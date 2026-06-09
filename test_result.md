@@ -101,3 +101,52 @@
 #====================================================================================================
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
+
+user_problem_statement: "Bygg DigiHome markedsside (Next.js App Router) etter flyttepakken — Warm Ink Editorial design, norsk bokmål, full SEO, DB-drevet blogg + admin + programmatisk SEO. Fase 1: verdensklasse forside + lead-API."
+
+backend:
+  - task: "Leads API (POST/GET /api/leads)"
+    implemented: true
+    working: true
+    file: "app/api/[[...path]]/route.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "Implementerte POST /api/leads (lagrer lead i MongoDB 'leads'-collection med uuid id, sanitering/trunkering av felt, status='new', createdAt ISO) og GET /api/leads (returnerer leads sortert nyeste først, uten _id). Bruker delt MongoClient i lib/mongodb.js (process.env.MONGO_URL + process.env.DB_NAME). CORS + OPTIONS håndtert. Health GET /api/root og /api/ returnerer {ok:true}. Trenger verifisering av Mongo-tilkobling og at lead lagres/hentes korrekt."
+        -working: true
+        -agent: "testing"
+        -comment: "✅ ALL BACKEND TESTS PASSED (10/10). Verified: 1) Health endpoints (GET /api/root, GET /api/) return 200 with {ok:true, message:'DigiHome API'}. 2) POST /api/leads creates lead with valid UUID id, status='new', ISO createdAt, returns 201. 3) Validation works: empty body returns 400 with Norwegian error 'Mangler kontaktinformasjon', address-only succeeds with 201. 4) GET /api/leads returns array sorted by createdAt descending (newest first). 5) MongoDB persistence confirmed - leads stored and retrieved correctly. 6) No MongoDB '_id' fields in any response (clean() function working). 7) Tested with base URL https://digihome-market.preview.emergentagent.com/api. All CRUD operations, validation, sorting, and data persistence working perfectly."
+
+frontend:
+  - task: "Forside (/) — Warm Ink Editorial, alle 16 seksjoner, SEO, JSON-LD"
+    implemented: true
+    working: "NA"
+    file: "app/page.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "Bygde komplett forside: hero (bento-collage, adressesøk, 3 nøkkeltall, flytende inntekts-badge), Slik jobber DigiHome (video-plassholder), tre tjenestemodeller, statistikk-stripe, 4 steg, Bergen-break, høykvalitetsboliger-galleri, showcase, 10+2-inntektssammenligning, lokale partnere, hvorfor velge DigiHome, Om DigiHome (CEO-plassholder), testimonials, partnere, avsluttende CTA, footer. Selvhostede fonter (next/font/local), JSON-LD Organization + RealEstateAgent, framer-motion fade-up. Verifisert visuelt via screenshots — ser bra ut. Ikke testet med frontend-agent ennå."
+
+metadata:
+  created_by: "main_agent"
+  version: "1.0"
+  test_sequence: 1
+  run_ui: false
+
+test_plan:
+  current_focus: []
+  stuck_tasks: []
+  test_all: false
+  test_priority: "high_first"
+
+agent_communication:
+    -agent: "main"
+    -message: "Fase 1 ferdig: verdensklasse forside + lead-API. Vennligst test KUN backend nå: 1) GET /api/root og GET /api/ skal returnere {ok:true}. 2) POST /api/leads med body {name, email, phone, address, propertyType, message} skal returnere 201 med {ok:true, lead:{...id...}} og lagre i MongoDB. 3) POST /api/leads med tomt body {} skal returnere 400. 4) GET /api/leads skal returnere array med opprettede leads (nyeste først), uten _id-felt. Ikke test frontend (gjøres separat med brukers samtykke)."
+    -agent: "testing"
+    -message: "✅ BACKEND TESTING COMPLETE - ALL TESTS PASSED (10/10). Tested all scenarios from review_request: health checks, lead creation (happy path + validation), lead listing with sorting, MongoDB persistence. All endpoints working correctly with proper error handling, UUID generation, ISO timestamps, and MongoDB _id removal. No critical or major issues found. Backend API is production-ready. Created backend_test.py for future regression testing. Ready for main agent to summarize and finish Phase 1."

@@ -18,6 +18,19 @@ module.exports = {
       },
       extend: {
         colors: {
+          canvas: '#FDFCFB',
+          'canvas-alt': '#FBFAF7',
+          surface: '#FFFFFF',
+          ink: '#0A0A0A',
+          'ink-soft': '#1A1A1A',
+          taupe: '#9B9080',
+          quiet: '#7C7466',
+          fill: '#F5F2EB',
+          hairline: '#EBE6DF',
+          lavender: '#9B5BD6',
+          'lavender-soft': '#CF97FC',
+          success: '#18794E',
+          'success-bg': '#E8F4EE',
           border: 'hsl(var(--border))',
           input: 'hsl(var(--input))',
           ring: 'hsl(var(--ring))',
@@ -72,7 +85,16 @@ module.exports = {
         borderRadius: {
           lg: 'var(--radius)',
           md: 'calc(var(--radius) - 2px)',
-          sm: 'calc(var(--radius) - 4px)'
+          sm: 'calc(var(--radius) - 4px)',
+          card: '20px',
+          panel: '24px'
+        },
+        fontFamily: {
+          heading: ['var(--font-heading)', 'sans-serif'],
+          body: ['var(--font-body)', 'sans-serif'],
+        },
+        maxWidth: {
+          shell: '1400px',
         },
         keyframes: {
           'accordion-down': {
