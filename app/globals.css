@@ -190,3 +190,42 @@ h1, h2, h3 {
     text-wrap: balance;
   }
 }
+
+/* === DigiHome — cinematic motion === */
+@keyframes dh-kenburns {
+  0%   { transform: scale(1.06) translate3d(0, 0, 0); }
+  100% { transform: scale(1.2) translate3d(-1.6%, -1.8%, 0); }
+}
+@keyframes dh-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-8px); }
+}
+@keyframes dh-eq {
+  0%, 100% { transform: scaleY(0.3); }
+  50%      { transform: scaleY(1); }
+}
+@keyframes dh-marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+@keyframes dh-blob {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33%      { transform: translate(4%, -5%) scale(1.1); }
+  66%      { transform: translate(-4%, 4%) scale(0.94); }
+}
+
+.animate-kenburns { animation: dh-kenburns 18s ease-in-out infinite alternate; }
+.animate-floaty   { animation: dh-float 5s ease-in-out infinite; }
+.animate-blob     { animation: dh-blob 18s ease-in-out infinite; }
+.marquee-track    { animation: dh-marquee 36s linear infinite; }
+.marquee-paused:hover .marquee-track { animation-play-state: paused; }
+.eq-bar           { transform-origin: bottom; animation: dh-eq 1s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-kenburns,
+  .animate-floaty,
+  .animate-blob,
+  .marquee-track,
+  .eq-bar { animation: none !important; }
+}
+

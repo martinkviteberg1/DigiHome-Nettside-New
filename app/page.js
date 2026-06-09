@@ -11,7 +11,9 @@ import { Footer } from '@/components/site/Footer';
 import { Reveal } from '@/components/site/Reveal';
 import { JsonLd } from '@/components/site/JsonLd';
 import { AddressSearch } from '@/components/site/AddressSearch';
-import { VideoBlock } from '@/components/site/VideoBlock';
+import { CinematicVideo } from '@/components/site/CinematicVideo';
+import { CountUp } from '@/components/site/CountUp';
+import { PartnerMarquee } from '@/components/site/PartnerMarquee';
 import {
   site, stats, statStrip, services, steps, qualities, qualityGallery,
   showcase, network, reasons, testimonials, partners,
@@ -132,7 +134,9 @@ export default function HomePage() {
                   <dl className="mt-10 grid grid-cols-3 gap-6 max-w-md">
                     {stats.map((s) => (
                       <div key={s.label}>
-                        <dt className="text-3xl sm:text-4xl font-bold text-ink tracking-[-0.03em]">{s.value}</dt>
+                        <dt className="text-3xl sm:text-4xl font-bold text-ink tracking-[-0.03em]">
+                          <CountUp value={s.value} />
+                        </dt>
                         <dd className="mt-1 text-sm text-quiet">{s.label}</dd>
                       </div>
                     ))}
@@ -142,19 +146,30 @@ export default function HomePage() {
 
               {/* Bento collage */}
               <Reveal delay={0.1} className="relative">
+                <div className="pointer-events-none absolute -inset-8 -z-10">
+                  <div className="absolute right-6 top-8 h-72 w-72 rounded-full bg-lavender-soft/25 blur-3xl animate-blob" />
+                  <div className="absolute left-0 bottom-0 h-56 w-56 rounded-full bg-[#FCE8C8]/40 blur-3xl animate-blob" style={{ animationDelay: '4s' }} />
+                </div>
+
                 <div className="relative grid grid-cols-2 grid-rows-2 gap-4 h-[460px] sm:h-[560px]">
-                  <div className="row-span-2 relative rounded-card overflow-hidden border border-hairline">
-                    <Image src="/interior-hallway.webp" alt="Lyst interiør i en DigiHome-bolig" fill className="object-cover" sizes="(max-width:1024px) 50vw, 25vw" priority />
+                  <div className="group row-span-2 relative rounded-card overflow-hidden border border-hairline">
+                    <Image src="/interior-hallway.webp" alt="Lyst interiør i en DigiHome-bolig" fill className="object-cover transition-transform duration-700 group-hover:scale-110" sizes="(max-width:1024px) 50vw, 25vw" priority />
+                    <div className="absolute inset-0 ring-1 ring-inset ring-black/5 rounded-card" />
                   </div>
-                  <div className="relative rounded-card overflow-hidden border border-hairline">
-                    <Image src="/interior-bedroom.webp" alt="Soverom i utleiebolig" fill className="object-cover" sizes="(max-width:1024px) 50vw, 25vw" />
+                  <div className="group relative rounded-card overflow-hidden border border-hairline">
+                    <Image src="/interior-bedroom.webp" alt="Soverom i utleiebolig" fill className="object-cover transition-transform duration-700 group-hover:scale-110" sizes="(max-width:1024px) 50vw, 25vw" />
                   </div>
-                  <div className="relative rounded-card overflow-hidden border border-hairline">
-                    <Image src="/bergen-houses.webp" alt="Boliger i Bergen" fill className="object-cover" sizes="(max-width:1024px) 50vw, 25vw" />
+                  <div className="group relative rounded-card overflow-hidden border border-hairline">
+                    <Image src="/bergen-houses.webp" alt="Boliger i Bergen" fill className="object-cover transition-transform duration-700 group-hover:scale-110" sizes="(max-width:1024px) 50vw, 25vw" />
                   </div>
                 </div>
 
-                <div className="absolute -left-3 sm:-left-5 bottom-8 z-10 rounded-2xl bg-white border border-hairline shadow-[0_12px_40px_rgba(0,0,0,0.10)] px-5 py-4">
+                <div className="absolute right-3 sm:right-4 top-5 z-10 inline-flex items-center gap-1.5 rounded-full bg-ink text-white px-3.5 py-1.5 text-xs font-semibold shadow-[0_8px_24px_rgba(0,0,0,0.2)]">
+                  <Sparkles className="h-3.5 w-3.5 text-lavender-soft" />
+                  Nytt · 10+2-modellen
+                </div>
+
+                <div className="absolute -left-3 sm:-left-5 bottom-8 z-10 rounded-2xl bg-white border border-hairline shadow-[0_12px_40px_rgba(0,0,0,0.10)] px-5 py-4 animate-floaty">
                   <p className="text-xs uppercase tracking-[0.16em] font-semibold text-taupe">Snittinntekt Bergen</p>
                   <p className="mt-1 text-2xl font-bold text-ink">{site.avgIncome}</p>
                 </div>
@@ -163,35 +178,26 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* ============ 2. SLIK JOBBER DIGIHOME (video) ============ */}
-        <section className="py-20 sm:py-28 bg-fill/50 border-y border-hairline">
-          <div className="max-w-shell mx-auto px-6 sm:px-10 lg:px-16">
-            <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
-              <div>
-                <Reveal><Eyebrow className="text-lavender">Slik fungerer det</Eyebrow></Reveal>
-                <Reveal as="h2" delay={0.05} className="mt-4 text-[34px] sm:text-[44px] font-bold text-ink leading-[1.08]">
-                  Slik jobber DigiHome for deg.
-                </Reveal>
-                <Reveal delay={0.1}>
-                  <p className="mt-5 text-lg text-quiet leading-relaxed max-w-lg">
-                    Se hvordan vi gjør langtidsutleie smartere — fra første visning til siste
-                    leiebetaling.
-                  </p>
-                </Reveal>
-                <Reveal delay={0.15}>
-                  <Link href="/forvaltning" className="mt-7 inline-flex items-center gap-2 text-sm font-semibold text-ink hover:gap-3 transition-all">
-                    Les mer om forvaltning <ArrowRight className="h-4 w-4" />
-                  </Link>
-                </Reveal>
-              </div>
+        {/* ============ 2. SLIK JOBBER DIGIHOME (kinematisk video) ============ */}
+        <section className="relative overflow-hidden bg-ink text-white py-20 sm:py-28">
+          <div className="pointer-events-none absolute inset-0" style={{ background: 'radial-gradient(circle at 75% 0%, rgba(207,151,252,0.14), transparent 55%)' }} />
+          <div className="relative max-w-shell mx-auto px-6 sm:px-10 lg:px-16">
+            <div className="max-w-2xl">
+              <Reveal><Eyebrow className="text-lavender-soft">Slik fungerer det</Eyebrow></Reveal>
+              <Reveal as="h2" delay={0.05} className="mt-4 text-[34px] sm:text-[52px] font-bold leading-[1.06]">
+                Slik jobber DigiHome for deg.
+              </Reveal>
               <Reveal delay={0.1}>
-                <VideoBlock
-                  poster="/bergen-rooftops.webp"
-                  src="/langtid-hero-720p.mp4"
-                  label="Se hvordan DigiHome jobber · Klikk for lyd"
-                />
+                <p className="mt-5 text-lg text-white/65 leading-relaxed max-w-xl">
+                  Se hvordan vi gjør langtidsutleie smartere — fra første visning til siste
+                  leiebetaling. Teknologi i kulissene, mennesker i front.
+                </p>
               </Reveal>
             </div>
+
+            <Reveal delay={0.12} className="mt-12">
+              <CinematicVideo poster="/bergen-aerial.webp" src="/langtid-hero-720p.mp4" />
+            </Reveal>
           </div>
         </section>
 
@@ -215,7 +221,7 @@ export default function HomePage() {
                 const Icon = iconMap[s.icon];
                 return (
                   <Reveal key={s.name} delay={i * 0.07}>
-                    <div className={`h-full rounded-card p-8 border transition shadow-[0_8px_30px_rgba(0,0,0,0.05)] ${s.featured ? 'bg-ink text-white border-ink' : 'bg-surface border-hairline'}`}>
+                    <div className={`h-full rounded-card p-8 border transition duration-300 hover:-translate-y-1.5 shadow-[0_8px_30px_rgba(0,0,0,0.05)] hover:shadow-[0_28px_60px_rgba(0,0,0,0.13)] ${s.featured ? 'bg-ink text-white border-ink' : 'bg-surface border-hairline'}`}>
                       <div className="flex items-center justify-between">
                         <span className={`h-12 w-12 rounded-full inline-flex items-center justify-center ${s.featured ? 'bg-white/10' : 'bg-fill'}`}>
                           <Icon className={`h-5 w-5 ${s.featured ? 'text-lavender-soft' : 'text-lavender'}`} />
@@ -247,7 +253,7 @@ export default function HomePage() {
             <div className="grid sm:grid-cols-3 gap-10 sm:gap-6">
               {statStrip.map((s, i) => (
                 <Reveal key={s.label} delay={i * 0.08} className="text-center sm:text-left">
-                  <p className="text-5xl sm:text-6xl font-bold tracking-[-0.04em]">{s.value}</p>
+                  <p className="text-5xl sm:text-6xl font-bold tracking-[-0.04em]"><CountUp value={s.value} /></p>
                   <p className="mt-3 text-lg font-semibold">{s.label}</p>
                   <p className="mt-1 text-sm text-white/55">{s.sub}</p>
                 </Reveal>
@@ -274,7 +280,7 @@ export default function HomePage() {
             <div className="mt-12 grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {steps.map((s, i) => (
                 <Reveal key={s.no} delay={i * 0.06}>
-                  <div className="h-full rounded-card bg-surface border border-hairline p-7 shadow-[0_8px_30px_rgba(0,0,0,0.05)]">
+                  <div className="h-full rounded-card bg-surface border border-hairline p-7 shadow-[0_8px_30px_rgba(0,0,0,0.05)] transition duration-300 hover:-translate-y-1.5 hover:shadow-[0_24px_60px_rgba(0,0,0,0.12)]">
                     <span className="text-sm font-bold text-lavender tracking-[0.1em]">{s.no}</span>
                     <h3 className="mt-4 text-xl font-bold text-ink">{s.title}</h3>
                     <p className="mt-3 text-[15px] leading-relaxed text-quiet">{s.body}</p>
@@ -363,7 +369,7 @@ export default function HomePage() {
             <div className="mt-12 grid md:grid-cols-3 gap-6">
               {showcase.map((p, i) => (
                 <Reveal key={p.area} delay={i * 0.07}>
-                  <article className="group rounded-card overflow-hidden bg-surface border border-hairline shadow-[0_8px_30px_rgba(0,0,0,0.05)]">
+                  <article className="group rounded-card overflow-hidden bg-surface border border-hairline shadow-[0_8px_30px_rgba(0,0,0,0.05)] transition duration-300 hover:-translate-y-1.5 hover:shadow-[0_24px_60px_rgba(0,0,0,0.12)]">
                     <div className="relative aspect-[4/3] overflow-hidden">
                       <Image src={p.image} alt={`Eiendom i ${p.area}`} fill className="object-cover transition-transform duration-700 group-hover:scale-105" sizes="(max-width:768px) 100vw, 33vw" />
                       <span className="absolute top-4 left-4 rounded-full bg-white/95 backdrop-blur px-3 py-1 text-xs font-semibold text-ink">{p.type}</span>
@@ -494,7 +500,7 @@ export default function HomePage() {
                 const Icon = iconMap[n.icon];
                 return (
                   <Reveal key={n.name} delay={i * 0.05}>
-                    <div className="h-full rounded-card bg-surface border border-hairline p-7">
+                    <div className="h-full rounded-card bg-surface border border-hairline p-7 transition duration-300 hover:-translate-y-1.5 hover:shadow-[0_24px_60px_rgba(0,0,0,0.10)]">
                       <span className="h-12 w-12 rounded-full bg-fill inline-flex items-center justify-center">
                         <Icon className="h-5 w-5 text-ink" />
                       </span>
@@ -611,7 +617,7 @@ export default function HomePage() {
             <div className="mt-12 grid md:grid-cols-3 gap-6">
               {testimonials.map((t, i) => (
                 <Reveal key={t.name} delay={i * 0.07}>
-                  <figure className="h-full rounded-card bg-surface border border-hairline p-8 shadow-[0_8px_30px_rgba(0,0,0,0.05)] flex flex-col">
+                  <figure className="h-full rounded-card bg-surface border border-hairline p-8 shadow-[0_8px_30px_rgba(0,0,0,0.05)] flex flex-col transition duration-300 hover:-translate-y-1.5 hover:shadow-[0_24px_60px_rgba(0,0,0,0.12)]">
                     <div className="flex gap-0.5 text-lavender">
                       {[0, 1, 2, 3, 4].map((s) => (
                         <Star key={s} className="h-4 w-4" fill="currentColor" />
@@ -630,23 +636,15 @@ export default function HomePage() {
         </section>
 
         {/* ============ 14. SAMARBEIDSPARTNERE ============ */}
-        <section className="py-16 border-y border-hairline bg-fill/40">
+        <section className="py-16 border-y border-hairline bg-canvas">
           <div className="max-w-shell mx-auto px-6 sm:px-10 lg:px-16">
             <Reveal>
               <p className="text-center text-xs uppercase tracking-[0.2em] font-semibold text-taupe">
                 Samarbeidspartnere
               </p>
             </Reveal>
-            <Reveal delay={0.05}>
-              <div className="mt-8 flex flex-wrap items-center justify-center gap-x-12 gap-y-6">
-                {partners.map((p) => (
-                  p.logo ? (
-                    <Image key={p.name} src={p.logo} alt={p.name} width={120} height={32} className="h-7 w-auto object-contain opacity-60 hover:opacity-100 transition grayscale hover:grayscale-0" />
-                  ) : (
-                    <span key={p.name} className="text-lg font-bold text-ink/35 hover:text-ink/70 transition tracking-tight">{p.name}</span>
-                  )
-                ))}
-              </div>
+            <Reveal delay={0.05} className="mt-8">
+              <PartnerMarquee />
             </Reveal>
           </div>
         </section>
