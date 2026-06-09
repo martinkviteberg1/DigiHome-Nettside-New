@@ -4,6 +4,7 @@ import {
   Sparkles, ShieldCheck, CalendarRange, Wrench, Plug, Droplets, Scale, Umbrella,
   BadgeCheck, TrendingUp, Eye, Users, Check, ArrowRight, ArrowUpRight,
   MapPin, BedDouble, Maximize, Quote, Star, BarChart3, Clock, Building2,
+  Repeat, LineChart, Settings2, Smartphone,
 } from 'lucide-react';
 
 import { Header } from '@/components/site/Header';
@@ -14,6 +15,8 @@ import { AddressSearch } from '@/components/site/AddressSearch';
 import { CinematicVideo } from '@/components/site/CinematicVideo';
 import { CountUp } from '@/components/site/CountUp';
 import { PartnerMarquee } from '@/components/site/PartnerMarquee';
+import { Bar } from '@/components/site/Bar';
+import { ScrollProgress } from '@/components/site/ScrollProgress';
 import {
   site, stats, statStrip, services, steps, qualities, qualityGallery,
   showcase, network, reasons, testimonials, partners,
@@ -21,7 +24,7 @@ import {
 
 const iconMap = {
   Sparkles, ShieldCheck, CalendarRange, Wrench, Plug, Droplets, Scale, Umbrella,
-  BadgeCheck, TrendingUp, Eye, Users,
+  BadgeCheck, TrendingUp, Eye, Users, Repeat, LineChart, Settings2, Smartphone,
 };
 
 export const metadata = {
@@ -38,7 +41,8 @@ export const metadata = {
 };
 
 const Eyebrow = ({ children, className = '' }) => (
-  <p className={`text-xs uppercase tracking-[0.2em] font-semibold text-taupe ${className}`}>
+  <p className={`flex items-center gap-3 text-xs uppercase tracking-[0.2em] font-semibold text-taupe ${className}`}>
+    <span className="inline-block h-px w-7 bg-current opacity-50" />
     {children}
   </p>
 );
@@ -277,28 +281,48 @@ export default function HomePage() {
               </Reveal>
             </div>
 
-            <div className="mt-12 grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {steps.map((s, i) => (
-                <Reveal key={s.no} delay={i * 0.06}>
-                  <div className="h-full rounded-card bg-surface border border-hairline p-7 shadow-[0_8px_30px_rgba(0,0,0,0.05)] transition duration-300 hover:-translate-y-1.5 hover:shadow-[0_24px_60px_rgba(0,0,0,0.12)]">
-                    <span className="text-sm font-bold text-lavender tracking-[0.1em]">{s.no}</span>
-                    <h3 className="mt-4 text-xl font-bold text-ink">{s.title}</h3>
-                    <p className="mt-3 text-[15px] leading-relaxed text-quiet">{s.body}</p>
-                  </div>
-                </Reveal>
-              ))}
+            <div className="mt-16 relative">
+              <div className="hidden lg:block absolute top-[42px] left-[10%] right-[10%] h-px bg-gradient-to-r from-hairline via-lavender/40 to-hairline" />
+              <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-12 relative">
+                {steps.map((s, i) => {
+                  const Icon = iconMap[s.icon];
+                  return (
+                    <Reveal key={s.no} delay={i * 0.08}>
+                      <div className="group">
+                        <div className="relative z-10 h-[84px] w-[84px] rounded-2xl bg-surface border border-hairline shadow-[0_8px_30px_rgba(0,0,0,0.06)] flex items-center justify-center mx-auto lg:mx-0 transition duration-300 group-hover:-translate-y-1 group-hover:shadow-[0_18px_40px_rgba(0,0,0,0.12)]">
+                          <Icon className="h-7 w-7 text-ink" />
+                          <span className="absolute -top-2.5 -right-2.5 h-7 w-7 rounded-full bg-lavender text-white text-xs font-bold flex items-center justify-center shadow-[0_4px_12px_rgba(155,91,214,0.4)]">
+                            {s.no}
+                          </span>
+                        </div>
+                        <h3 className="mt-6 text-xl font-bold text-ink text-center lg:text-left">{s.title}</h3>
+                        <p className="mt-2.5 text-[15px] leading-relaxed text-quiet text-center lg:text-left">{s.body}</p>
+                      </div>
+                    </Reveal>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </section>
 
         {/* ============ 6. FULLBREDDE BERGEN-BREAK ============ */}
         <section className="relative">
-          <div className="relative h-[440px] sm:h-[520px] overflow-hidden">
-            <Image src="/bergen-harbor.webp" alt="Bergen havn" fill className="object-cover" sizes="100vw" />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/25 to-black/10" />
+          <div className="relative h-[460px] sm:h-[560px] overflow-hidden">
+            <div className="absolute inset-0 animate-kenburns">
+              <Image src="/bergen-harbor.webp" alt="Bergen havn" fill className="object-cover" sizes="100vw" />
+            </div>
+            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/25 to-black/10" />
+            <div className="absolute inset-0" style={{ background: 'radial-gradient(circle at 80% 10%, rgba(207,151,252,0.18), transparent 55%)' }} />
             <div className="absolute inset-0 flex items-end">
               <div className="max-w-shell mx-auto w-full px-6 sm:px-10 lg:px-16 pb-14 sm:pb-20">
-                <Reveal as="h2" className="max-w-2xl text-white text-[32px] sm:text-[46px] font-bold leading-[1.1]">
+                <Reveal>
+                  <p className="flex items-center gap-3 text-xs uppercase tracking-[0.2em] font-semibold text-white/70">
+                    <span className="inline-block h-px w-7 bg-white/50" />
+                    Bergen, Norge
+                  </p>
+                </Reveal>
+                <Reveal as="h2" delay={0.05} className="mt-4 max-w-2xl text-white text-[32px] sm:text-[48px] font-bold leading-[1.08]">
                   Mer enn forvaltning.<br />En partner for eiendommen din.
                 </Reveal>
               </div>
@@ -339,8 +363,9 @@ export default function HomePage() {
               <Reveal delay={0.1}>
                 <div className="grid grid-cols-2 gap-4">
                   {qualityGallery.map((src, i) => (
-                    <div key={src} className={`relative rounded-card overflow-hidden border border-hairline ${i % 3 === 0 ? 'aspect-[4/5]' : 'aspect-[4/4]'}`}>
-                      <Image src={src} alt="DigiHome interiør" fill className="object-cover" sizes="(max-width:1024px) 50vw, 25vw" />
+                    <div key={src} className={`group relative rounded-card overflow-hidden border border-hairline ${i % 3 === 0 ? 'aspect-[4/5]' : 'aspect-[4/4]'}`}>
+                      <Image src={src} alt="DigiHome interiør" fill className="object-cover transition-transform duration-700 group-hover:scale-110" sizes="(max-width:1024px) 50vw, 25vw" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent opacity-0 group-hover:opacity-100 transition" />
                     </div>
                   ))}
                 </div>
@@ -445,9 +470,7 @@ export default function HomePage() {
                         <span className="text-sm text-white/70">Kun langtid</span>
                         <span className="text-lg font-semibold">180 000 kr</span>
                       </div>
-                      <div className="mt-2 h-3 rounded-full bg-white/10 overflow-hidden">
-                        <div className="h-full rounded-full bg-white/40" style={{ width: '71%' }} />
-                      </div>
+                      <Bar className="mt-2 h-3 rounded-full bg-white/10 overflow-hidden" barClassName="h-full rounded-full bg-white/40" width="71%" />
                     </div>
 
                     <div>
@@ -455,9 +478,7 @@ export default function HomePage() {
                         <span className="text-sm font-semibold text-white">10+2-modellen</span>
                         <span className="text-lg font-bold">252 000 kr</span>
                       </div>
-                      <div className="mt-2 h-3 rounded-full bg-white/10 overflow-hidden">
-                        <div className="h-full rounded-full bg-lavender-soft" style={{ width: '100%' }} />
-                      </div>
+                      <Bar className="mt-2 h-3 rounded-full bg-white/10 overflow-hidden" barClassName="h-full rounded-full bg-lavender-soft" width="100%" delay={0.25} />
                     </div>
                   </div>
 
@@ -617,16 +638,22 @@ export default function HomePage() {
             <div className="mt-12 grid md:grid-cols-3 gap-6">
               {testimonials.map((t, i) => (
                 <Reveal key={t.name} delay={i * 0.07}>
-                  <figure className="h-full rounded-card bg-surface border border-hairline p-8 shadow-[0_8px_30px_rgba(0,0,0,0.05)] flex flex-col transition duration-300 hover:-translate-y-1.5 hover:shadow-[0_24px_60px_rgba(0,0,0,0.12)]">
+                  <figure className="relative h-full rounded-card bg-surface border border-hairline p-8 shadow-[0_8px_30px_rgba(0,0,0,0.05)] flex flex-col transition duration-300 hover:-translate-y-1.5 hover:shadow-[0_24px_60px_rgba(0,0,0,0.12)]">
+                    <Quote className="absolute top-7 right-7 h-10 w-10 text-fill" fill="currentColor" strokeWidth={0} />
                     <div className="flex gap-0.5 text-lavender">
                       {[0, 1, 2, 3, 4].map((s) => (
                         <Star key={s} className="h-4 w-4" fill="currentColor" />
                       ))}
                     </div>
-                    <blockquote className="mt-5 text-[15px] leading-relaxed text-ink flex-1">“{t.quote}”</blockquote>
-                    <figcaption className="mt-6 pt-5 border-t border-hairline">
-                      <p className="font-bold text-ink">{t.name}</p>
-                      <p className="mt-0.5 text-sm text-taupe">{t.role}</p>
+                    <blockquote className="mt-5 text-[15px] leading-relaxed text-ink flex-1 relative">“{t.quote}”</blockquote>
+                    <figcaption className="mt-6 pt-5 border-t border-hairline flex items-center gap-3">
+                      <span className="h-11 w-11 rounded-full bg-fill text-ink font-bold flex items-center justify-center text-sm">
+                        {t.name.split(' ').map((w) => w[0]).join('').slice(0, 2)}
+                      </span>
+                      <div>
+                        <p className="font-bold text-ink">{t.name}</p>
+                        <p className="mt-0.5 text-sm text-taupe">{t.role}</p>
+                      </div>
                     </figcaption>
                   </figure>
                 </Reveal>
@@ -650,29 +677,41 @@ export default function HomePage() {
         </section>
 
         {/* ============ 15. AVSLUTTENDE CTA ============ */}
-        <section className="py-24 sm:py-32 relative overflow-hidden">
-          <div className="pointer-events-none absolute inset-0 -z-10 lavender-glow" />
+        <section className="py-24 sm:py-32">
           <div className="max-w-shell mx-auto px-6 sm:px-10 lg:px-16">
-            <div className="rounded-panel border border-hairline bg-surface px-8 py-16 sm:px-16 sm:py-20 text-center shadow-[0_20px_60px_rgba(0,0,0,0.06)]">
-              <Reveal as="h2" className="text-[32px] sm:text-[52px] font-bold text-ink leading-[1.08] max-w-3xl mx-auto text-balance">
-                Klar for å la eiendommen jobbe for deg?
-              </Reveal>
-              <Reveal delay={0.08}>
-                <p className="mt-6 text-lg text-quiet max-w-xl mx-auto leading-relaxed">
-                  Få en gratis vurdering og se nøyaktig hva eiendommen din kan tjene. Ingen
-                  forpliktelser.
-                </p>
-              </Reveal>
-              <Reveal delay={0.14}>
-                <div className="mt-9 flex flex-col sm:flex-row gap-3 justify-center">
-                  <Link href="/bli-utleier" className="rounded-full bg-ink text-white h-[52px] px-8 inline-flex items-center justify-center gap-2 text-sm font-semibold hover:bg-[#333] active:scale-[0.98] transition">
-                    Få gratis vurdering <ArrowUpRight className="h-4 w-4" />
-                  </Link>
-                  <Link href="/kontakt" className="rounded-full bg-white text-ink h-[52px] px-8 inline-flex items-center justify-center text-sm font-semibold border border-hairline hover:bg-fill transition">
-                    Kontakt oss
-                  </Link>
-                </div>
-              </Reveal>
+            <div className="relative overflow-hidden rounded-panel bg-ink text-white px-8 py-16 sm:px-16 sm:py-24 text-center shadow-[0_30px_80px_rgba(0,0,0,0.25)]">
+              <div className="pointer-events-none absolute inset-0" style={{ background: 'radial-gradient(circle at 50% 0%, rgba(207,151,252,0.22), transparent 60%)' }} />
+              <div className="pointer-events-none absolute inset-0 dot-grid opacity-[0.10]" />
+              <div className="pointer-events-none absolute -right-16 -bottom-16 h-72 w-72 rounded-full bg-lavender-soft/15 blur-3xl animate-blob" />
+              <div className="pointer-events-none absolute -left-16 -top-16 h-64 w-64 rounded-full bg-lavender/10 blur-3xl animate-blob" style={{ animationDelay: '5s' }} />
+
+              <div className="relative">
+                <Reveal>
+                  <span className="inline-flex items-center gap-2 rounded-full bg-white/10 border border-white/15 px-4 py-1.5 text-xs font-semibold text-white/80">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                    Gratis &amp; uforpliktende · Svar innen 24 timer
+                  </span>
+                </Reveal>
+                <Reveal as="h2" delay={0.05} className="mt-6 text-[32px] sm:text-[56px] font-bold leading-[1.06] max-w-3xl mx-auto text-balance">
+                  Klar for å la eiendommen jobbe for deg?
+                </Reveal>
+                <Reveal delay={0.1}>
+                  <p className="mt-6 text-lg text-white/65 max-w-xl mx-auto leading-relaxed">
+                    Få en gratis vurdering og se nøyaktig hva eiendommen din kan tjene. Ingen
+                    forpliktelser.
+                  </p>
+                </Reveal>
+                <Reveal delay={0.16}>
+                  <div className="mt-10 flex flex-col sm:flex-row gap-3 justify-center">
+                    <Link href="/bli-utleier" className="rounded-full bg-white text-ink h-[54px] px-8 inline-flex items-center justify-center gap-2 text-sm font-semibold hover:bg-white/90 active:scale-[0.98] transition">
+                      Få gratis vurdering <ArrowUpRight className="h-4 w-4" />
+                    </Link>
+                    <Link href="/kontakt" className="rounded-full bg-transparent text-white h-[54px] px-8 inline-flex items-center justify-center text-sm font-semibold border border-white/25 hover:bg-white/10 transition">
+                      Kontakt oss
+                    </Link>
+                  </div>
+                </Reveal>
+              </div>
             </div>
           </div>
         </section>

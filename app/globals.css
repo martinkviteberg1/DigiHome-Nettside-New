@@ -229,3 +229,32 @@ h1, h2, h3 {
   .eq-bar { animation: none !important; }
 }
 
+
+/* === DigiHome — global polish === */
+html { scroll-behavior: smooth; }
+
+::selection {
+  background: rgba(207, 151, 252, 0.35);
+  color: #0A0A0A;
+}
+
+:where(a, button, input, textarea, select):focus-visible {
+  outline: 2px solid #9B5BD6;
+  outline-offset: 2px;
+}
+
+.nav-underline { position: relative; }
+.nav-underline::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -5px;
+  height: 1.5px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.nav-underline:hover::after { transform: scaleX(1); }
+
