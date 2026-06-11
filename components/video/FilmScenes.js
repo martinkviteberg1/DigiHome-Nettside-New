@@ -223,6 +223,16 @@ function Kicker({ t, at, num, label, center = false }) {
   );
 }
 
+/** Landingsglød — myk lilla bloom på akt-titler når ordene har landet */
+const landGlow = (t, at) => {
+  const p = Math.sin(clamp01(seg(t, at, at + 1.3)) * Math.PI);
+  return p > 0.02
+    ? `0 0 calc(var(--su) * ${(p * 2.4).toFixed(2)}) rgba(207,151,252,${(0.4 * p).toFixed(3)})`
+    : 'none';
+};
+
+/* Stress-varsler i åpningen — fjernet etter tilbakemelding fra bruker */
+
 /** Pennespiss som følger signaturbanen (eksakt via getPointAtLength) */
 function SignaturePen({ d, sigP }) {
   const pathRef = useRef(null);
@@ -496,7 +506,7 @@ export function SceneAnnonse({ t }) {
     <Shell t={t} a={14} b={26.5}>
       <LeftCol lp={lp}>
         <Kicker t={t} at={14.55} num="01" label="ANNONSE" />
-        <h2 className="font-heading font-bold" style={{ fontSize: 'calc(var(--su) * 6.2)', color: '#FDFCFB', lineHeight: 1.08 }}>
+        <h2 className="font-heading font-bold" style={{ fontSize: 'calc(var(--su) * 6.2)', color: '#FDFCFB', lineHeight: 1.08, textShadow: landGlow(t, 15.4) }}>
           <Words t={t} at={14.7} text="Annonsen?" />
         </h2>
         <p className="font-body" style={{ fontSize: 'calc(var(--su) * 2.3)', color: 'rgba(253,252,251,0.6)', marginTop: 'calc(var(--su) * 1.8)', lineHeight: 1.4 }}>
@@ -695,7 +705,7 @@ export function SceneVisning({ t }) {
         <div className="absolute inset-0" style={{ opacity: partA, filter: partA < 0.95 ? `blur(${((1 - partA) * 6).toFixed(1)}px)` : 'none' }}>
           <LeftCol lp={lp}>
             <Kicker t={t} at={26.45} num="02" label="VISNINGER" />
-            <h2 className="font-heading font-bold" style={{ fontSize: 'calc(var(--su) * 6.2)', color: '#FDFCFB', lineHeight: 1.08 }}>
+            <h2 className="font-heading font-bold" style={{ fontSize: 'calc(var(--su) * 6.2)', color: '#FDFCFB', lineHeight: 1.08, textShadow: landGlow(t, 27.3) }}>
               <Words t={t} at={26.6} text="Visninger?" />
             </h2>
             <p className="font-body" style={{ fontSize: 'calc(var(--su) * 2.3)', color: 'rgba(253,252,251,0.6)', marginTop: 'calc(var(--su) * 1.8)' }}>
@@ -795,7 +805,7 @@ export function SceneVisning({ t }) {
         <div className="absolute inset-0" style={{ opacity: partB, filter: partBBlur > 0.3 ? `blur(${partBBlur.toFixed(1)}px)` : 'none' }}>
           <LeftCol lp={lp}>
             <Kicker t={t} at={32.4} num="03" label="SCREENING" />
-            <h2 className="font-heading font-bold" style={{ fontSize: 'calc(var(--su) * 6.2)', color: '#FDFCFB', lineHeight: 1.08 }}>
+            <h2 className="font-heading font-bold" style={{ fontSize: 'calc(var(--su) * 6.2)', color: '#FDFCFB', lineHeight: 1.08, textShadow: landGlow(t, 33.2) }}>
               <Words t={t} at={32.5} text="Leietakere?" />
             </h2>
             <p className="font-body" style={{ fontSize: 'calc(var(--su) * 2.3)', color: 'rgba(253,252,251,0.6)', marginTop: 'calc(var(--su) * 1.8)', lineHeight: 1.4 }}>
@@ -945,7 +955,7 @@ export function SceneKontrakt({ t }) {
         <div className="absolute inset-0" style={{ opacity: partA, filter: partA < 0.95 ? `blur(${((1 - partA) * 6).toFixed(1)}px)` : 'none' }}>
           <LeftCol lp={lp}>
             <Kicker t={t} at={38.45} num="04" label="KONTRAKT" />
-            <h2 className="font-heading font-bold" style={{ fontSize: 'calc(var(--su) * 6.2)', color: '#FDFCFB', lineHeight: 1.08 }}>
+            <h2 className="font-heading font-bold" style={{ fontSize: 'calc(var(--su) * 6.2)', color: '#FDFCFB', lineHeight: 1.08, textShadow: landGlow(t, 39.3) }}>
               <Words t={t} at={38.6} text="Kontrakten?" />
             </h2>
             <p className="font-body" style={{ fontSize: 'calc(var(--su) * 2.3)', color: 'rgba(253,252,251,0.6)', marginTop: 'calc(var(--su) * 1.8)' }}>
@@ -1026,7 +1036,7 @@ export function SceneKontrakt({ t }) {
       {partB > 0.01 && (
         <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ opacity: partB, filter: partBBlur > 0.3 ? `blur(${partBBlur.toFixed(1)}px)` : 'none' }}>
           <Kicker t={t} at={43.6} num="05" label="HUSLEIE" center />
-          <h2 className="font-heading font-bold" style={{ fontSize: 'calc(var(--su) * 5.4)', color: '#FDFCFB', lineHeight: 1.1 }}>
+          <h2 className="font-heading font-bold" style={{ fontSize: 'calc(var(--su) * 5.4)', color: '#FDFCFB', lineHeight: 1.1, textShadow: landGlow(t, 44.4) }}>
             <Words t={t} at={43.7} text="Og husleien?" />
           </h2>
           <p className="font-body" style={{ fontSize: 'calc(var(--su) * 2.3)', color: 'rgba(253,252,251,0.6)', marginTop: 'calc(var(--su) * 1)' }}>
@@ -1148,7 +1158,7 @@ export function SceneChat({ t }) {
     <Shell t={t} a={48.5} b={59.5}>
       <LeftCol lp={lp}>
         <Kicker t={t} at={48.95} num="06" label="SVAR 24/7" />
-        <h2 className="font-heading font-bold" style={{ fontSize: 'calc(var(--su) * 5.6)', color: '#FDFCFB', lineHeight: 1.1 }}>
+        <h2 className="font-heading font-bold" style={{ fontSize: 'calc(var(--su) * 5.6)', color: '#FDFCFB', lineHeight: 1.1, textShadow: landGlow(t, 50.0) }}>
           <Words t={t} at={49.1} stagger={0.1} text="Leietaker lurer på noe?" />
         </h2>
         <p className="font-body" style={{ fontSize: 'calc(var(--su) * 2.3)', color: 'rgba(253,252,251,0.6)', marginTop: 'calc(var(--su) * 1.8)', lineHeight: 1.4 }}>

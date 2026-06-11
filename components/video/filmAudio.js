@@ -107,7 +107,16 @@ export function scheduleMusic(ctx, destination, fromT = 0) {
   comp.release.value = 0.3;
   const master = ctx.createGain();
   master.gain.value = 0.9;
-  bus.connect(comp).connect(master).connect(destination);
+  /* master-EQ: varme i bunn + «air» i toppen (produksjonsglans) */
+  const shelfLo = ctx.createBiquadFilter();
+  shelfLo.type = 'lowshelf';
+  shelfLo.frequency.value = 130;
+  shelfLo.gain.value = 1.8;
+  const shelfHi = ctx.createBiquadFilter();
+  shelfHi.type = 'highshelf';
+  shelfHi.frequency.value = 8200;
+  shelfHi.gain.value = 2.4;
+  bus.connect(shelfLo).connect(shelfHi).connect(comp).connect(master).connect(destination);
 
   /* romklang */
   const reverb = ctx.createConvolver();

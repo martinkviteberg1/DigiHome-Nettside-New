@@ -179,7 +179,7 @@ export function FilmGrain({ t = 0, opacity = 0.05 }) {
   );
 }
 
-/** Lys-sveip ved aktskifter */
+/** Lys-sveip + fargede light leaks ved aktskifter */
 export function LightSweep({ t, boundaries = [] }) {
   let p = -1;
   for (const b of boundaries) {
@@ -189,14 +189,37 @@ export function LightSweep({ t, boundaries = [] }) {
   if (p < 0) return null;
   const x = p * 140 - 20;
   const op = Math.sin(p * Math.PI) * 0.09;
+  const leak = Math.sin(p * Math.PI);
   return (
-    <div
-      className="absolute inset-0 pointer-events-none"
-      aria-hidden="true"
-      style={{
-        background: `linear-gradient(105deg, transparent ${x - 12}%, rgba(255,255,255,${op.toFixed(3)}) ${x}%, transparent ${x + 12}%)`,
-      }}
-    />
+    <>
+      <div
+        className="absolute inset-0 pointer-events-none"
+        aria-hidden="true"
+        style={{
+          background: `linear-gradient(105deg, transparent ${x - 12}%, rgba(255,255,255,${op.toFixed(3)}) ${x}%, transparent ${x + 12}%)`,
+        }}
+      />
+      {/* organisk lilla lekkasje fra øvre hjørne */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        aria-hidden="true"
+        style={{
+          background: `radial-gradient(ellipse 55% 65% at ${(8 + p * 24).toFixed(1)}% -8%, rgba(207,151,252,0.11), transparent 70%)`,
+          opacity: leak.toFixed(3),
+          mixBlendMode: 'screen',
+        }}
+      />
+      {/* varm lekkasje fra nedre hjørne — filmisk dobbelttone */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        aria-hidden="true"
+        style={{
+          background: `radial-gradient(ellipse 45% 55% at ${(92 - p * 20).toFixed(1)}% 108%, rgba(255,176,118,0.06), transparent 70%)`,
+          opacity: leak.toFixed(3),
+          mixBlendMode: 'screen',
+        }}
+      />
+    </>
   );
 }
 
