@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { seg, clamp01, Orb, FilmGrain, LightSweep, Aurora, Bokeh, impactShake } from './filmUtils';
+import { seg, clamp01, Orb, FilmGrain, LightSweep, Aurora, Bokeh, impactShake, easeInOutCubic } from './filmUtils';
 import { scheduleMusic, renderMusicWav, FILM_DURATION } from './filmAudio';
 import {
   SceneOpening, SceneToggle, SceneAnnonse, SceneVisning, SceneKontrakt, SceneChat, SceneFinale,
@@ -39,6 +39,57 @@ const SHAKES = [
   [36.45, 0.3],   /* kandidat godkjent */
   [64.12, 0.7],   /* finale-brist */
 ];
+
+/* Den reisende orben — filmens røde tråd. Født av toggelen (10.9), utfører
+   hver oppgave i hver akt, og ofrer seg inn i finale-bristen (64.12).
+   Keyframes: [tid, x%, y%, skala, opasitet] */
+const ORB_PATH = [
+  [10.9, 51, 48, 0.0, 0],      /* fødes fra toggle-knappen */
+  [11.7, 50, 24, 1.0, 0.95],   /* stiger opp */
+  [13.6, 56, 22, 1.0, 0.95],
+  [15.2, 72, 11, 0.9, 0.9],    /* ankommer annonsekortet */
+  [17.5, 56, 13, 0.85, 0.9],   /* skanner foto: venstre... */
+  [19.1, 88, 13, 0.85, 0.9],   /* ...til høyre (styling-sveip) */
+  [20.6, 90, 8, 0.7, 0.85],
+  [26.2, 80, 10, 0.7, 0.85],   /* glir over aktskiftet */
+  [27.9, 54, 40, 0.75, 0.9],   /* booker rad 1 */
+  [28.7, 54, 50.5, 0.75, 0.9], /* rad 2 */
+  [29.5, 54, 61, 0.75, 0.9],   /* rad 3 */
+  [31.2, 62, 18, 0.7, 0.85],
+  [33.0, 71, 44, 0.5, 0.9],    /* setter seg i radarsenteret (driver skanningen) */
+  [35.25, 71, 44, 0.45, 0.9],
+  [35.7, 86, 16, 0.65, 0.85],  /* forlater før scoren lander */
+  [39.6, 57, 56, 0.6, 0.9],    /* inntar signaturlinjen */
+  [40.3, 57, 56, 0.6, 0.9],
+  [41.8, 73, 56, 0.6, 0.9],    /* følger pennen langs signaturen */
+  [42.4, 88, 72, 0.6, 0.9],    /* stempler BankID-merket */
+  [43.5, 76, 22, 0.7, 0.85],
+  [44.9, 50, 8, 0.8, 0.9],     /* venter over husleie-overskriften */
+  [46.5, 50, 8, 0.8, 0.9],
+  [46.95, 50, 58, 0.25, 0.85], /* stuper inn i beløpet (flare!) */
+  [47.05, 50, 60, 0.08, 0],
+  [49.7, 90, 6, 0.0, 0],       /* gjenfødes i chat-akten */
+  [50.4, 52, 24, 0.75, 0.9],
+  [51.4, 52, 32, 0.75, 0.9],   /* pulserer mens svaret skrives */
+  [52.6, 58, 33, 0.75, 0.9],   /* dytter svaret inn i telefonen */
+  [53.3, 52, 30, 0.75, 0.9],
+  [56.5, 56, 12, 0.7, 0.85],
+  [59.8, 50, 26, 0.85, 0.9],   /* samler troppene i finalen */
+  [63.3, 50, 28, 0.85, 0.9],
+  [64.05, 50, 50, 0.15, 0.7],  /* spiraler inn i kjernen... */
+  [64.15, 50, 50, 0.1, 0],     /* ...og blir til bristen */
+];
+
+function orbAt(t) {
+  if (t <= ORB_PATH[0][0] || t >= ORB_PATH[ORB_PATH.length - 1][0]) return null;
+  let i = 0;
+  while (i < ORB_PATH.length - 2 && t > ORB_PATH[i + 1][0]) i++;
+  const a = ORB_PATH[i];
+  const b = ORB_PATH[i + 1];
+  const p = easeInOutCubic(clamp01((t - a[0]) / (b[0] - a[0])));
+  const lerp = (u, v) => u + (v - u) * p;
+  return { x: lerp(a[1], b[1]), y: lerp(a[2], b[2]), s: lerp(a[3], b[3]), o: lerp(a[4], b[4]) };
+}
 
 /* ============ hovedklokke ============ */
 function useFilmClock(duration) {
@@ -284,7 +335,6 @@ export default function AutopilotFilm() {
 
   const pct = (time / DURATION) * 100;
   const watermark = Math.min(seg(time, 8.5, 9.7), 1 - seg(time, 66, 67.2)) * 0.45;
-  const engineOrb = Math.min(seg(time, 14.6, 15.6), 1 - seg(time, 47.5, 48.5)) * 0.85;
 
   /* impact-kameraristing (summert, deterministisk) */
   let shakeX = 0, shakeY = 0;
@@ -377,12 +427,69 @@ export default function AutopilotFilm() {
             style={{ top: 'calc(var(--su) * 3)', left: 'calc(var(--su) * 3.5)', height: 'calc(var(--su) * 2.2)', width: 'auto', opacity: watermark }}
           />
         )}
-        {/* motor-orb */}
-        {started && engineOrb > 0.01 && (
-          <div className="absolute pointer-events-none" style={{ top: 'calc(var(--su) * 2.3)', right: 'calc(var(--su) * 2.1)', opacity: engineOrb * 0.85 }}>
-            <Orb t={time} size="calc(var(--su) * 4.2)" speed={8} />
-          </div>
-        )}
+        {/* den reisende orben — filmens røde tråd (med lysspor) */}
+        {started && (() => {
+          const o = orbAt(time);
+          if (!o || o.o <= 0.02) return null;
+          const bobX = Math.sin(time * 1.7) * 0.22;
+          const bobY = Math.sin(time * 2.3) * 0.28;
+          return (
+            <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
+              {/* lysspor — tre falmende ekko bak orben */}
+              {[0.26, 0.17, 0.09].map((d, gi) => {
+                const g = orbAt(time - d);
+                if (!g || g.o <= 0.02) return null;
+                const sz = (3.6 * g.s * (0.55 + gi * 0.15)).toFixed(2);
+                return (
+                  <span
+                    key={gi}
+                    style={{
+                      position: 'absolute', left: `${g.x.toFixed(2)}%`, top: `${g.y.toFixed(2)}%`,
+                      width: `calc(var(--su) * ${sz})`, height: `calc(var(--su) * ${sz})`,
+                      transform: 'translate(-50%, -50%)',
+                      borderRadius: '50%',
+                      background: 'radial-gradient(circle, rgba(207,151,252,0.55), transparent 68%)',
+                      opacity: (g.o * (0.1 + gi * 0.09)).toFixed(3),
+                      filter: 'blur(calc(var(--su) * 0.3))',
+                    }}
+                  />
+                );
+              })}
+              <div
+                style={{
+                  position: 'absolute',
+                  left: `${(o.x + bobX).toFixed(2)}%`, top: `${(o.y + bobY).toFixed(2)}%`,
+                  transform: 'translate(-50%, -50%)',
+                  opacity: o.o.toFixed(3),
+                }}
+              >
+                {/* ytre aura */}
+                <div
+                  style={{
+                    position: 'absolute', left: '50%', top: '50%',
+                    width: `calc(var(--su) * ${(o.s * 9).toFixed(2)})`, height: `calc(var(--su) * ${(o.s * 9).toFixed(2)})`,
+                    transform: 'translate(-50%, -50%)',
+                    borderRadius: '50%',
+                    background: 'radial-gradient(circle, rgba(155,91,214,0.32), transparent 65%)',
+                    filter: 'blur(calc(var(--su) * 0.6))',
+                  }}
+                />
+                <Orb t={time} size={`calc(var(--su) * ${(o.s * 3.4).toFixed(2)})`} speed={7} />
+                {/* krisp lysende kjerne — leselig mot både lyse og mørke flater */}
+                <div
+                  style={{
+                    position: 'absolute', left: '50%', top: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    width: `calc(var(--su) * ${(o.s * 1.0).toFixed(2)})`, height: `calc(var(--su) * ${(o.s * 1.0).toFixed(2)})`,
+                    borderRadius: '50%',
+                    background: '#FDFCFB',
+                    boxShadow: '0 0 calc(var(--su) * 1.5) rgba(207,151,252,0.95), 0 0 calc(var(--su) * 3) rgba(155,91,214,0.55)',
+                  }}
+                />
+              </div>
+            </div>
+          );
+        })()}
 
         {/* filmkorn */}
         {started && <FilmGrain t={time} opacity={0.05} />}
