@@ -472,6 +472,46 @@ export function scheduleMusic(ctx, destination, fromT = 0) {
     }
   }
 
+  /* mykt AI-tikk (statuspiller) */
+  function tick(at, f = 880) {
+    if (at < fromT - 0.1) return;
+    const when = now() + Math.max(0, at - fromT);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, when);
+    g.gain.linearRampToValueAtTime(0.018, when + 0.006);
+    g.gain.exponentialRampToValueAtTime(0.0001, when + 0.1);
+    g.connect(bus);
+    send(g, 0.35);
+    const o = ctx.createOscillator();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(f, when);
+    o.frequency.exponentialRampToValueAtTime(f * 1.18, when + 0.05);
+    o.connect(g);
+    o.start(when);
+    o.stop(when + 0.13);
+    sources.push(o);
+  }
+
+  /* dyp, myk boom (finale-samling brister) */
+  function boom(at) {
+    if (at < fromT - 0.1) return;
+    const when = now() + Math.max(0, at - fromT);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, when);
+    g.gain.linearRampToValueAtTime(0.09, when + 0.018);
+    g.gain.exponentialRampToValueAtTime(0.0001, when + 0.9);
+    g.connect(bus);
+    send(g, 0.5);
+    const o = ctx.createOscillator();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(95, when);
+    o.frequency.exponentialRampToValueAtTime(38, when + 0.35);
+    o.connect(g);
+    o.start(when);
+    o.stop(when + 1.0);
+    sources.push(o);
+  }
+
   /* meldings-blipp (chat) */
   function msgPop(at, out = false) {
     if (at < fromT - 0.1) return;
@@ -579,6 +619,13 @@ export function scheduleMusic(ctx, destination, fromT = 0) {
   key(freq('G4'), 4.0);
   key(freq('Bb4'), 6.0, 0.038);
   toggleOn(10.45);
+  /* AI-statuspiller: start (lavt) og fullført (lysere) */
+  tick(15.5, 760);
+  tick(16.5, 1240);
+  tick(18.0, 760);
+  tick(19.3, 1240);
+  tick(20.6, 760);
+  tick(22.6, 1240);
   thump(23.75);
   ping(33.2, 740);
   ping(34.4, 880);
@@ -586,6 +633,10 @@ export function scheduleMusic(ctx, destination, fromT = 0) {
   msgPop(50.55, false);
   msgPop(52.65, true);
   msgPop(54.65, false);
+  /* finale: chips samles (fallende whoosh) og brister (boom + chime) */
+  whoosh(63.8, 0.05, 2400, 320, 1.1);
+  boom(64.12);
+  chime(freq('Eb5'), 64.2, 0.034);
   shimmer(65.55);
   airPad(freq('G5'), 67.5, 72);
   airPad(freq('C6'), 68.2, 72, 0.012);

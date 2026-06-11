@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
 import {
   seg, easeOutCubic, easeInOutCubic, easeOutExpo, easeOutBack, easeOutQuint,
   fadeInOut, rise, typed, fmtNOK, clamp01, Orb, Caret, Words, dRand,
@@ -135,6 +136,86 @@ function SparkBurst({ t, at, count = 9 }) {
         );
       })}
     </div>
+  );
+}
+
+/** AI-arbeidsstatus — glasspille med spinner som blir til hake (én plass, sekvensiell) */
+function AIPill({ t, at, done, label, y }) {
+  const inP = easeOutBack(seg(t, at, at + 0.55));
+  const fadeOut = seg(t, done + 0.55, done + 1.0);
+  const o = clamp01(seg(t, at, at + 0.3) * 2) * (1 - fadeOut);
+  if (o <= 0.003) return null;
+  const dP = easeOutBack(seg(t, done, done + 0.4));
+  const spin = ((t * 340) % 360).toFixed(0);
+  return (
+    <div
+      style={{
+        position: 'absolute', left: 'calc(var(--su) * 1.5)', top: `calc(var(--su) * ${y})`,
+        transform: `translateX(calc(var(--su) * ${((1 - clamp01(inP)) * -1.5).toFixed(2)})) scale(${Math.max(0.5, inP).toFixed(3)})`,
+        transformOrigin: 'left center',
+        opacity: o,
+        display: 'flex', alignItems: 'center', gap: 'calc(var(--su) * 0.7)',
+        background: 'rgba(16,16,19,0.92)', border: '1px solid rgba(255,255,255,0.14)',
+        borderRadius: 999, padding: 'calc(var(--su) * 0.6) calc(var(--su) * 1.3)',
+        boxShadow: '0 calc(var(--su)*0.8) calc(var(--su)*2.6) rgba(0,0,0,0.55), 0 0 calc(var(--su)*2) rgba(155,91,214,0.10)',
+        zIndex: 6,
+        whiteSpace: 'nowrap',
+      }}
+    >
+      <span style={{ position: 'relative', width: 'calc(var(--su) * 1.4)', height: 'calc(var(--su) * 1.4)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+        {dP <= 0.001 ? (
+          <span
+            style={{
+              position: 'absolute', inset: 0, borderRadius: '50%',
+              border: '1.6px solid rgba(207,151,252,0.22)', borderTopColor: '#CF97FC',
+              transform: `rotate(${spin}deg)`,
+            }}
+          />
+        ) : (
+          <span
+            style={{
+              fontSize: 'calc(var(--su) * 1.15)', fontWeight: 700, color: '#7ee2a8', lineHeight: 1,
+              transform: `scale(${Math.max(0.3, dP).toFixed(3)})`,
+            }}
+          >
+            ✓
+          </span>
+        )}
+      </span>
+      <span className="font-body" style={{ fontSize: 'calc(var(--su) * 1.2)', color: dP > 0.5 ? 'rgba(253,252,251,0.6)' : 'rgba(253,252,251,0.88)' }}>
+        {label}
+      </span>
+    </div>
+  );
+}
+
+/** Pennespiss som følger signaturbanen (eksakt via getPointAtLength) */
+function SignaturePen({ d, sigP }) {
+  const pathRef = useRef(null);
+  const dotRef = useRef(null);
+  useEffect(() => {
+    const path = pathRef.current;
+    const dot = dotRef.current;
+    if (!path || !dot) return;
+    try {
+      const L = path.getTotalLength();
+      const p = path.getPointAtLength(L * clamp01(sigP));
+      dot.setAttribute('cx', p.x.toFixed(2));
+      dot.setAttribute('cy', p.y.toFixed(2));
+      dot.setAttribute('opacity', sigP > 0.005 && sigP < 0.995 ? '1' : '0');
+    } catch (e) { /* ok */ }
+  }, [sigP, d]);
+  return (
+    <>
+      <path ref={pathRef} d={d} fill="none" stroke="none" />
+      <circle
+        ref={dotRef}
+        r="2.4"
+        fill="#2638c4"
+        opacity="0"
+        style={{ filter: 'drop-shadow(0 0 3.5px rgba(38,56,196,0.85))' }}
+      />
+    </>
   );
 }
 
@@ -284,6 +365,27 @@ export function SceneToggle({ t }) {
       <div className="absolute inset-0" style={{ background: 'radial-gradient(circle at 50% 50%, rgba(5,5,6,0) 30%, rgba(5,5,6,0.78) 72%)' }} />
       {/* bloom-glimt ved aktivering */}
       <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(circle at 50% 50%, rgba(207,151,252,0.3), transparent 55%)', opacity: bloom * 0.55 }} />
+      {/* energibølge — fin ring som ekspanderer over hele bildet */}
+      {(() => {
+        const wp = seg(t, 10.62, 12.1);
+        if (wp <= 0.001 || wp >= 0.999) return null;
+        const e = easeOutCubic(wp);
+        const sz = (e * 135).toFixed(2);
+        return (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none" aria-hidden="true">
+            <div
+              style={{
+                width: `calc(var(--su) * ${sz})`, height: `calc(var(--su) * ${sz})`,
+                borderRadius: '50%',
+                border: '1.5px solid rgba(207,151,252,0.55)',
+                boxShadow: '0 0 calc(var(--su)*1.4) rgba(207,151,252,0.35), inset 0 0 calc(var(--su)*1.4) rgba(207,151,252,0.18)',
+                opacity: (Math.sin(wp * Math.PI) * 0.75).toFixed(3),
+                flexShrink: 0,
+              }}
+            />
+          </div>
+        );
+      })()}
       <div className="absolute inset-0 flex flex-col items-center justify-center" style={rise(grpIn, 3)}>
         <div
           className="font-body uppercase"
@@ -388,6 +490,10 @@ export function SceneAnnonse({ t }) {
         <CardEdge />
         <Glare t={t} at={16.35} />
         <FloorGlow opacity={cardIn} />
+        {/* AI-motoren jobber — sekvensielle statuspiller over bildet */}
+        <AIPill t={t} at={15.5} done={16.5} label="Analyserer boligen" y={1.4} />
+        <AIPill t={t} at={18.0} done={19.3} label="Skriver annonsetekst" y={1.4} />
+        <AIPill t={t} at={20.6} done={22.6} label="Optimaliserer pris" y={1.4} />
         <div style={{ borderRadius: 'calc(var(--su) * 1.8)', overflow: 'hidden' }}>
           <div style={{ height: 'calc(var(--su) * 17)', overflow: 'hidden', position: 'relative', background: '#1b1b1f' }}>
             {/* f\u00f8r: ustylet (matt og flatt) */}
@@ -604,6 +710,28 @@ export function SceneVisning({ t }) {
                     <div className="font-heading font-bold" style={{ fontSize: 'calc(var(--su) * 1.9)', color: '#FDFCFB' }}>{b.tm}</div>
                   </div>
                   <div style={{ width: 1, alignSelf: 'stretch', background: 'rgba(255,255,255,0.1)' }} />
+                  {(() => {
+                    const grads = [
+                      'linear-gradient(135deg, #CF97FC, #9B5BD6)',
+                      'linear-gradient(135deg, #7DE3D2, #4FB8A8)',
+                      'linear-gradient(135deg, #F9A8D4, #E07CB8)',
+                    ];
+                    const idx = bookings.indexOf(b);
+                    const initials = b.n.split(' ').map((w) => w[0]).join('').replace('.', '');
+                    return (
+                      <span
+                        style={{
+                          width: 'calc(var(--su) * 3)', height: 'calc(var(--su) * 3)', borderRadius: '50%',
+                          background: grads[idx % 3], color: '#0A0A0A',
+                          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: 'calc(var(--su) * 1.15)', fontWeight: 600, flexShrink: 0,
+                        }}
+                        className="font-body"
+                      >
+                        {initials}
+                      </span>
+                    );
+                  })()}
                   <span className="font-body" style={{ fontSize: 'calc(var(--su) * 1.7)', color: 'rgba(253,252,251,0.85)', flex: 1 }}>{b.n}</span>
                   <span
                     className="font-body"
@@ -639,6 +767,13 @@ export function SceneVisning({ t }) {
           </LeftCol>
           <div style={{ position: 'absolute', right: '6%', top: '50%', transform: `translateY(-50%) translateY(calc(var(--su) * ${(-lp * 1.2).toFixed(2)}))`, width: '46%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <svg viewBox="0 0 200 200" style={{ width: 'calc(var(--su) * 41)', height: 'calc(var(--su) * 41)', overflow: 'visible' }}>
+              {/* roterende stiplet ytre ring — skanner-følelse */}
+              <circle
+                cx={cx} cy={cy} r={R + 10}
+                fill="none" stroke="rgba(207,151,252,0.30)" strokeWidth="0.6"
+                strokeDasharray="2.5 7.5"
+                style={{ opacity: ringsIn * 0.85, transformOrigin: `${cx}px ${cy}px`, transform: `rotate(${(t * 9).toFixed(1)}deg)` }}
+              />
               {[0.33, 0.66, 1].map((s, ri) => (
                 <polygon
                   key={ri}
@@ -811,7 +946,7 @@ export function SceneKontrakt({ t }) {
               );
             })}
             <div style={{ marginTop: 'calc(var(--su) * 2.4)', borderTop: '1px solid rgba(10,10,10,0.2)', paddingTop: 'calc(var(--su) * 1)', position: 'relative' }}>
-              <svg viewBox="0 0 160 44" style={{ width: 'calc(var(--su) * 16)', height: 'calc(var(--su) * 4.6)', position: 'absolute', top: 'calc(var(--su) * -3.4)', left: 'calc(var(--su) * 1)' }}>
+              <svg viewBox="0 0 160 44" style={{ width: 'calc(var(--su) * 16)', height: 'calc(var(--su) * 4.6)', position: 'absolute', top: 'calc(var(--su) * -3.4)', left: 'calc(var(--su) * 1)', overflow: 'visible' }}>
                 <path
                   d="M6,32 C10,12 18,6 20,16 C22,26 16,34 24,30 C30,27 30,14 36,16 C42,18 38,32 46,28 C52,25 52,16 58,17 C64,18 62,30 70,27 C80,23 84,10 92,14 C98,17 94,30 104,27 C114,24 118,14 128,18 C136,21 138,28 152,24"
                   fill="none"
@@ -821,6 +956,10 @@ export function SceneKontrakt({ t }) {
                   pathLength="1"
                   strokeDasharray="1"
                   strokeDashoffset={1 - sigP}
+                />
+                <SignaturePen
+                  d="M6,32 C10,12 18,6 20,16 C22,26 16,34 24,30 C30,27 30,14 36,16 C42,18 38,32 46,28 C52,25 52,16 58,17 C64,18 62,30 70,27 C80,23 84,10 92,14 C98,17 94,30 104,27 C114,24 118,14 128,18 C136,21 138,28 152,24"
+                  sigP={sigP}
                 />
               </svg>
               <div className="font-body" style={{ fontSize: 'calc(var(--su) * 1.2)', color: 'rgba(10,10,10,0.5)' }}>Leietaker — Emma Nordvik</div>
@@ -865,6 +1004,34 @@ export function SceneKontrakt({ t }) {
                 pointerEvents: 'none',
               }}
             />
+            {/* stigende lyspartikler mens beløpet teller opp */}
+            {(() => {
+              const win = Math.min(seg(t, 44.9, 45.6), 1 - seg(t, 47.6, 48.4));
+              if (win <= 0.01) return null;
+              return (
+                <div aria-hidden="true" style={{ position: 'absolute', inset: 'calc(var(--su) * -4) calc(var(--su) * -6)', pointerEvents: 'none', opacity: win }}>
+                  {Array.from({ length: 9 }).map((_, i) => {
+                    const cyc = 3.4 + dRand(i, 61) * 2.2;
+                    const ph = ((t - 44.9) / cyc + dRand(i, 62)) % 1;
+                    const x = 8 + dRand(i, 63) * 84;
+                    const y = 100 - ph * 105;
+                    const sz = 0.28 + dRand(i, 64) * 0.35;
+                    return (
+                      <span
+                        key={i}
+                        style={{
+                          position: 'absolute', left: `${x.toFixed(1)}%`, top: `${y.toFixed(1)}%`,
+                          width: `calc(var(--su) * ${sz.toFixed(2)})`, height: `calc(var(--su) * ${sz.toFixed(2)})`,
+                          borderRadius: '50%', background: '#CF97FC',
+                          boxShadow: '0 0 calc(var(--su)*0.7) rgba(207,151,252,0.85)',
+                          opacity: (Math.sin(ph * Math.PI) * (0.3 + 0.5 * dRand(i, 65))).toFixed(3),
+                        }}
+                      />
+                    );
+                  })}
+                </div>
+              );
+            })()}
             <div className="font-body" style={{ fontSize: 'calc(var(--su) * 1.3)', letterSpacing: '0.35em', color: 'rgba(207,151,252,0.85)', marginBottom: 'calc(var(--su) * 1)', position: 'relative' }}>
               HUSLEIE · NOVEMBER
             </div>
@@ -975,7 +1142,7 @@ export function SceneChat({ t }) {
         {/* telefonramme */}
         <div
           style={{
-            position: 'relative', aspectRatio: '9 / 19',
+            position: 'relative', aspectRatio: '9 / 19.6',
             borderRadius: 'calc(var(--su) * 3.3)',
             background: 'linear-gradient(160deg, #3c3c44 0%, #18181c 28%, #101014 72%, #2a2a31 100%)',
             boxShadow: '0 0 0 1px rgba(255,255,255,0.09), 0 calc(var(--su)*0.3) calc(var(--su)*1) rgba(0,0,0,0.5), 0 calc(var(--su)*3) calc(var(--su)*9) rgba(0,0,0,0.65), 0 0 calc(var(--su)*8) rgba(155,91,214,0.12)',
@@ -1016,7 +1183,7 @@ export function SceneChat({ t }) {
             {/* dynamic island */}
             <div aria-hidden="true" style={{ position: 'absolute', top: 'calc(var(--su) * 0.75)', left: '50%', transform: 'translateX(-50%)', width: 'calc(var(--su) * 4.4)', height: 'calc(var(--su) * 1.25)', borderRadius: 999, background: '#000', boxShadow: 'inset 0 0 calc(var(--su)*0.3) rgba(255,255,255,0.06)' }} />
             {/* chat-header */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'calc(var(--su) * 0.9)', padding: 'calc(var(--su) * 1.3) calc(var(--su) * 1.5) calc(var(--su) * 1.1)', borderBottom: '1px solid rgba(255,255,255,0.07)', position: 'relative' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'calc(var(--su) * 0.9)', padding: 'calc(var(--su) * 1.1) calc(var(--su) * 1.5) calc(var(--su) * 0.95)', borderBottom: '1px solid rgba(255,255,255,0.07)', position: 'relative' }}>
               <img src="/brand/digihome-icon-purple.svg" alt="" style={{ width: 'calc(var(--su) * 2.5)', height: 'calc(var(--su) * 2.5)', borderRadius: 'calc(var(--su) * 0.65)' }} />
               <div style={{ flex: 1 }}>
                 <div className="font-body" style={{ fontSize: 'calc(var(--su) * 1.35)', fontWeight: 500, color: '#FDFCFB' }}>DigiHome</div>
@@ -1031,6 +1198,18 @@ export function SceneChat({ t }) {
             </div>
             {/* meldinger — forankret nederst som i ekte chat */}
             <div style={{ padding: 'calc(var(--su) * 1.4) calc(var(--su) * 1.4) 0', flex: 1, minHeight: 0, overflow: 'hidden', position: 'relative', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
+              <div
+                className="font-body"
+                style={{
+                  opacity: clamp01(seg(t, 50.15, 50.55) * 1.5),
+                  textAlign: 'center',
+                  fontSize: 'calc(var(--su) * 0.92)', letterSpacing: '0.04em',
+                  color: 'rgba(253,252,251,0.38)',
+                  marginBottom: 'calc(var(--su) * 1)',
+                }}
+              >
+                I dag 21:47
+              </div>
               <Bubble t={t} at={50.5} side="left" time="21:47" k={0.82}>Hei! Varmtvannet er plutselig borte 🥶</Bubble>
               {typingOn && (
                 <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 'calc(var(--su) * 0.9)' }}>
@@ -1055,7 +1234,7 @@ export function SceneChat({ t }) {
                 style={{
                   opacity: clamp01(statusIn * 2),
                   transform: `scale(${Math.max(0.6, easeOutBack(statusIn)).toFixed(3)})`,
-                  margin: 'calc(var(--su) * 1.3) auto 0',
+                  margin: 'calc(var(--su) * 1.2) auto 0',
                   width: 'fit-content',
                   fontSize: 'calc(var(--su) * 1.05)', letterSpacing: '0.07em',
                   color: 'rgba(207,151,252,0.95)',
@@ -1063,9 +1242,10 @@ export function SceneChat({ t }) {
                   padding: 'calc(var(--su) * 0.5) calc(var(--su) * 1.3)',
                   background: 'rgba(207,151,252,0.07)',
                   textAlign: 'center',
+                  whiteSpace: 'nowrap',
                 }}
               >
-                Besvart automatisk · svartid 8 sek
+                Besvart automatisk · 8 sek
               </div>
             </div>
             {/* meldingsfelt nederst */}
@@ -1079,6 +1259,12 @@ export function SceneChat({ t }) {
             </div>
             {/* skjermglare */}
             <div aria-hidden="true" style={{ position: 'absolute', inset: 0, background: 'linear-gradient(115deg, transparent 28%, rgba(255,255,255,0.05) 40%, rgba(255,255,255,0.015) 48%, transparent 58%)', pointerEvents: 'none' }} />
+            {/* skjermpuls når melding kommer inn */}
+            {(() => {
+              const pp = Math.sin(clamp01(seg(t, 50.5, 51.05)) * Math.PI);
+              if (pp <= 0.02) return null;
+              return <div aria-hidden="true" style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at 50% 35%, rgba(207,151,252,0.14), transparent 70%)', opacity: pp, pointerEvents: 'none' }} />;
+            })()}
           </div>
         </div>
       </div>
@@ -1095,17 +1281,21 @@ const FINAL_CHIPS = [
   'Annonse publisert', 'Visninger booket', 'Leietaker screenet',
   'Kontrakt signert', 'Husleie utbetalt', 'Henvendelser besvart',
 ];
+/* posisjoner (i su, relativt sentrum) for samle-animasjonen */
+const CHIP_POS = [
+  [-23, -5.6], [0, -5.6], [23, -5.6],
+  [-22, 5.6], [0.8, 5.6], [22, 5.6],
+];
 
 export function SceneFinale({ t }) {
-  const chipsOut = seg(t, 63.3, 64.1);
-  const txt = Math.min(easeOutCubic(seg(t, 64.1, 64.9)), 1 - seg(t, 67.2, 67.9));
+  const txt = Math.min(easeOutCubic(seg(t, 64.15, 64.95)), 1 - seg(t, 67.2, 67.9));
   const morph = easeInOutCubic(seg(t, 65.5, 66.1));
   const glow = Math.sin(clamp01(seg(t, 65.5, 67.0)) * Math.PI);
   const logoIn = easeOutQuint(seg(t, 68.0, 69.2));
   const urlIn = easeOutCubic(seg(t, 69.5, 70.3));
 
   const charRise = (i) => {
-    const p = easeOutQuint(seg(t, 64.2 + i * 0.045, 65.1 + i * 0.045));
+    const p = easeOutQuint(seg(t, 64.25 + i * 0.045, 65.15 + i * 0.045));
     return { display: 'inline-block', whiteSpace: 'pre', opacity: Math.min(1, p * 1.6), transform: `translateY(calc(var(--su) * ${((1 - p) * 3.5).toFixed(3)}))` };
   };
   const prefix = 'Trygt. Automa';
@@ -1113,36 +1303,92 @@ export function SceneFinale({ t }) {
 
   return (
     <Shell t={t} a={59} b={72} fOut={0} drift={0}>
-      {chipsOut < 1 && (
-        <div
-          className="absolute inset-0 flex items-center justify-center"
-          style={{
-            opacity: 1 - chipsOut,
-            transform: `translateY(calc(var(--su) * ${(-chipsOut * 3).toFixed(2)}))`,
-            filter: chipsOut > 0.05 ? `blur(${(chipsOut * 6).toFixed(1)}px)` : 'none',
-          }}
-        >
-          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 'calc(var(--su) * 1.6)', maxWidth: '68%' }}>
-            {FINAL_CHIPS.map((c, i) => {
-              const p = seg(t, 59.6 + i * 0.45, 60.4 + i * 0.45);
-              return (
-                <span
-                  key={c}
-                  className="font-body"
-                  style={{
-                    opacity: clamp01(p * 2),
-                    transform: `scale(${Math.max(0.5, easeOutBack(p)).toFixed(3)}) translateY(calc(var(--su) * ${((1 - easeOutCubic(p)) * 2).toFixed(2)}))`,
-                    fontSize: 'calc(var(--su) * 2)', color: 'rgba(253,252,251,0.9)',
-                    border: '1px solid rgba(255,255,255,0.16)', background: 'rgba(255,255,255,0.05)',
-                    borderRadius: 999, padding: 'calc(var(--su) * 1.1) calc(var(--su) * 2.2)',
-                    display: 'inline-flex', alignItems: 'center', gap: 'calc(var(--su) * 0.9)',
-                  }}
-                >
-                  <span style={{ color: '#CF97FC', fontWeight: 700 }}>✓</span> {c}
-                </span>
-              );
-            })}
-          </div>
+      {t < 65.8 && (
+        <div className="absolute inset-0">
+          {/* chips som samles til ett punkt */}
+          {FINAL_CHIPS.map((c, i) => {
+            const p = seg(t, 59.6 + i * 0.45, 60.4 + i * 0.45);
+            if (p <= 0) return null;
+            const g = easeInOutCubic(seg(t, 63.35 + i * 0.06, 64.1 + i * 0.06));
+            const [px, py] = CHIP_POS[i];
+            const x = px * (1 - g);
+            const y = py * (1 - g) + (1 - easeOutCubic(p)) * 2;
+            const sc = Math.max(0.5, easeOutBack(p)) * (1 - 0.8 * g);
+            const op = clamp01(p * 2) * (1 - seg(t, 63.95 + i * 0.06, 64.14 + i * 0.06));
+            if (op <= 0.003) return null;
+            return (
+              <span
+                key={c}
+                className="font-body"
+                style={{
+                  position: 'absolute', left: '50%', top: '50%',
+                  transform: `translate(-50%, -50%) translate(calc(var(--su) * ${x.toFixed(2)}), calc(var(--su) * ${y.toFixed(2)})) scale(${sc.toFixed(3)})`,
+                  opacity: op.toFixed(3),
+                  fontSize: 'calc(var(--su) * 2)', color: 'rgba(253,252,251,0.9)',
+                  border: '1px solid rgba(255,255,255,0.16)', background: 'rgba(255,255,255,0.05)',
+                  borderRadius: 999, padding: 'calc(var(--su) * 1.1) calc(var(--su) * 2.2)',
+                  display: 'inline-flex', alignItems: 'center', gap: 'calc(var(--su) * 0.9)',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                <span style={{ color: '#CF97FC', fontWeight: 700 }}>✓</span> {c}
+              </span>
+            );
+          })}
+          {/* samlingskjerne — lysende punkt som vokser */}
+          {(() => {
+            const core = Math.min(easeOutCubic(seg(t, 63.5, 64.12)), 1 - seg(t, 64.18, 64.5));
+            if (core <= 0.01) return null;
+            const sz = (1.2 + core * 3.6).toFixed(2);
+            return (
+              <div
+                aria-hidden="true"
+                style={{
+                  position: 'absolute', left: '50%', top: '50%',
+                  width: `calc(var(--su) * ${sz})`, height: `calc(var(--su) * ${sz})`,
+                  transform: 'translate(-50%, -50%)',
+                  borderRadius: '50%',
+                  background: 'radial-gradient(circle, #FDFCFB 0%, #CF97FC 38%, rgba(155,91,214,0) 70%)',
+                  filter: 'blur(calc(var(--su) * 0.25))',
+                  boxShadow: '0 0 calc(var(--su)*4.5) rgba(207,151,252,0.85)',
+                  opacity: core,
+                }}
+              />
+            );
+          })()}
+          {/* brist — ekspanderende ring + lysglimt */}
+          {(() => {
+            const ring = seg(t, 64.12, 65.15);
+            const flash = Math.sin(clamp01(seg(t, 64.1, 64.7)) * Math.PI);
+            return (
+              <>
+                {ring > 0.001 && ring < 0.999 && (
+                  <div
+                    aria-hidden="true"
+                    style={{
+                      position: 'absolute', left: '50%', top: '50%',
+                      width: `calc(var(--su) * ${(easeOutCubic(ring) * 66).toFixed(2)})`,
+                      height: `calc(var(--su) * ${(easeOutCubic(ring) * 66).toFixed(2)})`,
+                      transform: 'translate(-50%, -50%)',
+                      borderRadius: '50%',
+                      border: '1.5px solid rgba(207,151,252,0.6)',
+                      opacity: ((1 - ring) * 0.85).toFixed(3),
+                    }}
+                  />
+                )}
+                {flash > 0.02 && (
+                  <div
+                    aria-hidden="true"
+                    style={{
+                      position: 'absolute', inset: 0,
+                      background: 'radial-gradient(ellipse 46% 42% at 50% 50%, rgba(207,151,252,0.30), transparent 72%)',
+                      opacity: flash,
+                    }}
+                  />
+                )}
+              </>
+            );
+          })()}
         </div>
       )}
       {txt > 0 && (
