@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { seg, clamp01, Orb, FilmGrain, LightSweep, Aurora, Bokeh } from './filmUtils';
+import { seg, clamp01, Orb, FilmGrain, LightSweep, Aurora, Bokeh, impactShake } from './filmUtils';
 import { scheduleMusic, renderMusicWav, FILM_DURATION } from './filmAudio';
 import {
   SceneOpening, SceneToggle, SceneAnnonse, SceneVisning, SceneKontrakt, SceneChat, SceneFinale,
@@ -19,6 +19,25 @@ const SCENES = [
   { start: 38, end: 49, C: SceneKontrakt },
   { start: 48.5, end: 59.5, C: SceneChat },
   { start: 59, end: 72, C: SceneFinale },
+];
+
+/* kapitler (for spiller-UI) */
+const CHAPTERS = [
+  { t: 0, label: 'Åpning' },
+  { t: 8, label: 'Autopilot på' },
+  { t: 14, label: 'Annonse' },
+  { t: 26, label: 'Visninger & screening' },
+  { t: 38, label: 'Kontrakt & husleie' },
+  { t: 48.5, label: 'Svar 24/7' },
+  { t: 59, label: 'Finale' },
+];
+
+/* impact-kameraristing: [tidspunkt, styrke] */
+const SHAKES = [
+  [10.65, 0.5],   /* toggle-flip */
+  [23.78, 0.55],  /* FINN-stempel */
+  [36.45, 0.3],   /* kandidat godkjent */
+  [64.12, 0.7],   /* finale-brist */
 ];
 
 /* ============ hovedklokke ============ */
@@ -267,6 +286,24 @@ export default function AutopilotFilm() {
   const watermark = Math.min(seg(time, 8.5, 9.7), 1 - seg(time, 66, 67.2)) * 0.45;
   const engineOrb = Math.min(seg(time, 14.6, 15.6), 1 - seg(time, 47.5, 48.5)) * 0.85;
 
+  /* impact-kameraristing (summert, deterministisk) */
+  let shakeX = 0, shakeY = 0;
+  for (const [at, mag] of SHAKES) {
+    const s = impactShake(time, at, mag);
+    shakeX += s.x;
+    shakeY += s.y;
+  }
+  const shakeAmt = Math.abs(shakeX) + Math.abs(shakeY);
+
+  /* vignett som «puster» i takt med musikkpulsen (kick hver 1,2s fra 10,8–58,8) */
+  const kickGlow = started && time >= 10.8 && time <= 58.8
+    ? Math.exp(-(((time - 10.8) % 1.2) / 1.2) * 5.5)
+    : 0;
+
+  /* aktivt kapittel */
+  let chapterLabel = CHAPTERS[0].label;
+  for (const c of CHAPTERS) if (time >= c.t) chapterLabel = c.label;
+
   return (
     <div
       ref={wrapperRef}
@@ -291,6 +328,15 @@ export default function AutopilotFilm() {
           '--su': '12px',
         }}
       >
+        {/* riste-wrapper — impact-kamerarist + alle visuelle lag */}
+        <div
+          className="absolute inset-0"
+          style={{
+            transform: shakeAmt > 0.001
+              ? `translate(calc(var(--su) * ${shakeX.toFixed(3)}), calc(var(--su) * ${shakeY.toFixed(3)})) scale(${(1 + shakeAmt * 0.02).toFixed(4)})`
+              : 'none',
+          }}
+        >
         {/* moderne aurora-mesh-bakgrunn + bokeh-dybde + vignett */}
         <Aurora t={time} opacity={0.14 * seg(time, 7.2, 9.5)} />
         {started && <Bokeh t={time} opacity={seg(time, 7.6, 9.8)} />}
@@ -310,6 +356,18 @@ export default function AutopilotFilm() {
         {/* lys-sveip ved aktskifter */}
         {started && <LightSweep t={time} boundaries={SCENE_BOUNDARIES} />}
 
+        {/* puls-glød i takt med musikken */}
+        {kickGlow > 0.03 && (
+          <div
+            className="absolute inset-0 pointer-events-none"
+            aria-hidden="true"
+            style={{
+              background: 'radial-gradient(ellipse 75% 65% at 50% 46%, rgba(207,151,252,0.065), transparent 70%)',
+              opacity: kickGlow.toFixed(3),
+            }}
+          />
+        )}
+
         {/* vannmerke */}
         {started && watermark > 0.01 && (
           <img
@@ -328,6 +386,7 @@ export default function AutopilotFilm() {
 
         {/* filmkorn */}
         {started && <FilmGrain t={time} opacity={0.05} />}
+        </div>
 
         {/* startoverlegg */}
         {!started && !recordMode && (
@@ -445,9 +504,36 @@ export default function AutopilotFilm() {
               <span className="font-body" style={{ fontSize: 'calc(var(--su) * 1.35)', color: 'rgba(253,252,251,0.75)', fontVariantNumeric: 'tabular-nums', minWidth: 'calc(var(--su) * 8.5)' }}>
                 {fmtTime(time)} / {fmtTime(DURATION)}
               </span>
+              <span className="font-body" style={{ fontSize: 'calc(var(--su) * 1.2)', color: 'rgba(207,151,252,0.85)', letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>
+                {chapterLabel}
+              </span>
               <div ref={progressRef} onClick={onSeekClick} className="flex-1 cursor-pointer" style={{ padding: 'calc(var(--su) * 0.8) 0' }}>
-                <div style={{ height: 'calc(var(--su) * 0.45)', borderRadius: 99, background: 'rgba(255,255,255,0.16)', overflow: 'hidden' }}>
-                  <div style={{ height: '100%', width: `${pct}%`, borderRadius: 99, background: 'linear-gradient(90deg, #9B5BD6, #CF97FC)' }} />
+                <div style={{ position: 'relative', height: 'calc(var(--su) * 0.45)', borderRadius: 99, background: 'rgba(255,255,255,0.16)' }}>
+                  <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${pct}%`, borderRadius: 99, background: 'linear-gradient(90deg, #9B5BD6, #CF97FC)' }} />
+                  {/* kapittelmerker */}
+                  {CHAPTERS.slice(1).map((c) => (
+                    <span
+                      key={c.t}
+                      aria-hidden="true"
+                      style={{
+                        position: 'absolute', left: `${((c.t / DURATION) * 100).toFixed(2)}%`, top: '-18%', bottom: '-18%',
+                        width: 'calc(var(--su) * 0.18)',
+                        borderRadius: 99,
+                        background: time >= c.t ? 'rgba(10,10,10,0.55)' : 'rgba(255,255,255,0.45)',
+                      }}
+                    />
+                  ))}
+                  {/* spillehode */}
+                  <span
+                    aria-hidden="true"
+                    style={{
+                      position: 'absolute', left: `${pct}%`, top: '50%',
+                      transform: 'translate(-50%, -50%)',
+                      width: 'calc(var(--su) * 1.05)', height: 'calc(var(--su) * 1.05)',
+                      borderRadius: '50%', background: '#FDFCFB',
+                      boxShadow: '0 0 calc(var(--su) * 1.1) rgba(207,151,252,0.9)',
+                    }}
+                  />
                 </div>
               </div>
               {dlReady && (

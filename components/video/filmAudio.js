@@ -493,12 +493,12 @@ export function scheduleMusic(ctx, destination, fromT = 0) {
   }
 
   /* dyp, myk boom (finale-samling brister) */
-  function boom(at) {
+  function boom(at, vol = 0.09) {
     if (at < fromT - 0.1) return;
     const when = now() + Math.max(0, at - fromT);
     const g = ctx.createGain();
     g.gain.setValueAtTime(0.0001, when);
-    g.gain.linearRampToValueAtTime(0.09, when + 0.018);
+    g.gain.linearRampToValueAtTime(vol, when + 0.018);
     g.gain.exponentialRampToValueAtTime(0.0001, when + 0.9);
     g.connect(bus);
     send(g, 0.5);
@@ -573,6 +573,87 @@ export function scheduleMusic(ctx, destination, fromT = 0) {
     }
   }
 
+  /* myk hi-hat — gir filmen driv (offbeat mot pulsen) */
+  function hat(at, vol = 0.011) {
+    if (at < fromT - 0.05) return;
+    const when = now() + Math.max(0, at - fromT);
+    const src = ctx.createBufferSource();
+    src.buffer = noiseBuf;
+    const hp = ctx.createBiquadFilter();
+    hp.type = 'highpass';
+    hp.frequency.value = 7800;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, when);
+    g.gain.linearRampToValueAtTime(vol, when + 0.006);
+    g.gain.exponentialRampToValueAtTime(0.0001, when + 0.07);
+    src.connect(hp).connect(g).connect(bus);
+    src.start(when, dr(Math.floor(at * 10), 51) * 1.2, 0.09);
+    sources.push(src);
+  }
+
+  /* sub-anticipation — lav svell som bygger inn mot et treffpunkt */
+  function subSwell(at, dur = 0.5, vol = 0.055) {
+    if (at < fromT - 0.05) return;
+    const a = at - dur;
+    const when = now() + Math.max(0, a - fromT);
+    const end = now() + Math.max(0.02, at - fromT);
+    const g = ctx.createGain();
+    g.connect(bus);
+    g.gain.setValueAtTime(0.0001, when);
+    g.gain.exponentialRampToValueAtTime(vol, end);
+    g.gain.exponentialRampToValueAtTime(0.0001, end + 0.12);
+    const o = ctx.createOscillator();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(46, when);
+    o.frequency.linearRampToValueAtTime(60, end);
+    o.connect(g);
+    o.start(when);
+    o.stop(end + 0.2);
+    sources.push(o);
+  }
+
+  /* data-chirp — korte stigende blipp (radar-prosessering) */
+  function chirp(at, f0, f1, vol = 0.011) {
+    if (at < fromT - 0.05) return;
+    const when = now() + Math.max(0, at - fromT);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, when);
+    g.gain.linearRampToValueAtTime(vol, when + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, when + 0.09);
+    g.connect(bus);
+    send(g, 0.3);
+    const o = ctx.createOscillator();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(f0, when);
+    o.frequency.exponentialRampToValueAtTime(f1, when + 0.08);
+    o.connect(g);
+    o.start(when);
+    o.stop(when + 0.12);
+    sources.push(o);
+  }
+
+  /* kamera-shutter — to raske klikk (foto stylet) */
+  function shutter(at) {
+    for (const [d, f, v] of [[0, 3200, 0.032], [0.05, 2300, 0.026]]) {
+      const nt = at + d;
+      if (nt < fromT - 0.05) continue;
+      const when = now() + Math.max(0, nt - fromT);
+      const src = ctx.createBufferSource();
+      src.buffer = noiseBuf;
+      const bp = ctx.createBiquadFilter();
+      bp.type = 'bandpass';
+      bp.frequency.value = f;
+      bp.Q.value = 1.2;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, when);
+      g.gain.linearRampToValueAtTime(v, when + 0.004);
+      g.gain.exponentialRampToValueAtTime(0.0001, when + 0.045);
+      src.connect(bp).connect(g).connect(bus);
+      src.start(when, 0.5 + d, 0.06);
+      sources.push(src);
+    }
+  }
+
   /* luftig finale-pad */
   function airPad(f, a, b, vol = 0.016) {
     if (b <= fromT) return;
@@ -600,6 +681,11 @@ export function scheduleMusic(ctx, destination, fromT = 0) {
   for (let at = PULSE.from, k = 0; at <= PULSE.to; at += PULSE.step, k++) {
     kick(at);
   }
+  /* hi-hats — offbeat driv, hopper over ~20% (menneskelig følelse) */
+  for (let at = 14.9, hk = 0; at <= 58.7; at += 0.6, hk++) {
+    if (dr(hk, 71) < 0.2) continue;
+    hat(at, hk % 2 === 0 ? 0.012 : 0.007);
+  }
   let k = 0;
   for (let at = ARP.from; at <= ARP.to; at += ARP.step, k++) {
     if (dr(k, 11) < 0.62) continue;
@@ -618,6 +704,7 @@ export function scheduleMusic(ctx, destination, fromT = 0) {
   key(freq('C5'), 2.5);
   key(freq('G4'), 4.0);
   key(freq('Bb4'), 6.0, 0.038);
+  subSwell(10.62); /* anticipation inn mot toggle */
   toggleOn(10.45);
   /* AI-statuspiller: start (lavt) og fullført (lysere) */
   tick(15.5, 760);
@@ -626,10 +713,19 @@ export function scheduleMusic(ctx, destination, fromT = 0) {
   tick(19.3, 1240);
   tick(20.6, 760);
   tick(22.6, 1240);
+  shutter(19.25); /* foto stylet */
   thump(23.75);
   ping(33.2, 740);
   ping(34.4, 880);
+  /* radar-prosessering: data-chirps */
+  chirp(33.5, 1250, 1900);
+  chirp(33.85, 1500, 2300);
+  chirp(34.2, 1100, 1750);
+  chirp(34.6, 1650, 2500);
+  chirp(34.95, 1300, 2000);
+  whoosh(36.4, 0.028, 800, 3200, 0.9); /* anamorf flare — godkjent */
   scribble(40.35, 41.7);
+  whoosh(46.85, 0.03, 900, 3800, 0.9); /* anamorf flare — husleie */
   msgPop(50.55, false);
   msgPop(52.65, true);
   msgPop(54.65, false);
@@ -638,6 +734,7 @@ export function scheduleMusic(ctx, destination, fromT = 0) {
   boom(64.12);
   chime(freq('Eb5'), 64.2, 0.034);
   shimmer(65.55);
+  boom(68.0, 0.05); /* myk logo-hit */
   airPad(freq('G5'), 67.5, 72);
   airPad(freq('C6'), 68.2, 72, 0.012);
 

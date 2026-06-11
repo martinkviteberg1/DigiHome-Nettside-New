@@ -36,6 +36,17 @@ export const dRand = (i, salt = 0) => {
   return x - Math.floor(x);
 };
 
+/** Impact-kameraristing — deterministisk, dempet sinus-støy etter et treffpunkt */
+export const impactShake = (t, at, mag = 0.5, dur = 0.5) => {
+  const p = (t - at) / dur;
+  if (p <= 0 || p >= 1) return { x: 0, y: 0 };
+  const decay = Math.exp(-p * 5.5) * (1 - p);
+  return {
+    x: Math.sin(p * 47.3) * decay * mag,
+    y: Math.cos(p * 39.7) * decay * mag * 0.7,
+  };
+};
+
 /* ============ shared props — 100% deterministiske fra filmtid t ============ */
 
 /** Aurora-orb — levende gradient-sfære, drevet av filmtid */
@@ -245,6 +256,47 @@ export function Aurora({ t = 0, opacity = 0.13 }) {
           }}
         />
       ))}
+    </div>
+  );
+}
+
+/** Anamorf linseflare — horisontal lysstripe + kjerneglow (kinofølelse) */
+export function Anamorphic({ t, at, dur = 1.2, x = '50%', y = '50%', maxW = 70, z = 5 }) {
+  const p = seg(t, at, at + dur);
+  if (p <= 0.001 || p >= 0.999) return null;
+  const op = Math.sin(p * Math.PI);
+  const w = (0.3 + easeOutCubic(p) * 0.7) * maxW;
+  return (
+    <div
+      aria-hidden="true"
+      style={{
+        position: 'absolute', left: x, top: y,
+        transform: 'translate(-50%, -50%)',
+        width: `calc(var(--su) * ${w.toFixed(2)})`,
+        height: 'calc(var(--su) * 0.6)',
+        opacity: op.toFixed(3),
+        pointerEvents: 'none',
+        zIndex: z,
+        mixBlendMode: 'screen',
+      }}
+    >
+      <div
+        style={{
+          position: 'absolute', inset: 0, borderRadius: 999,
+          background: 'linear-gradient(90deg, transparent, rgba(207,151,252,0.55) 20%, rgba(255,255,255,0.95) 50%, rgba(207,151,252,0.55) 80%, transparent)',
+          filter: 'blur(calc(var(--su) * 0.18))',
+        }}
+      />
+      <div
+        style={{
+          position: 'absolute', left: '50%', top: '50%',
+          width: 'calc(var(--su) * 7)', height: 'calc(var(--su) * 7)',
+          transform: 'translate(-50%, -50%)',
+          borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(255,255,255,0.55), rgba(207,151,252,0.28) 38%, transparent 70%)',
+          filter: 'blur(calc(var(--su) * 0.5))',
+        }}
+      />
     </div>
   );
 }

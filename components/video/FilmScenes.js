@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react';
 import {
   seg, easeOutCubic, easeInOutCubic, easeOutExpo, easeOutBack, easeOutQuint,
   fadeInOut, rise, typed, fmtNOK, clamp01, Orb, Caret, Words, dRand,
+  Starfield, Anamorphic,
 } from './filmUtils';
 
 /* Felles sceneskall — myk blur/skala-overgang + retningsdrift + kameradrift */
@@ -183,6 +184,39 @@ function AIPill({ t, at, done, label, y }) {
         )}
       </span>
       <span className="font-body" style={{ fontSize: 'calc(var(--su) * 1.2)', color: dP > 0.5 ? 'rgba(253,252,251,0.6)' : 'rgba(253,252,251,0.88)' }}>
+        {label}
+      </span>
+    </div>
+  );
+}
+
+/** Kapittel-kicker — «01 · ANNONSE» med tegnende aksentlinje (editorial struktur) */
+function Kicker({ t, at, num, label, center = false }) {
+  const p = easeOutCubic(seg(t, at, at + 0.8));
+  const lineW = easeOutCubic(seg(t, at + 0.15, at + 1.05));
+  if (p <= 0.003) return null;
+  return (
+    <div
+      style={{
+        display: 'flex', alignItems: 'center', gap: 'calc(var(--su) * 1)',
+        justifyContent: center ? 'center' : 'flex-start',
+        marginBottom: 'calc(var(--su) * 1.7)',
+        opacity: p,
+        transform: `translateY(calc(var(--su) * ${((1 - p) * 1.4).toFixed(2)}))`,
+      }}
+    >
+      <span className="font-heading" style={{ fontSize: 'calc(var(--su) * 1.35)', fontWeight: 700, color: '#CF97FC', letterSpacing: '0.06em' }}>
+        {num}
+      </span>
+      <span
+        aria-hidden="true"
+        style={{
+          width: `calc(var(--su) * ${(4.2 * lineW).toFixed(2)})`,
+          height: 1,
+          background: 'linear-gradient(90deg, rgba(207,151,252,0.85), rgba(207,151,252,0.08))',
+        }}
+      />
+      <span className="font-body" style={{ fontSize: 'calc(var(--su) * 1.1)', letterSpacing: '0.32em', color: 'rgba(253,252,251,0.48)' }}>
         {label}
       </span>
     </div>
@@ -461,6 +495,7 @@ export function SceneAnnonse({ t }) {
   return (
     <Shell t={t} a={14} b={26.5}>
       <LeftCol lp={lp}>
+        <Kicker t={t} at={14.55} num="01" label="ANNONSE" />
         <h2 className="font-heading font-bold" style={{ fontSize: 'calc(var(--su) * 6.2)', color: '#FDFCFB', lineHeight: 1.08 }}>
           <Words t={t} at={14.7} text="Annonsen?" />
         </h2>
@@ -659,6 +694,7 @@ export function SceneVisning({ t }) {
       {partA > 0.01 && (
         <div className="absolute inset-0" style={{ opacity: partA, filter: partA < 0.95 ? `blur(${((1 - partA) * 6).toFixed(1)}px)` : 'none' }}>
           <LeftCol lp={lp}>
+            <Kicker t={t} at={26.45} num="02" label="VISNINGER" />
             <h2 className="font-heading font-bold" style={{ fontSize: 'calc(var(--su) * 6.2)', color: '#FDFCFB', lineHeight: 1.08 }}>
               <Words t={t} at={26.6} text="Visninger?" />
             </h2>
@@ -758,6 +794,7 @@ export function SceneVisning({ t }) {
       {partB > 0.01 && (
         <div className="absolute inset-0" style={{ opacity: partB, filter: partBBlur > 0.3 ? `blur(${partBBlur.toFixed(1)}px)` : 'none' }}>
           <LeftCol lp={lp}>
+            <Kicker t={t} at={32.4} num="03" label="SCREENING" />
             <h2 className="font-heading font-bold" style={{ fontSize: 'calc(var(--su) * 6.2)', color: '#FDFCFB', lineHeight: 1.08 }}>
               <Words t={t} at={32.5} text="Leietakere?" />
             </h2>
@@ -878,6 +915,7 @@ export function SceneVisning({ t }) {
               KANDIDAT GODKJENT ✓
             </div>
           </div>
+          <Anamorphic t={t} at={36.4} x="71%" y="46%" maxW={46} dur={1.1} />
         </div>
       )}
     </Shell>
@@ -906,6 +944,7 @@ export function SceneKontrakt({ t }) {
       {partA > 0.01 && (
         <div className="absolute inset-0" style={{ opacity: partA, filter: partA < 0.95 ? `blur(${((1 - partA) * 6).toFixed(1)}px)` : 'none' }}>
           <LeftCol lp={lp}>
+            <Kicker t={t} at={38.45} num="04" label="KONTRAKT" />
             <h2 className="font-heading font-bold" style={{ fontSize: 'calc(var(--su) * 6.2)', color: '#FDFCFB', lineHeight: 1.08 }}>
               <Words t={t} at={38.6} text="Kontrakten?" />
             </h2>
@@ -986,6 +1025,7 @@ export function SceneKontrakt({ t }) {
       )}
       {partB > 0.01 && (
         <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ opacity: partB, filter: partBBlur > 0.3 ? `blur(${partBBlur.toFixed(1)}px)` : 'none' }}>
+          <Kicker t={t} at={43.6} num="05" label="HUSLEIE" center />
           <h2 className="font-heading font-bold" style={{ fontSize: 'calc(var(--su) * 5.4)', color: '#FDFCFB', lineHeight: 1.1 }}>
             <Words t={t} at={43.7} text="Og husleien?" />
           </h2>
@@ -1054,6 +1094,7 @@ export function SceneKontrakt({ t }) {
               Utbetalt ✓
             </span>
           </div>
+          <Anamorphic t={t} at={46.9} x="50%" y="60%" maxW={72} dur={1.25} />
         </div>
       )}
     </Shell>
@@ -1106,6 +1147,7 @@ export function SceneChat({ t }) {
   return (
     <Shell t={t} a={48.5} b={59.5}>
       <LeftCol lp={lp}>
+        <Kicker t={t} at={48.95} num="06" label="SVAR 24/7" />
         <h2 className="font-heading font-bold" style={{ fontSize: 'calc(var(--su) * 5.6)', color: '#FDFCFB', lineHeight: 1.1 }}>
           <Words t={t} at={49.1} stagger={0.1} text="Leietaker lurer på noe?" />
         </h2>
@@ -1393,6 +1435,7 @@ export function SceneFinale({ t }) {
       )}
       {txt > 0 && (
         <div className="absolute inset-0 flex items-center justify-center" style={{ opacity: Math.min(1, txt * 1.4) }}>
+          <Anamorphic t={t} at={65.5} x="50%" y="50%" maxW={58} dur={1.05} z={1} />
           <h2 className="font-heading font-bold" style={{ fontSize: 'calc(var(--su) * 8)', color: '#FDFCFB', letterSpacing: '-0.03em', lineHeight: 1.1, display: 'flex' }}>
             {prefix.split('').map((ch, i) => (
               <span key={`p${i}`} style={charRise(i)}>{ch}</span>
@@ -1453,6 +1496,26 @@ export function SceneFinale({ t }) {
         <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ opacity: Math.min(1, logoIn * 1.3) }}>
           {/* ren, mørk flate som isolerer finalen */}
           <div className="absolute inset-0" style={{ background: '#060607' }} />
+          {/* stjernehimmel — rolig dybde bak logoen */}
+          <Starfield t={t} opacity={0.22 * logoIn} />
+          {/* langsomt roterende lysstråler (god-rays) */}
+          <div
+            aria-hidden="true"
+            className="absolute"
+            style={{
+              left: '50%', top: '46%',
+              width: 'calc(var(--su) * 95)', height: 'calc(var(--su) * 95)',
+              transform: `translate(-50%, -50%) rotate(${(t * 1.6).toFixed(2)}deg)`,
+              background: 'repeating-conic-gradient(from 0deg, transparent 0deg 13deg, rgba(155,91,214,0.055) 17deg, transparent 21deg 30deg)',
+              WebkitMaskImage: 'radial-gradient(circle, rgba(0,0,0,0.9), transparent 62%)',
+              maskImage: 'radial-gradient(circle, rgba(0,0,0,0.9), transparent 62%)',
+              filter: 'blur(calc(var(--su) * 0.6))',
+              opacity: (0.55 * logoIn * (1 - seg(t, 70.6, 72))).toFixed(3),
+              pointerEvents: 'none',
+            }}
+          />
+          {/* anamorf flare ved logo-avsløringen */}
+          <Anamorphic t={t} at={68.2} x="50%" y="46%" maxW={84} dur={1.4} z={1} />
           {/* svært subtil glød bak logoen */}
           <div
             className="absolute"
