@@ -11,7 +11,7 @@ from datetime import datetime
 import re
 
 # Get base URL from environment or use default
-BASE_URL = os.getenv('NEXT_PUBLIC_BASE_URL', 'https://digihome-market.preview.emergentagent.com')
+BASE_URL = os.getenv('NEXT_PUBLIC_BASE_URL', 'https://digihome-demo.preview.emergentagent.com')
 API_BASE = f"{BASE_URL}/api"
 
 print(f"Testing DigiHome API at: {API_BASE}")

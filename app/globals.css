@@ -258,3 +258,14 @@ html { scroll-behavior: smooth; }
 }
 .nav-underline:hover::after { transform: scaleX(1); }
 
+/* === DigiHome — autopilot-filmen === */
+@keyframes dh-orb-swirl {
+  0%   { transform: rotate(0deg) scale(1); filter: blur(calc(var(--su, 12px) * 1.4)) hue-rotate(0deg); }
+  50%  { transform: rotate(180deg) scale(1.07); filter: blur(calc(var(--su, 12px) * 1.4)) hue-rotate(35deg); }
+  100% { transform: rotate(360deg) scale(1); filter: blur(calc(var(--su, 12px) * 1.4)) hue-rotate(0deg); }
+}
+@keyframes dh-caret {
+  0%, 49%   { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
