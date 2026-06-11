@@ -1,60 +1,125 @@
 'use client';
 
 import {
-  seg, easeOutCubic, easeInOutCubic, easeOutExpo, easeOutBack,
-  fadeInOut, rise, pop, typed, fmtNOK, clamp01, Orb, Caret,
+  seg, easeOutCubic, easeInOutCubic, easeOutExpo, easeOutBack, easeOutQuint,
+  fadeInOut, rise, typed, fmtNOK, clamp01, Orb, Caret, Words,
 } from './filmUtils';
 
+/* Felles sceneskall — myk blur/skala-overgang + subtil kameradrift */
+function Shell({ t, a, b, fIn = 0.7, fOut = 0.7, drift = 0.02, children }) {
+  const enter = fIn === 0 ? 1 : easeOutCubic(seg(t, a, a + fIn));
+  const exit = 1 - easeInOutCubic(seg(t, b - fOut, b));
+  const o = Math.min(enter, exit);
+  const lp = seg(t, a, b);
+  const scale = (0.975 + 0.025 * enter) * (1 + lp * drift) * (1 + (1 - exit) * 0.02);
+  const blur = (1 - enter) * 9 + (1 - exit) * 7;
+  return (
+    <div
+      className="absolute inset-0"
+      style={{
+        opacity: o,
+        transform: `scale(${scale.toFixed(4)})`,
+        filter: blur > 0.3 ? `blur(${blur.toFixed(1)}px)` : 'none',
+        willChange: 'transform, opacity, filter',
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+/* Venstre tekstkolonne med parallax */
+function LeftCol({ lp, children, width = '34%' }) {
+  return (
+    <div
+      style={{
+        position: 'absolute', left: '7%', top: '50%', width,
+        transform: `translateY(-50%) translateY(calc(var(--su) * ${(lp * 0.6).toFixed(2)}))`,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
 /* =====================================================================
-   AKT 1 — ÅPNING (0–6.5s)  «Utleie.» → mørk sirkelwipe → «På autopilot.»
+   AKT 1 — ÅPNING (0–8.5s)
 ===================================================================== */
 export function SceneOpening({ t }) {
-  const o = fadeInOut(t, 0, 6.5, 0, 0.5);
-  const kickerIn = easeOutCubic(seg(t, 0.25, 1.0));
-  const kickerOut = 1 - seg(t, 2.2, 2.8);
-  const wipe = easeInOutCubic(seg(t, 2.6, 4.3));
-  const lightOut = 1 - seg(t, 3.2, 4.0);
-  const drift = seg(t, 4.3, 6.5);
+  const iconIn = easeOutQuint(seg(t, 0.25, 1.9));
+  const ringP = seg(t, 1.5, 2.6);
+  const shift = easeInOutCubic(seg(t, 2.2, 3.3));
+  const kicker = Math.min(easeOutCubic(seg(t, 0.5, 1.3)), 1 - seg(t, 1.9, 2.5));
+  const wipe = easeInOutCubic(seg(t, 4.9, 6.7));
+  const lightOut = 1 - seg(t, 5.5, 6.3);
+  const driftP = seg(t, 6.7, 8.5);
 
   const word1 = 'Utleie.';
   const word2 = 'På autopilot.';
 
   return (
-    <div className="absolute inset-0" style={{ opacity: o }}>
-      {/* light canvas */}
+    <Shell t={t} a={0} b={8.5} fIn={0} drift={0}>
       <div className="absolute inset-0" style={{ background: '#FDFCFB' }} />
       <div className="absolute inset-0 dot-grid" style={{ opacity: 0.35 }} />
-      <div
-        className="absolute inset-0 flex flex-col items-center justify-center"
-        style={{ opacity: lightOut }}
-      >
+      <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ opacity: lightOut }}>
+        <div
+          style={{
+            position: 'relative',
+            opacity: iconIn,
+            transform: `translateY(calc(var(--su) * ${(-shift * 4).toFixed(2)})) scale(${(0.78 + 0.22 * iconIn - shift * 0.36).toFixed(3)})`,
+            filter: `blur(${((1 - iconIn) * 16).toFixed(1)}px)`,
+            marginBottom: 'calc(var(--su) * 2.2)',
+          }}
+        >
+          <div
+            style={{
+              position: 'absolute', inset: 'calc(var(--su) * -1.6)', borderRadius: 'calc(var(--su) * 3)',
+              border: '1.5px solid rgba(155,91,214,0.5)',
+              opacity: ringP > 0 ? (1 - ringP) * 0.8 : 0,
+              transform: `scale(${(1 + ringP * 0.55).toFixed(3)})`,
+            }}
+          />
+          <img
+            src="/brand/digihome-icon-purple.svg"
+            alt=""
+            style={{
+              width: 'calc(var(--su) * 11)', height: 'calc(var(--su) * 11)',
+              borderRadius: 'calc(var(--su) * 1.6)',
+              boxShadow: '0 calc(var(--su)*2) calc(var(--su)*6) rgba(155,91,214,0.3)',
+              display: 'block',
+            }}
+          />
+        </div>
         <div
           className="font-body uppercase"
           style={{
-            ...rise(Math.min(kickerIn, kickerOut), 1.5),
-            fontSize: 'calc(var(--su) * 1.5)',
-            letterSpacing: '0.42em',
+            opacity: kicker,
+            fontSize: 'calc(var(--su) * 1.4)',
+            letterSpacing: '0.42em', textIndent: '0.42em',
             color: 'rgba(10,10,10,0.45)',
-            marginBottom: 'calc(var(--su) * 3.2)',
+            height: 'calc(var(--su) * 2)',
           }}
         >
           DigiHome presenterer
         </div>
         <h1
           className="font-heading font-bold"
-          style={{ fontSize: 'calc(var(--su) * 11)', color: '#0A0A0A', lineHeight: 1, display: 'flex' }}
+          style={{
+            fontSize: 'calc(var(--su) * 10.5)', color: '#0A0A0A', lineHeight: 1.06, display: 'flex',
+            marginTop: 'calc(var(--su) * 0.3)',
+            height: 'calc(var(--su) * 11.5)',
+          }}
         >
           {word1.split('').map((ch, i) => {
-            const p = easeOutCubic(seg(t, 0.55 + i * 0.07, 1.45 + i * 0.07));
+            const p = easeOutQuint(seg(t, 2.5 + i * 0.06, 3.55 + i * 0.06));
             return (
-              <span key={i} style={{ display: 'inline-block', opacity: p, transform: `translateY(calc(var(--su) * ${((1 - p) * 4).toFixed(3)}))` }}>
+              <span key={i} style={{ display: 'inline-block', opacity: Math.min(1, p * 1.6), transform: `translateY(calc(var(--su) * ${((1 - p) * 4.5).toFixed(3)}))` }}>
                 {ch}
               </span>
             );
           })}
         </h1>
       </div>
-      {/* dark circular wipe */}
       <div
         className="absolute inset-0"
         style={{ background: '#0A0A0A', clipPath: `circle(${(wipe * 140).toFixed(2)}% at 84% 50%)` }}
@@ -63,17 +128,14 @@ export function SceneOpening({ t }) {
           <h1
             className="font-heading font-bold"
             style={{
-              fontSize: 'calc(var(--su) * 11)',
-              color: '#FDFCFB',
-              lineHeight: 1,
-              display: 'flex',
-              transform: `scale(${(1 + drift * 0.035).toFixed(4)})`,
+              fontSize: 'calc(var(--su) * 11)', color: '#FDFCFB', lineHeight: 1.06, display: 'flex',
+              transform: `scale(${(1 + driftP * 0.035).toFixed(4)})`,
             }}
           >
             {word2.split('').map((ch, i) => {
-              const p = easeOutCubic(seg(t, 3.35 + i * 0.05, 4.15 + i * 0.05));
+              const p = easeOutQuint(seg(t, 5.7 + i * 0.045, 6.75 + i * 0.045));
               return (
-                <span key={i} style={{ display: 'inline-block', whiteSpace: 'pre', opacity: p, transform: `translateY(calc(var(--su) * ${((1 - p) * 4).toFixed(3)}))` }}>
+                <span key={i} style={{ display: 'inline-block', whiteSpace: 'pre', opacity: Math.min(1, p * 1.6), transform: `translateY(calc(var(--su) * ${((1 - p) * 4.5).toFixed(3)}))` }}>
                   {ch}
                 </span>
               );
@@ -81,50 +143,48 @@ export function SceneOpening({ t }) {
           </h1>
         </div>
       </div>
-    </div>
+    </Shell>
   );
 }
 
 /* =====================================================================
-   AKT 2 — TOGGLE (6–12.5s)  Autopilot skrus PÅ — motoren våkner
+   AKT 2 — TOGGLE (8–14.5s)
 ===================================================================== */
 export function SceneToggle({ t }) {
-  const o = fadeInOut(t, 6, 12.5);
-  const grpIn = easeOutCubic(seg(t, 6.8, 7.6));
-  const flip = easeInOutCubic(seg(t, 8.2, 8.8));
-  const ring = seg(t, 8.75, 10.1);
-  const orbIn = easeOutCubic(seg(t, 8.8, 10.8));
-  const cap = easeOutCubic(seg(t, 9.9, 10.9));
+  const grpIn = easeOutQuint(seg(t, 8.8, 9.8));
+  const flip = easeInOutCubic(seg(t, 10.2, 10.8));
+  const ring = seg(t, 10.75, 12.1);
+  const ring2 = seg(t, 11.1, 12.6);
+  const orbIn = easeOutCubic(seg(t, 10.8, 12.8));
+  const bloom = Math.sin(clamp01(seg(t, 10.55, 11.45)) * Math.PI);
 
   return (
-    <div className="absolute inset-0" style={{ opacity: o }}>
-      {/* orb behind */}
+    <Shell t={t} a={8} b={14.5}>
       <div className="absolute inset-0 flex items-center justify-center">
-        <Orb
-          size="calc(var(--su) * 52)"
-          style={{ opacity: orbIn * 0.8, transform: `scale(${(0.65 + 0.35 * orbIn).toFixed(3)})`, transition: 'none' }}
-        />
+        <Orb t={t} size="calc(var(--su) * 52)" style={{ opacity: orbIn * 0.8, transform: `scale(${(0.65 + 0.35 * orbIn).toFixed(3)})` }} />
       </div>
       <div className="absolute inset-0" style={{ background: 'radial-gradient(circle at 50% 50%, rgba(5,5,6,0) 30%, rgba(5,5,6,0.78) 72%)' }} />
-      {/* toggle group */}
+      {/* bloom-glimt ved aktivering */}
+      <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(circle at 50% 50%, rgba(207,151,252,0.3), transparent 55%)', opacity: bloom * 0.55 }} />
       <div className="absolute inset-0 flex flex-col items-center justify-center" style={rise(grpIn, 3)}>
         <div
           className="font-body uppercase"
-          style={{ fontSize: 'calc(var(--su) * 1.7)', letterSpacing: '0.5em', color: 'rgba(253,252,251,0.85)', marginBottom: 'calc(var(--su) * 2.6)', textIndent: '0.5em' }}
+          style={{ fontSize: 'calc(var(--su) * 1.7)', letterSpacing: '0.5em', textIndent: '0.5em', color: 'rgba(253,252,251,0.85)', marginBottom: 'calc(var(--su) * 2.6)' }}
         >
           Autopilot
         </div>
         <div style={{ position: 'relative' }}>
-          {/* pulse ring */}
-          <div
-            style={{
-              position: 'absolute', inset: 'calc(var(--su) * -1)', borderRadius: '999px',
-              border: '1.5px solid rgba(207,151,252,0.8)',
-              opacity: ring > 0 ? (1 - ring) * 0.9 : 0,
-              transform: `scale(${(1 + ring * 1.6).toFixed(3)})`,
-            }}
-          />
-          {/* track */}
+          {[ring, ring2].map((r, i) => (
+            <div
+              key={i}
+              style={{
+                position: 'absolute', inset: 'calc(var(--su) * -1)', borderRadius: '999px',
+                border: '1.5px solid rgba(207,151,252,0.8)',
+                opacity: r > 0 ? (1 - r) * 0.9 : 0,
+                transform: `scale(${(1 + r * (1.6 + i * 0.5)).toFixed(3)})`,
+              }}
+            />
+          ))}
           <div
             style={{
               width: 'calc(var(--su) * 13.5)', height: 'calc(var(--su) * 7)', borderRadius: '999px',
@@ -134,7 +194,6 @@ export function SceneToggle({ t }) {
             }}
           >
             <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(120deg, #9B5BD6, #CF97FC)', opacity: flip }} />
-            {/* knob */}
             <div
               style={{
                 position: 'absolute', top: 'calc(var(--su) * 0.6)', left: 'calc(var(--su) * 0.6)',
@@ -148,108 +207,130 @@ export function SceneToggle({ t }) {
         <div
           className="font-heading"
           style={{
-            ...rise(cap, 2.5),
-            fontSize: 'calc(var(--su) * 3.1)',
-            color: 'rgba(253,252,251,0.92)',
-            marginTop: 'calc(var(--su) * 4)',
-            letterSpacing: '-0.02em',
+            fontSize: 'calc(var(--su) * 3.1)', color: 'rgba(253,252,251,0.92)',
+            marginTop: 'calc(var(--su) * 4)', letterSpacing: '-0.02em', lineHeight: 1.2,
           }}
         >
-          Fra nå skjer alt av seg selv.
+          <Words t={t} at={11.9} stagger={0.12} text="Fra nå skjer alt av seg selv." />
         </div>
       </div>
-    </div>
+    </Shell>
   );
 }
 
 /* =====================================================================
-   AKT 3 — ANNONSERING (12–24.5s)  Annonsen bygger seg selv → FINN
+   AKT 3 — ANNONSERING (14–26.5s)
 ===================================================================== */
 export function SceneAnnonse({ t }) {
-  const o = fadeInOut(t, 12, 24.5);
-  const h1 = easeOutCubic(seg(t, 12.6, 13.4));
-  const h2 = easeOutCubic(seg(t, 13.2, 14.0));
-  const cardIn = easeOutCubic(seg(t, 13.0, 13.9));
-  const photoP = easeInOutCubic(seg(t, 13.7, 14.8));
-  const titleP = seg(t, 14.9, 16.7);
-  const aiTag = easeOutCubic(seg(t, 17.0, 17.6));
-  const descP = seg(t, 17.4, 19.9);
-  const priceIn = easeOutCubic(seg(t, 19.9, 20.5));
-  const stampP = seg(t, 21.0, 21.7);
-  const capIn = easeOutCubic(seg(t, 22.2, 23.0));
+  const lp = seg(t, 14, 26.5);
+  const cardIn = easeOutQuint(seg(t, 15.0, 16.1));
+  const photoP = easeInOutCubic(seg(t, 15.7, 16.8));
+  const styleP = easeInOutCubic(seg(t, 17.6, 19.1));
+  const styleBadge = seg(t, 19.2, 19.8);
+  const titleP = seg(t, 16.6, 18.3);
+  const descP = seg(t, 20.2, 22.4);
+  const priceIn = easeOutCubic(seg(t, 22.5, 23.1));
+  const stampP = seg(t, 23.4, 24.1);
+  const capIn = easeOutCubic(seg(t, 24.5, 25.3));
 
   const title = 'Lys 3-roms med utsikt — Møhlenpris';
   const desc = 'Velkommen til en gjennomgående lys 3-roms med stor balkong og panoramautsikt over Puddefjorden. Nyoppusset kjøkken, gangavstand til sentrum.';
   const chips = ['74 m²', '2 soverom', 'Balkong'];
 
   return (
-    <div className="absolute inset-0" style={{ opacity: o }}>
-      {/* left headline */}
-      <div style={{ position: 'absolute', left: '7%', top: '50%', transform: 'translateY(-50%)', width: '34%' }}>
-        <h2 className="font-heading font-bold" style={{ ...rise(h1), fontSize: 'calc(var(--su) * 6.2)', color: '#FDFCFB', lineHeight: 1.02 }}>
-          Annonsen?
+    <Shell t={t} a={14} b={26.5}>
+      <LeftCol lp={lp}>
+        <h2 className="font-heading font-bold" style={{ fontSize: 'calc(var(--su) * 6.2)', color: '#FDFCFB', lineHeight: 1.08 }}>
+          <Words t={t} at={14.7} text="Annonsen?" />
         </h2>
-        <p className="font-body" style={{ ...rise(h2), fontSize: 'calc(var(--su) * 2.3)', color: 'rgba(253,252,251,0.6)', marginTop: 'calc(var(--su) * 1.8)', lineHeight: 1.4 }}>
-          Skrives og publiseres automatisk.
+        <p className="font-body" style={{ fontSize: 'calc(var(--su) * 2.3)', color: 'rgba(253,252,251,0.6)', marginTop: 'calc(var(--su) * 1.8)', lineHeight: 1.4 }}>
+          <Words t={t} at={15.3} stagger={0.1} text="Stylet, skrevet og publisert — automatisk." />
         </p>
         <div className="font-body" style={{ ...rise(capIn, 2), marginTop: 'calc(var(--su) * 3)', display: 'flex', alignItems: 'center', gap: 'calc(var(--su) * 1)' }}>
           <span style={{ width: 'calc(var(--su) * 0.8)', height: 'calc(var(--su) * 0.8)', borderRadius: '50%', background: '#CF97FC', display: 'inline-block' }} />
           <span style={{ fontSize: 'calc(var(--su) * 1.6)', color: 'rgba(207,151,252,0.9)', letterSpacing: '0.08em' }}>
-            Proffe bilder · AI-tekst · riktig pris
+            Klar på minutter — ikke dager
           </span>
         </div>
-      </div>
-      {/* listing card */}
+      </LeftCol>
       <div
         style={{
           position: 'absolute', right: '7%', top: '50%', width: '42%',
-          transform: `translateY(-50%) translateY(calc(var(--su) * ${((1 - cardIn) * 4).toFixed(2)})) scale(${(0.96 + cardIn * 0.04).toFixed(3)})`,
+          transform: `translateY(-50%) translateY(calc(var(--su) * ${((1 - cardIn) * 5 - lp * 1.2).toFixed(2)})) scale(${(0.95 + cardIn * 0.05).toFixed(3)})`,
           opacity: cardIn,
           background: '#131316', border: '1px solid rgba(255,255,255,0.09)',
-          borderRadius: 'calc(var(--su) * 1.8)', overflow: 'visible',
+          borderRadius: 'calc(var(--su) * 1.8)',
           boxShadow: '0 calc(var(--su)*2.4) calc(var(--su)*7) rgba(0,0,0,0.55)',
         }}
       >
         <div style={{ borderRadius: 'calc(var(--su) * 1.8)', overflow: 'hidden' }}>
-          {/* photo */}
-          <div style={{ height: 'calc(var(--su) * 18)', overflow: 'hidden', position: 'relative', background: '#1b1b1f' }}>
+          <div style={{ height: 'calc(var(--su) * 17)', overflow: 'hidden', position: 'relative', background: '#1b1b1f' }}>
+            {/* f\u00f8r: ustylet (matt og flatt) */}
             <img
               src="/interior-living.webp"
               alt=""
               style={{
+                position: 'absolute', inset: 0,
                 width: '100%', height: '100%', objectFit: 'cover',
+                filter: 'saturate(0.25) brightness(0.68) contrast(0.88)',
                 clipPath: `inset(0 ${((1 - photoP) * 100).toFixed(2)}% 0 0)`,
                 transform: `scale(${(1.08 - photoP * 0.08).toFixed(3)})`,
               }}
             />
+            {/* etter: stylet */}
+            <img
+              src="/interior-living.webp"
+              alt=""
+              style={{
+                position: 'absolute', inset: 0,
+                width: '100%', height: '100%', objectFit: 'cover',
+                filter: 'saturate(1.12) brightness(1.06) contrast(1.05)',
+                clipPath: `inset(0 ${((1 - styleP) * 100).toFixed(2)}% 0 0)`,
+                transform: `scale(${(1.08 - photoP * 0.08).toFixed(3)})`,
+              }}
+            />
+            {/* styling-sveiplinje */}
+            {styleP > 0.001 && styleP < 0.999 && (
+              <div
+                style={{
+                  position: 'absolute', top: 0, bottom: 0,
+                  left: `${(styleP * 100).toFixed(2)}%`,
+                  width: 'calc(var(--su) * 0.25)',
+                  background: '#FDFCFB',
+                  boxShadow: '0 0 calc(var(--su)*2.2) rgba(207,151,252,0.95), 0 0 calc(var(--su)*0.8) rgba(255,255,255,0.9)',
+                }}
+              />
+            )}
+            {/* stylet-badge */}
+            <span
+              className="font-body"
+              style={{
+                position: 'absolute', top: 'calc(var(--su) * 1.1)', right: 'calc(var(--su) * 1.1)',
+                opacity: clamp01(styleBadge * 2),
+                transform: `scale(${Math.max(0.5, easeOutBack(styleBadge)).toFixed(3)})`,
+                fontSize: 'calc(var(--su) * 1.2)', fontWeight: 500, letterSpacing: '0.06em',
+                color: '#0A0A0A', background: 'rgba(253,252,251,0.92)',
+                backdropFilter: 'blur(4px)',
+                borderRadius: 999, padding: 'calc(var(--su) * 0.45) calc(var(--su) * 1.2)',
+                display: 'inline-flex', alignItems: 'center', gap: 'calc(var(--su) * 0.5)',
+              }}
+            >
+              <span style={{ color: '#9B5BD6' }}>{'\u2726'}</span> Stylet automatisk
+            </span>
             <div style={{ position: 'absolute', left: 'calc(var(--su)*1.2)', bottom: 'calc(var(--su)*1.2)', opacity: photoP, display: 'flex', gap: 'calc(var(--su)*0.6)' }}>
               {[0, 1, 2].map((i) => (
                 <span key={i} style={{ width: 'calc(var(--su)*2.6)', height: 'calc(var(--su)*0.45)', borderRadius: 99, background: i === 0 ? '#FDFCFB' : 'rgba(253,252,251,0.35)' }} />
               ))}
             </div>
-            <span
-              className="font-body"
-              style={{
-                ...pop(aiTag),
-                position: 'absolute', bottom: 'calc(var(--su) * 1.1)', right: 'calc(var(--su) * 1.1)',
-                fontSize: 'calc(var(--su) * 1.2)', letterSpacing: '0.06em',
-                color: '#0A0A0A', background: 'linear-gradient(120deg, #CF97FC, #b07ce0)',
-                borderRadius: 999, padding: 'calc(var(--su) * 0.4) calc(var(--su) * 1.1)',
-                fontWeight: 500,
-              }}
-            >
-              ✦ Skrevet av DigiHome AI
-            </span>
           </div>
-          {/* body */}
           <div style={{ padding: 'calc(var(--su) * 2.2)' }}>
             <div className="font-heading font-bold" style={{ fontSize: 'calc(var(--su) * 2.5)', color: '#FDFCFB', minHeight: 'calc(var(--su) * 3.2)', lineHeight: 1.15 }}>
               {typed(title, titleP)}
-              {titleP > 0 && titleP < 1 ? <Caret /> : null}
+              {titleP > 0 && titleP < 1 ? <Caret t={t} /> : null}
             </div>
             <div style={{ display: 'flex', gap: 'calc(var(--su) * 1)', marginTop: 'calc(var(--su) * 1.3)' }}>
               {chips.map((c, i) => {
-                const p = easeOutBack(seg(t, 16.8 + i * 0.3, 17.4 + i * 0.3));
+                const p = easeOutBack(seg(t, 19.6 + i * 0.3, 20.2 + i * 0.3));
                 return (
                   <span
                     key={c}
@@ -266,41 +347,53 @@ export function SceneAnnonse({ t }) {
                 );
               })}
             </div>
-            <div style={{ position: 'relative', marginTop: 'calc(var(--su) * 1.6)' }}>
-              <p className="font-body" style={{ fontSize: 'calc(var(--su) * 1.55)', color: 'rgba(253,252,251,0.55)', lineHeight: 1.55, minHeight: 'calc(var(--su) * 7)' }}>
-                {typed(desc, descP)}
-                {descP > 0 && descP < 1 ? <Caret /> : null}
-              </p>
-            </div>
+            <p className="font-body" style={{ marginTop: 'calc(var(--su) * 1.6)', fontSize: 'calc(var(--su) * 1.55)', color: 'rgba(253,252,251,0.55)', lineHeight: 1.55, minHeight: 'calc(var(--su) * 7)' }}>
+              {typed(desc, descP)}
+              {descP > 0 && descP < 1 ? <Caret t={t} /> : null}
+            </p>
             <div style={{ ...rise(priceIn, 2), display: 'flex', alignItems: 'baseline', gap: 'calc(var(--su) * 0.8)', marginTop: 'calc(var(--su) * 1.4)' }}>
-              <span className="font-heading font-bold" style={{ fontSize: 'calc(var(--su) * 3)', color: '#FDFCFB' }}>24 800 kr</span>
+              <span className="font-heading font-bold" style={{ fontSize: 'calc(var(--su) * 3)', color: '#FDFCFB' }}>{'24\u202F800 kr'}</span>
               <span className="font-body" style={{ fontSize: 'calc(var(--su) * 1.5)', color: 'rgba(253,252,251,0.5)' }}>/mnd</span>
             </div>
           </div>
         </div>
-        {/* FINN stamp */}
         <div
           style={{
             position: 'absolute', top: 'calc(var(--su) * -2.4)', right: 'calc(var(--su) * -2.4)',
-            opacity: clamp01(stampP * 2),
-            transform: `rotate(-7deg) scale(${Math.max(0.4, easeOutBack(stampP)).toFixed(3)})`,
+            opacity: clamp01(stampP * 3),
+            transform: `rotate(-7deg) scale(${(1.9 - 0.9 * easeOutQuint(stampP)).toFixed(3)})`,
             background: '#FDFCFB', borderRadius: 999,
             padding: 'calc(var(--su) * 0.9) calc(var(--su) * 1.6)',
             display: 'flex', alignItems: 'center', gap: 'calc(var(--su) * 1)',
             boxShadow: '0 calc(var(--su)*1) calc(var(--su)*3.5) rgba(0,0,0,0.5)',
           }}
         >
+          {/* landingsring */}
+          {(() => {
+            const ringP = seg(t, 23.95, 24.6);
+            if (ringP <= 0 || ringP >= 1) return null;
+            return (
+              <span
+                style={{
+                  position: 'absolute', inset: 'calc(var(--su) * -0.5)', borderRadius: 999,
+                  border: '1.5px solid rgba(207,151,252,0.7)',
+                  opacity: (1 - ringP) * 0.8,
+                  transform: `scale(${(1 + ringP * 0.45).toFixed(3)})`,
+                }}
+              />
+            );
+          })()}
           <img src="/finn-logo.png" alt="FINN" style={{ height: 'calc(var(--su) * 2.4)', width: 'auto', borderRadius: 'calc(var(--su)*0.4)' }} />
           <span className="font-body" style={{ fontSize: 'calc(var(--su) * 1.6)', fontWeight: 500, color: '#0A0A0A' }}>Publisert</span>
           <span style={{ color: '#16a34a', fontSize: 'calc(var(--su) * 1.8)', fontWeight: 700 }}>✓</span>
         </div>
       </div>
-    </div>
+    </Shell>
   );
 }
 
 /* =====================================================================
-   AKT 4 — VISNING + SCREENING (24–36.5s)
+   AKT 4 — VISNING + SCREENING (26–38.5s)
 ===================================================================== */
 const RADAR_LABELS = ['Kreditt', 'Inntekt', 'Referanser', 'Historikk', 'Stabilitet'];
 const RADAR_VALUES = [0.92, 0.84, 0.95, 0.78, 0.88];
@@ -311,45 +404,39 @@ function radarPoint(cx, cy, r, i, n = 5) {
 }
 
 export function SceneVisning({ t }) {
-  const o = fadeInOut(t, 24, 36.5);
-  const partA = Math.min(1, 1 - seg(t, 29.7, 30.3));
-  const partB = seg(t, 30.3, 30.9);
+  const lp = seg(t, 26, 38.5);
+  const partA = Math.min(1, 1 - seg(t, 31.7, 32.3));
+  const partB = seg(t, 32.3, 32.9);
+  const partBBlur = (1 - easeOutCubic(partB)) * 6;
 
-  /* — Part A: visninger — */
-  const hA1 = easeOutCubic(seg(t, 24.5, 25.3));
-  const hA2 = easeOutCubic(seg(t, 25.0, 25.8));
-  const calIn = easeOutCubic(seg(t, 25.2, 26.0));
+  const calIn = easeOutQuint(seg(t, 27.2, 28.2));
   const bookings = [
-    { d: 'Tir', tm: '17:00', n: 'Emma N.', at: 26.0 },
-    { d: 'Ons', tm: '17:30', n: 'Jonas B.', at: 26.8 },
-    { d: 'Tor', tm: '18:00', n: 'Sofie H.', at: 27.6 },
+    { d: 'Tir', tm: '17:00', n: 'Emma N.', at: 28.0 },
+    { d: 'Ons', tm: '17:30', n: 'Jonas B.', at: 28.8 },
+    { d: 'Tor', tm: '18:00', n: 'Sofie H.', at: 29.6 },
   ];
-  const fullCap = easeOutCubic(seg(t, 28.5, 29.3));
+  const fullCap = easeOutCubic(seg(t, 30.5, 31.3));
 
-  /* — Part B: radar — */
-  const ringsIn = easeOutCubic(seg(t, 30.7, 31.5));
-  const hB1 = easeOutCubic(seg(t, 30.4, 31.2));
-  const hB2 = easeOutCubic(seg(t, 30.9, 31.7));
-  const badge = seg(t, 34.3, 35.0);
+  const ringsIn = easeOutCubic(seg(t, 32.7, 33.5));
+  const badge = seg(t, 36.3, 37.0);
   const cx = 100, cy = 102, R = 74;
 
   return (
-    <div className="absolute inset-0" style={{ opacity: o }}>
-      {/* ---------- PART A ---------- */}
+    <Shell t={t} a={26} b={38.5}>
       {partA > 0.01 && (
-        <div className="absolute inset-0" style={{ opacity: partA }}>
-          <div style={{ position: 'absolute', left: '7%', top: '50%', transform: 'translateY(-50%)', width: '34%' }}>
-            <h2 className="font-heading font-bold" style={{ ...rise(hA1), fontSize: 'calc(var(--su) * 6.2)', color: '#FDFCFB', lineHeight: 1.02 }}>
-              Visninger?
+        <div className="absolute inset-0" style={{ opacity: partA, filter: partA < 0.95 ? `blur(${((1 - partA) * 6).toFixed(1)}px)` : 'none' }}>
+          <LeftCol lp={lp}>
+            <h2 className="font-heading font-bold" style={{ fontSize: 'calc(var(--su) * 6.2)', color: '#FDFCFB', lineHeight: 1.08 }}>
+              <Words t={t} at={26.6} text="Visninger?" />
             </h2>
-            <p className="font-body" style={{ ...rise(hA2), fontSize: 'calc(var(--su) * 2.3)', color: 'rgba(253,252,251,0.6)', marginTop: 'calc(var(--su) * 1.8)' }}>
-              Booker seg selv.
+            <p className="font-body" style={{ fontSize: 'calc(var(--su) * 2.3)', color: 'rgba(253,252,251,0.6)', marginTop: 'calc(var(--su) * 1.8)' }}>
+              <Words t={t} at={27.2} stagger={0.1} text="Booker seg selv." />
             </p>
-          </div>
+          </LeftCol>
           <div
             style={{
               position: 'absolute', right: '8%', top: '50%', width: '40%',
-              transform: `translateY(-50%) translateY(calc(var(--su) * ${((1 - calIn) * 4).toFixed(2)}))`,
+              transform: `translateY(-50%) translateY(calc(var(--su) * ${((1 - calIn) * 5 - lp * 1.2).toFixed(2)})) scale(${(0.95 + calIn * 0.05).toFixed(3)})`,
               opacity: calIn,
               background: '#131316', border: '1px solid rgba(255,255,255,0.09)',
               borderRadius: 'calc(var(--su) * 1.8)', padding: 'calc(var(--su) * 2.4)',
@@ -365,13 +452,13 @@ export function SceneVisning({ t }) {
               </span>
             </div>
             {bookings.map((b) => {
-              const p = easeOutCubic(seg(t, b.at, b.at + 0.7));
+              const p = easeOutQuint(seg(t, b.at, b.at + 0.8));
               const chk = easeOutBack(seg(t, b.at + 0.45, b.at + 0.95));
               return (
                 <div
                   key={b.n}
                   style={{
-                    ...rise(p, 2),
+                    ...rise(p, 2.5),
                     display: 'flex', alignItems: 'center', gap: 'calc(var(--su) * 1.4)',
                     background: 'rgba(255,255,255,0.045)', border: '1px solid rgba(255,255,255,0.07)',
                     borderRadius: 'calc(var(--su) * 1.1)',
@@ -405,20 +492,18 @@ export function SceneVisning({ t }) {
           </div>
         </div>
       )}
-      {/* ---------- PART B ---------- */}
       {partB > 0.01 && (
-        <div className="absolute inset-0" style={{ opacity: partB }}>
-          <div style={{ position: 'absolute', left: '7%', top: '50%', transform: 'translateY(-50%)', width: '34%' }}>
-            <h2 className="font-heading font-bold" style={{ ...rise(hB1), fontSize: 'calc(var(--su) * 6.2)', color: '#FDFCFB', lineHeight: 1.02 }}>
-              Leietakere?
+        <div className="absolute inset-0" style={{ opacity: partB, filter: partBBlur > 0.3 ? `blur(${partBBlur.toFixed(1)}px)` : 'none' }}>
+          <LeftCol lp={lp}>
+            <h2 className="font-heading font-bold" style={{ fontSize: 'calc(var(--su) * 6.2)', color: '#FDFCFB', lineHeight: 1.08 }}>
+              <Words t={t} at={32.5} text="Leietakere?" />
             </h2>
-            <p className="font-body" style={{ ...rise(hB2), fontSize: 'calc(var(--su) * 2.3)', color: 'rgba(253,252,251,0.6)', marginTop: 'calc(var(--su) * 1.8)' }}>
-              Screenes automatisk — kreditt, inntekt og referanser.
+            <p className="font-body" style={{ fontSize: 'calc(var(--su) * 2.3)', color: 'rgba(253,252,251,0.6)', marginTop: 'calc(var(--su) * 1.8)', lineHeight: 1.4 }}>
+              <Words t={t} at={33.0} stagger={0.08} text="Screenes automatisk — kreditt, inntekt og referanser." />
             </p>
-          </div>
-          <div style={{ position: 'absolute', right: '6%', top: '50%', transform: 'translateY(-50%)', width: '46%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <svg viewBox="0 0 200 200" style={{ width: 'calc(var(--su) * 42)', height: 'calc(var(--su) * 42)', overflow: 'visible' }}>
-              {/* rings */}
+          </LeftCol>
+          <div style={{ position: 'absolute', right: '6%', top: '50%', transform: `translateY(-50%) translateY(calc(var(--su) * ${(-lp * 1.2).toFixed(2)}))`, width: '46%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <svg viewBox="0 0 200 200" style={{ width: 'calc(var(--su) * 41)', height: 'calc(var(--su) * 41)', overflow: 'visible' }}>
               {[0.33, 0.66, 1].map((s, ri) => (
                 <polygon
                   key={ri}
@@ -429,15 +514,13 @@ export function SceneVisning({ t }) {
                   style={{ opacity: ringsIn }}
                 />
               ))}
-              {/* axes */}
               {RADAR_LABELS.map((_, i) => {
                 const [x, y] = radarPoint(cx, cy, R, i);
                 return <line key={i} x1={cx} y1={cy} x2={x} y2={y} stroke="rgba(255,255,255,0.09)" strokeWidth="0.7" style={{ opacity: ringsIn }} />;
               })}
-              {/* value polygon */}
               {(() => {
                 const pts = RADAR_LABELS.map((_, i) => {
-                  const v = RADAR_VALUES[i] * easeOutCubic(seg(t, 31.9 + i * 0.16, 33.3 + i * 0.16));
+                  const v = RADAR_VALUES[i] * easeOutCubic(seg(t, 33.9 + i * 0.16, 35.3 + i * 0.16));
                   return radarPoint(cx, cy, R * v, i);
                 });
                 const ptsStr = pts.map((p) => p.join(',')).join(' ');
@@ -445,16 +528,30 @@ export function SceneVisning({ t }) {
                   <g>
                     <polygon points={ptsStr} fill="rgba(207,151,252,0.16)" stroke="#CF97FC" strokeWidth="1.6" strokeLinejoin="round" style={{ filter: 'drop-shadow(0 0 6px rgba(207,151,252,0.65))' }} />
                     {pts.map((p, i) => (
-                      <circle key={i} cx={p[0]} cy={p[1]} r="2.4" fill="#CF97FC" style={{ opacity: seg(t, 32.2 + i * 0.16, 32.8 + i * 0.16) }} />
+                      <circle key={i} cx={p[0]} cy={p[1]} r="2.4" fill="#CF97FC" style={{ opacity: seg(t, 34.2 + i * 0.16, 34.8 + i * 0.16) }} />
                     ))}
                   </g>
                 );
               })()}
-              {/* labels */}
+              {/* radar-scan: roterende sveiplinje */}
+              {(() => {
+                const scanOp = Math.min(seg(t, 33.0, 33.5), 1 - seg(t, 35.3, 35.9)) * 0.45;
+                if (scanOp <= 0.01) return null;
+                const ang = -Math.PI / 2 + ((t - 33.0) * 2.1) % (Math.PI * 2);
+                const sx = cx + R * Math.cos(ang);
+                const sy = cy + R * Math.sin(ang);
+                return (
+                  <line
+                    x1={cx} y1={cy} x2={sx} y2={sy}
+                    stroke="#CF97FC" strokeWidth="1.1" opacity={scanOp}
+                    style={{ filter: 'drop-shadow(0 0 4px rgba(207,151,252,0.85))' }}
+                  />
+                );
+              })()}
               {RADAR_LABELS.map((lb, i) => {
                 const [x, y] = radarPoint(cx, cy, R + 16, i);
-                const lit = seg(t, 33.4, 34.0);
-                const op = easeOutCubic(seg(t, 31.3 + i * 0.18, 31.9 + i * 0.18));
+                const lit = seg(t, 35.4, 36.0);
+                const op = easeOutCubic(seg(t, 33.3 + i * 0.18, 33.9 + i * 0.18));
                 return (
                   <text
                     key={lb}
@@ -462,12 +559,10 @@ export function SceneVisning({ t }) {
                     y={y + 2.5}
                     textAnchor="middle"
                     style={{
-                      fontSize: 7.5,
-                      letterSpacing: '0.12em',
+                      fontSize: 7.5, letterSpacing: '0.12em',
                       fontFamily: 'var(--font-body)',
                       fill: lit > 0.5 ? '#CF97FC' : 'rgba(253,252,251,0.6)',
                       opacity: op,
-                      textTransform: 'uppercase',
                     }}
                   >
                     {lb.toUpperCase()}
@@ -492,48 +587,43 @@ export function SceneVisning({ t }) {
           </div>
         </div>
       )}
-    </div>
+    </Shell>
   );
 }
 
 /* =====================================================================
-   AKT 5 — KONTRAKT + HUSLEIE (36–46.5s)
+   AKT 5 — KONTRAKT + HUSLEIE (38–49s)
 ===================================================================== */
 export function SceneKontrakt({ t }) {
-  const o = fadeInOut(t, 36, 46.5);
-  const partA = Math.min(1, 1 - seg(t, 40.9, 41.5));
-  const partB = seg(t, 41.5, 42.1);
+  const lp = seg(t, 38, 49);
+  const partA = Math.min(1, 1 - seg(t, 42.9, 43.5));
+  const partB = seg(t, 43.5, 44.1);
+  const partBBlur = (1 - easeOutCubic(partB)) * 6;
 
-  const hA1 = easeOutCubic(seg(t, 36.5, 37.3));
-  const hA2 = easeOutCubic(seg(t, 37.0, 37.8));
-  const docIn = easeOutCubic(seg(t, 37.2, 38.0));
-  const sigP = easeInOutCubic(seg(t, 38.3, 39.8));
-  const bankP = seg(t, 39.9, 40.6);
+  const docIn = easeOutQuint(seg(t, 39.2, 40.2));
+  const sigP = easeInOutCubic(seg(t, 40.3, 41.8));
+  const bankP = seg(t, 41.9, 42.6);
 
-  const hB1 = easeOutCubic(seg(t, 41.6, 42.4));
-  const hB2 = easeOutCubic(seg(t, 42.0, 42.8));
-  const countP = easeOutExpo(seg(t, 42.6, 45.0));
-  const txnIn = easeOutCubic(seg(t, 44.9, 45.6));
+  const countP = easeOutExpo(seg(t, 44.6, 47.0));
+  const txnIn = easeOutCubic(seg(t, 46.9, 47.6));
   const amount = 24800 * countP;
 
   return (
-    <div className="absolute inset-0" style={{ opacity: o }}>
-      {/* ---------- PART A: kontrakt ---------- */}
+    <Shell t={t} a={38} b={49}>
       {partA > 0.01 && (
-        <div className="absolute inset-0" style={{ opacity: partA }}>
-          <div style={{ position: 'absolute', left: '7%', top: '50%', transform: 'translateY(-50%)', width: '34%' }}>
-            <h2 className="font-heading font-bold" style={{ ...rise(hA1), fontSize: 'calc(var(--su) * 6.2)', color: '#FDFCFB', lineHeight: 1.02 }}>
-              Kontrakten?
+        <div className="absolute inset-0" style={{ opacity: partA, filter: partA < 0.95 ? `blur(${((1 - partA) * 6).toFixed(1)}px)` : 'none' }}>
+          <LeftCol lp={lp}>
+            <h2 className="font-heading font-bold" style={{ fontSize: 'calc(var(--su) * 6.2)', color: '#FDFCFB', lineHeight: 1.08 }}>
+              <Words t={t} at={38.6} text="Kontrakten?" />
             </h2>
-            <p className="font-body" style={{ ...rise(hA2), fontSize: 'calc(var(--su) * 2.3)', color: 'rgba(253,252,251,0.6)', marginTop: 'calc(var(--su) * 1.8)' }}>
-              Signeres digitalt — med BankID.
+            <p className="font-body" style={{ fontSize: 'calc(var(--su) * 2.3)', color: 'rgba(253,252,251,0.6)', marginTop: 'calc(var(--su) * 1.8)' }}>
+              <Words t={t} at={39.1} stagger={0.1} text="Signeres digitalt — med BankID." />
             </p>
-          </div>
-          {/* paper doc */}
+          </LeftCol>
           <div
             style={{
               position: 'absolute', right: '10%', top: '50%', width: '34%',
-              transform: `translateY(-50%) translateY(calc(var(--su) * ${((1 - docIn) * 4).toFixed(2)})) rotate(${((1 - docIn) * 2).toFixed(2)}deg)`,
+              transform: `translateY(-50%) translateY(calc(var(--su) * ${((1 - docIn) * 5 - lp * 1.2).toFixed(2)})) rotate(${((1 - docIn) * 2).toFixed(2)}deg) scale(${(0.95 + docIn * 0.05).toFixed(3)})`,
               opacity: docIn,
               background: '#FBFAF7', borderRadius: 'calc(var(--su) * 1.2)',
               padding: 'calc(var(--su) * 2.8)',
@@ -544,7 +634,7 @@ export function SceneKontrakt({ t }) {
               LEIEKONTRAKT
             </div>
             {[100, 92, 97, 84, 90].map((w, i) => {
-              const p = easeOutCubic(seg(t, 37.4 + i * 0.18, 38.0 + i * 0.18));
+              const p = easeOutCubic(seg(t, 39.4 + i * 0.18, 40.0 + i * 0.18));
               return (
                 <div
                   key={i}
@@ -557,7 +647,6 @@ export function SceneKontrakt({ t }) {
                 />
               );
             })}
-            {/* signature */}
             <div style={{ marginTop: 'calc(var(--su) * 2.4)', borderTop: '1px solid rgba(10,10,10,0.2)', paddingTop: 'calc(var(--su) * 1)', position: 'relative' }}>
               <svg viewBox="0 0 160 44" style={{ width: 'calc(var(--su) * 16)', height: 'calc(var(--su) * 4.6)', position: 'absolute', top: 'calc(var(--su) * -3.4)', left: 'calc(var(--su) * 1)' }}>
                 <path
@@ -573,7 +662,6 @@ export function SceneKontrakt({ t }) {
               </svg>
               <div className="font-body" style={{ fontSize: 'calc(var(--su) * 1.2)', color: 'rgba(10,10,10,0.5)' }}>Leietaker — Emma Nordvik</div>
             </div>
-            {/* BankID badge */}
             <div
               style={{
                 position: 'absolute', bottom: 'calc(var(--su) * -2)', right: 'calc(var(--su) * -2.4)',
@@ -592,20 +680,19 @@ export function SceneKontrakt({ t }) {
           </div>
         </div>
       )}
-      {/* ---------- PART B: husleie ---------- */}
       {partB > 0.01 && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ opacity: partB }}>
-          <h2 className="font-heading font-bold" style={{ ...rise(hB1), fontSize: 'calc(var(--su) * 5.4)', color: '#FDFCFB', lineHeight: 1.05 }}>
-            Og husleien?
+        <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ opacity: partB, filter: partBBlur > 0.3 ? `blur(${partBBlur.toFixed(1)}px)` : 'none' }}>
+          <h2 className="font-heading font-bold" style={{ fontSize: 'calc(var(--su) * 5.4)', color: '#FDFCFB', lineHeight: 1.1 }}>
+            <Words t={t} at={43.7} text="Og husleien?" />
           </h2>
-          <p className="font-body" style={{ ...rise(hB2), fontSize: 'calc(var(--su) * 2.3)', color: 'rgba(253,252,251,0.6)', marginTop: 'calc(var(--su) * 1)' }}>
-            Den bare kommer.
+          <p className="font-body" style={{ fontSize: 'calc(var(--su) * 2.3)', color: 'rgba(253,252,251,0.6)', marginTop: 'calc(var(--su) * 1)' }}>
+            <Words t={t} at={44.2} stagger={0.12} text="Den bare kommer." />
           </p>
           <div style={{ marginTop: 'calc(var(--su) * 3.4)', textAlign: 'center' }}>
             <div className="font-body" style={{ fontSize: 'calc(var(--su) * 1.3)', letterSpacing: '0.35em', color: 'rgba(207,151,252,0.85)', marginBottom: 'calc(var(--su) * 1)' }}>
               HUSLEIE · NOVEMBER
             </div>
-            <div className="font-heading font-bold" style={{ fontSize: 'calc(var(--su) * 9.5)', color: '#FDFCFB', lineHeight: 1, fontVariantNumeric: 'tabular-nums', opacity: countP > 0 ? 1 : 0 }}>
+            <div className="font-heading font-bold" style={{ fontSize: 'calc(var(--su) * 9.5)', color: '#FDFCFB', lineHeight: 1, fontVariantNumeric: 'tabular-nums', opacity: countP > 0 ? 1 : 0, transform: `scale(${(1 + Math.sin(clamp01(seg(t, 46.85, 47.5)) * Math.PI) * 0.045).toFixed(3)})` }}>
               {fmtNOK(amount)} kr
             </div>
           </div>
@@ -618,7 +705,7 @@ export function SceneKontrakt({ t }) {
               borderRadius: 999, padding: 'calc(var(--su) * 1.1) calc(var(--su) * 2.4)',
             }}
           >
-            <img src="/digihome-mark.svg" alt="" style={{ height: 'calc(var(--su) * 2.2)', width: 'auto' }} />
+            <img src="/brand/digihome-icon-purple.svg" alt="" style={{ height: 'calc(var(--su) * 2.2)', width: 'auto', borderRadius: 'calc(var(--su)*0.4)' }} />
             <span className="font-body" style={{ fontSize: 'calc(var(--su) * 1.7)', color: 'rgba(253,252,251,0.8)' }}>DigiHome → Din konto</span>
             <span className="font-body" style={{ fontSize: 'calc(var(--su) * 1.4)', color: '#7ee2a8', background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.35)', borderRadius: 999, padding: 'calc(var(--su)*0.4) calc(var(--su)*1.1)' }}>
               Utbetalt ✓
@@ -626,34 +713,170 @@ export function SceneKontrakt({ t }) {
           </div>
         </div>
       )}
-    </div>
+    </Shell>
   );
 }
 
 /* =====================================================================
-   AKT 6 — FINALE (46–60s)
+   AKT 6 — CHAT MED LEIETAKER (48.5–59.5s)
 ===================================================================== */
-const FINAL_CHIPS = ['Annonse publisert', 'Visninger booket', 'Leietaker screenet', 'Kontrakt signert', 'Husleie utbetalt'];
+function Bubble({ t, at, side, children, time }) {
+  const p = easeOutBack(seg(t, at, at + 0.6));
+  const o = clamp01(seg(t, at, at + 0.35) * 2);
+  const isRight = side === 'right';
+  return (
+    <div style={{ display: 'flex', justifyContent: isRight ? 'flex-end' : 'flex-start', marginBottom: 'calc(var(--su) * 1.1)' }}>
+      <div
+        style={{
+          opacity: o,
+          transform: `scale(${Math.max(0.5, p).toFixed(3)}) translateY(calc(var(--su) * ${((1 - clamp01(p)) * 1.5).toFixed(2)}))`,
+          transformOrigin: isRight ? 'bottom right' : 'bottom left',
+          maxWidth: '78%',
+          background: isRight ? 'linear-gradient(120deg, #CF97FC, #b07ce0)' : 'rgba(255,255,255,0.08)',
+          color: isRight ? '#0A0A0A' : 'rgba(253,252,251,0.92)',
+          border: isRight ? 'none' : '1px solid rgba(255,255,255,0.08)',
+          borderRadius: 'calc(var(--su) * 1.6)',
+          borderBottomRightRadius: isRight ? 'calc(var(--su) * 0.4)' : 'calc(var(--su) * 1.6)',
+          borderBottomLeftRadius: isRight ? 'calc(var(--su) * 1.6)' : 'calc(var(--su) * 0.4)',
+          padding: 'calc(var(--su) * 1.1) calc(var(--su) * 1.6)',
+        }}
+      >
+        <div className="font-body" style={{ fontSize: 'calc(var(--su) * 1.65)', lineHeight: 1.45 }}>{children}</div>
+        {time ? (
+          <div className="font-body" style={{ fontSize: 'calc(var(--su) * 1.05)', opacity: 0.55, marginTop: 'calc(var(--su) * 0.4)', textAlign: 'right' }}>
+            {time}
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
 
-export function SceneFinale({ t }) {
-  const o = fadeInOut(t, 46, 60, 0.5, 0);
-  const chipsOut = seg(t, 50.7, 51.5);
-  const txt = Math.min(easeOutCubic(seg(t, 51.5, 52.3)), 1 - seg(t, 54.5, 55.3));
-  const logoIn = easeOutCubic(seg(t, 55.5, 56.5));
-  const tagIn = easeOutCubic(seg(t, 56.1, 57.1));
-  const urlIn = easeOutCubic(seg(t, 56.9, 57.7));
+export function SceneChat({ t }) {
+  const lp = seg(t, 48.5, 59.5);
+  const cardIn = easeOutQuint(seg(t, 49.4, 50.4));
+  const typingOn = t >= 51.4 && t < 52.5;
+  const statusIn = seg(t, 56.2, 56.9);
+  const capIn = easeOutCubic(seg(t, 56.6, 57.4));
 
   return (
-    <div className="absolute inset-0" style={{ opacity: o }}>
-      {/* chips */}
+    <Shell t={t} a={48.5} b={59.5}>
+      <LeftCol lp={lp}>
+        <h2 className="font-heading font-bold" style={{ fontSize: 'calc(var(--su) * 5.6)', color: '#FDFCFB', lineHeight: 1.1 }}>
+          <Words t={t} at={49.1} stagger={0.1} text="Leietaker lurer på noe?" />
+        </h2>
+        <p className="font-body" style={{ fontSize: 'calc(var(--su) * 2.3)', color: 'rgba(253,252,251,0.6)', marginTop: 'calc(var(--su) * 1.8)', lineHeight: 1.4 }}>
+          <Words t={t} at={49.7} stagger={0.1} text="Besvart på sekunder. Døgnet rundt." />
+        </p>
+        <div className="font-body" style={{ ...rise(capIn, 2), marginTop: 'calc(var(--su) * 3)', display: 'flex', alignItems: 'center', gap: 'calc(var(--su) * 1)' }}>
+          <span style={{ width: 'calc(var(--su) * 0.8)', height: 'calc(var(--su) * 0.8)', borderRadius: '50%', background: '#CF97FC', display: 'inline-block' }} />
+          <span style={{ fontSize: 'calc(var(--su) * 1.6)', color: 'rgba(207,151,252,0.9)', letterSpacing: '0.08em' }}>
+            Håndtert for deg — hele leieforholdet
+          </span>
+        </div>
+      </LeftCol>
+      <div
+        style={{
+          position: 'absolute', right: '9%', top: '50%', width: '37%',
+          transform: `translateY(-50%) translateY(calc(var(--su) * ${((1 - cardIn) * 5 - lp * 1.2).toFixed(2)})) scale(${(0.95 + cardIn * 0.05).toFixed(3)})`,
+          opacity: cardIn,
+          background: '#131316', border: '1px solid rgba(255,255,255,0.09)',
+          borderRadius: 'calc(var(--su) * 1.8)',
+          boxShadow: '0 calc(var(--su)*2.4) calc(var(--su)*7) rgba(0,0,0,0.55)',
+          overflow: 'hidden',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'calc(var(--su) * 1.1)', padding: 'calc(var(--su) * 1.5) calc(var(--su) * 1.8)', borderBottom: '1px solid rgba(255,255,255,0.07)', background: 'rgba(255,255,255,0.03)' }}>
+          <img src="/brand/digihome-icon-purple.svg" alt="" style={{ width: 'calc(var(--su) * 2.8)', height: 'calc(var(--su) * 2.8)', borderRadius: 'calc(var(--su) * 0.7)' }} />
+          <div style={{ flex: 1 }}>
+            <div className="font-body" style={{ fontSize: 'calc(var(--su) * 1.6)', fontWeight: 500, color: '#FDFCFB' }}>DigiHome</div>
+            <div className="font-body" style={{ fontSize: 'calc(var(--su) * 1.15)', color: '#7ee2a8', display: 'flex', alignItems: 'center', gap: 'calc(var(--su) * 0.5)' }}>
+              <span style={{ width: 'calc(var(--su) * 0.7)', height: 'calc(var(--su) * 0.7)', borderRadius: '50%', background: '#22c55e', display: 'inline-block' }} />
+              Alltid på
+            </div>
+          </div>
+          <span className="font-body" style={{ fontSize: 'calc(var(--su) * 1.1)', letterSpacing: '0.18em', color: '#CF97FC', border: '1px solid rgba(207,151,252,0.45)', borderRadius: 999, padding: 'calc(var(--su)*0.35) calc(var(--su)*1)' }}>
+            24/7
+          </span>
+        </div>
+        <div style={{ padding: 'calc(var(--su) * 1.8)' }}>
+          <Bubble t={t} at={50.5} side="left" time="21:47">Hei! Varmtvannet er plutselig borte 🥶</Bubble>
+          {typingOn && (
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 'calc(var(--su) * 1.1)' }}>
+              <div style={{ background: 'rgba(207,151,252,0.18)', borderRadius: 'calc(var(--su) * 1.6)', padding: 'calc(var(--su) * 1) calc(var(--su) * 1.5)', display: 'flex', gap: 'calc(var(--su) * 0.55)' }}>
+                {[0, 1, 2].map((i) => (
+                  <span
+                    key={i}
+                    style={{
+                      width: 'calc(var(--su) * 0.8)', height: 'calc(var(--su) * 0.8)', borderRadius: '50%', background: '#CF97FC',
+                      opacity: 0.35 + 0.65 * Math.abs(Math.sin((t * 4 + i * 0.9))),
+                      display: 'inline-block',
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+          <Bubble t={t} at={52.6} side="right" time="21:47">Det fikser vi! Rørlegger er booket til i morgen kl. 09:00.</Bubble>
+          <Bubble t={t} at={54.6} side="left" time="21:48">Wow, så raskt! Tusen takk 🙌</Bubble>
+          <div
+            className="font-body"
+            style={{
+              opacity: clamp01(statusIn * 2),
+              transform: `scale(${Math.max(0.6, easeOutBack(statusIn)).toFixed(3)})`,
+              margin: 'calc(var(--su) * 1.6) auto 0',
+              width: 'fit-content',
+              fontSize: 'calc(var(--su) * 1.3)', letterSpacing: '0.08em',
+              color: 'rgba(207,151,252,0.95)',
+              border: '1px solid rgba(207,151,252,0.4)', borderRadius: 999,
+              padding: 'calc(var(--su) * 0.55) calc(var(--su) * 1.6)',
+            }}
+          >
+            Besvart automatisk · svartid 8 sek
+          </div>
+        </div>
+      </div>
+    </Shell>
+  );
+}
+
+/* =====================================================================
+   AKT 7 — FINALE (59–72s)
+===================================================================== */
+const FINAL_CHIPS = [
+  'Annonse publisert', 'Visninger booket', 'Leietaker screenet',
+  'Kontrakt signert', 'Husleie utbetalt', 'Henvendelser besvart',
+];
+
+export function SceneFinale({ t }) {
+  const chipsOut = seg(t, 63.3, 64.1);
+  const txt = Math.min(easeOutCubic(seg(t, 64.1, 64.9)), 1 - seg(t, 67.2, 67.9));
+  const morph = easeInOutCubic(seg(t, 65.5, 66.1));
+  const glow = Math.sin(clamp01(seg(t, 65.5, 67.0)) * Math.PI);
+  const logoIn = easeOutQuint(seg(t, 68.0, 69.2));
+  const urlIn = easeOutCubic(seg(t, 69.5, 70.3));
+
+  const charRise = (i) => {
+    const p = easeOutQuint(seg(t, 64.2 + i * 0.045, 65.1 + i * 0.045));
+    return { display: 'inline-block', whiteSpace: 'pre', opacity: Math.min(1, p * 1.6), transform: `translateY(calc(var(--su) * ${((1 - p) * 3.5).toFixed(3)}))` };
+  };
+  const prefix = 'Trygt. Automa';
+  const suffix = 'isk.';
+
+  return (
+    <Shell t={t} a={59} b={72} fOut={0} drift={0}>
       {chipsOut < 1 && (
         <div
           className="absolute inset-0 flex items-center justify-center"
-          style={{ opacity: 1 - chipsOut, transform: `translateY(calc(var(--su) * ${(-chipsOut * 3).toFixed(2)}))` }}
+          style={{
+            opacity: 1 - chipsOut,
+            transform: `translateY(calc(var(--su) * ${(-chipsOut * 3).toFixed(2)}))`,
+            filter: chipsOut > 0.05 ? `blur(${(chipsOut * 6).toFixed(1)}px)` : 'none',
+          }}
         >
-          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 'calc(var(--su) * 1.6)', maxWidth: '64%' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 'calc(var(--su) * 1.6)', maxWidth: '68%' }}>
             {FINAL_CHIPS.map((c, i) => {
-              const p = seg(t, 46.7 + i * 0.5, 47.4 + i * 0.5);
+              const p = seg(t, 59.6 + i * 0.45, 60.4 + i * 0.45);
               return (
                 <span
                   key={c}
@@ -674,36 +897,105 @@ export function SceneFinale({ t }) {
           </div>
         </div>
       )}
-      {/* trygt. automatisk. */}
       {txt > 0 && (
-        <div className="absolute inset-0 flex items-center justify-center" style={rise(txt, 2)}>
-          <h2 className="font-heading font-bold" style={{ fontSize: 'calc(var(--su) * 8)', color: '#FDFCFB', letterSpacing: '-0.03em' }}>
-            Trygt. Automatisk.
+        <div className="absolute inset-0 flex items-center justify-center" style={{ opacity: Math.min(1, txt * 1.4) }}>
+          <h2 className="font-heading font-bold" style={{ fontSize: 'calc(var(--su) * 8)', color: '#FDFCFB', letterSpacing: '-0.03em', lineHeight: 1.1, display: 'flex' }}>
+            {prefix.split('').map((ch, i) => (
+              <span key={`p${i}`} style={charRise(i)}>{ch}</span>
+            ))}
+            {/* morph-bokstaven: t -> g */}
+            <span style={{ ...charRise(prefix.length), position: 'relative', perspective: 'calc(var(--su) * 30)' }}>
+              <span
+                style={{
+                  display: 'inline-block',
+                  transform: `rotateX(${(morph * 88).toFixed(1)}deg)`,
+                  opacity: 1 - morph,
+                  transformOrigin: '50% 100%',
+                }}
+              >
+                t
+              </span>
+              <span
+                style={{
+                  position: 'absolute', left: 0, top: 0,
+                  display: 'inline-block',
+                  transform: `rotateX(${((1 - morph) * -88).toFixed(1)}deg)`,
+                  opacity: morph,
+                  transformOrigin: '50% 0%',
+                  color: '#CF97FC',
+                  textShadow: `0 0 calc(var(--su) * ${(glow * 2.4).toFixed(2)}) rgba(207,151,252,0.85)`,
+                }}
+              >
+                g
+              </span>
+              {/* gnister rundt morphen */}
+              {[[-1.6, -2.4, 0], [2.2, -1.8, 0.12], [-2.0, 1.6, 0.24], [1.8, 2.2, 0.3]].map(([dx, dy, dl], i) => {
+                const sp = seg(t, 65.55 + dl, 66.25 + dl);
+                if (sp <= 0 || sp >= 1) return null;
+                const fly = easeOutCubic(sp);
+                return (
+                  <span
+                    key={`s${i}`}
+                    style={{
+                      position: 'absolute', left: '50%', top: '40%',
+                      fontSize: 'calc(var(--su) * 1.6)', color: '#CF97FC', fontWeight: 400,
+                      opacity: Math.sin(sp * Math.PI),
+                      transform: `translate(calc(var(--su) * ${(dx * fly).toFixed(2)}), calc(var(--su) * ${(dy * fly).toFixed(2)})) scale(${(0.5 + fly * 0.6).toFixed(2)})`,
+                      pointerEvents: 'none',
+                    }}
+                  >
+                    {'\u2726'}
+                  </span>
+                );
+              })}
+            </span>
+            {suffix.split('').map((ch, i) => (
+              <span key={`e${i}`} style={charRise(prefix.length + 1 + i)}>{ch}</span>
+            ))}
           </h2>
         </div>
       )}
-      {/* logo finale */}
       {logoIn > 0 && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <div className="absolute inset-0 flex items-center justify-center" style={{ opacity: logoIn * 0.4 }}>
-            <Orb size="calc(var(--su) * 46)" speed={18} />
-          </div>
-          <div className="absolute inset-0" style={{ background: 'radial-gradient(circle at 50% 50%, rgba(5,5,6,0) 26%, rgba(5,5,6,0.82) 70%)' }} />
+        <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ opacity: Math.min(1, logoIn * 1.3) }}>
+          {/* ren, mørk flate som isolerer finalen */}
+          <div className="absolute inset-0" style={{ background: '#060607' }} />
+          {/* svært subtil glød bak logoen */}
+          <div
+            className="absolute"
+            style={{
+              width: '64%', height: '58%',
+              background: 'radial-gradient(ellipse at center, rgba(155,91,214,0.09), transparent 62%)',
+              filter: 'blur(calc(var(--su) * 2.5))',
+            }}
+          />
+          {/* tynn horisontlinje under logoen */}
+          <div
+            className="absolute"
+            style={{
+              top: '67%', left: '50%',
+              width: `calc(var(--su) * ${(26 * easeOutCubic(seg(t, 69.2, 70.4))).toFixed(2)})`,
+              height: 1,
+              transform: 'translateX(-50%)',
+              background: 'linear-gradient(90deg, transparent, rgba(207,151,252,0.45), transparent)',
+            }}
+          />
           <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <img
-              src="/digihome-wordmark-white.svg"
+              src="/brand/digihome-lockup-white.svg"
               alt="DigiHome"
-              style={{ width: 'calc(var(--su) * 30)', height: 'auto', ...rise(logoIn, 2.5), opacity: logoIn }}
+              style={{ width: 'calc(var(--su) * 30)', height: 'auto', ...rise(logoIn, 2.5), opacity: logoIn, filter: `blur(${((1 - logoIn) * 8).toFixed(1)}px)` }}
             />
-            <div className="font-heading" style={{ ...rise(tagIn, 2), fontSize: 'calc(var(--su) * 2.7)', color: 'rgba(253,252,251,0.85)', marginTop: 'calc(var(--su) * 2.6)' }}>
-              Utleie på autopilot.
+            <div className="font-body" style={{ fontSize: 'calc(var(--su) * 1.9)', color: 'rgba(253,252,251,0.55)', marginTop: 'calc(var(--su) * 3.2)', letterSpacing: '0.02em', lineHeight: 1.2 }}>
+              <Words t={t} at={68.9} stagger={0.14} text="Utleie på autopilot." />
             </div>
-            <div className="font-body" style={{ ...rise(urlIn, 1.5), fontSize: 'calc(var(--su) * 1.5)', letterSpacing: '0.4em', color: 'rgba(253,252,251,0.4)', marginTop: 'calc(var(--su) * 2)', textIndent: '0.4em' }}>
+            <div className="font-body" style={{ ...rise(urlIn, 1.2), fontSize: 'calc(var(--su) * 1.25)', letterSpacing: '0.45em', textIndent: '0.45em', color: 'rgba(253,252,251,0.28)', marginTop: 'calc(var(--su) * 3.4)' }}>
               DIGIHOME.NO
             </div>
           </div>
+          {/* fade til sort helt på slutten */}
+          <div className="absolute inset-0 pointer-events-none" style={{ background: '#000', opacity: seg(t, 71.0, 72) }} />
         </div>
       )}
-    </div>
+    </Shell>
   );
 }

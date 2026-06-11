@@ -1,23 +1,27 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { seg, clamp01, Orb, Starfield } from './filmUtils';
+import { seg, clamp01, Orb, FilmGrain, LightSweep, Aurora } from './filmUtils';
+import { scheduleMusic, renderMusicWav, FILM_DURATION } from './filmAudio';
 import {
-  SceneOpening, SceneToggle, SceneAnnonse, SceneVisning, SceneKontrakt, SceneFinale,
+  SceneOpening, SceneToggle, SceneAnnonse, SceneVisning, SceneKontrakt, SceneChat, SceneFinale,
 } from './FilmScenes';
 
-const DURATION = 60;
+const DURATION = FILM_DURATION; /* 72s */
+const MP4_URL = '/film/digihome-utleie-pa-autopilot-16x9.mp4';
+const SCENE_BOUNDARIES = [8, 14, 26, 38, 48.5, 59];
 
 const SCENES = [
-  { start: 0, end: 6.5, C: SceneOpening },
-  { start: 6, end: 12.5, C: SceneToggle },
-  { start: 12, end: 24.5, C: SceneAnnonse },
-  { start: 24, end: 36.5, C: SceneVisning },
-  { start: 36, end: 46.5, C: SceneKontrakt },
-  { start: 46, end: 60, C: SceneFinale },
+  { start: 0, end: 8.5, C: SceneOpening },
+  { start: 8, end: 14.5, C: SceneToggle },
+  { start: 14, end: 26.5, C: SceneAnnonse },
+  { start: 26, end: 38.5, C: SceneVisning },
+  { start: 38, end: 49, C: SceneKontrakt },
+  { start: 48.5, end: 59.5, C: SceneChat },
+  { start: 59, end: 72, C: SceneFinale },
 ];
 
-/* ============ master clock ============ */
+/* ============ hovedklokke ============ */
 function useFilmClock(duration) {
   const [time, setTime] = useState(0);
   const [playing, setPlaying] = useState(false);
@@ -26,7 +30,6 @@ function useFilmClock(duration) {
   const tRef = useRef(0);
   const rafRef = useRef(0);
   const lastRef = useRef(0);
-  // NB: når voiceover-lyd legges til, byttes klokka til audio.currentTime som master.
 
   const tick = useCallback(function loop(now) {
     const dt = Math.min((now - lastRef.current) / 1000, 0.1);
@@ -66,16 +69,17 @@ function useFilmClock(duration) {
     if (v < duration) setEnded(false);
   }, [duration]);
 
+  const beginPaused = useCallback(() => {
+    setStarted(true);
+    setPlaying(false);
+  }, []);
+
   useEffect(() => () => cancelAnimationFrame(rafRef.current), []);
 
-  return { time, playing, started, ended, play, pause, seekTo };
+  return { time, playing, started, ended, play, pause, seekTo, beginPaused, tRef };
 }
 
-const fmtTime = (s) => {
-  const m = Math.floor(s / 60);
-  const sec = Math.floor(s % 60);
-  return `${m}:${String(sec).padStart(2, '0')}`;
-};
+const fmtTime = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 
 /* ============ ikoner ============ */
 const PlayIcon = ({ size = 20 }) => (
@@ -90,51 +94,142 @@ const ReplayIcon = ({ size = 18 }) => (
 const FullscreenIcon = ({ size = 18 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3" /></svg>
 );
+const SoundOnIcon = ({ size = 18 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 5 6 9H2v6h4l5 4V5z" /><path d="M15.5 8.5a5 5 0 0 1 0 7" /><path d="M18.5 5.5a9 9 0 0 1 0 13" /></svg>
+);
+const SoundOffIcon = ({ size = 18 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 5 6 9H2v6h4l5 4V5z" /><line x1="23" y1="9" x2="17" y2="15" /><line x1="17" y1="9" x2="23" y2="15" /></svg>
+);
+const DownloadIcon = ({ size = 18 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
+);
 
 /* ============ hovedkomponent ============ */
 export default function AutopilotFilm() {
-  const { time, playing, started, ended, play, pause, seekTo } = useFilmClock(DURATION);
+  const { time, playing, started, ended, play, pause, seekTo, beginPaused, tRef } = useFilmClock(DURATION);
   const wrapperRef = useRef(null);
   const stageRef = useRef(null);
   const progressRef = useRef(null);
   const hideTimer = useRef(null);
   const [chrome, setChrome] = useState(true);
-  const [isFs, setIsFs] = useState(false);
+  const [recordMode, setRecordMode] = useState(false);
+  const [muted, setMuted] = useState(false);
+  const [dlReady, setDlReady] = useState(false);
+  const [idleT, setIdleT] = useState(0);
 
-  /* stage unit: --su = 1% av scenebredden */
+  const playingRef = useRef(playing);
+  playingRef.current = playing;
+  const mutedRef = useRef(muted);
+  mutedRef.current = muted;
+
+  /* ---- musikk ---- */
+  const audioCtxRef = useRef(null);
+  const musicRef = useRef(null);
+  const recordRef = useRef(false);
+
+  const stopMusic = useCallback(() => {
+    if (musicRef.current) {
+      musicRef.current.stop();
+      musicRef.current = null;
+    }
+  }, []);
+
+  const startMusic = useCallback(() => {
+    if (recordRef.current) return;
+    stopMusic();
+    try {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return;
+      if (!audioCtxRef.current) audioCtxRef.current = new Ctx();
+      const ctx = audioCtxRef.current;
+      if (ctx.state === 'suspended') ctx.resume();
+      musicRef.current = scheduleMusic(ctx, ctx.destination, tRef.current);
+    } catch (e) { /* lyd ikke tilgjengelig */ }
+  }, [stopMusic, tRef]);
+
+  useEffect(() => {
+    if (playing && !muted) startMusic();
+    else stopMusic();
+  }, [playing, muted, startMusic, stopMusic]);
+
+  useEffect(() => () => { stopMusic(); audioCtxRef.current?.close?.().catch?.(() => {}); }, [stopMusic]);
+
+  /* resynk musikk etter spoling */
+  const resyncMusic = useCallback(() => {
+    if (playingRef.current && !mutedRef.current) startMusic();
+  }, [startMusic]);
+
+  /* ---- record-modus (frame-for-frame MP4-rendring) ---- */
+  useEffect(() => {
+    const sp = new URLSearchParams(window.location.search);
+    if (sp.get('record') === '1') {
+      recordRef.current = true;
+      setRecordMode(true);
+      beginPaused();
+      window.__setTime = (t) => { seekTo(t); };
+      window.__renderMusicWav = renderMusicWav;
+      window.__filmReady = true;
+    }
+  }, [beginPaused, seekTo]);
+
+  /* ---- sjekk om MP4 finnes (for nedlasting) ---- */
+  useEffect(() => {
+    fetch(MP4_URL, { method: 'HEAD' })
+      .then((r) => { if (r.ok) setDlReady(true); })
+      .catch(() => {});
+  }, []);
+
+  const triggerDownload = useCallback(() => {
+    const a = document.createElement('a');
+    a.href = MP4_URL;
+    a.download = 'digihome-utleie-pa-autopilot.mp4';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }, []);
+
+  /* ---- idle-klokke for plakat-orb ---- */
+  useEffect(() => {
+    if (started) return;
+    let raf;
+    const t0 = performance.now();
+    const loop = (now) => {
+      setIdleT((now - t0) / 1000);
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, [started]);
+
+  /* ---- stage-enhet: --su = 1% av scenebredde ---- */
   useEffect(() => {
     const el = stageRef.current;
     if (!el) return;
     const ro = new ResizeObserver(([entry]) => {
-      const w = entry.contentRect.width;
-      el.style.setProperty('--su', `${w / 100}px`);
+      el.style.setProperty('--su', `${entry.contentRect.width / 100}px`);
     });
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
 
-  /* auto-skjul kontroller */
+  /* ---- auto-skjul kontroller ---- */
   const wake = useCallback(() => {
     setChrome(true);
     clearTimeout(hideTimer.current);
     hideTimer.current = setTimeout(() => setChrome(false), 2400);
   }, []);
   useEffect(() => () => clearTimeout(hideTimer.current), []);
-  const chromeVisible = chrome || !playing || !started || ended;
+  const chromeVisible = !recordMode && (chrome || !playing || !started || ended);
 
-  /* fullskjerm */
+  /* ---- fullskjerm ---- */
   const toggleFs = useCallback(() => {
     if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
     else wrapperRef.current?.requestFullscreen?.().catch(() => {});
   }, []);
-  useEffect(() => {
-    const onFs = () => setIsFs(!!document.fullscreenElement);
-    document.addEventListener('fullscreenchange', onFs);
-    return () => document.removeEventListener('fullscreenchange', onFs);
-  }, []);
 
-  /* tastatur */
+  /* ---- tastatur ---- */
   useEffect(() => {
+    if (recordMode) return;
     const onKey = (e) => {
       if (e.code === 'Space' || e.key === 'k') {
         e.preventDefault();
@@ -142,11 +237,15 @@ export default function AutopilotFilm() {
         else if (playing) pause();
         else play();
       } else if (e.key === 'ArrowRight') {
-        seekTo(time + 5);
+        seekTo(tRef.current + 5);
+        resyncMusic();
       } else if (e.key === 'ArrowLeft') {
-        seekTo(time - 5);
+        seekTo(tRef.current - 5);
+        resyncMusic();
       } else if (e.key === 'f') {
         toggleFs();
+      } else if (e.key === 'm') {
+        setMuted((m) => !m);
       } else if (e.key === 'r') {
         seekTo(0);
         play();
@@ -154,30 +253,32 @@ export default function AutopilotFilm() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [started, ended, playing, time, play, pause, seekTo, toggleFs]);
+  }, [recordMode, started, ended, playing, play, pause, seekTo, toggleFs, resyncMusic, tRef]);
 
-  /* klikk på progresjonslinje */
+  /* ---- klikk på progresjonslinje ---- */
   const onSeekClick = (e) => {
     const rect = progressRef.current.getBoundingClientRect();
     const ratio = clamp01((e.clientX - rect.left) / rect.width);
     seekTo(ratio * DURATION);
-    if (!playing && started && !ended) {
-      /* beholder pause-state ved scrubbing */
-    }
+    resyncMusic();
   };
 
   const pct = (time / DURATION) * 100;
-  const watermark = Math.min(seg(time, 7, 8.2), 1 - seg(time, 54, 55.2)) * 0.45;
-  const engineOrb = Math.min(seg(time, 12.6, 13.6), 1 - seg(time, 45.4, 46.4)) * 0.85;
-  const starsOn = started && time > 5.5;
+  const watermark = Math.min(seg(time, 8.5, 9.7), 1 - seg(time, 66, 67.2)) * 0.45;
+  const engineOrb = Math.min(seg(time, 14.6, 15.6), 1 - seg(time, 47.5, 48.5)) * 0.85;
 
   return (
     <div
       ref={wrapperRef}
       className="fixed inset-0 z-[100] flex items-center justify-center select-none"
-      style={{ background: '#030304', cursor: chromeVisible ? 'default' : 'none' }}
-      onMouseMove={wake}
-      onClick={() => { if (started && !ended) (playing ? pause() : play()); }}
+      style={{ background: '#030304', cursor: recordMode ? 'none' : chromeVisible ? 'default' : 'none' }}
+      onMouseMove={recordMode ? undefined : wake}
+      onClick={recordMode ? undefined : () => { if (started && !ended) (playing ? pause() : play()); }}
+      onContextMenu={(e) => {
+        if (recordMode) return;
+        e.preventDefault();
+        if (dlReady) triggerDownload();
+      }}
     >
       {/* 16:9-scene, letterboxet */}
       <div
@@ -190,57 +291,65 @@ export default function AutopilotFilm() {
           '--su': '12px',
         }}
       >
-        {/* nebula-bakgrunn */}
+        {/* moderne aurora-mesh-bakgrunn + vignett */}
+        <Aurora t={time} opacity={0.14 * seg(time, 7.2, 9.5)} />
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
-            opacity: seg(time, 5.5, 7.5),
-            background:
-              'radial-gradient(ellipse 60% 50% at 72% 18%, rgba(207,151,252,0.09), transparent 60%), radial-gradient(ellipse 50% 45% at 20% 85%, rgba(125,227,210,0.05), transparent 60%)',
+            opacity: seg(time, 7.2, 9.5),
+            background: 'radial-gradient(ellipse at 50% 42%, transparent 52%, rgba(0,0,0,0.5) 100%)',
           }}
         />
-        <Starfield playing={playing} opacity={starsOn ? 0.5 : 0} />
 
         {/* scener */}
         {started && SCENES.map(({ start, end, C }, i) =>
           time >= start - 0.1 && time <= end + 0.1 ? <C key={i} t={time} /> : null
         )}
 
+        {/* lys-sveip ved aktskifter */}
+        {started && <LightSweep t={time} boundaries={SCENE_BOUNDARIES} />}
+
         {/* vannmerke */}
-        {watermark > 0.01 && (
+        {started && watermark > 0.01 && (
           <img
-            src="/digihome-wordmark-white.svg"
+            src="/brand/digihome-lockup-white.svg"
             alt=""
             className="absolute pointer-events-none"
-            style={{ top: 'calc(var(--su) * 3)', left: 'calc(var(--su) * 3.5)', height: 'calc(var(--su) * 2)', width: 'auto', opacity: watermark }}
+            style={{ top: 'calc(var(--su) * 3)', left: 'calc(var(--su) * 3.5)', height: 'calc(var(--su) * 2.2)', width: 'auto', opacity: watermark }}
           />
         )}
-        {/* motor-orb (alltid på jobb) */}
-        {engineOrb > 0.01 && (
+        {/* motor-orb */}
+        {started && engineOrb > 0.01 && (
           <div className="absolute pointer-events-none" style={{ top: 'calc(var(--su) * 2.6)', right: 'calc(var(--su) * 3.2)', opacity: engineOrb }}>
-            <Orb size="calc(var(--su) * 5.5)" speed={8} />
+            <Orb t={time} size="calc(var(--su) * 5.5)" speed={8} />
           </div>
         )}
 
+        {/* filmkorn */}
+        {started && <FilmGrain t={time} opacity={0.05} />}
+
         {/* startoverlegg */}
-        {!started && (
+        {!started && !recordMode && (
           <div className="absolute inset-0 z-30 flex flex-col items-center justify-center" style={{ background: '#0A0A0A' }}>
             <div className="absolute inset-0 flex items-center justify-center" style={{ opacity: 0.32 }}>
-              <Orb size="calc(var(--su) * 50)" speed={18} />
+              <Orb t={idleT} size="calc(var(--su) * 50)" speed={18} />
             </div>
             <div className="absolute inset-0" style={{ background: 'radial-gradient(circle at 50% 50%, rgba(5,5,6,0) 24%, rgba(5,5,6,0.85) 68%)' }} />
             <div className="relative flex flex-col items-center">
-              <img src="/digihome-mark.svg" alt="DigiHome" style={{ height: 'calc(var(--su) * 5)', width: 'auto', marginBottom: 'calc(var(--su) * 3)' }} />
+              <img
+                src="/brand/digihome-icon-purple.svg"
+                alt="DigiHome"
+                style={{ height: 'calc(var(--su) * 6.5)', width: 'calc(var(--su) * 6.5)', borderRadius: 'calc(var(--su) * 1)', marginBottom: 'calc(var(--su) * 3)', boxShadow: '0 0 calc(var(--su)*4) rgba(207,151,252,0.35)' }}
+              />
               <h1 className="font-heading font-bold" style={{ fontSize: 'calc(var(--su) * 6.4)', color: '#FDFCFB', letterSpacing: '-0.03em', lineHeight: 1 }}>
                 Utleie på autopilot
               </h1>
               <p className="font-body" style={{ fontSize: 'calc(var(--su) * 1.7)', color: 'rgba(253,252,251,0.55)', marginTop: 'calc(var(--su) * 1.6)' }}>
-                En 60-sekunders film fra DigiHome
+                En film fra DigiHome · 72 sekunder · med lyd
               </p>
               <button
                 onClick={(e) => { e.stopPropagation(); play(); }}
                 aria-label="Spill av"
-                className="group"
                 style={{
                   marginTop: 'calc(var(--su) * 4)',
                   width: 'calc(var(--su) * 8.5)', height: 'calc(var(--su) * 8.5)', borderRadius: '50%',
@@ -256,16 +365,16 @@ export default function AutopilotFilm() {
                 <svg style={{ width: 'calc(var(--su) * 3.2)', height: 'calc(var(--su) * 3.2)', marginLeft: 'calc(var(--su) * 0.4)' }} viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.14v13.72c0 .8.87 1.3 1.56.88l10.9-6.86a1.04 1.04 0 0 0 0-1.76L9.56 4.26A1.04 1.04 0 0 0 8 5.14z" /></svg>
               </button>
               <p className="font-body" style={{ fontSize: 'calc(var(--su) * 1.25)', color: 'rgba(253,252,251,0.35)', marginTop: 'calc(var(--su) * 3.2)', letterSpacing: '0.06em' }}>
-                Mellomrom = pause · ← → = spol · F = fullskjerm
+                Mellomrom = pause · M = lyd av/på · F = fullskjerm{dlReady ? ' · høyreklikk = last ned' : ''}
               </p>
             </div>
           </div>
         )}
 
         {/* sluttoverlegg */}
-        {ended && (
+        {ended && !recordMode && (
           <div className="absolute inset-0 z-30 flex flex-col items-center justify-center" style={{ background: 'rgba(3,3,4,0.45)', backdropFilter: 'blur(6px)' }}>
-            <div style={{ display: 'flex', gap: 'calc(var(--su) * 1.6)' }}>
+            <div style={{ display: 'flex', gap: 'calc(var(--su) * 1.6)', flexWrap: 'wrap', justifyContent: 'center' }}>
               <button
                 onClick={(e) => { e.stopPropagation(); seekTo(0); play(); }}
                 className="font-body"
@@ -278,6 +387,20 @@ export default function AutopilotFilm() {
               >
                 <ReplayIcon /> Se igjen
               </button>
+              {dlReady && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); triggerDownload(); }}
+                  className="font-body"
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 'calc(var(--su) * 0.9)',
+                    border: '1px solid rgba(207,151,252,0.6)', color: '#CF97FC',
+                    borderRadius: 999, padding: 'calc(var(--su) * 1.2) calc(var(--su) * 2.8)',
+                    fontSize: 'calc(var(--su) * 1.8)',
+                  }}
+                >
+                  <DownloadIcon /> Last ned MP4
+                </button>
+              )}
               <a
                 href="/"
                 onClick={(e) => e.stopPropagation()}
@@ -296,7 +419,7 @@ export default function AutopilotFilm() {
         )}
 
         {/* kontroller */}
-        {started && (
+        {started && !recordMode && (
           <div
             className="absolute bottom-0 left-0 right-0 z-20"
             onClick={(e) => e.stopPropagation()}
@@ -309,29 +432,28 @@ export default function AutopilotFilm() {
             }}
           >
             <div className="flex items-center" style={{ gap: 'calc(var(--su) * 1.6)' }}>
-              <button
-                onClick={() => (ended ? play() : playing ? pause() : play())}
-                aria-label={playing ? 'Pause' : 'Spill av'}
-                style={{ color: '#FDFCFB', display: 'flex' }}
-              >
+              <button onClick={() => (ended ? play() : playing ? pause() : play())} aria-label={playing ? 'Pause' : 'Spill av'} style={{ color: '#FDFCFB', display: 'flex' }}>
                 {playing ? <PauseIcon /> : <PlayIcon />}
               </button>
               <button onClick={() => { seekTo(0); play(); }} aria-label="Start på nytt" style={{ color: 'rgba(253,252,251,0.7)', display: 'flex' }}>
                 <ReplayIcon />
               </button>
+              <button onClick={() => setMuted((m) => !m)} aria-label={muted ? 'Lyd på' : 'Lyd av'} style={{ color: muted ? 'rgba(253,252,251,0.45)' : 'rgba(253,252,251,0.85)', display: 'flex' }}>
+                {muted ? <SoundOffIcon /> : <SoundOnIcon />}
+              </button>
               <span className="font-body" style={{ fontSize: 'calc(var(--su) * 1.35)', color: 'rgba(253,252,251,0.75)', fontVariantNumeric: 'tabular-nums', minWidth: 'calc(var(--su) * 8.5)' }}>
                 {fmtTime(time)} / {fmtTime(DURATION)}
               </span>
-              <div
-                ref={progressRef}
-                onClick={onSeekClick}
-                className="flex-1 cursor-pointer"
-                style={{ padding: 'calc(var(--su) * 0.8) 0' }}
-              >
+              <div ref={progressRef} onClick={onSeekClick} className="flex-1 cursor-pointer" style={{ padding: 'calc(var(--su) * 0.8) 0' }}>
                 <div style={{ height: 'calc(var(--su) * 0.45)', borderRadius: 99, background: 'rgba(255,255,255,0.16)', overflow: 'hidden' }}>
                   <div style={{ height: '100%', width: `${pct}%`, borderRadius: 99, background: 'linear-gradient(90deg, #9B5BD6, #CF97FC)' }} />
                 </div>
               </div>
+              {dlReady && (
+                <button onClick={triggerDownload} aria-label="Last ned MP4" title="Last ned MP4" style={{ color: 'rgba(253,252,251,0.7)', display: 'flex' }}>
+                  <DownloadIcon />
+                </button>
+              )}
               <button onClick={toggleFs} aria-label="Fullskjerm" style={{ color: 'rgba(253,252,251,0.7)', display: 'flex' }}>
                 <FullscreenIcon />
               </button>
@@ -340,7 +462,7 @@ export default function AutopilotFilm() {
         )}
 
         {/* tynn alltid-synlig progresjonslinje */}
-        {started && !chromeVisible && (
+        {started && !recordMode && !chromeVisible && (
           <div className="absolute bottom-0 left-0 right-0 z-10" style={{ height: 'calc(var(--su) * 0.35)', background: 'rgba(255,255,255,0.08)' }}>
             <div style={{ height: '100%', width: `${pct}%`, background: 'linear-gradient(90deg, #9B5BD6, #CF97FC)' }} />
           </div>
