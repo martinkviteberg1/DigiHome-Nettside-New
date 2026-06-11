@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { seg, clamp01, Orb, FilmGrain, LightSweep, Aurora } from './filmUtils';
+import { seg, clamp01, Orb, FilmGrain, LightSweep, Aurora, Bokeh } from './filmUtils';
 import { scheduleMusic, renderMusicWav, FILM_DURATION } from './filmAudio';
 import {
   SceneOpening, SceneToggle, SceneAnnonse, SceneVisning, SceneKontrakt, SceneChat, SceneFinale,
@@ -291,8 +291,9 @@ export default function AutopilotFilm() {
           '--su': '12px',
         }}
       >
-        {/* moderne aurora-mesh-bakgrunn + vignett */}
+        {/* moderne aurora-mesh-bakgrunn + bokeh-dybde + vignett */}
         <Aurora t={time} opacity={0.14 * seg(time, 7.2, 9.5)} />
+        {started && <Bokeh t={time} opacity={seg(time, 7.6, 9.8)} />}
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
@@ -320,8 +321,8 @@ export default function AutopilotFilm() {
         )}
         {/* motor-orb */}
         {started && engineOrb > 0.01 && (
-          <div className="absolute pointer-events-none" style={{ top: 'calc(var(--su) * 2.6)', right: 'calc(var(--su) * 3.2)', opacity: engineOrb }}>
-            <Orb t={time} size="calc(var(--su) * 5.5)" speed={8} />
+          <div className="absolute pointer-events-none" style={{ top: 'calc(var(--su) * 2.3)', right: 'calc(var(--su) * 2.1)', opacity: engineOrb * 0.85 }}>
+            <Orb t={time} size="calc(var(--su) * 4.2)" speed={8} />
           </div>
         )}
 

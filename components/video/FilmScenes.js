@@ -2,10 +2,10 @@
 
 import {
   seg, easeOutCubic, easeInOutCubic, easeOutExpo, easeOutBack, easeOutQuint,
-  fadeInOut, rise, typed, fmtNOK, clamp01, Orb, Caret, Words,
+  fadeInOut, rise, typed, fmtNOK, clamp01, Orb, Caret, Words, dRand,
 } from './filmUtils';
 
-/* Felles sceneskall — myk blur/skala-overgang + subtil kameradrift */
+/* Felles sceneskall — myk blur/skala-overgang + retningsdrift + kameradrift */
 function Shell({ t, a, b, fIn = 0.7, fOut = 0.7, drift = 0.02, children }) {
   const enter = fIn === 0 ? 1 : easeOutCubic(seg(t, a, a + fIn));
   const exit = 1 - easeInOutCubic(seg(t, b - fOut, b));
@@ -13,12 +13,13 @@ function Shell({ t, a, b, fIn = 0.7, fOut = 0.7, drift = 0.02, children }) {
   const lp = seg(t, a, b);
   const scale = (0.975 + 0.025 * enter) * (1 + lp * drift) * (1 + (1 - exit) * 0.02);
   const blur = (1 - enter) * 9 + (1 - exit) * 7;
+  const x = (1 - enter) * 2.2 - (1 - exit) * 2.2; /* inn fra h\u00f8yre, ut mot venstre */
   return (
     <div
       className="absolute inset-0"
       style={{
         opacity: o,
-        transform: `scale(${scale.toFixed(4)})`,
+        transform: `scale(${scale.toFixed(4)}) translateX(calc(var(--su) * ${x.toFixed(3)}))`,
         filter: blur > 0.3 ? `blur(${blur.toFixed(1)}px)` : 'none',
         willChange: 'transform, opacity, filter',
       }}
@@ -38,6 +39,101 @@ function LeftCol({ lp, children, width = '34%' }) {
       }}
     >
       {children}
+    </div>
+  );
+}
+
+/* ============ verdensklasse kort-dybde ============ */
+
+/** Gradient-kantlys — 1px lysende kant som gir kortet glass-følelse */
+function CardEdge({ radius = 'calc(var(--su) * 1.8)' }) {
+  return (
+    <div
+      aria-hidden="true"
+      style={{
+        position: 'absolute', inset: 0, borderRadius: radius, padding: 1,
+        background: 'linear-gradient(155deg, rgba(255,255,255,0.28), rgba(255,255,255,0.03) 28%, rgba(207,151,252,0.18) 62%, rgba(255,255,255,0.06) 100%)',
+        WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+        WebkitMaskComposite: 'xor',
+        maskComposite: 'exclude',
+        pointerEvents: 'none',
+        zIndex: 3,
+      }}
+    />
+  );
+}
+
+/** Glare-sveip — diagonal lysrefleks som glir over kortet ved landing */
+function Glare({ t, at, dur = 1.15, radius = 'calc(var(--su) * 1.8)' }) {
+  const p = seg(t, at, at + dur);
+  if (p <= 0.001 || p >= 0.999) return null;
+  const x = p * 170 - 35;
+  const op = Math.sin(p * Math.PI);
+  return (
+    <div aria-hidden="true" style={{ position: 'absolute', inset: 0, borderRadius: radius, overflow: 'hidden', pointerEvents: 'none', zIndex: 4 }}>
+      <div
+        style={{
+          position: 'absolute', top: '-30%', bottom: '-30%',
+          left: `${x.toFixed(2)}%`, width: '22%',
+          transform: 'rotate(13deg)',
+          background: `linear-gradient(90deg, transparent, rgba(255,255,255,${(0.13 * op).toFixed(3)}), transparent)`,
+        }}
+      />
+    </div>
+  );
+}
+
+/** Gulv-glød — myk lilla kontaktskygge under kortet som forankrer det i rommet */
+function FloorGlow({ opacity = 1 }) {
+  return (
+    <div
+      aria-hidden="true"
+      style={{
+        position: 'absolute', top: '101%', left: '6%', right: '6%',
+        height: 'calc(var(--su) * 4)',
+        background: 'radial-gradient(ellipse 60% 100% at 50% 0%, rgba(155,91,214,0.22), rgba(0,0,0,0.35) 55%, transparent 80%)',
+        filter: 'blur(calc(var(--su) * 1.2))',
+        opacity,
+        pointerEvents: 'none',
+      }}
+    />
+  );
+}
+
+/** Kontinuerlig 3D-float — deterministisk svev fra filmtid */
+const float3d = (t, seed = 0) => ({
+  ry: Math.sin(t * 0.45 + seed) * 0.7,
+  rx: Math.cos(t * 0.38 + seed * 1.7) * 0.4,
+  y: Math.sin(t * 0.6 + seed * 2.3) * 0.35,
+});
+
+/** Gnistburst — partikler som flyr radielt ut (toggle-aktivering) */
+function SparkBurst({ t, at, count = 9 }) {
+  const sp = seg(t, at, at + 0.9);
+  if (sp <= 0.001 || sp >= 0.999) return null;
+  const fly = easeOutCubic(sp);
+  const op = Math.sin(sp * Math.PI);
+  return (
+    <div aria-hidden="true" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+      {Array.from({ length: count }).map((_, i) => {
+        const ang = (i / count) * Math.PI * 2 + dRand(i, 7) * 0.7;
+        const dist = 6 + dRand(i, 8) * 5;
+        const sz = 0.35 + dRand(i, 9) * 0.4;
+        return (
+          <span
+            key={i}
+            style={{
+              position: 'absolute', left: '50%', top: '50%',
+              width: `calc(var(--su) * ${sz.toFixed(2)})`, height: `calc(var(--su) * ${sz.toFixed(2)})`,
+              borderRadius: '50%',
+              background: i % 3 === 0 ? '#FDFCFB' : '#CF97FC',
+              boxShadow: '0 0 calc(var(--su)*0.8) rgba(207,151,252,0.9)',
+              opacity: (op * (0.5 + dRand(i, 10) * 0.5)).toFixed(3),
+              transform: `translate(calc(var(--su) * ${(Math.cos(ang) * dist * fly).toFixed(2)}), calc(var(--su) * ${(Math.sin(ang) * dist * fly).toFixed(2)})) scale(${(1 - fly * 0.5).toFixed(2)})`,
+            }}
+          />
+        );
+      })}
     </div>
   );
 }
@@ -120,10 +216,32 @@ export function SceneOpening({ t }) {
           })}
         </h1>
       </div>
+      {/* glødende rim langs sveipekanten */}
+      {wipe > 0.005 && wipe < 0.995 && (
+        <div
+          className="absolute inset-0"
+          aria-hidden="true"
+          style={{
+            background: 'radial-gradient(circle at 84% 50%, rgba(207,151,252,0.95), rgba(155,91,214,0.85) 70%, rgba(155,91,214,0.8))',
+            clipPath: `circle(${(wipe * 140 + 1.6).toFixed(2)}% at 84% 50%)`,
+            filter: 'blur(calc(var(--su) * 0.45))',
+            opacity: Math.sin(wipe * Math.PI) * 0.9,
+          }}
+        />
+      )}
       <div
         className="absolute inset-0"
         style={{ background: '#0A0A0A', clipPath: `circle(${(wipe * 140).toFixed(2)}% at 84% 50%)` }}
       >
+        {/* motoren aner sin ankomst — svak glød bak teksten */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            opacity: seg(t, 6.7, 8.5) * 0.5,
+            background: 'radial-gradient(ellipse 42% 38% at 50% 52%, rgba(155,91,214,0.22), transparent 70%)',
+            filter: 'blur(calc(var(--su) * 1.5))',
+          }}
+        />
         <div className="absolute inset-0 flex items-center justify-center">
           <h1
             className="font-heading font-bold"
@@ -174,6 +292,7 @@ export function SceneToggle({ t }) {
           Autopilot
         </div>
         <div style={{ position: 'relative' }}>
+          <SparkBurst t={t} at={10.62} count={10} />
           {[ring, ring2].map((r, i) => (
             <div
               key={i}
@@ -253,16 +372,22 @@ export function SceneAnnonse({ t }) {
           </span>
         </div>
       </LeftCol>
+      {(() => {
+        const f3 = float3d(t, 1.3);
+        return (
       <div
         style={{
           position: 'absolute', right: '7%', top: '50%', width: '42%',
-          transform: `translateY(-50%) translateY(calc(var(--su) * ${((1 - cardIn) * 5 - lp * 1.2).toFixed(2)})) scale(${(0.95 + cardIn * 0.05).toFixed(3)})`,
+          transform: `perspective(calc(var(--su) * 130)) translateY(-50%) translateY(calc(var(--su) * ${((1 - cardIn) * 5 - lp * 1.2 + f3.y).toFixed(2)})) rotateY(${(-7 + 5.2 * cardIn + f3.ry * cardIn).toFixed(2)}deg) rotateX(${(1.5 - cardIn + f3.rx * cardIn).toFixed(2)}deg) scale(${(0.95 + cardIn * 0.05).toFixed(3)})`,
           opacity: cardIn,
-          background: '#131316', border: '1px solid rgba(255,255,255,0.09)',
+          background: '#131316',
           borderRadius: 'calc(var(--su) * 1.8)',
-          boxShadow: '0 calc(var(--su)*2.4) calc(var(--su)*7) rgba(0,0,0,0.55)',
+          boxShadow: '0 calc(var(--su)*0.3) calc(var(--su)*1) rgba(0,0,0,0.45), 0 calc(var(--su)*2.6) calc(var(--su)*8) rgba(0,0,0,0.6), 0 0 calc(var(--su)*7) rgba(155,91,214,0.10)',
         }}
       >
+        <CardEdge />
+        <Glare t={t} at={16.35} />
+        <FloorGlow opacity={cardIn} />
         <div style={{ borderRadius: 'calc(var(--su) * 1.8)', overflow: 'hidden' }}>
           <div style={{ height: 'calc(var(--su) * 17)', overflow: 'hidden', position: 'relative', background: '#1b1b1f' }}>
             {/* f\u00f8r: ustylet (matt og flatt) */}
@@ -388,6 +513,8 @@ export function SceneAnnonse({ t }) {
           <span style={{ color: '#16a34a', fontSize: 'calc(var(--su) * 1.8)', fontWeight: 700 }}>✓</span>
         </div>
       </div>
+        );
+      })()}
     </Shell>
   );
 }
@@ -433,16 +560,22 @@ export function SceneVisning({ t }) {
               <Words t={t} at={27.2} stagger={0.1} text="Booker seg selv." />
             </p>
           </LeftCol>
+          {(() => {
+            const f3 = float3d(t, 2.6);
+            return (
           <div
             style={{
               position: 'absolute', right: '8%', top: '50%', width: '40%',
-              transform: `translateY(-50%) translateY(calc(var(--su) * ${((1 - calIn) * 5 - lp * 1.2).toFixed(2)})) scale(${(0.95 + calIn * 0.05).toFixed(3)})`,
+              transform: `perspective(calc(var(--su) * 130)) translateY(-50%) translateY(calc(var(--su) * ${((1 - calIn) * 5 - lp * 1.2 + f3.y).toFixed(2)})) rotateY(${(-7 + 5.2 * calIn + f3.ry * calIn).toFixed(2)}deg) rotateX(${(1.5 - calIn + f3.rx * calIn).toFixed(2)}deg) scale(${(0.95 + calIn * 0.05).toFixed(3)})`,
               opacity: calIn,
-              background: '#131316', border: '1px solid rgba(255,255,255,0.09)',
+              background: '#131316',
               borderRadius: 'calc(var(--su) * 1.8)', padding: 'calc(var(--su) * 2.4)',
-              boxShadow: '0 calc(var(--su)*2.4) calc(var(--su)*7) rgba(0,0,0,0.55)',
+              boxShadow: '0 calc(var(--su)*0.3) calc(var(--su)*1) rgba(0,0,0,0.45), 0 calc(var(--su)*2.6) calc(var(--su)*8) rgba(0,0,0,0.6), 0 0 calc(var(--su)*7) rgba(155,91,214,0.10)',
             }}
           >
+            <CardEdge />
+            <Glare t={t} at={28.45} />
+            <FloorGlow opacity={calIn} />
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'calc(var(--su) * 1.8)' }}>
               <span className="font-body" style={{ fontSize: 'calc(var(--su) * 1.7)', color: 'rgba(253,252,251,0.85)', fontWeight: 500 }}>
                 Visningskalender · Uke 47
@@ -490,6 +623,8 @@ export function SceneVisning({ t }) {
               Fullbooket — uten at du løftet en finger.
             </div>
           </div>
+            );
+          })()}
         </div>
       )}
       {partB > 0.01 && (
@@ -546,6 +681,29 @@ export function SceneVisning({ t }) {
                     stroke="#CF97FC" strokeWidth="1.1" opacity={scanOp}
                     style={{ filter: 'drop-shadow(0 0 4px rgba(207,151,252,0.85))' }}
                   />
+                );
+              })()}
+              {/* score-teller i sentrum */}
+              {(() => {
+                const scIn = easeOutCubic(seg(t, 35.5, 36.3));
+                if (scIn <= 0.01) return null;
+                const score = Math.round(92 * easeOutExpo(seg(t, 35.5, 36.8)));
+                return (
+                  <g style={{ opacity: scIn }}>
+                    <circle cx={cx} cy={cy} r={17.5 * (0.8 + 0.2 * scIn)} fill="rgba(8,8,10,0.82)" stroke="rgba(207,151,252,0.35)" strokeWidth="0.8" />
+                    <text
+                      x={cx} y={cy + 2.5} textAnchor="middle"
+                      style={{ fontSize: 13, fontWeight: 700, fontFamily: 'var(--font-heading)', fill: '#FDFCFB' }}
+                    >
+                      {score}
+                    </text>
+                    <text
+                      x={cx} y={cy + 10} textAnchor="middle"
+                      style={{ fontSize: 4.2, letterSpacing: '0.28em', fontFamily: 'var(--font-body)', fill: 'rgba(207,151,252,0.85)' }}
+                    >
+                      SCORE
+                    </text>
+                  </g>
                 );
               })()}
               {RADAR_LABELS.map((lb, i) => {
@@ -620,16 +778,21 @@ export function SceneKontrakt({ t }) {
               <Words t={t} at={39.1} stagger={0.1} text="Signeres digitalt — med BankID." />
             </p>
           </LeftCol>
+          {(() => {
+            const f3 = float3d(t, 3.4);
+            return (
           <div
             style={{
               position: 'absolute', right: '10%', top: '50%', width: '34%',
-              transform: `translateY(-50%) translateY(calc(var(--su) * ${((1 - docIn) * 5 - lp * 1.2).toFixed(2)})) rotate(${((1 - docIn) * 2).toFixed(2)}deg) scale(${(0.95 + docIn * 0.05).toFixed(3)})`,
+              transform: `perspective(calc(var(--su) * 130)) translateY(-50%) translateY(calc(var(--su) * ${((1 - docIn) * 5 - lp * 1.2 + f3.y).toFixed(2)})) rotate(${((1 - docIn) * 2).toFixed(2)}deg) rotateY(${(-6 + 4.5 * docIn + f3.ry * docIn).toFixed(2)}deg) scale(${(0.95 + docIn * 0.05).toFixed(3)})`,
               opacity: docIn,
-              background: '#FBFAF7', borderRadius: 'calc(var(--su) * 1.2)',
+              background: 'linear-gradient(168deg, #FFFFFF 0%, #FBFAF7 42%, #F1EDE6 100%)',
+              borderRadius: 'calc(var(--su) * 1.2)',
               padding: 'calc(var(--su) * 2.8)',
-              boxShadow: '0 calc(var(--su)*2.4) calc(var(--su)*7) rgba(0,0,0,0.6)',
+              boxShadow: '0 calc(var(--su)*0.3) calc(var(--su)*1) rgba(0,0,0,0.4), 0 calc(var(--su)*2.6) calc(var(--su)*8) rgba(0,0,0,0.65)',
             }}
           >
+            <FloorGlow opacity={docIn} />
             <div className="font-body" style={{ fontSize: 'calc(var(--su) * 1.3)', letterSpacing: '0.3em', color: 'rgba(10,10,10,0.55)', marginBottom: 'calc(var(--su) * 1.8)' }}>
               LEIEKONTRAKT
             </div>
@@ -678,6 +841,8 @@ export function SceneKontrakt({ t }) {
               <span style={{ color: '#16a34a', fontSize: 'calc(var(--su) * 1.7)', fontWeight: 700 }}>✓</span>
             </div>
           </div>
+            );
+          })()}
         </div>
       )}
       {partB > 0.01 && (
@@ -688,11 +853,22 @@ export function SceneKontrakt({ t }) {
           <p className="font-body" style={{ fontSize: 'calc(var(--su) * 2.3)', color: 'rgba(253,252,251,0.6)', marginTop: 'calc(var(--su) * 1)' }}>
             <Words t={t} at={44.2} stagger={0.12} text="Den bare kommer." />
           </p>
-          <div style={{ marginTop: 'calc(var(--su) * 3.4)', textAlign: 'center' }}>
-            <div className="font-body" style={{ fontSize: 'calc(var(--su) * 1.3)', letterSpacing: '0.35em', color: 'rgba(207,151,252,0.85)', marginBottom: 'calc(var(--su) * 1)' }}>
+          <div style={{ marginTop: 'calc(var(--su) * 3.4)', textAlign: 'center', position: 'relative' }}>
+            {/* glød bak beløpet som pulserer ved fullført innbetaling */}
+            <div
+              aria-hidden="true"
+              style={{
+                position: 'absolute', inset: 'calc(var(--su) * -6) calc(var(--su) * -10)',
+                background: 'radial-gradient(ellipse 60% 55% at 50% 60%, rgba(155,91,214,0.22), transparent 70%)',
+                filter: 'blur(calc(var(--su) * 1.8))',
+                opacity: (0.4 * countP + 0.6 * Math.sin(clamp01(seg(t, 46.85, 47.9)) * Math.PI)).toFixed(3),
+                pointerEvents: 'none',
+              }}
+            />
+            <div className="font-body" style={{ fontSize: 'calc(var(--su) * 1.3)', letterSpacing: '0.35em', color: 'rgba(207,151,252,0.85)', marginBottom: 'calc(var(--su) * 1)', position: 'relative' }}>
               HUSLEIE · NOVEMBER
             </div>
-            <div className="font-heading font-bold" style={{ fontSize: 'calc(var(--su) * 9.5)', color: '#FDFCFB', lineHeight: 1, fontVariantNumeric: 'tabular-nums', opacity: countP > 0 ? 1 : 0, transform: `scale(${(1 + Math.sin(clamp01(seg(t, 46.85, 47.5)) * Math.PI) * 0.045).toFixed(3)})` }}>
+            <div className="font-heading font-bold" style={{ position: 'relative', fontSize: 'calc(var(--su) * 9.5)', color: '#FDFCFB', lineHeight: 1, fontVariantNumeric: 'tabular-nums', opacity: countP > 0 ? 1 : 0, transform: `scale(${(1 + Math.sin(clamp01(seg(t, 46.85, 47.5)) * Math.PI) * 0.045).toFixed(3)})`, textShadow: `0 0 calc(var(--su) * ${(Math.sin(clamp01(seg(t, 46.85, 47.9)) * Math.PI) * 3.2).toFixed(2)}) rgba(207,151,252,0.55)` }}>
               {fmtNOK(amount)} kr
             </div>
           </div>
@@ -720,30 +896,31 @@ export function SceneKontrakt({ t }) {
 /* =====================================================================
    AKT 6 — CHAT MED LEIETAKER (48.5–59.5s)
 ===================================================================== */
-function Bubble({ t, at, side, children, time }) {
+function Bubble({ t, at, side, children, time, k = 1 }) {
   const p = easeOutBack(seg(t, at, at + 0.6));
   const o = clamp01(seg(t, at, at + 0.35) * 2);
   const isRight = side === 'right';
   return (
-    <div style={{ display: 'flex', justifyContent: isRight ? 'flex-end' : 'flex-start', marginBottom: 'calc(var(--su) * 1.1)' }}>
+    <div style={{ display: 'flex', justifyContent: isRight ? 'flex-end' : 'flex-start', marginBottom: `calc(var(--su) * ${(1.1 * k).toFixed(2)})` }}>
       <div
         style={{
           opacity: o,
           transform: `scale(${Math.max(0.5, p).toFixed(3)}) translateY(calc(var(--su) * ${((1 - clamp01(p)) * 1.5).toFixed(2)}))`,
           transformOrigin: isRight ? 'bottom right' : 'bottom left',
-          maxWidth: '78%',
+          maxWidth: '82%',
           background: isRight ? 'linear-gradient(120deg, #CF97FC, #b07ce0)' : 'rgba(255,255,255,0.08)',
           color: isRight ? '#0A0A0A' : 'rgba(253,252,251,0.92)',
           border: isRight ? 'none' : '1px solid rgba(255,255,255,0.08)',
-          borderRadius: 'calc(var(--su) * 1.6)',
-          borderBottomRightRadius: isRight ? 'calc(var(--su) * 0.4)' : 'calc(var(--su) * 1.6)',
-          borderBottomLeftRadius: isRight ? 'calc(var(--su) * 1.6)' : 'calc(var(--su) * 0.4)',
-          padding: 'calc(var(--su) * 1.1) calc(var(--su) * 1.6)',
+          borderRadius: `calc(var(--su) * ${(1.6 * k).toFixed(2)})`,
+          borderBottomRightRadius: isRight ? `calc(var(--su) * ${(0.4 * k).toFixed(2)})` : `calc(var(--su) * ${(1.6 * k).toFixed(2)})`,
+          borderBottomLeftRadius: isRight ? `calc(var(--su) * ${(1.6 * k).toFixed(2)})` : `calc(var(--su) * ${(0.4 * k).toFixed(2)})`,
+          padding: `calc(var(--su) * ${(1.1 * k).toFixed(2)}) calc(var(--su) * ${(1.6 * k).toFixed(2)})`,
+          boxShadow: isRight ? '0 calc(var(--su)*0.5) calc(var(--su)*1.6) rgba(155,91,214,0.25)' : '0 calc(var(--su)*0.4) calc(var(--su)*1.2) rgba(0,0,0,0.3)',
         }}
       >
-        <div className="font-body" style={{ fontSize: 'calc(var(--su) * 1.65)', lineHeight: 1.45 }}>{children}</div>
+        <div className="font-body" style={{ fontSize: `calc(var(--su) * ${(1.65 * k).toFixed(2)})`, lineHeight: 1.45 }}>{children}</div>
         {time ? (
-          <div className="font-body" style={{ fontSize: 'calc(var(--su) * 1.05)', opacity: 0.55, marginTop: 'calc(var(--su) * 0.4)', textAlign: 'right' }}>
+          <div className="font-body" style={{ fontSize: `calc(var(--su) * ${(1.05 * k).toFixed(2)})`, opacity: 0.55, marginTop: `calc(var(--su) * ${(0.4 * k).toFixed(2)})`, textAlign: 'right' }}>
             {time}
           </div>
         ) : null}
@@ -775,67 +952,138 @@ export function SceneChat({ t }) {
           </span>
         </div>
       </LeftCol>
+      {(() => {
+        const f3 = float3d(t, 4.1);
+        return (
       <div
         style={{
-          position: 'absolute', right: '9%', top: '50%', width: '37%',
-          transform: `translateY(-50%) translateY(calc(var(--su) * ${((1 - cardIn) * 5 - lp * 1.2).toFixed(2)})) scale(${(0.95 + cardIn * 0.05).toFixed(3)})`,
+          position: 'absolute', right: '11.5%', top: '50%', width: '22%',
+          transform: `perspective(calc(var(--su) * 150)) translateY(-50%) translateY(calc(var(--su) * ${((1 - cardIn) * 6 - lp * 1.0 + f3.y).toFixed(2)})) rotateY(${(-11 + 6.5 * cardIn + f3.ry * cardIn * 1.5).toFixed(2)}deg) rotateX(${(2 - 1.4 * cardIn + f3.rx * cardIn).toFixed(2)}deg) scale(${(0.94 + cardIn * 0.06).toFixed(3)})`,
           opacity: cardIn,
-          background: '#131316', border: '1px solid rgba(255,255,255,0.09)',
-          borderRadius: 'calc(var(--su) * 1.8)',
-          boxShadow: '0 calc(var(--su)*2.4) calc(var(--su)*7) rgba(0,0,0,0.55)',
-          overflow: 'hidden',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'calc(var(--su) * 1.1)', padding: 'calc(var(--su) * 1.5) calc(var(--su) * 1.8)', borderBottom: '1px solid rgba(255,255,255,0.07)', background: 'rgba(255,255,255,0.03)' }}>
-          <img src="/brand/digihome-icon-purple.svg" alt="" style={{ width: 'calc(var(--su) * 2.8)', height: 'calc(var(--su) * 2.8)', borderRadius: 'calc(var(--su) * 0.7)' }} />
-          <div style={{ flex: 1 }}>
-            <div className="font-body" style={{ fontSize: 'calc(var(--su) * 1.6)', fontWeight: 500, color: '#FDFCFB' }}>DigiHome</div>
-            <div className="font-body" style={{ fontSize: 'calc(var(--su) * 1.15)', color: '#7ee2a8', display: 'flex', alignItems: 'center', gap: 'calc(var(--su) * 0.5)' }}>
-              <span style={{ width: 'calc(var(--su) * 0.7)', height: 'calc(var(--su) * 0.7)', borderRadius: '50%', background: '#22c55e', display: 'inline-block' }} />
-              Alltid på
-            </div>
-          </div>
-          <span className="font-body" style={{ fontSize: 'calc(var(--su) * 1.1)', letterSpacing: '0.18em', color: '#CF97FC', border: '1px solid rgba(207,151,252,0.45)', borderRadius: 999, padding: 'calc(var(--su)*0.35) calc(var(--su)*1)' }}>
-            24/7
-          </span>
-        </div>
-        <div style={{ padding: 'calc(var(--su) * 1.8)' }}>
-          <Bubble t={t} at={50.5} side="left" time="21:47">Hei! Varmtvannet er plutselig borte 🥶</Bubble>
-          {typingOn && (
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 'calc(var(--su) * 1.1)' }}>
-              <div style={{ background: 'rgba(207,151,252,0.18)', borderRadius: 'calc(var(--su) * 1.6)', padding: 'calc(var(--su) * 1) calc(var(--su) * 1.5)', display: 'flex', gap: 'calc(var(--su) * 0.55)' }}>
-                {[0, 1, 2].map((i) => (
-                  <span
-                    key={i}
-                    style={{
-                      width: 'calc(var(--su) * 0.8)', height: 'calc(var(--su) * 0.8)', borderRadius: '50%', background: '#CF97FC',
-                      opacity: 0.35 + 0.65 * Math.abs(Math.sin((t * 4 + i * 0.9))),
-                      display: 'inline-block',
-                    }}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-          <Bubble t={t} at={52.6} side="right" time="21:47">Det fikser vi! Rørlegger er booket til i morgen kl. 09:00.</Bubble>
-          <Bubble t={t} at={54.6} side="left" time="21:48">Wow, så raskt! Tusen takk 🙌</Bubble>
+        {/* atmosfærisk glød bak telefonen */}
+        <div
+          aria-hidden="true"
+          style={{
+            position: 'absolute', inset: '-10% -28%',
+            background: 'radial-gradient(ellipse at 50% 45%, rgba(155,91,214,0.22), transparent 65%)',
+            filter: 'blur(calc(var(--su) * 2))',
+            pointerEvents: 'none',
+          }}
+        />
+        {/* telefonramme */}
+        <div
+          style={{
+            position: 'relative', aspectRatio: '9 / 19',
+            borderRadius: 'calc(var(--su) * 3.3)',
+            background: 'linear-gradient(160deg, #3c3c44 0%, #18181c 28%, #101014 72%, #2a2a31 100%)',
+            boxShadow: '0 0 0 1px rgba(255,255,255,0.09), 0 calc(var(--su)*0.3) calc(var(--su)*1) rgba(0,0,0,0.5), 0 calc(var(--su)*3) calc(var(--su)*9) rgba(0,0,0,0.65), 0 0 calc(var(--su)*8) rgba(155,91,214,0.12)',
+          }}
+        >
+          {/* sideknapper */}
+          <div aria-hidden="true" style={{ position: 'absolute', left: 'calc(var(--su) * -0.22)', top: '22%', width: 'calc(var(--su) * 0.25)', height: '5%', borderRadius: 99, background: '#26262c' }} />
+          <div aria-hidden="true" style={{ position: 'absolute', left: 'calc(var(--su) * -0.22)', top: '29%', width: 'calc(var(--su) * 0.25)', height: '8%', borderRadius: 99, background: '#26262c' }} />
+          <div aria-hidden="true" style={{ position: 'absolute', right: 'calc(var(--su) * -0.22)', top: '26%', width: 'calc(var(--su) * 0.25)', height: '11%', borderRadius: 99, background: '#26262c' }} />
+          {/* skjerm */}
           <div
-            className="font-body"
             style={{
-              opacity: clamp01(statusIn * 2),
-              transform: `scale(${Math.max(0.6, easeOutBack(statusIn)).toFixed(3)})`,
-              margin: 'calc(var(--su) * 1.6) auto 0',
-              width: 'fit-content',
-              fontSize: 'calc(var(--su) * 1.3)', letterSpacing: '0.08em',
-              color: 'rgba(207,151,252,0.95)',
-              border: '1px solid rgba(207,151,252,0.4)', borderRadius: 999,
-              padding: 'calc(var(--su) * 0.55) calc(var(--su) * 1.6)',
+              position: 'absolute', inset: 'calc(var(--su) * 0.5)',
+              borderRadius: 'calc(var(--su) * 2.8)',
+              background: 'linear-gradient(180deg, #16161D 0%, #0E0E13 100%)',
+              overflow: 'hidden',
+              display: 'flex', flexDirection: 'column',
             }}
           >
-            Besvart automatisk · svartid 8 sek
+            {/* skjerm-ambient */}
+            <div aria-hidden="true" style={{ position: 'absolute', inset: 0, background: 'linear-gradient(195deg, rgba(155,91,214,0.10), transparent 32%, transparent 68%, rgba(155,91,214,0.07))', pointerEvents: 'none' }} />
+            {/* statuslinje */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 'calc(var(--su) * 0.9) calc(var(--su) * 1.7) 0', position: 'relative' }}>
+              <span className="font-body" style={{ fontSize: 'calc(var(--su) * 1.05)', fontWeight: 500, color: 'rgba(253,252,251,0.92)', fontVariantNumeric: 'tabular-nums' }}>21:47</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 'calc(var(--su) * 0.45)' }}>
+                {/* signal */}
+                <span style={{ display: 'flex', alignItems: 'flex-end', gap: 'calc(var(--su) * 0.14)' }}>
+                  {[0.4, 0.6, 0.8, 1].map((h, i) => (
+                    <span key={i} style={{ width: 'calc(var(--su) * 0.22)', height: `calc(var(--su) * ${(h * 0.95).toFixed(2)})`, borderRadius: 1, background: 'rgba(253,252,251,0.9)' }} />
+                  ))}
+                </span>
+                {/* batteri */}
+                <span style={{ width: 'calc(var(--su) * 1.7)', height: 'calc(var(--su) * 0.85)', borderRadius: 'calc(var(--su) * 0.22)', border: '1px solid rgba(253,252,251,0.5)', padding: 1, display: 'flex' }}>
+                  <span style={{ width: '78%', borderRadius: 1, background: 'rgba(253,252,251,0.9)' }} />
+                </span>
+              </span>
+            </div>
+            {/* dynamic island */}
+            <div aria-hidden="true" style={{ position: 'absolute', top: 'calc(var(--su) * 0.75)', left: '50%', transform: 'translateX(-50%)', width: 'calc(var(--su) * 4.4)', height: 'calc(var(--su) * 1.25)', borderRadius: 999, background: '#000', boxShadow: 'inset 0 0 calc(var(--su)*0.3) rgba(255,255,255,0.06)' }} />
+            {/* chat-header */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'calc(var(--su) * 0.9)', padding: 'calc(var(--su) * 1.3) calc(var(--su) * 1.5) calc(var(--su) * 1.1)', borderBottom: '1px solid rgba(255,255,255,0.07)', position: 'relative' }}>
+              <img src="/brand/digihome-icon-purple.svg" alt="" style={{ width: 'calc(var(--su) * 2.5)', height: 'calc(var(--su) * 2.5)', borderRadius: 'calc(var(--su) * 0.65)' }} />
+              <div style={{ flex: 1 }}>
+                <div className="font-body" style={{ fontSize: 'calc(var(--su) * 1.35)', fontWeight: 500, color: '#FDFCFB' }}>DigiHome</div>
+                <div className="font-body" style={{ fontSize: 'calc(var(--su) * 0.95)', color: '#7ee2a8', display: 'flex', alignItems: 'center', gap: 'calc(var(--su) * 0.4)' }}>
+                  <span style={{ width: 'calc(var(--su) * 0.55)', height: 'calc(var(--su) * 0.55)', borderRadius: '50%', background: '#22c55e', display: 'inline-block', boxShadow: `0 0 calc(var(--su) * ${(0.6 + 0.4 * Math.sin(t * 2.2)).toFixed(2)}) rgba(34,197,94,0.8)` }} />
+                  Alltid på
+                </div>
+              </div>
+              <span className="font-body" style={{ fontSize: 'calc(var(--su) * 0.9)', letterSpacing: '0.16em', color: '#CF97FC', border: '1px solid rgba(207,151,252,0.45)', borderRadius: 999, padding: 'calc(var(--su)*0.3) calc(var(--su)*0.8)' }}>
+                24/7
+              </span>
+            </div>
+            {/* meldinger — forankret nederst som i ekte chat */}
+            <div style={{ padding: 'calc(var(--su) * 1.4) calc(var(--su) * 1.4) 0', flex: 1, minHeight: 0, overflow: 'hidden', position: 'relative', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
+              <Bubble t={t} at={50.5} side="left" time="21:47" k={0.82}>Hei! Varmtvannet er plutselig borte 🥶</Bubble>
+              {typingOn && (
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 'calc(var(--su) * 0.9)' }}>
+                  <div style={{ background: 'rgba(207,151,252,0.18)', borderRadius: 'calc(var(--su) * 1.3)', padding: 'calc(var(--su) * 0.8) calc(var(--su) * 1.2)', display: 'flex', gap: 'calc(var(--su) * 0.45)' }}>
+                    {[0, 1, 2].map((i) => (
+                      <span
+                        key={i}
+                        style={{
+                          width: 'calc(var(--su) * 0.65)', height: 'calc(var(--su) * 0.65)', borderRadius: '50%', background: '#CF97FC',
+                          opacity: 0.35 + 0.65 * Math.abs(Math.sin((t * 4 + i * 0.9))),
+                          display: 'inline-block',
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+              <Bubble t={t} at={52.6} side="right" time="21:47" k={0.82}>Det fikser vi! Rørlegger kommer i morgen kl. 09:00.</Bubble>
+              <Bubble t={t} at={54.6} side="left" time="21:48" k={0.82}>Wow, så raskt! Tusen takk 🙌</Bubble>
+              <div
+                className="font-body"
+                style={{
+                  opacity: clamp01(statusIn * 2),
+                  transform: `scale(${Math.max(0.6, easeOutBack(statusIn)).toFixed(3)})`,
+                  margin: 'calc(var(--su) * 1.3) auto 0',
+                  width: 'fit-content',
+                  fontSize: 'calc(var(--su) * 1.05)', letterSpacing: '0.07em',
+                  color: 'rgba(207,151,252,0.95)',
+                  border: '1px solid rgba(207,151,252,0.4)', borderRadius: 999,
+                  padding: 'calc(var(--su) * 0.5) calc(var(--su) * 1.3)',
+                  background: 'rgba(207,151,252,0.07)',
+                  textAlign: 'center',
+                }}
+              >
+                Besvart automatisk · svartid 8 sek
+              </div>
+            </div>
+            {/* meldingsfelt nederst */}
+            <div style={{ padding: 'calc(var(--su) * 0.9) calc(var(--su) * 1.3) calc(var(--su) * 1.2)', position: 'relative' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 'calc(var(--su) * 0.8)', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.11)', borderRadius: 999, padding: 'calc(var(--su) * 0.6) calc(var(--su) * 1.2)' }}>
+                <span className="font-body" style={{ fontSize: 'calc(var(--su) * 1.15)', color: 'rgba(253,252,251,0.4)', flex: 1 }}>Melding…</span>
+                <span style={{ width: 'calc(var(--su) * 1.8)', height: 'calc(var(--su) * 1.8)', borderRadius: '50%', background: 'linear-gradient(135deg, #CF97FC, #9B5BD6)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <svg style={{ width: 'calc(var(--su) * 1)', height: 'calc(var(--su) * 1)' }} viewBox="0 0 24 24" fill="none" stroke="#0A0A0A" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M12 19V5M5 12l7-7 7 7" /></svg>
+                </span>
+              </div>
+            </div>
+            {/* skjermglare */}
+            <div aria-hidden="true" style={{ position: 'absolute', inset: 0, background: 'linear-gradient(115deg, transparent 28%, rgba(255,255,255,0.05) 40%, rgba(255,255,255,0.015) 48%, transparent 58%)', pointerEvents: 'none' }} />
           </div>
         </div>
       </div>
+        );
+      })()}
     </Shell>
   );
 }

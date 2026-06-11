@@ -248,3 +248,38 @@ export function Aurora({ t = 0, opacity = 0.13 }) {
     </div>
   );
 }
+
+/** Bokeh-støv — store, myke lysflekker som driver sakte (deterministisk) */
+export function Bokeh({ t = 0, opacity = 1 }) {
+  const dots = [];
+  for (let i = 0; i < 7; i++) {
+    const sz = 2.5 + dRand(i, 41) * 5;
+    const spdX = 0.25 + dRand(i, 42) * 0.5;
+    const spdY = 0.1 + dRand(i, 43) * 0.25;
+    let x = (dRand(i, 44) * 110 + t * spdX) % 112 - 6;
+    let y = (dRand(i, 45) * 105 - t * spdY) % 108;
+    if (y < -4) y += 108;
+    const tw = 0.5 + 0.5 * Math.sin(t * 0.25 + dRand(i, 46) * 6.28);
+    dots.push({ x, y, sz, op: (0.035 + 0.045 * dRand(i, 47)) * tw, lav: dRand(i, 48) > 0.5 });
+  }
+  return (
+    <div className="absolute inset-0 pointer-events-none" style={{ opacity }} aria-hidden="true">
+      {dots.map((d, i) => (
+        <div
+          key={i}
+          style={{
+            position: 'absolute',
+            left: `${d.x.toFixed(2)}%`,
+            top: `${d.y.toFixed(2)}%`,
+            width: `calc(var(--su) * ${d.sz.toFixed(2)})`,
+            height: `calc(var(--su) * ${d.sz.toFixed(2)})`,
+            borderRadius: '50%',
+            background: d.lav ? 'rgba(207,151,252,0.55)' : 'rgba(220,225,255,0.45)',
+            opacity: d.op.toFixed(3),
+            filter: 'blur(calc(var(--su) * 1.1))',
+          }}
+        />
+      ))}
+    </div>
+  );
+}

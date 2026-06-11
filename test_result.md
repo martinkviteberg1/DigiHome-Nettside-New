@@ -133,6 +133,18 @@ frontend:
         -agent: "main"
         -comment: "Bygde komplett forside: hero (bento-collage, adressesøk, 3 nøkkeltall, flytende inntekts-badge), Slik jobber DigiHome (video-plassholder), tre tjenestemodeller, statistikk-stripe, 4 steg, Bergen-break, høykvalitetsboliger-galleri, showcase, 10+2-inntektssammenligning, lokale partnere, hvorfor velge DigiHome, Om DigiHome (CEO-plassholder), testimonials, partnere, avsluttende CTA, footer. Selvhostede fonter (next/font/local), JSON-LD Organization + RealEstateAgent, framer-motion fade-up. Verifisert visuelt via screenshots — ser bra ut. Ikke testet med frontend-agent ennå."
 
+  - task: "Kinofilm /video — «Utleie på autopilot» (verdensklasse-løft)"
+    implemented: true
+    working: true
+    file: "components/video/FilmScenes.js, components/video/AutopilotFilm.js, scripts/render_film.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "main"
+        -comment: "Verdensklasse-løft fullført: (1) Bokeh-dybdelag aktivert globalt bak scenene. (2) Alle kort fikk gradient-kantlys (CardEdge), glare-sveip (Glare), gulv-glød (FloorGlow) og kontinuerlig deterministisk 3D-float (float3d). (3) Akt 1: glødende lilla rim langs sirkelsveipen. (4) Akt 2: gnistburst (SparkBurst) ved toggle-flip. (5) Akt 4: score-teller (92) i radar-sentrum. (6) Akt 5: papirlys-gradient på kontrakt + glød-puls bak husleiebeløpet. (7) Akt 6: chat-kort erstattet med realistisk telefonramme (dynamic island, statuslinje 21:47 m/signal+batteri, sideknapper, skjermglare, meldingsfelt, bottom-anchored meldinger). Fikset overflow-klipping av chip/meldingsfelt (bredere telefon 22%, minHeight:0 + overflow:hidden, kortere meldingstekst). Motor-orben flyttet/krympet så den ikke overlapper kort. Verifisert frame-for-frame via Playwright-stillbilder over hele tidslinjen (11 nøkkeltidspunkter). MP4 re-rendret via scripts/render_film.py."
+
 metadata:
   created_by: "main_agent"
   version: "1.0"
