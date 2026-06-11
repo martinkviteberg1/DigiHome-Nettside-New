@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { seg, clamp01, Orb, FilmGrain, LightSweep, Aurora, Bokeh, impactShake } from './filmUtils';
+import { seg, clamp01, Orb, FilmGrain, LightSweep, Aurora, Bokeh } from './filmUtils';
 import { scheduleMusic, renderMusicWav, FILM_DURATION } from './filmAudio';
 import {
   SceneOpening, SceneToggle, SceneAnnonse, SceneVisning, SceneKontrakt, SceneChat, SceneFinale,
@@ -32,13 +32,7 @@ const CHAPTERS = [
   { t: 59, label: 'Finale' },
 ];
 
-/* impact-kameraristing: [tidspunkt, styrke] */
-const SHAKES = [
-  [10.65, 0.5],   /* toggle-flip */
-  [23.78, 0.55],  /* FINN-stempel */
-  [36.45, 0.3],   /* kandidat godkjent */
-  [64.12, 0.7],   /* finale-brist */
-];
+/* impact-kamerarist fjernet etter tilbakemelding — filmen skal være supersmooth */
 
 /* ============ hovedklokke ============ */
 function useFilmClock(duration) {
@@ -286,15 +280,6 @@ export default function AutopilotFilm() {
   const watermark = Math.min(seg(time, 8.5, 9.7), 1 - seg(time, 66, 67.2)) * 0.45;
   const engineOrb = Math.min(seg(time, 14.6, 15.6), 1 - seg(time, 47.5, 48.5)) * 0.85;
 
-  /* impact-kameraristing (summert, deterministisk) */
-  let shakeX = 0, shakeY = 0;
-  for (const [at, mag] of SHAKES) {
-    const s = impactShake(time, at, mag);
-    shakeX += s.x;
-    shakeY += s.y;
-  }
-  const shakeAmt = Math.abs(shakeX) + Math.abs(shakeY);
-
   /* vignett som «puster» i takt med musikkpulsen (kick hver 1,2s fra 10,8–58,8) */
   const kickGlow = started && time >= 10.8 && time <= 58.8
     ? Math.exp(-(((time - 10.8) % 1.2) / 1.2) * 5.5)
@@ -328,15 +313,8 @@ export default function AutopilotFilm() {
           '--su': '12px',
         }}
       >
-        {/* riste-wrapper — impact-kamerarist + alle visuelle lag */}
-        <div
-          className="absolute inset-0"
-          style={{
-            transform: shakeAmt > 0.001
-              ? `translate(calc(var(--su) * ${shakeX.toFixed(3)}), calc(var(--su) * ${shakeY.toFixed(3)})) scale(${(1 + shakeAmt * 0.02).toFixed(4)})`
-              : 'none',
-          }}
-        >
+        {/* visuelle lag — supersmooth, ingen kamerarist */}
+        <div className="absolute inset-0">
         {/* moderne aurora-mesh-bakgrunn + bokeh-dybde + vignett */}
         <Aurora t={time} opacity={0.14 * seg(time, 7.2, 9.5)} />
         {started && <Bokeh t={time} opacity={seg(time, 7.6, 9.8)} />}
@@ -386,7 +364,7 @@ export default function AutopilotFilm() {
         )}
 
         {/* filmkorn — pulserer ved treffpunkter */}
-        {started && <FilmGrain t={time} opacity={0.05 + Math.min(0.07, shakeAmt * 0.1)} />}
+        {started && <FilmGrain t={time} opacity={0.05} />}
         </div>
 
         {/* startoverlegg */}

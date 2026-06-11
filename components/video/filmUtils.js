@@ -36,16 +36,7 @@ export const dRand = (i, salt = 0) => {
   return x - Math.floor(x);
 };
 
-/** Impact-kameraristing — deterministisk, dempet sinus-støy etter et treffpunkt */
-export const impactShake = (t, at, mag = 0.5, dur = 0.5) => {
-  const p = (t - at) / dur;
-  if (p <= 0 || p >= 1) return { x: 0, y: 0 };
-  const decay = Math.exp(-p * 5.5) * (1 - p);
-  return {
-    x: Math.sin(p * 47.3) * decay * mag,
-    y: Math.cos(p * 39.7) * decay * mag * 0.7,
-  };
-};
+/* impact-kamerarist fjernet etter tilbakemelding — filmen skal være supersmooth */
 
 /* ============ shared props — 100% deterministiske fra filmtid t ============ */
 
