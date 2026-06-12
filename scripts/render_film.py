@@ -20,11 +20,16 @@ from playwright.async_api import async_playwright
 
 CAPTURE_FPS = 60   # fanges i 60 fps ...
 OUT_FPS = 30       # ... og blandes ned til 30 fps med motion blur
-DURATION = 108
-URL = "http://localhost:3000/video?record=1"
+CUT60 = "--cut60" in sys.argv
+DURATION = 60 if CUT60 else 108
+URL = "http://localhost:3000/video?record=1" + ("&cut=60" if CUT60 else "")
 FRAMES_DIR = "/tmp/film_frames"
 WAV_PATH = "/tmp/film_music.wav"
-OUT_PATH = "/app/public/film/digihome-utleie-pa-autopilot-16x9.mp4"
+OUT_PATH = (
+    "/app/public/film/digihome-utleie-pa-autopilot-60s-16x9.mp4"
+    if CUT60 else
+    "/app/public/film/digihome-utleie-pa-autopilot-16x9.mp4"
+)
 TEST_MODE = "--test" in sys.argv
 
 TOTAL_FRAMES = CAPTURE_FPS * DURATION if not TEST_MODE else 12
@@ -32,6 +37,10 @@ TOTAL_FRAMES = CAPTURE_FPS * DURATION if not TEST_MODE else 12
 
 async def render():
     os.makedirs(FRAMES_DIR, exist_ok=True)
+    # toem gamle frames (ellers blandes rester fra forrige render inn)
+    for f in os.listdir(FRAMES_DIR):
+        if f.endswith(".jpg"):
+            os.remove(os.path.join(FRAMES_DIR, f))
     async with async_playwright() as p:
         browser = await p.chromium.launch(
             executable_path="/usr/bin/google-chrome",
@@ -50,7 +59,12 @@ async def render():
         print("page ready, warming up assets...", flush=True)
 
         # varm opp alle bilder/fonter ved aa hoppe gjennom filmen
-        for t in [3, 10, 16, 19, 22, 25, 28, 32, 36, 42, 48, 54, 60, 66, 72, 78, 84, 90, 96, 102]:
+        warmup = (
+            [2, 7, 11, 14, 17, 20, 22, 25, 29, 33, 36, 41, 44, 47, 51, 55, 58]
+            if CUT60 else
+            [3, 10, 16, 19, 22, 25, 28, 32, 36, 42, 48, 54, 60, 66, 72, 78, 84, 90, 96, 102]
+        )
+        for t in warmup:
             await page.evaluate(f"window.__setTime({t})")
             await page.wait_for_timeout(250)
         await page.wait_for_timeout(1500)

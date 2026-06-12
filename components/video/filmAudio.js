@@ -20,6 +20,7 @@ const dr = (i, salt = 0) => {
 };
 
 export const FILM_DURATION = 108;
+export const FILM_DURATION_60 = 60;
 
 /* --- voiceover (ElevenLabs, ferdig plassert paa tidslinjen) --- */
 const VO_ENABLED = false; /* AV: brukeren ønsket film uten voiceover */
@@ -122,7 +123,7 @@ function makeNoiseBuffer(ctx, duration = 2) {
 /* =====================================================================
    Hovedplanlegger — returnerer { stop }
 ===================================================================== */
-export function scheduleMusic(ctx, destination, fromT = 0) {
+export function scheduleMusic(ctx, destination, fromT = 0, cut = 'full') {
   const sources = [];
   let stopped = false;
   const now = () => ctx.currentTime;
@@ -725,6 +726,134 @@ export function scheduleMusic(ctx, destination, fromT = 0) {
   }
 
   /* ====== planlegg alt ====== */
+  if (cut === '60') {
+    /* ---------- 60s reklamekutt — strammere tempo, mer punch ---------- */
+    const PAD60 = [
+      { a: 0,    b: 10.6, notes: ['C4', 'G4', 'D5'] },
+      { a: 10.3, b: 15.4, notes: ['Eb3', 'G3', 'Bb3', 'D4'] },
+      { a: 15.2, b: 21.4, notes: ['F3', 'Ab3', 'C4', 'Eb4'] },
+      { a: 21.0, b: 28.3, notes: ['Ab3', 'C4', 'Eb4', 'G4'] },
+      { a: 28.1, b: 34.7, notes: ['Ab3', 'C4', 'Eb4', 'G4'] },
+      { a: 34.4, b: 39.8, notes: ['Eb3', 'G3', 'Bb3', 'D4'] },
+      { a: 39.5, b: 45.4, notes: ['Bb3', 'D4', 'F4', 'C5'] },
+      { a: 45.1, b: 49.5, notes: ['F3', 'Ab3', 'C4', 'Eb4'] },
+      { a: 49.4, b: 50.6, notes: ['Ab3', 'C4', 'Eb4', 'C5'] },
+      { a: 50.4, b: 55.2, notes: ['Bb3', 'D4', 'F4', 'D5'] },
+      { a: 55.0, b: 60,   notes: ['C4', 'G4', 'D5', 'Eb5'] },
+    ];
+    const BASS60 = [
+      { a: 0, b: 10.6, n: 'C2' }, { a: 10.3, b: 15.4, n: 'Eb2' }, { a: 15.2, b: 21.4, n: 'F2' },
+      { a: 21.0, b: 34.7, n: 'Ab2' }, { a: 34.4, b: 39.8, n: 'Eb2' }, { a: 39.5, b: 45.4, n: 'Bb2' },
+      { a: 45.1, b: 49.5, n: 'F2' }, { a: 49.4, b: 50.6, n: 'Ab2' }, { a: 50.4, b: 55.2, n: 'Bb2' },
+      { a: 55.0, b: 60, n: 'C2' },
+    ];
+    const chord60At = (t) => {
+      for (let i = PAD60.length - 1; i >= 0; i--) if (t >= PAD60[i].a) return PAD60[i].notes;
+      return PAD60[0].notes;
+    };
+    for (const s of PAD60) for (const n of s.notes) padNote(freq(n), s.a, s.b);
+    for (const s of BASS60) bassNote(freq(s.n), s.a, s.b, 0.115);
+    /* dobbelt tempo-puls = reklame-driv (kick hver 0,6s fra toggle-klikket) */
+    for (let at = 7.2; at <= 49.2; at += 0.6) kick(at);
+    for (let at = 7.5, hk = 0; at <= 49.2; at += 0.6, hk++) {
+      if (dr(hk, 72) < 0.18) continue;
+      hat(at, hk % 2 === 0 ? 0.014 : 0.008);
+    }
+    /* tett arp */
+    let a60 = 0;
+    for (let at = 8.4; at <= 49.4; at += 0.3, a60++) {
+      if (dr(a60, 14) < 0.55) continue;
+      const tones = chord60At(at);
+      const pick60 = tones[Math.floor(dr(a60, 15) * tones.length)];
+      const up = dr(a60, 16) > 0.6 ? 2 : 1;
+      pluck(freq(pick60) * up, at, a60);
+    }
+    /* sceneskift: riser + impact (ikke ved match-cuttet 21.3) */
+    for (const b of [10.3, 15.2, 28.1, 34.4, 39.5, 45.1, 49.4]) {
+      whoosh(b - 0.5, 0.026, 320, 3000, 1.0);
+      boom(b, 0.026);
+    }
+    whoosh(5.7); /* åpning -> toggle */
+    /* lead-aksenter */
+    lead(freq('C5'), 16.4, 1.6);
+    lead(freq('G4'), 25.0, 1.6);
+    lead(freq('Bb4'), 30.0, 1.6);
+    lead(freq('Ab4'), 36.2, 1.8);
+    lead(freq('C5'), 46.2, 1.6);
+    lead(freq('G5'), 55.4, 2.6);
+
+    /* --- SFX i synk med bildet --- */
+    /* åpning */
+    key(freq('Eb5'), 0.7);
+    key(freq('C5'), 2.0);
+    key(freq('G4'), 2.95);
+    key(freq('Bb4'), 3.75, 0.038);
+    /* toggle (klikk på 7.18) */
+    subSwell(6.65);
+    whoosh(6.9, 0.028, 280, 2200, 0.8);
+    toggleOn(7.18);
+    /* adresse */
+    whoosh(10.6, 0.03, 600, 2600, 0.9);
+    for (let i = 0; i < 22; i++) {
+      const at = 10.95 + i * 0.075;
+      if (at > 12.5 || dr(i, 31) < 0.32) continue;
+      tick(at, 1450 + dr(i, 32) * 750);
+    }
+    ping(11.95, 740);
+    tick(12.8, 990);
+    thump(13.15);
+    chime(freq('G5'), 14.05, 0.03);
+    tick(14.5, 760); tick(14.83, 830); tick(15.16, 900); tick(15.49, 970);
+    /* bilder */
+    whoosh(15.45, 0.03, 600, 2600, 0.9);
+    tick(16.8, 520); tick(17.02, 545); tick(17.24, 570); tick(17.46, 595); tick(17.68, 620);
+    ping(17.85, 830); ping(18.2, 880);
+    whoosh(18.3, 0.035, 700, 3200, 1.1);
+    tick(18.55, 900); tick(18.81, 980); tick(19.07, 1060); tick(19.33, 1140);
+    chime(freq('Eb5'), 19.85, 0.03);
+    whoosh(20.6, 0.04, 500, 3400, 1.2);
+    /* styling — match-cut, prompt og sveip */
+    whoosh(21.35, 0.026, 620, 2800, 0.85);
+    shimmer(21.6);
+    whoosh(22.52, 0.022, 650, 2400, 0.7);
+    for (let i = 0; i < 30; i++) {
+      const at = 22.9 + i * 0.087;
+      if (at > 25.45 || dr(i, 21) < 0.32) continue;
+      tick(at, 1450 + dr(i, 22) * 750);
+    }
+    thump(25.9);
+    whoosh(25.95, 0.05, 480, 4200, 1.9);
+    shimmer(26.05);
+    chime(freq('Ab5'), 27.9, 0.032);
+    /* annonse */
+    shutter(28.55);
+    tick(28.6, 1240); tick(29.9, 760); tick(31.9, 1240);
+    thump(33.05);
+    chime(freq('Eb5'), 33.35, 0.03);
+    /* screening */
+    ping(35.2, 740); ping(36.4, 880);
+    chirp(35.5, 1250, 1900); chirp(35.85, 1500, 2300); chirp(36.2, 1100, 1750); chirp(36.6, 1650, 2500); chirp(36.95, 1300, 2000);
+    whoosh(38.4, 0.028, 800, 3200, 0.9);
+    chime(freq('G5'), 38.5, 0.03);
+    /* kontrakt + husleie */
+    scribble(40.45, 41.8);
+    chime(freq('F5'), 41.95, 0.03);
+    whoosh(43.55, 0.03, 900, 3800, 0.9);
+    chime(freq('C6'), 43.95, 0.032);
+    /* chat */
+    msgPop(45.65, false);
+    msgPop(47.75, true);
+    chime(freq('Ab5'), 48.0, 0.028);
+    /* finale */
+    whoosh(48.7, 0.05, 500, 5200, 1.4);
+    whoosh(50.5, 0.05, 2400, 320, 1.1);
+    boom(50.82);
+    chime(freq('Eb5'), 50.9, 0.034);
+    shimmer(53.15);
+    boom(55.05, 0.05);
+    airPad(freq('G5'), 54.9, 60);
+    airPad(freq('C6'), 55.6, 60, 0.012);
+  } else {
   for (const s of PAD_SECTIONS) for (const n of s.notes) padNote(freq(n), s.a, s.b);
   for (const s of BASS_SECTIONS) bassNote(freq(s.n), s.a, s.b);
   for (let at = PULSE.from, k = 0; at <= PULSE.to; at += PULSE.step, k++) {
@@ -848,6 +977,7 @@ export function scheduleMusic(ctx, destination, fromT = 0) {
   boom(103.35, 0.05); /* myk logo-hit */
   airPad(freq('G5'), 103.2, 108);
   airPad(freq('C6'), 103.9, 108, 0.012);
+  } /* slutt: full versjon */
 
   /* --- voiceover: spilles utenom musikk-kjeden, med ducking --- */
   const voGain = ctx.createGain();
@@ -899,11 +1029,11 @@ export function scheduleMusic(ctx, destination, fromT = 0) {
 }
 
 /* --- offline render til WAV (for MP4-eksport) — musikk + voiceover --- */
-export async function renderMusicWav(duration = FILM_DURATION) {
+export async function renderMusicWav(duration = FILM_DURATION, cut = 'full') {
   const sampleRate = 44100;
   const ctx = new OfflineAudioContext(2, Math.ceil(sampleRate * duration), sampleRate);
   if (VO_ENABLED) { try { await loadVoice(ctx); } catch (e) { /* render uten VO */ } }
-  scheduleMusic(ctx, ctx.destination, 0);
+  scheduleMusic(ctx, ctx.destination, 0, cut);
   const buf = await ctx.startRendering();
   return audioBufferToWavBase64(buf);
 }

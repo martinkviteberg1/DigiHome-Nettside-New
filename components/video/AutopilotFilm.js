@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { seg, clamp01, Orb, FilmGrain, LightSweep, Aurora, Bokeh } from './filmUtils';
-import { scheduleMusic, renderMusicWav, FILM_DURATION } from './filmAudio';
+import { scheduleMusic, renderMusicWav, FILM_DURATION, FILM_DURATION_60 } from './filmAudio';
 import {
   SceneOpening, SceneToggle, SceneAdresse, SceneBilder, SceneStyling, SceneAnnonse, SceneVisning, SceneKontrakt, SceneDynamisk, SceneChat, SceneFinale,
 } from './FilmScenes';
@@ -43,6 +43,55 @@ const CHAPTERS = [
 ];
 
 /* impact-kamerarist fjernet etter tilbakemelding — filmen skal være supersmooth */
+
+/* =====================================================================
+   60s REKLAMEKUTT — samme scener, men spilt som utvalgte vinduer
+   (start/end = kutt-tid, shift = kutt-tid minus scenens interne tid)
+===================================================================== */
+const MP4_URL_60 = '/film/digihome-utleie-pa-autopilot-60s-16x9.mp4?v=20260612'; /* cache-bust */
+const SCENES_60 = [
+  { start: 0,     end: 6.0,  C: SceneOpening,  shift: -1.7,  fadeOut: 0.35 },
+  { start: 5.65,  end: 10.6, C: SceneToggle,   shift: -2.8,  fadeIn: 0.35, fadeOut: 0.3 },
+  { start: 10.25, end: 15.4, C: SceneAdresse,  shift: -4.0,  fadeIn: 0.35, fadeOut: 0.3 },
+  { start: 15.15, end: 21.4, C: SceneBilder,   shift: -5.1,  fadeIn: 0.35 },               /* match-cut ut */
+  { start: 21.0,  end: 28.3, C: SceneStyling,  shift: 6.9,   fadeOut: 0.3 },               /* match-cut inn */
+  { start: 28.0,  end: 34.7, C: SceneAnnonse,  shift: 9.3,   fadeIn: 0.35, fadeOut: 0.3 },
+  { start: 34.35, end: 39.8, C: SceneVisning,  shift: 2.0,   fadeIn: 0.35, fadeOut: 0.3 },
+  { start: 39.45, end: 42.7, C: SceneKontrakt, shift: 0.1,   fadeIn: 0.35, fadeOut: 0.25 },
+  { start: 42.4,  end: 45.4, C: SceneKontrakt, shift: -3.3,  fadeIn: 0.3,  fadeOut: 0.25 },
+  { start: 45.1,  end: 49.5, C: SceneChat,     shift: -13.9, fadeIn: 0.35, fadeOut: 0.3 },
+  { start: 49.4,  end: 60,   C: SceneFinale,   shift: -24.3, fadeIn: 0.35 },
+];
+const CHAPTERS_60 = [
+  { t: 0, label: 'Åpning' },
+  { t: 5.7, label: 'Autopilot på' },
+  { t: 10.3, label: 'Adresse' },
+  { t: 15.2, label: 'Bilder' },
+  { t: 21.3, label: 'AI-styling' },
+  { t: 28.1, label: 'Annonse' },
+  { t: 34.4, label: 'Screening' },
+  { t: 39.5, label: 'Kontrakt' },
+  { t: 42.4, label: 'Husleie inn' },
+  { t: 45.1, label: 'Svar 24/7' },
+  { t: 49.4, label: 'Finale' },
+];
+const BOUNDARIES_60 = [5.7, 10.3, 15.2, 28.1, 34.4, 39.5, 42.4, 45.1, 49.4]; /* ingen sweep ved match-cuttet (21.3) */
+
+/* per-versjon konfigurasjon (full film vs. reklamekutt) */
+const CUTS = {
+  full: {
+    duration: FILM_DURATION, mp4: MP4_URL, dlName: 'digihome-utleie-pa-autopilot.mp4',
+    scenes: SCENES, chapters: CHAPTERS, boundaries: SCENE_BOUNDARIES,
+    aurora: [7.2, 9.5], wm: [8.5, 9.7, 75, 76.2], orb: [14.6, 15.6, 56.5, 57.5],
+    kick: { from: 10.8, to: 67.8, step: 1.2 }, poster: 5.0, label: 'Full · 1:48',
+  },
+  60: {
+    duration: FILM_DURATION_60, mp4: MP4_URL_60, dlName: 'digihome-utleie-pa-autopilot-60s.mp4',
+    scenes: SCENES_60, chapters: CHAPTERS_60, boundaries: BOUNDARIES_60,
+    aurora: [4.4, 6.4], wm: [6.2, 7.2, 48.4, 49.4], orb: [10.6, 11.6, 38.9, 39.9],
+    kick: { from: 7.2, to: 49.2, step: 0.6 }, poster: 3.4, label: 'Reklame · 1:00',
+  },
+};
 
 /* ============ hovedklokke ============ */
 function useFilmClock(duration) {
@@ -129,7 +178,11 @@ const DownloadIcon = ({ size = 18 }) => (
 
 /* ============ hovedkomponent ============ */
 export default function AutopilotFilm() {
-  const { time, playing, started, ended, play, pause, seekTo, beginPaused, tRef } = useFilmClock(DURATION);
+  const [cut, setCut] = useState('full'); /* 'full' (1:48) eller '60' (reklamekutt) */
+  const CFG = CUTS[cut];
+  const cutRef = useRef(cut);
+  cutRef.current = cut;
+  const { time, playing, started, ended, play, pause, seekTo, beginPaused, tRef } = useFilmClock(CFG.duration);
   const wrapperRef = useRef(null);
   const stageRef = useRef(null);
   const progressRef = useRef(null);
@@ -166,7 +219,7 @@ export default function AutopilotFilm() {
       if (!audioCtxRef.current) audioCtxRef.current = new Ctx();
       const ctx = audioCtxRef.current;
       if (ctx.state === 'suspended') ctx.resume();
-      musicRef.current = scheduleMusic(ctx, ctx.destination, tRef.current);
+      musicRef.current = scheduleMusic(ctx, ctx.destination, tRef.current, cutRef.current);
     } catch (e) { /* lyd ikke tilgjengelig */ }
   }, [stopMusic, tRef]);
 
@@ -185,31 +238,49 @@ export default function AutopilotFilm() {
   /* ---- record-modus (frame-for-frame MP4-rendring) ---- */
   useEffect(() => {
     const sp = new URLSearchParams(window.location.search);
+    if (sp.get('cut') === '60') setCut('60');
     if (sp.get('record') === '1') {
       recordRef.current = true;
       setRecordMode(true);
       beginPaused();
       window.__setTime = (t) => { seekTo(t); };
-      window.__renderMusicWav = renderMusicWav;
       window.__filmReady = true;
     }
   }, [beginPaused, seekTo]);
 
+  /* offline-musikk-render følger aktiv versjon (brukes av render-skriptet) */
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.__renderMusicWav = (d) => renderMusicWav(d ?? CUTS[cut].duration, cut);
+  }, [cut]);
+
   /* ---- sjekk om MP4 finnes (for nedlasting) ---- */
   useEffect(() => {
-    fetch(MP4_URL, { method: 'HEAD' })
+    setDlReady(false);
+    fetch(CFG.mp4, { method: 'HEAD' })
       .then((r) => { if (r.ok) setDlReady(true); })
       .catch(() => {});
-  }, []);
+  }, [CFG.mp4]);
 
   const triggerDownload = useCallback(() => {
     const a = document.createElement('a');
-    a.href = MP4_URL;
-    a.download = 'digihome-utleie-pa-autopilot.mp4';
+    a.href = CUTS[cutRef.current].mp4;
+    a.download = CUTS[cutRef.current].dlName;
     document.body.appendChild(a);
     a.click();
     a.remove();
   }, []);
+
+  /* ---- bytt mellom full film og reklamekutt ---- */
+  const switchCut = useCallback((c) => {
+    if (c === cutRef.current) return;
+    stopMusic();
+    setCut(c);
+    seekTo(0);
+  }, [stopMusic, seekTo]);
+  useEffect(() => {
+    if (playingRef.current && !mutedRef.current) startMusic();
+  }, [cut, startMusic]);
 
   /* ---- idle-klokke for plakat-orb ---- */
   useEffect(() => {
@@ -244,7 +315,7 @@ export default function AutopilotFilm() {
   useEffect(() => () => clearTimeout(hideTimer.current), []);
   const chromeVisible = !recordMode && (chrome || !playing || !started || ended);
   /* før start: vis filmens åpningsbilde som plakat */
-  const displayT = started ? time : 5.2;
+  const displayT = started ? time : CFG.poster;
 
   /* ---- fullskjerm ---- */
   const toggleFs = useCallback(() => {
@@ -284,22 +355,22 @@ export default function AutopilotFilm() {
   const onSeekClick = (e) => {
     const rect = progressRef.current.getBoundingClientRect();
     const ratio = clamp01((e.clientX - rect.left) / rect.width);
-    seekTo(ratio * DURATION);
+    seekTo(ratio * CFG.duration);
     resyncMusic();
   };
 
-  const pct = (time / DURATION) * 100;
-  const watermark = Math.min(seg(time, 8.5, 9.7), 1 - seg(time, 75, 76.2)) * 0.45;
-  const engineOrb = Math.min(seg(time, 14.6, 15.6), 1 - seg(time, 56.5, 57.5)) * 0.85;
+  const pct = (time / CFG.duration) * 100;
+  const watermark = Math.min(seg(time, CFG.wm[0], CFG.wm[1]), 1 - seg(time, CFG.wm[2], CFG.wm[3])) * 0.45;
+  const engineOrb = Math.min(seg(time, CFG.orb[0], CFG.orb[1]), 1 - seg(time, CFG.orb[2], CFG.orb[3])) * 0.85;
 
-  /* vignett som «puster» i takt med musikkpulsen (kick hver 1,2s fra 10,8–67,8) */
-  const kickGlow = started && time >= 10.8 && time <= 67.8
-    ? Math.exp(-(((time - 10.8) % 1.2) / 1.2) * 5.5)
+  /* vignett som «puster» i takt med musikkpulsen */
+  const kickGlow = started && time >= CFG.kick.from && time <= CFG.kick.to
+    ? Math.exp(-(((time - CFG.kick.from) % CFG.kick.step) / CFG.kick.step) * 5.5)
     : 0;
 
   /* aktivt kapittel */
-  let chapterLabel = CHAPTERS[0].label;
-  for (const c of CHAPTERS) if (time >= c.t) chapterLabel = c.label;
+  let chapterLabel = CFG.chapters[0].label;
+  for (const c of CFG.chapters) if (time >= c.t) chapterLabel = c.label;
 
   return (
     <div
@@ -328,20 +399,29 @@ export default function AutopilotFilm() {
         {/* visuelle lag — supersmooth, ingen kamerarist */}
         <div className="absolute inset-0">
         {/* moderne aurora-mesh-bakgrunn + bokeh-dybde + vignett */}
-        <Aurora t={time} opacity={0.14 * seg(time, 7.2, 9.5)} />
-        {started && <Bokeh t={time} opacity={seg(time, 7.6, 9.8)} />}
+        <Aurora t={time} opacity={0.14 * seg(time, CFG.aurora[0], CFG.aurora[1])} />
+        {started && <Bokeh t={time} opacity={seg(time, CFG.aurora[0], CFG.aurora[1])} />}
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
-            opacity: seg(time, 7.2, 9.5),
+            opacity: seg(time, CFG.aurora[0], CFG.aurora[1]),
             background: 'radial-gradient(ellipse at 50% 42%, transparent 52%, rgba(0,0,0,0.5) 100%)',
           }}
         />
 
-        {/* scener (med ev. tidsshift) — før start vises filmens plakatbilde */}
-        {SCENES.map(({ start, end, C, shift = 0 }, i) =>
-          displayT >= start - 0.1 && displayT <= end + 0.1 ? <C key={i} t={displayT - shift} /> : null
-        )}
+        {/* scener (med ev. tidsshift og fade-vinduer for reklamekuttet) */}
+        {CFG.scenes.map(({ start, end, C, shift = 0, fadeIn = 0, fadeOut = 0 }, i) => {
+          if (!(displayT >= start - 0.1 && displayT <= end + 0.1)) return null;
+          let o = 1;
+          if (fadeIn > 0) o = Math.min(o, clamp01((displayT - start) / fadeIn));
+          if (fadeOut > 0) o = Math.min(o, clamp01((end - displayT) / fadeOut));
+          if (o >= 0.999) return <C key={`${cut}-${i}`} t={displayT - shift} />;
+          return (
+            <div key={`${cut}-${i}`} className="absolute inset-0" style={{ opacity: o.toFixed(3) }}>
+              <C t={displayT - shift} />
+            </div>
+          );
+        })}
 
         {/* forhåndslast styling-bildene (unngå hikk ved 14s) */}
         <div aria-hidden="true" style={{ display: 'none' }}>
@@ -351,7 +431,7 @@ export default function AutopilotFilm() {
         </div>
 
         {/* lys-sveip ved aktskifter */}
-        {started && <LightSweep t={time} boundaries={SCENE_BOUNDARIES} />}
+        {started && <LightSweep t={time} boundaries={CFG.boundaries} />}
 
         {/* puls-glød i takt med musikken */}
         {kickGlow > 0.03 && (
@@ -407,6 +487,27 @@ export default function AutopilotFilm() {
             >
               <svg style={{ width: 'calc(var(--su) * 3.4)', height: 'calc(var(--su) * 3.4)', marginLeft: 'calc(var(--su) * 0.4)' }} viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.14v13.72c0 .8.87 1.3 1.56.88l10.9-6.86a1.04 1.04 0 0 0 0-1.76L9.56 4.26A1.04 1.04 0 0 0 8 5.14z" /></svg>
             </button>
+            {/* versjonsvelger på plakaten */}
+            <div style={{ position: 'absolute', bottom: '9%', display: 'flex', gap: 'calc(var(--su) * 1)' }} onClick={(e) => e.stopPropagation()}>
+              {['full', '60'].map((c) => (
+                <button
+                  key={c}
+                  onClick={() => switchCut(c)}
+                  className="font-body"
+                  style={{
+                    borderRadius: 999,
+                    padding: 'calc(var(--su) * 0.6) calc(var(--su) * 1.6)',
+                    fontSize: 'calc(var(--su) * 1.3)',
+                    border: '1px solid rgba(255,255,255,0.25)',
+                    color: cut === c ? '#0A0A0A' : 'rgba(253,252,251,0.85)',
+                    background: cut === c ? '#FDFCFB' : 'rgba(10,10,12,0.4)',
+                    backdropFilter: 'blur(6px)',
+                  }}
+                >
+                  {CUTS[c].label}
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
@@ -481,7 +582,7 @@ export default function AutopilotFilm() {
                 {muted ? <SoundOffIcon /> : <SoundOnIcon />}
               </button>
               <span className="font-body" style={{ fontSize: 'calc(var(--su) * 1.35)', color: 'rgba(253,252,251,0.75)', fontVariantNumeric: 'tabular-nums', minWidth: 'calc(var(--su) * 8.5)' }}>
-                {fmtTime(time)} / {fmtTime(DURATION)}
+                {fmtTime(time)} / {fmtTime(CFG.duration)}
               </span>
               <span className="font-body" style={{ fontSize: 'calc(var(--su) * 1.2)', color: 'rgba(207,151,252,0.85)', letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>
                 {chapterLabel}
@@ -490,12 +591,12 @@ export default function AutopilotFilm() {
                 <div style={{ position: 'relative', height: 'calc(var(--su) * 0.45)', borderRadius: 99, background: 'rgba(255,255,255,0.16)' }}>
                   <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${pct}%`, borderRadius: 99, background: 'linear-gradient(90deg, #9B5BD6, #CF97FC)' }} />
                   {/* kapittelmerker */}
-                  {CHAPTERS.slice(1).map((c) => (
+                  {CFG.chapters.slice(1).map((c) => (
                     <span
                       key={c.t}
                       aria-hidden="true"
                       style={{
-                        position: 'absolute', left: `${((c.t / DURATION) * 100).toFixed(2)}%`, top: '-18%', bottom: '-18%',
+                        position: 'absolute', left: `${((c.t / CFG.duration) * 100).toFixed(2)}%`, top: '-18%', bottom: '-18%',
                         width: 'calc(var(--su) * 0.18)',
                         borderRadius: 99,
                         background: time >= c.t ? 'rgba(10,10,10,0.55)' : 'rgba(255,255,255,0.45)',
@@ -514,6 +615,25 @@ export default function AutopilotFilm() {
                     }}
                   />
                 </div>
+              </div>
+              {/* versjonsvelger: full film / reklamekutt */}
+              <div style={{ display: 'flex', borderRadius: 999, border: '1px solid rgba(255,255,255,0.18)', overflow: 'hidden', flexShrink: 0 }}>
+                {['full', '60'].map((c) => (
+                  <button
+                    key={c}
+                    onClick={() => switchCut(c)}
+                    className="font-body"
+                    style={{
+                      padding: 'calc(var(--su) * 0.35) calc(var(--su) * 1)',
+                      fontSize: 'calc(var(--su) * 1.1)',
+                      whiteSpace: 'nowrap',
+                      color: cut === c ? '#0A0A0A' : 'rgba(253,252,251,0.7)',
+                      background: cut === c ? '#FDFCFB' : 'transparent',
+                    }}
+                  >
+                    {CUTS[c].label}
+                  </button>
+                ))}
               </div>
               {dlReady && (
                 <button onClick={triggerDownload} aria-label="Last ned MP4" title="Last ned MP4" style={{ color: 'rgba(253,252,251,0.7)', display: 'flex' }}>
