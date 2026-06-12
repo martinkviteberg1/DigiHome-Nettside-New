@@ -103,32 +103,32 @@ export function AutopilotChapters() {
   const Scene = ch.Scene;
 
   return (
-    <section ref={sectionRef} className="relative overflow-hidden bg-[#050507] text-white py-24 sm:py-32">
-      {/* rolig studiolys */}
+    <section ref={sectionRef} className="relative overflow-hidden py-20 sm:py-24">
+      {/* svakt lavendel-lys oppe til høyre */}
       <div
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            'radial-gradient(ellipse 50% 40% at 20% 8%, rgba(170,160,200,0.07), transparent 62%), radial-gradient(ellipse 44% 36% at 86% 92%, rgba(140,135,170,0.05), transparent 62%)',
+            'radial-gradient(ellipse 46% 38% at 84% 0%, rgba(207,151,252,0.10), transparent 60%)',
         }}
       />
 
       <div className="relative max-w-shell mx-auto px-6 sm:px-10 lg:px-16">
         {/* seksjonshode */}
         <div className="max-w-2xl">
-          <p className="flex items-center gap-3 text-xs uppercase tracking-[0.2em] font-semibold text-white/40">
+          <p className="flex items-center gap-3 text-xs uppercase tracking-[0.2em] font-semibold text-lavender">
             <span className="inline-block h-px w-7 bg-current opacity-50" />
             Autopiloten i praksis
           </p>
-          <h2 className="mt-4 text-[34px] sm:text-[52px] font-bold leading-[1.06]">
+          <h2 className="mt-4 text-[34px] sm:text-[48px] font-bold text-ink leading-[1.08]">
             Fra adresse til leie på konto.
           </h2>
-          <p className="mt-5 text-lg text-white/55 leading-relaxed max-w-xl">
+          <p className="mt-5 text-lg text-quiet leading-relaxed max-w-xl">
             Fire ting skjer fra du slipper autopiloten løs. Du gjør ingen av dem.
           </p>
         </div>
 
-        <div className="mt-12 lg:mt-16 grid lg:grid-cols-[0.92fr_1.08fr] gap-8 lg:gap-14 items-center">
+        <div className="mt-10 lg:mt-12 grid lg:grid-cols-[0.92fr_1.08fr] gap-8 lg:gap-14 items-center">
           {/* kapittel-tabs */}
           <div className="order-2 lg:order-1 flex flex-col gap-2.5" role="tablist" aria-label="Kapitler">
             {CHAPTERS.map((c, i) => {
@@ -141,26 +141,26 @@ export function AutopilotChapters() {
                   role="tab"
                   aria-selected={active}
                   onClick={() => select(i)}
-                  className={`group w-full text-left rounded-2xl px-5 py-4 border transition-colors duration-300 ${
+                  className={`group w-full text-left rounded-2xl px-5 py-4 border transition-all duration-300 ${
                     active
-                      ? 'bg-white/[0.05] border-white/[0.12]'
-                      : 'border-transparent hover:bg-white/[0.03]'
+                      ? 'bg-surface border-hairline shadow-[0_16px_44px_rgba(22,19,28,0.08)]'
+                      : 'border-transparent hover:bg-fill/60'
                   }`}
                 >
                   <div className="flex items-baseline gap-4">
-                    <span className={`font-heading text-[13px] font-bold tracking-[0.08em] transition-colors duration-300 ${active ? 'text-white/85' : 'text-white/25'}`}>
+                    <span className={`font-heading text-[13px] font-bold tracking-[0.08em] transition-colors duration-300 ${active ? 'text-lavender' : 'text-ink/25'}`}>
                       {c.no}
                     </span>
-                    <span className={`flex-1 font-heading text-[17px] sm:text-lg font-bold leading-snug transition-colors duration-300 ${active ? 'text-white' : 'text-white/45 group-hover:text-white/70'}`}>
+                    <span className={`flex-1 font-heading text-[17px] sm:text-lg font-bold leading-snug transition-colors duration-300 ${active ? 'text-ink' : 'text-ink/40 group-hover:text-ink/65'}`}>
                       {c.title}
                     </span>
                   </div>
-                  <div className="mt-3.5 relative h-[2px] w-full rounded-full bg-white/[0.08] overflow-hidden">
+                  <div className="mt-3.5 relative h-[2px] w-full rounded-full bg-ink/[0.08] overflow-hidden">
                     <span
                       className="absolute left-0 top-0 h-full rounded-full"
                       style={{
                         width: `${pct.toFixed(1)}%`,
-                        background: 'linear-gradient(90deg, rgba(253,252,251,0.85), rgba(213,206,226,0.5))',
+                        background: 'linear-gradient(90deg, #9B5BD6, #CF97FC)',
                       }}
                     />
                   </div>
@@ -172,7 +172,7 @@ export function AutopilotChapters() {
                     }}
                   >
                     <div className="overflow-hidden">
-                      <p className={`pt-3 text-[15px] leading-relaxed transition-opacity duration-500 ${active ? 'opacity-100 text-white/55' : 'opacity-0'}`}>
+                      <p className={`pt-3 text-[15px] leading-relaxed transition-opacity duration-500 ${active ? 'opacity-100 text-quiet' : 'opacity-0'}`}>
                         {c.body}
                       </p>
                     </div>
@@ -191,7 +191,7 @@ export function AutopilotChapters() {
                 '--u': `${un}px`,
                 aspectRatio: '100 / 76',
                 background: 'linear-gradient(165deg, #0B0B11 0%, #07070A 58%, #0A0A0F 100%)',
-                boxShadow: '0 30px 80px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.06)',
+                boxShadow: '0 36px 90px rgba(22,19,28,0.30), 0 8px 26px rgba(22,19,28,0.16), inset 0 1px 0 rgba(255,255,255,0.07)',
               }}
             >
               <div className="absolute inset-0 dot-grid opacity-[0.07]" />
