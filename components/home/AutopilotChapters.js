@@ -43,6 +43,7 @@ const CHAPTERS = [
 export function AutopilotChapters() {
   const sectionRef = useRef(null);
   const stageRef = useRef(null);
+  const tiltRef = useRef(null);
   const [un, setUn] = useState(5);
   const [idx, setIdx] = useState(0);
   const [t, setT] = useState(0);
@@ -51,6 +52,42 @@ export function AutopilotChapters() {
 
   useEffect(() => {
     setReduce(window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  }, []);
+
+  /* pointer-parallax: scenen lener seg umerkelig mot pekeren (dag-versjon av heroens tilt) */
+  useEffect(() => {
+    const zone = sectionRef.current;
+    const inner = tiltRef.current;
+    if (!zone || !inner) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    if (window.matchMedia('(pointer: coarse)').matches) return;
+    const st = { tx: 0, ty: 0, cx: 0, cy: 0, raf: 0, hover: false };
+    const step = () => {
+      st.cx += (st.tx - st.cx) * 0.055;
+      st.cy += (st.ty - st.cy) * 0.055;
+      inner.style.transform = `rotateX(${(-st.cy * 2.2).toFixed(3)}deg) rotateY(${(st.cx * 2.8).toFixed(3)}deg)`;
+      if (st.hover || Math.abs(st.tx - st.cx) + Math.abs(st.ty - st.cy) > 0.001) {
+        st.raf = requestAnimationFrame(step);
+      } else {
+        st.raf = 0;
+      }
+    };
+    const kick = () => { if (!st.raf) st.raf = requestAnimationFrame(step); };
+    const onMove = (e) => {
+      const r = zone.getBoundingClientRect();
+      st.tx = Math.max(-1, Math.min(1, ((e.clientX - r.left) / r.width - 0.5) * 2));
+      st.ty = Math.max(-1, Math.min(1, ((e.clientY - r.top) / r.height - 0.5) * 2));
+      st.hover = true;
+      kick();
+    };
+    const onLeave = () => { st.tx = 0; st.ty = 0; st.hover = false; kick(); };
+    zone.addEventListener('pointermove', onMove, { passive: true });
+    zone.addEventListener('pointerleave', onLeave, { passive: true });
+    return () => {
+      zone.removeEventListener('pointermove', onMove);
+      zone.removeEventListener('pointerleave', onLeave);
+      if (st.raf) cancelAnimationFrame(st.raf);
+    };
   }, []);
 
   useEffect(() => {
@@ -192,7 +229,8 @@ export function AutopilotChapters() {
           </div>
 
           {/* scenen — rett på lys bakgrunn, uten ramme (dag-modus) */}
-          <div className="order-1 lg:order-2">
+          <div className="order-1 lg:order-2" style={{ perspective: '1300px' }}>
+            <div ref={tiltRef} style={{ transformStyle: 'preserve-3d', willChange: 'transform' }}>
             <div
               ref={stageRef}
               className="relative w-full overflow-hidden"
@@ -235,6 +273,7 @@ export function AutopilotChapters() {
                 <span className="text-ink/50">{ch.no}</span>
                 <span className="text-ink/20">/ 04</span>
               </div>
+            </div>
             </div>
           </div>
         </div>
