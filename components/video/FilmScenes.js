@@ -1619,7 +1619,7 @@ export function SceneChat({ t }) {
 }
 
 /* =====================================================================
-   AKT 8 — FINALE (68–81s)
+   AKT 8 — FINALE (68–84s)
 ===================================================================== */
 const FINAL_CHIPS = [
   'Annonse publisert', 'Visninger booket', 'Leietaker screenet',
@@ -1632,33 +1632,33 @@ const CHIP_POS = [
 ];
 
 export function SceneFinale({ t }) {
-  const txt = Math.min(easeOutCubic(seg(t, 73.15, 73.95)), 1 - seg(t, 76.2, 76.9));
-  const morph = easeInOutCubic(seg(t, 74.5, 75.1));
-  const glow = Math.sin(clamp01(seg(t, 74.5, 76.0)) * Math.PI);
-  const logoIn = easeOutQuint(seg(t, 77.0, 78.2));
-  const urlIn = easeOutCubic(seg(t, 78.5, 79.3));
+  const txt = Math.min(easeOutCubic(seg(t, 75.45, 76.25)), 1 - seg(t, 78.7, 79.4));
+  const morph = easeInOutCubic(seg(t, 77.4, 78.0));
+  const glow = Math.sin(clamp01(seg(t, 77.4, 78.9)) * Math.PI);
+  const logoIn = easeOutQuint(seg(t, 79.3, 80.5));
+  const urlIn = easeOutCubic(seg(t, 80.9, 81.7));
 
   const charRise = (i) => {
-    const p = easeOutQuint(seg(t, 73.25 + i * 0.045, 74.15 + i * 0.045));
+    const p = easeOutQuint(seg(t, 75.55 + i * 0.045, 76.45 + i * 0.045));
     return { display: 'inline-block', whiteSpace: 'pre', opacity: Math.min(1, p * 1.6), transform: `translateY(calc(var(--su) * ${((1 - p) * 3.5).toFixed(3)}))` };
   };
   const prefix = 'Trygt. Automa';
   const suffix = 'isk.';
 
   return (
-    <Shell t={t} a={68} b={81} fOut={0} drift={0}>
-      {t < 74.8 && (
+    <Shell t={t} a={68} b={84} fOut={0} drift={0}>
+      {t < 76.8 && (
         <div className="absolute inset-0">
           {/* chips som samles til ett punkt */}
           {FINAL_CHIPS.map((c, i) => {
-            const p = seg(t, 68.6 + i * 0.45, 69.4 + i * 0.45);
+            const p = seg(t, 68.55 + i * 0.85, 69.35 + i * 0.85);
             if (p <= 0) return null;
-            const g = easeInOutCubic(seg(t, 72.35 + i * 0.06, 73.1 + i * 0.06));
+            const g = easeInOutCubic(seg(t, 74.35 + i * 0.06, 75.1 + i * 0.06));
             const [px, py] = CHIP_POS[i];
             const x = px * (1 - g);
             const y = py * (1 - g) + (1 - easeOutCubic(p)) * 2;
             const sc = Math.max(0.5, easeOutBack(p)) * (1 - 0.8 * g);
-            const op = clamp01(p * 2) * (1 - seg(t, 72.95 + i * 0.06, 73.14 + i * 0.06));
+            const op = clamp01(p * 2) * (1 - seg(t, 74.95 + i * 0.06, 75.14 + i * 0.06));
             if (op <= 0.003) return null;
             return (
               <span
@@ -1681,7 +1681,7 @@ export function SceneFinale({ t }) {
           })}
           {/* samlingskjerne — lysende punkt som vokser */}
           {(() => {
-            const core = Math.min(easeOutCubic(seg(t, 72.5, 73.12)), 1 - seg(t, 73.18, 73.5));
+            const core = Math.min(easeOutCubic(seg(t, 74.5, 75.12)), 1 - seg(t, 75.18, 75.5));
             if (core <= 0.01) return null;
             const sz = (1.2 + core * 3.6).toFixed(2);
             return (
@@ -1702,8 +1702,8 @@ export function SceneFinale({ t }) {
           })()}
           {/* brist — ekspanderende ring + lysglimt */}
           {(() => {
-            const ring = seg(t, 73.12, 74.15);
-            const flash = Math.sin(clamp01(seg(t, 73.1, 73.7)) * Math.PI);
+            const ring = seg(t, 75.12, 76.15);
+            const flash = Math.sin(clamp01(seg(t, 75.1, 75.7)) * Math.PI);
             return (
               <>
                 {ring > 0.001 && ring < 0.999 && (
@@ -1737,7 +1737,7 @@ export function SceneFinale({ t }) {
       )}
       {txt > 0 && (
         <div className="absolute inset-0 flex items-center justify-center" style={{ opacity: Math.min(1, txt * 1.4) }}>
-          <Anamorphic t={t} at={74.5} x="50%" y="50%" maxW={58} dur={1.05} z={1} />
+          <Anamorphic t={t} at={77.4} x="50%" y="50%" maxW={58} dur={1.05} z={1} />
           <h2 className="font-heading font-bold" style={{ fontSize: 'calc(var(--su) * 8)', color: '#FDFCFB', letterSpacing: '-0.03em', lineHeight: 1.1, display: 'flex' }}>
             {prefix.split('').map((ch, i) => (
               <span key={`p${i}`} style={charRise(i)}>{ch}</span>
@@ -1769,7 +1769,7 @@ export function SceneFinale({ t }) {
               </span>
               {/* gnister rundt morphen */}
               {[[-1.6, -2.4, 0], [2.2, -1.8, 0.12], [-2.0, 1.6, 0.24], [1.8, 2.2, 0.3]].map(([dx, dy, dl], i) => {
-                const sp = seg(t, 74.55 + dl, 75.25 + dl);
+                const sp = seg(t, 77.45 + dl, 78.15 + dl);
                 if (sp <= 0 || sp >= 1) return null;
                 const fly = easeOutCubic(sp);
                 return (
@@ -1812,12 +1812,12 @@ export function SceneFinale({ t }) {
               WebkitMaskImage: 'radial-gradient(circle, rgba(0,0,0,0.9), transparent 62%)',
               maskImage: 'radial-gradient(circle, rgba(0,0,0,0.9), transparent 62%)',
               filter: 'blur(calc(var(--su) * 0.6))',
-              opacity: (0.55 * logoIn * (1 - seg(t, 79.6, 81))).toFixed(3),
+              opacity: (0.55 * logoIn * (1 - seg(t, 82.4, 84))).toFixed(3),
               pointerEvents: 'none',
             }}
           />
           {/* anamorf flare ved logo-avsløringen */}
-          <Anamorphic t={t} at={68.2} x="50%" y="46%" maxW={84} dur={1.4} z={1} />
+          <Anamorphic t={t} at={79.4} x="50%" y="46%" maxW={84} dur={1.4} z={1} />
           {/* svært subtil glød bak logoen */}
           <div
             className="absolute"
@@ -1832,7 +1832,7 @@ export function SceneFinale({ t }) {
             className="absolute"
             style={{
               top: '67%', left: '50%',
-              width: `calc(var(--su) * ${(26 * easeOutCubic(seg(t, 78.2, 79.4))).toFixed(2)})`,
+              width: `calc(var(--su) * ${(26 * easeOutCubic(seg(t, 80.6, 81.8))).toFixed(2)})`,
               height: 1,
               transform: 'translateX(-50%)',
               background: 'linear-gradient(90deg, transparent, rgba(207,151,252,0.45), transparent)',
@@ -1845,14 +1845,14 @@ export function SceneFinale({ t }) {
               style={{ width: 'calc(var(--su) * 30)', height: 'auto', ...rise(logoIn, 2.5), opacity: logoIn, filter: `blur(${((1 - logoIn) * 8).toFixed(1)}px)` }}
             />
             <div className="font-body" style={{ fontSize: 'calc(var(--su) * 1.9)', color: 'rgba(253,252,251,0.55)', marginTop: 'calc(var(--su) * 3.2)', letterSpacing: '0.02em', lineHeight: 1.2 }}>
-              <Words t={t} at={77.9} stagger={0.14} text="Utleie på autopilot." />
+              <Words t={t} at={80.2} stagger={0.14} text="Utleie på autopilot." />
             </div>
             <div className="font-body" style={{ ...rise(urlIn, 1.2), fontSize: 'calc(var(--su) * 1.25)', letterSpacing: '0.45em', textIndent: '0.45em', color: 'rgba(253,252,251,0.28)', marginTop: 'calc(var(--su) * 3.4)' }}>
               DIGIHOME.NO
             </div>
           </div>
           {/* fade til sort helt på slutten */}
-          <div className="absolute inset-0 pointer-events-none" style={{ background: '#000', opacity: seg(t, 80.0, 81) }} />
+          <div className="absolute inset-0 pointer-events-none" style={{ background: '#000', opacity: seg(t, 83.0, 84) }} />
         </div>
       )}
     </Shell>

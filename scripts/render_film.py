@@ -20,7 +20,7 @@ from playwright.async_api import async_playwright
 
 CAPTURE_FPS = 60   # fanges i 60 fps ...
 OUT_FPS = 30       # ... og blandes ned til 30 fps med motion blur
-DURATION = 81
+DURATION = 84
 URL = "http://localhost:3000/video?record=1"
 FRAMES_DIR = "/tmp/film_frames"
 WAV_PATH = "/tmp/film_music.wav"
@@ -64,8 +64,8 @@ async def render():
             if i % 300 == 0:
                 print(f"  frame {i}/{TOTAL_FRAMES} (t={t:.1f}s)", flush=True)
 
-        print("rendering music (OfflineAudioContext)...", flush=True)
-        wav_b64 = await page.evaluate("window.__renderMusicWav(72)")
+        print("rendering music + voiceover (OfflineAudioContext)...", flush=True)
+        wav_b64 = await page.evaluate(f"window.__renderMusicWav({DURATION})")
         with open(WAV_PATH, "wb") as f:
             f.write(base64.b64decode(wav_b64))
         print(f"music: {os.path.getsize(WAV_PATH) / 1e6:.1f} MB wav", flush=True)

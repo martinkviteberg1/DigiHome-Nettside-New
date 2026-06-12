@@ -19,7 +19,33 @@ const dr = (i, salt = 0) => {
   return x - Math.floor(x);
 };
 
-export const FILM_DURATION = 81;
+export const FILM_DURATION = 84;
+
+/* --- voiceover (ElevenLabs, ferdig plassert paa tidslinjen) --- */
+const VO_ENABLED = false; /* AV: brukeren ønsket film uten voiceover */
+const VO_URL = '/film/vo/vo-track.mp3';
+const DUCK_LEVEL = 0.4; /* musikkvolum under tale */
+/* [start, slutt] for naar fortelleren snakker (for ducking) */
+const DUCK_WINDOWS = [
+  [1.0, 5.23], [5.85, 9.1], [10.3, 12.85], [15.2, 23.6],
+  [27.0, 30.01], [30.8, 39.07], [39.85, 43.62], [44.35, 50.54],
+  [51.2, 57.82], [59.4, 65.73], [68.75, 72.91], [74.55, 78.47],
+  [79.55, 83.5],
+];
+
+let voiceBuffer = null;
+let voicePromise = null;
+export function loadVoice(ctx) {
+  if (voiceBuffer) return Promise.resolve(voiceBuffer);
+  if (!voicePromise) {
+    voicePromise = fetch(VO_URL)
+      .then((r) => { if (!r.ok) throw new Error('vo mangler'); return r.arrayBuffer(); })
+      .then((ab) => ctx.decodeAudioData(ab))
+      .then((buf) => { voiceBuffer = buf; return buf; })
+      .catch(() => { voicePromise = null; return null; });
+  }
+  return voicePromise;
+}
 
 /* --- partitur --- */
 const PAD_SECTIONS = [
@@ -29,19 +55,19 @@ const PAD_SECTIONS = [
   { a: 38,   b: 49,   notes: ['Bb3', 'D4', 'F4', 'C5'] },
   { a: 48.5, b: 57.5, notes: ['Ab3', 'C4', 'Eb4', 'G4'] },
   { a: 57.5, b: 68.5, notes: ['F3', 'Ab3', 'C4', 'Eb4'] },
-  { a: 68,   b: 73,   notes: ['Ab3', 'C4', 'Eb4', 'C5'] },
-  { a: 72.5, b: 77,   notes: ['Bb3', 'D4', 'F4', 'D5'] },
-  { a: 76.5, b: 81,   notes: ['C4', 'G4', 'D5', 'Eb5'] },
+  { a: 68,   b: 74.8, notes: ['Ab3', 'C4', 'Eb4', 'C5'] },
+  { a: 74.3, b: 79.8, notes: ['Bb3', 'D4', 'F4', 'D5'] },
+  { a: 79.3, b: 84,   notes: ['C4', 'G4', 'D5', 'Eb5'] },
 ];
 const BASS_SECTIONS = [
   { a: 0, b: 14.5, n: 'C2' }, { a: 14, b: 26.5, n: 'Ab2' }, { a: 26, b: 38.5, n: 'Eb2' },
   { a: 38, b: 49, n: 'Bb2' }, { a: 48.5, b: 57.5, n: 'Ab2' }, { a: 57.5, b: 68.5, n: 'F2' },
-  { a: 68, b: 73, n: 'Ab2' }, { a: 72.5, b: 77, n: 'Bb2' }, { a: 76.5, b: 81, n: 'C2' },
+  { a: 68, b: 74.8, n: 'Ab2' }, { a: 74.3, b: 79.8, n: 'Bb2' }, { a: 79.3, b: 84, n: 'C2' },
 ];
 const WHOOSHES = [8, 14, 26, 38, 48.5, 57.5, 68];
 const CHIMES = [
   { t: 23.2, n: 'Eb5' }, { t: 36.5, n: 'G5' }, { t: 42.1, n: 'F5' },
-  { t: 47.1, n: 'C6' }, { t: 55.7, n: 'Ab5' }, { t: 62.0, n: 'Ab5' }, { t: 77.2, n: 'G5' },
+  { t: 47.1, n: 'C6' }, { t: 55.7, n: 'Ab5' }, { t: 62.0, n: 'Ab5' }, { t: 79.8, n: 'G5' },
 ];
 const LEAD = [
   { t: 16.2, n: 'G4', d: 1.6 }, { t: 18.0, n: 'Bb4', d: 1.4 }, { t: 19.6, n: 'C5', d: 2.2 },
@@ -50,7 +76,7 @@ const LEAD = [
   { t: 50.4, n: 'Ab4', d: 1.6 }, { t: 53.0, n: 'C5', d: 1.8 },
   { t: 59.8, n: 'C5', d: 1.6 }, { t: 61.8, n: 'Bb4', d: 2.0 },
   { t: 69.6, n: 'Eb5', d: 1.8 }, { t: 71.4, n: 'F5', d: 2.0 },
-  { t: 77.4, n: 'G5', d: 3.0 },
+  { t: 79.7, n: 'G5', d: 3.0 },
 ];
 const PULSE = { from: 10.8, to: 67.8, step: 1.2, vol: 0.06 };
 const ARP = { from: 14.6, to: 67.8, step: 0.6 };
@@ -90,13 +116,14 @@ function makeNoiseBuffer(ctx, duration = 2) {
 ===================================================================== */
 export function scheduleMusic(ctx, destination, fromT = 0) {
   const sources = [];
+  let stopped = false;
   const now = () => ctx.currentTime;
 
   /* busser */
   const bus = ctx.createGain();
   bus.gain.value = 1;
   if (FILM_DURATION > fromT) {
-    const fadeStart = now() + Math.max(0, 70.8 - fromT);
+    const fadeStart = now() + Math.max(0, 76.5 - fromT);
     const fadeEnd = now() + Math.max(0, FILM_DURATION - fromT);
     bus.gain.setValueAtTime(1, fadeStart);
     bus.gain.linearRampToValueAtTime(0.0001, fadeEnd);
@@ -118,7 +145,10 @@ export function scheduleMusic(ctx, destination, fromT = 0) {
   shelfHi.type = 'highshelf';
   shelfHi.frequency.value = 8200;
   shelfHi.gain.value = 2.4;
-  bus.connect(shelfLo).connect(shelfHi).connect(comp).connect(master).connect(destination);
+  /* duck-gain: senker musikken naar fortelleren snakker */
+  const duck = ctx.createGain();
+  duck.gain.value = 1;
+  bus.connect(shelfLo).connect(shelfHi).connect(comp).connect(master).connect(duck).connect(destination);
 
   /* romklang */
   const reverb = ctx.createConvolver();
@@ -747,29 +777,68 @@ export function scheduleMusic(ctx, destination, fromT = 0) {
   msgPop(61.65, true);
   msgPop(63.65, false);
   /* finale: chips samles (fallende whoosh) og brister (boom + chime) */
-  whoosh(72.8, 0.05, 2400, 320, 1.1);
-  boom(73.12);
-  chime(freq('Eb5'), 73.2, 0.034);
-  shimmer(74.55);
-  boom(77.0, 0.05); /* myk logo-hit */
-  airPad(freq('G5'), 76.5, 81);
-  airPad(freq('C6'), 77.2, 81, 0.012);
+  whoosh(74.8, 0.05, 2400, 320, 1.1);
+  boom(75.12);
+  chime(freq('Eb5'), 75.2, 0.034);
+  shimmer(77.45);
+  boom(79.35, 0.05); /* myk logo-hit */
+  airPad(freq('G5'), 79.2, 84);
+  airPad(freq('C6'), 79.9, 84, 0.012);
+
+  /* --- voiceover: spilles utenom musikk-kjeden, med ducking --- */
+  const voGain = ctx.createGain();
+  voGain.gain.value = 1.15;
+  voGain.connect(destination);
+  const scheduleDuck = (fT, at) => {
+    duck.gain.cancelScheduledValues(at);
+    duck.gain.setValueAtTime(1, at);
+    for (const [a, b] of DUCK_WINDOWS) {
+      if (b + 0.45 <= fT) continue;
+      const s = at + Math.max(0, a - 0.12 - fT);
+      const e = at + Math.max(0.16, b + 0.05 - fT);
+      duck.gain.setValueAtTime(1, s);
+      duck.gain.linearRampToValueAtTime(DUCK_LEVEL, s + 0.15);
+      duck.gain.setValueAtTime(DUCK_LEVEL, e);
+      duck.gain.linearRampToValueAtTime(1, e + 0.4);
+    }
+  };
+  const startVoice = (fT, at) => {
+    if (!voiceBuffer || fT >= voiceBuffer.duration) return;
+    const src = ctx.createBufferSource();
+    src.buffer = voiceBuffer;
+    src.connect(voGain);
+    src.start(at, fT);
+    sources.push(src);
+    scheduleDuck(fT, at);
+  };
+  if (VO_ENABLED && voiceBuffer) {
+    startVoice(fromT, now());
+  } else if (VO_ENABLED && typeof fetch !== 'undefined') {
+    const t0 = now();
+    loadVoice(ctx).then((buf) => {
+      if (!buf || stopped) return;
+      startVoice(fromT + (now() - t0), now());
+    });
+  }
 
   return {
     stop() {
+      stopped = true;
       for (const s of sources) {
         try { s.stop(); } catch (e) { /* ok */ }
         try { s.disconnect(); } catch (e) { /* ok */ }
       }
       try { bus.disconnect(); } catch (e) { /* ok */ }
+      try { voGain.disconnect(); } catch (e) { /* ok */ }
     },
   };
 }
 
-/* --- offline render til WAV (for MP4-eksport) --- */
+/* --- offline render til WAV (for MP4-eksport) — musikk + voiceover --- */
 export async function renderMusicWav(duration = FILM_DURATION) {
   const sampleRate = 44100;
   const ctx = new OfflineAudioContext(2, Math.ceil(sampleRate * duration), sampleRate);
+  if (VO_ENABLED) { try { await loadVoice(ctx); } catch (e) { /* render uten VO */ } }
   scheduleMusic(ctx, ctx.destination, 0);
   const buf = await ctx.startRendering();
   return audioBufferToWavBase64(buf);

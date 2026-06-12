@@ -7,7 +7,7 @@ import {
   SceneOpening, SceneToggle, SceneAnnonse, SceneVisning, SceneKontrakt, SceneDynamisk, SceneChat, SceneFinale,
 } from './FilmScenes';
 
-const DURATION = FILM_DURATION; /* 81s */
+const DURATION = FILM_DURATION; /* 84s */
 const MP4_URL = '/film/digihome-utleie-pa-autopilot-16x9.mp4';
 const SCENE_BOUNDARIES = [8, 14, 26, 38, 48.5, 57.5, 68];
 
@@ -19,7 +19,7 @@ const SCENES = [
   { start: 38, end: 49, C: SceneKontrakt },
   { start: 48.5, end: 58, C: SceneDynamisk },
   { start: 57.5, end: 68.5, C: SceneChat },
-  { start: 68, end: 81, C: SceneFinale },
+  { start: 68, end: 84, C: SceneFinale },
 ];
 
 /* kapitler (for spiller-UI) */
