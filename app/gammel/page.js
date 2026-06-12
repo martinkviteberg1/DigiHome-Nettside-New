@@ -3,7 +3,7 @@ import Link from 'next/link';
 import {
   Sparkles, ShieldCheck, CalendarRange, Wrench, Plug, Droplets, Scale, Umbrella,
   BadgeCheck, TrendingUp, Eye, Users, Check, ArrowRight, ArrowUpRight,
-  MapPin, BedDouble, Maximize, Quote, Star, Clock,
+  MapPin, BedDouble, Maximize, Quote, Star, BarChart3, Clock, Building2,
   Repeat, LineChart, Settings2, Smartphone,
 } from 'lucide-react';
 
@@ -11,14 +11,15 @@ import { Header } from '@/components/site/Header';
 import { Footer } from '@/components/site/Footer';
 import { Reveal } from '@/components/site/Reveal';
 import { JsonLd } from '@/components/site/JsonLd';
+import { AddressSearch } from '@/components/site/AddressSearch';
 import { CinematicVideo } from '@/components/site/CinematicVideo';
 import { CountUp } from '@/components/site/CountUp';
 import { PartnerMarquee } from '@/components/site/PartnerMarquee';
 import { Bar } from '@/components/site/Bar';
-import { HeroAutopilot } from '@/components/home/HeroAutopilot';
+import { ScrollProgress } from '@/components/site/ScrollProgress';
 import {
-  site, statStrip, services, steps, qualities, qualityGallery,
-  showcase, network, reasons, testimonials,
+  site, stats, statStrip, services, steps, qualities, qualityGallery,
+  showcase, network, reasons, testimonials, partners,
 } from '@/lib/site';
 
 const iconMap = {
@@ -27,16 +28,10 @@ const iconMap = {
 };
 
 export const metadata = {
-  description:
-    'Utleie på autopilot. DigiHome håndterer annonsering, prising, visninger og leietakere i Bergen — helt automatisk. Gratis verdivurdering.',
-  alternates: { canonical: '/' },
-  openGraph: {
-    title: 'DigiHome | Utleie på autopilot',
-    description:
-      'DigiHome håndterer annonsering, prising, visninger og leietakere i Bergen — helt automatisk. Gratis verdivurdering.',
-    url: site.url + '/',
-    images: [{ url: site.ogImage, width: 1200, height: 630, alt: 'DigiHome — Bergen' }],
-  },
+  title: 'Gammel forside',
+  description: 'Arkivert versjon av DigiHome-forsiden.',
+  alternates: { canonical: '/gammel' },
+  robots: { index: false, follow: false },
 };
 
 const Eyebrow = ({ children, className = '' }) => (
@@ -93,31 +88,113 @@ export default function HomePage() {
     <>
       <JsonLd data={orgJsonLd} />
       <JsonLd data={localBusinessJsonLd} />
-      <Header dark />
+      <Header />
 
       <main>
-        {/* ============ 1. HERO — UTLEIE. PÅ AUTOPILOT. ============ */}
-        <HeroAutopilot />
+        {/* ============ 1. HERO ============ */}
+        <section className="relative overflow-hidden">
+          <div
+            className="pointer-events-none absolute inset-0 -z-10 dot-grid opacity-[0.45]"
+            style={{
+              maskImage: 'radial-gradient(ellipse 70% 60% at 50% 35%, black 30%, transparent 75%)',
+              WebkitMaskImage: 'radial-gradient(ellipse 70% 60% at 50% 35%, black 30%, transparent 75%)',
+            }}
+          />
+          <div className="pointer-events-none absolute inset-0 -z-10 lavender-glow" />
 
-        {/* ============ 2. SLIK JOBBER DIGIHOME (kinematisk film) ============ */}
+          <div className="max-w-shell mx-auto px-6 sm:px-10 lg:px-16 pt-12 pb-20 lg:pt-16 lg:pb-28">
+            <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+              <div>
+                <Reveal>
+                  <div className="inline-flex items-center gap-2 rounded-full bg-white border border-hairline px-3.5 py-1.5 text-xs font-semibold text-quiet shadow-[0_4px_16px_rgba(0,0,0,0.04)]">
+                    <span className="h-1.5 w-1.5 rounded-full bg-lavender" />
+                    Eiendomsforvaltning i Bergen
+                  </div>
+                </Reveal>
+
+                <Reveal as="h1" delay={0.05} className="mt-6 text-[40px] sm:text-[52px] lg:text-[62px] font-bold text-ink leading-[1.05] text-balance">
+                  Smartere utleie.<br />Høyere inntekt.
+                </Reveal>
+
+                <Reveal delay={0.1}>
+                  <p className="mt-6 text-lg text-quiet leading-relaxed max-w-xl">
+                    DigiHome kombinerer teknologi med personlig oppfølging for å maksimere
+                    leieinntekten din. Vår hybridløsning av korttids- og langtidsutleie tilpasser
+                    seg markedet automatisk.
+                  </p>
+                </Reveal>
+
+                <Reveal delay={0.15} className="mt-8">
+                  <AddressSearch />
+                </Reveal>
+
+                <Reveal delay={0.2}>
+                  <dl className="mt-10 grid grid-cols-3 gap-6 max-w-md">
+                    {stats.map((s) => (
+                      <div key={s.label}>
+                        <dt className="text-3xl sm:text-4xl font-bold text-ink tracking-[-0.03em]">
+                          <CountUp value={s.value} />
+                        </dt>
+                        <dd className="mt-1 text-sm text-quiet">{s.label}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                </Reveal>
+              </div>
+
+              {/* Bento collage */}
+              <Reveal delay={0.1} className="relative">
+                <div className="pointer-events-none absolute -inset-8 -z-10">
+                  <div className="absolute right-6 top-8 h-72 w-72 rounded-full bg-lavender-soft/25 blur-3xl animate-blob" />
+                  <div className="absolute left-0 bottom-0 h-56 w-56 rounded-full bg-[#FCE8C8]/40 blur-3xl animate-blob" style={{ animationDelay: '4s' }} />
+                </div>
+
+                <div className="relative grid grid-cols-2 grid-rows-2 gap-4 h-[460px] sm:h-[560px]">
+                  <div className="group row-span-2 relative rounded-card overflow-hidden border border-hairline">
+                    <Image src="/interior-hallway.webp" alt="Lyst interiør i en DigiHome-bolig" fill className="object-cover transition-transform duration-700 group-hover:scale-110" sizes="(max-width:1024px) 50vw, 25vw" priority />
+                    <div className="absolute inset-0 ring-1 ring-inset ring-black/5 rounded-card" />
+                  </div>
+                  <div className="group relative rounded-card overflow-hidden border border-hairline">
+                    <Image src="/interior-bedroom.webp" alt="Soverom i utleiebolig" fill className="object-cover transition-transform duration-700 group-hover:scale-110" sizes="(max-width:1024px) 50vw, 25vw" />
+                  </div>
+                  <div className="group relative rounded-card overflow-hidden border border-hairline">
+                    <Image src="/bergen-houses.webp" alt="Boliger i Bergen" fill className="object-cover transition-transform duration-700 group-hover:scale-110" sizes="(max-width:1024px) 50vw, 25vw" />
+                  </div>
+                </div>
+
+                <div className="absolute right-3 sm:right-4 top-5 z-10 inline-flex items-center gap-1.5 rounded-full bg-ink text-white px-3.5 py-1.5 text-xs font-semibold shadow-[0_8px_24px_rgba(0,0,0,0.2)]">
+                  <Sparkles className="h-3.5 w-3.5 text-lavender-soft" />
+                  Nytt · 10+2-modellen
+                </div>
+
+                <div className="absolute -left-3 sm:-left-5 bottom-8 z-10 rounded-2xl bg-white border border-hairline shadow-[0_12px_40px_rgba(0,0,0,0.10)] px-5 py-4 animate-floaty">
+                  <p className="text-xs uppercase tracking-[0.16em] font-semibold text-taupe">Snittinntekt Bergen</p>
+                  <p className="mt-1 text-2xl font-bold text-ink">{site.avgIncome}</p>
+                </div>
+              </Reveal>
+            </div>
+          </div>
+        </section>
+
+        {/* ============ 2. SLIK JOBBER DIGIHOME (kinematisk video) ============ */}
         <section className="relative overflow-hidden bg-ink text-white py-20 sm:py-28">
           <div className="pointer-events-none absolute inset-0" style={{ background: 'radial-gradient(circle at 75% 0%, rgba(207,151,252,0.14), transparent 55%)' }} />
           <div className="relative max-w-shell mx-auto px-6 sm:px-10 lg:px-16">
             <div className="max-w-2xl">
-              <Reveal><Eyebrow className="text-lavender-soft">Se filmen</Eyebrow></Reveal>
+              <Reveal><Eyebrow className="text-lavender-soft">Slik fungerer det</Eyebrow></Reveal>
               <Reveal as="h2" delay={0.05} className="mt-4 text-[34px] sm:text-[52px] font-bold leading-[1.06]">
                 Slik jobber DigiHome for deg.
               </Reveal>
               <Reveal delay={0.1}>
                 <p className="mt-5 text-lg text-white/65 leading-relaxed max-w-xl">
-                  Fra du slår på autopiloten til leien tikker inn på konto — se hele
-                  flyten på 60 sekunder. Teknologi i kulissene, mennesker i front.
+                  Se hvordan vi gjør langtidsutleie smartere — fra første visning til siste
+                  leiebetaling. Teknologi i kulissene, mennesker i front.
                 </p>
               </Reveal>
             </div>
 
             <Reveal delay={0.12} className="mt-12">
-              <CinematicVideo poster="/bergen-aerial.webp" src="/film/digihome-utleie-pa-autopilot-60s-16x9.mp4" />
+              <CinematicVideo poster="/bergen-aerial.webp" src="/langtid-hero-720p.mp4" />
             </Reveal>
           </div>
         </section>
@@ -376,7 +453,7 @@ export default function HomePage() {
                 </div>
               </div>
 
-              {/* Inntektssammenligning */}
+              {/* Income comparison */}
               <Reveal delay={0.1}>
                 <div className="rounded-panel bg-ink text-white p-8 sm:p-10 shadow-[0_20px_60px_rgba(0,0,0,0.18)]">
                   <p className="text-xs uppercase tracking-[0.2em] font-semibold text-white/50">Inntektssammenligning</p>
@@ -493,7 +570,7 @@ export default function HomePage() {
         <section className="py-20 sm:py-28 bg-ink text-white">
           <div className="max-w-shell mx-auto px-6 sm:px-10 lg:px-16">
             <div className="grid lg:grid-cols-[0.8fr_1.2fr] gap-12 lg:gap-16 items-center">
-              {/* Portrett-plassholder (sarah.webp leveres senere) */}
+              {/* Portrait placeholder (sarah.webp leveres senere) */}
               <Reveal>
                 <div className="relative aspect-[3/4] rounded-panel overflow-hidden border border-white/10 bg-gradient-to-br from-[#2a2540] via-[#1a1828] to-ink">
                   <div className="absolute inset-0 dot-grid opacity-[0.15]" />

@@ -269,3 +269,47 @@ html { scroll-behavior: smooth; }
   50%, 100% { opacity: 0; }
 }
 
+/* === DigiHome — hero «Utleie. På autopilot.» === */
+.dh-platinum {
+  background: linear-gradient(100deg, #FDFCFB 0%, #CFC9D6 28%, #948CA6 50%, #EAE6F2 74%, #B9B2C8 100%);
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation: dh-shine 9s ease-in-out infinite;
+}
+@keyframes dh-shine {
+  0%, 100% { background-position: 0% 50%; }
+  50%      { background-position: 100% 50%; }
+}
+/* intro-linjene overstyrer shine mens de toner inn (cascade: står etter .dh-platinum) */
+.dh-intro-line {
+  opacity: 0;
+  animation: dh-line-in 1.05s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.dh-l1 { animation-delay: 0.3s; }
+.dh-l2 { animation-delay: 1.45s; }
+@keyframes dh-line-in {
+  from { opacity: 0; transform: translateY(0.45em); filter: blur(14px); }
+  to   { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+@keyframes dh-aurora {
+  0%   { transform: rotate(0deg) scale(1); }
+  50%  { transform: rotate(180deg) scale(1.1); }
+  100% { transform: rotate(360deg) scale(1); }
+}
+.dh-scroll-line {
+  transform-origin: top;
+  animation: dh-scroll-pulse 2.2s ease-in-out infinite;
+}
+@keyframes dh-scroll-pulse {
+  0%, 100% { opacity: 0.25; transform: scaleY(0.5); }
+  50%      { opacity: 1; transform: scaleY(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dh-intro-line { animation: none !important; opacity: 1 !important; }
+  .dh-platinum   { animation: none !important; }
+  .dh-scroll-line { animation: none !important; }
+}
+
