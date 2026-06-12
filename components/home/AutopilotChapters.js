@@ -9,7 +9,6 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { Reveal } from '@/components/site/Reveal';
-import { seg, easeInOutCubic } from '@/components/video/filmUtils';
 import { SceneAnnonse, ScenePris, SceneLeietaker, SceneHverdag } from './ChapterScenes';
 
 const EASE = 'cubic-bezier(0.16, 1, 0.3, 1)';
@@ -192,22 +191,20 @@ export function AutopilotChapters() {
             })}
           </div>
 
-          {/* scenen */}
+          {/* scenen — rett på lys bakgrunn, uten ramme (dag-modus) */}
           <div className="order-1 lg:order-2">
             <div
               ref={stageRef}
-              className="relative w-full overflow-hidden rounded-[24px] border border-white/10"
+              className="relative w-full overflow-hidden"
               style={{
                 '--u': `${un}px`,
                 aspectRatio: '100 / 76',
-                background: 'linear-gradient(165deg, #0B0B11 0%, #07070A 58%, #0A0A0F 100%)',
-                boxShadow: '0 36px 90px rgba(22,19,28,0.30), 0 8px 26px rgba(22,19,28,0.16), inset 0 1px 0 rgba(255,255,255,0.07)',
               }}
             >
-              <div className="absolute inset-0 dot-grid opacity-[0.07]" />
+              {/* mykt scenelys bak elementene */}
               <div
                 className="absolute inset-0"
-                style={{ background: 'radial-gradient(ellipse 70% 55% at 50% 32%, rgba(170,160,200,0.07), transparent 65%)' }}
+                style={{ background: 'radial-gradient(ellipse 64% 52% at 50% 38%, rgba(155,91,214,0.05), transparent 68%)' }}
               />
               {/* kinematisk kamera: rolig zoom gjennom kapitlet */}
               <div
@@ -221,45 +218,23 @@ export function AutopilotChapters() {
               >
                 <Scene t={t} />
               </div>
-              {/* lys-sveip ved kapittelskifte */}
-              {(() => {
-                const p = seg(t, 0.05, 0.65);
-                if (p <= 0.001 || p >= 0.999) return null;
-                const e = easeInOutCubic(p);
-                return (
-                  <div className="pointer-events-none absolute inset-0 overflow-hidden">
-                    <div
-                      className="absolute"
-                      style={{
-                        top: '-30%', bottom: '-30%', width: '40%',
-                        left: `${(-45 + 130 * e).toFixed(1)}%`,
-                        transform: 'rotate(9deg)',
-                        background: `linear-gradient(100deg, transparent, rgba(235,232,245,${(Math.sin(p * Math.PI) * 0.05).toFixed(3)}) 45%, rgba(250,249,253,${(Math.sin(p * Math.PI) * 0.08).toFixed(3)}) 50%, rgba(235,232,245,${(Math.sin(p * Math.PI) * 0.05).toFixed(3)}) 55%, transparent)`,
-                        mixBlendMode: 'screen',
-                      }}
-                    />
-                  </div>
-                );
-              })()}
               {/* telemetri-stripe */}
-              <div className="absolute left-5 right-5 top-4 flex items-center justify-between">
+              <div className="absolute left-2 right-2 top-1 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]" />
-                  <span className="text-[9px] uppercase tracking-[0.32em] font-semibold text-white/35">
+                  <span className="h-1.5 w-1.5 rounded-full bg-success shadow-[0_0_5px_rgba(24,121,78,0.5)]" />
+                  <span className="text-[9px] uppercase tracking-[0.32em] font-semibold text-ink/35">
                     DigiHome Autopilot
                   </span>
                 </div>
-                <span className="text-[9px] uppercase tracking-[0.28em] font-semibold text-white/45">
+                <span className="text-[9px] uppercase tracking-[0.28em] font-semibold text-ink/45">
                   {ch.tag}
                 </span>
               </div>
               {/* kapittel-indikator */}
-              <div className="absolute left-5 bottom-4 flex items-baseline gap-1.5 text-[10px] uppercase tracking-[0.3em] font-semibold">
-                <span className="text-white/55">{ch.no}</span>
-                <span className="text-white/20">/ 04</span>
+              <div className="absolute left-2 bottom-2 flex items-baseline gap-1.5 text-[10px] uppercase tracking-[0.3em] font-semibold">
+                <span className="text-ink/50">{ch.no}</span>
+                <span className="text-ink/20">/ 04</span>
               </div>
-              {/* vignett */}
-              <div className="pointer-events-none absolute inset-0 rounded-[24px]" style={{ boxShadow: 'inset 0 0 90px rgba(0,0,0,0.5)' }} />
             </div>
           </div>
         </div>
