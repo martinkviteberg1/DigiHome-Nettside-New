@@ -1112,11 +1112,301 @@ export function SceneKontrakt({ t }) {
 }
 
 /* =====================================================================
-   AKT 6 — CHAT MED LEIETAKER (48.5–59.5s)
+   AKT 6 — DYNAMISK UTLEIE (48.5–57.5s)
+   Kombinér langtid og korttid — f.eks. Airbnb om sommeren — for
+   maksimal inntekt. Visualisert som en års-tidslinje.
+===================================================================== */
+const DYN_W = 39.2;                 /* indre kortbredde i su */
+const DYN_M = DYN_W / 12;           /* månedsbredde */
+const DYN_MONTHS = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'];
+/* langtidsblokker: [fraMnd, tilMnd, sveipStart, etikett] */
+const DYN_LONG = [
+  [0, 5, 50.4, 'Langtid'],
+  [8, 12, 50.9, 'Langtid'],
+];
+const DYN_SUMMER_X0 = 5 * DYN_M + 0.15;
+const DYN_SUMMER_X1 = 8 * DYN_M - 0.15;
+/* korttidsbookinger i sommerhullet: [bredde-su, popStart] */
+const DYN_SHORT = [
+  [1.9, 52.6], [1.3, 52.85], [2.2, 53.1], [1.2, 53.35], [1.7, 53.6],
+];
+const DYN_SHORT_X = (() => {
+  let x = DYN_SUMMER_X0 + 0.25;
+  return DYN_SHORT.map(([w]) => {
+    const cur = x;
+    x += w + 0.28;
+    return cur;
+  });
+})();
+
+export function SceneDynamisk({ t }) {
+  const lp = seg(t, 48.5, 57.5);
+  const cardIn = easeOutQuint(seg(t, 49.3, 50.3));
+  const dash = Math.min(seg(t, 51.7, 52.2), 1 - seg(t, 52.65, 53.05)); /* «Sommer?»-puls */
+  const tagIn = easeOutBack(seg(t, 53.1, 53.7));
+  const tagO = clamp01(seg(t, 53.1, 53.4) * 2);
+  const cmpIn = clamp01(seg(t, 54.1, 54.65) * 1.5);
+  const aA = Math.round(easeOutExpo(seg(t, 54.4, 55.5)) * 298000);
+  const aB = Math.round(easeOutExpo(seg(t, 54.5, 55.7)) * 352000);
+  const barA = easeOutCubic(seg(t, 54.35, 55.35));
+  const barB = easeOutCubic(seg(t, 54.5, 55.6));
+  const plussIn = easeOutBack(seg(t, 55.7, 56.2));
+  const badgeIn = seg(t, 56.2, 56.7);
+  const capIn = easeOutCubic(seg(t, 54.9, 55.7));
+  const pillOn = clamp01(seg(t, 52.6, 53.1) * 1.5);
+  const f3 = float3d(t, 3.3);
+  const summerC = (DYN_SUMMER_X0 + DYN_SUMMER_X1) / 2;
+
+  return (
+    <Shell t={t} a={48.5} b={57.5}>
+      <LeftCol lp={lp}>
+        <Kicker t={t} at={48.95} num="06" label="DYNAMISK" />
+        <h2 className="font-heading font-bold" style={{ fontSize: 'calc(var(--su) * 6.2)', color: '#FDFCFB', lineHeight: 1.08, textShadow: landGlow(t, 49.9) }}>
+          <Words t={t} at={49.1} text="Maksimal inntekt?" />
+        </h2>
+        <p className="font-body" style={{ fontSize: 'calc(var(--su) * 2.3)', color: 'rgba(253,252,251,0.6)', marginTop: 'calc(var(--su) * 1.8)', lineHeight: 1.4 }}>
+          <Words t={t} at={49.8} stagger={0.09} text="Kombinér langtid og korttid — du bestemmer." />
+        </p>
+        <div className="font-body" style={{ ...rise(capIn, 2), marginTop: 'calc(var(--su) * 3)', display: 'flex', alignItems: 'center', gap: 'calc(var(--su) * 1)' }}>
+          <span style={{ width: 'calc(var(--su) * 0.8)', height: 'calc(var(--su) * 0.8)', borderRadius: '50%', background: '#CF97FC', display: 'inline-block' }} />
+          <span style={{ fontSize: 'calc(var(--su) * 1.6)', color: 'rgba(207,151,252,0.9)', letterSpacing: '0.08em' }}>
+            Vinter: langtid · Sommer: Airbnb
+          </span>
+        </div>
+      </LeftCol>
+      <div
+        style={{
+          position: 'absolute', right: '7%', top: '50%', width: '44%',
+          transform: `perspective(calc(var(--su) * 130)) translateY(-50%) translateY(calc(var(--su) * ${((1 - cardIn) * 5 - lp * 1.2 + f3.y).toFixed(2)})) rotateY(${(-7 + 5.2 * cardIn + f3.ry * cardIn).toFixed(2)}deg) rotateX(${(1.5 - cardIn + f3.rx * cardIn).toFixed(2)}deg) scale(${(0.95 + cardIn * 0.05).toFixed(3)})`,
+          opacity: cardIn,
+          background: '#131316',
+          borderRadius: 'calc(var(--su) * 1.8)', padding: 'calc(var(--su) * 2.2) calc(var(--su) * 2.4)',
+          boxShadow: '0 calc(var(--su)*0.3) calc(var(--su)*1) rgba(0,0,0,0.45), 0 calc(var(--su)*2.6) calc(var(--su)*8) rgba(0,0,0,0.6), 0 0 calc(var(--su)*7) rgba(155,91,214,0.10)',
+        }}
+      >
+        <CardEdge />
+        <Glare t={t} at={50.55} />
+        <FloorGlow opacity={cardIn} />
+        {/* topplinje: tittel + legende + DYNAMISK-pille */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'calc(var(--su) * 1.6)' }}>
+          <span className="font-body" style={{ fontSize: 'calc(var(--su) * 1.7)', color: 'rgba(253,252,251,0.85)', fontWeight: 500 }}>
+            Året ditt
+          </span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 'calc(var(--su) * 1.5)' }}>
+            <span className="font-body" style={{ display: 'flex', alignItems: 'center', gap: 'calc(var(--su) * 0.5)', fontSize: 'calc(var(--su) * 1.1)', color: 'rgba(253,252,251,0.55)' }}>
+              <span style={{ width: 'calc(var(--su) * 0.85)', height: 'calc(var(--su) * 0.85)', borderRadius: 3, background: 'linear-gradient(90deg, #9B5BD6, #CF97FC)' }} />
+              Langtid
+            </span>
+            <span className="font-body" style={{ display: 'flex', alignItems: 'center', gap: 'calc(var(--su) * 0.5)', fontSize: 'calc(var(--su) * 1.1)', color: 'rgba(253,252,251,0.55)' }}>
+              <span style={{ width: 'calc(var(--su) * 0.85)', height: 'calc(var(--su) * 0.85)', borderRadius: 3, background: 'rgba(207,151,252,0.16)', border: '1px solid rgba(207,151,252,0.65)' }} />
+              Korttid
+            </span>
+            <span
+              className="font-body"
+              style={{
+                fontSize: 'calc(var(--su) * 1.05)', letterSpacing: '0.18em', color: '#CF97FC',
+                border: '1px solid rgba(207,151,252,0.5)', borderRadius: 999,
+                padding: 'calc(var(--su)*0.35) calc(var(--su)*0.95)',
+                background: `rgba(207,151,252,${(0.04 + pillOn * 0.07).toFixed(3)})`,
+                boxShadow: `0 0 calc(var(--su) * ${(pillOn * (1.1 + 0.5 * Math.abs(Math.sin(t * 2.4)))).toFixed(2)}) rgba(207,151,252,0.6)`,
+              }}
+            >
+              DYNAMISK
+            </span>
+          </span>
+        </div>
+        {/* månedsbokstaver */}
+        <div style={{ position: 'relative', width: `calc(var(--su) * ${DYN_W})`, height: 'calc(var(--su) * 1.5)', margin: '0 auto calc(var(--su) * 0.4)' }}>
+          {DYN_MONTHS.map((m, i) => (
+            <span
+              key={i}
+              className="font-body"
+              style={{
+                position: 'absolute', left: `calc(var(--su) * ${(i * DYN_M).toFixed(2)})`,
+                width: `calc(var(--su) * ${DYN_M.toFixed(2)})`,
+                textAlign: 'center', fontSize: 'calc(var(--su) * 1)', letterSpacing: '0.1em',
+                color: 'rgba(253,252,251,0.35)',
+                opacity: clamp01(seg(t, 49.7 + i * 0.03, 50.0 + i * 0.03) * 1.5),
+              }}
+            >
+              {m}
+            </span>
+          ))}
+        </div>
+        {/* års-tidslinje */}
+        <div style={{ position: 'relative', width: `calc(var(--su) * ${DYN_W})`, height: 'calc(var(--su) * 6)', margin: '0 auto' }}>
+          {/* spor */}
+          <div style={{ position: 'absolute', inset: 0, borderRadius: 'calc(var(--su) * 1)', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }} />
+          {/* månedsskiller */}
+          {Array.from({ length: 11 }, (_, i) => (
+            <span key={i} aria-hidden="true" style={{ position: 'absolute', left: `calc(var(--su) * ${((i + 1) * DYN_M).toFixed(2)})`, top: 'calc(var(--su) * 0.8)', bottom: 'calc(var(--su) * 0.8)', width: 1, background: 'rgba(255,255,255,0.05)' }} />
+          ))}
+          {/* langtidsblokker som sveiper inn */}
+          {DYN_LONG.map(([m0, m1, at, label], i) => {
+            const sw = easeInOutCubic(seg(t, at, at + 0.8));
+            if (sw <= 0.003) return null;
+            const x0 = m0 * DYN_M + 0.15;
+            const x1 = m1 * DYN_M - 0.15;
+            return (
+              <div
+                key={`l${i}`}
+                style={{
+                  position: 'absolute', left: `calc(var(--su) * ${x0.toFixed(2)})`, top: 'calc(var(--su) * 0.5)',
+                  width: `calc(var(--su) * ${((x1 - x0) * sw).toFixed(2)})`, height: 'calc(var(--su) * 5)',
+                  borderRadius: 'calc(var(--su) * 0.8)',
+                  background: 'linear-gradient(90deg, #9B5BD6, #CF97FC)',
+                  boxShadow: '0 calc(var(--su)*0.25) calc(var(--su)*1.3) rgba(155,91,214,0.4)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
+                }}
+              >
+                <span className="font-body" style={{ fontSize: 'calc(var(--su) * 1.2)', color: '#0A0A0A', fontWeight: 600, whiteSpace: 'nowrap', opacity: clamp01(seg(t, at + 0.7, at + 1.05) * 1.6) }}>
+                  {label}
+                </span>
+              </div>
+            );
+          })}
+          {/* sommerhullet: «Sommer?» før autopiloten fyller det */}
+          {dash > 0.02 && (
+            <div
+              style={{
+                position: 'absolute', left: `calc(var(--su) * ${DYN_SUMMER_X0.toFixed(2)})`, top: 'calc(var(--su) * 0.5)',
+                width: `calc(var(--su) * ${(DYN_SUMMER_X1 - DYN_SUMMER_X0).toFixed(2)})`, height: 'calc(var(--su) * 5)',
+                borderRadius: 'calc(var(--su) * 0.8)',
+                border: '1.5px dashed rgba(207,151,252,0.45)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                opacity: dash,
+              }}
+            >
+              <span className="font-body" style={{ fontSize: 'calc(var(--su) * 1.15)', color: 'rgba(207,151,252,0.8)', letterSpacing: '0.08em' }}>
+                Sommer?
+              </span>
+            </div>
+          )}
+          {/* korttidsbookinger som kaskaderer inn */}
+          {DYN_SHORT.map(([w, at], i) => {
+            const pop = easeOutBack(seg(t, at, at + 0.5));
+            const o = clamp01(seg(t, at, at + 0.28) * 2);
+            if (o <= 0.003) return null;
+            const ringP = seg(t, at + 0.1, at + 0.7);
+            return (
+              <div
+                key={`k${i}`}
+                style={{
+                  position: 'absolute', left: `calc(var(--su) * ${DYN_SHORT_X[i].toFixed(2)})`, top: 'calc(var(--su) * 0.95)',
+                  width: `calc(var(--su) * ${w.toFixed(2)})`, height: 'calc(var(--su) * 4.1)',
+                  opacity: o,
+                  transform: `scale(${Math.max(0.5, pop).toFixed(3)})`,
+                }}
+              >
+                <div
+                  style={{
+                    position: 'absolute', inset: 0,
+                    borderRadius: 'calc(var(--su) * 0.6)',
+                    background: 'rgba(207,151,252,0.16)',
+                    border: '1px solid rgba(207,151,252,0.65)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}
+                >
+                  <span style={{ fontSize: 'calc(var(--su) * 0.9)', color: '#EDDCFF' }}>✦</span>
+                </div>
+                {ringP > 0.003 && ringP < 0.997 && (
+                  <div aria-hidden="true" style={{ position: 'absolute', inset: `calc(var(--su) * ${(-(easeOutCubic(ringP) * 1.2)).toFixed(2)})`, borderRadius: 'calc(var(--su) * 1.1)', border: '1px solid rgba(207,151,252,0.6)', opacity: (1 - ringP).toFixed(3) }} />
+                )}
+              </div>
+            );
+          })}
+        </div>
+        {/* Airbnb-tag under sommeren */}
+        <div style={{ position: 'relative', width: `calc(var(--su) * ${DYN_W})`, height: 'calc(var(--su) * 3.6)', margin: '0 auto' }}>
+          {tagO > 0.003 && (
+            <>
+              <span aria-hidden="true" style={{ position: 'absolute', left: `calc(var(--su) * ${summerC.toFixed(2)})`, top: 0, width: 1, height: 'calc(var(--su) * 0.8)', background: 'rgba(207,151,252,0.5)', opacity: tagO }} />
+              <span
+                className="font-body"
+                style={{
+                  position: 'absolute', left: `calc(var(--su) * ${summerC.toFixed(2)})`, top: 'calc(var(--su) * 0.9)',
+                  transform: `translateX(-50%) scale(${Math.max(0.6, tagIn).toFixed(3)})`,
+                  opacity: tagO,
+                  fontSize: 'calc(var(--su) * 1.15)', color: '#EDDCFF', whiteSpace: 'nowrap',
+                  border: '1px solid rgba(207,151,252,0.5)', borderRadius: 999,
+                  padding: 'calc(var(--su) * 0.45) calc(var(--su) * 1.2)',
+                  background: 'rgba(207,151,252,0.1)',
+                  boxShadow: '0 0 calc(var(--su)*1.4) rgba(155,91,214,0.25)',
+                }}
+              >
+                ✦ Airbnb om sommeren · opptil 2× nattpris
+              </span>
+            </>
+          )}
+        </div>
+        {/* inntektssammenligning */}
+        <div style={{ opacity: cmpIn, marginTop: 'calc(var(--su) * 0.4)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'calc(var(--su) * 1)', marginBottom: 'calc(var(--su) * 1.1)' }}>
+            <span className="font-body" style={{ width: 'calc(var(--su) * 12.5)', fontSize: 'calc(var(--su) * 1.25)', color: 'rgba(253,252,251,0.55)' }}>Kun langtid</span>
+            <span style={{ position: 'relative', flex: 1, height: 'calc(var(--su) * 1.4)', borderRadius: 999, background: 'rgba(255,255,255,0.07)', overflow: 'hidden' }}>
+              <span style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${(70 * barA).toFixed(1)}%`, borderRadius: 999, background: 'rgba(255,255,255,0.28)' }} />
+            </span>
+            <span className="font-heading font-bold" style={{ width: 'calc(var(--su) * 10.5)', textAlign: 'right', fontSize: 'calc(var(--su) * 1.55)', color: 'rgba(253,252,251,0.7)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+              {fmtNOK(aA)} kr
+            </span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'calc(var(--su) * 1)' }}>
+            <span className="font-body" style={{ width: 'calc(var(--su) * 12.5)', fontSize: 'calc(var(--su) * 1.25)', color: 'rgba(253,252,251,0.85)' }}>Langtid + korttid</span>
+            <span style={{ position: 'relative', flex: 1, height: 'calc(var(--su) * 1.4)', borderRadius: 999, background: 'rgba(255,255,255,0.07)', overflow: 'hidden' }}>
+              <span style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${(82.5 * barB).toFixed(1)}%`, borderRadius: 999, background: 'linear-gradient(90deg, #9B5BD6, #CF97FC)', boxShadow: '0 0 calc(var(--su)*1) rgba(155,91,214,0.5)' }} />
+            </span>
+            <span className="font-heading font-bold" style={{ width: 'calc(var(--su) * 10.5)', textAlign: 'right', fontSize: 'calc(var(--su) * 1.55)', color: '#FDFCFB', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+              {fmtNOK(aB)} kr
+            </span>
+          </div>
+        </div>
+        {/* badge: +18 % og konklusjon */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'calc(var(--su) * 1)', marginTop: 'calc(var(--su) * 1.6)' }}>
+          <span
+            className="font-body"
+            style={{
+              opacity: clamp01(plussIn * 2),
+              transform: `scale(${Math.max(0.6, plussIn).toFixed(3)})`,
+              fontSize: 'calc(var(--su) * 1.3)', fontWeight: 600, color: '#7ee2a8',
+              border: '1px solid rgba(126,226,168,0.45)', borderRadius: 999,
+              padding: 'calc(var(--su) * 0.4) calc(var(--su) * 1.1)',
+              background: 'rgba(126,226,168,0.08)',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            ↑ +18 % i året
+          </span>
+          <span
+            className="font-body"
+            style={{
+              opacity: clamp01(badgeIn * 2),
+              transform: `scale(${Math.max(0.6, easeOutBack(badgeIn)).toFixed(3)})`,
+              fontSize: 'calc(var(--su) * 1.3)', letterSpacing: '0.07em',
+              color: 'rgba(207,151,252,0.95)',
+              border: '1px solid rgba(207,151,252,0.4)', borderRadius: 999,
+              padding: 'calc(var(--su) * 0.4) calc(var(--su) * 1.3)',
+              background: 'rgba(207,151,252,0.07)',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            Du bestemmer ✓
+          </span>
+        </div>
+      </div>
+      <Anamorphic t={t} at={55.7} x="71%" y="68%" maxW={42} dur={1.0} />
+    </Shell>
+  );
+}
+
+
+
+/* =====================================================================
+   AKT 7 — CHAT MED LEIETAKER (57.5–68.5s)
 ===================================================================== */
 function Bubble({ t, at, side, children, time, k = 1 }) {
   const p = easeOutBack(seg(t, at, at + 0.6));
   const o = clamp01(seg(t, at, at + 0.35) * 2);
+  if (o <= 0.003) return null; /* ikke reserver plass før meldingen ankommer */
   const isRight = side === 'right';
   return (
     <div style={{ display: 'flex', justifyContent: isRight ? 'flex-end' : 'flex-start', marginBottom: `calc(var(--su) * ${(1.1 * k).toFixed(2)})` }}>
@@ -1148,21 +1438,21 @@ function Bubble({ t, at, side, children, time, k = 1 }) {
 }
 
 export function SceneChat({ t }) {
-  const lp = seg(t, 48.5, 59.5);
-  const cardIn = easeOutQuint(seg(t, 49.4, 50.4));
-  const typingOn = t >= 51.4 && t < 52.5;
-  const statusIn = seg(t, 56.2, 56.9);
-  const capIn = easeOutCubic(seg(t, 56.6, 57.4));
+  const lp = seg(t, 57.5, 68.5);
+  const cardIn = easeOutQuint(seg(t, 58.4, 59.4));
+  const typingOn = t >= 60.4 && t < 61.5;
+  const statusIn = seg(t, 65.2, 65.9);
+  const capIn = easeOutCubic(seg(t, 65.6, 66.4));
 
   return (
-    <Shell t={t} a={48.5} b={59.5}>
+    <Shell t={t} a={57.5} b={68.5}>
       <LeftCol lp={lp}>
-        <Kicker t={t} at={48.95} num="06" label="SVAR 24/7" />
-        <h2 className="font-heading font-bold" style={{ fontSize: 'calc(var(--su) * 5.6)', color: '#FDFCFB', lineHeight: 1.1, textShadow: landGlow(t, 50.0) }}>
-          <Words t={t} at={49.1} stagger={0.1} text="Leietaker lurer på noe?" />
+        <Kicker t={t} at={57.95} num="07" label="SVAR 24/7" />
+        <h2 className="font-heading font-bold" style={{ fontSize: 'calc(var(--su) * 5.6)', color: '#FDFCFB', lineHeight: 1.1, textShadow: landGlow(t, 59.0) }}>
+          <Words t={t} at={58.1} stagger={0.1} text="Leietaker lurer på noe?" />
         </h2>
         <p className="font-body" style={{ fontSize: 'calc(var(--su) * 2.3)', color: 'rgba(253,252,251,0.6)', marginTop: 'calc(var(--su) * 1.8)', lineHeight: 1.4 }}>
-          <Words t={t} at={49.7} stagger={0.1} text="Besvart på sekunder. Døgnet rundt." />
+          <Words t={t} at={58.7} stagger={0.1} text="Besvart på sekunder. Døgnet rundt." />
         </p>
         <div className="font-body" style={{ ...rise(capIn, 2), marginTop: 'calc(var(--su) * 3)', display: 'flex', alignItems: 'center', gap: 'calc(var(--su) * 1)' }}>
           <span style={{ width: 'calc(var(--su) * 0.8)', height: 'calc(var(--su) * 0.8)', borderRadius: '50%', background: '#CF97FC', display: 'inline-block' }} />
@@ -1176,7 +1466,7 @@ export function SceneChat({ t }) {
         return (
       <div
         style={{
-          position: 'absolute', right: '11.5%', top: '50%', width: '22%',
+          position: 'absolute', right: '10.5%', top: '50%', width: '24%',
           transform: `perspective(calc(var(--su) * 150)) translateY(-50%) translateY(calc(var(--su) * ${((1 - cardIn) * 6 - lp * 1.0 + f3.y).toFixed(2)})) rotateY(${(-11 + 6.5 * cardIn + f3.ry * cardIn * 1.5).toFixed(2)}deg) rotateX(${(2 - 1.4 * cardIn + f3.rx * cardIn).toFixed(2)}deg) scale(${(0.94 + cardIn * 0.06).toFixed(3)})`,
           opacity: cardIn,
         }}
@@ -1194,7 +1484,7 @@ export function SceneChat({ t }) {
         {/* telefonramme */}
         <div
           style={{
-            position: 'relative', aspectRatio: '9 / 19.6',
+            position: 'relative', aspectRatio: '9 / 18.2',
             borderRadius: 'calc(var(--su) * 3.3)',
             background: 'linear-gradient(160deg, #3c3c44 0%, #18181c 28%, #101014 72%, #2a2a31 100%)',
             boxShadow: '0 0 0 1px rgba(255,255,255,0.09), 0 calc(var(--su)*0.3) calc(var(--su)*1) rgba(0,0,0,0.5), 0 calc(var(--su)*3) calc(var(--su)*9) rgba(0,0,0,0.65), 0 0 calc(var(--su)*8) rgba(155,91,214,0.12)',
@@ -1253,7 +1543,7 @@ export function SceneChat({ t }) {
               <div
                 className="font-body"
                 style={{
-                  opacity: clamp01(seg(t, 50.15, 50.55) * 1.5),
+                  opacity: clamp01(seg(t, 59.15, 59.55) * 1.5),
                   textAlign: 'center',
                   fontSize: 'calc(var(--su) * 0.92)', letterSpacing: '0.04em',
                   color: 'rgba(253,252,251,0.38)',
@@ -1262,7 +1552,7 @@ export function SceneChat({ t }) {
               >
                 I dag 21:47
               </div>
-              <Bubble t={t} at={50.5} side="left" time="21:47" k={0.82}>Hei! Varmtvannet er plutselig borte 🥶</Bubble>
+              <Bubble t={t} at={59.5} side="left" time="21:47" k={0.82}>Hei! Varmtvannet er plutselig borte 🥶</Bubble>
               {typingOn && (
                 <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 'calc(var(--su) * 0.9)' }}>
                   <div style={{ background: 'rgba(207,151,252,0.18)', borderRadius: 'calc(var(--su) * 1.3)', padding: 'calc(var(--su) * 0.8) calc(var(--su) * 1.2)', display: 'flex', gap: 'calc(var(--su) * 0.45)' }}>
@@ -1279,8 +1569,9 @@ export function SceneChat({ t }) {
                   </div>
                 </div>
               )}
-              <Bubble t={t} at={52.6} side="right" time="21:47" k={0.82}>Det fikser vi! Rørlegger kommer i morgen kl. 09:00.</Bubble>
-              <Bubble t={t} at={54.6} side="left" time="21:48" k={0.82}>Wow, så raskt! Tusen takk 🙌</Bubble>
+              <Bubble t={t} at={61.6} side="right" time="21:47" k={0.82}>Det fikser vi! Rørlegger kommer i morgen kl. 09:00.</Bubble>
+              <Bubble t={t} at={63.6} side="left" time="21:48" k={0.82}>Wow, så raskt! Tusen takk 🙌</Bubble>
+              {statusIn > 0.003 && (
               <div
                 className="font-body"
                 style={{
@@ -1299,6 +1590,7 @@ export function SceneChat({ t }) {
               >
                 Besvart automatisk · 8 sek
               </div>
+              )}
             </div>
             {/* meldingsfelt nederst */}
             <div style={{ padding: 'calc(var(--su) * 0.9) calc(var(--su) * 1.3) calc(var(--su) * 1.2)', position: 'relative' }}>
@@ -1313,7 +1605,7 @@ export function SceneChat({ t }) {
             <div aria-hidden="true" style={{ position: 'absolute', inset: 0, background: 'linear-gradient(115deg, transparent 28%, rgba(255,255,255,0.05) 40%, rgba(255,255,255,0.015) 48%, transparent 58%)', pointerEvents: 'none' }} />
             {/* skjermpuls når melding kommer inn */}
             {(() => {
-              const pp = Math.sin(clamp01(seg(t, 50.5, 51.05)) * Math.PI);
+              const pp = Math.sin(clamp01(seg(t, 59.5, 60.05)) * Math.PI);
               if (pp <= 0.02) return null;
               return <div aria-hidden="true" style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at 50% 35%, rgba(207,151,252,0.14), transparent 70%)', opacity: pp, pointerEvents: 'none' }} />;
             })()}
@@ -1327,7 +1619,7 @@ export function SceneChat({ t }) {
 }
 
 /* =====================================================================
-   AKT 7 — FINALE (59–72s)
+   AKT 8 — FINALE (68–81s)
 ===================================================================== */
 const FINAL_CHIPS = [
   'Annonse publisert', 'Visninger booket', 'Leietaker screenet',
@@ -1335,38 +1627,38 @@ const FINAL_CHIPS = [
 ];
 /* posisjoner (i su, relativt sentrum) for samle-animasjonen */
 const CHIP_POS = [
-  [-23, -5.6], [0, -5.6], [23, -5.6],
-  [-22, 5.6], [0.8, 5.6], [22, 5.6],
+  [-23.5, -5.6], [0, -5.6], [23.5, -5.6],
+  [-23.5, 5.6], [-1.2, 5.6], [23.5, 5.6],
 ];
 
 export function SceneFinale({ t }) {
-  const txt = Math.min(easeOutCubic(seg(t, 64.15, 64.95)), 1 - seg(t, 67.2, 67.9));
-  const morph = easeInOutCubic(seg(t, 65.5, 66.1));
-  const glow = Math.sin(clamp01(seg(t, 65.5, 67.0)) * Math.PI);
-  const logoIn = easeOutQuint(seg(t, 68.0, 69.2));
-  const urlIn = easeOutCubic(seg(t, 69.5, 70.3));
+  const txt = Math.min(easeOutCubic(seg(t, 73.15, 73.95)), 1 - seg(t, 76.2, 76.9));
+  const morph = easeInOutCubic(seg(t, 74.5, 75.1));
+  const glow = Math.sin(clamp01(seg(t, 74.5, 76.0)) * Math.PI);
+  const logoIn = easeOutQuint(seg(t, 77.0, 78.2));
+  const urlIn = easeOutCubic(seg(t, 78.5, 79.3));
 
   const charRise = (i) => {
-    const p = easeOutQuint(seg(t, 64.25 + i * 0.045, 65.15 + i * 0.045));
+    const p = easeOutQuint(seg(t, 73.25 + i * 0.045, 74.15 + i * 0.045));
     return { display: 'inline-block', whiteSpace: 'pre', opacity: Math.min(1, p * 1.6), transform: `translateY(calc(var(--su) * ${((1 - p) * 3.5).toFixed(3)}))` };
   };
   const prefix = 'Trygt. Automa';
   const suffix = 'isk.';
 
   return (
-    <Shell t={t} a={59} b={72} fOut={0} drift={0}>
-      {t < 65.8 && (
+    <Shell t={t} a={68} b={81} fOut={0} drift={0}>
+      {t < 74.8 && (
         <div className="absolute inset-0">
           {/* chips som samles til ett punkt */}
           {FINAL_CHIPS.map((c, i) => {
-            const p = seg(t, 59.6 + i * 0.45, 60.4 + i * 0.45);
+            const p = seg(t, 68.6 + i * 0.45, 69.4 + i * 0.45);
             if (p <= 0) return null;
-            const g = easeInOutCubic(seg(t, 63.35 + i * 0.06, 64.1 + i * 0.06));
+            const g = easeInOutCubic(seg(t, 72.35 + i * 0.06, 73.1 + i * 0.06));
             const [px, py] = CHIP_POS[i];
             const x = px * (1 - g);
             const y = py * (1 - g) + (1 - easeOutCubic(p)) * 2;
             const sc = Math.max(0.5, easeOutBack(p)) * (1 - 0.8 * g);
-            const op = clamp01(p * 2) * (1 - seg(t, 63.95 + i * 0.06, 64.14 + i * 0.06));
+            const op = clamp01(p * 2) * (1 - seg(t, 72.95 + i * 0.06, 73.14 + i * 0.06));
             if (op <= 0.003) return null;
             return (
               <span
@@ -1376,10 +1668,10 @@ export function SceneFinale({ t }) {
                   position: 'absolute', left: '50%', top: '50%',
                   transform: `translate(-50%, -50%) translate(calc(var(--su) * ${x.toFixed(2)}), calc(var(--su) * ${y.toFixed(2)})) scale(${sc.toFixed(3)})`,
                   opacity: op.toFixed(3),
-                  fontSize: 'calc(var(--su) * 2)', color: 'rgba(253,252,251,0.9)',
+                  fontSize: 'calc(var(--su) * 1.8)', color: 'rgba(253,252,251,0.9)',
                   border: '1px solid rgba(255,255,255,0.16)', background: 'rgba(255,255,255,0.05)',
-                  borderRadius: 999, padding: 'calc(var(--su) * 1.1) calc(var(--su) * 2.2)',
-                  display: 'inline-flex', alignItems: 'center', gap: 'calc(var(--su) * 0.9)',
+                  borderRadius: 999, padding: 'calc(var(--su) * 0.95) calc(var(--su) * 1.9)',
+                  display: 'inline-flex', alignItems: 'center', gap: 'calc(var(--su) * 0.8)',
                   whiteSpace: 'nowrap',
                 }}
               >
@@ -1389,7 +1681,7 @@ export function SceneFinale({ t }) {
           })}
           {/* samlingskjerne — lysende punkt som vokser */}
           {(() => {
-            const core = Math.min(easeOutCubic(seg(t, 63.5, 64.12)), 1 - seg(t, 64.18, 64.5));
+            const core = Math.min(easeOutCubic(seg(t, 72.5, 73.12)), 1 - seg(t, 73.18, 73.5));
             if (core <= 0.01) return null;
             const sz = (1.2 + core * 3.6).toFixed(2);
             return (
@@ -1410,8 +1702,8 @@ export function SceneFinale({ t }) {
           })()}
           {/* brist — ekspanderende ring + lysglimt */}
           {(() => {
-            const ring = seg(t, 64.12, 65.15);
-            const flash = Math.sin(clamp01(seg(t, 64.1, 64.7)) * Math.PI);
+            const ring = seg(t, 73.12, 74.15);
+            const flash = Math.sin(clamp01(seg(t, 73.1, 73.7)) * Math.PI);
             return (
               <>
                 {ring > 0.001 && ring < 0.999 && (
@@ -1445,13 +1737,13 @@ export function SceneFinale({ t }) {
       )}
       {txt > 0 && (
         <div className="absolute inset-0 flex items-center justify-center" style={{ opacity: Math.min(1, txt * 1.4) }}>
-          <Anamorphic t={t} at={65.5} x="50%" y="50%" maxW={58} dur={1.05} z={1} />
+          <Anamorphic t={t} at={74.5} x="50%" y="50%" maxW={58} dur={1.05} z={1} />
           <h2 className="font-heading font-bold" style={{ fontSize: 'calc(var(--su) * 8)', color: '#FDFCFB', letterSpacing: '-0.03em', lineHeight: 1.1, display: 'flex' }}>
             {prefix.split('').map((ch, i) => (
               <span key={`p${i}`} style={charRise(i)}>{ch}</span>
             ))}
-            {/* morph-bokstaven: t -> g */}
-            <span style={{ ...charRise(prefix.length), position: 'relative', perspective: 'calc(var(--su) * 30)' }}>
+            {/* morph-bokstaven: t -> g (plassen vokser med morphen siden g er bredere enn t) */}
+            <span style={{ ...charRise(prefix.length), position: 'relative', perspective: 'calc(var(--su) * 30)', paddingRight: `${(morph * 0.2).toFixed(3)}em` }}>
               <span
                 style={{
                   display: 'inline-block',
@@ -1477,7 +1769,7 @@ export function SceneFinale({ t }) {
               </span>
               {/* gnister rundt morphen */}
               {[[-1.6, -2.4, 0], [2.2, -1.8, 0.12], [-2.0, 1.6, 0.24], [1.8, 2.2, 0.3]].map(([dx, dy, dl], i) => {
-                const sp = seg(t, 65.55 + dl, 66.25 + dl);
+                const sp = seg(t, 74.55 + dl, 75.25 + dl);
                 if (sp <= 0 || sp >= 1) return null;
                 const fly = easeOutCubic(sp);
                 return (
@@ -1520,7 +1812,7 @@ export function SceneFinale({ t }) {
               WebkitMaskImage: 'radial-gradient(circle, rgba(0,0,0,0.9), transparent 62%)',
               maskImage: 'radial-gradient(circle, rgba(0,0,0,0.9), transparent 62%)',
               filter: 'blur(calc(var(--su) * 0.6))',
-              opacity: (0.55 * logoIn * (1 - seg(t, 70.6, 72))).toFixed(3),
+              opacity: (0.55 * logoIn * (1 - seg(t, 79.6, 81))).toFixed(3),
               pointerEvents: 'none',
             }}
           />
@@ -1540,7 +1832,7 @@ export function SceneFinale({ t }) {
             className="absolute"
             style={{
               top: '67%', left: '50%',
-              width: `calc(var(--su) * ${(26 * easeOutCubic(seg(t, 69.2, 70.4))).toFixed(2)})`,
+              width: `calc(var(--su) * ${(26 * easeOutCubic(seg(t, 78.2, 79.4))).toFixed(2)})`,
               height: 1,
               transform: 'translateX(-50%)',
               background: 'linear-gradient(90deg, transparent, rgba(207,151,252,0.45), transparent)',
@@ -1553,14 +1845,14 @@ export function SceneFinale({ t }) {
               style={{ width: 'calc(var(--su) * 30)', height: 'auto', ...rise(logoIn, 2.5), opacity: logoIn, filter: `blur(${((1 - logoIn) * 8).toFixed(1)}px)` }}
             />
             <div className="font-body" style={{ fontSize: 'calc(var(--su) * 1.9)', color: 'rgba(253,252,251,0.55)', marginTop: 'calc(var(--su) * 3.2)', letterSpacing: '0.02em', lineHeight: 1.2 }}>
-              <Words t={t} at={68.9} stagger={0.14} text="Utleie på autopilot." />
+              <Words t={t} at={77.9} stagger={0.14} text="Utleie på autopilot." />
             </div>
             <div className="font-body" style={{ ...rise(urlIn, 1.2), fontSize: 'calc(var(--su) * 1.25)', letterSpacing: '0.45em', textIndent: '0.45em', color: 'rgba(253,252,251,0.28)', marginTop: 'calc(var(--su) * 3.4)' }}>
               DIGIHOME.NO
             </div>
           </div>
           {/* fade til sort helt på slutten */}
-          <div className="absolute inset-0 pointer-events-none" style={{ background: '#000', opacity: seg(t, 71.0, 72) }} />
+          <div className="absolute inset-0 pointer-events-none" style={{ background: '#000', opacity: seg(t, 80.0, 81) }} />
         </div>
       )}
     </Shell>

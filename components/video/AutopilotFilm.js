@@ -4,12 +4,12 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { seg, clamp01, Orb, FilmGrain, LightSweep, Aurora, Bokeh } from './filmUtils';
 import { scheduleMusic, renderMusicWav, FILM_DURATION } from './filmAudio';
 import {
-  SceneOpening, SceneToggle, SceneAnnonse, SceneVisning, SceneKontrakt, SceneChat, SceneFinale,
+  SceneOpening, SceneToggle, SceneAnnonse, SceneVisning, SceneKontrakt, SceneDynamisk, SceneChat, SceneFinale,
 } from './FilmScenes';
 
-const DURATION = FILM_DURATION; /* 72s */
+const DURATION = FILM_DURATION; /* 81s */
 const MP4_URL = '/film/digihome-utleie-pa-autopilot-16x9.mp4';
-const SCENE_BOUNDARIES = [8, 14, 26, 38, 48.5, 59];
+const SCENE_BOUNDARIES = [8, 14, 26, 38, 48.5, 57.5, 68];
 
 const SCENES = [
   { start: 0, end: 8.5, C: SceneOpening },
@@ -17,8 +17,9 @@ const SCENES = [
   { start: 14, end: 26.5, C: SceneAnnonse },
   { start: 26, end: 38.5, C: SceneVisning },
   { start: 38, end: 49, C: SceneKontrakt },
-  { start: 48.5, end: 59.5, C: SceneChat },
-  { start: 59, end: 72, C: SceneFinale },
+  { start: 48.5, end: 58, C: SceneDynamisk },
+  { start: 57.5, end: 68.5, C: SceneChat },
+  { start: 68, end: 81, C: SceneFinale },
 ];
 
 /* kapitler (for spiller-UI) */
@@ -28,8 +29,9 @@ const CHAPTERS = [
   { t: 14, label: 'Annonse' },
   { t: 26, label: 'Visninger & screening' },
   { t: 38, label: 'Kontrakt & husleie' },
-  { t: 48.5, label: 'Svar 24/7' },
-  { t: 59, label: 'Finale' },
+  { t: 48.5, label: 'Dynamisk utleie' },
+  { t: 57.5, label: 'Svar 24/7' },
+  { t: 68, label: 'Finale' },
 ];
 
 /* impact-kamerarist fjernet etter tilbakemelding — filmen skal være supersmooth */
@@ -277,11 +279,11 @@ export default function AutopilotFilm() {
   };
 
   const pct = (time / DURATION) * 100;
-  const watermark = Math.min(seg(time, 8.5, 9.7), 1 - seg(time, 66, 67.2)) * 0.45;
-  const engineOrb = Math.min(seg(time, 14.6, 15.6), 1 - seg(time, 47.5, 48.5)) * 0.85;
+  const watermark = Math.min(seg(time, 8.5, 9.7), 1 - seg(time, 75, 76.2)) * 0.45;
+  const engineOrb = Math.min(seg(time, 14.6, 15.6), 1 - seg(time, 56.5, 57.5)) * 0.85;
 
-  /* vignett som «puster» i takt med musikkpulsen (kick hver 1,2s fra 10,8–58,8) */
-  const kickGlow = started && time >= 10.8 && time <= 58.8
+  /* vignett som «puster» i takt med musikkpulsen (kick hver 1,2s fra 10,8–67,8) */
+  const kickGlow = started && time >= 10.8 && time <= 67.8
     ? Math.exp(-(((time - 10.8) % 1.2) / 1.2) * 5.5)
     : 0;
 

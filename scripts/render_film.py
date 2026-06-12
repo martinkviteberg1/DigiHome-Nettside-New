@@ -20,7 +20,7 @@ from playwright.async_api import async_playwright
 
 CAPTURE_FPS = 60   # fanges i 60 fps ...
 OUT_FPS = 30       # ... og blandes ned til 30 fps med motion blur
-DURATION = 72
+DURATION = 81
 URL = "http://localhost:3000/video?record=1"
 FRAMES_DIR = "/tmp/film_frames"
 WAV_PATH = "/tmp/film_music.wav"

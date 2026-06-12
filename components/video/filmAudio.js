@@ -19,7 +19,7 @@ const dr = (i, salt = 0) => {
   return x - Math.floor(x);
 };
 
-export const FILM_DURATION = 72;
+export const FILM_DURATION = 81;
 
 /* --- partitur --- */
 const PAD_SECTIONS = [
@@ -27,31 +27,33 @@ const PAD_SECTIONS = [
   { a: 14,   b: 26.5, notes: ['Ab3', 'C4', 'Eb4', 'G4'] },
   { a: 26,   b: 38.5, notes: ['Eb3', 'G3', 'Bb3', 'D4'] },
   { a: 38,   b: 49,   notes: ['Bb3', 'D4', 'F4', 'C5'] },
-  { a: 48.5, b: 59.5, notes: ['F3', 'Ab3', 'C4', 'Eb4'] },
-  { a: 59,   b: 64,   notes: ['Ab3', 'C4', 'Eb4', 'C5'] },
-  { a: 63.5, b: 68,   notes: ['Bb3', 'D4', 'F4', 'D5'] },
-  { a: 67.5, b: 72,   notes: ['C4', 'G4', 'D5', 'Eb5'] },
+  { a: 48.5, b: 57.5, notes: ['Ab3', 'C4', 'Eb4', 'G4'] },
+  { a: 57.5, b: 68.5, notes: ['F3', 'Ab3', 'C4', 'Eb4'] },
+  { a: 68,   b: 73,   notes: ['Ab3', 'C4', 'Eb4', 'C5'] },
+  { a: 72.5, b: 77,   notes: ['Bb3', 'D4', 'F4', 'D5'] },
+  { a: 76.5, b: 81,   notes: ['C4', 'G4', 'D5', 'Eb5'] },
 ];
 const BASS_SECTIONS = [
   { a: 0, b: 14.5, n: 'C2' }, { a: 14, b: 26.5, n: 'Ab2' }, { a: 26, b: 38.5, n: 'Eb2' },
-  { a: 38, b: 49, n: 'Bb2' }, { a: 48.5, b: 59.5, n: 'F2' }, { a: 59, b: 64, n: 'Ab2' },
-  { a: 63.5, b: 68, n: 'Bb2' }, { a: 67.5, b: 72, n: 'C2' },
+  { a: 38, b: 49, n: 'Bb2' }, { a: 48.5, b: 57.5, n: 'Ab2' }, { a: 57.5, b: 68.5, n: 'F2' },
+  { a: 68, b: 73, n: 'Ab2' }, { a: 72.5, b: 77, n: 'Bb2' }, { a: 76.5, b: 81, n: 'C2' },
 ];
-const WHOOSHES = [8, 14, 26, 38, 48.5, 59];
+const WHOOSHES = [8, 14, 26, 38, 48.5, 57.5, 68];
 const CHIMES = [
   { t: 23.2, n: 'Eb5' }, { t: 36.5, n: 'G5' }, { t: 42.1, n: 'F5' },
-  { t: 47.1, n: 'C6' }, { t: 53.0, n: 'Ab5' }, { t: 68.2, n: 'G5' },
+  { t: 47.1, n: 'C6' }, { t: 55.7, n: 'Ab5' }, { t: 62.0, n: 'Ab5' }, { t: 77.2, n: 'G5' },
 ];
 const LEAD = [
   { t: 16.2, n: 'G4', d: 1.6 }, { t: 18.0, n: 'Bb4', d: 1.4 }, { t: 19.6, n: 'C5', d: 2.2 },
   { t: 28.2, n: 'Eb5', d: 1.6 }, { t: 30.0, n: 'D5', d: 2.0 },
   { t: 40.2, n: 'F4', d: 1.4 }, { t: 41.8, n: 'G4', d: 2.2 },
-  { t: 50.8, n: 'C5', d: 1.6 }, { t: 52.8, n: 'Bb4', d: 2.0 },
-  { t: 60.6, n: 'Eb5', d: 1.8 }, { t: 62.4, n: 'F5', d: 2.0 },
-  { t: 68.4, n: 'G5', d: 3.0 },
+  { t: 50.4, n: 'Ab4', d: 1.6 }, { t: 53.0, n: 'C5', d: 1.8 },
+  { t: 59.8, n: 'C5', d: 1.6 }, { t: 61.8, n: 'Bb4', d: 2.0 },
+  { t: 69.6, n: 'Eb5', d: 1.8 }, { t: 71.4, n: 'F5', d: 2.0 },
+  { t: 77.4, n: 'G5', d: 3.0 },
 ];
-const PULSE = { from: 10.8, to: 58.8, step: 1.2, vol: 0.06 };
-const ARP = { from: 14.6, to: 58.8, step: 0.6 };
+const PULSE = { from: 10.8, to: 67.8, step: 1.2, vol: 0.06 };
+const ARP = { from: 14.6, to: 67.8, step: 0.6 };
 
 const chordAt = (t) => {
   for (let i = PAD_SECTIONS.length - 1; i >= 0; i--) {
@@ -691,7 +693,7 @@ export function scheduleMusic(ctx, destination, fromT = 0) {
     kick(at);
   }
   /* hi-hats — offbeat driv, hopper over ~20% (menneskelig følelse) */
-  for (let at = 14.9, hk = 0; at <= 58.7; at += 0.6, hk++) {
+  for (let at = 14.9, hk = 0; at <= 67.7; at += 0.6, hk++) {
     if (dr(hk, 71) < 0.2) continue;
     hat(at, hk % 2 === 0 ? 0.012 : 0.007);
   }
@@ -735,17 +737,23 @@ export function scheduleMusic(ctx, destination, fromT = 0) {
   whoosh(36.4, 0.028, 800, 3200, 0.9); /* anamorf flare — godkjent */
   scribble(40.35, 41.7);
   whoosh(46.85, 0.03, 900, 3800, 0.9); /* anamorf flare — husleie */
-  msgPop(50.55, false);
-  msgPop(52.65, true);
-  msgPop(54.65, false);
+  /* dynamisk utleie: langtidssveip, korttid-kaskade, badge */
+  whoosh(50.8, 0.025, 420, 2400, 1.1);
+  tick(52.65, 880);
+  tick(53.15, 990);
+  tick(53.65, 1100);
+  tick(56.25, 1240);
+  msgPop(59.55, false);
+  msgPop(61.65, true);
+  msgPop(63.65, false);
   /* finale: chips samles (fallende whoosh) og brister (boom + chime) */
-  whoosh(63.8, 0.05, 2400, 320, 1.1);
-  boom(64.12);
-  chime(freq('Eb5'), 64.2, 0.034);
-  shimmer(65.55);
-  boom(68.0, 0.05); /* myk logo-hit */
-  airPad(freq('G5'), 67.5, 72);
-  airPad(freq('C6'), 68.2, 72, 0.012);
+  whoosh(72.8, 0.05, 2400, 320, 1.1);
+  boom(73.12);
+  chime(freq('Eb5'), 73.2, 0.034);
+  shimmer(74.55);
+  boom(77.0, 0.05); /* myk logo-hit */
+  airPad(freq('G5'), 76.5, 81);
+  airPad(freq('C6'), 77.2, 81, 0.012);
 
   return {
     stop() {
