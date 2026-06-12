@@ -26,25 +26,25 @@ import {
   fmtNOK,
 } from '@/components/video/filmUtils';
 
-const LOOP = 20;
+const LOOP = 20.4;
 const u = (n) => `calc(var(--u) * ${typeof n === 'number' ? n.toFixed(3) : n})`;
 
 const HUB = { x: 50, y: 46 };
 const RINGS = [
-  { r: 12, at: 2.2, op: 0.10 },
-  { r: 18, at: 2.45, op: 0.07 },
-  { r: 24, at: 2.7, op: 0.09, dashed: true },
+  { r: 12, at: 2.9, op: 0.10 },
+  { r: 18, at: 3.15, op: 0.07 },
+  { r: 24, at: 3.4, op: 0.09, dashed: true },
 ];
 const NODES = [
-  { at: 5.0, x: 18, y: 26, icon: Megaphone, label: 'Annonse', sub: 'Finn · Airbnb' },
-  { at: 6.7, x: 82, y: 26, icon: TrendingUp, label: 'Pris', sub: '25 500 kr/mnd' },
-  { at: 8.4, x: 14, y: 62, icon: UserCheck, label: 'Leietaker', sub: 'Verifisert' },
-  { at: 10.1, x: 86, y: 62, icon: FileCheck, label: 'Kontrakt', sub: 'BankID · 12 mnd' },
+  { at: 5.6, x: 18, y: 26, icon: Megaphone, label: 'Annonse', sub: 'Finn · Airbnb' },
+  { at: 7.3, x: 82, y: 26, icon: TrendingUp, label: 'Pris', sub: '25 500 kr/mnd' },
+  { at: 9.0, x: 14, y: 62, icon: UserCheck, label: 'Leietaker', sub: 'Verifisert' },
+  { at: 10.7, x: 86, y: 62, icon: FileCheck, label: 'Kontrakt', sub: 'BankID · 12 mnd' },
 ];
 /* grønne returpulser: hovedhøsting + idle-liv */
 const RETURNS = [
-  { n: 0, at: 11.9 }, { n: 1, at: 12.1 }, { n: 2, at: 12.3 }, { n: 3, at: 12.5 },
-  { n: 1, at: 16.3 }, { n: 2, at: 17.2 },
+  { n: 0, at: 12.5 }, { n: 1, at: 12.7 }, { n: 2, at: 12.9 }, { n: 3, at: 13.1 },
+  { n: 1, at: 16.9 }, { n: 2, at: 17.7 },
 ];
 
 const lineFor = (n) => {
@@ -66,7 +66,7 @@ function useLoopTime(playing) {
   }, []);
   useEffect(() => {
     if (reduce) {
-      setT(15.0); // statisk: hele systemet aktivt + utbetaling
+      setT(15.6); // statisk: hele systemet aktivt + utbetaling
       return;
     }
     if (!playing) return;
@@ -168,6 +168,32 @@ function SystemSVG({ t }) {
         );
       })}
 
+      {/* sonar-puls fra huben — systemet lever */}
+      {t > 6.2 && (() => {
+        const rp = ((t - 6.2) % 3.2) / 3.2;
+        return (
+          <circle
+            cx={HUB.x} cy={HUB.y} r={(7.6 + rp * 7.5).toFixed(2)}
+            stroke={`rgba(235,232,245,${((1 - rp) * 0.10).toFixed(3)})`}
+            strokeWidth="0.25"
+          />
+        );
+      })()}
+
+      {/* ankomst-rippel når pulsen treffer noden */}
+      {NODES.map((n) => {
+        const ar = seg(t, n.at + 0.5, n.at + 1.05);
+        if (ar <= 0.01 || ar >= 0.99) return null;
+        return (
+          <circle
+            key={`rip-${n.label}`}
+            cx={n.x} cy={n.y} r={(3.4 + easeOutCubic(ar) * 4).toFixed(2)}
+            stroke={`rgba(235,232,245,${(Math.sin(ar * Math.PI) * 0.22).toFixed(3)})`}
+            strokeWidth="0.22"
+          />
+        );
+      })}
+
       {/* forbindelseslinjer */}
       {NODES.map((n, i) => {
         const p = easeInOutCubic(seg(t, n.at, n.at + 0.5));
@@ -224,7 +250,7 @@ function SystemSVG({ t }) {
 
 /* ---------- radarsveip rundt huben ---------- */
 function Sweep({ t }) {
-  const o = easeOutCubic(seg(t, 2.6, 3.4));
+  const o = easeOutCubic(seg(t, 3.3, 4.1));
   if (o <= 0.01) return null;
   const rot = (t * 42) % 360;
   return (
@@ -246,12 +272,14 @@ function Sweep({ t }) {
 /* ---------- bryteren som booter systemet ---------- */
 function BootToggle({ t }) {
   const inRaw = easeOutBack(seg(t, 0.35, 1.0));
-  const out = easeInOutCubic(seg(t, 1.95, 2.6));
+  const out = easeInOutCubic(seg(t, 2.7, 3.3));
   const o = Math.min(inRaw * 1.4, 1) * (1 - out);
   if (o <= 0.004) return null;
+  const labelIn = easeOutCubic(seg(t, 0.55, 1.1));
   const pre = Math.sin(seg(t, 1.18, 1.32) * Math.PI);
   const knobRaw = easeOutBack(seg(t, 1.32, 1.8));
   const on = seg(t, 1.32, 1.8) > 0.35;
+  const statusIn = easeOutCubic(seg(t, 1.9, 2.4));
 
   const KW = 9, TW = 24, TH = 11.4, PAD = 1.2;
   const travel = TW - KW - PAD * 2;
@@ -268,16 +296,30 @@ function BootToggle({ t }) {
         filter: out > 0.02 ? `blur(${(out * 6).toFixed(1)}px)` : 'none',
       }}
     >
+      {/* etikett — glir opp mot systemlinjen når den fases ut */}
+      <p
+        className="font-body uppercase absolute left-1/2 text-center"
+        style={{
+          bottom: `calc(100% + ${u(3.2)})`,
+          fontSize: u(2.1), letterSpacing: '0.42em',
+          color: 'rgba(253,252,251,0.62)',
+          whiteSpace: 'nowrap',
+          opacity: (labelIn * (1 - out)).toFixed(2),
+          transform: `translateX(-50%) translateY(${u((1 - labelIn) * 1.6 - out * 6)})`,
+        }}
+      >
+        Autopilot
+      </p>
       <span
         className="absolute inset-0 rounded-full"
         style={{
           background: on
             ? 'linear-gradient(135deg, rgba(255,255,255,0.26), rgba(255,255,255,0.10) 45%, rgba(213,206,226,0.18))'
-            : 'rgba(255,255,255,0.055)',
-          border: `1px solid ${on ? 'rgba(255,255,255,0.42)' : 'rgba(255,255,255,0.13)'}`,
+            : 'rgba(255,255,255,0.085)',
+          border: `1px solid ${on ? 'rgba(255,255,255,0.42)' : 'rgba(255,255,255,0.18)'}`,
           boxShadow: on
             ? `0 0 ${u(5)} rgba(235,232,245,0.20), inset 0 ${u(0.4)} ${u(0.8)} rgba(255,255,255,0.22), inset 0 ${u(-0.8)} ${u(1.6)} rgba(0,0,0,0.25)`
-            : `inset 0 ${u(0.4)} ${u(0.8)} rgba(255,255,255,0.07), inset 0 ${u(-0.8)} ${u(1.8)} rgba(0,0,0,0.45)`,
+            : `inset 0 ${u(0.4)} ${u(0.8)} rgba(255,255,255,0.09), inset 0 ${u(-0.8)} ${u(1.8)} rgba(0,0,0,0.45)`,
           transition: 'background 0.4s, border 0.4s, box-shadow 0.4s',
         }}
       />
@@ -290,16 +332,41 @@ function BootToggle({ t }) {
           boxShadow: `0 ${u(0.8)} ${u(2.4)} rgba(0,0,0,0.55), inset 0 ${u(0.4)} ${u(0.7)} rgba(255,255,255,0.95), inset 0 ${u(-0.5)} ${u(0.9)} rgba(0,0,0,0.14)${on ? `, 0 0 ${u(2.6)} rgba(255,255,255,0.28)` : ''}`,
         }}
       />
+      {/* status — skifter til grønt når den aktiveres */}
+      <div
+        className="absolute left-1/2 flex items-center"
+        style={{
+          top: `calc(100% + ${u(3)})`,
+          gap: u(1.2),
+          whiteSpace: 'nowrap',
+          opacity: (labelIn * (1 - out)).toFixed(2),
+          transform: `translateX(-50%) translateY(${u(out * 3)})`,
+        }}
+      >
+        {statusIn > 0.01 ? (
+          <>
+            <span
+              className="inline-flex rounded-full"
+              style={{ width: u(1.4), height: u(1.4), background: '#34d399', boxShadow: `0 0 ${u(1.6)} rgba(52,211,153,0.8)`, opacity: statusIn.toFixed(2) }}
+            />
+            <span className="font-body" style={{ fontSize: u(2.3), color: 'rgba(126,226,168,0.92)', opacity: statusIn.toFixed(2) }}>
+              Autopilot aktivert
+            </span>
+          </>
+        ) : (
+          <span className="font-body" style={{ fontSize: u(2.3), color: 'rgba(253,252,251,0.38)' }}>Av</span>
+        )}
+      </div>
     </div>
   );
 }
 
 /* ---------- huben: boligen i sentrum ---------- */
 function Hub({ t }) {
-  const inP = easeOutBack(seg(t, 2.15, 2.85));
+  const inP = easeOutBack(seg(t, 2.85, 3.55));
   if (inP <= 0.004) return null;
   const active = NODES.filter((n) => t > n.at + 1.05).length;
-  const flash = Math.sin(clamp01(seg(t, 12.4, 13.3)) * Math.PI);
+  const flash = Math.sin(clamp01(seg(t, 13.0, 13.9)) * Math.PI);
   const energy = 0.12 + active * 0.05 + flash * 0.3;
   return (
     <div
@@ -322,9 +389,9 @@ function Hub({ t }) {
 
 /* ---------- systemlinje øverst ---------- */
 function SystemLabel({ t }) {
-  const p = easeOutCubic(seg(t, 2.7, 3.3));
+  const p = easeOutCubic(seg(t, 3.3, 3.9));
   if (p <= 0.004) return null;
-  const aktiv = easeOutCubic(seg(t, 3.1, 3.6));
+  const aktiv = easeOutCubic(seg(t, 3.7, 4.2));
   return (
     <div
       className="absolute flex items-center justify-center"
@@ -345,11 +412,11 @@ function SystemLabel({ t }) {
 
 /* ---------- adresse-lock med sikte-braketter ---------- */
 function AddressLock({ t }) {
-  const p = easeOutCubic(seg(t, 3.5, 4.2));
+  const p = easeOutCubic(seg(t, 4.1, 4.8));
   if (p <= 0.004) return null;
-  const lockP = easeInOutCubic(seg(t, 3.6, 4.35));
-  const tick = easeOutBack(seg(t, 4.45, 4.85));
-  const settled = t > 5.2;
+  const lockP = easeInOutCubic(seg(t, 4.2, 4.95));
+  const tick = easeOutBack(seg(t, 5.05, 5.45));
+  const settled = t > 5.8;
   const br = (1.9 - 0.9 * lockP);
   const brO = Math.min(p, settled ? 0.25 : 0.8);
   const corner = (pos) => ({
@@ -430,13 +497,13 @@ function Node({ t, node }) {
 
 /* ---------- utbetalings-telemetri nederst ---------- */
 function PayoutReadout({ t }) {
-  const lineP = easeInOutCubic(seg(t, 12.9, 13.4));
+  const lineP = easeInOutCubic(seg(t, 13.5, 14.0));
   if (lineP <= 0.004) return null;
-  const labelP = easeOutCubic(seg(t, 13.1, 13.6));
-  const amount = 25000 * easeOutCubic(seg(t, 13.4, 14.6));
-  const check = easeOutBack(seg(t, 14.7, 15.1));
-  const subP = easeOutCubic(seg(t, 15.4, 15.9));
-  const bloom = Math.sin(clamp01(seg(t, 14.7, 15.7)) * Math.PI);
+  const labelP = easeOutCubic(seg(t, 13.7, 14.2));
+  const amount = 25000 * easeOutCubic(seg(t, 14.0, 15.2));
+  const check = easeOutBack(seg(t, 15.3, 15.7));
+  const subP = easeOutCubic(seg(t, 15.9, 16.4));
+  const bloom = Math.sin(clamp01(seg(t, 15.3, 16.3)) * Math.PI);
   return (
     <div className="absolute flex flex-col items-center" style={{ left: 0, right: 0, top: u(73.5) }}>
       <span
@@ -507,7 +574,7 @@ export function HeroLoop({ playing = true }) {
 
   const t = useLoopTime(playing && inView);
   const fy = Math.sin(t * 0.5) * 0.4;
-  const ex = easeInOutCubic(seg(t, 18.5, 19.6));
+  const ex = easeInOutCubic(seg(t, 18.9, 20.0));
 
   return (
     <div
