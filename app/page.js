@@ -16,6 +16,7 @@ import { CountUp } from '@/components/site/CountUp';
 import { PartnerMarquee } from '@/components/site/PartnerMarquee';
 import { Bar } from '@/components/site/Bar';
 import { HeroAutopilot } from '@/components/home/HeroAutopilot';
+import { AutopilotChapters } from '@/components/home/AutopilotChapters';
 import {
   site, statStrip, services, steps, qualities, qualityGallery,
   showcase, network, reasons, testimonials,
@@ -99,7 +100,10 @@ export default function HomePage() {
         {/* ============ 1. HERO — UTLEIE. PÅ AUTOPILOT. ============ */}
         <HeroAutopilot />
 
-        {/* ============ 2. SLIK JOBBER DIGIHOME (kinematisk film) ============ */}
+        {/* ============ 2. AUTOPILOTEN I PRAKSIS (kapitler på autopilot) ============ */}
+        <AutopilotChapters />
+
+        {/* ============ 3. SLIK JOBBER DIGIHOME (kinematisk film) ============ */}
         <section className="relative overflow-hidden bg-ink text-white py-20 sm:py-28">
           <div className="pointer-events-none absolute inset-0" style={{ background: 'radial-gradient(circle at 75% 0%, rgba(207,151,252,0.14), transparent 55%)' }} />
           <div className="relative max-w-shell mx-auto px-6 sm:px-10 lg:px-16">
