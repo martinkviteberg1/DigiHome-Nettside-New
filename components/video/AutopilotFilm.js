@@ -8,7 +8,7 @@ import {
 } from './FilmScenes';
 
 const DURATION = FILM_DURATION; /* 108s */
-const MP4_URL = '/film/digihome-utleie-pa-autopilot-16x9.mp4?v=20260612b'; /* versjonsstempel hindrer at nettleseren bruker gammel cache */
+const MP4_URL = '/film/digihome-utleie-pa-autopilot-16x9.mp4?v=20260612c'; /* versjonsstempel hindrer at nettleseren bruker gammel cache */
 const SCENE_BOUNDARIES = [8, 14, 20, 26, 38, 50, 62, 72.5, 81.5, 92];
 
 /* «shift» lar en scene beholde sine interne tidskonstanter
@@ -48,9 +48,9 @@ const CHAPTERS = [
    60s REKLAMEKUTT — samme scener, men spilt som utvalgte vinduer
    (start/end = kutt-tid, shift = kutt-tid minus scenens interne tid)
 ===================================================================== */
-const MP4_URL_60 = '/film/digihome-utleie-pa-autopilot-60s-16x9.mp4?v=20260612'; /* cache-bust */
+const MP4_URL_60 = '/film/digihome-utleie-pa-autopilot-60s-16x9.mp4?v=20260612b'; /* cache-bust */
 const SCENES_60 = [
-  { start: 0,     end: 6.0,  C: SceneOpening,  shift: -1.7,  fadeOut: 0.35 },
+  { start: 0,     end: 6.0,  C: SceneOpening,  shift: -1.1,  fadeIn: 0.55, fadeOut: 0.35 }, /* naturlig fade inn fra sort */
   { start: 5.65,  end: 10.6, C: SceneToggle,   shift: -2.8,  fadeIn: 0.35, fadeOut: 0.3 },
   { start: 10.25, end: 15.4, C: SceneAdresse,  shift: -4.0,  fadeIn: 0.35, fadeOut: 0.3 },
   { start: 15.15, end: 21.4, C: SceneBilder,   shift: -5.1,  fadeIn: 0.35 },               /* match-cut ut */
@@ -89,7 +89,7 @@ const CUTS = {
     duration: FILM_DURATION_60, mp4: MP4_URL_60, dlName: 'digihome-utleie-pa-autopilot-60s.mp4',
     scenes: SCENES_60, chapters: CHAPTERS_60, boundaries: BOUNDARIES_60,
     aurora: [4.4, 6.4], wm: [6.2, 7.2, 48.4, 49.4], orb: [10.6, 11.6, 38.9, 39.9],
-    kick: { from: 7.2, to: 49.2, step: 0.6 }, poster: 3.4, label: 'Reklame · 1:00',
+    kick: { from: 7.2, to: 49.2, step: 0.6 }, poster: 2.6, label: 'Reklame · 1:00',
   },
 };
 

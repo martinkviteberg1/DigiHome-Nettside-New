@@ -131,9 +131,11 @@ export function scheduleMusic(ctx, destination, fromT = 0, cut = 'full') {
   /* busser */
   const bus = ctx.createGain();
   bus.gain.value = 1;
-  if (FILM_DURATION > fromT) {
-    const fadeStart = now() + Math.max(0, 100.5 - fromT);
-    const fadeEnd = now() + Math.max(0, FILM_DURATION - fromT);
+  const tailA = cut === '60' ? 57.0 : 100.5;
+  const tailB = cut === '60' ? 60 : FILM_DURATION;
+  if (tailB > fromT) {
+    const fadeStart = now() + Math.max(0, tailA - fromT);
+    const fadeEnd = now() + Math.max(0, tailB - fromT);
     bus.gain.setValueAtTime(1, fadeStart);
     bus.gain.linearRampToValueAtTime(0.0001, fadeEnd);
   }
@@ -157,7 +159,10 @@ export function scheduleMusic(ctx, destination, fromT = 0, cut = 'full') {
   /* duck-gain: senker musikken naar fortelleren snakker */
   const duck = ctx.createGain();
   duck.gain.value = 1;
-  bus.connect(shelfLo).connect(shelfHi).connect(comp).connect(master).connect(duck).connect(destination);
+  /* sidechain-pump (kun reklamekuttet): hele miksen «puster» mot kicken */
+  const pump = ctx.createGain();
+  pump.gain.value = 1;
+  bus.connect(pump).connect(shelfLo).connect(shelfHi).connect(comp).connect(master).connect(duck).connect(destination);
 
   /* romklang */
   const reverb = ctx.createConvolver();
@@ -258,7 +263,7 @@ export function scheduleMusic(ctx, destination, fromT = 0, cut = 'full') {
   }
 
   /* --- myk, rund puls (hjerteslag-f\u00f8lelse, ingen klikk) --- */
-  function kick(at) {
+  function kick(at, vol = PULSE.vol) {
     if (at < fromT) return;
     const when = now() + (at - fromT);
     const g = ctx.createGain();
@@ -267,7 +272,7 @@ export function scheduleMusic(ctx, destination, fromT = 0, cut = 'full') {
     lp.frequency.value = 150;
     g.connect(lp).connect(bus);
     g.gain.setValueAtTime(0.0001, when);
-    g.gain.linearRampToValueAtTime(PULSE.vol, when + 0.025);
+    g.gain.linearRampToValueAtTime(vol, when + 0.025);
     g.gain.exponentialRampToValueAtTime(0.0001, when + 0.55);
     const o = ctx.createOscillator();
     o.type = 'sine';
@@ -277,6 +282,26 @@ export function scheduleMusic(ctx, destination, fromT = 0, cut = 'full') {
     o.start(when);
     o.stop(when + 0.6);
     sources.push(o);
+  }
+
+  /* --- klapp: filtrert støy på 2 og 4 (brukes i reklamekuttet) --- */
+  function clap(at, vol = 0.028) {
+    if (at < fromT) return;
+    const when = now() + (at - fromT);
+    const src = ctx.createBufferSource();
+    src.buffer = noiseBuf;
+    const bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.value = 1900;
+    bp.Q.value = 0.9;
+    const g = ctx.createGain();
+    src.connect(bp).connect(g).connect(bus);
+    send(g, 0.5);
+    g.gain.setValueAtTime(0.0001, when);
+    g.gain.linearRampToValueAtTime(vol, when + 0.008);
+    g.gain.exponentialRampToValueAtTime(0.0001, when + 0.16);
+    src.start(when, 0.4, 0.3);
+    sources.push(src);
   }
 
   /* --- plukk (med attack-rampe, ingen klikk) --- */
@@ -752,12 +777,23 @@ export function scheduleMusic(ctx, destination, fromT = 0, cut = 'full') {
       return PAD60[0].notes;
     };
     for (const s of PAD60) for (const n of s.notes) padNote(freq(n), s.a, s.b);
-    for (const s of BASS60) bassNote(freq(s.n), s.a, s.b, 0.115);
+    for (const s of BASS60) bassNote(freq(s.n), s.a, s.b, 0.135);
     /* dobbelt tempo-puls = reklame-driv (kick hver 0,6s fra toggle-klikket) */
-    for (let at = 7.2; at <= 49.2; at += 0.6) kick(at);
+    for (let at = 7.2; at <= 49.2; at += 0.6) {
+      kick(at, 0.078);
+      /* sidechain-pump: miksen «dukker» mot hver kick */
+      if (at >= fromT) {
+        const w = now() + (at - fromT);
+        pump.gain.setValueAtTime(1, w + 0.005);
+        pump.gain.linearRampToValueAtTime(0.76, w + 0.05);
+        pump.gain.linearRampToValueAtTime(1, w + 0.44);
+      }
+    }
+    /* klapp på 2 og 4 */
+    for (let at = 7.8; at <= 49.2; at += 1.2) clap(at, 0.028);
     for (let at = 7.5, hk = 0; at <= 49.2; at += 0.6, hk++) {
       if (dr(hk, 72) < 0.18) continue;
-      hat(at, hk % 2 === 0 ? 0.014 : 0.008);
+      hat(at, hk % 2 === 0 ? 0.016 : 0.009);
     }
     /* tett arp */
     let a60 = 0;
@@ -770,8 +806,8 @@ export function scheduleMusic(ctx, destination, fromT = 0, cut = 'full') {
     }
     /* sceneskift: riser + impact (ikke ved match-cuttet 21.3) */
     for (const b of [10.3, 15.2, 28.1, 34.4, 39.5, 45.1, 49.4]) {
-      whoosh(b - 0.5, 0.026, 320, 3000, 1.0);
-      boom(b, 0.026);
+      whoosh(b - 0.5, 0.032, 320, 3000, 1.0);
+      boom(b, 0.035);
     }
     whoosh(5.7); /* åpning -> toggle */
     /* lead-aksenter */
@@ -783,15 +819,16 @@ export function scheduleMusic(ctx, destination, fromT = 0, cut = 'full') {
     lead(freq('G5'), 55.4, 2.6);
 
     /* --- SFX i synk med bildet --- */
-    /* åpning */
-    key(freq('Eb5'), 0.7);
-    key(freq('C5'), 2.0);
-    key(freq('G4'), 2.95);
-    key(freq('Bb4'), 3.75, 0.038);
+    /* åpning (vinduet starter nå på intern 1.1 med fade inn fra sort) */
+    key(freq('Eb5'), 0.8);
+    key(freq('C5'), 1.3);
+    key(freq('G4'), 3.45);
+    key(freq('Bb4'), 4.3, 0.038);
     /* toggle (klikk på 7.18) */
     subSwell(6.65);
     whoosh(6.9, 0.028, 280, 2200, 0.8);
     toggleOn(7.18);
+    subSwell(7.18, 0.7, 0.07); /* sub-drop idet autopiloten våkner */
     /* adresse */
     whoosh(10.6, 0.03, 600, 2600, 0.9);
     for (let i = 0; i < 22; i++) {
@@ -814,6 +851,7 @@ export function scheduleMusic(ctx, destination, fromT = 0, cut = 'full') {
     whoosh(20.6, 0.04, 500, 3400, 1.2);
     /* styling — match-cut, prompt og sveip */
     whoosh(21.35, 0.026, 620, 2800, 0.85);
+    subSwell(21.4, 0.6, 0.06); /* sub-drop når morphen lander */
     shimmer(21.6);
     whoosh(22.52, 0.022, 650, 2400, 0.7);
     for (let i = 0; i < 30; i++) {
@@ -846,6 +884,7 @@ export function scheduleMusic(ctx, destination, fromT = 0, cut = 'full') {
     chime(freq('Ab5'), 48.0, 0.028);
     /* finale */
     whoosh(48.7, 0.05, 500, 5200, 1.4);
+    subSwell(49.4, 0.8, 0.07); /* sub-drop inn i finalen */
     whoosh(50.5, 0.05, 2400, 320, 1.1);
     boom(50.82);
     chime(freq('Eb5'), 50.9, 0.034);

@@ -467,7 +467,7 @@ function ToggleTagline({ t }) {
 }
 
 /** Energi-innsug — partikler trekkes inn mot bryteren mens den lader */
-function ChargeIn({ t, a, b, count = 12 }) {
+function ChargeIn({ t, a, b, count = 9 }) {
   const w = seg(t, a, b);
   if (w <= 0.001 || w >= 0.999) return null;
   return (
@@ -490,7 +490,7 @@ function ChargeIn({ t, a, b, count = 12 }) {
               borderRadius: '50%',
               background: i % 3 === 0 ? '#CF97FC' : '#FDFCFB',
               boxShadow: '0 0 calc(var(--su)*0.6) rgba(255,255,255,0.55)',
-              opacity: (Math.sin(p * Math.PI) * 0.85).toFixed(3),
+              opacity: (Math.sin(p * Math.PI) * 0.65).toFixed(3),
               transform: `translate(calc(var(--su) * ${(Math.cos(ang) * r).toFixed(2)}), calc(var(--su) * ${(Math.sin(ang) * r * 0.7).toFixed(2)}))`,
             }}
           />
@@ -541,9 +541,9 @@ export function SceneToggle({ t }) {
   const settleOv = Math.max(0, easeOutBack(flipRaw) - 1);             /* squash mot høyre kant */
   const act = easeOutCubic(seg(t, 10.06, 10.62));                     /* aktivering (farge/glød) */
   const arc = easeInOutCubic(seg(t, 9.35, 10.05));                    /* laderingen tegnes FØR klikket */
+  const arcFade = 1 - seg(t, 10.15, 10.7);                            /* laderingen løses opp etter klikket */
   const ring = seg(t, 10.15, 11.35);                                  /* ekspanderende ring 1 */
   const ring2 = seg(t, 10.45, 11.85);                                 /* ekspanderende ring 2 */
-  const edge = Math.min(easeOutCubic(seg(t, 10.2, 11.7)), 1 - seg(t, 13.7, 14.5)); /* skjermkant-glød */
   const wave = seg(t, 10.1, 11.6);                                    /* energibølge */
   const breathe = 0.5 + 0.5 * Math.sin(t * 1.7);
   const capScale = 1 - press * 0.05 + act * 0.025;
@@ -574,25 +574,6 @@ export function SceneToggle({ t }) {
           opacity: act * (0.7 + breathe * 0.3),
         }}
       />
-      {/* skjermkant-glød — hele rammen lyser når autopiloten våkner */}
-      {edge > 0.003 && (
-        <div aria-hidden="true" className="absolute inset-0 pointer-events-none" style={{ opacity: edge }}>
-          <div
-            style={{
-              position: 'absolute', inset: 'calc(var(--su) * 0.5)',
-              borderRadius: 'calc(var(--su) * 2.2)',
-              padding: 'calc(var(--su) * 0.16)',
-              background: `conic-gradient(from ${((t * 34) % 360).toFixed(1)}deg, #9B5BD6, #CF97FC, #F4EFFC, #CF97FC, #7A7CF0, #9B5BD6)`,
-              WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
-              WebkitMaskComposite: 'xor',
-              maskComposite: 'exclude',
-              filter: `blur(calc(var(--su) * ${(0.32 + breathe * 0.22).toFixed(2)}))`,
-              opacity: 0.42 + breathe * 0.18,
-            }}
-          />
-          <div style={{ position: 'absolute', inset: 0, boxShadow: `inset 0 0 calc(var(--su)*7) rgba(155,91,214,${(0.1 + breathe * 0.05).toFixed(2)})` }} />
-        </div>
-      )}
       {/* energibølge — én ring som ekspanderer over hele bildet */}
       {wave > 0.001 && wave < 0.999 && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none" aria-hidden="true">
@@ -601,9 +582,9 @@ export function SceneToggle({ t }) {
               width: `calc(var(--su) * ${(easeOutCubic(wave) * 140).toFixed(2)})`,
               height: `calc(var(--su) * ${(easeOutCubic(wave) * 140).toFixed(2)})`,
               borderRadius: '50%',
-              border: '1.5px solid rgba(255,255,255,0.38)',
-              boxShadow: '0 0 calc(var(--su)*1.4) rgba(255,255,255,0.2), inset 0 0 calc(var(--su)*1.4) rgba(255,255,255,0.1)',
-              opacity: (Math.sin(wave * Math.PI) * 0.55).toFixed(3),
+              border: '1.5px solid rgba(255,255,255,0.3)',
+              boxShadow: '0 0 calc(var(--su)*1.4) rgba(255,255,255,0.16), inset 0 0 calc(var(--su)*1.4) rgba(255,255,255,0.08)',
+              opacity: (Math.sin(wave * Math.PI) * 0.38).toFixed(3),
               flexShrink: 0,
             }}
           />
@@ -661,8 +642,8 @@ export function SceneToggle({ t }) {
               }}
             />
           ))}
-          {/* laderingen — lys som tegnes rundt bryteren før klikket */}
-          {arc > 0.001 && (
+          {/* laderingen — lys som tegnes rundt bryteren før klikket, og løses opp etter */}
+          {arc > 0.001 && arcFade > 0.001 && (
             <div
               aria-hidden="true"
               style={{
@@ -670,12 +651,13 @@ export function SceneToggle({ t }) {
                 padding: 'calc(var(--su) * 0.14)',
                 background: arc < 0.999
                   ? `conic-gradient(from -90deg, #FFFFFF 0deg, #E3E1EC ${(arc * 320).toFixed(0)}deg, rgba(227,225,236,0) ${(arc * 360).toFixed(0)}deg)`
-                  : `conic-gradient(from ${((t * 50) % 360).toFixed(1)}deg, rgba(255,255,255,0.25), rgba(207,151,252,0.5), rgba(255,255,255,0.75), rgba(207,151,252,0.5), rgba(255,255,255,0.25))`,
+                  : 'conic-gradient(from -90deg, #FFFFFF, #E3E1EC, #FFFFFF)',
                 WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
                 WebkitMaskComposite: 'xor',
                 maskComposite: 'exclude',
-                filter: 'blur(0.5px)',
-                opacity: arc < 0.999 ? 1 : 0.35 + act * 0.2 * breathe,
+                filter: `blur(${(0.5 + (1 - arcFade) * 3).toFixed(1)}px)`,
+                opacity: arc < 0.999 ? 1 : arcFade * 0.9,
+                transform: `scale(${(1 + (1 - arcFade) * 0.18).toFixed(3)})`,
               }}
             />
           )}
