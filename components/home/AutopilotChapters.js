@@ -8,33 +8,35 @@
 */
 
 import { useEffect, useRef, useState } from 'react';
+import { Reveal } from '@/components/site/Reveal';
+import { seg, easeInOutCubic } from '@/components/video/filmUtils';
 import { SceneAnnonse, ScenePris, SceneLeietaker, SceneHverdag } from './ChapterScenes';
 
 const EASE = 'cubic-bezier(0.16, 1, 0.3, 1)';
 
 const CHAPTERS = [
   {
-    id: 'annonse', no: '01',
+    id: 'annonse', no: '01', tag: 'Dag 1',
     title: 'Annonsen skriver seg selv',
-    body: 'Profesjonell tekst og bilder publiseres på Finn, Airbnb og Hybel — klart på timer, ikke uker.',
+    body: 'Profesjonelle bilder og tekst, publisert på Finn, Airbnb og Hybel. Live på timer — ikke uker.',
     dur: 8.5, Scene: SceneAnnonse,
   },
   {
-    id: 'pris', no: '02',
+    id: 'pris', no: '02', tag: 'Uke 1',
     title: 'Prisen kalibreres mot markedet',
-    body: 'Autopiloten leser markedet i Bergen kontinuerlig og finner prisen som maksimerer inntekten din.',
+    body: 'Autopiloten leser Bergen-markedet kontinuerlig og låser prisen som maksimerer inntekten din.',
     dur: 8.0, Scene: ScenePris,
   },
   {
-    id: 'leietaker', no: '03',
+    id: 'leietaker', no: '03', tag: 'Dag 14',
     title: 'Leietakeren verifiseres grundig',
     body: 'BankID, inntekt og referanser sjekkes på hver eneste søker. Du møter aldri en tilfeldig leietaker.',
     dur: 8.5, Scene: SceneLeietaker,
   },
   {
-    id: 'hverdag', no: '04',
+    id: 'hverdag', no: '04', tag: 'Hver måned',
     title: 'Hverdagen håndterer vi',
-    body: 'Lekkasjer, visninger og purringer fanges lydløst av oss. Du hører fra oss når leien er på konto.',
+    body: 'Lekkasjer, visninger og purringer fanges lydløst. Det eneste du merker, er leien som kommer inn.',
     dur: 9.5, Scene: SceneHverdag,
   },
 ];
@@ -116,16 +118,21 @@ export function AutopilotChapters() {
       <div className="relative max-w-shell mx-auto px-6 sm:px-10 lg:px-16">
         {/* seksjonshode */}
         <div className="max-w-2xl">
-          <p className="flex items-center gap-3 text-xs uppercase tracking-[0.2em] font-semibold text-lavender">
-            <span className="inline-block h-px w-7 bg-current opacity-50" />
-            Autopiloten i praksis
-          </p>
-          <h2 className="mt-4 text-[34px] sm:text-[48px] font-bold text-ink leading-[1.08]">
+          <Reveal>
+            <p className="flex items-center gap-3 text-xs uppercase tracking-[0.2em] font-semibold text-lavender">
+              <span className="inline-block h-px w-7 bg-current opacity-50" />
+              Autopiloten i praksis
+            </p>
+          </Reveal>
+          <Reveal as="h2" delay={0.05} className="mt-4 text-[34px] sm:text-[48px] font-bold text-ink leading-[1.08]">
             Fra adresse til leie på konto.
-          </h2>
-          <p className="mt-5 text-lg text-quiet leading-relaxed max-w-xl">
-            Fire ting skjer fra du slipper autopiloten løs. Du gjør ingen av dem.
-          </p>
+          </Reveal>
+          <Reveal delay={0.1}>
+            <p className="mt-5 text-lg text-quiet leading-relaxed max-w-xl">
+              Følg de første ukene etter at du slår på autopiloten.
+              Fire ting skjer — og du gjør ingen av dem.
+            </p>
+          </Reveal>
         </div>
 
         <div className="mt-10 lg:mt-12 grid lg:grid-cols-[0.92fr_1.08fr] gap-8 lg:gap-14 items-center">
@@ -153,6 +160,9 @@ export function AutopilotChapters() {
                     </span>
                     <span className={`flex-1 font-heading text-[17px] sm:text-lg font-bold leading-snug transition-colors duration-300 ${active ? 'text-ink' : 'text-ink/40 group-hover:text-ink/65'}`}>
                       {c.title}
+                    </span>
+                    <span className={`shrink-0 text-[10px] uppercase tracking-[0.18em] font-semibold transition-colors duration-300 ${active ? 'text-lavender' : 'text-ink/25'}`}>
+                      {c.tag}
                     </span>
                   </div>
                   <div className="mt-3.5 relative h-[2px] w-full rounded-full bg-ink/[0.08] overflow-hidden">
@@ -199,8 +209,49 @@ export function AutopilotChapters() {
                 className="absolute inset-0"
                 style={{ background: 'radial-gradient(ellipse 70% 55% at 50% 32%, rgba(170,160,200,0.07), transparent 65%)' }}
               />
-              <div key={ch.id} className="absolute inset-0" style={{ opacity: Math.min(1, t * 2.8).toFixed(2) }}>
+              {/* kinematisk kamera: rolig zoom gjennom kapitlet */}
+              <div
+                key={ch.id}
+                className="absolute inset-0"
+                style={{
+                  opacity: Math.min(1, t * 2.8).toFixed(2),
+                  transform: `scale(${(1 + 0.04 * (t / ch.dur)).toFixed(4)})`,
+                  transformOrigin: '50% 46%',
+                }}
+              >
                 <Scene t={t} />
+              </div>
+              {/* lys-sveip ved kapittelskifte */}
+              {(() => {
+                const p = seg(t, 0.05, 0.65);
+                if (p <= 0.001 || p >= 0.999) return null;
+                const e = easeInOutCubic(p);
+                return (
+                  <div className="pointer-events-none absolute inset-0 overflow-hidden">
+                    <div
+                      className="absolute"
+                      style={{
+                        top: '-30%', bottom: '-30%', width: '40%',
+                        left: `${(-45 + 130 * e).toFixed(1)}%`,
+                        transform: 'rotate(9deg)',
+                        background: `linear-gradient(100deg, transparent, rgba(235,232,245,${(Math.sin(p * Math.PI) * 0.05).toFixed(3)}) 45%, rgba(250,249,253,${(Math.sin(p * Math.PI) * 0.08).toFixed(3)}) 50%, rgba(235,232,245,${(Math.sin(p * Math.PI) * 0.05).toFixed(3)}) 55%, transparent)`,
+                        mixBlendMode: 'screen',
+                      }}
+                    />
+                  </div>
+                );
+              })()}
+              {/* telemetri-stripe */}
+              <div className="absolute left-5 right-5 top-4 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]" />
+                  <span className="text-[9px] uppercase tracking-[0.32em] font-semibold text-white/35">
+                    DigiHome Autopilot
+                  </span>
+                </div>
+                <span className="text-[9px] uppercase tracking-[0.28em] font-semibold text-white/45">
+                  {ch.tag}
+                </span>
               </div>
               {/* kapittel-indikator */}
               <div className="absolute left-5 bottom-4 flex items-baseline gap-1.5 text-[10px] uppercase tracking-[0.3em] font-semibold">
