@@ -205,10 +205,26 @@ function SystemSVG({ t }) {
           <stop offset="0" stopColor="#fff" stopOpacity="0.5" />
           <stop offset="1" stopColor="#fff" stopOpacity="0" />
         </linearGradient>
+        <linearGradient id="dhHorizon" gradientUnits="userSpaceOnUse" x1="2" y1="0" x2="98" y2="0">
+          <stop offset="0" stopColor="#EBE8F5" stopOpacity="0" />
+          <stop offset="0.5" stopColor="#EBE8F5" stopOpacity="0.10" />
+          <stop offset="1" stopColor="#EBE8F5" stopOpacity="0" />
+        </linearGradient>
         <mask id="dhReflMask" maskUnits="userSpaceOnUse" x="0" y="50" width="100" height="16">
           <rect x="20" y="50.5" width="60" height="15.5" fill="url(#dhReflFade)" />
         </mask>
       </defs>
+      {/* horisontlinje — forankrer scenen i gulvplanet */}
+      {(() => {
+        const p = easeInOutCubic(seg(t, 3.15, 4.25));
+        if (p <= 0.004) return null;
+        return (
+          <line
+            x1={(50 - 47 * p).toFixed(2)} y1={GY} x2={(50 + 47 * p).toFixed(2)} y2={GY}
+            stroke="url(#dhHorizon)" strokeWidth="0.16"
+          />
+        );
+      })()}
       {/* elliptiske instrumentringer på gulvplanet */}
       {RINGS.map((ring, i) => {
         const p = easeOutCubic(seg(t, ring.at, ring.at + 0.7));
@@ -627,6 +643,10 @@ function Node({ t, node, dof = 0 }) {
   const inP = Math.min(inRaw, 1.05);
   const isActive = t > node.at + 1.05;
   const Icon = node.icon;
+  /* undertekst skrives ut tegn for tegn — levende telemetri */
+  const typed = node.sub.slice(0, Math.ceil(seg(t, node.at + 0.95, node.at + 1.6) * node.sub.length));
+  /* spekulært sveip over kortet i det noden kvitterer */
+  const shine = seg(t, node.at + 1.05, node.at + 1.55);
   return (
     <div
       className="absolute flex flex-col items-center"
@@ -648,36 +668,65 @@ function Node({ t, node, dof = 0 }) {
         }}
       >
         <Icon style={{ width: u(3), height: u(3), color: 'rgba(253,252,251,0.88)' }} strokeWidth={1.7} />
+        {shine > 0.001 && shine < 0.999 && (
+          <span className="absolute inset-0 overflow-hidden pointer-events-none" style={{ borderRadius: u(1.9) }}>
+            <span
+              className="absolute"
+              style={{
+                top: '-45%', bottom: '-45%', width: '46%',
+                left: `${(-55 + 170 * easeInOutCubic(shine)).toFixed(1)}%`,
+                transform: 'rotate(18deg)',
+                background: 'linear-gradient(100deg, transparent, rgba(255,255,255,0.32), transparent)',
+                opacity: Math.sin(shine * Math.PI).toFixed(2),
+              }}
+            />
+          </span>
+        )}
         <NodeStatus t={t} done={node.at + 1.05} />
       </span>
       <p className="font-body font-medium" style={{ fontSize: u(2.05), color: 'rgba(253,252,251,0.88)', marginTop: u(1.3), whiteSpace: 'nowrap' }}>{node.label}</p>
-      <p className="font-body" style={{ fontSize: u(1.75), color: 'rgba(253,252,251,0.4)', marginTop: u(0.25), whiteSpace: 'nowrap' }}>{node.sub}</p>
+      <p className="font-body" style={{ fontSize: u(1.75), color: 'rgba(253,252,251,0.4)', marginTop: u(0.25), whiteSpace: 'nowrap', minHeight: '1.2em' }}>{typed || '\u00A0'}</p>
     </div>
   );
 }
 
-/* ---------- ekte odometer: rullende sifferkolonner ---------- */
+/* ---------- ekte odometer: sifferkolonner som spinner og lander presist ---------- */
 const DIGITS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0];
+const PAYOUT_AT = 14.0;
 
-function Odometer({ value }) {
-  const places = [10000, 1000, 100, 10, 1];
+/* 25 000 — hver kolonne har egen start, varighet og antall omdreininger,
+   og lander ALLTID nøyaktig på sluttsifferet (travel er et helt tall). */
+const ODO_COLS = [
+  { d: 2, spins: 1, st: 0.0,  dur: 1.05 },
+  { d: 5, spins: 2, st: 0.07, dur: 1.15 },
+  { d: 0, spins: 3, st: 0.14, dur: 1.25 },
+  { d: 0, spins: 4, st: 0.21, dur: 1.32 },
+  { d: 0, spins: 5, st: 0.28, dur: 1.38 },
+];
+const ODO_DONE = PAYOUT_AT + 0.28 + 1.38; // 15.66 — siste kolonne i ro
+
+function Odometer({ t }) {
   return (
     <span className="inline-flex items-baseline" style={{ lineHeight: 1 }}>
-      {places.map((p, i) => {
-        const pos = (value / p) % 10;
-        const leadingZero = value < p && p > 1;
+      {ODO_COLS.map((c, i) => {
+        const p = easeInOutCubic(seg(t, PAYOUT_AT + c.st, PAYOUT_AT + c.st + c.dur));
+        const pos = ((c.spins * 10 + c.d) * p) % 10;
         return (
           <span
-            key={p}
+            key={i}
             className="relative inline-block overflow-hidden text-center"
-            style={{ height: '1em', width: '0.62em', marginLeft: i === 2 ? '0.16em' : 0 }}
+            style={{
+              height: '1em', width: '0.62em', marginLeft: i === 2 ? '0.16em' : 0,
+              maskImage: 'linear-gradient(180deg, transparent 0%, #000 14%, #000 86%, transparent 100%)',
+              WebkitMaskImage: 'linear-gradient(180deg, transparent 0%, #000 14%, #000 86%, transparent 100%)',
+            }}
           >
             <span
               className="absolute left-0 right-0 top-0"
               style={{ transform: `translateY(${(-pos).toFixed(3)}em)` }}
             >
               {DIGITS.map((d, j) => (
-                <span key={j} className="block" style={{ height: '1em', lineHeight: 1, opacity: leadingZero ? 0.25 : 1 }}>
+                <span key={j} className="block" style={{ height: '1em', lineHeight: 1 }}>
                   {d}
                 </span>
               ))}
@@ -693,11 +742,10 @@ function Odometer({ value }) {
 function PayoutReadout({ t }) {
   const lineP = easeInOutCubic(seg(t, 13.5, 14.0));
   if (lineP <= 0.004) return null;
-  const labelP = easeOutCubic(seg(t, 13.7, 14.2));
-  const amount = 25000 * easeOutCubic(seg(t, 14.0, 15.3));
-  const check = easeOutBack(seg(t, 15.4, 15.8));
-  const subP = easeOutCubic(seg(t, 16.0, 16.5));
-  const bloom = Math.sin(clamp01(seg(t, 15.4, 16.4)) * Math.PI);
+  const labelP = easeOutCubic(seg(t, 13.7, 14.3));
+  const check = easeOutBack(seg(t, ODO_DONE + 0.1, ODO_DONE + 0.5));
+  const subP = easeOutCubic(seg(t, ODO_DONE + 0.6, ODO_DONE + 1.1));
+  const bloom = Math.sin(clamp01(seg(t, ODO_DONE - 0.1, ODO_DONE + 0.9)) * Math.PI);
   return (
     <div className="absolute flex flex-col items-center" style={{ left: 0, right: 0, top: u(73.5) }}>
       <span
@@ -710,14 +758,16 @@ function PayoutReadout({ t }) {
         <p
           className="font-body uppercase"
           style={{
-            fontSize: u(1.75), letterSpacing: '0.4em', color: 'rgba(253,252,251,0.4)',
+            fontSize: u(1.75),
+            letterSpacing: `${(0.62 - 0.22 * labelP).toFixed(3)}em`,
+            color: 'rgba(253,252,251,0.4)',
             marginTop: u(2.2), opacity: labelP.toFixed(2), transform: `translateY(${u((1 - labelP) * 1.5)})`,
           }}
         >
           Leie mottatt
         </p>
       )}
-      {t > 14.0 && (
+      {t > PAYOUT_AT && (
         <div className="relative flex items-center" style={{ gap: u(2), marginTop: u(1.2) }}>
           <span
             className="absolute pointer-events-none"
@@ -728,7 +778,7 @@ function PayoutReadout({ t }) {
             }}
           />
           <span className="relative font-heading font-bold inline-flex items-baseline" style={{ fontSize: u(6.6), color: '#FDFCFB', letterSpacing: '0.01em' }}>
-            <Odometer value={amount} />
+            <Odometer t={t} />
             <span style={{ fontSize: u(4.4), marginLeft: '0.18em', color: 'rgba(253,252,251,0.85)' }}>kr</span>
           </span>
           {check > 0.01 && (

@@ -149,15 +149,15 @@ export function HeroAutopilot() {
             </div>
 
             <div {...rv(560)}>
-              <dl className="mt-10 flex flex-wrap items-center gap-x-8 gap-y-3">
+              <dl className="mt-10 flex flex-wrap items-center gap-y-4">
                 {[
-                  ['30+', 'eiendommer i Bergen'],
-                  ['+30 %', 'høyere leieinntekt'],
-                  ['98 %', 'eier-tilfredshet'],
-                ].map(([v, l]) => (
-                  <div key={l} className="flex items-baseline gap-2">
-                    <dt className="font-heading text-2xl font-bold text-white tracking-[-0.02em]">{v}</dt>
-                    <dd className="text-sm text-white/40">{l}</dd>
+                  ['30+', 'Eiendommer i Bergen'],
+                  ['+30 %', 'Høyere leieinntekt'],
+                  ['98 %', 'Eier-tilfredshet'],
+                ].map(([v, l], i) => (
+                  <div key={l} className={`flex flex-col ${i ? 'pl-7 ml-7 border-l border-white/10' : ''}`}>
+                    <dt className="font-heading text-[26px] font-bold text-white tracking-[-0.02em] leading-none">{v}</dt>
+                    <dd className="mt-1.5 text-[11px] uppercase tracking-[0.16em] text-white/35 font-semibold">{l}</dd>
                   </div>
                 ))}
               </dl>

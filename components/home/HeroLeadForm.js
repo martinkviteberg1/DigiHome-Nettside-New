@@ -85,7 +85,7 @@ export function HeroLeadForm() {
       )}
 
       <form onSubmit={step === 'address' ? submitAddress : submitContact}>
-        <div className="flex flex-col sm:flex-row items-stretch gap-2 p-2 rounded-2xl bg-white/[0.06] border border-white/[0.13] backdrop-blur-md shadow-[0_18px_50px_rgba(0,0,0,0.45)] focus-within:border-white/25 transition">
+        <div className="flex flex-col sm:flex-row items-stretch gap-2 p-2 rounded-2xl bg-white/[0.06] border border-white/[0.13] backdrop-blur-md shadow-[0_18px_50px_rgba(0,0,0,0.45)] transition-all duration-500 focus-within:border-white/[0.28] focus-within:bg-white/[0.075] focus-within:shadow-[0_18px_50px_rgba(0,0,0,0.45),0_0_44px_rgba(207,151,252,0.12)]">
           <div className="flex items-center gap-2.5 flex-1 px-3">
             {step === 'address' ? (
               <MapPin className="h-5 w-5 text-white/40 shrink-0" />
