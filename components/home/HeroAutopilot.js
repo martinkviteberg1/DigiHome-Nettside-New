@@ -36,6 +36,8 @@ export function HeroAutopilot() {
   const [flip, setFlip] = useState(null);
   const playedIntro = useRef(false);
   const h1Ref = useRef(null);
+  const fadeRef = useRef(null);
+  const bgRef = useRef(null);
 
   useEffect(() => {
     let t1, t2;
@@ -98,6 +100,34 @@ export function HeroAutopilot() {
     return () => { document.body.style.overflow = ''; };
   }, [stage]);
 
+  /* sømløs overgang til filmen under: kameraet trekker seg rolig tilbake
+     (innholdet toner ut og skaleres ned mens neste seksjon glir over) */
+  useEffect(() => {
+    if (stage !== 'done') return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const el = fadeRef.current;
+    if (!el) return;
+    let raf = 0;
+    const apply = () => {
+      raf = 0;
+      const vh = window.innerHeight || 1;
+      const pr = Math.min(1, Math.max(0, window.scrollY / (vh * 0.9)));
+      const e = pr * pr * (3 - 2 * pr); // smoothstep
+      el.style.opacity = (1 - e * 0.95).toFixed(3);
+      el.style.transform = `translateY(${(e * -7).toFixed(2)}vh) scale(${(1 - e * 0.055).toFixed(4)})`;
+      if (bgRef.current) bgRef.current.style.opacity = (1 - e).toFixed(3);
+    };
+    const onScroll = () => { if (!raf) raf = requestAnimationFrame(apply); };
+    apply();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      if (raf) cancelAnimationFrame(raf);
+      el.style.opacity = '';
+      el.style.transform = '';
+    };
+  }, [stage]);
+
   const shown = stage === 'morph' || stage === 'done';
   const rv = (d, extra = '') => ({
     className: `transition-all ${extra} ${shown ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`,
@@ -108,6 +138,7 @@ export function HeroAutopilot() {
     <section className="relative overflow-hidden bg-[#050507] text-white -mt-[72px]">
       {/* bakteppe — rolig studiolys, ikke romstøv */}
       <div
+        ref={bgRef}
         className="pointer-events-none absolute inset-0"
         style={{
           background:
@@ -115,7 +146,11 @@ export function HeroAutopilot() {
         }}
       />
 
-      <div className="relative max-w-shell mx-auto px-6 sm:px-10 lg:px-16">
+      <div
+        ref={fadeRef}
+        className="relative max-w-shell mx-auto px-6 sm:px-10 lg:px-16"
+        style={{ willChange: 'transform, opacity', transformOrigin: '50% 80%' }}
+      >
         <div className="grid lg:grid-cols-[1.02fr_0.98fr] gap-14 lg:gap-10 items-center min-h-[100svh] pt-[104px] pb-16 lg:pt-[72px] lg:pb-10">
           {/* venstre kolonne */}
           <div className="max-w-2xl">

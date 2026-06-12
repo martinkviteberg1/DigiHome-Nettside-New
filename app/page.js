@@ -16,7 +16,7 @@ import { CountUp } from '@/components/site/CountUp';
 import { PartnerMarquee } from '@/components/site/PartnerMarquee';
 import { Bar } from '@/components/site/Bar';
 import { HeroAutopilot } from '@/components/home/HeroAutopilot';
-import { AutopilotChapters } from '@/components/home/AutopilotChapters';
+import { AutopilotJourney } from '@/components/home/AutopilotJourney';
 import {
   site, statStrip, services, steps, qualities, qualityGallery,
   showcase, network, reasons, testimonials,
@@ -100,12 +100,13 @@ export default function HomePage() {
         {/* ============ 1. HERO — UTLEIE. PÅ AUTOPILOT. ============ */}
         <HeroAutopilot />
 
-        {/* ============ 2. AUTOPILOTEN I PRAKSIS (kapitler på autopilot) ============ */}
-        <AutopilotChapters />
+        {/* ============ 2. DE FØRSTE 30 DAGENE (scroll-drevet film) ============ */}
+        <AutopilotJourney />
 
         {/* ============ 3. SLIK JOBBER DIGIHOME (kinematisk film) ============ */}
-        <section className="relative overflow-hidden bg-ink text-white py-20 sm:py-28">
+        <section id="film" className="relative overflow-hidden bg-ink text-white py-20 sm:py-28">
           <div className="pointer-events-none absolute inset-0" style={{ background: 'radial-gradient(circle at 75% 0%, rgba(207,151,252,0.14), transparent 55%)' }} />
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-44" style={{ background: 'linear-gradient(180deg, #050507, rgba(5,5,7,0))' }} />
           <div className="relative max-w-shell mx-auto px-6 sm:px-10 lg:px-16">
             <div className="max-w-2xl">
               <Reveal><Eyebrow className="text-lavender-soft">Se filmen</Eyebrow></Reveal>

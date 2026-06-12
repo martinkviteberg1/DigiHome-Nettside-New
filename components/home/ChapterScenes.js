@@ -2,12 +2,13 @@
 
 /*
   ChapterScenes — fire kinematiske scener for «Autopiloten i praksis».
-  DAG-MODUS med Apple-nivå bevegelsesspråk:
+  NATT-PALETT i grafittrommet (#14121A): glass-kort, platina-streker,
+  lavendel-aksenter og grønn telemetri — med Apple-nivå bevegelsesspråk:
   - Fjær-fysikk (spring) på alle entréer, med overshoot og settle
-  - Levende idle: alt bobber og puster subtilt, ingenting er dødt
-  - Kontinuitet og dybde: elementer trekker bakover, lysende ledepunkter
-  - Fysisk respons: skjoldet dyttes av treff, kortene «legges på bordet»
+  - Levende idle: alt bobber og puster subtilt
+  - Lysende ledepunkter (bezier), buede baner, fysisk skjold-respons
   Koordinatsystem: 100 x 76 enheter (--u = 1 % av scenens bredde).
+  Gulvlinjen i scenevinduet ligger på y=50.5 — komposisjonene står på den.
 */
 
 import {
@@ -17,7 +18,8 @@ import { seg, clamp01, easeOutCubic, easeInOutCubic, easeOutBack } from '@/compo
 
 const u = (n) => `calc(var(--u) * ${typeof n === 'number' ? n.toFixed(3) : n})`;
 
-const INK = '#0A0A0A';
+const FG = '#FDFCFB';
+const LAV = '#CF97FC';
 
 /* fjær: rask inn, ~8 % overshoot, myk settle */
 const spring = (p) => (p <= 0 ? 0 : p >= 1 ? 1 : 1 - Math.exp(-6 * p) * Math.cos(7.5 * p));
@@ -25,11 +27,11 @@ const sp = (t, a, b) => spring(seg(t, a, b));
 /* idle-flyt: kontinuerlig, subtil pust */
 const fl = (t, seed, amp = 0.25) => Math.sin(t * 1.15 + seed) * amp;
 
-/* lagdelt skygge: kontakt + ambient — elementene «svever» */
-const CARD_SHADOW = '0 1px 2px rgba(22,19,28,0.06), 0 12px 32px rgba(22,19,28,0.10), 0 30px 64px rgba(22,19,28,0.05)';
+/* glass-kort med topp-highlight og dyp skygge */
+const CARD_SHADOW = 'inset 0 1px 0 rgba(255,255,255,0.08), 0 2px 4px rgba(0,0,0,0.3), 0 14px 36px rgba(0,0,0,0.42)';
 const cardStyle = () => ({
-  background: '#FFFFFF',
-  border: '1px solid rgba(10,10,10,0.08)',
+  background: 'rgba(28,26,36,0.92)',
+  border: '1px solid rgba(255,255,255,0.12)',
   boxShadow: CARD_SHADOW,
 });
 
@@ -57,12 +59,12 @@ function Tick({ size = 3, pop = 1 }) {
       className="inline-flex items-center justify-center shrink-0"
       style={{
         width: u(size), height: u(size), borderRadius: '50%',
-        background: '#E8F4EE', border: '1px solid rgba(24,121,78,0.35)',
-        boxShadow: `0 ${u(0.4)} ${u(1.2)} rgba(24,121,78,0.16)`,
+        background: 'rgba(12,20,16,0.9)', border: '1px solid rgba(52,211,153,0.55)',
+        boxShadow: `0 0 ${u(1.2)} rgba(52,211,153,0.35)`,
         transform: `scale(${Math.max(0.3, Math.min(pop, 1.1)).toFixed(2)})`,
       }}
     >
-      <span style={{ color: '#18794E', fontWeight: 700, fontSize: u(size * 0.56), lineHeight: 1 }}>✓</span>
+      <span style={{ color: '#7ee2a8', fontWeight: 700, fontSize: u(size * 0.56), lineHeight: 1 }}>✓</span>
     </span>
   );
 }
@@ -84,7 +86,7 @@ function Stinger({ t, at, label, value, countTo, suffix = '', sub, valueSize = 5
       <span
         style={{
           width: u(26 * lineP), height: 1,
-          background: 'linear-gradient(90deg, transparent, rgba(10,10,10,0.25), transparent)',
+          background: 'linear-gradient(90deg, transparent, rgba(235,232,245,0.35), transparent)',
         }}
       />
       {labelP > 0.01 && (
@@ -93,7 +95,7 @@ function Stinger({ t, at, label, value, countTo, suffix = '', sub, valueSize = 5
           style={{
             fontSize: u(1.7),
             letterSpacing: `${(0.6 - 0.22 * labelP).toFixed(3)}em`,
-            color: 'rgba(10,10,10,0.40)',
+            color: 'rgba(253,252,251,0.4)',
             marginTop: u(1.8), opacity: labelP.toFixed(2), transform: `translateY(${u((1 - labelP) * 1.4)})`,
           }}
         >
@@ -106,14 +108,14 @@ function Stinger({ t, at, label, value, countTo, suffix = '', sub, valueSize = 5
             className="absolute pointer-events-none"
             style={{
               inset: u(-6),
-              background: 'radial-gradient(ellipse 62% 62% at 50% 50%, rgba(24,121,78,0.07), rgba(155,91,214,0.03) 48%, transparent 72%)',
+              background: 'radial-gradient(ellipse 62% 62% at 50% 50%, rgba(150,232,186,0.085), rgba(240,237,248,0.05) 48%, transparent 72%)',
               opacity: bloom.toFixed(2),
             }}
           />
           <span
             className="relative font-heading font-bold"
             style={{
-              fontSize: u(valueSize), color: INK, whiteSpace: 'nowrap',
+              fontSize: u(valueSize), color: FG, whiteSpace: 'nowrap',
               fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.01em',
               opacity: valP.toFixed(2),
               transform: `translateY(${u((1 - valP) * 2)})`,
@@ -125,7 +127,7 @@ function Stinger({ t, at, label, value, countTo, suffix = '', sub, valueSize = 5
         </div>
       )}
       {subP > 0.01 && (
-        <p className="font-body" style={{ fontSize: u(1.95), color: 'rgba(10,10,10,0.48)', marginTop: u(1.2), opacity: subP.toFixed(2) }}>
+        <p className="font-body" style={{ fontSize: u(1.95), color: 'rgba(253,252,251,0.5)', marginTop: u(1.2), opacity: subP.toFixed(2) }}>
           {sub}
         </p>
       )}
@@ -186,8 +188,8 @@ export function SceneAnnonse({ t }) {
                   width: u(14.4), height: u(10.5), borderRadius: u(1.2),
                   opacity: Math.min(p * 1.6, 1).toFixed(2),
                   transform: `translateY(${u((1 - Math.min(p, 1.04)) * -5)}) rotate(${rot.toFixed(1)}deg) scale(${(0.85 + 0.15 * Math.min(p, 1.05)).toFixed(3)})`,
-                  border: '1px solid rgba(10,10,10,0.08)',
-                  boxShadow: `0 ${u(1)} ${u(2.6)} rgba(22,19,28,0.10)`,
+                  border: '1px solid rgba(255,255,255,0.12)',
+                  boxShadow: `0 ${u(1)} ${u(2.6)} rgba(0,0,0,0.4)`,
                 }}
               >
                 {p > 0.02 && (
@@ -201,7 +203,7 @@ export function SceneAnnonse({ t }) {
                       top: '-30%', bottom: '-30%', width: '45%',
                       left: `${(-50 + 165 * easeInOutCubic(sheen)).toFixed(1)}%`,
                       transform: 'rotate(16deg)',
-                      background: `linear-gradient(100deg, transparent, rgba(255,255,255,${(Math.sin(sheen * Math.PI) * 0.45).toFixed(2)}), transparent)`,
+                      background: `linear-gradient(100deg, transparent, rgba(255,255,255,${(Math.sin(sheen * Math.PI) * 0.4).toFixed(2)}), transparent)`,
                     }}
                   />
                 )}
@@ -213,17 +215,17 @@ export function SceneAnnonse({ t }) {
         {/* tittel — AI-en skriver */}
         <p
           className="font-heading font-bold"
-          style={{ fontSize: u(3.1), color: INK, marginTop: u(2.4), minHeight: u(4), whiteSpace: 'nowrap', letterSpacing: '-0.01em' }}
+          style={{ fontSize: u(3.1), color: FG, marginTop: u(2.4), minHeight: u(4), whiteSpace: 'nowrap', letterSpacing: '-0.01em' }}
         >
           {AD_TITLE.slice(0, chars)}
-          <span style={{ opacity: caretOn ? 1 : 0, color: 'rgba(10,10,10,0.55)', fontWeight: 400 }}>|</span>
+          <span style={{ opacity: caretOn ? 1 : 0, color: 'rgba(235,232,245,0.8)', fontWeight: 400 }}>|</span>
         </p>
 
         {/* meta-rad */}
         <p
           className="font-body"
           style={{
-            fontSize: u(1.95), color: 'rgba(10,10,10,0.45)', marginTop: u(0.8),
+            fontSize: u(1.95), color: 'rgba(253,252,251,0.45)', marginTop: u(0.8),
             opacity: metaP.toFixed(2), transform: `translateY(${u((1 - metaP) * 1.2)})`,
           }}
         >
@@ -240,7 +242,7 @@ export function SceneAnnonse({ t }) {
                 style={{
                   display: 'block', height: u(1.1), borderRadius: u(0.6),
                   width: `${(w * p).toFixed(1)}%`,
-                  background: 'linear-gradient(90deg, rgba(10,10,10,0.11), rgba(10,10,10,0.06))',
+                  background: 'linear-gradient(90deg, rgba(235,232,245,0.13), rgba(235,232,245,0.07))',
                 }}
               />
             );
@@ -255,15 +257,15 @@ export function SceneAnnonse({ t }) {
           style={{
             left: u(36), top: u(5), gap: u(1.1),
             padding: `${u(0.85)} ${u(1.8)}`, borderRadius: u(2.6),
-            background: '#FFFFFF',
-            border: '1px solid rgba(155,91,214,0.35)',
-            boxShadow: `0 ${u(1.2)} ${u(3.5)} rgba(22,19,28,0.10), 0 0 ${u(2.5)} rgba(155,91,214,0.12)`,
+            background: 'rgba(32,29,42,0.95)',
+            border: '1px solid rgba(207,151,252,0.32)',
+            boxShadow: `0 ${u(1.2)} ${u(3.5)} rgba(0,0,0,0.45), 0 0 ${u(2.5)} rgba(207,151,252,0.12)`,
             opacity: aiIn.toFixed(2),
             transform: `translateY(${u((1 - aiIn) * 2 + fl(t, 2, 0.3))})`,
           }}
         >
-          <Sparkles style={{ width: u(2), height: u(2), color: '#9B5BD6' }} strokeWidth={2} />
-          <span className="font-body" style={{ fontSize: u(1.85), color: 'rgba(10,10,10,0.72)', whiteSpace: 'nowrap' }}>
+          <Sparkles style={{ width: u(2), height: u(2), color: LAV }} strokeWidth={2} />
+          <span className="font-body" style={{ fontSize: u(1.85), color: 'rgba(253,252,251,0.8)', whiteSpace: 'nowrap' }}>
             DigiHome AI skriver
           </span>
           <span className="flex" style={{ gap: u(0.5) }}>
@@ -272,7 +274,7 @@ export function SceneAnnonse({ t }) {
                 key={d}
                 className="rounded-full"
                 style={{
-                  width: u(0.7), height: u(0.7), background: '#9B5BD6',
+                  width: u(0.7), height: u(0.7), background: LAV,
                   opacity: (0.25 + 0.75 * Math.max(0, Math.sin(t * 5 - d * 0.9))).toFixed(2),
                 }}
               />
@@ -296,14 +298,14 @@ export function SceneAnnonse({ t }) {
             <g key={c.label}>
               <line
                 x1={x1} y1={y1} x2={x2} y2={y2}
-                stroke="rgba(10,10,10,0.16)" strokeWidth="0.22"
+                stroke="rgba(235,232,245,0.16)" strokeWidth="0.22"
                 strokeDasharray={len.toFixed(2)}
                 strokeDashoffset={(len * (1 - lineP)).toFixed(2)}
               />
               {pp > 0.01 && pp < 0.99 && (
                 <>
-                  <circle cx={px.toFixed(2)} cy={py.toFixed(2)} r="1.1" fill={`rgba(155,91,214,${(Math.sin(pp * Math.PI) * 0.18).toFixed(2)})`} />
-                  <circle cx={px.toFixed(2)} cy={py.toFixed(2)} r="0.5" fill={`rgba(155,91,214,${(Math.sin(pp * Math.PI) * 0.9).toFixed(2)})`} />
+                  <circle cx={px.toFixed(2)} cy={py.toFixed(2)} r="1.1" fill={`rgba(207,151,252,${(Math.sin(pp * Math.PI) * 0.2).toFixed(2)})`} />
+                  <circle cx={px.toFixed(2)} cy={py.toFixed(2)} r="0.5" fill={`rgba(207,151,252,${(Math.sin(pp * Math.PI) * 0.95).toFixed(2)})`} />
                 </>
               )}
             </g>
@@ -325,15 +327,15 @@ export function SceneAnnonse({ t }) {
               left: u(72.5), top: u(c.y + fl(t, 3 + i * 1.7, 0.3)), height: u(6),
               padding: `0 ${u(2)}`, gap: u(1.2),
               borderRadius: u(3),
-              background: '#FFFFFF',
-              border: `1px solid rgba(10,10,10,${ticked ? 0.14 : 0.08})`,
-              boxShadow: `0 ${u(1.2)} ${u(3.5)} rgba(22,19,28,0.09)`,
+              background: 'rgba(28,26,36,0.92)',
+              border: `1px solid rgba(255,255,255,${ticked ? 0.2 : 0.12})`,
+              boxShadow: `0 ${u(1.2)} ${u(3.5)} rgba(0,0,0,0.45)${ticked ? `, 0 0 ${u(2.4)} rgba(235,232,245,0.07)` : ''}`,
               opacity: Math.min(pop * 1.6, 1).toFixed(2),
               transform: `scale(${(0.7 + 0.3 * Math.min(pop, 1.06)).toFixed(3)})`,
-              transition: 'border 0.4s',
+              transition: 'border 0.4s, box-shadow 0.4s',
             }}
           >
-            <span className="font-body font-medium" style={{ fontSize: u(2.05), color: 'rgba(10,10,10,0.85)', whiteSpace: 'nowrap' }}>
+            <span className="font-body font-medium" style={{ fontSize: u(2.05), color: 'rgba(253,252,251,0.88)', whiteSpace: 'nowrap' }}>
               {c.label}
             </span>
             {ticked && <Tick size={2.5} pop={sp(t, at + 0.8, at + 1.15)} />}
@@ -348,15 +350,15 @@ export function SceneAnnonse({ t }) {
           style={{
             left: u(72.5), top: u(52 + fl(t, 8, 0.3)), gap: u(1.2),
             padding: `${u(0.9)} ${u(1.8)}`, borderRadius: u(2.8),
-            background: '#FFFFFF', border: '1px solid rgba(10,10,10,0.08)',
-            boxShadow: `0 ${u(1.2)} ${u(3.5)} rgba(22,19,28,0.09)`,
+            background: 'rgba(28,26,36,0.92)', border: '1px solid rgba(255,255,255,0.12)',
+            boxShadow: `0 ${u(1.2)} ${u(3.5)} rgba(0,0,0,0.45)`,
             opacity: Math.min(viewsIn * 1.6, 1).toFixed(2),
             transform: `scale(${(0.7 + 0.3 * Math.min(viewsIn, 1.06)).toFixed(3)})`,
           }}
         >
-          <Eye style={{ width: u(2.1), height: u(2.1), color: 'rgba(10,10,10,0.5)' }} strokeWidth={1.8} />
-          <span className="font-body" style={{ fontSize: u(1.9), color: 'rgba(10,10,10,0.65)', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
-            <span style={{ color: INK, fontWeight: 600 }}>{views}</span> visninger i dag
+          <Eye style={{ width: u(2.1), height: u(2.1), color: 'rgba(253,252,251,0.55)' }} strokeWidth={1.8} />
+          <span className="font-body" style={{ fontSize: u(1.9), color: 'rgba(253,252,251,0.7)', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
+            <span style={{ color: FG, fontWeight: 600 }}>{views}</span> visninger i dag
           </span>
         </div>
       )}
@@ -406,10 +408,10 @@ export function ScenePris({ t }) {
     width: u(1.8), height: u(1.8),
     ...(pos.includes('t') ? { top: 0 } : { bottom: 0 }),
     ...(pos.includes('l') ? { left: 0 } : { right: 0 }),
-    borderTop: pos.includes('t') ? '1.5px solid rgba(155,91,214,0.85)' : 'none',
-    borderBottom: pos.includes('b') ? '1.5px solid rgba(155,91,214,0.85)' : 'none',
-    borderLeft: pos.includes('l') ? '1.5px solid rgba(155,91,214,0.85)' : 'none',
-    borderRight: pos.includes('r') ? '1.5px solid rgba(155,91,214,0.85)' : 'none',
+    borderTop: pos.includes('t') ? '1.5px solid rgba(235,232,245,0.75)' : 'none',
+    borderBottom: pos.includes('b') ? '1.5px solid rgba(235,232,245,0.75)' : 'none',
+    borderLeft: pos.includes('l') ? '1.5px solid rgba(235,232,245,0.75)' : 'none',
+    borderRight: pos.includes('r') ? '1.5px solid rgba(235,232,245,0.75)' : 'none',
   });
 
   return (
@@ -420,7 +422,7 @@ export function ScenePris({ t }) {
           className="absolute font-body uppercase"
           style={{
             left: u(10), top: u(8.5), fontSize: u(1.6), letterSpacing: '0.32em',
-            color: 'rgba(10,10,10,0.35)', opacity: capP.toFixed(2),
+            color: 'rgba(253,252,251,0.35)', opacity: capP.toFixed(2),
           }}
         >
           Bergen · leiemarked
@@ -434,7 +436,7 @@ export function ScenePris({ t }) {
           className="absolute font-body"
           style={{
             left: u(1.5), top: u(y), transform: 'translateY(-50%)',
-            fontSize: u(1.5), color: 'rgba(10,10,10,0.30)', fontVariantNumeric: 'tabular-nums',
+            fontSize: u(1.5), color: 'rgba(253,252,251,0.30)', fontVariantNumeric: 'tabular-nums',
             opacity: (0.9 * gridP).toFixed(2),
           }}
         >
@@ -444,33 +446,33 @@ export function ScenePris({ t }) {
 
       <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 76" fill="none" aria-hidden="true">
         <defs>
-          <linearGradient id="dhAreaFillLys" x1="0" y1="20" x2="0" y2="50" gradientUnits="userSpaceOnUse">
-            <stop offset="0" stopColor="#0A0A0A" stopOpacity="0.06" />
-            <stop offset="1" stopColor="#0A0A0A" stopOpacity="0" />
+          <linearGradient id="dhAreaFillNatt" x1="0" y1="20" x2="0" y2="50" gradientUnits="userSpaceOnUse">
+            <stop offset="0" stopColor="#EBE8F5" stopOpacity="0.10" />
+            <stop offset="1" stopColor="#EBE8F5" stopOpacity="0" />
           </linearGradient>
         </defs>
 
         {/* rutenett */}
         {[24, 33, 42].map((y) => (
-          <line key={y} x1="10" y1={y} x2="90" y2={y} stroke={`rgba(10,10,10,${(0.06 * gridP).toFixed(3)})`} strokeWidth="0.16" strokeDasharray="0.8 2" />
+          <line key={y} x1="10" y1={y} x2="90" y2={y} stroke={`rgba(235,232,245,${(0.05 * gridP).toFixed(3)})`} strokeWidth="0.16" strokeDasharray="0.8 2" />
         ))}
-        <line x1="10" y1="50" x2="90" y2="50" stroke={`rgba(10,10,10,${(0.16 * gridP).toFixed(3)})`} strokeWidth="0.2" />
+        <line x1="10" y1="50" x2="90" y2="50" stroke={`rgba(235,232,245,${(0.14 * gridP).toFixed(3)})`} strokeWidth="0.2" />
 
         {/* areal under markedslinjen — blusser opp ved lås */}
-        {areaP > 0.01 && <path d={M_AREA} fill="url(#dhAreaFillLys)" opacity={(areaP * (1 + areaGlow)).toFixed(2)} />}
+        {areaP > 0.01 && <path d={M_AREA} fill="url(#dhAreaFillNatt)" opacity={(areaP * (1 + areaGlow)).toFixed(2)} />}
 
         {/* markedslinjen tegnes med lysende ledepunkt */}
         {lineP > 0.004 && (
           <path
             d={M_PATH}
-            stroke="rgba(10,10,10,0.5)" strokeWidth="0.35" strokeLinecap="round"
+            stroke="rgba(235,232,245,0.55)" strokeWidth="0.35" strokeLinecap="round"
             strokeDasharray={M_LEN} strokeDashoffset={(M_LEN * (1 - lineP)).toFixed(2)}
           />
         )}
         {lineP > 0.01 && lineP < 0.995 && (
           <>
-            <circle cx={tipX.toFixed(2)} cy={tipY.toFixed(2)} r="1.4" fill="rgba(155,91,214,0.18)" />
-            <circle cx={tipX.toFixed(2)} cy={tipY.toFixed(2)} r="0.6" fill="#9B5BD6" />
+            <circle cx={tipX.toFixed(2)} cy={tipY.toFixed(2)} r="1.4" fill="rgba(207,151,252,0.2)" />
+            <circle cx={tipX.toFixed(2)} cy={tipY.toFixed(2)} r="0.6" fill={LAV} />
           </>
         )}
 
@@ -483,9 +485,9 @@ export function ScenePris({ t }) {
           return (
             <g key={i}>
               {echo > 0.01 && echo < 0.99 && (
-                <circle cx={d.x} cy={d.y} r={(0.7 + echo * 1.8).toFixed(2)} stroke={`rgba(10,10,10,${(Math.sin(echo * Math.PI) * 0.22).toFixed(2)})`} strokeWidth="0.15" fill="none" />
+                <circle cx={d.x} cy={d.y} r={(0.7 + echo * 1.8).toFixed(2)} stroke={`rgba(235,232,245,${(Math.sin(echo * Math.PI) * 0.25).toFixed(2)})`} strokeWidth="0.15" fill="none" />
               )}
-              <circle cx={d.x} cy={d.y} r={(0.75 * p).toFixed(2)} fill={`rgba(10,10,10,${(0.45 * p).toFixed(2)})`} />
+              <circle cx={d.x} cy={d.y} r={(0.75 * p).toFixed(2)} fill={`rgba(235,232,245,${(0.5 * p).toFixed(2)})`} />
             </g>
           );
         })}
@@ -494,7 +496,7 @@ export function ScenePris({ t }) {
         {(scanActive || locked) && (
           <line
             x1="10" y1={(locked ? LOCK.y : scanY).toFixed(2)} x2="90" y2={(locked ? LOCK.y : scanY).toFixed(2)}
-            stroke={locked ? 'rgba(10,10,10,0.8)' : 'rgba(155,91,214,0.5)'}
+            stroke={locked ? 'rgba(250,249,253,0.8)' : 'rgba(207,151,252,0.5)'}
             strokeWidth={locked ? 0.3 : 0.22}
             strokeDasharray={locked ? 'none' : '1.4 1.6'}
           />
@@ -506,10 +508,10 @@ export function ScenePris({ t }) {
             {burst > 0.01 && burst < 0.99 && (
               <circle
                 cx={LOCK.x} cy={LOCK.y} r={(1 + easeOutCubic(burst) * 5).toFixed(2)}
-                stroke={`rgba(155,91,214,${(Math.sin(burst * Math.PI) * 0.5).toFixed(2)})`} strokeWidth="0.25" fill="none"
+                stroke={`rgba(207,151,252,${(Math.sin(burst * Math.PI) * 0.5).toFixed(2)})`} strokeWidth="0.25" fill="none"
               />
             )}
-            <circle cx={LOCK.x} cy={LOCK.y} r={(1.1 * Math.min(lockPop, 1.1)).toFixed(2)} fill="#9B5BD6" />
+            <circle cx={LOCK.x} cy={LOCK.y} r={(1.1 * Math.min(lockPop, 1.1)).toFixed(2)} fill={LAV} />
           </>
         )}
       </svg>
@@ -522,14 +524,14 @@ export function ScenePris({ t }) {
             left: u(91), top: u(locked ? LOCK.y : scanY),
             transform: 'translate(-100%, -50%)',
             padding: `${u(0.7)} ${u(1.5)}`, borderRadius: u(1.4),
-            background: '#FFFFFF',
-            border: `1px solid ${locked ? 'rgba(24,121,78,0.45)' : 'rgba(10,10,10,0.12)'}`,
-            boxShadow: `0 ${u(1)} ${u(3)} rgba(22,19,28,0.10)`,
+            background: 'rgba(28,26,36,0.95)',
+            border: `1px solid ${locked ? 'rgba(52,211,153,0.5)' : 'rgba(255,255,255,0.16)'}`,
+            boxShadow: `0 ${u(1)} ${u(3)} rgba(0,0,0,0.45)`,
             opacity: tagP.toFixed(2),
             transition: 'border 0.3s',
           }}
         >
-          <span className="font-body font-semibold" style={{ fontSize: u(1.9), color: locked ? '#18794E' : 'rgba(10,10,10,0.8)', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
+          <span className="font-body font-semibold" style={{ fontSize: u(1.9), color: locked ? '#7ee2a8' : 'rgba(253,252,251,0.85)', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
             {fmt(locked ? 25500 : scanPrice)} kr
           </span>
         </div>
@@ -540,9 +542,9 @@ export function ScenePris({ t }) {
         <div className="absolute flex items-center" style={{ right: u(10), top: u(8.2), gap: u(1.2), opacity: kalibLabel.toFixed(2) }}>
           <span
             className="inline-flex rounded-full"
-            style={{ width: u(1.2), height: u(1.2), background: '#9B5BD6', opacity: (Math.sin(t * 6) > 0 ? 1 : 0.3) }}
+            style={{ width: u(1.2), height: u(1.2), background: LAV, opacity: (Math.sin(t * 6) > 0 ? 1 : 0.3) }}
           />
-          <span className="font-body uppercase" style={{ fontSize: u(1.7), letterSpacing: '0.3em', color: 'rgba(10,10,10,0.45)' }}>
+          <span className="font-body uppercase" style={{ fontSize: u(1.7), letterSpacing: '0.3em', color: 'rgba(253,252,251,0.45)' }}>
             Kalibrerer
           </span>
         </div>
@@ -596,13 +598,14 @@ export function SceneLeietaker({ t }) {
 
   return (
     <div className="absolute inset-0">
-      {/* skannelys — lavendel på lyst */}
+      {/* skannelys */}
       {beamOn && (
         <div
           className="absolute pointer-events-none"
           style={{
             left: u(beamX - 5), top: 0, bottom: 0, width: u(10),
-            background: 'linear-gradient(90deg, transparent, rgba(155,91,214,0.05) 45%, rgba(155,91,214,0.09) 50%, rgba(155,91,214,0.05) 55%, transparent)',
+            background: 'linear-gradient(90deg, transparent, rgba(235,232,245,0.08) 45%, rgba(250,249,253,0.13) 50%, rgba(235,232,245,0.08) 55%, transparent)',
+            mixBlendMode: 'screen',
             opacity: Math.sin(beamP * Math.PI).toFixed(2),
           }}
         />
@@ -629,9 +632,9 @@ export function SceneLeietaker({ t }) {
               left: u(x), top: u(25 + fl(t, i * 2.2, a.chosen ? 0.22 : 0.15)),
               width: u(22), padding: `${u(2.2)} ${u(2)}`,
               borderRadius: u(2.2),
-              background: '#FFFFFF',
-              border: `1px solid ${glow > 0.05 ? `rgba(24,121,78,${(0.5 * glow).toFixed(2)})` : 'rgba(10,10,10,0.08)'}`,
-              boxShadow: `${CARD_SHADOW}${glow > 0.05 ? `, 0 0 ${u(3.5)} rgba(24,121,78,${(0.12 * glow).toFixed(2)})` : ''}`,
+              background: 'rgba(28,26,36,0.92)',
+              border: `1px solid ${glow > 0.05 ? `rgba(52,211,153,${(0.5 * glow).toFixed(2)})` : 'rgba(255,255,255,0.12)'}`,
+              boxShadow: `${CARD_SHADOW}${glow > 0.05 ? `, 0 0 ${u(3.5)} rgba(52,211,153,${(0.16 * glow).toFixed(2)})` : ''}`,
               transform: `translate(-50%, -50%) translateY(${u((1 - Math.min(inP, 1.04)) * 7)}) rotate(${rot.toFixed(1)}deg) scale(${sc})`,
               opacity: (Math.min(inP * 1.6, 1) * (1 - 0.5 * rej) * (1 - ex)).toFixed(2),
               filter: `${rej > 0.02 ? `grayscale(${rej.toFixed(2)})` : ''} ${ex > 0.02 ? `blur(${(ex * 1.6).toFixed(1)}px)` : ''}`.trim() || 'none',
@@ -643,8 +646,8 @@ export function SceneLeietaker({ t }) {
                 className="inline-flex items-center justify-center rounded-full font-heading font-bold"
                 style={{
                   width: u(6), height: u(6), fontSize: u(2.2),
-                  background: 'rgba(10,10,10,0.05)', color: 'rgba(10,10,10,0.8)',
-                  border: '1px solid rgba(10,10,10,0.10)',
+                  background: 'rgba(235,232,245,0.10)', color: 'rgba(253,252,251,0.85)',
+                  border: '1px solid rgba(255,255,255,0.12)',
                 }}
               >
                 {a.init}
@@ -655,25 +658,25 @@ export function SceneLeietaker({ t }) {
                   className="absolute rounded-full"
                   style={{
                     inset: u(-0.8),
-                    border: '1.4px solid rgba(10,10,10,0.10)',
-                    borderTopColor: 'rgba(155,91,214,0.8)',
+                    border: '1.4px solid rgba(255,255,255,0.10)',
+                    borderTopColor: 'rgba(207,151,252,0.85)',
                     transform: `rotate(${((t * 540) % 360).toFixed(0)}deg)`,
                     opacity: spin.toFixed(2),
                   }}
                 />
               )}
             </span>
-            <p className="font-body font-medium" style={{ fontSize: u(2.05), color: 'rgba(10,10,10,0.85)', marginTop: u(1.4), whiteSpace: 'nowrap' }}>
+            <p className="font-body font-medium" style={{ fontSize: u(2.05), color: 'rgba(253,252,251,0.88)', marginTop: u(1.4), whiteSpace: 'nowrap' }}>
               {a.name}
             </p>
-            <span style={{ display: 'block', width: '74%', height: u(0.9), borderRadius: u(0.5), background: 'rgba(10,10,10,0.09)', marginTop: u(1.4) }} />
-            <span style={{ display: 'block', width: '52%', height: u(0.9), borderRadius: u(0.5), background: 'rgba(10,10,10,0.06)', marginTop: u(0.8) }} />
+            <span style={{ display: 'block', width: '74%', height: u(0.9), borderRadius: u(0.5), background: 'rgba(235,232,245,0.10)', marginTop: u(1.4) }} />
+            <span style={{ display: 'block', width: '52%', height: u(0.9), borderRadius: u(0.5), background: 'rgba(235,232,245,0.07)', marginTop: u(0.8) }} />
             {/* status-linje */}
             <p
               className="font-body"
               style={{
                 fontSize: u(1.6), marginTop: u(1.3), minHeight: u(2), whiteSpace: 'nowrap',
-                color: t >= a.verdictAt ? (a.chosen ? '#18794E' : 'rgba(10,10,10,0.35)') : 'rgba(10,10,10,0.4)',
+                color: t >= a.verdictAt ? (a.chosen ? '#7ee2a8' : 'rgba(253,252,251,0.35)') : 'rgba(253,252,251,0.45)',
                 fontWeight: a.chosen && t >= a.verdictAt ? 600 : 400,
               }}
             >
@@ -684,9 +687,8 @@ export function SceneLeietaker({ t }) {
                 className="absolute inline-flex items-center justify-center rounded-full"
                 style={{
                   top: u(-1), right: u(-1), width: u(2.8), height: u(2.8),
-                  background: '#FFFFFF', border: '1px solid rgba(10,10,10,0.14)',
-                  color: 'rgba(10,10,10,0.45)', fontSize: u(1.6),
-                  boxShadow: `0 ${u(0.5)} ${u(1.4)} rgba(22,19,28,0.08)`,
+                  background: 'rgba(20,18,26,0.95)', border: '1px solid rgba(255,255,255,0.18)',
+                  color: 'rgba(253,252,251,0.5)', fontSize: u(1.6),
                 }}
               >
                 –
@@ -708,7 +710,7 @@ export function SceneLeietaker({ t }) {
           style={{
             left: u(30), top: u(25), width: u(34), height: u(30),
             transform: 'translate(-50%, -50%)',
-            background: 'radial-gradient(ellipse 50% 50% at 50% 50%, rgba(155,91,214,0.06), transparent 70%)',
+            background: 'radial-gradient(ellipse 50% 50% at 50% 50%, rgba(235,232,245,0.05), transparent 70%)',
             opacity: mvP.toFixed(2),
           }}
         />
@@ -730,7 +732,7 @@ export function SceneLeietaker({ t }) {
             }}
           >
             <Tick size={3} pop={sp(t, at + 0.18, at + 0.55)} />
-            <span className="font-body font-medium" style={{ fontSize: u(2.3), color: 'rgba(10,10,10,0.82)', whiteSpace: 'nowrap' }}>
+            <span className="font-body font-medium" style={{ fontSize: u(2.3), color: 'rgba(253,252,251,0.85)', whiteSpace: 'nowrap' }}>
               {c}
             </span>
           </div>
@@ -743,17 +745,17 @@ export function SceneLeietaker({ t }) {
           <svg viewBox="0 0 56 24" fill="none" style={{ width: u(22), height: u(9.4), overflow: 'visible' }} aria-hidden="true">
             <path
               d={SIG_PATH}
-              stroke="rgba(10,10,10,0.8)" strokeWidth="1.1" strokeLinecap="round"
+              stroke="rgba(250,249,253,0.85)" strokeWidth="1.1" strokeLinecap="round"
               strokeDasharray="80" strokeDashoffset={(80 * (1 - sigP)).toFixed(2)}
             />
             {sigP > 0.01 && sigP < 0.99 && (
               <>
-                <circle cx={penX.toFixed(2)} cy={penY.toFixed(2)} r="2.6" fill="rgba(155,91,214,0.15)" />
-                <circle cx={penX.toFixed(2)} cy={penY.toFixed(2)} r="1.1" fill="#0A0A0A" />
+                <circle cx={penX.toFixed(2)} cy={penY.toFixed(2)} r="2.6" fill="rgba(207,151,252,0.18)" />
+                <circle cx={penX.toFixed(2)} cy={penY.toFixed(2)} r="1.1" fill="#FAF9FD" />
               </>
             )}
           </svg>
-          <div style={{ width: u(24), height: 1, background: 'linear-gradient(90deg, rgba(10,10,10,0.25), transparent)', marginTop: u(0.6) }} />
+          <div style={{ width: u(24), height: 1, background: 'linear-gradient(90deg, rgba(235,232,245,0.3), transparent)', marginTop: u(0.6) }} />
         </div>
       )}
 
@@ -812,9 +814,8 @@ export function SceneHverdag({ t }) {
         style={{
           left: u(C.x + nudgeX), top: u(C.y + nudgeY), width: u(RING_R * 2), height: u(RING_R * 2),
           transform: `translate(-50%, -50%) scale(${ringScale})`,
-          border: `1.5px solid rgba(10,10,10,${(0.3 + 0.3 * pulse).toFixed(2)})`,
-          boxShadow: `0 ${u(1.5)} ${u(4 + 2 * pulse)} rgba(155,91,214,${(0.08 + 0.14 * pulse).toFixed(2)}), 0 ${u(3)} ${u(8)} rgba(22,19,28,0.06)`,
-          background: '#FFFFFF',
+          border: `1px solid rgba(235,232,245,${(0.3 + 0.3 * pulse).toFixed(2)})`,
+          boxShadow: `0 0 ${u(3 + 3 * pulse)} rgba(207,151,252,${(0.10 + 0.16 * pulse).toFixed(2)}), inset 0 0 ${u(3)} rgba(235,232,245,0.06)`,
           opacity: ringOp,
         }}
       />
@@ -824,8 +825,8 @@ export function SceneHverdag({ t }) {
         style={{
           left: u(C.x + nudgeX * 0.5), top: u(C.y + nudgeY * 0.5), width: u(RING_R * 2.8), height: u(RING_R * 2.8),
           transform: `translate(-50%, -50%) rotate(${((t * 24) % 360).toFixed(1)}deg)`,
-          border: '1px dashed rgba(10,10,10,0.10)',
-          borderTopColor: 'rgba(155,91,214,0.45)',
+          border: '1px dashed rgba(235,232,245,0.10)',
+          borderTopColor: 'rgba(207,151,252,0.5)',
           opacity: (Math.min(ringIn, 1) * (1 - 0.55 * calm)).toFixed(2),
         }}
       />
@@ -839,8 +840,8 @@ export function SceneHverdag({ t }) {
         }}
         aria-hidden="true"
       >
-        <path d="M4 14 L4 7.5 L10 3 L16 7.5 L16 14 Z" stroke={`rgba(10,10,10,${(0.7 + 0.3 * pulse).toFixed(2)})`} strokeWidth="0.7" strokeLinejoin="round" />
-        <circle cx="10" cy="8.2" r="1.1" stroke="rgba(10,10,10,0.55)" strokeWidth="0.5" />
+        <path d="M4 14 L4 7.5 L10 3 L16 7.5 L16 14 Z" stroke={`rgba(250,249,253,${(0.75 + 0.25 * pulse).toFixed(2)})`} strokeWidth="0.7" strokeLinejoin="round" />
+        <circle cx="10" cy="8.2" r="1.1" stroke="rgba(250,249,253,0.6)" strokeWidth="0.5" />
       </svg>
 
       {/* absorpsjons-rippler */}
@@ -859,7 +860,7 @@ export function SceneHverdag({ t }) {
             style={{
               left: u(tx), top: u(ty), width: u(r * 2), height: u(r * 2),
               transform: 'translate(-50%, -50%)',
-              border: `1px solid rgba(155,91,214,${(Math.sin(rp * Math.PI) * 0.4).toFixed(2)})`,
+              border: `1px solid rgba(207,151,252,${(Math.sin(rp * Math.PI) * 0.4).toFixed(2)})`,
             }}
           />
         );
@@ -889,21 +890,21 @@ export function SceneHverdag({ t }) {
               left: u(x), top: u(y),
               transform: `translate(-50%, -50%) scale(${(1 - 0.6 * absorbed).toFixed(2)}) rotate(${(curve * 0.6).toFixed(1)}deg)`,
               gap: u(1.1), padding: `${u(0.9)} ${u(1.7)}`, borderRadius: u(2.8),
-              background: '#FFFFFF',
-              border: '1px solid rgba(10,10,10,0.09)',
-              boxShadow: `0 ${u(1.4)} ${u(4)} rgba(22,19,28,0.12)`,
+              background: 'rgba(28,26,36,0.95)',
+              border: '1px solid rgba(255,255,255,0.13)',
+              boxShadow: `0 ${u(1.4)} ${u(4)} rgba(0,0,0,0.5)`,
               opacity: (Math.min(seg(t, n.at, n.at + 0.2) * 1.5, 1) * (1 - absorbed)).toFixed(2),
               whiteSpace: 'nowrap',
             }}
           >
             <span
               className="inline-flex items-center justify-center rounded-full shrink-0"
-              style={{ width: u(3), height: u(3), background: 'rgba(10,10,10,0.05)' }}
+              style={{ width: u(3), height: u(3), background: 'rgba(235,232,245,0.09)' }}
             >
-              <Icon style={{ width: u(1.7), height: u(1.7), color: 'rgba(10,10,10,0.6)' }} strokeWidth={1.8} />
+              <Icon style={{ width: u(1.7), height: u(1.7), color: 'rgba(253,252,251,0.7)' }} strokeWidth={1.8} />
             </span>
-            <span className="font-body" style={{ fontSize: u(1.65), color: 'rgba(10,10,10,0.38)' }}>{n.time}</span>
-            <span className="font-body" style={{ fontSize: u(1.9), color: 'rgba(10,10,10,0.82)' }}>{n.text}</span>
+            <span className="font-body" style={{ fontSize: u(1.65), color: 'rgba(253,252,251,0.4)' }}>{n.time}</span>
+            <span className="font-body" style={{ fontSize: u(1.9), color: 'rgba(253,252,251,0.85)' }}>{n.text}</span>
           </div>
         );
       })}
@@ -915,15 +916,15 @@ export function SceneHverdag({ t }) {
           style={{
             left: u(64), top: u(11 + fl(t, 5, 0.2)), gap: u(1.2),
             padding: `${u(0.9)} ${u(1.9)}`, borderRadius: u(2.8),
-            background: '#FFFFFF', border: '1px solid rgba(10,10,10,0.08)',
-            boxShadow: `0 ${u(1.2)} ${u(3.5)} rgba(22,19,28,0.09)`,
+            background: 'rgba(28,26,36,0.92)', border: '1px solid rgba(255,255,255,0.12)',
+            boxShadow: `0 ${u(1.2)} ${u(3.5)} rgba(0,0,0,0.45)`,
             transform: `scale(${(1 + 0.07 * Math.sin(clamp01(countPop) * Math.PI)).toFixed(3)})`,
             opacity: (1 - 0.45 * calm).toFixed(2),
           }}
         >
-          <span className="inline-flex rounded-full" style={{ width: u(1.2), height: u(1.2), background: '#18794E', boxShadow: `0 0 ${u(1.2)} rgba(24,121,78,0.5)` }} />
-          <span className="font-body" style={{ fontSize: u(1.9), color: 'rgba(10,10,10,0.62)', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
-            Håndtert av autopiloten · <span style={{ color: INK, fontWeight: 600 }}>{count}</span>
+          <span className="inline-flex rounded-full" style={{ width: u(1.2), height: u(1.2), background: '#34d399', boxShadow: `0 0 ${u(1.4)} rgba(52,211,153,0.8)` }} />
+          <span className="font-body" style={{ fontSize: u(1.9), color: 'rgba(253,252,251,0.7)', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
+            Håndtert av autopiloten · <span style={{ color: FG, fontWeight: 600 }}>{count}</span>
           </span>
         </div>
       )}

@@ -141,13 +141,18 @@ export function AutopilotChapters() {
   const Scene = ch.Scene;
 
   return (
-    <section ref={sectionRef} className="relative overflow-hidden py-20 sm:py-24">
-      {/* svakt lavendel-lys oppe til høyre */}
+    <section ref={sectionRef} className="relative overflow-hidden py-24 sm:py-28 text-white" style={{ background: '#14121A' }}>
+      {/* romskifte fra heroen: myk søm ned i grafitt */}
+      <div
+        className="pointer-events-none absolute inset-x-0 top-0 h-44"
+        style={{ background: 'linear-gradient(180deg, rgba(5,5,7,0.65), transparent)' }}
+      />
+      {/* studiolys */}
       <div
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            'radial-gradient(ellipse 46% 38% at 84% 0%, rgba(207,151,252,0.10), transparent 60%)',
+            'radial-gradient(ellipse 52% 40% at 78% 0%, rgba(155,91,214,0.10), transparent 60%), radial-gradient(ellipse 46% 38% at 6% 100%, rgba(120,110,160,0.06), transparent 60%)',
         }}
       />
 
@@ -155,23 +160,23 @@ export function AutopilotChapters() {
         {/* seksjonshode */}
         <div className="max-w-2xl">
           <Reveal>
-            <p className="flex items-center gap-3 text-xs uppercase tracking-[0.2em] font-semibold text-lavender">
+            <p className="flex items-center gap-3 text-xs uppercase tracking-[0.2em] font-semibold text-[#CF97FC]">
               <span className="inline-block h-px w-7 bg-current opacity-50" />
               Autopiloten i praksis
             </p>
           </Reveal>
-          <Reveal as="h2" delay={0.05} className="mt-4 text-[34px] sm:text-[48px] font-bold text-ink leading-[1.08]">
+          <Reveal as="h2" delay={0.05} className="mt-4 text-[34px] sm:text-[48px] font-bold leading-[1.08] text-white">
             Fra adresse til leie på konto.
           </Reveal>
           <Reveal delay={0.1}>
-            <p className="mt-5 text-lg text-quiet leading-relaxed max-w-xl">
+            <p className="mt-5 text-lg text-white/55 leading-relaxed max-w-xl">
               Følg de første ukene etter at du slår på autopiloten.
               Fire ting skjer — og du gjør ingen av dem.
             </p>
           </Reveal>
         </div>
 
-        <div className="mt-10 lg:mt-12 grid lg:grid-cols-[0.92fr_1.08fr] gap-8 lg:gap-14 items-center">
+        <div className="mt-10 lg:mt-12 grid lg:grid-cols-[0.85fr_1.15fr] gap-8 lg:gap-12 items-center">
           {/* kapittel-tabs */}
           <div className="order-2 lg:order-1 flex flex-col gap-2.5" role="tablist" aria-label="Kapitler">
             {CHAPTERS.map((c, i) => {
@@ -186,30 +191,37 @@ export function AutopilotChapters() {
                   onClick={() => select(i)}
                   className={`group w-full text-left rounded-2xl px-5 py-4 border transition-all duration-300 ${
                     active
-                      ? 'bg-surface border-hairline shadow-[0_16px_44px_rgba(22,19,28,0.08)]'
-                      : 'border-transparent hover:bg-fill/60'
+                      ? 'bg-white/[0.05] border-white/[0.12] shadow-[0_18px_44px_rgba(0,0,0,0.35)]'
+                      : 'border-transparent hover:bg-white/[0.03]'
                   }`}
                 >
                   <div className="flex items-baseline gap-4">
-                    <span className={`font-heading text-[13px] font-bold tracking-[0.08em] transition-colors duration-300 ${active ? 'text-lavender' : 'text-ink/25'}`}>
+                    <span className={`font-heading text-[13px] font-bold tracking-[0.08em] transition-colors duration-300 ${active ? 'text-[#CF97FC]' : 'text-white/25'}`}>
                       {c.no}
                     </span>
-                    <span className={`flex-1 font-heading text-[17px] sm:text-lg font-bold leading-snug transition-colors duration-300 ${active ? 'text-ink' : 'text-ink/40 group-hover:text-ink/65'}`}>
+                    <span className={`flex-1 font-heading text-[17px] sm:text-lg font-bold leading-snug transition-colors duration-300 ${active ? 'text-white' : 'text-white/40 group-hover:text-white/65'}`}>
                       {c.title}
                     </span>
-                    <span className={`shrink-0 text-[10px] uppercase tracking-[0.18em] font-semibold transition-colors duration-300 ${active ? 'text-lavender' : 'text-ink/25'}`}>
+                    {i < idx && (
+                      <span className="inline-flex h-4 w-4 shrink-0 translate-y-0.5 items-center justify-center rounded-full border border-emerald-400/40 bg-emerald-400/10 text-[9px] leading-none text-emerald-300">
+                        ✓
+                      </span>
+                    )}
+                    <span className={`shrink-0 text-[10px] uppercase tracking-[0.18em] font-semibold transition-colors duration-300 ${active ? 'text-[#CF97FC]/90' : 'text-white/25'}`}>
                       {c.tag}
                     </span>
                   </div>
-                  <div className="mt-3.5 relative h-[2px] w-full rounded-full bg-ink/[0.08] overflow-hidden">
-                    <span
-                      className="absolute left-0 top-0 h-full rounded-full"
-                      style={{
-                        width: `${pct.toFixed(1)}%`,
-                        background: 'linear-gradient(90deg, #9B5BD6, #CF97FC)',
-                      }}
-                    />
-                  </div>
+                  {active && (
+                    <div className="mt-3.5 relative h-[2px] w-full rounded-full bg-white/[0.08] overflow-hidden">
+                      <span
+                        className="absolute left-0 top-0 h-full rounded-full"
+                        style={{
+                          width: `${pct.toFixed(1)}%`,
+                          background: 'linear-gradient(90deg, #CF97FC, rgba(253,252,251,0.7))',
+                        }}
+                      />
+                    </div>
+                  )}
                   <div
                     className="grid"
                     style={{
@@ -218,7 +230,7 @@ export function AutopilotChapters() {
                     }}
                   >
                     <div className="overflow-hidden">
-                      <p className={`pt-3 text-[15px] leading-relaxed transition-opacity duration-500 ${active ? 'opacity-100 text-quiet' : 'opacity-0'}`}>
+                      <p className={`pt-3 text-[15px] leading-relaxed transition-opacity duration-500 ${active ? 'opacity-100 text-white/55' : 'opacity-0'}`}>
                         {c.body}
                       </p>
                     </div>
@@ -239,10 +251,23 @@ export function AutopilotChapters() {
                 aspectRatio: '100 / 76',
               }}
             >
-              {/* mykt scenelys bak elementene */}
+              {/* studiolys bak scenen */}
               <div
                 className="absolute inset-0"
-                style={{ background: 'radial-gradient(ellipse 64% 52% at 50% 38%, rgba(155,91,214,0.05), transparent 68%)' }}
+                style={{ background: 'radial-gradient(ellipse 60% 50% at 50% 34%, rgba(155,91,214,0.08), transparent 66%)' }}
+              />
+              {/* gulvet — horisont + bakkeglød (scene-anatomi som består mellom kapitler) */}
+              <div
+                className="absolute pointer-events-none"
+                style={{ left: '8%', right: '8%', top: '66.4%', height: 1, background: 'linear-gradient(90deg, transparent, rgba(235,232,245,0.16), transparent)' }}
+              />
+              <div
+                className="absolute pointer-events-none"
+                style={{ left: '20%', right: '20%', top: '58%', height: '17%', background: 'radial-gradient(ellipse 50% 50% at 50% 50%, rgba(207,151,252,0.08), transparent 70%)' }}
+              />
+              <div
+                className="absolute inset-0 pointer-events-none"
+                style={{ background: 'linear-gradient(180deg, transparent 66.5%, rgba(0,0,0,0.16) 100%)' }}
               />
               {/* kinematisk kamera: rolig zoom gjennom kapitlet */}
               <div
@@ -250,7 +275,7 @@ export function AutopilotChapters() {
                 className="absolute inset-0"
                 style={{
                   opacity: Math.min(1, t * 2.8).toFixed(2),
-                  transform: `scale(${(1 + 0.04 * (t / ch.dur)).toFixed(4)})`,
+                  transform: `scale(${(1.07 + 0.04 * (t / ch.dur)).toFixed(4)})`,
                   transformOrigin: '50% 46%',
                 }}
               >
@@ -259,19 +284,19 @@ export function AutopilotChapters() {
               {/* telemetri-stripe */}
               <div className="absolute left-2 right-2 top-1 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-success shadow-[0_0_5px_rgba(24,121,78,0.5)]" />
-                  <span className="text-[9px] uppercase tracking-[0.32em] font-semibold text-ink/35">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.7)]" />
+                  <span className="text-[9px] uppercase tracking-[0.32em] font-semibold text-white/35">
                     DigiHome Autopilot
                   </span>
                 </div>
-                <span className="text-[9px] uppercase tracking-[0.28em] font-semibold text-ink/45">
+                <span className="text-[9px] uppercase tracking-[0.28em] font-semibold text-white/45">
                   {ch.tag}
                 </span>
               </div>
               {/* kapittel-indikator */}
               <div className="absolute left-2 bottom-2 flex items-baseline gap-1.5 text-[10px] uppercase tracking-[0.3em] font-semibold">
-                <span className="text-ink/50">{ch.no}</span>
-                <span className="text-ink/20">/ 04</span>
+                <span className="text-white/50">{ch.no}</span>
+                <span className="text-white/20">/ 04</span>
               </div>
             </div>
             </div>
