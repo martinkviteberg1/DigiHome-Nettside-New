@@ -200,6 +200,15 @@ function SystemSVG({ t }) {
 
   return (
     <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 94" fill="none" aria-hidden="true">
+      <defs>
+        <linearGradient id="dhReflFade" gradientUnits="userSpaceOnUse" x1="0" y1="50.8" x2="0" y2="61.5">
+          <stop offset="0" stopColor="#fff" stopOpacity="0.5" />
+          <stop offset="1" stopColor="#fff" stopOpacity="0" />
+        </linearGradient>
+        <mask id="dhReflMask" maskUnits="userSpaceOnUse" x="0" y="50" width="100" height="16">
+          <rect x="20" y="50.5" width="60" height="15.5" fill="url(#dhReflFade)" />
+        </mask>
+      </defs>
       {/* elliptiske instrumentringer på gulvplanet */}
       {RINGS.map((ring, i) => {
         const p = easeOutCubic(seg(t, ring.at, ring.at + 0.7));
@@ -250,6 +259,26 @@ function SystemSVG({ t }) {
           </g>
         );
       })}
+      {/* speilrefleksjon i gulvplanet — polert studiogulv */}
+      <g mask="url(#dhReflMask)" transform="translate(0,101) scale(1,-1)">
+        {HOUSE.map((segm, i) => {
+          const p = easeInOutCubic(seg(t, HOUSE_AT + i * 0.11, HOUSE_AT + i * 0.11 + 0.55));
+          if (p <= 0.004) return null;
+          return (
+            <path
+              key={`refl-${i}`}
+              d={segm.d}
+              stroke={`rgba(235,232,245,${(0.2 + flash * 0.14).toFixed(3)})`}
+              strokeWidth="0.32" strokeLinecap="round" strokeLinejoin="round"
+              strokeDasharray={segm.len} strokeDashoffset={(segm.len * (1 - p)).toFixed(2)}
+            />
+          );
+        })}
+        {windowOn > 0.01 && (
+          <circle cx={CX} cy={40.6} r="1.1" fill={`rgba(255,241,209,${(0.12 * windowPulse).toFixed(3)})`} />
+        )}
+      </g>
+
       {/* gavlvindu — tennes når systemet jobber */}
       {(() => {
         const p = seg(t, HOUSE_AT + 0.7, HOUSE_AT + 1.15);
@@ -395,6 +424,27 @@ function Sweep({ t }) {
   );
 }
 
+/* ---------- kinematisk lyssveip over scenen ---------- */
+function LightSweep({ t, from, dur, strength = 0.09 }) {
+  const p = seg(t, from, from + dur);
+  if (p <= 0.001 || p >= 0.999) return null;
+  const x = -45 + 130 * easeInOutCubic(p);
+  const o = Math.sin(p * Math.PI) * strength;
+  return (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none">
+      <div
+        className="absolute"
+        style={{
+          top: '-30%', bottom: '-30%', left: `${x.toFixed(1)}%`, width: '46%',
+          background: `linear-gradient(100deg, transparent, rgba(235,232,245,${(o * 0.55).toFixed(3)}) 42%, rgba(250,249,253,${o.toFixed(3)}) 50%, rgba(235,232,245,${(o * 0.55).toFixed(3)}) 58%, transparent)`,
+          transform: 'rotate(8deg)',
+          mixBlendMode: 'screen',
+        }}
+      />
+    </div>
+  );
+}
+
 /* ---------- bryteren som booter systemet ---------- */
 function BootToggle({ t }) {
   const inRaw = easeOutBack(seg(t, 0.35, 1.0));
@@ -486,14 +536,19 @@ function BootToggle({ t }) {
 }
 
 /* ---------- systemlinje øverst ---------- */
-function SystemLabel({ t }) {
+function SystemLabel({ t, dof = 0 }) {
   const p = easeOutCubic(seg(t, 3.3, 3.9));
   if (p <= 0.004) return null;
   const aktiv = easeOutCubic(seg(t, 3.7, 4.2));
   return (
     <div
       className="absolute flex items-center justify-center"
-      style={{ left: 0, right: 0, top: u(4.5), gap: u(1.6), opacity: p.toFixed(2), transform: `translateY(${u((1 - p) * 1.5)})` }}
+      style={{
+        left: 0, right: 0, top: u(4.5), gap: u(1.6),
+        opacity: (p * (1 - dof * 0.38)).toFixed(2),
+        transform: `translateY(${u((1 - p) * 1.5)})`,
+        filter: dof > 0.02 ? `blur(${(dof * 1.3).toFixed(2)}px)` : 'none',
+      }}
     >
       <span className="font-body uppercase" style={{ fontSize: u(1.75), letterSpacing: '0.42em', color: 'rgba(253,252,251,0.38)' }}>
         DigiHome Autopilot
@@ -509,7 +564,7 @@ function SystemLabel({ t }) {
 }
 
 /* ---------- adresse-lock med sikte-braketter ---------- */
-function AddressLock({ t }) {
+function AddressLock({ t, dof = 0 }) {
   const p = easeOutCubic(seg(t, 4.1, 4.8));
   if (p <= 0.004) return null;
   const lockP = easeInOutCubic(seg(t, 4.2, 4.95));
@@ -528,7 +583,14 @@ function AddressLock({ t }) {
     borderRight: pos.includes('r') ? '1.5px solid rgba(235,232,245,0.7)' : 'none',
   });
   return (
-    <div className="absolute flex justify-center" style={{ left: 0, right: 0, top: u(10.5) }}>
+    <div
+      className="absolute flex justify-center"
+      style={{
+        left: 0, right: 0, top: u(10.5),
+        filter: dof > 0.02 ? `blur(${(dof * 1.5).toFixed(2)}px)` : 'none',
+        opacity: (1 - dof * 0.42).toFixed(2),
+      }}
+    >
       <div
         className="relative flex items-center"
         style={{
@@ -559,7 +621,7 @@ function AddressLock({ t }) {
 }
 
 /* ---------- node: subsystem som kobles på ---------- */
-function Node({ t, node }) {
+function Node({ t, node, dof = 0 }) {
   const inRaw = easeOutBack(seg(t, node.at + 0.4, node.at + 0.95));
   if (inRaw <= 0.004) return null;
   const inP = Math.min(inRaw, 1.05);
@@ -571,7 +633,8 @@ function Node({ t, node }) {
       style={{
         left: `${node.x}%`, top: `${(node.y / 94) * 100}%`,
         transform: `translate(-50%, -50%) scale(${((0.8 + 0.2 * inP) * node.depth).toFixed(3)})`,
-        opacity: (Math.min(inRaw * 1.4, 1) * (isActive ? 0.92 : 1)).toFixed(2),
+        opacity: (Math.min(inRaw * 1.4, 1) * (isActive ? 0.92 : 1) * (1 - dof * 0.5)).toFixed(2),
+        filter: dof > 0.02 ? `blur(${(dof * 1.8).toFixed(2)}px)` : 'none',
       }}
     >
       <span
@@ -660,7 +723,7 @@ function PayoutReadout({ t }) {
             className="absolute pointer-events-none"
             style={{
               inset: u(-7),
-              background: 'radial-gradient(ellipse 60% 60% at 50% 50%, rgba(240,237,248,0.09), transparent 70%)',
+              background: 'radial-gradient(ellipse 62% 62% at 50% 50%, rgba(150,232,186,0.085), rgba(240,237,248,0.05) 48%, transparent 72%)',
               opacity: bloom.toFixed(2),
             }}
           />
@@ -687,6 +750,7 @@ function PayoutReadout({ t }) {
 /* ===================== HOVEDKOMPONENT ===================== */
 export function HeroLoop({ playing = true }) {
   const wrapRef = useRef(null);
+  const tiltRef = useRef(null);
   const [un, setUn] = useState(5.2);
   const [inView, setInView] = useState(true);
 
@@ -704,38 +768,81 @@ export function HeroLoop({ playing = true }) {
     };
   }, []);
 
+  /* interaktiv 3D-tilt — scenen lener seg umerkelig mot pekeren (dempet fjær) */
+  useEffect(() => {
+    const el = wrapRef.current;
+    const inner = tiltRef.current;
+    if (!el || !inner) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    if (window.matchMedia('(pointer: coarse)').matches) return;
+    const zone = el.closest('section') || el;
+    const st = { tx: 0, ty: 0, cx: 0, cy: 0, raf: 0, hover: false };
+    const step = () => {
+      st.cx += (st.tx - st.cx) * 0.055;
+      st.cy += (st.ty - st.cy) * 0.055;
+      inner.style.transform = `rotateX(${(-st.cy * 3.4).toFixed(3)}deg) rotateY(${(st.cx * 4.6).toFixed(3)}deg)`;
+      if (st.hover || Math.abs(st.tx - st.cx) + Math.abs(st.ty - st.cy) > 0.001) {
+        st.raf = requestAnimationFrame(step);
+      } else {
+        st.raf = 0;
+      }
+    };
+    const kick = () => { if (!st.raf) st.raf = requestAnimationFrame(step); };
+    const onMove = (e) => {
+      const r = zone.getBoundingClientRect();
+      st.tx = Math.max(-1, Math.min(1, ((e.clientX - r.left) / r.width - 0.5) * 2));
+      st.ty = Math.max(-1, Math.min(1, ((e.clientY - r.top) / r.height - 0.5) * 2));
+      st.hover = true;
+      kick();
+    };
+    const onLeave = () => { st.tx = 0; st.ty = 0; st.hover = false; kick(); };
+    zone.addEventListener('pointermove', onMove, { passive: true });
+    zone.addEventListener('pointerleave', onLeave, { passive: true });
+    return () => {
+      zone.removeEventListener('pointermove', onMove);
+      zone.removeEventListener('pointerleave', onLeave);
+      if (st.raf) cancelAnimationFrame(st.raf);
+    };
+  }, []);
+
   const t = useLoopTime(playing && inView);
   const fy = Math.sin(t * 0.5) * 0.4;
   const ex = easeInOutCubic(seg(t, 18.9, 20.0));
   const { s, y } = cam(t);
+  /* dybdeskarphet: periferien mykner mens kameraet fokuserer på utbetalingen */
+  const dof = easeInOutCubic(seg(t, 13.5, 14.5)) * (1 - easeInOutCubic(seg(t, 16.8, 17.9)));
 
   return (
     <div
       ref={wrapRef}
       className="relative w-full select-none"
-      style={{ '--u': `${un}px`, aspectRatio: '100 / 94' }}
+      style={{ '--u': `${un}px`, aspectRatio: '100 / 94', perspective: '1100px' }}
       aria-hidden="true"
     >
       <Backdrop t={t} ex={ex} />
-      <div
-        className="absolute inset-0"
-        style={{
-          transform: `translateY(${u(fy + y - ex * 2.5)}) scale(${s.toFixed(4)})`,
-          transformOrigin: '50% 45%',
-          opacity: (1 - ex).toFixed(2),
-          filter: ex > 0.02 ? `blur(${(ex * 6).toFixed(1)}px)` : 'none',
-        }}
-      >
-        <Sweep t={t} />
-        <GroundGlow t={t} />
-        <SystemSVG t={t} />
-        <SystemLabel t={t} />
-        <AddressLock t={t} />
-        <BootToggle t={t} />
-        {NODES.map((n) => (
-          <Node key={n.label} t={t} node={n} />
-        ))}
-        <PayoutReadout t={t} />
+      <div ref={tiltRef} className="absolute inset-0" style={{ transformStyle: 'preserve-3d', willChange: 'transform' }}>
+        <div
+          className="absolute inset-0"
+          style={{
+            transform: `translateY(${u(fy + y - ex * 2.5)}) scale(${s.toFixed(4)})`,
+            transformOrigin: '50% 45%',
+            opacity: (1 - ex).toFixed(2),
+            filter: ex > 0.02 ? `blur(${(ex * 6).toFixed(1)}px)` : 'none',
+          }}
+        >
+          <Sweep t={t} />
+          <GroundGlow t={t} />
+          <SystemSVG t={t} />
+          <SystemLabel t={t} dof={dof} />
+          <AddressLock t={t} dof={dof} />
+          <BootToggle t={t} />
+          {NODES.map((n) => (
+            <Node key={n.label} t={t} node={n} dof={dof} />
+          ))}
+          <PayoutReadout t={t} />
+          <LightSweep t={t} from={4.55} dur={1.2} strength={0.05} />
+          <LightSweep t={t} from={15.25} dur={1.25} strength={0.09} />
+        </div>
       </div>
     </div>
   );

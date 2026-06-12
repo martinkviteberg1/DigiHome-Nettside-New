@@ -173,14 +173,6 @@ export function HeroAutopilot() {
         </div>
       </div>
 
-      {/* skroll-hint */}
-      <div {...rv(720)} aria-hidden="true">
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 hidden sm:flex flex-col items-center gap-2">
-          <span className="text-[10px] uppercase tracking-[0.3em] text-white/30 font-semibold">Skroll</span>
-          <span className="h-8 w-px bg-gradient-to-b from-white/40 to-transparent dh-scroll-line" />
-        </div>
-      </div>
-
       {/* ============ INTRO-TEPPE (kun første besøk) ============ */}
       {stage !== 'done' && (
         <>
