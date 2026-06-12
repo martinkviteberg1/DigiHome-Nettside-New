@@ -8,7 +8,7 @@ import {
 } from './FilmScenes';
 
 const DURATION = FILM_DURATION; /* 108s */
-const MP4_URL = '/film/digihome-utleie-pa-autopilot-16x9.mp4?v=20260612'; /* versjonsstempel hindrer at nettleseren bruker gammel cache */
+const MP4_URL = '/film/digihome-utleie-pa-autopilot-16x9.mp4?v=20260612b'; /* versjonsstempel hindrer at nettleseren bruker gammel cache */
 const SCENE_BOUNDARIES = [8, 14, 20, 26, 38, 50, 62, 72.5, 81.5, 92];
 
 /* «shift» lar en scene beholde sine interne tidskonstanter

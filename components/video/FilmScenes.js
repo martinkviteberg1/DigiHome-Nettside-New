@@ -434,20 +434,17 @@ function ToggleTagline({ t }) {
               </span>
             );
           }
-          const flow = (((t - at) * 42 + (i - plain.length) * 11) % 400 + 400) % 400;
           return (
             <span
               key={i}
               style={{
                 ...base,
-                background: 'linear-gradient(100deg, #F4EFFC, #CF97FC 35%, #9B5BD6 55%, #F4EFFC 80%)',
-                backgroundSize: '400% 100%',
-                backgroundPositionX: `${(-flow).toFixed(1)}%`,
+                background: 'linear-gradient(180deg, #FFFFFF 12%, #E9E9EF 55%, #A9ABB8 96%)',
                 WebkitBackgroundClip: 'text',
                 backgroundClip: 'text',
                 WebkitTextFillColor: 'transparent',
                 color: 'transparent',
-                filter: `blur(${((1 - p) * 7).toFixed(1)}px) drop-shadow(0 0 calc(var(--su)*0.9) rgba(155,91,214,0.4))`,
+                filter: `blur(${((1 - p) * 7).toFixed(1)}px)`,
               }}
             >
               {ch}
@@ -462,7 +459,7 @@ function ToggleTagline({ t }) {
           position: 'absolute', left: '50%', bottom: 'calc(var(--su) * -1.7)',
           transform: 'translateX(-50%)',
           width: `calc(var(--su) * ${(line * 30).toFixed(2)})`, height: '1.5px',
-          background: 'linear-gradient(90deg, transparent, rgba(207,151,252,0.85), transparent)',
+          background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.45), transparent)',
         }}
       />
     </div>
@@ -491,8 +488,8 @@ function ChargeIn({ t, a, b, count = 12 }) {
               position: 'absolute', left: '50%', top: '50%',
               width: `calc(var(--su) * ${sz.toFixed(2)})`, height: `calc(var(--su) * ${sz.toFixed(2)})`,
               borderRadius: '50%',
-              background: i % 3 === 0 ? '#FDFCFB' : '#CF97FC',
-              boxShadow: '0 0 calc(var(--su)*0.6) rgba(207,151,252,0.8)',
+              background: i % 3 === 0 ? '#CF97FC' : '#FDFCFB',
+              boxShadow: '0 0 calc(var(--su)*0.6) rgba(255,255,255,0.55)',
               opacity: (Math.sin(p * Math.PI) * 0.85).toFixed(3),
               transform: `translate(calc(var(--su) * ${(Math.cos(ang) * r).toFixed(2)}), calc(var(--su) * ${(Math.sin(ang) * r * 0.7).toFixed(2)}))`,
             }}
@@ -523,9 +520,9 @@ function RisingMotes({ t, a, b, count = 10 }) {
               position: 'absolute', left: `calc(${x.toFixed(1)}% + calc(var(--su) * ${sway.toFixed(2)}))`, top: `${y.toFixed(1)}%`,
               width: `calc(var(--su) * ${sz.toFixed(2)})`, height: `calc(var(--su) * ${sz.toFixed(2)})`,
               borderRadius: '50%',
-              background: '#CF97FC',
-              boxShadow: '0 0 calc(var(--su)*0.5) rgba(207,151,252,0.7)',
-              opacity: (win * Math.sin(ph * Math.PI) * 0.5).toFixed(3),
+              background: 'rgba(255,255,255,0.85)',
+              boxShadow: '0 0 calc(var(--su)*0.5) rgba(255,255,255,0.45)',
+              opacity: (win * Math.sin(ph * Math.PI) * 0.38).toFixed(3),
             }}
           />
         );
@@ -562,7 +559,7 @@ export function SceneToggle({ t }) {
         style={{
           position: 'absolute', left: '50%', top: 0, width: 'calc(var(--su) * 46)', height: '58%',
           transform: 'translateX(-50%)',
-          background: 'linear-gradient(180deg, rgba(207,151,252,0.10), rgba(155,91,214,0.035) 55%, transparent)',
+          background: 'linear-gradient(180deg, rgba(255,255,255,0.085), rgba(255,255,255,0.03) 55%, transparent)',
           clipPath: 'polygon(38% 0, 62% 0, 100% 100%, 0 100%)',
           filter: 'blur(calc(var(--su) * 1.2))',
           opacity: grpIn * (0.45 + act * 0.55),
@@ -573,7 +570,7 @@ export function SceneToggle({ t }) {
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
-          background: 'radial-gradient(ellipse 46% 40% at 50% 46%, rgba(155,91,214,0.16), transparent 70%)',
+          background: 'radial-gradient(ellipse 46% 40% at 50% 46%, rgba(155,91,214,0.09), transparent 70%)',
           opacity: act * (0.7 + breathe * 0.3),
         }}
       />
@@ -590,10 +587,10 @@ export function SceneToggle({ t }) {
               WebkitMaskComposite: 'xor',
               maskComposite: 'exclude',
               filter: `blur(calc(var(--su) * ${(0.32 + breathe * 0.22).toFixed(2)}))`,
-              opacity: 0.7 + breathe * 0.3,
+              opacity: 0.42 + breathe * 0.18,
             }}
           />
-          <div style={{ position: 'absolute', inset: 0, boxShadow: `inset 0 0 calc(var(--su)*7) rgba(155,91,214,${(0.16 + breathe * 0.09).toFixed(2)})` }} />
+          <div style={{ position: 'absolute', inset: 0, boxShadow: `inset 0 0 calc(var(--su)*7) rgba(155,91,214,${(0.1 + breathe * 0.05).toFixed(2)})` }} />
         </div>
       )}
       {/* energibølge — én ring som ekspanderer over hele bildet */}
@@ -604,9 +601,9 @@ export function SceneToggle({ t }) {
               width: `calc(var(--su) * ${(easeOutCubic(wave) * 140).toFixed(2)})`,
               height: `calc(var(--su) * ${(easeOutCubic(wave) * 140).toFixed(2)})`,
               borderRadius: '50%',
-              border: '1.5px solid rgba(207,151,252,0.5)',
-              boxShadow: '0 0 calc(var(--su)*1.4) rgba(207,151,252,0.3), inset 0 0 calc(var(--su)*1.4) rgba(207,151,252,0.15)',
-              opacity: (Math.sin(wave * Math.PI) * 0.7).toFixed(3),
+              border: '1.5px solid rgba(255,255,255,0.38)',
+              boxShadow: '0 0 calc(var(--su)*1.4) rgba(255,255,255,0.2), inset 0 0 calc(var(--su)*1.4) rgba(255,255,255,0.1)',
+              opacity: (Math.sin(wave * Math.PI) * 0.55).toFixed(3),
               flexShrink: 0,
             }}
           />
@@ -658,8 +655,8 @@ export function SceneToggle({ t }) {
               aria-hidden="true"
               style={{
                 position: 'absolute', inset: 'calc(var(--su) * -1)', borderRadius: 999,
-                border: '1.5px solid rgba(207,151,252,0.8)',
-                opacity: r > 0 ? (1 - r) * 0.85 : 0,
+                border: '1.5px solid rgba(255,255,255,0.55)',
+                opacity: r > 0 ? (1 - r) * 0.7 : 0,
                 transform: `scale(${(1 + r * (1.55 + i * 0.5)).toFixed(3)})`,
               }}
             />
@@ -672,13 +669,13 @@ export function SceneToggle({ t }) {
                 position: 'absolute', inset: 'calc(var(--su) * -0.55)', borderRadius: 999,
                 padding: 'calc(var(--su) * 0.14)',
                 background: arc < 0.999
-                  ? `conic-gradient(from -90deg, #F4EFFC 0deg, #CF97FC ${(arc * 320).toFixed(0)}deg, rgba(207,151,252,0) ${(arc * 360).toFixed(0)}deg)`
-                  : `conic-gradient(from ${((t * 50) % 360).toFixed(1)}deg, #9B5BD6, #CF97FC, #F4EFFC, #CF97FC, #9B5BD6)`,
+                  ? `conic-gradient(from -90deg, #FFFFFF 0deg, #E3E1EC ${(arc * 320).toFixed(0)}deg, rgba(227,225,236,0) ${(arc * 360).toFixed(0)}deg)`
+                  : `conic-gradient(from ${((t * 50) % 360).toFixed(1)}deg, rgba(255,255,255,0.25), rgba(207,151,252,0.5), rgba(255,255,255,0.75), rgba(207,151,252,0.5), rgba(255,255,255,0.25))`,
                 WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
                 WebkitMaskComposite: 'xor',
                 maskComposite: 'exclude',
                 filter: 'blur(0.5px)',
-                opacity: arc < 0.999 ? 1 : 0.5 + act * 0.3 * breathe,
+                opacity: arc < 0.999 ? 1 : 0.35 + act * 0.2 * breathe,
               }}
             />
           )}
@@ -690,12 +687,12 @@ export function SceneToggle({ t }) {
               background: 'rgba(22,22,28,0.62)', border: '1px solid rgba(255,255,255,0.13)',
               backdropFilter: 'blur(8px)',
               boxShadow: act > 0.01
-                ? `inset 0 calc(var(--su)*0.25) calc(var(--su)*0.8) rgba(0,0,0,0.45), 0 0 calc(var(--su) * ${(act * (3 + breathe * 1.4)).toFixed(2)}) rgba(155,91,214,${(act * 0.5).toFixed(2)})`
+                ? `inset 0 calc(var(--su)*0.25) calc(var(--su)*0.8) rgba(0,0,0,0.45), 0 0 calc(var(--su) * ${(act * (2.2 + breathe * 1)).toFixed(2)}) rgba(155,91,214,${(act * 0.32).toFixed(2)})`
                 : 'inset 0 calc(var(--su)*0.25) calc(var(--su)*0.8) rgba(0,0,0,0.45)',
             }}
           >
             {/* gradient-fyll når autopiloten våkner */}
-            <div aria-hidden="true" style={{ position: 'absolute', inset: 0, background: 'linear-gradient(120deg, #9B5BD6, #CF97FC)', opacity: act }} />
+            <div aria-hidden="true" style={{ position: 'absolute', inset: 0, background: 'linear-gradient(120deg, #7E49BE, #A678DE)', opacity: act }} />
             {/* levende sheen over fyllet */}
             <div
               aria-hidden="true"
@@ -723,8 +720,8 @@ export function SceneToggle({ t }) {
                 aria-hidden="true"
                 style={{
                   width: 'calc(var(--su) * 1.5)', height: 'calc(var(--su) * 1.5)', borderRadius: '50%',
-                  background: 'radial-gradient(circle at 35% 35%, #CF97FC, #9B5BD6)',
-                  boxShadow: `0 0 calc(var(--su) * ${(0.8 + breathe * 0.8).toFixed(2)}) rgba(155,91,214,0.9)`,
+                  background: 'radial-gradient(circle at 35% 35%, #B98AE8, #7E49BE)',
+                  boxShadow: `0 0 calc(var(--su) * ${(0.6 + breathe * 0.5).toFixed(2)}) rgba(155,91,214,0.55)`,
                   opacity: act,
                   transform: `scale(${(0.4 + act * 0.6).toFixed(3)})`,
                 }}
@@ -1235,7 +1232,7 @@ function StyleHeadline({ t }) {
         aria-hidden="true"
         style={{
           position: 'absolute', inset: 'calc(var(--su) * -2.2) calc(var(--su) * -5)',
-          background: 'radial-gradient(ellipse 60% 80% at 50% 55%, rgba(155,91,214,0.16), transparent 72%)',
+          background: 'radial-gradient(ellipse 60% 80% at 50% 55%, rgba(255,255,255,0.05), transparent 72%)',
           opacity: bloom,
           filter: 'blur(calc(var(--su) * 0.8))',
           pointerEvents: 'none',
@@ -1257,20 +1254,17 @@ function StyleHeadline({ t }) {
             </span>
           );
         }
-        const flow = (((t - at) * 42 + (i - plain.length) * 11) % 400 + 400) % 400;
         return (
           <span
             key={i}
             style={{
               ...base,
-              background: 'linear-gradient(100deg, #F4EFFC, #CF97FC 35%, #9B5BD6 55%, #F4EFFC 80%)',
-              backgroundSize: '400% 100%',
-              backgroundPositionX: `${(-flow).toFixed(1)}%`,
+              background: 'linear-gradient(180deg, #FFFFFF 12%, #E9E9EF 55%, #A9ABB8 96%)',
               WebkitBackgroundClip: 'text',
               backgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
               color: 'transparent',
-              filter: `blur(${((1 - p) * 6).toFixed(1)}px) drop-shadow(0 0 calc(var(--su)*0.8) rgba(155,91,214,0.45))`,
+              filter: `blur(${((1 - p) * 6).toFixed(1)}px)`,
             }}
           >
             {ch}
@@ -1284,7 +1278,7 @@ function StyleHeadline({ t }) {
           position: 'absolute', left: '50%', bottom: 'calc(var(--su) * -1.05)',
           transform: 'translateX(-50%)',
           width: `calc(var(--su) * ${(line * 18).toFixed(2)})`, height: '1.5px',
-          background: 'linear-gradient(90deg, transparent, rgba(207,151,252,0.85), transparent)',
+          background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.45), transparent)',
         }}
       />
     </span>
