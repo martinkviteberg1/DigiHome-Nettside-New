@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head><style>
+body { margin: 0; background: #111; font-family: sans-serif; }
+.grid { display: flex; flex-wrap: wrap; }
+.cell { width: 33vw; margin: 2px; position: relative; overflow: hidden; aspect-ratio: 3/2; }
+.cell img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.cell img.top { opacity: 0.5; }
+.cell span { position: absolute; top: 4px; left: 6px; color: #0f0; font-size: 14px; z-index: 5; background: #000a; padding: 2px 6px; }
+</style></head>
+<body>
+<div class="grid">
+  <div class="cell"><img src="room-day.jpg"/><img class="top" src="room-before.jpg" style="transform:none"/><span>A: ingen</span></div>
+  <div class="cell"><img src="room-day.jpg"/><img class="top" src="room-before.jpg" style="transform:scale(1.08)"/><span>B: scale 1.08</span></div>
+  <div class="cell"><img src="room-day.jpg"/><img class="top" src="room-before.jpg" style="transform:scale(1.15)"/><span>C: scale 1.15</span></div>
+  <div class="cell"><img src="room-day.jpg"/><img class="top" src="room-before.jpg" style="transform:scale(1.08) translate(2%,2%)"/><span>D: 1.08 +2,+2</span></div>
+  <div class="cell"><img src="room-day.jpg"/><img class="top" src="room-before.jpg" style="transform:scale(1.15) translate(0%,3%)"/><span>E: 1.15 0,+3</span></div>
+  <div class="cell"><img src="room-day.jpg"/><img class="top" src="room-before.jpg" style="transform:scale(1.22) translate(0%,4%)"/><span>F: 1.22 0,+4</span></div>
+</div>
+</body>
+</html>

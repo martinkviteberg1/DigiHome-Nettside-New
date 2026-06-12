@@ -4,34 +4,42 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { seg, clamp01, Orb, FilmGrain, LightSweep, Aurora, Bokeh } from './filmUtils';
 import { scheduleMusic, renderMusicWav, FILM_DURATION } from './filmAudio';
 import {
-  SceneOpening, SceneToggle, SceneAnnonse, SceneVisning, SceneKontrakt, SceneDynamisk, SceneChat, SceneFinale,
+  SceneOpening, SceneToggle, SceneAdresse, SceneBilder, SceneStyling, SceneAnnonse, SceneVisning, SceneKontrakt, SceneDynamisk, SceneChat, SceneFinale,
 } from './FilmScenes';
 
-const DURATION = FILM_DURATION; /* 84s */
+const DURATION = FILM_DURATION; /* 108s */
 const MP4_URL = '/film/digihome-utleie-pa-autopilot-16x9.mp4';
-const SCENE_BOUNDARIES = [8, 14, 26, 38, 48.5, 57.5, 68];
+const SCENE_BOUNDARIES = [8, 14, 20, 26, 38, 50, 62, 72.5, 81.5, 92];
 
+/* «shift» lar en scene beholde sine interne tidskonstanter
+   selv om den er flyttet senere i filmen (t - shift sendes inn) */
 const SCENES = [
   { start: 0, end: 8.5, C: SceneOpening },
   { start: 8, end: 14.5, C: SceneToggle },
-  { start: 14, end: 26.5, C: SceneAnnonse },
-  { start: 26, end: 38.5, C: SceneVisning },
-  { start: 38, end: 49, C: SceneKontrakt },
-  { start: 48.5, end: 58, C: SceneDynamisk },
-  { start: 57.5, end: 68.5, C: SceneChat },
-  { start: 68, end: 84, C: SceneFinale },
+  { start: 14, end: 20.5, C: SceneAdresse },
+  { start: 20, end: 26.5, C: SceneBilder },
+  { start: 26, end: 38.5, C: SceneStyling, shift: 12 },
+  { start: 38, end: 50.5, C: SceneAnnonse, shift: 24 },
+  { start: 50, end: 62.5, C: SceneVisning, shift: 24 },
+  { start: 62, end: 73, C: SceneKontrakt, shift: 24 },
+  { start: 72.5, end: 82, C: SceneDynamisk, shift: 24 },
+  { start: 81.5, end: 92.5, C: SceneChat, shift: 24 },
+  { start: 92, end: 108, C: SceneFinale, shift: 24 },
 ];
 
 /* kapitler (for spiller-UI) */
 const CHAPTERS = [
   { t: 0, label: 'Åpning' },
   { t: 8, label: 'Autopilot på' },
-  { t: 14, label: 'Annonse' },
-  { t: 26, label: 'Visninger & screening' },
-  { t: 38, label: 'Kontrakt & husleie' },
-  { t: 48.5, label: 'Dynamisk utleie' },
-  { t: 57.5, label: 'Svar 24/7' },
-  { t: 68, label: 'Finale' },
+  { t: 14, label: 'Adresse' },
+  { t: 20, label: 'Bilder' },
+  { t: 26, label: 'AI-styling' },
+  { t: 38, label: 'Annonse' },
+  { t: 50, label: 'Visninger & screening' },
+  { t: 62, label: 'Kontrakt & husleie' },
+  { t: 72.5, label: 'Dynamisk utleie' },
+  { t: 81.5, label: 'Svar 24/7' },
+  { t: 92, label: 'Finale' },
 ];
 
 /* impact-kamerarist fjernet etter tilbakemelding — filmen skal være supersmooth */
@@ -235,6 +243,8 @@ export default function AutopilotFilm() {
   }, []);
   useEffect(() => () => clearTimeout(hideTimer.current), []);
   const chromeVisible = !recordMode && (chrome || !playing || !started || ended);
+  /* før start: vis filmens åpningsbilde som plakat */
+  const displayT = started ? time : 5.2;
 
   /* ---- fullskjerm ---- */
   const toggleFs = useCallback(() => {
@@ -297,7 +307,7 @@ export default function AutopilotFilm() {
       className="fixed inset-0 z-[100] flex items-center justify-center select-none"
       style={{ background: '#030304', cursor: recordMode ? 'none' : chromeVisible ? 'default' : 'none' }}
       onMouseMove={recordMode ? undefined : wake}
-      onClick={recordMode ? undefined : () => { if (started && !ended) (playing ? pause() : play()); }}
+      onClick={recordMode ? undefined : () => { if (!started) { play(); } else if (!ended) { playing ? pause() : play(); } }}
       onContextMenu={(e) => {
         if (recordMode) return;
         e.preventDefault();
@@ -328,10 +338,17 @@ export default function AutopilotFilm() {
           }}
         />
 
-        {/* scener */}
-        {started && SCENES.map(({ start, end, C }, i) =>
-          time >= start - 0.1 && time <= end + 0.1 ? <C key={i} t={time} /> : null
+        {/* scener (med ev. tidsshift) — før start vises filmens plakatbilde */}
+        {SCENES.map(({ start, end, C, shift = 0 }, i) =>
+          displayT >= start - 0.1 && displayT <= end + 0.1 ? <C key={i} t={displayT - shift} /> : null
         )}
+
+        {/* forhåndslast styling-bildene (unngå hikk ved 14s) */}
+        <div aria-hidden="true" style={{ display: 'none' }}>
+          <img src="/film/styling/room-before.jpg" alt="" />
+          <img src="/film/styling/room-day.jpg" alt="" />
+          <img src="/film/styling/room-evening.jpg" alt="" />
+        </div>
 
         {/* lys-sveip ved aktskifter */}
         {started && <LightSweep t={time} boundaries={SCENE_BOUNDARIES} />}
@@ -369,46 +386,27 @@ export default function AutopilotFilm() {
         {started && <FilmGrain t={time} opacity={0.05} />}
         </div>
 
-        {/* startoverlegg */}
+        {/* startoverlegg — kun playknapp over filmens plakatbilde */}
         {!started && !recordMode && (
-          <div className="absolute inset-0 z-30 flex flex-col items-center justify-center" style={{ background: '#0A0A0A' }}>
-            <div className="absolute inset-0 flex items-center justify-center" style={{ opacity: 0.32 }}>
-              <Orb t={idleT} size="calc(var(--su) * 50)" speed={18} />
-            </div>
-            <div className="absolute inset-0" style={{ background: 'radial-gradient(circle at 50% 50%, rgba(5,5,6,0) 24%, rgba(5,5,6,0.85) 68%)' }} />
-            <div className="relative flex flex-col items-center">
-              <img
-                src="/brand/digihome-icon-purple.svg"
-                alt="DigiHome"
-                style={{ height: 'calc(var(--su) * 6.5)', width: 'calc(var(--su) * 6.5)', borderRadius: 'calc(var(--su) * 1)', marginBottom: 'calc(var(--su) * 3)', boxShadow: '0 0 calc(var(--su)*4) rgba(207,151,252,0.35)' }}
-              />
-              <h1 className="font-heading font-bold" style={{ fontSize: 'calc(var(--su) * 6.4)', color: '#FDFCFB', letterSpacing: '-0.03em', lineHeight: 1 }}>
-                Utleie på autopilot
-              </h1>
-              <p className="font-body" style={{ fontSize: 'calc(var(--su) * 1.7)', color: 'rgba(253,252,251,0.55)', marginTop: 'calc(var(--su) * 1.6)' }}>
-                En film fra DigiHome · 72 sekunder · med lyd
-              </p>
-              <button
-                onClick={(e) => { e.stopPropagation(); play(); }}
-                aria-label="Spill av"
-                style={{
-                  marginTop: 'calc(var(--su) * 4)',
-                  width: 'calc(var(--su) * 8.5)', height: 'calc(var(--su) * 8.5)', borderRadius: '50%',
-                  background: 'linear-gradient(135deg, #CF97FC, #9B5BD6)',
-                  color: '#0A0A0A',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  boxShadow: '0 0 calc(var(--su) * 5) rgba(207,151,252,0.45)',
-                  transition: 'transform 0.25s cubic-bezier(0.16,1,0.3,1)',
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.08)')}
-                onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
-              >
-                <svg style={{ width: 'calc(var(--su) * 3.2)', height: 'calc(var(--su) * 3.2)', marginLeft: 'calc(var(--su) * 0.4)' }} viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.14v13.72c0 .8.87 1.3 1.56.88l10.9-6.86a1.04 1.04 0 0 0 0-1.76L9.56 4.26A1.04 1.04 0 0 0 8 5.14z" /></svg>
-              </button>
-              <p className="font-body" style={{ fontSize: 'calc(var(--su) * 1.25)', color: 'rgba(253,252,251,0.35)', marginTop: 'calc(var(--su) * 3.2)', letterSpacing: '0.06em' }}>
-                Mellomrom = pause · M = lyd av/på · F = fullskjerm{dlReady ? ' · høyreklikk = last ned' : ''}
-              </p>
-            </div>
+          <div className="absolute inset-0 z-30 flex items-center justify-center">
+            <div className="absolute inset-0" style={{ background: 'radial-gradient(circle at 50% 50%, rgba(3,3,4,0.26), rgba(3,3,4,0.52) 100%)' }} />
+            <button
+              onClick={(e) => { e.stopPropagation(); play(); }}
+              aria-label="Spill av"
+              className="relative"
+              style={{
+                width: 'calc(var(--su) * 9)', height: 'calc(var(--su) * 9)', borderRadius: '50%',
+                background: 'linear-gradient(135deg, #CF97FC, #9B5BD6)',
+                color: '#0A0A0A',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                boxShadow: '0 0 calc(var(--su) * 5) rgba(207,151,252,0.45), 0 calc(var(--su)*0.8) calc(var(--su)*3) rgba(0,0,0,0.5)',
+                transition: 'transform 0.25s cubic-bezier(0.16,1,0.3,1)',
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.08)')}
+              onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
+            >
+              <svg style={{ width: 'calc(var(--su) * 3.4)', height: 'calc(var(--su) * 3.4)', marginLeft: 'calc(var(--su) * 0.4)' }} viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.14v13.72c0 .8.87 1.3 1.56.88l10.9-6.86a1.04 1.04 0 0 0 0-1.76L9.56 4.26A1.04 1.04 0 0 0 8 5.14z" /></svg>
+            </button>
           </div>
         )}
 

@@ -10,7 +10,7 @@ import {
 /* Felles sceneskall — myk blur/skala-overgang + retningsdrift + kameradrift */
 function Shell({ t, a, b, fIn = 0.7, fOut = 0.7, drift = 0.02, children }) {
   const enter = fIn === 0 ? 1 : easeOutCubic(seg(t, a, a + fIn));
-  const exit = 1 - easeInOutCubic(seg(t, b - fOut, b));
+  const exit = fOut === 0 ? 1 : 1 - easeInOutCubic(seg(t, b - fOut, b));
   const o = Math.min(enter, exit);
   const lp = seg(t, a, b);
   const scale = (0.975 + 0.025 * enter) * (1 + lp * drift) * (1 + (1 - exit) * 0.02);
@@ -267,13 +267,13 @@ function SignaturePen({ d, sigP }) {
    AKT 1 — ÅPNING (0–8.5s)
 ===================================================================== */
 export function SceneOpening({ t }) {
-  const iconIn = easeOutQuint(seg(t, 0.25, 1.9));
-  const ringP = seg(t, 1.5, 2.6);
-  const shift = easeInOutCubic(seg(t, 2.2, 3.3));
-  const kicker = Math.min(easeOutCubic(seg(t, 0.5, 1.3)), 1 - seg(t, 1.9, 2.5));
-  const wipe = easeInOutCubic(seg(t, 4.9, 6.7));
-  const lightOut = 1 - seg(t, 5.5, 6.3);
-  const driftP = seg(t, 6.7, 8.5);
+  const iconIn = easeOutQuint(seg(t, 0.2, 1.6));
+  const ringP = seg(t, 1.25, 2.3);
+  const shift = easeInOutCubic(seg(t, 2.0, 3.05));
+  const kicker = Math.min(easeOutCubic(seg(t, 0.45, 1.15)), 1 - seg(t, 1.75, 2.3));
+  const wipe = easeInOutCubic(seg(t, 4.55, 6.35));
+  const lightOut = 1 - seg(t, 5.15, 5.95);
+  const driftP = seg(t, 6.35, 8.5);
 
   const word1 = 'Utleie.';
   const word2 = 'På autopilot.';
@@ -332,7 +332,7 @@ export function SceneOpening({ t }) {
           }}
         >
           {word1.split('').map((ch, i) => {
-            const p = easeOutQuint(seg(t, 2.5 + i * 0.06, 3.55 + i * 0.06));
+            const p = easeOutQuint(seg(t, 2.3 + i * 0.06, 3.35 + i * 0.06));
             return (
               <span key={i} style={{ display: 'inline-block', opacity: Math.min(1, p * 1.6), transform: `translateY(calc(var(--su) * ${((1 - p) * 4.5).toFixed(3)}))` }}>
                 {ch}
@@ -362,7 +362,7 @@ export function SceneOpening({ t }) {
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
-            opacity: seg(t, 6.7, 8.5) * 0.5,
+            opacity: seg(t, 6.35, 8.5) * 0.5,
             background: 'radial-gradient(ellipse 42% 38% at 50% 52%, rgba(155,91,214,0.22), transparent 70%)',
             filter: 'blur(calc(var(--su) * 1.5))',
           }}
@@ -376,7 +376,7 @@ export function SceneOpening({ t }) {
             }}
           >
             {word2.split('').map((ch, i) => {
-              const p = easeOutQuint(seg(t, 5.7 + i * 0.045, 6.75 + i * 0.045));
+              const p = easeOutQuint(seg(t, 5.35 + i * 0.045, 6.4 + i * 0.045));
               return (
                 <span key={i} style={{ display: 'inline-block', whiteSpace: 'pre', opacity: Math.min(1, p * 1.6), transform: `translateY(calc(var(--su) * ${((1 - p) * 4.5).toFixed(3)}))` }}>
                   {ch}
@@ -392,91 +392,1122 @@ export function SceneOpening({ t }) {
 
 /* =====================================================================
    AKT 2 — TOGGLE (8–14.5s)
+   Lading → klikk → energi. Raskt, presist og levende.
 ===================================================================== */
+/* Hypermoderne tagline — blur-reveal per tegn + flytende gradient på nøkkelordene */
+function ToggleTagline({ t }) {
+  const plain = 'Fra nå skjer ';
+  const grad = 'alt av seg selv.';
+  const at = 11.25;
+  const stagger = 0.05;
+  const all = (plain + grad).split('');
+  const scrim = easeOutCubic(seg(t, at, at + 0.9));
+  const line = easeOutCubic(seg(t, 12.45, 13.35));
+  return (
+    <div style={{ position: 'relative', marginTop: 'calc(var(--su) * 4)' }}>
+      {/* kontrast-skjerm bak teksten (mot orb-gløden) */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: 'absolute', inset: 'calc(var(--su) * -3.5) calc(var(--su) * -7)',
+          background: 'radial-gradient(ellipse 58% 64% at 50% 50%, rgba(4,4,7,0.68), transparent 78%)',
+          opacity: scrim,
+        }}
+      />
+      <div
+        className="font-heading font-bold"
+        style={{ position: 'relative', fontSize: 'calc(var(--su) * 4)', letterSpacing: '-0.025em', lineHeight: 1.15, whiteSpace: 'nowrap' }}
+      >
+        {all.map((ch, i) => {
+          const p = easeOutCubic(seg(t, at + i * stagger, at + 0.55 + i * stagger));
+          if (p <= 0) return <span key={i} style={{ display: 'inline-block', whiteSpace: 'pre', opacity: 0 }}>{ch}</span>;
+          const isGrad = i >= plain.length;
+          const base = {
+            display: 'inline-block', whiteSpace: 'pre',
+            opacity: Math.min(1, p * 1.5),
+            transform: `translateY(calc(var(--su) * ${((1 - p) * 2.4).toFixed(2)})) scale(${(0.92 + p * 0.08).toFixed(3)})`,
+          };
+          if (!isGrad) {
+            return (
+              <span key={i} style={{ ...base, color: '#FDFCFB', filter: `blur(${((1 - p) * 7).toFixed(1)}px)`, textShadow: '0 0 calc(var(--su)*1.8) rgba(5,5,8,0.9)' }}>
+                {ch}
+              </span>
+            );
+          }
+          const flow = (((t - at) * 42 + (i - plain.length) * 11) % 400 + 400) % 400;
+          return (
+            <span
+              key={i}
+              style={{
+                ...base,
+                background: 'linear-gradient(100deg, #F4EFFC, #CF97FC 35%, #9B5BD6 55%, #F4EFFC 80%)',
+                backgroundSize: '400% 100%',
+                backgroundPositionX: `${(-flow).toFixed(1)}%`,
+                WebkitBackgroundClip: 'text',
+                backgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                color: 'transparent',
+                filter: `blur(${((1 - p) * 7).toFixed(1)}px) drop-shadow(0 0 calc(var(--su)*0.9) rgba(155,91,214,0.4))`,
+              }}
+            >
+              {ch}
+            </span>
+          );
+        })}
+      </div>
+      {/* shimmer-linje under */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: 'absolute', left: '50%', bottom: 'calc(var(--su) * -1.7)',
+          transform: 'translateX(-50%)',
+          width: `calc(var(--su) * ${(line * 30).toFixed(2)})`, height: '1.5px',
+          background: 'linear-gradient(90deg, transparent, rgba(207,151,252,0.85), transparent)',
+        }}
+      />
+    </div>
+  );
+}
+
+/** Energi-innsug — partikler trekkes inn mot bryteren mens den lader */
+function ChargeIn({ t, a, b, count = 12 }) {
+  const w = seg(t, a, b);
+  if (w <= 0.001 || w >= 0.999) return null;
+  return (
+    <div aria-hidden="true" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+      {Array.from({ length: count }).map((_, i) => {
+        const d = dRand(i, 21) * 0.4;
+        const p = clamp01((w - d) / (1 - d));
+        if (p <= 0.001 || p >= 0.999) return null;
+        const e = easeInOutCubic(p);
+        const ang = dRand(i, 22) * Math.PI * 2;
+        const r0 = 9 + dRand(i, 23) * 7;
+        const r = r0 * (1 - e);
+        const sz = 0.22 + dRand(i, 24) * 0.3;
+        return (
+          <span
+            key={i}
+            style={{
+              position: 'absolute', left: '50%', top: '50%',
+              width: `calc(var(--su) * ${sz.toFixed(2)})`, height: `calc(var(--su) * ${sz.toFixed(2)})`,
+              borderRadius: '50%',
+              background: i % 3 === 0 ? '#FDFCFB' : '#CF97FC',
+              boxShadow: '0 0 calc(var(--su)*0.6) rgba(207,151,252,0.8)',
+              opacity: (Math.sin(p * Math.PI) * 0.85).toFixed(3),
+              transform: `translate(calc(var(--su) * ${(Math.cos(ang) * r).toFixed(2)}), calc(var(--su) * ${(Math.sin(ang) * r * 0.7).toFixed(2)}))`,
+            }}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+/** Svevende støvkorn som stiger etter aktivering — rolig liv i rommet */
+function RisingMotes({ t, a, b, count = 10 }) {
+  const win = fadeInOut(t, a, b, 0.8, 1.2);
+  if (win <= 0.003) return null;
+  return (
+    <div aria-hidden="true" className="absolute inset-0 pointer-events-none">
+      {Array.from({ length: count }).map((_, i) => {
+        const speed = 0.06 + dRand(i, 31) * 0.05;
+        const ph = ((t - a) * speed + dRand(i, 32)) % 1;
+        const x = 22 + dRand(i, 33) * 56;
+        const y = 80 - ph * 56;
+        const sway = Math.sin((t + i * 1.7) * 1.1) * 1.2;
+        const sz = 0.16 + dRand(i, 34) * 0.22;
+        return (
+          <span
+            key={i}
+            style={{
+              position: 'absolute', left: `calc(${x.toFixed(1)}% + calc(var(--su) * ${sway.toFixed(2)}))`, top: `${y.toFixed(1)}%`,
+              width: `calc(var(--su) * ${sz.toFixed(2)})`, height: `calc(var(--su) * ${sz.toFixed(2)})`,
+              borderRadius: '50%',
+              background: '#CF97FC',
+              boxShadow: '0 0 calc(var(--su)*0.5) rgba(207,151,252,0.7)',
+              opacity: (win * Math.sin(ph * Math.PI) * 0.5).toFixed(3),
+            }}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
 export function SceneToggle({ t }) {
-  const grpIn = easeOutQuint(seg(t, 8.8, 9.8));
-  const flip = easeInOutCubic(seg(t, 10.2, 10.8));
-  const ring = seg(t, 10.75, 12.1);
-  const ring2 = seg(t, 11.1, 12.6);
-  const orbIn = easeOutCubic(seg(t, 10.8, 12.8));
-  const bloom = Math.sin(clamp01(seg(t, 10.55, 11.45)) * Math.PI);
+  const grpIn = easeOutQuint(seg(t, 8.45, 9.3));
+  const press = Math.sin(clamp01(seg(t, 9.72, 10.02)) * Math.PI);     /* trykk-dipp */
+  const lean = Math.sin(clamp01(seg(t, 9.78, 10.0)) * Math.PI);       /* anticipation — knotten lener seg bakover */
+  const flipRaw = seg(t, 9.98, 10.42);
+  const flip = easeInOutCubic(flipRaw);                               /* knott-glid AV → PÅ */
+  const stretch = Math.sin(clamp01(flipRaw) * Math.PI);               /* strekk midt i glidet */
+  const settleOv = Math.max(0, easeOutBack(flipRaw) - 1);             /* squash mot høyre kant */
+  const act = easeOutCubic(seg(t, 10.06, 10.62));                     /* aktivering (farge/glød) */
+  const arc = easeInOutCubic(seg(t, 9.35, 10.05));                    /* laderingen tegnes FØR klikket */
+  const ring = seg(t, 10.15, 11.35);                                  /* ekspanderende ring 1 */
+  const ring2 = seg(t, 10.45, 11.85);                                 /* ekspanderende ring 2 */
+  const edge = Math.min(easeOutCubic(seg(t, 10.2, 11.7)), 1 - seg(t, 13.7, 14.5)); /* skjermkant-glød */
+  const wave = seg(t, 10.1, 11.6);                                    /* energibølge */
+  const breathe = 0.5 + 0.5 * Math.sin(t * 1.7);
+  const capScale = 1 - press * 0.05 + act * 0.025;
+  const knobX = 6.5 * Math.min(flip, 1) - lean * 0.45;
+  const sqX = 1 + stretch * 0.18 + settleOv * 1.4;
+  const sqY = 1 - stretch * 0.12 - settleOv * 0.45;
 
   return (
     <Shell t={t} a={8} b={14.5}>
-      <div className="absolute inset-0 flex items-center justify-center">
-        <Orb t={t} size="calc(var(--su) * 52)" style={{ opacity: orbIn * 0.8, transform: `scale(${(0.65 + 0.35 * orbIn).toFixed(3)})` }} />
-      </div>
-      <div className="absolute inset-0" style={{ background: 'radial-gradient(circle at 50% 50%, rgba(5,5,6,0) 30%, rgba(5,5,6,0.78) 72%)' }} />
-      {/* bloom-glimt ved aktivering */}
-      <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(circle at 50% 50%, rgba(207,151,252,0.3), transparent 55%)', opacity: bloom * 0.55 }} />
-      {/* energibølge — fin ring som ekspanderer over hele bildet */}
-      {(() => {
-        const wp = seg(t, 10.62, 12.1);
-        if (wp <= 0.001 || wp >= 0.999) return null;
-        const e = easeOutCubic(wp);
-        const sz = (e * 135).toFixed(2);
-        return (
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none" aria-hidden="true">
-            <div
-              style={{
-                width: `calc(var(--su) * ${sz})`, height: `calc(var(--su) * ${sz})`,
-                borderRadius: '50%',
-                border: '1.5px solid rgba(207,151,252,0.55)',
-                boxShadow: '0 0 calc(var(--su)*1.4) rgba(207,151,252,0.35), inset 0 0 calc(var(--su)*1.4) rgba(207,151,252,0.18)',
-                opacity: (Math.sin(wp * Math.PI) * 0.75).toFixed(3),
-                flexShrink: 0,
-              }}
-            />
-          </div>
-        );
-      })()}
+      {/* spotlys ovenfra — scenenærvær */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: 'absolute', left: '50%', top: 0, width: 'calc(var(--su) * 46)', height: '58%',
+          transform: 'translateX(-50%)',
+          background: 'linear-gradient(180deg, rgba(207,151,252,0.10), rgba(155,91,214,0.035) 55%, transparent)',
+          clipPath: 'polygon(38% 0, 62% 0, 100% 100%, 0 100%)',
+          filter: 'blur(calc(var(--su) * 1.2))',
+          opacity: grpIn * (0.45 + act * 0.55),
+          pointerEvents: 'none',
+        }}
+      />
+      {/* ambient bloom i senter etter aktivering */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background: 'radial-gradient(ellipse 46% 40% at 50% 46%, rgba(155,91,214,0.16), transparent 70%)',
+          opacity: act * (0.7 + breathe * 0.3),
+        }}
+      />
+      {/* skjermkant-glød — hele rammen lyser når autopiloten våkner */}
+      {edge > 0.003 && (
+        <div aria-hidden="true" className="absolute inset-0 pointer-events-none" style={{ opacity: edge }}>
+          <div
+            style={{
+              position: 'absolute', inset: 'calc(var(--su) * 0.5)',
+              borderRadius: 'calc(var(--su) * 2.2)',
+              padding: 'calc(var(--su) * 0.16)',
+              background: `conic-gradient(from ${((t * 34) % 360).toFixed(1)}deg, #9B5BD6, #CF97FC, #F4EFFC, #CF97FC, #7A7CF0, #9B5BD6)`,
+              WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+              WebkitMaskComposite: 'xor',
+              maskComposite: 'exclude',
+              filter: `blur(calc(var(--su) * ${(0.32 + breathe * 0.22).toFixed(2)}))`,
+              opacity: 0.7 + breathe * 0.3,
+            }}
+          />
+          <div style={{ position: 'absolute', inset: 0, boxShadow: `inset 0 0 calc(var(--su)*7) rgba(155,91,214,${(0.16 + breathe * 0.09).toFixed(2)})` }} />
+        </div>
+      )}
+      {/* energibølge — én ring som ekspanderer over hele bildet */}
+      {wave > 0.001 && wave < 0.999 && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none" aria-hidden="true">
+          <div
+            style={{
+              width: `calc(var(--su) * ${(easeOutCubic(wave) * 140).toFixed(2)})`,
+              height: `calc(var(--su) * ${(easeOutCubic(wave) * 140).toFixed(2)})`,
+              borderRadius: '50%',
+              border: '1.5px solid rgba(207,151,252,0.5)',
+              boxShadow: '0 0 calc(var(--su)*1.4) rgba(207,151,252,0.3), inset 0 0 calc(var(--su)*1.4) rgba(207,151,252,0.15)',
+              opacity: (Math.sin(wave * Math.PI) * 0.7).toFixed(3),
+              flexShrink: 0,
+            }}
+          />
+        </div>
+      )}
+      {/* anamorf lysstripe i klikkøyeblikket */}
+      <Anamorphic t={t} at={10.0} x="50%" y="50%" maxW={60} dur={1.1} z={2} />
+      {/* svevende støvkorn etter aktivering */}
+      <RisingMotes t={t} a={10.4} b={13.8} />
+
       <div className="absolute inset-0 flex flex-col items-center justify-center" style={rise(grpIn, 3)}>
+        {/* AUTOPILOT — ord-merke med tracking-innflyvning og blur-reveal */}
         <div
           className="font-body uppercase"
-          style={{ fontSize: 'calc(var(--su) * 1.7)', letterSpacing: '0.5em', textIndent: '0.5em', color: 'rgba(253,252,251,0.85)', marginBottom: 'calc(var(--su) * 2.6)' }}
+          style={{
+            display: 'flex',
+            fontSize: 'calc(var(--su) * 1.7)',
+            letterSpacing: `${(0.5 + (1 - grpIn) * 0.3).toFixed(3)}em`,
+            textIndent: '0.5em',
+            color: 'rgba(253,252,251,0.85)',
+            marginBottom: 'calc(var(--su) * 3)',
+          }}
         >
-          Autopilot
+          {'AUTOPILOT'.split('').map((ch, i) => {
+            const p = easeOutCubic(seg(t, 8.6 + i * 0.05, 9.25 + i * 0.05));
+            return (
+              <span
+                key={i}
+                style={{
+                  opacity: Math.min(1, p * 1.4),
+                  filter: `blur(${((1 - p) * 5).toFixed(1)}px)`,
+                  transform: `translateY(calc(var(--su) * ${((1 - p) * 1.2).toFixed(2)}))`,
+                }}
+              >
+                {ch}
+              </span>
+            );
+          })}
         </div>
-        <div style={{ position: 'relative' }}>
-          <SparkBurst t={t} at={10.62} count={10} />
+
+        {/* fysisk bryter — lader, klikker og glir fra AV til PÅ */}
+        <div style={{ position: 'relative', transform: `scale(${capScale.toFixed(3)})` }}>
+          <ChargeIn t={t} a={9.3} b={10.0} />
+          <SparkBurst t={t} at={10.05} count={12} />
+          {/* ekspanderende ringer ved aktivering */}
           {[ring, ring2].map((r, i) => (
             <div
               key={i}
+              aria-hidden="true"
               style={{
-                position: 'absolute', inset: 'calc(var(--su) * -1)', borderRadius: '999px',
+                position: 'absolute', inset: 'calc(var(--su) * -1)', borderRadius: 999,
                 border: '1.5px solid rgba(207,151,252,0.8)',
-                opacity: r > 0 ? (1 - r) * 0.9 : 0,
-                transform: `scale(${(1 + r * (1.6 + i * 0.5)).toFixed(3)})`,
+                opacity: r > 0 ? (1 - r) * 0.85 : 0,
+                transform: `scale(${(1 + r * (1.55 + i * 0.5)).toFixed(3)})`,
               }}
             />
           ))}
+          {/* laderingen — lys som tegnes rundt bryteren før klikket */}
+          {arc > 0.001 && (
+            <div
+              aria-hidden="true"
+              style={{
+                position: 'absolute', inset: 'calc(var(--su) * -0.55)', borderRadius: 999,
+                padding: 'calc(var(--su) * 0.14)',
+                background: arc < 0.999
+                  ? `conic-gradient(from -90deg, #F4EFFC 0deg, #CF97FC ${(arc * 320).toFixed(0)}deg, rgba(207,151,252,0) ${(arc * 360).toFixed(0)}deg)`
+                  : `conic-gradient(from ${((t * 50) % 360).toFixed(1)}deg, #9B5BD6, #CF97FC, #F4EFFC, #CF97FC, #9B5BD6)`,
+                WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+                WebkitMaskComposite: 'xor',
+                maskComposite: 'exclude',
+                filter: 'blur(0.5px)',
+                opacity: arc < 0.999 ? 1 : 0.5 + act * 0.3 * breathe,
+              }}
+            />
+          )}
+          {/* spor — glass med dybde */}
           <div
             style={{
-              width: 'calc(var(--su) * 13.5)', height: 'calc(var(--su) * 7)', borderRadius: '999px',
+              width: 'calc(var(--su) * 13.5)', height: 'calc(var(--su) * 7)', borderRadius: 999,
               position: 'relative', overflow: 'hidden',
-              background: '#222226', border: '1px solid rgba(255,255,255,0.1)',
-              boxShadow: flip > 0.5 ? `0 0 calc(var(--su) * ${(flip * 4).toFixed(2)}) rgba(207,151,252,0.5)` : 'none',
+              background: 'rgba(22,22,28,0.62)', border: '1px solid rgba(255,255,255,0.13)',
+              backdropFilter: 'blur(8px)',
+              boxShadow: act > 0.01
+                ? `inset 0 calc(var(--su)*0.25) calc(var(--su)*0.8) rgba(0,0,0,0.45), 0 0 calc(var(--su) * ${(act * (3 + breathe * 1.4)).toFixed(2)}) rgba(155,91,214,${(act * 0.5).toFixed(2)})`
+                : 'inset 0 calc(var(--su)*0.25) calc(var(--su)*0.8) rgba(0,0,0,0.45)',
             }}
           >
-            <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(120deg, #9B5BD6, #CF97FC)', opacity: flip }} />
+            {/* gradient-fyll når autopiloten våkner */}
+            <div aria-hidden="true" style={{ position: 'absolute', inset: 0, background: 'linear-gradient(120deg, #9B5BD6, #CF97FC)', opacity: act }} />
+            {/* levende sheen over fyllet */}
+            <div
+              aria-hidden="true"
+              style={{
+                position: 'absolute', inset: 0,
+                background: `linear-gradient(${(105 + Math.sin(t * 0.9) * 12).toFixed(1)}deg, transparent 30%, rgba(255,255,255,${(act * (0.1 + breathe * 0.07)).toFixed(3)}) 50%, transparent 70%)`,
+                opacity: act,
+              }}
+            />
+            {/* knott — lener seg, glir, strekker seg og setter seg med squash */}
             <div
               style={{
                 position: 'absolute', top: 'calc(var(--su) * 0.6)', left: 'calc(var(--su) * 0.6)',
                 width: 'calc(var(--su) * 5.8)', height: 'calc(var(--su) * 5.8)', borderRadius: '50%',
-                background: '#FDFCFB', boxShadow: '0 2px 14px rgba(0,0,0,0.45)',
-                transform: `translateX(calc(var(--su) * ${(flip * 6.5).toFixed(3)}))`,
+                background: 'radial-gradient(circle at 33% 30%, #FFFFFF, #F2EEF8 62%, #E2DCEE)',
+                boxShadow: act > 0.01
+                  ? `0 calc(var(--su)*0.25) calc(var(--su)*1.3) rgba(0,0,0,0.5), 0 0 calc(var(--su) * ${(act * 1.6).toFixed(2)}) rgba(255,255,255,${(act * 0.55).toFixed(2)})`
+                  : '0 calc(var(--su)*0.25) calc(var(--su)*1.3) rgba(0,0,0,0.5)',
+                transform: `translateX(calc(var(--su) * ${knobX.toFixed(3)})) scale(${sqX.toFixed(3)}, ${sqY.toFixed(3)})`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}
+            >
+              {/* power-prikk i knotten */}
+              <span
+                aria-hidden="true"
+                style={{
+                  width: 'calc(var(--su) * 1.5)', height: 'calc(var(--su) * 1.5)', borderRadius: '50%',
+                  background: 'radial-gradient(circle at 35% 35%, #CF97FC, #9B5BD6)',
+                  boxShadow: `0 0 calc(var(--su) * ${(0.8 + breathe * 0.8).toFixed(2)}) rgba(155,91,214,0.9)`,
+                  opacity: act,
+                  transform: `scale(${(0.4 + act * 0.6).toFixed(3)})`,
+                }}
+              />
+            </div>
+          </div>
+        </div>
+        <ToggleTagline t={t} />
+      </div>
+    </Shell>
+  );
+}
+
+/* =====================================================================
+   AKT 2a — ADRESSE (14–20.5s)
+   Adressen skrives inn — systemet slår opp i eiendomsregisteret.
+===================================================================== */
+const ADDRESS_TEXT = 'Møhlenprisbakken 14, Bergen';
+const ADDRESS_SUGGESTIONS = [
+  'Møhlenprisbakken 14, 5006 Bergen',
+  'Møhlenprisbakken 14B, 5006 Bergen',
+  'Møhlenpris allé 2, 5006 Bergen',
+];
+const REGISTER_ROWS = [
+  ['Hjemmelshaver', 'K. Nordmann'],
+  ['Gnr / Bnr', '164 / 237 · Bergen'],
+  ['Areal (BRA)', '74 m² · 3-roms'],
+  ['Heftelser', 'Ingen'],
+];
+
+function PinIcon() {
+  return (
+    <svg width="100%" height="100%" viewBox="0 0 24 24" fill="none" stroke="#CF97FC" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 21s-7-5.5-7-11a7 7 0 1 1 14 0c0 5.5-7 11-7 11z" />
+      <circle cx="12" cy="10" r="2.6" />
+    </svg>
+  );
+}
+
+export function SceneAdresse({ t }) {
+  const fieldIn = easeOutQuint(seg(t, 14.55, 15.4));
+  const typeP = seg(t, 14.95, 16.55);
+  const dropIn = easeOutCubic(seg(t, 15.85, 16.3));
+  const dropOut = seg(t, 17.0, 17.3);
+  const hl = seg(t, 16.7, 16.95);
+  const lockP = Math.sin(clamp01(seg(t, 17.05, 17.75)) * Math.PI);
+  const searchP = Math.min(easeOutCubic(seg(t, 17.25, 17.6)), 1 - seg(t, 17.95, 18.2));
+  const panelIn = easeOutCubic(seg(t, 18.0, 18.5));
+  const capIn = easeOutCubic(seg(t, 19.55, 19.95));
+  const typing = typeP > 0 && typeP < 1;
+  const addr = typed(ADDRESS_TEXT, typeP);
+  const dropO = Math.min(dropIn, 1 - dropOut);
+  const spin = ((t * 340) % 360).toFixed(0);
+
+  return (
+    <Shell t={t} a={14} b={20.5}>
+      <div style={{ position: 'absolute', top: '8%', left: 0, right: 0, display: 'flex', justifyContent: 'center' }}>
+        <Kicker t={t} at={14.35} num="01" label="ADRESSE" center />
+      </div>
+      <h2
+        className="font-heading font-bold"
+        style={{
+          position: 'absolute', top: '14%', left: 0, right: 0, textAlign: 'center',
+          fontSize: 'calc(var(--su) * 3.7)', color: '#FDFCFB', lineHeight: 1.1,
+          textShadow: landGlow(t, 15.1),
+        }}
+      >
+        <Words t={t} at={14.55} text="Start med adressen." />
+      </h2>
+
+      {/* søkefelt */}
+      <div
+        style={{
+          position: 'absolute', left: '50%', top: '33.5%', width: 'calc(var(--su) * 46)',
+          transform: `translateX(-50%) translateY(calc(var(--su) * ${((1 - fieldIn) * 3.5).toFixed(2)}))`,
+          opacity: fieldIn,
+        }}
+      >
+        <div
+          style={{
+            display: 'flex', alignItems: 'center', gap: 'calc(var(--su) * 1)',
+            background: 'rgba(16,16,19,0.92)',
+            border: `1px solid rgba(207,151,252,${(0.18 + lockP * 0.65).toFixed(2)})`,
+            borderRadius: 999,
+            padding: 'calc(var(--su) * 1.1) calc(var(--su) * 1.8)',
+            boxShadow: `0 calc(var(--su)*1.2) calc(var(--su)*4) rgba(0,0,0,0.55), 0 0 calc(var(--su)*${(0.5 + lockP * 3).toFixed(2)}) rgba(155,91,214,${(0.1 + lockP * 0.35).toFixed(2)})`,
+          }}
+        >
+          <span style={{ width: 'calc(var(--su) * 1.9)', height: 'calc(var(--su) * 1.9)', flexShrink: 0 }}>
+            <PinIcon />
+          </span>
+          <span className="font-body" style={{ flex: 1, fontSize: 'calc(var(--su) * 1.7)', color: 'rgba(253,252,251,0.94)', whiteSpace: 'nowrap', overflow: 'hidden', display: 'flex', alignItems: 'center', minHeight: 'calc(var(--su) * 2.3)' }}>
+            {addr.length === 0 ? <span style={{ color: 'rgba(253,252,251,0.35)' }}>Hvor ligger boligen?</span> : addr}
+            {typing && <Caret t={t} />}
+          </span>
+        </div>
+
+        {/* autocomplete-dropdown */}
+        {dropO > 0.003 && (
+          <div
+            style={{
+              position: 'absolute', left: 0, right: 0, top: '100%',
+              marginTop: 'calc(var(--su) * 0.7)',
+              background: 'rgba(16,16,19,0.94)',
+              border: '1px solid rgba(255,255,255,0.12)',
+              borderRadius: 'calc(var(--su) * 1.3)',
+              overflow: 'hidden',
+              opacity: dropO,
+              transform: `translateY(calc(var(--su) * ${((1 - dropIn) * -1.2).toFixed(2)}))`,
+              boxShadow: '0 calc(var(--su)*1.5) calc(var(--su)*4.5) rgba(0,0,0,0.6)',
+              zIndex: 5,
+            }}
+          >
+            {ADDRESS_SUGGESTIONS.map((s, i) => (
+              <div
+                key={s}
+                className="font-body"
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 'calc(var(--su) * 0.9)',
+                  padding: 'calc(var(--su) * 0.95) calc(var(--su) * 1.7)',
+                  fontSize: 'calc(var(--su) * 1.4)',
+                  color: i === 0 ? '#FDFCFB' : 'rgba(253,252,251,0.55)',
+                  background: i === 0 ? `rgba(155,91,214,${(0.14 + hl * 0.2).toFixed(2)})` : 'transparent',
+                  borderBottom: i < 2 ? '1px solid rgba(255,255,255,0.06)' : 'none',
+                }}
+              >
+                <span style={{ width: 'calc(var(--su) * 1.3)', height: 'calc(var(--su) * 1.3)', opacity: 0.7, flexShrink: 0 }}>
+                  <PinIcon />
+                </span>
+                {s}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* søker i eiendomsregisteret */}
+        {searchP > 0.003 && (
+          <div style={{ marginTop: 'calc(var(--su) * 1.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'calc(var(--su) * 0.9)', opacity: searchP }}>
+            <span
+              style={{
+                width: 'calc(var(--su) * 1.3)', height: 'calc(var(--su) * 1.3)', borderRadius: '50%',
+                border: '2px solid rgba(207,151,252,0.3)', borderTopColor: '#CF97FC',
+                transform: `rotate(${spin}deg)`, flexShrink: 0,
+              }}
+            />
+            <span className="font-body" style={{ fontSize: 'calc(var(--su) * 1.35)', color: 'rgba(253,252,251,0.6)', letterSpacing: '0.04em' }}>
+              Søker i eiendomsregisteret …
+            </span>
+          </div>
+        )}
+
+        {/* registerutskrift */}
+        {panelIn > 0.003 && (
+          <div
+            style={{
+              marginTop: 'calc(var(--su) * 1.6)',
+              background: 'rgba(14,14,18,0.88)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: 'calc(var(--su) * 1.4)',
+              padding: 'calc(var(--su) * 0.6) calc(var(--su) * 1.8)',
+              opacity: panelIn,
+              transform: `translateY(calc(var(--su) * ${((1 - panelIn) * 1.8).toFixed(2)}))`,
+              boxShadow: '0 calc(var(--su)*1.4) calc(var(--su)*4.5) rgba(0,0,0,0.55)',
+            }}
+          >
+            {REGISTER_ROWS.map(([label, value], i) => {
+              const rp = easeOutCubic(seg(t, 18.15 + i * 0.33, 18.6 + i * 0.33));
+              const ok = easeOutBack(seg(t, 18.5 + i * 0.33, 18.82 + i * 0.33));
+              return (
+                <div
+                  key={label}
+                  className="font-body"
+                  style={{
+                    display: 'flex', alignItems: 'center',
+                    padding: 'calc(var(--su) * 0.78) 0',
+                    borderBottom: i < REGISTER_ROWS.length - 1 ? '1px solid rgba(255,255,255,0.07)' : 'none',
+                    opacity: rp,
+                    transform: `translateX(calc(var(--su) * ${((1 - rp) * 1.6).toFixed(2)}))`,
+                  }}
+                >
+                  <span style={{ width: 'calc(var(--su) * 14)', fontSize: 'calc(var(--su) * 1.3)', color: 'rgba(253,252,251,0.5)', letterSpacing: '0.04em' }}>{label}</span>
+                  <span style={{ flex: 1, fontSize: 'calc(var(--su) * 1.45)', color: 'rgba(253,252,251,0.93)' }}>{value}</span>
+                  {ok > 0.01 && (
+                    <span
+                      style={{
+                        color: '#7ee2a8', fontSize: 'calc(var(--su) * 1.3)', fontWeight: 700,
+                        transform: `scale(${Math.max(0.4, ok).toFixed(2)})`, opacity: clamp01(ok * 1.5),
+                      }}
+                    >
+                      ✓
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* kilde */}
+        <div style={{ ...rise(capIn, 1.2), marginTop: 'calc(var(--su) * 1.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'calc(var(--su) * 0.8)', opacity: capIn }}>
+          <span style={{ width: 'calc(var(--su) * 0.7)', height: 'calc(var(--su) * 0.7)', borderRadius: '50%', background: '#7ee2a8', display: 'inline-block', boxShadow: '0 0 calc(var(--su)*0.9) rgba(126,226,168,0.8)' }} />
+          <span className="font-body" style={{ fontSize: 'calc(var(--su) * 1.3)', color: 'rgba(253,252,251,0.55)', letterSpacing: '0.05em' }}>
+            Hentet fra eiendomsregisteret
+          </span>
+        </div>
+      </div>
+    </Shell>
+  );
+}
+
+/* =====================================================================
+   AKT 2b — BILDER (20–26.5s)
+   Bildene slippes inn — systemet leser boligdetaljer og velger forsidebilde.
+===================================================================== */
+const UPLOAD_PHOTOS = [
+  { src: '/film/upload/image002.jpg', label: 'stue' },
+  { src: '/film/upload/image005.jpg', label: 'kjøkken' },
+  { src: '/film/styling/room-before.jpg', label: 'soverom' }, /* beste — føres videre til styling */
+  { src: '/film/upload/image007.jpg', label: 'spisestue' },
+  { src: '/film/upload/image001.jpg', label: 'entré' },
+];
+const PHOTO_FACTS = ['2 soverom', 'Kjøkkenøy', 'Spisestue', 'Parkett'];
+
+export function SceneBilder({ t }) {
+  const zoneIn = easeOutQuint(seg(t, 20.45, 21.25));
+  const hintO = Math.min(easeOutCubic(seg(t, 20.7, 21.15)), 1 - seg(t, 21.35, 21.6));
+  const scanP = easeInOutCubic(seg(t, 23.35, 24.5));
+  const scanCap = Math.min(easeOutCubic(seg(t, 23.3, 23.7)), 1 - seg(t, 24.45, 24.7));
+  const pickCap = easeOutCubic(seg(t, 24.85, 25.25));
+  const pick = easeOutBack(seg(t, 24.85, 25.4));
+  const zoomOut = easeInOutCubic(seg(t, 25.7, 26.5));
+  const outP = seg(t, 25.55, 26.05); /* alt annet enn hovedbildet trekker seg rolig tilbake */
+  const spin = ((t * 340) % 360).toFixed(0);
+
+  return (
+    <Shell t={t} a={20} b={26.5} fOut={0} drift={0}>
+      <div
+        style={{
+          position: 'absolute', top: '8%', left: 0, right: 0, display: 'flex', justifyContent: 'center',
+          opacity: 1 - outP,
+          transform: `translateY(calc(var(--su) * ${(-outP * 1.6).toFixed(2)}))`,
+          filter: outP > 0.01 ? `blur(${(outP * 5).toFixed(1)}px)` : 'none',
+        }}
+      >
+        <Kicker t={t} at={20.3} num="02" label="BILDER" center />
+      </div>
+      <h2
+        className="font-heading font-bold"
+        style={{
+          position: 'absolute', top: '14%', left: 0, right: 0, textAlign: 'center',
+          fontSize: 'calc(var(--su) * 3.7)', color: '#FDFCFB', lineHeight: 1.1,
+          textShadow: landGlow(t, 21.0),
+          opacity: 1 - outP,
+          transform: `translateY(calc(var(--su) * ${(-outP * 1.9).toFixed(2)}))`,
+          filter: outP > 0.01 ? `blur(${(outP * 5).toFixed(1)}px)` : 'none',
+        }}
+      >
+        <Words t={t} at={20.5} text="Slipp inn bildene." />
+      </h2>
+
+      {/* slippsone */}
+      <div
+        style={{
+          position: 'absolute', left: '50%', top: '56%', width: 'calc(var(--su) * 62)',
+          height: 'calc(var(--su) * 21)',
+          transform: `translate(-50%, -50%) translateY(calc(var(--su) * ${((1 - zoneIn) * 4).toFixed(2)})) scale(${(0.96 + zoneIn * 0.04).toFixed(3)})`,
+          opacity: zoneIn,
+          border: `1.5px dashed rgba(255,255,255,${(0.2 * (1 - pickCap)).toFixed(2)})`,
+          borderRadius: 'calc(var(--su) * 2)',
+          background: `rgba(255,255,255,${(0.025 * (1 - outP)).toFixed(4)})`,
+        }}
+      >
+        {/* hint før bildene lander */}
+        {hintO > 0.003 && (
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 'calc(var(--su) * 1)', opacity: hintO }}>
+            <span
+              style={{
+                width: 'calc(var(--su) * 3.6)', height: 'calc(var(--su) * 3.6)', borderRadius: '50%',
+                border: '1.5px solid rgba(207,151,252,0.55)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: '#CF97FC', fontSize: 'calc(var(--su) * 1.9)', fontWeight: 700,
+              }}
+            >
+              {'\u2191'}
+            </span>
+            <span className="font-body" style={{ fontSize: 'calc(var(--su) * 1.4)', color: 'rgba(253,252,251,0.45)' }}>
+              Dra og slipp — eller hent fra mobilen
+            </span>
+          </div>
+        )}
+
+        {/* fem bilder faller inn */}
+        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'calc(var(--su) * 1.4)' }}>
+          {UPLOAD_PHOTOS.map((ph, i) => {
+            const at = 21.45 + i * 0.22;
+            const inP = easeOutCubic(seg(t, at, at + 0.75));
+            if (inP <= 0.001) return null;
+            const uplE = easeOutCubic(seg(t, at + 0.35, at + 1.2));   /* opplasting: blur → skarp */
+            const done = easeOutCubic(seg(t, at + 1.25, at + 1.55));  /* hake */
+            const gone = 1 - seg(t, 25.5, 25.95);                     /* rydd opp før morph */
+            /* skannelys passerer kortet */
+            const sx = scanP * 100;
+            const cx = 10 + i * 20; /* kortets ca. midtpunkt i % av sonen */
+            const lit = scanP > 0.001 && scanP < 0.999 && Math.abs(sx - cx) < 9 ? 1 - Math.abs(sx - cx) / 9 : 0;
+            const isBest = i === 2;
+            const dim = isBest ? 1 : 1 - pickCap * 0.5;
+            /* sømløs morph: forsidebildet vokser til styling-kortets eksakte geometri (50su bred, 3:2) */
+            const morphScale = isBest ? 1 + pick * 0.05 + zoomOut * 3.5796 : 1;
+            const radius = isBest ? 1 - zoomOut * 0.61 : 1;
+            return (
+              <div
+                key={i}
+                style={{
+                  position: 'relative',
+                  width: 'calc(var(--su) * 10.8)', height: 'calc(var(--su) * 7.2)',
+                  borderRadius: `calc(var(--su) * ${radius.toFixed(3)})`,
+                  overflow: 'hidden',
+                  background: '#1b1b1f',
+                  opacity: isBest ? clamp01(inP * 2) * (1 - seg(t, 26.4, 26.49)) : clamp01(inP * 2) * dim * (1 - seg(t, 25.55, 26.05)),
+                  transform: `translate(calc(var(--su) * ${((1 - inP) * (i - 2) * 1.3).toFixed(2)}), calc(var(--su) * ${(((1 - inP) * 5.2) - (isBest ? zoomOut * 0.56 : 0)).toFixed(2)})) rotate(${((1 - inP) * (i - 2) * 2.4).toFixed(2)}deg) scale(${((0.9 + inP * 0.1) * morphScale * (isBest ? 1 : 1 - pickCap * 0.045)).toFixed(3)})`,
+                  boxShadow: isBest && pick > 0.01
+                    ? `0 calc(var(--su)*1) calc(var(--su)*3) rgba(0,0,0,0.55), 0 0 0 2px rgba(207,151,252,${(0.85 * pick * (1 - seg(t, 25.55, 25.95))).toFixed(2)}), 0 0 calc(var(--su)*2.4) rgba(155,91,214,${(0.5 * pick * (1 - zoomOut)).toFixed(2)})`
+                    : `0 calc(var(--su)*1) calc(var(--su)*3) rgba(0,0,0,0.55)${lit > 0.02 ? `, 0 0 calc(var(--su)*1.6) rgba(207,151,252,${(lit * 0.55).toFixed(2)})` : ''}`,
+                  zIndex: isBest ? 5 : 2,
+                }}
+              >
+                <img
+                  src={ph.src}
+                  alt=""
+                  style={{
+                    position: 'absolute', inset: 0, width: '100%', height: '100%',
+                    objectFit: 'cover',
+                    transform: isBest ? `scale(${(1 + zoomOut * 0.173).toFixed(3)}) translate(0%, ${(zoomOut * 3).toFixed(1)}%)` : 'none',
+                    filter: `blur(${(((1 - inP) * 4) + ((1 - uplE) * 7) + (isBest ? 0 : pickCap * 2.2)).toFixed(1)}px) saturate(${(0.82 + uplE * 0.18 - (isBest ? zoomOut * 0.12 : 0)).toFixed(2)}) brightness(${(0.94 + uplE * 0.06 + lit * 0.22 - (isBest ? zoomOut * 0.03 : 0)).toFixed(2)})`,
+                  }}
+                />
+                {/* opplastingsbar — tynn lysende linje */}
+                {uplE > 0.001 && uplE < 0.999 && (
+                  <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 'calc(var(--su) * 0.32)', background: 'rgba(0,0,0,0.45)' }}>
+                    <div style={{ width: `${(uplE * 100).toFixed(1)}%`, height: '100%', background: 'linear-gradient(90deg, #9B5BD6, #CF97FC)', boxShadow: '0 0 calc(var(--su)*0.7) rgba(207,151,252,0.8)' }} />
+                  </div>
+                )}
+                {/* lastet opp ✓ */}
+                {done > 0.01 && (
+                  <span
+                    style={{
+                      position: 'absolute', top: 'calc(var(--su) * 0.55)', right: 'calc(var(--su) * 0.55)',
+                      width: 'calc(var(--su) * 1.7)', height: 'calc(var(--su) * 1.7)', borderRadius: '50%',
+                      background: 'rgba(8,8,12,0.75)', border: '1px solid rgba(126,226,168,0.5)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      color: '#7ee2a8', fontSize: 'calc(var(--su) * 0.95)', fontWeight: 700,
+                      transform: `scale(${(0.6 + easeOutBack(done) * 0.4).toFixed(2)})`,
+                      opacity: clamp01(done * 1.5) * gone,
+                    }}
+                  >
+                    ✓
+                  </span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* skannelinje over sonen */}
+        {scanP > 0.001 && scanP < 0.999 && (
+          <div aria-hidden="true" style={{ position: 'absolute', inset: 0, zIndex: 6, pointerEvents: 'none', borderRadius: 'calc(var(--su) * 2)', overflow: 'hidden' }}>
+            <div
+              style={{
+                position: 'absolute', top: 0, bottom: 0,
+                left: `${Math.max(0, scanP * 100 - 12).toFixed(2)}%`, width: '12%',
+                background: 'linear-gradient(90deg, transparent, rgba(207,151,252,0.12))',
+              }}
+            />
+            <div
+              style={{
+                position: 'absolute', top: 0, bottom: 0,
+                left: `${(scanP * 100).toFixed(2)}%`, width: 'calc(var(--su) * 0.22)',
+                background: '#FDFCFB',
+                boxShadow: '0 0 calc(var(--su)*2) rgba(207,151,252,0.9), 0 0 calc(var(--su)*0.7) rgba(255,255,255,0.9)',
               }}
             />
           </div>
+        )}
+
+        {/* leste boligdetaljer */}
+        <div style={{ position: 'absolute', left: 0, right: 0, bottom: 'calc(var(--su) * 1.1)', display: 'flex', justifyContent: 'center', gap: 'calc(var(--su) * 0.9)', zIndex: 7 }}>
+          {PHOTO_FACTS.map((c, i) => {
+            const p = easeOutBack(seg(t, 23.55 + i * 0.26, 24.05 + i * 0.26));
+            if (p <= 0.001) return null;
+            return (
+              <span
+                key={c}
+                className="font-body"
+                style={{
+                  opacity: clamp01(p * 2) * (1 - seg(t, 25.45, 25.85)),
+                  transform: `scale(${Math.max(0.6, p).toFixed(3)})`,
+                  fontSize: 'calc(var(--su) * 1.2)', color: 'rgba(253,252,251,0.88)',
+                  border: '1px solid rgba(207,151,252,0.3)', borderRadius: 999,
+                  background: 'rgba(12,12,16,0.78)',
+                  padding: 'calc(var(--su) * 0.4) calc(var(--su) * 1.1)',
+                }}
+              >
+                {c}
+              </span>
+            );
+          })}
         </div>
-        <div
-          className="font-heading"
-          style={{
-            fontSize: 'calc(var(--su) * 3.1)', color: 'rgba(253,252,251,0.92)',
-            marginTop: 'calc(var(--su) * 4)', letterSpacing: '-0.02em', lineHeight: 1.2,
-          }}
-        >
-          <Words t={t} at={11.9} stagger={0.12} text="Fra nå skjer alt av seg selv." />
+      </div>
+
+      {/* statuslinje under sonen */}
+      <div style={{ position: 'absolute', left: 0, right: 0, top: '78.5%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'calc(var(--su) * 0.9)' }}>
+        {scanCap > 0.003 && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'calc(var(--su) * 0.9)', opacity: scanCap }}>
+            <span
+              style={{
+                width: 'calc(var(--su) * 1.3)', height: 'calc(var(--su) * 1.3)', borderRadius: '50%',
+                border: '2px solid rgba(207,151,252,0.3)', borderTopColor: '#CF97FC',
+                transform: `rotate(${spin}deg)`, flexShrink: 0,
+              }}
+            />
+            <span className="font-body" style={{ fontSize: 'calc(var(--su) * 1.35)', color: 'rgba(253,252,251,0.6)', letterSpacing: '0.04em' }}>
+              Leser boligdetaljer fra bildene …
+            </span>
+          </div>
+        )}
+        {pickCap > 0.003 && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'calc(var(--su) * 0.8)', opacity: pickCap * (1 - seg(t, 25.45, 25.85)) }}>
+            <span style={{ width: 'calc(var(--su) * 0.7)', height: 'calc(var(--su) * 0.7)', borderRadius: '50%', background: '#7ee2a8', display: 'inline-block', boxShadow: '0 0 calc(var(--su)*0.9) rgba(126,226,168,0.8)' }} />
+            <span className="font-body" style={{ fontSize: 'calc(var(--su) * 1.35)', color: 'rgba(253,252,251,0.6)', letterSpacing: '0.04em' }}>
+              Forsidebilde valgt
+            </span>
+          </div>
+        )}
+      </div>
+    </Shell>
+  );
+}
+
+/* =====================================================================
+   AKT 2b — AI-STYLING (14–26.5s)
+   To prompt-runder på ekte bilder: møblering, deretter kveldslys.
+===================================================================== */
+const STYLE_PROMPT_1 = 'Hotellseng, teppe på gulvet og moderne kunst';
+const STYLE_PROMPT_2 = 'Koselig kveldslys';
+
+/** AI-sveip — glødende linje med gradient-hale og partikler */
+function StyleSweep({ t, a, b, color = '207,151,252' }) {
+  const p = easeInOutCubic(seg(t, a, b));
+  if (p <= 0.001 || p >= 0.999) return null;
+  const x = p * 100;
+  return (
+    <div aria-hidden="true" style={{ position: 'absolute', inset: 0, zIndex: 4, pointerEvents: 'none' }}>
+      {/* gradient-hale bak linjen (på avslørt side) */}
+      <div
+        style={{
+          position: 'absolute', top: 0, bottom: 0,
+          left: `${Math.max(0, x - 15).toFixed(2)}%`, width: '15%',
+          background: `linear-gradient(90deg, transparent, rgba(${color},0.15))`,
+        }}
+      />
+      {/* selve skannelinjen */}
+      <div
+        style={{
+          position: 'absolute', top: 0, bottom: 0,
+          left: `${x.toFixed(2)}%`, width: 'calc(var(--su) * 0.28)',
+          background: '#FDFCFB',
+          boxShadow: `0 0 calc(var(--su)*2.6) rgba(${color},0.95), 0 0 calc(var(--su)*0.9) rgba(255,255,255,0.95)`,
+        }}
+      />
+      {/* partikler langs linjen */}
+      {Array.from({ length: 9 }).map((_, i) => {
+        const ph = (t * (1.2 + dRand(i, 3) * 0.9) + dRand(i, 4) * 7) % 1;
+        const y = dRand(i, 5) * 90 + 5;
+        const dx = (dRand(i, 6) - 0.25) * 4.5 * ph;
+        const sz = 0.2 + dRand(i, 7) * 0.32;
+        return (
+          <span
+            key={i}
+            style={{
+              position: 'absolute', top: `${y.toFixed(1)}%`,
+              left: `calc(${x.toFixed(2)}% + calc(var(--su) * ${dx.toFixed(2)}))`,
+              width: `calc(var(--su) * ${sz.toFixed(2)})`, height: `calc(var(--su) * ${sz.toFixed(2)})`,
+              borderRadius: '50%',
+              background: i % 3 === 0 ? '#FDFCFB' : `rgb(${color})`,
+              boxShadow: `0 0 calc(var(--su)*0.7) rgba(${color},0.9)`,
+              opacity: (Math.sin(ph * Math.PI) * 0.9).toFixed(3),
+            }}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+/* Hypermoderne akt-tittel — blur-reveal per tegn + flytende gradient på «stilen.» */
+function StyleHeadline({ t }) {
+  const plain = 'Beskriv stilen — ';
+  const grad = 'AI-en gjør resten.';
+  const at = 14.55;
+  const stagger = 0.03;
+  const all = (plain + grad).split('');
+  const line = easeOutCubic(seg(t, 15.6, 16.5));
+  const bloom = Math.sin(clamp01(seg(t, 15.1, 16.8)) * Math.PI);
+  return (
+    <span style={{ position: 'relative', display: 'inline-block', whiteSpace: 'nowrap' }}>
+      {/* myk bloom bak tittelen idet den lander */}
+      <span
+        aria-hidden="true"
+        style={{
+          position: 'absolute', inset: 'calc(var(--su) * -2.2) calc(var(--su) * -5)',
+          background: 'radial-gradient(ellipse 60% 80% at 50% 55%, rgba(155,91,214,0.16), transparent 72%)',
+          opacity: bloom,
+          filter: 'blur(calc(var(--su) * 0.8))',
+          pointerEvents: 'none',
+        }}
+      />
+      {all.map((ch, i) => {
+        const p = easeOutCubic(seg(t, at + i * stagger, at + 0.6 + i * stagger));
+        if (p <= 0) return <span key={i} style={{ display: 'inline-block', whiteSpace: 'pre', opacity: 0 }}>{ch}</span>;
+        const isGrad = i >= plain.length;
+        const base = {
+          display: 'inline-block', whiteSpace: 'pre', position: 'relative',
+          opacity: Math.min(1, p * 1.5),
+          transform: `translateY(calc(var(--su) * ${((1 - p) * 1.9).toFixed(2)})) scale(${(0.93 + p * 0.07).toFixed(3)})`,
+        };
+        if (!isGrad) {
+          return (
+            <span key={i} style={{ ...base, color: '#FDFCFB', filter: `blur(${((1 - p) * 6).toFixed(1)}px)` }}>
+              {ch}
+            </span>
+          );
+        }
+        const flow = (((t - at) * 42 + (i - plain.length) * 11) % 400 + 400) % 400;
+        return (
+          <span
+            key={i}
+            style={{
+              ...base,
+              background: 'linear-gradient(100deg, #F4EFFC, #CF97FC 35%, #9B5BD6 55%, #F4EFFC 80%)',
+              backgroundSize: '400% 100%',
+              backgroundPositionX: `${(-flow).toFixed(1)}%`,
+              WebkitBackgroundClip: 'text',
+              backgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              color: 'transparent',
+              filter: `blur(${((1 - p) * 6).toFixed(1)}px) drop-shadow(0 0 calc(var(--su)*0.8) rgba(155,91,214,0.45))`,
+            }}
+          >
+            {ch}
+          </span>
+        );
+      })}
+      {/* shimmer-linje som tegnes under */}
+      <span
+        aria-hidden="true"
+        style={{
+          position: 'absolute', left: '50%', bottom: 'calc(var(--su) * -1.05)',
+          transform: 'translateX(-50%)',
+          width: `calc(var(--su) * ${(line * 24).toFixed(2)})`, height: '1.5px',
+          background: 'linear-gradient(90deg, transparent, rgba(207,151,252,0.85), transparent)',
+        }}
+      />
+    </span>
+  );
+}
+
+export function SceneStyling({ t }) {
+  const lp = seg(t, 14, 26.5);
+  const photoIn = seg(t, 14.42, 14.47); /* match-cut: kortet tar over i det zoomen lander på eksakt geometri */
+  const glowIn = easeOutCubic(seg(t, 14.5, 15.3)); /* gulv-glød og dybde toner rolig inn etter landingen */
+  const fRamp = easeInOutCubic(seg(t, 14.7, 16.4)); /* 3D-svevet våkner først etter at morphen har landet */
+  const promptIn = easeOutCubic(seg(t, 15.6, 16.2));
+  const type1 = seg(t, 16.0, 18.6);
+  const press1 = Math.sin(clamp01(seg(t, 18.85, 19.2)) * Math.PI);
+  const s1 = easeInOutCubic(seg(t, 19.05, 21.0));
+  const clear1 = seg(t, 21.15, 21.45);
+  const type2 = seg(t, 21.7, 22.7);
+  const press2 = Math.sin(clamp01(seg(t, 22.95, 23.3)) * Math.PI);
+  const s2 = easeInOutCubic(seg(t, 23.15, 24.85));
+  const badge = seg(t, 25.0, 25.6);
+  const sweeping = (t >= 19.05 && t < 21.0) || (t >= 23.15 && t < 24.85);
+  const typing = (type1 > 0 && type1 < 1) || (type2 > 0 && type2 < 1);
+  const pulse = press1 + press2;
+  const forP = Math.min(easeOutCubic(seg(t, 15.4, 15.9)), 1 - seg(t, 18.9, 19.3));
+  const promptText = t >= 21.45 ? typed(STYLE_PROMPT_2, type2) : typed(STYLE_PROMPT_1, type1);
+  const textOpacity = t >= 21.15 && t < 21.45 ? 1 - clear1 : 1;
+  const zoom = 1.02 + lp * 0.05;
+  const f3 = float3d(t, 2.2);
+  const spin = ((t * 340) % 360).toFixed(0);
+  /* kalibrert utsnitt for originalbildet (matcher de AI-stylede) */
+  const beforeT = `scale(${(zoom * 1.15).toFixed(3)}) translate(0%, 3%)`;
+
+  return (
+    <Shell t={t} a={14} b={26.5} fIn={0}>
+      {/* kicker + tittel, sentrert over bildet */}
+      <div style={{ position: 'absolute', top: '6%', left: 0, right: 0, display: 'flex', justifyContent: 'center' }}>
+        <Kicker t={t} at={14.35} num="03" label="STYLING" center />
+      </div>
+      <h2
+        className="font-heading font-bold"
+        style={{
+          position: 'absolute', top: '11.5%', left: 0, right: 0, textAlign: 'center',
+          fontSize: 'calc(var(--su) * 3.6)', color: '#FDFCFB', lineHeight: 1.1, letterSpacing: '-0.02em',
+        }}
+      >
+        <StyleHeadline t={t} />
+      </h2>
+
+      {/* foto-kort, sentrert */}
+      <div
+        style={{
+          position: 'absolute', left: '50%', top: '55%', width: 'calc(var(--su) * 50)',
+          transform: `perspective(calc(var(--su) * 140)) translate(-50%, -50%) translateY(calc(var(--su) * ${(f3.y * fRamp).toFixed(2)})) rotateY(${(f3.ry * 0.6 * fRamp).toFixed(2)}deg) rotateX(${(f3.rx * 0.5 * fRamp).toFixed(2)}deg)`,
+          opacity: photoIn,
+          background: '#131316',
+          borderRadius: 'calc(var(--su) * 1.8)',
+          boxShadow: '0 calc(var(--su)*0.3) calc(var(--su)*1) rgba(0,0,0,0.45), 0 calc(var(--su)*2.6) calc(var(--su)*8) rgba(0,0,0,0.6), 0 0 calc(var(--su)*7) rgba(155,91,214,0.10)',
+        }}
+      >
+        <CardEdge />
+        <Glare t={t} at={15.95} />
+        <FloorGlow opacity={glowIn} />
+        <div style={{ position: 'relative', aspectRatio: '3 / 2', borderRadius: 'calc(var(--su) * 1.8)', overflow: 'hidden', background: '#1b1b1f' }}>
+          {/* FØR — ekte originalbilde (kalibrert) */}
+          {t < 21.6 && (
+            <img
+              src="/film/styling/room-before.jpg"
+              alt=""
+              style={{
+                position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover',
+                transform: beforeT, filter: 'saturate(0.88) brightness(0.97)',
+              }}
+            />
+          )}
+          {/* AI-redraw-sone foran sveip 1 (maskerer perspektivavvik) */}
+          {s1 > 0.001 && s1 < 0.999 && (
+            <img
+              src="/film/styling/room-before.jpg"
+              alt=""
+              style={{
+                position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover',
+                transform: beforeT, filter: 'blur(9px) saturate(1.3) brightness(1.14)',
+                clipPath: `inset(0 ${(100 - Math.min(100, s1 * 100 + 7)).toFixed(2)}% 0 ${(s1 * 100).toFixed(2)}%)`,
+              }}
+            />
+          )}
+          {/* ETTER 1 — stylet (dag) */}
+          {t < 25.4 && (
+            <img
+              src="/film/styling/room-day.jpg"
+              alt=""
+              style={{
+                position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover',
+                transform: `scale(${zoom.toFixed(3)})`,
+                clipPath: `inset(0 ${((1 - s1) * 100).toFixed(2)}% 0 0)`,
+              }}
+            />
+          )}
+          {/* redraw-sone foran sveip 2 (tynn) */}
+          {s2 > 0.001 && s2 < 0.999 && (
+            <img
+              src="/film/styling/room-day.jpg"
+              alt=""
+              style={{
+                position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover',
+                transform: `scale(${zoom.toFixed(3)})`, filter: 'blur(5px) brightness(1.12)',
+                clipPath: `inset(0 ${(100 - Math.min(100, s2 * 100 + 3.5)).toFixed(2)}% 0 ${(s2 * 100).toFixed(2)}%)`,
+              }}
+            />
+          )}
+          {/* ETTER 2 — stylet (kveldslys) */}
+          <img
+            src="/film/styling/room-evening.jpg"
+            alt=""
+            style={{
+              position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover',
+              transform: `scale(${zoom.toFixed(3)})`,
+              clipPath: `inset(0 ${((1 - s2) * 100).toFixed(2)}% 0 0)`,
+            }}
+          />
+          {/* varm bloom idet kveldslyset ruller inn */}
+          {(() => {
+            const w = Math.sin(clamp01(seg(t, 23.2, 25.4)) * Math.PI);
+            if (w <= 0.02) return null;
+            return (
+              <div
+                aria-hidden="true"
+                style={{
+                  position: 'absolute', inset: 0, zIndex: 3, pointerEvents: 'none',
+                  background: 'radial-gradient(ellipse 70% 60% at 42% 55%, rgba(255,170,90,0.20), transparent 70%)',
+                  opacity: w,
+                }}
+              />
+            );
+          })()}
+          <StyleSweep t={t} a={19.05} b={21.0} />
+          <StyleSweep t={t} a={23.15} b={24.85} color="255,190,120" />
+          {/* FØR-merke */}
+          {forP > 0.003 && (
+            <span
+              className="font-body"
+              style={{
+                position: 'absolute', top: 'calc(var(--su) * 1.2)', left: 'calc(var(--su) * 1.2)',
+                opacity: forP,
+                fontSize: 'calc(var(--su) * 1.05)', letterSpacing: '0.24em', textIndent: '0.1em',
+                color: 'rgba(253,252,251,0.85)', background: 'rgba(8,8,12,0.6)',
+                border: '1px solid rgba(255,255,255,0.18)', backdropFilter: 'blur(6px)',
+                borderRadius: 999, padding: 'calc(var(--su) * 0.45) calc(var(--su) * 1.1)', zIndex: 6,
+              }}
+            >
+              FØR
+            </span>
+          )}
+          {/* Stylet-badge */}
+          {badge > 0.003 && (
+            <span
+              className="font-body"
+              style={{
+                position: 'absolute', top: 'calc(var(--su) * 1.2)', right: 'calc(var(--su) * 1.2)',
+                opacity: clamp01(badge * 2),
+                transform: `scale(${Math.max(0.5, easeOutBack(badge)).toFixed(3)})`,
+                fontSize: 'calc(var(--su) * 1.25)', fontWeight: 500, letterSpacing: '0.05em',
+                color: '#0A0A0A', background: 'rgba(253,252,251,0.94)',
+                borderRadius: 999, padding: 'calc(var(--su) * 0.5) calc(var(--su) * 1.3)',
+                display: 'inline-flex', alignItems: 'center', gap: 'calc(var(--su) * 0.55)', zIndex: 6,
+              }}
+            >
+              <span style={{ color: '#9B5BD6' }}>{'\u2726'}</span> Stylet automatisk
+            </span>
+          )}
+          {/* promptfelt */}
+          <div
+            style={{
+              position: 'absolute', left: '50%', bottom: 'calc(var(--su) * 1.5)',
+              transform: `translateX(-50%) translateY(calc(var(--su) * ${((1 - promptIn) * 3.5).toFixed(2)}))`,
+              opacity: promptIn,
+              width: '82%',
+              display: 'flex', alignItems: 'center', gap: 'calc(var(--su) * 0.9)',
+              background: 'rgba(8,8,12,0.74)', border: '1px solid rgba(255,255,255,0.16)',
+              backdropFilter: 'blur(10px)', borderRadius: 999,
+              padding: 'calc(var(--su) * 0.55) calc(var(--su) * 0.55) calc(var(--su) * 0.55) calc(var(--su) * 1.5)',
+              boxShadow: '0 calc(var(--su)*1) calc(var(--su)*3) rgba(0,0,0,0.5)',
+              zIndex: 6,
+            }}
+          >
+            <span aria-hidden="true" style={{ color: '#CF97FC', fontSize: 'calc(var(--su) * 1.5)', lineHeight: 1 }}>{'\u2726'}</span>
+            <span
+              className="font-body"
+              style={{
+                flex: 1, fontSize: 'calc(var(--su) * 1.35)', color: 'rgba(253,252,251,0.92)',
+                whiteSpace: 'nowrap', overflow: 'hidden', opacity: textOpacity,
+                lineHeight: 1.4, minHeight: 'calc(var(--su) * 2)', display: 'flex', alignItems: 'center',
+              }}
+            >
+              {promptText.length === 0 && !typing
+                ? <span style={{ color: 'rgba(253,252,251,0.35)' }}>Beskriv stilen …</span>
+                : promptText}
+              {typing && <Caret t={t} />}
+            </span>
+            <span
+              aria-hidden="true"
+              style={{
+                width: 'calc(var(--su) * 3.1)', height: 'calc(var(--su) * 3.1)', borderRadius: '50%',
+                background: 'linear-gradient(145deg, #9B5BD6, #CF97FC)',
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                transform: `scale(${(1 + pulse * 0.22).toFixed(3)})`,
+                boxShadow: `0 0 calc(var(--su) * ${(1 + pulse * 2.4).toFixed(2)}) rgba(155,91,214,${(0.45 + pulse * 0.4).toFixed(2)})`,
+                flexShrink: 0,
+              }}
+            >
+              {sweeping ? (
+                <span
+                  style={{
+                    width: 'calc(var(--su) * 1.4)', height: 'calc(var(--su) * 1.4)', borderRadius: '50%',
+                    border: '2px solid rgba(255,255,255,0.35)', borderTopColor: '#fff',
+                    transform: `rotate(${spin}deg)`,
+                  }}
+                />
+              ) : (
+                <span style={{ color: '#fff', fontSize: 'calc(var(--su) * 1.7)', fontWeight: 700, lineHeight: 1 }}>{'\u2191'}</span>
+              )}
+            </span>
+          </div>
         </div>
       </div>
     </Shell>
@@ -490,8 +1521,6 @@ export function SceneAnnonse({ t }) {
   const lp = seg(t, 14, 26.5);
   const cardIn = easeOutQuint(seg(t, 15.0, 16.1));
   const photoP = easeInOutCubic(seg(t, 15.7, 16.8));
-  const styleP = easeInOutCubic(seg(t, 17.6, 19.1));
-  const styleBadge = seg(t, 19.2, 19.8);
   const titleP = seg(t, 16.6, 18.3);
   const descP = seg(t, 20.2, 22.4);
   const priceIn = easeOutCubic(seg(t, 22.5, 23.1));
@@ -505,12 +1534,12 @@ export function SceneAnnonse({ t }) {
   return (
     <Shell t={t} a={14} b={26.5}>
       <LeftCol lp={lp}>
-        <Kicker t={t} at={14.55} num="01" label="ANNONSE" />
+        <Kicker t={t} at={14.55} num="04" label="ANNONSE" />
         <h2 className="font-heading font-bold" style={{ fontSize: 'calc(var(--su) * 6.2)', color: '#FDFCFB', lineHeight: 1.08, textShadow: landGlow(t, 15.4) }}>
           <Words t={t} at={14.7} text="Annonsen?" />
         </h2>
         <p className="font-body" style={{ fontSize: 'calc(var(--su) * 2.3)', color: 'rgba(253,252,251,0.6)', marginTop: 'calc(var(--su) * 1.8)', lineHeight: 1.4 }}>
-          <Words t={t} at={15.3} stagger={0.1} text="Stylet, skrevet og publisert — automatisk." />
+          <Words t={t} at={15.3} stagger={0.1} text="Skrevet, priset og publisert — automatisk." />
         </p>
         <div className="font-body" style={{ ...rise(capIn, 2), marginTop: 'calc(var(--su) * 3)', display: 'flex', alignItems: 'center', gap: 'calc(var(--su) * 1)' }}>
           <span style={{ width: 'calc(var(--su) * 0.8)', height: 'calc(var(--su) * 0.8)', borderRadius: '50%', background: '#CF97FC', display: 'inline-block' }} />
@@ -541,58 +1570,17 @@ export function SceneAnnonse({ t }) {
         <AIPill t={t} at={20.6} done={22.6} label="Optimaliserer pris" y={1.4} />
         <div style={{ borderRadius: 'calc(var(--su) * 1.8)', overflow: 'hidden' }}>
           <div style={{ height: 'calc(var(--su) * 17)', overflow: 'hidden', position: 'relative', background: '#1b1b1f' }}>
-            {/* f\u00f8r: ustylet (matt og flatt) */}
+            {/* det AI-stylede bildet fra forrige akt — kontinuitet */}
             <img
-              src="/interior-living.webp"
+              src="/film/styling/room-evening.jpg"
               alt=""
               style={{
                 position: 'absolute', inset: 0,
                 width: '100%', height: '100%', objectFit: 'cover',
-                filter: 'saturate(0.25) brightness(0.68) contrast(0.88)',
                 clipPath: `inset(0 ${((1 - photoP) * 100).toFixed(2)}% 0 0)`,
                 transform: `scale(${(1.08 - photoP * 0.08).toFixed(3)})`,
               }}
             />
-            {/* etter: stylet */}
-            <img
-              src="/interior-living.webp"
-              alt=""
-              style={{
-                position: 'absolute', inset: 0,
-                width: '100%', height: '100%', objectFit: 'cover',
-                filter: 'saturate(1.12) brightness(1.06) contrast(1.05)',
-                clipPath: `inset(0 ${((1 - styleP) * 100).toFixed(2)}% 0 0)`,
-                transform: `scale(${(1.08 - photoP * 0.08).toFixed(3)})`,
-              }}
-            />
-            {/* styling-sveiplinje */}
-            {styleP > 0.001 && styleP < 0.999 && (
-              <div
-                style={{
-                  position: 'absolute', top: 0, bottom: 0,
-                  left: `${(styleP * 100).toFixed(2)}%`,
-                  width: 'calc(var(--su) * 0.25)',
-                  background: '#FDFCFB',
-                  boxShadow: '0 0 calc(var(--su)*2.2) rgba(207,151,252,0.95), 0 0 calc(var(--su)*0.8) rgba(255,255,255,0.9)',
-                }}
-              />
-            )}
-            {/* stylet-badge */}
-            <span
-              className="font-body"
-              style={{
-                position: 'absolute', top: 'calc(var(--su) * 1.1)', right: 'calc(var(--su) * 1.1)',
-                opacity: clamp01(styleBadge * 2),
-                transform: `scale(${Math.max(0.5, easeOutBack(styleBadge)).toFixed(3)})`,
-                fontSize: 'calc(var(--su) * 1.2)', fontWeight: 500, letterSpacing: '0.06em',
-                color: '#0A0A0A', background: 'rgba(253,252,251,0.92)',
-                backdropFilter: 'blur(4px)',
-                borderRadius: 999, padding: 'calc(var(--su) * 0.45) calc(var(--su) * 1.2)',
-                display: 'inline-flex', alignItems: 'center', gap: 'calc(var(--su) * 0.5)',
-              }}
-            >
-              <span style={{ color: '#9B5BD6' }}>{'\u2726'}</span> Stylet automatisk
-            </span>
             <div style={{ position: 'absolute', left: 'calc(var(--su)*1.2)', bottom: 'calc(var(--su)*1.2)', opacity: photoP, display: 'flex', gap: 'calc(var(--su)*0.6)' }}>
               {[0, 1, 2].map((i) => (
                 <span key={i} style={{ width: 'calc(var(--su)*2.6)', height: 'calc(var(--su)*0.45)', borderRadius: 99, background: i === 0 ? '#FDFCFB' : 'rgba(253,252,251,0.35)' }} />
@@ -704,7 +1692,7 @@ export function SceneVisning({ t }) {
       {partA > 0.01 && (
         <div className="absolute inset-0" style={{ opacity: partA, filter: partA < 0.95 ? `blur(${((1 - partA) * 6).toFixed(1)}px)` : 'none' }}>
           <LeftCol lp={lp}>
-            <Kicker t={t} at={26.45} num="02" label="VISNINGER" />
+            <Kicker t={t} at={26.45} num="05" label="VISNINGER" />
             <h2 className="font-heading font-bold" style={{ fontSize: 'calc(var(--su) * 6.2)', color: '#FDFCFB', lineHeight: 1.08, textShadow: landGlow(t, 27.3) }}>
               <Words t={t} at={26.6} text="Visninger?" />
             </h2>
@@ -804,7 +1792,7 @@ export function SceneVisning({ t }) {
       {partB > 0.01 && (
         <div className="absolute inset-0" style={{ opacity: partB, filter: partBBlur > 0.3 ? `blur(${partBBlur.toFixed(1)}px)` : 'none' }}>
           <LeftCol lp={lp}>
-            <Kicker t={t} at={32.4} num="03" label="SCREENING" />
+            <Kicker t={t} at={32.4} num="06" label="SCREENING" />
             <h2 className="font-heading font-bold" style={{ fontSize: 'calc(var(--su) * 6.2)', color: '#FDFCFB', lineHeight: 1.08, textShadow: landGlow(t, 33.2) }}>
               <Words t={t} at={32.5} text="Leietakere?" />
             </h2>
@@ -954,7 +1942,7 @@ export function SceneKontrakt({ t }) {
       {partA > 0.01 && (
         <div className="absolute inset-0" style={{ opacity: partA, filter: partA < 0.95 ? `blur(${((1 - partA) * 6).toFixed(1)}px)` : 'none' }}>
           <LeftCol lp={lp}>
-            <Kicker t={t} at={38.45} num="04" label="KONTRAKT" />
+            <Kicker t={t} at={38.45} num="07" label="KONTRAKT" />
             <h2 className="font-heading font-bold" style={{ fontSize: 'calc(var(--su) * 6.2)', color: '#FDFCFB', lineHeight: 1.08, textShadow: landGlow(t, 39.3) }}>
               <Words t={t} at={38.6} text="Kontrakten?" />
             </h2>
@@ -1035,7 +2023,7 @@ export function SceneKontrakt({ t }) {
       )}
       {partB > 0.01 && (
         <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ opacity: partB, filter: partBBlur > 0.3 ? `blur(${partBBlur.toFixed(1)}px)` : 'none' }}>
-          <Kicker t={t} at={43.6} num="05" label="HUSLEIE" center />
+          <Kicker t={t} at={43.6} num="08" label="HUSLEIE" center />
           <h2 className="font-heading font-bold" style={{ fontSize: 'calc(var(--su) * 5.4)', color: '#FDFCFB', lineHeight: 1.1, textShadow: landGlow(t, 44.4) }}>
             <Words t={t} at={43.7} text="Og husleien?" />
           </h2>
@@ -1160,7 +2148,7 @@ export function SceneDynamisk({ t }) {
   return (
     <Shell t={t} a={48.5} b={57.5}>
       <LeftCol lp={lp}>
-        <Kicker t={t} at={48.95} num="06" label="DYNAMISK" />
+        <Kicker t={t} at={48.95} num="09" label="DYNAMISK" />
         <h2 className="font-heading font-bold" style={{ fontSize: 'calc(var(--su) * 6.2)', color: '#FDFCFB', lineHeight: 1.08, textShadow: landGlow(t, 49.9) }}>
           <Words t={t} at={49.1} text="Maksimal inntekt?" />
         </h2>
@@ -1447,7 +2435,7 @@ export function SceneChat({ t }) {
   return (
     <Shell t={t} a={57.5} b={68.5}>
       <LeftCol lp={lp}>
-        <Kicker t={t} at={57.95} num="07" label="SVAR 24/7" />
+        <Kicker t={t} at={57.95} num="10" label="SVAR 24/7" />
         <h2 className="font-heading font-bold" style={{ fontSize: 'calc(var(--su) * 5.6)', color: '#FDFCFB', lineHeight: 1.1, textShadow: landGlow(t, 59.0) }}>
           <Words t={t} at={58.1} stagger={0.1} text="Leietaker lurer på noe?" />
         </h2>

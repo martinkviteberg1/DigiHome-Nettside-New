@@ -19,7 +19,7 @@ const dr = (i, salt = 0) => {
   return x - Math.floor(x);
 };
 
-export const FILM_DURATION = 84;
+export const FILM_DURATION = 108;
 
 /* --- voiceover (ElevenLabs, ferdig plassert paa tidslinjen) --- */
 const VO_ENABLED = false; /* AV: brukeren ønsket film uten voiceover */
@@ -50,36 +50,44 @@ export function loadVoice(ctx) {
 /* --- partitur --- */
 const PAD_SECTIONS = [
   { a: 0,    b: 14.5, notes: ['C4', 'G4', 'D5'] },
-  { a: 14,   b: 26.5, notes: ['Ab3', 'C4', 'Eb4', 'G4'] },
-  { a: 26,   b: 38.5, notes: ['Eb3', 'G3', 'Bb3', 'D4'] },
-  { a: 38,   b: 49,   notes: ['Bb3', 'D4', 'F4', 'C5'] },
-  { a: 48.5, b: 57.5, notes: ['Ab3', 'C4', 'Eb4', 'G4'] },
-  { a: 57.5, b: 68.5, notes: ['F3', 'Ab3', 'C4', 'Eb4'] },
-  { a: 68,   b: 74.8, notes: ['Ab3', 'C4', 'Eb4', 'C5'] },
-  { a: 74.3, b: 79.8, notes: ['Bb3', 'D4', 'F4', 'D5'] },
-  { a: 79.3, b: 84,   notes: ['C4', 'G4', 'D5', 'Eb5'] },
+  { a: 14,   b: 20.5, notes: ['Eb3', 'G3', 'Bb3', 'D4'] }, /* adresse */
+  { a: 20,   b: 26.5, notes: ['F3', 'Ab3', 'C4', 'Eb4'] }, /* bilder */
+  { a: 26,   b: 32.5, notes: ['Ab3', 'C4', 'Eb4', 'G4'] }, /* styling: prompt 1 */
+  { a: 32,   b: 38.5, notes: ['F3', 'Ab3', 'C4', 'Eb4'] }, /* styling: kveldslys */
+  { a: 38,   b: 50.5, notes: ['Ab3', 'C4', 'Eb4', 'G4'] },
+  { a: 50,   b: 62.5, notes: ['Eb3', 'G3', 'Bb3', 'D4'] },
+  { a: 62,   b: 73,   notes: ['Bb3', 'D4', 'F4', 'C5'] },
+  { a: 72.5, b: 81.5, notes: ['Ab3', 'C4', 'Eb4', 'G4'] },
+  { a: 81.5, b: 92.5, notes: ['F3', 'Ab3', 'C4', 'Eb4'] },
+  { a: 92,   b: 98.8, notes: ['Ab3', 'C4', 'Eb4', 'C5'] },
+  { a: 98.3, b: 103.8, notes: ['Bb3', 'D4', 'F4', 'D5'] },
+  { a: 103.3, b: 108, notes: ['C4', 'G4', 'D5', 'Eb5'] },
 ];
 const BASS_SECTIONS = [
-  { a: 0, b: 14.5, n: 'C2' }, { a: 14, b: 26.5, n: 'Ab2' }, { a: 26, b: 38.5, n: 'Eb2' },
-  { a: 38, b: 49, n: 'Bb2' }, { a: 48.5, b: 57.5, n: 'Ab2' }, { a: 57.5, b: 68.5, n: 'F2' },
-  { a: 68, b: 74.8, n: 'Ab2' }, { a: 74.3, b: 79.8, n: 'Bb2' }, { a: 79.3, b: 84, n: 'C2' },
+  { a: 0, b: 14.5, n: 'C2' }, { a: 14, b: 20.5, n: 'Eb2' }, { a: 20, b: 26.5, n: 'F2' },
+  { a: 26, b: 32.5, n: 'Ab2' }, { a: 32, b: 38.5, n: 'F2' },
+  { a: 38, b: 50.5, n: 'Ab2' }, { a: 50, b: 62.5, n: 'Eb2' }, { a: 62, b: 73, n: 'Bb2' },
+  { a: 72.5, b: 81.5, n: 'Ab2' }, { a: 81.5, b: 92.5, n: 'F2' },
+  { a: 92, b: 98.8, n: 'Ab2' }, { a: 98.3, b: 103.8, n: 'Bb2' }, { a: 103.3, b: 108, n: 'C2' },
 ];
-const WHOOSHES = [8, 14, 26, 38, 48.5, 57.5, 68];
+const WHOOSHES = [8, 14, 20, 26, 38, 50, 62, 72.5, 81.5, 92];
 const CHIMES = [
-  { t: 23.2, n: 'Eb5' }, { t: 36.5, n: 'G5' }, { t: 42.1, n: 'F5' },
-  { t: 47.1, n: 'C6' }, { t: 55.7, n: 'Ab5' }, { t: 62.0, n: 'Ab5' }, { t: 79.8, n: 'G5' },
+  { t: 47.2, n: 'Eb5' }, { t: 60.5, n: 'G5' }, { t: 66.1, n: 'F5' },
+  { t: 71.1, n: 'C6' }, { t: 79.7, n: 'Ab5' }, { t: 86.0, n: 'Ab5' }, { t: 103.8, n: 'G5' },
 ];
 const LEAD = [
-  { t: 16.2, n: 'G4', d: 1.6 }, { t: 18.0, n: 'Bb4', d: 1.4 }, { t: 19.6, n: 'C5', d: 2.2 },
-  { t: 28.2, n: 'Eb5', d: 1.6 }, { t: 30.0, n: 'D5', d: 2.0 },
-  { t: 40.2, n: 'F4', d: 1.4 }, { t: 41.8, n: 'G4', d: 2.2 },
-  { t: 50.4, n: 'Ab4', d: 1.6 }, { t: 53.0, n: 'C5', d: 1.8 },
-  { t: 59.8, n: 'C5', d: 1.6 }, { t: 61.8, n: 'Bb4', d: 2.0 },
-  { t: 69.6, n: 'Eb5', d: 1.8 }, { t: 71.4, n: 'F5', d: 2.0 },
-  { t: 79.7, n: 'G5', d: 3.0 },
+  { t: 15.6, n: 'Bb4', d: 1.8 }, { t: 22.4, n: 'C5', d: 1.8 },
+  { t: 28.6, n: 'G4', d: 1.8 }, { t: 36.0, n: 'Ab4', d: 2.2 },
+  { t: 40.2, n: 'G4', d: 1.6 }, { t: 42.0, n: 'Bb4', d: 1.4 }, { t: 43.6, n: 'C5', d: 2.2 },
+  { t: 52.2, n: 'Eb5', d: 1.6 }, { t: 54.0, n: 'D5', d: 2.0 },
+  { t: 64.2, n: 'F4', d: 1.4 }, { t: 65.8, n: 'G4', d: 2.2 },
+  { t: 74.4, n: 'Ab4', d: 1.6 }, { t: 77.0, n: 'C5', d: 1.8 },
+  { t: 83.8, n: 'C5', d: 1.6 }, { t: 85.8, n: 'Bb4', d: 2.0 },
+  { t: 93.6, n: 'Eb5', d: 1.8 }, { t: 95.4, n: 'F5', d: 2.0 },
+  { t: 103.7, n: 'G5', d: 3.0 },
 ];
-const PULSE = { from: 10.8, to: 67.8, step: 1.2, vol: 0.06 };
-const ARP = { from: 14.6, to: 67.8, step: 0.6 };
+const PULSE = { from: 10.8, to: 91.8, step: 1.2, vol: 0.06 };
+const ARP = { from: 14.6, to: 91.8, step: 0.6 };
 
 const chordAt = (t) => {
   for (let i = PAD_SECTIONS.length - 1; i >= 0; i--) {
@@ -123,7 +131,7 @@ export function scheduleMusic(ctx, destination, fromT = 0) {
   const bus = ctx.createGain();
   bus.gain.value = 1;
   if (FILM_DURATION > fromT) {
-    const fadeStart = now() + Math.max(0, 76.5 - fromT);
+    const fadeStart = now() + Math.max(0, 100.5 - fromT);
     const fadeEnd = now() + Math.max(0, FILM_DURATION - fromT);
     bus.gain.setValueAtTime(1, fadeStart);
     bus.gain.linearRampToValueAtTime(0.0001, fadeEnd);
@@ -736,54 +744,110 @@ export function scheduleMusic(ctx, destination, fromT = 0) {
     pluck(freq(pick) * up, at, k);
   }
   for (const w of WHOOSHES) whoosh(w);
-  whoosh(67.5, 0.06, 500, 5200, 1.6); /* riser inn mot logo */
+  whoosh(91.5, 0.06, 500, 5200, 1.6); /* riser inn mot logo */
   for (const c of CHIMES) chime(freq(c.n), c.t);
   for (const l of LEAD) lead(freq(l.n), l.t, l.d);
 
   /* lydeffekter */
   key(freq('Eb5'), 0.9);
-  key(freq('C5'), 2.5);
-  key(freq('G4'), 4.0);
-  key(freq('Bb4'), 6.0, 0.038);
-  subSwell(10.62); /* anticipation inn mot toggle */
-  toggleOn(10.45);
-  /* AI-statuspiller: start (lavt) og fullført (lysere) */
-  tick(15.5, 760);
-  tick(16.5, 1240);
-  tick(18.0, 760);
-  tick(19.3, 1240);
-  tick(20.6, 760);
-  tick(22.6, 1240);
-  shutter(19.25); /* foto stylet */
-  thump(23.75);
-  ping(33.2, 740);
-  ping(34.4, 880);
+  key(freq('C5'), 2.4);
+  key(freq('G4'), 4.55);
+  key(freq('Bb4'), 5.85, 0.038);
+  subSwell(9.45);  /* anticipation — bryteren lader */
+  whoosh(9.7, 0.028, 280, 2200, 0.8); /* lade-riser inn mot klikket */
+  toggleOn(9.98);
+  /* adresse: søkefelt, tasting, autocomplete og registeroppslag */
+  whoosh(14.6, 0.03, 600, 2600, 0.9);  /* felt inn */
+  for (let i = 0; i < 22; i++) {       /* tasting — adresse */
+    const at = 14.95 + i * 0.075;
+    if (at > 16.5 || dr(i, 31) < 0.32) continue;
+    tick(at, 1450 + dr(i, 32) * 750);
+  }
+  ping(15.95, 740);                     /* autocomplete åpner */
+  tick(16.8, 990);                      /* forslag markeres */
+  thump(17.15);                         /* valgt */
+  chime(freq('G5'), 18.05, 0.03);       /* register funnet */
+  tick(18.5, 760);                      /* registerrader inn */
+  tick(18.83, 830);
+  tick(19.16, 900);
+  tick(19.49, 970);
+  /* bilder: slippsone, fem bilder, opplasting, skanning og valg */
+  whoosh(20.55, 0.03, 600, 2600, 0.9);  /* sone inn */
+  tick(21.9, 520);                      /* bildene lander */
+  tick(22.12, 545);
+  tick(22.34, 570);
+  tick(22.56, 595);
+  tick(22.78, 620);
+  ping(22.95, 830);                     /* lastet opp ✓ */
+  ping(23.3, 880);
+  whoosh(23.4, 0.035, 700, 3200, 1.1);  /* skannelinje */
+  tick(23.65, 900);                     /* detaljer leses */
+  tick(23.91, 980);
+  tick(24.17, 1060);
+  tick(24.43, 1140);
+  chime(freq('Eb5'), 24.95, 0.03);      /* forsidebilde valgt */
+  whoosh(25.7, 0.04, 500, 3400, 1.2);   /* zoom mot styling */
+  /* AI-styling: sømløs morph lander, prompt-tasting, sveip og badge */
+  whoosh(26.45, 0.026, 620, 2800, 0.85); /* morphen lander — glare-sveip */
+  shimmer(26.7);                         /* tittelens gradient-reveal */
+  whoosh(27.62, 0.022, 650, 2400, 0.7);  /* promptfeltet glir inn */
+  for (let i = 0; i < 30; i++) {       /* tasting — prompt 1 */
+    const at = 28.0 + i * 0.087;
+    if (at > 30.55 || dr(i, 21) < 0.32) continue;
+    tick(at, 1450 + dr(i, 22) * 750);
+  }
+  thump(31.0);                          /* send-knapp 1 — trykk-toppen */
+  whoosh(31.05, 0.05, 480, 4200, 1.9);  /* sveip 1 — møblering */
+  shimmer(31.15);
+  chime(freq('Ab5'), 33.0, 0.032);      /* møblert ✓ */
+  tick(33.2, 640);                      /* feltet tømmes */
+  for (let i = 0; i < 12; i++) {        /* tasting — prompt 2 */
+    const at = 33.7 + i * 0.085;
+    if (at > 34.65 || dr(i, 23) < 0.32) continue;
+    tick(at, 1450 + dr(i, 24) * 750);
+  }
+  thump(35.1);                          /* send-knapp 2 — trykk-toppen */
+  whoosh(35.15, 0.05, 420, 3800, 1.7);  /* sveip 2 — kveldslys */
+  shimmer(35.25);
+  chime(freq('C6'), 36.85, 0.034);      /* kveldslys ✓ */
+  ping(37.15, 880);                     /* «Stylet automatisk»-badge */
+  /* annonse: AI-statuspiller og publisering */
+  tick(39.5, 760);
+  tick(40.5, 1240);
+  tick(42.0, 760);
+  tick(43.3, 1240);
+  tick(44.6, 760);
+  tick(46.6, 1240);
+  shutter(43.25); /* foto inn i annonsen */
+  thump(47.75);
+  ping(57.2, 740);
+  ping(58.4, 880);
   /* radar-prosessering: data-chirps */
-  chirp(33.5, 1250, 1900);
-  chirp(33.85, 1500, 2300);
-  chirp(34.2, 1100, 1750);
-  chirp(34.6, 1650, 2500);
-  chirp(34.95, 1300, 2000);
-  whoosh(36.4, 0.028, 800, 3200, 0.9); /* anamorf flare — godkjent */
-  scribble(40.35, 41.7);
-  whoosh(46.85, 0.03, 900, 3800, 0.9); /* anamorf flare — husleie */
+  chirp(57.5, 1250, 1900);
+  chirp(57.85, 1500, 2300);
+  chirp(58.2, 1100, 1750);
+  chirp(58.6, 1650, 2500);
+  chirp(58.95, 1300, 2000);
+  whoosh(60.4, 0.028, 800, 3200, 0.9); /* anamorf flare — godkjent */
+  scribble(64.35, 65.7);
+  whoosh(70.85, 0.03, 900, 3800, 0.9); /* anamorf flare — husleie */
   /* dynamisk utleie: langtidssveip, korttid-kaskade, badge */
-  whoosh(50.8, 0.025, 420, 2400, 1.1);
-  tick(52.65, 880);
-  tick(53.15, 990);
-  tick(53.65, 1100);
-  tick(56.25, 1240);
-  msgPop(59.55, false);
-  msgPop(61.65, true);
-  msgPop(63.65, false);
+  whoosh(74.8, 0.025, 420, 2400, 1.1);
+  tick(76.65, 880);
+  tick(77.15, 990);
+  tick(77.65, 1100);
+  tick(80.25, 1240);
+  msgPop(83.55, false);
+  msgPop(85.65, true);
+  msgPop(87.65, false);
   /* finale: chips samles (fallende whoosh) og brister (boom + chime) */
-  whoosh(74.8, 0.05, 2400, 320, 1.1);
-  boom(75.12);
-  chime(freq('Eb5'), 75.2, 0.034);
-  shimmer(77.45);
-  boom(79.35, 0.05); /* myk logo-hit */
-  airPad(freq('G5'), 79.2, 84);
-  airPad(freq('C6'), 79.9, 84, 0.012);
+  whoosh(98.8, 0.05, 2400, 320, 1.1);
+  boom(99.12);
+  chime(freq('Eb5'), 99.2, 0.034);
+  shimmer(101.45);
+  boom(103.35, 0.05); /* myk logo-hit */
+  airPad(freq('G5'), 103.2, 108);
+  airPad(freq('C6'), 103.9, 108, 0.012);
 
   /* --- voiceover: spilles utenom musikk-kjeden, med ducking --- */
   const voGain = ctx.createGain();

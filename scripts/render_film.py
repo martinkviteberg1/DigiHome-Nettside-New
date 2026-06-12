@@ -20,7 +20,7 @@ from playwright.async_api import async_playwright
 
 CAPTURE_FPS = 60   # fanges i 60 fps ...
 OUT_FPS = 30       # ... og blandes ned til 30 fps med motion blur
-DURATION = 84
+DURATION = 108
 URL = "http://localhost:3000/video?record=1"
 FRAMES_DIR = "/tmp/film_frames"
 WAV_PATH = "/tmp/film_music.wav"
@@ -50,7 +50,7 @@ async def render():
         print("page ready, warming up assets...", flush=True)
 
         # varm opp alle bilder/fonter ved aa hoppe gjennom filmen
-        for t in [3, 10, 17, 28, 35, 40, 45, 52, 57, 69]:
+        for t in [3, 10, 16, 19, 22, 25, 28, 32, 36, 42, 48, 54, 60, 66, 72, 78, 84, 90, 96, 102]:
             await page.evaluate(f"window.__setTime({t})")
             await page.wait_for_timeout(250)
         await page.wait_for_timeout(1500)
