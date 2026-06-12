@@ -1,62 +1,78 @@
 'use client';
 
 /*
-  HeroLoop — «DigiHome OS»: hele systemet som ett levende kontrollsenter
-  (20s loop), à la Teslas autopilot-visualisering.
+  HeroLoop — «DigiHome OS» i full dybde (20.4s loop). SUPER WOW-utgave.
 
-    1. BOOT       bryteren flippes — systemet våkner, hub + ringer kalibreres,
-                  radarsveipet begynner å gå
-    2. LOCK       adressen låses på med konvergerende sikte-braketter
-    3. ORKESTRER  fire noder kobles på én etter én: linje tegnes fra huben,
-                  en lyspuls reiser ut, noden kvitterer med hake
-                  (Annonse · Pris · Leietaker · Kontrakt)
-    4. RETUR      grønne pulser strømmer tilbake til huben — energien høstes —
-                  og utbetalingen telles opp som telemetri nederst
-    5. IDLE       systemet går og puster, før en rolig reboot
+    1. BOOT       AUTOPILOT-bryteren flippes («Av» → «Aktivert») og løses opp.
+                  Boligen STREKTEGNES linje for linje — arkitektonisk wireframe —
+                  og elliptiske instrumentringer kalibreres på gulvplanet.
+    2. LOCK       systemlinje + adresse låses på med sikte-braketter.
+    3. ORKESTRER  fire noder kobles på: linje tegnes, lyspuls reiser ut,
+                  ankomst-rippel, grønn kvittering. Vinduet i huset TENNES.
+                  Etter kvittering flyter en konstant energistrøm langs linjene.
+    4. HØSTING    grønne pulser strømmer hjem, huset blusser opp — og beløpet
+                  ruller inn på et EKTE ODOMETER nederst: 25 000 kr.
+    5. IDLE       sonar-pulser ruller over planet før en rolig reboot.
 
-  Monokrom platina + grønn telemetri. Ingen forklaringer — bare systemet.
-  Alle størrelser i --u (1 % av bredden). SVG-laget deler samme koordinater
-  (viewBox 0 0 100 94), så linjer og HTML-noder er perfekt synkronisert.
+  Kinematisk kamera: zoomet inn under boot → trekker ut og avslører systemet →
+  presser inn mot utbetalingen → tilbake til hvile.
+
+  Monokrom platina + grønn telemetri. Alle størrelser i --u (1 % av bredden).
+  SVG-laget deler koordinater med HTML (viewBox 0 0 100 94).
 */
 
 import { useEffect, useRef, useState } from 'react';
-import { Home, Megaphone, TrendingUp, FileCheck, UserCheck, MapPin } from 'lucide-react';
+import { Megaphone, TrendingUp, FileCheck, UserCheck, MapPin } from 'lucide-react';
 import {
   seg, clamp01, easeOutCubic, easeInOutCubic, easeOutBack,
-  fmtNOK,
 } from '@/components/video/filmUtils';
 
 const LOOP = 20.4;
 const u = (n) => `calc(var(--u) * ${typeof n === 'number' ? n.toFixed(3) : n})`;
 
-const HUB = { x: 50, y: 46 };
+const CX = 50;          // husets senter-x
+const GY = 50.5;        // gulvplanets senterlinje
+const ANCHOR = { x: 50, y: 45 };
+
 const RINGS = [
-  { r: 12, at: 2.9, op: 0.10 },
-  { r: 18, at: 3.15, op: 0.07 },
-  { r: 24, at: 3.4, op: 0.09, dashed: true },
+  { r: 13, at: 3.4, op: 0.10 },
+  { r: 19, at: 3.65, op: 0.07 },
+  { r: 25, at: 3.9, op: 0.09, dashed: true },
 ];
 const NODES = [
-  { at: 5.6, x: 18, y: 26, icon: Megaphone, label: 'Annonse', sub: 'Finn · Airbnb' },
-  { at: 7.3, x: 82, y: 26, icon: TrendingUp, label: 'Pris', sub: '25 500 kr/mnd' },
-  { at: 9.0, x: 14, y: 62, icon: UserCheck, label: 'Leietaker', sub: 'Verifisert' },
-  { at: 10.7, x: 86, y: 62, icon: FileCheck, label: 'Kontrakt', sub: 'BankID · 12 mnd' },
+  { at: 5.6, x: 18, y: 24, depth: 0.94, icon: Megaphone, label: 'Annonse', sub: 'Finn · Airbnb' },
+  { at: 7.3, x: 82, y: 24, depth: 0.94, icon: TrendingUp, label: 'Pris', sub: '25 500 kr/mnd' },
+  { at: 9.0, x: 14, y: 60, depth: 1.05, icon: UserCheck, label: 'Leietaker', sub: 'Verifisert' },
+  { at: 10.7, x: 86, y: 60, depth: 1.05, icon: FileCheck, label: 'Kontrakt', sub: 'BankID · 12 mnd' },
 ];
-/* grønne returpulser: hovedhøsting + idle-liv */
 const RETURNS = [
   { n: 0, at: 12.5 }, { n: 1, at: 12.7 }, { n: 2, at: 12.9 }, { n: 3, at: 13.1 },
   { n: 1, at: 16.9 }, { n: 2, at: 17.7 },
 ];
 
+/* huset — strektegnes segment for segment (lengder forhåndsberegnet) */
+const HOUSE = [
+  { d: 'M42 50 L42 42.6', len: 7.4 },
+  { d: 'M58 50 L58 42.6', len: 7.4 },
+  { d: 'M42 50 L58 50', len: 16 },
+  { d: 'M41 43 L50 36.4', len: 11.2 },
+  { d: 'M50 36.4 L59 43', len: 11.2 },
+  { d: 'M47.7 50 L47.7 45.9 L52.3 45.9 L52.3 50', len: 12.9 },
+];
+const HOUSE_AT = 3.05;
+
 const lineFor = (n) => {
-  const dx = n.x - HUB.x, dy = n.y - HUB.y;
+  const dx = n.x - ANCHOR.x, dy = n.y - ANCHOR.y;
   const len = Math.hypot(dx, dy);
   const ux = dx / len, uy = dy / len;
   return {
-    x1: HUB.x + ux * 8.4, y1: HUB.y + uy * 8.4,
-    x2: n.x - ux * 5.4, y2: n.y - uy * 5.4,
+    x1: ANCHOR.x + ux * 10.5, y1: ANCHOR.y + uy * 10.5,
+    x2: n.x - ux * 5.6, y2: n.y - uy * 5.6,
   };
 };
 const LINES = NODES.map(lineFor);
+
+const activeCount = (t) => NODES.filter((n) => t > n.at + 1.05).length;
 
 function useLoopTime(playing) {
   const [t, setT] = useState(0);
@@ -66,7 +82,7 @@ function useLoopTime(playing) {
   }, []);
   useEffect(() => {
     if (reduce) {
-      setT(15.6); // statisk: hele systemet aktivt + utbetaling
+      setT(15.6); // statisk: hele systemet + utbetaling
       return;
     }
     if (!playing) return;
@@ -82,7 +98,33 @@ function useLoopTime(playing) {
   return t;
 }
 
-/* ---------- bakteppe: rommet lysner når systemet booter ---------- */
+/* ---------- kinematisk kamera ---------- */
+function cam(t) {
+  const e = easeInOutCubic;
+  let s = 1.07, y = 0;
+  if (t < 3) {
+    s = 1.07;
+  } else if (t < 5) {
+    const p = e(seg(t, 3, 5));
+    s = 1.07 - 0.07 * p;
+  } else if (t < 13.3) {
+    s = 1.0 + 0.02 * seg(t, 5, 13.3);
+  } else if (t < 14.3) {
+    const p = e(seg(t, 13.3, 14.3));
+    s = 1.02 + 0.03 * p;
+    y = -1.8 * p;
+  } else if (t < 16.8) {
+    s = 1.05;
+    y = -1.8;
+  } else {
+    const p = e(seg(t, 16.8, 18.2));
+    s = 1.05 - 0.05 * p;
+    y = -1.8 * (1 - p);
+  }
+  return { s, y };
+}
+
+/* ---------- bakteppe ---------- */
 function Backdrop({ t, ex }) {
   const breathe = 0.8 + 0.2 * Math.sin(t * 0.35);
   const lit = (0.35 + 0.65 * easeOutCubic(seg(t, 1.4, 2.6))) * (1 - 0.7 * ex);
@@ -109,7 +151,7 @@ function Backdrop({ t, ex }) {
   );
 }
 
-/* ---------- liten grønn hake ---------- */
+/* ---------- delte byggesteiner ---------- */
 function ChipCheck({ size = 3 }) {
   return (
     <span
@@ -148,39 +190,122 @@ function NodeStatus({ t, done, size = 2.7 }) {
   );
 }
 
-/* ---------- SVG-lag: ringer, sveip-senter, linjer og pulser ---------- */
+/* ---------- SVG: hus, gulvplan, linjer, pulser, energi ---------- */
 function SystemSVG({ t }) {
+  const active = activeCount(t);
+  const flash = Math.sin(clamp01(seg(t, 13.0, 13.9)) * Math.PI);
+  const houseGlow = 0.05 + active * 0.015 + flash * 0.18;
+  const windowOn = easeOutCubic(seg(t, 6.6, 7.4));
+  const windowPulse = windowOn * (0.65 + 0.35 * Math.sin(t * 1.7));
+
   return (
     <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 94" fill="none" aria-hidden="true">
-      {/* kalibrerende ringer */}
+      {/* elliptiske instrumentringer på gulvplanet */}
       {RINGS.map((ring, i) => {
         const p = easeOutCubic(seg(t, ring.at, ring.at + 0.7));
         if (p <= 0.004) return null;
         return (
-          <circle
+          <ellipse
             key={i}
-            cx={HUB.x} cy={HUB.y} r={(ring.r * p).toFixed(2)}
+            cx={CX} cy={GY} rx={(ring.r * p).toFixed(2)} ry={(ring.r * 0.32 * p).toFixed(2)}
             stroke={`rgba(235,232,245,${(ring.op * p).toFixed(3)})`}
             strokeWidth="0.22"
             strokeDasharray={ring.dashed ? '1.1 2.3' : 'none'}
-            style={ring.dashed ? { transformOrigin: '50px 46px', transform: `rotate(${(t * 2.4).toFixed(2)}deg)` } : undefined}
+            strokeDashoffset={ring.dashed ? (t * 1.4).toFixed(2) : 0}
           />
         );
       })}
 
-      {/* sonar-puls fra huben — systemet lever */}
+      {/* sonar-puls som ruller over planet */}
       {t > 6.2 && (() => {
         const rp = ((t - 6.2) % 3.2) / 3.2;
+        const rr = 9 + rp * 17;
         return (
-          <circle
-            cx={HUB.x} cy={HUB.y} r={(7.6 + rp * 7.5).toFixed(2)}
-            stroke={`rgba(235,232,245,${((1 - rp) * 0.10).toFixed(3)})`}
+          <ellipse
+            cx={CX} cy={GY} rx={rr.toFixed(2)} ry={(rr * 0.32).toFixed(2)}
+            stroke={`rgba(235,232,245,${((1 - rp) * 0.09).toFixed(3)})`}
             strokeWidth="0.25"
           />
         );
       })()}
 
-      {/* ankomst-rippel når pulsen treffer noden */}
+      {/* huset — glødeunderlag + strektegning */}
+      {HOUSE.map((segm, i) => {
+        const p = easeInOutCubic(seg(t, HOUSE_AT + i * 0.11, HOUSE_AT + i * 0.11 + 0.55));
+        if (p <= 0.004) return null;
+        return (
+          <g key={i}>
+            <path
+              d={segm.d}
+              stroke={`rgba(235,232,245,${houseGlow.toFixed(3)})`}
+              strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round"
+              strokeDasharray={segm.len} strokeDashoffset={(segm.len * (1 - p)).toFixed(2)}
+            />
+            <path
+              d={segm.d}
+              stroke={`rgba(250,249,253,${(0.88 + flash * 0.12).toFixed(2)})`}
+              strokeWidth="0.3" strokeLinecap="round" strokeLinejoin="round"
+              strokeDasharray={segm.len} strokeDashoffset={(segm.len * (1 - p)).toFixed(2)}
+            />
+          </g>
+        );
+      })}
+      {/* gavlvindu — tennes når systemet jobber */}
+      {(() => {
+        const p = seg(t, HOUSE_AT + 0.7, HOUSE_AT + 1.15);
+        if (p <= 0.004) return null;
+        const circ = 8.5;
+        return (
+          <>
+            <circle
+              cx={CX} cy={40.6} r="1.35"
+              stroke="rgba(250,249,253,0.85)" strokeWidth="0.28"
+              strokeDasharray={circ} strokeDashoffset={(circ * (1 - easeInOutCubic(p))).toFixed(2)}
+              transform={`rotate(-90 ${CX} 40.6)`}
+            />
+            {windowOn > 0.01 && (
+              <circle cx={CX} cy={40.6} r="1.1" fill={`rgba(255,241,209,${(0.22 * windowPulse).toFixed(3)})`} />
+            )}
+          </>
+        );
+      })()}
+
+      {/* forbindelseslinjer */}
+      {NODES.map((n, i) => {
+        const p = easeInOutCubic(seg(t, n.at, n.at + 0.5));
+        if (p <= 0.004) return null;
+        const L = LINES[i];
+        const len = Math.hypot(L.x2 - L.x1, L.y2 - L.y1);
+        const isActive = t > n.at + 1.05;
+        return (
+          <line
+            key={n.label}
+            x1={L.x1} y1={L.y1} x2={L.x2} y2={L.y2}
+            stroke={`rgba(235,232,245,${isActive ? 0.12 : 0.26})`}
+            strokeWidth="0.22"
+            strokeDasharray={len.toFixed(2)}
+            strokeDashoffset={(len * (1 - p)).toFixed(2)}
+          />
+        );
+      })}
+
+      {/* konstant energistrøm langs aktive linjer */}
+      {NODES.map((n, i) => {
+        if (t < n.at + 1.3) return null;
+        const L = LINES[i];
+        return (
+          <line
+            key={`flow-${n.label}`}
+            x1={L.x2} y1={L.y2} x2={L.x1} y2={L.y1}
+            stroke="rgba(126,226,168,0.11)"
+            strokeWidth="0.3"
+            strokeDasharray="0.7 2.7"
+            strokeDashoffset={(-(t * 4.6) % 3.4).toFixed(2)}
+          />
+        );
+      })}
+
+      {/* ankomst-rippel ved noden */}
       {NODES.map((n) => {
         const ar = seg(t, n.at + 0.5, n.at + 1.05);
         if (ar <= 0.01 || ar >= 0.99) return null;
@@ -190,25 +315,6 @@ function SystemSVG({ t }) {
             cx={n.x} cy={n.y} r={(3.4 + easeOutCubic(ar) * 4).toFixed(2)}
             stroke={`rgba(235,232,245,${(Math.sin(ar * Math.PI) * 0.22).toFixed(3)})`}
             strokeWidth="0.22"
-          />
-        );
-      })}
-
-      {/* forbindelseslinjer */}
-      {NODES.map((n, i) => {
-        const p = easeInOutCubic(seg(t, n.at, n.at + 0.5));
-        if (p <= 0.004) return null;
-        const L = LINES[i];
-        const len = Math.hypot(L.x2 - L.x1, L.y2 - L.y1);
-        const active = t > n.at + 1.05;
-        return (
-          <line
-            key={n.label}
-            x1={L.x1} y1={L.y1} x2={L.x2} y2={L.y2}
-            stroke={`rgba(235,232,245,${active ? 0.13 : 0.26})`}
-            strokeWidth="0.22"
-            strokeDasharray={len.toFixed(2)}
-            strokeDashoffset={(len * (1 - p)).toFixed(2)}
           />
         );
       })}
@@ -229,7 +335,7 @@ function SystemSVG({ t }) {
         );
       })}
 
-      {/* returpulser (grønn telemetri, node → hub) */}
+      {/* returpulser (grønn telemetri) */}
       {RETURNS.map((r, i) => {
         const p = easeInOutCubic(seg(t, r.at, r.at + 0.55));
         if (p <= 0.01 || p >= 0.99) return null;
@@ -248,22 +354,42 @@ function SystemSVG({ t }) {
   );
 }
 
-/* ---------- radarsveip rundt huben ---------- */
+/* ---------- glød i bakken under huset ---------- */
+function GroundGlow({ t }) {
+  const p = easeOutCubic(seg(t, HOUSE_AT + 0.4, HOUSE_AT + 1.2));
+  if (p <= 0.01) return null;
+  const flash = Math.sin(clamp01(seg(t, 13.0, 13.9)) * Math.PI);
+  const o = (0.10 + activeCount(t) * 0.022 + flash * 0.2) * p;
+  return (
+    <div
+      className="absolute pointer-events-none"
+      style={{
+        left: '50%', top: `${(52.2 / 94) * 100}%`,
+        width: u(26), height: u(6.5),
+        transform: 'translate(-50%, -50%)',
+        background: `radial-gradient(ellipse 50% 50% at 50% 50%, rgba(235,232,245,${o.toFixed(3)}), transparent 70%)`,
+        filter: `blur(${u(1.2)})`,
+      }}
+    />
+  );
+}
+
+/* ---------- elliptisk radarsveip ---------- */
 function Sweep({ t }) {
-  const o = easeOutCubic(seg(t, 3.3, 4.1));
+  const o = easeOutCubic(seg(t, 3.6, 4.4));
   if (o <= 0.01) return null;
   const rot = (t * 42) % 360;
   return (
     <div
       className="absolute pointer-events-none"
       style={{
-        left: `${HUB.x}%`, top: `${(HUB.y / 94) * 100}%`,
-        width: u(50), height: u(50),
-        transform: 'translate(-50%, -50%)',
+        left: `${CX}%`, top: `${(GY / 94) * 100}%`,
+        width: u(52), height: u(52),
+        transform: 'translate(-50%, -50%) scaleY(0.34)',
         borderRadius: '50%',
-        background: `conic-gradient(from ${rot.toFixed(1)}deg, rgba(235,232,245,${(0.065 * o).toFixed(3)}), transparent 48deg)`,
-        maskImage: 'radial-gradient(circle, transparent 26%, rgba(0,0,0,0.9) 42%, rgba(0,0,0,0.9) 60%, transparent 72%)',
-        WebkitMaskImage: 'radial-gradient(circle, transparent 26%, rgba(0,0,0,0.9) 42%, rgba(0,0,0,0.9) 60%, transparent 72%)',
+        background: `conic-gradient(from ${rot.toFixed(1)}deg, rgba(235,232,245,${(0.07 * o).toFixed(3)}), transparent 50deg)`,
+        maskImage: 'radial-gradient(circle, transparent 22%, rgba(0,0,0,0.9) 40%, rgba(0,0,0,0.9) 62%, transparent 74%)',
+        WebkitMaskImage: 'radial-gradient(circle, transparent 22%, rgba(0,0,0,0.9) 40%, rgba(0,0,0,0.9) 62%, transparent 74%)',
       }}
     />
   );
@@ -289,14 +415,13 @@ function BootToggle({ t }) {
     <div
       className="absolute"
       style={{
-        left: `${HUB.x}%`, top: `${(HUB.y / 94) * 100}%`,
+        left: '50%', top: `${(45 / 94) * 100}%`,
         width: u(TW), height: u(TH),
         transform: `translate(-50%, -50%) translateY(${u((1 - Math.min(inRaw, 1.03)) * 4)}) scale(${((0.92 + 0.08 * Math.min(inRaw, 1.03)) * (1 - out * 0.25)).toFixed(3)})`,
         opacity: o.toFixed(2),
         filter: out > 0.02 ? `blur(${(out * 6).toFixed(1)}px)` : 'none',
       }}
     >
-      {/* etikett — glir opp mot systemlinjen når den fases ut */}
       <p
         className="font-body uppercase absolute left-1/2 text-center"
         style={{
@@ -332,7 +457,6 @@ function BootToggle({ t }) {
           boxShadow: `0 ${u(0.8)} ${u(2.4)} rgba(0,0,0,0.55), inset 0 ${u(0.4)} ${u(0.7)} rgba(255,255,255,0.95), inset 0 ${u(-0.5)} ${u(0.9)} rgba(0,0,0,0.14)${on ? `, 0 0 ${u(2.6)} rgba(255,255,255,0.28)` : ''}`,
         }}
       />
-      {/* status — skifter til grønt når den aktiveres */}
       <div
         className="absolute left-1/2 flex items-center"
         style={{
@@ -357,32 +481,6 @@ function BootToggle({ t }) {
           <span className="font-body" style={{ fontSize: u(2.3), color: 'rgba(253,252,251,0.38)' }}>Av</span>
         )}
       </div>
-    </div>
-  );
-}
-
-/* ---------- huben: boligen i sentrum ---------- */
-function Hub({ t }) {
-  const inP = easeOutBack(seg(t, 2.85, 3.55));
-  if (inP <= 0.004) return null;
-  const active = NODES.filter((n) => t > n.at + 1.05).length;
-  const flash = Math.sin(clamp01(seg(t, 13.0, 13.9)) * Math.PI);
-  const energy = 0.12 + active * 0.05 + flash * 0.3;
-  return (
-    <div
-      className="absolute flex items-center justify-center"
-      style={{
-        left: `${HUB.x}%`, top: `${(HUB.y / 94) * 100}%`,
-        width: u(14), height: u(14),
-        transform: `translate(-50%, -50%) scale(${(0.6 + 0.4 * Math.min(inP, 1.05) + flash * 0.03).toFixed(3)})`,
-        opacity: Math.min(inP * 1.4, 1).toFixed(2),
-        borderRadius: '50%',
-        background: 'rgba(21,20,25,0.94)',
-        border: `1px solid rgba(255,255,255,${(0.16 + flash * 0.2).toFixed(2)})`,
-        boxShadow: `0 ${u(2)} ${u(6)} rgba(0,0,0,0.5), 0 0 ${u(6)} rgba(235,232,245,${energy.toFixed(2)}), inset 0 1px 0 rgba(255,255,255,0.12)`,
-      }}
-    >
-      <Home style={{ width: u(5.2), height: u(5.2), color: 'rgba(253,252,251,0.92)' }} strokeWidth={1.6} />
     </div>
   );
 }
@@ -465,15 +563,15 @@ function Node({ t, node }) {
   const inRaw = easeOutBack(seg(t, node.at + 0.4, node.at + 0.95));
   if (inRaw <= 0.004) return null;
   const inP = Math.min(inRaw, 1.05);
-  const active = t > node.at + 1.05;
+  const isActive = t > node.at + 1.05;
   const Icon = node.icon;
   return (
     <div
       className="absolute flex flex-col items-center"
       style={{
         left: `${node.x}%`, top: `${(node.y / 94) * 100}%`,
-        transform: `translate(-50%, -50%) scale(${(0.8 + 0.2 * inP).toFixed(3)})`,
-        opacity: (Math.min(inRaw * 1.4, 1) * (active ? 0.92 : 1)).toFixed(2),
+        transform: `translate(-50%, -50%) scale(${((0.8 + 0.2 * inP) * node.depth).toFixed(3)})`,
+        opacity: (Math.min(inRaw * 1.4, 1) * (isActive ? 0.92 : 1)).toFixed(2),
       }}
     >
       <span
@@ -481,8 +579,8 @@ function Node({ t, node }) {
         style={{
           width: u(6.4), height: u(6.4), borderRadius: u(1.9),
           background: 'rgba(21,20,25,0.92)',
-          border: `1px solid rgba(255,255,255,${active ? 0.2 : 0.13})`,
-          boxShadow: `0 ${u(1.4)} ${u(4)} rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)${active ? `, 0 0 ${u(2.6)} rgba(235,232,245,0.08)` : ''}`,
+          border: `1px solid rgba(255,255,255,${isActive ? 0.2 : 0.13})`,
+          boxShadow: `0 ${u(1.4)} ${u(4)} rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)${isActive ? `, 0 0 ${u(2.6)} rgba(235,232,245,0.08)` : ''}`,
           transition: 'border 0.4s, box-shadow 0.4s',
         }}
       >
@@ -495,15 +593,48 @@ function Node({ t, node }) {
   );
 }
 
+/* ---------- ekte odometer: rullende sifferkolonner ---------- */
+const DIGITS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0];
+
+function Odometer({ value }) {
+  const places = [10000, 1000, 100, 10, 1];
+  return (
+    <span className="inline-flex items-baseline" style={{ lineHeight: 1 }}>
+      {places.map((p, i) => {
+        const pos = (value / p) % 10;
+        const leadingZero = value < p && p > 1;
+        return (
+          <span
+            key={p}
+            className="relative inline-block overflow-hidden text-center"
+            style={{ height: '1em', width: '0.62em', marginLeft: i === 2 ? '0.16em' : 0 }}
+          >
+            <span
+              className="absolute left-0 right-0 top-0"
+              style={{ transform: `translateY(${(-pos).toFixed(3)}em)` }}
+            >
+              {DIGITS.map((d, j) => (
+                <span key={j} className="block" style={{ height: '1em', lineHeight: 1, opacity: leadingZero ? 0.25 : 1 }}>
+                  {d}
+                </span>
+              ))}
+            </span>
+          </span>
+        );
+      })}
+    </span>
+  );
+}
+
 /* ---------- utbetalings-telemetri nederst ---------- */
 function PayoutReadout({ t }) {
   const lineP = easeInOutCubic(seg(t, 13.5, 14.0));
   if (lineP <= 0.004) return null;
   const labelP = easeOutCubic(seg(t, 13.7, 14.2));
-  const amount = 25000 * easeOutCubic(seg(t, 14.0, 15.2));
-  const check = easeOutBack(seg(t, 15.3, 15.7));
-  const subP = easeOutCubic(seg(t, 15.9, 16.4));
-  const bloom = Math.sin(clamp01(seg(t, 15.3, 16.3)) * Math.PI);
+  const amount = 25000 * easeOutCubic(seg(t, 14.0, 15.3));
+  const check = easeOutBack(seg(t, 15.4, 15.8));
+  const subP = easeOutCubic(seg(t, 16.0, 16.5));
+  const bloom = Math.sin(clamp01(seg(t, 15.4, 16.4)) * Math.PI);
   return (
     <div className="absolute flex flex-col items-center" style={{ left: 0, right: 0, top: u(73.5) }}>
       <span
@@ -523,7 +654,7 @@ function PayoutReadout({ t }) {
           Leie mottatt
         </p>
       )}
-      {amount > 1 && (
+      {t > 14.0 && (
         <div className="relative flex items-center" style={{ gap: u(2), marginTop: u(1.2) }}>
           <span
             className="absolute pointer-events-none"
@@ -533,8 +664,9 @@ function PayoutReadout({ t }) {
               opacity: bloom.toFixed(2),
             }}
           />
-          <span className="relative font-heading font-bold" style={{ fontSize: u(6.6), color: '#FDFCFB', letterSpacing: '-0.02em', lineHeight: 1 }}>
-            {fmtNOK(amount)} kr
+          <span className="relative font-heading font-bold inline-flex items-baseline" style={{ fontSize: u(6.6), color: '#FDFCFB', letterSpacing: '0.01em' }}>
+            <Odometer value={amount} />
+            <span style={{ fontSize: u(4.4), marginLeft: '0.18em', color: 'rgba(253,252,251,0.85)' }}>kr</span>
           </span>
           {check > 0.01 && (
             <span className="relative" style={{ transform: `scale(${Math.max(0.4, Math.min(check, 1.12)).toFixed(2)})`, display: 'inline-flex' }}>
@@ -575,6 +707,7 @@ export function HeroLoop({ playing = true }) {
   const t = useLoopTime(playing && inView);
   const fy = Math.sin(t * 0.5) * 0.4;
   const ex = easeInOutCubic(seg(t, 18.9, 20.0));
+  const { s, y } = cam(t);
 
   return (
     <div
@@ -587,17 +720,18 @@ export function HeroLoop({ playing = true }) {
       <div
         className="absolute inset-0"
         style={{
-          transform: `translateY(${u(fy - ex * 2.5)})`,
+          transform: `translateY(${u(fy + y - ex * 2.5)}) scale(${s.toFixed(4)})`,
+          transformOrigin: '50% 45%',
           opacity: (1 - ex).toFixed(2),
           filter: ex > 0.02 ? `blur(${(ex * 6).toFixed(1)}px)` : 'none',
         }}
       >
         <Sweep t={t} />
+        <GroundGlow t={t} />
         <SystemSVG t={t} />
         <SystemLabel t={t} />
         <AddressLock t={t} />
         <BootToggle t={t} />
-        <Hub t={t} />
         {NODES.map((n) => (
           <Node key={n.label} t={t} node={n} />
         ))}
