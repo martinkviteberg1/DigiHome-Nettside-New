@@ -1221,10 +1221,10 @@ function StyleSweep({ t, a, b, color = '207,151,252' }) {
 
 /* Hypermoderne akt-tittel — blur-reveal per tegn + flytende gradient på «stilen.» */
 function StyleHeadline({ t }) {
-  const plain = 'Beskriv stilen — ';
-  const grad = 'AI-en gjør resten.';
+  const plain = 'Automatisk ';
+  const grad = 'styling.';
   const at = 14.55;
-  const stagger = 0.03;
+  const stagger = 0.045;
   const all = (plain + grad).split('');
   const line = easeOutCubic(seg(t, 15.6, 16.5));
   const bloom = Math.sin(clamp01(seg(t, 15.1, 16.8)) * Math.PI);
@@ -1283,7 +1283,7 @@ function StyleHeadline({ t }) {
         style={{
           position: 'absolute', left: '50%', bottom: 'calc(var(--su) * -1.05)',
           transform: 'translateX(-50%)',
-          width: `calc(var(--su) * ${(line * 24).toFixed(2)})`, height: '1.5px',
+          width: `calc(var(--su) * ${(line * 18).toFixed(2)})`, height: '1.5px',
           background: 'linear-gradient(90deg, transparent, rgba(207,151,252,0.85), transparent)',
         }}
       />
@@ -1327,7 +1327,7 @@ export function SceneStyling({ t }) {
         className="font-heading font-bold"
         style={{
           position: 'absolute', top: '11.5%', left: 0, right: 0, textAlign: 'center',
-          fontSize: 'calc(var(--su) * 3.6)', color: '#FDFCFB', lineHeight: 1.1, letterSpacing: '-0.02em',
+          fontSize: 'calc(var(--su) * 4)', color: '#FDFCFB', lineHeight: 1.1, letterSpacing: '-0.02em',
         }}
       >
         <StyleHeadline t={t} />
