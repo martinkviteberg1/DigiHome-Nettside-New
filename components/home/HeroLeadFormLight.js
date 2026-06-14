@@ -23,27 +23,46 @@ export function HeroLeadFormLight() {
   const boxRef = useRef(null);
   const debounceRef = useRef(null);
   const skipFetch = useRef(false);
+  const cacheRef = useRef(new Map());
+  const abortRef = useRef(null);
+  const reqIdRef = useRef(0);
 
   useEffect(() => {
     if (step !== 'address') { setShowSug(false); return; }
     if (skipFetch.current) { skipFetch.current = false; return; }
     const q = address.trim();
     if (q.length < 3) { setSuggestions([]); setShowSug(false); setLoadingSug(false); return; }
+
+    // umiddelbart fra cache (føles instant ved backspace / gjentatte søk)
+    const cached = cacheRef.current.get(q.toLowerCase());
+    if (cached) {
+      setSuggestions(cached);
+      setShowSug(true);
+      setActiveIdx(-1);
+      setLoadingSug(false);
+      return;
+    }
+
     setLoadingSug(true);
+    setShowSug(true); // behold panelet åpent med forrige treff mens vi henter (ingen blink)
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
+      const myId = ++reqIdRef.current;
+      if (abortRef.current) abortRef.current.abort();
+      const ac = new AbortController();
+      abortRef.current = ac;
       try {
-        const res = await fetch(`/api/address?q=${encodeURIComponent(q)}`);
+        const res = await fetch(`/api/address?q=${encodeURIComponent(q)}`, { signal: ac.signal });
         const data = await res.json();
-        setSuggestions(data.suggestions || []);
-        setShowSug(true);
-        setActiveIdx(-1);
+        const sug = data.suggestions || [];
+        cacheRef.current.set(q.toLowerCase(), sug);
+        if (myId === reqIdRef.current) { setSuggestions(sug); setActiveIdx(-1); }
       } catch (e) {
-        setSuggestions([]);
+        // avbrutt eller nettverksfeil — ignorer (eldre svar overskriver ikke nyere)
       } finally {
-        setLoadingSug(false);
+        if (myId === reqIdRef.current) setLoadingSug(false);
       }
-    }, 220);
+    }, 140);
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [address, step]);
 
@@ -219,9 +238,6 @@ export function HeroLeadFormLight() {
                 ))}
               </ul>
             )}
-            <div className="px-4 py-2 border-t border-hairline flex items-center gap-1.5 text-[11px] text-taupe/80">
-              <MapPin className="h-3 w-3" /> Adresser fra Kartverket
-            </div>
           </div>
         )}
       </div>

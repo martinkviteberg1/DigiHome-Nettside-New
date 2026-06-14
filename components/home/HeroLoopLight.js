@@ -84,9 +84,12 @@ function useLoopTime(playing, startAt = 0) {
     if (!playing) return;
     let raf;
     const t0 = performance.now() - startAt * 1000;
+    let last = 0;
     const tick = (now) => {
-      setT(((now - t0) / 1000) % LOOP);
       raf = requestAnimationFrame(tick);
+      if (now - last < 32) return; // ~30 fps — sparer hovedtråden (jevnere tasting)
+      last = now;
+      setT(((now - t0) / 1000) % LOOP);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
@@ -740,6 +743,8 @@ function PayoutReadout({ t }) {
   const check = easeOutBack(seg(t, ODO_DONE + 0.1, ODO_DONE + 0.5));
   const subP = easeOutCubic(seg(t, ODO_DONE + 0.6, ODO_DONE + 1.1));
   const bloom = Math.sin(clamp01(seg(t, ODO_DONE - 0.1, ODO_DONE + 0.9)) * Math.PI);
+  const payP = easeOutCubic(clamp01(seg(t, PAYOUT_AT, ODO_DONE)));
+  const amountStr = Math.round(25500 * payP).toLocaleString('nb-NO');
   return (
     <div className="absolute flex flex-col items-center" style={{ left: 0, right: 0, top: u(73.5) }}>
       <span
@@ -771,13 +776,13 @@ function PayoutReadout({ t }) {
               opacity: bloom.toFixed(2),
             }}
           />
-          <span className="relative font-heading font-bold inline-flex items-baseline" style={{ fontSize: u(6.6), color: '#0A0A0A', letterSpacing: '0.01em' }}>
-            <Odometer t={t} />
-            <span style={{ fontSize: u(4.4), marginLeft: '0.18em', color: 'rgba(10,10,10,0.82)' }}>kr</span>
+          <span className="relative font-heading font-bold inline-flex items-baseline tabular-nums" style={{ fontSize: u(6.6), color: '#0A0A0A', letterSpacing: '-0.01em' }}>
+            <span>{amountStr}</span>
+            <span style={{ fontSize: u(3.3), marginLeft: '0.2em', fontWeight: 600, color: 'rgba(10,10,10,0.5)' }}>kr</span>
           </span>
           {check > 0.01 && (
             <span className="relative" style={{ transform: `scale(${Math.max(0.4, Math.min(check, 1.12)).toFixed(2)})`, display: 'inline-flex' }}>
-              <ChipCheck size={4} />
+              <ChipCheck size={3.4} />
             </span>
           )}
         </div>
