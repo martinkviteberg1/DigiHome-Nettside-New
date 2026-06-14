@@ -892,8 +892,6 @@ export function HeroLoopLight({ playing = true }) {
             <Node key={n.label} t={t} node={n} dof={dof} />
           ))}
           <PayoutReadout t={t} />
-          <LightSweep t={t} from={4.55} dur={1.2} strength={0.04} />
-          <LightSweep t={t} from={15.25} dur={1.25} strength={0.07} />
         </div>
       </div>
     </div>
