@@ -51,12 +51,12 @@ export function SeksjonFilm() {
     return () => ro.disconnect();
   }, []);
 
-  /* prefers-reduced-motion + in-view */
+  /* prefers-reduced-motion + in-view (observerer selve scenen for best timing) */
   useEffect(() => {
     setReduce(window.matchMedia('(prefers-reduced-motion: reduce)').matches);
-    const el = sectionRef.current;
+    const el = stageRef.current;
     if (!el) return;
-    const io = new IntersectionObserver(([e]) => setInView(e.isIntersecting), { threshold: 0.3 });
+    const io = new IntersectionObserver(([e]) => setInView(e.isIntersecting), { threshold: 0.25 });
     io.observe(el);
     return () => io.disconnect();
   }, []);
@@ -86,12 +86,33 @@ export function SeksjonFilm() {
   const seamP = END - T < SEAM ? clamp01(1 - (END - T) / SEAM) : 0;
 
   return (
-    <section ref={sectionRef} className="dh-reel relative bg-[#060607] overflow-hidden" style={{ minHeight: '100svh' }}>
+    <section ref={sectionRef} className="dh-reel relative bg-[#060607] overflow-hidden">
       {/* skjul scenenes kapittel-kicker («04 ANNONSE») kun her — /video er uberørt */}
       <style>{`.dh-reel [data-dh-kicker]{display:none!important;}`}</style>
 
+      {/* overgang inn — «dim til kino»: varmt papir → lavendel-skumring → kinosvart */}
+      <div
+        aria-hidden="true"
+        className="relative w-full"
+        style={{
+          height: 'clamp(170px, 26vh, 320px)',
+          background:
+            'linear-gradient(180deg,#FEFBFA 0%,#F4EDF6 15%,#C9B6E0 35%,#5A4A7C 56%,#1C1530 79%,#060607 100%)',
+        }}
+      >
+        {/* skjerm-glød som siver oppover fra kinoen */}
+        <div
+          className="absolute inset-x-0 bottom-0 pointer-events-none"
+          style={{
+            height: '78%',
+            background:
+              'radial-gradient(ellipse 58% 100% at 50% 132%, rgba(155,91,214,0.26), rgba(207,151,252,0.10) 42%, transparent 72%)',
+          }}
+        />
+      </div>
+
       {/* sentrert kino-scene */}
-      <div className="flex flex-col items-center justify-center px-4 sm:px-8 py-20" style={{ minHeight: '100svh' }}>
+      <div className="flex flex-col items-center justify-center px-4 sm:px-8 pb-16 pt-2" style={{ minHeight: '100svh' }}>
         <div
           ref={stageRef}
           className="relative overflow-hidden"
