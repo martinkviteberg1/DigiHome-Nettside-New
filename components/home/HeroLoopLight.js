@@ -295,12 +295,9 @@ function SystemSVG({ t }) {
             />
           );
         })}
-        {windowOn > 0.01 && (
-          <circle cx={CX} cy={40.6} r="1.1" fill={AMBER((0.18 * windowPulse).toFixed(3))} />
-        )}
       </g>
 
-      {/* gavlvindu — tennes når systemet jobber */}
+      {/* gavlvindu — strektegnes som del av blueprint */}
       {(() => {
         const p = seg(t, HOUSE_AT + 0.7, HOUSE_AT + 1.15);
         if (p <= 0.004) return null;
@@ -313,12 +310,6 @@ function SystemSVG({ t }) {
               strokeDasharray={circ} strokeDashoffset={(circ * (1 - easeInOutCubic(p))).toFixed(2)}
               transform={`rotate(-90 ${CX} 40.6)`}
             />
-            {windowOn > 0.01 && (
-              <>
-                <circle cx={CX} cy={40.6} r="1.9" fill={AMBER((0.18 * windowPulse).toFixed(3))} />
-                <circle cx={CX} cy={40.6} r="1.05" fill={AMBER((0.6 * windowPulse).toFixed(3))} />
-              </>
-            )}
           </>
         );
       })()}
@@ -702,7 +693,7 @@ const PAYOUT_AT = 14.0;
 const ODO_COLS = [
   { d: 2, spins: 1, st: 0.0,  dur: 1.05 },
   { d: 5, spins: 2, st: 0.07, dur: 1.15 },
-  { d: 0, spins: 3, st: 0.14, dur: 1.25 },
+  { d: 5, spins: 3, st: 0.14, dur: 1.25 },
   { d: 0, spins: 4, st: 0.21, dur: 1.32 },
   { d: 0, spins: 5, st: 0.28, dur: 1.38 },
 ];

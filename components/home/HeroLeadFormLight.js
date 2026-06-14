@@ -1,12 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { MapPin, ArrowRight, Check, Loader2, Phone } from 'lucide-react';
 
 /*
   Lys variant av to-stegs lead-skjemaet (forside /2).
-  Steg 1: adresse → Steg 2: telefon/e-post → POST /api/leads → kvittering.
-  Hvitt kort på varmt papir, blekk-tekst, ink-knapp, lavendel fokus-ring.
+  Steg 1: adresse (med Kartverket/Geonorge autocomplete) → Steg 2: telefon/e-post
+  → POST /api/leads → kvittering. Hvitt kort, blekk-tekst, ink-knapp, nøytral fokus.
 */
 export function HeroLeadFormLight() {
   const [step, setStep] = useState('address'); // address | contact | sent
@@ -14,6 +14,63 @@ export function HeroLeadFormLight() {
   const [contact, setContact] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+
+  // adresse-autofullføring
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSug, setShowSug] = useState(false);
+  const [activeIdx, setActiveIdx] = useState(-1);
+  const [loadingSug, setLoadingSug] = useState(false);
+  const boxRef = useRef(null);
+  const debounceRef = useRef(null);
+  const skipFetch = useRef(false);
+
+  useEffect(() => {
+    if (step !== 'address') { setShowSug(false); return; }
+    if (skipFetch.current) { skipFetch.current = false; return; }
+    const q = address.trim();
+    if (q.length < 3) { setSuggestions([]); setShowSug(false); setLoadingSug(false); return; }
+    setLoadingSug(true);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/address?q=${encodeURIComponent(q)}`);
+        const data = await res.json();
+        setSuggestions(data.suggestions || []);
+        setShowSug(true);
+        setActiveIdx(-1);
+      } catch (e) {
+        setSuggestions([]);
+      } finally {
+        setLoadingSug(false);
+      }
+    }, 220);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [address, step]);
+
+  useEffect(() => {
+    const onDoc = (e) => {
+      if (boxRef.current && !boxRef.current.contains(e.target)) setShowSug(false);
+    };
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, []);
+
+  const selectSuggestion = (s) => {
+    skipFetch.current = true;
+    setAddress(s.label);
+    setSuggestions([]);
+    setShowSug(false);
+    setActiveIdx(-1);
+    setError('');
+  };
+
+  const onAddrKeyDown = (e) => {
+    if (!showSug || suggestions.length === 0) return;
+    if (e.key === 'ArrowDown') { e.preventDefault(); setActiveIdx((i) => Math.min(i + 1, suggestions.length - 1)); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); setActiveIdx((i) => Math.max(i - 1, 0)); }
+    else if (e.key === 'Enter' && activeIdx >= 0) { e.preventDefault(); selectSuggestion(suggestions[activeIdx]); }
+    else if (e.key === 'Escape') { setShowSug(false); }
+  };
 
   const submitAddress = (e) => {
     e.preventDefault();
@@ -85,48 +142,86 @@ export function HeroLeadFormLight() {
         </button>
       )}
 
-      <form onSubmit={step === 'address' ? submitAddress : submitContact}>
-        <div className="flex flex-col sm:flex-row items-stretch gap-2 p-2 rounded-2xl bg-white border border-hairline shadow-[0_14px_44px_rgba(26,23,38,0.08)] transition-all duration-500 focus-within:border-lavender/40 focus-within:shadow-[0_14px_44px_rgba(26,23,38,0.10),0_0_40px_rgba(155,91,214,0.12)]">
-          <div className="flex items-center gap-2.5 flex-1 px-3">
-            {step === 'address' ? (
-              <MapPin className="h-5 w-5 text-taupe shrink-0" />
-            ) : (
-              <Phone className="h-5 w-5 text-taupe shrink-0" />
-            )}
-            {step === 'address' ? (
-              <input
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                placeholder="Hva er adressen din?"
-                aria-label="Adresse"
-                className="w-full bg-transparent outline-none text-ink placeholder:text-taupe/70 h-12 text-base"
-              />
-            ) : (
-              <input
-                autoFocus
-                value={contact}
-                onChange={(e) => setContact(e.target.value)}
-                placeholder="Telefon eller e-post"
-                aria-label="Telefon eller e-post"
-                className="w-full bg-transparent outline-none text-ink placeholder:text-taupe/70 h-12 text-base"
-              />
-            )}
+      <div className="relative" ref={boxRef}>
+        <form onSubmit={step === 'address' ? submitAddress : submitContact}>
+          <div className="flex flex-col sm:flex-row items-stretch gap-2 p-2 rounded-2xl bg-white border border-hairline shadow-[0_14px_44px_rgba(26,23,38,0.08)] transition-shadow duration-300 focus-within:shadow-[0_18px_52px_rgba(26,23,38,0.13)]">
+            <div className="flex items-center gap-2.5 flex-1 px-3">
+              {step === 'address' ? (
+                <MapPin className="h-5 w-5 text-taupe shrink-0" />
+              ) : (
+                <Phone className="h-5 w-5 text-taupe shrink-0" />
+              )}
+              {step === 'address' ? (
+                <input
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  onFocus={() => { if (suggestions.length) setShowSug(true); }}
+                  onKeyDown={onAddrKeyDown}
+                  placeholder="Hva er adressen din?"
+                  aria-label="Adresse"
+                  autoComplete="off"
+                  spellCheck={false}
+                  className="w-full bg-transparent outline-none focus:outline-none focus-visible:outline-none focus:ring-0 border-0 text-ink placeholder:text-taupe/70 h-12 text-base"
+                />
+              ) : (
+                <input
+                  autoFocus
+                  value={contact}
+                  onChange={(e) => setContact(e.target.value)}
+                  placeholder="Telefon eller e-post"
+                  aria-label="Telefon eller e-post"
+                  className="w-full bg-transparent outline-none focus:outline-none focus-visible:outline-none focus:ring-0 border-0 text-ink placeholder:text-taupe/70 h-12 text-base"
+                />
+              )}
+            </div>
+            <button
+              type="submit"
+              disabled={busy}
+              className="rounded-xl bg-ink text-white h-12 px-6 inline-flex items-center justify-center gap-2 text-sm font-semibold hover:bg-[#222] active:scale-[0.98] transition whitespace-nowrap disabled:opacity-60"
+            >
+              {busy ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : step === 'address' ? (
+                <>Få vurdering <ArrowRight className="h-4 w-4" /></>
+              ) : (
+                <>Send <ArrowRight className="h-4 w-4" /></>
+              )}
+            </button>
           </div>
-          <button
-            type="submit"
-            disabled={busy}
-            className="rounded-xl bg-ink text-white h-12 px-6 inline-flex items-center justify-center gap-2 text-sm font-semibold hover:bg-[#222] active:scale-[0.98] transition whitespace-nowrap disabled:opacity-60"
-          >
-            {busy ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : step === 'address' ? (
-              <>Få vurdering <ArrowRight className="h-4 w-4" /></>
+        </form>
+
+        {step === 'address' && showSug && (suggestions.length > 0 || loadingSug) && (
+          <div className="absolute left-0 right-0 top-full mt-2 z-50 rounded-2xl bg-white border border-hairline shadow-[0_24px_64px_rgba(26,23,38,0.18)] overflow-hidden">
+            {loadingSug && suggestions.length === 0 ? (
+              <div className="px-4 py-3 text-sm text-taupe flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" /> Søker…
+              </div>
             ) : (
-              <>Send <ArrowRight className="h-4 w-4" /></>
+              <ul className="max-h-72 overflow-auto py-1">
+                {suggestions.map((s, i) => (
+                  <li key={s.label + i}>
+                    <button
+                      type="button"
+                      onMouseDown={(e) => { e.preventDefault(); selectSuggestion(s); }}
+                      onMouseEnter={() => setActiveIdx(i)}
+                      className={`w-full text-left px-4 py-2.5 flex items-start gap-3 transition ${i === activeIdx ? 'bg-fill' : 'hover:bg-fill'}`}
+                    >
+                      <MapPin className="h-4 w-4 text-taupe mt-0.5 shrink-0" />
+                      <span className="min-w-0">
+                        <span className="block text-[15px] text-ink truncate">{s.text}</span>
+                        {s.sub && <span className="block text-xs text-taupe truncate">{s.sub}</span>}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
             )}
-          </button>
-        </div>
-      </form>
+            <div className="px-4 py-2 border-t border-hairline text-[11px] text-taupe/80">
+              Adresser fra Kartverket
+            </div>
+          </div>
+        )}
+      </div>
 
       <p className="mt-3 text-sm text-taupe">
         {error ? (

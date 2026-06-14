@@ -20,6 +20,34 @@ async function handleRoute(request, { params }) {
   const method = request.method;
 
   try {
+    // --- Adresse-autofullføring (Geonorge, gratis offentlig API, ingen nøkkel) ---
+    if (route === '/address' && method === 'GET') {
+      const { searchParams } = new URL(request.url);
+      const q = (searchParams.get('q') || '').trim();
+      if (q.length < 3) return cors(NextResponse.json({ suggestions: [] }));
+      try {
+        const url = `https://ws.geonorge.no/adresser/v1/sok?sok=${encodeURIComponent(q)}&fuzzy=true&treffPerSide=6&side=0&asciiKompatibel=true`;
+        const r = await fetch(url, { headers: { Accept: 'application/json' } });
+        if (!r.ok) return cors(NextResponse.json({ suggestions: [] }));
+        const data = await r.json();
+        const seen = new Set();
+        const suggestions = (data.adresser || [])
+          .map((a) => {
+            const text = a.adressetekst || '';
+            const sub = `${a.postnummer || ''} ${a.poststed || ''}`.trim();
+            return { text, sub, label: sub ? `${text}, ${sub}` : text };
+          })
+          .filter((s) => {
+            if (!s.text || seen.has(s.label)) return false;
+            seen.add(s.label);
+            return true;
+          });
+        return cors(NextResponse.json({ suggestions }));
+      } catch (e) {
+        return cors(NextResponse.json({ suggestions: [] }));
+      }
+    }
+
     const db = await getDb();
 
     // Health

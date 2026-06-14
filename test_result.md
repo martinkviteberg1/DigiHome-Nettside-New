@@ -120,6 +120,21 @@ backend:
         -agent: "testing"
         -comment: "✅ ALL BACKEND TESTS PASSED (10/10). Verified: 1) Health endpoints (GET /api/root, GET /api/) return 200 with {ok:true, message:'DigiHome API'}. 2) POST /api/leads creates lead with valid UUID id, status='new', ISO createdAt, returns 201. 3) Validation works: empty body returns 400 with Norwegian error 'Mangler kontaktinformasjon', address-only succeeds with 201. 4) GET /api/leads returns array sorted by createdAt descending (newest first). 5) MongoDB persistence confirmed - leads stored and retrieved correctly. 6) No MongoDB '_id' fields in any response (clean() function working). 7) Tested with base URL https://hero-premiere-4.preview.emergentagent.com/api. All CRUD operations, validation, sorting, and data persistence working perfectly."
 
+  - task: "Adresse-autofullføring (GET /api/address) — Geonorge/Kartverket proxy"
+    implemented: true
+    working: true
+    file: "app/api/[[...path]]/route.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "Nytt GET /api/address?q=<søk> endepunkt som proxyer Kartverket/Geonorge sitt gratis offentlige adresse-API (https://ws.geonorge.no/adresser/v1/sok, ingen nøkkel). Returnerer {suggestions:[{text, sub, label}]} (maks 6, deduplisert). Validering: q < 3 tegn -> {suggestions:[]}. Feil fra Geonorge / unntak -> {suggestions:[]} (aldri 500). Plassert FØR getDb() så det er uavhengig av MongoDB. CORS håndtert. Manuell røyktest via curl bekreftet 6 forslag for 'Strandgaten 1' (inkl. 5013 BERGEN). Trenger verifisering: gyldig søk returnerer forslag, kort søk (<3) gir tom liste, spesialtegn (æøå) håndteres, og at /api/leads fortsatt fungerer uendret."
+        -working: true
+        -agent: "testing"
+        -comment: "✅ ALL ADDRESS AUTOCOMPLETE TESTS PASSED (11/11 total). PRIMARY FOCUS verified: 1) GET /api/address?q=Strandgaten returns 200 with 6 suggestions, correct JSON shape {suggestions:[{text, sub, label}]}, all fields non-empty. 2) GET /api/address?q=Strandgaten%201 returns 200 with Bergen result (5013 BERGEN found in suggestions). 3) GET /api/address?q=ab (2 chars) returns 200 with empty suggestions array. 4) GET /api/address?q= (empty) returns 200 with empty suggestions array. 5) GET /api/address?q=Møhlenprisbakken (special chars æøå) returns 200 with 2 suggestions, no 500 error. 6) Robustness verified: endpoint NEVER returns 500, all tests returned 200. 7) Deduplication verified: all labels are unique (6 suggestions, 6 unique labels). REGRESSION verified: 8) GET /api/root and GET /api/ return 200 with {ok:true, message:'DigiHome API'}. 9) POST /api/leads creates lead with UUID id, status='new', ISO createdAt, returns 201, no _id field. 10) POST /api/leads with empty body returns 400 with Norwegian error 'Mangler kontaktinformasjon'. 11) GET /api/leads returns array sorted newest-first, no _id fields. All backend APIs working perfectly. Base URL: https://hero-premiere-4.preview.emergentagent.com/api"
+
 frontend:
   - task: "Forside (/) — Warm Ink Editorial, alle 16 seksjoner, SEO, JSON-LD"
     implemented: true
@@ -151,7 +166,7 @@ frontend:
 metadata:
   created_by: "main_agent"
   version: "1.0"
-  test_sequence: 1
+  test_sequence: 2
   run_ui: false
 
 test_plan:
@@ -179,3 +194,7 @@ agent_communication:
     -message: "STORYTELLING-UTVIDELSE (108s): (1) Ny akt «01 ADRESSE» (14–20.5s): søkefelt med pin-ikon, adressen «Møhlenprisbakken 14, Bergen» skrives med caret, autocomplete-dropdown (3 forslag, toppvalg markeres), felt låses med lilla glød, så «Boligdata hentet automatisk» + 5 data-chips (3-roms, 74 m², 4. etasje, Bygget 1899, Balkong). (2) Ny akt «02 BILDER» (20–26.5s): dra-og-slipp-sone, 3 bilder (ulike utsnitt av room-before.jpg via objectPosition+zoom) faller inn som polaroids, opplastingsbarer + grønn hake, «AI velger beste forsidebilde» med lilla ring rundt midtbildet som zoomer ut som match-cut til styling-akten. (3) Ny akt «03 STYLING» (26–38.5s, shift 12): ekte FØR/ETTER-bildepar fra bruker (original.avif kalibrert scale(1.15)+3% mot AI-stylede 2048px-bilder), to prompt-runder med AI-sveip (glødende skannelinje + redraw-sone + partikler), «Stylet med AI»-badge. (4) Annonse-akten bruker nå kveldsbildet (kontinuitet) — gammel mini-sveip + «Stylet automatisk»-badge fjernet (fikser rapportert badge-overlapp). (5) Alle senere akter shiftes +24s via shift-mekanisme i SCENES (AutopilotFilm sender t-shift). Kickers renummerert 01–10. Partitur utvidet til 108s med egne akkorder (Eb→F→Ab) og SFX for nye akter. FILM_DURATION=108. VOICEOVER DEAKTIVERT (VO_ENABLED=false i filmAudio.js) etter brukerønske — ElevenLabs-spor ligger klart i /public/film/vo/. Verifisert frame-for-frame (adresse, bilder, styling-sveip, annonse, finale-burst, logo). Full MP4 re-rendring pågår."
     -agent: "main"
     -message: "SEKSJON 2 BYGD HELT PÅ NYTT (kun frontend): Erstattet tab-baserte AutopilotChapters med scroll-drevet kinoformat «De første 30 dagene» (AutopilotJourney.js + JourneyScenes.js). Sticky 100svh-scene i 620vh-container; scroll = filmtidslinje med lerp-glatting. Struktur: åpning («Du sier ja. / Autopiloten gjør resten.») → DAG 1 annonse → DAG 4 pris → DAG 14 leietaker → DAG 30 utbetaling → finale («0 minutter.» + CTA). Gigantiske ghost-dagtall, filmtidslinje nederst (klikkbar seek), topp-telemetri, kapittel-lys. Sømløs hero-overgang: hero-innhold + bakteppe parallax-fader ved scroll (HeroAutopilot), scenens lys/vignett toner først inn når festet, identisk bakgrunn #050507, blend-gradient mot #film-seksjonen. Premium-runde etter brukerfeedback: fjernet filmkorn (prikkemønster), alle borders/outlines, spinnere, fargede prikker, stempler, overshoot-easing; kantløse flater + myke skygger; fikset SVG-linjefragmentering (preserveAspectRatio+dash-bug → clipPath-avsløring m/ myk frontkant), tabular-nums-mellomrom, tekstbrekk i kort. Verifisert via skjermbilder: overgang, alle 4 kapitler, finale, mobil 390px. Backend uendret."
+    -agent: "main"
+    -message: "NY LYS HERO-VARIANT på /2 (separat fra mørk hero på /). Nytt GET /api/address-endepunkt lagt til for Google-Maps-stil adresse-autofullføring i det lyse lead-skjemaet (HeroLeadFormLight). Vennligst test KUN backend nå, med fokus på det nye endepunktet: 1) GET /api/address?q=Strandgaten skal returnere 200 med {suggestions:[{text, sub, label}, ...]} (norske adresser fra Geonorge/Kartverket, maks 6). 2) GET /api/address?q=ab (kort, <3 tegn) skal returnere {suggestions:[]}. 3) GET /api/address?q= (tom) skal returnere {suggestions:[]}. 4) GET /api/address?q=Møhlenprisbakken (æøå/spesialtegn) skal håndteres uten feil (200, evt. tom liste). 5) Endepunktet skal ALDRI returnere 500 selv ved feil. 6) REGRESJON: bekreft at POST /api/leads og GET /api/leads fortsatt fungerer som før (uendret). Ikke test frontend (gjøres separat med brukers samtykke)."
+    -agent: "testing"
+    -message: "✅ BACKEND TESTING COMPLETE - ALL 11 TESTS PASSED (100% success rate). PRIMARY FOCUS: Address autocomplete endpoint (GET /api/address) fully verified - returns correct JSON shape with max 6 suggestions, handles short queries (<3 chars) and empty queries correctly, processes special Norwegian characters (æøå) without errors, never returns 500 status, and properly deduplicates by label. Bergen addresses confirmed in results. REGRESSION: All existing endpoints working unchanged - health checks, lead creation with UUID, validation with Norwegian errors, lead listing sorted newest-first, no MongoDB _id fields. Backend API is production-ready. Updated backend_test.py for comprehensive testing. No critical or major issues found."
