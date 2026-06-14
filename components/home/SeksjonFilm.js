@@ -1,48 +1,66 @@
 'use client';
 
 /*
-  Seksjon 2 — «Slik fungerer DigiHome» (kino-reel).
-  En verdensklasse, auto-spillende kinoblokk som GJENBRUKER de faktiske
-  film-scenene fra /video (SceneAnnonse → Visning → Kontrakt → Dynamisk → Chat).
-  Scenene er sammenhengende i tid (akkurat som i filmen), så én kontinuerlig
-  klokke spiller dem sømløst med originale crossfades. Looper med en seam-ghost
-  for helt sømløs runde. Spiller kun når seksjonen er i view (IntersectionObserver)
-  og pauser ute av view. Rører IKKE FilmScenes.js eller render-pipelinen i /video.
+  Seksjon 2 — «Slik fungerer DigiHome» (scroll-drevet zoom-til-fullskjerm kino).
+  VERDENSKLASSE-SØMLØSHET: zoom-transformasjonen er FRAKOBLET React og skrives
+  direkte til DOM-en på 60fps (imperativt), mens film-scenene animerer på sin egen
+  ~30fps-klokke. Dermed påvirkes aldri den smue zoom-bevegelsen av scene-rendering.
+  Hvilemodus: 16:9-ramme i hero-container-bredde (max-w-shell), løftet nær heroen.
+  Når du scroller vokser den jevnt (easeInOutCubic) ut til full-bleed fullskjerm
+  (sticky pin), spiller de FAKTISKE film-scenene fra /video i loop, og slippes ut.
+  Rører IKKE FilmScenes.js / render-pipelinen.
 */
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
   SceneAnnonse, SceneVisning, SceneKontrakt, SceneDynamisk, SceneChat,
 } from '@/components/video/FilmScenes';
-import { Aurora, Bokeh, FilmGrain, LightSweep, Orb, clamp01 } from '@/components/video/filmUtils';
+import { Aurora, Bokeh, FilmGrain, LightSweep, Orb, clamp01, easeInOutCubic } from '@/components/video/filmUtils';
 
 /* reel: scenenes interne tidsvinduer (sammenhengende, som i filmen) */
 const REEL = [
-  { C: SceneAnnonse,  a: 14,   b: 26.5, label: 'Annonse' },
-  { C: SceneVisning,  a: 26,   b: 38.5, label: 'Visninger' },
-  { C: SceneKontrakt, a: 38,   b: 49,   label: 'Kontrakt' },
-  { C: SceneDynamisk, a: 48.5, b: 57.5, label: 'Inntekt' },
-  { C: SceneChat,     a: 57.5, b: 68.5, label: 'Svar 24/7' },
+  { C: SceneAnnonse,  a: 14,   b: 26.5 },
+  { C: SceneVisning,  a: 26,   b: 38.5 },
+  { C: SceneKontrakt, a: 38,   b: 49 },
+  { C: SceneDynamisk, a: 48.5, b: 57.5 },
+  { C: SceneChat,     a: 57.5, b: 68.5 },
 ];
-const START = REEL[0].a;                  // 14
-const END = REEL[REEL.length - 1].b;      // 68.5
-const SEAM = 1.0;                         // loop-crossfade (s)
-const FIRST_SPAN = END - START;           // 54.5 — første runde (ren fade-inn)
-const LOOP_START = START + SEAM;          // 15 — etterfølgende runder starter her
-const LOOP_SPAN = END - LOOP_START;       // 53.5
-const BOUNDARIES = [26, 38, 48.5, 57.5];  // aktskifter — lys-sveip
-const STAGE_W = 'min(94vw, calc((100svh - 150px) * 1.7778))';
+const START = REEL[0].a;
+const END = REEL[REEL.length - 1].b;
+const SEAM = 1.0;
+const FIRST_SPAN = END - START;
+const LOOP_START = START + SEAM;
+const LOOP_SPAN = END - LOOP_START;
+const BOUNDARIES = [26, 38, 48.5, 57.5];
+
+/* zoom: symmetrisk rundt pin — starter før pin, fullføres etter (jevn, tidlig) */
+const ZOOM_OFFSET = 0.62;   // andel vh før pin der zoomen starter
+const ZOOM_RANGE = 1.24;    // andel vh zoomen bruker (lengre = mykere)
+const LIFT_VH = 7;          // hvor mye rammen løftes mot toppen i hvile
+
+const lerp = (a, b, t) => a + (b - a) * t;
+const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
+function mixBg(p) {
+  const t = clamp01(p);
+  return `rgb(${Math.round(lerp(254, 6, t))},${Math.round(lerp(251, 6, t))},${Math.round(lerp(250, 7, t))})`;
+}
+
+function containerWidth(vw) {
+  const pad = vw >= 1024 ? 128 : vw >= 640 ? 80 : 48;
+  return Math.min(1400, Math.max(280, vw - pad));
+}
 
 export function SeksjonFilm() {
-  const sectionRef = useRef(null);
-  const stageRef = useRef(null);
+  const trackRef = useRef(null);
+  const stickyRef = useRef(null);
+  const zoomRef = useRef(null);
   const [elapsed, setElapsed] = useState(0);
-  const [inView, setInView] = useState(false);
+  const [active, setActive] = useState(false);
   const [reduce, setReduce] = useState(false);
 
-  /* stage-enhet --su = 1% av scenebredde (nøyaktig som i filmen) */
+  /* --su = 1% av layout-bredde (uavhengig av transform — ResizeObserver gir layout) */
   useEffect(() => {
-    const el = stageRef.current;
+    const el = zoomRef.current;
     if (!el) return;
     const ro = new ResizeObserver(([entry]) => {
       el.style.setProperty('--su', `${entry.contentRect.width / 100}px`);
@@ -51,77 +69,108 @@ export function SeksjonFilm() {
     return () => ro.disconnect();
   }, []);
 
-  /* prefers-reduced-motion + in-view (observerer selve scenen for best timing) */
+  /* prefers-reduced-motion + aktiv (bredt margin slik at zoom-løkka er klar tidlig) */
   useEffect(() => {
-    setReduce(window.matchMedia('(prefers-reduced-motion: reduce)').matches);
-    const el = stageRef.current;
+    const r = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    setReduce(r);
+    const el = trackRef.current;
     if (!el) return;
-    const io = new IntersectionObserver(([e]) => setInView(e.isIntersecting), { threshold: 0.25 });
+    const io = new IntersectionObserver(([e]) => setActive(e.isIntersecting), {
+      rootMargin: '40% 0px 40% 0px',
+      threshold: 0,
+    });
     io.observe(el);
     return () => io.disconnect();
   }, []);
 
-  /* hovedklokke — ~30fps, kun når i view (sparer hovedtråden) */
+  /* SETT initial transform før første paint (unngå fullskjerm-glimt) */
+  useLayoutEffect(() => {
+    const zoom = zoomRef.current;
+    if (!zoom) return;
+    const vw = window.innerWidth;
+    const fullW = zoom.offsetWidth || vw;
+    const s0 = clamp(containerWidth(vw) / fullW, 0.4, 0.96);
+    const vh = window.innerHeight || 1;
+    zoom.style.transform = `translateY(${(-LIFT_VH * vh / 100).toFixed(1)}px) scale(${s0.toFixed(4)})`;
+    zoom.style.borderRadius = '22px';
+    if (stickyRef.current) stickyRef.current.style.background = mixBg(0);
+  }, []);
+
+  /* ZOOM-LØKKE — imperativ, 60fps, FRAKOBLET React (smue, uavhengig av scener) */
   useEffect(() => {
-    if (reduce || !inView) return;
+    if (reduce) {
+      const zoom = zoomRef.current;
+      if (zoom) { zoom.style.transform = 'none'; zoom.style.borderRadius = '0px'; zoom.style.boxShadow = 'none'; }
+      if (stickyRef.current) stickyRef.current.style.background = '#060607';
+      return;
+    }
+    if (!active) return;
+    let raf;
+    const apply = () => {
+      raf = requestAnimationFrame(apply);
+      const track = trackRef.current, zoom = zoomRef.current, sticky = stickyRef.current;
+      if (!track || !zoom) return;
+      const vh = window.innerHeight || 1;
+      const vw = window.innerWidth || 1;
+      const top = track.getBoundingClientRect().top;
+      const p = clamp01((ZOOM_OFFSET * vh - top) / (ZOOM_RANGE * vh));
+      const e = easeInOutCubic(p);
+      const fullW = zoom.offsetWidth || vw;
+      const s0 = clamp(containerWidth(vw) / fullW, 0.4, 0.96);
+      const scale = s0 + (1 - s0) * e;
+      const ty = (-LIFT_VH * (1 - e) * vh) / 100;
+      zoom.style.transform = `translateY(${ty.toFixed(1)}px) scale(${scale.toFixed(4)})`;
+      zoom.style.borderRadius = `${((1 - e) * 22).toFixed(1)}px`;
+      const sh = 1 - e;
+      zoom.style.boxShadow = sh > 0.01
+        ? `0 ${(44 * sh).toFixed(0)}px ${(120 * sh).toFixed(0)}px rgba(20,16,40,${(0.3 * sh).toFixed(3)})`
+        : 'none';
+      if (sticky) sticky.style.background = mixBg(Math.min(1, p * 1.12));
+    };
+    raf = requestAnimationFrame(apply);
+    return () => cancelAnimationFrame(raf);
+  }, [active, reduce]);
+
+  /* FILMKLOKKE — ~30fps, kun når aktiv (scene-rendering, frakoblet zoom) */
+  useEffect(() => {
+    if (reduce || !active) return;
     let raf, last = performance.now(), acc = 0;
     const tick = (now) => {
       raf = requestAnimationFrame(tick);
       const dt = now - last; last = now; acc += dt;
-      if (acc < 32) return; // ~30 fps
-      const step = Math.min(acc, 100) / 1000; acc = 0; // tak p\u00e5 0.1s \u2014 unng\u00e5 hopp ved frame-drops
-      setElapsed((p) => p + step);
+      if (acc < 33) return;
+      const step = Math.min(acc, 100) / 1000; acc = 0;
+      setElapsed((eP) => eP + step);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [inView, reduce]);
+  }, [active, reduce]);
 
   /* elapsed -> filmtid T (sømløs loop) */
   let T;
-  if (reduce) T = 22;                                   // statisk, pent komponert bilde
-  else if (elapsed < FIRST_SPAN) T = START + elapsed;   // første runde: ren fade-inn fra sort
+  if (reduce) T = 22;
+  else if (elapsed < FIRST_SPAN) T = START + elapsed;
   else T = LOOP_START + ((elapsed - FIRST_SPAN) % LOOP_SPAN);
-
-  /* loop-seam: Annonse pre-fade for sømløs runde (krysser Chats fade-ut) */
   const seamP = END - T < SEAM ? clamp01(1 - (END - T) / SEAM) : 0;
 
   return (
-    <section ref={sectionRef} className="dh-reel relative bg-[#060607] overflow-hidden">
-      {/* skjul scenenes kapittel-kicker («04 ANNONSE») kun her — /video er uberørt */}
-      <style>{`.dh-reel [data-dh-kicker]{display:none!important;}`}</style>
+    <section ref={trackRef} className="dh-reel relative" style={{ height: reduce ? '100svh' : '210vh' }}>
+      {/* skjul scenenes kapittel-kicker («04 ANNONSE») kun her — /video uberørt; tuck under heroens tomme bunn på store skjermer */}
+      <style>{`.dh-reel [data-dh-kicker]{display:none!important;}@media(min-width:1024px){.dh-reel{margin-top:-10vh;}}`}</style>
 
-      {/* overgang inn — «dim til kino»: varmt papir → lavendel-skumring → kinosvart */}
       <div
-        aria-hidden="true"
-        className="relative w-full"
-        style={{
-          height: 'clamp(170px, 26vh, 320px)',
-          background:
-            'linear-gradient(180deg,#FEFBFA 0%,#F4EDF6 15%,#C9B6E0 35%,#5A4A7C 56%,#1C1530 79%,#060607 100%)',
-        }}
+        ref={stickyRef}
+        className="sticky top-0 overflow-hidden flex items-center justify-center"
+        style={{ height: '100svh', background: '#FEFBFA' }}
       >
-        {/* skjerm-glød som siver oppover fra kinoen */}
         <div
-          className="absolute inset-x-0 bottom-0 pointer-events-none"
-          style={{
-            height: '78%',
-            background:
-              'radial-gradient(ellipse 58% 100% at 50% 132%, rgba(155,91,214,0.26), rgba(207,151,252,0.10) 42%, transparent 72%)',
-          }}
-        />
-      </div>
-
-      {/* sentrert kino-scene */}
-      <div className="flex flex-col items-center justify-center px-4 sm:px-8 pb-16 pt-2" style={{ minHeight: '100svh' }}>
-        <div
-          ref={stageRef}
+          ref={zoomRef}
           className="relative overflow-hidden"
           style={{
-            width: STAGE_W,
-            aspectRatio: '16 / 9',
+            width: 'min(100vw, calc(100svh * 1.7778))',
+            height: 'min(100svh, calc(100vw * 0.5625))',
             background: '#060607',
-            borderRadius: 'clamp(14px, 1.4vw, 24px)',
-            boxShadow: '0 60px 140px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.05)',
+            willChange: 'transform',
             '--su': '9px',
           }}
         >
@@ -137,7 +186,6 @@ export function SeksjonFilm() {
           {REEL.map(({ C, a, b }, i) =>
             T >= a - 0.06 && T <= b + 0.06 ? <C key={i} t={T} /> : null
           )}
-          {/* loop-seam: Annonse pre-fade */}
           {seamP > 0 && <SceneAnnonse t={START + seamP * SEAM} />}
 
           {/* lys-sveip ved aktskifter */}
