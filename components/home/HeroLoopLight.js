@@ -9,7 +9,7 @@
 */
 
 import { useEffect, useRef, useState } from 'react';
-import { Megaphone, TrendingUp, FileCheck, UserCheck, MapPin } from 'lucide-react';
+import { Megaphone, TrendingUp, FileCheck, UserCheck, MapPin, BedDouble, Maximize, BadgeCheck } from 'lucide-react';
 import {
   seg, clamp01, easeOutCubic, easeInOutCubic, easeOutBack,
 } from '@/components/video/filmUtils';
@@ -25,6 +25,13 @@ const LAVS = (a) => `rgba(207,151,252,${a})`;// myk lavendel
 const EMER = (a) => `rgba(16,185,129,${a})`; // emerald-telemetri
 const EMERD = (a) => `rgba(24,121,78,${a})`; // dyp suksess-grønn
 const AMBER = (a) => `rgba(244,168,76,${a})`;// tent vindu (varmt)
+
+/* ---------- åpningsscene: annonsekort → autopilot ---------- */
+const LISTING_IMG = 'https://images.unsplash.com/photo-1633505899118-4ca6bd143043?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA3MDR8MHwxfHNlYXJjaHwxfHxub3JkaWMlMjBpbnRlcmlvcnxlbnwwfHx8d2hpdGV8MTc4MTQzNDg4OHww&ixlib=rb-4.1.0&q=85&w=900';
+const CARD_TOGGLE_AT = 1.2;          // bryteren flippes
+const CARD_TRANSITION_START = 2.8;   // kortet begynner å forvandles
+const CARD_END = 4.0;                // fase → loop
+const LOOP_START = 3.35;             // loopen starter her første runde (etter bryter-beatet)
 
 const CX = 50;          // husets senter-x
 const GY = 50.5;        // gulvplanets senterlinje
@@ -70,8 +77,8 @@ const LINES = NODES.map(lineFor);
 
 const activeCount = (t) => NODES.filter((n) => t > n.at + 1.05).length;
 
-function useLoopTime(playing) {
-  const [t, setT] = useState(0);
+function useLoopTime(playing, startAt = 0) {
+  const [t, setT] = useState(startAt);
   const [reduce, setReduce] = useState(false);
   useEffect(() => {
     setReduce(window.matchMedia('(prefers-reduced-motion: reduce)').matches);
@@ -83,14 +90,14 @@ function useLoopTime(playing) {
     }
     if (!playing) return;
     let raf;
-    const t0 = performance.now();
+    const t0 = performance.now() - startAt * 1000;
     const tick = (now) => {
       setT(((now - t0) / 1000) % LOOP);
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [playing, reduce]);
+  }, [playing, reduce, startAt]);
   return t;
 }
 
@@ -800,12 +807,133 @@ function PayoutReadout({ t }) {
   );
 }
 
+/* ---------- kompakt bryter på annonsekortet ---------- */
+function CompactToggle({ on, knobP }) {
+  const W = 46, H = 26, P = 3, K = 20;
+  const travel = W - K - P * 2;
+  const kx = travel * Math.max(0, Math.min(knobP, 1.06));
+  return (
+    <span className="relative inline-block shrink-0" style={{ width: W, height: H }}>
+      <span
+        className="absolute inset-0 rounded-full"
+        style={{
+          background: on ? 'linear-gradient(135deg, #9B5BD6, #CF97FC)' : '#E9E2D8',
+          boxShadow: on
+            ? '0 0 12px rgba(155,91,214,0.40), inset 0 1px 2px rgba(255,255,255,0.35)'
+            : 'inset 0 1px 2px rgba(26,23,38,0.14)',
+          transition: 'background 0.35s, box-shadow 0.35s',
+        }}
+      />
+      <span
+        className="absolute rounded-full bg-white"
+        style={{
+          top: P, left: P, width: K, height: K,
+          transform: `translateX(${kx.toFixed(1)}px)`,
+          boxShadow: '0 1px 3px rgba(26,23,38,0.32), 0 0 0 1px rgba(26,23,38,0.04)',
+        }}
+      />
+    </span>
+  );
+}
+
+/* ---------- premium annonsekort (åpningsscene) ---------- */
+function AnnonseCard({ ct, opacity, ty, scale, blur }) {
+  const on = ct > CARD_TOGGLE_AT + 0.22;
+  const knobP = easeOutBack(clamp01(seg(ct, CARD_TOGGLE_AT, CARD_TOGGLE_AT + 0.5)));
+  const statusIn = clamp01(seg(ct, CARD_TOGGLE_AT + 0.42, CARD_TOGGLE_AT + 0.95));
+  const surge = clamp01(seg(ct, CARD_TOGGLE_AT + 0.05, CARD_TOGGLE_AT + 0.95));
+  return (
+    <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
+      <div
+        style={{
+          width: '88%', maxWidth: 460,
+          opacity: opacity.toFixed(3),
+          transform: `translateY(${ty.toFixed(2)}%) scale(${scale.toFixed(4)})`,
+          filter: blur > 0.05 ? `blur(${blur.toFixed(1)}px)` : 'none',
+          transformOrigin: '50% 55%', willChange: 'transform, opacity',
+        }}
+      >
+        <div
+          className="relative overflow-hidden rounded-[22px] bg-white border border-hairline"
+          style={{ boxShadow: '0 34px 80px rgba(26,23,38,0.17), 0 4px 14px rgba(26,23,38,0.06)' }}
+        >
+          {/* foto */}
+          <div className="relative w-full overflow-hidden" style={{ aspectRatio: '16 / 10' }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={LISTING_IMG} alt="Leilighet i Bergen" className="w-full h-full object-cover" draggable="false" />
+            <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(10,8,16,0.22), transparent 42%)' }} />
+            <span className="absolute top-3 left-3 rounded-full bg-white/95 px-3 py-1 text-[11px] font-semibold text-ink backdrop-blur">Til leie</span>
+            <span
+              className="absolute top-3 right-3 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold text-white"
+              style={{ background: 'rgba(155,91,214,0.92)' }}
+            >
+              <BadgeCheck className="h-3.5 w-3.5" /> DigiHome
+            </span>
+          </div>
+          {/* innhold */}
+          <div className="p-5">
+            <div className="flex items-center gap-1.5">
+              <MapPin className="h-4 w-4 shrink-0" style={{ color: '#9B5BD6' }} />
+              <span className="text-[15px] font-semibold text-ink">Møhlenprisbakken 14</span>
+              <span className="text-[15px] text-taupe">· Bergen</span>
+            </div>
+            <div className="mt-3 flex items-center gap-5 text-sm text-quiet">
+              <span className="inline-flex items-center gap-1.5"><BedDouble className="h-4 w-4" /> 3 rom</span>
+              <span className="inline-flex items-center gap-1.5"><Maximize className="h-4 w-4" /> 74 m²</span>
+              <span className="inline-flex items-center gap-1.5">Leilighet</span>
+            </div>
+            <div className="mt-3.5 flex items-baseline gap-1.5">
+              <span className="text-[26px] font-bold text-ink tracking-[-0.01em]">25 500 kr</span>
+              <span className="text-sm text-taupe">/mnd</span>
+            </div>
+            <div className="mt-4 pt-4 border-t border-hairline flex items-center justify-between">
+              <span className="text-sm font-semibold text-ink">Autopilot</span>
+              <div className="flex items-center gap-2.5">
+                <CompactToggle on={on} knobP={knobP} />
+                <span className="inline-flex items-center justify-end" style={{ minWidth: 80 }}>
+                  {statusIn > 0.01 ? (
+                    <span className="inline-flex items-center gap-1.5 text-sm font-semibold" style={{ color: '#18794E', opacity: statusIn.toFixed(2) }}>
+                      <span className="h-1.5 w-1.5 rounded-full" style={{ background: '#10b981' }} /> Aktivert
+                    </span>
+                  ) : (
+                    <span className="text-sm text-taupe">Av</span>
+                  )}
+                </span>
+              </div>
+            </div>
+          </div>
+          {/* power-surge shine — lokalt i kortet (normal blend, ingen ramme-artefakt) */}
+          {surge > 0.001 && surge < 0.999 && (
+            <span className="absolute inset-0 pointer-events-none overflow-hidden" style={{ borderRadius: 22 }}>
+              <span
+                className="absolute"
+                style={{
+                  top: '-20%', bottom: '-20%', width: '42%',
+                  left: `${(-55 + 175 * easeInOutCubic(surge)).toFixed(1)}%`,
+                  transform: 'rotate(10deg)',
+                  background: 'linear-gradient(100deg, transparent, rgba(155,91,214,0.16), rgba(207,151,252,0.10), transparent)',
+                  opacity: Math.sin(surge * Math.PI).toFixed(2),
+                }}
+              />
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ===================== HOVEDKOMPONENT ===================== */
 export function HeroLoopLight({ playing = true }) {
   const wrapRef = useRef(null);
   const tiltRef = useRef(null);
   const [un, setUn] = useState(5.2);
   const [inView, setInView] = useState(true);
+  const [phase, setPhase] = useState('card'); // card | transition | loop
+  const [ct, setCt] = useState(0);            // åpningsklokke (sekunder)
+  const [reduce, setReduce] = useState(false);
+  const phaseRef = useRef('card');
+  const setPhaseBoth = (p) => { phaseRef.current = p; setPhase(p); };
 
   useEffect(() => {
     const el = wrapRef.current;
@@ -858,11 +986,43 @@ export function HeroLoopLight({ playing = true }) {
     };
   }, []);
 
-  const t = useLoopTime(playing && inView);
+  // åpningsklokke: kort → forvandling → loop
+  useEffect(() => {
+    if (reduce) { setPhaseBoth('loop'); return; }
+    if (!(playing && inView)) return;
+    if (phaseRef.current === 'loop') return;
+    let raf;
+    const t0 = performance.now() - ct * 1000;
+    const tick = (now) => {
+      const c = (now - t0) / 1000;
+      setCt(c);
+      if (c >= CARD_TRANSITION_START && phaseRef.current === 'card') setPhaseBoth('transition');
+      if (c >= CARD_END) { setPhaseBoth('loop'); return; }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playing, inView, reduce]);
+
+  const live = playing && inView;
+  const loopPlaying = live && phase !== 'card';
+  const t = useLoopTime(loopPlaying, LOOP_START);
   const fy = Math.sin(t * 0.5) * 0.4;
   const ex = easeInOutCubic(seg(t, 18.9, 20.0));
   const { s, y } = cam(t);
   const dof = easeInOutCubic(seg(t, 13.5, 14.5)) * (1 - easeInOutCubic(seg(t, 16.8, 17.9)));
+
+  // crossfade kort ↔ scene
+  const sceneIn = phase === 'loop'
+    ? 1
+    : (phase === 'transition' ? clamp01(seg(ct, CARD_TRANSITION_START + 0.15, CARD_END)) : 0);
+  const cardEnter = easeOutCubic(clamp01(seg(ct, 0.0, 0.6)));
+  const cardExit = easeInOutCubic(clamp01(seg(ct, CARD_TRANSITION_START, CARD_TRANSITION_START + 0.95)));
+  const cardOpacity = cardEnter * (1 - cardExit);
+  const cardY = (1 - cardEnter) * 2.5 - cardExit * 5;
+  const cardScale = (0.97 + 0.03 * cardEnter) * (1 - cardExit * 0.05);
+  const cardBlur = cardExit * 7;
 
   return (
     <div
@@ -878,7 +1038,7 @@ export function HeroLoopLight({ playing = true }) {
           style={{
             transform: `translateY(${u(fy + y - ex * 2.5)}) scale(${s.toFixed(4)})`,
             transformOrigin: '50% 45%',
-            opacity: (1 - ex).toFixed(2),
+            opacity: ((1 - ex) * sceneIn).toFixed(3),
             filter: ex > 0.02 ? `blur(${(ex * 6).toFixed(1)}px)` : 'none',
           }}
         >
@@ -894,6 +1054,9 @@ export function HeroLoopLight({ playing = true }) {
           <PayoutReadout t={t} />
         </div>
       </div>
+      {phase !== 'loop' && cardOpacity > 0.001 && (
+        <AnnonseCard ct={ct} opacity={cardOpacity} ty={cardY} scale={cardScale} blur={cardBlur} />
+      )}
     </div>
   );
 }
