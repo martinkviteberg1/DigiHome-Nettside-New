@@ -283,6 +283,19 @@ html { scroll-behavior: smooth; }
   0%, 100% { background-position: 0% 50%; }
   50%      { background-position: 100% 50%; }
 }
+/* lys variant: grafitt-krom med lavendel-kjerne (forside /2) */
+.dh-ink-shine {
+  background: linear-gradient(100deg, #16121F 0%, #5A4F73 26%, #9B5BD6 50%, #463F5C 74%, #16121F 100%);
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation: dh-shine 9s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .dh-ink-shine { animation: none !important; }
+}
 /* intro-linjene overstyrer shine mens de toner inn (cascade: står etter .dh-platinum) */
 .dh-intro-line {
   opacity: 0;
