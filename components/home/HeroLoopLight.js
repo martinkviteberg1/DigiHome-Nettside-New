@@ -334,7 +334,7 @@ function SystemSVG({ t }) {
           <line
             key={n.label}
             x1={L.x1} y1={L.y1} x2={L.x2} y2={L.y2}
-            stroke={INK(isActive ? 0.14 : 0.30)}
+            stroke={INK(isActive ? 0.17 : 0.32)}
             strokeWidth="0.22"
             strokeDasharray={len.toFixed(2)}
             strokeDashoffset={(len * (1 - p)).toFixed(2)}
@@ -448,8 +448,8 @@ function Sweep({ t }) {
   );
 }
 
-/* ---------- mykt lavendel-sveip over scenen (multiply) ---------- */
-function LightSweep({ t, from, dur, strength = 0.07 }) {
+/* ---------- mykt lavendel-sveip over scenen (multiply, sf\u00e6re-feather) ---------- */
+function LightSweep({ t, from, dur, strength = 0.06 }) {
   const p = seg(t, from, from + dur);
   if (p <= 0.001 || p >= 0.999) return null;
   const x = -45 + 130 * easeInOutCubic(p);
@@ -459,10 +459,12 @@ function LightSweep({ t, from, dur, strength = 0.07 }) {
       <div
         className="absolute"
         style={{
-          top: '-30%', bottom: '-30%', left: `${x.toFixed(1)}%`, width: '46%',
+          top: '-12%', bottom: '-12%', left: `${x.toFixed(1)}%`, width: '46%',
           background: `linear-gradient(100deg, transparent, rgba(155,91,214,${(o * 0.5).toFixed(3)}) 46%, rgba(207,151,252,${o.toFixed(3)}) 50%, rgba(155,91,214,${(o * 0.5).toFixed(3)}) 54%, transparent)`,
           transform: 'rotate(8deg)',
           mixBlendMode: 'multiply',
+          WebkitMaskImage: 'linear-gradient(to bottom, transparent, #000 20%, #000 80%, transparent)',
+          maskImage: 'linear-gradient(to bottom, transparent, #000 20%, #000 80%, transparent)',
         }}
       />
     </div>
@@ -551,9 +553,7 @@ function BootToggle({ t }) {
               Autopilot aktivert
             </span>
           </>
-        ) : (
-          <span className="font-body" style={{ fontSize: u(2.3), color: 'rgba(10,10,10,0.4)' }}>Av</span>
-        )}
+        ) : null}
       </div>
     </div>
   );
@@ -666,16 +666,16 @@ function Node({ t, node, dof = 0 }) {
       <span
         className="relative inline-flex items-center justify-center"
         style={{
-          width: u(6.4), height: u(6.4), borderRadius: u(1.9),
+          width: u(7.8), height: u(7.8), borderRadius: u(2.3),
           background: '#FFFFFF',
-          border: `1px solid ${isActive ? 'rgba(155,91,214,0.32)' : 'rgba(26,23,38,0.09)'}`,
-          boxShadow: `0 ${u(1.2)} ${u(3.6)} rgba(26,23,38,0.10), inset 0 1px 0 rgba(255,255,255,0.9)${isActive ? `, 0 0 ${u(2.8)} rgba(155,91,214,0.16)` : ''}`,
+          border: `1px solid ${isActive ? 'rgba(155,91,214,0.34)' : 'rgba(26,23,38,0.10)'}`,
+          boxShadow: `0 ${u(1.7)} ${u(4.8)} rgba(26,23,38,0.13), inset 0 1px 0 rgba(255,255,255,0.9)${isActive ? `, 0 0 ${u(3.2)} rgba(155,91,214,0.18)` : ''}`,
           transition: 'border 0.4s, box-shadow 0.4s',
         }}
       >
-        <Icon style={{ width: u(3), height: u(3), color: isActive ? 'rgba(155,91,214,0.95)' : 'rgba(26,23,38,0.82)' }} strokeWidth={1.7} />
+        <Icon style={{ width: u(3.7), height: u(3.7), color: isActive ? 'rgba(155,91,214,0.98)' : 'rgba(26,23,38,0.85)' }} strokeWidth={1.8} />
         {shine > 0.001 && shine < 0.999 && (
-          <span className="absolute inset-0 overflow-hidden pointer-events-none" style={{ borderRadius: u(1.9) }}>
+          <span className="absolute inset-0 overflow-hidden pointer-events-none" style={{ borderRadius: u(2.3) }}>
             <span
               className="absolute"
               style={{
@@ -688,10 +688,10 @@ function Node({ t, node, dof = 0 }) {
             />
           </span>
         )}
-        <NodeStatus t={t} done={node.at + 1.05} />
+        <NodeStatus t={t} done={node.at + 1.05} size={2.9} />
       </span>
-      <p className="font-body font-medium" style={{ fontSize: u(2.05), color: 'rgba(26,23,38,0.9)', marginTop: u(1.3), whiteSpace: 'nowrap' }}>{node.label}</p>
-      <p className="font-body" style={{ fontSize: u(1.75), color: 'rgba(124,116,102,0.85)', marginTop: u(0.25), whiteSpace: 'nowrap', minHeight: '1.2em' }}>{typed || '\u00A0'}</p>
+      <p className="font-body font-medium" style={{ fontSize: u(2.25), color: 'rgba(26,23,38,0.9)', marginTop: u(1.55), whiteSpace: 'nowrap' }}>{node.label}</p>
+      <p className="font-body" style={{ fontSize: u(1.85), color: 'rgba(124,116,102,0.85)', marginTop: u(0.3), whiteSpace: 'nowrap', minHeight: '1.2em' }}>{typed || '\u00A0'}</p>
     </div>
   );
 }

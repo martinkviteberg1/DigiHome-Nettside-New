@@ -34,7 +34,7 @@ export function HeroAutopilotLight() {
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            'radial-gradient(ellipse 54% 44% at 80% 12%, rgba(155,91,214,0.06), transparent 62%), radial-gradient(ellipse 48% 40% at 12% 92%, rgba(207,151,252,0.05), transparent 64%)',
+            'radial-gradient(ellipse 62% 54% at 84% 6%, rgba(155,91,214,0.055), transparent 74%), radial-gradient(ellipse 56% 48% at 8% 96%, rgba(207,151,252,0.045), transparent 74%)',
         }}
       />
 
@@ -80,7 +80,7 @@ export function HeroAutopilotLight() {
 
           {/* høyre kolonne — levende produktloop (lys) */}
           <div {...rv(380, 'lg:pl-4')}>
-            <div className="mx-auto w-full max-w-[560px]">
+            <div className="mx-auto w-full max-w-[600px]">
               <HeroLoopLight playing={shown} />
             </div>
           </div>
