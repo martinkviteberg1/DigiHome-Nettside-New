@@ -127,8 +127,10 @@ export function SeksjonFilm() {
         ? `0 ${(44 * sh).toFixed(0)}px ${(120 * sh).toFixed(0)}px rgba(20,16,40,${(0.3 * sh).toFixed(3)})`
         : 'none';
       if (sticky) {
-        // hold sidene LYSE (papir) gjennom hele zoomen; mørkne kun helt på slutten
-        const bgT = clamp01((p - 0.82) / 0.18);
+        // mørkne TIDLIG: ferdig kinosvart før rammen blir stor, så letterbox-striper
+        // alltid er svarte (aldri grå). Den korte overgangen skjer mens seksjonen
+        // så vidt entrer nedenfra (rammen er under viewporten) — usynlig.
+        const bgT = clamp01((p - 0.06) / 0.30);
         sticky.style.background = mixBg(bgT);
       }
     };
