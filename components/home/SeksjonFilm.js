@@ -33,9 +33,10 @@ const LOOP_START = START + SEAM;
 const LOOP_SPAN = END - LOOP_START;
 const BOUNDARIES = [26, 38, 48.5, 57.5];
 
-/* zoom: symmetrisk rundt pin — starter før pin, fullføres etter (jevn, tidlig) */
-const ZOOM_OFFSET = 0.62;   // andel vh før pin der zoomen starter
-const ZOOM_RANGE = 1.24;    // andel vh zoomen bruker (lengre = mykere)
+/* zoom: skjer gjennom hele inn-scrollen og er FERDIG nøyaktig ved pin
+   (rammen vokser container-bredde -> fullskjerm idet seksjonen sentreres) */
+const ZOOM_OFFSET = 1.0;    // p=0 når seksjonen så vidt entrer (secTop = vh)
+const ZOOM_RANGE = 1.0;     // p=1 ved pin (secTop = 0) — tidligst mulig fullskjerm
 const LIFT_VH = 0;          // ramme sentrert i hvile (rent, ingen hero-overlapp)
 
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -158,7 +159,7 @@ export function SeksjonFilm() {
   const seamP = END - T < SEAM ? clamp01(1 - (END - T) / SEAM) : 0;
 
   return (
-    <section ref={trackRef} className="dh-reel relative" style={{ height: reduce ? '100svh' : '210vh' }}>
+    <section ref={trackRef} className="dh-reel relative" style={{ height: reduce ? '100svh' : '175vh' }}>
       {/* skjul scenenes kapittel-kicker («04 ANNONSE») kun her — /video uberørt; tuck under heroens tomme bunn på store skjermer */}
       <style>{`.dh-reel [data-dh-kicker]{display:none!important;}`}</style>
 
