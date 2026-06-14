@@ -82,33 +82,13 @@ export function SeksjonFilm() {
   else if (elapsed < FIRST_SPAN) T = START + elapsed;   // første runde: ren fade-inn fra sort
   else T = LOOP_START + ((elapsed - FIRST_SPAN) % LOOP_SPAN);
 
-  /* aktiv scene + fremdrift (for navigasjon) */
-  let activeIdx = 0;
-  for (let i = 0; i < REEL.length; i++) {
-    if (T >= REEL[i].a - 0.001) activeIdx = i;
-  }
-  const activeFrac = clamp01((T - REEL[activeIdx].a) / (REEL[activeIdx].b - REEL[activeIdx].a));
-
-  /* loop-seam: Annonse pre-fade for sMømløs runde (krysser Chats fade-ut) */
+  /* loop-seam: Annonse pre-fade for sømløs runde (krysser Chats fade-ut) */
   const seamP = END - T < SEAM ? clamp01(1 - (END - T) / SEAM) : 0;
 
-  /* hopp til kapittel */
-  const seek = (i) => {
-    const targetT = REEL[i].a + 0.02;
-    if (targetT >= LOOP_START) setElapsed(FIRST_SPAN + (targetT - LOOP_START));
-    else setElapsed(targetT - START);
-  };
-
   return (
-    <section ref={sectionRef} className="relative bg-[#060607] overflow-hidden" style={{ minHeight: '100svh' }}>
-      {/* eyebrow */}
-      <div className="absolute top-0 left-0 right-0 z-20 pointer-events-none">
-        <div className="max-w-shell mx-auto px-6 sm:px-10 lg:px-16 pt-10">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.34em] text-white/40">
-            Slik fungerer DigiHome
-          </p>
-        </div>
-      </div>
+    <section ref={sectionRef} className="dh-reel relative bg-[#060607] overflow-hidden" style={{ minHeight: '100svh' }}>
+      {/* skjul scenenes kapittel-kicker («04 ANNONSE») kun her — /video er uberørt */}
+      <style>{`.dh-reel [data-dh-kicker]{display:none!important;}`}</style>
 
       {/* sentrert kino-scene */}
       <div className="flex flex-col items-center justify-center px-4 sm:px-8 py-20" style={{ minHeight: '100svh' }}>
@@ -147,41 +127,6 @@ export function SeksjonFilm() {
           </div>
           {/* filmkorn */}
           <FilmGrain t={T} opacity={0.05} />
-        </div>
-
-        {/* kapittel-navigasjon */}
-        <div className="mt-8 w-full" style={{ maxWidth: STAGE_W }}>
-          <div className="flex items-center justify-center gap-3 flex-wrap">
-            {REEL.map((s, i) => {
-              const active = i === activeIdx;
-              return (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => seek(i)}
-                  className="group flex items-center gap-2 outline-none"
-                  aria-label={`Gå til ${s.label}`}
-                >
-                  <span
-                    className="relative h-1 overflow-hidden rounded-full transition-all duration-300"
-                    style={{ width: active ? 40 : 20, background: 'rgba(255,255,255,0.16)' }}
-                  >
-                    {active && (
-                      <span
-                        className="absolute inset-y-0 left-0 rounded-full"
-                        style={{ width: `${(activeFrac * 100).toFixed(0)}%`, background: 'linear-gradient(90deg,#9B5BD6,#CF97FC)' }}
-                      />
-                    )}
-                  </span>
-                  <span
-                    className={`hidden sm:inline text-[10px] font-semibold uppercase tracking-[0.2em] transition-colors ${active ? 'text-white/85' : 'text-white/35 group-hover:text-white/60'}`}
-                  >
-                    {s.label}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
         </div>
       </div>
     </section>

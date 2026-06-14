@@ -197,6 +197,7 @@ function Kicker({ t, at, num, label, center = false }) {
   if (p <= 0.003) return null;
   return (
     <div
+      data-dh-kicker="1"
       style={{
         display: 'flex', alignItems: 'center', gap: 'calc(var(--su) * 1)',
         justifyContent: center ? 'center' : 'flex-start',
