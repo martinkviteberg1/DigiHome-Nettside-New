@@ -191,33 +191,36 @@ export function HeroLeadFormLight() {
         </form>
 
         {step === 'address' && showSug && (suggestions.length > 0 || loadingSug) && (
-          <div className="absolute left-0 right-0 top-full mt-2 z-50 rounded-2xl bg-white border border-hairline shadow-[0_24px_64px_rgba(26,23,38,0.18)] overflow-hidden">
+          <div className="absolute left-0 right-0 top-full mt-2 z-50 rounded-2xl bg-white border border-hairline shadow-[0_24px_64px_rgba(26,23,38,0.18)] overflow-hidden animate-in fade-in-0 slide-in-from-top-1 duration-200">
             {loadingSug && suggestions.length === 0 ? (
-              <div className="px-4 py-3 text-sm text-taupe flex items-center gap-2">
+              <div className="px-4 py-3.5 text-sm text-taupe flex items-center gap-2">
                 <Loader2 className="h-4 w-4 animate-spin" /> Søker…
               </div>
             ) : (
-              <ul className="max-h-72 overflow-auto py-1">
+              <ul className="max-h-[19rem] overflow-auto p-1.5">
                 {suggestions.map((s, i) => (
                   <li key={s.label + i}>
                     <button
                       type="button"
                       onMouseDown={(e) => { e.preventDefault(); selectSuggestion(s); }}
                       onMouseEnter={() => setActiveIdx(i)}
-                      className={`w-full text-left px-4 py-2.5 flex items-start gap-3 transition ${i === activeIdx ? 'bg-fill' : 'hover:bg-fill'}`}
+                      className={`w-full text-left px-3 py-2.5 rounded-xl flex items-center gap-3 transition-colors ${i === activeIdx ? 'bg-fill' : ''}`}
                     >
-                      <MapPin className="h-4 w-4 text-taupe mt-0.5 shrink-0" />
-                      <span className="min-w-0">
-                        <span className="block text-[15px] text-ink truncate">{s.text}</span>
+                      <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors ${i === activeIdx ? 'bg-white shadow-sm' : 'bg-fill'}`}>
+                        <MapPin className={`h-4 w-4 transition-colors ${i === activeIdx ? 'text-lavender' : 'text-taupe'}`} />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-[15px] font-medium text-ink truncate">{s.text}</span>
                         {s.sub && <span className="block text-xs text-taupe truncate">{s.sub}</span>}
                       </span>
+                      <ArrowRight className={`h-4 w-4 shrink-0 text-taupe transition-all duration-200 ${i === activeIdx ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-1'}`} />
                     </button>
                   </li>
                 ))}
               </ul>
             )}
-            <div className="px-4 py-2 border-t border-hairline text-[11px] text-taupe/80">
-              Adresser fra Kartverket
+            <div className="px-4 py-2 border-t border-hairline flex items-center gap-1.5 text-[11px] text-taupe/80">
+              <MapPin className="h-3 w-3" /> Adresser fra Kartverket
             </div>
           </div>
         )}

@@ -56,13 +56,13 @@ export function HeroAutopilotLight() {
               </p>
             </div>
 
-            <div {...rv(440)}>
+            <div {...rv(440, 'relative z-20')}>
               <div className="mt-9">
                 <HeroLeadFormLight />
               </div>
             </div>
 
-            <div {...rv(560)}>
+            <div {...rv(560, 'relative z-10')}>
               <dl className="mt-10 flex flex-wrap items-center gap-y-4">
                 {[
                   ['30+', 'Eiendommer i Bergen'],
