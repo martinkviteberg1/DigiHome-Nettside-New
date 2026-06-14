@@ -36,7 +36,7 @@ const BOUNDARIES = [26, 38, 48.5, 57.5];
 /* zoom: symmetrisk rundt pin — starter før pin, fullføres etter (jevn, tidlig) */
 const ZOOM_OFFSET = 0.62;   // andel vh før pin der zoomen starter
 const ZOOM_RANGE = 1.24;    // andel vh zoomen bruker (lengre = mykere)
-const LIFT_VH = 7;          // hvor mye rammen løftes mot toppen i hvile
+const LIFT_VH = 0;          // ramme sentrert i hvile (rent, ingen hero-overlapp)
 
 const lerp = (a, b, t) => a + (b - a) * t;
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
@@ -125,7 +125,11 @@ export function SeksjonFilm() {
       zoom.style.boxShadow = sh > 0.01
         ? `0 ${(44 * sh).toFixed(0)}px ${(120 * sh).toFixed(0)}px rgba(20,16,40,${(0.3 * sh).toFixed(3)})`
         : 'none';
-      if (sticky) sticky.style.background = mixBg(Math.min(1, p * 1.12));
+      if (sticky) {
+        // hold sidene LYSE (papir) gjennom hele zoomen; mørkne kun helt på slutten
+        const bgT = clamp01((p - 0.82) / 0.18);
+        sticky.style.background = mixBg(bgT);
+      }
     };
     raf = requestAnimationFrame(apply);
     return () => cancelAnimationFrame(raf);
@@ -156,7 +160,7 @@ export function SeksjonFilm() {
   return (
     <section ref={trackRef} className="dh-reel relative" style={{ height: reduce ? '100svh' : '210vh' }}>
       {/* skjul scenenes kapittel-kicker («04 ANNONSE») kun her — /video uberørt; tuck under heroens tomme bunn på store skjermer */}
-      <style>{`.dh-reel [data-dh-kicker]{display:none!important;}@media(min-width:1024px){.dh-reel{margin-top:-10vh;}}`}</style>
+      <style>{`.dh-reel [data-dh-kicker]{display:none!important;}`}</style>
 
       <div
         ref={stickyRef}
