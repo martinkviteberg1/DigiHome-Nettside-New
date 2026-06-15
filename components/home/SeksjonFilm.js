@@ -19,7 +19,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
-import { seg, clamp01, easeOutCubic, easeInOutCubic } from '@/components/video/filmUtils';
+import { Sparkles } from 'lucide-react';
+import { seg, clamp01, easeOutCubic, easeInOutCubic, typed } from '@/components/video/filmUtils';
 
 /* ---------- enheter & palett ---------- */
 const u = (n) => `calc(var(--su) * ${typeof n === 'number' ? n.toFixed(3) : n})`;
@@ -91,6 +92,42 @@ function Rule({ p = 1, mt = 3, mb = 0 }) {
 
 const LABEL = { fontSize: u(1.65), letterSpacing: '0.28em', textTransform: 'uppercase' };
 
+/* blinkende skrivemarkør (AI-følelse) */
+function Caret({ show, h = u(3), color = LAV(0.95) }) {
+  if (!show) return null;
+  return (
+    <span
+      aria-hidden
+      className="inline-block"
+      style={{ width: 2, height: h, marginLeft: u(0.5), marginBottom: `-${u(0.2)}`, background: color, borderRadius: 1, verticalAlign: 'baseline', animation: 'dh-caret 1.05s steps(1) infinite' }}
+    />
+  );
+}
+
+/* «DigiHome AI skriver…»-indikator */
+function AiBadge({ p, clock, label = 'DigiHome AI skriver annonsen' }) {
+  if (p <= 0.01) return null;
+  const dots = '.'.repeat(1 + (Math.floor(clock * 2) % 3));
+  const spin = (clock * 90) % 360;
+  return (
+    <div className="inline-flex items-center" style={{ gap: u(1.1), opacity: Math.min(1, p * 1.6), transform: `translateY(${u((1 - Math.min(1, p * 1.6)) * 1)})` }}>
+      <Sparkles style={{ width: u(2.3), height: u(2.3), color: LAV(0.95), transform: `rotate(${spin.toFixed(0)}deg)` }} strokeWidth={2} />
+      <span className="font-body font-semibold" style={{ fontSize: u(1.75), letterSpacing: '0.02em', color: LAV(0.95) }}>{label}{dots}</span>
+    </div>
+  );
+}
+
+/* AI-scan: tynn lavendel-linje som feier nedover mens innholdet «skrives» */
+function ScanLine({ p }) {
+  if (p <= 0.001 || p >= 0.999) return null;
+  const y = (p * 100).toFixed(1);
+  const o = Math.sin(p * Math.PI) * 0.6;
+  return (
+    <div className="pointer-events-none absolute left-0 right-0" style={{ top: `${y}%`, height: u(9), transform: 'translateY(-50%)', background: `linear-gradient(180deg, transparent, ${LAV(0.07 * o)} 45%, ${LAVS(0.05 * o)} 50%, ${LAV(0.07 * o)} 55%, transparent)` }} />
+  );
+}
+
+
 /* ============================================================
    01 — ANNONSE
    ============================================================ */
@@ -101,20 +138,29 @@ const PUB = [
 ];
 
 function SceneAnnonse({ q, clock }) {
-  const media = easeOutCubic(seg(q, 0.0, 0.16));
-  const rev = easeInOutCubic(seg(q, 0.08, 0.5));
-  const l1 = easeOutCubic(seg(q, 0.4, 0.54));
-  const l2 = easeOutCubic(seg(q, 0.48, 0.62));
-  const l3 = easeOutCubic(seg(q, 0.56, 0.7));
-  const live = easeOutCubic(seg(q, 0.58, 0.7));
-  const rule = easeOutCubic(seg(q, 0.66, 0.78));
-  const statP = easeOutCubic(seg(q, 0.9, 1));
+  const media = easeOutCubic(seg(q, 0.0, 0.14));
+  const rev = easeInOutCubic(seg(q, 0.06, 0.42));
+  const live = easeOutCubic(seg(q, 0.42, 0.54));
   const pulse = 0.5 + 0.5 * Math.abs(Math.sin(clock * 2));
+
+  const writing = clamp01(seg(q, 0.18, 0.7));
+  const aiDone = q >= 0.7;
+  const doneP = easeOutCubic(seg(q, 0.7, 0.79));
+  const titleType = seg(q, 0.22, 0.48);
+  const metaType = seg(q, 0.46, 0.6);
+  const priceP = easeOutCubic(seg(q, 0.56, 0.72));
+  const priceVal = 18600 + (24800 - 18600) * priceP;
+  const scanP = seg(q, 0.2, 0.66);
+  const rule = easeOutCubic(seg(q, 0.72, 0.82));
+  const statP = easeOutCubic(seg(q, 0.9, 1));
+
+  const titleCaret = titleType > 0.02 && titleType < 0.999;
+  const metaCaret = metaType > 0.02 && metaType < 0.999;
 
   return (
     <div className="absolute inset-0 flex flex-col">
       {/* full-bleed media — fyller hele kortbredden, som i filmen */}
-      <div className="relative w-full overflow-hidden shrink-0" style={{ height: u(45), opacity: media }}>
+      <div className="relative w-full overflow-hidden shrink-0" style={{ height: u(42), opacity: media }}>
         <div className="absolute inset-0" style={{ clipPath: `inset(0 ${((1 - rev) * 100).toFixed(2)}% 0 0)`, transform: `scale(${(1.05 - 0.05 * rev).toFixed(4)})` }}>
           <Image src="/interior-living.webp" alt="" fill sizes="50vw" className="object-cover" />
           <div className="absolute inset-0" style={{ background: 'linear-gradient(200deg, transparent 56%, rgba(22,18,31,0.3))' }} />
@@ -128,7 +174,6 @@ function SceneAnnonse({ q, clock }) {
             <span className="font-body font-semibold" style={{ ...LABEL, fontSize: u(1.45), letterSpacing: '0.2em', color: INK(0.82) }}>Live</span>
           </span>
         )}
-        {/* bilde-indikator (som i filmen) */}
         <div className="absolute flex" style={{ left: u(2.6), bottom: u(2.4), gap: u(0.9), opacity: live }}>
           {[0, 1, 2].map((i) => (
             <span key={i} style={{ width: i === 0 ? u(3.4) : u(2), height: u(0.7), borderRadius: 999, background: i === 0 ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.5)' }} />
@@ -136,31 +181,47 @@ function SceneAnnonse({ q, clock }) {
         </div>
       </div>
 
-      {/* innhold — padet */}
-      <div className="flex-1 flex flex-col justify-center" style={{ padding: `${u(3)} ${u(6)} ${u(5)}` }}>
-        <div>
-          <WriteLine p={l1} w={44}>
-            <p className="font-heading font-bold" style={{ fontSize: u(3.3), color: INK(0.95), lineHeight: 1.12 }}>Lys 3-roms med utsikt mot Byfjorden</p>
-          </WriteLine>
-          <div style={{ marginTop: u(1.4) }}>
-            <WriteLine p={l2} w={30}>
-              <p className="font-body" style={{ fontSize: u(2.1), color: QUIET(0.95) }}>Sandviken · 74 m² · 3. etasje · Møblert</p>
-            </WriteLine>
-          </div>
-          <div style={{ marginTop: u(1.7) }}>
-            <WriteLine p={l3} w={24}>
-              <div className="flex items-baseline" style={{ gap: u(1.3) }}>
-                <p className="font-heading font-bold" style={{ fontSize: u(3.6), color: INK(0.95) }}>
-                  <span style={{ fontVariantNumeric: 'tabular-nums' }}>{'24\u202F800'}</span> kr
-                </p>
-                <span className="font-body" style={{ fontSize: u(1.95), color: QUIET(0.8) }}>/ mnd · satt av autopiloten</span>
-              </div>
-            </WriteLine>
-          </div>
+      {/* innhold — AI skriver annonsen live */}
+      <div className="relative flex-1 flex flex-col justify-center overflow-hidden" style={{ padding: `${u(2.4)} ${u(6)} ${u(4.5)}` }}>
+        <ScanLine p={scanP} />
+
+        {/* AI-status */}
+        <div className="flex items-center" style={{ minHeight: u(2.8), marginBottom: u(2.2) }}>
+          {!aiDone ? (
+            <AiBadge p={writing} clock={clock} />
+          ) : (
+            <div className="inline-flex items-center" style={{ gap: u(1.1), ...riseIn(doneP, 1) }}>
+              <Check p={doneP} size={2.4} />
+              <span className="font-body font-semibold" style={{ fontSize: u(1.75), color: EMER(0.95) }}>Skrevet &amp; publisert av autopiloten</span>
+            </div>
+          )}
         </div>
 
-        <Rule p={rule} mt={3.2} mb={2.6} />
+        {/* tittel — skrives tegn for tegn */}
+        <p className="font-heading font-bold" style={{ fontSize: u(3.3), color: INK(0.95), lineHeight: 1.14, minHeight: u(8) }}>
+          {typed('Lys 3-roms med utsikt mot Byfjorden', titleType)}
+          <Caret show={titleCaret} h={u(3.1)} />
+        </p>
 
+        {/* meta */}
+        <p className="font-body" style={{ fontSize: u(2.1), color: QUIET(0.95), marginTop: u(1.2), minHeight: u(2.7) }}>
+          {typed('Sandviken · 74 m² · 3. etasje · Møblert', metaType)}
+          <Caret show={metaCaret} h={u(2)} color={QUIET(0.7)} />
+        </p>
+
+        {/* pris — kalibreres mot markedet */}
+        <div className="flex items-baseline" style={{ gap: u(1.3), marginTop: u(1.7), minHeight: u(4), opacity: priceP > 0.01 ? 1 : 0 }}>
+          <p className="font-heading font-bold" style={{ fontSize: u(3.6), color: INK(0.95) }}>
+            <span style={{ fontVariantNumeric: 'tabular-nums' }}>{nbsp(priceVal)}</span> kr
+          </p>
+          <span className="font-body" style={{ fontSize: u(1.95), color: priceP < 0.99 ? LAV(0.9) : QUIET(0.8) }}>
+            / mnd · {priceP < 0.99 ? 'kalibrerer mot markedet…' : 'satt av autopiloten'}
+          </span>
+        </div>
+
+        <Rule p={rule} mt={3} mb={2.4} />
+
+        {/* publisering */}
         <div className="flex items-center" style={{ gap: u(1.8) }}>
           <span className="font-body font-semibold" style={{ ...LABEL, color: QUIET(0.8) }}>Publisert</span>
           <div className="flex items-center" style={{ gap: u(1.2) }}>
@@ -177,7 +238,8 @@ function SceneAnnonse({ q, clock }) {
           </div>
         </div>
 
-        <div className="flex items-center" style={{ gap: u(1.6), marginTop: u(3.4), ...riseIn(statP, 1.6) }}>
+        {/* resultat */}
+        <div className="flex items-center" style={{ gap: u(1.6), marginTop: u(3), ...riseIn(statP, 1.6) }}>
           <Check p={statP} size={3} />
           <span className="font-body" style={{ fontSize: u(2.15), color: QUIET(1) }}>
             <span style={{ color: INK(0.92), fontWeight: 600 }}>12 henvendelser</span> — første visning booket innen ett døgn
@@ -315,31 +377,45 @@ function SceneLeietaker({ q }) {
    ============================================================ */
 const SIG_D = 'M3 26 C 9 8, 15 8, 17 23 C 18 31, 23 33, 27 21 C 30 11, 36 11, 38 25 C 39 33, 45 33, 50 19 C 54 9, 61 10, 64 25 C 66 33, 73 32, 79 18 C 82 11, 89 13, 96 24';
 
-function SceneKontrakt({ q }) {
-  const headIn = easeOutCubic(seg(q, 0.02, 0.18));
-  const lineW = (i) => easeOutCubic(seg(q, 0.26 + i * 0.06, 0.38 + i * 0.06));
-  const sigLabel = easeOutCubic(seg(q, 0.48, 0.58));
-  const sigDraw = easeInOutCubic(seg(q, 0.52, 0.8));
-  const rule = easeOutCubic(seg(q, 0.8, 0.9));
-  const stamp = easeOutCubic(seg(q, 0.84, 0.96));
+function SceneKontrakt({ q, clock }) {
+  const headIn = easeOutCubic(seg(q, 0.02, 0.16));
+  const aiP = Math.max(0, clamp01(seg(q, 0.14, 0.22)) - clamp01(seg(q, 0.52, 0.6)));
+  const clauses = [
+    '§1 · Leieforhold: 12 måneder fra 1. juli 2025',
+    '§2 · Månedsleie: 24 800 kr, forfall den 1.',
+    '§3 · Depositum: 74 400 kr på sperret konto',
+  ];
+  const cType = (i) => seg(q, 0.22 + i * 0.12, 0.36 + i * 0.12);
+  const sigLabel = easeOutCubic(seg(q, 0.6, 0.7));
+  const sigDraw = easeInOutCubic(seg(q, 0.58, 0.82));
+  const rule = easeOutCubic(seg(q, 0.82, 0.9));
+  const stamp = easeOutCubic(seg(q, 0.86, 0.97));
 
   return (
     <div className="absolute inset-0 flex flex-col justify-center" style={{ padding: `${u(6)} ${u(6)}` }}>
-      <div style={riseIn(headIn, 2.4)}>
+      <div className="flex items-center justify-between" style={riseIn(headIn, 2.4)}>
         <span className="font-body font-semibold" style={{ ...LABEL, color: QUIET(0.8) }}>Leiekontrakt</span>
-        <p className="font-heading font-bold" style={{ fontSize: u(3.2), color: INK(0.95), marginTop: u(1), lineHeight: 1.12 }}>Møhlenprisbakken 14, Bergen</p>
-        <p className="font-body" style={{ fontSize: u(2.1), color: QUIET(0.95), marginTop: u(0.6) }}>12 måneder · depositum sikret</p>
+        {aiP > 0.01 && <AiBadge p={aiP} clock={clock} label="AI utformer kontrakten" />}
       </div>
+      <p className="font-heading font-bold" style={{ fontSize: u(3.2), color: INK(0.95), marginTop: u(1), lineHeight: 1.12, ...riseIn(headIn, 1.6) }}>Møhlenprisbakken 14, Bergen</p>
+      <p className="font-body" style={{ fontSize: u(2.1), color: QUIET(0.95), marginTop: u(0.6), ...riseIn(headIn, 1.2) }}>12 måneder · depositum sikret</p>
 
-      {/* skjelett-klausuler */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: u(1.7), marginTop: u(4) }}>
-        {[42, 36, 40].map((w, i) => (
-          <span key={i} className="block rounded-full" style={{ height: u(1.6), width: `${(w * lineW(i)).toFixed(1)}%`, background: INK(0.08) }} />
-        ))}
+      {/* klausuler — skrives av AI, tegn for tegn */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: u(1.6), marginTop: u(3.6) }}>
+        {clauses.map((c, i) => {
+          const p = cType(i);
+          const caret = p > 0.02 && p < 0.999;
+          return (
+            <p key={i} className="font-body" style={{ fontSize: u(1.95), color: INK(0.72), minHeight: u(2.7), lineHeight: 1.35 }}>
+              {typed(c, p)}
+              <Caret show={caret} h={u(1.9)} color={LAV(0.8)} />
+            </p>
+          );
+        })}
       </div>
 
       {/* signatur */}
-      <div style={{ marginTop: u(5.5) }}>
+      <div style={{ marginTop: u(4.5) }}>
         <div className="relative" style={{ height: u(12) }}>
           <svg viewBox="0 0 100 40" className="absolute" style={{ left: 0, bottom: u(2), width: '62%', height: u(10), overflow: 'visible' }} fill="none">
             <path d={SIG_D} pathLength="100" stroke={INK(0.78)} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="100" strokeDashoffset={(100 * (1 - sigDraw)).toFixed(2)} vectorEffect="non-scaling-stroke" />
@@ -349,9 +425,8 @@ function SceneKontrakt({ q }) {
         <p className="font-body" style={{ fontSize: u(1.85), color: QUIET(0.9), marginTop: u(1.2), opacity: sigLabel, transform: `translateY(${u((1 - sigLabel) * 1)})` }}>Signatur · leietaker</p>
       </div>
 
-      <Rule p={rule} mt={4} mb={2.6} />
-      {/* BankID — forankret nederst */}
-      <div className="flex items-center" style={{ gap: u(1.6), marginTop: u(3.5), ...riseIn(stamp, 1.6) }}>
+      <Rule p={rule} mt={3.6} mb={2.4} />
+      <div className="flex items-center" style={{ gap: u(1.6), marginTop: u(2.4), ...riseIn(stamp, 1.6) }}>
         <span className="relative inline-block" style={{ width: u(7), height: u(3.2) }}>
           <Image src="/bankid-logo.png" alt="BankID" fill sizes="80px" className="object-contain object-left" />
         </span>
