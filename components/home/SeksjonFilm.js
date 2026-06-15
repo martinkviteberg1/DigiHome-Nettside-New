@@ -450,10 +450,90 @@ const STEPS = [
   { tag: 'Utbetaling', title: 'Leien lander på konto', body: 'Husleien kommer hver måned, helt automatisk. Du ser bare beløpet tikke inn.', Scene: SceneUtbetaling },
 ];
 
+/* ---------- kino-atmosfære (lys variant av filmens språk) ---------- */
+const NOISE = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>";
+
+/* levende lavendel-aurora som puster og driver sakte */
+function AuroraLight({ clock }) {
+  const b1 = 0.82 + 0.18 * Math.sin(clock * 0.4);
+  const b2 = 0.82 + 0.18 * Math.sin(clock * 0.32 + 2.1);
+  return (
+    <div className="pointer-events-none absolute inset-0 overflow-hidden">
+      <div
+        className="absolute"
+        style={{
+          left: '4%', top: '0%', width: '72%', height: '66%',
+          background: `radial-gradient(ellipse 60% 60% at 50% 50%, ${LAV(0.11)}, transparent 70%)`,
+          opacity: b1.toFixed(3),
+          transform: `translate3d(${(Math.sin(clock * 0.25) * 3).toFixed(2)}%, ${(Math.cos(clock * 0.2) * 2).toFixed(2)}%, 0)`,
+        }}
+      />
+      <div
+        className="absolute"
+        style={{
+          right: '2%', bottom: '4%', width: '64%', height: '58%',
+          background: `radial-gradient(ellipse 60% 60% at 50% 50%, ${LAVS(0.1)}, transparent 70%)`,
+          opacity: b2.toFixed(3),
+          transform: `translate3d(${(Math.cos(clock * 0.22) * -3).toFixed(2)}%, ${(Math.sin(clock * 0.18) * 2).toFixed(2)}%, 0)`,
+        }}
+      />
+    </div>
+  );
+}
+
+/* myk gulvglød — forankrer scenen i et plan (som filmens GroundGlow) */
+function FloorGlow({ clock }) {
+  const b = 0.78 + 0.22 * Math.sin(clock * 0.5);
+  return (
+    <div
+      className="pointer-events-none absolute"
+      style={{
+        left: '14%', right: '14%', bottom: '3%', height: '16%',
+        background: `radial-gradient(ellipse 60% 100% at 50% 100%, ${INK(0.07)}, transparent 72%)`,
+        filter: 'blur(10px)', opacity: b.toFixed(3),
+      }}
+    />
+  );
+}
+
+/* fint filmkorn */
+function GrainLight() {
+  return (
+    <div
+      className="pointer-events-none absolute inset-0"
+      style={{ backgroundImage: `url("${NOISE}")`, backgroundSize: '170px 170px', opacity: 0.028, mixBlendMode: 'multiply' }}
+    />
+  );
+}
+
+/* lys-sveip ved scenebytte — drevet av reveal (rev) */
+function SweepLight({ rev }) {
+  const p = seg(rev, 0.0, 0.52);
+  if (p <= 0.001 || p >= 0.999) return null;
+  const x = -45 + 150 * easeInOutCubic(p);
+  const o = Math.sin(p * Math.PI) * 0.1;
+  return (
+    <div className="pointer-events-none absolute inset-0 overflow-hidden">
+      <div
+        className="absolute"
+        style={{
+          top: '-15%', bottom: '-15%', left: `${x.toFixed(1)}%`, width: '40%',
+          transform: 'rotate(9deg)', mixBlendMode: 'multiply',
+          background: `linear-gradient(100deg, transparent, ${LAV(o * 0.5)} 46%, ${LAVS(o)} 50%, ${LAV(o * 0.5)} 54%, transparent)`,
+          WebkitMaskImage: 'linear-gradient(to bottom, transparent, #000 18%, #000 82%, transparent)',
+          maskImage: 'linear-gradient(to bottom, transparent, #000 18%, #000 82%, transparent)',
+        }}
+      />
+    </div>
+  );
+}
+
+
 /* ===================== HOVEDKOMPONENT ===================== */
 export function SeksjonFilm() {
   const sectionRef = useRef(null);
   const stageRef = useRef(null);
+  const tiltRef = useRef(null);
   const stepStartRef = useRef(0); // når aktivt steg startet (for reveal — fryses ALDRI)
   const autoElapsedRef = useRef(0); // akkumulert autospill-tid (fryses ved hover)
   const prevRef = useRef(0);
@@ -532,8 +612,47 @@ export function SeksjonFilm() {
     setProg({ rev: 0, auto: 0 });
   };
 
+  /* interaktiv dybde — lerretet lener seg umerkelig mot pekeren (parallax) */
+  useEffect(() => {
+    const stage = stageRef.current;
+    const inner = tiltRef.current;
+    if (!stage || !inner) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    if (window.matchMedia('(pointer: coarse)').matches) return;
+    const st = { tx: 0, ty: 0, cx: 0, cy: 0, raf: 0, hover: false };
+    const step = () => {
+      st.cx += (st.tx - st.cx) * 0.06;
+      st.cy += (st.ty - st.cy) * 0.06;
+      inner.style.transform = `rotateX(${(-st.cy * 2.2).toFixed(3)}deg) rotateY(${(st.cx * 2.8).toFixed(3)}deg)`;
+      if (st.hover || Math.abs(st.tx - st.cx) + Math.abs(st.ty - st.cy) > 0.001) {
+        st.raf = requestAnimationFrame(step);
+      } else {
+        st.raf = 0;
+      }
+    };
+    const kick = () => { if (!st.raf) st.raf = requestAnimationFrame(step); };
+    const onMove = (e) => {
+      const r = stage.getBoundingClientRect();
+      st.tx = Math.max(-1, Math.min(1, ((e.clientX - r.left) / r.width - 0.5) * 2));
+      st.ty = Math.max(-1, Math.min(1, ((e.clientY - r.top) / r.height - 0.5) * 2));
+      st.hover = true;
+      kick();
+    };
+    const onLeave = () => { st.tx = 0; st.ty = 0; st.hover = false; kick(); };
+    stage.addEventListener('pointermove', onMove, { passive: true });
+    stage.addEventListener('pointerleave', onLeave, { passive: true });
+    return () => {
+      stage.removeEventListener('pointermove', onMove);
+      stage.removeEventListener('pointerleave', onLeave);
+      if (st.raf) cancelAnimationFrame(st.raf);
+    };
+  }, []);
+
   const hoverOn = () => { pausedRef.current = true; };
   const hoverOff = () => { pausedRef.current = false; };
+
+  /* sakte kamera-drift — gir scenen en levende, filmatisk ro */
+  const camDrift = `translateY(${u(Math.sin(clock * 0.4) * 0.5)}) scale(${(1 + 0.012 * Math.sin(clock * 0.32 + 1)).toFixed(4)})`;
 
   return (
     <section ref={sectionRef} className="relative overflow-hidden bg-[#FEFBFA] text-ink">
@@ -544,117 +663,119 @@ export function SeksjonFilm() {
       />
 
       <div className="relative max-w-shell mx-auto px-6 sm:px-10 lg:px-16 py-24 sm:py-28 lg:py-36">
-        {/* overskrift */}
-        <div className="max-w-2xl">
-          <p className="font-body font-semibold uppercase text-[11px] tracking-[0.28em] text-taupe">De første 30 dagene</p>
-          <h2 className="mt-5 font-heading font-bold tracking-[-0.035em] leading-[1.02] text-[clamp(34px,4.6vw,58px)] text-ink">
-            Fra annonse til <span className="dh-ink-shine">leie på konto.</span>
-          </h2>
-          <p className="mt-6 text-lg text-quiet leading-relaxed max-w-xl">
-            Du sier ja én gang. DigiHome tar resten — annonsering, visninger, leietakere, kontrakt og utbetaling. Helt automatisk, mens du ser på.
-          </p>
-        </div>
-
-        {/* steg + scene */}
         <div
-          className="mt-16 lg:mt-20 grid lg:grid-cols-[0.82fr_1.18fr] gap-12 lg:gap-16 items-center"
+          className="grid lg:grid-cols-[minmax(300px,380px)_1fr] gap-14 lg:gap-20 items-center"
           onPointerEnter={hoverOn}
           onPointerLeave={hoverOff}
         >
-          {/* venstre: stegliste */}
-          <div role="tablist" aria-label="Slik fungerer DigiHome">
-            {STEPS.map((s, i) => {
-              const isActive = i === active;
-              return (
-                <button
-                  key={s.tag}
-                  role="tab"
-                  aria-selected={isActive}
-                  onClick={() => selectStep(i)}
-                  className="group relative block w-full text-left pl-8 py-5 outline-none"
-                >
-                  {/* skinne */}
-                  <span className="absolute left-0 top-0 bottom-0 w-px" style={{ background: '#EBE6DF' }} />
-                  {isActive && (
-                    <span
-                      className="absolute left-0 top-0 w-px"
-                      style={{ height: `${(prog.auto * 100).toFixed(1)}%`, background: 'linear-gradient(180deg,#9B5BD6,#CF97FC)' }}
-                    />
-                  )}
-                  {/* node */}
-                  <span
-                    className="absolute rounded-full transition-all duration-500"
-                    style={{
-                      left: -3.5, top: u(0),
-                      marginTop: '26px',
-                      width: isActive ? 8 : 6, height: isActive ? 8 : 6,
-                      background: isActive ? '#9B5BD6' : '#D8D1C7',
-                      boxShadow: isActive ? '0 0 0 5px rgba(155,91,214,0.12)' : 'none',
-                    }}
-                  />
+          {/* venstre: overskrift + stegliste */}
+          <div className="lg:py-4">
+            <p className="font-body font-semibold uppercase text-[11px] tracking-[0.28em] text-taupe">De første 30 dagene</p>
+            <h2 className="mt-4 font-heading font-bold tracking-[-0.035em] leading-[1.04] text-[clamp(30px,3.4vw,46px)] text-ink">
+              Fra annonse til <span className="dh-ink-shine">leie på konto.</span>
+            </h2>
+            <p className="mt-5 text-[17px] text-quiet leading-relaxed max-w-md">
+              Du sier ja én gang. DigiHome tar resten — annonsering, visninger, leietakere, kontrakt og utbetaling. Helt automatisk, mens du ser på.
+            </p>
 
-                  <div className="flex items-baseline gap-3">
-                    <span className="font-body font-semibold tabular-nums text-[12px] tracking-[0.1em] transition-colors duration-500" style={{ color: isActive ? '#9B5BD6' : '#9B9080' }}>
-                      0{i + 1}
-                    </span>
-                    <span className={`font-heading font-bold tracking-[-0.02em] transition-colors duration-500 text-[clamp(18px,1.5vw,23px)] ${isActive ? 'text-ink' : 'text-ink/45 group-hover:text-ink/70'}`}>
-                      {s.title}
-                    </span>
-                  </div>
-
-                  {/* beskrivelse — utvider kun aktiv */}
-                  <div
-                    className="overflow-hidden transition-all"
-                    style={{
-                      maxHeight: isActive ? 140 : 0,
-                      opacity: isActive ? 1 : 0,
-                      transitionDuration: '600ms',
-                      transitionTimingFunction: 'cubic-bezier(0.16,1,0.3,1)',
-                    }}
+            <div role="tablist" aria-label="Slik fungerer DigiHome" className="mt-11">
+              {STEPS.map((s, i) => {
+                const isActive = i === active;
+                return (
+                  <button
+                    key={s.tag}
+                    role="tab"
+                    aria-selected={isActive}
+                    onClick={() => selectStep(i)}
+                    className="group relative block w-full text-left pl-7 py-[18px] outline-none"
                   >
-                    <p className="mt-3 text-[15px] leading-relaxed text-quiet max-w-md">{s.body}</p>
-                  </div>
-                </button>
-              );
-            })}
+                    {/* skinne */}
+                    <span className="absolute left-0 top-0 bottom-0 w-px" style={{ background: '#EBE6DF' }} />
+                    {isActive && (
+                      <span
+                        className="absolute left-0 top-0 w-px"
+                        style={{ height: `${(prog.auto * 100).toFixed(1)}%`, background: 'linear-gradient(180deg,#9B5BD6,#CF97FC)' }}
+                      />
+                    )}
+                    {/* node */}
+                    <span
+                      className="absolute rounded-full transition-all duration-500"
+                      style={{
+                        left: -3.5, top: 0, marginTop: '24px',
+                        width: isActive ? 8 : 6, height: isActive ? 8 : 6,
+                        background: isActive ? '#9B5BD6' : '#D8D1C7',
+                        boxShadow: isActive ? '0 0 0 5px rgba(155,91,214,0.12)' : 'none',
+                      }}
+                    />
+
+                    <div className="flex items-baseline gap-3">
+                      <span className="font-body font-semibold tabular-nums text-[12px] tracking-[0.1em] transition-colors duration-500" style={{ color: isActive ? '#9B5BD6' : '#9B9080' }}>
+                        0{i + 1}
+                      </span>
+                      <span className={`font-heading font-bold tracking-[-0.02em] transition-colors duration-500 text-[19px] ${isActive ? 'text-ink' : 'text-ink/40 group-hover:text-ink/65'}`}>
+                        {s.title}
+                      </span>
+                    </div>
+
+                    {/* beskrivelse — utvider kun aktiv */}
+                    <div
+                      className="overflow-hidden transition-all"
+                      style={{
+                        maxHeight: isActive ? 140 : 0,
+                        opacity: isActive ? 1 : 0,
+                        transitionDuration: '600ms',
+                        transitionTimingFunction: 'cubic-bezier(0.16,1,0.3,1)',
+                      }}
+                    >
+                      <p className="mt-2.5 text-[14.5px] leading-relaxed text-quiet">{s.body}</p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
-          {/* høyre: scene-galleri */}
+          {/* høyre: åpent kino-lerret (ingen ramme — elementene flyter rett på papiret) */}
           <div className="relative">
             <div
               ref={stageRef}
-              className="relative w-full overflow-hidden rounded-[28px]"
-              style={{
-                aspectRatio: '1 / 1',
-                background: 'linear-gradient(180deg,#FBF8FC,#F6F1EC)',
-                boxShadow: '0 1px 3px rgba(22,18,31,0.05), 0 50px 90px -40px rgba(22,18,31,0.4)',
-                '--su': '5px',
-              }}
+              className="relative w-full"
+              style={{ aspectRatio: '1 / 1', perspective: '1500px', '--su': '7px' }}
             >
-              {/* fint papir-korn / vignett */}
-              <div className="pointer-events-none absolute inset-0" style={{ background: 'radial-gradient(ellipse 80% 80% at 50% 35%, transparent 60%, rgba(22,18,31,0.05))' }} />
+              {/* levende atmosfære (ikke tiltet → parallax-dybde mot innholdet) */}
+              <AuroraLight clock={clock} />
+              <FloorGlow clock={clock} />
 
-              {STEPS.map((s, i) => {
-                const isActive = i === active;
-                const Scene = s.Scene;
-                return (
-                  <div
-                    key={s.tag}
-                    role="tabpanel"
-                    aria-hidden={!isActive}
-                    className="absolute inset-0 transition-all"
-                    style={{
-                      opacity: isActive ? 1 : 0,
-                      transform: isActive ? 'scale(1)' : 'scale(0.985)',
-                      transitionDuration: '700ms',
-                      transitionTimingFunction: 'cubic-bezier(0.16,1,0.3,1)',
-                      pointerEvents: 'none',
-                    }}
-                  >
-                    <Scene q={isActive ? prog.rev : 1} clock={isActive ? clock : 0} />
-                  </div>
-                );
-              })}
+              {/* tilt-lag */}
+              <div ref={tiltRef} className="absolute inset-0" style={{ transformStyle: 'preserve-3d', willChange: 'transform' }}>
+                {/* kamera-drift */}
+                <div className="absolute inset-0" style={{ transform: camDrift, transformOrigin: '50% 46%' }}>
+                  {STEPS.map((s, i) => {
+                    const isActive = i === active;
+                    const Scene = s.Scene;
+                    return (
+                      <div
+                        key={s.tag}
+                        role="tabpanel"
+                        aria-hidden={!isActive}
+                        className="absolute inset-0 transition-all"
+                        style={{
+                          opacity: isActive ? 1 : 0,
+                          transform: isActive ? 'scale(1) translateY(0)' : 'scale(0.94) translateY(8px)',
+                          transitionDuration: '820ms',
+                          transitionTimingFunction: 'cubic-bezier(0.16,1,0.3,1)',
+                          pointerEvents: 'none',
+                        }}
+                      >
+                        <Scene q={isActive ? prog.rev : 1} clock={isActive ? clock : 0} />
+                      </div>
+                    );
+                  })}
+                  <SweepLight rev={prog.rev} />
+                </div>
+              </div>
+
+              <GrainLight />
             </div>
           </div>
         </div>
