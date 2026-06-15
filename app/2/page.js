@@ -1,6 +1,7 @@
 import { Header } from '@/components/site/Header';
 import { Footer } from '@/components/site/Footer';
 import { HeroAutopilotLight } from '@/components/home/HeroAutopilotLight';
+import { SeksjonAutopilot } from '@/components/home/SeksjonAutopilot';
 import { SeksjonFilm } from '@/components/home/SeksjonFilm';
 
 export const metadata = {
@@ -17,6 +18,7 @@ export default function HomeLightPage() {
       <Header />
       <main>
         <HeroAutopilotLight />
+        <SeksjonAutopilot />
         <SeksjonFilm />
       </main>
       <Footer />
