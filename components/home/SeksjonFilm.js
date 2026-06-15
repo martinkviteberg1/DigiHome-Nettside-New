@@ -112,71 +112,77 @@ function SceneAnnonse({ q, clock }) {
   const pulse = 0.5 + 0.5 * Math.abs(Math.sin(clock * 2));
 
   return (
-    <div className="absolute inset-0 flex flex-col justify-center" style={{ padding: `${u(5.5)} ${u(6)}` }}>
-      {/* media */}
-      <div className="relative w-full overflow-hidden shrink-0" style={{ height: u(38), borderRadius: u(2.6), opacity: media, transform: `translateY(${u((1 - media) * 3)})` }}>
+    <div className="absolute inset-0 flex flex-col">
+      {/* full-bleed media — fyller hele kortbredden, som i filmen */}
+      <div className="relative w-full overflow-hidden shrink-0" style={{ height: u(45), opacity: media }}>
         <div className="absolute inset-0" style={{ clipPath: `inset(0 ${((1 - rev) * 100).toFixed(2)}% 0 0)`, transform: `scale(${(1.05 - 0.05 * rev).toFixed(4)})` }}>
-          <Image src="/interior-living.webp" alt="" fill sizes="45vw" className="object-cover" />
-          <div className="absolute inset-0" style={{ background: 'linear-gradient(200deg, transparent 60%, rgba(22,18,31,0.26))' }} />
+          <Image src="/interior-living.webp" alt="" fill sizes="50vw" className="object-cover" />
+          <div className="absolute inset-0" style={{ background: 'linear-gradient(200deg, transparent 56%, rgba(22,18,31,0.3))' }} />
         </div>
         {rev > 0.02 && rev < 0.985 && (
           <span className="absolute top-0 bottom-0" style={{ left: `${(rev * 100).toFixed(2)}%`, width: 1.5, background: LAVS(0.9) }} />
         )}
         {live > 0.02 && (
-          <span className="absolute inline-flex items-center" style={{ left: u(2.2), top: u(2), gap: u(1), padding: `${u(0.85)} ${u(1.8)}`, borderRadius: 999, background: 'rgba(255,255,255,0.92)', boxShadow: '0 6px 18px rgba(22,18,31,0.12)', opacity: live }}>
+          <span className="absolute inline-flex items-center" style={{ left: u(2.6), top: u(2.4), gap: u(1), padding: `${u(0.9)} ${u(1.9)}`, borderRadius: 999, background: 'rgba(255,255,255,0.94)', boxShadow: '0 6px 18px rgba(22,18,31,0.14)', opacity: live }}>
             <span style={{ width: u(1), height: u(1), borderRadius: '50%', background: EMER(1), opacity: pulse }} />
             <span className="font-body font-semibold" style={{ ...LABEL, fontSize: u(1.45), letterSpacing: '0.2em', color: INK(0.82) }}>Live</span>
           </span>
         )}
+        {/* bilde-indikator (som i filmen) */}
+        <div className="absolute flex" style={{ left: u(2.6), bottom: u(2.4), gap: u(0.9), opacity: live }}>
+          {[0, 1, 2].map((i) => (
+            <span key={i} style={{ width: i === 0 ? u(3.4) : u(2), height: u(0.7), borderRadius: 999, background: i === 0 ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.5)' }} />
+          ))}
+        </div>
       </div>
 
-      {/* tekst — rett på flaten */}
-      <div style={{ marginTop: u(3) }}>
-        <WriteLine p={l1} w={44}>
-          <p className="font-heading font-bold" style={{ fontSize: u(3.2), color: INK(0.95), lineHeight: 1.12 }}>Lys 3-roms med utsikt mot Byfjorden</p>
-        </WriteLine>
-        <div style={{ marginTop: u(1.4) }}>
-          <WriteLine p={l2} w={30}>
-            <p className="font-body" style={{ fontSize: u(2.1), color: QUIET(0.95) }}>Sandviken · 74 m² · 3. etasje · Møblert</p>
+      {/* innhold — padet */}
+      <div className="flex-1 flex flex-col justify-center" style={{ padding: `${u(3)} ${u(6)} ${u(5)}` }}>
+        <div>
+          <WriteLine p={l1} w={44}>
+            <p className="font-heading font-bold" style={{ fontSize: u(3.3), color: INK(0.95), lineHeight: 1.12 }}>Lys 3-roms med utsikt mot Byfjorden</p>
           </WriteLine>
+          <div style={{ marginTop: u(1.4) }}>
+            <WriteLine p={l2} w={30}>
+              <p className="font-body" style={{ fontSize: u(2.1), color: QUIET(0.95) }}>Sandviken · 74 m² · 3. etasje · Møblert</p>
+            </WriteLine>
+          </div>
+          <div style={{ marginTop: u(1.7) }}>
+            <WriteLine p={l3} w={24}>
+              <div className="flex items-baseline" style={{ gap: u(1.3) }}>
+                <p className="font-heading font-bold" style={{ fontSize: u(3.6), color: INK(0.95) }}>
+                  <span style={{ fontVariantNumeric: 'tabular-nums' }}>{'24\u202F800'}</span> kr
+                </p>
+                <span className="font-body" style={{ fontSize: u(1.95), color: QUIET(0.8) }}>/ mnd · satt av autopiloten</span>
+              </div>
+            </WriteLine>
+          </div>
         </div>
-        <div style={{ marginTop: u(1.6) }}>
-          <WriteLine p={l3} w={24}>
-            <div className="flex items-baseline" style={{ gap: u(1.3) }}>
-              <p className="font-heading font-bold" style={{ fontSize: u(3.4), color: INK(0.95) }}>
-                <span style={{ fontVariantNumeric: 'tabular-nums' }}>{'24\u202F800'}</span> kr
-              </p>
-              <span className="font-body" style={{ fontSize: u(1.9), color: QUIET(0.8) }}>/ mnd · satt av autopiloten</span>
-            </div>
-          </WriteLine>
+
+        <Rule p={rule} mt={3.2} mb={2.6} />
+
+        <div className="flex items-center" style={{ gap: u(1.8) }}>
+          <span className="font-body font-semibold" style={{ ...LABEL, color: QUIET(0.8) }}>Publisert</span>
+          <div className="flex items-center" style={{ gap: u(1.2) }}>
+            {PUB.map((pf) => {
+              const okP = easeOutCubic(seg(q, pf.at, pf.at + 0.06));
+              const inP = easeOutCubic(seg(q, pf.at - 0.08, pf.at));
+              return (
+                <span key={pf.name} className="inline-flex items-center" style={{ gap: u(0.9), padding: `${u(1)} ${u(1.7)}`, borderRadius: 999, background: INK(0.04), opacity: inP, transform: `translateY(${u((1 - inP) * 1.5)})` }}>
+                  {okP > 0.01 ? <Check p={okP} size={2.2} /> : <Pending size={2.2} />}
+                  <span className="font-body font-medium" style={{ fontSize: u(1.95), color: INK(0.82) }}>{pf.name}</span>
+                </span>
+              );
+            })}
+          </div>
         </div>
-      </div>
 
-      <Rule p={rule} mt={3.2} mb={2.6} />
-
-      {/* publisering — flate tags på flaten */}
-      <div className="flex items-center" style={{ gap: u(1.8) }}>
-        <span className="font-body font-semibold" style={{ ...LABEL, color: QUIET(0.8) }}>Publisert</span>
-        <div className="flex items-center" style={{ gap: u(1.2) }}>
-          {PUB.map((pf) => {
-            const okP = easeOutCubic(seg(q, pf.at, pf.at + 0.06));
-            const inP = easeOutCubic(seg(q, pf.at - 0.08, pf.at));
-            return (
-              <span key={pf.name} className="inline-flex items-center" style={{ gap: u(0.9), padding: `${u(1)} ${u(1.7)}`, borderRadius: 999, background: INK(0.04), opacity: inP, transform: `translateY(${u((1 - inP) * 1.5)})` }}>
-                {okP > 0.01 ? <Check p={okP} size={2.2} /> : <Pending size={2.2} />}
-                <span className="font-body font-medium" style={{ fontSize: u(1.95), color: INK(0.82) }}>{pf.name}</span>
-              </span>
-            );
-          })}
+        <div className="flex items-center" style={{ gap: u(1.6), marginTop: u(3.4), ...riseIn(statP, 1.6) }}>
+          <Check p={statP} size={3} />
+          <span className="font-body" style={{ fontSize: u(2.15), color: QUIET(1) }}>
+            <span style={{ color: INK(0.92), fontWeight: 600 }}>12 henvendelser</span> — første visning booket innen ett døgn
+          </span>
         </div>
-      </div>
-
-      {/* resultat — forankret nederst */}
-      <div className="flex items-center" style={{ gap: u(1.6), marginTop: u(3.5), ...riseIn(statP, 1.6) }}>
-        <Check p={statP} size={3} />
-        <span className="font-body" style={{ fontSize: u(2.15), color: QUIET(1) }}>
-          <span style={{ color: INK(0.92), fontWeight: 600 }}>12 henvendelser</span> — første visning booket innen ett døgn
-        </span>
       </div>
     </div>
   );
@@ -469,33 +475,9 @@ function SweepLight({ rev }) {
   );
 }
 
-/* ---------- chrome-linje øverst på skjermen ---------- */
-function TopBar({ tag }) {
-  return (
-    <div className="shrink-0 flex items-center justify-between" style={{ padding: '0 22px', height: 54, borderBottom: `1px solid ${HAIR}`, background: 'rgba(255,255,255,0.6)' }}>
-      <div className="flex items-center gap-2.5">
-        <span className="relative inline-block" style={{ width: 20, height: 20 }}>
-          <Image src="/brand/digihome-icon-purple.svg" alt="" fill sizes="20px" className="object-contain" />
-        </span>
-        <span className="font-heading font-bold text-ink text-[14px] tracking-[-0.01em]">digihome</span>
-        <span className="mx-1 h-3 w-px" style={{ background: HAIR }} />
-        <span className="font-body font-semibold uppercase text-taupe text-[10px] tracking-[0.24em]">Autopilot</span>
-      </div>
-      <div className="flex items-center gap-2">
-        <span className="font-body font-semibold uppercase text-[10px] tracking-[0.24em]" style={{ color: '#9B5BD6' }}>{tag}</span>
-        <span className="mx-0.5 inline-flex items-center gap-1.5">
-          <span className="inline-block rounded-full" style={{ width: 6, height: 6, background: '#10b981', boxShadow: '0 0 6px rgba(16,185,129,0.6)' }} />
-          <span className="font-body text-[11px]" style={{ color: '#18794E' }}>Aktiv</span>
-        </span>
-      </div>
-    </div>
-  );
-}
-
 /* ===================== HOVEDKOMPONENT ===================== */
 export function SeksjonFilm() {
   const sectionRef = useRef(null);
-  const frameRef = useRef(null);
   const tiltRef = useRef(null);
   const stageRef = useRef(null);
   const stepStartRef = useRef(0);
@@ -576,7 +558,7 @@ export function SeksjonFilm() {
 
   /* dybde — hele skjermen lener seg mot pekeren */
   useEffect(() => {
-    const zone = frameRef.current;
+    const zone = stageRef.current;
     const inner = tiltRef.current;
     if (!zone || !inner) return;
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
@@ -621,7 +603,7 @@ export function SeksjonFilm() {
 
       <div className="relative max-w-shell mx-auto px-6 sm:px-10 lg:px-16 py-24 sm:py-28 lg:py-36">
         <div
-          className="grid lg:grid-cols-[minmax(300px,380px)_1fr] gap-14 lg:gap-20 items-center"
+          className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center"
           onPointerEnter={hoverOn}
           onPointerLeave={hoverOff}
         >
@@ -678,47 +660,43 @@ export function SeksjonFilm() {
           <div className="relative" style={{ perspective: '1700px' }}>
             <div ref={tiltRef} style={{ transformStyle: 'preserve-3d', willChange: 'transform' }}>
               <div
-                ref={frameRef}
-                className="relative w-full overflow-hidden flex flex-col rounded-[24px]"
+                ref={stageRef}
+                className="relative w-full overflow-hidden rounded-[24px]"
                 style={{
-                  aspectRatio: '1 / 1.06',
+                  aspectRatio: '1 / 1.04',
                   background: 'linear-gradient(180deg,#FFFFFF,#FCFAFE)',
                   boxShadow: '0 2px 4px rgba(22,18,31,0.04), 0 44px 96px -38px rgba(22,18,31,0.36)',
                   border: '1px solid rgba(22,18,31,0.05)',
+                  '--su': '7px',
                 }}
               >
-                <TopBar tag={STEPS[active].tag} />
-
-                {/* lerret */}
-                <div ref={stageRef} className="relative flex-1 overflow-hidden" style={{ '--su': '7px' }}>
-                  <AuroraLight clock={clock} />
-                  <FloorGlow clock={clock} />
-                  <div className="absolute inset-0" style={{ transform: camDrift, transformOrigin: '50% 46%' }}>
-                    {STEPS.map((s, i) => {
-                      const isActive = i === active;
-                      const Scene = s.Scene;
-                      return (
-                        <div
-                          key={s.tag}
-                          role="tabpanel"
-                          aria-hidden={!isActive}
-                          className="absolute inset-0 transition-all"
-                          style={{
-                            opacity: isActive ? 1 : 0,
-                            transform: isActive ? 'scale(1) translateY(0)' : 'scale(0.965) translateY(6px)',
-                            transitionDuration: '760ms',
-                            transitionTimingFunction: 'cubic-bezier(0.16,1,0.3,1)',
-                            pointerEvents: 'none',
-                          }}
-                        >
-                          <Scene q={isActive ? prog.rev : 1} clock={isActive ? clock : 0} />
-                        </div>
-                      );
-                    })}
-                    <SweepLight rev={prog.rev} />
-                  </div>
-                  <GrainLight />
+                <AuroraLight clock={clock} />
+                <FloorGlow clock={clock} />
+                <div className="absolute inset-0" style={{ transform: camDrift, transformOrigin: '50% 46%' }}>
+                  {STEPS.map((s, i) => {
+                    const isActive = i === active;
+                    const Scene = s.Scene;
+                    return (
+                      <div
+                        key={s.tag}
+                        role="tabpanel"
+                        aria-hidden={!isActive}
+                        className="absolute inset-0 transition-all"
+                        style={{
+                          opacity: isActive ? 1 : 0,
+                          transform: isActive ? 'scale(1) translateY(0)' : 'scale(0.965) translateY(6px)',
+                          transitionDuration: '760ms',
+                          transitionTimingFunction: 'cubic-bezier(0.16,1,0.3,1)',
+                          pointerEvents: 'none',
+                        }}
+                      >
+                        <Scene q={isActive ? prog.rev : 1} clock={isActive ? clock : 0} />
+                      </div>
+                    );
+                  })}
+                  <SweepLight rev={prog.rev} />
                 </div>
+                <GrainLight />
               </div>
             </div>
           </div>
