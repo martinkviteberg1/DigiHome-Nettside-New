@@ -1,164 +1,100 @@
 'use client';
 
 /*
-  Seksjon 2 (/2) — «Operasjonssentralen» som ET MØRKT KONTROLLROM.
-  Selve seksjonen ER cockpiten: en bred, ekte operasjonssentral der autopilot-bryteren
-  bor i toppen. Når du skrur den opp (Manuell → Assistert → Autopilot) reagerer hele
-  sentralen — prioritetskøen forberedes og deretter tømmer seg selv.
+  Seksjon 2 (/2) — «Listen som tømmer seg selv».
+  Lyst, radikalt minimalistisk: manifest øverst, så ett sentrert, fokusert spor —
+  en autopilot-kontroll (Manuell → Assistert → Autopilot) og en ren oppgaveliste
+  rett på papiret (ingen bokser, kun hårfine linjer og luft).
 
-  Mørkt motorrom på lyst papir = dramatisk «dette er motoren», men sømløst i flyten.
-  Responsiv og lesbar (ikke su-skalert) — stabler pent på mobil.
+  Når autopiloten skrus opp: oppgavene går fra «Gjør selv» → «AI foreslår + Godkjenn»
+  → hukes av og forsvinner. Telleren faller 5 → 0, og en rolig tom-tilstand toner inn:
+  «Alt er gjort.» Roen er beviset på at DigiHome er en motor, ikke en funksjonshaug.
 */
 
 import { useEffect, useRef, useState } from 'react';
-import { Sparkles, Wallet, Wrench, KeyRound, ChevronRight, Gauge, Clock } from 'lucide-react';
+import { Sparkles, ChevronRight } from 'lucide-react';
 import { seg, clamp01, easeOutCubic, easeInOutCubic, typed } from '@/components/video/filmUtils';
 
-const REVEAL_DUR = 1.6;
-const STEP_DUR = 7.0;
+const INK = (a = 1) => `rgba(22,18,31,${a})`;
+const QUIET = (a = 1) => `rgba(124,116,102,${a})`;
+const LAV = (a = 1) => `rgba(155,91,214,${a})`;
+const EMER = (a = 1) => `rgba(24,121,78,${a})`;
+const HAIR = 'rgba(22,18,31,0.08)';
 
-/* mørk palett */
-const AC = {
-  lav: { fg: '#C9A2FF', bg: 'rgba(155,91,214,0.16)' },
-  amber: { fg: '#F2B45E', bg: 'rgba(242,180,94,0.14)' },
-  emer: { fg: '#46D6A0', bg: 'rgba(70,214,160,0.14)' },
-};
+const REVEAL_DUR = 1.7;
+const STEP_DUR = 7.5;
+const ROWH = 96;
 
-const LEVELS = [
-  { tag: 'Manuell', short: 'Manuell' },
-  { tag: 'Assistert', short: 'Assistert' },
-  { tag: 'Autopilot', short: 'Autopilot' },
-];
-
-const KPIS = [
-  { v: '12 %', l: 'Utleiegrad' },
-  { v: '2', l: 'Leieforhold' },
-  { v: '14', l: 'Ledige' },
-  { v: '1', l: 'Innflytting' },
-  { v: '0', l: 'Haster' },
-];
+const LEVELS = [{ tag: 'Manuell' }, { tag: 'Assistert' }, { tag: 'Autopilot' }];
 
 const TASKS = [
-  { Icon: Wallet, accent: 'lav', title: 'Depositum ikke startet', meta: 'Olaf Ryes vei 11C · 55 500 kr', ai: 'Starter depositumsprosess' },
-  { Icon: Wallet, accent: 'lav', title: 'Depositum venter på betaling', meta: 'Sofiegaten 4 · 54 000 kr', ai: 'Sender påminnelse til leietaker' },
-  { Icon: Wrench, accent: 'amber', title: 'Sak: støy fra nabo', meta: 'Olaf Ryes vei 11C · åpen sak', ai: 'Utkast til svar er klart' },
-  { Icon: Wrench, accent: 'amber', title: 'Ødelagt komfyr meldt', meta: 'Olaf Ryes vei 11C · leietaker', ai: 'Bestiller håndverker' },
+  { kind: 'Depositum', title: 'Depositum ikke startet', meta: 'Olaf Ryes vei 11C · 55 500 kr', ai: 'Starter depositumsprosess' },
+  { kind: 'Depositum', title: 'Depositum venter på betaling', meta: 'Sofiegaten 4 · 54 000 kr', ai: 'Sender påminnelse til leietaker' },
+  { kind: 'Sak', title: 'Sak: støy fra nabo', meta: 'Olaf Ryes vei 11C · åpen sak', ai: 'Utkast til svar er klart' },
+  { kind: 'Sak', title: 'Ødelagt komfyr meldt', meta: 'Olaf Ryes vei 11C · leietaker', ai: 'Bestiller håndverker' },
+  { kind: 'Innflytting', title: 'Innflytting om 16 dager', meta: 'Martin Test · Olaf Ryes vei 11C', ai: 'Klargjør innflyttingsprotokoll' },
 ];
 
-const PIPELINE = [
-  { l: 'Utkast', n: 1 },
-  { l: 'Annonsert', n: 0 },
-  { l: 'Leads', n: 0 },
-  { l: 'Visning', n: 0 },
-  { l: 'Søkere', n: 0 },
-  { l: 'Kontrakt', n: 0 },
-];
-
-/* ---------- små byggesteiner ---------- */
-function Check({ p = 1, size = 18 }) {
-  if (p <= 0.01) return null;
+/* leading-indikator (tom ring → fylt smaragd-hake) */
+function Indicator({ level, doneP }) {
+  const done = level === 2 ? doneP : 0;
+  const ring = level === 1 ? LAV(0.55) : INK(0.18);
   return (
-    <span className="inline-flex items-center justify-center shrink-0" style={{ width: size, height: size, borderRadius: '50%', background: AC.emer.bg, opacity: Math.min(1, p * 1.6), transform: `scale(${(0.8 + 0.2 * easeOutCubic(p)).toFixed(3)})` }}>
-      <svg viewBox="0 0 12 12" style={{ width: '56%', height: '56%' }} fill="none">
-        <path d="M2.6 6.4 L5 8.7 L9.5 3.6" stroke={AC.emer.fg} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
+    <span className="relative inline-flex items-center justify-center shrink-0" style={{ width: 24, height: 24 }}>
+      <span className="absolute inset-0 rounded-full" style={{ border: `1.5px solid ${ring}`, opacity: 1 - done, transition: 'border-color 400ms' }} />
+      <span className="absolute inset-0 rounded-full" style={{ background: EMER(0.95), opacity: done, transform: `scale(${(0.6 + 0.4 * done).toFixed(3)})` }} />
+      {done > 0.2 && (
+        <svg viewBox="0 0 12 12" className="relative" style={{ width: 12, height: 12, opacity: done }} fill="none">
+          <path d="M2.6 6.4 L5 8.7 L9.5 3.6" stroke="#fff" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      )}
     </span>
   );
 }
 
-function Panel({ label, children }) {
-  return (
-    <div className="rounded-2xl p-4 sm:p-5" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
-      <p className="font-body font-semibold uppercase text-[10px] tracking-[0.22em] text-white/40 mb-3.5">{label}</p>
-      {children}
-    </div>
-  );
-}
-
-/* ---------- autopilot-bryter ---------- */
-function AutopilotSwitch({ level, auto, onSelect }) {
-  return (
-    <div className="flex items-center gap-3 shrink-0">
-      <span className="font-body font-semibold uppercase text-[10px] tracking-[0.24em] text-white/35 hidden sm:inline">Autopilot</span>
-      <div className="relative flex items-center p-1 rounded-full" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)' }}>
-        {LEVELS.map((lv, i) => {
-          const on = i === level;
-          return (
-            <button
-              key={lv.short}
-              onClick={() => onSelect(i)}
-              className="relative rounded-full transition-colors duration-300"
-              style={{ padding: '7px 14px', color: on ? '#fff' : 'rgba(255,255,255,0.5)' }}
-            >
-              {on && (
-                <span className="absolute inset-0 rounded-full" style={{ background: 'linear-gradient(180deg,#A063E0,#7C3FB0)', boxShadow: '0 6px 18px rgba(155,91,214,0.55), inset 0 1px 0 rgba(255,255,255,0.25)' }}>
-                  <span className="absolute left-2.5 right-2.5 bottom-[3px] h-[2px] rounded-full" style={{ background: 'rgba(255,255,255,0.5)', transform: `scaleX(${auto.toFixed(3)})`, transformOrigin: 'left' }} />
-                </span>
-              )}
-              <span className="relative font-body font-semibold text-[12.5px] whitespace-nowrap">{lv.short}</span>
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-/* ---------- en oppgaverad ---------- */
 function TaskRow({ task, level, q, i, clock }) {
-  const a = AC[task.accent];
-  const rowIn = easeOutCubic(seg(q, 0.12 + i * 0.05, 0.3 + i * 0.05));
-  const aiP = easeOutCubic(seg(q, 0.3 + i * 0.1, 0.5 + i * 0.1));
-  const doneAt = 0.3 + i * 0.16;
-  const doneP = easeOutCubic(seg(q, doneAt, doneAt + 0.14));
-  const dim = level === 2 ? 1 - 0.42 * doneP : 1;
+  const rowIn = easeOutCubic(seg(q, 0.08 + i * 0.05, 0.24 + i * 0.05));
+  const aiP = easeOutCubic(seg(q, 0.28 + i * 0.1, 0.46 + i * 0.1));
+  const doneAt = 0.18 + i * 0.12;
+  const doneP = easeOutCubic(seg(q, doneAt, doneAt + 0.1));
+  const collapseP = level === 2 ? easeInOutCubic(seg(q, doneAt + 0.12, doneAt + 0.3)) : 0;
 
   return (
-    <div
-      className="flex items-center gap-3 rounded-xl px-3.5 py-3"
-      style={{ background: 'rgba(255,255,255,0.045)', border: '1px solid rgba(255,255,255,0.07)', opacity: rowIn * dim, transform: `translateY(${((1 - rowIn) * 8).toFixed(1)}px)`, transition: 'opacity 450ms ease, background 450ms ease' }}
-    >
-      <span className="inline-flex items-center justify-center shrink-0" style={{ width: 34, height: 34, borderRadius: 10, background: a.bg }}>
-        <task.Icon style={{ width: 16, height: 16, color: a.fg }} strokeWidth={2} />
-      </span>
-      <div className="flex-1 min-w-0">
-        <p className="font-body font-semibold text-white/90 text-[14px] truncate">{task.title}</p>
-        <p className="font-body text-white/45 text-[12px] truncate mt-0.5">{task.meta}</p>
-        <div style={{ height: 16, marginTop: 3 }}>
-          {level === 1 && aiP > 0.01 && (
-            <span className="inline-flex items-center gap-1.5" style={{ opacity: Math.min(1, aiP * 1.5) }}>
-              <Sparkles style={{ width: 12, height: 12, color: AC.lav.fg }} strokeWidth={2} />
-              <span className="font-body font-medium text-[12px]" style={{ color: AC.lav.fg }}>
-                AI foreslår: {i === 0 ? typed(task.ai, seg(q, 0.34, 0.62)) : task.ai}
+    <div style={{ maxHeight: level === 2 ? `${((1 - collapseP) * ROWH).toFixed(1)}px` : 'none', overflow: level === 2 ? 'hidden' : 'visible', opacity: rowIn * (1 - collapseP) }}>
+      <div className="flex items-center gap-4" style={{ padding: '17px 2px', borderTop: i === 0 ? 'none' : `1px solid ${HAIR}`, transform: `translateY(${((1 - rowIn) * 8).toFixed(1)}px)` }}>
+        <Indicator level={level} doneP={doneP} />
+        <div className="flex-1 min-w-0">
+          <p className="font-body font-semibold text-[16px] sm:text-[17px] truncate" style={{ color: level === 2 && doneP > 0.5 ? INK(0.5) : INK(0.92), textDecoration: level === 2 && doneP > 0.6 ? 'line-through' : 'none', textDecorationColor: INK(0.25) }}>{task.title}</p>
+          <p className="font-body text-[13px] sm:text-[13.5px] truncate mt-0.5" style={{ color: QUIET(0.95) }}>
+            <span style={{ color: QUIET(0.7) }}>{task.kind}</span> · {task.meta}
+          </p>
+          <div style={{ height: 18, marginTop: 3 }}>
+            {level === 1 && aiP > 0.01 && (
+              <span className="inline-flex items-center gap-1.5" style={{ opacity: Math.min(1, aiP * 1.5) }}>
+                <Sparkles style={{ width: 13, height: 13, color: LAV(0.95) }} strokeWidth={2} />
+                <span className="font-body font-medium text-[13px]" style={{ color: LAV(0.95) }}>{i === 0 ? typed(task.ai, seg(q, 0.32, 0.6)) : task.ai}</span>
               </span>
-            </span>
+            )}
+            {level === 2 && doneP > 0.01 && (
+              <span className="font-body font-medium text-[13px]" style={{ color: EMER(0.9), opacity: doneP }}>{task.ai} · utført</span>
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-center justify-end shrink-0" style={{ minWidth: 96 }}>
+          {level === 0 && (
+            <span className="inline-flex items-center gap-1 font-body text-[13.5px]" style={{ color: QUIET(0.9) }}>Gjør selv <ChevronRight style={{ width: 15, height: 15 }} strokeWidth={2} /></span>
           )}
-          {level === 2 && doneP > 0.01 && (
-            <span className="font-body font-medium text-[12px]" style={{ color: AC.emer.fg, opacity: doneP }}>{task.ai} · ferdig</span>
+          {level === 1 && (
+            <span className="inline-flex items-center font-body font-semibold text-[13px]" style={{ padding: '6px 15px', borderRadius: 999, color: LAV(0.95), background: LAV(0.1), opacity: Math.min(1, aiP * 1.5), transform: `translateY(${((1 - Math.min(1, aiP * 1.5)) * 4).toFixed(1)}px)` }}>Godkjenn</span>
+          )}
+          {level === 2 && doneP < 0.55 && (
+            <span className="inline-flex items-center gap-1.5">
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: LAV(0.9), opacity: 0.4 + 0.6 * Math.abs(Math.sin(clock * 3)) }} />
+              <span className="font-body text-[13px]" style={{ color: LAV(0.9) }}>Utfører…</span>
+            </span>
           )}
         </div>
-      </div>
-
-      <div className="flex items-center justify-end shrink-0" style={{ minWidth: 92 }}>
-        {level === 0 && (
-          <span className="inline-flex items-center gap-1 text-white/45 font-body text-[12.5px]">Gjør selv <ChevronRight style={{ width: 15, height: 15 }} strokeWidth={2} /></span>
-        )}
-        {level === 1 && (
-          <span className="inline-flex items-center rounded-full font-body font-semibold text-[12.5px] text-white" style={{ padding: '6px 14px', background: 'linear-gradient(180deg,#A063E0,#7C3FB0)', boxShadow: '0 4px 12px rgba(155,91,214,0.45)', opacity: Math.min(1, aiP * 1.5), transform: `translateY(${((1 - Math.min(1, aiP * 1.5)) * 4).toFixed(1)}px)` }}>Godkjenn</span>
-        )}
-        {level === 2 && (
-          doneP < 0.55 ? (
-            <span className="inline-flex items-center gap-1.5">
-              <span style={{ width: 7, height: 7, borderRadius: '50%', background: AC.lav.fg, opacity: 0.4 + 0.6 * Math.abs(Math.sin(clock * 3)) }} />
-              <span className="font-body text-[12.5px]" style={{ color: AC.lav.fg }}>Utfører…</span>
-            </span>
-          ) : (
-            <span className="inline-flex items-center gap-1.5">
-              <Check p={doneP} size={18} />
-              <span className="font-body font-medium text-[12.5px]" style={{ color: AC.emer.fg }}>Utført</span>
-            </span>
-          )
-        )}
       </div>
     </div>
   );
@@ -167,8 +103,6 @@ function TaskRow({ task, level, q, i, clock }) {
 /* ===================== HOVEDKOMPONENT ===================== */
 export function SeksjonAutopilot() {
   const sectionRef = useRef(null);
-  const tiltRef = useRef(null);
-  const frameRef = useRef(null);
   const stepStartRef = useRef(0);
   const autoElapsedRef = useRef(0);
   const prevRef = useRef(0);
@@ -184,7 +118,7 @@ export function SeksjonAutopilot() {
     setReduce(window.matchMedia('(prefers-reduced-motion: reduce)').matches);
     const el = sectionRef.current;
     if (!el) return;
-    const io = new IntersectionObserver(([e]) => setInView(e.isIntersecting), { threshold: 0.15 });
+    const io = new IntersectionObserver(([e]) => setInView(e.isIntersecting), { threshold: 0.2 });
     io.observe(el);
     return () => io.disconnect();
   }, []);
@@ -227,169 +161,90 @@ export function SeksjonAutopilot() {
     setProg({ rev: 0, auto: 0 });
   };
 
-  /* subtil dybde mot peker */
-  useEffect(() => {
-    const zone = frameRef.current;
-    const inner = tiltRef.current;
-    if (!zone || !inner) return;
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    if (window.matchMedia('(pointer: coarse)').matches) return;
-    const st = { tx: 0, ty: 0, cx: 0, cy: 0, raf: 0, hover: false };
-    const step = () => {
-      st.cx += (st.tx - st.cx) * 0.06;
-      st.cy += (st.ty - st.cy) * 0.06;
-      inner.style.transform = `rotateX(${(-st.cy * 1.1).toFixed(3)}deg) rotateY(${(st.cx * 1.4).toFixed(3)}deg)`;
-      if (st.hover || Math.abs(st.tx - st.cx) + Math.abs(st.ty - st.cy) > 0.001) st.raf = requestAnimationFrame(step);
-      else st.raf = 0;
-    };
-    const kick = () => { if (!st.raf) st.raf = requestAnimationFrame(step); };
-    const onMove = (e) => {
-      const r = zone.getBoundingClientRect();
-      st.tx = Math.max(-1, Math.min(1, ((e.clientX - r.left) / r.width - 0.5) * 2));
-      st.ty = Math.max(-1, Math.min(1, ((e.clientY - r.top) / r.height - 0.5) * 2));
-      st.hover = true; kick();
-    };
-    const onLeave = () => { st.tx = 0; st.ty = 0; st.hover = false; kick(); };
-    zone.addEventListener('pointermove', onMove, { passive: true });
-    zone.addEventListener('pointerleave', onLeave, { passive: true });
-    return () => { zone.removeEventListener('pointermove', onMove); zone.removeEventListener('pointerleave', onLeave); if (st.raf) cancelAnimationFrame(st.raf); };
-  }, []);
-
   const hoverOn = () => { pausedRef.current = true; };
   const hoverOff = () => { pausedRef.current = false; };
 
   const q = prog.rev;
-  const resolved = easeInOutCubic(seg(q, 0.2, 0.95));
-  const count = level < 2 ? 5 : Math.round(5 * (1 - resolved));
+  let count = TASKS.length;
+  if (level === 2) {
+    count = TASKS.reduce((acc, _, i) => {
+      const doneAt = 0.18 + i * 0.12;
+      return acc - (easeOutCubic(seg(q, doneAt, doneAt + 0.1)) > 0.5 ? 1 : 0);
+    }, TASKS.length);
+  }
+  const emptyP = level === 2 ? easeOutCubic(seg(q, 0.9, 1.0)) : 0;
   const statusLine = level === 0
-    ? 'Du har 5 handlinger som venter — og gjør hvert steg selv.'
+    ? 'Du gjør hvert steg selv.'
     : level === 1
-      ? 'AI har forberedt 5 forslag — godkjenn med ett klikk.'
-      : count > 0 ? `Motoren utfører automatisk … ${count} igjen i kø.` : 'Alt er håndtert — 0 handlinger i kø.';
-  const dot = 0.4 + 0.6 * Math.abs(Math.sin(clock * 2));
-  const auroraShift = `translate3d(${(Math.sin(clock * 0.25) * 2).toFixed(2)}%, ${(Math.cos(clock * 0.2) * 2).toFixed(2)}%, 0)`;
+      ? 'Motoren forbereder hvert steg. Du godkjenner.'
+      : count > 0 ? 'Motoren utfører — uten at du løfter en finger.' : 'Alt er håndtert.';
 
   return (
     <section ref={sectionRef} className="relative overflow-hidden bg-[#FEFBFA] text-ink">
-      <div className="pointer-events-none absolute inset-0" style={{ background: 'radial-gradient(ellipse 50% 44% at 90% 2%, rgba(155,91,214,0.05), transparent 70%)' }} />
+      <div className="pointer-events-none absolute inset-0" style={{ background: 'radial-gradient(ellipse 46% 40% at 50% -6%, rgba(155,91,214,0.05), transparent 70%)' }} />
 
-      <div className="relative max-w-shell mx-auto px-6 sm:px-10 lg:px-16 py-24 sm:py-28 lg:py-32">
+      <div className="relative max-w-shell mx-auto px-6 sm:px-10 lg:px-16 py-24 sm:py-28 lg:py-36">
         {/* MANIFEST */}
-        <div className="max-w-3xl">
+        <div className="max-w-2xl mx-auto text-center">
           <p className="font-body font-semibold uppercase text-[11px] tracking-[0.28em] text-taupe">En ny måte å drive utleie på</p>
-          <h2 className="mt-5 font-heading font-bold tracking-[-0.035em] leading-[1.03] text-[clamp(34px,5vw,62px)] text-ink">
+          <h2 className="mt-5 font-heading font-bold tracking-[-0.035em] leading-[1.04] text-[clamp(32px,4.6vw,58px)] text-ink">
             Ikke et verktøy du betjener.<br />
             <span className="dh-ink-shine">En motor som driver.</span>
           </h2>
-          <p className="mt-7 text-[19px] leading-relaxed text-quiet max-w-2xl">
-            DigiHome er ikke et system med hundre funksjoner du må lære deg. Det er én motor — en operasjonssentral som finner selv hva som haster, foreslår neste steg, og utfører når du lar den. Skru opp autopiloten og se den jobbe.
+          <p className="mt-6 text-[18px] leading-relaxed text-quiet max-w-xl mx-auto">
+            Ikke hundre funksjoner — én motor. Den finner selv hva som haster, foreslår neste steg, og utfører når du lar den. Skru opp autopiloten og se listen tømme seg selv.
           </p>
         </div>
 
-        {/* KONTROLLROMMET */}
-        <div className="mt-14 lg:mt-20" style={{ perspective: '2000px' }} onPointerEnter={hoverOn} onPointerLeave={hoverOff}>
-          <div ref={tiltRef} style={{ transformStyle: 'preserve-3d', willChange: 'transform' }}>
-            <div
-              ref={frameRef}
-              className="relative overflow-hidden rounded-[22px] sm:rounded-[30px]"
-              style={{ background: 'radial-gradient(130% 120% at 82% -12%, #271E3B 0%, #16121F 46%, #0E0B16 100%)', boxShadow: '0 2px 6px rgba(22,18,31,0.12), 0 70px 130px -46px rgba(40,30,70,0.55)', border: '1px solid rgba(255,255,255,0.06)' }}
-            >
-              {/* aurora + korn */}
-              <div className="pointer-events-none absolute inset-0 overflow-hidden">
-                <div className="absolute" style={{ left: '0%', top: '-20%', width: '60%', height: '90%', background: `radial-gradient(ellipse 55% 55% at 50% 50%, rgba(155,91,214,${(0.12 + 0.05 * clamp01(level / 2)).toFixed(3)}), transparent 70%)`, transform: auroraShift }} />
-                <div className="absolute" style={{ right: '-6%', bottom: '-25%', width: '58%', height: '90%', background: `radial-gradient(ellipse 55% 55% at 50% 50%, rgba(70,214,160,${(0.05 + 0.07 * clamp01(level / 2)).toFixed(3)}), transparent 70%)` }} />
-              </div>
-
-              <div className="relative p-5 sm:p-7 lg:p-9">
-                {/* header */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div>
-                    <div className="flex items-center gap-2.5">
-                      <Gauge style={{ width: 19, height: 19, color: AC.lav.fg }} strokeWidth={2} />
-                      <span className="font-heading font-bold text-white/92 text-[16px] tracking-[-0.01em]">Operasjonssentral</span>
-                      <span className="inline-flex items-center gap-1.5 ml-1">
-                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: level === 2 ? AC.emer.fg : AC.lav.fg, opacity: dot }} />
+        {/* FOKUSERT SPOR */}
+        <div className="mt-14 lg:mt-16 max-w-2xl mx-auto" onPointerEnter={hoverOn} onPointerLeave={hoverOff}>
+          {/* autopilot-kontroll */}
+          <div className="flex flex-col items-center">
+            <div className="inline-flex items-center p-1 rounded-full" style={{ background: 'rgba(22,18,31,0.05)' }}>
+              {LEVELS.map((lv, i) => {
+                const on = i === level;
+                return (
+                  <button key={lv.tag} onClick={() => selectLevel(i)} className="relative rounded-full transition-colors duration-300" style={{ padding: '8px 18px', color: on ? INK(0.95) : QUIET(0.9) }}>
+                    {on && (
+                      <span className="absolute inset-0 rounded-full" style={{ background: '#fff', boxShadow: '0 1px 3px rgba(22,18,31,0.12), 0 4px 12px rgba(22,18,31,0.06)' }}>
+                        <span className="absolute left-3.5 right-3.5 bottom-[3px] h-[2px] rounded-full" style={{ background: 'linear-gradient(90deg,#9B5BD6,#CF97FC)', transform: `scaleX(${prog.auto.toFixed(3)})`, transformOrigin: 'left' }} />
                       </span>
-                    </div>
-                    <p className="mt-1.5 font-body text-white/55 text-[13.5px]">{statusLine}</p>
-                  </div>
-                  <AutopilotSwitch level={level} auto={prog.auto} onSelect={selectLevel} />
-                </div>
-
-                {/* KPI */}
-                <div className="mt-6 grid grid-cols-3 sm:grid-cols-5 gap-2.5 sm:gap-3">
-                  {KPIS.map((k) => (
-                    <div key={k.l} className="rounded-xl px-3.5 py-3" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                      <p className="font-heading font-bold text-white/92 text-[20px] leading-none tabular-nums">{k.v}</p>
-                      <p className="mt-1.5 font-body uppercase text-[9.5px] tracking-[0.14em] text-white/40">{k.l}</p>
-                    </div>
-                  ))}
-                </div>
-
-                {/* body */}
-                <div className="mt-5 grid lg:grid-cols-[1.55fr_1fr] gap-5">
-                  {/* prioritetskø */}
-                  <div>
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="font-body font-semibold uppercase text-[10px] tracking-[0.22em] text-white/40">Prioritetskø</span>
-                      <div className="hidden sm:flex items-center gap-1.5">
-                        {['Alle', 'Depositum', 'Drift'].map((f, i) => (
-                          <span key={f} className="font-body text-[11px] rounded-full px-2.5 py-1" style={{ background: i === 0 ? 'rgba(155,91,214,0.18)' : 'rgba(255,255,255,0.05)', color: i === 0 ? AC.lav.fg : 'rgba(255,255,255,0.5)' }}>{f}</span>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="space-y-2.5">
-                      {TASKS.map((t, i) => (
-                        <TaskRow key={i} task={t} level={level} q={q} i={i} clock={clock} />
-                      ))}
-                    </div>
-                    {/* footer-status */}
-                    <div className="mt-4 flex items-center gap-2">
-                      <Sparkles style={{ width: 15, height: 15, color: level === 2 ? AC.emer.fg : AC.lav.fg }} strokeWidth={2} />
-                      <span className="font-body text-[13px] text-white/55">
-                        {level === 0 ? 'Du gjør hvert steg selv.' : level === 1 ? 'Motoren forbereder hvert steg. Du godkjenner.' : 'Motoren driver alt selv — du trenger ikke gjøre noe.'}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* høyre skinne */}
-                  <div className="space-y-4">
-                    <Panel label="Kommende frister">
-                      <div className="flex items-center gap-3">
-                        <span className="inline-flex flex-col items-center justify-center shrink-0" style={{ width: 42, height: 42, borderRadius: 12, background: AC.emer.bg }}>
-                          <span className="font-heading font-bold text-[15px] leading-none" style={{ color: AC.emer.fg }}>16</span>
-                          <span className="font-body text-[8px] uppercase tracking-wider mt-0.5" style={{ color: AC.emer.fg }}>dager</span>
-                        </span>
-                        <div className="min-w-0">
-                          <p className="font-body font-semibold text-white/90 text-[13.5px] truncate">Innflytting</p>
-                          <p className="font-body text-white/45 text-[12px] truncate mt-0.5">Martin Test · Olaf Ryes vei 11C</p>
-                        </div>
-                        <Clock style={{ width: 15, height: 15, color: 'rgba(255,255,255,0.3)', marginLeft: 'auto' }} strokeWidth={2} />
-                      </div>
-                    </Panel>
-
-                    <Panel label="Pipeline">
-                      <div className="grid grid-cols-3 gap-x-3 gap-y-4">
-                        {PIPELINE.map((s, idx) => {
-                          const active = s.n > 0;
-                          return (
-                            <div key={s.l}>
-                              <div className="flex items-baseline gap-1.5">
-                                <span className="font-heading font-bold text-[16px] tabular-nums" style={{ color: active ? '#fff' : 'rgba(255,255,255,0.35)' }}>{s.n}</span>
-                              </div>
-                              <p className="font-body text-[10.5px] text-white/40 mt-1">{s.l}</p>
-                              <div className="mt-1.5 h-[3px] rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.08)' }}>
-                                <span className="block h-full rounded-full" style={{ width: active ? '70%' : '0%', background: `linear-gradient(90deg, ${AC.lav.fg}, #7C3FB0)` }} />
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </Panel>
-                  </div>
-                </div>
-              </div>
+                    )}
+                    <span className="relative font-body font-semibold text-[13.5px] whitespace-nowrap">{lv.tag}</span>
+                  </button>
+                );
+              })}
             </div>
+            <p className="mt-4 font-body text-[14px] text-quiet">{statusLine}</p>
+          </div>
+
+          {/* listen */}
+          <div className="relative mt-10" style={{ minHeight: ROWH * TASKS.length }}>
+            <div aria-hidden={emptyP > 0.5}>
+              {TASKS.map((t, i) => (
+                <TaskRow key={i} task={t} level={level} q={q} i={i} clock={clock} />
+              ))}
+            </div>
+
+            {/* rolig tom-tilstand */}
+            {emptyP > 0.01 && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none" style={{ opacity: emptyP, transform: `translateY(${((1 - emptyP) * 10).toFixed(1)}px)` }}>
+                <span className="relative inline-flex items-center justify-center" style={{ width: 56, height: 56, borderRadius: '50%', background: EMER(0.1) }}>
+                  <span className="absolute pointer-events-none" style={{ inset: -10, borderRadius: '50%', background: `radial-gradient(circle, ${EMER(0.16)}, transparent 70%)`, opacity: 0.5 + 0.5 * Math.abs(Math.sin(clock * 1.5)) }} />
+                  <svg viewBox="0 0 24 24" className="relative" style={{ width: 26, height: 26 }} fill="none">
+                    <path d="M5 12.5 L10 17.5 L19 7" stroke={EMER(0.95)} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </span>
+                <p className="mt-5 font-heading font-bold text-[24px] tracking-[-0.02em] text-ink">Alt er gjort.</p>
+                <p className="mt-2 font-body text-[15px] text-quiet max-w-xs">Ingenting krever deg akkurat nå. Motoren tar resten — døgnet rundt.</p>
+              </div>
+            )}
+          </div>
+
+          {/* diskret teller */}
+          <div className="mt-6 flex items-center justify-center gap-2">
+            <span className="font-heading font-bold tabular-nums text-[20px] tracking-[-0.02em] transition-colors duration-300" style={{ color: count === 0 ? EMER(0.9) : INK(0.9) }}>{count}</span>
+            <span className="font-body text-[14px] text-quiet">{count === 1 ? 'oppgave igjen i køen' : 'oppgaver igjen i køen'}</span>
           </div>
         </div>
       </div>
