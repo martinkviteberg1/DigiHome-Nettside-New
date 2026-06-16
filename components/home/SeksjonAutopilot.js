@@ -1,22 +1,17 @@
 'use client';
 
 /*
-  Seksjon 2 (/2) — «Grensesnittet som bygger seg selv».
-  Ingen overskrift. Samme bakgrunn som heroen. Kun én hårfin ramme rundt et
-  dashboard — innholdet lever rett på papiret (ingen bokser, kun luft og linjer).
-
-  Koreografi (spilles av når seksjonen kommer i syne):
-    1) En nydelig typewriter skriver et kort manifest inni rammen.
-    2) Manifestet toner ut og grensesnittet vokser fram — topplinje, moduler,
-       sanntidsfeed og nøkkeltall stiger inn i tur.
-    3) Motoren går live: hendelser kommer inn, analyseres, utføres og logges,
-       i en rolig, uendelig loop.
+  Seksjon 2 (/2) — «Systemet i drift», verdensklasse-utgave.
+  Kinematisk manifest → grensesnittet vokser fram → motoren går live.
+  Dashboardet er nå en egen, ren produktflate (kjølig hvit) som så vidt løfter
+  seg fra det varme papiret: mykt topplys, flerlags skygge, ultrafin grain,
+  ekte DigiHome-merke, Right Grotesk på tallene, og et levende innsikts-panel.
 */
 
 import { useEffect, useRef, useState } from 'react';
 import {
   Megaphone, LineChart, CalendarRange, MessageSquare, Wallet,
-  Sparkles, Check, ShieldCheck,
+  Sparkles, Check, TrendingUp,
 } from 'lucide-react';
 import { seg, clamp01, easeOutCubic, easeInOutCubic, typed } from '@/components/video/filmUtils';
 
@@ -25,34 +20,40 @@ const QUIET = (a = 1) => `rgba(124,116,102,${a})`;
 const LAV = (a = 1) => `rgba(155,91,214,${a})`;
 const EMER = (a = 1) => `rgba(24,121,78,${a})`;
 const HAIR = 'rgba(22,18,31,0.05)';
+const HAIR_OUT = 'rgba(22,18,31,0.07)';
+
+const SURFACE = '#FFFFFF';                 // kjølig, ren produktflate
+const PANEL = 'rgba(28,30,54,0.022)';      // hvisken av kjølig tint på sidepaneler
+const ACTIVE_BG = 'rgba(155,91,214,0.045)';
+const GRAIN =
+  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")";
 
 const SECTION_BG =
   'radial-gradient(ellipse 64% 42% at 50% 58%, rgba(155,91,214,0.038), transparent 72%)';
 
-const EVENT_DUR = 6.2; // sekunder per hendelse i live-loopen
+const EVENT_DUR = 6.2;
 
 /* manifest — avkreft den gamle måten, avslør den nye */
 const NEG = ['Ingen dashboards.', 'Ingen klikk.', 'Ingen funksjoner.'];
 const FINAL = 'Bare autopilot.';
 const SUBLINE = 'Et helt nytt system for utleie. Du slår det på — så driver det seg selv.';
 
-/* manifest-koreografi (sekunder) */
 const NEG_START = 0.6;
-const NEG_CYCLE = 1.25;     // type + hold + erase per negasjon
+const NEG_CYCLE = 1.25;
 const NEG_TYPE = 0.55;
 const NEG_HOLD = 0.4;
 const NEG_ERASE = 0.3;
-const FINAL_START = NEG_START + NEG.length * NEG_CYCLE;  // ≈ 4.35
+const FINAL_START = NEG_START + NEG.length * NEG_CYCLE;
 const FINAL_DUR = 1.0;
 
-/* reveal-tidslinje (sekunder) */
 const T = {
   manOut: [FINAL_START + 3.0, FINAL_START + 3.8],
   topbar: [FINAL_START + 3.3, FINAL_START + 3.95],
   railBase: FINAL_START + 3.6,
   railStagger: 0.09,
   feed: [FINAL_START + 3.95, FINAL_START + 4.7],
-  metrics: [FINAL_START + 4.5, FINAL_START + 5.15],
+  insight: [FINAL_START + 4.3, FINAL_START + 5.0],
+  metrics: [FINAL_START + 4.7, FINAL_START + 5.35],
   liveStart: FINAL_START + 4.0,
 };
 
@@ -77,7 +78,35 @@ function Dots({ clock }) {
   return <span style={{ opacity: 0.85 }}>{'.'.repeat(n)}</span>;
 }
 
-/* ─────────── aktiv hendelse (flat, rett på papiret) ─────────── */
+/* ─────────── levende graf (sparkline) ─────────── */
+function Sparkline({ drawP = 1 }) {
+  const W = 250, H = 60, pad = 5;
+  const data = [10, 15, 12, 19, 16, 25, 22, 31, 28, 39, 36, 47];
+  const n = data.length;
+  const max = Math.max(...data), min = Math.min(...data);
+  const xs = (i) => pad + (i / (n - 1)) * (W - pad * 2);
+  const ys = (v) => H - pad - ((v - min) / (max - min)) * (H - pad * 2);
+  let dLine = '';
+  data.forEach((v, i) => { dLine += `${i === 0 ? 'M' : 'L'} ${xs(i).toFixed(1)} ${ys(v).toFixed(1)} `; });
+  const dArea = `${dLine} L ${xs(n - 1).toFixed(1)} ${H} L ${xs(0).toFixed(1)} ${H} Z`;
+  const lastX = xs(n - 1), lastY = ys(data[n - 1]);
+  const dotOn = drawP > 0.9;
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H} preserveAspectRatio="none">
+      <defs>
+        <linearGradient id="dh-spark" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="rgba(155,91,214,0.20)" />
+          <stop offset="100%" stopColor="rgba(155,91,214,0)" />
+        </linearGradient>
+      </defs>
+      <path d={dArea} fill="url(#dh-spark)" style={{ opacity: drawP }} />
+      <path d={dLine} fill="none" stroke="#9B5BD6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" pathLength="1" style={{ strokeDasharray: 1, strokeDashoffset: 1 - drawP }} />
+      {dotOn && <circle cx={lastX} cy={lastY} r="3" fill="#9B5BD6" />}
+    </svg>
+  );
+}
+
+/* ─────────── aktiv hendelse (fokusert kort) ─────────── */
 function ActiveEvent({ ev, p, clock }) {
   const acting = p >= 0.4 && p < 0.74;
   const actP = seg(p, 0.4, 0.7);
@@ -92,62 +121,58 @@ function ActiveEvent({ ev, p, clock }) {
   const underP = clamp01(seg(p, 0.1, 0.42));
 
   return (
-    <div className="relative">
-      <div className="flex items-start gap-4">
-        <span className="h-11 w-11 shrink-0 rounded-[13px] inline-flex items-center justify-center transition-colors duration-500" style={{ background: resolved ? EMER(0.1) : LAV(0.1) }}>
-          <ModIcon style={{ width: 21, height: 21, color: resolved ? EMER(0.95) : LAV(0.95) }} strokeWidth={1.8} />
+    <div className="relative rounded-[16px] px-5 py-4" style={{ background: resolved ? EMER(0.045) : ACTIVE_BG, border: `1px solid ${resolved ? EMER(0.14) : LAV(0.13)}`, transition: 'background 500ms, border-color 500ms' }}>
+      <div className="flex items-start gap-3.5">
+        <span className="h-10 w-10 shrink-0 rounded-[12px] inline-flex items-center justify-center" style={{ background: resolved ? EMER(0.12) : LAV(0.13) }}>
+          <ModIcon style={{ width: 20, height: 20, color: resolved ? EMER(0.95) : LAV(0.98) }} strokeWidth={1.9} />
         </span>
-
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-3">
-            <p className="font-body font-semibold text-[16px] sm:text-[17px] text-ink truncate">{ev.title}</p>
-            <span className="hidden sm:inline-flex items-center gap-1.5 shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors duration-300" style={{ color: phaseColor, background: resolved ? EMER(0.08) : LAV(0.08) }}>
+            <p className="font-heading font-bold text-[16px] tracking-[-0.012em] text-ink truncate">{ev.title}</p>
+            <span className="hidden sm:inline-flex items-center gap-1.5 shrink-0 rounded-full px-2.5 py-1 text-[10.5px] font-semibold" style={{ color: phaseColor, background: SURFACE }}>
               {!resolved && <span className="h-1.5 w-1.5 rounded-full" style={{ background: phaseColor, opacity: 0.5 + 0.5 * Math.abs(Math.sin(clock * 3)) }} />}
               {resolved && <Check className="h-3 w-3" strokeWidth={3} />}
               {phaseLabel}
             </span>
           </div>
-          <p className="mt-1 font-body text-[13px] text-quiet truncate">{ev.meta}</p>
+          <p className="mt-0.5 font-body text-[12.5px] text-quiet truncate">{ev.meta}</p>
 
-          {/* prosesslinje (fast høyde) */}
-          <div style={{ height: 22, marginTop: 12 }}>
+          <div style={{ height: 22, marginTop: 11 }}>
             {analyzing && (
               <span className="inline-flex items-center gap-2" style={{ opacity: easeOutCubic(seg(p, 0.1, 0.2)) }}>
                 <span className="relative inline-flex" style={{ width: 13, height: 13 }}>
                   <span className="absolute inset-0 rounded-full border-2" style={{ borderColor: LAV(0.25), borderTopColor: LAV(0.95), transform: `rotate(${(clock * 320) % 360}deg)` }} />
                 </span>
-                <span className="font-body text-[13.5px]" style={{ color: LAV(0.95) }}>{ev.analyze}<Dots clock={clock} /></span>
+                <span className="font-body text-[13px]" style={{ color: LAV(0.95) }}>{ev.analyze}<Dots clock={clock} /></span>
               </span>
             )}
             {acting && (
               <span className="inline-flex items-center gap-2">
                 <Sparkles className="h-3.5 w-3.5" style={{ color: LAV(0.95) }} strokeWidth={2} />
-                <span className="font-body font-medium text-[13.5px]" style={{ color: LAV(0.98) }}>
+                <span className="font-body font-medium text-[13px]" style={{ color: LAV(0.98) }}>
                   {typed(ev.act, actP)}
                   {actP < 1 && <span className="dh-caret-bar" style={{ background: LAV(0.9) }} />}
                 </span>
               </span>
             )}
             {resolved && !acting && (
-              <span className="font-body font-medium text-[13.5px]" style={{ color: INK(0.5) }}>{ev.act}</span>
+              <span className="font-body font-medium text-[13px]" style={{ color: INK(0.5) }}>{ev.act}</span>
             )}
           </div>
 
-          {/* resultatlinje (fast høyde) */}
-          <div style={{ height: 20, marginTop: 4 }}>
+          <div style={{ height: 18, marginTop: 3 }}>
             {resolved && (
               <span className="inline-flex items-center gap-1.5" style={{ opacity: resolveP, transform: `translateY(${((1 - resolveP) * 4).toFixed(1)}px)` }}>
                 <span className="inline-flex items-center justify-center rounded-full" style={{ width: 15, height: 15, background: EMER(0.95) }}>
                   <Check className="h-2.5 w-2.5 text-white" strokeWidth={3.4} />
                 </span>
-                <span className="font-body font-semibold text-[13px]" style={{ color: EMER(0.9) }}>{ev.result}</span>
+                <span className="font-body font-semibold text-[12.5px]" style={{ color: EMER(0.9) }}>{ev.result}</span>
               </span>
             )}
           </div>
 
-          {/* hårfin fremdriftslinje under analyse */}
-          <div className="mt-3.5 h-px w-full" style={{ background: HAIR }}>
-            <div className="h-px" style={{ width: `${(resolved ? 1 : underP) * 100}%`, background: resolved ? EMER(0.5) : LAV(0.6), transition: 'background 400ms' }} />
+          <div className="mt-3 h-px w-full rounded-full" style={{ background: 'rgba(22,18,31,0.08)' }}>
+            <div className="h-px rounded-full" style={{ width: `${(resolved ? 1 : underP) * 100}%`, background: resolved ? EMER(0.55) : LAV(0.65), transition: 'background 400ms' }} />
           </div>
         </div>
       </div>
@@ -155,61 +180,58 @@ function ActiveEvent({ ev, p, clock }) {
   );
 }
 
-/* ─────────── neste i kø ─────────── */
 function QueueRow({ ev, depth }) {
   const Mod = MODULES[ev.m];
   const ModIcon = Mod.icon;
-  const op = depth === 0 ? 0.78 : 0.5;
+  const op = depth === 0 ? 0.82 : 0.55;
   return (
-    <div className="flex items-center gap-3 py-2.5" style={{ opacity: op }}>
-      <span className="h-8 w-8 shrink-0 rounded-[10px] inline-flex items-center justify-center" style={{ background: 'rgba(155,91,214,0.07)' }}>
+    <div className="flex items-center gap-3 py-2.5 px-1" style={{ opacity: op }}>
+      <span className="h-8 w-8 shrink-0 rounded-[10px] inline-flex items-center justify-center" style={{ background: 'rgba(155,91,214,0.08)' }}>
         <ModIcon className="h-4 w-4" style={{ color: LAV(0.7) }} strokeWidth={1.9} />
       </span>
       <div className="flex-1 min-w-0">
-        <p className="font-body text-[13.5px] text-ink/75 truncate">{ev.title}</p>
-        <p className="font-body text-[11.5px] truncate" style={{ color: QUIET(0.85) }}>{ev.meta}</p>
+        <p className="font-body text-[13px] text-ink/75 truncate">{ev.title}</p>
+        <p className="font-body text-[11px] truncate" style={{ color: QUIET(0.85) }}>{ev.meta}</p>
       </div>
-      <span className="inline-flex items-center gap-1.5 shrink-0 font-body text-[12px]" style={{ color: QUIET(0.85) }}>
+      <span className="inline-flex items-center gap-1.5 shrink-0 font-body text-[11.5px]" style={{ color: QUIET(0.85) }}>
         <span className="h-2 w-2 rounded-full" style={{ border: `1.5px solid ${QUIET(0.45)}` }} /> I kø
       </span>
     </div>
   );
 }
 
-/* ─────────── nylig håndtert ─────────── */
 function HistoryRow({ ev, depth }) {
   const Mod = MODULES[ev.m];
   const ModIcon = Mod.icon;
-  const op = depth === 0 ? 0.6 : depth === 1 ? 0.4 : 0.24;
+  const op = depth === 0 ? 0.6 : 0.35;
   return (
-    <div className="flex items-center gap-3 py-2.5" style={{ opacity: op }}>
+    <div className="flex items-center gap-3 py-2.5 px-1" style={{ opacity: op }}>
       <span className="h-8 w-8 shrink-0 rounded-[10px] inline-flex items-center justify-center" style={{ background: 'rgba(22,18,31,0.04)' }}>
         <ModIcon className="h-4 w-4" style={{ color: INK(0.5) }} strokeWidth={1.9} />
       </span>
       <div className="flex-1 min-w-0">
-        <p className="font-body text-[13.5px] text-ink/70 truncate">{ev.title}</p>
+        <p className="font-body text-[13px] text-ink/70 truncate">{ev.title}</p>
       </div>
-      <span className="inline-flex items-center gap-1 shrink-0 font-body text-[12px]" style={{ color: EMER(0.7) }}>
+      <span className="inline-flex items-center gap-1 shrink-0 font-body text-[11.5px]" style={{ color: EMER(0.7) }}>
         <Check className="h-3 w-3" strokeWidth={3} /> Løst
       </span>
     </div>
   );
 }
 
-/* ─────────── modul-skinne (flat) ─────────── */
 function ModuleRail({ activeM, clock, t }) {
   return (
     <div className="flex flex-col gap-0.5">
-      <p className="mb-2.5 font-body font-semibold uppercase text-[10px] tracking-[0.2em]" style={{ color: QUIET(0.7), opacity: easeOutCubic(seg(t, T.railBase - 0.2, T.railBase + 0.3)) }}>Moduler</p>
+      <p className="mb-2.5 px-1 font-body font-semibold uppercase text-[10px] tracking-[0.2em]" style={{ color: QUIET(0.7), opacity: easeOutCubic(seg(t, T.railBase - 0.2, T.railBase + 0.3)) }}>Moduler</p>
       {MODULES.map((m, i) => {
         const rp = easeOutCubic(seg(t, T.railBase + i * T.railStagger, T.railBase + 0.6 + i * T.railStagger));
         const on = i === activeM;
         const Icon = m.icon;
         return (
-          <div key={m.key} className="relative flex items-center gap-2.5 py-2.5 pl-2.5" style={{ opacity: rp, transform: `translateX(${((1 - rp) * -8).toFixed(1)}px)` }}>
-            {on && <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-full transition-all duration-500" style={{ background: LAV(0.85) }} />}
-            <Icon className="h-4 w-4 shrink-0 transition-colors duration-500" style={{ color: on ? LAV(0.95) : INK(0.4) }} strokeWidth={1.9} />
-            <span className="font-body text-[13.5px] transition-colors duration-500" style={{ color: on ? INK(0.92) : INK(0.5), fontWeight: on ? 600 : 500 }}>{m.label}</span>
+          <div key={m.key} className="relative flex items-center gap-2.5 py-2.5 pl-3 pr-2 rounded-[10px]" style={{ opacity: rp, transform: `translateX(${((1 - rp) * -8).toFixed(1)}px)`, background: on ? LAV(0.07) : 'transparent', transition: 'background 500ms' }}>
+            {on && <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-full" style={{ background: LAV(0.85) }} />}
+            <Icon className="h-4 w-4 shrink-0 transition-colors duration-500" style={{ color: on ? LAV(0.98) : INK(0.4) }} strokeWidth={1.9} />
+            <span className="font-body text-[13px] transition-colors duration-500" style={{ color: on ? INK(0.92) : INK(0.5), fontWeight: on ? 600 : 500 }}>{m.label}</span>
             <span className="ml-auto h-1.5 w-1.5 rounded-full transition-all duration-500" style={{ background: on ? LAV(0.9) : INK(0.12), opacity: on ? 0.5 + 0.5 * Math.abs(Math.sin(clock * 3)) : 1 }} />
           </div>
         );
@@ -218,16 +240,36 @@ function ModuleRail({ activeM, clock, t }) {
   );
 }
 
-function Metric({ label, value }) {
+function MiniRow({ label, value }) {
   return (
-    <div className="shrink-0 leading-none">
-      <span className="font-heading font-bold tabular-nums text-[15px] text-ink tracking-[-0.01em]">{value}</span>
-      <span className="ml-2 font-body text-[12px]" style={{ color: QUIET(0.85) }}>{label}</span>
+    <div className="flex items-center justify-between py-2">
+      <span className="font-body text-[12.5px]" style={{ color: QUIET(0.9) }}>{label}</span>
+      <span className="font-heading font-bold text-[13.5px] tabular-nums tracking-[-0.01em] text-ink">{value}</span>
     </div>
   );
 }
-function Sep() {
-  return <span className="shrink-0 h-3.5 w-px" style={{ background: HAIR }} />;
+
+function InsightPanel({ reveal, drawP }) {
+  const income = Math.round(84200 * drawP);
+  return (
+    <div style={{ opacity: reveal, transform: `translateX(${((1 - reveal) * 12).toFixed(1)}px)` }}>
+      <p className="font-body font-semibold uppercase text-[10px] tracking-[0.2em]" style={{ color: QUIET(0.7) }}>Inntekt · 30 dager</p>
+      <div className="mt-2.5 flex items-end justify-between gap-2">
+        <span className="font-heading font-bold text-[26px] leading-none tabular-nums tracking-[-0.02em] text-ink">{income.toLocaleString('nb-NO')} kr</span>
+        <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold mb-0.5" style={{ color: EMER(0.9), background: EMER(0.08) }}>
+          <TrendingUp className="h-3 w-3" strokeWidth={2.4} />+12 %
+        </span>
+      </div>
+      <div className="mt-4">
+        <Sparkline drawP={drawP} />
+      </div>
+      <div className="mt-4 pt-1" style={{ borderTop: `1px solid ${HAIR}` }}>
+        <MiniRow label="Belegg" value="97 %" />
+        <MiniRow label="Snittrespons" value="2 min" />
+        <MiniRow label="Neste utbetaling" value="1. sep" />
+      </div>
+    </div>
+  );
 }
 
 /* ═════════════════════ HOVEDKOMPONENT ═════════════════════ */
@@ -286,15 +328,16 @@ export function SeksjonAutopilot() {
     return () => cancelAnimationFrame(raf);
   }, [reduce, inView]);
 
-  // reveal-verdier
   const tt = reduce ? 99 : t;
   const manOut = easeInOutCubic(seg(tt, T.manOut[0], T.manOut[1]));
   const manOpacity = reduce ? 0 : 1 - manOut;
   const topbarP = easeOutCubic(seg(tt, T.topbar[0], T.topbar[1]));
   const feedP = easeOutCubic(seg(tt, T.feed[0], T.feed[1]));
+  const insightReveal = easeOutCubic(seg(tt, T.insight[0], T.insight[1]));
+  const insightDraw = easeOutCubic(seg(tt, T.insight[0] + 0.2, T.insight[0] + 1.6));
   const metricsP = easeOutCubic(seg(tt, T.metrics[0], T.metrics[1]));
 
-  // manifest: negasjoner (type → hold → slett), så avsløres FINAL
+  // manifest
   let negText = '';
   let negCaret = false;
   if (tt < FINAL_START) {
@@ -321,21 +364,22 @@ export function SeksjonAutopilot() {
       <div className="pointer-events-none absolute inset-0" style={{ background: SECTION_BG }} />
 
       <div className="relative max-w-shell mx-auto px-6 sm:px-10 lg:px-16 pt-0 pb-20 sm:pb-24 lg:pb-28">
-        {/* RAMMEN — kun en hårfin outline, innholdet lever rett på papiret */}
+        {/* DASHBOARDET — egen, ren produktflate */}
         <div
-          className="relative rounded-[26px] overflow-hidden min-h-[600px] sm:min-h-[620px]"
-          style={{ border: `1px solid ${HAIR}`, boxShadow: '0 30px 90px -60px rgba(22,18,31,0.22)' }}
+          className="relative rounded-[26px] overflow-hidden min-h-[580px] sm:min-h-[600px]"
+          style={{ background: SURFACE, border: `1px solid ${HAIR_OUT}`, boxShadow: '0 1px 2px rgba(22,18,31,0.04), 0 12px 32px -18px rgba(22,18,31,0.14), 0 60px 120px -55px rgba(22,18,31,0.30), inset 0 1px 0 rgba(255,255,255,0.8)' }}
         >
+          {/* ultrafin grain */}
+          <div className="pointer-events-none absolute inset-0" style={{ backgroundImage: GRAIN, backgroundSize: '180px 180px', opacity: 0.028, mixBlendMode: 'multiply' }} />
+
           {/* ── grensesnittet (vokser fram) ── */}
           <div className="absolute inset-0 flex flex-col">
-            {/* topplinje */}
+            {/* topplinje med ekte merke */}
             <div className="flex items-center justify-between px-5 sm:px-6 h-[58px]" style={{ borderBottom: `1px solid ${HAIR}`, opacity: topbarP, transform: `translateY(${((1 - topbarP) * -6).toFixed(1)}px)` }}>
               <div className="flex items-center gap-2.5">
-                <span className="h-7 w-7 rounded-[8px] inline-flex items-center justify-center" style={{ background: 'linear-gradient(135deg,#9B5BD6,#CF97FC)' }}>
-                  <ShieldCheck className="h-4 w-4 text-white" strokeWidth={2.2} />
-                </span>
-                <span className="font-heading font-bold text-[14px] tracking-[-0.01em] text-ink">DigiHome OS</span>
-                <span className="hidden sm:block font-body text-[12.5px]" style={{ color: QUIET(0.8) }}>· Drift</span>
+                <img src="/digihome-icon.svg" alt="DigiHome" width={26} height={26} className="rounded-[7px]" style={{ boxShadow: '0 1px 3px rgba(22,18,31,0.16)' }} />
+                <span className="font-heading font-bold text-[15px] tracking-[-0.015em] text-ink">digihome</span>
+                <span className="ml-0.5 rounded-full px-1.5 py-0.5 text-[9.5px] font-bold tracking-[0.08em]" style={{ background: LAV(0.1), color: LAV(0.95) }}>OS</span>
               </div>
               <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11.5px] font-semibold" style={{ color: EMER(0.9), background: EMER(0.08) }}>
                 <span className="h-1.5 w-1.5 rounded-full" style={{ background: EMER(0.9), opacity: 0.4 + 0.6 * Math.abs(Math.sin(clock * 2.2)) }} />
@@ -343,16 +387,15 @@ export function SeksjonAutopilot() {
               </span>
             </div>
 
-            {/* kropp */}
-            <div className="flex-1 min-h-0 overflow-hidden grid md:grid-cols-[224px_1fr]">
+            {/* kropp: skinne + feed + innsikt */}
+            <div className="flex-1 min-h-0 overflow-hidden grid md:grid-cols-[200px_1fr] lg:grid-cols-[200px_1fr_272px]">
               {/* skinne */}
-              <div className="hidden md:block px-5 py-6" style={{ borderRight: `1px solid ${HAIR}` }}>
+              <div className="hidden md:block px-4 py-6" style={{ borderRight: `1px solid ${HAIR}`, background: PANEL }}>
                 <ModuleRail activeM={activeM} clock={clock} t={tt} />
               </div>
 
               {/* feed */}
-              <div className="px-5 sm:px-7 lg:px-9 py-6" style={{ opacity: feedP, transform: `translateY(${((1 - feedP) * 10).toFixed(1)}px)` }}>
-                {/* mobil: moduler som chips */}
+              <div className="px-5 sm:px-7 py-6" style={{ opacity: feedP, transform: `translateY(${((1 - feedP) * 10).toFixed(1)}px)` }}>
                 <div className="md:hidden mb-5 flex items-center gap-2 overflow-x-auto no-scrollbar">
                   {MODULES.map((m, i) => {
                     const on = i === activeM;
@@ -366,50 +409,56 @@ export function SeksjonAutopilot() {
                   })}
                 </div>
 
-                <p className="font-body font-semibold uppercase text-[10px] tracking-[0.2em] mb-4" style={{ color: QUIET(0.7) }}>Sanntid</p>
+                <p className="font-body font-semibold uppercase text-[10px] tracking-[0.2em] mb-3.5" style={{ color: QUIET(0.7) }}>Sanntid</p>
                 <ActiveEvent ev={ev} p={pStatic} clock={clock} />
 
-                <div className="mt-7">
-                  <p className="font-body font-semibold uppercase text-[10px] tracking-[0.2em] mb-1" style={{ color: QUIET(0.7) }}>Neste i kø</p>
+                <div className="mt-6">
+                  <p className="font-body font-semibold uppercase text-[10px] tracking-[0.2em] mb-1 px-1" style={{ color: QUIET(0.7) }}>Neste i kø</p>
                   {queue.map((q, i) => (
                     <QueueRow key={`${q.title}-${i}`} ev={q} depth={i} />
                   ))}
                 </div>
 
-                <div className="mt-6 pt-5" style={{ borderTop: `1px solid ${HAIR}` }}>
-                  <p className="font-body font-semibold uppercase text-[10px] tracking-[0.2em] mb-1" style={{ color: QUIET(0.7) }}>Nylig håndtert</p>
-                  {history.map((h, i) => (
+                <div className="mt-5 pt-4" style={{ borderTop: `1px solid ${HAIR}` }}>
+                  <p className="font-body font-semibold uppercase text-[10px] tracking-[0.2em] mb-1 px-1" style={{ color: QUIET(0.7) }}>Nylig håndtert</p>
+                  {history.slice(0, 2).map((h, i) => (
                     <HistoryRow key={`${h.title}-${i}`} ev={h} depth={i} />
                   ))}
                 </div>
               </div>
+
+              {/* innsikt */}
+              <div className="hidden lg:block px-6 py-6" style={{ borderLeft: `1px solid ${HAIR}`, background: PANEL }}>
+                <InsightPanel reveal={insightReveal} drawP={insightDraw} />
+              </div>
             </div>
 
             {/* bunnlinje */}
-            <div className="flex items-center gap-5 sm:gap-8 px-5 sm:px-6 h-[56px] overflow-x-auto no-scrollbar" style={{ borderTop: `1px solid ${HAIR}`, opacity: metricsP }}>
-              <Metric label="Løst i dag" value={String(solved)} />
-              <Sep />
-              <Metric label="Snittrespons" value="2 min" />
-              <Sep />
-              <Metric label="Aktive boliger" value="30" />
-              <Sep />
-              <Metric label="Belegg" value="97 %" />
-              <span className="ml-auto hidden sm:inline-flex items-center gap-1.5 font-body text-[12px] shrink-0" style={{ color: QUIET(0.85) }}>
+            <div className="flex items-center gap-5 sm:gap-7 px-5 sm:px-6 h-[54px] overflow-x-auto no-scrollbar" style={{ borderTop: `1px solid ${HAIR}`, opacity: metricsP, background: PANEL }}>
+              <div className="shrink-0 leading-none">
+                <span className="font-heading font-bold tabular-nums text-[14px] text-ink tracking-[-0.01em]">{solved}</span>
+                <span className="ml-2 font-body text-[12px]" style={{ color: QUIET(0.85) }}>oppgaver løst i dag</span>
+              </div>
+              <span className="shrink-0 h-3.5 w-px" style={{ background: HAIR }} />
+              <div className="shrink-0 leading-none">
+                <span className="font-heading font-bold tabular-nums text-[14px] text-ink tracking-[-0.01em]">30</span>
+                <span className="ml-2 font-body text-[12px]" style={{ color: QUIET(0.85) }}>aktive boliger</span>
+              </div>
+              <span className="ml-auto hidden sm:inline-flex items-center gap-1.5 font-body text-[12px] shrink-0" style={{ color: QUIET(0.9) }}>
                 <span className="h-1.5 w-1.5 rounded-full" style={{ background: EMER(0.8) }} />
                 Alt under kontroll
               </span>
             </div>
           </div>
 
-          {/* ── manifest (kinematisk) — avkrefter den gamle måten, avslører autopiloten ── */}
+          {/* ── manifest (kinematisk) ── */}
           {manOpacity > 0.01 && (
             <div
               className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center pointer-events-none"
-              style={{ background: '#FEFBFA', opacity: manOpacity, transform: `translateY(${(manOut * -10).toFixed(1)}px) scale(${(1 - manOut * 0.02).toFixed(3)})` }}
+              style={{ background: SURFACE, opacity: manOpacity, transform: `translateY(${(manOut * -10).toFixed(1)}px) scale(${(1 - manOut * 0.02).toFixed(3)})` }}
             >
               <p className="font-body font-semibold uppercase text-[11px] tracking-[0.32em]" style={{ color: QUIET(0.7), opacity: seg(tt, 0.15, 0.55) }}>En ny måte å leie ut på</p>
 
-              {/* stor linje — fast høyde for å unngå hopp */}
               <div className="relative mt-6 flex items-center justify-center w-full" style={{ height: 'clamp(56px,9vw,110px)' }}>
                 {!showFinal && (
                   <span className="font-heading font-bold tracking-[-0.03em] text-[clamp(32px,5.2vw,68px)] whitespace-nowrap" style={{ color: INK(0.45) }}>
@@ -427,7 +476,6 @@ export function SeksjonAutopilot() {
                 )}
               </div>
 
-              {/* subline */}
               <p
                 className="mt-7 font-body text-[16px] sm:text-[18px] leading-relaxed text-quiet max-w-md mx-auto"
                 style={{ opacity: sublineP, transform: `translateY(${((1 - sublineP) * 8).toFixed(1)}px)` }}
