@@ -31,21 +31,29 @@ const SECTION_BG =
 
 const EVENT_DUR = 6.2; // sekunder per hendelse i live-loopen
 
-/* manifest-linjer */
-const L1 = 'Du sier ja én gang.';
-const L2 = 'Motoren gjør resten.';
+/* manifest — avkreft den gamle måten, avslør den nye */
+const NEG = ['Ingen dashboards.', 'Ingen klikk.', 'Ingen funksjoner.'];
+const FINAL = 'Bare autopilot.';
+const SUBLINE = 'Et helt nytt system for utleie. Du slår det på — så driver det seg selv.';
+
+/* manifest-koreografi (sekunder) */
+const NEG_START = 0.6;
+const NEG_CYCLE = 1.25;     // type + hold + erase per negasjon
+const NEG_TYPE = 0.55;
+const NEG_HOLD = 0.4;
+const NEG_ERASE = 0.3;
+const FINAL_START = NEG_START + NEG.length * NEG_CYCLE;  // ≈ 4.35
+const FINAL_DUR = 1.0;
 
 /* reveal-tidslinje (sekunder) */
 const T = {
-  l1: [0.5, 1.95],
-  l2: [2.2, 3.6],
-  manOut: [4.2, 4.95],
-  topbar: [4.5, 5.15],
-  railBase: 4.8,
+  manOut: [FINAL_START + 3.0, FINAL_START + 3.8],
+  topbar: [FINAL_START + 3.3, FINAL_START + 3.95],
+  railBase: FINAL_START + 3.6,
   railStagger: 0.09,
-  feed: [5.3, 6.05],
-  metrics: [5.85, 6.5],
-  liveStart: 5.4,
+  feed: [FINAL_START + 3.95, FINAL_START + 4.7],
+  metrics: [FINAL_START + 4.5, FINAL_START + 5.15],
+  liveStart: FINAL_START + 4.0,
 };
 
 const MODULES = [
@@ -279,24 +287,34 @@ export function SeksjonAutopilot() {
   }, [reduce, inView]);
 
   // reveal-verdier
-  const built = !reduce;
   const tt = reduce ? 99 : t;
-  const l1P = seg(tt, T.l1[0], T.l1[1]);
-  const l2P = seg(tt, T.l2[0], T.l2[1]);
   const manOut = easeInOutCubic(seg(tt, T.manOut[0], T.manOut[1]));
   const manOpacity = reduce ? 0 : 1 - manOut;
   const topbarP = easeOutCubic(seg(tt, T.topbar[0], T.topbar[1]));
   const feedP = easeOutCubic(seg(tt, T.feed[0], T.feed[1]));
   const metricsP = easeOutCubic(seg(tt, T.metrics[0], T.metrics[1]));
 
+  // manifest: negasjoner (type → hold → slett), så avsløres FINAL
+  let negText = '';
+  let negCaret = false;
+  if (tt < FINAL_START) {
+    const k = Math.min(NEG.length - 1, Math.max(0, Math.floor((tt - NEG_START) / NEG_CYCLE)));
+    const local = (tt - NEG_START) - k * NEG_CYCLE;
+    const phrase = NEG[k];
+    if (tt < NEG_START) negText = '';
+    else if (local < NEG_TYPE) negText = phrase.slice(0, Math.round(phrase.length * clamp01(local / NEG_TYPE)));
+    else if (local < NEG_TYPE + NEG_HOLD) negText = phrase;
+    else negText = phrase.slice(0, Math.round(phrase.length * (1 - clamp01((local - NEG_TYPE - NEG_HOLD) / NEG_ERASE))));
+    negCaret = true;
+  }
+  const finalP = easeOutCubic(seg(tt, FINAL_START, FINAL_START + FINAL_DUR));
+  const showFinal = tt >= FINAL_START;
+  const sublineP = easeOutCubic(seg(tt, FINAL_START + 0.8, FINAL_START + 1.6));
+
   const ev = EVENTS[idx];
   const activeM = ev.m;
   const queue = [EVENTS[(idx + 1) % EVENTS.length], EVENTS[(idx + 2) % EVENTS.length]];
   const pStatic = reduce ? 0.8 : p;
-
-  // manifest-caret: står på linjen som skrives nå
-  const caretOnL1 = l1P < 1;
-  const caretOnL2 = l1P >= 1 && (l2P < 1 || manOut < 0.2);
 
   return (
     <section ref={sectionRef} className="relative overflow-hidden bg-[#FEFBFA] text-ink">
@@ -383,23 +401,39 @@ export function SeksjonAutopilot() {
             </div>
           </div>
 
-          {/* ── manifest (typewriter) — toner ut når grensesnittet vokser fram ── */}
+          {/* ── manifest (kinematisk) — avkrefter den gamle måten, avslører autopiloten ── */}
           {manOpacity > 0.01 && (
             <div
               className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center pointer-events-none"
-              style={{ background: '#FEFBFA', opacity: manOpacity, transform: `translateY(${(manOut * -10).toFixed(1)}px) scale(${(1 - manOut * 0.03).toFixed(3)})` }}
+              style={{ background: '#FEFBFA', opacity: manOpacity, transform: `translateY(${(manOut * -10).toFixed(1)}px) scale(${(1 - manOut * 0.02).toFixed(3)})` }}
             >
-              <p className="font-body font-semibold uppercase text-[11px] tracking-[0.3em]" style={{ color: QUIET(0.7), opacity: seg(tt, 0.2, 0.6) }}>DigiHome OS</p>
-              <h3 className="mt-5 font-heading font-bold tracking-[-0.03em] leading-[1.12] text-[clamp(26px,3.6vw,44px)] text-ink">
-                <span className="block">
-                  {typed(L1, l1P)}
-                  {caretOnL1 && <span className="dh-caret-bar" style={{ background: INK(0.8), height: '0.85em' }} />}
-                </span>
-                <span className="block dh-ink-shine">
-                  {typed(L2, l2P)}
-                  {caretOnL2 && <span className="dh-caret-bar" style={{ background: LAV(0.85), height: '0.85em' }} />}
-                </span>
-              </h3>
+              <p className="font-body font-semibold uppercase text-[11px] tracking-[0.32em]" style={{ color: QUIET(0.7), opacity: seg(tt, 0.15, 0.55) }}>En ny måte å leie ut på</p>
+
+              {/* stor linje — fast høyde for å unngå hopp */}
+              <div className="relative mt-6 flex items-center justify-center w-full" style={{ height: 'clamp(56px,9vw,110px)' }}>
+                {!showFinal && (
+                  <span className="font-heading font-bold tracking-[-0.03em] text-[clamp(32px,5.2vw,68px)] whitespace-nowrap" style={{ color: INK(0.45) }}>
+                    {negText}
+                    {negCaret && <span className="dh-caret-bar" style={{ background: INK(0.5), height: '0.8em' }} />}
+                  </span>
+                )}
+                {showFinal && (
+                  <span
+                    className="dh-ink-shine font-heading font-bold tracking-[-0.04em] text-[clamp(40px,6.8vw,88px)] whitespace-nowrap"
+                    style={{ opacity: finalP, filter: `blur(${((1 - finalP) * 16).toFixed(1)}px)`, transform: `scale(${(0.92 + finalP * 0.08).toFixed(3)})` }}
+                  >
+                    {FINAL}
+                  </span>
+                )}
+              </div>
+
+              {/* subline */}
+              <p
+                className="mt-7 font-body text-[16px] sm:text-[18px] leading-relaxed text-quiet max-w-md mx-auto"
+                style={{ opacity: sublineP, transform: `translateY(${((1 - sublineP) * 8).toFixed(1)}px)` }}
+              >
+                {SUBLINE}
+              </p>
             </div>
           )}
         </div>
