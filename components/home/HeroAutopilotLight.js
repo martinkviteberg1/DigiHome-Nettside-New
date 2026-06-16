@@ -38,6 +38,18 @@ export function HeroAutopilotLight() {
         }}
       />
 
+      {/* nydelig dot-grid — konsentrert i øvre del, fader ut før bunnen (bevarer sømløs overgang) */}
+      <div
+        className="dot-grid pointer-events-none absolute inset-0"
+        style={{
+          opacity: 0.55,
+          WebkitMaskImage:
+            'radial-gradient(ellipse 88% 74% at 60% 14%, #000 0%, rgba(0,0,0,0.42) 48%, transparent 74%)',
+          maskImage:
+            'radial-gradient(ellipse 88% 74% at 60% 14%, #000 0%, rgba(0,0,0,0.42) 48%, transparent 74%)',
+        }}
+      />
+
       <div className="relative max-w-shell mx-auto px-6 sm:px-10 lg:px-16">
         <div className="grid lg:grid-cols-[1.02fr_0.98fr] gap-14 lg:gap-10 items-center min-h-[100svh] pt-[104px] pb-16 lg:pt-[72px] lg:pb-10">
           {/* venstre kolonne */}
