@@ -29,12 +29,12 @@ export function HeroAutopilotLight() {
 
   return (
     <section className="relative overflow-hidden bg-[#FEFBFA] text-ink -mt-[72px]">
-      {/* bakteppe — rolig lavendel-ambient på varmt papir */}
+      {/* bakteppe — rolig lavendel-ambient, kun i øvre del så bunnen er helt flatt papir (sømløst inn i seksjon 2) */}
       <div
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            'radial-gradient(ellipse 62% 54% at 84% 6%, rgba(155,91,214,0.055), transparent 74%), radial-gradient(ellipse 56% 48% at 8% 96%, rgba(207,151,252,0.045), transparent 74%)',
+            'radial-gradient(ellipse 60% 48% at 84% 12%, rgba(155,91,214,0.05), transparent 70%), radial-gradient(ellipse 50% 40% at 4% 30%, rgba(207,151,252,0.04), transparent 70%)',
         }}
       />
 
