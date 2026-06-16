@@ -110,7 +110,7 @@ function Sparkline({ drawP = 1 }) {
 function ActiveEvent({ ev, p, clock }) {
   const acting = p >= 0.4 && p < 0.74;
   const actP = seg(p, 0.4, 0.7);
-  const analyzing = p >= 0.1 && p < 0.42;
+  const analyzing = p >= 0.1 && p < 0.4;
   const resolveP = easeOutCubic(seg(p, 0.74, 0.86));
   const resolved = p >= 0.74;
 
@@ -221,7 +221,7 @@ function HistoryRow({ ev, depth }) {
 
 function ModuleRail({ activeM, clock, t }) {
   return (
-    <div className="flex flex-col gap-0.5">
+    <div className="flex flex-col h-full gap-0.5">
       <p className="mb-2.5 px-1 font-body font-semibold uppercase text-[10px] tracking-[0.2em]" style={{ color: QUIET(0.7), opacity: easeOutCubic(seg(t, T.railBase - 0.2, T.railBase + 0.3)) }}>Moduler</p>
       {MODULES.map((m, i) => {
         const rp = easeOutCubic(seg(t, T.railBase + i * T.railStagger, T.railBase + 0.6 + i * T.railStagger));
@@ -236,6 +236,12 @@ function ModuleRail({ activeM, clock, t }) {
           </div>
         );
       })}
+      <div className="mt-auto pt-5" style={{ opacity: easeOutCubic(seg(t, T.railBase + 0.5, T.railBase + 1.2)) }}>
+        <div className="flex items-center gap-2 rounded-[10px] px-3 py-2.5" style={{ background: SURFACE, border: `1px solid ${HAIR}` }}>
+          <span className="h-2 w-2 rounded-full" style={{ background: EMER(0.85), opacity: 0.4 + 0.6 * Math.abs(Math.sin(clock * 2.2)) }} />
+          <span className="font-body text-[12px]" style={{ color: INK(0.65) }}>Motoren kjører</span>
+        </div>
+      </div>
     </div>
   );
 }
@@ -249,24 +255,31 @@ function MiniRow({ label, value }) {
   );
 }
 
-function InsightPanel({ reveal, drawP }) {
+function InsightPanel({ reveal, drawP, clock }) {
   const income = Math.round(84200 * drawP);
   return (
-    <div style={{ opacity: reveal, transform: `translateX(${((1 - reveal) * 12).toFixed(1)}px)` }}>
+    <div className="flex flex-col h-full" style={{ opacity: reveal, transform: `translateX(${((1 - reveal) * 12).toFixed(1)}px)` }}>
       <p className="font-body font-semibold uppercase text-[10px] tracking-[0.2em]" style={{ color: QUIET(0.7) }}>Inntekt · 30 dager</p>
       <div className="mt-2.5 flex items-end justify-between gap-2">
-        <span className="font-heading font-bold text-[26px] leading-none tabular-nums tracking-[-0.02em] text-ink">{income.toLocaleString('nb-NO')} kr</span>
+        <span className="font-heading font-bold text-[27px] leading-none tabular-nums tracking-[-0.02em] text-ink">{income.toLocaleString('nb-NO')} kr</span>
         <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold mb-0.5" style={{ color: EMER(0.9), background: EMER(0.08) }}>
           <TrendingUp className="h-3 w-3" strokeWidth={2.4} />+12 %
         </span>
       </div>
-      <div className="mt-4">
+      <div className="mt-5">
         <Sparkline drawP={drawP} />
       </div>
-      <div className="mt-4 pt-1" style={{ borderTop: `1px solid ${HAIR}` }}>
+      <div className="mt-5 pt-1" style={{ borderTop: `1px solid ${HAIR}` }}>
         <MiniRow label="Belegg" value="97 %" />
         <MiniRow label="Snittrespons" value="2 min" />
         <MiniRow label="Neste utbetaling" value="1. sep" />
+      </div>
+      <div className="mt-auto pt-5 flex items-center justify-between">
+        <span className="inline-flex items-center gap-1.5 font-body text-[12px]" style={{ color: QUIET(0.9) }}>
+          <span className="h-1.5 w-1.5 rounded-full" style={{ background: EMER(0.8), opacity: 0.4 + 0.6 * Math.abs(Math.sin(clock * 2.2)) }} />
+          Sist synkronisert
+        </span>
+        <span className="font-body text-[12px]" style={{ color: INK(0.6) }}>nå</span>
       </div>
     </div>
   );
@@ -364,9 +377,9 @@ export function SeksjonAutopilot() {
       <div className="pointer-events-none absolute inset-0" style={{ background: SECTION_BG }} />
 
       <div className="relative max-w-shell mx-auto px-6 sm:px-10 lg:px-16 pt-0 pb-20 sm:pb-24 lg:pb-28">
-        {/* DASHBOARDET — egen, ren produktflate */}
+        {/* DASHBOARDET — egen, ren produktflate, optimal høyde i viewport */}
         <div
-          className="relative rounded-[26px] overflow-hidden min-h-[580px] sm:min-h-[600px]"
+          className="relative rounded-[26px] overflow-hidden min-h-[600px] sm:h-[86vh] sm:min-h-[660px] sm:max-h-[920px]"
           style={{ background: SURFACE, border: `1px solid ${HAIR_OUT}`, boxShadow: '0 1px 2px rgba(22,18,31,0.04), 0 12px 32px -18px rgba(22,18,31,0.14), 0 60px 120px -55px rgba(22,18,31,0.30), inset 0 1px 0 rgba(255,255,255,0.8)' }}
         >
           {/* ultrafin grain */}
@@ -395,7 +408,7 @@ export function SeksjonAutopilot() {
               </div>
 
               {/* feed */}
-              <div className="px-5 sm:px-7 py-6" style={{ opacity: feedP, transform: `translateY(${((1 - feedP) * 10).toFixed(1)}px)` }}>
+              <div className="px-5 sm:px-7 py-6 flex flex-col" style={{ opacity: feedP, transform: `translateY(${((1 - feedP) * 10).toFixed(1)}px)` }}>
                 <div className="md:hidden mb-5 flex items-center gap-2 overflow-x-auto no-scrollbar">
                   {MODULES.map((m, i) => {
                     const on = i === activeM;
@@ -419,9 +432,9 @@ export function SeksjonAutopilot() {
                   ))}
                 </div>
 
-                <div className="mt-5 pt-4" style={{ borderTop: `1px solid ${HAIR}` }}>
+                <div className="mt-auto pt-4" style={{ borderTop: `1px solid ${HAIR}` }}>
                   <p className="font-body font-semibold uppercase text-[10px] tracking-[0.2em] mb-1 px-1" style={{ color: QUIET(0.7) }}>Nylig håndtert</p>
-                  {history.slice(0, 2).map((h, i) => (
+                  {history.slice(0, 3).map((h, i) => (
                     <HistoryRow key={`${h.title}-${i}`} ev={h} depth={i} />
                   ))}
                 </div>
@@ -429,7 +442,7 @@ export function SeksjonAutopilot() {
 
               {/* innsikt */}
               <div className="hidden lg:block px-6 py-6" style={{ borderLeft: `1px solid ${HAIR}`, background: PANEL }}>
-                <InsightPanel reveal={insightReveal} drawP={insightDraw} />
+                <InsightPanel reveal={insightReveal} drawP={insightDraw} clock={clock} />
               </div>
             </div>
 
