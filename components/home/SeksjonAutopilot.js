@@ -302,7 +302,7 @@ export function SeksjonAutopilot() {
     <section ref={sectionRef} className="relative overflow-hidden bg-[#FEFBFA] text-ink">
       <div className="pointer-events-none absolute inset-0" style={{ background: SECTION_BG }} />
 
-      <div className="relative max-w-shell mx-auto px-6 sm:px-10 lg:px-16 pt-4 pb-20 sm:pt-8 sm:pb-24 lg:pt-10 lg:pb-28">
+      <div className="relative max-w-shell mx-auto px-6 sm:px-10 lg:px-16 pt-0 pb-20 sm:pb-24 lg:pb-28">
         {/* RAMMEN — kun en hårfin outline, innholdet lever rett på papiret */}
         <div
           className="relative rounded-[26px] overflow-hidden min-h-[600px] sm:min-h-[620px]"
