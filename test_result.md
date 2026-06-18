@@ -192,6 +192,9 @@ frontend:
         -working: true
         -agent: "main"
         -comment: "NY SLIDE 2 lagt til: SAutopilotMindset «Ikke et system. En autopilot.» (posisjonerings-/paradigme-slide, lys beige). Kontrast: venstre = nedtonet tradisjonelt system m/ 9 modul-chips («du må gjøre jobben»), høyre = proaktivt «DigiHome foreslår»-kort som sykler gjennom 3 ekte oppgaver (Forny annonse → Svar leietaker → Juster pris) med ferdig utkast + Godkjenn/Rediger/Auto, nederst mørk autonomi-dial (Manuell → Foreslår → Autopilot). Verifisert via skjermbilder: rendrer verdensklasse, kort-syklingen fungerer (fanget oppgave 1 og 3). Deck er nå 17 slides; SLIDES-kommentarer renummerert. Tømte testagentens cachede PDF + test-leads fra MongoDB så første ekte nedlasting genererer riktig 17-slides-PDF."
+        -working: true
+        -agent: "main"
+        -comment: "SLIDE 2 LØFTET TIL VERDENSKLASSE (v2, mørk/kinematisk): Erstattet lys versjon med mørk SlideFrame + aurora-glød + fin dot-grid. Venstre: pille «En ny måte å tenke programvare på» + to-tonet gradient-overskrift «Programvare du bruker, / blir programvare som jobber.» + manifest + 3 prinsipp-rader (Proaktiv/Forberedt/Autonom m/ ikoner). Høyre: premium glass-«DigiHome Autopilot»-konsoll med glødende kjerne-orb (puls + ring), «Aktiv»-pille, 2 fullførte auto-rader (m/ AUTO-tag + tid), fokal lilla-glødende «Neste oppgave»-kort som sykler 3 oppgaver m/ utkast + Godkjenn/Rediger/«Kjør på auto», og integrert autonomi-dial «68% autonomt» (Manuell→Foreslår→Autopilot). Scanning-shimmer. Verifisert via skjermbilder (oppgave 1 + 3) — rendrer fl), syklingen smooth i mørk variant. Backend uendret."
 
   - task: "SeksjonBoliger (/2) — live boligportefølje fra DigiHome API"
     implemented: true

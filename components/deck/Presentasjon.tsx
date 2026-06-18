@@ -4702,44 +4702,43 @@ const SDualUSP = (p: any) => {
   );
 };
 
-/* ═══ MINDSET SLIDE — «Ikke et system. En autopilot.» (paradigm reframe) ═══ */
+/* ═══ MINDSET SLIDE — «En ny måte å tenke programvare på» (paradigm reframe · cinematic) ═══ */
 const REFRAME_TASKS = [
   {
     tag: 'Annonse utløper',
     title: 'Forny annonsen for Solveien 12B',
-    context: 'Annonsen utløper om 2 dager · 14 visninger denne uken',
+    context: 'Utløper om 2 dager · 14 visninger denne uken',
     draftLabel: 'Utkast klart',
-    draft: 'Lys 3-roms i hjertet av Bergen — pusset opp, ledig fra 1. mai. Nær Bryggen og bybanen…',
+    draft: 'Lys 3-roms i hjertet av Bergen — pusset opp, ledig fra 1. mai. Nær Bryggen og bybanen.',
     icon: Camera,
   },
   {
     tag: 'Ny melding',
     title: 'Svar Stine om innflytting',
-    context: 'Melding mottatt 09:12 · venter på svar',
+    context: 'Mottatt 09:12 · venter på svar',
     draftLabel: 'Svar foreslått',
-    draft: 'Hei Stine! Innflytting er bekreftet til 1. april kl. 14. Nøkler henter du i resepsjonen…',
+    draft: 'Hei Stine! Innflytting er bekreftet til 1. april kl. 14. Nøkler henter du i resepsjonen.',
     icon: MessageCircle,
   },
   {
     tag: 'Lavt belegg',
     title: 'Juster prisen — 3 ledige netter',
-    context: 'Lav belegg uke 18 · konkurrenter ligger −8 %',
+    context: 'Uke 18 · konkurrenter ligger −8 %',
     draftLabel: 'Forslag',
-    draft: 'Senk pris −6 % for 12.–15. mai for å fylle kalenderen før helgen. Estimert +2 100 kr.',
+    draft: 'Senk pris −6 % for 12.–15. mai for å fylle kalenderen. Estimert +2 100 kr i inntekt.',
     icon: BarChart3,
   },
 ];
 
-const REFRAME_MODULES = [
-  { icon: Camera, label: 'Annonser' },
-  { icon: CalendarDays, label: 'Kalender' },
-  { icon: FileText, label: 'Kontrakter' },
-  { icon: CreditCard, label: 'Betaling' },
-  { icon: MessageCircle, label: 'Meldinger' },
-  { icon: PieChart, label: 'Regnskap' },
-  { icon: Wrench, label: 'Vedlikehold' },
-  { icon: ClipboardList, label: 'Dokumenter' },
-  { icon: BarChart3, label: 'Rapporter' },
+const REFRAME_DONE = [
+  { label: 'Sendte husleie-påminnelse · 3 leietakere', time: '08:30' },
+  { label: 'Bekreftet visning · Møhlenpris 14', time: '08:52' },
+];
+
+const REFRAME_PRINCIPLES = [
+  { icon: Target, title: 'Proaktiv', body: 'Vet neste oppgave før du rekker å tenke på den.' },
+  { icon: PenLine, title: 'Forberedt', body: 'Hver oppgave kommer med ferdig utkast. Du sier bare ja.' },
+  { icon: Zap, title: 'Autonom', body: 'Skru opp autopiloten — fra forslag til full selvkjøring.' },
 ];
 
 const SAutopilotMindset = (p: any) => {
@@ -4750,7 +4749,7 @@ const SAutopilotMindset = (p: any) => {
 
   useEffect(() => {
     if (!active || isPdf) { setTi(0); return; }
-    const id = setInterval(() => setTi((v: number) => (v + 1) % REFRAME_TASKS.length), 3800);
+    const id = setInterval(() => setTi((v: number) => (v + 1) % REFRAME_TASKS.length), 4200);
     return () => clearInterval(id);
   }, [active, isPdf]);
 
@@ -4758,178 +4757,178 @@ const SAutopilotMindset = (p: any) => {
   const TaskIcon = task.icon;
 
   return (
-  <SlideFrame bg="beige" {...p}>
+  <SlideFrame bg="dark" {...p}>
     <style>{`
-      @keyframes rfFadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
-      @keyframes rfHeadlineIn { from { opacity: 0; transform: translateY(22px); filter: blur(8px); } 60% { filter: blur(0); } to { opacity: 1; transform: translateY(0); filter: blur(0); } }
-      @keyframes rfPanelIn { from { opacity: 0; transform: translateY(24px) scale(0.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
-      @keyframes rfTaskIn { from { opacity: 0; transform: translateY(10px); filter: blur(3px); } to { opacity: 1; transform: translateY(0); filter: blur(0); } }
-      @keyframes rfDot { 0%,100% { opacity: 0.45; transform: scale(0.9); } 50% { opacity: 1; transform: scale(1.25); } }
-      @keyframes rfCaret { 0%,100% { opacity: 1; } 50% { opacity: 0; } }
-      @keyframes rfDialFill { from { width: 0%; } to { width: 50%; } }
-      @keyframes rfKnob { 0%,100% { box-shadow: 0 0 0 0 rgba(181,110,237,0.45), 0 6px 18px -4px rgba(181,110,237,0.65); } 50% { box-shadow: 0 0 0 7px rgba(181,110,237,0.12), 0 6px 18px -4px rgba(181,110,237,0.65); } }
-      @keyframes rfChipIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+      @keyframes mFadeUp { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
+      @keyframes mHeadline { from { opacity: 0; transform: translateY(24px); filter: blur(10px); } 60% { filter: blur(0); } to { opacity: 1; transform: translateY(0); filter: blur(0); } }
+      @keyframes mPanelIn { from { opacity: 0; transform: translateY(26px) scale(0.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
+      @keyframes mTaskIn { from { opacity: 0; transform: translateY(12px) scale(0.99); filter: blur(4px); } to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); } }
+      @keyframes mCore { 0%,100% { transform: scale(1); opacity: 0.85; } 50% { transform: scale(1.12); opacity: 1; } }
+      @keyframes mCoreRing { 0% { transform: scale(0.75); opacity: 0.65; } 100% { transform: scale(2.3); opacity: 0; } }
+      @keyframes mScan { 0% { transform: translateY(-110%); opacity: 0; } 14% { opacity: 0.5; } 50% { opacity: 0.32; } 88% { opacity: 0; } 100% { transform: translateY(560%); opacity: 0; } }
+      @keyframes mCaret { 0%,100% { opacity: 1; } 50% { opacity: 0; } }
+      @keyframes mDialFill { from { width: 0%; } to { width: 68%; } }
+      @keyframes mKnob { 0%,100% { box-shadow: 0 0 0 0 rgba(181,110,237,0.5), 0 6px 20px -4px rgba(181,110,237,0.8); } 50% { box-shadow: 0 0 0 8px rgba(181,110,237,0.12), 0 6px 20px -4px rgba(181,110,237,0.8); } }
+      @keyframes mRowIn { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: translateX(0); } }
+      @keyframes mAurora { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(4%, -3%) scale(1.08); } }
     `}</style>
 
-    <DotGrid maskCenter="50% 22%" opacity={0.34} />
+    {/* ── Aurora background ── */}
+    <div aria-hidden="true" className="absolute inset-0 pointer-events-none overflow-hidden">
+      <div className="absolute -top-[20%] -right-[10%] w-[60%] h-[70%] rounded-full"
+           style={{ background: `radial-gradient(circle, ${P}26 0%, transparent 65%)`, filter: 'blur(24px)', animation: active ? 'mAurora 16s ease-in-out infinite' : undefined }} />
+      <div className="absolute -bottom-[25%] -left-[12%] w-[55%] h-[60%] rounded-full"
+           style={{ background: 'radial-gradient(circle, rgba(99,102,241,0.16) 0%, transparent 65%)', filter: 'blur(24px)', animation: active ? 'mAurora 20s ease-in-out infinite reverse' : undefined }} />
+    </div>
+    <DotGrid maskCenter="68% 50%" opacity={0.16} />
 
-    <div className="max-w-[1280px] mx-auto px-6 sm:px-12 w-full relative z-10 my-auto">
-      {/* ═══ Editorial header ═══ */}
-      <div className="mb-7 sm:mb-9 max-w-[1040px]">
-        <p className="text-[10.5px] sm:text-[11px] font-bold uppercase tracking-[0.28em] mb-4"
-           style={{ color: P, ...F, animation: active ? 'rfFadeUp 0.6s cubic-bezier(0.22,1,0.36,1) 0.15s both' : undefined, opacity: show ? undefined : 0 }}>
-          Tankesettet
-        </p>
-        <h2 className="font-bold text-[#0c0c0c] tracking-[-0.038em] leading-[1.02]"
-            style={{ ...F, fontSize: 'clamp(30px, 4.2vw, 60px)', animation: active ? 'rfHeadlineIn 0.95s cubic-bezier(0.22,1,0.36,1) 0.3s both' : undefined, opacity: show ? undefined : 0 }}>
-          Ikke et system. <span style={{ color: P }}>En autopilot.</span>
-        </h2>
-        <p className="text-[14px] sm:text-[16.5px] text-[#5a564d] leading-[1.55] font-light mt-5 max-w-[840px]"
-           style={{ ...F, animation: active ? 'rfFadeUp 0.7s cubic-bezier(0.22,1,0.36,1) 0.5s both' : undefined, opacity: show ? undefined : 0 }}>
-          Vi tenker ikke moduler og funksjoner du må betjene. Vi tenker en prosessdrevet motor som
-          alltid vet neste oppgave — foreslår den med ferdig utkast, og kjører så mye på autopilot som du vil.
-        </p>
-      </div>
+    <div className="max-w-[1320px] mx-auto px-6 sm:px-12 w-full relative z-10 my-auto">
+      <div className="grid grid-cols-1 lg:grid-cols-[0.84fr_1.16fr] gap-10 lg:gap-14 items-center">
 
-      {/* ═══ Contrast: traditional system  vs  proactive next-task ═══ */}
-      <div className="grid grid-cols-1 md:grid-cols-[0.86fr_auto_1.14fr] gap-6 md:gap-9 items-stretch">
+        {/* ── LEFT · narrative ── */}
+        <div>
+          <div className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 mb-6"
+               style={{ background: 'rgba(181,110,237,0.1)', border: '1px solid rgba(181,110,237,0.22)', animation: active ? 'mFadeUp 0.6s cubic-bezier(0.22,1,0.36,1) 0.15s both' : undefined, opacity: show ? undefined : 0 }}>
+            <Sparkles className="w-3 h-3" style={{ color: '#c39ce0' }} strokeWidth={2} />
+            <span className="text-[10px] font-bold uppercase tracking-[0.22em]" style={{ color: '#c39ce0', ...F }}>En ny måte å tenke programvare på</span>
+          </div>
 
-        {/* ── LEFT · traditional system (passive, you operate it) ── */}
-        <div className="rounded-[22px] p-6 sm:p-7 relative overflow-hidden flex flex-col"
-             style={{ background: '#f1eee8', border: '1px solid #e7e2d9',
-                      animation: active ? 'rfPanelIn 0.8s cubic-bezier(0.22,1,0.36,1) 0.7s both' : undefined, opacity: show ? undefined : 0 }}>
-          <p className="text-[9.5px] font-bold uppercase tracking-[0.26em] text-[#b0a795] mb-1.5" style={F}>Tradisjonelt system</p>
-          <p className="text-[15px] sm:text-[16px] font-bold text-[#8d8676] tracking-[-0.02em] leading-[1.3] mb-5" style={F}>
-            Moduler og funksjoner — <br className="hidden sm:block" />du må gjøre jobben.
+          <h2 className="font-bold tracking-[-0.04em] leading-[1.0]"
+              style={{ ...F, fontSize: 'clamp(32px, 3.9vw, 58px)', animation: active ? 'mHeadline 0.95s cubic-bezier(0.22,1,0.36,1) 0.3s both' : undefined, opacity: show ? undefined : 0 }}>
+            <span className="block" style={{ color: 'rgba(255,255,255,0.4)' }}>Programvare du bruker,</span>
+            <span className="block" style={{ background: 'linear-gradient(90deg,#ffffff 0%,#d9bdf2 58%,#b56eed 100%)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>blir programvare som jobber.</span>
+          </h2>
+
+          <p className="text-[14.5px] sm:text-[16px] leading-[1.6] font-light mt-6 max-w-[470px]"
+             style={{ ...F, color: 'rgba(255,255,255,0.62)', animation: active ? 'mFadeUp 0.7s cubic-bezier(0.22,1,0.36,1) 0.5s both' : undefined, opacity: show ? undefined : 0 }}>
+            Slutten på moduler, dashboards og funksjoner du selv må betjene. DigiHome er en prosessdrevet
+            autopilot — den vet alltid neste oppgave, og utfører den så selvstendig du vil.
           </p>
-          <div className="grid grid-cols-3 gap-2 sm:gap-2.5">
-            {REFRAME_MODULES.map((m, i) => {
-              const MIcon = m.icon;
+
+          <div className="mt-8 space-y-0">
+            {REFRAME_PRINCIPLES.map((pr, i) => {
+              const PIcon = pr.icon;
               return (
-                <div key={i} className="rounded-[11px] bg-white/55 flex flex-col items-center justify-center gap-1.5 py-3"
-                     style={{ border: '1px solid #e7e2d9',
-                              animation: active ? `rfChipIn 0.5s ease-out ${0.95 + i * 0.04}s both` : undefined, opacity: show ? undefined : 0 }}>
-                  <MIcon className="w-4 h-4 text-[#b3aa98]" strokeWidth={1.6} />
-                  <span className="text-[9.5px] font-medium text-[#9a9281] tracking-[-0.01em]" style={F}>{m.label}</span>
+                <div key={i} className="flex items-start gap-3.5 py-3.5"
+                     style={{ borderTop: i === 0 ? 'none' : '1px solid rgba(255,255,255,0.07)', animation: active ? `mRowIn 0.6s cubic-bezier(0.22,1,0.36,1) ${0.78 + i * 0.12}s both` : undefined, opacity: show ? undefined : 0 }}>
+                  <span className="shrink-0 w-9 h-9 rounded-[11px] flex items-center justify-center mt-0.5"
+                        style={{ background: 'rgba(181,110,237,0.12)', border: '1px solid rgba(181,110,237,0.2)' }}>
+                    <PIcon className="w-4 h-4" style={{ color: '#c39ce0' }} strokeWidth={1.9} />
+                  </span>
+                  <div>
+                    <p className="text-[14px] font-bold text-white tracking-[-0.01em]" style={F}>{pr.title}</p>
+                    <p className="text-[12.5px] font-light leading-[1.5] mt-0.5" style={{ color: 'rgba(255,255,255,0.5)', ...F }}>{pr.body}</p>
+                  </div>
                 </div>
               );
             })}
           </div>
-          <p className="text-[11.5px] text-[#a39a88] leading-[1.5] font-light mt-5 tracking-[-0.005em]" style={F}>
-            Du må vite hva som skal gjøres — og gjøre alt selv.
-          </p>
         </div>
 
-        {/* ── divider ── */}
-        <div className="hidden md:flex flex-col items-center justify-center"
-             style={{ animation: active ? 'rfFadeUp 0.6s ease-out 0.85s both' : undefined, opacity: show ? undefined : 0 }}>
-          <div className="w-px flex-1 bg-gradient-to-b from-transparent via-[#dcd6cb] to-transparent" />
-          <span className="my-3 text-[10px] font-bold uppercase tracking-[0.2em] text-[#c0b8a6]" style={F}>vs</span>
-          <div className="w-px flex-1 bg-gradient-to-b from-transparent via-[#dcd6cb] to-transparent" />
-        </div>
+        {/* ── RIGHT · the Autopilot console ── */}
+        <div className="relative rounded-[28px] overflow-hidden"
+             style={{ background: 'linear-gradient(155deg, rgba(30,28,37,0.92) 0%, rgba(15,14,19,0.95) 100%)',
+                      border: '1px solid rgba(255,255,255,0.09)',
+                      boxShadow: '0 40px 100px -30px rgba(181,110,237,0.4), 0 30px 70px -20px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.06)',
+                      animation: active ? 'mPanelIn 0.9s cubic-bezier(0.22,1,0.36,1) 0.7s both' : undefined, opacity: show ? undefined : 0 }}>
+          {/* scanning shimmer */}
+          {active && !isPdf && (
+            <div aria-hidden="true" className="absolute left-0 right-0 h-24 pointer-events-none z-20"
+                 style={{ background: `linear-gradient(180deg, transparent, ${P}12, transparent)`, animation: 'mScan 6.5s ease-in-out infinite 1.4s' }} />
+          )}
+          {/* top glow */}
+          <div aria-hidden="true" className="absolute -top-24 right-8 w-[300px] h-[300px] rounded-full pointer-events-none"
+               style={{ background: `radial-gradient(circle, ${P}33 0%, transparent 70%)` }} />
 
-        {/* ── RIGHT · DigiHome proactive next-task card ── */}
-        <div className="rounded-[24px] bg-white relative overflow-hidden flex flex-col"
-             style={{ border: '1px solid #ece8e1',
-                      boxShadow: '0 2px 4px rgba(20,15,10,0.03), 0 24px 60px -18px rgba(181,110,237,0.28), 0 14px 40px rgba(20,15,10,0.07)',
-                      animation: active ? 'rfPanelIn 0.85s cubic-bezier(0.22,1,0.36,1) 0.8s both' : undefined, opacity: show ? undefined : 0 }}>
-          {/* purple glow */}
-          <div aria-hidden="true" className="absolute -top-28 -right-24 w-[320px] h-[320px] rounded-full pointer-events-none"
-               style={{ background: `radial-gradient(circle, ${P}1f 0%, transparent 70%)` }} />
-
-          <div className="relative z-10 p-6 sm:p-7 flex flex-col h-full">
+          <div className="relative z-10 p-6 sm:p-7">
             {/* header */}
-            <div className="flex items-center justify-between mb-5">
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full" style={{ background: P, boxShadow: `0 0 10px ${P}`, animation: active ? 'rfDot 2s ease-in-out infinite' : undefined }} />
-                <span className="text-[10px] font-bold uppercase tracking-[0.24em]" style={{ color: P, ...F }}>DigiHome foreslår</span>
-              </div>
-              <span className="text-[11px] font-medium text-[#b3aa98] tabular-nums" style={F}>09:14</span>
-            </div>
-
-            {/* task (re-animates on cycle) */}
-            <div key={ti} style={{ animation: !isPdf ? 'rfTaskIn 0.55s cubic-bezier(0.22,1,0.36,1) both' : undefined }} className="flex-1">
-              <div className="flex items-center gap-2 mb-3">
-                <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold"
-                      style={{ background: `${P}14`, color: '#7d39c4' }}>
-                  <TaskIcon className="w-3 h-3" strokeWidth={2} /> {task.tag}
+            <div className="flex items-center justify-between pb-5" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+              <div className="flex items-center gap-3">
+                <span className="relative flex items-center justify-center w-9 h-9">
+                  <span className="absolute inset-0 rounded-full" style={{ border: `1.5px solid ${P}`, animation: active ? 'mCoreRing 2.6s ease-out infinite' : undefined }} />
+                  <span className="w-3 h-3 rounded-full" style={{ background: `radial-gradient(circle, #e7d0fb, ${P})`, boxShadow: `0 0 14px ${P}`, animation: active ? 'mCore 2.2s ease-in-out infinite' : undefined }} />
                 </span>
-              </div>
-              <h3 className="text-[21px] sm:text-[24px] font-bold text-[#0c0c0c] tracking-[-0.028em] leading-[1.15] mb-2.5" style={F}>
-                {task.title}
-              </h3>
-              <p className="text-[12.5px] text-[#6f6a5f] leading-[1.5] font-light mb-4 tracking-[-0.005em]" style={F}>{task.context}</p>
-
-              {/* draft preview */}
-              <div className="rounded-[14px] px-4 py-3.5" style={{ background: '#f7f5f1', border: '1px solid #eceae3' }}>
-                <p className="text-[8.5px] font-bold uppercase tracking-[0.22em] text-[#a99fdb] mb-1.5" style={F}>{task.draftLabel}</p>
-                <p className="text-[12.5px] text-[#3a352c] leading-[1.55] font-light tracking-[-0.005em]" style={F}>
-                  {task.draft}
-                  <span className="inline-block w-[2px] h-[13px] align-middle ml-0.5 translate-y-[1px]" style={{ background: P, animation: active ? 'rfCaret 1s step-end infinite' : undefined }} />
-                </p>
-              </div>
-            </div>
-
-            {/* actions */}
-            <div className="flex items-center gap-2.5 mt-5">
-              <button className="inline-flex items-center gap-1.5 rounded-full px-4 py-2.5 text-[12.5px] font-semibold text-white tracking-[-0.01em]"
-                      style={{ background: P, boxShadow: `0 8px 20px -6px ${P}99`, ...F }}>
-                <Check className="w-3.5 h-3.5" strokeWidth={2.6} /> Godkjenn
-              </button>
-              <button className="rounded-full px-4 py-2.5 text-[12.5px] font-semibold text-[#5a564d] tracking-[-0.01em]"
-                      style={{ background: '#f3f0ea', border: '1px solid #e7e2d9', ...F }}>
-                Rediger
-              </button>
-              <div className="ml-auto flex items-center gap-2">
-                <span className="text-[11px] font-medium text-[#8d8676] tracking-[-0.01em]" style={F}>Auto</span>
-                <div className="w-9 h-5 rounded-full relative" style={{ background: P }}>
-                  <span className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-white" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+                <div>
+                  <p className="text-[13.5px] font-bold text-white tracking-[-0.01em] leading-none" style={F}>DigiHome Autopilot</p>
+                  <p className="text-[10.5px] font-light mt-1.5" style={{ color: 'rgba(255,255,255,0.45)', ...F }}>Vet alltid neste oppgave</p>
                 </div>
               </div>
+              <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold"
+                    style={{ background: 'rgba(52,211,153,0.12)', border: '1px solid rgba(52,211,153,0.25)', color: '#5fe3b0' }}>
+                <span className="w-1.5 h-1.5 rounded-full bg-[#34d399]" style={{ animation: active ? 'mCore 1.6s ease-in-out infinite' : undefined }} /> Aktiv
+              </span>
             </div>
-          </div>
-        </div>
-      </div>
 
-      {/* ═══ Autonomy dial — turn up as much autopilot as you want ═══ */}
-      <div className="mt-7 sm:mt-8 rounded-[20px] bg-[#0c0c0c] px-7 sm:px-9 py-5 sm:py-6 relative overflow-hidden"
-           style={{ animation: active ? 'rfFadeUp 0.85s cubic-bezier(0.22,1,0.36,1) 1.15s both' : undefined, opacity: show ? undefined : 0 }}>
-        <div aria-hidden="true" className="absolute -top-20 right-10 w-[260px] h-[260px] rounded-full pointer-events-none"
-             style={{ background: `radial-gradient(circle, ${P}22 0%, transparent 70%)` }} />
-        <div className="grid grid-cols-1 md:grid-cols-[0.9fr_1.1fr] gap-6 md:gap-12 items-center relative z-10">
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.28em] mb-2.5" style={{ color: P, ...F }}>Grad av autopilot</p>
-            <p className="text-[16px] sm:text-[19px] font-bold text-white tracking-[-0.02em] leading-[1.3]" style={F}>
-              Du skrur opp autopiloten <span style={{ color: '#c39ce0' }}>så langt du vil.</span>
-            </p>
-          </div>
-
-          {/* track */}
-          <div className="pt-1">
-            <div className="relative h-[3px] rounded-full" style={{ background: 'rgba(255,255,255,0.12)' }}>
-              <div className="absolute left-0 top-0 h-full rounded-full"
-                   style={{ width: isPdf ? '50%' : '50%', background: `linear-gradient(90deg, ${P}, #c39ce0)`, animation: active ? 'rfDialFill 1.1s cubic-bezier(0.22,1,0.36,1) 1.35s both' : undefined }} />
-              {[0, 50, 100].map((pos, i) => (
-                <div key={i} className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2" style={{ left: `${pos}%` }}>
-                  {i === 1 ? (
-                    <span className="block w-[18px] h-[18px] rounded-full border-2 border-[#0c0c0c]" style={{ background: P, animation: active ? 'rfKnob 2.4s ease-in-out infinite 1.6s' : undefined }} />
-                  ) : (
-                    <span className="block w-2 h-2 rounded-full" style={{ background: 'rgba(255,255,255,0.35)' }} />
-                  )}
+            {/* completed (auto) rows */}
+            <div className="pt-4 pb-1 space-y-2.5">
+              {REFRAME_DONE.map((d, i) => (
+                <div key={i} className="flex items-center gap-3"
+                     style={{ animation: active ? `mRowIn 0.6s ease-out ${0.95 + i * 0.12}s both` : undefined, opacity: show ? undefined : 0 }}>
+                  <span className="shrink-0 w-5 h-5 rounded-full flex items-center justify-center" style={{ background: 'rgba(181,110,237,0.16)' }}>
+                    <Check className="w-3 h-3" style={{ color: '#c39ce0' }} strokeWidth={3} />
+                  </span>
+                  <span className="text-[12px] font-light tracking-[-0.005em] flex-1 truncate" style={{ color: 'rgba(255,255,255,0.42)', ...F }}>{d.label}</span>
+                  <span className="text-[8.5px] font-bold uppercase tracking-[0.14em] px-1.5 py-0.5 rounded" style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.4)' }}>Auto</span>
+                  <span className="text-[10px] font-light tabular-nums" style={{ color: 'rgba(255,255,255,0.3)', ...F }}>{d.time}</span>
                 </div>
               ))}
             </div>
-            <div className="flex justify-between mt-3.5">
-              {[
-                { t: 'Manuell', s: 'Du gjør alt' },
-                { t: 'Foreslår', s: 'Utkast klart', hl: true },
-                { t: 'Autopilot', s: 'Helautomatisk' },
-              ].map((n, i) => (
-                <div key={i} className={i === 0 ? 'text-left' : i === 2 ? 'text-right' : 'text-center'}>
-                  <p className="text-[11.5px] font-semibold tracking-[-0.01em]" style={{ color: n.hl ? '#c39ce0' : 'rgba(255,255,255,0.85)', ...F }}>{n.t}</p>
-                  <p className="text-[9.5px] font-light mt-0.5" style={{ color: 'rgba(255,255,255,0.4)', ...F }}>{n.s}</p>
+
+            {/* focal next task */}
+            <div className="mt-3 relative rounded-[18px] overflow-hidden"
+                 style={{ background: 'linear-gradient(150deg, rgba(181,110,237,0.1), rgba(255,255,255,0.03))', border: `1px solid ${P}40`, boxShadow: `0 14px 40px -16px ${P}` }}>
+              <div className="absolute top-0 left-0 right-0 h-px" style={{ background: `linear-gradient(90deg, transparent, ${P}, transparent)` }} />
+              <div key={ti} style={{ animation: !isPdf && active ? 'mTaskIn 0.6s cubic-bezier(0.22,1,0.36,1) both' : undefined }} className="p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold"
+                        style={{ background: `${P}24`, color: '#dcc1f5' }}>
+                    <TaskIcon className="w-3 h-3" strokeWidth={2} /> {task.tag}
+                  </span>
+                  <span className="text-[10px] font-bold uppercase tracking-[0.16em]" style={{ color: '#c39ce0' }}>Neste oppgave</span>
                 </div>
-              ))}
+                <h3 className="text-[19px] sm:text-[21px] font-bold text-white tracking-[-0.025em] leading-[1.2] mb-1.5" style={F}>{task.title}</h3>
+                <p className="text-[11.5px] font-light mb-4" style={{ color: 'rgba(255,255,255,0.5)', ...F }}>{task.context}</p>
+                <div className="rounded-[12px] px-4 py-3" style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                  <p className="text-[8.5px] font-bold uppercase tracking-[0.22em] mb-1.5" style={{ color: '#a78bda', ...F }}>{task.draftLabel}</p>
+                  <p className="text-[12px] font-light leading-[1.55]" style={{ color: 'rgba(255,255,255,0.82)', ...F }}>
+                    {task.draft}
+                    <span className="inline-block w-[2px] h-[12px] align-middle ml-0.5 translate-y-[1px]" style={{ background: '#c39ce0', animation: active ? 'mCaret 1s step-end infinite' : undefined }} />
+                  </p>
+                </div>
+                <div className="flex items-center gap-2.5 mt-4">
+                  <button className="inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-[12px] font-semibold text-white"
+                          style={{ background: P, boxShadow: `0 8px 22px -6px ${P}`, ...F }}>
+                    <Check className="w-3.5 h-3.5" strokeWidth={2.6} /> Godkjenn
+                  </button>
+                  <button className="rounded-full px-4 py-2 text-[12px] font-semibold"
+                          style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.75)', ...F }}>Rediger</button>
+                  <div className="ml-auto flex items-center gap-1.5">
+                    <span className="text-[10.5px] font-medium" style={{ color: 'rgba(255,255,255,0.5)', ...F }}>Kjør på auto</span>
+                    <div className="w-8 h-[18px] rounded-full relative" style={{ background: P }}>
+                      <span className="absolute top-0.5 right-0.5 w-3.5 h-3.5 rounded-full bg-white" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* autonomy dial */}
+            <div className="mt-6 pt-5" style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-[10px] font-bold uppercase tracking-[0.22em]" style={{ color: 'rgba(255,255,255,0.5)', ...F }}>Grad av autopilot</span>
+                <span className="text-[12px] font-bold tabular-nums" style={{ color: '#c39ce0', ...F }}>68% autonomt</span>
+              </div>
+              <div className="relative h-[3px] rounded-full" style={{ background: 'rgba(255,255,255,0.1)' }}>
+                <div className="absolute left-0 top-0 h-full rounded-full"
+                     style={{ width: '68%', background: `linear-gradient(90deg, ${P}, #c39ce0)`, animation: active ? 'mDialFill 1.2s cubic-bezier(0.22,1,0.36,1) 1.4s both' : undefined }} />
+                <span className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 block w-[16px] h-[16px] rounded-full border-2 border-[#15141a]"
+                      style={{ left: '68%', background: P, animation: active ? 'mKnob 2.4s ease-in-out infinite 1.7s' : undefined }} />
+              </div>
+              <div className="flex justify-between mt-3">
+                {['Manuell', 'Foreslår', 'Autopilot'].map((t, i) => (
+                  <span key={i} className="text-[10px] font-medium tracking-[-0.005em]" style={{ color: i === 2 ? '#c39ce0' : 'rgba(255,255,255,0.4)', ...F }}>{t}</span>
+                ))}
+              </div>
             </div>
           </div>
         </div>
