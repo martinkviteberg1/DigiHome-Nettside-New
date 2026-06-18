@@ -4908,26 +4908,157 @@ const SAutopilotMindset = (p: any) => {
   );
 };
 
+/* ═══ PROCESS SLIDE — «Hele utleieprosessen. Ett system.» (prosess-pipeline · ende-til-ende) ═══ */
+const PROCESS_STAGES = [
+  { icon: Target,        title: 'Lead inn',      sub: 'Boligeier melder seg' },
+  { icon: FileText,      title: 'Tilbud',        sub: 'Verdivurdering + tilbud' },
+  { icon: Shield,        title: 'Signering',     sub: 'Forvaltningsavtale · BankID' },
+  { icon: Building2,     title: 'Eiendomsdata',  sub: 'Hentes fra Matrikkelen' },
+  { icon: Sparkles,      title: 'Klargjøring',   sub: 'AI-styling + annonsetekst' },
+  { icon: Rocket,        title: 'Publisering',   sub: 'Ut i markedet · FINN' },
+  { icon: ClipboardCheck, title: 'Leietaker',    sub: 'Kredittsjekk + leiekontrakt' },
+];
+
+const PROCESS_LOGOS = [
+  { src: '/bankid-logo.png', alt: 'BankID' },
+  { src: '/finn-logo.png', alt: 'FINN' },
+  { text: 'Matrikkelen' },
+  { src: '/creditsafe-logo.png', alt: 'Creditsafe' },
+  { src: '/vipps-logo.png', alt: 'Vipps' },
+  { src: '/fiken-logo.png', alt: 'Fiken' },
+  { src: '/tripletex-logo.png', alt: 'Tripletex' },
+];
+
+const SProcessPipeline = (p: any) => {
+  const active = p.isActive;
+  const isPdf = !!p.pdfMode;
+  const show = active || isPdf;
+  const AC = '#a78bfa';
+  const anim = active && !isPdf;
+  const circleLit = { borderColor: 'rgba(167,139,250,0.55)', background: 'rgba(167,139,250,0.13)', boxShadow: '0 0 18px -5px rgba(167,139,250,0.7)' };
+
+  return (
+  <SlideFrame bg="dark" {...p}>
+    <style>{`
+      @keyframes pUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+      @keyframes pHead { from { opacity: 0; transform: translateY(20px); filter: blur(8px); } 60% { filter: blur(0); } to { opacity: 1; transform: translateY(0); filter: blur(0); } }
+      @keyframes pCirc { from { opacity: 0.3; transform: scale(0.85); border-color: rgba(255,255,255,0.12); background: rgba(255,255,255,0.03); box-shadow: 0 0 0 0 rgba(167,139,250,0); } to { opacity: 1; transform: scale(1); border-color: rgba(167,139,250,0.55); background: rgba(167,139,250,0.13); box-shadow: 0 0 18px -5px rgba(167,139,250,0.7); } }
+      @keyframes pLbl { from { opacity: 0.2; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+      @keyframes pConn { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+      @keyframes pDrift { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+      @keyframes pSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    `}</style>
+
+    <div aria-hidden="true" className="absolute inset-0 pointer-events-none overflow-hidden">
+      <div className="absolute top-[34%] left-1/2 -translate-x-1/2 w-[70%] h-[40%] rounded-full"
+           style={{ background: `radial-gradient(ellipse, ${AC}16 0%, transparent 70%)`, filter: 'blur(40px)' }} />
+    </div>
+    <DotGrid maskCenter="50% 40%" opacity={0.07} />
+
+    <div className="max-w-[1240px] mx-auto px-6 sm:px-12 w-full relative z-10 my-auto">
+
+      {/* ── header ── */}
+      <div className="text-center max-w-[820px] mx-auto">
+        <div className="inline-flex items-center gap-2.5 mb-6"
+             style={{ animation: active ? 'pUp 0.6s cubic-bezier(0.22,1,0.36,1) 0.15s both' : undefined, opacity: show ? undefined : 0 }}>
+          <span className="h-px w-6" style={{ background: AC }} />
+          <span className="text-[10.5px] font-medium uppercase tracking-[0.24em]" style={{ color: 'rgba(255,255,255,0.55)', ...F }}>Kartlagt av utleiere — automatisert fra ende til ende</span>
+          <span className="h-px w-6" style={{ background: AC }} />
+        </div>
+        <h2 className="tracking-[-0.035em] leading-[1.0]"
+            style={{ ...FH, fontWeight: 700, fontSize: 'clamp(34px, 4.2vw, 60px)', animation: active ? 'pHead 0.9s cubic-bezier(0.22,1,0.36,1) 0.28s both' : undefined, opacity: show ? undefined : 0 }}>
+          <span className="text-white">Hele utleieprosessen. </span>
+          <span style={{ color: AC }}>Ett system.</span>
+        </h2>
+        <p className="text-[14.5px] sm:text-[16px] leading-[1.55] font-normal mt-5 max-w-[680px] mx-auto"
+           style={{ ...F, color: 'rgba(255,255,255,0.58)', animation: active ? 'pUp 0.7s cubic-bezier(0.22,1,0.36,1) 0.5s both' : undefined, opacity: show ? undefined : 0 }}>
+          Utleie følger en standardisert prosess. Vi er utleiere selv — har kartlagt hvert manuelle steg
+          og automatisert hele kjeden, fra lead til løpende forvaltning.
+        </p>
+      </div>
+
+      {/* ── pipeline ── */}
+      <div className="mt-14 sm:mt-16 flex items-start justify-center">
+        {PROCESS_STAGES.map((s, i) => {
+          const Icon = s.icon;
+          const d = 0.7 + i * 0.4;
+          return (
+            <React.Fragment key={s.title}>
+              <div className="flex flex-col items-center text-center" style={{ width: '124px' }}>
+                <span className="text-[9px] font-bold tabular-nums tracking-[0.1em] mb-2.5" style={{ color: 'rgba(255,255,255,0.3)', ...F }}>{String(i + 1).padStart(2, '0')}</span>
+                <span className="w-[52px] h-[52px] rounded-[15px] flex items-center justify-center border"
+                      style={{ ...circleLit, animation: anim ? `pCirc 0.55s cubic-bezier(0.22,1,0.36,1) ${d}s both` : undefined }}>
+                  <Icon className="w-[22px] h-[22px]" style={{ color: '#d7c6f7' }} strokeWidth={1.7} />
+                </span>
+                <p className="text-[13px] font-semibold text-white tracking-[-0.01em] mt-3.5"
+                   style={{ ...F, animation: anim ? `pLbl 0.5s ease ${d + 0.1}s both` : undefined, opacity: show ? undefined : 0 }}>{s.title}</p>
+                <p className="text-[11px] font-normal leading-[1.35] mt-1 px-1"
+                   style={{ color: 'rgba(255,255,255,0.46)', ...F, animation: anim ? `pLbl 0.5s ease ${d + 0.15}s both` : undefined, opacity: show ? undefined : 0 }}>{s.sub}</p>
+              </div>
+
+              {i < PROCESS_STAGES.length - 1 && (
+                <div className="flex-1 mt-[33px] h-[2px] mx-0.5 relative max-w-[60px]" style={{ background: 'rgba(255,255,255,0.09)' }}>
+                  <div className="absolute inset-y-0 left-0 w-full rounded-full" style={{ transformOrigin: 'left', background: `linear-gradient(90deg, ${AC}, #c4b5fd)`, animation: anim ? `pConn 0.42s ease ${d + 0.22}s both` : undefined }} />
+                </div>
+              )}
+            </React.Fragment>
+          );
+        })}
+
+        {/* arrow + drift endpoint */}
+        <div className="flex items-center mt-[26px]" style={{ animation: anim ? 'pDrift 0.6s cubic-bezier(0.22,1,0.36,1) 3.6s both' : undefined, opacity: show ? undefined : 0 }}>
+          <ArrowRight className="w-4 h-4 mx-1.5" style={{ color: 'rgba(255,255,255,0.35)' }} strokeWidth={2} />
+          <div className="flex flex-col items-center text-center" style={{ width: '120px' }}>
+            <span className="w-[52px] h-[52px] rounded-full flex items-center justify-center" style={{ background: `${AC}1f`, border: `1px solid ${AC}66`, boxShadow: `0 0 22px -6px ${AC}` }}>
+              <Loader2 className="w-[22px] h-[22px]" style={{ color: AC, animation: anim ? 'pSpin 4s linear infinite' : undefined }} strokeWidth={2} />
+            </span>
+            <p className="text-[13px] font-semibold mt-3.5" style={{ color: '#d7c6f7', ...F }}>Drift</p>
+            <p className="text-[11px] font-normal leading-[1.35] mt-1" style={{ color: 'rgba(255,255,255,0.46)', ...F }}>Autopilot, kontinuerlig</p>
+          </div>
+        </div>
+      </div>
+
+      {/* ── integrasjoner ── */}
+      <div className="mt-14 flex items-center justify-center gap-2.5 flex-wrap"
+           style={{ animation: active ? 'pUp 0.7s cubic-bezier(0.22,1,0.36,1) 1.1s both' : undefined, opacity: show ? undefined : 0 }}>
+        <span className="text-[9.5px] font-semibold uppercase tracking-[0.2em] mr-1.5" style={{ color: 'rgba(255,255,255,0.4)', ...F }}>Integrert med</span>
+        {PROCESS_LOGOS.map((l, i) => (
+          l.text ? (
+            <span key={i} className="inline-flex items-center h-[30px] px-3 rounded-lg text-[11.5px] font-semibold"
+                  style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.8)', ...F }}>{l.text}</span>
+          ) : (
+            <span key={i} className="inline-flex items-center h-[30px] px-3 rounded-lg bg-white" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>
+              <img src={l.src} alt={l.alt} className="h-[15px] w-auto object-contain" />
+            </span>
+          )
+        ))}
+      </div>
+    </div>
+  </SlideFrame>
+  );
+};
+
 /* ═══ SLIDE ORDER ═══ */
 /* ═══ SLIDE ORDER — 2026 · Product-first investor flow ═══ */
 const SLIDES = [
   S1,            // 01 · Cover
   SAutopilotMindset, // 02 · Mindset reframe — «Ikke et system. En autopilot.»
-  SLiveDemo,     // 03 · Live product animation (from /digihome-tech)
-  SDualUSP,      // 04 · Three unique aspects (auto-listing + dynamic + AI ops)
-  STeam,         // 05 · Team (founder-market fit)
-  SProblem,      // 06 · Problem
-  SWhyNow,       // 07 · Why now? (timing window)
-  SWhyDH,        // 08 · Solution
-  SMarket1,      // 09 · Tiered market (NOK leievolum)
-  SMarket3,      // 10 · Path to 150 MNOK ARR (Nordic)
-  SDiff,         // 11 · Konkurransefortrinn (combined moat + market positioning)
-  SProductTiers, // 12 · Products & pricing
-  SRevenue,      // 13 · Revenue model
-  SUnitEconomics,// 14 · Unit economics
-  SBudgetRunway, // 15 · Budget & runway
-  SAsk,          // 16 · Pre-seed emisjon
-  S9,            // 17 · Closing
+  SProcessPipeline, // 03 · Prosess-pipeline — «Hele utleieprosessen. Ett system.»
+  SLiveDemo,     // 04 · Live product animation (from /digihome-tech)
+  SDualUSP,      // 05 · Three unique aspects (auto-listing + dynamic + AI ops)
+  STeam,         // 06 · Team (founder-market fit)
+  SProblem,      // 07 · Problem
+  SWhyNow,       // 08 · Why now? (timing window)
+  SWhyDH,        // 09 · Solution
+  SMarket1,      // 10 · Tiered market (NOK leievolum)
+  SMarket3,      // 11 · Path to 150 MNOK ARR (Nordic)
+  SDiff,         // 12 · Konkurransefortrinn (combined moat + market positioning)
+  SProductTiers, // 13 · Products & pricing
+  SRevenue,      // 14 · Revenue model
+  SUnitEconomics,// 15 · Unit economics
+  SBudgetRunway, // 16 · Budget & runway
+  SAsk,          // 17 · Pre-seed emisjon
+  S9,            // 18 · Closing
 ];
 
 export default function Presentasjon() {
