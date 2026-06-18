@@ -189,6 +189,9 @@ frontend:
         -working: true
         -agent: "main"
         -comment: "Portet komplett interaktiv investor-pitch-deck (Presentasjon.tsx ~5000l + HeroProductAnimation.tsx + LandingHeroAnimation.tsx) fra DigiHome-repo (branch martindevtestnew) til Next.js. Tillegg: TypeScript-støtte (tsconfig.json, allowJs), html2canvas+jspdf, Plus Jakarta Sans-font, 23 nye assets kopiert til /public. Fikset 2 blokkere: (1) hevet NODE_OPTIONS max-old-space-size 512->3072 (OOM-restart på tung deck), (2) la til ts,tsx i tailwind.config content (h-screen genererte ikke -> høyde 0/hvit side). Verifisert via skjermbilder: slide 1 (cover m/ Bergen-foto + DigiHome-wordmark), slide 2 (live produkt-demo), slide 4 (team m/ foto), slide 15 (The Ask m/ KPI-kort + milepæler). Alle 16 slides rendrer i verdensklasse. Piltast/klikk-navigasjon fungerer."
+        -working: true
+        -agent: "main"
+        -comment: "NY SLIDE 2 lagt til: SAutopilotMindset «Ikke et system. En autopilot.» (posisjonerings-/paradigme-slide, lys beige). Kontrast: venstre = nedtonet tradisjonelt system m/ 9 modul-chips («du må gjøre jobben»), høyre = proaktivt «DigiHome foreslår»-kort som sykler gjennom 3 ekte oppgaver (Forny annonse → Svar leietaker → Juster pris) med ferdig utkast + Godkjenn/Rediger/Auto, nederst mørk autonomi-dial (Manuell → Foreslår → Autopilot). Verifisert via skjermbilder: rendrer verdensklasse, kort-syklingen fungerer (fanget oppgave 1 og 3). Deck er nå 17 slides; SLIDES-kommentarer renummerert. Tømte testagentens cachede PDF + test-leads fra MongoDB så første ekte nedlasting genererer riktig 17-slides-PDF."
 
   - task: "SeksjonBoliger (/2) — live boligportefølje fra DigiHome API"
     implemented: true
