@@ -1680,7 +1680,7 @@ export default function HeroProductAnimation() {
   const showAutomation = phase === 'automation' || phase === 'automation-out';
 
   return (
-    <div ref={ref} className="flex flex-col" data-testid="hero-product-animation" style={{ fontFamily: "'Plus Jakarta Sans', -apple-system, sans-serif" }}>
+    <div ref={ref} className="flex flex-col" data-testid="hero-product-animation" style={{ fontFamily: "var(--font-body), 'ABC Diatype', -apple-system, sans-serif" }}>
 
       {/* ── DEBUG NAV BUTTONS (hidden, enable by setting display to flex) ── */}
       <div className="flex-wrap items-center gap-1.5 mb-3 px-1" data-testid="debug-nav" style={{ display: 'none' }}>
@@ -3188,7 +3188,7 @@ export function HeroProductAnimationBackup() {
   ];
 
   return (
-    <div ref={ref} className="flex flex-col" data-testid="hero-product-animation-backup" style={{ fontFamily: "'Plus Jakarta Sans', -apple-system, sans-serif" }}>
+    <div ref={ref} className="flex flex-col" data-testid="hero-product-animation-backup" style={{ fontFamily: "var(--font-body), 'ABC Diatype', -apple-system, sans-serif" }}>
       <div className="flex items-center justify-center">
         {tabs.map(tab => {
           const active = activeTab === tab.key;

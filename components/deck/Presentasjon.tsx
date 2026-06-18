@@ -4,10 +4,12 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { ChevronLeft, ChevronRight, Check, Home, CreditCard, MessageCircle, Wrench, FileText, Sparkles, ArrowRight, Plus, Camera, Clock, BarChart3, Zap, Brain, Building2, AlertTriangle, TrendingUp, Settings, Layers, CalendarDays, PhoneCall, PenLine, Target, Rocket, Bot, MinusCircle, PlusCircle, LayoutDashboard, MessageSquare, ClipboardList, Radio, ClipboardCheck, AlertCircle, Users, BookOpen, PieChart, DollarSign, Shield, ChevronDown, Search, Filter, MoreHorizontal, Volume2, Droplets, Download, Loader2 } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
+import { AnimatePresence, motion } from 'framer-motion';
 import HeroProductAnimation from './HeroProductAnimation';
 import LandingHeroAnimation from './LandingHeroAnimation';
 
-const F = { fontFamily: "'Plus Jakarta Sans', -apple-system, sans-serif" };
+const F = { fontFamily: "var(--font-body), 'ABC Diatype', -apple-system, BlinkMacSystemFont, sans-serif" };
+const FH = { fontFamily: "var(--font-heading), 'PP Right Grotesk', -apple-system, BlinkMacSystemFont, sans-serif" };
 const P = '#b56eed'; // accent
 
 function Logo({ light, className = '' }: any) {
@@ -925,7 +927,7 @@ const SProductGlance = (p: any) => {
       { label: 'Superadmin', Icon: Shield },
     ];
     return (
-      <div className="bg-[#1a1a1a] text-white flex flex-col shrink-0" style={{ width: '196px', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+      <div className="bg-[#1a1a1a] text-white flex flex-col shrink-0" style={{ width: '196px', fontFamily: "var(--font-body), 'ABC Diatype', sans-serif" }}>
         {/* Logo header — exact match to real portal */}
         <div className="px-5 pt-5 pb-3 flex items-center justify-between">
           <img src="/logo-light.svg" alt="Digihome" className="h-[20px] w-auto opacity-90" />
@@ -4702,234 +4704,156 @@ const SDualUSP = (p: any) => {
   );
 };
 
-/* ═══ MINDSET SLIDE — «En ny måte å tenke programvare på» (paradigm reframe · cinematic) ═══ */
-const REFRAME_TASKS = [
-  {
-    tag: 'Annonse utløper',
-    title: 'Forny annonsen for Solveien 12B',
-    context: 'Utløper om 2 dager · 14 visninger denne uken',
-    draftLabel: 'Utkast klart',
-    draft: 'Lys 3-roms i hjertet av Bergen — pusset opp, ledig fra 1. mai. Nær Bryggen og bybanen.',
-    icon: Camera,
-  },
-  {
-    tag: 'Ny melding',
-    title: 'Svar Stine om innflytting',
-    context: 'Mottatt 09:12 · venter på svar',
-    draftLabel: 'Svar foreslått',
-    draft: 'Hei Stine! Innflytting er bekreftet til 1. april kl. 14. Nøkler henter du i resepsjonen.',
-    icon: MessageCircle,
-  },
-  {
-    tag: 'Lavt belegg',
-    title: 'Juster prisen — 3 ledige netter',
-    context: 'Uke 18 · konkurrenter ligger −8 %',
-    draftLabel: 'Forslag',
-    draft: 'Senk pris −6 % for 12.–15. mai for å fylle kalenderen. Estimert +2 100 kr i inntekt.',
-    icon: BarChart3,
-  },
-];
-
-const REFRAME_DONE = [
-  { label: 'Sendte husleie-påminnelse · 3 leietakere', time: '08:30' },
-  { label: 'Bekreftet visning · Møhlenpris 14', time: '08:52' },
-];
-
-const REFRAME_PRINCIPLES = [
-  { icon: Target, title: 'Proaktiv', body: 'Vet neste oppgave før du rekker å tenke på den.' },
-  { icon: PenLine, title: 'Forberedt', body: 'Hver oppgave kommer med ferdig utkast. Du sier bare ja.' },
-  { icon: Zap, title: 'Autonom', body: 'Skru opp autopiloten — fra forslag til full selvkjøring.' },
+/* ═══ MINDSET SLIDE — «En ny måte å tenke programvare på» (langtid · én oppgave om gangen) ═══ */
+const LANGTID_TASKS = [
+  { cat: 'Kontrakt',    title: 'Reguler husleien etter KPI',        context: 'Solveien 12B · årlig justering forfaller 1. juni', handling: 'Varsel klart: husleie økes 3,8 % iht. konsumprisindeks, med én måneds frist.', resolve: 'auto' },
+  { cat: 'Husleie',     title: 'Påminnelse om forfalt husleie',     context: 'Møhlenpris 14 · forfalt for 2 dager siden',          handling: 'Vennlig påminnelse sendt på SMS og e-post, med betalingslenke vedlagt.',     resolve: 'auto' },
+  { cat: 'Vedlikehold', title: 'Lekkasje meldt av leietaker',        context: 'Strandgaten 8 · kjøkkenkran drypper',                handling: 'Rørlegger foreslått tirsdag kl. 10–12. Leietaker varslet om tidspunkt.',     resolve: 'you' },
+  { cat: 'Utleie',      title: 'Ny leietaker kredittsjekket',        context: 'Nygårdsgaten 22 · 9 søkere screenet',                handling: 'Anbefalt søker, score 4,8/5. Leiekontrakt klar til e-signering.',           resolve: 'you' },
 ];
 
 const SAutopilotMindset = (p: any) => {
   const active = p.isActive;
   const isPdf = !!p.pdfMode;
   const show = active || isPdf;
-  const [ti, setTi] = useState(0);
+  const AC = '#a78bfa';
+  const EASE = [0.22, 1, 0.36, 1];
 
+  const [cycle, setCycle] = useState(0);
+  const [phase, setPhase] = useState<'work' | 'done'>(isPdf ? 'done' : 'work');
+
+  const task = LANGTID_TASKS[cycle];
+
+  // reset on leave
   useEffect(() => {
-    if (!active || isPdf) { setTi(0); return; }
-    const id = setInterval(() => setTi((v: number) => (v + 1) % REFRAME_TASKS.length), 4200);
-    return () => clearInterval(id);
+    if (isPdf) { setCycle(0); setPhase('done'); return; }
+    if (!active) { setCycle(0); setPhase('work'); }
   }, [active, isPdf]);
 
-  const task = REFRAME_TASKS[ti];
-  const TaskIcon = task.icon;
+  // per task: work -> done -> next
+  useEffect(() => {
+    if (!active || isPdf) return;
+    setPhase('work');
+    const t1 = setTimeout(() => setPhase('done'), 2750);
+    const t2 = setTimeout(() => setCycle((c) => (c + 1) % LANGTID_TASKS.length), 4500);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, [cycle, active, isPdf]);
+
+  const C = 119.38; // 2πr, r=19
+  const isAuto = task.resolve === 'auto';
+  const doneColor = isAuto ? AC : '#34d399';
 
   return (
   <SlideFrame bg="dark" {...p}>
     <style>{`
-      @keyframes mFadeUp { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
-      @keyframes mHeadline { from { opacity: 0; transform: translateY(24px); filter: blur(10px); } 60% { filter: blur(0); } to { opacity: 1; transform: translateY(0); filter: blur(0); } }
-      @keyframes mPanelIn { from { opacity: 0; transform: translateY(26px) scale(0.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
-      @keyframes mTaskIn { from { opacity: 0; transform: translateY(12px) scale(0.99); filter: blur(4px); } to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); } }
-      @keyframes mCore { 0%,100% { transform: scale(1); opacity: 0.85; } 50% { transform: scale(1.12); opacity: 1; } }
-      @keyframes mCoreRing { 0% { transform: scale(0.75); opacity: 0.65; } 100% { transform: scale(2.3); opacity: 0; } }
-      @keyframes mScan { 0% { transform: translateY(-110%); opacity: 0; } 14% { opacity: 0.5; } 50% { opacity: 0.32; } 88% { opacity: 0; } 100% { transform: translateY(560%); opacity: 0; } }
-      @keyframes mCaret { 0%,100% { opacity: 1; } 50% { opacity: 0; } }
-      @keyframes mDialFill { from { width: 0%; } to { width: 68%; } }
-      @keyframes mKnob { 0%,100% { box-shadow: 0 0 0 0 rgba(181,110,237,0.5), 0 6px 20px -4px rgba(181,110,237,0.8); } 50% { box-shadow: 0 0 0 8px rgba(181,110,237,0.12), 0 6px 20px -4px rgba(181,110,237,0.8); } }
-      @keyframes mRowIn { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: translateX(0); } }
-      @keyframes mAurora { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(4%, -3%) scale(1.08); } }
+      @keyframes mUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+      @keyframes mHead { from { opacity: 0; transform: translateY(20px); filter: blur(8px); } 60% { filter: blur(0); } to { opacity: 1; transform: translateY(0); filter: blur(0); } }
+      @keyframes mPanel { from { opacity: 0; transform: translateY(20px) scale(0.99); } to { opacity: 1; transform: translateY(0) scale(1); } }
+      @keyframes mRing { from { stroke-dashoffset: ${C}; } to { stroke-dashoffset: 0; } }
+      @keyframes mPop { 0% { opacity: 0; transform: scale(0.7); } 60% { transform: scale(1.12); } 100% { opacity: 1; transform: scale(1); } }
+      @keyframes mPulse { 0%,100% { opacity: 0.45; transform: scale(0.85); } 50% { opacity: 1; transform: scale(1.2); } }
+      @keyframes mRingPulse { 0% { transform: scale(0.7); opacity: 0.5; } 100% { transform: scale(2); opacity: 0; } }
     `}</style>
 
-    {/* ── Aurora background ── */}
+    {/* single soft glow behind the task */}
     <div aria-hidden="true" className="absolute inset-0 pointer-events-none overflow-hidden">
-      <div className="absolute -top-[20%] -right-[10%] w-[60%] h-[70%] rounded-full"
-           style={{ background: `radial-gradient(circle, ${P}26 0%, transparent 65%)`, filter: 'blur(24px)', animation: active ? 'mAurora 16s ease-in-out infinite' : undefined }} />
-      <div className="absolute -bottom-[25%] -left-[12%] w-[55%] h-[60%] rounded-full"
-           style={{ background: 'radial-gradient(circle, rgba(99,102,241,0.16) 0%, transparent 65%)', filter: 'blur(24px)', animation: active ? 'mAurora 20s ease-in-out infinite reverse' : undefined }} />
+      <div className="absolute top-1/2 right-[12%] -translate-y-1/2 w-[40%] h-[64%] rounded-full"
+           style={{ background: `radial-gradient(ellipse, ${AC}1a 0%, transparent 70%)`, filter: 'blur(34px)' }} />
     </div>
-    <DotGrid maskCenter="68% 50%" opacity={0.16} />
+    <DotGrid maskCenter="50% 50%" opacity={0.07} />
 
-    <div className="max-w-[1320px] mx-auto px-6 sm:px-12 w-full relative z-10 my-auto">
-      <div className="grid grid-cols-1 lg:grid-cols-[0.84fr_1.16fr] gap-10 lg:gap-14 items-center">
+    <div className="max-w-[1240px] mx-auto px-6 sm:px-12 w-full relative z-10 my-auto">
+      <div className="grid grid-cols-1 lg:grid-cols-[0.82fr_1.18fr] gap-12 lg:gap-20 items-center">
 
-        {/* ── LEFT · narrative ── */}
+        {/* ── LEFT · minimal narrative ── */}
         <div>
-          <div className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 mb-6"
-               style={{ background: 'rgba(181,110,237,0.1)', border: '1px solid rgba(181,110,237,0.22)', animation: active ? 'mFadeUp 0.6s cubic-bezier(0.22,1,0.36,1) 0.15s both' : undefined, opacity: show ? undefined : 0 }}>
-            <Sparkles className="w-3 h-3" style={{ color: '#c39ce0' }} strokeWidth={2} />
-            <span className="text-[10px] font-bold uppercase tracking-[0.22em]" style={{ color: '#c39ce0', ...F }}>En ny måte å tenke programvare på</span>
+          <div className="flex items-center gap-3 mb-7"
+               style={{ animation: active ? 'mUp 0.6s cubic-bezier(0.22,1,0.36,1) 0.15s both' : undefined, opacity: show ? undefined : 0 }}>
+            <span className="h-px w-7" style={{ background: AC }} />
+            <span className="text-[10.5px] font-medium uppercase tracking-[0.24em]" style={{ color: 'rgba(255,255,255,0.55)', ...F }}>En ny måte å tenke programvare på</span>
           </div>
 
-          <h2 className="font-bold tracking-[-0.04em] leading-[1.0]"
-              style={{ ...F, fontSize: 'clamp(32px, 3.9vw, 58px)', animation: active ? 'mHeadline 0.95s cubic-bezier(0.22,1,0.36,1) 0.3s both' : undefined, opacity: show ? undefined : 0 }}>
-            <span className="block" style={{ color: 'rgba(255,255,255,0.4)' }}>Programvare du bruker,</span>
-            <span className="block" style={{ background: 'linear-gradient(90deg,#ffffff 0%,#d9bdf2 58%,#b56eed 100%)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>blir programvare som jobber.</span>
+          <h2 className="tracking-[-0.04em] leading-[0.98]"
+              style={{ ...FH, fontWeight: 700, fontSize: 'clamp(40px, 4.6vw, 72px)', animation: active ? 'mHead 0.9s cubic-bezier(0.22,1,0.36,1) 0.28s both' : undefined, opacity: show ? undefined : 0 }}>
+            <span className="block text-white">Ikke et system.</span>
+            <span className="block" style={{ color: AC }}>En autopilot.</span>
           </h2>
 
-          <p className="text-[14.5px] sm:text-[16px] leading-[1.6] font-light mt-6 max-w-[470px]"
-             style={{ ...F, color: 'rgba(255,255,255,0.62)', animation: active ? 'mFadeUp 0.7s cubic-bezier(0.22,1,0.36,1) 0.5s both' : undefined, opacity: show ? undefined : 0 }}>
-            Slutten på moduler, dashboards og funksjoner du selv må betjene. DigiHome er en prosessdrevet
-            autopilot — den vet alltid neste oppgave, og utfører den så selvstendig du vil.
+          <p className="text-[15.5px] sm:text-[17px] leading-[1.5] font-normal mt-7 max-w-[380px]"
+             style={{ ...F, color: 'rgba(255,255,255,0.6)', animation: active ? 'mUp 0.7s cubic-bezier(0.22,1,0.36,1) 0.5s both' : undefined, opacity: show ? undefined : 0 }}>
+            Den vet alltid neste oppgave i utleien — forbereder den, og fullfører den for deg.
           </p>
 
-          <div className="mt-8 space-y-0">
-            {REFRAME_PRINCIPLES.map((pr, i) => {
-              const PIcon = pr.icon;
-              return (
-                <div key={i} className="flex items-start gap-3.5 py-3.5"
-                     style={{ borderTop: i === 0 ? 'none' : '1px solid rgba(255,255,255,0.07)', animation: active ? `mRowIn 0.6s cubic-bezier(0.22,1,0.36,1) ${0.78 + i * 0.12}s both` : undefined, opacity: show ? undefined : 0 }}>
-                  <span className="shrink-0 w-9 h-9 rounded-[11px] flex items-center justify-center mt-0.5"
-                        style={{ background: 'rgba(181,110,237,0.12)', border: '1px solid rgba(181,110,237,0.2)' }}>
-                    <PIcon className="w-4 h-4" style={{ color: '#c39ce0' }} strokeWidth={1.9} />
-                  </span>
-                  <div>
-                    <p className="text-[14px] font-bold text-white tracking-[-0.01em]" style={F}>{pr.title}</p>
-                    <p className="text-[12.5px] font-light leading-[1.5] mt-0.5" style={{ color: 'rgba(255,255,255,0.5)', ...F }}>{pr.body}</p>
-                  </div>
-                </div>
-              );
-            })}
+          <div className="flex items-center gap-2.5 mt-9 text-[12.5px]"
+               style={{ ...F, animation: active ? 'mUp 0.7s cubic-bezier(0.22,1,0.36,1) 0.66s both' : undefined, opacity: show ? undefined : 0 }}>
+            {['Proaktiv', 'Forberedt', 'Autonom'].map((w, i) => (
+              <React.Fragment key={w}>
+                {i > 0 && <span style={{ color: 'rgba(255,255,255,0.22)' }}>·</span>}
+                <span style={{ color: 'rgba(255,255,255,0.78)' }}>{w}</span>
+              </React.Fragment>
+            ))}
           </div>
         </div>
 
-        {/* ── RIGHT · the Autopilot console ── */}
-        <div className="relative rounded-[28px] overflow-hidden"
-             style={{ background: 'linear-gradient(155deg, rgba(30,28,37,0.92) 0%, rgba(15,14,19,0.95) 100%)',
-                      border: '1px solid rgba(255,255,255,0.09)',
-                      boxShadow: '0 40px 100px -30px rgba(181,110,237,0.4), 0 30px 70px -20px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.06)',
-                      animation: active ? 'mPanelIn 0.9s cubic-bezier(0.22,1,0.36,1) 0.7s both' : undefined, opacity: show ? undefined : 0 }}>
-          {/* scanning shimmer */}
-          {active && !isPdf && (
-            <div aria-hidden="true" className="absolute left-0 right-0 h-24 pointer-events-none z-20"
-                 style={{ background: `linear-gradient(180deg, transparent, ${P}12, transparent)`, animation: 'mScan 6.5s ease-in-out infinite 1.4s' }} />
-          )}
-          {/* top glow */}
-          <div aria-hidden="true" className="absolute -top-24 right-8 w-[300px] h-[300px] rounded-full pointer-events-none"
-               style={{ background: `radial-gradient(circle, ${P}33 0%, transparent 70%)` }} />
+        {/* ── RIGHT · one task at a time ── */}
+        <div className="relative rounded-[26px] px-7 sm:px-9 py-8 sm:py-9"
+             style={{ background: 'rgba(255,255,255,0.018)', border: '1px solid rgba(255,255,255,0.06)',
+                      boxShadow: '0 30px 90px -50px rgba(0,0,0,0.9)',
+                      animation: active ? 'mPanel 0.85s cubic-bezier(0.22,1,0.36,1) 0.6s both' : undefined, opacity: show ? undefined : 0 }}>
 
-          <div className="relative z-10 p-6 sm:p-7">
-            {/* header */}
-            <div className="flex items-center justify-between pb-5" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-              <div className="flex items-center gap-3">
-                <span className="relative flex items-center justify-center w-9 h-9">
-                  <span className="absolute inset-0 rounded-full" style={{ border: `1.5px solid ${P}`, animation: active ? 'mCoreRing 2.6s ease-out infinite' : undefined }} />
-                  <span className="w-3 h-3 rounded-full" style={{ background: `radial-gradient(circle, #e7d0fb, ${P})`, boxShadow: `0 0 14px ${P}`, animation: active ? 'mCore 2.2s ease-in-out infinite' : undefined }} />
-                </span>
-                <div>
-                  <p className="text-[13.5px] font-bold text-white tracking-[-0.01em] leading-none" style={F}>DigiHome Autopilot</p>
-                  <p className="text-[10.5px] font-light mt-1.5" style={{ color: 'rgba(255,255,255,0.45)', ...F }}>Vet alltid neste oppgave</p>
-                </div>
-              </div>
-              <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold"
-                    style={{ background: 'rgba(52,211,153,0.12)', border: '1px solid rgba(52,211,153,0.25)', color: '#5fe3b0' }}>
-                <span className="w-1.5 h-1.5 rounded-full bg-[#34d399]" style={{ animation: active ? 'mCore 1.6s ease-in-out infinite' : undefined }} /> Aktiv
+          {/* live header */}
+          <div className="flex items-center justify-between mb-9">
+            <div className="flex items-center gap-2.5">
+              <span className="relative flex items-center justify-center w-2 h-2">
+                <span className="absolute w-2 h-2 rounded-full" style={{ background: AC, animation: active ? 'mRingPulse 2.6s ease-out infinite' : undefined }} />
+                <span className="w-1.5 h-1.5 rounded-full" style={{ background: AC, boxShadow: `0 0 8px ${AC}` }} />
               </span>
+              <span className="text-[11px] font-medium uppercase tracking-[0.2em]" style={{ color: 'rgba(255,255,255,0.5)', ...F }}>DigiHome autopilot</span>
             </div>
+            <span className="text-[11px] font-medium tabular-nums tracking-[-0.005em]" style={{ color: phase === 'done' ? doneColor : 'rgba(255,255,255,0.45)', ...F, transition: 'color 0.4s' }}>
+              {phase === 'done' ? (isAuto ? 'Fullført' : 'Klar') : 'Arbeider …'}
+            </span>
+          </div>
 
-            {/* completed (auto) rows */}
-            <div className="pt-4 pb-1 space-y-2.5">
-              {REFRAME_DONE.map((d, i) => (
-                <div key={i} className="flex items-center gap-3"
-                     style={{ animation: active ? `mRowIn 0.6s ease-out ${0.95 + i * 0.12}s both` : undefined, opacity: show ? undefined : 0 }}>
-                  <span className="shrink-0 w-5 h-5 rounded-full flex items-center justify-center" style={{ background: 'rgba(181,110,237,0.16)' }}>
-                    <Check className="w-3 h-3" style={{ color: '#c39ce0' }} strokeWidth={3} />
-                  </span>
-                  <span className="text-[12px] font-light tracking-[-0.005em] flex-1 truncate" style={{ color: 'rgba(255,255,255,0.42)', ...F }}>{d.label}</span>
-                  <span className="text-[8.5px] font-bold uppercase tracking-[0.14em] px-1.5 py-0.5 rounded" style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.4)' }}>Auto</span>
-                  <span className="text-[10px] font-light tabular-nums" style={{ color: 'rgba(255,255,255,0.3)', ...F }}>{d.time}</span>
-                </div>
-              ))}
-            </div>
+          {/* the single task */}
+          <div className="min-h-[252px] flex flex-col justify-center">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={cycle}
+                initial={isPdf ? false : { opacity: 0, y: 22, filter: 'blur(7px)' }}
+                animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                exit={{ opacity: 0, y: -18, filter: 'blur(7px)' }}
+                transition={{ duration: 0.55, ease: EASE }}
+              >
+                <span className="text-[10.5px] font-semibold uppercase tracking-[0.26em]" style={{ color: AC, ...F }}>{task.cat}</span>
+                <h3 className="text-[30px] sm:text-[38px] font-bold text-white tracking-[-0.03em] leading-[1.05] mt-3" style={FH}>{task.title}</h3>
+                <p className="text-[13.5px] font-normal mt-3.5" style={{ color: 'rgba(255,255,255,0.5)', ...F }}>{task.context}</p>
 
-            {/* focal next task */}
-            <div className="mt-3 relative rounded-[18px] overflow-hidden"
-                 style={{ background: 'linear-gradient(150deg, rgba(181,110,237,0.1), rgba(255,255,255,0.03))', border: `1px solid ${P}40`, boxShadow: `0 14px 40px -16px ${P}` }}>
-              <div className="absolute top-0 left-0 right-0 h-px" style={{ background: `linear-gradient(90deg, transparent, ${P}, transparent)` }} />
-              <div key={ti} style={{ animation: !isPdf && active ? 'mTaskIn 0.6s cubic-bezier(0.22,1,0.36,1) both' : undefined }} className="p-5">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold"
-                        style={{ background: `${P}24`, color: '#dcc1f5' }}>
-                    <TaskIcon className="w-3 h-3" strokeWidth={2} /> {task.tag}
-                  </span>
-                  <span className="text-[10px] font-bold uppercase tracking-[0.16em]" style={{ color: '#c39ce0' }}>Neste oppgave</span>
-                </div>
-                <h3 className="text-[19px] sm:text-[21px] font-bold text-white tracking-[-0.025em] leading-[1.2] mb-1.5" style={F}>{task.title}</h3>
-                <p className="text-[11.5px] font-light mb-4" style={{ color: 'rgba(255,255,255,0.5)', ...F }}>{task.context}</p>
-                <div className="rounded-[12px] px-4 py-3" style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.07)' }}>
-                  <p className="text-[8.5px] font-bold uppercase tracking-[0.22em] mb-1.5" style={{ color: '#a78bda', ...F }}>{task.draftLabel}</p>
-                  <p className="text-[12px] font-light leading-[1.55]" style={{ color: 'rgba(255,255,255,0.82)', ...F }}>
-                    {task.draft}
-                    <span className="inline-block w-[2px] h-[12px] align-middle ml-0.5 translate-y-[1px]" style={{ background: '#c39ce0', animation: active ? 'mCaret 1s step-end infinite' : undefined }} />
-                  </p>
-                </div>
-                <div className="flex items-center gap-2.5 mt-4">
-                  <button className="inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-[12px] font-semibold text-white"
-                          style={{ background: P, boxShadow: `0 8px 22px -6px ${P}`, ...F }}>
-                    <Check className="w-3.5 h-3.5" strokeWidth={2.6} /> Godkjenn
-                  </button>
-                  <button className="rounded-full px-4 py-2 text-[12px] font-semibold"
-                          style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.75)', ...F }}>Rediger</button>
-                  <div className="ml-auto flex items-center gap-1.5">
-                    <span className="text-[10.5px] font-medium" style={{ color: 'rgba(255,255,255,0.5)', ...F }}>Kjør på auto</span>
-                    <div className="w-8 h-[18px] rounded-full relative" style={{ background: P }}>
-                      <span className="absolute top-0.5 right-0.5 w-3.5 h-3.5 rounded-full bg-white" />
-                    </div>
+                <div className="mt-7 pt-6 flex items-center gap-4" style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+                  {/* progress ring -> check */}
+                  <div className="relative w-12 h-12 shrink-0">
+                    <svg className="w-12 h-12 -rotate-90" viewBox="0 0 44 44">
+                      <circle cx="22" cy="22" r="19" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="2.5" />
+                      <circle cx="22" cy="22" r="19" fill="none" stroke={phase === 'done' ? doneColor : AC} strokeWidth="2.5" strokeLinecap="round"
+                              strokeDasharray={C}
+                              style={ phase === 'done'
+                                ? { strokeDashoffset: 0, transition: 'stroke 0.4s' }
+                                : { strokeDashoffset: (active && !isPdf) ? undefined : 0, animation: (active && !isPdf) ? `mRing 2.65s cubic-bezier(0.4,0,0.2,1) forwards` : undefined } } />
+                    </svg>
+                    {phase === 'done' && (
+                      <Check className="absolute inset-0 m-auto w-5 h-5" style={{ color: doneColor, animation: 'mPop 0.4s cubic-bezier(0.22,1,0.36,1) both' }} strokeWidth={2.8} />
+                    )}
+                  </div>
+
+                  <div className="min-w-0">
+                    <p className="text-[12px] font-semibold tracking-[-0.005em]" style={{ color: phase === 'done' ? doneColor : 'rgba(255,255,255,0.85)', ...F, transition: 'color 0.4s' }}>
+                      {phase === 'done' ? (isAuto ? 'Utført automatisk' : 'Godkjent av deg') : 'Forbereder handling …'}
+                    </p>
+                    <p className="text-[13px] font-normal leading-[1.5] mt-1" style={{ color: 'rgba(255,255,255,0.55)', ...F }}>{task.handling}</p>
                   </div>
                 </div>
-              </div>
-            </div>
-
-            {/* autonomy dial */}
-            <div className="mt-6 pt-5" style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}>
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-[10px] font-bold uppercase tracking-[0.22em]" style={{ color: 'rgba(255,255,255,0.5)', ...F }}>Grad av autopilot</span>
-                <span className="text-[12px] font-bold tabular-nums" style={{ color: '#c39ce0', ...F }}>68% autonomt</span>
-              </div>
-              <div className="relative h-[3px] rounded-full" style={{ background: 'rgba(255,255,255,0.1)' }}>
-                <div className="absolute left-0 top-0 h-full rounded-full"
-                     style={{ width: '68%', background: `linear-gradient(90deg, ${P}, #c39ce0)`, animation: active ? 'mDialFill 1.2s cubic-bezier(0.22,1,0.36,1) 1.4s both' : undefined }} />
-                <span className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 block w-[16px] h-[16px] rounded-full border-2 border-[#15141a]"
-                      style={{ left: '68%', background: P, animation: active ? 'mKnob 2.4s ease-in-out infinite 1.7s' : undefined }} />
-              </div>
-              <div className="flex justify-between mt-3">
-                {['Manuell', 'Foreslår', 'Autopilot'].map((t, i) => (
-                  <span key={i} className="text-[10px] font-medium tracking-[-0.005em]" style={{ color: i === 2 ? '#c39ce0' : 'rgba(255,255,255,0.4)', ...F }}>{t}</span>
-                ))}
-              </div>
-            </div>
+              </motion.div>
+            </AnimatePresence>
           </div>
         </div>
       </div>
@@ -5088,7 +5012,7 @@ export default function Presentasjon() {
   }, [next, prev]);
 
   return (
-    <div className="w-screen h-screen overflow-hidden relative bg-[#0c0c0c]" style={F}
+    <div className="dh-deck w-screen h-screen overflow-hidden relative bg-[#0c0c0c]" style={F}
       onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
       {SLIDES.map((Slide: any, i: number) => (
         <div key={i} className={`absolute inset-0 transition-all duration-700 ease-[cubic-bezier(0.4,0,0.2,1)] ${i === c ? 'opacity-100 scale-100' : i < c ? 'opacity-0 scale-[0.96]' : 'opacity-0 scale-[1.04]'}`} style={{ pointerEvents: i === c ? 'auto' : 'none' }}>

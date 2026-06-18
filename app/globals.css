@@ -328,3 +328,8 @@ html { scroll-behavior: smooth; }
   .dh-platinum   { animation: none !important; }
 }
 
+/* Investor-deck: bruk merkevarefontene — overskrifter = PP Right Grotesk, brødtekst = ABC Diatype */
+.dh-deck h1, .dh-deck h2, .dh-deck h3 {
+  font-family: var(--font-heading), 'PP Right Grotesk', -apple-system, sans-serif !important;
+}
+
