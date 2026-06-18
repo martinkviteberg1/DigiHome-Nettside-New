@@ -4736,12 +4736,12 @@ const SAutopilotMindset = (p: any) => {
     setPhase('work');
     const timers: any[] = [];
     if (manual) {
-      timers.push(setTimeout(() => setPhase('review'), 1900));
-      timers.push(setTimeout(() => setPhase('done'), 3800));
-      timers.push(setTimeout(() => setCycle((c) => (c + 1) % LANGTID_TASKS.length), 5200));
+      timers.push(setTimeout(() => setPhase('review'), 2800));
+      timers.push(setTimeout(() => setPhase('done'), 5600));
+      timers.push(setTimeout(() => setCycle((c) => (c + 1) % LANGTID_TASKS.length), 7600));
     } else {
-      timers.push(setTimeout(() => setPhase('done'), 2650));
-      timers.push(setTimeout(() => setCycle((c) => (c + 1) % LANGTID_TASKS.length), 4400));
+      timers.push(setTimeout(() => setPhase('done'), 3400));
+      timers.push(setTimeout(() => setCycle((c) => (c + 1) % LANGTID_TASKS.length), 6400));
     }
     return () => timers.forEach(clearTimeout);
   }, [cycle, active, isPdf]);
@@ -4863,11 +4863,11 @@ const SAutopilotMindset = (p: any) => {
                       <div className="flex items-center gap-3">
                         <div className="relative">
                           <button className="inline-flex items-center gap-2 rounded-[10px] px-4 py-2.5 text-[13px] font-semibold text-[#0a1a14]"
-                                  style={{ background: GREEN, boxShadow: `0 8px 24px -8px ${GREEN}`, ...F, animation: 'btnPress 1.5s cubic-bezier(0.4,0,0.2,1) 0.2s both' }}>
+                                  style={{ background: GREEN, boxShadow: `0 8px 24px -8px ${GREEN}`, ...F, animation: 'btnPress 1.8s cubic-bezier(0.4,0,0.2,1) 0.7s both' }}>
                             <Check className="w-4 h-4" strokeWidth={2.8} /> Godkjenn
                           </button>
-                          <span aria-hidden="true" className="absolute inset-0 rounded-[10px] pointer-events-none" style={{ border: `2px solid ${GREEN}`, animation: 'btnRipple 1.5s ease-out 0.2s both' }} />
-                          <span aria-hidden="true" className="absolute pointer-events-none z-10" style={{ left: '62%', top: '60%', animation: 'curTap 1.5s cubic-bezier(0.4,0,0.2,1) 0.2s both' }}><Cursor /></span>
+                          <span aria-hidden="true" className="absolute inset-0 rounded-[10px] pointer-events-none" style={{ border: `2px solid ${GREEN}`, animation: 'btnRipple 1.8s ease-out 0.7s both' }} />
+                          <span aria-hidden="true" className="absolute pointer-events-none z-10" style={{ left: '62%', top: '60%', animation: 'curTap 1.8s cubic-bezier(0.4,0,0.2,1) 0.7s both' }}><Cursor /></span>
                         </div>
                         <button className="rounded-[10px] px-4 py-2.5 text-[13px] font-medium" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.7)', ...F }}>Rediger</button>
                         <span className="text-[11.5px] font-medium ml-1" style={{ color: AMBER, ...F }}>Venter på din godkjenning</span>
@@ -4883,7 +4883,7 @@ const SAutopilotMindset = (p: any) => {
                                   strokeDasharray={C}
                                   style={ phase === 'done'
                                     ? { strokeDashoffset: 0, transition: 'stroke 0.4s' }
-                                    : { strokeDashoffset: (active && !isPdf) ? undefined : 0, animation: (active && !isPdf) ? `mRing ${manual ? '1.85' : '2.55'}s cubic-bezier(0.4,0,0.2,1) forwards` : undefined } } />
+                                    : { strokeDashoffset: (active && !isPdf) ? undefined : 0, animation: (active && !isPdf) ? `mRing ${manual ? '2.7' : '3.3'}s cubic-bezier(0.4,0,0.2,1) forwards` : undefined } } />
                         </svg>
                         {phase === 'done' && (
                           <Check className="absolute inset-0 m-auto w-5 h-5" style={{ color: doneColor, animation: 'mPop 0.4s cubic-bezier(0.22,1,0.36,1) both' }} strokeWidth={2.8} />
