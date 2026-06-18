@@ -4704,58 +4704,75 @@ const SDualUSP = (p: any) => {
   );
 };
 
-/* ═══ MINDSET SLIDE — «En ny måte å tenke programvare på» (langtid · én oppgave om gangen) ═══ */
+/* ═══ MINDSET SLIDE — «En ny måte å tenke programvare på» (langtid · autopilot + manuell godkjenning) ═══ */
 const LANGTID_TASKS = [
-  { cat: 'Kontrakt',    title: 'Reguler husleien etter KPI',        context: 'Solveien 12B · årlig justering forfaller 1. juni', handling: 'Varsel klart: husleie økes 3,8 % iht. konsumprisindeks, med én måneds frist.', resolve: 'auto' },
-  { cat: 'Husleie',     title: 'Påminnelse om forfalt husleie',     context: 'Møhlenpris 14 · forfalt for 2 dager siden',          handling: 'Vennlig påminnelse sendt på SMS og e-post, med betalingslenke vedlagt.',     resolve: 'auto' },
-  { cat: 'Vedlikehold', title: 'Lekkasje meldt av leietaker',        context: 'Strandgaten 8 · kjøkkenkran drypper',                handling: 'Rørlegger foreslått tirsdag kl. 10–12. Leietaker varslet om tidspunkt.',     resolve: 'you' },
-  { cat: 'Utleie',      title: 'Ny leietaker kredittsjekket',        context: 'Nygårdsgaten 22 · 9 søkere screenet',                handling: 'Anbefalt søker, score 4,8/5. Leiekontrakt klar til e-signering.',           resolve: 'you' },
+  { cat: 'Kontrakt',    title: 'Reguler husleien etter KPI',    context: 'Solveien 12B · årlig justering forfaller 1. juni', handling: 'Varsel klart: husleie økes 3,8 % iht. konsumprisindeks, med én måneds frist.', resolve: 'auto' },
+  { cat: 'Husleie',     title: 'Påminnelse om forfalt husleie', context: 'Møhlenpris 14 · forfalt for 2 dager siden',          handling: 'Vennlig påminnelse sendt på SMS og e-post, med betalingslenke vedlagt.',     resolve: 'auto' },
+  { cat: 'Vedlikehold', title: 'Lekkasje meldt av leietaker',    context: 'Strandgaten 8 · kjøkkenkran drypper',                handling: 'Rørlegger foreslått tirsdag kl. 10–12. Leietaker varslet om tidspunkt.',     resolve: 'you'  },
+  { cat: 'Utleie',      title: 'Ny leietaker kredittsjekket',    context: 'Nygårdsgaten 22 · 9 søkere screenet',                handling: 'Anbefalt søker, score 4,8/5. Leiekontrakt klar til e-signering.',           resolve: 'you'  },
 ];
 
 const SAutopilotMindset = (p: any) => {
   const active = p.isActive;
   const isPdf = !!p.pdfMode;
   const show = active || isPdf;
-  const AC = '#a78bfa';
-  const EASE = [0.22, 1, 0.36, 1];
+  const AC = '#a78bfa';      // autopilot (violett)
+  const AMBER = '#f4b066';   // krever godkjenning
+  const GREEN = '#34d399';   // godkjent
 
   const [cycle, setCycle] = useState(0);
-  const [phase, setPhase] = useState<'work' | 'done'>(isPdf ? 'done' : 'work');
+  const [phase, setPhase] = useState<'work' | 'review' | 'done'>(isPdf ? 'done' : 'work');
 
   const task = LANGTID_TASKS[cycle];
+  const manual = task.resolve === 'you';
 
-  // reset on leave
   useEffect(() => {
     if (isPdf) { setCycle(0); setPhase('done'); return; }
     if (!active) { setCycle(0); setPhase('work'); }
   }, [active, isPdf]);
 
-  // per task: work -> done -> next
   useEffect(() => {
     if (!active || isPdf) return;
     setPhase('work');
-    const t1 = setTimeout(() => setPhase('done'), 2750);
-    const t2 = setTimeout(() => setCycle((c) => (c + 1) % LANGTID_TASKS.length), 4500);
-    return () => { clearTimeout(t1); clearTimeout(t2); };
+    const timers: any[] = [];
+    if (manual) {
+      timers.push(setTimeout(() => setPhase('review'), 1900));
+      timers.push(setTimeout(() => setPhase('done'), 3800));
+      timers.push(setTimeout(() => setCycle((c) => (c + 1) % LANGTID_TASKS.length), 5200));
+    } else {
+      timers.push(setTimeout(() => setPhase('done'), 2650));
+      timers.push(setTimeout(() => setCycle((c) => (c + 1) % LANGTID_TASKS.length), 4400));
+    }
+    return () => timers.forEach(clearTimeout);
   }, [cycle, active, isPdf]);
 
   const C = 119.38; // 2πr, r=19
   const isAuto = task.resolve === 'auto';
-  const doneColor = isAuto ? AC : '#34d399';
+  const doneColor = isAuto ? AC : GREEN;
+  const modeColor = isAuto ? AC : AMBER;
+
+  const Cursor = () => (
+    <svg width="19" height="22" viewBox="0 0 19 22" fill="none" style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }}>
+      <path d="M2 1.5L2 16.5L6 12.8L8.8 19.5L11.2 18.5L8.5 12L13.5 12L2 1.5Z" fill="white" stroke="#0c0c0c" strokeWidth="1.1" strokeLinejoin="round" />
+    </svg>
+  );
 
   return (
   <SlideFrame bg="dark" {...p}>
     <style>{`
       @keyframes mUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+      @keyframes mUpSm { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
       @keyframes mHead { from { opacity: 0; transform: translateY(20px); filter: blur(8px); } 60% { filter: blur(0); } to { opacity: 1; transform: translateY(0); filter: blur(0); } }
       @keyframes mPanel { from { opacity: 0; transform: translateY(20px) scale(0.99); } to { opacity: 1; transform: translateY(0) scale(1); } }
       @keyframes mRing { from { stroke-dashoffset: ${C}; } to { stroke-dashoffset: 0; } }
       @keyframes mPop { 0% { opacity: 0; transform: scale(0.7); } 60% { transform: scale(1.12); } 100% { opacity: 1; transform: scale(1); } }
-      @keyframes mPulse { 0%,100% { opacity: 0.45; transform: scale(0.85); } 50% { opacity: 1; transform: scale(1.2); } }
       @keyframes mRingPulse { 0% { transform: scale(0.7); opacity: 0.5; } 100% { transform: scale(2); opacity: 0; } }
+      @keyframes mDotPulse { 0%,100% { opacity: 0.4; } 50% { opacity: 1; } }
+      @keyframes curTap { 0% { opacity: 0; transform: translate(40px, 34px) scale(1); } 30% { opacity: 1; transform: translate(0,0) scale(1); } 46% { transform: translate(0,0) scale(0.78); } 62% { transform: translate(0,0) scale(1); } 100% { opacity: 1; transform: translate(0,0) scale(1); } }
+      @keyframes btnPress { 0%,40% { transform: scale(1); } 50% { transform: scale(0.94); } 64%,100% { transform: scale(1); } }
+      @keyframes btnRipple { 0%,40% { opacity: 0; transform: scale(0.6); } 52% { opacity: 0.7; } 100% { opacity: 0; transform: scale(1.9); } }
     `}</style>
 
-    {/* single soft glow behind the task */}
     <div aria-hidden="true" className="absolute inset-0 pointer-events-none overflow-hidden">
       <div className="absolute top-1/2 right-[12%] -translate-y-1/2 w-[40%] h-[64%] rounded-full"
            style={{ background: `radial-gradient(ellipse, ${AC}1a 0%, transparent 70%)`, filter: 'blur(34px)' }} />
@@ -4779,9 +4796,10 @@ const SAutopilotMindset = (p: any) => {
             <span className="block" style={{ color: AC }}>En autopilot.</span>
           </h2>
 
-          <p className="text-[15.5px] sm:text-[17px] leading-[1.5] font-normal mt-7 max-w-[380px]"
+          <p className="text-[15.5px] sm:text-[17px] leading-[1.5] font-normal mt-7 max-w-[400px]"
              style={{ ...F, color: 'rgba(255,255,255,0.6)', animation: active ? 'mUp 0.7s cubic-bezier(0.22,1,0.36,1) 0.5s both' : undefined, opacity: show ? undefined : 0 }}>
-            Den vet alltid neste oppgave i utleien — forbereder den, og fullfører den for deg.
+            Den vet alltid neste oppgave i utleien — forbereder den med utkast, og fullfører den
+            automatisk eller med din godkjenning. Du bestemmer.
           </p>
 
           <div className="flex items-center gap-2.5 mt-9 text-[12.5px]"
@@ -4802,7 +4820,7 @@ const SAutopilotMindset = (p: any) => {
                       animation: active ? 'mPanel 0.85s cubic-bezier(0.22,1,0.36,1) 0.6s both' : undefined, opacity: show ? undefined : 0 }}>
 
           {/* live header */}
-          <div className="flex items-center justify-between mb-9">
+          <div className="flex items-center justify-between mb-8">
             <div className="flex items-center gap-2.5">
               <span className="relative flex items-center justify-center w-2 h-2">
                 <span className="absolute w-2 h-2 rounded-full" style={{ background: AC, animation: active ? 'mRingPulse 2.6s ease-out infinite' : undefined }} />
@@ -4810,47 +4828,75 @@ const SAutopilotMindset = (p: any) => {
               </span>
               <span className="text-[11px] font-medium uppercase tracking-[0.2em]" style={{ color: 'rgba(255,255,255,0.5)', ...F }}>DigiHome autopilot</span>
             </div>
-            <span className="text-[11px] font-medium tabular-nums tracking-[-0.005em]" style={{ color: phase === 'done' ? doneColor : 'rgba(255,255,255,0.45)', ...F, transition: 'color 0.4s' }}>
-              {phase === 'done' ? (isAuto ? 'Fullført' : 'Klar') : 'Arbeider …'}
+            <span className="text-[11px] font-medium tabular-nums tracking-[-0.005em]" style={{ color: phase === 'done' ? doneColor : (phase === 'review' ? AMBER : 'rgba(255,255,255,0.45)'), ...F, transition: 'color 0.4s' }}>
+              {phase === 'done' ? (isAuto ? 'Fullført' : 'Godkjent') : phase === 'review' ? 'Venter på deg' : 'Arbeider …'}
             </span>
           </div>
 
           {/* the single task */}
-          <div className="min-h-[252px] flex flex-col justify-center">
+          <div className="min-h-[268px] flex flex-col justify-center">
             <AnimatePresence mode="wait">
               <motion.div
                 key={cycle}
                 initial={isPdf ? false : { opacity: 0, y: 22, filter: 'blur(7px)' }}
                 animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
                 exit={{ opacity: 0, y: -18, filter: 'blur(7px)' }}
-                transition={{ duration: 0.55, ease: EASE }}
+                transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
               >
-                <span className="text-[10.5px] font-semibold uppercase tracking-[0.26em]" style={{ color: AC, ...F }}>{task.cat}</span>
+                <div className="flex items-center gap-3">
+                  <span className="text-[10.5px] font-semibold uppercase tracking-[0.26em]" style={{ color: AC, ...F }}>{task.cat}</span>
+                  <span className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[9.5px] font-semibold uppercase tracking-[0.12em]"
+                        style={{ background: `${modeColor}1a`, color: modeColor, ...F }}>
+                    <span className="w-1.5 h-1.5 rounded-full" style={{ background: modeColor }} />
+                    {isAuto ? 'Autopilot' : 'Krever godkjenning'}
+                  </span>
+                </div>
+
                 <h3 className="text-[30px] sm:text-[38px] font-bold text-white tracking-[-0.03em] leading-[1.05] mt-3" style={FH}>{task.title}</h3>
                 <p className="text-[13.5px] font-normal mt-3.5" style={{ color: 'rgba(255,255,255,0.5)', ...F }}>{task.context}</p>
 
-                <div className="mt-7 pt-6 flex items-center gap-4" style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}>
-                  {/* progress ring -> check */}
-                  <div className="relative w-12 h-12 shrink-0">
-                    <svg className="w-12 h-12 -rotate-90" viewBox="0 0 44 44">
-                      <circle cx="22" cy="22" r="19" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="2.5" />
-                      <circle cx="22" cy="22" r="19" fill="none" stroke={phase === 'done' ? doneColor : AC} strokeWidth="2.5" strokeLinecap="round"
-                              strokeDasharray={C}
-                              style={ phase === 'done'
-                                ? { strokeDashoffset: 0, transition: 'stroke 0.4s' }
-                                : { strokeDashoffset: (active && !isPdf) ? undefined : 0, animation: (active && !isPdf) ? `mRing 2.65s cubic-bezier(0.4,0,0.2,1) forwards` : undefined } } />
-                    </svg>
-                    {phase === 'done' && (
-                      <Check className="absolute inset-0 m-auto w-5 h-5" style={{ color: doneColor, animation: 'mPop 0.4s cubic-bezier(0.22,1,0.36,1) both' }} strokeWidth={2.8} />
-                    )}
-                  </div>
-
-                  <div className="min-w-0">
-                    <p className="text-[12px] font-semibold tracking-[-0.005em]" style={{ color: phase === 'done' ? doneColor : 'rgba(255,255,255,0.85)', ...F, transition: 'color 0.4s' }}>
-                      {phase === 'done' ? (isAuto ? 'Utført automatisk' : 'Godkjent av deg') : 'Forbereder handling …'}
-                    </p>
-                    <p className="text-[13px] font-normal leading-[1.5] mt-1" style={{ color: 'rgba(255,255,255,0.55)', ...F }}>{task.handling}</p>
-                  </div>
+                <div className="mt-7 pt-6 min-h-[64px] flex items-center" style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+                  {phase === 'review' ? (
+                    /* ── MANUAL: venter på din godkjenning ── */
+                    <div style={{ animation: 'mUpSm 0.4s cubic-bezier(0.22,1,0.36,1) both' }} className="w-full">
+                      <p className="text-[13px] font-normal leading-[1.5] mb-4" style={{ color: 'rgba(255,255,255,0.62)', ...F }}>{task.handling}</p>
+                      <div className="flex items-center gap-3">
+                        <div className="relative">
+                          <button className="inline-flex items-center gap-2 rounded-[10px] px-4 py-2.5 text-[13px] font-semibold text-[#0a1a14]"
+                                  style={{ background: GREEN, boxShadow: `0 8px 24px -8px ${GREEN}`, ...F, animation: 'btnPress 1.5s cubic-bezier(0.4,0,0.2,1) 0.2s both' }}>
+                            <Check className="w-4 h-4" strokeWidth={2.8} /> Godkjenn
+                          </button>
+                          <span aria-hidden="true" className="absolute inset-0 rounded-[10px] pointer-events-none" style={{ border: `2px solid ${GREEN}`, animation: 'btnRipple 1.5s ease-out 0.2s both' }} />
+                          <span aria-hidden="true" className="absolute pointer-events-none z-10" style={{ left: '62%', top: '60%', animation: 'curTap 1.5s cubic-bezier(0.4,0,0.2,1) 0.2s both' }}><Cursor /></span>
+                        </div>
+                        <button className="rounded-[10px] px-4 py-2.5 text-[13px] font-medium" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.7)', ...F }}>Rediger</button>
+                        <span className="text-[11.5px] font-medium ml-1" style={{ color: AMBER, ...F }}>Venter på din godkjenning</span>
+                      </div>
+                    </div>
+                  ) : (
+                    /* ── WORK (ring fyller) / DONE (check) ── */
+                    <div className="flex items-center gap-4 w-full">
+                      <div className="relative w-12 h-12 shrink-0">
+                        <svg className="w-12 h-12 -rotate-90" viewBox="0 0 44 44">
+                          <circle cx="22" cy="22" r="19" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="2.5" />
+                          <circle cx="22" cy="22" r="19" fill="none" stroke={phase === 'done' ? doneColor : AC} strokeWidth="2.5" strokeLinecap="round"
+                                  strokeDasharray={C}
+                                  style={ phase === 'done'
+                                    ? { strokeDashoffset: 0, transition: 'stroke 0.4s' }
+                                    : { strokeDashoffset: (active && !isPdf) ? undefined : 0, animation: (active && !isPdf) ? `mRing ${manual ? '1.85' : '2.55'}s cubic-bezier(0.4,0,0.2,1) forwards` : undefined } } />
+                        </svg>
+                        {phase === 'done' && (
+                          <Check className="absolute inset-0 m-auto w-5 h-5" style={{ color: doneColor, animation: 'mPop 0.4s cubic-bezier(0.22,1,0.36,1) both' }} strokeWidth={2.8} />
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[12px] font-semibold tracking-[-0.005em]" style={{ color: phase === 'done' ? doneColor : 'rgba(255,255,255,0.85)', ...F, transition: 'color 0.4s' }}>
+                          {phase === 'done' ? (isAuto ? 'Utført automatisk' : 'Godkjent av deg') : (manual ? 'Forbereder utkast …' : 'Forbereder handling …')}
+                        </p>
+                        <p className="text-[13px] font-normal leading-[1.5] mt-1" style={{ color: 'rgba(255,255,255,0.55)', ...F }}>{task.handling}</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </motion.div>
             </AnimatePresence>
