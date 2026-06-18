@@ -3,6 +3,7 @@ import { Footer } from '@/components/site/Footer';
 import { HeroAutopilotLight } from '@/components/home/HeroAutopilotLight';
 import { SeksjonAutopilot } from '@/components/home/SeksjonAutopilot';
 import { SeksjonFilm } from '@/components/home/SeksjonFilm';
+import { SeksjonBoliger } from '@/components/home/SeksjonBoliger';
 
 export const metadata = {
   title: 'DigiHome | Utleie på autopilot (lys)',
@@ -20,6 +21,7 @@ export default function HomeLightPage() {
         <HeroAutopilotLight />
         <SeksjonAutopilot />
         <SeksjonFilm />
+        <SeksjonBoliger />
       </main>
       <Footer />
     </>

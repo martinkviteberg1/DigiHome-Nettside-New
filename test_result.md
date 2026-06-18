@@ -120,6 +120,18 @@ backend:
         -agent: "testing"
         -comment: "✅ ALL BACKEND TESTS PASSED (10/10). Verified: 1) Health endpoints (GET /api/root, GET /api/) return 200 with {ok:true, message:'DigiHome API'}. 2) POST /api/leads creates lead with valid UUID id, status='new', ISO createdAt, returns 201. 3) Validation works: empty body returns 400 with Norwegian error 'Mangler kontaktinformasjon', address-only succeeds with 201. 4) GET /api/leads returns array sorted by createdAt descending (newest first). 5) MongoDB persistence confirmed - leads stored and retrieved correctly. 6) No MongoDB '_id' fields in any response (clean() function working). 7) Tested with base URL https://hero-premiere-4.preview.emergentagent.com/api. All CRUD operations, validation, sorting, and data persistence working perfectly."
 
+  - task: "Boliger-proxy (GET /api/listings) — sikker proxy til DigiHome listings API"
+    implemented: true
+    working: true
+    file: "app/api/[[...path]]/route.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "main"
+        -comment: "GET /api/listings?limit=&status= proxyer DigiHome-plattformens public listings API med server-side X-API-Key (DIGIHOME_API_KEY/DIGIHOME_API_URL fra .env). Normaliserer hver bolig (tittel, gate, by, pris, m², soverom, cover, bildeantall, rentalLabel) og filtrerer bort boliger uten cover. Returnerer {tenant, count, listings}. Ved manglende config / upstream-feil / unntak returneres tom liste (aldri 500). Manuell røyktest via curl bekreftet 4 ekte boliger (Olaf Ryes vei 11C, Bergen, 17000/11800 kr) + tenant 'Digihome AS'."
+
   - task: "Adresse-autofullføring (GET /api/address) — Geonorge/Kartverket proxy"
     implemented: true
     working: true
@@ -136,6 +148,18 @@ backend:
         -comment: "✅ ALL ADDRESS AUTOCOMPLETE TESTS PASSED (11/11 total). PRIMARY FOCUS verified: 1) GET /api/address?q=Strandgaten returns 200 with 6 suggestions, correct JSON shape {suggestions:[{text, sub, label}]}, all fields non-empty. 2) GET /api/address?q=Strandgaten%201 returns 200 with Bergen result (5013 BERGEN found in suggestions). 3) GET /api/address?q=ab (2 chars) returns 200 with empty suggestions array. 4) GET /api/address?q= (empty) returns 200 with empty suggestions array. 5) GET /api/address?q=Møhlenprisbakken (special chars æøå) returns 200 with 2 suggestions, no 500 error. 6) Robustness verified: endpoint NEVER returns 500, all tests returned 200. 7) Deduplication verified: all labels are unique (6 suggestions, 6 unique labels). REGRESSION verified: 8) GET /api/root and GET /api/ return 200 with {ok:true, message:'DigiHome API'}. 9) POST /api/leads creates lead with UUID id, status='new', ISO createdAt, returns 201, no _id field. 10) POST /api/leads with empty body returns 400 with Norwegian error 'Mangler kontaktinformasjon'. 11) GET /api/leads returns array sorted newest-first, no _id fields. All backend APIs working perfectly. Base URL: https://hero-premiere-4.preview.emergentagent.com/api"
 
 frontend:
+  - task: "SeksjonBoliger (/2) — live boligportefølje fra DigiHome API"
+    implemented: true
+    working: "NA"
+    file: "components/home/SeksjonBoliger.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "Ny seksjon «Boliger vi forvalter nå.» på /2 som henter ekte boliger via /api/listings (server-proxy). Redaksjonelt 3-kolonners rutenett med premium hvite kort: cover-bilde m/ hover-zoom, rentalLabel-merke (Dynamisk), bildeantall-badge, by + gate, tittel, soverom + m², pris (kr/mnd) + «Se bolig»-lenke. Skeleton-loading; seksjonen skjules helt hvis ingen boliger. Verifisert visuelt via skjermbilder på desktop (1920px): heading m/ ink-shine, eyebrow, 4 ekte boliger rendres korrekt med live data. Ikke testet med frontend-agent."
+
   - task: "Forside (/) — Warm Ink Editorial, alle 16 seksjoner, SEO, JSON-LD"
     implemented: true
     working: "NA"
