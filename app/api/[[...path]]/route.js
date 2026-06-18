@@ -147,6 +147,87 @@ async function handleRoute(request, { params }) {
       return cors(NextResponse.json(leads.map(clean)));
     }
 
+    // --- Investor-interesse (deck «The Ask»-slide) ---
+    if (route === '/investor/interest' && method === 'POST') {
+      let body = {};
+      try { body = await request.json(); } catch (e) { body = {}; }
+      const name = (body.name || '').toString().trim();
+      const email = (body.email || '').toString().trim();
+      if (name.length < 2 || !email) {
+        return cors(NextResponse.json({ detail: 'Navn og e-post er påkrevd' }, { status: 400 }));
+      }
+      const lead = {
+        id: uuidv4(),
+        name: name.slice(0, 120),
+        email: email.slice(0, 200),
+        phone: (body.phone || '').toString().slice(0, 40),
+        company: (body.company || '').toString().slice(0, 160),
+        ticket_size: (body.ticket_size || '').toString().slice(0, 60),
+        message: (body.message || '').toString().slice(0, 2000),
+        source: 'presentasjon_deck',
+        status: 'new',
+        created_at: new Date().toISOString(),
+      };
+      await db.collection('investor_leads').insertOne(lead);
+      return cors(NextResponse.json({ ok: true, id: lead.id }));
+    }
+
+    if (route === '/investor/leads' && method === 'GET') {
+      const { searchParams } = new URL(request.url);
+      const limit = Math.min(parseInt(searchParams.get('limit') || '100', 10) || 100, 500);
+      const leads = await db.collection('investor_leads').find({}).sort({ created_at: -1 }).limit(limit).toArray();
+      return cors(NextResponse.json({ leads: leads.map(clean) }));
+    }
+
+    // --- Investor-deck PDF-cache (instant nedlasting) ---
+    if (route === '/investor-deck/pdf/info' && method === 'GET') {
+      const doc = await db.collection('investor_deck_pdfs').findOne({ id: 'current' }, { projection: { pdf_data: 0, _id: 0 } });
+      if (!doc) return cors(NextResponse.json({ exists: false }));
+      return cors(NextResponse.json({ exists: true, size: doc.size || null, updated_at: doc.updated_at || null, slide_count: doc.slide_count || null }));
+    }
+
+    if (route === '/investor-deck/pdf' && method === 'GET') {
+      const doc = await db.collection('investor_deck_pdfs').findOne({ id: 'current' });
+      if (!doc || !doc.pdf_data) {
+        return cors(NextResponse.json({ detail: "PDF har ikke blitt generert ennå. Trykk 'Generer PDF' i investor-deck-siden først." }, { status: 404 }));
+      }
+      const buf = doc.pdf_data.buffer ? Buffer.from(doc.pdf_data.buffer) : Buffer.from(doc.pdf_data);
+      const res = new NextResponse(buf, {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': 'attachment; filename="DigiHome-Investor-Deck.pdf"',
+          'Cache-Control': 'public, max-age=3600',
+        },
+      });
+      return cors(res);
+    }
+
+    if (route === '/investor-deck/pdf' && method === 'POST') {
+      let form;
+      try { form = await request.formData(); } catch (e) { return cors(NextResponse.json({ detail: 'Ugyldig opplasting' }, { status: 400 })); }
+      const file = form.get('file');
+      const slideCount = parseInt((form.get('slide_count') || '0').toString(), 10) || 0;
+      if (!file || typeof file.arrayBuffer !== 'function') {
+        return cors(NextResponse.json({ detail: 'Tom fil' }, { status: 400 }));
+      }
+      const buf = Buffer.from(await file.arrayBuffer());
+      const MAX = 14 * 1024 * 1024;
+      if (buf.length === 0) return cors(NextResponse.json({ detail: 'Tom fil' }, { status: 400 }));
+      if (buf.length > MAX) {
+        return cors(NextResponse.json({ detail: `PDF for stor (${(buf.length / 1024 / 1024).toFixed(1)} MB). Maks 14 MB.` }, { status: 413 }));
+      }
+      if (buf.subarray(0, 4).toString('latin1') !== '%PDF') {
+        return cors(NextResponse.json({ detail: 'Fil er ikke en gyldig PDF' }, { status: 400 }));
+      }
+      await db.collection('investor_deck_pdfs').updateOne(
+        { id: 'current' },
+        { $set: { id: 'current', pdf_data: buf, size: buf.length, slide_count: slideCount || null, updated_at: new Date().toISOString() } },
+        { upsert: true }
+      );
+      return cors(NextResponse.json({ ok: true, size: buf.length, slide_count: slideCount || null }));
+    }
+
     return cors(NextResponse.json({ error: `Route ${route} not found` }, { status: 404 }));
   } catch (error) {
     console.error('API Error:', error);
