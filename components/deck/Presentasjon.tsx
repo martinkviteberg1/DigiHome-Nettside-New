@@ -5285,17 +5285,17 @@ const SProcessPipeline = (p: any) => {
 /* ═══ FORRETNINGSMODELLER — B2C (private) + B2B (profesjonelle) · én plattform ═══ */
 const BIZ_MODELS = [
   {
-    tag: 'B2C', label: 'Private huseiere', icon: Home,
-    who: 'Privatpersoner som leier ut 1–5 boliger',
-    desc: 'Mangler tid og kompetanse til å drifte profesjonelt. DigiHome gjør alt — fra annonse til utbetaling — på autopilot.',
-    points: ['Helautomatisk utleie og forvaltning', 'Ingen erfaring nødvendig', 'Selvbetjent — i gang på minutter'],
+    idx: '01', tag: 'B2C', market: 'Privatmarkedet', label: 'Private huseiere',
+    who: '1–5 utleieboliger',
+    desc: 'Privatpersoner som mangler tid og kompetanse til å drifte profesjonelt. DigiHome tar hele jobben — fra annonse til utbetaling — på autopilot.',
+    traits: 'Helautomatisk · Selvbetjent · Ingen erfaring nødvendig',
     model: 'Forvaltningshonorar', modelSub: 'andel av leieinntekt',
   },
   {
-    tag: 'B2B', label: 'Profesjonelle aktører', icon: Building2, hot: true,
-    who: 'Eiendomsselskaper og forvaltere med større porteføljer',
-    desc: 'Automatiserer driften på tvers av mange enheter. Skalerer team, prosesser og rapportering i én plattform.',
-    points: ['Drift av hele porteføljer', 'Team, roller og rapportering', 'API og integrasjoner'],
+    idx: '02', tag: 'B2B', market: 'Bedriftsmarkedet', label: 'Profesjonelle aktører',
+    who: 'Selskaper og forvaltere med portefølje',
+    desc: 'Eiendomsselskaper og forvaltere som driver i skala. Samme autopilot tar driften på tvers av mange enheter — med team, roller og rapportering.',
+    traits: 'Porteføljedrift · Team & roller · API og integrasjoner',
     model: 'SaaS per enhet', modelSub: 'enterprise-lisens',
   },
 ];
@@ -5338,60 +5338,42 @@ const SBusinessModels = (p: any) => {
         </h2>
       </div>
 
-      {/* to kort */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6 mt-11 sm:mt-12">
-        {BIZ_MODELS.map((m: any, i: number) => {
-          const Icon = m.icon;
-          return (
-            <div key={m.tag} className="relative rounded-[24px] p-7 sm:p-8 overflow-hidden"
-                 style={{ background: m.hot ? `linear-gradient(180deg, ${AC}12, rgba(255,255,255,0.018))` : 'rgba(255,255,255,0.022)',
-                          border: m.hot ? `1px solid ${AC}3a` : '1px solid rgba(255,255,255,0.07)',
-                          boxShadow: m.hot ? `0 44px 130px -55px ${AC}, inset 0 1px 0 rgba(255,255,255,0.04)` : '0 40px 120px -60px rgba(0,0,0,0.9)',
-                          animation: anim ? `bmCard 0.85s cubic-bezier(0.22,1,0.36,1) ${0.55 + i * 0.18}s both` : undefined,
-                          opacity: show ? undefined : 0 }}>
-              {m.hot && <div aria-hidden="true" className="absolute -top-24 -right-16 w-56 h-56 rounded-full pointer-events-none"
-                             style={{ background: `radial-gradient(circle, ${AC}26 0%, transparent 70%)`, filter: 'blur(22px)' }} />}
+      {/* to spalter — redaksjonelt, kantløst, hårlinje-skille */}
+      <div className="grid grid-cols-1 md:grid-cols-2 mt-14 sm:mt-16">
+        {BIZ_MODELS.map((m: any, i: number) => (
+          <div key={m.tag}
+               className={`relative ${i === 0 ? 'md:pr-14' : 'md:pl-14 md:border-l border-t md:border-t-0 mt-12 pt-12 md:mt-0 md:pt-0'}`}
+               style={{ borderColor: 'rgba(255,255,255,0.1)',
+                        animation: anim ? `bmUp 0.85s cubic-bezier(0.22,1,0.36,1) ${0.5 + i * 0.2}s both` : undefined,
+                        opacity: show ? undefined : 0 }}>
 
-              {/* top: ikon + tag */}
-              <div className="relative flex items-center justify-between">
-                <span className="w-12 h-12 rounded-[14px] flex items-center justify-center"
-                      style={{ background: m.hot ? `${AC}22` : 'rgba(255,255,255,0.06)', border: `1px solid ${m.hot ? AC + '4d' : 'rgba(255,255,255,0.1)'}` }}>
-                  <Icon className="w-[22px] h-[22px]" style={{ color: m.hot ? '#efe0ff' : 'rgba(255,255,255,0.82)' }} strokeWidth={1.7} />
-                </span>
-                <span className="text-[11px] font-bold tracking-[0.14em] px-2.5 py-1 rounded-full"
-                      style={{ ...F, color: m.hot ? AC : 'rgba(255,255,255,0.5)', background: m.hot ? `${AC}1a` : 'rgba(255,255,255,0.05)', border: `1px solid ${m.hot ? AC + '40' : 'rgba(255,255,255,0.1)'}` }}>{m.tag}</span>
+            {/* index + marked + tag */}
+            <div className="flex items-baseline justify-between">
+              <div className="flex items-baseline gap-3.5">
+                <span className="text-[15px] font-bold tabular-nums tracking-[-0.01em]" style={{ ...F, color: AC }}>{m.idx}</span>
+                <span className="text-[11px] font-semibold uppercase tracking-[0.24em]" style={{ ...F, color: 'rgba(255,255,255,0.42)' }}>{m.market}</span>
               </div>
-
-              {/* label + hvem */}
-              <h3 className="text-[23px] sm:text-[27px] font-bold tracking-[-0.025em] mt-6 text-white" style={{ ...FH }}>{m.label}</h3>
-              <p className="text-[13px] font-medium tracking-[-0.005em] mt-1.5" style={{ ...F, color: m.hot ? AC : 'rgba(255,255,255,0.5)' }}>{m.who}</p>
-
-              {/* beskrivelse */}
-              <p className="text-[14px] sm:text-[14.5px] font-normal leading-[1.6] mt-5" style={{ ...F, color: 'rgba(255,255,255,0.62)' }}>{m.desc}</p>
-
-              {/* punkter */}
-              <div className="flex flex-col gap-2.5 mt-6">
-                {m.points.map((pt: string) => (
-                  <div key={pt} className="flex items-center gap-2.5">
-                    <span className="shrink-0 w-[18px] h-[18px] rounded-full flex items-center justify-center" style={{ background: `${AC}20` }}>
-                      <Check className="w-[11px] h-[11px]" style={{ color: AC }} strokeWidth={3} />
-                    </span>
-                    <span className="text-[13.5px] font-normal" style={{ ...F, color: 'rgba(255,255,255,0.8)' }}>{pt}</span>
-                  </div>
-                ))}
-              </div>
-
-              {/* inntektsmodell */}
-              <div className="mt-7 pt-5" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-                <span className="text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ ...F, color: 'rgba(255,255,255,0.4)' }}>Inntektsmodell</span>
-                <div className="flex items-baseline gap-2 mt-1.5">
-                  <span className="text-[17px] sm:text-[19px] font-bold tracking-[-0.01em]" style={{ ...FH, color: '#fff' }}>{m.model}</span>
-                  <span className="text-[13px] font-normal" style={{ ...F, color: 'rgba(255,255,255,0.45)' }}>· {m.modelSub}</span>
-                </div>
-              </div>
+              <span className="text-[11px] font-semibold tracking-[0.16em]" style={{ ...F, color: 'rgba(255,255,255,0.3)' }}>{m.tag}</span>
             </div>
-          );
-        })}
+
+            {/* tittel + hvem */}
+            <h3 className="text-[30px] sm:text-[38px] font-bold tracking-[-0.03em] leading-[1.04] mt-7 text-white" style={{ ...FH }}>{m.label}</h3>
+            <p className="text-[14px] font-medium tracking-[-0.005em] mt-2.5" style={{ ...F, color: AC }}>{m.who}</p>
+
+            {/* verdi */}
+            <p className="text-[14.5px] sm:text-[15.5px] font-normal leading-[1.65] mt-6 max-w-[400px]" style={{ ...F, color: 'rgba(255,255,255,0.6)' }}>{m.desc}</p>
+
+            {/* egenskaper — én linje, ingen liste */}
+            <p className="text-[12.5px] font-medium tracking-[0.005em] leading-[1.5] mt-7" style={{ ...F, color: 'rgba(255,255,255,0.4)' }}>{m.traits}</p>
+
+            {/* inntektsmodell — redaksjonell key/value */}
+            <div className="flex items-baseline gap-2.5 mt-9 flex-wrap">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.22em]" style={{ ...F, color: 'rgba(255,255,255,0.3)' }}>Inntekt</span>
+              <span className="text-[19px] sm:text-[21px] font-bold tracking-[-0.015em]" style={{ ...FH, color: '#fff' }}>{m.model}</span>
+              <span className="text-[13px] font-normal" style={{ ...F, color: 'rgba(255,255,255,0.4)' }}>· {m.modelSub}</span>
+            </div>
+          </div>
+        ))}
       </div>
 
       {/* samlende linje */}
@@ -5441,19 +5423,10 @@ export default function Presentasjon() {
   const [exportProgress, setExportProgress] = useState(0);
   const [exportStage, setExportStage] = useState<'idle' | 'preparing' | 'capturing' | 'building' | 'uploading' | 'done'>('idle');
   const [cachedPdf, setCachedPdf] = useState<{ exists: boolean; size?: number; updated_at?: string } | null>(null);
-  const next = useCallback(() => setC((v: any) => (v === 1 && navLocked) ? v : Math.min(v + 1, SLIDES.length - 1)), [navLocked]);
+  const next = useCallback(() => setC((v: any) => Math.min(v + 1, SLIDES.length - 1)), []);
   const prev = useCallback(() => setC((v: any) => Math.max(v - 1, 0)), []);
 
-  // Lås fremover-navigasjon på Slide 2 til hele keynote-animasjonen er ferdig
-  useEffect(() => {
-    if (c === 1) {
-      setNavLocked(true);
-      const safety = setTimeout(() => setNavLocked(false), 32000); // failsafe
-      return () => clearTimeout(safety);
-    }
-    setNavLocked(false);
-  }, [c]);
-  const handleS2Complete = useCallback(() => setNavLocked(false), []);
+  const handleS2Complete = useCallback(() => {}, []);
 
   // Ved load: sjekk om cached PDF finnes på serveren
   useEffect(() => {
@@ -5596,7 +5569,7 @@ export default function Presentasjon() {
       </button>
       <button
         onClick={next}
-        disabled={c === SLIDES.length - 1 || (c === 1 && navLocked)}
+        disabled={c === SLIDES.length - 1}
         aria-label="Neste slide"
         className="group fixed right-0 top-0 bottom-0 w-[18%] z-40 cursor-e-resize disabled:cursor-not-allowed disabled:opacity-0 transition-opacity"
         style={{ background: 'transparent' }}>
