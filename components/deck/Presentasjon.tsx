@@ -4741,7 +4741,7 @@ const SAutopilotMindset = (p: any) => {
     setPunchOn(false);
     const t1 = setTimeout(() => setStage('problem'), 4800);
     const t2 = setTimeout(() => setStage('shift'), 11600);
-    const t3 = setTimeout(() => setStage('proof'), 16400);
+    const t3 = setTimeout(() => setStage('proof'), 17400);
     return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
   }, [active, isPdf]);
 
@@ -4879,22 +4879,47 @@ const SAutopilotMindset = (p: any) => {
         </div>
       </div>
 
-      {/* ── BEAT 3 · SKIFTET ── */}
+      {/* ── BEAT 3 · SKIFTET (ny tankegang: CRM → DigiHome) ── */}
       <div className="absolute inset-0 flex items-center justify-center px-6 text-center" style={beat(2)}>
-        <div className="max-w-[880px]">
-          <div className="inline-flex items-center gap-3 mb-8"
-               style={{ animation: stage === 'shift' ? 'mUp 0.7s cubic-bezier(0.22,1,0.36,1) 0.2s both' : undefined }}>
+        <div className="max-w-[820px] w-full">
+          {/* eyebrow */}
+          <div className="inline-flex items-center gap-3 mb-12"
+               style={{ animation: stage === 'shift' ? 'mUp 0.7s cubic-bezier(0.22,1,0.36,1) 0.15s both' : undefined }}>
             <span className="h-px w-6" style={{ background: `${AC}66` }} />
-            <span className="text-[11px] font-semibold uppercase tracking-[0.26em]" style={{ color: AC, ...F }}>Slik burde det være</span>
+            <span className="text-[11px] font-semibold uppercase tracking-[0.3em]" style={{ color: AC, ...F }}>En ny tankegang</span>
             <span className="h-px w-6" style={{ background: `${AC}66` }} />
           </div>
-          <p className="text-[38px] sm:text-[58px] font-bold tracking-[-0.035em] leading-[1.05]"
-             style={{ ...FH, color: '#fff', textWrap: 'balance' as any, animation: stage === 'shift' ? 'mReveal 1.2s cubic-bezier(0.22,1,0.36,1) 0.65s both' : undefined }}>
-            DigiHome forteller deg alltid <span style={{ color: AC, textShadow: `0 0 70px ${AC}55` }}>hva som er neste.</span>
-          </p>
-          <p className="text-[18px] sm:text-[23px] font-normal tracking-[-0.01em] leading-[1.5] mt-7 max-w-[700px] mx-auto"
-             style={{ ...FH, color: 'rgba(255,255,255,0.52)', textWrap: 'balance' as any, animation: stage === 'shift' ? 'mUp 0.9s cubic-bezier(0.22,1,0.36,1) 1.6s both' : undefined }}>
-            Du ser oppgaven, og utfører den — med akkurat så mye automatikk du selv vil.
+
+          {/* GAMMEL TANKEGANG — tradisjonelt CRM */}
+          <div style={{ animation: stage === 'shift' ? 'mUp 0.85s cubic-bezier(0.22,1,0.36,1) 0.6s both' : undefined }}>
+            <span className="block text-[10.5px] font-semibold uppercase tracking-[0.32em] mb-3" style={{ color: 'rgba(255,255,255,0.3)', ...F }}>Tradisjonelt CRM</span>
+            <p className="text-[26px] sm:text-[34px] font-medium tracking-[-0.02em] leading-[1.15]"
+               style={{ ...FH, color: 'rgba(255,255,255,0.38)' }}>
+              Lagrer informasjon. Venter på deg.
+            </p>
+          </div>
+
+          {/* overgang */}
+          <div className="flex items-center justify-center my-8"
+               style={{ animation: stage === 'shift' ? 'mUp 0.6s cubic-bezier(0.22,1,0.36,1) 1.2s both' : undefined }}>
+            <span className="w-px h-10" style={{ background: `linear-gradient(to bottom, rgba(255,255,255,0.06), ${AC})` }} />
+          </div>
+
+          {/* NY TANKEGANG — DigiHome */}
+          <div className="relative" style={{ animation: stage === 'shift' ? 'mReveal 1.2s cubic-bezier(0.22,1,0.36,1) 1.55s both' : undefined }}>
+            <div aria-hidden="true" className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[75%] h-[150%] rounded-full pointer-events-none"
+                 style={{ background: `radial-gradient(ellipse, ${AC}24 0%, transparent 70%)`, filter: 'blur(44px)' }} />
+            <span className="relative block text-[10.5px] font-semibold uppercase tracking-[0.32em] mb-3" style={{ color: AC, ...F }}>DigiHome</span>
+            <p className="relative text-[34px] sm:text-[52px] font-bold tracking-[-0.03em] leading-[1.06]"
+               style={{ ...FH, color: '#fff', textWrap: 'balance' as any }}>
+              Vet hva som er neste. <span style={{ color: AC, textShadow: `0 0 70px ${AC}55` }}>Gjør jobben.</span>
+            </p>
+          </div>
+
+          {/* autonomi-resolve */}
+          <p className="text-[16px] sm:text-[20px] font-normal tracking-[-0.01em] leading-[1.5] mt-10 max-w-[560px] mx-auto"
+             style={{ ...FH, color: 'rgba(255,255,255,0.5)', textWrap: 'balance' as any, animation: stage === 'shift' ? 'mUp 0.9s cubic-bezier(0.22,1,0.36,1) 2.5s both' : undefined }}>
+            Du velger bare hvor mye som skjer automatisk.
           </p>
         </div>
       </div>
@@ -5177,7 +5202,7 @@ export default function Presentasjon() {
   useEffect(() => {
     if (c === 1) {
       setNavLocked(true);
-      const safety = setTimeout(() => setNavLocked(false), 41000); // failsafe
+      const safety = setTimeout(() => setNavLocked(false), 43000); // failsafe
       return () => clearTimeout(safety);
     }
     setNavLocked(false);
