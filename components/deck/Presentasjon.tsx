@@ -4833,18 +4833,17 @@ const SAutopilotMindset = (p: any) => {
                pointerEvents: 'none', zIndex: 12,
              }}>
           <div className="max-w-[640px] text-center">
-            <p className="text-[19px] sm:text-[22px] font-semibold tracking-[-0.015em] text-white"
-               style={{ ...FH, animation: stage === 'explain' ? 'mUp 0.7s cubic-bezier(0.22,1,0.36,1) 0.1s both' : undefined }}>
-              Vi snudde det på hodet.
+            <p className="text-[13.5px] sm:text-[15px] font-normal tracking-[0.005em]"
+               style={{ ...F, color: 'rgba(255,255,255,0.5)', animation: stage === 'explain' ? 'mUp 0.7s cubic-bezier(0.22,1,0.36,1) 0.1s both' : undefined }}>
+              De fleste systemer lagrer informasjon.
             </p>
-            <p className="text-[14.5px] sm:text-[16px] leading-[1.62] font-normal mt-4"
-               style={{ ...F, color: 'rgba(255,255,255,0.62)', animation: stage === 'explain' ? 'mUp 0.7s cubic-bezier(0.22,1,0.36,1) 0.5s both' : undefined }}>
-              I stedet for et verktøy du må betjene, bygget vi et{' '}
-              <span style={{ color: AC, fontWeight: 500 }}>proaktivt system</span>{' '}— det vet hva som må gjøres i utleien, og gjør det.
+            <p className="text-[24px] sm:text-[30px] font-semibold tracking-[-0.02em] text-white mt-2.5"
+               style={{ ...FH, animation: stage === 'explain' ? 'mUp 0.75s cubic-bezier(0.22,1,0.36,1) 0.42s both' : undefined }}>
+              DigiHome <span style={{ color: AC }}>utfører arbeidet.</span>
             </p>
-            <p className="text-[14.5px] sm:text-[16px] leading-[1.62] font-normal mt-2.5"
-               style={{ ...F, color: 'rgba(255,255,255,0.62)', animation: stage === 'explain' ? 'mUp 0.7s cubic-bezier(0.22,1,0.36,1) 0.95s both' : undefined }}>
-              Du godkjenner kun det som krever et menneske.
+            <p className="text-[14.5px] sm:text-[16px] leading-[1.62] font-normal mt-5 max-w-[540px] mx-auto"
+               style={{ ...F, color: 'rgba(255,255,255,0.6)', animation: stage === 'explain' ? 'mUp 0.7s cubic-bezier(0.22,1,0.36,1) 0.85s both' : undefined }}>
+              Det vet hva som må gjøres i utleien — og gjør det. Du godkjenner kun det som krever et menneske.
             </p>
           </div>
         </div>
