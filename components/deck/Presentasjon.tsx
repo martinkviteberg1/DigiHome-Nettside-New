@@ -4741,7 +4741,7 @@ const SAutopilotMindset = (p: any) => {
     setPunchOn(false);
     const t1 = setTimeout(() => setStage('problem'), 4800);
     const t2 = setTimeout(() => setStage('shift'), 11600);
-    const t3 = setTimeout(() => setStage('proof'), 17400);
+    const t3 = setTimeout(() => setStage('proof'), 18200);
     return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
   }, [active, isPdf]);
 
@@ -4856,11 +4856,11 @@ const SAutopilotMindset = (p: any) => {
           <div className="inline-flex items-center gap-3 mb-9"
                style={{ animation: stage === 'problem' ? 'mUp 0.6s cubic-bezier(0.22,1,0.36,1) 0.1s both' : undefined }}>
             <span className="h-px w-6" style={{ background: 'rgba(255,255,255,0.3)' }} />
-            <span className="text-[11px] font-semibold uppercase tracking-[0.26em]" style={{ color: 'rgba(255,255,255,0.5)', ...F }}>Slik er det i dag</span>
+            <span className="text-[11px] font-semibold uppercase tracking-[0.26em]" style={{ color: 'rgba(255,255,255,0.5)', ...F }}>Slik jobber du i dag</span>
             <span className="h-px w-6" style={{ background: 'rgba(255,255,255,0.3)' }} />
           </div>
           <div className="space-y-2.5">
-            {['Ett system for utleien.', 'Ett for økonomien.', 'Ett for leietakerne.'].map((l, i) => (
+            {['Du følger opp.', 'Du sender påminnelser.', 'Du passer på at ting skjer.'].map((l, i) => (
               <p key={l} className="text-[28px] sm:text-[40px] font-semibold tracking-[-0.02em] leading-[1.12]"
                  style={{ ...FH, color: '#fff',
                           opacity: punchOn ? 0.24 : undefined,
@@ -4879,7 +4879,7 @@ const SAutopilotMindset = (p: any) => {
         </div>
       </div>
 
-      {/* ── BEAT 3 · SKIFTET (slik fungerer proptech i dag → slik tenker DigiHome) ── */}
+      {/* ── BEAT 3 · SKIFTET (slik jobber du i dag → slik driver DigiHome prosessen) ── */}
       <div className="absolute inset-0 flex items-center justify-center px-6 text-center" style={beat(2)}>
         <div className="max-w-[860px] w-full">
           {/* eyebrow */}
@@ -4890,12 +4890,12 @@ const SAutopilotMindset = (p: any) => {
             <span className="h-px w-6" style={{ background: `${AC}66` }} />
           </div>
 
-          {/* SLIK FUNGERER TRADISJONELL PROPTECH */}
+          {/* TRADISJONELL PROPTECH — du driver alt */}
           <div style={{ animation: stage === 'shift' ? 'mUp 0.85s cubic-bezier(0.22,1,0.36,1) 0.6s both' : undefined }}>
             <span className="block text-[10.5px] font-semibold uppercase tracking-[0.32em] mb-3.5" style={{ color: 'rgba(255,255,255,0.3)', ...F }}>Tradisjonell proptech</span>
-            <p className="text-[25px] sm:text-[33px] font-medium tracking-[-0.02em] leading-[1.2]"
+            <p className="text-[24px] sm:text-[32px] font-medium tracking-[-0.02em] leading-[1.2]"
                style={{ ...FH, color: 'rgba(255,255,255,0.4)', textWrap: 'balance' as any }}>
-              Du logger inn. Du leter. <span style={{ color: 'rgba(255,255,255,0.62)' }}>Du gjør jobben.</span>
+              Du logger inn. Du finner neste oppgave. <span style={{ color: 'rgba(255,255,255,0.62)' }}>Du gjør jobben.</span>
             </p>
           </div>
 
@@ -4905,21 +4905,27 @@ const SAutopilotMindset = (p: any) => {
             <span className="w-px h-11" style={{ background: `linear-gradient(to bottom, rgba(255,255,255,0.05), ${AC})` }} />
           </div>
 
-          {/* SLIK TENKER DIGIHOME */}
-          <div className="relative" style={{ animation: stage === 'shift' ? 'mReveal 1.2s cubic-bezier(0.22,1,0.36,1) 1.6s both' : undefined }}>
-            <div aria-hidden="true" className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[80%] h-[170%] rounded-full pointer-events-none"
-                 style={{ background: `radial-gradient(ellipse, ${AC}26 0%, transparent 70%)`, filter: 'blur(46px)' }} />
+          {/* DIGIHOME — systemet driver prosessen, bygger opp til «Det utfører.» */}
+          <div className="relative">
+            <div aria-hidden="true" className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[82%] h-[185%] rounded-full pointer-events-none"
+                 style={{ background: `radial-gradient(ellipse, ${AC}22 0%, transparent 70%)`, filter: 'blur(48px)' }} />
             <span className="relative block text-[10.5px] font-semibold uppercase tracking-[0.32em] mb-3.5" style={{ color: AC, ...F }}>Slik tenker DigiHome</span>
-            <p className="relative text-[32px] sm:text-[48px] font-bold tracking-[-0.03em] leading-[1.1]"
-               style={{ ...FH, color: '#fff', textWrap: 'balance' as any }}>
-              Det følger med. Det prioriterer. <span style={{ color: AC, textShadow: `0 0 70px ${AC}55` }}>Det utfører.</span>
+            <p className="relative text-[22px] sm:text-[29px] font-medium tracking-[-0.018em] leading-[1.25] max-w-[720px] mx-auto"
+               style={{ ...FH, color: 'rgba(255,255,255,0.9)', textWrap: 'balance' as any,
+                        animation: stage === 'shift' ? 'mUp 0.85s cubic-bezier(0.22,1,0.36,1) 1.9s both' : undefined }}>
+              Det følger med. Det vet hva som mangler. Det tar neste steg.
+            </p>
+            <p className="relative text-[40px] sm:text-[60px] font-bold tracking-[-0.035em] leading-[1.04] mt-5"
+               style={{ ...FH, color: AC, textShadow: `0 0 80px ${AC}66`,
+                        animation: stage === 'shift' ? 'mReveal 1.2s cubic-bezier(0.22,1,0.36,1) 2.95s both' : undefined }}>
+              Det utfører.
             </p>
           </div>
 
-          {/* resolve — autonomi */}
-          <p className="text-[16px] sm:text-[20px] font-normal tracking-[-0.01em] leading-[1.5] mt-10 max-w-[600px] mx-auto"
-             style={{ ...FH, color: 'rgba(255,255,255,0.5)', textWrap: 'balance' as any, animation: stage === 'shift' ? 'mUp 0.9s cubic-bezier(0.22,1,0.36,1) 2.55s both' : undefined }}>
-            Systemet driver seg selv — du bestemmer bare graden av automatikk.
+          {/* resolve — driver prosessen + autonomi */}
+          <p className="text-[16px] sm:text-[20px] font-normal tracking-[-0.01em] leading-[1.55] mt-11 max-w-[600px] mx-auto"
+             style={{ ...FH, color: 'rgba(255,255,255,0.5)', textWrap: 'balance' as any, animation: stage === 'shift' ? 'mUp 0.9s cubic-bezier(0.22,1,0.36,1) 4.0s both' : undefined }}>
+            <span style={{ color: 'rgba(255,255,255,0.78)' }}>Systemet driver prosessen.</span> Du bestemmer bare graden av automatikk.
           </p>
         </div>
       </div>
