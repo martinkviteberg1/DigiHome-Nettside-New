@@ -4778,6 +4778,15 @@ const SAutopilotMindset = (p: any) => {
     return () => timers.forEach(clearTimeout);
   }, [activeRow, stage, active, isPdf]);
 
+  // signaliser til decket at hele keynote-sekvensen er ferdig (låser opp navigasjon)
+  useEffect(() => {
+    if (!active || isPdf) return;
+    if (activeRow >= 5) {
+      const t = setTimeout(() => { if (p.onAnimationComplete) p.onAnimationComplete(); }, 1500);
+      return () => clearTimeout(t);
+    }
+  }, [activeRow, active, isPdf]);
+
   const C = 119.38; // 2πr, r=19
   const doneCount = Math.min(Math.max(activeRow, 0), 5);
   const SI = { hook: 0, problem: 1, shift: 2, proof: 3 }[stage];
@@ -4847,10 +4856,10 @@ const SAutopilotMindset = (p: any) => {
           <div className="inline-flex items-center gap-3 mb-9"
                style={{ animation: stage === 'problem' ? 'mUp 0.6s cubic-bezier(0.22,1,0.36,1) 0.1s both' : undefined }}>
             <span className="h-px w-6" style={{ background: 'rgba(255,255,255,0.3)' }} />
-            <span className="text-[11px] font-semibold uppercase tracking-[0.26em]" style={{ color: 'rgba(255,255,255,0.5)', ...F }}>Slik er proptech i dag</span>
+            <span className="text-[11px] font-semibold uppercase tracking-[0.26em]" style={{ color: 'rgba(255,255,255,0.5)', ...F }}>Slik er det i dag</span>
             <span className="h-px w-6" style={{ background: 'rgba(255,255,255,0.3)' }} />
           </div>
-          <div className="space-y-1.5">
+          <div className="space-y-2.5">
             {['Ett system for utleien.', 'Ett for økonomien.', 'Ett for leietakerne.'].map((l, i) => (
               <p key={l} className="text-[28px] sm:text-[40px] font-semibold tracking-[-0.02em] leading-[1.12]"
                  style={{ ...FH, color: '#fff',
@@ -4859,13 +4868,13 @@ const SAutopilotMindset = (p: any) => {
                           transition: 'opacity 0.8s ease' }}>{l}</p>
             ))}
           </div>
-          <p className="text-[32px] sm:text-[48px] font-bold tracking-[-0.03em] leading-[1.08] mt-8"
+          <p className="text-[32px] sm:text-[48px] font-bold tracking-[-0.03em] leading-[1.08] mt-11"
              style={{ ...FH,
                       opacity: punchOn ? 1 : 0,
                       transform: punchOn ? 'translateY(0)' : 'translateY(20px)',
                       filter: punchOn ? 'blur(0)' : 'blur(11px)',
                       transition: 'opacity 1.1s cubic-bezier(0.22,1,0.36,1), transform 1.1s cubic-bezier(0.22,1,0.36,1), filter 1.05s ease' }}>
-            <span className="text-white">Men jobben er fortsatt </span><span style={{ color: AC }}>din.</span>
+            <span className="text-white">Likevel gjør du alt </span><span style={{ color: AC }}>selv.</span>
           </p>
         </div>
       </div>
@@ -5156,12 +5165,24 @@ const SLIDES = [
 
 export default function Presentasjon() {
   const [c, setC] = useState(0);
+  const [navLocked, setNavLocked] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState(0);
   const [exportStage, setExportStage] = useState<'idle' | 'preparing' | 'capturing' | 'building' | 'uploading' | 'done'>('idle');
   const [cachedPdf, setCachedPdf] = useState<{ exists: boolean; size?: number; updated_at?: string } | null>(null);
-  const next = useCallback(() => setC((v: any) => Math.min(v + 1, SLIDES.length - 1)), []);
+  const next = useCallback(() => setC((v: any) => (v === 1 && navLocked) ? v : Math.min(v + 1, SLIDES.length - 1)), [navLocked]);
   const prev = useCallback(() => setC((v: any) => Math.max(v - 1, 0)), []);
+
+  // Lås fremover-navigasjon på Slide 2 til hele keynote-animasjonen er ferdig
+  useEffect(() => {
+    if (c === 1) {
+      setNavLocked(true);
+      const safety = setTimeout(() => setNavLocked(false), 41000); // failsafe
+      return () => clearTimeout(safety);
+    }
+    setNavLocked(false);
+  }, [c]);
+  const handleS2Complete = useCallback(() => setNavLocked(false), []);
 
   // Ved load: sjekk om cached PDF finnes på serveren
   useEffect(() => {
@@ -5286,7 +5307,7 @@ export default function Presentasjon() {
       onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
       {SLIDES.map((Slide: any, i: number) => (
         <div key={i} className={`absolute inset-0 transition-all duration-700 ease-[cubic-bezier(0.4,0,0.2,1)] ${i === c ? 'opacity-100 scale-100' : i < c ? 'opacity-0 scale-[0.96]' : 'opacity-0 scale-[1.04]'}`} style={{ pointerEvents: i === c ? 'auto' : 'none' }}>
-          <Slide slideNum={i + 1} total={SLIDES.length} isActive={i === c} />
+          <Slide slideNum={i + 1} total={SLIDES.length} isActive={i === c} onAnimationComplete={i === 1 ? handleS2Complete : undefined} />
         </div>
       ))}
 
@@ -5304,7 +5325,7 @@ export default function Presentasjon() {
       </button>
       <button
         onClick={next}
-        disabled={c === SLIDES.length - 1}
+        disabled={c === SLIDES.length - 1 || (c === 1 && navLocked)}
         aria-label="Neste slide"
         className="group fixed right-0 top-0 bottom-0 w-[18%] z-40 cursor-e-resize disabled:cursor-not-allowed disabled:opacity-0 transition-opacity"
         style={{ background: 'transparent' }}>
