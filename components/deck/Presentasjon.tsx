@@ -4720,7 +4720,8 @@ const SAutopilotMindset = (p: any) => {
   const AMBER = '#f4b066';   // krever godkjenning
   const GREEN = '#34d399';   // godkjent
 
-  const [stage, setStage] = useState<'intro' | 'explain' | 'list'>(isPdf ? 'list' : 'intro');
+  const [stage, setStage] = useState<'hook' | 'problem' | 'shift' | 'proof'>(isPdf ? 'proof' : 'hook');
+  const [punchOn, setPunchOn] = useState(false);
   const [activeRow, setActiveRow] = useState(isPdf ? 5 : -1);
   const [rowPhase, setRowPhase] = useState<'work' | 'review' | 'done'>('work');
 
@@ -4732,19 +4733,29 @@ const SAutopilotMindset = (p: any) => {
     { cat: 'Annonse',     title: 'Forny annonsen på FINN',             mode: 'auto', detail: 'Annonsen republisert med oppdatert pris og bilder.' },
   ];
 
-  // master kinematisk tidslinje: intro → forklaring → sjekkliste
+  // master keynote-tidslinje: krok → problem → skiftet → bevis (auto-spill)
   useEffect(() => {
-    if (isPdf) { setStage('list'); setActiveRow(5); return; }
-    if (!active) { setStage('intro'); setActiveRow(-1); setRowPhase('work'); return; }
-    setStage('intro');
-    const t1 = setTimeout(() => setStage('explain'), 3000);
-    const t2 = setTimeout(() => setStage('list'), 8200);
-    return () => { clearTimeout(t1); clearTimeout(t2); };
+    if (isPdf) { setStage('proof'); setActiveRow(5); setPunchOn(true); return; }
+    if (!active) { setStage('hook'); setActiveRow(-1); setRowPhase('work'); setPunchOn(false); return; }
+    setStage('hook');
+    setPunchOn(false);
+    const t1 = setTimeout(() => setStage('problem'), 3300);
+    const t2 = setTimeout(() => setStage('shift'), 8200);
+    const t3 = setTimeout(() => setStage('proof'), 11700);
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
   }, [active, isPdf]);
 
-  // start gjennomgangen når sjekklisten er synlig
+  // progressiv build i problem-beaten: linjene stables → dimmes når punchen lander
   useEffect(() => {
-    if (!active || isPdf || stage !== 'list') return;
+    if (!active || isPdf) return;
+    if (stage !== 'problem') { setPunchOn(false); return; }
+    const t = setTimeout(() => setPunchOn(true), 2300);
+    return () => clearTimeout(t);
+  }, [stage, active, isPdf]);
+
+  // start gjennomgangen når beviset (sjekklisten) er synlig
+  useEffect(() => {
+    if (!active || isPdf || stage !== 'proof') return;
     setActiveRow(-1);
     const t = setTimeout(() => setActiveRow(0), 1600);
     return () => clearTimeout(t);
@@ -4752,7 +4763,7 @@ const SAutopilotMindset = (p: any) => {
 
   // prosesser aktiv rad → hak av → neste rad
   useEffect(() => {
-    if (!active || isPdf || stage !== 'list' || activeRow < 0 || activeRow > 4) return;
+    if (!active || isPdf || stage !== 'proof' || activeRow < 0 || activeRow > 4) return;
     const isManual = AUTOPILOT_TASKS[activeRow].mode === 'you';
     setRowPhase('work');
     const timers: any[] = [];
@@ -4768,8 +4779,15 @@ const SAutopilotMindset = (p: any) => {
   }, [activeRow, stage, active, isPdf]);
 
   const C = 119.38; // 2πr, r=19
-  const titleUp = stage !== 'intro';
   const doneCount = Math.min(Math.max(activeRow, 0), 5);
+  const SI = { hook: 0, problem: 1, shift: 2, proof: 3 }[stage];
+  const beat = (i: number) => ({
+    opacity: SI === i ? 1 : 0,
+    transform: SI === i ? 'translateY(0) scale(1)' : (SI > i ? 'translateY(-30px) scale(0.985)' : 'translateY(30px) scale(0.985)'),
+    filter: SI === i ? 'blur(0px)' : 'blur(9px)',
+    transition: 'opacity 0.8s cubic-bezier(0.22,1,0.36,1), transform 0.9s cubic-bezier(0.22,1,0.36,1), filter 0.8s ease',
+    pointerEvents: (SI === i ? 'auto' : 'none') as any,
+  });
 
   const Cursor = () => (
     <svg width="19" height="22" viewBox="0 0 19 22" fill="none" style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }}>
@@ -4797,74 +4815,78 @@ const SAutopilotMindset = (p: any) => {
     <div aria-hidden="true" className="absolute inset-0 pointer-events-none overflow-hidden">
       <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[58%] h-[60%] rounded-full"
            style={{ background: `radial-gradient(ellipse, ${AC}22 0%, transparent 70%)`, filter: 'blur(48px)',
-                    opacity: titleUp ? 0.5 : 1, transition: 'opacity 1.3s ease' }} />
+                    opacity: SI > 0 ? 0.5 : 1, transition: 'opacity 1.3s ease' }} />
     </div>
     <DotGrid maskCenter="50% 45%" opacity={0.06} />
 
-    {/* ═══ KINEMATISK SCENE — fyller framen, vertikalt sentrert ═══ */}
-    <div className="absolute inset-0 flex items-center justify-center px-6 z-10">
-      <div className="relative w-full max-w-[1080px]" style={{ height: 'min(600px, 84vh)' }}>
+    {/* ═══ KEYNOTE-SCENE — fire beats som auto-spiller ═══ */}
+    <div className="absolute inset-0 z-10">
 
-        {/* ── AKT 1→2 · TITTEL: morfer fra stort sentrert utsagn → liten tittel på topp ── */}
-        <div className="absolute left-0 right-0 text-center"
-             style={{
-               top: titleUp ? '6%' : '50%',
-               transform: titleUp ? 'translateY(0) scale(0.4)' : 'translateY(-50%) scale(1)',
-               transformOrigin: 'center top',
-               transition: 'top 1.1s cubic-bezier(0.66,0,0.2,1), transform 1.1s cubic-bezier(0.66,0,0.2,1)',
-               zIndex: 20,
-             }}>
-          <h2 className="tracking-[-0.04em] leading-[0.95]"
-              style={{ ...FH, fontWeight: 700, fontSize: 'clamp(46px, 6.4vw, 88px)' }}>
-            <span className="block text-white"
-                  style={{ animation: active ? 'mReveal 0.95s cubic-bezier(0.22,1,0.36,1) 0.35s both' : undefined, opacity: show ? undefined : 0 }}>Ikke et system.</span>
-            <span className="block"
-                  style={{ color: AC, textShadow: `0 0 60px ${AC}55`,
-                           animation: active ? 'mReveal 0.95s cubic-bezier(0.22,1,0.36,1) 0.74s both' : undefined, opacity: show ? undefined : 0 }}>En autopilot.</span>
-          </h2>
-        </div>
+      {/* ── BEAT 1 · KROKEN ── */}
+      <div className="absolute inset-0 flex items-center justify-center px-6 text-center" style={beat(0)}>
+        <h2 className="tracking-[-0.04em] leading-[0.95]" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(48px, 6.6vw, 92px)' }}>
+          <span className="block text-white"
+                style={{ animation: (active && stage === 'hook') ? 'mReveal 0.95s cubic-bezier(0.22,1,0.36,1) 0.35s both' : undefined, opacity: show ? undefined : 0 }}>Ikke et system.</span>
+          <span className="block"
+                style={{ color: AC, textShadow: `0 0 70px ${AC}55`,
+                         animation: (active && stage === 'hook') ? 'mReveal 0.95s cubic-bezier(0.22,1,0.36,1) 0.74s both' : undefined, opacity: show ? undefined : 0 }}>En autopilot.</span>
+        </h2>
+      </div>
 
-        {/* ── AKT 2 · FORKLARING (rolig, forklarende reveal) ── */}
-        <div className="absolute left-0 right-0 flex justify-center px-4"
-             style={{
-               top: '33%',
-               opacity: stage === 'explain' ? 1 : 0,
-               transition: 'opacity 0.7s ease',
-               pointerEvents: 'none', zIndex: 12,
-             }}>
-          <div className="max-w-[640px] text-center">
-            <p className="text-[13.5px] sm:text-[15px] font-normal tracking-[0.005em]"
-               style={{ ...F, color: 'rgba(255,255,255,0.5)', animation: stage === 'explain' ? 'mUp 0.7s cubic-bezier(0.22,1,0.36,1) 0.1s both' : undefined }}>
-              De fleste systemer lagrer informasjon.
-            </p>
-            <p className="text-[24px] sm:text-[30px] font-semibold tracking-[-0.02em] text-white mt-2.5"
-               style={{ ...FH, animation: stage === 'explain' ? 'mUp 0.75s cubic-bezier(0.22,1,0.36,1) 0.42s both' : undefined }}>
-              DigiHome <span style={{ color: AC }}>utfører arbeidet.</span>
-            </p>
-            <p className="text-[14.5px] sm:text-[16px] leading-[1.62] font-normal mt-5 max-w-[540px] mx-auto"
-               style={{ ...F, color: 'rgba(255,255,255,0.6)', animation: stage === 'explain' ? 'mUp 0.7s cubic-bezier(0.22,1,0.36,1) 0.85s both' : undefined }}>
-              Det vet hva som må gjøres i utleien — og gjør det. Du godkjenner kun det som krever et menneske.
-            </p>
+      {/* ── BEAT 2 · PROBLEMET (progressiv build) ── */}
+      <div className="absolute inset-0 flex items-center justify-center px-6 text-center" style={beat(1)}>
+        <div className="max-w-[760px]">
+          <div className="inline-flex items-center gap-3 mb-9"
+               style={{ animation: stage === 'problem' ? 'mUp 0.6s cubic-bezier(0.22,1,0.36,1) 0.1s both' : undefined }}>
+            <span className="h-px w-6" style={{ background: 'rgba(255,255,255,0.3)' }} />
+            <span className="text-[11px] font-semibold uppercase tracking-[0.26em]" style={{ color: 'rgba(255,255,255,0.5)', ...F }}>Problemet med dagens proptech</span>
+            <span className="h-px w-6" style={{ background: 'rgba(255,255,255,0.3)' }} />
           </div>
+          <div className="space-y-1.5">
+            {['Flere dashboards.', 'Flere moduler.', 'Flere menyer.'].map((l, i) => (
+              <p key={l} className="text-[28px] sm:text-[40px] font-semibold tracking-[-0.02em] leading-[1.12]"
+                 style={{ ...FH, color: '#fff',
+                          opacity: punchOn ? 0.28 : undefined,
+                          animation: stage === 'problem' ? `mUp 0.6s cubic-bezier(0.22,1,0.36,1) ${0.5 + i * 0.55}s both` : undefined,
+                          transition: 'opacity 0.6s ease' }}>{l}</p>
+            ))}
+          </div>
+          <p className="text-[32px] sm:text-[48px] font-bold tracking-[-0.03em] leading-[1.08] mt-8"
+             style={{ ...FH,
+                      opacity: punchOn ? 1 : 0,
+                      transform: punchOn ? 'translateY(0)' : 'translateY(16px)',
+                      filter: punchOn ? 'blur(0)' : 'blur(9px)',
+                      transition: 'opacity 0.8s cubic-bezier(0.22,1,0.36,1), transform 0.8s cubic-bezier(0.22,1,0.36,1), filter 0.8s ease' }}>
+            <span className="text-white">Men du gjør fortsatt </span><span style={{ color: AC }}>alt arbeidet.</span>
+          </p>
         </div>
+      </div>
 
-        {/* ── AKT 3–4 · SJEKKLISTE (5 oppgaver hakes av, én etter én) ── */}
-        <div className="absolute left-0 right-0 flex justify-center px-4"
-             style={{
-               top: '18%',
-               opacity: stage === 'list' ? 1 : 0,
-               transform: stage === 'list' ? 'translateY(0)' : 'translateY(24px)',
-               transition: 'opacity 0.8s cubic-bezier(0.22,1,0.36,1) 0.25s, transform 0.8s cubic-bezier(0.22,1,0.36,1) 0.25s',
-             }}>
-          <div className="relative w-full max-w-[600px] rounded-[24px] px-5 sm:px-6 py-5 text-left"
-               style={{ background: 'rgba(255,255,255,0.018)', border: '1px solid rgba(255,255,255,0.06)',
-                        boxShadow: '0 30px 90px -50px rgba(0,0,0,0.9)' }}>
+      {/* ── BEAT 3 · SKIFTET ── */}
+      <div className="absolute inset-0 flex items-center justify-center px-6 text-center" style={beat(2)}>
+        <div className="max-w-[820px]">
+          <p className="text-[22px] sm:text-[28px] font-medium tracking-[-0.015em]"
+             style={{ ...FH, color: 'rgba(255,255,255,0.42)', animation: stage === 'shift' ? 'mUp 0.65s cubic-bezier(0.22,1,0.36,1) 0.15s both' : undefined }}>
+            De lagrer informasjon.
+          </p>
+          <p className="text-[40px] sm:text-[62px] font-bold tracking-[-0.035em] leading-[1.02] mt-3"
+             style={{ ...FH, color: '#fff', animation: stage === 'shift' ? 'mReveal 0.95s cubic-bezier(0.22,1,0.36,1) 0.5s both' : undefined }}>
+            DigiHome <span style={{ color: AC, textShadow: `0 0 70px ${AC}55` }}>utfører arbeidet.</span>
+          </p>
+        </div>
+      </div>
+
+      {/* ── BEAT 4 · BEVISET (sjekklisten hakes av, én etter én) ── */}
+      <div className="absolute inset-0 flex flex-col items-center justify-center px-6" style={beat(3)}>
+        <div className="relative w-full max-w-[600px] rounded-[24px] px-5 sm:px-6 py-5 text-left"
+             style={{ background: 'rgba(255,255,255,0.018)', border: '1px solid rgba(255,255,255,0.06)',
+                      boxShadow: '0 30px 90px -50px rgba(0,0,0,0.9)' }}>
 
             {/* header */}
             <div className="flex items-center justify-between mb-4 px-1.5">
               <div className="flex items-center gap-2.5">
                 <span className="relative flex items-center justify-center w-2 h-2">
-                  <span className="absolute w-2 h-2 rounded-full" style={{ background: AC, animation: (active && stage === 'list' && activeRow >= 0 && activeRow < 5) ? 'mRingPulse 2.6s ease-out infinite' : undefined }} />
+                  <span className="absolute w-2 h-2 rounded-full" style={{ background: AC, animation: (active && stage === 'proof' && activeRow >= 0 && activeRow < 5) ? 'mRingPulse 2.6s ease-out infinite' : undefined }} />
                   <span className="w-1.5 h-1.5 rounded-full" style={{ background: AC, boxShadow: `0 0 8px ${AC}` }} />
                 </span>
                 <span className="text-[11px] font-medium uppercase tracking-[0.2em]" style={{ color: 'rgba(255,255,255,0.5)', ...F }}>DigiHome autopilot</span>
@@ -4953,8 +4975,15 @@ const SAutopilotMindset = (p: any) => {
               })}
             </div>
           </div>
-        </div>
-
+          {/* sluttlinje — står når alt er fullført */}
+          <p className="text-center text-[17px] sm:text-[21px] font-semibold tracking-[-0.015em] mt-8 px-6 max-w-[640px]"
+             style={{ ...FH, color: 'rgba(255,255,255,0.92)',
+                      opacity: (activeRow === 5 || isPdf) ? 1 : 0,
+                      transform: (activeRow === 5 || isPdf) ? 'translateY(0)' : 'translateY(14px)',
+                      filter: (activeRow === 5 || isPdf) ? 'blur(0)' : 'blur(6px)',
+                      transition: 'opacity 0.9s cubic-bezier(0.22,1,0.36,1) 0.2s, transform 0.9s cubic-bezier(0.22,1,0.36,1) 0.2s, filter 0.9s ease 0.2s' }}>
+            Ikke et system du bruker. <span style={{ color: AC }}>Et system som jobber for deg.</span>
+          </p>
       </div>
     </div>
   </SlideFrame>
