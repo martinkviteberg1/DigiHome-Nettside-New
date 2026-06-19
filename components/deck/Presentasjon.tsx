@@ -5227,8 +5227,7 @@ const SLIDES = [
   S1,            // 01 · Cover
   SAutopilotMindset, // 02 · Mindset reframe — «Ikke et system. En autopilot.»
   SComparison,    // 03 · Sammenligning — tradisjonell software vs DigiHome (forklarende)
-  SCategoryEvolution, // 04 · Kategori — software-evolusjon (V1→V2→V3, ny kategori)
-  SProcessPipeline, // 05 · Prosess-pipeline — «Hele utleieprosessen. Ett system.»
+  SProcessPipeline, // 04 · Prosess-pipeline — «Hele utleieprosessen. Ett system.»
   SLiveDemo,     // 04 · Live product animation (from /digihome-tech)
   SDualUSP,      // 05 · Three unique aspects (auto-listing + dynamic + AI ops)
   STeam,         // 06 · Team (founder-market fit)
