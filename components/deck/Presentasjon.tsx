@@ -4720,22 +4720,9 @@ const SAutopilotMindset = (p: any) => {
   const AMBER = '#f4b066';   // krever godkjenning
   const GREEN = '#34d399';   // godkjent
 
-  const [stage, setStage] = useState<'hook' | 'problem' | 'shift' | 'proof'>(isPdf ? 'proof' : 'hook');
-  const [punchOn, setPunchOn] = useState(false);
+  const [stage, setStage] = useState<'hook' | 'proof'>(isPdf ? 'proof' : 'hook');
   const [activeRow, setActiveRow] = useState(isPdf ? 5 : -1);
   const [rowPhase, setRowPhase] = useState<'work' | 'review' | 'done'>('work');
-  const [shiftStep, setShiftStep] = useState(isPdf ? 6 : -1);
-  const [shiftResolve, setShiftResolve] = useState(isPdf);
-
-  // Apple-sekvens for skiftet: én linje om gangen (Du… → Det… → Det utfører.)
-  const SHIFT_SEQ = [
-    { t: 'Du logger inn.',           kind: 'you' },
-    { t: 'Du finner oppgaven.',      kind: 'you' },
-    { t: 'Du gjør jobben.',          kind: 'you' },
-    { t: 'Det følger med.',          kind: 'it' },
-    { t: 'Det vet hva som mangler.', kind: 'it' },
-    { t: 'Det tar neste steg.',      kind: 'it' },
-  ];
 
   const AUTOPILOT_TASKS = [
     { cat: 'Kontrakt',    title: 'Reguler husleien etter KPI',        mode: 'auto', detail: 'Husleie justeres 3,8 % etter konsumprisindeks. Varsel sendt med én måneds frist.' },
@@ -4745,37 +4732,14 @@ const SAutopilotMindset = (p: any) => {
     { cat: 'Annonse',     title: 'Forny annonsen på FINN',             mode: 'auto', detail: 'Annonsen republisert med oppdatert pris og bilder.' },
   ];
 
-  // master keynote-tidslinje: krok → problem → skiftet → bevis (auto-spill)
+  // master keynote-tidslinje: krok → bevis/sjekkliste (auto-spill)
   useEffect(() => {
-    if (isPdf) { setStage('proof'); setActiveRow(5); setPunchOn(true); return; }
-    if (!active) { setStage('hook'); setActiveRow(-1); setRowPhase('work'); setPunchOn(false); return; }
+    if (isPdf) { setStage('proof'); setActiveRow(5); return; }
+    if (!active) { setStage('hook'); setActiveRow(-1); setRowPhase('work'); return; }
     setStage('hook');
-    setPunchOn(false);
-    const t1 = setTimeout(() => setStage('problem'), 4800);
-    const t2 = setTimeout(() => setStage('shift'), 11600);
-    const t3 = setTimeout(() => setStage('proof'), 21200);
-    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+    const t1 = setTimeout(() => setStage('proof'), 4800);
+    return () => clearTimeout(t1);
   }, [active, isPdf]);
-
-  // progressiv build i problem-beaten: linjene stables → dimmes når punchen lander
-  useEffect(() => {
-    if (!active || isPdf) return;
-    if (stage !== 'problem') { setPunchOn(false); return; }
-    const t = setTimeout(() => setPunchOn(true), 3600);
-    return () => clearTimeout(t);
-  }, [stage, active, isPdf]);
-
-  // skiftet: avslør én linje om gangen, bygg til klimaks «Det utfører.», så resolve
-  useEffect(() => {
-    if (isPdf) { setShiftStep(6); setShiftResolve(true); return; }
-    if (!active || stage !== 'shift') { setShiftStep(-1); setShiftResolve(false); return; }
-    setShiftStep(-1); setShiftResolve(false);
-    const T: any[] = [];
-    const cues = [300, 1050, 1800, 3000, 3950, 4900, 5950]; // steg 0..6 (6 = klimaks)
-    cues.forEach((ms, i) => T.push(setTimeout(() => setShiftStep(i), ms)));
-    T.push(setTimeout(() => setShiftResolve(true), 7100));
-    return () => T.forEach(clearTimeout);
-  }, [stage, active, isPdf]);
 
   // start gjennomgangen når beviset (sjekklisten) er synlig
   useEffect(() => {
@@ -4813,7 +4777,7 @@ const SAutopilotMindset = (p: any) => {
 
   const C = 119.38; // 2πr, r=19
   const doneCount = Math.min(Math.max(activeRow, 0), 5);
-  const SI = { hook: 0, problem: 1, shift: 2, proof: 3 }[stage];
+  const SI = { hook: 0, proof: 1 }[stage];
   const beat = (i: number) => ({
     opacity: SI === i ? 1 : 0,
     transform: SI === i ? 'translateY(0) scale(1)' : (SI > i ? 'translateY(-46px) scale(0.965)' : 'translateY(46px) scale(0.965)'),
@@ -4874,93 +4838,7 @@ const SAutopilotMindset = (p: any) => {
         </h2>
       </div>
 
-      {/* ── BEAT 2 · PROBLEMET (progressiv build) ── */}
-      <div className="absolute inset-0 flex items-center justify-center px-6 text-center" style={beat(1)}>
-        <div className="max-w-[800px]" style={{ animation: (active && stage === 'problem') ? 'mKenBurnsSoft 9s cubic-bezier(0.33,0,0.2,1) both' : undefined }}>
-          <div className="inline-flex items-center gap-3 mb-9"
-               style={{ animation: stage === 'problem' ? 'mUp 0.6s cubic-bezier(0.22,1,0.36,1) 0.1s both' : undefined }}>
-            <span className="h-px w-6" style={{ background: 'rgba(255,255,255,0.3)' }} />
-            <span className="text-[11px] font-semibold uppercase tracking-[0.26em]" style={{ color: 'rgba(255,255,255,0.5)', ...F }}>Slik jobber du i dag</span>
-            <span className="h-px w-6" style={{ background: 'rgba(255,255,255,0.3)' }} />
-          </div>
-          <div className="space-y-2.5">
-            {['Du følger opp.', 'Du sender påminnelser.', 'Du passer på at ting skjer.'].map((l, i) => (
-              <p key={l} className="text-[28px] sm:text-[40px] font-semibold tracking-[-0.02em] leading-[1.12]"
-                 style={{ ...FH, color: '#fff',
-                          opacity: punchOn ? 0.24 : undefined,
-                          animation: stage === 'problem' ? `mUp 0.85s cubic-bezier(0.22,1,0.36,1) ${0.7 + i * 0.78}s both` : undefined,
-                          transition: 'opacity 0.8s ease' }}>{l}</p>
-            ))}
-          </div>
-          <p className="text-[32px] sm:text-[48px] font-bold tracking-[-0.03em] leading-[1.08] mt-11"
-             style={{ ...FH,
-                      opacity: punchOn ? 1 : 0,
-                      transform: punchOn ? 'translateY(0)' : 'translateY(20px)',
-                      filter: punchOn ? 'blur(0)' : 'blur(11px)',
-                      transition: 'opacity 1.1s cubic-bezier(0.22,1,0.36,1), transform 1.1s cubic-bezier(0.22,1,0.36,1), filter 1.05s ease' }}>
-            <span className="text-white">Likevel gjør du alt </span><span style={{ color: AC }}>selv.</span>
-          </p>
-        </div>
-      </div>
-
-      {/* ── BEAT 3 · SKIFTET — én linje om gangen (Apple-sekvens, bygger til «Det utfører.») ── */}
-      <div className="absolute inset-0 px-6 text-center" style={beat(2)}>
-
-        {/* transiente linjer: Du… (grått) → Det… (hvitt) — kun én synlig om gangen */}
-        {SHIFT_SEQ.map((m: any, i: number) => {
-          const isCur = shiftStep === i;
-          const isPast = shiftStep > i;
-          return (
-            <div key={i} className="absolute inset-0 flex items-center justify-center px-6 pointer-events-none"
-                 style={{
-                   opacity: isCur ? 1 : 0,
-                   transform: isCur ? 'translateY(0)' : (isPast ? 'translateY(-36px)' : 'translateY(36px)'),
-                   filter: isCur ? 'blur(0)' : 'blur(13px)',
-                   transition: 'opacity 0.7s cubic-bezier(0.22,1,0.36,1), transform 0.85s cubic-bezier(0.22,1,0.36,1), filter 0.7s ease',
-                 }}>
-              <span className="tracking-[-0.038em] leading-[1.0]"
-                    style={{ ...FH,
-                             fontWeight: m.kind === 'you' ? 600 : 700,
-                             fontSize: 'clamp(42px, 5.8vw, 78px)',
-                             color: m.kind === 'you' ? 'rgba(255,255,255,0.38)' : '#fff' }}>
-                {m.t}
-              </span>
-            </div>
-          );
-        })}
-
-        {/* KLIMAKS — «Det utfører.» blir stående */}
-        <div className="absolute inset-0 flex items-center justify-center px-6 pointer-events-none"
-             style={{
-               opacity: shiftStep >= 6 ? 1 : 0,
-               transform: shiftStep >= 6 ? 'translateY(0) scale(1)' : 'translateY(42px) scale(0.9)',
-               filter: shiftStep >= 6 ? 'blur(0)' : 'blur(18px)',
-               transition: 'opacity 1.0s cubic-bezier(0.22,1,0.36,1), transform 1.15s cubic-bezier(0.22,1,0.36,1), filter 1.0s ease',
-             }}>
-          <div aria-hidden="true" className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[62%] h-[130%] rounded-full"
-               style={{ background: `radial-gradient(ellipse, ${AC}28 0%, transparent 68%)`, filter: 'blur(54px)',
-                        opacity: shiftStep >= 6 ? 1 : 0, transition: 'opacity 1.3s ease' }} />
-          <span className="relative tracking-[-0.04em] leading-[0.98]"
-                style={{ ...FH, fontWeight: 800, fontSize: 'clamp(66px, 9.4vw, 134px)',
-                         color: AC, textShadow: `0 0 95px ${AC}66` }}>
-            Det utfører.
-          </span>
-        </div>
-
-        {/* RESOLVE — driver prosessen + autonomi (nederste tredjedel) */}
-        <div className="absolute left-0 right-0 px-6 text-center" style={{ bottom: '15%' }}>
-          <p className="tracking-[-0.01em] mx-auto max-w-[620px]"
-             style={{ ...F, fontSize: 'clamp(15px, 1.65vw, 21px)', lineHeight: 1.5,
-                      opacity: shiftResolve ? 1 : 0,
-                      transform: shiftResolve ? 'translateY(0)' : 'translateY(14px)',
-                      transition: 'opacity 1.0s cubic-bezier(0.22,1,0.36,1), transform 1.0s cubic-bezier(0.22,1,0.36,1)',
-                      color: 'rgba(255,255,255,0.5)' }}>
-            <span style={{ color: 'rgba(255,255,255,0.82)' }}>Systemet driver prosessen.</span> Du bestemmer graden av automatikk.
-          </p>
-        </div>
-      </div>
-
-      {/* ── BEAT 4 · BEVISET (sjekklisten hakes av, én etter én) ── */}
+      {/* ── BEAT 2 · BEVISET (sjekklisten hakes av, én etter én) ── */}
       <div className="absolute inset-0 flex flex-col items-center justify-center px-6" style={beat(3)}>
         <div className="relative w-full max-w-[720px] rounded-[30px] px-7 sm:px-10 py-8 text-left"
              style={{ background: 'rgba(255,255,255,0.022)', border: '1px solid rgba(255,255,255,0.07)',
