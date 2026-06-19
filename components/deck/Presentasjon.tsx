@@ -4839,7 +4839,7 @@ const SAutopilotMindset = (p: any) => {
       </div>
 
       {/* ── BEAT 2 · BEVISET (sjekklisten hakes av, én etter én) ── */}
-      <div className="absolute inset-0 flex flex-col items-center justify-center px-6" style={beat(3)}>
+      <div className="absolute inset-0 flex flex-col items-center justify-center px-6" style={beat(1)}>
         <div className="relative w-full max-w-[720px] rounded-[30px] px-7 sm:px-10 py-8 text-left"
              style={{ background: 'rgba(255,255,255,0.022)', border: '1px solid rgba(255,255,255,0.07)',
                       boxShadow: '0 40px 120px -55px rgba(0,0,0,0.95)', backdropFilter: 'blur(22px)', WebkitBackdropFilter: 'blur(22px)' }}>
@@ -4959,6 +4959,72 @@ const PROCESS_STAGES = [
   { icon: Rocket,        title: 'Publisering',   sub: 'Ut i markedet · FINN' },
   { icon: ClipboardCheck, title: 'Leietaker',    sub: 'Kredittsjekk + leiekontrakt' },
 ];
+
+/* ═══ 03 · SAMMENLIGNING — tradisjonell software vs DigiHome (forklarende) ═══ */
+const SComparison = (p: any) => {
+  const active = p.isActive;
+  const isPdf = !!p.pdfMode;
+  const show = active || isPdf;
+  const AC = '#d298ff';
+  return (
+  <SlideFrame bg="dark" {...p}>
+    <style>{`
+      @keyframes cmpUp { from { opacity: 0; transform: translateY(22px); } to { opacity: 1; transform: translateY(0); } }
+    `}</style>
+
+    <div aria-hidden="true" className="absolute inset-0 pointer-events-none overflow-hidden">
+      <div className="absolute left-[72%] top-1/2 w-[44%] h-[62%] rounded-full"
+           style={{ background: `radial-gradient(ellipse, ${AC}18 0%, transparent 70%)`, filter: 'blur(62px)', transform: 'translate(-50%,-50%)' }} />
+    </div>
+    <DotGrid maskCenter="50% 45%" opacity={0.05} />
+    <div aria-hidden="true" className="absolute inset-0 pointer-events-none"
+         style={{ background: 'radial-gradient(ellipse at 50% 46%, transparent 54%, rgba(0,0,0,0.5) 100%)' }} />
+
+    <div className="absolute inset-0 z-10 flex items-center justify-center px-6">
+      <div className="w-full max-w-[1020px]">
+        {/* eyebrow */}
+        <div className="flex items-center justify-center gap-3 mb-12 sm:mb-14"
+             style={{ opacity: show ? undefined : 0, animation: active ? 'cmpUp 0.8s cubic-bezier(0.22,1,0.36,1) 0.2s both' : undefined }}>
+          <span className="h-px w-7" style={{ background: `${AC}55` }} />
+          <span className="text-[11px] font-semibold uppercase tracking-[0.32em]" style={{ ...F, color: AC }}>Forskjellen fra tradisjonell software</span>
+          <span className="h-px w-7" style={{ background: `${AC}55` }} />
+        </div>
+
+        {/* to kolonner */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-0">
+          {/* venstre — tradisjonell software */}
+          <div className="md:pr-16"
+               style={{ opacity: show ? undefined : 0, animation: active ? 'cmpUp 0.85s cubic-bezier(0.22,1,0.36,1) 0.6s both' : undefined }}>
+            <h3 className="text-[19px] sm:text-[24px] font-bold tracking-[-0.02em] mb-5" style={{ ...FH, color: 'rgba(255,255,255,0.55)' }}>Tradisjonell software</h3>
+            <p className="text-[17px] sm:text-[20px] font-normal leading-[1.62]" style={{ ...F, color: 'rgba(255,255,255,0.46)' }}>
+              Bygget som en samling moduler og funksjoner. Du må selv vite hva som skal gjøres, finne riktig sted i systemet, og utføre hver oppgave manuelt.
+            </p>
+          </div>
+
+          {/* høyre — DigiHome */}
+          <div className="md:pl-16 relative"
+               style={{ opacity: show ? undefined : 0, animation: active ? 'cmpUp 0.85s cubic-bezier(0.22,1,0.36,1) 1.1s both' : undefined }}>
+            <div aria-hidden="true" className="hidden md:block absolute left-0 top-0 bottom-0 w-px"
+                 style={{ background: `linear-gradient(to bottom, transparent, ${AC}55, transparent)` }} />
+            <h3 className="text-[19px] sm:text-[24px] font-bold tracking-[-0.02em] mb-5" style={{ ...FH, color: '#fff' }}>DigiHome</h3>
+            <p className="text-[17px] sm:text-[20px] font-normal leading-[1.62]" style={{ ...F, color: 'rgba(255,255,255,0.82)' }}>
+              Bygget motsatt vei. Systemet vet til enhver tid hva som er neste steg, og gir deg en løpende liste over kommende oppgaver — <span style={{ color: AC }}>som du kan se gjennom, godkjenne, eller la systemet utføre automatisk.</span>
+            </p>
+          </div>
+        </div>
+
+        {/* konklusjon */}
+        <div className="mt-12 sm:mt-14 pt-8 text-center"
+             style={{ borderTop: '1px solid rgba(255,255,255,0.08)', opacity: show ? undefined : 0, animation: active ? 'cmpUp 0.9s cubic-bezier(0.22,1,0.36,1) 1.7s both' : undefined }}>
+          <p className="text-[18px] sm:text-[24px] font-medium tracking-[-0.02em] leading-[1.5] max-w-[800px] mx-auto" style={{ ...FH, color: 'rgba(255,255,255,0.92)', textWrap: 'balance' as any }}>
+            Forskjellen er ikke antall funksjoner, men at systemet selv vet hva som er neste steg — og fører deg gjennom arbeidet.
+          </p>
+        </div>
+      </div>
+    </div>
+  </SlideFrame>
+  );
+};
 
 /* ═══ 03 · KATEGORI — software-evolusjonen: Record → Workflow → Autonomous ═══ */
 const SCategoryEvolution = (p: any) => {
@@ -5160,8 +5226,9 @@ const SProcessPipeline = (p: any) => {
 const SLIDES = [
   S1,            // 01 · Cover
   SAutopilotMindset, // 02 · Mindset reframe — «Ikke et system. En autopilot.»
-  SCategoryEvolution, // 03 · Kategori — software-evolusjon (V1→V2→V3, ny kategori)
-  SProcessPipeline, // 04 · Prosess-pipeline — «Hele utleieprosessen. Ett system.»
+  SComparison,    // 03 · Sammenligning — tradisjonell software vs DigiHome (forklarende)
+  SCategoryEvolution, // 04 · Kategori — software-evolusjon (V1→V2→V3, ny kategori)
+  SProcessPipeline, // 05 · Prosess-pipeline — «Hele utleieprosessen. Ett system.»
   SLiveDemo,     // 04 · Live product animation (from /digihome-tech)
   SDualUSP,      // 05 · Three unique aspects (auto-listing + dynamic + AI ops)
   STeam,         // 06 · Team (founder-market fit)
@@ -5193,7 +5260,7 @@ export default function Presentasjon() {
   useEffect(() => {
     if (c === 1) {
       setNavLocked(true);
-      const safety = setTimeout(() => setNavLocked(false), 46000); // failsafe
+      const safety = setTimeout(() => setNavLocked(false), 28000); // failsafe
       return () => clearTimeout(safety);
     }
     setNavLocked(false);
