@@ -4727,7 +4727,11 @@ const SAutopilotMindset = (p: any) => {
   const AUTOPILOT_TASKS = [
     { cat: 'Kontrakt',    title: 'Reguler husleien etter KPI',        mode: 'auto', detail: 'Husleie justeres 3,8 % etter konsumprisindeks. Varsel sendt med én måneds frist.' },
     { cat: 'Husleie',     title: 'Forfalt husleie — send påminnelse',  mode: 'auto', detail: 'Påminnelse sendt automatisk med ny betalingsfrist og KID.' },
-    { cat: 'Vedlikehold', title: 'Lekkasje meldt av leietaker',        mode: 'you',  detail: 'Rørlegger foreslått tirsdag kl. 10–12. Leietaker varsles om tidspunkt.' },
+    { cat: 'Leietaker',   title: 'Leietaker spør om maling av stua',    mode: 'you',  kind: 'message',
+      from: 'Anna Berg', role: 'Leietaker', initials: 'AB', time: '21:47',
+      incoming: 'Hei! Er det greit om jeg maler stua i en lysere farge?',
+      draft: 'Hei Anna! Det går helt fint — velg gjerne en nøytral farge og mal tilbake til hvitt ved utflytting. Si fra om du lurer på noe mer. Mvh Martin',
+      detail: '' },
     { cat: 'Utleie',      title: 'Kredittsjekk ny leietaker',          mode: 'you',  detail: 'Søker godkjent. Kontrakt klargjort for signering med BankID.' },
     { cat: 'Annonse',     title: 'Forny annonsen på FINN',             mode: 'auto', detail: 'Annonsen republisert med oppdatert pris og bilder.' },
   ];
@@ -4753,12 +4757,19 @@ const SAutopilotMindset = (p: any) => {
   useEffect(() => {
     if (!active || isPdf || stage !== 'proof' || activeRow < 0 || activeRow > 4) return;
     const isManual = AUTOPILOT_TASKS[activeRow].mode === 'you';
+    const isMsg = (AUTOPILOT_TASKS[activeRow] as any).kind === 'message';
     setRowPhase('work');
     const timers: any[] = [];
     if (isManual) {
-      timers.push(setTimeout(() => setRowPhase('review'), 1700));
-      timers.push(setTimeout(() => setRowPhase('done'), 3500));
-      timers.push(setTimeout(() => setActiveRow((r) => r + 1), 4400));
+      if (isMsg) {
+        timers.push(setTimeout(() => setRowPhase('review'), 1600));
+        timers.push(setTimeout(() => setRowPhase('done'), 5200));
+        timers.push(setTimeout(() => setActiveRow((r) => r + 1), 6000));
+      } else {
+        timers.push(setTimeout(() => setRowPhase('review'), 1700));
+        timers.push(setTimeout(() => setRowPhase('done'), 3500));
+        timers.push(setTimeout(() => setActiveRow((r) => r + 1), 4400));
+      }
     } else {
       timers.push(setTimeout(() => setRowPhase('done'), 2400));
       timers.push(setTimeout(() => setActiveRow((r) => r + 1), 3200));
@@ -4804,6 +4815,7 @@ const SAutopilotMindset = (p: any) => {
       @keyframes mPop { 0% { opacity: 0; transform: scale(0.7); } 60% { transform: scale(1.12); } 100% { opacity: 1; transform: scale(1); } }
       @keyframes mRingPulse { 0% { transform: scale(0.7); opacity: 0.5; } 100% { transform: scale(2); opacity: 0; } }
       @keyframes mDotPulse { 0%,100% { opacity: 0.4; } 50% { opacity: 1; } }
+      @keyframes mDot { 0%,100% { opacity: 0.25; transform: translateY(0); } 50% { opacity: 1; transform: translateY(-2px); } }
       @keyframes curTap { 0% { opacity: 0; transform: translate(40px, 34px) scale(1); } 30% { opacity: 1; transform: translate(0,0) scale(1); } 46% { transform: translate(0,0) scale(0.78); } 62% { transform: translate(0,0) scale(1); } 100% { opacity: 1; transform: translate(0,0) scale(1); } }
       @keyframes btnPress { 0%,40% { transform: scale(1); } 50% { transform: scale(0.94); } 64%,100% { transform: scale(1); } }
       @keyframes btnRipple { 0%,40% { opacity: 0; transform: scale(0.6); } 52% { opacity: 0.7; } 100% { opacity: 0; transform: scale(1.9); } }
@@ -4904,19 +4916,68 @@ const SAutopilotMindset = (p: any) => {
 
                     {current && (
                       <div style={{ animation: 'mUpSm 0.4s cubic-bezier(0.22,1,0.36,1) both' }}>
-                        <p className="text-[13.5px] sm:text-[14px] font-normal leading-[1.55] mt-2" style={{ color: 'rgba(255,255,255,0.5)', ...F }}>{t.detail}</p>
-                        {ph === 'review' && (
-                          <div className="flex items-center gap-3 mt-4">
-                            <div className="relative">
-                              <button className="inline-flex items-center gap-2 rounded-[11px] px-4 py-2.5 text-[13.5px] font-semibold text-[#0a1a14]"
-                                      style={{ background: GREEN, boxShadow: `0 10px 26px -8px ${GREEN}`, ...F, animation: 'btnPress 1.8s cubic-bezier(0.4,0,0.2,1) 0.6s both' }}>
-                                <Check className="w-4 h-4" strokeWidth={2.8} /> Godkjenn
-                              </button>
-                              <span aria-hidden="true" className="absolute inset-0 rounded-[11px] pointer-events-none" style={{ border: `2px solid ${GREEN}`, animation: 'btnRipple 1.8s ease-out 0.6s both' }} />
-                              <span aria-hidden="true" className="absolute pointer-events-none z-10" style={{ left: '60%', top: '58%', animation: 'curTap 1.8s cubic-bezier(0.4,0,0.2,1) 0.6s both' }}><Cursor /></span>
+                        {(t as any).kind === 'message' ? (
+                          <div className="mt-3 max-w-[450px]">
+                            {/* innkommende melding fra leietaker */}
+                            <div className="flex items-start gap-2.5">
+                              <span className="shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-[10.5px] font-bold"
+                                    style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.78)', ...F }}>{(t as any).initials}</span>
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[12.5px] font-semibold text-white" style={{ ...F }}>{(t as any).from}</span>
+                                  <span className="text-[11px]" style={{ color: 'rgba(255,255,255,0.4)', ...F }}>{(t as any).role} · {(t as any).time}</span>
+                                </div>
+                                <div className="inline-block mt-1.5 px-3.5 py-2.5 text-[13.5px] leading-[1.5]"
+                                     style={{ background: 'rgba(255,255,255,0.055)', borderRadius: '4px 15px 15px 15px', color: 'rgba(255,255,255,0.82)', ...F }}>{(t as any).incoming}</div>
+                              </div>
                             </div>
-                            <button className="rounded-[11px] px-4 py-2.5 text-[13.5px] font-medium" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.7)', ...F }}>Rediger</button>
+
+                            {ph === 'work' ? (
+                              <div className="flex items-center gap-1.5 mt-3 ml-[38px]">
+                                {[0, 1, 2].map((d) => (
+                                  <span key={d} className="w-[5px] h-[5px] rounded-full" style={{ background: 'rgba(255,255,255,0.45)', animation: `mDot 1.2s ease-in-out ${d * 0.16}s infinite` }} />
+                                ))}
+                                <span className="text-[12px] ml-1.5" style={{ color: 'rgba(255,255,255,0.42)', ...F }}>skriver svar …</span>
+                              </div>
+                            ) : (
+                              <div style={{ animation: 'mUpSm 0.5s cubic-bezier(0.22,1,0.36,1) both' }}>
+                                <div className="flex items-center gap-2.5 mt-4 mb-2.5 ml-[38px]">
+                                  <span className="text-[10px] font-semibold uppercase tracking-[0.16em]" style={{ color: AC, ...F }}>Utkast · klar for godkjenning</span>
+                                  <span className="h-px flex-1" style={{ background: 'rgba(255,255,255,0.08)' }} />
+                                </div>
+                                <div className="ml-[38px] px-3.5 py-3 text-[13.5px] leading-[1.55]"
+                                     style={{ background: `${AC}14`, border: `1px solid ${AC}33`, borderRadius: '15px 4px 15px 15px', color: 'rgba(255,255,255,0.92)', boxShadow: `0 16px 44px -24px ${AC}`, ...F }}>{(t as any).draft}</div>
+                                <div className="flex items-center gap-3 mt-4 ml-[38px]">
+                                  <div className="relative">
+                                    <button className="inline-flex items-center gap-2 rounded-[11px] px-4 py-2.5 text-[13.5px] font-semibold text-[#0a1a14]"
+                                            style={{ background: GREEN, boxShadow: `0 10px 26px -8px ${GREEN}`, ...F, animation: 'btnPress 2.6s cubic-bezier(0.4,0,0.2,1) 1.45s both' }}>
+                                      <Check className="w-4 h-4" strokeWidth={2.8} /> Godkjenn og send
+                                    </button>
+                                    <span aria-hidden="true" className="absolute inset-0 rounded-[11px] pointer-events-none" style={{ border: `2px solid ${GREEN}`, animation: 'btnRipple 2.6s ease-out 1.45s both' }} />
+                                    <span aria-hidden="true" className="absolute pointer-events-none z-10" style={{ left: '60%', top: '58%', animation: 'curTap 2.6s cubic-bezier(0.4,0,0.2,1) 1.45s both' }}><Cursor /></span>
+                                  </div>
+                                  <button className="rounded-[11px] px-4 py-2.5 text-[13.5px] font-medium" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.7)', ...F }}>Rediger</button>
+                                </div>
+                              </div>
+                            )}
                           </div>
+                        ) : (
+                          <>
+                            <p className="text-[13.5px] sm:text-[14px] font-normal leading-[1.55] mt-2" style={{ color: 'rgba(255,255,255,0.5)', ...F }}>{t.detail}</p>
+                            {ph === 'review' && (
+                              <div className="flex items-center gap-3 mt-4">
+                                <div className="relative">
+                                  <button className="inline-flex items-center gap-2 rounded-[11px] px-4 py-2.5 text-[13.5px] font-semibold text-[#0a1a14]"
+                                          style={{ background: GREEN, boxShadow: `0 10px 26px -8px ${GREEN}`, ...F, animation: 'btnPress 1.8s cubic-bezier(0.4,0,0.2,1) 0.6s both' }}>
+                                    <Check className="w-4 h-4" strokeWidth={2.8} /> Godkjenn
+                                  </button>
+                                  <span aria-hidden="true" className="absolute inset-0 rounded-[11px] pointer-events-none" style={{ border: `2px solid ${GREEN}`, animation: 'btnRipple 1.8s ease-out 0.6s both' }} />
+                                  <span aria-hidden="true" className="absolute pointer-events-none z-10" style={{ left: '60%', top: '58%', animation: 'curTap 1.8s cubic-bezier(0.4,0,0.2,1) 0.6s both' }}><Cursor /></span>
+                                </div>
+                                <button className="rounded-[11px] px-4 py-2.5 text-[13.5px] font-medium" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.7)', ...F }}>Rediger</button>
+                              </div>
+                            )}
+                          </>
                         )}
                       </div>
                     )}
@@ -5259,7 +5320,7 @@ export default function Presentasjon() {
   useEffect(() => {
     if (c === 1) {
       setNavLocked(true);
-      const safety = setTimeout(() => setNavLocked(false), 28000); // failsafe
+      const safety = setTimeout(() => setNavLocked(false), 32000); // failsafe
       return () => clearTimeout(safety);
     }
     setNavLocked(false);
