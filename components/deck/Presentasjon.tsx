@@ -4739,9 +4739,9 @@ const SAutopilotMindset = (p: any) => {
     if (!active) { setStage('hook'); setActiveRow(-1); setRowPhase('work'); setPunchOn(false); return; }
     setStage('hook');
     setPunchOn(false);
-    const t1 = setTimeout(() => setStage('problem'), 3300);
-    const t2 = setTimeout(() => setStage('shift'), 8200);
-    const t3 = setTimeout(() => setStage('proof'), 11700);
+    const t1 = setTimeout(() => setStage('problem'), 4800);
+    const t2 = setTimeout(() => setStage('shift'), 11600);
+    const t3 = setTimeout(() => setStage('proof'), 15400);
     return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
   }, [active, isPdf]);
 
@@ -4749,7 +4749,7 @@ const SAutopilotMindset = (p: any) => {
   useEffect(() => {
     if (!active || isPdf) return;
     if (stage !== 'problem') { setPunchOn(false); return; }
-    const t = setTimeout(() => setPunchOn(true), 2300);
+    const t = setTimeout(() => setPunchOn(true), 3600);
     return () => clearTimeout(t);
   }, [stage, active, isPdf]);
 
@@ -4783,9 +4783,9 @@ const SAutopilotMindset = (p: any) => {
   const SI = { hook: 0, problem: 1, shift: 2, proof: 3 }[stage];
   const beat = (i: number) => ({
     opacity: SI === i ? 1 : 0,
-    transform: SI === i ? 'translateY(0) scale(1)' : (SI > i ? 'translateY(-30px) scale(0.985)' : 'translateY(30px) scale(0.985)'),
-    filter: SI === i ? 'blur(0px)' : 'blur(9px)',
-    transition: 'opacity 0.8s cubic-bezier(0.22,1,0.36,1), transform 0.9s cubic-bezier(0.22,1,0.36,1), filter 0.8s ease',
+    transform: SI === i ? 'translateY(0) scale(1)' : (SI > i ? 'translateY(-46px) scale(0.965)' : 'translateY(46px) scale(0.965)'),
+    filter: SI === i ? 'blur(0px)' : 'blur(15px)',
+    transition: 'opacity 1.2s cubic-bezier(0.22,1,0.36,1), transform 1.3s cubic-bezier(0.22,1,0.36,1), filter 1.15s ease',
     pointerEvents: (SI === i ? 'auto' : 'none') as any,
   });
 
@@ -4810,32 +4810,40 @@ const SAutopilotMindset = (p: any) => {
       @keyframes curTap { 0% { opacity: 0; transform: translate(40px, 34px) scale(1); } 30% { opacity: 1; transform: translate(0,0) scale(1); } 46% { transform: translate(0,0) scale(0.78); } 62% { transform: translate(0,0) scale(1); } 100% { opacity: 1; transform: translate(0,0) scale(1); } }
       @keyframes btnPress { 0%,40% { transform: scale(1); } 50% { transform: scale(0.94); } 64%,100% { transform: scale(1); } }
       @keyframes btnRipple { 0%,40% { opacity: 0; transform: scale(0.6); } 52% { opacity: 0.7; } 100% { opacity: 0; transform: scale(1.9); } }
+      @keyframes mKenBurns { 0% { transform: scale(1.0) translateY(12px); } 100% { transform: scale(1.05) translateY(-12px); } }
+      @keyframes mKenBurnsSoft { 0% { transform: scale(1.0) translateY(8px); } 100% { transform: scale(1.028) translateY(-6px); } }
+      @keyframes mGlowBreath { 0%,100% { transform: translate(-50%,-50%) scale(1); } 50% { transform: translate(-50%,-50%) scale(1.16); } }
     `}</style>
 
     <div aria-hidden="true" className="absolute inset-0 pointer-events-none overflow-hidden">
-      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[58%] h-[60%] rounded-full"
+      <div className="absolute left-1/2 top-1/2 w-[58%] h-[60%] rounded-full"
            style={{ background: `radial-gradient(ellipse, ${AC}22 0%, transparent 70%)`, filter: 'blur(48px)',
-                    opacity: SI > 0 ? 0.5 : 1, transition: 'opacity 1.3s ease' }} />
+                    transform: 'translate(-50%,-50%)',
+                    opacity: SI > 0 ? 0.5 : 1, transition: 'opacity 1.3s ease',
+                    animation: !isPdf ? 'mGlowBreath 14s ease-in-out infinite' : undefined }} />
     </div>
     <DotGrid maskCenter="50% 45%" opacity={0.06} />
+    <div aria-hidden="true" className="absolute inset-0 pointer-events-none"
+         style={{ background: 'radial-gradient(ellipse at 50% 44%, transparent 50%, rgba(0,0,0,0.5) 100%)' }} />
 
     {/* ═══ KEYNOTE-SCENE — fire beats som auto-spiller ═══ */}
     <div className="absolute inset-0 z-10">
 
       {/* ── BEAT 1 · KROKEN ── */}
       <div className="absolute inset-0 flex items-center justify-center px-6 text-center" style={beat(0)}>
-        <h2 className="tracking-[-0.04em] leading-[0.95]" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(48px, 6.6vw, 92px)' }}>
+        <h2 className="tracking-[-0.04em] leading-[0.95]" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(48px, 6.6vw, 92px)',
+              animation: (active && stage === 'hook') ? 'mKenBurns 10s cubic-bezier(0.33,0,0.2,1) both' : undefined }}>
           <span className="block text-white"
-                style={{ animation: (active && stage === 'hook') ? 'mReveal 0.95s cubic-bezier(0.22,1,0.36,1) 0.35s both' : undefined, opacity: show ? undefined : 0 }}>Ikke et system.</span>
+                style={{ animation: (active && stage === 'hook') ? 'mReveal 1.4s cubic-bezier(0.22,1,0.36,1) 0.5s both' : undefined, opacity: show ? undefined : 0 }}>Ikke et system.</span>
           <span className="block"
                 style={{ color: AC, textShadow: `0 0 70px ${AC}55`,
-                         animation: (active && stage === 'hook') ? 'mReveal 0.95s cubic-bezier(0.22,1,0.36,1) 0.74s both' : undefined, opacity: show ? undefined : 0 }}>En autopilot.</span>
+                         animation: (active && stage === 'hook') ? 'mReveal 1.4s cubic-bezier(0.22,1,0.36,1) 1.45s both' : undefined, opacity: show ? undefined : 0 }}>En autopilot.</span>
         </h2>
       </div>
 
       {/* ── BEAT 2 · PROBLEMET (progressiv build) ── */}
       <div className="absolute inset-0 flex items-center justify-center px-6 text-center" style={beat(1)}>
-        <div className="max-w-[760px]">
+        <div className="max-w-[760px]" style={{ animation: (active && stage === 'problem') ? 'mKenBurnsSoft 9s cubic-bezier(0.33,0,0.2,1) both' : undefined }}>
           <div className="inline-flex items-center gap-3 mb-9"
                style={{ animation: stage === 'problem' ? 'mUp 0.6s cubic-bezier(0.22,1,0.36,1) 0.1s both' : undefined }}>
             <span className="h-px w-6" style={{ background: 'rgba(255,255,255,0.3)' }} />
@@ -4846,17 +4854,17 @@ const SAutopilotMindset = (p: any) => {
             {['Flere dashboards.', 'Flere moduler.', 'Flere menyer.'].map((l, i) => (
               <p key={l} className="text-[28px] sm:text-[40px] font-semibold tracking-[-0.02em] leading-[1.12]"
                  style={{ ...FH, color: '#fff',
-                          opacity: punchOn ? 0.28 : undefined,
-                          animation: stage === 'problem' ? `mUp 0.6s cubic-bezier(0.22,1,0.36,1) ${0.5 + i * 0.55}s both` : undefined,
-                          transition: 'opacity 0.6s ease' }}>{l}</p>
+                          opacity: punchOn ? 0.24 : undefined,
+                          animation: stage === 'problem' ? `mUp 0.85s cubic-bezier(0.22,1,0.36,1) ${0.7 + i * 0.78}s both` : undefined,
+                          transition: 'opacity 0.8s ease' }}>{l}</p>
             ))}
           </div>
           <p className="text-[32px] sm:text-[48px] font-bold tracking-[-0.03em] leading-[1.08] mt-8"
              style={{ ...FH,
                       opacity: punchOn ? 1 : 0,
-                      transform: punchOn ? 'translateY(0)' : 'translateY(16px)',
-                      filter: punchOn ? 'blur(0)' : 'blur(9px)',
-                      transition: 'opacity 0.8s cubic-bezier(0.22,1,0.36,1), transform 0.8s cubic-bezier(0.22,1,0.36,1), filter 0.8s ease' }}>
+                      transform: punchOn ? 'translateY(0)' : 'translateY(20px)',
+                      filter: punchOn ? 'blur(0)' : 'blur(11px)',
+                      transition: 'opacity 1.1s cubic-bezier(0.22,1,0.36,1), transform 1.1s cubic-bezier(0.22,1,0.36,1), filter 1.05s ease' }}>
             <span className="text-white">Men du gjør fortsatt </span><span style={{ color: AC }}>alt arbeidet.</span>
           </p>
         </div>
@@ -4866,11 +4874,11 @@ const SAutopilotMindset = (p: any) => {
       <div className="absolute inset-0 flex items-center justify-center px-6 text-center" style={beat(2)}>
         <div className="max-w-[820px]">
           <p className="text-[22px] sm:text-[28px] font-medium tracking-[-0.015em]"
-             style={{ ...FH, color: 'rgba(255,255,255,0.42)', animation: stage === 'shift' ? 'mUp 0.65s cubic-bezier(0.22,1,0.36,1) 0.15s both' : undefined }}>
-            De lagrer informasjon.
+             style={{ ...FH, color: 'rgba(255,255,255,0.42)', animation: stage === 'shift' ? 'mUp 0.8s cubic-bezier(0.22,1,0.36,1) 0.2s both' : undefined }}>
+            Andre systemer viser deg arbeidet.
           </p>
           <p className="text-[40px] sm:text-[62px] font-bold tracking-[-0.035em] leading-[1.02] mt-3"
-             style={{ ...FH, color: '#fff', animation: stage === 'shift' ? 'mReveal 0.95s cubic-bezier(0.22,1,0.36,1) 0.5s both' : undefined }}>
+             style={{ ...FH, color: '#fff', animation: stage === 'shift' ? 'mReveal 1.15s cubic-bezier(0.22,1,0.36,1) 0.7s both' : undefined }}>
             DigiHome <span style={{ color: AC, textShadow: `0 0 70px ${AC}55` }}>utfører arbeidet.</span>
           </p>
         </div>
@@ -4878,103 +4886,100 @@ const SAutopilotMindset = (p: any) => {
 
       {/* ── BEAT 4 · BEVISET (sjekklisten hakes av, én etter én) ── */}
       <div className="absolute inset-0 flex flex-col items-center justify-center px-6" style={beat(3)}>
-        <div className="relative w-full max-w-[600px] rounded-[24px] px-5 sm:px-6 py-5 text-left"
-             style={{ background: 'rgba(255,255,255,0.018)', border: '1px solid rgba(255,255,255,0.06)',
-                      boxShadow: '0 30px 90px -50px rgba(0,0,0,0.9)' }}>
+        <div className="relative w-full max-w-[720px] rounded-[30px] px-7 sm:px-10 py-8 text-left"
+             style={{ background: 'rgba(255,255,255,0.022)', border: '1px solid rgba(255,255,255,0.07)',
+                      boxShadow: '0 40px 120px -55px rgba(0,0,0,0.95)', backdropFilter: 'blur(22px)', WebkitBackdropFilter: 'blur(22px)' }}>
 
-            {/* header */}
-            <div className="flex items-center justify-between mb-4 px-1.5">
-              <div className="flex items-center gap-2.5">
-                <span className="relative flex items-center justify-center w-2 h-2">
-                  <span className="absolute w-2 h-2 rounded-full" style={{ background: AC, animation: (active && stage === 'proof' && activeRow >= 0 && activeRow < 5) ? 'mRingPulse 2.6s ease-out infinite' : undefined }} />
-                  <span className="w-1.5 h-1.5 rounded-full" style={{ background: AC, boxShadow: `0 0 8px ${AC}` }} />
-                </span>
-                <span className="text-[11px] font-medium uppercase tracking-[0.2em]" style={{ color: 'rgba(255,255,255,0.5)', ...F }}>DigiHome autopilot</span>
-              </div>
-              <span className="text-[11px] font-medium tabular-nums" style={{ color: doneCount === 5 ? AC : 'rgba(255,255,255,0.45)', ...F, transition: 'color 0.4s' }}>
-                {doneCount} av 5 fullført
+          {/* header */}
+          <div className="flex items-center justify-between pb-6" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+            <div className="flex items-center gap-3">
+              <span className="relative flex items-center justify-center w-2.5 h-2.5">
+                <span className="absolute w-2.5 h-2.5 rounded-full" style={{ background: AC, animation: (active && stage === 'proof' && activeRow >= 0 && activeRow < 5) ? 'mRingPulse 2.6s ease-out infinite' : undefined }} />
+                <span className="w-[7px] h-[7px] rounded-full" style={{ background: AC, boxShadow: `0 0 10px ${AC}` }} />
               </span>
+              <span className="text-[12px] font-medium uppercase tracking-[0.24em]" style={{ color: 'rgba(255,255,255,0.5)', ...F }}>DigiHome autopilot</span>
             </div>
-
-            {/* rader */}
-            <div className="flex flex-col">
-              {AUTOPILOT_TASKS.map((t, i) => {
-                const isAutoRow = t.mode === 'auto';
-                const rowDone = isPdf || activeRow > i || activeRow === 5;
-                const current = !rowDone && activeRow === i;
-                const upcoming = !rowDone && !current;
-                const ph = current ? rowPhase : (rowDone ? 'done' : 'idle');
-                const checkCol = isAutoRow ? AC : GREEN;
-                const modeCol = isAutoRow ? AC : AMBER;
-                return (
-                  <div key={i} className="flex items-start gap-3.5 rounded-2xl px-3"
-                       style={{ paddingTop: current ? 13 : 10, paddingBottom: current ? 13 : 10,
-                                background: current ? 'rgba(255,255,255,0.045)' : 'transparent',
-                                opacity: upcoming ? 0.4 : 1,
-                                transition: 'background 0.4s ease, opacity 0.5s ease, padding 0.4s ease' }}>
-                    {/* indikator */}
-                    <div className="relative w-[24px] h-[24px] shrink-0 mt-[1px]">
-                      {(rowDone || ph === 'done') ? (
-                        <div className="w-[24px] h-[24px] rounded-full flex items-center justify-center"
-                             style={{ background: `${checkCol}22`, border: `1.5px solid ${checkCol}` }}>
-                          <Check className="w-3.5 h-3.5" style={{ color: checkCol, animation: current ? 'mPop 0.4s cubic-bezier(0.22,1,0.36,1) both' : undefined }} strokeWidth={3} />
-                        </div>
-                      ) : current && ph === 'work' ? (
-                        <svg className="w-[24px] h-[24px] -rotate-90" viewBox="0 0 44 44">
-                          <circle cx="22" cy="22" r="19" fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="3.5" />
-                          <circle cx="22" cy="22" r="19" fill="none" stroke={AC} strokeWidth="3.5" strokeLinecap="round"
-                                  strokeDasharray={C} style={{ animation: `mRing ${isAutoRow ? '2.2' : '1.5'}s cubic-bezier(0.4,0,0.2,1) forwards` }} />
-                        </svg>
-                      ) : current && ph === 'review' ? (
-                        <span className="relative flex items-center justify-center w-[24px] h-[24px]">
-                          <span className="absolute w-[20px] h-[20px] rounded-full" style={{ background: AMBER, opacity: 0.22, animation: 'mRingPulse 1.8s ease-out infinite' }} />
-                          <span className="w-[9px] h-[9px] rounded-full" style={{ background: AMBER, boxShadow: `0 0 8px ${AMBER}` }} />
-                        </span>
-                      ) : (
-                        <div className="w-[24px] h-[24px] rounded-full" style={{ border: '1.5px solid rgba(255,255,255,0.18)' }} />
-                      )}
-                    </div>
-
-                    {/* tekst */}
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2.5">
-                        <span className="text-[14px] sm:text-[14.5px] font-semibold tracking-[-0.01em] truncate"
-                              style={{ ...F, color: current ? '#fff' : rowDone ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.8)', transition: 'color 0.4s' }}>{t.title}</span>
-                        <span className="text-[9px] font-semibold uppercase tracking-[0.16em] shrink-0" style={{ color: 'rgba(255,255,255,0.3)', ...F }}>{t.cat}</span>
-                      </div>
-
-                      {current && (
-                        <div style={{ animation: 'mUpSm 0.4s cubic-bezier(0.22,1,0.36,1) both' }}>
-                          <p className="text-[12.5px] font-normal leading-[1.5] mt-1.5" style={{ color: 'rgba(255,255,255,0.52)', ...F }}>{t.detail}</p>
-                          {ph === 'review' && (
-                            <div className="flex items-center gap-2.5 mt-3">
-                              <div className="relative">
-                                <button className="inline-flex items-center gap-1.5 rounded-[9px] px-3.5 py-2 text-[12.5px] font-semibold text-[#0a1a14]"
-                                        style={{ background: GREEN, boxShadow: `0 8px 22px -8px ${GREEN}`, ...F, animation: 'btnPress 1.8s cubic-bezier(0.4,0,0.2,1) 0.6s both' }}>
-                                  <Check className="w-3.5 h-3.5" strokeWidth={2.8} /> Godkjenn
-                                </button>
-                                <span aria-hidden="true" className="absolute inset-0 rounded-[9px] pointer-events-none" style={{ border: `2px solid ${GREEN}`, animation: 'btnRipple 1.8s ease-out 0.6s both' }} />
-                                <span aria-hidden="true" className="absolute pointer-events-none z-10" style={{ left: '60%', top: '58%', animation: 'curTap 1.8s cubic-bezier(0.4,0,0.2,1) 0.6s both' }}><Cursor /></span>
-                              </div>
-                              <button className="rounded-[9px] px-3.5 py-2 text-[12.5px] font-medium" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.7)', ...F }}>Rediger</button>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* status */}
-                    <div className="shrink-0 pl-2 text-right" style={{ minWidth: 92 }}>
-                      <span className="text-[10.5px] font-semibold tracking-[-0.005em]"
-                            style={{ ...F, color: (rowDone || ph === 'done') ? checkCol : ph === 'review' ? AMBER : ph === 'work' ? 'rgba(255,255,255,0.5)' : modeCol, transition: 'color 0.4s' }}>
-                        {(rowDone || ph === 'done') ? (isAutoRow ? 'Automatisk' : 'Godkjent') : ph === 'work' ? 'Forbereder …' : ph === 'review' ? 'Venter på deg' : (isAutoRow ? 'Autopilot' : 'Manuell')}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+            <span className="text-[12.5px] font-medium tabular-nums tracking-[-0.005em]" style={{ color: doneCount === 5 ? AC : 'rgba(255,255,255,0.45)', ...F, transition: 'color 0.4s' }}>
+              {doneCount} av 5 fullført
+            </span>
           </div>
+
+          {/* rader */}
+          <div className="flex flex-col mt-3">
+            {AUTOPILOT_TASKS.map((t, i) => {
+              const isAutoRow = t.mode === 'auto';
+              const rowDone = isPdf || activeRow > i || activeRow === 5;
+              const current = !rowDone && activeRow === i;
+              const upcoming = !rowDone && !current;
+              const ph = current ? rowPhase : (rowDone ? 'done' : 'idle');
+              const checkCol = isAutoRow ? AC : GREEN;
+              const modeCol = isAutoRow ? AC : AMBER;
+              return (
+                <div key={i} className="flex items-start gap-4 rounded-[20px] px-4"
+                     style={{ paddingTop: current ? 18 : 14, paddingBottom: current ? 18 : 14,
+                              background: current ? 'rgba(255,255,255,0.045)' : 'transparent',
+                              opacity: upcoming ? 0.34 : 1,
+                              transition: 'background 0.45s ease, opacity 0.55s ease, padding 0.4s ease' }}>
+                  {/* indikator */}
+                  <div className="relative w-[30px] h-[30px] shrink-0 mt-[2px]">
+                    {(rowDone || ph === 'done') ? (
+                      <div className="w-[30px] h-[30px] rounded-full flex items-center justify-center"
+                           style={{ background: `${checkCol}22`, border: `1.5px solid ${checkCol}` }}>
+                        <Check className="w-4 h-4" style={{ color: checkCol, animation: current ? 'mPop 0.45s cubic-bezier(0.22,1,0.36,1) both' : undefined }} strokeWidth={3} />
+                      </div>
+                    ) : current && ph === 'work' ? (
+                      <svg className="w-[30px] h-[30px] -rotate-90" viewBox="0 0 44 44">
+                        <circle cx="22" cy="22" r="19" fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="3" />
+                        <circle cx="22" cy="22" r="19" fill="none" stroke={AC} strokeWidth="3" strokeLinecap="round"
+                                strokeDasharray={C} style={{ animation: `mRing ${isAutoRow ? '2.2' : '1.5'}s cubic-bezier(0.4,0,0.2,1) forwards` }} />
+                      </svg>
+                    ) : current && ph === 'review' ? (
+                      <span className="relative flex items-center justify-center w-[30px] h-[30px]">
+                        <span className="absolute w-[26px] h-[26px] rounded-full" style={{ background: AMBER, opacity: 0.2, animation: 'mRingPulse 1.8s ease-out infinite' }} />
+                        <span className="w-[11px] h-[11px] rounded-full" style={{ background: AMBER, boxShadow: `0 0 10px ${AMBER}` }} />
+                      </span>
+                    ) : (
+                      <div className="w-[30px] h-[30px] rounded-full" style={{ border: '1.5px solid rgba(255,255,255,0.18)' }} />
+                    )}
+                  </div>
+
+                  {/* tekst */}
+                  <div className="min-w-0 flex-1 pt-0.5">
+                    <span className="block text-[17px] sm:text-[18.5px] font-medium tracking-[-0.015em] truncate"
+                          style={{ ...F, color: current ? '#fff' : rowDone ? 'rgba(255,255,255,0.62)' : 'rgba(255,255,255,0.85)', transition: 'color 0.4s' }}>{t.title}</span>
+
+                    {current && (
+                      <div style={{ animation: 'mUpSm 0.4s cubic-bezier(0.22,1,0.36,1) both' }}>
+                        <p className="text-[13.5px] sm:text-[14px] font-normal leading-[1.55] mt-2" style={{ color: 'rgba(255,255,255,0.5)', ...F }}>{t.detail}</p>
+                        {ph === 'review' && (
+                          <div className="flex items-center gap-3 mt-4">
+                            <div className="relative">
+                              <button className="inline-flex items-center gap-2 rounded-[11px] px-4 py-2.5 text-[13.5px] font-semibold text-[#0a1a14]"
+                                      style={{ background: GREEN, boxShadow: `0 10px 26px -8px ${GREEN}`, ...F, animation: 'btnPress 1.8s cubic-bezier(0.4,0,0.2,1) 0.6s both' }}>
+                                <Check className="w-4 h-4" strokeWidth={2.8} /> Godkjenn
+                              </button>
+                              <span aria-hidden="true" className="absolute inset-0 rounded-[11px] pointer-events-none" style={{ border: `2px solid ${GREEN}`, animation: 'btnRipple 1.8s ease-out 0.6s both' }} />
+                              <span aria-hidden="true" className="absolute pointer-events-none z-10" style={{ left: '60%', top: '58%', animation: 'curTap 1.8s cubic-bezier(0.4,0,0.2,1) 0.6s both' }}><Cursor /></span>
+                            </div>
+                            <button className="rounded-[11px] px-4 py-2.5 text-[13.5px] font-medium" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.7)', ...F }}>Rediger</button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* status */}
+                  <div className="shrink-0 pl-3 text-right pt-0.5" style={{ minWidth: 104 }}>
+                    <span className="text-[11.5px] font-semibold tracking-[-0.005em]"
+                          style={{ ...F, color: (rowDone || ph === 'done') ? checkCol : ph === 'review' ? AMBER : ph === 'work' ? 'rgba(255,255,255,0.5)' : modeCol, transition: 'color 0.4s' }}>
+                      {(rowDone || ph === 'done') ? (isAutoRow ? 'Automatisk' : 'Godkjent') : ph === 'work' ? 'Forbereder …' : ph === 'review' ? 'Venter på deg' : (isAutoRow ? 'Autopilot' : 'Manuell')}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
           {/* sluttlinje — står når alt er fullført */}
           <p className="text-center text-[17px] sm:text-[21px] font-semibold tracking-[-0.015em] mt-8 px-6 max-w-[640px]"
              style={{ ...FH, color: 'rgba(255,255,255,0.92)',
