@@ -5309,80 +5309,105 @@ const SBusinessModels = (p: any) => {
   return (
   <SlideFrame bg="dark" {...p}>
     <style>{`
-      @keyframes bmUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-      @keyframes bmHead { from { opacity: 0; transform: translateY(22px); filter: blur(9px); } 60% { filter: blur(0); } to { opacity: 1; transform: translateY(0); filter: blur(0); } }
-      @keyframes bmCard { from { opacity: 0; transform: translateY(28px) scale(0.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
+      @keyframes bmFade { from { opacity: 0; transform: translateY(18px); filter: blur(8px); } to { opacity: 1; transform: translateY(0); filter: blur(0); } }
+      @keyframes bmWipe { from { opacity: 0; clip-path: inset(0 100% 0 0); filter: blur(7px); } 60% { filter: blur(0); } to { opacity: 1; clip-path: inset(0 0 0 0); filter: blur(0); } }
+      @keyframes bmDraw { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+      @keyframes bmNode { 0% { transform: translate(-50%,-50%) scale(0); opacity: 0; } 65% { transform: translate(-50%,-50%) scale(1.25); } 100% { transform: translate(-50%,-50%) scale(1); opacity: 1; } }
+      @keyframes bmHalo { 0%,100% { opacity: 0.45; transform: translate(-50%,-50%) scale(1); } 50% { opacity: 0.85; transform: translate(-50%,-50%) scale(1.3); } }
+      @keyframes bmFlow { 0% { top: 4%; opacity: 0; } 16% { opacity: 1; } 84% { opacity: 1; } 100% { top: 92%; opacity: 0; } }
+      @keyframes bmColL { from { opacity: 0; transform: translateX(-18px); filter: blur(6px); } to { opacity: 1; transform: translateX(0); filter: blur(0); } }
+      @keyframes bmColR { from { opacity: 0; transform: translateX(18px); filter: blur(6px); } to { opacity: 1; transform: translateX(0); filter: blur(0); } }
     `}</style>
 
+    {/* ambient dybde */}
     <div aria-hidden="true" className="absolute inset-0 pointer-events-none overflow-hidden">
-      <div className="absolute left-1/2 top-[50%] w-[66%] h-[56%] rounded-full"
-           style={{ background: `radial-gradient(ellipse, ${AC}18 0%, transparent 70%)`, filter: 'blur(52px)', transform: 'translate(-50%,-50%)' }} />
+      <div className="absolute left-1/2 top-[46%] w-[70%] h-[58%] rounded-full"
+           style={{ background: `radial-gradient(ellipse, ${AC}16 0%, transparent 70%)`, filter: 'blur(58px)', transform: 'translate(-50%,-50%)' }} />
+      <div className="absolute left-1/2 top-0 h-full w-[260px] -translate-x-1/2"
+           style={{ background: `linear-gradient(to bottom, transparent, ${AC}08 40%, transparent 84%)`, filter: 'blur(40px)' }} />
     </div>
-    <DotGrid maskCenter="50% 42%" opacity={0.05} />
+    <DotGrid maskCenter="50% 40%" opacity={0.04} />
     <div aria-hidden="true" className="absolute inset-0 pointer-events-none"
-         style={{ background: 'radial-gradient(ellipse at 50% 46%, transparent 52%, rgba(0,0,0,0.5) 100%)' }} />
+         style={{ background: 'radial-gradient(ellipse at 50% 44%, transparent 50%, rgba(0,0,0,0.55) 100%)' }} />
 
-    <div className="relative z-10 w-full max-w-[1060px] mx-auto px-6 sm:px-10 my-auto">
+    <div className="relative z-10 w-full max-w-[1080px] mx-auto px-6 sm:px-12 my-auto">
       {/* header */}
       <div className="text-center">
-        <div className="inline-flex items-center gap-2.5 mb-6"
-             style={{ animation: anim ? 'bmUp 0.7s cubic-bezier(0.22,1,0.36,1) 0.15s both' : undefined, opacity: show ? undefined : 0 }}>
-          <span className="h-px w-6" style={{ background: AC }} />
-          <span className="text-[10.5px] font-semibold uppercase tracking-[0.26em]" style={{ color: 'rgba(255,255,255,0.55)', ...F }}>To forretningsmodeller · én plattform</span>
-          <span className="h-px w-6" style={{ background: AC }} />
+        <div className="inline-flex items-center gap-3 mb-7"
+             style={{ animation: anim ? 'bmFade 0.8s cubic-bezier(0.22,1,0.36,1) 0.15s both' : undefined, opacity: show ? undefined : 0 }}>
+          <span className="h-px w-7" style={{ background: `linear-gradient(to right, transparent, ${AC})` }} />
+          <span className="text-[10.5px] font-semibold uppercase tracking-[0.28em]" style={{ color: 'rgba(255,255,255,0.5)', ...F }}>To forretningsmodeller · én plattform</span>
+          <span className="h-px w-7" style={{ background: `linear-gradient(to left, transparent, ${AC})` }} />
         </div>
-        <h2 className="tracking-[-0.035em] leading-[1.02]"
-            style={{ ...FH, fontWeight: 700, fontSize: 'clamp(31px, 4vw, 54px)', animation: anim ? 'bmHead 0.9s cubic-bezier(0.22,1,0.36,1) 0.3s both' : undefined, opacity: show ? undefined : 0 }}>
+        <h2 className="tracking-[-0.038em] leading-[1.0]"
+            style={{ ...FH, fontWeight: 700, fontSize: 'clamp(33px, 4.3vw, 58px)', animation: anim ? 'bmWipe 1.15s cubic-bezier(0.22,1,0.36,1) 0.35s both' : undefined, opacity: show ? undefined : 0 }}>
           <span className="text-white">Bygget for både private </span>
           <span style={{ color: AC }}>og profesjonelle.</span>
         </h2>
       </div>
 
-      {/* to spalter — redaksjonelt, kantløst, hårlinje-skille */}
-      <div className="grid grid-cols-1 md:grid-cols-2 mt-14 sm:mt-16">
+      {/* to spalter med glødende kjerne-spine i midten («én motor → to markeder») */}
+      <div className="relative grid grid-cols-1 md:grid-cols-2 mt-16 sm:mt-20">
+
+        {/* ── senterlinje med subtil node (kun desktop) ── */}
+        <div aria-hidden="true" className="hidden md:block absolute left-1/2 -translate-x-1/2 inset-y-0 z-0" style={{ width: 2 }}>
+          {/* subtil node øverst */}
+          <span className="absolute left-1/2 top-0 w-8 h-8 rounded-full"
+                style={{ background: `radial-gradient(circle, ${AC}2e 0%, transparent 70%)`, transform: 'translate(-50%,-50%)', opacity: show ? undefined : 0 }} />
+          <span className="absolute left-1/2 top-0 w-[6px] h-[6px] rounded-full"
+                style={{ background: AC, boxShadow: `0 0 9px ${AC}55`,
+                         animation: anim ? 'bmNode 0.9s cubic-bezier(0.22,1,0.36,1) 1.1s both' : 'none',
+                         transform: 'translate(-50%,-50%)', opacity: show ? undefined : 0 }} />
+          {/* linje som tegnes ned (subtil) */}
+          <div className="absolute left-1/2 -translate-x-1/2 top-0 bottom-0 w-px"
+               style={{ transformOrigin: 'top', background: `linear-gradient(to bottom, ${AC}7a 0%, rgba(255,255,255,0.07) 38%, transparent 100%)`,
+                        animation: anim ? 'bmDraw 1.1s cubic-bezier(0.4,0,0.1,1) 1.25s both' : undefined,
+                        transform: show && !anim ? 'scaleY(1)' : undefined, opacity: show ? undefined : 0 }} />
+        </div>
+
         {BIZ_MODELS.map((m: any, i: number) => (
           <div key={m.tag}
-               className={`relative ${i === 0 ? 'md:pr-14' : 'md:pl-14 md:border-l border-t md:border-t-0 mt-12 pt-12 md:mt-0 md:pt-0'}`}
+               className={`relative z-10 ${i === 0 ? 'md:pr-16' : 'md:pl-16 border-t md:border-t-0 mt-12 pt-12 md:mt-0 md:pt-0'}`}
                style={{ borderColor: 'rgba(255,255,255,0.1)',
-                        animation: anim ? `bmUp 0.85s cubic-bezier(0.22,1,0.36,1) ${0.5 + i * 0.2}s both` : undefined,
+                        animation: anim ? `${i === 0 ? 'bmColL' : 'bmColR'} 0.95s cubic-bezier(0.22,1,0.36,1) ${1.5 + i * 0.18}s both` : undefined,
                         opacity: show ? undefined : 0 }}>
 
             {/* index + marked + tag */}
             <div className="flex items-baseline justify-between">
               <div className="flex items-baseline gap-3.5">
                 <span className="text-[15px] font-bold tabular-nums tracking-[-0.01em]" style={{ ...F, color: AC }}>{m.idx}</span>
-                <span className="text-[11px] font-semibold uppercase tracking-[0.24em]" style={{ ...F, color: 'rgba(255,255,255,0.42)' }}>{m.market}</span>
+                <span className="text-[11px] font-semibold uppercase tracking-[0.26em]" style={{ ...F, color: 'rgba(255,255,255,0.42)' }}>{m.market}</span>
               </div>
-              <span className="text-[11px] font-semibold tracking-[0.16em]" style={{ ...F, color: 'rgba(255,255,255,0.3)' }}>{m.tag}</span>
+              <span className="text-[11px] font-semibold tracking-[0.18em]" style={{ ...F, color: 'rgba(255,255,255,0.28)' }}>{m.tag}</span>
             </div>
 
             {/* tittel + hvem */}
-            <h3 className="text-[30px] sm:text-[38px] font-bold tracking-[-0.03em] leading-[1.04] mt-7 text-white" style={{ ...FH }}>{m.label}</h3>
-            <p className="text-[14px] font-medium tracking-[-0.005em] mt-2.5" style={{ ...F, color: AC }}>{m.who}</p>
+            <h3 className="text-[31px] sm:text-[40px] font-bold tracking-[-0.032em] leading-[1.02] mt-8 text-white" style={{ ...FH }}>{m.label}</h3>
+            <p className="text-[13.5px] font-medium tracking-[0.0em] mt-3" style={{ ...F, color: 'rgba(255,255,255,0.5)' }}>{m.who}</p>
 
             {/* verdi */}
-            <p className="text-[14.5px] sm:text-[15.5px] font-normal leading-[1.65] mt-6 max-w-[400px]" style={{ ...F, color: 'rgba(255,255,255,0.6)' }}>{m.desc}</p>
+            <p className="text-[14.5px] sm:text-[15.5px] font-normal leading-[1.65] mt-7 max-w-[400px]" style={{ ...F, color: 'rgba(255,255,255,0.6)' }}>{m.desc}</p>
 
-            {/* egenskaper — én linje, ingen liste */}
-            <p className="text-[12.5px] font-medium tracking-[0.005em] leading-[1.5] mt-7" style={{ ...F, color: 'rgba(255,255,255,0.4)' }}>{m.traits}</p>
+            {/* egenskaper — én linje */}
+            <p className="text-[12.5px] font-medium tracking-[0.005em] leading-[1.5] mt-8" style={{ ...F, color: 'rgba(255,255,255,0.4)' }}>{m.traits}</p>
 
-            {/* inntektsmodell — redaksjonell key/value */}
-            <div className="flex items-baseline gap-2.5 mt-9 flex-wrap">
-              <span className="text-[10px] font-semibold uppercase tracking-[0.22em]" style={{ ...F, color: 'rgba(255,255,255,0.3)' }}>Inntekt</span>
-              <span className="text-[19px] sm:text-[21px] font-bold tracking-[-0.015em]" style={{ ...FH, color: '#fff' }}>{m.model}</span>
+            {/* inntektsmodell */}
+            <div className="flex items-baseline gap-2.5 mt-10 flex-wrap">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.24em]" style={{ ...F, color: 'rgba(255,255,255,0.3)' }}>Inntekt</span>
+              <span className="text-[19px] sm:text-[22px] font-bold tracking-[-0.018em]" style={{ ...FH, color: '#fff' }}>{m.model}</span>
               <span className="text-[13px] font-normal" style={{ ...F, color: 'rgba(255,255,255,0.4)' }}>· {m.modelSub}</span>
             </div>
           </div>
         ))}
       </div>
 
-      {/* samlende linje */}
-      <div className="text-center mt-10 sm:mt-12"
-           style={{ animation: anim ? 'bmUp 1s cubic-bezier(0.22,1,0.36,1) 1.1s both' : undefined, opacity: show ? undefined : 0 }}>
-        <p className="text-[20px] sm:text-[26px] font-bold tracking-[-0.025em]" style={{ ...FH, color: '#fff' }}>
-          Samme motor. <span style={{ color: AC, textShadow: `0 0 60px ${AC}55` }}>To markeder.</span>
+      {/* samlende payoff */}
+      <div className="text-center mt-14 sm:mt-16"
+           style={{ animation: anim ? 'bmFade 1s cubic-bezier(0.22,1,0.36,1) 2.4s both' : undefined, opacity: show ? undefined : 0 }}>
+        <p className="text-[21px] sm:text-[27px] font-bold tracking-[-0.028em]" style={{ ...FH, color: '#fff' }}>
+          Samme motor. <span style={{ color: AC, textShadow: `0 0 44px ${AC}3a` }}>To markeder.</span>
         </p>
-        <p className="text-[13.5px] sm:text-[15px] font-normal leading-[1.55] mt-2.5 max-w-[580px] mx-auto" style={{ ...F, color: 'rgba(255,255,255,0.5)' }}>
+        <p className="text-[13.5px] sm:text-[15px] font-normal leading-[1.55] mt-3 max-w-[560px] mx-auto" style={{ ...F, color: 'rgba(255,255,255,0.48)' }}>
           Autopiloten som driver privatmarkedet er den samme som skalerer de profesjonelle — ny inntektsstrøm, tilnærmet null marginalkostnad.
         </p>
       </div>
