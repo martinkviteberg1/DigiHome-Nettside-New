@@ -4879,47 +4879,47 @@ const SAutopilotMindset = (p: any) => {
         </div>
       </div>
 
-      {/* ── BEAT 3 · SKIFTET (ny tankegang: CRM → DigiHome) ── */}
+      {/* ── BEAT 3 · SKIFTET (slik fungerer proptech i dag → slik tenker DigiHome) ── */}
       <div className="absolute inset-0 flex items-center justify-center px-6 text-center" style={beat(2)}>
-        <div className="max-w-[820px] w-full">
+        <div className="max-w-[860px] w-full">
           {/* eyebrow */}
           <div className="inline-flex items-center gap-3 mb-12"
                style={{ animation: stage === 'shift' ? 'mUp 0.7s cubic-bezier(0.22,1,0.36,1) 0.15s both' : undefined }}>
             <span className="h-px w-6" style={{ background: `${AC}66` }} />
-            <span className="text-[11px] font-semibold uppercase tracking-[0.3em]" style={{ color: AC, ...F }}>En ny tankegang</span>
+            <span className="text-[11px] font-semibold uppercase tracking-[0.3em]" style={{ color: AC, ...F }}>En ny måte å tenke system på</span>
             <span className="h-px w-6" style={{ background: `${AC}66` }} />
           </div>
 
-          {/* GAMMEL TANKEGANG — tradisjonelt CRM */}
+          {/* SLIK FUNGERER TRADISJONELL PROPTECH */}
           <div style={{ animation: stage === 'shift' ? 'mUp 0.85s cubic-bezier(0.22,1,0.36,1) 0.6s both' : undefined }}>
-            <span className="block text-[10.5px] font-semibold uppercase tracking-[0.32em] mb-3" style={{ color: 'rgba(255,255,255,0.3)', ...F }}>Tradisjonelt CRM</span>
-            <p className="text-[26px] sm:text-[34px] font-medium tracking-[-0.02em] leading-[1.15]"
-               style={{ ...FH, color: 'rgba(255,255,255,0.38)' }}>
-              Lagrer informasjon. Venter på deg.
+            <span className="block text-[10.5px] font-semibold uppercase tracking-[0.32em] mb-3.5" style={{ color: 'rgba(255,255,255,0.3)', ...F }}>Tradisjonell proptech</span>
+            <p className="text-[25px] sm:text-[33px] font-medium tracking-[-0.02em] leading-[1.2]"
+               style={{ ...FH, color: 'rgba(255,255,255,0.4)', textWrap: 'balance' as any }}>
+              Du logger inn. Du leter. <span style={{ color: 'rgba(255,255,255,0.62)' }}>Du gjør jobben.</span>
             </p>
           </div>
 
           {/* overgang */}
           <div className="flex items-center justify-center my-8"
-               style={{ animation: stage === 'shift' ? 'mUp 0.6s cubic-bezier(0.22,1,0.36,1) 1.2s both' : undefined }}>
-            <span className="w-px h-10" style={{ background: `linear-gradient(to bottom, rgba(255,255,255,0.06), ${AC})` }} />
+               style={{ animation: stage === 'shift' ? 'mUp 0.6s cubic-bezier(0.22,1,0.36,1) 1.25s both' : undefined }}>
+            <span className="w-px h-11" style={{ background: `linear-gradient(to bottom, rgba(255,255,255,0.05), ${AC})` }} />
           </div>
 
-          {/* NY TANKEGANG — DigiHome */}
-          <div className="relative" style={{ animation: stage === 'shift' ? 'mReveal 1.2s cubic-bezier(0.22,1,0.36,1) 1.55s both' : undefined }}>
-            <div aria-hidden="true" className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[75%] h-[150%] rounded-full pointer-events-none"
-                 style={{ background: `radial-gradient(ellipse, ${AC}24 0%, transparent 70%)`, filter: 'blur(44px)' }} />
-            <span className="relative block text-[10.5px] font-semibold uppercase tracking-[0.32em] mb-3" style={{ color: AC, ...F }}>DigiHome</span>
-            <p className="relative text-[34px] sm:text-[52px] font-bold tracking-[-0.03em] leading-[1.06]"
+          {/* SLIK TENKER DIGIHOME */}
+          <div className="relative" style={{ animation: stage === 'shift' ? 'mReveal 1.2s cubic-bezier(0.22,1,0.36,1) 1.6s both' : undefined }}>
+            <div aria-hidden="true" className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[80%] h-[170%] rounded-full pointer-events-none"
+                 style={{ background: `radial-gradient(ellipse, ${AC}26 0%, transparent 70%)`, filter: 'blur(46px)' }} />
+            <span className="relative block text-[10.5px] font-semibold uppercase tracking-[0.32em] mb-3.5" style={{ color: AC, ...F }}>Slik tenker DigiHome</span>
+            <p className="relative text-[32px] sm:text-[48px] font-bold tracking-[-0.03em] leading-[1.1]"
                style={{ ...FH, color: '#fff', textWrap: 'balance' as any }}>
-              Vet hva som er neste. <span style={{ color: AC, textShadow: `0 0 70px ${AC}55` }}>Gjør jobben.</span>
+              Det følger med. Det prioriterer. <span style={{ color: AC, textShadow: `0 0 70px ${AC}55` }}>Det utfører.</span>
             </p>
           </div>
 
-          {/* autonomi-resolve */}
-          <p className="text-[16px] sm:text-[20px] font-normal tracking-[-0.01em] leading-[1.5] mt-10 max-w-[560px] mx-auto"
-             style={{ ...FH, color: 'rgba(255,255,255,0.5)', textWrap: 'balance' as any, animation: stage === 'shift' ? 'mUp 0.9s cubic-bezier(0.22,1,0.36,1) 2.5s both' : undefined }}>
-            Du velger bare hvor mye som skjer automatisk.
+          {/* resolve — autonomi */}
+          <p className="text-[16px] sm:text-[20px] font-normal tracking-[-0.01em] leading-[1.5] mt-10 max-w-[600px] mx-auto"
+             style={{ ...FH, color: 'rgba(255,255,255,0.5)', textWrap: 'balance' as any, animation: stage === 'shift' ? 'mUp 0.9s cubic-bezier(0.22,1,0.36,1) 2.55s both' : undefined }}>
+            Systemet driver seg selv — du bestemmer bare graden av automatikk.
           </p>
         </div>
       </div>
