@@ -10,7 +10,7 @@ import LandingHeroAnimation from './LandingHeroAnimation';
 
 const F = { fontFamily: "var(--font-body), 'ABC Diatype', -apple-system, BlinkMacSystemFont, sans-serif" };
 const FH = { fontFamily: "var(--font-heading), 'PP Right Grotesk', -apple-system, BlinkMacSystemFont, sans-serif" };
-const P = '#b56eed'; // accent
+const P = '#d298ff'; // accent (merkevare-lilla)
 
 function Logo({ light, className = '' }: any) {
   return <img src={light ? '/deck-logo-light.svg' : '/deck-logo-dark.svg'} alt="DigiHome" className={`h-6 ${className}`} />;
@@ -54,7 +54,7 @@ function SlideFrame({ children, bg, img, overlay, slideNum, total }: any) {
           <div className="absolute inset-0" style={{ background: overlay || 'linear-gradient(to bottom, rgba(0,0,0,0.5), rgba(0,0,0,0.75))' }} />
         </>
       )}
-      {bg === 'dark' && !isImg && <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_30%_20%,rgba(181,110,237,0.1),transparent_50%)]" />}
+      {bg === 'dark' && !isImg && <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_30%_20%,rgba(210,152,255,0.1),transparent_50%)]" />}
       <div className="absolute top-4 left-5 sm:top-7 sm:left-10 z-20"><Logo light={isDark} className="h-5 sm:h-6" /></div>
       <div className="absolute top-4 right-5 sm:top-7 sm:right-10 z-20 text-[10px] sm:text-[11px] font-medium tracking-wider" style={{ color: isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)' }}>{slideNum}/{total}</div>
       <div className="relative z-10 min-h-full flex items-start pt-16 sm:pt-14 pb-10 sm:pb-10">{children}</div>
@@ -206,7 +206,7 @@ const S1 = (p: any) => {
             ...F,
             fontSize: 'clamp(76px, min(13vw, 20vh), 184px)',
             color: '#ffffff',
-            textShadow: '0 2px 30px rgba(10,10,10,0.55), 0 0 90px rgba(181,110,237,0.22)',
+            textShadow: '0 2px 30px rgba(10,10,10,0.55), 0 0 90px rgba(210,152,255,0.22)',
             animation: (p.isActive && !isPdf) ? 's1TitleIn 1.1s cubic-bezier(0.22,1,0.36,1) 0.5s both' : undefined,
             opacity: showFinal ? 1 : 0,
           }}>
@@ -1463,7 +1463,7 @@ const SProductGlance = (p: any) => {
                 {[
                   { name: 'Bryggen Invest AS',  units: '12 eiendommer', gross: '241 200', net: '184 250', status: 'Utbetalt',  sCol: '#10b981', initials: 'BI', avBg: '#dcfce7', avC: '#166534' },
                   { name: 'Vest Linje AS',      units: '8 eiendommer',  gross: '186 400', net: '142 880', status: 'Utbetalt',  sCol: '#10b981', initials: 'VL', avBg: '#dbeafe', avC: '#1e40af' },
-                  { name: 'Møhlenpris Eiendom', units: '6 eiendommer',  gross: '142 850', net: '108 920', status: 'Klar',      sCol: P,         initials: 'ME', avBg: '#f3e8ff', avC: '#7c3aed' },
+                  { name: 'Møhlenpris Eiendom', units: '6 eiendommer',  gross: '142 850', net: '108 920', status: 'Klar',      sCol: '#b56eed',         initials: 'ME', avBg: '#f3e8ff', avC: '#7c3aed' },
                   { name: 'Kviteberg AS',        units: '8 eiendommer',  gross: '198 600', net: '152 110', status: 'Klar',      sCol: P,         initials: 'KV', avBg: '#fef3c7', avC: '#92400e' },
                   { name: 'Torgallmenningen 3',  units: '6 eiendommer',  gross: '255 750', net: '208 260', status: 'Behandles', sCol: '#f59e0b', initials: 'TO', avBg: '#fee2e2', avC: '#991b1b' },
                 ].map((r: any, i) => (
@@ -2482,7 +2482,7 @@ const S9 = (p: any) => (
             ...F,
             fontSize: 'clamp(36px, min(5.4vw, 7.5vh), 78px)',
             color: '#ffffff',
-            textShadow: '0 2px 30px rgba(10,10,10,0.55), 0 0 80px rgba(181,110,237,0.22)',
+            textShadow: '0 2px 30px rgba(10,10,10,0.55), 0 0 80px rgba(210,152,255,0.22)',
             animation: p.isActive ? 's9HeadlineIn 1.1s cubic-bezier(0.22,1,0.36,1) 0.55s both' : undefined,
             opacity: p.isActive ? undefined : 0,
           }}>
@@ -2591,7 +2591,7 @@ const SLiveDemo = (p: any) => {
         @keyframes ldFade { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes ldHeadlineIn { from { opacity: 0; transform: translateY(24px); filter: blur(6px); } to { opacity: 1; transform: translateY(0); filter: blur(0); } }
         @keyframes ldAnimIn { 0% { opacity: 0; transform: translateY(30px); filter: blur(6px); } 100% { opacity: 1; transform: translateY(0); filter: blur(0); } }
-        @keyframes ldPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(181,110,237,0.5); } 50% { box-shadow: 0 0 0 16px rgba(181,110,237,0); } }
+        @keyframes ldPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(210,152,255,0.5); } 50% { box-shadow: 0 0 0 16px rgba(210,152,255,0); } }
         @keyframes ldPlayIn { from { opacity: 0; transform: translate(-50%, -50%) scale(0.8); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
       `}</style>
 
@@ -2674,7 +2674,7 @@ const SLiveDemo = (p: any) => {
                            width: 88,
                            height: 88,
                            background: `linear-gradient(135deg, ${P} 0%, #9333ea 100%)`,
-                           boxShadow: '0 12px 40px rgba(181,110,237,0.38), 0 2px 4px rgba(20,15,10,0.08)',
+                           boxShadow: '0 12px 40px rgba(210,152,255,0.38), 0 2px 4px rgba(20,15,10,0.08)',
                            animation: 'ldPulse 2.4s ease-in-out infinite, ldPlayIn 0.7s cubic-bezier(0.22,1,0.36,1) both',
                            position: 'absolute',
                            top: '50%',
@@ -4716,7 +4716,7 @@ const SAutopilotMindset = (p: any) => {
   const active = p.isActive;
   const isPdf = !!p.pdfMode;
   const show = active || isPdf;
-  const AC = '#a78bfa';      // autopilot (violett)
+  const AC = '#d298ff';      // autopilot (merkevare-lilla)
   const AMBER = '#f4b066';   // krever godkjenning
   const GREEN = '#34d399';   // godkjent
 
@@ -4933,16 +4933,16 @@ const SProcessPipeline = (p: any) => {
   const active = p.isActive;
   const isPdf = !!p.pdfMode;
   const show = active || isPdf;
-  const AC = '#a78bfa';
+  const AC = '#d298ff';
   const anim = active && !isPdf;
-  const circleLit = { borderColor: 'rgba(167,139,250,0.55)', background: 'rgba(167,139,250,0.13)', boxShadow: '0 0 18px -5px rgba(167,139,250,0.7)' };
+  const circleLit = { borderColor: 'rgba(210,152,255,0.55)', background: 'rgba(210,152,255,0.13)', boxShadow: '0 0 18px -5px rgba(210,152,255,0.7)' };
 
   return (
   <SlideFrame bg="dark" {...p}>
     <style>{`
       @keyframes pUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
       @keyframes pHead { from { opacity: 0; transform: translateY(20px); filter: blur(8px); } 60% { filter: blur(0); } to { opacity: 1; transform: translateY(0); filter: blur(0); } }
-      @keyframes pCirc { from { opacity: 0.3; transform: scale(0.85); border-color: rgba(255,255,255,0.12); background: rgba(255,255,255,0.03); box-shadow: 0 0 0 0 rgba(167,139,250,0); } to { opacity: 1; transform: scale(1); border-color: rgba(167,139,250,0.55); background: rgba(167,139,250,0.13); box-shadow: 0 0 18px -5px rgba(167,139,250,0.7); } }
+      @keyframes pCirc { from { opacity: 0.3; transform: scale(0.85); border-color: rgba(255,255,255,0.12); background: rgba(255,255,255,0.03); box-shadow: 0 0 0 0 rgba(210,152,255,0); } to { opacity: 1; transform: scale(1); border-color: rgba(210,152,255,0.55); background: rgba(210,152,255,0.13); box-shadow: 0 0 18px -5px rgba(210,152,255,0.7); } }
       @keyframes pLbl { from { opacity: 0.2; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
       @keyframes pConn { from { transform: scaleX(0); } to { transform: scaleX(1); } }
       @keyframes pDrift { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
@@ -4988,7 +4988,7 @@ const SProcessPipeline = (p: any) => {
                 <span className="text-[9px] font-bold tabular-nums tracking-[0.1em] mb-2.5" style={{ color: 'rgba(255,255,255,0.3)', ...F }}>{String(i + 1).padStart(2, '0')}</span>
                 <span className="w-[52px] h-[52px] rounded-[15px] flex items-center justify-center border"
                       style={{ ...circleLit, animation: anim ? `pCirc 0.55s cubic-bezier(0.22,1,0.36,1) ${d}s both` : undefined }}>
-                  <Icon className="w-[22px] h-[22px]" style={{ color: '#d7c6f7' }} strokeWidth={1.7} />
+                  <Icon className="w-[22px] h-[22px]" style={{ color: '#e9d6ff' }} strokeWidth={1.7} />
                 </span>
                 <p className="text-[13px] font-semibold text-white tracking-[-0.01em] mt-3.5"
                    style={{ ...F, animation: anim ? `pLbl 0.5s ease ${d + 0.1}s both` : undefined, opacity: show ? undefined : 0 }}>{s.title}</p>
@@ -4998,7 +4998,7 @@ const SProcessPipeline = (p: any) => {
 
               {i < PROCESS_STAGES.length - 1 && (
                 <div className="flex-1 mt-[33px] h-[2px] mx-0.5 relative max-w-[60px]" style={{ background: 'rgba(255,255,255,0.09)' }}>
-                  <div className="absolute inset-y-0 left-0 w-full rounded-full" style={{ transformOrigin: 'left', background: `linear-gradient(90deg, ${AC}, #c4b5fd)`, animation: anim ? `pConn 0.42s ease ${d + 0.22}s both` : undefined }} />
+                  <div className="absolute inset-y-0 left-0 w-full rounded-full" style={{ transformOrigin: 'left', background: `linear-gradient(90deg, ${AC}, #ecd9ff)`, animation: anim ? `pConn 0.42s ease ${d + 0.22}s both` : undefined }} />
                 </div>
               )}
             </React.Fragment>
@@ -5012,7 +5012,7 @@ const SProcessPipeline = (p: any) => {
             <span className="w-[52px] h-[52px] rounded-full flex items-center justify-center" style={{ background: `${AC}1f`, border: `1px solid ${AC}66`, boxShadow: `0 0 22px -6px ${AC}` }}>
               <Loader2 className="w-[22px] h-[22px]" style={{ color: AC, animation: anim ? 'pSpin 4s linear infinite' : undefined }} strokeWidth={2} />
             </span>
-            <p className="text-[13px] font-semibold mt-3.5" style={{ color: '#d7c6f7', ...F }}>Drift</p>
+            <p className="text-[13px] font-semibold mt-3.5" style={{ color: '#e9d6ff', ...F }}>Drift</p>
             <p className="text-[11px] font-normal leading-[1.35] mt-1" style={{ color: 'rgba(255,255,255,0.46)', ...F }}>Autopilot, kontinuerlig</p>
           </div>
         </div>
@@ -5242,13 +5242,13 @@ export default function Presentasjon() {
           data-testid="download-pdf-btn"
           className="h-9 px-3.5 rounded-full flex items-center gap-2 text-[11.5px] font-semibold tracking-wide transition-all duration-300 hover:scale-[1.03] active:scale-[0.98] disabled:cursor-wait"
           style={{
-            background: exporting ? 'rgba(181,110,237,0.92)' : 'rgba(255,255,255,0.08)',
+            background: exporting ? 'rgba(210,152,255,0.92)' : 'rgba(255,255,255,0.08)',
             backdropFilter: 'blur(16px)',
             WebkitBackdropFilter: 'blur(16px)',
-            border: `1px solid ${exporting ? 'rgba(181,110,237,0.45)' : 'rgba(255,255,255,0.14)'}`,
+            border: `1px solid ${exporting ? 'rgba(210,152,255,0.45)' : 'rgba(255,255,255,0.14)'}`,
             color: 'rgba(255,255,255,0.92)',
             boxShadow: exporting
-              ? '0 8px 28px -8px rgba(181,110,237,0.5)'
+              ? '0 8px 28px -8px rgba(210,152,255,0.5)'
               : '0 8px 24px -10px rgba(0,0,0,0.4)',
           }}>
           {exporting ? (
