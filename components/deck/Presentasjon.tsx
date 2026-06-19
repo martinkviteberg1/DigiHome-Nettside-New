@@ -4720,42 +4720,56 @@ const SAutopilotMindset = (p: any) => {
   const AMBER = '#f4b066';   // krever godkjenning
   const GREEN = '#34d399';   // godkjent
 
-  const [stage, setStage] = useState<'intro' | 'console'>(isPdf ? 'console' : 'intro');
-  const [cycle, setCycle] = useState(0);
-  const [phase, setPhase] = useState<'work' | 'review' | 'done'>(isPdf ? 'done' : 'work');
+  const [stage, setStage] = useState<'intro' | 'explain' | 'list'>(isPdf ? 'list' : 'intro');
+  const [activeRow, setActiveRow] = useState(isPdf ? 5 : -1);
+  const [rowPhase, setRowPhase] = useState<'work' | 'review' | 'done'>('work');
 
-  const task = LANGTID_TASKS[cycle];
-  const manual = task.resolve === 'you';
+  const AUTOPILOT_TASKS = [
+    { cat: 'Kontrakt',    title: 'Reguler husleien etter KPI',        mode: 'auto', detail: 'Husleie justeres 3,8 % etter konsumprisindeks. Varsel sendt med én måneds frist.' },
+    { cat: 'Husleie',     title: 'Forfalt husleie — send påminnelse',  mode: 'auto', detail: 'Påminnelse sendt automatisk med ny betalingsfrist og KID.' },
+    { cat: 'Vedlikehold', title: 'Lekkasje meldt av leietaker',        mode: 'you',  detail: 'Rørlegger foreslått tirsdag kl. 10–12. Leietaker varsles om tidspunkt.' },
+    { cat: 'Utleie',      title: 'Kredittsjekk ny leietaker',          mode: 'you',  detail: 'Søker godkjent. Kontrakt klargjort for signering med BankID.' },
+    { cat: 'Annonse',     title: 'Forny annonsen på FINN',             mode: 'auto', detail: 'Annonsen republisert med oppdatert pris og bilder.' },
+  ];
 
-  // master kinematisk tidslinje: stort utsagn (intro) → autopilot jobber (console)
+  // master kinematisk tidslinje: intro → forklaring → sjekkliste
   useEffect(() => {
-    if (isPdf) { setStage('console'); setCycle(0); setPhase('done'); return; }
-    if (!active) { setStage('intro'); setCycle(0); setPhase('work'); return; }
+    if (isPdf) { setStage('list'); setActiveRow(5); return; }
+    if (!active) { setStage('intro'); setActiveRow(-1); setRowPhase('work'); return; }
     setStage('intro');
-    const t = setTimeout(() => setStage('console'), 3300);
-    return () => clearTimeout(t);
+    const t1 = setTimeout(() => setStage('explain'), 3000);
+    const t2 = setTimeout(() => setStage('list'), 8200);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
   }, [active, isPdf]);
 
-  // oppgave-syklus — starter først når konsollen er i fokus
+  // start gjennomgangen når sjekklisten er synlig
   useEffect(() => {
-    if (!active || isPdf || stage !== 'console') return;
-    setPhase('work');
+    if (!active || isPdf || stage !== 'list') return;
+    setActiveRow(-1);
+    const t = setTimeout(() => setActiveRow(0), 1600);
+    return () => clearTimeout(t);
+  }, [stage, active, isPdf]);
+
+  // prosesser aktiv rad → hak av → neste rad
+  useEffect(() => {
+    if (!active || isPdf || stage !== 'list' || activeRow < 0 || activeRow > 4) return;
+    const isManual = AUTOPILOT_TASKS[activeRow].mode === 'you';
+    setRowPhase('work');
     const timers: any[] = [];
-    if (manual) {
-      timers.push(setTimeout(() => setPhase('review'), 2800));
-      timers.push(setTimeout(() => setPhase('done'), 5600));
-      timers.push(setTimeout(() => setCycle((c) => (c + 1) % LANGTID_TASKS.length), 7600));
+    if (isManual) {
+      timers.push(setTimeout(() => setRowPhase('review'), 1700));
+      timers.push(setTimeout(() => setRowPhase('done'), 3500));
+      timers.push(setTimeout(() => setActiveRow((r) => r + 1), 4400));
     } else {
-      timers.push(setTimeout(() => setPhase('done'), 3400));
-      timers.push(setTimeout(() => setCycle((c) => (c + 1) % LANGTID_TASKS.length), 6400));
+      timers.push(setTimeout(() => setRowPhase('done'), 2400));
+      timers.push(setTimeout(() => setActiveRow((r) => r + 1), 3200));
     }
     return () => timers.forEach(clearTimeout);
-  }, [cycle, active, isPdf, stage]);
+  }, [activeRow, stage, active, isPdf]);
 
   const C = 119.38; // 2πr, r=19
-  const isAuto = task.resolve === 'auto';
-  const doneColor = isAuto ? AC : GREEN;
-  const modeColor = isAuto ? AC : AMBER;
+  const titleUp = stage !== 'intro';
+  const doneCount = Math.min(Math.max(activeRow, 0), 5);
 
   const Cursor = () => (
     <svg width="19" height="22" viewBox="0 0 19 22" fill="none" style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }}>
@@ -4783,7 +4797,7 @@ const SAutopilotMindset = (p: any) => {
     <div aria-hidden="true" className="absolute inset-0 pointer-events-none overflow-hidden">
       <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[58%] h-[60%] rounded-full"
            style={{ background: `radial-gradient(ellipse, ${AC}22 0%, transparent 70%)`, filter: 'blur(48px)',
-                    opacity: stage === 'console' ? 0.55 : 1, transition: 'opacity 1.3s ease' }} />
+                    opacity: titleUp ? 0.5 : 1, transition: 'opacity 1.3s ease' }} />
     </div>
     <DotGrid maskCenter="50% 45%" opacity={0.06} />
 
@@ -4794,8 +4808,8 @@ const SAutopilotMindset = (p: any) => {
         {/* ── AKT 1→2 · TITTEL: morfer fra stort sentrert utsagn → liten tittel på topp ── */}
         <div className="absolute left-0 right-0 text-center"
              style={{
-               top: stage === 'console' ? '6%' : '50%',
-               transform: stage === 'console' ? 'translateY(0) scale(0.4)' : 'translateY(-50%) scale(1)',
+               top: titleUp ? '6%' : '50%',
+               transform: titleUp ? 'translateY(0) scale(0.4)' : 'translateY(-50%) scale(1)',
                transformOrigin: 'center top',
                transition: 'top 1.1s cubic-bezier(0.66,0,0.2,1), transform 1.1s cubic-bezier(0.66,0,0.2,1)',
                zIndex: 20,
@@ -4810,116 +4824,134 @@ const SAutopilotMindset = (p: any) => {
           </h2>
         </div>
 
-        {/* ── AKT 3 · KONSOLL-BLOKK: subtittel + meta + autopilot-konsoll ── */}
-        <div className="absolute left-0 right-0 flex flex-col items-center text-center"
+        {/* ── AKT 2 · FORKLARING (rolig, forklarende reveal) ── */}
+        <div className="absolute left-0 right-0 flex justify-center px-4"
              style={{
-               top: '21%',
-               opacity: stage === 'console' ? 1 : 0,
-               transform: stage === 'console' ? 'translateY(0)' : 'translateY(26px)',
-               transition: 'opacity 0.85s cubic-bezier(0.22,1,0.36,1) 0.5s, transform 0.85s cubic-bezier(0.22,1,0.36,1) 0.5s',
+               top: '33%',
+               opacity: stage === 'explain' ? 1 : 0,
+               transition: 'opacity 0.7s ease',
+               pointerEvents: 'none', zIndex: 12,
              }}>
-
-          <p className="text-[13.5px] sm:text-[15px] leading-[1.5] font-normal max-w-[430px]"
-             style={{ ...F, color: 'rgba(255,255,255,0.56)' }}>
-            Den vet alltid neste oppgave i utleien — forbereder den, og fullfører den
-            automatisk eller med din godkjenning. Du bestemmer.
-          </p>
-
-          <div className="flex items-center gap-2.5 mt-3 text-[11.5px]" style={{ ...F }}>
-            {['Proaktiv', 'Forberedt', 'Autonom'].map((w, i) => (
-              <React.Fragment key={w}>
-                {i > 0 && <span style={{ color: 'rgba(255,255,255,0.2)' }}>·</span>}
-                <span style={{ color: 'rgba(255,255,255,0.68)' }}>{w}</span>
-              </React.Fragment>
-            ))}
+          <div className="max-w-[640px] text-center">
+            <p className="text-[19px] sm:text-[22px] font-semibold tracking-[-0.015em] text-white"
+               style={{ ...FH, animation: stage === 'explain' ? 'mUp 0.7s cubic-bezier(0.22,1,0.36,1) 0.1s both' : undefined }}>
+              Vi snudde det på hodet.
+            </p>
+            <p className="text-[14.5px] sm:text-[16px] leading-[1.62] font-normal mt-4"
+               style={{ ...F, color: 'rgba(255,255,255,0.62)', animation: stage === 'explain' ? 'mUp 0.7s cubic-bezier(0.22,1,0.36,1) 0.5s both' : undefined }}>
+              I stedet for et verktøy du må betjene, bygget vi et{' '}
+              <span style={{ color: AC, fontWeight: 500 }}>proaktivt system</span>{' '}— det vet hva som må gjøres i utleien, og gjør det.
+            </p>
+            <p className="text-[14.5px] sm:text-[16px] leading-[1.62] font-normal mt-2.5"
+               style={{ ...F, color: 'rgba(255,255,255,0.62)', animation: stage === 'explain' ? 'mUp 0.7s cubic-bezier(0.22,1,0.36,1) 0.95s both' : undefined }}>
+              Du godkjenner kun det som krever et menneske.
+            </p>
           </div>
+        </div>
 
-          {/* ── AUTOPILOT-KONSOLL (én oppgave om gangen) ── */}
-          <div className="relative w-full max-w-[560px] rounded-[24px] px-7 sm:px-9 py-6 mt-6 text-left"
+        {/* ── AKT 3–4 · SJEKKLISTE (5 oppgaver hakes av, én etter én) ── */}
+        <div className="absolute left-0 right-0 flex justify-center px-4"
+             style={{
+               top: '18%',
+               opacity: stage === 'list' ? 1 : 0,
+               transform: stage === 'list' ? 'translateY(0)' : 'translateY(24px)',
+               transition: 'opacity 0.8s cubic-bezier(0.22,1,0.36,1) 0.25s, transform 0.8s cubic-bezier(0.22,1,0.36,1) 0.25s',
+             }}>
+          <div className="relative w-full max-w-[600px] rounded-[24px] px-5 sm:px-6 py-5 text-left"
                style={{ background: 'rgba(255,255,255,0.018)', border: '1px solid rgba(255,255,255,0.06)',
                         boxShadow: '0 30px 90px -50px rgba(0,0,0,0.9)' }}>
 
-            {/* live header */}
-            <div className="flex items-center justify-between mb-6">
+            {/* header */}
+            <div className="flex items-center justify-between mb-4 px-1.5">
               <div className="flex items-center gap-2.5">
                 <span className="relative flex items-center justify-center w-2 h-2">
-                  <span className="absolute w-2 h-2 rounded-full" style={{ background: AC, animation: (active && stage === 'console') ? 'mRingPulse 2.6s ease-out infinite' : undefined }} />
+                  <span className="absolute w-2 h-2 rounded-full" style={{ background: AC, animation: (active && stage === 'list' && activeRow >= 0 && activeRow < 5) ? 'mRingPulse 2.6s ease-out infinite' : undefined }} />
                   <span className="w-1.5 h-1.5 rounded-full" style={{ background: AC, boxShadow: `0 0 8px ${AC}` }} />
                 </span>
                 <span className="text-[11px] font-medium uppercase tracking-[0.2em]" style={{ color: 'rgba(255,255,255,0.5)', ...F }}>DigiHome autopilot</span>
               </div>
-              <span className="text-[11px] font-medium tabular-nums tracking-[-0.005em]" style={{ color: phase === 'done' ? doneColor : (phase === 'review' ? AMBER : 'rgba(255,255,255,0.45)'), ...F, transition: 'color 0.4s' }}>
-                {phase === 'done' ? (isAuto ? 'Fullført' : 'Godkjent') : phase === 'review' ? 'Venter på deg' : 'Arbeider …'}
+              <span className="text-[11px] font-medium tabular-nums" style={{ color: doneCount === 5 ? AC : 'rgba(255,255,255,0.45)', ...F, transition: 'color 0.4s' }}>
+                {doneCount} av 5 fullført
               </span>
             </div>
 
-            {/* the single task */}
-            <div className="min-h-[222px] flex flex-col justify-center">
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={cycle}
-                  initial={isPdf ? false : { opacity: 0, y: 22, filter: 'blur(7px)' }}
-                  animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-                  exit={{ opacity: 0, y: -18, filter: 'blur(7px)' }}
-                  transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="text-[10.5px] font-semibold uppercase tracking-[0.26em]" style={{ color: AC, ...F }}>{task.cat}</span>
-                    <span className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[9.5px] font-semibold uppercase tracking-[0.12em]"
-                          style={{ background: `${modeColor}1a`, color: modeColor, ...F }}>
-                      <span className="w-1.5 h-1.5 rounded-full" style={{ background: modeColor }} />
-                      {isAuto ? 'Autopilot' : 'Krever godkjenning'}
-                    </span>
-                  </div>
-
-                  <h3 className="text-[26px] sm:text-[32px] font-bold text-white tracking-[-0.03em] leading-[1.06] mt-3" style={FH}>{task.title}</h3>
-                  <p className="text-[13px] font-normal mt-3" style={{ color: 'rgba(255,255,255,0.5)', ...F }}>{task.context}</p>
-
-                  <div className="mt-6 pt-5 min-h-[60px] flex items-center" style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}>
-                    {phase === 'review' ? (
-                      /* ── MANUAL: venter på din godkjenning ── */
-                      <div style={{ animation: 'mUpSm 0.4s cubic-bezier(0.22,1,0.36,1) both' }} className="w-full">
-                        <p className="text-[13px] font-normal leading-[1.5] mb-4" style={{ color: 'rgba(255,255,255,0.62)', ...F }}>{task.handling}</p>
-                        <div className="flex items-center gap-3">
-                          <div className="relative">
-                            <button className="inline-flex items-center gap-2 rounded-[10px] px-4 py-2.5 text-[13px] font-semibold text-[#0a1a14]"
-                                    style={{ background: GREEN, boxShadow: `0 8px 24px -8px ${GREEN}`, ...F, animation: 'btnPress 1.8s cubic-bezier(0.4,0,0.2,1) 0.7s both' }}>
-                              <Check className="w-4 h-4" strokeWidth={2.8} /> Godkjenn
-                            </button>
-                            <span aria-hidden="true" className="absolute inset-0 rounded-[10px] pointer-events-none" style={{ border: `2px solid ${GREEN}`, animation: 'btnRipple 1.8s ease-out 0.7s both' }} />
-                            <span aria-hidden="true" className="absolute pointer-events-none z-10" style={{ left: '62%', top: '60%', animation: 'curTap 1.8s cubic-bezier(0.4,0,0.2,1) 0.7s both' }}><Cursor /></span>
-                          </div>
-                          <button className="rounded-[10px] px-4 py-2.5 text-[13px] font-medium" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.7)', ...F }}>Rediger</button>
-                          <span className="text-[11.5px] font-medium ml-1" style={{ color: AMBER, ...F }}>Venter på din godkjenning</span>
+            {/* rader */}
+            <div className="flex flex-col">
+              {AUTOPILOT_TASKS.map((t, i) => {
+                const isAutoRow = t.mode === 'auto';
+                const rowDone = isPdf || activeRow > i || activeRow === 5;
+                const current = !rowDone && activeRow === i;
+                const upcoming = !rowDone && !current;
+                const ph = current ? rowPhase : (rowDone ? 'done' : 'idle');
+                const checkCol = isAutoRow ? AC : GREEN;
+                const modeCol = isAutoRow ? AC : AMBER;
+                return (
+                  <div key={i} className="flex items-start gap-3.5 rounded-2xl px-3"
+                       style={{ paddingTop: current ? 13 : 10, paddingBottom: current ? 13 : 10,
+                                background: current ? 'rgba(255,255,255,0.045)' : 'transparent',
+                                opacity: upcoming ? 0.4 : 1,
+                                transition: 'background 0.4s ease, opacity 0.5s ease, padding 0.4s ease' }}>
+                    {/* indikator */}
+                    <div className="relative w-[24px] h-[24px] shrink-0 mt-[1px]">
+                      {(rowDone || ph === 'done') ? (
+                        <div className="w-[24px] h-[24px] rounded-full flex items-center justify-center"
+                             style={{ background: `${checkCol}22`, border: `1.5px solid ${checkCol}` }}>
+                          <Check className="w-3.5 h-3.5" style={{ color: checkCol, animation: current ? 'mPop 0.4s cubic-bezier(0.22,1,0.36,1) both' : undefined }} strokeWidth={3} />
                         </div>
+                      ) : current && ph === 'work' ? (
+                        <svg className="w-[24px] h-[24px] -rotate-90" viewBox="0 0 44 44">
+                          <circle cx="22" cy="22" r="19" fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="3.5" />
+                          <circle cx="22" cy="22" r="19" fill="none" stroke={AC} strokeWidth="3.5" strokeLinecap="round"
+                                  strokeDasharray={C} style={{ animation: `mRing ${isAutoRow ? '2.2' : '1.5'}s cubic-bezier(0.4,0,0.2,1) forwards` }} />
+                        </svg>
+                      ) : current && ph === 'review' ? (
+                        <span className="relative flex items-center justify-center w-[24px] h-[24px]">
+                          <span className="absolute w-[20px] h-[20px] rounded-full" style={{ background: AMBER, opacity: 0.22, animation: 'mRingPulse 1.8s ease-out infinite' }} />
+                          <span className="w-[9px] h-[9px] rounded-full" style={{ background: AMBER, boxShadow: `0 0 8px ${AMBER}` }} />
+                        </span>
+                      ) : (
+                        <div className="w-[24px] h-[24px] rounded-full" style={{ border: '1.5px solid rgba(255,255,255,0.18)' }} />
+                      )}
+                    </div>
+
+                    {/* tekst */}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2.5">
+                        <span className="text-[14px] sm:text-[14.5px] font-semibold tracking-[-0.01em] truncate"
+                              style={{ ...F, color: current ? '#fff' : rowDone ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.8)', transition: 'color 0.4s' }}>{t.title}</span>
+                        <span className="text-[9px] font-semibold uppercase tracking-[0.16em] shrink-0" style={{ color: 'rgba(255,255,255,0.3)', ...F }}>{t.cat}</span>
                       </div>
-                    ) : (
-                      /* ── WORK (ring fyller) / DONE (check) ── */
-                      <div className="flex items-center gap-4 w-full">
-                        <div className="relative w-12 h-12 shrink-0">
-                          <svg className="w-12 h-12 -rotate-90" viewBox="0 0 44 44">
-                            <circle cx="22" cy="22" r="19" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="2.5" />
-                            <circle cx="22" cy="22" r="19" fill="none" stroke={phase === 'done' ? doneColor : AC} strokeWidth="2.5" strokeLinecap="round"
-                                    strokeDasharray={C}
-                                    style={ phase === 'done'
-                                      ? { strokeDashoffset: 0, transition: 'stroke 0.4s' }
-                                      : { strokeDashoffset: (active && !isPdf) ? undefined : 0, animation: (active && !isPdf) ? `mRing ${manual ? '2.7' : '3.3'}s cubic-bezier(0.4,0,0.2,1) forwards` : undefined } } />
-                          </svg>
-                          {phase === 'done' && (
-                            <Check className="absolute inset-0 m-auto w-5 h-5" style={{ color: doneColor, animation: 'mPop 0.4s cubic-bezier(0.22,1,0.36,1) both' }} strokeWidth={2.8} />
+
+                      {current && (
+                        <div style={{ animation: 'mUpSm 0.4s cubic-bezier(0.22,1,0.36,1) both' }}>
+                          <p className="text-[12.5px] font-normal leading-[1.5] mt-1.5" style={{ color: 'rgba(255,255,255,0.52)', ...F }}>{t.detail}</p>
+                          {ph === 'review' && (
+                            <div className="flex items-center gap-2.5 mt-3">
+                              <div className="relative">
+                                <button className="inline-flex items-center gap-1.5 rounded-[9px] px-3.5 py-2 text-[12.5px] font-semibold text-[#0a1a14]"
+                                        style={{ background: GREEN, boxShadow: `0 8px 22px -8px ${GREEN}`, ...F, animation: 'btnPress 1.8s cubic-bezier(0.4,0,0.2,1) 0.6s both' }}>
+                                  <Check className="w-3.5 h-3.5" strokeWidth={2.8} /> Godkjenn
+                                </button>
+                                <span aria-hidden="true" className="absolute inset-0 rounded-[9px] pointer-events-none" style={{ border: `2px solid ${GREEN}`, animation: 'btnRipple 1.8s ease-out 0.6s both' }} />
+                                <span aria-hidden="true" className="absolute pointer-events-none z-10" style={{ left: '60%', top: '58%', animation: 'curTap 1.8s cubic-bezier(0.4,0,0.2,1) 0.6s both' }}><Cursor /></span>
+                              </div>
+                              <button className="rounded-[9px] px-3.5 py-2 text-[12.5px] font-medium" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.7)', ...F }}>Rediger</button>
+                            </div>
                           )}
                         </div>
-                        <div className="min-w-0">
-                          <p className="text-[12px] font-semibold tracking-[-0.005em]" style={{ color: phase === 'done' ? doneColor : 'rgba(255,255,255,0.85)', ...F, transition: 'color 0.4s' }}>
-                            {phase === 'done' ? (isAuto ? 'Utført automatisk' : 'Godkjent av deg') : (manual ? 'Forbereder utkast …' : 'Forbereder handling …')}
-                          </p>
-                          <p className="text-[13px] font-normal leading-[1.5] mt-1" style={{ color: 'rgba(255,255,255,0.55)', ...F }}>{task.handling}</p>
-                        </div>
-                      </div>
-                    )}
+                      )}
+                    </div>
+
+                    {/* status */}
+                    <div className="shrink-0 pl-2 text-right" style={{ minWidth: 92 }}>
+                      <span className="text-[10.5px] font-semibold tracking-[-0.005em]"
+                            style={{ ...F, color: (rowDone || ph === 'done') ? checkCol : ph === 'review' ? AMBER : ph === 'work' ? 'rgba(255,255,255,0.5)' : modeCol, transition: 'color 0.4s' }}>
+                        {(rowDone || ph === 'done') ? (isAutoRow ? 'Automatisk' : 'Godkjent') : ph === 'work' ? 'Forbereder …' : ph === 'review' ? 'Venter på deg' : (isAutoRow ? 'Autopilot' : 'Manuell')}
+                      </span>
+                    </div>
                   </div>
-                </motion.div>
-              </AnimatePresence>
+                );
+              })}
             </div>
           </div>
         </div>
