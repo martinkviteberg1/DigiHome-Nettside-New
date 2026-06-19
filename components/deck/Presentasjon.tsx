@@ -5282,13 +5282,141 @@ const SProcessPipeline = (p: any) => {
   );
 };
 
+/* ═══ FORRETNINGSMODELLER — B2C (private) + B2B (profesjonelle) · én plattform ═══ */
+const BIZ_MODELS = [
+  {
+    tag: 'B2C', label: 'Private huseiere', icon: Home,
+    who: 'Privatpersoner som leier ut 1–5 boliger',
+    desc: 'Mangler tid og kompetanse til å drifte profesjonelt. DigiHome gjør alt — fra annonse til utbetaling — på autopilot.',
+    points: ['Helautomatisk utleie og forvaltning', 'Ingen erfaring nødvendig', 'Selvbetjent — i gang på minutter'],
+    model: 'Forvaltningshonorar', modelSub: 'andel av leieinntekt',
+  },
+  {
+    tag: 'B2B', label: 'Profesjonelle aktører', icon: Building2, hot: true,
+    who: 'Eiendomsselskaper og forvaltere med større porteføljer',
+    desc: 'Automatiserer driften på tvers av mange enheter. Skalerer team, prosesser og rapportering i én plattform.',
+    points: ['Drift av hele porteføljer', 'Team, roller og rapportering', 'API og integrasjoner'],
+    model: 'SaaS per enhet', modelSub: 'enterprise-lisens',
+  },
+];
+
+const SBusinessModels = (p: any) => {
+  const active = p.isActive;
+  const isPdf = !!p.pdfMode;
+  const show = active || isPdf;
+  const AC = '#d298ff';
+  const anim = active && !isPdf;
+  return (
+  <SlideFrame bg="dark" {...p}>
+    <style>{`
+      @keyframes bmUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+      @keyframes bmHead { from { opacity: 0; transform: translateY(22px); filter: blur(9px); } 60% { filter: blur(0); } to { opacity: 1; transform: translateY(0); filter: blur(0); } }
+      @keyframes bmCard { from { opacity: 0; transform: translateY(28px) scale(0.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
+    `}</style>
+
+    <div aria-hidden="true" className="absolute inset-0 pointer-events-none overflow-hidden">
+      <div className="absolute left-1/2 top-[50%] w-[66%] h-[56%] rounded-full"
+           style={{ background: `radial-gradient(ellipse, ${AC}18 0%, transparent 70%)`, filter: 'blur(52px)', transform: 'translate(-50%,-50%)' }} />
+    </div>
+    <DotGrid maskCenter="50% 42%" opacity={0.05} />
+    <div aria-hidden="true" className="absolute inset-0 pointer-events-none"
+         style={{ background: 'radial-gradient(ellipse at 50% 46%, transparent 52%, rgba(0,0,0,0.5) 100%)' }} />
+
+    <div className="relative z-10 w-full max-w-[1060px] mx-auto px-6 sm:px-10 my-auto">
+      {/* header */}
+      <div className="text-center">
+        <div className="inline-flex items-center gap-2.5 mb-6"
+             style={{ animation: anim ? 'bmUp 0.7s cubic-bezier(0.22,1,0.36,1) 0.15s both' : undefined, opacity: show ? undefined : 0 }}>
+          <span className="h-px w-6" style={{ background: AC }} />
+          <span className="text-[10.5px] font-semibold uppercase tracking-[0.26em]" style={{ color: 'rgba(255,255,255,0.55)', ...F }}>To forretningsmodeller · én plattform</span>
+          <span className="h-px w-6" style={{ background: AC }} />
+        </div>
+        <h2 className="tracking-[-0.035em] leading-[1.02]"
+            style={{ ...FH, fontWeight: 700, fontSize: 'clamp(31px, 4vw, 54px)', animation: anim ? 'bmHead 0.9s cubic-bezier(0.22,1,0.36,1) 0.3s both' : undefined, opacity: show ? undefined : 0 }}>
+          <span className="text-white">Bygget for både private </span>
+          <span style={{ color: AC }}>og profesjonelle.</span>
+        </h2>
+      </div>
+
+      {/* to kort */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6 mt-11 sm:mt-12">
+        {BIZ_MODELS.map((m: any, i: number) => {
+          const Icon = m.icon;
+          return (
+            <div key={m.tag} className="relative rounded-[24px] p-7 sm:p-8 overflow-hidden"
+                 style={{ background: m.hot ? `linear-gradient(180deg, ${AC}12, rgba(255,255,255,0.018))` : 'rgba(255,255,255,0.022)',
+                          border: m.hot ? `1px solid ${AC}3a` : '1px solid rgba(255,255,255,0.07)',
+                          boxShadow: m.hot ? `0 44px 130px -55px ${AC}, inset 0 1px 0 rgba(255,255,255,0.04)` : '0 40px 120px -60px rgba(0,0,0,0.9)',
+                          animation: anim ? `bmCard 0.85s cubic-bezier(0.22,1,0.36,1) ${0.55 + i * 0.18}s both` : undefined,
+                          opacity: show ? undefined : 0 }}>
+              {m.hot && <div aria-hidden="true" className="absolute -top-24 -right-16 w-56 h-56 rounded-full pointer-events-none"
+                             style={{ background: `radial-gradient(circle, ${AC}26 0%, transparent 70%)`, filter: 'blur(22px)' }} />}
+
+              {/* top: ikon + tag */}
+              <div className="relative flex items-center justify-between">
+                <span className="w-12 h-12 rounded-[14px] flex items-center justify-center"
+                      style={{ background: m.hot ? `${AC}22` : 'rgba(255,255,255,0.06)', border: `1px solid ${m.hot ? AC + '4d' : 'rgba(255,255,255,0.1)'}` }}>
+                  <Icon className="w-[22px] h-[22px]" style={{ color: m.hot ? '#efe0ff' : 'rgba(255,255,255,0.82)' }} strokeWidth={1.7} />
+                </span>
+                <span className="text-[11px] font-bold tracking-[0.14em] px-2.5 py-1 rounded-full"
+                      style={{ ...F, color: m.hot ? AC : 'rgba(255,255,255,0.5)', background: m.hot ? `${AC}1a` : 'rgba(255,255,255,0.05)', border: `1px solid ${m.hot ? AC + '40' : 'rgba(255,255,255,0.1)'}` }}>{m.tag}</span>
+              </div>
+
+              {/* label + hvem */}
+              <h3 className="text-[23px] sm:text-[27px] font-bold tracking-[-0.025em] mt-6 text-white" style={{ ...FH }}>{m.label}</h3>
+              <p className="text-[13px] font-medium tracking-[-0.005em] mt-1.5" style={{ ...F, color: m.hot ? AC : 'rgba(255,255,255,0.5)' }}>{m.who}</p>
+
+              {/* beskrivelse */}
+              <p className="text-[14px] sm:text-[14.5px] font-normal leading-[1.6] mt-5" style={{ ...F, color: 'rgba(255,255,255,0.62)' }}>{m.desc}</p>
+
+              {/* punkter */}
+              <div className="flex flex-col gap-2.5 mt-6">
+                {m.points.map((pt: string) => (
+                  <div key={pt} className="flex items-center gap-2.5">
+                    <span className="shrink-0 w-[18px] h-[18px] rounded-full flex items-center justify-center" style={{ background: `${AC}20` }}>
+                      <Check className="w-[11px] h-[11px]" style={{ color: AC }} strokeWidth={3} />
+                    </span>
+                    <span className="text-[13.5px] font-normal" style={{ ...F, color: 'rgba(255,255,255,0.8)' }}>{pt}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* inntektsmodell */}
+              <div className="mt-7 pt-5" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                <span className="text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ ...F, color: 'rgba(255,255,255,0.4)' }}>Inntektsmodell</span>
+                <div className="flex items-baseline gap-2 mt-1.5">
+                  <span className="text-[17px] sm:text-[19px] font-bold tracking-[-0.01em]" style={{ ...FH, color: '#fff' }}>{m.model}</span>
+                  <span className="text-[13px] font-normal" style={{ ...F, color: 'rgba(255,255,255,0.45)' }}>· {m.modelSub}</span>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* samlende linje */}
+      <div className="text-center mt-10 sm:mt-12"
+           style={{ animation: anim ? 'bmUp 1s cubic-bezier(0.22,1,0.36,1) 1.1s both' : undefined, opacity: show ? undefined : 0 }}>
+        <p className="text-[20px] sm:text-[26px] font-bold tracking-[-0.025em]" style={{ ...FH, color: '#fff' }}>
+          Samme motor. <span style={{ color: AC, textShadow: `0 0 60px ${AC}55` }}>To markeder.</span>
+        </p>
+        <p className="text-[13.5px] sm:text-[15px] font-normal leading-[1.55] mt-2.5 max-w-[580px] mx-auto" style={{ ...F, color: 'rgba(255,255,255,0.5)' }}>
+          Autopiloten som driver privatmarkedet er den samme som skalerer de profesjonelle — ny inntektsstrøm, tilnærmet null marginalkostnad.
+        </p>
+      </div>
+    </div>
+  </SlideFrame>
+  );
+};
+
+
 /* ═══ SLIDE ORDER ═══ */
 /* ═══ SLIDE ORDER — 2026 · Product-first investor flow ═══ */
 const SLIDES = [
   S1,            // 01 · Cover
   SAutopilotMindset, // 02 · Mindset reframe — «Ikke et system. En autopilot.»
   SComparison,    // 03 · Sammenligning — tradisjonell software vs DigiHome (forklarende)
-  SProcessPipeline, // 04 · Prosess-pipeline — «Hele utleieprosessen. Ett system.»
+  SBusinessModels, // 04 · Forretningsmodeller — B2C (private) + B2B (profesjonelle)
   SLiveDemo,     // 04 · Live product animation (from /digihome-tech)
   SDualUSP,      // 05 · Three unique aspects (auto-listing + dynamic + AI ops)
   STeam,         // 06 · Team (founder-market fit)
