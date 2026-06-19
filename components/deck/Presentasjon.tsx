@@ -5052,6 +5052,82 @@ const PROCESS_STAGES = [
   { icon: ClipboardCheck, title: 'Leietaker',    sub: 'Kredittsjekk + leiekontrakt' },
 ];
 
+/* ═══ 03 · KATEGORI — software-evolusjonen: Record → Workflow → Autonomous ═══ */
+const SCategoryEvolution = (p: any) => {
+  const active = p.isActive;
+  const isPdf = !!p.pdfMode;
+  const show = active || isPdf;
+  const AC = '#d298ff';
+  const GENS = [
+    { v: 'V1', verb: 'Lagrer informasjon.',   ex: 'CRM · ERP · Forvaltning' },
+    { v: 'V2', verb: 'Organiserer arbeidet.',  ex: 'Asana · Monday · HubSpot' },
+    { v: 'V3', verb: 'Driver operasjonen.',    ex: 'DigiHome', hot: true },
+  ];
+  return (
+  <SlideFrame bg="dark" {...p}>
+    <style>{`
+      @keyframes cevUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+      @keyframes cevReveal { from { opacity: 0; transform: translateY(26px); filter: blur(12px); } 55% { filter: blur(0); } to { opacity: 1; transform: translateY(0); filter: blur(0); } }
+    `}</style>
+
+    <div aria-hidden="true" className="absolute inset-0 pointer-events-none overflow-hidden">
+      <div className="absolute left-1/2 top-[58%] w-[55%] h-[42%] rounded-full"
+           style={{ background: `radial-gradient(ellipse, ${AC}1c 0%, transparent 70%)`, filter: 'blur(50px)', transform: 'translate(-50%,-50%)' }} />
+    </div>
+    <DotGrid maskCenter="50% 45%" opacity={0.05} />
+    <div aria-hidden="true" className="absolute inset-0 pointer-events-none"
+         style={{ background: 'radial-gradient(ellipse at 50% 46%, transparent 52%, rgba(0,0,0,0.5) 100%)' }} />
+
+    <div className="absolute inset-0 z-10 flex items-center justify-center px-6">
+      <div className="w-full max-w-[820px]">
+        {/* eyebrow */}
+        <div className="flex items-center justify-center gap-3 mb-11"
+             style={{ opacity: show ? undefined : 0, animation: active ? 'cevUp 0.8s cubic-bezier(0.22,1,0.36,1) 0.2s both' : undefined }}>
+          <span className="h-px w-7" style={{ background: `${AC}55` }} />
+          <span className="text-[11px] font-semibold uppercase tracking-[0.32em]" style={{ ...F, color: AC }}>Tre generasjoner software</span>
+          <span className="h-px w-7" style={{ background: `${AC}55` }} />
+        </div>
+
+        {/* generasjonene */}
+        <div>
+          {GENS.map((g: any, i: number) => (
+            <div key={g.v}
+                 className="relative flex items-center justify-between gap-5 py-6 sm:py-7"
+                 style={{ borderTop: `1px solid ${g.hot ? AC + '3a' : 'rgba(255,255,255,0.08)'}`,
+                          opacity: show ? undefined : 0,
+                          animation: active ? `cevUp 0.85s cubic-bezier(0.22,1,0.36,1) ${0.7 + i * 0.78}s both` : undefined }}>
+              {g.hot && <div aria-hidden="true" className="absolute inset-0 pointer-events-none"
+                             style={{ background: `radial-gradient(ellipse at 28% 50%, ${AC}24 0%, transparent 62%)`, filter: 'blur(18px)' }} />}
+              <div className="relative flex items-baseline gap-4 sm:gap-6 text-left">
+                <span className="text-[12px] sm:text-[13px] font-bold tracking-[0.08em]"
+                      style={{ ...F, color: g.hot ? AC : 'rgba(255,255,255,0.26)', minWidth: 26 }}>{g.v}</span>
+                <span className="text-[23px] sm:text-[36px] font-bold tracking-[-0.03em] leading-[1.05]"
+                      style={{ ...FH, color: g.hot ? '#fff' : 'rgba(255,255,255,0.42)', textShadow: g.hot ? `0 0 60px ${AC}44` : undefined }}>{g.verb}</span>
+              </div>
+              <span className="relative text-[12px] sm:text-[15px] font-semibold tracking-[-0.01em] text-right whitespace-nowrap"
+                    style={{ ...F, color: g.hot ? AC : 'rgba(255,255,255,0.3)', textShadow: g.hot ? `0 0 40px ${AC}55` : undefined }}>{g.ex}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* tesen */}
+        <div className="text-center mt-12 sm:mt-14"
+             style={{ opacity: show ? undefined : 0, animation: active ? 'cevReveal 1.1s cubic-bezier(0.22,1,0.36,1) 3.4s both' : undefined }}>
+          <p className="text-[26px] sm:text-[40px] font-bold tracking-[-0.035em] leading-[1.08]"
+             style={{ ...FH, color: '#fff', textWrap: 'balance' as any }}>
+            DigiHome er <span style={{ color: AC, textShadow: `0 0 70px ${AC}55` }}>tredje generasjon.</span>
+          </p>
+          <p className="text-[15px] sm:text-[19px] font-normal mt-4 max-w-[520px] mx-auto"
+             style={{ ...F, color: 'rgba(255,255,255,0.5)', textWrap: 'balance' as any }}>
+            Ikke et bedre verktøy — en ny kategori software.
+          </p>
+        </div>
+      </div>
+    </div>
+  </SlideFrame>
+  );
+};
+
 const PROCESS_LOGOS = [
   { src: '/bankid-logo.png', alt: 'BankID' },
   { src: '/finn-logo.png', alt: 'FINN' },
@@ -5176,7 +5252,8 @@ const SProcessPipeline = (p: any) => {
 const SLIDES = [
   S1,            // 01 · Cover
   SAutopilotMindset, // 02 · Mindset reframe — «Ikke et system. En autopilot.»
-  SProcessPipeline, // 03 · Prosess-pipeline — «Hele utleieprosessen. Ett system.»
+  SCategoryEvolution, // 03 · Kategori — software-evolusjon (V1→V2→V3, ny kategori)
+  SProcessPipeline, // 04 · Prosess-pipeline — «Hele utleieprosessen. Ett system.»
   SLiveDemo,     // 04 · Live product animation (from /digihome-tech)
   SDualUSP,      // 05 · Three unique aspects (auto-listing + dynamic + AI ops)
   STeam,         // 06 · Team (founder-market fit)
