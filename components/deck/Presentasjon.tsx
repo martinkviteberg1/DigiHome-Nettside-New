@@ -4724,6 +4724,18 @@ const SAutopilotMindset = (p: any) => {
   const [punchOn, setPunchOn] = useState(false);
   const [activeRow, setActiveRow] = useState(isPdf ? 5 : -1);
   const [rowPhase, setRowPhase] = useState<'work' | 'review' | 'done'>('work');
+  const [shiftStep, setShiftStep] = useState(isPdf ? 6 : -1);
+  const [shiftResolve, setShiftResolve] = useState(isPdf);
+
+  // Apple-sekvens for skiftet: én linje om gangen (Du… → Det… → Det utfører.)
+  const SHIFT_SEQ = [
+    { t: 'Du logger inn.',           kind: 'you' },
+    { t: 'Du finner oppgaven.',      kind: 'you' },
+    { t: 'Du gjør jobben.',          kind: 'you' },
+    { t: 'Det følger med.',          kind: 'it' },
+    { t: 'Det vet hva som mangler.', kind: 'it' },
+    { t: 'Det tar neste steg.',      kind: 'it' },
+  ];
 
   const AUTOPILOT_TASKS = [
     { cat: 'Kontrakt',    title: 'Reguler husleien etter KPI',        mode: 'auto', detail: 'Husleie justeres 3,8 % etter konsumprisindeks. Varsel sendt med én måneds frist.' },
@@ -4741,7 +4753,7 @@ const SAutopilotMindset = (p: any) => {
     setPunchOn(false);
     const t1 = setTimeout(() => setStage('problem'), 4800);
     const t2 = setTimeout(() => setStage('shift'), 11600);
-    const t3 = setTimeout(() => setStage('proof'), 18200);
+    const t3 = setTimeout(() => setStage('proof'), 21200);
     return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
   }, [active, isPdf]);
 
@@ -4751,6 +4763,18 @@ const SAutopilotMindset = (p: any) => {
     if (stage !== 'problem') { setPunchOn(false); return; }
     const t = setTimeout(() => setPunchOn(true), 3600);
     return () => clearTimeout(t);
+  }, [stage, active, isPdf]);
+
+  // skiftet: avslør én linje om gangen, bygg til klimaks «Det utfører.», så resolve
+  useEffect(() => {
+    if (isPdf) { setShiftStep(6); setShiftResolve(true); return; }
+    if (!active || stage !== 'shift') { setShiftStep(-1); setShiftResolve(false); return; }
+    setShiftStep(-1); setShiftResolve(false);
+    const T: any[] = [];
+    const cues = [300, 1050, 1800, 3000, 3950, 4900, 5950]; // steg 0..6 (6 = klimaks)
+    cues.forEach((ms, i) => T.push(setTimeout(() => setShiftStep(i), ms)));
+    T.push(setTimeout(() => setShiftResolve(true), 7100));
+    return () => T.forEach(clearTimeout);
   }, [stage, active, isPdf]);
 
   // start gjennomgangen når beviset (sjekklisten) er synlig
@@ -4879,53 +4903,59 @@ const SAutopilotMindset = (p: any) => {
         </div>
       </div>
 
-      {/* ── BEAT 3 · SKIFTET (slik jobber du i dag → slik driver DigiHome prosessen) ── */}
-      <div className="absolute inset-0 flex items-center justify-center px-6 text-center" style={beat(2)}>
-        <div className="max-w-[860px] w-full">
-          {/* eyebrow */}
-          <div className="inline-flex items-center gap-3 mb-12"
-               style={{ animation: stage === 'shift' ? 'mUp 0.7s cubic-bezier(0.22,1,0.36,1) 0.15s both' : undefined }}>
-            <span className="h-px w-6" style={{ background: `${AC}66` }} />
-            <span className="text-[11px] font-semibold uppercase tracking-[0.3em]" style={{ color: AC, ...F }}>En ny måte å tenke system på</span>
-            <span className="h-px w-6" style={{ background: `${AC}66` }} />
-          </div>
+      {/* ── BEAT 3 · SKIFTET — én linje om gangen (Apple-sekvens, bygger til «Det utfører.») ── */}
+      <div className="absolute inset-0 px-6 text-center" style={beat(2)}>
 
-          {/* TRADISJONELL PROPTECH — du driver alt */}
-          <div style={{ animation: stage === 'shift' ? 'mUp 0.85s cubic-bezier(0.22,1,0.36,1) 0.6s both' : undefined }}>
-            <span className="block text-[10.5px] font-semibold uppercase tracking-[0.32em] mb-3.5" style={{ color: 'rgba(255,255,255,0.3)', ...F }}>Tradisjonell proptech</span>
-            <p className="text-[24px] sm:text-[32px] font-medium tracking-[-0.02em] leading-[1.2]"
-               style={{ ...FH, color: 'rgba(255,255,255,0.4)', textWrap: 'balance' as any }}>
-              Du logger inn. Du finner neste oppgave. <span style={{ color: 'rgba(255,255,255,0.62)' }}>Du gjør jobben.</span>
-            </p>
-          </div>
+        {/* transiente linjer: Du… (grått) → Det… (hvitt) — kun én synlig om gangen */}
+        {SHIFT_SEQ.map((m: any, i: number) => {
+          const isCur = shiftStep === i;
+          const isPast = shiftStep > i;
+          return (
+            <div key={i} className="absolute inset-0 flex items-center justify-center px-6 pointer-events-none"
+                 style={{
+                   opacity: isCur ? 1 : 0,
+                   transform: isCur ? 'translateY(0)' : (isPast ? 'translateY(-36px)' : 'translateY(36px)'),
+                   filter: isCur ? 'blur(0)' : 'blur(13px)',
+                   transition: 'opacity 0.7s cubic-bezier(0.22,1,0.36,1), transform 0.85s cubic-bezier(0.22,1,0.36,1), filter 0.7s ease',
+                 }}>
+              <span className="tracking-[-0.038em] leading-[1.0]"
+                    style={{ ...FH,
+                             fontWeight: m.kind === 'you' ? 600 : 700,
+                             fontSize: 'clamp(42px, 5.8vw, 78px)',
+                             color: m.kind === 'you' ? 'rgba(255,255,255,0.38)' : '#fff' }}>
+                {m.t}
+              </span>
+            </div>
+          );
+        })}
 
-          {/* overgang */}
-          <div className="flex items-center justify-center my-8"
-               style={{ animation: stage === 'shift' ? 'mUp 0.6s cubic-bezier(0.22,1,0.36,1) 1.25s both' : undefined }}>
-            <span className="w-px h-11" style={{ background: `linear-gradient(to bottom, rgba(255,255,255,0.05), ${AC})` }} />
-          </div>
+        {/* KLIMAKS — «Det utfører.» blir stående */}
+        <div className="absolute inset-0 flex items-center justify-center px-6 pointer-events-none"
+             style={{
+               opacity: shiftStep >= 6 ? 1 : 0,
+               transform: shiftStep >= 6 ? 'translateY(0) scale(1)' : 'translateY(42px) scale(0.9)',
+               filter: shiftStep >= 6 ? 'blur(0)' : 'blur(18px)',
+               transition: 'opacity 1.0s cubic-bezier(0.22,1,0.36,1), transform 1.15s cubic-bezier(0.22,1,0.36,1), filter 1.0s ease',
+             }}>
+          <div aria-hidden="true" className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[62%] h-[130%] rounded-full"
+               style={{ background: `radial-gradient(ellipse, ${AC}28 0%, transparent 68%)`, filter: 'blur(54px)',
+                        opacity: shiftStep >= 6 ? 1 : 0, transition: 'opacity 1.3s ease' }} />
+          <span className="relative tracking-[-0.04em] leading-[0.98]"
+                style={{ ...FH, fontWeight: 800, fontSize: 'clamp(66px, 9.4vw, 134px)',
+                         color: AC, textShadow: `0 0 95px ${AC}66` }}>
+            Det utfører.
+          </span>
+        </div>
 
-          {/* DIGIHOME — systemet driver prosessen, bygger opp til «Det utfører.» */}
-          <div className="relative">
-            <div aria-hidden="true" className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[82%] h-[185%] rounded-full pointer-events-none"
-                 style={{ background: `radial-gradient(ellipse, ${AC}22 0%, transparent 70%)`, filter: 'blur(48px)' }} />
-            <span className="relative block text-[10.5px] font-semibold uppercase tracking-[0.32em] mb-3.5" style={{ color: AC, ...F }}>Slik tenker DigiHome</span>
-            <p className="relative text-[22px] sm:text-[29px] font-medium tracking-[-0.018em] leading-[1.25] max-w-[720px] mx-auto"
-               style={{ ...FH, color: 'rgba(255,255,255,0.9)', textWrap: 'balance' as any,
-                        animation: stage === 'shift' ? 'mUp 0.85s cubic-bezier(0.22,1,0.36,1) 1.9s both' : undefined }}>
-              Det følger med. Det vet hva som mangler. Det tar neste steg.
-            </p>
-            <p className="relative text-[40px] sm:text-[60px] font-bold tracking-[-0.035em] leading-[1.04] mt-5"
-               style={{ ...FH, color: AC, textShadow: `0 0 80px ${AC}66`,
-                        animation: stage === 'shift' ? 'mReveal 1.2s cubic-bezier(0.22,1,0.36,1) 2.95s both' : undefined }}>
-              Det utfører.
-            </p>
-          </div>
-
-          {/* resolve — driver prosessen + autonomi */}
-          <p className="text-[16px] sm:text-[20px] font-normal tracking-[-0.01em] leading-[1.55] mt-11 max-w-[600px] mx-auto"
-             style={{ ...FH, color: 'rgba(255,255,255,0.5)', textWrap: 'balance' as any, animation: stage === 'shift' ? 'mUp 0.9s cubic-bezier(0.22,1,0.36,1) 4.0s both' : undefined }}>
-            <span style={{ color: 'rgba(255,255,255,0.78)' }}>Systemet driver prosessen.</span> Du bestemmer bare graden av automatikk.
+        {/* RESOLVE — driver prosessen + autonomi (nederste tredjedel) */}
+        <div className="absolute left-0 right-0 px-6 text-center" style={{ bottom: '15%' }}>
+          <p className="tracking-[-0.01em] mx-auto max-w-[620px]"
+             style={{ ...F, fontSize: 'clamp(15px, 1.65vw, 21px)', lineHeight: 1.5,
+                      opacity: shiftResolve ? 1 : 0,
+                      transform: shiftResolve ? 'translateY(0)' : 'translateY(14px)',
+                      transition: 'opacity 1.0s cubic-bezier(0.22,1,0.36,1), transform 1.0s cubic-bezier(0.22,1,0.36,1)',
+                      color: 'rgba(255,255,255,0.5)' }}>
+            <span style={{ color: 'rgba(255,255,255,0.82)' }}>Systemet driver prosessen.</span> Du bestemmer graden av automatikk.
           </p>
         </div>
       </div>
@@ -5285,7 +5315,7 @@ export default function Presentasjon() {
   useEffect(() => {
     if (c === 1) {
       setNavLocked(true);
-      const safety = setTimeout(() => setNavLocked(false), 43000); // failsafe
+      const safety = setTimeout(() => setNavLocked(false), 46000); // failsafe
       return () => clearTimeout(safety);
     }
     setNavLocked(false);
