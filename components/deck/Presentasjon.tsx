@@ -4741,7 +4741,7 @@ const SAutopilotMindset = (p: any) => {
     setPunchOn(false);
     const t1 = setTimeout(() => setStage('problem'), 4800);
     const t2 = setTimeout(() => setStage('shift'), 11600);
-    const t3 = setTimeout(() => setStage('proof'), 15400);
+    const t3 = setTimeout(() => setStage('proof'), 16400);
     return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
   }, [active, isPdf]);
 
@@ -4843,15 +4843,15 @@ const SAutopilotMindset = (p: any) => {
 
       {/* ── BEAT 2 · PROBLEMET (progressiv build) ── */}
       <div className="absolute inset-0 flex items-center justify-center px-6 text-center" style={beat(1)}>
-        <div className="max-w-[760px]" style={{ animation: (active && stage === 'problem') ? 'mKenBurnsSoft 9s cubic-bezier(0.33,0,0.2,1) both' : undefined }}>
+        <div className="max-w-[800px]" style={{ animation: (active && stage === 'problem') ? 'mKenBurnsSoft 9s cubic-bezier(0.33,0,0.2,1) both' : undefined }}>
           <div className="inline-flex items-center gap-3 mb-9"
                style={{ animation: stage === 'problem' ? 'mUp 0.6s cubic-bezier(0.22,1,0.36,1) 0.1s both' : undefined }}>
             <span className="h-px w-6" style={{ background: 'rgba(255,255,255,0.3)' }} />
-            <span className="text-[11px] font-semibold uppercase tracking-[0.26em]" style={{ color: 'rgba(255,255,255,0.5)', ...F }}>Problemet med dagens proptech</span>
+            <span className="text-[11px] font-semibold uppercase tracking-[0.26em]" style={{ color: 'rgba(255,255,255,0.5)', ...F }}>Slik er proptech i dag</span>
             <span className="h-px w-6" style={{ background: 'rgba(255,255,255,0.3)' }} />
           </div>
           <div className="space-y-1.5">
-            {['Flere dashboards.', 'Flere moduler.', 'Flere menyer.'].map((l, i) => (
+            {['Ett system for utleien.', 'Ett for økonomien.', 'Ett for leietakerne.'].map((l, i) => (
               <p key={l} className="text-[28px] sm:text-[40px] font-semibold tracking-[-0.02em] leading-[1.12]"
                  style={{ ...FH, color: '#fff',
                           opacity: punchOn ? 0.24 : undefined,
@@ -4865,21 +4865,27 @@ const SAutopilotMindset = (p: any) => {
                       transform: punchOn ? 'translateY(0)' : 'translateY(20px)',
                       filter: punchOn ? 'blur(0)' : 'blur(11px)',
                       transition: 'opacity 1.1s cubic-bezier(0.22,1,0.36,1), transform 1.1s cubic-bezier(0.22,1,0.36,1), filter 1.05s ease' }}>
-            <span className="text-white">Men du gjør fortsatt </span><span style={{ color: AC }}>alt arbeidet.</span>
+            <span className="text-white">Men jobben er fortsatt </span><span style={{ color: AC }}>din.</span>
           </p>
         </div>
       </div>
 
       {/* ── BEAT 3 · SKIFTET ── */}
       <div className="absolute inset-0 flex items-center justify-center px-6 text-center" style={beat(2)}>
-        <div className="max-w-[820px]">
-          <p className="text-[22px] sm:text-[28px] font-medium tracking-[-0.015em]"
-             style={{ ...FH, color: 'rgba(255,255,255,0.42)', animation: stage === 'shift' ? 'mUp 0.8s cubic-bezier(0.22,1,0.36,1) 0.2s both' : undefined }}>
-            Andre systemer viser deg arbeidet.
+        <div className="max-w-[880px]">
+          <div className="inline-flex items-center gap-3 mb-8"
+               style={{ animation: stage === 'shift' ? 'mUp 0.7s cubic-bezier(0.22,1,0.36,1) 0.2s both' : undefined }}>
+            <span className="h-px w-6" style={{ background: `${AC}66` }} />
+            <span className="text-[11px] font-semibold uppercase tracking-[0.26em]" style={{ color: AC, ...F }}>Slik burde det være</span>
+            <span className="h-px w-6" style={{ background: `${AC}66` }} />
+          </div>
+          <p className="text-[38px] sm:text-[58px] font-bold tracking-[-0.035em] leading-[1.05]"
+             style={{ ...FH, color: '#fff', textWrap: 'balance' as any, animation: stage === 'shift' ? 'mReveal 1.2s cubic-bezier(0.22,1,0.36,1) 0.65s both' : undefined }}>
+            DigiHome forteller deg alltid <span style={{ color: AC, textShadow: `0 0 70px ${AC}55` }}>hva som er neste.</span>
           </p>
-          <p className="text-[40px] sm:text-[62px] font-bold tracking-[-0.035em] leading-[1.02] mt-3"
-             style={{ ...FH, color: '#fff', animation: stage === 'shift' ? 'mReveal 1.15s cubic-bezier(0.22,1,0.36,1) 0.7s both' : undefined }}>
-            DigiHome <span style={{ color: AC, textShadow: `0 0 70px ${AC}55` }}>utfører arbeidet.</span>
+          <p className="text-[18px] sm:text-[23px] font-normal tracking-[-0.01em] leading-[1.5] mt-7 max-w-[700px] mx-auto"
+             style={{ ...FH, color: 'rgba(255,255,255,0.52)', textWrap: 'balance' as any, animation: stage === 'shift' ? 'mUp 0.9s cubic-bezier(0.22,1,0.36,1) 1.6s both' : undefined }}>
+            Du ser oppgaven, og utfører den — med akkurat så mye automatikk du selv vil.
           </p>
         </div>
       </div>
