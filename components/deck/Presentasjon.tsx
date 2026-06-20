@@ -5282,6 +5282,127 @@ const SProcessPipeline = (p: any) => {
   );
 };
 
+/* ═══ MANIFEST — boligforvaltning er en standardisert, repeterbar prosess ═══ */
+const PM_STAGES = ['Annonse', 'Visning', 'Kontrakt', 'Innflytting', 'Husleie', 'Vedlikehold', 'Fornyelse'];
+
+const SProcessManifesto = (p: any) => {
+  const active = p.isActive;
+  const isPdf = !!p.pdfMode;
+  const show = active || isPdf;
+  const AC = '#d298ff';
+  const anim = active && !isPdf;
+
+  // syklus-geometri
+  const cx = 230, cy = 182, rRing = 108, rLabel = 132;
+  const circ = 2 * Math.PI * rRing;
+  const lines = [
+    { t: 'Utleie ser ut som kaos.', c: 'rgba(255,255,255,0.78)' },
+    { t: 'Egentlig er det en fast, repeterbar prosess.', c: 'rgba(255,255,255,0.92)' },
+  ];
+
+  return (
+  <SlideFrame bg="dark" {...p}>
+    <style>{`
+      @keyframes pmFade { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+      @keyframes pmRingDraw { from { stroke-dashoffset: ${circ}; } to { stroke-dashoffset: 0; } }
+      @keyframes pmPop { from { opacity: 0; transform: scale(0); } to { opacity: 1; transform: scale(1); } }
+      @keyframes pmSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    `}</style>
+
+    {/* ambient — rolig */}
+    <div aria-hidden="true" className="absolute inset-0 pointer-events-none"
+         style={{ background: 'radial-gradient(ellipse at 72% 48%, rgba(210,152,255,0.07) 0%, transparent 55%)' }} />
+    <DotGrid maskCenter="70% 45%" opacity={0.035} />
+
+    <div className="relative z-10 w-full max-w-[1140px] mx-auto px-6 sm:px-12 my-auto">
+      <div className="grid grid-cols-1 md:grid-cols-[1.05fr_0.95fr] gap-12 md:gap-8 items-center">
+
+        {/* ── venstre: manifest ── */}
+        <div>
+          <span className="text-[11px] font-semibold uppercase tracking-[0.3em]"
+                style={{ ...F, color: 'rgba(255,255,255,0.4)', display: 'block',
+                         animation: anim ? 'pmFade 0.7s cubic-bezier(0.22,1,0.36,1) 0.1s both' : undefined, opacity: show ? undefined : 0 }}>
+            Manifest
+          </span>
+
+          <div className="mt-8 space-y-2">
+            {lines.map((l, i) => (
+              <p key={i} className="tracking-[-0.03em] leading-[1.12]"
+                 style={{ ...FH, fontWeight: 600, fontSize: 'clamp(25px, 2.9vw, 39px)', color: l.c,
+                          animation: anim ? `pmFade 0.8s cubic-bezier(0.22,1,0.36,1) ${0.35 + i * 0.22}s both` : undefined, opacity: show ? undefined : 0 }}>
+                {l.t}
+              </p>
+            ))}
+            <p className="tracking-[-0.03em] leading-[1.12]"
+               style={{ ...FH, fontWeight: 600, fontSize: 'clamp(25px, 2.9vw, 39px)', color: '#fff',
+                        animation: anim ? 'pmFade 0.8s cubic-bezier(0.22,1,0.36,1) 0.79s both' : undefined, opacity: show ? undefined : 0 }}>
+              Og faste prosesser er skapt for å <span style={{ color: AC }}>automatiseres.</span>
+            </p>
+          </div>
+
+          <div className="h-px w-16 mt-9 origin-left"
+               style={{ background: 'rgba(255,255,255,0.18)', animation: anim ? 'pmFade 0.7s ease 1.15s both' : undefined, opacity: show ? undefined : 0 }} />
+          <p className="text-[14.5px] sm:text-[16px] font-normal leading-[1.6] mt-6 max-w-[440px]"
+             style={{ ...F, color: 'rgba(255,255,255,0.55)',
+                      animation: anim ? 'pmFade 0.9s cubic-bezier(0.22,1,0.36,1) 1.25s both' : undefined, opacity: show ? undefined : 0 }}>
+            <span style={{ color: 'rgba(255,255,255,0.9)', fontWeight: 500 }}>De samme stegene — for hver bolig, hver gang.</span> Det er hele forutsetningen for DigiHome.
+          </p>
+        </div>
+
+        {/* ── høyre: syklus-visual ── */}
+        <div className="relative flex items-center justify-center"
+             style={{ animation: anim ? 'pmFade 0.9s cubic-bezier(0.22,1,0.36,1) 0.5s both' : undefined, opacity: show ? undefined : 0 }}>
+          <svg viewBox="0 0 460 364" className="w-full max-w-[420px]" style={{ overflow: 'visible' }}>
+            {/* ring */}
+            <circle cx={cx} cy={cy} r={rRing} fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="1"
+                    strokeDasharray={circ}
+                    style={{ strokeDashoffset: anim ? undefined : 0, animation: anim ? 'pmRingDraw 1.3s cubic-bezier(0.4,0,0.1,1) 0.7s both' : undefined }} />
+
+            {/* noder + etiketter */}
+            {PM_STAGES.map((s, i) => {
+              const ang = (-90 + i * (360 / PM_STAGES.length)) * Math.PI / 180;
+              const nx = cx + rRing * Math.cos(ang);
+              const ny = cy + rRing * Math.sin(ang);
+              const lx = cx + rLabel * Math.cos(ang);
+              const ly = cy + rLabel * Math.sin(ang);
+              const cosv = Math.cos(ang);
+              const anchor = Math.abs(cosv) < 0.34 ? 'middle' : (cosv > 0 ? 'start' : 'end');
+              const delay = 1.0 + i * 0.1;
+              return (
+                <g key={s} style={{ transformOrigin: `${nx}px ${ny}px`, animation: anim ? `pmPop 0.5s cubic-bezier(0.34,1.56,0.64,1) ${delay}s both` : undefined, opacity: show ? undefined : 0 }}>
+                  <circle cx={nx} cy={ny} r="3.5" fill="rgba(255,255,255,0.55)" />
+                  <text x={lx} y={ly} textAnchor={anchor} dominantBaseline="middle"
+                        style={{ fontFamily: 'var(--font-body)', fontSize: '12.5px', fontWeight: 500, fill: 'rgba(255,255,255,0.62)' }}>
+                    {s}
+                  </text>
+                </g>
+              );
+            })}
+
+            {/* langsom roterende aksent-prikk (kontinuerlig syklus) */}
+            <g style={{ transformOrigin: `${cx}px ${cy}px`, animation: anim ? 'pmSpin 22s linear 2.2s infinite' : undefined }}>
+              <circle cx={cx} cy={cy - rRing} r="9" fill={AC} opacity="0.18" />
+              <circle cx={cx} cy={cy - rRing} r="3.5" fill={AC} />
+            </g>
+
+            {/* senter */}
+            <text x={cx} y={cy - 7} textAnchor="middle" dominantBaseline="middle"
+                  style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontWeight: 600, letterSpacing: '0.2em', fill: 'rgba(255,255,255,0.4)' }}>
+              SAMME SYKLUS
+            </text>
+            <text x={cx} y={cy + 13} textAnchor="middle" dominantBaseline="middle"
+                  style={{ fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: 500, fill: 'rgba(255,255,255,0.78)' }}>
+              hver bolig, hver gang
+            </text>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </SlideFrame>
+  );
+};
+
+
 /* ═══ FORRETNINGSMODELLER — B2C (private) + B2B (profesjonelle) · én plattform ═══ */
 const BIZ_MODELS = [
   {
@@ -5391,7 +5512,8 @@ const SBusinessModels = (p: any) => {
 const SLIDES = [
   S1,            // 01 · Cover
   SAutopilotMindset, // 02 · Mindset reframe — «Ikke et system. En autopilot.»
-  SComparison,    // 03 · Sammenligning — tradisjonell software vs DigiHome (forklarende)
+  SProcessManifesto, // 03 · Manifest — boligforvaltning er en standardisert, repeterbar prosess
+  SComparison,    // 04 · Sammenligning — tradisjonell software vs DigiHome (forklarende)
   SBusinessModels, // 04 · Forretningsmodeller — B2C (private) + B2B (profesjonelle)
   SLiveDemo,     // 04 · Live product animation (from /digihome-tech)
   SDualUSP,      // 05 · Three unique aspects (auto-listing + dynamic + AI ops)
@@ -5544,7 +5666,7 @@ export default function Presentasjon() {
     <div className="dh-deck w-screen h-screen overflow-hidden relative bg-[#0c0c0c]" style={F}
       onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
       {SLIDES.map((Slide: any, i: number) => (
-        <div key={i} className={`absolute inset-0 transition-all duration-700 ease-[cubic-bezier(0.4,0,0.2,1)] ${i === c ? 'opacity-100 scale-100' : i < c ? 'opacity-0 scale-[0.96]' : 'opacity-0 scale-[1.04]'}`} style={{ pointerEvents: i === c ? 'auto' : 'none' }}>
+        <div key={i} className={`absolute inset-0 overflow-hidden transition-all duration-700 ease-[cubic-bezier(0.4,0,0.2,1)] ${i === c ? 'opacity-100 scale-100' : i < c ? 'opacity-0 scale-[0.96]' : 'opacity-0 scale-[1.04]'}`} style={{ pointerEvents: i === c ? 'auto' : 'none', visibility: Math.abs(i - c) <= 1 ? 'visible' : 'hidden' }}>
           <Slide slideNum={i + 1} total={SLIDES.length} isActive={i === c} onAnimationComplete={i === 1 ? handleS2Complete : undefined} />
         </div>
       ))}
