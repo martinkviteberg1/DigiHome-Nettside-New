@@ -508,7 +508,7 @@ const STeam = (p: any) => {
       name: 'Martin C. Kviteberg',
       role: 'Teknisk sjef · CTO · Medgründer',
       img: '/team/martin-kviteberg.jpg',
-      imgStyle: { objectPosition: 'center', transform: 'scale(2.6)', transformOrigin: '50% 24%' },
+      imgStyle: { objectPosition: 'center', transform: 'scale(2.75)', transformOrigin: '50% 33%' },
       lead: 'Gründer med exit fra Adonis AS. Startet Bnbspesialisten — en av Norges tre første korttidsforvaltere.',
       bullets: [
         'Dekker tech, automatisering, drift og forvaltning.',
@@ -5383,7 +5383,7 @@ const SVisionIntro = (p: any) => {
                 {/* signatur */}
                 <div className="flex items-center gap-3.5 mt-12" style={line(5)}>
                   <div className="w-[48px] h-[48px] rounded-full overflow-hidden shrink-0" style={{ boxShadow: '0 8px 22px rgba(20,15,10,0.16)', border: '1px solid rgba(20,15,10,0.06)' }}>
-                    <img src="/team/martin-kviteberg.jpg" alt="Martin C. Kviteberg" className="w-full h-full object-cover" style={{ objectPosition: 'center', transform: 'scale(2.6)', transformOrigin: '50% 24%' }} />
+                    <img src="/team/martin-kviteberg.jpg" alt="Martin C. Kviteberg" className="w-full h-full object-cover" style={{ objectPosition: 'center', transform: 'scale(2.75)', transformOrigin: '50% 33%' }} />
                   </div>
                   <div className="leading-tight">
                     <p className="text-[13.5px] font-semibold tracking-[-0.01em]" style={{ ...F, color: INK }}>Martin C. Kviteberg</p>
@@ -5406,7 +5406,8 @@ const SFraVerktoyTilMotor = (p: any) => {
   const isPdf = !!p.pdfMode;
   const show = active || isPdf;
   const INK = '#1c1815';
-  const DIM = 'rgba(38,32,26,0.46)';
+  const DIM = 'rgba(38,32,26,0.40)';
+  const LBL = 'rgba(38,32,26,0.42)';
   const PAIRS = [
     { left: 'Et verktøy du betjener', right: 'En motor som jobber' },
     { left: 'Lagrer og viser informasjon', right: 'Forstår, forbereder og utfører' },
@@ -5433,9 +5434,9 @@ const SFraVerktoyTilMotor = (p: any) => {
 
         {/* header */}
         <div className="text-center mb-12 sm:mb-16">
-          <span className="block text-[10.5px] font-semibold uppercase tracking-[0.36em]" style={{ ...F, color: P, ...rise(0) }}>Problemet og løsningen</span>
+          <span className="block text-[10.5px] font-semibold uppercase tracking-[0.36em]" style={{ ...F, color: LBL, ...rise(0) }}>Problemet og løsningen</span>
           <h2 className="mt-5 tracking-[-0.038em] leading-[1.02]" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(32px, 4vw, 56px)', color: INK, ...rise(1) }}>
-            Fra <span style={{ color: DIM }}>verktøy</span> til <span style={{ color: P }}>motor</span>.
+            Fra <span style={{ color: DIM }}>verktøy</span> til motor.
           </h2>
         </div>
 
@@ -5443,16 +5444,16 @@ const SFraVerktoyTilMotor = (p: any) => {
         <div className="relative">
           {/* senter-skinne */}
           <div className="absolute left-1/2 top-1 bottom-1 w-px -translate-x-1/2"
-               style={{ background: 'linear-gradient(180deg, transparent, rgba(28,22,16,0.13) 14%, rgba(28,22,16,0.13) 86%, transparent)', transformOrigin: 'top',
+               style={{ background: 'linear-gradient(180deg, transparent, rgba(28,22,16,0.12) 14%, rgba(28,22,16,0.12) 86%, transparent)', transformOrigin: 'top',
                         animation: show ? 'fvRail 0.9s cubic-bezier(0.22,1,0.36,1) 0.25s both' : undefined, opacity: show ? undefined : 0 }} />
 
           {/* spalte-overskrifter */}
           <div className="grid grid-cols-2 gap-x-12 sm:gap-x-24 lg:gap-x-28 mb-8 sm:mb-10">
             <div className="text-right" style={rise(2)}>
-              <span className="text-[10.5px] sm:text-[11.5px] font-semibold uppercase tracking-[0.22em]" style={{ ...F, color: DIM }}>Tradisjonell proptech</span>
+              <span className="text-[10.5px] sm:text-[11.5px] font-semibold uppercase tracking-[0.22em]" style={{ ...F, color: LBL }}>Tradisjonell proptech</span>
             </div>
             <div className="text-left" style={rise(2)}>
-              <span className="inline-flex items-center gap-2 text-[10.5px] sm:text-[11.5px] font-semibold uppercase tracking-[0.22em]" style={{ ...F, color: P }}>
+              <span className="inline-flex items-center gap-2 text-[10.5px] sm:text-[11.5px] font-semibold uppercase tracking-[0.22em]" style={{ ...F, color: INK }}>
                 <span className="h-[6px] w-[6px] rounded-full" style={{ background: P }} />DigiHome
               </span>
             </div>
@@ -5466,7 +5467,7 @@ const SFraVerktoyTilMotor = (p: any) => {
                   <p className="text-[16px] sm:text-[20px] leading-[1.25]" style={{ ...F, color: DIM }}>{pair.left}</p>
                 </div>
                 <div className="text-left pl-1 sm:pl-3" style={rise(3 + i)}>
-                  <p className="text-[17px] sm:text-[22px] leading-[1.25]" style={{ ...FH, fontWeight: 600, color: pair.accent ? P : INK }}>{pair.right}</p>
+                  <p className="text-[17px] sm:text-[22px] leading-[1.25]" style={{ ...FH, fontWeight: pair.accent ? 700 : 600, color: INK }}>{pair.right}</p>
                 </div>
               </React.Fragment>
             ))}
