@@ -5277,14 +5277,6 @@ const SVisionIntro = (p: any) => {
 
   const onVision = phase === 'vision';
 
-  const FLOW_STEPS = ['Annonsering', 'Visning', 'Kontrakt', 'Depositum', 'Innflytting', 'Husleie', 'Vedlikehold'];
-  const DH_ACTIONS = [
-    { v: 'Forstår', d: 'hva som må gjøres' },
-    { v: 'Foreslår', d: 'neste steg' },
-    { v: 'Forbereder', d: 'arbeidet' },
-    { v: 'Utfører', d: 'det som kan automatiseres' },
-  ];
-
   const beat = (target: 'hook' | 'vision') => ({
     opacity: phase === target ? 1 : 0,
     transform: phase === target ? 'translateY(0) scale(1)' : (target === 'hook' ? 'translateY(-40px) scale(0.97)' : 'translateY(40px) scale(0.97)'),
@@ -5324,63 +5316,40 @@ const SVisionIntro = (p: any) => {
         </h2>
       </div>
 
-      {/* ── DIGIHOME FORKLART (statisk, forklarende) ── */}
-      <div className="absolute inset-0 flex items-center justify-center px-6 py-10 overflow-y-auto no-scrollbar" style={beat('vision')}>
-        <div className="w-full max-w-[1080px] mx-auto">
+      {/* ── DIGIHOME FORKLART · ren tekst (keynote) ── */}
+      <div className="absolute inset-0 flex items-center justify-center px-6 sm:px-10 py-12 overflow-y-auto no-scrollbar" style={beat('vision')}>
+        <div className="w-full max-w-[880px] mx-auto">
+          {(() => {
+            const line = (i: number) => ({
+              animation: (active && onVision) ? `viReveal 1.1s cubic-bezier(0.22,1,0.36,1) ${0.12 + i * 0.2}s both` : undefined,
+              opacity: show ? undefined : 0,
+            });
+            return (
+              <>
+                {/* eyebrow */}
+                <span className="text-[11px] font-semibold uppercase tracking-[0.32em] block" style={{ ...F, color: 'rgba(255,255,255,0.4)', ...line(0) }}>Idéen bak DigiHome</span>
 
-          {/* header */}
-          <span className="text-[11px] font-semibold uppercase tracking-[0.3em]" style={{ ...F, color: 'rgba(255,255,255,0.4)', display: 'block' }}>Idéen bak DigiHome</span>
-          <h2 className="tracking-[-0.035em] leading-[1.08] mt-4" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(26px, 3vw, 44px)' }}>
-            <span style={{ color: 'rgba(255,255,255,0.7)' }}>Programvare har vært verktøy. </span>
-            <span style={{ color: '#fff' }}>DigiHome er en </span>
-            <span style={{ color: AC }}>motor.</span>
-          </h2>
-          <p className="text-[14.5px] sm:text-[16px] font-normal leading-[1.6] mt-5 max-w-[780px]" style={{ ...F, color: 'rgba(255,255,255,0.58)' }}>
-            Neste generasjon programvare er ikke flere moduler å klikke seg gjennom, eller systemer som bare lagrer informasjon — men programvare som faktisk gjør jobben.
-          </p>
+                {/* stor ledetekst */}
+                <h2 className="tracking-[-0.035em] leading-[1.05] mt-8" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(32px, 4.4vw, 60px)' }}>
+                  <span className="block" style={{ color: 'rgba(255,255,255,0.5)', ...line(1) }}>Programvare har vært et verktøy.</span>
+                  <span className="block" style={{ color: '#fff', ...line(2) }}>DigiHome er en <span style={{ color: AC, textShadow: `0 0 60px ${AC}44` }}>motor.</span></span>
+                </h2>
 
-          {/* to spalter */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-16 mt-10">
+                {/* brødtekst — ren prosa */}
+                <p className="text-[16px] sm:text-[20px] font-normal leading-[1.6] mt-10 max-w-[740px]" style={{ ...F, color: 'rgba(255,255,255,0.6)', ...line(3) }}>
+                  Boligforvaltning ser ut som kaos, men er egentlig <span style={{ color: 'rgba(255,255,255,0.92)' }}>den samme prosessen — hver gang</span>. Annonsering, visning, kontrakt, depositum, innflytting, husleie og vedlikehold.
+                </p>
+                <p className="text-[16px] sm:text-[20px] font-normal leading-[1.6] mt-6 max-w-[740px]" style={{ ...F, color: 'rgba(255,255,255,0.6)', ...line(4) }}>
+                  Faste, repeterbare steg er skapt for å drives av seg selv. Så vi bygde programvaren som <span style={{ color: 'rgba(255,255,255,0.92)' }}>forstår, forbereder og utfører</span> arbeidet — bolig for bolig.
+                </p>
 
-            {/* venstre — repeterbare prosesser */}
-            <div>
-              <span className="text-[10.5px] font-semibold uppercase tracking-[0.22em]" style={{ ...F, color: 'rgba(255,255,255,0.42)', display: 'block' }}>Repeterbar av natur</span>
-              <p className="text-[14.5px] sm:text-[15.5px] font-normal leading-[1.6] mt-4" style={{ ...F, color: 'rgba(255,255,255,0.62)' }}>
-                Boligforvaltning består av <span style={{ color: 'rgba(255,255,255,0.92)' }}>repeterbare prosesser</span>. De samme stegene går igjen, bolig for bolig:
-              </p>
-              <div className="flex flex-wrap gap-2 mt-5">
-                {FLOW_STEPS.map((s) => (
-                  <span key={s} className="text-[12.5px] font-medium rounded-full px-3 py-1.5" style={{ ...F, color: 'rgba(255,255,255,0.72)', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>{s}</span>
-                ))}
-              </div>
-            </div>
-
-            {/* høyre — slik jobber DigiHome */}
-            <div>
-              <span className="text-[10.5px] font-semibold uppercase tracking-[0.22em]" style={{ ...F, color: AC, display: 'block' }}>Slik jobber DigiHome</span>
-              <div className="mt-4 flex flex-col">
-                {DH_ACTIONS.map((a, i) => (
-                  <div key={a.v} className="flex items-start gap-3.5">
-                    <div className="flex flex-col items-center">
-                      <span className="shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-[12px] font-bold" style={{ ...F, color: AC, background: `${AC}1a`, border: `1px solid ${AC}40` }}>{i + 1}</span>
-                      {i < DH_ACTIONS.length - 1 && <span className="w-px" style={{ height: 16, background: 'rgba(255,255,255,0.14)', marginTop: 3, marginBottom: 3 }} />}
-                    </div>
-                    <div className="pt-1">
-                      <span className="text-[15.5px] sm:text-[16.5px] font-semibold tracking-[-0.01em]" style={{ ...FH, color: '#fff' }}>{a.v}</span>
-                      <span className="text-[13.5px] sm:text-[14px] font-normal ml-2" style={{ ...F, color: 'rgba(255,255,255,0.5)' }}>{a.d}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* prinsipp */}
-          <div className="mt-10 pt-7" style={{ borderTop: '1px solid rgba(255,255,255,0.09)' }}>
-            <p className="tracking-[-0.018em]" style={{ ...FH, fontWeight: 600, fontSize: 'clamp(17px, 1.9vw, 22px)', color: 'rgba(255,255,255,0.95)' }}>
-              Mennesket har kontroll. <span style={{ color: AC }}>Systemet gjør jobben.</span>
-            </p>
-          </div>
+                {/* avslutning */}
+                <p className="tracking-[-0.022em] leading-[1.12] mt-12" style={{ ...FH, fontWeight: 600, fontSize: 'clamp(22px, 2.6vw, 34px)', color: '#fff', ...line(5) }}>
+                  Mennesket har kontroll. <span style={{ color: AC }}>Systemet gjør jobben.</span>
+                </p>
+              </>
+            );
+          })()}
         </div>
       </div>
     </div>
