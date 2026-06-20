@@ -5383,7 +5383,7 @@ const SVisionIntro = (p: any) => {
                 {/* signatur */}
                 <div className="flex items-center gap-4 mt-12" style={line(5)}>
                   <div className="w-[72px] h-[72px] rounded-full overflow-hidden shrink-0" style={{ boxShadow: '0 10px 28px rgba(20,15,10,0.18)', border: '1px solid rgba(20,15,10,0.06)' }}>
-                    <img src="/team/martin-kviteberg.jpg" alt="Martin C. Kviteberg" className="w-full h-full object-cover" style={{ objectPosition: 'center', transform: 'scale(3.0)', transformOrigin: '50% 28%' }} />
+                    <img src="/team/martin-kviteberg.jpg" alt="Martin C. Kviteberg" className="w-full h-full object-cover" style={{ objectPosition: 'center', transform: 'scale(3.0)', transformOrigin: '42% 28%' }} />
                   </div>
                   <div className="leading-tight">
                     <p className="text-[15px] font-semibold tracking-[-0.01em]" style={{ ...F, color: INK }}>Martin C. Kviteberg</p>
