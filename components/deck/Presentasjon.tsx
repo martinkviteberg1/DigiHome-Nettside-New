@@ -5315,6 +5315,7 @@ const SVisionIntro = (p: any) => {
     <style>{`
       @keyframes viReveal { from { opacity: 0; transform: translateY(24px); filter: blur(14px); } 55% { filter: blur(0.5px); } to { opacity: 1; transform: translateY(0); filter: blur(0); } }
       @keyframes viKen { 0% { transform: scale(1) translateY(8px); } 100% { transform: scale(1.04) translateY(-8px); } }
+      @keyframes viRail { from { opacity: 0; transform: scaleY(0); } to { opacity: 1; transform: scaleY(1); } }
     `}</style>
 
     {/* ── MØRK AMBIENT (krok) — fader ut når lyset slås på ── */}
@@ -5350,33 +5351,37 @@ const SVisionIntro = (p: any) => {
       {/* ── DIGIHOME FORKLART · venstrejustert editorial (Apple-nivå) ── */}
       <div className="absolute inset-0 flex items-center px-8 sm:px-14 lg:px-24 overflow-y-auto no-scrollbar" style={beat('vision')}>
         <div className="w-full max-w-[1180px] mx-auto">
-          <div className="max-w-[900px]">
+          <div className="relative max-w-[940px] pl-8 sm:pl-11">
           {(() => {
             const line = (i: number) => ({
-              animation: (active && onVision) ? `viReveal 1.15s cubic-bezier(0.22,1,0.36,1) ${0.3 + i * 0.16}s both` : undefined,
+              animation: (active && onVision) ? `viReveal 1.15s cubic-bezier(0.22,1,0.36,1) ${0.3 + i * 0.14}s both` : undefined,
               opacity: show ? undefined : 0,
             });
             return (
               <>
-                {/* kicker m/ aksenttick */}
-                <div className="flex items-center gap-3.5" style={line(0)}>
-                  <span className="h-[2px] w-8 rounded-full" style={{ background: ACL }} />
-                  <span className="text-[11px] font-semibold uppercase tracking-[0.3em]" style={{ ...F, color: 'rgba(40,30,22,0.5)' }}>Idéen bak DigiHome</span>
+                {/* vertikal aksent-skinne (editorial) */}
+                <div className="absolute left-0 top-[5px] bottom-[5px] w-[2px] rounded-full overflow-hidden"
+                     style={{ background: 'linear-gradient(180deg, rgba(28,22,18,0.16) 0%, rgba(28,22,18,0.02) 100%)', transformOrigin: 'top',
+                              animation: (active && onVision) ? 'viRail 1.2s cubic-bezier(0.22,1,0.36,1) 0.3s both' : undefined, opacity: show ? undefined : 0 }}>
+                  <div className="absolute top-0 left-0 w-full h-16" style={{ background: `linear-gradient(180deg, ${ACL}, ${ACL}00)` }} />
                 </div>
 
-                {/* hero-statement */}
-                <h2 className="tracking-[-0.042em] leading-[1.0] mt-9" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(38px, 5.2vw, 68px)' }}>
-                  <span className="block" style={{ color: 'rgba(38,30,22,0.34)', ...line(1) }}>Programvare var et verktøy.</span>
-                  <span className="block" style={{ color: INK, ...line(2) }}>DigiHome er en <span style={{ color: ACL }}>motor.</span></span>
+                {/* kicker */}
+                <span className="block text-[11px] font-semibold uppercase tracking-[0.32em]" style={{ ...F, color: 'rgba(40,30,22,0.5)', ...line(1) }}>Idéen bak DigiHome</span>
+
+                {/* hero-statement — full ink */}
+                <h2 className="tracking-[-0.044em] leading-[0.98] mt-8" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(40px, 5.6vw, 74px)' }}>
+                  <span className="block" style={{ color: INK, ...line(2) }}>Programvare var et verktøy.</span>
+                  <span className="block" style={{ color: INK, ...line(3) }}>DigiHome er en <span style={{ color: ACL, textShadow: `0 0 42px ${ACL}3d` }}>motor.</span></span>
                 </h2>
 
                 {/* støttetekst — én rolig setning, smal måling */}
-                <p className="text-[17px] sm:text-[21px] font-normal leading-[1.55] mt-10 max-w-[540px]" style={{ ...F, color: 'rgba(40,32,25,0.6)', ...line(3) }}>
-                  Boligforvaltning ser ut som kaos. Egentlig er det <span style={{ color: INK }}>den samme prosessen — hver gang</span>. Og faste prosesser er skapt for å drives av seg selv.
+                <p className="text-[17px] sm:text-[21px] font-normal leading-[1.55] mt-10 max-w-[540px]" style={{ ...F, color: 'rgba(36,29,23,0.62)', ...line(4) }}>
+                  Boligforvaltning ser ut som kaos. Egentlig er det <span style={{ color: INK, fontWeight: 500 }}>den samme prosessen — hver gang</span>. Og faste prosesser er skapt for å drives av seg selv.
                 </p>
 
                 {/* avslutning — payoff, satt fra hverandre */}
-                <p className="tracking-[-0.022em] leading-[1.16] mt-14 max-w-[720px]" style={{ ...FH, fontWeight: 600, fontSize: 'clamp(23px, 2.7vw, 36px)', color: INK, ...line(4) }}>
+                <p className="tracking-[-0.024em] leading-[1.14] mt-14 max-w-[760px]" style={{ ...FH, fontWeight: 600, fontSize: 'clamp(24px, 2.9vw, 38px)', color: INK, ...line(5) }}>
                   Mennesket har kontrollen. <span style={{ color: ACL }}>Systemet gjør jobben.</span>
                 </p>
               </>
