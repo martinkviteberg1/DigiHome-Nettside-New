@@ -5381,13 +5381,13 @@ const SVisionIntro = (p: any) => {
                 </p>
 
                 {/* signatur */}
-                <div className="flex items-center gap-3.5 mt-12" style={line(5)}>
-                  <div className="w-[48px] h-[48px] rounded-full overflow-hidden shrink-0" style={{ boxShadow: '0 8px 22px rgba(20,15,10,0.16)', border: '1px solid rgba(20,15,10,0.06)' }}>
+                <div className="flex items-center gap-4 mt-12" style={line(5)}>
+                  <div className="w-[72px] h-[72px] rounded-full overflow-hidden shrink-0" style={{ boxShadow: '0 10px 28px rgba(20,15,10,0.18)', border: '1px solid rgba(20,15,10,0.06)' }}>
                     <img src="/team/martin-kviteberg.jpg" alt="Martin C. Kviteberg" className="w-full h-full object-cover" style={{ objectPosition: 'center', transform: 'scale(3.0)', transformOrigin: '50% 28%' }} />
                   </div>
                   <div className="leading-tight">
-                    <p className="text-[13.5px] font-semibold tracking-[-0.01em]" style={{ ...F, color: INK }}>Martin C. Kviteberg</p>
-                    <p className="text-[11.5px] mt-0.5" style={{ ...F, color: 'rgba(28,22,16,0.5)' }}>CTO &amp; Medgründer</p>
+                    <p className="text-[15px] font-semibold tracking-[-0.01em]" style={{ ...F, color: INK }}>Martin C. Kviteberg</p>
+                    <p className="text-[12.5px] mt-0.5" style={{ ...F, color: 'rgba(28,22,16,0.5)' }}>CTO &amp; Medgründer</p>
                   </div>
                 </div>
               </>
