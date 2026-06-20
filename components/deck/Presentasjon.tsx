@@ -5472,6 +5472,13 @@ const SFraVerktoyTilMotor = (p: any) => {
           </div>
         </div>
 
+        {/* innsikt — kjernebudskap (slått sammen fra «Forskjellen fra tradisjonell software») */}
+        <div className="text-center mt-16 sm:mt-24 max-w-[820px] mx-auto" style={rise(7)}>
+          <p className="leading-[1.5]" style={{ ...F, fontSize: 'clamp(16px, 1.55vw, 22px)', color: INK }}>
+            Forskjellen er ikke antall funksjoner — men at systemet selv vet hva som er <span style={{ color: P, fontWeight: 600, whiteSpace: 'nowrap' }}>neste steg</span>, og fører deg gjennom arbeidet.
+          </p>
+        </div>
+
       </div>
     </div>
   </SlideFrame>
@@ -5591,8 +5598,7 @@ const SLIDES = [
   SVisionIntro,      // 02 · Visjon — krok «Ikke et system. En autopilot.» → idéen bak DigiHome
   SFraVerktoyTilMotor, // 03 · Problemet og løsningen — fra verktøy (proptech) til motor (DigiHome)
   SAutopilotChecklist, // 04 · Autopiloten i arbeid — sjekkliste-animasjon
-  SComparison,    // 04 · Sammenligning — tradisjonell software vs DigiHome (forklarende)
-  SBusinessModels, // 04 · Forretningsmodeller — B2C (private) + B2B (profesjonelle)
+  SBusinessModels, // 05 · Forretningsmodeller — B2C (private) + B2B (profesjonelle)
   SLiveDemo,     // 04 · Live product animation (from /digihome-tech)
   SDualUSP,      // 05 · Three unique aspects (auto-listing + dynamic + AI ops)
   STeam,         // 06 · Team (founder-market fit)
