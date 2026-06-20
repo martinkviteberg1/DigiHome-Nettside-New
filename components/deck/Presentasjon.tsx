@@ -5406,8 +5406,6 @@ const SFraVerktoyTilMotor = (p: any) => {
   const isPdf = !!p.pdfMode;
   const show = active || isPdf;
   const INK = '#1c1815';
-  const DIM = 'rgba(38,32,26,0.40)';
-  const LBL = 'rgba(38,32,26,0.42)';
   const PAIRS = [
     { left: 'Et verktøy du betjener', right: 'En motor som jobber' },
     { left: 'Lagrer og viser informasjon', right: 'Forstår, forbereder og utfører' },
@@ -5430,44 +5428,44 @@ const SFraVerktoyTilMotor = (p: any) => {
     <DotGrid maskCenter="50% 44%" opacity={0.4} />
 
     <div className="absolute inset-0 z-10 flex items-center justify-center px-6 sm:px-12 py-12 overflow-y-auto no-scrollbar">
-      <div className="w-full max-w-[1040px] mx-auto">
+      <div className="w-full max-w-[1080px] mx-auto">
 
         {/* header */}
-        <div className="text-center mb-12 sm:mb-16">
-          <span className="block text-[10.5px] font-semibold uppercase tracking-[0.36em]" style={{ ...F, color: LBL, ...rise(0) }}>Problemet og løsningen</span>
-          <h2 className="mt-5 tracking-[-0.038em] leading-[1.02]" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(32px, 4vw, 56px)', color: INK, ...rise(1) }}>
-            Fra <span style={{ color: DIM }}>verktøy</span> til motor.
+        <div className="text-center mb-14 sm:mb-20">
+          <span className="block text-[11px] font-bold uppercase tracking-[0.4em]" style={{ ...F, color: P, ...rise(0) }}>Problemet og løsningen</span>
+          <h2 className="mt-6 tracking-[-0.045em] leading-[0.98]" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(40px, 5.4vw, 74px)', color: INK, ...rise(1) }}>
+            Fra verktøy til <span style={{ color: P }}>motor</span>.
           </h2>
         </div>
 
         {/* sammenligning */}
         <div className="relative">
           {/* senter-skinne */}
-          <div className="absolute left-1/2 top-1 bottom-1 w-px -translate-x-1/2"
-               style={{ background: 'linear-gradient(180deg, transparent, rgba(28,22,16,0.12) 14%, rgba(28,22,16,0.12) 86%, transparent)', transformOrigin: 'top',
+          <div className="absolute left-1/2 top-2 bottom-2 w-px -translate-x-1/2"
+               style={{ background: 'linear-gradient(180deg, transparent, rgba(28,22,16,0.16) 12%, rgba(28,22,16,0.16) 88%, transparent)', transformOrigin: 'top',
                         animation: show ? 'fvRail 0.9s cubic-bezier(0.22,1,0.36,1) 0.25s both' : undefined, opacity: show ? undefined : 0 }} />
 
           {/* spalte-overskrifter */}
-          <div className="grid grid-cols-2 gap-x-12 sm:gap-x-24 lg:gap-x-28 mb-8 sm:mb-10">
+          <div className="grid grid-cols-2 gap-x-10 sm:gap-x-20 lg:gap-x-28 mb-9 sm:mb-12">
             <div className="text-right" style={rise(2)}>
-              <span className="text-[10.5px] sm:text-[11.5px] font-semibold uppercase tracking-[0.22em]" style={{ ...F, color: LBL }}>Tradisjonell proptech</span>
+              <span className="text-[11px] sm:text-[12px] font-bold uppercase tracking-[0.24em]" style={{ ...F, color: INK }}>Tradisjonell proptech</span>
             </div>
             <div className="text-left" style={rise(2)}>
-              <span className="inline-flex items-center gap-2 text-[10.5px] sm:text-[11.5px] font-semibold uppercase tracking-[0.22em]" style={{ ...F, color: INK }}>
-                <span className="h-[6px] w-[6px] rounded-full" style={{ background: P }} />DigiHome
+              <span className="inline-flex items-center gap-2.5 text-[11px] sm:text-[12px] font-bold uppercase tracking-[0.24em]" style={{ ...F, color: INK }}>
+                <span className="h-[7px] w-[7px] rounded-full" style={{ background: P }} />DigiHome
               </span>
             </div>
           </div>
 
           {/* rader */}
-          <div className="grid grid-cols-2 gap-x-12 sm:gap-x-24 lg:gap-x-28 gap-y-6 sm:gap-y-8 items-center">
+          <div className="grid grid-cols-2 gap-x-10 sm:gap-x-20 lg:gap-x-28 gap-y-8 sm:gap-y-11 items-baseline">
             {PAIRS.map((pair, i) => (
               <React.Fragment key={i}>
                 <div className="text-right pr-1 sm:pr-3" style={rise(3 + i)}>
-                  <p className="text-[16px] sm:text-[20px] leading-[1.25]" style={{ ...F, color: DIM }}>{pair.left}</p>
+                  <p className="leading-[1.18]" style={{ ...F, fontWeight: 400, fontSize: 'clamp(18px, 1.9vw, 26px)', color: INK }}>{pair.left}</p>
                 </div>
                 <div className="text-left pl-1 sm:pl-3" style={rise(3 + i)}>
-                  <p className="text-[17px] sm:text-[22px] leading-[1.25]" style={{ ...FH, fontWeight: pair.accent ? 700 : 600, color: INK }}>{pair.right}</p>
+                  <p className="leading-[1.18]" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(20px, 2.15vw, 30px)', color: pair.accent ? P : INK }}>{pair.right}</p>
                 </div>
               </React.Fragment>
             ))}
