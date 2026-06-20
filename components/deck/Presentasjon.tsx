@@ -61,7 +61,7 @@ function SlideFrame({ children, bg, img, overlay, slideNum, total, revealLight }
         <div aria-hidden="true" className="absolute inset-0 pointer-events-none" style={{
           opacity: revealLight ? 1 : 0,
           transition: 'opacity 1.35s cubic-bezier(0.22,1,0.36,1)',
-          background: 'radial-gradient(ellipse at 50% 40%, #fcf9f4 0%, #f6f1e9 55%, #efe7da 100%)',
+          background: '#f7f5f2',
         }} />
       )}
       <div className="absolute top-4 left-5 sm:top-7 sm:left-10 z-20">
@@ -5328,15 +5328,10 @@ const SVisionIntro = (p: any) => {
     <div aria-hidden="true" className="absolute inset-0 pointer-events-none"
          style={{ background: 'radial-gradient(ellipse at 50% 46%, transparent 52%, rgba(0,0,0,0.5) 100%)', opacity: onVision ? 0 : 1, transition: 'opacity 1.1s ease' }} />
 
-    {/* ── VARM LYS AMBIENT (visjon) — toner inn med lyset ── */}
-    <div aria-hidden="true" className="absolute inset-0 pointer-events-none overflow-hidden" style={{ opacity: onVision ? 1 : 0, transition: 'opacity 1.5s ease 0.15s' }}>
-      <div className="absolute -top-[12%] right-[-8%] w-[52%] h-[60%] rounded-full"
-           style={{ background: `radial-gradient(ellipse, ${ACL}14 0%, transparent 70%)`, filter: 'blur(72px)' }} />
-      <div className="absolute bottom-[-18%] left-[-10%] w-[56%] h-[58%] rounded-full"
-           style={{ background: 'radial-gradient(ellipse, rgba(214,170,110,0.16) 0%, transparent 70%)', filter: 'blur(82px)' }} />
+    {/* ── LYS DOT-GRID (visjon) — samme rene bakgrunn som øvrige lyse slides ── */}
+    <div aria-hidden="true" className="absolute inset-0 pointer-events-none" style={{ opacity: onVision ? 1 : 0, transition: 'opacity 1.5s ease 0.15s' }}>
+      <DotGrid maskCenter="50% 42%" opacity={0.4} />
     </div>
-    <div aria-hidden="true" className="absolute inset-0 pointer-events-none"
-         style={{ background: 'radial-gradient(ellipse at 50% 44%, transparent 56%, rgba(120,95,60,0.13) 100%)', opacity: onVision ? 1 : 0, transition: 'opacity 1.5s ease 0.15s' }} />
 
     <div className="absolute inset-0 z-10">
 
