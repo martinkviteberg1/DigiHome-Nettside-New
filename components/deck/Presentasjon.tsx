@@ -5400,6 +5400,86 @@ const SVisionIntro = (p: any) => {
   );
 };
 
+/* ═══ PROBLEMET OG LØSNINGEN — fra verktøy (tradisjonell proptech) til motor (DigiHome) ═══ */
+const SFraVerktoyTilMotor = (p: any) => {
+  const active = p.isActive;
+  const isPdf = !!p.pdfMode;
+  const show = active || isPdf;
+  const INK = '#1c1815';
+  const DIM = 'rgba(38,32,26,0.46)';
+  const PAIRS = [
+    { left: 'Et verktøy du betjener', right: 'En motor som jobber' },
+    { left: 'Lagrer og viser informasjon', right: 'Forstår, forbereder og utfører' },
+    { left: 'Flere moduler — mer å klikke', right: 'Ett system, én flyt' },
+    { left: 'Du gjør jobben', right: 'Systemet gjør jobben', accent: true },
+  ];
+  const rise = (i: number) => ({
+    animation: show ? `fvIn 0.85s cubic-bezier(0.22,1,0.36,1) ${0.15 + i * 0.1}s both` : undefined,
+    opacity: show ? undefined : 0,
+  });
+
+  useEffect(() => { p.onLight?.(active && !isPdf); }, [active, isPdf]);
+
+  return (
+  <SlideFrame bg="beige" {...p}>
+    <style>{`
+      @keyframes fvIn { from { opacity: 0; transform: translateY(20px); filter: blur(8px); } to { opacity: 1; transform: translateY(0); filter: blur(0); } }
+      @keyframes fvRail { from { opacity: 0; transform: scaleY(0); } to { opacity: 1; transform: scaleY(1); } }
+    `}</style>
+    <DotGrid maskCenter="50% 44%" opacity={0.4} />
+
+    <div className="absolute inset-0 z-10 flex items-center justify-center px-6 sm:px-12 py-12 overflow-y-auto no-scrollbar">
+      <div className="w-full max-w-[1040px] mx-auto">
+
+        {/* header */}
+        <div className="text-center mb-12 sm:mb-16">
+          <span className="block text-[10.5px] font-semibold uppercase tracking-[0.36em]" style={{ ...F, color: P, ...rise(0) }}>Problemet og løsningen</span>
+          <h2 className="mt-5 tracking-[-0.038em] leading-[1.02]" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(32px, 4vw, 56px)', color: INK, ...rise(1) }}>
+            Fra <span style={{ color: DIM }}>verktøy</span> til <span style={{ color: P }}>motor</span>.
+          </h2>
+        </div>
+
+        {/* sammenligning */}
+        <div className="relative">
+          {/* senter-skinne */}
+          <div className="absolute left-1/2 top-1 bottom-1 w-px -translate-x-1/2"
+               style={{ background: 'linear-gradient(180deg, transparent, rgba(28,22,16,0.13) 14%, rgba(28,22,16,0.13) 86%, transparent)', transformOrigin: 'top',
+                        animation: show ? 'fvRail 0.9s cubic-bezier(0.22,1,0.36,1) 0.25s both' : undefined, opacity: show ? undefined : 0 }} />
+
+          {/* spalte-overskrifter */}
+          <div className="grid grid-cols-2 gap-x-12 sm:gap-x-24 lg:gap-x-28 mb-8 sm:mb-10">
+            <div className="text-right" style={rise(2)}>
+              <span className="text-[10.5px] sm:text-[11.5px] font-semibold uppercase tracking-[0.22em]" style={{ ...F, color: DIM }}>Tradisjonell proptech</span>
+            </div>
+            <div className="text-left" style={rise(2)}>
+              <span className="inline-flex items-center gap-2 text-[10.5px] sm:text-[11.5px] font-semibold uppercase tracking-[0.22em]" style={{ ...F, color: P }}>
+                <span className="h-[6px] w-[6px] rounded-full" style={{ background: P }} />DigiHome
+              </span>
+            </div>
+          </div>
+
+          {/* rader */}
+          <div className="grid grid-cols-2 gap-x-12 sm:gap-x-24 lg:gap-x-28 gap-y-6 sm:gap-y-8 items-center">
+            {PAIRS.map((pair, i) => (
+              <React.Fragment key={i}>
+                <div className="text-right pr-1 sm:pr-3" style={rise(3 + i)}>
+                  <p className="text-[16px] sm:text-[20px] leading-[1.25]" style={{ ...F, color: DIM }}>{pair.left}</p>
+                </div>
+                <div className="text-left pl-1 sm:pl-3" style={rise(3 + i)}>
+                  <p className="text-[17px] sm:text-[22px] leading-[1.25]" style={{ ...FH, fontWeight: 600, color: pair.accent ? P : INK }}>{pair.right}</p>
+                </div>
+              </React.Fragment>
+            ))}
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </SlideFrame>
+  );
+};
+
+
 
 /* ═══ FORRETNINGSMODELLER — B2C (private) + B2B (profesjonelle) · én plattform ═══ */
 const BIZ_MODELS = [
@@ -5510,7 +5590,8 @@ const SBusinessModels = (p: any) => {
 const SLIDES = [
   S1,            // 01 · Cover
   SVisionIntro,      // 02 · Visjon — krok «Ikke et system. En autopilot.» → idéen bak DigiHome
-  SAutopilotChecklist, // 03 · Autopiloten i arbeid — sjekkliste-animasjon
+  SFraVerktoyTilMotor, // 03 · Problemet og løsningen — fra verktøy (proptech) til motor (DigiHome)
+  SAutopilotChecklist, // 04 · Autopiloten i arbeid — sjekkliste-animasjon
   SComparison,    // 04 · Sammenligning — tradisjonell software vs DigiHome (forklarende)
   SBusinessModels, // 04 · Forretningsmodeller — B2C (private) + B2B (profesjonelle)
   SLiveDemo,     // 04 · Live product animation (from /digihome-tech)
@@ -5542,7 +5623,7 @@ export default function Presentasjon() {
   const prev = useCallback(() => setC((v: any) => Math.max(v - 1, 0)), []);
 
   // Slide 2 (visjon) toner til lys bakgrunn — la chrome (pille/teller) tilpasse seg
-  useEffect(() => { if (c !== 1) setChromeLight(false); }, [c]);
+  useEffect(() => { if (c !== 1 && c !== 2) setChromeLight(false); }, [c]);
 
   const handleS2Complete = useCallback(() => {}, []);
 
@@ -5669,7 +5750,7 @@ export default function Presentasjon() {
       onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
       {SLIDES.map((Slide: any, i: number) => (
         <div key={i} className={`absolute inset-0 overflow-hidden transition-all duration-700 ease-[cubic-bezier(0.4,0,0.2,1)] ${i === c ? 'opacity-100 scale-100' : i < c ? 'opacity-0 scale-[0.96]' : 'opacity-0 scale-[1.04]'}`} style={{ pointerEvents: i === c ? 'auto' : 'none', visibility: Math.abs(i - c) <= 1 ? 'visible' : 'hidden' }}>
-          <Slide slideNum={i + 1} total={SLIDES.length} isActive={i === c} onLight={i === 1 ? setChromeLight : undefined} onAnimationComplete={i === 1 ? handleS2Complete : undefined} />
+          <Slide slideNum={i + 1} total={SLIDES.length} isActive={i === c} onLight={(i === 1 || i === 2) ? setChromeLight : undefined} onAnimationComplete={i === 1 ? handleS2Complete : undefined} />
         </div>
       ))}
 
