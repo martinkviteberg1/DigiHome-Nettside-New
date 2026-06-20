@@ -5352,78 +5352,61 @@ const SVisionIntro = (p: any) => {
       {/* ── MANIFEST · DIGIHOME FORKLART (venstrejustert editorial) ── */}
       <div className="absolute inset-0 flex items-center px-8 sm:px-14 lg:px-24 py-10 overflow-y-auto no-scrollbar" style={beat('vision')}>
         <div className="w-full max-w-[1180px] mx-auto">
-          <div className="relative max-w-[700px] pl-8 sm:pl-11">
+          <div className="relative max-w-[640px]">
           {(() => {
             const line = (i: number) => ({
-              animation: (active && onVision) ? `viReveal 1.05s cubic-bezier(0.22,1,0.36,1) ${0.25 + i * 0.085}s both` : undefined,
+              animation: (active && onVision) ? `viReveal 1.05s cubic-bezier(0.22,1,0.36,1) ${0.25 + i * 0.08}s both` : undefined,
               opacity: show ? undefined : 0,
             });
-            const STEG = ['Annonsering', 'Visning', 'Kontrakt', 'Depositum', 'Innflytting', 'Husleie', 'Vedlikehold'];
-            const muted = 'rgba(40,32,25,0.58)';
+            const body = 'rgba(26,21,16,0.84)';
             return (
               <>
-                {/* vertikal aksent-skinne (editorial) */}
-                <div className="absolute left-0 top-[5px] bottom-[5px] w-[2px] rounded-full overflow-hidden"
-                     style={{ background: 'linear-gradient(180deg, rgba(28,22,18,0.16) 0%, rgba(28,22,18,0.02) 100%)', transformOrigin: 'top',
-                              animation: (active && onVision) ? 'viRail 1.2s cubic-bezier(0.22,1,0.36,1) 0.25s both' : undefined, opacity: show ? undefined : 0 }}>
-                  <div className="absolute top-0 left-0 w-full h-16" style={{ background: `linear-gradient(180deg, ${ACL}, ${ACL}00)` }} />
-                </div>
-
                 {/* kicker */}
-                <span className="block text-[11px] font-semibold uppercase tracking-[0.32em]" style={{ ...F, color: 'rgba(40,30,22,0.5)', ...line(0) }}>Idéen bak DigiHome</span>
+                <span className="block text-[10.5px] font-semibold uppercase tracking-[0.36em]" style={{ ...F, color: ACL, ...line(0) }}>Idéen bak DigiHome</span>
 
-                {/* lead */}
-                <div className="mt-7" style={{ ...FH, fontWeight: 600, fontSize: 'clamp(21px, 2.3vw, 30px)', letterSpacing: '-0.02em', lineHeight: 1.22 }}>
-                  <p style={{ color: INK, ...line(1) }}>Boligforvaltning ser komplisert ut.</p>
-                  <p className="mt-1.5" style={{ color: muted, ...line(2) }}>Egentlig er det <span style={{ color: INK }}>den samme prosessen</span> om og om igjen.</p>
-                </div>
+                {/* lead — hero */}
+                <h2 className="mt-7 tracking-[-0.032em] leading-[1.12]" style={{ ...FH, fontWeight: 600, fontSize: 'clamp(27px, 3.2vw, 40px)', color: INK }}>
+                  <span className="block" style={line(1)}>Boligforvaltning ser komplisert ut.</span>
+                  <span className="block mt-1" style={line(2)}>Egentlig er det den samme prosessen om og om igjen.</span>
+                </h2>
 
                 {/* prosess-steg */}
-                <p className="mt-7 text-[14.5px] sm:text-[16px] font-medium leading-[1.7]" style={{ ...F, letterSpacing: '0.005em', ...line(3) }}>
-                  {STEG.map((s, i) => (
-                    <span key={s} className="whitespace-nowrap">
-                      <span style={{ color: 'rgba(28,24,20,0.9)' }}>{s}</span><span style={{ color: ACL }}>.</span>{i !== STEG.length - 1 ? '\u00A0\u00A0' : ''}
-                    </span>
-                  ))}
+                <p className="mt-9 text-[15px] sm:text-[17px] leading-[1.7]" style={{ ...F, color: INK, fontWeight: 500, letterSpacing: '0.004em', ...line(3) }}>
+                  Annonsering. Visning. Kontrakt. Depositum. Innflytting. Husleie. Vedlikehold.
                 </p>
-                <p className="mt-3 text-[14.5px] sm:text-[16px] leading-[1.6]" style={{ ...F, color: muted, ...line(4) }}>
+                <p className="mt-2 text-[15px] sm:text-[17px] leading-[1.6]" style={{ ...F, color: body, ...line(4) }}>
                   De samme stegene gjentas for hver bolig.
                 </p>
 
-                {/* tradisjonell proptech */}
-                <p className="mt-7 text-[14.5px] sm:text-[16px] leading-[1.65] max-w-[600px]" style={{ ...F, color: muted, ...line(5) }}>
-                  Tradisjonell proptech har digitalisert verktøyene: flere moduler, flere funksjoner, flere steder å klikke.
+                {/* problem */}
+                <p className="mt-9 text-[15px] sm:text-[17px] leading-[1.62]" style={{ ...F, color: body, ...line(5) }}>
+                  Tradisjonell proptech har digitalisert verktøyene — flere moduler, flere funksjoner, flere steder å klikke.
+                </p>
+                <p className="mt-4 text-[15px] sm:text-[17px] leading-[1.55]" style={{ ...F, color: body, ...line(6) }}>
+                  Men brukerne ønsker seg ikke flere verktøy. <span style={{ color: INK, fontWeight: 600 }}>De ønsker at arbeidet blir gjort.</span>
                 </p>
 
-                {/* vendepunkt */}
-                <p className="mt-6 text-[15.5px] sm:text-[17.5px] leading-[1.5] max-w-[560px]" style={{ ...F, ...line(6) }}>
-                  <span style={{ color: muted }}>Men brukerne ønsker seg ikke flere verktøy. </span>
-                  <span style={{ color: INK, fontWeight: 600 }}>De ønsker at arbeidet blir gjort.</span>
+                {/* løsning — nøkkelsetning */}
+                <p className="mt-10 tracking-[-0.026em] leading-[1.14]" style={{ ...FH, fontWeight: 600, fontSize: 'clamp(24px, 2.9vw, 36px)', color: INK, ...line(7) }}>
+                  Derfor bygde vi DigiHome som en <span style={{ color: ACL }}>motor</span> for boligforvaltning.
                 </p>
-
-                {/* nøkkelsetning */}
-                <p className="mt-8 tracking-[-0.02em] leading-[1.18] max-w-[640px]" style={{ ...FH, fontWeight: 600, fontSize: 'clamp(20px, 2.2vw, 28px)', color: INK, ...line(7) }}>
-                  Derfor bygde vi DigiHome som en <span style={{ color: ACL, textShadow: `0 0 40px ${ACL}3d` }}>motor</span> for boligforvaltning.
-                </p>
-
-                {/* hva systemet gjør */}
-                <p className="mt-5 text-[14.5px] sm:text-[16px] leading-[1.65] max-w-[620px]" style={{ ...F, color: muted, ...line(8) }}>
-                  Systemet <span style={{ color: INK }}>holder oversikt</span>, <span style={{ color: INK }}>foreslår neste steg</span>, <span style={{ color: INK }}>forbereder arbeidet</span> og <span style={{ color: INK }}>utfører</span> det som kan automatiseres.
+                <p className="mt-5 text-[15px] sm:text-[17px] leading-[1.6]" style={{ ...F, color: body, ...line(8) }}>
+                  Systemet holder oversikt, foreslår neste steg, forbereder arbeidet og utfører det som kan automatiseres.
                 </p>
 
                 {/* payoff */}
-                <p className="mt-8 tracking-[-0.022em] leading-[1.14]" style={{ ...FH, fontWeight: 600, fontSize: 'clamp(22px, 2.5vw, 32px)', color: INK, ...line(9) }}>
+                <p className="mt-10 tracking-[-0.028em] leading-[1.08]" style={{ ...FH, fontWeight: 600, fontSize: 'clamp(25px, 3.1vw, 38px)', color: INK, ...line(9) }}>
                   Mennesket har kontroll. <span style={{ color: ACL }}>Systemet gjør jobben.</span>
                 </p>
 
-                {/* signatur — grunnlegger bak manifestet */}
-                <div className="flex items-center gap-4 mt-10" style={line(10)}>
-                  <div className="w-[54px] h-[54px] rounded-full overflow-hidden shrink-0" style={{ boxShadow: '0 10px 26px rgba(20,15,10,0.18)', border: '1px solid rgba(20,15,10,0.07)' }}>
+                {/* signatur */}
+                <div className="flex items-center gap-3.5 mt-12" style={line(10)}>
+                  <div className="w-[50px] h-[50px] rounded-full overflow-hidden shrink-0" style={{ boxShadow: '0 8px 22px rgba(20,15,10,0.16)', border: '1px solid rgba(20,15,10,0.06)' }}>
                     <img src="/team/martin-kviteberg.jpg" alt="Martin C. Kviteberg" className="w-full h-full object-cover" style={{ objectPosition: 'center', transform: 'scale(2.6)', transformOrigin: '50% 24%' }} />
                   </div>
                   <div className="leading-tight">
-                    <p className="text-[14.5px] font-semibold tracking-[-0.01em]" style={{ ...F, color: INK }}>Martin C. Kviteberg</p>
-                    <p className="text-[12px] mt-0.5" style={{ ...F, color: 'rgba(40,30,22,0.55)' }}>CTO &amp; Medgründer</p>
+                    <p className="text-[14px] font-semibold tracking-[-0.01em]" style={{ ...F, color: INK }}>Martin C. Kviteberg</p>
+                    <p className="text-[12px] mt-0.5" style={{ ...F, color: 'rgba(28,22,16,0.5)' }}>CTO &amp; Medgründer</p>
                   </div>
                 </div>
               </>
