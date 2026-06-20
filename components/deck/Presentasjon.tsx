@@ -5383,7 +5383,7 @@ const SVisionIntro = (p: any) => {
                 {/* signatur */}
                 <div className="flex items-center gap-3.5 mt-12" style={line(5)}>
                   <div className="w-[48px] h-[48px] rounded-full overflow-hidden shrink-0" style={{ boxShadow: '0 8px 22px rgba(20,15,10,0.16)', border: '1px solid rgba(20,15,10,0.06)' }}>
-                    <img src="/team/martin-kviteberg.jpg" alt="Martin C. Kviteberg" className="w-full h-full object-cover" style={{ objectPosition: 'center', transform: 'scale(2.75)', transformOrigin: '50% 33%' }} />
+                    <img src="/team/martin-kviteberg.jpg" alt="Martin C. Kviteberg" className="w-full h-full object-cover" style={{ objectPosition: 'center', transform: 'scale(3.0)', transformOrigin: '50% 28%' }} />
                   </div>
                   <div className="leading-tight">
                     <p className="text-[13.5px] font-semibold tracking-[-0.01em]" style={{ ...F, color: INK }}>Martin C. Kviteberg</p>
@@ -5432,9 +5432,9 @@ const SFraVerktoyTilMotor = (p: any) => {
 
         {/* header */}
         <div className="text-center mb-14 sm:mb-20">
-          <span className="block text-[11px] font-bold uppercase tracking-[0.4em]" style={{ ...F, color: P, ...rise(0) }}>Problemet og løsningen</span>
+          <span className="block text-[10px] font-bold uppercase tracking-[0.46em]" style={{ ...F, color: INK, ...rise(0) }}>Problemet og løsningen</span>
           <h2 className="mt-6 tracking-[-0.045em] leading-[0.98]" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(40px, 5.4vw, 74px)', color: INK, ...rise(1) }}>
-            Fra verktøy til <span style={{ color: P }}>motor</span>.
+            Fra verktøy til motor.
           </h2>
         </div>
 
@@ -5475,7 +5475,7 @@ const SFraVerktoyTilMotor = (p: any) => {
         {/* innsikt — kjernebudskap (slått sammen fra «Forskjellen fra tradisjonell software») */}
         <div className="text-center mt-16 sm:mt-24 max-w-[820px] mx-auto" style={rise(7)}>
           <p className="leading-[1.5]" style={{ ...F, fontSize: 'clamp(16px, 1.55vw, 22px)', color: INK }}>
-            Forskjellen er ikke antall funksjoner — men at systemet selv vet hva som er <span style={{ color: P, fontWeight: 600, whiteSpace: 'nowrap' }}>neste steg</span>, og fører deg gjennom arbeidet.
+            Forskjellen er ikke antall funksjoner — men at systemet selv vet hva som er <span style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>neste steg</span>, og fører deg gjennom arbeidet.
           </p>
         </div>
 
