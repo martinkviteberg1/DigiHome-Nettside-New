@@ -505,9 +505,10 @@ const STeam = (p: any) => {
       ],
     },
     {
-      name: 'Martin Kviteberg',
-      role: 'Teknisk sjef · CTO',
-      img: '/team-martin.webp',
+      name: 'Martin C. Kviteberg',
+      role: 'Teknisk sjef · CTO · Medgründer',
+      img: '/team/martin-kviteberg.jpg',
+      imgStyle: { objectPosition: 'center', transform: 'scale(2.6)', transformOrigin: '50% 24%' },
       lead: 'Gründer med exit fra Adonis AS. Startet Bnbspesialisten — en av Norges tre første korttidsforvaltere.',
       bullets: [
         'Dekker tech, automatisering, drift og forvaltning.',
@@ -566,7 +567,7 @@ const STeam = (p: any) => {
             {/* Portrait */}
             <div className="px-7 pt-7 pb-5 flex items-start justify-between">
               <div className="w-[88px] h-[88px] sm:w-[104px] sm:h-[104px] rounded-full overflow-hidden ring-1 ring-[#eceae3]" style={{ boxShadow: '0 6px 22px rgba(20,15,10,0.10)' }}>
-                <img src={m.img} alt={m.name} className="w-full h-full object-cover object-top" />
+                <img src={m.img} alt={m.name} className="w-full h-full object-cover" style={{ objectPosition: 'top', ...(m.imgStyle || {}) }} />
               </div>
               <span className="text-[9.5px] font-bold tabular-nums tracking-[0.18em] text-[#b5aa98] mt-1.5" style={F}>0{i + 1}</span>
             </div>
