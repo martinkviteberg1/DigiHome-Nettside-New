@@ -12,8 +12,8 @@ const F = { fontFamily: "var(--font-body), 'ABC Diatype', -apple-system, BlinkMa
 const FH = { fontFamily: "var(--font-heading), 'PP Right Grotesk', -apple-system, BlinkMacSystemFont, sans-serif" };
 const P = '#d298ff'; // accent (merkevare-lilla)
 
-function Logo({ light, className = '' }: any) {
-  return <img src={light ? '/deck-logo-light.svg' : '/deck-logo-dark.svg'} alt="DigiHome" className={`h-6 ${className}`} />;
+function Logo({ light, className = '', style }: any) {
+  return <img src={light ? '/deck-logo-light.svg' : '/deck-logo-dark.svg'} alt="DigiHome" className={`h-6 ${className}`} style={style} />;
 }
 
 /* Subtle dot-grid background — matches landing page aesthetic */
@@ -34,10 +34,11 @@ function DotGrid({ maskCenter = '50% 35%', opacity = 0.45 }: { maskCenter?: stri
 /* Tiny blurred LQIP (low-quality image placeholder) for Bergen aerial — shows instantly */
 const BERGEN_LQIP = 'data:image/webp;base64,UklGRqwAAABXRUJQVlA4IKAAAAAwBgCdASooAB4APx16slGtKCSitVgIAaAjiWIAtvudAcsf5qYdI6g/JjyJE/Kcq9KnuOzttNM+LUcAAP5UZlm0+0bEnzBpjiIOcCUb4DCWhBzj6hgD9xp0SCq6OLdVTkhUHVGWsmkcXLeJm8Ve2QXlYYDQk8F/nQFWznJGfC6uEXPq/IFeguJ7iLUJdo9TgKAhojg8rVuzznWrH+PYGAAA';
 
-function SlideFrame({ children, bg, img, overlay, slideNum, total }: any) {
+function SlideFrame({ children, bg, img, overlay, slideNum, total, revealLight }: any) {
   const isImg = !!img;
   const isDark = bg === 'dark' || isImg;
   const isBergen = img === '/bergen-aerial.webp';
+  const useReveal = revealLight !== undefined;
   return (
     <div className="absolute inset-0 overflow-y-auto overflow-x-hidden no-scrollbar" style={{ background: bg === 'dark' ? '#0c0c0c' : bg === 'beige' ? '#f7f5f2' : '#fff' }}>
       {isImg && (
@@ -54,9 +55,26 @@ function SlideFrame({ children, bg, img, overlay, slideNum, total }: any) {
           <div className="absolute inset-0" style={{ background: overlay || 'linear-gradient(to bottom, rgba(0,0,0,0.5), rgba(0,0,0,0.75))' }} />
         </>
       )}
-      {bg === 'dark' && !isImg && <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_30%_20%,rgba(210,152,255,0.1),transparent_50%)]" />}
-      <div className="absolute top-4 left-5 sm:top-7 sm:left-10 z-20"><Logo light={isDark} className="h-5 sm:h-6" /></div>
-      <div className="absolute top-4 right-5 sm:top-7 sm:right-10 z-20 text-[10px] sm:text-[11px] font-medium tracking-wider" style={{ color: isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)' }}>{slideNum}/{total}</div>
+      {bg === 'dark' && !isImg && <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_30%_20%,rgba(210,152,255,0.1),transparent_50%)]" style={useReveal ? { opacity: revealLight ? 0 : 1, transition: 'opacity 1.2s ease' } : undefined} />}
+      {/* Lights-on warm reveal (optional, smoothly crossfades dark→warm light) */}
+      {useReveal && (
+        <div aria-hidden="true" className="absolute inset-0 pointer-events-none" style={{
+          opacity: revealLight ? 1 : 0,
+          transition: 'opacity 1.35s cubic-bezier(0.22,1,0.36,1)',
+          background: 'radial-gradient(ellipse at 50% 38%, #faf6ef 0%, #f3ebde 56%, #e9dfcf 100%)',
+        }} />
+      )}
+      <div className="absolute top-4 left-5 sm:top-7 sm:left-10 z-20">
+        {useReveal ? (
+          <div className="relative">
+            <Logo light={true} className="h-5 sm:h-6" style={{ opacity: revealLight ? 0 : 1, transition: 'opacity 1.2s ease' }} />
+            <Logo light={false} className="h-5 sm:h-6 absolute inset-0" style={{ opacity: revealLight ? 1 : 0, transition: 'opacity 1.2s ease' }} />
+          </div>
+        ) : (
+          <Logo light={isDark} className="h-5 sm:h-6" />
+        )}
+      </div>
+      <div className="absolute top-4 right-5 sm:top-7 sm:right-10 z-20 text-[10px] sm:text-[11px] font-medium tracking-wider" style={{ color: useReveal ? (revealLight ? 'rgba(0,0,0,0.22)' : 'rgba(255,255,255,0.2)') : (isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)'), transition: useReveal ? 'color 1.2s ease' : undefined }}>{slideNum}/{total}</div>
       <div className="relative z-10 min-h-full flex items-start pt-16 sm:pt-14 pb-10 sm:pb-10">{children}</div>
     </div>
   );
@@ -5265,6 +5283,8 @@ const SVisionIntro = (p: any) => {
   const isPdf = !!p.pdfMode;
   const show = active || isPdf;
   const AC = '#d298ff';
+  const ACL = '#7c3aed';   // dypere lilla — leses godt på varm lys bakgrunn
+  const INK = '#1c1815';   // varm mørk «ink» til visjon-teksten
 
   const [phase, setPhase] = useState<'hook' | 'vision'>(isPdf ? 'vision' : 'hook');
   useEffect(() => {
@@ -5277,6 +5297,11 @@ const SVisionIntro = (p: any) => {
 
   const onVision = phase === 'vision';
 
+  // meld fra til deck-chrome når lyset er slått på (lys bakgrunn)
+  useEffect(() => {
+    p.onLight?.(active && onVision && !isPdf);
+  }, [active, onVision, isPdf]);
+
   const beat = (target: 'hook' | 'vision') => ({
     opacity: phase === target ? 1 : 0,
     transform: phase === target ? 'translateY(0) scale(1)' : (target === 'hook' ? 'translateY(-40px) scale(0.97)' : 'translateY(40px) scale(0.97)'),
@@ -5286,25 +5311,36 @@ const SVisionIntro = (p: any) => {
   });
 
   return (
-  <SlideFrame bg="dark" {...p}>
+  <SlideFrame bg="dark" {...p} revealLight={onVision}>
     <style>{`
       @keyframes viReveal { from { opacity: 0; transform: translateY(24px); filter: blur(14px); } 55% { filter: blur(0.5px); } to { opacity: 1; transform: translateY(0); filter: blur(0); } }
       @keyframes viKen { 0% { transform: scale(1) translateY(8px); } 100% { transform: scale(1.04) translateY(-8px); } }
     `}</style>
 
-    {/* ambient */}
-    <div aria-hidden="true" className="absolute inset-0 pointer-events-none overflow-hidden">
+    {/* ── MØRK AMBIENT (krok) — fader ut når lyset slås på ── */}
+    <div aria-hidden="true" className="absolute inset-0 pointer-events-none overflow-hidden" style={{ opacity: onVision ? 0 : 1, transition: 'opacity 1.1s ease' }}>
       <div className="absolute left-1/2 top-1/2 w-[60%] h-[62%] rounded-full"
-           style={{ background: `radial-gradient(ellipse, ${AC}1f 0%, transparent 70%)`, filter: 'blur(54px)', transform: 'translate(-50%,-50%)',
-                    opacity: onVision ? 0.5 : 1, transition: 'opacity 1.2s ease' }} />
+           style={{ background: `radial-gradient(ellipse, ${AC}1f 0%, transparent 70%)`, filter: 'blur(54px)', transform: 'translate(-50%,-50%)' }} />
     </div>
-    <DotGrid maskCenter="50% 45%" opacity={0.05} />
+    <div aria-hidden="true" className="absolute inset-0 pointer-events-none" style={{ opacity: onVision ? 0 : 1, transition: 'opacity 1.1s ease' }}>
+      <DotGrid maskCenter="50% 45%" opacity={0.05} />
+    </div>
     <div aria-hidden="true" className="absolute inset-0 pointer-events-none"
-         style={{ background: 'radial-gradient(ellipse at 50% 46%, transparent 52%, rgba(0,0,0,0.5) 100%)' }} />
+         style={{ background: 'radial-gradient(ellipse at 50% 46%, transparent 52%, rgba(0,0,0,0.5) 100%)', opacity: onVision ? 0 : 1, transition: 'opacity 1.1s ease' }} />
+
+    {/* ── VARM LYS AMBIENT (visjon) — toner inn med lyset ── */}
+    <div aria-hidden="true" className="absolute inset-0 pointer-events-none overflow-hidden" style={{ opacity: onVision ? 1 : 0, transition: 'opacity 1.5s ease 0.15s' }}>
+      <div className="absolute -top-[12%] right-[-8%] w-[52%] h-[60%] rounded-full"
+           style={{ background: `radial-gradient(ellipse, ${ACL}14 0%, transparent 70%)`, filter: 'blur(72px)' }} />
+      <div className="absolute bottom-[-18%] left-[-10%] w-[56%] h-[58%] rounded-full"
+           style={{ background: 'radial-gradient(ellipse, rgba(214,170,110,0.16) 0%, transparent 70%)', filter: 'blur(82px)' }} />
+    </div>
+    <div aria-hidden="true" className="absolute inset-0 pointer-events-none"
+         style={{ background: 'radial-gradient(ellipse at 50% 44%, transparent 56%, rgba(120,95,60,0.13) 100%)', opacity: onVision ? 1 : 0, transition: 'opacity 1.5s ease 0.15s' }} />
 
     <div className="absolute inset-0 z-10">
 
-      {/* ── KROK ── */}
+      {/* ── KROK (mørk, kinematisk) ── */}
       <div className="absolute inset-0 flex items-center justify-center px-6 text-center" style={beat('hook')}>
         <h2 className="tracking-[-0.04em] leading-[0.95]" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(48px, 6.6vw, 92px)',
               animation: (active && phase === 'hook') ? 'viKen 10s cubic-bezier(0.33,0,0.2,1) both' : undefined }}>
@@ -5316,36 +5352,36 @@ const SVisionIntro = (p: any) => {
         </h2>
       </div>
 
-      {/* ── DIGIHOME FORKLART · ren tekst (keynote) ── */}
+      {/* ── DIGIHOME FORKLART · ren tekst, varm editorial (lyset slått på) ── */}
       <div className="absolute inset-0 flex items-center justify-center px-6 sm:px-10 py-12 overflow-y-auto no-scrollbar" style={beat('vision')}>
         <div className="w-full max-w-[880px] mx-auto">
           {(() => {
             const line = (i: number) => ({
-              animation: (active && onVision) ? `viReveal 1.1s cubic-bezier(0.22,1,0.36,1) ${0.12 + i * 0.2}s both` : undefined,
+              animation: (active && onVision) ? `viReveal 1.1s cubic-bezier(0.22,1,0.36,1) ${0.35 + i * 0.2}s both` : undefined,
               opacity: show ? undefined : 0,
             });
             return (
               <>
                 {/* eyebrow */}
-                <span className="text-[11px] font-semibold uppercase tracking-[0.32em] block" style={{ ...F, color: 'rgba(255,255,255,0.4)', ...line(0) }}>Idéen bak DigiHome</span>
+                <span className="text-[11px] font-semibold uppercase tracking-[0.32em] block" style={{ ...F, color: 'rgba(40,30,22,0.5)', ...line(0) }}>Idéen bak DigiHome</span>
 
                 {/* stor ledetekst */}
                 <h2 className="tracking-[-0.035em] leading-[1.05] mt-8" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(32px, 4.4vw, 60px)' }}>
-                  <span className="block" style={{ color: 'rgba(255,255,255,0.5)', ...line(1) }}>Programvare har vært et verktøy.</span>
-                  <span className="block" style={{ color: '#fff', ...line(2) }}>DigiHome er en <span style={{ color: AC, textShadow: `0 0 60px ${AC}44` }}>motor.</span></span>
+                  <span className="block" style={{ color: 'rgba(40,32,24,0.42)', ...line(1) }}>Programvare har vært et verktøy.</span>
+                  <span className="block" style={{ color: INK, ...line(2) }}>DigiHome er en <span style={{ color: ACL }}>motor.</span></span>
                 </h2>
 
                 {/* brødtekst — ren prosa */}
-                <p className="text-[16px] sm:text-[20px] font-normal leading-[1.6] mt-10 max-w-[740px]" style={{ ...F, color: 'rgba(255,255,255,0.6)', ...line(3) }}>
-                  Boligforvaltning ser ut som kaos, men er egentlig <span style={{ color: 'rgba(255,255,255,0.92)' }}>den samme prosessen — hver gang</span>. Annonsering, visning, kontrakt, depositum, innflytting, husleie og vedlikehold.
+                <p className="text-[16px] sm:text-[20px] font-normal leading-[1.6] mt-10 max-w-[740px]" style={{ ...F, color: 'rgba(42,34,27,0.66)', ...line(3) }}>
+                  Boligforvaltning ser ut som kaos, men er egentlig <span style={{ color: 'rgba(24,20,16,0.94)' }}>den samme prosessen — hver gang</span>. Annonsering, visning, kontrakt, depositum, innflytting, husleie og vedlikehold.
                 </p>
-                <p className="text-[16px] sm:text-[20px] font-normal leading-[1.6] mt-6 max-w-[740px]" style={{ ...F, color: 'rgba(255,255,255,0.6)', ...line(4) }}>
-                  Faste, repeterbare steg er skapt for å drives av seg selv. Så vi bygde programvaren som <span style={{ color: 'rgba(255,255,255,0.92)' }}>forstår, forbereder og utfører</span> arbeidet — bolig for bolig.
+                <p className="text-[16px] sm:text-[20px] font-normal leading-[1.6] mt-6 max-w-[740px]" style={{ ...F, color: 'rgba(42,34,27,0.66)', ...line(4) }}>
+                  Faste, repeterbare steg er skapt for å drives av seg selv. Så vi bygde programvaren som <span style={{ color: 'rgba(24,20,16,0.94)' }}>forstår, forbereder og utfører</span> arbeidet — bolig for bolig.
                 </p>
 
                 {/* avslutning */}
-                <p className="tracking-[-0.022em] leading-[1.12] mt-12" style={{ ...FH, fontWeight: 600, fontSize: 'clamp(22px, 2.6vw, 34px)', color: '#fff', ...line(5) }}>
-                  Mennesket har kontroll. <span style={{ color: AC }}>Systemet gjør jobben.</span>
+                <p className="tracking-[-0.022em] leading-[1.12] mt-12" style={{ ...FH, fontWeight: 600, fontSize: 'clamp(22px, 2.6vw, 34px)', color: INK, ...line(5) }}>
+                  Mennesket har kontroll. <span style={{ color: ACL }}>Systemet gjør jobben.</span>
                 </p>
               </>
             );
@@ -5490,12 +5526,16 @@ const SLIDES = [
 export default function Presentasjon() {
   const [c, setC] = useState(0);
   const [navLocked, setNavLocked] = useState(false);
+  const [chromeLight, setChromeLight] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState(0);
   const [exportStage, setExportStage] = useState<'idle' | 'preparing' | 'capturing' | 'building' | 'uploading' | 'done'>('idle');
   const [cachedPdf, setCachedPdf] = useState<{ exists: boolean; size?: number; updated_at?: string } | null>(null);
   const next = useCallback(() => setC((v: any) => Math.min(v + 1, SLIDES.length - 1)), []);
   const prev = useCallback(() => setC((v: any) => Math.max(v - 1, 0)), []);
+
+  // Slide 2 (visjon) toner til lys bakgrunn — la chrome (pille/teller) tilpasse seg
+  useEffect(() => { if (c !== 1) setChromeLight(false); }, [c]);
 
   const handleS2Complete = useCallback(() => {}, []);
 
@@ -5622,7 +5662,7 @@ export default function Presentasjon() {
       onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
       {SLIDES.map((Slide: any, i: number) => (
         <div key={i} className={`absolute inset-0 overflow-hidden transition-all duration-700 ease-[cubic-bezier(0.4,0,0.2,1)] ${i === c ? 'opacity-100 scale-100' : i < c ? 'opacity-0 scale-[0.96]' : 'opacity-0 scale-[1.04]'}`} style={{ pointerEvents: i === c ? 'auto' : 'none', visibility: Math.abs(i - c) <= 1 ? 'visible' : 'hidden' }}>
-          <Slide slideNum={i + 1} total={SLIDES.length} isActive={i === c} onAnimationComplete={i === 1 ? handleS2Complete : undefined} />
+          <Slide slideNum={i + 1} total={SLIDES.length} isActive={i === c} onLight={i === 1 ? setChromeLight : undefined} onAnimationComplete={i === 1 ? handleS2Complete : undefined} />
         </div>
       ))}
 
@@ -5671,14 +5711,14 @@ export default function Presentasjon() {
           data-testid="download-pdf-btn"
           className="h-9 px-3.5 rounded-full flex items-center gap-2 text-[11.5px] font-semibold tracking-wide transition-all duration-300 hover:scale-[1.03] active:scale-[0.98] disabled:cursor-wait"
           style={{
-            background: exporting ? 'rgba(210,152,255,0.92)' : 'rgba(255,255,255,0.08)',
+            background: exporting ? 'rgba(210,152,255,0.92)' : (chromeLight ? 'rgba(28,22,16,0.05)' : 'rgba(255,255,255,0.08)'),
             backdropFilter: 'blur(16px)',
             WebkitBackdropFilter: 'blur(16px)',
-            border: `1px solid ${exporting ? 'rgba(210,152,255,0.45)' : 'rgba(255,255,255,0.14)'}`,
-            color: 'rgba(255,255,255,0.92)',
+            border: `1px solid ${exporting ? 'rgba(210,152,255,0.45)' : (chromeLight ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,255,0.14)')}`,
+            color: exporting ? 'rgba(255,255,255,0.92)' : (chromeLight ? 'rgba(28,22,16,0.9)' : 'rgba(255,255,255,0.92)'),
             boxShadow: exporting
               ? '0 8px 28px -8px rgba(210,152,255,0.5)'
-              : '0 8px 24px -10px rgba(0,0,0,0.4)',
+              : (chromeLight ? '0 8px 24px -10px rgba(0,0,0,0.22)' : '0 8px 24px -10px rgba(0,0,0,0.4)'),
           }}>
           {exporting ? (
             <>
@@ -5708,12 +5748,12 @@ export default function Presentasjon() {
             title={`Cached PDF — oppdatert ${cachedPdf.updated_at ? new Date(cachedPdf.updated_at).toLocaleString('no-NO') : 'tidligere'}. Klikk for å oppdatere.`}
             className="h-9 w-9 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-[1.06] active:scale-[0.95]"
             style={{
-              background: 'rgba(255,255,255,0.06)',
+              background: chromeLight ? 'rgba(28,22,16,0.05)' : 'rgba(255,255,255,0.06)',
               backdropFilter: 'blur(16px)',
               WebkitBackdropFilter: 'blur(16px)',
-              border: '1px solid rgba(255,255,255,0.12)',
-              color: 'rgba(255,255,255,0.7)',
-              boxShadow: '0 8px 24px -10px rgba(0,0,0,0.4)',
+              border: `1px solid ${chromeLight ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,255,0.12)'}`,
+              color: chromeLight ? 'rgba(28,22,16,0.75)' : 'rgba(255,255,255,0.7)',
+              boxShadow: chromeLight ? '0 8px 24px -10px rgba(0,0,0,0.22)' : '0 8px 24px -10px rgba(0,0,0,0.4)',
             }}>
             <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21 12a9 9 0 1 1-3-6.7" />
