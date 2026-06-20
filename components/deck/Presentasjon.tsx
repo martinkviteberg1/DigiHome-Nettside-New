@@ -5619,18 +5619,32 @@ const SLIDES = [
 export default function Presentasjon() {
   const [c, setC] = useState(0);
   const [navLocked, setNavLocked] = useState(false);
+  const [s2Locked, setS2Locked] = useState(false);
   const [chromeLight, setChromeLight] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState(0);
   const [exportStage, setExportStage] = useState<'idle' | 'preparing' | 'capturing' | 'building' | 'uploading' | 'done'>('idle');
   const [cachedPdf, setCachedPdf] = useState<{ exists: boolean; size?: number; updated_at?: string } | null>(null);
-  const next = useCallback(() => setC((v: any) => Math.min(v + 1, SLIDES.length - 1)), []);
+  const next = useCallback(() => setC((v: any) => {
+    if (v === 1 && s2Locked) return v;            // Slide 2: lås fremover til animasjonen er ferdig
+    return Math.min(v + 1, SLIDES.length - 1);
+  }), [s2Locked]);
   const prev = useCallback(() => setC((v: any) => Math.max(v - 1, 0)), []);
 
   // Slide 2 (visjon) toner til lys bakgrunn — la chrome (pille/teller) tilpasse seg
   useEffect(() => { if (c !== 1 && c !== 2) setChromeLight(false); }, [c]);
 
-  const handleS2Complete = useCallback(() => {}, []);
+  // Slide 2: lås fremover-navigasjon til hele tekst-animasjonen er spilt ferdig
+  useEffect(() => {
+    if (c === 1) {
+      setS2Locked(true);
+      const t = setTimeout(() => setS2Locked(false), 6400);
+      return () => clearTimeout(t);
+    }
+    setS2Locked(false);
+  }, [c]);
+
+  const handleS2Complete = useCallback(() => setS2Locked(false), []);
 
   // Ved load: sjekk om cached PDF finnes på serveren
   useEffect(() => {
@@ -5773,7 +5787,7 @@ export default function Presentasjon() {
       </button>
       <button
         onClick={next}
-        disabled={c === SLIDES.length - 1}
+        disabled={c === SLIDES.length - 1 || (c === 1 && s2Locked)}
         aria-label="Neste slide"
         className="group fixed right-0 top-0 bottom-0 w-[18%] z-40 cursor-e-resize disabled:cursor-not-allowed disabled:opacity-0 transition-opacity"
         style={{ background: 'transparent' }}>
