@@ -5276,12 +5276,14 @@ const SVisionIntro = (p: any) => {
   }, [active, isPdf]);
 
   const onVision = phase === 'vision';
-  const vAnim = active && !isPdf && onVision;
 
-  // syklus-geometri — ekte sirkel
-  const SZ = 460, cx = 230, cy = 230, rRing = 132, rLabel = 158;
-  const circ = 2 * Math.PI * rRing;
-  const T = 17; // orbit-periode (sek)
+  const FLOW_STEPS = ['Annonsering', 'Visning', 'Kontrakt', 'Depositum', 'Innflytting', 'Husleie', 'Vedlikehold'];
+  const DH_ACTIONS = [
+    { v: 'Forstår', d: 'hva som må gjøres' },
+    { v: 'Foreslår', d: 'neste steg' },
+    { v: 'Forbereder', d: 'arbeidet' },
+    { v: 'Utfører', d: 'det som kan automatiseres' },
+  ];
 
   const beat = (target: 'hook' | 'vision') => ({
     opacity: phase === target ? 1 : 0,
@@ -5295,11 +5297,6 @@ const SVisionIntro = (p: any) => {
   <SlideFrame bg="dark" {...p}>
     <style>{`
       @keyframes viReveal { from { opacity: 0; transform: translateY(24px); filter: blur(14px); } 55% { filter: blur(0.5px); } to { opacity: 1; transform: translateY(0); filter: blur(0); } }
-      @keyframes viFade { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
-      @keyframes viRingDraw { from { stroke-dashoffset: ${circ}; } to { stroke-dashoffset: 0; } }
-      @keyframes viPop { from { opacity: 0; transform: scale(0); } to { opacity: 1; transform: scale(1); } }
-      @keyframes viSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-      @keyframes viNodeGlow { 0% { r: 6.5; opacity: 1; } 10% { r: 3.5; opacity: 0.5; } 100% { r: 3.5; opacity: 0.5; } }
       @keyframes viKen { 0% { transform: scale(1) translateY(8px); } 100% { transform: scale(1.04) translateY(-8px); } }
     `}</style>
 
@@ -5327,93 +5324,62 @@ const SVisionIntro = (p: any) => {
         </h2>
       </div>
 
-      {/* ── VISJON ── */}
-      <div className="absolute inset-0 flex items-center justify-center px-6" style={beat('vision')}>
-        <div className="w-full max-w-[1160px] mx-auto px-2 sm:px-6">
-          <div className="grid grid-cols-1 md:grid-cols-[1.05fr_0.95fr] gap-10 md:gap-6 items-center">
+      {/* ── DIGIHOME FORKLART (statisk, forklarende) ── */}
+      <div className="absolute inset-0 flex items-center justify-center px-6 py-10 overflow-y-auto no-scrollbar" style={beat('vision')}>
+        <div className="w-full max-w-[1080px] mx-auto">
 
-            {/* venstre: visjon */}
+          {/* header */}
+          <span className="text-[11px] font-semibold uppercase tracking-[0.3em]" style={{ ...F, color: 'rgba(255,255,255,0.4)', display: 'block' }}>Idéen bak DigiHome</span>
+          <h2 className="tracking-[-0.035em] leading-[1.08] mt-4" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(26px, 3vw, 44px)' }}>
+            <span style={{ color: 'rgba(255,255,255,0.7)' }}>Programvare har vært verktøy. </span>
+            <span style={{ color: '#fff' }}>DigiHome er en </span>
+            <span style={{ color: AC }}>motor.</span>
+          </h2>
+          <p className="text-[14.5px] sm:text-[16px] font-normal leading-[1.6] mt-5 max-w-[780px]" style={{ ...F, color: 'rgba(255,255,255,0.58)' }}>
+            Neste generasjon programvare er ikke flere moduler å klikke seg gjennom, eller systemer som bare lagrer informasjon — men programvare som faktisk gjør jobben.
+          </p>
+
+          {/* to spalter */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-16 mt-10">
+
+            {/* venstre — repeterbare prosesser */}
             <div>
-              <span className="text-[11px] font-semibold uppercase tracking-[0.3em]"
-                    style={{ ...F, color: 'rgba(255,255,255,0.4)', display: 'block',
-                             animation: vAnim ? 'viFade 0.7s cubic-bezier(0.22,1,0.36,1) 0.2s both' : undefined, opacity: show ? undefined : 0 }}>
-                Idéen bak DigiHome
-              </span>
-
-              <div className="mt-7 space-y-1.5">
-                <p className="tracking-[-0.035em] leading-[1.08]" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(28px, 3.4vw, 50px)', color: 'rgba(255,255,255,0.8)',
-                     animation: vAnim ? 'viReveal 0.9s cubic-bezier(0.22,1,0.36,1) 0.4s both' : undefined, opacity: show ? undefined : 0 }}>
-                  Utleie er ikke kaos.
-                </p>
-                <p className="tracking-[-0.035em] leading-[1.08]" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(28px, 3.4vw, 50px)', color: '#fff',
-                     animation: vAnim ? 'viReveal 0.9s cubic-bezier(0.22,1,0.36,1) 0.7s both' : undefined, opacity: show ? undefined : 0 }}>
-                  Det er den samme prosessen — hver gang.
-                </p>
-                <p className="tracking-[-0.035em] leading-[1.08]" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(28px, 3.4vw, 50px)', color: AC, textShadow: `0 0 60px ${AC}33`,
-                     animation: vAnim ? 'viReveal 0.95s cubic-bezier(0.22,1,0.36,1) 1.05s both' : undefined, opacity: show ? undefined : 0 }}>
-                  Så vi bygde den til å drive seg selv.
-                </p>
-              </div>
-
-              <div className="h-px w-16 mt-9 origin-left"
-                   style={{ background: 'rgba(255,255,255,0.18)', animation: vAnim ? 'viFade 0.7s ease 1.5s both' : undefined, opacity: show ? undefined : 0 }} />
-              <p className="text-[14.5px] sm:text-[16.5px] font-normal leading-[1.6] mt-6 max-w-[430px]"
-                 style={{ ...F, color: 'rgba(255,255,255,0.58)',
-                          animation: vAnim ? 'viFade 0.9s cubic-bezier(0.22,1,0.36,1) 1.6s both' : undefined, opacity: show ? undefined : 0 }}>
-                <span style={{ color: 'rgba(255,255,255,0.92)', fontWeight: 500 }}>Visjonen er enkel:</span> en bolig som drifter seg selv — fra annonse til utbetaling.
+              <span className="text-[10.5px] font-semibold uppercase tracking-[0.22em]" style={{ ...F, color: 'rgba(255,255,255,0.42)', display: 'block' }}>Repeterbar av natur</span>
+              <p className="text-[14.5px] sm:text-[15.5px] font-normal leading-[1.6] mt-4" style={{ ...F, color: 'rgba(255,255,255,0.62)' }}>
+                Boligforvaltning består av <span style={{ color: 'rgba(255,255,255,0.92)' }}>repeterbare prosesser</span>. De samme stegene går igjen, bolig for bolig:
               </p>
+              <div className="flex flex-wrap gap-2 mt-5">
+                {FLOW_STEPS.map((s) => (
+                  <span key={s} className="text-[12.5px] font-medium rounded-full px-3 py-1.5" style={{ ...F, color: 'rgba(255,255,255,0.72)', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>{s}</span>
+                ))}
+              </div>
             </div>
 
-            {/* høyre: syklus-visual (ekte sirkel, kontinuerlig flyt) */}
-            <div className="relative flex items-center justify-center"
-                 style={{ animation: vAnim ? 'viFade 1s cubic-bezier(0.22,1,0.36,1) 0.6s both' : undefined, opacity: show ? undefined : 0 }}>
-              <svg viewBox={`0 0 ${SZ} ${SZ}`} className="w-full max-w-[400px]" style={{ overflow: 'visible' }}>
-                {/* bakgrunns-ring */}
-                <circle cx={cx} cy={cy} r={rRing} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="1" />
-                {/* tegnende aksent-ring */}
-                <circle cx={cx} cy={cy} r={rRing} fill="none" stroke={`${AC}5a`} strokeWidth="1.5" strokeLinecap="round"
-                        strokeDasharray={circ}
-                        style={{ strokeDashoffset: vAnim ? undefined : 0, transform: 'rotate(-90deg)', transformOrigin: `${cx}px ${cy}px`,
-                                 animation: vAnim ? 'viRingDraw 1.4s cubic-bezier(0.4,0,0.1,1) 0.8s both' : undefined }} />
-
-                {/* noder + etiketter — lyser i sekvens synket med prikken */}
-                {PM_STAGES.map((s, i) => {
-                  const ang = (-90 + i * (360 / PM_STAGES.length)) * Math.PI / 180;
-                  const nx = cx + rRing * Math.cos(ang);
-                  const ny = cy + rRing * Math.sin(ang);
-                  const lx = cx + rLabel * Math.cos(ang);
-                  const ly = cy + rLabel * Math.sin(ang);
-                  const cosv = Math.cos(ang);
-                  const anchor = Math.abs(cosv) < 0.34 ? 'middle' : (cosv > 0 ? 'start' : 'end');
-                  return (
-                    <g key={s} style={{ transformOrigin: `${nx}px ${ny}px`, animation: vAnim ? `viPop 0.5s cubic-bezier(0.34,1.56,0.64,1) ${1.1 + i * 0.09}s both` : undefined, opacity: show ? undefined : 0 }}>
-                      <circle cx={nx} cy={ny} r="3.5" fill={AC}
-                              style={{ animation: vAnim ? `viNodeGlow ${T}s linear ${2.3 + (i / PM_STAGES.length) * T}s infinite` : undefined }} />
-                      <text x={lx} y={ly} textAnchor={anchor} dominantBaseline="middle"
-                            style={{ fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: 500, fill: 'rgba(255,255,255,0.66)' }}>
-                        {s}
-                      </text>
-                    </g>
-                  );
-                })}
-
-                {/* flytende aksent-prikk (kontinuerlig syklus) */}
-                <g style={{ transformOrigin: `${cx}px ${cy}px`, animation: vAnim ? `viSpin ${T}s linear 2.3s infinite` : undefined }}>
-                  <circle cx={cx} cy={cy - rRing} r="11" fill={AC} opacity="0.2" />
-                  <circle cx={cx} cy={cy - rRing} r="4" fill={AC} style={{ filter: `drop-shadow(0 0 6px ${AC})` }} />
-                </g>
-
-                {/* senter */}
-                <text x={cx} y={cy - 8} textAnchor="middle" dominantBaseline="middle"
-                      style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontWeight: 600, letterSpacing: '0.22em', fill: 'rgba(255,255,255,0.4)' }}>
-                  SAMME SYKLUS
-                </text>
-                <text x={cx} y={cy + 14} textAnchor="middle" dominantBaseline="middle"
-                      style={{ fontFamily: 'var(--font-body)', fontSize: '15px', fontWeight: 500, fill: 'rgba(255,255,255,0.82)' }}>
-                  hver bolig, hver gang
-                </text>
-              </svg>
+            {/* høyre — slik jobber DigiHome */}
+            <div>
+              <span className="text-[10.5px] font-semibold uppercase tracking-[0.22em]" style={{ ...F, color: AC, display: 'block' }}>Slik jobber DigiHome</span>
+              <div className="mt-4 flex flex-col">
+                {DH_ACTIONS.map((a, i) => (
+                  <div key={a.v} className="flex items-start gap-3.5">
+                    <div className="flex flex-col items-center">
+                      <span className="shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-[12px] font-bold" style={{ ...F, color: AC, background: `${AC}1a`, border: `1px solid ${AC}40` }}>{i + 1}</span>
+                      {i < DH_ACTIONS.length - 1 && <span className="w-px" style={{ height: 16, background: 'rgba(255,255,255,0.14)', marginTop: 3, marginBottom: 3 }} />}
+                    </div>
+                    <div className="pt-1">
+                      <span className="text-[15.5px] sm:text-[16.5px] font-semibold tracking-[-0.01em]" style={{ ...FH, color: '#fff' }}>{a.v}</span>
+                      <span className="text-[13.5px] sm:text-[14px] font-normal ml-2" style={{ ...F, color: 'rgba(255,255,255,0.5)' }}>{a.d}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
+          </div>
+
+          {/* prinsipp */}
+          <div className="mt-10 pt-7" style={{ borderTop: '1px solid rgba(255,255,255,0.09)' }}>
+            <p className="tracking-[-0.018em]" style={{ ...FH, fontWeight: 600, fontSize: 'clamp(17px, 1.9vw, 22px)', color: 'rgba(255,255,255,0.95)' }}>
+              Mennesket har kontroll. <span style={{ color: AC }}>Systemet gjør jobben.</span>
+            </p>
           </div>
         </div>
       </div>
