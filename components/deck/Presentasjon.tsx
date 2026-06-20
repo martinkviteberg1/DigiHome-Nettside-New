@@ -5349,84 +5349,50 @@ const SVisionIntro = (p: any) => {
         </h2>
       </div>
 
-      {/* ── MANIFEST · DIGIHOME FORKLART (venstrejustert editorial) ── */}
-      <div className="absolute inset-0 flex items-center px-8 sm:px-14 lg:px-24 py-10 overflow-y-auto no-scrollbar" style={beat('vision')}>
-        <div className="w-full max-w-[1180px] mx-auto">
-          <div className="w-full">
+      {/* ── MANIFEST · DIGIHOME FORKLART (ren, flytende tekst) ── */}
+      <div className="absolute inset-0 flex items-center justify-center px-6 sm:px-10 py-10 overflow-y-auto no-scrollbar" style={beat('vision')}>
+        <div className="w-full max-w-[680px] mx-auto">
           {(() => {
             const line = (i: number) => ({
-              animation: (active && onVision) ? `viReveal 1.0s cubic-bezier(0.22,1,0.36,1) ${0.25 + i * 0.07}s both` : undefined,
+              animation: (active && onVision) ? `viReveal 1.0s cubic-bezier(0.22,1,0.36,1) ${0.28 + i * 0.12}s both` : undefined,
               opacity: show ? undefined : 0,
             });
-            const body = 'rgba(26,21,16,0.82)';
-            const label = 'rgba(28,22,16,0.4)';
             return (
               <>
                 {/* kicker */}
                 <span className="block text-[10.5px] font-semibold uppercase tracking-[0.36em]" style={{ ...F, color: ACL, ...line(0) }}>Idéen bak DigiHome</span>
 
-                {/* lead — headline + subline */}
-                <h2 className="mt-6 tracking-[-0.034em] leading-[1.02]" style={{ ...FH, fontWeight: 600, fontSize: 'clamp(30px, 3.7vw, 50px)', color: INK, ...line(1) }}>
-                  Boligforvaltning ser komplisert ut.
-                </h2>
-                <p className="mt-3.5 tracking-[-0.01em] leading-[1.3] max-w-[640px]" style={{ ...FH, fontWeight: 500, fontSize: 'clamp(18px, 1.9vw, 25px)', color: 'rgba(26,21,16,0.58)', ...line(2) }}>
-                  Egentlig er det <span style={{ color: INK }}>den samme prosessen</span> — om og om igjen.
-                </p>
-
-                {/* to spalter: i dag | med digihome */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-16 lg:gap-x-24 gap-y-10 mt-11">
-
-                  {/* venstre — slik er det i dag */}
-                  <div style={line(3)}>
-                    <div className="flex items-center gap-2.5 mb-5">
-                      <span className="h-[6px] w-[6px] rounded-full" style={{ background: 'rgba(26,21,16,0.32)' }} />
-                      <span className="text-[10px] font-semibold uppercase tracking-[0.28em]" style={{ ...F, color: label }}>Slik er det i dag</span>
-                    </div>
-                    <p className="text-[15.5px] sm:text-[16.5px] font-medium leading-[1.6]" style={{ ...F, color: INK }}>
-                      Annonsering. Visning. Kontrakt. Depositum. Innflytting. Husleie. Vedlikehold.
-                    </p>
-                    <p className="mt-3.5 text-[15px] sm:text-[16px] leading-[1.62]" style={{ ...F, color: body }}>
-                      De samme stegene gjentas for hver bolig. Tradisjonell proptech har bare digitalisert verktøyene — flere moduler, flere funksjoner, flere steder å klikke.
-                    </p>
-                    <p className="mt-3.5 text-[15px] sm:text-[16px] leading-[1.62]" style={{ ...F, color: body }}>
-                      Men brukerne ønsker seg ikke flere verktøy. <span style={{ color: INK, fontWeight: 600 }}>De ønsker at arbeidet blir gjort.</span>
-                    </p>
-                  </div>
-
-                  {/* høyre — med digihome */}
-                  <div style={line(4)}>
-                    <div className="flex items-center gap-2.5 mb-5">
-                      <span className="h-[6px] w-[6px] rounded-full" style={{ background: ACL }} />
-                      <span className="text-[10px] font-semibold uppercase tracking-[0.28em]" style={{ ...F, color: ACL }}>Med DigiHome</span>
-                    </div>
-                    <p className="tracking-[-0.018em] leading-[1.14]" style={{ ...FH, fontWeight: 600, fontSize: 'clamp(21px, 2.15vw, 29px)', color: INK }}>
-                      Derfor bygde vi DigiHome som en <span style={{ color: ACL }}>motor</span> for boligforvaltning.
-                    </p>
-                    <p className="mt-4 text-[15px] sm:text-[16px] leading-[1.62]" style={{ ...F, color: body }}>
-                      Systemet holder oversikt, foreslår neste steg, forbereder arbeidet og utfører det som kan automatiseres.
-                    </p>
-                  </div>
+                {/* manifest — ren, flytende prosa */}
+                <div className="mt-8 space-y-7" style={{ ...F, fontSize: 'clamp(17px, 1.55vw, 21px)', lineHeight: 1.72, color: INK }}>
+                  <p style={line(1)}>
+                    Boligforvaltning ser komplisert ut. Egentlig er det den samme prosessen, om og om igjen — annonsering, visning, kontrakt, depositum, innflytting, husleie og vedlikehold, gjentatt for hver bolig.
+                  </p>
+                  <p style={line(2)}>
+                    Tradisjonell proptech har bare digitalisert verktøyene: flere moduler, flere funksjoner, flere steder å klikke. Men brukerne ønsker seg ikke flere verktøy — de ønsker at arbeidet blir gjort.
+                  </p>
+                  <p style={line(3)}>
+                    Derfor bygde vi DigiHome som en <span style={{ color: ACL }}>motor</span> for boligforvaltning. Systemet holder oversikt, foreslår neste steg, forbereder arbeidet og utfører det som kan automatiseres.
+                  </p>
                 </div>
 
-                {/* resolusjon + signatur */}
-                <div className="mt-11 pt-8 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6" style={{ borderTop: '1px solid rgba(26,21,16,0.09)', ...line(5) }}>
-                  <p className="tracking-[-0.024em] leading-[1.08] max-w-[620px]" style={{ ...FH, fontWeight: 600, fontSize: 'clamp(23px, 2.7vw, 36px)', color: INK }}>
-                    Mennesket har kontroll. <span style={{ color: ACL }}>Systemet gjør jobben.</span>
-                  </p>
-                  <div className="flex items-center gap-3.5 shrink-0">
-                    <div className="w-[48px] h-[48px] rounded-full overflow-hidden shrink-0" style={{ boxShadow: '0 8px 22px rgba(20,15,10,0.16)', border: '1px solid rgba(20,15,10,0.06)' }}>
-                      <img src="/team/martin-kviteberg.jpg" alt="Martin C. Kviteberg" className="w-full h-full object-cover" style={{ objectPosition: 'center', transform: 'scale(2.6)', transformOrigin: '50% 24%' }} />
-                    </div>
-                    <div className="leading-tight">
-                      <p className="text-[13.5px] font-semibold tracking-[-0.01em]" style={{ ...F, color: INK }}>Martin C. Kviteberg</p>
-                      <p className="text-[11.5px] mt-0.5" style={{ ...F, color: 'rgba(28,22,16,0.5)' }}>CTO &amp; Medgründer</p>
-                    </div>
+                {/* payoff */}
+                <p className="mt-9 tracking-[-0.022em] leading-[1.12]" style={{ ...FH, fontWeight: 600, fontSize: 'clamp(23px, 2.5vw, 33px)', color: INK, ...line(4) }}>
+                  Mennesket har kontroll. <span style={{ color: ACL }}>Systemet gjør jobben.</span>
+                </p>
+
+                {/* signatur */}
+                <div className="flex items-center gap-3.5 mt-12" style={line(5)}>
+                  <div className="w-[48px] h-[48px] rounded-full overflow-hidden shrink-0" style={{ boxShadow: '0 8px 22px rgba(20,15,10,0.16)', border: '1px solid rgba(20,15,10,0.06)' }}>
+                    <img src="/team/martin-kviteberg.jpg" alt="Martin C. Kviteberg" className="w-full h-full object-cover" style={{ objectPosition: 'center', transform: 'scale(2.6)', transformOrigin: '50% 24%' }} />
+                  </div>
+                  <div className="leading-tight">
+                    <p className="text-[13.5px] font-semibold tracking-[-0.01em]" style={{ ...F, color: INK }}>Martin C. Kviteberg</p>
+                    <p className="text-[11.5px] mt-0.5" style={{ ...F, color: 'rgba(28,22,16,0.5)' }}>CTO &amp; Medgründer</p>
                   </div>
                 </div>
               </>
             );
           })()}
-          </div>
         </div>
       </div>
     </div>
