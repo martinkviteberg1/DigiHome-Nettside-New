@@ -5352,59 +5352,42 @@ const SVisionIntro = (p: any) => {
         </h2>
       </div>
 
-      {/* ── DIGIHOME FORKLART · ren tekst, varm editorial (lyset slått på) ── */}
-      <div className="absolute inset-0 flex items-center justify-center px-6 sm:px-10 py-12 overflow-y-auto no-scrollbar" style={beat('vision')}>
-        <div className="w-full max-w-[940px] mx-auto text-center">
+      {/* ── DIGIHOME FORKLART · venstrejustert editorial (Apple-nivå) ── */}
+      <div className="absolute inset-0 flex items-center px-8 sm:px-14 lg:px-24 overflow-y-auto no-scrollbar" style={beat('vision')}>
+        <div className="w-full max-w-[1180px] mx-auto">
+          <div className="max-w-[900px]">
           {(() => {
             const line = (i: number) => ({
-              animation: (active && onVision) ? `viReveal 1.1s cubic-bezier(0.22,1,0.36,1) ${0.35 + i * 0.16}s both` : undefined,
+              animation: (active && onVision) ? `viReveal 1.15s cubic-bezier(0.22,1,0.36,1) ${0.3 + i * 0.16}s both` : undefined,
               opacity: show ? undefined : 0,
             });
-            const STEG = ['Annonsering', 'Visning', 'Kontrakt', 'Depositum', 'Innflytting', 'Husleie', 'Vedlikehold'];
             return (
               <>
-                {/* eyebrow m/ hårlinjer */}
-                <div className="flex items-center justify-center gap-4" style={line(0)}>
-                  <span className="h-px w-8 sm:w-10" style={{ background: 'linear-gradient(90deg, transparent, rgba(40,30,22,0.28))' }} />
-                  <span className="text-[11px] font-semibold uppercase tracking-[0.34em] whitespace-nowrap" style={{ ...F, color: 'rgba(40,30,22,0.46)' }}>Idéen bak DigiHome</span>
-                  <span className="h-px w-8 sm:w-10" style={{ background: 'linear-gradient(90deg, rgba(40,30,22,0.28), transparent)' }} />
+                {/* kicker m/ aksenttick */}
+                <div className="flex items-center gap-3.5" style={line(0)}>
+                  <span className="h-[2px] w-8 rounded-full" style={{ background: ACL }} />
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.3em]" style={{ ...F, color: 'rgba(40,30,22,0.5)' }}>Idéen bak DigiHome</span>
                 </div>
 
                 {/* hero-statement */}
-                <h2 className="tracking-[-0.038em] leading-[1.02] mt-9" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(33px, 4.6vw, 62px)' }}>
-                  <span className="block" style={{ color: 'rgba(40,32,24,0.4)', ...line(1) }}>Programvare har vært et verktøy.</span>
+                <h2 className="tracking-[-0.042em] leading-[1.0] mt-9" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(38px, 5.2vw, 68px)' }}>
+                  <span className="block" style={{ color: 'rgba(38,30,22,0.34)', ...line(1) }}>Programvare var et verktøy.</span>
                   <span className="block" style={{ color: INK, ...line(2) }}>DigiHome er en <span style={{ color: ACL }}>motor.</span></span>
                 </h2>
 
-                {/* ledetekst — kort, sentrert smal måling */}
-                <p className="text-[18px] sm:text-[23px] font-normal leading-[1.5] mt-10 mx-auto max-w-[660px]" style={{ ...F, color: 'rgba(38,30,24,0.7)', ...line(3) }}>
-                  Boligforvaltning ser ut som kaos. Egentlig er det <span style={{ color: INK }}>den samme prosessen — hver gang.</span>
+                {/* støttetekst — én rolig setning, smal måling */}
+                <p className="text-[17px] sm:text-[21px] font-normal leading-[1.55] mt-10 max-w-[540px]" style={{ ...F, color: 'rgba(40,32,25,0.6)', ...line(3) }}>
+                  Boligforvaltning ser ut som kaos. Egentlig er det <span style={{ color: INK }}>den samme prosessen — hver gang</span>. Og faste prosesser er skapt for å drives av seg selv.
                 </p>
 
-                {/* prosess-bildetekst */}
-                <p className="text-[10.5px] sm:text-[11.5px] font-semibold uppercase mt-8 mx-auto max-w-[780px] leading-[2]" style={{ ...F, color: 'rgba(40,32,24,0.4)', letterSpacing: '0.2em', ...line(4) }}>
-                  {STEG.map((s, i) => (
-                    <span key={s} className="whitespace-nowrap">
-                      {s}{i < STEG.length - 1 && <span style={{ color: ACL, margin: '0 0.7em', opacity: 0.85 }}>·</span>}
-                    </span>
-                  ))}
-                </p>
-
-                {/* andre setning */}
-                <p className="text-[18px] sm:text-[23px] font-normal leading-[1.5] mt-8 mx-auto max-w-[700px]" style={{ ...F, color: 'rgba(38,30,24,0.7)', ...line(5) }}>
-                  Faste, repeterbare steg er skapt for å drives av seg selv. Så vi bygde programvaren som <span style={{ color: INK }}>forstår, forbereder og utfører</span> arbeidet — bolig for bolig.
-                </p>
-
-                {/* hårlinje */}
-                <div className="h-px w-[64px] mx-auto mt-11" style={{ background: 'linear-gradient(90deg, transparent, rgba(40,30,22,0.22), transparent)', ...line(6) }} />
-
-                {/* avslutning */}
-                <p className="tracking-[-0.022em] leading-[1.15] mt-9" style={{ ...FH, fontWeight: 600, fontSize: 'clamp(21px, 2.5vw, 31px)', color: INK, ...line(7) }}>
-                  Mennesket har kontroll. <span style={{ color: ACL }}>Systemet gjør jobben.</span>
+                {/* avslutning — payoff, satt fra hverandre */}
+                <p className="tracking-[-0.022em] leading-[1.16] mt-14 max-w-[720px]" style={{ ...FH, fontWeight: 600, fontSize: 'clamp(23px, 2.7vw, 36px)', color: INK, ...line(4) }}>
+                  Mennesket har kontrollen. <span style={{ color: ACL }}>Systemet gjør jobben.</span>
                 </p>
               </>
             );
           })()}
+          </div>
         </div>
       </div>
     </div>
