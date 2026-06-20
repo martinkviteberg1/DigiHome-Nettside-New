@@ -5349,51 +5349,81 @@ const SVisionIntro = (p: any) => {
         </h2>
       </div>
 
-      {/* ── DIGIHOME FORKLART · venstrejustert editorial (Apple-nivå) ── */}
-      <div className="absolute inset-0 flex items-center px-8 sm:px-14 lg:px-24 overflow-y-auto no-scrollbar" style={beat('vision')}>
+      {/* ── MANIFEST · DIGIHOME FORKLART (venstrejustert editorial) ── */}
+      <div className="absolute inset-0 flex items-center px-8 sm:px-14 lg:px-24 py-10 overflow-y-auto no-scrollbar" style={beat('vision')}>
         <div className="w-full max-w-[1180px] mx-auto">
-          <div className="relative max-w-[940px] pl-8 sm:pl-11">
+          <div className="relative max-w-[700px] pl-8 sm:pl-11">
           {(() => {
             const line = (i: number) => ({
-              animation: (active && onVision) ? `viReveal 1.15s cubic-bezier(0.22,1,0.36,1) ${0.3 + i * 0.14}s both` : undefined,
+              animation: (active && onVision) ? `viReveal 1.05s cubic-bezier(0.22,1,0.36,1) ${0.25 + i * 0.085}s both` : undefined,
               opacity: show ? undefined : 0,
             });
+            const STEG = ['Annonsering', 'Visning', 'Kontrakt', 'Depositum', 'Innflytting', 'Husleie', 'Vedlikehold'];
+            const muted = 'rgba(40,32,25,0.58)';
             return (
               <>
                 {/* vertikal aksent-skinne (editorial) */}
                 <div className="absolute left-0 top-[5px] bottom-[5px] w-[2px] rounded-full overflow-hidden"
                      style={{ background: 'linear-gradient(180deg, rgba(28,22,18,0.16) 0%, rgba(28,22,18,0.02) 100%)', transformOrigin: 'top',
-                              animation: (active && onVision) ? 'viRail 1.2s cubic-bezier(0.22,1,0.36,1) 0.3s both' : undefined, opacity: show ? undefined : 0 }}>
+                              animation: (active && onVision) ? 'viRail 1.2s cubic-bezier(0.22,1,0.36,1) 0.25s both' : undefined, opacity: show ? undefined : 0 }}>
                   <div className="absolute top-0 left-0 w-full h-16" style={{ background: `linear-gradient(180deg, ${ACL}, ${ACL}00)` }} />
                 </div>
 
                 {/* kicker */}
-                <span className="block text-[11px] font-semibold uppercase tracking-[0.32em]" style={{ ...F, color: 'rgba(40,30,22,0.5)', ...line(1) }}>Idéen bak DigiHome</span>
+                <span className="block text-[11px] font-semibold uppercase tracking-[0.32em]" style={{ ...F, color: 'rgba(40,30,22,0.5)', ...line(0) }}>Idéen bak DigiHome</span>
 
-                {/* hero-statement — full ink */}
-                <h2 className="tracking-[-0.044em] leading-[0.98] mt-8" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(40px, 5.6vw, 74px)' }}>
-                  <span className="block" style={{ color: INK, ...line(2) }}>Programvare var et verktøy.</span>
-                  <span className="block" style={{ color: INK, ...line(3) }}>DigiHome er en <span style={{ color: ACL, textShadow: `0 0 42px ${ACL}3d` }}>motor.</span></span>
-                </h2>
+                {/* lead */}
+                <div className="mt-7" style={{ ...FH, fontWeight: 600, fontSize: 'clamp(21px, 2.3vw, 30px)', letterSpacing: '-0.02em', lineHeight: 1.22 }}>
+                  <p style={{ color: INK, ...line(1) }}>Boligforvaltning ser komplisert ut.</p>
+                  <p className="mt-1.5" style={{ color: muted, ...line(2) }}>Egentlig er det <span style={{ color: INK }}>den samme prosessen</span> om og om igjen.</p>
+                </div>
 
-                {/* støttetekst — én rolig setning, smal måling */}
-                <p className="text-[17px] sm:text-[21px] font-normal leading-[1.55] mt-10 max-w-[540px]" style={{ ...F, color: 'rgba(36,29,23,0.62)', ...line(4) }}>
-                  Boligforvaltning ser ut som kaos. Egentlig er det <span style={{ color: INK, fontWeight: 500 }}>den samme prosessen — hver gang</span>. Og faste prosesser er skapt for å drives av seg selv.
+                {/* prosess-steg */}
+                <p className="mt-7 text-[14.5px] sm:text-[16px] font-medium leading-[1.7]" style={{ ...F, letterSpacing: '0.005em', ...line(3) }}>
+                  {STEG.map((s, i) => (
+                    <span key={s} className="whitespace-nowrap">
+                      <span style={{ color: 'rgba(28,24,20,0.9)' }}>{s}</span><span style={{ color: ACL }}>.</span>{i !== STEG.length - 1 ? '\u00A0\u00A0' : ''}
+                    </span>
+                  ))}
+                </p>
+                <p className="mt-3 text-[14.5px] sm:text-[16px] leading-[1.6]" style={{ ...F, color: muted, ...line(4) }}>
+                  De samme stegene gjentas for hver bolig.
                 </p>
 
-                {/* avslutning — payoff, satt fra hverandre */}
-                <p className="tracking-[-0.024em] leading-[1.14] mt-14 max-w-[760px]" style={{ ...FH, fontWeight: 600, fontSize: 'clamp(24px, 2.9vw, 38px)', color: INK, ...line(5) }}>
-                  Mennesket har kontrollen. <span style={{ color: ACL }}>Systemet gjør jobben.</span>
+                {/* tradisjonell proptech */}
+                <p className="mt-7 text-[14.5px] sm:text-[16px] leading-[1.65] max-w-[600px]" style={{ ...F, color: muted, ...line(5) }}>
+                  Tradisjonell proptech har digitalisert verktøyene: flere moduler, flere funksjoner, flere steder å klikke.
+                </p>
+
+                {/* vendepunkt */}
+                <p className="mt-6 text-[15.5px] sm:text-[17.5px] leading-[1.5] max-w-[560px]" style={{ ...F, ...line(6) }}>
+                  <span style={{ color: muted }}>Men brukerne ønsker seg ikke flere verktøy. </span>
+                  <span style={{ color: INK, fontWeight: 600 }}>De ønsker at arbeidet blir gjort.</span>
+                </p>
+
+                {/* nøkkelsetning */}
+                <p className="mt-8 tracking-[-0.02em] leading-[1.18] max-w-[640px]" style={{ ...FH, fontWeight: 600, fontSize: 'clamp(20px, 2.2vw, 28px)', color: INK, ...line(7) }}>
+                  Derfor bygde vi DigiHome som en <span style={{ color: ACL, textShadow: `0 0 40px ${ACL}3d` }}>motor</span> for boligforvaltning.
+                </p>
+
+                {/* hva systemet gjør */}
+                <p className="mt-5 text-[14.5px] sm:text-[16px] leading-[1.65] max-w-[620px]" style={{ ...F, color: muted, ...line(8) }}>
+                  Systemet <span style={{ color: INK }}>holder oversikt</span>, <span style={{ color: INK }}>foreslår neste steg</span>, <span style={{ color: INK }}>forbereder arbeidet</span> og <span style={{ color: INK }}>utfører</span> det som kan automatiseres.
+                </p>
+
+                {/* payoff */}
+                <p className="mt-8 tracking-[-0.022em] leading-[1.14]" style={{ ...FH, fontWeight: 600, fontSize: 'clamp(22px, 2.5vw, 32px)', color: INK, ...line(9) }}>
+                  Mennesket har kontroll. <span style={{ color: ACL }}>Systemet gjør jobben.</span>
                 </p>
 
                 {/* signatur — grunnlegger bak manifestet */}
-                <div className="flex items-center gap-4 mt-12" style={line(6)}>
-                  <div className="w-[58px] h-[58px] rounded-full overflow-hidden shrink-0" style={{ boxShadow: '0 10px 26px rgba(20,15,10,0.18)', border: '1px solid rgba(20,15,10,0.07)' }}>
+                <div className="flex items-center gap-4 mt-10" style={line(10)}>
+                  <div className="w-[54px] h-[54px] rounded-full overflow-hidden shrink-0" style={{ boxShadow: '0 10px 26px rgba(20,15,10,0.18)', border: '1px solid rgba(20,15,10,0.07)' }}>
                     <img src="/team/martin-kviteberg.jpg" alt="Martin C. Kviteberg" className="w-full h-full object-cover" style={{ objectPosition: 'center', transform: 'scale(2.6)', transformOrigin: '50% 24%' }} />
                   </div>
                   <div className="leading-tight">
-                    <p className="text-[15px] font-semibold tracking-[-0.01em]" style={{ ...F, color: INK }}>Martin C. Kviteberg</p>
-                    <p className="text-[12.5px] mt-0.5" style={{ ...F, color: 'rgba(40,30,22,0.55)' }}>CTO &amp; Medgründer</p>
+                    <p className="text-[14.5px] font-semibold tracking-[-0.01em]" style={{ ...F, color: INK }}>Martin C. Kviteberg</p>
+                    <p className="text-[12px] mt-0.5" style={{ ...F, color: 'rgba(40,30,22,0.55)' }}>CTO &amp; Medgründer</p>
                   </div>
                 </div>
               </>
