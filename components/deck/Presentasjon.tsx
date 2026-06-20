@@ -5385,6 +5385,17 @@ const SVisionIntro = (p: any) => {
                 <p className="tracking-[-0.024em] leading-[1.14] mt-14 max-w-[760px]" style={{ ...FH, fontWeight: 600, fontSize: 'clamp(24px, 2.9vw, 38px)', color: INK, ...line(5) }}>
                   Mennesket har kontrollen. <span style={{ color: ACL }}>Systemet gjør jobben.</span>
                 </p>
+
+                {/* signatur — grunnlegger bak manifestet */}
+                <div className="flex items-center gap-4 mt-12" style={line(6)}>
+                  <div className="w-[58px] h-[58px] rounded-full overflow-hidden shrink-0" style={{ boxShadow: '0 10px 26px rgba(20,15,10,0.18)', border: '1px solid rgba(20,15,10,0.07)' }}>
+                    <img src="/team/martin-kviteberg.jpg" alt="Martin C. Kviteberg" className="w-full h-full object-cover" style={{ objectPosition: 'center', transform: 'scale(2.6)', transformOrigin: '50% 24%' }} />
+                  </div>
+                  <div className="leading-tight">
+                    <p className="text-[15px] font-semibold tracking-[-0.01em]" style={{ ...F, color: INK }}>Martin C. Kviteberg</p>
+                    <p className="text-[12.5px] mt-0.5" style={{ ...F, color: 'rgba(40,30,22,0.55)' }}>CTO &amp; Medgründer</p>
+                  </div>
+                </div>
               </>
             );
           })()}
