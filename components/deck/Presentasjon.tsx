@@ -4712,7 +4712,7 @@ const LANGTID_TASKS = [
   { cat: 'Utleie',      title: 'Ny leietaker kredittsjekket',    context: 'Nygårdsgaten 22 · 9 søkere screenet',                handling: 'Anbefalt søker, score 4,8/5. Leiekontrakt klar til e-signering.',           resolve: 'you'  },
 ];
 
-const SAutopilotMindset = (p: any) => {
+const SAutopilotChecklist = (p: any) => {
   const active = p.isActive;
   const isPdf = !!p.pdfMode;
   const show = active || isPdf;
@@ -4720,7 +4720,6 @@ const SAutopilotMindset = (p: any) => {
   const AMBER = '#f4b066';   // krever godkjenning
   const GREEN = '#34d399';   // godkjent
 
-  const [stage, setStage] = useState<'hook' | 'proof'>(isPdf ? 'proof' : 'hook');
   const [activeRow, setActiveRow] = useState(isPdf ? 5 : -1);
   const [rowPhase, setRowPhase] = useState<'work' | 'review' | 'done'>('work');
 
@@ -4736,26 +4735,18 @@ const SAutopilotMindset = (p: any) => {
     { cat: 'Annonse',     title: 'Forny annonsen på FINN',             mode: 'auto', detail: 'Annonsen republisert med oppdatert pris og bilder.' },
   ];
 
-  // master keynote-tidslinje: krok → bevis/sjekkliste (auto-spill)
+  // start sjekkliste-gjennomgangen ved aktivering
   useEffect(() => {
-    if (isPdf) { setStage('proof'); setActiveRow(5); return; }
-    if (!active) { setStage('hook'); setActiveRow(-1); setRowPhase('work'); return; }
-    setStage('hook');
-    const t1 = setTimeout(() => setStage('proof'), 4800);
-    return () => clearTimeout(t1);
-  }, [active, isPdf]);
-
-  // start gjennomgangen når beviset (sjekklisten) er synlig
-  useEffect(() => {
-    if (!active || isPdf || stage !== 'proof') return;
+    if (isPdf) { setActiveRow(5); return; }
+    if (!active) { setActiveRow(-1); setRowPhase('work'); return; }
     setActiveRow(-1);
-    const t = setTimeout(() => setActiveRow(0), 1600);
+    const t = setTimeout(() => setActiveRow(0), 900);
     return () => clearTimeout(t);
-  }, [stage, active, isPdf]);
+  }, [active, isPdf]);
 
   // prosesser aktiv rad → hak av → neste rad
   useEffect(() => {
-    if (!active || isPdf || stage !== 'proof' || activeRow < 0 || activeRow > 4) return;
+    if (!active || isPdf || activeRow < 0 || activeRow > 4) return;
     const isManual = AUTOPILOT_TASKS[activeRow].mode === 'you';
     const isMsg = (AUTOPILOT_TASKS[activeRow] as any).kind === 'message';
     setRowPhase('work');
@@ -4775,7 +4766,7 @@ const SAutopilotMindset = (p: any) => {
       timers.push(setTimeout(() => setActiveRow((r) => r + 1), 3200));
     }
     return () => timers.forEach(clearTimeout);
-  }, [activeRow, stage, active, isPdf]);
+  }, [activeRow, active, isPdf]);
 
   // signaliser til decket at hele keynote-sekvensen er ferdig (låser opp navigasjon)
   useEffect(() => {
@@ -4788,14 +4779,6 @@ const SAutopilotMindset = (p: any) => {
 
   const C = 119.38; // 2πr, r=19
   const doneCount = Math.min(Math.max(activeRow, 0), 5);
-  const SI = { hook: 0, proof: 1 }[stage];
-  const beat = (i: number) => ({
-    opacity: SI === i ? 1 : 0,
-    transform: SI === i ? 'translateY(0) scale(1)' : (SI > i ? 'translateY(-46px) scale(0.965)' : 'translateY(46px) scale(0.965)'),
-    filter: SI === i ? 'blur(0px)' : 'blur(15px)',
-    transition: 'opacity 1.2s cubic-bezier(0.22,1,0.36,1), transform 1.3s cubic-bezier(0.22,1,0.36,1), filter 1.15s ease',
-    pointerEvents: (SI === i ? 'auto' : 'none') as any,
-  });
 
   const Cursor = () => (
     <svg width="19" height="22" viewBox="0 0 19 22" fill="none" style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }}>
@@ -4828,30 +4811,22 @@ const SAutopilotMindset = (p: any) => {
       <div className="absolute left-1/2 top-1/2 w-[58%] h-[60%] rounded-full"
            style={{ background: `radial-gradient(ellipse, ${AC}22 0%, transparent 70%)`, filter: 'blur(48px)',
                     transform: 'translate(-50%,-50%)',
-                    opacity: SI > 0 ? 0.5 : 1, transition: 'opacity 1.3s ease',
+                    opacity: 0.55,
                     animation: !isPdf ? 'mGlowBreath 14s ease-in-out infinite' : undefined }} />
     </div>
     <DotGrid maskCenter="50% 45%" opacity={0.06} />
     <div aria-hidden="true" className="absolute inset-0 pointer-events-none"
          style={{ background: 'radial-gradient(ellipse at 50% 44%, transparent 50%, rgba(0,0,0,0.5) 100%)' }} />
 
-    {/* ═══ KEYNOTE-SCENE — fire beats som auto-spiller ═══ */}
+    {/* ═══ SJEKKLISTE-SCENE — autopiloten i arbeid ═══ */}
     <div className="absolute inset-0 z-10">
 
-      {/* ── BEAT 1 · KROKEN ── */}
-      <div className="absolute inset-0 flex items-center justify-center px-6 text-center" style={beat(0)}>
-        <h2 className="tracking-[-0.04em] leading-[0.95]" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(48px, 6.6vw, 92px)',
-              animation: (active && stage === 'hook') ? 'mKenBurns 10s cubic-bezier(0.33,0,0.2,1) both' : undefined }}>
-          <span className="block text-white"
-                style={{ animation: (active && stage === 'hook') ? 'mReveal 1.4s cubic-bezier(0.22,1,0.36,1) 0.5s both' : undefined, opacity: show ? undefined : 0 }}>Ikke et system.</span>
-          <span className="block"
-                style={{ color: AC, textShadow: `0 0 70px ${AC}55`,
-                         animation: (active && stage === 'hook') ? 'mReveal 1.4s cubic-bezier(0.22,1,0.36,1) 1.45s both' : undefined, opacity: show ? undefined : 0 }}>En autopilot.</span>
-        </h2>
-      </div>
-
-      {/* ── BEAT 2 · BEVISET (sjekklisten hakes av, én etter én) ── */}
-      <div className="absolute inset-0 flex flex-col items-center justify-center px-6" style={beat(1)}>
+      {/* ── SJEKKLISTEN hakes av, én etter én ── */}
+      <div className="absolute inset-0 flex flex-col items-center justify-center px-6">
+        {/* kicker */}
+        <div className="mb-6" style={{ animation: (active && !isPdf) ? 'mUp 0.7s cubic-bezier(0.22,1,0.36,1) 0.1s both' : undefined, opacity: show ? undefined : 0 }}>
+          <span className="text-[11px] font-semibold uppercase tracking-[0.28em]" style={{ ...F, color: 'rgba(255,255,255,0.42)' }}>Autopiloten i arbeid</span>
+        </div>
         <div className="relative w-full max-w-[720px] rounded-[30px] px-7 sm:px-10 py-8 text-left"
              style={{ background: 'rgba(255,255,255,0.022)', border: '1px solid rgba(255,255,255,0.07)',
                       boxShadow: '0 40px 120px -55px rgba(0,0,0,0.95)', backdropFilter: 'blur(22px)', WebkitBackdropFilter: 'blur(22px)' }}>
@@ -4860,7 +4835,7 @@ const SAutopilotMindset = (p: any) => {
           <div className="flex items-center justify-between pb-6" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
             <div className="flex items-center gap-3">
               <span className="relative flex items-center justify-center w-2.5 h-2.5">
-                <span className="absolute w-2.5 h-2.5 rounded-full" style={{ background: AC, animation: (active && stage === 'proof' && activeRow >= 0 && activeRow < 5) ? 'mRingPulse 2.6s ease-out infinite' : undefined }} />
+                <span className="absolute w-2.5 h-2.5 rounded-full" style={{ background: AC, animation: (active && activeRow >= 0 && activeRow < 5) ? 'mRingPulse 2.6s ease-out infinite' : undefined }} />
                 <span className="w-[7px] h-[7px] rounded-full" style={{ background: AC, boxShadow: `0 0 10px ${AC}` }} />
               </span>
               <span className="text-[12px] font-medium uppercase tracking-[0.24em]" style={{ color: 'rgba(255,255,255,0.5)', ...F }}>DigiHome autopilot</span>
@@ -5285,116 +5260,161 @@ const SProcessPipeline = (p: any) => {
 /* ═══ MANIFEST — boligforvaltning er en standardisert, repeterbar prosess ═══ */
 const PM_STAGES = ['Annonse', 'Visning', 'Kontrakt', 'Innflytting', 'Husleie', 'Vedlikehold', 'Fornyelse'];
 
-const SProcessManifesto = (p: any) => {
+const SVisionIntro = (p: any) => {
   const active = p.isActive;
   const isPdf = !!p.pdfMode;
   const show = active || isPdf;
   const AC = '#d298ff';
-  const anim = active && !isPdf;
 
-  // syklus-geometri
-  const cx = 230, cy = 182, rRing = 108, rLabel = 132;
+  const [phase, setPhase] = useState<'hook' | 'vision'>(isPdf ? 'vision' : 'hook');
+  useEffect(() => {
+    if (isPdf) { setPhase('vision'); return; }
+    if (!active) { setPhase('hook'); return; }
+    setPhase('hook');
+    const t = setTimeout(() => setPhase('vision'), 4400);
+    return () => clearTimeout(t);
+  }, [active, isPdf]);
+
+  const onVision = phase === 'vision';
+  const vAnim = active && !isPdf && onVision;
+
+  // syklus-geometri — ekte sirkel
+  const SZ = 460, cx = 230, cy = 230, rRing = 132, rLabel = 158;
   const circ = 2 * Math.PI * rRing;
-  const lines = [
-    { t: 'Utleie ser ut som kaos.', c: 'rgba(255,255,255,0.78)' },
-    { t: 'Egentlig er det en fast, repeterbar prosess.', c: 'rgba(255,255,255,0.92)' },
-  ];
+  const T = 17; // orbit-periode (sek)
+
+  const beat = (target: 'hook' | 'vision') => ({
+    opacity: phase === target ? 1 : 0,
+    transform: phase === target ? 'translateY(0) scale(1)' : (target === 'hook' ? 'translateY(-40px) scale(0.97)' : 'translateY(40px) scale(0.97)'),
+    filter: phase === target ? 'blur(0)' : 'blur(14px)',
+    transition: 'opacity 1.1s cubic-bezier(0.22,1,0.36,1), transform 1.2s cubic-bezier(0.22,1,0.36,1), filter 1.05s ease',
+    pointerEvents: (phase === target ? 'auto' : 'none') as any,
+  });
 
   return (
   <SlideFrame bg="dark" {...p}>
     <style>{`
-      @keyframes pmFade { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
-      @keyframes pmRingDraw { from { stroke-dashoffset: ${circ}; } to { stroke-dashoffset: 0; } }
-      @keyframes pmPop { from { opacity: 0; transform: scale(0); } to { opacity: 1; transform: scale(1); } }
-      @keyframes pmSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+      @keyframes viReveal { from { opacity: 0; transform: translateY(24px); filter: blur(14px); } 55% { filter: blur(0.5px); } to { opacity: 1; transform: translateY(0); filter: blur(0); } }
+      @keyframes viFade { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+      @keyframes viRingDraw { from { stroke-dashoffset: ${circ}; } to { stroke-dashoffset: 0; } }
+      @keyframes viPop { from { opacity: 0; transform: scale(0); } to { opacity: 1; transform: scale(1); } }
+      @keyframes viSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+      @keyframes viNodeGlow { 0% { r: 6.5; opacity: 1; } 10% { r: 3.5; opacity: 0.5; } 100% { r: 3.5; opacity: 0.5; } }
+      @keyframes viKen { 0% { transform: scale(1) translateY(8px); } 100% { transform: scale(1.04) translateY(-8px); } }
     `}</style>
 
-    {/* ambient — rolig */}
+    {/* ambient */}
+    <div aria-hidden="true" className="absolute inset-0 pointer-events-none overflow-hidden">
+      <div className="absolute left-1/2 top-1/2 w-[60%] h-[62%] rounded-full"
+           style={{ background: `radial-gradient(ellipse, ${AC}1f 0%, transparent 70%)`, filter: 'blur(54px)', transform: 'translate(-50%,-50%)',
+                    opacity: onVision ? 0.5 : 1, transition: 'opacity 1.2s ease' }} />
+    </div>
+    <DotGrid maskCenter="50% 45%" opacity={0.05} />
     <div aria-hidden="true" className="absolute inset-0 pointer-events-none"
-         style={{ background: 'radial-gradient(ellipse at 72% 48%, rgba(210,152,255,0.07) 0%, transparent 55%)' }} />
-    <DotGrid maskCenter="70% 45%" opacity={0.035} />
+         style={{ background: 'radial-gradient(ellipse at 50% 46%, transparent 52%, rgba(0,0,0,0.5) 100%)' }} />
 
-    <div className="relative z-10 w-full max-w-[1140px] mx-auto px-6 sm:px-12 my-auto">
-      <div className="grid grid-cols-1 md:grid-cols-[1.05fr_0.95fr] gap-12 md:gap-8 items-center">
+    <div className="absolute inset-0 z-10">
 
-        {/* ── venstre: manifest ── */}
-        <div>
-          <span className="text-[11px] font-semibold uppercase tracking-[0.3em]"
-                style={{ ...F, color: 'rgba(255,255,255,0.4)', display: 'block',
-                         animation: anim ? 'pmFade 0.7s cubic-bezier(0.22,1,0.36,1) 0.1s both' : undefined, opacity: show ? undefined : 0 }}>
-            Manifest
-          </span>
+      {/* ── KROK ── */}
+      <div className="absolute inset-0 flex items-center justify-center px-6 text-center" style={beat('hook')}>
+        <h2 className="tracking-[-0.04em] leading-[0.95]" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(48px, 6.6vw, 92px)',
+              animation: (active && phase === 'hook') ? 'viKen 10s cubic-bezier(0.33,0,0.2,1) both' : undefined }}>
+          <span className="block text-white"
+                style={{ animation: (active && phase === 'hook') ? 'viReveal 1.4s cubic-bezier(0.22,1,0.36,1) 0.5s both' : undefined, opacity: show ? undefined : 0 }}>Ikke et system.</span>
+          <span className="block"
+                style={{ color: AC, textShadow: `0 0 70px ${AC}55`,
+                         animation: (active && phase === 'hook') ? 'viReveal 1.4s cubic-bezier(0.22,1,0.36,1) 1.45s both' : undefined, opacity: show ? undefined : 0 }}>En autopilot.</span>
+        </h2>
+      </div>
 
-          <div className="mt-8 space-y-2">
-            {lines.map((l, i) => (
-              <p key={i} className="tracking-[-0.03em] leading-[1.12]"
-                 style={{ ...FH, fontWeight: 600, fontSize: 'clamp(25px, 2.9vw, 39px)', color: l.c,
-                          animation: anim ? `pmFade 0.8s cubic-bezier(0.22,1,0.36,1) ${0.35 + i * 0.22}s both` : undefined, opacity: show ? undefined : 0 }}>
-                {l.t}
+      {/* ── VISJON ── */}
+      <div className="absolute inset-0 flex items-center justify-center px-6" style={beat('vision')}>
+        <div className="w-full max-w-[1160px] mx-auto px-2 sm:px-6">
+          <div className="grid grid-cols-1 md:grid-cols-[1.05fr_0.95fr] gap-10 md:gap-6 items-center">
+
+            {/* venstre: visjon */}
+            <div>
+              <span className="text-[11px] font-semibold uppercase tracking-[0.3em]"
+                    style={{ ...F, color: 'rgba(255,255,255,0.4)', display: 'block',
+                             animation: vAnim ? 'viFade 0.7s cubic-bezier(0.22,1,0.36,1) 0.2s both' : undefined, opacity: show ? undefined : 0 }}>
+                Idéen bak DigiHome
+              </span>
+
+              <div className="mt-7 space-y-1.5">
+                <p className="tracking-[-0.035em] leading-[1.08]" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(28px, 3.4vw, 50px)', color: 'rgba(255,255,255,0.8)',
+                     animation: vAnim ? 'viReveal 0.9s cubic-bezier(0.22,1,0.36,1) 0.4s both' : undefined, opacity: show ? undefined : 0 }}>
+                  Utleie er ikke kaos.
+                </p>
+                <p className="tracking-[-0.035em] leading-[1.08]" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(28px, 3.4vw, 50px)', color: '#fff',
+                     animation: vAnim ? 'viReveal 0.9s cubic-bezier(0.22,1,0.36,1) 0.7s both' : undefined, opacity: show ? undefined : 0 }}>
+                  Det er den samme prosessen — hver gang.
+                </p>
+                <p className="tracking-[-0.035em] leading-[1.08]" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(28px, 3.4vw, 50px)', color: AC, textShadow: `0 0 60px ${AC}33`,
+                     animation: vAnim ? 'viReveal 0.95s cubic-bezier(0.22,1,0.36,1) 1.05s both' : undefined, opacity: show ? undefined : 0 }}>
+                  Så vi bygde den til å drive seg selv.
+                </p>
+              </div>
+
+              <div className="h-px w-16 mt-9 origin-left"
+                   style={{ background: 'rgba(255,255,255,0.18)', animation: vAnim ? 'viFade 0.7s ease 1.5s both' : undefined, opacity: show ? undefined : 0 }} />
+              <p className="text-[14.5px] sm:text-[16.5px] font-normal leading-[1.6] mt-6 max-w-[430px]"
+                 style={{ ...F, color: 'rgba(255,255,255,0.58)',
+                          animation: vAnim ? 'viFade 0.9s cubic-bezier(0.22,1,0.36,1) 1.6s both' : undefined, opacity: show ? undefined : 0 }}>
+                <span style={{ color: 'rgba(255,255,255,0.92)', fontWeight: 500 }}>Visjonen er enkel:</span> en bolig som drifter seg selv — fra annonse til utbetaling.
               </p>
-            ))}
-            <p className="tracking-[-0.03em] leading-[1.12]"
-               style={{ ...FH, fontWeight: 600, fontSize: 'clamp(25px, 2.9vw, 39px)', color: '#fff',
-                        animation: anim ? 'pmFade 0.8s cubic-bezier(0.22,1,0.36,1) 0.79s both' : undefined, opacity: show ? undefined : 0 }}>
-              Og faste prosesser er skapt for å <span style={{ color: AC }}>automatiseres.</span>
-            </p>
-          </div>
+            </div>
 
-          <div className="h-px w-16 mt-9 origin-left"
-               style={{ background: 'rgba(255,255,255,0.18)', animation: anim ? 'pmFade 0.7s ease 1.15s both' : undefined, opacity: show ? undefined : 0 }} />
-          <p className="text-[14.5px] sm:text-[16px] font-normal leading-[1.6] mt-6 max-w-[440px]"
-             style={{ ...F, color: 'rgba(255,255,255,0.55)',
-                      animation: anim ? 'pmFade 0.9s cubic-bezier(0.22,1,0.36,1) 1.25s both' : undefined, opacity: show ? undefined : 0 }}>
-            <span style={{ color: 'rgba(255,255,255,0.9)', fontWeight: 500 }}>De samme stegene — for hver bolig, hver gang.</span> Det er hele forutsetningen for DigiHome.
-          </p>
-        </div>
+            {/* høyre: syklus-visual (ekte sirkel, kontinuerlig flyt) */}
+            <div className="relative flex items-center justify-center"
+                 style={{ animation: vAnim ? 'viFade 1s cubic-bezier(0.22,1,0.36,1) 0.6s both' : undefined, opacity: show ? undefined : 0 }}>
+              <svg viewBox={`0 0 ${SZ} ${SZ}`} className="w-full max-w-[400px]" style={{ overflow: 'visible' }}>
+                {/* bakgrunns-ring */}
+                <circle cx={cx} cy={cy} r={rRing} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="1" />
+                {/* tegnende aksent-ring */}
+                <circle cx={cx} cy={cy} r={rRing} fill="none" stroke={`${AC}5a`} strokeWidth="1.5" strokeLinecap="round"
+                        strokeDasharray={circ}
+                        style={{ strokeDashoffset: vAnim ? undefined : 0, transform: 'rotate(-90deg)', transformOrigin: `${cx}px ${cy}px`,
+                                 animation: vAnim ? 'viRingDraw 1.4s cubic-bezier(0.4,0,0.1,1) 0.8s both' : undefined }} />
 
-        {/* ── høyre: syklus-visual ── */}
-        <div className="relative flex items-center justify-center"
-             style={{ animation: anim ? 'pmFade 0.9s cubic-bezier(0.22,1,0.36,1) 0.5s both' : undefined, opacity: show ? undefined : 0 }}>
-          <svg viewBox="0 0 460 364" className="w-full max-w-[420px]" style={{ overflow: 'visible' }}>
-            {/* ring */}
-            <circle cx={cx} cy={cy} r={rRing} fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="1"
-                    strokeDasharray={circ}
-                    style={{ strokeDashoffset: anim ? undefined : 0, animation: anim ? 'pmRingDraw 1.3s cubic-bezier(0.4,0,0.1,1) 0.7s both' : undefined }} />
+                {/* noder + etiketter — lyser i sekvens synket med prikken */}
+                {PM_STAGES.map((s, i) => {
+                  const ang = (-90 + i * (360 / PM_STAGES.length)) * Math.PI / 180;
+                  const nx = cx + rRing * Math.cos(ang);
+                  const ny = cy + rRing * Math.sin(ang);
+                  const lx = cx + rLabel * Math.cos(ang);
+                  const ly = cy + rLabel * Math.sin(ang);
+                  const cosv = Math.cos(ang);
+                  const anchor = Math.abs(cosv) < 0.34 ? 'middle' : (cosv > 0 ? 'start' : 'end');
+                  return (
+                    <g key={s} style={{ transformOrigin: `${nx}px ${ny}px`, animation: vAnim ? `viPop 0.5s cubic-bezier(0.34,1.56,0.64,1) ${1.1 + i * 0.09}s both` : undefined, opacity: show ? undefined : 0 }}>
+                      <circle cx={nx} cy={ny} r="3.5" fill={AC}
+                              style={{ animation: vAnim ? `viNodeGlow ${T}s linear ${2.3 + (i / PM_STAGES.length) * T}s infinite` : undefined }} />
+                      <text x={lx} y={ly} textAnchor={anchor} dominantBaseline="middle"
+                            style={{ fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: 500, fill: 'rgba(255,255,255,0.66)' }}>
+                        {s}
+                      </text>
+                    </g>
+                  );
+                })}
 
-            {/* noder + etiketter */}
-            {PM_STAGES.map((s, i) => {
-              const ang = (-90 + i * (360 / PM_STAGES.length)) * Math.PI / 180;
-              const nx = cx + rRing * Math.cos(ang);
-              const ny = cy + rRing * Math.sin(ang);
-              const lx = cx + rLabel * Math.cos(ang);
-              const ly = cy + rLabel * Math.sin(ang);
-              const cosv = Math.cos(ang);
-              const anchor = Math.abs(cosv) < 0.34 ? 'middle' : (cosv > 0 ? 'start' : 'end');
-              const delay = 1.0 + i * 0.1;
-              return (
-                <g key={s} style={{ transformOrigin: `${nx}px ${ny}px`, animation: anim ? `pmPop 0.5s cubic-bezier(0.34,1.56,0.64,1) ${delay}s both` : undefined, opacity: show ? undefined : 0 }}>
-                  <circle cx={nx} cy={ny} r="3.5" fill="rgba(255,255,255,0.55)" />
-                  <text x={lx} y={ly} textAnchor={anchor} dominantBaseline="middle"
-                        style={{ fontFamily: 'var(--font-body)', fontSize: '12.5px', fontWeight: 500, fill: 'rgba(255,255,255,0.62)' }}>
-                    {s}
-                  </text>
+                {/* flytende aksent-prikk (kontinuerlig syklus) */}
+                <g style={{ transformOrigin: `${cx}px ${cy}px`, animation: vAnim ? `viSpin ${T}s linear 2.3s infinite` : undefined }}>
+                  <circle cx={cx} cy={cy - rRing} r="11" fill={AC} opacity="0.2" />
+                  <circle cx={cx} cy={cy - rRing} r="4" fill={AC} style={{ filter: `drop-shadow(0 0 6px ${AC})` }} />
                 </g>
-              );
-            })}
 
-            {/* langsom roterende aksent-prikk (kontinuerlig syklus) */}
-            <g style={{ transformOrigin: `${cx}px ${cy}px`, animation: anim ? 'pmSpin 22s linear 2.2s infinite' : undefined }}>
-              <circle cx={cx} cy={cy - rRing} r="9" fill={AC} opacity="0.18" />
-              <circle cx={cx} cy={cy - rRing} r="3.5" fill={AC} />
-            </g>
-
-            {/* senter */}
-            <text x={cx} y={cy - 7} textAnchor="middle" dominantBaseline="middle"
-                  style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontWeight: 600, letterSpacing: '0.2em', fill: 'rgba(255,255,255,0.4)' }}>
-              SAMME SYKLUS
-            </text>
-            <text x={cx} y={cy + 13} textAnchor="middle" dominantBaseline="middle"
-                  style={{ fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: 500, fill: 'rgba(255,255,255,0.78)' }}>
-              hver bolig, hver gang
-            </text>
-          </svg>
+                {/* senter */}
+                <text x={cx} y={cy - 8} textAnchor="middle" dominantBaseline="middle"
+                      style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontWeight: 600, letterSpacing: '0.22em', fill: 'rgba(255,255,255,0.4)' }}>
+                  SAMME SYKLUS
+                </text>
+                <text x={cx} y={cy + 14} textAnchor="middle" dominantBaseline="middle"
+                      style={{ fontFamily: 'var(--font-body)', fontSize: '15px', fontWeight: 500, fill: 'rgba(255,255,255,0.82)' }}>
+                  hver bolig, hver gang
+                </text>
+              </svg>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -5511,8 +5531,8 @@ const SBusinessModels = (p: any) => {
 /* ═══ SLIDE ORDER — 2026 · Product-first investor flow ═══ */
 const SLIDES = [
   S1,            // 01 · Cover
-  SAutopilotMindset, // 02 · Mindset reframe — «Ikke et system. En autopilot.»
-  SProcessManifesto, // 03 · Manifest — boligforvaltning er en standardisert, repeterbar prosess
+  SVisionIntro,      // 02 · Visjon — krok «Ikke et system. En autopilot.» → idéen bak DigiHome
+  SAutopilotChecklist, // 03 · Autopiloten i arbeid — sjekkliste-animasjon
   SComparison,    // 04 · Sammenligning — tradisjonell software vs DigiHome (forklarende)
   SBusinessModels, // 04 · Forretningsmodeller — B2C (private) + B2B (profesjonelle)
   SLiveDemo,     // 04 · Live product animation (from /digihome-tech)
