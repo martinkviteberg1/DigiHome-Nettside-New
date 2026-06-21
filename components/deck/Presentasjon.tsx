@@ -5605,8 +5605,8 @@ const SArkitektur = (p: any) => {
       @keyframes arkIn { from { opacity: 0; transform: translateY(20px); filter: blur(6px); } to { opacity: 1; transform: translateY(0); filter: blur(0); } }
       @keyframes arkFade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
     `}</style>
-    <div className="mx-auto px-6 sm:px-12 w-full relative z-10" style={{ maxWidth: 1340 }}>
-      <div className="mb-6 sm:mb-9">
+    <div className="mx-auto self-stretch px-6 sm:px-12 w-full relative z-10 flex flex-col justify-center" style={{ maxWidth: 1340 }}>
+      <div className="mb-7 sm:mb-11">
         <div className="flex items-end justify-between gap-8 flex-wrap">
           <div>
             <span className="block text-[10px] font-bold uppercase tracking-[0.42em] mb-3" style={{ ...F, color: DINK, animation: active ? 'arkFade 0.7s ease 0.1s both' : undefined, opacity: active ? undefined : 0 }}>Arkitekturen</span>
