@@ -64,9 +64,9 @@ const STEPS: Step[] = [
   },
   {
     screen: 'proposal',
-    focus: { x: 543, y: 690, w: 394, h: 92 },
-    cursor: { x: 740, y: 736 }, down: true,
-    coach: { x: 470, y: 540, side: 'bottom', text: 'Huseier åpner lenken og signerer med BankID — uten papir.' },
+    focus: { x: 600, y: 624, w: 290, h: 80 },
+    cursor: { x: 742, y: 660 }, down: true,
+    coach: { x: 470, y: 452, side: 'top', text: 'Huseier åpner lenken og signerer med BankID — uten papir.' },
     dur: 4800,
   },
 ];
