@@ -5705,8 +5705,10 @@ export default function Presentasjon() {
   useEffect(() => { if (c !== 1 && c !== 2) setChromeLight(false); }, [c]);
 
   // Slide 2: lås fremover-navigasjon til hele tekst-animasjonen er spilt ferdig
+  // MIDLERTIDIG DEAKTIVERT — låsen er slått av etter ønske. Sett ENABLE_S2_LOCK = true for å reaktivere.
+  const ENABLE_S2_LOCK = false;
   useEffect(() => {
-    if (c === 1) {
+    if (ENABLE_S2_LOCK && c === 1) {
       setS2Locked(true);
       const t = setTimeout(() => setS2Locked(false), 6400);
       return () => clearTimeout(t);
