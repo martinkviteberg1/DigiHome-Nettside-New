@@ -93,7 +93,7 @@ const SEED: Record<string, { n: string; a: string; v: number }[]> = {
 };
 
 /* ── simulert markør ── */
-function Cursor({ x, y, down }: { x: number; y: number; down: boolean }) {
+export function Cursor({ x, y, down }: { x: number; y: number; down: boolean }) {
   return (
     <div className="absolute z-50 pointer-events-none" style={{ left: x, top: y, transform: `translate(-3px,-2px) scale(${down ? 0.86 : 1})`, transition: 'left 0.85s cubic-bezier(0.5,0,0.2,1), top 0.85s cubic-bezier(0.5,0,0.2,1), transform 0.18s ease' }}>
       <MousePointer2 className="w-7 h-7" style={{ color: '#111', fill: '#fff', filter: 'drop-shadow(0 2px 5px rgba(0,0,0,0.35))' }} strokeWidth={1.5} />
@@ -207,7 +207,7 @@ function LeadCard({ n, a, v }: { n: string; a: string; v: number }) {
 }
 
 /* ── SURFACE: salgspipeline ── */
-function PipelineSurface({ mode }: { mode: 'still' | 'live' }) {
+export function PipelineSurface({ mode }: { mode: 'still' | 'live' }) {
   const MAIN_W = WIN_W - SIDEBAR_W;
   const PAD = 28, GAP = 14;
   const COL_W = Math.floor((MAIN_W - PAD * 2 - GAP * 4) / 5);
@@ -292,7 +292,7 @@ function PipelineSurface({ mode }: { mode: 'still' | 'live' }) {
 
 /* ── SURFACE: tilbud (varmt, lyst dokument) + BankID ── */
 const TRUST: [any, string][] = [[ShieldCheck, 'Juridisk trygt'], [Fingerprint, 'BankID-signering'], [Unlock, 'Ingen bindingstid']];
-function ProposalSurface({ mode }: { mode: 'still' | 'live' }) {
+export function ProposalSurface({ mode }: { mode: 'still' | 'live' }) {
   const live = mode === 'live';
   const [phase, setPhase] = useState(0); // 0 doc, 1 cursor→aksepter, 2 click, 3 bankid, 4 signed
   const [cursor, setCursor] = useState({ x: 1180, y: 250 });
