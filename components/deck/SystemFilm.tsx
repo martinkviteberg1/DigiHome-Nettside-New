@@ -106,29 +106,40 @@ function Typewriter({ text, speed = 26, start = true }: { text: string; speed?: 
   return <>{text.slice(0, n)}<span className="sf-caret" style={{ background: INK }} /></>;
 }
 
-/* ── ord-for-ord avsløring (Apple-rolig) ── */
-function WordReveal({ text, delay = 0.12 }: { text: string; delay?: number }) {
+/* ── ChatGPT-stil strømming (ord-for-ord m/ levende markør) ── */
+function StreamText({ text, startDelay = 0, speed = 48, caret = true, caretColor = LILAC_TXT }: { text: string; startDelay?: number; speed?: number; caret?: boolean; caretColor?: string }) {
   const words = text.split(' ');
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    setN(0);
+    let i = 0; let iv: any;
+    const to = setTimeout(() => {
+      iv = setInterval(() => { i++; setN(i); if (i >= words.length) clearInterval(iv); }, speed);
+    }, startDelay);
+    return () => { clearTimeout(to); if (iv) clearInterval(iv); };
+  }, [text, startDelay, speed]); // eslint-disable-line
+  const done = n >= words.length;
   return (
     <>
-      {words.map((w, i) => (
-        <span key={i} style={{ display: 'inline-block', whiteSpace: 'pre', animation: `sf-wordin 0.55s cubic-bezier(0.16,1,0.3,1) ${delay + i * 0.026}s both` }}>{w}{i < words.length - 1 ? ' ' : ''}</span>
-      ))}
+      {words.slice(0, n).join(' ')}{n > 0 && !done ? ' ' : ''}
+      {caret && <i className="sf-cursor" style={{ background: caretColor, animation: done ? 'sf-blink 1.05s step-end infinite' : 'none', opacity: done ? undefined : 1 }} />}
     </>
   );
 }
 
-/* ── narrasjons-caption (inne i rammen, nederst — Apple lower-third) ── */
+/* ── narrasjons-caption (ChatGPT-stil assistent som forklarer steget) ── */
 function Caption({ step, text, k }: { step: string; text: string; k: number }) {
   return (
-    <div key={k} className="absolute z-40" style={{ left: 44, bottom: 40, width: 620, animation: 'sf-capin 0.7s cubic-bezier(0.16,1,0.3,1) both' }}>
-      <div className="relative rounded-[22px] pl-7 pr-7 py-5 overflow-hidden" style={{ background: 'rgba(255,255,255,0.82)', backdropFilter: 'blur(22px) saturate(1.3)', boxShadow: '0 2px 8px rgba(26,22,18,0.04), 0 26px 70px -28px rgba(26,22,18,0.42)' }}>
-        <span className="absolute left-0 top-5 bottom-5 w-[3px] rounded-full" style={{ background: `linear-gradient(180deg, ${LILAC}, ${LILAC_TXT})` }} />
-        <div className="flex items-center gap-2 mb-2">
-          <span className="w-1.5 h-1.5 rounded-full" style={{ background: LILAC, boxShadow: `0 0 8px ${LILAC}` }} />
-          <span className="text-[10.5px] font-bold uppercase tracking-[0.28em]" style={{ color: LILAC_TXT, fontFamily: F }}>{step}</span>
+    <div key={k} className="absolute z-40" style={{ left: 44, bottom: 40, width: 560, animation: 'sf-capin 0.65s cubic-bezier(0.16,1,0.3,1) both' }}>
+      <div className="relative rounded-[20px] overflow-hidden" style={{ background: 'rgba(255,255,255,0.86)', backdropFilter: 'blur(24px) saturate(1.4)', boxShadow: '0 2px 8px rgba(26,22,18,0.04), 0 26px 70px -28px rgba(26,22,18,0.42)' }}>
+        <div className="flex items-center gap-2.5 px-5 pt-3.5 pb-2.5" style={{ borderBottom: `1px solid ${LINE}` }}>
+          <span className="inline-flex items-center justify-center w-6 h-6 rounded-lg shrink-0" style={{ background: 'linear-gradient(135deg,#e9c8ff,#b07cf0)', boxShadow: `0 0 12px ${LILAC}66` }}><Sparkles className="w-3.5 h-3.5 text-white" strokeWidth={2.4} /></span>
+          <span className="text-[12.5px] font-bold" style={{ color: INK, fontFamily: FH }}>DigiHome</span>
+          <span className="w-1 h-1 rounded-full" style={{ background: WHISPER }} />
+          <span className="text-[11px]" style={{ color: SUB, fontFamily: F }}>forklarer</span>
+          <span className="ml-auto text-[9.5px] font-bold uppercase tracking-[0.2em] px-2 py-1 rounded-md" style={{ color: LILAC_TXT, background: LILAC_BG, fontFamily: F }}>{step}</span>
         </div>
-        <p className="text-[18.5px] leading-[1.5]" style={{ color: INK, fontFamily: F, fontWeight: 450, letterSpacing: '-0.005em' }}><WordReveal text={text} /></p>
+        <p className="px-5 pt-3 pb-4 text-[17.5px] leading-[1.52]" style={{ color: INK, fontFamily: F, fontWeight: 450, letterSpacing: '-0.004em' }}><StreamText text={text} startDelay={180} speed={46} /></p>
       </div>
     </div>
   );
@@ -805,16 +816,139 @@ function PortefoljeSurface({ mode }: { mode: 'still' | 'live' }) {
   );
 }
 
+/* ════════ NETTSIDE · huseier fyller ut skjema på digihome.no ════════ */
+function NettsideSurface({ mode }: { mode: 'still' | 'live' }) {
+  const live = mode === 'live';
+  const [phase, setPhase] = useState(live ? 0 : 0); // 0 idle,1 adresse,2 valgt,3 navn,4 tlf,5 hover CTA,6 sendt
+  const [cursor, setCursor] = useState({ x: 1180, y: 540 });
+  const [down, setDown] = useState(false);
+  useEffect(() => {
+    if (!live) { setPhase(0); return; }
+    setPhase(0); setCursor({ x: 1180, y: 540 });
+    const T: any[] = [];
+    T.push(setTimeout(() => { setPhase(1); setCursor({ x: 1120, y: 293 }); }, 650));
+    T.push(setTimeout(() => { setDown(true); setTimeout(() => setDown(false), 280); }, 2500)); // velg forslag
+    T.push(setTimeout(() => setPhase(2), 2700));
+    T.push(setTimeout(() => { setPhase(3); setCursor({ x: 1120, y: 377 }); }, 3300));
+    T.push(setTimeout(() => { setPhase(4); setCursor({ x: 1120, y: 461 }); }, 4700));
+    T.push(setTimeout(() => { setPhase(5); setCursor({ x: 1120, y: 540 }); }, 6000));
+    T.push(setTimeout(() => { setDown(true); setPhase(6); setTimeout(() => setDown(false), 340); }, 6700));
+    return () => T.forEach(clearTimeout);
+  }, [live]);
+
+  const field = (icon: any, y: number, label: string, active: boolean, filled: boolean, inner: React.ReactNode) => {
+    const Ic = icon;
+    return (
+      <div className="absolute" style={{ left: 28, right: 28, top: y }}>
+        <p className="text-[11px] font-semibold mb-1.5" style={{ color: SUB, fontFamily: F }}>{label}</p>
+        <div className="flex items-center gap-2.5 h-[50px] px-3.5 rounded-xl" style={{ background: active ? '#fff' : '#faf8f5', border: `1.5px solid ${active ? LILAC : LINE}`, boxShadow: active ? `0 0 0 4px ${LILAC_BG}` : 'none', transition: 'all 0.3s ease' }}>
+          <Ic className="w-[18px] h-[18px] shrink-0" strokeWidth={1.8} style={{ color: filled || active ? LILAC_TXT : FAINT }} />
+          <span className="text-[14.5px] truncate" style={{ color: filled ? INK : FAINT, fontFamily: F }}>{inner}</span>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="absolute inset-0" style={{ background: CANVAS }}>
+      {/* browser chrome */}
+      <div className="flex items-center gap-2 px-4" style={{ height: 44, background: '#efebe4', borderBottom: `1px solid ${LINE}` }}>
+        <span className="flex gap-1.5">{['#ff5f57', '#febc2e', '#28c840'].map(c => <span key={c} className="w-3 h-3 rounded-full" style={{ background: c }} />)}</span>
+        <div className="ml-3 flex-1 max-w-[420px] h-7 rounded-lg flex items-center gap-2 px-3" style={{ background: '#fff', border: `1px solid ${LINE}` }}><ShieldCheck className="w-3.5 h-3.5" style={{ color: SUCCESS }} /><span className="text-[12px]" style={{ color: SUB, fontFamily: F }}>digihome.no</span></div>
+      </div>
+      {/* site nav */}
+      <div className="flex items-center justify-between px-12" style={{ height: 64, borderBottom: `1px solid ${LINE}` }}>
+        <span className="flex items-center gap-2 font-bold text-[18px]" style={{ color: INK, fontFamily: FH }}><span className="inline-flex items-center justify-center w-7 h-7 rounded-lg text-white text-[14px]" style={{ background: 'linear-gradient(135deg,#cf97fc,#7c5cff)' }}>H</span>digihome</span>
+        <div className="flex items-center gap-7">
+          {['Forvaltning', 'Utleie', 'Priser', 'Om oss'].map(l => <span key={l} className="text-[14px] font-medium" style={{ color: SUB, fontFamily: F }}>{l}</span>)}
+          <span className="inline-flex items-center h-9 px-4 rounded-full text-[13.5px] font-semibold" style={{ background: INK, color: '#fff', fontFamily: FH }}>Logg inn</span>
+        </div>
+      </div>
+
+      {/* hero venstre */}
+      <div className="absolute" style={{ left: 96, top: 196, width: 560 }}>
+        <div className="flex items-center gap-2 mb-5"><span className="w-1.5 h-1.5 rounded-full" style={{ background: LILAC }} /><span className="text-[12px] font-bold uppercase tracking-[0.26em]" style={{ color: GOLD, fontFamily: F }}>Utleie på autopilot</span></div>
+        <h1 className="font-bold tracking-[-0.04em] leading-[0.98]" style={{ color: INK, fontFamily: FH, fontSize: 62 }}>Lei ut boligen.<br />Vi gjør resten.</h1>
+        <p className="mt-6 text-[18px] leading-[1.6]" style={{ color: SUB, fontFamily: F, maxWidth: 470 }}>Send oss adressen. Vi tar oss av prising, annonsering, visninger, kontrakt og drift — og du får utbetaling hver måned.</p>
+        <div className="flex items-center gap-5 mt-7">
+          {[[ShieldCheck, 'BankID-signering'], [Unlock, 'Ingen bindingstid'], [Wallet, 'Fast utbetaling']].map(([Ic, t]: any) => (
+            <span key={t} className="inline-flex items-center gap-2 text-[13px] font-medium" style={{ color: INK2, fontFamily: F }}><Ic className="w-4 h-4" style={{ color: GOLD }} strokeWidth={1.8} />{t}</span>
+          ))}
+        </div>
+        <div className="flex items-center gap-2 mt-8">
+          <span className="flex items-center gap-0.5">{[0, 1, 2, 3, 4].map(i => <Star key={i} className="w-4 h-4" style={{ color: SAND }} fill="currentColor" strokeWidth={0} />)}</span>
+          <span className="text-[13px] font-semibold" style={{ color: INK2, fontFamily: F }}>4,9</span>
+          <span className="text-[13px]" style={{ color: FAINT, fontFamily: F }}>· forvalter 124 boliger i Bergen</span>
+        </div>
+      </div>
+
+      {/* form-kort høyre */}
+      <div className="absolute" style={{ left: 880, top: 150, width: 480 }}>
+        <div className="relative rounded-[26px]" style={{ background: SURF, border: `1px solid ${LINE}`, boxShadow: '0 2px 6px rgba(26,22,18,0.04), 0 40px 90px -34px rgba(26,22,18,0.4)', minHeight: 470 }}>
+          <div className="px-7 pt-7 pb-2">
+            <p className="text-[11px] font-bold uppercase tracking-[0.22em]" style={{ color: LILAC_TXT, fontFamily: F }}>Kom i gang</p>
+            <h3 className="text-[24px] font-bold tracking-[-0.02em] mt-1.5" style={{ color: INK, fontFamily: FH }}>Få et uforpliktende tilbud</h3>
+          </div>
+          {phase < 6 ? (
+            <>
+              {field(MapPin, 118, 'Adresse', phase === 1, phase >= 1,
+                phase >= 2 ? 'Camilla Colletts gate 14A, 5006 Bergen' : phase >= 1 ? <Typewriter text="Camilla Colletts gate 14A" /> : 'Søk etter adressen din')}
+              {field(Users, 202, 'Fullt navn', phase === 3, phase >= 3, phase >= 3 ? <Typewriter text="Anna Berg" /> : 'Navnet ditt')}
+              {field(Phone, 286, 'Telefon', phase === 4, phase >= 4, phase >= 4 ? <Typewriter text="934 11 802" /> : 'Telefonnummer')}
+              <div className="absolute" style={{ left: 28, right: 28, top: 370 }}>
+                <button className="w-full h-[54px] rounded-full inline-flex items-center justify-center gap-2 text-[16px] font-semibold" style={{ background: INK, color: '#fff', fontFamily: FH, boxShadow: phase === 5 ? `0 0 0 6px ${LILAC_BG}, 0 14px 30px -12px rgba(26,22,18,0.5)` : '0 10px 24px -12px rgba(26,22,18,0.4)', transform: down ? 'scale(0.98)' : 'none', transition: 'all 0.2s ease' }}>Send inn <ArrowRight className="w-5 h-5" strokeWidth={2.4} /></button>
+                <p className="text-center text-[11.5px] mt-3" style={{ color: FAINT, fontFamily: F }}>Gratis og uforpliktende · svar innen 24 timer</p>
+              </div>
+              {/* autocomplete dropdown */}
+              {phase === 1 && (
+                <div className="absolute z-20" style={{ left: 28, right: 28, top: 200, animation: 'sf-rise 0.3s ease both' }}>
+                  <div className="rounded-xl overflow-hidden" style={{ background: SURF, border: `1px solid ${LINE}`, boxShadow: '0 20px 44px -18px rgba(26,22,18,0.32)' }}>
+                    {[['Camilla Colletts gate 14A', '5006 Bergen'], ['Camilla Colletts gate 14B', '5006 Bergen'], ['Camilla Colletts gate 9', '5006 Bergen']].map(([a, b], i) => (
+                      <div key={a} className="flex items-center gap-2.5 px-3.5 py-2.5" style={{ background: i === 0 ? HOVER : 'transparent', borderBottom: i < 2 ? `1px solid ${LINE}` : 'none' }}>
+                        <MapPin className="w-4 h-4 shrink-0" style={{ color: i === 0 ? LILAC_TXT : FAINT }} strokeWidth={1.8} />
+                        <span className="text-[13.5px] font-medium" style={{ color: INK, fontFamily: F }}>{a}</span>
+                        <span className="text-[12px]" style={{ color: FAINT, fontFamily: F }}>{b}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="px-8 py-10 text-center" style={{ animation: 'sf-fade 0.5s ease both' }}>
+              <div className="w-16 h-16 rounded-full mx-auto flex items-center justify-center" style={{ background: SUCCESS_BG, animation: 'sf-pop 0.5s cubic-bezier(0.16,1,0.3,1)' }}><Check className="w-9 h-9" style={{ color: SUCCESS }} strokeWidth={3} /></div>
+              <h3 className="mt-6 text-[26px] font-bold tracking-[-0.02em]" style={{ color: INK, fontFamily: FH }}>Takk, Anna!</h3>
+              <p className="mt-3 text-[15px] leading-relaxed mx-auto" style={{ color: SUB, fontFamily: F, maxWidth: 320 }}>Vi har mottatt henvendelsen for <b style={{ color: INK }}>Camilla Colletts gate 14A</b>. En rådgiver tar kontakt innen 24 timer.</p>
+              <div className="mt-6 inline-flex items-center gap-2 px-4 py-2 rounded-full" style={{ background: LILAC_BG }}><Sparkles className="w-4 h-4" style={{ color: LILAC_TXT }} strokeWidth={2} /><span className="text-[12.5px] font-semibold" style={{ color: LILAC_TXT, fontFamily: F }}>Sendt rett inn i systemet</span></div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {live && phase >= 6 && (
+        <div className="absolute z-30" style={{ top: 80, right: 32, animation: 'sf-slidein 0.5s cubic-bezier(0.16,1,0.3,1) both' }}>
+          <Toast Icon={Mail}>Nytt lead lagt i <b>pipelinen</b></Toast>
+        </div>
+      )}
+      {live && phase < 6 && <Cursor x={cursor.x} y={cursor.y} down={down} />}
+    </div>
+  );
+}
+
+
 /* ── surface-register ── */
 const SURFACES: Record<string, (p: { mode: 'still' | 'live' }) => JSX.Element> = {
-  pipeline: PipelineSurface, proposal: ProposalSurface, registrer: RegistrerSurface, finn: FinnSurface,
+  nettside: NettsideSurface, pipeline: PipelineSurface, proposal: ProposalSurface, registrer: RegistrerSurface, finn: FinnSurface,
   visninger: VisningerSurface, screening: ScreeningSurface, kontrakt: KontraktSurface,
   innflytting: InnflyttingSurface, drift: DriftSurface, portefolje: PortefoljeSurface,
 };
 
 
-/* ── keynote-overlay (inne i rammen, over sløret surface — Apple keynote) ── */
+/* ── keynote-overlay (inne i rammen, over sløret surface — Apple keynote, levende skriving) ── */
 function KeynoteOverlay({ eyebrow, lines, sub }: { eyebrow: string; lines: string[]; sub?: string }) {
+  let wi = -1;
+  const totalWords = lines.join(' ').split(' ').length;
+  const subDelay = Math.round(totalWords * 90 + 600);
   return (
     <div className="absolute inset-0 z-30 flex flex-col items-center justify-center text-center px-20"
       style={{ background: 'radial-gradient(120% 95% at 50% 46%, rgba(250,248,245,0.95) 0%, rgba(250,248,245,0.92) 36%, rgba(250,248,245,0.8) 68%, rgba(250,248,245,0.6) 100%)', backdropFilter: 'blur(3px)' }}>
@@ -824,9 +958,16 @@ function KeynoteOverlay({ eyebrow, lines, sub }: { eyebrow: string; lines: strin
         <span className="text-[12.5px] font-bold uppercase tracking-[0.36em]" style={{ color: SUB, fontFamily: F }}>{eyebrow}</span>
       </div>
       <h2 className="relative font-bold tracking-[-0.045em]" style={{ color: INK, fontFamily: FH, fontSize: 76, lineHeight: 1.01 }}>
-        {lines.map((l, i) => <span key={i} className="block" style={{ animation: `sf-blurup 0.95s cubic-bezier(0.16,1,0.3,1) ${0.22 + i * 0.14}s both` }}>{l}</span>)}
+        {lines.map((l, li) => {
+          const ws = l.split(' ');
+          return (
+            <span key={li} className="block">
+              {ws.map((w, k) => { wi += 1; const d = 0.25 + wi * 0.09; return <span key={k} style={{ display: 'inline-block', whiteSpace: 'pre', animation: `sf-wordblur 0.6s cubic-bezier(0.16,1,0.3,1) ${d}s both` }}>{w}{k < ws.length - 1 ? ' ' : ''}</span>; })}
+            </span>
+          );
+        })}
       </h2>
-      {sub && <p className="relative mt-8" style={{ color: SUB, fontFamily: F, fontSize: 21, fontWeight: 400, maxWidth: 600, lineHeight: 1.6, animation: `sf-rise 0.9s cubic-bezier(0.16,1,0.3,1) ${0.34 + lines.length * 0.14}s both` }}>{sub}</p>}
+      {sub && <p className="relative mt-8" style={{ color: SUB, fontFamily: F, fontSize: 21, fontWeight: 400, maxWidth: 600, lineHeight: 1.6 }}><StreamText text={sub} startDelay={subDelay} speed={40} /></p>}
     </div>
   );
 }
@@ -834,8 +975,9 @@ function KeynoteOverlay({ eyebrow, lines, sub }: { eyebrow: string; lines: strin
 /* ── scene-manifest ── */
 const SCENES = [
   // ── AKT 1 · ANSKAFFELSE ──
-  { act: 'Akt 1 · Anskaffelse', surface: 'pipeline', kind: 'keynote', dur: 5400, key: { eyebrow: 'Slik jobber en forvalter', lines: ['Det begynner med', 'en henvendelse.'], sub: 'En huseier vil leie ut. Tradisjonelt drukner slike forespørsler i e-post og regneark — de beste glipper.' } },
-  { act: 'Akt 1 · Anskaffelse', surface: 'pipeline', kind: 'tour', dur: 11500, cap: { step: 'Salgspipeline', text: 'Forespørselen fra digihome.no lander øverst i pipelinen og flyttes gjennom løpet. Den vektede prognosen oppdateres for hvert steg — ingenting glipper.' } },
+  { act: 'Akt 1 · Anskaffelse', surface: 'nettside', kind: 'keynote', dur: 5400, key: { eyebrow: 'Slik jobber en forvalter', lines: ['Det begynner med', 'en henvendelse.'], sub: 'En huseier vil leie ut boligen sin — og fyller inn adressen på digihome.no.' } },
+  { act: 'Akt 1 · Anskaffelse', surface: 'nettside', kind: 'tour', dur: 11500, cap: { step: 'På digihome.no', text: 'Huseieren fyller inn adresse og kontaktinfo. Skjemaet sjekker adressen automatisk og sender henvendelsen rett inn i systemet — ingen e-post, ingen skjema på avveie.' } },
+  { act: 'Akt 1 · Anskaffelse', surface: 'pipeline', kind: 'tour', dur: 11000, cap: { step: 'Salgspipeline', text: 'Henvendelsen lander øverst i pipelinen og flyttes gjennom løpet. Den vektede prognosen oppdateres for hvert steg — ingenting glipper.' } },
   { act: 'Akt 1 · Anskaffelse', surface: 'proposal', kind: 'keynote', dur: 5200, key: { eyebrow: 'Painpoint', lines: ['Tilbud på papir', 'tar dager.'], sub: 'Normalt skrives forvaltningstilbud manuelt og signeres på papir. DigiHome gjør det til minutter.' } },
   { act: 'Akt 1 · Anskaffelse', surface: 'proposal', kind: 'tour', dur: 12000, cap: { step: 'Tilbud & signering', text: 'Tilbudet genereres fra systemet med honorar og vilkår. Huseier åpner en lenke, ser et proft dokument og signerer med BankID.' } },
   { act: 'Akt 1 · Anskaffelse', surface: 'proposal', kind: 'keynote', dur: 5600, key: { eyebrow: 'Akt 1 fullført', lines: ['Fra henvendelse', 'til signert avtale.'], sub: 'Hele salgsløpet — uten papir, uten regneark. Og nå tar systemet over driften.' } },
@@ -961,6 +1103,7 @@ export default function SystemFilm() {
 
       <style>{`
         .sf-caret { display:inline-block; width:2px; height:1em; margin-left:2px; vertical-align:-2px; animation: sf-blink 1s step-end infinite; }
+        .sf-cursor { display:inline-block; width:9px; height:1.05em; border-radius:2px; margin-left:3px; vertical-align:-3px; }
         .sf-done { width:100% !important; }
         @keyframes sf-blink { 50% { opacity:0; } }
         @keyframes sf-fill { from { width:0%; } to { width:100%; } }
@@ -974,6 +1117,7 @@ export default function SystemFilm() {
         @keyframes sf-scan { 0% { top:-12%; } 100% { top:104%; } }
         @keyframes sf-spin { to { transform: rotate(360deg); } }
         @keyframes sf-wordin { from { opacity:0; transform: translateY(0.3em); filter: blur(5px); } to { opacity:1; transform: translateY(0); filter: blur(0); } }
+        @keyframes sf-wordblur { from { opacity:0; transform: translateY(0.36em); filter: blur(9px); } to { opacity:1; transform: translateY(0); filter: blur(0); } }
         @keyframes sf-capin { from { opacity:0; transform: translateY(16px) scale(0.985); } to { opacity:1; transform: translateY(0) scale(1); } }
       `}</style>
     </div>
