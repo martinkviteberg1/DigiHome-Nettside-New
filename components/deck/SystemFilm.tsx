@@ -1012,30 +1012,61 @@ const SURFACES: Record<string, (p: { mode: 'still' | 'live' }) => JSX.Element> =
 };
 
 
+/* ── sentrert forklaring (Apple keynote — midt i bildet, toner bort når produktet kommer i fokus) ── */
+function CenterNarration({ step, text, gone }: { step: string; text: string; gone: boolean }) {
+  return (
+    <div className="absolute inset-0 z-30 flex flex-col items-center justify-center text-center px-24"
+      style={{
+        background: 'radial-gradient(125% 100% at 50% 48%, rgba(250,248,245,0.94) 0%, rgba(250,248,245,0.9) 40%, rgba(250,248,245,0.76) 72%, rgba(250,248,245,0.55) 100%)',
+        backdropFilter: 'blur(3px)',
+        opacity: gone ? 0 : 1,
+        transform: gone ? 'translateY(-26px) scale(0.992)' : 'none',
+        transition: 'opacity 0.75s cubic-bezier(0.16,1,0.3,1), transform 0.75s cubic-bezier(0.16,1,0.3,1)',
+        pointerEvents: 'none',
+      }}>
+      <div className="absolute pointer-events-none" style={{ width: 700, height: 320, borderRadius: '50%', background: `radial-gradient(circle, ${LILAC}1c 0%, transparent 70%)`, filter: 'blur(30px)' }} />
+      <div className="relative flex items-center gap-2.5 mb-6" style={{ animation: 'sf-rise 0.6s cubic-bezier(0.16,1,0.3,1) 0.05s both' }}>
+        <span className="w-1.5 h-1.5 rounded-full" style={{ background: LILAC, boxShadow: `0 0 10px ${LILAC}` }} />
+        <span className="text-[12px] font-bold uppercase tracking-[0.32em]" style={{ color: LILAC_TXT, fontFamily: F }}>{step}</span>
+      </div>
+      <p className="relative font-semibold tracking-[-0.022em]" style={{ color: INK, fontFamily: FH, fontSize: 38, lineHeight: 1.3, maxWidth: 940 }}>
+        <StreamText text={text} startDelay={250} speed={40} />
+      </p>
+    </div>
+  );
+}
+
 /* ── keynote-overlay (inne i rammen, over sløret surface — Apple keynote, levende skriving) ── */
-function KeynoteOverlay({ eyebrow, lines, sub }: { eyebrow: string; lines: string[]; sub?: string }) {
+function KeynoteOverlay({ eyebrow, lines, sub, hero = false }: { eyebrow: string; lines: string[]; sub?: string; hero?: boolean }) {
   let wi = -1;
   const totalWords = lines.join(' ').split(' ').length;
-  const subDelay = Math.round(totalWords * 90 + 600);
+  const subDelay = Math.round(totalWords * 90 + (hero ? 800 : 600));
   return (
     <div className="absolute inset-0 z-30 flex flex-col items-center justify-center text-center px-20"
       style={{ background: 'radial-gradient(120% 95% at 50% 46%, rgba(250,248,245,0.95) 0%, rgba(250,248,245,0.92) 36%, rgba(250,248,245,0.8) 68%, rgba(250,248,245,0.6) 100%)', backdropFilter: 'blur(3px)' }}>
-      <div className="absolute pointer-events-none" style={{ width: 720, height: 360, borderRadius: '50%', background: `radial-gradient(circle, ${LILAC}1f 0%, transparent 70%)`, filter: 'blur(30px)', animation: 'sf-fade 1.2s ease both' }} />
-      <div className="relative flex items-center gap-2.5 mb-7" style={{ animation: 'sf-rise 0.7s cubic-bezier(0.16,1,0.3,1) 0.05s both' }}>
-        <span className="w-1.5 h-1.5 rounded-full" style={{ background: LILAC, boxShadow: `0 0 10px ${LILAC}` }} />
-        <span className="text-[12.5px] font-bold uppercase tracking-[0.36em]" style={{ color: SUB, fontFamily: F }}>{eyebrow}</span>
-      </div>
-      <h2 className="relative font-bold tracking-[-0.045em]" style={{ color: INK, fontFamily: FH, fontSize: 76, lineHeight: 1.01 }}>
+      <div className="absolute pointer-events-none" style={{ width: hero ? 880 : 720, height: hero ? 440 : 360, borderRadius: '50%', background: `radial-gradient(circle, ${LILAC}${hero ? '26' : '1f'} 0%, transparent 70%)`, filter: 'blur(34px)', animation: 'sf-fade 1.4s ease both' }} />
+      {hero ? (
+        <div className="relative flex items-center gap-2.5 mb-9" style={{ animation: 'sf-rise 0.8s cubic-bezier(0.16,1,0.3,1) 0.05s both' }}>
+          <span className="inline-flex items-center justify-center w-9 h-9 rounded-xl text-white text-[17px] font-bold" style={{ background: 'linear-gradient(135deg,#cf97fc,#7c5cff)', fontFamily: FH, boxShadow: `0 8px 24px -6px ${LILAC}` }}>H</span>
+          <span className="text-[20px] font-bold tracking-[-0.01em]" style={{ color: INK, fontFamily: FH }}>digihome</span>
+        </div>
+      ) : (
+        <div className="relative flex items-center gap-2.5 mb-7" style={{ animation: 'sf-rise 0.7s cubic-bezier(0.16,1,0.3,1) 0.05s both' }}>
+          <span className="w-1.5 h-1.5 rounded-full" style={{ background: LILAC, boxShadow: `0 0 10px ${LILAC}` }} />
+          <span className="text-[12.5px] font-bold uppercase tracking-[0.36em]" style={{ color: SUB, fontFamily: F }}>{eyebrow}</span>
+        </div>
+      )}
+      <h2 className="relative font-bold tracking-[-0.045em]" style={{ color: INK, fontFamily: FH, fontSize: hero ? 94 : 76, lineHeight: 1.0 }}>
         {lines.map((l, li) => {
           const ws = l.split(' ');
           return (
             <span key={li} className="block">
-              {ws.map((w, k) => { wi += 1; const d = 0.25 + wi * 0.09; return <span key={k} style={{ display: 'inline-block', whiteSpace: 'pre', animation: `sf-wordblur 0.6s cubic-bezier(0.16,1,0.3,1) ${d}s both` }}>{w}{k < ws.length - 1 ? ' ' : ''}</span>; })}
+              {ws.map((w, k) => { wi += 1; const d = 0.25 + wi * (hero ? 0.11 : 0.09); return <span key={k} style={{ display: 'inline-block', whiteSpace: 'pre', animation: `sf-wordblur ${hero ? 0.75 : 0.6}s cubic-bezier(0.16,1,0.3,1) ${d}s both` }}>{w}{k < ws.length - 1 ? ' ' : ''}</span>; })}
             </span>
           );
         })}
       </h2>
-      {sub && <p className="relative mt-8" style={{ color: SUB, fontFamily: F, fontSize: 21, fontWeight: 400, maxWidth: 600, lineHeight: 1.6 }}><StreamText text={sub} startDelay={subDelay} speed={40} /></p>}
+      {sub && <p className="relative mt-8" style={{ color: SUB, fontFamily: F, fontSize: hero ? 22 : 21, fontWeight: 400, maxWidth: hero ? 660 : 600, lineHeight: 1.6 }}><StreamText text={sub} startDelay={subDelay} speed={40} /></p>}
     </div>
   );
 }
@@ -1089,6 +1120,7 @@ export default function SystemFilm() {
   const [idx, setIdx] = useState(0);
   const [playing, setPlaying] = useState(true);
   const [scale, setScale] = useState(0.7);
+  const [revealed, setRevealed] = useState(false);
   const last = SCENES.length - 1;
 
   useEffect(() => {
@@ -1107,6 +1139,17 @@ export default function SystemFilm() {
     return () => clearTimeout(t);
   }, [idx, playing, last]);
 
+  // sentrert forklaring → produktet kommer i fokus (Apple "si det, så vis det")
+  useEffect(() => {
+    setRevealed(false);
+    const sc = SCENES[idx] as any;
+    if (sc.kind !== 'tour') return;
+    const words = (sc.cap?.text || '').split(' ').length;
+    const delay = Math.min(Math.max(words * 72 + 1500, 2600), 4600);
+    const t = setTimeout(() => setRevealed(true), delay);
+    return () => clearTimeout(t);
+  }, [idx]);
+
   const next = useCallback(() => setIdx(i => Math.min(i + 1, last)), [last]);
   const prev = useCallback(() => setIdx(i => Math.max(i - 1, 0)), []);
   useEffect(() => {
@@ -1121,6 +1164,8 @@ export default function SystemFilm() {
 
   const s = SCENES[idx] as any;
   const isKeynote = s.kind === 'keynote';
+  const mode: 'still' | 'live' = isKeynote ? 'still' : (revealed ? 'live' : 'still');
+  const dimmed = isKeynote || !revealed;
 
   return (
     <div className="fixed inset-0 overflow-hidden" style={{ background: CANVAS, fontFamily: F }}>
@@ -1153,14 +1198,19 @@ export default function SystemFilm() {
           {/* gulvskygge */}
           <div className="absolute pointer-events-none" style={{ left: '8%', right: '8%', bottom: '-5%', height: 60, borderRadius: '50%', background: 'rgba(26,22,18,0.22)', filter: 'blur(34px)' }} />
           <div style={{ width: WIN_W, height: WIN_H, transform: `scale(${scale})`, transformOrigin: 'top left', position: 'absolute', top: 0, left: 0, borderRadius: 22, overflow: 'hidden', background: SURF, boxShadow: '0 1px 0 rgba(255,255,255,0.7) inset, 0 0 0 1px rgba(26,22,18,0.06), 0 8px 18px rgba(26,22,18,0.06), 0 60px 130px -24px rgba(26,22,18,0.32)' }}>
-            {/* surface (key per surface-type slik at samme surface ikke remountes mellom keynote→tour) */}
-            <div key={s.surface + (isKeynote ? '' : '-live')} className="absolute inset-0" style={{ filter: isKeynote ? 'blur(8px) saturate(1.04)' : 'none', transform: isKeynote ? 'scale(1.04)' : 'none', transition: 'filter 0.7s cubic-bezier(0.16,1,0.3,1), transform 0.7s cubic-bezier(0.16,1,0.3,1)', animation: 'sf-fade 0.5s ease both' }}>
-              {(() => { const Surf = SURFACES[s.surface] || PipelineSurface; return <Surf mode={isKeynote ? 'still' : 'live'} />; })()}
+            {/* surface — sløret/zoomet mens forklaringen vises, kommer i fokus ved avsløring */}
+            <div key={`${idx}-${mode}`} className="absolute inset-0"
+              style={dimmed
+                ? { filter: 'blur(9px) saturate(1.05) brightness(0.99)', animation: 'sf-dimin 9s cubic-bezier(0.16,1,0.3,1) both' }
+                : { animation: 'sf-revealin 0.9s cubic-bezier(0.16,1,0.3,1) both' }}>
+              {(() => { const Surf = SURFACES[s.surface] || PipelineSurface; return <Surf mode={mode} />; })()}
             </div>
             {/* fin topp-glanskant */}
-            <div className="absolute inset-x-0 top-0 pointer-events-none" style={{ height: 80, background: 'linear-gradient(to bottom, rgba(255,255,255,0.18), transparent)' }} />
-            {isKeynote && <KeynoteOverlay key={'k' + idx} {...s.key} />}
-            {!isKeynote && s.cap && <Caption k={idx} step={s.cap.step} text={s.cap.text} />}
+            <div className="absolute inset-x-0 top-0 pointer-events-none z-20" style={{ height: 80, background: 'linear-gradient(to bottom, rgba(255,255,255,0.18), transparent)' }} />
+            {/* cinematisk vignette */}
+            <div className="absolute inset-0 pointer-events-none z-20" style={{ boxShadow: 'inset 0 0 160px 30px rgba(26,22,18,0.10)', borderRadius: 22, opacity: dimmed ? 1 : 0.5, transition: 'opacity 0.8s ease' }} />
+            {isKeynote && <KeynoteOverlay key={'k' + idx} hero={idx === 0} {...s.key} />}
+            {!isKeynote && s.cap && <CenterNarration key={'c' + idx} step={s.cap.step} text={s.cap.text} gone={revealed} />}
           </div>
         </div>
       </div>
@@ -1193,6 +1243,8 @@ export default function SystemFilm() {
         @keyframes sf-wordblur { from { opacity:0; transform: translateY(0.36em); filter: blur(9px); } to { opacity:1; transform: translateY(0); filter: blur(0); } }
         @keyframes sf-flow { 0% { left:0%; opacity:0; } 15% { opacity:1; } 85% { opacity:1; } 100% { left:100%; opacity:0; } }
         @keyframes sf-capin { from { opacity:0; transform: translateY(16px) scale(0.985); } to { opacity:1; transform: translateY(0) scale(1); } }
+        @keyframes sf-dimin { 0% { opacity:0; transform: scale(1.055); } 12% { opacity:1; } 100% { opacity:1; transform: scale(1.085); } }
+        @keyframes sf-revealin { 0% { opacity:0; filter: blur(11px); transform: scale(1.04); } 100% { opacity:1; filter: blur(0); transform: scale(1); } }
       `}</style>
     </div>
   );
