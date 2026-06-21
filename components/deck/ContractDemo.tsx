@@ -1,19 +1,21 @@
 'use client';
 /**
  * ContractDemo — scriptet, selvstendig rekonstruksjon av DigiHome-flyten:
- * Operasjonssentral → Autopilot-kommando → «Kontraktsutkast» som fylles live → sendt.
- *
- * Pixel-tro mot produktet (OperasjonssentralPage / Copilot / LeaseCanvas), men uten
- * data/nett/auth/router — ren tidslinje. Brukes inne i en deck-slide (SSystemIArbeid).
+ * Sidebar → Operasjonssentral → Autopilot-kommando → «Kontraktsutkast» fylles live → sendt.
+ * Pixel-tro mot produktet (AdminLayout / OperasjonssentralPage / Copilot / LeaseCanvas),
+ * men uten data/nett/auth/router — ren tidslinje. Brukes i deck-slide (SSystemIArbeid).
  */
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import {
   PenLine, Wallet, ScrollText, ChevronRight, Clock, Check, Zap, RefreshCw,
   SlidersHorizontal, ListFilter, Sparkles, X, FileSignature, User, Mail, Phone,
-  CalendarDays, ArrowUpRight, ArrowUp, Mic, AudioLines, Maximize2, RotateCcw, Volume2,
+  CalendarDays, ArrowUpRight, Mic, AudioLines, Maximize2, RotateCcw, Volume2,
+  LayoutDashboard, Gauge, MessageSquare, UserCheck, ClipboardList, Radio,
+  ClipboardCheck, Bot, Building2, Rocket, FileText, AlertCircle, Users,
+  PanelLeftClose, ChevronsUpDown,
 } from 'lucide-react';
 
-/* ── DigiHome merkelag (fra design_guidelines.json) ── */
+/* ── DigiHome merkelag ── */
 const INK = '#0A0A0A';
 const INK2 = '#36332E';
 const MUTED = '#808080';
@@ -25,10 +27,39 @@ const SOFT = '#F4F2EE';
 const SUBTLE = '#F9F9F9';
 const ACCENT = '#7C3AED';   // lilla — handling
 const BRAND = '#d298ff';    // merkelilla — primær-CTA
+const LILAC = '#cf97fc';    // sidebar-aksent
+const BADGE = '#af6ee8';
 const GREEN = '#16a34a';
 const ORANGE = '#ea580c';
+const SIDE_BG = '#1a1a1a';
 const FH = "var(--font-heading), 'PP Right Grotesk', -apple-system, BlinkMacSystemFont, sans-serif";
 const F = "var(--font-body), 'ABC Diatype', -apple-system, BlinkMacSystemFont, sans-serif";
+
+const SIDEBAR_W = 256;
+const COPILOT_W = 416;
+const LEASE_W = 424;
+const WIN_W = 1480;
+const WIN_H = 832;
+
+const NAV: any[] = [
+  { sec: 'Arbeid' },
+  { label: 'Oversikt', Icon: LayoutDashboard },
+  { label: 'Operasjonssentral', Icon: Gauge, active: true, badge: 'Ny' },
+  { label: 'Innboks', Icon: MessageSquare },
+  { label: 'Leads', Icon: UserCheck, badge: 'Pro' },
+  { label: 'Reservasjoner', Icon: ClipboardList },
+  { label: 'Kalender', Icon: CalendarDays },
+  { label: 'Kanaler', Icon: Radio },
+  { label: 'Oppgaver', Icon: ClipboardCheck },
+  { label: 'Driftsassistent', Icon: Bot },
+  { sec: 'Drift' },
+  { label: 'Eiendommer', Icon: Building2 },
+  { label: 'Utleieprosesser', Icon: Rocket },
+  { label: 'Leieforhold', Icon: FileText },
+  { label: 'Dokumenter', Icon: FileSignature },
+  { label: 'Saker', Icon: AlertCircle },
+  { label: 'Personer', Icon: Users },
+];
 
 const CAT: Record<string, { bg: string; fg: string; Icon: any }> = {
   Signering: { bg: '#EFE6FC', fg: '#7C3AED', Icon: PenLine },
@@ -57,18 +88,13 @@ const FILL: { k: string; v: string }[] = [
 ];
 const ESSENTIALS = ['tenant_name', 'start_date', 'monthly_rent', 'tenant_email', 'tenant_phone', 'deposit'];
 
-const WIN_W = 1240;
-const WIN_H = 760;
-const COPILOT_W = 416;
-const LEASE_W = 424;
-
 type Draft = Record<string, string>;
 
 const renderInline = (t: string) =>
   t.split(/(\*\*[^*]+\*\*)/g).map((p, i) =>
     p.startsWith('**') ? <strong key={i} style={{ color: INK, fontWeight: 700 }}>{p.slice(2, -2)}</strong> : <React.Fragment key={i}>{p}</React.Fragment>);
 
-/* ─────────────── Felt i kontraktsutkast (display-only) ─────────────── */
+/* ── felt i kontraktsutkast (display-only) ── */
 const LeaseField = ({ icon, label, value, placeholder, suffix, lit }: any) => {
   const filled = !!(value && String(value).trim());
   return (
@@ -101,22 +127,19 @@ const SectionHead = ({ children }: any) => (
   </div>
 );
 
-/* ─────────────── Hovedkomponent ─────────────── */
 export default function ContractDemo({ active, pdfMode }: { active?: boolean; pdfMode?: boolean }) {
   const isPdf = !!pdfMode;
 
-  // state
-  const [started, setStarted] = useState(false);     // kommando sendt → meldingsvisning
-  const [pickIdx, setPickIdx] = useState(-1);         // hvilken chip som markeres
-  const [sending, setSending] = useState(false);      // typing-dots
-  const [reply, setReply] = useState(false);          // svar 1 vist
-  const [reply2, setReply2] = useState(false);        // svar 2 vist
+  const [started, setStarted] = useState(false);
+  const [pickIdx, setPickIdx] = useState(-1);
+  const [sending, setSending] = useState(false);
+  const [reply, setReply] = useState(false);
+  const [reply2, setReply2] = useState(false);
   const [leaseOpen, setLeaseOpen] = useState(false);
   const [draft, setDraft] = useState<Draft>({ contract_type: 'tidsubestemt' });
   const [flash, setFlash] = useState<Record<string, boolean>>({});
   const [ready, setReady] = useState(false);
   const [sent, setSent] = useState(false);
-  const [tick, setTick] = useState(0); // re-render bump
 
   const timers = useRef<any[]>([]);
   const clearAll = () => { timers.current.forEach((t) => clearTimeout(t)); timers.current = []; };
@@ -126,10 +149,10 @@ export default function ContractDemo({ active, pdfMode }: { active?: boolean; pd
     clearAll();
     setStarted(false); setPickIdx(-1); setSending(false); setReply(false); setReply2(false);
     setLeaseOpen(false); setDraft({ contract_type: 'tidsubestemt' }); setFlash({});
-    setReady(false); setSent(false); setTick((t) => t + 1);
+    setReady(false); setSent(false);
   }, []);
 
-  // PDF: statisk representativt sluttbilde (alt utfylt, klar til å sende)
+  // PDF: statisk representativt sluttbilde (alt utfylt, klar)
   useEffect(() => {
     if (!isPdf) return;
     clearAll();
@@ -139,17 +162,15 @@ export default function ContractDemo({ active, pdfMode }: { active?: boolean; pd
     setDraft(d); setReady(true); setSent(false);
   }, [isPdf]);
 
-  // Tidslinje
   const run = useCallback(() => {
     reset();
     const d: Draft = { contract_type: 'tidsubestemt' };
-    at(900, () => setPickIdx(1));
-    at(2000, () => { setPickIdx(-1); setStarted(true); setSending(true); });
-    at(3300, () => { setSending(false); setReply(true); });
-    at(4000, () => setLeaseOpen(true));
-    // fyll feltene
+    at(1000, () => setPickIdx(1));
+    at(2200, () => { setPickIdx(-1); setStarted(true); setSending(true); });
+    at(3500, () => { setSending(false); setReply(true); });
+    at(4300, () => setLeaseOpen(true));
     FILL.forEach((f, i) => {
-      const t = 4900 + i * 760;
+      const t = 5200 + i * 780;
       at(t, () => {
         d[f.k] = f.v;
         setDraft({ ...d });
@@ -157,28 +178,27 @@ export default function ContractDemo({ active, pdfMode }: { active?: boolean; pd
         timers.current.push(setTimeout(() => setFlash((fl) => { const n = { ...fl }; delete n[f.k]; return n; }), 1300));
       });
     });
-    const fillEnd = 4900 + FILL.length * 760;
+    const fillEnd = 5200 + FILL.length * 780;
     at(fillEnd + 300, () => { setReady(true); setReply2(true); });
     at(fillEnd + 1700, () => setSent(true));
   }, [reset]);
 
-  // start/stopp ved aktiv slide
   useEffect(() => {
     if (isPdf) return;
-    if (active) { run(); }
-    else { reset(); }
+    if (active) run();
+    else reset();
     return () => clearAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active, isPdf]);
 
-  // skalering til å passe i sliden
-  const [scale, setScale] = useState(isPdf ? 0.9 : 0.74);
+  // skalering
+  const [scale, setScale] = useState(isPdf ? 0.86 : 0.7);
   useEffect(() => {
-    if (isPdf) { setScale(0.9); return; }
+    if (isPdf) { setScale(0.86); return; }
     const upd = () => {
-      const availH = window.innerHeight - 248;
-      const availW = window.innerWidth - 130;
-      setScale(Math.max(0.5, Math.min(availH / WIN_H, availW / WIN_W, 0.92)));
+      const availH = window.innerHeight - 196;
+      const availW = window.innerWidth - 96;
+      setScale(Math.max(0.45, Math.min(availH / WIN_H, availW / WIN_W, 1)));
     };
     upd();
     window.addEventListener('resize', upd);
@@ -187,31 +207,65 @@ export default function ContractDemo({ active, pdfMode }: { active?: boolean; pd
 
   const filledCount = ESSENTIALS.filter((k) => (draft[k] || '').toString().trim()).length;
   const pct = Math.round((filledCount / ESSENTIALS.length) * 100);
-  const listDim = leaseOpen;
 
   return (
-    <div className="relative mx-auto" style={{ width: WIN_W * scale, height: WIN_H * scale }} data-tick={tick}>
+    <div className="relative mx-auto" style={{ width: WIN_W * scale, height: WIN_H * scale }}>
       <div style={{
         width: WIN_W, height: WIN_H, transform: `scale(${scale})`, transformOrigin: 'top left',
         position: 'absolute', top: 0, left: 0, borderRadius: 18, overflow: 'hidden', background: CANVAS,
-        boxShadow: '0 4px 10px rgba(20,15,10,0.05), 0 34px 90px rgba(20,15,10,0.17)', border: '1px solid #e4dfd6',
+        boxShadow: '0 4px 10px rgba(20,15,10,0.05), 0 40px 100px rgba(20,15,10,0.18)', border: '1px solid #e4dfd6',
       }}>
-        {/* prikk-grid */}
-        <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle, #c8c8c8 0.8px, transparent 0.8px)', backgroundSize: '24px 24px', opacity: 0.16 }} />
 
-        {/* ── OPERASJONSSENTRAL (hovedflate) ── */}
-        <div className="absolute inset-0 overflow-hidden transition-all duration-500"
-          style={{ paddingRight: COPILOT_W, filter: listDim ? 'blur(1.5px)' : 'none' }}>
-          <div className="px-10 py-9 h-full" style={{ maxWidth: 880 }}>
-            {/* header */}
+        {/* ─── SIDEBAR ─── */}
+        <div className="absolute top-0 bottom-0 left-0 flex flex-col" style={{ width: SIDEBAR_W, background: SIDE_BG }}>
+          {/* logo */}
+          <div className="flex items-center justify-between px-5 pt-5 pb-3 shrink-0">
+            <img src="/digihome-logo-white.svg" alt="DigiHome" className="h-[24px] w-auto select-none" draggable={false} />
+            <PanelLeftClose className="w-4 h-4 shrink-0" strokeWidth={1.6} style={{ color: 'rgba(255,255,255,0.45)' }} />
+          </div>
+          {/* nav */}
+          <nav className="flex-1 px-2.5 overflow-hidden" style={{ paddingTop: 2 }}>
+            {NAV.map((it, i) => {
+              if (it.sec) return <p key={`s${i}`} className="text-[9.5px] font-semibold uppercase tracking-[0.16em] px-3 pt-[18px] pb-2" style={{ color: 'rgba(255,255,255,0.35)' }}>{it.sec}</p>;
+              const A = it.active;
+              return (
+                <div key={it.label} className="relative flex items-center gap-3 rounded-xl px-3 py-[9px] text-[13px] font-medium mb-0.5"
+                  style={{ background: A ? 'linear-gradient(90deg, rgba(207,151,252,0.20), rgba(207,151,252,0.04))' : 'transparent', color: A ? '#fff' : 'rgba(255,255,255,0.5)' }}>
+                  {A && <div className="absolute left-0 top-1/2 -translate-y-1/2 rounded-r-full" style={{ width: 4, height: 22, background: 'linear-gradient(180deg,#cf97fc,#7c5cff)', boxShadow: '0 0 12px rgba(207,151,252,0.65)' }} />}
+                  <it.Icon className="w-[18px] h-[18px] shrink-0" strokeWidth={A ? 2.2 : 1.6} style={{ color: A ? LILAC : 'rgba(255,255,255,0.55)' }} />
+                  <span className="truncate">{it.label}</span>
+                  {it.badge && <span className="ml-auto text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ color: BADGE, background: 'rgba(175,110,232,0.12)' }}>{it.badge}</span>}
+                </div>
+              );
+            })}
+          </nav>
+          {/* profil */}
+          <div className="shrink-0 p-2.5 border-t" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+            <div className="flex items-center gap-2.5 px-2 py-2 rounded-xl" style={{ background: 'rgba(255,255,255,0.03)' }}>
+              <span className="w-8 h-8 rounded-full overflow-hidden shrink-0" style={{ border: '1px solid rgba(255,255,255,0.12)' }}>
+                <img src="/team/martin-kviteberg-face.jpg" alt="Martin" className="w-full h-full object-cover" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-[12.5px] font-semibold leading-none truncate" style={{ color: '#fff' }}>Martin Kviteberg</p>
+                <p className="text-[10.5px] mt-1 truncate" style={{ color: 'rgba(255,255,255,0.45)' }}>martin@kviteberg.no</p>
+              </div>
+              <ChevronsUpDown className="w-4 h-4 shrink-0" strokeWidth={1.8} style={{ color: 'rgba(255,255,255,0.4)' }} />
+            </div>
+          </div>
+        </div>
+
+        {/* ─── OPERASJONSSENTRAL (hovedflate) ─── */}
+        <div className="absolute top-0 bottom-0 overflow-hidden transition-all duration-500"
+          style={{ left: SIDEBAR_W, right: COPILOT_W, background: CANVAS, filter: leaseOpen ? 'blur(1.5px)' : 'none' }}>
+          <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle, #c8c8c8 0.8px, transparent 0.8px)', backgroundSize: '24px 24px', opacity: 0.16 }} />
+          <div className="px-10 py-9 h-full relative">
             <div className="flex items-center gap-2 mb-3">
               <span className="w-1.5 h-1.5 rounded-full" style={{ background: ACCENT }} />
               <span className="text-[10.5px] tracking-[0.2em] uppercase" style={{ color: MUTED, fontWeight: 700 }}>Operasjonssentral · Lørdag 20. juni</span>
             </div>
-            <h1 className="text-[50px] leading-[0.98]" style={{ color: INK, fontFamily: FH, fontWeight: 800, letterSpacing: '-0.035em' }}>Autopilot</h1>
+            <h1 className="text-[52px] leading-[0.98]" style={{ color: INK, fontFamily: FH, fontWeight: 800, letterSpacing: '-0.035em' }}>Autopilot</h1>
             <p className="text-[15px] mt-3.5" style={{ color: INK2 }}>Du har <strong style={{ color: INK }}>3</strong> gjøremål.</p>
 
-            {/* handlingsknapper */}
             <div className="flex items-center gap-2.5 mt-6 mb-7">
               {[{ I: ListFilter, l: 'Filter' }, { I: SlidersHorizontal, l: 'Regelverk' }, { I: RefreshCw, l: 'Oppdater' }].map(({ I, l }) => (
                 <span key={l} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full"
@@ -221,14 +275,12 @@ export default function ContractDemo({ active, pdfMode }: { active?: boolean; pd
               ))}
             </div>
 
-            {/* kort */}
             <div className="flex flex-col gap-3.5">
               {TASKS.map((a) => {
                 const cc = CAT[a.cat];
                 const exec = !!a.cta;
                 return (
-                  <div key={a.id} className="relative bg-white rounded-[22px] overflow-hidden"
-                    style={{ border: `1px solid ${HAIRLINE}`, boxShadow: '0 2px 8px rgba(10,10,10,0.03)' }}>
+                  <div key={a.id} className="relative bg-white rounded-[22px] overflow-hidden" style={{ border: `1px solid ${HAIRLINE}`, boxShadow: '0 2px 8px rgba(10,10,10,0.03)' }}>
                     <div className="flex items-center gap-5 p-5">
                       <div className="w-16 h-16 rounded-[16px] shrink-0 flex items-center justify-center" style={{ background: cc.bg, border: `1px solid ${HAIRLINE}` }}>
                         <cc.Icon className="w-6 h-6" strokeWidth={2.1} style={{ color: cc.fg }} />
@@ -258,25 +310,24 @@ export default function ContractDemo({ active, pdfMode }: { active?: boolean; pd
                 );
               })}
             </div>
-            <p className="text-[11.5px] text-center mt-8 flex items-center justify-center gap-1.5" style={{ color: MUTED }}>
+            <p className="text-[11.5px] mt-8 flex items-center gap-1.5" style={{ color: MUTED }}>
               Klikk et gjøremål for full kontekst <span className="opacity-50">·</span> <Zap className="w-3 h-3" style={{ color: ACCENT }} /> kjører handlingen direkte
             </p>
           </div>
         </div>
 
         {/* dim-overlay over listen når kontrakt åpnes */}
-        <div className="absolute top-0 bottom-0 left-0 transition-opacity duration-500 pointer-events-none"
-          style={{ right: COPILOT_W + LEASE_W, background: 'rgba(10,10,10,0.30)', opacity: leaseOpen ? 1 : 0 }} />
+        <div className="absolute top-0 bottom-0 transition-opacity duration-500 pointer-events-none"
+          style={{ left: SIDEBAR_W, right: COPILOT_W + LEASE_W, background: 'rgba(10,10,10,0.30)', opacity: leaseOpen ? 1 : 0 }} />
 
-        {/* ── KONTRAKTSUTKAST (kanvas) ── */}
-        <div className="absolute top-0 bottom-0 flex flex-col transition-transform duration-[450ms]"
+        {/* ─── KONTRAKTSUTKAST ─── */}
+        <div className="absolute top-0 bottom-0 flex flex-col"
           style={{
             right: COPILOT_W, width: LEASE_W, background: '#fff', borderLeft: `1px solid ${LINE}`,
             boxShadow: '-12px 0 44px rgba(10,10,10,0.13)',
             transform: leaseOpen ? 'translateX(0)' : 'translateX(100%)',
-            transitionTimingFunction: 'cubic-bezier(0.22,1,0.36,1)',
+            transition: 'transform 450ms cubic-bezier(0.22,1,0.36,1)',
           }}>
-          {/* header */}
           <div className="flex items-start justify-between gap-3 px-6 pt-6 pb-5 shrink-0">
             <div className="flex items-center gap-3 min-w-0">
               <span className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0" style={{ background: '#ecfdf5' }}>
@@ -290,7 +341,6 @@ export default function ContractDemo({ active, pdfMode }: { active?: boolean; pd
             <span className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ color: MUTED2 }}><X className="w-[18px] h-[18px]" strokeWidth={2.2} /></span>
           </div>
 
-          {/* hint + fremdrift */}
           <div className="px-6 pb-4 shrink-0 flex flex-col gap-3">
             <div className="inline-flex items-center gap-1.5 rounded-full pl-2.5 pr-3.5 py-1.5 w-fit" style={{ background: '#f5f0fe' }}>
               <Sparkles className="w-3 h-3" style={{ color: ACCENT }} strokeWidth={2.4} />
@@ -304,7 +354,6 @@ export default function ContractDemo({ active, pdfMode }: { active?: boolean; pd
             </div>
           </div>
 
-          {/* body */}
           <div className="flex-1 overflow-hidden px-6 py-5 flex flex-col gap-7 border-t" style={{ borderColor: LINE }}>
             <div className="flex flex-col gap-5">
               <SectionHead>Leietaker</SectionHead>
@@ -335,7 +384,6 @@ export default function ContractDemo({ active, pdfMode }: { active?: boolean; pd
             </div>
           </div>
 
-          {/* footer */}
           <div className="px-6 py-5 shrink-0 border-t" style={{ borderColor: LINE }}>
             <div className="w-full h-[52px] rounded-full text-white text-[14.5px] font-bold inline-flex items-center justify-center gap-2 transition-all"
               style={{ background: sent ? GREEN : INK, opacity: ready ? 1 : 0.4, fontFamily: FH }}>
@@ -347,9 +395,8 @@ export default function ContractDemo({ active, pdfMode }: { active?: boolean; pd
           </div>
         </div>
 
-        {/* ── AUTOPILOT (copilot) ── */}
+        {/* ─── AUTOPILOT (copilot) ─── */}
         <div className="absolute top-0 bottom-0 right-0 flex flex-col" style={{ width: COPILOT_W, background: '#fff', borderLeft: `1px solid ${LINE}` }}>
-          {/* header */}
           <div className="flex items-center justify-between px-5 h-16 shrink-0 border-b" style={{ borderColor: LINE }}>
             <div className="flex items-center gap-2.5 min-w-0">
               <span className="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style={{ background: INK }}>
@@ -365,7 +412,6 @@ export default function ContractDemo({ active, pdfMode }: { active?: boolean; pd
             </div>
           </div>
 
-          {/* body */}
           <div className="flex-1 overflow-hidden px-5 py-6">
             {!started ? (
               <div className="pt-4">
@@ -388,11 +434,9 @@ export default function ContractDemo({ active, pdfMode }: { active?: boolean; pd
               </div>
             ) : (
               <div className="flex flex-col gap-7">
-                {/* bruker-kommando */}
                 <div className="flex justify-end" style={{ animation: 'cdRise 0.3s ease both' }}>
                   <div className="max-w-[82%] px-4 py-3 rounded-[20px] rounded-br-[7px] text-[14px] leading-[1.5]" style={{ background: INK, color: '#fff' }}>{COMMAND}</div>
                 </div>
-                {/* svar */}
                 {(sending || reply) && (
                   <div className="flex gap-3" style={{ animation: 'cdRise 0.3s ease both' }}>
                     <span className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5" style={{ background: SOFT, border: `1px solid ${LINE}` }}>
@@ -410,7 +454,6 @@ export default function ContractDemo({ active, pdfMode }: { active?: boolean; pd
                     )}
                   </div>
                 )}
-                {/* svar 2 */}
                 {reply2 && (
                   <div className="flex gap-3" style={{ animation: 'cdRise 0.3s ease both' }}>
                     <span className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5" style={{ background: SOFT, border: `1px solid ${LINE}` }}>
@@ -423,7 +466,6 @@ export default function ContractDemo({ active, pdfMode }: { active?: boolean; pd
             )}
           </div>
 
-          {/* composer */}
           <div className="px-4 pb-4 pt-2 shrink-0">
             <div className="flex items-end gap-2 rounded-[22px] p-2" style={{ background: '#fff', border: `1px solid ${LINE}`, boxShadow: '0 6px 20px -12px rgba(10,10,10,0.18)' }}>
               <span className="w-10 h-10 rounded-full flex items-center justify-center shrink-0" style={{ background: SOFT, color: INK2 }}><Mic className="w-4 h-4" strokeWidth={2} /></span>
@@ -434,15 +476,6 @@ export default function ContractDemo({ active, pdfMode }: { active?: boolean; pd
           </div>
         </div>
       </div>
-
-      {/* spill igjen */}
-      {!isPdf && (
-        <button onClick={run} aria-label="Spill av demoen på nytt"
-          className="absolute -bottom-11 left-1/2 -translate-x-1/2 inline-flex items-center gap-2 px-4 py-2 rounded-full transition-all hover:-translate-y-0.5"
-          style={{ border: '1px solid rgba(28,22,16,0.12)', color: 'rgba(28,22,16,0.6)', background: 'rgba(255,255,255,0.7)', fontFamily: F, fontSize: 12.5, fontWeight: 600 }}>
-          <RefreshCw className="w-3.5 h-3.5" strokeWidth={2.2} /> Spill igjen
-        </button>
-      )}
 
       <style>{`
         @keyframes cdRise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
