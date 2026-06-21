@@ -816,6 +816,74 @@ function PortefoljeSurface({ mode }: { mode: 'still' | 'live' }) {
   );
 }
 
+/* ════════ INTRO · oversiktskart over hele utleieflyten ════════ */
+const FLOW: { n: string; Icon: any; t: string; mods: string[] }[] = [
+  { n: '01', Icon: UserCheck, t: 'Anskaffelse', mods: ['Lead-pipeline', 'Tilbud', 'BankID'] },
+  { n: '02', Icon: Sparkles, t: 'Klargjøring', mods: ['AI-boligdata', 'Bildestudio', 'FINN'] },
+  { n: '03', Icon: CalendarDays, t: 'Interesse', mods: ['Visninger', 'Screening', 'Scoring'] },
+  { n: '04', Icon: FileSignature, t: 'Inngåelse', mods: ['Kontrakt', 'Depositum', 'Innflytting'] },
+  { n: '05', Icon: Wallet, t: 'Drift', mods: ['Husleie', 'Oppgjør', 'Saker'] },
+  { n: '06', Icon: BarChart3, t: 'Skala', mods: ['Portefølje', 'Team', 'API'] },
+];
+function OversiktSurface({ mode }: { mode: 'still' | 'live' }) {
+  const live = mode === 'live';
+  const p = useStaged(live, [300, 650, 1000, 1350, 1700, 2050, 2700], 7);
+  return (
+    <div className="absolute inset-0 overflow-hidden" style={{ background: CANVAS }}>
+      <div className="absolute pointer-events-none" style={{ top: '-20%', left: '50%', transform: 'translateX(-50%)', width: 1000, height: 600, borderRadius: '50%', background: `radial-gradient(circle, ${LILAC}14 0%, transparent 70%)`, filter: 'blur(40px)' }} />
+      {/* header */}
+      <div className="absolute flex items-center justify-between" style={{ left: 56, right: 56, top: 44 }}>
+        <span className="flex items-center gap-2.5 font-bold text-[19px]" style={{ color: INK, fontFamily: FH }}><span className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-white text-[15px]" style={{ background: 'linear-gradient(135deg,#cf97fc,#7c5cff)' }}>H</span>digihome<span className="ml-1 text-[12px] font-semibold uppercase tracking-[0.18em]" style={{ color: GOLD, fontFamily: F }}>· Operativsystem</span></span>
+        <span className="inline-flex items-center gap-2 h-9 px-4 rounded-full text-[12.5px] font-bold" style={{ background: LILAC_BG, color: LILAC_TXT, fontFamily: F }}><span className="w-2 h-2 rounded-full" style={{ background: LILAC_TXT, boxShadow: `0 0 8px ${LILAC_TXT}` }} />Autopilot aktiv</span>
+      </div>
+      {/* tittel */}
+      <div className="absolute text-center" style={{ left: 0, right: 0, top: 138 }}>
+        <p className="text-[11px] font-bold uppercase tracking-[0.3em] mb-2" style={{ color: GOLD, fontFamily: F }}>Hele utleieflyten · ett system</p>
+        <h2 className="text-[34px] font-bold tracking-[-0.025em]" style={{ color: INK, fontFamily: FH }}>Fra henvendelse til daglig drift</h2>
+      </div>
+      {/* flyt */}
+      <div className="absolute flex items-start" style={{ left: 56, right: 56, top: 300 }}>
+        {FLOW.map((f, i) => {
+          const on = live ? p >= i + 1 : true;
+          const lineOn = live ? p >= i + 2 : true;
+          return (
+            <React.Fragment key={f.t}>
+              <div className="flex flex-col items-center" style={{ width: 168, opacity: on ? 1 : 0, transform: on ? 'none' : 'translateY(14px)', transition: 'all 0.55s cubic-bezier(0.16,1,0.3,1)' }}>
+                <div className="relative w-[68px] h-[68px] rounded-2xl flex items-center justify-center" style={{ background: SURF, border: `1px solid ${LINE}`, boxShadow: '0 10px 26px -12px rgba(111,84,180,0.32)' }}>
+                  <f.Icon className="w-7 h-7" style={{ color: LILAC_TXT }} strokeWidth={1.7} />
+                  <span className="absolute -top-2 -right-2 w-6 h-6 rounded-full text-[10px] font-bold flex items-center justify-center" style={{ background: INK, color: '#fff', fontFamily: FH }}>{f.n}</span>
+                </div>
+                <p className="text-[16px] font-bold mt-3.5 tracking-[-0.01em]" style={{ color: INK, fontFamily: FH }}>{f.t}</p>
+                <div className="flex flex-col items-center gap-1.5 mt-2.5">
+                  {f.mods.map((m, k) => <span key={m} className="text-[11px] font-medium px-2.5 py-1 rounded-full" style={{ background: HOVER, color: SUB, fontFamily: F, opacity: on ? 1 : 0, transition: `opacity 0.4s ease ${0.25 + k * 0.08}s` }}>{m}</span>)}
+                </div>
+              </div>
+              {i < FLOW.length - 1 && (
+                <div className="relative flex-1" style={{ height: 2, marginTop: 33 }}>
+                  <div className="absolute inset-0 rounded-full" style={{ background: `linear-gradient(90deg, ${LILAC}, ${LILAC_TXT})`, transformOrigin: 'left', transform: lineOn ? 'scaleX(1)' : 'scaleX(0)', transition: 'transform 0.5s cubic-bezier(0.16,1,0.3,1)' }} />
+                  {live && lineOn && <span className="absolute w-1.5 h-1.5 rounded-full" style={{ top: -2, background: '#fff', boxShadow: `0 0 8px 2px ${LILAC}`, animation: `sf-flow 1.8s linear ${i * 0.2}s infinite` }} />}
+                </div>
+              )}
+            </React.Fragment>
+          );
+        })}
+      </div>
+      {/* autopilot-rail */}
+      <div className="absolute" style={{ left: 56, right: 56, bottom: 70, opacity: live ? (p >= 7 ? 1 : 0) : 1, transform: live && p < 7 ? 'translateY(10px)' : 'none', transition: 'all 0.6s cubic-bezier(0.16,1,0.3,1)' }}>
+        <div className="rounded-2xl px-6 py-4 flex items-center gap-5" style={{ background: SURF, border: `1px solid ${LINE}`, boxShadow: '0 18px 44px -24px rgba(26,22,18,0.3)' }}>
+          <span className="inline-flex items-center gap-2 text-[13px] font-bold shrink-0" style={{ color: INK, fontFamily: FH }}><Bot className="w-4 h-4" style={{ color: LILAC_TXT }} strokeWidth={1.9} />Automatisert ende-til-ende</span>
+          <span className="w-px h-6" style={{ background: LINE }} />
+          <span className="text-[11px] uppercase tracking-[0.16em] font-bold shrink-0" style={{ color: GOLD }}>Integrasjoner</span>
+          <div className="flex items-center gap-2 flex-wrap">
+            {['BankID', 'FINN', 'Creditsafe', 'Vipps', 'DNB', 'Fiken'].map(t => <span key={t} className="inline-flex items-center gap-1.5 text-[12px] font-semibold px-2.5 py-1.5 rounded-lg" style={{ background: '#faf8f5', border: `1px solid ${LINE}`, color: INK2, fontFamily: FH }}><Zap className="w-3 h-3" style={{ color: LILAC_TXT }} />{t}</span>)}
+          </div>
+          <span className="ml-auto inline-flex items-center gap-1.5 text-[12px] font-bold shrink-0" style={{ color: SUCCESS, fontFamily: F }}><span className="w-2 h-2 rounded-full" style={{ background: SUCCESS }} />Drift 24/7</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ════════ NETTSIDE · huseier fyller ut skjema på digihome.no ════════ */
 function NettsideSurface({ mode }: { mode: 'still' | 'live' }) {
   const live = mode === 'live';
@@ -938,7 +1006,7 @@ function NettsideSurface({ mode }: { mode: 'still' | 'live' }) {
 
 /* ── surface-register ── */
 const SURFACES: Record<string, (p: { mode: 'still' | 'live' }) => JSX.Element> = {
-  nettside: NettsideSurface, pipeline: PipelineSurface, proposal: ProposalSurface, registrer: RegistrerSurface, finn: FinnSurface,
+  oversikt: OversiktSurface, nettside: NettsideSurface, pipeline: PipelineSurface, proposal: ProposalSurface, registrer: RegistrerSurface, finn: FinnSurface,
   visninger: VisningerSurface, screening: ScreeningSurface, kontrakt: KontraktSurface,
   innflytting: InnflyttingSurface, drift: DriftSurface, portefolje: PortefoljeSurface,
 };
@@ -974,6 +1042,11 @@ function KeynoteOverlay({ eyebrow, lines, sub }: { eyebrow: string; lines: strin
 
 /* ── scene-manifest ── */
 const SCENES = [
+  // ── INTRO · OVERSIKT ──
+  { act: 'Intro', surface: 'oversikt', kind: 'keynote', dur: 6000, key: { eyebrow: 'DigiHome', lines: ['Hele utleien.', 'På autopilot.'], sub: 'Operativsystemet som driver hele utleieflyten for forvaltere — fra første henvendelse til daglig drift.' } },
+  { act: 'Intro', surface: 'oversikt', kind: 'tour', dur: 12500, cap: { step: 'Én plattform', text: 'Seks faser, ett sammenhengende system: anskaffelse, klargjøring, visninger, kontrakt, drift og skala. Hvert steg er automatisert og henger sammen — forvalteren styrer, systemet gjør jobben.' } },
+  { act: 'Intro', surface: 'oversikt', kind: 'keynote', dur: 5400, key: { eyebrow: 'Slik fungerer det', lines: ['La oss følge', 'én bolig.'], sub: 'Fra en huseier tar kontakt — helt til boligen drifter seg selv.' } },
+
   // ── AKT 1 · ANSKAFFELSE ──
   { act: 'Akt 1 · Anskaffelse', surface: 'nettside', kind: 'keynote', dur: 5400, key: { eyebrow: 'Slik jobber en forvalter', lines: ['Det begynner med', 'en henvendelse.'], sub: 'En huseier vil leie ut boligen sin — og fyller inn adressen på digihome.no.' } },
   { act: 'Akt 1 · Anskaffelse', surface: 'nettside', kind: 'tour', dur: 11500, cap: { step: 'På digihome.no', text: 'Huseieren fyller inn adresse og kontaktinfo. Skjemaet sjekker adressen automatisk og sender henvendelsen rett inn i systemet — ingen e-post, ingen skjema på avveie.' } },
@@ -1118,6 +1191,7 @@ export default function SystemFilm() {
         @keyframes sf-spin { to { transform: rotate(360deg); } }
         @keyframes sf-wordin { from { opacity:0; transform: translateY(0.3em); filter: blur(5px); } to { opacity:1; transform: translateY(0); filter: blur(0); } }
         @keyframes sf-wordblur { from { opacity:0; transform: translateY(0.36em); filter: blur(9px); } to { opacity:1; transform: translateY(0); filter: blur(0); } }
+        @keyframes sf-flow { 0% { left:0%; opacity:0; } 15% { opacity:1; } 85% { opacity:1; } 100% { left:100%; opacity:0; } }
         @keyframes sf-capin { from { opacity:0; transform: translateY(16px) scale(0.985); } to { opacity:1; transform: translateY(0) scale(1); } }
       `}</style>
     </div>
