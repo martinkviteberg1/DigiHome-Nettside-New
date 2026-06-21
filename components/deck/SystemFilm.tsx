@@ -44,6 +44,14 @@ const BADGE = '#af6ee8';
 const FH = "var(--font-heading), 'PP Right Grotesk', sans-serif";
 const F = "var(--font-body), 'ABC Diatype', sans-serif";
 
+/* ── cinematisk natt-grade (scenen rundt produktet) ── */
+const NIGHT = '#0a0a0c';
+const SNOW = '#f3f0ea';
+const SNOW_MID = 'rgba(243,240,234,0.56)';
+const SNOW_LO = 'rgba(243,240,234,0.30)';
+const ACCENT = '#b88cf0';
+const GRAIN = "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")";
+
 const WIN_W = 1480;
 const WIN_H = 832;
 const SIDEBAR_W = 256;
@@ -1013,60 +1021,58 @@ const SURFACES: Record<string, (p: { mode: 'still' | 'live' }) => JSX.Element> =
 
 
 /* ── sentrert forklaring (Apple keynote — midt i bildet, toner bort når produktet kommer i fokus) ── */
-function CenterNarration({ step, text, gone }: { step: string; text: string; gone: boolean }) {
+function NarrationTag({ label }: { label: string }) {
   return (
-    <div className="absolute inset-0 z-30 flex flex-col items-center justify-center text-center px-24"
-      style={{
-        background: 'radial-gradient(125% 100% at 50% 48%, rgba(250,248,245,0.94) 0%, rgba(250,248,245,0.9) 40%, rgba(250,248,245,0.76) 72%, rgba(250,248,245,0.55) 100%)',
-        backdropFilter: 'blur(3px)',
-        opacity: gone ? 0 : 1,
-        transform: gone ? 'translateY(-26px) scale(0.992)' : 'none',
-        transition: 'opacity 0.75s cubic-bezier(0.16,1,0.3,1), transform 0.75s cubic-bezier(0.16,1,0.3,1)',
-        pointerEvents: 'none',
-      }}>
-      <div className="absolute pointer-events-none" style={{ width: 700, height: 320, borderRadius: '50%', background: `radial-gradient(circle, ${LILAC}1c 0%, transparent 70%)`, filter: 'blur(30px)' }} />
-      <div className="relative flex items-center gap-2.5 mb-6" style={{ animation: 'sf-rise 0.6s cubic-bezier(0.16,1,0.3,1) 0.05s both' }}>
-        <span className="w-1.5 h-1.5 rounded-full" style={{ background: LILAC, boxShadow: `0 0 10px ${LILAC}` }} />
-        <span className="text-[12px] font-bold uppercase tracking-[0.32em]" style={{ color: LILAC_TXT, fontFamily: F }}>{step}</span>
-      </div>
-      <p className="relative font-semibold tracking-[-0.022em]" style={{ color: INK, fontFamily: FH, fontSize: 38, lineHeight: 1.3, maxWidth: 940 }}>
-        <StreamText text={text} startDelay={250} speed={40} />
-      </p>
+    <div className="flex items-center gap-3.5 mb-7" style={{ animation: 'sf-fade 1.1s ease 0.1s both' }}>
+      <span style={{ width: 38, height: 1, background: SNOW_LO }} />
+      <span className="text-[11px] font-semibold uppercase" style={{ color: SNOW_MID, fontFamily: F, letterSpacing: '0.34em' }}>{label}</span>
+      <span style={{ width: 38, height: 1, background: SNOW_LO }} />
     </div>
   );
 }
 
-/* ── keynote-overlay (inne i rammen, over sløret surface — Apple keynote, levende skriving) ── */
+/* ── sentrert forklaring (cinematisk, midt i bildet — toner bort når produktet kommer i fokus) ── */
+function CenterNarration({ step, text, gone }: { step: string; text: string; gone: boolean }) {
+  const big = text.length <= 88;
+  return (
+    <div className="absolute inset-0 z-30 flex flex-col items-center justify-center text-center px-28"
+      style={{
+        background: 'radial-gradient(135% 115% at 50% 50%, rgba(10,10,12,0.93) 0%, rgba(10,10,12,0.87) 46%, rgba(10,10,12,0.62) 78%, rgba(10,10,12,0.3) 100%)',
+        opacity: gone ? 0 : 1,
+        transform: gone ? 'scale(1.02)' : 'none',
+        transition: 'opacity 0.85s cubic-bezier(0.16,1,0.3,1), transform 1.3s cubic-bezier(0.16,1,0.3,1)',
+        pointerEvents: 'none',
+      }}>
+      <div className="absolute pointer-events-none" style={{ width: 820, height: 360, borderRadius: '50%', background: `radial-gradient(circle, ${ACCENT}1a 0%, transparent 70%)`, filter: 'blur(40px)' }} />
+      <NarrationTag label={step} />
+      <p className="relative" style={{ color: SNOW, fontFamily: FH, fontWeight: 500, fontSize: big ? 42 : 32, lineHeight: 1.34, maxWidth: 1000, letterSpacing: '-0.022em', animation: 'sf-cinein 1.15s cubic-bezier(0.16,1,0.3,1) 0.15s both' }}>{text}</p>
+    </div>
+  );
+}
+
+/* ── keynote-overlay (cinematisk tittel — maske-avsløring, lys tekst på mørk scene) ── */
 function KeynoteOverlay({ eyebrow, lines, sub, hero = false }: { eyebrow: string; lines: string[]; sub?: string; hero?: boolean }) {
-  let wi = -1;
-  const totalWords = lines.join(' ').split(' ').length;
-  const subDelay = Math.round(totalWords * 90 + (hero ? 800 : 600));
+  const subDelay = lines.length * 0.13 + 0.55;
   return (
     <div className="absolute inset-0 z-30 flex flex-col items-center justify-center text-center px-20"
-      style={{ background: 'radial-gradient(120% 95% at 50% 46%, rgba(250,248,245,0.95) 0%, rgba(250,248,245,0.92) 36%, rgba(250,248,245,0.8) 68%, rgba(250,248,245,0.6) 100%)', backdropFilter: 'blur(3px)' }}>
-      <div className="absolute pointer-events-none" style={{ width: hero ? 880 : 720, height: hero ? 440 : 360, borderRadius: '50%', background: `radial-gradient(circle, ${LILAC}${hero ? '26' : '1f'} 0%, transparent 70%)`, filter: 'blur(34px)', animation: 'sf-fade 1.4s ease both' }} />
+      style={{ background: 'radial-gradient(125% 105% at 50% 45%, rgba(10,10,12,0.94) 0%, rgba(10,10,12,0.89) 42%, rgba(10,10,12,0.66) 76%, rgba(10,10,12,0.4) 100%)' }}>
+      <div className="absolute pointer-events-none" style={{ width: hero ? 940 : 760, height: hero ? 460 : 380, borderRadius: '50%', background: `radial-gradient(circle, ${ACCENT}${hero ? '24' : '18'} 0%, transparent 70%)`, filter: 'blur(44px)', animation: 'sf-fade 1.6s ease both' }} />
       {hero ? (
-        <div className="relative flex items-center gap-2.5 mb-9" style={{ animation: 'sf-rise 0.8s cubic-bezier(0.16,1,0.3,1) 0.05s both' }}>
-          <span className="inline-flex items-center justify-center w-9 h-9 rounded-xl text-white text-[17px] font-bold" style={{ background: 'linear-gradient(135deg,#cf97fc,#7c5cff)', fontFamily: FH, boxShadow: `0 8px 24px -6px ${LILAC}` }}>H</span>
-          <span className="text-[20px] font-bold tracking-[-0.01em]" style={{ color: INK, fontFamily: FH }}>digihome</span>
+        <div className="relative flex items-center gap-3 mb-10" style={{ animation: 'sf-cinein 1s cubic-bezier(0.16,1,0.3,1) 0.05s both' }}>
+          <span className="inline-flex items-center justify-center w-10 h-10 rounded-xl text-white text-[18px] font-bold" style={{ background: 'linear-gradient(135deg,#cf97fc,#7c5cff)', fontFamily: FH, boxShadow: `0 0 28px -2px ${ACCENT}` }}>H</span>
+          <span className="text-[22px] font-bold tracking-[-0.01em]" style={{ color: SNOW, fontFamily: FH }}>digihome</span>
         </div>
       ) : (
-        <div className="relative flex items-center gap-2.5 mb-7" style={{ animation: 'sf-rise 0.7s cubic-bezier(0.16,1,0.3,1) 0.05s both' }}>
-          <span className="w-1.5 h-1.5 rounded-full" style={{ background: LILAC, boxShadow: `0 0 10px ${LILAC}` }} />
-          <span className="text-[12.5px] font-bold uppercase tracking-[0.36em]" style={{ color: SUB, fontFamily: F }}>{eyebrow}</span>
-        </div>
+        <NarrationTag label={eyebrow} />
       )}
-      <h2 className="relative font-bold tracking-[-0.045em]" style={{ color: INK, fontFamily: FH, fontSize: hero ? 94 : 76, lineHeight: 1.0 }}>
-        {lines.map((l, li) => {
-          const ws = l.split(' ');
-          return (
-            <span key={li} className="block">
-              {ws.map((w, k) => { wi += 1; const d = 0.25 + wi * (hero ? 0.11 : 0.09); return <span key={k} style={{ display: 'inline-block', whiteSpace: 'pre', animation: `sf-wordblur ${hero ? 0.75 : 0.6}s cubic-bezier(0.16,1,0.3,1) ${d}s both` }}>{w}{k < ws.length - 1 ? ' ' : ''}</span>; })}
-            </span>
-          );
-        })}
+      <h2 className="relative font-bold tracking-[-0.045em]" style={{ color: SNOW, fontFamily: FH, fontSize: hero ? 96 : 78, lineHeight: 1.05 }}>
+        {lines.map((l, li) => (
+          <span key={li} className="block" style={{ overflow: 'hidden', paddingBottom: '0.1em' }}>
+            <span className="block" style={{ animation: `sf-maskup 1.05s cubic-bezier(0.16,1,0.3,1) ${0.2 + li * 0.13}s both` }}>{l}</span>
+          </span>
+        ))}
       </h2>
-      {sub && <p className="relative mt-8" style={{ color: SUB, fontFamily: F, fontSize: hero ? 22 : 21, fontWeight: 400, maxWidth: hero ? 660 : 600, lineHeight: 1.6 }}><StreamText text={sub} startDelay={subDelay} speed={40} /></p>}
+      {sub && <p className="relative mt-9" style={{ color: SNOW_MID, fontFamily: F, fontSize: hero ? 22 : 20, fontWeight: 400, maxWidth: hero ? 680 : 600, lineHeight: 1.62, animation: `sf-cinein 1.1s cubic-bezier(0.16,1,0.3,1) ${subDelay}s both` }}>{sub}</p>}
     </div>
   );
 }
@@ -1168,47 +1174,52 @@ export default function SystemFilm() {
   const dimmed = isKeynote || !revealed;
 
   return (
-    <div className="fixed inset-0 overflow-hidden" style={{ background: CANVAS, fontFamily: F }}>
-      <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(120% 80% at 50% 28%, transparent 52%, rgba(26,22,18,0.06) 100%)' }} />
+    <div className="fixed inset-0 overflow-hidden" style={{ background: NIGHT, fontFamily: F }}>
+      {/* dyp cinematisk bakgrunn */}
+      <div className="absolute inset-0 pointer-events-none" style={{ background: `radial-gradient(125% 95% at 50% 6%, #1b1a23 0%, #121117 40%, ${NIGHT} 80%)` }} />
+      <div className="absolute inset-0 pointer-events-none" style={{ background: `radial-gradient(42% 52% at 16% 28%, ${ACCENT}14 0%, transparent 60%), radial-gradient(46% 56% at 86% 78%, rgba(179,167,143,0.10) 0%, transparent 62%)`, filter: 'blur(24px)' }} />
+      <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(118% 96% at 50% 44%, transparent 50%, rgba(0,0,0,0.6) 100%)' }} />
+      {/* filmkorn */}
+      <div className="absolute pointer-events-none" style={{ inset: '-20%', backgroundImage: GRAIN, backgroundSize: '150px 150px', opacity: 0.045, mixBlendMode: 'overlay', animation: 'sf-grain 0.55s steps(3) infinite' }} />
 
       {/* topp: chrome + akt-progress */}
       <div className="absolute top-0 left-0 right-0 z-50 px-9 pt-5">
         <div className="flex items-center justify-between mb-3">
-          <span className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.34em]" style={{ color: SUB }}><span className="w-1.5 h-1.5 rounded-full" style={{ background: LILAC, boxShadow: `0 0 8px ${LILAC}` }} />Systemet</span>
-          <span className="text-[11px] font-bold uppercase tracking-[0.3em] transition-colors" style={{ color: INK }}>{s.act}</span>
-          <span className="text-[11px] font-bold tracking-[0.18em] tabular-nums" style={{ color: FAINT }}>{String(idx + 1).padStart(2, '0')} <span style={{ color: WHISPER }}>/ {String(SCENES.length).padStart(2, '0')}</span></span>
+          <span className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.34em]" style={{ color: SNOW_MID }}><span className="w-1.5 h-1.5 rounded-full" style={{ background: ACCENT, boxShadow: `0 0 8px ${ACCENT}` }} />Systemet</span>
+          <span className="text-[11px] font-bold uppercase tracking-[0.3em]" style={{ color: SNOW }}>{s.act}</span>
+          <span className="text-[11px] font-bold tracking-[0.18em] tabular-nums" style={{ color: SNOW_MID }}>{String(idx + 1).padStart(2, '0')} <span style={{ color: SNOW_LO }}>/ {String(SCENES.length).padStart(2, '0')}</span></span>
         </div>
         <div className="flex gap-1.5">
           {SCENES.map((sc: any, i) => {
             const gap = i > 0 && SCENES[i].act !== SCENES[i - 1].act;
             return (
-              <div key={i} className="flex-1 h-[3px] rounded-full overflow-hidden" style={{ background: 'rgba(26,22,18,0.09)', marginLeft: gap ? 12 : 0 }}>
-                <div style={{ height: '100%', borderRadius: 99, background: i === idx ? `linear-gradient(90deg, ${LILAC}, ${LILAC_TXT})` : LILAC_TXT, boxShadow: i === idx ? `0 0 8px ${LILAC}99` : 'none', width: i < idx ? '100%' : '0%', animation: i === idx && playing ? `sf-fill ${sc.dur}ms linear forwards` : 'none' }} />
+              <div key={i} className="flex-1 h-[3px] rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.10)', marginLeft: gap ? 12 : 0 }}>
+                <div style={{ height: '100%', borderRadius: 99, background: i === idx ? `linear-gradient(90deg, ${ACCENT}, #ddc9ff)` : 'rgba(243,240,234,0.55)', boxShadow: i === idx ? `0 0 8px ${ACCENT}aa` : 'none', width: i < idx ? '100%' : '0%', animation: i === idx && playing ? `sf-fill ${sc.dur}ms linear forwards` : 'none' }} />
               </div>
             );
           })}
         </div>
       </div>
 
-      {/* THE STAGE — vedvarende ramme */}
+      {/* THE STAGE — produktet svever i mørket */}
       <div className="absolute inset-0 flex items-center justify-center">
         <div className="relative" style={{ width: WIN_W * scale, height: WIN_H * scale }}>
           {/* ambient glød bak rammen */}
-          <div className="absolute pointer-events-none" style={{ inset: '-14% -10%', background: `radial-gradient(60% 55% at 50% 42%, ${LILAC}1c 0%, transparent 70%), radial-gradient(80% 70% at 50% 60%, rgba(179,167,143,0.14) 0%, transparent 72%)`, filter: 'blur(34px)' }} />
-          {/* gulvskygge */}
-          <div className="absolute pointer-events-none" style={{ left: '8%', right: '8%', bottom: '-5%', height: 60, borderRadius: '50%', background: 'rgba(26,22,18,0.22)', filter: 'blur(34px)' }} />
-          <div style={{ width: WIN_W, height: WIN_H, transform: `scale(${scale})`, transformOrigin: 'top left', position: 'absolute', top: 0, left: 0, borderRadius: 22, overflow: 'hidden', background: SURF, boxShadow: '0 1px 0 rgba(255,255,255,0.7) inset, 0 0 0 1px rgba(26,22,18,0.06), 0 8px 18px rgba(26,22,18,0.06), 0 60px 130px -24px rgba(26,22,18,0.32)' }}>
-            {/* surface — sløret/zoomet mens forklaringen vises, kommer i fokus ved avsløring */}
+          <div className="absolute pointer-events-none" style={{ inset: '-22% -16%', background: `radial-gradient(58% 54% at 50% 40%, ${ACCENT}22 0%, transparent 68%), radial-gradient(80% 72% at 50% 64%, rgba(179,167,143,0.12) 0%, transparent 72%)`, filter: 'blur(46px)' }} />
+          {/* gulvrefleks-skygge */}
+          <div className="absolute pointer-events-none" style={{ left: '6%', right: '6%', bottom: '-6%', height: 80, borderRadius: '50%', background: 'rgba(0,0,0,0.55)', filter: 'blur(44px)' }} />
+          <div style={{ width: WIN_W, height: WIN_H, transform: `scale(${scale})`, transformOrigin: 'top left', position: 'absolute', top: 0, left: 0, borderRadius: 22, overflow: 'hidden', background: SURF, boxShadow: `0 0 0 1px rgba(255,255,255,0.08), 0 2px 0 rgba(255,255,255,0.10) inset, 0 50px 90px -24px rgba(0,0,0,0.7), 0 120px 180px -50px rgba(0,0,0,0.65), 0 0 130px -28px ${ACCENT}40` }}>
+            {/* surface — recede til mørke mens forklaringen vises, kommer i fokus ved avsløring */}
             <div key={`${idx}-${mode}`} className="absolute inset-0"
               style={dimmed
-                ? { filter: 'blur(9px) saturate(1.05) brightness(0.99)', animation: 'sf-dimin 9s cubic-bezier(0.16,1,0.3,1) both' }
-                : { animation: 'sf-revealin 0.9s cubic-bezier(0.16,1,0.3,1) both' }}>
+                ? { filter: 'blur(10px) saturate(1.02) brightness(0.96)', animation: 'sf-dimin 9s cubic-bezier(0.16,1,0.3,1) both' }
+                : { animation: 'sf-revealin 0.95s cubic-bezier(0.16,1,0.3,1) both' }}>
               {(() => { const Surf = SURFACES[s.surface] || PipelineSurface; return <Surf mode={mode} />; })()}
             </div>
             {/* fin topp-glanskant */}
-            <div className="absolute inset-x-0 top-0 pointer-events-none z-20" style={{ height: 80, background: 'linear-gradient(to bottom, rgba(255,255,255,0.18), transparent)' }} />
-            {/* cinematisk vignette */}
-            <div className="absolute inset-0 pointer-events-none z-20" style={{ boxShadow: 'inset 0 0 160px 30px rgba(26,22,18,0.10)', borderRadius: 22, opacity: dimmed ? 1 : 0.5, transition: 'opacity 0.8s ease' }} />
+            <div className="absolute inset-x-0 top-0 pointer-events-none z-20" style={{ height: 90, background: 'linear-gradient(to bottom, rgba(255,255,255,0.16), transparent)' }} />
+            {/* cinematisk inner-vignette når produktet er i fokus */}
+            <div className="absolute inset-0 pointer-events-none z-20" style={{ boxShadow: 'inset 0 0 180px 40px rgba(10,10,12,0.14)', borderRadius: 22, opacity: dimmed ? 0 : 1, transition: 'opacity 1s ease' }} />
             {isKeynote && <KeynoteOverlay key={'k' + idx} hero={idx === 0} {...s.key} />}
             {!isKeynote && s.cap && <CenterNarration key={'c' + idx} step={s.cap.step} text={s.cap.text} gone={revealed} />}
           </div>
@@ -1217,10 +1228,10 @@ export default function SystemFilm() {
 
       {/* kontroller */}
       <div className="absolute bottom-7 right-9 z-50 flex items-center gap-2.5">
-        <div className="flex items-center gap-1 rounded-full p-1" style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(16px)', boxShadow: '0 8px 24px -10px rgba(26,22,18,0.28), 0 0 0 1px rgba(26,22,18,0.05)' }}>
-          <button onClick={prev} className="w-10 h-10 rounded-full flex items-center justify-center transition-colors hover:bg-black/5" style={{ color: INK }} aria-label="Forrige"><ChevronLeft className="w-5 h-5" /></button>
-          <button onClick={() => setPlaying(p => !p)} className="w-11 h-11 rounded-full flex items-center justify-center text-white" style={{ background: INK, boxShadow: '0 6px 16px -6px rgba(26,22,18,0.5)' }} aria-label="Spill/pause">{playing ? <Pause className="w-[18px] h-[18px]" /> : <Play className="w-[18px] h-[18px]" style={{ marginLeft: 1 }} />}</button>
-          <button onClick={next} className="w-10 h-10 rounded-full flex items-center justify-center transition-colors hover:bg-black/5" style={{ color: INK }} aria-label="Neste"><ChevronRight className="w-5 h-5" /></button>
+        <div className="flex items-center gap-1 rounded-full p-1" style={{ background: 'rgba(255,255,255,0.07)', backdropFilter: 'blur(18px)', boxShadow: '0 10px 30px -12px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.12)' }}>
+          <button onClick={prev} className="w-10 h-10 rounded-full flex items-center justify-center transition-colors hover:bg-white/10" style={{ color: SNOW }} aria-label="Forrige"><ChevronLeft className="w-5 h-5" /></button>
+          <button onClick={() => setPlaying(p => !p)} className="w-11 h-11 rounded-full flex items-center justify-center" style={{ background: SNOW, color: NIGHT, boxShadow: `0 0 22px -4px ${ACCENT}88` }} aria-label="Spill/pause">{playing ? <Pause className="w-[18px] h-[18px]" /> : <Play className="w-[18px] h-[18px]" style={{ marginLeft: 1 }} />}</button>
+          <button onClick={next} className="w-10 h-10 rounded-full flex items-center justify-center transition-colors hover:bg-white/10" style={{ color: SNOW }} aria-label="Neste"><ChevronRight className="w-5 h-5" /></button>
         </div>
       </div>
 
@@ -1245,6 +1256,9 @@ export default function SystemFilm() {
         @keyframes sf-capin { from { opacity:0; transform: translateY(16px) scale(0.985); } to { opacity:1; transform: translateY(0) scale(1); } }
         @keyframes sf-dimin { 0% { opacity:0; transform: scale(1.055); } 12% { opacity:1; } 100% { opacity:1; transform: scale(1.085); } }
         @keyframes sf-revealin { 0% { opacity:0; filter: blur(11px); transform: scale(1.04); } 100% { opacity:1; filter: blur(0); transform: scale(1); } }
+        @keyframes sf-maskup { 0% { transform: translateY(112%); } 100% { transform: translateY(0); } }
+        @keyframes sf-cinein { 0% { opacity:0; transform: translateY(20px); filter: blur(8px); } 100% { opacity:1; transform: translateY(0); filter: blur(0); } }
+        @keyframes sf-grain { 0% { transform: translate(0,0); } 33% { transform: translate(-4%,3%); } 66% { transform: translate(3%,-4%); } 100% { transform: translate(0,0); } }
       `}</style>
     </div>
   );
