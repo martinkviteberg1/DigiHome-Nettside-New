@@ -826,10 +826,10 @@ function PortefoljeSurface({ mode }: { mode: 'still' | 'live' }) {
 
 /* ════════ INTRO · oversiktskart over hele utleieflyten ════════ */
 const FLOW: { n: string; Icon: any; t: string; mods: string[] }[] = [
-  { n: '01', Icon: UserCheck, t: 'Anskaffelse', mods: ['Lead-pipeline', 'Tilbud', 'BankID'] },
+  { n: '01', Icon: UserCheck, t: 'Salg', mods: ['Lead-pipeline', 'Tilbud', 'BankID'] },
   { n: '02', Icon: Sparkles, t: 'Klargjøring', mods: ['AI-boligdata', 'Bildestudio', 'FINN'] },
-  { n: '03', Icon: CalendarDays, t: 'Interesse', mods: ['Visninger', 'Screening', 'Scoring'] },
-  { n: '04', Icon: FileSignature, t: 'Inngåelse', mods: ['Kontrakt', 'Depositum', 'Innflytting'] },
+  { n: '03', Icon: CalendarDays, t: 'Visning', mods: ['Booking', 'Screening', 'Scoring'] },
+  { n: '04', Icon: FileSignature, t: 'Kontrakt', mods: ['Signering', 'Depositum', 'Innflytting'] },
   { n: '05', Icon: Wallet, t: 'Drift', mods: ['Husleie', 'Oppgjør', 'Saker'] },
   { n: '06', Icon: BarChart3, t: 'Skala', mods: ['Portefølje', 'Team', 'API'] },
 ];
@@ -1077,84 +1077,169 @@ function KeynoteOverlay({ eyebrow, lines, sub, hero = false }: { eyebrow: string
   );
 }
 
-/* ── scene-manifest ── */
-const SCENES = [
-  // ── INTRO · OVERSIKT ──
-  { act: 'Intro', surface: 'oversikt', kind: 'keynote', dur: 6000, key: { eyebrow: 'DigiHome', lines: ['Hele utleien.', 'På autopilot.'], sub: 'Operativsystemet som driver hele utleieflyten for forvaltere — fra første henvendelse til daglig drift.' } },
-  { act: 'Intro', surface: 'oversikt', kind: 'tour', dur: 12500, cap: { step: 'Én plattform', text: 'Seks faser, ett sammenhengende system: anskaffelse, klargjøring, visninger, kontrakt, drift og skala. Hvert steg er automatisert og henger sammen — forvalteren styrer, systemet gjør jobben.' } },
-  { act: 'Intro', surface: 'oversikt', kind: 'keynote', dur: 5400, key: { eyebrow: 'Slik fungerer det', lines: ['La oss følge', 'én bolig.'], sub: 'Fra en huseier tar kontakt — helt til boligen drifter seg selv.' } },
+/* ════════════════════════════════════════════════════════════
+   REISEN — rolig, lys, profesjonell gjennomgang av stegene
+   ════════════════════════════════════════════════════════════ */
+const STEPS = ['Salg', 'Klargjøring', 'Visning', 'Kontrakt', 'Drift', 'Skala'];
+const STEP_ICON: Record<string, any> = { Salg: UserCheck, Klargjøring: Sparkles, Visning: CalendarDays, Kontrakt: FileSignature, Drift: Wallet, Skala: BarChart3 };
 
-  // ── AKT 1 · ANSKAFFELSE ──
-  { act: 'Akt 1 · Anskaffelse', surface: 'nettside', kind: 'keynote', dur: 5400, key: { eyebrow: 'Slik jobber en forvalter', lines: ['Det begynner med', 'en henvendelse.'], sub: 'En huseier vil leie ut boligen sin — og fyller inn adressen på digihome.no.' } },
-  { act: 'Akt 1 · Anskaffelse', surface: 'nettside', kind: 'tour', dur: 11500, cap: { step: 'På digihome.no', text: 'Huseieren fyller inn adresse og kontaktinfo. Skjemaet sjekker adressen automatisk og sender henvendelsen rett inn i systemet — ingen e-post, ingen skjema på avveie.' } },
-  { act: 'Akt 1 · Anskaffelse', surface: 'pipeline', kind: 'tour', dur: 11000, cap: { step: 'Salgspipeline', text: 'Henvendelsen lander øverst i pipelinen og flyttes gjennom løpet. Den vektede prognosen oppdateres for hvert steg — ingenting glipper.' } },
-  { act: 'Akt 1 · Anskaffelse', surface: 'proposal', kind: 'keynote', dur: 5200, key: { eyebrow: 'Painpoint', lines: ['Tilbud på papir', 'tar dager.'], sub: 'Normalt skrives forvaltningstilbud manuelt og signeres på papir. DigiHome gjør det til minutter.' } },
-  { act: 'Akt 1 · Anskaffelse', surface: 'proposal', kind: 'tour', dur: 12000, cap: { step: 'Tilbud & signering', text: 'Tilbudet genereres fra systemet med honorar og vilkår. Huseier åpner en lenke, ser et proft dokument og signerer med BankID.' } },
-  { act: 'Akt 1 · Anskaffelse', surface: 'proposal', kind: 'keynote', dur: 5600, key: { eyebrow: 'Akt 1 fullført', lines: ['Fra henvendelse', 'til signert avtale.'], sub: 'Hele salgsløpet — uten papir, uten regneark. Og nå tar systemet over driften.' } },
+const BEATS: { step: string; kicker: string; title: string; desc: string; surface: string; points: string[]; dur: number }[] = [
+  { step: 'Intro', kicker: 'DigiHome', title: 'Én bolig — hele reisen', desc: 'Følg én bolig gjennom DigiHome, fra første henvendelse til daglig drift på skala. Seks steg, ett sammenhengende system.', surface: 'oversikt', points: ['Salg', 'Klargjøring', 'Visning', 'Kontrakt', 'Drift', 'Skala'], dur: 8000 },
 
-  // ── AKT 2 · KLARGJØRING ──
-  { act: 'Akt 2 · Klargjøring', surface: 'registrer', kind: 'keynote', dur: 5400, key: { eyebrow: 'Painpoint', lines: ['Å klargjøre en bolig', 'tar en hel dag.'], sub: 'Måle opp, skrive tekst, redigere bilder, legge ut. DigiHome gjør alt dette fra noen få bilder.' } },
-  { act: 'Akt 2 · Klargjøring', surface: 'registrer', kind: 'tour', dur: 10500, cap: { step: 'Registrering med AI', text: 'Du laster opp bilder. Systemet gjenkjenner rom, areal og fasiliteter automatisk — og styler bildene for visning.' } },
-  { act: 'Akt 2 · Klargjøring', surface: 'finn', kind: 'keynote', dur: 5000, key: { eyebrow: 'Painpoint', lines: ['En annonse', 'som faktisk selger.'], sub: 'Godt språk, riktig pris og gode bilder avgjør hvor mange som melder seg.' } },
-  { act: 'Akt 2 · Klargjøring', surface: 'finn', kind: 'tour', dur: 9500, cap: { step: 'Publisering', text: 'Annonsen genereres og publiseres på FINN.no og en egen brandet utleieside — med ett klikk.' } },
-  { act: 'Akt 2 · Klargjøring', surface: 'finn', kind: 'keynote', dur: 5400, key: { eyebrow: 'Akt 2 fullført', lines: ['Fra bilder', 'til live annonse.'], sub: 'Klargjøring og publisering på minutter — ikke en hel dag.' } },
+  { step: 'Salg', kicker: 'Henvendelse', title: 'Det starter med en henvendelse', desc: 'En huseier fyller inn adressen på digihome.no. Skjemaet kvalitetssikrer adressen og sender henvendelsen rett inn i systemet.', surface: 'nettside', points: ['Adresseoppslag', 'Kontaktinfo', 'Rett i pipeline'], dur: 9000 },
+  { step: 'Salg', kicker: 'Pipeline', title: 'Ingen leads på avveie', desc: 'Henvendelsen havner øverst i salgspipelinen og flyttes gjennom løpet. Den vektede prognosen oppdateres automatisk.', surface: 'pipeline', points: ['Kanban-pipeline', 'Vektet prognose', 'Automatisk oppfølging'], dur: 9000 },
+  { step: 'Salg', kicker: 'Tilbud', title: 'Signert med BankID på minutter', desc: 'Tilbudet genereres med honorar og vilkår. Huseier åpner en lenke og signerer med BankID — helt uten papir.', surface: 'proposal', points: ['Auto-generert tilbud', 'BankID-signering', 'Avtale i boks'], dur: 9500 },
 
-  // ── AKT 3 · FRA INTERESSE TIL LEIETAKER ──
-  { act: 'Akt 3 · Interesse', surface: 'visninger', kind: 'keynote', dur: 5400, key: { eyebrow: 'Painpoint', lines: ['48 interessenter.', 'Hvem velger du?'], sub: 'Visninger, e-poster og telefon. Manuelt blir det kaos — og magefølelsen avgjør.' } },
-  { act: 'Akt 3 · Interesse', surface: 'visninger', kind: 'tour', dur: 10500, cap: { step: 'Visninger booker seg selv', text: 'Kvalifiserte interessenter booker visning selv etter kapasitet. Bekreftelser og SMS-påminnelser sendes automatisk.' } },
-  { act: 'Akt 3 · Interesse', surface: 'screening', kind: 'tour', dur: 11000, cap: { step: 'Screening & scoring', text: 'Hver kandidat scores på inntekt og kredittsjekk via Creditsafe. Systemet anbefaler den tryggeste leietakeren.' } },
-  { act: 'Akt 3 · Interesse', surface: 'screening', kind: 'keynote', dur: 5400, key: { eyebrow: 'Akt 3 fullført', lines: ['Fra mengde', 'til riktig leietaker.'], sub: 'Objektivt, dokumentert og uten gjetting.' } },
+  { step: 'Klargjøring', kicker: 'Registrering', title: 'AI klargjør boligen', desc: 'Last opp noen bilder. Systemet gjenkjenner rom, areal og fasiliteter — og styler bildene for visning.', surface: 'registrer', points: ['Bildegjenkjenning', 'Auto-utfylt boligdata', 'Bildestudio'], dur: 9000 },
+  { step: 'Klargjøring', kicker: 'Publisering', title: 'Live annonse med ett klikk', desc: 'Annonsen skrives og publiseres på FINN.no og en egen brandet utleieside — samtidig.', surface: 'finn', points: ['Auto-tekst', 'FINN.no', 'Egen utleieside'], dur: 8500 },
 
-  // ── AKT 4 · INNGÅELSE ──
-  { act: 'Akt 4 · Inngåelse', surface: 'kontrakt', kind: 'keynote', dur: 5200, key: { eyebrow: 'Painpoint', lines: ['Kontrakt, depositum,', 'innflytting.'], sub: 'Tre prosesser, tre systemer og mye papir. DigiHome samler alt digitalt.' } },
-  { act: 'Akt 4 · Inngåelse', surface: 'kontrakt', kind: 'tour', dur: 10500, cap: { step: 'Kontrakt & depositum', text: 'Kontrakten genereres fra vilkårene og signeres med BankID. Depositumskonto opprettes via bank — ingen kapital fryses manuelt.' } },
-  { act: 'Akt 4 · Inngåelse', surface: 'innflytting', kind: 'tour', dur: 10500, cap: { step: 'Digital innflytting', text: 'Tilstandsrapport med bilder, nøkkeloverlevering og velkomst. Leietakeren får en egen portal med kontrakt, husleie og meldinger.' } },
-  { act: 'Akt 4 · Inngåelse', surface: 'innflytting', kind: 'keynote', dur: 5400, key: { eyebrow: 'Akt 4 fullført', lines: ['Leietakeren', 'er innflyttet.'], sub: 'Kontrakt signert, depositum sikret, portal aktivert — automatisk.' } },
+  { step: 'Visning', kicker: 'Booking', title: 'Visninger booker seg selv', desc: 'Kvalifiserte interessenter booker visning etter kapasitet. Bekreftelser og SMS-påminnelser sendes automatisk.', surface: 'visninger', points: ['Selvbetjent booking', 'Kapasitetsstyring', 'Automatisk SMS'], dur: 9000 },
+  { step: 'Visning', kicker: 'Screening', title: 'Riktig leietaker — uten gjetting', desc: 'Hver kandidat scores på inntekt og kredittsjekk via Creditsafe. Systemet anbefaler den tryggeste.', surface: 'screening', points: ['Inntektsvurdering', 'Creditsafe', 'Objektiv anbefaling'], dur: 9500 },
 
-  // ── AKT 5 · DRIFT PÅ AUTOPILOT ──
-  { act: 'Akt 5 · Drift', surface: 'drift', kind: 'keynote', dur: 5400, key: { eyebrow: 'Det egentlige arbeidet', lines: ['Utleie slutter ikke', 'ved innflytting.'], sub: 'Husleie, oppgjør og vedlikehold — måned etter måned. Her ligger den virkelige jobben.' } },
-  { act: 'Akt 5 · Drift', surface: 'drift', kind: 'tour', dur: 11500, cap: { step: 'Drift på autopilot', text: 'Husleie kreves inn og gjøres opp hver måned med utbetaling og rapport. Meldte saker analyseres, tildeles leverandør og dokumenteres.' } },
-  { act: 'Akt 5 · Drift', surface: 'drift', kind: 'keynote', dur: 5400, key: { eyebrow: 'Akt 5 fullført', lines: ['Driften går', 'av seg selv.'], sub: 'Huseier ser inntekt, belegg og utbetaling i sanntid.' } },
+  { step: 'Kontrakt', kicker: 'Inngåelse', title: 'Kontrakt og depositum digitalt', desc: 'Kontrakten genereres fra vilkårene og signeres med BankID. Depositumskonto opprettes via bank.', surface: 'kontrakt', points: ['Auto-kontrakt', 'BankID-signering', 'Depositumskonto'], dur: 9000 },
+  { step: 'Kontrakt', kicker: 'Innflytting', title: 'Digital innflytting', desc: 'Tilstandsrapport med bilder, nøkkeloverlevering og en egen leietakerportal med alt på ett sted.', surface: 'innflytting', points: ['Tilstandsrapport', 'Nøkkeloverlevering', 'Leietakerportal'], dur: 9000 },
 
-  // ── FINALE · SKALA ──
-  { act: 'Finale · Skala', surface: 'portefolje', kind: 'keynote', dur: 5200, key: { eyebrow: 'Skala', lines: ['Like enkelt for 10', 'som for 1000 boliger.'], sub: 'Samme motor, hele porteføljen. Team, roller og integrasjoner samlet ett sted.' } },
-  { act: 'Finale · Skala', surface: 'portefolje', kind: 'tour', dur: 9500, cap: { step: 'Portefølje & team', text: 'Alle eiendommer, aktive utleieprosesser og visninger i sanntid. Rollebasert tilgang for hele teamet.' } },
-  { act: 'Finale · Skala', surface: 'portefolje', kind: 'keynote', dur: 6800, key: { eyebrow: 'Systemet', lines: ['Fra første henvendelse', 'til daglig drift.'], sub: 'Ett system for hele utleien. Det er DigiHome.' } },
+  { step: 'Drift', kicker: 'Økonomi', title: 'Driften går av seg selv', desc: 'Husleie kreves inn og gjøres opp hver måned med utbetaling og rapport. Meldte saker analyseres og løses.', surface: 'drift', points: ['Husleieinnkreving', 'Månedlig oppgjør', 'Saksbehandling'], dur: 9500 },
+
+  { step: 'Skala', kicker: 'Portefølje', title: 'Hele porteføljen — ett system', desc: 'Alle eiendommer, prosesser og visninger i sanntid. Rollebasert tilgang for hele teamet.', surface: 'portefolje', points: ['Porteføljeoversikt', 'Team & roller', 'Integrasjoner'], dur: 9000 },
 ];
+
+/* ── steg-skinne (alltid synlig — viser hvor i reisen vi er) ── */
+function JourneyRail({ active }: { active: number }) {
+  return (
+    <div className="flex items-center" style={{ width: '100%' }}>
+      {STEPS.map((label, i) => {
+        const done = i < active, cur = i === active;
+        const Icon = STEP_ICON[label];
+        return (
+          <React.Fragment key={label}>
+            <div className="flex flex-col items-center" style={{ width: 104 }}>
+              <div className="relative flex items-center justify-center" style={{ width: 56, height: 56 }}>
+                {cur && <span className="absolute rounded-full" style={{ width: 56, height: 56, border: `1px solid ${LILAC}66`, animation: 'sf-pulse 2.6s cubic-bezier(0.4,0,0.2,1) infinite' }} />}
+                <div className="flex items-center justify-center rounded-full" style={{
+                  width: 44, height: 44,
+                  background: cur ? INK : SURF,
+                  border: cur ? 'none' : `1.5px solid ${done ? LILAC : LINE}`,
+                  boxShadow: cur ? `0 12px 28px -8px rgba(26,22,18,0.55), 0 0 0 6px ${CANVAS}` : done ? `0 0 0 6px ${CANVAS}` : `0 0 0 6px ${CANVAS}`,
+                  transition: 'all 0.6s cubic-bezier(0.16,1,0.3,1)',
+                }}>
+                  {done ? <Check className="w-[18px] h-[18px]" style={{ color: LILAC_TXT }} strokeWidth={3} />
+                    : <Icon className="w-[19px] h-[19px]" style={{ color: cur ? '#fff' : FAINT }} strokeWidth={1.8} />}
+                </div>
+              </div>
+              <span className="mt-2.5 text-[12.5px] tracking-[-0.01em]" style={{ color: cur ? INK : done ? SUB : FAINT, fontFamily: FH, fontWeight: cur ? 700 : 500, transition: 'color 0.6s ease' }}>{label}</span>
+            </div>
+            {i < STEPS.length - 1 && (
+              <div className="flex-1 relative" style={{ height: 2, marginTop: -30 }}>
+                <div className="absolute inset-0 rounded-full" style={{ background: LINE }} />
+                <div className="absolute inset-y-0 left-0 rounded-full" style={{ width: i < active ? '100%' : '0%', background: `linear-gradient(90deg, ${LILAC}, ${LILAC_TXT})`, boxShadow: i < active ? `0 0 10px ${LILAC}55` : 'none', transition: 'width 0.85s cubic-bezier(0.16,1,0.3,1)' }} />
+              </div>
+            )}
+          </React.Fragment>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ── resultat-linje per scene (gir hvert steg en «payoff» og fyller kolonnen rolig) ── */
+const OUTCOME: Record<string, string> = {
+  oversikt: 'Seks steg. Ett sammenhengende system.',
+  nettside: 'Henvendelsen er i systemet på sekunder.',
+  pipeline: 'Prognosen oppdateres helt av seg selv.',
+  proposal: 'Avtalen er signert — uten papir.',
+  registrer: 'Boligen er klar for annonse.',
+  finn: 'Live på FINN og egen side samtidig.',
+  visninger: 'Visningene fyller seg selv opp.',
+  screening: 'Tryggeste leietaker anbefalt — objektivt.',
+  kontrakt: 'Kontrakt signert, depositum opprettet.',
+  innflytting: 'Leietaker er onboardet digitalt.',
+  drift: 'Inntekt og saker — på autopilot.',
+  portefolje: 'Hele porteføljen styres fra ett sted.',
+};
+
+/* ── venstre fortellerpanel (rolig, vertikalt balansert mot produktet) ── */
+function LeftPanel({ beat, k }: { beat: typeof BEATS[number]; k: number }) {
+  const Icon = beat.step === 'Intro' ? null : STEP_ICON[beat.step];
+  const twoCol = beat.points.length > 3;
+  const out = OUTCOME[beat.surface];
+  return (
+    <div key={k} className="absolute flex flex-col justify-center" style={{ left: 100, top: 236, height: 584, width: 452 }}>
+      <div className="flex items-center gap-3" style={{ animation: 'sf-textin 0.6s cubic-bezier(0.16,1,0.3,1) both' }}>
+        {beat.step === 'Intro'
+          ? <span className="inline-flex items-center justify-center w-8 h-8 rounded-[10px] text-white text-[15px] font-bold" style={{ background: 'linear-gradient(135deg,#cf97fc,#7c5cff)', fontFamily: FH, boxShadow: `0 6px 16px -6px ${LILAC}` }}>H</span>
+          : <span className="inline-flex items-center justify-center w-8 h-8 rounded-[10px]" style={{ background: LILAC_BG }}><Icon className="w-[18px] h-[18px]" style={{ color: LILAC_TXT }} strokeWidth={1.9} /></span>}
+        <span className="text-[12px] font-bold uppercase tracking-[0.24em]" style={{ color: LILAC_TXT, fontFamily: F }}>{beat.kicker}</span>
+      </div>
+      <h2 className="mt-7 font-bold tracking-[-0.03em]" style={{ color: INK, fontFamily: FH, fontSize: 46, lineHeight: 1.06, animation: 'sf-focusin 0.9s cubic-bezier(0.16,1,0.3,1) 0.05s both' }}>{beat.title}</h2>
+      <p className="mt-6 text-[18px]" style={{ color: SUB, fontFamily: F, lineHeight: 1.62, maxWidth: 436, animation: 'sf-textin 0.7s cubic-bezier(0.16,1,0.3,1) 0.16s both' }}>{beat.desc}</p>
+      <div className="mt-8 grid gap-x-6 gap-y-3.5" style={{ gridTemplateColumns: twoCol ? '1fr 1fr' : '1fr' }}>
+        {beat.points.map((p, i) => (
+          <div key={p} className="flex items-center gap-3" style={{ animation: `sf-textin 0.6s cubic-bezier(0.16,1,0.3,1) ${0.26 + i * 0.06}s both` }}>
+            <span className="inline-flex items-center justify-center w-5 h-5 rounded-full shrink-0" style={{ background: LILAC_BG }}><Check className="w-3 h-3" style={{ color: LILAC_TXT }} strokeWidth={3} /></span>
+            <span className="text-[14.5px] font-medium" style={{ color: INK2, fontFamily: F }}>{p}</span>
+          </div>
+        ))}
+      </div>
+      {out && (
+        <div className="mt-9 pt-6 flex items-center gap-3" style={{ borderTop: `1px solid ${LINE}`, animation: `sf-textin 0.7s cubic-bezier(0.16,1,0.3,1) ${0.36 + beat.points.length * 0.05}s both` }}>
+          <span className="inline-flex items-center justify-center w-6 h-6 rounded-full shrink-0" style={{ background: INK }}><ArrowRight className="w-3.5 h-3.5 text-white" strokeWidth={2.6} /></span>
+          <span className="text-[15px] font-semibold tracking-[-0.01em]" style={{ color: INK, fontFamily: FH }}>{out}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── produktramme (skalert skjerm — stor, rolig, med gulvrefleks & ambient lys) ── */
+const PF_W = 1024, PF_H = 576;
+const PF_SCALE = Math.min(PF_W / WIN_W, PF_H / WIN_H);
+function ProductFrame({ surface, k }: { surface: string; k: number }) {
+  const Surf = SURFACES[surface] || PipelineSurface;
+  return (
+    <div className="absolute" style={{ left: 576, top: 240 }}>
+      <div className="relative" style={{ width: PF_W, height: PF_H }}>
+        {/* ambient lysglød bak skjermen */}
+        <div className="absolute pointer-events-none" style={{ inset: '-12% -9%', background: `radial-gradient(56% 56% at 50% 36%, ${LILAC}16 0%, transparent 72%)`, filter: 'blur(38px)' }} />
+        {/* gulv-kontaktskygge */}
+        <div className="absolute pointer-events-none" style={{ left: '7%', right: '7%', bottom: -28, height: 52, borderRadius: '50%', background: 'rgba(26,22,18,0.20)', filter: 'blur(32px)' }} />
+        {/* mild gulvrefleks */}
+        <div className="absolute pointer-events-none" style={{ left: '16%', right: '16%', bottom: -10, height: 90, background: `linear-gradient(to bottom, ${LILAC}0d, transparent)`, filter: 'blur(16px)', opacity: 0.7 }} />
+        <div key={k} style={{ width: PF_W, height: PF_H, borderRadius: 20, overflow: 'hidden', background: SURF, boxShadow: `0 1px 0 rgba(255,255,255,0.9) inset, 0 0 0 1px ${LINE}, 0 2px 5px rgba(26,22,18,0.04), 0 44px 96px -36px rgba(26,22,18,0.42)`, animation: 'sf-prodin 0.85s cubic-bezier(0.16,1,0.3,1) both' }}>
+          <div style={{ width: WIN_W, height: WIN_H, transform: `scale(${PF_SCALE})`, transformOrigin: 'top left', position: 'absolute', top: (PF_H - WIN_H * PF_SCALE) / 2, left: (PF_W - WIN_W * PF_SCALE) / 2 }}>
+            <Surf mode="live" />
+          </div>
+          {/* topp-sheen + dybde-vignett */}
+          <div className="absolute inset-x-0 top-0 pointer-events-none" style={{ height: 66, background: 'linear-gradient(to bottom, rgba(255,255,255,0.18), transparent)' }} />
+          <div className="absolute inset-0 pointer-events-none" style={{ boxShadow: 'inset 0 0 64px rgba(26,22,18,0.035)', borderRadius: 20 }} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const SLIDE_W = 1680, SLIDE_H = 945;
 
 export default function SystemFilm() {
   const [idx, setIdx] = useState(0);
   const [playing, setPlaying] = useState(true);
   const [scale, setScale] = useState(0.7);
-  const [revealed, setRevealed] = useState(false);
-  const last = SCENES.length - 1;
+  const last = BEATS.length - 1;
+  const beat = BEATS[idx];
+  const active = STEPS.indexOf(beat.step);
+  const phaseLabel = beat.step === 'Intro' ? 'Oversikt · 6 steg' : `Fase 0${active + 1} — ${beat.step}`;
 
   useEffect(() => {
-    const upd = () => {
-      const availH = window.innerHeight - 150;
-      const availW = window.innerWidth - 120;
-      setScale(Math.max(0.4, Math.min(availH / WIN_H, availW / WIN_W, 0.96)));
-    };
+    const upd = () => setScale(Math.min((window.innerWidth - 80) / SLIDE_W, (window.innerHeight - 60) / SLIDE_H, 1.05));
     upd(); window.addEventListener('resize', upd);
     return () => window.removeEventListener('resize', upd);
   }, []);
 
   useEffect(() => {
     if (!playing || idx >= last) return;
-    const t = setTimeout(() => setIdx(i => Math.min(i + 1, last)), SCENES[idx].dur);
+    const t = setTimeout(() => setIdx(i => Math.min(i + 1, last)), beat.dur);
     return () => clearTimeout(t);
-  }, [idx, playing, last]);
-
-  // sentrert forklaring → produktet kommer i fokus (Apple "si det, så vis det")
-  useEffect(() => {
-    setRevealed(false);
-    const sc = SCENES[idx] as any;
-    if (sc.kind !== 'tour') return;
-    const words = (sc.cap?.text || '').split(' ').length;
-    const delay = Math.min(Math.max(words * 72 + 1500, 2600), 4600);
-    const t = setTimeout(() => setRevealed(true), delay);
-    return () => clearTimeout(t);
-  }, [idx]);
+  }, [idx, playing, last, beat.dur]);
 
   const next = useCallback(() => setIdx(i => Math.min(i + 1, last)), [last]);
   const prev = useCallback(() => setIdx(i => Math.max(i - 1, 0)), []);
@@ -1168,81 +1253,63 @@ export default function SystemFilm() {
     return () => window.removeEventListener('keydown', onKey);
   }, [next, prev]);
 
-  const s = SCENES[idx] as any;
-  const isKeynote = s.kind === 'keynote';
-  const mode: 'still' | 'live' = isKeynote ? 'still' : (revealed ? 'live' : 'still');
-  const dimmed = isKeynote || !revealed;
-
   return (
-    <div className="fixed inset-0 overflow-hidden" style={{ background: NIGHT, fontFamily: F }}>
-      {/* dyp cinematisk bakgrunn */}
-      <div className="absolute inset-0 pointer-events-none" style={{ background: `radial-gradient(125% 95% at 50% 6%, #1b1a23 0%, #121117 40%, ${NIGHT} 80%)` }} />
-      <div className="absolute inset-0 pointer-events-none" style={{ background: `radial-gradient(42% 52% at 16% 28%, ${ACCENT}14 0%, transparent 60%), radial-gradient(46% 56% at 86% 78%, rgba(179,167,143,0.10) 0%, transparent 62%)`, filter: 'blur(24px)' }} />
-      <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(118% 96% at 50% 44%, transparent 50%, rgba(0,0,0,0.6) 100%)' }} />
-      {/* filmkorn */}
-      <div className="absolute pointer-events-none" style={{ inset: '-20%', backgroundImage: GRAIN, backgroundSize: '150px 150px', opacity: 0.045, mixBlendMode: 'overlay', animation: 'sf-grain 0.55s steps(3) infinite' }} />
+    <div className="fixed inset-0 overflow-hidden flex items-center justify-center" style={{ background: CANVAS, fontFamily: F }}>
+      {/* rolig lys bakgrunn + levende ambient lys */}
+      <div className="absolute inset-0 pointer-events-none" style={{ background: `radial-gradient(100% 68% at 50% -4%, ${SURF} 0%, ${CANVAS} 56%)` }} />
+      <div className="absolute pointer-events-none" style={{ top: '-12%', left: '10%', width: 640, height: 640, borderRadius: '50%', background: 'radial-gradient(circle, rgba(207,151,252,0.10) 0%, transparent 70%)', filter: 'blur(30px)', animation: 'sf-float1 24s ease-in-out infinite' }} />
+      <div className="absolute pointer-events-none" style={{ bottom: '-16%', right: '6%', width: 720, height: 720, borderRadius: '50%', background: 'radial-gradient(circle, rgba(216,196,166,0.16) 0%, transparent 70%)', filter: 'blur(36px)', animation: 'sf-float2 28s ease-in-out infinite' }} />
+      <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(120% 90% at 50% 50%, transparent 56%, rgba(26,22,18,0.05) 100%)' }} />
+      <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: GRAIN, opacity: 0.022, mixBlendMode: 'multiply' }} />
 
-      {/* topp: chrome + akt-progress */}
-      <div className="absolute top-0 left-0 right-0 z-50 px-9 pt-5">
-        <div className="flex items-center justify-between mb-3">
-          <span className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.34em]" style={{ color: SNOW_MID }}><span className="w-1.5 h-1.5 rounded-full" style={{ background: ACCENT, boxShadow: `0 0 8px ${ACCENT}` }} />Systemet</span>
-          <span className="text-[11px] font-bold uppercase tracking-[0.3em]" style={{ color: SNOW }}>{s.act}</span>
-          <span className="text-[11px] font-bold tracking-[0.18em] tabular-nums" style={{ color: SNOW_MID }}>{String(idx + 1).padStart(2, '0')} <span style={{ color: SNOW_LO }}>/ {String(SCENES.length).padStart(2, '0')}</span></span>
-        </div>
-        <div className="flex gap-1.5">
-          {SCENES.map((sc: any, i) => {
-            const gap = i > 0 && SCENES[i].act !== SCENES[i - 1].act;
-            return (
-              <div key={i} className="flex-1 h-[3px] rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.10)', marginLeft: gap ? 12 : 0 }}>
-                <div style={{ height: '100%', borderRadius: 99, background: i === idx ? `linear-gradient(90deg, ${ACCENT}, #ddc9ff)` : 'rgba(243,240,234,0.55)', boxShadow: i === idx ? `0 0 8px ${ACCENT}aa` : 'none', width: i < idx ? '100%' : '0%', animation: i === idx && playing ? `sf-fill ${sc.dur}ms linear forwards` : 'none' }} />
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* THE STAGE — produktet svever i mørket */}
-      <div className="absolute inset-0 flex items-center justify-center">
-        <div className="relative" style={{ width: WIN_W * scale, height: WIN_H * scale }}>
-          {/* ambient glød bak rammen */}
-          <div className="absolute pointer-events-none" style={{ inset: '-22% -16%', background: `radial-gradient(58% 54% at 50% 40%, ${ACCENT}22 0%, transparent 68%), radial-gradient(80% 72% at 50% 64%, rgba(179,167,143,0.12) 0%, transparent 72%)`, filter: 'blur(46px)' }} />
-          {/* gulvrefleks-skygge */}
-          <div className="absolute pointer-events-none" style={{ left: '6%', right: '6%', bottom: '-6%', height: 80, borderRadius: '50%', background: 'rgba(0,0,0,0.55)', filter: 'blur(44px)' }} />
-          <div style={{ width: WIN_W, height: WIN_H, transform: `scale(${scale})`, transformOrigin: 'top left', position: 'absolute', top: 0, left: 0, borderRadius: 22, overflow: 'hidden', background: SURF, boxShadow: `0 0 0 1px rgba(255,255,255,0.08), 0 2px 0 rgba(255,255,255,0.10) inset, 0 50px 90px -24px rgba(0,0,0,0.7), 0 120px 180px -50px rgba(0,0,0,0.65), 0 0 130px -28px ${ACCENT}40` }}>
-            {/* surface — recede til mørke mens forklaringen vises, kommer i fokus ved avsløring */}
-            <div key={`${idx}-${mode}`} className="absolute inset-0"
-              style={dimmed
-                ? { filter: 'blur(10px) saturate(1.02) brightness(0.96)', animation: 'sf-dimin 9s cubic-bezier(0.16,1,0.3,1) both' }
-                : { animation: 'sf-revealin 0.95s cubic-bezier(0.16,1,0.3,1) both' }}>
-              {(() => { const Surf = SURFACES[s.surface] || PipelineSurface; return <Surf mode={mode} />; })()}
-            </div>
-            {/* fin topp-glanskant */}
-            <div className="absolute inset-x-0 top-0 pointer-events-none z-20" style={{ height: 90, background: 'linear-gradient(to bottom, rgba(255,255,255,0.16), transparent)' }} />
-            {/* cinematisk inner-vignette når produktet er i fokus */}
-            <div className="absolute inset-0 pointer-events-none z-20" style={{ boxShadow: 'inset 0 0 180px 40px rgba(10,10,12,0.14)', borderRadius: 22, opacity: dimmed ? 0 : 1, transition: 'opacity 1s ease' }} />
-            {isKeynote && <KeynoteOverlay key={'k' + idx} hero={idx === 0} {...s.key} />}
-            {!isKeynote && s.cap && <CenterNarration key={'c' + idx} step={s.cap.step} text={s.cap.text} gone={revealed} />}
+      {/* SLIDE */}
+      <div style={{ width: SLIDE_W, height: SLIDE_H, transform: `scale(${scale})`, transformOrigin: 'center', position: 'relative' }}>
+        {/* header */}
+        <div className="absolute flex items-center justify-between" style={{ left: 100, top: 54, right: 100 }}>
+          <span className="flex items-center gap-2.5 font-bold text-[18px]" style={{ color: INK, fontFamily: FH }}>
+            <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg text-white text-[14px]" style={{ background: 'linear-gradient(135deg,#cf97fc,#7c5cff)' }}>H</span>digihome
+          </span>
+          <div className="flex items-center gap-3.5">
+            <span className="w-1.5 h-1.5 rounded-full" style={{ background: beat.step === 'Intro' ? FAINT : LILAC_TXT, transition: 'background 0.5s' }} />
+            <span key={phaseLabel} className="text-[12px] font-bold uppercase tracking-[0.22em]" style={{ color: beat.step === 'Intro' ? FAINT : INK2, fontFamily: F, animation: 'sf-textin 0.5s ease both' }}>{phaseLabel}</span>
           </div>
+        </div>
+
+        {/* steg-skinne */}
+        <div className="absolute" style={{ left: 160, top: 116, width: SLIDE_W - 320 }}>
+          <JourneyRail active={active} />
+        </div>
+
+        {/* innhold */}
+        <LeftPanel key={'L' + idx} beat={beat} k={idx} />
+        <ProductFrame key={'P' + idx} surface={beat.surface} k={idx} />
+
+        {/* fremdrift for gjeldende steg */}
+        <div className="absolute flex items-center gap-4" style={{ left: 100, right: 100, bottom: 64 }}>
+          <span className="text-[11px] font-bold uppercase tracking-[0.18em] tabular-nums shrink-0" style={{ color: FAINT, fontFamily: F }}>{String(idx + 1).padStart(2, '0')}<span style={{ opacity: 0.5 }}> / {String(BEATS.length).padStart(2, '0')}</span></span>
+          <div className="flex-1 rounded-full overflow-hidden" style={{ height: 2, background: LINE }}>
+            <div key={idx} style={{ height: '100%', background: `linear-gradient(90deg, ${LILAC}, ${LILAC_TXT})`, width: '0%', animation: playing ? `sf-fill ${beat.dur}ms linear forwards` : 'none' }} />
+          </div>
+          <span className="text-[11px] font-semibold tracking-[-0.01em] shrink-0" style={{ color: SUB, fontFamily: FH }}>{beat.step === 'Intro' ? 'Oversikt' : beat.step}</span>
         </div>
       </div>
 
       {/* kontroller */}
-      <div className="absolute bottom-7 right-9 z-50 flex items-center gap-2.5">
-        <div className="flex items-center gap-1 rounded-full p-1" style={{ background: 'rgba(255,255,255,0.07)', backdropFilter: 'blur(18px)', boxShadow: '0 10px 30px -12px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.12)' }}>
-          <button onClick={prev} className="w-10 h-10 rounded-full flex items-center justify-center transition-colors hover:bg-white/10" style={{ color: SNOW }} aria-label="Forrige"><ChevronLeft className="w-5 h-5" /></button>
-          <button onClick={() => setPlaying(p => !p)} className="w-11 h-11 rounded-full flex items-center justify-center" style={{ background: SNOW, color: NIGHT, boxShadow: `0 0 22px -4px ${ACCENT}88` }} aria-label="Spill/pause">{playing ? <Pause className="w-[18px] h-[18px]" /> : <Play className="w-[18px] h-[18px]" style={{ marginLeft: 1 }} />}</button>
-          <button onClick={next} className="w-10 h-10 rounded-full flex items-center justify-center transition-colors hover:bg-white/10" style={{ color: SNOW }} aria-label="Neste"><ChevronRight className="w-5 h-5" /></button>
+      <div className="absolute bottom-7 left-1/2 z-50" style={{ transform: 'translateX(-50%)' }}>
+        <div className="flex items-center gap-1 rounded-full p-1" style={{ background: 'rgba(255,255,255,0.82)', backdropFilter: 'blur(16px)', boxShadow: '0 10px 30px -12px rgba(26,22,18,0.22), 0 0 0 1px rgba(26,22,18,0.05)' }}>
+          <button onClick={prev} className="w-10 h-10 rounded-full flex items-center justify-center transition-colors hover:bg-black/5" style={{ color: INK }} aria-label="Forrige"><ChevronLeft className="w-5 h-5" /></button>
+          <button onClick={() => setPlaying(p => !p)} className="w-11 h-11 rounded-full flex items-center justify-center text-white" style={{ background: INK, boxShadow: '0 6px 16px -6px rgba(26,22,18,0.5)' }} aria-label="Spill/pause">{playing ? <Pause className="w-[18px] h-[18px]" /> : <Play className="w-[18px] h-[18px]" style={{ marginLeft: 1 }} />}</button>
+          <button onClick={next} className="w-10 h-10 rounded-full flex items-center justify-center transition-colors hover:bg-black/5" style={{ color: INK }} aria-label="Neste"><ChevronRight className="w-5 h-5" /></button>
+          <span className="px-3 text-[12px] font-bold tabular-nums" style={{ color: FAINT, fontFamily: F }}>{String(idx + 1).padStart(2, '0')} / {String(BEATS.length).padStart(2, '0')}</span>
         </div>
       </div>
 
       <style>{`
         .sf-caret { display:inline-block; width:2px; height:1em; margin-left:2px; vertical-align:-2px; animation: sf-blink 1s step-end infinite; }
         .sf-cursor { display:inline-block; width:9px; height:1.05em; border-radius:2px; margin-left:3px; vertical-align:-3px; }
-        .sf-done { width:100% !important; }
         @keyframes sf-blink { 50% { opacity:0; } }
         @keyframes sf-fill { from { width:0%; } to { width:100%; } }
         @keyframes sf-fade { from { opacity:0; } to { opacity:1; } }
-        @keyframes sf-blurup { from { opacity:0; transform: translateY(0.4em); filter: blur(12px); } to { opacity:1; transform: translateY(0); filter: blur(0); } }
         @keyframes sf-rise { from { opacity:0; transform: translateY(10px); } to { opacity:1; transform: translateY(0); } }
         @keyframes sf-pop { from { opacity:0; transform: scale(0.9); } to { opacity:1; transform: scale(1); } }
         @keyframes sf-slidein { from { opacity:0; transform: translateX(24px); } to { opacity:1; transform: translateX(0); } }
@@ -1250,15 +1317,13 @@ export default function SystemFilm() {
         @keyframes sf-load { from { width:0%; } to { width:100%; } }
         @keyframes sf-scan { 0% { top:-12%; } 100% { top:104%; } }
         @keyframes sf-spin { to { transform: rotate(360deg); } }
-        @keyframes sf-wordin { from { opacity:0; transform: translateY(0.3em); filter: blur(5px); } to { opacity:1; transform: translateY(0); filter: blur(0); } }
-        @keyframes sf-wordblur { from { opacity:0; transform: translateY(0.36em); filter: blur(9px); } to { opacity:1; transform: translateY(0); filter: blur(0); } }
         @keyframes sf-flow { 0% { left:0%; opacity:0; } 15% { opacity:1; } 85% { opacity:1; } 100% { left:100%; opacity:0; } }
-        @keyframes sf-capin { from { opacity:0; transform: translateY(16px) scale(0.985); } to { opacity:1; transform: translateY(0) scale(1); } }
-        @keyframes sf-dimin { 0% { opacity:0; transform: scale(1.055); } 12% { opacity:1; } 100% { opacity:1; transform: scale(1.085); } }
-        @keyframes sf-revealin { 0% { opacity:0; filter: blur(11px); transform: scale(1.04); } 100% { opacity:1; filter: blur(0); transform: scale(1); } }
-        @keyframes sf-maskup { 0% { transform: translateY(112%); } 100% { transform: translateY(0); } }
-        @keyframes sf-cinein { 0% { opacity:0; transform: translateY(20px); filter: blur(8px); } 100% { opacity:1; transform: translateY(0); filter: blur(0); } }
-        @keyframes sf-grain { 0% { transform: translate(0,0); } 33% { transform: translate(-4%,3%); } 66% { transform: translate(3%,-4%); } 100% { transform: translate(0,0); } }
+        @keyframes sf-textin { from { opacity:0; transform: translateY(12px); } to { opacity:1; transform: translateY(0); } }
+        @keyframes sf-prodin { from { opacity:0; transform: scale(0.975); filter: blur(6px); } to { opacity:1; transform: scale(1); filter: blur(0); } }
+        @keyframes sf-focusin { from { opacity:0; filter: blur(9px); transform: translateY(14px); } to { opacity:1; filter: blur(0); transform: translateY(0); } }
+        @keyframes sf-pulse { 0% { opacity:0.55; transform: scale(0.82); } 70% { opacity:0; transform: scale(1.14); } 100% { opacity:0; transform: scale(1.14); } }
+        @keyframes sf-float1 { 0%, 100% { transform: translate(0,0); } 50% { transform: translate(42px, 32px); } }
+        @keyframes sf-float2 { 0%, 100% { transform: translate(0,0); } 50% { transform: translate(-48px, -30px); } }
       `}</style>
     </div>
   );
