@@ -247,6 +247,22 @@ frontend:
         -agent: "main"
         -comment: "Verdensklasse-løft fullført: (1) Bokeh-dybdelag aktivert globalt bak scenene. (2) Alle kort fikk gradient-kantlys (CardEdge), glare-sveip (Glare), gulv-glød (FloorGlow) og kontinuerlig deterministisk 3D-float (float3d). (3) Akt 1: glødende lilla rim langs sirkelsveipen. (4) Akt 2: gnistburst (SparkBurst) ved toggle-flip. (5) Akt 4: score-teller (92) i radar-sentrum. (6) Akt 5: papirlys-gradient på kontrakt + glød-puls bak husleiebeløpet. (7) Akt 6: chat-kort erstattet med realistisk telefonramme (dynamic island, statuslinje 21:47 m/signal+batteri, sideknapper, skjermglare, meldingsfelt, bottom-anchored meldinger). Fikset overflow-klipping av chip/meldingsfelt (bredere telefon 22%, minHeight:0 + overflow:hidden, kortere meldingstekst). Motor-orben flyttet/krympet så den ikke overlapper kort. Verifisert frame-for-frame via Playwright-stillbilder over hele tidslinjen (11 nøkkeltidspunkter). MP4 re-rendret via scripts/render_film.py."
 
+  - task: "Systemet-film (/film) — kinematisk B2B-produkttur (SystemFilm.tsx)"
+    implemented: true
+    working: true
+    file: "components/deck/SystemFilm.tsx, app/film/page.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "main"
+        -comment: "P1 — Bygde ut hele produktturen fra kun Akt 1 til 6 akter / 24 scener (Akt 1 Anskaffelse, Akt 2 Klargjøring, Akt 3 Interesse, Akt 4 Inngåelse, Akt 5 Drift, Finale Skala) etter /app/memory/digihome_b2b_flow_spec.md. Hver akt veksler mellom keynote-tekst (over sløret UI) og live produkt-tur. 8 nye scriptede surfaces: registrer (AI-boligdata), finn (FINN.no-annonse), visninger (booking/SMS), screening (Creditsafe-scoring 94/100), kontrakt (BankID+depositum), innflytting (tilstandsrapport+leietakerportal), drift (økonomi+sak-tidslinje), portefolje (skala-dashboard). AppShell refaktorert til active-prop. Surface-register erstatter ternær."
+        -working: true
+        -agent: "main"
+        -comment: "APPLE-NIVÅ LØFT (kun frontend, etter brukerønske «løft alt til Apple nivå»): (1) EKTE BILDER: hentet 11 ekte interiør-/fasadefoto (Pexels/Unsplash) via vision_expert_agent, lastet ned til /public/film/photos/, byttet ut alle fargeflater i registrer/finn/innflytting/portefolje med <img object-cover>. (2) KEYNOTE-SCENER: redesignet KeynoteOverlay — radial scrim + ambient lilla glød, lilla-dot kicker (tracking 0.36em), 76px RG-overskrift (blur-up stagger per linje), rolig 21px undertekst. (3) FORKLARINGER: ny Caption (Apple lower-third) — frostet glass + lilla aksent-skinne, ord-for-ord WordReveal (sf-wordin) i stedet for typewriter. (4) CHROME: akt-gruppert progressbar m/ glød på aktiv, scene-teller 01/24, ramme fikk ambient bakglød + gulvskygge + topp-glanskant + finere bezel, frostet kontroll-cluster. Verifisert via skjermbilder: keynote, registrer (ekte rom), finn (ekte annonse), screening, innflytting, portefolje (ekte fasader). Backend uendret; ingen retesting nødvendig."
+
+
 metadata:
   created_by: "main_agent"
   version: "1.0"
