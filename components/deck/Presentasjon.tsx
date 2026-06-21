@@ -6,6 +6,7 @@ import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { AnimatePresence, motion } from 'framer-motion';
 import HeroProductAnimation from './HeroProductAnimation';
+import ContractDemo from './ContractDemo';
 import LandingHeroAnimation from './LandingHeroAnimation';
 
 const F = { fontFamily: "var(--font-body), 'ABC Diatype', -apple-system, BlinkMacSystemFont, sans-serif" };
@@ -5592,12 +5593,48 @@ const SBusinessModels = (p: any) => {
 
 
 /* ═══ SLIDE ORDER ═══ */
+/* ═══ S04 · Systemet i arbeid — scriptet kontrakt-demo (ekte produkt-UI) ═══ */
+const SSystemIArbeid = (p: any) => {
+  const active = p.isActive;
+  const isPdf = !!p.pdfMode;
+  const DINK = '#1c1815';
+  return (
+  <SlideFrame bg="beige" {...p}>
+    <style>{`
+      @keyframes siaIn { from { opacity: 0; transform: translateY(22px); filter: blur(6px); } to { opacity: 1; transform: translateY(0); filter: blur(0); } }
+      @keyframes siaFade { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    `}</style>
+    <div className="mx-auto px-6 sm:px-12 w-full relative z-10" style={{ maxWidth: 1320 }}>
+      {/* editorial header */}
+      <div className="mb-5 sm:mb-7">
+        <div className="flex items-end justify-between gap-8 flex-wrap">
+          <div>
+            <span className="block text-[10px] font-bold uppercase tracking-[0.42em] mb-3" style={{ ...F, color: DINK, animation: active ? 'siaFade 0.7s ease 0.1s both' : undefined, opacity: active ? undefined : 0 }}>Systemet i arbeid</span>
+            <h2 className="font-bold tracking-[-0.042em] leading-[1.02]" style={{ ...FH, fontWeight: 700, color: DINK, fontSize: 'clamp(28px, 3.8vw, 50px)', animation: active ? 'siaIn 0.9s cubic-bezier(0.22,1,0.36,1) 0.2s both' : undefined, opacity: active ? undefined : 0 }}>
+              Én kommando. Systemet gjør resten.
+            </h2>
+          </div>
+          <p className="font-light leading-[1.55] max-w-[330px] mb-1" style={{ ...F, color: '#5a564d', fontSize: 'clamp(11.5px, 1vw, 13.5px)', animation: active ? 'siaFade 0.7s ease 0.4s both' : undefined, opacity: active ? undefined : 0 }}>
+            Fra «lag leiekontrakt» til ferdig utkast — leietaker, leie, datoer og depositum fylt ut automatisk.
+          </p>
+        </div>
+      </div>
+
+      {/* ramme — ekte produkt-UI, scriptet */}
+      <div style={{ animation: active && !isPdf ? 'siaIn 1.1s cubic-bezier(0.16,1,0.3,1) 0.45s both' : undefined, opacity: (active || isPdf) ? 1 : 0 }}>
+        <ContractDemo active={active} pdfMode={isPdf} />
+      </div>
+    </div>
+  </SlideFrame>
+  );
+};
+
 /* ═══ SLIDE ORDER — 2026 · Product-first investor flow ═══ */
 const SLIDES = [
   S1,            // 01 · Cover
   SVisionIntro,      // 02 · Visjon — krok «Ikke et system. En autopilot.» → idéen bak DigiHome
   SFraVerktoyTilMotor, // 03 · Problemet og løsningen — fra verktøy (proptech) til motor (DigiHome)
-  SAutopilotChecklist, // 04 · Autopiloten i arbeid — sjekkliste-animasjon
+  SSystemIArbeid, // 04 · Systemet i arbeid — scriptet kontrakt-demo (ekte produkt-UI)
   SBusinessModels, // 05 · Forretningsmodeller — B2C (private) + B2B (profesjonelle)
   SLiveDemo,     // 04 · Live product animation (from /digihome-tech)
   SDualUSP,      // 05 · Three unique aspects (auto-listing + dynamic + AI ops)
