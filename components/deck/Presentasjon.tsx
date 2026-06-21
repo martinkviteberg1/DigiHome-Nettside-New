@@ -7,6 +7,7 @@ import jsPDF from 'jspdf';
 import { AnimatePresence, motion } from 'framer-motion';
 import HeroProductAnimation from './HeroProductAnimation';
 import ContractDemo from './ContractDemo';
+import AutopilotArchitecture from './AutopilotArchitecture';
 import LandingHeroAnimation from './LandingHeroAnimation';
 
 const F = { fontFamily: "var(--font-body), 'ABC Diatype', -apple-system, BlinkMacSystemFont, sans-serif" };
@@ -5593,6 +5594,37 @@ const SBusinessModels = (p: any) => {
 
 
 /* ═══ SLIDE ORDER ═══ */
+/* ═══ S04a · Arkitekturen — alt flyter inn i Autopiloten (animert systemskisse) ═══ */
+const SArkitektur = (p: any) => {
+  const active = p.isActive;
+  const isPdf = !!p.pdfMode;
+  const DINK = '#1c1815';
+  return (
+  <SlideFrame bg="beige" {...p}>
+    <style>{`
+      @keyframes arkIn { from { opacity: 0; transform: translateY(20px); filter: blur(6px); } to { opacity: 1; transform: translateY(0); filter: blur(0); } }
+      @keyframes arkFade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    `}</style>
+    <div className="mx-auto px-6 sm:px-12 w-full relative z-10" style={{ maxWidth: 1340 }}>
+      <div className="mb-6 sm:mb-9">
+        <div className="flex items-end justify-between gap-8 flex-wrap">
+          <div>
+            <span className="block text-[10px] font-bold uppercase tracking-[0.42em] mb-3" style={{ ...F, color: DINK, animation: active ? 'arkFade 0.7s ease 0.1s both' : undefined, opacity: active ? undefined : 0 }}>Arkitekturen</span>
+            <h2 className="font-bold tracking-[-0.042em] leading-[1.0]" style={{ ...FH, fontWeight: 700, color: DINK, fontSize: 'clamp(28px, 3.8vw, 50px)', animation: active ? 'arkIn 0.9s cubic-bezier(0.22,1,0.36,1) 0.2s both' : undefined, opacity: active ? undefined : 0 }}>
+              Alt flyter inn i Autopiloten.
+            </h2>
+          </div>
+          <p className="font-light leading-[1.55] max-w-[360px] mb-1" style={{ ...F, color: '#5a564d', fontSize: 'clamp(11.5px, 1vw, 13.5px)', animation: active ? 'arkFade 0.7s ease 0.4s both' : undefined, opacity: active ? undefined : 0 }}>
+            Et komplett forvaltningssystem i bunn — men der andre lagrer data, lar DigiHome den jobbe.
+          </p>
+        </div>
+      </div>
+      <AutopilotArchitecture active={active} pdfMode={isPdf} />
+    </div>
+  </SlideFrame>
+  );
+};
+
 /* ═══ S04 · Systemet i arbeid — scriptet kontrakt-demo (ekte produkt-UI) ═══ */
 const SSystemIArbeid = (p: any) => {
   const active = p.isActive;
@@ -5634,6 +5666,7 @@ const SLIDES = [
   S1,            // 01 · Cover
   SVisionIntro,      // 02 · Visjon — krok «Ikke et system. En autopilot.» → idéen bak DigiHome
   SFraVerktoyTilMotor, // 03 · Problemet og løsningen — fra verktøy (proptech) til motor (DigiHome)
+  SArkitektur, // 04a · Arkitekturen — alt flyter inn i Autopiloten (animert)
   SSystemIArbeid, // 04 · Systemet i arbeid — scriptet kontrakt-demo (ekte produkt-UI)
   SBusinessModels, // 05 · Forretningsmodeller — B2C (private) + B2B (profesjonelle)
   SLiveDemo,     // 04 · Live product animation (from /digihome-tech)
