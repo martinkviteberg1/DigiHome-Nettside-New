@@ -5636,7 +5636,7 @@ const SProdukt = (p: any) => {
       @keyframes prodHIn { from { opacity: 0; transform: translateY(20px); filter: blur(6px); } to { opacity: 1; transform: translateY(0); filter: blur(0); } }
       @keyframes prodHFade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
     `}</style>
-    <div className="mx-auto self-stretch px-6 sm:px-12 w-full relative z-10 flex flex-col justify-center" style={{ maxWidth: 1340 }}>
+    <div className="mx-auto self-stretch px-6 sm:px-12 w-full relative z-10 flex flex-col justify-center" style={{ maxWidth: 1400 }}>
       <div className="mb-6 sm:mb-9">
         <div className="flex items-end justify-between gap-8 flex-wrap">
           <div>
