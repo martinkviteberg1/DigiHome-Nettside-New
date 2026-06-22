@@ -64,13 +64,8 @@ type Beat = {
 const FULL: Focus = { scale: 1.0, x: 0, y: 0 };
 // rolig kamera i full visning under hele turen → stabile koordinater for coachmarks
 const BEATS: Beat[] = [
-  // — Kapittel 0: modul-oversikt — sidebaren blar gjennom modulene, oversikt lyser opp i takt —
-  { kind: 'overview', key: 'overview', side: 0, content: -1, node: -1, dur: 1100 },
-  { kind: 'overview', key: 'overview', side: 1, content: -1, node: -1, dur: 900 },
-  { kind: 'overview', key: 'overview', side: 2, content: -1, node: -1, dur: 900 },
-  { kind: 'overview', key: 'overview', side: 3, content: -1, node: -1, dur: 900 },
-  { kind: 'overview', key: 'overview', side: 4, content: -1, node: -1, dur: 900 },
-  { kind: 'overview', key: 'overview', side: 5, content: -1, node: -1, dur: 1800 },
+  // — Kapittel 0: operativsystem-konstellasjon — sidebaren glir kontinuerlig nedover, modulene samler seg rundt kjernen —
+  { kind: 'overview', key: 'overview', side: 0, content: -1, node: -1, dur: 7000 },
   // — Salg deep-dive —
   { kind: 'nav',  key: 'salg',       side: 0, content: 0, node: 0, dur: 2000 },
   { kind: 'view', key: 'salg',       side: 0, content: 0, node: 0, dur: 4400 },
@@ -127,7 +122,7 @@ function SideLabel({ children }: any) {
   return <p className="text-[8.5px] font-semibold uppercase tracking-[0.18em] px-4 pt-2.5 pb-1" style={{ fontFamily: PJ, color: 'rgba(255,255,255,0.28)' }}>{children}</p>;
 }
 
-function Sidebar({ tab, cursorOn, pulseKey }: { tab: number; cursorOn?: boolean; pulseKey?: number }) {
+function Sidebar({ tab, cursorOn, pulseKey, sweep }: { tab: number; cursorOn?: boolean; pulseKey?: number; sweep?: boolean }) {
   const navRef = useRef<HTMLDivElement>(null);
   const rSalg = useRef<HTMLDivElement>(null);
   const rEiendommer = useRef<HTMLDivElement>(null);
@@ -143,7 +138,7 @@ function Sidebar({ tab, cursorOn, pulseKey }: { tab: number; cursorOn?: boolean;
     if (el) setInd({ top: el.offsetTop, h: el.offsetHeight, ready: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab]);
-  const k = TABS[tab].key;
+  const k = sweep ? '' : TABS[tab].key;
 
   return (
     <div className="shrink-0 flex flex-col py-3" style={{ width: SIDE_W, background: SIDE, borderRight: '1px solid rgba(0,0,0,0.06)' }}>
@@ -151,11 +146,20 @@ function Sidebar({ tab, cursorOn, pulseKey }: { tab: number; cursorOn?: boolean;
         <img src="/img/digihome-logo-white.svg" alt="DigiHome" className="h-[21px] w-auto select-none" draggable={false} />
       </div>
       <div ref={navRef} className="relative flex-1 overflow-hidden">
+        {sweep && (
+          <>
+            <style>{`@keyframes pdSweep { 0% { top:-18%; opacity:0; } 16% { opacity:1; } 84% { opacity:1; } 100% { top:104%; opacity:0; } }`}</style>
+            <div className="absolute left-0 right-0 pointer-events-none" style={{ height: 130, top: 0, zIndex: 4, mixBlendMode: 'screen', animation: 'pdSweep 3s cubic-bezier(0.4,0,0.6,1) infinite' }}>
+              <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, transparent, rgba(207,151,252,0.30) 50%, transparent)', filter: 'blur(5px)' }} />
+              <div className="absolute left-2 right-2" style={{ top: '50%', height: 2, transform: 'translateY(-50%)', borderRadius: 2, background: 'linear-gradient(90deg, transparent, rgba(220,176,255,0.95), transparent)', boxShadow: '0 0 18px rgba(207,151,252,0.85)' }} />
+            </div>
+          </>
+        )}
         <div style={{
           position: 'absolute', left: 10, right: 10, top: ind.top, height: ind.h, borderRadius: 9,
           background: 'linear-gradient(90deg, rgba(207,151,252,0.22), rgba(207,151,252,0.05))',
           transition: 'top 0.55s cubic-bezier(0.22,1,0.36,1), height 0.55s cubic-bezier(0.22,1,0.36,1), opacity 0.4s ease',
-          opacity: ind.ready ? 1 : 0, zIndex: 1,
+          opacity: (ind.ready && !sweep) ? 1 : 0, zIndex: 1,
         }}>
           <span style={{ position: 'absolute', left: -10, top: '50%', transform: 'translateY(-50%)', width: 3, height: 18, borderRadius: '0 4px 4px 0', background: 'linear-gradient(to bottom,#cf97fc,#7c5cff)', boxShadow: '0 0 12px rgba(207,151,252,0.75)' }} />
         </div>
@@ -557,59 +561,69 @@ const VIEWS = [ViewSalg, ViewEiendommer, ViewAnnonse, ViewSaker, ViewKalender, V
 
 const VIEW_KEYS = ['salg', 'eiendommer', 'annonse', 'saker', 'kalender', 'autopilot'];
 
-/* ═══════════════════════ MODUL-OVERSIKT (kapittel 0 — systemets oppbygning) ═══════════════════════ */
+/* ═══════════════════════ KAPITTEL 0 · OPERATIVSYSTEM-KONSTELLASJON ═══════════════════════ */
+const OV_CX = 500, OV_CY = 205;
 const OV_MODS = [
-  { Icon: UserCheck,    name: 'Salg',       d: 'Interessent → signert leieavtale.' },
-  { Icon: Building2,    name: 'Eiendommer', d: 'Hele porteføljen, samlet.' },
-  { Icon: Rocket,       name: 'Annonse',    d: 'AI-annonse → publisert til FINN.' },
-  { Icon: AlertCircle,  name: 'Saker',      d: 'Drift og vedlikehold, sporbart.' },
-  { Icon: CalendarDays, name: 'Kalender',   d: 'Belegg og dynamisk prising.' },
-  { Icon: Gauge,        name: 'Autopilot',  d: 'Ser alt — og handler på det.', auto: true },
+  { Icon: UserCheck,    name: 'Salg',       x: 500, y: 65 },
+  { Icon: Building2,    name: 'Eiendommer', x: 827, y: 135 },
+  { Icon: Rocket,       name: 'Annonse',    x: 827, y: 275 },
+  { Icon: AlertCircle,  name: 'Saker',      x: 500, y: 345 },
+  { Icon: CalendarDays, name: 'Kalender',   x: 173, y: 275 },
+  { Icon: Gauge,        name: 'Autopilot',  x: 173, y: 135, auto: true },
 ];
-function ModuleOverview({ active = -1 }: { active?: number }) {
+function ModuleOverview() {
   return (
-    <div className="h-full px-10 py-9 flex flex-col justify-center" style={{ background: BG }}>
-      <style>{`@keyframes moIn { from { opacity:0; transform: translateY(13px); } to { opacity:1; transform: translateY(0); } }`}</style>
+    <div className="h-full relative overflow-hidden" style={{ background: BG }}>
+      <style>{`
+        @keyframes moHead { from { opacity:0; transform: translateY(14px); filter: blur(7px); } to { opacity:1; transform: translateY(0); filter: blur(0); } }
+        @keyframes moFade { from { opacity:0; } to { opacity:1; } }
+        @keyframes moNode { 0% { opacity:0; transform: translate(-50%,-50%) scale(0.55); } 100% { opacity:1; transform: translate(-50%,-50%) scale(1); } }
+        @keyframes moFlow { to { stroke-dashoffset: 0; } }
+        @keyframes moHalo { 0%,100% { opacity:0.4; transform: translate(-50%,-50%) scale(1); } 50% { opacity:0.85; transform: translate(-50%,-50%) scale(1.15); } }
+      `}</style>
+
+      {/* ambient */}
+      <div aria-hidden className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(58% 58% at 50% 58%, rgba(210,152,255,0.11), transparent 70%)' }} />
+      <div aria-hidden className="absolute inset-0 pointer-events-none" style={{ backgroundImage: 'radial-gradient(rgba(124,58,237,0.11) 1px, transparent 1px)', backgroundSize: '26px 26px', WebkitMaskImage: 'radial-gradient(72% 66% at 50% 56%, #000 28%, transparent 76%)', maskImage: 'radial-gradient(72% 66% at 50% 56%, #000 28%, transparent 76%)', opacity: 0.55 }} />
+
       {/* header */}
-      <div className="mb-7" style={{ animation: 'moIn 0.7s cubic-bezier(0.22,1,0.36,1) both' }}>
-        <span className="text-[11px] font-bold uppercase tracking-[0.3em]" style={{ fontFamily: PJ, color: ACCENT_DK }}>Systemets oppbygning</span>
-        <h2 className="text-[30px] font-bold tracking-[-0.03em] leading-[1.05] mt-3" style={{ fontFamily: FH, color: INK }}>Ett system. Mange moduler.</h2>
-        <p className="text-[14px] mt-2.5 max-w-[560px]" style={{ fontFamily: PJ, color: SUB }}>Alt henger sammen — og alt flyter inn i autopiloten.</p>
+      <div className="absolute left-0 right-0 text-center z-30 px-10" style={{ top: 54 }}>
+        <span className="inline-block text-[11px] font-bold uppercase tracking-[0.34em]" style={{ fontFamily: PJ, color: ACCENT_DK, animation: 'moHead 0.7s cubic-bezier(0.22,1,0.36,1) 0.05s both' }}>DigiHome · operativsystemet</span>
+        <h2 className="text-[31px] font-bold tracking-[-0.03em] leading-[1.05] mt-3" style={{ fontFamily: FH, color: INK, animation: 'moHead 0.8s cubic-bezier(0.22,1,0.36,1) 0.16s both' }}>Ett system. Bygget i moduler.</h2>
+        <p className="text-[14px] mt-2.5" style={{ fontFamily: PJ, color: SUB, animation: 'moHead 0.7s cubic-bezier(0.22,1,0.36,1) 0.3s both' }}>Seks moduler. Én plattform. Alt henger sammen.</p>
       </div>
-      {/* modul-rutenett */}
-      <div className="grid grid-cols-2 gap-3.5">
+
+      {/* konstellasjon */}
+      <div className="absolute z-10" style={{ left: '50%', top: 248, transform: 'translateX(-50%)', width: 1000, height: 410 }}>
+        {/* eiker (linjer + flytende puls) */}
+        <svg width="1000" height="410" className="absolute inset-0 overflow-visible" style={{ animation: 'moFade 0.9s ease 0.35s both' }}>
+          {OV_MODS.map((m, i) => (
+            <g key={m.name}>
+              <line x1={OV_CX} y1={OV_CY} x2={m.x} y2={m.y} stroke="rgba(124,58,237,0.16)" strokeWidth={1.4} />
+              <line x1={OV_CX} y1={OV_CY} x2={m.x} y2={m.y} stroke="#cf97fc" strokeWidth={1.7} strokeLinecap="round" strokeDasharray="3 24" style={{ strokeDashoffset: 27, animation: `moFlow 1.5s linear ${0.7 + i * 0.12}s infinite` }} />
+            </g>
+          ))}
+        </svg>
+
+        {/* system-kjerne */}
+        <div className="absolute z-20" style={{ left: OV_CX, top: OV_CY, transform: 'translate(-50%,-50%)', animation: 'moFade 0.8s ease 0.2s both' }}>
+          <span aria-hidden className="absolute rounded-full" style={{ left: '50%', top: '50%', width: 156, height: 156, transform: 'translate(-50%,-50%)', background: 'radial-gradient(circle, rgba(210,152,255,0.55), transparent 68%)', filter: 'blur(9px)', animation: 'moHalo 3.4s ease-in-out infinite' }} />
+          <div className="relative rounded-[24px] overflow-hidden" style={{ width: 104, height: 104, boxShadow: '0 26px 60px -16px rgba(124,58,237,0.55), 0 0 0 6px rgba(255,255,255,0.72), inset 0 1px 0 rgba(255,255,255,0.3)' }}>
+            <img src="/digihome-mark.svg" alt="DigiHome" className="w-full h-full object-cover" draggable={false} />
+          </div>
+          <p className="absolute left-1/2 -translate-x-1/2 whitespace-nowrap text-[11px] font-semibold uppercase tracking-[0.22em]" style={{ top: 116, fontFamily: PJ, color: ACCENT_DK }}>Operativsystemet</p>
+        </div>
+
+        {/* moduler */}
         {OV_MODS.map((m, i) => {
-          const on = active === i;
-          const Ic = m.Icon;
-          const dark = !!m.auto;
+          const Ic = m.Icon; const dark = !!m.auto;
           return (
-            <div key={m.name}
-              className="relative rounded-2xl px-5 py-4 flex items-center gap-4 overflow-hidden"
-              style={{
-                background: dark ? '#181622' : '#ffffff',
-                border: `1.5px solid ${on ? (dark ? 'rgba(210,152,255,0.6)' : 'rgba(154,99,232,0.45)') : (dark ? 'rgba(210,152,255,0.22)' : BORDER)}`,
-                boxShadow: on
-                  ? (dark ? '0 24px 52px -22px rgba(124,58,237,0.62), 0 0 0 4px rgba(210,152,255,0.12)' : '0 24px 52px -26px rgba(124,58,237,0.34), 0 0 0 4px rgba(154,99,232,0.10)')
-                  : (dark ? '0 14px 34px -22px rgba(0,0,0,0.5)' : '0 10px 30px -24px rgba(20,15,10,0.30)'),
-                transform: on ? 'translateY(-3px)' : 'none',
-                transition: 'all 0.5s cubic-bezier(0.22,1,0.36,1)',
-                animation: `moIn 0.6s cubic-bezier(0.22,1,0.36,1) ${0.15 + i * 0.07}s both`,
-              }}>
-              <span className="inline-flex items-center justify-center w-12 h-12 rounded-xl shrink-0" style={{
-                background: dark ? (on ? ACCENT : 'rgba(255,255,255,0.08)') : (on ? ACCENT : 'rgba(154,99,232,0.10)'),
-                border: dark ? 'none' : '1px solid rgba(154,99,232,0.18)',
-                transition: 'all 0.5s ease',
-              }}>
-                <Ic className="w-[22px] h-[22px]" style={{ color: dark ? (on ? '#1a1020' : '#cf97fc') : (on ? '#fff' : ACCENT) }} strokeWidth={1.9} />
-              </span>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <p className="text-[16px] font-bold tracking-[-0.01em]" style={{ fontFamily: FH, color: dark ? '#fff' : INK }}>{m.name}</p>
-                  {dark && <span className="inline-flex items-center gap-1 text-[8.5px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded" style={{ fontFamily: PJ, background: 'rgba(207,151,252,0.18)', color: '#cf97fc' }}><Sparkles className="w-2.5 h-2.5" />AI</span>}
-                </div>
-                <p className="text-[12px] mt-0.5 truncate" style={{ fontFamily: PJ, color: dark ? 'rgba(255,255,255,0.55)' : SUB }}>{m.d}</p>
+            <div key={m.name} className="absolute z-20" style={{ left: m.x, top: m.y, transform: 'translate(-50%,-50%)', animation: `moNode 0.65s cubic-bezier(0.34,1.4,0.5,1) ${0.55 + i * 0.13}s both` }}>
+              <div className="rounded-2xl flex items-center justify-center" style={{ width: 60, height: 60, background: dark ? '#181622' : '#ffffff', border: `1px solid ${dark ? 'rgba(210,152,255,0.3)' : BORDER}`, boxShadow: dark ? '0 16px 38px -12px rgba(124,58,237,0.55)' : '0 16px 36px -18px rgba(20,15,10,0.34), inset 0 1px 0 rgba(255,255,255,0.85)' }}>
+                <Ic className="w-[24px] h-[24px]" style={{ color: dark ? '#cf97fc' : ACCENT_DK }} strokeWidth={1.85} />
               </div>
-              <span className="text-[12px] font-bold tabular-nums shrink-0" style={{ fontFamily: PJ, color: on ? (dark ? '#cf97fc' : ACCENT) : (dark ? 'rgba(255,255,255,0.3)' : FAINT) }}>{String(i + 1).padStart(2, '0')}</span>
+              <span className="absolute left-1/2 -translate-x-1/2 whitespace-nowrap text-[13px] font-semibold" style={{ top: 67, fontFamily: FH, color: INK }}>{m.name}</span>
+              {dark && <span className="absolute left-1/2 -translate-x-1/2 whitespace-nowrap text-[8.5px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded inline-flex items-center gap-1" style={{ top: 88, fontFamily: PJ, background: 'rgba(207,151,252,0.16)', color: ACCENT_DK }}><Sparkles className="w-2.5 h-2.5" />AI</span>}
             </div>
           );
         })}
@@ -749,11 +763,11 @@ function DesktopMock({ phase, beat, pulseKey }: { phase: 'intro' | 'tour'; beat:
     <div ref={frameRef} className="rounded-[24px] overflow-hidden relative" style={{ width: DESK_W, background: BG, border: `1px solid ${BORDER_S}`, boxShadow: '0 1px 0 rgba(255,255,255,0.9) inset, 0 60px 130px -44px rgba(26,22,18,0.46), 0 24px 60px -34px rgba(26,22,18,0.26)' }}>
       {/* app-flate (rolig — full visning hele turen) */}
       <div className="flex" style={{ height: BODY_H }}>
-        <Sidebar tab={beat.side} cursorOn={isNav} pulseKey={pulseKey} />
+        <Sidebar tab={beat.side} cursorOn={isNav} pulseKey={pulseKey} sweep={isOverview} />
         <div className="flex-1 relative overflow-hidden" style={{ background: BG }}>
           <AnimatePresence mode="sync">
             <motion.div key={isOverview ? 'overview' : beat.content} ref={(el) => { if (el) curContent.current = el; }} className="absolute inset-0" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.7, ease }}>
-              {isOverview ? <ModuleOverview active={beat.side} /> : View ? <View /> : null}
+              {isOverview ? <ModuleOverview /> : View ? <View /> : null}
             </motion.div>
           </AnimatePresence>
           {/* nav-dim: under navigasjon dempes innholdet så fokus er på sidebaren */}
