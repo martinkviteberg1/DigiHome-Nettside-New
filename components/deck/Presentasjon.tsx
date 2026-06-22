@@ -5513,6 +5513,7 @@ const SBusinessModels = (p: any) => {
   const active = p.isActive;
   const isPdf = !!p.pdfMode;
   const show = active || isPdf;
+  useEffect(() => { p.onLight?.(active && !isPdf); }, [active, isPdf]);
   const AC = '#9a63e8';      // lesbar merkevare-lilla på lys bakgrunn
   const INK = '#0c0c0c';
   const INK2 = '#1c1714';
@@ -5607,13 +5608,13 @@ const SBetalingsmodell = (p: any) => {
   const isPdf = !!p.pdfMode;
   const show = active || isPdf;
   const anim = active && !isPdf;
-  const AC = '#d298ff';
-  const INK = '#ffffff';
-  const INK2 = 'rgba(255,255,255,0.95)';
-  const SUB = 'rgba(255,255,255,0.60)';
-  const MUT = 'rgba(255,255,255,0.45)';
-  const FAINT = 'rgba(255,255,255,0.32)';
-  const HAIR = 'rgba(255,255,255,0.10)';
+  const AC = '#9a63e8';      // lesbar merkevare-lilla på lys bakgrunn
+  const INK = '#0c0c0c';
+  const INK2 = '#1c1714';
+  const SUB = '#57514a';
+  const MUT = '#8a8278';
+  const FAINT = '#a8a097';
+  const HAIR = 'rgba(20,15,10,0.10)';
   const TIERS = [
     {
       seg: 'Privat · B2C', name: 'Selvbetjent', pre: '', big: '5%', unit: 'av leiesummen',
@@ -5634,16 +5635,17 @@ const SBetalingsmodell = (p: any) => {
       hl: false, badge: '',
     },
   ];
+  useEffect(() => { p.onLight?.(active && !isPdf); }, [active, isPdf]);
   return (
-  <SlideFrame bg="dark" {...p}>
+  <SlideFrame bg="beige" {...p}>
     <style>{`
       @keyframes payFade { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
       @keyframes payCard { from { opacity: 0; transform: translateY(22px) scale(0.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
     `}</style>
 
     <div aria-hidden="true" className="absolute inset-0 pointer-events-none"
-         style={{ background: 'radial-gradient(ellipse at 50% 20%, rgba(210,152,255,0.12) 0%, transparent 56%)' }} />
-    <DotGrid maskCenter="50% 28%" opacity={0.045} />
+         style={{ background: 'radial-gradient(ellipse at 50% 20%, rgba(154,99,232,0.05) 0%, transparent 56%)' }} />
+    <DotGrid maskCenter="50% 28%" opacity={0.4} />
 
     <div className="relative z-10 w-full max-w-[1180px] mx-auto px-6 sm:px-12 my-auto">
       {/* header */}
@@ -5663,15 +5665,15 @@ const SBetalingsmodell = (p: any) => {
           <div key={t.name}
                className="relative rounded-[22px] p-7 flex flex-col"
                style={{
-                 background: t.hl ? 'linear-gradient(180deg, rgba(210,152,255,0.15), rgba(210,152,255,0.035))' : 'linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.022))',
-                 border: t.hl ? `1.5px solid rgba(210,152,255,0.42)` : '1px solid rgba(255,255,255,0.08)',
-                 boxShadow: t.hl ? '0 34px 80px -28px rgba(124,58,237,0.55), inset 0 1px 0 rgba(255,255,255,0.06)' : '0 30px 70px -34px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.05)',
+                 background: t.hl ? 'linear-gradient(180deg, rgba(154,99,232,0.08), rgba(154,99,232,0.022))' : '#ffffff',
+                 border: t.hl ? `1.5px solid rgba(154,99,232,0.40)` : '1px solid rgba(20,15,10,0.08)',
+                 boxShadow: t.hl ? '0 34px 80px -34px rgba(124,58,237,0.30), inset 0 1px 0 rgba(255,255,255,0.7)' : '0 26px 60px -34px rgba(20,15,10,0.20), inset 0 1px 0 rgba(255,255,255,0.7)',
                  animation: anim ? `payCard 0.8s cubic-bezier(0.22,1,0.36,1) ${0.45 + i * 0.12}s both` : undefined,
                  opacity: show ? undefined : 0,
                }}>
             {t.badge && (
               <span className="absolute top-5 right-5 inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.14em] px-2.5 py-1 rounded-full"
-                    style={{ ...F, background: AC, color: '#1a1020' }}>
+                    style={{ ...F, background: AC, color: '#fff' }}>
                 <Sparkles className="w-3 h-3" strokeWidth={2.4} /> {t.badge}
               </span>
             )}
@@ -5693,8 +5695,8 @@ const SBetalingsmodell = (p: any) => {
             <ul className="flex flex-col gap-3 mt-auto">
               {t.feats.map((f, fi) => (
                 <li key={fi} className="flex items-start gap-2.5">
-                  <span className="inline-flex items-center justify-center w-[18px] h-[18px] rounded-full shrink-0 mt-0.5" style={{ background: t.hl ? AC : 'rgba(210,152,255,0.16)' }}>
-                    <Check className="w-[11px] h-[11px]" strokeWidth={3} style={{ color: t.hl ? '#1a1020' : AC }} />
+                  <span className="inline-flex items-center justify-center w-[18px] h-[18px] rounded-full shrink-0 mt-0.5" style={{ background: t.hl ? AC : 'rgba(154,99,232,0.14)' }}>
+                    <Check className="w-[11px] h-[11px]" strokeWidth={3} style={{ color: t.hl ? '#fff' : AC }} />
                   </span>
                   <span className="text-[12.5px] font-normal leading-snug" style={{ ...F, color: fi === 0 && t.hl ? INK2 : SUB, fontWeight: fi === 0 && t.hl ? 600 : 400 }}>{f}</span>
                 </li>
@@ -5721,32 +5723,35 @@ const SFilosofi = (p: any) => {
   const isPdf = !!p.pdfMode;
   const show = active || isPdf;
   const anim = active && !isPdf;
-  const AC = '#d298ff';
+  useEffect(() => { p.onLight?.(active && !isPdf); }, [active, isPdf]);
+  const AC = '#9a63e8';      // lesbar merkevare-lilla på lys bakgrunn
+  const INK = '#0c0c0c';
+  const SUB = '#57514a';
   const PILLARS = [
     { no: '01', t: 'Best practice som standard.', d: 'Boligforvaltning er de samme prosessene, om og om igjen. Alt som kan automatiseres, blir automatisert. Det som gjenstår er det menneskelige — relasjon og salg.' },
-    { no: '02', t: 'Hypermoderne grensesnitt. Null friksjon.', d: 'Aldri som en tung enterprise-ERP — ikke ett unødvendig klikk. Finnes en smartere vei, bygger vi den inn. Boliginfo hentes automatisk fra eiendomsregisteret; vi sparer aldri på detaljene.' },
+    { no: '02', t: 'Hypermoderne grensesnitt. Null friksjon.', d: 'Aldri som en tung enterprise-ERP — ikke ett unødvendig klikk. Finnes en smartere vei, bygger vi den inn.' },
     { no: '03', t: 'AI der det skaper verdi — innenfor faste rammer.', d: 'Systemet er et rammeverk med hele prosessen fra A til Å. AI jobber på toppen av driftsprosedyrene — kraftfullt, men alltid innenfor definerte rammer.' },
     { no: '04', t: 'Bygget for skala. Data som forsterker seg selv.', d: 'Hver prosess gir strukturert data som gjør automatiseringen og AI-en stadig bedre — mens marginalkostnaden faller mot null når vi vokser.' },
   ];
   return (
-  <SlideFrame bg="dark" {...p}>
+  <SlideFrame bg="beige" {...p}>
     <style>{`
       @keyframes filFade { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
       @keyframes filGrow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
     `}</style>
 
     <div aria-hidden="true" className="absolute inset-0 pointer-events-none"
-         style={{ background: 'radial-gradient(ellipse at 50% 16%, rgba(210,152,255,0.11) 0%, transparent 56%)' }} />
-    <DotGrid maskCenter="50% 24%" opacity={0.045} />
+         style={{ background: 'radial-gradient(ellipse at 50% 16%, rgba(154,99,232,0.05) 0%, transparent 56%)' }} />
+    <DotGrid maskCenter="50% 24%" opacity={0.4} />
 
     <div className="relative z-10 w-full max-w-[1120px] mx-auto px-6 sm:px-12 my-auto">
       {/* header */}
       <div className="mb-9 sm:mb-12" style={{ animation: anim ? 'filFade 0.7s cubic-bezier(0.22,1,0.36,1) 0.1s both' : undefined, opacity: show ? undefined : 0 }}>
         <span className="text-[11px] font-bold uppercase tracking-[0.32em]" style={{ ...F, color: AC }}>Fundamentet</span>
-        <h2 className="tracking-[-0.03em] leading-[1.04] mt-5" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(28px, 3.6vw, 48px)', color: '#fff' }}>
+        <h2 className="tracking-[-0.03em] leading-[1.04] mt-5" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(28px, 3.6vw, 48px)', color: INK }}>
           Filosofien bak DigiHome.
         </h2>
-        <p className="text-[14.5px] sm:text-[16px] font-normal leading-[1.6] mt-4 max-w-[620px]" style={{ ...F, color: 'rgba(255,255,255,0.55)' }}>
+        <p className="text-[14.5px] sm:text-[16px] font-normal leading-[1.6] mt-4 max-w-[620px]" style={{ ...F, color: SUB }}>
           Fire grunnpilarer styrer hver eneste beslutning vi tar i produktet.
         </p>
       </div>
@@ -5760,15 +5765,15 @@ const SFilosofi = (p: any) => {
             <div key={p2.no}
                  className={`relative ${right ? 'md:pl-12' : 'md:pr-12'} ${bottom ? 'pt-9 md:pt-10' : 'pb-9 md:pb-10'} ${right ? 'md:border-l' : ''} ${bottom ? 'border-t' : ''} ${!bottom && i === 1 ? '' : ''}`}
                  style={{
-                   borderColor: 'rgba(255,255,255,0.10)',
+                   borderColor: 'rgba(20,15,10,0.10)',
                    animation: anim ? `filFade 0.8s cubic-bezier(0.22,1,0.36,1) ${0.45 + i * 0.13}s both` : undefined,
                    opacity: show ? undefined : 0,
                  }}>
               <div className="flex items-start gap-5">
-                <span className="font-bold tabular-nums leading-none shrink-0" style={{ ...FH, color: 'transparent', WebkitTextStroke: `1.4px rgba(210,152,255,0.55)`, fontSize: 'clamp(36px, 3.6vw, 50px)' }}>{p2.no}</span>
+                <span className="font-bold tabular-nums leading-none shrink-0" style={{ ...FH, color: 'transparent', WebkitTextStroke: `1.4px rgba(154,99,232,0.55)`, fontSize: 'clamp(36px, 3.6vw, 50px)' }}>{p2.no}</span>
                 <div className="pt-0.5">
-                  <h3 className="text-[19px] sm:text-[21px] font-bold tracking-[-0.02em] leading-[1.2]" style={{ ...FH, color: '#fff' }}>{p2.t}</h3>
-                  <p className="text-[13.5px] sm:text-[14px] font-normal leading-[1.62] mt-3" style={{ ...F, color: 'rgba(255,255,255,0.58)' }}>{p2.d}</p>
+                  <h3 className="text-[19px] sm:text-[21px] font-bold tracking-[-0.02em] leading-[1.2]" style={{ ...FH, color: INK }}>{p2.t}</h3>
+                  <p className="text-[13.5px] sm:text-[14px] font-normal leading-[1.62] mt-3" style={{ ...F, color: SUB }}>{p2.d}</p>
                 </div>
               </div>
             </div>
@@ -5787,12 +5792,14 @@ const SArkitektur = (p: any) => {
   const active = p.isActive;
   const isPdf = !!p.pdfMode;
   const DINK = '#1c1815';
+  useEffect(() => { p.onLight?.(active && !isPdf); }, [active, isPdf]);
   return (
   <SlideFrame bg="beige" {...p}>
     <style>{`
       @keyframes arkIn { from { opacity: 0; transform: translateY(20px); filter: blur(6px); } to { opacity: 1; transform: translateY(0); filter: blur(0); } }
       @keyframes arkFade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
     `}</style>
+    <DotGrid maskCenter="50% 30%" opacity={0.4} />
     <div className="mx-auto self-stretch px-6 sm:px-12 w-full relative z-10 flex flex-col justify-center" style={{ maxWidth: 1340 }}>
       <div className="mb-7 sm:mb-11">
         <div className="flex items-end justify-between gap-8 flex-wrap">
@@ -5816,7 +5823,9 @@ const SArkitektur = (p: any) => {
 /* ═══ S04b · Produktet — Én motor. To produkter. (B2B desktop + B2C mobil) ═══ */
 const SProdukt = (p: any) => {
   const active = p.isActive;
+  const isPdf = !!p.pdfMode;
   const DINK = '#1c1815';
+  useEffect(() => { p.onLight?.(active && !isPdf); }, [active, isPdf]);
   return (
   <SlideFrame bg="white" {...p}>
     <style>{`
@@ -5842,6 +5851,7 @@ const SSystemIArbeid = (p: any) => {
   const active = p.isActive;
   const isPdf = !!p.pdfMode;
   const DINK = '#1c1815';
+  useEffect(() => { p.onLight?.(active && !isPdf); }, [active, isPdf]);
   return (
   <SlideFrame bg="beige" {...p}>
     <style>{`
@@ -5917,8 +5927,8 @@ export default function Presentasjon() {
   }), [s2Locked]);
   const prev = useCallback(() => setC((v: any) => Math.max(v - 1, 0)), []);
 
-  // Slide 2 (visjon) toner til lys bakgrunn — la chrome (pille/teller) tilpasse seg
-  useEffect(() => { if (c !== 1 && c !== 2) setChromeLight(false); }, [c]);
+  // Lyse slides toner til lys bakgrunn — la chrome (pille) tilpasse seg
+  useEffect(() => { if (![1, 2, 3, 4, 6, 7, 8, 9].includes(c)) setChromeLight(false); }, [c]);
 
   // Slide 2: lås fremover-navigasjon til hele tekst-animasjonen er spilt ferdig
   // MIDLERTIDIG DEAKTIVERT — låsen er slått av etter ønske. Sett ENABLE_S2_LOCK = true for å reaktivere.
@@ -6057,7 +6067,7 @@ export default function Presentasjon() {
       onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
       {SLIDES.map((Slide: any, i: number) => (
         <div key={i} className={`absolute inset-0 overflow-hidden transition-all duration-700 ease-[cubic-bezier(0.4,0,0.2,1)] ${i === c ? 'opacity-100 scale-100' : i < c ? 'opacity-0 scale-[0.96]' : 'opacity-0 scale-[1.04]'}`} style={{ pointerEvents: i === c ? 'auto' : 'none', visibility: Math.abs(i - c) <= 1 ? 'visible' : 'hidden' }}>
-          <Slide slideNum={i + 1} total={SLIDES.length} isActive={i === c} onLight={(i === 1 || i === 2) ? setChromeLight : undefined} onAnimationComplete={i === 1 ? handleS2Complete : undefined} />
+          <Slide slideNum={i + 1} total={SLIDES.length} isActive={i === c} onLight={[1, 2, 3, 4, 6, 7, 8, 9].includes(i) ? setChromeLight : undefined} onAnimationComplete={i === 1 ? handleS2Complete : undefined} />
         </div>
       ))}
 
