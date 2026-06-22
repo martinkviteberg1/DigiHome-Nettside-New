@@ -10,7 +10,6 @@ import ContractDemo from './ContractDemo';
 import AutopilotArchitecture from './AutopilotArchitecture';
 import ProductDuo from './ProductDuo';
 import AIEiendom from './AIEiendom';
-import AnnonseFinn from './AnnonseFinn';
 import LandingHeroAnimation from './LandingHeroAnimation';
 
 const F = { fontFamily: "var(--font-body), 'ABC Diatype', -apple-system, BlinkMacSystemFont, sans-serif" };
@@ -5729,10 +5728,10 @@ const SFilosofi = (p: any) => {
   const INK = '#0c0c0c';
   const SUB = '#57514a';
   const PILLARS = [
-    { no: '01', t: 'Best practice som standard.', d: 'Boligforvaltning er de samme prosessene, om og om igjen. Alt som kan automatiseres, blir automatisert. Det som gjenstår er det menneskelige — relasjon og salg.' },
-    { no: '02', t: 'Hypermoderne grensesnitt. Null friksjon.', d: 'Aldri som en tung enterprise-ERP — ikke ett unødvendig klikk. Finnes en smartere vei, bygger vi den inn.' },
-    { no: '03', t: 'AI der det skaper verdi — innenfor faste rammer.', d: 'Systemet er et rammeverk med hele prosessen fra A til Å. AI jobber på toppen av driftsprosedyrene — kraftfullt, men alltid innenfor definerte rammer.' },
-    { no: '04', t: 'Bygget for skala. Data som forsterker seg selv.', d: 'Hver prosess gir strukturert data som gjør automatiseringen og AI-en stadig bedre — mens marginalkostnaden faller mot null når vi vokser.' },
+    { no: '01', Icon: Settings, t: 'Best practice som standard.', d: 'Boligforvaltning er de samme prosessene, om og om igjen. Alt som kan automatiseres, blir automatisert. Det som gjenstår er det menneskelige — relasjon og salg.' },
+    { no: '02', Icon: Zap, t: 'Hypermoderne grensesnitt. Null friksjon.', d: 'Aldri som en tung enterprise-ERP — ikke ett unødvendig klikk. Finnes en smartere vei, bygger vi den inn.' },
+    { no: '03', Icon: Shield, t: 'AI der det skaper verdi — innenfor faste rammer.', d: 'Systemet er et rammeverk med hele prosessen fra A til Å. AI jobber på toppen av driftsprosedyrene — kraftfullt, men alltid innenfor definerte rammer.' },
+    { no: '04', Icon: TrendingUp, t: 'Bygget for skala. Data som forsterker seg selv.', d: 'Hver prosess gir strukturert data som gjør automatiseringen og AI-en stadig bedre — mens marginalkostnaden faller mot null når vi vokser.' },
   ];
   return (
   <SlideFrame bg="beige" {...p}>
@@ -5757,25 +5756,34 @@ const SFilosofi = (p: any) => {
         </p>
       </div>
 
-      {/* 2×2 manifest-rutenett, hårlinjer i stedet for bokser */}
-      <div className="grid grid-cols-1 md:grid-cols-2">
+      {/* 2×2 premium-kort — i tråd med de andre lyse slidene */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6">
         {PILLARS.map((p2, i) => {
-          const right = i % 2 === 1;
-          const bottom = i >= 2;
+          const Ic = p2.Icon;
           return (
             <div key={p2.no}
-                 className={`relative ${right ? 'md:pl-12' : 'md:pr-12'} ${bottom ? 'pt-9 md:pt-10' : 'pb-9 md:pb-10'} ${right ? 'md:border-l' : ''} ${bottom ? 'border-t' : ''} ${!bottom && i === 1 ? '' : ''}`}
+                 className="relative rounded-[22px] p-7 overflow-hidden"
                  style={{
-                   borderColor: 'rgba(20,15,10,0.10)',
-                   animation: anim ? `filFade 0.8s cubic-bezier(0.22,1,0.36,1) ${0.45 + i * 0.13}s both` : undefined,
+                   background: '#ffffff',
+                   border: '1px solid rgba(20,15,10,0.07)',
+                   boxShadow: '0 26px 64px -40px rgba(20,15,10,0.26), inset 0 1px 0 rgba(255,255,255,0.85)',
+                   animation: anim ? `filFade 0.8s cubic-bezier(0.22,1,0.36,1) ${0.4 + i * 0.12}s both` : undefined,
                    opacity: show ? undefined : 0,
                  }}>
-              <div className="flex items-start gap-5">
-                <span className="font-bold tabular-nums leading-none shrink-0" style={{ ...FH, color: 'transparent', WebkitTextStroke: `1.4px rgba(154,99,232,0.55)`, fontSize: 'clamp(36px, 3.6vw, 50px)' }}>{p2.no}</span>
-                <div className="pt-0.5">
-                  <h3 className="text-[19px] sm:text-[21px] font-bold tracking-[-0.02em] leading-[1.2]" style={{ ...FH, color: INK }}>{p2.t}</h3>
-                  <p className="text-[13.5px] sm:text-[14px] font-normal leading-[1.62] mt-3" style={{ ...F, color: SUB }}>{p2.d}</p>
+              {/* subtil sheen øverst-venstre */}
+              <span aria-hidden="true" className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(120% 90% at 0% 0%, rgba(154,99,232,0.05), transparent 58%)' }} />
+              {/* stor nummer-vannmerke */}
+              <span aria-hidden="true" className="absolute select-none pointer-events-none" style={{ top: -22, right: 4, ...FH, fontWeight: 700, fontSize: 124, lineHeight: 1, color: 'transparent', WebkitTextStroke: '1.5px rgba(154,99,232,0.12)' }}>{p2.no}</span>
+
+              <div className="relative">
+                <div className="flex items-center justify-between">
+                  <span className="inline-flex items-center justify-center w-12 h-12 rounded-2xl" style={{ background: 'rgba(154,99,232,0.10)', border: '1px solid rgba(154,99,232,0.20)' }}>
+                    <Ic className="w-[21px] h-[21px]" style={{ color: AC }} strokeWidth={1.9} />
+                  </span>
+                  <span className="text-[11px] font-bold uppercase tracking-[0.22em] tabular-nums" style={{ ...F, color: AC }}>Pilar {p2.no}</span>
                 </div>
+                <h3 className="text-[19px] sm:text-[20px] font-bold tracking-[-0.02em] leading-[1.22] mt-6" style={{ ...FH, color: INK }}>{p2.t}</h3>
+                <p className="text-[13.5px] sm:text-[14px] font-normal leading-[1.62] mt-3" style={{ ...F, color: SUB }}>{p2.d}</p>
               </div>
             </div>
           );
@@ -5847,13 +5855,6 @@ const SAIEiendom = (p: any) => (
   </SlideFrame>
 );
 
-/* ═══ S04c2 · Fra bolig til FINN — AI-annonse + ett-klikks publisering (kinematisk) ═══ */
-const SAnnonseFinn = (p: any) => (
-  <SlideFrame bg="dark" {...p}>
-    <AnnonseFinn active={p.isActive} pdfMode={!!p.pdfMode} />
-  </SlideFrame>
-);
-
 /* ═══ S04 · Systemet i arbeid — scriptet kontrakt-demo (ekte produkt-UI) ═══ */
 const SSystemIArbeid = (p: any) => {
   const active = p.isActive;
@@ -5898,7 +5899,6 @@ const SLIDES = [
   SFraVerktoyTilMotor, // 03 · Problemet og løsningen — fra verktøy (proptech) til motor (DigiHome)
   SArkitektur, // 04a · Arkitekturen — alt flyter inn i Autopiloten (animert)
   SProdukt, // 04b · Produktet — Én motor. To produkter. (B2B desktop + B2C mobil)
-  SAnnonseFinn, // 04b2 · Fra bolig til FINN — AI-annonse + ett-klikks publisering
   SAIEiendom, // 04c · AI som forstår eiendom — 3 AI-moats m/ menneske-godkjenning
   SFilosofi, // 04d · Filosofien bak DigiHome — fire grunnpilarer
   SSystemIArbeid, // 04 · Systemet i arbeid — scriptet kontrakt-demo (ekte produkt-UI)
@@ -5937,7 +5937,7 @@ export default function Presentasjon() {
   const prev = useCallback(() => setC((v: any) => Math.max(v - 1, 0)), []);
 
   // Lyse slides toner til lys bakgrunn — la chrome (pille) tilpasse seg
-  useEffect(() => { if (![1, 2, 3, 4, 7, 8, 9, 10].includes(c)) setChromeLight(false); }, [c]);
+  useEffect(() => { if (![1, 2, 3, 4, 6, 7, 8, 9].includes(c)) setChromeLight(false); }, [c]);
 
   // Slide 2: lås fremover-navigasjon til hele tekst-animasjonen er spilt ferdig
   // MIDLERTIDIG DEAKTIVERT — låsen er slått av etter ønske. Sett ENABLE_S2_LOCK = true for å reaktivere.
@@ -6076,7 +6076,7 @@ export default function Presentasjon() {
       onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
       {SLIDES.map((Slide: any, i: number) => (
         <div key={i} className={`absolute inset-0 overflow-hidden transition-all duration-700 ease-[cubic-bezier(0.4,0,0.2,1)] ${i === c ? 'opacity-100 scale-100' : i < c ? 'opacity-0 scale-[0.96]' : 'opacity-0 scale-[1.04]'}`} style={{ pointerEvents: i === c ? 'auto' : 'none', visibility: Math.abs(i - c) <= 1 ? 'visible' : 'hidden' }}>
-          <Slide slideNum={i + 1} total={SLIDES.length} isActive={i === c} onLight={[1, 2, 3, 4, 7, 8, 9, 10].includes(i) ? setChromeLight : undefined} onAnimationComplete={i === 1 ? handleS2Complete : undefined} />
+          <Slide slideNum={i + 1} total={SLIDES.length} isActive={i === c} onLight={[1, 2, 3, 4, 6, 7, 8, 9].includes(i) ? setChromeLight : undefined} onAnimationComplete={i === 1 ? handleS2Complete : undefined} />
         </div>
       ))}
 

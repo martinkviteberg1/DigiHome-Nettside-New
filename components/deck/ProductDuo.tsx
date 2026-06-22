@@ -18,6 +18,7 @@ import {
   AlertCircle, DollarSign, Home, Users, Search, Bell, Wrench,
   ChevronRight, ChevronLeft, MapPin, Sparkles, Check, Clock, Filter, History,
   RefreshCw, Wallet, ArrowUpRight, ArrowRight, Zap, Circle, Timer, Pause, CheckCircle2, Droplets, Plus, TrendingUp,
+  Wand2, Loader2, Camera,
 } from 'lucide-react';
 
 /* ── fonter ── */
@@ -44,6 +45,7 @@ const ease = [0.22, 1, 0.36, 1] as const;
 const TABS = [
   { key: 'salg', label: 'Salg' },
   { key: 'eiendommer', label: 'Eiendommer' },
+  { key: 'annonse', label: 'Annonse' },
   { key: 'saker', label: 'Saker' },
   { key: 'kalender', label: 'Kalender' },
   { key: 'autopilot', label: 'Autopilot' },
@@ -66,13 +68,15 @@ const BEATS: Beat[] = [
   { kind: 'view', key: 'salg',       side: 0, content: 0, node: 0, dur: 4400 },
   { kind: 'nav',  key: 'eiendommer', side: 1, content: 0, node: 1, dur: 1900 },
   { kind: 'view', key: 'eiendommer', side: 1, content: 1, node: 1, dur: 4400 },
-  { kind: 'nav',  key: 'saker',      side: 2, content: 1, node: 2, dur: 1900 },
-  { kind: 'view', key: 'saker',      side: 2, content: 2, node: 2, dur: 4400 },
-  { kind: 'nav',  key: 'kalender',   side: 3, content: 2, node: 3, dur: 1900 },
-  { kind: 'view', key: 'kalender',   side: 3, content: 3, node: 3, dur: 4400 },
-  { kind: 'converge', key: 'converge', side: 3, content: 3, node: 3, dur: 2600 },
-  { kind: 'nav',  key: 'autopilot',  side: 4, content: 3, node: 4, dur: 2000 },
-  { kind: 'view', key: 'autopilot',  side: 4, content: 4, node: 4, dur: 5600 },
+  { kind: 'nav',  key: 'annonse',    side: 2, content: 1, node: 2, dur: 1900 },
+  { kind: 'view', key: 'annonse',    side: 2, content: 2, node: 2, dur: 8200 },
+  { kind: 'nav',  key: 'saker',      side: 3, content: 2, node: 3, dur: 1900 },
+  { kind: 'view', key: 'saker',      side: 3, content: 3, node: 3, dur: 4400 },
+  { kind: 'nav',  key: 'kalender',   side: 4, content: 3, node: 4, dur: 1900 },
+  { kind: 'view', key: 'kalender',   side: 4, content: 4, node: 4, dur: 4400 },
+  { kind: 'converge', key: 'converge', side: 4, content: 4, node: 4, dur: 2600 },
+  { kind: 'nav',  key: 'autopilot',  side: 5, content: 4, node: 5, dur: 2000 },
+  { kind: 'view', key: 'autopilot',  side: 5, content: 5, node: 5, dur: 5600 },
 ];
 const INTRO_DUR = 5200;
 
@@ -122,7 +126,8 @@ function Sidebar({ tab, cursorOn, pulseKey }: { tab: number; cursorOn?: boolean;
   const rSaker = useRef<HTMLDivElement>(null);
   const rKalender = useRef<HTMLDivElement>(null);
   const rOperasjon = useRef<HTMLDivElement>(null);
-  const tabRefs = [rSalg, rEiendommer, rSaker, rKalender, rOperasjon];
+  const rUtleie = useRef<HTMLDivElement>(null);
+  const tabRefs = [rSalg, rEiendommer, rUtleie, rSaker, rKalender, rOperasjon];
   const [ind, setInd] = useState({ top: 0, h: 0, ready: false });
 
   useEffect(() => {
@@ -167,7 +172,7 @@ function Sidebar({ tab, cursorOn, pulseKey }: { tab: number; cursorOn?: boolean;
         <NavItem icon={Bot} label="Driftsassistent" on={false} />
         <SideLabel>Drift</SideLabel>
         <NavItem innerRef={rEiendommer} icon={Building2} label="Eiendommer" on={k === 'eiendommer'} />
-        <NavItem icon={Rocket} label="Utleieprosesser" on={false} />
+        <NavItem innerRef={rUtleie} icon={Rocket} label="Utleieprosesser" on={k === 'annonse'} />
         <NavItem icon={ScrollText} label="Leieforhold" on={false} />
         <NavItem icon={FileText} label="Dokumenter" on={false} />
         <NavItem innerRef={rSaker} icon={AlertCircle} label="Saker" on={k === 'saker'} />
@@ -290,6 +295,99 @@ function ViewEiendommer() {
             </div>
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════ VISNING · ANNONSE (AI-annonse → FINN-publisering) ═══════════════════════ */
+function ViewAnnonse() {
+  const [stage, setStage] = useState(0); // 0 AI henter data + styler bilder · 1 annonse skrevet · 2 publisert
+  useEffect(() => {
+    const t1 = setTimeout(() => setStage(1), 2600);
+    const t2 = setTimeout(() => setStage(2), 5200);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, []);
+  const wrote = stage >= 1;
+  const published = stage >= 2;
+  const DATA: [string, string][] = [
+    ['Boligtype', '3-roms leilighet'],
+    ['Areal', '74 m²'],
+    ['Etasje', '4. av 5'],
+    ['Møblering', 'Møblert'],
+  ];
+  return (
+    <div className="h-full px-7 py-6 flex flex-col" style={{ background: BG }}>
+      <style>{`
+        @keyframes paScan { 0% { top:-16%; opacity:0; } 18% { opacity:1; } 100% { top:116%; opacity:0; } }
+        @keyframes paRise { from { opacity:0; transform: translateY(8px); } to { opacity:1; transform: translateY(0); } }
+        @keyframes paField { from { opacity:0; transform: translateY(7px); } to { opacity:1; transform: translateY(0); } }
+      `}</style>
+      <PageHead title="Annonsering" sub="Ny utleie · Camilla Colletts gate 14A"
+        right={<span className="inline-flex items-center gap-2 h-9 px-3.5 rounded-full text-[12.5px] font-semibold" style={{ fontFamily: PJ, background: ACCENT_SOFT, color: ACCENT_DK }}><Wand2 className="w-4 h-4" strokeWidth={2} /> AI-annonse</span>} />
+      <div className="grid flex-1 min-h-0 gap-4" style={{ gridTemplateColumns: '1.38fr 1fr' }}>
+        {/* venstre: AI-generert FINN-annonse (preview) */}
+        <div className="rounded-2xl overflow-hidden flex flex-col" style={{ background: CARD, border: `1px solid ${BORDER}`, boxShadow: '0 2px 10px rgba(10,10,10,0.04)' }}>
+          {/* cover */}
+          <div className="relative shrink-0" style={{ height: 290 }}>
+            <img src="/interior-living.webp" alt="" className="w-full h-full object-cover" style={{ filter: wrote ? 'saturate(1.05) contrast(1.02)' : 'saturate(0.95) brightness(0.99)', transition: 'filter 0.7s ease' }} />
+            <span className="absolute top-3 left-3 text-[10px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full" style={{ fontFamily: PJ, color: INK, background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(4px)' }}>Til leie</span>
+            <span className="absolute top-3 right-3 inline-flex items-center text-[10px] font-black tracking-tight px-2 py-1 rounded-md" style={{ color: '#fff', background: FINN }}>FINN.no</span>
+            <span className="absolute bottom-3 right-3 inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-md" style={{ fontFamily: PJ, color: '#fff', background: 'rgba(20,16,12,0.62)' }}><Camera className="w-3 h-3" /> 24 bilder</span>
+            {!wrote && <div className="absolute inset-x-0 z-10" style={{ height: 64, top: 0, background: `linear-gradient(to bottom, transparent, ${ACCENT}55, transparent)`, animation: 'paScan 1.7s ease-in-out infinite' }} />}
+          </div>
+          {/* annonse-tekst */}
+          <div className="px-6 py-4 flex-1 flex flex-col">
+            <div className="flex items-center mb-1" style={{ minHeight: 26 }}>
+              {!wrote ? (
+                <span className="inline-flex items-center gap-2 text-[12px] font-medium" style={{ fontFamily: PJ, color: ACCENT_DK }}><Loader2 className="w-3.5 h-3.5 animate-spin" strokeWidth={2.2} /> AI styler bildene og skriver annonsen …</span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 text-[10.5px] font-semibold px-2.5 py-1 rounded-full" style={{ fontFamily: PJ, background: ACCENT_SOFT, color: ACCENT_DK, animation: 'paRise 0.5s ease both' }}><Wand2 className="w-3 h-3" /> Skrevet av DigiHome</span>
+              )}
+            </div>
+            <div className="flex-1 flex flex-col justify-center" style={{ opacity: wrote ? 1 : 0, transform: wrote ? 'none' : 'translateY(10px)', filter: wrote ? 'blur(0)' : 'blur(6px)', transition: 'all 0.8s cubic-bezier(0.22,1,0.36,1)' }}>
+              <h2 className="text-[23px] font-bold tracking-[-0.02em] leading-tight" style={{ fontFamily: FH, color: INK }}>Lys og nyoppusset 3-roms i Møhlenpris</h2>
+              <p className="flex items-center gap-1.5 mt-2 text-[12.5px]" style={{ fontFamily: PJ, color: SUB }}><MapPin className="w-3.5 h-3.5" strokeWidth={1.8} /> Camilla Colletts gate 14A, 5006 Bergen</p>
+              <div className="flex gap-7 mt-4 pt-4" style={{ borderTop: `1px solid ${BORDER}` }}>
+                {[['Leie', '16 800 kr'], ['Areal', '74 m²'], ['Soverom', '3']].map(([k, v]) => (
+                  <div key={k}><p className="text-[10px] uppercase tracking-[0.1em]" style={{ fontFamily: PJ, color: MUTED }}>{k}</p><p className="text-[16px] font-bold mt-0.5 tabular-nums" style={{ fontFamily: FH, color: INK }}>{v}</p></div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+        {/* høyre: boligdata + publisering */}
+        <div className="flex flex-col gap-4 min-h-0">
+          {/* boligdata — hentet automatisk */}
+          <div className="rounded-2xl p-5 flex flex-col shrink-0" style={{ background: CARD, border: `1px solid ${BORDER}`, boxShadow: '0 2px 10px rgba(10,10,10,0.04)' }}>
+            <div className="flex items-center gap-2 mb-1"><span className="w-1.5 h-1.5 rounded-full" style={{ background: GREEN }} /><span className="text-[9.5px] uppercase tracking-[0.2em] font-bold" style={{ fontFamily: PJ, color: '#a98a52' }}>Hentet automatisk</span></div>
+            <h3 className="text-[16px] font-bold tracking-[-0.01em] mb-1.5" style={{ fontFamily: FH, color: INK }}>Boligdata</h3>
+            <div>
+              {DATA.map(([k, v], i) => (
+                <div key={k} className="flex items-center justify-between py-2" style={{ borderBottom: i < DATA.length - 1 ? `1px solid ${BORDER}` : 'none', animation: `paField 0.5s ease ${0.2 + i * 0.12}s both` }}>
+                  <span className="text-[12px]" style={{ fontFamily: PJ, color: SUB }}>{k}</span>
+                  <span className="text-[13px] font-semibold tabular-nums" style={{ fontFamily: FH, color: INK }}>{v}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          {/* publisering — 2 kanaler */}
+          <div className="rounded-2xl p-5 flex-1 flex flex-col" style={{ background: published ? GREEN_BG : CARD, border: `1px solid ${published ? 'rgba(106,171,142,0.45)' : BORDER}`, boxShadow: '0 2px 10px rgba(10,10,10,0.04)', transition: 'background 0.6s ease, border-color 0.6s ease' }}>
+            <p className="text-[10px] uppercase tracking-[0.16em] font-bold mb-3" style={{ fontFamily: PJ, color: published ? '#3f7d5f' : '#a98a52' }}>{published ? 'Publisert · 2 kanaler' : 'Publiserer …'}</p>
+            {([['FINN.no'], ['din-utleieside.no']] as [string][]).map(([t]) => (
+              <div key={t} className="flex items-center gap-3 py-2">
+                <span className="w-6 h-6 rounded-full flex items-center justify-center shrink-0" style={{ background: published ? '#ffffff' : ICONBG }}>
+                  {published ? <Check className="w-3.5 h-3.5" style={{ color: GREEN }} strokeWidth={3} /> : <Loader2 className="w-3.5 h-3.5 animate-spin" style={{ color: FAINT }} />}
+                </span>
+                <span className="text-[13.5px] font-semibold" style={{ fontFamily: FH, color: INK }}>{t}</span>
+                {published && <span className="ml-auto inline-flex items-center gap-1.5 text-[11px] font-semibold" style={{ fontFamily: PJ, color: '#3f7d5f' }}><span className="w-1.5 h-1.5 rounded-full" style={{ background: GREEN }} />Live</span>}
+              </div>
+            ))}
+            <div className="mt-auto pt-3 flex items-start gap-2 text-[11px] leading-snug" style={{ fontFamily: PJ, color: MUTED }}>
+              <Sparkles className="w-3.5 h-3.5 shrink-0 mt-px" style={{ color: ACCENT_DK }} strokeWidth={2} /> Annonse og egen utleieside generert av AI — publisert med ett klikk.
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -447,9 +545,9 @@ function ViewOperasjon() {
   );
 }
 
-const VIEWS = [ViewSalg, ViewEiendommer, ViewSaker, ViewKalender, ViewOperasjon];
+const VIEWS = [ViewSalg, ViewEiendommer, ViewAnnonse, ViewSaker, ViewKalender, ViewOperasjon];
 
-const VIEW_KEYS = ['salg', 'eiendommer', 'saker', 'kalender', 'autopilot'];
+const VIEW_KEYS = ['salg', 'eiendommer', 'annonse', 'saker', 'kalender', 'autopilot'];
 
 /* ═══════════════════════ INTRO-TEKST (inne i rammen, fortellende progressiv reveal) ═══════════════════════ */
 function IntroCard() {
@@ -502,7 +600,7 @@ function IntroCard() {
         className="mt-9 text-[15px] font-light" style={{ fontFamily: "var(--font-body), 'ABC Diatype', sans-serif", color: 'rgba(255,255,255,0.5)', letterSpacing: '0.01em' }}
         initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.9, ease, delay: 3.9 }}
       >
-        <span style={{ color: 'rgba(255,255,255,0.74)' }}>Salg</span> · Eiendommer · Saker · Kalender — ett system.&nbsp;&nbsp;
+        <span style={{ color: 'rgba(255,255,255,0.74)' }}>Salg</span> · Eiendommer · Annonse · Saker · Kalender — ett system.&nbsp;&nbsp;
         <span style={{ color: '#fff', fontWeight: 500 }}>La oss ta en omvisning</span>
         <motion.span className="inline-block" initial={{ x: -4, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ duration: 0.6, ease, delay: 4.4 }}>
           <ArrowRight className="inline-block w-4 h-4 ml-1.5 -mt-0.5" style={{ color: ACCENT }} strokeWidth={2.4} />
@@ -660,7 +758,7 @@ function Rail({ phase, node }: { phase: 'intro' | 'tour'; node: number }) {
   const active = phase === 'tour' ? node : -1;
   const progress = active < 0 ? 0 : active / (VIEW_KEYS.length - 1);
   return (
-    <div className="mt-8 mx-auto" style={{ maxWidth: 760 }}>
+    <div className="mt-8 mx-auto" style={{ maxWidth: 840 }}>
       <div className="relative flex items-center justify-between px-2">
         {/* bakgrunns-linje */}
         <span className="absolute left-6 right-6 top-[7px] h-[2px] rounded-full" style={{ background: '#ded9e4' }} />
@@ -669,7 +767,7 @@ function Rail({ phase, node }: { phase: 'intro' | 'tour'; node: number }) {
         {TABS.map((t, i) => {
           const on = active === i;
           const done = active > i;
-          const isAuto = i === 4;
+          const isAuto = i === TABS.length - 1;
           const isIntro = active < 0;
           return (
             <div key={t.key} className="relative z-10 flex flex-col items-center gap-2" style={{ width: 90 }}>
