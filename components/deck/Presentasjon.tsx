@@ -225,7 +225,7 @@ const S1 = (p: any) => {
     <div className="w-full text-center px-6 sm:px-12 relative z-10 my-auto">
       <h1 className="font-bold leading-[0.92] tracking-[-0.045em] mb-6 sm:mb-8"
           style={{
-            ...F,
+            ...FH,
             fontSize: 'clamp(76px, min(13vw, 20vh), 184px)',
             color: '#ffffff',
             textShadow: '0 2px 30px rgba(10,10,10,0.55), 0 0 90px rgba(210,152,255,0.22)',
