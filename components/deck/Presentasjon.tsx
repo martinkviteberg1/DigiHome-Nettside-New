@@ -496,6 +496,8 @@ const SSolution = (p: any) => {
 /* ═══ TEAM SLIDE — Proptonomy-style: big headline + sectioned cards ═══ */
 const STeam = (p: any) => {
   const active = p.isActive;
+  const isPdf = !!p.pdfMode;
+  useEffect(() => { p.onLight?.(active && !isPdf); }, [active, isPdf]);
   const team = [
     {
       name: 'Sarah Sleeman',
@@ -5972,7 +5974,8 @@ const SSystemIArbeid = (p: any) => {
 const SLIDES = [
   S1,            // 01 · Cover
   SVisionIntro,      // 02 · Visjon — krok «Ikke et system. En autopilot.» → idéen bak DigiHome
-  SFraVerktoyTilMotor, // 03 · Problemet og løsningen — fra verktøy (proptech) til motor (DigiHome)
+  STeam,         // 03 · Teamet (founder-market fit) — flyttet frem
+  SFraVerktoyTilMotor, // 04 · Problemet og løsningen — fra verktøy (proptech) til motor (DigiHome)
   SArkitektur, // 04a · Arkitekturen — alt flyter inn i Autopiloten (animert)
   SProdukt, // 04b · Produktet — Én motor. To produkter. (B2B desktop + B2C mobil)
   SAIEiendom, // 04c · AI som forstår eiendom — 3 AI-moats m/ menneske-godkjenning
@@ -5983,7 +5986,6 @@ const SLIDES = [
   SAlleredeInntekter, // 05c · Allerede i drift — 40 betalende huseiere, MRR/ARR i dag (traksjon)
   SLiveDemo,     // 04 · Live product animation (from /digihome-tech)
   SDualUSP,      // 05 · Three unique aspects (auto-listing + dynamic + AI ops)
-  STeam,         // 06 · Team (founder-market fit)
   SProblem,      // 07 · Problem
   SWhyNow,       // 08 · Why now? (timing window)
   SWhyDH,        // 09 · Solution
@@ -6014,7 +6016,7 @@ export default function Presentasjon() {
   const prev = useCallback(() => setC((v: any) => Math.max(v - 1, 0)), []);
 
   // Lyse slides toner til lys bakgrunn — la chrome (pille) tilpasse seg
-  useEffect(() => { if (![1, 2, 3, 4, 6, 7, 8, 9, 10].includes(c)) setChromeLight(false); }, [c]);
+  useEffect(() => { if (![1, 2, 3, 4, 5, 7, 8, 9, 10, 11].includes(c)) setChromeLight(false); }, [c]);
 
   // Slide 2: lås fremover-navigasjon til hele tekst-animasjonen er spilt ferdig
   // MIDLERTIDIG DEAKTIVERT — låsen er slått av etter ønske. Sett ENABLE_S2_LOCK = true for å reaktivere.
@@ -6153,7 +6155,7 @@ export default function Presentasjon() {
       onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
       {SLIDES.map((Slide: any, i: number) => (
         <div key={i} className={`absolute inset-0 overflow-hidden transition-all duration-700 ease-[cubic-bezier(0.4,0,0.2,1)] ${i === c ? 'opacity-100 scale-100' : i < c ? 'opacity-0 scale-[0.96]' : 'opacity-0 scale-[1.04]'}`} style={{ pointerEvents: i === c ? 'auto' : 'none', visibility: Math.abs(i - c) <= 1 ? 'visible' : 'hidden' }}>
-          <Slide slideNum={i + 1} total={SLIDES.length} isActive={i === c} onLight={[1, 2, 3, 4, 6, 7, 8, 9, 10].includes(i) ? setChromeLight : undefined} onAnimationComplete={i === 1 ? handleS2Complete : undefined} />
+          <Slide slideNum={i + 1} total={SLIDES.length} isActive={i === c} onLight={[1, 2, 3, 4, 5, 7, 8, 9, 10, 11].includes(i) ? setChromeLight : undefined} onAnimationComplete={i === 1 ? handleS2Complete : undefined} />
         </div>
       ))}
 
