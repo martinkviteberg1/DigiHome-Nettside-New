@@ -500,7 +500,7 @@ const STeam = (p: any) => {
   const show = active || isPdf;
   const anim = active && !isPdf;
   useEffect(() => { p.onLight?.(active && !isPdf); }, [active, isPdf]);
-  const AC = '#9a63e8';      // lesbar merkevare-lilla på lys bakgrunn
+  const AC = '#a052e0';      // lesbar merkevare-lilla på lys bakgrunn
   const INK = '#0c0c0c';
   const INK2 = '#1c1714';
   const SUB = '#57514a';
@@ -543,7 +543,7 @@ const STeam = (p: any) => {
     `}</style>
 
     <div aria-hidden="true" className="absolute inset-0 pointer-events-none"
-         style={{ background: 'radial-gradient(ellipse at 50% 14%, rgba(154,99,232,0.05) 0%, transparent 56%)' }} />
+         style={{ background: 'radial-gradient(ellipse at 50% 14%, rgba(160,82,224,0.05) 0%, transparent 56%)' }} />
     <DotGrid maskCenter="50% 24%" opacity={0.4} />
 
     <div className="relative z-10 w-full max-w-[1240px] mx-auto px-6 sm:px-12 my-auto">
@@ -2125,7 +2125,7 @@ const SMarket1 = (p: any) => {
   const isPdf = !!p.pdfMode;
   const show = active || isPdf;
   const anim = active && !isPdf;
-  const AC = '#9a63e8', INK = '#0c0c0c', INK2 = '#1c1714', SUB = '#57514a', MUT = '#8a8278';
+  const AC = '#a052e0', INK = '#0c0c0c', INK2 = '#1c1714', SUB = '#57514a', MUT = '#8a8278';
   useEffect(() => { p.onLight?.(active && !isPdf); }, [active, isPdf]);
   const tiers = [
     { year: '2026',  region: 'Norge',                size: '86',     unit: 'mrd NOK', note: 'Første bevismarked. 600 000 utleieboliger, høy digital modenhet og ingen dominerende SaaS-standard.',  width: 14,  highlight: true  },
@@ -2338,7 +2338,7 @@ const SMarket3 = (p: any) => {
   const isPdf = !!p.pdfMode;
   const show = active || isPdf;
   const anim = active && !isPdf;
-  const AC = '#9a63e8', INK = '#0c0c0c', INK2 = '#1c1714', SUB = '#57514a', MUT = '#8a8278';
+  const AC = '#a052e0', INK = '#0c0c0c', INK2 = '#1c1714', SUB = '#57514a', MUT = '#8a8278';
   useEffect(() => { p.onLight?.(active && !isPdf); }, [active, isPdf]);
   const splits = [
     { region: 'Norge',  pct: '60', customers: '6 000', window: '2026 – 2028', note: 'Bevismarked · 600k boliger', highlight: true },
@@ -2391,8 +2391,8 @@ const SMarket3 = (p: any) => {
         {splits.map((s, i) => (
           <div key={i} className="relative rounded-[20px] p-6 sm:p-7 flex flex-col"
                style={{
-                 background: s.highlight ? 'linear-gradient(180deg, rgba(154,99,232,0.09), rgba(154,99,232,0.025))' : '#ffffff',
-                 border: s.highlight ? '1.5px solid rgba(154,99,232,0.42)' : '1px solid rgba(20,15,10,0.08)',
+                 background: s.highlight ? 'linear-gradient(180deg, rgba(160,82,224,0.09), rgba(160,82,224,0.025))' : '#ffffff',
+                 border: s.highlight ? '1.5px solid rgba(160,82,224,0.42)' : '1px solid rgba(20,15,10,0.08)',
                  boxShadow: s.highlight ? '0 32px 76px -36px rgba(124,58,237,0.3), inset 0 1px 0 rgba(255,255,255,0.7)' : '0 24px 56px -34px rgba(20,15,10,0.18), inset 0 1px 0 rgba(255,255,255,0.7)',
                  animation: anim ? `m3ColIn 0.8s cubic-bezier(0.22,1,0.36,1) ${0.95 + i * 0.12}s both` : undefined,
                  opacity: show ? undefined : 0,
@@ -2982,7 +2982,7 @@ const SRevenue = (p: any) => {
   const show = active || isPdf;
   const anim = active && !isPdf;
   useEffect(() => { p.onLight?.(active && !isPdf); }, [active, isPdf]);
-  const AC = '#9a63e8', INK = '#0c0c0c', INK2 = '#1c1714', SUB = '#57514a', MUT = '#8a8278';
+  const AC = '#a052e0', INK = '#0c0c0c', INK2 = '#1c1714', SUB = '#57514a', MUT = '#8a8278';
   const HAIR = 'rgba(20,15,10,0.10)';
   const engines = [
     { num: '01', title: 'Selvbetjent', badge: 'Privat · B2C', metric: '5', unit: '% av leien', lead: 'Privat utleier forvalter selv — plattformen gjør grovarbeidet. Ren software-margin.', bullets: ['≈ 650 kr/mnd ved 13 000 kr leie', 'Lav terskel, bred privattrakt', 'Inntekten følger leienivået automatisk'] },
@@ -3056,13 +3056,12 @@ const SRevenue = (p: any) => {
       </div>
 
       {/* Scaling scenarios — editorial dark hero */}
-      <article className="rounded-[22px] p-7 sm:p-8 relative overflow-hidden"
+      <article className="rounded-[26px] p-7 sm:p-9 relative overflow-hidden"
                style={{
-                 background: 'linear-gradient(165deg, #14141a 0%, #0a0a0d 100%)',
-                 border: '1px solid rgba(255,255,255,0.06)',
-                 boxShadow: '0 2px 4px rgba(20,15,10,0.06), 0 20px 60px rgba(20,15,10,0.14)',
-                 animation: active ? 'reCardIn 0.85s cubic-bezier(0.22,1,0.36,1) 0.95s both' : undefined,
-                 opacity: active ? undefined : 0,
+                 background: 'linear-gradient(165deg, #16141d 0%, #0a090d 100%)',
+                 boxShadow: '0 50px 100px -55px rgba(20,15,10,0.55)',
+                 animation: anim ? 'reCardIn 0.85s cubic-bezier(0.22,1,0.36,1) 0.95s both' : undefined,
+                 opacity: show ? undefined : 0,
                }}>
         <div aria-hidden="true" className="absolute -top-20 -right-20 w-[380px] h-[380px] rounded-full pointer-events-none" style={{ background: 'radial-gradient(ellipse at center, rgba(195,156,224,0.16) 0%, transparent 65%)' }} />
 
@@ -3076,13 +3075,13 @@ const SRevenue = (p: any) => {
                   <span className="text-[10.5px] font-bold uppercase tracking-[0.18em]" style={{ color: P }}>{ph.phase}</span>
                   <span className="text-[9.5px] text-white/55 tabular-nums font-medium">{ph.period}</span>
                 </div>
-                <p className="text-[38px] sm:text-[44px] font-bold text-white tracking-[-0.04em] leading-none mb-1.5 tabular-nums" style={F}>{ph.arr}</p>
+                <p className="text-[38px] sm:text-[44px] text-white tracking-[-0.04em] leading-none mb-1.5 tabular-nums" style={{ ...FH, fontWeight: 700 }}>{ph.arr}</p>
                 <p className="text-[11.5px] text-white/60 font-light mb-4"><span className="font-semibold text-white/90">{ph.customers}</span> kunder · {ph.desc}</p>
                 <div className="h-[5px] rounded-full bg-white/[0.08] overflow-hidden">
                   <div className="h-full rounded-full origin-left" style={{
                     background: `linear-gradient(90deg, ${P}, #9333ea)`,
                     width: `${ph.bar}%`,
-                    transform: active ? 'scaleX(1)' : 'scaleX(0)',
+                    transform: show ? 'scaleX(1)' : 'scaleX(0)',
                     transition: `transform 1s cubic-bezier(0.22,1,0.36,1) ${1.2 + i * 0.15}s`,
                   }} />
                 </div>
@@ -3097,12 +3096,12 @@ const SRevenue = (p: any) => {
 
       {/* Bottom ribbon */}
       <div className="mt-8 flex items-center justify-center gap-3"
-           style={{ animation: active ? 'reFadeUp 0.8s cubic-bezier(0.22,1,0.36,1) 1.3s both' : undefined, opacity: active ? undefined : 0 }}>
-        <div className="h-px bg-[#d8d2c5] origin-right" style={{ width: '54px', animation: active ? 'reRule 0.9s cubic-bezier(0.22,1,0.36,1) 1.45s both' : undefined }} />
+           style={{ animation: anim ? 'reFadeUp 0.8s cubic-bezier(0.22,1,0.36,1) 1.3s both' : undefined, opacity: show ? undefined : 0 }}>
+        <div className="h-px bg-[#d8d2c5] origin-right" style={{ width: '54px', animation: anim ? 'reRule 0.9s cubic-bezier(0.22,1,0.36,1) 1.45s both' : undefined }} />
         <p className="text-[11px] sm:text-[12px] text-[#7a6f5e] font-medium tracking-[-0.005em]">
-          <span className="font-semibold" style={{ color: P }}>Kjernen:</span> take-rate på privat (5–10 %) + SaaS per enhet på proff gir tre inntektsstrømmer som vokser med både leienivå og porteføljestørrelse.
+          <span className="font-semibold" style={{ color: AC }}>Kjernen:</span> take-rate på privat (5–10 %) + SaaS per enhet på proff gir tre inntektsstrømmer som vokser med både leienivå og porteføljestørrelse.
         </p>
-        <div className="h-px bg-[#d8d2c5] origin-left" style={{ width: '54px', animation: active ? 'reRule 0.9s cubic-bezier(0.22,1,0.36,1) 1.45s both' : undefined }} />
+        <div className="h-px bg-[#d8d2c5] origin-left" style={{ width: '54px', animation: anim ? 'reRule 0.9s cubic-bezier(0.22,1,0.36,1) 1.45s both' : undefined }} />
       </div>
     </div>
   </SlideFrame>
@@ -3112,8 +3111,14 @@ const SRevenue = (p: any) => {
 /* ═══ SLIDE 16 — SUnitEconomics · Proptonomy-style ═══ */
 const SUnitEconomics = (p: any) => {
   const active = p.isActive;
+  const isPdf = !!p.pdfMode;
+  const show = active || isPdf;
+  const anim = active && !isPdf;
+  useEffect(() => { p.onLight?.(active && !isPdf); }, [active, isPdf]);
+  const AC = '#a052e0', INK = '#0c0c0c', INK2 = '#1c1714', SUB = '#57514a', MUT = '#8a8278';
+  const HAIR = 'rgba(20,15,10,0.10)';
   const kpis = [
-    { num: '01', big: '13', unit: ':1', title: 'LTV / CAC', lead: 'Pro-segmentet gir særlig sterk økonomi fordi én kunde ofte representerer flere boliger og høyere månedlig inntekt.', benchmark: '>3:1' },
+    { num: '01', big: '13', unit: ':1', title: 'LTV / CAC', lead: 'Det profesjonelle segmentet gir særlig sterk økonomi fordi én kunde ofte representerer mange enheter og høy månedlig konto-ARR.', benchmark: '>3:1' },
     { num: '02', big: '4', unit: 'mnd', title: 'Tilbakebetalingstid', lead: 'Lav CAC og høy abonnementsverdi gjør at markedsførings- og salgskostnaden kan betales raskt tilbake.', benchmark: '<12 mnd' },
     { num: '03', big: '82', unit: '%', title: 'Bruttomargin', lead: 'AI- og skykostnader øker lite per ny kunde. Det gir gode marginer når volumet vokser.', benchmark: '>75 %' },
     { num: '04', big: '<3', unit: '%', title: 'Månedlig churn', lead: 'Når kontrakt, betaling, drift, dokumentasjon og regnskap først ligger i DigiHome, blir produktet en del av kundens daglige arbeidsflyt.', benchmark: '<5 %' },
@@ -3146,47 +3151,45 @@ const SUnitEconomics = (p: any) => {
 
     <div className="max-w-[1280px] mx-auto px-6 sm:px-12 w-full relative z-10">
       {/* Editorial header — matches other slides */}
-      <div className="mb-5 sm:mb-7 max-w-[1080px]">
-        <div className="flex items-center gap-3 mb-3 flex-wrap"
-             style={{ animation: active ? 'ueFadeUp 0.6s cubic-bezier(0.22,1,0.36,1) 0.15s both' : undefined, opacity: active ? undefined : 0 }}>
-          <p className="text-[10.5px] sm:text-[11px] font-bold uppercase tracking-[0.32em]" style={{ color: P, ...F }}>Unit economics</p>
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full" style={{ backgroundColor: '#f59e0b10', border: '1px solid #f59e0b28' }}>
+      <div className="mb-8 sm:mb-10 max-w-[1000px]">
+        <div className="flex items-center gap-3 mb-5 flex-wrap"
+             style={{ animation: anim ? 'ueFadeUp 0.6s cubic-bezier(0.22,1,0.36,1) 0.15s both' : undefined, opacity: show ? undefined : 0 }}>
+          <span className="text-[11px] font-bold uppercase tracking-[0.4em]" style={{ color: AC, ...F }}>Unit economics</span>
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full" style={{ backgroundColor: '#f59e0b10' }}>
             <div className="w-1 h-1 rounded-full bg-[#f59e0b]" />
             <span className="text-[8.5px] font-bold uppercase tracking-[0.14em] text-[#b47500]" style={F}>Modellert før ekstern lansering</span>
           </span>
         </div>
-        <h2 className="font-bold text-[#0c0c0c] tracking-[-0.035em] leading-[1.04]"
-            style={{ ...F, fontSize: 'clamp(24px, 3.0vw, 40px)', animation: active ? 'ueHeadlineIn 0.95s cubic-bezier(0.22,1,0.36,1) 0.3s both' : undefined, opacity: active ? undefined : 0 }}>
-          <span className="md:block">Sunn økonomi <span style={{ color: P }}>fra første kunde</span>.</span>
+        <h2 className="tracking-[-0.04em] leading-[1.0]"
+            style={{ ...FH, fontWeight: 700, color: INK, fontSize: 'clamp(26px, 3.2vw, 46px)', animation: anim ? 'ueHeadlineIn 0.95s cubic-bezier(0.22,1,0.36,1) 0.3s both' : undefined, opacity: show ? undefined : 0 }}>
+          Sunn økonomi <span style={{ color: AC }}>fra første kunde</span>.
         </h2>
-        <p className="text-[12.5px] sm:text-[13px] text-[#3a3530] leading-[1.6] mt-3 max-w-[880px] font-light"
-           style={{ ...F, animation: active ? 'ueFadeUp 0.9s cubic-bezier(0.22,1,0.36,1) 0.55s both' : undefined, opacity: active ? undefined : 0 }}>
+        <span className="block mt-6 h-px rounded-full" style={{ width: 60, background: `linear-gradient(90deg, ${AC}, transparent)`, transformOrigin: 'left', animation: anim ? 'ueRule 0.9s cubic-bezier(0.22,1,0.36,1) 0.5s both' : undefined, opacity: show ? undefined : 0 }} />
+        <p className="text-[13px] sm:text-[14.5px] leading-[1.6] mt-6 max-w-[780px] font-normal"
+           style={{ ...F, color: SUB, animation: anim ? 'ueFadeUp 0.9s cubic-bezier(0.22,1,0.36,1) 0.6s both' : undefined, opacity: show ? undefined : 0 }}>
           DigiHome er bygget som et kapitaleffektivt SaaS-produkt med lave marginalkostnader, kort tilbakebetalingstid og høy verdi per kunde.
         </p>
       </div>
 
-      {/* 4 KPI cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5 mb-4 sm:mb-5">
+      {/* 4 KPI — editorial kolonner, hårlinje-topp, ingen kort */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-7 lg:gap-x-9 gap-y-8 mb-9 sm:mb-11">
         {kpis.map((k, i) => (
-          <article key={i} className="bg-white rounded-[18px] p-4 sm:p-5 flex flex-col"
-                   style={{
-                     border: '1px solid #ece8e1',
-                     boxShadow: '0 1px 2px rgba(20,15,10,0.03), 0 10px 32px rgba(20,15,10,0.05)',
-                     animation: active ? `ueCardIn 0.8s cubic-bezier(0.22,1,0.36,1) ${0.5 + i * 0.1}s both` : undefined,
-                     opacity: active ? undefined : 0,
-                   }}>
-            <p className="text-[8.5px] font-bold tabular-nums tracking-[0.22em] text-[#b5aa98] mb-2" style={F}>{k.num}</p>
-            <div className="flex items-baseline gap-1.5 mb-2.5">
-              <span className="font-bold tracking-[-0.04em] leading-none tabular-nums" style={{ ...F, color: P, fontSize: 'clamp(32px, 3.4vw, 46px)' }}>{k.big}</span>
-              <span className="text-[14px] sm:text-[16px] font-medium text-[#8a8478]">{k.unit}</span>
+          <div key={i} className="relative pt-6 flex flex-col"
+               style={{ animation: anim ? `ueCardIn 0.8s cubic-bezier(0.22,1,0.36,1) ${0.5 + i * 0.1}s both` : undefined, opacity: show ? undefined : 0 }}>
+            <span className="absolute top-0 left-0 right-0 h-px" style={{ background: HAIR }} />
+            <span className="absolute top-0 left-0 h-[2px] w-8 rounded-full" style={{ background: AC }} />
+            <span className="text-[8.5px] font-bold tabular-nums tracking-[0.24em] mb-3" style={{ ...F, color: MUT }}>{k.num}</span>
+            <div className="flex items-baseline gap-1.5 mb-2">
+              <span className="tracking-[-0.04em] leading-none tabular-nums" style={{ ...FH, fontWeight: 700, color: AC, fontSize: 'clamp(34px, 3.6vw, 48px)' }}>{k.big}</span>
+              <span className="text-[14px] sm:text-[16px] font-medium" style={{ ...F, color: MUT }}>{k.unit}</span>
             </div>
-            <p className="text-[12.5px] font-bold text-[#0c0c0c] tracking-[-0.005em] mb-1.5" style={F}>{k.title}</p>
-            <p className="text-[10.5px] text-[#6e6a62] leading-[1.5] font-light flex-1">{k.lead}</p>
-            <div className="pt-2.5 mt-2.5 border-t border-[#f0ede8] flex items-center justify-between">
-              <span className="text-[9.5px] text-[#b5aa98] uppercase tracking-[0.12em]">Mål</span>
-              <span className="text-[10.5px] font-bold text-[#0c0c0c] tabular-nums" style={F}>{k.benchmark}</span>
+            <h3 className="text-[13px] tracking-[-0.01em] mb-2" style={{ ...FH, fontWeight: 700, color: INK }}>{k.title}</h3>
+            <p className="text-[10.5px] leading-[1.5] font-normal flex-1" style={{ ...F, color: MUT }}>{k.lead}</p>
+            <div className="pt-3 mt-3 flex items-center justify-between" style={{ borderTop: `1px solid ${HAIR}` }}>
+              <span className="text-[9px] uppercase tracking-[0.14em]" style={{ ...F, color: MUT }}>Mål</span>
+              <span className="text-[10.5px] font-bold tabular-nums" style={{ ...F, color: INK2 }}>{k.benchmark}</span>
             </div>
-          </article>
+          </div>
         ))}
       </div>
 
@@ -5472,7 +5475,7 @@ const SBusinessModels = (p: any) => {
   const isPdf = !!p.pdfMode;
   const show = active || isPdf;
   useEffect(() => { p.onLight?.(active && !isPdf); }, [active, isPdf]);
-  const AC = '#9a63e8';      // lesbar merkevare-lilla på lys bakgrunn
+  const AC = '#a052e0';      // lesbar merkevare-lilla på lys bakgrunn
   const INK = '#0c0c0c';
   const INK2 = '#1c1714';
   const SUB = '#57514a';
@@ -5489,7 +5492,7 @@ const SBusinessModels = (p: any) => {
 
     {/* ambient — flatt og rolig */}
     <div aria-hidden="true" className="absolute inset-0 pointer-events-none"
-         style={{ background: 'radial-gradient(ellipse at 50% 28%, rgba(154,99,232,0.05) 0%, transparent 55%)' }} />
+         style={{ background: 'radial-gradient(ellipse at 50% 28%, rgba(160,82,224,0.05) 0%, transparent 55%)' }} />
     <DotGrid maskCenter="50% 30%" opacity={0.36} />
 
     <div className="relative z-10 w-full max-w-[1060px] mx-auto px-6 sm:px-12 my-auto">
@@ -5566,7 +5569,7 @@ const SBetalingsmodell = (p: any) => {
   const isPdf = !!p.pdfMode;
   const show = active || isPdf;
   const anim = active && !isPdf;
-  const AC = '#9a63e8';      // lesbar merkevare-lilla på lys bakgrunn
+  const AC = '#a052e0';      // lesbar merkevare-lilla på lys bakgrunn
   const INK = '#0c0c0c';
   const INK2 = '#1c1714';
   const SUB = '#57514a';
@@ -5602,7 +5605,7 @@ const SBetalingsmodell = (p: any) => {
     `}</style>
 
     <div aria-hidden="true" className="absolute inset-0 pointer-events-none"
-         style={{ background: 'radial-gradient(ellipse at 50% 20%, rgba(154,99,232,0.05) 0%, transparent 56%)' }} />
+         style={{ background: 'radial-gradient(ellipse at 50% 20%, rgba(160,82,224,0.05) 0%, transparent 56%)' }} />
     <DotGrid maskCenter="50% 28%" opacity={0.4} />
 
     <div className="relative z-10 w-full max-w-[1180px] mx-auto px-6 sm:px-12 my-auto">
@@ -5623,8 +5626,8 @@ const SBetalingsmodell = (p: any) => {
           <div key={t.name}
                className="relative rounded-[22px] p-7 flex flex-col"
                style={{
-                 background: t.hl ? 'linear-gradient(180deg, rgba(154,99,232,0.08), rgba(154,99,232,0.022))' : '#ffffff',
-                 border: t.hl ? `1.5px solid rgba(154,99,232,0.40)` : '1px solid rgba(20,15,10,0.08)',
+                 background: t.hl ? 'linear-gradient(180deg, rgba(160,82,224,0.08), rgba(160,82,224,0.022))' : '#ffffff',
+                 border: t.hl ? `1.5px solid rgba(160,82,224,0.40)` : '1px solid rgba(20,15,10,0.08)',
                  boxShadow: t.hl ? '0 34px 80px -34px rgba(124,58,237,0.30), inset 0 1px 0 rgba(255,255,255,0.7)' : '0 26px 60px -34px rgba(20,15,10,0.20), inset 0 1px 0 rgba(255,255,255,0.7)',
                  animation: anim ? `payCard 0.8s cubic-bezier(0.22,1,0.36,1) ${0.45 + i * 0.12}s both` : undefined,
                  opacity: show ? undefined : 0,
@@ -5653,7 +5656,7 @@ const SBetalingsmodell = (p: any) => {
             <ul className="flex flex-col gap-3 mt-auto">
               {t.feats.map((f, fi) => (
                 <li key={fi} className="flex items-start gap-2.5">
-                  <span className="inline-flex items-center justify-center w-[18px] h-[18px] rounded-full shrink-0 mt-0.5" style={{ background: t.hl ? AC : 'rgba(154,99,232,0.14)' }}>
+                  <span className="inline-flex items-center justify-center w-[18px] h-[18px] rounded-full shrink-0 mt-0.5" style={{ background: t.hl ? AC : 'rgba(160,82,224,0.14)' }}>
                     <Check className="w-[11px] h-[11px]" strokeWidth={3} style={{ color: t.hl ? '#fff' : AC }} />
                   </span>
                   <span className="text-[12.5px] font-normal leading-snug" style={{ ...F, color: fi === 0 && t.hl ? INK2 : SUB, fontWeight: fi === 0 && t.hl ? 600 : 400 }}>{f}</span>
@@ -5680,7 +5683,7 @@ const SAlleredeInntekter = (p: any) => {
   const isPdf = !!p.pdfMode;
   const show = active || isPdf;
   const anim = active && !isPdf;
-  const AC = '#9a63e8';      // lesbar merkevare-lilla på lys bakgrunn
+  const AC = '#a052e0';      // lesbar merkevare-lilla på lys bakgrunn
   const INK = '#0c0c0c';
   const INK2 = '#1c1714';
   const SUB = '#57514a';
@@ -5703,7 +5706,7 @@ const SAlleredeInntekter = (p: any) => {
     `}</style>
 
     <div aria-hidden="true" className="absolute inset-0 pointer-events-none"
-         style={{ background: 'radial-gradient(ellipse at 50% 20%, rgba(154,99,232,0.05) 0%, transparent 56%)' }} />
+         style={{ background: 'radial-gradient(ellipse at 50% 20%, rgba(160,82,224,0.05) 0%, transparent 56%)' }} />
     <DotGrid maskCenter="50% 26%" opacity={0.4} />
 
     <div className="relative z-10 w-full max-w-[1180px] mx-auto px-6 sm:px-12 my-auto">
@@ -5727,8 +5730,8 @@ const SAlleredeInntekter = (p: any) => {
           <div key={s.label}
                className="relative rounded-[22px] p-7 flex flex-col"
                style={{
-                 background: s.hl ? 'linear-gradient(180deg, rgba(154,99,232,0.09), rgba(154,99,232,0.025))' : '#ffffff',
-                 border: s.hl ? '1.5px solid rgba(154,99,232,0.42)' : '1px solid rgba(20,15,10,0.08)',
+                 background: s.hl ? 'linear-gradient(180deg, rgba(160,82,224,0.09), rgba(160,82,224,0.025))' : '#ffffff',
+                 border: s.hl ? '1.5px solid rgba(160,82,224,0.42)' : '1px solid rgba(20,15,10,0.08)',
                  boxShadow: s.hl ? '0 34px 80px -34px rgba(124,58,237,0.30), inset 0 1px 0 rgba(255,255,255,0.7)' : '0 26px 60px -34px rgba(20,15,10,0.20), inset 0 1px 0 rgba(255,255,255,0.7)',
                  animation: anim ? `traCard 0.8s cubic-bezier(0.22,1,0.36,1) ${0.4 + i * 0.12}s both` : undefined,
                  opacity: show ? undefined : 0,
@@ -5767,7 +5770,7 @@ const SFilosofi = (p: any) => {
   const show = active || isPdf;
   const anim = active && !isPdf;
   useEffect(() => { p.onLight?.(active && !isPdf); }, [active, isPdf]);
-  const AC = '#9a63e8';      // lesbar merkevare-lilla på lys bakgrunn
+  const AC = '#a052e0';      // lesbar merkevare-lilla på lys bakgrunn
   const INK = '#0c0c0c';
   const SUB = '#57514a';
   const PILLARS = [
@@ -5784,7 +5787,7 @@ const SFilosofi = (p: any) => {
     `}</style>
 
     <div aria-hidden="true" className="absolute inset-0 pointer-events-none"
-         style={{ background: 'radial-gradient(ellipse at 50% 16%, rgba(154,99,232,0.05) 0%, transparent 56%)' }} />
+         style={{ background: 'radial-gradient(ellipse at 50% 16%, rgba(160,82,224,0.05) 0%, transparent 56%)' }} />
     <DotGrid maskCenter="50% 24%" opacity={0.4} />
 
     <div className="relative z-10 w-full max-w-[1200px] mx-auto px-6 sm:px-12 my-auto">
@@ -5977,7 +5980,7 @@ export default function Presentasjon() {
   const prev = useCallback(() => setC((v: any) => Math.max(v - 1, 0)), []);
 
   // Lyse slides toner til lys bakgrunn — la chrome (pille) tilpasse seg
-  useEffect(() => { if (![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 16].includes(c)) setChromeLight(false); }, [c]);
+  useEffect(() => { if (![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 16, 18, 19].includes(c)) setChromeLight(false); }, [c]);
 
   // Slide 2: lås fremover-navigasjon til hele tekst-animasjonen er spilt ferdig
   // MIDLERTIDIG DEAKTIVERT — låsen er slått av etter ønske. Sett ENABLE_S2_LOCK = true for å reaktivere.
@@ -6116,7 +6119,7 @@ export default function Presentasjon() {
       onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
       {SLIDES.map((Slide: any, i: number) => (
         <div key={i} className={`absolute inset-0 overflow-hidden transition-all duration-700 ease-[cubic-bezier(0.4,0,0.2,1)] ${i === c ? 'opacity-100 scale-100' : i < c ? 'opacity-0 scale-[0.96]' : 'opacity-0 scale-[1.04]'}`} style={{ pointerEvents: i === c ? 'auto' : 'none', visibility: Math.abs(i - c) <= 1 ? 'visible' : 'hidden' }}>
-          <Slide slideNum={i + 1} total={SLIDES.length} isActive={i === c} onLight={[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 16].includes(i) ? setChromeLight : undefined} onAnimationComplete={i === 1 ? handleS2Complete : undefined} />
+          <Slide slideNum={i + 1} total={SLIDES.length} isActive={i === c} onLight={[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 16, 18, 19].includes(i) ? setChromeLight : undefined} onAnimationComplete={i === 1 ? handleS2Complete : undefined} />
         </div>
       ))}
 

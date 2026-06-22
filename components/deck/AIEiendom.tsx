@@ -10,15 +10,16 @@
  * Lyst, premium, sømløst (ingen bokskanter — kun mykt lys/skygge). Gjennomgående
  * prinsipp: AI gjør utkastet, mennesket godkjenner alltid.
  */
-import React from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import {
   Sparkles, Check, FileSignature, ArrowLeftRight, ShieldCheck,
-  Pencil, Wand2, CornerDownRight, PenLine, Lock,
+  Pencil, Wand2, CornerDownRight, PenLine, Lock, Plus, ArrowRight,
 } from 'lucide-react';
 
 const F = "var(--font-body), 'ABC Diatype', -apple-system, sans-serif";
 const FH = "var(--font-heading), 'PP Right Grotesk', -apple-system, sans-serif";
-const AC = '#9a63e8';
+const AC = '#a052e0';
+const P = '#d298ff';      // merkevare-lilla (samme som mobilmockup ellers i decken)
 const PDK = '#7c3aed';
 const INK = '#0c0c0c';
 const INK2 = '#1c1714';
@@ -101,7 +102,7 @@ function HeroStyling({ on, pdf }: any) {
 
         {/* FØR / ETTER-merker */}
         <span className="absolute top-4 left-4 z-20 text-[9.5px] font-bold uppercase px-2.5 py-1 rounded-full" style={{ fontFamily: F, color: 'rgba(255,255,255,0.92)', background: 'rgba(8,6,10,0.5)', backdropFilter: 'blur(8px)', letterSpacing: '0.16em' }}>Før</span>
-        <span className="absolute top-4 right-4 z-20 inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-full" style={{ fontFamily: F, color: '#fff', background: 'linear-gradient(135deg, rgba(154,99,232,0.94), rgba(124,58,237,0.94))', backdropFilter: 'blur(8px)', boxShadow: '0 8px 22px -8px rgba(124,58,237,0.6)' }}>
+        <span className="absolute top-4 right-4 z-20 inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-full" style={{ fontFamily: F, color: '#fff', background: 'linear-gradient(135deg, rgba(160,82,224,0.94), rgba(124,58,237,0.94))', backdropFilter: 'blur(8px)', boxShadow: '0 8px 22px -8px rgba(124,58,237,0.6)' }}>
           <Wand2 className="w-3 h-3" strokeWidth={2.4} /> Stylet med AI
         </span>
 
@@ -150,7 +151,7 @@ function ContractPanel({ on }: any) {
           {/* brevhode */}
           <div className="flex items-center justify-between pb-2" style={{ borderBottom: `1px solid ${HAIR}` }}>
             <div className="flex items-center gap-2">
-              <span className="w-5 h-5 rounded-[6px] flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #9a63e8, #7c3aed)' }}>
+              <span className="w-5 h-5 rounded-[6px] flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #a052e0, #7c3aed)' }}>
                 <FileSignature className="w-3 h-3 text-white" strokeWidth={2.2} />
               </span>
               <span className="text-[13px] font-bold tracking-[-0.015em]" style={{ fontFamily: FH, color: INK2 }}>Leieavtale</span>
@@ -219,7 +220,7 @@ function ChatPanel({ on }: any) {
             <span className="block text-[8px] mt-1 ml-1" style={{ fontFamily: F, color: MUT }}>09:14</span>
           </div>
           <div className="self-end max-w-[90%]" style={{ animation: on ? 'aiRow 0.6s ease 0.9s both' : undefined }}>
-            <div className="rounded-[15px] rounded-tr-[5px] px-3 py-2" style={{ background: 'linear-gradient(135deg, rgba(154,99,232,0.15), rgba(124,58,237,0.11))' }}>
+            <div className="rounded-[15px] rounded-tr-[5px] px-3 py-2" style={{ background: 'linear-gradient(135deg, rgba(160,82,224,0.15), rgba(124,58,237,0.11))' }}>
               <p className="text-[8px] font-bold uppercase tracking-[0.1em] mb-1 inline-flex items-center gap-1" style={{ fontFamily: F, color: PDK }}><Sparkles className="w-2.5 h-2.5" strokeWidth={2.6} /> AI-forslag · fra kontrakt + eiendom</p>
               <p className="text-[11.5px] leading-snug" style={{ fontFamily: F, color: INK2 }}>Hei Anna! Jeg har opprettet en sak og varslet rørlegger — de tar kontakt innen 24t. Steng vannkrana bak maskinen så lenge.</p>
             </div>
@@ -241,6 +242,91 @@ function ChatPanel({ on }: any) {
   );
 }
 
+/* ═══════════════ DigiHome AI — mobilmockup (samme som ellers i decken) ═══════════════ */
+function DeckAIChatPhone({ active }: { active: boolean }) {
+  const chatRef = useRef<HTMLDivElement>(null);
+  const [step, setStep] = useState(0);
+
+  useEffect(() => { if (chatRef.current && step > 0) { const t = setTimeout(() => chatRef.current?.scrollTo({ top: chatRef.current.scrollHeight, behavior: 'smooth' }), step >= 10 ? 700 : 50); return () => clearTimeout(t); } }, [step]);
+  useEffect(() => {
+    if (!active) { setStep(0); return; }
+    let timeouts: ReturnType<typeof setTimeout>[] = [];
+    const run = () => { timeouts.forEach(clearTimeout); timeouts = []; setStep(0);
+      [[0,0],[700,1],[2400,2],[4000,3],[5600,4],[7200,5],[8800,6],[10400,7],[12000,8],[13600,9],[15000,10]].forEach(([d,v]) => timeouts.push(setTimeout(() => setStep(v), d)));
+      timeouts.push(setTimeout(run, 22000));
+    };
+    run();
+    return () => timeouts.forEach(clearTimeout);
+  }, [active]);
+
+  const Av = () => <div className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5" style={{ backgroundColor: `${P}10` }}><Sparkles className="w-3 h-3" style={{ color: P }} strokeWidth={1.3} /></div>;
+  const JA = () => <img src="https://customer-assets.emergentagent.com/job_9ac850f1-4c4e-4305-b194-8cd3509969c1/artifacts/93xk0b12_GWeZ391lh9hfONZ36JQzJ_ns7qFd8s.png?w=80&h=80&fit=crop&crop=face" alt="" className="w-5 h-5 rounded-full object-cover shrink-0" />;
+  const UMsg = ({ text, show }: any) => <div style={{ maxHeight: show ? 80 : 0, opacity: show ? 1 : 0, overflow: 'hidden', transition: 'max-height 0.5s cubic-bezier(0.16,1,0.3,1), opacity 0.4s ease', marginBottom: show ? 10 : 0 }}><div className="flex items-end justify-end gap-1.5"><div className="max-w-[190px] rounded-[18px] rounded-br-[5px] px-3 py-2" style={{ backgroundColor: `${P}18`, border: `1px solid ${P}25` }}><p className="text-[10px] text-white/90 leading-[1.6]">{text}</p></div><JA /></div></div>;
+  const AMsg = ({ text, show }: any) => <div style={{ maxHeight: show ? 100 : 0, opacity: show ? 1 : 0, overflow: 'hidden', transition: 'max-height 0.5s cubic-bezier(0.16,1,0.3,1), opacity 0.4s ease', marginBottom: show ? 10 : 0 }}><div className="flex items-start gap-1.5"><Av /><div className="max-w-[200px] rounded-[18px] rounded-tl-[5px] px-3 py-2" style={{ backgroundColor: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.08)' }}><p className="text-[10px] text-white/70 leading-[1.6]">{text}</p></div></div></div>;
+  const Typing = ({ show }: any) => <div style={{ maxHeight: show ? 40 : 0, opacity: show ? 1 : 0, overflow: 'hidden', transition: 'max-height 0.4s, opacity 0.3s', marginBottom: show ? 10 : 0 }}><div className="flex items-start gap-1.5"><Av /><div className="rounded-[18px] rounded-tl-[5px] px-3 py-2" style={{ backgroundColor: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.08)' }}><div className="flex items-center gap-[4px]">{[0,1,2].map(i => <div key={i} className="w-[4px] h-[4px] rounded-full" style={{ backgroundColor: P, opacity: 0.5, animation: `aiPhoneTyping 1.2s ease-in-out ${i*0.15}s infinite` }} />)}</div></div></div></div>;
+
+  return (
+    <div className="w-[270px] rounded-[36px] bg-[#0a0a0a] p-[6px]" style={{ boxShadow: '0 50px 100px rgba(0,0,0,0.4), 0 12px 40px rgba(0,0,0,0.25), 0 0 0 1px rgba(255,255,255,0.08)' }}>
+      <style>{`@keyframes aiPhoneTyping { 0%,60%,100% { transform:translateY(0) } 30% { transform:translateY(-3px) } }`}</style>
+      <div className="w-[80px] h-[22px] bg-[#0a0a0a] rounded-b-[12px] mx-auto -mt-[6px] relative z-20" />
+      <div className="rounded-[30px] overflow-hidden -mt-[22px] flex flex-col" style={{ height: 520 }}>
+        <div className="px-4 pt-4 pb-3" style={{ backgroundColor: '#141414', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+          <div className="flex items-center justify-between mb-3"><img src="/digihome-logo-dark.svg" alt="" className="h-[12px] w-auto opacity-80" /><div className="flex items-center gap-1 px-1.5 py-0.5 rounded-full" style={{ backgroundColor: 'rgba(5,150,105,0.15)' }}><div className="w-[4px] h-[4px] rounded-full bg-[#059669]" /><span className="text-[7px] font-semibold text-[#059669]">Online</span></div></div>
+          <div className="flex items-center gap-2.5"><div className="w-9 h-9 rounded-full flex items-center justify-center" style={{ backgroundColor: `${P}20` }}><Sparkles className="w-4 h-4" style={{ color: P }} strokeWidth={1.2} /></div><div><p className="text-[7px] text-white/70">Driftsassistent</p><p className="text-[14px] font-bold text-white tracking-[-0.01em]">DigiHome AI</p></div></div>
+        </div>
+        <div ref={chatRef} className="px-3.5 pt-3 pb-2 flex-1 overflow-y-auto" style={{ backgroundColor: '#141414', scrollbarWidth: 'none' }}>
+          <div className="flex items-center gap-2.5 mb-3"><div className="flex-1 h-[1px] bg-white/[0.1]" /><span className="text-[7px] font-semibold text-white/55 uppercase tracking-wider">I dag</span><div className="flex-1 h-[1px] bg-white/[0.1]" /></div>
+          <UMsg text="Hei, stekeovnen har sluttet å virke. Ingen av platene blir varme." show={step >= 1} />
+          <Typing show={step === 2} />
+          <AMsg text="Hei Stine! Beklager det. Jeg oppretter en sak og finner en elektriker." show={step >= 3} />
+          <UMsg text="Tusen takk! Hvor lang tid tar det?" show={step >= 4} />
+          <Typing show={step === 5} />
+          <AMsg text="Bergen Elektro kan komme fredag 10-12. Skal jeg bekrefte?" show={step >= 6} />
+          <UMsg text="Ja, perfekt!" show={step >= 7} />
+          <Typing show={step === 8} />
+          <AMsg text="Bekreftet! Du får påminnelse torsdag kveld." show={step >= 9} />
+          <div className="ml-8 mb-2" style={{ maxHeight: step >= 10 ? 100 : 0, opacity: step >= 10 ? 1 : 0, overflow: 'hidden', transition: 'max-height 0.6s cubic-bezier(0.16,1,0.3,1), opacity 0.5s ease' }}>
+            <div className="rounded-xl overflow-hidden" style={{ backgroundColor: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' }}>
+              <div className="px-3 py-2 flex items-center gap-1.5" style={{ backgroundColor: `${P}08`, borderBottom: `1px solid ${P}12` }}><Sparkles className="w-2.5 h-2.5" style={{ color: P }} strokeWidth={1.5} /><span className="text-[8px] font-bold" style={{ color: P }}>AI opprettet automatisk</span></div>
+              <div className="px-3 py-2.5 flex items-center gap-2.5"><div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: 'rgba(5,150,105,0.12)' }}><Check className="w-3.5 h-3.5 text-[#059669]" strokeWidth={2} /></div><div><p className="text-[10px] font-bold text-white/80">Sak #1042</p><p className="text-[8px] text-white/75 mt-0.5">Bergen Elektro · Fre 10:00</p></div></div>
+            </div>
+          </div>
+        </div>
+        <div className="px-3.5 pb-3 pt-1.5" style={{ backgroundColor: '#141414' }}>
+          <div className="h-[38px] rounded-xl px-3 flex items-center gap-2.5" style={{ backgroundColor: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' }}><Plus className="w-3.5 h-3.5 text-white/55" strokeWidth={1.8} /><span className="text-[10px] text-white/55 flex-1">Skriv en melding...</span><div className="w-6 h-6 rounded-md flex items-center justify-center" style={{ backgroundColor: `${P}20` }}><ArrowRight className="w-2.5 h-2.5" style={{ color: P }} strokeWidth={2} /></div></div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════ PANEL · DigiHome AI (mobilmockup — minimalistisk, rammefri) ═══════════════ */
+function AIPhonePanel({ on }: any) {
+  return (
+    <div className="relative h-full flex items-center justify-center" style={{ animation: on ? 'aiUp 0.95s cubic-bezier(0.22,1,0.36,1) 0.34s both' : undefined }}>
+      {/* myk lilla glød bak telefonen — gir dybde uten boks */}
+      <div aria-hidden="true" className="absolute inset-0 pointer-events-none flex items-center justify-center">
+        <div style={{ width: '80%', height: '66%', borderRadius: '50%', background: 'radial-gradient(ellipse at center, rgba(160,82,224,0.16) 0%, rgba(210,152,255,0.07) 40%, transparent 70%)', filter: 'blur(10px)' }} />
+      </div>
+
+      {/* minimal etikett — øverst, ingen boks */}
+      <div className="absolute top-0 left-0 z-20"><Eyebrow no="02" label="Driftsassistent" /></div>
+
+      {/* telefon — fritt svevende */}
+      <div style={{ transform: 'scale(0.88)', transformOrigin: 'center', animation: on ? 'aiPhoneFloat 5.5s ease-in-out 1.3s infinite' : undefined }}>
+        <DeckAIChatPhone active={on} />
+      </div>
+
+      {/* minimal caption — nederst, editorial (ingen ramme) */}
+      <div className="absolute bottom-0 left-0 right-0 z-20 text-center px-3">
+        <p className="text-[13px] leading-snug max-w-[400px] mx-auto" style={{ fontFamily: F, color: SUB }}>
+          <span style={{ color: INK2, fontWeight: 700, fontFamily: FH }}>Autonom drift.</span> Henvendelser løses, saker opprettes og håndverkere bookes — automatisk.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 /* ═══════════════════ SLIDE-INNHOLD ═══════════════════ */
 export default function AIEiendom({ active, pdfMode }: { active?: boolean; pdfMode?: boolean }) {
   const on = active || pdfMode;
@@ -254,13 +340,14 @@ export default function AIEiendom({ active, pdfMode }: { active?: boolean; pdfMo
         @keyframes aiGrow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
         @keyframes aiWipeClip { 0%,10% { clip-path: inset(0 78% 0 0); } 50% { clip-path: inset(0 22% 0 0); } 90%,100% { clip-path: inset(0 78% 0 0); } }
         @keyframes aiWipeLine { 0%,10% { left: 22%; } 50% { left: 78%; } 90%,100% { left: 22%; } }
+        @keyframes aiPhoneFloat { 0%,100% { transform: scale(0.88) translateY(0); } 50% { transform: scale(0.88) translateY(-10px); } }
       `}</style>
 
       {/* ── header ── */}
       <div className="mb-5 sm:mb-7 flex items-end justify-between gap-10 flex-wrap">
         <div>
           <span className="inline-flex items-center gap-2.5 text-[10.5px] font-bold uppercase tracking-[0.42em] mb-4" style={{ fontFamily: F, color: AC, animation: on ? 'aiFade 0.7s ease 0.1s both' : undefined, opacity: on ? undefined : 0 }}>
-            <span className="w-1.5 h-1.5 rounded-full" style={{ background: AC, boxShadow: `0 0 10px rgba(154,99,232,0.6)` }} /> Det intelligente laget
+            <span className="w-1.5 h-1.5 rounded-full" style={{ background: AC, boxShadow: `0 0 10px rgba(160,82,224,0.6)` }} /> Det intelligente laget
           </span>
           <h2 className="tracking-[-0.042em] leading-[0.98]" style={{ fontFamily: FH, fontWeight: 700, color: INK, fontSize: 'clamp(30px, 4vw, 56px)', animation: on ? 'aiHead 0.9s cubic-bezier(0.22,1,0.36,1) 0.2s both' : undefined, opacity: on ? undefined : 0 }}>
             AI som forstår <span style={{ color: AC }}>eiendom.</span>
@@ -275,10 +362,9 @@ export default function AIEiendom({ active, pdfMode }: { active?: boolean; pdfMo
       </div>
 
       {/* ── bento ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:h-[620px] lg:[grid-template-rows:1fr_1fr] shrink-0">
-        <div className="lg:col-span-7 lg:row-span-2 min-h-[320px] lg:min-h-0"><HeroStyling on={on} pdf={pdfMode} /></div>
-        <div className="lg:col-span-5 min-h-[250px] lg:min-h-0"><ContractPanel on={on} /></div>
-        <div className="lg:col-span-5 min-h-[250px] lg:min-h-0"><ChatPanel on={on} /></div>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:h-[620px] shrink-0">
+        <div className="lg:col-span-7 min-h-[340px] lg:min-h-0"><HeroStyling on={on} pdf={pdfMode} /></div>
+        <div className="lg:col-span-5 min-h-[600px] lg:min-h-0"><AIPhonePanel on={on} /></div>
       </div>
 
       {/* ── prinsipp-footer ── */}
