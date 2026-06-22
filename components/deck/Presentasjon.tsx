@@ -517,7 +517,7 @@ const STeam = (p: any) => {
     },
     {
       name: 'Martin C. Kviteberg',
-      role: 'Teknisk sjef · CTO · Medgründer',
+      role: 'Teknisk sjef · CTO',
       field: 'Teknologi',
       img: '/team/martin-kviteberg-face.jpg',
       imgStyle: { objectPosition: 'center' },
@@ -2381,7 +2381,7 @@ const SMarket3 = (p: any) => {
         <div className="max-w-[360px] sm:text-right">
           <p className="text-[10.5px] font-bold uppercase tracking-[0.24em] mb-2.5" style={{ ...F, color: MUT }}>Struktur</p>
           <p className="text-[13px] sm:text-[14.5px] font-normal leading-[1.55]" style={{ ...F, color: SUB }}>
-            10 000 kunder × <span className="font-semibold tabular-nums" style={{ color: INK2 }}>15 000 kr</span> snitt ARPU. Take-rate via SaaS + transaksjoner.
+            Privat <span className="font-semibold tabular-nums" style={{ color: INK2 }}>5–10 %</span> av leien + B2B per enhet ⇒ blandet ≈ 1 250 kr/mnd. Inntekten følger leienivået.
           </p>
         </div>
       </div>
@@ -2978,16 +2978,22 @@ const SWhyDH = (p: any) => {
 /* ═══ SLIDE 15 — SRevenue (Inntektsmodell) · Proptonomy-style ═══ */
 const SRevenue = (p: any) => {
   const active = p.isActive;
+  const isPdf = !!p.pdfMode;
+  const show = active || isPdf;
+  const anim = active && !isPdf;
+  useEffect(() => { p.onLight?.(active && !isPdf); }, [active, isPdf]);
+  const AC = '#9a63e8', INK = '#0c0c0c', INK2 = '#1c1714', SUB = '#57514a', MUT = '#8a8278';
+  const HAIR = 'rgba(20,15,10,0.10)';
   const engines = [
-    { num: '01', title: 'Gratis inngang', badge: 'Gratis', metric: '0', unit: 'kr', lead: 'Gratisproduktet gjør det enkelt å komme i gang og bygger en bred trakt av private utleiere.', bullets: ['Lav terskel for nye brukere', 'Verdi før betalingspunktet', 'Naturlig vei videre til betalte pakker'] },
-    { num: '02', title: 'Private abonnement', badge: 'Essential + Hybrid', metric: '99–249', unit: 'kr/mnd', lead: 'Private utleiere betaler for de delene av flyten de faktisk bruker.', bullets: ['Essential: 99 kr per leieforhold', 'Smart Hybrid: 249 kr per bolig', 'Fast månedlig inntekt fra et stort privatmarked'] },
-    { num: '03', title: 'Portefølje og forvaltning', badge: 'Pro + Enterprise', metric: '1 990–9 900+', unit: 'kr/mnd', lead: 'Forvaltere, eiendomsselskaper og partnere gir høyere ARR og mer stabile kunderelasjoner.', bullets: ['Pro fra 1 990 kr/mnd', 'Enterprise fra 9 900 kr/mnd', 'Flere boliger hos kunden gir høyere inntekt for DigiHome'] },
-    { num: '04', title: 'Tillegg og transaksjoner', badge: 'Tillegg', metric: '+30–80', unit: 'kr ARPU', lead: 'Tjenester som allerede hører naturlig hjemme i utleieflyten gir ekstra inntekt med høy margin.', bullets: ['Depositum · kredittsjekk · forsikring', 'Kanalpublisering', 'Regnskapsflyt'] },
+    { num: '01', title: 'Selvbetjent', badge: 'Privat · B2C', metric: '5', unit: '% av leien', lead: 'Privat utleier forvalter selv — plattformen gjør grovarbeidet. Ren software-margin.', bullets: ['≈ 650 kr/mnd ved 13 000 kr leie', 'Lav terskel, bred privattrakt', 'Inntekten følger leienivået automatisk'] },
+    { num: '02', title: 'Full forvaltning', badge: 'Privat · B2C', metric: '10', unit: '% av leien', lead: 'Vi tar hele driften — som en utleiemegler. Høyere ARPU, særlig på korttid.', bullets: ['≈ 1 300 kr/mnd langtid → 3 000 kr korttid', 'Korttid ≈ 2,7× leie ⇒ 2,7× gebyr', 'Dagens 40 betalende kunder ligger her'] },
+    { num: '03', title: 'Porteføljelisens', badge: 'Profesjonell · B2B', metric: 'fra 249', unit: 'kr/enhet/mnd', lead: 'SaaS per enhet med volumrabatt. Én kunde = mange enheter ⇒ stor, stabil ARR.', bullets: ['≈ 200 kr/enhet etter volumrabatt', '250+ enheter per forvalter', 'Lav churn, høy retensjon'] },
+    { num: '04', title: 'Tillegg & transaksjoner', badge: 'Alle segmenter', metric: '+30–80', unit: 'kr ARPU', lead: 'Tjenester som hører naturlig hjemme i utleieflyten gir ekstra inntekt med høy margin.', bullets: ['Depositum · kredittsjekk · forsikring', 'Kanalpublisering', 'Regnskapsflyt'] },
   ];
   const phases = [
-    { phase: 'Fase 1', period: '2026',     customers: '500',    arr: '4,2 MNOK', bar: 12,  desc: 'Bergen og Vestlandet · organisk vekst' },
-    { phase: 'Fase 2', period: '2027–28', customers: '3 000',  arr: '27 MNOK',  bar: 40,  desc: 'Norge · markedsføring og partnere' },
-    { phase: 'Fase 3', period: '2029–30', customers: '10 000', arr: '95 MNOK',  bar: 100, desc: 'Norden · ekspansjon' },
+    { phase: 'Fase 1', period: '2026',     customers: '~900',    arr: '8 MNOK',   bar: 6,   desc: 'Bergen og Vestlandet · privat' },
+    { phase: 'Fase 2', period: '2027–28', customers: '~4 500',  arr: '50 MNOK',  bar: 33,  desc: 'Norge · + første forvaltere' },
+    { phase: 'Fase 3', period: '2029–30', customers: '~10 000', arr: '150 MNOK', bar: 100, desc: 'Norden · privat + 60 forvaltere' },
   ];
 
   return (
@@ -3002,52 +3008,50 @@ const SRevenue = (p: any) => {
 
     <DotGrid maskCenter="50% 26%" opacity={0.4} />
 
-    <div className="max-w-[1280px] mx-auto px-6 sm:px-12 w-full relative z-10">
+    <div className="max-w-[1240px] mx-auto px-6 sm:px-12 w-full relative z-10">
       {/* Editorial header */}
-      <div className="mb-6 sm:mb-8">
-        <p className="text-[10.5px] sm:text-[11px] font-bold uppercase tracking-[0.28em] mb-5"
-           style={{ color: P, animation: active ? 'reFadeUp 0.6s cubic-bezier(0.22,1,0.36,1) 0.15s both' : undefined, opacity: active ? undefined : 0 }}>
+      <div className="mb-9 sm:mb-11 max-w-[960px]">
+        <span className="inline-block text-[11px] font-bold uppercase tracking-[0.4em] mb-5"
+           style={{ ...F, color: AC, animation: anim ? 'reFadeUp 0.6s cubic-bezier(0.22,1,0.36,1) 0.15s both' : undefined, opacity: show ? undefined : 0 }}>
           Inntektsmodell
-        </p>
-        <h2 className="text-[26px] sm:text-[34px] lg:text-[42px] font-bold text-[#0c0c0c] tracking-[-0.035em] leading-[1.06] max-w-[1120px]"
-            style={{ ...F, animation: active ? 'reHeadlineIn 0.95s cubic-bezier(0.22,1,0.36,1) 0.3s both' : undefined, opacity: active ? undefined : 0 }}>
-          <span className="md:block">Gratis inngang. <span style={{ color: P }}>Betaling når verdien blir tydelig</span>.</span>
+        </span>
+        <h2 className="tracking-[-0.04em] leading-[1.0]"
+            style={{ ...FH, fontWeight: 700, fontSize: 'clamp(28px, 3.6vw, 50px)', color: INK, animation: anim ? 'reHeadlineIn 0.95s cubic-bezier(0.22,1,0.36,1) 0.3s both' : undefined, opacity: show ? undefined : 0 }}>
+          Prisen følger <span style={{ color: AC }}>leien</span>.<br className="hidden sm:block" /> Inntekten følger porteføljen.
         </h2>
-        <p className="text-[13px] sm:text-[14px] text-[#3a3530] leading-[1.6] font-light tracking-[-0.003em] max-w-[860px] mt-4"
-           style={{ ...F, animation: active ? 'reFadeUp 0.8s cubic-bezier(0.22,1,0.36,1) 0.5s both' : undefined, opacity: active ? undefined : 0 }}>
-          DigiHome vokser med kunden: først ett leieforhold, deretter flere boliger, mer drift og flere tilleggstjenester.
+        <span className="block mt-6 h-px rounded-full" style={{ width: 60, background: `linear-gradient(90deg, ${AC}, transparent)`, transformOrigin: 'left', animation: anim ? 'reRule 0.9s cubic-bezier(0.22,1,0.36,1) 0.5s both' : undefined, opacity: show ? undefined : 0 }} />
+        <p className="text-[13px] sm:text-[14.5px] leading-[1.6] font-normal max-w-[760px] mt-6"
+           style={{ ...F, color: SUB, animation: anim ? 'reFadeUp 0.8s cubic-bezier(0.22,1,0.36,1) 0.6s both' : undefined, opacity: show ? undefined : 0 }}>
+          DigiHome tar en andel av leien fra private (5–10 %) og SaaS per enhet fra profesjonelle — begge skaleres med kundens portefølje og med leienivået.
         </p>
       </div>
 
-      {/* 4 revenue engines */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5 mb-6">
+      {/* 4 motorer — editorial kolonner, hårlinje-topp, ingen kort */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-7 lg:gap-x-9 gap-y-9 mb-9 sm:mb-11">
         {engines.map((e, i) => (
-          <article key={i} className="bg-white rounded-[18px] p-5 sm:p-6 flex flex-col"
-                   style={{
-                     border: '1px solid #ece8e1',
-                     boxShadow: '0 1px 2px rgba(20,15,10,0.03), 0 10px 32px rgba(20,15,10,0.05)',
-                     animation: active ? `reCardIn 0.8s cubic-bezier(0.22,1,0.36,1) ${0.5 + i * 0.1}s both` : undefined,
-                     opacity: active ? undefined : 0,
-                   }}>
-            <div className="flex items-start justify-between mb-3">
-              <p className="text-[8.5px] font-bold tabular-nums tracking-[0.22em] text-[#b5aa98]" style={F}>MOTOR {e.num}</p>
-              <span className="text-[8.5px] font-bold uppercase tracking-[0.12em] px-2 py-[2.5px] rounded-full" style={{ background: `${P}12`, color: P, border: `1px solid ${P}28` }}>{e.badge}</span>
+          <div key={i} className="relative pt-6 flex flex-col"
+               style={{ animation: anim ? `reCardIn 0.8s cubic-bezier(0.22,1,0.36,1) ${0.5 + i * 0.1}s both` : undefined, opacity: show ? undefined : 0 }}>
+            <span className="absolute top-0 left-0 right-0 h-px" style={{ background: HAIR }} />
+            <span className="absolute top-0 left-0 h-[2px] w-8 rounded-full" style={{ background: AC }} />
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-[8.5px] font-bold tabular-nums tracking-[0.24em]" style={{ ...F, color: MUT }}>MOTOR {e.num}</span>
+              <span className="text-[8.5px] font-bold uppercase tracking-[0.12em] px-2 py-[2.5px] rounded-full" style={{ ...F, background: `${AC}16`, color: AC }}>{e.badge}</span>
             </div>
-            <h3 className="text-[17px] font-bold text-[#0c0c0c] tracking-[-0.018em] mb-3" style={F}>{e.title}</h3>
-            <div className="flex items-baseline gap-1.5 mb-3 pb-3 border-b border-[#e6e2d9]">
-              <span className="text-[28px] font-bold text-[#0c0c0c] tracking-[-0.035em] leading-none tabular-nums" style={F}>{e.metric}</span>
-              <span className="text-[12px] font-medium text-[#8a8478]">{e.unit}</span>
+            <div className="flex items-baseline gap-1.5 mb-1.5">
+              <span className="tabular-nums tracking-[-0.04em] leading-none" style={{ ...FH, fontWeight: 700, color: INK, fontSize: e.metric.length > 3 ? 'clamp(24px,2.5vw,32px)' : 'clamp(34px,3.4vw,46px)' }}>{e.metric}</span>
+              <span className="text-[12px] font-medium" style={{ ...F, color: MUT }}>{e.unit}</span>
             </div>
-            <p className="text-[11.5px] font-semibold text-[#2a2a2a] leading-[1.55] tracking-[-0.003em] mb-3" style={F}>{e.lead}</p>
+            <h3 className="text-[16px] tracking-[-0.018em] mb-3" style={{ ...FH, fontWeight: 700, color: INK }}>{e.title}</h3>
+            <p className="text-[11.5px] font-medium leading-[1.55] mb-3.5" style={{ ...F, color: INK2 }}>{e.lead}</p>
             <ul className="space-y-2 flex-1">
               {e.bullets.map((b, j) => (
-                <li key={j} className="text-[10.5px] text-[#6e6a62] leading-[1.55] font-light flex items-start gap-2">
-                  <span className="mt-[6px] w-[3px] h-[3px] rounded-full shrink-0" style={{ backgroundColor: '#c4b9a8' }} />
+                <li key={j} className="text-[10.5px] leading-[1.5] font-normal flex items-start gap-2" style={{ ...F, color: MUT }}>
+                  <span className="mt-[6px] w-[3px] h-[3px] rounded-full shrink-0" style={{ backgroundColor: AC }} />
                   <span>{b}</span>
                 </li>
               ))}
             </ul>
-          </article>
+          </div>
         ))}
       </div>
 
@@ -3086,7 +3090,7 @@ const SRevenue = (p: any) => {
             ))}
           </div>
           <div className="mt-7 pt-5 border-t border-white/[0.08]">
-            <p className="text-[11.5px] text-white/60 font-light leading-[1.55]">Under 1 % av adresserbart marked (150 MNOK ARR ≈ 10 000 kunder × 1 250 kr snitt MRR) gir allerede en stor, skalerbar virksomhet — før norsk ekspansjon er mettet.</p>
+            <p className="text-[11.5px] text-white/60 font-light leading-[1.55]">150 MNOK ARR ≈ <span className="font-semibold text-white/90">0,17 % av norsk leievolum</span> — selvbetjent (5 %), full forvaltning (10 %) og B2B per enhet i balanse. Stor, skalerbar virksomhet før Norge er mettet.</p>
           </div>
         </div>
       </article>
@@ -3096,7 +3100,7 @@ const SRevenue = (p: any) => {
            style={{ animation: active ? 'reFadeUp 0.8s cubic-bezier(0.22,1,0.36,1) 1.3s both' : undefined, opacity: active ? undefined : 0 }}>
         <div className="h-px bg-[#d8d2c5] origin-right" style={{ width: '54px', animation: active ? 'reRule 0.9s cubic-bezier(0.22,1,0.36,1) 1.45s both' : undefined }} />
         <p className="text-[11px] sm:text-[12px] text-[#7a6f5e] font-medium tracking-[-0.005em]">
-          <span className="font-semibold" style={{ color: P }}>Kjernen:</span> SaaS, transaksjoner og tilleggstjenester gir flere inntektsstrømmer fra samme kunde — og øker i takt med kundens portefølje.
+          <span className="font-semibold" style={{ color: P }}>Kjernen:</span> take-rate på privat (5–10 %) + SaaS per enhet på proff gir tre inntektsstrømmer som vokser med både leienivå og porteføljestørrelse.
         </p>
         <div className="h-px bg-[#d8d2c5] origin-left" style={{ width: '54px', animation: active ? 'reRule 0.9s cubic-bezier(0.22,1,0.36,1) 1.45s both' : undefined }} />
       </div>
@@ -3115,18 +3119,18 @@ const SUnitEconomics = (p: any) => {
     { num: '04', big: '<3', unit: '%', title: 'Månedlig churn', lead: 'Når kontrakt, betaling, drift, dokumentasjon og regnskap først ligger i DigiHome, blir produktet en del av kundens daglige arbeidsflyt.', benchmark: '<5 %' },
   ];
   const typeLight = [
-    { label: 'ARPU med tillegg', value: '310 kr/mnd' },
+    { label: 'ARPU med tillegg', value: '900 kr/mnd' },
     { label: 'CAC',              value: '1 500 kr' },
-    { label: 'LTV',              value: '7 440 kr' },
-    { label: 'Bruttomargin',     value: '84 %', hi: true },
-    { label: 'Tilbakebetalingstid', value: '5 mnd', hi: true },
+    { label: 'LTV',              value: '21 600 kr' },
+    { label: 'Bruttomargin',     value: '78 %', hi: true },
+    { label: 'Tilbakebetalingstid', value: '2 mnd', hi: true },
   ];
   const typePro = [
-    { label: 'ARPU med tillegg', value: '2 200 kr/mnd' },
-    { label: 'CAC',              value: '6 000 kr' },
-    { label: 'LTV',              value: '79 200 kr' },
-    { label: 'Bruttomargin',     value: '82 %', hi: true },
-    { label: 'Tilbakebetalingstid', value: '4 mnd', hi: true },
+    { label: 'ARPU per konto', value: '25 000 kr/mnd' },
+    { label: 'CAC',              value: '25 000 kr' },
+    { label: 'LTV',              value: '900 000 kr' },
+    { label: 'Bruttomargin',     value: '84 %', hi: true },
+    { label: 'Tilbakebetalingstid', value: '1 mnd', hi: true },
   ];
 
   return (
@@ -3200,8 +3204,8 @@ const SUnitEconomics = (p: any) => {
           <p className="text-[9.5px] font-bold tracking-[0.22em] text-white/50 mb-4" style={F}>TO KUNDETYPER</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-9">
             {[
-              { tag: 'KUNDETYPE 1', name: 'Smart Hybrid · privat utleier', sub: 'Én bolig som kan veksle mellom korttids- og langtidsutleie.', rows: typeLight },
-              { tag: 'KUNDETYPE 2', name: 'Pro · forvalter',                sub: 'Profesjonell kunde med flere boliger og voksende portefølje.', rows: typePro   },
+              { tag: 'KUNDETYPE 1', name: 'Privat · take-rate', sub: 'Betaler 5–10 % av leien. Ren software-margin på selvbetjent, full drift på forvaltning.', rows: typeLight },
+              { tag: 'KUNDETYPE 2', name: 'Profesjonell · per enhet',                sub: 'Forvalter med voksende portefølje. Én kunde = mange enheter ⇒ stor konto-ARR.', rows: typePro   },
             ].map((c, i) => (
               <div key={i} className="relative">
                 {i === 0 && <div className="hidden sm:block absolute -right-4 top-1 bottom-1 w-px bg-white/[0.08]" />}
@@ -3488,10 +3492,10 @@ const STraction = (p: any) => {
             <h3 className="text-[17px] font-bold text-[#0c0c0c] tracking-[-0.018em] mb-3" style={F}>Ventet Q3 2026</h3>
             <div className="space-y-2.5 mb-4">
               {[
-                { seg: 'Private (Smart Hybrid)', n: '120+' },
-                { seg: 'Forvaltere (Pro)',      n: '8' },
-                { seg: 'Bedrift (Enterprise)',  n: '3' },
-                { seg: 'Megler-partnere',       n: '5' },
+                { seg: 'Private utleiere',    n: '120+' },
+                { seg: 'Forvaltere',          n: '8' },
+                { seg: 'Eiendomsselskaper',   n: '3' },
+                { seg: 'Megler-partnere',     n: '5' },
               ].map((p, k) => (
                 <div key={k} className="flex items-center justify-between">
                   <p className="text-[11.5px] text-[#6e6a62] font-light" style={F}>{p.seg}</p>
@@ -5949,7 +5953,7 @@ const SLIDES = [
   SMarket1,      // 10 · Tiered market (NOK leievolum)
   SMarket3,      // 11 · Path to 150 MNOK ARR (Nordic)
   SDiff,         // 12 · Konkurransefortrinn (combined moat + market positioning)
-  SProductTiers, // 13 · Products & pricing
+  // SProductTiers, // SKJULT — utdatert prismodell (flat SaaS-trapp). Ny modell: % av leie (5/10 %) + B2B per enhet. Vises i Betalingsmodell.
   SRevenue,      // 14 · Revenue model
   SUnitEconomics,// 15 · Unit economics
   SBudgetRunway, // 16 · Budget & runway
