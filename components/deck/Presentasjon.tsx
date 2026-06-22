@@ -5607,13 +5607,13 @@ const SBetalingsmodell = (p: any) => {
   const isPdf = !!p.pdfMode;
   const show = active || isPdf;
   const anim = active && !isPdf;
-  const AC = '#9a63e8';
-  const INK = '#0c0c0c';
-  const INK2 = '#1c1714';
-  const SUB = '#57514a';
-  const MUT = '#8a8278';
-  const FAINT = '#a8a097';
-  const HAIR = 'rgba(20,15,10,0.10)';
+  const AC = '#d298ff';
+  const INK = '#ffffff';
+  const INK2 = 'rgba(255,255,255,0.95)';
+  const SUB = 'rgba(255,255,255,0.60)';
+  const MUT = 'rgba(255,255,255,0.45)';
+  const FAINT = 'rgba(255,255,255,0.32)';
+  const HAIR = 'rgba(255,255,255,0.10)';
   const TIERS = [
     {
       seg: 'Privat · B2C', name: 'Selvbetjent', pre: '', big: '5%', unit: 'av leiesummen',
@@ -5635,15 +5635,15 @@ const SBetalingsmodell = (p: any) => {
     },
   ];
   return (
-  <SlideFrame bg="beige" {...p}>
+  <SlideFrame bg="dark" {...p}>
     <style>{`
       @keyframes payFade { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
       @keyframes payCard { from { opacity: 0; transform: translateY(22px) scale(0.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
     `}</style>
 
     <div aria-hidden="true" className="absolute inset-0 pointer-events-none"
-         style={{ background: 'radial-gradient(ellipse at 50% 26%, rgba(154,99,232,0.05) 0%, transparent 55%)' }} />
-    <DotGrid maskCenter="50% 28%" opacity={0.34} />
+         style={{ background: 'radial-gradient(ellipse at 50% 20%, rgba(210,152,255,0.12) 0%, transparent 56%)' }} />
+    <DotGrid maskCenter="50% 28%" opacity={0.045} />
 
     <div className="relative z-10 w-full max-w-[1180px] mx-auto px-6 sm:px-12 my-auto">
       {/* header */}
@@ -5663,15 +5663,15 @@ const SBetalingsmodell = (p: any) => {
           <div key={t.name}
                className="relative rounded-[22px] p-7 flex flex-col"
                style={{
-                 background: t.hl ? 'linear-gradient(180deg, rgba(154,99,232,0.07), rgba(154,99,232,0.02))' : '#fff',
-                 border: t.hl ? `1.5px solid rgba(154,99,232,0.28)` : '1px solid #ece8e1',
-                 boxShadow: t.hl ? '0 20px 50px -22px rgba(124,58,150,0.28)' : '0 1px 2px rgba(20,15,10,0.03), 0 12px 34px rgba(20,15,10,0.05)',
+                 background: t.hl ? 'linear-gradient(180deg, rgba(210,152,255,0.15), rgba(210,152,255,0.035))' : 'linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.022))',
+                 border: t.hl ? `1.5px solid rgba(210,152,255,0.42)` : '1px solid rgba(255,255,255,0.08)',
+                 boxShadow: t.hl ? '0 34px 80px -28px rgba(124,58,237,0.55), inset 0 1px 0 rgba(255,255,255,0.06)' : '0 30px 70px -34px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.05)',
                  animation: anim ? `payCard 0.8s cubic-bezier(0.22,1,0.36,1) ${0.45 + i * 0.12}s both` : undefined,
                  opacity: show ? undefined : 0,
                }}>
             {t.badge && (
               <span className="absolute top-5 right-5 inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.14em] px-2.5 py-1 rounded-full"
-                    style={{ ...F, background: AC, color: '#fff' }}>
+                    style={{ ...F, background: AC, color: '#1a1020' }}>
                 <Sparkles className="w-3 h-3" strokeWidth={2.4} /> {t.badge}
               </span>
             )}
@@ -5693,8 +5693,8 @@ const SBetalingsmodell = (p: any) => {
             <ul className="flex flex-col gap-3 mt-auto">
               {t.feats.map((f, fi) => (
                 <li key={fi} className="flex items-start gap-2.5">
-                  <span className="inline-flex items-center justify-center w-[18px] h-[18px] rounded-full shrink-0 mt-0.5" style={{ background: t.hl ? AC : 'rgba(154,99,232,0.12)' }}>
-                    <Check className="w-[11px] h-[11px]" strokeWidth={3} style={{ color: t.hl ? '#fff' : AC }} />
+                  <span className="inline-flex items-center justify-center w-[18px] h-[18px] rounded-full shrink-0 mt-0.5" style={{ background: t.hl ? AC : 'rgba(210,152,255,0.16)' }}>
+                    <Check className="w-[11px] h-[11px]" strokeWidth={3} style={{ color: t.hl ? '#1a1020' : AC }} />
                   </span>
                   <span className="text-[12.5px] font-normal leading-snug" style={{ ...F, color: fi === 0 && t.hl ? INK2 : SUB, fontWeight: fi === 0 && t.hl ? 600 : 400 }}>{f}</span>
                 </li>
