@@ -663,18 +663,19 @@ function Rail({ phase, node }: { phase: 'intro' | 'tour'; node: number }) {
     <div className="mt-8 mx-auto" style={{ maxWidth: 760 }}>
       <div className="relative flex items-center justify-between px-2">
         {/* bakgrunns-linje */}
-        <span className="absolute left-6 right-6 top-[7px] h-[2px] rounded-full" style={{ background: BORDER }} />
+        <span className="absolute left-6 right-6 top-[7px] h-[2px] rounded-full" style={{ background: '#ded9e4' }} />
         {/* fyll-linje */}
         <span className="absolute left-6 top-[7px] h-[2px] rounded-full" style={{ width: `calc((100% - 48px) * ${progress})`, background: `linear-gradient(90deg, ${ACCENT_DK}, ${ACCENT})`, boxShadow: `0 0 12px ${ACCENT}66`, transition: 'width 1.1s cubic-bezier(0.22,1,0.36,1)' }} />
         {TABS.map((t, i) => {
           const on = active === i;
           const done = active > i;
           const isAuto = i === 4;
+          const isIntro = active < 0;
           return (
             <div key={t.key} className="relative z-10 flex flex-col items-center gap-2" style={{ width: 90 }}>
               <span className="w-4 h-4 rounded-full flex items-center justify-center" style={{
-                background: on ? ACCENT : done ? ACCENT_DK : CARD,
-                border: `1.5px solid ${on || done ? ACCENT_DK : BORDER}`,
+                background: on ? ACCENT : done ? ACCENT_DK : (isIntro ? '#eceaf1' : CARD),
+                border: `1.5px solid ${on || done ? ACCENT_DK : (isIntro ? '#c7c2d1' : BORDER)}`,
                 boxShadow: on ? `0 0 0 5px ${ACCENT}26` : 'none',
                 transition: 'all 0.5s ease',
               }}>
@@ -683,8 +684,8 @@ function Rail({ phase, node }: { phase: 'intro' | 'tour'; node: number }) {
               </span>
               <span className="text-[11px] font-semibold whitespace-nowrap" style={{
                 fontFamily: PJ,
-                color: on ? (isAuto ? ACCENT_DK : INK) : done ? SUB : MUTED,
-                fontWeight: on ? 700 : 500,
+                color: on ? (isAuto ? ACCENT_DK : INK) : done ? SUB : (isIntro ? '#6f6b76' : MUTED),
+                fontWeight: on ? 700 : isIntro ? 600 : 500,
                 transition: 'color 0.5s ease',
               }}>{t.label}</span>
             </div>
