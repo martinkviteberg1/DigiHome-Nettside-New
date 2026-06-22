@@ -5716,6 +5716,91 @@ const SBetalingsmodell = (p: any) => {
   );
 };
 
+/* ═══ S05c · Allerede i drift — DigiHome genererer inntekter i dag (traksjon) ═══ */
+const SAlleredeInntekter = (p: any) => {
+  const active = p.isActive;
+  const isPdf = !!p.pdfMode;
+  const show = active || isPdf;
+  const anim = active && !isPdf;
+  const AC = '#9a63e8';      // lesbar merkevare-lilla på lys bakgrunn
+  const INK = '#0c0c0c';
+  const INK2 = '#1c1714';
+  const SUB = '#57514a';
+  const MUT = '#8a8278';
+  useEffect(() => { p.onLight?.(active && !isPdf); }, [active, isPdf]);
+
+  const STATS = [
+    { big: '40', unit: '', label: 'Huseiere på fullforvaltning', sub: 'betalende kunder i dag', hl: false },
+    { big: '3 000', unit: 'kr', label: 'Snitt inntekt per bolig / mnd', sub: 'fullforvaltning — 10 % av leien', hl: false },
+    { big: '120 000', unit: 'kr', label: 'Månedlig inntekt · MRR', sub: 'tilbakevendende, hver måned', hl: false },
+    { big: '1,44', unit: 'MNOK', label: 'Årlig inntektsbasis · ARR', sub: 'løpende — før skalert salg', hl: true },
+  ];
+
+  return (
+  <SlideFrame bg="beige" {...p}>
+    <style>{`
+      @keyframes traFade { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+      @keyframes traCard { from { opacity: 0; transform: translateY(22px) scale(0.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
+      @keyframes traPulse { 0%,100% { opacity: 0.5; transform: scale(1); } 50% { opacity: 1; transform: scale(1.3); } }
+    `}</style>
+
+    <div aria-hidden="true" className="absolute inset-0 pointer-events-none"
+         style={{ background: 'radial-gradient(ellipse at 50% 20%, rgba(154,99,232,0.05) 0%, transparent 56%)' }} />
+    <DotGrid maskCenter="50% 26%" opacity={0.4} />
+
+    <div className="relative z-10 w-full max-w-[1180px] mx-auto px-6 sm:px-12 my-auto">
+      {/* header */}
+      <div className="mb-10 sm:mb-12" style={{ animation: anim ? 'traFade 0.7s cubic-bezier(0.22,1,0.36,1) 0.1s both' : undefined, opacity: show ? undefined : 0 }}>
+        <span className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.28em]" style={{ ...F, color: AC }}>
+          <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ background: '#22a06b', animation: anim ? 'traPulse 2s ease-in-out infinite' : undefined }} />
+          Traksjon · allerede i drift
+        </span>
+        <h2 className="tracking-[-0.03em] leading-[1.04] mt-5" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(28px, 3.6vw, 48px)', color: INK }}>
+          Vi genererer allerede <span style={{ color: AC }}>inntekter.</span>
+        </h2>
+        <p className="text-[14.5px] sm:text-[16px] font-normal leading-[1.6] mt-4 max-w-[700px]" style={{ ...F, color: SUB }}>
+          DigiHome er ikke et konsept. Vi har <span style={{ color: INK2, fontWeight: 600 }}>40 betalende huseiere</span> på fullforvaltning i dag — med ekte, tilbakevendende inntekter.
+        </p>
+      </div>
+
+      {/* fire nøkkeltall */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
+        {STATS.map((s, i) => (
+          <div key={s.label}
+               className="relative rounded-[22px] p-7 flex flex-col"
+               style={{
+                 background: s.hl ? 'linear-gradient(180deg, rgba(154,99,232,0.09), rgba(154,99,232,0.025))' : '#ffffff',
+                 border: s.hl ? '1.5px solid rgba(154,99,232,0.42)' : '1px solid rgba(20,15,10,0.08)',
+                 boxShadow: s.hl ? '0 34px 80px -34px rgba(124,58,237,0.30), inset 0 1px 0 rgba(255,255,255,0.7)' : '0 26px 60px -34px rgba(20,15,10,0.20), inset 0 1px 0 rgba(255,255,255,0.7)',
+                 animation: anim ? `traCard 0.8s cubic-bezier(0.22,1,0.36,1) ${0.4 + i * 0.12}s both` : undefined,
+                 opacity: show ? undefined : 0,
+               }}>
+            {s.hl && (
+              <span className="absolute top-5 right-5 inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.14em] px-2.5 py-1 rounded-full" style={{ ...F, background: AC, color: '#fff' }}>
+                <TrendingUp className="w-3 h-3" strokeWidth={2.6} /> Vokser
+              </span>
+            )}
+            <div className="flex items-end gap-1.5">
+              <span className="font-bold tracking-[-0.04em] leading-[0.9]" style={{ ...FH, color: s.hl ? AC : INK, fontSize: 'clamp(32px, 4vw, 52px)' }}>{s.big}</span>
+              {s.unit && <span className="text-[16px] font-semibold mb-2" style={{ ...F, color: s.hl ? AC : MUT }}>{s.unit}</span>}
+            </div>
+            <span className="text-[13.5px] font-semibold mt-4 tracking-[-0.01em]" style={{ ...FH, color: INK2 }}>{s.label}</span>
+            <span className="text-[12.5px] font-normal leading-snug mt-1.5" style={{ ...F, color: MUT }}>{s.sub}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* payoff */}
+      <p className="text-[14px] sm:text-[15px] font-normal leading-[1.6] mt-9 text-center mx-auto max-w-[760px]"
+         style={{ ...F, color: SUB, animation: anim ? 'traFade 0.9s cubic-bezier(0.22,1,0.36,1) 0.95s both' : undefined, opacity: show ? undefined : 0 }}>
+        <span style={{ color: INK2, fontWeight: 600 }}>40 boliger × 3 000 kr/mnd = 120 000 kr i månedlig inntekt.</span> Ekte kunder, ekte inntekter — før vi har skalert salget.
+      </p>
+    </div>
+  </SlideFrame>
+  );
+};
+
+
 
 /* ═══ S04d · Filosofien bak DigiHome — fire grunnpilarer (manifest, dark) ═══ */
 const SFilosofi = (p: any) => {
@@ -5895,6 +5980,7 @@ const SLIDES = [
   SSystemIArbeid, // 04 · Systemet i arbeid — scriptet kontrakt-demo (ekte produkt-UI)
   SBusinessModels, // 05 · Forretningsmodeller — B2C (private) + B2B (profesjonelle)
   SBetalingsmodell, // 05b · Betalingsmodell — B2C (% av leie) + B2B (SaaS per enhet)
+  SAlleredeInntekter, // 05c · Allerede i drift — 40 betalende huseiere, MRR/ARR i dag (traksjon)
   SLiveDemo,     // 04 · Live product animation (from /digihome-tech)
   SDualUSP,      // 05 · Three unique aspects (auto-listing + dynamic + AI ops)
   STeam,         // 06 · Team (founder-market fit)
@@ -5928,7 +6014,7 @@ export default function Presentasjon() {
   const prev = useCallback(() => setC((v: any) => Math.max(v - 1, 0)), []);
 
   // Lyse slides toner til lys bakgrunn — la chrome (pille) tilpasse seg
-  useEffect(() => { if (![1, 2, 3, 4, 6, 7, 8, 9].includes(c)) setChromeLight(false); }, [c]);
+  useEffect(() => { if (![1, 2, 3, 4, 6, 7, 8, 9, 10].includes(c)) setChromeLight(false); }, [c]);
 
   // Slide 2: lås fremover-navigasjon til hele tekst-animasjonen er spilt ferdig
   // MIDLERTIDIG DEAKTIVERT — låsen er slått av etter ønske. Sett ENABLE_S2_LOCK = true for å reaktivere.
@@ -6067,7 +6153,7 @@ export default function Presentasjon() {
       onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
       {SLIDES.map((Slide: any, i: number) => (
         <div key={i} className={`absolute inset-0 overflow-hidden transition-all duration-700 ease-[cubic-bezier(0.4,0,0.2,1)] ${i === c ? 'opacity-100 scale-100' : i < c ? 'opacity-0 scale-[0.96]' : 'opacity-0 scale-[1.04]'}`} style={{ pointerEvents: i === c ? 'auto' : 'none', visibility: Math.abs(i - c) <= 1 ? 'visible' : 'hidden' }}>
-          <Slide slideNum={i + 1} total={SLIDES.length} isActive={i === c} onLight={[1, 2, 3, 4, 6, 7, 8, 9].includes(i) ? setChromeLight : undefined} onAnimationComplete={i === 1 ? handleS2Complete : undefined} />
+          <Slide slideNum={i + 1} total={SLIDES.length} isActive={i === c} onLight={[1, 2, 3, 4, 6, 7, 8, 9, 10].includes(i) ? setChromeLight : undefined} onAnimationComplete={i === 1 ? handleS2Complete : undefined} />
         </div>
       ))}
 
