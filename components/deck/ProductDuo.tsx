@@ -49,18 +49,44 @@ const TABS = [
   { key: 'autopilot', label: 'Autopilot' },
 ];
 
-/* ── omvisnings-koreografi: tom ramme → tekst → app-UI → guidet zoom → autopilot ── */
+/* ── omvisnings-koreografi: tom ramme → fortellende tekst → app-UI → (naviger i sidebar → zoom på innhold) → autopilot ── */
 type Focus = { scale: number; x: number; y: number };
-type Step = { key: string; tab: number; node: number; dur: number; focus: Focus; dim: number };
-const STEPS: Step[] = [
-  { key: 'salg',       tab: 0, node: 0, dur: 3000, focus: { scale: 1.11, x: -78, y: 14 },  dim: 0.30 },
-  { key: 'eiendommer', tab: 1, node: 1, dur: 3000, focus: { scale: 1.10, x: -66, y: 10 },  dim: 0.26 },
-  { key: 'saker',      tab: 2, node: 2, dur: 3000, focus: { scale: 1.13, x: -72, y: 0 },   dim: 0.28 },
-  { key: 'kalender',   tab: 3, node: 3, dur: 3000, focus: { scale: 1.10, x: -60, y: 8 },   dim: 0.24 },
-  { key: 'converge',   tab: 3, node: 3, dur: 2000, focus: { scale: 1.0,  x: 0,   y: 0 },   dim: 0.40 },
-  { key: 'autopilot',  tab: 4, node: 4, dur: 5400, focus: { scale: 1.0,  x: 0,   y: 0 },   dim: 0.0 },
+type Beat = {
+  kind: 'nav' | 'view' | 'converge';
+  key: string;
+  side: number;     // hvilken sidebar-modul som er markert (markør-mål)
+  content: number;  // hvilken modul-skjerm som vises i innholdet
+  node: number;     // fremdrifts-skinne
+  dur: number;
+  focus: Focus;
+  dim: number;
+};
+const FULL: Focus = { scale: 1.0, x: 0, y: 0 };
+const FOCUS: Record<string, Focus> = {
+  salg:       { scale: 1.11, x: -78, y: 14 },
+  eiendommer: { scale: 1.10, x: -66, y: 10 },
+  saker:      { scale: 1.13, x: -72, y: 0 },
+  kalender:   { scale: 1.10, x: -60, y: 8 },
+};
+const BEATS: Beat[] = [
+  // Salg
+  { kind: 'nav',  key: 'salg',       side: 0, content: 0, node: 0, dur: 1500, focus: FULL,             dim: 0.0 },
+  { kind: 'view', key: 'salg',       side: 0, content: 0, node: 0, dur: 2600, focus: FOCUS.salg,       dim: 0.30 },
+  // Eiendommer
+  { kind: 'nav',  key: 'eiendommer', side: 1, content: 0, node: 1, dur: 1350, focus: FULL,             dim: 0.0 },
+  { kind: 'view', key: 'eiendommer', side: 1, content: 1, node: 1, dur: 2600, focus: FOCUS.eiendommer, dim: 0.26 },
+  // Saker
+  { kind: 'nav',  key: 'saker',      side: 2, content: 1, node: 2, dur: 1350, focus: FULL,             dim: 0.0 },
+  { kind: 'view', key: 'saker',      side: 2, content: 2, node: 2, dur: 2600, focus: FOCUS.saker,      dim: 0.28 },
+  // Kalender
+  { kind: 'nav',  key: 'kalender',   side: 3, content: 2, node: 3, dur: 1350, focus: FULL,             dim: 0.0 },
+  { kind: 'view', key: 'kalender',   side: 3, content: 3, node: 3, dur: 2600, focus: FOCUS.kalender,   dim: 0.24 },
+  // Konvergens → Autopilot
+  { kind: 'converge', key: 'converge', side: 3, content: 3, node: 3, dur: 2000, focus: FULL,           dim: 0.42 },
+  { kind: 'nav',  key: 'autopilot',  side: 4, content: 3, node: 4, dur: 1500, focus: FULL,             dim: 0.0 },
+  { kind: 'view', key: 'autopilot',  side: 4, content: 4, node: 4, dur: 4600, focus: FULL,             dim: 0.0 },
 ];
-const INTRO_DUR = 3200;
+const INTRO_DUR = 4700;
 const CAPS: Record<string, { t: string; d: string }> = {
   salg:       { t: 'Salg',       d: 'Fang interessenter — automatisk oppfølging og kvalifisering.' },
   eiendommer: { t: 'Eiendommer', d: 'Hele porteføljen, enheter og leieforhold på ett sted.' },
@@ -95,7 +121,7 @@ function SideLabel({ children }: any) {
   return <p className="text-[8.5px] font-semibold uppercase tracking-[0.18em] px-4 pt-2.5 pb-1" style={{ fontFamily: PJ, color: 'rgba(255,255,255,0.28)' }}>{children}</p>;
 }
 
-function Sidebar({ tab }: { tab: number }) {
+function Sidebar({ tab, cursorOn, pulseKey }: { tab: number; cursorOn?: boolean; pulseKey?: number }) {
   const navRef = useRef<HTMLDivElement>(null);
   const rSalg = useRef<HTMLDivElement>(null);
   const rEiendommer = useRef<HTMLDivElement>(null);
@@ -125,6 +151,15 @@ function Sidebar({ tab }: { tab: number }) {
           opacity: ind.ready ? 1 : 0, zIndex: 1,
         }}>
           <span style={{ position: 'absolute', left: -10, top: '50%', transform: 'translateY(-50%)', width: 3, height: 18, borderRadius: '0 4px 4px 0', background: 'linear-gradient(to bottom,#cf97fc,#7c5cff)', boxShadow: '0 0 12px rgba(207,151,252,0.75)' }} />
+        </div>
+        {/* navigasjons-markør + klikk-ripple */}
+        {cursorOn && (
+          <span key={'rip' + pulseKey} style={{ position: 'absolute', left: 14, top: ind.top + ind.h / 2 - 13, width: 26, height: 26, borderRadius: '50%', border: '2px solid #cf97fc', opacity: 0, zIndex: 5, pointerEvents: 'none', animation: 'pdRipple 0.8s ease-out 0.5s both' }} />
+        )}
+        <div style={{ position: 'absolute', left: 40, top: ind.top + ind.h / 2 - 6, zIndex: 6, pointerEvents: 'none', opacity: cursorOn ? 1 : 0, transition: 'top 0.6s cubic-bezier(0.22,1,0.36,1), left 0.3s ease, opacity 0.35s ease', filter: 'drop-shadow(0 2px 5px rgba(0,0,0,0.55))' }}>
+          <span key={'tap' + pulseKey} style={{ display: 'inline-block', animation: cursorOn ? 'pdTap 0.8s ease-out 0.5s both' : undefined }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M5 3 L5 19 L9 15 L11.5 21 L14.2 19.9 L11.8 14.2 L17 14 Z" fill="#fff" stroke="#0a0a0a" strokeWidth="1.1" strokeLinejoin="round" /></svg>
+          </span>
         </div>
         <SideLabel>Arbeid</SideLabel>
         <NavItem icon={LayoutDashboard} label="Oversikt" on={false} />
@@ -422,8 +457,9 @@ const VIEWS = [ViewSalg, ViewEiendommer, ViewSaker, ViewKalender, ViewOperasjon]
 
 const VIEW_KEYS = ['salg', 'eiendommer', 'saker', 'kalender', 'autopilot'];
 
-/* ═══════════════════════ INTRO-TEKST (inne i rammen, før appen vises) ═══════════════════════ */
+/* ═══════════════════════ INTRO-TEKST (inne i rammen, fortellende progressiv reveal) ═══════════════════════ */
 function IntroCard() {
+  const line1 = 'Alt du forventer.'.split(' ');
   return (
     <motion.div
       className="absolute inset-0 z-40 flex flex-col items-center justify-center text-center px-16 overflow-hidden"
@@ -431,65 +467,87 @@ function IntroCard() {
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, scale: 1.05, filter: 'blur(6px)' }}
       transition={{ duration: 0.95, ease }}
     >
-      {/* ambient glød + fin grid */}
-      <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(50% 50% at 50% 38%, rgba(210,152,255,0.16), transparent 70%)' }} />
+      {/* ambient glød + fin grid (puster sakte inn) */}
+      <motion.div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(50% 50% at 50% 40%, rgba(210,152,255,0.18), transparent 70%)' }}
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 2.2, ease }} />
       <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: 'radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1px)', backgroundSize: '32px 32px', maskImage: 'radial-gradient(ellipse 70% 60% at 50% 45%, #000 30%, transparent 80%)', WebkitMaskImage: 'radial-gradient(ellipse 70% 60% at 50% 45%, #000 30%, transparent 80%)' }} />
+
+      {/* kicker */}
       <motion.span
-        className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.4em] mb-7"
+        className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.4em] mb-8"
         style={{ fontFamily: PJ, color: 'rgba(255,255,255,0.5)' }}
-        initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease, delay: 0.25 }}
+        initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, ease, delay: 0.6 }}
       >
         <span className="w-1.5 h-1.5 rounded-full" style={{ background: ACCENT, boxShadow: `0 0 10px ${ACCENT}` }} />
         DigiHome-plattformen
       </motion.span>
-      <h2 className="leading-[1.02] tracking-[-0.035em]" style={{ fontFamily: FH, fontWeight: 700, fontSize: 'clamp(34px, 4.4vw, 62px)' }}>
-        <motion.span className="block" style={{ color: '#fbfaff' }} initial={{ opacity: 0, y: 22, filter: 'blur(8px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} transition={{ duration: 0.85, ease, delay: 0.45 }}>
-          Alt du forventer.
-        </motion.span>
+
+      <h2 className="leading-[1.04] tracking-[-0.035em]" style={{ fontFamily: FH, fontWeight: 700, fontSize: 'clamp(34px, 4.4vw, 62px)' }}>
+        {/* linje 1 — bygges ord for ord (oppsett) */}
+        <span className="block" style={{ color: '#fbfaff' }}>
+          {line1.map((w, i) => (
+            <motion.span key={i} className="inline-block" style={{ marginRight: '0.24em' }}
+              initial={{ opacity: 0, y: 20, filter: 'blur(10px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+              transition={{ duration: 0.7, ease, delay: 1.5 + i * 0.1 }}>{w}</motion.span>
+          ))}
+        </span>
+        {/* tynn aksent-linje som tegnes mellom oppsett og payoff */}
+        <motion.span className="block mx-auto my-3 rounded-full" style={{ height: 2, background: `linear-gradient(90deg, transparent, ${ACCENT}, transparent)`, transformOrigin: 'center' }}
+          initial={{ scaleX: 0, opacity: 0 }} animate={{ scaleX: 1, opacity: 1 }} transition={{ duration: 0.9, ease, delay: 2.4 }} />
+        {/* linje 2 — payoff, lander samlet med glød */}
         <motion.span
-          className="block" initial={{ opacity: 0, y: 22, filter: 'blur(8px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} transition={{ duration: 0.85, ease, delay: 0.72 }}
-          style={{ backgroundImage: `linear-gradient(100deg, ${ACCENT} 0%, #e9ccff 55%, #b07be0 100%)`, WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}
+          className="block" initial={{ opacity: 0, y: 24, filter: 'blur(12px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} transition={{ duration: 1.0, ease, delay: 2.9 }}
+          style={{ backgroundImage: `linear-gradient(100deg, ${ACCENT} 0%, #e9ccff 55%, #b07be0 100%)`, WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent', filter: 'drop-shadow(0 0 22px rgba(210,152,255,0.28))' }}
         >
           Pluss autopiloten ingen andre har.
         </motion.span>
       </h2>
+
+      {/* CTA-linje */}
       <motion.p
-        className="mt-7 text-[15px] font-light" style={{ fontFamily: "var(--font-body), 'ABC Diatype', sans-serif", color: 'rgba(255,255,255,0.52)', letterSpacing: '0.01em' }}
-        initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, ease, delay: 1.05 }}
+        className="mt-9 text-[15px] font-light" style={{ fontFamily: "var(--font-body), 'ABC Diatype', sans-serif", color: 'rgba(255,255,255,0.5)', letterSpacing: '0.01em' }}
+        initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.9, ease, delay: 3.9 }}
       >
-        <span style={{ color: 'rgba(255,255,255,0.78)' }}>Salg</span> · Eiendommer · Saker · Kalender — ett system.&nbsp;&nbsp;<span style={{ color: 'rgba(255,255,255,0.7)' }}>La oss ta en omvisning</span>
-        <ArrowRight className="inline-block w-4 h-4 ml-1.5 -mt-0.5" style={{ color: ACCENT }} strokeWidth={2.4} />
+        <span style={{ color: 'rgba(255,255,255,0.74)' }}>Salg</span> · Eiendommer · Saker · Kalender — ett system.&nbsp;&nbsp;
+        <span style={{ color: '#fff', fontWeight: 500 }}>La oss ta en omvisning</span>
+        <motion.span className="inline-block" initial={{ x: -4, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ duration: 0.6, ease, delay: 4.4 }}>
+          <ArrowRight className="inline-block w-4 h-4 ml-1.5 -mt-0.5" style={{ color: ACCENT }} strokeWidth={2.4} />
+        </motion.span>
       </motion.p>
     </motion.div>
   );
 }
 
-/* ═══════════════════════ DESKTOP-MOCKUP (kamera + spotlight + overlays) ═══════════════════════ */
-function DesktopMock({ phase, step }: { phase: 'intro' | 'tour'; step: Step }) {
-  const View = VIEWS[step.tab];
-  const showCap = phase === 'tour' && CAPS[step.key];
-  const isAuto = step.key === 'autopilot';
-  const isConv = step.key === 'converge';
+/* ═══════════════════════ DESKTOP-MOCKUP (kamera + spotlight + nav-markør + overlays) ═══════════════════════ */
+function DesktopMock({ phase, beat, pulseKey }: { phase: 'intro' | 'tour'; beat: Beat; pulseKey: number }) {
+  const View = VIEWS[beat.content];
+  const isNav = beat.kind === 'nav';
+  const isView = beat.kind === 'view';
+  const isConv = beat.kind === 'converge';
+  const isAuto = beat.key === 'autopilot' && isView;
+  const showCap = phase === 'tour' && isView && CAPS[beat.key];
   return (
     <div className="rounded-[24px] overflow-hidden relative" style={{ width: DESK_W, background: BG, border: `1px solid ${BORDER_S}`, boxShadow: '0 1px 0 rgba(255,255,255,0.9) inset, 0 60px 130px -44px rgba(26,22,18,0.46), 0 24px 60px -34px rgba(26,22,18,0.26)' }}>
       {/* kamera (zoom/pan) */}
       <motion.div
         className="flex" style={{ height: BODY_H, transformOrigin: '50% 50%' }}
-        animate={{ scale: step.focus.scale, x: step.focus.x, y: step.focus.y }}
+        animate={{ scale: beat.focus.scale, x: beat.focus.x, y: beat.focus.y }}
         transition={{ duration: 1.25, ease }}
       >
-        <Sidebar tab={step.tab} />
+        <Sidebar tab={beat.side} cursorOn={isNav} pulseKey={pulseKey} />
         <div className="flex-1 relative overflow-hidden" style={{ background: BG }}>
           <AnimatePresence mode="sync">
-            <motion.div key={step.tab} className="absolute inset-0" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.55, ease }}>
+            <motion.div key={beat.content} className="absolute inset-0" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.55, ease }}>
               <View />
             </motion.div>
           </AnimatePresence>
+          {/* nav-dim: under navigasjon dempes innholdet så fokus er på sidebaren */}
+          <div className="absolute inset-0 pointer-events-none" style={{ background: 'rgba(8,7,12,0.5)', opacity: isNav ? 1 : 0, transition: 'opacity 0.7s ease' }} />
         </div>
       </motion.div>
 
       {/* spotlight-vignett (highlight på fokusmodulen) */}
-      <div className="absolute inset-0 pointer-events-none z-10" style={{ background: `radial-gradient(ellipse 64% 66% at 52% 47%, transparent 42%, rgba(12,10,18,${step.dim}) 100%)`, transition: 'background 1s ease' }} />
+      <div className="absolute inset-0 pointer-events-none z-10" style={{ background: `radial-gradient(ellipse 64% 66% at 52% 47%, transparent 42%, rgba(12,10,18,${beat.dim}) 100%)`, transition: 'background 1s ease' }} />
 
       {/* autopilot-pille */}
       <AnimatePresence>
@@ -502,16 +560,16 @@ function DesktopMock({ phase, step }: { phase: 'intro' | 'tour'; step: Step }) {
         )}
       </AnimatePresence>
 
-      {/* lower-third bildetekst */}
+      {/* lower-third bildetekst (kun i view-fasen) */}
       <AnimatePresence mode="wait">
         {showCap && (
-          <motion.div key={step.key} className="absolute left-7 bottom-7 z-20 max-w-[420px]"
+          <motion.div key={beat.key} className="absolute left-7 bottom-7 z-20 max-w-[420px]"
             initial={{ opacity: 0, y: 16, filter: 'blur(6px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} exit={{ opacity: 0, y: -10, filter: 'blur(4px)' }} transition={{ duration: 0.6, ease }}>
             <div className="rounded-2xl px-5 py-4 flex items-start gap-3.5" style={{ background: 'rgba(16,14,22,0.74)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', boxShadow: '0 18px 44px -16px rgba(0,0,0,0.5)' }}>
               <span className="w-1 self-stretch rounded-full shrink-0" style={{ background: `linear-gradient(${ACCENT}, ${ACCENT_DK})`, boxShadow: `0 0 14px ${ACCENT}` }} />
               <div>
-                <p className="text-[16px] font-semibold leading-tight" style={{ fontFamily: FH, color: '#fff', letterSpacing: '-0.01em' }}>{CAPS[step.key].t}</p>
-                <p className="text-[12.5px] mt-1 font-light leading-snug" style={{ fontFamily: PJ, color: 'rgba(255,255,255,0.62)' }}>{CAPS[step.key].d}</p>
+                <p className="text-[16px] font-semibold leading-tight" style={{ fontFamily: FH, color: '#fff', letterSpacing: '-0.01em' }}>{CAPS[beat.key].t}</p>
+                <p className="text-[12.5px] mt-1 font-light leading-snug" style={{ fontFamily: PJ, color: 'rgba(255,255,255,0.62)' }}>{CAPS[beat.key].d}</p>
               </div>
             </div>
           </motion.div>
@@ -585,7 +643,7 @@ export default function ProductDuo({ active, pdfMode }: { active?: boolean; pdfM
   const wrapRef = useRef<HTMLDivElement>(null);
   const [cw, setCw] = useState(DESK_W);
   const [phase, setPhase] = useState<'intro' | 'tour'>('intro');
-  const [si, setSi] = useState(0);
+  const [bi, setBi] = useState(0);
 
   useEffect(() => {
     const update = () => { if (wrapRef.current) setCw(wrapRef.current.offsetWidth); };
@@ -597,26 +655,25 @@ export default function ProductDuo({ active, pdfMode }: { active?: boolean; pdfM
   }, []);
 
   // PDF: statisk autopilot-visning, ingen timere
-  const autoIdx = STEPS.findIndex((s) => s.key === 'autopilot');
+  const autoIdx = BEATS.findIndex((b) => b.key === 'autopilot' && b.kind === 'view');
 
   useEffect(() => {
-    if (pdfMode) { setPhase('tour'); setSi(autoIdx); return; }
-    if (!active) { setPhase('intro'); setSi(0); return; }
-    // start på intro når slide blir aktiv
-    setPhase('intro'); setSi(0);
-    const t = setTimeout(() => { setPhase('tour'); setSi(0); }, INTRO_DUR);
+    if (pdfMode) { setPhase('tour'); setBi(autoIdx); return; }
+    if (!active) { setPhase('intro'); setBi(0); return; }
+    setPhase('intro'); setBi(0);
+    const t = setTimeout(() => { setPhase('tour'); setBi(0); }, INTRO_DUR);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active, pdfMode]);
 
   useEffect(() => {
     if (!active || pdfMode || phase !== 'tour') return;
-    const t = setTimeout(() => setSi((s) => (s + 1) % STEPS.length), STEPS[si].dur);
+    const t = setTimeout(() => setBi((b) => (b + 1) % BEATS.length), BEATS[bi].dur);
     return () => clearTimeout(t);
-  }, [active, pdfMode, phase, si]);
+  }, [active, pdfMode, phase, bi]);
 
-  const introStep: Step = { key: 'intro', tab: 0, node: -1, dur: 0, focus: { scale: 1.06, x: 0, y: 0 }, dim: 0 };
-  const step = phase === 'intro' ? introStep : STEPS[si];
+  const introBeat: Beat = { kind: 'view', key: 'intro', side: 0, content: 0, node: -1, dur: 0, focus: { scale: 1.04, x: 0, y: 0 }, dim: 0 };
+  const beat = phase === 'intro' ? introBeat : BEATS[bi];
 
   const scale = Math.min(1.06, cw / DESK_W);
   const anim = show && !pdfMode ? 'pd-in 0.9s cubic-bezier(0.16,1,0.3,1) 0.1s both' : undefined;
@@ -625,14 +682,16 @@ export default function ProductDuo({ active, pdfMode }: { active?: boolean; pdfM
     <div ref={wrapRef} className="w-full">
       <style>{`
         @keyframes pd-in { from { opacity:0; transform: translateY(26px); filter: blur(8px); } to { opacity:1; transform: translateY(0); filter: blur(0); } }
+        @keyframes pdRipple { 0% { transform: scale(0.4); opacity: 0.85; } 100% { transform: scale(2); opacity: 0; } }
+        @keyframes pdTap { 0% { transform: scale(1); } 38% { transform: scale(0.8); } 100% { transform: scale(1); } }
       `}</style>
       <div style={{ animation: anim, opacity: show ? undefined : 0 }}>
         <div style={{ height: BODY_H * scale, position: 'relative' }}>
           <div style={{ width: DESK_W, transform: `scale(${scale})`, transformOrigin: 'top center', position: 'absolute', left: '50%', marginLeft: -DESK_W / 2, top: 0 }}>
-            <DesktopMock phase={phase} step={step} />
+            <DesktopMock phase={phase} beat={beat} pulseKey={phase === 'tour' ? bi : -1} />
           </div>
         </div>
-        <Rail phase={phase} node={phase === 'tour' ? STEPS[si].node : -1} />
+        <Rail phase={phase} node={phase === 'tour' ? BEATS[bi].node : -1} />
       </div>
     </div>
   );
