@@ -5636,20 +5636,7 @@ const SProdukt = (p: any) => {
       @keyframes prodHIn { from { opacity: 0; transform: translateY(20px); filter: blur(6px); } to { opacity: 1; transform: translateY(0); filter: blur(0); } }
       @keyframes prodHFade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
     `}</style>
-    <div className="mx-auto self-stretch px-6 sm:px-12 w-full relative z-10 flex flex-col justify-center" style={{ maxWidth: 1400 }}>
-      <div className="mb-6 sm:mb-9">
-        <div className="flex items-end justify-between gap-8 flex-wrap">
-          <div>
-            <span className="block text-[10px] font-bold uppercase tracking-[0.42em] mb-3" style={{ ...F, color: DINK, animation: active ? 'prodHFade 0.7s ease 0.1s both' : undefined, opacity: active ? undefined : 0 }}>Produktet</span>
-            <h2 className="font-bold tracking-[-0.042em] leading-[1.0]" style={{ ...FH, fontWeight: 700, color: DINK, fontSize: 'clamp(28px, 3.8vw, 50px)', animation: active ? 'prodHIn 0.9s cubic-bezier(0.22,1,0.36,1) 0.2s both' : undefined, opacity: active ? undefined : 0 }}>
-              Én motor. To produkter.
-            </h2>
-          </div>
-          <p className="font-light leading-[1.55] max-w-[370px] mb-1" style={{ ...F, color: '#5a564d', fontSize: 'clamp(11.5px, 1vw, 13.5px)', animation: active ? 'prodHFade 0.7s ease 0.4s both' : undefined, opacity: active ? undefined : 0 }}>
-            Samme autopilot-motor i bunn — proff-cockpit for forvalteren, autopilot for den private utleieren.
-          </p>
-        </div>
-      </div>
+    <div className="mx-auto self-stretch px-6 sm:px-10 w-full relative z-10 flex flex-col justify-center" style={{ maxWidth: 1440 }}>
       <ProductDuo active={active} pdfMode={!!p.pdfMode} />
     </div>
   </SlideFrame>
