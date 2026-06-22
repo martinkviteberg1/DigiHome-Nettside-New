@@ -9,6 +9,7 @@ import HeroProductAnimation from './HeroProductAnimation';
 import ContractDemo from './ContractDemo';
 import AutopilotArchitecture from './AutopilotArchitecture';
 import ProductDuo from './ProductDuo';
+import AIEiendom from './AIEiendom';
 import LandingHeroAnimation from './LandingHeroAnimation';
 
 const F = { fontFamily: "var(--font-body), 'ABC Diatype', -apple-system, BlinkMacSystemFont, sans-serif" };
@@ -5643,6 +5644,13 @@ const SProdukt = (p: any) => {
   );
 };
 
+/* ═══ S04c · AI som forstår eiendom — 3 praktiske AI-moats m/ menneske-godkjenning ═══ */
+const SAIEiendom = (p: any) => (
+  <SlideFrame bg="dark" {...p}>
+    <AIEiendom active={p.isActive} pdfMode={!!p.pdfMode} />
+  </SlideFrame>
+);
+
 /* ═══ S04 · Systemet i arbeid — scriptet kontrakt-demo (ekte produkt-UI) ═══ */
 const SSystemIArbeid = (p: any) => {
   const active = p.isActive;
@@ -5686,6 +5694,7 @@ const SLIDES = [
   SFraVerktoyTilMotor, // 03 · Problemet og løsningen — fra verktøy (proptech) til motor (DigiHome)
   SArkitektur, // 04a · Arkitekturen — alt flyter inn i Autopiloten (animert)
   SProdukt, // 04b · Produktet — Én motor. To produkter. (B2B desktop + B2C mobil)
+  SAIEiendom, // 04c · AI som forstår eiendom — 3 AI-moats m/ menneske-godkjenning
   SSystemIArbeid, // 04 · Systemet i arbeid — scriptet kontrakt-demo (ekte produkt-UI)
   SBusinessModels, // 05 · Forretningsmodeller — B2C (private) + B2B (profesjonelle)
   SLiveDemo,     // 04 · Live product animation (from /digihome-tech)
