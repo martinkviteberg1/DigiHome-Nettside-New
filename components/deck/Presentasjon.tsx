@@ -5601,6 +5601,120 @@ const SBusinessModels = (p: any) => {
 };
 
 
+/* ═══ S05b · Betalingsmodell — B2C (% av leie) + B2B (SaaS per enhet) ═══ */
+const SBetalingsmodell = (p: any) => {
+  const active = p.isActive;
+  const isPdf = !!p.pdfMode;
+  const show = active || isPdf;
+  const anim = active && !isPdf;
+  const AC = '#9a63e8';
+  const INK = '#0c0c0c';
+  const INK2 = '#1c1714';
+  const SUB = '#57514a';
+  const MUT = '#8a8278';
+  const FAINT = '#a8a097';
+  const HAIR = 'rgba(20,15,10,0.10)';
+  const TIERS = [
+    {
+      seg: 'Privat · B2C', name: 'Selvbetjent', pre: '', big: '5%', unit: 'av leiesummen',
+      desc: 'Du forvalter selv — plattformen gjør grovarbeidet.',
+      feats: ['Annonsering på FINN, Airbnb m.fl.', 'Kontrakt, betaling og oppfølging — automatisk', 'Full oversikt i appen', 'Du styrer leietaker-kontakten'],
+      hl: false, badge: '',
+    },
+    {
+      seg: 'Privat · B2C', name: 'Full forvaltning', pre: '', big: '10%', unit: 'av leiesummen',
+      desc: 'Vi tar hele administrasjonen — som en utleiemegler.',
+      feats: ['Alt i Selvbetjent, pluss:', 'All leietaker-kommunikasjon', 'Visninger, drift og vedlikehold', 'Du løfter aldri en finger'],
+      hl: true, badge: 'Vi tar alt',
+    },
+    {
+      seg: 'Profesjonell · B2B', name: 'Porteføljelisens', pre: 'fra', big: '249 kr', unit: 'per enhet / mnd',
+      desc: 'SaaS per enhet — synkende pris ved volum.',
+      feats: ['Volumrabatt — rabattmatrise ved skala', 'Porteføljedrift, team & roller', 'API og integrasjoner', 'Enterprise-support'],
+      hl: false, badge: '',
+    },
+  ];
+  return (
+  <SlideFrame bg="beige" {...p}>
+    <style>{`
+      @keyframes payFade { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+      @keyframes payCard { from { opacity: 0; transform: translateY(22px) scale(0.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
+    `}</style>
+
+    <div aria-hidden="true" className="absolute inset-0 pointer-events-none"
+         style={{ background: 'radial-gradient(ellipse at 50% 26%, rgba(154,99,232,0.05) 0%, transparent 55%)' }} />
+    <DotGrid maskCenter="50% 28%" opacity={0.34} />
+
+    <div className="relative z-10 w-full max-w-[1180px] mx-auto px-6 sm:px-12 my-auto">
+      {/* header */}
+      <div className="mb-9 sm:mb-11" style={{ animation: anim ? 'payFade 0.7s cubic-bezier(0.22,1,0.36,1) 0.1s both' : undefined, opacity: show ? undefined : 0 }}>
+        <span className="text-[11px] font-bold uppercase tracking-[0.28em]" style={{ ...F, color: AC }}>Betalingsmodell</span>
+        <h2 className="tracking-[-0.03em] leading-[1.04] mt-5" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(28px, 3.4vw, 46px)', color: INK }}>
+          Prising som følger verdien.
+        </h2>
+        <p className="text-[14.5px] sm:text-[16px] font-normal leading-[1.6] mt-4 max-w-[660px]" style={{ ...F, color: SUB }}>
+          Privatmarkedet betaler en andel av leien. Det profesjonelle markedet betaler per enhet, med volumrabatt.
+        </p>
+      </div>
+
+      {/* tre nivåer */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        {TIERS.map((t, i) => (
+          <div key={t.name}
+               className="relative rounded-[22px] p-7 flex flex-col"
+               style={{
+                 background: t.hl ? 'linear-gradient(180deg, rgba(154,99,232,0.07), rgba(154,99,232,0.02))' : '#fff',
+                 border: t.hl ? `1.5px solid rgba(154,99,232,0.28)` : '1px solid #ece8e1',
+                 boxShadow: t.hl ? '0 20px 50px -22px rgba(124,58,150,0.28)' : '0 1px 2px rgba(20,15,10,0.03), 0 12px 34px rgba(20,15,10,0.05)',
+                 animation: anim ? `payCard 0.8s cubic-bezier(0.22,1,0.36,1) ${0.45 + i * 0.12}s both` : undefined,
+                 opacity: show ? undefined : 0,
+               }}>
+            {t.badge && (
+              <span className="absolute top-5 right-5 inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.14em] px-2.5 py-1 rounded-full"
+                    style={{ ...F, background: AC, color: '#fff' }}>
+                <Sparkles className="w-3 h-3" strokeWidth={2.4} /> {t.badge}
+              </span>
+            )}
+
+            <span className="text-[10.5px] font-bold uppercase tracking-[0.2em]" style={{ ...F, color: MUT }}>{t.seg}</span>
+            <h3 className="text-[23px] font-bold tracking-[-0.02em] leading-tight mt-2.5" style={{ ...FH, color: INK }}>{t.name}</h3>
+
+            {/* pris */}
+            <div className="flex items-end gap-2 mt-6">
+              {t.pre && <span className="text-[14px] font-medium mb-2.5" style={{ ...F, color: MUT }}>{t.pre}</span>}
+              <span className="font-bold tracking-[-0.04em] leading-[0.9]" style={{ ...FH, color: t.hl ? AC : INK, fontSize: 'clamp(40px, 4.6vw, 56px)' }}>{t.big}</span>
+            </div>
+            <span className="text-[13px] font-normal mt-1.5" style={{ ...F, color: MUT }}>{t.unit}</span>
+
+            <p className="text-[13.5px] font-normal leading-[1.55] mt-4" style={{ ...F, color: SUB }}>{t.desc}</p>
+
+            <div className="h-px w-full my-6" style={{ background: HAIR }} />
+
+            <ul className="flex flex-col gap-3 mt-auto">
+              {t.feats.map((f, fi) => (
+                <li key={fi} className="flex items-start gap-2.5">
+                  <span className="inline-flex items-center justify-center w-[18px] h-[18px] rounded-full shrink-0 mt-0.5" style={{ background: t.hl ? AC : 'rgba(154,99,232,0.12)' }}>
+                    <Check className="w-[11px] h-[11px]" strokeWidth={3} style={{ color: t.hl ? '#fff' : AC }} />
+                  </span>
+                  <span className="text-[12.5px] font-normal leading-snug" style={{ ...F, color: fi === 0 && t.hl ? INK2 : SUB, fontWeight: fi === 0 && t.hl ? 600 : 400 }}>{f}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+
+      {/* payoff */}
+      <p className="text-[14px] sm:text-[15px] font-normal leading-[1.6] mt-9 text-center mx-auto max-w-[720px]"
+         style={{ ...F, color: SUB, animation: anim ? 'payFade 0.9s cubic-bezier(0.22,1,0.36,1) 0.95s both' : undefined, opacity: show ? undefined : 0 }}>
+        <span style={{ color: INK2, fontWeight: 600 }}>Prisen følger verdien vi skaper.</span> Ingen bindingstid, ingen skjulte gebyrer — for private huseiere tjener vi først når de tjener.
+      </p>
+    </div>
+  </SlideFrame>
+  );
+};
+
+
 /* ═══ SLIDE ORDER ═══ */
 /* ═══ S04a · Arkitekturen — alt flyter inn i Autopiloten (animert systemskisse) ═══ */
 const SArkitektur = (p: any) => {
@@ -5703,6 +5817,7 @@ const SLIDES = [
   SAIEiendom, // 04c · AI som forstår eiendom — 3 AI-moats m/ menneske-godkjenning
   SSystemIArbeid, // 04 · Systemet i arbeid — scriptet kontrakt-demo (ekte produkt-UI)
   SBusinessModels, // 05 · Forretningsmodeller — B2C (private) + B2B (profesjonelle)
+  SBetalingsmodell, // 05b · Betalingsmodell — B2C (% av leie) + B2B (SaaS per enhet)
   SLiveDemo,     // 04 · Live product animation (from /digihome-tech)
   SDualUSP,      // 05 · Three unique aspects (auto-listing + dynamic + AI ops)
   STeam,         // 06 · Team (founder-market fit)
