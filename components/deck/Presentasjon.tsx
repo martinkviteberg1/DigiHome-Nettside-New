@@ -5715,6 +5715,72 @@ const SBetalingsmodell = (p: any) => {
 };
 
 
+/* ═══ S04d · Filosofien bak DigiHome — fire grunnpilarer (manifest, dark) ═══ */
+const SFilosofi = (p: any) => {
+  const active = p.isActive;
+  const isPdf = !!p.pdfMode;
+  const show = active || isPdf;
+  const anim = active && !isPdf;
+  const AC = '#d298ff';
+  const PILLARS = [
+    { no: '01', t: 'Best practice som standard.', d: 'Boligforvaltning er de samme prosessene, om og om igjen. Alt som kan automatiseres, blir automatisert. Det som gjenstår er det menneskelige — relasjon og salg.' },
+    { no: '02', t: 'Hypermoderne grensesnitt. Null friksjon.', d: 'Aldri som en tung enterprise-ERP — ikke ett unødvendig klikk. Finnes en smartere vei, bygger vi den inn. Boliginfo hentes automatisk fra eiendomsregisteret; vi sparer aldri på detaljene.' },
+    { no: '03', t: 'AI der det skaper verdi — innenfor faste rammer.', d: 'Systemet er et rammeverk med hele prosessen fra A til Å. AI jobber på toppen av driftsprosedyrene — kraftfullt, men alltid innenfor definerte rammer.' },
+    { no: '04', t: 'Bygget for skala. Data som forsterker seg selv.', d: 'Hver prosess gir strukturert data som gjør automatiseringen og AI-en stadig bedre — mens marginalkostnaden faller mot null når vi vokser.' },
+  ];
+  return (
+  <SlideFrame bg="dark" {...p}>
+    <style>{`
+      @keyframes filFade { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+      @keyframes filGrow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+    `}</style>
+
+    <div aria-hidden="true" className="absolute inset-0 pointer-events-none"
+         style={{ background: 'radial-gradient(ellipse at 50% 16%, rgba(210,152,255,0.11) 0%, transparent 56%)' }} />
+    <DotGrid maskCenter="50% 24%" opacity={0.045} />
+
+    <div className="relative z-10 w-full max-w-[1120px] mx-auto px-6 sm:px-12 my-auto">
+      {/* header */}
+      <div className="mb-9 sm:mb-12" style={{ animation: anim ? 'filFade 0.7s cubic-bezier(0.22,1,0.36,1) 0.1s both' : undefined, opacity: show ? undefined : 0 }}>
+        <span className="text-[11px] font-bold uppercase tracking-[0.32em]" style={{ ...F, color: AC }}>Fundamentet</span>
+        <h2 className="tracking-[-0.03em] leading-[1.04] mt-5" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(28px, 3.6vw, 48px)', color: '#fff' }}>
+          Filosofien bak DigiHome.
+        </h2>
+        <p className="text-[14.5px] sm:text-[16px] font-normal leading-[1.6] mt-4 max-w-[620px]" style={{ ...F, color: 'rgba(255,255,255,0.55)' }}>
+          Fire grunnpilarer styrer hver eneste beslutning vi tar i produktet.
+        </p>
+      </div>
+
+      {/* 2×2 manifest-rutenett, hårlinjer i stedet for bokser */}
+      <div className="grid grid-cols-1 md:grid-cols-2">
+        {PILLARS.map((p2, i) => {
+          const right = i % 2 === 1;
+          const bottom = i >= 2;
+          return (
+            <div key={p2.no}
+                 className={`relative ${right ? 'md:pl-12' : 'md:pr-12'} ${bottom ? 'pt-9 md:pt-10' : 'pb-9 md:pb-10'} ${right ? 'md:border-l' : ''} ${bottom ? 'border-t' : ''} ${!bottom && i === 1 ? '' : ''}`}
+                 style={{
+                   borderColor: 'rgba(255,255,255,0.10)',
+                   animation: anim ? `filFade 0.8s cubic-bezier(0.22,1,0.36,1) ${0.45 + i * 0.13}s both` : undefined,
+                   opacity: show ? undefined : 0,
+                 }}>
+              <div className="flex items-start gap-5">
+                <span className="font-bold tabular-nums leading-none shrink-0" style={{ ...FH, color: 'transparent', WebkitTextStroke: `1.4px rgba(210,152,255,0.55)`, fontSize: 'clamp(36px, 3.6vw, 50px)' }}>{p2.no}</span>
+                <div className="pt-0.5">
+                  <h3 className="text-[19px] sm:text-[21px] font-bold tracking-[-0.02em] leading-[1.2]" style={{ ...FH, color: '#fff' }}>{p2.t}</h3>
+                  <p className="text-[13.5px] sm:text-[14px] font-normal leading-[1.62] mt-3" style={{ ...F, color: 'rgba(255,255,255,0.58)' }}>{p2.d}</p>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  </SlideFrame>
+  );
+};
+
+
 /* ═══ SLIDE ORDER ═══ */
 /* ═══ S04a · Arkitekturen — alt flyter inn i Autopiloten (animert systemskisse) ═══ */
 const SArkitektur = (p: any) => {
@@ -5815,6 +5881,7 @@ const SLIDES = [
   SArkitektur, // 04a · Arkitekturen — alt flyter inn i Autopiloten (animert)
   SProdukt, // 04b · Produktet — Én motor. To produkter. (B2B desktop + B2C mobil)
   SAIEiendom, // 04c · AI som forstår eiendom — 3 AI-moats m/ menneske-godkjenning
+  SFilosofi, // 04d · Filosofien bak DigiHome — fire grunnpilarer
   SSystemIArbeid, // 04 · Systemet i arbeid — scriptet kontrakt-demo (ekte produkt-UI)
   SBusinessModels, // 05 · Forretningsmodeller — B2C (private) + B2B (profesjonelle)
   SBetalingsmodell, // 05b · Betalingsmodell — B2C (% av leie) + B2B (SaaS per enhet)
