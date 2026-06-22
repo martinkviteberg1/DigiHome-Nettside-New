@@ -64,8 +64,8 @@ type Beat = {
 const FULL: Focus = { scale: 1.0, x: 0, y: 0 };
 // rolig kamera i full visning under hele turen → stabile koordinater for coachmarks
 const BEATS: Beat[] = [
-  // — Kapittel 0: operativsystem-konstellasjon — sidebaren glir kontinuerlig nedover, modulene samler seg rundt kjernen —
-  { kind: 'overview', key: 'overview', side: 0, content: -1, node: -1, dur: 5000 },
+  // — Kapittel 0: cinematisk + pedagogisk oversikt — tekst-reveal → «select» drar nedover sidebaren → konstellasjonen bygges modul for modul —
+  { kind: 'overview', key: 'overview', side: 0, content: -1, node: -1, dur: 8800 },
   // — Salg deep-dive —
   { kind: 'nav',  key: 'salg',       side: 0, content: 0, node: 0, dur: 1700 },
   { kind: 'view', key: 'salg',       side: 0, content: 0, node: 0, dur: 4400 },
@@ -122,7 +122,7 @@ function SideLabel({ children }: any) {
   return <p className="text-[8.5px] font-semibold uppercase tracking-[0.18em] px-4 pt-2.5 pb-1" style={{ fontFamily: PJ, color: 'rgba(255,255,255,0.28)' }}>{children}</p>;
 }
 
-function Sidebar({ tab, cursorOn, pulseKey, sweep }: { tab: number; cursorOn?: boolean; pulseKey?: number; sweep?: boolean }) {
+function Sidebar({ tab, cursorOn, pulseKey, walkStep }: { tab: number; cursorOn?: boolean; pulseKey?: number; walkStep?: number }) {
   const navRef = useRef<HTMLDivElement>(null);
   const rSalg = useRef<HTMLDivElement>(null);
   const rEiendommer = useRef<HTMLDivElement>(null);
@@ -131,14 +131,20 @@ function Sidebar({ tab, cursorOn, pulseKey, sweep }: { tab: number; cursorOn?: b
   const rOperasjon = useRef<HTMLDivElement>(null);
   const rUtleie = useRef<HTMLDivElement>(null);
   const tabRefs = [rSalg, rEiendommer, rUtleie, rSaker, rKalender, rOperasjon];
+  // «select»-modus (oversikt): pillen drar nedover i visuell rekkefølge
+  const walkRefs: Record<string, React.RefObject<HTMLDivElement>> = { autopilot: rOperasjon, salg: rSalg, kalender: rKalender, eiendommer: rEiendommer, annonse: rUtleie, saker: rSaker };
+  const inOverview = typeof walkStep === 'number';
+  const isWalk = inOverview && (walkStep as number) >= 0;
+  const walkKey = isWalk ? WALK_KEYS[walkStep as number] : null;
   const [ind, setInd] = useState({ top: 0, h: 0, ready: false });
 
   useEffect(() => {
-    const el = tabRefs[tab]?.current;
+    const el = isWalk && walkKey ? walkRefs[walkKey]?.current : tabRefs[tab]?.current;
     if (el) setInd({ top: el.offsetTop, h: el.offsetHeight, ready: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab]);
-  const k = sweep ? '' : TABS[tab].key;
+  }, [tab, walkStep]);
+  const k = isWalk ? (walkKey as string) : (inOverview ? '' : TABS[tab].key);
+  const showInd = inOverview ? isWalk : true;
 
   return (
     <div className="shrink-0 flex flex-col py-3" style={{ width: SIDE_W, background: SIDE, borderRight: '1px solid rgba(0,0,0,0.06)' }}>
@@ -146,20 +152,11 @@ function Sidebar({ tab, cursorOn, pulseKey, sweep }: { tab: number; cursorOn?: b
         <img src="/img/digihome-logo-white.svg" alt="DigiHome" className="h-[21px] w-auto select-none" draggable={false} />
       </div>
       <div ref={navRef} className="relative flex-1 overflow-hidden">
-        {sweep && (
-          <>
-            <style>{`@keyframes pdSweep { 0% { top:-18%; opacity:0; } 16% { opacity:1; } 84% { opacity:1; } 100% { top:104%; opacity:0; } }`}</style>
-            <div className="absolute left-0 right-0 pointer-events-none" style={{ height: 130, top: 0, zIndex: 4, mixBlendMode: 'screen', animation: 'pdSweep 3s cubic-bezier(0.4,0,0.6,1) infinite' }}>
-              <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, transparent, rgba(207,151,252,0.30) 50%, transparent)', filter: 'blur(5px)' }} />
-              <div className="absolute left-2 right-2" style={{ top: '50%', height: 2, transform: 'translateY(-50%)', borderRadius: 2, background: 'linear-gradient(90deg, transparent, rgba(220,176,255,0.95), transparent)', boxShadow: '0 0 18px rgba(207,151,252,0.85)' }} />
-            </div>
-          </>
-        )}
         <div style={{
           position: 'absolute', left: 10, right: 10, top: ind.top, height: ind.h, borderRadius: 9,
           background: 'linear-gradient(90deg, rgba(207,151,252,0.22), rgba(207,151,252,0.05))',
           transition: 'top 0.55s cubic-bezier(0.22,1,0.36,1), height 0.55s cubic-bezier(0.22,1,0.36,1), opacity 0.4s ease',
-          opacity: (ind.ready && !sweep) ? 1 : 0, zIndex: 1,
+          opacity: (ind.ready && showInd) ? 1 : 0, zIndex: 1,
         }}>
           <span style={{ position: 'absolute', left: -10, top: '50%', transform: 'translateY(-50%)', width: 3, height: 18, borderRadius: '0 4px 4px 0', background: 'linear-gradient(to bottom,#cf97fc,#7c5cff)', boxShadow: '0 0 12px rgba(207,151,252,0.75)' }} />
         </div>
@@ -564,72 +561,104 @@ const VIEW_KEYS = ['salg', 'eiendommer', 'annonse', 'saker', 'kalender', 'autopi
 /* ═══════════════════════ KAPITTEL 0 · OPERATIVSYSTEM-KONSTELLASJON ═══════════════════════ */
 const OV_CX = 520, OV_CY = 240, OV_RX = 470, OV_RY = 164;
 const OV_MODS = [
-  { Icon: UserCheck,    name: 'Salg',       x: 520, y: 76 },
-  { Icon: Building2,    name: 'Eiendommer', x: 927, y: 158 },
-  { Icon: Rocket,       name: 'Annonse',    x: 927, y: 322 },
-  { Icon: AlertCircle,  name: 'Saker',      x: 520, y: 404 },
-  { Icon: CalendarDays, name: 'Kalender',   x: 113, y: 322 },
-  { Icon: Gauge,        name: 'Autopilot',  x: 113, y: 158, auto: true },
+  { key: 'salg',       Icon: UserCheck,    name: 'Salg',       x: 520, y: 76 },
+  { key: 'eiendommer', Icon: Building2,    name: 'Eiendommer', x: 927, y: 158 },
+  { key: 'annonse',    Icon: Rocket,       name: 'Annonse',    x: 927, y: 322 },
+  { key: 'saker',      Icon: AlertCircle,  name: 'Saker',      x: 520, y: 404 },
+  { key: 'kalender',   Icon: CalendarDays, name: 'Kalender',   x: 113, y: 322 },
+  { key: 'autopilot',  Icon: Gauge,        name: 'Autopilot',  x: 113, y: 158, auto: true },
 ];
-function ModuleOverview() {
+// «select»-rekkefølge nedover sidebaren (visuell rekkefølge) — styrer både pille-bevegelse og progressiv node-avsløring
+const WALK_KEYS = ['autopilot', 'salg', 'kalender', 'eiendommer', 'annonse', 'saker'];
+function ModuleOverview({ stage, step }: { stage: 'text' | 'walk' | 'all'; step: number }) {
+  const isText = stage === 'text';
+  const showC = stage === 'walk' || stage === 'all';
+  const all = stage === 'all';
+  const vis = (key: string) => all || (stage === 'walk' && step >= WALK_KEYS.indexOf(key));
+  const activeKey = stage === 'walk' && step >= 0 && step < WALK_KEYS.length ? WALK_KEYS[step] : null;
+  const txt = 'Ett supermoderne grensesnitt.'.split(' ');
   return (
     <div className="h-full relative overflow-hidden" style={{ background: BG }}>
       <style>{`
         @keyframes moHead { from { opacity:0; transform: translateY(15px); filter: blur(8px); } to { opacity:1; transform: translateY(0); filter: blur(0); } }
-        @keyframes moFade { from { opacity:0; } to { opacity:1; } }
-        @keyframes moNode { 0% { opacity:0; transform: translate(-50%,-50%) scale(0.5); } 100% { opacity:1; transform: translate(-50%,-50%) scale(1); } }
+        @keyframes moTxt { from { opacity:0; transform: translateY(18px); filter: blur(12px); } to { opacity:1; transform: translateY(0); filter: blur(0); } }
         @keyframes moFlow { to { stroke-dashoffset: 0; } }
         @keyframes moHalo { 0%,100% { opacity:0.38; transform: translate(-50%,-50%) scale(1); } 50% { opacity:0.8; transform: translate(-50%,-50%) scale(1.16); } }
         @keyframes moRing { to { stroke-dashoffset: -19; } }
+        @keyframes moPulse { 0% { transform: translate(-50%,-50%) scale(0.85); opacity:0.8; } 100% { transform: translate(-50%,-50%) scale(1.7); opacity:0; } }
       `}</style>
 
       {/* ambient */}
       <div aria-hidden className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(60% 62% at 50% 60%, rgba(210,152,255,0.12), transparent 72%)' }} />
-      <div aria-hidden className="absolute inset-0 pointer-events-none" style={{ backgroundImage: 'radial-gradient(rgba(124,58,237,0.11) 1px, transparent 1px)', backgroundSize: '27px 27px', WebkitMaskImage: 'radial-gradient(74% 70% at 50% 58%, #000 26%, transparent 78%)', maskImage: 'radial-gradient(74% 70% at 50% 58%, #000 26%, transparent 78%)', opacity: 0.5 }} />
+      <div aria-hidden className="absolute inset-0 pointer-events-none" style={{ backgroundImage: 'radial-gradient(rgba(124,58,237,0.11) 1px, transparent 1px)', backgroundSize: '27px 27px', WebkitMaskImage: 'radial-gradient(74% 70% at 50% 58%, #000 26%, transparent 78%)', maskImage: 'radial-gradient(74% 70% at 50% 58%, #000 26%, transparent 78%)', opacity: showC ? 0.5 : 0.28, transition: 'opacity 0.9s ease' }} />
 
-      {/* header */}
-      <div className="absolute left-0 right-0 text-center z-30 px-10" style={{ top: 46 }}>
-        <span className="inline-block text-[11px] font-bold uppercase tracking-[0.36em]" style={{ fontFamily: PJ, color: ACCENT_DK, animation: 'moHead 0.7s cubic-bezier(0.22,1,0.36,1) 0.04s both' }}>DigiHome · operativsystemet</span>
-        <h2 className="text-[33px] font-bold tracking-[-0.032em] leading-[1.03] mt-3" style={{ fontFamily: FH, color: INK, animation: 'moHead 0.85s cubic-bezier(0.22,1,0.36,1) 0.14s both' }}>Ett system. Bygget i moduler.</h2>
-        <p className="text-[14.5px] mt-2.5" style={{ fontFamily: PJ, color: SUB, animation: 'moHead 0.7s cubic-bezier(0.22,1,0.36,1) 0.26s both' }}>Seks moduler. Én plattform. Alt henger sammen.</p>
+      {/* ══ STEG 1 · TEKST-REVEAL ══ */}
+      <div className="absolute inset-0 z-40 flex flex-col items-center justify-center text-center px-16 pointer-events-none"
+           style={{ opacity: isText ? 1 : 0, transform: isText ? 'scale(1)' : 'scale(1.05)', filter: isText ? 'blur(0px)' : 'blur(9px)', transition: 'opacity 0.7s ease, transform 0.9s cubic-bezier(0.22,1,0.36,1), filter 0.9s ease' }}>
+        <span className="inline-block text-[11px] font-bold uppercase tracking-[0.42em] mb-7" style={{ fontFamily: PJ, color: ACCENT_DK, animation: isText ? 'moTxt 0.7s cubic-bezier(0.22,1,0.36,1) 0.1s both' : undefined }}>DigiHome · operativsystemet</span>
+        <h2 className="leading-[1.04] tracking-[-0.034em]" style={{ fontFamily: FH, fontWeight: 700, fontSize: 'clamp(34px, 4.4vw, 56px)', color: INK }}>
+          {txt.map((w, i) => (
+            <span key={i} className="inline-block" style={{ marginRight: '0.26em', animation: isText ? `moTxt 0.7s cubic-bezier(0.22,1,0.36,1) ${0.55 + i * 0.1}s both` : undefined }}>{w}</span>
+          ))}
+        </h2>
+        <p className="text-[16px] mt-5" style={{ fontFamily: PJ, color: SUB, animation: isText ? 'moTxt 0.7s cubic-bezier(0.22,1,0.36,1) 1.35s both' : undefined }}>Bygget i moduler. Vi tar dem én om gangen.</p>
       </div>
 
-      {/* konstellasjon */}
-      <div className="absolute z-10" style={{ left: '50%', top: 216, transform: 'translateX(-50%)', width: 1044, height: 472 }}>
-        <svg width="1044" height="472" className="absolute inset-0 overflow-visible" style={{ animation: 'moFade 0.9s ease 0.3s both' }}>
-          {/* bane-ring */}
-          <ellipse cx={OV_CX} cy={OV_CY} rx={OV_RX} ry={OV_RY} fill="none" stroke="rgba(124,58,237,0.16)" strokeWidth={1.25} strokeDasharray="1.5 9" style={{ animation: 'moRing 2.6s linear infinite' }} />
-          {/* eiker */}
-          {OV_MODS.map((m, i) => (
-            <g key={m.name}>
-              <line x1={OV_CX} y1={OV_CY} x2={m.x} y2={m.y} stroke="rgba(124,58,237,0.13)" strokeWidth={1.25} />
-              <line x1={OV_CX} y1={OV_CY} x2={m.x} y2={m.y} stroke="#cf97fc" strokeWidth={1.6} strokeLinecap="round" strokeDasharray="2.5 22" style={{ strokeDashoffset: 24.5, animation: `moFlow 1.6s linear ${0.5 + i * 0.1}s infinite` }} />
-            </g>
-          ))}
-        </svg>
-
-        {/* system-kjerne */}
-        <div className="absolute z-20" style={{ left: OV_CX, top: OV_CY, transform: 'translate(-50%,-50%)', animation: 'moFade 0.8s ease 0.18s both' }}>
-          <span aria-hidden className="absolute rounded-full" style={{ left: '50%', top: '50%', width: 178, height: 178, transform: 'translate(-50%,-50%)', background: 'radial-gradient(circle, rgba(210,152,255,0.55), transparent 68%)', filter: 'blur(11px)', animation: 'moHalo 3.6s ease-in-out infinite' }} />
-          <div className="relative rounded-[26px] overflow-hidden" style={{ width: 116, height: 116, boxShadow: '0 30px 66px -16px rgba(124,58,237,0.55), 0 0 0 7px rgba(255,255,255,0.72), inset 0 1px 0 rgba(255,255,255,0.3)' }}>
-            <img src="/digihome-mark.svg" alt="DigiHome" className="w-full h-full object-cover" draggable={false} />
-          </div>
-          <p className="absolute left-1/2 -translate-x-1/2 whitespace-nowrap text-[11px] font-semibold uppercase tracking-[0.24em]" style={{ top: 130, fontFamily: PJ, color: ACCENT_DK }}>Operativsystemet</p>
+      {/* ══ STEG 2–3 · KONSTELLASJON (bygges modul for modul) ══ */}
+      <div className="absolute inset-0" style={{ opacity: showC ? 1 : 0, transform: showC ? 'scale(1)' : 'scale(0.985)', filter: showC ? 'blur(0px)' : 'blur(7px)', transition: 'opacity 0.8s ease 0.05s, transform 0.9s cubic-bezier(0.22,1,0.36,1), filter 0.9s ease' }}>
+        {/* header */}
+        <div className="absolute left-0 right-0 text-center z-30 px-10" style={{ top: 46 }}>
+          <span className="inline-block text-[11px] font-bold uppercase tracking-[0.36em]" style={{ fontFamily: PJ, color: ACCENT_DK }}>DigiHome · operativsystemet</span>
+          <h2 className="text-[33px] font-bold tracking-[-0.032em] leading-[1.03] mt-3" style={{ fontFamily: FH, color: INK }}>Ett system. Bygget i moduler.</h2>
+          <p className="text-[14.5px] mt-2.5" style={{ fontFamily: PJ, color: SUB, transition: 'color 0.5s ease' }}>
+            {all ? 'Seks moduler. Én plattform. Alt henger sammen.' : 'Følg med — modulene kobles på, én etter én.'}
+          </p>
         </div>
 
-        {/* moduler */}
-        {OV_MODS.map((m, i) => {
-          const Ic = m.Icon; const dark = !!m.auto;
-          return (
-            <div key={m.name} className="absolute z-20" style={{ left: m.x, top: m.y, transform: 'translate(-50%,-50%)', animation: `moNode 0.6s cubic-bezier(0.34,1.45,0.5,1) ${0.42 + i * 0.1}s both` }}>
-              <div className="rounded-[18px] flex items-center justify-center" style={{ width: 64, height: 64, background: dark ? '#181622' : '#ffffff', border: `1px solid ${dark ? 'rgba(210,152,255,0.32)' : BORDER}`, boxShadow: dark ? '0 18px 40px -12px rgba(124,58,237,0.55)' : '0 18px 40px -18px rgba(20,15,10,0.36), inset 0 1px 0 rgba(255,255,255,0.85)' }}>
-                <Ic className="w-[25px] h-[25px]" style={{ color: dark ? '#cf97fc' : ACCENT_DK }} strokeWidth={1.85} />
-              </div>
-              <span className="absolute left-1/2 -translate-x-1/2 whitespace-nowrap text-[13.5px] font-semibold" style={{ top: 71, fontFamily: FH, color: INK }}>{m.name}</span>
-              {dark && <span className="absolute left-1/2 -translate-x-1/2 whitespace-nowrap text-[8.5px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded inline-flex items-center gap-1" style={{ top: 93, fontFamily: PJ, background: 'rgba(207,151,252,0.16)', color: ACCENT_DK }}><Sparkles className="w-2.5 h-2.5" />AI</span>}
+        {/* konstellasjon */}
+        <div className="absolute z-10" style={{ left: '50%', top: 216, transform: 'translateX(-50%)', width: 1044, height: 472 }}>
+          <svg width="1044" height="472" className="absolute inset-0 overflow-visible">
+            {/* bane-ring — først tydelig når alt er på */}
+            <ellipse cx={OV_CX} cy={OV_CY} rx={OV_RX} ry={OV_RY} fill="none" stroke="rgba(124,58,237,0.16)" strokeWidth={1.25} strokeDasharray="1.5 9" style={{ opacity: all ? 1 : 0, transition: 'opacity 0.8s ease', animation: 'moRing 2.6s linear infinite' }} />
+            {/* eiker — vises når modulen kobles på */}
+            {OV_MODS.map((m) => {
+              const on = vis(m.key);
+              return (
+                <g key={m.key} style={{ opacity: on ? 1 : 0, transition: 'opacity 0.55s ease' }}>
+                  <line x1={OV_CX} y1={OV_CY} x2={m.x} y2={m.y} stroke="rgba(124,58,237,0.13)" strokeWidth={1.25} />
+                  <line x1={OV_CX} y1={OV_CY} x2={m.x} y2={m.y} stroke="#cf97fc" strokeWidth={1.6} strokeLinecap="round" strokeDasharray="2.5 22" style={{ strokeDashoffset: 24.5, animation: on ? `moFlow 1.6s linear infinite` : undefined }} />
+                </g>
+              );
+            })}
+          </svg>
+
+          {/* system-kjerne */}
+          <div className="absolute z-20" style={{ left: OV_CX, top: OV_CY, transform: 'translate(-50%,-50%)', opacity: showC ? 1 : 0, transition: 'opacity 0.7s ease' }}>
+            <span aria-hidden className="absolute rounded-full" style={{ left: '50%', top: '50%', width: 178, height: 178, transform: 'translate(-50%,-50%)', background: 'radial-gradient(circle, rgba(210,152,255,0.55), transparent 68%)', filter: 'blur(11px)', animation: 'moHalo 3.6s ease-in-out infinite' }} />
+            <div className="relative rounded-[26px] overflow-hidden" style={{ width: 116, height: 116, boxShadow: '0 30px 66px -16px rgba(124,58,237,0.55), 0 0 0 7px rgba(255,255,255,0.72), inset 0 1px 0 rgba(255,255,255,0.3)' }}>
+              <img src="/digihome-mark.svg" alt="DigiHome" className="w-full h-full object-cover" draggable={false} />
             </div>
-          );
-        })}
+            <p className="absolute left-1/2 -translate-x-1/2 whitespace-nowrap text-[11px] font-semibold uppercase tracking-[0.24em]" style={{ top: 130, fontFamily: PJ, color: ACCENT_DK }}>Operativsystemet</p>
+          </div>
+
+          {/* moduler — popper inn etter hvert som «select» lander på dem */}
+          {OV_MODS.map((m) => {
+            const Ic = m.Icon; const dark = !!m.auto;
+            const on = vis(m.key);
+            const isActive = activeKey === m.key;
+            return (
+              <div key={m.key} className="absolute z-20" style={{ left: m.x, top: m.y, transform: `translate(-50%,-50%) scale(${on ? (isActive ? 1.08 : 1) : 0.55})`, opacity: on ? 1 : 0, transition: 'opacity 0.5s ease, transform 0.55s cubic-bezier(0.34,1.45,0.5,1)' }}>
+                {/* aktiv-puls-ring */}
+                {isActive && <span aria-hidden className="absolute rounded-[18px]" style={{ left: '50%', top: 32, width: 64, height: 64, transform: 'translate(-50%,-50%)', border: '2px solid rgba(207,151,252,0.85)', animation: 'moPulse 1.1s ease-out infinite' }} />}
+                <div className="rounded-[18px] flex items-center justify-center" style={{ width: 64, height: 64, background: dark ? '#181622' : '#ffffff', border: `1px solid ${dark ? 'rgba(210,152,255,0.32)' : (isActive ? 'rgba(207,151,252,0.6)' : BORDER)}`, boxShadow: isActive ? '0 22px 48px -14px rgba(124,58,237,0.5), 0 0 0 4px rgba(207,151,252,0.16)' : (dark ? '0 18px 40px -12px rgba(124,58,237,0.55)' : '0 18px 40px -18px rgba(20,15,10,0.36), inset 0 1px 0 rgba(255,255,255,0.85)'), transition: 'box-shadow 0.4s ease, border-color 0.4s ease' }}>
+                  <Ic className="w-[25px] h-[25px]" style={{ color: dark ? '#cf97fc' : ACCENT_DK }} strokeWidth={1.85} />
+                </div>
+                <span className="absolute left-1/2 -translate-x-1/2 whitespace-nowrap text-[13.5px] font-semibold" style={{ top: 71, fontFamily: FH, color: INK }}>{m.name}</span>
+                {dark && <span className="absolute left-1/2 -translate-x-1/2 whitespace-nowrap text-[8.5px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded inline-flex items-center gap-1" style={{ top: 93, fontFamily: PJ, background: 'rgba(207,151,252,0.16)', color: ACCENT_DK }}><Sparkles className="w-2.5 h-2.5" />AI</span>}
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
@@ -697,7 +726,7 @@ function IntroCard() {
 }
 
 /* ═══════════════════════ DESKTOP-MOCKUP (rolig kamera + nav-markør + coachmark guided tour) ═══════════════════════ */
-function DesktopMock({ phase, beat, pulseKey }: { phase: 'intro' | 'tour'; beat: Beat; pulseKey: number }) {
+function DesktopMock({ phase, beat, pulseKey, pdfMode }: { phase: 'intro' | 'tour'; beat: Beat; pulseKey: number; pdfMode?: boolean }) {
   const isOverview = beat.kind === 'overview';
   const View = isOverview ? null : VIEWS[beat.content];
   const isNav = beat.kind === 'nav';
@@ -705,6 +734,22 @@ function DesktopMock({ phase, beat, pulseKey }: { phase: 'intro' | 'tour'; beat:
   const isConv = beat.kind === 'converge';
   const isAuto = beat.key === 'autopilot' && isView;
   const coach = isView ? COACH[beat.key] : null;
+
+  // ── Kapittel 0 state-maskin: tekst (steg 1) → «select» nedover sidebaren (steg 2) → hele systemet (steg 3) ──
+  const [ovStage, setOvStage] = useState<'text' | 'walk' | 'all'>('text');
+  const [ovStep, setOvStep] = useState(-1);
+  useEffect(() => {
+    if (!isOverview) { setOvStage('text'); setOvStep(-1); return; }
+    if (pdfMode) { setOvStage('all'); setOvStep(WALK_KEYS.length - 1); return; }
+    setOvStage('text'); setOvStep(-1);
+    const ts: any[] = [];
+    const TEXT_MS = 2500, STEP_MS = 700;
+    ts.push(setTimeout(() => { setOvStage('walk'); setOvStep(0); }, TEXT_MS));
+    for (let i = 1; i < WALK_KEYS.length; i++) ts.push(setTimeout(() => setOvStep(i), TEXT_MS + i * STEP_MS));
+    ts.push(setTimeout(() => setOvStage('all'), TEXT_MS + WALK_KEYS.length * STEP_MS + 350));
+    return () => ts.forEach(clearTimeout);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOverview, pdfMode]);
 
   const frameRef = useRef<HTMLDivElement>(null);
   const curContent = useRef<HTMLDivElement | null>(null);
@@ -766,11 +811,11 @@ function DesktopMock({ phase, beat, pulseKey }: { phase: 'intro' | 'tour'; beat:
     <div ref={frameRef} className="rounded-[24px] overflow-hidden relative" style={{ width: DESK_W, background: BG, border: `1px solid ${BORDER_S}`, boxShadow: '0 1px 0 rgba(255,255,255,0.9) inset, 0 60px 130px -44px rgba(26,22,18,0.46), 0 24px 60px -34px rgba(26,22,18,0.26)' }}>
       {/* app-flate (rolig — full visning hele turen) */}
       <div className="flex" style={{ height: BODY_H }}>
-        <Sidebar tab={beat.side} cursorOn={isNav} pulseKey={pulseKey} sweep={isOverview} />
+        <Sidebar tab={beat.side} cursorOn={isNav} pulseKey={pulseKey} walkStep={isOverview ? ovStep : undefined} />
         <div className="flex-1 relative overflow-hidden" style={{ background: BG }}>
           <AnimatePresence mode="sync">
             <motion.div key={isOverview ? 'overview' : beat.content} ref={(el) => { if (el) curContent.current = el; }} className="absolute inset-0" initial={{ opacity: 0, scale: 1.015, filter: 'blur(8px)' }} animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }} exit={{ opacity: 0, scale: 0.985, filter: 'blur(8px)' }} transition={{ duration: 0.9, ease }}>
-              {isOverview ? <ModuleOverview /> : View ? <View /> : null}
+              {isOverview ? <ModuleOverview stage={ovStage} step={ovStep} /> : View ? <View /> : null}
             </motion.div>
           </AnimatePresence>
           {/* nav-dim: under navigasjon dempes innholdet så fokus er på sidebaren */}
@@ -933,7 +978,7 @@ export default function ProductDuo({ active, pdfMode }: { active?: boolean; pdfM
       <div style={{ animation: anim, opacity: show ? undefined : 0 }}>
         <div style={{ height: BODY_H * scale, position: 'relative' }}>
           <div style={{ width: DESK_W, transform: `scale(${scale})`, transformOrigin: 'top center', position: 'absolute', left: '50%', marginLeft: -DESK_W / 2, top: 0 }}>
-            <DesktopMock phase={phase} beat={beat} pulseKey={phase === 'tour' ? bi : -1} />
+            <DesktopMock phase={phase} beat={beat} pulseKey={phase === 'tour' ? bi : -1} pdfMode={pdfMode} />
           </div>
         </div>
         <Rail phase={phase} node={phase === 'tour' ? BEATS[bi].node : -1} />
