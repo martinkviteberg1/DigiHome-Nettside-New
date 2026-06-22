@@ -49,7 +49,7 @@ const TABS = [
   { key: 'autopilot', label: 'Autopilot' },
 ];
 
-/* ── omvisnings-koreografi: tom ramme → fortellende tekst → app-UI → (naviger i sidebar → zoom på innhold) → autopilot ── */
+/* ── omvisnings-koreografi: tom ramme → fortellende tekst → app-UI → (naviger i sidebar → coachmark-highlight m/ forklaring) → autopilot ── */
 type Focus = { scale: number; x: number; y: number };
 type Beat = {
   kind: 'nav' | 'view' | 'converge';
@@ -58,42 +58,36 @@ type Beat = {
   content: number;  // hvilken modul-skjerm som vises i innholdet
   node: number;     // fremdrifts-skinne
   dur: number;
-  focus: Focus;
-  dim: number;
 };
 const FULL: Focus = { scale: 1.0, x: 0, y: 0 };
-const FOCUS: Record<string, Focus> = {
-  salg:       { scale: 1.11, x: -78, y: 14 },
-  eiendommer: { scale: 1.10, x: -66, y: 10 },
-  saker:      { scale: 1.13, x: -72, y: 0 },
-  kalender:   { scale: 1.10, x: -60, y: 8 },
-};
+// rolig kamera i full visning under hele turen → stabile koordinater for coachmarks
 const BEATS: Beat[] = [
-  // Salg
-  { kind: 'nav',  key: 'salg',       side: 0, content: 0, node: 0, dur: 1500, focus: FULL,             dim: 0.0 },
-  { kind: 'view', key: 'salg',       side: 0, content: 0, node: 0, dur: 2600, focus: FOCUS.salg,       dim: 0.30 },
-  // Eiendommer
-  { kind: 'nav',  key: 'eiendommer', side: 1, content: 0, node: 1, dur: 1350, focus: FULL,             dim: 0.0 },
-  { kind: 'view', key: 'eiendommer', side: 1, content: 1, node: 1, dur: 2600, focus: FOCUS.eiendommer, dim: 0.26 },
-  // Saker
-  { kind: 'nav',  key: 'saker',      side: 2, content: 1, node: 2, dur: 1350, focus: FULL,             dim: 0.0 },
-  { kind: 'view', key: 'saker',      side: 2, content: 2, node: 2, dur: 2600, focus: FOCUS.saker,      dim: 0.28 },
-  // Kalender
-  { kind: 'nav',  key: 'kalender',   side: 3, content: 2, node: 3, dur: 1350, focus: FULL,             dim: 0.0 },
-  { kind: 'view', key: 'kalender',   side: 3, content: 3, node: 3, dur: 2600, focus: FOCUS.kalender,   dim: 0.24 },
-  // Konvergens → Autopilot
-  { kind: 'converge', key: 'converge', side: 3, content: 3, node: 3, dur: 2000, focus: FULL,           dim: 0.42 },
-  { kind: 'nav',  key: 'autopilot',  side: 4, content: 3, node: 4, dur: 1500, focus: FULL,             dim: 0.0 },
-  { kind: 'view', key: 'autopilot',  side: 4, content: 4, node: 4, dur: 4600, focus: FULL,             dim: 0.0 },
+  { kind: 'nav',  key: 'salg',       side: 0, content: 0, node: 0, dur: 2000 },
+  { kind: 'view', key: 'salg',       side: 0, content: 0, node: 0, dur: 4400 },
+  { kind: 'nav',  key: 'eiendommer', side: 1, content: 0, node: 1, dur: 1900 },
+  { kind: 'view', key: 'eiendommer', side: 1, content: 1, node: 1, dur: 4400 },
+  { kind: 'nav',  key: 'saker',      side: 2, content: 1, node: 2, dur: 1900 },
+  { kind: 'view', key: 'saker',      side: 2, content: 2, node: 2, dur: 4400 },
+  { kind: 'nav',  key: 'kalender',   side: 3, content: 2, node: 3, dur: 1900 },
+  { kind: 'view', key: 'kalender',   side: 3, content: 3, node: 3, dur: 4400 },
+  { kind: 'converge', key: 'converge', side: 3, content: 3, node: 3, dur: 2600 },
+  { kind: 'nav',  key: 'autopilot',  side: 4, content: 3, node: 4, dur: 2000 },
+  { kind: 'view', key: 'autopilot',  side: 4, content: 4, node: 4, dur: 5600 },
 ];
-const INTRO_DUR = 4700;
-const CAPS: Record<string, { t: string; d: string }> = {
-  salg:       { t: 'Salg',       d: 'Fang interessenter — automatisk oppfølging og kvalifisering.' },
-  eiendommer: { t: 'Eiendommer', d: 'Hele porteføljen, enheter og leieforhold på ett sted.' },
-  saker:      { t: 'Saker',      d: 'Drift og vedlikehold — meldt, tildelt og løst.' },
-  kalender:   { t: 'Kalender',   d: 'Belegg og dynamisk utleie på tvers av kanaler.' },
-  autopilot:  { t: 'Autopilot',  d: 'Ser alt fra modulene — og handler på det.' },
+const INTRO_DUR = 5200;
+
+/* coachmark-tekst per modul (highlight-feltet måles fra faktisk DOM-element via data-hi) */
+const COACH: Record<string, { no: string; t: string; d: string }> = {
+  salg:       { no: '01', t: 'Salg', d: 'Fra interessent til signert leieavtale — automatisk oppfølging i hvert steg.' },
+  eiendommer: { no: '02', t: 'Eiendommer', d: 'Hele porteføljen samlet — enheter, leieforhold og økonomi per eiendom.' },
+  saker:      { no: '03', t: 'Saker', d: 'Drift og vedlikehold — meldt, tildelt og løst, med full sporbarhet.' },
+  kalender:   { no: '04', t: 'Kalender', d: 'Belegg og dynamisk prising på tvers av kanaler.' },
+  autopilot:  { no: '05', t: 'Autopilot', d: 'Ser alt fra modulene — og handler på det. Du godkjenner.' },
 };
+const COACH_W = 312;
+type Spot = { x: number; y: number; w: number; h: number };
+type Place = { spot: Spot; cx: number; cy: number };
+const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 
 function Spark({ data, color, w = 60, h = 20 }: any) {
   const min = Math.min(...data), max = Math.max(...data), range = (max - min) || 1;
@@ -165,7 +159,7 @@ function Sidebar({ tab, cursorOn, pulseKey }: { tab: number; cursorOn?: boolean;
         <NavItem icon={LayoutDashboard} label="Oversikt" on={false} />
         <NavItem innerRef={rOperasjon} icon={Gauge} label="Operasjonssentral" on={k === 'autopilot'} badge="Ny" />
         <NavItem icon={MessageSquare} label="Innboks" on={false} />
-        <NavItem innerRef={rSalg} icon={UserCheck} label="Leads" on={k === 'salg'} badge="Pro" />
+        <NavItem innerRef={rSalg} icon={UserCheck} label="Salg" on={k === 'salg'} />
         <NavItem icon={CalendarCheck} label="Reservasjoner" on={false} />
         <NavItem innerRef={rKalender} icon={CalendarDays} label="Kalender" on={k === 'kalender'} />
         <NavItem icon={Radio} label="Kanaler" on={false} />
@@ -249,8 +243,8 @@ function ViewSalg() {
       <PageHead title="Salg" sub="Pipeline · 12 aktive leads · 1,2 M kr i potensial"
         right={<><GhostBtn><Filter className="w-3.5 h-3.5" />Filter</GhostBtn><DarkBtn><Plus className="w-3.5 h-3.5" />Ny lead</DarkBtn></>} />
       <div className="grid grid-cols-5 gap-3 flex-1 min-h-0">
-        {cols.map((col) => (
-          <div key={col.name} className="flex flex-col gap-2.5 rounded-2xl p-2.5" style={{ background: CARDSOFT }}>
+        {cols.map((col, i) => (
+          <div key={col.name} {...(i === 0 ? { 'data-hi': '1' } : {})} className="flex flex-col gap-2.5 rounded-2xl p-2.5" style={{ background: CARDSOFT }}>
             <div className="flex items-center justify-between px-1">
               <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full" style={{ background: col.c }} /><span className="text-[11px] font-bold" style={{ fontFamily: PJ, color: TXT }}>{col.name}</span></div>
               <span className="text-[9.5px] font-bold px-1.5 rounded-full" style={{ fontFamily: PJ, color: SUB, background: CARD }}>{col.leads.length}</span>
@@ -278,8 +272,8 @@ function ViewEiendommer() {
       <PageHead title="Eiendommer" sub="142 eiendommer · 137 utleid · 96 % belegg"
         right={<><span className="inline-flex items-center gap-2 h-9 px-3.5 rounded-full text-[12px]" style={{ fontFamily: PJ, color: MUTED, background: CARD, border: `1px solid ${BORDER}` }}><Search className="w-3.5 h-3.5" />Søk…</span><DarkBtn><Plus className="w-3.5 h-3.5" />Legg til</DarkBtn></>} />
       <div className="grid grid-cols-3 gap-4 flex-1 min-h-0">
-        {props.map((p) => (
-          <div key={p.addr} className="rounded-2xl overflow-hidden flex flex-col" style={{ background: CARD, border: `1px solid ${BORDER}`, boxShadow: '0 2px 8px rgba(10,10,10,0.03)' }}>
+        {props.map((p, i) => (
+          <div key={p.addr} {...(i === 0 ? { 'data-hi': '1' } : {})} className="rounded-2xl overflow-hidden flex flex-col" style={{ background: CARD, border: `1px solid ${BORDER}`, boxShadow: '0 2px 8px rgba(10,10,10,0.03)' }}>
             <div className="relative" style={{ height: 96 }}>
               <img src={p.img} alt="" className="w-full h-full object-cover" />
               <span className="absolute top-2.5 left-2.5 text-[9px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full" style={{ fontFamily: PJ, color: '#fff', background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }}>{p.units}</span>
@@ -333,7 +327,7 @@ function ViewSaker() {
           {['Sak', 'Eiendom', 'Status', 'Prioritet', 'Tildelt'].map((h) => <span key={h} className="text-[9.5px] font-bold uppercase tracking-[0.1em]" style={{ fontFamily: PJ, color: MUTED }}>{h}</span>)}
         </div>
         {rows.map((r, i) => { const s = ST[r.status]; const ty = TYP[r.typ]; const pr = PRC[r.pri]; const SIcon = s.icon; const TIcon = ty.icon; return (
-          <div key={r.sak} className="grid items-center px-5 py-3.5" style={{ gridTemplateColumns: '1.7fr 1.2fr 0.9fr 0.9fr 1.2fr', borderBottom: i < rows.length - 1 ? `1px solid ${BORDER}` : 'none' }}>
+          <div key={r.sak} {...(i === 0 ? { 'data-hi': '1' } : {})} className="grid items-center px-5 py-3.5" style={{ gridTemplateColumns: '1.7fr 1.2fr 0.9fr 0.9fr 1.2fr', borderBottom: i < rows.length - 1 ? `1px solid ${BORDER}` : 'none' }}>
             <div className="flex items-center gap-3 min-w-0">
               <span className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: ty.bg }}><TIcon className="w-4 h-4" style={{ color: ty.c }} strokeWidth={1.9} /></span>
               <span className="text-[13px] font-semibold truncate" style={{ fontFamily: PJ, color: INK }}>{r.sak}</span>
@@ -376,7 +370,7 @@ function ViewKalender() {
       <div className="flex items-center gap-3.5 mb-3">
         {legend.map((g) => <span key={g.l} className="inline-flex items-center gap-1.5 text-[10.5px] font-medium" style={{ fontFamily: PJ, color: SUB }}><span className="w-2.5 h-2.5 rounded-[3px]" style={{ background: g.c }} />{g.l}</span>)}
       </div>
-      <div className="rounded-2xl flex-1 min-h-0 flex flex-col overflow-hidden" style={{ background: CARD, border: `1px solid ${BORDER}` }}>
+      <div data-hi="1" className="rounded-2xl flex-1 min-h-0 flex flex-col overflow-hidden" style={{ background: CARD, border: `1px solid ${BORDER}` }}>
         <div className="grid grid-cols-7" style={{ borderBottom: `1px solid ${BORDER}` }}>
           {weekdays.map((w) => <div key={w} className="text-center py-2 text-[9.5px] font-bold uppercase tracking-wide" style={{ fontFamily: PJ, color: MUTED }}>{w}</div>)}
         </div>
@@ -429,10 +423,10 @@ function ViewOperasjon() {
       </div>
 
       <div className="flex flex-col gap-3 flex-1">
-        {items.map((a) => {
+        {items.map((a, i) => {
           const cc = CAT[a.cat]; const Icon = cc.icon;
           return (
-            <div key={a.title} className="group relative rounded-[20px] overflow-hidden flex items-center gap-4 px-5 py-4" style={{ background: CARD, border: `1px solid ${HAIRLINE}`, boxShadow: '0 2px 8px rgba(10,10,10,0.03)' }}>
+            <div key={a.title} {...(i === 0 ? { 'data-hi': '1' } : {})} className="group relative rounded-[20px] overflow-hidden flex items-center gap-4 px-5 py-4" style={{ background: CARD, border: `1px solid ${HAIRLINE}`, boxShadow: '0 2px 8px rgba(10,10,10,0.03)' }}>
               <div className="w-14 h-14 rounded-[16px] shrink-0 flex items-center justify-center" style={{ background: cc.bg }}><Icon className="w-6 h-6" style={{ color: cc.fg }} strokeWidth={2} /></div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
@@ -518,60 +512,124 @@ function IntroCard() {
   );
 }
 
-/* ═══════════════════════ DESKTOP-MOCKUP (kamera + spotlight + nav-markør + overlays) ═══════════════════════ */
+/* ═══════════════════════ DESKTOP-MOCKUP (rolig kamera + nav-markør + coachmark guided tour) ═══════════════════════ */
 function DesktopMock({ phase, beat, pulseKey }: { phase: 'intro' | 'tour'; beat: Beat; pulseKey: number }) {
   const View = VIEWS[beat.content];
   const isNav = beat.kind === 'nav';
   const isView = beat.kind === 'view';
   const isConv = beat.kind === 'converge';
   const isAuto = beat.key === 'autopilot' && isView;
-  const showCap = phase === 'tour' && isView && CAPS[beat.key];
+  const coach = isView ? COACH[beat.key] : null;
+
+  const frameRef = useRef<HTMLDivElement>(null);
+  const curContent = useRef<HTMLDivElement | null>(null);
+  const [place, setPlace] = useState<Place | null>(null);
+
+  // mål faktisk highlight-element (data-hi) → posisjoner spotlight + forklaringsboks
+  useEffect(() => {
+    if (!isView || !coach) { setPlace(null); return; }
+    let t1: any, t2: any;
+    const measure = () => {
+      const frame = frameRef.current; const cur = curContent.current;
+      if (!frame || !cur) return false;
+      const el = cur.querySelector('[data-hi]') as HTMLElement | null;
+      if (!el) return false;
+      const fr = frame.getBoundingClientRect();
+      const er = el.getBoundingClientRect();
+      const s = fr.width / DESK_W;
+      if (s <= 0 || er.width <= 0) return false;
+      const pad = 9;
+      const spot: Spot = {
+        x: Math.max(4, (er.left - fr.left) / s - pad),
+        y: Math.max(4, (er.top - fr.top) / s - pad),
+        w: er.width / s + pad * 2,
+        h: er.height / s + pad * 2,
+      };
+      // velg side med mest plass: høyre → under → venstre → over → fallback (over highlight, nederst)
+      const GAP = 26;
+      const rightRoom = (DESK_W - 22) - (spot.x + spot.w + GAP);
+      const belowRoom = (BODY_H - 20) - (spot.y + spot.h + GAP);
+      const leftRoom = (spot.x - GAP) - 22;
+      const aboveRoom = (spot.y - GAP) - 16;
+      let cx: number, cy: number;
+      if (rightRoom >= COACH_W) {
+        cx = spot.x + spot.w + GAP;
+        cy = clamp(spot.y + spot.h / 2 - 74, 18, BODY_H - 172);
+      } else if (belowRoom >= 150) {
+        cx = clamp(spot.x + spot.w / 2 - COACH_W / 2, SIDE_W + 18, DESK_W - COACH_W - 20);
+        cy = spot.y + spot.h + GAP;
+      } else if (leftRoom >= COACH_W) {
+        cx = spot.x - GAP - COACH_W;
+        cy = clamp(spot.y + spot.h / 2 - 74, 18, BODY_H - 172);
+      } else if (aboveRoom >= 150) {
+        cx = clamp(spot.x + spot.w / 2 - COACH_W / 2, SIDE_W + 18, DESK_W - COACH_W - 20);
+        cy = clamp(spot.y - GAP - 150, 16, BODY_H - 172);
+      } else {
+        // highlight fyller flaten → flytende kort nede til høyre inni feltet
+        cx = clamp(spot.x + spot.w - COACH_W - 20, SIDE_W + 18, DESK_W - COACH_W - 20);
+        cy = clamp(spot.y + spot.h - 168, 18, BODY_H - 172);
+      }
+      setPlace({ spot, cx, cy });
+      return true;
+    };
+    t1 = setTimeout(() => { if (!measure()) t2 = setTimeout(measure, 380); }, 560);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [beat.key, beat.kind, beat.content]);
+
   return (
-    <div className="rounded-[24px] overflow-hidden relative" style={{ width: DESK_W, background: BG, border: `1px solid ${BORDER_S}`, boxShadow: '0 1px 0 rgba(255,255,255,0.9) inset, 0 60px 130px -44px rgba(26,22,18,0.46), 0 24px 60px -34px rgba(26,22,18,0.26)' }}>
-      {/* kamera (zoom/pan) */}
-      <motion.div
-        className="flex" style={{ height: BODY_H, transformOrigin: '50% 50%' }}
-        animate={{ scale: beat.focus.scale, x: beat.focus.x, y: beat.focus.y }}
-        transition={{ duration: 1.25, ease }}
-      >
+    <div ref={frameRef} className="rounded-[24px] overflow-hidden relative" style={{ width: DESK_W, background: BG, border: `1px solid ${BORDER_S}`, boxShadow: '0 1px 0 rgba(255,255,255,0.9) inset, 0 60px 130px -44px rgba(26,22,18,0.46), 0 24px 60px -34px rgba(26,22,18,0.26)' }}>
+      {/* app-flate (rolig — full visning hele turen) */}
+      <div className="flex" style={{ height: BODY_H }}>
         <Sidebar tab={beat.side} cursorOn={isNav} pulseKey={pulseKey} />
         <div className="flex-1 relative overflow-hidden" style={{ background: BG }}>
           <AnimatePresence mode="sync">
-            <motion.div key={beat.content} className="absolute inset-0" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.55, ease }}>
+            <motion.div key={beat.content} ref={(el) => { if (el) curContent.current = el; }} className="absolute inset-0" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.7, ease }}>
               <View />
             </motion.div>
           </AnimatePresence>
           {/* nav-dim: under navigasjon dempes innholdet så fokus er på sidebaren */}
           <div className="absolute inset-0 pointer-events-none" style={{ background: 'rgba(8,7,12,0.5)', opacity: isNav ? 1 : 0, transition: 'opacity 0.7s ease' }} />
         </div>
-      </motion.div>
+      </div>
 
-      {/* spotlight-vignett (highlight på fokusmodulen) */}
-      <div className="absolute inset-0 pointer-events-none z-10" style={{ background: `radial-gradient(ellipse 64% 66% at 52% 47%, transparent 42%, rgba(12,10,18,${beat.dim}) 100%)`, transition: 'background 1s ease' }} />
+      {/* fin konstant vignett for dybde */}
+      <div className="absolute inset-0 pointer-events-none z-10" style={{ background: 'radial-gradient(ellipse 80% 80% at 50% 45%, transparent 60%, rgba(12,10,18,0.12) 100%)' }} />
 
-      {/* autopilot-pille */}
+      {/* ── COACHMARK: dimmer hele mockupen, highlighter det målte elementet, forklaring ved siden av ── */}
       <AnimatePresence>
-        {isAuto && (
-          <motion.div className="absolute bottom-5 right-6 z-20 inline-flex items-center gap-2 h-10 px-4 rounded-full" style={{ background: '#0a0a0a', boxShadow: '0 12px 30px -8px rgba(0,0,0,0.45), 0 0 0 4px rgba(207,151,252,0.1)' }}
-            initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.5, ease, delay: 0.3 }}>
-            <Sparkles className="w-4 h-4" style={{ color: ACCENT }} strokeWidth={2} />
-            <span className="text-[12.5px] font-semibold text-white" style={{ fontFamily: PJ }}>Spør Autopilot</span>
+        {coach && place && (
+          <motion.div key={beat.key} className="absolute inset-0 z-20 pointer-events-none"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.7, ease }}>
+            {/* highlight-felt (box-shadow dimmer alt utenfor) */}
+            <motion.div className="absolute rounded-[14px]"
+              initial={{ left: place.spot.x, top: place.spot.y, width: place.spot.w, height: place.spot.h }}
+              animate={{ left: place.spot.x, top: place.spot.y, width: place.spot.w, height: place.spot.h }}
+              transition={{ duration: 0.7, ease }}
+              style={{ boxShadow: '0 0 0 9999px rgba(8,6,14,0.6)', border: '1.5px solid rgba(210,152,255,0.7)', animation: 'pdGlow 2.8s ease-in-out infinite' }} />
+            {/* forklaringsboks */}
+            <motion.div className="absolute" style={{ left: place.cx, top: place.cy, width: COACH_W }}
+              initial={{ opacity: 0, y: 16, filter: 'blur(7px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} transition={{ duration: 0.7, ease, delay: 0.35 }}>
+              <div className="rounded-[18px] px-5 py-4" style={{ background: 'rgba(17,14,24,0.86)', backdropFilter: 'blur(18px)', WebkitBackdropFilter: 'blur(18px)', boxShadow: '0 24px 60px -20px rgba(0,0,0,0.62), inset 0 1px 0 rgba(255,255,255,0.06)' }}>
+                <div className="flex items-center gap-2.5 mb-2.5">
+                  <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg text-[11px] font-bold" style={{ fontFamily: PJ, background: 'rgba(210,152,255,0.16)', color: ACCENT, border: `1px solid ${ACCENT}3a` }}>{coach.no}</span>
+                  <span className="text-[10px] font-bold uppercase tracking-[0.2em]" style={{ fontFamily: PJ, color: 'rgba(255,255,255,0.4)' }}>{coach.no} / 05</span>
+                </div>
+                <p className="text-[18px] font-semibold leading-tight mb-1.5" style={{ fontFamily: FH, color: '#fff', letterSpacing: '-0.015em' }}>{coach.t}</p>
+                <p className="text-[12.5px] font-light leading-snug" style={{ fontFamily: PJ, color: 'rgba(255,255,255,0.62)' }}>{coach.d}</p>
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* lower-third bildetekst (kun i view-fasen) */}
-      <AnimatePresence mode="wait">
-        {showCap && (
-          <motion.div key={beat.key} className="absolute left-7 bottom-7 z-20 max-w-[420px]"
-            initial={{ opacity: 0, y: 16, filter: 'blur(6px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} exit={{ opacity: 0, y: -10, filter: 'blur(4px)' }} transition={{ duration: 0.6, ease }}>
-            <div className="rounded-2xl px-5 py-4 flex items-start gap-3.5" style={{ background: 'rgba(16,14,22,0.74)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', boxShadow: '0 18px 44px -16px rgba(0,0,0,0.5)' }}>
-              <span className="w-1 self-stretch rounded-full shrink-0" style={{ background: `linear-gradient(${ACCENT}, ${ACCENT_DK})`, boxShadow: `0 0 14px ${ACCENT}` }} />
-              <div>
-                <p className="text-[16px] font-semibold leading-tight" style={{ fontFamily: FH, color: '#fff', letterSpacing: '-0.01em' }}>{CAPS[beat.key].t}</p>
-                <p className="text-[12.5px] mt-1 font-light leading-snug" style={{ fontFamily: PJ, color: 'rgba(255,255,255,0.62)' }}>{CAPS[beat.key].d}</p>
-              </div>
-            </div>
+      {/* autopilot-pille */}
+      <AnimatePresence>
+        {isAuto && (
+          <motion.div className="absolute bottom-5 right-6 z-30 inline-flex items-center gap-2 h-10 px-4 rounded-full" style={{ background: '#0a0a0a', boxShadow: '0 12px 30px -8px rgba(0,0,0,0.45), 0 0 0 4px rgba(207,151,252,0.1)' }}
+            initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.5, ease, delay: 0.8 }}>
+            <Sparkles className="w-4 h-4" style={{ color: ACCENT }} strokeWidth={2} />
+            <span className="text-[12.5px] font-semibold text-white" style={{ fontFamily: PJ }}>Spør Autopilot</span>
           </motion.div>
         )}
       </AnimatePresence>
@@ -581,9 +639,9 @@ function DesktopMock({ phase, beat, pulseKey }: { phase: 'intro' | 'tour'; beat:
         {isConv && (
           <motion.div className="absolute inset-0 z-30 flex items-center justify-center text-center px-12"
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.6, ease }}>
-            <div className="absolute inset-0" style={{ background: 'radial-gradient(60% 60% at 50% 50%, rgba(10,9,16,0.5), rgba(10,9,16,0.28))', backdropFilter: 'blur(2px)' }} />
+            <div className="absolute inset-0" style={{ background: 'radial-gradient(60% 60% at 50% 50%, rgba(10,9,16,0.62), rgba(10,9,16,0.4))', backdropFilter: 'blur(2px)' }} />
             <motion.h3 className="relative leading-[1.05] tracking-[-0.03em]" style={{ fontFamily: FH, fontWeight: 700, fontSize: 'clamp(28px, 3.4vw, 46px)', color: '#fff' }}
-              initial={{ opacity: 0, y: 16, filter: 'blur(8px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} transition={{ duration: 0.8, ease, delay: 0.15 }}>
+              initial={{ opacity: 0, y: 16, filter: 'blur(8px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} transition={{ duration: 0.9, ease, delay: 0.2 }}>
               Alt dette flyter inn i{' '}
               <span style={{ backgroundImage: `linear-gradient(100deg, ${ACCENT}, #e9ccff)`, WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>autopiloten.</span>
             </motion.h3>
@@ -672,7 +730,7 @@ export default function ProductDuo({ active, pdfMode }: { active?: boolean; pdfM
     return () => clearTimeout(t);
   }, [active, pdfMode, phase, bi]);
 
-  const introBeat: Beat = { kind: 'view', key: 'intro', side: 0, content: 0, node: -1, dur: 0, focus: { scale: 1.04, x: 0, y: 0 }, dim: 0 };
+  const introBeat: Beat = { kind: 'view', key: 'intro', side: 0, content: 0, node: -1, dur: 0 };
   const beat = phase === 'intro' ? introBeat : BEATS[bi];
 
   const scale = Math.min(1.06, cw / DESK_W);
@@ -684,6 +742,7 @@ export default function ProductDuo({ active, pdfMode }: { active?: boolean; pdfM
         @keyframes pd-in { from { opacity:0; transform: translateY(26px); filter: blur(8px); } to { opacity:1; transform: translateY(0); filter: blur(0); } }
         @keyframes pdRipple { 0% { transform: scale(0.4); opacity: 0.85; } 100% { transform: scale(2); opacity: 0; } }
         @keyframes pdTap { 0% { transform: scale(1); } 38% { transform: scale(0.8); } 100% { transform: scale(1); } }
+        @keyframes pdGlow { 0%,100% { box-shadow: 0 0 0 9999px rgba(8,6,14,0.62), 0 0 22px 1px rgba(210,152,255,0.25); } 50% { box-shadow: 0 0 0 9999px rgba(8,6,14,0.62), 0 0 34px 4px rgba(210,152,255,0.45); } }
       `}</style>
       <div style={{ animation: anim, opacity: show ? undefined : 0 }}>
         <div style={{ height: BODY_H * scale, position: 'relative' }}>

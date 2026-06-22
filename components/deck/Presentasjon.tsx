@@ -5513,10 +5513,16 @@ const SBusinessModels = (p: any) => {
   const active = p.isActive;
   const isPdf = !!p.pdfMode;
   const show = active || isPdf;
-  const AC = '#d298ff';
+  const AC = '#9a63e8';      // lesbar merkevare-lilla på lys bakgrunn
+  const INK = '#0c0c0c';
+  const INK2 = '#1c1714';
+  const SUB = '#57514a';
+  const MUT = '#8a8278';
+  const FAINT = '#a8a097';
+  const HAIR = 'rgba(20,15,10,0.10)';
   const anim = active && !isPdf;
   return (
-  <SlideFrame bg="dark" {...p}>
+  <SlideFrame bg="beige" {...p}>
     <style>{`
       @keyframes bmFade { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
       @keyframes bmGrow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
@@ -5524,31 +5530,31 @@ const SBusinessModels = (p: any) => {
 
     {/* ambient — flatt og rolig */}
     <div aria-hidden="true" className="absolute inset-0 pointer-events-none"
-         style={{ background: 'radial-gradient(ellipse at 50% 30%, rgba(210,152,255,0.05) 0%, transparent 55%)' }} />
-    <DotGrid maskCenter="50% 30%" opacity={0.035} />
+         style={{ background: 'radial-gradient(ellipse at 50% 28%, rgba(154,99,232,0.05) 0%, transparent 55%)' }} />
+    <DotGrid maskCenter="50% 30%" opacity={0.36} />
 
     <div className="relative z-10 w-full max-w-[1060px] mx-auto px-6 sm:px-12 my-auto">
       {/* eyebrow + tittel — venstrejustert */}
       <div style={{ animation: anim ? 'bmFade 0.7s cubic-bezier(0.22,1,0.36,1) 0.1s both' : undefined, opacity: show ? undefined : 0 }}>
-        <span className="text-[11px] font-semibold uppercase tracking-[0.28em]" style={{ ...F, color: 'rgba(255,255,255,0.4)' }}>Forretningsmodell</span>
+        <span className="text-[11px] font-bold uppercase tracking-[0.28em]" style={{ ...F, color: AC }}>Forretningsmodell</span>
         <h2 className="tracking-[-0.03em] leading-[1.05] mt-5"
-            style={{ ...FH, fontWeight: 700, fontSize: 'clamp(28px, 3.4vw, 46px)', color: '#fff' }}>
+            style={{ ...FH, fontWeight: 700, fontSize: 'clamp(28px, 3.4vw, 46px)', color: INK }}>
           To forretningsmodeller. Én plattform.
         </h2>
-        <p className="text-[14.5px] sm:text-[16px] font-normal leading-[1.6] mt-4 max-w-[600px]" style={{ ...F, color: 'rgba(255,255,255,0.55)' }}>
+        <p className="text-[14.5px] sm:text-[16px] font-normal leading-[1.6] mt-4 max-w-[600px]" style={{ ...F, color: SUB }}>
           DigiHome betjener to ulike kundegrupper med samme underliggende plattform.
         </p>
       </div>
 
       {/* hårlinje */}
-      <div className="h-px w-full mt-10 origin-left" style={{ background: 'rgba(255,255,255,0.1)', animation: anim ? 'bmGrow 0.9s cubic-bezier(0.4,0,0.1,1) 0.35s both' : undefined, opacity: show ? undefined : 0 }} />
+      <div className="h-px w-full mt-10 origin-left" style={{ background: HAIR, animation: anim ? 'bmGrow 0.9s cubic-bezier(0.4,0,0.1,1) 0.35s both' : undefined, opacity: show ? undefined : 0 }} />
 
       {/* to spalter — nøytralt skille, ingen pynt */}
       <div className="grid grid-cols-1 md:grid-cols-2 mt-12 sm:mt-14">
         {BIZ_MODELS.map((m: any, i: number) => (
           <div key={m.tag}
                className={`relative ${i === 0 ? 'md:pr-16' : 'md:pl-16 md:border-l border-t md:border-t-0 mt-12 pt-12 md:mt-0 md:pt-0'}`}
-               style={{ borderColor: 'rgba(255,255,255,0.09)',
+               style={{ borderColor: HAIR,
                         animation: anim ? `bmFade 0.8s cubic-bezier(0.22,1,0.36,1) ${0.5 + i * 0.12}s both` : undefined,
                         opacity: show ? undefined : 0 }}>
 
@@ -5556,38 +5562,38 @@ const SBusinessModels = (p: any) => {
             <div className="flex items-baseline justify-between">
               <div className="flex items-baseline gap-3.5">
                 <span className="text-[14px] font-bold tabular-nums tracking-[-0.01em]" style={{ ...F, color: AC }}>{m.idx}</span>
-                <span className="text-[11px] font-semibold uppercase tracking-[0.24em]" style={{ ...F, color: 'rgba(255,255,255,0.42)' }}>{m.market}</span>
+                <span className="text-[11px] font-semibold uppercase tracking-[0.24em]" style={{ ...F, color: MUT }}>{m.market}</span>
               </div>
-              <span className="text-[11px] font-medium tracking-[0.16em]" style={{ ...F, color: 'rgba(255,255,255,0.28)' }}>{m.tag}</span>
+              <span className="text-[11px] font-medium tracking-[0.16em]" style={{ ...F, color: FAINT }}>{m.tag}</span>
             </div>
 
             {/* tittel + hvem */}
-            <h3 className="text-[26px] sm:text-[32px] font-bold tracking-[-0.028em] leading-[1.05] mt-7 text-white" style={{ ...FH }}>{m.label}</h3>
-            <p className="text-[13.5px] font-medium mt-2.5" style={{ ...F, color: 'rgba(255,255,255,0.48)' }}>{m.who}</p>
+            <h3 className="text-[26px] sm:text-[32px] font-bold tracking-[-0.028em] leading-[1.05] mt-7" style={{ ...FH, color: INK }}>{m.label}</h3>
+            <p className="text-[13.5px] font-medium mt-2.5" style={{ ...F, color: MUT }}>{m.who}</p>
 
             {/* verdi */}
-            <p className="text-[14px] sm:text-[15px] font-normal leading-[1.65] mt-6 max-w-[400px]" style={{ ...F, color: 'rgba(255,255,255,0.58)' }}>{m.desc}</p>
+            <p className="text-[14px] sm:text-[15px] font-normal leading-[1.65] mt-6 max-w-[400px]" style={{ ...F, color: SUB }}>{m.desc}</p>
 
             {/* egenskaper */}
-            <p className="text-[12.5px] font-normal tracking-[0.005em] leading-[1.5] mt-7" style={{ ...F, color: 'rgba(255,255,255,0.38)' }}>{m.traits}</p>
+            <p className="text-[12.5px] font-normal tracking-[0.005em] leading-[1.5] mt-7" style={{ ...F, color: MUT }}>{m.traits}</p>
 
             {/* inntektsmodell */}
             <div className="flex items-baseline gap-2.5 mt-9 flex-wrap">
-              <span className="text-[10px] font-semibold uppercase tracking-[0.22em]" style={{ ...F, color: 'rgba(255,255,255,0.3)' }}>Inntekt</span>
-              <span className="text-[17px] sm:text-[19px] font-semibold tracking-[-0.015em]" style={{ ...FH, color: 'rgba(255,255,255,0.95)' }}>{m.model}</span>
-              <span className="text-[13px] font-normal" style={{ ...F, color: 'rgba(255,255,255,0.4)' }}>· {m.modelSub}</span>
+              <span className="text-[10px] font-semibold uppercase tracking-[0.22em]" style={{ ...F, color: FAINT }}>Inntekt</span>
+              <span className="text-[17px] sm:text-[19px] font-semibold tracking-[-0.015em]" style={{ ...FH, color: INK2 }}>{m.model}</span>
+              <span className="text-[13px] font-normal" style={{ ...F, color: MUT }}>· {m.modelSub}</span>
             </div>
           </div>
         ))}
       </div>
 
       {/* hårlinje */}
-      <div className="h-px w-full mt-12 sm:mt-14 origin-left" style={{ background: 'rgba(255,255,255,0.1)', animation: anim ? 'bmGrow 0.9s cubic-bezier(0.4,0,0.1,1) 0.9s both' : undefined, opacity: show ? undefined : 0 }} />
+      <div className="h-px w-full mt-12 sm:mt-14 origin-left" style={{ background: HAIR, animation: anim ? 'bmGrow 0.9s cubic-bezier(0.4,0,0.1,1) 0.9s both' : undefined, opacity: show ? undefined : 0 }} />
 
       {/* payoff — rolig, uten fargeord */}
       <p className="text-[14.5px] sm:text-[16px] font-normal leading-[1.6] mt-7 max-w-[680px]"
-         style={{ ...F, color: 'rgba(255,255,255,0.6)', animation: anim ? 'bmFade 0.9s cubic-bezier(0.22,1,0.36,1) 1.1s both' : undefined, opacity: show ? undefined : 0 }}>
-        <span style={{ color: 'rgba(255,255,255,0.92)', fontWeight: 500 }}>Samme plattform driver begge markedene.</span> Når motoren først er bygget for privatmarkedet, betjenes det profesjonelle markedet med tilnærmet null marginalkostnad — en andre inntektsstrøm på samme infrastruktur.
+         style={{ ...F, color: SUB, animation: anim ? 'bmFade 0.9s cubic-bezier(0.22,1,0.36,1) 1.1s both' : undefined, opacity: show ? undefined : 0 }}>
+        <span style={{ color: INK2, fontWeight: 600 }}>Samme plattform driver begge markedene.</span> Når motoren først er bygget for privatmarkedet, betjenes det profesjonelle markedet med tilnærmet null marginalkostnad — en andre inntektsstrøm på samme infrastruktur.
       </p>
     </div>
   </SlideFrame>
