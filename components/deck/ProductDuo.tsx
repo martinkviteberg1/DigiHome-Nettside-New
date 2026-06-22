@@ -52,9 +52,8 @@ function DesktopMock() {
       <div className="flex" style={{ height: 502 }}>
         {/* sidebar */}
         <div className="shrink-0 flex flex-col py-3.5" style={{ width: 190, background: SIDEBAR }}>
-          <div className="flex items-center gap-2 px-4 mb-4">
-            <span className="inline-flex items-center justify-center w-[22px] h-[22px] rounded-md text-white text-[10px] font-bold" style={{ background: 'linear-gradient(135deg,#cf97fc,#7c5cff)', fontFamily: PJ }}>H</span>
-            <span className="text-[13px] font-bold text-white tracking-tight" style={{ fontFamily: PJ }}>digihome</span>
+          <div className="px-4 mb-4 pt-0.5">
+            <img src="/img/digihome-logo-white.svg" alt="DigiHome" className="h-[22px] w-auto select-none" draggable={false} />
           </div>
           <p className="text-[9px] font-semibold uppercase tracking-[0.16em] px-4 pt-2 pb-1.5" style={{ fontFamily: PJ, color: 'rgba(255,255,255,0.35)' }}>Arbeid</p>
           <SideItem icon={LayoutDashboard} label="Oversikt" active />
