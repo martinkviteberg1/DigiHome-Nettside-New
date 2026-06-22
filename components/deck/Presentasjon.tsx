@@ -5744,50 +5744,41 @@ const SFilosofi = (p: any) => {
          style={{ background: 'radial-gradient(ellipse at 50% 16%, rgba(154,99,232,0.05) 0%, transparent 56%)' }} />
     <DotGrid maskCenter="50% 24%" opacity={0.4} />
 
-    <div className="relative z-10 w-full max-w-[1120px] mx-auto px-6 sm:px-12 my-auto">
-      {/* header */}
-      <div className="mb-9 sm:mb-12" style={{ animation: anim ? 'filFade 0.7s cubic-bezier(0.22,1,0.36,1) 0.1s both' : undefined, opacity: show ? undefined : 0 }}>
-        <span className="text-[11px] font-bold uppercase tracking-[0.32em]" style={{ ...F, color: AC }}>Fundamentet</span>
-        <h2 className="tracking-[-0.03em] leading-[1.04] mt-5" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(28px, 3.6vw, 48px)', color: INK }}>
-          Filosofien bak DigiHome.
-        </h2>
-        <p className="text-[14.5px] sm:text-[16px] font-normal leading-[1.6] mt-4 max-w-[620px]" style={{ ...F, color: SUB }}>
-          Fire grunnpilarer styrer hver eneste beslutning vi tar i produktet.
-        </p>
-      </div>
+    <div className="relative z-10 w-full max-w-[1200px] mx-auto px-6 sm:px-12 my-auto">
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)] gap-y-12 lg:gap-x-20 items-center">
 
-      {/* 2×2 premium-kort — i tråd med de andre lyse slidene */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6">
-        {PILLARS.map((p2, i) => {
-          const Ic = p2.Icon;
-          return (
-            <div key={p2.no}
-                 className="relative rounded-[22px] p-7 overflow-hidden"
+        {/* ── VENSTRE — rolig editorial intro ── */}
+        <div style={{ animation: anim ? 'filFade 0.8s cubic-bezier(0.22,1,0.36,1) 0.1s both' : undefined, opacity: show ? undefined : 0 }}>
+          <span className="text-[11px] font-bold uppercase tracking-[0.4em]" style={{ ...F, color: AC }}>Fundamentet</span>
+          <h2 className="tracking-[-0.035em] leading-[1.02] mt-6" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(34px, 4.2vw, 60px)', color: INK }}>
+            Filosofien<br />bak DigiHome.
+          </h2>
+          <span className="block mt-8 mb-7 h-px rounded-full" style={{ width: 64, background: `linear-gradient(90deg, ${AC}, transparent)`, transformOrigin: 'left', animation: anim ? 'filGrow 0.9s cubic-bezier(0.22,1,0.36,1) 0.5s both' : undefined }} />
+          <p className="text-[15px] sm:text-[16.5px] font-normal leading-[1.62] max-w-[400px]" style={{ ...F, color: SUB }}>
+            Fire grunnpilarer styrer hver eneste beslutning vi tar i produktet.
+          </p>
+        </div>
+
+        {/* ── HØYRE — fire pilarer, hårlinje-separert, ingen bokser ── */}
+        <div>
+          {PILLARS.map((p2, i) => (
+            <div key={p2.no} className="relative flex gap-6 sm:gap-8 py-6 sm:py-[26px]"
                  style={{
-                   background: '#ffffff',
-                   border: '1px solid rgba(20,15,10,0.07)',
-                   boxShadow: '0 26px 64px -40px rgba(20,15,10,0.26), inset 0 1px 0 rgba(255,255,255,0.85)',
-                   animation: anim ? `filFade 0.8s cubic-bezier(0.22,1,0.36,1) ${0.4 + i * 0.12}s both` : undefined,
+                   borderTop: i === 0 ? 'none' : '1px solid rgba(20,15,10,0.09)',
+                   animation: anim ? `filFade 0.8s cubic-bezier(0.22,1,0.36,1) ${0.4 + i * 0.13}s both` : undefined,
                    opacity: show ? undefined : 0,
                  }}>
-              {/* subtil sheen øverst-venstre */}
-              <span aria-hidden="true" className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(120% 90% at 0% 0%, rgba(154,99,232,0.05), transparent 58%)' }} />
-              {/* stor nummer-vannmerke */}
-              <span aria-hidden="true" className="absolute select-none pointer-events-none" style={{ top: -22, right: 4, ...FH, fontWeight: 700, fontSize: 124, lineHeight: 1, color: 'transparent', WebkitTextStroke: '1.5px rgba(154,99,232,0.12)' }}>{p2.no}</span>
-
-              <div className="relative">
-                <div className="flex items-center justify-between">
-                  <span className="inline-flex items-center justify-center w-12 h-12 rounded-2xl" style={{ background: 'rgba(154,99,232,0.10)', border: '1px solid rgba(154,99,232,0.20)' }}>
-                    <Ic className="w-[21px] h-[21px]" style={{ color: AC }} strokeWidth={1.9} />
-                  </span>
-                  <span className="text-[11px] font-bold uppercase tracking-[0.22em] tabular-nums" style={{ ...F, color: AC }}>Pilar {p2.no}</span>
-                </div>
-                <h3 className="text-[19px] sm:text-[20px] font-bold tracking-[-0.02em] leading-[1.22] mt-6" style={{ ...FH, color: INK }}>{p2.t}</h3>
-                <p className="text-[13.5px] sm:text-[14px] font-normal leading-[1.62] mt-3" style={{ ...F, color: SUB }}>{p2.d}</p>
+              <span className="shrink-0 tabular-nums leading-none pt-1" style={{ ...FH, fontWeight: 600, fontSize: 17, color: AC, letterSpacing: '0.04em' }}>
+                {p2.no}
+              </span>
+              <div className="min-w-0">
+                <h3 className="text-[19px] sm:text-[21px] font-bold tracking-[-0.02em] leading-[1.22]" style={{ ...FH, color: INK }}>{p2.t}</h3>
+                <p className="text-[13.5px] sm:text-[14.5px] font-normal leading-[1.6] mt-2.5" style={{ ...F, color: SUB }}>{p2.d}</p>
               </div>
             </div>
-          );
-        })}
+          ))}
+        </div>
+
       </div>
     </div>
   </SlideFrame>

@@ -641,57 +641,57 @@ function IntroCard() {
   return (
     <motion.div
       className="absolute inset-0 z-40 flex flex-col items-center justify-center text-center px-16 overflow-hidden"
-      style={{ background: 'radial-gradient(120% 120% at 50% 18%, #1a1726 0%, #100f17 48%, #0a0910 100%)' }}
-      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, scale: 1.05, filter: 'blur(6px)' }}
-      transition={{ duration: 0.95, ease }}
+      style={{ background: 'radial-gradient(125% 125% at 50% 15%, #1b1828 0%, #0f0e16 50%, #08070d 100%)' }}
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, scale: 1.06, filter: 'blur(8px)' }}
+      transition={{ duration: 1.0, ease }}
     >
-      {/* ambient glød + fin grid (puster sakte inn) */}
-      <motion.div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(50% 50% at 50% 40%, rgba(210,152,255,0.18), transparent 70%)' }}
-        initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 2.2, ease }} />
-      <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: 'radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1px)', backgroundSize: '32px 32px', maskImage: 'radial-gradient(ellipse 70% 60% at 50% 45%, #000 30%, transparent 80%)', WebkitMaskImage: 'radial-gradient(ellipse 70% 60% at 50% 45%, #000 30%, transparent 80%)' }} />
+      {/* én ren, pustende glød — minimalt */}
+      <motion.div className="absolute pointer-events-none" style={{ left: '50%', top: '43%', width: 940, height: 580, transform: 'translate(-50%,-50%)', background: 'radial-gradient(closest-side, rgba(210,152,255,0.22), transparent 72%)', filter: 'blur(10px)' }}
+        initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 2.6, ease }} />
 
       {/* kicker */}
       <motion.span
-        className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.4em] mb-8"
-        style={{ fontFamily: PJ, color: 'rgba(255,255,255,0.5)' }}
-        initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, ease, delay: 0.6 }}
+        className="inline-flex items-center gap-2.5 text-[11px] font-bold uppercase tracking-[0.46em] mb-10"
+        style={{ fontFamily: PJ, color: 'rgba(255,255,255,0.46)' }}
+        initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, ease, delay: 0.55 }}
       >
-        <span className="w-1.5 h-1.5 rounded-full" style={{ background: ACCENT, boxShadow: `0 0 10px ${ACCENT}` }} />
+        <span className="w-1.5 h-1.5 rounded-full" style={{ background: ACCENT, boxShadow: `0 0 12px ${ACCENT}` }} />
         DigiHome-plattformen
       </motion.span>
 
-      <h2 className="leading-[1.04] tracking-[-0.035em]" style={{ fontFamily: FH, fontWeight: 700, fontSize: 'clamp(34px, 4.4vw, 62px)' }}>
+      <h2 className="leading-[1.02] tracking-[-0.038em]" style={{ fontFamily: FH, fontWeight: 700, fontSize: 'clamp(40px, 5.2vw, 74px)' }}>
         {/* linje 1 — bygges ord for ord (oppsett) */}
         <span className="block" style={{ color: '#fbfaff' }}>
           {line1.map((w, i) => (
             <motion.span key={i} className="inline-block" style={{ marginRight: '0.24em' }}
-              initial={{ opacity: 0, y: 20, filter: 'blur(10px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-              transition={{ duration: 0.7, ease, delay: 1.5 + i * 0.1 }}>{w}</motion.span>
+              initial={{ opacity: 0, y: 22, filter: 'blur(12px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+              transition={{ duration: 0.75, ease, delay: 1.4 + i * 0.11 }}>{w}</motion.span>
           ))}
         </span>
-        {/* tynn aksent-linje som tegnes mellom oppsett og payoff */}
-        <motion.span className="block mx-auto my-3 rounded-full" style={{ height: 2, background: `linear-gradient(90deg, transparent, ${ACCENT}, transparent)`, transformOrigin: 'center' }}
-          initial={{ scaleX: 0, opacity: 0 }} animate={{ scaleX: 1, opacity: 1 }} transition={{ duration: 0.9, ease, delay: 2.4 }} />
+        {/* tynn aksent-linje */}
+        <motion.span className="block mx-auto my-4 rounded-full" style={{ height: 2, width: 140, background: `linear-gradient(90deg, transparent, ${ACCENT}, transparent)`, transformOrigin: 'center' }}
+          initial={{ scaleX: 0, opacity: 0 }} animate={{ scaleX: 1, opacity: 1 }} transition={{ duration: 0.9, ease, delay: 2.3 }} />
         {/* linje 2 — payoff, lander samlet med glød */}
         <motion.span
-          className="block" initial={{ opacity: 0, y: 24, filter: 'blur(12px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} transition={{ duration: 1.0, ease, delay: 2.9 }}
-          style={{ backgroundImage: `linear-gradient(100deg, ${ACCENT} 0%, #e9ccff 55%, #b07be0 100%)`, WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent', filter: 'drop-shadow(0 0 22px rgba(210,152,255,0.28))' }}
+          className="block" initial={{ opacity: 0, y: 26, filter: 'blur(14px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} transition={{ duration: 1.05, ease, delay: 2.8 }}
+          style={{ backgroundImage: `linear-gradient(100deg, ${ACCENT} 0%, #efd9ff 52%, #b07be0 100%)`, WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent', filter: 'drop-shadow(0 0 26px rgba(210,152,255,0.32))' }}
         >
           Pluss autopiloten ingen andre har.
         </motion.span>
       </h2>
 
-      {/* CTA-linje */}
-      <motion.p
-        className="mt-9 text-[15px] font-light" style={{ fontFamily: "var(--font-body), 'ABC Diatype', sans-serif", color: 'rgba(255,255,255,0.5)', letterSpacing: '0.01em' }}
+      {/* minimal CTA — bare omvisning */}
+      <motion.div
+        className="mt-12 inline-flex items-center gap-3 text-[13.5px] font-medium"
+        style={{ fontFamily: PJ, color: 'rgba(255,255,255,0.62)', letterSpacing: '0.02em' }}
         initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.9, ease, delay: 3.9 }}
       >
-        <span style={{ color: 'rgba(255,255,255,0.74)' }}>Salg</span> · Eiendommer · Annonse · Saker · Kalender — ett system.&nbsp;&nbsp;
-        <span style={{ color: '#fff', fontWeight: 500 }}>La oss ta en omvisning</span>
-        <motion.span className="inline-block" initial={{ x: -4, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ duration: 0.6, ease, delay: 4.4 }}>
-          <ArrowRight className="inline-block w-4 h-4 ml-1.5 -mt-0.5" style={{ color: ACCENT }} strokeWidth={2.4} />
+        <span className="w-7 h-px" style={{ background: 'rgba(255,255,255,0.22)' }} />
+        La oss ta en omvisning
+        <motion.span className="inline-block" initial={{ x: -4, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ duration: 0.6, ease, delay: 4.3 }}>
+          <ArrowRight className="inline-block w-4 h-4" style={{ color: ACCENT }} strokeWidth={2.2} />
         </motion.span>
-      </motion.p>
+      </motion.div>
     </motion.div>
   );
 }
