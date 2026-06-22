@@ -2146,7 +2146,11 @@ const SFinn = (p: any) => (
 /* ═══ MARKET 1: Norsk leiemarked — ekte SSB-tall ═══ */
 const SMarket1 = (p: any) => {
   const active = p.isActive;
-  // Editorial geographic cascade. One visual metaphor. No noise.
+  const isPdf = !!p.pdfMode;
+  const show = active || isPdf;
+  const anim = active && !isPdf;
+  const AC = '#9a63e8', INK = '#0c0c0c', INK2 = '#1c1714', SUB = '#57514a', MUT = '#8a8278';
+  useEffect(() => { p.onLight?.(active && !isPdf); }, [active, isPdf]);
   const tiers = [
     { year: '2026',  region: 'Norge',                size: '86',     unit: 'mrd NOK', note: 'Første bevismarked. 600 000 utleieboliger, høy digital modenhet og ingen dominerende SaaS-standard.',  width: 14,  highlight: true  },
     { year: '2027',  region: 'Norden',               size: '320',    unit: 'mrd NOK', note: 'Naturlig skalering. Lignende betalings- og identitetsinfrastruktur, med BankID, MitID og Freja som lokale tillitslag.', width: 32 },
@@ -2157,94 +2161,69 @@ const SMarket1 = (p: any) => {
   return (
   <SlideFrame bg="beige" {...p}>
     <style>{`
-      @keyframes m1FadeUp { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
-      @keyframes m1HeadlineIn { from { opacity: 0; transform: translateY(24px); filter: blur(8px); } 60% { filter: blur(0); } to { opacity: 1; transform: translateY(0); filter: blur(0); } }
-      @keyframes m1RowIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+      @keyframes m1FadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+      @keyframes m1HeadlineIn { from { opacity: 0; transform: translateY(22px); filter: blur(8px); } 60% { filter: blur(0); } to { opacity: 1; transform: translateY(0); filter: blur(0); } }
+      @keyframes m1RowIn { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
+      @keyframes m1Grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
     `}</style>
 
-    <DotGrid maskCenter="50% 25%" opacity={0.3} />
+    <DotGrid maskCenter="50% 24%" opacity={0.4} />
 
     <div className="max-w-[1180px] mx-auto px-6 sm:px-12 w-full relative z-10">
-      {/* Editorial header — matches other slides */}
-      <div className="mb-7 sm:mb-10 max-w-[980px]">
-        <p className="text-[10.5px] sm:text-[11px] font-bold uppercase tracking-[0.32em] mb-4"
-           style={{ color: P, ...F, animation: active ? 'm1FadeUp 0.6s cubic-bezier(0.22,1,0.36,1) 0.15s both' : undefined, opacity: active ? undefined : 0 }}>
-          Marked · geografisk kaskade
-        </p>
-        <h2 className="font-bold text-[#0c0c0c] tracking-[-0.035em] leading-[1.04]"
-            style={{ ...F, fontSize: 'clamp(26px, 3.6vw, 46px)', animation: active ? 'm1HeadlineIn 0.95s cubic-bezier(0.22,1,0.36,1) 0.3s both' : undefined, opacity: active ? undefined : 0 }}>
-          <span className="md:block"><span style={{ color: P }}>Norge</span> først.</span>{' '}
-          <span className="md:block text-[#3a3530] font-light tracking-[-0.03em]">Norden neste. Globalt på sikt.</span>
+      {/* header */}
+      <div className="mb-8 sm:mb-11 max-w-[980px]">
+        <span className="inline-block text-[11px] font-bold uppercase tracking-[0.32em]" style={{ ...F, color: AC, animation: anim ? 'm1FadeUp 0.6s cubic-bezier(0.22,1,0.36,1) 0.15s both' : undefined, opacity: show ? undefined : 0 }}>Marked · geografisk kaskade</span>
+        <h2 className="tracking-[-0.035em] leading-[1.04] mt-5" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(28px, 3.8vw, 50px)', color: INK, animation: anim ? 'm1HeadlineIn 0.95s cubic-bezier(0.22,1,0.36,1) 0.3s both' : undefined, opacity: show ? undefined : 0 }}>
+          <span style={{ color: AC }}>Norge</span> først. <span style={{ color: '#9b938a', fontWeight: 400 }}>Norden neste. Globalt på sikt.</span>
         </h2>
-        <p className="text-[#3a3530] leading-[1.55] font-light tracking-[-0.003em] mt-5 max-w-[780px]"
-           style={{ ...F, fontSize: 'clamp(13px, 1.1vw, 15px)', animation: active ? 'm1FadeUp 0.8s cubic-bezier(0.22,1,0.36,1) 0.5s both' : undefined, opacity: active ? undefined : 0 }}>
+        <span className="block mt-7 h-px rounded-full" style={{ width: 64, background: `linear-gradient(90deg, ${AC}, transparent)`, transformOrigin: 'left', animation: anim ? 'm1Grow 0.9s cubic-bezier(0.22,1,0.36,1) 0.5s both' : undefined, opacity: show ? undefined : 0 }} />
+        <p className="text-[14px] sm:text-[15.5px] font-normal leading-[1.6] mt-6 max-w-[720px]" style={{ ...F, color: SUB, animation: anim ? 'm1FadeUp 0.8s cubic-bezier(0.22,1,0.36,1) 0.6s both' : undefined, opacity: show ? undefined : 0 }}>
           DigiHome bygges som én kjerneplattform, med lokale lag for språk, regelverk, betaling og identitet.
         </p>
       </div>
 
-      {/* Editorial ladder — 4 tier rows, compact */}
-      <div className="space-y-0">
+      {/* editorial ladder */}
+      <div>
         {tiers.map((t, i) => (
-          <div key={i}
-               className="relative grid grid-cols-12 gap-4 sm:gap-6 items-baseline border-t"
+          <div key={i} className="relative grid grid-cols-12 gap-4 sm:gap-6 items-center"
                style={{
-                 paddingTop: 'clamp(14px, 1.8vh, 24px)',
-                 paddingBottom: 'clamp(14px, 1.8vh, 24px)',
-                 borderColor: t.highlight ? `${P}55` : '#e4dfd4',
-                 borderTopWidth: t.highlight ? '2px' : '1px',
-                 animation: active ? `m1RowIn 0.7s cubic-bezier(0.22,1,0.36,1) ${0.55 + i * 0.1}s both` : undefined,
-                 opacity: active ? undefined : 0,
+                 paddingTop: 'clamp(15px, 1.9vh, 24px)', paddingBottom: 'clamp(15px, 1.9vh, 24px)',
+                 borderTop: i === 0 ? 'none' : '1px solid rgba(20,15,10,0.09)',
+                 animation: anim ? `m1RowIn 0.7s cubic-bezier(0.22,1,0.36,1) ${0.6 + i * 0.1}s both` : undefined,
+                 opacity: show ? undefined : 0,
                }}>
-            {/* Left: year + region */}
             <div className="col-span-12 sm:col-span-4 flex items-baseline gap-4 sm:gap-5">
-              <span className="text-[11px] sm:text-[12px] font-bold tabular-nums tracking-[0.1em]"
-                    style={{ ...F, color: t.highlight ? P : '#a8a094' }}>{t.year}</span>
+              <span className="tabular-nums tracking-[0.06em] shrink-0" style={{ ...FH, fontWeight: 600, fontSize: 13, color: t.highlight ? AC : MUT }}>{t.year}</span>
               <div className="min-w-0">
-                <p className="font-bold text-[#0c0c0c] tracking-[-0.02em] leading-none"
-                   style={{ ...F, fontSize: 'clamp(16px, 1.7vw, 20px)' }}>{t.region}</p>
-                <p className="text-[#6e6a62] font-light mt-1.5 leading-[1.4] tracking-[-0.003em]"
-                   style={{ ...F, fontSize: 'clamp(10.5px, 0.85vw, 12px)' }}>{t.note}</p>
+                <p className="tracking-[-0.02em] leading-none" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(17px, 1.8vw, 21px)', color: INK }}>{t.region}</p>
+                <p className="font-normal mt-2 leading-[1.45]" style={{ ...F, fontSize: 'clamp(11px, 0.85vw, 12.5px)', color: SUB }}>{t.note}</p>
               </div>
             </div>
-
-            {/* Middle: scale bar */}
             <div className="col-span-12 sm:col-span-5 hidden sm:block">
-              <div className="h-[2px] bg-[#e4dfd4] rounded-full overflow-hidden">
+              <div className="h-[3px] rounded-full overflow-hidden" style={{ background: 'rgba(20,15,10,0.07)' }}>
                 <div className="h-full rounded-full origin-left"
-                     style={{
-                       background: t.highlight ? `linear-gradient(90deg, ${P}, ${P}aa)` : '#0c0c0c',
-                       width: `${t.width}%`,
-                       transform: active ? 'scaleX(1)' : 'scaleX(0)',
-                       transition: `transform 1.2s cubic-bezier(0.22,1,0.36,1) ${0.9 + i * 0.1}s`,
-                     }} />
+                     style={{ background: t.highlight ? `linear-gradient(90deg, ${AC}, #c79bf0)` : '#23201c', width: `${t.width}%`, transform: show ? 'scaleX(1)' : 'scaleX(0)', transition: `transform 1.2s cubic-bezier(0.22,1,0.36,1) ${1 + i * 0.1}s` }} />
               </div>
             </div>
-
-            {/* Right: the number */}
             <div className="col-span-12 sm:col-span-3 flex items-baseline gap-2 sm:justify-end">
-              <span className="font-bold tracking-[-0.04em] leading-none tabular-nums text-[#0c0c0c]"
-                    style={{ ...F, fontSize: 'clamp(36px, 4.2vw, 56px)' }}>{t.size}</span>
+              <span className="tracking-[-0.04em] leading-none tabular-nums" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(38px, 4.4vw, 58px)', color: t.highlight ? AC : INK }}>{t.size}</span>
               <div className="flex flex-col gap-[2px] pb-1">
-                <span className="text-[10.5px] sm:text-[11.5px] text-[#0c0c0c] font-semibold tracking-[-0.003em]" style={F}>{t.unit}</span>
-                <span className="text-[9.5px] sm:text-[10px] text-[#8a8478] font-light tracking-[-0.003em]" style={F}>årlig leievolum</span>
+                <span className="text-[11.5px] font-semibold" style={{ ...F, color: INK2 }}>{t.unit}</span>
+                <span className="text-[10px] font-normal" style={{ ...F, color: MUT }}>årlig leievolum</span>
               </div>
             </div>
           </div>
         ))}
-
-        {/* Final divider */}
-        <div className="border-t border-[#e4dfd4]" />
+        <div style={{ borderTop: '1px solid rgba(20,15,10,0.09)' }} />
       </div>
 
-      {/* Subtle footer — editorial silence */}
-      <div className="mt-6 sm:mt-9 flex items-baseline justify-between flex-wrap gap-4"
-           style={{ animation: active ? 'm1FadeUp 0.8s cubic-bezier(0.22,1,0.36,1) 1.1s both' : undefined, opacity: active ? undefined : 0 }}>
-        <p className="text-[10.5px] sm:text-[11.5px] text-[#7a6f5e] font-light tracking-[-0.003em] max-w-[760px] leading-[1.5]" style={F}>
-          Tallene viser samlet <span className="font-semibold text-[#0c0c0c]">leievolum</span>, ikke SaaS-TAM. DigiHome tar betalt gjennom abonnement, transaksjoner og tilleggstjenester — med mulig take-rate over tid.
+      {/* footer */}
+      <div className="mt-7 sm:mt-9 flex items-baseline justify-between flex-wrap gap-4"
+           style={{ animation: anim ? 'm1FadeUp 0.8s cubic-bezier(0.22,1,0.36,1) 1.15s both' : undefined, opacity: show ? undefined : 0 }}>
+        <p className="text-[11px] sm:text-[12px] font-normal leading-[1.55] max-w-[760px]" style={{ ...F, color: MUT }}>
+          Tallene viser samlet <span className="font-semibold" style={{ color: INK2 }}>leievolum</span>, ikke SaaS-TAM. DigiHome tar betalt gjennom abonnement, transaksjoner og tilleggstjenester — med mulig take-rate over tid.
         </p>
-        <p className="text-[10px] text-[#a8a094] font-light tracking-[-0.003em]" style={F}>
-          Kilder: Eurostat · SSB · Statista PropTech
-        </p>
+        <p className="text-[10.5px] font-normal" style={{ ...F, color: '#a39a8e' }}>Kilder: Eurostat · SSB · Statista PropTech</p>
       </div>
     </div>
   </SlideFrame>
@@ -2380,7 +2359,11 @@ const SMarket2 = (p: any) => {
 /* ═══ SLIDE 11 — SMarket3 (Vei til 150 MNOK ARR) · Proptonomy-style ═══ */
 const SMarket3 = (p: any) => {
   const active = p.isActive;
-  // Editorial: one big number. Three markets. Quiet proof.
+  const isPdf = !!p.pdfMode;
+  const show = active || isPdf;
+  const anim = active && !isPdf;
+  const AC = '#9a63e8', INK = '#0c0c0c', INK2 = '#1c1714', SUB = '#57514a', MUT = '#8a8278';
+  useEffect(() => { p.onLight?.(active && !isPdf); }, [active, isPdf]);
   const splits = [
     { region: 'Norge',  pct: '60', customers: '6 000', window: '2026 – 2028', note: 'Bevismarked · 600k boliger', highlight: true },
     { region: 'Norden', pct: '30', customers: '3 000', window: '2027 – 2029', note: 'Samme KYC-stack' },
@@ -2390,85 +2373,78 @@ const SMarket3 = (p: any) => {
   return (
   <SlideFrame bg="beige" {...p}>
     <style>{`
-      @keyframes m3FadeUp { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
-      @keyframes m3HeadlineIn { from { opacity: 0; transform: translateY(24px); filter: blur(8px); } 60% { filter: blur(0); } to { opacity: 1; transform: translateY(0); filter: blur(0); } }
-      @keyframes m3HeroIn { from { opacity: 0; transform: translateY(32px) scale(0.96); filter: blur(10px); } 60% { filter: blur(0); } to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); } }
-      @keyframes m3ColIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+      @keyframes m3FadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+      @keyframes m3HeadlineIn { from { opacity: 0; transform: translateY(22px); filter: blur(8px); } 60% { filter: blur(0); } to { opacity: 1; transform: translateY(0); filter: blur(0); } }
+      @keyframes m3HeroIn { from { opacity: 0; transform: translateY(28px) scale(0.97); filter: blur(10px); } 60% { filter: blur(0); } to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); } }
+      @keyframes m3ColIn { from { opacity: 0; transform: translateY(20px) scale(0.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
+      @keyframes m3Grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
     `}</style>
 
-    <DotGrid maskCenter="50% 25%" opacity={0.3} />
+    <DotGrid maskCenter="50% 24%" opacity={0.4} />
 
     <div className="max-w-[1180px] mx-auto px-6 sm:px-12 w-full relative z-10">
-      {/* Editorial header — matches other slides */}
-      <div className="mb-7 sm:mb-10 max-w-[900px]">
-        <p className="text-[10.5px] sm:text-[11px] font-bold uppercase tracking-[0.32em] mb-4"
-           style={{ color: P, ...F, animation: active ? 'm3FadeUp 0.6s cubic-bezier(0.22,1,0.36,1) 0.15s both' : undefined, opacity: active ? undefined : 0 }}>
-          Mål 2030 · Nordic leader
-        </p>
-        <h2 className="font-bold text-[#0c0c0c] tracking-[-0.035em] leading-[1.04]"
-            style={{ ...F, fontSize: 'clamp(26px, 3.6vw, 46px)', animation: active ? 'm3HeadlineIn 0.95s cubic-bezier(0.22,1,0.36,1) 0.3s both' : undefined, opacity: active ? undefined : 0 }}>
-          <span className="md:block">10 000 kunder.</span>{' '}
-          <span className="md:block text-[#3a3530] font-light tracking-[-0.03em]">Tre markeder. Ett produkt.</span>
+      {/* header */}
+      <div className="mb-8 sm:mb-10 max-w-[920px]">
+        <span className="inline-block text-[11px] font-bold uppercase tracking-[0.32em]" style={{ ...F, color: AC, animation: anim ? 'm3FadeUp 0.6s cubic-bezier(0.22,1,0.36,1) 0.15s both' : undefined, opacity: show ? undefined : 0 }}>Mål 2030 · Nordic leader</span>
+        <h2 className="tracking-[-0.035em] leading-[1.04] mt-5" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(28px, 3.8vw, 50px)', color: INK, animation: anim ? 'm3HeadlineIn 0.95s cubic-bezier(0.22,1,0.36,1) 0.3s both' : undefined, opacity: show ? undefined : 0 }}>
+          10 000 kunder. <span style={{ color: '#9b938a', fontWeight: 400 }}>Tre markeder. Ett produkt.</span>
         </h2>
+        <span className="block mt-7 h-px rounded-full" style={{ width: 64, background: `linear-gradient(90deg, ${AC}, transparent)`, transformOrigin: 'left', animation: anim ? 'm3Grow 0.9s cubic-bezier(0.22,1,0.36,1) 0.5s both' : undefined, opacity: show ? undefined : 0 }} />
       </div>
 
-      {/* Hero number — the commanding visual, compact */}
-      <div className="relative flex flex-col sm:flex-row items-start sm:items-baseline justify-between gap-4 sm:gap-10 pb-7 sm:pb-10 border-b border-[#e4dfd4]"
-           style={{ animation: active ? 'm3HeroIn 1.1s cubic-bezier(0.22,1,0.36,1) 0.5s both' : undefined, opacity: active ? undefined : 0 }}>
+      {/* hero number */}
+      <div className="relative flex flex-col sm:flex-row items-start sm:items-baseline justify-between gap-5 sm:gap-10 pb-7 sm:pb-9"
+           style={{ borderBottom: '1px solid rgba(20,15,10,0.10)', animation: anim ? 'm3HeroIn 1.1s cubic-bezier(0.22,1,0.36,1) 0.55s both' : undefined, opacity: show ? undefined : 0 }}>
         <div className="flex items-baseline gap-3 sm:gap-5">
-          <span className="font-bold tracking-[-0.05em] leading-[0.85] tabular-nums"
-                style={{ ...F, color: P, fontSize: 'clamp(80px, 10vw, 140px)' }}>
-            150
-          </span>
-          <div className="flex flex-col gap-1">
-            <span className="font-bold tracking-[-0.02em] text-[#0c0c0c]" style={{ ...F, fontSize: 'clamp(14px, 1.4vw, 20px)' }}>MNOK ARR</span>
-            <span className="text-[11.5px] sm:text-[13px] text-[#8a8478] font-light tracking-[-0.003em]" style={F}>innen 2030</span>
+          <span className="tabular-nums" style={{ ...FH, fontWeight: 700, color: AC, fontSize: 'clamp(82px, 10vw, 138px)', letterSpacing: '-0.05em', lineHeight: 0.82 }}>150</span>
+          <div className="flex flex-col gap-1.5">
+            <span className="tracking-[-0.02em]" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(15px, 1.4vw, 20px)', color: INK }}>MNOK ARR</span>
+            <span className="text-[12px] sm:text-[13px] font-normal" style={{ ...F, color: MUT }}>innen 2030</span>
           </div>
         </div>
-
         <div className="max-w-[360px] sm:text-right">
-          <p className="text-[10.5px] sm:text-[11px] font-bold uppercase tracking-[0.22em] mb-2" style={{ ...F, color: '#8a8478' }}>Struktur</p>
-          <p className="text-[12.5px] sm:text-[14px] text-[#3a3530] font-light leading-[1.5] tracking-[-0.003em]" style={F}>
-            10 000 kunder × <span className="font-semibold text-[#0c0c0c] tabular-nums">15 000 kr</span> snitt ARPU. Take-rate via SaaS + transaksjoner.
+          <p className="text-[10.5px] font-bold uppercase tracking-[0.24em] mb-2.5" style={{ ...F, color: MUT }}>Struktur</p>
+          <p className="text-[13px] sm:text-[14.5px] font-normal leading-[1.55]" style={{ ...F, color: SUB }}>
+            10 000 kunder × <span className="font-semibold tabular-nums" style={{ color: INK2 }}>15 000 kr</span> snitt ARPU. Take-rate via SaaS + transaksjoner.
           </p>
         </div>
       </div>
 
-      {/* 3-column market split — compact */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-10 mt-7 sm:mt-10">
+      {/* 3 premium markedskort */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mt-8 sm:mt-9">
         {splits.map((s, i) => (
-          <div key={i}
-               className="relative pl-5"
+          <div key={i} className="relative rounded-[20px] p-6 sm:p-7 flex flex-col"
                style={{
-                 borderLeft: s.highlight ? `2px solid ${P}` : '1px solid #e4dfd4',
-                 animation: active ? `m3ColIn 0.8s cubic-bezier(0.22,1,0.36,1) ${0.9 + i * 0.1}s both` : undefined,
-                 opacity: active ? undefined : 0,
+                 background: s.highlight ? 'linear-gradient(180deg, rgba(154,99,232,0.09), rgba(154,99,232,0.025))' : '#ffffff',
+                 border: s.highlight ? '1.5px solid rgba(154,99,232,0.42)' : '1px solid rgba(20,15,10,0.08)',
+                 boxShadow: s.highlight ? '0 32px 76px -36px rgba(124,58,237,0.3), inset 0 1px 0 rgba(255,255,255,0.7)' : '0 24px 56px -34px rgba(20,15,10,0.18), inset 0 1px 0 rgba(255,255,255,0.7)',
+                 animation: anim ? `m3ColIn 0.8s cubic-bezier(0.22,1,0.36,1) ${0.95 + i * 0.12}s both` : undefined,
+                 opacity: show ? undefined : 0,
                }}>
-            <p className="text-[10.5px] font-bold uppercase tracking-[0.22em] mb-3"
-               style={{ ...F, color: s.highlight ? P : '#8a8478' }}>{s.region}</p>
-            <div className="flex items-baseline gap-1.5 mb-3">
-              <span className="font-bold tracking-[-0.04em] leading-none tabular-nums text-[#0c0c0c]"
-                    style={{ ...F, fontSize: 'clamp(40px, 4.5vw, 58px)' }}>{s.pct}</span>
-              <span className="text-[14px] sm:text-[16px] text-[#8a8478] font-medium pb-1" style={F}>%</span>
+            {s.highlight && (
+              <span className="absolute top-5 right-5 text-[9.5px] font-bold uppercase tracking-[0.16em] px-2.5 py-1 rounded-full" style={{ ...F, background: AC, color: '#fff' }}>Beachhead</span>
+            )}
+            <p className="text-[10.5px] font-bold uppercase tracking-[0.22em]" style={{ ...F, color: s.highlight ? AC : MUT }}>{s.region}</p>
+            <div className="flex items-baseline gap-1.5 mt-4">
+              <span className="tracking-[-0.04em] leading-none tabular-nums" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(42px, 4.6vw, 60px)', color: s.highlight ? AC : INK }}>{s.pct}</span>
+              <span className="text-[15px] sm:text-[17px] font-medium pb-1.5" style={{ ...F, color: MUT }}>%</span>
             </div>
-            <p className="text-[13px] sm:text-[14px] font-semibold text-[#0c0c0c] tracking-[-0.005em] tabular-nums" style={F}>
-              {s.customers} <span className="text-[#8a8478] font-light">kunder</span>
+            <p className="text-[13.5px] sm:text-[14.5px] font-semibold tracking-[-0.005em] tabular-nums mt-4" style={{ ...FH, color: INK }}>
+              {s.customers} <span className="font-normal" style={{ ...F, color: MUT }}>kunder</span>
             </p>
-            <p className="text-[11px] sm:text-[12px] text-[#8a8478] font-light mt-1 tracking-[-0.003em] tabular-nums" style={F}>{s.window}</p>
-            <p className="text-[11px] sm:text-[12px] text-[#6e6a62] font-light mt-3 leading-[1.5] tracking-[-0.003em]" style={F}>{s.note}</p>
+            <p className="text-[11.5px] sm:text-[12px] font-normal mt-1.5 tracking-[-0.003em] tabular-nums" style={{ ...F, color: MUT }}>{s.window}</p>
+            <p className="text-[11.5px] sm:text-[12.5px] font-normal mt-3 leading-[1.5]" style={{ ...F, color: SUB }}>{s.note}</p>
           </div>
         ))}
       </div>
 
-      {/* Subtle comparables footer — editorial silence */}
-      <div className="mt-7 sm:mt-10 pt-5 sm:pt-6 border-t border-[#e4dfd4] flex items-baseline justify-between flex-wrap gap-4"
-           style={{ animation: active ? 'm3FadeUp 0.8s cubic-bezier(0.22,1,0.36,1) 1.3s both' : undefined, opacity: active ? undefined : 0 }}>
-        <p className="text-[10.5px] sm:text-[11.5px] text-[#7a6f5e] font-light tracking-[-0.003em] max-w-[680px] leading-[1.5]" style={F}>
-          Sammenlignbare exits: <span className="font-semibold text-[#0c0c0c]">Hostaway $925M</span> · <span className="font-semibold text-[#0c0c0c]">Guesty ~$1 mrd</span> · <span className="font-semibold text-[#0c0c0c]">AppFolio $5,8 mrd</span>. Samme kategori.
+      {/* footer */}
+      <div className="mt-7 sm:mt-9 pt-5 sm:pt-6 flex items-baseline justify-between flex-wrap gap-4"
+           style={{ borderTop: '1px solid rgba(20,15,10,0.09)', animation: anim ? 'm3FadeUp 0.8s cubic-bezier(0.22,1,0.36,1) 1.35s both' : undefined, opacity: show ? undefined : 0 }}>
+        <p className="text-[11px] sm:text-[12px] font-normal leading-[1.55] max-w-[680px]" style={{ ...F, color: MUT }}>
+          Sammenlignbare exits: <span className="font-semibold" style={{ color: INK2 }}>Hostaway $925M</span> · <span className="font-semibold" style={{ color: INK2 }}>Guesty ~$1 mrd</span> · <span className="font-semibold" style={{ color: INK2 }}>AppFolio $5,8 mrd</span>. Samme kategori.
         </p>
-        <p className="text-[10px] text-[#a8a094] font-light tracking-[-0.003em]" style={F}>
-          20–30× ARR-multippel · 3–5 mrd NOK exit-range
-        </p>
+        <p className="text-[10.5px] font-normal" style={{ ...F, color: '#a39a8e' }}>20–30× ARR-multippel · 3–5 mrd NOK exit-range</p>
       </div>
     </div>
   </SlideFrame>
@@ -5977,14 +5953,13 @@ const SLIDES = [
   STeam,         // 03 · Teamet (founder-market fit) — flyttet frem
   SFraVerktoyTilMotor, // 04 · Problemet og løsningen — fra verktøy (proptech) til motor (DigiHome)
   SArkitektur, // 04a · Arkitekturen — alt flyter inn i Autopiloten (animert)
+  SFilosofi, // 04d · Filosofien bak DigiHome — flyttet rett etter «alt flyter inn i autopiloten»
   SProdukt, // 04b · Produktet — Én motor. To produkter. (B2B desktop + B2C mobil)
   SAIEiendom, // 04c · AI som forstår eiendom — 3 AI-moats m/ menneske-godkjenning
-  SFilosofi, // 04d · Filosofien bak DigiHome — fire grunnpilarer
-  SSystemIArbeid, // 04 · Systemet i arbeid — scriptet kontrakt-demo (ekte produkt-UI)
   SBusinessModels, // 05 · Forretningsmodeller — B2C (private) + B2B (profesjonelle)
   SBetalingsmodell, // 05b · Betalingsmodell — B2C (% av leie) + B2B (SaaS per enhet)
   SAlleredeInntekter, // 05c · Allerede i drift — 40 betalende huseiere, MRR/ARR i dag (traksjon)
-  SLiveDemo,     // 04 · Live product animation (from /digihome-tech)
+  // SLiveDemo,  // SKJULT etter ønske (behold koden) — «Produktet er bygget. Nå skal markedet vinnes.»
   SDualUSP,      // 05 · Three unique aspects (auto-listing + dynamic + AI ops)
   SProblem,      // 07 · Problem
   SWhyNow,       // 08 · Why now? (timing window)
@@ -6016,7 +5991,7 @@ export default function Presentasjon() {
   const prev = useCallback(() => setC((v: any) => Math.max(v - 1, 0)), []);
 
   // Lyse slides toner til lys bakgrunn — la chrome (pille) tilpasse seg
-  useEffect(() => { if (![1, 2, 3, 4, 5, 7, 8, 9, 10, 11].includes(c)) setChromeLight(false); }, [c]);
+  useEffect(() => { if (![1, 2, 3, 4, 5, 6, 8, 9, 10, 15, 16].includes(c)) setChromeLight(false); }, [c]);
 
   // Slide 2: lås fremover-navigasjon til hele tekst-animasjonen er spilt ferdig
   // MIDLERTIDIG DEAKTIVERT — låsen er slått av etter ønske. Sett ENABLE_S2_LOCK = true for å reaktivere.
@@ -6155,7 +6130,7 @@ export default function Presentasjon() {
       onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
       {SLIDES.map((Slide: any, i: number) => (
         <div key={i} className={`absolute inset-0 overflow-hidden transition-all duration-700 ease-[cubic-bezier(0.4,0,0.2,1)] ${i === c ? 'opacity-100 scale-100' : i < c ? 'opacity-0 scale-[0.96]' : 'opacity-0 scale-[1.04]'}`} style={{ pointerEvents: i === c ? 'auto' : 'none', visibility: Math.abs(i - c) <= 1 ? 'visible' : 'hidden' }}>
-          <Slide slideNum={i + 1} total={SLIDES.length} isActive={i === c} onLight={[1, 2, 3, 4, 5, 7, 8, 9, 10, 11].includes(i) ? setChromeLight : undefined} onAnimationComplete={i === 1 ? handleS2Complete : undefined} />
+          <Slide slideNum={i + 1} total={SLIDES.length} isActive={i === c} onLight={[1, 2, 3, 4, 5, 6, 8, 9, 10, 15, 16].includes(i) ? setChromeLight : undefined} onAnimationComplete={i === 1 ? handleS2Complete : undefined} />
         </div>
       ))}
 

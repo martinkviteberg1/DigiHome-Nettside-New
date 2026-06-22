@@ -12,6 +12,7 @@
  */
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import ContractDemo from './ContractDemo';
 import {
   LayoutDashboard, Gauge, MessageSquare, UserCheck, CalendarDays, CalendarCheck,
   Radio, ClipboardList, Bot, Building2, Building, Rocket, ScrollText, FileText,
@@ -54,7 +55,7 @@ const TABS = [
 /* ── omvisnings-koreografi: tom ramme → fortellende tekst → app-UI → (naviger i sidebar → coachmark-highlight m/ forklaring) → autopilot ── */
 type Focus = { scale: number; x: number; y: number };
 type Beat = {
-  kind: 'nav' | 'view' | 'converge' | 'overview';
+  kind: 'nav' | 'view' | 'converge' | 'overview' | 'finale';
   key: string;
   side: number;     // hvilken sidebar-modul som er markert (markør-mål)
   content: number;  // hvilken modul-skjerm som vises i innholdet
@@ -79,7 +80,9 @@ const BEATS: Beat[] = [
   { kind: 'view', key: 'kalender',   side: 4, content: 4, node: 4, dur: 4400 },
   { kind: 'converge', key: 'converge', side: 4, content: 4, node: 4, dur: 2600 },
   { kind: 'nav',  key: 'autopilot',  side: 5, content: 4, node: 5, dur: 2000 },
-  { kind: 'view', key: 'autopilot',  side: 5, content: 5, node: 5, dur: 5600 },
+  { kind: 'view', key: 'autopilot',  side: 5, content: 5, node: 5, dur: 4200 },
+  // — Finale: ContractDemo (eksakt som den gamle «Én kommando»-sliden) — autopiloten bygger leiekontrakten —
+  { kind: 'finale', key: 'finale', side: 5, content: 5, node: 5, dur: 13800 },
 ];
 const INTRO_DUR = 5200;
 
@@ -122,7 +125,7 @@ function SideLabel({ children }: any) {
   return <p className="text-[8.5px] font-semibold uppercase tracking-[0.18em] px-4 pt-2.5 pb-1" style={{ fontFamily: PJ, color: 'rgba(255,255,255,0.28)' }}>{children}</p>;
 }
 
-function Sidebar({ tab, cursorOn, pulseKey, walkStep }: { tab: number; cursorOn?: boolean; pulseKey?: number; walkStep?: number }) {
+function Sidebar({ tab, cursorOn, pulseKey, walkStep, phase, pdfMode }: { tab: number; cursorOn?: boolean; pulseKey?: number; walkStep?: number; phase?: 'intro' | 'tour'; pdfMode?: boolean }) {
   const navRef = useRef<HTMLDivElement>(null);
   const rSalg = useRef<HTMLDivElement>(null);
   const rEiendommer = useRef<HTMLDivElement>(null);
@@ -146,9 +149,30 @@ function Sidebar({ tab, cursorOn, pulseKey, walkStep }: { tab: number; cursorOn?
   const k = isWalk ? (walkKey as string) : (inOverview ? '' : TABS[tab].key);
   const showInd = inOverview ? isWalk : true;
 
+  const useEnter = phase !== undefined && !pdfMode;
+  const tourIn = phase === 'tour';
+  const itemsClass = useEnter ? `dh-sb-items${tourIn ? ' dh-sb-go' : ''}` : '';
+  const chromeStyle = (delay: number): React.CSSProperties | undefined => useEnter ? { opacity: tourIn ? 1 : 0, transform: tourIn ? 'translateX(0)' : 'translateX(-12px)', transition: `opacity 0.7s ease ${delay}s, transform 0.85s cubic-bezier(0.22,1,0.36,1) ${delay}s` } : undefined;
+
   return (
     <div className="shrink-0 flex flex-col py-3" style={{ width: SIDE_W, background: SIDE, borderRight: '1px solid rgba(0,0,0,0.06)' }}>
-      <div className="px-4 mb-2 pt-0.5">
+      <style dangerouslySetInnerHTML={{ __html: `
+        @keyframes sbReveal { from { opacity:0; transform: translateX(-13px); } to { opacity:1; transform: translateX(0); } }
+        .dh-sb-items > * { opacity: 0; }
+        .dh-sb-go > * { animation: sbReveal 0.55s cubic-bezier(0.22,1,0.36,1) both; }
+        .dh-sb-go > *:nth-child(1){animation-delay:.16s}
+        .dh-sb-go > *:nth-child(2){animation-delay:.21s}
+        .dh-sb-go > *:nth-child(3){animation-delay:.26s}
+        .dh-sb-go > *:nth-child(4){animation-delay:.31s}
+        .dh-sb-go > *:nth-child(5){animation-delay:.355s}
+        .dh-sb-go > *:nth-child(6){animation-delay:.40s}
+        .dh-sb-go > *:nth-child(7){animation-delay:.445s}
+        .dh-sb-go > *:nth-child(8){animation-delay:.49s}
+        .dh-sb-go > *:nth-child(9){animation-delay:.53s}
+        .dh-sb-go > *:nth-child(10){animation-delay:.57s}
+        .dh-sb-go > *:nth-child(n+11){animation-delay:.61s}
+      ` }} />
+      <div className="px-4 mb-2 pt-0.5" style={chromeStyle(0.12)}>
         <img src="/img/digihome-logo-white.svg" alt="DigiHome" className="h-[21px] w-auto select-none" draggable={false} />
       </div>
       <div ref={navRef} className="relative flex-1 overflow-hidden">
@@ -169,26 +193,28 @@ function Sidebar({ tab, cursorOn, pulseKey, walkStep }: { tab: number; cursorOn?
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M5 3 L5 19 L9 15 L11.5 21 L14.2 19.9 L11.8 14.2 L17 14 Z" fill="#fff" stroke="#0a0a0a" strokeWidth="1.1" strokeLinejoin="round" /></svg>
           </span>
         </div>
-        <SideLabel>Arbeid</SideLabel>
-        <NavItem icon={LayoutDashboard} label="Oversikt" on={false} />
-        <NavItem innerRef={rOperasjon} icon={Gauge} label="Operasjonssentral" on={k === 'autopilot'} badge="Ny" />
-        <NavItem icon={MessageSquare} label="Innboks" on={false} />
-        <NavItem innerRef={rSalg} icon={UserCheck} label="Salg" on={k === 'salg'} />
-        <NavItem icon={CalendarCheck} label="Reservasjoner" on={false} />
-        <NavItem innerRef={rKalender} icon={CalendarDays} label="Kalender" on={k === 'kalender'} />
-        <NavItem icon={Radio} label="Kanaler" on={false} />
-        <NavItem icon={ClipboardList} label="Oppgaver" on={false} />
-        <NavItem icon={Bot} label="Driftsassistent" on={false} />
-        <SideLabel>Drift</SideLabel>
-        <NavItem innerRef={rEiendommer} icon={Building2} label="Eiendommer" on={k === 'eiendommer'} />
-        <NavItem innerRef={rUtleie} icon={Rocket} label="Utleieprosesser" on={k === 'annonse'} />
-        <NavItem icon={ScrollText} label="Leieforhold" on={false} />
-        <NavItem icon={FileText} label="Dokumenter" on={false} />
-        <NavItem innerRef={rSaker} icon={AlertCircle} label="Saker" on={k === 'saker'} />
-        <NavItem icon={Users} label="Personer" on={false} />
-        <NavItem icon={Building} label="Organisasjon" on={false} />
+        <div className={itemsClass}>
+          <SideLabel>Arbeid</SideLabel>
+          <NavItem icon={LayoutDashboard} label="Oversikt" on={false} />
+          <NavItem innerRef={rOperasjon} icon={Gauge} label="Operasjonssentral" on={k === 'autopilot'} badge="Ny" />
+          <NavItem icon={MessageSquare} label="Innboks" on={false} />
+          <NavItem innerRef={rSalg} icon={UserCheck} label="Salg" on={k === 'salg'} />
+          <NavItem icon={CalendarCheck} label="Reservasjoner" on={false} />
+          <NavItem innerRef={rKalender} icon={CalendarDays} label="Kalender" on={k === 'kalender'} />
+          <NavItem icon={Radio} label="Kanaler" on={false} />
+          <NavItem icon={ClipboardList} label="Oppgaver" on={false} />
+          <NavItem icon={Bot} label="Driftsassistent" on={false} />
+          <SideLabel>Drift</SideLabel>
+          <NavItem innerRef={rEiendommer} icon={Building2} label="Eiendommer" on={k === 'eiendommer'} />
+          <NavItem innerRef={rUtleie} icon={Rocket} label="Utleieprosesser" on={k === 'annonse'} />
+          <NavItem icon={ScrollText} label="Leieforhold" on={false} />
+          <NavItem icon={FileText} label="Dokumenter" on={false} />
+          <NavItem innerRef={rSaker} icon={AlertCircle} label="Saker" on={k === 'saker'} />
+          <NavItem icon={Users} label="Personer" on={false} />
+          <NavItem icon={Building} label="Organisasjon" on={false} />
+        </div>
       </div>
-      <div className="mt-1 mx-2.5 flex items-center gap-2.5 rounded-xl px-2.5 py-2" style={{ background: 'rgba(255,255,255,0.05)' }}>
+      <div className="mt-1 mx-2.5 flex items-center gap-2.5 rounded-xl px-2.5 py-2" style={{ background: 'rgba(255,255,255,0.05)', ...chromeStyle(0.5) }}>
         <div className="w-7 h-7 rounded-full overflow-hidden shrink-0"><img src="/team/martin-kviteberg-face.jpg" alt="" className="w-full h-full object-cover" /></div>
         <div className="min-w-0">
           <p className="text-[11px] font-semibold text-white truncate" style={{ fontFamily: PJ }}>Martin Kviteberg</p>
@@ -554,6 +580,118 @@ function ViewOperasjon() {
   );
 }
 
+/* ═══════════════════════ FINALE · «Én kommando → autopiloten gjør resten» ═══════════════════════ */
+const FIN_CMD = 'Lag leiekontrakt for Olaf Ryes vei 11C';
+const FIN_STEPS = [
+  { Icon: UserCheck,    label: 'Leietaker hentet',                   sub: 'Kari Nordmann · fra Salg-pipelinen' },
+  { Icon: Wallet,       label: 'Leie, datoer og depositum fylt ut',  sub: '14 500 kr/mnd · innflytting 01.08' },
+  { Icon: ScrollText,   label: 'Leiekontrakt generert',              sub: 'Olaf Ryes vei 11C · Enhet 10' },
+  { Icon: CheckCircle2, label: 'Sendt til signering',                sub: 'BankID · til begge parter' },
+];
+
+function CommandFinale({ pdfMode }: { pdfMode?: boolean }) {
+  const [typed, setTyped] = useState(pdfMode ? FIN_CMD : '');
+  const [stage, setStage] = useState<'cmd' | 'run' | 'done'>(pdfMode ? 'done' : 'cmd');
+  const [k, setK] = useState(pdfMode ? FIN_STEPS.length : 0); // antall fullførte steg (k = aktivt steg pågår)
+
+  useEffect(() => {
+    if (pdfMode) return;
+    const ts: any[] = [];
+    const CHAR = 46;
+    for (let i = 1; i <= FIN_CMD.length; i++) ts.push(setTimeout(() => setTyped(FIN_CMD.slice(0, i)), 450 + i * CHAR));
+    const typeEnd = 450 + FIN_CMD.length * CHAR;
+    ts.push(setTimeout(() => setStage('run'), typeEnd + 640));
+    for (let i = 1; i <= FIN_STEPS.length; i++) ts.push(setTimeout(() => setK(i), typeEnd + 640 + i * 760));
+    ts.push(setTimeout(() => setStage('done'), typeEnd + 640 + FIN_STEPS.length * 760 + 520));
+    return () => ts.forEach(clearTimeout);
+  }, [pdfMode]);
+
+  const running = stage !== 'cmd';
+  return (
+    <div className="h-full relative overflow-hidden flex flex-col" style={{ background: BG }}>
+      <style>{`
+        @keyframes fnRowIn { from { opacity:0; transform: translateY(14px); } to { opacity:1; transform: translateY(0); } }
+        @keyframes fnPop { 0% { transform: scale(0.4); opacity:0; } 60% { transform: scale(1.12); } 100% { transform: scale(1); opacity:1; } }
+        @keyframes fnCaret { 0%,49% { opacity:1; } 50%,100% { opacity:0; } }
+        @keyframes fnUp { from { opacity:0; transform: translateY(20px) scale(0.98); filter: blur(8px);} to { opacity:1; transform: translateY(0) scale(1); filter: blur(0);} }
+      `}</style>
+
+      <div aria-hidden className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(60% 60% at 50% 32%, rgba(210,152,255,0.10), transparent 70%)' }} />
+
+      {/* header */}
+      <div className="px-9 pt-7 shrink-0">
+        <p className="text-[10px] tracking-[0.2em] uppercase flex items-center gap-1.5" style={{ fontFamily: PJ, color: MUTED, fontWeight: 700 }}>
+          <span className="w-1.5 h-1.5 rounded-full" style={{ background: ACCENT_DK }} />Operasjonssentral · Autopilot
+        </p>
+      </div>
+
+      {/* sentral kolonne */}
+      <div className="flex-1 flex flex-col items-center justify-center px-12 relative">
+        <div className="w-full" style={{ maxWidth: 660 }}>
+          {/* tittel */}
+          <div className="text-center mb-5">
+            <h2 className="text-[27px] leading-[1.06] tracking-[-0.03em]" style={{ fontFamily: FH, fontWeight: 800, color: INK }}>
+              Én kommando. <span style={{ color: ACCENT_DK }}>Systemet gjør resten.</span>
+            </h2>
+          </div>
+
+          {/* kommandolinje */}
+          <div className="relative rounded-[18px] flex items-center gap-3 px-5" style={{ height: 60, background: CARD, border: `1.5px solid ${running ? 'rgba(124,58,237,0.30)' : BORDER}`, boxShadow: running ? '0 24px 60px -30px rgba(124,58,237,0.4)' : '0 18px 44px -28px rgba(20,15,10,0.28)', transition: 'border-color 0.5s ease, box-shadow 0.5s ease' }}>
+            <Sparkles className="w-5 h-5 shrink-0" style={{ color: ACCENT_DK }} strokeWidth={2} />
+            <div className="flex-1 min-w-0 flex items-center">
+              <span className="text-[16px] truncate" style={{ fontFamily: PJ, color: typed ? INK : MUTED, fontWeight: 500 }}>{typed || 'Skriv en kommando…'}</span>
+              {stage === 'cmd' && <span className="inline-block w-[2px] h-[20px] ml-0.5" style={{ background: ACCENT_DK, animation: 'fnCaret 1s step-end infinite' }} />}
+            </div>
+            <span className="inline-flex items-center justify-center w-9 h-9 rounded-xl shrink-0" style={{ background: running ? ACCENT_DK : '#1a1a1a', transition: 'background 0.4s ease' }}>
+              {running ? <Check className="w-4 h-4 text-white" strokeWidth={3} /> : <ArrowRight className="w-4 h-4 text-white" strokeWidth={2.4} />}
+            </span>
+          </div>
+
+          {/* steg-kaskade (reservert høyde → ingen layout-hopp) */}
+          <div className="mt-5 flex flex-col gap-2.5" style={{ minHeight: 296 }}>
+            {running && FIN_STEPS.map((s, i) => {
+              if (i > k) return null;
+              const doneRow = i < k;
+              const Icon = s.Icon;
+              return (
+                <div key={s.label} className="flex items-center gap-3.5 rounded-[16px] px-4 py-3" style={{ background: CARD, border: `1px solid ${HAIRLINE}`, boxShadow: '0 2px 8px rgba(10,10,10,0.03)', animation: 'fnRowIn 0.5s cubic-bezier(0.22,1,0.36,1) both' }}>
+                  <span className="w-10 h-10 rounded-[12px] shrink-0 flex items-center justify-center" style={{ background: ACCENT_SOFT }}>
+                    <Icon className="w-[19px] h-[19px]" style={{ color: ACCENT_DK }} strokeWidth={2} />
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[14.5px] leading-tight truncate" style={{ fontFamily: FH, fontWeight: 700, color: INK }}>{s.label}</p>
+                    <p className="text-[12px] truncate mt-0.5" style={{ fontFamily: PJ, color: MUTED }}>{s.sub}</p>
+                  </div>
+                  {doneRow ? (
+                    <span className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-full shrink-0" style={{ fontFamily: PJ, color: ACCENT_DK, background: ACCENT_SOFT, animation: 'fnPop 0.4s cubic-bezier(0.34,1.5,0.5,1) both' }}>
+                      <Check className="w-3 h-3" strokeWidth={3} />Utført automatisk
+                    </span>
+                  ) : (
+                    <Loader2 className="w-4 h-4 shrink-0 animate-spin" style={{ color: ACCENT_DK }} />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* punchline-overlay */}
+        {stage === 'done' && (
+          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center text-center px-12" style={{ background: 'radial-gradient(70% 70% at 50% 50%, rgba(253,252,251,0.93), rgba(253,252,251,0.98))', backdropFilter: 'blur(3px)', WebkitBackdropFilter: 'blur(3px)', animation: 'fnUp 0.85s cubic-bezier(0.22,1,0.36,1) both' }}>
+            <span className="inline-flex items-center justify-center w-14 h-14 rounded-full mb-6" style={{ background: ACCENT_DK, boxShadow: `0 0 0 8px ${ACCENT}26`, animation: 'fnPop 0.6s cubic-bezier(0.34,1.5,0.5,1) both' }}>
+              <Check className="w-7 h-7 text-white" strokeWidth={3} />
+            </span>
+            <p className="text-[12px] uppercase tracking-[0.22em] mb-3" style={{ fontFamily: PJ, color: MUTED, fontWeight: 700 }}>Leiekontrakt sendt til signering</p>
+            <h2 className="text-[34px] leading-[1.05] tracking-[-0.035em]" style={{ fontFamily: FH, fontWeight: 800, color: INK }}>
+              Pluss autopiloten<br /><span style={{ color: ACCENT_DK }}>ingen andre har.</span>
+            </h2>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 const VIEWS = [ViewSalg, ViewEiendommer, ViewAnnonse, ViewSaker, ViewKalender, ViewOperasjon];
 
 const VIEW_KEYS = ['salg', 'eiendommer', 'annonse', 'saker', 'kalender', 'autopilot'];
@@ -604,19 +742,10 @@ function ModuleOverview({ stage, step }: { stage: 'text' | 'walk' | 'all'; step:
         <p className="text-[16px] mt-5" style={{ fontFamily: PJ, color: SUB, animation: isText ? 'moTxt 0.7s cubic-bezier(0.22,1,0.36,1) 1.35s both' : undefined }}>Bygget i moduler. Vi tar dem én om gangen.</p>
       </div>
 
-      {/* ══ STEG 2–3 · KONSTELLASJON (bygges modul for modul) ══ */}
+      {/* ══ STEG 2–3 · KONSTELLASJON (bygges modul for modul — kun illustrasjon, sentrert) ══ */}
       <div className="absolute inset-0" style={{ opacity: showC ? 1 : 0, transform: showC ? 'scale(1)' : 'scale(0.985)', filter: showC ? 'blur(0px)' : 'blur(7px)', transition: 'opacity 0.8s ease 0.05s, transform 0.9s cubic-bezier(0.22,1,0.36,1), filter 0.9s ease' }}>
-        {/* header */}
-        <div className="absolute left-0 right-0 text-center z-30 px-10" style={{ top: 46 }}>
-          <span className="inline-block text-[11px] font-bold uppercase tracking-[0.36em]" style={{ fontFamily: PJ, color: ACCENT_DK }}>DigiHome · operativsystemet</span>
-          <h2 className="text-[33px] font-bold tracking-[-0.032em] leading-[1.03] mt-3" style={{ fontFamily: FH, color: INK }}>Ett system. Bygget i moduler.</h2>
-          <p className="text-[14.5px] mt-2.5" style={{ fontFamily: PJ, color: SUB, transition: 'color 0.5s ease' }}>
-            {all ? 'Seks moduler. Én plattform. Alt henger sammen.' : 'Følg med — modulene kobles på, én etter én.'}
-          </p>
-        </div>
-
         {/* konstellasjon */}
-        <div className="absolute z-10" style={{ left: '50%', top: 216, transform: 'translateX(-50%)', width: 1044, height: 472 }}>
+        <div className="absolute z-10" style={{ left: '50%', top: 124, transform: 'translateX(-50%)', width: 1044, height: 472 }}>
           <svg width="1044" height="472" className="absolute inset-0 overflow-visible">
             {/* bane-ring — først tydelig når alt er på */}
             <ellipse cx={OV_CX} cy={OV_CY} rx={OV_RX} ry={OV_RY} fill="none" stroke="rgba(124,58,237,0.16)" strokeWidth={1.25} strokeDasharray="1.5 9" style={{ opacity: all ? 1 : 0, transition: 'opacity 0.8s ease', animation: 'moRing 2.6s linear infinite' }} />
@@ -728,7 +857,8 @@ function IntroCard() {
 /* ═══════════════════════ DESKTOP-MOCKUP (rolig kamera + nav-markør + coachmark guided tour) ═══════════════════════ */
 function DesktopMock({ phase, beat, pulseKey, pdfMode }: { phase: 'intro' | 'tour'; beat: Beat; pulseKey: number; pdfMode?: boolean }) {
   const isOverview = beat.kind === 'overview';
-  const View = isOverview ? null : VIEWS[beat.content];
+  const isFinale = beat.kind === 'finale';
+  const View = (isOverview || isFinale) ? null : VIEWS[beat.content];
   const isNav = beat.kind === 'nav';
   const isView = beat.kind === 'view';
   const isConv = beat.kind === 'converge';
@@ -811,11 +941,11 @@ function DesktopMock({ phase, beat, pulseKey, pdfMode }: { phase: 'intro' | 'tou
     <div ref={frameRef} className="rounded-[24px] overflow-hidden relative" style={{ width: DESK_W, background: BG, border: `1px solid ${BORDER_S}`, boxShadow: '0 1px 0 rgba(255,255,255,0.9) inset, 0 60px 130px -44px rgba(26,22,18,0.46), 0 24px 60px -34px rgba(26,22,18,0.26)' }}>
       {/* app-flate (rolig — full visning hele turen) */}
       <div className="flex" style={{ height: BODY_H }}>
-        <Sidebar tab={beat.side} cursorOn={isNav} pulseKey={pulseKey} walkStep={isOverview ? ovStep : undefined} />
+        <Sidebar tab={beat.side} cursorOn={isNav} pulseKey={pulseKey} walkStep={isOverview ? ovStep : undefined} phase={phase} pdfMode={pdfMode} />
         <div className="flex-1 relative overflow-hidden" style={{ background: BG }}>
           <AnimatePresence mode="sync">
-            <motion.div key={isOverview ? 'overview' : beat.content} ref={(el) => { if (el) curContent.current = el; }} className="absolute inset-0" initial={{ opacity: 0, scale: 1.015, filter: 'blur(8px)' }} animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }} exit={{ opacity: 0, scale: 0.985, filter: 'blur(8px)' }} transition={{ duration: 0.9, ease }}>
-              {isOverview ? <ModuleOverview stage={ovStage} step={ovStep} /> : View ? <View /> : null}
+            <motion.div key={isOverview ? 'overview' : isFinale ? 'finale' : beat.content} ref={(el) => { if (el) curContent.current = el; }} className="absolute inset-0" initial={{ opacity: 0, scale: 1.015, filter: 'blur(8px)' }} animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }} exit={{ opacity: 0, scale: 0.985, filter: 'blur(8px)' }} transition={{ duration: 0.9, ease }}>
+              {isOverview ? <ModuleOverview stage={ovStage} step={ovStep} /> : isFinale ? <CommandFinale pdfMode={pdfMode} /> : View ? <View /> : null}
             </motion.div>
           </AnimatePresence>
           {/* nav-dim: under navigasjon dempes innholdet så fokus er på sidebaren */}
@@ -966,6 +1096,7 @@ export default function ProductDuo({ active, pdfMode }: { active?: boolean; pdfM
 
   const scale = Math.min(1.06, cw / DESK_W);
   const anim = show && !pdfMode ? 'pd-in 0.9s cubic-bezier(0.16,1,0.3,1) 0.1s both' : undefined;
+  const atFinale = phase === 'tour' && BEATS[bi]?.kind === 'finale';
 
   return (
     <div ref={wrapRef} className="w-full">
@@ -974,14 +1105,25 @@ export default function ProductDuo({ active, pdfMode }: { active?: boolean; pdfM
         @keyframes pdRipple { 0% { transform: scale(0.4); opacity: 0.85; } 100% { transform: scale(2); opacity: 0; } }
         @keyframes pdTap { 0% { transform: scale(1); } 38% { transform: scale(0.8); } 100% { transform: scale(1); } }
         @keyframes pdGlow { 0%,100% { box-shadow: 0 0 0 9999px rgba(8,6,14,0.62), 0 0 22px 1px rgba(210,152,255,0.25); } 50% { box-shadow: 0 0 0 9999px rgba(8,6,14,0.62), 0 0 34px 4px rgba(210,152,255,0.45); } }
+        @keyframes pdFinaleIn { from { opacity:0; transform: translateY(22px) scale(0.97); filter: blur(9px); } to { opacity:1; transform: translateY(0) scale(1); filter: blur(0); } }
       `}</style>
       <div style={{ animation: anim, opacity: show ? undefined : 0 }}>
-        <div style={{ height: BODY_H * scale, position: 'relative' }}>
-          <div style={{ width: DESK_W, transform: `scale(${scale})`, transformOrigin: 'top center', position: 'absolute', left: '50%', marginLeft: -DESK_W / 2, top: 0 }}>
-            <DesktopMock phase={phase} beat={beat} pulseKey={phase === 'tour' ? bi : -1} pdfMode={pdfMode} />
+        {atFinale ? (
+          <div className="flex justify-center" style={{ animation: !pdfMode ? 'pdFinaleIn 0.95s cubic-bezier(0.22,1,0.36,1) both' : undefined }}>
+            <ContractDemo active={!pdfMode} pdfMode={pdfMode} />
           </div>
-        </div>
-        <Rail phase={phase} node={phase === 'tour' ? BEATS[bi].node : -1} />
+        ) : (
+          <>
+            <div style={{ height: BODY_H * scale, position: 'relative' }}>
+              <div style={{ width: DESK_W, transform: `scale(${scale})`, transformOrigin: 'top center', position: 'absolute', left: '50%', marginLeft: -DESK_W / 2, top: 0 }}>
+                <DesktopMock phase={phase} beat={beat} pulseKey={phase === 'tour' ? bi : -1} pdfMode={pdfMode} />
+              </div>
+            </div>
+            <div style={{ opacity: phase === 'tour' ? 1 : 0, transform: phase === 'tour' ? 'translateY(0)' : 'translateY(12px)', transition: 'opacity 0.7s ease, transform 0.8s cubic-bezier(0.22,1,0.36,1)', pointerEvents: phase === 'tour' ? 'auto' : 'none' }}>
+              <Rail phase={phase} node={phase === 'tour' ? BEATS[bi].node : -1} />
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
