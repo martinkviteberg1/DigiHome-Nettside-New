@@ -493,133 +493,109 @@ const SSolution = (p: any) => {
   );
 };
 
-/* ═══ TEAM SLIDE — Proptonomy-style: big headline + sectioned cards ═══ */
+/* ═══ TEAM SLIDE — premium minimalist editorial (hairline rows, no cards) ═══ */
 const STeam = (p: any) => {
   const active = p.isActive;
   const isPdf = !!p.pdfMode;
+  const show = active || isPdf;
+  const anim = active && !isPdf;
   useEffect(() => { p.onLight?.(active && !isPdf); }, [active, isPdf]);
+  const AC = '#9a63e8';      // lesbar merkevare-lilla på lys bakgrunn
+  const INK = '#0c0c0c';
+  const INK2 = '#1c1714';
+  const SUB = '#57514a';
+  const MUT = '#8a8278';
+  const HAIR = 'rgba(20,15,10,0.09)';
   const team = [
     {
       name: 'Sarah Sleeman',
       role: 'Daglig leder · CEO',
+      field: 'Eiendom',
       img: '/team-sarah.webp',
       lead: 'Eiendomsmegler med seks års erfaring fra rådgivende roller i DNB.',
-      bullets: [
-        'Leder kundeakkvisisjon, eiendomsforvaltning og selskapets daglige administrasjon.',
-        'Bachelor i eiendomsmegling fra BI.',
-        'DN Aspiring Women.',
-      ],
+      meta: 'Leder kundeakkvisisjon og forvaltning · Bachelor i eiendomsmegling, BI · DN Aspiring Women',
     },
     {
       name: 'Martin C. Kviteberg',
       role: 'Teknisk sjef · CTO · Medgründer',
+      field: 'Teknologi',
       img: '/team/martin-kviteberg-face.jpg',
       imgStyle: { objectPosition: 'center' },
       lead: 'Gründer med exit fra Adonis AS. Startet Bnbspesialisten — en av Norges tre første korttidsforvaltere.',
-      bullets: [
-        'Dekker tech, automatisering, drift og forvaltning.',
-        '10+ år som direktør for forretningsutvikling hos Adonis AS.',
-        'Bachelor i økonomi og administrasjon fra BI.',
-      ],
+      meta: 'Tech, automatisering og drift · 10+ år som direktør for forretningsutvikling, Adonis AS · BI',
     },
     {
       name: 'Erik Hoffmann-Dahl',
       role: 'Styrets leder · Rådgiver',
+      field: 'Jus',
       img: '/team-erik.webp',
-      lead: 'Advokat og partner i Hoffmann Thinn. Sparringspartner siden dag én. Tegnet selskapsstrukturen som skal bære vekst og emisjon.',
-      bullets: [
-        'Dekker struktur, kontrakt, compliance og investorklarhet.',
-        'Spesialist på M&A, eiendomstransaksjoner og kontraktsrett.',
-        'Passer på at hver leiekontrakt og personvernflyt holder mål.',
-      ],
+      lead: 'Advokat og partner i Hoffmann Thinn. Tegnet selskapsstrukturen som skal bære vekst og emisjon.',
+      meta: 'Struktur, kontrakt og compliance · Spesialist på M&A og eiendomstransaksjoner · Investorklarhet',
     },
   ];
 
   return (
   <SlideFrame bg="beige" {...p}>
     <style>{`
-      @keyframes teamFadeUp { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
-      @keyframes teamHeadlineIn { from { opacity: 0; transform: translateY(24px); filter: blur(8px); } 60% { filter: blur(0); } to { opacity: 1; transform: translateY(0); filter: blur(0); } }
-      @keyframes teamCardIn { from { opacity: 0; transform: translateY(28px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
-      @keyframes teamRule { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+      @keyframes teamFade { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+      @keyframes teamHead { from { opacity: 0; transform: translateY(22px); filter: blur(8px); } 60% { filter: blur(0); } to { opacity: 1; transform: translateY(0); filter: blur(0); } }
+      @keyframes teamGrow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
     `}</style>
 
-    <DotGrid maskCenter="50% 30%" opacity={0.4} />
+    <div aria-hidden="true" className="absolute inset-0 pointer-events-none"
+         style={{ background: 'radial-gradient(ellipse at 50% 14%, rgba(154,99,232,0.05) 0%, transparent 56%)' }} />
+    <DotGrid maskCenter="50% 24%" opacity={0.4} />
 
-    <div className="max-w-[1280px] mx-auto px-6 sm:px-12 w-full relative z-10">
-      {/* ═══ Editorial header ═══ */}
-      <div className="mb-7 sm:mb-10">
-        <p className="text-[10.5px] sm:text-[11px] font-bold uppercase tracking-[0.28em] mb-5"
-           style={{ color: P, animation: active ? 'teamFadeUp 0.6s cubic-bezier(0.22,1,0.36,1) 0.15s both' : undefined, opacity: active ? undefined : 0 }}>
-          Teamet
-        </p>
-        <h2 className="text-[26px] sm:text-[36px] lg:text-[46px] font-bold text-[#0c0c0c] tracking-[-0.035em] leading-[1.06] max-w-[1080px]"
-            style={{ ...F, animation: active ? 'teamHeadlineIn 0.95s cubic-bezier(0.22,1,0.36,1) 0.3s both' : undefined, opacity: active ? undefined : 0 }}>
-          <span className="md:block">Bygget av utleiere,</span>{' '}
-          <span className="md:block"><span style={{ color: P }}>for utleiere.</span></span>
-        </h2>
-      </div>
+    <div className="relative z-10 w-full max-w-[1240px] mx-auto px-6 sm:px-12 my-auto">
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] gap-y-12 lg:gap-x-20 items-center">
 
-      {/* ═══ 3 premium cards ═══ */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 lg:gap-7">
-        {team.map((m, i) => (
-          <article key={i} className="bg-white rounded-[20px] flex flex-col"
-                   style={{
-                     border: '1px solid #ece8e1',
-                     boxShadow: '0 1px 2px rgba(20,15,10,0.03), 0 14px 40px rgba(20,15,10,0.06)',
-                     animation: active ? `teamCardIn 0.85s cubic-bezier(0.22,1,0.36,1) ${0.55 + i * 0.12}s both` : undefined,
-                     opacity: active ? undefined : 0,
-                   }}>
-            {/* Portrait */}
-            <div className="px-7 pt-7 pb-5 flex items-start justify-between">
-              <div className="w-[88px] h-[88px] sm:w-[104px] sm:h-[104px] rounded-full overflow-hidden ring-1 ring-[#eceae3]" style={{ boxShadow: '0 6px 22px rgba(20,15,10,0.10)' }}>
+        {/* ── VENSTRE — editorial intro ── */}
+        <div style={{ animation: anim ? 'teamFade 0.8s cubic-bezier(0.22,1,0.36,1) 0.1s both' : undefined, opacity: show ? undefined : 0 }}>
+          <span className="text-[11px] font-bold uppercase tracking-[0.4em]" style={{ ...F, color: AC }}>Teamet</span>
+          <h2 className="tracking-[-0.035em] leading-[1.02] mt-6" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(34px, 4.2vw, 60px)', color: INK }}>
+            Bygget av utleiere,<br /><span style={{ color: AC }}>for utleiere.</span>
+          </h2>
+          <span className="block mt-8 mb-7 h-px rounded-full" style={{ width: 64, background: `linear-gradient(90deg, ${AC}, transparent)`, transformOrigin: 'left', animation: anim ? 'teamGrow 0.9s cubic-bezier(0.22,1,0.36,1) 0.5s both' : undefined }} />
+          <p className="text-[15px] sm:text-[16.5px] font-normal leading-[1.62] max-w-[400px]" style={{ ...F, color: SUB }}>
+            Tre fagfelt — eiendom, teknologi og jus — kjent fra innsiden, før første eksterne kapitalrunde.
+          </p>
+          <div className="mt-8 flex items-center gap-2.5 text-[12.5px] font-semibold tracking-[-0.005em]" style={{ ...F, color: INK2 }}>
+            <span>Eiendom</span>
+            <span className="w-1 h-1 rounded-full" style={{ backgroundColor: AC }} />
+            <span>Teknologi</span>
+            <span className="w-1 h-1 rounded-full" style={{ backgroundColor: AC }} />
+            <span>Jus</span>
+          </div>
+        </div>
+
+        {/* ── HØYRE — tre medlemmer, hårlinje-separert, ingen bokser ── */}
+        <div>
+          {team.map((m, i) => (
+            <div key={m.name} className="relative flex items-center gap-5 sm:gap-7 py-6 sm:py-[26px]"
+                 style={{
+                   borderTop: i === 0 ? 'none' : `1px solid ${HAIR}`,
+                   animation: anim ? `teamFade 0.8s cubic-bezier(0.22,1,0.36,1) ${0.4 + i * 0.13}s both` : undefined,
+                   opacity: show ? undefined : 0,
+                 }}>
+              {/* portrett — rent, mykt, ingen tung ramme */}
+              <div className="shrink-0 w-[86px] h-[86px] sm:w-[100px] sm:h-[100px] rounded-full overflow-hidden"
+                   style={{ boxShadow: '0 1px 0 rgba(255,255,255,0.6), 0 10px 30px -14px rgba(20,15,10,0.35)' }}>
                 <img src={m.img} alt={m.name} className="w-full h-full object-cover" style={{ objectPosition: 'top', ...(m.imgStyle || {}) }} />
               </div>
-              <span className="text-[9.5px] font-bold tabular-nums tracking-[0.18em] text-[#b5aa98] mt-1.5" style={F}>0{i + 1}</span>
+
+              <div className="min-w-0 flex-1">
+                <div className="flex items-baseline gap-3">
+                  <h3 className="text-[20px] sm:text-[23px] tracking-[-0.02em] leading-tight" style={{ ...FH, fontWeight: 700, color: INK }}>{m.name}</h3>
+                  <span className="text-[9.5px] font-bold tabular-nums tracking-[0.2em]" style={{ ...F, color: MUT }}>0{i + 1}</span>
+                </div>
+                <p className="text-[12px] font-semibold mt-1.5 uppercase tracking-[0.06em]" style={{ ...F, color: AC }}>{m.role}</p>
+                <p className="text-[13.5px] sm:text-[14px] font-medium leading-[1.55] mt-3 max-w-[440px]" style={{ ...F, color: INK2 }}>{m.lead}</p>
+                <p className="text-[12px] sm:text-[12.5px] font-normal leading-[1.6] mt-2 max-w-[440px]" style={{ ...F, color: MUT }}>{m.meta}</p>
+              </div>
             </div>
-
-            {/* Name + role */}
-            <div className="px-7">
-              <h3 className="text-[19px] sm:text-[21px] font-bold text-[#0c0c0c] tracking-[-0.018em] leading-tight" style={F}>{m.name}</h3>
-              <p className="text-[11.5px] font-semibold mt-1.5 tracking-[-0.005em]" style={{ color: P }}>{m.role}</p>
-            </div>
-
-            {/* Hairline divider */}
-            <div className="mx-7 my-5 h-px bg-gradient-to-r from-transparent via-[#e6e2d9] to-transparent" />
-
-            {/* Lead bio (bold) */}
-            <div className="px-7 pb-2">
-              <p className="text-[13px] sm:text-[13.5px] font-semibold text-[#1a1a1a] leading-[1.55] tracking-[-0.005em]" style={F}>
-                {m.lead}
-              </p>
-            </div>
-
-            {/* Bullet sections */}
-            <ul className="px-7 pt-3 pb-7 space-y-3 flex-1">
-              {m.bullets.map((b, j) => (
-                <li key={j} className="text-[12px] sm:text-[12.5px] text-[#6e6a62] leading-[1.65] font-light flex items-start gap-2.5">
-                  <span className="mt-[7px] w-[3px] h-[3px] rounded-full shrink-0" style={{ backgroundColor: '#c4b9a8' }} />
-                  <span>{b}</span>
-                </li>
-              ))}
-            </ul>
-          </article>
-        ))}
-      </div>
-
-      {/* ═══ Bottom credibility ribbon ═══ */}
-      <div className="mt-7 sm:mt-10 flex items-center justify-center gap-3"
-           style={{ animation: active ? 'teamFadeUp 0.8s cubic-bezier(0.22,1,0.36,1) 1.05s both' : undefined, opacity: active ? undefined : 0 }}>
-        <div className="h-px bg-[#d8d2c5] origin-right" style={{ width: '54px', animation: active ? 'teamRule 0.9s cubic-bezier(0.22,1,0.36,1) 1.2s both' : undefined }} />
-        <div className="flex items-center gap-2 text-[11px] sm:text-[12px] text-[#7a6f5e] font-medium tracking-[-0.005em]">
-          <span>Eiendom</span>
-          <span className="w-1 h-1 rounded-full" style={{ backgroundColor: P }} />
-          <span>Teknologi</span>
-          <span className="w-1 h-1 rounded-full" style={{ backgroundColor: P }} />
-          <span>Jus</span>
-          <span className="text-[#b5aa98]">— alle tre fagfelt, kjent fra innsiden, før første eksterne kapitalrunde.</span>
+          ))}
         </div>
-        <div className="h-px bg-[#d8d2c5] origin-left" style={{ width: '54px', animation: active ? 'teamRule 0.9s cubic-bezier(0.22,1,0.36,1) 1.2s both' : undefined }} />
+
       </div>
     </div>
   </SlideFrame>
@@ -5903,11 +5879,17 @@ const SProdukt = (p: any) => {
 };
 
 /* ═══ S04c · AI som forstår eiendom — 3 praktiske AI-moats m/ menneske-godkjenning ═══ */
-const SAIEiendom = (p: any) => (
-  <SlideFrame bg="dark" {...p}>
-    <AIEiendom active={p.isActive} pdfMode={!!p.pdfMode} />
+const SAIEiendom = (p: any) => {
+  const active = p.isActive;
+  const isPdf = !!p.pdfMode;
+  useEffect(() => { p.onLight?.(active && !isPdf); }, [active, isPdf]);
+  return (
+  <SlideFrame bg="beige" {...p}>
+    <DotGrid maskCenter="50% 28%" opacity={0.4} />
+    <AIEiendom active={active} pdfMode={isPdf} />
   </SlideFrame>
-);
+  );
+};
 
 /* ═══ S04 · Systemet i arbeid — scriptet kontrakt-demo (ekte produkt-UI) ═══ */
 const SSystemIArbeid = (p: any) => {
@@ -5991,7 +5973,7 @@ export default function Presentasjon() {
   const prev = useCallback(() => setC((v: any) => Math.max(v - 1, 0)), []);
 
   // Lyse slides toner til lys bakgrunn — la chrome (pille) tilpasse seg
-  useEffect(() => { if (![1, 2, 3, 4, 5, 6, 8, 9, 10, 15, 16].includes(c)) setChromeLight(false); }, [c]);
+  useEffect(() => { if (![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 16].includes(c)) setChromeLight(false); }, [c]);
 
   // Slide 2: lås fremover-navigasjon til hele tekst-animasjonen er spilt ferdig
   // MIDLERTIDIG DEAKTIVERT — låsen er slått av etter ønske. Sett ENABLE_S2_LOCK = true for å reaktivere.
@@ -6130,7 +6112,7 @@ export default function Presentasjon() {
       onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
       {SLIDES.map((Slide: any, i: number) => (
         <div key={i} className={`absolute inset-0 overflow-hidden transition-all duration-700 ease-[cubic-bezier(0.4,0,0.2,1)] ${i === c ? 'opacity-100 scale-100' : i < c ? 'opacity-0 scale-[0.96]' : 'opacity-0 scale-[1.04]'}`} style={{ pointerEvents: i === c ? 'auto' : 'none', visibility: Math.abs(i - c) <= 1 ? 'visible' : 'hidden' }}>
-          <Slide slideNum={i + 1} total={SLIDES.length} isActive={i === c} onLight={[1, 2, 3, 4, 5, 6, 8, 9, 10, 15, 16].includes(i) ? setChromeLight : undefined} onAnimationComplete={i === 1 ? handleS2Complete : undefined} />
+          <Slide slideNum={i + 1} total={SLIDES.length} isActive={i === c} onLight={[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 16].includes(i) ? setChromeLight : undefined} onAnimationComplete={i === 1 ? handleS2Complete : undefined} />
         </div>
       ))}
 
@@ -6139,7 +6121,7 @@ export default function Presentasjon() {
         onClick={prev}
         disabled={c === 0}
         aria-label="Forrige slide"
-        className="group fixed left-0 top-0 bottom-0 w-[18%] z-40 cursor-w-resize disabled:cursor-not-allowed disabled:opacity-0 transition-opacity"
+        className="group fixed left-0 top-0 bottom-0 w-[18%] z-40 cursor-w-resize disabled:cursor-not-allowed disabled:opacity-0 transition-opacity focus:outline-none focus-visible:outline-none"
         style={{ background: 'transparent' }}>
         <div className="absolute left-4 sm:left-6 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full backdrop-blur-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300"
           style={{ backgroundColor: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.1)' }}>
@@ -6150,7 +6132,7 @@ export default function Presentasjon() {
         onClick={next}
         disabled={c === SLIDES.length - 1 || (c === 1 && s2Locked)}
         aria-label="Neste slide"
-        className="group fixed right-0 top-0 bottom-0 w-[18%] z-40 cursor-e-resize disabled:cursor-not-allowed disabled:opacity-0 transition-opacity"
+        className="group fixed right-0 top-0 bottom-0 w-[18%] z-40 cursor-e-resize disabled:cursor-not-allowed disabled:opacity-0 transition-opacity focus:outline-none focus-visible:outline-none"
         style={{ background: 'transparent' }}>
         <div className="absolute right-4 sm:right-6 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full backdrop-blur-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300"
           style={{ backgroundColor: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.1)' }}>
