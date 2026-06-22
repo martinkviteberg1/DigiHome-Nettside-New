@@ -74,43 +74,39 @@ function FrostNum({ no, label }: any) {
     </span>
   );
 }
-function HeroStyling({ on }: any) {
+function HeroStyling({ on, pdf }: any) {
+  const wipe = on && !pdf;
   return (
     <div
       className="relative h-full rounded-[26px] overflow-hidden flex flex-col"
       style={{ background: '#0c0c0c', boxShadow: SOFT, animation: on ? 'aiUp 0.95s cubic-bezier(0.22,1,0.36,1) 0.2s both' : undefined }}
     >
-      {/* bilde-flate */}
+      {/* bilde-flate — animert FØR/ETTER-slider */}
       <div className="relative flex-1 overflow-hidden">
         {/* ETTER (base, full) */}
         <img src="/film/styling/styled_evening.webp" alt="Stylet med AI" className="absolute inset-0 w-full h-full object-cover" style={{ objectPosition: 'center' }} />
-        {/* FØR (venstre halvdel, klippet) */}
-        <div className="absolute inset-0" style={{ clipPath: 'inset(0 50% 0 0)' }}>
+        {/* FØR (venstre del, klippet — glir) */}
+        <div className="absolute inset-0" style={{ clipPath: 'inset(0 50% 0 0)', animation: wipe ? 'aiWipeClip 7s cubic-bezier(0.65,0,0.35,1) 0.8s infinite' : undefined, willChange: 'clip-path' }}>
           <img src="/film/styling/room-evening.jpg" alt="Før styling" className="absolute inset-0 w-full h-full object-cover" style={{ objectPosition: 'center' }} />
-          <span className="absolute inset-0" style={{ background: 'linear-gradient(90deg, rgba(8,6,10,0.28), rgba(8,6,10,0.05))' }} />
+          <span className="absolute inset-0" style={{ background: 'linear-gradient(90deg, rgba(8,6,10,0.30), rgba(8,6,10,0.04))' }} />
         </div>
 
-        {/* AI-skann-sveip over ETTER-halvdelen */}
-        <div className="absolute inset-y-0 right-0 pointer-events-none overflow-hidden" style={{ width: '50%' }}>
-          <span className="absolute inset-y-0" style={{ width: '60%', left: '-60%', background: 'linear-gradient(105deg, transparent, rgba(170,120,255,0.16), transparent)', animation: 'aiSweep 5.2s ease-in-out 0.9s infinite' }} />
-        </div>
-
-        {/* skillelinje + håndtak */}
-        <div className="absolute inset-y-0 pointer-events-none" style={{ left: '50%', transform: 'translateX(-50%)', width: 2, background: 'linear-gradient(180deg, rgba(255,255,255,0.0), rgba(255,255,255,0.9) 18%, rgba(255,255,255,0.9) 82%, rgba(255,255,255,0.0))', boxShadow: '0 0 14px rgba(255,255,255,0.45)' }} />
-        <div className="absolute pointer-events-none" style={{ left: '50%', top: '50%', transform: 'translate(-50%,-50%)' }}>
-          <span className="flex items-center justify-center w-9 h-9 rounded-full" style={{ background: 'rgba(255,255,255,0.94)', boxShadow: '0 8px 24px rgba(0,0,0,0.4)', backdropFilter: 'blur(6px)' }}>
+        {/* skillelinje + håndtak (glir synket med clip) */}
+        <div className="absolute inset-y-0 z-10 pointer-events-none" style={{ left: '50%', animation: wipe ? 'aiWipeLine 7s cubic-bezier(0.65,0,0.35,1) 0.8s infinite' : undefined, willChange: 'left' }}>
+          <div className="absolute inset-y-0" style={{ left: 0, transform: 'translateX(-50%)', width: 2, background: 'linear-gradient(180deg, rgba(255,255,255,0.0), rgba(255,255,255,0.92) 16%, rgba(255,255,255,0.92) 84%, rgba(255,255,255,0.0))', boxShadow: '0 0 16px rgba(255,255,255,0.5)' }} />
+          <span className="absolute top-1/2 left-0 flex items-center justify-center w-10 h-10 rounded-full" style={{ transform: 'translate(-50%,-50%)', background: 'rgba(255,255,255,0.96)', boxShadow: '0 10px 28px rgba(0,0,0,0.45), 0 0 0 6px rgba(255,255,255,0.14)', backdropFilter: 'blur(6px)' }}>
             <ArrowLeftRight className="w-4 h-4" style={{ color: '#1c1714' }} strokeWidth={2.4} />
           </span>
         </div>
 
         {/* FØR / ETTER-merker */}
-        <span className="absolute top-4 left-4 text-[9.5px] font-bold uppercase tracking-[0.2em] px-2.5 py-1 rounded-full" style={{ fontFamily: F, color: 'rgba(255,255,255,0.92)', background: 'rgba(8,6,10,0.45)', backdropFilter: 'blur(8px)', letterSpacing: '0.14em' }}>Før</span>
-        <span className="absolute top-4 right-4 inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-full" style={{ fontFamily: F, color: '#fff', background: 'linear-gradient(135deg, rgba(154,99,232,0.92), rgba(124,58,237,0.92))', backdropFilter: 'blur(8px)', boxShadow: '0 8px 22px -8px rgba(124,58,237,0.6)' }}>
+        <span className="absolute top-4 left-4 z-20 text-[9.5px] font-bold uppercase px-2.5 py-1 rounded-full" style={{ fontFamily: F, color: 'rgba(255,255,255,0.92)', background: 'rgba(8,6,10,0.5)', backdropFilter: 'blur(8px)', letterSpacing: '0.16em' }}>Før</span>
+        <span className="absolute top-4 right-4 z-20 inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-full" style={{ fontFamily: F, color: '#fff', background: 'linear-gradient(135deg, rgba(154,99,232,0.94), rgba(124,58,237,0.94))', backdropFilter: 'blur(8px)', boxShadow: '0 8px 22px -8px rgba(124,58,237,0.6)' }}>
           <Wand2 className="w-3 h-3" strokeWidth={2.4} /> Stylet med AI
         </span>
 
         {/* topp-etikett */}
-        <div className="absolute bottom-4 left-4 right-4">
+        <div className="absolute bottom-4 left-4 right-4 z-20">
           <div className="inline-flex"><Eyebrow no="01" label="Annonsefoto" light /></div>
         </div>
       </div>
@@ -256,7 +252,8 @@ export default function AIEiendom({ active, pdfMode }: { active?: boolean; pdfMo
         @keyframes aiHead { from { opacity:0; transform: translateY(16px); filter: blur(6px); } to { opacity:1; transform: translateY(0); filter: blur(0); } }
         @keyframes aiFade { from { opacity:0; transform: translateY(8px); } to { opacity:1; transform: translateY(0); } }
         @keyframes aiGrow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
-        @keyframes aiSweep { 0% { left:-60%; } 55% { left:120%; } 100% { left:120%; } }
+        @keyframes aiWipeClip { 0%,10% { clip-path: inset(0 78% 0 0); } 50% { clip-path: inset(0 22% 0 0); } 90%,100% { clip-path: inset(0 78% 0 0); } }
+        @keyframes aiWipeLine { 0%,10% { left: 22%; } 50% { left: 78%; } 90%,100% { left: 22%; } }
       `}</style>
 
       {/* ── header ── */}
@@ -279,7 +276,7 @@ export default function AIEiendom({ active, pdfMode }: { active?: boolean; pdfMo
 
       {/* ── bento ── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:h-[620px] lg:[grid-template-rows:1fr_1fr] shrink-0">
-        <div className="lg:col-span-7 lg:row-span-2 min-h-[320px] lg:min-h-0"><HeroStyling on={on} /></div>
+        <div className="lg:col-span-7 lg:row-span-2 min-h-[320px] lg:min-h-0"><HeroStyling on={on} pdf={pdfMode} /></div>
         <div className="lg:col-span-5 min-h-[250px] lg:min-h-0"><ContractPanel on={on} /></div>
         <div className="lg:col-span-5 min-h-[250px] lg:min-h-0"><ChatPanel on={on} /></div>
       </div>
