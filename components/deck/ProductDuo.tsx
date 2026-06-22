@@ -54,7 +54,7 @@ const TABS = [
 /* ── omvisnings-koreografi: tom ramme → fortellende tekst → app-UI → (naviger i sidebar → coachmark-highlight m/ forklaring) → autopilot ── */
 type Focus = { scale: number; x: number; y: number };
 type Beat = {
-  kind: 'nav' | 'view' | 'converge';
+  kind: 'nav' | 'view' | 'converge' | 'overview';
   key: string;
   side: number;     // hvilken sidebar-modul som er markert (markør-mål)
   content: number;  // hvilken modul-skjerm som vises i innholdet
@@ -64,6 +64,14 @@ type Beat = {
 const FULL: Focus = { scale: 1.0, x: 0, y: 0 };
 // rolig kamera i full visning under hele turen → stabile koordinater for coachmarks
 const BEATS: Beat[] = [
+  // — Kapittel 0: modul-oversikt — sidebaren blar gjennom modulene, oversikt lyser opp i takt —
+  { kind: 'overview', key: 'overview', side: 0, content: -1, node: -1, dur: 1100 },
+  { kind: 'overview', key: 'overview', side: 1, content: -1, node: -1, dur: 900 },
+  { kind: 'overview', key: 'overview', side: 2, content: -1, node: -1, dur: 900 },
+  { kind: 'overview', key: 'overview', side: 3, content: -1, node: -1, dur: 900 },
+  { kind: 'overview', key: 'overview', side: 4, content: -1, node: -1, dur: 900 },
+  { kind: 'overview', key: 'overview', side: 5, content: -1, node: -1, dur: 1800 },
+  // — Salg deep-dive —
   { kind: 'nav',  key: 'salg',       side: 0, content: 0, node: 0, dur: 2000 },
   { kind: 'view', key: 'salg',       side: 0, content: 0, node: 0, dur: 4400 },
   { kind: 'nav',  key: 'eiendommer', side: 1, content: 0, node: 1, dur: 1900 },
@@ -549,6 +557,67 @@ const VIEWS = [ViewSalg, ViewEiendommer, ViewAnnonse, ViewSaker, ViewKalender, V
 
 const VIEW_KEYS = ['salg', 'eiendommer', 'annonse', 'saker', 'kalender', 'autopilot'];
 
+/* ═══════════════════════ MODUL-OVERSIKT (kapittel 0 — systemets oppbygning) ═══════════════════════ */
+const OV_MODS = [
+  { Icon: UserCheck,    name: 'Salg',       d: 'Interessent → signert leieavtale.' },
+  { Icon: Building2,    name: 'Eiendommer', d: 'Hele porteføljen, samlet.' },
+  { Icon: Rocket,       name: 'Annonse',    d: 'AI-annonse → publisert til FINN.' },
+  { Icon: AlertCircle,  name: 'Saker',      d: 'Drift og vedlikehold, sporbart.' },
+  { Icon: CalendarDays, name: 'Kalender',   d: 'Belegg og dynamisk prising.' },
+  { Icon: Gauge,        name: 'Autopilot',  d: 'Ser alt — og handler på det.', auto: true },
+];
+function ModuleOverview({ active = -1 }: { active?: number }) {
+  return (
+    <div className="h-full px-10 py-9 flex flex-col justify-center" style={{ background: BG }}>
+      <style>{`@keyframes moIn { from { opacity:0; transform: translateY(13px); } to { opacity:1; transform: translateY(0); } }`}</style>
+      {/* header */}
+      <div className="mb-7" style={{ animation: 'moIn 0.7s cubic-bezier(0.22,1,0.36,1) both' }}>
+        <span className="text-[11px] font-bold uppercase tracking-[0.3em]" style={{ fontFamily: PJ, color: ACCENT_DK }}>Systemets oppbygning</span>
+        <h2 className="text-[30px] font-bold tracking-[-0.03em] leading-[1.05] mt-3" style={{ fontFamily: FH, color: INK }}>Ett system. Mange moduler.</h2>
+        <p className="text-[14px] mt-2.5 max-w-[560px]" style={{ fontFamily: PJ, color: SUB }}>Alt henger sammen — og alt flyter inn i autopiloten.</p>
+      </div>
+      {/* modul-rutenett */}
+      <div className="grid grid-cols-2 gap-3.5">
+        {OV_MODS.map((m, i) => {
+          const on = active === i;
+          const Ic = m.Icon;
+          const dark = !!m.auto;
+          return (
+            <div key={m.name}
+              className="relative rounded-2xl px-5 py-4 flex items-center gap-4 overflow-hidden"
+              style={{
+                background: dark ? '#181622' : '#ffffff',
+                border: `1.5px solid ${on ? (dark ? 'rgba(210,152,255,0.6)' : 'rgba(154,99,232,0.45)') : (dark ? 'rgba(210,152,255,0.22)' : BORDER)}`,
+                boxShadow: on
+                  ? (dark ? '0 24px 52px -22px rgba(124,58,237,0.62), 0 0 0 4px rgba(210,152,255,0.12)' : '0 24px 52px -26px rgba(124,58,237,0.34), 0 0 0 4px rgba(154,99,232,0.10)')
+                  : (dark ? '0 14px 34px -22px rgba(0,0,0,0.5)' : '0 10px 30px -24px rgba(20,15,10,0.30)'),
+                transform: on ? 'translateY(-3px)' : 'none',
+                transition: 'all 0.5s cubic-bezier(0.22,1,0.36,1)',
+                animation: `moIn 0.6s cubic-bezier(0.22,1,0.36,1) ${0.15 + i * 0.07}s both`,
+              }}>
+              <span className="inline-flex items-center justify-center w-12 h-12 rounded-xl shrink-0" style={{
+                background: dark ? (on ? ACCENT : 'rgba(255,255,255,0.08)') : (on ? ACCENT : 'rgba(154,99,232,0.10)'),
+                border: dark ? 'none' : '1px solid rgba(154,99,232,0.18)',
+                transition: 'all 0.5s ease',
+              }}>
+                <Ic className="w-[22px] h-[22px]" style={{ color: dark ? (on ? '#1a1020' : '#cf97fc') : (on ? '#fff' : ACCENT) }} strokeWidth={1.9} />
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <p className="text-[16px] font-bold tracking-[-0.01em]" style={{ fontFamily: FH, color: dark ? '#fff' : INK }}>{m.name}</p>
+                  {dark && <span className="inline-flex items-center gap-1 text-[8.5px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded" style={{ fontFamily: PJ, background: 'rgba(207,151,252,0.18)', color: '#cf97fc' }}><Sparkles className="w-2.5 h-2.5" />AI</span>}
+                </div>
+                <p className="text-[12px] mt-0.5 truncate" style={{ fontFamily: PJ, color: dark ? 'rgba(255,255,255,0.55)' : SUB }}>{m.d}</p>
+              </div>
+              <span className="text-[12px] font-bold tabular-nums shrink-0" style={{ fontFamily: PJ, color: on ? (dark ? '#cf97fc' : ACCENT) : (dark ? 'rgba(255,255,255,0.3)' : FAINT) }}>{String(i + 1).padStart(2, '0')}</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 /* ═══════════════════════ INTRO-TEKST (inne i rammen, fortellende progressiv reveal) ═══════════════════════ */
 function IntroCard() {
   const line1 = 'Alt du forventer.'.split(' ');
@@ -612,7 +681,8 @@ function IntroCard() {
 
 /* ═══════════════════════ DESKTOP-MOCKUP (rolig kamera + nav-markør + coachmark guided tour) ═══════════════════════ */
 function DesktopMock({ phase, beat, pulseKey }: { phase: 'intro' | 'tour'; beat: Beat; pulseKey: number }) {
-  const View = VIEWS[beat.content];
+  const isOverview = beat.kind === 'overview';
+  const View = isOverview ? null : VIEWS[beat.content];
   const isNav = beat.kind === 'nav';
   const isView = beat.kind === 'view';
   const isConv = beat.kind === 'converge';
@@ -682,8 +752,8 @@ function DesktopMock({ phase, beat, pulseKey }: { phase: 'intro' | 'tour'; beat:
         <Sidebar tab={beat.side} cursorOn={isNav} pulseKey={pulseKey} />
         <div className="flex-1 relative overflow-hidden" style={{ background: BG }}>
           <AnimatePresence mode="sync">
-            <motion.div key={beat.content} ref={(el) => { if (el) curContent.current = el; }} className="absolute inset-0" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.7, ease }}>
-              <View />
+            <motion.div key={isOverview ? 'overview' : beat.content} ref={(el) => { if (el) curContent.current = el; }} className="absolute inset-0" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.7, ease }}>
+              {isOverview ? <ModuleOverview active={beat.side} /> : View ? <View /> : null}
             </motion.div>
           </AnimatePresence>
           {/* nav-dim: under navigasjon dempes innholdet så fokus er på sidebaren */}
