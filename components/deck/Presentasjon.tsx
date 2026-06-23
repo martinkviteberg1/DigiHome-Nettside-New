@@ -6159,7 +6159,8 @@ export default function Presentasjon() {
       </div>
 
       {/* ═══ PDF Download — subtil glass-pille øverst til høyre ═══ */}
-      <div className="fixed top-4 right-4 sm:top-5 sm:right-5 z-50 flex items-center gap-2">
+      {/* MIDLERTIDIG SKJULT: fjern `hidden ` under for å vise «Last ned PDF» igjen */}
+      <div className="hidden fixed top-4 right-4 sm:top-5 sm:right-5 z-50 flex items-center gap-2">
         {/* Hovedknapp — Last ned PDF */}
         <button
           onClick={handleDownload}
