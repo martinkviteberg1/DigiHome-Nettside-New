@@ -300,28 +300,18 @@ function DeckAIChatPhone({ active }: { active: boolean }) {
   );
 }
 
-/* ═══════════════ PANEL · DigiHome AI (mobilmockup — minimalistisk, rammefri) ═══════════════ */
+/* ═══════════════ PANEL · DigiHome AI (mobilmockup — stor, rammefri, ingen tekst) ═══════════════ */
 function AIPhonePanel({ on }: any) {
   return (
     <div className="relative h-full flex items-center justify-center" style={{ animation: on ? 'aiUp 0.95s cubic-bezier(0.22,1,0.36,1) 0.34s both' : undefined }}>
       {/* myk lilla glød bak telefonen — gir dybde uten boks */}
       <div aria-hidden="true" className="absolute inset-0 pointer-events-none flex items-center justify-center">
-        <div style={{ width: '80%', height: '66%', borderRadius: '50%', background: 'radial-gradient(ellipse at center, rgba(160,82,224,0.16) 0%, rgba(210,152,255,0.07) 40%, transparent 70%)', filter: 'blur(10px)' }} />
+        <div style={{ width: '90%', height: '78%', borderRadius: '50%', background: 'radial-gradient(ellipse at center, rgba(160,82,224,0.20) 0%, rgba(210,152,255,0.09) 42%, transparent 72%)', filter: 'blur(12px)' }} />
       </div>
 
-      {/* minimal etikett — øverst, ingen boks */}
-      <div className="absolute top-0 left-0 z-20"><Eyebrow no="02" label="Driftsassistent" /></div>
-
-      {/* telefon — fritt svevende */}
-      <div style={{ transform: 'scale(0.88)', transformOrigin: 'center', animation: on ? 'aiPhoneFloat 5.5s ease-in-out 1.3s infinite' : undefined }}>
+      {/* telefon — stor, fritt svevende (balanserer venstre kort) */}
+      <div style={{ transform: 'scale(1.12)', transformOrigin: 'center', animation: on ? 'aiPhoneFloat 5.5s ease-in-out 1.3s infinite' : undefined }}>
         <DeckAIChatPhone active={on} />
-      </div>
-
-      {/* minimal caption — nederst, editorial (ingen ramme) */}
-      <div className="absolute bottom-0 left-0 right-0 z-20 text-center px-3">
-        <p className="text-[13px] leading-snug max-w-[400px] mx-auto" style={{ fontFamily: F, color: SUB }}>
-          <span style={{ color: INK2, fontWeight: 700, fontFamily: FH }}>Autonom drift.</span> Henvendelser løses, saker opprettes og håndverkere bookes — automatisk.
-        </p>
       </div>
     </div>
   );
@@ -340,7 +330,7 @@ export default function AIEiendom({ active, pdfMode }: { active?: boolean; pdfMo
         @keyframes aiGrow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
         @keyframes aiWipeClip { 0%,10% { clip-path: inset(0 78% 0 0); } 50% { clip-path: inset(0 22% 0 0); } 90%,100% { clip-path: inset(0 78% 0 0); } }
         @keyframes aiWipeLine { 0%,10% { left: 22%; } 50% { left: 78%; } 90%,100% { left: 22%; } }
-        @keyframes aiPhoneFloat { 0%,100% { transform: scale(0.88) translateY(0); } 50% { transform: scale(0.88) translateY(-10px); } }
+        @keyframes aiPhoneFloat { 0%,100% { transform: scale(1.12) translateY(0); } 50% { transform: scale(1.12) translateY(-8px); } }
       `}</style>
 
       {/* ── header ── */}
@@ -364,7 +354,7 @@ export default function AIEiendom({ active, pdfMode }: { active?: boolean; pdfMo
       {/* ── bento ── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:h-[620px] shrink-0">
         <div className="lg:col-span-7 min-h-[340px] lg:min-h-0"><HeroStyling on={on} pdf={pdfMode} /></div>
-        <div className="lg:col-span-5 min-h-[600px] lg:min-h-0"><AIPhonePanel on={on} /></div>
+        <div className="lg:col-span-5 min-h-[640px] lg:min-h-0"><AIPhonePanel on={on} /></div>
       </div>
 
       {/* ── prinsipp-footer ── */}
