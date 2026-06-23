@@ -285,114 +285,125 @@ const S1 = (p: any) => {
 /* ═══ PROBLEM SLIDE — Structural-shift narrative · venture-framing ═══ */
 const SProblem = (p: any) => {
   const active = p.isActive;
+  const isPdf = !!p.pdfMode;
+  const show = active || isPdf;
+  const anim = active && !isPdf;
+  useEffect(() => { p.onLight?.(active && !isPdf); }, [active, isPdf]);
+
+  const AC = '#a052e0';      // lesbar merkevare-lilla på lys bakgrunn
+  const INK = '#0c0c0c';
+  const INK2 = '#1c1714';
+  const SUB = '#57514a';
+  const MUT = '#8a8278';
+  const HAIR = 'rgba(20,15,10,0.09)';
+
   const shifts = [
     {
       num: '01',
-      kicker: 'Mange løse tråder',
-      body: 'Annonser, visninger, henvendelser, betalinger og leverandører må følges opp samtidig — på tvers av flere boliger. Én glipp i oppfølgingen koster både inntekt og omdømme.',
+      title: 'Mange løse tråder',
+      body: 'Annonser, visninger, henvendelser, betalinger og leverandører må følges opp samtidig — på tvers av flere boliger. Én glipp koster både inntekt og omdømme.',
     },
     {
       num: '02',
-      kicker: 'Mer ansvar',
-      body: 'Kontrakt, skatt, depositum, dokumentasjon og lokale regler ligger fortsatt på utleier. Feil blir dyrere — og vanskeligere å oppdage før det er for sent.',
+      title: 'Mer ansvar',
+      body: 'Kontrakt, skatt, depositum, dokumentasjon og stadig strengere regelverk ligger på utleier. Feil blir dyrere — og oppdages ofte først når det er for sent.',
     },
     {
       num: '03',
-      kicker: 'Høyere forventninger',
-      body: 'Leietakere forventer raske svar, digital oppfølging og ryddig dokumentasjon. Det som før var god service, er nå minimumskrav.',
+      title: 'Høyere forventninger',
+      body: 'Leietakere forventer raske svar, digital oppfølging og ryddig dokumentasjon. Det som før var god service, er nå et minimumskrav.',
     },
   ];
 
   return (
   <SlideFrame bg="beige" {...p}>
     <style>{`
-      @keyframes probFadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
-      @keyframes probHeadlineIn { from { opacity: 0; transform: translateY(22px); filter: blur(8px); } 60% { filter: blur(0); } to { opacity: 1; transform: translateY(0); filter: blur(0); } }
-      @keyframes probCardIn { from { opacity: 0; transform: translateY(24px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
-      @keyframes probRule { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+      @keyframes prbFade { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+      @keyframes prbHead { from { opacity: 0; transform: translateY(22px); filter: blur(8px); } 60% { filter: blur(0); } to { opacity: 1; transform: translateY(0); filter: blur(0); } }
+      @keyframes prbGrow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+      @keyframes prbRise { from { transform: scaleY(0); } to { transform: scaleY(1); } }
     `}</style>
 
-    <DotGrid maskCenter="50% 28%" opacity={0.38} />
+    <div aria-hidden="true" className="absolute inset-0 pointer-events-none"
+         style={{ background: 'radial-gradient(ellipse at 50% 12%, rgba(160,82,224,0.05) 0%, transparent 56%)' }} />
+    <DotGrid maskCenter="50% 22%" opacity={0.4} />
 
-    <div className="max-w-[1240px] mx-auto px-6 sm:px-12 w-full relative z-10">
-      {/* ═══ Editorial header ═══ */}
-      <div className="mb-7 sm:mb-10">
-        <p className="text-[10.5px] sm:text-[11px] font-bold uppercase tracking-[0.28em] mb-4"
-           style={{ color: P, animation: active ? 'probFadeUp 0.6s cubic-bezier(0.22,1,0.36,1) 0.15s both' : undefined, opacity: active ? undefined : 0 }}
-           data-testid="problem-kicker">
+    <div className="relative z-10 w-full max-w-[1180px] mx-auto px-6 sm:px-12 my-auto">
+
+      {/* ═══ HEADER — editorial ═══ */}
+      <div className="max-w-[880px]">
+        <span className="block text-[11px] font-bold uppercase tracking-[0.4em]"
+              data-testid="problem-kicker"
+              style={{ ...F, color: AC, animation: anim ? 'prbFade 0.7s cubic-bezier(0.22,1,0.36,1) 0.1s both' : undefined, opacity: show ? undefined : 0 }}>
           Problemet
-        </p>
-        <h2 className="text-[26px] sm:text-[36px] lg:text-[44px] font-bold text-[#0c0c0c] tracking-[-0.035em] leading-[1.08] max-w-[960px]"
-            style={{ ...F, animation: active ? 'probHeadlineIn 0.95s cubic-bezier(0.22,1,0.36,1) 0.3s both' : undefined, opacity: active ? undefined : 0 }}
-            data-testid="problem-headline">
-          Utleie har gått fra passiv inntekt <span className="md:block">til <span style={{ color: P }}>aktiv drift.</span></span>
+        </span>
+        <h2 className="tracking-[-0.035em] leading-[1.02] mt-6"
+            data-testid="problem-headline"
+            style={{ ...FH, fontWeight: 700, fontSize: 'clamp(32px, 4.4vw, 60px)', color: INK,
+                     animation: anim ? 'prbHead 0.95s cubic-bezier(0.22,1,0.36,1) 0.25s both' : undefined, opacity: show ? undefined : 0 }}>
+          Utleie har gått fra passiv inntekt<br className="hidden md:block" /> til <span style={{ color: AC }}>aktiv drift.</span>
         </h2>
-        <p className="text-[13.5px] sm:text-[15px] text-[#5a564d] leading-[1.55] font-light mt-4 sm:mt-5 max-w-[780px]"
-           style={{ ...F, animation: active ? 'probFadeUp 0.7s cubic-bezier(0.22,1,0.36,1) 0.5s both' : undefined, opacity: active ? undefined : 0 }}>
+        <span className="block mt-7 h-px rounded-full"
+              style={{ width: 64, background: `linear-gradient(90deg, ${AC}, transparent)`, transformOrigin: 'left',
+                       animation: anim ? 'prbGrow 0.9s cubic-bezier(0.22,1,0.36,1) 0.55s both' : undefined, opacity: show ? undefined : 0 }} />
+        <p className="text-[15px] sm:text-[16.5px] font-normal leading-[1.6] mt-7 max-w-[640px]"
+           style={{ ...F, color: SUB, animation: anim ? 'prbFade 0.8s cubic-bezier(0.22,1,0.36,1) 0.65s both' : undefined, opacity: show ? undefined : 0 }}>
           Flere kanaler, strengere krav og høyere forventninger gjør at vanlige utleiere plutselig må opptre som profesjonelle operatører.
         </p>
       </div>
 
-      {/* ═══ 3 cards — clean editorial, single paragraph body ═══ */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-5">
+      {/* ═══ 3 problempunkter — hårlinje-separerte kolonner, INGEN bokser ═══ */}
+      <div className="grid grid-cols-1 md:grid-cols-3 mt-11 sm:mt-14">
         {shifts.map((s, i) => (
-          <article key={i} className="bg-white rounded-[18px] px-6 sm:px-7 pt-6 pb-7 flex flex-col"
-                   data-testid={`problem-shift-${i + 1}`}
-                   style={{
-                     border: '1px solid #ece8e1',
-                     boxShadow: '0 1px 2px rgba(20,15,10,0.03), 0 10px 32px rgba(20,15,10,0.055)',
-                     animation: active ? `probCardIn 0.8s cubic-bezier(0.22,1,0.36,1) ${0.65 + i * 0.1}s both` : undefined,
-                     opacity: active ? undefined : 0,
-                   }}>
-            <div className="flex items-center gap-3 mb-4">
-              <span className="text-[9.5px] font-bold tabular-nums tracking-[0.22em] text-[#b5aa98]" style={F}>{s.num}</span>
-              <span className="h-px flex-1 bg-[#ece8e1]" />
+          <div key={s.num} className="relative md:px-9 first:md:pl-0 last:md:pr-0 py-7 md:py-0"
+               data-testid={`problem-shift-${i + 1}`}
+               style={{ animation: anim ? `prbFade 0.8s cubic-bezier(0.22,1,0.36,1) ${0.8 + i * 0.13}s both` : undefined, opacity: show ? undefined : 0 }}>
+            {/* vertikal hårlinje mellom kolonner (desktop) */}
+            {i > 0 && <span aria-hidden="true" className="hidden md:block absolute left-0 top-1 bottom-1 w-px" style={{ background: HAIR, transformOrigin: 'top',
+                        animation: anim ? `prbRise 0.7s cubic-bezier(0.22,1,0.36,1) ${0.85 + i * 0.13}s both` : undefined }} />}
+            {/* horisontal hårlinje (mobil) */}
+            {i > 0 && <span aria-hidden="true" className="md:hidden absolute left-0 right-0 top-0 h-px" style={{ background: HAIR }} />}
+            <div className="flex items-center gap-3 mb-5">
+              <span className="text-[11px] font-bold tabular-nums tracking-[0.2em]" style={{ ...F, color: AC }}>{s.num}</span>
+              <span className="h-px flex-1" style={{ background: HAIR }} />
             </div>
-            <h3 className="text-[20px] sm:text-[22px] font-bold text-[#0c0c0c] tracking-[-0.022em] leading-[1.15] mb-4" style={F}>{s.kicker}</h3>
-            <p className="text-[12.5px] sm:text-[13.5px] text-[#2a2720] leading-[1.6] font-light tracking-[-0.003em] flex-1" style={F}>
-              {s.body}
-            </p>
-          </article>
+            <h3 className="text-[21px] sm:text-[23px] tracking-[-0.02em] leading-[1.12] mb-3.5" style={{ ...FH, fontWeight: 700, color: INK }}>{s.title}</h3>
+            <p className="text-[13px] sm:text-[14px] font-normal leading-[1.62] max-w-[330px]" style={{ ...F, color: SUB }}>{s.body}</p>
+          </div>
         ))}
       </div>
 
-      {/* ═══ Insight block — problem resolution + DigiHome's answer, side by side ═══ */}
-      <div className="mt-8 sm:mt-10 bg-[#0c0c0c] rounded-[20px] px-7 sm:px-10 py-7 sm:py-9 relative overflow-hidden"
+      {/* ═══ KONSEKVENSEN — kantløs redaksjonell koda (ingen mørk boks) ═══ */}
+      <div className="mt-11 sm:mt-14 pt-9 grid grid-cols-1 md:grid-cols-[1fr_auto_1.05fr] gap-8 md:gap-12 items-stretch"
            data-testid="problem-insight-block"
-           style={{ animation: active ? 'probFadeUp 0.85s cubic-bezier(0.22,1,0.36,1) 1.1s both' : undefined, opacity: active ? undefined : 0 }}>
-        {/* subtle purple glow */}
-        <div aria-hidden="true" className="absolute -top-24 -right-28 w-[340px] h-[340px] rounded-full pointer-events-none"
-             style={{ background: `radial-gradient(circle, ${P}25 0%, transparent 70%)` }} />
-
-        <div className="grid grid-cols-1 md:grid-cols-[0.88fr_auto_1.12fr] gap-7 md:gap-10 items-center relative z-10">
-          {/* Left: the binary bad choice */}
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.3em] mb-3" style={{ color: P }}>Konsekvensen</p>
-            <p className="text-[17px] sm:text-[20px] font-bold text-white tracking-[-0.02em] leading-[1.28] mb-4" style={F}>
-              Utleiere står igjen med <span style={{ color: P }}>to dårlige valg.</span>
-            </p>
-            <div className="space-y-2">
-              <div className="flex items-baseline gap-3" data-testid="problem-alt-a">
-                <span className="text-[10px] font-bold tabular-nums tracking-[0.2em] text-white/55 w-3" style={F}>A</span>
-                <span className="text-[12.5px] sm:text-[13.5px] text-white/80 leading-[1.5] font-light" style={F}>Gjøre alt selv i flere fragmenterte verktøy.</span>
-              </div>
-              <div className="flex items-baseline gap-3" data-testid="problem-alt-b">
-                <span className="text-[10px] font-bold tabular-nums tracking-[0.2em] text-white/55 w-3" style={F}>B</span>
-                <span className="text-[12.5px] sm:text-[13.5px] text-white/80 leading-[1.5] font-light" style={F}>Gi bort marginen til manuell forvaltning.</span>
-              </div>
+           style={{ borderTop: `1px solid ${HAIR}`, animation: anim ? 'prbFade 0.9s cubic-bezier(0.22,1,0.36,1) 1.2s both' : undefined, opacity: show ? undefined : 0 }}>
+        {/* venstre — de to dårlige valgene */}
+        <div>
+          <span className="text-[10px] font-bold uppercase tracking-[0.3em]" style={{ ...F, color: MUT }}>Konsekvensen</span>
+          <p className="text-[18px] sm:text-[21px] tracking-[-0.02em] leading-[1.3] mt-3" style={{ ...FH, fontWeight: 600, color: INK }}>
+            Utleiere står igjen med <span style={{ color: AC }}>to dårlige valg.</span>
+          </p>
+          <div className="mt-4 space-y-2">
+            <div className="flex items-baseline gap-3" data-testid="problem-alt-a">
+              <span className="text-[10px] font-bold tabular-nums tracking-[0.2em] w-3" style={{ ...F, color: MUT }}>A</span>
+              <span className="text-[13px] sm:text-[13.5px] font-normal leading-[1.5]" style={{ ...F, color: SUB }}>Gjøre alt selv i fragmenterte verktøy.</span>
+            </div>
+            <div className="flex items-baseline gap-3" data-testid="problem-alt-b">
+              <span className="text-[10px] font-bold tabular-nums tracking-[0.2em] w-3" style={{ ...F, color: MUT }}>B</span>
+              <span className="text-[13px] sm:text-[13.5px] font-normal leading-[1.5]" style={{ ...F, color: SUB }}>Gi bort marginen til manuell forvaltning.</span>
             </div>
           </div>
+        </div>
 
-          {/* Vertical divider */}
-          <div className="hidden md:block w-px h-24 bg-white/10" />
+        {/* vertikal hårlinje */}
+        <span aria-hidden="true" className="hidden md:block w-px self-stretch" style={{ background: HAIR }} />
 
-          {/* Right: DigiHome's answer */}
-          <div data-testid="problem-closing">
-            <p className="text-[10px] font-bold uppercase tracking-[0.3em] mb-3 text-white/50" style={F}>DigiHome</p>
-            <p className="text-[17px] sm:text-[20px] font-bold text-white tracking-[-0.02em] leading-[1.3]" style={F}>
-              Vi <span style={{ color: P }}>automatiserer driften</span> som tidligere krevde mennesker.
-            </p>
-          </div>
+        {/* høyre — DigiHomes svar */}
+        <div data-testid="problem-closing" className="flex flex-col justify-center">
+          <span className="text-[10px] font-bold uppercase tracking-[0.3em]" style={{ ...F, color: AC }}>DigiHome</span>
+          <p className="text-[18px] sm:text-[21px] tracking-[-0.02em] leading-[1.32] mt-3" style={{ ...FH, fontWeight: 600, color: INK }}>
+            Vi <span style={{ color: AC }}>automatiserer driften</span> som før krevde mennesker — og bygger nettverket som forvalter den i skala.
+          </p>
         </div>
       </div>
     </div>
