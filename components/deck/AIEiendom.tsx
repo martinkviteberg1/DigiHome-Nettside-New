@@ -84,16 +84,16 @@ function HeroStyling({ on, pdf }: any) {
     >
       {/* bilde-flate — animert FØR/ETTER-slider */}
       <div className="relative flex-1 overflow-hidden">
-        {/* ETTER (base, full) */}
-        <img src="/film/styling/styled_evening.webp" alt="Stylet med AI" className="absolute inset-0 w-full h-full object-cover" style={{ objectPosition: 'center' }} />
-        {/* FØR (venstre del, klippet — glir) */}
-        <div className="absolute inset-0" style={{ clipPath: 'inset(0 50% 0 0)', animation: wipe ? 'aiWipeClip 7s cubic-bezier(0.65,0,0.35,1) 0.8s infinite' : undefined, willChange: 'clip-path' }}>
-          <img src="/film/styling/room-evening.jpg" alt="Før styling" className="absolute inset-0 w-full h-full object-cover" style={{ objectPosition: 'center' }} />
-          <span className="absolute inset-0" style={{ background: 'linear-gradient(90deg, rgba(8,6,10,0.30), rgba(8,6,10,0.04))' }} />
+        {/* FØR (base, full) */}
+        <img src="/film/styling/room-evening.jpg" alt="Før styling" className="absolute inset-0 w-full h-full object-cover" style={{ objectPosition: 'center' }} />
+        {/* ETTER (avsløres venstre→høyre med én wipe) */}
+        <div className="absolute inset-0" style={{ clipPath: 'inset(0 50% 0 0)', animation: wipe ? 'aiWipeClip 2.6s cubic-bezier(0.16,1,0.3,1) 0.7s both' : undefined, willChange: 'clip-path' }}>
+          <img src="/film/styling/styled_evening.webp" alt="Stylet med AI" className="absolute inset-0 w-full h-full object-cover" style={{ objectPosition: 'center' }} />
+          <span className="absolute inset-0" style={{ background: 'linear-gradient(90deg, rgba(8,6,10,0.20), transparent 32%)' }} />
         </div>
 
         {/* skillelinje + håndtak (glir synket med clip) */}
-        <div className="absolute inset-y-0 z-10 pointer-events-none" style={{ left: '50%', animation: wipe ? 'aiWipeLine 7s cubic-bezier(0.65,0,0.35,1) 0.8s infinite' : undefined, willChange: 'left' }}>
+        <div className="absolute inset-y-0 z-10 pointer-events-none" style={{ left: '50%', animation: wipe ? 'aiWipeLine 2.6s cubic-bezier(0.16,1,0.3,1) 0.7s both' : undefined, willChange: 'left' }}>
           <div className="absolute inset-y-0" style={{ left: 0, transform: 'translateX(-50%)', width: 2, background: 'linear-gradient(180deg, rgba(255,255,255,0.0), rgba(255,255,255,0.92) 16%, rgba(255,255,255,0.92) 84%, rgba(255,255,255,0.0))', boxShadow: '0 0 16px rgba(255,255,255,0.5)' }} />
           <span className="absolute top-1/2 left-0 flex items-center justify-center w-10 h-10 rounded-full" style={{ transform: 'translate(-50%,-50%)', background: 'rgba(255,255,255,0.96)', boxShadow: '0 10px 28px rgba(0,0,0,0.45), 0 0 0 6px rgba(255,255,255,0.14)', backdropFilter: 'blur(6px)' }}>
             <ArrowLeftRight className="w-4 h-4" style={{ color: '#1c1714' }} strokeWidth={2.4} />
@@ -101,8 +101,8 @@ function HeroStyling({ on, pdf }: any) {
         </div>
 
         {/* FØR / ETTER-merker */}
-        <span className="absolute top-4 left-4 z-20 text-[9.5px] font-bold uppercase px-2.5 py-1 rounded-full" style={{ fontFamily: F, color: 'rgba(255,255,255,0.92)', background: 'rgba(8,6,10,0.5)', backdropFilter: 'blur(8px)', letterSpacing: '0.16em' }}>Før</span>
-        <span className="absolute top-4 right-4 z-20 inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-full" style={{ fontFamily: F, color: '#fff', background: 'linear-gradient(135deg, rgba(160,82,224,0.94), rgba(124,58,237,0.94))', backdropFilter: 'blur(8px)', boxShadow: '0 8px 22px -8px rgba(124,58,237,0.6)' }}>
+        <span className="absolute top-4 right-4 z-20 text-[9.5px] font-bold uppercase px-2.5 py-1 rounded-full" style={{ fontFamily: F, color: 'rgba(255,255,255,0.92)', background: 'rgba(8,6,10,0.5)', backdropFilter: 'blur(8px)', letterSpacing: '0.16em' }}>Før</span>
+        <span className="absolute top-4 left-4 z-20 inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-full" style={{ fontFamily: F, color: '#fff', background: 'linear-gradient(135deg, rgba(160,82,224,0.94), rgba(124,58,237,0.94))', backdropFilter: 'blur(8px)', boxShadow: '0 8px 22px -8px rgba(124,58,237,0.6)' }}>
           <Wand2 className="w-3 h-3" strokeWidth={2.4} /> Stylet med AI
         </span>
 
@@ -328,8 +328,8 @@ export default function AIEiendom({ active, pdfMode }: { active?: boolean; pdfMo
         @keyframes aiHead { from { opacity:0; transform: translateY(16px); filter: blur(6px); } to { opacity:1; transform: translateY(0); filter: blur(0); } }
         @keyframes aiFade { from { opacity:0; transform: translateY(8px); } to { opacity:1; transform: translateY(0); } }
         @keyframes aiGrow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
-        @keyframes aiWipeClip { 0%,10% { clip-path: inset(0 78% 0 0); } 50% { clip-path: inset(0 22% 0 0); } 90%,100% { clip-path: inset(0 78% 0 0); } }
-        @keyframes aiWipeLine { 0%,10% { left: 22%; } 50% { left: 78%; } 90%,100% { left: 22%; } }
+        @keyframes aiWipeClip { from { clip-path: inset(0 90% 0 0); } to { clip-path: inset(0 15% 0 0); } }
+        @keyframes aiWipeLine { from { left: 10%; } to { left: 85%; } }
         @keyframes aiPhoneFloat { 0%,100% { transform: scale(1.12) translateY(0); } 50% { transform: scale(1.12) translateY(-8px); } }
       `}</style>
 

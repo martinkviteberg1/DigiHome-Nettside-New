@@ -5475,6 +5475,104 @@ const SFraVerktoyTilMotor = (p: any) => {
   );
 };
 
+/* ═══ DRIFTSGEARINGEN — kjerne-tesen: samme forvalter, mange flere boliger ═══ */
+const SDriftsgearing = (p: any) => {
+  const active = p.isActive;
+  const isPdf = !!p.pdfMode;
+  const show = active || isPdf;
+  const anim = active && !isPdf;
+  useEffect(() => { p.onLight?.(active && !isPdf); }, [active, isPdf]);
+
+  const AC = '#a052e0';
+  const INK = '#0c0c0c';
+  const SUB = '#57514a';
+  const MUT = '#8a8278';
+  const HAIR = 'rgba(20,15,10,0.09)';
+
+  const sides = [
+    { label: 'Tradisjonell forvaltning', sublabel: 'Manuell drift · bransjeestimat', value: '≈50', fill: 25, accent: false },
+    { label: 'DigiHome', sublabel: 'AI-drevet drift', value: '≈200', fill: 100, accent: true },
+  ];
+
+  return (
+  <SlideFrame bg="beige" {...p}>
+    <style>{`
+      @keyframes dgFade { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+      @keyframes dgHead { from { opacity: 0; transform: translateY(22px); filter: blur(8px); } 60% { filter: blur(0); } to { opacity: 1; transform: translateY(0); filter: blur(0); } }
+      @keyframes dgFill { from { width: 0%; } }
+      @keyframes dgPop { from { opacity: 0; transform: scale(0.82); } to { opacity: 1; transform: scale(1); } }
+    `}</style>
+
+    <div aria-hidden="true" className="absolute inset-0 pointer-events-none"
+         style={{ background: 'radial-gradient(ellipse at 50% 12%, rgba(160,82,224,0.06) 0%, transparent 56%)' }} />
+    <DotGrid maskCenter="50% 22%" opacity={0.4} />
+
+    <div className="relative z-10 w-full max-w-[1080px] mx-auto px-6 sm:px-12 my-auto">
+
+      {/* ═══ HEADER ═══ */}
+      <div className="text-center max-w-[880px] mx-auto">
+        <span className="block text-[11px] font-bold uppercase tracking-[0.4em]"
+              style={{ ...F, color: AC, animation: anim ? 'dgFade 0.7s cubic-bezier(0.22,1,0.36,1) 0.1s both' : undefined, opacity: show ? undefined : 0 }}>
+          Driftsgearingen
+        </span>
+        <h2 className="tracking-[-0.035em] leading-[1.04] mt-6"
+            style={{ ...FH, fontWeight: 700, fontSize: 'clamp(32px, 4.2vw, 58px)', color: INK,
+                     animation: anim ? 'dgHead 0.95s cubic-bezier(0.22,1,0.36,1) 0.25s both' : undefined, opacity: show ? undefined : 0 }}>
+          Samme forvalter. <span style={{ color: AC }}>4× porteføljen.</span>
+        </h2>
+        <p className="text-[15px] sm:text-[16.5px] font-normal leading-[1.6] mt-6 max-w-[680px] mx-auto"
+           style={{ ...F, color: SUB, animation: anim ? 'dgFade 0.8s cubic-bezier(0.22,1,0.36,1) 0.55s both' : undefined, opacity: show ? undefined : 0 }}>
+          Når systemet gjør grovarbeidet, blir det ikke flyttet — det forsvinner. Det endrer enhetsøkonomien i forvaltning.
+        </p>
+      </div>
+
+      {/* ═══ SAMMENLIGNING ═══ */}
+      <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-9 md:gap-12 items-center mt-12 sm:mt-16">
+        {sides.map((s, i) => (
+          <React.Fragment key={s.label}>
+            {i === 1 && (
+              <div className="flex md:flex-col items-center justify-center gap-x-3 gap-y-1 shrink-0"
+                   style={{ animation: anim ? 'dgPop 0.7s cubic-bezier(0.22,1,0.36,1) 1.15s both' : undefined, opacity: show ? undefined : 0 }}>
+                <span className="tracking-[-0.03em] leading-none" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(30px, 3.1vw, 46px)', color: AC }}>≈4×</span>
+                <span className="text-[10px] font-bold uppercase tracking-[0.28em]" style={{ ...F, color: MUT }}>gearing</span>
+              </div>
+            )}
+            <div style={{ animation: anim ? `dgFade 0.8s cubic-bezier(0.22,1,0.36,1) ${0.7 + i * 0.18}s both` : undefined, opacity: show ? undefined : 0 }}>
+              <div className="flex items-end justify-between gap-3 mb-3.5">
+                <div className="min-w-0">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.16em]" style={{ ...F, color: s.accent ? AC : INK }}>{s.label}</p>
+                  <p className="text-[11px] font-normal mt-1.5" style={{ ...F, color: MUT }}>{s.sublabel}</p>
+                </div>
+                <p className="tracking-[-0.04em] leading-none tabular-nums shrink-0" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(42px, 4.8vw, 66px)', color: s.accent ? AC : INK }}>{s.value}</p>
+              </div>
+              {/* kapasitets-skinne */}
+              <div className="h-[10px] rounded-full overflow-hidden" style={{ background: 'rgba(20,15,10,0.07)' }}>
+                <div className="h-full rounded-full" style={{
+                  width: show ? `${s.fill}%` : '0%',
+                  background: s.accent ? `linear-gradient(90deg, ${AC}, #c39ce0)` : 'rgba(20,15,10,0.30)',
+                  boxShadow: s.accent ? `0 0 18px ${AC}55` : 'none',
+                  animation: anim ? `dgFill 1.1s cubic-bezier(0.22,1,0.36,1) ${0.95 + i * 0.18}s both` : undefined,
+                }} />
+              </div>
+              <p className="text-[12px] font-medium mt-2.5" style={{ ...F, color: SUB }}>boliger per årsverk</p>
+            </div>
+          </React.Fragment>
+        ))}
+      </div>
+
+      {/* ═══ PAYOFF-KODA ═══ */}
+      <div className="mt-12 sm:mt-16 pt-9 text-center"
+           style={{ borderTop: `1px solid ${HAIR}`, animation: anim ? 'dgFade 0.9s cubic-bezier(0.22,1,0.36,1) 1.35s both' : undefined, opacity: show ? undefined : 0 }}>
+        <p className="tracking-[-0.018em] leading-[1.4] max-w-[900px] mx-auto" style={{ ...FH, fontWeight: 600, fontSize: 'clamp(18px, 2vw, 26px)', color: INK }}>
+          Marginalkostnaden per ny bolig faller mot null → <span style={{ color: AC }}>~82 % bruttomargin</span>. Hver franchise kopierer nøyaktig samme gearing.
+        </p>
+      </div>
+    </div>
+  </SlideFrame>
+  );
+};
+
+
 
 
 /* ═══ FORRETNINGSMODELLER — Egen forvaltning (bevis) + Franchise (skalering) · ett AI-OS ═══ */
@@ -5973,11 +6071,12 @@ const SLIDES: { C: any; light: boolean; animated?: boolean }[] = [
   { C: SWhyNow, light: true },                      // 04 · Hvorfor nå — timing-vinduet (beige, flyttet frem)
   // { C: SWhyDH, light: true },                    // SKJULT etter ønske — «Løsningen» (Ett system som gjør jobben) overlappet «Fra verktøy til motor» + hadde utdatert korttid-innhold. Koden beholdt.
   { C: SFraVerktoyTilMotor, light: true },          // 05 · Løsningen / Konseptet — fra verktøy (proptech) til motor
+  { C: SDriftsgearing, light: true },               // 06 · Driftsgearingen — samme forvalter, ~4× porteføljen (kjerne-tesen)
   { C: SProdukt, light: true },                     // 07 · Produktet — én motor, to produkter
   { C: SAIEiendom, light: true },                   // 08 · AI som forstår eiendom — 3 AI-moats
   { C: SArkitektur, light: true },                  // 09 · Arkitekturen — moat (animert, skjøvet bakover)
   { C: SFilosofi, light: true },                    // 10 · Filosofien bak DigiHome (rett etter arkitektur)
-  { C: SDualUSP, light: true },                     // 11 · Tre unike aspekter (beige)
+  // { C: SDualUSP, light: true },                  // SKJULT etter ønske — «Tre unike aspekter». Koden beholdt.
   { C: SBusinessModels, light: true },              // 12 · Forretningsmodeller
   { C: SBetalingsmodell, light: true },             // 13 · Betalingsmodell
   { C: SAlleredeInntekter, light: true },           // 14 · Allerede i drift — traksjon
