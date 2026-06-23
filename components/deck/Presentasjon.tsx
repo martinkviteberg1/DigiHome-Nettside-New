@@ -5422,7 +5422,7 @@ const SFraVerktoyTilMotor = (p: any) => {
 
         {/* header */}
         <div className="text-center mb-14 sm:mb-20">
-          <span className="block text-[10px] font-bold uppercase tracking-[0.46em]" style={{ ...F, color: INK, ...rise(0) }}>Problemet og løsningen</span>
+          <span className="block text-[10px] font-bold uppercase tracking-[0.46em]" style={{ ...F, color: INK, ...rise(0) }}>Løsningen</span>
           <h2 className="mt-6 tracking-[-0.045em] leading-[0.98]" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(40px, 5.4vw, 74px)', color: INK, ...rise(1) }}>
             Fra verktøy til motor.
           </h2>
@@ -5971,8 +5971,8 @@ const SLIDES: { C: any; light: boolean; animated?: boolean }[] = [
   { C: SVisionIntro, light: true, animated: true }, // 02 · Visjon — krok (mørk→lys reveal)
   { C: SProblem, light: true },                     // 03 · Problemet — status quo (beige, flyttet frem)
   { C: SWhyNow, light: true },                      // 04 · Hvorfor nå — timing-vinduet (beige, flyttet frem)
-  { C: SWhyDH, light: true },                       // 05 · Løsningen — DigiHome (white, flyttet frem)
-  { C: SFraVerktoyTilMotor, light: true },          // 06 · Konseptet — fra verktøy (proptech) til motor
+  // { C: SWhyDH, light: true },                    // SKJULT etter ønske — «Løsningen» (Ett system som gjør jobben) overlappet «Fra verktøy til motor» + hadde utdatert korttid-innhold. Koden beholdt.
+  { C: SFraVerktoyTilMotor, light: true },          // 05 · Løsningen / Konseptet — fra verktøy (proptech) til motor
   { C: SProdukt, light: true },                     // 07 · Produktet — én motor, to produkter
   { C: SAIEiendom, light: true },                   // 08 · AI som forstår eiendom — 3 AI-moats
   { C: SArkitektur, light: true },                  // 09 · Arkitekturen — moat (animert, skjøvet bakover)
