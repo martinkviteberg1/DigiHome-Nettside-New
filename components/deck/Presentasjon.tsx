@@ -5936,33 +5936,37 @@ const SSystemIArbeid = (p: any) => {
 };
 
 /* ═══ SLIDE ORDER — 2026 · Product-first investor flow ═══ */
-const SLIDES = [
-  S1,            // 01 · Cover
-  SVisionIntro,      // 02 · Visjon — krok «Ikke et system. En autopilot.» → idéen bak DigiHome
-  STeam,         // 03 · Teamet (founder-market fit) — flyttet frem
-  SFraVerktoyTilMotor, // 04 · Problemet og løsningen — fra verktøy (proptech) til motor (DigiHome)
-  SArkitektur, // 04a · Arkitekturen — alt flyter inn i Autopiloten (animert)
-  SFilosofi, // 04d · Filosofien bak DigiHome — flyttet rett etter «alt flyter inn i autopiloten»
-  SProdukt, // 04b · Produktet — Én motor. To produkter. (B2B desktop + B2C mobil)
-  SAIEiendom, // 04c · AI som forstår eiendom — 3 AI-moats m/ menneske-godkjenning
-  SBusinessModels, // 05 · Forretningsmodeller — B2C (private) + B2B (profesjonelle)
-  SBetalingsmodell, // 05b · Betalingsmodell — B2C (% av leie) + B2B (SaaS per enhet)
-  SAlleredeInntekter, // 05c · Allerede i drift — 40 betalende huseiere, MRR/ARR i dag (traksjon)
-  // SLiveDemo,  // SKJULT etter ønske (behold koden) — «Produktet er bygget. Nå skal markedet vinnes.»
-  SDualUSP,      // 05 · Three unique aspects (auto-listing + dynamic + AI ops)
-  SProblem,      // 07 · Problem
-  SWhyNow,       // 08 · Why now? (timing window)
-  SWhyDH,        // 09 · Solution
-  SMarket1,      // 10 · Tiered market (NOK leievolum)
-  SMarket3,      // 11 · Path to 150 MNOK ARR (Nordic)
-  SDiff,         // 12 · Konkurransefortrinn (combined moat + market positioning)
-  // SProductTiers, // SKJULT — utdatert prismodell (flat SaaS-trapp). Ny modell: % av leie (5/10 %) + B2B per enhet. Vises i Betalingsmodell.
-  SRevenue,      // 14 · Revenue model
-  SUnitEconomics,// 15 · Unit economics
-  SBudgetRunway, // 16 · Budget & runway
-  SAsk,          // 17 · Pre-seed emisjon
-  S9,            // 18 · Closing
+/* ═══ SLIDES — deklarativ rekkefølge (Narrativ B: problem-først) ═══
+   light:    true  → lys bakgrunn  (mørk nav-chrome / piler)
+             false → mørk bakgrunn (lys nav-chrome / piler)
+   animated: true  → slide med tekst-animasjon (kobles til onAnimationComplete + s2-lås)
+   Lys/mørk følger nå hvert slide-objekt — ingen hardkodede indeks-arrays.            */
+const SLIDES: { C: any; light: boolean; animated?: boolean }[] = [
+  { C: S1, light: false },                          // 01 · Cover (mørk — Bergen cityscape)
+  { C: SVisionIntro, light: true, animated: true }, // 02 · Visjon — krok (mørk→lys reveal)
+  { C: SProblem, light: true },                     // 03 · Problemet — status quo (beige, flyttet frem)
+  { C: SWhyNow, light: true },                      // 04 · Hvorfor nå — timing-vinduet (beige, flyttet frem)
+  { C: SWhyDH, light: true },                       // 05 · Løsningen — DigiHome (white, flyttet frem)
+  { C: SFraVerktoyTilMotor, light: true },          // 06 · Konseptet — fra verktøy (proptech) til motor
+  { C: SProdukt, light: true },                     // 07 · Produktet — én motor, to produkter
+  { C: SAIEiendom, light: true },                   // 08 · AI som forstår eiendom — 3 AI-moats
+  { C: SArkitektur, light: true },                  // 09 · Arkitekturen — moat (animert, skjøvet bakover)
+  { C: SFilosofi, light: true },                    // 10 · Filosofien bak DigiHome (rett etter arkitektur)
+  { C: SDualUSP, light: true },                     // 11 · Tre unike aspekter (beige)
+  { C: SBusinessModels, light: true },              // 12 · Forretningsmodeller
+  { C: SBetalingsmodell, light: true },             // 13 · Betalingsmodell
+  { C: SAlleredeInntekter, light: true },           // 14 · Allerede i drift — traksjon
+  { C: SMarket1, light: true },                     // 15 · Marked (NOK leievolum)
+  { C: SMarket3, light: true },                     // 16 · Vei til 150 MNOK ARR (Norden)
+  { C: SDiff, light: true },                        // 17 · Konkurransefortrinn (white)
+  { C: SRevenue, light: true },                     // 18 · Inntektsmodell
+  { C: SUnitEconomics, light: true },               // 19 · Unit economics
+  { C: SBudgetRunway, light: true },                // 20 · Budsjett & runway (beige)
+  { C: STeam, light: true },                        // 21 · Teamet (founder-market fit, mot slutten)
+  { C: SAsk, light: true },                         // 22 · Pre-seed emisjon (beige)
+  { C: S9, light: false },                          // 23 · Closing (mørk — Bergen harbor)
 ];
+const ANIMATED_IDX = SLIDES.findIndex(s => s.animated);
 
 export default function Presentasjon() {
   const [c, setC] = useState(0);
@@ -5974,19 +5978,20 @@ export default function Presentasjon() {
   const [exportStage, setExportStage] = useState<'idle' | 'preparing' | 'capturing' | 'building' | 'uploading' | 'done'>('idle');
   const [cachedPdf, setCachedPdf] = useState<{ exists: boolean; size?: number; updated_at?: string } | null>(null);
   const next = useCallback(() => setC((v: any) => {
-    if (v === 1 && s2Locked) return v;            // Slide 2: lås fremover til animasjonen er ferdig
+    if (v === ANIMATED_IDX && s2Locked) return v; // Animert slide: lås fremover til animasjonen er ferdig
     return Math.min(v + 1, SLIDES.length - 1);
   }), [s2Locked]);
   const prev = useCallback(() => setC((v: any) => Math.max(v - 1, 0)), []);
 
-  // Lyse slides toner til lys bakgrunn — la chrome (pille) tilpasse seg
-  useEffect(() => { if (![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 16, 18, 19].includes(c)) setChromeLight(false); }, [c]);
+  // Lyse slides toner til lys bakgrunn — la chrome (piler) tilpasse seg.
+  // Mørke slides tvinger chrome tilbake til lyst (slide-objektet bestemmer lys/mørk).
+  useEffect(() => { if (!SLIDES[c]?.light) setChromeLight(false); }, [c]);
 
   // Slide 2: lås fremover-navigasjon til hele tekst-animasjonen er spilt ferdig
   // MIDLERTIDIG DEAKTIVERT — låsen er slått av etter ønske. Sett ENABLE_S2_LOCK = true for å reaktivere.
   const ENABLE_S2_LOCK = false;
   useEffect(() => {
-    if (ENABLE_S2_LOCK && c === 1) {
+    if (ENABLE_S2_LOCK && c === ANIMATED_IDX) {
       setS2Locked(true);
       const t = setTimeout(() => setS2Locked(false), 6400);
       return () => clearTimeout(t);
@@ -6117,11 +6122,14 @@ export default function Presentasjon() {
   return (
     <div className="dh-deck w-screen h-screen overflow-hidden relative bg-[#0c0c0c]" style={F}
       onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
-      {SLIDES.map((Slide: any, i: number) => (
-        <div key={i} className={`absolute inset-0 overflow-hidden transition-all duration-700 ease-[cubic-bezier(0.4,0,0.2,1)] ${i === c ? 'opacity-100 scale-100' : i < c ? 'opacity-0 scale-[0.96]' : 'opacity-0 scale-[1.04]'}`} style={{ pointerEvents: i === c ? 'auto' : 'none', visibility: Math.abs(i - c) <= 1 ? 'visible' : 'hidden' }}>
-          <Slide slideNum={i + 1} total={SLIDES.length} isActive={i === c} onLight={[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 16, 18, 19].includes(i) ? setChromeLight : undefined} onAnimationComplete={i === 1 ? handleS2Complete : undefined} />
-        </div>
-      ))}
+      {SLIDES.map((slide, i: number) => {
+        const Slide: any = slide.C;
+        return (
+          <div key={i} className={`absolute inset-0 overflow-hidden transition-all duration-700 ease-[cubic-bezier(0.4,0,0.2,1)] ${i === c ? 'opacity-100 scale-100' : i < c ? 'opacity-0 scale-[0.96]' : 'opacity-0 scale-[1.04]'}`} style={{ pointerEvents: i === c ? 'auto' : 'none', visibility: Math.abs(i - c) <= 1 ? 'visible' : 'hidden' }}>
+            <Slide slideNum={i + 1} total={SLIDES.length} isActive={i === c} onLight={slide.light ? setChromeLight : undefined} onAnimationComplete={slide.animated ? handleS2Complete : undefined} />
+          </div>
+        );
+      })}
 
       {/* ═══ Invisible click zones — left / right thirds ═══ */}
       <button
@@ -6137,7 +6145,7 @@ export default function Presentasjon() {
       </button>
       <button
         onClick={next}
-        disabled={c === SLIDES.length - 1 || (c === 1 && s2Locked)}
+        disabled={c === SLIDES.length - 1 || (c === ANIMATED_IDX && s2Locked)}
         aria-label="Neste slide"
         className="group fixed right-0 top-0 bottom-0 w-[18%] z-40 cursor-e-resize disabled:cursor-not-allowed disabled:opacity-0 transition-opacity focus:outline-none focus-visible:outline-none"
         style={{ background: 'transparent' }}>
@@ -6233,20 +6241,23 @@ export default function Presentasjon() {
             pointerEvents: 'none',
             zIndex: -1,
           }}>
-          {SLIDES.map((Slide: any, i: number) => (
-            <div
-              key={`pdf-${i}`}
-              id={`pdf-slide-${i}`}
-              style={{
-                width: 1920,
-                height: 1080,
-                position: 'relative',
-                overflow: 'hidden',
-                background: '#0c0c0c',
-              }}>
-              <Slide slideNum={i + 1} total={SLIDES.length} isActive={true} pdfMode={true} />
-            </div>
-          ))}
+          {SLIDES.map((slide, i: number) => {
+            const Slide: any = slide.C;
+            return (
+              <div
+                key={`pdf-${i}`}
+                id={`pdf-slide-${i}`}
+                style={{
+                  width: 1920,
+                  height: 1080,
+                  position: 'relative',
+                  overflow: 'hidden',
+                  background: '#0c0c0c',
+                }}>
+                <Slide slideNum={i + 1} total={SLIDES.length} isActive={true} pdfMode={true} />
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
