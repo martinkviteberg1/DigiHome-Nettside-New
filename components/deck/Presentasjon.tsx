@@ -288,8 +288,8 @@ const SProblem = (p: any) => {
   const shifts = [
     {
       num: '01',
-      kicker: 'Flere kanaler',
-      body: 'FINN, Airbnb, Booking og egne leads må holdes oppdatert samtidig. Én feil i pris, kalender eller tilgjengelighet kan koste både inntekt og omdømme.',
+      kicker: 'Mange løse tråder',
+      body: 'Annonser, visninger, henvendelser, betalinger og leverandører må følges opp samtidig — på tvers av flere boliger. Én glipp i oppfølgingen koster både inntekt og omdømme.',
     },
     {
       num: '02',
@@ -299,7 +299,7 @@ const SProblem = (p: any) => {
     {
       num: '03',
       kicker: 'Høyere forventninger',
-      body: 'Leietakere og gjester forventer raske svar, digital oppfølging og ryddig dokumentasjon. Det som før var god service, er nå minimumskrav.',
+      body: 'Leietakere forventer raske svar, digital oppfølging og ryddig dokumentasjon. Det som før var god service, er nå minimumskrav.',
     },
   ];
 
@@ -1720,9 +1720,9 @@ const SDiff = (p: any) => {
     },
     {
       num: '03',
-      title: 'Én bolig, flere inntektsmodeller',
-      lead: 'De fleste systemer er laget for enten bookinger eller kontrakter. DigiHome håndterer begge — med samme bolig, samme kalender og samme økonomiflyt.',
-      tag: 'Det gjør det mulig å veksle mellom korttid og langtid etter sesong, etterspørsel, regelverk og pris.',
+      title: 'Et nettverk, ikke bare programvare',
+      lead: 'DigiHome er ikke et verktøy vi selger til konkurrenter. Vi drifter selv og skalerer gjennom franchise — lokale operatører på vårt AI-OS, under én nasjonal merkevare.',
+      tag: 'AI-effektivitet (3–4× flere enheter per årsverk) + franchise-nettverkseffekt er vanskelig å kopiere.',
     },
   ];
 
@@ -1758,12 +1758,12 @@ const SDiff = (p: any) => {
         </p>
         <h2 className="font-bold text-[#0c0c0c] tracking-[-0.035em] leading-[1.04]"
             style={{ ...F, fontSize: 'clamp(24px, 3.0vw, 40px)', animation: active ? 'diffHeadlineIn 0.95s cubic-bezier(0.22,1,0.36,1) 0.3s both' : undefined, opacity: active ? undefined : 0 }}>
-          <span className="md:block">Korttid og langtid har vært <span style={{ color: P }}>to ulike markeder</span>.</span>{' '}
-          <span className="md:block text-[#3a3530] font-light tracking-[-0.03em]">DigiHome samler dem i én plattform.</span>
+          <span className="md:block">Forvaltning har vært <span style={{ color: P }}>manuelt og fragmentert</span>.</span>{' '}
+          <span className="md:block text-[#3a3530] font-light tracking-[-0.03em]">DigiHome gjør det autonomt — og skalerer det som ett nettverk.</span>
         </h2>
         <p className="text-[#3a3530] leading-[1.55] font-light tracking-[-0.003em] mt-4 max-w-[1000px]"
            style={{ ...F, fontSize: 'clamp(12.5px, 1.0vw, 14px)', animation: active ? 'diffFadeUp 0.8s cubic-bezier(0.22,1,0.36,1) 0.5s both' : undefined, opacity: active ? undefined : 0 }}>
-          Guesty, Hostaway og Lodgify er sterke på korttidsutleie. AppFolio og Hemlane er bygget for langtidsutleie. Hybel, Husleie og FINN løser viktige deler av det norske markedet — men ikke hele flyten. <span className="font-semibold text-[#0c0c0c]">DigiHome står i krysningspunktet</span>: korttid, langtid, drift og AI samlet i ett system.
+          Tradisjonelle forvaltere kjører på Excel og spredte verktøy. Hybel, Husleie og FINN løser deler av flyten — ingen tar hele driften. <span className="font-semibold text-[#0c0c0c]">DigiHome står alene</span> i krysningspunktet: AI-native, full forvaltning og et skalerbart franchise-nettverk.
         </p>
       </div>
 
@@ -1867,7 +1867,7 @@ const SDiff = (p: any) => {
         <div className="flex items-start gap-4 max-w-[1100px]">
           <p className="text-[10px] font-bold uppercase tracking-[0.22em] pt-1 shrink-0" style={{ ...F, color: P }}>Forsvar</p>
           <p className="text-[12px] sm:text-[13px] text-[#3a3530] font-light leading-[1.55] tracking-[-0.003em]" style={F}>
-            <span className="font-semibold text-[#0c0c0c]">Hvorfor det blir vanskelig å kopiere.</span> Én konkurrent kan kopiere én funksjon. Det vanskelige er kombinasjonen: lokal infrastruktur, AI-drevet drift og støtte for både korttid og langtid i samme plattform.
+            <span className="font-semibold text-[#0c0c0c]">Hvorfor det blir vanskelig å kopiere.</span> Én konkurrent kan kopiere én funksjon. Det vanskelige er kombinasjonen: AI-drevet drift (3–4× flere enheter per årsverk), et skalerbart franchise-nettverk og en nasjonal merkevare bygget på lokal infrastruktur.
           </p>
         </div>
       </div>
@@ -2197,7 +2197,7 @@ const SMarket1 = (p: any) => {
       <div className="mt-7 sm:mt-9 flex items-baseline justify-between flex-wrap gap-4"
            style={{ animation: anim ? 'm1FadeUp 0.8s cubic-bezier(0.22,1,0.36,1) 1.15s both' : undefined, opacity: show ? undefined : 0 }}>
         <p className="text-[11px] sm:text-[12px] font-normal leading-[1.55] max-w-[760px]" style={{ ...F, color: MUT }}>
-          Tallene viser samlet <span className="font-semibold" style={{ color: INK2 }}>leievolum</span>, ikke SaaS-TAM. DigiHome tar betalt gjennom abonnement, transaksjoner og tilleggstjenester — med mulig take-rate over tid.
+          Tallene viser samlet <span className="font-semibold" style={{ color: INK2 }}>leievolum</span>. DigiHome tjener på forvaltningshonorar (10 % av leien), recurring per enhet fra franchise og utleiemegling — alt skalerer med leienivå og antall enheter.
         </p>
         <p className="text-[10.5px] font-normal" style={{ ...F, color: '#a39a8e' }}>Kilder: Eurostat · SSB · Statista PropTech</p>
       </div>
@@ -2341,9 +2341,9 @@ const SMarket3 = (p: any) => {
   const AC = '#a052e0', INK = '#0c0c0c', INK2 = '#1c1714', SUB = '#57514a', MUT = '#8a8278';
   useEffect(() => { p.onLight?.(active && !isPdf); }, [active, isPdf]);
   const splits = [
-    { region: 'Norge',  pct: '60', customers: '6 000', window: '2026 – 2028', note: 'Bevismarked · 600k boliger', highlight: true },
-    { region: 'Norden', pct: '30', customers: '3 000', window: '2027 – 2029', note: 'Samme KYC-stack' },
-    { region: 'Europa', pct: '10', customers: '1 000', window: '2028 – 2030', note: 'UK + DACH først' },
+    { region: 'Norge',  pct: '60', customers: '~18 000', window: '2026 – 2028', note: 'Bevismarked · 600k boliger', highlight: true },
+    { region: 'Norden', pct: '30', customers: '~9 000', window: '2027 – 2029', note: 'Samme KYC-stack' },
+    { region: 'Europa', pct: '10', customers: '~3 000', window: '2028 – 2030', note: 'UK + DACH først' },
   ];
 
   return (
@@ -2363,7 +2363,7 @@ const SMarket3 = (p: any) => {
       <div className="mb-8 sm:mb-10 max-w-[920px]">
         <span className="inline-block text-[11px] font-bold uppercase tracking-[0.32em]" style={{ ...F, color: AC, animation: anim ? 'm3FadeUp 0.6s cubic-bezier(0.22,1,0.36,1) 0.15s both' : undefined, opacity: show ? undefined : 0 }}>Mål 2030 · Nordic leader</span>
         <h2 className="tracking-[-0.035em] leading-[1.04] mt-5" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(28px, 3.8vw, 50px)', color: INK, animation: anim ? 'm3HeadlineIn 0.95s cubic-bezier(0.22,1,0.36,1) 0.3s both' : undefined, opacity: show ? undefined : 0 }}>
-          10 000 kunder. <span style={{ color: '#9b938a', fontWeight: 400 }}>Tre markeder. Ett produkt.</span>
+          ~30 000 enheter. <span style={{ color: '#9b938a', fontWeight: 400 }}>Tre markeder. Ett nettverk.</span>
         </h2>
         <span className="block mt-7 h-px rounded-full" style={{ width: 64, background: `linear-gradient(90deg, ${AC}, transparent)`, transformOrigin: 'left', animation: anim ? 'm3Grow 0.9s cubic-bezier(0.22,1,0.36,1) 0.5s both' : undefined, opacity: show ? undefined : 0 }} />
       </div>
@@ -2381,7 +2381,7 @@ const SMarket3 = (p: any) => {
         <div className="max-w-[360px] sm:text-right">
           <p className="text-[10.5px] font-bold uppercase tracking-[0.24em] mb-2.5" style={{ ...F, color: MUT }}>Struktur</p>
           <p className="text-[13px] sm:text-[14.5px] font-normal leading-[1.55]" style={{ ...F, color: SUB }}>
-            Privat <span className="font-semibold tabular-nums" style={{ color: INK2 }}>5–10 %</span> av leien + B2B per enhet ⇒ blandet ≈ 1 250 kr/mnd. Inntekten følger leienivået.
+            Egen drift (10 % av leien) + franchise per enhet ⇒ blandet <span className="font-semibold tabular-nums" style={{ color: INK2 }}>≈ 400 kr/enhet/mnd</span> til DigiHome. Inntekten følger nettverkets enheter.
           </p>
         </div>
       </div>
@@ -2406,7 +2406,7 @@ const SMarket3 = (p: any) => {
               <span className="text-[15px] sm:text-[17px] font-medium pb-1.5" style={{ ...F, color: MUT }}>%</span>
             </div>
             <p className="text-[13.5px] sm:text-[14.5px] font-semibold tracking-[-0.005em] tabular-nums mt-4" style={{ ...FH, color: INK }}>
-              {s.customers} <span className="font-normal" style={{ ...F, color: MUT }}>kunder</span>
+              {s.customers} <span className="font-normal" style={{ ...F, color: MUT }}>enheter</span>
             </p>
             <p className="text-[11.5px] sm:text-[12px] font-normal mt-1.5 tracking-[-0.003em] tabular-nums" style={{ ...F, color: MUT }}>{s.window}</p>
             <p className="text-[11.5px] sm:text-[12.5px] font-normal mt-3 leading-[1.5]" style={{ ...F, color: SUB }}>{s.note}</p>
@@ -2985,15 +2985,15 @@ const SRevenue = (p: any) => {
   const AC = '#a052e0', INK = '#0c0c0c', INK2 = '#1c1714', SUB = '#57514a', MUT = '#8a8278';
   const HAIR = 'rgba(20,15,10,0.10)';
   const engines = [
-    { num: '01', title: 'Selvbetjent', badge: 'Privat · B2C', metric: '5', unit: '% av leien', lead: 'Privat utleier forvalter selv — plattformen gjør grovarbeidet. Ren software-margin.', bullets: ['≈ 650 kr/mnd ved 13 000 kr leie', 'Lav terskel, bred privattrakt', 'Inntekten følger leienivået automatisk'] },
-    { num: '02', title: 'Full forvaltning', badge: 'Privat · B2C', metric: '10', unit: '% av leien', lead: 'Vi tar hele driften — som en utleiemegler. Høyere ARPU, særlig på korttid.', bullets: ['≈ 1 300 kr/mnd langtid → 3 000 kr korttid', 'Korttid ≈ 2,7× leie ⇒ 2,7× gebyr', 'Dagens 40 betalende kunder ligger her'] },
-    { num: '03', title: 'Porteføljelisens', badge: 'Profesjonell · B2B', metric: 'fra 249', unit: 'kr/enhet/mnd', lead: 'SaaS per enhet med volumrabatt. Én kunde = mange enheter ⇒ stor, stabil ARR.', bullets: ['≈ 200 kr/enhet etter volumrabatt', '250+ enheter per forvalter', 'Lav churn, høy retensjon'] },
-    { num: '04', title: 'Tillegg & transaksjoner', badge: 'Alle segmenter', metric: '+30–80', unit: 'kr ARPU', lead: 'Tjenester som hører naturlig hjemme i utleieflyten gir ekstra inntekt med høy margin.', bullets: ['Depositum · kredittsjekk · forsikring', 'Kanalpublisering', 'Regnskapsflyt'] },
+    { num: '01', title: 'Egen forvaltning', badge: 'Flaggskip', metric: '10', unit: '% av leien', lead: 'Bergen-flaggskipet vi drifter selv. Full forvaltningsmargin — beviset og cash-en.', bullets: ['≈ 1 300 kr/enhet/mnd langtid', 'Dagens 40 huseiere ligger her', 'Referansene franchise hviler på'] },
+    { num: '02', title: 'Franchise · plattform', badge: 'Recurring', metric: 'fra 199', unit: 'kr/enhet/mnd', lead: 'Lokale operatører driver på DigiHome-OS-et. Skalerbar, recurring kjerne-ARR.', bullets: ['+ liten royalty på toppen', '≈ 0,7 MNOK/år per moden franchise', '300+ enheter per franchise'] },
+    { num: '03', title: 'Franchise · etablering', badge: 'Engangs', metric: '~200', unit: 'k per franchise', lead: 'Etableringsavgift når en ny operatør går inn i nettverket. Finansierer onboarding.', bullets: ['Opplæring, oppsett og merkevare', 'Kapital-lett — operatør tar driften', 'Skalerer med antall nye franchises'] },
+    { num: '04', title: 'Utleiemegling & transaksjoner', badge: 'Alle segmenter', metric: '+30–80', unit: 'kr ARPU', lead: 'Utleiemegling per leieforhold + depositum, kredittsjekk og forsikring. Høy margin.', bullets: ['Engangsgebyr ved nytt leieforhold', 'Depositum · kredittsjekk · forsikring', 'Trakt inn til full forvaltning'] },
   ];
   const phases = [
-    { phase: 'Fase 1', period: '2026',     customers: '~900',    arr: '8 MNOK',   bar: 6,   desc: 'Bergen og Vestlandet · privat' },
-    { phase: 'Fase 2', period: '2027–28', customers: '~4 500',  arr: '50 MNOK',  bar: 33,  desc: 'Norge · + første forvaltere' },
-    { phase: 'Fase 3', period: '2029–30', customers: '~10 000', arr: '150 MNOK', bar: 100, desc: 'Norden · privat + 60 forvaltere' },
+    { phase: 'Fase 1', period: '2026',     customers: '~3 franchises',   arr: '5 MNOK',   bar: 3,   desc: 'Bergen egen + piloter' },
+    { phase: 'Fase 2', period: '2027–28', customers: '~25 franchises',  arr: '40 MNOK',  bar: 27,  desc: 'Norge · nettverket bygges' },
+    { phase: 'Fase 3', period: '2029–30', customers: '~100 franchises', arr: '150 MNOK', bar: 100, desc: 'Norden · ~30 000 enheter' },
   ];
 
   return (
@@ -3017,12 +3017,12 @@ const SRevenue = (p: any) => {
         </span>
         <h2 className="tracking-[-0.04em] leading-[1.0]"
             style={{ ...FH, fontWeight: 700, fontSize: 'clamp(28px, 3.6vw, 50px)', color: INK, animation: anim ? 'reHeadlineIn 0.95s cubic-bezier(0.22,1,0.36,1) 0.3s both' : undefined, opacity: show ? undefined : 0 }}>
-          Prisen følger <span style={{ color: AC }}>leien</span>.<br className="hidden sm:block" /> Inntekten følger porteføljen.
+          Prisen følger <span style={{ color: AC }}>leien</span>.<br className="hidden sm:block" /> Inntekten følger nettverket.
         </h2>
         <span className="block mt-6 h-px rounded-full" style={{ width: 60, background: `linear-gradient(90deg, ${AC}, transparent)`, transformOrigin: 'left', animation: anim ? 'reRule 0.9s cubic-bezier(0.22,1,0.36,1) 0.5s both' : undefined, opacity: show ? undefined : 0 }} />
         <p className="text-[13px] sm:text-[14.5px] leading-[1.6] font-normal max-w-[760px] mt-6"
            style={{ ...F, color: SUB, animation: anim ? 'reFadeUp 0.8s cubic-bezier(0.22,1,0.36,1) 0.6s both' : undefined, opacity: show ? undefined : 0 }}>
-          DigiHome tar en andel av leien fra private (5–10 %) og SaaS per enhet fra profesjonelle — begge skaleres med kundens portefølje og med leienivået.
+          DigiHome tar 10 % av leien på egen drift, recurring per enhet fra franchise og utleiemegling per leieforhold — alt skalerer med nettverkets enheter.
         </p>
       </div>
 
@@ -3076,7 +3076,7 @@ const SRevenue = (p: any) => {
                   <span className="text-[9.5px] text-white/55 tabular-nums font-medium">{ph.period}</span>
                 </div>
                 <p className="text-[38px] sm:text-[44px] text-white tracking-[-0.04em] leading-none mb-1.5 tabular-nums" style={{ ...FH, fontWeight: 700 }}>{ph.arr}</p>
-                <p className="text-[11.5px] text-white/60 font-light mb-4"><span className="font-semibold text-white/90">{ph.customers}</span> kunder · {ph.desc}</p>
+                <p className="text-[11.5px] text-white/60 font-light mb-4"><span className="font-semibold text-white/90">{ph.customers}</span> · {ph.desc}</p>
                 <div className="h-[5px] rounded-full bg-white/[0.08] overflow-hidden">
                   <div className="h-full rounded-full origin-left" style={{
                     background: `linear-gradient(90deg, ${P}, #9333ea)`,
@@ -3089,7 +3089,7 @@ const SRevenue = (p: any) => {
             ))}
           </div>
           <div className="mt-7 pt-5 border-t border-white/[0.08]">
-            <p className="text-[11.5px] text-white/60 font-light leading-[1.55]">150 MNOK ARR ≈ <span className="font-semibold text-white/90">0,17 % av norsk leievolum</span> — selvbetjent (5 %), full forvaltning (10 %) og B2B per enhet i balanse. Stor, skalerbar virksomhet før Norge er mettet.</p>
+            <p className="text-[11.5px] text-white/60 font-light leading-[1.55]">150 MNOK ARR ≈ <span className="font-semibold text-white/90">~30 000 enheter under forvaltning</span> på tvers av nettverket — egen drift + franchise. En brøkdel av det norske utleiemarkedet.</p>
           </div>
         </div>
       </article>
@@ -3099,7 +3099,7 @@ const SRevenue = (p: any) => {
            style={{ animation: anim ? 'reFadeUp 0.8s cubic-bezier(0.22,1,0.36,1) 1.3s both' : undefined, opacity: show ? undefined : 0 }}>
         <div className="h-px bg-[#d8d2c5] origin-right" style={{ width: '54px', animation: anim ? 'reRule 0.9s cubic-bezier(0.22,1,0.36,1) 1.45s both' : undefined }} />
         <p className="text-[11px] sm:text-[12px] text-[#7a6f5e] font-medium tracking-[-0.005em]">
-          <span className="font-semibold" style={{ color: AC }}>Kjernen:</span> take-rate på privat (5–10 %) + SaaS per enhet på proff gir tre inntektsstrømmer som vokser med både leienivå og porteføljestørrelse.
+          <span className="font-semibold" style={{ color: AC }}>Kjernen:</span> egen forvaltning (10 % take-rate) + recurring per enhet fra franchise + utleiemegling gir tre inntektsstrømmer som vokser med nettverkets enheter.
         </p>
         <div className="h-px bg-[#d8d2c5] origin-left" style={{ width: '54px', animation: anim ? 'reRule 0.9s cubic-bezier(0.22,1,0.36,1) 1.45s both' : undefined }} />
       </div>
@@ -3118,24 +3118,24 @@ const SUnitEconomics = (p: any) => {
   const AC = '#a052e0', INK = '#0c0c0c', INK2 = '#1c1714', SUB = '#57514a', MUT = '#8a8278';
   const HAIR = 'rgba(20,15,10,0.10)';
   const kpis = [
-    { num: '01', big: '13', unit: ':1', title: 'LTV / CAC', lead: 'Det profesjonelle segmentet gir særlig sterk økonomi fordi én kunde ofte representerer mange enheter og høy månedlig konto-ARR.', benchmark: '>3:1' },
-    { num: '02', big: '4', unit: 'mnd', title: 'Tilbakebetalingstid', lead: 'Lav CAC og høy abonnementsverdi gjør at markedsførings- og salgskostnaden kan betales raskt tilbake.', benchmark: '<12 mnd' },
-    { num: '03', big: '82', unit: '%', title: 'Bruttomargin', lead: 'AI- og skykostnader øker lite per ny kunde. Det gir gode marginer når volumet vokser.', benchmark: '>75 %' },
-    { num: '04', big: '<3', unit: '%', title: 'Månedlig churn', lead: 'Når kontrakt, betaling, drift, dokumentasjon og regnskap først ligger i DigiHome, blir produktet en del av kundens daglige arbeidsflyt.', benchmark: '<5 %' },
+    { num: '01', big: '13', unit: ':1', title: 'LTV / CAC', lead: 'Franchise gir særlig sterk økonomi: lav CAC fordi operatøren tar driftskostnaden, og høy, langvarig recurring per franchise.', benchmark: '>3:1' },
+    { num: '02', big: '4', unit: 'mnd', title: 'Tilbakebetalingstid', lead: 'Lav anskaffelseskostnad og høy recurring-verdi gjør at salgs- og onboarding-kostnaden betales raskt tilbake.', benchmark: '<12 mnd' },
+    { num: '03', big: '82', unit: '%', title: 'Bruttomargin', lead: 'AI- og skykostnader øker lite per ny enhet. Det gir gode marginer når nettverket vokser.', benchmark: '>75 %' },
+    { num: '04', big: '<3', unit: '%', title: 'Månedlig churn', lead: 'Når forvaltning, kontrakt, betaling og drift ligger i DigiHome-OS-et, blir det ryggraden i operatørens daglige drift.', benchmark: '<5 %' },
   ];
   const typeLight = [
-    { label: 'ARPU med tillegg', value: '900 kr/mnd' },
-    { label: 'CAC',              value: '1 500 kr' },
-    { label: 'LTV',              value: '21 600 kr' },
-    { label: 'Bruttomargin',     value: '78 %', hi: true },
-    { label: 'Tilbakebetalingstid', value: '2 mnd', hi: true },
+    { label: 'DigiHome netto / enhet', value: '~400 kr/mnd' },
+    { label: 'Bruttomargin',     value: '80 %', hi: true },
+    { label: 'Årlig per enhet',   value: '~4 800 kr' },
+    { label: 'Marginalkostnad ny enhet', value: 'Nær 0' },
+    { label: 'Månedlig churn',    value: '<3 %', hi: true },
   ];
   const typePro = [
-    { label: 'ARPU per konto', value: '25 000 kr/mnd' },
-    { label: 'CAC',              value: '25 000 kr' },
-    { label: 'LTV',              value: '900 000 kr' },
-    { label: 'Bruttomargin',     value: '84 %', hi: true },
-    { label: 'Tilbakebetalingstid', value: '1 mnd', hi: true },
+    { label: 'Enheter ved modenhet', value: '~300' },
+    { label: 'Recurring ARR til DigiHome', value: '~0,7 MNOK/år', hi: true },
+    { label: 'Etablering (engangs)', value: '~200 000 kr' },
+    { label: 'Enheter per årsverk', value: '300–400', hi: true },
+    { label: 'CAC',              value: 'Lav — operatør tar drift' },
   ];
 
   return (
@@ -3167,7 +3167,7 @@ const SUnitEconomics = (p: any) => {
         <span className="block mt-6 h-px rounded-full" style={{ width: 60, background: `linear-gradient(90deg, ${AC}, transparent)`, transformOrigin: 'left', animation: anim ? 'ueRule 0.9s cubic-bezier(0.22,1,0.36,1) 0.5s both' : undefined, opacity: show ? undefined : 0 }} />
         <p className="text-[13px] sm:text-[14.5px] leading-[1.6] mt-6 max-w-[780px] font-normal"
            style={{ ...F, color: SUB, animation: anim ? 'ueFadeUp 0.9s cubic-bezier(0.22,1,0.36,1) 0.6s both' : undefined, opacity: show ? undefined : 0 }}>
-          DigiHome er bygget som et kapitaleffektivt SaaS-produkt med lave marginalkostnader, kort tilbakebetalingstid og høy verdi per kunde.
+          Egen drift beviser marginene; franchise gjør veksten kapital-lett. Lav marginalkostnad per enhet, kort tilbakebetalingstid og høy recurring-verdi per franchise.
         </p>
       </div>
 
@@ -3204,11 +3204,11 @@ const SUnitEconomics = (p: any) => {
                }}>
         <div aria-hidden="true" className="absolute -top-20 -right-20 w-[380px] h-[380px] rounded-full pointer-events-none" style={{ background: 'radial-gradient(ellipse at center, rgba(195,156,224,0.16) 0%, transparent 65%)' }} />
         <div className="relative">
-          <p className="text-[9.5px] font-bold tracking-[0.22em] text-white/50 mb-4" style={F}>TO KUNDETYPER</p>
+          <p className="text-[9.5px] font-bold tracking-[0.22em] text-white/50 mb-4" style={F}>TO ANALYSENIVÅER</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-9">
             {[
-              { tag: 'KUNDETYPE 1', name: 'Privat · take-rate', sub: 'Betaler 5–10 % av leien. Ren software-margin på selvbetjent, full drift på forvaltning.', rows: typeLight },
-              { tag: 'KUNDETYPE 2', name: 'Profesjonell · per enhet',                sub: 'Forvalter med voksende portefølje. Én kunde = mange enheter ⇒ stor konto-ARR.', rows: typePro   },
+              { tag: 'PER ENHET', name: 'Én forvaltet enhet', sub: 'Huseier betaler 10 % av leien. DigiHome beholder ~400 kr/mnd netto, blandet over nettverket.', rows: typeLight },
+              { tag: 'PER FRANCHISE', name: 'Én moden franchise', sub: 'Lokal operatør med ~300 enheter. Recurring plattform-ARR + etablering — kapital-lett for DigiHome.', rows: typePro   },
             ].map((c, i) => (
               <div key={i} className="relative">
                 {i === 0 && <div className="hidden sm:block absolute -right-4 top-1 bottom-1 w-px bg-white/[0.08]" />}
@@ -3247,13 +3247,13 @@ const SUnitEconomics = (p: any) => {
 const SBudgetRunway = (p: any) => {
   const active = p.isActive;
   const kpis = [
-    { num: '01', big: '3', unit: 'MNOK', title: 'Kapitalbehov', lead: 'Pre-seed emisjon for å lansere eksternt, hente de første betalende kundene og validere vekstmodellen.', note: '22 MNOK pre-money / 25 MNOK post-money' },
+    { num: '01', big: '3', unit: 'MNOK', title: 'Kapitalbehov', lead: 'Pre-seed emisjon for å systematisere Bergen-prototypen, rekruttere de første franchisetakerne og validere franchise-modellen.', note: '22 MNOK pre-money / 25 MNOK post-money' },
     { num: '02', big: '16', unit: 'mnd', title: 'Runway', lead: 'Gir tid til kommersiell lansering, salg, kundelæring og forberedelse til seed-runde uten å måtte hente kapital midt i prosessen.', note: 'Q4 2026 → Q1 2028' },
     { num: '03', big: '~180', unit: 'k/mnd', title: 'Månedlig burn', lead: 'Dekker to fulltidsgründere, markedsføring, infrastruktur, juridisk arbeid og nødvendig buffer.', note: 'Inkl. sosiale kostnader' },
   ];
   const budget = [
     { label: 'Lønn til grunnleggere', sub: 'Sarah og Martin fulltidsdedikert i 16 måneder.', amount: '2 050 000', pct: 68, founders: true },
-    { label: 'Markedsføring og salg',  sub: 'Performance, FINN, content, partnerarbeid og første kundeanskaffelse.', amount: '450 000', pct: 15 },
+    { label: 'Markedsføring og franchise-rekruttering',  sub: 'Merkevarebygging, content, partnerarbeid og rekruttering av de første franchisetakerne.', amount: '450 000', pct: 15 },
     { label: 'Produkt og infrastruktur', sub: 'OpenAI, Channex, regnskapssystemer, hosting og nødvendige integrasjoner.', amount: '240 000', pct: 8 },
     { label: 'Juridisk og regnskap',  sub: 'GDPR, vilkår, selskapsstruktur, kundeavtaler og løpende regnskap.', amount: '120 000', pct: 4 },
     { label: 'Buffer',                sub: 'Uforutsette kostnader og investorvennlig margin.', amount: '140 000', pct: 5 },
@@ -3283,7 +3283,7 @@ const SBudgetRunway = (p: any) => {
         </h2>
         <p className="text-[12.5px] sm:text-[13px] text-[#3a3530] leading-[1.6] mt-3 max-w-[880px] font-light"
            style={{ ...F, animation: active ? 'brFadeUp 0.9s cubic-bezier(0.22,1,0.36,1) 0.55s both' : undefined, opacity: active ? undefined : 0 }}>
-          Produktet er allerede bygget. Denne runden finansierer fulltid på gründerteamet, første eksterne kunder og nok runway til å nå neste investorpakke.
+          Produktet er allerede bygget. Denne runden finansierer fulltid på gründerteamet, systematisering av driften og rekruttering av de første franchisetakerne — med nok runway til neste investorpakke.
         </p>
       </div>
 
@@ -3353,7 +3353,7 @@ const SBudgetRunway = (p: any) => {
                   </li>
                   <li className="flex items-center gap-2 text-[11.5px] text-[#3a3530] font-light">
                     <span className="w-[3px] h-[3px] rounded-full shrink-0" style={{ backgroundColor: P }} />
-                    <span>Martin Kviteberg, CTO — <span className="font-semibold text-[#0c0c0c] tabular-nums">600 000 kr/år</span></span>
+                    <span>Martin Kviteberg, Produktsjef — <span className="font-semibold text-[#0c0c0c] tabular-nums">600 000 kr/år</span></span>
                   </li>
                 </ul>
               )}
@@ -3367,7 +3367,7 @@ const SBudgetRunway = (p: any) => {
            style={{ animation: active ? 'brFadeUp 0.8s cubic-bezier(0.22,1,0.36,1) 1.25s both' : undefined, opacity: active ? undefined : 0 }}>
         <div className="h-px bg-[#d8d2c5] origin-right" style={{ width: '54px', animation: active ? 'brRule 0.9s cubic-bezier(0.22,1,0.36,1) 1.4s both' : undefined }} />
         <p className="text-[11px] sm:text-[12px] text-[#7a6f5e] font-medium tracking-[-0.005em] text-center">
-          <span className="font-semibold" style={{ color: P }}>Kjernen:</span> kapitalen brukes ikke til å finne ut om produktet kan bygges — den brukes til å bevise at markedet vil betale for det.
+          <span className="font-semibold" style={{ color: P }}>Kjernen:</span> kapitalen brukes ikke til å finne ut om produktet kan bygges — den brukes til å bevise at franchise-modellen skalerer.
         </p>
         <div className="h-px bg-[#d8d2c5] origin-left" style={{ width: '54px', animation: active ? 'brRule 0.9s cubic-bezier(0.22,1,0.36,1) 1.4s both' : undefined }} />
       </div>
@@ -3806,7 +3806,7 @@ const SAsk = (p: any) => {
         </h2>
         <p className="text-[12.5px] sm:text-[13px] text-[#3a3530] leading-[1.6] mt-3 max-w-[880px] font-light"
            style={{ ...F, animation: active ? 'askFadeUp 0.9s cubic-bezier(0.22,1,0.36,1) 0.55s both' : undefined, opacity: active ? undefined : 0 }}>
-          DigiHome Tech AS henter 3 MNOK i ny egenkapital for å ta selskapet fra intern produktvalidering til eksternt markedsbevis.
+          DigiHome Tech AS henter 3 MNOK i ny egenkapital for å ta selskapet fra bevist Bergen-drift til et skalerbart franchise-nettverk.
         </p>
       </div>
 
@@ -3850,11 +3850,11 @@ const SAsk = (p: any) => {
           <h3 className="text-[16px] font-bold text-[#0c0c0c] tracking-[-0.018em] mb-4" style={F}>Hva emisjonen finansierer før seed</h3>
           <div className="space-y-0">
             {[
-              { when: 'Mnd 1–6',   what: '10 betalende SaaS-kunder',                                              desc: 'Første eksterne referansekunder utenfor DigiHome AS.' },
-              { when: 'Mnd 4–10',  what: '500k ARR løpende',                                                       desc: 'Betalingsvillighet og pricing dokumentert.' },
-              { when: 'Mnd 6–12',  what: 'CAC payback < 6 mnd',                                                    desc: 'Bruttomargin 75 %+.' },
-              { when: 'Mnd 8–14',  what: 'Nordisk lanseringsklarhet',                                              desc: 'Arkitektur, compliance-lag og første salgsressurs.' },
-              { when: 'Mnd 12–16', what: 'Seed-klar prosess',                                                      desc: 'Mål om 50–80 MNOK pre-money.' },
+              { when: 'Mnd 1–6',   what: 'Bergen-prototypen systematisert',                                       desc: 'Driften pakket som en repeterbar franchise-oppskrift.' },
+              { when: 'Mnd 4–10',  what: 'Første 2–3 franchisetakere signert',                                    desc: 'Lokale operatører i drift på DigiHome-OS-et.' },
+              { when: 'Mnd 6–12',  what: 'Franchise-økonomi bevist',                                              desc: 'CAC payback < 6 mnd · bruttomargin 75 %+.' },
+              { when: 'Mnd 8–14',  what: 'Skalerbar onboarding + nasjonal merkevare',                            desc: 'Opplæring, kvalitetsrekkverk og rekrutteringsmotor klar.' },
+              { when: 'Mnd 12–16', what: 'Seed-klar prosess',                                                     desc: 'Mål om 50–80 MNOK pre-money.' },
             ].map((m, k) => (
               <div key={k} className="flex gap-4 py-2.5 border-b border-[#f0ede8] last:border-0">
                 <div className="shrink-0 w-[78px]">
@@ -4037,13 +4037,13 @@ const SWhyNow = (p: any) => {
       num: '02',
       tag: 'Regulering',
       title: 'Reglene blir mer krevende',
-      body: 'Korttidsutleie, skatt, depositum og kontrakter krever bedre dokumentasjon og mer presis oppfølging. Det gjør lokale, regeltilpassede systemer mer verdifulle.',
+      body: 'Utleie, skatt, depositum og kontrakter krever bedre dokumentasjon og mer presis oppfølging. Det gjør lokale, regeltilpassede systemer mer verdifulle.',
     },
     {
       num: '03',
       tag: 'Marked',
-      title: 'Korttid og langtid glir sammen',
-      body: 'Flere eiere vil bruke samme bolig fleksibelt gjennom året: korttid når etterspørselen er høy, langtid når stabilitet lønner seg. Dagens verktøy er bygget for enten–eller.',
+      title: 'Utleie profesjonaliseres',
+      body: 'Stadig flere private huseiere vil sette bort driften til profesjonelle. Samtidig er forvaltningsbransjen fragmentert og umoden — et stort rom for én moderne, nasjonal aktør.',
     },
     {
       num: '04',
@@ -4534,7 +4534,7 @@ const SDualUSP = (p: any) => {
             </p>
             <div className="h-px bg-gradient-to-r from-[#e6e2d9] to-transparent mb-3" />
             <p className="text-[11.5px] font-semibold tracking-[-0.003em] leading-[1.45]" style={{ ...F, color: P }}>
-              Klar for FINN, Airbnb og Booking.com.
+              Klar for FINN og de største utleieportalene.
             </p>
           </div>
         </article>
@@ -4631,11 +4631,11 @@ const SDualUSP = (p: any) => {
               Utleie
             </h3>
             <p className="text-[13px] text-[#2a2a2a] font-light leading-[1.55] tracking-[-0.003em] mb-4 flex-1" style={F}>
-              Samme bolig veksler mellom korttid og langtid etter sesong og etterspørsel — alt styrt fra én kalender.
+              Markedsdrevet prissetting og minimal tomgang — DigiHome finner riktig leie, fyller ledige enheter raskt og fornyer kontrakter automatisk.
             </p>
             <div className="h-px bg-gradient-to-r from-[#e6e2d9] to-transparent mb-3" />
             <p className="text-[12px] font-semibold tracking-[-0.003em] leading-[1.45]" style={{ ...F, color: P }}>
-              Korttid, langtid og drift — i samme system.
+              Riktig pris, fullt belegg — automatisk.
             </p>
           </div>
         </article>
@@ -5352,7 +5352,7 @@ const SVisionIntro = (p: any) => {
                   </div>
                   <div className="leading-tight">
                     <p className="text-[15px] font-semibold tracking-[-0.01em]" style={{ ...F, color: INK }}>Martin C. Kviteberg</p>
-                    <p className="text-[12.5px] mt-0.5" style={{ ...F, color: 'rgba(28,22,16,0.5)' }}>CTO &amp; Medgründer</p>
+                    <p className="text-[12.5px] mt-0.5" style={{ ...F, color: 'rgba(28,22,16,0.5)' }}>Produktsjef &amp; Medgründer</p>
                   </div>
                 </div>
               </>
@@ -5452,21 +5452,21 @@ const SFraVerktoyTilMotor = (p: any) => {
 
 
 
-/* ═══ FORRETNINGSMODELLER — B2C (private) + B2B (profesjonelle) · én plattform ═══ */
+/* ═══ FORRETNINGSMODELLER — Egen forvaltning (bevis) + Franchise (skalering) · ett AI-OS ═══ */
 const BIZ_MODELS = [
   {
-    idx: '01', tag: 'B2C', market: 'Privatmarkedet', label: 'Private huseiere',
-    who: '1–5 utleieboliger',
-    desc: 'Privatpersoner som mangler tid og kompetanse til å drifte profesjonelt. DigiHome tar hele jobben — fra annonse til utbetaling — på autopilot.',
-    traits: 'Helautomatisk · Selvbetjent · Ingen erfaring nødvendig',
-    model: 'Forvaltningshonorar', modelSub: 'andel av leieinntekt',
+    idx: '01', tag: 'EGEN DRIFT', market: 'Flaggskip', label: 'DigiHome forvaltning',
+    who: 'Egendrevet — Bergen først',
+    desc: 'Vi drifter selv som profesjonell utleiemegler og forvalter. Beviser enhetsøkonomien, bygger merkevaren og leverer referansene franchisemodellen hviler på.',
+    traits: 'Full forvaltning · Take-rate · FINN-trygt',
+    model: 'Forvaltningshonorar', modelSub: '~10 % av leien',
   },
   {
-    idx: '02', tag: 'B2B', market: 'Bedriftsmarkedet', label: 'Profesjonelle aktører',
-    who: 'Selskaper og forvaltere med portefølje',
-    desc: 'Eiendomsselskaper og forvaltere som driver i skala. Samme autopilot tar driften på tvers av mange enheter — med team, roller og rapportering.',
-    traits: 'Porteføljedrift · Team & roller · API og integrasjoner',
-    model: 'SaaS per enhet', modelSub: 'enterprise-lisens',
+    idx: '02', tag: 'FRANCHISE', market: 'Skalering', label: 'Lokale DigiHome-operatører',
+    who: 'Franchisetakere over hele landet',
+    desc: 'Lokale operatører driver forvaltning under DigiHome-merket, drevet av vårt AI-OS. Kapital-lett skalering — de tar med lokal kapital, relasjoner og drift.',
+    traits: 'AI-OS · Nasjonal merkevare · Per enhet',
+    model: 'Plattform per enhet', modelSub: '+ etablering & royalty',
   },
 ];
 
@@ -5501,10 +5501,10 @@ const SBusinessModels = (p: any) => {
         <span className="text-[11px] font-bold uppercase tracking-[0.28em]" style={{ ...F, color: AC }}>Forretningsmodell</span>
         <h2 className="tracking-[-0.03em] leading-[1.05] mt-5"
             style={{ ...FH, fontWeight: 700, fontSize: 'clamp(28px, 3.4vw, 46px)', color: INK }}>
-          To forretningsmodeller. Én plattform.
+          To spor. Ett AI-OS.
         </h2>
         <p className="text-[14.5px] sm:text-[16px] font-normal leading-[1.6] mt-4 max-w-[600px]" style={{ ...F, color: SUB }}>
-          DigiHome betjener to ulike kundegrupper med samme underliggende plattform.
+          DigiHome vokser i to spor — egen drift som bevis, franchise som motor — på samme AI-plattform.
         </p>
       </div>
 
@@ -5555,7 +5555,7 @@ const SBusinessModels = (p: any) => {
       {/* payoff — rolig, uten fargeord */}
       <p className="text-[14.5px] sm:text-[16px] font-normal leading-[1.6] mt-7 max-w-[680px]"
          style={{ ...F, color: SUB, animation: anim ? 'bmFade 0.9s cubic-bezier(0.22,1,0.36,1) 1.1s both' : undefined, opacity: show ? undefined : 0 }}>
-        <span style={{ color: INK2, fontWeight: 600 }}>Samme plattform driver begge markedene.</span> Når motoren først er bygget for privatmarkedet, betjenes det profesjonelle markedet med tilnærmet null marginalkostnad — en andre inntektsstrøm på samme infrastruktur.
+        <span style={{ color: INK2, fontWeight: 600 }}>Egen drift beviser modellen — franchise skalerer den.</span> Vi tjener recurring per enhet på tvers av nettverket, mens lokale operatører tar med kapital og drift. Kapital-lett vekst på samme AI-infrastruktur.
       </p>
     </div>
   </SlideFrame>
@@ -5578,21 +5578,21 @@ const SBetalingsmodell = (p: any) => {
   const HAIR = 'rgba(20,15,10,0.10)';
   const TIERS = [
     {
-      seg: 'Privat · B2C', name: 'Selvbetjent', pre: '', big: '5%', unit: 'av leiesummen',
-      desc: 'Du forvalter selv — plattformen gjør grovarbeidet.',
-      feats: ['Annonsering på FINN, Airbnb m.fl.', 'Kontrakt, betaling og oppfølging — automatisk', 'Full oversikt i appen', 'Du styrer leietaker-kontakten'],
+      seg: 'Huseier · Forvaltning', name: 'Full forvaltning', pre: '', big: '10%', unit: 'av leien',
+      desc: 'Vi tar hele driften — som en profesjonell utleiemegler. Langtid.',
+      feats: ['Annonsering, visning og kontrakt', 'All leietaker-kommunikasjon — AI-drevet', 'Drift, vedlikehold og oppgjør', 'Huseier løfter aldri en finger'],
       hl: false, badge: '',
     },
     {
-      seg: 'Privat · B2C', name: 'Full forvaltning', pre: '', big: '10%', unit: 'av leiesummen',
-      desc: 'Vi tar hele administrasjonen — som en utleiemegler.',
-      feats: ['Alt i Selvbetjent, pluss:', 'All leietaker-kommunikasjon', 'Visninger, drift og vedlikehold', 'Du løfter aldri en finger'],
-      hl: true, badge: 'Vi tar alt',
+      seg: 'Franchise', name: 'Plattform per enhet', pre: 'fra', big: '199 kr', unit: 'per enhet / mnd',
+      desc: 'Lokale operatører driver på DigiHome-OS-et. Recurring og skalerbart.',
+      feats: ['AI-OS + nasjonal merkevare', 'Etableringsavgift ved oppstart', 'Liten royalty-andel på toppen', '3–4× flere enheter per årsverk'],
+      hl: true, badge: 'Vekstmotoren',
     },
     {
-      seg: 'Profesjonell · B2B', name: 'Porteføljelisens', pre: 'fra', big: '249 kr', unit: 'per enhet / mnd',
-      desc: 'SaaS per enhet — synkende pris ved volum.',
-      feats: ['Volumrabatt — rabattmatrise ved skala', 'Porteføljedrift, team & roller', 'API og integrasjoner', 'Enterprise-support'],
+      seg: 'Transaksjon · Engangs', name: 'Finn leietaker', pre: '', big: 'Engangs', unit: 'utleiemegling per leieforhold',
+      desc: 'Frittstående utleiemegling — og trakt inn til full forvaltning.',
+      feats: ['Engangsgebyr ved nytt leieforhold', 'Depositum, kredittsjekk, e-sign', 'Kanalpublisering inkludert', 'Oppselg til løpende forvaltning'],
       hl: false, badge: '',
     },
   ];
@@ -5616,7 +5616,7 @@ const SBetalingsmodell = (p: any) => {
           Prising som følger verdien.
         </h2>
         <p className="text-[14.5px] sm:text-[16px] font-normal leading-[1.6] mt-4 max-w-[660px]" style={{ ...F, color: SUB }}>
-          Privatmarkedet betaler en andel av leien. Det profesjonelle markedet betaler per enhet, med volumrabatt.
+          Tre inntektskilder: forvaltningshonorar fra huseier, recurring plattformavgift fra franchise, og utleiemegling per leieforhold.
         </p>
       </div>
 
@@ -5670,7 +5670,7 @@ const SBetalingsmodell = (p: any) => {
       {/* payoff */}
       <p className="text-[14px] sm:text-[15px] font-normal leading-[1.6] mt-9 text-center mx-auto max-w-[720px]"
          style={{ ...F, color: SUB, animation: anim ? 'payFade 0.9s cubic-bezier(0.22,1,0.36,1) 0.95s both' : undefined, opacity: show ? undefined : 0 }}>
-        <span style={{ color: INK2, fontWeight: 600 }}>Prisen følger verdien vi skaper.</span> Ingen bindingstid, ingen skjulte gebyrer — for private huseiere tjener vi først når de tjener.
+        <span style={{ color: INK2, fontWeight: 600 }}>Prisen følger verdien vi skaper.</span> Recurring per enhet på tvers av nettverket — og vi tjener først når utleier får leid ut. Ingen bindingstid, ingen skjulte gebyrer.
       </p>
     </div>
   </SlideFrame>
@@ -5720,7 +5720,7 @@ const SAlleredeInntekter = (p: any) => {
           Vi genererer allerede <span style={{ color: AC }}>inntekter.</span>
         </h2>
         <p className="text-[14.5px] sm:text-[16px] font-normal leading-[1.6] mt-4 max-w-[700px]" style={{ ...F, color: SUB }}>
-          DigiHome er ikke et konsept. Vi har <span style={{ color: INK2, fontWeight: 600 }}>40 betalende huseiere</span> på fullforvaltning i dag — med ekte, tilbakevendende inntekter.
+          DigiHome er ikke et konsept. Vi har <span style={{ color: INK2, fontWeight: 600 }}>40 betalende huseiere</span> på fullforvaltning i Bergen i dag — den beviste prototypen hver franchise skal replikere.
         </p>
       </div>
 
@@ -5754,7 +5754,7 @@ const SAlleredeInntekter = (p: any) => {
       {/* payoff */}
       <p className="text-[14px] sm:text-[15px] font-normal leading-[1.6] mt-9 text-center mx-auto max-w-[760px]"
          style={{ ...F, color: SUB, animation: anim ? 'traFade 0.9s cubic-bezier(0.22,1,0.36,1) 0.95s both' : undefined, opacity: show ? undefined : 0 }}>
-        <span style={{ color: INK2, fontWeight: 600 }}>40 boliger × 3 000 kr/mnd = 120 000 kr i månedlig inntekt.</span> Ekte kunder, ekte inntekter — før vi har skalert salget.
+        <span style={{ color: INK2, fontWeight: 600 }}>40 boliger × 3 000 kr/mnd = 120 000 kr i månedlig inntekt.</span> Dette er prototypen — bevist i Bergen. Franchise gjør den nasjonal.
       </p>
     </div>
   </SlideFrame>
