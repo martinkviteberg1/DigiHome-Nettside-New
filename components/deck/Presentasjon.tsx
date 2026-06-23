@@ -517,12 +517,12 @@ const STeam = (p: any) => {
     },
     {
       name: 'Martin C. Kviteberg',
-      role: 'Teknisk sjef · CTO',
+      role: 'Produktsjef · CPO',
       field: 'Teknologi',
       img: '/team/martin-kviteberg-face.jpg',
       imgStyle: { objectPosition: 'center' },
-      lead: 'Gründer med exit fra Adonis AS. Startet Bnbspesialisten — en av Norges tre første korttidsforvaltere.',
-      meta: 'Tech, automatisering og drift · 10+ år som direktør for forretningsutvikling, Adonis AS · BI',
+      lead: 'Gründer av Bnbspesialisten — en av Norges tre første korttidsforvaltere. Sentral i familieselskapet Adonis AS frem mot exit.',
+      meta: 'Produkt, automatisering og drift · 10 år som direktør for forretningsutvikling i Adonis AS · BI',
     },
     {
       name: 'Erik Hoffmann-Dahl',
