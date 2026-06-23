@@ -4037,6 +4037,17 @@ const SAsk = (p: any) => {
 /* ═══ SLIDE 8 — SWhyNow (Hvorfor akkurat nå?) · Proptonomy-style ═══ */
 const SWhyNow = (p: any) => {
   const active = p.isActive;
+  const isPdf = !!p.pdfMode;
+  const show = active || isPdf;
+  const anim = active && !isPdf;
+  useEffect(() => { p.onLight?.(active && !isPdf); }, [active, isPdf]);
+
+  const AC = '#a052e0';      // lesbar merkevare-lilla på lys bakgrunn
+  const INK = '#0c0c0c';
+  const SUB = '#57514a';
+  const MUT = '#8a8278';
+  const HAIR = 'rgba(20,15,10,0.09)';
+
   const forces = [
     {
       num: '01',
@@ -4059,7 +4070,7 @@ const SWhyNow = (p: any) => {
     {
       num: '04',
       tag: 'Generasjonsskifte',
-      title: 'Nye eiere forventer bedre verktøy',
+      title: 'Nye eiere forventer mer',
       body: 'Yngre boligeiere arver, kjøper og forvalter eiendom digitalt. De forventer samme enkelhet i utleie som i bank, regnskap og netthandel.',
     },
   ];
@@ -4067,63 +4078,66 @@ const SWhyNow = (p: any) => {
   return (
   <SlideFrame bg="beige" {...p}>
     <style>{`
-      @keyframes wnFadeUp { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
-      @keyframes wnHeadlineIn { from { opacity: 0; transform: translateY(24px); filter: blur(8px); } 60% { filter: blur(0); } to { opacity: 1; transform: translateY(0); filter: blur(0); } }
-      @keyframes wnCardIn { from { opacity: 0; transform: translateY(28px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
-      @keyframes wnRule { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+      @keyframes wnFade { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+      @keyframes wnHead { from { opacity: 0; transform: translateY(22px); filter: blur(8px); } 60% { filter: blur(0); } to { opacity: 1; transform: translateY(0); filter: blur(0); } }
+      @keyframes wnGrow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+      @keyframes wnRise { from { transform: scaleY(0); } to { transform: scaleY(1); } }
     `}</style>
 
-    <DotGrid maskCenter="50% 28%" opacity={0.4} />
+    <div aria-hidden="true" className="absolute inset-0 pointer-events-none"
+         style={{ background: 'radial-gradient(ellipse at 50% 12%, rgba(160,82,224,0.05) 0%, transparent 56%)' }} />
+    <DotGrid maskCenter="50% 22%" opacity={0.4} />
 
-    <div className="max-w-[1280px] mx-auto px-6 sm:px-12 w-full relative z-10">
-      {/* Editorial header */}
-      <div className="mb-6 sm:mb-8">
-        <p className="text-[10.5px] sm:text-[11px] font-bold uppercase tracking-[0.28em] mb-5"
-           style={{ color: P, animation: active ? 'wnFadeUp 0.6s cubic-bezier(0.22,1,0.36,1) 0.15s both' : undefined, opacity: active ? undefined : 0 }}>
+    <div className="relative z-10 w-full max-w-[1200px] mx-auto px-6 sm:px-12 my-auto">
+
+      {/* ═══ HEADER — editorial ═══ */}
+      <div className="max-w-[940px]">
+        <span className="block text-[11px] font-bold uppercase tracking-[0.4em]"
+              style={{ ...F, color: AC, animation: anim ? 'wnFade 0.7s cubic-bezier(0.22,1,0.36,1) 0.1s both' : undefined, opacity: show ? undefined : 0 }}>
           Hvorfor nå
-        </p>
-        <h2 className="text-[26px] sm:text-[34px] lg:text-[42px] font-bold text-[#0c0c0c] tracking-[-0.035em] leading-[1.08] max-w-[1080px]"
-            style={{ ...F, animation: active ? 'wnHeadlineIn 0.95s cubic-bezier(0.22,1,0.36,1) 0.3s both' : undefined, opacity: active ? undefined : 0 }}>
-          Utleiemarkedet endrer seg <span className="md:block">raskere enn verktøyene <span style={{ color: P }}>som skal håndtere det.</span></span>
+        </span>
+        <h2 className="tracking-[-0.035em] leading-[1.04] mt-6"
+            style={{ ...FH, fontWeight: 700, fontSize: 'clamp(30px, 3.9vw, 52px)', color: INK,
+                     animation: anim ? 'wnHead 0.95s cubic-bezier(0.22,1,0.36,1) 0.25s both' : undefined, opacity: show ? undefined : 0 }}>
+          Utleiemarkedet endrer seg raskere<br className="hidden md:block" /> enn verktøyene <span style={{ color: AC }}>som skal håndtere det.</span>
         </h2>
-        <p className="text-[13.5px] sm:text-[15px] text-[#5a564d] leading-[1.55] font-light mt-4 sm:mt-5 max-w-[820px]"
-           style={{ ...F, animation: active ? 'wnFadeUp 0.7s cubic-bezier(0.22,1,0.36,1) 0.5s both' : undefined, opacity: active ? undefined : 0 }}>
+        <span className="block mt-7 h-px rounded-full"
+              style={{ width: 64, background: `linear-gradient(90deg, ${AC}, transparent)`, transformOrigin: 'left',
+                       animation: anim ? 'wnGrow 0.9s cubic-bezier(0.22,1,0.36,1) 0.55s both' : undefined, opacity: show ? undefined : 0 }} />
+        <p className="text-[15px] sm:text-[16.5px] font-normal leading-[1.6] mt-7 max-w-[680px]"
+           style={{ ...F, color: SUB, animation: anim ? 'wnFade 0.8s cubic-bezier(0.22,1,0.36,1) 0.65s both' : undefined, opacity: show ? undefined : 0 }}>
           AI, regulering og nye leievaner treffer markedet samtidig. Det skaper et kort vindu for en ny standard.
         </p>
       </div>
 
-      {/* 4 force cards — clean editorial, num+tag header, title, single body */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5">
+      {/* ═══ 4 drivkrefter — hårlinje-separerte kolonner, INGEN bokser ═══ */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 mt-10 sm:mt-12">
         {forces.map((f, i) => (
-          <article key={i} className="bg-white rounded-[18px] px-6 sm:px-7 pt-6 pb-7 flex flex-col"
-                   style={{
-                     border: '1px solid #ece8e1',
-                     boxShadow: '0 1px 2px rgba(20,15,10,0.03), 0 10px 32px rgba(20,15,10,0.05)',
-                     animation: active ? `wnCardIn 0.85s cubic-bezier(0.22,1,0.36,1) ${0.5 + i * 0.1}s both` : undefined,
-                     opacity: active ? undefined : 0,
-                   }}>
+          <div key={f.num} className="relative lg:px-7 first:lg:pl-0 last:lg:pr-0 py-6 lg:py-0"
+               style={{ animation: anim ? `wnFade 0.8s cubic-bezier(0.22,1,0.36,1) ${0.75 + i * 0.11}s both` : undefined, opacity: show ? undefined : 0 }}>
+            {/* vertikal hårlinje mellom kolonner (desktop) */}
+            {i > 0 && <span aria-hidden="true" className="hidden lg:block absolute left-0 top-1 bottom-1 w-px" style={{ background: HAIR, transformOrigin: 'top',
+                        animation: anim ? `wnRise 0.7s cubic-bezier(0.22,1,0.36,1) ${0.8 + i * 0.11}s both` : undefined }} />}
+            {/* horisontal hårlinje (mobil/tablet) */}
+            {i > 0 && <span aria-hidden="true" className="lg:hidden absolute left-0 right-0 top-0 h-px" style={{ background: HAIR }} />}
             <div className="flex items-center gap-2.5 mb-4">
-              <span className="text-[9.5px] font-bold tabular-nums tracking-[0.22em] text-[#b5aa98]" style={F}>{f.num}</span>
-              <span className="text-[10px] text-[#d8d2c5]">·</span>
-              <span className="text-[10px] font-bold uppercase tracking-[0.22em]" style={{ ...F, color: P }}>{f.tag}</span>
+              <span className="text-[11px] font-bold tabular-nums tracking-[0.2em]" style={{ ...F, color: AC }}>{f.num}</span>
+              <span className="text-[10px] font-bold uppercase tracking-[0.2em]" style={{ ...F, color: MUT }}>{f.tag}</span>
+              <span className="h-px flex-1" style={{ background: HAIR }} />
             </div>
-            <h3 className="text-[18px] sm:text-[20px] font-bold text-[#0c0c0c] tracking-[-0.022em] leading-[1.18] mb-3.5" style={F}>{f.title}</h3>
-            <p className="text-[12px] sm:text-[12.5px] text-[#2a2720] leading-[1.6] font-light tracking-[-0.003em] flex-1" style={F}>
-              {f.body}
-            </p>
-          </article>
+            <h3 className="text-[18.5px] sm:text-[20px] tracking-[-0.02em] leading-[1.16] mb-3" style={{ ...FH, fontWeight: 700, color: INK }}>{f.title}</h3>
+            <p className="text-[12.5px] sm:text-[13px] font-normal leading-[1.6] max-w-[260px]" style={{ ...F, color: SUB }}>{f.body}</p>
+          </div>
         ))}
       </div>
 
-      {/* Timing-urgency ribbon */}
-      <div className="mt-7 sm:mt-10 flex items-center justify-center gap-3 sm:gap-5 flex-wrap sm:flex-nowrap"
-           style={{ animation: active ? 'wnFadeUp 0.8s cubic-bezier(0.22,1,0.36,1) 1.0s both' : undefined, opacity: active ? undefined : 0 }}>
-        <p className="text-[10px] font-bold uppercase tracking-[0.3em]" style={{ color: P }}>Timing</p>
-        <div className="h-px bg-[#d8d2c5] origin-right hidden sm:block" style={{ width: '40px', animation: active ? 'wnRule 0.9s cubic-bezier(0.22,1,0.36,1) 1.15s both' : undefined }} />
-        <p className="text-[12.5px] sm:text-[14px] text-[#2a2720] font-semibold tracking-[-0.005em] text-center max-w-[760px]" style={F}>
-          Markedet trenger ikke enda et skjema eller en portal. Det trenger <span style={{ color: P }}>et system som tar arbeidet.</span>
+      {/* ═══ TIMING — kantløs redaksjonell koda (ingen ramme) ═══ */}
+      <div className="mt-10 sm:mt-12 pt-9 flex flex-col items-center text-center gap-4"
+           style={{ borderTop: `1px solid ${HAIR}`, animation: anim ? 'wnFade 0.9s cubic-bezier(0.22,1,0.36,1) 1.2s both' : undefined, opacity: show ? undefined : 0 }}>
+        <span className="text-[10px] font-bold uppercase tracking-[0.4em]" style={{ ...F, color: AC }}>Timing</span>
+        <p className="tracking-[-0.018em] leading-[1.3] max-w-[860px]" style={{ ...FH, fontWeight: 600, fontSize: 'clamp(19px, 2.1vw, 27px)', color: INK }}>
+          Markedet trenger ikke enda et skjema eller en portal. Det trenger <span style={{ color: AC }}>et system som tar arbeidet.</span>
         </p>
-        <div className="h-px bg-[#d8d2c5] origin-left hidden sm:block" style={{ width: '40px', animation: active ? 'wnRule 0.9s cubic-bezier(0.22,1,0.36,1) 1.15s both' : undefined }} />
       </div>
     </div>
   </SlideFrame>
