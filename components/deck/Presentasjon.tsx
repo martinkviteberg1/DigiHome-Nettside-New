@@ -6303,28 +6303,27 @@ const SSlikSystemetAutomatiserer = (p: any) => {
         </p>
       </div>
 
-      {/* MAIN — vertikal steg-rail + hevet detaljpanel */}
-      <div className="grid grid-cols-1 lg:grid-cols-[minmax(290px,0.92fr)_1.45fr] gap-7 lg:gap-12 mt-8 sm:mt-9 items-stretch relative z-50"
+      {/* MAIN — minimalistisk steg-rail + kantløst redaksjonelt detaljfelt */}
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(270px,0.82fr)_1.5fr] gap-8 lg:gap-14 mt-9 sm:mt-11 items-start relative z-50"
            style={{ animation: anim ? 'saFade 0.8s cubic-bezier(0.22,1,0.36,1) 0.55s both' : undefined, opacity: show ? undefined : 0 }}>
 
-        {/* ── VENSTRE: vertikal stepper ── */}
+        {/* ── VENSTRE: minimalistisk stepper ── */}
         <div className="relative">
           {/* fremdriftstråd (bakgrunn) */}
-          <div aria-hidden="true" className="absolute pointer-events-none" style={{ left: 23, top: 28, bottom: 28, width: 2, background: HAIR, borderRadius: 2 }} />
+          <div aria-hidden="true" className="absolute pointer-events-none" style={{ left: 17, top: 30, bottom: 30, width: 1.5, background: HAIR, borderRadius: 2 }} />
           {/* fremdriftstråd (fyll) */}
-          <div aria-hidden="true" className="absolute pointer-events-none" style={{ left: 23, top: 28, width: 2, height: `calc((100% - 56px) * ${tab / (TABS.length - 1)})`, background: `linear-gradient(180deg, ${AC}, ${AC}aa)`, borderRadius: 2, transition: 'height 0.55s cubic-bezier(0.4,0,0.2,1)' }} />
+          <div aria-hidden="true" className="absolute pointer-events-none" style={{ left: 17, top: 30, width: 1.5, height: `calc((100% - 60px) * ${tab / (TABS.length - 1)})`, background: `linear-gradient(180deg, ${AC}, ${AC}99)`, borderRadius: 2, transition: 'height 0.55s cubic-bezier(0.4,0,0.2,1)' }} />
 
-          <div className="relative space-y-1.5">
+          <div className="relative space-y-0.5">
             {TABS.map((tb, i) => {
               const on = i === tab; const done = i < tab;
               return (
                 <button key={tb.n} onClick={() => pick(i)} type="button"
-                  className="group w-full flex items-center gap-3.5 rounded-2xl pl-1.5 pr-3.5 py-2.5 text-left transition-all duration-300"
-                  style={{ background: on ? '#fff' : 'transparent', boxShadow: on ? '0 14px 34px -16px rgba(20,15,10,0.22)' : 'none',
-                           animation: anim ? `saRowIn 0.5s cubic-bezier(0.22,1,0.36,1) ${0.6 + i * 0.07}s both` : undefined, opacity: show ? undefined : 0 }}>
+                  className="group w-full flex items-center gap-4 rounded-xl pr-3 py-3 text-left transition-colors duration-300 hover:bg-[rgba(20,15,10,0.025)]"
+                  style={{ animation: anim ? `saRowIn 0.5s cubic-bezier(0.22,1,0.36,1) ${0.6 + i * 0.07}s both` : undefined, opacity: show ? undefined : 0 }}>
                   {/* node */}
                   <span className="relative z-10 flex items-center justify-center w-9 h-9 rounded-full shrink-0 transition-all duration-300"
-                        style={{ background: (on || done) ? AC : '#fff', border: (on || done) ? 'none' : `1px solid ${HAIR}`,
+                        style={{ background: (on || done) ? AC : '#f3efe9', border: (on || done) ? 'none' : `1px solid ${HAIR}`,
                                  animation: (on && anim) ? 'saGlow 2.8s ease-in-out infinite' : undefined }}>
                     {done
                       ? <Check className="w-4 h-4 text-white" strokeWidth={3} />
@@ -6332,61 +6331,55 @@ const SSlikSystemetAutomatiserer = (p: any) => {
                   </span>
                   {/* etikett */}
                   <span className="min-w-0 flex-1">
-                    <span className="block text-[14px] font-semibold leading-tight truncate" style={{ ...F, color: on ? INK : (done ? SUB : MUT) }}>{tb.name}</span>
-                    <span className="block text-[11.5px] leading-tight mt-0.5 truncate" style={{ ...F, color: MUT }}>{tb.sub}</span>
+                    <span className="block text-[14.5px] font-semibold leading-tight truncate transition-colors duration-300" style={{ ...F, color: on ? INK : (done ? SUB : MUT) }}>{tb.name}</span>
+                    <span className="block text-[11.5px] leading-tight mt-0.5 truncate transition-colors duration-300" style={{ ...F, color: on ? AC : MUT }}>{tb.sub}</span>
                   </span>
-                  {on && <ArrowRight className="w-4 h-4 shrink-0" style={{ color: AC }} strokeWidth={2.4} />}
+                  <ArrowRight className="w-4 h-4 shrink-0 transition-all duration-300" style={{ color: AC, opacity: on ? 1 : 0, transform: on ? 'translateX(0)' : 'translateX(-6px)' }} strokeWidth={2.4} />
                 </button>
               );
             })}
           </div>
         </div>
 
-        {/* ── HØYRE: detaljpanel ── */}
-        <div key={tab} className="relative rounded-3xl p-7 sm:p-9 overflow-hidden flex flex-col"
-             style={{ background: '#fff', boxShadow: '0 30px 70px -28px rgba(20,15,10,0.20)', animation: anim ? 'saPanel 0.55s cubic-bezier(0.22,1,0.36,1) both' : undefined }}>
-          {/* topp-aksentlinje */}
-          <div aria-hidden="true" className="absolute inset-x-0 top-0 h-px" style={{ background: `linear-gradient(90deg, transparent, ${AC}55, transparent)` }} />
-          {/* mykt hjørne-glød */}
-          <div aria-hidden="true" className="absolute -top-16 -right-16 w-48 h-48 rounded-full pointer-events-none" style={{ background: `radial-gradient(circle, ${AC}10, transparent 70%)` }} />
+        {/* ── HØYRE: kantløst redaksjonelt detaljfelt ── */}
+        <div key={tab} className="relative lg:pl-14 lg:border-l overflow-hidden" style={{ borderColor: HAIR, animation: anim ? 'saPanel 0.55s cubic-bezier(0.22,1,0.36,1) both' : undefined }}>
+          {/* stort ghost-tall */}
+          <span aria-hidden="true" className="absolute -top-8 right-0 pointer-events-none select-none tabular-nums leading-none" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(120px, 15vw, 210px)', color: INK, opacity: 0.04 }}>{t.n}</span>
 
-          {/* hode */}
-          <div className="flex items-start gap-4">
-            <span className="flex items-center justify-center w-14 h-14 rounded-2xl shrink-0" style={{ background: `${AC}12` }}>
-              <Icon className="w-6 h-6" style={{ color: AC }} strokeWidth={2} />
-            </span>
-            <div className="pt-1">
-              <span className="text-[10.5px] font-bold uppercase tracking-[0.26em]" style={{ ...F, color: AC }}>Steg {t.n} <span style={{ color: MUT }}>/ 0{TABS.length}</span></span>
-              <h3 className="text-[24px] sm:text-[30px] tracking-[-0.02em] leading-[1.05] mt-1.5" style={{ ...FH, fontWeight: 700, color: INK }}>{t.name}</h3>
+          <div className="relative z-10">
+            {/* eyebrow + ikon */}
+            <div className="flex items-center gap-3">
+              <Icon className="w-[26px] h-[26px]" style={{ color: AC }} strokeWidth={1.8} />
+              <span className="text-[10.5px] font-bold uppercase tracking-[0.28em]" style={{ ...F, color: AC }}>Steg {t.n} <span style={{ color: MUT }}>/ 0{TABS.length}</span></span>
             </div>
-          </div>
+            <h3 className="text-[28px] sm:text-[36px] tracking-[-0.025em] leading-[1.02] mt-4" style={{ ...FH, fontWeight: 700, color: INK }}>{t.name}</h3>
+            <p className="text-[11.5px] uppercase tracking-[0.16em] font-semibold mt-2.5" style={{ ...F, color: MUT }}>{t.sub}</p>
 
-          <p className="text-[14px] sm:text-[15px] font-normal leading-[1.55] mt-5 max-w-[560px]" style={{ ...F, color: SUB }}>{t.desc}</p>
+            <p className="text-[14.5px] sm:text-[15.5px] font-normal leading-[1.6] mt-6 max-w-[600px]" style={{ ...F, color: SUB }}>{t.desc}</p>
 
-          <div className="space-y-3 mt-5">
-            {t.points.map((pt, i) => (
-              <div key={i} className="flex items-start gap-3">
-                <span className="flex items-center justify-center w-5 h-5 rounded-full mt-px shrink-0" style={{ background: `${AC}16` }}>
-                  <Check className="w-3 h-3" style={{ color: AC }} strokeWidth={3} />
+            {/* sjekkliste — hårlinje-separert */}
+            <div className="mt-7">
+              {t.points.map((pt, i) => (
+                <div key={i} className="flex items-start gap-3.5 py-3.5" style={{ borderTop: i === 0 ? 'none' : `1px solid ${HAIR}` }}>
+                  <Check className="w-[17px] h-[17px] mt-px shrink-0" style={{ color: AC }} strokeWidth={2.4} />
+                  <span className="text-[13.5px] sm:text-[14px] font-normal leading-[1.5]" style={{ ...F, color: '#2a2520' }}>{pt}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* teknologi-rad */}
+            <div className="mt-7 pt-6 flex flex-wrap items-center gap-x-6 gap-y-3" style={{ borderTop: `1px solid ${HAIR}` }}>
+              <span className="text-[10px] font-bold uppercase tracking-[0.26em]" style={{ ...F, color: MUT }}>Teknologi</span>
+              {t.tech.map((tc) => (
+                <span key={tc} className="inline-flex items-center gap-2 text-[12.5px] font-semibold" style={{ ...F, color: INK }}>
+                  <span className="w-1.5 h-1.5 rounded-full" style={{ background: AC }} />{tc}
                 </span>
-                <span className="text-[13.5px] font-normal leading-[1.5]" style={{ ...F, color: '#3a352f' }}>{pt}</span>
-              </div>
-            ))}
-          </div>
-
-          {/* teknologi-footer */}
-          <div className="mt-auto pt-6 flex flex-wrap items-center gap-2" style={{ borderTop: `1px solid ${HAIR}` }}>
-            <span className="text-[10px] font-bold uppercase tracking-[0.24em] mr-1.5" style={{ ...F, color: MUT }}>Teknologi</span>
-            {t.tech.map((tc) => (
-              <span key={tc} className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11.5px] font-semibold"
-                    style={{ ...F, color: INK, background: '#faf8f5', border: `1px solid ${HAIR}` }}>
-                <span className="w-1.5 h-1.5 rounded-full" style={{ background: AC }} />{tc}
+              ))}
+              <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 ml-auto" style={{ background: `${AC}10` }}>
+                <Zap className="w-3.5 h-3.5" style={{ color: AC }} strokeWidth={2.4} />
+                <span className="text-[10px] font-bold uppercase tracking-[0.12em]" style={{ ...F, color: AC }}>Automatisert</span>
               </span>
-            ))}
-            <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 ml-auto" style={{ background: `${AC}12` }}>
-              <Zap className="w-3.5 h-3.5" style={{ color: AC }} strokeWidth={2.4} />
-              <span className="text-[10.5px] font-bold uppercase tracking-[0.12em]" style={{ ...F, color: AC }}>Automatisert</span>
-            </span>
+            </div>
           </div>
         </div>
       </div>
@@ -6395,7 +6388,7 @@ const SSlikSystemetAutomatiserer = (p: any) => {
       <div className="mt-9 sm:mt-11 pt-7"
            style={{ borderTop: `1px solid ${HAIR}`, animation: anim ? 'saFade 0.9s cubic-bezier(0.22,1,0.36,1) 0.75s both' : undefined, opacity: show ? undefined : 0 }}>
         <p className="text-[13.5px] sm:text-[15px] font-normal leading-[1.5]" style={{ ...F, color: SUB }}>
-          <span style={{ color: INK, fontWeight: 600 }}>AI gjør grovarbeidet i hvert steg.</span> Forvalteren kobles bare på der det krever en beslutning eller et fysisk møte.
+          <span style={{ color: INK, fontWeight: 600 }}>Systemet gjør grovarbeidet i hvert steg.</span> Forvalteren kobles bare på der det krever en beslutning eller et fysisk møte.
         </p>
       </div>
     </div>
