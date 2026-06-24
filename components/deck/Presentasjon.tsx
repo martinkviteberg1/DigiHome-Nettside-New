@@ -7235,6 +7235,85 @@ const SMarkedKilde = (p: any) => {
   );
 };
 
+/* ═══ APPENDIKS — Teknisk kostnadsbase ═══ */
+const SKostnadsbase = (p: any) => {
+  const active = p.isActive; const isPdf = !!p.pdfMode; const show = active || isPdf; const anim = active && !isPdf;
+  useEffect(() => { p.onLight?.(active && !isPdf); }, [active, isPdf]);
+  const AC = '#a052e0'; const INK = '#0c0c0c'; const INK2 = '#1c1714'; const SUB = '#57514a'; const MUT = '#8a8278'; const HAIR = 'rgba(20,15,10,0.09)'; const GREEN = '#1f9d57';
+
+  const COSTS = [
+    { k: 'Hosting / plattform', t: 'Fast', v: '~225 kr/mnd' },
+    { k: 'Registerdata (Infotorg)', t: 'Fast', v: '~2 500 kr/mnd' },
+    { k: 'BankID-signering', t: 'Variabel', v: '17 kr / signering' },
+    { k: 'AI / API', t: 'Variabel', v: '~300–500 kr/mnd' },
+    { k: 'Andre integrasjoner', t: 'Etter behov', v: '—' },
+  ];
+
+  return (
+  <SlideFrame bg="beige" {...p}>
+    <style>{`
+      @keyframes kbFade { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+      @keyframes kbRow { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: translateX(0); } }
+    `}</style>
+    <DotGrid maskCenter="50% 16%" opacity={0.38} />
+    <div className="relative z-10 w-full max-w-[1200px] mx-auto px-6 sm:px-12 my-auto">
+      <div className="max-w-[880px]">
+        <span className="block text-[11px] font-bold uppercase tracking-[0.34em]" style={{ ...F, color: AC, animation: anim ? 'kbFade 0.7s ease 0.1s both' : undefined, opacity: show ? undefined : 0 }}>Appendiks · Teknisk kostnadsbase</span>
+        <h2 className="tracking-[-0.035em] leading-[1.05] mt-4" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(24px, 3vw, 40px)', color: INK, animation: anim ? 'kbFade 0.85s ease 0.2s both' : undefined, opacity: show ? undefined : 0 }}>
+          Lav teknisk kostnadsbase
+        </h2>
+        <p className="text-[14px] sm:text-[15px] font-normal leading-[1.55] mt-4 max-w-[760px]" style={{ ...F, color: SUB, animation: anim ? 'kbFade 0.85s ease 0.32s both' : undefined, opacity: show ? undefined : 0 }}>
+          Plattformen er bygget med en lett kostnadsstruktur. Faste systemkostnader er små, mens BankID og enkelte oppslag prises per transaksjon.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_1fr] gap-7 lg:gap-12 mt-8">
+        {/* venstre — kostnadstabell */}
+        <div style={{ animation: anim ? 'kbFade 0.9s ease 0.42s both' : undefined, opacity: show ? undefined : 0 }}>
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-[11px] font-bold uppercase tracking-[0.2em]" style={{ ...F, color: INK2 }}>Kostnad i dag</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ ...F, color: MUT }}>Type · nivå</p>
+          </div>
+          <div className="rounded-2xl bg-white overflow-hidden" style={{ border: `1px solid ${HAIR}`, boxShadow: '0 16px 38px -24px rgba(20,15,10,0.2)' }}>
+            {COSTS.map((c, i) => (
+              <div key={c.k} className="flex items-center justify-between gap-3 px-5 py-[14px]" style={{ borderTop: i > 0 ? `1px solid ${HAIR}` : 'none', animation: anim ? `kbRow 0.6s cubic-bezier(0.22,1,0.36,1) ${0.55 + i * 0.08}s both` : undefined, opacity: show ? undefined : 0 }}>
+                <span className="text-[13.5px] font-semibold" style={{ ...F, color: INK2 }}>{c.k}</span>
+                <div className="flex items-center gap-3 shrink-0">
+                  <span className="text-[9.5px] font-bold uppercase tracking-[0.12em] rounded-full px-2 py-[3px]" style={{ ...F, color: c.t === 'Fast' ? AC : (c.t === 'Variabel' ? GREEN : MUT), background: c.t === 'Fast' ? `${AC}12` : (c.t === 'Variabel' ? 'rgba(31,157,87,0.1)' : 'rgba(20,15,10,0.05)') }}>{c.t}</span>
+                  <span className="text-[13px] font-bold tabular-nums text-right w-[120px]" style={{ ...FH, color: INK }}>{c.v}</span>
+                </div>
+              </div>
+            ))}
+            <div className="flex items-center justify-between px-5 py-[14px]" style={{ borderTop: `1.5px solid ${HAIR}`, background: 'rgba(20,15,10,0.02)' }}>
+              <span className="text-[12px] font-bold uppercase tracking-[0.14em]" style={{ ...F, color: SUB }}>Sum faste i dag</span>
+              <span className="text-[15px] font-bold tabular-nums" style={{ ...FH, color: AC }}>~2 725 kr/mnd</span>
+            </div>
+          </div>
+        </div>
+
+        {/* høyre — hva det betyr */}
+        <div style={{ animation: anim ? 'kbFade 0.9s ease 0.55s both' : undefined, opacity: show ? undefined : 0 }}>
+          <div className="rounded-2xl bg-white p-6" style={{ border: `1px solid ${HAIR}`, boxShadow: '0 16px 38px -24px rgba(20,15,10,0.22)' }}>
+            <p className="text-[11px] font-bold uppercase tracking-[0.2em] mb-4" style={{ ...F, color: AC }}>Hva det betyr</p>
+            <div className="flex items-end gap-3">
+              <span className="tabular-nums leading-none" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(34px,4vw,52px)', color: INK }}>~68 kr</span>
+              <span className="text-[12px] font-medium pb-1.5 leading-[1.35]" style={{ ...F, color: MUT }}>fast teknisk kostnad<br/>per bolig / mnd (40 boliger)</span>
+            </div>
+            <p className="text-[12px] leading-[1.5] mt-3 font-light" style={{ ...F, color: SUB }}>
+              ~3 % av brutto inntekt per enhet (2 300 kr). Faste kostnader spres på flere enheter ved skalering — marginalkostnaden per ny enhet nærmer seg bare BankID + AI.
+            </p>
+          </div>
+          <p className="text-[11px] leading-[1.6] mt-4 font-light" style={{ ...F, color: MUT }}>
+            <span style={{ fontWeight: 700, color: SUB }}>Modenhet:</span> De største kostnadene ved skalering ligger ikke i hosting, men i produktutvikling, integrasjonsvedlikehold, kvalitetssikring, AI-bruk, compliance og onboarding av operatører. <span style={{ fontWeight: 600, color: SUB }}>DigiHome Tech AS eier konsept, kildekode, prosesslogikk, dataflyt og merkevare</span> — infrastrukturen kan modnes når volum og krav øker.
+          </p>
+        </div>
+      </div>
+    </div>
+  </SlideFrame>
+  );
+};
+
+
 /* ═══ DE-RISKING — ærlig om risiko + slik beviser vi det bort ═══ */
 const SDeRisk = (p: any) => {
   const active = p.isActive; const isPdf = !!p.pdfMode; const show = active || isPdf; const anim = active && !isPdf;
@@ -7468,6 +7547,7 @@ const SLIDES: { C: any; light: boolean; animated?: boolean }[] = [
   { C: SAsk, light: true },                         // 22 · Pre-seed emisjon (beige)
   { C: S9, light: false },                          // 23 · Closing (mørk — Bergen harbor)
   { C: SMarkedKilde, light: true },                 // · Appendiks — live market scrape (FINN, juni 2026)
+  { C: SKostnadsbase, light: true },                // · Appendiks — teknisk kostnadsbase
 ];
 const ANIMATED_IDX = SLIDES.findIndex(s => s.animated);
 
