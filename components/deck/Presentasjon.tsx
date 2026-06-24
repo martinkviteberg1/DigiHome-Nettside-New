@@ -6321,6 +6321,130 @@ const SSlikSystemetAutomatiserer = (p: any) => {
   );
 };
 
+/* ═══ SELSKAPSSTRUKTUR — to søsterselskaper under DigiHome-paraplyen ═══ */
+const SSelskapsstruktur = (p: any) => {
+  const active = p.isActive;
+  const isPdf = !!p.pdfMode;
+  const show = active || isPdf;
+  const anim = active && !isPdf;
+  useEffect(() => { p.onLight?.(active && !isPdf); }, [active, isPdf]);
+
+  const AC = '#a052e0'; const INK = '#0c0c0c'; const SUB = '#57514a'; const MUT = '#8a8278'; const HAIR = 'rgba(20,15,10,0.09)';
+
+  return (
+  <SlideFrame bg="beige" {...p}>
+    <style>{`
+      @keyframes stFade { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+      @keyframes stHead { from { opacity: 0; transform: translateY(22px); filter: blur(8px); } 60% { filter: blur(0); } to { opacity: 1; transform: translateY(0); filter: blur(0); } }
+      @keyframes stPop { from { opacity: 0; transform: translateY(-10px) scale(0.94); } to { opacity: 1; transform: translateY(0) scale(1); } }
+      @keyframes stRise { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+      @keyframes stCard { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
+    `}</style>
+    <div aria-hidden="true" className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse at 50% 16%, rgba(160,82,224,0.06) 0%, transparent 58%)' }} />
+    <DotGrid maskCenter="50% 20%" opacity={0.4} />
+
+    <div className="relative z-10 w-full max-w-[1120px] mx-auto px-6 sm:px-12 my-auto">
+      {/* HEADER */}
+      <div className="text-center max-w-[840px] mx-auto">
+        <span className="block text-[11px] font-bold uppercase tracking-[0.4em]" style={{ ...F, color: AC, animation: anim ? 'stFade 0.7s cubic-bezier(0.22,1,0.36,1) 0.1s both' : undefined, opacity: show ? undefined : 0 }}>Selskapsstruktur</span>
+        <h2 className="tracking-[-0.035em] leading-[1.04] mt-5" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(30px, 3.9vw, 54px)', color: INK, animation: anim ? 'stHead 0.95s cubic-bezier(0.22,1,0.36,1) 0.25s both' : undefined, opacity: show ? undefined : 0 }}>
+          Én merkevare. <span style={{ color: AC }}>To selskaper.</span>
+        </h2>
+        <p className="text-[14px] sm:text-[15.5px] font-normal leading-[1.55] mt-5 max-w-[660px] mx-auto" style={{ ...F, color: SUB, animation: anim ? 'stFade 0.8s cubic-bezier(0.22,1,0.36,1) 0.5s both' : undefined, opacity: show ? undefined : 0 }}>
+          To søsterselskaper under én paraply — slik holdes den skalerbare teknologien adskilt fra den operasjonelle driften.
+        </p>
+      </div>
+
+      {/* DIAGRAM */}
+      <div className="flex flex-col items-center mt-10 sm:mt-12">
+        {/* Holding-paraply */}
+        <div className="inline-flex items-center gap-3 rounded-full pl-2 pr-5 py-2"
+             style={{ background: INK, animation: anim ? 'stPop 0.7s cubic-bezier(0.22,1,0.36,1) 0.65s both' : undefined, opacity: show ? undefined : 0 }}>
+          <span className="inline-flex items-center justify-center w-7 h-7 rounded-full" style={{ background: `linear-gradient(135deg, ${AC}, #7c3aed)` }}>
+            <Layers className="w-3.5 h-3.5 text-white" strokeWidth={2.4} />
+          </span>
+          <span className="text-[15px] tracking-[-0.01em]" style={{ ...FH, fontWeight: 700, color: '#fff' }}>DigiHome</span>
+          <span className="text-[10px] font-semibold uppercase tracking-[0.22em]" style={{ ...F, color: 'rgba(255,255,255,0.5)' }}>Holding · paraply</span>
+        </div>
+        {/* vertikal kobling */}
+        <span aria-hidden="true" className="block w-px h-9" style={{ background: HAIR, transformOrigin: 'top', animation: anim ? 'stRise 0.6s cubic-bezier(0.22,1,0.36,1) 0.85s both' : undefined }} />
+
+        {/* to søsterselskaper */}
+        <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-5 md:gap-4 items-stretch w-full">
+          {/* DigiHome Tech AS — investeringsmål */}
+          <div className="relative rounded-3xl px-7 py-7"
+               style={{ background: '#fff', border: `1.5px solid ${AC}45`, boxShadow: `0 20px 54px -26px ${AC}66`, animation: anim ? 'stCard 0.8s cubic-bezier(0.22,1,0.36,1) 0.95s both' : undefined, opacity: show ? undefined : 0 }}>
+            <span className="absolute -top-3 left-7 inline-flex items-center gap-1.5 rounded-full px-3 py-1" style={{ background: `linear-gradient(135deg, ${AC}, #7c3aed)`, boxShadow: `0 8px 20px -8px ${AC}99` }}>
+              <Sparkles className="w-3 h-3 text-white" strokeWidth={2.4} />
+              <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-white">Her investerer du</span>
+            </span>
+            <div className="flex items-center gap-3 mb-4 mt-1">
+              <span className="flex items-center justify-center w-10 h-10 rounded-2xl shrink-0" style={{ background: `${AC}14` }}>
+                <Brain className="w-5 h-5" style={{ color: AC }} strokeWidth={2} />
+              </span>
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em]" style={{ ...F, color: MUT }}>Teknologiselskap</p>
+                <h3 className="text-[21px] sm:text-[23px] tracking-[-0.02em] leading-none mt-1" style={{ ...FH, fontWeight: 700, color: INK }}>DigiHome Tech AS</h3>
+              </div>
+            </div>
+            <p className="text-[13.5px] font-normal leading-[1.5] mb-4" style={{ ...F, color: SUB }}>AI-OS, plattform og IP — selve motoren bak hele nettverket.</p>
+            <div className="flex flex-wrap gap-2">
+              {['Recurring platform-ARR', 'Franchise-royalty', 'Høy margin · skalerbar'].map((c) => (
+                <span key={c} className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11.5px] font-semibold" style={{ ...F, color: INK, background: `${AC}0f`, border: `1px solid ${AC}24` }}>
+                  <span className="w-1.5 h-1.5 rounded-full" style={{ background: AC }} />{c}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* lisens-kobling */}
+          <div className="flex md:flex-col items-center justify-center gap-2 px-1" style={{ animation: anim ? 'stFade 0.7s cubic-bezier(0.22,1,0.36,1) 1.15s both' : undefined, opacity: show ? undefined : 0 }}>
+            <ArrowRight className="w-6 h-6 md:rotate-0 rotate-90" style={{ color: AC }} strokeWidth={2} />
+            <span className="text-center text-[10px] font-bold uppercase tracking-[0.16em] leading-tight" style={{ ...F, color: MUT }}>Plattform-<br className="hidden md:block" />lisens<br className="hidden md:block" /><span style={{ color: AC }}>markedspris</span></span>
+          </div>
+
+          {/* DigiHome AS — drift */}
+          <div className="relative rounded-3xl px-7 py-7"
+               style={{ background: '#fff', border: `1px solid ${HAIR}`, boxShadow: '0 12px 36px -22px rgba(20,15,10,0.4)', animation: anim ? 'stCard 0.8s cubic-bezier(0.22,1,0.36,1) 1.1s both' : undefined, opacity: show ? undefined : 0 }}>
+            <div className="flex items-center gap-3 mb-4 mt-1">
+              <span className="flex items-center justify-center w-10 h-10 rounded-2xl shrink-0" style={{ background: 'rgba(20,15,10,0.05)' }}>
+                <Building2 className="w-5 h-5" style={{ color: INK }} strokeWidth={2} />
+              </span>
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em]" style={{ ...F, color: MUT }}>Forvaltningsselskap</p>
+                <h3 className="text-[21px] sm:text-[23px] tracking-[-0.02em] leading-none mt-1" style={{ ...FH, fontWeight: 700, color: INK }}>DigiHome AS</h3>
+              </div>
+            </div>
+            <p className="text-[13.5px] font-normal leading-[1.5] mb-4" style={{ ...F, color: SUB }}>Forvaltning og drift — flaggskipet som beviser modellen i markedet.</p>
+            <div className="flex flex-wrap gap-2">
+              {['Bergen-flaggskip', 'Egen drift · take-rate', 'Referanser & proof'].map((c) => (
+                <span key={c} className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11.5px] font-semibold" style={{ ...F, color: SUB, background: 'rgba(20,15,10,0.035)', border: `1px solid ${HAIR}` }}>
+                  <span className="w-1.5 h-1.5 rounded-full" style={{ background: MUT }} />{c}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* franchise-note */}
+        <div className="mt-6 inline-flex items-center gap-2.5 rounded-full px-4 py-2"
+             style={{ background: 'rgba(20,15,10,0.035)', border: `1px solid ${HAIR}`, animation: anim ? 'stFade 0.8s cubic-bezier(0.22,1,0.36,1) 1.3s both' : undefined, opacity: show ? undefined : 0 }}>
+          <Users className="w-4 h-4" style={{ color: AC }} strokeWidth={2.2} />
+          <span className="text-[12.5px] font-medium" style={{ ...F, color: SUB }}>Samme plattform lisensieres til <span style={{ color: INK, fontWeight: 600 }}>alle franchise-partnere</span> i nettverket.</span>
+        </div>
+      </div>
+
+      {/* CODA */}
+      <div className="mt-10 sm:mt-12 pt-7 text-center" style={{ borderTop: `1px solid ${HAIR}`, animation: anim ? 'stFade 0.9s cubic-bezier(0.22,1,0.36,1) 1.45s both' : undefined, opacity: show ? undefined : 0 }}>
+        <p className="tracking-[-0.018em] leading-[1.4] max-w-[820px] mx-auto" style={{ ...FH, fontWeight: 600, fontSize: 'clamp(17px, 1.9vw, 25px)', color: INK }}>
+          Tech-selskapet <span style={{ color: AC }}>eier verdien som skalerer.</span> Driftsselskapet beviser den i markedet.
+        </p>
+      </div>
+    </div>
+  </SlideFrame>
+  );
+};
+
 /* ═══ SLIDE ORDER — 2026 · Product-first investor flow ═══ */
 /* ═══ SLIDES — deklarativ rekkefølge (Narrativ B: problem-først) ═══
    light:    true  → lys bakgrunn  (mørk nav-chrome / piler)
@@ -6342,6 +6466,7 @@ const SLIDES: { C: any; light: boolean; animated?: boolean }[] = [
   { C: SArkitektur, light: true },                  // 09 · Arkitekturen — moat (animert, skjøvet bakover)
   { C: SFilosofi, light: true },                    // 10 · Filosofien bak DigiHome (rett etter arkitektur)
   // { C: SDualUSP, light: true },                  // SKJULT etter ønske — «Tre unike aspekter». Koden beholdt.
+  { C: SSelskapsstruktur, light: true },            // · Selskapsstruktur — DigiHome Tech AS + DigiHome AS under paraply
   { C: SBusinessModels, light: true },              // 12 · Forretningsmodeller
   { C: SBetalingsmodell, light: true },             // 13 · Betalingsmodell
   { C: SAlleredeInntekter, light: true },           // 14 · Allerede i drift — traksjon
