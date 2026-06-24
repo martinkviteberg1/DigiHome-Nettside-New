@@ -2389,7 +2389,7 @@ const SMarket3 = (p: any) => {
         <div className="max-w-[360px] sm:text-right">
           <p className="text-[10.5px] font-bold uppercase tracking-[0.24em] mb-2.5" style={{ ...F, color: MUT }}>Struktur</p>
           <p className="text-[13px] sm:text-[14.5px] font-normal leading-[1.55]" style={{ ...F, color: SUB }}>
-            Egen drift (10 % av leien) + franchise per enhet ⇒ blandet <span className="font-semibold tabular-nums" style={{ color: INK2 }}>≈ 400 kr/enhet/mnd</span> til DigiHome. Inntekten følger nettverkets enheter.
+            Egen drift (10 % av leien) + franchise per enhet ⇒ <span className="font-semibold tabular-nums" style={{ color: INK2 }}>350–400 kr/enhet/mnd</span> til DigiHome ved modne enheter i høyverdisegmentet. Inntekten følger nettverkets enheter.
           </p>
         </div>
       </div>
@@ -3351,7 +3351,7 @@ const SBudgetRunway = (p: any) => {
         </h2>
         <p className="text-[12.5px] sm:text-[13px] text-[#3a3530] leading-[1.6] mt-3 max-w-[880px] font-light"
            style={{ ...F, animation: active ? 'brFadeUp 0.9s cubic-bezier(0.22,1,0.36,1) 0.55s both' : undefined, opacity: active ? undefined : 0 }}>
-          Produktet er allerede bygget. Denne runden finansierer fulltid på gründerteamet, systematisering av driften og rekruttering av de første franchisetakerne — med nok runway til neste investorpakke.
+          Kjerneplattformen er bygget og brukes i egen drift. Denne runden finansierer fulltid på gründerteamet, kommersiell validering, franchise-klargjøring og integrasjonene som kreves for skalering — med nok runway til neste investorpakke.
         </p>
       </div>
 
@@ -3390,7 +3390,7 @@ const SBudgetRunway = (p: any) => {
             <p className="text-[9.5px] font-bold tracking-[0.22em] mb-1.5" style={{ ...F, color: P }}>FORDELING AV 3 MNOK</p>
             <h3 className="text-[16px] font-bold text-[#0c0c0c] tracking-[-0.018em]" style={F}>Hvor pengene går</h3>
           </div>
-          <p className="text-[10.5px] text-[#8a8478] font-light">Produktet er ferdig bygget — kapitalen finansierer markedet.</p>
+          <p className="text-[10.5px] text-[#8a8478] font-light">Kjerneplattformen er bygget og i bruk — kapitalen finansierer validering og skalering.</p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-3.5">
           {budget.map((b, k) => (
@@ -3490,7 +3490,7 @@ const STraction = (p: any) => {
         </h2>
         <p className="text-[12.5px] sm:text-[14px] text-[#3a3530] leading-[1.55] font-light tracking-[-0.003em] max-w-[860px] mt-4"
            style={{ ...F, animation: active ? 'trFadeUp 0.8s cubic-bezier(0.22,1,0.36,1) 0.5s both' : undefined, opacity: active ? undefined : 0 }}>
-          <span className="font-semibold text-[#0c0c0c]">0 eksterne betalende kunder p.t.</span> 40 boliger driftet i 18 måneder — produktet er ferdig. Bridge-kapitalen kjøper de første eksterne referansekundene før seed-runden (~Q1 2028).
+          <span className="font-semibold text-[#0c0c0c]">0 eksterne betalende kunder p.t.</span> 40 boliger driftet i 18 måneder — kjerneplattformen er bygget og i bruk. Bridge-kapitalen kjøper de første eksterne referansekundene før seed-runden (~Q1 2028).
         </p>
       </div>
 
@@ -3946,18 +3946,18 @@ const SAsk = (p: any) => {
                    animation: active ? 'askCardIn 0.85s cubic-bezier(0.22,1,0.36,1) 1.0s both' : undefined,
                    opacity: active ? undefined : 0,
                  }}>
-          <p className="text-[9.5px] font-bold tracking-[0.22em] mb-1.5" style={{ ...F, color: P }}>POTENSIELL OPPSIDE</p>
-          <h3 className="text-[16px] font-bold text-[#0c0c0c] tracking-[-0.018em] mb-4" style={F}>Realistisk avkastning</h3>
+          <p className="text-[9.5px] font-bold tracking-[0.22em] mb-1.5" style={{ ...F, color: P }}>POTENSIELL OPPSIDE · INDIKATIV</p>
+          <h3 className="text-[16px] font-bold text-[#0c0c0c] tracking-[-0.018em] mb-4" style={F}>Neste verdidrivere</h3>
           <div className="space-y-3.5">
             <div className="pb-3 border-b border-[#e2ded5]">
-              <p className="text-[9.5px] text-[#6e6a62] mb-1 uppercase tracking-[0.12em] font-semibold">Ved seed-runde</p>
+              <p className="text-[9.5px] text-[#6e6a62] mb-1 uppercase tracking-[0.12em] font-semibold">Indikativ ved seed</p>
               <p className="text-[32px] font-bold text-[#0c0c0c] tracking-[-0.03em] leading-none tabular-nums" style={F}>2–3×</p>
-              <p className="text-[10px] text-[#8a8478] mt-1 font-light">Basert på ny seed-runde på 50–80 MNOK pre-money.</p>
+              <p className="text-[10px] text-[#8a8478] mt-1 font-light">Betinget av validert franchise-modell (50–80 MNOK pre-money).</p>
             </div>
             <div>
-              <p className="text-[9.5px] text-[#6e6a62] mb-1 uppercase tracking-[0.12em] font-semibold">Ved exit / senere vekstrunde</p>
+              <p className="text-[9.5px] text-[#6e6a62] mb-1 uppercase tracking-[0.12em] font-semibold">Indikativ ved exit / vekstrunde</p>
               <p className="text-[32px] font-bold text-[#0c0c0c] tracking-[-0.03em] leading-none tabular-nums" style={F}>5–15×</p>
-              <p className="text-[10px] text-[#8a8478] mt-1 font-light">Basert på realistisk exit-range på 500 MNOK – 3 mrd.</p>
+              <p className="text-[10px] text-[#8a8478] mt-1 font-light">Ved bevist skalering (500 MNOK – 3 mrd).</p>
             </div>
           </div>
         </article>
@@ -5570,12 +5570,12 @@ const SDriftsgearing = (p: any) => {
       <div className="text-center max-w-[880px] mx-auto">
         <span className="block text-[11px] font-bold uppercase tracking-[0.4em]"
               style={{ ...F, color: AC, animation: anim ? 'dgFade 0.7s cubic-bezier(0.22,1,0.36,1) 0.1s both' : undefined, opacity: show ? undefined : 0 }}>
-          Driftsgearingen
+          Driftsgearingen · modell
         </span>
         <h2 className="tracking-[-0.035em] leading-[1.04] mt-6"
             style={{ ...FH, fontWeight: 700, fontSize: 'clamp(32px, 4.2vw, 58px)', color: INK,
                      animation: anim ? 'dgHead 0.95s cubic-bezier(0.22,1,0.36,1) 0.25s both' : undefined, opacity: show ? undefined : 0 }}>
-          Samme forvalter. <span style={{ color: AC }}>4× porteføljen.</span>
+          Samme forvalter. <span style={{ color: AC }}>Mål: 3–4× porteføljen.</span>
         </h2>
         <p className="text-[15px] sm:text-[16.5px] font-normal leading-[1.6] mt-6 max-w-[680px] mx-auto"
            style={{ ...F, color: SUB, animation: anim ? 'dgFade 0.8s cubic-bezier(0.22,1,0.36,1) 0.55s both' : undefined, opacity: show ? undefined : 0 }}>
@@ -5611,7 +5611,7 @@ const SDriftsgearing = (p: any) => {
                   animation: anim ? `dgFill 1.1s cubic-bezier(0.22,1,0.36,1) ${0.95 + i * 0.18}s both` : undefined,
                 }} />
               </div>
-              <p className="text-[12px] font-medium mt-2.5" style={{ ...F, color: SUB }}>boliger per årsverk</p>
+              <p className="text-[12px] font-medium mt-2.5" style={{ ...F, color: SUB }}>boliger per årsverk (modell / mål)</p>
             </div>
           </React.Fragment>
         ))}
@@ -5621,7 +5621,7 @@ const SDriftsgearing = (p: any) => {
       <div className="mt-12 sm:mt-16 pt-9 text-center"
            style={{ borderTop: `1px solid ${HAIR}`, animation: anim ? 'dgFade 0.9s cubic-bezier(0.22,1,0.36,1) 1.35s both' : undefined, opacity: show ? undefined : 0 }}>
         <p className="tracking-[-0.018em] leading-[1.4] max-w-[900px] mx-auto" style={{ ...FH, fontWeight: 600, fontSize: 'clamp(18px, 2vw, 26px)', color: INK }}>
-          Marginalkostnaden per ny bolig faller mot null → <span style={{ color: AC }}>~82 % bruttomargin</span>. Hver franchise kopierer nøyaktig samme gearing.
+          Marginalkostnaden per ny bolig faller mot null → <span style={{ color: AC }}>~82 % bruttomargin</span>. Hver franchise er bygget for samme gearing.
         </p>
       </div>
     </div>
@@ -6982,7 +6982,7 @@ const SMarkedsbevis = (p: any) => {
   const KPIS = [
     { big: '11 581', unit: '', label: 'Aktive annonser', sub: 'Synlig tilbudsside — i sanntid' },
     { big: '63', unit: '%', label: 'Private annonsører', sub: '7 263 av 11 581 — fragmentert marked' },
-    { big: '21 045', unit: 'kr', label: 'Bergen · snittleie', sub: 'Høyest i landet — vårt beachhead' },
+    { big: '20 274', unit: 'kr', label: 'Bergen · snittleie', sub: 'Høyest i vår FINN-analyse — beachhead' },
     { big: '25', unit: '%', label: 'Topp 3 plattformer', sub: 'Synlige, men ingen full-stack-dominans' },
   ];
   // tilbudsside-fordeling (% av alle annonser)
@@ -7077,10 +7077,10 @@ const SMarkedKilde = (p: any) => {
   const AC = '#a052e0'; const INK = '#0c0c0c'; const INK2 = '#1c1714'; const SUB = '#57514a'; const MUT = '#8a8278'; const HAIR = 'rgba(20,15,10,0.09)';
 
   const REGIONS = [
-    { r: 'Bergen', n: 664, rent: 21045 }, { r: 'Oslo', n: 2670, rent: 19029 },
-    { r: 'Stavanger', n: 440, rent: 18385 }, { r: 'Trondheim', n: 803, rent: 14249 }, { r: 'Andre', n: 7004, rent: 13291 },
+    { r: 'Bergen', n: 822, rent: 20274 }, { r: 'Oslo', n: 2673, rent: 19034 },
+    { r: 'Stavanger', n: 445, rent: 18415 }, { r: 'Trondheim', n: 835, rent: 14250 }, { r: 'Andre', n: 6806, rent: 13189 },
   ];
-  const maxRent = 21045;
+  const maxRent = 20274;
   const ROOMS = [
     { k: '1 rom', rent: 11153 }, { k: '2 rom', rent: 12882 }, { k: '3 rom', rent: 17061 }, { k: '4 rom', rent: 20124 }, { k: '5+ rom', rent: 18423 },
   ];
@@ -7149,7 +7149,7 @@ const SMarkedKilde = (p: any) => {
             ))}
           </div>
           <p className="text-[10.5px] leading-[1.55] mt-4 font-light" style={{ ...F, color: MUT }}>
-            <span style={{ fontWeight: 700, color: SUB }}>Kilde &amp; metode:</span> Egen analyse av 11 581 aktive FINN-annonser, juni 2026, klassifisert etter annonsør, region, boligtype og pris. Ingen dupliserte Finnkoder. Annonser under 5 000 kr inkluderer enkelte parkerings-/lagerobjekter og filtreres i ARPU-analyser. «Annonse» ≈ utleieenhet (ikke nødvendigvis 1:1). «Andre» er en bred restkategori.
+            <span style={{ fontWeight: 700, color: SUB }}>Kilde &amp; metode:</span> Egen analyse av 11 581 aktive FINN-annonser, juni 2026 (v4 — presise Finn.no-bydefinisjoner), klassifisert etter annonsør, region, boligtype og pris. Ingen dupliserte Finnkoder. Annonser under 5 000 kr inkluderer enkelte parkerings-/lagerobjekter og filtreres i ARPU-analyser. «Annonse» ≈ utleieenhet (ikke nødvendigvis 1:1). «Andre» er en bred restkategori.
           </p>
         </div>
       </div>
