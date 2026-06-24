@@ -2817,10 +2817,10 @@ const SProductTiers = (p: any) => {
                 </ul>
 
                 {/* Volume pricing (Pro only) */}
-                {t.volume && (
+                {(t as any).volume && (
                   <div className="rounded-[10px] p-3 mb-5" style={{ background: `${P}08`, border: `1px solid ${P}20` }}>
                     <p className="text-[8px] font-bold uppercase tracking-[0.16em] mb-2" style={{ color: P }}>VOLUMRABATT</p>
-                    {t.volume.map((v: any, k: number) => (
+                    {(t as any).volume.map((v: any, k: number) => (
                       <div key={k} className="flex items-center justify-between py-0.5">
                         <span className="text-[10px] text-[#6e6a62] font-light">{v.r}</span>
                         <span className="text-[10px] font-bold text-[#0c0c0c] tabular-nums" style={F}>{v.p} kr</span>

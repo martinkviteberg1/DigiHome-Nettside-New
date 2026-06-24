@@ -32,17 +32,17 @@ function HeroMap({ active, address, settled, zoomIn }: { active: boolean; addres
   const overlayRef = useRef<any>(null);
 
   useEffect(() => {
-    if (!active || !mapRef.current || !window.google?.maps) return;
+    if (!active || !mapRef.current || !(window as any).google?.maps) return;
     if (mapInstance.current) return;
 
     // Geocode first, then create map already centered + zoomed
-    const geocoder = new window.google.maps.Geocoder();
+    const geocoder = new (window as any).google.maps.Geocoder();
     geocoder.geocode({ address }, (results: any, status: any) => {
       if (status !== 'OK' || !results?.[0] || !mapRef.current) return;
       const loc = results[0].geometry.location;
 
       // Create map already at the right position — no zoom animation
-      mapInstance.current = new window.google.maps.Map(mapRef.current, {
+      mapInstance.current = new (window as any).google.maps.Map(mapRef.current, {
         center: loc, zoom: 16,
         disableDefaultUI: true, zoomControl: false, mapTypeControl: false,
         streetViewControl: false, fullscreenControl: false, gestureHandling: 'none',
@@ -52,7 +52,7 @@ function HeroMap({ active, address, settled, zoomIn }: { active: boolean; addres
       // Drop pin after a short delay
       setTimeout(() => {
         if (!mapInstance.current || overlayRef.current) return;
-        class PinOverlay extends window.google.maps.OverlayView {
+        class PinOverlay extends (window as any).google.maps.OverlayView {
           pos: any; div: any;
           constructor(pos: any, map: any) { super(); this.pos = pos; this.setMap(map); }
           onAdd() {
