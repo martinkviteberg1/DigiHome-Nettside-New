@@ -7520,42 +7520,49 @@ const SInnhold = (p: any) => {
   const idxOf = (C: any) => SLIDES.findIndex((s) => s.C === C);
   const go = (C: any) => { const i = idxOf(C); if (i >= 0) p.goTo?.(i); };
   const SECTIONS = [
-    { n: '01', t: 'Problem & marked', items: [
+    { n: '01', t: 'Visjon & team', items: [
+      { label: 'Hvorfor vi bygde DigiHome', C: SVisionIntro },
+      { label: 'Teamet', C: STeam },
       { label: 'Utleie er blitt aktiv drift', C: SProblem },
       { label: 'Hvorfor nå', C: SWhyNow },
-      { label: 'Markedsanalyse — FINN', C: SMarkedsbevis },
-      { label: 'Marked: Norge · Norden · 2030', C: SMarket1 },
     ] },
-    { n: '02', t: 'Produkt & teknologi', items: [
+    { n: '02', t: 'Produkt & system', items: [
       { label: 'Hvorfor vi er annerledes', C: SFraVerktoyTilMotor },
+      { label: 'Produkt & demo', C: SProdukt },
       { label: 'Slik jobber systemet', C: SSlikViJobber },
       { label: 'Slik automatiserer systemet', C: SSlikSystemetAutomatiserer },
       { label: 'Autopilot: live vs veikart', C: SAutopilotStatus },
-      { label: 'Produkt & demo', C: SProdukt },
+    ] },
+    { n: '03', t: 'Traksjon & teknologi', items: [
+      { label: 'Driftsgearing', C: SDriftsgearing },
+      { label: '40 boliger i Bergen', C: SAlleredeInntekter },
       { label: 'AI, arkitektur & økosystem', C: SAIEiendom },
     ] },
-    { n: '03', t: 'Traksjon', items: [
-      { label: '40 boliger i Bergen', C: SAlleredeInntekter },
-      { label: 'Driftsgearing', C: SDriftsgearing },
-    ] },
-    { n: '04', t: 'Forretningsmodell', items: [
+    { n: '04', t: 'Selskap & modell', items: [
       { label: 'Filosofi & selskapsstruktur', C: SFilosofi },
       { label: 'Verdiflyt — Tech vs drift', C: SVerdiflyt },
       { label: 'Egen drift + franchise', C: SBusinessModels },
       { label: 'Den ideelle operatøren', C: SOperator },
       { label: 'Betalingsmodell', C: SBetalingsmodell },
     ] },
-    { n: '05', t: 'Økonomi', items: [
+    { n: '05', t: 'Marked', items: [
+      { label: 'Markedsanalyse — FINN', C: SMarkedsbevis },
+      { label: 'Marked: Norge · Norden · 2030', C: SMarket1 },
+      { label: 'Vei til 150 MNOK ARR', C: SMarket3 },
+      { label: 'Konkurransefortrinn', C: SDiff },
+    ] },
+    { n: '06', t: 'Økonomi, risiko & emisjon', items: [
       { label: 'Inntektsmodell', C: SRevenue },
       { label: 'Unit economics', C: SUnitEconomics },
+      { label: 'Cashflow i dag', C: SCashflowIDag },
       { label: 'Budsjett & runway', C: SBudgetRunway },
-    ] },
-    { n: '06', t: 'Team, risiko & emisjon', items: [
-      { label: 'Teamet', C: STeam },
       { label: 'Risikoene vi beviser bort', C: SDeRisk },
       { label: 'Emisjon: 3 MNOK', C: SAsk },
-      { label: 'Appendiks — metode', C: SMarkedKilde },
     ] },
+  ];
+  const APPENDIKS = [
+    { label: 'Appendiks — markedskilde', C: SMarkedKilde },
+    { label: 'Appendiks — kostnadsbase', C: SKostnadsbase },
   ];
   return (
   <SlideFrame bg="beige" {...p}>
@@ -7613,6 +7620,23 @@ const SInnhold = (p: any) => {
             </ul>
           </div>
         ))}
+      </div>
+
+      <div className="mt-8 sm:mt-9 pt-4 flex items-center gap-x-6 gap-y-2 flex-wrap"
+           style={{ borderTop: `1.5px solid ${HAIR}`, animation: anim ? `inCol 0.75s cubic-bezier(0.22,1,0.36,1) 1.1s both` : undefined, opacity: show ? undefined : 0 }}>
+        <span className="text-[11px] font-bold uppercase tracking-[0.22em] shrink-0" style={{ ...F, color: MUT }}>Appendiks</span>
+        {APPENDIKS.map((it) => {
+          const num = idxOf(it.C);
+          const label2 = num >= 0 ? String(num + 1).padStart(2, '0') : '';
+          return (
+            <button key={it.label} type="button" onClick={() => go(it.C)}
+              className="inItem inline-flex items-center gap-2 text-left focus:outline-none focus-visible:outline-none">
+              <span className="inArrow shrink-0 text-[12px] leading-none" style={{ color: AC }}>→</span>
+              <span className="text-[13px] leading-[1.3]" style={{ ...F, color: 'inherit' }}>{it.label}</span>
+              <span className="inNum tabular-nums text-[11px] font-semibold shrink-0" style={{ ...F }}>{label2}</span>
+            </button>
+          );
+        })}
       </div>
     </div>
   </SlideFrame>
