@@ -3359,9 +3359,9 @@ const SBudgetRunway = (p: any) => {
       </div>
 
       {/* Top row — 3 KPI cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-5 mb-4 sm:mb-5">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-5 mb-3.5 sm:mb-4">
         {kpis.map((k, i) => (
-          <article key={i} className="bg-white rounded-[18px] p-5 flex flex-col"
+          <article key={i} className="bg-white rounded-[18px] p-4 flex flex-col"
                    style={{
                      border: '1px solid #ece8e1',
                      boxShadow: '0 1px 2px rgba(20,15,10,0.03), 0 10px 32px rgba(20,15,10,0.05)',
@@ -3369,8 +3369,8 @@ const SBudgetRunway = (p: any) => {
                      opacity: active ? undefined : 0,
                    }}>
             <p className="text-[8.5px] font-bold tabular-nums tracking-[0.22em] text-[#b5aa98] mb-3" style={F}>{k.num}</p>
-            <div className="flex items-baseline gap-1.5 mb-3">
-              <span className="font-bold text-[#0c0c0c] tracking-[-0.04em] leading-none tabular-nums" style={{ ...F, fontSize: 'clamp(36px, 3.6vw, 50px)' }}>{k.big}</span>
+            <div className="flex items-baseline gap-1.5 mb-2.5">
+              <span className="font-bold text-[#0c0c0c] tracking-[-0.04em] leading-none tabular-nums" style={{ ...F, fontSize: 'clamp(30px, 3vw, 42px)' }}>{k.big}</span>
               <span className="text-[14px] sm:text-[16px] font-medium text-[#8a8478]">{k.unit}</span>
             </div>
             <p className="text-[13px] font-bold text-[#0c0c0c] tracking-[-0.005em] mb-2" style={F}>{k.title}</p>
@@ -3388,7 +3388,7 @@ const SBudgetRunway = (p: any) => {
                  animation: active ? 'brCardIn 0.85s cubic-bezier(0.22,1,0.36,1) 0.85s both' : undefined,
                  opacity: active ? undefined : 0,
                }}>
-        <div className="flex items-baseline justify-between mb-5 flex-wrap gap-3">
+        <div className="flex items-baseline justify-between mb-4 flex-wrap gap-3">
           <div>
             <p className="text-[9.5px] font-bold tracking-[0.22em] mb-1.5" style={{ ...F, color: P }}>FORDELING AV 3 MNOK</p>
             <h3 className="text-[16px] font-bold text-[#0c0c0c] tracking-[-0.018em]" style={F}>Hvor pengene går</h3>
@@ -3433,14 +3433,27 @@ const SBudgetRunway = (p: any) => {
         </div>
       </article>
 
-      {/* Bottom ribbon */}
-      <div className="mt-6 flex items-center justify-center gap-3 flex-wrap"
-           style={{ animation: active ? 'brFadeUp 0.8s cubic-bezier(0.22,1,0.36,1) 1.25s both' : undefined, opacity: active ? undefined : 0 }}>
-        <div className="h-px bg-[#d8d2c5] origin-right" style={{ width: '54px', animation: active ? 'brRule 0.9s cubic-bezier(0.22,1,0.36,1) 1.4s both' : undefined }} />
-        <p className="text-[11px] sm:text-[12px] text-[#7a6f5e] font-medium tracking-[-0.005em] text-center">
-          <span className="font-semibold" style={{ color: P }}>Kjernen:</span> kapitalen brukes ikke til å finne ut om produktet kan bygges — den brukes til å bevise at franchise-modellen skalerer.
+      {/* Før → Etter emisjon + kjernen */}
+      <div className="mt-3 sm:mt-4" style={{ animation: active ? 'brFadeUp 0.8s cubic-bezier(0.22,1,0.36,1) 1.25s both' : undefined, opacity: active ? undefined : 0 }}>
+        <div className="rounded-[16px] bg-white px-6 sm:px-7 py-3 grid grid-cols-1 lg:grid-cols-[1fr_auto_1fr] gap-3 lg:gap-0 items-center"
+             style={{ border: '1px solid #ece8e1', boxShadow: '0 1px 2px rgba(20,15,10,0.03), 0 12px 34px rgba(20,15,10,0.05)' }}>
+          <div className="lg:pr-7">
+            <span className="block text-[9px] font-bold uppercase tracking-[0.2em] mb-1.5" style={{ ...F, color: '#9b9389' }}>I dag · bootstrap</span>
+            <p className="text-[12px] leading-[1.5] font-light" style={{ ...F, color: '#3a3530' }}>Ingen gründerlønn · driften dekker egne kostnader · <span className="font-semibold" style={{ color: '#0c0c0c' }}>drift betaler Tech markedspris</span> — Tech har allerede recurring inntekt.</p>
+          </div>
+          <div className="hidden lg:flex items-center justify-center px-5">
+            <div className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: '#fff', boxShadow: `0 8px 22px -8px ${P}99, 0 0 0 1px rgba(160,82,224,0.14)` }}>
+              <ArrowRight className="w-[18px] h-[18px]" style={{ color: '#a052e0' }} strokeWidth={2.4} />
+            </div>
+          </div>
+          <div className="lg:pl-7 lg:border-l lg:border-[#ece8e1]">
+            <span className="block text-[9px] font-bold uppercase tracking-[0.2em] mb-1.5" style={{ ...F, color: '#a052e0' }}>Etter emisjon · 16 mnd</span>
+            <p className="text-[12px] leading-[1.5] font-light" style={{ ...F, color: '#3a3530' }}>To gründere på fulltid · strukturert franchisevalidering · <span className="font-semibold" style={{ color: '#0c0c0c' }}>voksende Tech ARR</span> og seed-klarhet.</p>
+          </div>
+        </div>
+        <p className="text-[11px] sm:text-[12px] text-[#7a6f5e] font-medium tracking-[-0.005em] text-center mt-3.5">
+          <span className="font-semibold" style={{ color: P }}>Kjernen:</span> vi henter ikke penger fordi driften er dyr — men fordi gründertid, struktur og franchisevalidering er flaskehalsen.
         </p>
-        <div className="h-px bg-[#d8d2c5] origin-left" style={{ width: '54px', animation: active ? 'brRule 0.9s cubic-bezier(0.22,1,0.36,1) 1.4s both' : undefined }} />
       </div>
     </div>
   </SlideFrame>
