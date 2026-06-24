@@ -7845,7 +7845,7 @@ const SRobotVisjon = (p: any) => {
 const SAIDisiplin = (p: any) => {
   const active = p.isActive; const isPdf = !!p.pdfMode; const show = active || isPdf; const anim = active && !isPdf;
   useEffect(() => { p.onLight?.(active && !isPdf); }, [active, isPdf]);
-  const AC = '#a052e0'; const INK = '#0c0c0c'; const INK2 = '#1c1714'; const SUB = '#57514a'; const MUT = '#8a8278'; const HAIR = 'rgba(20,15,10,0.09)';
+  const AC = '#a052e0'; const INK = '#0c0c0c'; const INK2 = '#1c1714'; const SUB = '#57514a'; const MUT = '#8a8278'; const HAIR = 'rgba(20,15,10,0.08)';
   const RULES = [
     'Husleie, KPI-regulering & avregning',
     'Depositum & depositumskonto',
@@ -7860,15 +7860,21 @@ const SAIDisiplin = (p: any) => {
     'Triage & prioritering av saker',
     'Sammendrag av samtaler & markedsinnsikt',
   ];
+  const FLOW = [
+    { t: 'AI foreslår', Icon: Sparkles, c: AC, tint: 'rgba(160,82,224,0.09)' },
+    { t: 'Regler validerer', Icon: Shield, c: INK, tint: 'rgba(20,15,10,0.045)' },
+    { t: 'Du bestemmer', Icon: Check, c: INK, tint: 'rgba(20,15,10,0.045)', strong: true },
+  ];
   const col = (d: number) => ({ animation: anim ? `adFade 0.8s cubic-bezier(0.22,1,0.36,1) ${d}s both` : undefined, opacity: show ? undefined : 0 } as React.CSSProperties);
   return (
   <SlideFrame bg="beige" {...p}>
     <style>{`
       @keyframes adFade { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
       @keyframes adRow { from { opacity: 0; transform: translateX(-6px); } to { opacity: 1; transform: translateX(0); } }
+      @keyframes adSeam { from { opacity: 0; } to { opacity: 1; } }
     `}</style>
-    <DotGrid maskCenter="50% 12%" opacity={0.34} />
-    <div className="relative z-10 w-full max-w-[1200px] mx-auto px-6 sm:px-12 my-auto">
+    <DotGrid maskCenter="50% 10%" opacity={0.3} />
+    <div className="relative z-10 w-full max-w-[1180px] mx-auto px-6 sm:px-12 my-auto">
       <div className="max-w-[940px]">
         <div className="flex items-center gap-3" style={col(0.05)}>
           <span className="h-px w-7 shrink-0" style={{ background: AC }} />
@@ -7877,57 +7883,73 @@ const SAIDisiplin = (p: any) => {
         <h2 className="tracking-[-0.035em] leading-[1.04] mt-4" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(27px, 3.5vw, 50px)', color: INK, ...col(0.16) }}>
           AI der det tenker. <span style={{ color: AC }}>Regler der det teller.</span>
         </h2>
-        <p className="mt-4 leading-[1.5] max-w-[740px]" style={{ ...F, fontWeight: 400, fontSize: 'clamp(13.5px, 1.35vw, 16.5px)', color: SUB, ...col(0.28) }}>
+        <p className="mt-3.5 leading-[1.5] max-w-[740px]" style={{ ...F, fontWeight: 400, fontSize: 'clamp(13.5px, 1.35vw, 16.5px)', color: SUB, ...col(0.28) }}>
           Vi er bygget AI-native fra bunnen — men lar aldri AI styre der ting må være forutsigbart, lovlig og riktig. AI foreslår; regler og mennesker bestemmer.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 lg:gap-7 mt-7">
-        {/* REGELMOTOR */}
-        <div className="relative rounded-[24px] p-6 sm:p-7" style={{ background: '#ffffff', boxShadow: '0 2px 4px rgba(20,15,10,0.03), 0 30px 64px -42px rgba(20,15,10,0.26)', ...col(0.4) }}>
-          <div className="flex items-center gap-3 mb-1">
-            <span className="flex items-center justify-center w-11 h-11 rounded-2xl shrink-0" style={{ background: '#0c0c0c' }}><Shield className="w-[19px] h-[19px] text-white" strokeWidth={2} /></span>
-            <div>
-              <span className="block" style={{ ...FH, fontWeight: 700, fontSize: '20px', color: INK, letterSpacing: '-0.01em' }}>Regelmotor</span>
-              <span className="block text-[11px] font-semibold uppercase tracking-[0.12em]" style={{ ...F, color: MUT }}>Deterministisk · forutsigbar</span>
+      {/* DIPTYK — mørk regelmotor × lys AI-side */}
+      <div className="relative mt-8 rounded-[28px] overflow-hidden grid grid-cols-1 md:grid-cols-2" style={{ boxShadow: '0 2px 6px rgba(20,15,10,0.04), 0 44px 96px -52px rgba(20,15,10,0.42)', ...col(0.4) }}>
+        {/* REGELMOTOR — deterministisk (mørk) */}
+        <div className="relative p-7 sm:p-8" style={{ background: '#0c0c0c' }}>
+          <div aria-hidden="true" className="absolute inset-0 pointer-events-none" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.045) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.045) 1px, transparent 1px)', backgroundSize: '26px 26px', maskImage: 'radial-gradient(ellipse at 25% 0%, black, transparent 78%)', WebkitMaskImage: 'radial-gradient(ellipse at 25% 0%, black, transparent 78%)' }} />
+          <div className="relative">
+            <div className="flex items-center gap-3 mb-1.5">
+              <span className="flex items-center justify-center w-11 h-11 rounded-2xl shrink-0" style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)' }}><Shield className="w-[19px] h-[19px] text-white" strokeWidth={2} /></span>
+              <div>
+                <span className="block" style={{ ...FH, fontWeight: 700, fontSize: '21px', color: '#ffffff', letterSpacing: '-0.01em' }}>Regelmotor</span>
+                <span className="block text-[10.5px] font-semibold uppercase tracking-[0.16em]" style={{ ...F, color: 'rgba(255,255,255,0.42)' }}>Deterministisk · forutsigbar</span>
+              </div>
             </div>
+            <p className="text-[12.5px] leading-snug mt-2 mb-4" style={{ ...F, color: 'rgba(255,255,255,0.6)' }}>Det som kan <span style={{ fontStyle: 'italic' }}>og bør</span> være regelstyrt — penger, jus, frister, identitet.</p>
+            <ul>
+              {RULES.map((r, i) => (
+                <li key={r} className="flex items-center gap-3 py-[8.5px]" style={{ borderTop: i > 0 ? '1px solid rgba(255,255,255,0.08)' : 'none', animation: anim ? `adRow 0.5s ease ${0.55 + i*0.05}s both` : undefined, opacity: show ? undefined : 0 }}>
+                  <Check className="w-[15px] h-[15px] shrink-0" style={{ color: '#34d399' }} strokeWidth={2.6} />
+                  <span className="text-[13.5px] leading-tight" style={{ ...F, color: 'rgba(255,255,255,0.88)' }}>{r}</span>
+                </li>
+              ))}
+            </ul>
           </div>
-          <p className="text-[12.5px] leading-snug mt-2 mb-4" style={{ ...F, color: SUB }}>Det som kan <span style={{ fontStyle: 'italic' }}>og bør</span> være regelstyrt — penger, jus, frister, identitet.</p>
-          <ul>
-            {RULES.map((r, i) => (
-              <li key={r} className="flex items-center gap-3 py-[8px]" style={{ borderTop: i > 0 ? `1px solid ${HAIR}` : 'none', animation: anim ? `adRow 0.5s ease ${0.55 + i*0.05}s both` : undefined, opacity: show ? undefined : 0 }}>
-                <Check className="w-[15px] h-[15px] shrink-0" style={{ color: INK }} strokeWidth={2.6} />
-                <span className="text-[13.5px] leading-tight" style={{ ...F, color: INK2 }}>{r}</span>
-              </li>
-            ))}
-          </ul>
         </div>
-        {/* AI-LAGET */}
-        <div className="relative rounded-[24px] p-6 sm:p-7 overflow-hidden" style={{ background: '#ffffff', boxShadow: '0 2px 4px rgba(160,82,224,0.04), 0 30px 64px -42px rgba(160,82,224,0.3)', ...col(0.5) }}>
-          <div aria-hidden="true" className="absolute -top-16 -right-16 w-[220px] h-[220px] rounded-full pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(160,82,224,0.1) 0%, transparent 66%)' }} />
-          <div className="relative flex items-center gap-3 mb-1">
-            <span className="flex items-center justify-center w-11 h-11 rounded-2xl shrink-0" style={{ background: `linear-gradient(135deg, ${AC}, #7a3bbf)` }}><Brain className="w-[19px] h-[19px] text-white" strokeWidth={2} /></span>
-            <div>
-              <span className="block" style={{ ...FH, fontWeight: 700, fontSize: '20px', color: INK, letterSpacing: '-0.01em' }}>AI-laget</span>
-              <span className="block text-[11px] font-semibold uppercase tracking-[0.12em]" style={{ ...F, color: AC }}>State of the art · AI-native</span>
+        {/* AI-LAGET — state of the art (lys + glød) */}
+        <div className="relative p-7 sm:p-8 overflow-hidden" style={{ background: '#ffffff' }}>
+          <div aria-hidden="true" className="absolute -top-20 -right-16 w-[280px] h-[280px] rounded-full pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(160,82,224,0.13) 0%, transparent 66%)' }} />
+          <div className="relative">
+            <div className="flex items-center gap-3 mb-1.5">
+              <span className="flex items-center justify-center w-11 h-11 rounded-2xl shrink-0" style={{ background: `linear-gradient(135deg, ${AC}, #7a3bbf)`, boxShadow: '0 10px 24px -10px rgba(160,82,224,0.6)' }}><Brain className="w-[19px] h-[19px] text-white" strokeWidth={2} /></span>
+              <div>
+                <span className="block" style={{ ...FH, fontWeight: 700, fontSize: '21px', color: INK, letterSpacing: '-0.01em' }}>AI-laget</span>
+                <span className="block text-[10.5px] font-semibold uppercase tracking-[0.16em]" style={{ ...F, color: AC }}>State of the art · AI-native</span>
+              </div>
             </div>
+            <p className="text-[12.5px] leading-snug mt-2 mb-4" style={{ ...F, color: SUB }}>Det som krever språk, vurdering og fart — alltid med din godkjenning.</p>
+            <ul>
+              {AILAG.map((r, i) => (
+                <li key={r} className="flex items-center gap-3 py-[8.5px]" style={{ borderTop: i > 0 ? `1px solid ${HAIR}` : 'none', animation: anim ? `adRow 0.5s ease ${0.65 + i*0.05}s both` : undefined, opacity: show ? undefined : 0 }}>
+                  <Sparkles className="w-[15px] h-[15px] shrink-0" style={{ color: AC }} strokeWidth={2} />
+                  <span className="text-[13.5px] leading-tight" style={{ ...F, color: INK2 }}>{r}</span>
+                </li>
+              ))}
+            </ul>
           </div>
-          <p className="relative text-[12.5px] leading-snug mt-2 mb-4" style={{ ...F, color: SUB }}>Det som krever språk, vurdering og fart — alltid med din godkjenning.</p>
-          <ul className="relative">
-            {AILAG.map((r, i) => (
-              <li key={r} className="flex items-center gap-3 py-[8px]" style={{ borderTop: i > 0 ? `1px solid ${HAIR}` : 'none', animation: anim ? `adRow 0.5s ease ${0.65 + i*0.05}s both` : undefined, opacity: show ? undefined : 0 }}>
-                <Sparkles className="w-[15px] h-[15px] shrink-0" style={{ color: AC }} strokeWidth={2} />
-                <span className="text-[13.5px] leading-tight" style={{ ...F, color: INK2 }}>{r}</span>
-              </li>
-            ))}
-          </ul>
         </div>
+        {/* sentral energi-søm */}
+        <div aria-hidden="true" className="hidden md:block absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-px pointer-events-none" style={{ background: 'linear-gradient(180deg, transparent, rgba(160,82,224,0.55), transparent)', animation: anim ? 'adSeam 1s ease 0.75s both' : undefined }} />
       </div>
 
-      <div className="mt-6 flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5 text-center" style={col(0.95)}>
-        <span className="text-[13px] sm:text-[14.5px] font-semibold" style={{ ...F, color: INK }}>AI foreslår · regler og mennesker bestemmer</span>
-        <span className="w-1 h-1 rounded-full" style={{ background: MUT }} />
-        <span className="text-[13px] sm:text-[14.5px]" style={{ ...F, color: SUB }}>Forklarbart · reverserbart · sporbart</span>
+      {/* STYRINGS-FLYT */}
+      <div className="mt-7 flex flex-wrap items-center justify-center gap-x-2.5 gap-y-2" style={col(0.95)}>
+        {FLOW.map((f, i) => (
+          <React.Fragment key={f.t}>
+            <span className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full text-[12.5px] sm:text-[13.5px]" style={{ ...F, fontWeight: f.strong ? 700 : 600, color: f.c, background: f.tint }}>
+              <f.Icon className="w-[14px] h-[14px]" style={{ color: f.c }} strokeWidth={f.Icon === Check ? 2.6 : 2} />
+              {f.t}
+            </span>
+            {i < FLOW.length - 1 && <ArrowRight className="w-4 h-4 shrink-0" style={{ color: MUT }} strokeWidth={2} />}
+          </React.Fragment>
+        ))}
+        <span className="hidden sm:inline text-[12.5px] ml-1.5" style={{ ...F, color: MUT }}>· forklarbart, reverserbart, sporbart</span>
       </div>
     </div>
   </SlideFrame>
