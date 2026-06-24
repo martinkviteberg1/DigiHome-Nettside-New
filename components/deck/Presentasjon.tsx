@@ -532,7 +532,7 @@ const STeam = (p: any) => {
       field: 'Teknologi',
       img: '/team/martin-kviteberg-face.jpg',
       imgStyle: { objectPosition: 'center' },
-      lead: 'Gründer av Bnbspesialisten — en av Norges første profesjonelle utleieforvaltere. Sentral i familieselskapet Adonis AS frem mot exit.',
+      lead: 'Gründer av BnbSpesialisten AS — en av Norges første profesjonelle utleieforvaltere. Sentral i familieselskapet Adonis AS frem mot exit.',
       meta: 'Produkt, automatisering og drift · 10 år som direktør for forretningsutvikling i Adonis AS · BI',
     },
     {
@@ -2993,7 +2993,7 @@ const SRevenue = (p: any) => {
   const AC = '#a052e0', INK = '#0c0c0c', INK2 = '#1c1714', SUB = '#57514a', MUT = '#8a8278';
   const HAIR = 'rgba(20,15,10,0.10)';
   const engines = [
-    { num: '01', title: 'Egen forvaltning', badge: 'Flaggskip', metric: '10', unit: '% av leien', lead: 'Bergen-flaggskipet vi drifter selv. Full forvaltningsmargin — beviset og cash-en.', bullets: ['≈ 2 000 kr/enhet/mnd (modell) — Bergen i dag ~3 000', 'Dagens 40 huseiere ligger her', 'Referansene franchise hviler på'] },
+    { num: '01', title: 'Egen forvaltning', badge: 'Flaggskip', metric: '10', unit: '% av leien', lead: 'Bergen-flaggskipet vi drifter selv. Full forvaltningsmargin — beviset og cash-en.', bullets: ['≈ 2 000 kr/enhet/mnd (modell) — Bergen i dag ~3 000', 'Dagens 40 boliger ligger her', 'Referansene franchise hviler på'] },
     { num: '02', title: 'Franchise · plattform', badge: 'Recurring', metric: 'fra 199', unit: 'kr/enhet/mnd', lead: 'Lokale operatører driver på DigiHome-plattformen. Skalerbar, recurring kjerne-ARR.', bullets: ['+ royalty ~10 % av operatørens honorar', '≈ 1,4 MNOK/år per moden franchise', '300+ enheter per franchise'] },
     { num: '03', title: 'Franchise · etablering', badge: 'Engangs', metric: '~200', unit: 'k per franchise', lead: 'Etableringsavgift når en ny operatør går inn i nettverket. Finansierer onboarding.', bullets: ['Opplæring, oppsett og merkevare', 'Kapital-lett — operatør tar driften', 'Skalerer med antall nye franchises'] },
     { num: '04', title: 'Utleiemegling & transaksjoner', badge: 'Alle segmenter', metric: '+30–80', unit: 'kr ARPU', lead: 'Utleiemegling per leieforhold + depositum, kredittsjekk og forsikring. Høy margin.', bullets: ['Engangsgebyr ved nytt leieforhold', 'Depositum · kredittsjekk · forsikring', 'Trakt inn til full forvaltning'] },
@@ -5901,7 +5901,7 @@ const SAlleredeInntekter = (p: any) => {
           Vi genererer allerede <span style={{ color: AC }}>inntekter.</span>
         </h2>
         <p className="text-[14.5px] sm:text-[16px] font-normal leading-[1.6] mt-4 max-w-[700px]" style={{ ...F, color: SUB }}>
-          DigiHome er ikke et konsept. Vi har <span style={{ color: INK2, fontWeight: 600 }}>40 betalende huseiere</span> på fullforvaltning i Bergen i dag — den beviste prototypen hver franchise skal replikere.
+          DigiHome er ikke et produktkonsept. Vi har <span style={{ color: INK2, fontWeight: 600 }}>40 betalende boliger</span> på fullforvaltning i Bergen i dag — den beviste prototypen hver franchise skal replikere. Neste steg er å bevise at modellen kan pakkes og replikeres.
         </p>
       </div>
 
@@ -7158,6 +7158,92 @@ const SMarkedKilde = (p: any) => {
   );
 };
 
+/* ═══ DE-RISKING — ærlig om risiko + slik beviser vi det bort ═══ */
+const SDeRisk = (p: any) => {
+  const active = p.isActive; const isPdf = !!p.pdfMode; const show = active || isPdf; const anim = active && !isPdf;
+  useEffect(() => { p.onLight?.(active && !isPdf); }, [active, isPdf]);
+  const AC = '#a052e0'; const INK = '#0c0c0c'; const INK2 = '#1c1714'; const SUB = '#57514a'; const MUT = '#8a8278'; const HAIR = 'rgba(20,15,10,0.09)';
+  const AMBER = '#c2891f'; const GREEN = '#1f9d57';
+  const RISKS = [
+    {
+      n: '01', flag: 'STØRSTE RISIKO',
+      risk: 'Franchise-modellen er ikke validert ennå',
+      riskSub: 'Vi har bevist egen drift i Bergen — ikke at modellen kan pakkes og selges til lokale operatører.',
+      fix: 'Rundens viktigste leveranse: validere operatør-ICP, signere 2–3 piloter og teste betalingsmodellen (199 kr + royalty) og onboarding.',
+    },
+    {
+      n: '02', flag: '',
+      risk: 'Kapasiteten (3–4×) er modellert',
+      riskSub: 'Gearingen bygger på benchmarks og egen drift på 40 boliger — ikke et skalert bevis ennå.',
+      fix: 'Dokumentere faktiske boliger per årsverk på egne + pilot-enheter, og automatisere flaskehalsene som begrenser kapasitet.',
+    },
+    {
+      n: '03', flag: '',
+      risk: 'Regulatorisk kompleksitet',
+      riskSub: 'Forvaltning, klientmidler, depositum, GDPR og ansvar ved automatiserte handlinger.',
+      fix: 'Innebygd: drift og Tech separert, menneske godkjenner kritiske steg, standardavtaler + audit trail. Forretningsadvokat Erik Hoffmann-Dahl er styreleder.',
+    },
+  ];
+  return (
+  <SlideFrame bg="beige" {...p}>
+    <style>{`
+      @keyframes drFade { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+      @keyframes drHead { from { opacity: 0; transform: translateY(22px); filter: blur(8px); } 60% { filter: blur(0); } to { opacity: 1; transform: translateY(0); filter: blur(0); } }
+      @keyframes drCard { from { opacity: 0; transform: translateY(22px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
+    `}</style>
+    <div aria-hidden="true" className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse at 50% 10%, rgba(160,82,224,0.05) 0%, transparent 55%)' }} />
+    <DotGrid maskCenter="50% 14%" opacity={0.4} />
+
+    <div className="relative z-10 w-full max-w-[1240px] mx-auto px-6 sm:px-12 my-auto">
+      <div className="max-w-[920px]">
+        <span className="block text-[11px] font-bold uppercase tracking-[0.34em]" style={{ ...F, color: AC, animation: anim ? 'drFade 0.7s cubic-bezier(0.22,1,0.36,1) 0.1s both' : undefined, opacity: show ? undefined : 0 }}>Ærlig om risiko</span>
+        <h2 className="tracking-[-0.035em] leading-[1.05] mt-5" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(28px, 3.4vw, 46px)', color: INK, animation: anim ? 'drHead 0.95s cubic-bezier(0.22,1,0.36,1) 0.25s both' : undefined, opacity: show ? undefined : 0 }}>
+          Risikoene vi <span style={{ color: AC }}>beviser bort.</span>
+        </h2>
+        <p className="text-[14px] sm:text-[15.5px] font-normal leading-[1.55] mt-4 max-w-[780px]" style={{ ...F, color: SUB, animation: anim ? 'drFade 0.8s cubic-bezier(0.22,1,0.36,1) 0.5s both' : undefined, opacity: show ? undefined : 0 }}>
+          Behovet er bevist. De neste 16 månedene handler om å bevise at modellen kan replikeres — og vi vet nøyaktig hvilke antakelser vi tester.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mt-8 sm:mt-9">
+        {RISKS.map((r, i) => (
+          <div key={r.n} className="relative rounded-[22px] bg-white p-6 sm:p-7 flex flex-col"
+               style={{ border: r.flag ? `1px solid ${AC}33` : `1px solid ${HAIR}`, boxShadow: r.flag ? `0 2px 4px rgba(20,15,10,0.04), 0 26px 60px -30px ${AC}55` : '0 1px 2px rgba(20,15,10,0.03), 0 20px 46px -28px rgba(20,15,10,0.2)',
+                        animation: anim ? `drCard 0.8s cubic-bezier(0.22,1,0.36,1) ${0.55 + i * 0.12}s both` : undefined, opacity: show ? undefined : 0 }}>
+            {/* risk header */}
+            <div className="flex items-center gap-2.5 mb-3">
+              <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1" style={{ background: `${AMBER}14` }}>
+                <span className="w-1.5 h-1.5 rounded-full" style={{ background: AMBER }} />
+                <span className="text-[9.5px] font-bold uppercase tracking-[0.16em]" style={{ ...F, color: AMBER }}>Risiko {r.n}</span>
+              </span>
+              {r.flag && <span className="text-[9px] font-bold uppercase tracking-[0.14em] rounded-full px-2 py-1" style={{ ...F, color: '#fff', background: AC }}>{r.flag}</span>}
+            </div>
+            <p className="text-[16px] sm:text-[17px] tracking-[-0.015em] leading-[1.3]" style={{ ...FH, fontWeight: 700, color: INK }}>{r.risk}</p>
+            <p className="text-[12.5px] leading-[1.5] mt-2 font-light" style={{ ...F, color: MUT }}>{r.riskSub}</p>
+
+            <div className="mt-auto pt-5">
+              <div className="flex items-center gap-2 mb-2.5" style={{ borderTop: `1px solid ${HAIR}`, paddingTop: '18px' }}>
+                <Check className="w-[15px] h-[15px] shrink-0" style={{ color: GREEN }} strokeWidth={2.8} />
+                <span className="text-[9.5px] font-bold uppercase tracking-[0.16em]" style={{ ...F, color: GREEN }}>Slik beviser vi det bort</span>
+              </div>
+              <p className="text-[12.5px] sm:text-[13px] leading-[1.5]" style={{ ...F, color: INK2 }}>{r.fix}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-7 sm:mt-8 pt-6 flex items-start gap-3" style={{ borderTop: `1px solid ${HAIR}`, animation: anim ? 'drFade 0.9s cubic-bezier(0.22,1,0.36,1) 1.0s both' : undefined, opacity: show ? undefined : 0 }}>
+        <Target className="w-5 h-5 mt-px shrink-0" style={{ color: AC }} strokeWidth={2} />
+        <p className="text-[13px] sm:text-[14.5px] leading-[1.55] max-w-[920px]" style={{ ...F, color: SUB }}>
+          <span style={{ color: INK, fontWeight: 700 }}>Vi selger ikke en ferdig skalert visjon.</span> Vi selger en presis plan for å bevise bort den største risikoen — med 3 MNOK og 16 måneder.
+        </p>
+      </div>
+    </div>
+  </SlideFrame>
+  );
+};
+
+
 
 
 const SLIDES: { C: any; light: boolean; animated?: boolean }[] = [
@@ -7192,6 +7278,7 @@ const SLIDES: { C: any; light: boolean; animated?: boolean }[] = [
   { C: SUnitEconomics, light: true },               // 19 · Unit economics
   { C: SBudgetRunway, light: true },                // 20 · Budsjett & runway (beige)
   { C: STeam, light: true },                        // 21 · Teamet (founder-market fit, mot slutten)
+  { C: SDeRisk, light: true },                      // · De-risking — ærlig om risiko + plan
   { C: SAsk, light: true },                         // 22 · Pre-seed emisjon (beige)
   { C: S9, light: false },                          // 23 · Closing (mørk — Bergen harbor)
   { C: SMarkedKilde, light: true },                 // · Appendiks — live market scrape (FINN, juni 2026)
