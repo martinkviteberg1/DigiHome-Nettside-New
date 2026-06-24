@@ -7567,6 +7567,10 @@ const SInnhold = (p: any) => {
       { label: 'Risikoene vi beviser bort', C: SDeRisk },
       { label: 'Emisjon: 3 MNOK', C: SAsk },
     ] },
+    { n: '07', t: 'Veikart & visjon', items: [
+      { label: 'Veikart — praktisk AI', C: SVeikart },
+      { label: 'Robotteknologi — visjonen', C: SRobotVisjon },
+    ] },
   ];
   return (
   <SlideFrame bg="beige" {...p}>
@@ -7719,6 +7723,112 @@ const SElevatorPitch = (p: any) => {
   );
 };
 
+/* ═══ Veikart — praktisk AI-automatisering (nær sikt) ═══ */
+const SVeikart = (p: any) => {
+  const active = p.isActive; const isPdf = !!p.pdfMode; const show = active || isPdf; const anim = active && !isPdf;
+  useEffect(() => { p.onLight?.(active && !isPdf); }, [active, isPdf]);
+  const AC = '#a052e0'; const INK = '#0c0c0c'; const INK2 = '#1c1714'; const SUB = '#57514a';
+  const PILLARS = [
+    { Icon: PhoneCall, t: 'AI Voice', s: 'Samtaler logget automatisk', d: 'Telefonsamtaler med huseiere og leietakere transkriberes og logges rett i systemet — full historikk, null manuelt etterarbeid.', tag: 'Under utvikling' },
+    { Icon: Wrench, t: 'Leverandørnettverk', s: 'Renhold, elektro, håndverk — koordinert av agenten', d: 'Vi etablerer lokale leverandører i hver by vi forvalter. Agentsystemet koordinerer alt mellom huseier, leietaker og leverandør.', tag: 'Veikart' },
+    { Icon: Camera, t: 'Virtuelle visninger', s: 'Visninger uten oppmøte', d: 'Leietakere opplever boligen digitalt — færre fysiske visninger, raskere utleie, mindre friksjon for alle.', tag: 'Veikart' },
+  ];
+  return (
+  <SlideFrame bg="beige" {...p}>
+    <style>{`
+      @keyframes vkFade { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+      @keyframes vkCard { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    `}</style>
+    <DotGrid maskCenter="50% 14%" opacity={0.36} />
+    <div className="relative z-10 w-full max-w-[1180px] mx-auto px-6 sm:px-12 my-auto">
+      <div className="max-w-[920px]">
+        <div className="flex items-center gap-3" style={{ animation: anim ? 'vkFade 0.7s ease 0.05s both' : undefined, opacity: show ? undefined : 0 }}>
+          <span className="h-px w-7 shrink-0" style={{ background: AC }} />
+          <span className="text-[10.5px] sm:text-[11px] font-bold uppercase tracking-[0.32em]" style={{ ...F, color: AC }}>Veikart · praktisk AI</span>
+        </div>
+        <h2 className="tracking-[-0.035em] leading-[1.04] mt-4" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(28px, 3.6vw, 52px)', color: INK, animation: anim ? 'vkFade 0.85s ease 0.18s both' : undefined, opacity: show ? undefined : 0 }}>
+          Vi automatiserer alt som kan <span style={{ color: AC }}>— og bør.</span>
+        </h2>
+        <p className="mt-4 leading-[1.5] max-w-[700px]" style={{ ...F, fontWeight: 400, fontSize: 'clamp(14px, 1.4vw, 17px)', color: SUB, animation: anim ? 'vkFade 0.9s ease 0.3s both' : undefined, opacity: show ? undefined : 0 }}>
+          Praktisk AI, ikke hype. Det som krever et menneske — salg og relasjoner — gjør vi selv. Resten lar vi systemet ta.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 lg:gap-7 mt-9">
+        {PILLARS.map((c, i) => (
+          <div key={c.t} className="relative rounded-[22px] p-6 sm:p-7 flex flex-col" style={{ background: '#ffffff', boxShadow: '0 2px 4px rgba(20,15,10,0.03), 0 30px 64px -40px rgba(20,15,10,0.26)', animation: anim ? `vkCard 0.8s cubic-bezier(0.22,1,0.36,1) ${0.42 + i * 0.12}s both` : undefined, opacity: show ? undefined : 0 }}>
+            <div className="flex items-center justify-between mb-5">
+              <span className="flex items-center justify-center w-11 h-11 rounded-2xl" style={{ background: 'rgba(160,82,224,0.1)' }}><c.Icon className="w-[20px] h-[20px]" style={{ color: AC }} strokeWidth={2} /></span>
+              <span className="text-[10px] font-bold uppercase tracking-[0.16em] px-2.5 py-1 rounded-full" style={{ ...F, color: AC, background: 'rgba(160,82,224,0.08)' }}>{c.tag}</span>
+            </div>
+            <span className="block" style={{ ...FH, fontWeight: 700, fontSize: '21px', color: INK, letterSpacing: '-0.01em' }}>{c.t}</span>
+            <span className="block mt-1.5 text-[13px] font-semibold leading-snug" style={{ ...F, color: AC }}>{c.s}</span>
+            <p className="mt-3 text-[13.5px] leading-[1.55]" style={{ ...F, color: SUB }}>{c.d}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-8 flex items-center gap-4 rounded-2xl px-5 sm:px-6 py-4" style={{ background: 'rgba(20,15,10,0.035)', animation: anim ? 'vkFade 0.9s ease 0.85s both' : undefined, opacity: show ? undefined : 0 }}>
+        <span className="flex items-center justify-center w-9 h-9 rounded-xl shrink-0" style={{ background: '#0c0c0c' }}><Users className="w-[17px] h-[17px] text-white" strokeWidth={2} /></span>
+        <p className="text-[13.5px] sm:text-[15px] leading-snug" style={{ ...F, color: INK2 }}>
+          <span style={{ fontWeight: 700 }}>Prinsippet:</span> automatiser det som kan <span style={{ fontStyle: 'italic' }}>og bør</span>. Salg og relasjonsbygging forblir menneskelig.
+        </p>
+      </div>
+    </div>
+  </SlideFrame>
+  );
+};
+
+/* ═══ Robotteknologi — langsiktig visjon (moonshot) ═══ */
+const SRobotVisjon = (p: any) => {
+  const active = p.isActive; const isPdf = !!p.pdfMode; const anim = active && !isPdf; const show = active || isPdf;
+  const AC = '#d298ff';
+  const ri = (d: number) => ({ animation: anim ? `rvUp 0.95s cubic-bezier(0.22,1,0.36,1) ${d}s both` : undefined, opacity: show ? undefined : 0 } as React.CSSProperties);
+  const FOCUS = ['Visninger', 'Renhold', 'Befaring', 'Vedlikehold'];
+  return (
+  <SlideFrame bg="dark" {...p}>
+    <style>{`
+      @keyframes rvUp { from { opacity: 0; transform: translateY(22px); filter: blur(8px); } 60% { filter: blur(0); } to { opacity: 1; transform: translateY(0); filter: blur(0); } }
+      @keyframes rvImg { from { opacity: 0; transform: scale(1.06); } to { opacity: 1; transform: scale(1); } }
+    `}</style>
+    <div className="absolute inset-0">
+      <img src="/robot-vision.jpg" alt="Humanoid robot" className="absolute inset-0 w-full h-full object-cover" style={{ objectPosition: 'right center', animation: anim ? 'rvImg 1.6s cubic-bezier(0.22,1,0.36,1) both' : undefined }} loading="eager" decoding="async" />
+      <div aria-hidden="true" className="absolute inset-0" style={{ background: 'linear-gradient(90deg, #08080a 0%, rgba(8,8,10,0.92) 28%, rgba(8,8,10,0.55) 52%, rgba(8,8,10,0.05) 78%, transparent 100%)' }} />
+      <div aria-hidden="true" className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(8,8,10,0.5) 0%, transparent 30%, transparent 70%, rgba(8,8,10,0.6) 100%)' }} />
+      <div aria-hidden="true" className="absolute top-[-10%] left-[-5%] w-[700px] h-[700px] rounded-full pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(210,152,255,0.12) 0%, transparent 60%)' }} />
+    </div>
+
+    <div className="relative z-10 w-full max-w-[1240px] mx-auto px-6 sm:px-12 my-auto">
+      <div className="max-w-[630px]">
+        <div className="flex items-center gap-3" style={ri(0.1)}>
+          <span className="h-px w-8 shrink-0" style={{ background: AC }} />
+          <span className="text-[10.5px] sm:text-[11px] font-bold uppercase tracking-[0.34em]" style={{ ...F, color: AC }}>Den lange banen · robotteknologi</span>
+        </div>
+        <h2 className="tracking-[-0.04em] leading-[1.02] mt-5" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(33px, 4.6vw, 62px)', color: '#ffffff', textShadow: '0 2px 30px rgba(0,0,0,0.5)' }}>
+          <span className="block" style={ri(0.22)}>Vi automatiserte det digitale.</span>
+          <span className="block" style={{ color: AC, ...ri(0.4) }}>Roboter tar det fysiske.</span>
+        </h2>
+        <p className="mt-6 leading-[1.6] max-w-[540px]" style={{ ...F, fontWeight: 400, fontSize: 'clamp(14px, 1.4vw, 17px)', color: 'rgba(255,255,255,0.82)', textShadow: '0 1px 14px rgba(0,0,0,0.5)', ...ri(0.56) }}>
+          Så snart humanoide roboter blir praktisk brukbare, tar DigiHome dem i bruk for å automatisere de siste manuelle prosessene. Vi skal være tidlig ute — teste i beta — og gjøre fysisk autonomi til en sentral del av merkevaren.
+        </p>
+        <div className="flex flex-wrap gap-2.5 mt-7" style={ri(0.7)}>
+          {FOCUS.map((f) => (
+            <span key={f} className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full text-[12.5px] font-medium" style={{ ...F, color: 'rgba(255,255,255,0.9)', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', backdropFilter: 'blur(8px)' }}>
+              <Bot className="w-[14px] h-[14px]" style={{ color: AC }} strokeWidth={2} />{f}
+            </span>
+          ))}
+        </div>
+        <div className="flex items-center gap-3 mt-8" style={ri(0.82)}>
+          <span className="text-[11px] font-bold uppercase tracking-[0.2em]" style={{ ...F, color: AC }}>Beta-først</span>
+          <span className="w-1 h-1 rounded-full" style={{ background: 'rgba(255,255,255,0.3)' }} />
+          <span className="text-[11px] font-medium uppercase tracking-[0.2em]" style={{ ...F, color: 'rgba(255,255,255,0.5)' }}>Veikart 2030+</span>
+        </div>
+      </div>
+    </div>
+  </SlideFrame>
+  );
+};
+
 const SLIDES: { C: any; light: boolean; animated?: boolean }[] = [
   { C: S1, light: false },                          // 01 · Cover (mørk — Bergen cityscape)
   { C: SBrandFilm, light: false },                  // 02 · Merkevarefilm (mørk — kinematisk brand-film)
@@ -7758,6 +7868,8 @@ const SLIDES: { C: any; light: boolean; animated?: boolean }[] = [
   { C: SBudgetRunway, light: true },                // 20 · Budsjett & runway (beige)
   { C: SDeRisk, light: true },                      // · De-risking — ærlig om risiko + plan
   { C: SAsk, light: true },                         // 22 · Pre-seed emisjon (beige)
+  { C: SVeikart, light: true },                     // · Veikart — praktisk AI-automatisering (beige)
+  { C: SRobotVisjon, light: false },                // · Robotteknologi — langsiktig visjon (mørk, robotbilde)
   { C: S9, light: false },                          // 23 · Closing (mørk — Bergen harbor)
 ];
 const ANIMATED_IDX = SLIDES.findIndex(s => s.animated);
