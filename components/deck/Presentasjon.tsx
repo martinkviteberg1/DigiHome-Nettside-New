@@ -551,8 +551,8 @@ const STeam = (p: any) => {
       field: 'AI',
       img: '/team/kevin-ai.jpg',
       imgStyle: { objectPosition: '50% 16%' },
-      lead: 'Placeholder-bio — oppdateres. AI-rådgiver med fokus på praktisk og ansvarlig AI i produkt og drift.',
-      meta: 'Rådgir på AI-arkitektur, automatisering og modellvalg · profil fylles inn',
+      lead: 'Analytiker i DNB. Bygger og automatiserer plattformen med AI-drevet utvikling.',
+      meta: 'Bakgrunn fra eiendomsanalyse, datadrevne analyseverktøy, arkitektur og modellering · Siviløkonom, NHH/HVL · Masteroppgave i boligmarkedsøkonomi',
     },
   ];
 
