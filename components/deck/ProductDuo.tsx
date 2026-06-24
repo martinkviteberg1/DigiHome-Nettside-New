@@ -714,7 +714,7 @@ function ModuleOverview({ stage, step }: { stage: 'text' | 'walk' | 'all'; step:
   const all = stage === 'all';
   const vis = (key: string) => all || (stage === 'walk' && step >= WALK_KEYS.indexOf(key));
   const activeKey = stage === 'walk' && step >= 0 && step < WALK_KEYS.length ? WALK_KEYS[step] : null;
-  const txt = 'Ett supermoderne grensesnitt.'.split(' ');
+  const txt = 'Et supermoderne grensesnitt.'.split(' ');
   return (
     <div className="h-full relative overflow-hidden" style={{ background: BG }}>
       <style>{`
@@ -739,7 +739,7 @@ function ModuleOverview({ stage, step }: { stage: 'text' | 'walk' | 'all'; step:
             <span key={i} className="inline-block" style={{ marginRight: '0.26em', animation: isText ? `moTxt 0.7s cubic-bezier(0.22,1,0.36,1) ${0.55 + i * 0.1}s both` : undefined }}>{w}</span>
           ))}
         </h2>
-        <p className="text-[16px] mt-5" style={{ fontFamily: PJ, color: SUB, animation: isText ? 'moTxt 0.7s cubic-bezier(0.22,1,0.36,1) 1.35s both' : undefined }}>Bygget i moduler. Vi tar dem én om gangen.</p>
+        <p className="text-[16px] mt-5" style={{ fontFamily: PJ, color: SUB, animation: isText ? 'moTxt 0.7s cubic-bezier(0.22,1,0.36,1) 1.35s both' : undefined }}>Hele driften samlet på ett sted.</p>
       </div>
 
       {/* ══ STEG 2–3 · KONSTELLASJON (bygges modul for modul — kun illustrasjon, sentrert) ══ */}
@@ -855,7 +855,7 @@ function IntroCard() {
 }
 
 /* ═══════════════════════ DESKTOP-MOCKUP (rolig kamera + nav-markør + coachmark guided tour) ═══════════════════════ */
-function DesktopMock({ phase, beat, pulseKey, pdfMode }: { phase: 'intro' | 'tour'; beat: Beat; pulseKey: number; pdfMode?: boolean }) {
+function DesktopMock({ phase, beat, pulseKey, pdfMode, active }: { phase: 'intro' | 'tour'; beat: Beat; pulseKey: number; pdfMode?: boolean; active?: boolean }) {
   const isOverview = beat.kind === 'overview';
   const isFinale = beat.kind === 'finale';
   const View = (isOverview || isFinale) ? null : VIEWS[beat.content];
@@ -869,7 +869,7 @@ function DesktopMock({ phase, beat, pulseKey, pdfMode }: { phase: 'intro' | 'tou
   const [ovStage, setOvStage] = useState<'text' | 'walk' | 'all'>('text');
   const [ovStep, setOvStep] = useState(-1);
   useEffect(() => {
-    if (!isOverview) { setOvStage('text'); setOvStep(-1); return; }
+    if (!isOverview || !active) { setOvStage('text'); setOvStep(-1); return; }
     if (pdfMode) { setOvStage('all'); setOvStep(WALK_KEYS.length - 1); return; }
     setOvStage('text'); setOvStep(-1);
     const ts: any[] = [];
@@ -879,7 +879,7 @@ function DesktopMock({ phase, beat, pulseKey, pdfMode }: { phase: 'intro' | 'tou
     ts.push(setTimeout(() => setOvStage('all'), TEXT_MS + WALK_KEYS.length * STEP_MS + 350));
     return () => ts.forEach(clearTimeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOverview, pdfMode]);
+  }, [isOverview, pdfMode, active]);
 
   const frameRef = useRef<HTMLDivElement>(null);
   const curContent = useRef<HTMLDivElement | null>(null);
@@ -1061,7 +1061,7 @@ export default function ProductDuo({ active, pdfMode }: { active?: boolean; pdfM
   const show = active || pdfMode;
   const wrapRef = useRef<HTMLDivElement>(null);
   const [cw, setCw] = useState(DESK_W);
-  const [phase, setPhase] = useState<'intro' | 'tour'>('intro');
+  const [phase, setPhase] = useState<'intro' | 'tour'>('tour');
   const [bi, setBi] = useState(0);
 
   useEffect(() => {
@@ -1078,10 +1078,9 @@ export default function ProductDuo({ active, pdfMode }: { active?: boolean; pdfM
 
   useEffect(() => {
     if (pdfMode) { setPhase('tour'); setBi(autoIdx); return; }
-    if (!active) { setPhase('intro'); setBi(0); return; }
-    setPhase('intro'); setBi(0);
-    const t = setTimeout(() => { setPhase('tour'); setBi(0); }, INTRO_DUR);
-    return () => clearTimeout(t);
+    // Hopper over den mørke åpningsscenen («Alt du forventer…») —
+    // starter rett på den lyse omvisningen (operativsystemet/grensesnittet).
+    setPhase('tour'); setBi(0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active, pdfMode]);
 
@@ -1116,7 +1115,7 @@ export default function ProductDuo({ active, pdfMode }: { active?: boolean; pdfM
           <>
             <div style={{ height: BODY_H * scale, position: 'relative' }}>
               <div style={{ width: DESK_W, transform: `scale(${scale})`, transformOrigin: 'top center', position: 'absolute', left: '50%', marginLeft: -DESK_W / 2, top: 0 }}>
-                <DesktopMock phase={phase} beat={beat} pulseKey={phase === 'tour' ? bi : -1} pdfMode={pdfMode} />
+                <DesktopMock phase={phase} beat={beat} pulseKey={phase === 'tour' ? bi : -1} pdfMode={pdfMode} active={active} />
               </div>
             </div>
             <div style={{ opacity: phase === 'tour' ? 1 : 0, transform: phase === 'tour' ? 'translateY(0)' : 'translateY(12px)', transition: 'opacity 0.7s ease, transform 0.8s cubic-bezier(0.22,1,0.36,1)', pointerEvents: phase === 'tour' ? 'auto' : 'none' }}>

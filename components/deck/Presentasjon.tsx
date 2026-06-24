@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { ChevronLeft, ChevronRight, Check, Home, CreditCard, MessageCircle, Wrench, FileText, Sparkles, ArrowRight, Plus, Camera, Clock, BarChart3, Zap, Brain, Building2, AlertTriangle, TrendingUp, Settings, Layers, CalendarDays, PhoneCall, PenLine, Target, Rocket, Bot, MinusCircle, PlusCircle, LayoutDashboard, MessageSquare, ClipboardList, Radio, ClipboardCheck, AlertCircle, Users, BookOpen, PieChart, DollarSign, Shield, ChevronDown, Search, Filter, MoreHorizontal, Volume2, Droplets, Download, Loader2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Check, Home, CreditCard, MessageCircle, Wrench, FileText, Sparkles, ArrowRight, Plus, Camera, Clock, BarChart3, Zap, Brain, Building2, AlertTriangle, TrendingUp, Settings, Layers, CalendarDays, PhoneCall, PenLine, Target, Rocket, Bot, MinusCircle, PlusCircle, LayoutDashboard, MessageSquare, ClipboardList, Radio, ClipboardCheck, AlertCircle, Users, BookOpen, PieChart, DollarSign, Shield, ChevronDown, Search, Filter, MoreHorizontal, Volume2, Droplets, Download, Loader2, Play } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -1716,34 +1716,39 @@ const S6 = (p: any) => (
 /* ═══ SLIDE 7 — SDiff (Konkurransefortrinn · COMBINED with market map) ═══ */
 const SDiff = (p: any) => {
   const active = p.isActive;
+  const AC = '#a052e0'; const INK = '#0c0c0c'; const INK2 = '#2a2620'; const SUB = '#5b554d'; const MUT = '#9b9389'; const HAIR = 'rgba(20,15,10,0.08)';
   const pillars = [
     {
       num: '01',
+      Icon: Shield,
       title: 'Nordisk fra første dag',
-      lead: 'DigiHome er bygget rundt infrastrukturen som faktisk må fungere i Norden: BankID, MitID, Freja, FINN, regnskapssystemer, betaling, kontrakter og dokumentasjon.',
-      tag: 'Internasjonale aktører kan oversette produktet. De må fortsatt bygge det lokale laget.',
+      lead: 'Bygget rundt infrastrukturen som faktisk må fungere i Norden: BankID, MitID, Freja, FINN, regnskap, betaling, kontrakter og dokumentasjon.',
+      tag: 'Internasjonale aktører kan oversette produktet — men må fortsatt bygge det lokale laget.',
     },
     {
       num: '02',
+      Icon: Zap,
       title: 'Automatisering i selve flyten',
-      lead: 'DigiHome er ikke et gammelt forvaltningssystem med AI lagt på toppen. Plattformen er bygget for at rutinearbeid skal løses automatisk — fra annonse og prising til henvendelser, saker, oppfølging og regnskap.',
+      lead: 'Ikke et gammelt forvaltningssystem med AI lagt på toppen. Plattformen er bygget for at rutinearbeid løses automatisk — fra annonse og prising til henvendelser, saker, oppfølging og regnskap.',
       tag: 'AI er ikke en feature. Det er måten systemet er konstruert på.',
     },
     {
       num: '03',
+      Icon: Users,
       title: 'Et nettverk, ikke bare programvare',
-      lead: 'DigiHome er ikke et verktøy vi selger til konkurrenter. Vi drifter selv og skalerer gjennom franchise — lokale operatører på vår plattform, under én nasjonal merkevare.',
-      tag: 'AI-effektivitet (3–4× flere enheter per årsverk) + franchise-nettverkseffekt er vanskelig å kopiere.',
+      lead: 'Vi selger ikke verktøy til konkurrenter. Vi drifter selv og skalerer gjennom franchise — lokale operatører på vår plattform, under én nasjonal merkevare.',
+      tag: 'AI-effektivitet + franchise-nettverkseffekt er vanskelig å kopiere.',
     },
   ];
 
   const competitors = [
-    { name: 'FINN',                 x: 15, y: 60, size: 28 },
-    { name: 'Hybel',                x: 25, y: 45, size: 30 },
-    { name: 'Husleie.no',           x: 37, y: 56, size: 30 },
-    { name: 'Lokal utleiemegler',   x: 52, y: 84, size: 32 },
-    { name: 'Tradisjonell forvalter', x: 68, y: 72, size: 34 },
-    { name: 'DigiHome',             x: 84, y: 15, size: 58, us: true },
+    { name: 'FINN',                   x: 16, y: 64, size: 30 },
+    { name: 'Hybel',                  x: 27, y: 42, size: 32 },
+    { name: 'Husleie.no',             x: 39, y: 54, size: 32 },
+    { name: 'Lokal utleiemegler',     x: 44, y: 88, size: 30 },
+    { name: 'Tradisjonell forvalter', x: 60, y: 77, size: 34 },
+    { name: 'Utleiemegleren',         x: 78, y: 58, size: 36 },
+    { name: 'DigiHome',               x: 84, y: 16, size: 60, us: true },
   ];
 
   return (
@@ -1753,6 +1758,7 @@ const SDiff = (p: any) => {
       @keyframes diffHeadlineIn { from { opacity: 0; transform: translateY(24px); filter: blur(8px); } 60% { filter: blur(0); } to { opacity: 1; transform: translateY(0); filter: blur(0); } }
       @keyframes diffCardIn { from { opacity: 0; transform: translateY(28px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
       @keyframes diffDot { from { opacity: 0; transform: scale(0); } to { opacity: 1; transform: scale(1); } }
+      @keyframes diffPulse { 0% { transform: translate(-50%,-50%) scale(0.85); opacity: 0.5; } 70%,100% { transform: translate(-50%,-50%) scale(1.8); opacity: 0; } }
     `}</style>
 
     <DotGrid maskCenter="50% 26%" opacity={0.4} />
@@ -1760,18 +1766,18 @@ const SDiff = (p: any) => {
     <div className="max-w-[1320px] mx-auto px-6 sm:px-12 w-full relative z-10">
       {/* Editorial header */}
       <div className="mb-6 sm:mb-8 max-w-[1120px]">
-        <p className="text-[10.5px] sm:text-[11px] font-bold uppercase tracking-[0.28em] mb-4"
-           style={{ color: P, animation: active ? 'diffFadeUp 0.6s cubic-bezier(0.22,1,0.36,1) 0.15s both' : undefined, opacity: active ? undefined : 0 }}>
+        <p className="text-[10.5px] sm:text-[11px] font-bold uppercase tracking-[0.32em] mb-4"
+           style={{ color: AC, animation: active ? 'diffFadeUp 0.6s cubic-bezier(0.22,1,0.36,1) 0.15s both' : undefined, opacity: active ? undefined : 0 }}>
           Konkurransefortrinn
         </p>
-        <h2 className="font-bold text-[#0c0c0c] tracking-[-0.035em] leading-[1.04]"
-            style={{ ...F, fontSize: 'clamp(24px, 3.0vw, 40px)', animation: active ? 'diffHeadlineIn 0.95s cubic-bezier(0.22,1,0.36,1) 0.3s both' : undefined, opacity: active ? undefined : 0 }}>
-          <span className="md:block">Forvaltning har vært <span style={{ color: P }}>manuelt og fragmentert</span>.</span>{' '}
-          <span className="md:block text-[#3a3530] font-light tracking-[-0.03em]">DigiHome gjør det autonomt — og skalerer det som ett nettverk.</span>
+        <h2 className="tracking-[-0.035em] leading-[1.04]"
+            style={{ ...FH, fontWeight: 700, color: INK, fontSize: 'clamp(25px, 3.1vw, 42px)', animation: active ? 'diffHeadlineIn 0.95s cubic-bezier(0.22,1,0.36,1) 0.3s both' : undefined, opacity: active ? undefined : 0 }}>
+          <span className="md:block">Forvaltning har vært <span style={{ color: AC }}>manuelt og fragmentert</span>.</span>{' '}
+          <span className="md:block font-light" style={{ ...FH, fontWeight: 300, color: '#3a3530', letterSpacing: '-0.03em' }}>DigiHome gjør det autonomt — og skalerer det som ett nettverk.</span>
         </h2>
-        <p className="text-[#3a3530] leading-[1.55] font-light tracking-[-0.003em] mt-4 max-w-[1000px]"
-           style={{ ...F, fontSize: 'clamp(12.5px, 1.0vw, 14px)', animation: active ? 'diffFadeUp 0.8s cubic-bezier(0.22,1,0.36,1) 0.5s both' : undefined, opacity: active ? undefined : 0 }}>
-          Tradisjonelle utleiemeglere og forvaltere tar hele driften — men manuelt, lokalt og dyrt. Verktøy som Hybel, Husleie.no og FINN er digitale, men løser bare deler av flyten. <span className="font-semibold text-[#0c0c0c]">DigiHome står alene</span> i krysningspunktet: full forvaltning, AI-native og et skalerbart nasjonalt nettverk.
+        <p className="leading-[1.55] font-light tracking-[-0.003em] mt-4 max-w-[1010px]"
+           style={{ ...F, color: SUB, fontSize: 'clamp(12.5px, 1.0vw, 14px)', animation: active ? 'diffFadeUp 0.8s cubic-bezier(0.22,1,0.36,1) 0.5s both' : undefined, opacity: active ? undefined : 0 }}>
+          Tradisjonelle aktører som <span className="font-semibold" style={{ color: INK }}>Utleiemegleren</span> og lokale forvaltere tar hele driften — men manuelt, lokalt og kostbart. Verktøy som Hybel, Husleie.no og FINN er digitale, men dekker bare deler av flyten. <span className="font-semibold" style={{ color: INK }}>DigiHome står alene</span> i krysningspunktet: full forvaltning, AI-native og et skalerbart nasjonalt nettverk.
         </p>
       </div>
 
@@ -1787,57 +1793,55 @@ const SDiff = (p: any) => {
                    opacity: active ? undefined : 0,
                  }}>
           <div className="flex items-baseline justify-between mb-4">
-            <p className="text-[9.5px] font-bold tracking-[0.22em] text-[#b5aa98]" style={F}>MARKEDSKART · DYBDE × BREDDE</p>
+            <p className="text-[9.5px] font-bold tracking-[0.24em]" style={{ ...F, color: MUT }}>MARKEDSKART</p>
+            <p className="text-[9px] font-medium tracking-[0.12em]" style={{ ...F, color: '#c2b9aa' }}>Automatisering × bredde</p>
           </div>
 
           {/* Matrix */}
-          <div className="relative flex-1 rounded-[14px] bg-white overflow-hidden"
-               style={{ border: '1px solid #e2ded5', minHeight: 320 }}>
-            {/* Axis labels */}
-            <div className="absolute top-2.5 left-1/2 -translate-x-1/2 text-[8.5px] font-bold uppercase tracking-[0.16em] text-[#b5aa98]" style={F}>AI-NATIVE</div>
-            <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 text-[8.5px] font-bold uppercase tracking-[0.16em] text-[#b5aa98]" style={F}>MANUELL</div>
-            <div className="absolute left-2 top-1/2 -translate-y-1/2 -rotate-90 text-[8.5px] font-bold uppercase tracking-[0.16em] text-[#b5aa98] origin-center whitespace-nowrap" style={F}>SMAL</div>
-            <div className="absolute right-2 top-1/2 -translate-y-1/2 rotate-90 text-[8.5px] font-bold uppercase tracking-[0.16em] text-[#b5aa98] origin-center whitespace-nowrap" style={F}>BRED</div>
+          <div className="relative flex-1 rounded-[16px] overflow-hidden"
+               style={{ background: 'linear-gradient(180deg,#ffffff,#fcfbf9)', border: '1px solid #e7e2da', minHeight: 344 }}>
+            {/* vinnerkvadrant (oppe til høyre) */}
+            <div aria-hidden="true" className="absolute" style={{ right: 0, top: 0, width: '52%', height: '52%', background: `radial-gradient(120% 120% at 100% 0%, ${AC}1a, transparent 72%)` }} />
+            {/* kvadrant-hårlinjer */}
+            <div className="absolute left-1/2 top-8 bottom-8 w-px" style={{ background: 'linear-gradient(180deg, transparent, #e7e1d7 16%, #e7e1d7 84%, transparent)' }} />
+            <div className="absolute top-1/2 left-8 right-8 h-px" style={{ background: 'linear-gradient(90deg, transparent, #e7e1d7 16%, #e7e1d7 84%, transparent)' }} />
 
-            {/* Grid lines */}
-            <div className="absolute left-1/2 top-7 bottom-7 w-px" style={{ backgroundColor: '#eae6dd' }} />
-            <div className="absolute top-1/2 left-7 right-7 h-px" style={{ backgroundColor: '#eae6dd' }} />
+            {/* aksetekster */}
+            <div className="absolute top-2.5 left-1/2 -translate-x-1/2 text-[8.5px] font-bold uppercase tracking-[0.18em]" style={{ ...F, color: MUT }}>AI-native</div>
+            <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 text-[8.5px] font-bold uppercase tracking-[0.18em]" style={{ ...F, color: MUT }}>Manuell drift</div>
+            <div className="absolute left-2 top-1/2 -translate-y-1/2 -rotate-90 text-[8.5px] font-bold uppercase tracking-[0.18em] origin-center whitespace-nowrap" style={{ ...F, color: MUT }}>Punktverktøy</div>
+            <div className="absolute right-2 top-1/2 -translate-y-1/2 rotate-90 text-[8.5px] font-bold uppercase tracking-[0.18em] origin-center whitespace-nowrap" style={{ ...F, color: MUT }}>Full forvaltning</div>
 
-            {/* Krysningspunkt label */}
-            <div className="absolute top-[8%] right-[7%] text-[8.5px] font-bold tracking-[0.18em]" style={{ ...F, color: `${P}80` }}>KRYSNINGSPUNKT</div>
+            {/* krysningspunkt-pille */}
+            <div className="absolute top-[6%] right-[4.5%] px-2 py-[3px] rounded-full text-[8px] font-bold tracking-[0.16em]" style={{ ...F, color: AC, background: `${AC}14`, border: `1px solid ${AC}33` }}>KRYSNINGSPUNKT</div>
 
-            {/* Competitors */}
+            {/* aktører */}
             {competitors.map((c, i) => (
               <div key={i} className="absolute flex flex-col items-center"
-                   style={{
-                     left: `${c.x}%`,
-                     top: `${c.y}%`,
-                     transform: 'translate(-50%, -50%)',
-                     animation: active ? `diffDot 0.5s cubic-bezier(0.34,1.56,0.64,1) ${0.75 + i * 0.07}s both` : undefined,
-                     opacity: active ? undefined : 0,
-                   }}>
-                <div className="rounded-full flex items-center justify-center"
-                     style={{
-                       width: `${c.size}px`,
-                       height: `${c.size}px`,
-                       backgroundColor: c.us ? P : '#e6e2d9',
-                       border: c.us ? `2px solid ${P}` : '1.5px solid #c4b9a8',
-                       boxShadow: c.us ? `0 0 0 6px ${P}1f, 0 10px 36px ${P}50` : 'none',
-                     }}>
-                  {c.us && <span className="text-[9.5px] font-bold text-white" style={F}>DH</span>}
+                   style={{ left: `${c.x}%`, top: `${c.y}%`, transform: 'translate(-50%, -50%)', zIndex: c.us ? 5 : 2,
+                            animation: active ? `diffDot 0.55s cubic-bezier(0.34,1.56,0.64,1) ${0.75 + i * 0.07}s both` : undefined, opacity: active ? undefined : 0 }}>
+                <div className="relative flex items-center justify-center" style={{ width: c.size, height: c.size }}>
+                  {c.us && <span aria-hidden="true" className="absolute left-1/2 top-1/2 rounded-full" style={{ width: c.size, height: c.size, background: AC, animation: active ? 'diffPulse 2.6s ease-out 1.3s infinite' : undefined }} />}
+                  <div className="relative rounded-full flex items-center justify-center"
+                       style={{ width: `${c.size}px`, height: `${c.size}px`,
+                                background: c.us ? `radial-gradient(circle at 34% 28%, #c79bf0, ${AC})` : 'rgba(255,255,255,0.92)',
+                                border: c.us ? `1.5px solid ${AC}` : '1.5px solid #d6cdbf',
+                                boxShadow: c.us ? `0 0 0 5px ${AC}1c, 0 12px 34px -6px ${AC}66` : '0 2px 8px rgba(20,15,10,0.05)' }}>
+                    {c.us && <span className="text-[10px] font-bold text-white" style={F}>DH</span>}
+                  </div>
                 </div>
-                <p className={`text-[9.5px] mt-1.5 whitespace-nowrap ${c.us ? 'font-bold' : 'font-medium'}`} style={{ color: c.us ? P : '#6e6a62' }}>{c.name}</p>
+                <p className={`text-[9.5px] mt-1.5 whitespace-nowrap ${c.us ? 'font-bold' : 'font-medium'}`} style={{ ...F, color: c.us ? AC : '#7c766c' }}>{c.name}</p>
               </div>
             ))}
           </div>
 
-          <div className="mt-3.5 flex items-center gap-4 text-[10px] text-[#8a8478] font-light">
+          <div className="mt-3.5 flex items-center gap-4 text-[10px] font-light" style={{ color: MUT }}>
             <div className="flex items-center gap-1.5">
-              <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: P }} />
-              <span className="font-semibold" style={{ color: '#0c0c0c' }}>DigiHome</span>
+              <div className="w-2.5 h-2.5 rounded-full" style={{ background: AC, boxShadow: `0 0 8px ${AC}` }} />
+              <span className="font-semibold" style={{ color: INK }}>DigiHome</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <div className="w-2.5 h-2.5 rounded-full bg-[#e6e2d9]" style={{ border: '1px solid #c4b9a8' }} />
+              <div className="w-2.5 h-2.5 rounded-full" style={{ background: '#fff', border: '1.5px solid #d6cdbf' }} />
               <span>Konkurrenter</span>
             </div>
           </div>
@@ -1870,14 +1874,13 @@ const SDiff = (p: any) => {
       </div>
 
       {/* Footer note: why it's hard to copy */}
-      <div className="mt-6 sm:mt-8"
-           style={{ animation: active ? 'diffFadeUp 0.8s cubic-bezier(0.22,1,0.36,1) 1.05s both' : undefined, opacity: active ? undefined : 0 }}>
-        <div className="flex items-start gap-4 max-w-[1100px]">
-          <p className="text-[10px] font-bold uppercase tracking-[0.22em] pt-1 shrink-0" style={{ ...F, color: P }}>Forsvar</p>
-          <p className="text-[12px] sm:text-[13px] text-[#3a3530] font-light leading-[1.55] tracking-[-0.003em]" style={F}>
-            <span className="font-semibold text-[#0c0c0c]">Hvorfor det blir vanskelig å kopiere.</span> Én konkurrent kan kopiere én funksjon. Det vanskelige er kombinasjonen: automatisert drift (3–4× flere enheter per årsverk), et skalerbart franchise-nettverk og en nasjonal merkevare bygget på lokal infrastruktur.
-          </p>
-        </div>
+      <div className="mt-6 sm:mt-7 rounded-[16px] px-5 sm:px-7 py-4 flex items-start gap-4"
+           style={{ background: `linear-gradient(90deg, ${AC}10, transparent 62%)`, border: `1px solid ${AC}24`,
+                    animation: active ? 'diffFadeUp 0.8s cubic-bezier(0.22,1,0.36,1) 1.05s both' : undefined, opacity: active ? undefined : 0 }}>
+        <p className="text-[10px] font-bold uppercase tracking-[0.22em] pt-1 shrink-0" style={{ ...F, color: AC }}>Forsvar</p>
+        <p className="text-[12px] sm:text-[13px] font-light leading-[1.55] tracking-[-0.003em]" style={{ ...F, color: SUB }}>
+          <span className="font-semibold" style={{ color: INK }}>Hvorfor det blir vanskelig å kopiere.</span> Én konkurrent kan kopiere én funksjon. Det vanskelige er kombinasjonen: automatisert drift (mål 3–4× kapasitet per årsverk), et skalerbart franchise-nettverk og en nasjonal merkevare bygget på lokal nordisk infrastruktur.
+        </p>
       </div>
     </div>
   </SlideFrame>
@@ -5452,81 +5455,105 @@ const SFraVerktoyTilMotor = (p: any) => {
   const active = p.isActive;
   const isPdf = !!p.pdfMode;
   const show = active || isPdf;
-  const INK = '#1c1815';
+  const anim = active && !isPdf;
+  useEffect(() => { p.onLight?.(active && !isPdf); }, [active, isPdf]);
+
+  const INK = '#0c0c0c'; const INK2 = '#1c1714'; const MUT = '#9b9389'; const AC = '#a052e0';
+  const HAIR = 'rgba(20,15,10,0.08)';
+
   const PAIRS = [
-    { left: 'Et verktøy du betjener', right: 'En motor som jobber' },
-    { left: 'Lagrer og viser informasjon', right: 'Forstår, forbereder og utfører' },
-    { left: 'Flere moduler — mer å klikke', right: 'Ett system, én flyt' },
+    { left: 'Lagrer og viser data', right: 'Forstår status' },
+    { left: 'Du må vite neste steg', right: 'Foreslår neste handling' },
+    { left: 'Generisk AI lagt på toppen', right: 'AI med full prosesskontekst' },
+    { left: 'Automatiserer enkeltoppgaver', right: 'Driver hele flyten' },
     { left: 'Du gjør jobben', right: 'Systemet gjør jobben', accent: true },
   ];
   const rise = (i: number) => ({
-    animation: show ? `fvIn 0.85s cubic-bezier(0.22,1,0.36,1) ${0.15 + i * 0.1}s both` : undefined,
+    animation: anim ? `fvIn 0.8s cubic-bezier(0.22,1,0.36,1) ${0.12 + i * 0.08}s both` : undefined,
     opacity: show ? undefined : 0,
   });
-
-  useEffect(() => { p.onLight?.(active && !isPdf); }, [active, isPdf]);
 
   return (
   <SlideFrame bg="beige" {...p}>
     <style>{`
       @keyframes fvIn { from { opacity: 0; transform: translateY(20px); filter: blur(8px); } to { opacity: 1; transform: translateY(0); filter: blur(0); } }
-      @keyframes fvRail { from { opacity: 0; transform: scaleY(0); } to { opacity: 1; transform: scaleY(1); } }
+      @keyframes fvRowL { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
+      @keyframes fvRowR { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: translateX(0); } }
     `}</style>
-    <DotGrid maskCenter="50% 44%" opacity={0.4} />
+    <div aria-hidden="true" className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse at 74% 54%, rgba(160,82,224,0.06) 0%, transparent 56%)' }} />
+    <DotGrid maskCenter="50% 14%" opacity={0.36} />
 
-    <div className="absolute inset-0 z-10 flex items-center justify-center px-6 sm:px-12 py-12 overflow-y-auto no-scrollbar">
-      <div className="w-full max-w-[1080px] mx-auto">
+    <div className="relative z-10 w-full max-w-[1080px] mx-auto px-6 sm:px-12 my-auto">
 
-        {/* header */}
-        <div className="text-center mb-14 sm:mb-20">
-          <span className="block text-[10px] font-bold uppercase tracking-[0.46em]" style={{ ...F, color: INK, ...rise(0) }}>Løsningen</span>
-          <h2 className="mt-6 tracking-[-0.045em] leading-[0.98]" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(40px, 5.4vw, 74px)', color: INK, ...rise(1) }}>
-            Fra verktøy til motor.
-          </h2>
-        </div>
-
-        {/* sammenligning */}
-        <div className="relative">
-          {/* senter-skinne */}
-          <div className="absolute left-1/2 top-2 bottom-2 w-px -translate-x-1/2"
-               style={{ background: 'linear-gradient(180deg, transparent, rgba(28,22,16,0.16) 12%, rgba(28,22,16,0.16) 88%, transparent)', transformOrigin: 'top',
-                        animation: show ? 'fvRail 0.9s cubic-bezier(0.22,1,0.36,1) 0.25s both' : undefined, opacity: show ? undefined : 0 }} />
-
-          {/* spalte-overskrifter */}
-          <div className="grid grid-cols-2 gap-x-10 sm:gap-x-20 lg:gap-x-28 mb-9 sm:mb-12">
-            <div className="text-right" style={rise(2)}>
-              <span className="text-[11px] sm:text-[12px] font-bold uppercase tracking-[0.24em]" style={{ ...F, color: INK }}>Tradisjonell proptech</span>
-            </div>
-            <div className="text-left" style={rise(2)}>
-              <span className="inline-flex items-center gap-2.5 text-[11px] sm:text-[12px] font-bold uppercase tracking-[0.24em]" style={{ ...F, color: INK }}>
-                <span className="h-[7px] w-[7px] rounded-full" style={{ background: P }} />DigiHome
-              </span>
-            </div>
-          </div>
-
-          {/* rader */}
-          <div className="grid grid-cols-2 gap-x-10 sm:gap-x-20 lg:gap-x-28 gap-y-8 sm:gap-y-11 items-baseline">
-            {PAIRS.map((pair, i) => (
-              <React.Fragment key={i}>
-                <div className="text-right pr-1 sm:pr-3" style={rise(3 + i)}>
-                  <p className="leading-[1.18]" style={{ ...F, fontWeight: 400, fontSize: 'clamp(18px, 1.9vw, 26px)', color: INK }}>{pair.left}</p>
-                </div>
-                <div className="text-left pl-1 sm:pl-3" style={rise(3 + i)}>
-                  <p className="leading-[1.18]" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(20px, 2.15vw, 30px)', color: pair.accent ? P : INK }}>{pair.right}</p>
-                </div>
-              </React.Fragment>
-            ))}
-          </div>
-        </div>
-
-        {/* innsikt — kjernebudskap (slått sammen fra «Forskjellen fra tradisjonell software») */}
-        <div className="text-center mt-16 sm:mt-24 max-w-[820px] mx-auto" style={rise(7)}>
-          <p className="leading-[1.5]" style={{ ...F, fontSize: 'clamp(16px, 1.55vw, 22px)', color: INK }}>
-            Forskjellen er ikke antall funksjoner — men at systemet selv vet hva som er <span style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>neste steg</span>, og fører deg gjennom arbeidet.
-          </p>
-        </div>
-
+      {/* ═══ HEADER ═══ */}
+      <div className="text-center max-w-[900px] mx-auto mb-9 sm:mb-12">
+        <span className="block text-[11px] font-bold uppercase tracking-[0.42em]" style={{ ...F, color: AC, ...rise(0) }}>Hvorfor vi er annerledes</span>
+        <h2 className="mt-5 tracking-[-0.038em] leading-[1.05]" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(28px, 3.8vw, 52px)', color: INK, ...rise(1) }}>
+          Slik folk alltid har <span style={{ color: AC }}>ønsket</span> at software skulle fungere.
+        </h2>
       </div>
+
+      {/* ═══ SAMMENLIGNING — to paneler ═══ */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto_1fr] gap-4 lg:gap-0 items-stretch">
+
+        {/* LEFT — tradisjonell (passiv, dempet) */}
+        <div className="rounded-[26px] px-7 sm:px-8 py-7 h-full" style={{ background: 'rgba(20,15,10,0.025)', ...rise(2) }}>
+          <span className="block text-[10px] font-bold uppercase tracking-[0.24em] mb-4" style={{ ...F, color: MUT }}>System of record</span>
+          <h3 className="tracking-[-0.02em] mb-5" style={{ ...FH, fontWeight: 700, fontSize: '21px', color: '#6e655c' }}>Tradisjonell software</h3>
+          <ul>
+            {PAIRS.map((pair, i) => (
+              <li key={i} className="flex items-center gap-3.5 py-[12px]" style={{ borderTop: i > 0 ? `1px solid ${HAIR}` : 'none', animation: anim ? `fvRowL 0.6s cubic-bezier(0.22,1,0.36,1) ${0.55 + i * 0.08}s both` : undefined, opacity: show ? undefined : 0 }}>
+                <span className="shrink-0 w-[19px] h-[19px] rounded-full flex items-center justify-center" style={{ border: '1.5px solid rgba(20,15,10,0.16)' }}>
+                  <span className="block w-[7px] h-[1.5px] rounded-full" style={{ background: 'rgba(20,15,10,0.3)' }} />
+                </span>
+                <span className="text-[15.5px] leading-[1.3]" style={{ ...F, color: '#8a8278' }}>{pair.left}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {/* MIDTEN — transformasjon */}
+        <div className="hidden lg:flex items-center justify-center px-6" style={rise(3)}>
+          <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: '#fff', boxShadow: `0 12px 32px -10px ${AC}66, 0 0 0 1px rgba(160,82,224,0.12)` }}>
+            <ArrowRight className="w-5 h-5" style={{ color: AC }} strokeWidth={2.4} />
+          </div>
+        </div>
+
+        {/* RIGHT — DigiHome (aktiv, premium) */}
+        <div className="relative rounded-[26px] px-7 sm:px-8 py-7 h-full overflow-hidden" style={{ background: '#ffffff', boxShadow: '0 32px 72px -34px rgba(160,82,224,0.42), 0 2px 12px -5px rgba(20,15,10,0.07)', ...rise(2) }}>
+          <div aria-hidden="true" className="absolute top-0 left-7 right-7 h-[2px] rounded-full" style={{ background: `linear-gradient(90deg, transparent, ${AC}, transparent)` }} />
+          <div className="flex items-center gap-2.5 mb-4">
+            <span className="h-[7px] w-[7px] rounded-full" style={{ background: AC, boxShadow: `0 0 10px ${AC}` }} />
+            <span className="text-[10px] font-bold uppercase tracking-[0.24em]" style={{ ...F, color: AC }}>System of action</span>
+          </div>
+          <h3 className="tracking-[-0.02em] mb-5" style={{ ...FH, fontWeight: 700, fontSize: '21px', color: INK }}>DigiHome</h3>
+          <ul>
+            {PAIRS.map((pair, i) => {
+              const Icon = pair.accent ? Zap : Check;
+              return (
+                <li key={i} className="relative flex items-center gap-3.5 py-[12px]" style={{ borderTop: i > 0 ? `1px solid ${HAIR}` : 'none', animation: anim ? `fvRowR 0.6s cubic-bezier(0.22,1,0.36,1) ${0.55 + i * 0.08}s both` : undefined, opacity: show ? undefined : 0 }}>
+                  {pair.accent && <span aria-hidden="true" className="absolute -inset-x-4 inset-y-[2px] rounded-2xl" style={{ background: 'rgba(160,82,224,0.07)' }} />}
+                  <span className="relative shrink-0 w-[20px] h-[20px] rounded-full flex items-center justify-center" style={{ background: pair.accent ? AC : 'rgba(160,82,224,0.12)' }}>
+                    <Icon className="w-[12px] h-[12px]" style={{ color: pair.accent ? '#fff' : AC }} strokeWidth={2.6} />
+                  </span>
+                  <span className="relative text-[16px] leading-[1.3]" style={{ ...(pair.accent ? FH : F), fontWeight: pair.accent ? 700 : 600, color: pair.accent ? AC : INK2 }}>{pair.right}</span>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      </div>
+
+      {/* ═══ PUNCHLINE ═══ */}
+      <div className="text-center mt-10 sm:mt-14 max-w-[880px] mx-auto" style={rise(7)}>
+        <p className="leading-[1.32]" style={{ ...FH, fontWeight: 600, fontSize: 'clamp(20px, 2.1vw, 30px)', color: INK }}>
+          Tradisjonell software holder orden. <span style={{ color: AC }}>DigiHome hjelper deg å drive.</span>
+        </p>
+        <p className="text-[12.5px] sm:text-[13.5px] font-medium mt-5 tracking-[0.01em]" style={{ ...F, color: MUT }}>
+          Prosesskontekst → automatisering → færre timer per bolig → høyere kapasitet per forvalter.
+        </p>
+      </div>
+
     </div>
   </SlideFrame>
   );
@@ -6903,29 +6930,61 @@ const SBrandFilm = (p: any) => {
   const anim = active && !isPdf;
   const AC = '#d298ff';
   const vidRef = React.useRef<HTMLVideoElement>(null);
-  const [muted, setMuted] = React.useState(true);
+  const [withSound, setWithSound] = React.useState(false);
 
+  // ambient autoplay (muted, loop) when slide is active
   React.useEffect(() => {
     const v = vidRef.current;
     if (!v) return;
     if (active && !isPdf) {
-      v.muted = muted;
+      if (!withSound) { v.muted = true; v.loop = true; }
       const pr: any = v.play();
       if (pr && pr.catch) pr.catch(() => {});
     } else {
       v.pause();
       try { v.currentTime = 0; } catch {}
     }
-  }, [active, isPdf, muted]);
+  }, [active, isPdf, withSound]);
 
-  // reset to muted whenever the slide goes inactive
-  React.useEffect(() => { if (!active) setMuted(true); }, [active]);
+  // reset to ambient (muted) whenever the slide goes inactive
+  React.useEffect(() => {
+    if (!active) {
+      setWithSound(false);
+      const v = vidRef.current;
+      if (v) { v.muted = true; v.loop = true; }
+    }
+  }, [active]);
+
+  // play from start, with sound
+  const playWithSound = () => {
+    const v = vidRef.current;
+    if (!v) return;
+    v.muted = false;
+    v.loop = false;
+    try { v.currentTime = 0; } catch {}
+    setWithSound(true);
+    const pr: any = v.play();
+    if (pr && pr.catch) pr.catch(() => {});
+  };
+
+  // back to muted ambient loop
+  const backToAmbient = () => {
+    const v = vidRef.current;
+    if (!v) return;
+    v.muted = true;
+    v.loop = true;
+    setWithSound(false);
+    try { v.currentTime = 0; } catch {}
+    const pr: any = v.play();
+    if (pr && pr.catch) pr.catch(() => {});
+  };
 
   return (
   <SlideFrame bg="dark" {...p}>
     <style>{`
       @keyframes bfFade { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
       @keyframes bfFrame { from { opacity: 0; transform: translateY(26px) scale(0.985); filter: blur(8px); } to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); } }
+      @keyframes bfPulse { 0% { transform: scale(1); opacity: 0.7; } 70% { transform: scale(1.5); opacity: 0; } 100% { transform: scale(1.5); opacity: 0; } }
     `}</style>
 
     {/* ambient glow */}
@@ -6935,7 +6994,7 @@ const SBrandFilm = (p: any) => {
       {/* kicker */}
       <div className="flex items-center justify-center gap-4 mb-6" style={{ animation: anim ? 'bfFade 0.8s cubic-bezier(0.22,1,0.36,1) 0.1s both' : undefined, opacity: show ? undefined : 0 }}>
         <div className="h-px w-9" style={{ background: 'rgba(255,255,255,0.28)' }} />
-        <span className="text-[11px] font-bold uppercase tracking-[0.34em]" style={{ ...F, color: AC }}>Merkevarefilm</span>
+        <span className="text-[11px] font-bold uppercase tracking-[0.34em]" style={{ ...F, color: AC }}>DigiHome</span>
         <div className="h-px w-9" style={{ background: 'rgba(255,255,255,0.28)' }} />
       </div>
 
@@ -6951,14 +7010,32 @@ const SBrandFilm = (p: any) => {
           <img src="/brandfilm-poster.jpg" alt="DigiHome merkevarefilm" className="w-full h-full object-cover" />
         ) : (
           <>
-            <video ref={vidRef} className="w-full h-full object-cover" src="/brandfilm-web.mp4" poster="/brandfilm-poster.jpg" muted={muted} loop playsInline preload="auto" />
-            {/* mute toggle */}
-            <button type="button" onClick={() => setMuted(m => !m)}
-                    className="absolute bottom-4 right-4 flex items-center gap-2 rounded-full px-3.5 py-2 transition-all hover:scale-[1.04]"
-                    style={{ background: 'rgba(10,8,14,0.55)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.14)' }}>
-              <Volume2 className="w-4 h-4 text-white" strokeWidth={2} style={{ opacity: muted ? 0.45 : 1 }} />
-              <span className="text-[11px] font-semibold text-white" style={F}>{muted ? 'Slå på lyd' : 'Lyd på'}</span>
-            </button>
+            <video ref={vidRef} className="w-full h-full object-cover" src="/brandfilm-web.mp4" poster="/brandfilm-poster.jpg" playsInline preload="auto" onEnded={backToAmbient} />
+
+            {/* ambient scrim + stor play-knapp (når filmen kjører dempet) */}
+            {!withSound && (
+              <button type="button" onClick={playWithSound} aria-label="Spill av med lyd"
+                      className="absolute inset-0 flex flex-col items-center justify-center gap-4 group cursor-pointer"
+                      style={{ background: 'linear-gradient(180deg, rgba(8,6,12,0.34) 0%, rgba(8,6,12,0.12) 42%, rgba(8,6,12,0.5) 100%)' }}>
+                <span className="relative flex items-center justify-center rounded-full transition-transform duration-300 group-hover:scale-105"
+                      style={{ width: 86, height: 86, background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)', border: '1px solid rgba(255,255,255,0.5)', boxShadow: '0 16px 50px rgba(0,0,0,0.45)' }}>
+                  <span aria-hidden="true" className="absolute inset-0 rounded-full" style={{ border: '1px solid rgba(255,255,255,0.55)', animation: anim ? 'bfPulse 2.6s ease-out infinite' : undefined }} />
+                  <Play className="w-8 h-8 text-white" style={{ marginLeft: 4 }} fill="#fff" strokeWidth={0} />
+                </span>
+                <span className="text-[12.5px] font-semibold tracking-[0.01em] px-4 py-2 rounded-full"
+                      style={{ ...F, color: '#fff', background: 'rgba(10,8,14,0.5)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.14)' }}>Spill av med lyd</span>
+              </button>
+            )}
+
+            {/* spiller med lyd: demp/tilbake til ambient */}
+            {withSound && (
+              <button type="button" onClick={backToAmbient}
+                      className="absolute bottom-4 right-4 flex items-center gap-2 rounded-full px-3.5 py-2 transition-all hover:scale-[1.04]"
+                      style={{ background: 'rgba(10,8,14,0.55)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.14)' }}>
+                <Volume2 className="w-4 h-4 text-white" strokeWidth={2} />
+                <span className="text-[11px] font-semibold text-white" style={F}>Demp</span>
+              </button>
+            )}
           </>
         )}
       </div>
@@ -7243,24 +7320,134 @@ const SDeRisk = (p: any) => {
   );
 };
 
+/* ═══ INNHOLD — profesjonell agenda (lys) · alle temaer ═══ */
+const SInnhold = (p: any) => {
+  const active = p.isActive; const isPdf = !!p.pdfMode; const show = active || isPdf; const anim = active && !isPdf;
+  useEffect(() => { p.onLight?.(active && !isPdf); }, [active, isPdf]);
+  const AC = '#a052e0'; const INK = '#0c0c0c'; const INK2 = '#1c1714'; const SUB = '#4b443d'; const MUT = '#8a8278'; const HAIR = 'rgba(20,15,10,0.1)';
+  const idxOf = (C: any) => SLIDES.findIndex((s) => s.C === C);
+  const go = (C: any) => { const i = idxOf(C); if (i >= 0) p.goTo?.(i); };
+  const SECTIONS = [
+    { n: '01', t: 'Problem & marked', items: [
+      { label: 'Utleie er blitt aktiv drift', C: SProblem },
+      { label: 'Hvorfor nå', C: SWhyNow },
+      { label: 'Markedsanalyse — FINN', C: SMarkedsbevis },
+      { label: 'Marked: Norge · Norden · 2030', C: SMarket1 },
+    ] },
+    { n: '02', t: 'Produkt & teknologi', items: [
+      { label: 'Hvorfor vi er annerledes', C: SFraVerktoyTilMotor },
+      { label: 'Slik jobber systemet', C: SSlikViJobber },
+      { label: 'Slik automatiserer systemet', C: SSlikSystemetAutomatiserer },
+      { label: 'Autopilot: live vs veikart', C: SAutopilotStatus },
+      { label: 'Produkt & demo', C: SProdukt },
+      { label: 'AI, arkitektur & økosystem', C: SAIEiendom },
+    ] },
+    { n: '03', t: 'Traksjon', items: [
+      { label: '40 boliger i Bergen', C: SAlleredeInntekter },
+      { label: 'Driftsgearing', C: SDriftsgearing },
+    ] },
+    { n: '04', t: 'Forretningsmodell', items: [
+      { label: 'Filosofi & selskapsstruktur', C: SFilosofi },
+      { label: 'Verdiflyt — Tech vs drift', C: SVerdiflyt },
+      { label: 'Egen drift + franchise', C: SBusinessModels },
+      { label: 'Den ideelle operatøren', C: SOperator },
+      { label: 'Betalingsmodell', C: SBetalingsmodell },
+    ] },
+    { n: '05', t: 'Økonomi', items: [
+      { label: 'Inntektsmodell', C: SRevenue },
+      { label: 'Unit economics', C: SUnitEconomics },
+      { label: 'Budsjett & runway', C: SBudgetRunway },
+    ] },
+    { n: '06', t: 'Team, risiko & emisjon', items: [
+      { label: 'Teamet', C: STeam },
+      { label: 'Risikoene vi beviser bort', C: SDeRisk },
+      { label: 'Emisjon: 3 MNOK', C: SAsk },
+      { label: 'Appendiks — metode', C: SMarkedKilde },
+    ] },
+  ];
+  return (
+  <SlideFrame bg="beige" {...p}>
+    <style>{`
+      @keyframes inFade { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+      @keyframes inHead { from { opacity: 0; transform: translateY(22px); filter: blur(8px); } 60% { filter: blur(0); } to { opacity: 1; transform: translateY(0); filter: blur(0); } }
+      @keyframes inCol { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+      .inItem { color: ${INK2}; transition: color 0.22s ease, transform 0.24s cubic-bezier(0.22,1,0.36,1); }
+      .inItem:hover { color: ${AC}; transform: translateX(4px); }
+      .inNum { color: ${MUT}; transition: color 0.22s ease, opacity 0.22s ease; opacity: 0.55; }
+      .inItem:hover .inNum { color: ${AC}; opacity: 1; }
+      .inArrow { opacity: 0; transform: translateX(-6px); transition: opacity 0.22s ease, transform 0.24s cubic-bezier(0.22,1,0.36,1); }
+      .inItem:hover .inArrow { opacity: 1; transform: translateX(0); }
+    `}</style>
+    <DotGrid maskCenter="50% 12%" opacity={0.38} />
+
+    <div className="relative z-10 w-full max-w-[1120px] mx-auto px-6 sm:px-12 my-auto">
+      <div className="flex items-end justify-between flex-wrap gap-x-6 gap-y-3 mb-9 sm:mb-12">
+        <div>
+          <span className="block text-[12px] font-bold uppercase tracking-[0.38em]" style={{ ...F, color: AC, animation: anim ? 'inFade 0.7s cubic-bezier(0.22,1,0.36,1) 0.1s both' : undefined, opacity: show ? undefined : 0 }}>Investorpresentasjon</span>
+          <h2 className="tracking-[-0.035em] leading-[1.0] mt-4" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(36px, 4.6vw, 64px)', color: INK, animation: anim ? 'inHead 0.95s cubic-bezier(0.22,1,0.36,1) 0.25s both' : undefined, opacity: show ? undefined : 0 }}>
+            Innhold
+          </h2>
+        </div>
+        <p className="text-[13.5px] font-normal pb-2 max-w-[280px] text-right leading-[1.45]" style={{ ...F, color: SUB, animation: anim ? 'inFade 0.8s ease 0.42s both' : undefined, opacity: show ? undefined : 0 }}>
+          Trykk på et tema for å hoppe rett dit. <span style={{ color: MUT }}>· DigiHome 2026</span>
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-9 lg:gap-x-12 gap-y-8 sm:gap-y-9">
+        {SECTIONS.map((s, i) => (
+          <div key={s.n} className="pt-4" style={{ borderTop: `1.5px solid ${HAIR}`, animation: anim ? `inCol 0.75s cubic-bezier(0.22,1,0.36,1) ${0.5 + i * 0.09}s both` : undefined, opacity: show ? undefined : 0 }}>
+            <div className="flex items-baseline gap-2.5 mb-2">
+              <span className="tabular-nums tracking-[-0.02em]" style={{ ...FH, fontWeight: 700, fontSize: '16px', color: AC }}>{s.n}</span>
+              <span className="tracking-[-0.01em]" style={{ ...FH, fontWeight: 700, fontSize: '17.5px', color: INK2 }}>{s.t}</span>
+            </div>
+            <ul>
+              {s.items.map((it, j) => {
+                const num = idxOf(it.C);
+                const label2 = num >= 0 ? String(num + 1).padStart(2, '0') : '';
+                return (
+                  <li key={it.label} style={{ borderTop: j > 0 ? `1px solid ${HAIR}` : 'none' }}>
+                    <button
+                      type="button"
+                      onClick={() => go(it.C)}
+                      className="inItem w-full flex items-center gap-2.5 text-left py-[8.5px] focus:outline-none focus-visible:outline-none"
+                    >
+                      <span className="inArrow shrink-0 text-[13px] leading-none" style={{ color: AC }}>→</span>
+                      <span className="flex-1 text-[14.5px] leading-[1.35]" style={{ ...F, color: 'inherit' }}>{it.label}</span>
+                      <span className="inNum tabular-nums text-[11.5px] font-semibold tracking-[0.02em] shrink-0" style={{ ...F }}>{label2}</span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ))}
+      </div>
+    </div>
+  </SlideFrame>
+  );
+};
+
+
 
 
 
 const SLIDES: { C: any; light: boolean; animated?: boolean }[] = [
   { C: S1, light: false },                          // 01 · Cover (mørk — Bergen cityscape)
   { C: SBrandFilm, light: false },                  // 02 · Merkevarefilm (mørk — kinematisk brand-film)
-  { C: SVisionIntro, light: true, animated: true }, // 03 · Visjon — krok (mørk→lys reveal)
+  { C: SInnhold, light: false },                    // 03 · Innhold — minimalistisk agenda (mørk)
+  { C: SVisionIntro, light: true, animated: true }, // 04 · Visjon — krok (mørk→lys reveal) — «Hvorfor vi bygde DigiHome»
+  { C: STeam, light: true },                        // · Teamet — flyttet hit, rett etter «Hvorfor vi bygde DigiHome» (founder-market fit tidlig)
   { C: SProblem, light: true },                     // 03 · Problemet — status quo (beige, flyttet frem)
   { C: SWhyNow, light: true },                      // 04 · Hvorfor nå — timing-vinduet (beige, flyttet frem)
   // { C: SWhyDH, light: true },                    // SKJULT etter ønske — «Løsningen» (Ett system som gjør jobben) overlappet «Fra verktøy til motor» + hadde utdatert korttid-innhold. Koden beholdt.
   { C: SFraVerktoyTilMotor, light: true },          // 05 · Løsningen / Konseptet — fra verktøy (proptech) til motor
+  { C: SProdukt, light: true },                     // · Produktet — DigiHome-plattformen (flyttet hit, rett etter «Slik folk alltid har ønsket…»)
   { C: SSlikViJobber, light: true },                // 06 · Slik jobber vi — verdikjeden (utleiemegling + forvaltning)
   { C: SSlikSystemetAutomatiserer, light: true },   // 07 · Slik automatiserer systemet — faktabasert, faner + teknologi
   { C: SAutopilotStatus, light: true },             // · Autopilot-status — hva som faktisk kjører i dag vs. veikart
   { C: SDriftsgearing, light: true },               // 08 · Driftsgearingen — payoff (samme forvalter, ~4×)
   { C: SAlleredeInntekter, light: true },           // 09 · Traksjon — allerede i drift (flyttet tidlig, rett etter payoff)
-  { C: SProdukt, light: true },                     // 07 · Produktet — én motor, to produkter
-  { C: SAIEiendom, light: true },                   // 08 · AI som forstår eiendom — 3 AI-moats
+  { C: SAIEiendom, light: true },                   // · AI som forstår eiendom — 3 AI-moats
   { C: SArkitektur, light: true },                  // 09 · Arkitekturen — moat (animert, skjøvet bakover)
   { C: SOkosystem, light: true },                   // · Økosystem — integrasjoner (BankID, FINN, Vipps, regnskap m.m.)
   { C: SFilosofi, light: true },                    // 10 · Filosofien bak DigiHome (rett etter arkitektur)
@@ -7277,7 +7464,6 @@ const SLIDES: { C: any; light: boolean; animated?: boolean }[] = [
   { C: SRevenue, light: true },                     // 18 · Inntektsmodell
   { C: SUnitEconomics, light: true },               // 19 · Unit economics
   { C: SBudgetRunway, light: true },                // 20 · Budsjett & runway (beige)
-  { C: STeam, light: true },                        // 21 · Teamet (founder-market fit, mot slutten)
   { C: SDeRisk, light: true },                      // · De-risking — ærlig om risiko + plan
   { C: SAsk, light: true },                         // 22 · Pre-seed emisjon (beige)
   { C: S9, light: false },                          // 23 · Closing (mørk — Bergen harbor)
@@ -7442,8 +7628,8 @@ export default function Presentasjon() {
       {SLIDES.map((slide, i: number) => {
         const Slide: any = slide.C;
         return (
-          <div key={i} className={`absolute inset-0 overflow-hidden transition-all duration-700 ease-[cubic-bezier(0.4,0,0.2,1)] ${i === c ? 'opacity-100 scale-100' : i < c ? 'opacity-0 scale-[0.96]' : 'opacity-0 scale-[1.04]'}`} style={{ pointerEvents: i === c ? 'auto' : 'none', visibility: Math.abs(i - c) <= 1 ? 'visible' : 'hidden' }}>
-            <Slide slideNum={i + 1} total={SLIDES.length} isActive={i === c} onLight={slide.light ? setChromeLight : undefined} onAnimationComplete={slide.animated ? handleS2Complete : undefined} />
+          <div key={i} className={`absolute inset-0 overflow-hidden transition-all duration-700 ease-[cubic-bezier(0.4,0,0.2,1)] ${i === c ? 'opacity-100 scale-100' : i < c ? 'opacity-0 scale-[0.96]' : 'opacity-0 scale-[1.04]'}`} style={{ pointerEvents: i === c ? 'auto' : 'none', visibility: Math.abs(i - c) <= 1 ? 'visible' : 'hidden', zIndex: i === c ? 10 : 1 }}>
+            <Slide slideNum={i + 1} total={SLIDES.length} isActive={i === c} goTo={setC} onLight={slide.light ? setChromeLight : undefined} onAnimationComplete={slide.animated ? handleS2Complete : undefined} />
           </div>
         );
       })}
