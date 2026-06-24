@@ -6543,6 +6543,101 @@ const SSelskapsstruktur = (p: any) => {
              false → mørk bakgrunn (lys nav-chrome / piler)
    animated: true  → slide med tekst-animasjon (kobles til onAnimationComplete + s2-lås)
    Lys/mørk følger nå hvert slide-objekt — ingen hardkodede indeks-arrays.            */
+/* ═══ Økosystem — integrasjoner (DigiHome OS koblet til bransjen) ═══ */
+const SOkosystem = (p: any) => {
+  const active = p.isActive;
+  const isPdf = !!p.pdfMode;
+  const show = active || isPdf;
+  const anim = active && !isPdf;
+  useEffect(() => { p.onLight?.(active && !isPdf); }, [active, isPdf]);
+
+  const AC = '#a052e0'; const INK = '#0c0c0c'; const SUB = '#57514a'; const MUT = '#8a8278'; const HAIR = 'rgba(20,15,10,0.09)';
+
+  const GROUPS = [
+    {
+      label: 'Identitet & data', Icon: Shield, desc: 'Verifisering og automatiske registeroppslag.',
+      items: [{ name: 'BankID', color: '#1b1b3a' }, { name: 'Infotorg', color: '#1f4e79' }, { name: 'Kartverket', color: '#00736b' }],
+    },
+    {
+      label: 'Annonsekanaler', Icon: Radio, desc: 'Publisering og distribusjon i alle relevante kanaler.',
+      items: [{ name: 'FINN.no', color: '#0063fb' }, { name: 'Hybel.no', color: '#0ea5a4' }, { name: 'airbnb', color: '#ff5a5f' }, { name: 'Booking.com', color: '#003580' }],
+    },
+    {
+      label: 'Betaling & økonomi', Icon: CreditCard, desc: 'Innkreving, oppgjør og regnskap — automatisk.',
+      items: [{ name: 'vipps', color: '#ff5b24' }, { name: 'PowerOffice', color: '#e8500e' }, { name: 'Tripletex', color: '#2b6cb0' }, { name: 'Fiken', color: '#00a878' }],
+    },
+  ];
+
+  let d = 0; // stagger-teller
+
+  return (
+  <SlideFrame bg="beige" {...p}>
+    <style>{`
+      @keyframes okoFade { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+      @keyframes okoHead { from { opacity: 0; transform: translateY(22px); filter: blur(8px); } 60% { filter: blur(0); } to { opacity: 1; transform: translateY(0); filter: blur(0); } }
+      @keyframes okoTile { from { opacity: 0; transform: translateY(14px) scale(0.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
+    `}</style>
+    <div aria-hidden="true" className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse at 50% 8%, rgba(160,82,224,0.05) 0%, transparent 55%)' }} />
+    <DotGrid maskCenter="50% 14%" opacity={0.4} />
+
+    <div className="relative z-10 w-full max-w-[1240px] mx-auto px-6 sm:px-12 my-auto">
+      {/* HEADER */}
+      <div className="max-w-[880px]">
+        <span className="block text-[11px] font-bold uppercase tracking-[0.4em]" style={{ ...F, color: AC, animation: anim ? 'okoFade 0.7s cubic-bezier(0.22,1,0.36,1) 0.1s both' : undefined, opacity: show ? undefined : 0 }}>Økosystem</span>
+        <h2 className="tracking-[-0.035em] leading-[1.04] mt-5" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(28px, 3.6vw, 48px)', color: INK, animation: anim ? 'okoHead 0.95s cubic-bezier(0.22,1,0.36,1) 0.25s both' : undefined, opacity: show ? undefined : 0 }}>
+          Ett system — <span style={{ color: AC }}>koblet til hele bransjen.</span>
+        </h2>
+        <p className="text-[14px] sm:text-[15.5px] font-normal leading-[1.55] mt-5 max-w-[700px]" style={{ ...F, color: SUB, animation: anim ? 'okoFade 0.8s cubic-bezier(0.22,1,0.36,1) 0.5s both' : undefined, opacity: show ? undefined : 0 }}>
+          DigiHome-OS-et står i sentrum og snakker med verktøyene utleiere allerede stoler på — identitet, kanaler, betaling og regnskap flyter sømløst inn og ut.
+        </p>
+      </div>
+
+      {/* KATEGORIER */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-9 mt-9 sm:mt-11">
+        {GROUPS.map((g, gi) => {
+          const GIcon = g.Icon;
+          return (
+            <div key={g.label} className="relative" style={{ animation: anim ? `okoFade 0.7s cubic-bezier(0.22,1,0.36,1) ${0.55 + gi * 0.12}s both` : undefined, opacity: show ? undefined : 0 }}>
+              <div className="flex items-center gap-2.5 mb-1.5">
+                <span className="flex items-center justify-center w-8 h-8 rounded-lg shrink-0" style={{ background: `${AC}10` }}>
+                  <GIcon className="w-4 h-4" style={{ color: AC }} strokeWidth={2} />
+                </span>
+                <span className="text-[12px] font-bold uppercase tracking-[0.16em]" style={{ ...F, color: INK }}>{g.label}</span>
+              </div>
+              <p className="text-[12px] leading-[1.45] mb-4 ml-[42px]" style={{ ...F, color: MUT }}>{g.desc}</p>
+              <div className="space-y-3">
+                {g.items.map((it) => {
+                  const di = d++;
+                  return (
+                    <div key={it.name}
+                         className="flex items-center justify-center h-[58px] rounded-2xl"
+                         style={{ background: '#fff', boxShadow: '0 1px 2px rgba(20,15,10,0.04), 0 16px 32px -24px rgba(20,15,10,0.28)', border: `1px solid ${HAIR}`,
+                                  animation: anim ? `okoTile 0.6s cubic-bezier(0.22,1,0.36,1) ${0.7 + di * 0.05}s both` : undefined, opacity: show ? undefined : 0 }}>
+                      <span className="text-[19px] sm:text-[20px] tracking-[-0.01em]" style={{ ...FH, fontWeight: 700, color: it.color }}>{it.name}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* FOOTER — åpen arkitektur */}
+      <div className="mt-8 sm:mt-10 pt-6 flex items-center gap-3 flex-wrap"
+           style={{ borderTop: `1px solid ${HAIR}`, animation: anim ? 'okoFade 0.9s cubic-bezier(0.22,1,0.36,1) 1.15s both' : undefined, opacity: show ? undefined : 0 }}>
+        <span className="flex items-center justify-center w-7 h-7 rounded-lg shrink-0" style={{ background: `${AC}10` }}>
+          <Layers className="w-4 h-4" style={{ color: AC }} strokeWidth={2} />
+        </span>
+        <p className="text-[13px] sm:text-[14px] leading-[1.5]" style={{ ...F, color: SUB }}>
+          <span style={{ color: INK, fontWeight: 600 }}>Åpen API-arkitektur.</span> Nye integrasjoner kobles på uten å bygge om kjernen — økosystemet vokser med DigiHome.
+        </p>
+      </div>
+    </div>
+  </SlideFrame>
+  );
+};
+
 const SLIDES: { C: any; light: boolean; animated?: boolean }[] = [
   { C: S1, light: false },                          // 01 · Cover (mørk — Bergen cityscape)
   { C: SVisionIntro, light: true, animated: true }, // 02 · Visjon — krok (mørk→lys reveal)
@@ -6556,6 +6651,7 @@ const SLIDES: { C: any; light: boolean; animated?: boolean }[] = [
   { C: SProdukt, light: true },                     // 07 · Produktet — én motor, to produkter
   { C: SAIEiendom, light: true },                   // 08 · AI som forstår eiendom — 3 AI-moats
   { C: SArkitektur, light: true },                  // 09 · Arkitekturen — moat (animert, skjøvet bakover)
+  { C: SOkosystem, light: true },                   // · Økosystem — integrasjoner (BankID, FINN, Vipps, regnskap m.m.)
   { C: SFilosofi, light: true },                    // 10 · Filosofien bak DigiHome (rett etter arkitektur)
   // { C: SDualUSP, light: true },                  // SKJULT etter ønske — «Tre unike aspekter». Koden beholdt.
   { C: SSelskapsstruktur, light: true },            // · Selskapsstruktur — DigiHome Tech AS + DigiHome AS under paraply
