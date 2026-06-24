@@ -543,6 +543,15 @@ const STeam = (p: any) => {
       lead: 'Advokat og partner i Hoffmann Thinn. Tegnet selskapsstrukturen som skal bære vekst og emisjon.',
       meta: 'Struktur, kontrakt og compliance · Spesialist på M&A og eiendomstransaksjoner · Investorklarhet',
     },
+    {
+      name: 'Kevin',
+      role: 'AI-konsulent · Rådgiver',
+      field: 'AI',
+      img: '/team/kevin-ai.jpg',
+      imgStyle: { objectPosition: '50% 16%' },
+      lead: 'Placeholder-bio — oppdateres. AI-rådgiver med fokus på praktisk og ansvarlig AI i produkt og drift.',
+      meta: 'Rådgir på AI-arkitektur, automatisering og modellvalg · profil fylles inn',
+    },
   ];
 
   return (
@@ -568,7 +577,7 @@ const STeam = (p: any) => {
           </h2>
           <span className="block mt-8 mb-7 h-px rounded-full" style={{ width: 64, background: `linear-gradient(90deg, ${AC}, transparent)`, transformOrigin: 'left', animation: anim ? 'teamGrow 0.9s cubic-bezier(0.22,1,0.36,1) 0.5s both' : undefined }} />
           <p className="text-[15px] sm:text-[16.5px] font-normal leading-[1.62] max-w-[400px]" style={{ ...F, color: SUB }}>
-            Tre fagfelt — eiendom, teknologi og jus — kjent fra innsiden, før første eksterne kapitalrunde.
+            Fire fagfelt — eiendom, teknologi, jus og AI — kjent fra innsiden, før første eksterne kapitalrunde.
           </p>
           <div className="mt-8 flex items-center gap-2.5 text-[12.5px] font-semibold tracking-[-0.005em]" style={{ ...F, color: INK2 }}>
             <span>Eiendom</span>
@@ -576,6 +585,8 @@ const STeam = (p: any) => {
             <span>Teknologi</span>
             <span className="w-1 h-1 rounded-full" style={{ backgroundColor: AC }} />
             <span>Jus</span>
+            <span className="w-1 h-1 rounded-full" style={{ backgroundColor: AC }} />
+            <span>AI</span>
           </div>
         </div>
 
