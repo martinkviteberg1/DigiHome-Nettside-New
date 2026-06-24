@@ -6319,31 +6319,29 @@ const SSlikSystemetAutomatiserer = (p: any) => {
         </p>
       </div>
 
-      {/* MAIN — minimalistisk steg-rail + kantløst redaksjonelt detaljfelt */}
+      {/* MAIN — ikon-drevet steg-rail + kantløst redaksjonelt detaljfelt */}
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(270px,0.82fr)_1.5fr] gap-8 lg:gap-14 mt-9 sm:mt-11 items-start relative z-50"
            style={{ animation: anim ? 'saFade 0.8s cubic-bezier(0.22,1,0.36,1) 0.55s both' : undefined, opacity: show ? undefined : 0 }}>
 
-        {/* ── VENSTRE: minimalistisk stepper ── */}
+        {/* ── VENSTRE: ikon-stepper ── */}
         <div className="relative">
           {/* fremdriftstråd (bakgrunn) */}
-          <div aria-hidden="true" className="absolute pointer-events-none" style={{ left: 17, top: 30, bottom: 30, width: 1.5, background: HAIR, borderRadius: 2 }} />
+          <div aria-hidden="true" className="absolute pointer-events-none" style={{ left: 19, top: 32, bottom: 32, width: 1.5, background: HAIR, borderRadius: 2 }} />
           {/* fremdriftstråd (fyll) */}
-          <div aria-hidden="true" className="absolute pointer-events-none" style={{ left: 17, top: 30, width: 1.5, height: `calc((100% - 60px) * ${tab / (TABS.length - 1)})`, background: `linear-gradient(180deg, ${AC}, ${AC}99)`, borderRadius: 2, transition: 'height 0.55s cubic-bezier(0.4,0,0.2,1)' }} />
+          <div aria-hidden="true" className="absolute pointer-events-none" style={{ left: 19, top: 32, width: 1.5, height: `calc((100% - 64px) * ${tab / (TABS.length - 1)})`, background: `linear-gradient(180deg, ${AC}, ${AC}99)`, borderRadius: 2, transition: 'height 0.55s cubic-bezier(0.4,0,0.2,1)' }} />
 
           <div className="relative space-y-0.5">
             {TABS.map((tb, i) => {
-              const on = i === tab; const done = i < tab;
+              const on = i === tab; const done = i < tab; const RIcon = tb.Icon;
               return (
                 <button key={tb.n} onClick={() => pick(i)} type="button"
                   className="group w-full flex items-center gap-4 rounded-xl pr-3 py-3 text-left transition-colors duration-300 hover:bg-[rgba(20,15,10,0.025)]"
                   style={{ animation: anim ? `saRowIn 0.5s cubic-bezier(0.22,1,0.36,1) ${0.6 + i * 0.07}s both` : undefined, opacity: show ? undefined : 0 }}>
-                  {/* node */}
-                  <span className="relative z-10 flex items-center justify-center w-9 h-9 rounded-full shrink-0 transition-all duration-300"
+                  {/* ikon-node */}
+                  <span className="relative z-10 flex items-center justify-center w-10 h-10 rounded-full shrink-0 transition-all duration-300"
                         style={{ background: (on || done) ? AC : '#f3efe9', border: (on || done) ? 'none' : `1px solid ${HAIR}`,
                                  animation: (on && anim) ? 'saGlow 2.8s ease-in-out infinite' : undefined }}>
-                    {done
-                      ? <Check className="w-4 h-4 text-white" strokeWidth={3} />
-                      : <span className="text-[12px] font-bold tabular-nums" style={{ ...F, color: on ? '#fff' : MUT }}>{tb.n}</span>}
+                    <RIcon className="w-[18px] h-[18px] transition-colors duration-300" style={{ color: (on || done) ? '#fff' : MUT }} strokeWidth={2} />
                   </span>
                   {/* etikett */}
                   <span className="min-w-0 flex-1">
@@ -6358,44 +6356,47 @@ const SSlikSystemetAutomatiserer = (p: any) => {
         </div>
 
         {/* ── HØYRE: kantløst redaksjonelt detaljfelt ── */}
-        <div key={tab} className="relative lg:pl-14 lg:border-l overflow-hidden" style={{ borderColor: HAIR, animation: anim ? 'saPanel 0.55s cubic-bezier(0.22,1,0.36,1) both' : undefined }}>
-          {/* stort ghost-tall */}
-          <span aria-hidden="true" className="absolute -top-8 right-0 pointer-events-none select-none tabular-nums leading-none" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(120px, 15vw, 210px)', color: INK, opacity: 0.04 }}>{t.n}</span>
-
-          <div className="relative z-10">
-            {/* eyebrow + ikon */}
-            <div className="flex items-center gap-3">
-              <Icon className="w-[26px] h-[26px]" style={{ color: AC }} strokeWidth={1.8} />
-              <span className="text-[10.5px] font-bold uppercase tracking-[0.28em]" style={{ ...F, color: AC }}>Steg {t.n} <span style={{ color: MUT }}>/ 0{TABS.length}</span></span>
-            </div>
-            <h3 className="text-[28px] sm:text-[36px] tracking-[-0.025em] leading-[1.02] mt-4" style={{ ...FH, fontWeight: 700, color: INK }}>{t.name}</h3>
-            <p className="text-[11.5px] uppercase tracking-[0.16em] font-semibold mt-2.5" style={{ ...F, color: MUT }}>{t.sub}</p>
-
-            <p className="text-[14.5px] sm:text-[15.5px] font-normal leading-[1.6] mt-6 max-w-[600px]" style={{ ...F, color: SUB }}>{t.desc}</p>
-
-            {/* sjekkliste — hårlinje-separert */}
-            <div className="mt-7">
-              {t.points.map((pt, i) => (
-                <div key={i} className="flex items-start gap-3.5 py-3.5" style={{ borderTop: i === 0 ? 'none' : `1px solid ${HAIR}` }}>
-                  <Check className="w-[17px] h-[17px] mt-px shrink-0" style={{ color: AC }} strokeWidth={2.4} />
-                  <span className="text-[13.5px] sm:text-[14px] font-normal leading-[1.5]" style={{ ...F, color: '#2a2520' }}>{pt}</span>
-                </div>
+        <div key={tab} className="relative lg:pl-14 lg:border-l" style={{ borderColor: HAIR, animation: anim ? 'saPanel 0.55s cubic-bezier(0.22,1,0.36,1) both' : undefined }}>
+          {/* topp: premium ikon-tile + nummerløs fremdriftsindikator */}
+          <div className="flex items-center justify-between">
+            <span className="flex items-center justify-center w-[54px] h-[54px] rounded-2xl shrink-0" style={{ background: `${AC}0f` }}>
+              <Icon className="w-6 h-6" style={{ color: AC }} strokeWidth={1.9} />
+            </span>
+            <div className="flex items-center gap-1.5">
+              {TABS.map((_, i) => (
+                <span key={i} className="h-1.5 rounded-full transition-all duration-500"
+                      style={{ width: i === tab ? 26 : 14, background: i === tab ? AC : (i < tab ? `${AC}5e` : 'rgba(20,15,10,0.10)') }} />
               ))}
             </div>
+          </div>
 
-            {/* teknologi-rad */}
-            <div className="mt-7 pt-6 flex flex-wrap items-center gap-x-6 gap-y-3" style={{ borderTop: `1px solid ${HAIR}` }}>
-              <span className="text-[10px] font-bold uppercase tracking-[0.26em]" style={{ ...F, color: MUT }}>Teknologi</span>
-              {t.tech.map((tc) => (
-                <span key={tc} className="inline-flex items-center gap-2 text-[12.5px] font-semibold" style={{ ...F, color: INK }}>
-                  <span className="w-1.5 h-1.5 rounded-full" style={{ background: AC }} />{tc}
-                </span>
-              ))}
-              <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 ml-auto" style={{ background: `${AC}10` }}>
-                <Zap className="w-3.5 h-3.5" style={{ color: AC }} strokeWidth={2.4} />
-                <span className="text-[10px] font-bold uppercase tracking-[0.12em]" style={{ ...F, color: AC }}>Automatisert</span>
+          <h3 className="text-[29px] sm:text-[38px] tracking-[-0.025em] leading-[1.02] mt-6" style={{ ...FH, fontWeight: 700, color: INK }}>{t.name}</h3>
+          <p className="text-[11.5px] uppercase tracking-[0.18em] font-semibold mt-3" style={{ ...F, color: MUT }}>{t.sub}</p>
+
+          <p className="text-[14.5px] sm:text-[15.5px] font-normal leading-[1.6] mt-6 max-w-[600px]" style={{ ...F, color: SUB }}>{t.desc}</p>
+
+          {/* sjekkliste — hårlinje-separert */}
+          <div className="mt-7">
+            {t.points.map((pt, i) => (
+              <div key={i} className="flex items-start gap-3.5 py-3.5" style={{ borderTop: i === 0 ? 'none' : `1px solid ${HAIR}` }}>
+                <Check className="w-[17px] h-[17px] mt-px shrink-0" style={{ color: AC }} strokeWidth={2.4} />
+                <span className="text-[13.5px] sm:text-[14px] font-normal leading-[1.5]" style={{ ...F, color: '#2a2520' }}>{pt}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* teknologi-rad */}
+          <div className="mt-7 pt-6 flex flex-wrap items-center gap-x-6 gap-y-3" style={{ borderTop: `1px solid ${HAIR}` }}>
+            <span className="text-[10px] font-bold uppercase tracking-[0.26em]" style={{ ...F, color: MUT }}>Teknologi</span>
+            {t.tech.map((tc) => (
+              <span key={tc} className="inline-flex items-center gap-2 text-[12.5px] font-semibold" style={{ ...F, color: INK }}>
+                <span className="w-1.5 h-1.5 rounded-full" style={{ background: AC }} />{tc}
               </span>
-            </div>
+            ))}
+            <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 ml-auto" style={{ background: `${AC}10` }}>
+              <Zap className="w-3.5 h-3.5" style={{ color: AC }} strokeWidth={2.4} />
+              <span className="text-[10px] font-bold uppercase tracking-[0.12em]" style={{ ...F, color: AC }}>Automatisert</span>
+            </span>
           </div>
         </div>
       </div>
