@@ -3125,17 +3125,21 @@ const SUnitEconomics = (p: any) => {
   useEffect(() => { p.onLight?.(active && !isPdf); }, [active, isPdf]);
   const AC = '#a052e0', INK = '#0c0c0c', INK2 = '#1c1714', SUB = '#57514a', MUT = '#8a8278';
   const HAIR = 'rgba(20,15,10,0.10)';
-  // ── Bottom-up modell · EGEN FORVALTNING (per enhet, langtid) ──
+  // ── Bottom-up modell · EGEN FORVALTNING (per enhet, langtid · by-snitt) ──
+  const N = {
+    honorar: '2\u2009000', megling: '300', brutto: '2\u2009300', drift: '300', db: '2\u2009000',
+    cac: '4\u2009500', marked: '2\u2009100', onboard: '2\u2009400', placement: '9\u2009000',
+  };
   const revRows = [
-    { label: 'Forvaltningshonorar', sub: '10 % av ~13 000 kr leie', value: '1 300' },
-    { label: 'Utleiemegling', sub: 'amortisert per leieforhold', value: '215' },
+    { label: 'Forvaltningshonorar', sub: '10 % av ~20 000 kr leie', value: N.honorar },
+    { label: 'Utleiemegling', sub: 'amortisert per leieforhold', value: N.megling },
   ];
   const onboard = ['Ringe kunde · 0,3 t', 'Befaring · 2 t', 'Lag annonse · 0,3 t', '1 visning · 1,5 t', 'Kontrakt · 0,1 t', 'Overtagelse · 1,5 t'];
   const stats = [
-    { v: '~1 305', u: 'kr/mnd', k: 'Dekningsbidrag', note: '~86 % margin per enhet' },
-    { v: '~3', u: 'mnd', k: 'Tilbakebetaling', note: 'CAC ÷ dekningsbidrag' },
-    { v: '~11', u: ':1', k: 'LTV / CAC', note: '~33 mnd botid · <3 % churn' },
-    { v: '~86', u: '%', k: 'Bruttomargin', note: 'lav marginalkostnad per enhet' },
+    { v: '~2\u2009000', u: 'kr/mnd', k: 'Dekningsbidrag', note: '~87 % margin per enhet' },
+    { v: '~2', u: 'mnd', k: 'Tilbakebetaling', note: 'CAC ÷ dekningsbidrag' },
+    { v: '~15', u: ':1', k: 'LTV / CAC', note: '~33 mnd botid · <3 % churn' },
+    { v: '~87', u: '%', k: 'Bruttomargin', note: 'lav marginalkostnad per enhet' },
   ];
 
   return (
@@ -3175,104 +3179,116 @@ const SUnitEconomics = (p: any) => {
       <div className="grid grid-cols-1 lg:grid-cols-[1.55fr_1fr] gap-6 lg:gap-7 items-stretch">
 
         {/* ── VENSTRE: per forvaltet enhet (lys, detaljert ledger) ── */}
-        <div className="relative rounded-[24px] p-6 sm:p-8 flex flex-col"
-             style={{ background: '#fff', boxShadow: '0 2px 4px rgba(20,15,10,0.05), 0 26px 64px -28px rgba(20,15,10,0.22)',
+        <div className="relative rounded-[28px] p-7 sm:p-9 flex flex-col overflow-hidden"
+             style={{ background: '#fff', boxShadow: '0 2px 4px rgba(20,15,10,0.04), 0 30px 70px -30px rgba(20,15,10,0.22)',
                       animation: anim ? 'ueCardIn 0.85s cubic-bezier(0.22,1,0.36,1) 0.55s both' : undefined, opacity: show ? undefined : 0 }}>
+          <div aria-hidden="true" className="absolute inset-x-0 top-0 h-px" style={{ background: `linear-gradient(90deg, transparent, ${AC}40, transparent)` }} />
           <div className="flex items-center justify-between mb-1.5">
             <span className="text-[10px] font-bold uppercase tracking-[0.24em]" style={{ ...F, color: AC }}>Per forvaltet enhet</span>
             <span className="text-[9.5px] font-semibold uppercase tracking-[0.12em] px-2.5 py-1 rounded-full" style={{ ...F, color: SUB, background: 'rgba(20,15,10,0.04)' }}>Egen drift · langtid</span>
           </div>
-          <h3 className="text-[18px] sm:text-[20px] tracking-[-0.02em] mb-5" style={{ ...FH, fontWeight: 700, color: INK }}>Slik tjener én enhet penger</h3>
+          <h3 className="text-[18px] sm:text-[21px] tracking-[-0.02em] mb-6" style={{ ...FH, fontWeight: 700, color: INK }}>Slik tjener én enhet penger</h3>
 
           {/* MÅNEDLIG: inntekt → dekningsbidrag */}
-          <div className="space-y-2.5">
+          <div className="space-y-3">
             {revRows.map((r, i) => (
               <div key={i} className="flex items-baseline justify-between gap-3">
                 <span className="text-[13px]" style={{ ...F, color: INK2 }}>{r.label} <span className="text-[11px]" style={{ color: MUT }}>· {r.sub}</span></span>
-                <span className="text-[13px] font-semibold tabular-nums shrink-0" style={{ ...F, color: INK }}>+{r.value} kr</span>
+                <span className="text-[13.5px] font-semibold tabular-nums shrink-0" style={{ ...F, color: INK }}>+{r.value} kr</span>
               </div>
             ))}
             {/* brutto-bar */}
-            <div className="pt-1.5">
-              <div className="h-2.5 w-full rounded-full overflow-hidden flex" style={{ background: 'rgba(20,15,10,0.06)' }}>
-                <div style={{ width: '85.8%', background: AC }} />
-                <div style={{ width: '14.2%', background: `${AC}66` }} />
+            <div className="pt-1">
+              <div className="h-3 w-full rounded-full overflow-hidden flex" style={{ background: 'rgba(20,15,10,0.05)' }}>
+                <div style={{ width: '87%', background: AC }} />
+                <div style={{ width: '13%', background: `${AC}5e` }} />
               </div>
-              <div className="flex items-baseline justify-between mt-1.5">
-                <span className="text-[11px] font-medium uppercase tracking-[0.1em]" style={{ ...F, color: MUT }}>Brutto inntekt</span>
-                <span className="text-[13px] font-bold tabular-nums" style={{ ...F, color: INK }}>1 515 kr/mnd</span>
+              <div className="flex items-baseline justify-between mt-2">
+                <span className="text-[10.5px] font-semibold uppercase tracking-[0.12em]" style={{ ...F, color: MUT }}>Brutto inntekt</span>
+                <span className="text-[13.5px] font-bold tabular-nums" style={{ ...F, color: INK }}>{N.brutto} kr/mnd</span>
               </div>
             </div>
             {/* kostnad */}
-            <div className="flex items-baseline justify-between gap-3 pt-0.5">
-              <span className="text-[13px]" style={{ ...F, color: INK2 }}>− Kostnad å betjene <span className="text-[11px]" style={{ color: MUT }}>· tilsyn ~0,4 t + AI/infra</span></span>
-              <span className="text-[13px] font-semibold tabular-nums shrink-0" style={{ ...F, color: SUB }}>−210 kr</span>
-            </div>
-            {/* dekningsbidrag-bar (highlight) */}
-            <div className="pt-1.5">
-              <div className="h-2.5 w-full rounded-full overflow-hidden" style={{ background: 'rgba(20,15,10,0.06)' }}>
-                <div className="h-full rounded-full" style={{ width: '86.1%', background: `linear-gradient(90deg, ${AC}, ${AC}cc)`, boxShadow: `0 0 16px ${AC}55` }} />
-              </div>
-              <div className="flex items-baseline justify-between mt-1.5">
-                <span className="text-[13px] font-bold tracking-[-0.01em]" style={{ ...FH, color: INK }}>Dekningsbidrag</span>
-                <span className="text-[14px] font-bold tabular-nums" style={{ ...F, color: AC }}>1 305 kr/mnd · ~86 %</span>
-              </div>
+            <div className="flex items-baseline justify-between gap-3 pt-1">
+              <span className="text-[13px]" style={{ ...F, color: INK2 }}>− Kostnad å betjene <span className="text-[11px]" style={{ color: MUT }}>· tilsyn ~0,5 t + systemdrift</span></span>
+              <span className="text-[13.5px] font-semibold tabular-nums shrink-0" style={{ ...F, color: SUB }}>−{N.drift} kr</span>
             </div>
           </div>
 
-          <div className="my-5 h-px" style={{ background: HAIR }} />
+          {/* DEKNINGSBIDRAG — uthevet kulminasjon */}
+          <div className="mt-5 rounded-2xl px-5 py-4 relative overflow-hidden" style={{ background: `${AC}0d` }}>
+            <div aria-hidden="true" className="absolute left-0 top-0 bottom-0 w-1" style={{ background: AC }} />
+            <div className="h-2 w-full rounded-full overflow-hidden mb-3" style={{ background: 'rgba(20,15,10,0.06)' }}>
+              <div className="h-full rounded-full" style={{ width: '87%', background: `linear-gradient(90deg, ${AC}, ${AC}cc)`, boxShadow: `0 0 18px ${AC}66` }} />
+            </div>
+            <div className="flex items-baseline justify-between">
+              <span className="text-[13px] font-bold tracking-[-0.01em]" style={{ ...FH, color: INK }}>Dekningsbidrag</span>
+              <span className="flex items-baseline gap-1.5">
+                <span className="text-[22px] font-bold tabular-nums tracking-[-0.02em]" style={{ ...FH, color: AC }}>{N.db}</span>
+                <span className="text-[12px] font-semibold" style={{ ...F, color: SUB }}>kr/mnd · ~87 %</span>
+              </span>
+            </div>
+          </div>
+
+          <div className="my-6 h-px" style={{ background: HAIR }} />
 
           {/* ANSKAFFELSE (CAC) */}
           <div className="mt-auto">
             <div className="flex items-center justify-between mb-3">
               <span className="text-[10px] font-bold uppercase tracking-[0.24em]" style={{ ...F, color: AC }}>Anskaffelse · engangs</span>
-              <span className="text-[13px] font-bold tabular-nums" style={{ ...F, color: INK }}>CAC ~3 900 kr</span>
+              <span className="text-[13.5px] font-bold tabular-nums" style={{ ...F, color: INK }}>CAC ~{N.cac} kr</span>
             </div>
-            <div className="h-2.5 w-full rounded-full overflow-hidden flex" style={{ background: 'rgba(20,15,10,0.06)' }}>
-              <div style={{ width: '38.5%', background: '#c9a3e8' }} />
-              <div style={{ width: '61.5%', background: AC }} />
+            <div className="h-3 w-full rounded-full overflow-hidden flex" style={{ background: 'rgba(20,15,10,0.05)' }}>
+              <div style={{ width: '46.7%', background: '#c9a3e8' }} />
+              <div style={{ width: '53.3%', background: AC }} />
             </div>
-            <div className="flex items-center justify-between mt-2 text-[11.5px]" style={{ ...F, color: SUB }}>
-              <span className="inline-flex items-center gap-1.5"><span className="w-2 h-2 rounded-full" style={{ background: '#c9a3e8' }} />Marked (SoMe) <span className="font-bold" style={{ color: INK }}>1 500</span></span>
-              <span className="inline-flex items-center gap-1.5"><span className="w-2 h-2 rounded-full" style={{ background: AC }} />Onboarding ~6 t <span className="font-bold" style={{ color: INK }}>2 400</span></span>
+            <div className="flex items-center justify-between mt-2.5 text-[11.5px]" style={{ ...F, color: SUB }}>
+              <span className="inline-flex items-center gap-1.5"><span className="w-2 h-2 rounded-full" style={{ background: '#c9a3e8' }} />Marked (SoMe) <span className="font-bold tabular-nums" style={{ color: INK }}>{N.marked}</span></span>
+              <span className="inline-flex items-center gap-1.5"><span className="w-2 h-2 rounded-full" style={{ background: AC }} />Onboarding ~6 t <span className="font-bold tabular-nums" style={{ color: INK }}>{N.onboard}</span></span>
             </div>
-            <div className="flex flex-wrap gap-1.5 mt-3">
+            <div className="flex flex-wrap gap-1.5 mt-3.5">
               {onboard.map((o) => (
                 <span key={o} className="text-[10.5px] font-medium rounded-full px-2.5 py-1" style={{ ...F, color: SUB, background: 'rgba(20,15,10,0.04)' }}>{o}</span>
               ))}
             </div>
-            <p className="flex items-start gap-2 text-[12px] leading-[1.45] mt-3.5" style={{ ...F, color: SUB }}>
+            <p className="flex items-start gap-2 text-[12px] leading-[1.45] mt-4" style={{ ...F, color: SUB }}>
               <Check className="w-[15px] h-[15px] mt-px shrink-0" style={{ color: AC }} strokeWidth={2.6} />
-              <span>Første utleiemegling-gebyr <span className="tabular-nums">(~6 500 kr)</span> dekker hele onboarding-arbeidet — <span className="font-semibold" style={{ color: INK }}>kontant-positiv ved signering.</span></span>
+              <span>Første utleiemegling-gebyr <span className="tabular-nums">(~{N.placement} kr)</span> dekker hele onboarding-arbeidet — <span className="font-semibold" style={{ color: INK }}>kontant-positiv ved signering.</span></span>
             </p>
           </div>
         </div>
 
         {/* ── HØYRE: resultatet (mørkt anker) ── */}
-        <article className="relative rounded-[24px] p-6 sm:p-8 overflow-hidden flex flex-col"
-                 style={{ background: 'linear-gradient(165deg, #14141a 0%, #0a0a0d 100%)', border: '1px solid rgba(255,255,255,0.06)',
-                          boxShadow: '0 2px 4px rgba(20,15,10,0.06), 0 26px 64px -28px rgba(20,15,10,0.4)',
+        <article className="relative rounded-[28px] p-7 sm:p-9 overflow-hidden flex flex-col"
+                 style={{ background: 'linear-gradient(165deg, #15151b 0%, #0a0a0d 100%)', border: '1px solid rgba(255,255,255,0.06)',
+                          boxShadow: '0 2px 4px rgba(20,15,10,0.06), 0 30px 70px -30px rgba(20,15,10,0.45)',
                           animation: anim ? 'ueCardIn 0.85s cubic-bezier(0.22,1,0.36,1) 0.7s both' : undefined, opacity: show ? undefined : 0 }}>
-          <div aria-hidden="true" className="absolute -top-24 -right-24 w-[360px] h-[360px] rounded-full pointer-events-none" style={{ background: 'radial-gradient(ellipse at center, rgba(195,156,224,0.16) 0%, transparent 65%)' }} />
+          <div aria-hidden="true" className="absolute -top-24 -right-24 w-[360px] h-[360px] rounded-full pointer-events-none" style={{ background: 'radial-gradient(ellipse at center, rgba(195,156,224,0.18) 0%, transparent 65%)' }} />
           <div className="relative flex flex-col h-full">
             <span className="text-[10px] font-bold uppercase tracking-[0.24em]" style={{ ...F, color: P }}>Resultatet</span>
-            <h3 className="text-[18px] sm:text-[20px] text-white tracking-[-0.02em] mt-1.5 mb-6" style={{ ...FH, fontWeight: 700 }}>Bygget nedenfra — ikke påstått</h3>
+            <h3 className="text-[18px] sm:text-[20px] text-white tracking-[-0.02em] mt-1.5 mb-3" style={{ ...FH, fontWeight: 700 }}>Bygget nedenfra — ikke påstått</h3>
 
-            <div className="grid grid-cols-2 gap-x-5 gap-y-6 flex-1 content-start">
-              {stats.map((s) => (
-                <div key={s.k}>
+            {/* 2×2 med kryss-hårlinjer */}
+            <div className="grid grid-cols-2 flex-1">
+              {stats.map((s, i) => (
+                <div key={s.k}
+                     className={`flex flex-col justify-center ${i % 2 === 0 ? 'pr-6' : 'pl-6'} ${i < 2 ? 'pb-6' : 'pt-6'}`}
+                     style={{ borderRight: i % 2 === 0 ? '1px solid rgba(255,255,255,0.08)' : 'none', borderBottom: i < 2 ? '1px solid rgba(255,255,255,0.08)' : 'none' }}>
                   <div className="flex items-baseline gap-1">
-                    <span className="tabular-nums leading-none" style={{ ...FH, fontWeight: 700, color: '#fff', fontSize: 'clamp(26px, 2.7vw, 36px)' }}>{s.v}</span>
+                    <span className="tabular-nums leading-none" style={{ ...FH, fontWeight: 700, color: '#fff', fontSize: 'clamp(28px, 2.9vw, 38px)' }}>{s.v}</span>
                     <span className="text-[13px] font-medium" style={{ ...F, color: 'rgba(255,255,255,0.5)' }}>{s.u}</span>
                   </div>
                   <p className="text-[12px] font-semibold text-white mt-1.5" style={F}>{s.k}</p>
-                  <p className="text-[10.5px] leading-[1.4] mt-0.5" style={{ ...F, color: 'rgba(255,255,255,0.45)' }}>{s.note}</p>
+                  <p className="text-[10.5px] leading-[1.4] mt-0.5" style={{ ...F, color: 'rgba(255,255,255,0.42)' }}>{s.note}</p>
                 </div>
               ))}
             </div>
 
             <div className="mt-6 pt-5" style={{ borderTop: '1px solid rgba(255,255,255,0.1)' }}>
-              <p className="text-[10px] font-bold uppercase tracking-[0.2em] mb-2" style={{ ...F, color: P }}>Per moden franchise · kapital-lett</p>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full mb-2.5" style={{ background: 'rgba(195,156,224,0.12)' }}>
+                <span className="w-1.5 h-1.5 rounded-full" style={{ background: P }} />
+                <span className="text-[9.5px] font-bold uppercase tracking-[0.16em]" style={{ ...F, color: P }}>Per moden franchise · kapital-lett</span>
+              </span>
               <p className="text-[12px] leading-[1.55]" style={{ ...F, color: 'rgba(255,255,255,0.7)' }}>
                 ~300 enheter · <span className="font-bold text-white">~0,7 MNOK recurring ARR/år</span> · etablering ~200k · <span className="text-white">operatøren tar driften</span>.
               </p>
