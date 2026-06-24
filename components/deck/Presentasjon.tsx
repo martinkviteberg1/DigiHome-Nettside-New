@@ -6058,6 +6058,269 @@ const SSystemIArbeid = (p: any) => {
   );
 };
 
+/* ═══ SLIK JOBBER VI — verdikjeden (utleiemegling + forvaltning) ═══ */
+const SSlikViJobber = (p: any) => {
+  const active = p.isActive;
+  const isPdf = !!p.pdfMode;
+  const show = active || isPdf;
+  const anim = active && !isPdf;
+  useEffect(() => { p.onLight?.(active && !isPdf); }, [active, isPdf]);
+
+  const AC = '#a052e0'; const INK = '#0c0c0c'; const SUB = '#57514a'; const MUT = '#8a8278'; const HAIR = 'rgba(20,15,10,0.09)';
+
+  const phases = [
+    { tag: 'Fase 1', name: 'Anskaffelse', steps: [
+      { n: '01', label: 'Markedsføring', note: 'sosiale medier' },
+      { n: '02', label: 'Leads inn', note: 'via digihome.no' },
+      { n: '03', label: 'Kontakt huseier', note: '' },
+      { n: '04', label: 'Befaring', note: 'hjemme hos huseier' },
+      { n: '05', label: 'Forvaltningsavtale', note: 'signeres' },
+    ]},
+    { tag: 'Fase 2', name: 'Utleie', steps: [
+      { n: '06', label: 'Annonsering', note: 'Finn.no + DigiHome' },
+      { n: '07', label: 'Visning', note: 'med leietakere' },
+      { n: '08', label: 'Husleiekontrakt', note: 'signeres' },
+      { n: '09', label: 'Overtagelse', note: 'med leietaker' },
+    ]},
+    { tag: 'Fase 3', name: 'Forvaltning', steps: [
+      { n: '10', label: 'Løpende drift', note: 'av leieforholdet' },
+      { n: '11', label: 'Utflytting', note: '→ klar for ny runde' },
+    ]},
+  ];
+
+  return (
+  <SlideFrame bg="beige" {...p}>
+    <style>{`
+      @keyframes sjFade { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+      @keyframes sjHead { from { opacity: 0; transform: translateY(22px); filter: blur(8px); } 60% { filter: blur(0); } to { opacity: 1; transform: translateY(0); filter: blur(0); } }
+      @keyframes sjGrow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+      @keyframes sjRise { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+    `}</style>
+    <div aria-hidden="true" className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse at 50% 12%, rgba(160,82,224,0.05) 0%, transparent 56%)' }} />
+    <DotGrid maskCenter="50% 22%" opacity={0.4} />
+
+    <div className="relative z-10 w-full max-w-[1200px] mx-auto px-6 sm:px-12 my-auto">
+      {/* HEADER */}
+      <div className="max-w-[900px]">
+        <span className="block text-[11px] font-bold uppercase tracking-[0.4em]" style={{ ...F, color: AC, animation: anim ? 'sjFade 0.7s cubic-bezier(0.22,1,0.36,1) 0.1s both' : undefined, opacity: show ? undefined : 0 }}>Slik jobber vi</span>
+        <h2 className="tracking-[-0.035em] leading-[1.04] mt-6" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(30px, 3.9vw, 52px)', color: INK, animation: anim ? 'sjHead 0.95s cubic-bezier(0.22,1,0.36,1) 0.25s both' : undefined, opacity: show ? undefined : 0 }}>
+          Hele verdikjeden — <span style={{ color: AC }}>fra lead til leieforhold.</span>
+        </h2>
+        <span className="block mt-7 h-px rounded-full" style={{ width: 64, background: `linear-gradient(90deg, ${AC}, transparent)`, transformOrigin: 'left', animation: anim ? 'sjGrow 0.9s cubic-bezier(0.22,1,0.36,1) 0.55s both' : undefined, opacity: show ? undefined : 0 }} />
+        <p className="text-[15px] sm:text-[16.5px] font-normal leading-[1.6] mt-7 max-w-[680px]" style={{ ...F, color: SUB, animation: anim ? 'sjFade 0.8s cubic-bezier(0.22,1,0.36,1) 0.65s both' : undefined, opacity: show ? undefined : 0 }}>
+          Vi er utleiemegler og forvalter i ett. Hver bolig følger den samme, repeterbare syklusen.
+        </p>
+      </div>
+
+      {/* 3 FASER — hårlinje-separerte kolonner */}
+      <div className="grid grid-cols-1 md:grid-cols-3 mt-10 sm:mt-12">
+        {phases.map((ph, pi) => (
+          <div key={ph.tag} className="relative md:px-9 first:md:pl-0 last:md:pr-0 py-7 md:py-0"
+               style={{ animation: anim ? `sjFade 0.8s cubic-bezier(0.22,1,0.36,1) ${0.8 + pi * 0.14}s both` : undefined, opacity: show ? undefined : 0 }}>
+            {pi > 0 && <span aria-hidden="true" className="hidden md:block absolute left-0 top-1 bottom-1 w-px" style={{ background: HAIR, transformOrigin: 'top', animation: anim ? `sjRise 0.7s cubic-bezier(0.22,1,0.36,1) ${0.85 + pi * 0.14}s both` : undefined }} />}
+            {pi > 0 && <span aria-hidden="true" className="md:hidden absolute left-0 right-0 top-0 h-px" style={{ background: HAIR }} />}
+            <div className="flex items-center gap-2.5 mb-5">
+              <span className="text-[11px] font-bold uppercase tracking-[0.2em]" style={{ ...F, color: AC }}>{ph.tag}</span>
+              <span className="text-[14px] tracking-[-0.01em]" style={{ ...FH, fontWeight: 700, color: INK }}>{ph.name}</span>
+              <span className="h-px flex-1" style={{ background: HAIR }} />
+            </div>
+            <div className="space-y-3.5">
+              {ph.steps.map((s) => (
+                <div key={s.n} className="flex items-baseline gap-3">
+                  <span className="text-[11px] font-bold tabular-nums tracking-[0.08em] w-5 shrink-0" style={{ ...F, color: AC }}>{s.n}</span>
+                  <span className="leading-[1.3]">
+                    <span className="text-[15px] sm:text-[16px] font-medium" style={{ ...F, color: INK }}>{s.label}</span>
+                    {s.note && <span className="text-[13px] font-normal ml-1.5" style={{ ...F, color: MUT }}>{s.note}</span>}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* CODA — repeterbar */}
+      <div className="mt-10 sm:mt-12 pt-8 flex items-center gap-3"
+           style={{ borderTop: `1px solid ${HAIR}`, animation: anim ? 'sjFade 0.9s cubic-bezier(0.22,1,0.36,1) 1.25s both' : undefined, opacity: show ? undefined : 0 }}>
+        <span className="text-[17px] font-bold leading-none" style={{ color: AC }}>↻</span>
+        <p className="text-[13.5px] sm:text-[15px] font-normal leading-[1.5]" style={{ ...F, color: SUB }}>
+          <span style={{ color: INK, fontWeight: 600 }}>Repeterbar prosess.</span> Samme syklus skalerer fra én bolig til et nasjonalt nettverk.
+        </p>
+      </div>
+    </div>
+  </SlideFrame>
+  );
+};
+
+/* ═══ SLIK AUTOMATISERER SYSTEMET — faktabasert, faner + teknologi ═══ */
+const SSlikSystemetAutomatiserer = (p: any) => {
+  const active = p.isActive;
+  const isPdf = !!p.pdfMode;
+  const show = active || isPdf;
+  const anim = active && !isPdf;
+  const [tab, setTab] = useState(0);
+  const [manual, setManual] = useState(false);
+  useEffect(() => { p.onLight?.(active && !isPdf); }, [active, isPdf]);
+  useEffect(() => { if (active) { setTab(0); setManual(false); } }, [active]);
+
+  const AC = '#a052e0'; const INK = '#0c0c0c'; const SUB = '#57514a'; const MUT = '#8a8278'; const HAIR = 'rgba(20,15,10,0.09)';
+
+  const TABS = [
+    {
+      n: '01', name: 'Leadfangst', Icon: Search, sub: 'Hjemmeside-skjema med register-oppslag',
+      desc: 'Huseiere registrerer interesse på digihome.no — skriver inn boligadresse og noen enkle detaljer.',
+      points: [
+        'Systemet slår automatisk opp i eiendomsregisteret og henter eier, matrikkelnummer, areal, byggeår og bruksenhet.',
+        'Leadet opprettes ferdig beriket — ingen manuell punching av data.',
+        'Kvalifiseres og rutes til riktig oppfølging i det sekundet det kommer inn.',
+      ],
+      tech: ['Eiendomsregister-API', 'Matrikkel-oppslag', 'Auto-berikelse'],
+    },
+    {
+      n: '02', name: 'Salgspipeline', Icon: LayoutDashboard, sub: 'CRM med full oppfølging og booking',
+      desc: 'Hvert lead følger en strukturert pipeline med automatisk logging av all aktivitet.',
+      points: [
+        'Automatiske oppgaver, påminnelser og statusflyt gjennom hele salgsløpet.',
+        'Huseier booker befaring selv i et integrert Calendly-lignende system.',
+        'All kommunikasjon og historikk samlet på ett sted — ingenting faller mellom to stoler.',
+      ],
+      tech: ['Pipeline / CRM', 'Booking-motor', 'Aktivitetslogg'],
+    },
+    {
+      n: '03', name: 'Tilbud & signering', Icon: PenLine, sub: 'Interaktivt tilbud + BankID',
+      desc: 'Tilbudsgeneratoren lager et nydelig brandet, interaktivt tilbud på sekunder.',
+      points: [
+        'Sendes digitalt — huseier ser vilkår, pris og tjenester interaktivt.',
+        'Kunden aksepterer og signerer forvaltningsavtalen direkte med BankID.',
+        'Signert avtale arkiveres og utløser neste steg i flyten automatisk.',
+      ],
+      tech: ['Tilbudsgenerator', 'BankID-signering', 'Auto-arkivering'],
+    },
+    {
+      n: '04', name: 'Annonse & utleie', Icon: Camera, sub: 'AI-annonse, visning og kontrakt',
+      desc: 'Boligen klargjøres og publiseres med AI — så håndteres utleien fram til innflytting.',
+      points: [
+        'AI-styling av foto, auto-generert annonsetekst og datadrevet prisforslag.',
+        'Multikanal-publisering til Finn.no og DigiHome internt med ett klikk.',
+        'Visningsbooking, søker-scoring, husleiekontrakt med BankID og digital overtagelsesprotokoll.',
+      ],
+      tech: ['AI-foto & tekst', 'Multikanal-publisering', 'BankID-kontrakt'],
+    },
+    {
+      n: '05', name: 'Løpende forvaltning', Icon: Bot, sub: 'AI-drift fra innflytting til utflytting',
+      desc: 'Driftsassistenten håndterer det daglige — du kobles bare på når noe krever en beslutning.',
+      points: [
+        'AI svarer leietakere, oppretter saker og kobler på riktig leverandør automatisk.',
+        'Automatisk husleie-innkreving, regnskap og løpende eierrapportering.',
+        'Utflytting: oppgjør, depositum-retur og befaring → boligen er klar for ny runde.',
+      ],
+      tech: ['AI-driftsassistent', 'Auto-betaling & regnskap', 'Digitalt oppgjør'],
+    },
+  ];
+
+  useEffect(() => {
+    if (!active || isPdf || manual) return;
+    const id = setInterval(() => setTab((v) => (v + 1) % TABS.length), 5000);
+    return () => clearInterval(id);
+  }, [active, isPdf, manual]);
+
+  const t = TABS[tab];
+  const Icon = t.Icon;
+  const pick = (i: number) => { setManual(true); setTab(i); };
+
+  return (
+  <SlideFrame bg="beige" {...p}>
+    <style>{`
+      @keyframes saFade { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+      @keyframes saHead { from { opacity: 0; transform: translateY(22px); filter: blur(8px); } 60% { filter: blur(0); } to { opacity: 1; transform: translateY(0); filter: blur(0); } }
+      @keyframes saTab { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    `}</style>
+    <div aria-hidden="true" className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse at 50% 10%, rgba(160,82,224,0.05) 0%, transparent 56%)' }} />
+    <DotGrid maskCenter="50% 18%" opacity={0.4} />
+
+    <div className="relative z-10 w-full max-w-[1180px] mx-auto px-6 sm:px-12 my-auto">
+      {/* HEADER */}
+      <div className="max-w-[900px]">
+        <span className="block text-[11px] font-bold uppercase tracking-[0.4em]" style={{ ...F, color: AC, animation: anim ? 'saFade 0.7s cubic-bezier(0.22,1,0.36,1) 0.1s both' : undefined, opacity: show ? undefined : 0 }}>Slik automatiserer systemet</span>
+        <h2 className="tracking-[-0.035em] leading-[1.04] mt-5" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(28px, 3.6vw, 48px)', color: INK, animation: anim ? 'saHead 0.95s cubic-bezier(0.22,1,0.36,1) 0.25s both' : undefined, opacity: show ? undefined : 0 }}>
+          Teknologien bak — <span style={{ color: AC }}>steg for steg.</span>
+        </h2>
+        <p className="text-[14px] sm:text-[15.5px] font-normal leading-[1.55] mt-5 max-w-[680px]" style={{ ...F, color: SUB, animation: anim ? 'saFade 0.8s cubic-bezier(0.22,1,0.36,1) 0.5s both' : undefined, opacity: show ? undefined : 0 }}>
+          Hele verdikjeden kjører på ett system. Her er hva som skjer under panseret i hvert steg.
+        </p>
+      </div>
+
+      {/* TAB-BAR (sentrert — klar av klikk-soner) */}
+      <div className="relative z-50 flex flex-wrap justify-center gap-2 mt-8 sm:mt-9"
+           style={{ animation: anim ? 'saFade 0.8s cubic-bezier(0.22,1,0.36,1) 0.6s both' : undefined, opacity: show ? undefined : 0 }}>
+        {TABS.map((tb, i) => {
+          const on = i === tab;
+          return (
+            <button key={tb.n} onClick={() => pick(i)} type="button"
+              className="group inline-flex items-center gap-2 rounded-full px-3.5 sm:px-4 py-2.5 transition-all duration-300"
+              style={{ background: on ? INK : 'rgba(20,15,10,0.035)', border: `1px solid ${on ? INK : HAIR}` }}>
+              <span className="text-[10px] font-bold tabular-nums" style={{ ...F, color: on ? AC : MUT }}>{tb.n}</span>
+              <span className="text-[12px] sm:text-[12.5px] font-semibold" style={{ ...F, color: on ? '#fff' : SUB }}>{tb.name}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* AKTIV FANE */}
+      <div key={tab} className="grid grid-cols-1 md:grid-cols-[1.4fr_0.85fr] gap-8 md:gap-12 mt-9 sm:mt-10 items-start"
+           style={{ minHeight: 232, animation: anim ? 'saTab 0.5s cubic-bezier(0.22,1,0.36,1) both' : undefined }}>
+        {/* venstre — beskrivelse */}
+        <div>
+          <div className="flex items-center gap-3.5 mb-4">
+            <span className="flex items-center justify-center w-11 h-11 rounded-2xl shrink-0" style={{ background: `${AC}14` }}>
+              <Icon className="w-5 h-5" style={{ color: AC }} strokeWidth={2} />
+            </span>
+            <div>
+              <h3 className="text-[22px] sm:text-[26px] tracking-[-0.02em] leading-none" style={{ ...FH, fontWeight: 700, color: INK }}>{t.name}</h3>
+              <p className="text-[12.5px] font-normal mt-1.5" style={{ ...F, color: MUT }}>{t.sub}</p>
+            </div>
+          </div>
+          <p className="text-[14px] sm:text-[15px] font-normal leading-[1.55] mb-4 max-w-[580px]" style={{ ...F, color: SUB }}>{t.desc}</p>
+          <div className="space-y-2.5">
+            {t.points.map((pt, i) => (
+              <div key={i} className="flex items-start gap-2.5">
+                <Check className="w-[15px] h-[15px] mt-[3px] shrink-0" style={{ color: AC }} strokeWidth={2.6} />
+                <span className="text-[13px] sm:text-[13.5px] font-normal leading-[1.5]" style={{ ...F, color: '#3a352f' }}>{pt}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* høyre — teknologi */}
+        <div className="md:pl-10 md:border-l" style={{ borderColor: HAIR }}>
+          <span className="text-[10px] font-bold uppercase tracking-[0.28em]" style={{ ...F, color: MUT }}>Teknologi</span>
+          <div className="flex flex-wrap gap-2 mt-4">
+            {t.tech.map((tc) => (
+              <span key={tc} className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold"
+                    style={{ ...F, color: INK, background: '#fff', border: `1px solid ${HAIR}`, boxShadow: '0 1px 2px rgba(20,15,10,0.03)' }}>
+                <span className="w-1.5 h-1.5 rounded-full" style={{ background: AC }} />{tc}
+              </span>
+            ))}
+          </div>
+          <div className="mt-6 inline-flex items-center gap-2 rounded-full px-3 py-1.5" style={{ background: `${AC}12` }}>
+            <Zap className="w-3.5 h-3.5" style={{ color: AC }} strokeWidth={2.4} />
+            <span className="text-[11px] font-bold uppercase tracking-[0.12em]" style={{ ...F, color: AC }}>Automatisert</span>
+          </div>
+        </div>
+      </div>
+
+      {/* FOOTER coda */}
+      <div className="mt-9 sm:mt-11 pt-7"
+           style={{ borderTop: `1px solid ${HAIR}`, animation: anim ? 'saFade 0.9s cubic-bezier(0.22,1,0.36,1) 0.75s both' : undefined, opacity: show ? undefined : 0 }}>
+        <p className="text-[13.5px] sm:text-[15px] font-normal leading-[1.5]" style={{ ...F, color: SUB }}>
+          <span style={{ color: INK, fontWeight: 600 }}>AI gjør grovarbeidet i hvert steg.</span> Forvalteren kobles bare på der det krever en beslutning eller et fysisk møte.
+        </p>
+      </div>
+    </div>
+  </SlideFrame>
+  );
+};
+
 /* ═══ SLIDE ORDER — 2026 · Product-first investor flow ═══ */
 /* ═══ SLIDES — deklarativ rekkefølge (Narrativ B: problem-først) ═══
    light:    true  → lys bakgrunn  (mørk nav-chrome / piler)
@@ -6071,7 +6334,9 @@ const SLIDES: { C: any; light: boolean; animated?: boolean }[] = [
   { C: SWhyNow, light: true },                      // 04 · Hvorfor nå — timing-vinduet (beige, flyttet frem)
   // { C: SWhyDH, light: true },                    // SKJULT etter ønske — «Løsningen» (Ett system som gjør jobben) overlappet «Fra verktøy til motor» + hadde utdatert korttid-innhold. Koden beholdt.
   { C: SFraVerktoyTilMotor, light: true },          // 05 · Løsningen / Konseptet — fra verktøy (proptech) til motor
-  { C: SDriftsgearing, light: true },               // 06 · Driftsgearingen — samme forvalter, ~4× porteføljen (kjerne-tesen)
+  { C: SSlikViJobber, light: true },                // 06 · Slik jobber vi — verdikjeden (utleiemegling + forvaltning)
+  { C: SSlikSystemetAutomatiserer, light: true },   // 07 · Slik automatiserer systemet — faktabasert, faner + teknologi
+  { C: SDriftsgearing, light: true },               // 08 · Driftsgearingen — payoff (samme forvalter, ~4×)
   { C: SProdukt, light: true },                     // 07 · Produktet — én motor, to produkter
   { C: SAIEiendom, light: true },                   // 08 · AI som forstår eiendom — 3 AI-moats
   { C: SArkitektur, light: true },                  // 09 · Arkitekturen — moat (animert, skjøvet bakover)
@@ -6260,7 +6525,7 @@ export default function Presentasjon() {
         onClick={prev}
         disabled={c === 0}
         aria-label="Forrige slide"
-        className="group fixed left-0 top-0 bottom-0 w-[18%] z-40 cursor-w-resize disabled:cursor-not-allowed disabled:opacity-0 transition-opacity focus:outline-none focus-visible:outline-none"
+        className="group fixed left-0 top-0 bottom-0 w-[10%] z-40 cursor-w-resize disabled:cursor-not-allowed disabled:opacity-0 transition-opacity focus:outline-none focus-visible:outline-none"
         style={{ background: 'transparent' }}>
         <div className="absolute left-4 sm:left-6 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full backdrop-blur-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300"
           style={{ backgroundColor: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.1)' }}>
@@ -6271,7 +6536,7 @@ export default function Presentasjon() {
         onClick={next}
         disabled={c === SLIDES.length - 1 || (c === ANIMATED_IDX && s2Locked)}
         aria-label="Neste slide"
-        className="group fixed right-0 top-0 bottom-0 w-[18%] z-40 cursor-e-resize disabled:cursor-not-allowed disabled:opacity-0 transition-opacity focus:outline-none focus-visible:outline-none"
+        className="group fixed right-0 top-0 bottom-0 w-[10%] z-40 cursor-e-resize disabled:cursor-not-allowed disabled:opacity-0 transition-opacity focus:outline-none focus-visible:outline-none"
         style={{ background: 'transparent' }}>
         <div className="absolute right-4 sm:right-6 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full backdrop-blur-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300"
           style={{ backgroundColor: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.1)' }}>
