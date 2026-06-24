@@ -7543,6 +7543,7 @@ const SInnhold = (p: any) => {
       { label: 'Driftsgearing', C: SDriftsgearing },
       { label: '40 boliger i Bergen', C: SAlleredeInntekter },
       { label: 'AI, arkitektur & økosystem', C: SAIEiendom },
+      { label: 'Slik bruker vi AI', C: SAIDisiplin },
     ] },
     { n: '04', t: 'Selskap & modell', items: [
       { label: 'Filosofi & selskapsstruktur', C: SFilosofi },
@@ -7727,50 +7728,61 @@ const SElevatorPitch = (p: any) => {
 const SVeikart = (p: any) => {
   const active = p.isActive; const isPdf = !!p.pdfMode; const show = active || isPdf; const anim = active && !isPdf;
   useEffect(() => { p.onLight?.(active && !isPdf); }, [active, isPdf]);
-  const AC = '#a052e0'; const INK = '#0c0c0c'; const INK2 = '#1c1714'; const SUB = '#57514a';
-  const PILLARS = [
-    { Icon: PhoneCall, t: 'AI Voice', s: 'Samtaler logget automatisk', d: 'Telefonsamtaler med huseiere og leietakere transkriberes og logges rett i systemet — full historikk, null manuelt etterarbeid.', tag: 'Under utvikling' },
-    { Icon: Wrench, t: 'Leverandørnettverk', s: 'Renhold, elektro, håndverk — koordinert av agenten', d: 'Vi etablerer lokale leverandører i hver by vi forvalter. Agentsystemet koordinerer alt mellom huseier, leietaker og leverandør.', tag: 'Veikart' },
-    { Icon: Camera, t: 'Virtuelle visninger', s: 'Visninger uten oppmøte', d: 'Leietakere opplever boligen digitalt — færre fysiske visninger, raskere utleie, mindre friksjon for alle.', tag: 'Veikart' },
+  const AC = '#a052e0'; const INK = '#0c0c0c'; const INK2 = '#1c1714'; const SUB = '#57514a'; const MUT = '#8a8278'; const HAIR = 'rgba(20,15,10,0.09)'; const GREEN = '#1f9d57';
+  const STEPS = [
+    { Icon: Zap, k: 'I dag', t: 'Autopilot i drift', d: 'Hele utleien automatisert — bevist på 40 boliger.', tag: 'I drift', live: true },
+    { Icon: PhoneCall, k: 'Neste', t: 'AI Voice', d: 'Samtaler med huseiere og leietakere logges automatisk i systemet.', tag: 'Under utvikling' },
+    { Icon: Wrench, k: 'På vei', t: 'Leverandørnettverk', d: 'Renhold, elektro, håndverk — agenten koordinerer huseier, leietaker og leverandør.', tag: 'Veikart' },
+    { Icon: Camera, k: 'På vei', t: 'Virtuelle visninger', d: 'Leietakere opplever boligen digitalt — raskere utleie.', tag: 'Veikart' },
   ];
+  const fade = (d: number) => ({ animation: anim ? `vkFade 0.8s cubic-bezier(0.22,1,0.36,1) ${d}s both` : undefined, opacity: show ? undefined : 0 } as React.CSSProperties);
   return (
   <SlideFrame bg="beige" {...p}>
     <style>{`
       @keyframes vkFade { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
-      @keyframes vkCard { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+      @keyframes vkNode { from { opacity: 0; transform: translateY(14px) scale(0.85); } to { opacity: 1; transform: translateY(0) scale(1); } }
+      @keyframes vkThread { from { transform: scaleX(0); } to { transform: scaleX(1); } }
     `}</style>
-    <DotGrid maskCenter="50% 14%" opacity={0.36} />
-    <div className="relative z-10 w-full max-w-[1180px] mx-auto px-6 sm:px-12 my-auto">
-      <div className="max-w-[920px]">
-        <div className="flex items-center gap-3" style={{ animation: anim ? 'vkFade 0.7s ease 0.05s both' : undefined, opacity: show ? undefined : 0 }}>
+    <DotGrid maskCenter="50% 12%" opacity={0.34} />
+    <div className="relative z-10 w-full max-w-[1220px] mx-auto px-6 sm:px-12 my-auto">
+      <div className="max-w-[940px]">
+        <div className="flex items-center gap-3" style={fade(0.05)}>
           <span className="h-px w-7 shrink-0" style={{ background: AC }} />
           <span className="text-[10.5px] sm:text-[11px] font-bold uppercase tracking-[0.32em]" style={{ ...F, color: AC }}>Veikart · praktisk AI</span>
         </div>
-        <h2 className="tracking-[-0.035em] leading-[1.04] mt-4" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(28px, 3.6vw, 52px)', color: INK, animation: anim ? 'vkFade 0.85s ease 0.18s both' : undefined, opacity: show ? undefined : 0 }}>
+        <h2 className="tracking-[-0.035em] leading-[1.04] mt-4" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(28px, 3.6vw, 52px)', color: INK, ...fade(0.16) }}>
           Vi automatiserer alt som kan <span style={{ color: AC }}>— og bør.</span>
         </h2>
-        <p className="mt-4 leading-[1.5] max-w-[700px]" style={{ ...F, fontWeight: 400, fontSize: 'clamp(14px, 1.4vw, 17px)', color: SUB, animation: anim ? 'vkFade 0.9s ease 0.3s both' : undefined, opacity: show ? undefined : 0 }}>
+        <p className="mt-3.5 leading-[1.5] max-w-[700px]" style={{ ...F, fontWeight: 400, fontSize: 'clamp(13.5px, 1.35vw, 16.5px)', color: SUB, ...fade(0.28) }}>
           Praktisk AI, ikke hype. Det som krever et menneske — salg og relasjoner — gjør vi selv. Resten lar vi systemet ta.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 lg:gap-7 mt-9">
-        {PILLARS.map((c, i) => (
-          <div key={c.t} className="relative rounded-[22px] p-6 sm:p-7 flex flex-col" style={{ background: '#ffffff', boxShadow: '0 2px 4px rgba(20,15,10,0.03), 0 30px 64px -40px rgba(20,15,10,0.26)', animation: anim ? `vkCard 0.8s cubic-bezier(0.22,1,0.36,1) ${0.42 + i * 0.12}s both` : undefined, opacity: show ? undefined : 0 }}>
-            <div className="flex items-center justify-between mb-5">
-              <span className="flex items-center justify-center w-11 h-11 rounded-2xl" style={{ background: 'rgba(160,82,224,0.1)' }}><c.Icon className="w-[20px] h-[20px]" style={{ color: AC }} strokeWidth={2} /></span>
-              <span className="text-[10px] font-bold uppercase tracking-[0.16em] px-2.5 py-1 rounded-full" style={{ ...F, color: AC, background: 'rgba(160,82,224,0.08)' }}>{c.tag}</span>
+      {/* HORISONT-TIDSLINJE — fra drift i dag mot fremtiden */}
+      <div className="relative mt-12 sm:mt-16">
+        <div aria-hidden="true" className="absolute left-[12.5%] right-[12.5%] top-[28px] h-[2px] origin-left rounded-full" style={{ background: `linear-gradient(90deg, ${INK} 0%, ${AC} 100%)`, opacity: 0.85, animation: anim ? 'vkThread 1.1s cubic-bezier(0.22,1,0.36,1) 0.45s both' : undefined, transform: show ? undefined : 'scaleX(0)' }} />
+        <div aria-hidden="true" className="absolute left-[12.5%] right-[12.5%] top-[28px] h-[2px] rounded-full pointer-events-none" style={{ background: `linear-gradient(90deg, transparent 38%, ${AC} 100%)`, filter: 'blur(7px)', opacity: 0.55 }} />
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-x-5 gap-y-10">
+          {STEPS.map((s, i) => (
+            <div key={s.t} className="relative flex flex-col items-center text-center px-1" style={{ animation: anim ? `vkNode 0.7s cubic-bezier(0.22,1,0.36,1) ${0.55 + i * 0.14}s both` : undefined, opacity: show ? undefined : 0 }}>
+              <span className="relative flex items-center justify-center w-14 h-14 rounded-2xl mb-5" style={ s.live
+                ? { background: '#0c0c0c', boxShadow: '0 12px 30px -12px rgba(20,15,10,0.5)' }
+                : { background: '#ffffff', boxShadow: `0 0 0 1px ${HAIR}, 0 14px 34px -16px rgba(160,82,224,0.45)` } }>
+                <s.Icon className="w-[22px] h-[22px]" style={{ color: s.live ? GREEN : AC }} strokeWidth={2} />
+                {s.live && <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full" style={{ background: GREEN, boxShadow: '0 0 0 3px #f7f5f2' }} />}
+              </span>
+              <span className="text-[10.5px] font-bold uppercase tracking-[0.2em]" style={{ ...F, color: s.live ? GREEN : (i === 1 ? AC : MUT) }}>{s.k}</span>
+              <span className="block mt-1.5" style={{ ...FH, fontWeight: 700, fontSize: '18.5px', color: INK, letterSpacing: '-0.01em' }}>{s.t}</span>
+              <p className="mt-2 text-[12.5px] leading-[1.5] max-w-[230px]" style={{ ...F, color: SUB }}>{s.d}</p>
+              <span className="mt-3 inline-block text-[9.5px] font-bold uppercase tracking-[0.14em] px-2.5 py-1 rounded-full" style={{ ...F, color: s.live ? GREEN : AC, background: s.live ? 'rgba(31,157,87,0.1)' : 'rgba(160,82,224,0.08)' }}>{s.tag}</span>
             </div>
-            <span className="block" style={{ ...FH, fontWeight: 700, fontSize: '21px', color: INK, letterSpacing: '-0.01em' }}>{c.t}</span>
-            <span className="block mt-1.5 text-[13px] font-semibold leading-snug" style={{ ...F, color: AC }}>{c.s}</span>
-            <p className="mt-3 text-[13.5px] leading-[1.55]" style={{ ...F, color: SUB }}>{c.d}</p>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
 
-      <div className="mt-8 flex items-center gap-4 rounded-2xl px-5 sm:px-6 py-4" style={{ background: 'rgba(20,15,10,0.035)', animation: anim ? 'vkFade 0.9s ease 0.85s both' : undefined, opacity: show ? undefined : 0 }}>
+      <div className="mt-12 sm:mt-14 flex items-center justify-center gap-3.5 mx-auto max-w-[780px] rounded-2xl px-5 sm:px-6 py-4" style={{ background: 'rgba(20,15,10,0.035)', ...fade(1.15) }}>
         <span className="flex items-center justify-center w-9 h-9 rounded-xl shrink-0" style={{ background: '#0c0c0c' }}><Users className="w-[17px] h-[17px] text-white" strokeWidth={2} /></span>
-        <p className="text-[13.5px] sm:text-[15px] leading-snug" style={{ ...F, color: INK2 }}>
+        <p className="text-[13px] sm:text-[14.5px] leading-snug" style={{ ...F, color: INK2 }}>
           <span style={{ fontWeight: 700 }}>Prinsippet:</span> automatiser det som kan <span style={{ fontStyle: 'italic' }}>og bør</span>. Salg og relasjonsbygging forblir menneskelig.
         </p>
       </div>
@@ -7829,6 +7841,99 @@ const SRobotVisjon = (p: any) => {
   );
 };
 
+/* ═══ Slik bruker vi AI — regelmotor vs AI-lag (disiplinert AI) ═══ */
+const SAIDisiplin = (p: any) => {
+  const active = p.isActive; const isPdf = !!p.pdfMode; const show = active || isPdf; const anim = active && !isPdf;
+  useEffect(() => { p.onLight?.(active && !isPdf); }, [active, isPdf]);
+  const AC = '#a052e0'; const INK = '#0c0c0c'; const INK2 = '#1c1714'; const SUB = '#57514a'; const MUT = '#8a8278'; const HAIR = 'rgba(20,15,10,0.09)';
+  const RULES = [
+    'Husleie, KPI-regulering & avregning',
+    'Depositum & depositumskonto',
+    'Forfall, purring & inkassofrister',
+    'Kontrakt & lovkrav (husleieloven)',
+    'BankID, regnskap, MVA & utbetaling',
+  ];
+  const AILAG = [
+    'Utkast til svar & kommunikasjon',
+    'Annonsetekst, AI-foto & styling',
+    'Kontraktsutkast fra eiendomsdata',
+    'Triage & prioritering av saker',
+    'Sammendrag av samtaler & markedsinnsikt',
+  ];
+  const col = (d: number) => ({ animation: anim ? `adFade 0.8s cubic-bezier(0.22,1,0.36,1) ${d}s both` : undefined, opacity: show ? undefined : 0 } as React.CSSProperties);
+  return (
+  <SlideFrame bg="beige" {...p}>
+    <style>{`
+      @keyframes adFade { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
+      @keyframes adRow { from { opacity: 0; transform: translateX(-6px); } to { opacity: 1; transform: translateX(0); } }
+    `}</style>
+    <DotGrid maskCenter="50% 12%" opacity={0.34} />
+    <div className="relative z-10 w-full max-w-[1200px] mx-auto px-6 sm:px-12 my-auto">
+      <div className="max-w-[940px]">
+        <div className="flex items-center gap-3" style={col(0.05)}>
+          <span className="h-px w-7 shrink-0" style={{ background: AC }} />
+          <span className="text-[10.5px] sm:text-[11px] font-bold uppercase tracking-[0.32em]" style={{ ...F, color: AC }}>Slik bruker vi AI</span>
+        </div>
+        <h2 className="tracking-[-0.035em] leading-[1.04] mt-4" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(27px, 3.5vw, 50px)', color: INK, ...col(0.16) }}>
+          AI der det tenker. <span style={{ color: AC }}>Regler der det teller.</span>
+        </h2>
+        <p className="mt-4 leading-[1.5] max-w-[740px]" style={{ ...F, fontWeight: 400, fontSize: 'clamp(13.5px, 1.35vw, 16.5px)', color: SUB, ...col(0.28) }}>
+          Vi er bygget AI-native fra bunnen — men lar aldri AI styre der ting må være forutsigbart, lovlig og riktig. AI foreslår; regler og mennesker bestemmer.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 lg:gap-7 mt-7">
+        {/* REGELMOTOR */}
+        <div className="relative rounded-[24px] p-6 sm:p-7" style={{ background: '#ffffff', boxShadow: '0 2px 4px rgba(20,15,10,0.03), 0 30px 64px -42px rgba(20,15,10,0.26)', ...col(0.4) }}>
+          <div className="flex items-center gap-3 mb-1">
+            <span className="flex items-center justify-center w-11 h-11 rounded-2xl shrink-0" style={{ background: '#0c0c0c' }}><Shield className="w-[19px] h-[19px] text-white" strokeWidth={2} /></span>
+            <div>
+              <span className="block" style={{ ...FH, fontWeight: 700, fontSize: '20px', color: INK, letterSpacing: '-0.01em' }}>Regelmotor</span>
+              <span className="block text-[11px] font-semibold uppercase tracking-[0.12em]" style={{ ...F, color: MUT }}>Deterministisk · forutsigbar</span>
+            </div>
+          </div>
+          <p className="text-[12.5px] leading-snug mt-2 mb-4" style={{ ...F, color: SUB }}>Det som kan <span style={{ fontStyle: 'italic' }}>og bør</span> være regelstyrt — penger, jus, frister, identitet.</p>
+          <ul>
+            {RULES.map((r, i) => (
+              <li key={r} className="flex items-center gap-3 py-[8px]" style={{ borderTop: i > 0 ? `1px solid ${HAIR}` : 'none', animation: anim ? `adRow 0.5s ease ${0.55 + i*0.05}s both` : undefined, opacity: show ? undefined : 0 }}>
+                <Check className="w-[15px] h-[15px] shrink-0" style={{ color: INK }} strokeWidth={2.6} />
+                <span className="text-[13.5px] leading-tight" style={{ ...F, color: INK2 }}>{r}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+        {/* AI-LAGET */}
+        <div className="relative rounded-[24px] p-6 sm:p-7 overflow-hidden" style={{ background: '#ffffff', boxShadow: '0 2px 4px rgba(160,82,224,0.04), 0 30px 64px -42px rgba(160,82,224,0.3)', ...col(0.5) }}>
+          <div aria-hidden="true" className="absolute -top-16 -right-16 w-[220px] h-[220px] rounded-full pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(160,82,224,0.1) 0%, transparent 66%)' }} />
+          <div className="relative flex items-center gap-3 mb-1">
+            <span className="flex items-center justify-center w-11 h-11 rounded-2xl shrink-0" style={{ background: `linear-gradient(135deg, ${AC}, #7a3bbf)` }}><Brain className="w-[19px] h-[19px] text-white" strokeWidth={2} /></span>
+            <div>
+              <span className="block" style={{ ...FH, fontWeight: 700, fontSize: '20px', color: INK, letterSpacing: '-0.01em' }}>AI-laget</span>
+              <span className="block text-[11px] font-semibold uppercase tracking-[0.12em]" style={{ ...F, color: AC }}>State of the art · AI-native</span>
+            </div>
+          </div>
+          <p className="relative text-[12.5px] leading-snug mt-2 mb-4" style={{ ...F, color: SUB }}>Det som krever språk, vurdering og fart — alltid med din godkjenning.</p>
+          <ul className="relative">
+            {AILAG.map((r, i) => (
+              <li key={r} className="flex items-center gap-3 py-[8px]" style={{ borderTop: i > 0 ? `1px solid ${HAIR}` : 'none', animation: anim ? `adRow 0.5s ease ${0.65 + i*0.05}s both` : undefined, opacity: show ? undefined : 0 }}>
+                <Sparkles className="w-[15px] h-[15px] shrink-0" style={{ color: AC }} strokeWidth={2} />
+                <span className="text-[13.5px] leading-tight" style={{ ...F, color: INK2 }}>{r}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+
+      <div className="mt-6 flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5 text-center" style={col(0.95)}>
+        <span className="text-[13px] sm:text-[14.5px] font-semibold" style={{ ...F, color: INK }}>AI foreslår · regler og mennesker bestemmer</span>
+        <span className="w-1 h-1 rounded-full" style={{ background: MUT }} />
+        <span className="text-[13px] sm:text-[14.5px]" style={{ ...F, color: SUB }}>Forklarbart · reverserbart · sporbart</span>
+      </div>
+    </div>
+  </SlideFrame>
+  );
+};
+
 const SLIDES: { C: any; light: boolean; animated?: boolean }[] = [
   { C: S1, light: false },                          // 01 · Cover (mørk — Bergen cityscape)
   { C: SBrandFilm, light: false },                  // 02 · Merkevarefilm (mørk — kinematisk brand-film)
@@ -7847,6 +7952,7 @@ const SLIDES: { C: any; light: boolean; animated?: boolean }[] = [
   { C: SDriftsgearing, light: true },               // 08 · Driftsgearingen — payoff (samme forvalter, ~4×)
   { C: SAlleredeInntekter, light: true },           // 09 · Traksjon — allerede i drift (flyttet tidlig, rett etter payoff)
   { C: SAIEiendom, light: true },                   // · AI som forstår eiendom — 3 AI-moats
+  { C: SAIDisiplin, light: true },                  // · Slik bruker vi AI — regelmotor vs AI-lag (disiplinert AI)
   { C: SArkitektur, light: true },                  // 09 · Arkitekturen — moat (animert, skjøvet bakover)
   { C: SOkosystem, light: true },                   // · Økosystem — integrasjoner (BankID, FINN, Vipps, regnskap m.m.)
   { C: SFilosofi, light: true },                    // 10 · Filosofien bak DigiHome (rett etter arkitektur)
