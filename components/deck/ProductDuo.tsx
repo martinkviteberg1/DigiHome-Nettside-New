@@ -708,8 +708,9 @@ const OV_MODS = [
 ];
 // «select»-rekkefølge nedover sidebaren (visuell rekkefølge) — styrer både pille-bevegelse og progressiv node-avsløring
 const WALK_KEYS = ['autopilot', 'salg', 'kalender', 'eiendommer', 'annonse', 'saker'];
-function ModuleOverview({ stage, step }: { stage: 'text' | 'walk' | 'all'; step: number }) {
+function ModuleOverview({ stage, step, active }: { stage: 'text' | 'walk' | 'all'; step: number; active?: boolean }) {
   const isText = stage === 'text';
+  const reveal = isText && !!active; // spill kun inngangs-animasjonen når sliden faktisk er aktiv (ikke mens den er pre-mountet/skjult)
   const showC = stage === 'walk' || stage === 'all';
   const all = stage === 'all';
   const vis = (key: string) => all || (stage === 'walk' && step >= WALK_KEYS.indexOf(key));
@@ -719,7 +720,8 @@ function ModuleOverview({ stage, step }: { stage: 'text' | 'walk' | 'all'; step:
     <div className="h-full relative overflow-hidden" style={{ background: BG }}>
       <style>{`
         @keyframes moHead { from { opacity:0; transform: translateY(15px); filter: blur(8px); } to { opacity:1; transform: translateY(0); filter: blur(0); } }
-        @keyframes moTxt { from { opacity:0; transform: translateY(18px); filter: blur(12px); } to { opacity:1; transform: translateY(0); filter: blur(0); } }
+        @keyframes moTxt { 0% { opacity:0; transform: translateY(28px); filter: blur(16px); } 55% { filter: blur(1.5px); } 100% { opacity:1; transform: translateY(0); filter: blur(0); } }
+        @keyframes moBloom { 0% { opacity:0; transform: translate(-50%,-50%) scale(0.55); } 100% { opacity:1; transform: translate(-50%,-50%) scale(1); } }
         @keyframes moFlow { to { stroke-dashoffset: 0; } }
         @keyframes moHalo { 0%,100% { opacity:0.38; transform: translate(-50%,-50%) scale(1); } 50% { opacity:0.8; transform: translate(-50%,-50%) scale(1.16); } }
         @keyframes moRing { to { stroke-dashoffset: -19; } }
@@ -732,14 +734,16 @@ function ModuleOverview({ stage, step }: { stage: 'text' | 'walk' | 'all'; step:
 
       {/* ══ STEG 1 · TEKST-REVEAL ══ */}
       <div className="absolute inset-0 z-40 flex flex-col items-center justify-center text-center px-16 pointer-events-none"
-           style={{ opacity: isText ? 1 : 0, transform: isText ? 'scale(1)' : 'scale(1.05)', filter: isText ? 'blur(0px)' : 'blur(9px)', transition: 'opacity 0.7s ease, transform 0.9s cubic-bezier(0.22,1,0.36,1), filter 0.9s ease' }}>
-        <span className="inline-block text-[11px] font-bold uppercase tracking-[0.42em] mb-7" style={{ fontFamily: PJ, color: ACCENT_DK, animation: isText ? 'moTxt 0.7s cubic-bezier(0.22,1,0.36,1) 0.1s both' : undefined }}>DigiHome · operativsystemet</span>
-        <h2 className="leading-[1.04] tracking-[-0.034em]" style={{ fontFamily: FH, fontWeight: 700, fontSize: 'clamp(34px, 4.4vw, 56px)', color: INK }}>
+           style={{ opacity: reveal ? 1 : 0, transform: reveal ? 'scale(1)' : 'scale(1.05)', filter: reveal ? 'blur(0px)' : 'blur(9px)', transition: 'opacity 0.8s ease, transform 1.1s cubic-bezier(0.16,1,0.3,1), filter 1.0s ease' }}>
+        {/* blooming glow bak teksten — cinematisk «lyset slås på» */}
+        <div aria-hidden className="absolute left-1/2 top-1/2 w-[720px] h-[720px] rounded-full" style={{ background: 'radial-gradient(circle, rgba(210,152,255,0.24), rgba(210,152,255,0.06) 42%, transparent 66%)', transform: 'translate(-50%,-50%)', opacity: reveal ? 1 : 0, animation: reveal ? 'moBloom 1.9s cubic-bezier(0.16,1,0.3,1) 0.05s both' : undefined }} />
+        <span className="relative inline-block text-[11px] font-bold uppercase tracking-[0.42em] mb-7" style={{ fontFamily: PJ, color: ACCENT_DK, animation: reveal ? 'moTxt 0.9s cubic-bezier(0.16,1,0.3,1) 0.25s both' : undefined }}>DigiHome · operativsystemet</span>
+        <h2 className="relative leading-[1.04] tracking-[-0.034em]" style={{ fontFamily: FH, fontWeight: 700, fontSize: 'clamp(34px, 4.4vw, 56px)', color: INK }}>
           {txt.map((w, i) => (
-            <span key={i} className="inline-block" style={{ marginRight: '0.26em', animation: isText ? `moTxt 0.7s cubic-bezier(0.22,1,0.36,1) ${0.55 + i * 0.1}s both` : undefined }}>{w}</span>
+            <span key={i} className="inline-block" style={{ marginRight: '0.26em', animation: reveal ? `moTxt 1.05s cubic-bezier(0.16,1,0.3,1) ${0.55 + i * 0.16}s both` : undefined }}>{w}</span>
           ))}
         </h2>
-        <p className="text-[16px] mt-5" style={{ fontFamily: PJ, color: SUB, animation: isText ? 'moTxt 0.7s cubic-bezier(0.22,1,0.36,1) 1.35s both' : undefined }}>Hele driften samlet på ett sted.</p>
+        <p className="relative text-[16px] mt-5" style={{ fontFamily: PJ, color: SUB, animation: reveal ? 'moTxt 0.95s cubic-bezier(0.16,1,0.3,1) 1.55s both' : undefined }}>Hele driften samlet på ett sted.</p>
       </div>
 
       {/* ══ STEG 2–3 · KONSTELLASJON (bygges modul for modul — kun illustrasjon, sentrert) ══ */}
@@ -873,7 +877,7 @@ function DesktopMock({ phase, beat, pulseKey, pdfMode, active }: { phase: 'intro
     if (pdfMode) { setOvStage('all'); setOvStep(WALK_KEYS.length - 1); return; }
     setOvStage('text'); setOvStep(-1);
     const ts: any[] = [];
-    const TEXT_MS = 2500, STEP_MS = 700;
+    const TEXT_MS = 3000, STEP_MS = 700;
     ts.push(setTimeout(() => { setOvStage('walk'); setOvStep(0); }, TEXT_MS));
     for (let i = 1; i < WALK_KEYS.length; i++) ts.push(setTimeout(() => setOvStep(i), TEXT_MS + i * STEP_MS));
     ts.push(setTimeout(() => setOvStage('all'), TEXT_MS + WALK_KEYS.length * STEP_MS + 350));
@@ -945,7 +949,7 @@ function DesktopMock({ phase, beat, pulseKey, pdfMode, active }: { phase: 'intro
         <div className="flex-1 relative overflow-hidden" style={{ background: BG }}>
           <AnimatePresence mode="sync">
             <motion.div key={isOverview ? 'overview' : isFinale ? 'finale' : beat.content} ref={(el) => { if (el) curContent.current = el; }} className="absolute inset-0" initial={{ opacity: 0, scale: 1.015, filter: 'blur(8px)' }} animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }} exit={{ opacity: 0, scale: 0.985, filter: 'blur(8px)' }} transition={{ duration: 0.9, ease }}>
-              {isOverview ? <ModuleOverview stage={ovStage} step={ovStep} /> : isFinale ? <CommandFinale pdfMode={pdfMode} /> : View ? <View /> : null}
+              {isOverview ? <ModuleOverview stage={ovStage} step={ovStep} active={active} /> : isFinale ? <CommandFinale pdfMode={pdfMode} /> : View ? <View /> : null}
             </motion.div>
           </AnimatePresence>
           {/* nav-dim: under navigasjon dempes innholdet så fokus er på sidebaren */}

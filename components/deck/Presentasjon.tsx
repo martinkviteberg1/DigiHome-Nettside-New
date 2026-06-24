@@ -5584,11 +5584,14 @@ const SFraVerktoyTilMotor = (p: any) => {
     <div className="relative z-10 w-full max-w-[1080px] mx-auto px-6 sm:px-12 my-auto">
 
       {/* ═══ HEADER ═══ */}
-      <div className="text-center max-w-[900px] mx-auto mb-9 sm:mb-12">
+      <div className="text-center max-w-[920px] mx-auto mb-9 sm:mb-12">
         <span className="block text-[11px] font-bold uppercase tracking-[0.42em]" style={{ ...F, color: AC, ...rise(0) }}>Hvorfor vi er annerledes</span>
         <h2 className="mt-5 tracking-[-0.038em] leading-[1.05]" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(28px, 3.8vw, 52px)', color: INK, ...rise(1) }}>
-          Slik folk alltid har <span style={{ color: AC }}>ønsket</span> at software skulle fungere.
+          Vi bygde ikke et register. <span style={{ color: AC }}>Vi bygde en motor.</span>
         </h2>
+        <p className="mt-5 mx-auto max-w-[680px] text-[14px] sm:text-[15.5px] font-normal leading-[1.55]" style={{ ...F, color: '#5d564e', ...rise(2) }}>
+          Forskjellen mellom et system som lagrer hva som har skjedd — og ett som driver det som skal skje.
+        </p>
       </div>
 
       {/* ═══ SAMMENLIGNING — to paneler ═══ */}
@@ -5605,6 +5608,7 @@ const SFraVerktoyTilMotor = (p: any) => {
                   <span className="block w-[7px] h-[1.5px] rounded-full" style={{ background: 'rgba(20,15,10,0.3)' }} />
                 </span>
                 <span className="text-[15.5px] leading-[1.3]" style={{ ...F, color: '#8a8278' }}>{pair.left}</span>
+                <span className="ml-auto tabular-nums text-[11px] font-bold tracking-[0.04em] shrink-0" style={{ ...F, color: 'rgba(20,15,10,0.2)' }}>{String(i + 1).padStart(2, '0')}</span>
               </li>
             ))}
           </ul>
@@ -5635,6 +5639,7 @@ const SFraVerktoyTilMotor = (p: any) => {
                     <Icon className="w-[12px] h-[12px]" style={{ color: pair.accent ? '#fff' : AC }} strokeWidth={2.6} />
                   </span>
                   <span className="relative text-[16px] leading-[1.3]" style={{ ...(pair.accent ? FH : F), fontWeight: pair.accent ? 700 : 600, color: pair.accent ? AC : INK2 }}>{pair.right}</span>
+                  <span className="relative ml-auto tabular-nums text-[11px] font-bold tracking-[0.04em] shrink-0" style={{ ...F, color: pair.accent ? AC : 'rgba(160,82,224,0.55)' }}>{String(i + 1).padStart(2, '0')}</span>
                 </li>
               );
             })}
