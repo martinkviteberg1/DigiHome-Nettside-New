@@ -6843,7 +6843,7 @@ const SAutopilotStatus = (p: any) => {
     { pr: 'Vedlikehold & avvik', tr: 'Telefon / e-post', dh: 'Sak opprettes, leverandør foreslås', hu: 'Godkjenner', s: 'pilot' },
     { pr: 'Prising & kanalvalg', tr: 'Erfaring / manuelt', dh: 'Datadrevet anbefaling', hu: 'Beslutter', s: 'road' },
   ];
-  const COLS = 'grid grid-cols-[1.05fr_1.05fr_1.55fr_0.95fr_84px] gap-4';
+  const COLS = 'grid grid-cols-[1.05fr_1.05fr_1.55fr_0.95fr_84px] gap-4 min-w-[680px]';
   return (
   <SlideFrame bg="beige" {...p}>
     <style>{`@keyframes apFade{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}@keyframes apHead{from{opacity:0;transform:translateY(22px);filter:blur(8px)}60%{filter:blur(0)}to{opacity:1;transform:translateY(0);filter:blur(0)}}`}</style>
@@ -6869,7 +6869,7 @@ const SAutopilotStatus = (p: any) => {
       </div>
 
       {/* matrix */}
-      <div className="mt-4 rounded-[22px] overflow-hidden" style={{ background: '#fff', border: `1px solid ${HAIR}`, boxShadow: '0 2px 4px rgba(20,15,10,0.04), 0 28px 64px -30px rgba(20,15,10,0.22)', animation: anim ? 'apFade 0.8s cubic-bezier(0.22,1,0.36,1) 0.7s both' : undefined, opacity: show ? undefined : 0 }}>
+      <div className="mt-4 rounded-[22px] overflow-x-auto overflow-y-hidden no-scrollbar" style={{ background: '#fff', border: `1px solid ${HAIR}`, boxShadow: '0 2px 4px rgba(20,15,10,0.04), 0 28px 64px -30px rgba(20,15,10,0.22)', animation: anim ? 'apFade 0.8s cubic-bezier(0.22,1,0.36,1) 0.7s both' : undefined, opacity: show ? undefined : 0 }}>
         <div className={`${COLS} px-6 py-3`} style={{ background: 'rgba(20,15,10,0.025)' }}>
           {['Prosess', 'Tradisjonelt', 'DigiHome i dag', 'Menneske', 'Status'].map((h) => (
             <span key={h} className="text-[10px] font-bold uppercase tracking-[0.14em]" style={{ ...F, color: MUT }}>{h}</span>
@@ -6995,7 +6995,7 @@ const SVerdiflyt = (p: any) => {
     { inc: 'Etableringsavgift', who: 'Franchise-operatør', to: 'DigiHome Tech AS', type: 'Onboarding', tech: true },
     { inc: 'Transaksjoner', who: 'Huseier / leietaker / partner', to: 'DigiHome Tech / operatør', type: 'Volumbasert', tech: true },
   ];
-  const COLS = 'grid grid-cols-[1.1fr_1.2fr_1.2fr_1fr] gap-4';
+  const COLS = 'grid grid-cols-[1.1fr_1.2fr_1.2fr_1fr] gap-4 min-w-[560px]';
   return (
   <SlideFrame bg="beige" {...p}>
     <style>{`@keyframes vfFade{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}@keyframes vfHead{from{opacity:0;transform:translateY(22px);filter:blur(8px)}60%{filter:blur(0)}to{opacity:1;transform:translateY(0);filter:blur(0)}}`}</style>
@@ -7011,7 +7011,7 @@ const SVerdiflyt = (p: any) => {
         </p>
       </div>
 
-      <div className="mt-6 rounded-[22px] overflow-hidden" style={{ background: '#fff', border: `1px solid ${HAIR}`, boxShadow: '0 2px 4px rgba(20,15,10,0.04), 0 28px 64px -30px rgba(20,15,10,0.22)', animation: anim ? 'vfFade 0.8s cubic-bezier(0.22,1,0.36,1) 0.7s both' : undefined, opacity: show ? undefined : 0 }}>
+      <div className="mt-6 rounded-[22px] overflow-x-auto overflow-y-hidden no-scrollbar" style={{ background: '#fff', border: `1px solid ${HAIR}`, boxShadow: '0 2px 4px rgba(20,15,10,0.04), 0 28px 64px -30px rgba(20,15,10,0.22)', animation: anim ? 'vfFade 0.8s cubic-bezier(0.22,1,0.36,1) 0.7s both' : undefined, opacity: show ? undefined : 0 }}>
         <div className={`${COLS} px-6 py-3`} style={{ background: 'rgba(20,15,10,0.025)' }}>
           {['Inntekt', 'Hvem betaler', 'Til', 'Type'].map((h) => (
             <span key={h} className="text-[10px] font-bold uppercase tracking-[0.14em]" style={{ ...F, color: MUT }}>{h}</span>
