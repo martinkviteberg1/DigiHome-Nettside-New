@@ -2994,7 +2994,7 @@ const SRevenue = (p: any) => {
   const HAIR = 'rgba(20,15,10,0.10)';
   const engines = [
     { num: '01', title: 'Egen forvaltning', badge: 'Flaggskip', metric: '10', unit: '% av leien', lead: 'Bergen-flaggskipet vi drifter selv. Full forvaltningsmargin — beviset og cash-en.', bullets: ['≈ 2 000 kr/enhet/mnd (modell) — Bergen i dag ~3 000', 'Dagens 40 huseiere ligger her', 'Referansene franchise hviler på'] },
-    { num: '02', title: 'Franchise · plattform', badge: 'Recurring', metric: 'fra 199', unit: 'kr/enhet/mnd', lead: 'Lokale operatører driver på DigiHome-plattformen. Skalerbar, recurring kjerne-ARR.', bullets: ['+ liten royalty på toppen', '≈ 0,7 MNOK/år per moden franchise', '300+ enheter per franchise'] },
+    { num: '02', title: 'Franchise · plattform', badge: 'Recurring', metric: 'fra 199', unit: 'kr/enhet/mnd', lead: 'Lokale operatører driver på DigiHome-plattformen. Skalerbar, recurring kjerne-ARR.', bullets: ['+ royalty ~10 % av operatørens honorar', '≈ 1,4 MNOK/år per moden franchise', '300+ enheter per franchise'] },
     { num: '03', title: 'Franchise · etablering', badge: 'Engangs', metric: '~200', unit: 'k per franchise', lead: 'Etableringsavgift når en ny operatør går inn i nettverket. Finansierer onboarding.', bullets: ['Opplæring, oppsett og merkevare', 'Kapital-lett — operatør tar driften', 'Skalerer med antall nye franchises'] },
     { num: '04', title: 'Utleiemegling & transaksjoner', badge: 'Alle segmenter', metric: '+30–80', unit: 'kr ARPU', lead: 'Utleiemegling per leieforhold + depositum, kredittsjekk og forsikring. Høy margin.', bullets: ['Engangsgebyr ved nytt leieforhold', 'Depositum · kredittsjekk · forsikring', 'Trakt inn til full forvaltning'] },
   ];
@@ -3097,7 +3097,7 @@ const SRevenue = (p: any) => {
             ))}
           </div>
           <div className="mt-7 pt-5 border-t border-white/[0.08]">
-            <p className="text-[11.5px] text-white/60 font-light leading-[1.55]">150 MNOK ARR ≈ <span className="font-semibold text-white/90">~30 000 enheter under forvaltning</span> på tvers av nettverket — egen drift + franchise. En brøkdel av det norske utleiemarkedet.</p>
+            <p className="text-[11.5px] text-white/60 font-light leading-[1.55]">150 MNOK ARR ≈ <span className="font-semibold text-white/90">~30 000 enheter under forvaltning</span> (~720 MNOK forvaltnings-GMV i nettverket) — egen drift + franchise. En brøkdel av det norske utleiemarkedet.</p>
           </div>
         </div>
       </article>
@@ -3290,7 +3290,7 @@ const SUnitEconomics = (p: any) => {
                 <span className="text-[9.5px] font-bold uppercase tracking-[0.16em]" style={{ ...F, color: P }}>Per moden franchise · kapital-lett</span>
               </span>
               <p className="text-[12px] leading-[1.55]" style={{ ...F, color: 'rgba(255,255,255,0.7)' }}>
-                ~300 enheter · <span className="font-bold text-white">~0,7 MNOK recurring ARR/år</span> · etablering ~200k · <span className="text-white">operatøren tar driften</span>.
+                ~300 enheter · <span className="font-bold text-white">~1,4 MNOK recurring ARR/år</span> · etablering ~200k · <span className="text-white">operatøren tar driften</span>.
               </p>
             </div>
           </div>
@@ -5767,7 +5767,7 @@ const SBetalingsmodell = (p: any) => {
     {
       seg: 'Franchise', name: 'Plattform per enhet', pre: 'fra', big: '199 kr', unit: 'per enhet / mnd',
       desc: 'Lokale operatører driver på DigiHome-plattformen. Recurring og skalerbart.',
-      feats: ['Plattform + nasjonal merkevare', 'Etableringsavgift ved oppstart', 'Liten royalty-andel på toppen', '3–4× flere enheter per årsverk'],
+      feats: ['Plattform + nasjonal merkevare', 'Etableringsavgift ved oppstart', 'Royalty ~10 % av operatørens honorar', '3–4× flere enheter per årsverk'],
       hl: true, badge: 'Vekstmotoren',
     },
     {
@@ -5935,7 +5935,7 @@ const SAlleredeInntekter = (p: any) => {
       {/* payoff */}
       <p className="text-[14px] sm:text-[15px] font-normal leading-[1.6] mt-9 text-center mx-auto max-w-[760px]"
          style={{ ...F, color: SUB, animation: anim ? 'traFade 0.9s cubic-bezier(0.22,1,0.36,1) 0.95s both' : undefined, opacity: show ? undefined : 0 }}>
-        <span style={{ color: INK2, fontWeight: 600 }}>40 boliger × 3 000 kr/mnd = 120 000 kr i månedlig inntekt.</span> Dette er prototypen — bevist i Bergen. Franchise gjør den nasjonal. <span style={{ color: MUT }}>(Unit economics regner forsiktig med ~2 000 kr/enhet — Bergen ligger over.)</span>
+        <span style={{ color: INK2, fontWeight: 600 }}>40 boliger × 3 000 kr/mnd = 120 000 kr i månedlig inntekt.</span> Dette er prototypen — bevist i Bergen. Franchise gjør den nasjonal. <span style={{ color: MUT }}>(Tre ARPU-nivåer: markedssnitt ~1 500 kr · modell ~2 000 kr · dagens Bergen-portefølje ~3 000 kr.)</span>
       </p>
     </div>
   </SlideFrame>
@@ -6972,6 +6972,192 @@ const SBrandFilm = (p: any) => {
   );
 };
 
+/* ═══ MARKEDSBEVIS — live FINN-scrape (11 581 annonser, juni 2026) ═══ */
+const SMarkedsbevis = (p: any) => {
+  const active = p.isActive; const isPdf = !!p.pdfMode; const show = active || isPdf; const anim = active && !isPdf;
+  useEffect(() => { p.onLight?.(active && !isPdf); }, [active, isPdf]);
+  const AC = '#a052e0'; const INK = '#0c0c0c'; const INK2 = '#1c1714'; const SUB = '#57514a'; const MUT = '#8a8278'; const HAIR = 'rgba(20,15,10,0.09)';
+
+  const KPIS = [
+    { big: '11 581', unit: '', label: 'Aktive annonser', sub: 'Synlig tilbudsside — i sanntid' },
+    { big: '63', unit: '%', label: 'Private annonsører', sub: '7 263 av 11 581 — fragmentert marked' },
+    { big: '21 045', unit: 'kr', label: 'Bergen · snittleie', sub: 'Høyest i landet — vårt beachhead' },
+    { big: '25', unit: '%', label: 'Topp 3 plattformer', sub: 'Synlige, men ingen full-stack-dominans' },
+  ];
+  // tilbudsside-fordeling (% av alle annonser)
+  const SUPPLY = [
+    { name: 'Private', pct: 62.7, c: AC, big: true },
+    { name: 'Hybel.no', pct: 13.9, c: '#3a3530' },
+    { name: 'Utleiemegleren', pct: 6.3, c: '#6e655c' },
+    { name: 'Qasa', pct: 4.8, c: '#8a8278' },
+    { name: 'Øvrige profesjonelle', pct: 12.3, c: '#b8b0a5' },
+  ];
+
+  return (
+  <SlideFrame bg="beige" {...p}>
+    <style>{`
+      @keyframes mbFade { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+      @keyframes mbHead { from { opacity: 0; transform: translateY(22px); filter: blur(8px); } 60% { filter: blur(0); } to { opacity: 1; transform: translateY(0); filter: blur(0); } }
+      @keyframes mbCard { from { opacity: 0; transform: translateY(20px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
+      @keyframes mbBar { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+    `}</style>
+    <div aria-hidden="true" className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse at 50% 10%, rgba(160,82,224,0.05) 0%, transparent 55%)' }} />
+    <DotGrid maskCenter="50% 16%" opacity={0.4} />
+
+    <div className="relative z-10 w-full max-w-[1240px] mx-auto px-6 sm:px-12 my-auto">
+      {/* HEADER */}
+      <div className="max-w-[920px]">
+        <span className="block text-[11px] font-bold uppercase tracking-[0.34em]" style={{ ...F, color: AC, animation: anim ? 'mbFade 0.7s cubic-bezier(0.22,1,0.36,1) 0.1s both' : undefined, opacity: show ? undefined : 0 }}>Markedsanalyse · FINN, juni 2026</span>
+        <h2 className="tracking-[-0.035em] leading-[1.05] mt-5" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(26px, 3.4vw, 46px)', color: INK, animation: anim ? 'mbHead 0.95s cubic-bezier(0.22,1,0.36,1) 0.25s both' : undefined, opacity: show ? undefined : 0 }}>
+          Aktivt, fragmentert — <span style={{ color: AC }}>og fortsatt privatdrevet.</span>
+        </h2>
+        <p className="text-[14px] sm:text-[15.5px] font-normal leading-[1.55] mt-4 max-w-[760px]" style={{ ...F, color: SUB, animation: anim ? 'mbFade 0.8s cubic-bezier(0.22,1,0.36,1) 0.5s both' : undefined, opacity: show ? undefined : 0 }}>
+          Egen analyse av 11 581 aktive utleieannonser viser en stor, synlig tilbudsside uten en dominerende full-stack-operatør — akkurat der DigiHome kan ta posisjonen.
+        </p>
+      </div>
+
+      {/* KPI-rad */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5 mt-8 sm:mt-9">
+        {KPIS.map((k, i) => (
+          <div key={i} className="rounded-2xl bg-white p-5 sm:p-6 flex flex-col"
+               style={{ border: `1px solid ${HAIR}`, boxShadow: '0 1px 2px rgba(20,15,10,0.03), 0 16px 38px -24px rgba(20,15,10,0.22)',
+                        animation: anim ? `mbCard 0.8s cubic-bezier(0.22,1,0.36,1) ${0.5 + i * 0.1}s both` : undefined, opacity: show ? undefined : 0 }}>
+            <div className="flex items-baseline gap-1.5">
+              <span className="font-bold tracking-[-0.04em] leading-none tabular-nums" style={{ ...F, color: INK, fontSize: 'clamp(28px, 2.9vw, 40px)' }}>{k.big}</span>
+              {k.unit && <span className="text-[15px] sm:text-[17px] font-semibold" style={{ color: MUT }}>{k.unit}</span>}
+            </div>
+            <p className="text-[12.5px] font-bold mt-3" style={{ ...F, color: INK2 }}>{k.label}</p>
+            <p className="text-[11px] leading-[1.45] mt-1 font-light" style={{ ...F, color: MUT }}>{k.sub}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* TILBUDSSIDE — stacked bar */}
+      <div className="mt-8 sm:mt-9" style={{ animation: anim ? 'mbFade 0.9s cubic-bezier(0.22,1,0.36,1) 0.95s both' : undefined, opacity: show ? undefined : 0 }}>
+        <div className="flex items-baseline justify-between mb-3 flex-wrap gap-2">
+          <span className="text-[11px] font-bold uppercase tracking-[0.2em]" style={{ ...F, color: INK2 }}>Tilbudssiden — hvem annonserer</span>
+          <span className="text-[11px] font-light" style={{ ...F, color: MUT }}>Andel av 11 581 annonser</span>
+        </div>
+        <div className="flex w-full h-[44px] rounded-xl overflow-hidden" style={{ border: `1px solid ${HAIR}` }}>
+          {SUPPLY.map((s, i) => (
+            <div key={s.name} className="relative h-full flex items-center justify-center origin-left"
+                 style={{ width: `${s.pct}%`, background: s.c,
+                          animation: anim ? `mbBar 0.9s cubic-bezier(0.4,0,0.1,1) ${1.05 + i * 0.08}s both` : undefined,
+                          transformOrigin: 'left' }}>
+              {s.pct >= 6 && <span className="text-[10.5px] font-bold text-white tabular-nums px-1 truncate" style={F}>{s.pct}%</span>}
+            </div>
+          ))}
+        </div>
+        <div className="flex flex-wrap gap-x-5 gap-y-1.5 mt-3">
+          {SUPPLY.map((s) => (
+            <span key={s.name} className="flex items-center gap-1.5 text-[11px]" style={{ ...F, color: SUB }}>
+              <span className="w-2.5 h-2.5 rounded-sm" style={{ background: s.c }} />{s.name} <span className="tabular-nums" style={{ color: MUT }}>{s.pct}%</span>
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {/* PAYOFF */}
+      <div className="mt-7 sm:mt-8 pt-6 flex items-start gap-3" style={{ borderTop: `1px solid ${HAIR}`, animation: anim ? 'mbFade 0.9s cubic-bezier(0.22,1,0.36,1) 1.2s both' : undefined, opacity: show ? undefined : 0 }}>
+        <Target className="w-5 h-5 mt-px shrink-0" style={{ color: AC }} strokeWidth={2} />
+        <p className="text-[13px] sm:text-[14.5px] leading-[1.55]" style={{ ...F, color: SUB }}>
+          <span style={{ color: INK, fontWeight: 700 }}>DigiHome starter ikke i et kaldt marked.</span> Vi kan identifisere tusenvis av aktive utleiere i sanntid — og gå inn i høyverdi-segmentet (Bergen + storby, &gt;15&nbsp;000 kr/mnd) der smerten er størst og betalingsviljen høyest.
+        </p>
+      </div>
+    </div>
+  </SlideFrame>
+  );
+};
+
+/* ═══ APPENDIKS — market scrape metode + fordelinger ═══ */
+const SMarkedKilde = (p: any) => {
+  const active = p.isActive; const isPdf = !!p.pdfMode; const show = active || isPdf; const anim = active && !isPdf;
+  useEffect(() => { p.onLight?.(active && !isPdf); }, [active, isPdf]);
+  const AC = '#a052e0'; const INK = '#0c0c0c'; const INK2 = '#1c1714'; const SUB = '#57514a'; const MUT = '#8a8278'; const HAIR = 'rgba(20,15,10,0.09)';
+
+  const REGIONS = [
+    { r: 'Bergen', n: 664, rent: 21045 }, { r: 'Oslo', n: 2670, rent: 19029 },
+    { r: 'Stavanger', n: 440, rent: 18385 }, { r: 'Trondheim', n: 803, rent: 14249 }, { r: 'Andre', n: 7004, rent: 13291 },
+  ];
+  const maxRent = 21045;
+  const ROOMS = [
+    { k: '1 rom', rent: 11153 }, { k: '2 rom', rent: 12882 }, { k: '3 rom', rent: 17061 }, { k: '4 rom', rent: 20124 }, { k: '5+ rom', rent: 18423 },
+  ];
+
+  return (
+  <SlideFrame bg="beige" {...p}>
+    <style>{`
+      @keyframes mkFade { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+      @keyframes mkBar { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+    `}</style>
+    <DotGrid maskCenter="50% 16%" opacity={0.38} />
+    <div className="relative z-10 w-full max-w-[1200px] mx-auto px-6 sm:px-12 my-auto">
+      <div className="max-w-[860px]">
+        <span className="block text-[11px] font-bold uppercase tracking-[0.34em]" style={{ ...F, color: AC, animation: anim ? 'mkFade 0.7s ease 0.1s both' : undefined, opacity: show ? undefined : 0 }}>Appendiks · Live market scrape</span>
+        <h2 className="tracking-[-0.035em] leading-[1.05] mt-4" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(24px, 3vw, 40px)', color: INK, animation: anim ? 'mkFade 0.85s ease 0.2s both' : undefined, opacity: show ? undefined : 0 }}>
+          FINN-annonser, juni 2026
+        </h2>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-[1.15fr_1fr] gap-7 lg:gap-12 mt-8">
+        {/* venstre — fordelinger */}
+        <div style={{ animation: anim ? 'mkFade 0.9s ease 0.4s both' : undefined, opacity: show ? undefined : 0 }}>
+          <p className="text-[11px] font-bold uppercase tracking-[0.2em] mb-4" style={{ ...F, color: INK2 }}>Snittleie per region</p>
+          <div className="space-y-2.5">
+            {REGIONS.map((r, i) => (
+              <div key={r.r} className="flex items-center gap-3">
+                <span className="w-[78px] text-[12.5px] font-semibold shrink-0" style={{ ...F, color: INK2 }}>{r.r}</span>
+                <div className="flex-1 h-[22px] rounded-md overflow-hidden" style={{ background: 'rgba(20,15,10,0.05)' }}>
+                  <div className="h-full rounded-md origin-left flex items-center justify-end pr-2" style={{ width: `${(r.rent / maxRent) * 100}%`, background: r.r === 'Bergen' ? AC : '#c9c0b4', animation: anim ? `mkBar 0.9s cubic-bezier(0.4,0,0.1,1) ${0.5 + i * 0.08}s both` : undefined, transformOrigin: 'left' }}>
+                    <span className="text-[10.5px] font-bold tabular-nums" style={{ ...F, color: r.r === 'Bergen' ? '#fff' : INK2 }}>{r.rent.toLocaleString('nb-NO')}</span>
+                  </div>
+                </div>
+                <span className="w-[58px] text-right text-[10.5px] tabular-nums shrink-0" style={{ ...F, color: MUT }}>n={r.n.toLocaleString('nb-NO')}</span>
+              </div>
+            ))}
+          </div>
+
+          <p className="text-[11px] font-bold uppercase tracking-[0.2em] mt-7 mb-3" style={{ ...F, color: INK2 }}>Snittleie per romkategori</p>
+          <div className="flex items-end gap-2.5 h-[88px]">
+            {ROOMS.map((rm, i) => (
+              <div key={rm.k} className="flex-1 flex flex-col items-center justify-end h-full">
+                <span className="text-[10px] font-bold tabular-nums mb-1" style={{ ...F, color: INK2 }}>{(rm.rent/1000).toFixed(0)}k</span>
+                <div className="w-full rounded-t-md origin-bottom" style={{ height: `${(rm.rent / 21000) * 100}%`, background: rm.k === '4 rom' ? AC : '#c9c0b4', animation: anim ? `mkBar 0.9s cubic-bezier(0.4,0,0.1,1) ${0.7 + i * 0.07}s both` : undefined, transformOrigin: 'bottom' }} />
+                <span className="text-[10px] mt-1.5" style={{ ...F, color: MUT }}>{rm.k}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* høyre — metode + ARPU-rammeverk */}
+        <div style={{ animation: anim ? 'mkFade 0.9s ease 0.55s both' : undefined, opacity: show ? undefined : 0 }}>
+          <div className="rounded-2xl bg-white p-6" style={{ border: `1px solid ${HAIR}`, boxShadow: '0 16px 38px -24px rgba(20,15,10,0.22)' }}>
+            <p className="text-[11px] font-bold uppercase tracking-[0.2em] mb-3" style={{ ...F, color: AC }}>ARPU — tre nivåer</p>
+            {[
+              { k: 'Markeds-ARPU', v: '~1 500–1 800 kr', d: '10 % av markedssnitt (15 319 kr)' },
+              { k: 'DigiHome beachhead', v: '~2 000–2 500 kr', d: 'Bergen høyverdi-private (>15k)' },
+              { k: 'Tech / franchise', v: '~350–400 kr', d: 'plattform 199 + royalty per enhet' },
+            ].map((a, i) => (
+              <div key={i} className="flex items-baseline justify-between py-2.5" style={{ borderBottom: i < 2 ? `1px solid ${HAIR}` : 'none' }}>
+                <div>
+                  <p className="text-[12.5px] font-bold" style={{ ...F, color: INK2 }}>{a.k}</p>
+                  <p className="text-[10.5px] font-light" style={{ ...F, color: MUT }}>{a.d}</p>
+                </div>
+                <span className="text-[14px] font-bold tabular-nums shrink-0 ml-3" style={{ ...FH, color: INK }}>{a.v}</span>
+              </div>
+            ))}
+          </div>
+          <p className="text-[10.5px] leading-[1.55] mt-4 font-light" style={{ ...F, color: MUT }}>
+            <span style={{ fontWeight: 700, color: SUB }}>Kilde &amp; metode:</span> Egen analyse av 11 581 aktive FINN-annonser, juni 2026, klassifisert etter annonsør, region, boligtype og pris. Ingen dupliserte Finnkoder. Annonser under 5 000 kr inkluderer enkelte parkerings-/lagerobjekter og filtreres i ARPU-analyser. «Annonse» ≈ utleieenhet (ikke nødvendigvis 1:1). «Andre» er en bred restkategori.
+          </p>
+        </div>
+      </div>
+    </div>
+  </SlideFrame>
+  );
+};
+
+
 
 const SLIDES: { C: any; light: boolean; animated?: boolean }[] = [
   { C: S1, light: false },                          // 01 · Cover (mørk — Bergen cityscape)
@@ -6997,6 +7183,7 @@ const SLIDES: { C: any; light: boolean; animated?: boolean }[] = [
   { C: SBusinessModels, light: true },              // 12 · Forretningsmodeller
   { C: SOperator, light: true },                    // · Den ideelle operatøren — franchise-ICP
   { C: SBetalingsmodell, light: true },             // 13 · Betalingsmodell
+  { C: SMarkedsbevis, light: true },                // · Markedsbevis — live FINN-scrape (11 581 annonser)
   { C: SMarket1, light: true },                     // 15 · Marked (NOK leievolum)
   { C: SMarket3, light: true },                     // 16 · Vei til 150 MNOK ARR (Norden)
   { C: SDiff, light: true },                        // 17 · Konkurransefortrinn (white)
@@ -7006,6 +7193,7 @@ const SLIDES: { C: any; light: boolean; animated?: boolean }[] = [
   { C: STeam, light: true },                        // 21 · Teamet (founder-market fit, mot slutten)
   { C: SAsk, light: true },                         // 22 · Pre-seed emisjon (beige)
   { C: S9, light: false },                          // 23 · Closing (mørk — Bergen harbor)
+  { C: SMarkedKilde, light: true },                 // · Appendiks — live market scrape (FINN, juni 2026)
 ];
 const ANIMATED_IDX = SLIDES.findIndex(s => s.animated);
 
