@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { ChevronLeft, ChevronRight, Check, Home, CreditCard, MessageCircle, Wrench, FileText, Sparkles, ArrowRight, Plus, Camera, Clock, BarChart3, Zap, Brain, Building2, AlertTriangle, TrendingUp, Settings, Layers, CalendarDays, PhoneCall, PenLine, Target, Rocket, Bot, MinusCircle, PlusCircle, LayoutDashboard, MessageSquare, ClipboardList, Radio, ClipboardCheck, AlertCircle, Users, BookOpen, PieChart, DollarSign, Shield, ChevronDown, Search, Filter, MoreHorizontal, Volume2, Droplets, Download, Loader2, Play } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Check, Home, CreditCard, MessageCircle, Wrench, FileText, Sparkles, ArrowRight, Plus, Camera, Clock, BarChart3, Zap, Brain, Building2, AlertTriangle, TrendingUp, Settings, Layers, CalendarDays, PhoneCall, PenLine, Target, Rocket, Bot, MinusCircle, PlusCircle, LayoutDashboard, MessageSquare, ClipboardList, Radio, ClipboardCheck, AlertCircle, Users, BookOpen, PieChart, DollarSign, Shield, ChevronDown, Search, Filter, MoreHorizontal, Volume2, Droplets, Download, Loader2, Play, List, X } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -2474,7 +2474,7 @@ const S9 = (p: any) => (
             animation: p.isActive ? 's9HeadlineIn 1.1s cubic-bezier(0.22,1,0.36,1) 0.55s both' : undefined,
             opacity: p.isActive ? undefined : 0,
           }}>
-        Verden trenger bedre utleie. <span style={{ color: '#c39ce0' }}>Vi bygger infrastrukturen.</span>
+        Verden trenger bedre utleie. <span style={{ color: '#c39ce0' }}>Vi bygger autopiloten.</span>
       </h2>
 
       {/* Lead */}
@@ -2489,7 +2489,7 @@ const S9 = (p: any) => (
            animation: p.isActive ? 's9FadeUp 1s cubic-bezier(0.22,1,0.36,1) 0.9s both' : undefined,
            opacity: p.isActive ? undefined : 0,
          }}>
-        Vi starter i Norge — 600 000 utleieboliger, flere kanaler, mer regulering og høyere forventninger. Behovet for en samlet, automatisert plattform finnes overalt der bolig leies ut.
+        Vi starter i Norge — 600 000 utleieboliger, flere kanaler, mer regulering og høyere forventninger. Overalt der bolig leies ut trengs det samme: ett system som gjør jobben automatisk.
       </p>
       <p className="mx-auto font-medium max-w-[640px] mb-7 sm:mb-10 px-4"
          style={{
@@ -2502,7 +2502,7 @@ const S9 = (p: any) => (
            animation: p.isActive ? 's9FadeUp 1s cubic-bezier(0.22,1,0.36,1) 1.05s both' : undefined,
            opacity: p.isActive ? undefined : 0,
          }}>
-        DigiHome har produktet, teamet og timingen. Nå henter vi kapital for å bevise markedet — og bygge plattformen verden trenger.
+        DigiHome har produktet, teamet og timingen. Nå henter vi 3 MNOK for å bevise markedet — og gjøre utleie på autopilot til nasjonal infrastruktur.
       </p>
 
       {/* Contact row */}
@@ -5490,10 +5490,10 @@ const SVisionIntro = (p: any) => {
         <h2 className="tracking-[-0.04em] leading-[0.95]" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(48px, 6.6vw, 92px)',
               animation: (active && phase === 'hook') ? 'viKen 10s cubic-bezier(0.33,0,0.2,1) both' : undefined }}>
           <span className="block text-white"
-                style={{ animation: (active && phase === 'hook') ? 'viReveal 1.4s cubic-bezier(0.22,1,0.36,1) 0.5s both' : undefined, opacity: show ? undefined : 0 }}>Ikke et system.</span>
+                style={{ animation: (active && phase === 'hook') ? 'viReveal 1.4s cubic-bezier(0.22,1,0.36,1) 0.5s both' : undefined, opacity: show ? undefined : 0 }}>Vi var utleiere først.</span>
           <span className="block"
                 style={{ color: AC, textShadow: `0 0 70px ${AC}55`,
-                         animation: (active && phase === 'hook') ? 'viReveal 1.4s cubic-bezier(0.22,1,0.36,1) 1.45s both' : undefined, opacity: show ? undefined : 0 }}>En autopilot.</span>
+                         animation: (active && phase === 'hook') ? 'viReveal 1.4s cubic-bezier(0.22,1,0.36,1) 1.45s both' : undefined, opacity: show ? undefined : 0 }}>Så bygde vi motoren.</span>
         </h2>
       </div>
 
@@ -7265,7 +7265,7 @@ const SMarkedsbevis = (p: any) => {
   );
 };
 
-/* ═══ APPENDIKS — market scrape metode + fordelinger ═══ */
+/* ═══ Markedsanalyse — kilde & metode (FINN-scrape) ═══ */
 const SMarkedKilde = (p: any) => {
   const active = p.isActive; const isPdf = !!p.pdfMode; const show = active || isPdf; const anim = active && !isPdf;
   useEffect(() => { p.onLight?.(active && !isPdf); }, [active, isPdf]);
@@ -7289,7 +7289,7 @@ const SMarkedKilde = (p: any) => {
     <DotGrid maskCenter="50% 16%" opacity={0.38} />
     <div className="relative z-10 w-full max-w-[1200px] mx-auto px-6 sm:px-12 my-auto">
       <div className="max-w-[860px]">
-        <span className="block text-[11px] font-bold uppercase tracking-[0.34em]" style={{ ...F, color: AC, animation: anim ? 'mkFade 0.7s ease 0.1s both' : undefined, opacity: show ? undefined : 0 }}>Appendiks · Live market scrape</span>
+        <span className="block text-[11px] font-bold uppercase tracking-[0.34em]" style={{ ...F, color: AC, animation: anim ? 'mkFade 0.7s ease 0.1s both' : undefined, opacity: show ? undefined : 0 }}>Markedsanalyse · kilde & metode</span>
         <h2 className="tracking-[-0.035em] leading-[1.05] mt-4" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(24px, 3vw, 40px)', color: INK, animation: anim ? 'mkFade 0.85s ease 0.2s both' : undefined, opacity: show ? undefined : 0 }}>
           FINN-annonser, juni 2026
         </h2>
@@ -7353,7 +7353,7 @@ const SMarkedKilde = (p: any) => {
   );
 };
 
-/* ═══ APPENDIKS — Teknisk kostnadsbase ═══ */
+/* ═══ Teknisk kostnadsbase ═══ */
 const SKostnadsbase = (p: any) => {
   const active = p.isActive; const isPdf = !!p.pdfMode; const show = active || isPdf; const anim = active && !isPdf;
   useEffect(() => { p.onLight?.(active && !isPdf); }, [active, isPdf]);
@@ -7376,7 +7376,7 @@ const SKostnadsbase = (p: any) => {
     <DotGrid maskCenter="50% 16%" opacity={0.38} />
     <div className="relative z-10 w-full max-w-[1200px] mx-auto px-6 sm:px-12 my-auto">
       <div className="max-w-[880px]">
-        <span className="block text-[11px] font-bold uppercase tracking-[0.34em]" style={{ ...F, color: AC, animation: anim ? 'kbFade 0.7s ease 0.1s both' : undefined, opacity: show ? undefined : 0 }}>Appendiks · Teknisk kostnadsbase</span>
+        <span className="block text-[11px] font-bold uppercase tracking-[0.34em]" style={{ ...F, color: AC, animation: anim ? 'kbFade 0.7s ease 0.1s both' : undefined, opacity: show ? undefined : 0 }}>Teknologi · kostnadsbase</span>
         <h2 className="tracking-[-0.035em] leading-[1.05] mt-4" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(24px, 3vw, 40px)', color: INK, animation: anim ? 'kbFade 0.85s ease 0.2s both' : undefined, opacity: show ? undefined : 0 }}>
           Lav teknisk kostnadsbase
         </h2>
@@ -7526,6 +7526,7 @@ const SInnhold = (p: any) => {
   const go = (C: any) => { const i = idxOf(C); if (i >= 0) p.goTo?.(i); };
   const SECTIONS = [
     { n: '01', t: 'Visjon & team', items: [
+      { label: 'Elevator pitch', C: SElevatorPitch },
       { label: 'Hvorfor vi bygde DigiHome', C: SVisionIntro },
       { label: 'Teamet', C: STeam },
       { label: 'Utleie er blitt aktiv drift', C: SProblem },
@@ -7552,6 +7553,7 @@ const SInnhold = (p: any) => {
     ] },
     { n: '05', t: 'Marked', items: [
       { label: 'Markedsanalyse — FINN', C: SMarkedsbevis },
+      { label: 'Markedskilde & metode', C: SMarkedKilde },
       { label: 'Marked: Norge · Norden · 2030', C: SMarket1 },
       { label: 'Vei til 150 MNOK ARR', C: SMarket3 },
       { label: 'Konkurransefortrinn', C: SDiff },
@@ -7559,15 +7561,12 @@ const SInnhold = (p: any) => {
     { n: '06', t: 'Økonomi, risiko & emisjon', items: [
       { label: 'Inntektsmodell', C: SRevenue },
       { label: 'Unit economics', C: SUnitEconomics },
+      { label: 'Teknisk kostnadsbase', C: SKostnadsbase },
       { label: 'Cashflow i dag', C: SCashflowIDag },
       { label: 'Budsjett & runway', C: SBudgetRunway },
       { label: 'Risikoene vi beviser bort', C: SDeRisk },
       { label: 'Emisjon: 3 MNOK', C: SAsk },
     ] },
-  ];
-  const APPENDIKS = [
-    { label: 'Appendiks — markedskilde', C: SMarkedKilde },
-    { label: 'Appendiks — kostnadsbase', C: SKostnadsbase },
   ];
   return (
   <SlideFrame bg="beige" {...p}>
@@ -7626,23 +7625,6 @@ const SInnhold = (p: any) => {
           </div>
         ))}
       </div>
-
-      <div className="mt-8 sm:mt-9 pt-4 flex items-center gap-x-6 gap-y-2 flex-wrap"
-           style={{ borderTop: `1.5px solid ${HAIR}`, animation: anim ? `inCol 0.75s cubic-bezier(0.22,1,0.36,1) 1.1s both` : undefined, opacity: show ? undefined : 0 }}>
-        <span className="text-[11px] font-bold uppercase tracking-[0.22em] shrink-0" style={{ ...F, color: MUT }}>Appendiks</span>
-        {APPENDIKS.map((it) => {
-          const num = idxOf(it.C);
-          const label2 = num >= 0 ? String(num + 1).padStart(2, '0') : '';
-          return (
-            <button key={it.label} type="button" onClick={() => go(it.C)}
-              className="inItem inline-flex items-center gap-2 text-left focus:outline-none focus-visible:outline-none">
-              <span className="inArrow shrink-0 text-[12px] leading-none" style={{ color: AC }}>→</span>
-              <span className="text-[13px] leading-[1.3]" style={{ ...F, color: 'inherit' }}>{it.label}</span>
-              <span className="inNum tabular-nums text-[11px] font-semibold shrink-0" style={{ ...F }}>{label2}</span>
-            </button>
-          );
-        })}
-      </div>
     </div>
   </SlideFrame>
   );
@@ -7652,11 +7634,97 @@ const SInnhold = (p: any) => {
 
 
 
+const SElevatorPitch = (p: any) => {
+  const active = p.isActive; const isPdf = !!p.pdfMode; const show = active || isPdf; const anim = active && !isPdf;
+  const AC = '#a052e0';
+  const ri = (d: number) => ({ animation: anim ? `epUp 0.85s cubic-bezier(0.22,1,0.36,1) ${d}s both` : undefined, opacity: show ? undefined : 0 } as React.CSSProperties);
+  const PROOF = [
+    { Icon: Zap, t: 'Hele prosessen automatisert', s: 'fra lead til ferdig regnskap — ett system' },
+    { Icon: TrendingUp, t: '~4× driftsgearing', s: 'samme forvalter håndterer langt flere boliger' },
+    { Icon: Building2, t: '1,44 MNOK ARR · 40 boliger', s: 'bevist i egen drift — uten ekstern kapital' },
+  ];
+  return (
+  <SlideFrame bg="beige" {...p}>
+    <style>{`@keyframes epUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}@keyframes epHook{0%{opacity:0;transform:translateY(26px);filter:blur(12px)}60%{filter:blur(0)}100%{opacity:1;transform:translateY(0);filter:blur(0)}}`}</style>
+    <div aria-hidden="true" className="absolute top-[-14%] left-1/2 -translate-x-1/2 w-[900px] h-[820px] rounded-full pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(160,82,224,0.07) 0%, transparent 62%)' }} />
+    <div className="relative z-10 w-full max-w-[1180px] mx-auto px-6 sm:px-12 my-auto">
+      {/* eyebrow */}
+      <div className="flex items-center gap-3" style={ri(0.05)}>
+        <span className="h-px w-7 shrink-0" style={{ background: AC }} />
+        <span className="text-[10.5px] sm:text-[11px] font-bold uppercase tracking-[0.32em]" style={{ ...F, color: AC }}>Elevator pitch · DigiHome på 60 sekunder</span>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-[1.25fr_1fr] gap-9 lg:gap-14 items-center mt-5 sm:mt-7">
+        {/* ── venstre: krok + fortelling ── */}
+        <div>
+          {/* KROK */}
+          <h2 className="tracking-[-0.04em] leading-[0.98]" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(34px, 4.4vw, 60px)' }}>
+            <span className="block" style={{ color: '#0c0c0c', animation: anim ? 'epHook 1s cubic-bezier(0.16,1,0.3,1) 0.15s both' : undefined, opacity: show ? undefined : 0 }}>Ikke et system.</span>
+            <span className="block" style={{ color: AC, animation: anim ? 'epHook 1.05s cubic-bezier(0.16,1,0.3,1) 0.42s both' : undefined, opacity: show ? undefined : 0 }}>En autopilot.</span>
+          </h2>
+          <p className="mt-5 leading-[1.5] max-w-[540px]" style={{ ...F, fontWeight: 400, fontSize: 'clamp(14.5px, 1.45vw, 18px)', color: '#57514a', ...ri(0.5) }}>
+            Forvaltning og teknologi i samme selskap — en utleiedrift som <span style={{ color: '#0c0c0c', fontWeight: 600 }}>går av seg selv</span>.
+          </p>
+
+          {/* fortelling */}
+          <p className="leading-[1.55] mt-7" style={{ ...F, fontWeight: 400, fontSize: 'clamp(14px, 1.4vw, 17px)', color: '#3f3a34', ...ri(0.62) }}>
+            Vi automatiserte <span style={{ color: AC, fontWeight: 600 }}>hele prosessen</span> — fra første leietakerhenvendelse til ferdig regnskap — og beviste den i egen drift på <span style={{ color: '#0c0c0c', fontWeight: 600 }}>40 boliger i Bergen</span>.
+          </p>
+          <p className="leading-[1.55] mt-4" style={{ ...F, fontWeight: 400, fontSize: 'clamp(14px, 1.4vw, 17px)', color: '#3f3a34', ...ri(0.72) }}>
+            Det gir <span style={{ color: AC, fontWeight: 600 }}>driftsgearing</span>: når systemet gjør jobben, håndterer én forvalter mange ganger så mange boliger — og marginalkostnaden per enhet faller mot bare BankID + AI.
+          </p>
+          <p className="leading-[1.4] mt-6" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(16px, 1.7vw, 22px)', color: '#0c0c0c', ...ri(0.84) }}>
+            Det er derfor vi vinner — og vi henter <span style={{ color: AC }}>3 MNOK</span> for å gjøre den nasjonal.
+          </p>
+        </div>
+
+        {/* ── høyre: kombinasjonen + bevis ── */}
+        <div className="relative rounded-[26px] p-7 sm:p-8" style={{ background: '#ffffff', border: '1px solid rgba(20,15,10,0.07)', boxShadow: '0 2px 4px rgba(20,15,10,0.03), 0 34px 80px -38px rgba(20,15,10,0.28)', ...ri(0.55) }}>
+          <div aria-hidden="true" className="absolute -top-16 -right-16 w-[240px] h-[240px] rounded-full pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(160,82,224,0.08) 0%, transparent 66%)' }} />
+          <div className="relative">
+            {/* fusjon: forvaltning × teknologi = autopilot */}
+            <div className="grid grid-cols-[1fr_auto_1fr] items-stretch gap-2.5">
+              <div className="rounded-2xl px-3 py-4 text-center flex flex-col justify-center" style={{ background: 'rgba(20,15,10,0.035)', border: '1px solid rgba(20,15,10,0.07)' }}>
+                <span className="block text-[10px] font-bold uppercase tracking-[0.12em]" style={{ ...F, color: '#0c0c0c' }}>Forvaltning</span>
+                <span className="block text-[10.5px] mt-1 leading-tight" style={{ ...F, color: '#8a8278' }}>ekte drift</span>
+              </div>
+              <div className="flex items-center justify-center text-[20px] font-light" style={{ color: AC }}>×</div>
+              <div className="rounded-2xl px-3 py-4 text-center flex flex-col justify-center" style={{ background: 'rgba(20,15,10,0.035)', border: '1px solid rgba(20,15,10,0.07)' }}>
+                <span className="block text-[10px] font-bold uppercase tracking-[0.12em]" style={{ ...F, color: '#0c0c0c' }}>Teknologi</span>
+                <span className="block text-[10.5px] mt-1 leading-tight" style={{ ...F, color: '#8a8278' }}>eget system</span>
+              </div>
+            </div>
+            <div className="flex justify-center my-2"><ChevronDown className="w-5 h-5" style={{ color: AC }} strokeWidth={2.4} /></div>
+            <div className="rounded-2xl px-4 py-3.5 text-center" style={{ background: `linear-gradient(135deg, ${AC} 0%, #7a3bbf 100%)`, boxShadow: '0 14px 32px -14px rgba(160,82,224,0.5)' }}>
+              <span className="text-[13px] sm:text-[14px] font-bold uppercase tracking-[0.12em] text-white" style={F}>Utleie på autopilot</span>
+            </div>
+
+            {/* bevis */}
+            <div className="mt-6 space-y-px">
+              {PROOF.map((f) => (
+                <div key={f.t} className="flex items-start gap-3 py-3" style={{ borderTop: '1px solid rgba(20,15,10,0.08)' }}>
+                  <span className="flex items-center justify-center w-8 h-8 rounded-xl shrink-0 mt-px" style={{ background: 'rgba(160,82,224,0.1)' }}><f.Icon className="w-[16px] h-[16px]" style={{ color: AC }} strokeWidth={2} /></span>
+                  <div>
+                    <span className="block text-[13.5px] font-semibold leading-tight" style={{ ...F, color: '#0c0c0c' }}>{f.t}</span>
+                    <span className="block text-[11.5px] mt-0.5 leading-snug" style={{ ...F, color: '#8a8278' }}>{f.s}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </SlideFrame>
+  );
+};
+
 const SLIDES: { C: any; light: boolean; animated?: boolean }[] = [
   { C: S1, light: false },                          // 01 · Cover (mørk — Bergen cityscape)
   { C: SBrandFilm, light: false },                  // 02 · Merkevarefilm (mørk — kinematisk brand-film)
   { C: SInnhold, light: false },                    // 03 · Innhold — minimalistisk agenda (mørk)
-  { C: SVisionIntro, light: true, animated: true }, // 04 · Visjon — krok (mørk→lys reveal) — «Hvorfor vi bygde DigiHome»
+  { C: SElevatorPitch, light: true },               // 04 · Elevator pitch — DigiHome på 60 sekunder (lys, fortellende)
+  { C: SVisionIntro, light: true, animated: true }, // 05 · Visjon — krok (mørk→lys reveal) — «Hvorfor vi bygde DigiHome»
   { C: STeam, light: true },                        // · Teamet — flyttet hit, rett etter «Hvorfor vi bygde DigiHome» (founder-market fit tidlig)
   { C: SProblem, light: true },                     // 03 · Problemet — status quo (beige, flyttet frem)
   { C: SWhyNow, light: true },                      // 04 · Hvorfor nå — timing-vinduet (beige, flyttet frem)
@@ -7679,18 +7747,18 @@ const SLIDES: { C: any; light: boolean; animated?: boolean }[] = [
   { C: SOperator, light: true },                    // · Den ideelle operatøren — franchise-ICP
   { C: SBetalingsmodell, light: true },             // 13 · Betalingsmodell
   { C: SMarkedsbevis, light: true },                // · Markedsbevis — live FINN-scrape (11 581 annonser)
+  { C: SMarkedKilde, light: true },                 // · Markedskilde & metode (tidl. appendiks, nå integrert)
   { C: SMarket1, light: true },                     // 15 · Marked (NOK leievolum)
   { C: SMarket3, light: true },                     // 16 · Vei til 150 MNOK ARR (Norden)
   { C: SDiff, light: true },                        // 17 · Konkurransefortrinn (white)
   { C: SRevenue, light: true },                     // 18 · Inntektsmodell
   { C: SUnitEconomics, light: true },               // 19 · Unit economics
+  { C: SKostnadsbase, light: true },                // · Teknisk kostnadsbase (tidl. appendiks, nå integrert)
   { C: SCashflowIDag, light: true },                // · Cashflow i dag — bootstrap, før emisjon (beige)
   { C: SBudgetRunway, light: true },                // 20 · Budsjett & runway (beige)
   { C: SDeRisk, light: true },                      // · De-risking — ærlig om risiko + plan
   { C: SAsk, light: true },                         // 22 · Pre-seed emisjon (beige)
   { C: S9, light: false },                          // 23 · Closing (mørk — Bergen harbor)
-  { C: SMarkedKilde, light: true },                 // · Appendiks — live market scrape (FINN, juni 2026)
-  { C: SKostnadsbase, light: true },                // · Appendiks — teknisk kostnadsbase
 ];
 const ANIMATED_IDX = SLIDES.findIndex(s => s.animated);
 
@@ -7703,6 +7771,7 @@ export default function Presentasjon() {
   const [exportProgress, setExportProgress] = useState(0);
   const [exportStage, setExportStage] = useState<'idle' | 'preparing' | 'capturing' | 'building' | 'uploading' | 'done'>('idle');
   const [cachedPdf, setCachedPdf] = useState<{ exists: boolean; size?: number; updated_at?: string } | null>(null);
+  const [tocOpen, setTocOpen] = useState(false);
   const next = useCallback(() => setC((v: any) => {
     if (v === ANIMATED_IDX && s2Locked) return v; // Animert slide: lås fremover til animasjonen er ferdig
     return Math.min(v + 1, SLIDES.length - 1);
@@ -7838,12 +7907,14 @@ export default function Presentasjon() {
 
   useEffect(() => {
     const h = (e: any) => {
+      if (e.key === 'Escape' && tocOpen) { e.preventDefault(); setTocOpen(false); return; }
+      if (tocOpen) return; // ikke naviger decken bak åpent innholds-overlegg
       if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); next(); }
       if (e.key === 'ArrowLeft') { e.preventDefault(); prev(); }
     };
     window.addEventListener('keydown', h);
     return () => window.removeEventListener('keydown', h);
-  }, [next, prev]);
+  }, [next, prev, tocOpen]);
 
   return (
     <div className="dh-deck w-screen h-screen overflow-hidden relative bg-[#0c0c0c]" style={F}
@@ -7954,6 +8025,55 @@ export default function Presentasjon() {
           </button>
         )}
       </div>
+
+      {/* ═══ Innholdsfortegnelse-knapp — diskret, synlig på alle slides ═══ */}
+      <button
+        onClick={() => setTocOpen(true)}
+        aria-label="Åpne innholdsfortegnelse"
+        data-testid="toc-open-btn"
+        className="group fixed bottom-4 left-1/2 -translate-x-1/2 z-50 h-9 px-3.5 rounded-full flex items-center gap-2 text-[11.5px] font-semibold tracking-wide transition-all duration-300 hover:scale-[1.04] active:scale-[0.97]"
+        style={{
+          background: chromeLight ? 'rgba(28,22,16,0.05)' : 'rgba(255,255,255,0.08)',
+          backdropFilter: 'blur(16px)',
+          WebkitBackdropFilter: 'blur(16px)',
+          border: `1px solid ${chromeLight ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,255,0.14)'}`,
+          color: chromeLight ? 'rgba(28,22,16,0.85)' : 'rgba(255,255,255,0.9)',
+          boxShadow: chromeLight ? '0 8px 24px -10px rgba(0,0,0,0.22)' : '0 8px 24px -10px rgba(0,0,0,0.4)',
+        }}>
+        <List className="w-3.5 h-3.5" strokeWidth={2.2} />
+        <span>Innhold</span>
+      </button>
+
+      {/* ═══ Innholdsfortegnelse — fullskjerm-overlegg ═══ */}
+      {tocOpen && (
+        <div
+          className="fixed inset-0 z-[70]"
+          style={{ animation: 'tocOverlayIn 0.4s cubic-bezier(0.22,1,0.36,1) both' }}>
+          <style>{`@keyframes tocOverlayIn{from{opacity:0}to{opacity:1}}`}</style>
+          <SInnhold
+            isActive={true}
+            slideNum={SLIDES.findIndex((s) => s.C === SInnhold) + 1}
+            total={SLIDES.length}
+            goTo={(i: number) => { setC(i); setTocOpen(false); }}
+          />
+          {/* Lukk-knapp */}
+          <button
+            onClick={() => setTocOpen(false)}
+            aria-label="Lukk innholdsfortegnelse"
+            data-testid="toc-close-btn"
+            className="fixed top-4 right-4 sm:top-6 sm:right-6 z-[71] h-10 w-10 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-[1.06] active:scale-[0.95]"
+            style={{
+              background: 'rgba(28,22,16,0.05)',
+              backdropFilter: 'blur(16px)',
+              WebkitBackdropFilter: 'blur(16px)',
+              border: '1px solid rgba(0,0,0,0.12)',
+              color: 'rgba(28,22,16,0.78)',
+              boxShadow: '0 8px 24px -10px rgba(0,0,0,0.22)',
+            }}>
+            <X className="w-4 h-4" strokeWidth={2.2} />
+          </button>
+        </div>
+      )}
 
       {/* ═══ Off-screen render container for PDF capture ═══ */}
       {exporting && (
