@@ -532,7 +532,7 @@ const STeam = (p: any) => {
       field: 'Teknologi',
       img: '/team/martin-kviteberg-face.jpg',
       imgStyle: { objectPosition: 'center' },
-      lead: 'Gründer av Bnbspesialisten — en av Norges tre første korttidsforvaltere. Sentral i familieselskapet Adonis AS frem mot exit.',
+      lead: 'Gründer av Bnbspesialisten — en av Norges første profesjonelle utleieforvaltere. Sentral i familieselskapet Adonis AS frem mot exit.',
       meta: 'Produkt, automatisering og drift · 10 år som direktør for forretningsutvikling i Adonis AS · BI',
     },
     {
@@ -1738,15 +1738,12 @@ const SDiff = (p: any) => {
   ];
 
   const competitors = [
-    { name: 'Hybel',     x: 18, y: 72, size: 32 },
-    { name: 'Husleie',   x: 28, y: 78, size: 32 },
-    { name: 'FINN',      x: 12, y: 60, size: 28 },
-    { name: 'Hemlane',   x: 34, y: 52, size: 28 },
-    { name: 'AppFolio',  x: 48, y: 42, size: 38 },
-    { name: 'Lodgify',   x: 56, y: 32, size: 32 },
-    { name: 'Hostaway',  x: 62, y: 26, size: 36 },
-    { name: 'Guesty',    x: 70, y: 22, size: 40 },
-    { name: 'DigiHome',  x: 82, y: 14, size: 58, us: true },
+    { name: 'FINN',                 x: 15, y: 60, size: 28 },
+    { name: 'Hybel',                x: 25, y: 45, size: 30 },
+    { name: 'Husleie.no',           x: 37, y: 56, size: 30 },
+    { name: 'Lokal utleiemegler',   x: 52, y: 84, size: 32 },
+    { name: 'Tradisjonell forvalter', x: 68, y: 72, size: 34 },
+    { name: 'DigiHome',             x: 84, y: 15, size: 58, us: true },
   ];
 
   return (
@@ -1774,7 +1771,7 @@ const SDiff = (p: any) => {
         </h2>
         <p className="text-[#3a3530] leading-[1.55] font-light tracking-[-0.003em] mt-4 max-w-[1000px]"
            style={{ ...F, fontSize: 'clamp(12.5px, 1.0vw, 14px)', animation: active ? 'diffFadeUp 0.8s cubic-bezier(0.22,1,0.36,1) 0.5s both' : undefined, opacity: active ? undefined : 0 }}>
-          Tradisjonelle forvaltere kjører på Excel og spredte verktøy. Hybel, Husleie og FINN løser deler av flyten — ingen tar hele driften. <span className="font-semibold text-[#0c0c0c]">DigiHome står alene</span> i krysningspunktet: AI-native, full forvaltning og et skalerbart franchise-nettverk.
+          Tradisjonelle utleiemeglere og forvaltere tar hele driften — men manuelt, lokalt og dyrt. Verktøy som Hybel, Husleie.no og FINN er digitale, men løser bare deler av flyten. <span className="font-semibold text-[#0c0c0c]">DigiHome står alene</span> i krysningspunktet: full forvaltning, AI-native og et skalerbart nasjonalt nettverk.
         </p>
       </div>
 
@@ -5350,18 +5347,18 @@ const SVisionIntro = (p: any) => {
             return (
               <>
                 {/* kicker */}
-                <span className="block text-[10.5px] font-semibold uppercase tracking-[0.36em]" style={{ ...F, color: ACL, ...line(0) }}>Idéen bak DigiHome</span>
+                <span className="block text-[10.5px] font-semibold uppercase tracking-[0.36em]" style={{ ...F, color: ACL, ...line(0) }}>Hvorfor vi bygde DigiHome</span>
 
                 {/* manifest — ren, flytende prosa */}
                 <div className="mt-8 space-y-7" style={{ ...F, fontSize: 'clamp(17px, 1.55vw, 21px)', lineHeight: 1.72, color: INK }}>
                   <p style={line(1)}>
-                    Boligforvaltning ser komplisert ut. Egentlig er det den samme prosessen, om og om igjen — annonsering, visning, kontrakt, depositum, innflytting, husleie og vedlikehold, gjentatt for hver bolig.
+                    Som erfarne utleiere kjente vi problemet på kroppen: for mye av marginen forsvinner i manuelt arbeid. Boligforvaltning ser komplisert ut — men er egentlig den samme prosessen om og om igjen: annonse, visning, kontrakt, depositum, innflytting, husleie og vedlikehold, for hver eneste bolig.
                   </p>
                   <p style={line(2)}>
-                    Tradisjonell proptech har bare digitalisert verktøyene: flere moduler, flere funksjoner, flere steder å klikke. Men brukerne ønsker seg ikke flere verktøy — de ønsker at arbeidet blir gjort.
+                    Tradisjonell proptech har bare digitalisert verktøyene: flere moduler, flere steder å klikke. Men vi ønsket oss ikke flere verktøy — vi ville at arbeidet skulle bli gjort.
                   </p>
                   <p style={line(3)}>
-                    Derfor bygde vi DigiHome som en <span style={{ color: ACL }}>motor</span> for boligforvaltning. Systemet holder oversikt, foreslår neste steg, forbereder arbeidet og utfører det som kan automatiseres.
+                    Så vi bygde DigiHome som en <span style={{ color: ACL }}>motor</span> for boligforvaltning. Systemet holder oversikt, foreslår neste steg, forbereder arbeidet og utfører det som kan automatiseres.
                   </p>
                 </div>
 
