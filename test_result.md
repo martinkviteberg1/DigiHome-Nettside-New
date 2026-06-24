@@ -468,3 +468,5 @@ agent_communication:
 
 
 
+    -agent: "main"
+    -message: "FRONTEND (kun deck, backend uendret): KEYHOLE-FIX. Oppdaget at forrige økts «Keyhole»-tillegg var lagt i SProduct (engelsk) + SProcessPipeline (PROCESS_LOGOS) — BEGGE komponenter er IKKE i SLIDES-arrayet (decken bruker SProdukt/SOkosystem), så Keyhole var usynlig i den faktiske decken. Fikset: la Keyhole inn på den LIVE integrasjons-sliden SOkosystem (indeks 17, «Økosystem») i gruppen «Betaling & økonomi» (nå 4 tiles: Vipps, Keyhole, Tripletex, Fiken). Keyhole rendres som premium wordmark-tile (KeyRound-glyph i accent #a052e0 + «Keyhole» i FH-font) siden ingen offisiell logo-fil finnes; status-pille satt til PILOT (MÅ bekreftes av bruker). Justerte gruppe-desc til én linje («Innkreving, depositum og regnskap — automatisk.») så alle tre kolonners tile-rader igjen er perfekt på linje. Verifisert via skjermbilde 1920x1080 — Keyhole synlig, balansert, verdensklasse. Ingen retesting nødvendig (frontend, visuelt verifisert). FORBEHOLD: Keyhole-status (Live/Pilot/Veikart) er antakelse — venter brukerbekreftelse."

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { ChevronLeft, ChevronRight, Check, Home, CreditCard, MessageCircle, Wrench, FileText, Sparkles, ArrowRight, Plus, Camera, Clock, BarChart3, Zap, Brain, Building2, AlertTriangle, TrendingUp, Settings, Layers, CalendarDays, PhoneCall, PenLine, Target, Rocket, Bot, MinusCircle, PlusCircle, LayoutDashboard, MessageSquare, ClipboardList, Radio, ClipboardCheck, AlertCircle, Users, BookOpen, PieChart, DollarSign, Shield, ChevronDown, Search, Filter, MoreHorizontal, Volume2, Droplets, Download, Loader2, Play, List, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Check, Home, CreditCard, MessageCircle, Wrench, FileText, Sparkles, ArrowRight, Plus, Camera, Clock, BarChart3, Zap, Brain, Building2, AlertTriangle, TrendingUp, Settings, Layers, CalendarDays, PhoneCall, PenLine, Target, Rocket, Bot, MinusCircle, PlusCircle, LayoutDashboard, MessageSquare, ClipboardList, Radio, ClipboardCheck, AlertCircle, Users, BookOpen, PieChart, DollarSign, Shield, ChevronDown, Search, Filter, MoreHorizontal, Volume2, Droplets, Download, Loader2, Play, List, X, KeyRound } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -1647,10 +1647,10 @@ const SProduct = (p: any) => {
         <div className="flex items-center justify-between gap-6 flex-wrap">
           <div className="flex items-baseline gap-3">
             <span className="text-[10px] font-bold uppercase tracking-[0.25em]" style={{ color: P }}>Integrasjoner</span>
-            <span className="text-[13px] text-[#888] font-light">ett API &mdash; ni norske tjenester i produksjon</span>
+            <span className="text-[13px] text-[#888] font-light">ett API &mdash; ti norske tjenester i produksjon</span>
           </div>
           <div className="flex items-center gap-5 flex-wrap text-[11px] font-medium text-[#666]">
-            {['FINN', 'Airbnb', 'Booking.com', 'BankID', 'Regnskap', 'Channex', 'Lea Bank', 'Creditsafe', 'Vipps'].map((n, k) => (
+            {['FINN', 'Airbnb', 'Booking.com', 'BankID', 'Regnskap', 'Channex', 'Lea Bank', 'Keyhole', 'Creditsafe', 'Vipps'].map((n, k) => (
               <React.Fragment key={k}>
                 {k > 0 && <span className="text-[#d4cec0]">&middot;</span>}
                 <span className="tracking-tight">{n}</span>
@@ -5323,6 +5323,7 @@ const PROCESS_LOGOS = [
   { src: '/finn-logo.png', alt: 'FINN' },
   { text: 'Matrikkelen' },
   { src: '/creditsafe-logo.png', alt: 'Creditsafe' },
+  { text: 'Keyhole' },
   { src: '/vipps-logo.png', alt: 'Vipps' },
   { src: '/fiken-logo.png', alt: 'Fiken' },
   { src: '/tripletex-logo.png', alt: 'Tripletex' },
@@ -6661,9 +6662,10 @@ const SOkosystem = (p: any) => {
       ],
     },
     {
-      label: 'Betaling & økonomi', Icon: CreditCard, desc: 'Innkreving, oppgjør og regnskap — automatisk.',
+      label: 'Betaling & økonomi', Icon: CreditCard, desc: 'Innkreving, depositum og regnskap — automatisk.',
       items: [
         { name: 'Vipps', logo: '/vipps-logo.png', h: 26, s: 'live' },
+        { name: 'Keyhole', text: 'Keyhole', h: 22, s: 'pilot' },
         { name: 'Tripletex', logo: '/tripletex-logo.png', h: 21, s: 'live' },
         { name: 'Fiken', logo: '/fiken-logo.png', h: 26, s: 'road' },
       ],
@@ -6744,7 +6746,14 @@ const SOkosystem = (p: any) => {
                          style={{ background: '#ffffff', border: `1px solid ${HAIR}`, boxShadow: '0 1px 2px rgba(20,15,10,0.03), 0 20px 38px -26px rgba(20,15,10,0.30)',
                                   animation: anim ? `okoTile 0.6s cubic-bezier(0.22,1,0.36,1) ${0.85 + di * 0.05}s both` : undefined, opacity: show ? undefined : 0 }}>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={it.logo} alt={it.name} className="w-auto object-contain select-none" draggable={false} style={{ height: it.h, maxWidth: '72%' }} />
+                      {it.text ? (
+                        <span className="inline-flex items-center gap-1.5 select-none" style={{ ...FH, fontWeight: 700, fontSize: 19, color: INK, letterSpacing: '-0.01em' }}>
+                          <KeyRound className="w-[18px] h-[18px]" style={{ color: AC }} strokeWidth={2.2} />
+                          {it.text}
+                        </span>
+                      ) : (
+                        <img src={it.logo} alt={it.name} className="w-auto object-contain select-none" draggable={false} style={{ height: it.h, maxWidth: '72%' }} />
+                      )}
                       <span className="absolute top-2.5 right-2.5 inline-flex items-center gap-1 text-[8.5px] font-bold uppercase tracking-[0.06em] px-1.5 py-[3px] rounded-full"
                             style={{ ...F, color: ST[it.s].c, background: `${ST[it.s].c}16` }}>
                         <span className="w-1.5 h-1.5 rounded-full" style={{ background: ST[it.s].c }} />{ST[it.s].t}
