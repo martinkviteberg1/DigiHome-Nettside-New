@@ -5431,116 +5431,56 @@ const SVisionIntro = (p: any) => {
   const active = p.isActive;
   const isPdf = !!p.pdfMode;
   const show = active || isPdf;
-  const AC = '#d298ff';
-  const ACL = '#d298ff';   // merkevare-lilla — brukes også på lys bakgrunn
+  const anim = active && !isPdf;
+  const ACL = '#a052e0';   // merkevare-lilla på lys bakgrunn
   const INK = '#1c1815';   // varm mørk «ink» til visjon-teksten
 
-  const [phase, setPhase] = useState<'hook' | 'vision'>(isPdf ? 'vision' : 'hook');
-  useEffect(() => {
-    if (isPdf) { setPhase('vision'); return; }
-    if (!active) { setPhase('hook'); return; }
-    setPhase('hook');
-    const t = setTimeout(() => setPhase('vision'), 4400);
-    return () => clearTimeout(t);
-  }, [active, isPdf]);
+  // ren lys slide — meld fra til deck-chrome
+  useEffect(() => { p.onLight?.(active && !isPdf); }, [active, isPdf]);
 
-  const onVision = phase === 'vision';
-
-  // meld fra til deck-chrome når lyset er slått på (lys bakgrunn)
-  useEffect(() => {
-    p.onLight?.(active && onVision && !isPdf);
-  }, [active, onVision, isPdf]);
-
-  const beat = (target: 'hook' | 'vision') => ({
-    opacity: phase === target ? 1 : 0,
-    transform: phase === target ? 'translateY(0) scale(1)' : (target === 'hook' ? 'translateY(-40px) scale(0.97)' : 'translateY(40px) scale(0.97)'),
-    filter: phase === target ? 'blur(0)' : 'blur(14px)',
-    transition: 'opacity 1.1s cubic-bezier(0.22,1,0.36,1), transform 1.2s cubic-bezier(0.22,1,0.36,1), filter 1.05s ease',
-    pointerEvents: (phase === target ? 'auto' : 'none') as any,
-  });
+  const line = (i: number) => ({
+    animation: anim ? `viReveal 1.0s cubic-bezier(0.22,1,0.36,1) ${0.18 + i * 0.12}s both` : undefined,
+    opacity: show ? undefined : 0,
+  } as React.CSSProperties);
 
   return (
-  <SlideFrame bg="dark" {...p} revealLight={onVision}>
+  <SlideFrame bg="beige" {...p}>
     <style>{`
       @keyframes viReveal { from { opacity: 0; transform: translateY(24px); filter: blur(14px); } 55% { filter: blur(0.5px); } to { opacity: 1; transform: translateY(0); filter: blur(0); } }
-      @keyframes viKen { 0% { transform: scale(1) translateY(8px); } 100% { transform: scale(1.04) translateY(-8px); } }
-      @keyframes viRail { from { opacity: 0; transform: scaleY(0); } to { opacity: 1; transform: scaleY(1); } }
     `}</style>
 
-    {/* ── MØRK AMBIENT (krok) — fader ut når lyset slås på ── */}
-    <div aria-hidden="true" className="absolute inset-0 pointer-events-none overflow-hidden" style={{ opacity: onVision ? 0 : 1, transition: 'opacity 1.1s ease' }}>
-      <div className="absolute left-1/2 top-1/2 w-[60%] h-[62%] rounded-full"
-           style={{ background: `radial-gradient(ellipse, ${AC}1f 0%, transparent 70%)`, filter: 'blur(54px)', transform: 'translate(-50%,-50%)' }} />
-    </div>
-    <div aria-hidden="true" className="absolute inset-0 pointer-events-none" style={{ opacity: onVision ? 0 : 1, transition: 'opacity 1.1s ease' }}>
-      <DotGrid maskCenter="50% 45%" opacity={0.05} />
-    </div>
-    <div aria-hidden="true" className="absolute inset-0 pointer-events-none"
-         style={{ background: 'radial-gradient(ellipse at 50% 46%, transparent 52%, rgba(0,0,0,0.5) 100%)', opacity: onVision ? 0 : 1, transition: 'opacity 1.1s ease' }} />
+    <DotGrid maskCenter="50% 38%" opacity={0.4} />
 
-    {/* ── LYS DOT-GRID (visjon) — samme rene bakgrunn som øvrige lyse slides ── */}
-    <div aria-hidden="true" className="absolute inset-0 pointer-events-none" style={{ opacity: onVision ? 1 : 0, transition: 'opacity 1.5s ease 0.15s' }}>
-      <DotGrid maskCenter="50% 42%" opacity={0.4} />
-    </div>
+    <div className="relative z-10 w-full max-w-[680px] mx-auto px-6 sm:px-10 my-auto">
+      {/* kicker */}
+      <span className="block text-[10.5px] font-semibold uppercase tracking-[0.36em]" style={{ ...F, color: ACL, ...line(0) }}>Hvorfor vi bygde DigiHome</span>
 
-    <div className="absolute inset-0 z-10">
-
-      {/* ── KROK (mørk, kinematisk) ── */}
-      <div className="absolute inset-0 flex items-center justify-center px-6 text-center" style={beat('hook')}>
-        <h2 className="tracking-[-0.04em] leading-[0.95]" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(48px, 6.6vw, 92px)',
-              animation: (active && phase === 'hook') ? 'viKen 10s cubic-bezier(0.33,0,0.2,1) both' : undefined }}>
-          <span className="block text-white"
-                style={{ animation: (active && phase === 'hook') ? 'viReveal 1.4s cubic-bezier(0.22,1,0.36,1) 0.5s both' : undefined, opacity: show ? undefined : 0 }}>Vi var utleiere først.</span>
-          <span className="block"
-                style={{ color: AC, textShadow: `0 0 70px ${AC}55`,
-                         animation: (active && phase === 'hook') ? 'viReveal 1.4s cubic-bezier(0.22,1,0.36,1) 1.45s both' : undefined, opacity: show ? undefined : 0 }}>Så bygde vi motoren.</span>
-        </h2>
+      {/* manifest — ren, flytende prosa */}
+      <div className="mt-8 space-y-7" style={{ ...F, fontSize: 'clamp(17px, 1.55vw, 21px)', lineHeight: 1.72, color: INK }}>
+        <p style={line(1)}>
+          Som erfarne utleiere kjente vi problemet på kroppen: for mye av marginen forsvinner i manuelt arbeid. Boligforvaltning ser komplisert ut — men er egentlig den samme prosessen om og om igjen: annonse, visning, kontrakt, depositum, innflytting, husleie og vedlikehold, for hver eneste bolig.
+        </p>
+        <p style={line(2)}>
+          Tradisjonell proptech har bare digitalisert verktøyene: flere moduler, flere steder å klikke. Men vi ønsket oss ikke flere verktøy — vi ville at arbeidet skulle bli gjort.
+        </p>
+        <p style={line(3)}>
+          Så vi bygde DigiHome som en <span style={{ color: ACL }}>motor</span> for boligforvaltning. Systemet holder oversikt, foreslår neste steg, forbereder arbeidet og utfører det som kan automatiseres.
+        </p>
       </div>
 
-      {/* ── MANIFEST · DIGIHOME FORKLART (ren, flytende tekst) ── */}
-      <div className="absolute inset-0 flex items-center justify-center px-6 sm:px-10 py-10 overflow-y-auto no-scrollbar" style={beat('vision')}>
-        <div className="w-full max-w-[680px] mx-auto">
-          {(() => {
-            const line = (i: number) => ({
-              animation: (active && onVision) ? `viReveal 1.0s cubic-bezier(0.22,1,0.36,1) ${0.28 + i * 0.12}s both` : undefined,
-              opacity: show ? undefined : 0,
-            });
-            return (
-              <>
-                {/* kicker */}
-                <span className="block text-[10.5px] font-semibold uppercase tracking-[0.36em]" style={{ ...F, color: ACL, ...line(0) }}>Hvorfor vi bygde DigiHome</span>
+      {/* payoff */}
+      <p className="mt-9 tracking-[-0.022em] leading-[1.12]" style={{ ...FH, fontWeight: 600, fontSize: 'clamp(23px, 2.5vw, 33px)', color: INK, ...line(4) }}>
+        Mennesket har kontroll. <span style={{ color: ACL }}>Systemet gjør jobben.</span>
+      </p>
 
-                {/* manifest — ren, flytende prosa */}
-                <div className="mt-8 space-y-7" style={{ ...F, fontSize: 'clamp(17px, 1.55vw, 21px)', lineHeight: 1.72, color: INK }}>
-                  <p style={line(1)}>
-                    Som erfarne utleiere kjente vi problemet på kroppen: for mye av marginen forsvinner i manuelt arbeid. Boligforvaltning ser komplisert ut — men er egentlig den samme prosessen om og om igjen: annonse, visning, kontrakt, depositum, innflytting, husleie og vedlikehold, for hver eneste bolig.
-                  </p>
-                  <p style={line(2)}>
-                    Tradisjonell proptech har bare digitalisert verktøyene: flere moduler, flere steder å klikke. Men vi ønsket oss ikke flere verktøy — vi ville at arbeidet skulle bli gjort.
-                  </p>
-                  <p style={line(3)}>
-                    Så vi bygde DigiHome som en <span style={{ color: ACL }}>motor</span> for boligforvaltning. Systemet holder oversikt, foreslår neste steg, forbereder arbeidet og utfører det som kan automatiseres.
-                  </p>
-                </div>
-
-                {/* payoff */}
-                <p className="mt-9 tracking-[-0.022em] leading-[1.12]" style={{ ...FH, fontWeight: 600, fontSize: 'clamp(23px, 2.5vw, 33px)', color: INK, ...line(4) }}>
-                  Mennesket har kontroll. <span style={{ color: ACL }}>Systemet gjør jobben.</span>
-                </p>
-
-                {/* signatur */}
-                <div className="flex items-center gap-4 mt-12" style={line(5)}>
-                  <div className="w-[72px] h-[72px] rounded-full overflow-hidden shrink-0" style={{ boxShadow: '0 10px 28px rgba(20,15,10,0.18)', border: '1px solid rgba(20,15,10,0.06)' }}>
-                    <img src="/team/martin-kviteberg-face.jpg" alt="Martin C. Kviteberg" className="w-full h-full object-cover" style={{ objectPosition: 'center' }} />
-                  </div>
-                  <div className="leading-tight">
-                    <p className="text-[15px] font-semibold tracking-[-0.01em]" style={{ ...F, color: INK }}>Martin C. Kviteberg</p>
-                    <p className="text-[12.5px] mt-0.5" style={{ ...F, color: 'rgba(28,22,16,0.5)' }}>Produktsjef &amp; Medgründer</p>
-                  </div>
-                </div>
-              </>
-            );
-          })()}
+      {/* signatur */}
+      <div className="flex items-center gap-4 mt-12" style={line(5)}>
+        <div className="w-[72px] h-[72px] rounded-full overflow-hidden shrink-0" style={{ boxShadow: '0 10px 28px rgba(20,15,10,0.18)', border: '1px solid rgba(20,15,10,0.06)' }}>
+          <img src="/team/martin-kviteberg-face.jpg" alt="Martin C. Kviteberg" className="w-full h-full object-cover" style={{ objectPosition: 'center' }} />
+        </div>
+        <div className="leading-tight">
+          <p className="text-[15px] font-semibold tracking-[-0.01em]" style={{ ...F, color: INK }}>Martin C. Kviteberg</p>
+          <p className="text-[12.5px] mt-0.5" style={{ ...F, color: 'rgba(28,22,16,0.5)' }}>Produktsjef &amp; Medgründer</p>
         </div>
       </div>
     </div>
@@ -7640,81 +7580,134 @@ const SInnhold = (p: any) => {
 
 
 const SElevatorPitch = (p: any) => {
-  const active = p.isActive; const isPdf = !!p.pdfMode; const show = active || isPdf; const anim = active && !isPdf;
-  const AC = '#a052e0';
-  const ri = (d: number) => ({ animation: anim ? `epUp 0.85s cubic-bezier(0.22,1,0.36,1) ${d}s both` : undefined, opacity: show ? undefined : 0 } as React.CSSProperties);
+  const active = p.isActive; const isPdf = !!p.pdfMode; const show = active || isPdf;
+  const AC = '#a052e0';     // lilla på lys bakgrunn (pitch)
+  const ACD = '#d298ff';    // lilla på mørk bakgrunn (krok)
+
+  const [phase, setPhase] = useState<'hook' | 'pitch'>(isPdf ? 'pitch' : 'hook');
+  useEffect(() => {
+    if (isPdf) { setPhase('pitch'); return; }
+    if (!active) { setPhase('hook'); return; }
+    setPhase('hook');
+    const t = setTimeout(() => setPhase('pitch'), 4000);
+    return () => clearTimeout(t);
+  }, [active, isPdf]);
+  const onPitch = phase === 'pitch';
+  useEffect(() => { p.onLight?.(active && onPitch && !isPdf); }, [active, onPitch, isPdf]);
+
+  const anim = active && onPitch && !isPdf;
+  const ri = (d: number) => ({ animation: anim ? `epUp 0.85s cubic-bezier(0.22,1,0.36,1) ${d}s both` : undefined, opacity: (onPitch || isPdf) ? undefined : 0 } as React.CSSProperties);
+  const beat = (target: 'hook' | 'pitch') => ({
+    opacity: phase === target ? 1 : 0,
+    transform: phase === target ? 'translateY(0) scale(1)' : (target === 'hook' ? 'translateY(-40px) scale(0.97)' : 'translateY(40px) scale(0.97)'),
+    filter: phase === target ? 'blur(0)' : 'blur(14px)',
+    transition: 'opacity 1.1s cubic-bezier(0.22,1,0.36,1), transform 1.2s cubic-bezier(0.22,1,0.36,1), filter 1.05s ease',
+    pointerEvents: (phase === target ? 'auto' : 'none') as any,
+  } as React.CSSProperties);
+
   const PROOF = [
     { Icon: Zap, t: 'Hele prosessen automatisert', s: 'fra lead til ferdig regnskap — ett system' },
     { Icon: TrendingUp, t: '~4× driftsgearing', s: 'samme forvalter håndterer langt flere boliger' },
     { Icon: Building2, t: '1,44 MNOK ARR · 40 boliger', s: 'bevist i egen drift — uten ekstern kapital' },
   ];
+
   return (
-  <SlideFrame bg="beige" {...p}>
-    <style>{`@keyframes epUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}@keyframes epHook{0%{opacity:0;transform:translateY(26px);filter:blur(12px)}60%{filter:blur(0)}100%{opacity:1;transform:translateY(0);filter:blur(0)}}`}</style>
-    <div aria-hidden="true" className="absolute top-[-14%] left-1/2 -translate-x-1/2 w-[900px] h-[820px] rounded-full pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(160,82,224,0.07) 0%, transparent 62%)' }} />
-    <div className="relative z-10 w-full max-w-[1180px] mx-auto px-6 sm:px-12 my-auto">
-      {/* eyebrow */}
-      <div className="flex items-center gap-3" style={ri(0.05)}>
-        <span className="h-px w-7 shrink-0" style={{ background: AC }} />
-        <span className="text-[10.5px] sm:text-[11px] font-bold uppercase tracking-[0.32em]" style={{ ...F, color: AC }}>Elevator pitch · DigiHome på 60 sekunder</span>
+  <SlideFrame bg="dark" {...p} revealLight={onPitch}>
+    <style>{`
+      @keyframes epUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+      @keyframes viReveal { from { opacity: 0; transform: translateY(24px); filter: blur(14px); } 55% { filter: blur(0.5px); } to { opacity: 1; transform: translateY(0); filter: blur(0); } }
+      @keyframes viKen { 0% { transform: scale(1) translateY(8px); } 100% { transform: scale(1.04) translateY(-8px); } }
+    `}</style>
+
+    {/* ── MØRK AMBIENT (krok) — fader ut når pitch slås på ── */}
+    <div aria-hidden="true" className="absolute inset-0 pointer-events-none overflow-hidden" style={{ opacity: onPitch ? 0 : 1, transition: 'opacity 1.1s ease' }}>
+      <div className="absolute left-1/2 top-1/2 w-[60%] h-[62%] rounded-full" style={{ background: `radial-gradient(ellipse, ${ACD}1f 0%, transparent 70%)`, filter: 'blur(54px)', transform: 'translate(-50%,-50%)' }} />
+    </div>
+    <div aria-hidden="true" className="absolute inset-0 pointer-events-none" style={{ opacity: onPitch ? 0 : 1, transition: 'opacity 1.1s ease' }}>
+      <DotGrid maskCenter="50% 45%" opacity={0.05} />
+    </div>
+    <div aria-hidden="true" className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse at 50% 46%, transparent 52%, rgba(0,0,0,0.5) 100%)', opacity: onPitch ? 0 : 1, transition: 'opacity 1.1s ease' }} />
+
+    {/* ── LYS DOT-GRID + glød (pitch) ── */}
+    <div aria-hidden="true" className="absolute inset-0 pointer-events-none" style={{ opacity: onPitch ? 1 : 0, transition: 'opacity 1.5s ease 0.15s' }}>
+      <DotGrid maskCenter="50% 16%" opacity={0.36} />
+    </div>
+    <div aria-hidden="true" className="absolute top-[-14%] left-1/2 -translate-x-1/2 w-[900px] h-[820px] rounded-full pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(160,82,224,0.07) 0%, transparent 62%)', opacity: onPitch ? 1 : 0, transition: 'opacity 1.5s ease' }} />
+
+    <div className="absolute inset-0 z-10">
+      {/* ── KROK (mørk, kinematisk) ── */}
+      <div className="absolute inset-0 flex items-center justify-center px-6 text-center" style={beat('hook')}>
+        <h2 className="tracking-[-0.04em] leading-[0.95]" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(48px, 6.6vw, 92px)', animation: (active && phase === 'hook') ? 'viKen 10s cubic-bezier(0.33,0,0.2,1) both' : undefined }}>
+          <span className="block text-white" style={{ animation: (active && phase === 'hook') ? 'viReveal 1.4s cubic-bezier(0.22,1,0.36,1) 0.4s both' : undefined, opacity: show ? undefined : 0 }}>Ikke et system.</span>
+          <span className="block" style={{ color: ACD, textShadow: `0 0 70px ${ACD}55`, animation: (active && phase === 'hook') ? 'viReveal 1.4s cubic-bezier(0.22,1,0.36,1) 1.35s both' : undefined, opacity: show ? undefined : 0 }}>En autopilot.</span>
+        </h2>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1.25fr_1fr] gap-9 lg:gap-14 items-center mt-5 sm:mt-7">
-        {/* ── venstre: krok + fortelling ── */}
-        <div>
-          {/* KROK */}
-          <h2 className="tracking-[-0.04em] leading-[0.98]" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(34px, 4.4vw, 60px)' }}>
-            <span className="block" style={{ color: '#0c0c0c', animation: anim ? 'epHook 1s cubic-bezier(0.16,1,0.3,1) 0.15s both' : undefined, opacity: show ? undefined : 0 }}>Ikke et system.</span>
-            <span className="block" style={{ color: AC, animation: anim ? 'epHook 1.05s cubic-bezier(0.16,1,0.3,1) 0.42s both' : undefined, opacity: show ? undefined : 0 }}>En autopilot.</span>
-          </h2>
-          <p className="mt-5 leading-[1.5] max-w-[540px]" style={{ ...F, fontWeight: 400, fontSize: 'clamp(14.5px, 1.45vw, 18px)', color: '#57514a', ...ri(0.5) }}>
-            Forvaltning og teknologi i samme selskap — en utleiedrift som <span style={{ color: '#0c0c0c', fontWeight: 600 }}>går av seg selv</span>.
-          </p>
-
-          {/* fortelling */}
-          <p className="leading-[1.55] mt-7" style={{ ...F, fontWeight: 400, fontSize: 'clamp(14px, 1.4vw, 17px)', color: '#3f3a34', ...ri(0.62) }}>
-            Vi automatiserte <span style={{ color: AC, fontWeight: 600 }}>hele prosessen</span> — fra første leietakerhenvendelse til ferdig regnskap — og beviste den i egen drift på <span style={{ color: '#0c0c0c', fontWeight: 600 }}>40 boliger i Bergen</span>.
-          </p>
-          <p className="leading-[1.55] mt-4" style={{ ...F, fontWeight: 400, fontSize: 'clamp(14px, 1.4vw, 17px)', color: '#3f3a34', ...ri(0.72) }}>
-            Det gir <span style={{ color: AC, fontWeight: 600 }}>driftsgearing</span>: når systemet gjør jobben, håndterer én forvalter mange ganger så mange boliger — og marginalkostnaden per enhet faller mot bare BankID + AI.
-          </p>
-          <p className="leading-[1.4] mt-6" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(16px, 1.7vw, 22px)', color: '#0c0c0c', ...ri(0.84) }}>
-            Det er derfor vi vinner — og vi henter <span style={{ color: AC }}>3 MNOK</span> for å gjøre den nasjonal.
-          </p>
-        </div>
-
-        {/* ── høyre: kombinasjonen + bevis ── */}
-        <div className="relative rounded-[26px] p-7 sm:p-8" style={{ background: '#ffffff', border: '1px solid rgba(20,15,10,0.07)', boxShadow: '0 2px 4px rgba(20,15,10,0.03), 0 34px 80px -38px rgba(20,15,10,0.28)', ...ri(0.55) }}>
-          <div aria-hidden="true" className="absolute -top-16 -right-16 w-[240px] h-[240px] rounded-full pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(160,82,224,0.08) 0%, transparent 66%)' }} />
-          <div className="relative">
-            {/* fusjon: forvaltning × teknologi = autopilot */}
-            <div className="grid grid-cols-[1fr_auto_1fr] items-stretch gap-2.5">
-              <div className="rounded-2xl px-3 py-4 text-center flex flex-col justify-center" style={{ background: 'rgba(20,15,10,0.035)', border: '1px solid rgba(20,15,10,0.07)' }}>
-                <span className="block text-[10px] font-bold uppercase tracking-[0.12em]" style={{ ...F, color: '#0c0c0c' }}>Forvaltning</span>
-                <span className="block text-[10.5px] mt-1 leading-tight" style={{ ...F, color: '#8a8278' }}>ekte drift</span>
-              </div>
-              <div className="flex items-center justify-center text-[20px] font-light" style={{ color: AC }}>×</div>
-              <div className="rounded-2xl px-3 py-4 text-center flex flex-col justify-center" style={{ background: 'rgba(20,15,10,0.035)', border: '1px solid rgba(20,15,10,0.07)' }}>
-                <span className="block text-[10px] font-bold uppercase tracking-[0.12em]" style={{ ...F, color: '#0c0c0c' }}>Teknologi</span>
-                <span className="block text-[10.5px] mt-1 leading-tight" style={{ ...F, color: '#8a8278' }}>eget system</span>
-              </div>
-            </div>
-            <div className="flex justify-center my-2"><ChevronDown className="w-5 h-5" style={{ color: AC }} strokeWidth={2.4} /></div>
-            <div className="rounded-2xl px-4 py-3.5 text-center" style={{ background: `linear-gradient(135deg, ${AC} 0%, #7a3bbf 100%)`, boxShadow: '0 14px 32px -14px rgba(160,82,224,0.5)' }}>
-              <span className="text-[13px] sm:text-[14px] font-bold uppercase tracking-[0.12em] text-white" style={F}>Utleie på autopilot</span>
+      {/* ── PITCH (lys) ── */}
+      <div className="absolute inset-0 overflow-y-auto no-scrollbar" style={beat('pitch')}>
+        <div className="min-h-full flex items-center justify-center px-6 sm:px-12 py-14">
+          <div className="w-full max-w-[1180px] mx-auto">
+            {/* eyebrow */}
+            <div className="flex items-center gap-3" style={ri(0.05)}>
+              <span className="h-px w-7 shrink-0" style={{ background: AC }} />
+              <span className="text-[10.5px] sm:text-[11px] font-bold uppercase tracking-[0.32em]" style={{ ...F, color: AC }}>Elevator pitch · DigiHome på 60 sekunder</span>
             </div>
 
-            {/* bevis */}
-            <div className="mt-6 space-y-px">
-              {PROOF.map((f) => (
-                <div key={f.t} className="flex items-start gap-3 py-3" style={{ borderTop: '1px solid rgba(20,15,10,0.08)' }}>
-                  <span className="flex items-center justify-center w-8 h-8 rounded-xl shrink-0 mt-px" style={{ background: 'rgba(160,82,224,0.1)' }}><f.Icon className="w-[16px] h-[16px]" style={{ color: AC }} strokeWidth={2} /></span>
-                  <div>
-                    <span className="block text-[13.5px] font-semibold leading-tight" style={{ ...F, color: '#0c0c0c' }}>{f.t}</span>
-                    <span className="block text-[11.5px] mt-0.5 leading-snug" style={{ ...F, color: '#8a8278' }}>{f.s}</span>
+            <div className="grid grid-cols-1 lg:grid-cols-[1.25fr_1fr] gap-9 lg:gap-14 items-center mt-5 sm:mt-7">
+              {/* ── venstre: fortelling ── */}
+              <div>
+                <h2 className="tracking-[-0.035em] leading-[1.02]" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(30px, 3.6vw, 48px)', color: '#0c0c0c', ...ri(0.12) }}>
+                  En utleiedrift som <span style={{ color: AC }}>går av seg selv</span>.
+                </h2>
+                <p className="mt-4 leading-[1.5] max-w-[540px]" style={{ ...F, fontWeight: 400, fontSize: 'clamp(14.5px, 1.45vw, 18px)', color: '#57514a', ...ri(0.32) }}>
+                  Forvaltning og teknologi i samme selskap — én motor for hele utleieprosessen.
+                </p>
+                <p className="leading-[1.55] mt-6" style={{ ...F, fontWeight: 400, fontSize: 'clamp(14px, 1.4vw, 17px)', color: '#3f3a34', ...ri(0.44) }}>
+                  Vi automatiserte <span style={{ color: AC, fontWeight: 600 }}>hele prosessen</span> — fra første leietakerhenvendelse til ferdig regnskap — og beviste den i egen drift på <span style={{ color: '#0c0c0c', fontWeight: 600 }}>40 boliger i Bergen</span>.
+                </p>
+                <p className="leading-[1.55] mt-4" style={{ ...F, fontWeight: 400, fontSize: 'clamp(14px, 1.4vw, 17px)', color: '#3f3a34', ...ri(0.54) }}>
+                  Det gir <span style={{ color: AC, fontWeight: 600 }}>driftsgearing</span>: når systemet gjør jobben, håndterer én forvalter mange ganger så mange boliger — og marginalkostnaden per enhet faller mot bare BankID + AI.
+                </p>
+                <p className="leading-[1.4] mt-6" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(16px, 1.7vw, 22px)', color: '#0c0c0c', ...ri(0.64) }}>
+                  Det er derfor vi vinner — og vi henter <span style={{ color: AC }}>3 MNOK</span> for å gjøre den nasjonal.
+                </p>
+              </div>
+
+              {/* ── høyre: kombinasjonen + bevis ── */}
+              <div className="relative rounded-[26px] p-7 sm:p-8" style={{ background: '#ffffff', border: '1px solid rgba(20,15,10,0.07)', boxShadow: '0 2px 4px rgba(20,15,10,0.03), 0 34px 80px -38px rgba(20,15,10,0.28)', ...ri(0.4) }}>
+                <div aria-hidden="true" className="absolute -top-16 -right-16 w-[240px] h-[240px] rounded-full pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(160,82,224,0.08) 0%, transparent 66%)' }} />
+                <div className="relative">
+                  {/* fusjon: forvaltning × teknologi = autopilot */}
+                  <div className="grid grid-cols-[1fr_auto_1fr] items-stretch gap-2.5">
+                    <div className="rounded-2xl px-3 py-4 text-center flex flex-col justify-center" style={{ background: 'rgba(20,15,10,0.035)', border: '1px solid rgba(20,15,10,0.07)' }}>
+                      <span className="block text-[10px] font-bold uppercase tracking-[0.12em]" style={{ ...F, color: '#0c0c0c' }}>Forvaltning</span>
+                      <span className="block text-[10.5px] mt-1 leading-tight" style={{ ...F, color: '#8a8278' }}>ekte drift</span>
+                    </div>
+                    <div className="flex items-center justify-center text-[20px] font-light" style={{ color: AC }}>×</div>
+                    <div className="rounded-2xl px-3 py-4 text-center flex flex-col justify-center" style={{ background: 'rgba(20,15,10,0.035)', border: '1px solid rgba(20,15,10,0.07)' }}>
+                      <span className="block text-[10px] font-bold uppercase tracking-[0.12em]" style={{ ...F, color: '#0c0c0c' }}>Teknologi</span>
+                      <span className="block text-[10.5px] mt-1 leading-tight" style={{ ...F, color: '#8a8278' }}>eget system</span>
+                    </div>
+                  </div>
+                  <div className="flex justify-center my-2"><ChevronDown className="w-5 h-5" style={{ color: AC }} strokeWidth={2.4} /></div>
+                  <div className="rounded-2xl px-4 py-3.5 text-center" style={{ background: `linear-gradient(135deg, ${AC} 0%, #7a3bbf 100%)`, boxShadow: '0 14px 32px -14px rgba(160,82,224,0.5)' }}>
+                    <span className="text-[13px] sm:text-[14px] font-bold uppercase tracking-[0.12em] text-white" style={F}>Utleie på autopilot</span>
+                  </div>
+
+                  {/* bevis */}
+                  <div className="mt-6 space-y-px">
+                    {PROOF.map((f) => (
+                      <div key={f.t} className="flex items-start gap-3 py-3" style={{ borderTop: '1px solid rgba(20,15,10,0.08)' }}>
+                        <span className="flex items-center justify-center w-8 h-8 rounded-xl shrink-0 mt-px" style={{ background: 'rgba(160,82,224,0.1)' }}><f.Icon className="w-[16px] h-[16px]" style={{ color: AC }} strokeWidth={2} /></span>
+                        <div>
+                          <span className="block text-[13.5px] font-semibold leading-tight" style={{ ...F, color: '#0c0c0c' }}>{f.t}</span>
+                          <span className="block text-[11.5px] mt-0.5 leading-snug" style={{ ...F, color: '#8a8278' }}>{f.s}</span>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
-              ))}
+              </div>
             </div>
           </div>
         </div>
@@ -7760,8 +7753,8 @@ const SVeikart = (p: any) => {
 
       {/* HORISONT-TIDSLINJE — fra drift i dag mot fremtiden */}
       <div className="relative mt-12 sm:mt-16">
-        <div aria-hidden="true" className="absolute left-[12.5%] right-[12.5%] top-[28px] h-[2px] origin-left rounded-full" style={{ background: `linear-gradient(90deg, ${INK} 0%, ${AC} 100%)`, opacity: 0.85, animation: anim ? 'vkThread 1.1s cubic-bezier(0.22,1,0.36,1) 0.45s both' : undefined, transform: show ? undefined : 'scaleX(0)' }} />
-        <div aria-hidden="true" className="absolute left-[12.5%] right-[12.5%] top-[28px] h-[2px] rounded-full pointer-events-none" style={{ background: `linear-gradient(90deg, transparent 38%, ${AC} 100%)`, filter: 'blur(7px)', opacity: 0.55 }} />
+        <div aria-hidden="true" className="hidden md:block absolute left-[12.5%] right-[12.5%] top-[28px] h-[2px] origin-left rounded-full" style={{ background: `linear-gradient(90deg, ${INK} 0%, ${AC} 100%)`, opacity: 0.85, animation: anim ? 'vkThread 1.1s cubic-bezier(0.22,1,0.36,1) 0.45s both' : undefined, transform: show ? undefined : 'scaleX(0)' }} />
+        <div aria-hidden="true" className="hidden md:block absolute left-[12.5%] right-[12.5%] top-[28px] h-[2px] rounded-full pointer-events-none" style={{ background: `linear-gradient(90deg, transparent 38%, ${AC} 100%)`, filter: 'blur(7px)', opacity: 0.55 }} />
         <div className="grid grid-cols-2 md:grid-cols-4 gap-x-5 gap-y-10">
           {STEPS.map((s, i) => (
             <div key={s.t} className="relative flex flex-col items-center text-center px-1" style={{ animation: anim ? `vkNode 0.7s cubic-bezier(0.22,1,0.36,1) ${0.55 + i * 0.14}s both` : undefined, opacity: show ? undefined : 0 }}>

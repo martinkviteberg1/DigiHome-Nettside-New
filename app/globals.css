@@ -334,3 +334,12 @@ html { scroll-behavior: smooth; }
   font-family: var(--font-heading), 'PP Right Grotesk', -apple-system, sans-serif !important;
 }
 
+/* Investor-deck: verdensklasse mobil-reflow.
+   Kollaps alle arbitrære fler-kolonne-grids til én kolonne på mobil.
+   Unntak: horisontalt scrollbare tabeller (de har min-w-[...]). */
+@media (max-width: 900px) {
+  .dh-deck [class*="grid-cols-["]:not([class*="min-w-["]) {
+    grid-template-columns: 1fr !important;
+  }
+}
+
