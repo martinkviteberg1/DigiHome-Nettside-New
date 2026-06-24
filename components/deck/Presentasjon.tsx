@@ -1875,7 +1875,7 @@ const SDiff = (p: any) => {
         <div className="flex items-start gap-4 max-w-[1100px]">
           <p className="text-[10px] font-bold uppercase tracking-[0.22em] pt-1 shrink-0" style={{ ...F, color: P }}>Forsvar</p>
           <p className="text-[12px] sm:text-[13px] text-[#3a3530] font-light leading-[1.55] tracking-[-0.003em]" style={F}>
-            <span className="font-semibold text-[#0c0c0c]">Hvorfor det blir vanskelig å kopiere.</span> Én konkurrent kan kopiere én funksjon. Det vanskelige er kombinasjonen: AI-drevet drift (3–4× flere enheter per årsverk), et skalerbart franchise-nettverk og en nasjonal merkevare bygget på lokal infrastruktur.
+            <span className="font-semibold text-[#0c0c0c]">Hvorfor det blir vanskelig å kopiere.</span> Én konkurrent kan kopiere én funksjon. Det vanskelige er kombinasjonen: automatisert drift (3–4× flere enheter per årsverk), et skalerbart franchise-nettverk og en nasjonal merkevare bygget på lokal infrastruktur.
           </p>
         </div>
       </div>
@@ -2486,7 +2486,7 @@ const S9 = (p: any) => (
            animation: p.isActive ? 's9FadeUp 1s cubic-bezier(0.22,1,0.36,1) 0.9s both' : undefined,
            opacity: p.isActive ? undefined : 0,
          }}>
-        Vi starter i Norge — 600 000 utleieboliger, flere kanaler, mer regulering og høyere forventninger. Behovet for en samlet AI-drevet plattform finnes overalt der bolig leies ut.
+        Vi starter i Norge — 600 000 utleieboliger, flere kanaler, mer regulering og høyere forventninger. Behovet for en samlet, automatisert plattform finnes overalt der bolig leies ut.
       </p>
       <p className="mx-auto font-medium max-w-[640px] mb-7 sm:mb-10 px-4"
          style={{
@@ -2901,7 +2901,7 @@ const SWhyDH = (p: any) => {
     {
       num: '03',
       title: 'Automatisert drift',
-      lead: 'AI-assistenten håndterer henvendelser, oppretter saker, følger opp leietakere og kobler på riktig leverandør når noe skjer.',
+      lead: 'Systemet håndterer henvendelser, oppretter saker, følger opp leietakere og kobler på riktig leverandør når noe skjer.',
       tag: 'Mindre manuelt arbeid. Raskere svar. Bedre kontroll.',
     },
   ];
@@ -6691,7 +6691,7 @@ const SAutopilotStatus = (p: any) => {
   const ST: any = { live: { c: LIVE, t: 'Live' }, pilot: { c: PILOT, t: 'Pilot' }, road: { c: MUT, t: 'Veikart' } };
   const ROWS = [
     { pr: 'Leadberikelse', tr: 'Manuell punching', dh: 'Automatisk registeroppslag', hu: 'Godkjenner', s: 'live' },
-    { pr: 'Annonseutkast', tr: 'Manuell tekst', dh: 'AI-generert utkast', hu: 'Godkjenner', s: 'live' },
+    { pr: 'Annonseutkast', tr: 'Manuell tekst', dh: 'Auto-generert utkast', hu: 'Godkjenner', s: 'live' },
     { pr: 'Kontrakt & depositum', tr: 'Manuell oppfølging', dh: 'Klargjort + automatiske påminnelser', hu: 'Signerer', s: 'live' },
     { pr: 'Husleie & regnskap', tr: 'Manuell fakturering', dh: 'Auto-innkreving + bokføring', hu: 'Fører tilsyn', s: 'live' },
     { pr: 'Leietakerhenvendelser', tr: 'Manuelle svar', dh: 'Foreslåtte / automatiske svar', hu: 'Policy-styrt', s: 'pilot' },
@@ -6760,6 +6760,7 @@ const SOperator = (p: any) => {
   const FACTS = [
     { Icon: Target, k: 'Mål', v: '300 enheter innen 24 mnd' },
     { Icon: TrendingUp, k: 'Kapasitet', v: '3–4× flere enheter / årsverk' },
+    { Icon: CreditCard, k: 'Recurring', v: '~1,4 MNOK ARR / moden franchise' },
     { Icon: Building2, k: 'Merke & drift', v: 'DigiHome-plattformen + DigiHome-merket' },
   ];
   const KJOP = ['Etablert merkevare og tillit fra dag én', 'Plattformen som gjør grovarbeidet', 'Ferdig playbook for drift og vekst', 'Lead-motor som fyller pipelinen'];
