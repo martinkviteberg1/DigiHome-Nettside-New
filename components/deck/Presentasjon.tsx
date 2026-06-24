@@ -3460,6 +3460,91 @@ const SBudgetRunway = (p: any) => {
   );
 };
 
+/* ═══ CASHFLOW — dagens situasjon (før emisjon) ═══ */
+const SCashflowIDag = (p: any) => {
+  const active = p.isActive; const isPdf = !!p.pdfMode; const show = active || isPdf; const anim = active && !isPdf;
+  useEffect(() => { p.onLight?.(active && !isPdf); }, [active, isPdf]);
+  const AC = '#a052e0'; const INK = '#0c0c0c'; const INK2 = '#1c1714'; const SUB = '#57514a'; const MUT = '#9b9389'; const HAIR = 'rgba(20,15,10,0.08)'; const GREEN = '#1f9d57';
+
+  const MONTHS = ['Jan','Feb','Mar','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Des'];
+  const NETTO = [90,91,92,93,94,96,96,98,99,101,102,104]; // tusen kr, bootstrap (netto/mnd)
+  const MAXV = 120;
+
+  const kpis = [
+    { v: '~+96k', l: 'Snitt netto / mnd', s: 'bootstrap · 0 gründerlønn' },
+    { v: '~1,15 MNOK', l: 'Akkumulert kontantstrøm', s: '12 mnd på dagens nivå' },
+    { v: '≈ break-even', l: 'Normalisert', s: 'med markedslønn ~115k/mnd' },
+  ];
+
+  const rise = (i: number) => ({ animation: anim ? `cfFade 0.8s cubic-bezier(0.22,1,0.36,1) ${0.1 + i * 0.08}s both` : undefined, opacity: show ? undefined : 0 });
+
+  return (
+  <SlideFrame bg="beige" {...p}>
+    <style>{`
+      @keyframes cfFade { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+      @keyframes cfBar { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+    `}</style>
+    <DotGrid maskCenter="50% 14%" opacity={0.36} />
+    <div className="relative z-10 w-full max-w-[1180px] mx-auto px-6 sm:px-12 my-auto">
+      <div className="max-w-[860px] mb-7">
+        <span className="block text-[11px] font-bold uppercase tracking-[0.34em]" style={{ ...F, color: AC, ...rise(0) }}>Cashflow · dagens situasjon (før emisjon)</span>
+        <h2 className="tracking-[-0.035em] leading-[1.05] mt-4" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(26px,3.3vw,46px)', color: INK, ...rise(1) }}>
+          Driften går i pluss — <span style={{ color: AC }}>uten en krone i kapital</span>.
+        </h2>
+        <p className="text-[13.5px] sm:text-[14.5px] font-normal leading-[1.55] mt-4 max-w-[760px]" style={{ ...F, color: SUB, ...rise(2) }}>
+          Dagens portefølje (~40 boliger) er bootstrappet. Månedlig kontantstrøm er positiv fordi gründerne ikke tar lønn — vi brenner ikke kapital i dag.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] gap-7 lg:gap-10 items-stretch">
+        {/* graf */}
+        <div className="rounded-[20px] bg-white p-6 sm:p-7 flex flex-col" style={{ border: `1px solid ${HAIR}`, boxShadow: '0 18px 44px -26px rgba(20,15,10,0.22)', ...rise(3) }}>
+          <div className="flex items-baseline justify-between mb-5">
+            <p className="text-[11px] font-bold uppercase tracking-[0.2em]" style={{ ...F, color: INK2 }}>Månedlig netto kontantstrøm</p>
+            <p className="text-[10px] font-medium tracking-[0.1em]" style={{ ...F, color: MUT }}>tusen kr · illustrativt</p>
+          </div>
+          <div className="relative flex-1" style={{ minHeight: 230 }}>
+            {[120, 90, 60, 30, 0].map((g) => (
+              <div key={g} className="absolute left-0 right-0 flex items-center gap-2" style={{ bottom: `${(g / MAXV) * 100}%`, transform: 'translateY(50%)' }}>
+                <span className="text-[8.5px] tabular-nums w-7 text-right shrink-0" style={{ ...F, color: g === 0 ? '#b9b0a4' : '#cfc8bc' }}>{g === 0 ? '0' : g}</span>
+                <div className="h-px flex-1" style={{ background: g === 0 ? 'rgba(20,15,10,0.18)' : 'rgba(20,15,10,0.06)' }} />
+              </div>
+            ))}
+            <div className="absolute left-9 right-0 top-0 bottom-0 flex items-end justify-between gap-[5px]">
+              {NETTO.map((n, i) => (
+                <div key={i} className="flex-1 flex flex-col items-center justify-end h-full">
+                  <span className="text-[9px] font-bold tabular-nums mb-1" style={{ ...F, color: AC, animation: anim ? `cfFade 0.5s ease ${0.9 + i * 0.05}s both` : undefined, opacity: show ? undefined : 0 }}>{n}</span>
+                  <div className="w-full rounded-t-[4px]" style={{ height: `${(n / MAXV) * 100}%`, background: `linear-gradient(180deg, ${AC}, #c79bf0)`, transformOrigin: 'bottom', animation: anim ? `cfBar 0.7s cubic-bezier(0.22,1,0.36,1) ${0.55 + i * 0.05}s both` : undefined }} />
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="flex justify-between gap-[5px] mt-2 pl-9">
+            {MONTHS.map((m, i) => (<span key={i} className="flex-1 text-center text-[8.5px] font-medium" style={{ ...F, color: MUT }}>{m}</span>))}
+          </div>
+        </div>
+
+        {/* KPI-er + note */}
+        <div className="flex flex-col gap-3.5" style={rise(4)}>
+          {kpis.map((k, i) => (
+            <div key={i} className="rounded-[16px] bg-white px-5 py-4" style={{ border: `1px solid ${HAIR}`, boxShadow: '0 10px 26px -18px rgba(20,15,10,0.18)' }}>
+              <div className="tabular-nums leading-none" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(22px,2.4vw,30px)', color: i === 2 ? GREEN : INK }}>{k.v}</div>
+              <div className="text-[12.5px] font-semibold mt-1.5" style={{ ...F, color: INK2 }}>{k.l}</div>
+              <div className="text-[11px] font-light mt-0.5" style={{ ...F, color: MUT }}>{k.s}</div>
+            </div>
+          ))}
+          <p className="text-[11px] leading-[1.55] font-light mt-1" style={{ ...F, color: SUB }}>
+            <span style={{ fontWeight: 700, color: INK2 }}>Modenhet:</span> gründerne tar ikke lønn i dag. Med normalisert markedslønn er driften nær break-even — og forbedres når porteføljen vokser. <span style={{ fontWeight: 600, color: INK2 }}>Emisjonen finansierer fulltid og franchisevalidering — ikke overlevelse.</span>
+          </p>
+        </div>
+      </div>
+      <p className="text-[10px] font-light mt-5 text-center" style={{ ...F, color: MUT, ...rise(6) }}>Modellert ut fra dagens driftsnivå (~40 boliger, DigiHome AS). Tall bekreftes mot regnskap.</p>
+    </div>
+  </SlideFrame>
+  );
+};
+
+
 /* ═══ TRACTION — Bergen traction, pipeline, DigiSale ecosystem ═══ */
 /* ═══ SLIDE 12 — STraction · Proptonomy-style ═══ */
 const STraction = (p: any) => {
@@ -5661,7 +5746,7 @@ const SDriftsgearing = (p: any) => {
       <div className="mt-12 sm:mt-16 pt-9 text-center"
            style={{ borderTop: `1px solid ${HAIR}`, animation: anim ? 'dgFade 0.9s cubic-bezier(0.22,1,0.36,1) 1.35s both' : undefined, opacity: show ? undefined : 0 }}>
         <p className="tracking-[-0.018em] leading-[1.4] max-w-[900px] mx-auto" style={{ ...FH, fontWeight: 600, fontSize: 'clamp(18px, 2vw, 26px)', color: INK }}>
-          Marginalkostnaden per ny bolig faller mot null → <span style={{ color: AC }}>~82 % bruttomargin</span>. Hver franchise er bygget for samme gearing.
+          Marginalkostnaden per ny bolig synker kraftig — mot et minimum (i praksis BankID + AI) → <span style={{ color: AC }}>~82 % bruttomargin</span>. Hver franchise er bygget for samme gearing.
         </p>
       </div>
     </div>
@@ -5912,10 +5997,10 @@ const SAlleredeInntekter = (p: any) => {
   useEffect(() => { p.onLight?.(active && !isPdf); }, [active, isPdf]);
 
   const STATS = [
-    { big: '40', unit: '', label: 'Huseiere på fullforvaltning', sub: 'betalende kunder i dag', hl: false },
-    { big: '3 000', unit: 'kr', label: 'Snitt inntekt per bolig / mnd', sub: 'faktisk snitt Bergen · 10 % av leien', hl: false },
+    { big: '40', unit: '', label: 'Boliger på fullforvaltning', sub: 'under egen drift · DigiHome AS', hl: false },
+    { big: '3 000', unit: 'kr', label: 'Snitt inntekt per bolig / mnd', sub: 'sentral fullservice-portefølje Bergen · 10 % av leien', hl: false },
     { big: '120 000', unit: 'kr', label: 'Månedlig inntekt · MRR', sub: 'tilbakevendende, hver måned', hl: false },
-    { big: '1,44', unit: 'MNOK', label: 'Årlig inntektsbasis · ARR', sub: 'løpende — før skalert salg', hl: true },
+    { big: '1,44', unit: 'MNOK', label: 'Årlig inntektsbasis · ARR', sub: 'i DigiHome AS (drift) · før skalert salg', hl: true },
   ];
 
   return (
@@ -5975,7 +6060,11 @@ const SAlleredeInntekter = (p: any) => {
       {/* payoff */}
       <p className="text-[14px] sm:text-[15px] font-normal leading-[1.6] mt-9 text-center mx-auto max-w-[760px]"
          style={{ ...F, color: SUB, animation: anim ? 'traFade 0.9s cubic-bezier(0.22,1,0.36,1) 0.95s both' : undefined, opacity: show ? undefined : 0 }}>
-        <span style={{ color: INK2, fontWeight: 600 }}>40 boliger × 3 000 kr/mnd = 120 000 kr i månedlig inntekt.</span> Dette er prototypen — bevist i Bergen. Franchise gjør den nasjonal. <span style={{ color: MUT }}>(Tre ARPU-nivåer: markedssnitt ~1 500 kr · modell ~2 000 kr · dagens Bergen-portefølje ~3 000 kr.)</span>
+        <span style={{ color: INK2, fontWeight: 600 }}>40 boliger × 3 000 kr/mnd = 120 000 kr i månedlig inntekt.</span> Dette er prototypen — bevist i Bergen. Franchise gjør den nasjonal. <span style={{ color: MUT }}>(Tre ARPU-nivåer: markedssnitt ~1 500 kr · modell ~2 000 kr · dagens Bergen-portefølje ~3 000 kr — sentral, fullservice-segment.)</span>
+      </p>
+      <p className="text-[11.5px] sm:text-[12px] font-normal leading-[1.55] mt-4 text-center mx-auto max-w-[680px]"
+         style={{ ...F, color: MUT, animation: anim ? 'traFade 0.9s cubic-bezier(0.22,1,0.36,1) 1.1s both' : undefined, opacity: show ? undefined : 0 }}>
+        Denne inntekten ligger i <span style={{ color: SUB, fontWeight: 600 }}>DigiHome AS (drift)</span>. Investeringen gjøres i <span style={{ color: SUB, fontWeight: 600 }}>DigiHome Tech AS</span>, som eier og lisensierer plattformen til driften.
       </p>
     </div>
   </SlideFrame>
@@ -5998,7 +6087,7 @@ const SFilosofi = (p: any) => {
     { no: '01', Icon: Settings, t: 'Best practice som standard.', d: 'Boligforvaltning er de samme prosessene, om og om igjen. Alt som kan automatiseres, blir automatisert. Det som gjenstår er det menneskelige — relasjon og salg.' },
     { no: '02', Icon: Zap, t: 'Hypermoderne grensesnitt. Null friksjon.', d: 'Aldri som en tung enterprise-ERP — ikke ett unødvendig klikk. Finnes en smartere vei, bygger vi den inn.' },
     { no: '03', Icon: Shield, t: 'AI der det skaper verdi — innenfor faste rammer.', d: 'Systemet er et rammeverk med hele prosessen fra A til Å. AI jobber på toppen av driftsprosedyrene — kraftfullt, men alltid innenfor definerte rammer.' },
-    { no: '04', Icon: TrendingUp, t: 'Bygget for skala. Data som forsterker seg selv.', d: 'Hver prosess gir strukturert data som gjør automatiseringen og AI-en stadig bedre — mens marginalkostnaden faller mot null når vi vokser.' },
+    { no: '04', Icon: TrendingUp, t: 'Bygget for skala. Data som forsterker seg selv.', d: 'Hver prosess gir strukturert data som gjør automatiseringen og AI-en stadig bedre — mens marginalkostnaden per enhet synker mot et minimum når vi vokser.' },
   ];
   return (
   <SlideFrame bg="beige" {...p}>
@@ -6593,30 +6682,32 @@ const SOkosystem = (p: any) => {
   useEffect(() => { p.onLight?.(active && !isPdf); }, [active, isPdf]);
 
   const AC = '#a052e0'; const INK = '#0c0c0c'; const SUB = '#57514a'; const MUT = '#8a8278'; const HAIR = 'rgba(20,15,10,0.09)';
+  const LIVE = '#1f9d57'; const PILOT = '#c2891f';
+  const ST: any = { live: { c: LIVE, t: 'Live' }, pilot: { c: PILOT, t: 'Pilot' }, road: { c: MUT, t: 'Veikart' } };
 
   const GROUPS = [
     {
       label: 'Identitet & data', Icon: Shield, desc: 'Verifisering og automatiske registeroppslag.',
       items: [
-        { name: 'BankID', logo: '/bankid-logo.png', h: 22 },
-        { name: 'Kartverket', logo: '/kartverket-logo.png', h: 28 },
-        { name: 'Creditsafe', logo: '/creditsafe-logo.png', h: 22 },
+        { name: 'BankID', logo: '/bankid-logo.png', h: 22, s: 'live' },
+        { name: 'Kartverket', logo: '/kartverket-logo.png', h: 28, s: 'live' },
+        { name: 'Creditsafe', logo: '/creditsafe-logo.png', h: 22, s: 'pilot' },
       ],
     },
     {
       label: 'Annonsekanaler', Icon: Radio, desc: 'Publisering og distribusjon i alle relevante kanaler.',
       items: [
-        { name: 'FINN.no', logo: '/finn-logo.png', h: 30 },
-        { name: 'Airbnb', logo: '/airbnb-logo.png', h: 26 },
-        { name: 'Booking.com', logo: '/booking-logo.png', h: 19 },
+        { name: 'FINN.no', logo: '/finn-logo.png', h: 30, s: 'live' },
+        { name: 'Airbnb', logo: '/airbnb-logo.png', h: 26, s: 'live' },
+        { name: 'Booking.com', logo: '/booking-logo.png', h: 19, s: 'pilot' },
       ],
     },
     {
       label: 'Betaling & økonomi', Icon: CreditCard, desc: 'Innkreving, oppgjør og regnskap — automatisk.',
       items: [
-        { name: 'Vipps', logo: '/vipps-logo.png', h: 26 },
-        { name: 'Tripletex', logo: '/tripletex-logo.png', h: 21 },
-        { name: 'Fiken', logo: '/fiken-logo.png', h: 26 },
+        { name: 'Vipps', logo: '/vipps-logo.png', h: 26, s: 'live' },
+        { name: 'Tripletex', logo: '/tripletex-logo.png', h: 21, s: 'live' },
+        { name: 'Fiken', logo: '/fiken-logo.png', h: 26, s: 'road' },
       ],
     },
   ];
@@ -6695,8 +6786,11 @@ const SOkosystem = (p: any) => {
                          style={{ background: '#ffffff', border: `1px solid ${HAIR}`, boxShadow: '0 1px 2px rgba(20,15,10,0.03), 0 20px 38px -26px rgba(20,15,10,0.30)',
                                   animation: anim ? `okoTile 0.6s cubic-bezier(0.22,1,0.36,1) ${0.85 + di * 0.05}s both` : undefined, opacity: show ? undefined : 0 }}>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={it.logo} alt={it.name} className="w-auto object-contain select-none" draggable={false} style={{ height: it.h, maxWidth: '78%' }} />
-                      <Check className="absolute top-3 right-3 w-[13px] h-[13px] shrink-0" style={{ color: AC, opacity: 0.38 }} strokeWidth={2.6} />
+                      <img src={it.logo} alt={it.name} className="w-auto object-contain select-none" draggable={false} style={{ height: it.h, maxWidth: '72%' }} />
+                      <span className="absolute top-2.5 right-2.5 inline-flex items-center gap-1 text-[8.5px] font-bold uppercase tracking-[0.06em] px-1.5 py-[3px] rounded-full"
+                            style={{ ...F, color: ST[it.s].c, background: `${ST[it.s].c}16` }}>
+                        <span className="w-1.5 h-1.5 rounded-full" style={{ background: ST[it.s].c }} />{ST[it.s].t}
+                      </span>
                     </div>
                   );
                 })}
@@ -6715,7 +6809,13 @@ const SOkosystem = (p: any) => {
         <p className="text-[13px] sm:text-[14px] leading-[1.5] flex-1 min-w-[260px]" style={{ ...F, color: SUB }}>
           <span style={{ color: INK, fontWeight: 600 }}>Åpen API-arkitektur.</span> Nye integrasjoner kobles på uten å bygge om kjernen — økosystemet vokser med DigiHome.
         </p>
-        <span className="text-[11px] font-semibold uppercase tracking-[0.14em] px-3 py-1.5 rounded-full" style={{ ...F, color: AC, background: `${AC}0d` }}>10+ integrasjoner</span>
+        <div className="flex items-center gap-3.5">
+          {(['live', 'pilot', 'road'] as const).map((k) => (
+            <span key={k} className="inline-flex items-center gap-1.5 text-[10.5px] font-semibold" style={{ ...F, color: SUB }}>
+              <span className="w-2 h-2 rounded-full" style={{ background: ST[k].c }} />{ST[k].t}
+            </span>
+          ))}
+        </div>
       </div>
     </div>
   </SlideFrame>
@@ -7555,6 +7655,7 @@ const SLIDES: { C: any; light: boolean; animated?: boolean }[] = [
   { C: SDiff, light: true },                        // 17 · Konkurransefortrinn (white)
   { C: SRevenue, light: true },                     // 18 · Inntektsmodell
   { C: SUnitEconomics, light: true },               // 19 · Unit economics
+  { C: SCashflowIDag, light: true },                // · Cashflow i dag — bootstrap, før emisjon (beige)
   { C: SBudgetRunway, light: true },                // 20 · Budsjett & runway (beige)
   { C: SDeRisk, light: true },                      // · De-risking — ærlig om risiko + plan
   { C: SAsk, light: true },                         // 22 · Pre-seed emisjon (beige)
