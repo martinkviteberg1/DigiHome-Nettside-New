@@ -78,7 +78,9 @@ function SlideFrame({ children, bg, img, overlay, slideNum, total, revealLight }
           <Logo light={isDark} className="h-5 sm:h-6" />
         )}
       </div>
+      {slideNum != null && (
       <div className="absolute top-4 right-5 sm:top-7 sm:right-10 z-20 text-[10px] sm:text-[11px] font-medium tracking-wider" style={{ color: useReveal ? (revealLight ? 'rgba(0,0,0,0.22)' : 'rgba(255,255,255,0.2)') : (isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)'), transition: useReveal ? 'color 1.2s ease' : undefined }}>{slideNum}/{total}</div>
+      )}
       <div className="relative z-10 min-h-full flex items-start pt-16 sm:pt-14 pb-10 sm:pb-10">{children}</div>
     </div>
   );
@@ -7963,8 +7965,7 @@ const SAIDisiplin = (p: any) => {
 const SLIDES: { C: any; light: boolean; animated?: boolean }[] = [
   { C: S1, light: false },                          // 01 · Cover (mørk — Bergen cityscape)
   { C: SBrandFilm, light: false },                  // 02 · Merkevarefilm (mørk — kinematisk brand-film)
-  { C: SInnhold, light: false },                    // 03 · Innhold — minimalistisk agenda (mørk)
-  { C: SElevatorPitch, light: true },               // 04 · Elevator pitch — DigiHome på 60 sekunder (lys, fortellende)
+  { C: SElevatorPitch, light: true },               // 03 · Elevator pitch — mørk krok → lys pitch (DigiHome på 60 sekunder)
   { C: SVisionIntro, light: true, animated: true }, // 05 · Visjon — krok (mørk→lys reveal) — «Hvorfor vi bygde DigiHome»
   { C: STeam, light: true },                        // · Teamet — flyttet hit, rett etter «Hvorfor vi bygde DigiHome» (founder-market fit tidlig)
   { C: SProblem, light: true },                     // 03 · Problemet — status quo (beige, flyttet frem)
@@ -8296,8 +8297,6 @@ export default function Presentasjon() {
           <style>{`@keyframes tocOverlayIn{from{opacity:0}to{opacity:1}}`}</style>
           <SInnhold
             isActive={true}
-            slideNum={SLIDES.findIndex((s) => s.C === SInnhold) + 1}
-            total={SLIDES.length}
             goTo={(i: number) => { setC(i); setTocOpen(false); }}
           />
           {/* Lukk-knapp */}
