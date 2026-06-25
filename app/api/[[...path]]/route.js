@@ -151,6 +151,63 @@ async function forwardToDigiHome(path, payload) {
   }
 }
 
+// --- Adressesøk (Geonorge) med in-memory cache + retry + timeout ---
+// Gjør autofullføringen rask og robust: Geonorge svarer tidvis 500 (overbelastet),
+// og uten cache blir hvert tastetrykk et fullt rundturskall. Vi cacher vellykkede
+// svar (også legitime tom-treff), retry-er én gang ved feil, og aborterer trege kall.
+const _addrCache = new Map(); // qLower -> { at, suggestions }
+const ADDR_TTL_MS = 10 * 60 * 1000;
+const ADDR_CACHE_MAX = 600;
+
+async function geonorgeSearch(q) {
+  const key = q.toLowerCase();
+  const hit = _addrCache.get(key);
+  if (hit && Date.now() - hit.at < ADDR_TTL_MS) return hit.suggestions;
+
+  const url = `https://ws.geonorge.no/adresser/v1/sok?sok=${encodeURIComponent(q)}` +
+    `&fuzzy=true&treffPerSide=6&side=0&asciiKompatibel=true` +
+    `&filtrer=adresser.adressetekst,adresser.postnummer,adresser.poststed`;
+
+  let suggestions = [];
+  let ok = false;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 4000);
+      const r = await fetch(url, { headers: { Accept: 'application/json' }, signal: ctrl.signal });
+      clearTimeout(timer);
+      if (!r.ok) { if (attempt === 0) continue; break; }      // 500 → ett raskt retry
+      const data = await r.json();
+      const seen = new Set();
+      suggestions = (data.adresser || [])
+        .map((a) => {
+          const text = a.adressetekst || '';
+          const sub = `${a.postnummer || ''} ${a.poststed || ''}`.trim();
+          return { text, sub, label: sub ? `${text}, ${sub}` : text };
+        })
+        .filter((s) => {
+          if (!s.text || seen.has(s.label)) return false;
+          seen.add(s.label);
+          return true;
+        });
+      ok = true;
+      break;
+    } catch (e) {
+      if (attempt === 0) continue;                            // timeout/nettfeil → ett retry
+    }
+  }
+
+  // Cache KUN vellykkede svar (ikke feil/timeout — da vil vi prøve igjen neste tastetrykk).
+  if (ok) {
+    _addrCache.set(key, { at: Date.now(), suggestions });
+    if (_addrCache.size > ADDR_CACHE_MAX) {
+      const oldest = _addrCache.keys().next().value;
+      _addrCache.delete(oldest);
+    }
+  }
+  return suggestions;
+}
+
 const ADMIN_KEY = process.env.ADMIN_KEY || '';
 function adminAuthed(request) {
   try {
@@ -291,27 +348,11 @@ async function handleRoute(request, { params }) {
       const { searchParams } = new URL(request.url);
       const q = (searchParams.get('q') || '').trim();
       if (q.length < 3) return cors(NextResponse.json({ suggestions: [] }));
-      try {
-        const url = `https://ws.geonorge.no/adresser/v1/sok?sok=${encodeURIComponent(q)}&fuzzy=true&treffPerSide=6&side=0&asciiKompatibel=true`;
-        const r = await fetch(url, { headers: { Accept: 'application/json' } });
-        if (!r.ok) return cors(NextResponse.json({ suggestions: [] }));
-        const data = await r.json();
-        const seen = new Set();
-        const suggestions = (data.adresser || [])
-          .map((a) => {
-            const text = a.adressetekst || '';
-            const sub = `${a.postnummer || ''} ${a.poststed || ''}`.trim();
-            return { text, sub, label: sub ? `${text}, ${sub}` : text };
-          })
-          .filter((s) => {
-            if (!s.text || seen.has(s.label)) return false;
-            seen.add(s.label);
-            return true;
-          });
-        return cors(NextResponse.json({ suggestions }));
-      } catch (e) {
-        return cors(NextResponse.json({ suggestions: [] }));
-      }
+      const suggestions = await geonorgeSearch(q);
+      const res = cors(NextResponse.json({ suggestions }));
+      // La nettleseren cache identiske søk kort (rask gjentatt skriving/sletting).
+      res.headers.set('Cache-Control', 'private, max-age=120');
+      return res;
     }
 
     // --- Boliger (proxy til DigiHome-plattformens public listings API) ---
