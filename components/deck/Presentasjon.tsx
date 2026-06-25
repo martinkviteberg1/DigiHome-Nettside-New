@@ -8286,7 +8286,8 @@ export default function Presentasjon() {
         )}
       </div>
 
-      {/* ═══ Innholdsfortegnelse-knapp — minimalistisk, tilpasser seg lys/mørk slide ═══ */}
+      {/* ═══ Innholdsfortegnelse-knapp — minimalistisk; skjult på forsiden (slide 1) ═══ */}
+      {c !== 0 && (
       <button
         onClick={() => setTocOpen(true)}
         aria-label="Åpne innholdsfortegnelse"
@@ -8310,6 +8311,7 @@ export default function Presentasjon() {
         <LayoutGrid className="w-[13px] h-[13px] opacity-65 group-hover:opacity-100 transition-opacity duration-300" strokeWidth={2} />
         <span>Innhold</span>
       </button>
+      )}
 
       {/* ═══ Innholdsfortegnelse — fullskjerm-overlegg ═══ */}
       {tocOpen && (
