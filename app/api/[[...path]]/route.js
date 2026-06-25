@@ -2,6 +2,84 @@ import { NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 import crypto from 'crypto';
 import { getDb, clean } from '@/lib/mongodb';
+import { getObject, PUBLIC_PREFIX } from '@/lib/objectStorage';
+
+// --- Media-servering fra objektlagring (deploy-safe /public) ---
+// Next.js standalone inkluderer ikke /public, så vi serverer bilder/video/lyd
+// fra Emergent objektlagring via /api/media/<relativ-public-sti>.
+const MEDIA_CONTENT_TYPES = {
+  png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp',
+  gif: 'image/gif', svg: 'image/svg+xml', avif: 'image/avif', ico: 'image/x-icon',
+  mp4: 'video/mp4', webm: 'video/webm', mov: 'video/quicktime',
+  mp3: 'audio/mpeg', wav: 'audio/wav', aac: 'audio/aac',
+  woff: 'font/woff', woff2: 'font/woff2', ttf: 'font/ttf', otf: 'font/otf',
+  json: 'application/json', txt: 'text/plain', xml: 'application/xml',
+  html: 'text/html', css: 'text/css', js: 'application/javascript',
+};
+
+function mediaContentType(rel, fallback) {
+  const ext = (rel.split('.').pop() || '').toLowerCase();
+  return MEDIA_CONTENT_TYPES[ext] || fallback || 'application/octet-stream';
+}
+
+// Serverer en fil fra objektlagring. Støtter HTTP Range (206) for video-seeking.
+async function serveMedia(request, segments) {
+  const rel = segments.join('/');
+  if (!rel || rel.includes('..')) {
+    return cors(NextResponse.json({ error: 'Ugyldig sti' }, { status: 400 }));
+  }
+  let obj;
+  try {
+    obj = await getObject(`${PUBLIC_PREFIX}/${rel}`);
+  } catch (e) {
+    // Lageret returnerer 500 for ikke-eksisterende objekter (ikke 404). For
+    // mediaservering behandler vi enhver henting-feil som «ikke funnet» — det
+    // er forventet nettleseroppførsel for en manglende statisk fil.
+    return cors(NextResponse.json({ error: 'Ikke funnet' }, { status: 404 }));
+  }
+  if (!obj) {
+    return cors(NextResponse.json({ error: 'Ikke funnet' }, { status: 404 }));
+  }
+  const contentType = mediaContentType(rel, obj.contentType);
+  const total = obj.buffer.length;
+  const baseHeaders = {
+    'Content-Type': contentType,
+    'Cache-Control': 'public, max-age=31536000, immutable',
+    'Access-Control-Allow-Origin': process.env.CORS_ORIGINS || '*',
+    'Accept-Ranges': 'bytes',
+  };
+
+  const range = request.headers.get('range');
+  if (range) {
+    const m = /bytes=(\d*)-(\d*)/.exec(range);
+    if (m) {
+      let start = m[1] ? parseInt(m[1], 10) : 0;
+      let end = m[2] ? parseInt(m[2], 10) : total - 1;
+      if (Number.isNaN(start)) start = 0;
+      if (Number.isNaN(end) || end >= total) end = total - 1;
+      if (start > end || start >= total) {
+        return new NextResponse(null, {
+          status: 416,
+          headers: { ...baseHeaders, 'Content-Range': `bytes */${total}` },
+        });
+      }
+      const chunk = obj.buffer.subarray(start, end + 1);
+      return new NextResponse(chunk, {
+        status: 206,
+        headers: {
+          ...baseHeaders,
+          'Content-Range': `bytes ${start}-${end}/${total}`,
+          'Content-Length': String(chunk.length),
+        },
+      });
+    }
+  }
+
+  return new NextResponse(obj.buffer, {
+    status: 200,
+    headers: { ...baseHeaders, 'Content-Length': String(total) },
+  });
+}
 
 // Pitch-deck passord (sjekkes server-side). Cookie lagrer en sha256-token, ikke selve passordet.
 const DECK_PASSWORD = process.env.DECK_PASSWORD || '';
@@ -168,6 +246,11 @@ async function handleRoute(request, { params }) {
   const method = request.method;
 
   try {
+    // --- Media-servering fra objektlagring (/api/media/<sti>) ---
+    if (path[0] === 'media' && method === 'GET') {
+      return serveMedia(request, path.slice(1));
+    }
+
     // --- Pitch-deck passord-gate (server-side; httpOnly cookie) ---
     if (route === '/deck/auth' && method === 'GET') {
       const token = request.cookies.get('dh_deck')?.value || '';

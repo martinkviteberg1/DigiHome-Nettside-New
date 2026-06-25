@@ -48,6 +48,22 @@ const nextConfig = {
       },
     ];
   },
+  // Deploy-safe media: i produksjon (Next.js standalone) inkluderes ikke /public,
+  // så statiske bilder/video/lyd 404-er. `fallback`-rewrites kjører KUN etter at
+  // filsystem (/public, _next) og dynamiske ruter er sjekket — altså:
+  //   • lokalt/dev: filen finnes i /public ⇒ serveres direkte (rewrite trår ikke til)
+  //   • produksjon: /public mangler ⇒ faller tilbake til /api/media → objektlagring
+  async rewrites() {
+    return {
+      fallback: [
+        {
+          source:
+            '/:asset(.+\\.(?:png|jpe?g|webp|gif|svg|avif|ico|mp4|webm|mov|mp3|wav|aac|woff2?|ttf|otf))',
+          destination: '/api/media/:asset',
+        },
+      ],
+    };
+  },
 };
 
 module.exports = nextConfig;
