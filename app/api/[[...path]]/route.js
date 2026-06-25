@@ -13,7 +13,7 @@ function deckToken() {
 // Samme kodebase kjører i BÅDE test/preview og produksjon. Vi skiller miljøene
 // på NEXT_PUBLIC_BASE_URL (settes automatisk per miljø av plattformen):
 //   • preview/test  → test-CRM  (proposal-engine-37 ...)
-//   • produksjon    → prod-CRM  (https://digihome.no)
+//   • produksjon    → prod-CRM  (https://app.digihome.no — selve markedssiden ligger på digihome.no)
 // Dette hindrer at test-leads forurenser prod-CRM og omvendt.
 const PROD_HOSTS = ['digihome.no'];
 
@@ -26,7 +26,7 @@ function isProdEnv() {
 function digiHomeTarget() {
   if (isProdEnv()) {
     return {
-      url: process.env.DIGIHOME_API_URL_PROD || 'https://digihome.no',
+      url: process.env.DIGIHOME_API_URL_PROD || 'https://app.digihome.no',
       key: process.env.DIGIHOME_API_KEY_PROD || process.env.DIGIHOME_API_KEY || '',
       env: 'prod',
     };
