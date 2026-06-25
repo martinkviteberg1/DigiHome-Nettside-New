@@ -2,6 +2,84 @@ import { NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 import { getDb, clean } from '@/lib/mongodb';
 
+const DIGIHOME_API_URL = process.env.DIGIHOME_API_URL;
+const DIGIHOME_API_KEY = process.env.DIGIHOME_API_KEY;
+
+// Videresend lead til DigiHome-plattformen (offentlige endepunkter, X-API-Key som id-kort).
+// Best-effort med 8s timeout: feiler stille slik at brukeren alltid får kvittering (lagret lokalt).
+// Plattformen auto-tilordner til standard/eneste tenant = «DigiHome AS».
+async function forwardToDigiHome(path, payload) {
+  if (!DIGIHOME_API_URL) return { ok: false, error: 'DIGIHOME_API_URL mangler' };
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 8000);
+    const res = await fetch(`${DIGIHOME_API_URL}${path}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(DIGIHOME_API_KEY ? { 'X-API-Key': DIGIHOME_API_KEY } : {}),
+      },
+      body: JSON.stringify(payload),
+      signal: ctrl.signal,
+    });
+    clearTimeout(timer);
+    let data = {};
+    try { data = await res.json(); } catch (e) { data = {}; }
+    if (res.ok && (data.success || data.ok)) {
+      return { ok: true, id: (data.data && data.data.id) || null };
+    }
+    return { ok: false, error: `HTTP ${res.status}`, status: res.status };
+  } catch (e) {
+    return { ok: false, error: (e && e.message) || String(e) };
+  }
+}
+
+const ADMIN_KEY = process.env.ADMIN_KEY || '';
+function adminAuthed(request) {
+  try {
+    const url = new URL(request.url);
+    const key = url.searchParams.get('key') || request.headers.get('x-admin-key') || '';
+    return !!ADMIN_KEY && key === ADMIN_KEY;
+  } catch (e) { return false; }
+}
+
+// Re-forward alle leads/tenants som ikke er videresendt (forwarded !== true)
+async function reforwardPending(db) {
+  const results = { leads: { tried: 0, ok: 0 }, tenants: { tried: 0, ok: 0 } };
+  const pendLeads = await db.collection('leads').find({ forwarded: { $ne: true } }).limit(200).toArray();
+  for (const lead of pendLeads) {
+    results.leads.tried++;
+    const fwd = await forwardToDigiHome('/api/leads', {
+      name: lead.name, email: lead.email, phone: lead.phone, address: lead.address,
+      postal_code: lead.postal_code, property_type: lead.property_type, rental_model: lead.rental_model,
+      bedrooms: lead.bedrooms, sqm: lead.sqm, availability: lead.availability, lead_type: lead.lead_type,
+      units: lead.units, num_properties: lead.num_properties, notes: lead.notes,
+    });
+    if (fwd.ok) results.leads.ok++;
+    await db.collection('leads').updateOne({ id: lead.id }, { $set: {
+      forwarded: fwd.ok, platform_id: fwd.id || null, forward_error: fwd.ok ? null : (fwd.error || 'ukjent'),
+      forwarded_at: fwd.ok ? new Date().toISOString() : null,
+    } });
+  }
+  const pendTenants = await db.collection('tenant_leads').find({ forwarded: { $ne: true } }).limit(200).toArray();
+  for (const t of pendTenants) {
+    results.tenants.tried++;
+    const budgetStr = (t.budget_min || t.budget_max)
+      ? `${t.budget_min || ''}${t.budget_min && t.budget_max ? '–' : ''}${t.budget_max || ''} kr`.trim() : '';
+    const fwd = await forwardToDigiHome('/api/tenants', {
+      name: t.name, email: t.email, phone: t.phone, desired_area: t.preferred_area, address: t.preferred_area,
+      budget: budgetStr, bedrooms: t.bedrooms, move_in_date: t.move_in_date, message: t.notes,
+      lead_type: 'leietaker', source: 'nettside',
+    });
+    if (fwd.ok) results.tenants.ok++;
+    await db.collection('tenant_leads').updateOne({ id: t.id }, { $set: {
+      forwarded: fwd.ok, platform_id: fwd.id || null, forward_error: fwd.ok ? null : (fwd.error || 'ukjent'),
+      forwarded_at: fwd.ok ? new Date().toISOString() : null,
+    } });
+  }
+  return results;
+}
+
 const RENTAL_LABELS = { dynamisk: 'Dynamisk', korttid: 'Korttid', kortid: 'Korttid', langtid: 'Langtid' };
 
 function streetFromAddress(addr) {
@@ -149,7 +227,26 @@ async function handleRoute(request, { params }) {
       };
 
       await db.collection('leads').insertOne(lead);
-      return cors(NextResponse.json({ success: true, ok: true, data: { id: lead.id }, lead: clean(lead) }, { status: 201 }));
+
+      // Dual-write: videresend til DigiHome-plattformen (DigiHome AS)
+      const fwd = await forwardToDigiHome('/api/leads', {
+        name: lead.name, email: lead.email, phone: lead.phone,
+        address: lead.address, postal_code: lead.postal_code,
+        property_type: lead.property_type, rental_model: lead.rental_model,
+        bedrooms: lead.bedrooms, sqm: lead.sqm,
+        availability: lead.availability, lead_type: lead.lead_type,
+        units: lead.units, num_properties: lead.num_properties,
+        notes: lead.notes,
+      });
+      await db.collection('leads').updateOne({ id: lead.id }, { $set: {
+        forwarded: fwd.ok,
+        platform_id: fwd.id || null,
+        forward_error: fwd.ok ? null : (fwd.error || 'ukjent'),
+        forwarded_at: fwd.ok ? new Date().toISOString() : null,
+      } });
+      lead.forwarded = fwd.ok; lead.platform_id = fwd.id || null;
+
+      return cors(NextResponse.json({ success: true, ok: true, data: { id: lead.id }, forwarded: fwd.ok, lead: clean(lead) }, { status: 201 }));
     }
 
     // --- Tenants (leietaker-skjema) ---
@@ -182,7 +279,31 @@ async function handleRoute(request, { params }) {
       };
 
       await db.collection('tenant_leads').insertOne(tenant);
-      return cors(NextResponse.json({ success: true, ok: true, data: { id: tenant.id }, tenant: clean(tenant) }, { status: 201 }));
+
+      // Dual-write: videresend til DigiHome-plattformen (felt-mapping til /api/tenants)
+      const budgetStr = (tenant.budget_min || tenant.budget_max)
+        ? `${tenant.budget_min || ''}${tenant.budget_min && tenant.budget_max ? '–' : ''}${tenant.budget_max || ''} kr`.trim()
+        : '';
+      const fwd = await forwardToDigiHome('/api/tenants', {
+        name: tenant.name, email: tenant.email, phone: tenant.phone,
+        desired_area: tenant.preferred_area,
+        address: tenant.preferred_area,
+        budget: budgetStr,
+        bedrooms: tenant.bedrooms,
+        move_in_date: tenant.move_in_date,
+        message: tenant.notes,
+        lead_type: 'leietaker',
+        source: 'nettside',
+      });
+      await db.collection('tenant_leads').updateOne({ id: tenant.id }, { $set: {
+        forwarded: fwd.ok,
+        platform_id: fwd.id || null,
+        forward_error: fwd.ok ? null : (fwd.error || 'ukjent'),
+        forwarded_at: fwd.ok ? new Date().toISOString() : null,
+      } });
+      tenant.forwarded = fwd.ok; tenant.platform_id = fwd.id || null;
+
+      return cors(NextResponse.json({ success: true, ok: true, data: { id: tenant.id }, forwarded: fwd.ok, tenant: clean(tenant) }, { status: 201 }));
     }
 
     if (route === '/tenants' && method === 'GET') {
@@ -193,6 +314,20 @@ async function handleRoute(request, { params }) {
     if (route === '/leads' && method === 'GET') {
       const leads = await db.collection('leads').find({}).sort({ createdAt: -1 }).limit(500).toArray();
       return cors(NextResponse.json(leads.map(clean)));
+    }
+
+    // --- Admin: lead-oversikt + manuell re-forwarding (enkel nøkkel-gating) ---
+    if (route === '/admin/leads' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const leads = await db.collection('leads').find({}).sort({ createdAt: -1 }).limit(500).toArray();
+      const tenants = await db.collection('tenant_leads').find({}).sort({ createdAt: -1 }).limit(500).toArray();
+      return cors(NextResponse.json({ leads: leads.map(clean), tenants: tenants.map(clean) }));
+    }
+
+    if (route === '/admin/forward' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const results = await reforwardPending(db);
+      return cors(NextResponse.json({ success: true, results }));
     }
 
     // --- Investor-interesse (deck «The Ask»-slide) ---
