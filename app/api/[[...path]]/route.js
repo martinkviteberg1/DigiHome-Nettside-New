@@ -103,19 +103,27 @@ function isProdEnv() {
 }
 
 // Returnerer { url, key, env } for riktig DigiHome-CRM basert på gjeldende miljø.
+function normalizeCrmUrl(url) {
+  let u = (url || '').trim();
+  // app.digihome.no finnes ikke (DNS resolver kun digihome.no). Korriger en
+  // eventuell utdatert/stale konfig automatisk, så vi aldri POSTer til en død vert.
+  u = u.replace(/^https?:\/\/app\.digihome\.no/i, 'https://digihome.no');
+  return u.replace(/\/+$/, '');
+}
 function digiHomeTarget() {
   if (isProdEnv()) {
     return {
-      url: process.env.DIGIHOME_API_URL_PROD || 'https://digihome.no',
+      url: normalizeCrmUrl(process.env.DIGIHOME_API_URL_PROD || 'https://digihome.no'),
       key: process.env.DIGIHOME_API_KEY_PROD || process.env.DIGIHOME_API_KEY || '',
       env: 'prod',
     };
   }
   return {
-    url:
+    url: normalizeCrmUrl(
       process.env.DIGIHOME_API_URL_TEST ||
       process.env.DIGIHOME_API_URL ||
-      'https://proposal-engine-37.preview.emergentagent.com',
+      'https://proposal-engine-37.preview.emergentagent.com'
+    ),
     key: process.env.DIGIHOME_API_KEY_TEST || process.env.DIGIHOME_API_KEY || '',
     env: 'test',
   };
