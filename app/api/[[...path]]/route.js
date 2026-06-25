@@ -11,15 +11,17 @@ function deckToken() {
 
 // --- Miljøbasert ruting av lead-videresending ---
 // Samme kodebase kjører i BÅDE test/preview og produksjon. Vi skiller miljøene
-// på NEXT_PUBLIC_BASE_URL (settes automatisk per miljø av plattformen):
-//   • preview/test  → test-CRM  (proposal-engine-37 ...)
-//   • produksjon    → prod-CRM  (https://app.digihome.no — selve markedssiden ligger på digihome.no)
-// Dette hindrer at test-leads forurenser prod-CRM og omvendt.
-const PROD_HOSTS = ['digihome.no'];
+// DYNAMISK på NEXT_PUBLIC_BASE_URL (bakes inn per miljø ved bygg):
+//   • preview/test  → test-CRM  (proposal-engine-37 ...)  — kun *.preview.emergentagent.com / localhost
+//   • produksjon    → prod-CRM  (https://app.digihome.no)  — ALT annet (emergent.host-deploy OG custom domene digihome.no)
+// Dette gjør at både Emergent-domenet (hero-premiere-4.emergent.host) og det
+// kommende custom-domenet (digihome.no) automatisk regnes som produksjon.
+const TEST_HOSTS = ['preview.emergentagent.com', 'localhost', '127.0.0.1'];
 
 function isProdEnv() {
   const base = (process.env.NEXT_PUBLIC_BASE_URL || '').toLowerCase();
-  return PROD_HOSTS.some((h) => base.includes(h));
+  if (!base) return false;                                  // ukjent base → trygg default = test
+  return !TEST_HOSTS.some((h) => base.includes(h));         // ikke preview/lokalt ⇒ produksjon
 }
 
 // Returnerer { url, key, env } for riktig DigiHome-CRM basert på gjeldende miljø.
