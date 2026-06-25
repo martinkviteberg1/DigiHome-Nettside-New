@@ -546,7 +546,7 @@ const STeam = (p: any) => {
       meta: 'Struktur, kontrakt og compliance · Spesialist på M&A og eiendomstransaksjoner · Investorklarhet',
     },
     {
-      name: 'Kevin',
+      name: 'Kevin Ha',
       role: 'AI-konsulent · Rådgiver',
       field: 'AI',
       img: '/team/kevin-ai.jpg',

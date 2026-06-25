@@ -2,22 +2,52 @@ import { NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 import { getDb, clean } from '@/lib/mongodb';
 
-const DIGIHOME_API_URL = process.env.DIGIHOME_API_URL;
-const DIGIHOME_API_KEY = process.env.DIGIHOME_API_KEY;
+// --- Miljøbasert ruting av lead-videresending ---
+// Samme kodebase kjører i BÅDE test/preview og produksjon. Vi skiller miljøene
+// på NEXT_PUBLIC_BASE_URL (settes automatisk per miljø av plattformen):
+//   • preview/test  → test-CRM  (proposal-engine-37 ...)
+//   • produksjon    → prod-CRM  (https://digihome.no)
+// Dette hindrer at test-leads forurenser prod-CRM og omvendt.
+const PROD_HOSTS = ['digihome.no'];
+
+function isProdEnv() {
+  const base = (process.env.NEXT_PUBLIC_BASE_URL || '').toLowerCase();
+  return PROD_HOSTS.some((h) => base.includes(h));
+}
+
+// Returnerer { url, key, env } for riktig DigiHome-CRM basert på gjeldende miljø.
+function digiHomeTarget() {
+  if (isProdEnv()) {
+    return {
+      url: process.env.DIGIHOME_API_URL_PROD || 'https://digihome.no',
+      key: process.env.DIGIHOME_API_KEY_PROD || process.env.DIGIHOME_API_KEY || '',
+      env: 'prod',
+    };
+  }
+  return {
+    url:
+      process.env.DIGIHOME_API_URL_TEST ||
+      process.env.DIGIHOME_API_URL ||
+      'https://proposal-engine-37.preview.emergentagent.com',
+    key: process.env.DIGIHOME_API_KEY_TEST || process.env.DIGIHOME_API_KEY || '',
+    env: 'test',
+  };
+}
 
 // Videresend lead til DigiHome-plattformen (offentlige endepunkter, X-API-Key som id-kort).
 // Best-effort med 8s timeout: feiler stille slik at brukeren alltid får kvittering (lagret lokalt).
 // Plattformen auto-tilordner til standard/eneste tenant = «DigiHome AS».
 async function forwardToDigiHome(path, payload) {
-  if (!DIGIHOME_API_URL) return { ok: false, error: 'DIGIHOME_API_URL mangler' };
+  const target = digiHomeTarget();
+  if (!target.url) return { ok: false, error: 'DIGIHOME_API_URL mangler' };
   try {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 8000);
-    const res = await fetch(`${DIGIHOME_API_URL}${path}`, {
+    const res = await fetch(`${target.url}${path}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        ...(DIGIHOME_API_KEY ? { 'X-API-Key': DIGIHOME_API_KEY } : {}),
+        ...(target.key ? { 'X-API-Key': target.key } : {}),
       },
       body: JSON.stringify(payload),
       signal: ctrl.signal,
@@ -129,6 +159,17 @@ async function handleRoute(request, { params }) {
   const method = request.method;
 
   try {
+    // --- Miljø/ruting-info (verifisering: hvilket CRM får leads herfra?) ---
+    if (route === '/lead-target' && method === 'GET') {
+      const t = digiHomeTarget();
+      return cors(NextResponse.json({
+        env: t.env,
+        url: t.url,
+        keyConfigured: !!t.key,
+        baseUrl: process.env.NEXT_PUBLIC_BASE_URL || null,
+      }));
+    }
+
     // --- Adresse-autofullføring (Geonorge, gratis offentlig API, ingen nøkkel) ---
     if (route === '/address' && method === 'GET') {
       const { searchParams } = new URL(request.url);
@@ -159,8 +200,7 @@ async function handleRoute(request, { params }) {
 
     // --- Boliger (proxy til DigiHome-plattformens public listings API) ---
     if (route === '/listings' && method === 'GET') {
-      const apiBase = process.env.DIGIHOME_API_URL;
-      const apiKey = process.env.DIGIHOME_API_KEY;
+      const { url: apiBase, key: apiKey } = digiHomeTarget();
       if (!apiBase || !apiKey) {
         return cors(NextResponse.json({ tenant: null, count: 0, listings: [], error: 'not_configured' }));
       }

@@ -766,7 +766,7 @@ function ModuleOverview({ stage, step, active }: { stage: 'text' | 'walk' | 'all
           </svg>
 
           {/* system-kjerne */}
-          <div className="absolute z-20" style={{ left: OV_CX, top: OV_CY, transform: 'translate(-50%,-50%)', opacity: showC ? 1 : 0, transition: 'opacity 0.7s ease' }}>
+          <div className="absolute z-20" style={{ left: OV_CX, top: OV_CY, transform: showC ? 'translate(-50%,-50%) scale(1)' : 'translate(-50%,-50%) scale(0.82)', opacity: showC ? 1 : 0, transition: 'opacity 0.75s ease, transform 0.9s cubic-bezier(0.16,1,0.3,1)' }}>
             <span aria-hidden className="absolute rounded-full" style={{ left: '50%', top: '50%', width: 178, height: 178, transform: 'translate(-50%,-50%)', background: 'radial-gradient(circle, rgba(210,152,255,0.55), transparent 68%)', filter: 'blur(11px)', animation: 'moHalo 3.6s ease-in-out infinite' }} />
             <div className="relative rounded-[26px] overflow-hidden" style={{ width: 116, height: 116, boxShadow: '0 30px 66px -16px rgba(124,58,237,0.55), 0 0 0 7px rgba(255,255,255,0.72), inset 0 1px 0 rgba(255,255,255,0.3)' }}>
               <img src="/digihome-mark.svg" alt="DigiHome" className="w-full h-full object-cover" draggable={false} />
@@ -877,10 +877,12 @@ function DesktopMock({ phase, beat, pulseKey, pdfMode, active }: { phase: 'intro
     if (pdfMode) { setOvStage('all'); setOvStep(WALK_KEYS.length - 1); return; }
     setOvStage('text'); setOvStep(-1);
     const ts: any[] = [];
-    const TEXT_MS = 3000, STEP_MS = 700;
-    ts.push(setTimeout(() => { setOvStage('walk'); setOvStep(0); }, TEXT_MS));
-    for (let i = 1; i < WALK_KEYS.length; i++) ts.push(setTimeout(() => setOvStep(i), TEXT_MS + i * STEP_MS));
-    ts.push(setTimeout(() => setOvStage('all'), TEXT_MS + WALK_KEYS.length * STEP_MS + 350));
+    const TEXT_MS = 3000, STEP_MS = 700, CORE_MS = 900;
+    // Kjernen (operativsystem-logoen) vises FØRST, alene — så popper modulene inn én etter én (autopilot først).
+    ts.push(setTimeout(() => { setOvStage('walk'); setOvStep(-1); }, TEXT_MS));
+    ts.push(setTimeout(() => setOvStep(0), TEXT_MS + CORE_MS));
+    for (let i = 1; i < WALK_KEYS.length; i++) ts.push(setTimeout(() => setOvStep(i), TEXT_MS + CORE_MS + i * STEP_MS));
+    ts.push(setTimeout(() => setOvStage('all'), TEXT_MS + CORE_MS + WALK_KEYS.length * STEP_MS + 350));
     return () => ts.forEach(clearTimeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOverview, pdfMode, active]);
