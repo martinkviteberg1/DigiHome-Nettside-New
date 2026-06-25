@@ -106,7 +106,7 @@ function isProdEnv() {
 function digiHomeTarget() {
   if (isProdEnv()) {
     return {
-      url: process.env.DIGIHOME_API_URL_PROD || 'https://app.digihome.no',
+      url: process.env.DIGIHOME_API_URL_PROD || 'https://digihome.no',
       key: process.env.DIGIHOME_API_KEY_PROD || process.env.DIGIHOME_API_KEY || '',
       env: 'prod',
     };
