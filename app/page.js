@@ -14,6 +14,7 @@ import TestimonialsSection from '@/components/dh/TestimonialsSection';
 import PartnersBar from '@/components/dh/PartnersBar';
 import CTASection from '@/components/dh/CTASection';
 import Footer from '@/components/dh/Footer';
+import StructuredData from '@/components/dh/StructuredData';
 
 export const metadata = {
   title: 'DigiHome — Smartere utleie. Høyere inntekt.',
@@ -24,6 +25,7 @@ export const metadata = {
 export default function HomePage() {
   return (
     <div>
+      <StructuredData />
       <Header />
       <HeroSection />
       <ServiceModelsSection />

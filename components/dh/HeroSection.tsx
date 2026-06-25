@@ -131,6 +131,8 @@ export default function HeroSection() {
                 alt="Premium interiør Bergen"
                 className="w-full h-[220px] sm:h-[280px] object-cover"
                 loading="eager"
+                fetchPriority="high"
+                decoding="async"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
               <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between gap-2">
@@ -156,7 +158,7 @@ export default function HeroSection() {
             className="hidden lg:block">
             <div className="grid grid-cols-5 gap-3 h-[560px] xl:h-[600px]">
               <div className="col-span-3 rounded-[20px] overflow-hidden shadow-[0_8px_30px_rgba(0,0,0,0.06)] group">
-                <img src={IMG.main} alt="Stue" className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-[1000ms] ease-out" loading="eager" />
+                <img src={IMG.main} alt="Stue" className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-[1000ms] ease-out" loading="eager" fetchPriority="high" decoding="async" />
               </div>
               <div className="col-span-2 flex flex-col gap-3">
                 <div className="flex-1 rounded-[20px] overflow-hidden shadow-[0_8px_30px_rgba(0,0,0,0.06)] group">

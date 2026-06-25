@@ -13,7 +13,6 @@ export const metadata = {
   applicationName: 'DigiHome',
   alternates: {
     canonical: '/',
-    languages: { 'nb-NO': '/', en: '/en' },
   },
   keywords: [
     'eiendomsforvaltning Bergen',
