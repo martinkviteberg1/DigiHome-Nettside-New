@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { ChevronLeft, ChevronRight, Check, Home, CreditCard, MessageCircle, Wrench, FileText, Sparkles, ArrowRight, Plus, Camera, Clock, BarChart3, Zap, Brain, Building2, AlertTriangle, TrendingUp, Settings, Layers, CalendarDays, PhoneCall, PenLine, Target, Rocket, Bot, MinusCircle, PlusCircle, LayoutDashboard, MessageSquare, ClipboardList, Radio, ClipboardCheck, AlertCircle, Users, BookOpen, PieChart, DollarSign, Shield, ChevronDown, Search, Filter, MoreHorizontal, Volume2, Droplets, Download, Loader2, Play, List, X, KeyRound } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Check, Home, CreditCard, MessageCircle, Wrench, FileText, Sparkles, ArrowRight, Plus, Camera, Clock, BarChart3, Zap, Brain, Building2, AlertTriangle, TrendingUp, Settings, Layers, CalendarDays, PhoneCall, PenLine, Target, Rocket, Bot, MinusCircle, PlusCircle, LayoutDashboard, MessageSquare, ClipboardList, Radio, ClipboardCheck, AlertCircle, Users, BookOpen, PieChart, DollarSign, Shield, ChevronDown, Search, Filter, MoreHorizontal, Volume2, Droplets, Download, Loader2, Play, List, X, KeyRound, LayoutGrid } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -568,20 +568,22 @@ const STeam = (p: any) => {
          style={{ background: 'radial-gradient(ellipse at 50% 14%, rgba(160,82,224,0.05) 0%, transparent 56%)' }} />
     <DotGrid maskCenter="50% 24%" opacity={0.4} />
 
-    <div className="relative z-10 w-full max-w-[1240px] mx-auto px-6 sm:px-12 my-auto">
-      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] gap-y-12 lg:gap-x-20 items-center">
+    <div className="relative z-10 w-full max-w-[1180px] mx-auto px-6 sm:px-12 my-auto">
 
-        {/* ── VENSTRE — editorial intro ── */}
+      {/* ── HEADER — editorial, full bredde ── */}
+      <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-5 lg:gap-12 mb-9 lg:mb-12">
         <div style={{ animation: anim ? 'teamFade 0.8s cubic-bezier(0.22,1,0.36,1) 0.1s both' : undefined, opacity: show ? undefined : 0 }}>
           <span className="text-[11px] font-bold uppercase tracking-[0.4em]" style={{ ...F, color: AC }}>Teamet</span>
-          <h2 className="tracking-[-0.035em] leading-[1.02] mt-6" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(34px, 4.2vw, 60px)', color: INK }}>
-            Bygget av utleiere,<br /><span style={{ color: AC }}>for utleiere.</span>
+          <h2 className="tracking-[-0.035em] leading-[1.04] mt-5" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(30px, 3.6vw, 52px)', color: INK }}>
+            Bygget av utleiere, <span style={{ color: AC }}>for utleiere.</span>
           </h2>
-          <span className="block mt-8 mb-7 h-px rounded-full" style={{ width: 64, background: `linear-gradient(90deg, ${AC}, transparent)`, transformOrigin: 'left', animation: anim ? 'teamGrow 0.9s cubic-bezier(0.22,1,0.36,1) 0.5s both' : undefined }} />
-          <p className="text-[15px] sm:text-[16.5px] font-normal leading-[1.62] max-w-[400px]" style={{ ...F, color: SUB }}>
+        </div>
+        <div className="lg:text-right lg:max-w-[400px] shrink-0" style={{ animation: anim ? 'teamFade 0.8s cubic-bezier(0.22,1,0.36,1) 0.3s both' : undefined, opacity: show ? undefined : 0 }}>
+          <span className="block mb-4 h-px rounded-full lg:ml-auto" style={{ width: 56, background: `linear-gradient(90deg, ${AC}, transparent)`, transformOrigin: 'left', animation: anim ? 'teamGrow 0.9s cubic-bezier(0.22,1,0.36,1) 0.5s both' : undefined }} />
+          <p className="text-[14px] sm:text-[15px] font-normal leading-[1.58]" style={{ ...F, color: SUB }}>
             Fire fagfelt — eiendom, teknologi, jus og AI — kjent fra innsiden, før første eksterne kapitalrunde.
           </p>
-          <div className="mt-8 flex items-center gap-2.5 text-[12.5px] font-semibold tracking-[-0.005em]" style={{ ...F, color: INK2 }}>
+          <div className="mt-4 flex items-center lg:justify-end gap-2.5 text-[12px] font-semibold tracking-[-0.005em]" style={{ ...F, color: INK2 }}>
             <span>Eiendom</span>
             <span className="w-1 h-1 rounded-full" style={{ backgroundColor: AC }} />
             <span>Teknologi</span>
@@ -591,36 +593,40 @@ const STeam = (p: any) => {
             <span>AI</span>
           </div>
         </div>
+      </div>
 
-        {/* ── HØYRE — tre medlemmer, hårlinje-separert, ingen bokser ── */}
-        <div>
-          {team.map((m, i) => (
-            <div key={m.name} className="relative flex items-center gap-5 sm:gap-7 py-6 sm:py-[26px]"
-                 style={{
-                   borderTop: i === 0 ? 'none' : `1px solid ${HAIR}`,
-                   animation: anim ? `teamFade 0.8s cubic-bezier(0.22,1,0.36,1) ${0.4 + i * 0.13}s both` : undefined,
-                   opacity: show ? undefined : 0,
-                 }}>
+      {/* ── 2×2 MEDLEMS-GRID — kantløs, hårlinje-toppet ── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 lg:gap-x-16 gap-y-7 lg:gap-y-9">
+        {team.map((m, i) => (
+          <div key={m.name} className="relative pt-6"
+               style={{
+                 borderTop: `1px solid ${HAIR}`,
+                 animation: anim ? `teamFade 0.8s cubic-bezier(0.22,1,0.36,1) ${0.45 + i * 0.1}s both` : undefined,
+                 opacity: show ? undefined : 0,
+               }}>
+            {/* accent-tick på hårlinjen */}
+            <span aria-hidden="true" className="absolute -top-px left-0 h-[2px] rounded-full" style={{ width: 38, background: AC }} />
+            <div className="flex items-start gap-5">
               {/* portrett — rent, mykt, ingen tung ramme */}
-              <div className="shrink-0 w-[86px] h-[86px] sm:w-[100px] sm:h-[100px] rounded-full overflow-hidden"
-                   style={{ boxShadow: '0 1px 0 rgba(255,255,255,0.6), 0 10px 30px -14px rgba(20,15,10,0.35)' }}>
+              <div className="shrink-0 w-[82px] h-[82px] lg:w-[92px] lg:h-[92px] rounded-full overflow-hidden"
+                   style={{ boxShadow: '0 1px 0 rgba(255,255,255,0.6), 0 12px 30px -15px rgba(20,15,10,0.42)' }}>
                 <img src={m.img} alt={m.name} className="w-full h-full object-cover" style={{ objectPosition: 'top', ...(m.imgStyle || {}) }} />
               </div>
 
               <div className="min-w-0 flex-1">
-                <div className="flex items-baseline gap-3">
-                  <h3 className="text-[20px] sm:text-[23px] tracking-[-0.02em] leading-tight" style={{ ...FH, fontWeight: 700, color: INK }}>{m.name}</h3>
-                  <span className="text-[9.5px] font-bold tabular-nums tracking-[0.2em]" style={{ ...F, color: MUT }}>0{i + 1}</span>
+                <div className="flex items-baseline gap-2.5">
+                  <h3 className="text-[19px] lg:text-[21px] tracking-[-0.02em] leading-tight" style={{ ...FH, fontWeight: 700, color: INK }}>{m.name}</h3>
+                  <span className="text-[9px] font-bold tabular-nums tracking-[0.2em]" style={{ ...F, color: MUT }}>0{i + 1}</span>
                 </div>
-                <p className="text-[12px] font-semibold mt-1.5 uppercase tracking-[0.06em]" style={{ ...F, color: AC }}>{m.role}</p>
-                <p className="text-[13.5px] sm:text-[14px] font-medium leading-[1.55] mt-3 max-w-[440px]" style={{ ...F, color: INK2 }}>{m.lead}</p>
-                <p className="text-[12px] sm:text-[12.5px] font-normal leading-[1.6] mt-2 max-w-[440px]" style={{ ...F, color: MUT }}>{m.meta}</p>
+                <p className="text-[11px] font-bold mt-1.5 uppercase tracking-[0.1em]" style={{ ...F, color: AC }}>{m.role}</p>
+                <p className="text-[13px] lg:text-[13.5px] font-medium leading-[1.5] mt-2.5" style={{ ...F, color: INK2 }}>{m.lead}</p>
+                <p className="text-[11.5px] font-normal leading-[1.55] mt-1.5" style={{ ...F, color: MUT }}>{m.meta}</p>
               </div>
             </div>
-          ))}
-        </div>
-
+          </div>
+        ))}
       </div>
+
     </div>
   </SlideFrame>
   );
@@ -8280,21 +8286,31 @@ export default function Presentasjon() {
         )}
       </div>
 
-      {/* ═══ Innholdsfortegnelse-knapp — diskret, synlig på alle slides ═══ */}
+      {/* ═══ Innholdsfortegnelse-knapp — moderne, tilpasser seg lys/mørk slide ═══ */}
       <button
         onClick={() => setTocOpen(true)}
         aria-label="Åpne innholdsfortegnelse"
         data-testid="toc-open-btn"
-        className="group fixed bottom-4 left-1/2 -translate-x-1/2 z-50 h-9 px-3.5 rounded-full flex items-center gap-2 text-[11.5px] font-semibold tracking-wide transition-all duration-300 hover:scale-[1.04] active:scale-[0.97]"
-        style={{
-          background: chromeLight ? 'rgba(28,22,16,0.05)' : 'rgba(255,255,255,0.08)',
-          backdropFilter: 'blur(16px)',
-          WebkitBackdropFilter: 'blur(16px)',
-          border: `1px solid ${chromeLight ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,255,0.14)'}`,
-          color: chromeLight ? 'rgba(28,22,16,0.85)' : 'rgba(255,255,255,0.9)',
-          boxShadow: chromeLight ? '0 8px 24px -10px rgba(0,0,0,0.22)' : '0 8px 24px -10px rgba(0,0,0,0.4)',
+        className="group fixed bottom-5 left-1/2 -translate-x-1/2 z-50 h-11 pl-2.5 pr-4 rounded-full flex items-center gap-2.5 text-[12.5px] font-semibold tracking-[-0.01em] transition-all duration-300 hover:scale-[1.05] active:scale-[0.97]"
+        style={chromeLight ? {
+          background: 'rgba(255,255,255,0.72)',
+          backdropFilter: 'blur(22px) saturate(1.25)',
+          WebkitBackdropFilter: 'blur(22px) saturate(1.25)',
+          border: '1px solid rgba(20,15,10,0.10)',
+          color: '#1c1714',
+          boxShadow: '0 12px 34px -12px rgba(20,15,10,0.32), inset 0 1px 0 rgba(255,255,255,0.85)',
+        } : {
+          background: 'rgba(255,255,255,0.09)',
+          backdropFilter: 'blur(22px) saturate(1.25)',
+          WebkitBackdropFilter: 'blur(22px) saturate(1.25)',
+          border: '1px solid rgba(255,255,255,0.16)',
+          color: 'rgba(255,255,255,0.94)',
+          boxShadow: '0 12px 34px -12px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.14)',
         }}>
-        <List className="w-3.5 h-3.5" strokeWidth={2.2} />
+        <span className="flex items-center justify-center w-7 h-7 rounded-full transition-colors duration-300"
+              style={{ background: chromeLight ? 'rgba(160,82,224,0.12)' : 'rgba(210,152,255,0.20)' }}>
+          <LayoutGrid className="w-[14px] h-[14px]" strokeWidth={2.3} style={{ color: chromeLight ? '#a052e0' : '#d298ff' }} />
+        </span>
         <span>Innhold</span>
       </button>
 
