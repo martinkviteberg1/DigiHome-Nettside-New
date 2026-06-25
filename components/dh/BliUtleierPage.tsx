@@ -84,50 +84,12 @@ export default function BliUtleierPage() {
   }, [errors]);
 
   const [extraUnits, setExtraUnits] = useState<any[]>([]);
-  const addExtra = () => setExtraUnits((prev) => [...prev, { address: '', postal_code: '', property_type: 'leilighet', sqm: '', bedrooms: '' }]);
+  const addExtra = () => setExtraUnits((prev) => [...prev, { address: '', postal_code: '', property_type: 'leilighet', sqm: '', bedrooms: '', finn_url: '' }]);
   const updateExtra = (i: number, k: string, v: any) => setExtraUnits((prev) => prev.map((u, idx) => (idx === i ? { ...u, [k]: v } : u)));
   const removeExtra = (i: number) => setExtraUnits((prev) => prev.filter((_, idx) => idx !== i));
-
-  // Finn-oppslag: debounced når brukeren limer inn/skriver en finn.no-lenke.
-  useEffect(() => {
-    const u = (finnUrl || '').trim();
-    if (!u) { setFinnPreview(null); setFinnError(''); setFinnLoading(false); return; }
-    if (!/^https?:\/\/(www\.)?finn\.no\//i.test(u)) {
-      setFinnPreview(null);
-      setFinnError(u.length > 8 ? 'Lim inn en gyldig finn.no-lenke' : '');
-      return;
-    }
-    let cancelled = false;
-    setFinnLoading(true); setFinnError('');
-    const t = setTimeout(async () => {
-      try {
-        const r = await axios.get(`${BACKEND_URL}/api/finn-preview`, { params: { url: u } });
-        if (cancelled) return;
-        const d = r.data || {};
-        if (!d.ok) { setFinnPreview(null); setFinnError('Fant ikke annonsen. Sjekk at lenken er riktig.'); }
-        else {
-          setFinnPreview(d);
-          // Auto-utfyll feltene fra annonsen (overskriver – det er poenget med snarveien)
-          setFormData((prev: any) => {
-            const next = { ...prev };
-            if (d.sqm) next.sqm = String(d.sqm);
-            if (d.propertyType) next.property_type = d.propertyType;
-            if (d.bedrooms) {
-              const b = parseInt(d.bedrooms, 10);
-              if (b >= 1) next.bedrooms = b >= 5 ? '5+' : String(b);
-            }
-            return next;
-          });
-          setErrors((prev: any) => ({ ...prev, sqm: null, property_type: null, bedrooms: null }));
-        }
-      } catch (e) {
-        if (!cancelled) { setFinnPreview(null); setFinnError('Klarte ikke å hente annonsen akkurat nå.'); }
-      } finally {
-        if (!cancelled) setFinnLoading(false);
-      }
-    }, 500);
-    return () => { cancelled = true; clearTimeout(t); };
-  }, [finnUrl]);
+  // Slå sammen flere felt på en ekstra-enhet samtidig (brukes ved Finn-auto-utfylling).
+  const updateExtraMany = (i: number, obj: any) =>
+    setExtraUnits((prev) => prev.map((u, idx) => (idx === i ? { ...u, ...obj } : u)));
 
   const goNext = () => {
     const newErrors: Record<string, any> = {};
@@ -160,18 +122,27 @@ export default function BliUtleierPage() {
     setLoading(true);
     try {
       const validExtras = extraUnits.filter((u) => (u.address || '').trim());
-      const mkUnit = (address: string, postal_code: string, property_type: string, sqm: any, bedrooms: any) => ({
+      const mkUnit = (address: string, postal_code: string, property_type: string, sqm: any, bedrooms: any, finn_url?: string) => ({
         address: (address || '').trim(),
         postal_code: (postal_code || '').trim(),
         property_type: property_type || 'leilighet',
         sqm: sqm ? parseInt(sqm) : null,
         bedrooms: bedrooms ? parseInt(bedrooms) : null,
         rental_model: formData.rental_model || '',
+        finn_url: (finn_url || '').trim() || undefined,
       });
       const units = [
-        mkUnit(formData.address, formData.postal_code, formData.property_type, formData.sqm, formData.bedrooms),
-        ...validExtras.map((u) => mkUnit(u.address, u.postal_code, u.property_type, u.sqm, u.bedrooms)),
+        mkUnit(formData.address, formData.postal_code, formData.property_type, formData.sqm, formData.bedrooms, finnUrl),
+        ...validExtras.map((u) => mkUnit(u.address, u.postal_code, u.property_type, u.sqm, u.bedrooms, u.finn_url)),
       ];
+      // Oppsummer ekstra eiendommer i notatet, så CRM-teamet ser dem (inkl. Finn-lenke).
+      const extrasSummary = validExtras.map((u, idx) => {
+        const parts = [`Eiendom ${idx + 2}: ${(u.address || '').trim()}`];
+        if (u.sqm) parts.push(`${u.sqm} m²`);
+        if (u.bedrooms) parts.push(`${u.bedrooms} sov`);
+        if ((u.finn_url || '').trim()) parts.push(`Finn: ${u.finn_url.trim()}`);
+        return parts.join(', ');
+      });
       const payload = {
         address: formData.address, postal_code: formData.postal_code,
         sqm: formData.sqm ? parseInt(formData.sqm) : 60,
@@ -182,7 +153,11 @@ export default function BliUtleierPage() {
         units,
         num_properties: units.length,
         finn_url: finnUrl || undefined,
-        notes: [formData.rental_model ? `Ønsket modell: ${formData.rental_model}` : '', formData.notes].filter(Boolean).join('. '),
+        notes: [
+          formData.rental_model ? `Ønsket modell: ${formData.rental_model}` : '',
+          formData.notes,
+          ...extrasSummary,
+        ].filter(Boolean).join('. '),
       };
       const res = await axios.post(`${BACKEND_URL}/api/leads`, payload);
       if (res.data.success || res.data.ok) { setSubmitted(true); toast.success('Takk! Vi tar kontakt snart.'); }
@@ -297,12 +272,19 @@ export default function BliUtleierPage() {
                   <div className="space-y-5">
                     <div>
                       <Label className="text-[13px] font-semibold text-[#333] mb-2 block">Adresse til eiendommen <span className="text-[#cf97fc]">*</span></Label>
-                      <AddressAutocomplete value={formData.address} onChange={(v: any) => updateField('address', v)}
-                        onSelect={(data: any) => { if (data.address) updateField('address', data.address.replace(/,\s*(Norway|Norge)$/i, '')); if (data.postalCode) updateField('postal_code', data.postalCode); }}
+                      <AddressField
+                        value={formData.address}
+                        postalCode={formData.postal_code}
+                        autoConfirm
+                        error={errors.address}
                         placeholder="F.eks. Nordnesveien 8, Bergen"
-                        inputClassName="w-full h-[52px] px-4 text-[15px] bg-white border border-[#e0e0e0] rounded-2xl outline-none focus:border-[#cf97fc] focus:shadow-[0_0_0_3px_rgba(207,151,252,0.12)] transition-all placeholder:text-[#737373]"
-                        className="w-full" showIcon={false} dataTestId="owner-address-input" />
-                      {errors.address && <p className="text-[12px] text-red-500 mt-1.5">{errors.address}</p>}
+                        testIdPrefix="owner-address"
+                        onChange={(v: any) => updateField('address', v)}
+                        onSelect={(data: any) => {
+                          if (data.address) updateField('address', data.address.replace(/,\s*(Norway|Norge)$/i, ''));
+                          if (data.postalCode) updateField('postal_code', data.postalCode);
+                        }}
+                      />
                     </div>
                     <div className="pt-2 border-t border-[#f0f0f0]"><p className="text-[11px] font-semibold text-[#737373] uppercase tracking-[0.08em] mb-4">Kontaktinformasjon</p></div>
                     <TextInput label="Fullt navn" required error={errors.name} icon={User} value={formData.name} onChange={(v: any) => updateField('name', v)} placeholder="Ola Nordmann" autoComplete="name" testId="owner-name-input" />
@@ -325,46 +307,15 @@ export default function BliUtleierPage() {
                         <Label className="text-[13px] font-semibold text-[#333]">Har du allerede en Finn-annonse? <span className="text-[#aaa] font-normal">(valgfritt)</span></Label>
                       </div>
                       <p className="text-[12.5px] text-[#888] mb-3 leading-relaxed">Lim inn lenken til salgs- eller leieannonsen, så fyller vi inn detaljene for deg.</p>
-                      <div className="relative">
-                        <Link2 className="w-[16px] h-[16px] text-[#aaa] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                        <input
-                          type="url"
-                          inputMode="url"
-                          value={finnUrl}
-                          onChange={(e: any) => setFinnUrl(e.target.value)}
-                          placeholder="https://www.finn.no/realestate/..."
-                          data-testid="owner-finn-input"
-                          className="w-full h-[48px] pl-10 pr-10 text-[14px] bg-white border border-[#e6dcf5] rounded-xl outline-none focus:border-[#cf97fc] focus:shadow-[0_0_0_3px_rgba(207,151,252,0.14)] transition-all placeholder:text-[#bbb]"
-                        />
-                        {finnLoading && <Loader2 className="w-[16px] h-[16px] text-[#cf97fc] animate-spin absolute right-3.5 top-1/2 -translate-y-1/2" />}
-                        {!finnLoading && finnUrl && (
-                          <button type="button" onClick={() => setFinnUrl('')} aria-label="Fjern lenke" className="absolute right-3 top-1/2 -translate-y-1/2 text-[#bbb] hover:text-[#666] transition-colors"><X className="w-[15px] h-[15px]" /></button>
-                        )}
-                      </div>
-                      {finnError && <p className="text-[12px] text-[#d9534f] mt-2">{finnError}</p>}
-
-                      {finnPreview && finnPreview.ok && (
-                        <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}
-                          className="mt-3 flex gap-3 rounded-xl bg-white border border-[#eee] p-3" data-testid="owner-finn-preview">
-                          {finnPreview.image && (
-                            <img src={finnPreview.image} alt="" className="w-[92px] h-[68px] rounded-lg object-cover flex-shrink-0 bg-[#f3f3f3]" />
-                          )}
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2 mb-1 flex-wrap">
-                              {finnPreview.kind && (
-                                <span className="text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-[#f0e8fb] text-[#9a5fd0]">{finnPreview.kind === 'leie' ? 'Til leie' : 'Til salgs'}</span>
-                              )}
-                              <span className="text-[11px] text-[#22a06b] font-medium inline-flex items-center gap-1"><CheckCircle2 className="w-[12px] h-[12px]" /> Fylte inn automatisk</span>
-                            </div>
-                            <p className="text-[13px] font-semibold text-[#222] leading-snug line-clamp-2">{finnPreview.title}</p>
-                            <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1 text-[12px] text-[#777]">
-                              {finnPreview.sqm && <span>{finnPreview.sqm} m²</span>}
-                              {finnPreview.bedrooms && <span>{finnPreview.bedrooms} soverom</span>}
-                              {finnPreview.rent && <span>{Number(finnPreview.rent).toLocaleString('nb-NO')} kr/mnd</span>}
-                            </div>
-                          </div>
-                        </motion.div>
-                      )}
+                      <FinnLookupField
+                        value={finnUrl}
+                        onChange={setFinnUrl}
+                        testId="owner-finn"
+                        onResult={(d: any) => {
+                          setFormData((prev: any) => ({ ...prev, ...finnToFields(d) }));
+                          setErrors((prev: any) => ({ ...prev, sqm: null, property_type: null, bedrooms: null }));
+                        }}
+                      />
                     </div>
 
                     <TextInput label="Størrelse (m²)" required error={errors.sqm} value={formData.sqm} onChange={(v: any) => updateField('sqm', v)} placeholder="F.eks. 65" type="number" testId="owner-sqm-input" />
@@ -383,18 +334,48 @@ export default function BliUtleierPage() {
                       <p className="text-[13px] text-[#888] mb-4">Legg til flere boliger du vil leie ut — vi vurderer dem samlet.</p>
                       <AnimatePresence initial={false}>
                         {extraUnits.map((u: any, i: number) => (
-                          <motion.div key={i} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.2 }} className="rounded-2xl border border-[#eee] bg-white p-4 mb-3" data-testid={`owner-extra-unit-${i}`}>
-                            <div className="flex items-center justify-between mb-3"><p className="text-[11px] font-semibold text-[#737373] uppercase tracking-[0.06em]">Eiendom {i + 2}</p>
+                          <motion.div key={i} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.2 }} className="rounded-2xl border border-[#eee] bg-white p-5 mb-3" data-testid={`owner-extra-unit-${i}`}>
+                            <div className="flex items-center justify-between mb-4"><p className="text-[11px] font-semibold text-[#737373] uppercase tracking-[0.06em]">Eiendom {i + 2}</p>
                               <button type="button" onClick={() => removeExtra(i)} data-testid={`owner-extra-remove-${i}`} className="w-7 h-7 rounded-full flex items-center justify-center text-[#bbb] hover:text-red-500 hover:bg-red-50 transition-colors"><X className="w-4 h-4" /></button>
                             </div>
-                            <div className="space-y-2.5">
-                              <AddressAutocomplete value={u.address} onChange={(v: any) => updateExtra(i, 'address', v)}
-                                onSelect={(data: any) => { if (data.address) updateExtra(i, 'address', data.address.replace(/,\s*(Norway|Norge)$/i, '')); if (data.postalCode) updateExtra(i, 'postal_code', data.postalCode); }}
-                                placeholder="Adresse til eiendommen" inputClassName="w-full h-[46px] px-3.5 text-[14px] bg-white border border-[#e0e0e0] rounded-xl outline-none focus:border-[#cf97fc] focus:shadow-[0_0_0_3px_rgba(207,151,252,0.12)] transition-all placeholder:text-[#737373]" className="w-full" showIcon={false} dataTestId={`owner-extra-address-${i}`} />
-                              <div className="grid grid-cols-3 gap-2">
-                                <select value={u.property_type} onChange={(e: any) => updateExtra(i, 'property_type', e.target.value)} data-testid={`owner-extra-type-${i}`} className="h-[44px] px-2.5 text-[13px] bg-white border border-[#e0e0e0] rounded-xl outline-none focus:border-[#cf97fc] transition-colors text-[#333]">{propertyTypes.map((pt: any) => <option key={pt.value} value={pt.value}>{pt.label}</option>)}</select>
-                                <input value={u.sqm} onChange={(e: any) => updateExtra(i, 'sqm', e.target.value)} placeholder="m²" inputMode="numeric" data-testid={`owner-extra-sqm-${i}`} className="h-[44px] px-3 text-[13px] bg-white border border-[#e0e0e0] rounded-xl outline-none focus:border-[#cf97fc] transition-colors placeholder:text-[#999]" />
-                                <select value={u.bedrooms} onChange={(e: any) => updateExtra(i, 'bedrooms', e.target.value)} data-testid={`owner-extra-bedrooms-${i}`} className="h-[44px] px-2.5 text-[13px] bg-white border border-[#e0e0e0] rounded-xl outline-none focus:border-[#cf97fc] transition-colors text-[#333]"><option value="">Sov.</option>{['1', '2', '3', '4', '5+'].map((b: string) => <option key={b} value={b}>{b} sov.</option>)}</select>
+                            <div className="space-y-5">
+                              <div>
+                                <Label className="text-[12.5px] font-semibold text-[#555] mb-2 block">Adresse</Label>
+                                <AddressField
+                                  compact
+                                  value={u.address}
+                                  postalCode={u.postal_code}
+                                  placeholder="Adresse til eiendommen"
+                                  testIdPrefix={`owner-extra-address-${i}`}
+                                  onChange={(v: any) => updateExtra(i, 'address', v)}
+                                  onSelect={(data: any) => {
+                                    if (data.address) updateExtra(i, 'address', data.address.replace(/,\s*(Norway|Norge)$/i, ''));
+                                    if (data.postalCode) updateExtra(i, 'postal_code', data.postalCode);
+                                  }}
+                                />
+                              </div>
+
+                              <div className="rounded-xl bg-[#faf7fe] border border-[#efe6fb] p-3.5">
+                                <div className="flex items-center gap-1.5 mb-2">
+                                  <Sparkles className="w-[13px] h-[13px] text-[#cf97fc]" />
+                                  <span className="text-[12px] font-semibold text-[#555]">Finn-annonse <span className="text-[#aaa] font-normal">(valgfritt)</span></span>
+                                </div>
+                                <FinnLookupField
+                                  value={u.finn_url || ''}
+                                  onChange={(v: any) => updateExtra(i, 'finn_url', v)}
+                                  testId={`owner-extra-finn-${i}`}
+                                  onResult={(d: any) => updateExtraMany(i, finnToFields(d))}
+                                />
+                              </div>
+
+                              <TextInput label="Størrelse (m²)" value={u.sqm} onChange={(v: any) => updateExtra(i, 'sqm', v)} placeholder="F.eks. 65" type="number" testId={`owner-extra-sqm-${i}`} />
+                              <div>
+                                <Label className="text-[12.5px] font-semibold text-[#555] mb-3 block">Boligtype</Label>
+                                <IconCardSelector options={propertyTypes} selected={u.property_type} onChange={(v: any) => updateExtra(i, 'property_type', v)} testIdPrefix={`owner-extra-type-${i}`} />
+                              </div>
+                              <div>
+                                <Label className="text-[12.5px] font-semibold text-[#555] mb-3 block">Soverom</Label>
+                                <NumberSelector options={['1', '2', '3', '4', '5+']} selected={u.bedrooms} onChange={(v: any) => updateExtra(i, 'bedrooms', v)} testIdPrefix={`owner-extra-bedrooms-${i}`} />
                               </div>
                             </div>
                           </motion.div>
