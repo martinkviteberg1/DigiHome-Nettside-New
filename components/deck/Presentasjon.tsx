@@ -568,65 +568,68 @@ const STeam = (p: any) => {
          style={{ background: 'radial-gradient(ellipse at 50% 14%, rgba(160,82,224,0.05) 0%, transparent 56%)' }} />
     <DotGrid maskCenter="50% 24%" opacity={0.4} />
 
-    <div className="relative z-10 w-full max-w-[1180px] mx-auto px-6 sm:px-12 my-auto">
+    <div className="relative z-10 w-full max-w-[1200px] mx-auto px-6 sm:px-12 my-auto">
+      <div className="grid grid-cols-1 lg:grid-cols-[0.82fr_1.18fr] gap-y-10 items-center">
 
-      {/* ── HEADER — editorial, full bredde ── */}
-      <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-5 lg:gap-12 mb-9 lg:mb-12">
-        <div style={{ animation: anim ? 'teamFade 0.8s cubic-bezier(0.22,1,0.36,1) 0.1s both' : undefined, opacity: show ? undefined : 0 }}>
+        {/* ── VENSTRE — merkevare-panel ── */}
+        <div className="lg:pr-14" style={{ animation: anim ? 'teamFade 0.8s cubic-bezier(0.22,1,0.36,1) 0.1s both' : undefined, opacity: show ? undefined : 0 }}>
           <span className="text-[11px] font-bold uppercase tracking-[0.4em]" style={{ ...F, color: AC }}>Teamet</span>
-          <h2 className="tracking-[-0.035em] leading-[1.04] mt-5" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(30px, 3.6vw, 52px)', color: INK }}>
-            Bygget av utleiere, <span style={{ color: AC }}>for utleiere.</span>
+          <h2 className="tracking-[-0.04em] leading-[1.02] mt-6" style={{ ...FH, fontWeight: 700, fontSize: 'clamp(30px, 3.3vw, 44px)', color: INK }}>
+            Bygget av utleiere,<br /><span style={{ color: AC }}>for utleiere.</span>
           </h2>
-        </div>
-        <div className="lg:text-right lg:max-w-[400px] shrink-0" style={{ animation: anim ? 'teamFade 0.8s cubic-bezier(0.22,1,0.36,1) 0.3s both' : undefined, opacity: show ? undefined : 0 }}>
-          <span className="block mb-4 h-px rounded-full lg:ml-auto" style={{ width: 56, background: `linear-gradient(90deg, ${AC}, transparent)`, transformOrigin: 'left', animation: anim ? 'teamGrow 0.9s cubic-bezier(0.22,1,0.36,1) 0.5s both' : undefined }} />
-          <p className="text-[14px] sm:text-[15px] font-normal leading-[1.58]" style={{ ...F, color: SUB }}>
+          <span className="block mt-7 mb-6 h-px rounded-full" style={{ width: 60, background: `linear-gradient(90deg, ${AC}, transparent)`, transformOrigin: 'left', animation: anim ? 'teamGrow 0.9s cubic-bezier(0.22,1,0.36,1) 0.5s both' : undefined }} />
+          <p className="text-[14.5px] sm:text-[15.5px] font-normal leading-[1.6] max-w-[380px]" style={{ ...F, color: SUB }}>
             Fire fagfelt — eiendom, teknologi, jus og AI — kjent fra innsiden, før første eksterne kapitalrunde.
           </p>
-          <div className="mt-4 flex items-center lg:justify-end gap-2.5 text-[12px] font-semibold tracking-[-0.005em]" style={{ ...F, color: INK2 }}>
-            <span>Eiendom</span>
-            <span className="w-1 h-1 rounded-full" style={{ backgroundColor: AC }} />
-            <span>Teknologi</span>
-            <span className="w-1 h-1 rounded-full" style={{ backgroundColor: AC }} />
-            <span>Jus</span>
-            <span className="w-1 h-1 rounded-full" style={{ backgroundColor: AC }} />
-            <span>AI</span>
+          {/* fagfelt-chips */}
+          <div className="mt-7 flex flex-wrap gap-2" style={{ animation: anim ? 'teamFade 0.8s cubic-bezier(0.22,1,0.36,1) 0.6s both' : undefined, opacity: show ? undefined : 0 }}>
+            {['Eiendom', 'Teknologi', 'Jus', 'AI'].map((t) => (
+              <span key={t} className="inline-flex items-center gap-1.5 text-[12px] font-semibold rounded-full px-3 py-1.5"
+                    style={{ ...F, color: INK2, background: 'rgba(160,82,224,0.06)', border: '1px solid rgba(160,82,224,0.14)' }}>
+                <span className="w-1.5 h-1.5 rounded-full" style={{ background: AC }} />{t}
+              </span>
+            ))}
           </div>
         </div>
-      </div>
 
-      {/* ── 2×2 MEDLEMS-GRID — kantløs, hårlinje-toppet ── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 lg:gap-x-16 gap-y-7 lg:gap-y-9">
-        {team.map((m, i) => (
-          <div key={m.name} className="relative pt-6"
-               style={{
-                 borderTop: `1px solid ${HAIR}`,
-                 animation: anim ? `teamFade 0.8s cubic-bezier(0.22,1,0.36,1) ${0.45 + i * 0.1}s both` : undefined,
-                 opacity: show ? undefined : 0,
-               }}>
-            {/* accent-tick på hårlinjen */}
-            <span aria-hidden="true" className="absolute -top-px left-0 h-[2px] rounded-full" style={{ width: 38, background: AC }} />
-            <div className="flex items-start gap-5">
-              {/* portrett — rent, mykt, ingen tung ramme */}
-              <div className="shrink-0 w-[82px] h-[82px] lg:w-[92px] lg:h-[92px] rounded-full overflow-hidden"
-                   style={{ boxShadow: '0 1px 0 rgba(255,255,255,0.6), 0 12px 30px -15px rgba(20,15,10,0.42)' }}>
-                <img src={m.img} alt={m.name} className="w-full h-full object-cover" style={{ objectPosition: 'top', ...(m.imgStyle || {}) }} />
-              </div>
-
-              <div className="min-w-0 flex-1">
-                <div className="flex items-baseline gap-2.5">
-                  <h3 className="text-[19px] lg:text-[21px] tracking-[-0.02em] leading-tight" style={{ ...FH, fontWeight: 700, color: INK }}>{m.name}</h3>
-                  <span className="text-[9px] font-bold tabular-nums tracking-[0.2em]" style={{ ...F, color: MUT }}>0{i + 1}</span>
+        {/* ── HØYRE — 2×2 supermoderne medlems-grid m/ kryss-hårlinjer ── */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:border-l" style={{ borderColor: HAIR }}>
+          {team.map((m, i) => {
+            const leftCell = i % 2 === 0;
+            const topRow = i < 2;
+            return (
+              <div key={m.name}
+                   className={`relative px-6 lg:px-7 py-6 lg:py-7 ${leftCell ? 'sm:border-r' : ''} ${topRow ? 'sm:border-b' : ''}`}
+                   style={{
+                     borderColor: HAIR,
+                     animation: anim ? `teamFade 0.8s cubic-bezier(0.22,1,0.36,1) ${0.4 + i * 0.1}s both` : undefined,
+                     opacity: show ? undefined : 0,
+                   }}>
+                <div className="flex items-center gap-3.5">
+                  {/* portrett — firkant m/ glød-halo */}
+                  <div className="relative shrink-0">
+                    <div aria-hidden="true" className="absolute -inset-1.5 rounded-[20px]" style={{ background: `radial-gradient(circle at 50% 35%, ${AC}33, transparent 72%)`, filter: 'blur(7px)' }} />
+                    <div className="relative w-[66px] h-[66px] lg:w-[72px] lg:h-[72px] rounded-2xl overflow-hidden"
+                         style={{ boxShadow: '0 1px 0 rgba(255,255,255,0.7), 0 14px 30px -16px rgba(20,15,10,0.5)', outline: '1px solid rgba(255,255,255,0.55)', outlineOffset: '-1px' }}>
+                      <img src={m.img} alt={m.name} className="w-full h-full object-cover" style={{ objectPosition: 'top', ...(m.imgStyle || {}) }} />
+                    </div>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-baseline gap-2">
+                      <h3 className="text-[16.5px] lg:text-[18px] tracking-[-0.02em] leading-tight" style={{ ...FH, fontWeight: 700, color: INK }}>{m.name}</h3>
+                      <span className="text-[9px] font-bold tabular-nums tracking-[0.18em] shrink-0" style={{ ...F, color: AC }}>0{i + 1}</span>
+                    </div>
+                    <p className="text-[10.5px] font-bold mt-1.5 uppercase tracking-[0.11em]" style={{ ...F, color: AC }}>{m.role}</p>
+                  </div>
                 </div>
-                <p className="text-[11px] font-bold mt-1.5 uppercase tracking-[0.1em]" style={{ ...F, color: AC }}>{m.role}</p>
-                <p className="text-[13px] lg:text-[13.5px] font-medium leading-[1.5] mt-2.5" style={{ ...F, color: INK2 }}>{m.lead}</p>
-                <p className="text-[11.5px] font-normal leading-[1.55] mt-1.5" style={{ ...F, color: MUT }}>{m.meta}</p>
+                <p className="text-[13px] lg:text-[13.5px] font-medium leading-[1.5] mt-4" style={{ ...F, color: INK2 }}>{m.lead}</p>
+                <p className="text-[11.5px] font-normal leading-[1.55] mt-2" style={{ ...F, color: MUT }}>{m.meta}</p>
               </div>
-            </div>
-          </div>
-        ))}
-      </div>
+            );
+          })}
+        </div>
 
+      </div>
     </div>
   </SlideFrame>
   );
