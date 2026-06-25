@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Loader2, RefreshCw, Send, CheckCircle2, AlertCircle, Lock } from 'lucide-react';
+import { Loader2, RefreshCw, Send, CheckCircle2, AlertCircle, Lock, Trash2 } from 'lucide-react';
 
 export default function AdminLeadsPage() {
   const [key, setKey] = useState('');
@@ -40,6 +40,21 @@ export default function AdminLeadsPage() {
     } catch (e) {} finally { setForwarding(false); }
   };
 
+  const [deleting, setDeleting] = useState(false);
+  const doDelete = async (payload, confirmMsg) => {
+    if (confirmMsg && !window.confirm(confirmMsg)) return;
+    setDeleting(true);
+    try {
+      const type = tab === 'tenants' ? 'tenant' : 'lead';
+      const res = await fetch(`/api/admin/delete?key=${encodeURIComponent(key)}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type, ...payload }),
+      });
+      const json = await res.json();
+      if (json.success) await load(key);
+    } catch (e) {} finally { setDeleting(false); }
+  };
+
   if (!authed) {
     return (
       <div className="min-h-screen bg-[#fdfcfb] flex items-center justify-center px-5">
@@ -55,6 +70,7 @@ export default function AdminLeadsPage() {
 
   const rows = tab === 'leads' ? data.leads : data.tenants;
   const pendingCount = [...data.leads, ...data.tenants].filter((r) => r.forwarded !== true).length;
+  const tabPending = rows.filter((r) => r.forwarded !== true).length;
 
   return (
     <div className="min-h-screen bg-[#fdfcfb] px-5 sm:px-10 py-10">
@@ -67,6 +83,7 @@ export default function AdminLeadsPage() {
           <div className="flex items-center gap-3">
             <button onClick={() => load(key)} disabled={loading} className="h-10 px-4 rounded-full border border-[#e0e0e0] bg-white text-[13px] font-medium flex items-center gap-2 hover:bg-[#f7f7f5] transition-colors">{loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />} Oppdater</button>
             <button onClick={doForward} disabled={forwarding || pendingCount === 0} className="h-10 px-5 rounded-full bg-[#0a0a0a] text-white text-[13px] font-semibold flex items-center gap-2 disabled:opacity-40 active:scale-[0.97] transition-transform">{forwarding ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />} Re-send {pendingCount > 0 ? `(${pendingCount})` : ''}</button>
+            <button onClick={() => doDelete({ scope: 'pending' }, `Slette ${tabPending} ventende ${tab === 'leads' ? 'utleier' : 'leietaker'}-leads? Dette kan ikke angres.`)} disabled={deleting || tabPending === 0} className="h-10 px-4 rounded-full border border-red-200 bg-white text-red-600 text-[13px] font-semibold flex items-center gap-2 disabled:opacity-40 hover:bg-red-50 active:scale-[0.97] transition-all">{deleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />} Slett ventende {tabPending > 0 ? `(${tabPending})` : ''}</button>
           </div>
         </div>
 
@@ -85,9 +102,10 @@ export default function AdminLeadsPage() {
                 <th className="py-3 px-4 font-semibold">{tab === 'leads' ? 'Eiendom' : 'Ønsker'}</th>
                 <th className="py-3 px-4 font-semibold">Mottatt</th>
                 <th className="py-3 px-4 font-semibold">Videresendt</th>
+                <th className="py-3 px-4 font-semibold text-right">Handling</th>
               </tr></thead>
               <tbody>
-                {rows.length === 0 && (<tr><td colSpan={5} className="py-10 text-center text-[14px] text-[#aaa]">Ingen registreringer ennå</td></tr>)}
+                {rows.length === 0 && (<tr><td colSpan={6} className="py-10 text-center text-[14px] text-[#aaa]">Ingen registreringer ennå</td></tr>)}
                 {rows.map((r) => (
                   <tr key={r.id} className="border-b border-[#f6f6f6] hover:bg-[#fafafa] transition-colors">
                     <td className="py-3 px-4 text-[14px] font-medium text-[#222]">{r.name || '—'}</td>
@@ -102,6 +120,9 @@ export default function AdminLeadsPage() {
                       {r.forwarded === true
                         ? <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-emerald-600"><CheckCircle2 className="w-3.5 h-3.5" /> Sendt</span>
                         : <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-amber-600" title={r.forward_error || ''}><AlertCircle className="w-3.5 h-3.5" /> Venter{r.forward_error ? '' : ''}</span>}
+                    </td>
+                    <td className="py-3 px-4 text-right">
+                      <button onClick={() => doDelete({ id: r.id }, `Slette lead fra ${r.name || r.email || 'denne kontakten'}?`)} disabled={deleting} aria-label="Slett" className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-[#bbb] hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-40"><Trash2 className="w-4 h-4" /></button>
                     </td>
                   </tr>
                 ))}

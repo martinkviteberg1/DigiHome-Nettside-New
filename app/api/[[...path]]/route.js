@@ -682,6 +682,23 @@ async function handleRoute(request, { params }) {
       return cors(NextResponse.json({ success: true, results }));
     }
 
+    // Slett leads (admin): enkelt id, flere ids, etter e-post, kun ventende, eller alle.
+    if (route === '/admin/delete' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {};
+      try { body = await request.json(); } catch (e) { body = {}; }
+      const col = db.collection(body.type === 'tenant' ? 'tenant_leads' : 'leads');
+      let filter = null;
+      if (body.id) filter = { id: String(body.id) };
+      else if (Array.isArray(body.ids) && body.ids.length) filter = { id: { $in: body.ids.map(String) } };
+      else if (body.email) filter = { email: String(body.email) };
+      else if (body.scope === 'pending') filter = { forwarded: { $ne: true } };
+      else if (body.all === true) filter = {};
+      if (!filter) return cors(NextResponse.json({ success: false, error: 'Ingen sletteutvalg angitt' }, { status: 400 }));
+      const res = await col.deleteMany(filter);
+      return cors(NextResponse.json({ success: true, deleted: res.deletedCount || 0 }));
+    }
+
     // --- Investor-interesse (deck «The Ask»-slide) ---
     if (route === '/investor/interest' && method === 'POST') {
       let body = {};
