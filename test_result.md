@@ -342,6 +342,21 @@ frontend:
         -agent: "main"
         -comment: "APPLE-NIVÅ «KEYNOTE»-REBUILD av orkestreringslaget (kun frontend, etter brukerønske «diskuter hvordan vi løfter alt til virkelig Apple-nivå» → bruker valgte «gå for ALLE mine anbefalinger»). Diskuterte 3 retninger; bygde A+B-blanding. Beholdt produkt-surfaces (AppShell, Pipeline, Proposal, Registrer, Finn, Visninger, Screening, Kontrakt, Innflytting, Drift, Portefolje, Nettside, Oversikt) + JourneyRail + BEATS uendret; ERSTATTET hele orkestreringen (OUTCOME/LeftPanel/ProductFrame/SystemFilm/keyframes) med en KEYNOTE-motor: (1) ØYEBLIKK-SEKVENS: MOMENTS bygges fra BEATS som [utsagn, ...produkt] per fase + finale = 20 øyeblikk. To typer: STATEMENT (full flate, én selvsikker linje 92px med maske-avsløring + eyebrow + undertekst, mye pusterom — Apple keynote) og PRODUCT (produktet som HELT: stort 1112×625, sentrert, subtilt perspektiv som legger seg flatt via sf-heroin rotateX 6→0, ambient glød + gulvrefleks; én rolig forklaringslinje over). (2) SAMMENHENGENDE CROSS-DISSOLVE: to-lags stack-motor (sf-momentin/out) — ingen harde kutt; utgående toner ut mens innkommende toner inn. (3) VEDVARENDE ORIENTERING: JourneyRail + header beholdt øverst (z-6) gjennom alt; statements får fasen «ankommer» på skinnen (utsagn = ankomst til noden). (4) BOKSTØTTER: åpner med «Hele utleien. På autopilot.» → avslører 6-fase-kartet stort; lukker med finale «Ett system. Fra henvendelse til drift.» (alle 6 noder fullført). (5) REDUSERT PALETT på chrome (blekk + lilla). Auto-play (m.dur) + piltaster + play/pause beholdt; teller 01/20. Verifisert via skjermbilder: intro-utsagn, oversikt-helt, Salg-utsagn, nettside-helt (skjema fylles), pipeline-helt, screening-helt, drift-helt, finale (alle haker). Backend uendret; ingen retesting."
 
+  - task: "Keyhole-integrasjonsfilm (/keyhole) — KeyholeFilm.js + keyholeAudio.js"
+    implemented: true
+    working: true
+    file: "components/keyhole/KeyholeFilm.js, components/keyhole/keyholeAudio.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: false
+        -agent: "main"
+        -comment: "BLOKKER (arvet fra fork): keyholeAudio.js hadde avkuttet thump-funksjon (linje 267: `function thump(at) {` etterfulgt direkte av `function ping(...)`), som gjorde at Next.js-kompilering feilet med «'import'/'export' cannot be used outside of module code». FIKSET: ga thump() en korrekt kropp (mykt lavpass-sub-thump 120→45Hz, brukt @12.3s for FINN-publisert) + lukket blokken. Acorn-syntaksjekk OK, /keyhole returnerer HTTP 200, offline WAV-render (renderKeyholeWav → scheduleKeyholeMusic m/ thump) returnerer base64 uten feil (len 705660), ingen page-errors."
+        -working: true
+        -agent: "main"
+        -comment: "INTRO REDESIGNET TIL ROLIG/PROFESJONELL KEYNOTE (etter brukerønske «mer profesjonell intro, ikke så verdensrom, løft til verdensklasse»): Fjernet alle «verdensrom»-elementer fra SceneIntro — roterende conic god-rays, 30 konvergerende/eksploderende IntroParticles, flash-bloom og lens-flare-strek. Ny SceneIntro: (1) mykt sentralt ambient-lys som puster frem, (2) IntroMotes — kun 6 store, ekstremt subtile, sakte-drivende lyspartikler (dybde, ikke sci-fi), (3) elegant logo-lockup der DigiHome + Keyhole glir inn fra ytterkant mot midten langs en forbindelseslinje som vokser fra senteret, (4) én vandrende lyspuls langs linjen + ett mykt lyssveip (Sheen) over hele lockup ved «møtet» (synket m/ chime @2.15s), (5) × kobles inn, (6) overskrift «Utleie og trygghet, i ett system.» med blur-up ord-for-ord, (7) fin gradient-aksentlinje under overskrift, (8) undertekst toner inn. Verifisert via screenshots @1.3s (inngang), @2.35s (møte), @5.5s (full komposisjon) — ren, balansert, premium. Andre scener uendret (verifisert @27.2s screening). MP4 IKKE re-rendret ennå (venter brukergodkjenning av ny intro). Backend uendret."
+
 
 metadata:
   created_by: "main_agent"

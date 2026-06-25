@@ -5,6 +5,7 @@ import {
   FileText, Check, ShieldCheck, Users, Send, Landmark, KeyRound, Lock,
   ScanLine, BadgeCheck, Play, Pause, Download, Maximize2,
 } from 'lucide-react';
+import { scheduleKeyholeMusic, renderKeyholeWav } from './keyholeAudio';
 
 /* =====================================================================
    DigiHome × Keyhole — integrasjonsfilm
@@ -20,6 +21,8 @@ const easeOut = (x) => 1 - Math.pow(1 - clamp01(x), 3);
 const easeInOut = (x) => { x = clamp01(x); return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2; };
 /* progress av t i [a,b], eased */
 const seg = (t, a, b, ease = easeInOut) => ease(clamp01((t - a) / (b - a)));
+/* deterministisk pseudo-tilfeldig (0..1) */
+const rnd = (i) => { const x = Math.sin(i * 127.1 + 13.37) * 43758.5453; return x - Math.floor(x); };
 
 const DH = '#a052e0';      // DigiHome lilla
 const DH_GLOW = '#d298ff';
@@ -203,29 +206,109 @@ function Panel({ children, style, accent, sheenP }) {
   );
 }
 
-/* ================= SCENE 0 — INTRO ================= */
-function SceneIntro({ lt, dur }) {
-  const conv = seg(lt, 0.4, 2.2);          // logoene glir mot midten
-  const x = (1 - conv) * 90;
-  const flash = clamp01(1 - Math.abs(lt - 2.15) / 0.5); // glimt når de møtes
-  const tagP = seg(lt, 2.4, 3.6);
-  const sub = seg(lt, 3.2, 4.4);
-  const out = seg(lt, dur - 0.9, dur);     // svak utgang
+/* ================= SCENE 0 — INTRO (rolig, profesjonell keynote) ================= */
+/* Få, store, ekstremt subtile lyspartikler som driver sakte — dybde og ro,
+   ikke sci-fi. Ingen konvergering/eksplosjon. */
+function IntroMotes({ lt }) {
+  const motes = [
+    { x: -380, y: -160, s: 4,   ph: 0.0, c: DH_GLOW },
+    { x: 400,  y: -130, s: 3,   ph: 1.4, c: KH },
+    { x: -320, y: 180,  s: 3,   ph: 2.6, c: KH },
+    { x: 350,  y: 200,  s: 4,   ph: 3.7, c: DH_GLOW },
+    { x: -150, y: -230, s: 2.5, ph: 4.8, c: DH_GLOW },
+    { x: 180,  y: 230,  s: 2.5, ph: 5.6, c: KH },
+  ];
+  const appear = clamp01((lt - 0.3) / 1.6);
   return (
-    <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ opacity: 1 - out }}>
-      <div className="flex items-center justify-center gap-12 mb-12" style={{ position: 'relative' }}>
-        {/* møte-glød / glimt */}
-        <div style={{ position: 'absolute', left: '50%', top: '50%', width: 220, height: 220, marginLeft: -110, marginTop: -110, borderRadius: '50%', background: `radial-gradient(circle, #ffffff, ${KH} 38%, transparent 70%)`, opacity: conv * 0.35 + flash * 0.7, transform: `scale(${0.35 + conv * 0.7 + flash * 0.6})`, filter: 'blur(10px)', pointerEvents: 'none' }} />
-        <img src="/deck-logo-light.svg" alt="DigiHome" style={{ height: 64, transform: `translateX(${-x}px)`, opacity: conv, position: 'relative' }} />
-        <span style={{ ...FH, color: 'rgba(255,255,255,0.45)', fontSize: 46, fontWeight: 300, opacity: seg(lt, 1.4, 2.2), transform: `scale(${0.6 + conv * 0.4})`, position: 'relative' }}>×</span>
-        <img src="/keyhole-logo.png" alt="Keyhole" style={{ height: 58, transform: `translateX(${x}px)`, opacity: conv, position: 'relative' }} />
+    <div className="absolute inset-0 flex items-center justify-center" style={{ pointerEvents: 'none' }}>
+      <div style={{ position: 'relative', width: 0, height: 0 }}>
+        {motes.map((m, i) => {
+          const dx = Math.sin(lt * 0.30 + m.ph) * 14;
+          const dy = Math.cos(lt * 0.24 + m.ph) * 11;
+          const tw = 0.55 + 0.45 * Math.sin(lt * 0.7 + m.ph);
+          return (
+            <span key={i} style={{
+              position: 'absolute', left: m.x + dx, top: m.y + dy,
+              width: m.s, height: m.s, marginLeft: -m.s / 2, marginTop: -m.s / 2,
+              borderRadius: '50%', background: m.c,
+              opacity: appear * 0.42 * tw, boxShadow: `0 0 12px ${m.c}`,
+            }} />
+          );
+        })}
       </div>
-      <h1 className="text-center" style={{ ...FH, color: INK, fontWeight: 700, fontSize: 56, letterSpacing: '-0.03em', lineHeight: 1.05, opacity: tagP, transform: `translateY(${(1 - easeOut(tagP)) * 22}px)` }}>
-        Utleie og trygghet,<br />i ett system.
-      </h1>
-      <p className="text-center" style={{ ...FB, color: MUT, fontSize: 24, marginTop: 22, maxWidth: 720, lineHeight: 1.45, opacity: sub, transform: `translateY(${(1 - easeOut(sub)) * 18}px)` }}>
-        DigiHome driver hele utleien. Keyhole leverer kredittsjekk og depositum. Sømløst koblet sammen.
-      </p>
+    </div>
+  );
+}
+
+function SceneIntro({ lt, dur }) {
+  const glow    = seg(lt, 0.0, 1.4);                          // mykt sentralt lys puster frem
+  const lineP   = seg(lt, 0.5, 2.0);                          // forbindelseslinjen tegnes ut fra midten
+  const logosIn = seg(lt, 0.7, 2.3);                          // logoer glir inn mot midten
+  const meet    = clamp01(1 - Math.abs(lt - 2.35) / 0.85);    // mykt «møte»-aksent
+  const pulseP  = seg(lt, 2.1, 3.6, (x) => x);                // lyspuls vandrer langs linjen (én gang)
+  const sweep   = seg(lt, 2.2, 3.4);                          // elegant lyssveip over hele lockup
+  const xP      = seg(lt, 2.55, 3.25);                        // × kobles inn
+  const underline = seg(lt, 4.6, 5.8);
+  const subP    = seg(lt, 5.0, 6.2);
+  const out     = seg(lt, dur - 1.0, dur);
+
+  const slide = (1 - easeOut(logosIn)) * 86;                  // logoer fra ytterkant inn mot midten
+  const logoBlur = (1 - logosIn) * 7;
+
+  const line1 = ['Utleie', 'og', 'trygghet,'];
+  const line2 = ['i', 'ett', 'system.'];
+  const wordStyle = (idx) => {
+    const p = seg(lt, 3.45 + idx * 0.12, 4.2 + idx * 0.12);
+    return { display: 'inline-block', opacity: p, filter: `blur(${(1 - p) * 8}px)`, transform: `translateY(${(1 - easeOut(p)) * 24}px)` };
+  };
+
+  return (
+    <div className="absolute inset-0 flex items-center justify-center" style={{ opacity: 1 - out }}>
+      {/* mykt sentralt lys (dybde, ikke eksplosjon) */}
+      <div style={{ position: 'absolute', width: 1100, height: 1100, borderRadius: '50%', background: `radial-gradient(circle, ${DH}1f, transparent 62%)`, opacity: glow * (0.85 + meet * 0.45), transform: `scale(${0.9 + glow * 0.1 + meet * 0.04})`, filter: 'blur(8px)', pointerEvents: 'none' }} />
+
+      <IntroMotes lt={lt} />
+
+      <div className="flex flex-col items-center" style={{ position: 'relative' }}>
+        {/* lockup: logo — forbindelseslinje — logo */}
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', height: 96, marginBottom: 54, width: 760 }}>
+          {/* forbindelseslinje (vokser fra midten) */}
+          <div style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%,-50%)', width: 360 * lineP, height: 1.5, background: `linear-gradient(90deg, ${DH_GLOW}00, ${DH_GLOW}, ${KH}, ${KH}00)`, opacity: 0.55 * lineP }}>
+            {pulseP > 0 && pulseP < 1 && (
+              <span style={{ position: 'absolute', top: '50%', left: `${pulseP * 100}%`, width: 7, height: 7, marginTop: -3.5, marginLeft: -3.5, borderRadius: '50%', background: '#fff', boxShadow: `0 0 16px 4px ${KH}` }} />
+            )}
+          </div>
+
+          {/* DigiHome (venstre) */}
+          <div style={{ position: 'absolute', right: '50%', marginRight: 70, display: 'flex', alignItems: 'center', opacity: logosIn, transform: `translateX(${-slide}px)`, filter: `blur(${logoBlur}px)` }}>
+            <img src="/deck-logo-light.svg" alt="DigiHome" style={{ height: 60 }} />
+          </div>
+
+          {/* × kobling */}
+          <span style={{ ...FH, position: 'relative', color: 'rgba(255,255,255,0.55)', fontSize: 40, fontWeight: 300, opacity: xP, transform: `scale(${0.6 + xP * 0.4})`, zIndex: 2 }}>×</span>
+
+          {/* Keyhole (høyre) */}
+          <div style={{ position: 'absolute', left: '50%', marginLeft: 70, display: 'flex', alignItems: 'center', opacity: logosIn, transform: `translateX(${slide}px)`, filter: `blur(${logoBlur}px)` }}>
+            <img src="/keyhole-logo.png" alt="Keyhole" style={{ height: 54 }} />
+          </div>
+
+          {/* elegant lyssveip over lockup */}
+          <Sheen p={sweep} radius={12} />
+        </div>
+
+        {/* overskrift — ord for ord, mykt opp */}
+        <h1 className="text-center" style={{ ...FH, color: INK, fontWeight: 700, fontSize: 64, letterSpacing: '-0.03em', lineHeight: 1.05 }}>
+          <span style={{ display: 'block' }}>{line1.map((w, i) => <span key={i} style={wordStyle(i)}>{w}&nbsp;</span>)}</span>
+          <span style={{ display: 'block' }}>{line2.map((w, i) => <span key={i} style={wordStyle(i + 3)}>{w}&nbsp;</span>)}</span>
+        </h1>
+
+        {/* fin aksentlinje under overskrift */}
+        <div style={{ marginTop: 26, height: 2, width: 200 * underline, background: `linear-gradient(90deg, ${DH_GLOW}, ${KH})`, borderRadius: 99, opacity: underline * 0.9 }} />
+
+        <p className="text-center" style={{ ...FB, color: MUT, fontSize: 22, marginTop: 24, maxWidth: 700, lineHeight: 1.5, opacity: subP, transform: `translateY(${(1 - easeOut(subP)) * 14}px)` }}>
+          DigiHome driver hele utleien. Keyhole leverer kredittsjekk og depositum — sømløst koblet sammen.
+        </p>
+      </div>
     </div>
   );
 }
@@ -662,7 +745,7 @@ function useFilmClock() {
 
 /* ============ HOVEDKOMPONENT ============ */
 export default function KeyholeFilm() {
-  const { time, playing, started, ended, play, pause, seekTo, beginPaused } = useFilmClock();
+  const { time, playing, started, ended, play, pause, seekTo, beginPaused, tRef } = useFilmClock();
   const [recordMode, setRecordMode] = useState(false);
   const recordRef = useRef(false);
   const wrapRef = useRef(null);
@@ -671,7 +754,31 @@ export default function KeyholeFilm() {
   const hideTimer = useRef(null);
   const [dlReady, setDlReady] = useState(false);
 
-  const MP4_URL = '/film/digihome-keyhole-16x9.mp4?v=1';
+  /* --- musikk (WebAudio, live) --- */
+  const audioCtxRef = useRef(null);
+  const musicRef = useRef(null);
+  const stopMusic = useCallback(() => {
+    if (musicRef.current) { try { musicRef.current.stop(); } catch (e) { /* ok */ } musicRef.current = null; }
+  }, []);
+  const startMusic = useCallback((fromT) => {
+    if (recordRef.current) return; // ingen live-lyd i record-modus (WAV rendres separat)
+    stopMusic();
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return;
+    if (!audioCtxRef.current) audioCtxRef.current = new Ctx();
+    const ctx = audioCtxRef.current;
+    if (ctx.state === 'suspended') ctx.resume();
+    musicRef.current = scheduleKeyholeMusic(ctx, ctx.destination, fromT);
+  }, [stopMusic]);
+
+  const handlePlay = useCallback(() => { play(); startMusic(tRef.current); }, [play, startMusic, tRef]);
+  const handlePause = useCallback(() => { pause(); stopMusic(); }, [pause, stopMusic]);
+  const handleSeek = useCallback((v) => { seekTo(v); if (playing) startMusic(v); else stopMusic(); }, [seekTo, startMusic, stopMusic, playing]);
+
+  useEffect(() => { if (ended) stopMusic(); }, [ended, stopMusic]);
+  useEffect(() => () => { stopMusic(); try { audioCtxRef.current && audioCtxRef.current.close(); } catch (e) { /* ok */ } }, [stopMusic]);
+
+  const MP4_URL = '/film/digihome-keyhole-16x9.mp4?v=2';
 
   /* record-modus */
   useEffect(() => {
@@ -681,6 +788,7 @@ export default function KeyholeFilm() {
       setRecordMode(true);
       beginPaused();
       window.__setTime = (t) => { seekTo(t); };
+      window.__renderMusicWav = (d) => renderKeyholeWav(d == null ? DURATION : d);
       window.__filmReady = true;
     }
   }, [beginPaused, seekTo]);
@@ -732,7 +840,7 @@ export default function KeyholeFilm() {
       className="fixed inset-0 flex items-center justify-center"
       style={{ background: '#030304', cursor: recordMode ? 'none' : chromeVisible ? 'default' : 'none', overflow: 'hidden' }}
       onMouseMove={recordMode ? undefined : wake}
-      onClick={recordMode ? undefined : () => { if (!started) play(); else if (!ended) (playing ? pause() : play()); }}
+      onClick={recordMode ? undefined : () => { if (!started) handlePlay(); else if (!ended) (playing ? handlePause() : handlePlay()); }}
     >
       {/* STAGE 1920×1080 */}
       <div style={{ width: 1920, height: 1080, transform: `scale(${scale})`, transformOrigin: 'center center', position: 'relative', flexShrink: 0 }}>
@@ -804,7 +912,7 @@ export default function KeyholeFilm() {
             <img src="/keyhole-logo.png" alt="Keyhole" style={{ height: 30 }} />
           </div>
           <button
-            onClick={(e) => { e.stopPropagation(); play(); }}
+            onClick={(e) => { e.stopPropagation(); handlePlay(); }}
             className="flex items-center justify-center rounded-full"
             style={{ width: 88, height: 88, background: `linear-gradient(135deg, ${KH}, #f4707a)`, boxShadow: `0 20px 60px -14px ${KH}` }}
           >
@@ -823,7 +931,7 @@ export default function KeyholeFilm() {
             <img src="/keyhole-logo.png" alt="Keyhole" style={{ height: 28 }} />
           </div>
           <div className="flex items-center gap-3">
-            <button onClick={() => { seekTo(0); play(); }} className="flex items-center gap-2.5 rounded-full" style={{ padding: '13px 24px', background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.22)', color: '#fff', ...FB, fontWeight: 600, fontSize: 15 }}>
+            <button onClick={() => { seekTo(0); handlePlay(); }} className="flex items-center gap-2.5 rounded-full" style={{ padding: '13px 24px', background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.22)', color: '#fff', ...FB, fontWeight: 600, fontSize: 15 }}>
               <Play size={18} fill="#fff" /> Spill igjen
             </button>
             {dlReady && (
@@ -845,11 +953,11 @@ export default function KeyholeFilm() {
           {/* scrub */}
           <input
             type="range" min={0} max={DURATION} step={0.05} value={time}
-            onChange={(e) => seekTo(parseFloat(e.target.value))}
+            onChange={(e) => handleSeek(parseFloat(e.target.value))}
             style={{ width: '100%', accentColor: KH, cursor: 'pointer' }}
           />
           <div className="flex items-center gap-4 mt-3">
-            <button onClick={() => (playing ? pause() : play())} className="text-white">
+            <button onClick={() => (playing ? handlePause() : handlePlay())} className="text-white">
               {playing ? <Pause size={24} fill="#fff" /> : <Play size={24} fill="#fff" />}
             </button>
             <span style={{ ...FB, color: 'rgba(255,255,255,0.85)', fontSize: 14, fontVariantNumeric: 'tabular-nums' }}>

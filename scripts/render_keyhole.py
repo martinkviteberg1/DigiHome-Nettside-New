@@ -10,6 +10,7 @@ Bruk:
   python3 scripts/render_keyhole.py [--test]
 """
 import asyncio
+import base64
 import os
 import subprocess
 import sys
@@ -21,6 +22,7 @@ OUT_FPS = 30
 DURATION = 53.5
 URL = "http://localhost:3000/keyhole?record=1"
 FRAMES_DIR = "/tmp/keyhole_frames"
+WAV_PATH = "/tmp/keyhole_music.wav"
 OUT_PATH = "/app/public/film/digihome-keyhole-16x9.mp4"
 TEST_MODE = "--test" in sys.argv
 
