@@ -207,6 +207,21 @@ backend:
         -agent: "testing"
         -comment: "✅ ALL 12 BACKEND TESTS PASSED (100% success rate). CRITICAL NEW FEATURE verified: 1) GET /api/lead-target returns 200 with correct JSON {env:'test', url:'https://proposal-engine-37.preview.emergentagent.com', keyConfigured:true, baseUrl:'https://hero-premiere-4.preview.emergentagent.com'}. Environment routing correctly configured for TEST CRM. 2) POST /api/leads with huseier payload (name, email, phone, address, postal_code, property_type, sqm, bedrooms, rental_model, availability, lead_type, num_properties, notes) returns 201 {success:true, ok:true, data:{id:UUID}, forwarded:true, lead:{...platform_id:UUID}}. Lead successfully saved locally AND forwarded to external TEST CRM (forwarded=true, platform_id confirms upstream acceptance). 3) POST /api/tenants with leietaker payload (name, email, phone, preferred_area, budget_min, budget_max, bedrooms, move_in_date, notes) returns 201 {success:true, ok:true, data:{id:UUID}, forwarded:true, tenant:{...lead_type:'leietaker', platform_id:UUID}}. Tenant successfully saved locally AND forwarded to external TEST CRM. 4) Validation: POST /api/leads empty body returns 400 {success:false, error:'Mangler kontaktinformasjon'}. POST /api/tenants empty body returns 400 same shape. 5) GET /api/leads returns 200 array sorted newest-first, test lead present (matched by email test.routing@example.com), NO _id fields. 6) GET /api/tenants returns 200 array sorted newest-first, test tenant present (matched by email test.tenant.routing@example.com), NO _id fields. 7) GET /api/listings?limit=0&status=published returns 200 {tenant:'Digihome AS', count:0, listings:[]} - correctly proxies to TEST CRM, never 500. 8) REGRESSION: GET /api/address?q=Strandgaten returns 200 with 6 suggestions max, short query returns empty array. 9) REGRESSION: POST /api/investor/interest success path (200 {ok:true, id:UUID}) and validation path (400 {detail}) working. 10) REGRESSION: GET /api/admin/leads?key=dh_admin_b3Kx92Qz7Lm4 returns 200 {leads:[...], tenants:[...]}, no key returns 401 {error}. 11) REGRESSION: GET /api/root and GET /api/ return 200 {ok:true, message:'DigiHome API'}. Environment-based routing working PERFECTLY - preview environment correctly routes to TEST CRM, leads/tenants successfully forwarded with platform_id confirmation. All endpoints production-ready. Created backend_test_routing.py for comprehensive testing."
 
+  - task: "Pitch-deck passord-gate (GET/POST /api/deck/auth)"
+    implemented: true
+    working: true
+    file: "app/api/[[...path]]/route.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "Nytt enkelt passord-vern for pitch-decken (/pitch-deck). GET /api/deck/auth leser httpOnly-cookie 'dh_deck' og returnerer {authed:bool} (true kun hvis cookie === sha256('dh-deck::'+DECK_PASSWORD)). POST /api/deck/auth tar {password}; hvis === DECK_PASSWORD (fra .env, quotet pga '#') → 200 {ok:true} + setter httpOnly Secure SameSite=Lax cookie 'dh_deck' (30 dager); ellers 401 {ok:false, error:'Feil passord'}. Plassert FØR getDb() (ingen DB-avhengighet). Lokal node-røyktest bekreftet hele flyten: GET uten cookie→authed:false, POST 'wrong'→401, POST 'DigiHome2026##'→200+Set-Cookie, GET m/ cookie→authed:true. Trenger verifisering via testagent: 1) GET /api/deck/auth uten cookie → 200 {authed:false}. 2) POST {password:'feil'} → 401 {ok:false}. 3) POST {password:''} (tom) → 401. 4) POST {password:'DigiHome2026##'} → 200 {ok:true} + Set-Cookie 'dh_deck' (httpOnly). 5) GET med den returnerte cookien → 200 {authed:true}. VIKTIG: IKKE opprett leads/tenants (hold DB ren)."
+        -working: true
+        -agent: "testing"
+        -comment: "✅ ALL PITCH-DECK PASSWORD GATE TESTS PASSED (8/8). Comprehensive authentication flow verified: 1) GET /api/deck/auth without cookie returns 200 with {authed:false}. 2) POST /api/deck/auth with wrong password 'feil' returns 401 with {ok:false, error:'Feil passord'}. 3) POST with empty password '' returns 401 with {ok:false, error:'Feil passord'}. 4) POST with no password field (empty body {}) returns 401 with {ok:false, error:'Feil passord'}. 5) POST with correct password 'DigiHome2026##' returns 200 with {ok:true} AND sets httpOnly Secure SameSite=Lax cookie 'dh_deck' with sha256 token (verified in Set-Cookie header: 'dh_deck=7420b0adc91055b1fd569db1b080378727878e6c2e5429587bc8264ed12ab404; Path=/; Max-Age=2592000; Secure; HttpOnly; SameSite=lax'). 6) GET /api/deck/auth with valid cookie from step 5 returns 200 with {authed:true}. 7) GET /api/deck/auth with bogus cookie 'dh_deck=invalidtoken123' returns 200 with {authed:false}. 8) NO 500 errors in any test - all error cases handled gracefully. Cookie-based authentication working perfectly with proper security flags (HttpOnly, Secure, SameSite). Database kept clean - no leads or tenants created. Created backend_test_deck_auth.py for future regression testing."
+
 frontend:
   - task: "Investor-deck (/investor-deck) — 16-slides pitch deck portert fra DigiHome-repo"
     implemented: true
@@ -331,19 +346,20 @@ frontend:
 metadata:
   created_by: "main_agent"
   version: "1.0"
-  test_sequence: 3
+  test_sequence: 4
   run_ui: false
 
 test_plan:
-  current_focus:
-    - "Leads API (POST/GET /api/leads)"
-    - "Tenants API (POST/GET /api/tenants) — leietaker lead capture"
+  current_focus: []
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
 
 agent_communication:
     -agent: "main"
+    -message: "NY backend-endring å teste: Pitch-deck passord-gate (GET/POST /api/deck/auth). Test KUN dette + ikke opprett leads/tenants (hold DB ren). 1) GET /api/deck/auth uten cookie → 200 {authed:false}. 2) POST /api/deck/auth med {password:'feil'} → 401 {ok:false, error:'Feil passord'}. 3) POST med {password:''} (tom) → 401. 4) POST med {password:'DigiHome2026##'} → 200 {ok:true} OG Set-Cookie-header med 'dh_deck' (httpOnly). 5) Bruk den returnerte cookien i en ny GET /api/deck/auth → 200 {authed:true}. 6) (valgfritt) GET /api/deck/auth med en feil/tilfeldig dh_deck-cookie → 200 {authed:false}. Bekreft at endepunktet aldri returnerer 500. Ikke test andre endepunkter (allerede verifisert) og IKKE POST til /api/leads eller /api/tenants."
+    -agent: "testing"
+    -message: "✅ PITCH-DECK PASSWORD GATE TESTING COMPLETE - ALL 8 TESTS PASSED (100% success rate). Tested complete authentication flow: GET without cookie (authed:false), POST with wrong/empty/missing password (all return 401 with Norwegian error), POST with correct password (returns 200 + sets httpOnly Secure SameSite=Lax cookie with sha256 token), GET with valid cookie (authed:true), GET with bogus cookie (authed:false). All security flags verified (HttpOnly, Secure, SameSite). No 500 errors. Database kept clean - no leads/tenants created as requested. Created backend_test_deck_auth.py for regression testing. Pitch-deck password gate is production-ready."
     -message: "Fase 1 ferdig: verdensklasse forside + lead-API. Vennligst test KUN backend nå: 1) GET /api/root og GET /api/ skal returnere {ok:true}. 2) POST /api/leads med body {name, email, phone, address, propertyType, message} skal returnere 201 med {ok:true, lead:{...id...}} og lagre i MongoDB. 3) POST /api/leads med tomt body {} skal returnere 400. 4) GET /api/leads skal returnere array med opprettede leads (nyeste først), uten _id-felt. Ikke test frontend (gjøres separat med brukers samtykke)."
     -agent: "testing"
     -message: "✅ BACKEND TESTING COMPLETE - ALL TESTS PASSED (10/10). Tested all scenarios from review_request: health checks, lead creation (happy path + validation), lead listing with sorting, MongoDB persistence. All endpoints working correctly with proper error handling, UUID generation, ISO timestamps, and MongoDB _id removal. No critical or major issues found. Backend API is production-ready. Created backend_test.py for future regression testing. Ready for main agent to summarize and finish Phase 1."

@@ -1,6 +1,13 @@
 import { NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
+import crypto from 'crypto';
 import { getDb, clean } from '@/lib/mongodb';
+
+// Pitch-deck passord (sjekkes server-side). Cookie lagrer en sha256-token, ikke selve passordet.
+const DECK_PASSWORD = process.env.DECK_PASSWORD || '';
+function deckToken() {
+  return crypto.createHash('sha256').update(`dh-deck::${DECK_PASSWORD}`).digest('hex');
+}
 
 // --- Miljøbasert ruting av lead-videresending ---
 // Samme kodebase kjører i BÅDE test/preview og produksjon. Vi skiller miljøene
@@ -159,6 +166,30 @@ async function handleRoute(request, { params }) {
   const method = request.method;
 
   try {
+    // --- Pitch-deck passord-gate (server-side; httpOnly cookie) ---
+    if (route === '/deck/auth' && method === 'GET') {
+      const token = request.cookies.get('dh_deck')?.value || '';
+      const authed = !!DECK_PASSWORD && token === deckToken();
+      return cors(NextResponse.json({ authed }));
+    }
+    if (route === '/deck/auth' && method === 'POST') {
+      let body = {};
+      try { body = await request.json(); } catch (e) { body = {}; }
+      const pw = (body.password || '').toString();
+      if (!DECK_PASSWORD || pw !== DECK_PASSWORD) {
+        return cors(NextResponse.json({ ok: false, error: 'Feil passord' }, { status: 401 }));
+      }
+      const res = NextResponse.json({ ok: true });
+      res.cookies.set('dh_deck', deckToken(), {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 60 * 60 * 24 * 30, // 30 dager
+        secure: true,
+      });
+      return cors(res);
+    }
+
     // --- Miljø/ruting-info (verifisering: hvilket CRM får leads herfra?) ---
     if (route === '/lead-target' && method === 'GET') {
       const t = digiHomeTarget();

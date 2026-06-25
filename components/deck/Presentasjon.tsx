@@ -3473,13 +3473,25 @@ const SCashflowIDag = (p: any) => {
   const AC = '#a052e0'; const INK = '#0c0c0c'; const INK2 = '#1c1714'; const SUB = '#57514a'; const MUT = '#9b9389'; const HAIR = 'rgba(20,15,10,0.08)'; const GREEN = '#1f9d57';
 
   const MONTHS = ['Jan','Feb','Mar','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Des'];
-  const NETTO = [90,91,92,93,94,96,96,98,99,101,102,104]; // tusen kr, bootstrap (netto/mnd)
+  // Faktiske driftstall 2026 (tusen kr, netto/mnd, 0 gründerlønn):
+  //  Inntekt 80k (jan–jul) → 120k (aug–des). Faste kostn. 16k (jan–aug) → 27k (sep–des, m/ kontor).
+  const NETTO = [64,64,64,64,64,64,64,104,93,93,93,93];
+  const RAMP_IDX = 7; // august = inntektsløft (+50%)
   const MAXV = 120;
 
+  const COSTS = [
+    ['Markedsføring (SoMe)', '10 000'],
+    ['Eiendomsregisteret', '2 500'],
+    ['Systemer & programvare', '2 000'],
+    ['Forsikring', '1 000'],
+    ['Bank & diverse', '500'],
+    ['Kontor (fra sep)', '11 000'],
+  ];
+
   const kpis = [
-    { v: '~+96k', l: 'Snitt netto / mnd', s: 'bootstrap · 0 gründerlønn' },
-    { v: '~1,15 MNOK', l: 'Akkumulert kontantstrøm', s: '12 mnd på dagens nivå' },
-    { v: '≈ break-even', l: 'Normalisert', s: 'med markedslønn ~115k/mnd' },
+    { v: '~+77k', l: 'Snitt netto / mnd', s: 'bootstrap · 0 gründerlønn' },
+    { v: '~0,92 MNOK', l: 'Akkumulert 2026', s: '12 mnd · før emisjon' },
+    { v: '~1,12 MNOK/år', l: 'Run-rate Q4', s: 'sep–des, etter inntektsløft' },
   ];
 
   const rise = (i: number) => ({ animation: anim ? `cfFade 0.8s cubic-bezier(0.22,1,0.36,1) ${0.1 + i * 0.08}s both` : undefined, opacity: show ? undefined : 0 });
@@ -3498,7 +3510,7 @@ const SCashflowIDag = (p: any) => {
           Driften går i pluss — <span style={{ color: AC }}>uten en krone i kapital</span>.
         </h2>
         <p className="text-[13.5px] sm:text-[14.5px] font-normal leading-[1.55] mt-4 max-w-[760px]" style={{ ...F, color: SUB, ...rise(2) }}>
-          Dagens portefølje (~40 boliger) er bootstrappet. Månedlig kontantstrøm er positiv fordi gründerne ikke tar lønn — vi brenner ikke kapital i dag.
+          Dagens portefølje (~40 boliger) er bootstrappet. Kontantstrømmen er positiv i dag — og inntekten løftes 50 % fra august (80k → 120k/mnd). Vi brenner ikke kapital.
         </p>
       </div>
 
@@ -3507,7 +3519,7 @@ const SCashflowIDag = (p: any) => {
         <div className="rounded-[20px] bg-white p-6 sm:p-7 flex flex-col" style={{ border: `1px solid ${HAIR}`, boxShadow: '0 18px 44px -26px rgba(20,15,10,0.22)', ...rise(3) }}>
           <div className="flex items-baseline justify-between mb-5">
             <p className="text-[11px] font-bold uppercase tracking-[0.2em]" style={{ ...F, color: INK2 }}>Månedlig netto kontantstrøm</p>
-            <p className="text-[10px] font-medium tracking-[0.1em]" style={{ ...F, color: MUT }}>tusen kr · illustrativt</p>
+            <p className="text-[10px] font-medium tracking-[0.1em]" style={{ ...F, color: MUT }}>tusen kr · 2026</p>
           </div>
           <div className="relative flex-1" style={{ minHeight: 230 }}>
             {[120, 90, 60, 30, 0].map((g) => (
@@ -3520,13 +3532,27 @@ const SCashflowIDag = (p: any) => {
               {NETTO.map((n, i) => (
                 <div key={i} className="flex-1 flex flex-col items-center justify-end h-full">
                   <span className="text-[9px] font-bold tabular-nums mb-1" style={{ ...F, color: AC, animation: anim ? `cfFade 0.5s ease ${0.9 + i * 0.05}s both` : undefined, opacity: show ? undefined : 0 }}>{n}</span>
-                  <div className="w-full rounded-t-[4px]" style={{ height: `${(n / MAXV) * 100}%`, background: `linear-gradient(180deg, ${AC}, #c79bf0)`, transformOrigin: 'bottom', animation: anim ? `cfBar 0.7s cubic-bezier(0.22,1,0.36,1) ${0.55 + i * 0.05}s both` : undefined }} />
+                  <div className="w-full rounded-t-[4px]" style={{ height: `${(n / MAXV) * 100}%`, background: i >= RAMP_IDX ? `linear-gradient(180deg, ${AC}, #c79bf0)` : `linear-gradient(180deg, #c49ae8, #e0caf6)`, transformOrigin: 'bottom', animation: anim ? `cfBar 0.7s cubic-bezier(0.22,1,0.36,1) ${0.55 + i * 0.05}s both` : undefined }} />
                 </div>
               ))}
             </div>
           </div>
           <div className="flex justify-between gap-[5px] mt-2 pl-9">
             {MONTHS.map((m, i) => (<span key={i} className="flex-1 text-center text-[8.5px] font-medium" style={{ ...F, color: MUT }}>{m}</span>))}
+          </div>
+          <div className="mt-5 pt-4" style={{ borderTop: `1px solid ${HAIR}` }}>
+            <div className="flex items-center justify-between mb-2.5 flex-wrap gap-1">
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ ...F, color: INK2 }}>Faste kostnader / mnd</p>
+              <p className="text-[10px] font-semibold tabular-nums" style={{ ...F, color: SUB }}>16 000 (jan–aug) · 27 000 (fra sep)</p>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {COSTS.map(([label, amt], i) => (
+                <span key={i} className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-medium" style={{ ...F, background: 'rgba(160,82,224,0.07)', border: '1px solid rgba(160,82,224,0.14)', color: INK2 }}>
+                  {label} <span className="tabular-nums font-semibold" style={{ color: AC }}>{amt}</span>
+                </span>
+              ))}
+            </div>
+            <p className="text-[10px] font-light mt-2.5" style={{ ...F, color: MUT }}>Regnskap føres internt — ingen regnskapsførerkostnad.</p>
           </div>
         </div>
 
@@ -3540,11 +3566,11 @@ const SCashflowIDag = (p: any) => {
             </div>
           ))}
           <p className="text-[11px] leading-[1.55] font-light mt-1" style={{ ...F, color: SUB }}>
-            <span style={{ fontWeight: 700, color: INK2 }}>Modenhet:</span> gründerne tar ikke lønn i dag. Med normalisert markedslønn er driften nær break-even — og forbedres når porteføljen vokser. <span style={{ fontWeight: 600, color: INK2 }}>Emisjonen finansierer fulltid og franchisevalidering — ikke overlevelse.</span>
+            <span style={{ fontWeight: 700, color: INK2 }}>Modenhet:</span> driften går i pluss i dag — uten kapital og uten gründerlønn. Inntekten løftes 50 % fra august. <span style={{ fontWeight: 600, color: INK2 }}>Emisjonen finansierer fulltid og franchisevalidering — ikke overlevelse.</span>
           </p>
         </div>
       </div>
-      <p className="text-[10px] font-light mt-5 text-center" style={{ ...F, color: MUT, ...rise(6) }}>Modellert ut fra dagens driftsnivå (~40 boliger, DigiHome AS). Tall bekreftes mot regnskap.</p>
+      <p className="text-[10px] font-light mt-5 text-center" style={{ ...F, color: MUT, ...rise(6) }}>Faktiske driftstall 2026 (~40 boliger, DigiHome AS). Kommisjon langtid: 80k/mnd → 120k/mnd fra august. Eksl. gründerlønn (post-emisjon). Tall bekreftes mot regnskap.</p>
     </div>
   </SlideFrame>
   );
