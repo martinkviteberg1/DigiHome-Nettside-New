@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import { toast } from 'sonner';
@@ -18,6 +18,7 @@ import {
   User, Mail, ArrowRight, ArrowLeft, CheckCircle2, Loader2,
   Home, Building2, Warehouse, LayoutGrid, BedDouble, Heart, Shield, Calendar as CalendarIcon,
 } from 'lucide-react';
+import { track, getLeadAttribution } from '@/lib/analytics';
 
 const BACKEND_URL = '';
 
@@ -67,6 +68,12 @@ export default function BliLeietakerPage() {
     setFormData((prev: any) => ({ ...prev, [field]: value }));
     if (errors[field]) setErrors((prev: any) => ({ ...prev, [field]: null }));
   }, [errors]);
+
+  // Analyse: skjema startet + steg-sporing (drop-off).
+  useEffect(() => { track('form_start', { form: 'leietaker' }); }, []);
+  useEffect(() => {
+    track('form_step', { form: 'leietaker', step: step + 1, label: STEPS[step]?.title || `Steg ${step}` });
+  }, [step]);
 
   const toggleArea = useCallback((area: any) => {
     setFormData((prev: any) => ({
@@ -121,9 +128,14 @@ export default function BliLeietakerPage() {
           formData.furnished ? 'Ønsker møblert' : '', formData.washing ? 'Ønsker vaskemaskin' : '',
           formData.notes,
         ].filter(Boolean).join('. '),
+        attribution: getLeadAttribution(),
       };
       const res = await axios.post(`${BACKEND_URL}/api/tenants`, payload);
-      if (res.data.success || res.data.ok) { setSubmitted(true); toast.success('Registreringen er mottatt!'); }
+      if (res.data.success || res.data.ok) {
+        setSubmitted(true);
+        track('lead_submit', { form: 'leietaker', leadType: 'leietaker' });
+        toast.success('Registreringen er mottatt!');
+      }
     } catch { toast.error('Noe gikk galt. Prøv igjen.'); }
     finally { setLoading(false); }
   };

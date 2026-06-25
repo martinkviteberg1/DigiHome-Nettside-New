@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { MapPin } from 'lucide-react';
+import { track } from '@/lib/analytics';
 
 /**
  * AddressAutocomplete — bruker vår egen /api/address (Geonorge, gratis, ingen nøkkel)
@@ -64,6 +65,7 @@ export function AddressAutocomplete({
     onChange(s.text);
     setOpen(false);
     setSuggestions([]);
+    try { track('address_search', { selected: true }); } catch (e) {}
     if (onSelect) {
       const m = (s.sub || '').match(/(\d{4})\s+(.+)/);
       onSelect({ address: s.label || s.text, postalCode: m ? m[1] : '', city: m ? m[2] : '', raw: s });

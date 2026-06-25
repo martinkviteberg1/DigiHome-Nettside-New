@@ -15,6 +15,7 @@ import {
 } from './FormFields';
 import { AddressAutocomplete } from './AddressAutocomplete';
 import { FinnLookupField, AddressField, finnToFields } from './PropertyInputs';
+import { track, getLeadAttribution } from '@/lib/analytics';
 import {
   User, Mail, ArrowRight, ArrowLeft, CheckCircle2, Loader2,
   Home, Building2, Warehouse, LayoutGrid, BedDouble, TrendingUp, Shield, Key, Zap, Calendar as CalendarIcon,
@@ -77,6 +78,12 @@ export default function BliUtleierPage() {
       }
     } catch (e) { /* ignore */ }
   }, []);
+
+  // Analyse: marker at skjemaet ble startet (én gang) + spor hvert steg (drop-off).
+  useEffect(() => { track('form_start', { form: 'utleier' }); }, []);
+  useEffect(() => {
+    track('form_step', { form: 'utleier', step: step + 1, label: STEPS[step]?.title || `Steg ${step}` });
+  }, [step]);
 
   const updateField = useCallback((field: any, value: any) => {
     setFormData((prev: any) => ({ ...prev, [field]: value }));
@@ -153,6 +160,7 @@ export default function BliUtleierPage() {
         units,
         num_properties: units.length,
         finn_url: finnUrl || undefined,
+        attribution: getLeadAttribution(),
         notes: [
           formData.rental_model ? `Ønsket modell: ${formData.rental_model}` : '',
           formData.notes,
@@ -160,7 +168,11 @@ export default function BliUtleierPage() {
         ].filter(Boolean).join('. '),
       };
       const res = await axios.post(`${BACKEND_URL}/api/leads`, payload);
-      if (res.data.success || res.data.ok) { setSubmitted(true); toast.success('Takk! Vi tar kontakt snart.'); }
+      if (res.data.success || res.data.ok) {
+        setSubmitted(true);
+        track('lead_submit', { form: 'utleier', leadType: 'huseier', properties: units.length });
+        toast.success('Takk! Vi tar kontakt snart.');
+      }
     } catch { toast.error('Noe gikk galt. Prøv igjen.'); }
     finally { setLoading(false); }
   };

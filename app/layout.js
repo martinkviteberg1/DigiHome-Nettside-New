@@ -2,6 +2,7 @@ import './globals.css';
 import { Providers } from './providers';
 import { rightGrotesk, diatype } from './fonts';
 import { site } from '@/lib/site';
+import SiteAnalytics from '@/components/SiteAnalytics';
 
 export const metadata = {
   metadataBase: new URL(site.url),
@@ -57,6 +58,7 @@ export default function RootLayout({ children }) {
         <script dangerouslySetInnerHTML={{ __html: 'window.addEventListener("error",function(e){if(e.error instanceof DOMException&&e.error.name==="DataCloneError"&&e.message&&e.message.includes("PerformanceServerTiming")){e.stopImmediatePropagation();e.preventDefault()}},true);' }} />
       </head>
       <body className="font-body bg-canvas text-ink">
+        <SiteAnalytics />
         <Providers>{children}</Providers>
       </body>
     </html>
