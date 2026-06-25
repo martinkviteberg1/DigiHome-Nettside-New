@@ -35,7 +35,8 @@ export default function Header() {
       : navLinks.find((l) => pathname.startsWith(l.href))?.href || '';
 
   const isHomePage = pathname === '/';
-  const lightMode = isHomePage && !scrolled; // light tekst over mørk hero
+  // Hero-en vår er lys (#fdfcfb) — bruk alltid mørk meny (samme som /bli-utleier osv.)
+  const lightMode = false;
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12);
