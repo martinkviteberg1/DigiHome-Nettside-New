@@ -14,8 +14,9 @@ import { Menu, ArrowUpRight, X } from 'lucide-react';
 const NAV_NO = [
   { href: '/bli-utleier', label: 'For utleiere', testId: 'nav-utleier' },
   { href: '/bli-leietaker', label: 'For leietakere', testId: 'nav-leietaker' },
-  { href: '/forvaltning', label: 'Forvaltning', testId: 'nav-forvaltning' },
-  { href: '/nyheter', label: 'Nyheter', testId: 'nav-nyheter' },
+  // Midlertidig skjult (kommer senere):
+  // { href: '/forvaltning', label: 'Forvaltning', testId: 'nav-forvaltning' },
+  // { href: '/nyheter', label: 'Nyheter', testId: 'nav-nyheter' },
 ];
 
 export default function Header() {
