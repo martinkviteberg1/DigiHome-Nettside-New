@@ -115,31 +115,79 @@ async function handleRoute(request, { params }) {
       return cors(NextResponse.json({ message: 'DigiHome API', ok: true }));
     }
 
-    // --- Leads ---
+    // --- Leads (huseier/utleier-skjema) ---
     if (route === '/leads' && method === 'POST') {
       let body = {};
       try { body = await request.json(); } catch (e) { body = {}; }
 
       const hasSomething = body.name || body.email || body.phone || body.address;
       if (!hasSomething) {
-        return cors(NextResponse.json({ error: 'Mangler kontaktinformasjon' }, { status: 400 }));
+        return cors(NextResponse.json({ success: false, error: 'Mangler kontaktinformasjon' }, { status: 400 }));
       }
 
+      const toNum = (v) => (v === null || v === undefined || v === '' ? null : Number(v));
       const lead = {
         id: uuidv4(),
         name: (body.name || '').toString().slice(0, 200),
         email: (body.email || '').toString().slice(0, 200),
         phone: (body.phone || '').toString().slice(0, 60),
         address: (body.address || '').toString().slice(0, 300),
-        propertyType: (body.propertyType || '').toString().slice(0, 120),
-        message: (body.message || '').toString().slice(0, 4000),
-        source: (body.source || 'web').toString().slice(0, 60),
+        postal_code: (body.postal_code || '').toString().slice(0, 20),
+        property_type: (body.property_type || body.propertyType || '').toString().slice(0, 120),
+        sqm: toNum(body.sqm),
+        bedrooms: toNum(body.bedrooms),
+        rental_model: (body.rental_model || '').toString().slice(0, 60),
+        availability: (body.availability || '').toString().slice(0, 40),
+        lead_type: (body.lead_type || 'huseier').toString().slice(0, 40),
+        num_properties: toNum(body.num_properties) || 1,
+        units: Array.isArray(body.units) ? body.units.slice(0, 25) : [],
+        notes: (body.notes || body.message || '').toString().slice(0, 4000),
+        source: (body.source || 'nettside').toString().slice(0, 60),
         status: 'new',
+        forwarded: false,
         createdAt: new Date().toISOString(),
       };
 
       await db.collection('leads').insertOne(lead);
-      return cors(NextResponse.json({ ok: true, lead: clean(lead) }, { status: 201 }));
+      return cors(NextResponse.json({ success: true, ok: true, data: { id: lead.id }, lead: clean(lead) }, { status: 201 }));
+    }
+
+    // --- Tenants (leietaker-skjema) ---
+    if (route === '/tenants' && method === 'POST') {
+      let body = {};
+      try { body = await request.json(); } catch (e) { body = {}; }
+
+      const hasSomething = body.name || body.email || body.phone;
+      if (!hasSomething) {
+        return cors(NextResponse.json({ success: false, error: 'Mangler kontaktinformasjon' }, { status: 400 }));
+      }
+
+      const toNum = (v) => (v === null || v === undefined || v === '' ? null : Number(v));
+      const tenant = {
+        id: uuidv4(),
+        name: (body.name || '').toString().slice(0, 200),
+        email: (body.email || '').toString().slice(0, 200),
+        phone: (body.phone || '').toString().slice(0, 60),
+        preferred_area: (body.preferred_area || '').toString().slice(0, 400),
+        budget_min: toNum(body.budget_min),
+        budget_max: toNum(body.budget_max),
+        bedrooms: toNum(body.bedrooms),
+        move_in_date: (body.move_in_date || '').toString().slice(0, 40),
+        notes: (body.notes || '').toString().slice(0, 4000),
+        lead_type: 'leietaker',
+        source: 'nettside',
+        status: 'new',
+        forwarded: false,
+        createdAt: new Date().toISOString(),
+      };
+
+      await db.collection('tenant_leads').insertOne(tenant);
+      return cors(NextResponse.json({ success: true, ok: true, data: { id: tenant.id }, tenant: clean(tenant) }, { status: 201 }));
+    }
+
+    if (route === '/tenants' && method === 'GET') {
+      const tenants = await db.collection('tenant_leads').find({}).sort({ createdAt: -1 }).limit(500).toArray();
+      return cors(NextResponse.json(tenants.map(clean)));
     }
 
     if (route === '/leads' && method === 'GET') {
