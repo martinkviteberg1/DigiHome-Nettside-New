@@ -75,9 +75,12 @@ export default function HeroSection() {
               initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.45 }}
               className="mt-9">
-              <div className={`flex items-center max-w-[460px] rounded-2xl bg-white border transition-all duration-400 ${
+              <div
+                onFocus={() => setFocused(true)}
+                onBlur={() => setFocused(false)}
+                className={`flex items-center max-w-[460px] rounded-2xl bg-white border transition-all duration-400 ${
                 focused
-                  ? 'border-[#cf97fc]/50 shadow-[0_0_0_3px_rgba(207,151,252,0.12),0_12px_40px_rgba(0,0,0,0.08)]'
+                  ? 'border-[#cf97fc]/60 shadow-[0_0_0_3px_rgba(207,151,252,0.16),0_12px_40px_rgba(0,0,0,0.08)]'
                   : 'border-[#e5e5e5] shadow-[0_2px_12px_rgba(0,0,0,0.04)] hover:shadow-[0_6px_24px_rgba(0,0,0,0.07)]'
               }`}>
                 <div className="pl-5"><Search className="w-[18px] h-[18px] text-[#737373]" /></div>
@@ -88,7 +91,7 @@ export default function HeroSection() {
                   placeholder={T.placeholder[locale]}
                   showIcon={false}
                   dataTestId="hero-address-input"
-                  inputClassName="flex-1 h-[56px] px-3.5 text-[15px] bg-transparent border-0 outline-none placeholder:text-[#737373] w-full"
+                  inputClassName="flex-1 h-[56px] px-3.5 text-[15px] bg-transparent border-0 outline-none focus:outline-none focus-visible:outline-none focus:ring-0 placeholder:text-[#737373] w-full"
                   className="flex-1"
                 />
                 <div className="pr-1.5">

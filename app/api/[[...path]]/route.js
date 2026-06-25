@@ -209,6 +209,90 @@ async function geonorgeSearch(q) {
 }
 
 const ADMIN_KEY = process.env.ADMIN_KEY || '';
+
+// --- Finn-annonse forhåndsvisning (server-side scrape: og:-tags + nøkkelinfo) ---
+const _finnCache = new Map();
+const FINN_TTL_MS = 30 * 60 * 1000;
+const FINN_UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+
+function isFinnUrl(u) {
+  try { const x = new URL(u); return /(^|\.)finn\.no$/i.test(x.hostname); } catch (e) { return false; }
+}
+
+function decodeEntities(s) {
+  return (s || '')
+    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"').replace(/&#0?39;/g, "'").replace(/&#x27;/gi, "'").replace(/&apos;/g, "'")
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(parseInt(n, 10)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCharCode(parseInt(n, 16)));
+}
+
+function mapFinnPropertyType(raw) {
+  const t = (raw || '').toLowerCase();
+  if (!t) return '';
+  if (t.includes('leilighet')) return 'leilighet';
+  if (t.includes('hybel')) return 'hybel';
+  if (t.includes('rekkehus') || t.includes('tomannsbolig') || t.includes('flermannsbolig')) return 'rekkehus';
+  if (t.includes('enebolig') || t.includes('villa') || t.includes('hus') || t.includes('gård') || t.includes('gard')) return 'hus';
+  return 'annet';
+}
+
+async function fetchFinnPreview(rawUrl) {
+  const key = rawUrl.split('#')[0];
+  const hit = _finnCache.get(key);
+  if (hit && Date.now() - hit.at < FINN_TTL_MS) return hit.data;
+
+  let htmlStr = '';
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 8000);
+      const r = await fetch(key, {
+        headers: { 'User-Agent': FINN_UA, 'Accept-Language': 'nb-NO,nb;q=0.9,en;q=0.8' },
+        signal: ctrl.signal,
+      });
+      clearTimeout(timer);
+      if (!r.ok) { if (attempt === 0) continue; return { ok: false, error: `HTTP ${r.status}` }; }
+      htmlStr = await r.text();
+      break;
+    } catch (e) { if (attempt === 0) continue; return { ok: false, error: 'fetch_failed' }; }
+  }
+  if (!htmlStr) return { ok: false, error: 'empty' };
+
+  const meta = (prop) => {
+    const m = new RegExp(`<meta[^>]+property=["']og:${prop}["'][^>]+content=["']([^"']*)["']`, 'i').exec(htmlStr)
+           || new RegExp(`<meta[^>]+content=["']([^"']*)["'][^>]+property=["']og:${prop}["']`, 'i').exec(htmlStr);
+    return m ? decodeEntities(m[1]).trim() : '';
+  };
+  const title = meta('title');
+  const image = meta('image');
+  const description = meta('description').slice(0, 240);
+
+  // Strip HTML → tekst for nøkkelinfo (Boligtype/Soverom/Areal/Månedsleie)
+  const text = decodeEntities(htmlStr.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' '));
+  const num = (re) => { const m = re.exec(text); return m ? m[1].replace(/\s/g, '') : ''; };
+
+  const bedrooms = num(/Soverom\s+(\d+)/);
+  const sqm = num(/Prim[æa]rrom\s+(\d{1,4})\s*m/) || num(/Bruksareal\s+(\d{1,4})\s*m/) || num(/Bruttoareal\s+(\d{1,4})\s*m/);
+  const rent = num(/M[åa]nedsleie\s+([\d\s]{2,9}?)\s*kr/);
+  const ptRaw = (/Boligtype\s+([A-Za-zÆØÅæøå]+)/.exec(text) || [])[1] || '';
+  const propertyType = mapFinnPropertyType(ptRaw);
+  const kind = /\/lettings\//.test(key) || rent ? 'leie' : (/\/homes\//.test(key) ? 'salg' : '');
+
+  const data = {
+    ok: !!title,
+    finnUrl: key, title, image, description, kind,
+    propertyType, propertyTypeRaw: ptRaw,
+    bedrooms: bedrooms || '', sqm: sqm || '', rent: rent || '',
+  };
+  if (data.ok) {
+    _finnCache.set(key, { at: Date.now(), data });
+    if (_finnCache.size > 300) _finnCache.delete(_finnCache.keys().next().value);
+  }
+  return data;
+}
+
 function adminAuthed(request) {
   try {
     const url = new URL(request.url);
@@ -355,6 +439,17 @@ async function handleRoute(request, { params }) {
       return res;
     }
 
+    // --- Finn-annonse forhåndsvisning (valgfritt: huseier limer inn lenke) ---
+    if (route === '/finn-preview' && method === 'GET') {
+      const { searchParams } = new URL(request.url);
+      const url = (searchParams.get('url') || '').trim();
+      if (!url || !isFinnUrl(url)) {
+        return cors(NextResponse.json({ ok: false, error: 'Lim inn en gyldig finn.no-lenke' }, { status: 400 }));
+      }
+      const data = await fetchFinnPreview(url);
+      return cors(NextResponse.json(data));
+    }
+
     // --- Boliger (proxy til DigiHome-plattformens public listings API) ---
     if (route === '/listings' && method === 'GET') {
       const { url: apiBase, key: apiKey } = digiHomeTarget();
@@ -417,6 +512,7 @@ async function handleRoute(request, { params }) {
         num_properties: toNum(body.num_properties) || 1,
         units: Array.isArray(body.units) ? body.units.slice(0, 25) : [],
         notes: (body.notes || body.message || '').toString().slice(0, 4000),
+        finn_url: (body.finn_url || '').toString().slice(0, 600),
         source: (body.source || 'nettside').toString().slice(0, 60),
         status: 'new',
         forwarded: false,
@@ -424,6 +520,11 @@ async function handleRoute(request, { params }) {
       };
 
       await db.collection('leads').insertOne(lead);
+
+      // Inkluder Finn-lenken i notatet som videresendes, så CRM-teamet ser annonsen.
+      const fwdNotes = lead.finn_url
+        ? `${lead.notes ? lead.notes + '. ' : ''}Finn-annonse: ${lead.finn_url}`.slice(0, 4000)
+        : lead.notes;
 
       // Dual-write: videresend til DigiHome-plattformen (DigiHome AS)
       const fwd = await forwardToDigiHome('/api/leads', {
@@ -433,7 +534,8 @@ async function handleRoute(request, { params }) {
         bedrooms: lead.bedrooms, sqm: lead.sqm,
         availability: lead.availability, lead_type: lead.lead_type,
         units: lead.units, num_properties: lead.num_properties,
-        notes: lead.notes,
+        finn_url: lead.finn_url || undefined,
+        notes: fwdNotes,
       });
       await db.collection('leads').updateOne({ id: lead.id }, { $set: {
         forwarded: fwd.ok,

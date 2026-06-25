@@ -22,24 +22,34 @@ export function AddressAutocomplete({
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
   const skipRef = useRef(false);
+  const cacheRef = useRef<Map<string, any[]>>(new Map());
+  const abortRef = useRef<any>(null);
+  const reqIdRef = useRef(0);
 
-  // Debounced Geonorge-oppslag
+  // Debounced Geonorge-oppslag med klient-cache + request-guard (rask, ingen blink)
   useEffect(() => {
     if (skipRef.current) { skipRef.current = false; return; }
     const q = (value || '').trim();
     if (q.length < 3) { setSuggestions([]); setOpen(false); return; }
-    const ctrl = new AbortController();
+
+    // Instant fra cache (føles umiddelbart ved backspace / gjentatte søk)
+    const cached = cacheRef.current.get(q.toLowerCase());
+    if (cached) { setSuggestions(cached); setOpen(cached.length > 0); setActive(-1); return; }
+
     const t = setTimeout(async () => {
+      const myId = ++reqIdRef.current;
+      if (abortRef.current) abortRef.current.abort();
+      const ctrl = new AbortController();
+      abortRef.current = ctrl;
       try {
         const r = await fetch(`/api/address?q=${encodeURIComponent(q)}`, { signal: ctrl.signal });
         const data = await r.json();
         const list = data.suggestions || [];
-        setSuggestions(list);
-        setOpen(list.length > 0);
-        setActive(-1);
-      } catch (e) { /* abort/ignorer */ }
-    }, 220);
-    return () => { clearTimeout(t); ctrl.abort(); };
+        cacheRef.current.set(q.toLowerCase(), list);
+        if (myId === reqIdRef.current) { setSuggestions(list); setOpen(list.length > 0); setActive(-1); }
+      } catch (e) { /* abort/ignorer — eldre svar overskriver ikke nyere */ }
+    }, 150);
+    return () => { clearTimeout(t); };
   }, [value]);
 
   // Lukk ved klikk utenfor
