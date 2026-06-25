@@ -343,3 +343,15 @@ html { scroll-behavior: smooth; }
   }
 }
 
+
+/* Skeleton shimmer (Finn-forhåndsvisning under henting) */
+.shimmer {
+  background: linear-gradient(90deg, #f1f1f1 25%, #e7e7e7 37%, #f1f1f1 63%);
+  background-size: 400% 100%;
+  animation: dh-shimmer 1.4s ease infinite;
+}
+@keyframes dh-shimmer {
+  0% { background-position: 100% 50%; }
+  100% { background-position: 0 50%; }
+}
+

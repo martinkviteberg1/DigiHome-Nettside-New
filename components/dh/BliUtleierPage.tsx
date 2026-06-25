@@ -14,6 +14,7 @@ import {
   TextInput, PhoneInput, IconCardSelector, NumberSelector, SummaryCard,
 } from './FormFields';
 import { AddressAutocomplete } from './AddressAutocomplete';
+import { FinnLookupField, AddressField, finnToFields } from './PropertyInputs';
 import {
   User, Mail, ArrowRight, ArrowLeft, CheckCircle2, Loader2,
   Home, Building2, Warehouse, LayoutGrid, BedDouble, TrendingUp, Shield, Key, Zap, Calendar as CalendarIcon,
@@ -63,11 +64,8 @@ export default function BliUtleierPage() {
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
-  // Finn-annonse (valgfritt): lim inn lenke → forhåndsvisning + auto-utfylling
+  // Finn-annonse (valgfritt). FinnLookupField håndterer oppslag/forhåndsvisning selv.
   const [finnUrl, setFinnUrl] = useState('');
-  const [finnPreview, setFinnPreview] = useState<any>(null);
-  const [finnLoading, setFinnLoading] = useState(false);
-  const [finnError, setFinnError] = useState('');
 
   // Forhåndsutfyll adresse fra ?address= (fra hero-søket)
   useEffect(() => {

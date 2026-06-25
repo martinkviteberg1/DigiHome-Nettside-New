@@ -29,11 +29,8 @@ export default function Header() {
   const ctaText = 'Bli utleier';
   const loginText = 'Logg inn';
 
-  // Hjem ("/") regnes som "For utleiere"-konteksten på aktiv-pill-en
-  const activeHref =
-    pathname === '/'
-      ? '/bli-utleier'
-      : navLinks.find((l) => pathname.startsWith(l.href))?.href || '';
+  // Forsiden ("/") er en nøytral landingsside — ingen nav-fane skal være aktiv der.
+  const activeHref = navLinks.find((l) => pathname.startsWith(l.href))?.href || '';
 
   const isHomePage = pathname === '/';
   // Hero-en vår er lys (#fdfcfb) — bruk alltid mørk meny (samme som /bli-utleier osv.)

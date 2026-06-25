@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { ArrowRight, Search } from 'lucide-react';
@@ -32,6 +32,9 @@ export default function HeroSection() {
     const q = address ? `?address=${encodeURIComponent(address)}` : '';
     router.push(`/bli-utleier${q}`);
   };
+
+  // Forhåndslast skjemaet så «Få vurdering» åpner umiddelbart (ingen ventetid).
+  useEffect(() => { try { router.prefetch('/bli-utleier'); } catch (e) {} }, [router]);
 
   const handleAddressSelect = useCallback((data: any) => {
     setSelectedData(data);
