@@ -113,7 +113,7 @@ export function scheduleKeyholeMusic(ctx, destination, fromT = 0) {
   delay.connect(fb).connect(delay); delay.connect(wet).connect(bus);
 
   /* --- pads (stereo-detunede sager m/ lavpass-LFO) --- */
-  function padNote(f, a, b, vol = 0.036) {
+  function padNote(f, a, b, vol = 0.046) {
     if (b <= fromT) return;
     const when = now() + Math.max(0, a - fromT);
     const offset = Math.max(0, fromT - a);
@@ -153,18 +153,18 @@ export function scheduleKeyholeMusic(ctx, destination, fromT = 0) {
       o.start(when); o.stop(when + dur + 0.1); sources.push(o);
     }
   }
-  function kick(at, vol = 0.06) {
+  function kick(at, vol = 0.05) {
     if (at < fromT) return;
     const when = now() + (at - fromT);
     const g = ctx.createGain();
-    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 150;
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 110;
     g.connect(lp).connect(bus);
     g.gain.setValueAtTime(0.0001, when);
-    g.gain.linearRampToValueAtTime(vol, when + 0.025);
-    g.gain.exponentialRampToValueAtTime(0.0001, when + 0.55);
+    g.gain.linearRampToValueAtTime(vol, when + 0.08);          // myk attack — ingen klikk
+    g.gain.exponentialRampToValueAtTime(0.0001, when + 0.95);
     const o = ctx.createOscillator(); o.type = 'sine';
-    o.frequency.setValueAtTime(72, when); o.frequency.exponentialRampToValueAtTime(36, when + 0.18);
-    o.connect(g); o.start(when); o.stop(when + 0.6); sources.push(o);
+    o.frequency.setValueAtTime(56, when); o.frequency.exponentialRampToValueAtTime(40, when + 0.32);
+    o.connect(g); o.start(when); o.stop(when + 1.0); sources.push(o);
   }
   function pluck(f, at, k) {
     if (at < fromT) return;
@@ -195,7 +195,7 @@ export function scheduleKeyholeMusic(ctx, destination, fromT = 0) {
     const g = ctx.createGain();
     const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2400;
     g.connect(lp).connect(bus); send(g, 0.65);
-    const vol = 0.04;
+    const vol = 0.054;
     g.gain.setValueAtTime(0.0001, when);
     g.gain.linearRampToValueAtTime(vol, when + 0.28);
     g.gain.setValueAtTime(vol, when + Math.max(0.28, d - 0.9));
@@ -356,45 +356,39 @@ export function scheduleKeyholeMusic(ctx, destination, fromT = 0) {
   for (const s of PADS) for (const n of s.notes) padNote(freq(n), s.a, s.b);
   for (const s of BASS) bassNote(freq(s.n), s.a, s.b);
 
-  /* myk puls fra annonse til depositum */
-  for (let at = 8.0; at <= 49.0; at += 1.2) kick(at);
-  /* hi-hats — offbeat driv */
-  for (let at = 16.0, hk = 0; at <= 48.6; at += 0.6, hk++) {
-    if (dr(hk, 71) < 0.22) continue;
-    hat(at, hk % 2 === 0 ? 0.011 : 0.006);
-  }
-  /* sparsom arp */
+  /* varm, rolig puls (myk attack — ingen klikk), kun på hovedtaktene */
+  for (let at = 8.0; at <= 48.8; at += 2.4) kick(at);
+  /* musikalsk arp — bløt og sparsom */
   let k = 0;
-  for (let at = 12.0; at <= 48.8; at += 0.6, k++) {
-    if (dr(k, 11) < 0.6) continue;
+  for (let at = 12.0; at <= 48.6; at += 1.2, k++) {
+    if (dr(k, 11) < 0.5) continue;
     const tones = chordAt(at);
     const pick = tones[Math.floor(dr(k, 12) * tones.length)];
-    const up = dr(k, 13) > 0.6 ? 2 : 1;
-    pluck(freq(pick) * up, at, k);
+    pluck(freq(pick), at, k);
   }
 
-  for (const w of WHOOSHES) whoosh(w);
+  for (const w of WHOOSHES) whoosh(w, 0.032);
   for (const c of CHIMES) chime(freq(c.n), c.t);
   for (const l of LEAD) lead(freq(l.n), l.t, l.d);
 
   /* myke intro-tangenter */
   key(freq('Eb5'), 0.8); key(freq('C5'), 2.2); key(freq('G4'), 4.0);
 
-  /* SFX i synk med bildet */
-  thump(12.3);                                   // FINN publisert
-  tick(17.3, 560); tick(17.8, 600); tick(18.3, 640); tick(18.8, 690); // søkere lander
-  /* screening: skann-chirps + ping → Godkjent (topp 1) */
-  ping(26.9, 740);
-  for (let i = 0; i < 6; i++) chirp(27.0 + i * 0.32, 1200 + i * 120, 1900 + i * 140);
-  subSwell(29.55, 0.7, 0.07); boom(29.55, 0.05);
-  /* kontrakt: signering */
-  scribble(36.6, 38.0); subSwell(38.15, 0.5, 0.05);
-  /* depositum: tidslinje fylles → sikret (topp 2) */
-  tick(44.0, 700); tick(44.9, 780); tick(45.8, 860); tick(46.7, 940);
-  subSwell(48.15, 0.8, 0.075); boom(48.15, 0.055);
+  /* SFX i synk med bildet — myke og musikalske (ingen klikk/beep) */
+  thump(12.3);                                   // FINN publisert (myk sub)
+  /* søkere lander: mild stigende arp (G–B–D–G) i stedet for klikk */
+  pluck(freq('G4'), 17.3, 201); pluck(freq('B4'), 17.8, 202); pluck(freq('D5'), 18.3, 203); pluck(freq('G5'), 18.8, 204);
+  /* screening → Godkjent (topp 1): myk chime + varm swell */
+  chime(freq('E5'), 26.9, 0.03);
+  subSwell(29.55, 0.8, 0.075); boom(29.55, 0.05); chime(freq('C6'), 29.6, 0.042);
+  /* kontrakt: signering (myk swell) */
+  subSwell(38.15, 0.6, 0.05);
+  /* depositum: tidslinje fylles → sikret (topp 2): stigende arp C–E–G–C */
+  pluck(freq('C5'), 44.0, 211); pluck(freq('E5'), 44.9, 212); pluck(freq('G5'), 45.8, 213); pluck(freq('C6'), 46.7, 214);
+  subSwell(48.15, 0.9, 0.08); boom(48.15, 0.055);
   /* outro */
-  whoosh(49.4, 0.05, 500, 5200, 1.4); boom(49.8, 0.05);
-  airPad(freq('C6'), 49.6, 53.5, 0.013); airPad(freq('G5'), 50.2, 53.5, 0.011);
+  whoosh(49.4, 0.04, 500, 5200, 1.4); boom(49.8, 0.05);
+  airPad(freq('C6'), 49.6, 53.5, 0.014); airPad(freq('G5'), 50.2, 53.5, 0.012);
 
   return {
     stop() {

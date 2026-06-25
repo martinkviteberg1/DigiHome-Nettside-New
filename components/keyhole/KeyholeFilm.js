@@ -242,18 +242,16 @@ function IntroMotes({ lt }) {
 
 function SceneIntro({ lt, dur }) {
   const glow    = seg(lt, 0.0, 1.4);                          // mykt sentralt lys puster frem
-  const lineP   = seg(lt, 0.5, 2.0);                          // forbindelseslinjen tegnes ut fra midten
-  const logosIn = seg(lt, 0.7, 2.3);                          // logoer glir inn mot midten
-  const meet    = clamp01(1 - Math.abs(lt - 2.35) / 0.85);    // mykt «møte»-aksent
-  const pulseP  = seg(lt, 2.1, 3.6, (x) => x);                // lyspuls vandrer langs linjen (én gang)
-  const sweep   = seg(lt, 2.2, 3.4);                          // elegant lyssveip over hele lockup
-  const xP      = seg(lt, 2.55, 3.25);                        // × kobles inn
+  const logosIn = seg(lt, 0.6, 2.0);                          // logoer toner rolig inn
+  const meet    = clamp01(1 - Math.abs(lt - 2.2) / 0.9);      // mykt «møte»-aksent (glød)
+  const sweep   = seg(lt, 2.0, 3.3);                          // ett elegant lyssveip over lockup
+  const xP      = seg(lt, 2.2, 2.9);                          // × kobles rolig inn
   const underline = seg(lt, 4.6, 5.8);
   const subP    = seg(lt, 5.0, 6.2);
   const out     = seg(lt, dur - 1.0, dur);
 
-  const slide = (1 - easeOut(logosIn)) * 86;                  // logoer fra ytterkant inn mot midten
-  const logoBlur = (1 - logosIn) * 7;
+  const rise = (1 - easeOut(logosIn)) * 16;                   // logoer stiger mykt på plass
+  const logoBlur = (1 - logosIn) * 6;
 
   const line1 = ['Utleie', 'og', 'trygghet,'];
   const line2 = ['i', 'ett', 'system.'];
@@ -270,29 +268,22 @@ function SceneIntro({ lt, dur }) {
       <IntroMotes lt={lt} />
 
       <div className="flex flex-col items-center" style={{ position: 'relative' }}>
-        {/* lockup: logo — forbindelseslinje — logo */}
-        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', height: 96, marginBottom: 54, width: 760 }}>
-          {/* forbindelseslinje (vokser fra midten) */}
-          <div style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%,-50%)', width: 360 * lineP, height: 1.5, background: `linear-gradient(90deg, ${DH_GLOW}00, ${DH_GLOW}, ${KH}, ${KH}00)`, opacity: 0.55 * lineP }}>
-            {pulseP > 0 && pulseP < 1 && (
-              <span style={{ position: 'absolute', top: '50%', left: `${pulseP * 100}%`, width: 7, height: 7, marginTop: -3.5, marginLeft: -3.5, borderRadius: '50%', background: '#fff', boxShadow: `0 0 16px 4px ${KH}` }} />
-            )}
-          </div>
-
+        {/* lockup: DigiHome × Keyhole — rent, ingen linje */}
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', height: 92, marginBottom: 56, width: 720 }}>
           {/* DigiHome (venstre) */}
-          <div style={{ position: 'absolute', right: '50%', marginRight: 70, display: 'flex', alignItems: 'center', opacity: logosIn, transform: `translateX(${-slide}px)`, filter: `blur(${logoBlur}px)` }}>
-            <img src="/deck-logo-light.svg" alt="DigiHome" style={{ height: 60 }} />
+          <div style={{ position: 'absolute', right: '50%', marginRight: 62, display: 'flex', alignItems: 'center', opacity: logosIn, transform: `translateY(${rise}px) scale(${0.94 + logosIn * 0.06})`, filter: `blur(${logoBlur}px)`, transformOrigin: 'right center' }}>
+            <img src="/deck-logo-light.svg" alt="DigiHome" style={{ height: 58 }} />
           </div>
 
           {/* × kobling */}
-          <span style={{ ...FH, position: 'relative', color: 'rgba(255,255,255,0.55)', fontSize: 40, fontWeight: 300, opacity: xP, transform: `scale(${0.6 + xP * 0.4})`, zIndex: 2 }}>×</span>
+          <span style={{ ...FH, position: 'relative', color: 'rgba(255,255,255,0.42)', fontSize: 32, fontWeight: 300, opacity: xP, transform: `scale(${0.75 + xP * 0.25})`, zIndex: 2 }}>×</span>
 
           {/* Keyhole (høyre) */}
-          <div style={{ position: 'absolute', left: '50%', marginLeft: 70, display: 'flex', alignItems: 'center', opacity: logosIn, transform: `translateX(${slide}px)`, filter: `blur(${logoBlur}px)` }}>
-            <img src="/keyhole-logo.png" alt="Keyhole" style={{ height: 54 }} />
+          <div style={{ position: 'absolute', left: '50%', marginLeft: 62, display: 'flex', alignItems: 'center', opacity: logosIn, transform: `translateY(${rise}px) scale(${0.94 + logosIn * 0.06})`, filter: `blur(${logoBlur}px)`, transformOrigin: 'left center' }}>
+            <img src="/keyhole-logo.png" alt="Keyhole" style={{ height: 52 }} />
           </div>
 
-          {/* elegant lyssveip over lockup */}
+          {/* ett elegant lyssveip over lockup */}
           <Sheen p={sweep} radius={12} />
         </div>
 
@@ -778,7 +769,7 @@ export default function KeyholeFilm() {
   useEffect(() => { if (ended) stopMusic(); }, [ended, stopMusic]);
   useEffect(() => () => { stopMusic(); try { audioCtxRef.current && audioCtxRef.current.close(); } catch (e) { /* ok */ } }, [stopMusic]);
 
-  const MP4_URL = '/film/digihome-keyhole-16x9.mp4?v=2';
+  const MP4_URL = '/film/digihome-keyhole-16x9.mp4?v=3';
 
   /* record-modus */
   useEffect(() => {

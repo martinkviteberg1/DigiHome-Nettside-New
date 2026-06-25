@@ -56,6 +56,13 @@ async def render():
             await page.wait_for_timeout(220)
         await page.wait_for_timeout(1200)
 
+        # rendre filmmusikken (samme partitur, offline WAV) og skriv til disk
+        print("rendering music WAV (offline)...", flush=True)
+        wav_b64 = await page.evaluate("window.__renderMusicWav()")
+        with open(WAV_PATH, "wb") as fh:
+            fh.write(base64.b64decode(wav_b64))
+        print(f"  wav written: {os.path.getsize(WAV_PATH) / 1e6:.1f} MB", flush=True)
+
         print(f"rendering {TOTAL_FRAMES} frames @ {CAPTURE_FPS}fps capture...", flush=True)
         for i in range(TOTAL_FRAMES):
             t = (i / CAPTURE_FPS) if not TEST_MODE else (i * (DURATION / 12))
@@ -80,10 +87,12 @@ def encode():
         "ffmpeg", "-y",
         "-framerate", str(CAPTURE_FPS),
         "-i", f"{FRAMES_DIR}/f%05d.jpg",
+        "-i", WAV_PATH,
         "-vf", vf,
         "-c:v", "libx264", "-preset", "medium", "-crf", "18",
         "-pix_fmt", "yuv420p",
-        "-an", "-movflags", "+faststart",
+        "-c:a", "aac", "-b:a", "192k",
+        "-shortest", "-movflags", "+faststart",
         OUT_PATH,
     ]
     print(" ".join(cmd), flush=True)
