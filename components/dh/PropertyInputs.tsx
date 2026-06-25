@@ -34,8 +34,8 @@ export function AddressField({
 }: any) {
   const [editing, setEditing] = useState(!(autoConfirm && value));
   const inputWrapClass = compact
-    ? 'w-full h-[46px] px-3.5 text-[14px] bg-white border border-[#e0e0e0] rounded-xl outline-none focus:border-[#cf97fc] focus:shadow-[0_0_0_3px_rgba(207,151,252,0.12)] transition-all placeholder:text-[#9a9a9a]'
-    : 'w-full h-[52px] px-4 text-[15px] bg-white border border-[#e0e0e0] rounded-xl outline-none focus:border-[#cf97fc] focus:shadow-[0_0_0_3px_rgba(207,151,252,0.14)] transition-all placeholder:text-[#9a9a9a]';
+    ? 'w-full h-[46px] pl-10 pr-3.5 text-[14px] bg-white border border-[#e0e0e0] rounded-xl outline-none focus:border-[#cf97fc] focus:shadow-[0_0_0_3px_rgba(207,151,252,0.12)] transition-all placeholder:text-[#9a9a9a]'
+    : 'w-full h-[52px] pl-11 pr-4 text-[15px] bg-white border border-[#e0e0e0] rounded-xl outline-none focus:border-[#cf97fc] focus:shadow-[0_0_0_3px_rgba(207,151,252,0.14)] transition-all placeholder:text-[#9a9a9a]';
 
   if (!editing && value) {
     return (

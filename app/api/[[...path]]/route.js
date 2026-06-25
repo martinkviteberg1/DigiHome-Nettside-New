@@ -527,6 +527,30 @@ async function handleRoute(request, { params }) {
         createdAt: new Date().toISOString(),
       };
 
+      // Idempotens: stopp duplikater fra gjentatte klikk / nettverks-retry.
+      // Identisk henvendelse (samme e-post/telefon + adresse + type) innen 5 min
+      // regnes som duplikat → returner eksisterende uten ny insert/videresending.
+      try {
+        const sinceIso = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+        const idMatch = lead.email
+          ? { email: lead.email }
+          : (lead.phone ? { phone: lead.phone } : null);
+        if (idMatch) {
+          const dup = await db.collection('leads').findOne({
+            ...idMatch,
+            address: lead.address,
+            lead_type: lead.lead_type,
+            createdAt: { $gte: sinceIso },
+          });
+          if (dup) {
+            return cors(NextResponse.json({
+              success: true, ok: true, id: dup.id, deduped: true,
+              forwarded: dup.forwarded === true, lead: clean(dup),
+            }, { status: 200 }));
+          }
+        }
+      } catch (e) { /* dedupe er best-effort; fall gjennom til normal insert */ }
+
       await db.collection('leads').insertOne(lead);
 
       // Inkluder Finn-lenken i notatet som videresendes, så CRM-teamet ser annonsen.
@@ -584,6 +608,27 @@ async function handleRoute(request, { params }) {
         forwarded: false,
         createdAt: new Date().toISOString(),
       };
+
+      // Idempotens: stopp duplikater fra gjentatte klikk / nettverks-retry.
+      try {
+        const sinceIso = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+        const idMatch = tenant.email
+          ? { email: tenant.email }
+          : (tenant.phone ? { phone: tenant.phone } : null);
+        if (idMatch) {
+          const dup = await db.collection('tenant_leads').findOne({
+            ...idMatch,
+            preferred_area: tenant.preferred_area,
+            createdAt: { $gte: sinceIso },
+          });
+          if (dup) {
+            return cors(NextResponse.json({
+              success: true, ok: true, id: dup.id, deduped: true,
+              forwarded: dup.forwarded === true, tenant: clean(dup),
+            }, { status: 200 }));
+          }
+        }
+      } catch (e) { /* best-effort */ }
 
       await db.collection('tenant_leads').insertOne(tenant);
 
