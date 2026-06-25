@@ -8286,31 +8286,28 @@ export default function Presentasjon() {
         )}
       </div>
 
-      {/* ═══ Innholdsfortegnelse-knapp — moderne, tilpasser seg lys/mørk slide ═══ */}
+      {/* ═══ Innholdsfortegnelse-knapp — minimalistisk, tilpasser seg lys/mørk slide ═══ */}
       <button
         onClick={() => setTocOpen(true)}
         aria-label="Åpne innholdsfortegnelse"
         data-testid="toc-open-btn"
-        className="group fixed bottom-5 left-1/2 -translate-x-1/2 z-50 h-11 pl-2.5 pr-4 rounded-full flex items-center gap-2.5 text-[12.5px] font-semibold tracking-[-0.01em] transition-all duration-300 hover:scale-[1.05] active:scale-[0.97]"
+        className="group fixed bottom-5 left-1/2 -translate-x-1/2 z-50 h-9 px-4 rounded-full flex items-center gap-2 text-[12px] font-semibold tracking-[-0.005em] transition-all duration-300 hover:scale-[1.03] active:scale-[0.97]"
         style={chromeLight ? {
-          background: 'rgba(255,255,255,0.72)',
-          backdropFilter: 'blur(22px) saturate(1.25)',
-          WebkitBackdropFilter: 'blur(22px) saturate(1.25)',
-          border: '1px solid rgba(20,15,10,0.10)',
-          color: '#1c1714',
-          boxShadow: '0 12px 34px -12px rgba(20,15,10,0.32), inset 0 1px 0 rgba(255,255,255,0.85)',
+          background: 'rgba(255,255,255,0.62)',
+          backdropFilter: 'blur(20px) saturate(1.2)',
+          WebkitBackdropFilter: 'blur(20px) saturate(1.2)',
+          border: '1px solid rgba(20,15,10,0.09)',
+          color: 'rgba(28,22,16,0.80)',
+          boxShadow: '0 8px 26px -13px rgba(20,15,10,0.24)',
         } : {
-          background: 'rgba(255,255,255,0.09)',
-          backdropFilter: 'blur(22px) saturate(1.25)',
-          WebkitBackdropFilter: 'blur(22px) saturate(1.25)',
-          border: '1px solid rgba(255,255,255,0.16)',
-          color: 'rgba(255,255,255,0.94)',
-          boxShadow: '0 12px 34px -12px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.14)',
+          background: 'rgba(255,255,255,0.07)',
+          backdropFilter: 'blur(20px) saturate(1.2)',
+          WebkitBackdropFilter: 'blur(20px) saturate(1.2)',
+          border: '1px solid rgba(255,255,255,0.14)',
+          color: 'rgba(255,255,255,0.86)',
+          boxShadow: '0 8px 26px -13px rgba(0,0,0,0.5)',
         }}>
-        <span className="flex items-center justify-center w-7 h-7 rounded-full transition-colors duration-300"
-              style={{ background: chromeLight ? 'rgba(160,82,224,0.12)' : 'rgba(210,152,255,0.20)' }}>
-          <LayoutGrid className="w-[14px] h-[14px]" strokeWidth={2.3} style={{ color: chromeLight ? '#a052e0' : '#d298ff' }} />
-        </span>
+        <LayoutGrid className="w-[13px] h-[13px] opacity-65 group-hover:opacity-100 transition-opacity duration-300" strokeWidth={2} />
         <span>Innhold</span>
       </button>
 
