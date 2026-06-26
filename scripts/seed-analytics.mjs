@@ -34,6 +34,24 @@ const COUNTRIES = [['Norge', 88], ['Sverige', 4], ['Danmark', 3], ['Storbritanni
 const PAGES = [['/', 60], ['/bli-utleier', 22], ['/bli-leietaker', 10], ['/video', 8]];
 const STEPS_UTL = ['Velkommen', 'Om deg', 'Eiendommen', 'Dine mål', 'Bekreft'];
 
+// Core Web Vitals — realistiske fordelinger (mobil litt tregere enn desktop)
+const rnd = (min, max) => Math.round(min + Math.random() * (max - min));
+function wvRating(name, v) {
+  const TH = { LCP: [2500, 4000], INP: [200, 500], CLS: [0.1, 0.25], FCP: [1800, 3000], TTFB: [800, 1800] };
+  const t = TH[name]; if (!t) return 'good';
+  return v <= t[0] ? 'good' : (v <= t[1] ? 'needs-improvement' : 'poor');
+}
+function webVitalsFor(device) {
+  const mob = device === 'mobil';
+  return [
+    { name: 'LCP', value: mob ? rnd(1600, 3000) : rnd(900, 2100) },
+    { name: 'INP', value: mob ? rnd(90, 280) : rnd(60, 180) },
+    { name: 'CLS', value: +(Math.random() * (mob ? 0.14 : 0.08)).toFixed(3) },
+    { name: 'FCP', value: mob ? rnd(1100, 2300) : rnd(700, 1500) },
+    { name: 'TTFB', value: mob ? rnd(280, 900) : rnd(180, 600) },
+  ].map((m) => ({ ...m, rating: wvRating(m.name, m.value) }));
+}
+
 async function main() {
   const client = new MongoClient(MONGO_URL);
   await client.connect();
@@ -100,10 +118,45 @@ async function main() {
           docs.push({ id: randomUUID(), type: 'lead_submit', ts: tsl.toISOString(), day: tsl.toISOString().slice(0, 10), path: isUtl ? '/bli-utleier' : '/bli-leietaker', ...common, meta: { demo: true, form, leadType: isUtl ? 'huseier' : 'leietaker' } });
         }
       }
+      // Core Web Vitals (RUM) — for ~45 % av øktene
+      if (Math.random() < 0.45) {
+        const wvTs = new Date(tsStart + 3000);
+        for (const m of webVitalsFor(device)) {
+          docs.push({ id: randomUUID(), type: 'web_vital', ts: wvTs.toISOString(), day: wvTs.toISOString().slice(0, 10), path: landed, ...common, meta: { demo: true, name: m.name, value: m.value, rating: m.rating } });
+        }
+      }
     }
   }
 
   if (docs.length) await col.insertMany(docs);
+
+  // Sett realistiske pipeline-statuser på eksisterende leads (idempotent demo).
+  try {
+    const leadsCol = db.collection('leads');
+    const leads = await leadsCol.find({}).sort({ createdAt: -1 }).limit(40).toArray();
+    // Garanter komplett pipeline-representasjon på de første leadene (demo).
+    const FORCED = ['won', 'lost', 'qualified', 'contacted', 'won', 'lost'];
+    const STAGES = [['won', 0.2], ['lost', 0.15], ['qualified', 0.25], ['contacted', 0.3], ['new', 0.1]];
+    let touched = 0;
+    leads.forEach((l, idx) => { l.__stage = idx < FORCED.length ? FORCED[idx] : weighted(STAGES); });
+    for (const l of leads) {
+      const stage = l.__stage;
+      if (stage === 'new') continue;
+      const created = new Date(l.createdAt || Date.now()).getTime();
+      const respHours = Math.random() < 0.7 ? rnd(1, 23) : rnd(25, 70); // de fleste innen SLA
+      const respAt = new Date(created + respHours * 3600000).toISOString();
+      await leadsCol.updateOne({ id: l.id }, { $set: {
+        status: stage,
+        firstResponseAt: respAt,
+        statusUpdatedAt: respAt,
+        statusHistory: [{ status: stage, at: respAt }],
+        _demoStatus: true,
+      } });
+      touched++;
+    }
+    console.log(`Oppdaterte ${touched} leads med demo-pipeline-status.`);
+  } catch (e) { console.warn('Lead-status-seeding hoppet over:', e.message); }
+
   const total = await col.countDocuments({ 'meta.demo': true });
   console.log(`Seeded ${docs.length} demo-hendelser. Totalt demo i db: ${total}`);
   await client.close();

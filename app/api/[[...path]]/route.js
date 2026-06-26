@@ -4,7 +4,7 @@ import crypto from 'crypto';
 import { getDb, clean } from '@/lib/mongodb';
 import { getObject, PUBLIC_PREFIX } from '@/lib/objectStorage';
 import { isBot, buildEvent, ensureAnalyticsIndexes, computeAnalytics, computeLeadIntel } from '@/lib/analytics-server';
-import { deriveChannel, serializeForLLM } from '@/lib/analytics-server';
+import { deriveChannel, serializeForLLM, computeWebVitals, detectAnomalies, computeLive } from '@/lib/analytics-server';
 import { chatLLM } from '@/lib/llm';
 import { slugify } from '@/lib/site';
 import { getRentReport, refreshRentReport, RENT_CITIES } from '@/lib/rentmarket';
@@ -778,11 +778,90 @@ async function handleRoute(request, { params }) {
       if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const { searchParams } = new URL(request.url);
       const days = parseInt(searchParams.get('days') || '30', 10) || 30;
-      const [traffic, leadsIntel] = await Promise.all([
+      const [traffic, leadsIntel, webVitals] = await Promise.all([
         computeAnalytics(db, days),
         computeLeadIntel(db, days),
+        computeWebVitals(db, days),
       ]);
-      return cors(NextResponse.json({ traffic, leads: leadsIntel }));
+      const anomalies = [
+        ...detectAnomalies(traffic.timeseries, 'sessions', 'Økter'),
+        ...detectAnomalies(traffic.timeseries, 'leads', 'Leads'),
+      ].sort((a, b) => (a.day < b.day ? 1 : -1)).slice(0, 8);
+      return cors(NextResponse.json({ traffic, leads: leadsIntel, webVitals, anomalies }));
+    }
+
+    // --- Admin: live besøkende akkurat nå ---
+    if (route === '/admin/live' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const live = await computeLive(db);
+      const res = cors(NextResponse.json(live));
+      res.headers.set('Cache-Control', 'no-store');
+      return res;
+    }
+
+    // --- Admin: oppdater lead-status (pipeline) ---
+    if (route === '/admin/lead-status' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {};
+      try { body = await request.json(); } catch (e) { body = {}; }
+      const id = (body.id || '').toString();
+      const status = (body.status || '').toString();
+      const coll = body.type === 'tenant' ? 'tenant_leads' : 'leads';
+      const VALID = ['new', 'contacted', 'qualified', 'won', 'lost'];
+      if (!id || !VALID.includes(status)) {
+        return cors(NextResponse.json({ ok: false, error: 'Ugyldig forespørsel' }, { status: 400 }));
+      }
+      const nowIso = new Date().toISOString();
+      const existing = await db.collection(coll).findOne({ id });
+      if (!existing) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
+      const update = {
+        status,
+        statusUpdatedAt: nowIso,
+        statusHistory: [...(existing.statusHistory || []), { status, at: nowIso }].slice(-30),
+      };
+      // Sett første respons-tidspunkt når man flytter ut av 'new'
+      if (status !== 'new' && !existing.firstResponseAt) update.firstResponseAt = nowIso;
+      await db.collection(coll).updateOne({ id }, { $set: update });
+      return cors(NextResponse.json({ ok: true, id, status }));
+    }
+
+    // --- Admin: AI lead-scoring (forklarende, per lead) ---
+    if (route === '/admin/lead-score' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {};
+      try { body = await request.json(); } catch (e) { body = {}; }
+      const id = (body.id || '').toString();
+      const coll = body.type === 'tenant' ? 'tenant_leads' : 'leads';
+      const lead = await db.collection(coll).findOne({ id });
+      if (!lead) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
+      const ctx = {
+        type: lead.lead_type, navn: lead.name, har_epost: !!lead.email, har_telefon: !!lead.phone,
+        adresse: lead.address || lead.preferred_area || null, boligtype: lead.property_type || null,
+        kvm: lead.sqm || null, soverom: lead.bedrooms || null, modell: lead.rental_model || null,
+        finn_lenke: !!lead.finn_url, antall_enheter: lead.num_properties || 1,
+        budsjett: lead.budget_max || null, kanal: (lead.attribution && lead.attribution.channel) || lead.source,
+        notat: (lead.notes || '').slice(0, 600),
+      };
+      const SYS = 'Du er en erfaren salgsanalytiker for DigiHome (eiendomsforvaltning i Bergen). Vurder et innkommende lead og returner KUN gyldig JSON (ingen markdown) med feltene: {"score": <0-100 heltall, sannsynlighet for å bli kunde>, "label": "<Varm|Lunken|Kald>", "reasoning": "<1-2 setninger på norsk bokmål>", "nextAction": "<konkret neste steg på norsk bokmål>"}. Vekt: komplett kontaktinfo, eiendom med detaljer, Finn-lenke, flere enheter og kjøpsklar modell høyt. Ikke finn på fakta.';
+      try {
+        const answer = await chatLLM({ messages: [{ role: 'system', content: SYS }, { role: 'user', content: `LEAD-DATA:\n${JSON.stringify(ctx)}` }], maxTokens: 300, temperature: 0.2 });
+        let parsed = null;
+        try { parsed = JSON.parse((answer || '').replace(/```json|```/g, '').trim()); } catch (e) { parsed = null; }
+        if (!parsed || typeof parsed.score === 'undefined') {
+          return cors(NextResponse.json({ ok: false, error: 'Kunne ikke tolke AI-svar' }, { status: 502 }));
+        }
+        const aiScore = {
+          score: Math.max(0, Math.min(100, Math.round(Number(parsed.score) || 0))),
+          label: (parsed.label || '').toString().slice(0, 20),
+          reasoning: (parsed.reasoning || '').toString().slice(0, 500),
+          nextAction: (parsed.nextAction || '').toString().slice(0, 300),
+          at: new Date().toISOString(),
+        };
+        await db.collection(coll).updateOne({ id }, { $set: { aiScore } });
+        return cors(NextResponse.json({ ok: true, id, aiScore }));
+      } catch (e) {
+        return cors(NextResponse.json({ ok: false, error: (e && e.message) || 'AI utilgjengelig' }, { status: 502 }));
+      }
     }
 
     // --- Admin: AI-innsiktslag (sammendrag + naturlig språk-spørring) ---
@@ -796,11 +875,16 @@ async function handleRoute(request, { params }) {
       if (mode === 'ask' && question.trim().length < 3) {
         return cors(NextResponse.json({ ok: false, error: 'Skriv et spørsmål' }, { status: 400 }));
       }
-      const [traffic, leadsIntel] = await Promise.all([
+      const [traffic, leadsIntel, webVitals] = await Promise.all([
         computeAnalytics(db, days),
         computeLeadIntel(db, days),
+        computeWebVitals(db, days),
       ]);
-      const context = serializeForLLM(traffic, leadsIntel);
+      const anomalies = [
+        ...detectAnomalies(traffic.timeseries, 'sessions', 'Økter'),
+        ...detectAnomalies(traffic.timeseries, 'leads', 'Leads'),
+      ];
+      const context = serializeForLLM(traffic, leadsIntel, { webVitals, anomalies });
       const SYS_SUMMARY = 'Du er en erfaren vekst- og markedsanalytiker for DigiHome, en AI-drevet eiendomsforvalter i Bergen. Du får aggregerte analysedata fra markedsnettstedet digihome.no. Skriv et kort, skarpt sammendrag på norsk bokmål (3-5 setninger) som fremhever de viktigste innsiktene om trafikk, kanaler, konvertering og leads. Avslutt med 2-3 konkrete, handlingsrettede anbefalinger som en kort punktliste (bruk «-»). Bruk faktiske tall fra dataene. Ikke finn på tall. Vær presis og forretningsorientert.';
       const SYS_ASK = 'Du er en analyseassistent for DigiHome. Svar kort og presist på norsk bokmål, KUN basert på de oppgitte analysedataene. Hvis svaret ikke finnes i dataene, si det ærlig. Ikke finn på tall.';
       const messages = mode === 'ask'
