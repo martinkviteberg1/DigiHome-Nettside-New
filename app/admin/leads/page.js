@@ -3,17 +3,19 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Loader2, RefreshCw, Send, CheckCircle2, AlertCircle, Lock, Trash2,
-  LayoutDashboard, Activity, BarChart3, Users, Sparkles, FileText,
+  LayoutDashboard, Activity, BarChart3, Users, Sparkles, FileText, Database,
 } from 'lucide-react';
 import OverviewTab from '@/components/admin/OverviewTab';
 import TrafficTab from '@/components/admin/TrafficTab';
 import IntelTab from '@/components/admin/IntelTab';
 import InsightTab from '@/components/admin/InsightTab';
+import RentMarketTab from '@/components/admin/RentMarketTab';
 
 const TABS = [
   { k: 'oversikt', l: 'Oversikt', icon: LayoutDashboard },
   { k: 'trafikk', l: 'Trafikk', icon: Activity },
   { k: 'innsikt', l: 'Lead-innsikt', icon: BarChart3 },
+  { k: 'leiemarked', l: 'Leiemarked', icon: Database },
   { k: 'ai', l: 'AI-assistent', icon: Sparkles },
   { k: 'leads', l: 'Leads', icon: Users },
 ];
@@ -133,6 +135,7 @@ export default function AdminDashboardPage() {
         {tab === 'oversikt' && <OverviewTab traffic={analytics && analytics.traffic} leads={analytics && analytics.leads} />}
         {tab === 'trafikk' && <TrafficTab traffic={analytics && analytics.traffic} />}
         {tab === 'innsikt' && <IntelTab leads={analytics && analytics.leads} />}
+        {tab === 'leiemarked' && <RentMarketTab apiKey={key} />}
         {tab === 'ai' && <InsightTab apiKey={key} days={days} />}
 
         {tab === 'leads' && (

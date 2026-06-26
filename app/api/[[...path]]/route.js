@@ -7,6 +7,7 @@ import { isBot, buildEvent, ensureAnalyticsIndexes, computeAnalytics, computeLea
 import { deriveChannel, serializeForLLM } from '@/lib/analytics-server';
 import { chatLLM } from '@/lib/llm';
 import { slugify } from '@/lib/site';
+import { getRentReport, refreshRentReport, RENT_CITIES } from '@/lib/rentmarket';
 
 // --- Media-servering fra objektlagring (deploy-safe /public) ---
 // Next.js standalone inkluderer ikke /public, så vi serverer bilder/video/lyd
@@ -515,6 +516,53 @@ async function handleRoute(request, { params }) {
     // Health
     if ((route === '/' || route === '/root') && method === 'GET') {
       return cors(NextResponse.json({ message: 'DigiHome API', ok: true }));
+    }
+
+    // --- Leiemarkedsrapport (offentlig): SSB + DigiHome etterspørselsindeks ---
+    if (route === '/rentmarket' && method === 'GET') {
+      const { searchParams } = new URL(request.url);
+      const city = (searchParams.get('city') || 'bergen').toLowerCase();
+      if (!RENT_CITIES[city]) {
+        return cors(NextResponse.json({ error: 'Ukjent by' }, { status: 404 }));
+      }
+      try {
+        const report = await getRentReport(city, { db });
+        const res = cors(NextResponse.json({ report }));
+        res.headers.set('Cache-Control', 'public, max-age=1800, stale-while-revalidate=86400');
+        return res;
+      } catch (e) {
+        return cors(NextResponse.json({ error: 'Kunne ikke hente leiemarkedsdata' }, { status: 502 }));
+      }
+    }
+
+    // --- Admin: leiemarkedsrapport (full) + metadata ---
+    if (route === '/admin/rentmarket' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const { searchParams } = new URL(request.url);
+      const city = (searchParams.get('city') || 'bergen').toLowerCase();
+      if (!RENT_CITIES[city]) return cors(NextResponse.json({ error: 'Ukjent by' }, { status: 404 }));
+      try {
+        const report = await getRentReport(city, { db });
+        const cities = Object.values(RENT_CITIES).map((c) => ({ slug: c.slug, label: c.label }));
+        return cors(NextResponse.json({ report, cities }));
+      } catch (e) {
+        return cors(NextResponse.json({ error: (e && e.message) || 'Feil' }, { status: 502 }));
+      }
+    }
+
+    // --- Admin: tving oppdatering fra SSB (inkl. AI-sammendrag) ---
+    if (route === '/admin/rentmarket/refresh' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {};
+      try { body = await request.json(); } catch (e) { body = {}; }
+      const city = (body.city || 'bergen').toString().toLowerCase();
+      if (!RENT_CITIES[city]) return cors(NextResponse.json({ ok: false, error: 'Ukjent by' }, { status: 400 }));
+      try {
+        const report = await refreshRentReport(db, city);
+        return cors(NextResponse.json({ ok: true, report }));
+      } catch (e) {
+        return cors(NextResponse.json({ ok: false, error: (e && e.message) || 'SSB utilgjengelig' }, { status: 502 }));
+      }
     }
 
     // --- Analytics: førsteparts hendelses-inntak (offentlig, cookieless) ---

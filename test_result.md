@@ -328,6 +328,22 @@ backend:
         -comment: "✅ ALL TESTS PASSED (3/3). POST /api/admin/generate-article verified (tested SEQUENTIALLY with 2-3s delays due to LLM concurrency limits): 3a) POST WITHOUT key returns 401 {error:'Uautorisert'} (authentication required). 3b) POST with short topic 'ab' (<4 chars) returns 400 {ok:false, error:'Skriv et tema (minst 4 tegn)'} (Norwegian validation error). 3c) POST with topic 'Skatt på utleie i Norge' returns 200 {ok:true, draft:{title:'Skatt på utleie i Norge: Hva må du vite?', excerpt:'...', content:2708 chars (non-empty markdown), tags:['Skatt','Utleie','Norge','Eiendom'] (4 tags), seoTitle:'Skatt på utleie i Norge: En nyttig guide', seoDescription:'...'}} - all 6 required fields present (title, excerpt, content, tags, seoTitle, seoDescription), content is non-empty markdown. Emergent LLM integration working perfectly with retry logic handling concurrency limits. AI generates high-quality Norwegian blog drafts ready for publishing. Response time ~13.7s (normal for LLM generation). No sporadic 502 errors encountered."
 
 
+  - task: "Leiemarkedsrapport API (GET /api/rentmarket, GET/POST /api/admin/rentmarket[/refresh]) — SSB + etterspørselsindeks"
+    implemented: true
+    working: true
+    file: "app/api/[[...path]]/route.js, lib/rentmarket.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "NY FUNKSJON: Leiemarkedsrapport (datadrevet SEO/PR-ressurs). lib/rentmarket.js henter ekte data fra SSB PxWeb API (json-stat2): tabell 09895 (månedsleie per romtall + tidsserie for Bergen kommune, kode 03) og tabell 09897 (predikert månedsleie per prissone 03.01 Bergenhus / 03.02 øvrige bydeler + boligstørrelse). Kombinerer med DigiHomes egen Etterspørselsindeks (baseline fra locations.js bydel-demand som gulv + faktiske tenant_leads-signaler siste 90d som boost, maks +15). Cacher rapport i MongoDB 'rent_reports' (TTL 24t). Genererer valgfri AI-markedsvurdering via Emergent LLM (chatLLM) ved refresh. ENDEPUNKTER: (1) GET /api/rentmarket?city=bergen → 200 {report:{...}} (offentlig, cache-aware). Ukjent by → 404. (2) GET /api/admin/rentmarket?key=<ADMIN_KEY>&city=bergen → 200 {report, cities} (krever adminAuthed, ellers 401). (3) POST /api/admin/rentmarket/refresh?key=<ADMIN_KEY> body {city} → 200 {ok:true, report} (tvinger SSB-oppdatering + AI; 401 uten key; 400 ukjent by). Manuell røyktest bekreftet ekte tall: 2-roms 11870 kr/mnd (+11.4% YoY), etterspørselsindeks Bergen=78 'Høy', sentrum=93 'Svært høy'. TRENGER VERIFISERING: 1) GET /api/rentmarket?city=bergen → 200 med report som har byRoom[], zones[], trend[], headline{typical2rom}, demand{index,level,byArea[]}, insights[], source{tables[]}. 2) GET /api/rentmarket?city=oslo (ikke konfigurert) → 404. 3) GET /api/admin/rentmarket uten key → 401. 4) GET /api/admin/rentmarket?key=dh_admin_b3Kx92Qz7Lm4&city=bergen → 200 {report, cities}. 5) POST /api/admin/rentmarket/refresh uten key → 401. 6) POST /api/admin/rentmarket/refresh?key=...&{city:'bergen'} → 200 {ok:true, report} (kan ta 3-6s pga SSB+AI). 7) Bekreft at SSB-tall hentes (2-roms current ~11000-12000). VIKTIG: IKKE opprett leads/tenants (hold DB ren)."
+        -working: true
+        -agent: "testing"
+        -comment: "✅ ALL LEIEMARKEDSRAPPORT API TESTS PASSED (9/9 tests, 100% success rate). COMPREHENSIVE VERIFICATION: 1) GET /api/rentmarket?city=bergen returns 200 with complete report structure: byRoom array (5 entries with roomKey, label, current, yoyPct), zones array (2 entries: Bergen sentrum + Øvrige bydeler, each with sizes array containing label, rent, perSqm), trend array (6 years of data), headline object with typical2rom=11870 kr/mnd (within expected range 11000-12000), demand object with index=78 (valid 0-100 range), level='Høy', byArea array (7 areas), insights array (4 Norwegian sentences), source.tables containing SSB table IDs '09895' and '09897'. 2) GET /api/rentmarket?city=oslo (not configured) correctly returns 404 with {error:'Ukjent by'}. 3) GET /api/admin/rentmarket?city=bergen WITHOUT key correctly returns 401 with {error:'Uautorisert'}. 4) GET /api/admin/rentmarket?key=dh_admin_b3Kx92Qz7Lm4&city=bergen returns 200 with {report, cities} where cities array contains {slug:'bergen', label:'Bergen'}. 5) POST /api/admin/rentmarket/refresh WITHOUT key correctly returns 401 with {error:'Uautorisert'}. 6) POST /api/admin/rentmarket/refresh?key=dh_admin_b3Kx92Qz7Lm4 with body {\"city\":\"bergen\"} returns 200 with {ok:true, report} in 6.06 seconds (SSB API + AI generation working correctly). 7) NO 500 errors encountered across all endpoints. REGRESSION VERIFIED: GET /api/ returns 200 {ok:true, message:'DigiHome API'}, GET /api/admin/analytics?key=... returns 200 with {traffic, leads} (unchanged). SSB integration working perfectly with real data: typical2rom=11870 kr/mnd (+11.4% YoY), demand.index=78 'Høy', 2 zones (sentrum + øvrige), 4 insights in Norwegian. Database kept clean - no leads/tenants created. Created backend_test_rentmarket.py for comprehensive testing."
+
+
 frontend:
   - task: "Finn-annonse preview + auto-utfylling (GET /api/finn-preview) + /bli-utleier steg 2"
     implemented: true
@@ -520,14 +536,14 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Blogg/nyheter (GET /api/posts) — offentlig + admin"
-    - "Blogg/nyheter admin CRUD (POST/DELETE /api/admin/posts)"
-    - "AI-artikkelgenerator (POST /api/admin/generate-article) — Emergent LLM"
+    - "Leiemarkedsrapport API (GET /api/rentmarket, GET/POST /api/admin/rentmarket[/refresh]) — SSB + etterspørselsindeks"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
 
 agent_communication:
+    -agent: "main"
+    -message: "NY backend-funksjon å teste: LEIEMARKEDSRAPPORT (SSB + etterspørselsindeks). Base URL: https://hero-premiere-4.preview.emergentagent.com/api. Test KUN disse 3 endepunktene + IKKE opprett leads/tenants (hold DB ren). Admin-nøkkel: dh_admin_b3Kx92Qz7Lm4. 1) GET /api/rentmarket?city=bergen → 200 {report}. Bekreft report-form: report.byRoom er array med objekter {roomKey,label,current,yoyPct}, report.zones er array (>=2) med {label,sub,sizes:[{label,rent,perSqm}]}, report.trend er array {year,val}, report.headline.typical2rom er et tall ~11000-12000, report.demand.index er tall (0-100) + report.demand.level streng + report.demand.byArea array, report.insights array (>=2 norske setninger), report.source.tables inneholder id '09895' og '09897'. 2) GET /api/rentmarket?city=oslo (ikke konfigurert) → 404 {error}. 3) GET /api/admin/rentmarket?city=bergen UTEN key → 401 {error:'Uautorisert'}. 4) GET /api/admin/rentmarket?key=dh_admin_b3Kx92Qz7Lm4&city=bergen → 200 {report, cities} (cities array med {slug:'bergen', label:'Bergen'}). 5) POST /api/admin/rentmarket/refresh UTEN key → 401. 6) POST /api/admin/rentmarket/refresh?key=dh_admin_b3Kx92Qz7Lm4 med body {\"city\":\"bergen\"} → 200 {ok:true, report} (kan ta 3-8s pga SSB-kall + valgfri AI-generering; bruk timeout >=30s). 7) Bekreft at endepunktene ALDRI returnerer 500. REGRESJON (rask): GET /api/ → 200 {ok:true}; GET /api/admin/analytics?key=dh_admin_b3Kx92Qz7Lm4 → 200 (uendret). Rapporter pass/fail per item med faktiske statuskoder + nøkkelfelt-verdier."
     -agent: "main"
     -message: "NY backend-endring å teste: Pitch-deck passord-gate (GET/POST /api/deck/auth). Test KUN dette + ikke opprett leads/tenants (hold DB ren). 1) GET /api/deck/auth uten cookie → 200 {authed:false}. 2) POST /api/deck/auth med {password:'feil'} → 401 {ok:false, error:'Feil passord'}. 3) POST med {password:''} (tom) → 401. 4) POST med {password:'DigiHome2026##'} → 200 {ok:true} OG Set-Cookie-header med 'dh_deck' (httpOnly). 5) Bruk den returnerte cookien i en ny GET /api/deck/auth → 200 {authed:true}. 6) (valgfritt) GET /api/deck/auth med en feil/tilfeldig dh_deck-cookie → 200 {authed:false}. Bekreft at endepunktet aldri returnerer 500. Ikke test andre endepunkter (allerede verifisert) og IKKE POST til /api/leads eller /api/tenants."
     -agent: "testing"

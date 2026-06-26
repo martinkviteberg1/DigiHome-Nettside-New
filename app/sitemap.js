@@ -1,6 +1,7 @@
 import { site } from '@/lib/site';
 import { locations } from '@/lib/locations';
 import { getAllPublishedSlugs } from '@/lib/posts';
+import { rentCitySlugs } from '@/lib/rentmarket';
 
 // Dynamisk sitemap.xml (Next.js App Router).
 // Inneholder kun offentlige, indekserbare sider. Film-/deck-/admin-ruter
@@ -14,6 +15,7 @@ export default async function sitemap() {
     { url: `${base}/bli-utleier`, lastModified: now, changeFrequency: 'monthly', priority: 0.9 },
     { url: `${base}/bli-leietaker`, lastModified: now, changeFrequency: 'monthly', priority: 0.8 },
     { url: `${base}/utleie`, lastModified: now, changeFrequency: 'weekly', priority: 0.8 },
+    { url: `${base}/leiemarkedet`, lastModified: now, changeFrequency: 'weekly', priority: 0.8 },
     { url: `${base}/nyheter`, lastModified: now, changeFrequency: 'weekly', priority: 0.7 },
     { url: `${base}/video`, lastModified: now, changeFrequency: 'yearly', priority: 0.4 },
   ];
@@ -23,6 +25,13 @@ export default async function sitemap() {
     lastModified: now,
     changeFrequency: 'monthly',
     priority: l.type === 'by' ? 0.8 : 0.7,
+  }));
+
+  const rentMarketUrls = rentCitySlugs().map((slug) => ({
+    url: `${base}/leiemarkedet/${slug}`,
+    lastModified: now,
+    changeFrequency: 'weekly',
+    priority: 0.85,
   }));
 
   let postUrls = [];
@@ -36,5 +45,5 @@ export default async function sitemap() {
     }));
   } catch (e) { postUrls = []; }
 
-  return [...core, ...locationUrls, ...postUrls];
+  return [...core, ...locationUrls, ...rentMarketUrls, ...postUrls];
 }

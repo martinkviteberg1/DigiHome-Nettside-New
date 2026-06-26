@@ -5,9 +5,9 @@ import Link from 'next/link';
 
 const cols = [
   { title: 'Tjenester', links: [{ l: 'Dynamisk utleie', h: '/tjenester' }, { l: 'Langtidsutleie', h: '/tjenester' }, { l: 'Korttidsutleie', h: '/tjenester' }, { l: 'Rådgivning', h: '/radgivning' }] },
-  { title: 'Områder', links: [{ l: 'Utleie i Bergen', h: '/utleie/bergen' }, { l: 'Sentrum', h: '/utleie/sentrum' }, { l: 'Nordnes', h: '/utleie/nordnes' }, { l: 'Sandviken', h: '/utleie/sandviken' }, { l: 'Alle områder', h: '/utleie' }] },
+  { title: 'Områder', links: [{ l: 'Utleie i Bergen', h: '/utleie/bergen' }, { l: 'Sentrum', h: '/utleie/sentrum' }, { l: 'Nordnes', h: '/utleie/nordnes' }, { l: 'Leiemarkedet i Bergen', h: '/leiemarkedet/bergen' }, { l: 'Alle områder', h: '/utleie' }] },
   { title: 'Selskap', links: [{ l: 'Bli utleier', h: '/bli-utleier' }, { l: 'Bli leietaker', h: '/bli-leietaker' }, { l: 'Nyheter', h: '/nyheter' }, { l: 'Kontakt', h: '/kontakt' }] },
-  { title: 'Ressurser', links: [{ l: 'Om oss', h: '/om-oss' }, { l: 'Kontakt', h: '/kontakt' }, { l: 'Personvern', h: '#' }, { l: 'Vilkår', h: '#' }] },
+  { title: 'Ressurser', links: [{ l: 'Leiemarkedsrapport', h: '/leiemarkedet' }, { l: 'Om oss', h: '/om-oss' }, { l: 'Kontakt', h: '/kontakt' }, { l: 'Personvern', h: '#' }] },
 ];
 
 export default function Footer({ org }: { org?: { company_name?: string; org_number?: string; company_address?: string; company_email?: string; company_phone?: string } | null }) {
