@@ -34,8 +34,29 @@ export default function ServiceModelsSection() {
   // Audio playback state — ambient muted loop is default; click "Spill av med lyd" → restart with audio
   const ambientRef = useRef<HTMLVideoElement>(null);
   const audioRef = useRef<HTMLVideoElement>(null);
+  const videoWrapRef = useRef<HTMLDivElement>(null);
   const [audioMode, setAudioMode] = useState(false);
   const [audioLoading, setAudioLoading] = useState(false);
+  const [videoInView, setVideoInView] = useState(false);
+
+  // Utsett videolasting til den nærmer seg visning (sparer 4–6 MB ved sidelast,
+  // spesielt viktig på mobil). Ambient-videoen starter da automatisk.
+  useEffect(() => {
+    const el = videoWrapRef.current;
+    if (!el || typeof IntersectionObserver === 'undefined') { setVideoInView(true); return; }
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach((e) => { if (e.isIntersecting) { setVideoInView(true); io.disconnect(); } });
+    }, { rootMargin: '250px' });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (videoInView && !audioMode) {
+      const amb = ambientRef.current;
+      if (amb) { try { amb.load(); } catch (e) {} amb.play().catch(() => {}); }
+    }
+  }, [videoInView, audioMode]);
 
   const handlePlayWithSound = async () => {
     const a = audioRef.current;
@@ -99,6 +120,7 @@ export default function ServiceModelsSection() {
 
         {/* ─────── Hero video — ambient + click-anywhere-to-sound ─────── */}
         <motion.div
+          ref={videoWrapRef}
           initial={{ opacity: 0, scale: 0.985 }}
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true, margin: '-80px' }}
@@ -112,21 +134,20 @@ export default function ServiceModelsSection() {
           style={{ boxShadow: '0 32px 80px -28px rgba(20,20,30,0.28), 0 12px 32px -12px rgba(20,20,30,0.14)' }}
           data-testid="service-models-video"
         >
-          {/* AMBIENT video — muted, loop, autoplay (default) */}
+          {/* AMBIENT video — muted, loop; lastes/avspilles først når den nærmer seg visning */}
           <video
             ref={ambientRef}
-            autoPlay
             muted
             loop
             playsInline
-            preload="metadata"
+            preload="none"
             poster="/langtid-hero-poster.jpg"
             aria-hidden={audioMode}
             className="w-full h-auto block aspect-video object-cover transition-opacity duration-500"
             style={{ opacity: audioMode ? 0 : 1 }}
           >
-            <source src="/langtid-hero-720p.mp4" media="(max-width: 768px)" type="video/mp4" />
-            <source src="/langtid-hero.mp4" type="video/mp4" />
+            {videoInView && <source src="/langtid-hero-720p.mp4" media="(max-width: 768px)" type="video/mp4" />}
+            {videoInView && <source src="/langtid-hero.mp4" type="video/mp4" />}
             Nettleseren din støtter ikke video.
           </video>
 

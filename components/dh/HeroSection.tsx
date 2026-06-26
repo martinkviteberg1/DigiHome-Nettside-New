@@ -2,7 +2,6 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
 import { ArrowRight, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AddressAutocomplete } from './AddressAutocomplete';
@@ -64,22 +63,16 @@ export default function HeroSection() {
         <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 xl:gap-20 items-center">
           {/* Left */}
           <div>
-            <motion.h1
-              initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.65, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
-              className="text-[38px] sm:text-[48px] lg:text-[56px] xl:text-[62px] font-bold tracking-[-0.035em] leading-[1.06] text-[#0a0a0a]"
-              style={{ fontFamily: 'var(--font-heading)' }}
-            >{T.heading[locale]}</motion.h1>
+            <h1
+              className="dh-fade-up text-[38px] sm:text-[48px] lg:text-[56px] xl:text-[62px] font-bold tracking-[-0.035em] leading-[1.06] text-[#0a0a0a]"
+              style={{ fontFamily: 'var(--font-heading)', animationDelay: '0.05s' }}
+            >{T.heading[locale]}</h1>
 
-            <motion.p initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.3 }}
-              className="text-[16px] sm:text-[17px] text-[#555] leading-[1.75] mt-7 max-w-[44ch]">
+            <p className="dh-fade-up text-[16px] sm:text-[17px] text-[#555] leading-[1.75] mt-7 max-w-[44ch]" style={{ animationDelay: '0.15s' }}>
               {T.sub[locale]}
-            </motion.p>
+            </p>
 
-            <motion.form onSubmit={handleSubmit}
-              initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.45 }}
-              className="mt-9">
+            <form onSubmit={handleSubmit} className="dh-fade-up mt-9" style={{ animationDelay: '0.25s' }}>
               <div
                 onFocus={() => setFocused(true)}
                 onBlur={() => setFocused(false)}
@@ -107,26 +100,20 @@ export default function HeroSection() {
                 </div>
               </div>
               <p className="text-[12px] text-[#737373] mt-3 ml-1">Gratis og uforpliktende &middot; Svar innen 24 timer</p>
-            </motion.form>
+            </form>
 
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5, delay: 0.7 }}
-              className="flex items-center gap-10 mt-12">
+            <div className="dh-fade-up flex items-center gap-10 mt-12" style={{ animationDelay: '0.35s' }}>
               {[{ n: '30+', l: 'Eiendommer' }, { n: '98%', l: 'Tilfredshet' }, { n: '+30%', l: 'Høyere inntekt' }].map((s: any) => (
                 <div key={s.l}>
                   <p className="text-[22px] font-bold text-[#0a0a0a] tracking-tight" style={{ fontFamily: 'var(--font-heading)' }}>{s.n}</p>
                   <p className="text-[11px] text-[#aaa] mt-0.5">{s.l}</p>
                 </div>
               ))}
-            </motion.div>
+            </div>
           </div>
 
           {/* Mobile hero image */}
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}
-            className="lg:hidden -mx-6 sm:-mx-10"
-          >
+          <div className="lg:hidden -mx-6 sm:-mx-10">
             <div className="relative rounded-[20px] mx-6 sm:mx-10 overflow-hidden shadow-[0_8px_30px_rgba(0,0,0,0.06)]">
               <img
                 src="/interior-openplan.webp"
@@ -152,12 +139,10 @@ export default function HeroSection() {
                 </div>
               </div>
             </div>
-          </motion.div>
+          </div>
 
           {/* Right: bento (desktop only) */}
-          <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
-            className="hidden lg:block">
+          <div className="hidden lg:block">
             <div className="grid grid-cols-5 gap-3 h-[560px] xl:h-[600px]">
               <div className="col-span-3 rounded-[20px] overflow-hidden shadow-[0_8px_30px_rgba(0,0,0,0.06)] group">
                 <img src={IMG.main} alt="Stue" className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-[1000ms] ease-out" loading="eager" fetchPriority="high" decoding="async" />
@@ -168,8 +153,7 @@ export default function HeroSection() {
                 </div>
                 <div className="flex-1 rounded-[20px] overflow-hidden relative shadow-[0_8px_30px_rgba(0,0,0,0.06)] group">
                   <img src={IMG.side2} alt="Rom" className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-[1000ms] ease-out" loading="lazy" />
-                  <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 1.2 }}
-                    className="absolute bottom-4 left-4 right-4 bg-white/95 backdrop-blur-xl rounded-2xl px-5 py-3.5 shadow-[0_4px_20px_rgba(0,0,0,0.1)]">
+                  <div className="dh-fade-up absolute bottom-4 left-4 right-4 bg-white/95 backdrop-blur-xl rounded-2xl px-5 py-3.5 shadow-[0_4px_20px_rgba(0,0,0,0.1)]" style={{ animationDelay: '0.8s' }}>
                     <div className="flex items-center justify-between gap-3">
                       <div className="min-w-0">
                         <p className="text-[10px] text-[#999] leading-tight">Snittinntekt Bergen</p>
@@ -179,11 +163,11 @@ export default function HeroSection() {
                         <svg className="w-4 h-4 text-[#cf97fc]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
                       </div>
                     </div>
-                  </motion.div>
+                  </div>
                 </div>
               </div>
             </div>
-          </motion.div>
+          </div>
         </div>
       </div>
     </section>

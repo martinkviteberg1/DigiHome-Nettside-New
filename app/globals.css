@@ -355,3 +355,9 @@ html { scroll-behavior: smooth; }
   100% { background-position: 0 50%; }
 }
 
+
+/* Hero-inngang via CSS (ingen JS) — innhold/LCP males umiddelbart, lett på mobil */
+@keyframes dhFadeUp { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+.dh-fade-up { opacity: 0; animation: dhFadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both; }
+@media (max-width: 767px) { .dh-fade-up { animation-duration: 0.4s; } }
+@media (prefers-reduced-motion: reduce) { .dh-fade-up { animation: none; opacity: 1; transform: none; } }
