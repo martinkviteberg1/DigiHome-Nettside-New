@@ -20,7 +20,7 @@ export default function NetworkSection() {
           {/* Left: Image */}
           <div className="relative">
             <div className="rounded-2xl overflow-hidden shadow-[0_8px_30px_rgba(0,0,0,0.06)]">
-              <img src="/bergen-harbor.jpg" alt="Bergen" className="w-full aspect-[4/3] object-cover" loading="lazy" />
+              <img src="/bergen-harbor.webp" alt="Bergen" width={1200} height={900} className="w-full aspect-[4/3] object-cover" loading="lazy" decoding="async" />
             </div>
             {/* Floating badge */}
             <div className="absolute -bottom-4 -right-4 bg-white rounded-2xl p-5 shadow-[0_8px_30px_rgba(0,0,0,0.08)]">

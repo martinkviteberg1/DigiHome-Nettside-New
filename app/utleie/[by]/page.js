@@ -1,7 +1,10 @@
 import { notFound } from 'next/navigation';
 import { getLocation, relatedLocations, locations } from '@/lib/locations';
 import LocationPage from '@/components/dh/LocationPage';
+import { getRentReport } from '@/lib/rentmarket';
 import { site } from '@/lib/site';
+
+export const revalidate = 3600;
 
 export function generateStaticParams() {
   return locations.map((l) => ({ by: l.slug }));
@@ -25,9 +28,29 @@ export function generateMetadata({ params }) {
   };
 }
 
-export default function Page({ params }) {
+export default async function Page({ params }) {
   const loc = getLocation(params.by);
   if (!loc) notFound();
   const related = relatedLocations(loc.slug, 3);
-  return <LocationPage loc={loc} related={related} />;
+
+  // Live leiemarkedsdata (SSB + DigiHome etterspørselsindeks) — beriker siden.
+  let rent = null;
+  try {
+    const report = await getRentReport('bergen');
+    if (report) {
+      rent = {
+        year: report.year,
+        prevYear: report.prevYear,
+        byRoom: report.byRoom,
+        headline: report.headline,
+        cityIndex: report.demand?.index ?? null,
+        cityLevel: report.demand?.level ?? null,
+        topAreas: report.demand?.byArea || [],
+        area: (report.demand?.byArea || []).find((a) => a.slug === loc.slug) || null,
+        ssbUpdated: report.source?.ssbUpdated || null,
+      };
+    }
+  } catch (e) { rent = null; }
+
+  return <LocationPage loc={loc} related={related} rent={rent} />;
 }

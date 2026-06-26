@@ -7,7 +7,7 @@ import { MapPin } from 'lucide-react';
 const properties = [
   { image: '/showcase-1.webp', location: 'Nordnes, Bergen', type: '3 sov · 68 m²', income: '22 500', tag: 'Hybridutleie' },
   { image: '/interior-kitchen2.webp', location: 'Sandviken, Bergen', type: '2 sov · 52 m²', income: '18 000', tag: 'Korttidsutleie' },
-  { image: '/showcase-apartment.jpg', location: 'Sentrum, Bergen', type: '3 sov · 95 m²', income: '26 500', tag: 'Hybridutleie' },
+  { image: '/showcase-apartment.webp', location: 'Sentrum, Bergen', type: '3 sov · 95 m²', income: '26 500', tag: 'Hybridutleie' },
 ];
 
 export default function ShowcaseSection() {

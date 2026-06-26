@@ -345,6 +345,18 @@ backend:
 
 
 frontend:
+  - task: "Ytelse + navigasjon: 5 nye sider, LocationPage-redesign (datadrevet), bildeoptimalisering, leiemarkedet-sider"
+    implemented: true
+    working: "NA"
+    file: "app/tjenester|forvaltning|radgivning|om-oss|kontakt/page.js, components/dh/LocationPage.js, components/dh/RentMarketPage.js, app/leiemarkedet/*"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "STORT YTELSES-/INNHOLDSLØFT (ikke testet av agent enda). 1) NAVIGASJON: Bygde 5 manglende sider som ga 404 fra footer/header: /tjenester, /forvaltning, /radgivning, /om-oss, /kontakt (server-komponenter, mobil-først, innhold fra lib/site.js). /kontakt har klient-skjema (KontaktForm.js) som POSTer /api/leads (lead_type='kontakt'). Header 'Logg inn' fikset (/logg-inn 404 → ekstern). Alle 5 → 200. 2) LOCATIONPAGE: bygget om til verdensklasse, datadrevet — live SSB-leiepriser + DigiHome Etterspørselsindeks per bydel (rangert), lenke til /leiemarkedet/bergen. utleie/[by]/page.js henter getRentReport server-side. 3) BILDER: 4MB→0.27MB webp + 676KB→68KB webp (objektlagring), responsive srcset/sizes (480-1920w), eager+fetchPriority hero (LCP), lazy+width/height (CLS), preconnect til bilde-CDN. 4) /leiemarkedet + /leiemarkedet/[by] (Dataset+Article JSON-LD). VERIFISERT MANUELT: alle nøkkelsider 200, SSR-data renderes, ~40-86ms."
+
   - task: "Finn-annonse preview + auto-utfylling (GET /api/finn-preview) + /bli-utleier steg 2"
     implemented: true
     working: true
