@@ -5,6 +5,7 @@ import Link from 'next/link';
 
 const cols = [
   { title: 'Tjenester', links: [{ l: 'Dynamisk utleie', h: '/tjenester' }, { l: 'Langtidsutleie', h: '/tjenester' }, { l: 'Korttidsutleie', h: '/tjenester' }, { l: 'Rådgivning', h: '/radgivning' }] },
+  { title: 'Områder', links: [{ l: 'Utleie i Bergen', h: '/utleie/bergen' }, { l: 'Sentrum', h: '/utleie/sentrum' }, { l: 'Nordnes', h: '/utleie/nordnes' }, { l: 'Sandviken', h: '/utleie/sandviken' }, { l: 'Alle områder', h: '/utleie' }] },
   { title: 'Selskap', links: [{ l: 'Bli utleier', h: '/bli-utleier' }, { l: 'Bli leietaker', h: '/bli-leietaker' }, { l: 'Nyheter', h: '/nyheter' }, { l: 'Kontakt', h: '/kontakt' }] },
   { title: 'Ressurser', links: [{ l: 'Om oss', h: '/om-oss' }, { l: 'Kontakt', h: '/kontakt' }, { l: 'Personvern', h: '#' }, { l: 'Vilkår', h: '#' }] },
 ];
@@ -19,7 +20,7 @@ export default function Footer({ org }: { org?: { company_name?: string; org_num
   return (
     <footer className="bg-[#0a0a0a] text-white border-t border-white/[0.06]">
       <div className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16">
-        <div className="py-16 grid gap-12 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="py-16 grid gap-12 sm:grid-cols-2 lg:grid-cols-6">
           <div className="lg:col-span-2">
             <img src="/logo-light.svg" alt="DigiHome" className="h-[26px] w-auto" />
             <p className="text-[14px] text-white/55 leading-relaxed mt-4 max-w-[28ch]">Smartere utleieadministrasjon med en hybridløsning av korttids- og langtidsutleie.</p>

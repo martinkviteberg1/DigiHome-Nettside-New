@@ -6,6 +6,7 @@ import { getObject, PUBLIC_PREFIX } from '@/lib/objectStorage';
 import { isBot, buildEvent, ensureAnalyticsIndexes, computeAnalytics, computeLeadIntel } from '@/lib/analytics-server';
 import { deriveChannel, serializeForLLM } from '@/lib/analytics-server';
 import { chatLLM } from '@/lib/llm';
+import { slugify } from '@/lib/site';
 
 // --- Media-servering fra objektlagring (deploy-safe /public) ---
 // Next.js standalone inkluderer ikke /public, så vi serverer bilder/video/lyd
@@ -764,6 +765,118 @@ async function handleRoute(request, { params }) {
         return cors(NextResponse.json({ ok: false, error: (e && e.message) || 'AI utilgjengelig' }, { status: 502 }));
       }
     }
+
+    // --- Blogg/nyheter (posts) ---
+    // GET /posts — offentlig liste over publiserte (admin med ?all=1&key= ser alle).
+    if (route === '/posts' && method === 'GET') {
+      const { searchParams } = new URL(request.url);
+      const slug = searchParams.get('slug');
+      const tag = searchParams.get('tag');
+      const isAdmin = adminAuthed(request);
+      if (slug) {
+        const post = await db.collection('posts').findOne({ slug });
+        if (!post || (post.status !== 'published' && !isAdmin)) {
+          return cors(NextResponse.json({ error: 'Ikke funnet' }, { status: 404 }));
+        }
+        return cors(NextResponse.json({ post: clean(post) }));
+      }
+      const q = (isAdmin && searchParams.get('all') === '1') ? {} : { status: 'published' };
+      if (tag) q.tags = tag;
+      const limit = Math.min(parseInt(searchParams.get('limit') || '100', 10) || 100, 200);
+      const posts = await db.collection('posts')
+        .find(q).project({ content: 0 }).sort({ publishedAt: -1, createdAt: -1 }).limit(limit).toArray();
+      return cors(NextResponse.json({ posts: posts.map(clean) }));
+    }
+
+    // POST /admin/posts — opprett eller oppdater artikkel.
+    if (route === '/admin/posts' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {};
+      try { body = await request.json(); } catch (e) { body = {}; }
+      const title = (body.title || '').toString().trim();
+      if (!title) return cors(NextResponse.json({ success: false, error: 'Tittel mangler' }, { status: 400 }));
+      const status = body.status === 'published' ? 'published' : 'draft';
+      const now = new Date().toISOString();
+      const tags = Array.isArray(body.tags)
+        ? body.tags.map((t) => String(t).trim()).filter(Boolean).slice(0, 8)
+        : (body.tags ? String(body.tags).split(',').map((t) => t.trim()).filter(Boolean).slice(0, 8) : []);
+      const fields = {
+        title: title.slice(0, 200),
+        excerpt: (body.excerpt || '').toString().slice(0, 400),
+        content: (body.content || '').toString().slice(0, 40000),
+        coverImage: (body.coverImage || '').toString().slice(0, 600),
+        tags,
+        author: (body.author || 'DigiHome').toString().slice(0, 80),
+        seoTitle: (body.seoTitle || '').toString().slice(0, 70),
+        seoDescription: (body.seoDescription || '').toString().slice(0, 170),
+        status,
+        updatedAt: now,
+      };
+
+      if (body.id) {
+        const existing = await db.collection('posts').findOne({ id: String(body.id) });
+        if (!existing) return cors(NextResponse.json({ success: false, error: 'Finnes ikke' }, { status: 404 }));
+        let slug = slugify((body.slug || existing.slug || title).toString()) || existing.slug;
+        if (slug !== existing.slug) {
+          const dup = await db.collection('posts').findOne({ slug, id: { $ne: existing.id } });
+          if (dup) slug = `${slug}-${Math.random().toString(36).slice(2, 6)}`;
+        }
+        fields.slug = slug;
+        if (status === 'published' && !existing.publishedAt) fields.publishedAt = now;
+        else fields.publishedAt = existing.publishedAt || (status === 'published' ? now : null);
+        await db.collection('posts').updateOne({ id: existing.id }, { $set: fields });
+        const updated = await db.collection('posts').findOne({ id: existing.id });
+        return cors(NextResponse.json({ success: true, post: clean(updated) }));
+      }
+
+      // opprett
+      let slug = slugify(body.slug || title) || `artikkel-${Date.now()}`;
+      const dup = await db.collection('posts').findOne({ slug });
+      if (dup) slug = `${slug}-${Math.random().toString(36).slice(2, 6)}`;
+      const doc = {
+        id: uuidv4(),
+        slug,
+        ...fields,
+        publishedAt: status === 'published' ? now : null,
+        createdAt: now,
+      };
+      await db.collection('posts').insertOne(doc);
+      return cors(NextResponse.json({ success: true, post: clean(doc) }, { status: 201 }));
+    }
+
+    // DELETE /admin/posts — slett artikkel.
+    if (route === '/admin/posts' && method === 'DELETE') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {};
+      try { body = await request.json(); } catch (e) { body = {}; }
+      if (!body.id) return cors(NextResponse.json({ success: false, error: 'Mangler id' }, { status: 400 }));
+      const res = await db.collection('posts').deleteOne({ id: String(body.id) });
+      return cors(NextResponse.json({ success: true, deleted: res.deletedCount || 0 }));
+    }
+
+    // POST /admin/generate-article — AI-generert artikkelutkast (Emergent LLM).
+    if (route === '/admin/generate-article' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {};
+      try { body = await request.json(); } catch (e) { body = {}; }
+      const topic = (body.topic || '').toString().slice(0, 300);
+      if (topic.trim().length < 4) return cors(NextResponse.json({ ok: false, error: 'Skriv et tema (minst 4 tegn)' }, { status: 400 }));
+      const SYS = 'Du er innholdsredaktør for DigiHome, en AI-drevet eiendomsforvalter i Bergen. Skriv en hjelpsom, faktabasert og engasjerende artikkel på norsk bokmål for selskapets blogg/nyheter, rettet mot boligeiere og leietakere. Følg E-E-A-T: vær presis og nyttig, og IKKE finn på konkrete tall, priser eller lovparagrafer du ikke er sikker på. Returner KUN gyldig JSON (UTEN markdown-kodeblokk rundt) med nøyaktig disse feltene: {"title": string (maks 70 tegn), "excerpt": string (1-2 setninger), "content": string (markdown, 500-800 ord, bruk ## underoverskrifter og en kort ingress øverst, IKKE bruk H1/#), "tags": string[] (2-4 relevante norske tagger), "seoTitle": string (maks 60 tegn), "seoDescription": string (maks 155 tegn)}.';
+      try {
+        const raw = await chatLLM({ messages: [{ role: 'system', content: SYS }, { role: 'user', content: `Tema: ${topic}` }], maxTokens: 1800, temperature: 0.6 });
+        let txt = (raw || '').trim().replace(/^```(json)?/i, '').replace(/```$/i, '').trim();
+        const first = txt.indexOf('{'); const last = txt.lastIndexOf('}');
+        if (first >= 0 && last > first) txt = txt.slice(first, last + 1);
+        let draft;
+        try { draft = JSON.parse(txt); } catch (e) {
+          return cors(NextResponse.json({ ok: false, error: 'Kunne ikke tolke AI-svaret. Prøv igjen.' }, { status: 502 }));
+        }
+        return cors(NextResponse.json({ ok: true, draft }));
+      } catch (e) {
+        return cors(NextResponse.json({ ok: false, error: (e && e.message) || 'AI utilgjengelig' }, { status: 502 }));
+      }
+    }
+
 
     // Slett leads (admin): enkelt id, flere ids, etter e-post, kun ventende, eller alle.
     if (route === '/admin/delete' && method === 'POST') {

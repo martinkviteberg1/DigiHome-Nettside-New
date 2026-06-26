@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Loader2, RefreshCw, Send, CheckCircle2, AlertCircle, Lock, Trash2,
-  LayoutDashboard, Activity, BarChart3, Users, Sparkles,
+  LayoutDashboard, Activity, BarChart3, Users, Sparkles, FileText,
 } from 'lucide-react';
 import OverviewTab from '@/components/admin/OverviewTab';
 import TrafficTab from '@/components/admin/TrafficTab';
@@ -106,6 +106,7 @@ export default function AdminDashboardPage() {
             <p className="text-[13px] text-[#999] mt-0.5">Førsteparts analyse · cookieless · GDPR-trygt</p>
           </div>
           <div className="flex items-center gap-2">
+            <a href="/admin/artikler" className="h-9 px-4 rounded-full bg-white shadow-[0_2px_10px_rgba(0,0,0,0.04)] flex items-center gap-2 text-[12px] font-semibold text-[#666] hover:text-[#0a0a0a] transition-colors"><FileText className="w-3.5 h-3.5" /> Artikler</a>
             <div className="flex items-center bg-white rounded-full p-1 shadow-[0_2px_10px_rgba(0,0,0,0.04)]">
               {RANGES.map((r) => (
                 <button key={r.d} onClick={() => changeDays(r.d)} className={`px-3 py-1.5 rounded-full text-[12px] font-semibold transition-colors ${days === r.d ? 'bg-[#0a0a0a] text-white' : 'text-[#888] hover:text-[#0a0a0a]'}`}>{r.l}</button>
