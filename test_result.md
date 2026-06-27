@@ -375,6 +375,18 @@ backend:
 
 
 frontend:
+  - task: "Ytelses-overhaling: fjernet framer-motion fra markedssidene (lett CSS+IO-shim), optimizePackageImports, OG-font-tracing for standalone"
+    implemented: true
+    working: true
+    file: "lib/motion-lite.tsx, components/dh/*.tsx (16), app/providers.js, next.config.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "main"
+        -comment: "P0 (størst gevinst): Bygget lib/motion-lite.tsx — drop-in CSS+IntersectionObserver-erstatning for framer-motion (motion.<tag> m/ initial/animate/whileInView/transition/variants inkl. funksjons-varianter; AnimatePresence=passthrough uten exit; useReducedMotion; MotionConfig). Byttet import 'framer-motion' → '@/lib/motion-lite' i 16 components/dh/*.tsx + app/providers.js. Deck/video/keyhole/legacy beholder EKTE framer-motion (render_film.py trygt). Resultat: framer-motion (~50KB gz + hydrering) fjernet fra forsiden/bli-utleier/bli-leietaker/kontakt/lp-bundler. VERIFISERT via Playwright: forside (25/28 overskrifter synlige etter scroll-reveal), bli-utleier inkl. 4-stegs skjema (13/14 kontroller synlige, variant-steg rendrer), bli-leietaker, kontakt, lp — alle 200, ingen feil. P1: bilder allerede optimalisert (alle .webp 44-280KB, hero fetchPriority=high, resten loading=lazy); video allerede lazy (preload=none + <source> kun i visning + lyd kun ved klikk) — ingen endring nødvendig. P2: la til experimental.optimizePackageImports ['lucide-react','date-fns']; BEHOLDT images.unoptimized:true (assets alt optimalisert + standalone/objektlagring gjør flipping risikabelt). BONUS prod-fix: la til outputFileTracingIncludes for public/fonts/**.woff slik at OG-bildenes merkefonter finnes i standalone-bygg (ellers 500 på OG-ruter i prod). Frontend testes av bruker selv."
+
   - task: "Google Ads-anskaffelseslag: GA4 + Consent Mode v2 + GDPR-banner + konverteringshendelser (lead_start/generate_lead) + /lp-kampanjesider"
     implemented: true
     working: true
