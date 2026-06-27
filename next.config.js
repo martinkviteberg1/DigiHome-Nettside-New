@@ -18,6 +18,13 @@ const nextConfig = {
   experimental: {
     // Remove if not using Server Components
     serverComponentsExternalPackages: ['mongodb'],
+    // Tre-shaker ikon-/util-biblioteker (kun brukte ikoner havner i bundelen).
+    optimizePackageImports: ['lucide-react', 'date-fns'],
+    // KRITISK for prod: output:'standalone' inkluderer ikke /public, men OG-bildene
+    // (next/og) leser merkefontene fra public/fonts. Trace dem inn i standalone-bygget.
+    outputFileTracingIncludes: {
+      '/**': ['./public/fonts/**/*.woff'],
+    },
   },
   webpack(config, { dev }) {
     if (dev) {

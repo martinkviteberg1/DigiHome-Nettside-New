@@ -4,7 +4,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { MotionConfig } from 'framer-motion';
+import { MotionConfig } from '@/lib/motion-lite';
 import { Toaster } from 'sonner';
 
 const queryClient = new QueryClient({

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion } from '@/lib/motion-lite';
 
 const stats = [
   { end: 30, suffix: '%', label: 'Høyere inntekt', sub: 'sammenlignet med tradisjonell utleie', prefix: '+' },

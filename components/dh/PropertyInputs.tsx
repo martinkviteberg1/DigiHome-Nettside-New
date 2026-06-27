@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from '@/lib/motion-lite';
 import { MapPin, Pencil, Link2, Loader2, CheckCircle2, X, Sparkles } from 'lucide-react';
 import { AddressAutocomplete } from './AddressAutocomplete';
 

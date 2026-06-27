@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from '@/lib/motion-lite';
 import { Star, Heart, MapPin, Home, Sun } from 'lucide-react';
 
 const LISTING_IMG = '/interior-kitchen-bar.webp';

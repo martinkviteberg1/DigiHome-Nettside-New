@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
+import { motion } from '@/lib/motion-lite';
 import { TrendingUp, Home, Zap, ArrowRight, Volume2, VolumeX, Play } from 'lucide-react';
 
 const models = [
