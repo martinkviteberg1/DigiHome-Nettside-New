@@ -31,13 +31,13 @@ export const metadata = {
     siteName: 'DigiHome',
     title: 'DigiHome | Smartere utleie i Bergen',
     description: site.defaultDescription,
-    images: [{ url: site.ogImage, width: 1200, height: 630, alt: 'DigiHome' }],
+    // og:image leveres av app/opengraph-image.js (dynamisk, per side).
   },
   twitter: {
     card: 'summary_large_image',
     title: 'DigiHome | Smartere utleie i Bergen',
     description: site.defaultDescription,
-    images: [site.ogImage],
+    // twitter:image leveres av app/twitter-image.js.
   },
   icons: {
     icon: [{ url: '/digihome-favicon.svg', type: 'image/svg+xml' }],

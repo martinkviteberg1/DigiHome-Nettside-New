@@ -360,6 +360,18 @@ backend:
 
 
 frontend:
+  - task: "SEO-pakke: dynamiske OG-/Twitter-bilder (next/og), egendefinert 404 (not-found), web-manifest, error/loading-grenser"
+    implemented: true
+    working: true
+    file: "lib/og.js, app/opengraph-image.js, app/twitter-image.js, app/{bli-utleier,forvaltning,tjenester}/opengraph-image.js, app/leiemarkedet/[by]/opengraph-image.js, app/utleie/[by]/opengraph-image.js, app/nyheter/[slug]/opengraph-image.js, app/not-found.js, app/error.js, app/loading.js, app/manifest.js, app/layout.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "main"
+        -comment: "Bygget verdensklasse SEO-pakke. (1) Delt OG-motor lib/og.js bruker ImageResponse + ekte merkefonter (.woff: PP Right Grotesk + ABC Diatype) i Warm Ink Editorial-stil. Root opengraph-image + twitter-image dekker hele siden; per-side-overstyringer for bli-utleier/forvaltning/tjenester + DYNAMISKE for leiemarkedet/[by] (RENT_CITIES), utleie/[by] (getLocation) og nyheter/[slug] (getPostBySlug). (2) app/not-found.js: merket 404 med Header/Footer, 4 nav-kort, korrekt HTTP 404. (3) app/manifest.js → /manifest.webmanifest. (4) error.js (client) + loading.js. (5) layout.js: fjernet statiske openGraph.images/twitter.images så fil-konvensjonen er eneste kilde. VERIFISERT via curl + screenshot: alle OG-ruter 200/image/png (~80-91KB, fonter rendres), manifest gyldig JSON, /head peker korrekt til /opengraph-image + /twitter-image + manifest, 404 returnerer HTTP 404. Ingen backend-endring. Frontend-testing IKKE kjørt (bruker tester selv)."
+
   - task: "Ytelse + navigasjon: 5 nye sider, LocationPage-redesign (datadrevet), bildeoptimalisering, leiemarkedet-sider"
     implemented: true
     working: "NA"
@@ -784,3 +796,6 @@ agent_communication:
 
     -agent: "testing"
     -message: "✅ ADMIN INTELLIGENCE EXTENSION TESTING COMPLETE (7/7 tests passed, 100% success). All NEW admin endpoints working perfectly: GET /api/admin/analytics returns webVitals (5 metrics with p75/rating/samples), leads.totals with NEW fields (won/lost/winRate/avgResponseHours/slaPct), leads.pipeline (5 stages), anomalies array. GET /api/admin/live returns activeNow/sessions30m with Cache-Control:no-store, auth working (401 without key). POST /api/admin/lead-status updates lead status correctly (contacted/qualified/won/lost), validates status (400 for invalid), returns 404 for unknown id, 401 without key. POST /api/admin/lead-score calls Emergent LLM successfully (1.9s response time), returns aiScore with score(0-100)/label/reasoning/nextAction. POST /api/admin/ai-insight generates Norwegian insights (770 chars) with enriched context (Web Vitals/anomalies/pipeline) in 4.2s. Regression tests passed: GET /api/admin/analytics still includes traffic+leads (not 500), GET /api/ returns 200 {ok:true}. Created backend_test_admin_intelligence.py for comprehensive testing. NO NEW LEADS CREATED (database kept clean). Base URL: https://hero-premiere-4.preview.emergentagent.com/api, Admin key: dh_admin_b3Kx92Qz7Lm4."
+
+    -agent: "main"
+    -message: "SEO-PAKKE (verdensklasse) IMPLEMENTERT — kun frontend/metadata, INGEN backend-endring, så testing-agent IKKE påkrevd. Bekreftet at app.digihome.no-plattformen (egen FastAPI+React-repo) var en feilmerging og er fullstendig ignorert; alt arbeid er isolert til denne Next.js-markedssiden. Bygget: (1) Dynamiske OG-/Twitter-bilder via next/og ImageResponse + ekte merkefonter (.woff PP Right Grotesk + ABC Diatype) i Warm Ink Editorial — delt motor lib/og.js. Root opengraph-image/twitter-image dekker hele siden; per-side-overstyringer for bli-utleier/forvaltning/tjenester + dynamiske for leiemarkedet/[by], utleie/[by], nyheter/[slug]. (2) Egendefinert 404 (app/not-found.js) med Header/Footer + korrekt HTTP 404. (3) app/manifest.js → /manifest.webmanifest. (4) error.js + loading.js. (5) layout.js ryddet (statiske OG-bilder fjernet). Verifisert: alle OG-ruter 200/image/png (~80-91KB), <head> peker korrekt, 404-status korrekt, manifest gyldig. Skjermbilder bekrefter merkevaretro design. Bruker tester frontend selv."
