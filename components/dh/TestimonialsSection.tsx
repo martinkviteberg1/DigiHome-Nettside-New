@@ -1,7 +1,6 @@
-'use client';
 
 import React from 'react';
-import { motion } from '@/lib/motion-lite';
+import Reveal from '@/components/dh/Reveal';
 import { Quote } from 'lucide-react';
 
 const testimonials = [
@@ -14,13 +13,13 @@ export default function TestimonialsSection() {
   return (
     <section className="py-24 sm:py-32 bg-white">
       <div className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16">
-        <motion.h2 initial={{ opacity: 0, y: 12 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: '-80px' }} transition={{ duration: 0.5 }}
+        <Reveal as="h2" initial={{ opacity: 0, y: 12 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: '-80px' }} transition={{ duration: 0.5 }}
           className="text-[34px] sm:text-[42px] font-bold tracking-[-0.03em] leading-[1.08] text-[#0a0a0a] mb-14" style={{ fontFamily: 'var(--font-heading)' }}>
           Hva våre eiere sier
-        </motion.h2>
+        </Reveal>
         <div className="grid sm:grid-cols-3 gap-6 lg:gap-8">
           {testimonials.map((t: any, i: number) => (
-            <motion.div key={t.name} initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: '-40px' }} transition={{ duration: 0.45, delay: i * 0.1 }}
+            <Reveal as="div" key={t.name} initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: '-40px' }} transition={{ duration: 0.45, delay: i * 0.1 }}
               className="bg-[#fafafa] rounded-2xl p-7 sm:p-8 hover:bg-[#f5f3f0] transition-colors duration-500 relative">
               <Quote className="w-8 h-8 text-[#e8dff0] mb-5" strokeWidth={1.5} />
               <blockquote className="text-[16px] text-[#333] leading-[1.7]">
@@ -33,7 +32,7 @@ export default function TestimonialsSection() {
                   <p className="text-[12px] text-[#aaa]">{t.role}</p>
                 </div>
               </div>
-            </motion.div>
+            </Reveal>
           ))}
         </div>
       </div>

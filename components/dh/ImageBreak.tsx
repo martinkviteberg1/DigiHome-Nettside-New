@@ -1,13 +1,12 @@
-'use client';
 
 import React from 'react';
-import { motion } from '@/lib/motion-lite';
+import Reveal from '@/components/dh/Reveal';
 
 export default function ImageBreak() {
   return (
     <section className="pb-24 sm:pb-28" style={{ backgroundColor: '#fdfcfb' }}>
       <div className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16">
-        <motion.div
+        <Reveal as="div"
           initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: '-80px' }} transition={{ duration: 0.6 }}
           className="rounded-[24px] overflow-hidden relative"
@@ -27,7 +26,7 @@ export default function ImageBreak() {
               Mer enn forvaltning.<br/>En partner for eiendommen din.
             </p>
           </div>
-        </motion.div>
+        </Reveal>
       </div>
     </section>
   );

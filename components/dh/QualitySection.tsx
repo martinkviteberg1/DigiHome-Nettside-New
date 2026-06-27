@@ -1,7 +1,6 @@
-'use client';
 
 import React from 'react';
-import { motion } from '@/lib/motion-lite';
+import Reveal from '@/components/dh/Reveal';
 import { Sparkles } from 'lucide-react';
 
 export default function QualitySection() {
@@ -11,7 +10,7 @@ export default function QualitySection() {
 
         <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
           {/* Left: Text */}
-          <motion.div
+          <Reveal as="div"
             initial={{ opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: '-60px' }}
@@ -35,7 +34,7 @@ export default function QualitySection() {
                 'Nøye vedlikeholdt mellom hver leietaker',
                 'Strategisk beliggenhet i Bergen',
               ].map((text: any, i: number) => (
-                <motion.div key={i}
+                <Reveal as="div" key={i}
                   initial={{ opacity: 0, x: -8 }}
                   whileInView={{ opacity: 1, x: 0 }}
                   viewport={{ once: true }}
@@ -44,13 +43,13 @@ export default function QualitySection() {
                 >
                   <div className="w-1.5 h-1.5 rounded-full bg-[#cf97fc] shrink-0" />
                   <span className="text-[14px] text-[#555]">{text}</span>
-                </motion.div>
+                </Reveal>
               ))}
             </div>
-          </motion.div>
+          </Reveal>
 
           {/* Right: Image bento grid */}
-          <motion.div
+          <Reveal as="div"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: '-60px' }}
@@ -74,7 +73,7 @@ export default function QualitySection() {
                 </div>
               </div>
             </div>
-          </motion.div>
+          </Reveal>
         </div>
 
       </div>

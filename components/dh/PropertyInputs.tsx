@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import axios from 'axios';
 import { motion, AnimatePresence } from '@/lib/motion-lite';
 import { MapPin, Pencil, Link2, Loader2, CheckCircle2, X, Sparkles } from 'lucide-react';
 import { AddressAutocomplete } from './AddressAutocomplete';
@@ -108,9 +107,9 @@ export function FinnLookupField({ value, onChange, onResult, testId = 'finn', co
     setLoading(true); setErr('');
     const t = setTimeout(async () => {
       try {
-        const r = await axios.get(`/api/finn-preview`, { params: { url: u } });
+        const r = await fetch(`/api/finn-preview?url=${encodeURIComponent(u)}`);
         if (myId !== reqId.current) return;
-        const d = r.data || {};
+        const d = (await r.json().catch(() => ({}))) || {};
         if (!d.ok) { setPreview(null); setErr('Fant ikke annonsen. Sjekk at lenken er riktig.'); }
         else { setPreview(d); setErr(''); onResult?.(d); }
       } catch (e) {

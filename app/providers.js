@@ -1,11 +1,13 @@
 'use client';
 
 // Client-only context wrapper. QueryClient is created once at module load.
+// Toaster (sonner) lazy-lastes så den ikke ligger i den kritiske bundelen.
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { MotionConfig } from '@/lib/motion-lite';
-import { Toaster } from 'sonner';
+import dynamic from 'next/dynamic';
+
+const Toaster = dynamic(() => import('sonner').then((m) => m.Toaster), { ssr: false });
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -17,27 +19,10 @@ const queryClient = new QueryClient({
 });
 
 export function Providers({ children }) {
-  // På mobil reduserer vi bevegelse (slår av transform-/layout-animasjoner) for
-  // lavere hovedtråd-arbeid og raskere oppfattet ytelse. Desktop beholder full
-  // eleganse. Respekterer også brukerens "reduser bevegelse"-innstilling.
-  const [reduce, setReduce] = useState(false);
-  useEffect(() => {
-    const mqMobile = window.matchMedia('(max-width: 767px)');
-    const mqReduce = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const update = () => setReduce(mqMobile.matches || mqReduce.matches);
-    update();
-    mqMobile.addEventListener('change', update);
-    mqReduce.addEventListener('change', update);
-    return () => { mqMobile.removeEventListener('change', update); mqReduce.removeEventListener('change', update); };
-  }, []);
-
   return (
     <QueryClientProvider client={queryClient}>
-      <MotionConfig reducedMotion={reduce ? 'always' : 'never'}>
-        {children}
-      </MotionConfig>
+      {children}
       <Toaster position="top-center" richColors closeButton />
     </QueryClientProvider>
   );
 }
-

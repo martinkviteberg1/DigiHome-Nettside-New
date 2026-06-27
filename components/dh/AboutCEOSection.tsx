@@ -1,7 +1,6 @@
-'use client';
 
 import React from 'react';
-import { motion } from '@/lib/motion-lite';
+import Reveal from '@/components/dh/Reveal';
 
 export default function AboutCEOSection() {
   return (
@@ -12,7 +11,7 @@ export default function AboutCEOSection() {
 
           {/* Left: Quote + attribution */}
           <div className="order-2 lg:order-1">
-            <motion.p
+            <Reveal as="p"
               initial={{ opacity: 0, y: 10 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: '-60px' }}
@@ -20,9 +19,9 @@ export default function AboutCEOSection() {
               className="text-[11px] font-semibold text-[#cf97fc] uppercase tracking-[0.12em] mb-5"
             >
               Om DigiHome
-            </motion.p>
+            </Reveal>
 
-            <motion.h2
+            <Reveal as="h2"
               initial={{ opacity: 0, y: 12 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: '-80px' }}
@@ -31,9 +30,9 @@ export default function AboutCEOSection() {
               style={{ fontFamily: 'var(--font-heading)' }}
             >
               Mennesker og teknologi, h&aring;nd i h&aring;nd
-            </motion.h2>
+            </Reveal>
 
-            <motion.blockquote
+            <Reveal as="blockquote"
               initial={{ opacity: 0, y: 10 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: '-60px' }}
@@ -46,10 +45,10 @@ export default function AboutCEOSection() {
               <p className="text-[16px] sm:text-[17px] text-[#555] leading-[1.85] italic mt-5">
                 &laquo;Men det er menneskene v&aring;re som gj&oslash;r forskjellen. Et dedikert team som kjenner Bergen og eiendommen din, f&oslash;lger opp leietakere, og behandler hjemmet ditt som sitt eget.&raquo;
               </p>
-            </motion.blockquote>
+            </Reveal>
 
             {/* Author */}
-            <motion.div
+            <Reveal as="div"
               initial={{ opacity: 0, y: 8 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
@@ -63,11 +62,11 @@ export default function AboutCEOSection() {
                   <p className="text-[13px] text-[#999] mt-0.5">Daglig leder &amp; eiendomsmegler, DigiHome</p>
                 </div>
               </div>
-            </motion.div>
+            </Reveal>
           </div>
 
           {/* Right: Portrait — native portrait ratio */}
-          <motion.div
+          <Reveal as="div"
             initial={{ opacity: 0, scale: 0.97 }}
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true, margin: '-80px' }}
@@ -90,7 +89,7 @@ export default function AboutCEOSection() {
                 />
               </div>
             </div>
-          </motion.div>
+          </Reveal>
 
         </div>
       </div>

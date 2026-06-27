@@ -2,7 +2,6 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from '@/lib/motion-lite';
-import axios from 'axios';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -168,12 +167,19 @@ export default function BliUtleierPage() {
           ...extrasSummary,
         ].filter(Boolean).join('. '),
       };
-      const res = await axios.post(`${BACKEND_URL}/api/leads`, payload);
-      if (res.data.success || res.data.ok) {
+      const res = await fetch(`${BACKEND_URL}/api/leads`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && (data.success || data.ok)) {
         setSubmitted(true);
         track('lead_submit', { form: 'utleier', leadType: 'huseier', properties: units.length });
-        try { trackLead({ formId: 'utleier', source: 'bli-utleier', leadId: res.data?.data?.id }); } catch (e) {}
+        try { trackLead({ formId: 'utleier', source: 'bli-utleier', leadId: data?.data?.id }); } catch (e) {}
         toast.success('Takk! Vi tar kontakt snart.');
+      } else {
+        throw new Error('lead failed');
       }
     } catch { toast.error('Noe gikk galt. Prøv igjen.'); }
     finally { setLoading(false); }

@@ -1,7 +1,6 @@
-'use client';
 
 import React from 'react';
-import { motion } from '@/lib/motion-lite';
+import Reveal from '@/components/dh/Reveal';
 import { MapPin } from 'lucide-react';
 
 const properties = [
@@ -14,13 +13,13 @@ export default function ShowcaseSection() {
   return (
     <section className="py-20 sm:py-24 bg-white">
       <div className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16">
-        <motion.div initial={{ opacity: 0, y: 12 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: '-80px' }} transition={{ duration: 0.5 }}
+        <Reveal as="div" initial={{ opacity: 0, y: 12 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: '-80px' }} transition={{ duration: 0.5 }}
           className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-14">
           <h2 className="text-[34px] sm:text-[42px] font-bold tracking-[-0.03em] leading-[1.08] text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>Noen av våre eiendommer</h2>
-        </motion.div>
+        </Reveal>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-7">
           {properties.map((p: any, i: number) => (
-            <motion.div key={p.location} initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: '-40px' }} transition={{ duration: 0.45, delay: i * 0.1 }}
+            <Reveal as="div" key={p.location} initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: '-40px' }} transition={{ duration: 0.45, delay: i * 0.1 }}
               className="group cursor-pointer">
               <div className="rounded-2xl overflow-hidden mb-4 relative">
                 <img src={p.image} alt={p.location} className="w-full aspect-[5/4] object-cover group-hover:scale-[1.03] transition-transform duration-700 ease-out" loading="lazy" />
@@ -33,7 +32,7 @@ export default function ShowcaseSection() {
                 </div>
                 <div className="text-right shrink-0 ml-4"><p className="text-[16px] font-bold text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>{p.income}</p><p className="text-[11px] text-[#737373]">kr/mnd</p></div>
               </div>
-            </motion.div>
+            </Reveal>
           ))}
         </div>
       </div>

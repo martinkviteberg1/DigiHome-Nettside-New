@@ -1,7 +1,6 @@
-'use client';
 
 import React from 'react';
-import { motion } from '@/lib/motion-lite';
+import Reveal from '@/components/dh/Reveal';
 import { Zap, BarChart3, Shield, Smartphone } from 'lucide-react';
 
 const steps = [
@@ -38,7 +37,7 @@ export default function HowItWorksSection() {
 
         {/* Header */}
         <div className="text-center mb-16">
-          <motion.p
+          <Reveal as="p"
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
             viewport={{ once: true }}
@@ -47,8 +46,8 @@ export default function HowItWorksSection() {
             style={{ color: '#AE68E4' }}
           >
             Slik fungerer det
-          </motion.p>
-          <motion.h2
+          </Reveal>
+          <Reveal as="h2"
             initial={{ opacity: 0, y: 12 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: '-80px' }}
@@ -57,8 +56,8 @@ export default function HowItWorksSection() {
             style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
           >
             Fra henvendelse til utbetaling
-          </motion.h2>
-          <motion.p
+          </Reveal>
+          <Reveal as="p"
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
             viewport={{ once: true }}
@@ -66,7 +65,7 @@ export default function HowItWorksSection() {
             className="text-[16px] text-[#888] max-w-[440px] mx-auto leading-relaxed"
           >
             Fire steg. Null stress. Vi håndterer alt — du nyter inntekten.
-          </motion.p>
+          </Reveal>
         </div>
 
         {/* Steps — clean cards */}
@@ -74,7 +73,7 @@ export default function HowItWorksSection() {
           {steps.map((step: any, i: number) => {
             const Icon = step.icon;
             return (
-              <motion.div
+              <Reveal as="div"
                 key={step.num}
                 initial={{ opacity: 0, y: 16 }}
                 whileInView={{ opacity: 1, y: 0 }}
@@ -101,7 +100,7 @@ export default function HowItWorksSection() {
                 <p className="text-[14px] text-[#888] leading-[1.65]">
                   {step.desc}
                 </p>
-              </motion.div>
+              </Reveal>
             );
           })}
         </div>

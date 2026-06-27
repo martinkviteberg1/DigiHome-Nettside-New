@@ -1,7 +1,6 @@
-'use client';
 
 import React from 'react';
-import { motion } from '@/lib/motion-lite';
+import Reveal from '@/components/dh/Reveal';
 
 const partners = [
   {
@@ -74,7 +73,7 @@ export default function PartnersSection() {
   return (
     <section className="py-16 sm:py-20 bg-white border-t border-[#f0f0f0]" data-testid="partners-section">
       <div className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16">
-        <motion.p
+        <Reveal as="p"
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
@@ -82,9 +81,9 @@ export default function PartnersSection() {
           className="text-center text-[12px] font-semibold text-[#737373] uppercase tracking-[0.1em] mb-10"
         >
           Samarbeidspartnere
-        </motion.p>
+        </Reveal>
 
-        <motion.div
+        <Reveal as="div"
           initial={{ opacity: 0, y: 10 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
@@ -100,7 +99,7 @@ export default function PartnersSection() {
               {p.logo}
             </div>
           ))}
-        </motion.div>
+        </Reveal>
       </div>
     </section>
   );
