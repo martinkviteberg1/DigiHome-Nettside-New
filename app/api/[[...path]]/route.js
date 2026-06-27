@@ -374,6 +374,12 @@ function sanitizeAttribution(a) {
     country: s(a.country, 60),
     visitorId: s(a.visitorId, 60),
     sessionId: s(a.sessionId, 60),
+    // Rå klikk-ID-er (samtykke-gated på klienten) → for offline-konvertering til Google/Meta Ads.
+    gclid: s(a.gclid, 200) || undefined,
+    gbraid: s(a.gbraid, 200) || undefined,
+    wbraid: s(a.wbraid, 200) || undefined,
+    fbclid: s(a.fbclid, 200) || undefined,
+    msclkid: s(a.msclkid, 200) || undefined,
   };
 }
 

@@ -16,6 +16,7 @@ import {
 import { AddressAutocomplete } from './AddressAutocomplete';
 import { FinnLookupField, AddressField, finnToFields } from './PropertyInputs';
 import { track, getLeadAttribution } from '@/lib/analytics';
+import { trackLead, trackLeadStart, getClickIds } from '@/lib/gtag';
 import {
   User, Mail, ArrowRight, ArrowLeft, CheckCircle2, Loader2,
   Home, Building2, Warehouse, LayoutGrid, BedDouble, TrendingUp, Shield, Key, Zap, Calendar as CalendarIcon,
@@ -80,7 +81,7 @@ export default function BliUtleierPage() {
   }, []);
 
   // Analyse: marker at skjemaet ble startet (én gang) + spor hvert steg (drop-off).
-  useEffect(() => { track('form_start', { form: 'utleier' }); }, []);
+  useEffect(() => { track('form_start', { form: 'utleier' }); try { trackLeadStart('utleier'); } catch (e) {} }, []);
   useEffect(() => {
     track('form_step', { form: 'utleier', step: step + 1, label: STEPS[step]?.title || `Steg ${step}` });
   }, [step]);
@@ -160,7 +161,7 @@ export default function BliUtleierPage() {
         units,
         num_properties: units.length,
         finn_url: finnUrl || undefined,
-        attribution: getLeadAttribution(),
+        attribution: { ...getLeadAttribution(), ...getClickIds() },
         notes: [
           formData.rental_model ? `Ønsket modell: ${formData.rental_model}` : '',
           formData.notes,
@@ -171,6 +172,7 @@ export default function BliUtleierPage() {
       if (res.data.success || res.data.ok) {
         setSubmitted(true);
         track('lead_submit', { form: 'utleier', leadType: 'huseier', properties: units.length });
+        try { trackLead({ formId: 'utleier', source: 'bli-utleier', leadId: res.data?.data?.id }); } catch (e) {}
         toast.success('Takk! Vi tar kontakt snart.');
       }
     } catch { toast.error('Noe gikk galt. Prøv igjen.'); }

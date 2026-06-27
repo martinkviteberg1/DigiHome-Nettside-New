@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { MapPin, ArrowRight, Check, Loader2, Phone } from 'lucide-react';
+import { getLeadAttribution } from '@/lib/analytics';
+import { trackLead, trackLeadStart, getClickIds } from '@/lib/gtag';
 
 /*
   Lys variant av to-stegs lead-skjemaet (forside /2).
@@ -98,6 +100,7 @@ export function HeroLeadFormLight() {
       return;
     }
     setError('');
+    try { trackLeadStart('hero-light'); } catch (e) {}
     setStep('contact');
   };
 
@@ -120,9 +123,13 @@ export function HeroLeadFormLight() {
           email: isEmail ? c : '',
           phone: isEmail ? '' : c,
           source: 'hero-autopilot-light',
+          attribution: { ...getLeadAttribution(), ...getClickIds() },
         }),
       });
       if (!res.ok) throw new Error('api');
+      let data = {};
+      try { data = await res.json(); } catch (e) {}
+      try { trackLead({ formId: 'hero-light', source: 'hero-autopilot-light', leadId: data?.data?.id }); } catch (e) {}
       setStep('sent');
     } catch (err) {
       setError('Noe gikk galt. Prøv igjen — eller ring oss på 909 58 313.');

@@ -7,6 +7,7 @@
 import { useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { track } from '@/lib/analytics';
+import { trackPageview } from '@/lib/gtag';
 
 let vitalsBound = false;
 
@@ -17,6 +18,8 @@ export default function SiteAnalytics() {
     if (!pathname) return;
     if (pathname.startsWith('/admin')) return;
     track('pageview');
+    // GA4 SPA-sidevisning (kun ved markedsføringssamtykke; no-op uten GA4/samtykke).
+    trackPageview(pathname);
   }, [pathname]);
 
   // Core Web Vitals — registreres kun én gang, og ikke på admin-ruter.

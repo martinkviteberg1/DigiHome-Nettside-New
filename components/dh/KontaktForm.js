@@ -1,12 +1,21 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Loader2, CheckCircle2, Send } from 'lucide-react';
+import { getLeadAttribution } from '@/lib/analytics';
+import { trackLead, trackLeadStart, getClickIds } from '@/lib/gtag';
 
 export default function KontaktForm() {
   const [form, setForm] = useState({ name: '', email: '', phone: '', message: '' });
   const [status, setStatus] = useState('idle'); // idle | sending | done | error
+  const startedRef = useRef(false);
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+
+  const handleStart = () => {
+    if (startedRef.current) return;
+    startedRef.current = true;
+    try { trackLeadStart('kontakt'); } catch (e) {}
+  };
 
   const submit = async (e) => {
     e.preventDefault();
@@ -18,9 +27,15 @@ export default function KontaktForm() {
         body: JSON.stringify({
           name: form.name, email: form.email, phone: form.phone,
           notes: form.message, lead_type: 'kontakt', source: 'kontakt',
+          attribution: { ...getLeadAttribution(), ...getClickIds() },
         }),
       });
-      if (res.ok) { setStatus('done'); setForm({ name: '', email: '', phone: '', message: '' }); }
+      if (res.ok) {
+        let data = {};
+        try { data = await res.json(); } catch (e) {}
+        try { trackLead({ formId: 'kontakt', source: 'kontakt', leadId: data?.data?.id }); } catch (e) {}
+        setStatus('done'); setForm({ name: '', email: '', phone: '', message: '' });
+      }
       else setStatus('error');
     } catch (e) { setStatus('error'); }
   };
@@ -36,7 +51,7 @@ export default function KontaktForm() {
   }
 
   return (
-    <form onSubmit={submit} className="bg-white rounded-3xl p-7 sm:p-9 shadow-[0_18px_60px_-26px_rgba(0,0,0,0.18)] space-y-4">
+    <form onSubmit={submit} onFocus={handleStart} className="bg-white rounded-3xl p-7 sm:p-9 shadow-[0_18px_60px_-26px_rgba(0,0,0,0.18)] space-y-4">
       <div className="grid sm:grid-cols-2 gap-4">
         <div>
           <label className="block text-[12.5px] font-semibold text-[#666] mb-1.5">Navn *</label>

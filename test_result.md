@@ -105,6 +105,18 @@
 user_problem_statement: "Bygg DigiHome markedsside (Next.js App Router) etter flyttepakken — Warm Ink Editorial design, norsk bokmål, full SEO, DB-drevet blogg + admin + programmatisk SEO. Fase 1: verdensklasse forside + lead-API."
 
 backend:
+  - task: "Lead-attribusjon: lagre rå klikk-ID-er (gclid/gbraid/wbraid/fbclid/msclkid) på lead for offline-konvertering"
+    implemented: true
+    working: "NA"
+    file: "app/api/[[...path]]/route.js (sanitizeAttribution)"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "ENDRING: sanitizeAttribution() utvidet til å bevare 5 nye felt: gclid, gbraid, wbraid, fbclid, msclkid (hver maks 200 tegn, undefined hvis tom). Disse kommer fra klient via body.attribution (klienten merger getLeadAttribution() + getClickIds()). TEST KUN POST /api/leads + GET-regresjon, med OPPLAGT FALSKE data (ikke ekte personer). 1) POST /api/leads med body {name:'QA Test Bot', email:'qa-bot@example.test', phone:'+47 00000000', address:'Testveien 1', property_type:'leilighet', lead_type:'huseier', source:'qa-attr-test', attribution:{source:'google', medium:'cpc', campaign:'qa', gclid:'QA_GCLID_123', gbraid:'QA_GBRAID_456', utm_term:'x'}} → forvent 201 {success:true, lead:{...}}. VERIFISER at lead.attribution inneholder gclid:'QA_GCLID_123' og gbraid:'QA_GBRAID_456' (og source/medium/campaign bevart). 2) POST /api/leads med attribution UTEN klikk-ID-er {source:'direct'} → 201, lead.attribution.gclid skal være undefined/utelatt (ikke krasje). 3) POST /api/leads tom body {} → 400 {success:false}. 4) GET /api/leads?key=dh_admin_b3Kx92Qz7Lm4 → 200 array (nyeste først), uten _id. REGRESJON: 5) GET /api/ → 200 {ok:true}. Merk: leads videresendes til test-CRM (preview) — det er forventet; bruk minimalt antall (2 inserts holder). Rapporter om gclid/gbraid faktisk persisteres i lead.attribution."
+
   - task: "Admin Intelligence-utvidelse: Web Vitals, anomali-deteksjon, live-besøkende, lead-pipeline (status/SLA), AI lead-scoring"
     implemented: true
     working: true
@@ -360,6 +372,18 @@ backend:
 
 
 frontend:
+  - task: "Google Ads-anskaffelseslag: GA4 + Consent Mode v2 + GDPR-banner + konverteringshendelser (lead_start/generate_lead) + /lp-kampanjesider"
+    implemented: true
+    working: true
+    file: "lib/gtag.js, components/ConsentBanner.js, app/layout.js, components/SiteAnalytics.js, components/dh/HeroSection.tsx, components/dh/BliUtleierPage.tsx, components/dh/KontaktForm.js, components/home/HeroLeadFormLight.js, lib/landing.js, components/lp/CampaignLanding.js, app/lp/[slug]/page.js, .env"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "main"
+        -comment: "Portet Google Ads-laget til markedssiden (digihome.no = denne Next.js-siden). (1) GA4 (G-NB74W4273L) lastes via next/script med Consent Mode v2 default=denied (EØS). (2) Diskré GDPR-banner (Godta alle/Kun nødvendige) oppdaterer Consent Mode + lagrer i localStorage. (3) Konvertering: lead_start (hero + alle skjema-starter) + generate_lead (innsendt lead) + Google Ads conversion (no-op til AW-ID settes i .env). (4) Rå klikk-ID-er (gclid/gbraid/...) fanges samtykke-gated og festes på lead.attribution. (5) Tre /lp-kampanjesider (forvaltning/inntekt/10pluss2): noindex, message-match, inline lead-skjema m/ adresse-autofullføring, source lp-{slug}, mobil sticky CTA, FAQ. VERIFISERT via Playwright på preview: gtag lastet, banner vises, 'Godta alle' → consent+gclid fanget (gclid=TESTCLICK123 lagret), lead_start fyrer i dataLayer, alle LP 200 + noindex. Env: NEXT_PUBLIC_GA4_ID satt; NEXT_PUBLIC_GOOGLE_ADS_ID/_LEAD_LABEL tomme (no-op). Frontend testes av bruker selv."
+
   - task: "SEO-pakke: dynamiske OG-/Twitter-bilder (next/og), egendefinert 404 (not-found), web-manifest, error/loading-grenser"
     implemented: true
     working: true
@@ -575,14 +599,14 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Admin Intelligence-utvidelse: Web Vitals, anomali-deteksjon, live-besøkende, lead-pipeline (status/SLA), AI lead-scoring"
+    - "Lead-attribusjon: lagre rå klikk-ID-er (gclid/gbraid/wbraid/fbclid/msclkid) på lead for offline-konvertering"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
 
 agent_communication:
     -agent: "main"
-    -message: "NY backend-runde å teste: ADMIN INTELLIGENCE-UTVIDELSE. Base: https://hero-premiere-4.preview.emergentagent.com/api. Admin-nøkkel: dh_admin_b3Kx92Qz7Lm4. Test KUN endepunktene i task 'Admin Intelligence-utvidelse' (øverst i backend). IKKE opprett nye leads. For /api/admin/lead-status og /api/admin/lead-score: hent en eksisterende lead-id først (GET /api/leads?key=dh_admin_b3Kx92Qz7Lm4 returnerer liste), bruk den. Etter lead-status-test, sett gjerne status tilbake. Verifiser: (1) GET /api/admin/analytics?key=...&days=30 → 200 med nøklene traffic, leads, webVitals (metrics[] med p75/rating/p75Mobile/p75Desktop), anomalies[]. leads.totals har won/lost/winRate/avgResponseHours/slaPct, og leads.pipeline[] = [Ny,Kontaktet,Kvalifisert,Vunnet,Tapt]. (2) GET /api/admin/live?key=... → 200 {activeNow,sessions30m,topPages[],feed[]}; uten key → 401. (3) POST /api/admin/lead-status {id,status} — gyldig status oppdaterer (200 {ok:true}), ugyldig status → 400, ukjent id → 404, uten key → 401. (4) POST /api/admin/lead-score {id} → 200 {ok:true,aiScore:{score,label,reasoning,nextAction}} (timeout >=30s pga LLM; 502 fra LLM er akseptabelt, men ikke 500/auth-feil). (5) POST /api/admin/ai-insight {mode:'summary',days:30} → 200 (uendret). Rapporter pass/fail per item med statuskoder + nøkkelverdier (f.eks. webVitals.metrics[0].p75, leads.totals.winRate, activeNow)."
+    -message: "NY backend-endring å teste (KUN denne): Lead-attribusjon med rå klikk-ID-er. Base: https://hero-premiere-4.preview.emergentagent.com/api. sanitizeAttribution() bevarer nå gclid/gbraid/wbraid/fbclid/msclkid. Test POST /api/leads (med OPPLAGT FALSKE data, minimalt antall — leads videresendes til test-CRM, det er forventet): (1) POST {name:'QA Test Bot', email:'qa-bot@example.test', phone:'+47 00000000', address:'Testveien 1', property_type:'leilighet', lead_type:'huseier', source:'qa-attr-test', attribution:{source:'google',medium:'cpc',campaign:'qa',gclid:'QA_GCLID_123',gbraid:'QA_GBRAID_456',utm_term:'x'}} → 201, og lead.attribution MÅ inneholde gclid:'QA_GCLID_123' + gbraid:'QA_GBRAID_456' + source/medium/campaign. (2) POST med attribution:{source:'direct'} (ingen klikk-ID) → 201, lead.attribution.gclid utelatt/undefined (ingen krasj). (3) POST tom body {} → 400. (4) GET /api/leads?key=dh_admin_b3Kx92Qz7Lm4 → 200 array uten _id. (5) Regresjon: GET /api/ → 200 {ok:true}. IKKE test andre endepunkter."
     -agent: "main"
     -message: "NY backend-endring å teste: Pitch-deck passord-gate (GET/POST /api/deck/auth). Test KUN dette + ikke opprett leads/tenants (hold DB ren). 1) GET /api/deck/auth uten cookie → 200 {authed:false}. 2) POST /api/deck/auth med {password:'feil'} → 401 {ok:false, error:'Feil passord'}. 3) POST med {password:''} (tom) → 401. 4) POST med {password:'DigiHome2026##'} → 200 {ok:true} OG Set-Cookie-header med 'dh_deck' (httpOnly). 5) Bruk den returnerte cookien i en ny GET /api/deck/auth → 200 {authed:true}. 6) (valgfritt) GET /api/deck/auth med en feil/tilfeldig dh_deck-cookie → 200 {authed:false}. Bekreft at endepunktet aldri returnerer 500. Ikke test andre endepunkter (allerede verifisert) og IKKE POST til /api/leads eller /api/tenants."
     -agent: "testing"

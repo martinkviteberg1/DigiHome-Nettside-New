@@ -6,6 +6,7 @@ import { ArrowRight, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AddressAutocomplete } from './AddressAutocomplete';
 import { track } from '@/lib/analytics';
+import { trackLeadStart } from '@/lib/gtag';
 
 const T = {
   heading: { no: 'Smartere utleie. Høyere inntekt.', en: 'Smarter rentals. Higher income.' },
@@ -30,6 +31,7 @@ export default function HeroSection() {
   const handleSubmit = (e: any) => {
     e.preventDefault();
     try { track('cta_click', { cta: 'hero_vurdering', hasAddress: !!address }); } catch (err) {}
+    try { trackLeadStart('hero'); } catch (err) {}
     const q = address ? `?address=${encodeURIComponent(address)}` : '';
     router.push(`/bli-utleier${q}`);
   };
