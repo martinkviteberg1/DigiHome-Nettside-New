@@ -1,11 +1,13 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Loader2, RefreshCw, Send, CheckCircle2, AlertCircle, Trash2,
   LayoutDashboard, Activity, BarChart3, Users, Sparkles, Database,
   Radio, Gauge, TrendingUp, TrendingDown, Download, Megaphone,
+  Search, X, ArrowUp, ArrowDown, FileSpreadsheet, ChevronRight,
 } from 'lucide-react';
+import LeadDrawer from '@/components/admin/LeadDrawer';
 import OverviewTab from '@/components/admin/OverviewTab';
 import TrafficTab from '@/components/admin/TrafficTab';
 import IntelTab from '@/components/admin/IntelTab';
@@ -46,6 +48,13 @@ export default function InnsiktDashboard({ apiKey }) {
   const [scores, setScores] = useState({});
   const [scoringId, setScoringId] = useState('');
   const [statusBusy, setStatusBusy] = useState('');
+  const [drawerLead, setDrawerLead] = useState(null);
+  const [query, setQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [channelFilter, setChannelFilter] = useState('all');
+  const [sortBy, setSortBy] = useState('createdAt');
+  const [sortDir, setSortDir] = useState('desc');
+  const [exporting, setExporting] = useState(false);
 
   const load = useCallback(async (d) => {
     const dd = d || days;
@@ -105,6 +114,8 @@ export default function InnsiktDashboard({ apiKey }) {
         body: JSON.stringify({ id, status, type: type || 'lead', value }),
       });
       await load();
+      // Trigg ny henting i drawer (ny objekt-referanse → useEffect kjører på nytt)
+      setDrawerLead((dl) => (dl && dl.id === id ? { ...dl } : dl));
     } catch (e) {} finally { setStatusBusy(''); }
   };
 
@@ -113,6 +124,16 @@ export default function InnsiktDashboard({ apiKey }) {
     const a = document.createElement('a');
     a.href = url; a.rel = 'noopener';
     document.body.appendChild(a); a.click(); a.remove();
+  };
+
+  const exportCsv = () => {
+    setExporting(true);
+    const type = leadSub === 'tenants' ? 'tenant' : 'lead';
+    const url = `/api/admin/leads/export?type=${type}&key=${encodeURIComponent(apiKey)}`;
+    const a = document.createElement('a');
+    a.href = url; a.rel = 'noopener';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => setExporting(false), 1200);
   };
 
   const doScore = async (id, type) => {
@@ -131,6 +152,45 @@ export default function InnsiktDashboard({ apiKey }) {
   const rows = leadSub === 'leads' ? data.leads : data.tenants;
   const pendingCount = [...data.leads, ...data.tenants].filter((r) => r.forwarded !== true).length;
   const tabPending = rows.filter((r) => r.forwarded !== true).length;
+
+  const channelOf = (r) => (r.attribution && r.attribution.channel) || r.source || '—';
+
+  const channelOptions = useMemo(() => {
+    const set = new Set();
+    rows.forEach((r) => set.add(channelOf(r)));
+    return Array.from(set).sort();
+  }, [rows]);
+
+  const filteredRows = useMemo(() => {
+    let r = [...rows];
+    const q = query.trim().toLowerCase();
+    if (q) {
+      r = r.filter((x) => [x.name, x.email, x.phone, x.address, x.preferred_area, x.source, x.matrikkel_number, x.registry_owner_name]
+        .filter(Boolean).join(' ').toLowerCase().includes(q));
+    }
+    if (statusFilter !== 'all') r = r.filter((x) => (x.status || 'new') === statusFilter);
+    if (channelFilter !== 'all') r = r.filter((x) => channelOf(x) === channelFilter);
+    r.sort((a, b) => {
+      let av, bv;
+      if (sortBy === 'name') { av = (a.name || '').toLowerCase(); bv = (b.name || '').toLowerCase(); }
+      else if (sortBy === 'status') { av = a.status || 'new'; bv = b.status || 'new'; }
+      else { av = a.createdAt || ''; bv = b.createdAt || ''; }
+      if (av < bv) return sortDir === 'asc' ? -1 : 1;
+      if (av > bv) return sortDir === 'asc' ? 1 : -1;
+      return 0;
+    });
+    return r;
+  }, [rows, query, statusFilter, channelFilter, sortBy, sortDir]);
+
+  const toggleSort = (key) => {
+    if (sortBy === key) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    else { setSortBy(key); setSortDir(key === 'name' ? 'asc' : 'desc'); }
+  };
+  const SortIcon = ({ col }) => {
+    if (sortBy !== col) return <ArrowUp className="w-3 h-3 text-[#ddd]" />;
+    return sortDir === 'asc' ? <ArrowUp className="w-3 h-3 text-[#0a0a0a]" /> : <ArrowDown className="w-3 h-3 text-[#0a0a0a]" />;
+  };
+  const filtersActive = query.trim() || statusFilter !== 'all' || channelFilter !== 'all';
 
   return (
     <div>
@@ -195,13 +255,33 @@ export default function InnsiktDashboard({ apiKey }) {
                 <button key={t.k} onClick={() => setLeadSub(t.k)} className={`px-4 py-2 rounded-full text-[13px] font-semibold transition-colors ${leadSub === t.k ? 'bg-[#cf97fc] text-white' : 'bg-white text-[#666] shadow-[0_2px_10px_rgba(0,0,0,0.03)]'}`}>{t.l}</button>
               ))}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <button onClick={exportCsv} disabled={exporting || rows.length === 0} title="Eksporter alle leads til CSV (Excel, æøå)" className="h-9 px-4 rounded-full bg-white text-[#0a0a0a] text-[12px] font-semibold flex items-center gap-2 shadow-[0_2px_10px_rgba(0,0,0,0.03)] disabled:opacity-40 hover:bg-[#f5f5f5] active:scale-[0.97] transition-all">{exporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileSpreadsheet className="w-3.5 h-3.5" />} CSV</button>
               {leadSub === 'leads' && (
                 <button onClick={downloadAdsFeed} title="Last ned Google Ads offline-konverteringsfeed (vunne leads med gclid)" className="h-9 px-4 rounded-full bg-white text-[#8b5cf6] text-[12px] font-semibold flex items-center gap-2 shadow-[0_2px_10px_rgba(0,0,0,0.03)] hover:bg-[#f4f0fb] active:scale-[0.97] transition-all"><Download className="w-3.5 h-3.5" /> Google Ads-feed</button>
               )}
               <button onClick={doForward} disabled={forwarding || pendingCount === 0} className="h-9 px-4 rounded-full bg-[#0a0a0a] text-white text-[12px] font-semibold flex items-center gap-2 disabled:opacity-40 active:scale-[0.97] transition-transform">{forwarding ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />} Re-send {pendingCount > 0 ? `(${pendingCount})` : ''}</button>
               <button onClick={() => doDelete({ scope: 'pending' }, `Slette ${tabPending} ventende ${leadSub === 'leads' ? 'utleier' : 'leietaker'}-leads? Kan ikke angres.`)} disabled={deleting || tabPending === 0} className="h-9 px-4 rounded-full bg-white text-red-600 text-[12px] font-semibold flex items-center gap-2 shadow-[0_2px_10px_rgba(0,0,0,0.03)] disabled:opacity-40 hover:bg-red-50 active:scale-[0.97] transition-all">{deleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />} Slett ventende {tabPending > 0 ? `(${tabPending})` : ''}</button>
             </div>
+          </div>
+
+          {/* Søk + filtre */}
+          <div className="flex flex-wrap items-center gap-2 mb-4">
+            <div className="relative flex-1 min-w-[220px] max-w-[380px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#bbb]" />
+              <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Søk navn, e-post, telefon, adresse …" className="w-full h-9 pl-9 pr-8 rounded-full bg-white text-[13px] text-[#222] shadow-[0_2px_10px_rgba(0,0,0,0.03)] outline-none focus:ring-2 focus:ring-[#cf97fc]/40 placeholder:text-[#bbb]" />
+              {query && <button onClick={() => setQuery('')} aria-label="Tøm søk" className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#bbb] hover:text-[#666]"><X className="w-4 h-4" /></button>}
+            </div>
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="h-9 rounded-full bg-white text-[12.5px] font-semibold text-[#555] px-3.5 shadow-[0_2px_10px_rgba(0,0,0,0.03)] outline-none focus:ring-2 focus:ring-[#cf97fc]/40 cursor-pointer">
+              <option value="all">Alle statuser</option>
+              {STATUS_OPTS.map((o) => <option key={o.v} value={o.v}>{o.l}</option>)}
+            </select>
+            <select value={channelFilter} onChange={(e) => setChannelFilter(e.target.value)} className="h-9 rounded-full bg-white text-[12.5px] font-semibold text-[#555] px-3.5 shadow-[0_2px_10px_rgba(0,0,0,0.03)] outline-none focus:ring-2 focus:ring-[#cf97fc]/40 cursor-pointer">
+              <option value="all">Alle kilder</option>
+              {channelOptions.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+            {filtersActive && <button onClick={() => { setQuery(''); setStatusFilter('all'); setChannelFilter('all'); }} className="h-9 px-3 rounded-full text-[12px] font-semibold text-[#888] hover:text-[#0a0a0a] hover:bg-white transition-colors">Nullstill</button>}
+            <span className="text-[12px] text-[#aaa] ml-auto whitespace-nowrap">{filteredRows.length} av {rows.length}</span>
           </div>
 
           {leadSub === 'leads' && analytics && analytics.leads && analytics.leads.totals && (
@@ -225,24 +305,25 @@ export default function InnsiktDashboard({ apiKey }) {
             <div className="overflow-x-auto">
               <table className="w-full text-left">
                 <thead><tr className="border-b border-[#f0f0f0] text-[11px] uppercase tracking-[0.06em] text-[#aaa]">
-                  <th className="py-3 px-4 font-semibold">Navn</th>
+                  <th className="py-3 px-4 font-semibold"><button onClick={() => toggleSort('name')} className="inline-flex items-center gap-1 uppercase tracking-[0.06em] hover:text-[#0a0a0a] transition-colors">Navn <SortIcon col="name" /></button></th>
                   <th className="py-3 px-4 font-semibold">Kontakt</th>
                   <th className="py-3 px-4 font-semibold">{leadSub === 'leads' ? 'Eiendom' : 'Ønsker'}</th>
                   <th className="py-3 px-4 font-semibold">Kilde</th>
-                  <th className="py-3 px-4 font-semibold">Status</th>
-                  <th className="py-3 px-4 font-semibold">Mottatt</th>
+                  <th className="py-3 px-4 font-semibold"><button onClick={() => toggleSort('status')} className="inline-flex items-center gap-1 uppercase tracking-[0.06em] hover:text-[#0a0a0a] transition-colors">Status <SortIcon col="status" /></button></th>
+                  <th className="py-3 px-4 font-semibold"><button onClick={() => toggleSort('createdAt')} className="inline-flex items-center gap-1 uppercase tracking-[0.06em] hover:text-[#0a0a0a] transition-colors">Mottatt <SortIcon col="createdAt" /></button></th>
                   <th className="py-3 px-4 font-semibold">Sendt</th>
                   <th className="py-3 px-4 font-semibold text-right">Handling</th>
                 </tr></thead>
                 <tbody>
-                  {rows.length === 0 && (<tr><td colSpan={8} className="py-10 text-center text-[14px] text-[#aaa]">Ingen registreringer ennå</td></tr>)}
-                  {rows.map((r) => {
+                  {filteredRows.length === 0 && (<tr><td colSpan={8} className="py-10 text-center text-[14px] text-[#aaa]">{rows.length === 0 ? 'Ingen registreringer ennå' : 'Ingen treff på filteret'}</td></tr>)}
+                  {filteredRows.map((r) => {
                     const rType = leadSub === 'tenants' ? 'tenant' : 'lead';
                     const sc = scores[r.id];
                     return (
-                    <React.Fragment key={r.id}>
-                    <tr className="border-b border-[#f6f6f6] hover:bg-[#fafafa] transition-colors">
-                      <td className="py-3 px-4 text-[14px] font-medium text-[#222]">{r.name || '—'}</td>
+                    <tr key={r.id} onClick={() => setDrawerLead(r)} className="border-b border-[#f6f6f6] hover:bg-[#faf8fe] transition-colors cursor-pointer group">
+                      <td className="py-3 px-4 text-[14px] font-medium text-[#222]">
+                        <span className="inline-flex items-center gap-1.5">{r.name || '—'}<ChevronRight className="w-3.5 h-3.5 text-[#cf97fc] opacity-0 group-hover:opacity-100 transition-opacity" /></span>
+                      </td>
                       <td className="py-3 px-4 text-[13px] text-[#666]"><div>{r.email}</div><div className="text-[#aaa]">{r.phone}</div></td>
                       <td className="py-3 px-4 text-[13px] text-[#666] max-w-[260px]">
                         {leadSub === 'leads'
@@ -254,12 +335,12 @@ export default function InnsiktDashboard({ apiKey }) {
                           ? <span className="inline-flex items-center rounded-full bg-[#f4f0fb] text-[#8b5cf6] px-2 py-0.5 font-semibold">{r.attribution.channel}</span>
                           : <span className="text-[#bbb]">{r.source || '—'}</span>}
                       </td>
-                      <td className="py-3 px-4">
+                      <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center gap-1.5">
                           <select
                             value={r.status || 'new'} disabled={statusBusy === r.id}
                             onChange={(e) => doSetStatus(r.id, e.target.value, rType)}
-                            className={`text-[12px] font-semibold rounded-lg border border-[#e6e3df] bg-white px-2 py-1.5 outline-none focus:border-[#cf97fc] disabled:opacity-50 ${r.status === 'won' ? 'text-emerald-600' : r.status === 'lost' ? 'text-rose-600' : 'text-[#555]'}`}
+                            className={`text-[12px] font-semibold rounded-lg border border-[#e6e3df] bg-white px-2 py-1.5 outline-none focus:border-[#cf97fc] disabled:opacity-50 cursor-pointer ${r.status === 'won' ? 'text-emerald-600' : r.status === 'lost' ? 'text-rose-600' : 'text-[#555]'}`}
                           >
                             {STATUS_OPTS.map((o) => <option key={o.v} value={o.v}>{o.l}</option>)}
                           </select>
@@ -272,7 +353,7 @@ export default function InnsiktDashboard({ apiKey }) {
                           ? <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-emerald-600"><CheckCircle2 className="w-3.5 h-3.5" /> Sendt</span>
                           : <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-amber-600" title={r.forward_error || ''}><AlertCircle className="w-3.5 h-3.5" /> Venter</span>}
                       </td>
-                      <td className="py-3 px-4 text-right whitespace-nowrap">
+                      <td className="py-3 px-4 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                         <button onClick={() => doScore(r.id, rType)} disabled={scoringId === r.id} title="AI-vurder dette leadet" className="inline-flex items-center gap-1 mr-1 h-8 px-2.5 rounded-lg text-[12px] font-semibold text-[#8b5cf6] hover:bg-[#f4f0fb] transition-colors disabled:opacity-40">
                           {scoringId === r.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
                           {sc && !sc.error ? sc.score : 'AI'}
@@ -280,31 +361,26 @@ export default function InnsiktDashboard({ apiKey }) {
                         <button onClick={() => doDelete({ id: r.id }, `Slette lead fra ${r.name || r.email || 'denne kontakten'}?`)} disabled={deleting} aria-label="Slett" className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-[#bbb] hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-40"><Trash2 className="w-4 h-4" /></button>
                       </td>
                     </tr>
-                    {sc && (
-                      <tr className="bg-[#faf8fe]">
-                        <td colSpan={8} className="px-4 py-3">
-                          {sc.error ? (
-                            <p className="text-[13px] text-rose-500">AI-scoring feilet: {sc.error}</p>
-                          ) : (
-                            <div className="flex items-start gap-3">
-                              <div className="shrink-0 w-12 h-12 rounded-xl bg-[#1f1f1f] text-white flex flex-col items-center justify-center"><span className="text-[16px] font-bold leading-none" style={{ fontFamily: 'var(--font-heading)' }}>{sc.score}</span><span className="text-[8px] text-white/50">/100</span></div>
-                              <div className="flex-1">
-                                <p className="text-[13px] font-semibold text-[#1f1f1f] flex items-center gap-2">{sc.label} <span className="text-[11px] font-normal text-[#aaa]">· AI-vurdering</span></p>
-                                <p className="text-[13px] text-[#555] mt-0.5">{sc.reasoning}</p>
-                                {sc.nextAction && <p className="text-[12.5px] text-[#8b5cf6] mt-1.5"><b>Neste steg:</b> {sc.nextAction}</p>}
-                              </div>
-                            </div>
-                          )}
-                        </td>
-                      </tr>
-                    )}
-                    </React.Fragment>
                   );})}
                 </tbody>
               </table>
             </div>
           </div>
         </div>
+      )}
+
+      {drawerLead && (
+        <LeadDrawer
+          apiKey={apiKey}
+          lead={drawerLead}
+          type={leadSub === 'tenants' ? 'tenant' : 'lead'}
+          onClose={() => setDrawerLead(null)}
+          onStatusChange={doSetStatus}
+          statusBusy={statusBusy}
+          scoreData={scores[drawerLead.id]}
+          onScore={doScore}
+          scoring={scoringId}
+        />
       )}
     </div>
   );
