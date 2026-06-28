@@ -42,6 +42,5 @@ export default function robots() {
       },
     ],
     sitemap: `${base}/sitemap.xml`,
-    host: base,
   };
 }
