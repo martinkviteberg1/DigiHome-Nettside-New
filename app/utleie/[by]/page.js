@@ -12,19 +12,22 @@ export function generateStaticParams() {
 
 export function generateMetadata({ params }) {
   const loc = getLocation(params.by);
-  if (!loc) return { title: 'Ikke funnet | DigiHome' };
-  const title = `Utleie i ${loc.name} | DigiHome`;
+  if (!loc) return { title: 'Ikke funnet' };
+  // Tittel uten merkevare – layout-templaten ('%s | DigiHome') legger den til én gang.
+  const title = `Utleie i ${loc.name} – profesjonell eiendomsforvaltning`;
+  const ogTitle = `Utleie i ${loc.name} | DigiHome`;
   const desc = loc.intro.slice(0, 155);
   return {
     title,
     description: desc,
     alternates: { canonical: `/utleie/${loc.slug}` },
     openGraph: {
-      title, description: desc, url: `${site.url}/utleie/${loc.slug}`,
-      images: [{ url: loc.image, width: 1600, height: 1067, alt: `Utleie i ${loc.name}` }],
+      // Ingen eksplisitt images her -> bruker det brandede opengraph-image.js
+      // (DigiHome-kort med områdenavn) i stedet for et generisk stockfoto.
+      title: ogTitle, description: desc, url: `${site.url}/utleie/${loc.slug}`,
       type: 'website', locale: 'nb_NO',
     },
-    twitter: { card: 'summary_large_image', title, description: desc, images: [loc.image] },
+    twitter: { card: 'summary_large_image', title: ogTitle, description: desc },
   };
 }
 

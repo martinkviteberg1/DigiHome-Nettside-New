@@ -8,9 +8,15 @@ import { ArrowUpRight, BarChart3, Database } from 'lucide-react';
 export const revalidate = 3600;
 
 export const metadata = {
-  title: 'Leiemarkedet i Norge — leiepriser og etterspørsel | DigiHome',
+  title: 'Leiemarkedet i Norge — leiepriser og etterspørsel',
   description: 'Datadrevne leiemarkedsrapporter basert på SSBs leiemarkedsundersøkelse og DigiHomes egen etterspørselsindeks. Se snittleie, prisutvikling og hvor etterspørselen er størst.',
   alternates: { canonical: '/leiemarkedet' },
+  openGraph: {
+    title: 'Leiemarkedet i Norge — leiepriser og etterspørsel | DigiHome',
+    description: 'Datadrevne leiemarkedsrapporter basert på SSB og DigiHomes etterspørselsindeks.',
+    url: `${site.url}/leiemarkedet`, type: 'website', locale: 'nb_NO',
+    images: [{ url: site.url + site.ogImage }],
+  },
 };
 
 export default async function Page() {

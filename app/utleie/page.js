@@ -6,9 +6,9 @@ import { site } from '@/lib/site';
 import { ArrowUpRight, MapPin } from 'lucide-react';
 
 export const metadata = {
-  title: 'Utleie i Bergen — bydel for bydel | DigiHome',
+  title: 'Utleie i Bergen — bydel for bydel',
   description:
-    'Profesjonell, AI-drevet eiendomsforvaltning i Bergen og alle bydeler. Finn ditt nærmeste område — fra Sentrum og Nordnes til Åsane og Fana — og se hvordan DigiHome maksimerer leieinntekten din.',
+    'Profesjonell, AI-drevet eiendomsforvaltning i Bergen og alle bydeler. Finn ditt nærmeste område — fra Sentrum og Nordnes til Åsane, Fana, Ytrebygda og Fyllingsdalen — og se hvordan DigiHome maksimerer leieinntekten din.',
   alternates: { canonical: '/utleie' },
   openGraph: {
     title: 'Utleie i Bergen — bydel for bydel | DigiHome',
