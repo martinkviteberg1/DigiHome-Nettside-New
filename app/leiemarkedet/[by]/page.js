@@ -28,11 +28,12 @@ export async function generateMetadata({ params }) {
     description: desc,
     alternates: { canonical: `/leiemarkedet/${city.slug}` },
     openGraph: {
+      // Ingen eksplisitt images -> bruker det brandede opengraph-image.js
+      // (DigiHome «Leiemarkedsrapport»-kort) i stedet for et generisk stockfoto.
       title: ogTitle, description: desc, url: `${site.url}/leiemarkedet/${city.slug}`,
-      images: [{ url: city.image, width: 1600, height: 1067, alt: `Leiemarkedet i ${city.label}` }],
       type: 'article', locale: 'nb_NO',
     },
-    twitter: { card: 'summary_large_image', title: ogTitle, description: desc, images: [city.image] },
+    twitter: { card: 'summary_large_image', title: ogTitle, description: desc },
   };
 }
 
