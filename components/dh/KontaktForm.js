@@ -33,7 +33,7 @@ export default function KontaktForm() {
       if (res.ok) {
         let data = {};
         try { data = await res.json(); } catch (e) {}
-        try { trackLead({ formId: 'kontakt', source: 'kontakt', leadId: data?.data?.id }); } catch (e) {}
+        try { trackLead({ formId: 'kontakt', source: 'kontakt', leadId: data?.data?.id, email: form.email, phone: form.phone }); } catch (e) {}
         setStatus('done'); setForm({ name: '', email: '', phone: '', message: '' });
       }
       else setStatus('error');

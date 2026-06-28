@@ -73,7 +73,7 @@ export default function RootLayout({ children }) {
               id="ga-consent-default"
               strategy="beforeInteractive"
               dangerouslySetInnerHTML={{
-                __html: `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}window.gtag=gtag;gtag('consent','default',{ad_storage:'denied',analytics_storage:'denied',ad_user_data:'denied',ad_personalization:'denied',functionality_storage:'granted',security_storage:'granted',wait_for_update:500});gtag('js',new Date());gtag('config','${GA4_ID}',{send_page_view:false,anonymize_ip:true});${GADS_ID ? `gtag('config','${GADS_ID}');` : ''}`,
+                __html: `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}window.gtag=gtag;gtag('consent','default',{ad_storage:'denied',analytics_storage:'denied',ad_user_data:'denied',ad_personalization:'denied',functionality_storage:'granted',security_storage:'granted',wait_for_update:500});gtag('js',new Date());gtag('config','${GA4_ID}',{send_page_view:false,anonymize_ip:true});${GADS_ID ? `gtag('config','${GADS_ID}',{allow_enhanced_conversions:true});` : ''}`,
               }}
             />
             {/* gtag.js (176 KB) lastes ETTER første interaksjon eller etter 4s.

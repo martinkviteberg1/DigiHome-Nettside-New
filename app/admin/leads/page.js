@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   Loader2, RefreshCw, Send, CheckCircle2, AlertCircle, Lock, Trash2,
   LayoutDashboard, Activity, BarChart3, Users, Sparkles, FileText, Database,
-  Radio, Gauge, TrendingUp, TrendingDown,
+  Radio, Gauge, TrendingUp, TrendingDown, Download,
 } from 'lucide-react';
 import OverviewTab from '@/components/admin/OverviewTab';
 import TrafficTab from '@/components/admin/TrafficTab';
@@ -95,14 +95,28 @@ export default function AdminDashboardPage() {
   };
 
   const doSetStatus = async (id, status, type) => {
+    let value;
+    if (status === 'won') {
+      const input = window.prompt('Kontraktsverdi for Google Ads (NOK, valgfritt). La stå tom for å bruke standardverdi:', '');
+      if (input === null) return; // avbrutt
+      const n = Number((input || '').replace(/[^\d.,]/g, '').replace(',', '.'));
+      if (isFinite(n) && n > 0) value = n;
+    }
     setStatusBusy(id);
     try {
       await fetch(`/api/admin/lead-status?key=${encodeURIComponent(key)}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, status, type: type || 'lead' }),
+        body: JSON.stringify({ id, status, type: type || 'lead', value }),
       });
       await load(key);
     } catch (e) {} finally { setStatusBusy(''); }
+  };
+
+  const downloadAdsFeed = () => {
+    const url = `/api/admin/ads/offline-conversions?key=${encodeURIComponent(key)}`;
+    const a = document.createElement('a');
+    a.href = url; a.rel = 'noopener';
+    document.body.appendChild(a); a.click(); a.remove();
   };
 
   const doScore = async (id, type) => {
@@ -204,6 +218,9 @@ export default function AdminDashboardPage() {
                 ))}
               </div>
               <div className="flex items-center gap-2">
+                {leadSub === 'leads' && (
+                  <button onClick={downloadAdsFeed} title="Last ned Google Ads offline-konverteringsfeed (vunne leads med gclid)" className="h-9 px-4 rounded-full bg-white text-[#8b5cf6] text-[12px] font-semibold flex items-center gap-2 shadow-[0_2px_10px_rgba(0,0,0,0.03)] hover:bg-[#f4f0fb] active:scale-[0.97] transition-all"><Download className="w-3.5 h-3.5" /> Google Ads-feed</button>
+                )}
                 <button onClick={doForward} disabled={forwarding || pendingCount === 0} className="h-9 px-4 rounded-full bg-[#0a0a0a] text-white text-[12px] font-semibold flex items-center gap-2 disabled:opacity-40 active:scale-[0.97] transition-transform">{forwarding ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />} Re-send {pendingCount > 0 ? `(${pendingCount})` : ''}</button>
                 <button onClick={() => doDelete({ scope: 'pending' }, `Slette ${tabPending} ventende ${leadSub === 'leads' ? 'utleier' : 'leietaker'}-leads? Kan ikke angres.`)} disabled={deleting || tabPending === 0} className="h-9 px-4 rounded-full bg-white text-red-600 text-[12px] font-semibold flex items-center gap-2 shadow-[0_2px_10px_rgba(0,0,0,0.03)] disabled:opacity-40 hover:bg-red-50 active:scale-[0.97] transition-all">{deleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />} Slett ventende {tabPending > 0 ? `(${tabPending})` : ''}</button>
               </div>

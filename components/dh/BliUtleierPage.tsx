@@ -176,7 +176,7 @@ export default function BliUtleierPage() {
       if (res.ok && (data.success || data.ok)) {
         setSubmitted(true);
         track('lead_submit', { form: 'utleier', leadType: 'huseier', properties: units.length });
-        try { trackLead({ formId: 'utleier', source: 'bli-utleier', leadId: data?.data?.id }); } catch (e) {}
+        try { trackLead({ formId: 'utleier', source: 'bli-utleier', leadId: data?.data?.id, email: formData.email, phone: '+47 ' + formData.phone }); } catch (e) {}
         toast.success('Takk! Vi tar kontakt snart.');
       } else {
         throw new Error('lead failed');

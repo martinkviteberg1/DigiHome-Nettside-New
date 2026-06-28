@@ -78,7 +78,7 @@ export default function CampaignLanding({ cfg }) {
       if (!res.ok) throw new Error('api');
       let data = {};
       try { data = await res.json(); } catch (e) {}
-      try { trackLead({ formId: cfg.source, source: cfg.source, leadId: data?.data?.id }); } catch (e) {}
+      try { trackLead({ formId: cfg.source, source: cfg.source, leadId: data?.data?.id, email: form.email, phone: form.phone }); } catch (e) {}
       setStatus('done');
     } catch (e2) {
       setErr('Noe gikk galt. Prøv igjen — eller ring oss på ' + site.phone + '.');

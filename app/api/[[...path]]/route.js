@@ -454,6 +454,29 @@ function normalizeListing(l) {
   };
 }
 
+// --- Google Ads offline-konvertering: hjelpere -----------------------------
+// Formater ISO-tid til "yyyy-MM-dd HH:mm:ss" i Europe/Oslo (Google Ads-format).
+function osloTime(iso) {
+  try {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return '';
+    const parts = new Intl.DateTimeFormat('sv-SE', {
+      timeZone: 'Europe/Oslo', year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
+    }).formatToParts(d);
+    const o = {};
+    parts.forEach((p) => { o[p.type] = p.value; });
+    return `${o.year}-${o.month}-${o.day} ${o.hour}:${o.minute}:${o.second}`;
+  } catch (e) { return ''; }
+}
+
+// CSV-felt-escaping (siter ved komma/anførselstegn/linjeskift).
+function csvEsc(v) {
+  const s = (v === undefined || v === null) ? '' : String(v);
+  if (/[",\r\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+  return s;
+}
+
 function cors(response) {
   response.headers.set('Access-Control-Allow-Origin', process.env.CORS_ORIGINS || '*');
   response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
@@ -825,6 +848,48 @@ async function handleRoute(request, { params }) {
       return cors(NextResponse.json({ success: true, results }));
     }
 
+    // --- Admin: Google Ads offline-konverteringsfeed (CSV) -----------------
+    // Eksporterer vunne leads med gclid → "Conversions from clicks"-mal.
+    // Lastes opp i Google Ads → Smart Bidding optimaliserer mot ekte kunder.
+    if (route === '/admin/ads/offline-conversions' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const convName = (process.env.GOOGLE_ADS_OFFLINE_CONVERSION_NAME || 'DigiHome – Vunnet utleier');
+      const defVal = Number(process.env.GOOGLE_ADS_DEFAULT_LEAD_VALUE || '0') || 0;
+      // Google avviser klikk eldre enn 90 dager. Vi bruker createdAt som klikk-tid-proxy.
+      const cutoff = new Date(Date.now() - 90 * 86400000).toISOString();
+      const won = await db.collection('leads').find({
+        status: 'won',
+        'attribution.gclid': { $exists: true, $nin: [null, ''] },
+        createdAt: { $gte: cutoff },
+      }).sort({ wonAt: -1 }).limit(5000).toArray();
+
+      const lines = [];
+      lines.push('Parameters:TimeZone=Europe/Oslo');
+      lines.push('Google Click ID,Conversion Name,Conversion Time,Conversion Value,Conversion Currency,Transaction ID');
+      let included = 0;
+      for (const l of won) {
+        const gclid = (l.attribution && l.attribution.gclid) || '';
+        if (!gclid) continue;
+        const t = osloTime(l.wonAt || l.statusUpdatedAt || l.createdAt);
+        if (!t) continue;
+        const val = (Number(l.wonValue) > 0 ? Number(l.wonValue) : defVal);
+        const cur = (l.wonCurrency || 'NOK');
+        lines.push([
+          csvEsc(gclid), csvEsc(convName), csvEsc(t),
+          val > 0 ? val.toFixed(2) : '', val > 0 ? csvEsc(cur) : '', csvEsc(l.id),
+        ].join(','));
+        included++;
+      }
+      const csv = lines.join('\r\n') + '\r\n';
+      const fname = `digihome-google-ads-konverteringer-${new Date().toISOString().slice(0, 10)}.csv`;
+      const res = new NextResponse(csv, { status: 200 });
+      res.headers.set('Content-Type', 'text/csv; charset=utf-8');
+      res.headers.set('Content-Disposition', `attachment; filename="${fname}"`);
+      res.headers.set('X-Conversions-Count', String(included));
+      res.headers.set('Cache-Control', 'no-store');
+      return cors(res);
+    }
+
     // --- Admin: Analytics + Lead Intelligence (samlet) ---
     if (route === '/admin/analytics' && method === 'GET') {
       if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
@@ -873,6 +938,12 @@ async function handleRoute(request, { params }) {
       };
       // Sett første respons-tidspunkt når man flytter ut av 'new'
       if (status !== 'new' && !existing.firstResponseAt) update.firstResponseAt = nowIso;
+      // Vunnet kontrakt → registrer tidspunkt + verdi (for Google Ads offline-konvertering).
+      if (status === 'won') {
+        update.wonAt = nowIso;
+        const v = Number(body.value);
+        if (isFinite(v) && v > 0) { update.wonValue = Math.round(v * 100) / 100; update.wonCurrency = (body.currency || 'NOK').toString().slice(0, 3).toUpperCase(); }
+      }
       await db.collection(coll).updateOne({ id }, { $set: update });
       return cors(NextResponse.json({ ok: true, id, status }));
     }

@@ -129,7 +129,7 @@ export function HeroLeadFormLight() {
       if (!res.ok) throw new Error('api');
       let data = {};
       try { data = await res.json(); } catch (e) {}
-      try { trackLead({ formId: 'hero-light', source: 'hero-autopilot-light', leadId: data?.data?.id }); } catch (e) {}
+      try { trackLead({ formId: 'hero-light', source: 'hero-autopilot-light', leadId: data?.data?.id, email: isEmail ? c : '', phone: isEmail ? '' : c }); } catch (e) {}
       setStep('sent');
     } catch (err) {
       setError('Noe gikk galt. Prøv igjen — eller ring oss på 909 58 313.');
