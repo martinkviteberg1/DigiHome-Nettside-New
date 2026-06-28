@@ -12,7 +12,6 @@ import { nb } from 'date-fns/locale';
 import {
   TextInput, PhoneInput, IconCardSelector, NumberSelector, SummaryCard,
 } from './FormFields';
-import { AddressAutocomplete } from './AddressAutocomplete';
 import PropertyRegistryPicker from './PropertyRegistryPicker';
 import { FinnLookupField, AddressField, finnToFields } from './PropertyInputs';
 import { track, getLeadAttribution } from '@/lib/analytics';
@@ -20,17 +19,18 @@ import { trackLead, trackLeadStart, getClickIds } from '@/lib/gtag';
 import {
   User, Mail, ArrowRight, ArrowLeft, CheckCircle2, Loader2,
   Home, Building2, Warehouse, LayoutGrid, BedDouble, TrendingUp, Shield, Key, Zap, Calendar as CalendarIcon,
-  X, Plus, Link2, Sparkles,
+  X, Plus, Sparkles, MapPin, Link2,
 } from 'lucide-react';
 
 const BACKEND_URL = '';
 
 const STEPS = [
-  { id: 'welcome', title: 'Velkommen' },
-  { id: 'personal', title: 'Om deg' },
-  { id: 'property', title: 'Eiendommen' },
-  { id: 'goals', title: 'Dine mål' },
-  { id: 'confirm', title: 'Bekreft' },
+  { id: 'welcome', title: 'Velkommen' },   // 0
+  { id: 'address', title: 'Adresse' },      // 1
+  { id: 'property', title: 'Eiendommen' },  // 2
+  { id: 'personal', title: 'Om deg' },      // 3
+  { id: 'goals', title: 'Dine mål' },       // 4
+  { id: 'confirm', title: 'Bekreft' },      // 5
 ];
 
 const propertyTypes = [
@@ -73,8 +73,11 @@ export default function BliUtleierPage() {
 
   // Finn-annonse (valgfritt). FinnLookupField håndterer oppslag/forhåndsvisning selv.
   const [finnUrl, setFinnUrl] = useState('');
+  // Steg 1: velg mellom adresse eller Finn-annonse som inngang.
+  const [inputMode, setInputMode] = useState<'address' | 'finn'>('address');
+  const [finnMatrikkel, setFinnMatrikkel] = useState<any>(null);
 
-  // Forhåndsutfyll adresse fra ?address= (fra hero-søket)
+  // Forhåndsutfyll adresse fra ?address= (fra hero-søket) → rett til adresse-steget
   useEffect(() => {
     try {
       const p = new URLSearchParams(window.location.search).get('address');
@@ -101,18 +104,17 @@ export default function BliUtleierPage() {
   const addExtra = () => setExtraUnits((prev) => [...prev, { address: '', postal_code: '', property_type: 'leilighet', sqm: '', bedrooms: '', finn_url: '' }]);
   const updateExtra = (i: number, k: string, v: any) => setExtraUnits((prev) => prev.map((u, idx) => (idx === i ? { ...u, [k]: v } : u)));
   const removeExtra = (i: number) => setExtraUnits((prev) => prev.filter((_, idx) => idx !== i));
-  // Slå sammen flere felt på en ekstra-enhet samtidig (brukes ved Finn-auto-utfylling).
   const updateExtraMany = (i: number, obj: any) =>
     setExtraUnits((prev) => prev.map((u, idx) => (idx === i ? { ...u, ...obj } : u)));
 
   const goNext = () => {
     const newErrors: Record<string, any> = {};
     if (step === 1) {
-      if (!formData.address.trim()) newErrors.address = 'Vennligst oppgi adressen til eiendommen';
-      if (!formData.name.trim()) newErrors.name = 'Vennligst oppgi navnet ditt';
-      if (!formData.email.trim()) newErrors.email = 'Vennligst oppgi e-postadressen din';
-      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) newErrors.email = 'Ugyldig e-postadresse';
-      if (!formData.phone.trim() || formData.phone.replace(/\s/g, '').length < 8) newErrors.phone = 'Vennligst oppgi et gyldig telefonnummer (8 siffer)';
+      if (!formData.address.trim() && !finnMatrikkel) {
+        newErrors.address = inputMode === 'finn'
+          ? 'Lim inn en gyldig Finn-lenke til boligen'
+          : 'Vennligst oppgi adressen til eiendommen';
+      }
     }
     if (step === 2) {
       if (!formData.sqm.trim()) newErrors.sqm = 'Oppgi størrelse';
@@ -120,6 +122,12 @@ export default function BliUtleierPage() {
       if (!formData.bedrooms) newErrors.bedrooms = 'Velg antall soverom';
     }
     if (step === 3) {
+      if (!formData.name.trim()) newErrors.name = 'Vennligst oppgi navnet ditt';
+      if (!formData.email.trim()) newErrors.email = 'Vennligst oppgi e-postadressen din';
+      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) newErrors.email = 'Ugyldig e-postadresse';
+      if (!formData.phone.trim() || formData.phone.replace(/\s/g, '').length < 8) newErrors.phone = 'Vennligst oppgi et gyldig telefonnummer (8 siffer)';
+    }
+    if (step === 4) {
       if (!formData.rental_model) newErrors.rental_model = 'Velg utleiemodell';
       if (!formData.availability) newErrors.availability = 'Velg tilgjengelighetsdato';
     }
@@ -130,6 +138,18 @@ export default function BliUtleierPage() {
   };
 
   const goBack = () => { setDir(-1); setStep((prev: any) => Math.max(prev - 1, 0)); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+
+  // Felles: berik skjemaet med matrikkel/eier fra Eiendomsregisteret.
+  const applyRegistry = (d: any) => setFormData((prev: any) => ({
+    ...prev,
+    matrikkel_number: d.matrikkel_number || '',
+    seksjonsnr: d.seksjonsnr || '',
+    andelsnr: d.andelsnr || '',
+    bygningstype: d.bygningstype || '',
+    registry_owner_name: d.registry_owner_name || '',
+    registry_owner_type: d.registry_owner_type || '',
+    registry_orgnr: d.registry_orgnr || '',
+  }));
 
   const handleSubmit = async () => {
     if (loading) return;
@@ -158,7 +178,6 @@ export default function BliUtleierPage() {
         },
         ...validExtras.map((u) => mkUnit(u.address, u.postal_code, u.property_type, u.sqm, u.bedrooms, u.finn_url)),
       ];
-      // Sammendrag av matrikkel/eier fra Eiendomsregisteret (for CRM-teamet).
       const registrySummary = formData.matrikkel_number
         ? [
             `Matrikkel: ${formData.matrikkel_number}`,
@@ -166,7 +185,6 @@ export default function BliUtleierPage() {
             formData.registry_owner_name ? `Hjemmelshaver: ${formData.registry_owner_name}` : '',
           ].filter(Boolean).join(', ')
         : '';
-      // Oppsummer ekstra eiendommer i notatet, så CRM-teamet ser dem (inkl. Finn-lenke).
       const extrasSummary = validExtras.map((u, idx) => {
         const parts = [`Eiendom ${idx + 2}: ${(u.address || '').trim()}`];
         if (u.sqm) parts.push(`${u.sqm} m²`);
@@ -184,7 +202,6 @@ export default function BliUtleierPage() {
         units,
         num_properties: units.length,
         finn_url: finnUrl || undefined,
-        // Eiendomsregisteret (primær eiendom)
         matrikkel_number: formData.matrikkel_number || undefined,
         seksjonsnr: formData.seksjonsnr || undefined,
         andelsnr: formData.andelsnr || undefined,
@@ -299,7 +316,7 @@ export default function BliUtleierPage() {
     <div className="min-h-screen bg-[#fdfcfb] flex flex-col" data-testid="owner-page">
       <div className="h-[56px] lg:h-[76px]" />
       <div className="flex-1 flex flex-col">
-        <div className="max-w-[560px] w-full mx-auto px-6 pt-6">
+        <div className="max-w-[600px] w-full mx-auto px-6 pt-6">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-3">
               <button onClick={goBack} className="w-8 h-8 rounded-full border border-[#e5e5e5] hover:bg-[#f5f5f5] flex items-center justify-center transition-colors" data-testid="owner-back-button">
@@ -314,17 +331,40 @@ export default function BliUtleierPage() {
           </div>
         </div>
 
-        <div className="flex-1 max-w-[560px] w-full mx-auto px-6 pb-24">
+        <div className="flex-1 max-w-[600px] w-full mx-auto px-6 pb-24">
           <AnimatePresence mode="wait" custom={dir}>
             <motion.div key={step} custom={dir} variants={stepVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}>
 
+              {/* STEG 1 — ADRESSE eller FINN-ANNONSE → eiendomsregister-søk */}
               {step === 1 && (
-                <div data-testid="owner-step-personal">
-                  <h2 className="text-[28px] sm:text-[34px] font-bold tracking-[-0.03em] text-[#0a0a0a] mb-2" style={{ fontFamily: 'var(--font-heading)' }}>Fortell oss om deg</h2>
-                  <p className="text-[15px] text-[#888] mb-8">Slik at vi kan ta kontakt med en personlig vurdering.</p>
-                  <div className="space-y-5">
+                <div data-testid="owner-step-address">
+                  <div className="inline-flex items-center gap-2 text-[11px] font-semibold text-[#7c3aed] uppercase tracking-[0.1em] mb-3">
+                    <MapPin className="w-3.5 h-3.5" /> Eiendommen
+                  </div>
+                  <h2 className="text-[28px] sm:text-[34px] font-bold tracking-[-0.03em] text-[#0a0a0a] mb-2" style={{ fontFamily: 'var(--font-heading)' }}>Hvor ligger eiendommen?</h2>
+                  <p className="text-[15px] text-[#888] mb-7 max-w-[46ch]">Velg hvordan du vil registrere — vi henter adresse, matrikkel og eierforslag automatisk fra Eiendomsregisteret.</p>
+
+                  {/* Segmentert bryter: Adresse / Finn-annonse */}
+                  <div className="inline-flex p-1 rounded-full bg-[#f1eef6] mb-7" role="tablist" data-testid="owner-input-mode">
+                    {[
+                      { k: 'address', l: 'Adresse', icon: MapPin },
+                      { k: 'finn', l: 'Finn-annonse', icon: Link2 },
+                    ].map((m: any) => {
+                      const Icon = m.icon; const active = inputMode === m.k;
+                      return (
+                        <button key={m.k} type="button" role="tab" aria-selected={active}
+                          onClick={() => setInputMode(m.k)}
+                          data-testid={`owner-mode-${m.k}`}
+                          className={`flex items-center gap-2 px-4 sm:px-5 h-10 rounded-full text-[13.5px] font-semibold transition-all ${active ? 'bg-white text-[#0a0a0a] shadow-[0_2px_8px_rgba(0,0,0,0.08)]' : 'text-[#888] hover:text-[#0a0a0a]'}`}>
+                          <Icon className="w-4 h-4" /> {m.l}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {inputMode === 'address' ? (
                     <div>
-                      <Label className="text-[13px] font-semibold text-[#333] mb-2 block">Adresse til eiendommen <span className="text-[#7c3aed]">*</span></Label>
+                      <Label className="text-[13px] font-semibold text-[#333] mb-2 block">Adresse <span className="text-[#7c3aed]">*</span></Label>
                       <AddressField
                         value={formData.address}
                         postalCode={formData.postal_code}
@@ -341,27 +381,50 @@ export default function BliUtleierPage() {
                       />
                       <PropertyRegistryPicker
                         query={registryQuery}
-                        onResolved={(d: any) => setFormData((prev: any) => ({
-                          ...prev,
-                          matrikkel_number: d.matrikkel_number || '',
-                          seksjonsnr: d.seksjonsnr || '',
-                          andelsnr: d.andelsnr || '',
-                          bygningstype: d.bygningstype || '',
-                          registry_owner_name: d.registry_owner_name || '',
-                          registry_owner_type: d.registry_owner_type || '',
-                          registry_orgnr: d.registry_orgnr || '',
-                        }))}
+                        addressLabel={[formData.address, formData.postal_code].filter(Boolean).join(', ')}
+                        onResolved={applyRegistry}
                       />
                     </div>
-                    <div className="pt-2 border-t border-[#f0f0f0]"><p className="text-[11px] font-semibold text-[#737373] uppercase tracking-[0.08em] mb-4">Kontaktinformasjon</p></div>
-                    <TextInput label="Fullt navn" required error={errors.name} icon={User} value={formData.name} onChange={(v: any) => updateField('name', v)} placeholder="Ola Nordmann" autoComplete="name" testId="owner-name-input" />
-                    <TextInput label="E-post" required error={errors.email} icon={Mail} value={formData.email} type="email" onChange={(v: any) => updateField('email', v)} placeholder="ola@eksempel.no" autoComplete="email" testId="owner-email-input" />
-                    <PhoneInput value={formData.phone} onChange={(v: any) => updateField('phone', v)} error={errors.phone} testId="owner-phone-input" />
-                  </div>
-                  <p className="text-[11px] text-[#5b6370] mt-6"><span className="text-[#7c3aed]">*</span> Påkrevde felt</p>
+                  ) : (
+                    <div>
+                      <Label className="text-[13px] font-semibold text-[#333] mb-1.5 block">Lenke til Finn-annonse <span className="text-[#7c3aed]">*</span></Label>
+                      <p className="text-[13px] text-[#888] mb-3">Lim inn lenken til boligen på finn.no — vi henter adresse, areal, matrikkel og eierforslag automatisk.</p>
+                      <FinnLookupField
+                        value={finnUrl}
+                        onChange={setFinnUrl}
+                        testId="owner-step1-finn"
+                        onResult={(d: any) => {
+                          const mk = d?.matrikkel && d.matrikkel.kommunenr && d.matrikkel.gaardsnr && d.matrikkel.bruksnr
+                            ? { kommunenr: d.matrikkel.kommunenr, gaardsnr: d.matrikkel.gaardsnr, bruksnr: d.matrikkel.bruksnr } : null;
+                          setFinnMatrikkel(mk);
+                          setFormData((prev: any) => ({
+                            ...prev,
+                            ...finnToFields(d),
+                            ...(d?.address ? { address: d.address } : {}),
+                            ...(d?.postalCode ? { postal_code: d.postalCode } : {}),
+                          }));
+                          if (!mk && d?.address) setRegistryQuery(d.address);
+                          setErrors((prev: any) => ({ ...prev, address: null }));
+                        }}
+                      />
+                      {errors.address && <p className="text-[12px] text-red-500 mt-2">{errors.address}</p>}
+                      {finnMatrikkel && (
+                        <p className="mt-3 inline-flex items-center gap-1.5 text-[12.5px] text-[#5b6370] bg-[#f8f6fc] rounded-full px-3 py-1.5">
+                          <Sparkles className="w-3.5 h-3.5 text-[#cf97fc]" /> Matrikkel {finnMatrikkel.kommunenr}-{finnMatrikkel.gaardsnr}/{finnMatrikkel.bruksnr} hentet fra annonsen
+                        </p>
+                      )}
+                      <PropertyRegistryPicker
+                        matrikkel={finnMatrikkel}
+                        query={finnMatrikkel ? '' : registryQuery}
+                        addressLabel={formData.address}
+                        onResolved={applyRegistry}
+                      />
+                    </div>
+                  )}
                 </div>
               )}
 
+              {/* STEG 2 — EIENDOMMEN (detaljer) */}
               {step === 2 && (
                 <div data-testid="owner-step-property">
                   <h2 className="text-[28px] sm:text-[34px] font-bold tracking-[-0.03em] text-[#0a0a0a] mb-2" style={{ fontFamily: 'var(--font-heading)' }}>Om eiendommen</h2>
@@ -455,7 +518,22 @@ export default function BliUtleierPage() {
                 </div>
               )}
 
+              {/* STEG 3 — OM DEG (kontaktinformasjon) */}
               {step === 3 && (
+                <div data-testid="owner-step-personal">
+                  <h2 className="text-[28px] sm:text-[34px] font-bold tracking-[-0.03em] text-[#0a0a0a] mb-2" style={{ fontFamily: 'var(--font-heading)' }}>Fortell oss om deg</h2>
+                  <p className="text-[15px] text-[#888] mb-8">Slik at vi kan ta kontakt med en personlig vurdering.</p>
+                  <div className="space-y-5">
+                    <TextInput label="Fullt navn" required error={errors.name} icon={User} value={formData.name} onChange={(v: any) => updateField('name', v)} placeholder="Ola Nordmann" autoComplete="name" testId="owner-name-input" />
+                    <TextInput label="E-post" required error={errors.email} icon={Mail} value={formData.email} type="email" onChange={(v: any) => updateField('email', v)} placeholder="ola@eksempel.no" autoComplete="email" testId="owner-email-input" />
+                    <PhoneInput value={formData.phone} onChange={(v: any) => updateField('phone', v)} error={errors.phone} testId="owner-phone-input" />
+                  </div>
+                  <p className="text-[11px] text-[#5b6370] mt-6"><span className="text-[#7c3aed]">*</span> Påkrevde felt</p>
+                </div>
+              )}
+
+              {/* STEG 4 — DINE MÅL */}
+              {step === 4 && (
                 <div data-testid="owner-step-goals">
                   <h2 className="text-[28px] sm:text-[34px] font-bold tracking-[-0.03em] text-[#0a0a0a] mb-2" style={{ fontFamily: 'var(--font-heading)' }}>Hva er viktigst for deg?</h2>
                   <p className="text-[15px] text-[#888] mb-8">Vi anbefaler den optimale strategien basert på dine preferanser.</p>
@@ -503,24 +581,33 @@ export default function BliUtleierPage() {
                 </div>
               )}
 
-              {step === 4 && (
+              {/* STEG 5 — BEKREFT */}
+              {step === 5 && (
                 <div data-testid="owner-step-confirm">
                   <h2 className="text-[28px] sm:text-[34px] font-bold tracking-[-0.03em] text-[#0a0a0a] mb-2" style={{ fontFamily: 'var(--font-heading)' }}>Ser dette riktig ut?</h2>
                   <p className="text-[15px] text-[#888] mb-8">Sjekk at alt stemmer før du sender.</p>
                   <div className="space-y-4">
-                    <SummaryCard title="Om deg" onEdit={() => { setDir(-1); setStep(1); }} testId="owner-edit-personal">
+                    <SummaryCard title="Om deg" onEdit={() => { setDir(-1); setStep(3); }} testId="owner-edit-personal">
                       <p className="text-[15px] text-[#333] font-medium">{formData.name}</p>
                       <p className="text-[14px] text-[#666]">{formData.email}</p>
                       <p className="text-[14px] text-[#666]">+47 {formData.phone}</p>
                     </SummaryCard>
-                    <SummaryCard title={extraUnits.filter((u: any) => (u.address || '').trim()).length > 0 ? `Eiendommer (${1 + extraUnits.filter((u: any) => (u.address || '').trim()).length})` : 'Eiendommen'} onEdit={() => { setDir(-1); setStep(2); }} testId="owner-edit-property">
+                    <SummaryCard title={extraUnits.filter((u: any) => (u.address || '').trim()).length > 0 ? `Eiendommer (${1 + extraUnits.filter((u: any) => (u.address || '').trim()).length})` : 'Eiendommen'} onEdit={() => { setDir(-1); setStep(1); }} testId="owner-edit-property">
                       <p className="text-[14px] text-[#333] font-medium">{formData.address || '—'}</p>
                       <div className="flex gap-4 mt-1 text-[13px] text-[#888]">
                         {formData.postal_code && <span>{formData.postal_code}</span>}
                         {formData.sqm && <span>{formData.sqm} m²</span>}
                         {formData.property_type && <span className="capitalize">{formData.property_type}</span>}
-                        <span>{formData.bedrooms} sov.</span>
+                        {formData.bedrooms && <span>{formData.bedrooms} sov.</span>}
                       </div>
+                      {(formData.registry_owner_name || formData.seksjonsnr || formData.andelsnr) && (
+                        <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[12px]">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-[#e7f7ee] text-[#16a34a] px-2 py-0.5 font-semibold"><CheckCircle2 className="w-3 h-3" /> Verifisert i registeret</span>
+                          {formData.seksjonsnr && <span className="text-[#888]">Seksjon {formData.seksjonsnr}</span>}
+                          {formData.andelsnr && <span className="text-[#888]">Andel {formData.andelsnr}</span>}
+                          {formData.registry_owner_name && <span className="text-[#888]">· {formData.registry_owner_name}</span>}
+                        </div>
+                      )}
                       {extraUnits.filter((u: any) => (u.address || '').trim()).map((u: any, i: number) => (
                         <div key={i} className="mt-3 pt-3 border-t border-[#f3f3f3]" data-testid={`owner-summary-extra-${i}`}>
                           <p className="text-[14px] text-[#333] font-medium">{u.address}</p>
@@ -528,7 +615,7 @@ export default function BliUtleierPage() {
                         </div>
                       ))}
                     </SummaryCard>
-                    <SummaryCard title="Dine mål" onEdit={() => { setDir(-1); setStep(3); }} testId="owner-edit-goals">
+                    <SummaryCard title="Dine mål" onEdit={() => { setDir(-1); setStep(4); }} testId="owner-edit-goals">
                       {formData.rental_model && <p className="text-[14px] text-[#333]">Modell: <span className="font-medium capitalize">{formData.rental_model}</span></p>}
                       {formData.availability && <p className="text-[14px] text-[#666]">Tilgjengelig: {new Date(formData.availability + 'T12:00:00').toLocaleDateString('nb-NO', { day: 'numeric', month: 'long', year: 'numeric' })}</p>}
                       {formData.notes && <p className="text-[13px] text-[#5b6370] mt-1">{formData.notes}</p>}
@@ -542,7 +629,7 @@ export default function BliUtleierPage() {
         </div>
 
         <div className="sticky bottom-0 z-30 mt-auto bg-white/90 backdrop-blur-xl border-t border-[#f0f0f0]">
-          <div className="max-w-[560px] mx-auto px-6 py-4 flex items-center justify-between">
+          <div className="max-w-[600px] mx-auto px-6 py-4 flex items-center justify-between">
             <button onClick={goBack} className="text-[14px] font-semibold text-[#666] hover:text-[#333] underline underline-offset-4 transition-colors" data-testid="owner-back-link">Tilbake</button>
             {step < STEPS.length - 1 ? (
               <Button onClick={goNext} data-testid="owner-next-button" className="rounded-full bg-[#0a0a0a] text-white hover:bg-black h-12 px-8 text-[14px] font-semibold gap-2 active:scale-[0.97] transition-transform">Neste <ArrowRight className="w-4 h-4" /></Button>

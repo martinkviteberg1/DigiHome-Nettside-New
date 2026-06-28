@@ -381,11 +381,37 @@ async function fetchFinnPreview(rawUrl) {
   const propertyType = mapFinnPropertyType(ptRaw);
   const kind = /\/lettings\//.test(key) || rent ? 'leie' : (/\/homes\//.test(key) ? 'salg' : '');
 
+  // Matrikkelinformasjon (Kommunenr / Gårdsnr / Bruksnr / Seksjonsnr) →
+  // lar oss slå opp eiendommen direkte i Eiendomsregisteret uten adresse.
+  // NB: Finn bruker HTML-kommentarer mellom label og verdi («Kommunenr<!-- -->: <!-- -->3420»),
+  // som blir til mellomrom etter stripping → tillat \s*:?\s*.
+  const mnum = (re) => { const m = re.exec(text); return m ? m[1] : ''; };
+  const kommunenr = mnum(/Kommunenr\s*:?\s*(\d{3,4})\b/i);
+  const gaardsnr = mnum(/G(?:å|a)rdsnr\s*:?\s*(\d+)\b/i);
+  const bruksnr = mnum(/Bruksnr\s*:?\s*(\d+)\b/i);
+  const seksjonsnr = mnum(/Seksjonsnr\s*:?\s*(\d+)\b/i);
+  const festenr = mnum(/Festenr\s*:?\s*(\d+)\b/i);
+  const matrikkel = (kommunenr && gaardsnr && bruksnr)
+    ? { kommunenr, gaardsnr, bruksnr, seksjonsnr: seksjonsnr || '', festenr: festenr || '' }
+    : null;
+  // Ekte gateadresse ligger i kartlenken (data-testid="map-link"); fall tilbake til og:title.
+  let address = '';
+  const am = /"([^"]{5,120}?,\s*\d{4}\s[^"]{1,60}?)"\s+data-testid="map-link"/i.exec(htmlStr)
+          || /data-testid="map-link"[^>]*?(?:title|aria-label)="([^"]{5,120})"/i.exec(htmlStr);
+  if (am) address = decodeEntities(am[1]).trim();
+  // Strip evt. «Åpne kart for …»/«Vis kart …»-prefiks fra aria-label.
+  if (address) address = address.replace(/^(åpne|vis|se)\s+(i\s+)?kart(et)?\s*(for\s+)?/i, '').trim();
+  if (!address) address = (title || '').replace(/\s*[-–|]\s*FINN.*$/i, '').trim();
+  let postalCode = '';
+  const pm = /,\s*(\d{4})\s+\S/.exec(address);
+  if (pm) postalCode = pm[1];
+
   const data = {
     ok: !!title,
     finnUrl: key, title, image, description, kind,
     propertyType, propertyTypeRaw: ptRaw,
     bedrooms: bedrooms || '', sqm: sqm || '', rent: rent || '',
+    matrikkel, address, postalCode,
   };
   if (data.ok) {
     _finnCache.set(key, { at: Date.now(), data });
@@ -394,11 +420,84 @@ async function fetchFinnPreview(rawUrl) {
   return data;
 }
 
+// --- Admin-bruker-autentisering (e-post/passord + signert HMAC-sesjonstoken) ---
+// Innlogging utsteder et token som klienten sender som ?key= / x-admin-key →
+// adminAuthed godtar BÅDE legacy ADMIN_KEY OG et gyldig sesjonstoken, slik at
+// alle eksisterende admin-endepunkter fungerer uendret.
+const SESSION_SECRET = process.env.ADMIN_SESSION_SECRET || ADMIN_KEY || 'dh-admin-fallback-secret';
+const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 14; // 14 dager
+
+function hashPassword(password, salt) {
+  const s = salt || crypto.randomBytes(16).toString('hex');
+  const dk = crypto.scryptSync(String(password), s, 64).toString('hex');
+  return `scrypt$${s}$${dk}`;
+}
+function verifyPassword(password, stored) {
+  try {
+    const [scheme, salt, dk] = String(stored || '').split('$');
+    if (scheme !== 'scrypt' || !salt || !dk) return false;
+    const cand = crypto.scryptSync(String(password), salt, 64).toString('hex');
+    const a = Buffer.from(cand, 'hex');
+    const b = Buffer.from(dk, 'hex');
+    return a.length === b.length && crypto.timingSafeEqual(a, b);
+  } catch (e) { return false; }
+}
+function b64url(input) {
+  return Buffer.from(input).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function b64urlDecode(input) {
+  const pad = input.length % 4 ? '='.repeat(4 - (input.length % 4)) : '';
+  return Buffer.from(input.replace(/-/g, '+').replace(/_/g, '/') + pad, 'base64').toString('utf8');
+}
+function signSession(payload) {
+  const body = b64url(JSON.stringify(payload));
+  const sig = crypto.createHmac('sha256', SESSION_SECRET).update(body).digest('hex');
+  return `${body}.${sig}`;
+}
+function verifySession(token) {
+  try {
+    const [body, sig] = String(token || '').split('.');
+    if (!body || !sig) return null;
+    const expected = crypto.createHmac('sha256', SESSION_SECRET).update(body).digest('hex');
+    const a = Buffer.from(sig); const b = Buffer.from(expected);
+    if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
+    const payload = JSON.parse(b64urlDecode(body));
+    if (!payload || !payload.exp || Date.now() > payload.exp) return null;
+    return payload;
+  } catch (e) { return null; }
+}
+
+// Idempotent seeding av admin-bruker(e) fra .env (kjøres ved første innlogging).
+let _seededAdmin = false;
+async function ensureAdminUsers(db) {
+  if (_seededAdmin) return;
+  try {
+    const email = (process.env.ADMIN_SEED_EMAIL || '').trim().toLowerCase();
+    const password = process.env.ADMIN_SEED_PASSWORD || '';
+    if (email && password) {
+      const existing = await db.collection('admin_users').findOne({ email });
+      if (!existing) {
+        await db.collection('admin_users').insertOne({
+          id: uuidv4(),
+          email,
+          name: (process.env.ADMIN_SEED_NAME || 'Admin'),
+          role: 'owner',
+          passwordHash: hashPassword(password),
+          createdAt: new Date().toISOString(),
+        });
+      }
+    }
+    _seededAdmin = true;
+  } catch (e) { /* prøv igjen neste gang */ }
+}
+
 function adminAuthed(request) {
   try {
     const url = new URL(request.url);
     const key = url.searchParams.get('key') || request.headers.get('x-admin-key') || '';
-    return !!ADMIN_KEY && key === ADMIN_KEY;
+    if (!!ADMIN_KEY && key === ADMIN_KEY) return true;       // legacy nøkkel
+    if (key && verifySession(key)) return true;              // sesjonstoken
+    return false;
   } catch (e) { return false; }
 }
 
@@ -636,6 +735,46 @@ async function handleRoute(request, { params }) {
     }
 
     // ──────────────────────────────────────────────────────────────────────
+    // Admin-innlogging (e-post/passord → signert sesjonstoken)
+    // ──────────────────────────────────────────────────────────────────────
+    if (route === '/admin/auth/login' && method === 'POST') {
+      let body = {};
+      try { body = await request.json(); } catch (e) {}
+      const email = (body.email || '').toString().trim().toLowerCase();
+      const password = (body.password || '').toString();
+      if (!email || !password) {
+        return cors(NextResponse.json({ ok: false, error: 'Fyll inn e-post og passord' }, { status: 400 }));
+      }
+      await ensureAdminUsers(db);
+      const user = await db.collection('admin_users').findOne({ email });
+      if (!user || !verifyPassword(password, user.passwordHash)) {
+        return cors(NextResponse.json({ ok: false, error: 'Feil e-post eller passord' }, { status: 401 }));
+      }
+      const exp = Date.now() + SESSION_TTL_MS;
+      const token = signSession({ sub: user.id, email: user.email, exp });
+      return cors(NextResponse.json({
+        ok: true,
+        token,
+        exp,
+        user: { email: user.email, name: user.name || '', role: user.role || 'admin' },
+      }));
+    }
+
+    // Validér aktivt sesjonstoken (brukes ved oppstart for å gjenopprette innlogging).
+    if (route === '/admin/auth/me' && method === 'GET') {
+      const u = new URL(request.url);
+      const token = u.searchParams.get('key') || request.headers.get('x-admin-key') || '';
+      const payload = verifySession(token);
+      if (!payload) return cors(NextResponse.json({ ok: false }, { status: 401 }));
+      let user = null;
+      try { user = await db.collection('admin_users').findOne({ id: payload.sub }); } catch (e) {}
+      return cors(NextResponse.json({
+        ok: true,
+        user: { email: payload.email, name: (user && user.name) || '', role: (user && user.role) || 'admin' },
+      }));
+    }
+
+    // ──────────────────────────────────────────────────────────────────────
     // Eiendomsregisteret (Infotorg EDR): adresse → matrikkel → seksjon/andel
     // Offentlig (brukes av /bli-utleier). Rate-limitet + cachet i MongoDB.
     // ──────────────────────────────────────────────────────────────────────
@@ -649,11 +788,19 @@ async function handleRoute(request, { params }) {
       let body = {};
       try { body = await request.json(); } catch (e) { body = {}; }
       const address = (body.address || '').toString().trim();
-      if (!address) return cors(NextResponse.json({ status: 'error', message: 'Mangler adresse' }, { status: 400 }));
+      const mIn = body.matrikkel || null;
 
-      const matrikkel = await addressToMatrikkel(address);
-      if (!matrikkel) {
-        return cors(NextResponse.json({ status: 'not_found', message: 'Fant ikke adressen i Kartverket' }, { status: 404 }));
+      // Matrikkel kan komme direkte (fra Finn-annonse) eller via adresse-oppslag.
+      let matrikkel;
+      if (mIn && mIn.kommunenr && mIn.gaardsnr && mIn.bruksnr) {
+        matrikkel = { kommunenr: String(mIn.kommunenr), gaardsnr: String(mIn.gaardsnr), bruksnr: String(mIn.bruksnr) };
+      } else if (address) {
+        matrikkel = await addressToMatrikkel(address);
+        if (!matrikkel) {
+          return cors(NextResponse.json({ status: 'not_found', message: 'Fant ikke adressen i Kartverket' }, { status: 404 }));
+        }
+      } else {
+        return cors(NextResponse.json({ status: 'error', message: 'Mangler adresse eller matrikkel' }, { status: 400 }));
       }
       const { kommunenr: knr, gaardsnr: gnr, bruksnr: bnr } = matrikkel;
       const cacheKey = `${knr}-${gnr}-${bnr}`;
