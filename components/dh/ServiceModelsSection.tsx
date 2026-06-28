@@ -141,7 +141,7 @@ export default function ServiceModelsSection() {
             loop
             playsInline
             preload="none"
-            poster="/langtid-hero-poster.jpg"
+            poster={videoInView ? '/langtid-hero-poster.webp' : undefined}
             aria-hidden={audioMode}
             className="w-full h-auto block aspect-video object-cover transition-opacity duration-500"
             style={{ opacity: audioMode ? 0 : 1 }}
@@ -156,7 +156,7 @@ export default function ServiceModelsSection() {
             ref={audioRef}
             playsInline
             preload="none"
-            poster="/langtid-hero-poster.jpg"
+            poster={videoInView ? '/langtid-hero-poster.webp' : undefined}
             onEnded={handleAudioEnded}
             className="absolute inset-0 w-full h-full object-cover transition-opacity duration-500"
             style={{ opacity: audioMode ? 1 : 0, pointerEvents: audioMode ? 'auto' : 'none' }}
@@ -233,7 +233,7 @@ export default function ServiceModelsSection() {
             viewport={{ once: true }}
             transition={{ duration: 0.4 }}
             className="text-[11px] font-semibold uppercase tracking-[0.15em] mb-3"
-            style={{ color: '#AE68E4' }}
+            style={{ color: '#9333EA' }}
           >
             Våre tjenester
           </motion.p>

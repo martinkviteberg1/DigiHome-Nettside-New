@@ -30,7 +30,7 @@ export default function NetworkSection() {
                 </div>
                 <div>
                   <p className="text-[18px] font-bold text-[#222]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Én kontaktperson</p>
-                  <p className="text-[12px] text-[#999]">Vi koordinerer alt</p>
+                  <p className="text-[12px] text-[#6b6b6b]">Vi koordinerer alt</p>
                 </div>
               </div>
             </div>
@@ -38,7 +38,7 @@ export default function NetworkSection() {
 
           {/* Right: Content */}
           <div>
-            <p className="text-[13px] font-semibold uppercase tracking-[0.15em] mb-3" style={{ color: '#AE68E4' }}>Vårt nettverk</p>
+            <p className="text-[13px] font-semibold uppercase tracking-[0.15em] mb-3" style={{ color: '#9333EA' }}>Vårt nettverk</p>
             <h2 className="text-[32px] font-bold text-[#222] tracking-[-0.03em] leading-tight mb-4" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
               Komplett forvaltning med lokale partnere
             </h2>
@@ -56,7 +56,7 @@ export default function NetworkSection() {
                     </div>
                     <div>
                       <p className="text-[14px] font-semibold text-[#222]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{s.name}</p>
-                      <p className="text-[12px] text-[#999] leading-relaxed mt-0.5">{s.desc}</p>
+                      <p className="text-[12px] text-[#6b6b6b] leading-relaxed mt-0.5">{s.desc}</p>
                     </div>
                   </div>
                 );

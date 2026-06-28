@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 import crypto from 'crypto';
+import sharp from 'sharp';
 import { getDb, clean } from '@/lib/mongodb';
 import { getObject, PUBLIC_PREFIX } from '@/lib/objectStorage';
 import { isBot, buildEvent, ensureAnalyticsIndexes, computeAnalytics, computeLeadIntel } from '@/lib/analytics-server';
@@ -27,6 +28,12 @@ function mediaContentType(rel, fallback) {
   return MEDIA_CONTENT_TYPES[ext] || fallback || 'application/octet-stream';
 }
 
+// In-memory cache for resized image-varianter (next/image custom loader).
+// Holder de mest brukte responsive bredde-/kvalitetsvariantene varme slik at
+// gjentatte forespørsler (og CDN-cache-misser) ikke re-encoder hver gang.
+const MEDIA_RESIZE_CACHE = new Map();
+const MEDIA_RESIZE_MAX = 160;
+
 // Serverer en fil fra objektlagring. Støtter HTTP Range (206) for video-seeking.
 async function serveMedia(request, segments) {
   const rel = segments.join('/');
@@ -46,6 +53,45 @@ async function serveMedia(request, segments) {
     return cors(NextResponse.json({ error: 'Ikke funnet' }, { status: 404 }));
   }
   const contentType = mediaContentType(rel, obj.contentType);
+
+  // --- On-the-fly resize/re-encode for raster-bilder (next/image-loader) ---
+  // next/image ber om varianter via ?w=<bredde>&q=<kvalitet>. Vi resizer med
+  // sharp og leverer WebP (moderne format, godt stottet). SVG/video/etc rores ikke.
+  const isRaster = /^image\/(jpeg|png|webp|avif)$/.test(contentType);
+  let qs;
+  try { qs = new URL(request.url).searchParams; } catch (e) { qs = null; }
+  const wParam = qs ? parseInt(qs.get('w') || '0', 10) : 0;
+  if (isRaster && wParam > 0) {
+    try {
+      const width = Math.min(3840, Math.max(16, wParam));
+      const q = Math.min(100, Math.max(30, parseInt((qs.get('q') || '72'), 10)));
+      const key = `${rel}|${width}|${q}`;
+      let out = MEDIA_RESIZE_CACHE.get(key);
+      if (!out) {
+        out = await sharp(obj.buffer)
+          .rotate()
+          .resize({ width, withoutEnlargement: true })
+          .webp({ quality: q, effort: 4 })
+          .toBuffer();
+        if (MEDIA_RESIZE_CACHE.size >= MEDIA_RESIZE_MAX) {
+          MEDIA_RESIZE_CACHE.delete(MEDIA_RESIZE_CACHE.keys().next().value);
+        }
+        MEDIA_RESIZE_CACHE.set(key, out);
+      }
+      return new NextResponse(out, {
+        status: 200,
+        headers: {
+          'Content-Type': 'image/webp',
+          'Cache-Control': 'public, max-age=31536000, immutable',
+          'Access-Control-Allow-Origin': process.env.CORS_ORIGINS || '*',
+          'Content-Length': String(out.length),
+        },
+      });
+    } catch (e) {
+      // Sharp-feil → fall tilbake til originalen under.
+    }
+  }
+
   const total = obj.buffer.length;
   const baseHeaders = {
     'Content-Type': contentType,

@@ -10,14 +10,19 @@ const nextConfig = {
     ignoreDuringBuilds: true,
   },
   images: {
-    unoptimized: true,
+    // Egendefinert loader: lokale bilder optimaliseres on-the-fly via /api/media
+    // (sharp-resize), som fungerer i standalone-prod der /public ikke finnes.
+    loader: 'custom',
+    loaderFile: './lib/imageLoader.js',
     remotePatterns: [
       { protocol: 'https', hostname: 'avatars.githubusercontent.com', pathname: '/**' },
+      { protocol: 'https', hostname: 'images.unsplash.com', pathname: '/**' },
+      { protocol: 'https', hostname: 'images.pexels.com', pathname: '/**' },
     ],
   },
   experimental: {
     // Remove if not using Server Components
-    serverComponentsExternalPackages: ['mongodb'],
+    serverComponentsExternalPackages: ['mongodb', 'sharp'],
     // Tre-shaker ikon-/util-biblioteker (kun brukte ikoner havner i bundelen).
     optimizePackageImports: ['lucide-react', 'date-fns'],
     // KRITISK for prod: output:'standalone' inkluderer ikke /public, men OG-bildene
@@ -88,4 +93,9 @@ const nextConfig = {
   },
 };
 
-module.exports = nextConfig;
+const withBundleAnalyzer = require('@next/bundle-analyzer')({
+  enabled: process.env.ANALYZE === 'true',
+  openAnalyzer: false,
+});
+
+module.exports = withBundleAnalyzer(nextConfig);

@@ -90,7 +90,7 @@ export default function DynamicRentalSection() {
                   <h3 className="text-[15px] font-semibold text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>
                     10 m&#229;neder langtidsleie
                   </h3>
-                  <p className="text-[13px] text-[#999] leading-[1.6] mt-0.5">
+                  <p className="text-[13px] text-[#6b6b6b] leading-[1.6] mt-0.5">
                     Stabil inntekt hele &#229;ret. Annonseres p&#229; Finn.no og Hybel.no.
                   </p>
                 </div>
@@ -118,7 +118,7 @@ export default function DynamicRentalSection() {
                   <h3 className="text-[15px] font-semibold text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>
                     2 m&#229;neder korttidsutleie
                   </h3>
-                  <p className="text-[13px] text-[#999] leading-[1.6] mt-0.5">
+                  <p className="text-[13px] text-[#6b6b6b] leading-[1.6] mt-0.5">
                     Premium-priser om sommeren. Annonseres p&#229; Airbnb og Booking.
                   </p>
                 </div>
@@ -252,7 +252,7 @@ function FinnCard() {
             </div>
             <div>
               <p className="text-[11px] font-semibold text-[#333]">SHD Forvaltning AS</p>
-              <p className="text-[10px] text-[#999]">Profesjonell utleier</p>
+              <p className="text-[10px] text-[#6b6b6b]">Profesjonell utleier</p>
             </div>
           </div>
           <button className="bg-[#0063fb] text-white text-[12px] font-semibold px-4 py-2 rounded-lg hover:bg-[#0050d0] transition-colors duration-200">
@@ -287,7 +287,7 @@ function AirbnbCard() {
             Gjestfavoritt
           </span>
         </div>
-        <button className="absolute top-3.5 right-3.5 w-8 h-8 rounded-full bg-white/80 backdrop-blur-sm flex items-center justify-center shadow-sm hover:bg-white transition-colors duration-200">
+        <button aria-label="Lagre i favoritter" className="absolute top-3.5 right-3.5 w-8 h-8 rounded-full bg-white/80 backdrop-blur-sm flex items-center justify-center shadow-sm hover:bg-white transition-colors duration-200">
           <Heart className="w-4 h-4 text-[#333]" strokeWidth={2} />
         </button>
 
@@ -309,7 +309,7 @@ function AirbnbCard() {
           <div className="flex items-center gap-1 shrink-0 mt-0.5">
             <Star className="w-3.5 h-3.5 fill-[#222] text-[#222]" />
             <span className="text-[14px] font-bold text-[#222]">4.92</span>
-            <span className="text-[12px] text-[#999]">(47)</span>
+            <span className="text-[12px] text-[#6b6b6b]">(47)</span>
           </div>
         </div>
 
@@ -322,7 +322,7 @@ function AirbnbCard() {
             <span className="text-[22px] font-bold text-[#222] tracking-tight" style={{ fontFamily: 'var(--font-heading)' }}>2 450 kr</span>
             <span className="text-[13px] text-[#717171]">natt</span>
           </div>
-          <p className="text-[12px] text-[#999] mt-1">Totalt 12 250 kr inkl. avgifter</p>
+          <p className="text-[12px] text-[#6b6b6b] mt-1">Totalt 12 250 kr inkl. avgifter</p>
         </div>
 
         {/* Footer: Superhost + Reserve */}

@@ -59,7 +59,7 @@ export default function AboutCEOSection() {
                 <div className="w-[3px] h-12 rounded-full bg-[#cf97fc]" />
                 <div>
                   <p className="text-[16px] font-semibold text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>Sarah Sleeman</p>
-                  <p className="text-[13px] text-[#999] mt-0.5">Daglig leder &amp; eiendomsmegler, DigiHome</p>
+                  <p className="text-[13px] text-[#6b6b6b] mt-0.5">Daglig leder &amp; eiendomsmegler, DigiHome</p>
                 </div>
               </div>
             </Reveal>

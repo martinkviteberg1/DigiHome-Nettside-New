@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useCallback, useEffect } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { ArrowRight, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -116,14 +117,14 @@ export default function HeroSection() {
 
           {/* Mobile hero image */}
           <div className="lg:hidden -mx-6 sm:-mx-10">
-            <div className="relative rounded-[20px] mx-6 sm:mx-10 overflow-hidden shadow-[0_8px_30px_rgba(0,0,0,0.06)]">
-              <img
+            <div className="relative h-[220px] sm:h-[280px] rounded-[20px] mx-6 sm:mx-10 overflow-hidden shadow-[0_8px_30px_rgba(0,0,0,0.06)]">
+              <Image
                 src="/interior-openplan.webp"
                 alt="Premium interiør Bergen"
-                className="w-full h-[220px] sm:h-[280px] object-cover"
-                loading="eager"
-                fetchPriority="high"
-                decoding="async"
+                fill
+                priority
+                sizes="(max-width: 1023px) 100vw, 1px"
+                className="object-cover"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
               <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between gap-2">
@@ -146,15 +147,15 @@ export default function HeroSection() {
           {/* Right: bento (desktop only) */}
           <div className="hidden lg:block">
             <div className="grid grid-cols-5 gap-3 h-[560px] xl:h-[600px]">
-              <div className="col-span-3 rounded-[20px] overflow-hidden shadow-[0_8px_30px_rgba(0,0,0,0.06)] group">
-                <img src={IMG.main} alt="Stue" className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-[1000ms] ease-out" loading="eager" fetchPriority="high" decoding="async" />
+              <div className="relative col-span-3 rounded-[20px] overflow-hidden shadow-[0_8px_30px_rgba(0,0,0,0.06)] group">
+                <Image src={IMG.main} alt="Stue" fill sizes="(min-width: 1024px) 40vw, 1px" className="object-cover group-hover:scale-[1.03] transition-transform duration-[1000ms] ease-out" />
               </div>
               <div className="col-span-2 flex flex-col gap-3">
-                <div className="flex-1 rounded-[20px] overflow-hidden shadow-[0_8px_30px_rgba(0,0,0,0.06)] group">
-                  <img src={IMG.side1} alt="Soverom" className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-[1000ms] ease-out" loading="eager" />
+                <div className="relative flex-1 rounded-[20px] overflow-hidden shadow-[0_8px_30px_rgba(0,0,0,0.06)] group">
+                  <Image src={IMG.side1} alt="Soverom" fill sizes="(min-width: 1024px) 26vw, 1px" className="object-cover group-hover:scale-[1.03] transition-transform duration-[1000ms] ease-out" />
                 </div>
                 <div className="flex-1 rounded-[20px] overflow-hidden relative shadow-[0_8px_30px_rgba(0,0,0,0.06)] group">
-                  <img src={IMG.side2} alt="Rom" className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-[1000ms] ease-out" loading="lazy" />
+                  <Image src={IMG.side2} alt="Rom" fill sizes="(min-width: 1024px) 26vw, 1px" className="object-cover group-hover:scale-[1.03] transition-transform duration-[1000ms] ease-out" />
                   <div className="dh-fade-up absolute bottom-4 left-4 right-4 bg-white/95 backdrop-blur-xl rounded-2xl px-5 py-3.5 shadow-[0_4px_20px_rgba(0,0,0,0.1)]" style={{ animationDelay: '0.8s' }}>
                     <div className="flex items-center justify-between gap-3">
                       <div className="min-w-0">

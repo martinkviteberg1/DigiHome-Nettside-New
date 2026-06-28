@@ -43,7 +43,7 @@ export default function HowItWorksSection() {
             viewport={{ once: true }}
             transition={{ duration: 0.4 }}
             className="text-[13px] font-semibold uppercase tracking-[0.15em] mb-3"
-            style={{ color: '#AE68E4' }}
+            style={{ color: '#9333EA' }}
           >
             Slik fungerer det
           </Reveal>

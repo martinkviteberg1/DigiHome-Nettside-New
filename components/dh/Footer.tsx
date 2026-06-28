@@ -7,7 +7,7 @@ const cols = [
   { title: 'Tjenester', links: [{ l: 'Dynamisk utleie', h: '/tjenester' }, { l: 'Langtidsutleie', h: '/tjenester' }, { l: 'Korttidsutleie', h: '/tjenester' }, { l: 'Rådgivning', h: '/radgivning' }] },
   { title: 'Områder', links: [{ l: 'Utleie i Bergen', h: '/utleie/bergen' }, { l: 'Sentrum', h: '/utleie/sentrum' }, { l: 'Nordnes', h: '/utleie/nordnes' }, { l: 'Leiemarkedet i Bergen', h: '/leiemarkedet/bergen' }, { l: 'Alle områder', h: '/utleie' }] },
   { title: 'Selskap', links: [{ l: 'Bli utleier', h: '/bli-utleier' }, { l: 'Bli leietaker', h: '/bli-leietaker' }, { l: 'Nyheter', h: '/nyheter' }, { l: 'Kontakt', h: '/kontakt' }] },
-  { title: 'Ressurser', links: [{ l: 'Leiemarkedsrapport', h: '/leiemarkedet' }, { l: 'Om oss', h: '/om-oss' }, { l: 'Kontakt', h: '/kontakt' }, { l: 'Personvern', h: '#' }] },
+  { title: 'Ressurser', links: [{ l: 'Leiemarkedsrapport', h: '/leiemarkedet' }, { l: 'Om oss', h: '/om-oss' }, { l: 'Kontakt', h: '/kontakt' }, { l: 'Personvern', h: '/personvern' }] },
 ];
 
 export default function Footer({ org }: { org?: { company_name?: string; org_number?: string; company_address?: string; company_email?: string; company_phone?: string } | null }) {
@@ -44,14 +44,14 @@ export default function Footer({ org }: { org?: { company_name?: string; org_num
           </div>
           {cols.map((c: any) => (
             <div key={c.title}>
-              <h4 className="text-[12px] font-semibold text-white/60 uppercase tracking-[0.15em] mb-5">{c.title}</h4>
+              <h2 className="text-[12px] font-semibold text-white/60 uppercase tracking-[0.15em] mb-5">{c.title}</h2>
               <ul className="space-y-3">{c.links.map((l: any) => (<li key={l.l}><Link href={l.h} className="text-[14px] text-white/50 hover:text-white/70 transition-colors duration-200">{l.l}</Link></li>))}</ul>
             </div>
           ))}
         </div>
         <div className="border-t border-white/[0.06] py-8 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-[12px] text-white/50">&copy; {new Date().getFullYear()} {name} · Org.nr {orgNr} · {addr}</p>
-          <div className="flex items-center gap-6"><a href="#" className="text-[12px] text-white/50 hover:text-white/50 transition-colors">Personvern</a><a href="#" className="text-[12px] text-white/50 hover:text-white/50 transition-colors">Vilkår</a></div>
+          <div className="flex items-center gap-6"><a href="/personvern" className="text-[12px] text-white/50 hover:text-white/70 transition-colors">Personvern</a><a href="/personvern#vilkar" className="text-[12px] text-white/50 hover:text-white/70 transition-colors">Vilkår</a></div>
         </div>
       </div>
     </footer>
