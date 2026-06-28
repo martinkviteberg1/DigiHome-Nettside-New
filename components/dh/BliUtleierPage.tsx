@@ -13,7 +13,7 @@ import {
   TextInput, PhoneInput, IconCardSelector, NumberSelector, SummaryCard,
 } from './FormFields';
 import PropertyRegistryPicker from './PropertyRegistryPicker';
-import { FinnLookupField, AddressField, finnToFields } from './PropertyInputs';
+import { FinnLookupField, AddressField, finnToFields, FinnPropertyCard } from './PropertyInputs';
 import { track, getLeadAttribution } from '@/lib/analytics';
 import { trackLead, trackLeadStart, getClickIds } from '@/lib/gtag';
 import {
@@ -76,6 +76,25 @@ export default function BliUtleierPage() {
   // Steg 1: velg mellom adresse eller Finn-annonse som inngang.
   const [inputMode, setInputMode] = useState<'address' | 'finn'>('address');
   const [finnMatrikkel, setFinnMatrikkel] = useState<any>(null);
+  const [finnData, setFinnData] = useState<any>(null);
+  // Tilstand fra Eiendomsregisteret (for Finn-kortets verifiserings-footer).
+  const [registryState, setRegistryState] = useState<string>('idle');
+
+  // Nullstill Finn-flyten (bytt annonse) — tøm hentede felt.
+  const resetFinn = useCallback(() => {
+    setFinnUrl('');
+    setFinnData(null);
+    setFinnMatrikkel(null);
+    setRegistryState('idle');
+    setFormData((prev: any) => ({
+      ...prev,
+      address: '', postal_code: '', property_type: '', bedrooms: '', sqm: '',
+      matrikkel_number: '', seksjonsnr: '', andelsnr: '', bygningstype: '',
+      registry_owner_name: '', registry_owner_type: '', registry_orgnr: '',
+    }));
+    setRegistryQuery('');
+    setErrors((prev: any) => ({ ...prev, address: null, sqm: null, property_type: null, bedrooms: null }));
+  }, []);
 
   // Forhåndsutfyll adresse fra ?address= (fra hero-søket) → rett til adresse-steget
   useEffect(() => {
@@ -107,6 +126,9 @@ export default function BliUtleierPage() {
   const updateExtraMany = (i: number, obj: any) =>
     setExtraUnits((prev) => prev.map((u, idx) => (idx === i ? { ...u, ...obj } : u)));
 
+  // Finn-flyten hopper over «Om eiendommen» (steg 2) — alt redigeres på steg 1.
+  const flowSteps = inputMode === 'finn' ? [1, 3, 4, 5] : [1, 2, 3, 4, 5];
+
   const goNext = () => {
     const newErrors: Record<string, any> = {};
     if (step === 1) {
@@ -115,9 +137,15 @@ export default function BliUtleierPage() {
           ? 'Lim inn en gyldig Finn-lenke til boligen'
           : 'Vennligst oppgi adressen til eiendommen';
       }
+      // I Finn-flyten valideres eiendomsdetaljene her (det finnes ikke noe steg 2).
+      if (inputMode === 'finn') {
+        if (!String(formData.sqm || '').trim()) newErrors.sqm = 'Oppgi størrelse';
+        if (!formData.property_type) newErrors.property_type = 'Velg boligtype';
+        if (!formData.bedrooms) newErrors.bedrooms = 'Velg antall soverom';
+      }
     }
     if (step === 2) {
-      if (!formData.sqm.trim()) newErrors.sqm = 'Oppgi størrelse';
+      if (!String(formData.sqm || '').trim()) newErrors.sqm = 'Oppgi størrelse';
       if (!formData.property_type) newErrors.property_type = 'Velg boligtype';
       if (!formData.bedrooms) newErrors.bedrooms = 'Velg antall soverom';
     }
@@ -133,11 +161,23 @@ export default function BliUtleierPage() {
     }
     if (Object.keys(newErrors).length > 0) { setErrors(newErrors); return; }
     setDir(1);
-    setStep((prev: any) => Math.min(prev + 1, STEPS.length - 1));
+    if (step === 0) { setStep(1); }
+    else {
+      const pos = flowSteps.indexOf(step);
+      setStep(pos >= 0 && pos < flowSteps.length - 1 ? flowSteps[pos + 1] : step);
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const goBack = () => { setDir(-1); setStep((prev: any) => Math.max(prev - 1, 0)); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+  const goBack = () => {
+    setDir(-1);
+    if (step <= 1) { setStep(0); }
+    else {
+      const pos = flowSteps.indexOf(step);
+      setStep(pos > 0 ? flowSteps[pos - 1] : 1);
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   // Felles: berik skjemaet med matrikkel/eier fra Eiendomsregisteret.
   const applyRegistry = (d: any) => setFormData((prev: any) => ({
@@ -291,7 +331,7 @@ export default function BliUtleierPage() {
 
   if (step === 0) {
     return (
-      <div className="min-h-screen bg-[#fdfcfb]" data-testid="owner-page">
+      <div className="min-h-screen bg-[#fdfcfb]" data-testid="owner-page" style={{ paddingBottom: 'var(--dh-consent-h, 0px)' }}>
         <div className="h-[56px] lg:h-[76px]" />
         <div className="max-w-[1100px] mx-auto px-5 sm:px-10 py-6 sm:py-12 lg:py-16" data-testid="owner-step-welcome">
           <div className="grid lg:grid-cols-2 gap-7 sm:gap-10 lg:gap-16 items-center lg:min-h-[calc(100vh-200px)]">
@@ -350,6 +390,13 @@ export default function BliUtleierPage() {
     );
   }
 
+  // Flyt-bevisst progresjon (Finn hopper over steg 2).
+  const curPos = Math.max(0, flowSteps.indexOf(step));
+  const finnCardShown = step === 1 && inputMode === 'finn' && !!finnData;
+  const stepTitle = (step === 1 && inputMode === 'finn') ? 'Eiendommen' : STEPS[step].title;
+  const nextStepIdx = curPos < flowSteps.length - 1 ? flowSteps[curPos + 1] : null;
+  const nextStepTitle = nextStepIdx != null ? STEPS[nextStepIdx].title : '';
+
   return (
     <div className="min-h-screen bg-[#fdfcfb] flex flex-col" data-testid="owner-page">
       <div className="h-[56px] lg:h-[76px]" />
@@ -360,30 +407,29 @@ export default function BliUtleierPage() {
               <ArrowLeft className="w-4 h-4 text-[#888]" />
             </button>
             <div className="text-right">
-              <p className="text-[10.5px] font-semibold text-[#7c3aed] uppercase tracking-[0.1em] leading-none">Steg {step} av {STEPS.length - 1}</p>
-              <p className="text-[13.5px] text-[#0a0a0a] font-semibold mt-1 leading-none">{STEPS[step].title}</p>
+              <p className="text-[10.5px] font-semibold text-[#7c3aed] uppercase tracking-[0.1em] leading-none">Steg {curPos + 1} av {flowSteps.length}</p>
+              <p className="text-[13.5px] text-[#0a0a0a] font-semibold mt-1 leading-none">{stepTitle}</p>
             </div>
           </div>
-          {/* Premium stepper — sirkler + animerte koblinger */}
+          {/* Premium stepper — sirkler + animerte koblinger (flyt-bevisst) */}
           <div className="flex items-center mb-9">
-            {STEPS.slice(1).map((s: any, i: number) => {
-              const idx = i + 1;
-              const done = idx < step;
-              const active = idx === step;
+            {flowSteps.map((idx: number, pos: number) => {
+              const done = curPos > pos;
+              const active = step === idx;
               return (
-                <React.Fragment key={s.id}>
+                <React.Fragment key={idx}>
                   <motion.div
                     initial={false}
                     animate={{ scale: active ? 1.12 : 1 }}
                     transition={{ type: 'spring', stiffness: 320, damping: 20 }}
-                    title={s.title}
+                    title={STEPS[idx].title}
                     className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-[12px] font-bold border-2 transition-colors duration-300 ${done ? 'bg-[#cf97fc] border-[#cf97fc] text-white' : active ? 'bg-white border-[#cf97fc] text-[#7c3aed] shadow-[0_0_0_4px_rgba(207,151,252,0.18)]' : 'bg-white border-[#e6e3df] text-[#c4c0bb]'}`}
                   >
-                    {done ? <Check className="w-4 h-4" strokeWidth={3} /> : idx}
+                    {done ? <Check className="w-4 h-4" strokeWidth={3} /> : pos + 1}
                   </motion.div>
-                  {idx < STEPS.length - 1 && (
+                  {pos < flowSteps.length - 1 && (
                     <div className="flex-1 h-[2px] mx-2 rounded-full bg-[#ece9e4] overflow-hidden">
-                      <motion.div className="h-full bg-[#cf97fc] rounded-full" initial={false} animate={{ width: idx < step ? '100%' : '0%' }} transition={{ duration: 0.45, ease: [0.25, 0.1, 0.25, 1] }} />
+                      <motion.div className="h-full bg-[#cf97fc] rounded-full" initial={false} animate={{ width: curPos > pos ? '100%' : '0%' }} transition={{ duration: 0.45, ease: [0.25, 0.1, 0.25, 1] }} />
                     </div>
                   )}
                 </React.Fragment>
@@ -392,7 +438,7 @@ export default function BliUtleierPage() {
           </div>
         </div>
 
-        <div className="flex-1 max-w-[600px] w-full mx-auto px-6 pb-24" onKeyDown={onKeyDownAdvance}>
+        <div className="flex-1 max-w-[600px] w-full mx-auto px-6 pb-[calc(6rem+var(--dh-consent-h,0px))]" onKeyDown={onKeyDownAdvance}>
           <AnimatePresence mode="wait" custom={dir}>
             <motion.div key={step} custom={dir} variants={stepVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}>
 
@@ -402,10 +448,17 @@ export default function BliUtleierPage() {
                   <div className="inline-flex items-center gap-2 text-[11px] font-semibold text-[#7c3aed] uppercase tracking-[0.1em] mb-3">
                     <MapPin className="w-3.5 h-3.5" /> Eiendommen
                   </div>
-                  <h2 className="text-[28px] sm:text-[34px] font-bold tracking-[-0.03em] text-[#0a0a0a] mb-2" style={{ fontFamily: 'var(--font-heading)' }}>Hvor ligger eiendommen?</h2>
-                  <p className="text-[15px] text-[#888] mb-7 max-w-[46ch]">Velg hvordan du vil registrere — vi henter adresse, matrikkel og eierforslag automatisk fra Eiendomsregisteret.</p>
+                  <h2 className="text-[28px] sm:text-[34px] font-bold tracking-[-0.03em] text-[#0a0a0a] mb-2" style={{ fontFamily: 'var(--font-heading)' }}>
+                    {finnCardShown ? 'Bekreft eiendommen' : 'Hvor ligger eiendommen?'}
+                  </h2>
+                  <p className="text-[15px] text-[#888] mb-7 max-w-[46ch]">
+                    {finnCardShown
+                      ? 'Vi hentet alt fra annonsen og verifiserte mot Eiendomsregisteret. Sjekk at detaljene stemmer — du kan justere direkte.'
+                      : 'Velg hvordan du vil registrere — vi henter adresse, matrikkel og eierforslag automatisk fra Eiendomsregisteret.'}
+                  </p>
 
-                  {/* Segmentert bryter: Adresse / Finn-annonse */}
+                  {/* Segmentert bryter: Adresse / Finn-annonse — skjules når Finn-kortet vises */}
+                  {!finnCardShown && (
                   <div className="inline-flex p-1 rounded-full bg-[#f1eef6] mb-7" role="tablist" data-testid="owner-input-mode">
                     {[
                       { k: 'address', l: 'Adresse', icon: MapPin },
@@ -422,6 +475,7 @@ export default function BliUtleierPage() {
                       );
                     })}
                   </div>
+                  )}
 
                   {inputMode === 'address' ? (
                     <div>
@@ -448,38 +502,65 @@ export default function BliUtleierPage() {
                     </div>
                   ) : (
                     <div>
-                      <Label className="text-[13px] font-semibold text-[#333] mb-1.5 block">Lenke til Finn-annonse <span className="text-[#7c3aed]">*</span></Label>
-                      <p className="text-[13px] text-[#888] mb-3">Lim inn lenken til boligen på finn.no — vi henter adresse, areal, matrikkel og eierforslag automatisk.</p>
-                      <FinnLookupField
-                        value={finnUrl}
-                        onChange={setFinnUrl}
-                        testId="owner-step1-finn"
-                        onResult={(d: any) => {
-                          const mk = d?.matrikkel && d.matrikkel.kommunenr && d.matrikkel.gaardsnr && d.matrikkel.bruksnr
-                            ? { kommunenr: d.matrikkel.kommunenr, gaardsnr: d.matrikkel.gaardsnr, bruksnr: d.matrikkel.bruksnr } : null;
-                          setFinnMatrikkel(mk);
-                          setFormData((prev: any) => ({
-                            ...prev,
-                            ...finnToFields(d),
-                            ...(d?.address ? { address: d.address } : {}),
-                            ...(d?.postalCode ? { postal_code: d.postalCode } : {}),
-                          }));
-                          if (!mk && d?.address) setRegistryQuery(d.address);
-                          setErrors((prev: any) => ({ ...prev, address: null }));
-                        }}
-                      />
-                      {errors.address && <p className="text-[12px] text-red-500 mt-2">{errors.address}</p>}
-                      {finnMatrikkel && (
-                        <p className="mt-3 inline-flex items-center gap-1.5 text-[12.5px] text-[#5b6370] bg-[#f8f6fc] rounded-full px-3 py-1.5">
-                          <Sparkles className="w-3.5 h-3.5 text-[#cf97fc]" /> Matrikkel {finnMatrikkel.kommunenr}-{finnMatrikkel.gaardsnr}/{finnMatrikkel.bruksnr} hentet fra annonsen
-                        </p>
-                      )}
-                      <PropertyRegistryPicker
-                        matrikkel={finnMatrikkel}
-                        query={finnMatrikkel ? '' : registryQuery}
-                        addressLabel={formData.address}
-                        onResolved={applyRegistry}
-                      />
+                      {/* Før treff: lenkefelt. Etter treff: hele steget blir ett stort eiendomskort. */}
+                      <AnimatePresence mode="wait" initial={false}>
+                        {!finnData ? (
+                          <motion.div key="finn-input" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.25 }}>
+                            <Label className="text-[13px] font-semibold text-[#333] mb-1.5 block">Lenke til Finn-annonse <span className="text-[#7c3aed]">*</span></Label>
+                            <p className="text-[13px] text-[#888] mb-3">Lim inn lenken til boligen på finn.no — vi henter adresse, areal, matrikkel og eierforslag automatisk.</p>
+                            <FinnLookupField
+                              value={finnUrl}
+                              onChange={setFinnUrl}
+                              testId="owner-step1-finn"
+                              hidePreview
+                              onResult={(d: any) => {
+                                const mk = d?.matrikkel && d.matrikkel.kommunenr && d.matrikkel.gaardsnr && d.matrikkel.bruksnr
+                                  ? { kommunenr: d.matrikkel.kommunenr, gaardsnr: d.matrikkel.gaardsnr, bruksnr: d.matrikkel.bruksnr } : null;
+                                setFinnMatrikkel(mk);
+                                setFinnData(d);
+                                setFormData((prev: any) => ({
+                                  ...prev,
+                                  ...finnToFields(d),
+                                  ...(d?.address ? { address: d.address } : {}),
+                                  ...(d?.postalCode ? { postal_code: d.postalCode } : {}),
+                                }));
+                                if (!mk && d?.address) setRegistryQuery(d.address);
+                                setErrors((prev: any) => ({ ...prev, address: null }));
+                              }}
+                            />
+                            {errors.address && <p className="text-[12px] text-red-500 mt-2">{errors.address}</p>}
+                          </motion.div>
+                        ) : (
+                          <motion.div key="finn-card" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
+                            <FinnPropertyCard
+                              data={finnData}
+                              sourceUrl={finnUrl}
+                              onReset={resetFinn}
+                              sqm={formData.sqm}
+                              bedrooms={formData.bedrooms}
+                              propertyType={formData.property_type}
+                              onSqm={(v: any) => updateField('sqm', v)}
+                              onBedrooms={(v: any) => updateField('bedrooms', v)}
+                              onType={(v: any) => updateField('property_type', v)}
+                              errors={errors}
+                              verifying={registryState === 'loading'}
+                              ownerName={formData.registry_owner_name}
+                              ownerType={formData.registry_owner_type}
+                              needsSelect={(registryState === 'sameie' || registryState === 'borettslag') && !formData.seksjonsnr && !formData.andelsnr}
+                              registryFailed={registryState === 'notfound' || registryState === 'error'}
+                            />
+                            {/* Seksjons-/andelsvelger (kun for sameie/borettslag) — vises sømløst under kortet */}
+                            <PropertyRegistryPicker
+                              matrikkel={finnMatrikkel}
+                              query={finnMatrikkel ? '' : registryQuery}
+                              addressLabel={formData.address}
+                              onResolved={applyRegistry}
+                              onState={setRegistryState}
+                              renderSingle={false}
+                            />
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </div>
                   )}
                 </div>
@@ -689,12 +770,12 @@ export default function BliUtleierPage() {
           </AnimatePresence>
         </div>
 
-        <div className="sticky bottom-0 z-30 mt-auto bg-white/90 backdrop-blur-xl border-t border-[#f0f0f0]">
+        <div className="sticky z-30 mt-auto bg-white/90 backdrop-blur-xl border-t border-[#f0f0f0]" style={{ bottom: 'var(--dh-consent-h, 0px)' }}>
           <div className="max-w-[600px] mx-auto px-6 py-4 flex items-center justify-between gap-4">
             <button onClick={goBack} className="text-[14px] font-semibold text-[#666] hover:text-[#333] underline underline-offset-4 transition-colors" data-testid="owner-back-link">Tilbake</button>
-            {step < STEPS.length - 1 ? (
+            {nextStepIdx != null ? (
               <div className="flex items-center gap-3">
-                <span className="hidden sm:block text-[12px] text-[#aaa]">Neste: <span className="text-[#666] font-medium">{STEPS[step + 1].title}</span></span>
+                <span className="hidden sm:block text-[12px] text-[#aaa]">Neste: <span className="text-[#666] font-medium">{nextStepTitle}</span></span>
                 <Button onClick={goNext} data-testid="owner-next-button" className="rounded-full bg-[#0a0a0a] text-white hover:bg-black h-12 px-8 text-[14px] font-semibold gap-2 active:scale-[0.97] transition-transform shadow-[0_6px_20px_-8px_rgba(0,0,0,0.5)]">Neste <ArrowRight className="w-4 h-4" /></Button>
               </div>
             ) : (

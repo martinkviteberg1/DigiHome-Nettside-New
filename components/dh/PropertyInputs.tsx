@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from '@/lib/motion-lite';
-import { MapPin, Pencil, Link2, Loader2, CheckCircle2, X, Sparkles } from 'lucide-react';
+import { MapPin, Pencil, Link2, Loader2, CheckCircle2, X, Sparkles, Ruler, BedDouble, Home, Banknote, Hash } from 'lucide-react';
 import { AddressAutocomplete } from './AddressAutocomplete';
 
 /** Mapper Finn-preview-data til skjemafelt (sqm / property_type / bedrooms). */
@@ -88,7 +88,7 @@ export function AddressField({
    FinnLookupField — lim inn Finn-lenke → premium «scanning»-animasjon +
    forhåndsvisningskort. Kaller onResult(data) ved treff (parent auto-fyller).
    ────────────────────────────────────────────────────────────────────────── */
-export function FinnLookupField({ value, onChange, onResult, testId = 'finn', compact = false }: any) {
+export function FinnLookupField({ value, onChange, onResult, testId = 'finn', compact = false, hidePreview = false }: any) {
   const [preview, setPreview] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState('');
@@ -157,6 +157,7 @@ export function FinnLookupField({ value, onChange, onResult, testId = 'finn', co
 
       {err && <p className="text-[12px] text-[#d9534f] mt-2">{err}</p>}
 
+      {!hidePreview && (
       <AnimatePresence mode="wait">
         {loading && !preview && (
           /* Skeleton-kort med shimmer mens vi henter */
@@ -211,6 +212,154 @@ export function FinnLookupField({ value, onChange, onResult, testId = 'finn', co
           </motion.div>
         )}
       </AnimatePresence>
+      )}
     </div>
+  );
+}
+
+
+const FINN_TYPE_OPTS = [
+  { value: 'leilighet', label: 'Leilighet' },
+  { value: 'hus', label: 'Hus' },
+  { value: 'rekkehus', label: 'Rekkehus' },
+  { value: 'hybel', label: 'Hybel' },
+  { value: 'annet', label: 'Annet' },
+];
+
+/* ──────────────────────────────────────────────────────────────────────────
+   FinnPropertyCard — verdensklasse eiendomskort med hero-bilde, adresse og
+   REDIGERBARE stat-fliser (areal/soverom/boligtype). Brukes i Finn-flyten på
+   steg 1 slik at brukeren slipper et eget eiendoms-steg. Inkluderer kilde-
+   header (bytt annonse) + integrert eiendomsregister-verifisering i footer.
+   ────────────────────────────────────────────────────────────────────────── */
+export function FinnPropertyCard({
+  data, sqm, bedrooms, propertyType, onSqm, onBedrooms, onType, errors = {},
+  ownerName, ownerType, verifying = false, needsSelect = false, registryFailed = false,
+  sourceUrl, onReset,
+}: any) {
+  if (!data || !data.ok) return null;
+  const matrikkelStr = data.matrikkel && data.matrikkel.kommunenr
+    ? `${data.matrikkel.kommunenr}-${data.matrikkel.gaardsnr}/${data.matrikkel.bruksnr}`
+    : '';
+  const tileBase = 'rounded-2xl bg-[#faf9fc] p-3.5 border transition-colors';
+  let host = '';
+  try { host = sourceUrl ? new URL(sourceUrl).hostname.replace(/^www\./, '') : ''; } catch (e) { host = ''; }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 14, scale: 0.985 }} animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+      className="rounded-[26px] bg-white overflow-hidden shadow-[0_18px_60px_-28px_rgba(0,0,0,0.45)]"
+      data-testid="finn-property-card"
+    >
+      {/* Kilde-header — viser at dette er hentet fra Finn + bytt annonse */}
+      {(host || onReset) && (
+        <div className="flex items-center justify-between gap-3 px-4 sm:px-5 py-3 border-b border-[#f3f0f7]">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="w-7 h-7 rounded-full bg-[#f4eefb] flex items-center justify-center shrink-0"><Link2 className="w-3.5 h-3.5 text-[#7c3aed]" /></span>
+            <div className="min-w-0">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#aaa] leading-none">Hentet fra annonse</p>
+              <p className="text-[12.5px] font-medium text-[#555] truncate leading-tight mt-0.5">{host || 'finn.no'}</p>
+            </div>
+          </div>
+          {onReset && (
+            <button type="button" onClick={onReset} data-testid="finn-card-reset"
+              className="shrink-0 inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-[#7c3aed] hover:text-[#8a45d6] transition-colors px-2.5 py-1.5 rounded-lg hover:bg-[#faf5ff]">
+              <Pencil className="w-[13px] h-[13px]" /> Bytt annonse
+            </button>
+          )}
+        </div>
+      )}
+
+      {data.image ? (
+        <div className="relative">
+          <motion.img initial={{ scale: 1.06 }} animate={{ scale: 1 }} transition={{ duration: 0.7 }}
+            src={data.image} alt={data.address || 'Eiendom'} className="w-full h-[200px] sm:h-[240px] object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/0 to-black/10" />
+          <div className="absolute top-3.5 left-3.5">
+            {data.kind && <span className="text-[10.5px] font-bold uppercase tracking-[0.06em] px-2.5 py-1 rounded-full bg-white/95 text-[#0a0a0a]">{data.kind === 'leie' ? 'Til leie' : 'Til salgs'}</span>}
+          </div>
+          <div className="absolute bottom-4 left-4 right-4">
+            <p className="text-white text-[20px] sm:text-[24px] font-bold leading-tight tracking-[-0.01em]" style={{ fontFamily: 'var(--font-heading)' }}>{data.address || data.title}</p>
+            {matrikkelStr && <p className="text-white/80 text-[12.5px] mt-1.5 inline-flex items-center gap-1.5"><Hash className="w-3 h-3" /> Matrikkel {matrikkelStr}</p>}
+          </div>
+        </div>
+      ) : (
+        <div className="px-5 pt-5">
+          <p className="text-[20px] font-bold text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>{data.address || data.title}</p>
+          {matrikkelStr && <p className="text-[12.5px] text-[#999] mt-1 inline-flex items-center gap-1"><Hash className="w-3 h-3" /> Matrikkel {matrikkelStr}</p>}
+        </div>
+      )}
+
+      <div className="p-4 sm:p-5">
+        <div className="flex items-center gap-1.5 mb-3 px-0.5">
+          <Sparkles className="w-3.5 h-3.5 text-[#cf97fc]" />
+          <span className="text-[11.5px] text-[#888]">Hentet automatisk — trykk for å justere</span>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+          {/* Areal */}
+          <div className={`${tileBase} ${errors.sqm ? 'border-red-300' : 'border-transparent'} focus-within:border-[#cf97fc] focus-within:bg-white`}>
+            <div className="flex items-center gap-1.5 text-[#b39ddb] mb-1.5"><Ruler className="w-4 h-4" /><span className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-[#aaa]">Areal</span></div>
+            <div className="flex items-baseline gap-1">
+              <input type="number" inputMode="numeric" value={sqm || ''} onChange={(e: any) => onSqm(e.target.value)} placeholder="—"
+                className="w-full bg-transparent outline-none text-[19px] font-bold text-[#0a0a0a] leading-none placeholder:text-[#ccc]" style={{ fontFamily: 'var(--font-heading)' }} data-testid="finn-card-sqm" />
+              <span className="text-[13px] text-[#999] font-medium shrink-0">m²</span>
+            </div>
+          </div>
+          {/* Soverom */}
+          <div className={`${tileBase} ${errors.bedrooms ? 'border-red-300' : 'border-transparent'} focus-within:border-[#cf97fc] focus-within:bg-white`}>
+            <div className="flex items-center gap-1.5 text-[#b39ddb] mb-1.5"><BedDouble className="w-4 h-4" /><span className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-[#aaa]">Soverom</span></div>
+            <select value={bedrooms || ''} onChange={(e: any) => onBedrooms(e.target.value)} data-testid="finn-card-bedrooms"
+              className="w-full bg-transparent outline-none text-[19px] font-bold text-[#0a0a0a] leading-none cursor-pointer appearance-none" style={{ fontFamily: 'var(--font-heading)' }}>
+              <option value="">—</option>
+              {['1', '2', '3', '4', '5+'].map((n) => <option key={n} value={n}>{n}</option>)}
+            </select>
+          </div>
+          {/* Boligtype */}
+          <div className={`${tileBase} ${errors.property_type ? 'border-red-300' : 'border-transparent'} focus-within:border-[#cf97fc] focus-within:bg-white col-span-2 sm:col-span-1`}>
+            <div className="flex items-center gap-1.5 text-[#b39ddb] mb-1.5"><Home className="w-4 h-4" /><span className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-[#aaa]">Boligtype</span></div>
+            <select value={propertyType || ''} onChange={(e: any) => onType(e.target.value)} data-testid="finn-card-type"
+              className="w-full bg-transparent outline-none text-[19px] font-bold text-[#0a0a0a] leading-none cursor-pointer appearance-none" style={{ fontFamily: 'var(--font-heading)' }}>
+              <option value="">—</option>
+              {FINN_TYPE_OPTS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* Verifiserings-footer — eiendomsregister (Infotorg EDR) */}
+      {(verifying || ownerName || needsSelect || registryFailed) && (
+        <AnimatePresence mode="wait">
+          {verifying ? (
+            <motion.div key="verifying" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="flex items-center gap-2.5 px-5 py-3.5 bg-[#faf8fe] border-t border-[#f1ebfb]" data-testid="finn-card-verifying">
+              <Loader2 className="w-4 h-4 text-[#7c3aed] animate-spin shrink-0" />
+              <span className="text-[13.5px] text-[#5b6370]">Søker i Eiendomsregisteret …</span>
+            </motion.div>
+          ) : ownerName ? (
+            <motion.div key="verified" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+              className="flex items-center gap-2.5 px-5 py-3.5 bg-[#f7fcf9] border-t border-[#e7f3ec]" data-testid="finn-card-verified">
+              <span className="w-6 h-6 rounded-full bg-[#e7f7ee] flex items-center justify-center shrink-0"><CheckCircle2 className="w-4 h-4 text-[#16a34a]" /></span>
+              <span className="text-[13.5px] text-[#0a0a0a] leading-snug">
+                <span className="font-semibold">Verifisert i Eiendomsregisteret</span>
+                <span className="text-[#5b6370]"> · {ownerName}{ownerType === 'org' ? '' : ' · hjemmelshaver'}</span>
+              </span>
+            </motion.div>
+          ) : needsSelect ? (
+            <motion.div key="select" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="flex items-center gap-2.5 px-5 py-3.5 bg-[#faf8fe] border-t border-[#f1ebfb]" data-testid="finn-card-select">
+              <span className="w-6 h-6 rounded-full bg-[#f4eefb] flex items-center justify-center shrink-0"><CheckCircle2 className="w-4 h-4 text-[#7c3aed]" /></span>
+              <span className="text-[13.5px] text-[#0a0a0a] leading-snug"><span className="font-semibold">Funnet i registeret</span><span className="text-[#5b6370]"> · velg din enhet nedenfor</span></span>
+            </motion.div>
+          ) : registryFailed ? (
+            <motion.div key="failed" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="flex items-start gap-2.5 px-5 py-3.5 bg-[#f8f8f7] border-t border-[#eee]" data-testid="finn-card-registry-failed">
+              <Info className="w-4 h-4 text-[#5b6370] mt-0.5 shrink-0" />
+              <span className="text-[13px] text-[#5b6370] leading-relaxed">Vi fant ikke eiendommen automatisk i registeret — det går helt fint, du kan fortsette.</span>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
+      )}
+    </motion.div>
   );
 }

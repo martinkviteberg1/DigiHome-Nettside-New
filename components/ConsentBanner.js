@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Cookie } from 'lucide-react';
 import { gaEnabled, getStoredConsent, applyConsent, restoreConsent } from '@/lib/gtag';
@@ -10,6 +10,7 @@ import { gaEnabled, getStoredConsent, applyConsent, restoreConsent } from '@/lib
 export default function ConsentBanner() {
   const [decided, setDecided] = useState(true); // anta avgjort til vi vet
   const [mounted, setMounted] = useState(false);
+  const cardRef = useRef(null);
 
   useEffect(() => {
     setMounted(true);
@@ -23,8 +24,30 @@ export default function ConsentBanner() {
     }
   }, []);
 
+  // Eksponer bannerhøyde som CSS-variabel slik at klistrede CTA-er (skjemaer)
+  // kan løfte seg over banneret i stedet for å bli skjult. Nullstilles ved valg.
+  useEffect(() => {
+    const root = document.documentElement;
+    const setVar = (px) => root.style.setProperty('--dh-consent-h', `${px}px`);
+    if (decided || !mounted) {
+      setVar(0);
+      return;
+    }
+    const measure = () => {
+      const h = cardRef.current ? cardRef.current.getBoundingClientRect().height : 0;
+      setVar(h ? Math.round(h + 28) : 0); // + bunnmarg/pust
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    return () => {
+      window.removeEventListener('resize', measure);
+      root.style.setProperty('--dh-consent-h', '0px');
+    };
+  }, [decided, mounted]);
+
   const choose = (choice) => {
     applyConsent(choice);
+    try { document.documentElement.style.setProperty('--dh-consent-h', '0px'); } catch (e) {}
     setDecided(true);
   };
 
@@ -32,7 +55,7 @@ export default function ConsentBanner() {
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-[120] flex justify-center px-3 pb-3 sm:px-5 sm:pb-5 pointer-events-none">
-      <div className="pointer-events-auto w-full max-w-[560px] rounded-[20px] bg-surface border border-hairline shadow-[0_24px_70px_-24px_rgba(10,10,10,0.35)] p-5 sm:p-6">
+      <div ref={cardRef} className="pointer-events-auto w-full max-w-[560px] rounded-[20px] bg-surface border border-hairline shadow-[0_24px_70px_-24px_rgba(10,10,10,0.35)] p-5 sm:p-6">
         <div className="flex items-start gap-3.5">
           <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-fill">
             <Cookie className="h-4.5 w-4.5 text-lavender" />

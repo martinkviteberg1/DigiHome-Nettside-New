@@ -57,11 +57,17 @@ export function PropertyRegistryPicker({
   matrikkel: matrikkelIn,
   addressLabel,
   onResolved,
+  onState,
+  renderSingle = true,
 }: {
   query?: string;
   matrikkel?: { kommunenr: string; gaardsnr: string; bruksnr: string } | null;
   addressLabel?: string;
   onResolved: (d: RegistryResolved) => void;
+  /** Rapporterer intern tilstand til forelder (for Finn-kort-integrasjon). */
+  onState?: (s: string) => void;
+  /** Når false skjules «laster»- og «enkelt-eiendom»-kortet (forelder viser det selv). */
+  renderSingle?: boolean;
 }) {
   const [state, setState] = useState<'idle' | 'loading' | 'sameie' | 'borettslag' | 'single' | 'notfound' | 'error' | 'disabled'>('idle');
   const [lookup, setLookup] = useState<any>(null);
@@ -124,6 +130,10 @@ export function PropertyRegistryPicker({
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [matKey, q]);
+
+  // Rapporter tilstand oppover (for Finn-kort-integrasjon).
+  useEffect(() => { try { onState?.(state); } catch (e) {} }, [state]); // eslint-disable-line react-hooks/exhaustive-deps
+
 
   const handleSelect = (val: string) => {
     setSelected(val);
@@ -194,6 +204,7 @@ export function PropertyRegistryPicker({
 
   // ---- Laster: premium "søker i registeret" ----
   if (state === 'loading') {
+    if (!renderSingle) return null;
     return (
       <div className="mt-5 rounded-[24px] border border-[#efe6fb] bg-white p-8 sm:p-10 text-center shadow-[0_8px_40px_-24px_rgba(124,58,237,0.35)]" data-testid="registry-loading">
         <div className="mx-auto w-14 h-14 rounded-2xl bg-[#faf5ff] flex items-center justify-center mb-5">
@@ -298,6 +309,7 @@ export function PropertyRegistryPicker({
 
   // ---- Enkelt-eiendom (enebolig o.l.) ----
   if (state === 'single' && lookup) {
+    if (!renderSingle) return null;
     return (
       <div className="mt-5 rounded-[24px] border border-[#efe6fb] bg-white p-5 sm:p-6 shadow-[0_8px_40px_-24px_rgba(124,58,237,0.35)]" data-testid="registry-single">
         <div className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-[#16a34a] mb-3">

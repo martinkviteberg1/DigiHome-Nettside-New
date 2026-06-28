@@ -486,6 +486,19 @@ backend:
 
 
 frontend:
+  - task: "Bli-utleier Finn-flyt: hele steg 1 blir ett stort eiendomskort + steg-hopping + cookie-banner-fiks"
+    implemented: true
+    working: true
+    file: "components/dh/BliUtleierPage.tsx, components/dh/PropertyInputs.tsx (FinnPropertyCard), components/dh/PropertyRegistryPicker.tsx, components/ConsentBanner.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "main"
+        -comment: "BRUKERØNSKE: når man limer inn en Finn-lenke skal HELE steg 1 transformeres til ett stort, nydelig eiendomskort med alle detaljer + inline-editing, og Finn-flyten skal hoppe over steg 2 (Om eiendommen). ENDRINGER: (1) FinnPropertyCard (PropertyInputs.tsx) bygd om til hovedkortet: kilde-header (finn.no + «Bytt annonse»), hero-bilde m/ adresse+matrikkel-overlay, redigerbare fliser (areal/soverom/boligtype) og en INTEGRERT verifiserings-footer (laster / «Verifisert i Eiendomsregisteret · {hjemmelshaver}» / «velg din enhet nedenfor» / mykt feilfall). (2) PropertyRegistryPicker fikk onState(callback) + renderSingle=false slik at «laster»- og «enkelt-eiendom»-kortet skjules i Finn-flyten (kortets footer viser det i stedet); sameie/borettslag-velgeren vises fortsatt sømløst under kortet. (3) BliUtleierPage: finnData-state settes i onResult; steg 1 viser lenkefelt før treff og kortet etter treff (heading→«Bekreft eiendommen», bryter skjules); resetFinn() for «Bytt annonse»; fikset «Neste:»-etiketten til flyt-bevisst nextStepTitle (viste feilaktig «Eiendommen» i Finn-flyt, nå «Om deg»). (4) COOKIE-BANNER-FIKS (P0): ConsentBanner måler høyde og setter CSS-var --dh-consent-h; den klistrede CTA-en i BliUtleierPage løftes via style bottom:var(--dh-consent-h) + bunnpolstring, og velkomststeget får samme bunnpolstring → CTA blir aldri dekket. VERIFISERT av main med screenshot-verktøy (desktop 1920 + mobil 414): Finn-kort vises korrekt (Hjemmovegen 16 / Matrikkel 3420-72/128 / 124m² / 3 sov / Hus / verifisert TARDI KRISZTINA·hjemmelshaver), stepper viser «STEG 1 AV 4», Neste→lander på «Om deg» (steg 2 hoppet over), cookie-banner dekker ikke lenger Neste. Kun frontend-endringer; ingen backend-/API-endring."
+
+
   - task: "LCP-optimalisering forside (mobil) + siste A11y-kontrastfikser (100/100/100/100 hele siten)"
     implemented: true
     working: true
