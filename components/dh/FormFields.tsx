@@ -152,7 +152,7 @@ export function NumberSelector({ options, selected, onChange, testIdPrefix }: an
         const isSelected = selected === n;
         return (
           <button key={n} type="button" onClick={() => onChange(n)} data-testid={`${testIdPrefix}-${n}`}
-            className={`w-14 h-14 rounded-2xl text-[15px] font-semibold border-2 transition-all duration-200 ${isSelected ? 'border-[#cf97fc] bg-[#faf5ff] text-[#8b5fc0]' : 'border-[#eee] bg-white text-[#888] hover:border-[#ddd]'}`}>{n}</button>
+            className={`w-14 h-14 rounded-2xl text-[15px] font-semibold border-2 transition-all duration-200 active:scale-[0.93] ${isSelected ? 'border-[#cf97fc] bg-[#faf5ff] text-[#8b5fc0] shadow-[0_4px_16px_-6px_rgba(207,151,252,0.6)] -translate-y-0.5' : 'border-[#eee] bg-white text-[#888] hover:border-[#ddd] hover:-translate-y-0.5'}`}>{n}</button>
         );
       })}
     </div>
@@ -168,8 +168,8 @@ export function IconCardSelector({ options, selected, onChange, testIdPrefix }: 
         const isSelected = selected === type.value;
         return (
           <button key={type.value} type="button" onClick={() => onChange(isSelected ? '' : type.value)} data-testid={`${testIdPrefix}-${type.value}`}
-            className={`flex flex-col items-center gap-2 py-4 px-2 rounded-2xl border-2 transition-all duration-200 ${isSelected ? 'border-[#cf97fc] bg-[#faf5ff] shadow-[0_0_0_1px_rgba(207,151,252,0.3)]' : 'border-[#eee] bg-white hover:border-[#ddd] hover:bg-[#fafafa]'}`}>
-            <Icon className={`w-5 h-5 ${isSelected ? 'text-[#cf97fc]' : 'text-[#737373]'}`} strokeWidth={1.8} />
+            className={`flex flex-col items-center gap-2 py-4 px-2 rounded-2xl border-2 transition-all duration-200 active:scale-[0.95] ${isSelected ? 'border-[#cf97fc] bg-[#faf5ff] shadow-[0_4px_18px_-6px_rgba(207,151,252,0.55)] -translate-y-0.5' : 'border-[#eee] bg-white hover:border-[#ddd] hover:bg-[#fafafa] hover:-translate-y-0.5'}`}>
+            <Icon className={`w-5 h-5 transition-colors ${isSelected ? 'text-[#cf97fc]' : 'text-[#737373]'}`} strokeWidth={1.8} />
             <span className={`text-[12px] font-medium ${isSelected ? 'text-[#8b5fc0]' : 'text-[#888]'}`}>{type.label}</span>
           </button>
         );

@@ -17,7 +17,7 @@ import { FinnLookupField, AddressField, finnToFields } from './PropertyInputs';
 import { track, getLeadAttribution } from '@/lib/analytics';
 import { trackLead, trackLeadStart, getClickIds } from '@/lib/gtag';
 import {
-  User, Mail, ArrowRight, ArrowLeft, CheckCircle2, Loader2,
+  User, Mail, ArrowRight, ArrowLeft, CheckCircle2, Check, Loader2,
   Home, Building2, Warehouse, LayoutGrid, BedDouble, TrendingUp, Shield, Key, Zap, Calendar as CalendarIcon,
   X, Plus, Sparkles, MapPin, Link2,
 } from 'lucide-react';
@@ -151,6 +151,17 @@ export default function BliUtleierPage() {
     registry_orgnr: d.registry_orgnr || '',
   }));
 
+  // 2026-UX: Enter går videre (unntatt textarea + adresse/Finn-felt som bruker Enter selv).
+  const onKeyDownAdvance = (e: any) => {
+    if (e.key !== 'Enter' || e.shiftKey || loading) return;
+    const t = e.target;
+    const tag = (t && t.tagName ? t.tagName : '').toUpperCase();
+    if (tag === 'TEXTAREA') return;
+    if (t && t.closest && t.closest('[data-no-enter-advance]')) return;
+    e.preventDefault();
+    if (step < STEPS.length - 1) goNext(); else handleSubmit();
+  };
+
   const handleSubmit = async () => {
     if (loading) return;
     setLoading(true);
@@ -237,16 +248,40 @@ export default function BliUtleierPage() {
 
   if (submitted) {
     return (
-      <div className="min-h-screen flex items-center justify-center px-5 bg-[#fdfcfb]">
-        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }} className="text-center max-w-md">
-          <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
-            className="w-24 h-24 rounded-full bg-[#f5edfc] flex items-center justify-center mx-auto mb-8">
-            <CheckCircle2 className="w-12 h-12 text-[#cf97fc]" />
+      <div className="min-h-screen flex items-center justify-center px-5 py-16 bg-[#fdfcfb] relative overflow-hidden">
+        <div aria-hidden className="pointer-events-none absolute -top-32 left-1/2 -translate-x-1/2 h-[420px] w-[680px] rounded-full" style={{ background: 'radial-gradient(circle at center, rgba(207,151,252,0.16) 0%, rgba(207,151,252,0) 70%)' }} />
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }} className="relative text-center max-w-md w-full">
+          <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.15, type: 'spring', stiffness: 200, damping: 16 }}
+            className="w-20 h-20 rounded-[22px] bg-[#0a0a0a] flex items-center justify-center mx-auto mb-7 shadow-[0_14px_44px_-12px_rgba(0,0,0,0.45)]">
+            <CheckCircle2 className="w-10 h-10 text-[#cf97fc]" />
           </motion.div>
-          <h1 className="text-[36px] font-bold tracking-[-0.03em] text-[#0a0a0a] mb-4" style={{ fontFamily: 'var(--font-heading)' }}>Tusen takk!</h1>
-          <p className="text-[16px] text-[#666] mb-3 leading-relaxed">Vi har mottatt henvendelsen din og tar kontakt innen 24 timer for en personlig gjennomgang.</p>
+          <h1 className="text-[33px] sm:text-[38px] font-bold tracking-[-0.03em] text-[#0a0a0a] mb-3" style={{ fontFamily: 'var(--font-heading)' }}>Tusen takk{formData.name ? `, ${formData.name.split(' ')[0]}` : ''}!</h1>
+          <p className="text-[16px] text-[#666] leading-relaxed max-w-[42ch] mx-auto">Vi har mottatt henvendelsen din. En rådgiver tar kontakt for en personlig, uforpliktende gjennomgang.</p>
+
+          <div className="mt-8 text-left bg-white rounded-[22px] p-6 shadow-[0_8px_40px_-24px_rgba(0,0,0,0.35)]">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[#aaa] mb-4">Hva skjer nå</p>
+            <div>
+              {[
+                { t: 'Vi vurderer eiendommen', s: 'Inntektspotensial og beste utleiemodell', done: true },
+                { t: 'Vi ringer deg innen 24 timer', s: 'Personlig gjennomgang — helt uforpliktende' },
+                { t: 'Du får en skreddersydd plan', s: 'Klar oversikt over inntekt og neste steg' },
+              ].map((it: any, i: number, arr: any[]) => (
+                <motion.div key={i} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.35 + i * 0.12, duration: 0.35 }} className="flex gap-3.5">
+                  <div className="flex flex-col items-center">
+                    <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${it.done ? 'bg-[#cf97fc] text-white' : 'bg-[#f1ecf8] text-[#b39ddb]'}`}>{it.done ? <Check className="w-3.5 h-3.5" strokeWidth={3} /> : <span className="text-[12px] font-bold">{i + 1}</span>}</div>
+                    {i < arr.length - 1 && <div className="w-[2px] flex-1 min-h-[24px] bg-[#efe9f7] my-1" />}
+                  </div>
+                  <div className="pb-4">
+                    <p className="text-[14.5px] font-semibold text-[#0a0a0a] leading-tight">{it.t}</p>
+                    <p className="text-[13px] text-[#888] mt-0.5">{it.s}</p>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+
           <Button onClick={() => window.location.href = '/'} data-testid="owner-success-home-button"
-            className="rounded-full bg-[#0a0a0a] text-white hover:bg-black h-12 px-8 text-[14px] font-semibold gap-2 active:scale-[0.97] transition-transform mt-6">
+            className="rounded-full bg-[#0a0a0a] text-white hover:bg-black h-12 px-8 text-[14px] font-semibold gap-2 active:scale-[0.97] transition-transform mt-7">
             Tilbake til forsiden <ArrowRight className="w-4 h-4" />
           </Button>
         </motion.div>
@@ -302,6 +337,11 @@ export default function BliUtleierPage() {
                   Kom i gang <ArrowRight className="w-4 h-4" />
                 </Button>
                 <p className="text-[12px] text-[#737373] mt-3 sm:mt-4">Gratis og uforpliktende</p>
+                <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1.5">
+                  {['Tar 2 minutter', 'Registerverifisert', 'Svar innen 24t'].map((tx) => (
+                    <span key={tx} className="inline-flex items-center gap-1.5 text-[12px] text-[#737373]"><Check className="w-3.5 h-3.5 text-[#cf97fc]" strokeWidth={3} /> {tx}</span>
+                  ))}
+                </div>
               </motion.div>
             </motion.div>
           </div>
@@ -310,34 +350,55 @@ export default function BliUtleierPage() {
     );
   }
 
-  const progressPercent = (step / (STEPS.length - 1)) * 100;
-
   return (
     <div className="min-h-screen bg-[#fdfcfb] flex flex-col" data-testid="owner-page">
       <div className="h-[56px] lg:h-[76px]" />
       <div className="flex-1 flex flex-col">
         <div className="max-w-[600px] w-full mx-auto px-6 pt-6">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-3">
-              <button onClick={goBack} className="w-8 h-8 rounded-full border border-[#e5e5e5] hover:bg-[#f5f5f5] flex items-center justify-center transition-colors" data-testid="owner-back-button">
-                <ArrowLeft className="w-3.5 h-3.5 text-[#888]" />
-              </button>
-              <span className="text-[13px] text-[#737373] font-medium">{step} / {STEPS.length - 1}</span>
+          <div className="flex items-center justify-between mb-5">
+            <button onClick={goBack} className="w-9 h-9 rounded-full border border-[#e8e5e0] hover:bg-[#f5f5f5] flex items-center justify-center transition-colors active:scale-95" data-testid="owner-back-button" aria-label="Tilbake">
+              <ArrowLeft className="w-4 h-4 text-[#888]" />
+            </button>
+            <div className="text-right">
+              <p className="text-[10.5px] font-semibold text-[#7c3aed] uppercase tracking-[0.1em] leading-none">Steg {step} av {STEPS.length - 1}</p>
+              <p className="text-[13.5px] text-[#0a0a0a] font-semibold mt-1 leading-none">{STEPS[step].title}</p>
             </div>
-            <span className="text-[13px] text-[#737373] font-medium">{STEPS[step].title}</span>
           </div>
-          <div className="h-[2px] bg-[#f0f0f0] rounded-full mb-10 overflow-hidden">
-            <motion.div className="h-full bg-[#cf97fc] rounded-full" animate={{ width: `${progressPercent}%` }} transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }} />
+          {/* Premium stepper — sirkler + animerte koblinger */}
+          <div className="flex items-center mb-9">
+            {STEPS.slice(1).map((s: any, i: number) => {
+              const idx = i + 1;
+              const done = idx < step;
+              const active = idx === step;
+              return (
+                <React.Fragment key={s.id}>
+                  <motion.div
+                    initial={false}
+                    animate={{ scale: active ? 1.12 : 1 }}
+                    transition={{ type: 'spring', stiffness: 320, damping: 20 }}
+                    title={s.title}
+                    className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-[12px] font-bold border-2 transition-colors duration-300 ${done ? 'bg-[#cf97fc] border-[#cf97fc] text-white' : active ? 'bg-white border-[#cf97fc] text-[#7c3aed] shadow-[0_0_0_4px_rgba(207,151,252,0.18)]' : 'bg-white border-[#e6e3df] text-[#c4c0bb]'}`}
+                  >
+                    {done ? <Check className="w-4 h-4" strokeWidth={3} /> : idx}
+                  </motion.div>
+                  {idx < STEPS.length - 1 && (
+                    <div className="flex-1 h-[2px] mx-2 rounded-full bg-[#ece9e4] overflow-hidden">
+                      <motion.div className="h-full bg-[#cf97fc] rounded-full" initial={false} animate={{ width: idx < step ? '100%' : '0%' }} transition={{ duration: 0.45, ease: [0.25, 0.1, 0.25, 1] }} />
+                    </div>
+                  )}
+                </React.Fragment>
+              );
+            })}
           </div>
         </div>
 
-        <div className="flex-1 max-w-[600px] w-full mx-auto px-6 pb-24">
+        <div className="flex-1 max-w-[600px] w-full mx-auto px-6 pb-24" onKeyDown={onKeyDownAdvance}>
           <AnimatePresence mode="wait" custom={dir}>
             <motion.div key={step} custom={dir} variants={stepVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}>
 
               {/* STEG 1 — ADRESSE eller FINN-ANNONSE → eiendomsregister-søk */}
               {step === 1 && (
-                <div data-testid="owner-step-address">
+                <div data-testid="owner-step-address" data-no-enter-advance>
                   <div className="inline-flex items-center gap-2 text-[11px] font-semibold text-[#7c3aed] uppercase tracking-[0.1em] mb-3">
                     <MapPin className="w-3.5 h-3.5" /> Eiendommen
                   </div>
@@ -524,7 +585,7 @@ export default function BliUtleierPage() {
                   <h2 className="text-[28px] sm:text-[34px] font-bold tracking-[-0.03em] text-[#0a0a0a] mb-2" style={{ fontFamily: 'var(--font-heading)' }}>Fortell oss om deg</h2>
                   <p className="text-[15px] text-[#888] mb-8">Slik at vi kan ta kontakt med en personlig vurdering.</p>
                   <div className="space-y-5">
-                    <TextInput label="Fullt navn" required error={errors.name} icon={User} value={formData.name} onChange={(v: any) => updateField('name', v)} placeholder="Ola Nordmann" autoComplete="name" testId="owner-name-input" />
+                    <TextInput label="Fullt navn" required error={errors.name} icon={User} value={formData.name} onChange={(v: any) => updateField('name', v)} placeholder="Ola Nordmann" autoComplete="name" autoFocus testId="owner-name-input" />
                     <TextInput label="E-post" required error={errors.email} icon={Mail} value={formData.email} type="email" onChange={(v: any) => updateField('email', v)} placeholder="ola@eksempel.no" autoComplete="email" testId="owner-email-input" />
                     <PhoneInput value={formData.phone} onChange={(v: any) => updateField('phone', v)} error={errors.phone} testId="owner-phone-input" />
                   </div>
@@ -629,12 +690,15 @@ export default function BliUtleierPage() {
         </div>
 
         <div className="sticky bottom-0 z-30 mt-auto bg-white/90 backdrop-blur-xl border-t border-[#f0f0f0]">
-          <div className="max-w-[600px] mx-auto px-6 py-4 flex items-center justify-between">
+          <div className="max-w-[600px] mx-auto px-6 py-4 flex items-center justify-between gap-4">
             <button onClick={goBack} className="text-[14px] font-semibold text-[#666] hover:text-[#333] underline underline-offset-4 transition-colors" data-testid="owner-back-link">Tilbake</button>
             {step < STEPS.length - 1 ? (
-              <Button onClick={goNext} data-testid="owner-next-button" className="rounded-full bg-[#0a0a0a] text-white hover:bg-black h-12 px-8 text-[14px] font-semibold gap-2 active:scale-[0.97] transition-transform">Neste <ArrowRight className="w-4 h-4" /></Button>
+              <div className="flex items-center gap-3">
+                <span className="hidden sm:block text-[12px] text-[#aaa]">Neste: <span className="text-[#666] font-medium">{STEPS[step + 1].title}</span></span>
+                <Button onClick={goNext} data-testid="owner-next-button" className="rounded-full bg-[#0a0a0a] text-white hover:bg-black h-12 px-8 text-[14px] font-semibold gap-2 active:scale-[0.97] transition-transform shadow-[0_6px_20px_-8px_rgba(0,0,0,0.5)]">Neste <ArrowRight className="w-4 h-4" /></Button>
+              </div>
             ) : (
-              <Button onClick={handleSubmit} disabled={loading} data-testid="owner-submit-button" className="rounded-full bg-[#0a0a0a] text-white hover:bg-black h-12 px-8 text-[14px] font-semibold gap-2 active:scale-[0.97] transition-transform">{loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />} Send henvendelse</Button>
+              <Button onClick={handleSubmit} disabled={loading} data-testid="owner-submit-button" className="rounded-full bg-[#0a0a0a] text-white hover:bg-black h-12 px-8 text-[14px] font-semibold gap-2 active:scale-[0.97] transition-transform shadow-[0_6px_20px_-8px_rgba(0,0,0,0.5)]">{loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />} Send henvendelse</Button>
             )}
           </div>
         </div>
