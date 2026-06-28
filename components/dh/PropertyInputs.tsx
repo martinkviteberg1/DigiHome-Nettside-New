@@ -2,7 +2,8 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from '@/lib/motion-lite';
-import { MapPin, Pencil, Link2, Loader2, CheckCircle2, X, Sparkles, Ruler, BedDouble, Home, Banknote, Hash } from 'lucide-react';
+import { MapPin, Pencil, Link2, Loader2, CheckCircle2, X, Sparkles, Ruler, BedDouble, Home, Banknote, Hash, ChevronDown, Check, Building2, LayoutGrid, Warehouse, Minus, Plus, ShieldCheck, Info } from 'lucide-react';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { AddressAutocomplete } from './AddressAutocomplete';
 
 /** Mapper Finn-preview-data til skjemafelt (sqm / property_type / bedrooms). */
@@ -226,6 +227,15 @@ const FINN_TYPE_OPTS = [
   { value: 'annet', label: 'Annet' },
 ];
 
+const FINN_TYPE_META = [
+  { value: 'leilighet', label: 'Leilighet', icon: Building2 },
+  { value: 'hus', label: 'Hus', icon: Home },
+  { value: 'rekkehus', label: 'Rekkehus', icon: LayoutGrid },
+  { value: 'hybel', label: 'Hybel', icon: BedDouble },
+  { value: 'annet', label: 'Annet', icon: Warehouse },
+];
+const FINN_BED_OPTS = ['1', '2', '3', '4', '5+'];
+
 /* ──────────────────────────────────────────────────────────────────────────
    FinnPropertyCard — verdensklasse eiendomskort med hero-bilde, adresse og
    REDIGERBARE stat-fliser (areal/soverom/boligtype). Brukes i Finn-flyten på
@@ -237,13 +247,22 @@ export function FinnPropertyCard({
   ownerName, ownerType, verifying = false, needsSelect = false, registryFailed = false,
   sourceUrl, onReset,
 }: any) {
+  const [bedOpen, setBedOpen] = useState(false);
+  const [typeOpen, setTypeOpen] = useState(false);
   if (!data || !data.ok) return null;
   const matrikkelStr = data.matrikkel && data.matrikkel.kommunenr
     ? `${data.matrikkel.kommunenr}-${data.matrikkel.gaardsnr}/${data.matrikkel.bruksnr}`
     : '';
-  const tileBase = 'rounded-2xl bg-[#faf9fc] p-3.5 border transition-colors';
+  const typeMeta = FINN_TYPE_META.find((o) => o.value === propertyType);
+  const TypeIcon = typeMeta?.icon || Home;
   let host = '';
   try { host = sourceUrl ? new URL(sourceUrl).hostname.replace(/^www\./, '') : ''; } catch (e) { host = ''; }
+
+  // Felles flis-skall — tydelig «kan redigeres»-affordans (border, pencil, fokus-glød).
+  const tileShell = (editing: boolean, hasError: boolean) =>
+    `group/tile relative rounded-2xl bg-white p-3.5 text-left border transition-all duration-200 ${
+      hasError ? 'border-red-300' : editing ? 'border-[#cf97fc] shadow-[0_0_0_4px_rgba(207,151,252,0.16)]' : 'border-[#ece7f3] hover:border-[#cdbcf0] hover:shadow-[0_8px_24px_-18px_rgba(124,58,237,0.5)]'
+    }`;
 
   return (
     <motion.div
@@ -273,15 +292,15 @@ export function FinnPropertyCard({
 
       {data.image ? (
         <div className="relative">
-          <motion.img initial={{ scale: 1.06 }} animate={{ scale: 1 }} transition={{ duration: 0.7 }}
-            src={data.image} alt={data.address || 'Eiendom'} className="w-full h-[200px] sm:h-[240px] object-cover" />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/0 to-black/10" />
+          <motion.img initial={{ scale: 1.08 }} animate={{ scale: 1 }} transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+            src={data.image} alt={data.address || 'Eiendom'} className="w-full h-[210px] sm:h-[250px] object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-black/20" />
           <div className="absolute top-3.5 left-3.5">
-            {data.kind && <span className="text-[10.5px] font-bold uppercase tracking-[0.06em] px-2.5 py-1 rounded-full bg-white/95 text-[#0a0a0a]">{data.kind === 'leie' ? 'Til leie' : 'Til salgs'}</span>}
+            {data.kind && <span className="text-[10.5px] font-bold uppercase tracking-[0.06em] px-2.5 py-1 rounded-full bg-white/95 text-[#0a0a0a] shadow-sm">{data.kind === 'leie' ? 'Til leie' : 'Til salgs'}</span>}
           </div>
           <div className="absolute bottom-4 left-4 right-4">
-            <p className="text-white text-[20px] sm:text-[24px] font-bold leading-tight tracking-[-0.01em]" style={{ fontFamily: 'var(--font-heading)' }}>{data.address || data.title}</p>
-            {matrikkelStr && <p className="text-white/80 text-[12.5px] mt-1.5 inline-flex items-center gap-1.5"><Hash className="w-3 h-3" /> Matrikkel {matrikkelStr}</p>}
+            <p className="text-white text-[21px] sm:text-[25px] font-bold leading-tight tracking-[-0.01em] [text-shadow:0_2px_18px_rgba(0,0,0,0.4)]" style={{ fontFamily: 'var(--font-heading)' }}>{data.address || data.title}</p>
+            {matrikkelStr && <span className="mt-2 inline-flex items-center gap-1.5 text-white/95 text-[12px] font-medium bg-white/15 backdrop-blur-md rounded-full px-2.5 py-1 ring-1 ring-white/20"><Hash className="w-3 h-3" /> Matrikkel {matrikkelStr}</span>}
           </div>
         </div>
       ) : (
@@ -291,39 +310,83 @@ export function FinnPropertyCard({
         </div>
       )}
 
-      <div className="p-4 sm:p-5">
-        <div className="flex items-center gap-1.5 mb-3 px-0.5">
-          <Sparkles className="w-3.5 h-3.5 text-[#cf97fc]" />
-          <span className="text-[11.5px] text-[#888]">Hentet automatisk — trykk for å justere</span>
+      <div className="p-4 sm:p-5 bg-gradient-to-b from-white to-[#fcfaff]">
+        {/* Tydelig redigerbar-hint */}
+        <div className="flex items-center justify-between mb-3.5 gap-2">
+          <span className="inline-flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-[0.07em] text-[#9a5fd0] bg-[#f5edfc] rounded-full px-2.5 py-1">
+            <Sparkles className="w-3 h-3" /> Auto-utfylt
+          </span>
+          <span className="inline-flex items-center gap-1.5 text-[12px] text-[#999]">
+            <Pencil className="w-3 h-3" /> Trykk for å endre
+          </span>
         </div>
+
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-          {/* Areal */}
-          <div className={`${tileBase} ${errors.sqm ? 'border-red-300' : 'border-transparent'} focus-within:border-[#cf97fc] focus-within:bg-white`}>
-            <div className="flex items-center gap-1.5 text-[#b39ddb] mb-1.5"><Ruler className="w-4 h-4" /><span className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-[#aaa]">Areal</span></div>
+          {/* Areal — redigerbart tallfelt */}
+          <label className={`${tileShell(false, !!errors.sqm)} block cursor-text focus-within:border-[#cf97fc] focus-within:shadow-[0_0_0_4px_rgba(207,151,252,0.16)]`}>
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-1.5"><Ruler className="w-4 h-4 text-[#b39ddb]" /><span className="text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[#a3a0ab]">Areal</span></div>
+              <Pencil className="w-[13px] h-[13px] text-[#d2c6ea] transition-colors group-hover/tile:text-[#7c3aed]" />
+            </div>
             <div className="flex items-baseline gap-1">
               <input type="number" inputMode="numeric" value={sqm || ''} onChange={(e: any) => onSqm(e.target.value)} placeholder="—"
-                className="w-full bg-transparent outline-none text-[19px] font-bold text-[#0a0a0a] leading-none placeholder:text-[#ccc]" style={{ fontFamily: 'var(--font-heading)' }} data-testid="finn-card-sqm" />
-              <span className="text-[13px] text-[#999] font-medium shrink-0">m²</span>
+                className="w-full min-w-0 bg-transparent outline-none text-[22px] font-bold text-[#0a0a0a] leading-none placeholder:text-[#d4cce2]" style={{ fontFamily: 'var(--font-heading)' }} data-testid="finn-card-sqm" />
+              <span className="text-[13px] text-[#9b94a8] font-medium shrink-0">m²</span>
             </div>
-          </div>
-          {/* Soverom */}
-          <div className={`${tileBase} ${errors.bedrooms ? 'border-red-300' : 'border-transparent'} focus-within:border-[#cf97fc] focus-within:bg-white`}>
-            <div className="flex items-center gap-1.5 text-[#b39ddb] mb-1.5"><BedDouble className="w-4 h-4" /><span className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-[#aaa]">Soverom</span></div>
-            <select value={bedrooms || ''} onChange={(e: any) => onBedrooms(e.target.value)} data-testid="finn-card-bedrooms"
-              className="w-full bg-transparent outline-none text-[19px] font-bold text-[#0a0a0a] leading-none cursor-pointer appearance-none" style={{ fontFamily: 'var(--font-heading)' }}>
-              <option value="">—</option>
-              {['1', '2', '3', '4', '5+'].map((n) => <option key={n} value={n}>{n}</option>)}
-            </select>
-          </div>
-          {/* Boligtype */}
-          <div className={`${tileBase} ${errors.property_type ? 'border-red-300' : 'border-transparent'} focus-within:border-[#cf97fc] focus-within:bg-white col-span-2 sm:col-span-1`}>
-            <div className="flex items-center gap-1.5 text-[#b39ddb] mb-1.5"><Home className="w-4 h-4" /><span className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-[#aaa]">Boligtype</span></div>
-            <select value={propertyType || ''} onChange={(e: any) => onType(e.target.value)} data-testid="finn-card-type"
-              className="w-full bg-transparent outline-none text-[19px] font-bold text-[#0a0a0a] leading-none cursor-pointer appearance-none" style={{ fontFamily: 'var(--font-heading)' }}>
-              <option value="">—</option>
-              {FINN_TYPE_OPTS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-            </select>
-          </div>
+          </label>
+
+          {/* Soverom — custom popover-velger */}
+          <Popover open={bedOpen} onOpenChange={setBedOpen}>
+            <PopoverTrigger asChild>
+              <button type="button" data-testid="finn-card-bedrooms" className={tileShell(bedOpen, !!errors.bedrooms)}>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-1.5"><BedDouble className="w-4 h-4 text-[#b39ddb]" /><span className="text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[#a3a0ab]">Soverom</span></div>
+                  <ChevronDown className={`w-[15px] h-[15px] transition-all ${bedOpen ? 'rotate-180 text-[#7c3aed]' : 'text-[#d2c6ea] group-hover/tile:text-[#7c3aed]'}`} />
+                </div>
+                <span className="block text-[22px] font-bold leading-none text-left" style={{ fontFamily: 'var(--font-heading)' }}>{bedrooms ? <span className="text-[#0a0a0a]">{bedrooms}</span> : <span className="text-[#d4cce2]">—</span>}</span>
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="start" sideOffset={8} className="w-[208px] p-2 rounded-2xl border border-[#efe9f7] shadow-[0_18px_50px_-22px_rgba(0,0,0,0.35)]">
+              <p className="text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[#aaa] px-1.5 pb-2">Antall soverom</p>
+              <div className="grid grid-cols-5 gap-1.5">
+                {FINN_BED_OPTS.map((n) => {
+                  const sel = String(bedrooms) === n;
+                  return (
+                    <button key={n} type="button" onClick={() => { onBedrooms(n); setBedOpen(false); }}
+                      className={`h-10 rounded-xl text-[15px] font-bold transition-all active:scale-95 ${sel ? 'bg-[#cf97fc] text-white shadow-[0_4px_14px_-4px_rgba(207,151,252,0.8)]' : 'bg-[#f6f3fb] text-[#5b5570] hover:bg-[#efe7fb]'}`} style={{ fontFamily: 'var(--font-heading)' }}>{n}</button>
+                  );
+                })}
+              </div>
+            </PopoverContent>
+          </Popover>
+
+          {/* Boligtype — custom popover med ikoner */}
+          <Popover open={typeOpen} onOpenChange={setTypeOpen}>
+            <PopoverTrigger asChild>
+              <button type="button" data-testid="finn-card-type" className={`${tileShell(typeOpen, !!errors.property_type)} col-span-2 sm:col-span-1`}>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-1.5"><Home className="w-4 h-4 text-[#b39ddb]" /><span className="text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[#a3a0ab]">Boligtype</span></div>
+                  <ChevronDown className={`w-[15px] h-[15px] transition-all ${typeOpen ? 'rotate-180 text-[#7c3aed]' : 'text-[#d2c6ea] group-hover/tile:text-[#7c3aed]'}`} />
+                </div>
+                <span className="flex items-center gap-2 text-[19px] font-bold leading-none" style={{ fontFamily: 'var(--font-heading)' }}>
+                  {typeMeta ? (<><TypeIcon className="w-[18px] h-[18px] text-[#7c3aed]" /><span className="text-[#0a0a0a]">{typeMeta.label}</span></>) : <span className="text-[#d4cce2]">Velg</span>}
+                </span>
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="start" sideOffset={8} className="w-[244px] p-1.5 rounded-2xl border border-[#efe9f7] shadow-[0_18px_50px_-22px_rgba(0,0,0,0.35)]">
+              {FINN_TYPE_META.map((o) => {
+                const Icon = o.icon; const sel = propertyType === o.value;
+                return (
+                  <button key={o.value} type="button" onClick={() => { onType(o.value); setTypeOpen(false); }}
+                    className={`w-full flex items-center gap-3 px-2.5 h-11 rounded-xl text-[14.5px] font-medium transition-colors ${sel ? 'bg-[#faf5ff] text-[#0a0a0a]' : 'text-[#555] hover:bg-[#f7f4fc]'}`}>
+                    <span className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${sel ? 'bg-[#cf97fc] text-white' : 'bg-[#f1ecf8] text-[#a78bda]'}`}><Icon className="w-4 h-4" /></span>
+                    <span className="flex-1 text-left">{o.label}</span>
+                    {sel && <Check className="w-4 h-4 text-[#7c3aed]" strokeWidth={3} />}
+                  </button>
+                );
+              })}
+            </PopoverContent>
+          </Popover>
         </div>
       </div>
 
