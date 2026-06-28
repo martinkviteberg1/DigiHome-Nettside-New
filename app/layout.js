@@ -60,11 +60,12 @@ export default function RootLayout({ children }) {
   return (
     <html lang="nb" className={`${rightGrotesk.variable} ${diatype.variable}`}>
       <head>
-        {/* Raskere LCP: forhåndskoble til bilde-CDN-ene som brukes på lokasjons-/rapportsider */}
+        {/* LCP: forhåndslast hero-bildet for gjeldende viewport (mobil vs. desktop) */}
+        <link rel="preload" as="image" href="/interior-openplan.webp" media="(max-width: 1023px)" fetchPriority="high" />
+        <link rel="preload" as="image" href="/interior-hallway.webp" media="(min-width: 1024px)" fetchPriority="high" />
+        {/* Forhåndskoble til bilde-CDN-ene som brukes på lokasjons-/rapportsider */}
         <link rel="preconnect" href="https://images.unsplash.com" crossOrigin="anonymous" />
         <link rel="preconnect" href="https://images.pexels.com" crossOrigin="anonymous" />
-        <link rel="dns-prefetch" href="https://images.unsplash.com" />
-        <link rel="dns-prefetch" href="https://images.pexels.com" />
         <script dangerouslySetInnerHTML={{ __html: 'window.addEventListener("error",function(e){if(e.error instanceof DOMException&&e.error.name==="DataCloneError"&&e.message&&e.message.includes("PerformanceServerTiming")){e.stopImmediatePropagation();e.preventDefault()}},true);' }} />
         {GA4_ID ? (
           <>

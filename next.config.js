@@ -53,6 +53,21 @@ const nextConfig = {
           { key: "Access-Control-Allow-Headers", value: "*" },
         ],
       },
+      {
+        // Immutable, fingeravtrykk-baserte build-assets.
+        source: "/_next/static/:path*",
+        headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
+      },
+      {
+        // Selvhostede fonter (versjoneres ikke ofte).
+        source: "/fonts/:path*",
+        headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
+      },
+      {
+        // Bilder/medier: rask cache + revalidering i bakgrunnen.
+        source: "/:asset(.+\\.(?:png|jpe?g|webp|gif|svg|avif|mp4|webm|woff2?|ttf|otf))",
+        headers: [{ key: "Cache-Control", value: "public, max-age=86400, stale-while-revalidate=604800" }],
+      },
     ];
   },
   // Deploy-safe media: i produksjon (Next.js standalone) inkluderes ikke /public,

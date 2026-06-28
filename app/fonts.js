@@ -7,6 +7,9 @@ export const rightGrotesk = localFont({
   ],
   variable: '--font-heading',
   display: 'swap',
+  preload: true,
+  fallback: ['system-ui', 'Arial', 'sans-serif'],
+  adjustFontFallback: 'Arial',
 });
 
 export const diatype = localFont({
@@ -16,4 +19,7 @@ export const diatype = localFont({
   ],
   variable: '--font-body',
   display: 'swap',
+  preload: true,
+  fallback: ['system-ui', 'Arial', 'sans-serif'],
+  adjustFontFallback: 'Arial',
 });
