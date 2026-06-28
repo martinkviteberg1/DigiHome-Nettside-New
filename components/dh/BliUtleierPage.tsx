@@ -96,6 +96,16 @@ export default function BliUtleierPage() {
     setErrors((prev: any) => ({ ...prev, address: null, sqm: null, property_type: null, bedrooms: null }));
   }, []);
 
+  // Bytt inngangsvei (adresse ↔ Finn) + spor hvilken vei brukeren velger (CRO-funnel).
+  const switchToFinn = useCallback(() => {
+    setInputMode('finn');
+    try { track('form_input_mode', { form: 'utleier', mode: 'finn' }); } catch (e) {}
+  }, []);
+  const switchToAddress = useCallback(() => {
+    setInputMode('address');
+    try { track('form_input_mode', { form: 'utleier', mode: 'adresse' }); } catch (e) {}
+  }, []);
+
   // Forhåndsutfyll adresse fra ?address= (fra hero-søket) → rett til adresse-steget
   useEffect(() => {
     try {
@@ -449,33 +459,15 @@ export default function BliUtleierPage() {
                     <MapPin className="w-3.5 h-3.5" /> Eiendommen
                   </div>
                   <h2 className="text-[28px] sm:text-[34px] font-bold tracking-[-0.03em] text-[#0a0a0a] mb-2" style={{ fontFamily: 'var(--font-heading)' }}>
-                    {finnCardShown ? 'Bekreft eiendommen' : 'Hvor ligger eiendommen?'}
+                    {finnCardShown ? 'Bekreft eiendommen' : inputMode === 'finn' ? 'Lim inn Finn-annonsen' : 'Hvor ligger eiendommen?'}
                   </h2>
                   <p className="text-[15px] text-[#888] mb-7 max-w-[46ch]">
                     {finnCardShown
                       ? 'Vi hentet alt fra annonsen og verifiserte mot Eiendomsregisteret. Sjekk at detaljene stemmer — du kan justere direkte.'
-                      : 'Velg hvordan du vil registrere — vi henter adresse, matrikkel og eierforslag automatisk fra Eiendomsregisteret.'}
+                      : inputMode === 'finn'
+                        ? 'Lim inn lenken til boligen på finn.no, så fyller vi inn adresse, areal, matrikkel og eierforslag automatisk.'
+                        : 'Skriv inn adressen — vi henter matrikkel og eierforslag automatisk fra Eiendomsregisteret.'}
                   </p>
-
-                  {/* Segmentert bryter: Adresse / Finn-annonse — skjules når Finn-kortet vises */}
-                  {!finnCardShown && (
-                  <div className="inline-flex p-1 rounded-full bg-[#f1eef6] mb-7" role="tablist" data-testid="owner-input-mode">
-                    {[
-                      { k: 'address', l: 'Adresse', icon: MapPin },
-                      { k: 'finn', l: 'Finn-annonse', icon: Link2 },
-                    ].map((m: any) => {
-                      const Icon = m.icon; const active = inputMode === m.k;
-                      return (
-                        <button key={m.k} type="button" role="tab" aria-selected={active}
-                          onClick={() => setInputMode(m.k)}
-                          data-testid={`owner-mode-${m.k}`}
-                          className={`flex items-center gap-2 px-4 sm:px-5 h-10 rounded-full text-[13.5px] font-semibold transition-all ${active ? 'bg-white text-[#0a0a0a] shadow-[0_2px_8px_rgba(0,0,0,0.08)]' : 'text-[#888] hover:text-[#0a0a0a]'}`}>
-                          <Icon className="w-4 h-4" /> {m.l}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  )}
 
                   {inputMode === 'address' ? (
                     <div>
@@ -494,6 +486,31 @@ export default function BliUtleierPage() {
                           if (data.postalCode) updateField('postal_code', data.postalCode);
                         }}
                       />
+
+                      {/* Premium Finn-snarvei — vises før adresse er valgt (ikke alle har en annonse) */}
+                      <AnimatePresence initial={false}>
+                        {!registryQuery && (
+                          <motion.button
+                            key="finn-shortcut"
+                            type="button"
+                            onClick={switchToFinn}
+                            data-testid="owner-mode-finn"
+                            initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
+                            transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                            className="group mt-4 w-full flex items-center gap-3.5 rounded-2xl border border-[#ece7f5] bg-gradient-to-r from-[#faf7ff] to-[#f5eefc] px-4 py-3.5 text-left transition-all hover:border-[#d9c7f3] hover:shadow-[0_10px_30px_-18px_rgba(124,58,237,0.55)] active:scale-[0.99]"
+                          >
+                            <span className="w-9 h-9 rounded-xl bg-white flex items-center justify-center shrink-0 shadow-[0_2px_8px_rgba(124,58,237,0.12)]">
+                              <Zap className="w-4 h-4 text-[#7c3aed]" fill="#7c3aed" />
+                            </span>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-[13.5px] font-semibold text-[#0a0a0a] leading-tight">Har du allerede en Finn-annonse?</p>
+                              <p className="text-[12.5px] text-[#888] mt-0.5 leading-snug">Lim inn lenken — så fyller vi inn alt automatisk.</p>
+                            </div>
+                            <ArrowRight className="w-4 h-4 text-[#bbb] shrink-0 transition-all group-hover:text-[#7c3aed] group-hover:translate-x-0.5" />
+                          </motion.button>
+                        )}
+                      </AnimatePresence>
+
                       <PropertyRegistryPicker
                         query={registryQuery}
                         addressLabel={[formData.address, formData.postal_code].filter(Boolean).join(', ')}
@@ -502,6 +519,17 @@ export default function BliUtleierPage() {
                     </div>
                   ) : (
                     <div>
+                      {/* Tilbake til adresse-veien (kun før Finn-treff) */}
+                      {!finnData && (
+                        <button
+                          type="button"
+                          onClick={switchToAddress}
+                          data-testid="owner-mode-address"
+                          className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#7c3aed] hover:text-[#8a45d6] mb-5 transition-colors"
+                        >
+                          <ArrowLeft className="w-3.5 h-3.5" /> Bruk adresse i stedet
+                        </button>
+                      )}
                       {/* Før treff: lenkefelt. Etter treff: hele steget blir ett stort eiendomskort. */}
                       <AnimatePresence mode="wait" initial={false}>
                         {!finnData ? (
