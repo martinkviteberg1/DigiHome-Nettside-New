@@ -13,6 +13,7 @@ import {
   TextInput, PhoneInput, IconCardSelector, NumberSelector, SummaryCard,
 } from './FormFields';
 import { AddressAutocomplete } from './AddressAutocomplete';
+import PropertyRegistryPicker from './PropertyRegistryPicker';
 import { FinnLookupField, AddressField, finnToFields } from './PropertyInputs';
 import { track, getLeadAttribution } from '@/lib/analytics';
 import { trackLead, trackLeadStart, getClickIds } from '@/lib/gtag';
@@ -60,7 +61,12 @@ export default function BliUtleierPage() {
     name: '', email: '', phone: '',
     address: '', postal_code: '', property_type: '', bedrooms: '', sqm: '',
     rental_model: '', availability: '', notes: '',
+    // Eiendomsregisteret (Infotorg EDR) — fylles av PropertyRegistryPicker
+    matrikkel_number: '', seksjonsnr: '', andelsnr: '', bygningstype: '',
+    registry_owner_name: '', registry_owner_type: '', registry_orgnr: '',
   });
+  // Adressen som skal slås opp i Eiendomsregisteret (settes ved adressevalg)
+  const [registryQuery, setRegistryQuery] = useState('');
   const [errors, setErrors] = useState<any>({});
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -74,6 +80,7 @@ export default function BliUtleierPage() {
       const p = new URLSearchParams(window.location.search).get('address');
       if (p) {
         setFormData((prev: any) => ({ ...prev, address: p }));
+        setRegistryQuery(p);
         setStep(1);
       }
     } catch (e) { /* ignore */ }
@@ -139,9 +146,26 @@ export default function BliUtleierPage() {
         finn_url: (finn_url || '').trim() || undefined,
       });
       const units = [
-        mkUnit(formData.address, formData.postal_code, formData.property_type, formData.sqm, formData.bedrooms, finnUrl),
+        {
+          ...mkUnit(formData.address, formData.postal_code, formData.property_type, formData.sqm, formData.bedrooms, finnUrl),
+          matrikkel_number: formData.matrikkel_number || undefined,
+          seksjonsnr: formData.seksjonsnr || undefined,
+          andelsnr: formData.andelsnr || undefined,
+          bygningstype: formData.bygningstype || undefined,
+          registry_owner_name: formData.registry_owner_name || undefined,
+          registry_owner_type: formData.registry_owner_type || undefined,
+          registry_orgnr: formData.registry_orgnr || undefined,
+        },
         ...validExtras.map((u) => mkUnit(u.address, u.postal_code, u.property_type, u.sqm, u.bedrooms, u.finn_url)),
       ];
+      // Sammendrag av matrikkel/eier fra Eiendomsregisteret (for CRM-teamet).
+      const registrySummary = formData.matrikkel_number
+        ? [
+            `Matrikkel: ${formData.matrikkel_number}`,
+            formData.bygningstype ? `Type: ${formData.bygningstype}` : '',
+            formData.registry_owner_name ? `Hjemmelshaver: ${formData.registry_owner_name}` : '',
+          ].filter(Boolean).join(', ')
+        : '';
       // Oppsummer ekstra eiendommer i notatet, så CRM-teamet ser dem (inkl. Finn-lenke).
       const extrasSummary = validExtras.map((u, idx) => {
         const parts = [`Eiendom ${idx + 2}: ${(u.address || '').trim()}`];
@@ -160,9 +184,18 @@ export default function BliUtleierPage() {
         units,
         num_properties: units.length,
         finn_url: finnUrl || undefined,
+        // Eiendomsregisteret (primær eiendom)
+        matrikkel_number: formData.matrikkel_number || undefined,
+        seksjonsnr: formData.seksjonsnr || undefined,
+        andelsnr: formData.andelsnr || undefined,
+        bygningstype: formData.bygningstype || undefined,
+        registry_owner_name: formData.registry_owner_name || undefined,
+        registry_owner_type: formData.registry_owner_type || undefined,
+        registry_orgnr: formData.registry_orgnr || undefined,
         attribution: { ...getLeadAttribution(), ...getClickIds() },
         notes: [
           formData.rental_model ? `Ønsket modell: ${formData.rental_model}` : '',
+          registrySummary,
           formData.notes,
           ...extrasSummary,
         ].filter(Boolean).join('. '),
@@ -301,9 +334,23 @@ export default function BliUtleierPage() {
                         testIdPrefix="owner-address"
                         onChange={(v: any) => updateField('address', v)}
                         onSelect={(data: any) => {
-                          if (data.address) updateField('address', data.address.replace(/,\s*(Norway|Norge)$/i, ''));
+                          const addr = data.address ? data.address.replace(/,\s*(Norway|Norge)$/i, '') : '';
+                          if (addr) { updateField('address', addr); setRegistryQuery(addr); }
                           if (data.postalCode) updateField('postal_code', data.postalCode);
                         }}
+                      />
+                      <PropertyRegistryPicker
+                        query={registryQuery}
+                        onResolved={(d: any) => setFormData((prev: any) => ({
+                          ...prev,
+                          matrikkel_number: d.matrikkel_number || '',
+                          seksjonsnr: d.seksjonsnr || '',
+                          andelsnr: d.andelsnr || '',
+                          bygningstype: d.bygningstype || '',
+                          registry_owner_name: d.registry_owner_name || '',
+                          registry_owner_type: d.registry_owner_type || '',
+                          registry_orgnr: d.registry_orgnr || '',
+                        }))}
                       />
                     </div>
                     <div className="pt-2 border-t border-[#f0f0f0]"><p className="text-[11px] font-semibold text-[#737373] uppercase tracking-[0.08em] mb-4">Kontaktinformasjon</p></div>

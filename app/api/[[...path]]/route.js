@@ -10,6 +10,47 @@ import { parseGoogleAdsCsv } from '@/lib/adsImport';
 import { chatLLM } from '@/lib/llm';
 import { slugify } from '@/lib/site';
 import { getRentReport, refreshRentReport, RENT_CITIES } from '@/lib/rentmarket';
+import {
+  infotorgConfigured,
+  addressToMatrikkel,
+  checkMatrikkelExists,
+  getPropertyData,
+  getOwnerInfo,
+  getBorettslagAndeler,
+  getAndelOwner,
+  classifyBuildingType,
+  matrikkelString,
+} from '@/lib/infotorg';
+
+// --- Enkel in-memory rate-limit (per IP) for offentlige eiendomsoppslag ---
+const _rlBuckets = new Map(); // ip -> { count, resetAt }
+function rateLimit(ip, max = 30, windowMs = 60000) {
+  const now = Date.now();
+  const b = _rlBuckets.get(ip);
+  if (!b || now > b.resetAt) {
+    _rlBuckets.set(ip, { count: 1, resetAt: now + windowMs });
+    if (_rlBuckets.size > 5000) {
+      for (const [k, v] of _rlBuckets) if (now > v.resetAt) _rlBuckets.delete(k);
+    }
+    return true;
+  }
+  if (b.count >= max) return false;
+  b.count += 1;
+  return true;
+}
+function clientIp(request) {
+  const xff = request.headers.get('x-forwarded-for') || '';
+  return (xff.split(',')[0] || '').trim() || request.headers.get('x-real-ip') || 'unknown';
+}
+// Begrenset parallellitet for batch-SOAP (unngå å hamre EDR).
+async function mapLimit(items, limit, fn) {
+  const out = [];
+  for (let i = 0; i < items.length; i += limit) {
+    const chunk = items.slice(i, i + limit);
+    out.push(...(await Promise.all(chunk.map(fn))));
+  }
+  return out;
+}
 
 // --- Media-servering fra objektlagring (deploy-safe /public) ---
 // Next.js standalone inkluderer ikke /public, så vi serverer bilder/video/lyd
@@ -594,6 +635,202 @@ async function handleRoute(request, { params }) {
       return cors(NextResponse.json({ message: 'DigiHome API', ok: true }));
     }
 
+    // ──────────────────────────────────────────────────────────────────────
+    // Eiendomsregisteret (Infotorg EDR): adresse → matrikkel → seksjon/andel
+    // Offentlig (brukes av /bli-utleier). Rate-limitet + cachet i MongoDB.
+    // ──────────────────────────────────────────────────────────────────────
+    if (route === '/infotorg/lookup' && method === 'POST') {
+      if (!infotorgConfigured()) {
+        return cors(NextResponse.json({ status: 'disabled', message: 'Eiendomsregisteret er ikke konfigurert.' }, { status: 503 }));
+      }
+      if (!rateLimit(clientIp(request), 40)) {
+        return cors(NextResponse.json({ status: 'rate_limited', message: 'For mange oppslag. Vent litt og prøv igjen.' }, { status: 429 }));
+      }
+      let body = {};
+      try { body = await request.json(); } catch (e) { body = {}; }
+      const address = (body.address || '').toString().trim();
+      if (!address) return cors(NextResponse.json({ status: 'error', message: 'Mangler adresse' }, { status: 400 }));
+
+      const matrikkel = await addressToMatrikkel(address);
+      if (!matrikkel) {
+        return cors(NextResponse.json({ status: 'not_found', message: 'Fant ikke adressen i Kartverket' }, { status: 404 }));
+      }
+      const { kommunenr: knr, gaardsnr: gnr, bruksnr: bnr } = matrikkel;
+      const cacheKey = `${knr}-${gnr}-${bnr}`;
+
+      // Cache-hit?
+      try {
+        const cached = await db.collection('infotorg_cache').findOne({ cache_key: cacheKey }, { projection: { _id: 0 } });
+        if (cached && cached.edr_data) {
+          return cors(NextResponse.json({
+            status: 'ok', source: 'cache', matrikkel,
+            edr: cached.edr_data, building_type: cached.building_type, borettslag: cached.borettslag || null,
+          }));
+        }
+      } catch (e) { /* cache er best-effort */ }
+
+      // Finnes matrikkelen?
+      let exists = true;
+      try { exists = await checkMatrikkelExists(knr, gnr, bnr); } catch (e) { exists = true; }
+      if (!exists) {
+        return cors(NextResponse.json({ status: 'not_found', matrikkel, message: 'Matrikkelenheten finnes ikke i Eiendomsregisteret' }));
+      }
+
+      // Eiendomsdata
+      let edr;
+      try { edr = await getPropertyData(knr, gnr, bnr); }
+      catch (e) { return cors(NextResponse.json({ status: 'error', message: 'Kunne ikke hente eiendomsdata. Prøv igjen senere.' }, { status: 502 })); }
+
+      let buildingType = classifyBuildingType(edr);
+
+      // Borettslag-deteksjon: useksjonert matrikkel eid av et borettslag (org)
+      let borettslag = null;
+      if (!edr.seksjonert && !(edr.seksjoner || []).length) {
+        try {
+          const holder = await getOwnerInfo(knr, gnr, bnr, '0');
+          if (holder && holder.type === 'organisasjon' && /BORETTSLAG/i.test(holder.navn || '') && holder.orgnr) {
+            const andeler = await getBorettslagAndeler(holder.orgnr);
+            borettslag = { orgnr: holder.orgnr, navn: holder.navn, andeler };
+            buildingType = 'borettslag';
+          }
+        } catch (e) { /* ikke-kritisk */ }
+      }
+
+      // Cache (hopp over tom borettslag-andelsliste pga. forbigående feil)
+      const skipCache = borettslag && !(borettslag.andeler || []).length;
+      if (!skipCache) {
+        try {
+          await db.collection('infotorg_cache').updateOne(
+            { cache_key: cacheKey },
+            { $set: { cache_key: cacheKey, matrikkel, edr_data: edr, building_type: buildingType, borettslag, updated_at: new Date().toISOString() } },
+            { upsert: true },
+          );
+        } catch (e) { /* best-effort */ }
+      }
+
+      return cors(NextResponse.json({ status: 'ok', source: 'live', matrikkel, edr, building_type: buildingType, borettslag }));
+    }
+
+    // Hjemmelshaver for én seksjon (cachet per matrikkel+snr)
+    if (route === '/infotorg/owner' && method === 'POST') {
+      if (!infotorgConfigured()) return cors(NextResponse.json({ status: 'disabled' }, { status: 503 }));
+      let body = {};
+      try { body = await request.json(); } catch (e) { body = {}; }
+      const { kommunenr: knr, gaardsnr: gnr, bruksnr: bnr, seksjonsnr: snr } = body || {};
+      if (!knr || !gnr || !bnr) return cors(NextResponse.json({ status: 'error', message: 'Mangler matrikkel' }, { status: 400 }));
+      const ck = `${knr}-${gnr}-${bnr}-snr${snr || '0'}`;
+      try {
+        const cached = await db.collection('infotorg_owner_cache').findOne({ cache_key: ck }, { projection: { _id: 0 } });
+        if (cached && cached.owner) return cors(NextResponse.json({ status: 'ok', owner: cached.owner, source: 'cache' }));
+      } catch (e) {}
+      let owner = null;
+      try { owner = await getOwnerInfo(knr, gnr, bnr, snr || '0'); } catch (e) { return cors(NextResponse.json({ status: 'error' }, { status: 502 })); }
+      try {
+        await db.collection('infotorg_owner_cache').updateOne(
+          { cache_key: ck },
+          { $set: { cache_key: ck, owner, matrikkel: `${knr}-${gnr}/${bnr}`, seksjonsnr: snr || '0', updated_at: new Date().toISOString() } },
+          { upsert: true },
+        );
+      } catch (e) {}
+      if (!owner) return cors(NextResponse.json({ status: 'not_found', owner: null }));
+      return cors(NextResponse.json({ status: 'ok', owner, source: 'live' }));
+    }
+
+    // Batch: hjemmelshavere for flere seksjoner (merker seksjonsvelgeren)
+    if (route === '/infotorg/section-owners' && method === 'POST') {
+      if (!infotorgConfigured()) return cors(NextResponse.json({ status: 'disabled', owners: {} }, { status: 503 }));
+      let body = {};
+      try { body = await request.json(); } catch (e) { body = {}; }
+      const { kommunenr: knr, gaardsnr: gnr, bruksnr: bnr } = body || {};
+      const list = Array.from(new Set((body.seksjonsnr_list || []).map(String))).slice(0, 40);
+      if (!knr || !gnr || !bnr) return cors(NextResponse.json({ status: 'error', owners: {} }, { status: 400 }));
+      const owners = {};
+      const toFetch = [];
+      for (const snr of list) {
+        const ck = `${knr}-${gnr}-${bnr}-snr${snr}`;
+        try {
+          const cached = await db.collection('infotorg_owner_cache').findOne({ cache_key: ck }, { projection: { _id: 0 } });
+          if (cached && cached.owner) { owners[snr] = cached.owner; continue; }
+        } catch (e) {}
+        toFetch.push(snr);
+      }
+      await mapLimit(toFetch, 6, async (snr) => {
+        let owner = null;
+        try { owner = await getOwnerInfo(knr, gnr, bnr, snr); } catch (e) {}
+        const ck = `${knr}-${gnr}-${bnr}-snr${snr}`;
+        try {
+          await db.collection('infotorg_owner_cache').updateOne(
+            { cache_key: ck },
+            { $set: { cache_key: ck, owner, matrikkel: `${knr}-${gnr}/${bnr}`, seksjonsnr: snr, updated_at: new Date().toISOString() } },
+            { upsert: true },
+          );
+        } catch (e) {}
+        if (owner) owners[snr] = owner;
+        return snr;
+      });
+      return cors(NextResponse.json({ status: 'ok', owners }));
+    }
+
+    // Andelseier for én borettslag-andel (cachet per orgnr+andel)
+    if (route === '/infotorg/andel-owner' && method === 'POST') {
+      if (!infotorgConfigured()) return cors(NextResponse.json({ status: 'disabled' }, { status: 503 }));
+      let body = {};
+      try { body = await request.json(); } catch (e) { body = {}; }
+      const { orgnr, andelsnr } = body || {};
+      if (!orgnr || !andelsnr) return cors(NextResponse.json({ status: 'error', message: 'Mangler orgnr/andelsnr' }, { status: 400 }));
+      const ck = `brl-${orgnr}-andel${andelsnr}`;
+      try {
+        const cached = await db.collection('infotorg_owner_cache').findOne({ cache_key: ck }, { projection: { _id: 0 } });
+        if (cached && cached.owner) return cors(NextResponse.json({ status: 'ok', owner: cached.owner, source: 'cache' }));
+      } catch (e) {}
+      let owner = null;
+      try { owner = await getAndelOwner(orgnr, andelsnr); } catch (e) { return cors(NextResponse.json({ status: 'error' }, { status: 502 })); }
+      try {
+        await db.collection('infotorg_owner_cache').updateOne(
+          { cache_key: ck },
+          { $set: { cache_key: ck, owner, orgnr, andelsnr, updated_at: new Date().toISOString() } },
+          { upsert: true },
+        );
+      } catch (e) {}
+      if (!owner) return cors(NextResponse.json({ status: 'not_found', owner: null }));
+      return cors(NextResponse.json({ status: 'ok', owner, source: 'live' }));
+    }
+
+    // Batch: andelseiere for flere andeler (merker andelsvelgeren)
+    if (route === '/infotorg/andel-owners' && method === 'POST') {
+      if (!infotorgConfigured()) return cors(NextResponse.json({ status: 'disabled', owners: {} }, { status: 503 }));
+      let body = {};
+      try { body = await request.json(); } catch (e) { body = {}; }
+      const { orgnr } = body || {};
+      const list = Array.from(new Set((body.andelsnr_list || []).map(String))).slice(0, 40);
+      if (!orgnr) return cors(NextResponse.json({ status: 'error', owners: {} }, { status: 400 }));
+      const owners = {};
+      const toFetch = [];
+      for (const an of list) {
+        const ck = `brl-${orgnr}-andel${an}`;
+        try {
+          const cached = await db.collection('infotorg_owner_cache').findOne({ cache_key: ck }, { projection: { _id: 0 } });
+          if (cached && cached.owner) { owners[an] = cached.owner; continue; }
+        } catch (e) {}
+        toFetch.push(an);
+      }
+      await mapLimit(toFetch, 6, async (an) => {
+        let owner = null;
+        try { owner = await getAndelOwner(orgnr, an); } catch (e) {}
+        const ck = `brl-${orgnr}-andel${an}`;
+        try {
+          await db.collection('infotorg_owner_cache').updateOne(
+            { cache_key: ck },
+            { $set: { cache_key: ck, owner, orgnr, andelsnr: an, updated_at: new Date().toISOString() } },
+            { upsert: true },
+          );
+        } catch (e) {}
+        if (owner) owners[an] = owner;
+        return an;
+      });
+      return cors(NextResponse.json({ status: 'ok', owners }));
+    }
+
     // --- Leiemarkedsrapport (offentlig): SSB + DigiHome etterspørselsindeks ---
     if (route === '/rentmarket' && method === 'GET') {
       const { searchParams } = new URL(request.url);
@@ -684,6 +921,14 @@ async function handleRoute(request, { params }) {
         lead_type: (body.lead_type || 'huseier').toString().slice(0, 40),
         num_properties: toNum(body.num_properties) || 1,
         units: Array.isArray(body.units) ? body.units.slice(0, 25) : [],
+        // Eiendomsregisteret (Infotorg EDR) — primær eiendom
+        matrikkel_number: (body.matrikkel_number || '').toString().slice(0, 60),
+        seksjonsnr: (body.seksjonsnr || '').toString().slice(0, 12),
+        andelsnr: (body.andelsnr || '').toString().slice(0, 12),
+        bygningstype: (body.bygningstype || '').toString().slice(0, 80),
+        registry_owner_name: (body.registry_owner_name || '').toString().slice(0, 200),
+        registry_owner_type: (body.registry_owner_type || '').toString().slice(0, 40),
+        registry_orgnr: (body.registry_orgnr || '').toString().slice(0, 20),
         notes: (body.notes || body.message || '').toString().slice(0, 4000),
         finn_url: (body.finn_url || '').toString().slice(0, 600),
         source: (body.source || 'nettside').toString().slice(0, 60),
@@ -733,6 +978,13 @@ async function handleRoute(request, { params }) {
         availability: lead.availability, lead_type: lead.lead_type,
         units: lead.units, num_properties: lead.num_properties,
         finn_url: lead.finn_url || undefined,
+        matrikkel_number: lead.matrikkel_number || undefined,
+        seksjonsnr: lead.seksjonsnr || undefined,
+        andelsnr: lead.andelsnr || undefined,
+        bygningstype: lead.bygningstype || undefined,
+        registry_owner_name: lead.registry_owner_name || undefined,
+        registry_owner_type: lead.registry_owner_type || undefined,
+        registry_orgnr: lead.registry_orgnr || undefined,
         notes: fwdNotes,
       });
       await db.collection('leads').updateOne({ id: lead.id }, { $set: {
