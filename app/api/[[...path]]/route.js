@@ -391,8 +391,9 @@ async function fetchFinnPreview(rawUrl) {
   const bruksnr = mnum(/Bruksnr\s*:?\s*(\d+)\b/i);
   const seksjonsnr = mnum(/Seksjonsnr\s*:?\s*(\d+)\b/i);
   const festenr = mnum(/Festenr\s*:?\s*(\d+)\b/i);
+  const andelsnr = mnum(/Andelsnr\s*:?\s*(\d+)\b/i) || mnum(/Andelsnummer\s*:?\s*(\d+)\b/i);
   const matrikkel = (kommunenr && gaardsnr && bruksnr)
-    ? { kommunenr, gaardsnr, bruksnr, seksjonsnr: seksjonsnr || '', festenr: festenr || '' }
+    ? { kommunenr, gaardsnr, bruksnr, seksjonsnr: seksjonsnr || '', festenr: festenr || '', andelsnr: andelsnr || '' }
     : null;
   // Ekte gateadresse ligger i kartlenken (data-testid="map-link"); fall tilbake til og:title.
   let address = '';

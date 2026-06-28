@@ -577,7 +577,7 @@ export default function BliUtleierPage() {
                               needsSelect={(registryState === 'sameie' || registryState === 'borettslag') && !formData.seksjonsnr && !formData.andelsnr}
                               registryFailed={registryState === 'notfound' || registryState === 'error'}
                             />
-                            {/* Seksjons-/andelsvelger (kun for sameie/borettslag) — vises sømløst under kortet */}
+                            {/* Seksjons-/andelsvelger (kun for sameie/borettslag) — auto-velger fra Finn-seksjonsnr */}
                             <PropertyRegistryPicker
                               matrikkel={finnMatrikkel}
                               query={finnMatrikkel ? '' : registryQuery}
@@ -585,6 +585,8 @@ export default function BliUtleierPage() {
                               onResolved={applyRegistry}
                               onState={setRegistryState}
                               renderSingle={false}
+                              preselectSeksjonsnr={finnData?.matrikkel?.seksjonsnr || ''}
+                              preselectAndelsnr={finnData?.matrikkel?.andelsnr || ''}
                             />
                           </motion.div>
                         )}

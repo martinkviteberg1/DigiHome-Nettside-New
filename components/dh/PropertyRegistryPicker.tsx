@@ -59,6 +59,8 @@ export function PropertyRegistryPicker({
   onResolved,
   onState,
   renderSingle = true,
+  preselectSeksjonsnr,
+  preselectAndelsnr,
 }: {
   query?: string;
   matrikkel?: { kommunenr: string; gaardsnr: string; bruksnr: string } | null;
@@ -68,6 +70,10 @@ export function PropertyRegistryPicker({
   onState?: (s: string) => void;
   /** Når false skjules «laster»- og «enkelt-eiendom»-kortet (forelder viser det selv). */
   renderSingle?: boolean;
+  /** Seksjonsnr hentet fra Finn-annonsen → auto-velg riktig seksjon. */
+  preselectSeksjonsnr?: string;
+  /** Andelsnr hentet fra Finn-annonsen → auto-velg riktig andel. */
+  preselectAndelsnr?: string;
 }) {
   const [state, setState] = useState<'idle' | 'loading' | 'sameie' | 'borettslag' | 'single' | 'notfound' | 'error' | 'disabled'>('idle');
   const [lookup, setLookup] = useState<any>(null);
@@ -75,6 +81,9 @@ export function PropertyRegistryPicker({
   const [selected, setSelected] = useState<string>('');
   const [singleOwner, setSingleOwner] = useState<Owner | null>(null);
   const [search, setSearch] = useState('');
+  const [autoMatched, setAutoMatched] = useState(false);   // auto-valgt fra Finn-seksjonsnr
+  const [overrideOpen, setOverrideOpen] = useState(false);  // bruker vil velge manuelt likevel
+  const autoPreRef = useRef(false);
   const reqId = useRef(0);
 
   const matKey = matrikkelIn && matrikkelIn.kommunenr && matrikkelIn.gaardsnr && matrikkelIn.bruksnr
@@ -83,6 +92,7 @@ export function PropertyRegistryPicker({
 
   useEffect(() => {
     setSelected(''); setOwners({}); setLookup(null); setSingleOwner(null); setSearch('');
+    setAutoMatched(false); setOverrideOpen(false); autoPreRef.current = false;
     onResolved({});
     if (!matKey && !q) { setState('idle'); return; }
     const my = ++reqId.current;
@@ -137,15 +147,19 @@ export function PropertyRegistryPicker({
 
   const handleSelect = (val: string) => {
     setSelected(val);
-    if (!lookup) return;
-    const base = matrikkelStr(lookup.matrikkel);
-    const ow = owners[val] || null;
-    if (state === 'borettslag') {
-      onResolved({ matrikkel_number: base, bygningstype: lookup.building_type, andelsnr: val, registry_orgnr: lookup.borettslag?.orgnr, registry_owner_name: ow?.navn, registry_owner_type: ow?.type });
-    } else if (state === 'sameie') {
-      onResolved({ matrikkel_number: matrikkelStr(lookup.matrikkel, val), bygningstype: lookup.building_type, seksjonsnr: val, registry_owner_name: ow?.navn, registry_owner_type: ow?.type });
-    }
   };
+
+  // Hold onResolved i sync med valgt enhet + (sen) innlasting av hjemmelshaver.
+  useEffect(() => {
+    if (!selected || !lookup) return;
+    const ow = owners[selected] || null;
+    if (state === 'sameie') {
+      onResolved({ matrikkel_number: matrikkelStr(lookup.matrikkel, selected), bygningstype: lookup.building_type, seksjonsnr: selected, registry_owner_name: ow?.navn, registry_owner_type: ow?.type });
+    } else if (state === 'borettslag') {
+      onResolved({ matrikkel_number: matrikkelStr(lookup.matrikkel), bygningstype: lookup.building_type, andelsnr: selected, registry_orgnr: lookup.borettslag?.orgnr, registry_owner_name: ow?.navn, registry_owner_type: ow?.type });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected, owners, lookup, state]);
 
   // Bygg en enhetlig liste for seksjoner/andeler.
   const items = useMemo<Item[]>(() => {
@@ -175,6 +189,21 @@ export function PropertyRegistryPicker({
     }
     return [];
   }, [lookup, state, owners]);
+
+  // Auto-velg seksjon/andel når den er hentet direkte fra Finn-annonsen.
+  useEffect(() => {
+    if (autoPreRef.current || overrideOpen) return;
+    let key = '';
+    if (state === 'sameie' && preselectSeksjonsnr) key = String(preselectSeksjonsnr);
+    else if (state === 'borettslag' && preselectAndelsnr) key = String(preselectAndelsnr);
+    if (!key) return;
+    if (items.some((it) => it.key === key)) {
+      autoPreRef.current = true;
+      setAutoMatched(true);
+      setSelected(key);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state, items, preselectSeksjonsnr, preselectAndelsnr]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -217,6 +246,34 @@ export function PropertyRegistryPicker({
             <Building2 className="w-3.5 h-3.5 text-[#cf97fc]" /> {addressLabel}
           </div>
         )}
+      </div>
+    );
+  }
+
+  // ---- Auto-valgt fra Finn-annonse: kompakt bekreftelse (kortets footer viser hjemmelshaver) ----
+  if ((state === 'sameie' || state === 'borettslag') && autoMatched && !overrideOpen) {
+    const kindLabel = state === 'borettslag' ? 'andel' : 'seksjon';
+    if (renderSingle) {
+      // Adresse-flyt (sjelden): vis en liten bekreftelses-stripe.
+      const ow = selected ? owners[selected] : null;
+      return (
+        <div className="mt-5 rounded-2xl bg-[#f7fcf9] border border-[#e7f3ec] px-4 py-3.5 flex items-center gap-3" data-testid="registry-auto-selected">
+          <span className="w-7 h-7 rounded-full bg-[#e7f7ee] flex items-center justify-center shrink-0"><Check className="w-4 h-4 text-[#16a34a]" strokeWidth={3} /></span>
+          <div className="flex-1 min-w-0 text-[13.5px] leading-snug">
+            <span className="font-semibold text-[#0a0a0a]">{kindLabel === 'andel' ? 'Andel' : 'Seksjon'} {selected}</span>
+            <span className="text-[#5b6370]"> — hentet fra annonsen{ow ? ` · ${ow.navn}` : ''}</span>
+          </div>
+          <button type="button" onClick={() => setOverrideOpen(true)} className="shrink-0 text-[12.5px] font-semibold text-[#7c3aed] hover:text-[#8a45d6]">Endre</button>
+        </div>
+      );
+    }
+    // Finn-flyt: kortets footer viser «Verifisert … hjemmelshaver» — her trengs bare en diskré overstyring.
+    return (
+      <div className="mt-3 text-center" data-testid="registry-auto-selected">
+        <button type="button" onClick={() => setOverrideOpen(true)}
+          className="text-[12.5px] text-[#999] hover:text-[#7c3aed] transition-colors underline underline-offset-2 decoration-[#e0d8ee]">
+          Feil {kindLabel}? Velg en annen
+        </button>
       </div>
     );
   }
