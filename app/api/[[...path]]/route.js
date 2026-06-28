@@ -509,6 +509,7 @@ async function reforwardPending(db) {
   for (const lead of pendLeads) {
     results.leads.tried++;
     const fwd = await forwardToDigiHome('/api/leads', {
+      external_ref: lead.id, source_system: 'digihome-marketing',
       name: lead.name, email: lead.email, phone: lead.phone, address: lead.address,
       postal_code: lead.postal_code, property_type: lead.property_type, rental_model: lead.rental_model,
       bedrooms: lead.bedrooms, sqm: lead.sqm, availability: lead.availability, lead_type: lead.lead_type,
@@ -526,6 +527,7 @@ async function reforwardPending(db) {
     const budgetStr = (t.budget_min || t.budget_max)
       ? `${t.budget_min || ''}${t.budget_min && t.budget_max ? '–' : ''}${t.budget_max || ''} kr`.trim() : '';
     const fwd = await forwardToDigiHome('/api/tenants', {
+      external_ref: t.id, source_system: 'digihome-marketing',
       name: t.name, email: t.email, phone: t.phone, desired_area: t.preferred_area, address: t.preferred_area,
       budget: budgetStr, bedrooms: t.bedrooms, move_in_date: t.move_in_date, message: t.notes,
       lead_type: 'leietaker', source: 'nettside',
@@ -1119,6 +1121,7 @@ async function handleRoute(request, { params }) {
 
       // Dual-write: videresend til DigiHome-plattformen (DigiHome AS)
       const fwd = await forwardToDigiHome('/api/leads', {
+        external_ref: lead.id, source_system: 'digihome-marketing',
         name: lead.name, email: lead.email, phone: lead.phone,
         address: lead.address, postal_code: lead.postal_code,
         property_type: lead.property_type, rental_model: lead.rental_model,
@@ -1204,6 +1207,7 @@ async function handleRoute(request, { params }) {
         ? `${tenant.budget_min || ''}${tenant.budget_min && tenant.budget_max ? '–' : ''}${tenant.budget_max || ''} kr`.trim()
         : '';
       const fwd = await forwardToDigiHome('/api/tenants', {
+        external_ref: tenant.id, source_system: 'digihome-marketing',
         name: tenant.name, email: tenant.email, phone: tenant.phone,
         desired_area: tenant.preferred_area,
         address: tenant.preferred_area,
@@ -1404,6 +1408,123 @@ async function handleRoute(request, { params }) {
       }
       await db.collection(coll).updateOne({ id }, { $set: update });
       return cors(NextResponse.json({ ok: true, id, status }));
+    }
+
+    // --- Webhook: lead-status-sync FRA DigiHome-plattformen (to-veis closed-loop) ---
+    if (route === '/webhooks/lead-status' && method === 'POST') {
+      const secret = process.env.LEAD_SYNC_SECRET || '';
+      const provided = request.headers.get('x-webhook-secret') || '';
+      if (!secret || provided !== secret) {
+        return cors(NextResponse.json({ ok: false, error: 'Uautorisert' }, { status: 401 }));
+      }
+      let body = {};
+      try { body = await request.json(); } catch (e) { body = {}; }
+      const VALID = ['new', 'contacted', 'qualified', 'won', 'lost'];
+      const raw = (body.status || '').toString().toLowerCase().trim();
+      const map = {
+        ny: 'new', open: 'new', åpen: 'new', kontaktet: 'contacted', contacted: 'contacted',
+        kvalifisert: 'qualified', qualified: 'qualified', vunnet: 'won', won: 'won', signed: 'won',
+        signert: 'won', closed_won: 'won', tapt: 'lost', lost: 'lost', closed_lost: 'lost', avvist: 'lost',
+      };
+      const status = VALID.includes(raw) ? raw : (map[raw] || '');
+      if (!status) return cors(NextResponse.json({ ok: false, error: 'Ugyldig status', got: raw }, { status: 400 }));
+
+      const externalRef = (body.external_ref || body.externalRef || '').toString();
+      const platformId = (body.platform_id || body.platformId || '').toString();
+      const email = (body.email || '').toString().toLowerCase().trim();
+
+      // Match: external_ref (vår id) → platform_id → e-post, på tvers av begge kolleksjoner.
+      let coll = null, lead = null, matchedBy = '';
+      for (const c of ['leads', 'tenant_leads']) {
+        const or = [];
+        if (externalRef) or.push({ id: externalRef });
+        if (platformId) or.push({ platform_id: platformId });
+        if (email) or.push({ email });
+        if (!or.length) break;
+        const found = await db.collection(c).findOne({ $or: or });
+        if (found) {
+          coll = c; lead = found;
+          matchedBy = (externalRef && found.id === externalRef) ? 'external_ref' : (platformId && found.platform_id === platformId) ? 'platform_id' : 'email';
+          break;
+        }
+      }
+      if (!lead) return cors(NextResponse.json({ ok: false, error: 'Lead ikke funnet' }, { status: 404 }));
+
+      const nowIso = new Date().toISOString();
+      const changedAt = body.changed_at ? new Date(body.changed_at).toISOString() : nowIso;
+      const tenant = (body.tenant || '').toString().slice(0, 60) || null;
+      const update = {
+        status,
+        statusUpdatedAt: changedAt,
+        statusHistory: [...(lead.statusHistory || []), { status, at: changedAt, via: 'platform', tenant: tenant || undefined }].slice(-30),
+        syncedFromPlatform: true,
+        platformTenant: tenant || lead.platformTenant || null,
+        platformSyncAt: nowIso,
+      };
+      if (status !== 'new' && !lead.firstResponseAt) update.firstResponseAt = changedAt;
+      if (status === 'won') {
+        update.wonAt = changedAt;
+        const v = Number(body.value);
+        if (isFinite(v) && v > 0) { update.wonValue = Math.round(v * 100) / 100; update.wonCurrency = (body.currency || 'NOK').toString().slice(0, 3).toUpperCase(); }
+      }
+      await db.collection(coll).updateOne({ id: lead.id }, { $set: update });
+      return cors(NextResponse.json({ ok: true, id: lead.id, status, matched_by: matchedBy }));
+    }
+
+    // --- Admin: lead-detalj + kundereise-tidslinje ---
+    if (route === '/admin/lead' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const { searchParams } = new URL(request.url);
+      const id = (searchParams.get('id') || '').toString();
+      const coll = searchParams.get('type') === 'tenant' ? 'tenant_leads' : 'leads';
+      if (!id) return cors(NextResponse.json({ ok: false, error: 'Mangler id' }, { status: 400 }));
+      const lead = await db.collection(coll).findOne({ id });
+      if (!lead) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
+      const sid = lead.attribution && lead.attribution.sessionId;
+      const vid = lead.attribution && lead.attribution.visitorId;
+      let timeline = [];
+      const or = [];
+      if (sid) or.push({ sessionId: sid });
+      if (vid) or.push({ visitorId: vid });
+      if (or.length) {
+        timeline = await db.collection('events')
+          .find({ $or: or }, { projection: { _id: 0, type: 1, ts: 1, path: 1, channel: 1, device: 1, source: 1, medium: 1, campaign: 1, referrer: 1, meta: 1 } })
+          .sort({ ts: 1 }).limit(300).toArray();
+      }
+      return cors(NextResponse.json({ ok: true, lead: clean(lead), timeline }));
+    }
+
+    // --- Admin: eksporter leads til CSV (BOM for æøå i Excel) ---
+    if (route === '/admin/leads/export' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const { searchParams } = new URL(request.url);
+      const isTenant = searchParams.get('type') === 'tenant';
+      const coll = isTenant ? 'tenant_leads' : 'leads';
+      const docs = await db.collection(coll).find({}).sort({ createdAt: -1 }).limit(10000).toArray();
+      const cols = isTenant
+        ? ['createdAt', 'name', 'email', 'phone', 'preferred_area', 'budget_min', 'budget_max', 'bedrooms', 'move_in_date', 'status', 'channel', 'source', 'campaign', 'forwarded', 'syncedFromPlatform']
+        : ['createdAt', 'name', 'email', 'phone', 'address', 'postal_code', 'property_type', 'sqm', 'bedrooms', 'num_properties', 'matrikkel_number', 'seksjonsnr', 'registry_owner_name', 'status', 'wonValue', 'wonCurrency', 'channel', 'source', 'campaign', 'gclid', 'forwarded', 'syncedFromPlatform'];
+      const lines = [cols.join(',')];
+      for (const d of docs) {
+        const att = d.attribution || {};
+        const row = cols.map((c) => {
+          let v;
+          if (c === 'channel') v = att.channel;
+          else if (c === 'source') v = att.source || d.source;
+          else if (c === 'campaign') v = att.campaign;
+          else if (c === 'gclid') v = att.gclid;
+          else v = d[c];
+          return csvEsc(v === null || v === undefined ? '' : v);
+        });
+        lines.push(row.join(','));
+      }
+      const csv = '\ufeff' + lines.join('\r\n') + '\r\n';
+      const fname = `digihome-${isTenant ? 'leietakere' : 'utleiere'}-${new Date().toISOString().slice(0, 10)}.csv`;
+      const res = new NextResponse(csv, { status: 200 });
+      res.headers.set('Content-Type', 'text/csv; charset=utf-8');
+      res.headers.set('Content-Disposition', `attachment; filename="${fname}"`);
+      res.headers.set('Cache-Control', 'no-store');
+      return cors(res);
     }
 
     // --- Admin: AI lead-scoring (forklarende, per lead) ---
