@@ -38,7 +38,7 @@ function TrendChart({ trend }) {
         <g key={p.year}>
           <circle cx={x(i)} cy={y(p.val)} r="4" fill="#fff" stroke="#a463e8" strokeWidth="2.5" />
           <text x={x(i)} y={y(p.val) - 12} textAnchor="middle" fontSize="13" fontWeight="600" fill="#1f1f1f">{nf(p.val)}</text>
-          <text x={x(i)} y={H - 14} textAnchor="middle" fontSize="12" fill="#999">{p.year}</text>
+          <text x={x(i)} y={H - 14} textAnchor="middle" fontSize="12" fill="#5b6370">{p.year}</text>
         </g>
       ))}
     </svg>
@@ -118,7 +118,7 @@ export default function RentMarketPage({ report }) {
           <nav className="text-[12.5px] text-white/70 mb-5 flex items-center gap-2 flex-wrap">
             {crumbs.map((c, i) => (
               <span key={c.url} className="flex items-center gap-2">
-                {i > 0 && <span className="text-white/40">/</span>}
+                {i > 0 && <span className="text-white/70">/</span>}
                 {i < crumbs.length - 1 ? <Link href={c.url.replace(site.url, '') || '/'} className="hover:text-white transition-colors">{c.name}</Link> : <span className="text-white/90">{c.name}</span>}
               </span>
             ))}
@@ -160,7 +160,7 @@ export default function RentMarketPage({ report }) {
       <section className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16 py-16 lg:py-24">
         <div className="grid lg:grid-cols-[1.4fr_1fr] gap-12 lg:gap-20 items-start">
           <div>
-            <div className="inline-flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.14em] text-[#a463e8] mb-4">
+            <div className="inline-flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.14em] text-[#7c3aed] mb-4">
               <Sparkles className="w-3.5 h-3.5" /> Markedsvurdering
             </div>
             <h2 className="text-[28px] sm:text-[38px] font-bold tracking-[-0.02em] leading-[1.08] mb-6" style={{ fontFamily: 'var(--font-heading)' }}>
@@ -172,17 +172,17 @@ export default function RentMarketPage({ report }) {
                 <p className="text-[18px] sm:text-[20px] leading-relaxed text-[#333]">{r.aiSummary}</p>
               </div>
             )}
-            <p className="text-[15px] text-[#777] leading-relaxed">
+            <p className="text-[15px] text-[#666666] leading-relaxed">
               Tallene bygger på SSBs leiemarkedsundersøkelse — den mest autoritative kilden på faktiske leiepriser i Norge. DigiHome kombinerer dette med egne forvaltningsdata for å gi et komplett bilde av hvor etterspørselen er størst.
             </p>
           </div>
           <div className="bg-white rounded-3xl p-7 sm:p-8 shadow-[0_18px_60px_-26px_rgba(0,0,0,0.18)]">
-            <h3 className="text-[13px] font-semibold uppercase tracking-[0.12em] text-[#999] mb-5">Nøkkelfunn</h3>
+            <h3 className="text-[13px] font-semibold uppercase tracking-[0.12em] text-[#5b6370] mb-5">Nøkkelfunn</h3>
             <ul className="space-y-4">
               {r.insights.map((ins, i) => (
                 <li key={i} className="flex items-start gap-3">
                   <span className="mt-1 w-5 h-5 rounded-full bg-[#f4f0fb] flex items-center justify-center shrink-0">
-                    <BadgeCheck className="w-3.5 h-3.5 text-[#a463e8]" />
+                    <BadgeCheck className="w-3.5 h-3.5 text-[#7c3aed]" />
                   </span>
                   <span className="text-[15px] leading-relaxed text-[#333]">{ins}</span>
                 </li>
@@ -197,10 +197,10 @@ export default function RentMarketPage({ report }) {
         <div className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16 py-16 lg:py-20">
           <div className="flex items-end justify-between gap-6 flex-wrap mb-10">
             <div>
-              <div className="inline-flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.14em] text-[#a463e8] mb-3"><Building2 className="w-3.5 h-3.5" /> Snittleie per boligtype</div>
+              <div className="inline-flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.14em] text-[#7c3aed] mb-3"><Building2 className="w-3.5 h-3.5" /> Snittleie per boligtype</div>
               <h2 className="text-[26px] sm:text-[34px] font-bold tracking-[-0.02em]" style={{ fontFamily: 'var(--font-heading)' }}>Hva koster det å leie i {r.cityLabel}?</h2>
             </div>
-            <p className="text-[13px] text-[#999] max-w-[34ch]">Gjennomsnittlig månedlig leie ({r.year}). Tall i parentes viser endring fra {r.prevYear}.</p>
+            <p className="text-[13px] text-[#5b6370] max-w-[34ch]">Gjennomsnittlig månedlig leie ({r.year}). Tall i parentes viser endring fra {r.prevYear}.</p>
           </div>
           <div className="space-y-4">
             {r.byRoom.filter((b) => b.current).map((b) => (
@@ -213,7 +213,7 @@ export default function RentMarketPage({ report }) {
                 </div>
                 <div className="w-[70px] sm:w-[90px] shrink-0 text-right">
                   {b.yoyPct != null && (
-                    <span className={`inline-flex items-center gap-1 text-[12.5px] font-semibold ${b.yoyPct >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                    <span className={`inline-flex items-center gap-1 text-[12.5px] font-semibold ${b.yoyPct >= 0 ? 'text-emerald-700' : 'text-rose-600'}`}>
                       {b.yoyPct >= 0 ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
                       {b.yoyPct >= 0 ? '+' : ''}{b.yoyPct}%
                     </span>
@@ -229,7 +229,7 @@ export default function RentMarketPage({ report }) {
       <section className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16 py-16 lg:py-24">
         <div className="grid lg:grid-cols-[1fr_1.6fr] gap-10 lg:gap-16 items-center">
           <div>
-            <div className="inline-flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.14em] text-[#a463e8] mb-3"><Activity className="w-3.5 h-3.5" /> Prisutvikling</div>
+            <div className="inline-flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.14em] text-[#7c3aed] mb-3"><Activity className="w-3.5 h-3.5" /> Prisutvikling</div>
             <h2 className="text-[26px] sm:text-[34px] font-bold tracking-[-0.02em] leading-tight mb-5" style={{ fontFamily: 'var(--font-heading)' }}>Leieprisene over tid</h2>
             <p className="text-[15.5px] leading-relaxed text-[#555]">Gjennomsnittlig månedsleie på tvers av boligstørrelser i {r.cityLabel}, {r.years?.[0]}–{r.year}. Et stigende marked betyr økt avkastningspotensial — men også et marked der riktig prising blir stadig viktigere.</p>
           </div>
@@ -247,7 +247,7 @@ export default function RentMarketPage({ report }) {
           <p className="text-white/55 text-[15px] max-w-[60ch] mb-12">Predikert månedsleie etter boligstørrelse og prissone ({r.year}). Sentrale boliger oppnår en tydelig premie — særlig for små enheter.</p>
           <div className="grid md:grid-cols-2 gap-6">
             {r.zones.map((z, zi) => (
-              <div key={z.code} className={`rounded-3xl p-7 sm:p-8 ${zi === 0 ? 'bg-gradient-to-br from-[#1f1538] to-[#120c22] ring-1 ring-[#a463e8]/30' : 'bg-white/[0.04]'}`}>
+              <div key={z.code} className={`rounded-3xl p-7 sm:p-8 ${zi === 0 ? 'bg-gradient-to-br from-[#1f1538] to-[#120c22] ring-1 ring-[#7c3aed]/30' : 'bg-white/[0.04]'}`}>
                 <div className="flex items-center justify-between mb-6">
                   <div>
                     <h3 className="text-[20px] font-bold" style={{ fontFamily: 'var(--font-heading)' }}>{z.label}</h3>
@@ -260,7 +260,7 @@ export default function RentMarketPage({ report }) {
                     <div key={s.key} className="flex items-center justify-between py-2.5 border-b border-white/8 last:border-0">
                       <div>
                         <p className="text-[15px] font-semibold text-white/90">{s.label}</p>
-                        <p className="text-[12px] text-white/40">{s.sqm} m² · {nf(s.perSqm)} kr/m²</p>
+                        <p className="text-[12px] text-white/70">{s.sqm} m² · {nf(s.perSqm)} kr/m²</p>
                       </div>
                       <p className="text-[20px] font-bold" style={{ fontFamily: 'var(--font-heading)' }}>{nf(s.rent)} <span className="text-[13px] font-medium text-white/50">kr/mnd</span></p>
                     </div>
@@ -274,19 +274,19 @@ export default function RentMarketPage({ report }) {
 
       {/* DIGIHOME ETTERSPØRSELSINDEKS */}
       <section className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16 py-16 lg:py-24">
-        <div className="inline-flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.14em] text-[#a463e8] mb-3"><Sparkles className="w-3.5 h-3.5" /> DigiHome Etterspørselsindeks</div>
+        <div className="inline-flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.14em] text-[#7c3aed] mb-3"><Sparkles className="w-3.5 h-3.5" /> DigiHome Etterspørselsindeks</div>
         <div className="grid lg:grid-cols-[1fr_1.5fr] gap-10 lg:gap-16 items-start">
           <div>
             <h2 className="text-[26px] sm:text-[34px] font-bold tracking-[-0.02em] leading-tight mb-4" style={{ fontFamily: 'var(--font-heading)' }}>Hvor er etterspørselen størst?</h2>
             <div className="flex items-end gap-4 mb-5">
-              <div className="text-[64px] sm:text-[80px] font-bold leading-none text-[#a463e8]" style={{ fontFamily: 'var(--font-heading)' }}>{r.demand.index}</div>
+              <div className="text-[64px] sm:text-[80px] font-bold leading-none text-[#7c3aed]" style={{ fontFamily: 'var(--font-heading)' }}>{r.demand.index}</div>
               <div className="pb-2">
-                <p className="text-[13px] text-[#999]">av 100</p>
+                <p className="text-[13px] text-[#5b6370]">av 100</p>
                 <p className="text-[17px] font-bold text-[#1f1f1f]">{r.demand.level}</p>
               </div>
             </div>
-            <p className="text-[14px] leading-relaxed text-[#777]">{r.demand.note}</p>
-            <p className="text-[12.5px] text-[#aaa] mt-4">Basert på {r.demand.signals.leads} eierforespørsler og {r.demand.signals.tenants} leietakerforespørsler siste {r.demand.signals.windowDays} dager.</p>
+            <p className="text-[14px] leading-relaxed text-[#666666]">{r.demand.note}</p>
+            <p className="text-[12.5px] text-[#5b6370] mt-4">Basert på {r.demand.signals.leads} eierforespørsler og {r.demand.signals.tenants} leietakerforespørsler siste {r.demand.signals.windowDays} dager.</p>
           </div>
           <div className="space-y-3">
             {r.demand.byArea.map((a) => {
@@ -295,8 +295,8 @@ export default function RentMarketPage({ report }) {
                 <Link key={a.slug} href={`/utleie/${a.slug}`} className="group block bg-white rounded-2xl p-5 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.10)] hover:shadow-[0_12px_40px_-16px_rgba(0,0,0,0.18)] transition-shadow">
                   <div className="flex items-center justify-between mb-2.5">
                     <div className="flex items-center gap-2">
-                      <span className="text-[15.5px] font-semibold text-[#1f1f1f] group-hover:text-[#a463e8] transition-colors">{a.area}</span>
-                      <ArrowUpRight className="w-3.5 h-3.5 text-[#ccc] group-hover:text-[#a463e8] group-hover:translate-x-0.5 transition-all" />
+                      <span className="text-[15.5px] font-semibold text-[#1f1f1f] group-hover:text-[#7c3aed] transition-colors">{a.area}</span>
+                      <ArrowUpRight className="w-3.5 h-3.5 text-[#ccc] group-hover:text-[#7c3aed] group-hover:translate-x-0.5 transition-all" />
                     </div>
                     <span className={`text-[11.5px] font-semibold px-2.5 py-1 rounded-full ${tone.bg} ${tone.text}`}>{a.level}</span>
                   </div>
@@ -307,7 +307,7 @@ export default function RentMarketPage({ report }) {
                     <span className="text-[13px] font-bold text-[#666] w-8 text-right">{a.index}</span>
                   </div>
                   {a.popularTypes?.length > 0 && (
-                    <p className="text-[12px] text-[#aaa] mt-2">{a.popularTypes.join(' · ')}</p>
+                    <p className="text-[12px] text-[#5b6370] mt-2">{a.popularTypes.join(' · ')}</p>
                   )}
                 </Link>
               );
@@ -319,18 +319,18 @@ export default function RentMarketPage({ report }) {
       {/* METODE & KILDE */}
       <section className="bg-[#f6f4f1]">
         <div className="max-w-[1000px] mx-auto px-6 sm:px-10 lg:px-16 py-14 lg:py-16">
-          <div className="flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.12em] text-[#999] mb-5"><Info className="w-3.5 h-3.5" /> Metode og kilder</div>
+          <div className="flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.12em] text-[#5b6370] mb-5"><Info className="w-3.5 h-3.5" /> Metode og kilder</div>
           <div className="grid sm:grid-cols-2 gap-8 text-[14px] leading-relaxed text-[#666]">
             <div>
               <p className="font-semibold text-[#1f1f1f] mb-2">Datakilder</p>
               <ul className="space-y-2">
                 {r.source.tables.map((t) => (
                   <li key={t.id}>
-                    <a href={t.url} target="_blank" rel="noopener noreferrer" className="text-[#a463e8] hover:underline font-medium">SSB tabell {t.id}</a> — {t.title}
+                    <a href={t.url} target="_blank" rel="noopener noreferrer" className="text-[#7c3aed] hover:underline font-medium">SSB tabell {t.id}</a> — {t.title}
                   </li>
                 ))}
               </ul>
-              <p className="mt-3 text-[12.5px] text-[#999]">Lisens: {r.source.license}. Etterspørselsindeksen er DigiHomes egen sammenstilling.</p>
+              <p className="mt-3 text-[12.5px] text-[#5b6370]">Lisens: {r.source.license}. Etterspørselsindeksen er DigiHomes egen sammenstilling.</p>
             </div>
             <div>
               <p className="font-semibold text-[#1f1f1f] mb-2">Om tallene</p>

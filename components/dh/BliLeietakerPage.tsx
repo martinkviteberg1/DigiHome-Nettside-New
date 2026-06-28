@@ -155,7 +155,7 @@ export default function BliLeietakerPage() {
           </motion.div>
           <h1 className="text-[36px] font-bold tracking-[-0.03em] text-[#0a0a0a] mb-4" style={{ fontFamily: 'var(--font-heading)' }}>Velkommen til DigiHome!</h1>
           <p className="text-[16px] text-[#666] mb-3 leading-relaxed">Vi har mottatt registreringen din og matcher deg med passende boliger.</p>
-          <p className="text-[14px] text-[#999] mb-10">Du hører fra oss innen 48 timer.</p>
+          <p className="text-[14px] text-[#5b6370] mb-10">Du hører fra oss innen 48 timer.</p>
           <Button onClick={() => window.location.href = '/'} data-testid="tenant-success-home-button" className="rounded-full bg-[#0a0a0a] text-white hover:bg-black h-12 px-8 text-[14px] font-semibold gap-2 active:scale-[0.97] transition-transform">Tilbake til forsiden <ArrowRight className="w-4 h-4" /></Button>
         </motion.div>
       </div>
@@ -174,7 +174,7 @@ export default function BliLeietakerPage() {
               </div>
             </motion.div>
             <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.15 }}>
-              <p className="text-[11px] font-semibold text-[#cf97fc] uppercase tracking-[0.1em] mb-4">For leietakere</p>
+              <p className="text-[11px] font-semibold text-[#7c3aed] uppercase tracking-[0.1em] mb-4">For leietakere</p>
               <h1 className="text-[36px] sm:text-[46px] font-bold tracking-[-0.03em] leading-[1.08] text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>Finn ditt neste hjem i Bergen</h1>
               <p className="text-[16px] text-[#666] leading-[1.75] mt-5 max-w-[38ch]">Vi matcher deg med kvalitetsboliger som passer dine ønsker. Det tar kun 2 minutter.</p>
               <div className="mt-8 space-y-3">
@@ -188,7 +188,7 @@ export default function BliLeietakerPage() {
               </div>
               <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6, duration: 0.3 }} className="mt-10">
                 <Button onClick={goNext} data-testid="tenant-next-button" className="rounded-full bg-[#0a0a0a] text-white hover:bg-black h-14 px-10 text-[15px] font-semibold gap-2 active:scale-[0.97] transition-transform shadow-[0_4px_20px_rgba(0,0,0,0.12)]">Kom i gang <ArrowRight className="w-4 h-4" /></Button>
-                <p className="text-[12px] text-[#ccc] mt-4">Gratis og uforpliktende</p>
+                <p className="text-[12px] text-[#5b6370] mt-4">Gratis og uforpliktende</p>
               </motion.div>
             </motion.div>
           </div>
@@ -227,7 +227,7 @@ export default function BliLeietakerPage() {
                     <TextInput label="E-post" required error={errors.email} icon={Mail} value={formData.email} type="email" onChange={(v: any) => updateField('email', v)} placeholder="ola@eksempel.no" autoComplete="email" testId="tenant-email-input" />
                     <PhoneInput value={formData.phone} onChange={(v: any) => updateField('phone', v)} error={errors.phone} testId="tenant-phone-input" />
                   </div>
-                  <p className="text-[11px] text-[#ccc] mt-6"><span className="text-[#cf97fc]">*</span> Påkrevde felt</p>
+                  <p className="text-[11px] text-[#5b6370] mt-6"><span className="text-[#7c3aed]">*</span> Påkrevde felt</p>
                 </div>
               )}
 
@@ -237,12 +237,12 @@ export default function BliLeietakerPage() {
                   <p className="text-[15px] text-[#888] mb-8">Velg det som passer deg best.</p>
                   <div className="space-y-8">
                     <div>
-                      <Label className="text-[13px] font-semibold text-[#333] mb-3 block">Boligtype <span className="text-[#cf97fc]">*</span></Label>
+                      <Label className="text-[13px] font-semibold text-[#333] mb-3 block">Boligtype <span className="text-[#7c3aed]">*</span></Label>
                       <IconCardSelector options={boligTypes} selected={formData.property_type} onChange={(v: any) => updateField('property_type', v)} testIdPrefix="tenant-type" />
                       {errors.property_type && <p className="text-[12px] text-red-500 mt-1.5">{errors.property_type}</p>}
                     </div>
                     <div>
-                      <Label className="text-[13px] font-semibold text-[#333] mb-3 block">Boform <span className="text-[#cf97fc]">*</span></Label>
+                      <Label className="text-[13px] font-semibold text-[#333] mb-3 block">Boform <span className="text-[#7c3aed]">*</span></Label>
                       <div className="grid grid-cols-3 gap-2">
                         {[{ value: 'hele', label: 'Hele for meg selv' }, { value: 'bofellesskap', label: 'Bofellesskap' }, { value: 'fleksibel', label: 'Fleksibel' }].map((opt: any) => (
                           <button key={opt.value} type="button" onClick={() => updateField('housing_pref', formData.housing_pref === opt.value ? '' : opt.value)} className={`py-3 px-3 rounded-2xl border-2 text-[13px] font-medium text-center transition-all ${formData.housing_pref === opt.value ? 'border-[#cf97fc] bg-[#faf5ff] text-[#0a0a0a]' : 'border-[#eee] bg-white text-[#666] hover:border-[#ddd]'}`}>{opt.label}</button>
@@ -251,13 +251,13 @@ export default function BliLeietakerPage() {
                       {errors.housing_pref && <p className="text-[12px] text-red-500 mt-1.5">{errors.housing_pref}</p>}
                     </div>
                     <div>
-                      <Label className="text-[13px] font-semibold text-[#333] mb-2 block">Ønsket område i Bergen <span className="text-[#cf97fc]">*</span></Label>
+                      <Label className="text-[13px] font-semibold text-[#333] mb-2 block">Ønsket område i Bergen <span className="text-[#7c3aed]">*</span></Label>
                       <p className="text-[12px] text-[#aaa] mb-3">Velg ett eller flere områder</p>
                       <PillSelector options={areaOptions} selected={formData.preferred_areas} onToggle={toggleArea} multi testIdPrefix="tenant-area" />
                       {errors.preferred_areas && <p className="text-[12px] text-red-500 mt-1.5">{errors.preferred_areas}</p>}
                     </div>
                   </div>
-                  <p className="text-[11px] text-[#ccc] mt-6"><span className="text-[#cf97fc]">*</span> Påkrevde felt</p>
+                  <p className="text-[11px] text-[#5b6370] mt-6"><span className="text-[#7c3aed]">*</span> Påkrevde felt</p>
                 </div>
               )}
 
@@ -267,7 +267,7 @@ export default function BliLeietakerPage() {
                   <p className="text-[15px] text-[#888] mb-8">Jo mer vi vet, desto bedre match finner vi.</p>
                   <div className="space-y-7">
                     <div>
-                      <Label className="text-[13px] font-semibold text-[#333] mb-3 block">Antall soverom <span className="text-[#cf97fc]">*</span></Label>
+                      <Label className="text-[13px] font-semibold text-[#333] mb-3 block">Antall soverom <span className="text-[#7c3aed]">*</span></Label>
                       <NumberSelector options={['1', '2', '3', '4', '5+']} selected={formData.bedrooms} onChange={(v: any) => updateField('bedrooms', v)} testIdPrefix="tenant-bedrooms" />
                       {errors.bedrooms && <p className="text-[12px] text-red-500 mt-1.5">{errors.bedrooms}</p>}
                     </div>
@@ -276,7 +276,7 @@ export default function BliLeietakerPage() {
                       {errors.budget && <p className="text-[12px] text-red-500 mt-1.5">{errors.budget}</p>}
                     </div>
                     <div>
-                      <Label className="text-[13px] font-semibold text-[#333] mb-2 block">Ønsket innflytting <span className="text-[#cf97fc]">*</span></Label>
+                      <Label className="text-[13px] font-semibold text-[#333] mb-2 block">Ønsket innflytting <span className="text-[#7c3aed]">*</span></Label>
                       <Popover>
                         <PopoverTrigger asChild>
                           <button type="button" data-testid="tenant-move-date-input" className={`w-full h-[52px] px-4 text-left text-[15px] bg-white border rounded-2xl outline-none transition-all flex items-center gap-3 ${formData.move_in_date ? 'border-[#e0e0e0] text-[#333]' : 'border-[#e0e0e0] text-[#737373]'} hover:border-[#cf97fc] focus:border-[#cf97fc] focus:shadow-[0_0_0_3px_rgba(207,151,252,0.12)]`}>
@@ -299,7 +299,7 @@ export default function BliLeietakerPage() {
                       <textarea value={formData.notes} onChange={(e: any) => updateField('notes', e.target.value)} placeholder="Spesielle ønsker, allergier, tilgjengelighet..." rows={3} className="w-full mt-2 px-4 py-3.5 text-[15px] rounded-2xl border border-[#e0e0e0] bg-white focus:outline-none focus:ring-2 focus:ring-[#cf97fc] resize-none placeholder:text-[#737373]" data-testid="tenant-notes-textarea" />
                     </div>
                   </div>
-                  <p className="text-[11px] text-[#ccc] mt-6"><span className="text-[#cf97fc]">*</span> Påkrevde felt</p>
+                  <p className="text-[11px] text-[#5b6370] mt-6"><span className="text-[#7c3aed]">*</span> Påkrevde felt</p>
                 </div>
               )}
 

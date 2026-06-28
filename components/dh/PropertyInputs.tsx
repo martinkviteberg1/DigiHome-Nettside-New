@@ -46,7 +46,7 @@ export function AddressField({
         data-testid={`${testIdPrefix}-confirmed`}
       >
         <span className="flex-shrink-0 w-8 h-8 rounded-full bg-[#f4eefb] flex items-center justify-center">
-          <MapPin className="w-[15px] h-[15px] text-[#a463e8]" />
+          <MapPin className="w-[15px] h-[15px] text-[#7c3aed]" />
         </span>
         <div className="min-w-0 flex-1">
           <p className={`font-semibold text-[#1a1a1a] truncate ${compact ? 'text-[13.5px]' : 'text-[15px]'}`}>{value}</p>
@@ -56,7 +56,7 @@ export function AddressField({
           type="button"
           onClick={() => setEditing(true)}
           data-testid={`${testIdPrefix}-edit`}
-          className="flex-shrink-0 inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-[#a463e8] hover:text-[#8a45d6] transition-colors px-2.5 py-1.5 rounded-lg hover:bg-[#faf5ff]"
+          className="flex-shrink-0 inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-[#7c3aed] hover:text-[#8a45d6] transition-colors px-2.5 py-1.5 rounded-lg hover:bg-[#faf5ff]"
         >
           <Pencil className="w-[13px] h-[13px]" /> Endre
         </button>

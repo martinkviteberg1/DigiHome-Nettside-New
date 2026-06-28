@@ -73,7 +73,7 @@ export default function Header() {
           <nav className="hidden lg:flex items-center gap-1 relative">
             {navLinks.map((l) => {
               const isActive = activeHref === l.href;
-              const inactiveColor = lightMode ? 'rgba(255,255,255,0.60)' : 'rgba(31,31,31,0.60)';
+              const inactiveColor = lightMode ? 'rgba(255,255,255,0.60)' : 'rgba(31,31,31,0.74)';
               const activeColor = lightMode ? '#ffffff' : '#1f1f1f';
               return (
                 <Link
@@ -122,15 +122,15 @@ export default function Header() {
             <button
               className="group inline-flex items-center gap-1 text-[12px] font-semibold tracking-[0.06em] uppercase transition-colors"
               style={{
-                color: lightMode ? 'rgba(255,255,255,0.55)' : 'rgba(31,31,31,0.55)',
+                color: lightMode ? 'rgba(255,255,255,0.55)' : 'rgba(31,31,31,0.74)',
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.color = lightMode ? '#ffffff' : '#1f1f1f';
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.color = lightMode ? 'rgba(255,255,255,0.55)' : 'rgba(31,31,31,0.55)';
+                e.currentTarget.style.color = lightMode ? 'rgba(255,255,255,0.55)' : 'rgba(31,31,31,0.74)';
               }}
-              aria-label="Velg språk"
+              aria-label={`Velg språk (${locale === 'en' ? 'EN' : 'NO'})`}
               data-testid="header-locale-button"
             >
               <span>{locale === 'en' ? 'EN' : 'NO'}</span>

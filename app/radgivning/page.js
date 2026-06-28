@@ -36,10 +36,10 @@ export default function Page() {
             const Icon = c.icon;
             return (
               <div key={c.t} className="bg-white rounded-3xl p-8 shadow-[0_10px_40px_-20px_rgba(0,0,0,0.12)] flex flex-col">
-                <div className="w-12 h-12 rounded-2xl bg-[#f4f0fb] flex items-center justify-center mb-5"><Icon className="w-6 h-6 text-[#a463e8]" /></div>
+                <div className="w-12 h-12 rounded-2xl bg-[#f4f0fb] flex items-center justify-center mb-5"><Icon className="w-6 h-6 text-[#7c3aed]" /></div>
                 <h2 className="text-[21px] font-bold mb-2" style={{ fontFamily: 'var(--font-heading)' }}>{c.t}</h2>
                 <p className="text-[14.5px] text-[#666] leading-relaxed mb-6 flex-1">{c.b}</p>
-                <Link href={c.href} className="inline-flex items-center gap-1.5 text-[14px] font-semibold text-[#a463e8] hover:gap-2.5 transition-all w-fit">{c.cta} <ArrowUpRight className="w-4 h-4" /></Link>
+                <Link href={c.href} className="inline-flex items-center gap-1.5 text-[14px] font-semibold text-[#7c3aed] hover:gap-2.5 transition-all w-fit">{c.cta} <ArrowUpRight className="w-4 h-4" /></Link>
               </div>
             );
           })}

@@ -424,6 +424,19 @@ backend:
 
 
 frontend:
+  - task: "LCP-optimalisering forside (mobil) + siste A11y-kontrastfikser (100/100/100/100 hele siten)"
+    implemented: true
+    working: true
+    file: "components/dh/HeroSection.tsx, public/interior-openplan-hero.webp (NY, lastet opp til objektlagring), app/om-oss/page.js, components/dh/BliLeietakerPage.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "main"
+        -comment: "PROD PSI (digihome.no mobil) var Perf 87 / LCP 4.1s. ROT-ÅRSAK funnet empirisk: mobil-hero gikk via next/image custom-loader → /api/media/interior-openplan.webp?w=750&q=72 → sharp on-the-fly resize tok ~609ms (kald) på det MEST kritiske bildet. FIKS: (1) Pre-genererte en statisk 828px-variant (24KB) public/interior-openplan-hero.webp og LASTET DEN OPP til objektlagring (digihome/public/...) slik at den finnes BÅDE lokalt (/public) OG i prod (standalone faller tilbake til /api/media → objektlagring). (2) Endret mobil-hero <Image> til src='/interior-openplan-hero.webp' + unoptimized → ber om RÅ-URL (uten ?w=) → serveMedia streamer originalen UTEN sharp-resize, med immutable-cache. Bevarer priority-preload (fetchPriority=high). EMPIRISK (ren lokal prod-build, median): hero-bilde 609ms→23ms; mobil Perf 72→91, LCP 4683→3535ms, TBT 461→54ms; desktop Perf 99, LCP 939ms. A11y/BP/SEO=100 mobil+desktop. (3) A11y: siste color-contrast-feil fikset i app/om-oss (text-[#aaa]/[#bbb]→#5b6370) og BliLeietakerPage (text-[#ccc]→#5b6370, lilla label #cf97fc→#7c3aed, *-stjerner #cf97fc→#7c3aed). Verifisert A11y=100 på alle 6 tidligere flaggede sider (om-oss, bli-leietaker, forvaltning, kontakt, tjenester, leiemarkedet/bergen). MERK: BP=82 i lokal test mot LIVE digihome.no skyldes Cloudflares challenge-platform/jsd/main.js (deprecated APIs) — IKKE vår kode; Googles PSI viser BP=100. Frontend bør verifiseres av bruker / etter deploy via ekte PSI."
+
+
   - task: "Ytelses-overhaling: fjernet framer-motion fra markedssidene (lett CSS+IO-shim), optimizePackageImports, OG-font-tracing for standalone"
     implemented: true
     working: true

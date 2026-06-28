@@ -67,7 +67,7 @@ export default function HeroSection() {
           {/* Left */}
           <div>
             <h1
-              className="dh-fade-up text-[38px] sm:text-[48px] lg:text-[56px] xl:text-[62px] font-bold tracking-[-0.035em] leading-[1.06] text-[#0a0a0a]"
+              className="dh-rise text-[38px] sm:text-[48px] lg:text-[56px] xl:text-[62px] font-bold tracking-[-0.035em] leading-[1.06] text-[#0a0a0a]"
               style={{ fontFamily: 'var(--font-heading)', animationDelay: '0.05s' }}
             >{T.heading[locale]}</h1>
 
@@ -119,10 +119,11 @@ export default function HeroSection() {
           <div className="lg:hidden -mx-6 sm:-mx-10">
             <div className="relative h-[220px] sm:h-[280px] rounded-[20px] mx-6 sm:mx-10 overflow-hidden shadow-[0_8px_30px_rgba(0,0,0,0.06)]">
               <Image
-                src="/interior-openplan.webp"
+                src="/interior-openplan-hero.webp"
                 alt="Premium interiør Bergen"
                 fill
                 priority
+                unoptimized
                 sizes="(max-width: 1023px) 100vw, 1px"
                 className="object-cover"
               />

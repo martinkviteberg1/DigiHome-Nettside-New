@@ -41,7 +41,7 @@ export default function Page() {
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {pipeline.map((p, i) => (
             <div key={p.t} className="bg-white rounded-2xl p-7 shadow-[0_8px_36px_-18px_rgba(0,0,0,0.12)]">
-              <span className="text-[13px] font-bold text-[#d298ff]">{String(i + 1).padStart(2, '0')}</span>
+              <span className="text-[13px] font-bold text-[#7c3aed]">{String(i + 1).padStart(2, '0')}</span>
               <h3 className="text-[17px] font-bold mt-2 mb-1.5" style={{ fontFamily: 'var(--font-heading)' }}>{p.t}</h3>
               <p className="text-[14px] text-[#666] leading-relaxed">{p.b}</p>
             </div>
@@ -70,7 +70,7 @@ export default function Page() {
             const Icon = ICONS[rsn.icon] || BadgeCheck;
             return (
               <div key={rsn.title} className="flex items-start gap-4 bg-white rounded-2xl p-6 shadow-[0_8px_36px_-20px_rgba(0,0,0,0.10)]">
-                <div className="w-11 h-11 rounded-2xl bg-[#f4f0fb] flex items-center justify-center shrink-0"><Icon className="w-5 h-5 text-[#a463e8]" /></div>
+                <div className="w-11 h-11 rounded-2xl bg-[#f4f0fb] flex items-center justify-center shrink-0"><Icon className="w-5 h-5 text-[#7c3aed]" /></div>
                 <div><h3 className="text-[17px] font-bold mb-1.5" style={{ fontFamily: 'var(--font-heading)' }}>{rsn.title}</h3><p className="text-[14px] text-[#666] leading-relaxed">{rsn.body}</p></div>
               </div>
             );

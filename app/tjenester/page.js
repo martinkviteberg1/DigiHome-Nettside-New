@@ -35,12 +35,12 @@ export default function Page() {
             const Icon = ICONS[s.icon] || Sparkles;
             return (
               <div key={s.name} className={`rounded-3xl p-8 ${s.featured ? 'bg-gradient-to-br from-[#1f1538] to-[#120c22] text-white' : 'bg-white text-[#1f1f1f] shadow-[0_10px_40px_-18px_rgba(0,0,0,0.12)]'}`}>
-                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-5 ${s.featured ? 'bg-[#d298ff]/15' : 'bg-[#f4f0fb]'}`}><Icon className={`w-6 h-6 ${s.featured ? 'text-[#d298ff]' : 'text-[#a463e8]'}`} /></div>
-                {s.badge && <span className="inline-block text-[11px] font-semibold uppercase tracking-[0.1em] text-[#d298ff] mb-2">{s.badge}</span>}
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-5 ${s.featured ? 'bg-[#d298ff]/15' : 'bg-[#f4f0fb]'}`}><Icon className={`w-6 h-6 ${s.featured ? 'text-[#7c3aed]' : 'text-[#7c3aed]'}`} /></div>
+                {s.badge && <span className="inline-block text-[11px] font-semibold uppercase tracking-[0.1em] text-[#7c3aed] mb-2">{s.badge}</span>}
                 <h2 className="text-[22px] font-bold mb-1" style={{ fontFamily: 'var(--font-heading)' }}>{s.name}</h2>
-                <p className={`text-[12.5px] font-semibold uppercase tracking-[0.08em] mb-4 ${s.featured ? 'text-white/50' : 'text-[#aaa]'}`}>{s.tag}</p>
+                <p className={`text-[12.5px] font-semibold uppercase tracking-[0.08em] mb-4 ${s.featured ? 'text-white/50' : 'text-[#5b6370]'}`}>{s.tag}</p>
                 <p className={`text-[14.5px] leading-relaxed mb-5 ${s.featured ? 'text-white/70' : 'text-[#555]'}`}>{s.description}</p>
-                <div className={`inline-flex items-center gap-1.5 text-[13.5px] font-semibold ${s.featured ? 'text-[#d298ff]' : 'text-[#a463e8]'}`}><Check className="w-4 h-4" /> {s.highlight}</div>
+                <div className={`inline-flex items-center gap-1.5 text-[13.5px] font-semibold ${s.featured ? 'text-[#7c3aed]' : 'text-[#7c3aed]'}`}><Check className="w-4 h-4" /> {s.highlight}</div>
               </div>
             );
           })}
@@ -73,8 +73,8 @@ export default function Page() {
             const Icon = ICONS[st.icon] || Repeat;
             return (
               <div key={st.no} className="relative">
-                <span className="text-[13px] font-bold text-[#d298ff]">{st.no}</span>
-                <div className="w-11 h-11 rounded-2xl bg-[#f4f0fb] flex items-center justify-center my-3"><Icon className="w-5 h-5 text-[#a463e8]" /></div>
+                <span className="text-[13px] font-bold text-[#7c3aed]">{st.no}</span>
+                <div className="w-11 h-11 rounded-2xl bg-[#f4f0fb] flex items-center justify-center my-3"><Icon className="w-5 h-5 text-[#7c3aed]" /></div>
                 <h3 className="text-[17px] font-bold mb-1.5" style={{ fontFamily: 'var(--font-heading)' }}>{st.title}</h3>
                 <p className="text-[14px] text-[#666] leading-relaxed">{st.body}</p>
               </div>

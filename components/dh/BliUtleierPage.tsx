@@ -216,14 +216,14 @@ export default function BliUtleierPage() {
                 <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-black/5 to-transparent pointer-events-none" />
                 <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between gap-2">
                   <div className="bg-white/95 backdrop-blur-xl rounded-xl px-3.5 py-2.5 shadow-[0_4px_16px_rgba(0,0,0,0.12)]">
-                    <p className="text-[9px] text-[#999] leading-tight uppercase tracking-[0.04em]">Snittinntekt Bergen</p>
-                    <p className="text-[15px] font-bold text-[#0a0a0a] mt-0.5" style={{ fontFamily: 'var(--font-heading)' }}>25 000 kr<span className="text-[10px] font-normal text-[#999] ml-0.5">/mnd</span></p>
+                    <p className="text-[9px] text-[#5b6370] leading-tight uppercase tracking-[0.04em]">Snittinntekt Bergen</p>
+                    <p className="text-[15px] font-bold text-[#0a0a0a] mt-0.5" style={{ fontFamily: 'var(--font-heading)' }}>25 000 kr<span className="text-[10px] font-normal text-[#5b6370] ml-0.5">/mnd</span></p>
                   </div>
                   <div className="bg-white/95 backdrop-blur-xl rounded-xl px-3.5 py-2.5 shadow-[0_4px_16px_rgba(0,0,0,0.12)]">
                     <div className="flex items-center gap-1.5">
                       <div className="w-6 h-6 rounded-full bg-[#f5edfc] flex items-center justify-center"><TrendingUp className="w-3 h-3 text-[#cf97fc]" strokeWidth={2.6} /></div>
                       <div>
-                        <p className="text-[9px] text-[#999] leading-tight uppercase tracking-[0.04em]">Avkastning</p>
+                        <p className="text-[9px] text-[#5b6370] leading-tight uppercase tracking-[0.04em]">Avkastning</p>
                         <p className="text-[13px] font-bold text-[#0a0a0a] leading-tight" style={{ fontFamily: 'var(--font-heading)' }}>+40%</p>
                       </div>
                     </div>
@@ -235,7 +235,7 @@ export default function BliUtleierPage() {
               </div>
             </motion.div>
             <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.15 }}>
-              <p className="text-[10.5px] sm:text-[11px] font-semibold text-[#cf97fc] uppercase tracking-[0.1em] mb-3 sm:mb-4">For eiendomseiere</p>
+              <p className="text-[10.5px] sm:text-[11px] font-semibold text-[#7c3aed] uppercase tracking-[0.1em] mb-3 sm:mb-4">For eiendomseiere</p>
               <h1 className="text-[30px] sm:text-[40px] lg:text-[46px] font-bold tracking-[-0.03em] leading-[1.05] sm:leading-[1.08] text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>La eiendommen jobbe for deg</h1>
               <p className="text-[15px] sm:text-[16px] text-[#666] leading-[1.65] sm:leading-[1.75] mt-4 sm:mt-5 max-w-[42ch]">DigiHome forvalter eiendommen din profesjonelt — du lener deg tilbake og nyter inntekten.</p>
               <div className="mt-6 sm:mt-8 space-y-2.5 sm:space-y-3">
@@ -291,7 +291,7 @@ export default function BliUtleierPage() {
                   <p className="text-[15px] text-[#888] mb-8">Slik at vi kan ta kontakt med en personlig vurdering.</p>
                   <div className="space-y-5">
                     <div>
-                      <Label className="text-[13px] font-semibold text-[#333] mb-2 block">Adresse til eiendommen <span className="text-[#cf97fc]">*</span></Label>
+                      <Label className="text-[13px] font-semibold text-[#333] mb-2 block">Adresse til eiendommen <span className="text-[#7c3aed]">*</span></Label>
                       <AddressField
                         value={formData.address}
                         postalCode={formData.postal_code}
@@ -311,7 +311,7 @@ export default function BliUtleierPage() {
                     <TextInput label="E-post" required error={errors.email} icon={Mail} value={formData.email} type="email" onChange={(v: any) => updateField('email', v)} placeholder="ola@eksempel.no" autoComplete="email" testId="owner-email-input" />
                     <PhoneInput value={formData.phone} onChange={(v: any) => updateField('phone', v)} error={errors.phone} testId="owner-phone-input" />
                   </div>
-                  <p className="text-[11px] text-[#ccc] mt-6"><span className="text-[#cf97fc]">*</span> Påkrevde felt</p>
+                  <p className="text-[11px] text-[#5b6370] mt-6"><span className="text-[#7c3aed]">*</span> Påkrevde felt</p>
                 </div>
               )}
 
@@ -324,7 +324,7 @@ export default function BliUtleierPage() {
                     <div className="rounded-2xl bg-gradient-to-br from-[#faf5ff] to-[#f4eefb] border border-[#efe6fb] p-5" data-testid="owner-finn-block">
                       <div className="flex items-center gap-2 mb-1.5">
                         <Sparkles className="w-[15px] h-[15px] text-[#cf97fc]" />
-                        <Label className="text-[13px] font-semibold text-[#333]">Har du allerede en Finn-annonse? <span className="text-[#aaa] font-normal">(valgfritt)</span></Label>
+                        <Label className="text-[13px] font-semibold text-[#333]">Har du allerede en Finn-annonse? <span className="text-[#5b6370] font-normal">(valgfritt)</span></Label>
                       </div>
                       <p className="text-[12.5px] text-[#888] mb-3 leading-relaxed">Lim inn lenken til salgs- eller leieannonsen, så fyller vi inn detaljene for deg.</p>
                       <FinnLookupField
@@ -340,17 +340,17 @@ export default function BliUtleierPage() {
 
                     <TextInput label="Størrelse (m²)" required error={errors.sqm} value={formData.sqm} onChange={(v: any) => updateField('sqm', v)} placeholder="F.eks. 65" type="number" testId="owner-sqm-input" />
                     <div>
-                      <Label className="text-[13px] font-semibold text-[#333] mb-3 block">Boligtype <span className="text-[#cf97fc]">*</span></Label>
+                      <Label className="text-[13px] font-semibold text-[#333] mb-3 block">Boligtype <span className="text-[#7c3aed]">*</span></Label>
                       <IconCardSelector options={propertyTypes} selected={formData.property_type} onChange={(v: any) => updateField('property_type', v)} testIdPrefix="owner-type" />
                       {errors.property_type && <p className="text-[12px] text-red-500 mt-1.5">{errors.property_type}</p>}
                     </div>
                     <div>
-                      <Label className="text-[13px] font-semibold text-[#333] mb-3 block">Soverom <span className="text-[#cf97fc]">*</span></Label>
+                      <Label className="text-[13px] font-semibold text-[#333] mb-3 block">Soverom <span className="text-[#7c3aed]">*</span></Label>
                       <NumberSelector options={['1', '2', '3', '4', '5+']} selected={formData.bedrooms} onChange={(v: any) => updateField('bedrooms', v)} testIdPrefix="owner-bedrooms" />
                       {errors.bedrooms && <p className="text-[12px] text-red-500 mt-1.5">{errors.bedrooms}</p>}
                     </div>
                     <div className="pt-6 border-t border-[#f0f0f0]" data-testid="owner-extra-units-section">
-                      <div className="flex items-center justify-between mb-1"><p className="text-[13px] font-semibold text-[#333]">Har du flere eiendommer?</p><span className="text-[12px] text-[#999]">Valgfritt</span></div>
+                      <div className="flex items-center justify-between mb-1"><p className="text-[13px] font-semibold text-[#333]">Har du flere eiendommer?</p><span className="text-[12px] text-[#5b6370]">Valgfritt</span></div>
                       <p className="text-[13px] text-[#888] mb-4">Legg til flere boliger du vil leie ut — vi vurderer dem samlet.</p>
                       <AnimatePresence initial={false}>
                         {extraUnits.map((u: any, i: number) => (
@@ -378,7 +378,7 @@ export default function BliUtleierPage() {
                               <div className="rounded-xl bg-[#faf7fe] border border-[#efe6fb] p-3.5">
                                 <div className="flex items-center gap-1.5 mb-2">
                                   <Sparkles className="w-[13px] h-[13px] text-[#cf97fc]" />
-                                  <span className="text-[12px] font-semibold text-[#555]">Finn-annonse <span className="text-[#aaa] font-normal">(valgfritt)</span></span>
+                                  <span className="text-[12px] font-semibold text-[#555]">Finn-annonse <span className="text-[#5b6370] font-normal">(valgfritt)</span></span>
                                 </div>
                                 <FinnLookupField
                                   value={u.finn_url || ''}
@@ -404,7 +404,7 @@ export default function BliUtleierPage() {
                       <button type="button" onClick={addExtra} data-testid="owner-add-unit-button" className="w-full flex items-center justify-center gap-2 h-12 rounded-2xl border-2 border-dashed border-[#e0d4f0] text-[#cf97fc] hover:border-[#cf97fc] hover:bg-[#faf5ff] text-[14px] font-semibold transition-all"><Plus className="w-4 h-4" /> Legg til {extraUnits.length > 0 ? 'enda en' : 'eiendom'}</button>
                     </div>
                   </div>
-                  <p className="text-[11px] text-[#ccc] mt-6"><span className="text-[#cf97fc]">*</span> Påkrevde felt</p>
+                  <p className="text-[11px] text-[#5b6370] mt-6"><span className="text-[#7c3aed]">*</span> Påkrevde felt</p>
                 </div>
               )}
 
@@ -414,7 +414,7 @@ export default function BliUtleierPage() {
                   <p className="text-[15px] text-[#888] mb-8">Vi anbefaler den optimale strategien basert på dine preferanser.</p>
                   <div className="space-y-7">
                     <div>
-                      <Label className="text-[13px] font-semibold text-[#333] mb-3 block">Foretrukket utleiemodell <span className="text-[#cf97fc]">*</span></Label>
+                      <Label className="text-[13px] font-semibold text-[#333] mb-3 block">Foretrukket utleiemodell <span className="text-[#7c3aed]">*</span></Label>
                       <div className="space-y-2.5">
                         {rentalModels.map((m: any) => {
                           const Icon = m.icon;
@@ -424,7 +424,7 @@ export default function BliUtleierPage() {
                               className={`w-full flex items-center gap-4 p-4 rounded-2xl border-2 text-left transition-all duration-200 relative ${selected ? 'border-[#cf97fc] bg-[#faf5ff]' : 'border-[#eee] bg-white hover:border-[#ddd]'}`}>
                               {m.recommended && (<span className="absolute -top-2.5 right-4 text-[9px] font-bold uppercase tracking-[0.08em] px-2.5 py-1 rounded-full bg-gradient-to-r from-[#c084fc] to-[#AE68E4] text-white">Anbefalt</span>)}
                               <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${selected ? 'bg-[#cf97fc]' : 'bg-[#f0f0f0]'}`}><Icon className="w-5 h-5" style={{ color: selected ? '#fff' : '#aaa' }} /></div>
-                              <div><p className={`text-[14px] font-semibold ${selected ? 'text-[#0a0a0a]' : 'text-[#555]'}`}>{m.label}</p><p className="text-[12px] text-[#999] mt-0.5">{m.desc}</p></div>
+                              <div><p className={`text-[14px] font-semibold ${selected ? 'text-[#0a0a0a]' : 'text-[#555]'}`}>{m.label}</p><p className="text-[12px] text-[#5b6370] mt-0.5">{m.desc}</p></div>
                             </button>
                           );
                         })}
@@ -432,11 +432,11 @@ export default function BliUtleierPage() {
                       {errors.rental_model && <p className="text-[12px] text-red-500 mt-1.5">{errors.rental_model}</p>}
                     </div>
                     <div>
-                      <Label className="text-[13px] font-semibold text-[#333] mb-2 block">Når er eiendommen tilgjengelig? <span className="text-[#cf97fc]">*</span></Label>
+                      <Label className="text-[13px] font-semibold text-[#333] mb-2 block">Når er eiendommen tilgjengelig? <span className="text-[#7c3aed]">*</span></Label>
                       <Popover>
                         <PopoverTrigger asChild>
                           <button type="button" data-testid="owner-availability-input" className={`w-full h-[52px] px-4 text-left text-[15px] bg-white border rounded-2xl outline-none transition-all flex items-center gap-3 ${formData.availability ? 'border-[#e0e0e0] text-[#333]' : 'border-[#e0e0e0] text-[#737373]'} hover:border-[#cf97fc] focus:border-[#cf97fc] focus:shadow-[0_0_0_3px_rgba(207,151,252,0.12)]`}>
-                            <CalendarIcon className="w-4 h-4 text-[#999] shrink-0" />
+                            <CalendarIcon className="w-4 h-4 text-[#5b6370] shrink-0" />
                             {formData.availability ? format(new Date(formData.availability + 'T12:00:00'), 'd. MMMM yyyy', { locale: nb }) : 'Velg dato...'}
                           </button>
                         </PopoverTrigger>
@@ -484,7 +484,7 @@ export default function BliUtleierPage() {
                     <SummaryCard title="Dine mål" onEdit={() => { setDir(-1); setStep(3); }} testId="owner-edit-goals">
                       {formData.rental_model && <p className="text-[14px] text-[#333]">Modell: <span className="font-medium capitalize">{formData.rental_model}</span></p>}
                       {formData.availability && <p className="text-[14px] text-[#666]">Tilgjengelig: {new Date(formData.availability + 'T12:00:00').toLocaleDateString('nb-NO', { day: 'numeric', month: 'long', year: 'numeric' })}</p>}
-                      {formData.notes && <p className="text-[13px] text-[#999] mt-1">{formData.notes}</p>}
+                      {formData.notes && <p className="text-[13px] text-[#5b6370] mt-1">{formData.notes}</p>}
                       {!formData.rental_model && !formData.availability && !formData.notes && <p className="text-[13px] text-[#737373]">Ingen preferanser valgt</p>}
                     </SummaryCard>
                   </div>

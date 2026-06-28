@@ -131,18 +131,18 @@ export default function LocationPage({ loc, related = [], rent = null }) {
             </h2>
             <p className="text-[16.5px] leading-relaxed text-[#444]">{loc.intro}</p>
             <div className="mt-6 pl-5 border-l-2 border-[#e9d7fb]">
-              <p className="text-[12px] font-semibold uppercase tracking-[0.1em] text-[#a463e8] mb-1">Hvem leier her?</p>
+              <p className="text-[12px] font-semibold uppercase tracking-[0.1em] text-[#7c3aed] mb-1">Hvem leier her?</p>
               <p className="text-[15.5px] leading-relaxed text-[#555]">{loc.tenantProfile}</p>
             </div>
           </div>
           <div className="bg-white rounded-3xl p-7 shadow-[0_14px_50px_-22px_rgba(0,0,0,0.16)]">
-            <h3 className="text-[13px] font-semibold uppercase tracking-[0.12em] text-[#999] mb-5">Leiemarkedet i {loc.name}</h3>
+            <h3 className="text-[13px] font-semibold uppercase tracking-[0.12em] text-[#5b6370] mb-5">Leiemarkedet i {loc.name}</h3>
             <div className="space-y-5">
               <Stat icon={TrendingUp} label="Typisk leiepris" value={loc.market.avgRent} />
               <Stat icon={Sparkles} label="Etterspørsel" value={demandLevel || loc.market.demand} />
               <Stat icon={Home} label="Mest etterspurt" value={loc.market.popularTypes.join(' · ')} small />
             </div>
-            <p className="text-[13px] text-[#777] leading-relaxed mt-5 pt-5 border-t border-[#f0f0f0]">{loc.market.note}</p>
+            <p className="text-[13px] text-[#666666] leading-relaxed mt-5 pt-5 border-t border-[#f0f0f0]">{loc.market.note}</p>
           </div>
         </div>
       </section>
@@ -153,7 +153,7 @@ export default function LocationPage({ loc, related = [], rent = null }) {
           <div className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16 py-16 lg:py-20">
             <div className="grid lg:grid-cols-[1fr_1.2fr] gap-10 lg:gap-16 items-start">
               <div>
-                <div className="inline-flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.14em] text-[#a463e8] mb-3"><BarChart3 className="w-3.5 h-3.5" /> Leiepriser · {rent.year}</div>
+                <div className="inline-flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.14em] text-[#7c3aed] mb-3"><BarChart3 className="w-3.5 h-3.5" /> Leiepriser · {rent.year}</div>
                 <h2 className="text-[26px] sm:text-[34px] font-bold tracking-[-0.02em] leading-tight mb-4" style={{ fontFamily: 'var(--font-heading)' }}>
                   Hva koster det å leie i {isBydel ? 'Bergen' : loc.name}?
                 </h2>
@@ -162,10 +162,10 @@ export default function LocationPage({ loc, related = [], rent = null }) {
                   {two.yoyPct != null && <> ({two.yoyPct >= 0 ? '+' : ''}{two.yoyPct} % fra {rent.prevYear})</>}.
                   {isBydel && ' Tallene gjelder Bergen kommune samlet.'}
                 </p>
-                <Link href="/leiemarkedet/bergen" className="inline-flex items-center gap-1.5 text-[14px] font-semibold text-[#a463e8] hover:gap-2.5 transition-all">
+                <Link href="/leiemarkedet/bergen" className="inline-flex items-center gap-1.5 text-[14px] font-semibold text-[#7c3aed] hover:gap-2.5 transition-all">
                   Se hele leiemarkedsrapporten <ArrowUpRight className="w-4 h-4" />
                 </Link>
-                <p className="text-[12px] text-[#aaa] mt-5 flex items-center gap-1.5"><Database className="w-3.5 h-3.5" /> Kilde: Statistisk sentralbyrå (SSB)</p>
+                <p className="text-[12px] text-[#5b6370] mt-5 flex items-center gap-1.5"><Database className="w-3.5 h-3.5" /> Kilde: Statistisk sentralbyrå (SSB)</p>
               </div>
               <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-[0_14px_50px_-22px_rgba(0,0,0,0.16)]">
                 <div className="space-y-3.5">
@@ -178,7 +178,7 @@ export default function LocationPage({ loc, related = [], rent = null }) {
                         </div>
                       </div>
                       <span className="w-[52px] shrink-0 text-right text-[12px] font-semibold">
-                        {b.yoyPct != null && <span className={b.yoyPct >= 0 ? 'text-emerald-600' : 'text-rose-600'}>{b.yoyPct >= 0 ? '+' : ''}{b.yoyPct}%</span>}
+                        {b.yoyPct != null && <span className={b.yoyPct >= 0 ? 'text-emerald-700' : 'text-rose-600'}>{b.yoyPct >= 0 ? '+' : ''}{b.yoyPct}%</span>}
                       </span>
                     </div>
                   ))}
@@ -192,7 +192,7 @@ export default function LocationPage({ loc, related = [], rent = null }) {
       {/* ETTERSPØRSELSINDEKS / KONTEKST */}
       {rent?.topAreas?.length > 0 && (
         <section className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16 py-16 lg:py-24">
-          <div className="inline-flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.14em] text-[#a463e8] mb-3"><Activity className="w-3.5 h-3.5" /> DigiHome Etterspørselsindeks</div>
+          <div className="inline-flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.14em] text-[#7c3aed] mb-3"><Activity className="w-3.5 h-3.5" /> DigiHome Etterspørselsindeks</div>
           <h2 className="text-[26px] sm:text-[34px] font-bold tracking-[-0.02em] leading-tight mb-3 max-w-[24ch]" style={{ fontFamily: 'var(--font-heading)' }}>
             {isBydel ? `Slik ligger ${loc.name} an mot resten av Bergen` : 'Hvor er etterspørselen størst i Bergen?'}
           </h2>
@@ -203,7 +203,7 @@ export default function LocationPage({ loc, related = [], rent = null }) {
               const isCurrent = a.slug === loc.slug;
               return (
                 <Link key={a.slug} href={`/utleie/${a.slug}`} className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors ${isCurrent ? 'bg-[#f4f0fb]' : 'hover:bg-[#f7f6f4]'}`}>
-                  <span className={`w-[120px] shrink-0 text-[14px] font-semibold ${isCurrent ? 'text-[#a463e8]' : 'text-[#1f1f1f]'}`}>{a.area}</span>
+                  <span className={`w-[120px] shrink-0 text-[14px] font-semibold ${isCurrent ? 'text-[#7c3aed]' : 'text-[#1f1f1f]'}`}>{a.area}</span>
                   <div className="flex-1 h-2.5 rounded-full bg-[#eeecf0] overflow-hidden">
                     <div className="h-full rounded-full" style={{ width: `${a.index}%`, background: at.bar }} />
                   </div>
@@ -255,7 +255,7 @@ export default function LocationPage({ loc, related = [], rent = null }) {
           <div className="grid sm:grid-cols-3 gap-4">
             {related.map((r) => (
               <Link key={r.slug} href={`/utleie/${r.slug}`} className="group relative h-44 rounded-2xl overflow-hidden">
-                <img src={sized(r.image, 768)} srcSet={srcSet(r.image)} sizes="(max-width: 640px) 100vw, 33vw" alt={r.name} width={768} height={512} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" decoding="async" />
+                <img src={sized(r.image, 768)} srcSet={srcSet(r.image)} sizes="(max-width: 640px) 100vw, 33vw" alt="" width={768} height={512} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" decoding="async" />
                 <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, transparent 30%, rgba(10,10,10,0.75) 100%)' }} />
                 <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between">
                   <span className="text-white font-semibold text-[16px]">{r.name}</span>
@@ -289,8 +289,8 @@ export default function LocationPage({ loc, related = [], rent = null }) {
 function Stat({ icon: Icon, label, value, small }) {
   return (
     <div className="flex items-start gap-3">
-      <div className="w-9 h-9 rounded-xl bg-[#f4f0fb] flex items-center justify-center shrink-0"><Icon className="w-4 h-4 text-[#a463e8]" /></div>
-      <div><p className="text-[12px] text-[#999] font-medium">{label}</p><p className={`${small ? 'text-[15px]' : 'text-[17px]'} font-bold text-[#1f1f1f]`}>{value}</p></div>
+      <div className="w-9 h-9 rounded-xl bg-[#f4f0fb] flex items-center justify-center shrink-0"><Icon className="w-4 h-4 text-[#7c3aed]" /></div>
+      <div><p className="text-[12px] text-[#5b6370] font-medium">{label}</p><p className={`${small ? 'text-[15px]' : 'text-[17px]'} font-bold text-[#1f1f1f]`}>{value}</p></div>
     </div>
   );
 }

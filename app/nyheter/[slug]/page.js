@@ -39,7 +39,7 @@ const ARTICLE_CLS = [
   '[&>p]:text-[17px] [&>p]:leading-[1.78] [&>p]:text-[#3a3a3a] [&>p]:mb-6',
   '[&>ul]:list-disc [&>ul]:pl-6 [&>ul]:mb-6 [&>ul]:text-[#3a3a3a] [&>ul]:text-[16.5px] [&>ul>li]:mb-2 [&>ul>li]:leading-relaxed',
   '[&>ol]:list-decimal [&>ol]:pl-6 [&>ol]:mb-6 [&>ol]:text-[#3a3a3a] [&>ol]:text-[16.5px] [&>ol>li]:mb-2',
-  '[&_a]:text-[#a463e8] [&_a]:underline [&_a]:underline-offset-2 [&_strong]:font-semibold [&_strong]:text-[#1f1f1f]',
+  '[&_a]:text-[#7c3aed] [&_a]:underline [&_a]:underline-offset-2 [&_strong]:font-semibold [&_strong]:text-[#1f1f1f]',
   '[&>blockquote]:border-l-2 [&>blockquote]:border-[#d298ff] [&>blockquote]:pl-5 [&>blockquote]:italic [&>blockquote]:text-[#555] [&>blockquote]:my-6',
 ].join(' ');
 
@@ -87,7 +87,7 @@ export default async function ArticlePage({ params }) {
             <Link href="/nyheter" className="inline-flex items-center gap-1.5 text-[13px] font-medium text-[#888] hover:text-[#1f1f1f] transition-colors mb-7"><ArrowLeft className="w-4 h-4" /> Alle artikler</Link>
             <div className="flex items-center gap-3 mb-5 flex-wrap">
               {(post.tags || []).map((t) => (
-                <Link key={t} href={`/nyheter?tag=${encodeURIComponent(t)}`} className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[#a463e8] bg-[#f4f0fb] px-2.5 py-1 rounded-full hover:bg-[#ece3fb] transition-colors">{t}</Link>
+                <Link key={t} href={`/nyheter?tag=${encodeURIComponent(t)}`} className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[#7c3aed] bg-[#f4f0fb] px-2.5 py-1 rounded-full hover:bg-[#ece3fb] transition-colors">{t}</Link>
               ))}
               <span className="inline-flex items-center gap-1.5 text-[13px] text-[#999]"><Calendar className="w-3.5 h-3.5" /> {fmtDate(post.publishedAt)}</span>
             </div>

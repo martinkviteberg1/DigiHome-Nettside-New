@@ -46,7 +46,7 @@ export default function Page() {
               const Icon = v.icon;
               return (
                 <div key={v.t} className="bg-white rounded-2xl p-7 shadow-[0_8px_36px_-20px_rgba(0,0,0,0.10)]">
-                  <div className="w-11 h-11 rounded-2xl bg-[#f4f0fb] flex items-center justify-center mb-4"><Icon className="w-5 h-5 text-[#a463e8]" /></div>
+                  <div className="w-11 h-11 rounded-2xl bg-[#f4f0fb] flex items-center justify-center mb-4"><Icon className="w-5 h-5 text-[#7c3aed]" /></div>
                   <h3 className="text-[18px] font-bold mb-1.5" style={{ fontFamily: 'var(--font-heading)' }}>{v.t}</h3>
                   <p className="text-[14.5px] text-[#666] leading-relaxed">{v.b}</p>
                 </div>
@@ -72,20 +72,20 @@ export default function Page() {
 
       <section className="max-w-[1000px] mx-auto px-6 sm:px-10 lg:px-16 py-16 lg:py-20">
         <div className="bg-white rounded-3xl p-8 sm:p-10 shadow-[0_10px_40px_-20px_rgba(0,0,0,0.12)] flex flex-col sm:flex-row items-start gap-6">
-          <div className="w-16 h-16 rounded-2xl bg-[#f4f0fb] flex items-center justify-center shrink-0"><span className="text-[24px] font-bold text-[#a463e8]" style={{ fontFamily: 'var(--font-heading)' }}>SS</span></div>
+          <div className="w-16 h-16 rounded-2xl bg-[#f4f0fb] flex items-center justify-center shrink-0"><span className="text-[24px] font-bold text-[#7c3aed]" style={{ fontFamily: 'var(--font-heading)' }}>SS</span></div>
           <div>
-            <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-[#aaa] mb-1">Daglig leder</p>
+            <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-[#5b6370] mb-1">Daglig leder</p>
             <h3 className="text-[22px] font-bold" style={{ fontFamily: 'var(--font-heading)' }}>{site.ceo}</h3>
-            <p className="text-[14px] text-[#a463e8] font-medium mb-3">{site.ceoTitle}</p>
+            <p className="text-[14px] text-[#7c3aed] font-medium mb-3">{site.ceoTitle}</p>
             <p className="text-[15px] text-[#555] leading-relaxed">«Vårt løfte er enkelt: du skal slippe å tenke på utleien, og samtidig tjene mer enn du gjorde før. Vi behandler hver bolig som om den var vår egen.»</p>
           </div>
         </div>
       </section>
 
       <section className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16 pb-20">
-        <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-[#aaa] mb-6 text-center">Våre partnere</p>
+        <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-[#5b6370] mb-6 text-center">Våre partnere</p>
         <div className="flex flex-wrap items-center justify-center gap-x-10 gap-y-4">
-          {partners.map((p) => (<span key={p.name} className="text-[15px] font-semibold text-[#bbb]">{p.name}</span>))}
+          {partners.map((p) => (<span key={p.name} className="text-[15px] font-semibold text-[#5b6370]">{p.name}</span>))}
         </div>
       </section>
 

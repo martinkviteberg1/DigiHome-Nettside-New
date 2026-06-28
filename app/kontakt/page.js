@@ -38,14 +38,14 @@ export default function Page() {
                 const Icon = it.icon;
                 const inner = (
                   <div className="flex items-center gap-4 bg-white rounded-2xl p-5 shadow-[0_6px_30px_-18px_rgba(0,0,0,0.12)]">
-                    <div className="w-11 h-11 rounded-2xl bg-[#f4f0fb] flex items-center justify-center shrink-0"><Icon className="w-5 h-5 text-[#a463e8]" /></div>
-                    <div><p className="text-[12px] text-[#999] font-medium">{it.label}</p><p className="text-[15.5px] font-semibold text-[#1f1f1f]">{it.value}</p></div>
+                    <div className="w-11 h-11 rounded-2xl bg-[#f4f0fb] flex items-center justify-center shrink-0"><Icon className="w-5 h-5 text-[#7c3aed]" /></div>
+                    <div><p className="text-[12px] text-[#5b6370] font-medium">{it.label}</p><p className="text-[15.5px] font-semibold text-[#1f1f1f]">{it.value}</p></div>
                   </div>
                 );
                 return it.href ? <a key={it.label} href={it.href} className="block hover:opacity-90 transition-opacity">{inner}</a> : <div key={it.label}>{inner}</div>;
               })}
             </div>
-            <p className="text-[13px] text-[#999] mt-6 leading-relaxed">{site.legalName} · Org.nr {site.orgNr}</p>
+            <p className="text-[13px] text-[#5b6370] mt-6 leading-relaxed">{site.legalName} · Org.nr {site.orgNr}</p>
           </div>
           <div>
             <h2 className="text-[24px] sm:text-[30px] font-bold tracking-[-0.02em] mb-6" style={{ fontFamily: 'var(--font-heading)' }}>Send oss en melding</h2>

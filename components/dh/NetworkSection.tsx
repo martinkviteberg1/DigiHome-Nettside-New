@@ -1,5 +1,4 @@
-'use client';
-
+// Ren presentasjons-seksjon — server-komponent (ingen hydrering nødvendig).
 import React from 'react';
 import { Sparkles, Wrench, Droplets, Zap, Scale, ShieldCheck, Brush } from 'lucide-react';
 
