@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   Loader2, RefreshCw, Send, CheckCircle2, AlertCircle, Lock, Trash2,
   LayoutDashboard, Activity, BarChart3, Users, Sparkles, FileText, Database,
-  Radio, Gauge, TrendingUp, TrendingDown, Download,
+  Radio, Gauge, TrendingUp, TrendingDown, Download, Megaphone,
 } from 'lucide-react';
 import OverviewTab from '@/components/admin/OverviewTab';
 import TrafficTab from '@/components/admin/TrafficTab';
@@ -13,6 +13,7 @@ import InsightTab from '@/components/admin/InsightTab';
 import RentMarketTab from '@/components/admin/RentMarketTab';
 import LiveTab from '@/components/admin/LiveTab';
 import WebVitalsTab from '@/components/admin/WebVitalsTab';
+import AdsTab from '@/components/admin/AdsTab';
 
 const TABS = [
   { k: 'oversikt', l: 'Oversikt', icon: LayoutDashboard },
@@ -20,6 +21,7 @@ const TABS = [
   { k: 'trafikk', l: 'Trafikk', icon: Activity },
   { k: 'ytelse', l: 'Ytelse', icon: Gauge },
   { k: 'innsikt', l: 'Lead-innsikt', icon: BarChart3 },
+  { k: 'annonser', l: 'Annonser', icon: Megaphone },
   { k: 'leiemarked', l: 'Leiemarked', icon: Database },
   { k: 'ai', l: 'AI-assistent', icon: Sparkles },
   { k: 'leads', l: 'Leads', icon: Users },
@@ -206,6 +208,7 @@ export default function AdminDashboardPage() {
         {tab === 'trafikk' && <TrafficTab traffic={analytics && analytics.traffic} />}
         {tab === 'ytelse' && <WebVitalsTab webVitals={analytics && analytics.webVitals} />}
         {tab === 'innsikt' && <IntelTab leads={analytics && analytics.leads} />}
+        {tab === 'annonser' && <AdsTab apiKey={key} />}
         {tab === 'leiemarked' && <RentMarketTab apiKey={key} />}
         {tab === 'ai' && <InsightTab apiKey={key} days={days} />}
 

@@ -5,7 +5,8 @@ import sharp from 'sharp';
 import { getDb, clean } from '@/lib/mongodb';
 import { getObject, PUBLIC_PREFIX } from '@/lib/objectStorage';
 import { isBot, buildEvent, ensureAnalyticsIndexes, computeAnalytics, computeLeadIntel } from '@/lib/analytics-server';
-import { deriveChannel, serializeForLLM, computeWebVitals, detectAnomalies, computeLive } from '@/lib/analytics-server';
+import { deriveChannel, serializeForLLM, computeWebVitals, detectAnomalies, computeLive, computeAdsEconomics } from '@/lib/analytics-server';
+import { parseGoogleAdsCsv } from '@/lib/adsImport';
 import { chatLLM } from '@/lib/llm';
 import { slugify } from '@/lib/site';
 import { getRentReport, refreshRentReport, RENT_CITIES } from '@/lib/rentmarket';
@@ -888,6 +889,63 @@ async function handleRoute(request, { params }) {
       res.headers.set('X-Conversions-Count', String(included));
       res.headers.set('Cache-Control', 'no-store');
       return cors(res);
+    }
+
+    // --- Admin: Annonser — importer Google Ads kostnadsrapport (CSV) -------
+    if (route === '/admin/ads/import' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {};
+      try { body = await request.json(); } catch (e) { body = {}; }
+      const csv = (body.csv || '').toString();
+      if (!csv.trim()) return cors(NextResponse.json({ ok: false, error: 'Mangler CSV-innhold' }, { status: 400 }));
+      const parsed = parseGoogleAdsCsv(csv);
+      if (!parsed.ok) return cors(NextResponse.json({ ok: false, error: parsed.error }, { status: 400 }));
+
+      const nowIso = new Date().toISOString();
+      // Periode: bruk fra CSV-preamble, ellers manuell override fra body, ellers siste 30 dager.
+      const periodFrom = parsed.periodFrom || (body.periodFrom ? new Date(body.periodFrom).toISOString() : new Date(Date.now() - 30 * 86400000).toISOString());
+      const periodTo = parsed.periodTo || (body.periodTo ? new Date(body.periodTo).toISOString() : nowIso);
+      const label = parsed.label || (body.label || '').toString().slice(0, 120) || `Import ${nowIso.slice(0, 10)}`;
+
+      const imp = {
+        id: uuidv4(),
+        label,
+        currency: (body.currency ? String(body.currency).toUpperCase().slice(0, 3) : parsed.currency) || 'NOK',
+        periodFrom, periodTo,
+        totals: parsed.totals,
+        campaigns: parsed.campaigns.slice(0, 500),
+        importedAt: nowIso,
+        source: 'google_ads_csv',
+      };
+      await db.collection('ad_imports').insertOne(imp);
+      const economics = await computeAdsEconomics(db, imp);
+      return cors(NextResponse.json({ ok: true, economics, parsedCampaigns: parsed.campaigns.length }, { status: 201 }));
+    }
+
+    // --- Admin: Annonser — oversikt (siste import + join mot leads) --------
+    if (route === '/admin/ads/overview' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const { searchParams } = new URL(request.url);
+      const importId = searchParams.get('importId');
+      const query = importId ? { id: importId } : {};
+      const imp = await db.collection('ad_imports').find(query, { projection: { _id: 0 } }).sort({ importedAt: -1 }).limit(1).next();
+      const imports = await db.collection('ad_imports')
+        .find({}, { projection: { _id: 0, id: 1, label: 1, periodFrom: 1, periodTo: 1, importedAt: 1, currency: 1, 'totals.cost': 1 } })
+        .sort({ importedAt: -1 }).limit(50).toArray();
+      if (!imp) return cors(NextResponse.json({ ok: true, empty: true, imports: [] }));
+      const economics = await computeAdsEconomics(db, imp);
+      return cors(NextResponse.json({ ok: true, empty: false, economics, imports }));
+    }
+
+    // --- Admin: Annonser — slett en import ---------------------------------
+    if (route === '/admin/ads/import' && method === 'DELETE') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {};
+      try { body = await request.json(); } catch (e) { body = {}; }
+      const id = (body.id || '').toString();
+      if (!id) return cors(NextResponse.json({ ok: false, error: 'Mangler id' }, { status: 400 }));
+      const r = await db.collection('ad_imports').deleteOne({ id });
+      return cors(NextResponse.json({ ok: true, deleted: r.deletedCount }));
     }
 
     // --- Admin: Analytics + Lead Intelligence (samlet) ---
