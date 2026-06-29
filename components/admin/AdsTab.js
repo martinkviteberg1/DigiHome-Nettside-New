@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Loader2, Upload, Megaphone, TrendingUp, AlertCircle, Trash2,
-  Coins, MousePointerClick, Target, Wallet, CheckCircle2, Info, RefreshCw, Layers,
+  Coins, MousePointerClick, Target, Wallet, CheckCircle2, Info, RefreshCw, Layers, Link2 as LinkIcon,
 } from 'lucide-react';
 
 const nf = new Intl.NumberFormat('nb-NO');
@@ -29,6 +29,11 @@ export default function AdsTab({ apiKey }) {
   const [showHelp, setShowHelp] = useState(false);
   const [metaSyncing, setMetaSyncing] = useState(false);
   const [metaPreset, setMetaPreset] = useState('last_30d');
+  // Google Ads via Composio
+  const [googleStatus, setGoogleStatus] = useState(null); // {configured, connected, status, customerId}
+  const [googleSyncing, setGoogleSyncing] = useState(false);
+  const [googleConnecting, setGoogleConnecting] = useState(false);
+  const [googlePreset, setGooglePreset] = useState('last_30d');
   const fileRef = useRef(null);
 
   const load = useCallback(async (importId) => {
@@ -43,7 +48,56 @@ export default function AdsTab({ apiKey }) {
     finally { setLoading(false); }
   }, [apiKey]);
 
-  useEffect(() => { load(); }, [load]);
+  const loadGoogleStatus = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/admin/ads/google-status?key=${encodeURIComponent(apiKey)}`);
+      if (!res.ok) return;
+      const j = await res.json();
+      setGoogleStatus(j);
+    } catch (e) { /* stille */ }
+  }, [apiKey]);
+
+  useEffect(() => { load(); loadGoogleStatus(); }, [load, loadGoogleStatus]);
+
+  // Etter OAuth-retur (?googleads=connected): oppdater status + rydd URL
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const sp = new URLSearchParams(window.location.search);
+    if (sp.get('googleads') === 'connected') {
+      setImportMsg('Google Ads tilkoblet — synk forbruk for å hente data');
+      loadGoogleStatus();
+      sp.delete('googleads');
+      const url = window.location.pathname + (sp.toString() ? `?${sp}` : '');
+      window.history.replaceState({}, '', url);
+    }
+  }, [loadGoogleStatus]);
+
+  const doGoogleConnect = async () => {
+    setGoogleConnecting(true); setErr(''); setImportMsg('');
+    try {
+      const res = await fetch(`/api/admin/ads/google-connect?key=${encodeURIComponent(apiKey)}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ callbackUrl: `${window.location.origin}/admin?googleads=connected` }),
+      });
+      const j = await res.json();
+      if (!res.ok || !j.ok || !j.redirectUrl) { setErr(j.error || 'Kunne ikke starte Google-tilkobling'); setGoogleConnecting(false); return; }
+      window.location.href = j.redirectUrl;
+    } catch (e) { setErr('Kunne ikke starte Google-tilkobling'); setGoogleConnecting(false); }
+  };
+
+  const doGoogleSync = async () => {
+    setGoogleSyncing(true); setErr(''); setImportMsg('');
+    try {
+      const res = await fetch(`/api/admin/ads/google-sync?key=${encodeURIComponent(apiKey)}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ datePreset: googlePreset }),
+      });
+      const j = await res.json();
+      if (!res.ok || !j.ok) { setErr(j.error || 'Google-synk feilet'); }
+      else { setImportMsg(`Google synket: ${j.parsedCampaigns} kampanjer`); await load(); }
+    } catch (e) { setErr('Kunne ikke synke Google'); }
+    finally { setGoogleSyncing(false); }
+  };
 
   const doImport = async (csv) => {
     if (!csv || !csv.trim()) return;
@@ -110,6 +164,23 @@ export default function AdsTab({ apiKey }) {
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {importMsg && <span className="text-[12px] text-emerald-600 font-semibold flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> {importMsg}</span>}
+          {/* Google Ads (Composio) — koble til / synk live */}
+          {googleStatus && googleStatus.configured && (
+            googleStatus.connected ? (
+              <div className="flex items-center gap-1.5">
+                <select value={googlePreset} onChange={(e) => setGooglePreset(e.target.value)} className="h-9 rounded-full bg-white text-[12px] font-semibold text-[#555] px-3 shadow-[0_2px_10px_rgba(0,0,0,0.03)] outline-none focus:ring-2 focus:ring-[#4285F4]/30 cursor-pointer">
+                  {PRESETS.map((p) => <option key={p.v} value={p.v}>{p.l}</option>)}
+                </select>
+                <button onClick={doGoogleSync} disabled={googleSyncing} className="h-9 px-4 rounded-full text-white text-[12px] font-semibold flex items-center gap-2 disabled:opacity-40 active:scale-[0.97] transition-transform" style={{ background: '#4285F4' }}>
+                  {googleSyncing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />} Synk Google-forbruk
+                </button>
+              </div>
+            ) : (
+              <button onClick={doGoogleConnect} disabled={googleConnecting} className="h-9 px-4 rounded-full text-white text-[12px] font-semibold flex items-center gap-2 disabled:opacity-40 active:scale-[0.97] transition-transform" style={{ background: '#4285F4' }}>
+                {googleConnecting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <LinkIcon className="w-3.5 h-3.5" />} Koble til Google Ads
+              </button>
+            )
+          )}
           {/* Meta-synk */}
           {data && data.metaConfigured && (
             <div className="flex items-center gap-1.5">
@@ -131,7 +202,7 @@ export default function AdsTab({ apiKey }) {
       {showHelp && (
         <div className="mb-4 bg-[#f4f0fb] rounded-2xl p-4 text-[13px] text-[#444] leading-relaxed">
           <p className="font-semibold text-[#0a0a0a] mb-1">Multi-kanal annonseøkonomi</p>
-          <p><b>Google:</b> Kampanjer → velg periode → Last ned → .csv → last opp her. <b>Meta:</b> trykk «Synk Meta-forbruk» (henter direkte via API). Vi kobler kostnaden mot leads og vunne kontrakter for å regne ut CPL, CPA og ROAS — per kanal og <b>blandet (Google + Meta)</b>.</p>
+          <p><b>Google (live):</b> trykk «Koble til Google Ads», logg inn med Google-kontoen din, deretter «Synk Google-forbruk» — henter kostnad/klikk/visninger direkte via API (Composio). <b>Google (CSV):</b> alternativt last opp en kampanjerapport-CSV. <b>Meta:</b> trykk «Synk Meta-forbruk». Vi kobler kostnaden mot leads og vunne kontrakter for å regne ut CPL, CPA og ROAS — per kanal og <b>blandet (Google + Meta)</b>.</p>
           <p className="mt-1.5 text-[12px] text-[#777]">ROAS/CPA bruker «Vunnet»-verdien fra closed-loop. Meta-leads gjenkjennes på <code>fbclid</code> / kilde (facebook/instagram).</p>
         </div>
       )}

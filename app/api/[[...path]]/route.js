@@ -10,6 +10,7 @@ import { parseGoogleAdsCsv } from '@/lib/adsImport';
 import { sendMetaCapiEvent, metaCapiConfigured } from '@/lib/meta-capi';
 import { fetchMetaInsights, fetchMetaAccount, metaAdsConfigured } from '@/lib/meta-ads';
 import { fetchPages, fetchLeadForms, fetchFormLeads, mapLeadFields, metaLeadAdsConfigured, fetchSingleLead, fetchFormName, fetchPageToken } from '@/lib/meta-leadads';
+import { composioConfigured, createConnectLink, getConnectionStatus, runCampaignReport, defaultCustomerId } from '@/lib/composio-google-ads';
 import { chatLLM } from '@/lib/llm';
 import { slugify } from '@/lib/site';
 import { getRentReport, refreshRentReport, RENT_CITIES } from '@/lib/rentmarket';
@@ -1439,8 +1440,76 @@ async function handleRoute(request, { params }) {
       return cors(NextResponse.json({
         ok: true, empty,
         economics: googleEco, meta: metaEco, combined,
-        metaConfigured: metaAdsConfigured(), imports,
+        metaConfigured: metaAdsConfigured(),
+        googleConfigured: composioConfigured(),
+        googleSource: imp ? (imp.source || null) : null,
+        imports,
       }));
+    }
+
+    // --- Admin: Annonser — Google Ads via Composio: start OAuth-tilkobling ---
+    if (route === '/admin/ads/google-connect' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!composioConfigured()) return cors(NextResponse.json({ ok: false, error: 'Composio er ikke konfigurert (mangler COMPOSIO_API_KEY)' }, { status: 400 }));
+      let body = {};
+      try { body = await request.json(); } catch (e) { body = {}; }
+      const base = process.env.NEXT_PUBLIC_BASE_URL || '';
+      const callbackUrl = (body.callbackUrl && String(body.callbackUrl)) || `${base}/admin?googleads=connected`;
+      try {
+        const { redirectUrl, connectionId, authConfigId } = await createConnectLink(db, { callbackUrl });
+        return cors(NextResponse.json({ ok: true, redirectUrl, connectionId, authConfigId }));
+      } catch (e) {
+        return cors(NextResponse.json({ ok: false, error: e.message || 'Kunne ikke opprette tilkoblingslenke' }, { status: 502 }));
+      }
+    }
+
+    // --- Admin: Annonser — Google Ads via Composio: tilkoblingsstatus -------
+    if (route === '/admin/ads/google-status' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!composioConfigured()) return cors(NextResponse.json({ ok: true, configured: false, connected: false }));
+      try {
+        const st = await getConnectionStatus();
+        return cors(NextResponse.json({ ok: true, configured: true, customerId: defaultCustomerId(), ...st }));
+      } catch (e) {
+        return cors(NextResponse.json({ ok: true, configured: true, connected: false, status: 'ERROR', error: e.message }));
+      }
+    }
+
+    // --- Admin: Annonser — Google Ads via Composio: synk live kostnad ------
+    if (route === '/admin/ads/google-sync' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!composioConfigured()) return cors(NextResponse.json({ ok: false, error: 'Composio er ikke konfigurert' }, { status: 400 }));
+      let body = {};
+      try { body = await request.json(); } catch (e) { body = {}; }
+      const presetDays = { last_7d: 7, last_30d: 30, last_90d: 90 };
+      const datePreset = ['last_7d', 'last_30d', 'last_90d'].includes(body.datePreset) ? body.datePreset : 'last_30d';
+      const days = presetDays[datePreset];
+      const nowIso = new Date().toISOString();
+      const since = body.since ? new Date(body.since).toISOString() : new Date(Date.now() - days * 86400000).toISOString();
+      const until = body.until ? new Date(body.until).toISOString() : nowIso;
+      try {
+        const report = await runCampaignReport({ since, until, customerId: body.customerId });
+        const imp = {
+          id: uuidv4(),
+          label: `Google Ads (live) · ${report.from} – ${report.to}`,
+          currency: 'NOK',
+          periodFrom: new Date(report.from).toISOString(),
+          periodTo: new Date(`${report.to}T23:59:59.999Z`).toISOString(),
+          totals: report.totals,
+          campaigns: report.campaigns.slice(0, 500),
+          importedAt: nowIso,
+          source: 'google_ads_composio',
+          customerId: report.customerId,
+        };
+        await db.collection('ad_imports').insertOne(imp);
+        // behold maks 20 ferskeste Composio-importer
+        const stale = await db.collection('ad_imports').find({ source: 'google_ads_composio' }, { projection: { _id: 1, importedAt: 1 } }).sort({ importedAt: -1 }).skip(20).toArray();
+        if (stale.length) await db.collection('ad_imports').deleteMany({ _id: { $in: stale.map((o) => o._id) } });
+        const economics = await computeAdsEconomics(db, imp);
+        return cors(NextResponse.json({ ok: true, economics, parsedCampaigns: report.campaigns.length, customerId: report.customerId }, { status: 201 }));
+      } catch (e) {
+        return cors(NextResponse.json({ ok: false, error: e.message || 'Google Ads-synk feilet' }, { status: 502 }));
+      }
     }
 
     // --- Admin: Annonser — synk Meta-forbruk (Marketing API, read-only) ----
