@@ -9,7 +9,7 @@ import { deriveChannel, serializeForLLM, computeWebVitals, detectAnomalies, comp
 import { parseGoogleAdsCsv } from '@/lib/adsImport';
 import { sendMetaCapiEvent, metaCapiConfigured } from '@/lib/meta-capi';
 import { fetchMetaInsights, fetchMetaAccount, metaAdsConfigured } from '@/lib/meta-ads';
-import { fetchPages, fetchLeadForms, fetchFormLeads, mapLeadFields, metaLeadAdsConfigured } from '@/lib/meta-leadads';
+import { fetchPages, fetchLeadForms, fetchFormLeads, mapLeadFields, metaLeadAdsConfigured, fetchSingleLead, fetchFormName, fetchPageToken } from '@/lib/meta-leadads';
 import { chatLLM } from '@/lib/llm';
 import { slugify } from '@/lib/site';
 import { getRentReport, refreshRentReport, RENT_CITIES } from '@/lib/rentmarket';
@@ -578,6 +578,52 @@ function sanitizeAttribution(a) {
     fbc: s(a.fbc, 300) || undefined,
   };
 }
+
+// Importer ÉN Meta Lead Ads-lead (delt av manuell synk + webhook). Dedup på meta_leadgen_id.
+// Returnerer 'imported' | 'skipped' | 'error'.
+async function importMetaLeadDoc(db, ml, formName) {
+  try {
+    const isTenant = /leietaker|leie|tenant|bolig.?s.?ker/i.test(formName || '');
+    const coll = isTenant ? 'tenant_leads' : 'leads';
+    const exists = await db.collection(coll).findOne({ meta_leadgen_id: ml.id });
+    if (exists) return 'skipped';
+    const m = mapLeadFields(ml.field_data);
+    const attribution = sanitizeAttribution({
+      source: 'facebook', medium: 'paid-social', channel: 'Betalt',
+      campaign: ml.campaign_name || formName, content: ml.ad_name,
+    });
+    const nowIso = new Date().toISOString();
+    const doc = {
+      id: uuidv4(),
+      name: m.name || '(uten navn)', email: m.email || '', phone: m.phone || '',
+      address: m.address || '',
+      lead_type: isTenant ? 'leietaker' : 'huseier',
+      source: 'meta-leadads',
+      status: 'new',
+      createdAt: ml.created_time ? new Date(ml.created_time).toISOString() : nowIso,
+      notes: m.notes || '',
+      attribution,
+      meta_leadgen_id: ml.id,
+      meta_form_id: ml.form_id || null, meta_form_name: formName || null,
+      meta_ad_id: ml.ad_id || null, meta_campaign_name: ml.campaign_name || null,
+      meta_platform: ml.platform || null,
+      forwarded: false,
+    };
+    await db.collection(coll).insertOne(doc);
+    const fwd = await forwardToDigiHome(isTenant ? '/api/tenants' : '/api/leads', {
+      external_ref: doc.id, source_system: 'digihome-marketing-leadads',
+      name: doc.name, email: doc.email, phone: doc.phone, address: doc.address,
+      lead_type: doc.lead_type, notes: doc.notes,
+    });
+    await db.collection(coll).updateOne({ id: doc.id }, { $set: {
+      forwarded: fwd.ok, platform_id: fwd.id || null,
+      forward_error: fwd.ok ? null : (fwd.error || 'ukjent'),
+      forwarded_at: fwd.ok ? new Date().toISOString() : null,
+    } });
+    return 'imported';
+  } catch (e) { return 'error'; }
+}
+
 
 function normalizeListing(l) {
   const street = streetFromAddress(l.address);
@@ -1463,41 +1509,9 @@ async function handleRoute(request, { params }) {
             for (const ml of leads) {
               const createdUnix = Math.floor(new Date(ml.created_time).getTime() / 1000);
               if (createdUnix > maxCreated) maxCreated = createdUnix;
-              const exists = await db.collection(coll).findOne({ meta_leadgen_id: ml.id });
-              if (exists) { skipped++; continue; }
-              const m = mapLeadFields(ml.field_data);
-              const attribution = sanitizeAttribution({
-                source: 'facebook', medium: 'paid-social', channel: 'Betalt',
-                campaign: ml.campaign_name || form.name, content: ml.ad_name,
-              });
-              const doc = {
-                id: uuidv4(),
-                name: m.name || '(uten navn)', email: m.email || '', phone: m.phone || '',
-                address: m.address || '',
-                lead_type: isTenant ? 'leietaker' : 'huseier',
-                source: 'meta-leadads',
-                status: 'new',
-                createdAt: ml.created_time ? new Date(ml.created_time).toISOString() : nowIso,
-                notes: m.notes || '',
-                attribution,
-                meta_leadgen_id: ml.id,
-                meta_form_id: form.id, meta_form_name: form.name,
-                meta_ad_id: ml.ad_id || null, meta_campaign_name: ml.campaign_name || null,
-                meta_platform: ml.platform || null,
-                forwarded: false,
-              };
-              await db.collection(coll).insertOne(doc);
-              const fwd = await forwardToDigiHome(isTenant ? '/api/tenants' : '/api/leads', {
-                external_ref: doc.id, source_system: 'digihome-marketing-leadads',
-                name: doc.name, email: doc.email, phone: doc.phone, address: doc.address,
-                lead_type: doc.lead_type, notes: doc.notes,
-              });
-              await db.collection(coll).updateOne({ id: doc.id }, { $set: {
-                forwarded: fwd.ok, platform_id: fwd.id || null,
-                forward_error: fwd.ok ? null : (fwd.error || 'ukjent'),
-                forwarded_at: fwd.ok ? new Date().toISOString() : null,
-              } });
-              imported++; formImported++;
+              const r = await importMetaLeadDoc(db, { ...ml, form_id: form.id }, form.name);
+              if (r === 'imported') { imported++; formImported++; }
+              else if (r === 'skipped') skipped++;
             }
             await db.collection('meta_leadgen_sync').updateOne(
               { formId: form.id },
@@ -1604,6 +1618,102 @@ async function handleRoute(request, { params }) {
     }
 
     // --- Webhook: lead-status-sync FRA DigiHome-plattformen (to-veis closed-loop) ---
+    // --- Meta Lead Ads webhook: verifikasjon (GET) -------------------------
+    // Meta sender GET med hub.mode/hub.challenge/hub.verify_token ved oppsett.
+    if (route === '/webhooks/meta-leadgen' && method === 'GET') {
+      const { searchParams } = new URL(request.url);
+      const mode = searchParams.get('hub.mode');
+      const token = searchParams.get('hub.verify_token');
+      const challenge = searchParams.get('hub.challenge');
+      const verify = process.env.META_WEBHOOK_VERIFY_TOKEN || '';
+      if (mode === 'subscribe' && verify && token === verify) {
+        return new NextResponse(challenge || '', { status: 200, headers: { 'Content-Type': 'text/plain' } });
+      }
+      return new NextResponse('Forbidden', { status: 403 });
+    }
+
+    // --- Meta Lead Ads webhook: mottak (POST) ------------------------------
+    // Payload inneholder kun leadgen_id → vi henter selve leadet via Graph API.
+    if (route === '/webhooks/meta-leadgen' && method === 'POST') {
+      const raw = await request.text();
+      // Signaturverifisering (X-Hub-Signature-256 = sha256=HMAC(appSecret, body)).
+      const appSecret = process.env.META_APP_SECRET || '';
+      if (appSecret) {
+        const sigHeader = request.headers.get('x-hub-signature-256') || '';
+        const expected = 'sha256=' + crypto.createHmac('sha256', appSecret).update(raw).digest('hex');
+        const a = Buffer.from(sigHeader);
+        const b = Buffer.from(expected);
+        if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
+          return new NextResponse('Invalid signature', { status: 401 });
+        }
+      }
+      let payload = {};
+      try { payload = JSON.parse(raw || '{}'); } catch (e) { payload = {}; }
+
+      // Svar Meta RASKT (200) og prosesser i bakgrunnen — Meta retryer ved treghet/feil.
+      (async () => {
+        try {
+          const db2 = await getDb();
+          const entries = Array.isArray(payload.entry) ? payload.entry : [];
+          for (const entry of entries) {
+            const changes = Array.isArray(entry.changes) ? entry.changes : [];
+            for (const ch of changes) {
+              if (ch.field !== 'leadgen' || !ch.value) continue;
+              const v = ch.value;
+              const leadgenId = v.leadgen_id || v.leadgenId;
+              const pageId = v.page_id || entry.id;
+              const formId = v.form_id;
+              if (!leadgenId) continue;
+              try {
+                const pageToken = await fetchPageToken(pageId);
+                const [ml, formName] = await Promise.all([
+                  fetchSingleLead(leadgenId, pageToken),
+                  formId ? fetchFormName(formId, pageToken) : Promise.resolve(''),
+                ]);
+                await importMetaLeadDoc(db2, { ...ml, form_id: formId || (ml && ml.form_id) }, formName);
+                // oppdater cursor for skjemaet
+                if (formId) {
+                  const createdUnix = ml && ml.created_time ? Math.floor(new Date(ml.created_time).getTime() / 1000) : Math.floor(Date.now() / 1000);
+                  await db2.collection('meta_leadgen_sync').updateOne(
+                    { formId },
+                    { $set: { formId, formName, lastCreatedUnix: createdUnix, lastSyncedAt: new Date().toISOString(), via: 'webhook' } },
+                    { upsert: true },
+                  );
+                }
+              } catch (e) { /* enkelt-lead feilet — Meta retryer */ }
+            }
+          }
+        } catch (e) { /* svelg — vi har allerede svart 200 */ }
+      })();
+
+      return new NextResponse('EVENT_RECEIVED', { status: 200, headers: { 'Content-Type': 'text/plain' } });
+    }
+
+    // --- Admin: abonner Facebook-siden på leadgen-webhook (subscribed_apps) -
+    if (route === '/admin/meta/subscribe-leadgen' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!metaLeadAdsConfigured()) return cors(NextResponse.json({ ok: false, error: 'Meta ikke konfigurert' }, { status: 400 }));
+      try {
+        const pages = await fetchPages();
+        const VER = process.env.META_API_VERSION || 'v21.0';
+        const results = [];
+        for (const p of pages) {
+          try {
+            const url = `https://graph.facebook.com/${VER}/${p.id}/subscribed_apps`;
+            const res = await fetch(url, {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ subscribed_fields: 'leadgen', access_token: p.token }),
+            });
+            const j = await res.json().catch(() => ({}));
+            results.push({ page: p.name, id: p.id, ok: res.ok && (j.success !== false), response: j });
+          } catch (e) { results.push({ page: p.name, id: p.id, ok: false, error: e.message }); }
+        }
+        return cors(NextResponse.json({ ok: true, results }));
+      } catch (e) {
+        return cors(NextResponse.json({ ok: false, error: e.message || 'Abonnering feilet' }, { status: 502 }));
+      }
+    }
+
     if (route === '/webhooks/lead-status' && method === 'POST') {
       const secret = process.env.LEAD_SYNC_SECRET || '';
       const provided = request.headers.get('x-webhook-secret') || '';

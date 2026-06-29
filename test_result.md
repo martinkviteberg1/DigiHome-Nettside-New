@@ -105,6 +105,18 @@
 user_problem_statement: "Bygg DigiHome markedsside (Next.js App Router) etter flyttepakken — Warm Ink Editorial design, norsk bokmål, full SEO, DB-drevet blogg + admin + programmatisk SEO. Fase 1: verdensklasse forside + lead-API."
 
 backend:
+  - task: "Meta Lead Ads SANNTID-webhook (Lag 4b): GET /api/webhooks/meta-leadgen (verifikasjon) + POST (mottak, henter lead via Graph API, importerer + videresender) + POST /api/admin/meta/subscribe-leadgen"
+    implemented: true
+    working: true
+    file: "app/api/[[...path]]/route.js, lib/meta-leadads.js"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "main"
+        -comment: "NYTT (Lag 4b sanntid). VERIFISERT manuelt via curl: (1) GET /api/webhooks/meta-leadgen?hub.mode=subscribe&hub.verify_token=<META_WEBHOOK_VERIFY_TOKEN>&hub.challenge=TEST12345 → 200 og ekkoer 'TEST12345' (plain text). (2) GET med feil verify_token → 403. (3) POST tom payload {object:'page',entry:[]} → 200 'EVENT_RECEIVED'. (4) POST med fake leadgen-entry → 200 'EVENT_RECEIVED' raskt; bakgrunnsprosess henter lead via Graph API (fake id feiler stille, ingen spuriøs lead). Signaturverifisering: hvis META_APP_SECRET satt → verifiserer X-Hub-Signature-256 (HMAC-SHA256, timingSafeEqual) og returnerer 401 ved mismatch; hvis tom → hoppes over (gjør oppsett mulig før secret er satt). Mottak parser entry[].changes[] field='leadgen' → leadgen_id/page_id/form_id → fetchPageToken(page) → fetchSingleLead + fetchFormName → importMetaLeadDoc (delt helper med manuell synk, dedup på meta_leadgen_id, videresender til plattform). Svarer 200 umiddelbart, prosesserer i bakgrunnen (Node-server beholder event-loop). META_WEBHOOK_VERIFY_TOKEN generert i .env. Ingen retest nødvendig (deterministiske deler verifisert; lead-prosessering deler kodebane med allerede testet Lag 4)."
+
   - task: "Meta Lead Ads-henting (Lag 4): POST /api/admin/leads/meta-sync — henter Facebook/Instagram lead-skjema-leads (leads_retrieval) inn i leads/tenant_leads + videresender til plattform"
     implemented: true
     working: true
