@@ -5,8 +5,10 @@ import sharp from 'sharp';
 import { getDb, clean } from '@/lib/mongodb';
 import { getObject, PUBLIC_PREFIX } from '@/lib/objectStorage';
 import { isBot, buildEvent, ensureAnalyticsIndexes, computeAnalytics, computeLeadIntel } from '@/lib/analytics-server';
-import { deriveChannel, serializeForLLM, computeWebVitals, detectAnomalies, computeLive, computeAdsEconomics } from '@/lib/analytics-server';
+import { deriveChannel, serializeForLLM, computeWebVitals, detectAnomalies, computeLive, computeAdsEconomics, computeMetaEconomics, combineAdsEconomics } from '@/lib/analytics-server';
 import { parseGoogleAdsCsv } from '@/lib/adsImport';
+import { sendMetaCapiEvent, metaCapiConfigured } from '@/lib/meta-capi';
+import { fetchMetaInsights, fetchMetaAccount, metaAdsConfigured } from '@/lib/meta-ads';
 import { chatLLM } from '@/lib/llm';
 import { slugify } from '@/lib/site';
 import { getRentReport, refreshRentReport, RENT_CITIES } from '@/lib/rentmarket';
@@ -570,6 +572,9 @@ function sanitizeAttribution(a) {
     wbraid: s(a.wbraid, 200) || undefined,
     fbclid: s(a.fbclid, 200) || undefined,
     msclkid: s(a.msclkid, 200) || undefined,
+    // Meta-matching (Conversions API): _fbp/_fbc-cookieverdier fra pixelen.
+    fbp: s(a.fbp, 200) || undefined,
+    fbc: s(a.fbc, 300) || undefined,
   };
 }
 
@@ -1146,6 +1151,26 @@ async function handleRoute(request, { params }) {
       } });
       lead.forwarded = fwd.ok; lead.platform_id = fwd.id || null;
 
+      // Meta Conversions API (server-side Lead). event_id = lead.id → deduplikeres
+      // mot nettleser-pixelens Lead-hendelse. Non-fatal: skal aldri velte lead-flyten.
+      try {
+        if (metaCapiConfigured()) {
+          const att = lead.attribution || {};
+          const capi = await sendMetaCapiEvent({
+            eventName: 'Lead',
+            eventId: lead.id,
+            eventTime: lead.createdAt,
+            actionSource: 'website',
+            eventSourceUrl: request.headers.get('referer') || (att.landing_page ? `${process.env.NEXT_PUBLIC_BASE_URL || ''}${att.landing_page}` : undefined),
+            email: lead.email, phone: lead.phone, fullName: lead.name,
+            fbp: att.fbp, fbc: att.fbc, fbclid: att.fbclid,
+            clientIp: clientIp(request), userAgent: request.headers.get('user-agent') || '',
+            customData: { content_name: lead.lead_type || 'huseier' },
+          });
+          await db.collection('leads').updateOne({ id: lead.id }, { $set: { metaCapi: { event: 'Lead', ok: capi.ok, at: new Date().toISOString(), error: capi.ok ? null : (capi.error || null) } } });
+        }
+      } catch (e) { /* CAPI er best-effort */ }
+
       return cors(NextResponse.json({ success: true, ok: true, data: { id: lead.id }, forwarded: fwd.ok, lead: clean(lead) }, { status: 201 }));
     }
 
@@ -1225,6 +1250,25 @@ async function handleRoute(request, { params }) {
         forwarded_at: fwd.ok ? new Date().toISOString() : null,
       } });
       tenant.forwarded = fwd.ok; tenant.platform_id = fwd.id || null;
+
+      // Meta Conversions API (server-side Lead for leietaker). event_id = tenant.id.
+      try {
+        if (metaCapiConfigured()) {
+          const att = tenant.attribution || {};
+          const capi = await sendMetaCapiEvent({
+            eventName: 'Lead',
+            eventId: tenant.id,
+            eventTime: tenant.createdAt,
+            actionSource: 'website',
+            eventSourceUrl: request.headers.get('referer') || undefined,
+            email: tenant.email, phone: tenant.phone, fullName: tenant.name,
+            fbp: att.fbp, fbc: att.fbc, fbclid: att.fbclid,
+            clientIp: clientIp(request), userAgent: request.headers.get('user-agent') || '',
+            customData: { content_name: 'leietaker' },
+          });
+          await db.collection('tenant_leads').updateOne({ id: tenant.id }, { $set: { metaCapi: { event: 'Lead', ok: capi.ok, at: new Date().toISOString(), error: capi.ok ? null : (capi.error || null) } } });
+        }
+      } catch (e) { /* best-effort */ }
 
       return cors(NextResponse.json({ success: true, ok: true, data: { id: tenant.id }, forwarded: fwd.ok, tenant: clean(tenant) }, { status: 201 }));
     }
@@ -1326,7 +1370,7 @@ async function handleRoute(request, { params }) {
       return cors(NextResponse.json({ ok: true, economics, parsedCampaigns: parsed.campaigns.length }, { status: 201 }));
     }
 
-    // --- Admin: Annonser — oversikt (siste import + join mot leads) --------
+    // --- Admin: Annonser — oversikt (Google CSV + Meta API + blandet CAC) --
     if (route === '/admin/ads/overview' && method === 'GET') {
       if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const { searchParams } = new URL(request.url);
@@ -1336,9 +1380,60 @@ async function handleRoute(request, { params }) {
       const imports = await db.collection('ad_imports')
         .find({}, { projection: { _id: 0, id: 1, label: 1, periodFrom: 1, periodTo: 1, importedAt: 1, currency: 1, 'totals.cost': 1 } })
         .sort({ importedAt: -1 }).limit(50).toArray();
-      if (!imp) return cors(NextResponse.json({ ok: true, empty: true, imports: [] }));
-      const economics = await computeAdsEconomics(db, imp);
-      return cors(NextResponse.json({ ok: true, empty: false, economics, imports }));
+      const googleEco = imp ? await computeAdsEconomics(db, imp) : null;
+
+      // Meta: bruk siste lagrede snapshot (synkes eksplisitt via /admin/ads/meta-sync) — raskt, ingen live-kall.
+      let metaEco = null;
+      const metaSnap = await db.collection('meta_imports').find({}, { projection: { _id: 0 } }).sort({ importedAt: -1 }).limit(1).next();
+      if (metaSnap) metaEco = await computeMetaEconomics(db, metaSnap);
+
+      const combined = (googleEco || metaEco) ? combineAdsEconomics(googleEco, metaEco) : null;
+      const empty = !googleEco && !metaEco;
+      return cors(NextResponse.json({
+        ok: true, empty,
+        economics: googleEco, meta: metaEco, combined,
+        metaConfigured: metaAdsConfigured(), imports,
+      }));
+    }
+
+    // --- Admin: Annonser — synk Meta-forbruk (Marketing API, read-only) ----
+    if (route === '/admin/ads/meta-sync' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!metaAdsConfigured()) return cors(NextResponse.json({ ok: false, error: 'Meta er ikke konfigurert (mangler token/konto-ID)' }, { status: 400 }));
+      let body = {};
+      try { body = await request.json(); } catch (e) { body = {}; }
+      const presetDays = { last_7d: 7, last_30d: 30, last_90d: 90 };
+      const datePreset = ['last_7d', 'last_30d', 'last_90d'].includes(body.datePreset) ? body.datePreset : 'last_30d';
+      const days = presetDays[datePreset];
+      const nowIso = new Date().toISOString();
+      const periodFrom = body.since ? new Date(body.since).toISOString() : new Date(Date.now() - days * 86400000).toISOString();
+      const periodTo = body.until ? new Date(body.until).toISOString() : nowIso;
+      try {
+        const useRange = body.since && body.until;
+        const [campaigns, account] = await Promise.all([
+          fetchMetaInsights(useRange ? { since: String(body.since).slice(0, 10), until: String(body.until).slice(0, 10) } : { datePreset }),
+          fetchMetaAccount().catch(() => null),
+        ]);
+        const totals = campaigns.reduce((a, c) => ({
+          cost: a.cost + (c.cost || 0), clicks: a.clicks + (c.clicks || 0), impressions: a.impressions + (c.impressions || 0),
+        }), { cost: 0, clicks: 0, impressions: 0 });
+        const snap = {
+          id: uuidv4(), source: 'meta_api',
+          label: (account && account.name) ? account.name : 'Meta',
+          currency: (account && account.currency) || 'NOK',
+          accountStatus: account ? account.status : null,
+          periodFrom, periodTo, datePreset,
+          totals, campaigns: campaigns.slice(0, 500),
+          importedAt: nowIso,
+        };
+        await db.collection('meta_imports').insertOne(snap);
+        const stale = await db.collection('meta_imports').find({}, { projection: { _id: 1, importedAt: 1 } }).sort({ importedAt: -1 }).skip(20).toArray();
+        if (stale.length) await db.collection('meta_imports').deleteMany({ _id: { $in: stale.map((o) => o._id) } });
+        const economics = await computeMetaEconomics(db, snap);
+        return cors(NextResponse.json({ ok: true, economics, parsedCampaigns: campaigns.length, account }, { status: 201 }));
+      } catch (e) {
+        return cors(NextResponse.json({ ok: false, error: e.message || 'Meta-synk feilet' }, { status: 502 }));
+      }
     }
 
     // --- Admin: Annonser — slett en import ---------------------------------
@@ -1407,6 +1502,27 @@ async function handleRoute(request, { params }) {
         if (isFinite(v) && v > 0) { update.wonValue = Math.round(v * 100) / 100; update.wonCurrency = (body.currency || 'NOK').toString().slice(0, 3).toUpperCase(); }
       }
       await db.collection(coll).updateOne({ id }, { $set: update });
+
+      // Meta CAPI: admin markerer vunnet → server-side Purchase (samme event_id som
+      // webhook-veien → deduplikeres). Closed-loop også for manuelle utfall.
+      try {
+        if (status === 'won' && metaCapiConfigured()) {
+          const att = existing.attribution || {};
+          const wonVal = update.wonValue || Number(process.env.GOOGLE_ADS_DEFAULT_LEAD_VALUE) || undefined;
+          const capi = await sendMetaCapiEvent({
+            eventName: 'Purchase',
+            eventId: `won-${id}`,
+            eventTime: update.wonAt || nowIso,
+            actionSource: 'system_generated',
+            email: existing.email, phone: existing.phone, fullName: existing.name,
+            fbp: att.fbp, fbc: att.fbc, fbclid: att.fbclid,
+            value: wonVal, currency: update.wonCurrency || 'NOK',
+            customData: { content_name: existing.lead_type || 'lead', lead_event_id: id },
+          });
+          await db.collection(coll).updateOne({ id }, { $set: { metaCapiWon: { ok: capi.ok, at: nowIso, error: capi.ok ? null : (capi.error || null) } } });
+        }
+      } catch (e) { /* best-effort */ }
+
       return cors(NextResponse.json({ ok: true, id, status }));
     }
 
@@ -1468,7 +1584,30 @@ async function handleRoute(request, { params }) {
         if (isFinite(v) && v > 0) { update.wonValue = Math.round(v * 100) / 100; update.wonCurrency = (body.currency || 'NOK').toString().slice(0, 3).toUpperCase(); }
       }
       await db.collection(coll).updateOne({ id: lead.id }, { $set: update });
-      return cors(NextResponse.json({ ok: true, id: lead.id, status, matched_by: matchedBy }));
+
+      // Meta CAPI: når et lead vinnes → server-side konvertering med ekte kontraktsverdi.
+      // Lar Meta optimalisere mot faktiske kunder (closed-loop). event_id = won-<id> for dedup.
+      let metaCapi = null;
+      try {
+        if (status === 'won' && metaCapiConfigured()) {
+          const att = lead.attribution || {};
+          const wonVal = update.wonValue || Number(process.env.GOOGLE_ADS_DEFAULT_LEAD_VALUE) || undefined;
+          const capi = await sendMetaCapiEvent({
+            eventName: 'Purchase',
+            eventId: `won-${lead.id}`,
+            eventTime: update.wonAt || nowIso,
+            actionSource: 'system_generated',
+            email: lead.email, phone: lead.phone, fullName: lead.name,
+            fbp: att.fbp, fbc: att.fbc, fbclid: att.fbclid,
+            value: wonVal, currency: update.wonCurrency || 'NOK',
+            customData: { content_name: lead.lead_type || 'lead', lead_event_id: lead.id },
+          });
+          metaCapi = { ok: capi.ok, error: capi.ok ? undefined : capi.error };
+          await db.collection(coll).updateOne({ id: lead.id }, { $set: { metaCapiWon: { ok: capi.ok, at: nowIso, error: capi.ok ? null : (capi.error || null) } } });
+        }
+      } catch (e) { /* best-effort */ }
+
+      return cors(NextResponse.json({ ok: true, id: lead.id, status, matched_by: matchedBy, meta_capi: metaCapi || undefined }));
     }
 
     // --- Admin: lead-detalj + kundereise-tidslinje ---

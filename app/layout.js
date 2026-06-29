@@ -5,6 +5,7 @@ import { rightGrotesk, diatype } from './fonts';
 import { site } from '@/lib/site';
 import SiteAnalytics from '@/components/SiteAnalytics';
 import ConsentBanner from '@/components/ConsentBanner';
+import MetaPixel from '@/components/MetaPixel';
 
 const GA4_ID = process.env.NEXT_PUBLIC_GA4_ID || '';
 const GADS_ID = process.env.NEXT_PUBLIC_GOOGLE_ADS_ID || '';
@@ -94,6 +95,7 @@ export default function RootLayout({ children }) {
         <SiteAnalytics />
         <Providers>{children}</Providers>
         <ConsentBanner />
+        <MetaPixel />
       </body>
     </html>
   );
