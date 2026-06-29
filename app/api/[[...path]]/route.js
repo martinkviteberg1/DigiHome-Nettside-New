@@ -9,6 +9,7 @@ import { deriveChannel, serializeForLLM, computeWebVitals, detectAnomalies, comp
 import { parseGoogleAdsCsv } from '@/lib/adsImport';
 import { sendMetaCapiEvent, metaCapiConfigured } from '@/lib/meta-capi';
 import { fetchMetaInsights, fetchMetaAccount, metaAdsConfigured } from '@/lib/meta-ads';
+import { fetchPages, fetchLeadForms, fetchFormLeads, mapLeadFields, metaLeadAdsConfigured } from '@/lib/meta-leadads';
 import { chatLLM } from '@/lib/llm';
 import { slugify } from '@/lib/site';
 import { getRentReport, refreshRentReport, RENT_CITIES } from '@/lib/rentmarket';
@@ -1433,6 +1434,82 @@ async function handleRoute(request, { params }) {
         return cors(NextResponse.json({ ok: true, economics, parsedCampaigns: campaigns.length, account }, { status: 201 }));
       } catch (e) {
         return cors(NextResponse.json({ ok: false, error: e.message || 'Meta-synk feilet' }, { status: 502 }));
+      }
+    }
+
+    // --- Admin: hent Meta Lead Ads-leads inn i systemet (leads_retrieval) --
+    if (route === '/admin/leads/meta-sync' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!metaLeadAdsConfigured()) return cors(NextResponse.json({ ok: false, error: 'Meta er ikke konfigurert' }, { status: 400 }));
+      try {
+        const pages = await fetchPages();
+        const nowIso = new Date().toISOString();
+        let imported = 0, skipped = 0;
+        const formsOut = [];
+        for (const page of pages) {
+          let forms = [];
+          try { forms = await fetchLeadForms(page.id, page.token); } catch (e) { continue; }
+          for (const form of forms) {
+            const isTenant = /leietaker|leie|tenant|bolig.?s.?ker/i.test(form.name || '');
+            const coll = isTenant ? 'tenant_leads' : 'leads';
+            const sync = await db.collection('meta_leadgen_sync').findOne({ formId: form.id });
+            const since = sync && sync.lastCreatedUnix ? sync.lastCreatedUnix : undefined;
+            let leads = [];
+            if (form.leads_count > 0) {
+              try { leads = await fetchFormLeads(form.id, page.token, { since }); } catch (e) { leads = []; }
+            }
+            let maxCreated = since || 0;
+            let formImported = 0;
+            for (const ml of leads) {
+              const createdUnix = Math.floor(new Date(ml.created_time).getTime() / 1000);
+              if (createdUnix > maxCreated) maxCreated = createdUnix;
+              const exists = await db.collection(coll).findOne({ meta_leadgen_id: ml.id });
+              if (exists) { skipped++; continue; }
+              const m = mapLeadFields(ml.field_data);
+              const attribution = sanitizeAttribution({
+                source: 'facebook', medium: 'paid-social', channel: 'Betalt',
+                campaign: ml.campaign_name || form.name, content: ml.ad_name,
+              });
+              const doc = {
+                id: uuidv4(),
+                name: m.name || '(uten navn)', email: m.email || '', phone: m.phone || '',
+                address: m.address || '',
+                lead_type: isTenant ? 'leietaker' : 'huseier',
+                source: 'meta-leadads',
+                status: 'new',
+                createdAt: ml.created_time ? new Date(ml.created_time).toISOString() : nowIso,
+                notes: m.notes || '',
+                attribution,
+                meta_leadgen_id: ml.id,
+                meta_form_id: form.id, meta_form_name: form.name,
+                meta_ad_id: ml.ad_id || null, meta_campaign_name: ml.campaign_name || null,
+                meta_platform: ml.platform || null,
+                forwarded: false,
+              };
+              await db.collection(coll).insertOne(doc);
+              const fwd = await forwardToDigiHome(isTenant ? '/api/tenants' : '/api/leads', {
+                external_ref: doc.id, source_system: 'digihome-marketing-leadads',
+                name: doc.name, email: doc.email, phone: doc.phone, address: doc.address,
+                lead_type: doc.lead_type, notes: doc.notes,
+              });
+              await db.collection(coll).updateOne({ id: doc.id }, { $set: {
+                forwarded: fwd.ok, platform_id: fwd.id || null,
+                forward_error: fwd.ok ? null : (fwd.error || 'ukjent'),
+                forwarded_at: fwd.ok ? new Date().toISOString() : null,
+              } });
+              imported++; formImported++;
+            }
+            await db.collection('meta_leadgen_sync').updateOne(
+              { formId: form.id },
+              { $set: { formId: form.id, formName: form.name, lastCreatedUnix: maxCreated, lastSyncedAt: nowIso, leadsCount: form.leads_count } },
+              { upsert: true },
+            );
+            formsOut.push({ id: form.id, name: form.name, status: form.status, leads_count: form.leads_count, imported: formImported, type: isTenant ? 'leietaker' : 'huseier' });
+          }
+        }
+        return cors(NextResponse.json({ ok: true, imported, skipped, pages: pages.map((p) => ({ id: p.id, name: p.name })), forms: formsOut, syncedAt: nowIso }));
+      } catch (e) {
+        return cors(NextResponse.json({ ok: false, error: e.message || 'Lead Ads-synk feilet' }, { status: 502 }));
       }
     }
 

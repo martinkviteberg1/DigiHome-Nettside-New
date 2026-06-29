@@ -55,6 +55,8 @@ export default function InnsiktDashboard({ apiKey }) {
   const [sortBy, setSortBy] = useState('createdAt');
   const [sortDir, setSortDir] = useState('desc');
   const [exporting, setExporting] = useState(false);
+  const [leadAdsSyncing, setLeadAdsSyncing] = useState(false);
+  const [leadAdsMsg, setLeadAdsMsg] = useState('');
 
   const load = useCallback(async (d) => {
     const dd = d || days;
@@ -134,6 +136,25 @@ export default function InnsiktDashboard({ apiKey }) {
     a.href = url; a.rel = 'noopener';
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => setExporting(false), 1200);
+  };
+
+  const doLeadAdsSync = async () => {
+    setLeadAdsSyncing(true); setLeadAdsMsg('');
+    try {
+      const res = await fetch(`/api/admin/leads/meta-sync?key=${encodeURIComponent(apiKey)}`, { method: 'POST' });
+      const j = await res.json();
+      if (!res.ok || !j.ok) { setLeadAdsMsg(j.error || 'Lead Ads-synk feilet'); }
+      else {
+        const formsCount = (j.forms || []).length;
+        setLeadAdsMsg(
+          j.imported > 0
+            ? `Hentet ${j.imported} nye Lead Ads-leads`
+            : (formsCount === 0 ? 'Ingen Lead Ad-skjemaer funnet ennå' : `Ingen nye leads (${formsCount} skjema sjekket)`)
+        );
+        if (j.imported > 0) await load();
+      }
+    } catch (e) { setLeadAdsMsg('Kunne ikke synke Lead Ads'); }
+    finally { setLeadAdsSyncing(false); setTimeout(() => setLeadAdsMsg(''), 7000); }
   };
 
   const doScore = async (id, type) => {
@@ -256,6 +277,10 @@ export default function InnsiktDashboard({ apiKey }) {
               ))}
             </div>
             <div className="flex items-center gap-2 flex-wrap">
+              {leadAdsMsg && <span className="text-[12px] text-[#1877F2] font-semibold">{leadAdsMsg}</span>}
+              <button onClick={doLeadAdsSync} disabled={leadAdsSyncing} title="Hent Facebook/Instagram Lead Ads-leads direkte inn i systemet" className="h-9 px-4 rounded-full text-white text-[12px] font-semibold flex items-center gap-2 disabled:opacity-40 active:scale-[0.97] transition-transform" style={{ background: '#1877F2' }}>
+                {leadAdsSyncing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />} Synk Lead Ads
+              </button>
               <button onClick={exportCsv} disabled={exporting || rows.length === 0} title="Eksporter alle leads til CSV (Excel, æøå)" className="h-9 px-4 rounded-full bg-white text-[#0a0a0a] text-[12px] font-semibold flex items-center gap-2 shadow-[0_2px_10px_rgba(0,0,0,0.03)] disabled:opacity-40 hover:bg-[#f5f5f5] active:scale-[0.97] transition-all">{exporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileSpreadsheet className="w-3.5 h-3.5" />} CSV</button>
               {leadSub === 'leads' && (
                 <button onClick={downloadAdsFeed} title="Last ned Google Ads offline-konverteringsfeed (vunne leads med gclid)" className="h-9 px-4 rounded-full bg-white text-[#8b5cf6] text-[12px] font-semibold flex items-center gap-2 shadow-[0_2px_10px_rgba(0,0,0,0.03)] hover:bg-[#f4f0fb] active:scale-[0.97] transition-all"><Download className="w-3.5 h-3.5" /> Google Ads-feed</button>
