@@ -46,29 +46,23 @@ export default function AdsTab({ apiKey }) {
   const [importing, setImporting] = useState(false);
   const [importMsg, setImportMsg] = useState('');
   const [showHelp, setShowHelp] = useState(false);
-  // Meta (nær-sanntid, auto)
-  const [metaPeriod, setMetaPeriod] = useState('last_30d');
-  const [metaRefreshing, setMetaRefreshing] = useState(false);
-  const metaPeriodRef = useRef('last_30d');
-  // Google Ads via Composio (nær-sanntid, auto)
+  // Felles periode-filter (styrer BÅDE Google og Meta — nær-sanntid, auto-hentet)
+  const [period, setPeriod] = useState('last_30d');
+  const [refreshing, setRefreshing] = useState(false);
+  const periodRef = useRef('last_30d');
   const [googleConnecting, setGoogleConnecting] = useState(false);
-  const [googlePeriod, setGooglePeriod] = useState('last_30d');
-  const [googleRefreshing, setGoogleRefreshing] = useState(false);
-  const googlePeriodRef = useRef('last_30d');
   const fileRef = useRef(null);
 
   const load = useCallback(async (opts = {}) => {
     const { importId } = opts;
-    const gp = opts.googlePeriod || googlePeriodRef.current;
-    const mp = opts.metaPeriod || metaPeriodRef.current;
+    const p = opts.period || periodRef.current;
     setLoading(true); setErr('');
     try {
       const params = new URLSearchParams({ key: apiKey });
       if (importId) params.set('importId', importId);
-      params.set('googlePeriod', gp);
-      params.set('metaPeriod', mp);
-      if (opts.googleRefresh) params.set('googleRefresh', '1');
-      if (opts.metaRefresh) params.set('metaRefresh', '1');
+      params.set('googlePeriod', p);
+      params.set('metaPeriod', p);
+      if (opts.refresh) { params.set('googleRefresh', '1'); params.set('metaRefresh', '1'); }
       const res = await fetch(`/api/admin/ads/overview?${params.toString()}`);
       if (!res.ok) { setErr('Kunne ikke laste annonsedata'); setLoading(false); return; }
       const j = await res.json();
@@ -85,7 +79,7 @@ export default function AdsTab({ apiKey }) {
     const sp = new URLSearchParams(window.location.search);
     if (sp.get('googleads') === 'connected' || sp.get('status') === 'success') {
       setImportMsg('Google Ads tilkoblet ✓ — henter live data …');
-      load({ googleRefresh: true });
+      load({ refresh: true });
       sp.delete('googleads'); sp.delete('status'); sp.delete('connected_account_id');
       const url = window.location.pathname + (sp.toString() ? `?${sp}` : '');
       window.history.replaceState({}, '', url);
@@ -106,10 +100,8 @@ export default function AdsTab({ apiKey }) {
     } catch (e) { setErr('Kunne ikke starte Google-tilkobling'); setGoogleConnecting(false); }
   };
 
-  const changeGooglePeriod = (v) => { setGooglePeriod(v); googlePeriodRef.current = v; load({ googlePeriod: v }); };
-  const refreshGoogle = async () => { setGoogleRefreshing(true); setImportMsg(''); await load({ googleRefresh: true }); setGoogleRefreshing(false); };
-  const changeMetaPeriod = (v) => { setMetaPeriod(v); metaPeriodRef.current = v; load({ metaPeriod: v }); };
-  const refreshMeta = async () => { setMetaRefreshing(true); setImportMsg(''); await load({ metaRefresh: true }); setMetaRefreshing(false); };
+  const changePeriod = (v) => { setPeriod(v); periodRef.current = v; load({ period: v }); };
+  const refreshAll = async () => { setRefreshing(true); setImportMsg(''); await load({ refresh: true }); setRefreshing(false); };
 
   const doImport = async (csv) => {
     if (!csv || !csv.trim()) return;
@@ -162,34 +154,22 @@ export default function AdsTab({ apiKey }) {
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {importMsg && <span className="text-[12px] text-emerald-600 font-semibold flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> {importMsg}</span>}
-          {/* Google Ads (Composio) — auto live: periode-filter + oppdater, eller koble til */}
-          {data && data.googleConfigured && (
-            data.googleConnected ? (
-              <div className="flex items-center gap-1.5">
-                <select value={googlePeriod} onChange={(e) => changeGooglePeriod(e.target.value)} className="h-9 rounded-full bg-white text-[12px] font-semibold text-[#555] px-3 shadow-[0_2px_10px_rgba(0,0,0,0.03)] outline-none focus:ring-2 focus:ring-[#4285F4]/30 cursor-pointer">
-                  {GOOGLE_PERIODS.map((p) => <option key={p.v} value={p.v}>{p.l}</option>)}
-                </select>
-                <button onClick={refreshGoogle} disabled={googleRefreshing || loading} title="Oppdater Google-data nå" className="h-9 w-9 rounded-full bg-white text-[#4285F4] flex items-center justify-center shadow-[0_2px_10px_rgba(0,0,0,0.03)] disabled:opacity-40 active:scale-[0.95] transition-transform">
-                  <RefreshCw className={`w-4 h-4 ${googleRefreshing ? 'animate-spin' : ''}`} />
-                </button>
-              </div>
-            ) : (
-              <button onClick={doGoogleConnect} disabled={googleConnecting} className="h-9 px-4 rounded-full text-white text-[12px] font-semibold flex items-center gap-2 disabled:opacity-40 active:scale-[0.97] transition-transform" style={{ background: '#4285F4' }}>
-                {googleConnecting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <LinkIcon className="w-3.5 h-3.5" />} Koble til Google Ads
-              </button>
-            )
+          {/* Koble til Google Ads (kun når ikke tilkoblet) */}
+          {data && data.googleConfigured && !data.googleConnected && (
+            <button onClick={doGoogleConnect} disabled={googleConnecting} className="h-9 px-4 rounded-full text-white text-[12px] font-semibold flex items-center gap-2 disabled:opacity-40 active:scale-[0.97] transition-transform" style={{ background: '#4285F4' }}>
+              {googleConnecting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <LinkIcon className="w-3.5 h-3.5" />} Koble til Google Ads
+            </button>
           )}
-          {/* Meta-synk */}
-          {data && data.metaConfigured && (
-            <div className="flex items-center gap-1.5">
-              <select value={metaPeriod} onChange={(e) => changeMetaPeriod(e.target.value)} className="h-9 rounded-full bg-white text-[12px] font-semibold text-[#555] px-3 shadow-[0_2px_10px_rgba(0,0,0,0.03)] outline-none focus:ring-2 focus:ring-[#1877F2]/30 cursor-pointer">
-                {GOOGLE_PERIODS.map((p) => <option key={p.v} value={p.v}>{p.l}</option>)}
-              </select>
-              <button onClick={refreshMeta} disabled={metaRefreshing || loading} title="Oppdater Meta-data nå" className="h-9 w-9 rounded-full bg-white text-[#1877F2] flex items-center justify-center shadow-[0_2px_10px_rgba(0,0,0,0.03)] disabled:opacity-40 active:scale-[0.95] transition-transform">
-                <RefreshCw className={`w-4 h-4 ${metaRefreshing ? 'animate-spin' : ''}`} />
-              </button>
-            </div>
-          )}
+          {/* ÉN felles periode-filter for hele annonsebildet (Google + Meta auto-hentes) */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-[12px] font-semibold text-[#999] hidden sm:inline">Periode</span>
+            <select value={period} onChange={(e) => changePeriod(e.target.value)} className="h-9 rounded-full bg-white text-[12px] font-semibold text-[#555] px-3.5 shadow-[0_2px_10px_rgba(0,0,0,0.03)] outline-none focus:ring-2 focus:ring-[#cf97fc]/30 cursor-pointer">
+              {GOOGLE_PERIODS.map((p) => <option key={p.v} value={p.v}>{p.l}</option>)}
+            </select>
+            <button onClick={refreshAll} disabled={refreshing || loading} title="Oppdater alle tall nå" className="h-9 w-9 rounded-full bg-white text-[#8b5cf6] flex items-center justify-center shadow-[0_2px_10px_rgba(0,0,0,0.03)] disabled:opacity-40 active:scale-[0.95] transition-transform">
+              <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+            </button>
+          </div>
           <input ref={fileRef} type="file" accept=".csv,text/csv" onChange={onFile} className="hidden" />
           <button onClick={() => fileRef.current && fileRef.current.click()} disabled={importing} className="h-9 px-4 rounded-full bg-[#0a0a0a] text-white text-[12px] font-semibold flex items-center gap-2 disabled:opacity-40 active:scale-[0.97] transition-transform">
             {importing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />} Google Ads-CSV
@@ -210,7 +190,7 @@ export default function AdsTab({ apiKey }) {
       {loading ? (
         <div className="py-20 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-[#cf97fc]" /></div>
       ) : (data && data.empty) ? (
-        <EmptyState onPick={() => fileRef.current && fileRef.current.click()} onMeta={data.metaConfigured ? refreshMeta : null} metaSyncing={metaRefreshing} />
+        <EmptyState onPick={() => fileRef.current && fileRef.current.click()} onMeta={data.metaConfigured ? refreshAll : null} metaSyncing={refreshing} />
       ) : (
         <>
           {/* Blandet total (Google + Meta) */}
@@ -293,8 +273,8 @@ export default function AdsTab({ apiKey }) {
                   <p className="text-[12.5px] text-[#777]">Prøv igjen, eller sjekk at Meta-tokenet er gyldig.</p>
                 </div>
               </div>
-              <button onClick={refreshMeta} disabled={metaRefreshing} className="h-10 px-5 rounded-full text-white text-[13px] font-semibold inline-flex items-center gap-2 disabled:opacity-40 active:scale-[0.97] transition-transform" style={{ background: '#1877F2' }}>
-                {metaRefreshing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />} Prøv igjen
+              <button onClick={refreshAll} disabled={refreshing} className="h-10 px-5 rounded-full text-white text-[13px] font-semibold inline-flex items-center gap-2 disabled:opacity-40 active:scale-[0.97] transition-transform" style={{ background: '#1877F2' }}>
+                {refreshing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />} Prøv igjen
               </button>
             </div>
           ))}
