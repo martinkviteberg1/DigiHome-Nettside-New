@@ -1435,12 +1435,13 @@ async function handleRoute(request, { params }) {
 
       // --- Google: foretrekk LIVE (nær-sanntid, cachet) når Composio er tilkoblet ---
       const googleTask = (async () => {
-        let eco = null, live = false, connected = false, fetchedAt = null, stale = false, error = null, source = null;
+        let eco = null, live = false, connected = false, fetchedAt = null, stale = false, error = null, source = null, series = [];
         if (composioConfigured()) {
           try {
             const r = await getCachedReport(db, googlePeriod, { force: googleRefresh });
             connected = true; live = true; fetchedAt = r.fetchedAt; stale = !!r.stale; error = r.error || null;
             const rep = r.report;
+            series = rep.series || [];
             const transImp = {
               id: 'google-live', label: `Google Ads (live) · ${rep.from} – ${rep.to}`, currency: 'NOK',
               periodFrom: new Date(rep.from).toISOString(), periodTo: new Date(`${rep.to}T23:59:59.999Z`).toISOString(),
@@ -1454,33 +1455,61 @@ async function handleRoute(request, { params }) {
           const imp = await db.collection('ad_imports').find(query, { projection: { _id: 0 } }).sort({ importedAt: -1 }).limit(1).next();
           if (imp) { eco = await computeAdsEconomics(db, imp); source = imp.source || 'csv'; }
         }
-        return { eco, live, connected, fetchedAt, stale, error, source };
+        return { eco, live, connected, fetchedAt, stale, error, source, series };
       })();
 
       // --- Meta: LIVE (nær-sanntid, cachet) via Marketing API; fall tilbake til lagret snapshot ---
       const metaTask = (async () => {
-        let eco = null, live = false, fetchedAt = null, stale = false, error = null;
+        let eco = null, live = false, fetchedAt = null, stale = false, error = null, series = [];
         if (metaAdsConfigured()) {
           try {
             const r = await getCachedMetaReport(db, metaPeriod, { force: metaRefresh });
             live = true; fetchedAt = r.fetchedAt; stale = !!r.stale; error = r.error || null;
+            series = (r.snap && r.snap.series) || [];
             eco = await computeMetaEconomics(db, r.snap);
           } catch (e) { live = false; }
         }
         if (!eco) {
           const metaSnap = await db.collection('meta_imports').find({}, { projection: { _id: 0 } }).sort({ importedAt: -1 }).limit(1).next();
-          if (metaSnap) eco = await computeMetaEconomics(db, metaSnap);
+          if (metaSnap) { eco = await computeMetaEconomics(db, metaSnap); series = metaSnap.series || []; }
         }
-        return { eco, live, fetchedAt, stale, error };
+        return { eco, live, fetchedAt, stale, error, series };
       })();
 
       const [imports, g, m] = await Promise.all([importsP, googleTask, metaTask]);
       const googleEco = g.eco, metaEco = m.eco;
+      // Slå sammen daglige serier (Google + Meta) til én tidslinje for grafer.
+      const adsSeries = (() => {
+        const map = new Map();
+        const add = (arr, key) => {
+          for (const d of arr || []) {
+            if (!d || !d.date) continue;
+            const e = map.get(d.date) || { date: d.date, googleCost: 0, metaCost: 0, googleClicks: 0, metaClicks: 0 };
+            e[`${key}Cost`] += Number(d.cost) || 0;
+            e[`${key}Clicks`] += Number(d.clicks) || 0;
+            map.set(d.date, e);
+          }
+        };
+        add(g.series, 'google');
+        add(m.series, 'meta');
+        return Array.from(map.values())
+          .sort((a, b) => a.date.localeCompare(b.date))
+          .map((e) => ({
+            date: e.date,
+            googleCost: Math.round(e.googleCost * 100) / 100,
+            metaCost: Math.round(e.metaCost * 100) / 100,
+            cost: Math.round((e.googleCost + e.metaCost) * 100) / 100,
+            googleClicks: e.googleClicks,
+            metaClicks: e.metaClicks,
+            clicks: e.googleClicks + e.metaClicks,
+          }));
+      })();
       const combined = (googleEco || metaEco) ? combineAdsEconomics(googleEco, metaEco) : null;
       const empty = !googleEco && !metaEco;
       return cors(NextResponse.json({
         ok: true, empty,
         economics: googleEco, meta: metaEco, combined,
+        series: adsSeries,
         metaConfigured: metaAdsConfigured(),
         metaLive: m.live, metaPeriod, metaFetchedAt: m.fetchedAt, metaStale: m.stale, metaError: m.error,
         googleConfigured: composioConfigured(),

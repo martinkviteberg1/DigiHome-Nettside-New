@@ -59,6 +59,7 @@ export default function AdsTab({ apiKey }) {
   const [channel, setChannel] = useState('both'); // 'both' | 'google' | 'meta'
   const [draftChannel, setDraftChannel] = useState('both');
   const [draftPeriod, setDraftPeriod] = useState('last_30d');
+  const [chartMetric, setChartMetric] = useState('cost'); // 'cost' | 'clicks'
 
   useEffect(() => {
     if (!showFilter) { setFilterMounted(false); return; }
@@ -172,7 +173,7 @@ export default function AdsTab({ apiKey }) {
       <div className="flex flex-wrap items-start justify-between gap-3 mb-5">
         <div>
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#cf97fc] to-[#8b5cf6] flex items-center justify-center shadow-[0_6px_18px_rgba(139,92,246,0.28)]"><Megaphone className="w-5 h-5 text-white" /></div>
+            <div className="w-9 h-9 rounded-xl bg-[#0a0a0a] flex items-center justify-center shadow-[0_8px_20px_rgba(10,10,10,0.18)]"><Megaphone className="w-5 h-5 text-white" /></div>
             <h2 className="text-[20px] font-bold text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>Annonser</h2>
             <button onClick={() => setShowHelp((s) => !s)} className="text-[#bbb] hover:text-[#8b5cf6] transition-colors" aria-label="Hjelp"><Info className="w-4 h-4" /></button>
           </div>
@@ -187,14 +188,14 @@ export default function AdsTab({ apiKey }) {
             </button>
           )}
           {/* Verdensklasse filter-knapp → modal (kanal + periode + import) */}
-          <button onClick={openFilter} className="group h-10 pl-3.5 pr-4 rounded-full bg-white text-[12.5px] font-semibold text-[#444] flex items-center gap-2 shadow-[0_2px_12px_rgba(0,0,0,0.05)] ring-1 ring-transparent hover:ring-[#e8d9fb] hover:shadow-[0_6px_20px_rgba(139,92,246,0.14)] active:scale-[0.97] transition-all">
-            <SlidersHorizontal className="w-4 h-4 text-[#8b5cf6] group-hover:rotate-6 transition-transform" />
+          <button onClick={openFilter} className="group h-10 pl-3.5 pr-4 rounded-full bg-white text-[12.5px] font-semibold text-[#444] flex items-center gap-2 shadow-[0_2px_12px_rgba(0,0,0,0.05)] ring-1 ring-transparent hover:ring-[#dcdcdc] hover:shadow-[0_6px_20px_rgba(0,0,0,0.08)] active:scale-[0.97] transition-all">
+            <SlidersHorizontal className="w-4 h-4 text-[#0a0a0a] group-hover:rotate-6 transition-transform" />
             <span className="hidden sm:inline text-[#777]">{channelLabel}</span>
             <span className="text-[#ddd] hidden sm:inline">·</span>
             <span className="text-[#0a0a0a]">{periodLabel}</span>
-            {!filterIsDefault && <span className="ml-0.5 w-1.5 h-1.5 rounded-full bg-[#8b5cf6]" />}
+            {!filterIsDefault && <span className="ml-0.5 w-1.5 h-1.5 rounded-full bg-[#0a0a0a]" />}
           </button>
-          <button onClick={refreshAll} disabled={refreshing || loading} title="Oppdater alle tall nå" className="h-10 w-10 rounded-full bg-white text-[#8b5cf6] flex items-center justify-center shadow-[0_2px_12px_rgba(0,0,0,0.05)] ring-1 ring-transparent hover:ring-[#e8d9fb] disabled:opacity-40 active:scale-[0.95] transition-all">
+          <button onClick={refreshAll} disabled={refreshing || loading} title="Oppdater alle tall nå" className="h-10 w-10 rounded-full bg-white text-[#0a0a0a] flex items-center justify-center shadow-[0_2px_12px_rgba(0,0,0,0.05)] ring-1 ring-transparent hover:ring-[#dcdcdc] disabled:opacity-40 active:scale-[0.95] transition-all">
             <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
           </button>
           <input ref={fileRef} type="file" accept=".csv,text/csv" onChange={onFile} className="hidden" />
@@ -212,7 +213,7 @@ export default function AdsTab({ apiKey }) {
       {err && <div className="mb-4 bg-rose-50 text-rose-600 rounded-xl px-4 py-3 text-[13px] flex items-center gap-2"><AlertCircle className="w-4 h-4" /> {err}</div>}
 
       {loading ? (
-        <div className="py-20 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-[#cf97fc]" /></div>
+        <div className="py-20 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-[#0a0a0a]" /></div>
       ) : (data && data.empty) ? (
         <EmptyState onPick={() => fileRef.current && fileRef.current.click()} onMeta={data.metaConfigured ? refreshAll : null} metaSyncing={refreshing} />
       ) : (
@@ -227,10 +228,10 @@ export default function AdsTab({ apiKey }) {
 
           {/* Blandet total (Google + Meta) — verdensklasse «command center»-kort */}
           {channel === 'both' && bothSources && combined && (
-            <div className="mb-6 rounded-3xl p-5 sm:p-6 bg-gradient-to-br from-[#faf7ff] via-white to-[#f6f9ff] ring-1 ring-[#efe9f9] shadow-[0_4px_28px_rgba(120,80,200,0.06)]">
+            <div className="mb-6 rounded-3xl p-5 sm:p-6 bg-white ring-1 ring-[#ececec] shadow-[0_2px_20px_rgba(0,0,0,0.04)]">
               <div className="flex items-center justify-between gap-2 mb-4">
                 <div className="flex items-center gap-2">
-                  <span className="w-7 h-7 rounded-lg bg-white shadow-[0_2px_8px_rgba(0,0,0,0.06)] flex items-center justify-center"><Layers className="w-4 h-4 text-[#8b5cf6]" /></span>
+                  <span className="w-7 h-7 rounded-lg bg-[#f6f4f1] flex items-center justify-center"><Layers className="w-4 h-4 text-[#0a0a0a]" /></span>
                   <h3 className="text-[13px] font-bold uppercase tracking-[0.06em] text-[#555]">Totalt · Google + Meta</h3>
                 </div>
                 <span className="text-[11.5px] text-[#aaa] font-medium">{periodLabel}</span>
@@ -245,6 +246,11 @@ export default function AdsTab({ apiKey }) {
               </div>
               <SplitBar google={combined.sources.google.cost} meta={combined.sources.meta.cost} />
             </div>
+          )}
+
+          {/* Utvikling over tid — daglig tidsserie */}
+          {Array.isArray(data.series) && data.series.length > 0 && (
+            <TrendChart series={data.series} channel={channel} metric={chartMetric} onMetric={setChartMetric} periodLabel={periodLabel} />
           )}
 
           {/* Google-seksjon */}
@@ -328,7 +334,7 @@ export default function AdsTab({ apiKey }) {
           <div className={`relative w-full sm:max-w-lg bg-white rounded-t-[28px] sm:rounded-[28px] shadow-[0_30px_90px_rgba(0,0,0,0.28)] p-6 sm:p-7 transition-all duration-300 ${filterMounted ? 'opacity-100 translate-y-0 sm:scale-100' : 'opacity-0 translate-y-8 sm:translate-y-2 sm:scale-95'}`}>
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#cf97fc] to-[#8b5cf6] flex items-center justify-center shadow-[0_6px_18px_rgba(139,92,246,0.28)]"><SlidersHorizontal className="w-4 h-4 text-white" /></div>
+                <div className="w-9 h-9 rounded-xl bg-[#0a0a0a] flex items-center justify-center shadow-[0_8px_20px_rgba(10,10,10,0.18)]"><SlidersHorizontal className="w-4 h-4 text-white" /></div>
                 <div>
                   <h3 className="text-[17px] font-bold text-[#0a0a0a] leading-tight" style={{ fontFamily: 'var(--font-heading)' }}>Filter</h3>
                   <p className="text-[11.5px] text-[#999]">Velg kanal og tidsperiode</p>
@@ -339,7 +345,7 @@ export default function AdsTab({ apiKey }) {
 
             <p className="text-[10.5px] uppercase tracking-[0.08em] text-[#b3b3b3] font-bold mb-2.5">Kanal</p>
             <div className="grid grid-cols-1 gap-2 mb-6">
-              <ChannelCard active={draftChannel === 'both'} onClick={() => setDraftChannel('both')} icon={Layers} iconBg="linear-gradient(135deg,#cf97fc,#8b5cf6)" title="Begge kanaler" desc="Google + Meta samlet, inkl. blandet ROAS" />
+              <ChannelCard active={draftChannel === 'both'} onClick={() => setDraftChannel('both')} icon={Layers} iconBg="#0a0a0a" title="Begge kanaler" desc="Google + Meta samlet, inkl. blandet ROAS" />
               <ChannelCard active={draftChannel === 'google'} onClick={() => setDraftChannel('google')} badge="G" iconBg="#4285F4" title="Kun Google Ads" desc="Søkekampanjer · live via Composio" />
               <ChannelCard active={draftChannel === 'meta'} onClick={() => setDraftChannel('meta')} badge="f" iconBg="#1877F2" title="Kun Meta" desc="Facebook & Instagram · live" />
             </div>
@@ -363,7 +369,7 @@ export default function AdsTab({ apiKey }) {
 
             <div className="flex items-center gap-2 mt-6">
               <button onClick={resetFilter} className="h-12 px-5 rounded-full bg-white ring-1 ring-[#ececec] text-[#777] text-[13px] font-semibold hover:ring-[#dcdcdc] hover:text-[#555] transition-all">Nullstill</button>
-              <button onClick={applyFilter} className="flex-1 h-12 rounded-full bg-gradient-to-r from-[#8b5cf6] to-[#cf97fc] text-white text-[14px] font-bold shadow-[0_12px_30px_rgba(139,92,246,0.32)] active:scale-[0.98] transition-transform inline-flex items-center justify-center gap-2"><Check className="w-4 h-4" /> Bruk filter</button>
+              <button onClick={applyFilter} className="flex-1 h-12 rounded-full bg-[#0a0a0a] text-white text-[14px] font-bold shadow-[0_12px_30px_rgba(10,10,10,0.22)] active:scale-[0.98] transition-transform inline-flex items-center justify-center gap-2"><Check className="w-4 h-4" /> Bruk filter</button>
             </div>
           </div>
         </div>
@@ -380,20 +386,140 @@ function SplitBar({ google = 0, meta = 0 }) {
   return (
     <div className="mt-5">
       <div className="h-2.5 rounded-full overflow-hidden bg-[#eee] flex">
-        <div style={{ width: `${g}%`, background: '#4285F4' }} className="transition-all duration-500" />
-        <div style={{ width: `${m}%`, background: '#1877F2' }} className="transition-all duration-500" />
+        <div style={{ width: `${g}%`, background: '#1f1f1f' }} className="transition-all duration-500" />
+        <div style={{ width: `${m}%`, background: '#b9a8d6' }} className="transition-all duration-500" />
       </div>
       <div className="flex justify-between mt-2 text-[11.5px] text-[#888]">
-        <span className="inline-flex items-center gap-1.5 font-medium"><span className="w-2 h-2 rounded-full" style={{ background: '#4285F4' }} /> Google {g}%</span>
-        <span className="inline-flex items-center gap-1.5 font-medium">Meta {m}% <span className="w-2 h-2 rounded-full" style={{ background: '#1877F2' }} /></span>
+        <span className="inline-flex items-center gap-1.5 font-medium"><span className="w-2 h-2 rounded-full" style={{ background: '#1f1f1f' }} /> Google {g}%</span>
+        <span className="inline-flex items-center gap-1.5 font-medium">Meta {m}% <span className="w-2 h-2 rounded-full" style={{ background: '#b9a8d6' }} /></span>
       </div>
+    </div>
+  );
+}
+
+// --- Daglig tidsserie-graf (ren SVG, raffinert/dempet, hover-tooltip) ---
+const MONTHS_NO = ['jan', 'feb', 'mar', 'apr', 'mai', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'des'];
+function fmtDayLabel(iso) {
+  const d = new Date(`${iso}T00:00:00`);
+  if (isNaN(d.getTime())) return iso;
+  return `${d.getDate()}. ${MONTHS_NO[d.getMonth()]}`;
+}
+
+function TrendChart({ series = [], channel = 'both', metric = 'cost', onMetric, periodLabel }) {
+  const wrapRef = useRef(null);
+  const [w, setW] = useState(760);
+  const [hover, setHover] = useState(null);
+  useEffect(() => {
+    if (!wrapRef.current) return;
+    const ro = new ResizeObserver((entries) => { for (const e of entries) setW(Math.max(280, Math.floor(e.contentRect.width))); });
+    ro.observe(wrapRef.current);
+    return () => ro.disconnect();
+  }, []);
+
+  const COLORS = { google: '#1f1f1f', meta: '#b9a8d6' };
+  const isClicks = metric === 'clicks';
+  const fmtVal = (v) => (isClicks ? fmtNum(v) : fmtKr(v));
+  const showGoogle = channel !== 'meta';
+  const showMeta = channel !== 'google';
+
+  const pts = (series || []).filter((d) => d && d.date);
+  const gVals = pts.map((d) => (channel === 'meta' ? 0 : (isClicks ? (d.googleClicks || 0) : (d.googleCost || 0))));
+  const mVals = pts.map((d) => (channel === 'google' ? 0 : (isClicks ? (d.metaClicks || 0) : (d.metaCost || 0))));
+
+  const H = 210, padT = 14, padB = 28;
+  const N = pts.length;
+  const innerW = Math.max(10, w - 8);
+  const maxV = Math.max(1, ...gVals, ...mVals);
+  const X = (i) => (N <= 1 ? innerW / 2 : (i / (N - 1)) * innerW) + 4;
+  const Y = (v) => padT + (1 - v / maxV) * (H - padT - padB);
+  const baseY = H - padB;
+
+  const line = (vals) => {
+    const p = vals.map((v, i) => ({ x: X(i), y: Y(v) }));
+    if (!p.length) return '';
+    if (p.length < 3) return 'M ' + p.map((q) => `${q.x},${q.y}`).join(' L ');
+    let d = `M ${p[0].x},${p[0].y}`;
+    for (let i = 0; i < p.length - 1; i++) {
+      const p0 = p[i - 1] || p[i], p1 = p[i], p2 = p[i + 1], p3 = p[i + 2] || p2;
+      const c1x = p1.x + (p2.x - p0.x) / 6, c1y = p1.y + (p2.y - p0.y) / 6;
+      const c2x = p2.x - (p3.x - p1.x) / 6, c2y = p2.y - (p3.y - p1.y) / 6;
+      d += ` C ${c1x},${c1y} ${c2x},${c2y} ${p2.x},${p2.y}`;
+    }
+    return d;
+  };
+  const area = (vals) => {
+    const l = line(vals);
+    if (!l) return '';
+    return `${l} L ${X(vals.length - 1)},${baseY} L ${X(0)},${baseY} Z`;
+  };
+
+  const tickIdx = N <= 1 ? [0] : [0, Math.round((N - 1) / 3), Math.round((2 * (N - 1)) / 3), N - 1].filter((v, i, a) => a.indexOf(v) === i);
+  const onMove = (e) => {
+    if (!N) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const rx = e.clientX - rect.left - 4;
+    let i = Math.round((rx / innerW) * (N - 1));
+    setHover(Math.max(0, Math.min(N - 1, i)));
+  };
+  const totalG = gVals.reduce((a, b) => a + b, 0);
+  const totalM = mVals.reduce((a, b) => a + b, 0);
+
+  return (
+    <div className="mb-6 bg-white rounded-2xl p-5 sm:p-6 ring-1 ring-[#ececec] shadow-[0_2px_16px_rgba(0,0,0,0.04)]">
+      <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+        <div>
+          <h3 className="text-[14px] font-bold text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>Utvikling over tid</h3>
+          <p className="text-[11.5px] text-[#aaa] mt-0.5">{periodLabel} · daglig {isClicks ? 'klikk' : 'forbruk'}</p>
+        </div>
+        <div className="flex items-center gap-1 bg-[#f6f4f1] rounded-full p-1">
+          {[['cost', 'Forbruk'], ['clicks', 'Klikk']].map(([v, l]) => (
+            <button key={v} onClick={() => onMetric && onMetric(v)} className={`px-3.5 py-1.5 rounded-full text-[12px] font-semibold transition-colors ${metric === v ? 'bg-white text-[#0a0a0a] shadow-[0_1px_4px_rgba(0,0,0,0.08)]' : 'text-[#888] hover:text-[#0a0a0a]'}`}>{l}</button>
+          ))}
+        </div>
+      </div>
+
+      <div ref={wrapRef} className="relative w-full" style={{ height: H }}>
+        <svg width={w} height={H} className="block" onMouseMove={onMove} onMouseLeave={() => setHover(null)}>
+          <defs>
+            <linearGradient id="dhGoogle" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={COLORS.google} stopOpacity="0.10" /><stop offset="100%" stopColor={COLORS.google} stopOpacity="0" /></linearGradient>
+            <linearGradient id="dhMeta" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={COLORS.meta} stopOpacity="0.28" /><stop offset="100%" stopColor={COLORS.meta} stopOpacity="0" /></linearGradient>
+          </defs>
+          {[0, 0.5, 1].map((f, i) => (<line key={i} x1="0" x2={w} y1={padT + f * (H - padT - padB)} y2={padT + f * (H - padT - padB)} stroke="#f1f1f1" strokeWidth="1" />))}
+          {showMeta && <path d={area(mVals)} fill="url(#dhMeta)" />}
+          {showGoogle && <path d={area(gVals)} fill="url(#dhGoogle)" />}
+          {showMeta && <path d={line(mVals)} fill="none" stroke={COLORS.meta} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />}
+          {showGoogle && <path d={line(gVals)} fill="none" stroke={COLORS.google} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />}
+          {hover != null && N > 0 && (
+            <g>
+              <line x1={X(hover)} x2={X(hover)} y1={padT} y2={baseY} stroke="#ddd" strokeWidth="1" strokeDasharray="3 3" />
+              {showMeta && <circle cx={X(hover)} cy={Y(mVals[hover])} r="3.5" fill="#fff" stroke={COLORS.meta} strokeWidth="2" />}
+              {showGoogle && <circle cx={X(hover)} cy={Y(gVals[hover])} r="3.5" fill="#fff" stroke={COLORS.google} strokeWidth="2" />}
+            </g>
+          )}
+          {tickIdx.map((i) => (<text key={i} x={Math.max(16, Math.min(w - 16, X(i)))} y={H - 8} textAnchor="middle" fontSize="10.5" fill="#bbb">{fmtDayLabel(pts[i].date)}</text>))}
+        </svg>
+        {hover != null && N > 0 && (
+          <div className="pointer-events-none absolute -translate-x-1/2 bg-[#0a0a0a] text-white rounded-xl px-3 py-2 shadow-[0_8px_24px_rgba(0,0,0,0.25)] text-[11.5px] whitespace-nowrap" style={{ left: Math.max(62, Math.min(w - 62, X(hover))), top: 2 }}>
+            <div className="font-semibold mb-1">{fmtDayLabel(pts[hover].date)}</div>
+            {showGoogle && <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full" style={{ background: COLORS.google }} /> Google {fmtVal(gVals[hover])}</div>}
+            {showMeta && <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full" style={{ background: COLORS.meta }} /> Meta {fmtVal(mVals[hover])}</div>}
+          </div>
+        )}
+      </div>
+
+      {channel === 'both' && (
+        <div className="flex items-center gap-5 mt-3 text-[11.5px] text-[#888]">
+          <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full" style={{ background: COLORS.google }} /> Google <b className="text-[#444] font-semibold ml-0.5">{fmtVal(totalG)}</b></span>
+          <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full" style={{ background: COLORS.meta }} /> Meta <b className="text-[#444] font-semibold ml-0.5">{fmtVal(totalM)}</b></span>
+        </div>
+      )}
     </div>
   );
 }
 
 function ChannelCard({ active, onClick, icon: Icon, badge, iconBg, title, desc }) {
   return (
-    <button onClick={onClick} className={`relative w-full text-left rounded-2xl p-3.5 flex items-center gap-3 transition-all active:scale-[0.99] ${active ? 'bg-[#faf7ff] ring-2 ring-[#8b5cf6] shadow-[0_8px_24px_rgba(139,92,246,0.13)]' : 'bg-white ring-1 ring-[#ececec] hover:ring-[#dcdcdc]'}`}>
+    <button onClick={onClick} className={`relative w-full text-left rounded-2xl p-3.5 flex items-center gap-3 transition-all active:scale-[0.99] ${active ? 'bg-[#fafafa] ring-2 ring-[#0a0a0a] shadow-[0_8px_24px_rgba(0,0,0,0.10)]' : 'bg-white ring-1 ring-[#ececec] hover:ring-[#dcdcdc]'}`}>
       <span className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-[15px] shrink-0" style={{ background: iconBg }}>
         {Icon ? <Icon className="w-5 h-5" /> : badge}
       </span>
@@ -401,7 +527,7 @@ function ChannelCard({ active, onClick, icon: Icon, badge, iconBg, title, desc }
         <span className="block text-[14px] font-bold text-[#0a0a0a]">{title}</span>
         <span className="block text-[11.5px] text-[#999] truncate">{desc}</span>
       </span>
-      <span className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 transition-all ${active ? 'bg-[#8b5cf6] scale-100' : 'bg-[#f0f0f0] scale-90'}`}>
+      <span className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 transition-all ${active ? 'bg-[#0a0a0a] scale-100' : 'bg-[#f0f0f0] scale-90'}`}>
         {active && <Check className="w-3 h-3 text-white" />}
       </span>
     </button>
@@ -482,8 +608,8 @@ function CampaignTable({ eco }) {
 
 function Kpi({ icon: Icon, label, value, sub, accent = 'text-[#1f1f1f]', highlight }) {
   return (
-    <div className={`bg-white rounded-xl p-4 shadow-[0_2px_10px_rgba(0,0,0,0.03)] hover:shadow-[0_10px_28px_rgba(0,0,0,0.07)] hover:-translate-y-0.5 transition-all duration-200 ${highlight ? 'ring-1 ring-[#e8d9fb]' : ''}`}>
-      <p className="text-[11px] uppercase tracking-[0.06em] text-[#aaa] font-semibold flex items-center gap-1.5"><Icon className="w-3.5 h-3.5 text-[#cf97fc]" /> {label}</p>
+    <div className={`bg-white rounded-xl p-4 shadow-[0_2px_10px_rgba(0,0,0,0.03)] hover:shadow-[0_10px_28px_rgba(0,0,0,0.07)] hover:-translate-y-0.5 transition-all duration-200 ${highlight ? 'ring-1 ring-[#e6e6e6]' : ''}`}>
+      <p className="text-[11px] uppercase tracking-[0.06em] text-[#aaa] font-semibold flex items-center gap-1.5"><Icon className="w-3.5 h-3.5 text-[#9b93ad]" /> {label}</p>
       <p className={`text-[22px] font-bold mt-1 ${accent}`} style={{ fontFamily: 'var(--font-heading)' }}>{value}</p>
       {sub && <p className="text-[11.5px] text-[#999] mt-0.5">{sub}</p>}
     </div>
