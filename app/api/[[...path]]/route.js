@@ -8,9 +8,9 @@ import { isBot, buildEvent, ensureAnalyticsIndexes, computeAnalytics, computeLea
 import { deriveChannel, serializeForLLM, computeWebVitals, detectAnomalies, computeLive, computeAdsEconomics, computeMetaEconomics, combineAdsEconomics, computeAdsLeadsSeries } from '@/lib/analytics-server';
 import { parseGoogleAdsCsv } from '@/lib/adsImport';
 import { sendMetaCapiEvent, metaCapiConfigured } from '@/lib/meta-capi';
-import { fetchMetaInsights, fetchMetaAccount, metaAdsConfigured, getCachedMetaReport, META_PERIODS, metaPeriodToRange } from '@/lib/meta-ads';
+import { fetchMetaInsights, fetchMetaAccount, metaAdsConfigured, getCachedMetaReport, META_PERIODS, metaPeriodToRange, getCachedMetaCreatives } from '@/lib/meta-ads';
 import { fetchPages, fetchLeadForms, fetchFormLeads, mapLeadFields, metaLeadAdsConfigured, fetchSingleLead, fetchFormName, fetchPageToken } from '@/lib/meta-leadads';
-import { composioConfigured, createConnectLink, getConnectionStatus, runCampaignReport, defaultCustomerId, getCachedReport, GOOGLE_PERIODS } from '@/lib/composio-google-ads';
+import { composioConfigured, createConnectLink, getConnectionStatus, runCampaignReport, defaultCustomerId, getCachedReport, GOOGLE_PERIODS, getCachedCreatives } from '@/lib/composio-google-ads';
 import { chatLLM } from '@/lib/llm';
 import { slugify } from '@/lib/site';
 import { getRentReport, refreshRentReport, RENT_CITIES } from '@/lib/rentmarket';
@@ -1534,7 +1534,57 @@ async function handleRoute(request, { params }) {
       }));
     }
 
-    // --- Admin: Annonser — Google Ads via Composio: start OAuth-tilkobling ---
+    // --- Admin: Annonser — faktiske annonser/kreativer (Google RSA + Meta-kreativer) ---
+    if (route === '/admin/ads/creatives' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const { searchParams } = new URL(request.url);
+      const force = ['1', 'true'].includes(String(searchParams.get('refresh')));
+      const out = {
+        google: { configured: composioConfigured(), live: false, ads: [], fetchedAt: null, stale: false, error: null },
+        meta: { configured: metaAdsConfigured(), live: false, ads: [], fetchedAt: null, stale: false, error: null },
+      };
+      await Promise.all([
+        (async () => {
+          if (!composioConfigured()) return;
+          try {
+            const r = await getCachedCreatives(db, { force });
+            out.google.live = true; out.google.ads = r.ads || []; out.google.fetchedAt = r.fetchedAt;
+            out.google.stale = !!r.stale; out.google.error = r.error || null;
+          } catch (e) { out.google.error = e.message; }
+        })(),
+        (async () => {
+          if (!metaAdsConfigured()) return;
+          try {
+            const r = await getCachedMetaCreatives(db, { force });
+            out.meta.live = true; out.meta.ads = r.ads || []; out.meta.fetchedAt = r.fetchedAt;
+            out.meta.stale = !!r.stale; out.meta.error = r.error || null;
+          } catch (e) { out.meta.error = e.message; }
+        })(),
+      ]);
+      return cors(NextResponse.json({ ok: true, ...out }));
+    }
+
+    // --- Annonse-bilde-proxy (Meta/Instagram CDN). Domene-whitelistet (anti-SSRF). ---
+    if (route === '/admin/ads/img' && method === 'GET') {
+      const u = new URL(request.url).searchParams.get('u') || '';
+      if (!/^https:\/\/[a-z0-9.\-]*(fbcdn\.net|cdninstagram\.com|facebook\.com)\//i.test(u)) {
+        return new NextResponse('Forbidden', { status: 403 });
+      }
+      try {
+        const r = await fetch(u);
+        if (!r.ok) return new NextResponse('Not found', { status: 404 });
+        const buf = await r.arrayBuffer();
+        return new NextResponse(Buffer.from(buf), {
+          status: 200,
+          headers: {
+            'Content-Type': r.headers.get('content-type') || 'image/jpeg',
+            'Cache-Control': 'public, max-age=900',
+          },
+        });
+      } catch (e) {
+        return new NextResponse('Error', { status: 502 });
+      }
+    }
     if (route === '/admin/ads/google-connect' && method === 'POST') {
       if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       if (!composioConfigured()) return cors(NextResponse.json({ ok: false, error: 'Composio er ikke konfigurert (mangler COMPOSIO_API_KEY)' }, { status: 400 }));

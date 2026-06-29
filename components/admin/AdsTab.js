@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Loader2, Upload, Megaphone, TrendingUp, AlertCircle, Trash2,
   Coins, MousePointerClick, Target, Wallet, CheckCircle2, Info, RefreshCw, Layers, Link2 as LinkIcon,
-  SlidersHorizontal, X, Check,
+  SlidersHorizontal, X, Check, Image as ImageIcon, ExternalLink,
 } from 'lucide-react';
 
 const nf = new Intl.NumberFormat('nb-NO');
@@ -59,7 +59,28 @@ export default function AdsTab({ apiKey }) {
   const [channel, setChannel] = useState('both'); // 'both' | 'google' | 'meta'
   const [draftChannel, setDraftChannel] = useState('both');
   const [draftPeriod, setDraftPeriod] = useState('last_30d');
-  const [chartMetric, setChartMetric] = useState('cost'); // 'cost' | 'clicks'
+  const [chartMetric, setChartMetric] = useState('cost'); // 'cost' | 'clicks' | 'leads'
+  // Visning: statistikk (tall) eller faktiske annonser/kreativer
+  const [view, setView] = useState('stats'); // 'stats' | 'creatives'
+  const [creatives, setCreatives] = useState(null);
+  const [loadingCre, setLoadingCre] = useState(false);
+  const [creErr, setCreErr] = useState('');
+
+  const loadCreatives = useCallback(async (force = false) => {
+    setLoadingCre(true); setCreErr('');
+    try {
+      const params = new URLSearchParams({ key: apiKey });
+      if (force) params.set('refresh', '1');
+      const res = await fetch(`/api/admin/ads/creatives?${params.toString()}`);
+      if (!res.ok) { setCreErr('Kunne ikke laste annonser'); setLoadingCre(false); return; }
+      setCreatives(await res.json());
+    } catch (e) { setCreErr('Nettverksfeil'); }
+    finally { setLoadingCre(false); }
+  }, [apiKey]);
+
+  useEffect(() => {
+    if (view === 'creatives' && !creatives && !loadingCre) loadCreatives();
+  }, [view, creatives, loadingCre, loadCreatives]);
 
   useEffect(() => {
     if (!showFilter) { setFilterMounted(false); return; }
@@ -195,11 +216,18 @@ export default function AdsTab({ apiKey }) {
             <span className="text-[#0a0a0a]">{periodLabel}</span>
             {!filterIsDefault && <span className="ml-0.5 w-1.5 h-1.5 rounded-full bg-[#0a0a0a]" />}
           </button>
-          <button onClick={refreshAll} disabled={refreshing || loading} title="Oppdater alle tall nå" className="h-10 w-10 rounded-full bg-white text-[#0a0a0a] flex items-center justify-center shadow-[0_2px_12px_rgba(0,0,0,0.05)] ring-1 ring-transparent hover:ring-[#dcdcdc] disabled:opacity-40 active:scale-[0.95] transition-all">
-            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+          <button onClick={() => (view === 'creatives' ? loadCreatives(true) : refreshAll())} disabled={refreshing || loading || loadingCre} title="Oppdater nå" className="h-10 w-10 rounded-full bg-white text-[#0a0a0a] flex items-center justify-center shadow-[0_2px_12px_rgba(0,0,0,0.05)] ring-1 ring-transparent hover:ring-[#dcdcdc] disabled:opacity-40 active:scale-[0.95] transition-all">
+            <RefreshCw className={`w-4 h-4 ${refreshing || loadingCre ? 'animate-spin' : ''}`} />
           </button>
           <input ref={fileRef} type="file" accept=".csv,text/csv" onChange={onFile} className="hidden" />
         </div>
+      </div>
+
+      {/* Visningsbryter: Statistikk vs faktiske annonser/kampanjer */}
+      <div className="flex items-center gap-1 bg-[#f1efeb] rounded-full p-1 mb-5 w-fit">
+        {[['stats', 'Statistikk'], ['creatives', 'Annonser & kampanjer']].map(([v, l]) => (
+          <button key={v} onClick={() => setView(v)} className={`px-4 h-9 rounded-full text-[12.5px] font-semibold transition-all ${view === v ? 'bg-white text-[#0a0a0a] shadow-[0_2px_8px_rgba(0,0,0,0.08)]' : 'text-[#888] hover:text-[#0a0a0a]'}`}>{l}</button>
+        ))}
       </div>
 
       {showHelp && (
@@ -212,7 +240,9 @@ export default function AdsTab({ apiKey }) {
 
       {err && <div className="mb-4 bg-rose-50 text-rose-600 rounded-xl px-4 py-3 text-[13px] flex items-center gap-2"><AlertCircle className="w-4 h-4" /> {err}</div>}
 
-      {loading ? (
+      {view === 'creatives' ? (
+        <CreativesGallery data={creatives} loading={loadingCre} err={creErr} channel={channel} onRetry={() => loadCreatives(true)} />
+      ) : loading ? (
         <div className="py-20 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-[#0a0a0a]" /></div>
       ) : (data && data.empty) ? (
         <EmptyState onPick={() => fileRef.current && fileRef.current.click()} onMeta={data.metaConfigured ? refreshAll : null} metaSyncing={refreshing} />
@@ -618,6 +648,147 @@ function Kpi({ icon: Icon, label, value, sub, accent = 'text-[#1f1f1f]', highlig
       <p className="text-[11px] uppercase tracking-[0.06em] text-[#aaa] font-semibold flex items-center gap-1.5"><Icon className="w-3.5 h-3.5 text-[#9b93ad]" /> {label}</p>
       <p className={`text-[22px] font-bold mt-1 ${accent}`} style={{ fontFamily: 'var(--font-heading)' }}>{value}</p>
       {sub && <p className="text-[11.5px] text-[#999] mt-0.5">{sub}</p>}
+    </div>
+  );
+}
+
+function adStatusBadge(status) {
+  const s = String(status || '').toUpperCase();
+  const active = s.includes('ACTIVE') || s === 'ENABLED';
+  const paused = s.includes('PAUSED');
+  const label = active ? 'Aktiv' : paused ? 'Pauset' : (s ? s.charAt(0) + s.slice(1).toLowerCase().replace(/_/g, ' ') : '–');
+  const cls = active ? 'bg-emerald-50 text-emerald-700' : paused ? 'bg-amber-50 text-amber-700' : 'bg-[#f1f1f1] text-[#888]';
+  const dot = active ? 'bg-emerald-500' : paused ? 'bg-amber-500' : 'bg-[#bbb]';
+  return (
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-semibold ${cls}`}>
+      <span className={`w-1.5 h-1.5 rounded-full ${dot}`} />{label}
+    </span>
+  );
+}
+
+function ctaLabel(c) {
+  const map = {
+    LEARN_MORE: 'Lær mer', SIGN_UP: 'Registrer deg', CONTACT_US: 'Kontakt oss', GET_QUOTE: 'Få tilbud',
+    SUBSCRIBE: 'Abonner', APPLY_NOW: 'Søk nå', GET_OFFER: 'Få tilbud', MESSAGE_PAGE: 'Send melding',
+    BOOK_TRAVEL: 'Bestill', DOWNLOAD: 'Last ned', SHOP_NOW: 'Kjøp nå', SEE_MORE: 'Se mer',
+  };
+  return map[c] || (c ? c.replace(/_/g, ' ').toLowerCase() : '');
+}
+
+function proxiedImg(url) {
+  if (!url) return '';
+  return `/api/admin/ads/img?u=${encodeURIComponent(url)}`;
+}
+
+function MetaAdCard({ ad }) {
+  const [imgErr, setImgErr] = useState(false);
+  return (
+    <div className="bg-white rounded-2xl ring-1 ring-[#ececec] shadow-[0_2px_14px_rgba(0,0,0,0.04)] overflow-hidden hover:shadow-[0_12px_32px_rgba(0,0,0,0.09)] hover:-translate-y-0.5 transition-all duration-200 flex flex-col">
+      <div className="relative aspect-[4/3] bg-[#f3f1ee] overflow-hidden">
+        {ad.image && !imgErr ? (
+          <img src={proxiedImg(ad.image)} alt={ad.name} className="w-full h-full object-cover" onError={() => setImgErr(true)} loading="lazy" />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-[#cfc6dd]"><ImageIcon className="w-8 h-8" /></div>
+        )}
+        <div className="absolute top-2.5 left-2.5">
+          <span className="inline-flex items-center justify-center w-6 h-6 rounded-md text-white text-[12px] font-bold shadow-sm" style={{ background: '#1877F2' }}>f</span>
+        </div>
+        <div className="absolute top-2.5 right-2.5">{adStatusBadge(ad.status)}</div>
+      </div>
+      <div className="p-4 flex flex-col flex-1">
+        <p className="text-[10.5px] text-[#aaa] truncate mb-1">{ad.campaign}{ad.adset ? ` · ${ad.adset}` : ''}</p>
+        {ad.title
+          ? <p className="text-[13.5px] font-bold text-[#0a0a0a] leading-snug line-clamp-2">{ad.title}</p>
+          : <p className="text-[13px] font-semibold text-[#444] leading-snug line-clamp-2">{ad.name}</p>}
+        {ad.body && <p className="text-[12px] text-[#777] leading-relaxed mt-1.5 line-clamp-3">{ad.body}</p>}
+        <div className="mt-auto pt-3 flex items-center justify-between gap-2">
+          {ad.cta ? <span className="text-[11px] font-semibold text-[#0a0a0a] bg-[#f4f0fb] px-2.5 py-1 rounded-full">{ctaLabel(ad.cta)}</span> : <span />}
+          {ad.link && <a href={ad.link} target="_blank" rel="noopener noreferrer" className="text-[11.5px] font-semibold text-[#8b5cf6] hover:underline inline-flex items-center gap-1 whitespace-nowrap">Se annonse <ExternalLink className="w-3 h-3" /></a>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function GoogleAdCard({ ad }) {
+  let host = ad.finalUrl, path = '';
+  try { const u = new URL(ad.finalUrl); host = u.host.replace('www.', ''); path = u.pathname === '/' ? '' : u.pathname.replace(/^\//, ''); } catch (e) {}
+  const heads = (ad.headlines || []).slice(0, 3);
+  const descs = (ad.descriptions || []).slice(0, 2);
+  return (
+    <div className="bg-white rounded-2xl ring-1 ring-[#ececec] shadow-[0_2px_14px_rgba(0,0,0,0.04)] p-5 hover:shadow-[0_12px_32px_rgba(0,0,0,0.09)] hover:-translate-y-0.5 transition-all duration-200">
+      <div className="flex items-center justify-between gap-2 mb-3">
+        <p className="text-[10.5px] text-[#aaa] truncate">{ad.campaign}{ad.adGroup ? ` · ${ad.adGroup}` : ''}</p>
+        {adStatusBadge(ad.status)}
+      </div>
+      <div className="rounded-xl bg-[#fbfaf8] ring-1 ring-[#f0ece6] p-4">
+        <div className="flex items-center gap-1.5 mb-1">
+          <span className="text-[10px] font-bold text-[#0a0a0a] border border-[#0a0a0a] rounded px-1 leading-tight">Annonse</span>
+          <span className="text-[12px] text-[#3c4043] truncate">{host}{path && <span className="text-[#5f6368]"> › {path}</span>}</span>
+        </div>
+        <p className="text-[16px] text-[#1a0dab] leading-snug font-medium">{heads.join('  |  ')}</p>
+        {descs.length > 0 && <p className="text-[12.5px] text-[#4d5156] leading-relaxed mt-1">{descs.join(' ')}</p>}
+      </div>
+      {(ad.headlines || []).length > 0 && (
+        <div className="mt-3">
+          <p className="text-[10px] uppercase tracking-[0.06em] text-[#bbb] font-bold mb-1.5">Alle overskrifter ({ad.headlines.length})</p>
+          <div className="flex flex-wrap gap-1.5">
+            {ad.headlines.map((h, i) => <span key={i} className="text-[11px] text-[#555] bg-[#f4f2ef] rounded-full px-2 py-0.5">{h}</span>)}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CreativesGallery({ data, loading, err, channel, onRetry }) {
+  if (loading) return <div className="py-20 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-[#0a0a0a]" /></div>;
+  if (err) return (
+    <div className="py-16 text-center">
+      <p className="text-[13px] text-rose-600 mb-3">{err}</p>
+      <button onClick={onRetry} className="h-9 px-4 rounded-full bg-[#0a0a0a] text-white text-[12px] font-semibold inline-flex items-center gap-1.5"><RefreshCw className="w-3.5 h-3.5" /> Prøv igjen</button>
+    </div>
+  );
+  if (!data) return null;
+  const g = data.google || {}; const m = data.meta || {};
+  const showGoogle = channel !== 'meta';
+  const showMeta = channel !== 'google';
+  const gAds = showGoogle ? (g.ads || []) : [];
+  const mAds = showMeta ? (m.ads || []) : [];
+
+  return (
+    <div>
+      {gAds.length === 0 && mAds.length === 0 && (
+        <div className="py-16 bg-white rounded-2xl text-center text-[#999] text-[13px] shadow-[0_2px_16px_rgba(0,0,0,0.04)]">
+          {(showGoogle && g.error) || (showMeta && m.error) ? `Kunne ikke hente annonser: ${g.error || m.error}` : 'Ingen annonser å vise i valgt kanal.'}
+        </div>
+      )}
+
+      {showMeta && mAds.length > 0 && (
+        <section className="mb-8">
+          <div className="flex items-center gap-2 mb-3.5">
+            <span className="inline-flex items-center justify-center w-6 h-6 rounded-md text-white text-[12px] font-bold" style={{ background: '#1877F2' }}>f</span>
+            <h3 className="text-[14px] font-bold text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>Meta-annonser</h3>
+            <span className="text-[11.5px] text-[#aaa]">{mAds.length} stk · Facebook &amp; Instagram</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {mAds.map((ad) => <MetaAdCard key={ad.id} ad={ad} />)}
+          </div>
+        </section>
+      )}
+
+      {showGoogle && gAds.length > 0 && (
+        <section className="mb-4">
+          <div className="flex items-center gap-2 mb-3.5">
+            <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-white ring-1 ring-[#e6e6e6] text-[13px] font-bold" style={{ color: '#4285F4' }}>G</span>
+            <h3 className="text-[14px] font-bold text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>Google-søkeannonser</h3>
+            <span className="text-[11.5px] text-[#aaa]">{gAds.length} stk · Søkenettverk</span>
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {gAds.map((ad) => <GoogleAdCard key={ad.id} ad={ad} />)}
+          </div>
+        </section>
+      )}
     </div>
   );
 }
