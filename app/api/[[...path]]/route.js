@@ -5,10 +5,10 @@ import sharp from 'sharp';
 import { getDb, clean } from '@/lib/mongodb';
 import { getObject, PUBLIC_PREFIX } from '@/lib/objectStorage';
 import { isBot, buildEvent, ensureAnalyticsIndexes, computeAnalytics, computeLeadIntel } from '@/lib/analytics-server';
-import { deriveChannel, serializeForLLM, computeWebVitals, detectAnomalies, computeLive, computeAdsEconomics, computeMetaEconomics, combineAdsEconomics } from '@/lib/analytics-server';
+import { deriveChannel, serializeForLLM, computeWebVitals, detectAnomalies, computeLive, computeAdsEconomics, computeMetaEconomics, combineAdsEconomics, computeAdsLeadsSeries } from '@/lib/analytics-server';
 import { parseGoogleAdsCsv } from '@/lib/adsImport';
 import { sendMetaCapiEvent, metaCapiConfigured } from '@/lib/meta-capi';
-import { fetchMetaInsights, fetchMetaAccount, metaAdsConfigured, getCachedMetaReport, META_PERIODS } from '@/lib/meta-ads';
+import { fetchMetaInsights, fetchMetaAccount, metaAdsConfigured, getCachedMetaReport, META_PERIODS, metaPeriodToRange } from '@/lib/meta-ads';
 import { fetchPages, fetchLeadForms, fetchFormLeads, mapLeadFields, metaLeadAdsConfigured, fetchSingleLead, fetchFormName, fetchPageToken } from '@/lib/meta-leadads';
 import { composioConfigured, createConnectLink, getConnectionStatus, runCampaignReport, defaultCustomerId, getCachedReport, GOOGLE_PERIODS } from '@/lib/composio-google-ads';
 import { chatLLM } from '@/lib/llm';
@@ -1476,22 +1476,34 @@ async function handleRoute(request, { params }) {
         return { eco, live, fetchedAt, stale, error, series };
       })();
 
-      const [imports, g, m] = await Promise.all([importsP, googleTask, metaTask]);
+      const leadsRange = metaPeriodToRange(googlePeriod);
+      const leadsTask = computeAdsLeadsSeries(db, leadsRange.periodFrom, leadsRange.periodTo).catch(() => []);
+      const [imports, g, m, leadsSeries] = await Promise.all([importsP, googleTask, metaTask, leadsTask]);
       const googleEco = g.eco, metaEco = m.eco;
-      // Slå sammen daglige serier (Google + Meta) til én tidslinje for grafer.
+      // Slå sammen daglige serier (Google + Meta forbruk/klikk + leads) til én tidslinje for grafer.
       const adsSeries = (() => {
         const map = new Map();
-        const add = (arr, key) => {
+        const ensure = (date) => {
+          if (!map.has(date)) map.set(date, { date, googleCost: 0, metaCost: 0, googleClicks: 0, metaClicks: 0, googleLeads: 0, metaLeads: 0, leads: 0 });
+          return map.get(date);
+        };
+        const addSpend = (arr, key) => {
           for (const d of arr || []) {
             if (!d || !d.date) continue;
-            const e = map.get(d.date) || { date: d.date, googleCost: 0, metaCost: 0, googleClicks: 0, metaClicks: 0 };
+            const e = ensure(d.date);
             e[`${key}Cost`] += Number(d.cost) || 0;
             e[`${key}Clicks`] += Number(d.clicks) || 0;
-            map.set(d.date, e);
           }
         };
-        add(g.series, 'google');
-        add(m.series, 'meta');
+        addSpend(g.series, 'google');
+        addSpend(m.series, 'meta');
+        for (const d of leadsSeries || []) {
+          if (!d || !d.date) continue;
+          const e = ensure(d.date);
+          e.googleLeads += d.googleLeads || 0;
+          e.metaLeads += d.metaLeads || 0;
+          e.leads += d.leads || 0;
+        }
         return Array.from(map.values())
           .sort((a, b) => a.date.localeCompare(b.date))
           .map((e) => ({
@@ -1502,6 +1514,9 @@ async function handleRoute(request, { params }) {
             googleClicks: e.googleClicks,
             metaClicks: e.metaClicks,
             clicks: e.googleClicks + e.metaClicks,
+            googleLeads: e.googleLeads,
+            metaLeads: e.metaLeads,
+            leads: e.leads,
           }));
       })();
       const combined = (googleEco || metaEco) ? combineAdsEconomics(googleEco, metaEco) : null;

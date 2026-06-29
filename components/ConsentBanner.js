@@ -2,15 +2,19 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { Cookie } from 'lucide-react';
 import { gaEnabled, getStoredConsent, applyConsent, restoreConsent } from '@/lib/gtag';
 
 // Diskré GDPR-samtykkebanner (Consent Mode v2). Vises kun når GA4 er aktivert
 // og brukeren ikke har tatt et valg ennå. «Godta alle» / «Kun nødvendige».
+// Vises ALDRI i admin-portalen (/admin) — intern bruk, ingen sporing der.
 export default function ConsentBanner() {
   const [decided, setDecided] = useState(true); // anta avgjort til vi vet
   const [mounted, setMounted] = useState(false);
   const cardRef = useRef(null);
+  const pathname = usePathname();
+  const isAdmin = (pathname || '').startsWith('/admin');
 
   useEffect(() => {
     setMounted(true);
@@ -29,7 +33,7 @@ export default function ConsentBanner() {
   useEffect(() => {
     const root = document.documentElement;
     const setVar = (px) => root.style.setProperty('--dh-consent-h', `${px}px`);
-    if (decided || !mounted) {
+    if (decided || !mounted || isAdmin) {
       setVar(0);
       return;
     }
@@ -51,7 +55,7 @@ export default function ConsentBanner() {
     setDecided(true);
   };
 
-  if (!mounted || decided) return null;
+  if (!mounted || decided || isAdmin) return null;
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-[120] flex justify-center px-3 pb-3 sm:px-5 sm:pb-5 pointer-events-none">

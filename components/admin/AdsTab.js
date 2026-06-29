@@ -417,14 +417,20 @@ function TrendChart({ series = [], channel = 'both', metric = 'cost', onMetric, 
   }, []);
 
   const COLORS = { google: '#1f1f1f', meta: '#b9a8d6' };
-  const isClicks = metric === 'clicks';
-  const fmtVal = (v) => (isClicks ? fmtNum(v) : fmtKr(v));
+  const fmtVal = (v) => (metric === 'cost' ? fmtKr(v) : fmtNum(v));
+  const metricLabel = metric === 'cost' ? 'forbruk' : metric === 'clicks' ? 'klikk' : 'leads';
   const showGoogle = channel !== 'meta';
   const showMeta = channel !== 'google';
 
+  const pick = (d, ch) => {
+    if (metric === 'clicks') return (ch === 'google' ? d.googleClicks : d.metaClicks) || 0;
+    if (metric === 'leads') return (ch === 'google' ? d.googleLeads : d.metaLeads) || 0;
+    return (ch === 'google' ? d.googleCost : d.metaCost) || 0;
+  };
   const pts = (series || []).filter((d) => d && d.date);
-  const gVals = pts.map((d) => (channel === 'meta' ? 0 : (isClicks ? (d.googleClicks || 0) : (d.googleCost || 0))));
-  const mVals = pts.map((d) => (channel === 'google' ? 0 : (isClicks ? (d.metaClicks || 0) : (d.metaCost || 0))));
+  const gVals = pts.map((d) => (channel === 'meta' ? 0 : pick(d, 'google')));
+  const mVals = pts.map((d) => (channel === 'google' ? 0 : pick(d, 'meta')));
+  const avgPerDay = pts.length ? (gVals.reduce((a, b) => a + b, 0) + mVals.reduce((a, b) => a + b, 0)) / pts.length : 0;
 
   const H = 210, padT = 14, padB = 28;
   const N = pts.length;
@@ -469,10 +475,10 @@ function TrendChart({ series = [], channel = 'both', metric = 'cost', onMetric, 
       <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
         <div>
           <h3 className="text-[14px] font-bold text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>Utvikling over tid</h3>
-          <p className="text-[11.5px] text-[#aaa] mt-0.5">{periodLabel} · daglig {isClicks ? 'klikk' : 'forbruk'}</p>
+          <p className="text-[11.5px] text-[#aaa] mt-0.5">{periodLabel} · daglig {metricLabel} · snitt {fmtVal(avgPerDay)}/dag</p>
         </div>
         <div className="flex items-center gap-1 bg-[#f6f4f1] rounded-full p-1">
-          {[['cost', 'Forbruk'], ['clicks', 'Klikk']].map(([v, l]) => (
+          {[['cost', 'Forbruk'], ['clicks', 'Klikk'], ['leads', 'Leads']].map(([v, l]) => (
             <button key={v} onClick={() => onMetric && onMetric(v)} className={`px-3.5 py-1.5 rounded-full text-[12px] font-semibold transition-colors ${metric === v ? 'bg-white text-[#0a0a0a] shadow-[0_1px_4px_rgba(0,0,0,0.08)]' : 'text-[#888] hover:text-[#0a0a0a]'}`}>{l}</button>
           ))}
         </div>
