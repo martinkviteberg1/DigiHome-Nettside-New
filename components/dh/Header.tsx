@@ -6,6 +6,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { motion } from '@/lib/motion-lite';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Menu, ArrowUpRight, X } from 'lucide-react';
+import { site } from '@/lib/site';
 
 /**
  * DigiHome navbar — V1-DNA, edge-to-edge, full bredde
@@ -159,7 +160,7 @@ export default function Header() {
             />
 
             <Link
-              href="https://app.digihome.no/forvalter/login"
+              href={site.loginUrl}
               className="text-[13.5px] font-medium transition-colors tracking-[-0.005em]"
               style={{
                 color: lightMode ? 'rgba(255,255,255,0.78)' : 'rgba(31,31,31,0.75)',
@@ -252,7 +253,7 @@ export default function Header() {
                 </div>
                 <div className="p-6 space-y-3 border-t border-[#1f1f1f]/[0.06]">
                   <Link
-                    href="https://app.digihome.no/forvalter/login"
+                    href={site.loginUrl}
                     onClick={() => setMobileOpen(false)}
                     className="w-full rounded-full border border-[#1f1f1f]/15 text-[#1f1f1f] h-12 text-[14px] font-medium flex items-center justify-center gap-2 hover:bg-[#1f1f1f]/[0.04] transition-colors"
                   >
