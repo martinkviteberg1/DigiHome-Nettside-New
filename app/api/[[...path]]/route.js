@@ -10,7 +10,7 @@ import { parseGoogleAdsCsv } from '@/lib/adsImport';
 import { sendMetaCapiEvent, metaCapiConfigured } from '@/lib/meta-capi';
 import { fetchMetaInsights, fetchMetaAccount, metaAdsConfigured } from '@/lib/meta-ads';
 import { fetchPages, fetchLeadForms, fetchFormLeads, mapLeadFields, metaLeadAdsConfigured, fetchSingleLead, fetchFormName, fetchPageToken } from '@/lib/meta-leadads';
-import { composioConfigured, createConnectLink, getConnectionStatus, runCampaignReport, defaultCustomerId } from '@/lib/composio-google-ads';
+import { composioConfigured, createConnectLink, getConnectionStatus, runCampaignReport, defaultCustomerId, getCachedReport, GOOGLE_PERIODS } from '@/lib/composio-google-ads';
 import { chatLLM } from '@/lib/llm';
 import { slugify } from '@/lib/site';
 import { getRentReport, refreshRentReport, RENT_CITIES } from '@/lib/rentmarket';
@@ -1423,12 +1423,46 @@ async function handleRoute(request, { params }) {
       if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const { searchParams } = new URL(request.url);
       const importId = searchParams.get('importId');
-      const query = importId ? { id: importId } : {};
-      const imp = await db.collection('ad_imports').find(query, { projection: { _id: 0 } }).sort({ importedAt: -1 }).limit(1).next();
+      const googlePeriod = GOOGLE_PERIODS.includes(searchParams.get('googlePeriod')) ? searchParams.get('googlePeriod') : 'last_30d';
+      const googleRefresh = ['1', 'true'].includes(String(searchParams.get('googleRefresh')));
+
+      // imports-liste = kun manuelle CSV-opplastinger (skjul live Composio-snapshots).
       const imports = await db.collection('ad_imports')
-        .find({}, { projection: { _id: 0, id: 1, label: 1, periodFrom: 1, periodTo: 1, importedAt: 1, currency: 1, 'totals.cost': 1 } })
+        .find({ source: { $ne: 'google_ads_composio' } }, { projection: { _id: 0, id: 1, label: 1, periodFrom: 1, periodTo: 1, importedAt: 1, currency: 1, 'totals.cost': 1 } })
         .sort({ importedAt: -1 }).limit(50).toArray();
-      const googleEco = imp ? await computeAdsEconomics(db, imp) : null;
+
+      // --- Google: foretrekk LIVE (nær-sanntid, cachet) når Composio er tilkoblet ---
+      let googleEco = null;
+      let googleLive = false, googleConnected = false, googleFetchedAt = null, googleStale = false, googleError = null;
+      let googleSource = null;
+      if (composioConfigured()) {
+        try {
+          const r = await getCachedReport(db, googlePeriod, { force: googleRefresh });
+          googleConnected = true; googleLive = true; googleFetchedAt = r.fetchedAt; googleStale = !!r.stale; googleError = r.error || null;
+          const rep = r.report;
+          const transImp = {
+            id: 'google-live',
+            label: `Google Ads (live) · ${rep.from} – ${rep.to}`,
+            currency: 'NOK',
+            periodFrom: new Date(rep.from).toISOString(),
+            periodTo: new Date(`${rep.to}T23:59:59.999Z`).toISOString(),
+            totals: rep.totals,
+            campaigns: rep.campaigns,
+            importedAt: r.fetchedAt,
+            source: 'google_ads_composio_live',
+          };
+          googleEco = await computeAdsEconomics(db, transImp);
+          googleSource = 'google_ads_composio_live';
+        } catch (e) {
+          // ikke tilkoblet ennå (eller feil) → fall tilbake til evt. CSV-import
+          googleConnected = false; googleLive = false;
+        }
+      }
+      if (!googleEco) {
+        const query = importId ? { id: importId } : { source: { $ne: 'google_ads_composio' } };
+        const imp = await db.collection('ad_imports').find(query, { projection: { _id: 0 } }).sort({ importedAt: -1 }).limit(1).next();
+        if (imp) { googleEco = await computeAdsEconomics(db, imp); googleSource = imp.source || 'csv'; }
+      }
 
       // Meta: bruk siste lagrede snapshot (synkes eksplisitt via /admin/ads/meta-sync) — raskt, ingen live-kall.
       let metaEco = null;
@@ -1442,7 +1476,8 @@ async function handleRoute(request, { params }) {
         economics: googleEco, meta: metaEco, combined,
         metaConfigured: metaAdsConfigured(),
         googleConfigured: composioConfigured(),
-        googleSource: imp ? (imp.source || null) : null,
+        googleConnected, googleLive, googlePeriod, googleFetchedAt, googleStale, googleError,
+        googleSource,
         imports,
       }));
     }

@@ -20,6 +20,25 @@ const PRESETS = [
   { v: 'last_90d', l: 'Siste 90 dager' },
 ];
 
+// Google har i tillegg «I år» og «Hele tiden» (live-spørring via Composio/GAQL).
+const GOOGLE_PERIODS = [
+  { v: 'last_7d', l: 'Siste 7 dager' },
+  { v: 'last_30d', l: 'Siste 30 dager' },
+  { v: 'last_90d', l: 'Siste 90 dager' },
+  { v: 'this_year', l: 'I år' },
+  { v: 'all', l: 'Hele tiden' },
+];
+
+function minsAgo(iso) {
+  if (!iso) return null;
+  const m = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+  if (m <= 0) return 'nå nettopp';
+  if (m === 1) return '1 min siden';
+  if (m < 60) return `${m} min siden`;
+  const h = Math.round(m / 60);
+  return h === 1 ? '1 time siden' : `${h} timer siden`;
+}
+
 export default function AdsTab({ apiKey }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -29,18 +48,22 @@ export default function AdsTab({ apiKey }) {
   const [showHelp, setShowHelp] = useState(false);
   const [metaSyncing, setMetaSyncing] = useState(false);
   const [metaPreset, setMetaPreset] = useState('last_30d');
-  // Google Ads via Composio
-  const [googleStatus, setGoogleStatus] = useState(null); // {configured, connected, status, customerId}
-  const [googleSyncing, setGoogleSyncing] = useState(false);
+  // Google Ads via Composio (nær-sanntid, auto)
   const [googleConnecting, setGoogleConnecting] = useState(false);
-  const [googlePreset, setGooglePreset] = useState('last_30d');
+  const [googlePeriod, setGooglePeriod] = useState('last_30d');
+  const [googleRefreshing, setGoogleRefreshing] = useState(false);
+  const googlePeriodRef = useRef('last_30d');
   const fileRef = useRef(null);
 
-  const load = useCallback(async (importId) => {
+  const load = useCallback(async (opts = {}) => {
+    const { importId, period, refresh } = opts;
     setLoading(true); setErr('');
     try {
-      const q = importId ? `&importId=${encodeURIComponent(importId)}` : '';
-      const res = await fetch(`/api/admin/ads/overview?key=${encodeURIComponent(apiKey)}${q}`);
+      const params = new URLSearchParams({ key: apiKey });
+      if (importId) params.set('importId', importId);
+      params.set('googlePeriod', period || googlePeriodRef.current);
+      if (refresh) params.set('googleRefresh', '1');
+      const res = await fetch(`/api/admin/ads/overview?${params.toString()}`);
       if (!res.ok) { setErr('Kunne ikke laste annonsedata'); setLoading(false); return; }
       const j = await res.json();
       setData(j);
@@ -48,29 +71,21 @@ export default function AdsTab({ apiKey }) {
     finally { setLoading(false); }
   }, [apiKey]);
 
-  const loadGoogleStatus = useCallback(async () => {
-    try {
-      const res = await fetch(`/api/admin/ads/google-status?key=${encodeURIComponent(apiKey)}`);
-      if (!res.ok) return;
-      const j = await res.json();
-      setGoogleStatus(j);
-    } catch (e) { /* stille */ }
-  }, [apiKey]);
+  useEffect(() => { load(); }, [load]);
 
-  useEffect(() => { load(); loadGoogleStatus(); }, [load, loadGoogleStatus]);
-
-  // Etter OAuth-retur (?googleads=connected): oppdater status + rydd URL
+  // Etter OAuth-retur (?googleads=connected / ?status=success): hent live data + rydd URL
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const sp = new URLSearchParams(window.location.search);
-    if (sp.get('googleads') === 'connected') {
-      setImportMsg('Google Ads tilkoblet — synk forbruk for å hente data');
-      loadGoogleStatus();
-      sp.delete('googleads');
+    if (sp.get('googleads') === 'connected' || sp.get('status') === 'success') {
+      setImportMsg('Google Ads tilkoblet ✓ — henter live data …');
+      load({ refresh: true });
+      sp.delete('googleads'); sp.delete('status'); sp.delete('connected_account_id');
       const url = window.location.pathname + (sp.toString() ? `?${sp}` : '');
       window.history.replaceState({}, '', url);
     }
-  }, [loadGoogleStatus]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const doGoogleConnect = async () => {
     setGoogleConnecting(true); setErr(''); setImportMsg('');
@@ -85,20 +100,8 @@ export default function AdsTab({ apiKey }) {
     } catch (e) { setErr('Kunne ikke starte Google-tilkobling'); setGoogleConnecting(false); }
   };
 
-  const doGoogleSync = async () => {
-    setGoogleSyncing(true); setErr(''); setImportMsg('');
-    try {
-      const res = await fetch(`/api/admin/ads/google-sync?key=${encodeURIComponent(apiKey)}`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ datePreset: googlePreset }),
-      });
-      const j = await res.json();
-      if (!res.ok || !j.ok) { setErr(j.error || 'Google-synk feilet'); }
-      else if (!j.parsedCampaigns) { setImportMsg('Google tilkoblet ✓ — ingen kampanjer/forbruk i perioden ennå. Når annonsene dine er aktive, dukker kostnaden opp her.'); await load(); }
-      else { setImportMsg(`Google synket: ${j.parsedCampaigns} kampanjer`); await load(); }
-    } catch (e) { setErr('Kunne ikke synke Google'); }
-    finally { setGoogleSyncing(false); }
-  };
+  const changeGooglePeriod = (v) => { setGooglePeriod(v); googlePeriodRef.current = v; load({ period: v }); };
+  const refreshGoogle = async () => { setGoogleRefreshing(true); setImportMsg(''); await load({ refresh: true }); setGoogleRefreshing(false); };
 
   const doImport = async (csv) => {
     if (!csv || !csv.trim()) return;
@@ -165,15 +168,15 @@ export default function AdsTab({ apiKey }) {
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {importMsg && <span className="text-[12px] text-emerald-600 font-semibold flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> {importMsg}</span>}
-          {/* Google Ads (Composio) — koble til / synk live */}
-          {googleStatus && googleStatus.configured && (
-            googleStatus.connected ? (
+          {/* Google Ads (Composio) — auto live: periode-filter + oppdater, eller koble til */}
+          {data && data.googleConfigured && (
+            data.googleConnected ? (
               <div className="flex items-center gap-1.5">
-                <select value={googlePreset} onChange={(e) => setGooglePreset(e.target.value)} className="h-9 rounded-full bg-white text-[12px] font-semibold text-[#555] px-3 shadow-[0_2px_10px_rgba(0,0,0,0.03)] outline-none focus:ring-2 focus:ring-[#4285F4]/30 cursor-pointer">
-                  {PRESETS.map((p) => <option key={p.v} value={p.v}>{p.l}</option>)}
+                <select value={googlePeriod} onChange={(e) => changeGooglePeriod(e.target.value)} className="h-9 rounded-full bg-white text-[12px] font-semibold text-[#555] px-3 shadow-[0_2px_10px_rgba(0,0,0,0.03)] outline-none focus:ring-2 focus:ring-[#4285F4]/30 cursor-pointer">
+                  {GOOGLE_PERIODS.map((p) => <option key={p.v} value={p.v}>{p.l}</option>)}
                 </select>
-                <button onClick={doGoogleSync} disabled={googleSyncing} className="h-9 px-4 rounded-full text-white text-[12px] font-semibold flex items-center gap-2 disabled:opacity-40 active:scale-[0.97] transition-transform" style={{ background: '#4285F4' }}>
-                  {googleSyncing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />} Synk Google-forbruk
+                <button onClick={refreshGoogle} disabled={googleRefreshing || loading} title="Oppdater Google-data nå" className="h-9 w-9 rounded-full bg-white text-[#4285F4] flex items-center justify-center shadow-[0_2px_10px_rgba(0,0,0,0.03)] disabled:opacity-40 active:scale-[0.95] transition-transform">
+                  <RefreshCw className={`w-4 h-4 ${googleRefreshing ? 'animate-spin' : ''}`} />
                 </button>
               </div>
             ) : (
@@ -203,8 +206,8 @@ export default function AdsTab({ apiKey }) {
       {showHelp && (
         <div className="mb-4 bg-[#f4f0fb] rounded-2xl p-4 text-[13px] text-[#444] leading-relaxed">
           <p className="font-semibold text-[#0a0a0a] mb-1">Multi-kanal annonseøkonomi</p>
-          <p><b>Google (live):</b> trykk «Koble til Google Ads», logg inn med Google-kontoen din, deretter «Synk Google-forbruk» — henter kostnad/klikk/visninger direkte via API (Composio). <b>Google (CSV):</b> alternativt last opp en kampanjerapport-CSV. <b>Meta:</b> trykk «Synk Meta-forbruk». Vi kobler kostnaden mot leads og vunne kontrakter for å regne ut CPL, CPA og ROAS — per kanal og <b>blandet (Google + Meta)</b>.</p>
-          <p className="mt-1.5 text-[12px] text-[#777]">ROAS/CPA bruker «Vunnet»-verdien fra closed-loop. Meta-leads gjenkjennes på <code>fbclid</code> / kilde (facebook/instagram).</p>
+          <p><b>Google (live):</b> trykk «Koble til Google Ads» én gang og logg inn med Google-kontoen. Deretter hentes kostnad/klikk/visninger <b>automatisk</b> (nær-sanntid, hentes på nytt hvert ~10. minutt). Velg periode i nedtrekksmenyen (inkl. «Hele tiden») eller trykk oppdater-ikonet for ferske tall nå. <b>Meta:</b> trykk «Synk Meta-forbruk». Vi kobler kostnaden mot leads og vunne kontrakter for å regne ut CPL, CPA og ROAS — per kanal og <b>blandet (Google + Meta)</b>.</p>
+          <p className="mt-1.5 text-[12px] text-[#777]">ROAS/CPA bruker «Vunnet»-verdien fra closed-loop. Meta-leads gjenkjennes på <code>fbclid</code> / kilde (facebook/instagram). «Google Ads-CSV» finnes fortsatt som manuelt alternativ.</p>
         </div>
       )}
 
@@ -241,13 +244,26 @@ export default function AdsTab({ apiKey }) {
               period={`${(google.period.from || '').slice(0, 10)} – ${(google.period.to || '').slice(0, 10)}`}
               right={(
                 <div className="flex items-center gap-2 text-[12px] text-[#888]">
-                  {data.imports && data.imports.length > 1 && (
-                    <select onChange={(e) => load(e.target.value)} value={google.importId}
-                      className="text-[12px] rounded-lg border border-[#e6e3df] bg-white px-2 py-1 outline-none focus:border-[#cf97fc]">
-                      {data.imports.map((im) => <option key={im.id} value={im.id}>{im.label}</option>)}
-                    </select>
+                  {data.googleLive ? (
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="relative flex h-2 w-2">
+                        <span className={`absolute inline-flex h-full w-full rounded-full ${data.googleStale ? 'bg-amber-400' : 'bg-emerald-400'} opacity-60 animate-ping`}></span>
+                        <span className={`relative inline-flex h-2 w-2 rounded-full ${data.googleStale ? 'bg-amber-500' : 'bg-emerald-500'}`}></span>
+                      </span>
+                      <span className="font-semibold text-[#4285F4]">Live</span>
+                      <span>· oppdatert {minsAgo(data.googleFetchedAt) || 'nylig'}</span>
+                    </span>
+                  ) : (
+                    <>
+                      {data.imports && data.imports.length > 1 && (
+                        <select onChange={(e) => load({ importId: e.target.value })} value={google.importId}
+                          className="text-[12px] rounded-lg border border-[#e6e3df] bg-white px-2 py-1 outline-none focus:border-[#cf97fc]">
+                          {data.imports.map((im) => <option key={im.id} value={im.id}>{im.label}</option>)}
+                        </select>
+                      )}
+                      <button onClick={() => doDelete(google.importId)} className="text-[#bbb] hover:text-rose-500 inline-flex items-center gap-1"><Trash2 className="w-3.5 h-3.5" /> Slett import</button>
+                    </>
                   )}
-                  <button onClick={() => doDelete(google.importId)} className="text-[#bbb] hover:text-rose-500 inline-flex items-center gap-1"><Trash2 className="w-3.5 h-3.5" /> Slett import</button>
                 </div>
               )}
             />
