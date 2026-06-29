@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Loader2, Upload, Megaphone, TrendingUp, AlertCircle, Trash2,
   Coins, MousePointerClick, Target, Wallet, CheckCircle2, Info, RefreshCw, Layers, Link2 as LinkIcon,
+  SlidersHorizontal, X, Check,
 } from 'lucide-react';
 
 const nf = new Intl.NumberFormat('nb-NO');
@@ -52,6 +53,21 @@ export default function AdsTab({ apiKey }) {
   const periodRef = useRef('last_30d');
   const [googleConnecting, setGoogleConnecting] = useState(false);
   const fileRef = useRef(null);
+  // Verdensklasse filter (kanal + periode) i modal
+  const [showFilter, setShowFilter] = useState(false);
+  const [filterMounted, setFilterMounted] = useState(false);
+  const [channel, setChannel] = useState('both'); // 'both' | 'google' | 'meta'
+  const [draftChannel, setDraftChannel] = useState('both');
+  const [draftPeriod, setDraftPeriod] = useState('last_30d');
+
+  useEffect(() => {
+    if (!showFilter) { setFilterMounted(false); return; }
+    const t = setTimeout(() => setFilterMounted(true), 10);
+    const onKey = (e) => { if (e.key === 'Escape') setShowFilter(false); };
+    window.addEventListener('keydown', onKey);
+    if (typeof document !== 'undefined') document.body.style.overflow = 'hidden';
+    return () => { clearTimeout(t); window.removeEventListener('keydown', onKey); if (typeof document !== 'undefined') document.body.style.overflow = ''; };
+  }, [showFilter]);
 
   const load = useCallback(async (opts = {}) => {
     const { importId } = opts;
@@ -103,6 +119,13 @@ export default function AdsTab({ apiKey }) {
   const changePeriod = (v) => { setPeriod(v); periodRef.current = v; load({ period: v }); };
   const refreshAll = async () => { setRefreshing(true); setImportMsg(''); await load({ refresh: true }); setRefreshing(false); };
 
+  const openFilter = () => { setDraftChannel(channel); setDraftPeriod(period); setShowFilter(true); };
+  const resetFilter = () => { setDraftChannel('both'); setDraftPeriod('last_30d'); };
+  const applyFilter = () => { setChannel(draftChannel); if (draftPeriod !== period) changePeriod(draftPeriod); setShowFilter(false); };
+  const periodLabel = (GOOGLE_PERIODS.find((p) => p.v === period) || {}).l || period;
+  const channelLabel = channel === 'google' ? 'Kun Google' : channel === 'meta' ? 'Kun Meta' : 'Begge kanaler';
+  const filterIsDefault = channel === 'both' && period === 'last_30d';
+
   const doImport = async (csv) => {
     if (!csv || !csv.trim()) return;
     setImporting(true); setImportMsg(''); setErr('');
@@ -145,35 +168,36 @@ export default function AdsTab({ apiKey }) {
 
   return (
     <div>
-      {/* Verktøylinje */}
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-        <div className="flex items-center gap-2">
-          <Megaphone className="w-5 h-5 text-[#cf97fc]" />
-          <h2 className="text-[18px] font-bold text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>Annonser</h2>
-          <button onClick={() => setShowHelp((s) => !s)} className="ml-1 text-[#aaa] hover:text-[#8b5cf6]" aria-label="Hjelp"><Info className="w-4 h-4" /></button>
+      {/* Verktøylinje — verdensklasse */}
+      <div className="flex flex-wrap items-start justify-between gap-3 mb-5">
+        <div>
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#cf97fc] to-[#8b5cf6] flex items-center justify-center shadow-[0_6px_18px_rgba(139,92,246,0.28)]"><Megaphone className="w-5 h-5 text-white" /></div>
+            <h2 className="text-[20px] font-bold text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>Annonser</h2>
+            <button onClick={() => setShowHelp((s) => !s)} className="text-[#bbb] hover:text-[#8b5cf6] transition-colors" aria-label="Hjelp"><Info className="w-4 h-4" /></button>
+          </div>
+          <p className="text-[12.5px] text-[#999] mt-1.5 sm:ml-[46px]">Multi-kanal annonseøkonomi · CPL, CAC og ROAS koblet mot ekte leads</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {importMsg && <span className="text-[12px] text-emerald-600 font-semibold flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> {importMsg}</span>}
           {/* Koble til Google Ads (kun når ikke tilkoblet) */}
           {data && data.googleConfigured && !data.googleConnected && (
-            <button onClick={doGoogleConnect} disabled={googleConnecting} className="h-9 px-4 rounded-full text-white text-[12px] font-semibold flex items-center gap-2 disabled:opacity-40 active:scale-[0.97] transition-transform" style={{ background: '#4285F4' }}>
+            <button onClick={doGoogleConnect} disabled={googleConnecting} className="h-10 px-4 rounded-full text-white text-[12px] font-semibold flex items-center gap-2 disabled:opacity-40 active:scale-[0.97] transition-transform shadow-[0_6px_18px_rgba(66,133,244,0.3)]" style={{ background: '#4285F4' }}>
               {googleConnecting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <LinkIcon className="w-3.5 h-3.5" />} Koble til Google Ads
             </button>
           )}
-          {/* ÉN felles periode-filter for hele annonsebildet (Google + Meta auto-hentes) */}
-          <div className="flex items-center gap-1.5">
-            <span className="text-[12px] font-semibold text-[#999] hidden sm:inline">Periode</span>
-            <select value={period} onChange={(e) => changePeriod(e.target.value)} className="h-9 rounded-full bg-white text-[12px] font-semibold text-[#555] px-3.5 shadow-[0_2px_10px_rgba(0,0,0,0.03)] outline-none focus:ring-2 focus:ring-[#cf97fc]/30 cursor-pointer">
-              {GOOGLE_PERIODS.map((p) => <option key={p.v} value={p.v}>{p.l}</option>)}
-            </select>
-            <button onClick={refreshAll} disabled={refreshing || loading} title="Oppdater alle tall nå" className="h-9 w-9 rounded-full bg-white text-[#8b5cf6] flex items-center justify-center shadow-[0_2px_10px_rgba(0,0,0,0.03)] disabled:opacity-40 active:scale-[0.95] transition-transform">
-              <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
-            </button>
-          </div>
-          <input ref={fileRef} type="file" accept=".csv,text/csv" onChange={onFile} className="hidden" />
-          <button onClick={() => fileRef.current && fileRef.current.click()} disabled={importing} className="h-9 px-4 rounded-full bg-[#0a0a0a] text-white text-[12px] font-semibold flex items-center gap-2 disabled:opacity-40 active:scale-[0.97] transition-transform">
-            {importing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />} Google Ads-CSV
+          {/* Verdensklasse filter-knapp → modal (kanal + periode + import) */}
+          <button onClick={openFilter} className="group h-10 pl-3.5 pr-4 rounded-full bg-white text-[12.5px] font-semibold text-[#444] flex items-center gap-2 shadow-[0_2px_12px_rgba(0,0,0,0.05)] ring-1 ring-transparent hover:ring-[#e8d9fb] hover:shadow-[0_6px_20px_rgba(139,92,246,0.14)] active:scale-[0.97] transition-all">
+            <SlidersHorizontal className="w-4 h-4 text-[#8b5cf6] group-hover:rotate-6 transition-transform" />
+            <span className="hidden sm:inline text-[#777]">{channelLabel}</span>
+            <span className="text-[#ddd] hidden sm:inline">·</span>
+            <span className="text-[#0a0a0a]">{periodLabel}</span>
+            {!filterIsDefault && <span className="ml-0.5 w-1.5 h-1.5 rounded-full bg-[#8b5cf6]" />}
           </button>
+          <button onClick={refreshAll} disabled={refreshing || loading} title="Oppdater alle tall nå" className="h-10 w-10 rounded-full bg-white text-[#8b5cf6] flex items-center justify-center shadow-[0_2px_12px_rgba(0,0,0,0.05)] ring-1 ring-transparent hover:ring-[#e8d9fb] disabled:opacity-40 active:scale-[0.95] transition-all">
+            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+          </button>
+          <input ref={fileRef} type="file" accept=".csv,text/csv" onChange={onFile} className="hidden" />
         </div>
       </div>
 
@@ -193,12 +217,23 @@ export default function AdsTab({ apiKey }) {
         <EmptyState onPick={() => fileRef.current && fileRef.current.click()} onMeta={data.metaConfigured ? refreshAll : null} metaSyncing={refreshing} />
       ) : (
         <>
-          {/* Blandet total (Google + Meta) */}
-          {bothSources && combined && (
-            <div className="mb-6">
-              <div className="flex items-center gap-2 mb-2.5">
-                <Layers className="w-4 h-4 text-[#8b5cf6]" />
-                <h3 className="text-[13px] font-bold uppercase tracking-[0.06em] text-[#666]">Totalt · Google + Meta</h3>
+          {/* Tom-tilstand for valgt enkeltkanal */}
+          {channel === 'google' && !google && (
+            <div className="mb-6 bg-white rounded-2xl p-8 text-center text-[#999] text-[13px] shadow-[0_2px_16px_rgba(0,0,0,0.04)]">Ingen Google Ads-data i denne perioden.</div>
+          )}
+          {channel === 'meta' && !meta && (
+            <div className="mb-6 bg-white rounded-2xl p-8 text-center text-[#999] text-[13px] shadow-[0_2px_16px_rgba(0,0,0,0.04)]">Ingen Meta-data i denne perioden.</div>
+          )}
+
+          {/* Blandet total (Google + Meta) — verdensklasse «command center»-kort */}
+          {channel === 'both' && bothSources && combined && (
+            <div className="mb-6 rounded-3xl p-5 sm:p-6 bg-gradient-to-br from-[#faf7ff] via-white to-[#f6f9ff] ring-1 ring-[#efe9f9] shadow-[0_4px_28px_rgba(120,80,200,0.06)]">
+              <div className="flex items-center justify-between gap-2 mb-4">
+                <div className="flex items-center gap-2">
+                  <span className="w-7 h-7 rounded-lg bg-white shadow-[0_2px_8px_rgba(0,0,0,0.06)] flex items-center justify-center"><Layers className="w-4 h-4 text-[#8b5cf6]" /></span>
+                  <h3 className="text-[13px] font-bold uppercase tracking-[0.06em] text-[#555]">Totalt · Google + Meta</h3>
+                </div>
+                <span className="text-[11.5px] text-[#aaa] font-medium">{periodLabel}</span>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <Kpi icon={Wallet} label="Total markedskost" value={fmtKr(combined.cost)} accent="text-[#0a0a0a]" highlight
@@ -208,11 +243,12 @@ export default function AdsTab({ apiKey }) {
                 <Kpi icon={TrendingUp} label="ROAS (blandet)" value={fmtX(combined.roas)} accent={roasColor(combined.roas)} highlight
                   sub={`Dekningsbidrag ${fmtKr(combined.profit)}`} />
               </div>
+              <SplitBar google={combined.sources.google.cost} meta={combined.sources.meta.cost} />
             </div>
           )}
 
           {/* Google-seksjon */}
-          {google && (
+          {channel !== 'meta' && google && (
             <SourceBlock
               title="Google Ads" brand="#4285F4" eco={google}
               period={`${(google.period.from || '').slice(0, 10)} – ${(google.period.to || '').slice(0, 10)}`}
@@ -244,7 +280,7 @@ export default function AdsTab({ apiKey }) {
           )}
 
           {/* Meta-seksjon */}
-          {meta ? (
+          {channel !== 'google' && (meta ? (
             <SourceBlock
               title="Meta · Facebook & Instagram" brand="#1877F2" eco={meta}
               period={`${(meta.period.from || '').slice(0, 10)} – ${(meta.period.to || '').slice(0, 10)}`}
@@ -277,14 +313,98 @@ export default function AdsTab({ apiKey }) {
                 {refreshing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />} Prøv igjen
               </button>
             </div>
-          ))}
+          )))}
 
           <p className="mt-4 text-[12px] text-[#999] leading-relaxed">
             CPL/CPA/ROAS kobler kostnad mot leads i kanalen <b>Betalt</b> (per kampanje via <code>utm_campaign</code>). Sett kontraktsverdi på vunne leads i Leads-fanen for presis ROAS. Auto-tagging (gclid/fbclid) gir ofte tom <code>utm_campaign</code> → bruk konto-totalene som fasit.
           </p>
         </>
       )}
+
+      {/* === Verdensklasse Filter-modal === */}
+      {showFilter && (
+        <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center">
+          <div onClick={() => setShowFilter(false)} className={`absolute inset-0 bg-[#0a0a0a]/45 backdrop-blur-[3px] transition-opacity duration-300 ${filterMounted ? 'opacity-100' : 'opacity-0'}`} />
+          <div className={`relative w-full sm:max-w-lg bg-white rounded-t-[28px] sm:rounded-[28px] shadow-[0_30px_90px_rgba(0,0,0,0.28)] p-6 sm:p-7 transition-all duration-300 ${filterMounted ? 'opacity-100 translate-y-0 sm:scale-100' : 'opacity-0 translate-y-8 sm:translate-y-2 sm:scale-95'}`}>
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#cf97fc] to-[#8b5cf6] flex items-center justify-center shadow-[0_6px_18px_rgba(139,92,246,0.28)]"><SlidersHorizontal className="w-4 h-4 text-white" /></div>
+                <div>
+                  <h3 className="text-[17px] font-bold text-[#0a0a0a] leading-tight" style={{ fontFamily: 'var(--font-heading)' }}>Filter</h3>
+                  <p className="text-[11.5px] text-[#999]">Velg kanal og tidsperiode</p>
+                </div>
+              </div>
+              <button onClick={() => setShowFilter(false)} className="w-8 h-8 rounded-full hover:bg-[#f4f0fb] text-[#999] hover:text-[#8b5cf6] flex items-center justify-center transition-colors"><X className="w-4 h-4" /></button>
+            </div>
+
+            <p className="text-[10.5px] uppercase tracking-[0.08em] text-[#b3b3b3] font-bold mb-2.5">Kanal</p>
+            <div className="grid grid-cols-1 gap-2 mb-6">
+              <ChannelCard active={draftChannel === 'both'} onClick={() => setDraftChannel('both')} icon={Layers} iconBg="linear-gradient(135deg,#cf97fc,#8b5cf6)" title="Begge kanaler" desc="Google + Meta samlet, inkl. blandet ROAS" />
+              <ChannelCard active={draftChannel === 'google'} onClick={() => setDraftChannel('google')} badge="G" iconBg="#4285F4" title="Kun Google Ads" desc="Søkekampanjer · live via Composio" />
+              <ChannelCard active={draftChannel === 'meta'} onClick={() => setDraftChannel('meta')} badge="f" iconBg="#1877F2" title="Kun Meta" desc="Facebook & Instagram · live" />
+            </div>
+
+            <p className="text-[10.5px] uppercase tracking-[0.08em] text-[#b3b3b3] font-bold mb-2.5">Tidsperiode</p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-6">
+              {GOOGLE_PERIODS.map((p) => (
+                <button key={p.v} onClick={() => setDraftPeriod(p.v)} className={`h-11 rounded-xl text-[13px] font-semibold transition-all active:scale-[0.97] ${draftPeriod === p.v ? 'bg-[#0a0a0a] text-white shadow-[0_8px_22px_rgba(0,0,0,0.18)]' : 'bg-[#f6f4f1] text-[#555] hover:bg-[#efeae3]'}`}>{p.l}</button>
+              ))}
+            </div>
+
+            <div className="border-t border-[#f0ece6] pt-4 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-[12.5px] font-semibold text-[#444]">Importer Google Ads-CSV</p>
+                <p className="text-[11px] text-[#aaa]">Manuelt alternativ om live ikke er tilkoblet</p>
+              </div>
+              <button onClick={() => { setShowFilter(false); fileRef.current && fileRef.current.click(); }} disabled={importing} className="h-9 px-4 rounded-full bg-[#f4f0fb] text-[#8b5cf6] text-[12px] font-semibold inline-flex items-center gap-1.5 hover:bg-[#ece3fb] disabled:opacity-40 transition-colors whitespace-nowrap">
+                {importing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />} Last opp
+              </button>
+            </div>
+
+            <div className="flex items-center gap-2 mt-6">
+              <button onClick={resetFilter} className="h-12 px-5 rounded-full bg-white ring-1 ring-[#ececec] text-[#777] text-[13px] font-semibold hover:ring-[#dcdcdc] hover:text-[#555] transition-all">Nullstill</button>
+              <button onClick={applyFilter} className="flex-1 h-12 rounded-full bg-gradient-to-r from-[#8b5cf6] to-[#cf97fc] text-white text-[14px] font-bold shadow-[0_12px_30px_rgba(139,92,246,0.32)] active:scale-[0.98] transition-transform inline-flex items-center justify-center gap-2"><Check className="w-4 h-4" /> Bruk filter</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
+  );
+}
+
+function SplitBar({ google = 0, meta = 0 }) {
+  const tot = (google || 0) + (meta || 0);
+  if (tot <= 0) return null;
+  const g = Math.round((google / tot) * 100);
+  const m = 100 - g;
+  return (
+    <div className="mt-5">
+      <div className="h-2.5 rounded-full overflow-hidden bg-[#eee] flex">
+        <div style={{ width: `${g}%`, background: '#4285F4' }} className="transition-all duration-500" />
+        <div style={{ width: `${m}%`, background: '#1877F2' }} className="transition-all duration-500" />
+      </div>
+      <div className="flex justify-between mt-2 text-[11.5px] text-[#888]">
+        <span className="inline-flex items-center gap-1.5 font-medium"><span className="w-2 h-2 rounded-full" style={{ background: '#4285F4' }} /> Google {g}%</span>
+        <span className="inline-flex items-center gap-1.5 font-medium">Meta {m}% <span className="w-2 h-2 rounded-full" style={{ background: '#1877F2' }} /></span>
+      </div>
+    </div>
+  );
+}
+
+function ChannelCard({ active, onClick, icon: Icon, badge, iconBg, title, desc }) {
+  return (
+    <button onClick={onClick} className={`relative w-full text-left rounded-2xl p-3.5 flex items-center gap-3 transition-all active:scale-[0.99] ${active ? 'bg-[#faf7ff] ring-2 ring-[#8b5cf6] shadow-[0_8px_24px_rgba(139,92,246,0.13)]' : 'bg-white ring-1 ring-[#ececec] hover:ring-[#dcdcdc]'}`}>
+      <span className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-[15px] shrink-0" style={{ background: iconBg }}>
+        {Icon ? <Icon className="w-5 h-5" /> : badge}
+      </span>
+      <span className="flex-1 min-w-0">
+        <span className="block text-[14px] font-bold text-[#0a0a0a]">{title}</span>
+        <span className="block text-[11.5px] text-[#999] truncate">{desc}</span>
+      </span>
+      <span className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 transition-all ${active ? 'bg-[#8b5cf6] scale-100' : 'bg-[#f0f0f0] scale-90'}`}>
+        {active && <Check className="w-3 h-3 text-white" />}
+      </span>
+    </button>
   );
 }
 
@@ -362,7 +482,7 @@ function CampaignTable({ eco }) {
 
 function Kpi({ icon: Icon, label, value, sub, accent = 'text-[#1f1f1f]', highlight }) {
   return (
-    <div className={`bg-white rounded-xl p-4 shadow-[0_2px_10px_rgba(0,0,0,0.03)] ${highlight ? 'ring-1 ring-[#e8d9fb]' : ''}`}>
+    <div className={`bg-white rounded-xl p-4 shadow-[0_2px_10px_rgba(0,0,0,0.03)] hover:shadow-[0_10px_28px_rgba(0,0,0,0.07)] hover:-translate-y-0.5 transition-all duration-200 ${highlight ? 'ring-1 ring-[#e8d9fb]' : ''}`}>
       <p className="text-[11px] uppercase tracking-[0.06em] text-[#aaa] font-semibold flex items-center gap-1.5"><Icon className="w-3.5 h-3.5 text-[#cf97fc]" /> {label}</p>
       <p className={`text-[22px] font-bold mt-1 ${accent}`} style={{ fontFamily: 'var(--font-heading)' }}>{value}</p>
       {sub && <p className="text-[11.5px] text-[#999] mt-0.5">{sub}</p>}
