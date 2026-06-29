@@ -8,7 +8,7 @@ import { isBot, buildEvent, ensureAnalyticsIndexes, computeAnalytics, computeLea
 import { deriveChannel, serializeForLLM, computeWebVitals, detectAnomalies, computeLive, computeAdsEconomics, computeMetaEconomics, combineAdsEconomics } from '@/lib/analytics-server';
 import { parseGoogleAdsCsv } from '@/lib/adsImport';
 import { sendMetaCapiEvent, metaCapiConfigured } from '@/lib/meta-capi';
-import { fetchMetaInsights, fetchMetaAccount, metaAdsConfigured } from '@/lib/meta-ads';
+import { fetchMetaInsights, fetchMetaAccount, metaAdsConfigured, getCachedMetaReport, META_PERIODS } from '@/lib/meta-ads';
 import { fetchPages, fetchLeadForms, fetchFormLeads, mapLeadFields, metaLeadAdsConfigured, fetchSingleLead, fetchFormName, fetchPageToken } from '@/lib/meta-leadads';
 import { composioConfigured, createConnectLink, getConnectionStatus, runCampaignReport, defaultCustomerId, getCachedReport, GOOGLE_PERIODS } from '@/lib/composio-google-ads';
 import { chatLLM } from '@/lib/llm';
@@ -1425,59 +1425,67 @@ async function handleRoute(request, { params }) {
       const importId = searchParams.get('importId');
       const googlePeriod = GOOGLE_PERIODS.includes(searchParams.get('googlePeriod')) ? searchParams.get('googlePeriod') : 'last_30d';
       const googleRefresh = ['1', 'true'].includes(String(searchParams.get('googleRefresh')));
+      const metaPeriod = META_PERIODS.includes(searchParams.get('metaPeriod')) ? searchParams.get('metaPeriod') : 'last_30d';
+      const metaRefresh = ['1', 'true'].includes(String(searchParams.get('metaRefresh')));
 
       // imports-liste = kun manuelle CSV-opplastinger (skjul live Composio-snapshots).
-      const imports = await db.collection('ad_imports')
+      const importsP = db.collection('ad_imports')
         .find({ source: { $ne: 'google_ads_composio' } }, { projection: { _id: 0, id: 1, label: 1, periodFrom: 1, periodTo: 1, importedAt: 1, currency: 1, 'totals.cost': 1 } })
         .sort({ importedAt: -1 }).limit(50).toArray();
 
       // --- Google: foretrekk LIVE (nær-sanntid, cachet) når Composio er tilkoblet ---
-      let googleEco = null;
-      let googleLive = false, googleConnected = false, googleFetchedAt = null, googleStale = false, googleError = null;
-      let googleSource = null;
-      if (composioConfigured()) {
-        try {
-          const r = await getCachedReport(db, googlePeriod, { force: googleRefresh });
-          googleConnected = true; googleLive = true; googleFetchedAt = r.fetchedAt; googleStale = !!r.stale; googleError = r.error || null;
-          const rep = r.report;
-          const transImp = {
-            id: 'google-live',
-            label: `Google Ads (live) · ${rep.from} – ${rep.to}`,
-            currency: 'NOK',
-            periodFrom: new Date(rep.from).toISOString(),
-            periodTo: new Date(`${rep.to}T23:59:59.999Z`).toISOString(),
-            totals: rep.totals,
-            campaigns: rep.campaigns,
-            importedAt: r.fetchedAt,
-            source: 'google_ads_composio_live',
-          };
-          googleEco = await computeAdsEconomics(db, transImp);
-          googleSource = 'google_ads_composio_live';
-        } catch (e) {
-          // ikke tilkoblet ennå (eller feil) → fall tilbake til evt. CSV-import
-          googleConnected = false; googleLive = false;
+      const googleTask = (async () => {
+        let eco = null, live = false, connected = false, fetchedAt = null, stale = false, error = null, source = null;
+        if (composioConfigured()) {
+          try {
+            const r = await getCachedReport(db, googlePeriod, { force: googleRefresh });
+            connected = true; live = true; fetchedAt = r.fetchedAt; stale = !!r.stale; error = r.error || null;
+            const rep = r.report;
+            const transImp = {
+              id: 'google-live', label: `Google Ads (live) · ${rep.from} – ${rep.to}`, currency: 'NOK',
+              periodFrom: new Date(rep.from).toISOString(), periodTo: new Date(`${rep.to}T23:59:59.999Z`).toISOString(),
+              totals: rep.totals, campaigns: rep.campaigns, importedAt: r.fetchedAt, source: 'google_ads_composio_live',
+            };
+            eco = await computeAdsEconomics(db, transImp); source = 'google_ads_composio_live';
+          } catch (e) { connected = false; live = false; }
         }
-      }
-      if (!googleEco) {
-        const query = importId ? { id: importId } : { source: { $ne: 'google_ads_composio' } };
-        const imp = await db.collection('ad_imports').find(query, { projection: { _id: 0 } }).sort({ importedAt: -1 }).limit(1).next();
-        if (imp) { googleEco = await computeAdsEconomics(db, imp); googleSource = imp.source || 'csv'; }
-      }
+        if (!eco) {
+          const query = importId ? { id: importId } : { source: { $ne: 'google_ads_composio' } };
+          const imp = await db.collection('ad_imports').find(query, { projection: { _id: 0 } }).sort({ importedAt: -1 }).limit(1).next();
+          if (imp) { eco = await computeAdsEconomics(db, imp); source = imp.source || 'csv'; }
+        }
+        return { eco, live, connected, fetchedAt, stale, error, source };
+      })();
 
-      // Meta: bruk siste lagrede snapshot (synkes eksplisitt via /admin/ads/meta-sync) — raskt, ingen live-kall.
-      let metaEco = null;
-      const metaSnap = await db.collection('meta_imports').find({}, { projection: { _id: 0 } }).sort({ importedAt: -1 }).limit(1).next();
-      if (metaSnap) metaEco = await computeMetaEconomics(db, metaSnap);
+      // --- Meta: LIVE (nær-sanntid, cachet) via Marketing API; fall tilbake til lagret snapshot ---
+      const metaTask = (async () => {
+        let eco = null, live = false, fetchedAt = null, stale = false, error = null;
+        if (metaAdsConfigured()) {
+          try {
+            const r = await getCachedMetaReport(db, metaPeriod, { force: metaRefresh });
+            live = true; fetchedAt = r.fetchedAt; stale = !!r.stale; error = r.error || null;
+            eco = await computeMetaEconomics(db, r.snap);
+          } catch (e) { live = false; }
+        }
+        if (!eco) {
+          const metaSnap = await db.collection('meta_imports').find({}, { projection: { _id: 0 } }).sort({ importedAt: -1 }).limit(1).next();
+          if (metaSnap) eco = await computeMetaEconomics(db, metaSnap);
+        }
+        return { eco, live, fetchedAt, stale, error };
+      })();
 
+      const [imports, g, m] = await Promise.all([importsP, googleTask, metaTask]);
+      const googleEco = g.eco, metaEco = m.eco;
       const combined = (googleEco || metaEco) ? combineAdsEconomics(googleEco, metaEco) : null;
       const empty = !googleEco && !metaEco;
       return cors(NextResponse.json({
         ok: true, empty,
         economics: googleEco, meta: metaEco, combined,
         metaConfigured: metaAdsConfigured(),
+        metaLive: m.live, metaPeriod, metaFetchedAt: m.fetchedAt, metaStale: m.stale, metaError: m.error,
         googleConfigured: composioConfigured(),
-        googleConnected, googleLive, googlePeriod, googleFetchedAt, googleStale, googleError,
-        googleSource,
+        googleConnected: g.connected, googleLive: g.live, googlePeriod, googleFetchedAt: g.fetchedAt, googleStale: g.stale, googleError: g.error,
+        googleSource: g.source,
         imports,
       }));
     }

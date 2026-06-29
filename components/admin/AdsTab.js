@@ -46,8 +46,10 @@ export default function AdsTab({ apiKey }) {
   const [importing, setImporting] = useState(false);
   const [importMsg, setImportMsg] = useState('');
   const [showHelp, setShowHelp] = useState(false);
-  const [metaSyncing, setMetaSyncing] = useState(false);
-  const [metaPreset, setMetaPreset] = useState('last_30d');
+  // Meta (nær-sanntid, auto)
+  const [metaPeriod, setMetaPeriod] = useState('last_30d');
+  const [metaRefreshing, setMetaRefreshing] = useState(false);
+  const metaPeriodRef = useRef('last_30d');
   // Google Ads via Composio (nær-sanntid, auto)
   const [googleConnecting, setGoogleConnecting] = useState(false);
   const [googlePeriod, setGooglePeriod] = useState('last_30d');
@@ -56,13 +58,17 @@ export default function AdsTab({ apiKey }) {
   const fileRef = useRef(null);
 
   const load = useCallback(async (opts = {}) => {
-    const { importId, period, refresh } = opts;
+    const { importId } = opts;
+    const gp = opts.googlePeriod || googlePeriodRef.current;
+    const mp = opts.metaPeriod || metaPeriodRef.current;
     setLoading(true); setErr('');
     try {
       const params = new URLSearchParams({ key: apiKey });
       if (importId) params.set('importId', importId);
-      params.set('googlePeriod', period || googlePeriodRef.current);
-      if (refresh) params.set('googleRefresh', '1');
+      params.set('googlePeriod', gp);
+      params.set('metaPeriod', mp);
+      if (opts.googleRefresh) params.set('googleRefresh', '1');
+      if (opts.metaRefresh) params.set('metaRefresh', '1');
       const res = await fetch(`/api/admin/ads/overview?${params.toString()}`);
       if (!res.ok) { setErr('Kunne ikke laste annonsedata'); setLoading(false); return; }
       const j = await res.json();
@@ -79,7 +85,7 @@ export default function AdsTab({ apiKey }) {
     const sp = new URLSearchParams(window.location.search);
     if (sp.get('googleads') === 'connected' || sp.get('status') === 'success') {
       setImportMsg('Google Ads tilkoblet ✓ — henter live data …');
-      load({ refresh: true });
+      load({ googleRefresh: true });
       sp.delete('googleads'); sp.delete('status'); sp.delete('connected_account_id');
       const url = window.location.pathname + (sp.toString() ? `?${sp}` : '');
       window.history.replaceState({}, '', url);
@@ -100,8 +106,10 @@ export default function AdsTab({ apiKey }) {
     } catch (e) { setErr('Kunne ikke starte Google-tilkobling'); setGoogleConnecting(false); }
   };
 
-  const changeGooglePeriod = (v) => { setGooglePeriod(v); googlePeriodRef.current = v; load({ period: v }); };
-  const refreshGoogle = async () => { setGoogleRefreshing(true); setImportMsg(''); await load({ refresh: true }); setGoogleRefreshing(false); };
+  const changeGooglePeriod = (v) => { setGooglePeriod(v); googlePeriodRef.current = v; load({ googlePeriod: v }); };
+  const refreshGoogle = async () => { setGoogleRefreshing(true); setImportMsg(''); await load({ googleRefresh: true }); setGoogleRefreshing(false); };
+  const changeMetaPeriod = (v) => { setMetaPeriod(v); metaPeriodRef.current = v; load({ metaPeriod: v }); };
+  const refreshMeta = async () => { setMetaRefreshing(true); setImportMsg(''); await load({ metaRefresh: true }); setMetaRefreshing(false); };
 
   const doImport = async (csv) => {
     if (!csv || !csv.trim()) return;
@@ -136,20 +144,6 @@ export default function AdsTab({ apiKey }) {
       });
       await load();
     } catch (e) {}
-  };
-
-  const doMetaSync = async () => {
-    setMetaSyncing(true); setErr(''); setImportMsg('');
-    try {
-      const res = await fetch(`/api/admin/ads/meta-sync?key=${encodeURIComponent(apiKey)}`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ datePreset: metaPreset }),
-      });
-      const j = await res.json();
-      if (!res.ok || !j.ok) { setErr(j.error || 'Meta-synk feilet'); }
-      else { setImportMsg(`Meta synket: ${j.parsedCampaigns} kampanjer`); await load(); }
-    } catch (e) { setErr('Kunne ikke synke Meta'); }
-    finally { setMetaSyncing(false); }
   };
 
   const google = data && data.economics;
@@ -188,11 +182,11 @@ export default function AdsTab({ apiKey }) {
           {/* Meta-synk */}
           {data && data.metaConfigured && (
             <div className="flex items-center gap-1.5">
-              <select value={metaPreset} onChange={(e) => setMetaPreset(e.target.value)} className="h-9 rounded-full bg-white text-[12px] font-semibold text-[#555] px-3 shadow-[0_2px_10px_rgba(0,0,0,0.03)] outline-none focus:ring-2 focus:ring-[#1877F2]/30 cursor-pointer">
-                {PRESETS.map((p) => <option key={p.v} value={p.v}>{p.l}</option>)}
+              <select value={metaPeriod} onChange={(e) => changeMetaPeriod(e.target.value)} className="h-9 rounded-full bg-white text-[12px] font-semibold text-[#555] px-3 shadow-[0_2px_10px_rgba(0,0,0,0.03)] outline-none focus:ring-2 focus:ring-[#1877F2]/30 cursor-pointer">
+                {GOOGLE_PERIODS.map((p) => <option key={p.v} value={p.v}>{p.l}</option>)}
               </select>
-              <button onClick={doMetaSync} disabled={metaSyncing} className="h-9 px-4 rounded-full text-white text-[12px] font-semibold flex items-center gap-2 disabled:opacity-40 active:scale-[0.97] transition-transform" style={{ background: '#1877F2' }}>
-                {metaSyncing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />} Synk Meta-forbruk
+              <button onClick={refreshMeta} disabled={metaRefreshing || loading} title="Oppdater Meta-data nå" className="h-9 w-9 rounded-full bg-white text-[#1877F2] flex items-center justify-center shadow-[0_2px_10px_rgba(0,0,0,0.03)] disabled:opacity-40 active:scale-[0.95] transition-transform">
+                <RefreshCw className={`w-4 h-4 ${metaRefreshing ? 'animate-spin' : ''}`} />
               </button>
             </div>
           )}
@@ -206,7 +200,7 @@ export default function AdsTab({ apiKey }) {
       {showHelp && (
         <div className="mb-4 bg-[#f4f0fb] rounded-2xl p-4 text-[13px] text-[#444] leading-relaxed">
           <p className="font-semibold text-[#0a0a0a] mb-1">Multi-kanal annonseøkonomi</p>
-          <p><b>Google (live):</b> trykk «Koble til Google Ads» én gang og logg inn med Google-kontoen. Deretter hentes kostnad/klikk/visninger <b>automatisk</b> (nær-sanntid, hentes på nytt hvert ~10. minutt). Velg periode i nedtrekksmenyen (inkl. «Hele tiden») eller trykk oppdater-ikonet for ferske tall nå. <b>Meta:</b> trykk «Synk Meta-forbruk». Vi kobler kostnaden mot leads og vunne kontrakter for å regne ut CPL, CPA og ROAS — per kanal og <b>blandet (Google + Meta)</b>.</p>
+          <p><b>Google (live):</b> trykk «Koble til Google Ads» én gang og logg inn med Google-kontoen. Deretter hentes kostnad/klikk/visninger <b>automatisk</b> (nær-sanntid, hentes på nytt hvert ~10. minutt). <b>Meta:</b> hentes også <b>automatisk</b> live fra Facebook/Instagram. For begge: velg periode i nedtrekksmenyen (inkl. «Hele tiden») eller trykk oppdater-ikonet ↻ for ferske tall nå. Vi kobler kostnaden mot leads og vunne kontrakter for å regne ut CPL, CPA og ROAS — per kanal og <b>blandet (Google + Meta)</b>.</p>
           <p className="mt-1.5 text-[12px] text-[#777]">ROAS/CPA bruker «Vunnet»-verdien fra closed-loop. Meta-leads gjenkjennes på <code>fbclid</code> / kilde (facebook/instagram). «Google Ads-CSV» finnes fortsatt som manuelt alternativ.</p>
         </div>
       )}
@@ -216,7 +210,7 @@ export default function AdsTab({ apiKey }) {
       {loading ? (
         <div className="py-20 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-[#cf97fc]" /></div>
       ) : (data && data.empty) ? (
-        <EmptyState onPick={() => fileRef.current && fileRef.current.click()} onMeta={data.metaConfigured ? doMetaSync : null} metaSyncing={metaSyncing} />
+        <EmptyState onPick={() => fileRef.current && fileRef.current.click()} onMeta={data.metaConfigured ? refreshMeta : null} metaSyncing={metaRefreshing} />
       ) : (
         <>
           {/* Blandet total (Google + Meta) */}
@@ -277,7 +271,16 @@ export default function AdsTab({ apiKey }) {
               right={(
                 <div className="flex items-center gap-2 text-[12px] text-[#888]">
                   {meta.accountStatus === 3 && <span className="inline-flex items-center gap-1 text-amber-600 font-semibold" title="Annonsekontoen har uoppgjort saldo"><AlertCircle className="w-3.5 h-3.5" /> Uoppgjort saldo</span>}
-                  {meta.syncedAt && <span>Sist synket: {new Date(meta.syncedAt).toLocaleString('nb-NO', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>}
+                  {data.metaLive && (
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="relative flex h-2 w-2">
+                        <span className={`absolute inline-flex h-full w-full rounded-full ${data.metaStale ? 'bg-amber-400' : 'bg-emerald-400'} opacity-60 animate-ping`}></span>
+                        <span className={`relative inline-flex h-2 w-2 rounded-full ${data.metaStale ? 'bg-amber-500' : 'bg-emerald-500'}`}></span>
+                      </span>
+                      <span className="font-semibold text-[#1877F2]">Live</span>
+                      <span>· oppdatert {minsAgo(data.metaFetchedAt) || 'nylig'}</span>
+                    </span>
+                  )}
                 </div>
               )}
             />
@@ -286,12 +289,12 @@ export default function AdsTab({ apiKey }) {
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold" style={{ background: '#1877F2' }}>f</div>
                 <div>
-                  <p className="text-[14px] font-bold text-[#0a0a0a]">Meta-forbruk ikke synket ennå</p>
-                  <p className="text-[12.5px] text-[#777]">Hent annonseforbruk fra Facebook/Instagram for ekte multi-kanal CAC.</p>
+                  <p className="text-[14px] font-bold text-[#0a0a0a]">Kunne ikke hente Meta-forbruk</p>
+                  <p className="text-[12.5px] text-[#777]">Prøv igjen, eller sjekk at Meta-tokenet er gyldig.</p>
                 </div>
               </div>
-              <button onClick={doMetaSync} disabled={metaSyncing} className="h-10 px-5 rounded-full text-white text-[13px] font-semibold inline-flex items-center gap-2 disabled:opacity-40 active:scale-[0.97] transition-transform" style={{ background: '#1877F2' }}>
-                {metaSyncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />} Synk nå
+              <button onClick={refreshMeta} disabled={metaRefreshing} className="h-10 px-5 rounded-full text-white text-[13px] font-semibold inline-flex items-center gap-2 disabled:opacity-40 active:scale-[0.97] transition-transform" style={{ background: '#1877F2' }}>
+                {metaRefreshing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />} Prøv igjen
               </button>
             </div>
           ))}
@@ -395,7 +398,7 @@ function EmptyState({ onPick, onMeta, metaSyncing }) {
       <p className="text-[14px] text-[#666] mt-2 max-w-md mx-auto">Last opp Google Ads-CSV eller synk Meta-forbruk, så regner vi ut CPC, CPL, CAC og ROAS — koblet mot dine ekte leads og vunne kontrakter.</p>
       <div className="mt-5 flex items-center justify-center gap-2 flex-wrap">
         <button onClick={onPick} className="h-11 px-6 rounded-full bg-[#0a0a0a] text-white text-[13px] font-semibold inline-flex items-center gap-2 active:scale-[0.97] transition-transform"><Upload className="w-4 h-4" /> Importer Google-CSV</button>
-        {onMeta && <button onClick={onMeta} disabled={metaSyncing} className="h-11 px-6 rounded-full text-white text-[13px] font-semibold inline-flex items-center gap-2 disabled:opacity-40 active:scale-[0.97] transition-transform" style={{ background: '#1877F2' }}>{metaSyncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />} Synk Meta-forbruk</button>}
+        {onMeta && <button onClick={onMeta} disabled={metaSyncing} className="h-11 px-6 rounded-full text-white text-[13px] font-semibold inline-flex items-center gap-2 disabled:opacity-40 active:scale-[0.97] transition-transform" style={{ background: '#1877F2' }}>{metaSyncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />} Hent Meta-forbruk</button>}
       </div>
     </div>
   );
