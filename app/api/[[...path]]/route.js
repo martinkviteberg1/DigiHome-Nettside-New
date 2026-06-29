@@ -1689,6 +1689,47 @@ async function handleRoute(request, { params }) {
       return new NextResponse('EVENT_RECEIVED', { status: 200, headers: { 'Content-Type': 'text/plain' } });
     }
 
+    // --- Admin: registrer leadgen-webhook programmatisk (app- + side-abonnement) ---
+    if (route === '/admin/meta/setup-webhook' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const appId = process.env.META_APP_ID || '';
+      const appSecret = process.env.META_APP_SECRET || '';
+      const verify = process.env.META_WEBHOOK_VERIFY_TOKEN || '';
+      if (!appId || !appSecret || !verify) return cors(NextResponse.json({ ok: false, error: 'Mangler META_APP_ID / META_APP_SECRET / META_WEBHOOK_VERIFY_TOKEN' }, { status: 400 }));
+      let body = {};
+      try { body = await request.json(); } catch (e) { body = {}; }
+      const base = String(body.callbackBase || process.env.NEXT_PUBLIC_BASE_URL || '').replace(/\/$/, '');
+      const callbackUrl = `${base}/api/webhooks/meta-leadgen`;
+      const VER = process.env.META_API_VERSION || 'v21.0';
+      const appToken = `${appId}|${appSecret}`;
+      const out = { callbackUrl };
+      try {
+        // 1) App-nivå abonnement (object=page, fields=leadgen). Meta verifiserer callback via GET.
+        const subRes = await fetch(`https://graph.facebook.com/${VER}/${appId}/subscriptions`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ object: 'page', callback_url: callbackUrl, fields: 'leadgen', verify_token: verify, access_token: appToken }),
+        });
+        const subJ = await subRes.json().catch(() => ({}));
+        out.appSubscription = { ok: subRes.ok && subJ.success !== false, response: subJ };
+        // 2) Side-abonnement (subscribed_apps med leadgen) for hver tilgjengelig side.
+        const pages = await fetchPages();
+        out.pages = [];
+        for (const p of pages) {
+          try {
+            const r = await fetch(`https://graph.facebook.com/${VER}/${p.id}/subscribed_apps`, {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ subscribed_fields: 'leadgen', access_token: p.token }),
+            });
+            const j = await r.json().catch(() => ({}));
+            out.pages.push({ page: p.name, id: p.id, ok: r.ok && j.success !== false, response: j });
+          } catch (e) { out.pages.push({ page: p.name, id: p.id, ok: false, error: e.message }); }
+        }
+        return cors(NextResponse.json({ ok: out.appSubscription.ok, ...out }));
+      } catch (e) {
+        return cors(NextResponse.json({ ok: false, error: e.message || 'Webhook-oppsett feilet', ...out }, { status: 502 }));
+      }
+    }
+
     // --- Admin: abonner Facebook-siden på leadgen-webhook (subscribed_apps) -
     if (route === '/admin/meta/subscribe-leadgen' && method === 'POST') {
       if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
