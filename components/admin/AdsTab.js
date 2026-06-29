@@ -241,7 +241,7 @@ export default function AdsTab({ apiKey }) {
       {err && <div className="mb-4 bg-rose-50 text-rose-600 rounded-xl px-4 py-3 text-[13px] flex items-center gap-2"><AlertCircle className="w-4 h-4" /> {err}</div>}
 
       {view === 'creatives' ? (
-        <CreativesGallery data={creatives} loading={loadingCre} err={creErr} channel={channel} onRetry={() => loadCreatives(true)} />
+        <CreativesGallery data={creatives} loading={loadingCre} err={creErr} channel={channel} apiKey={apiKey} onRetry={() => loadCreatives(true)} />
       ) : loading ? (
         <div className="py-20 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-[#0a0a0a]" /></div>
       ) : (data && data.empty) ? (
@@ -680,6 +680,78 @@ function proxiedImg(url) {
   return `/api/admin/ads/img?u=${encodeURIComponent(url)}`;
 }
 
+// Native render-dimensjoner fra Metas preview-iframe (px) per format.
+// Liten høyde-buffer for å unngå interne scrollbarer.
+const META_PREVIEW_DIMS = {
+  MOBILE_FEED_STANDARD: { w: 335, h: 478 },
+  INSTAGRAM_STANDARD: { w: 320, h: 540 },
+  INSTAGRAM_STORY: { w: 320, h: 580 },
+};
+
+// Pixel-perfekt, responsiv forhåndsvisning av en faktisk Meta-annonse.
+// iframen rendres i native bredde og skaleres for å fylle kortet (crisp, ingen upscale).
+function MetaAdPreview({ ad, apiKey, format, index = 0 }) {
+  const wrapRef = useRef(null);
+  const [scale, setScale] = useState(1);
+  const [loaded, setLoaded] = useState(false);
+  const dims = META_PREVIEW_DIMS[format] || META_PREVIEW_DIMS.MOBILE_FEED_STANDARD;
+
+  useEffect(() => { setLoaded(false); }, [format]);
+
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const update = () => { const w = el.clientWidth; if (w > 0) setScale(Math.min(w / dims.w, 1)); };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [dims.w]);
+
+  const src = `/api/admin/ads/preview?id=${encodeURIComponent(ad.id)}&format=${format}&key=${encodeURIComponent(apiKey || '')}`;
+  const scaledH = Math.round(dims.h * scale);
+
+  return (
+    <div
+      className="dh-fade-up group bg-white rounded-2xl ring-1 ring-[#ececec] shadow-[0_2px_14px_rgba(0,0,0,0.04)] overflow-hidden hover:shadow-[0_20px_48px_rgba(0,0,0,0.11)] hover:-translate-y-1 transition-all duration-300 flex flex-col"
+      style={{ animationDelay: `${Math.min(index * 55, 440)}ms` }}
+    >
+      <div className="relative bg-gradient-to-b from-[#f7f6f4] to-[#eeedef] px-4 pt-4 pb-5 sm:px-5 sm:pt-5">
+        <div className="absolute top-3 left-3 z-20">
+          <span className="inline-flex items-center justify-center w-6 h-6 rounded-md text-white text-[12px] font-bold shadow-sm" style={{ background: '#1877F2' }}>f</span>
+        </div>
+        <div className="absolute top-3 right-3 z-20">{adStatusBadge(ad.status)}</div>
+        <div
+          ref={wrapRef}
+          className="relative mx-auto w-full overflow-hidden rounded-xl bg-white shadow-[0_10px_30px_rgba(0,0,0,0.10)] ring-1 ring-black/[0.04]"
+          style={{ maxWidth: dims.w, height: scaledH || dims.h }}
+        >
+          {!loaded && <div className="absolute inset-0 z-10 shimmer" aria-hidden="true" />}
+          <iframe
+            key={`${ad.id}-${format}`}
+            src={src}
+            title={ad.name || 'Meta-annonse'}
+            loading="lazy"
+            referrerPolicy="no-referrer"
+            scrolling="no"
+            onLoad={() => setLoaded(true)}
+            className={`absolute top-0 left-0 border-0 transition-opacity duration-500 ${loaded ? 'opacity-100' : 'opacity-0'}`}
+            style={{ width: dims.w, height: dims.h, transform: `scale(${scale})`, transformOrigin: 'top left' }}
+          />
+        </div>
+      </div>
+      <div className="p-4 border-t border-[#f3f3f3] flex flex-col flex-1">
+        <p className="text-[10.5px] text-[#aaa] truncate mb-0.5">{ad.campaign}{ad.adset ? ` · ${ad.adset}` : ''}</p>
+        <p className="text-[13px] font-bold text-[#0a0a0a] leading-snug line-clamp-1">{ad.title || ad.name || 'Annonse'}</p>
+        <div className="mt-auto pt-3 flex items-center justify-between gap-2">
+          {ad.cta ? <span className="text-[11px] font-semibold text-[#0a0a0a] bg-[#f4f0fb] px-2.5 py-1 rounded-full">{ctaLabel(ad.cta)}</span> : <span />}
+          {ad.link && <a href={ad.link} target="_blank" rel="noopener noreferrer" className="text-[11.5px] font-semibold text-[#8b5cf6] hover:underline inline-flex items-center gap-1 whitespace-nowrap">Åpne <ExternalLink className="w-3 h-3" /></a>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function MetaAdCard({ ad }) {
   const [imgErr, setImgErr] = useState(false);
   return (
@@ -741,8 +813,32 @@ function GoogleAdCard({ ad }) {
   );
 }
 
-function CreativesGallery({ data, loading, err, channel, onRetry }) {
-  if (loading) return <div className="py-20 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-[#0a0a0a]" /></div>;
+const META_FORMAT_TABS = [
+  { v: 'MOBILE_FEED_STANDARD', l: 'Feed' },
+  { v: 'INSTAGRAM_STANDARD', l: 'Instagram' },
+  { v: 'INSTAGRAM_STORY', l: 'Story' },
+];
+
+function GallerySkeleton() {
+  return (
+    <div>
+      <div className="h-5 w-44 rounded-md shimmer mb-4" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="bg-white rounded-2xl ring-1 ring-[#ececec] overflow-hidden shadow-[0_2px_14px_rgba(0,0,0,0.04)]">
+            <div className="p-5 bg-gradient-to-b from-[#f7f6f4] to-[#eeedef]"><div className="mx-auto rounded-xl shimmer" style={{ maxWidth: 320, height: 360 }} /></div>
+            <div className="p-4 space-y-2.5"><div className="h-2.5 w-2/3 rounded shimmer" /><div className="h-3.5 w-1/2 rounded shimmer" /></div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function CreativesGallery({ data, loading, err, channel, apiKey, onRetry }) {
+  const [fmt, setFmt] = useState('MOBILE_FEED_STANDARD');
+
+  if (loading) return <GallerySkeleton />;
   if (err) return (
     <div className="py-16 text-center">
       <p className="text-[13px] text-rose-600 mb-3">{err}</p>
@@ -765,27 +861,42 @@ function CreativesGallery({ data, loading, err, channel, onRetry }) {
       )}
 
       {showMeta && mAds.length > 0 && (
-        <section className="mb-8">
-          <div className="flex items-center gap-2 mb-3.5">
-            <span className="inline-flex items-center justify-center w-6 h-6 rounded-md text-white text-[12px] font-bold" style={{ background: '#1877F2' }}>f</span>
-            <h3 className="text-[14px] font-bold text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>Meta-annonser</h3>
-            <span className="text-[11.5px] text-[#aaa]">{mAds.length} stk · Facebook &amp; Instagram</span>
+        <section className="mb-9">
+          <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center justify-center w-6 h-6 rounded-md text-white text-[12px] font-bold" style={{ background: '#1877F2' }}>f</span>
+              <h3 className="text-[14px] font-bold text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>Meta-annonser</h3>
+              <span className="text-[11.5px] text-[#aaa]">{mAds.length} stk · Facebook &amp; Instagram</span>
+            </div>
+            <div className="inline-flex items-center gap-0.5 p-1 rounded-full bg-[#f2f1ef] ring-1 ring-[#e8e6e2]">
+              {META_FORMAT_TABS.map((t) => (
+                <button
+                  key={t.v}
+                  onClick={() => setFmt(t.v)}
+                  className={`h-7 px-3 rounded-full text-[11.5px] font-semibold transition-all ${fmt === t.v ? 'bg-[#0a0a0a] text-white shadow-[0_2px_8px_rgba(0,0,0,0.18)]' : 'text-[#777] hover:text-[#0a0a0a]'}`}
+                >{t.l}</button>
+              ))}
+            </div>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {mAds.map((ad) => <MetaAdCard key={ad.id} ad={ad} />)}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {mAds.map((ad, i) => <MetaAdPreview key={ad.id} ad={ad} apiKey={apiKey} format={fmt} index={i} />)}
           </div>
         </section>
       )}
 
       {showGoogle && gAds.length > 0 && (
         <section className="mb-4">
-          <div className="flex items-center gap-2 mb-3.5">
+          <div className="flex items-center gap-2 mb-4">
             <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-white ring-1 ring-[#e6e6e6] text-[13px] font-bold" style={{ color: '#4285F4' }}>G</span>
             <h3 className="text-[14px] font-bold text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>Google-søkeannonser</h3>
             <span className="text-[11.5px] text-[#aaa]">{gAds.length} stk · Søkenettverk</span>
           </div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {gAds.map((ad) => <GoogleAdCard key={ad.id} ad={ad} />)}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            {gAds.map((ad, i) => (
+              <div key={ad.id} className="dh-fade-up" style={{ animationDelay: `${Math.min(i * 55, 440)}ms` }}>
+                <GoogleAdCard ad={ad} />
+              </div>
+            ))}
           </div>
         </section>
       )}

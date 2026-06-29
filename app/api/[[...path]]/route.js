@@ -8,7 +8,7 @@ import { isBot, buildEvent, ensureAnalyticsIndexes, computeAnalytics, computeLea
 import { deriveChannel, serializeForLLM, computeWebVitals, detectAnomalies, computeLive, computeAdsEconomics, computeMetaEconomics, combineAdsEconomics, computeAdsLeadsSeries } from '@/lib/analytics-server';
 import { parseGoogleAdsCsv } from '@/lib/adsImport';
 import { sendMetaCapiEvent, metaCapiConfigured } from '@/lib/meta-capi';
-import { fetchMetaInsights, fetchMetaAccount, metaAdsConfigured, getCachedMetaReport, META_PERIODS, metaPeriodToRange, getCachedMetaCreatives } from '@/lib/meta-ads';
+import { fetchMetaInsights, fetchMetaAccount, metaAdsConfigured, getCachedMetaReport, META_PERIODS, metaPeriodToRange, getCachedMetaCreatives, fetchMetaPreviewSrc, isValidPreviewFormat } from '@/lib/meta-ads';
 import { fetchPages, fetchLeadForms, fetchFormLeads, mapLeadFields, metaLeadAdsConfigured, fetchSingleLead, fetchFormName, fetchPageToken } from '@/lib/meta-leadads';
 import { composioConfigured, createConnectLink, getConnectionStatus, runCampaignReport, defaultCustomerId, getCachedReport, GOOGLE_PERIODS, getCachedCreatives } from '@/lib/composio-google-ads';
 import { chatLLM } from '@/lib/llm';
@@ -1585,6 +1585,28 @@ async function handleRoute(request, { params }) {
         return new NextResponse('Error', { status: 502 });
       }
     }
+    // --- Meta annonse-forhåndsvisning (pixel-perfekt). Redirecter til Metas
+    //     preview-iframe slik at System User-tokenet ALDRI eksponeres i klienten.
+    //     no-referrer hindrer at admin-nøkkelen lekker til Meta via Referer. ---
+    if (route === '/admin/ads/preview' && method === 'GET') {
+      if (!adminAuthed(request)) return new NextResponse('Uautorisert', { status: 401 });
+      if (!metaAdsConfigured()) return new NextResponse('Meta ikke konfigurert', { status: 400 });
+      const sp = new URL(request.url).searchParams;
+      const id = String(sp.get('id') || '');
+      const format = isValidPreviewFormat(sp.get('format')) ? sp.get('format') : 'MOBILE_FEED_STANDARD';
+      if (!/^\d{3,}$/.test(id)) return new NextResponse('Ugyldig id', { status: 400 });
+      try {
+        const src = await fetchMetaPreviewSrc(id, format);
+        if (!src) return new NextResponse('Ingen forhåndsvisning', { status: 404 });
+        return new NextResponse(null, {
+          status: 302,
+          headers: { Location: src, 'Referrer-Policy': 'no-referrer', 'Cache-Control': 'private, max-age=300' },
+        });
+      } catch (e) {
+        return new NextResponse('Feil ved forhåndsvisning', { status: 502 });
+      }
+    }
+
     if (route === '/admin/ads/google-connect' && method === 'POST') {
       if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       if (!composioConfigured()) return cors(NextResponse.json({ ok: false, error: 'Composio er ikke konfigurert (mangler COMPOSIO_API_KEY)' }, { status: 400 }));
