@@ -94,6 +94,7 @@ export default function AdsTab({ apiKey }) {
       });
       const j = await res.json();
       if (!res.ok || !j.ok) { setErr(j.error || 'Google-synk feilet'); }
+      else if (!j.parsedCampaigns) { setImportMsg('Google tilkoblet ✓ — ingen kampanjer/forbruk i perioden ennå. Når annonsene dine er aktive, dukker kostnaden opp her.'); await load(); }
       else { setImportMsg(`Google synket: ${j.parsedCampaigns} kampanjer`); await load(); }
     } catch (e) { setErr('Kunne ikke synke Google'); }
     finally { setGoogleSyncing(false); }

@@ -1459,7 +1459,7 @@ async function handleRoute(request, { params }) {
         const { redirectUrl, connectionId, authConfigId } = await createConnectLink(db, { callbackUrl });
         return cors(NextResponse.json({ ok: true, redirectUrl, connectionId, authConfigId }));
       } catch (e) {
-        return cors(NextResponse.json({ ok: false, error: e.message || 'Kunne ikke opprette tilkoblingslenke' }, { status: 502 }));
+        return cors(NextResponse.json({ ok: false, error: e.message || 'Kunne ikke opprette tilkoblingslenke' }, { status: 200 }));
       }
     }
 
@@ -1508,7 +1508,7 @@ async function handleRoute(request, { params }) {
         const economics = await computeAdsEconomics(db, imp);
         return cors(NextResponse.json({ ok: true, economics, parsedCampaigns: report.campaigns.length, customerId: report.customerId }, { status: 201 }));
       } catch (e) {
-        return cors(NextResponse.json({ ok: false, error: e.message || 'Google Ads-synk feilet' }, { status: 502 }));
+        return cors(NextResponse.json({ ok: false, error: e.message || 'Google Ads-synk feilet' }, { status: 200 }));
       }
     }
 
