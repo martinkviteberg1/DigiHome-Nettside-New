@@ -3,9 +3,10 @@
 import React, { useState, useEffect } from 'react';
 import {
   Loader2, Lock, BarChart3, Users, CreditCard, FileText, LogOut,
-  Menu, X, ChevronRight, ShieldCheck, Sparkles,
+  Menu, X, ChevronRight, ShieldCheck, Sparkles, MessageSquare,
 } from 'lucide-react';
 import InnsiktDashboard from '@/components/admin/InnsiktDashboard';
+import AgentBridge from '@/components/admin/AgentBridge';
 
 const SESSION_KEY = 'dh_admin_session';
 const LEGACY_KEY = 'dh_admin_key';
@@ -30,12 +31,19 @@ const NAV = [
       { k: 'artikler', l: 'Artikler', icon: FileText, href: '/admin/artikler' },
     ],
   },
+  {
+    group: 'Koordinering',
+    items: [
+      { k: 'bro', l: 'Agent-bro', icon: MessageSquare, desc: 'Meldinger til/fra plattform-prosjektet' },
+    ],
+  },
 ];
 
 const SECTION_TITLES = {
   innsikt: { t: 'Innsikt', s: 'Førsteparts analyse · cookieless · GDPR-trygt' },
   kunder: { t: 'Kunder', s: 'Kommer snart — hentes fra DigiHome-plattformen' },
   abonnementer: { t: 'Abonnementer', s: 'Kommer snart — aktive avtaler & fakturering' },
+  bro: { t: 'Agent-bro', s: 'Delt meldingstråd for koordinering med plattform-prosjektet' },
 };
 
 export default function AdminPage() {
@@ -246,6 +254,7 @@ export default function AdminPage() {
           {section === 'innsikt' && <InnsiktDashboard apiKey={token} />}
           {section === 'kunder' && <ComingSoon icon={Users} title="Kunder" body="Her samler vi all kundeinformasjon fra DigiHome-plattformen — kontrakter, eiendommer, kontaktlogg og status. Vi kobler dette på i neste fase." />}
           {section === 'abonnementer' && <ComingSoon icon={CreditCard} title="Abonnementer" body="Oversikt over aktive avtaler, fakturering og inntekt per kunde — hentet direkte fra app-prosjektet. Kommer i neste fase." />}
+          {section === 'bro' && <AgentBridge apiKey={token} />}
         </div>
       </main>
     </div>

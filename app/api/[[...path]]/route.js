@@ -513,6 +513,17 @@ function adminAuthed(request) {
   } catch (e) { return false; }
 }
 
+// Auth for agent-bro: admin ELLER delt AGENT_BRIDGE_SECRET (header x-bridge-token / ?token=).
+function bridgeAuthed(request) {
+  if (adminAuthed(request)) return true;
+  try {
+    const url = new URL(request.url);
+    const token = url.searchParams.get('token') || request.headers.get('x-bridge-token') || '';
+    const secret = (process.env.AGENT_BRIDGE_SECRET || '').trim();
+    return !!(secret && token === secret);
+  } catch (e) { return false; }
+}
+
 // Re-forward alle leads/tenants som ikke er videresendt (forwarded !== true)
 async function reforwardPending(db) {
   const results = { leads: { tried: 0, ok: 0 }, tenants: { tried: 0, ok: 0 } };
@@ -1951,6 +1962,43 @@ async function handleRoute(request, { params }) {
         }
         return cors(NextResponse.json({ ok: true, mode, summary: run.summary, autoApplied: run.autoApplied, report }));
       } catch (e) { return cors(NextResponse.json({ ok: false, error: e.message }, { status: 200 })); }
+    }
+
+    // ===================================================================
+    // AGENT-BRO: delt postkasse for koordinering mellom markedssiden og
+    // plattform-prosjektet. Auth: admin (?key=) ELLER ?token=AGENT_BRIDGE_SECRET
+    // (header x-bridge-token). Lagres i collection agent_bridge.
+    // ===================================================================
+    if (route === '/agent-bridge' && method === 'GET') {
+      if (!bridgeAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const sp = new URL(request.url).searchParams;
+      const q = {};
+      const thread = (sp.get('thread') || '').trim();
+      if (thread) q.threadId = thread;
+      const since = (sp.get('since') || '').trim();
+      if (since) q.createdAt = { $gt: since };
+      const messages = await db.collection('agent_bridge').find(q, { projection: { _id: 0 } }).sort({ createdAt: 1 }).limit(500).toArray();
+      const threads = await db.collection('agent_bridge').distinct('threadId');
+      return cors(NextResponse.json({ ok: true, messages, threads, count: messages.length }));
+    }
+    if (route === '/agent-bridge' && method === 'POST') {
+      if (!bridgeAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      const from = ['marketing', 'platform'].includes(body.from) ? body.from : 'platform';
+      const type = ['brief', 'status', 'question', 'answer', 'note'].includes(body.type) ? body.type : 'note';
+      const subject = (body.subject || '').toString().slice(0, 200);
+      const text = (body.body || body.message || '').toString().slice(0, 20000);
+      if (!subject && !text) return cors(NextResponse.json({ ok: false, error: 'Mangler subject/body' }, { status: 400 }));
+      const doc = {
+        id: uuidv4(),
+        threadId: (body.threadId || body.thread || 'closed-loop').toString().slice(0, 80),
+        from, type, subject, body: text,
+        data: (body.data && typeof body.data === 'object') ? body.data : null,
+        author: (body.author || '').toString().slice(0, 80) || null,
+        createdAt: new Date().toISOString(),
+      };
+      await db.collection('agent_bridge').insertOne({ ...doc });
+      return cors(NextResponse.json({ ok: true, message: doc }, { status: 201 }));
     }
 
     // --- Admin: Annonser — Google Ads via Composio: synk live kostnad ------
