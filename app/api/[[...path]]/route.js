@@ -54,6 +54,21 @@ function clientIp(request) {
   const xff = request.headers.get('x-forwarded-for') || '';
   return (xff.split(',')[0] || '').trim() || request.headers.get('x-real-ip') || 'unknown';
 }
+// Markedsføringssamtykke fra lett cookie (dh_consent_mkt=1|0) satt av samtykke-banneret.
+// Returnerer true (godtatt), false (eksplisitt avslått) eller null (ukjent/ikke satt).
+function marketingConsentFromRequest(request) {
+  try {
+    const cookie = request.headers.get('cookie') || '';
+    const m = cookie.match(/(?:^|;\s*)dh_consent_mkt=([01])/);
+    if (!m) return null;
+    return m[1] === '1';
+  } catch (e) { return null; }
+}
+// CAPI/offline-konv. skal fyre MED MINDRE bruker eksplisitt avslo markedsføring (=== false).
+// Eldre leads uten lagret samtykke (undefined/null) bevarer dagens oppførsel (fyrer).
+function marketingAllowed(consent) {
+  return consent !== false;
+}
 // Begrenset parallellitet for batch-SOAP (unngå å hamre EDR).
 async function mapLimit(items, limit, fn) {
   const out = [];
@@ -1159,6 +1174,7 @@ async function handleRoute(request, { params }) {
         finn_url: (body.finn_url || '').toString().slice(0, 600),
         source: (body.source || 'nettside').toString().slice(0, 60),
         attribution: sanitizeAttribution(body.attribution),
+        marketingConsent: marketingConsentFromRequest(request),
         status: 'new',
         forwarded: false,
         createdAt: new Date().toISOString(),
@@ -1226,7 +1242,7 @@ async function handleRoute(request, { params }) {
       // Meta Conversions API (server-side Lead). event_id = lead.id → deduplikeres
       // mot nettleser-pixelens Lead-hendelse. Non-fatal: skal aldri velte lead-flyten.
       try {
-        if (metaCapiConfigured()) {
+        if (metaCapiConfigured() && marketingAllowed(lead.marketingConsent)) {
           const att = lead.attribution || {};
           const capi = await sendMetaCapiEvent({
             eventName: 'Lead',
@@ -1272,6 +1288,7 @@ async function handleRoute(request, { params }) {
         lead_type: 'leietaker',
         source: 'nettside',
         attribution: sanitizeAttribution(body.attribution),
+        marketingConsent: marketingConsentFromRequest(request),
         status: 'new',
         forwarded: false,
         createdAt: new Date().toISOString(),
@@ -1326,7 +1343,7 @@ async function handleRoute(request, { params }) {
 
       // Meta Conversions API (server-side Lead for leietaker). event_id = tenant.id.
       try {
-        if (metaCapiConfigured()) {
+        if (metaCapiConfigured() && marketingAllowed(tenant.marketingConsent)) {
           const att = tenant.attribution || {};
           const capi = await sendMetaCapiEvent({
             eventName: 'Lead',
@@ -2222,7 +2239,7 @@ async function handleRoute(request, { params }) {
       // Meta CAPI: admin markerer vunnet → server-side Purchase (samme event_id som
       // webhook-veien → deduplikeres). Closed-loop også for manuelle utfall.
       try {
-        if (status === 'won' && metaCapiConfigured()) {
+        if (status === 'won' && metaCapiConfigured() && marketingAllowed(existing.marketingConsent)) {
           const att = existing.attribution || {};
           const wonVal = update.wonValue || Number(process.env.GOOGLE_ADS_DEFAULT_LEAD_VALUE) || undefined;
           const capi = await sendMetaCapiEvent({
@@ -2243,7 +2260,7 @@ async function handleRoute(request, { params }) {
       // Google Ads offline-konvertering (Data Manager API, lukket sløyfe): vunnet lead m/ gclid.
       try {
         const att = existing.attribution || {};
-        if (status === 'won' && dataManagerConfigured() && (att.gclid || att.gbraid || att.wbraid)) {
+        if (status === 'won' && dataManagerConfigured() && marketingAllowed(existing.marketingConsent) && (att.gclid || att.gbraid || att.wbraid)) {
           const wonVal = update.wonValue || Number(process.env.GOOGLE_ADS_DEFAULT_LEAD_VALUE) || 0;
           const up = await ingestOfflineConversion({
             gclid: att.gclid, gbraid: att.gbraid, wbraid: att.wbraid,
@@ -2477,7 +2494,7 @@ async function handleRoute(request, { params }) {
       let metaCapi = null;
       const alreadyMetaWon = !!(lead.metaCapiWon && lead.metaCapiWon.ok);
       try {
-        if (status === 'won' && !alreadyMetaWon && metaCapiConfigured()) {
+        if (status === 'won' && !alreadyMetaWon && metaCapiConfigured() && marketingAllowed(lead.marketingConsent)) {
           const att = lead.attribution || {};
           const wonVal = update.wonValue || Number(process.env.GOOGLE_ADS_DEFAULT_LEAD_VALUE) || undefined;
           const capi = await sendMetaCapiEvent({
@@ -2500,7 +2517,7 @@ async function handleRoute(request, { params }) {
       const alreadyGoogleWon = !!(lead.googleAdsWon && lead.googleAdsWon.ok);
       try {
         const att = lead.attribution || {};
-        if (status === 'won' && !alreadyGoogleWon && dataManagerConfigured() && (att.gclid || att.gbraid || att.wbraid)) {
+        if (status === 'won' && !alreadyGoogleWon && dataManagerConfigured() && marketingAllowed(lead.marketingConsent) && (att.gclid || att.gbraid || att.wbraid)) {
           const wonVal = update.wonValue || Number(process.env.GOOGLE_ADS_DEFAULT_LEAD_VALUE) || 0;
           const up = await ingestOfflineConversion({
             gclid: att.gclid, gbraid: att.gbraid, wbraid: att.wbraid,

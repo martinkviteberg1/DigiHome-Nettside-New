@@ -105,6 +105,18 @@
 user_problem_statement: "Bygg DigiHome markedsside (Next.js App Router) etter flyttepakken — Warm Ink Editorial design, norsk bokmål, full SEO, DB-drevet blogg + admin + programmatisk SEO. Fase 1: verdensklasse forside + lead-API."
 
 backend:
+  - task: "GDPR: samtykke-gating av Meta CAPI + Google offline-konvertering (server-side)"
+    implemented: true
+    working: true
+    file: "lib/gtag.js, app/api/[[...path]]/route.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "main"
+        -comment: "NYTT (GDPR). Samtykke-banneret skriver nå en lett cookie dh_consent_mkt=1|0 (i tillegg til localStorage), synket ved både valg og gjenbruk (applyConsent + restoreConsent). Server leser cookien (marketingConsentFromRequest) og lagrer marketingConsent på lead/tenant. Meta CAPI (Lead utleier+leietaker, Purchase webhook+admin) OG Google offline-konvertering (webhook+admin) gates nå: fyrer MED MINDRE marketingConsent===false. Eldre leads (undefined/null) bevarer dagens oppførsel. VIKTIG: lead-videresending til plattformen gates IKKE (tjenesteleveranse/kontrakt). Verifisert: cookie=0 → CAPI fyrer ikke (marketingConsent=false); cookie=1 → fyrer; ingen cookie → fyrer (bakoverkompatibelt)."
+
   - task: "Meta-sporing utvidet: ViewContent + InitiateCheckout (skjemastart) + external_id/geo i CAPI"
     implemented: true
     working: true
