@@ -194,7 +194,7 @@ function deckToken() {
 // --- Miljøbasert ruting av lead-videresending ---
 // Samme kodebase kjører i BÅDE test/preview og produksjon. Vi skiller miljøene
 // DYNAMISK på NEXT_PUBLIC_BASE_URL (bakes inn per miljø ved bygg):
-//   • preview/test  → test-CRM  (proposal-engine-37 ...)  — kun *.preview.emergentagent.com / localhost
+//   • preview/test  → plattformens preview (tenant-hub-210 ...)  — kun *.preview.emergentagent.com / localhost
 //   • produksjon    → prod-CRM  (https://app.digihome.no)  — ALT annet (emergent.host-deploy OG custom domene digihome.no)
 // Dette gjør at både Emergent-domenet (hero-premiere-4.emergent.host) og det
 // kommende custom-domenet (digihome.no) automatisk regnes som produksjon.
@@ -209,15 +209,14 @@ function isProdEnv() {
 // Returnerer { url, key, env } for riktig DigiHome-CRM basert på gjeldende miljø.
 function normalizeCrmUrl(url) {
   let u = (url || '').trim();
-  // app.digihome.no finnes ikke (DNS resolver kun digihome.no). Korriger en
-  // eventuell utdatert/stale konfig automatisk, så vi aldri POSTer til en død vert.
-  u = u.replace(/^https?:\/\/app\.digihome\.no/i, 'https://digihome.no');
+  // Produksjon ligger på app.digihome.no (eget subdomene for plattformen).
+  // Vi gjør ingen vert-omskriving lenger — kun trimmer trailing slashes.
   return u.replace(/\/+$/, '');
 }
 function digiHomeTarget() {
   if (isProdEnv()) {
     return {
-      url: normalizeCrmUrl(process.env.DIGIHOME_API_URL_PROD || 'https://digihome.no'),
+      url: normalizeCrmUrl(process.env.DIGIHOME_API_URL_PROD || 'https://app.digihome.no'),
       key: process.env.DIGIHOME_API_KEY_PROD || process.env.DIGIHOME_API_KEY || '',
       env: 'prod',
     };
@@ -226,7 +225,7 @@ function digiHomeTarget() {
     url: normalizeCrmUrl(
       process.env.DIGIHOME_API_URL_TEST ||
       process.env.DIGIHOME_API_URL ||
-      'https://proposal-engine-37.preview.emergentagent.com'
+      'https://tenant-hub-210.preview.emergentagent.com'
     ),
     key: process.env.DIGIHOME_API_KEY_TEST || process.env.DIGIHOME_API_KEY || '',
     env: 'test',
