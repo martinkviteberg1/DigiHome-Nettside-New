@@ -16,6 +16,8 @@ import { dataManagerConfigured, ingestOfflineConversion } from '@/lib/google-ads
 import { buildRecommendations } from '@/lib/ads-recommendations';
 import { generateRsaCopy, generateMetaCopy } from '@/lib/ads-ai';
 import { runOptimization, getOptimizeConfig, setOptimizeConfig, getLastRun, listRuns, applyRecommendation } from '@/lib/ads-optimize';
+import { sendWeeklyReport, buildReportData, renderReportHtml } from '@/lib/ads-report';
+import { emailConfigured, reportRecipients } from '@/lib/email';
 import { chatLLM } from '@/lib/llm';
 import { slugify } from '@/lib/site';
 import { getRentReport, refreshRentReport, RENT_CITIES } from '@/lib/rentmarket';
@@ -1914,6 +1916,25 @@ async function handleRoute(request, { params }) {
       catch (e) { return cors(NextResponse.json({ ok: false, error: e.message }, { status: 200 })); }
     }
 
+    // Ukentlig management-rapport: send nå (test/manuell) til mottakere.
+    if (route === '/admin/ads/report/send' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!emailConfigured()) return cors(NextResponse.json({ ok: false, error: 'SendGrid er ikke konfigurert (SENDGRID_API_KEY mangler)' }, { status: 400 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      const recipients = Array.isArray(body.recipients) && body.recipients.length ? body.recipients : reportRecipients();
+      try { const r = await sendWeeklyReport(db, { recipients }); return cors(NextResponse.json(r, { status: r.ok ? 200 : 400 })); }
+      catch (e) { return cors(NextResponse.json({ ok: false, error: e.message }, { status: 200 })); }
+    }
+
+    // Forhåndsvisning av rapport-HTML (vises i admin).
+    if (route === '/admin/ads/report/preview' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      try {
+        const data = await buildReportData(db, {});
+        return cors(new NextResponse(renderReportHtml(data), { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8' } }));
+      } catch (e) { return cors(NextResponse.json({ ok: false, error: e.message }, { status: 200 })); }
+    }
+
     // Fase D: Sikret cron-endepunkt (ekstern planlegger, ukentlig/daglig).
     if (route === '/cron/ads-optimize' && (method === 'GET' || method === 'POST')) {
       const sp = new URL(request.url).searchParams;
@@ -1922,8 +1943,14 @@ async function handleRoute(request, { params }) {
       const okAuth = (cronSecret && token === cronSecret) || (ADMIN_KEY && token === ADMIN_KEY);
       if (!okAuth) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const mode = sp.get('mode') === 'daily' ? 'daily' : 'weekly';
-      try { const run = await runOptimization(db, { mode, dryRun: false }); return cors(NextResponse.json({ ok: true, mode, summary: run.summary, autoApplied: run.autoApplied })); }
-      catch (e) { return cors(NextResponse.json({ ok: false, error: e.message }, { status: 200 })); }
+      try {
+        const run = await runOptimization(db, { mode, dryRun: false });
+        let report = null;
+        if (mode === 'weekly' && emailConfigured() && sp.get('email') !== '0') {
+          try { report = await sendWeeklyReport(db, {}); } catch (e) { report = { ok: false, error: e.message }; }
+        }
+        return cors(NextResponse.json({ ok: true, mode, summary: run.summary, autoApplied: run.autoApplied, report }));
+      } catch (e) { return cors(NextResponse.json({ ok: false, error: e.message }, { status: 200 })); }
     }
 
     // --- Admin: Annonser — Google Ads via Composio: synk live kostnad ------
@@ -2347,10 +2374,22 @@ async function handleRoute(request, { params }) {
         platformSyncAt: nowIso,
       };
       if (status !== 'new' && !lead.firstResponseAt) update.firstResponseAt = changedAt;
+      const isValueUpdate = body.value_update === true || body.valueUpdate === true;
       if (status === 'won') {
-        update.wonAt = changedAt;
+        update.wonAt = lead.wonAt || changedAt;
         const v = Number(body.value);
-        if (isFinite(v) && v > 0) { update.wonValue = Math.round(v * 100) / 100; update.wonCurrency = (body.currency || 'NOK').toString().slice(0, 3).toUpperCase(); }
+        if (isFinite(v) && v > 0) {
+          update.wonValue = Math.round(v * 100) / 100;
+          update.wonCurrency = (body.currency || 'NOK').toString().slice(0, 3).toUpperCase();
+          if (isValueUpdate) {
+            // Faktisk kontraktsverdi (leiekontrakt signert) → intern sann ROAS.
+            update.wonValueActual = update.wonValue;
+            update.valueUpdatedAt = changedAt;
+          } else if (lead.wonValueEstimate == null) {
+            // Akkvisisjonsestimat ved signering → fryses som verdien sendt til ads.
+            update.wonValueEstimate = update.wonValue;
+          }
+        }
       }
       await db.collection(coll).updateOne({ id: lead.id }, { $set: update });
 

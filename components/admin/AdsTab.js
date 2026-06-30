@@ -1623,6 +1623,19 @@ function ReportSettingsPanel({ apiKey }) {
   const [running, setRunning] = useState(false);
   const [savingCfg, setSavingCfg] = useState(false);
   const [err, setErr] = useState('');
+  const [sendingReport, setSendingReport] = useState(false);
+  const [reportMsg, setReportMsg] = useState(null);
+
+  const sendReport = async () => {
+    setSendingReport(true); setReportMsg(null);
+    try {
+      const res = await fetch(`/api/admin/ads/report/send?key=${encodeURIComponent(apiKey)}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
+      const j = await res.json();
+      setReportMsg(j.ok ? { ok: true, text: `Sendt til ${(j.recipients || []).join(', ')}` } : { ok: false, text: j.error || 'Sending feilet' });
+    } catch (e) { setReportMsg({ ok: false, text: e.message }); }
+    setSendingReport(false);
+  };
+  const previewReport = () => { window.open(`/api/admin/ads/report/preview?key=${encodeURIComponent(apiKey)}`, '_blank'); };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -1665,6 +1678,34 @@ function ReportSettingsPanel({ apiKey }) {
           </div>
         )}
       </div>
+      {last && Array.isArray(last.alerts) && last.alerts.length > 0 && (
+        <div className="bg-white rounded-2xl p-5 shadow-[0_2px_16px_rgba(0,0,0,0.04)]">
+          <p className="font-semibold text-[#0a0a0a] text-[14px] mb-3 inline-flex items-center gap-2"><AlertCircle className="w-4 h-4 text-amber-500" /> Varsler ({last.alerts.length})</p>
+          <div className="space-y-2">
+            {last.alerts.map((al) => (
+              <div key={al.id} className="rounded-xl px-4 py-3 bg-[#fafafa]" style={{ borderLeft: `3px solid ${al.severity === 'high' ? '#dc2626' : al.severity === 'medium' ? '#d97706' : '#7c5cff'}` }}>
+                <p className="text-[13px] font-semibold text-[#0a0a0a]">{al.title}</p>
+                <p className="text-[12px] text-[#777] mt-0.5 leading-relaxed">{al.detail}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="bg-white rounded-2xl p-5 shadow-[0_2px_16px_rgba(0,0,0,0.04)]">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <p className="font-semibold text-[#0a0a0a] text-[14px] inline-flex items-center gap-2"><FileText className="w-4 h-4" /> Ukentlig management-rapport (e-post)</p>
+            <p className="text-[12px] text-[#999] mt-0.5">Sendes automatisk ukentlig via cron. KPI-er, varsler, topp/bunn-annonser og anbefalinger.</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button onClick={previewReport} className="h-10 px-4 rounded-full bg-white ring-1 ring-[#eee] text-[12.5px] font-semibold inline-flex items-center gap-1.5 hover:ring-[#dcdcdc]"><ExternalLink className="w-4 h-4" /> Forhåndsvis</button>
+            <button onClick={sendReport} disabled={sendingReport} className="h-10 px-5 rounded-full bg-[#0a0a0a] text-white text-[12.5px] font-semibold disabled:opacity-40 inline-flex items-center gap-1.5 active:scale-[0.97] transition-transform">{sendingReport ? <Loader2 className="w-4 h-4 animate-spin" /> : <Megaphone className="w-4 h-4" />} Send testrapport</button>
+          </div>
+        </div>
+        {reportMsg && <p className={`text-[12px] mt-3 ${reportMsg.ok ? 'text-emerald-600' : 'text-rose-500'}`}>{reportMsg.ok ? '✓ ' : ''}{reportMsg.text}</p>}
+      </div>
+
       {last && last.report && (
         <div className="bg-white rounded-2xl p-5 shadow-[0_2px_16px_rgba(0,0,0,0.04)]">
           <p className="font-semibold text-[#0a0a0a] text-[14px] mb-3 inline-flex items-center gap-2"><FileText className="w-4 h-4" /> AI-ukerapport</p>

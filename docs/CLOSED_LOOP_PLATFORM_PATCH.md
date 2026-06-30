@@ -138,14 +138,34 @@ Rett etter `col.update_one({"id": lead_id}, ops)` (linje ~1080), legg til:
 
 ---
 
-## 3) Verdi-håndtering (ROAS)
+## 3) Verdi-håndtering (ROAS) — dual-value (best practice)
 
-- Sender plattformen `value` → markedssiden bruker den som konverteringsverdi.
-- Sender den **ikke** `value` → markedssiden bruker `GOOGLE_ADS_DEFAULT_LEAD_VALUE`
-  (i dag `0`). Da registreres konverteringen (antallsbasert), men **verdibasert
-  ROAS blir 0**.
-- **Anbefaling:** send faktisk årlig forvaltningsverdi ved `signed`, ELLER sett
-  en fornuftig default på markedssiden.
+To verdier holdes adskilt:
+
+- **Akkvisisjonsverdi** (sendes til Google/Meta for budgivning): settes ÉN gang
+  ved `signed` med **estimert årlig honorar** (basert på estimert leie). Fyres da
+  fordi attribusjonsvinduet krever det. Fryses etterpå.
+- **Faktisk verdi** (intern sann ROAS): når faktisk leiekontrakt signeres og
+  reelt honorar er kjent, send et nytt webhook-kall med `value_update: true` og
+  den faktiske verdien. Markedssiden oppdaterer da intern `wonValue`
+  (dashbordet) uten å dobbelt-fyre konverteringer.
+
+```python
+# Ved signering (estimat):
+notify_marketing_lead_status(doc, "won", value=estimert_aarlig_honorar)
+
+# Senere, når leiekontrakt er signert (faktisk honorar):
+# legg "value_update": True i payloaden (egen liten variant av helperen):
+#   payload = {"external_ref": ..., "status": "won",
+#              "value": faktisk_aarlig_honorar, "value_update": True}
+```
+
+- Sender plattformen ingen `value` → markedssiden bruker
+  `GOOGLE_ADS_DEFAULT_LEAD_VALUE` (i dag `0`) → verdibasert ROAS blir 0.
+- **Senere leiekontrakt-endringer:** ikke jag hver endring mot ad-plattformene
+  (vinduer lukkes). Hold akkvisisjonsverdien frosset; bruk `value_update` kun
+  første gang faktisk honorar er kjent. Intern LTV kan du oppdatere fritt.
+
 
 ---
 
