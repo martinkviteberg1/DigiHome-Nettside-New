@@ -6,6 +6,7 @@ import {
   Coins, MousePointerClick, Target, Wallet, CheckCircle2, Info, RefreshCw, Layers, Link2 as LinkIcon,
   SlidersHorizontal, X, Check, Image as ImageIcon, ExternalLink,
   Plus, Play, Pause, Save, MapPin, Sparkles,
+  Search, ArrowUpDown, Lightbulb, Zap, FileText, Settings2, Wand2, TrendingDown, ListChecks,
 } from 'lucide-react';
 
 const nf = new Intl.NumberFormat('nb-NO');
@@ -226,7 +227,7 @@ export default function AdsTab({ apiKey }) {
 
       {/* Visningsbryter: Statistikk vs faktiske annonser/kampanjer */}
       <div className="flex items-center gap-1 bg-[#f1efeb] rounded-full p-1 mb-5 w-fit">
-        {[['stats', 'Statistikk'], ['creatives', 'Annonser & kampanjer'], ['campaigns', 'Kampanjestyring']].map(([v, l]) => (
+        {[['stats', 'Statistikk'], ['table', 'Annonse-tabell'], ['creatives', 'Annonser & kampanjer'], ['campaigns', 'Kampanjestyring'], ['optimize', 'AI & optimalisering']].map(([v, l]) => (
           <button key={v} onClick={() => setView(v)} className={`px-4 h-9 rounded-full text-[12.5px] font-semibold transition-all ${view === v ? 'bg-white text-[#0a0a0a] shadow-[0_2px_8px_rgba(0,0,0,0.08)]' : 'text-[#888] hover:text-[#0a0a0a]'}`}>{l}</button>
         ))}
       </div>
@@ -243,6 +244,10 @@ export default function AdsTab({ apiKey }) {
 
       {view === 'campaigns' ? (
         <CampaignManager apiKey={apiKey} />
+      ) : view === 'table' ? (
+        <AdsTable apiKey={apiKey} period={period} channel={channel} />
+      ) : view === 'optimize' ? (
+        <OptimizePanel apiKey={apiKey} />
       ) : view === 'creatives' ? (
         <CreativesGallery data={creatives} loading={loadingCre} err={creErr} channel={channel} apiKey={apiKey} onRetry={() => loadCreatives(true)} />
       ) : loading ? (
@@ -1251,6 +1256,437 @@ function CreateCampaignModal({ apiKey, onClose, onCreated }) {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+
+// ===========================================================================
+// Fase A: Samlet annonse-tabell (Google + Meta) m/ filtre + sortering.
+// ===========================================================================
+const STATUS_ACTIVE = (s) => ['ENABLED', 'ACTIVE'].includes(String(s || '').toUpperCase());
+function statusPill(s) {
+  const up = String(s || '').toUpperCase();
+  if (STATUS_ACTIVE(up)) return <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />Aktiv</span>;
+  if (up.includes('PAUSED')) return <span className="text-[11px] font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">Pauset</span>;
+  return <span className="text-[11px] font-semibold text-[#888] bg-[#f1efeb] px-2 py-0.5 rounded-full">{s || '–'}</span>;
+}
+function channelPill(ch) {
+  return ch === 'meta'
+    ? <span className="text-[10.5px] font-bold text-[#1877F2] bg-[#eaf2fe] px-1.5 py-0.5 rounded">Meta</span>
+    : <span className="text-[10.5px] font-bold text-[#0F9D58] bg-[#eafaf0] px-1.5 py-0.5 rounded">Google</span>;
+}
+
+function AdsTable({ apiKey, period, channel }) {
+  const [rows, setRows] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState('');
+  const [meta, setMeta] = useState({});
+  const [sortKey, setSortKey] = useState('cost');
+  const [sortDir, setSortDir] = useState('desc');
+  const [statusF, setStatusF] = useState('all');
+  const [chan, setChan] = useState(channel === 'both' ? 'all' : channel);
+  const [q, setQ] = useState('');
+
+  const load = useCallback(async (force) => {
+    setLoading(true); setErr('');
+    try {
+      const params = new URLSearchParams({ key: apiKey, googlePeriod: period, metaPeriod: period });
+      if (force) params.set('refresh', '1');
+      const res = await fetch(`/api/admin/ads/table?${params.toString()}`);
+      const j = await res.json();
+      if (!j.ok) throw new Error(j.error || 'Kunne ikke hente annonser');
+      setRows(j.ads || []);
+      setMeta({ google: j.google, meta: j.meta });
+    } catch (e) { setErr(e.message); setRows([]); }
+    setLoading(false);
+  }, [apiKey, period]);
+  useEffect(() => { load(); }, [load]);
+
+  const filtered = (rows || []).filter((r) => {
+    if (chan !== 'all' && r.channel !== chan) return false;
+    if (statusF === 'active' && !STATUS_ACTIVE(r.status)) return false;
+    if (statusF === 'paused' && STATUS_ACTIVE(r.status)) return false;
+    if (q && !(`${r.name} ${r.campaign} ${r.adGroup}`.toLowerCase().includes(q.toLowerCase()))) return false;
+    return true;
+  });
+  const sorted = [...filtered].sort((a, b) => {
+    const av = a[sortKey], bv = b[sortKey];
+    if (typeof av === 'string' || typeof bv === 'string') return sortDir === 'asc' ? String(av).localeCompare(String(bv)) : String(bv).localeCompare(String(av));
+    const an = av == null ? -Infinity : av, bn = bv == null ? -Infinity : bv;
+    return sortDir === 'asc' ? (an - bn) : (bn - an);
+  });
+  const totals = filtered.reduce((t, r) => ({ cost: t.cost + (r.cost || 0), clicks: t.clicks + (r.clicks || 0), impressions: t.impressions + (r.impressions || 0), conversions: t.conversions + (r.conversions || 0) }), { cost: 0, clicks: 0, impressions: 0, conversions: 0 });
+
+  const sortBtn = (key, label) => (
+    <th className="px-3 py-2.5 text-right cursor-pointer select-none hover:text-[#0a0a0a] whitespace-nowrap" onClick={() => { if (sortKey === key) setSortDir((d) => d === 'asc' ? 'desc' : 'asc'); else { setSortKey(key); setSortDir('desc'); } }}>
+      <span className="inline-flex items-center gap-1">{label}{sortKey === key && <ArrowUpDown className="w-3 h-3 text-[#0a0a0a]" />}</span>
+    </th>
+  );
+
+  return (
+    <div>
+      <div className="flex flex-wrap items-center gap-2 mb-4">
+        <div className="flex items-center gap-1 bg-[#f1efeb] rounded-full p-1">
+          {[['all', 'Alle'], ['google', 'Google'], ['meta', 'Meta']].map(([v, l]) => (
+            <button key={v} onClick={() => setChan(v)} className={`px-3 h-8 rounded-full text-[12px] font-semibold transition-all ${chan === v ? 'bg-white text-[#0a0a0a] shadow-sm' : 'text-[#888] hover:text-[#0a0a0a]'}`}>{l}</button>
+          ))}
+        </div>
+        <div className="flex items-center gap-1 bg-[#f1efeb] rounded-full p-1">
+          {[['all', 'Alle'], ['active', 'Aktive'], ['paused', 'Pauset']].map(([v, l]) => (
+            <button key={v} onClick={() => setStatusF(v)} className={`px-3 h-8 rounded-full text-[12px] font-semibold transition-all ${statusF === v ? 'bg-white text-[#0a0a0a] shadow-sm' : 'text-[#888] hover:text-[#0a0a0a]'}`}>{l}</button>
+          ))}
+        </div>
+        <div className="relative">
+          <Search className="w-4 h-4 text-[#bbb] absolute left-3 top-1/2 -translate-y-1/2" />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Søk annonse/kampanje…" className="h-10 pl-9 pr-3 rounded-full bg-white ring-1 ring-[#eee] text-[12.5px] text-[#0a0a0a] outline-none focus:ring-[#dcdcdc] w-[220px]" />
+        </div>
+        <button onClick={() => load(true)} disabled={loading} className="h-10 w-10 rounded-full bg-white flex items-center justify-center shadow-sm ring-1 ring-transparent hover:ring-[#dcdcdc] disabled:opacity-40 ml-auto"><RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /></button>
+      </div>
+
+      {err && <div className="mb-4 bg-rose-50 text-rose-600 rounded-xl px-4 py-3 text-[13px] flex items-center gap-2"><AlertCircle className="w-4 h-4" /> {err}</div>}
+
+      {loading ? (
+        <div className="py-20 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-[#0a0a0a]" /></div>
+      ) : sorted.length === 0 ? (
+        <div className="bg-white rounded-2xl p-10 text-center text-[#999] text-[13px] shadow-[0_2px_16px_rgba(0,0,0,0.04)]">Ingen annonser matcher filteret i denne perioden.</div>
+      ) : (
+        <div className="bg-white rounded-2xl shadow-[0_2px_16px_rgba(0,0,0,0.04)] overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-[12.5px]">
+              <thead className="text-[#999] text-[11px] uppercase tracking-wide border-b border-[#f0f0f0]">
+                <tr>
+                  <th className="px-3 py-2.5 text-left">Annonse</th>
+                  <th className="px-3 py-2.5 text-left">Status</th>
+                  {sortBtn('cost', 'Kostnad')}
+                  {sortBtn('impressions', 'Visn.')}
+                  {sortBtn('clicks', 'Klikk')}
+                  {sortBtn('ctr', 'CTR')}
+                  {sortBtn('cpc', 'CPC')}
+                  {sortBtn('conversions', 'Konv.')}
+                  {sortBtn('cpa', 'CPA')}
+                  {sortBtn('roas', 'ROAS')}
+                </tr>
+              </thead>
+              <tbody>
+                {sorted.map((r) => (
+                  <tr key={`${r.channel}-${r.id}`} className="border-b border-[#f6f6f6] hover:bg-[#fafafa]">
+                    <td className="px-3 py-2.5 max-w-[280px]">
+                      <div className="flex items-center gap-2">{channelPill(r.channel)}<span className="font-semibold text-[#0a0a0a] truncate" title={r.name}>{r.name || '–'}</span></div>
+                      <div className="text-[11px] text-[#aaa] truncate" title={`${r.campaign} · ${r.adGroup}`}>{r.campaign}{r.adGroup ? ` · ${r.adGroup}` : ''}</div>
+                    </td>
+                    <td className="px-3 py-2.5">{statusPill(r.status)}</td>
+                    <td className="px-3 py-2.5 text-right font-semibold text-[#0a0a0a]">{fmtKr(r.cost)}</td>
+                    <td className="px-3 py-2.5 text-right text-[#666]">{fmtNum(r.impressions)}</td>
+                    <td className="px-3 py-2.5 text-right text-[#666]">{fmtNum(r.clicks)}</td>
+                    <td className="px-3 py-2.5 text-right text-[#666]">{fmtPct(r.ctr)}</td>
+                    <td className="px-3 py-2.5 text-right text-[#666]">{fmtKr2(r.cpc)}</td>
+                    <td className="px-3 py-2.5 text-right text-[#666]">{r.conversions ? fmtNum(r.conversions) : '–'}</td>
+                    <td className="px-3 py-2.5 text-right text-[#666]">{r.cpa != null ? fmtKr(r.cpa) : '–'}</td>
+                    <td className={`px-3 py-2.5 text-right font-semibold ${roasColor(r.roas)}`}>{r.roas != null ? fmtX(r.roas) : '–'}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot className="border-t-2 border-[#f0f0f0] bg-[#fafafa] font-semibold text-[#0a0a0a]">
+                <tr>
+                  <td className="px-3 py-2.5" colSpan={2}>{filtered.length} annonser</td>
+                  <td className="px-3 py-2.5 text-right">{fmtKr(totals.cost)}</td>
+                  <td className="px-3 py-2.5 text-right">{fmtNum(totals.impressions)}</td>
+                  <td className="px-3 py-2.5 text-right">{fmtNum(totals.clicks)}</td>
+                  <td className="px-3 py-2.5 text-right text-[#bbb]">–</td>
+                  <td className="px-3 py-2.5 text-right text-[#bbb]">–</td>
+                  <td className="px-3 py-2.5 text-right">{fmtNum(totals.conversions)}</td>
+                  <td className="px-3 py-2.5 text-right text-[#bbb]">–</td>
+                  <td className="px-3 py-2.5 text-right text-[#bbb]">–</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      )}
+      {meta.google && meta.google.error && <p className="mt-2 text-[11px] text-amber-600">Google: {meta.google.error}</p>}
+      {meta.meta && meta.meta.error && <p className="mt-2 text-[11px] text-amber-600">Meta: {meta.meta.error}</p>}
+    </div>
+  );
+}
+
+// ===========================================================================
+// Fase B–D: AI & optimalisering.
+// ===========================================================================
+const SEV = { high: { l: 'Høy', c: 'bg-rose-50 text-rose-700' }, medium: { l: 'Middels', c: 'bg-amber-50 text-amber-700' }, low: { l: 'Lav', c: 'bg-[#eef] text-[#5b5bd6]' } };
+const REC_ICON = { add_negative: TrendingDown, pause_keyword: Pause, pause_ad: Pause, scale_budget: TrendingUp, ai_refresh: Wand2 };
+
+function OptimizePanel({ apiKey }) {
+  const [tab, setTab] = useState('recs');
+  return (
+    <div>
+      <div className="flex items-center gap-1 bg-[#f1efeb] rounded-full p-1 mb-5 w-fit flex-wrap">
+        {[['recs', 'Anbefalinger', ListChecks], ['keywords', 'Søkeord-research', Search], ['ai', 'AI-tekster', Wand2], ['report', 'Rapport & innstillinger', FileText]].map(([v, l, Icon]) => (
+          <button key={v} onClick={() => setTab(v)} className={`px-3.5 h-9 rounded-full text-[12px] font-semibold inline-flex items-center gap-1.5 transition-all ${tab === v ? 'bg-white text-[#0a0a0a] shadow-sm' : 'text-[#888] hover:text-[#0a0a0a]'}`}><Icon className="w-3.5 h-3.5" />{l}</button>
+        ))}
+      </div>
+      {tab === 'recs' && <RecommendationsPanel apiKey={apiKey} />}
+      {tab === 'keywords' && <KeywordResearchPanel apiKey={apiKey} />}
+      {tab === 'ai' && <AiCopyPanel apiKey={apiKey} />}
+      {tab === 'report' && <ReportSettingsPanel apiKey={apiKey} />}
+    </div>
+  );
+}
+
+function RecommendationsPanel({ apiKey }) {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState('');
+  const [applying, setApplying] = useState({});
+  const [applied, setApplied] = useState({});
+
+  const load = useCallback(async () => {
+    setLoading(true); setErr('');
+    try {
+      const res = await fetch(`/api/admin/ads/recommendations?key=${encodeURIComponent(apiKey)}&period=last_30d`);
+      const j = await res.json();
+      if (!j.ok) throw new Error(j.error || 'Kunne ikke hente anbefalinger');
+      setData(j);
+    } catch (e) { setErr(e.message); }
+    setLoading(false);
+  }, [apiKey]);
+  useEffect(() => { load(); }, [load]);
+
+  const apply = async (rec) => {
+    setApplying((s) => ({ ...s, [rec.id]: true }));
+    try {
+      const res = await fetch(`/api/admin/ads/recommendations/apply?key=${encodeURIComponent(apiKey)}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ recommendation: rec }) });
+      const j = await res.json();
+      setApplied((s) => ({ ...s, [rec.id]: j.ok ? 'ok' : (j.error || 'feil') }));
+    } catch (e) { setApplied((s) => ({ ...s, [rec.id]: e.message })); }
+    setApplying((s) => ({ ...s, [rec.id]: false }));
+  };
+
+  if (loading) return <div className="py-16 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-[#0a0a0a]" /></div>;
+  if (err) return <div className="bg-rose-50 text-rose-600 rounded-xl px-4 py-3 text-[13px] flex items-center gap-2"><AlertCircle className="w-4 h-4" /> {err} <button onClick={load} className="ml-2 underline">Prøv igjen</button></div>;
+  const recs = (data && data.recommendations) || [];
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
+        <div className="text-[13px] text-[#666]"><b className="text-[#0a0a0a]">{recs.length}</b> anbefalinger · potensiell besparelse <b className="text-[#0a0a0a]">{fmtKr(data && data.estimatedSavings)}</b></div>
+        <button onClick={load} className="h-9 px-3 rounded-full bg-white ring-1 ring-[#eee] text-[12px] font-semibold inline-flex items-center gap-1.5"><RefreshCw className="w-3.5 h-3.5" /> Oppdater</button>
+      </div>
+      {recs.length === 0 ? (
+        <div className="bg-white rounded-2xl p-10 text-center text-[#999] text-[13px] shadow-[0_2px_16px_rgba(0,0,0,0.04)]"><CheckCircle2 className="w-6 h-6 mx-auto mb-2 text-emerald-500" />Ingen sløsing oppdaget — kontoen ser sunn ut.</div>
+      ) : (
+        <div className="space-y-2.5">
+          {recs.map((r) => {
+            const Icon = REC_ICON[r.type] || Lightbulb;
+            const sev = SEV[r.severity] || SEV.low;
+            const st = applied[r.id];
+            const isAi = r.type === 'ai_refresh';
+            return (
+              <div key={r.id} className="bg-white rounded-2xl p-4 shadow-[0_2px_16px_rgba(0,0,0,0.04)] flex items-start gap-3">
+                <div className="w-9 h-9 rounded-xl bg-[#f4f0fb] flex items-center justify-center flex-shrink-0"><Icon className="w-4 h-4 text-[#7c5cff]" /></div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-semibold text-[#0a0a0a] text-[13.5px]">{r.title}</span>
+                    <span className={`text-[10.5px] font-bold px-1.5 py-0.5 rounded ${sev.c}`}>{sev.l}</span>
+                    {channelPill(r.channel)}
+                  </div>
+                  <p className="text-[12.5px] text-[#777] mt-1 leading-relaxed">{r.rationale}</p>
+                </div>
+                <div className="flex-shrink-0 text-right">
+                  {st === 'ok' ? (
+                    <span className="text-[12px] font-semibold text-emerald-600 inline-flex items-center gap-1"><CheckCircle2 className="w-4 h-4" /> Utført</span>
+                  ) : isAi ? (
+                    <span className="text-[11px] text-[#aaa]">Se «AI-tekster»</span>
+                  ) : (
+                    <button onClick={() => apply(r)} disabled={applying[r.id]} className="h-9 px-4 rounded-full bg-[#0a0a0a] text-white text-[12px] font-semibold disabled:opacity-40 inline-flex items-center gap-1.5 active:scale-[0.97] transition-transform">{applying[r.id] ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />} Bruk</button>
+                  )}
+                  {st && st !== 'ok' && <p className="text-[10.5px] text-rose-500 mt-1 max-w-[140px]">{st}</p>}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function KeywordResearchPanel({ apiKey }) {
+  const [seeds, setSeeds] = useState('leie ut bolig bergen, utleie bergen');
+  const [ideas, setIdeas] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState('');
+  const run = async () => {
+    setLoading(true); setErr('');
+    try {
+      const res = await fetch(`/api/admin/ads/keyword-research?key=${encodeURIComponent(apiKey)}&seeds=${encodeURIComponent(seeds)}`);
+      const j = await res.json();
+      if (!j.ok) throw new Error(j.error || 'Kunne ikke hente søkeord');
+      setIdeas(j.ideas || []);
+    } catch (e) { setErr(e.message); }
+    setLoading(false);
+  };
+  const COMP = { LOW: 'text-emerald-600', MEDIUM: 'text-amber-600', HIGH: 'text-rose-600' };
+  return (
+    <div>
+      <div className="flex flex-wrap items-center gap-2 mb-4">
+        <input value={seeds} onChange={(e) => setSeeds(e.target.value)} placeholder="Frø-søkeord, kommaseparert…" className="h-10 px-4 rounded-full bg-white ring-1 ring-[#eee] text-[12.5px] text-[#0a0a0a] outline-none focus:ring-[#dcdcdc] flex-1 min-w-[260px]" />
+        <button onClick={run} disabled={loading} className="h-10 px-5 rounded-full bg-[#0a0a0a] text-white text-[12.5px] font-semibold disabled:opacity-40 inline-flex items-center gap-1.5">{loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />} Finn søkeord</button>
+      </div>
+      {err && <div className="mb-4 bg-rose-50 text-rose-600 rounded-xl px-4 py-3 text-[13px]">{err}</div>}
+      {loading && <div className="py-12 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-[#0a0a0a]" /></div>}
+      {ideas && !loading && (
+        ideas.length === 0 ? <div className="bg-white rounded-2xl p-10 text-center text-[#999] text-[13px] shadow-[0_2px_16px_rgba(0,0,0,0.04)]">Ingen forslag.</div> : (
+          <div className="bg-white rounded-2xl shadow-[0_2px_16px_rgba(0,0,0,0.04)] overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-[12.5px]">
+                <thead className="text-[#999] text-[11px] uppercase tracking-wide border-b border-[#f0f0f0]"><tr><th className="px-3 py-2.5 text-left">Søkeord</th><th className="px-3 py-2.5 text-right">Søk/mnd</th><th className="px-3 py-2.5 text-center">Konkurranse</th><th className="px-3 py-2.5 text-right">Budestimat (topp)</th></tr></thead>
+                <tbody>{ideas.slice(0, 80).map((k, i) => (
+                  <tr key={i} className="border-b border-[#f6f6f6] hover:bg-[#fafafa]"><td className="px-3 py-2.5 font-semibold text-[#0a0a0a]">{k.text}</td><td className="px-3 py-2.5 text-right text-[#666]">{fmtNum(k.avgMonthlySearches)}</td><td className={`px-3 py-2.5 text-center font-semibold ${COMP[k.competition] || 'text-[#999]'}`}>{k.competition === 'HIGH' ? 'Høy' : k.competition === 'MEDIUM' ? 'Middels' : k.competition === 'LOW' ? 'Lav' : '–'}</td><td className="px-3 py-2.5 text-right text-[#666]">{k.lowBid != null ? `${fmtKr2(k.lowBid)} – ${fmtKr2(k.highBid)}` : '–'}</td></tr>
+                ))}</tbody>
+              </table>
+            </div>
+          </div>
+        )
+      )}
+      {!ideas && !loading && <div className="bg-white rounded-2xl p-10 text-center text-[#999] text-[13px] shadow-[0_2px_16px_rgba(0,0,0,0.04)]">Skriv inn frø-søkeord og finn nye muligheter i Bergen-markedet.</div>}
+    </div>
+  );
+}
+
+function AiCopyPanel({ apiKey }) {
+  const [kind, setKind] = useState('rsa');
+  const [theme, setTheme] = useState('Utleie i Bergen');
+  const [out, setOut] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState('');
+  const [copied, setCopied] = useState('');
+  const run = async () => {
+    setLoading(true); setErr(''); setOut(null);
+    try {
+      const res = await fetch(`/api/admin/ads/ai/generate?key=${encodeURIComponent(apiKey)}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind, theme }) });
+      const j = await res.json();
+      if (!j.ok) throw new Error(j.error || 'AI-generering feilet');
+      setOut(j);
+    } catch (e) { setErr(e.message); }
+    setLoading(false);
+  };
+  const copy = (txt, id) => { try { navigator.clipboard.writeText(txt); setCopied(id); setTimeout(() => setCopied(''), 1200); } catch (_) {} };
+  const Chip = ({ text, id }) => (
+    <button onClick={() => copy(text, id)} className="text-left bg-[#f7f5f1] hover:bg-[#f1efeb] rounded-lg px-3 py-2 text-[12.5px] text-[#333] transition-colors inline-flex items-center justify-between gap-2 w-full">{text}<span className="text-[10px] text-[#aaa] flex-shrink-0">{copied === id ? 'Kopiert!' : 'Kopier'}</span></button>
+  );
+  return (
+    <div>
+      <div className="flex flex-wrap items-center gap-2 mb-4">
+        <div className="flex items-center gap-1 bg-[#f1efeb] rounded-full p-1">
+          {[['rsa', 'Google RSA'], ['meta', 'Meta']].map(([v, l]) => (<button key={v} onClick={() => setKind(v)} className={`px-3 h-8 rounded-full text-[12px] font-semibold ${kind === v ? 'bg-white text-[#0a0a0a] shadow-sm' : 'text-[#888]'}`}>{l}</button>))}
+        </div>
+        <input value={theme} onChange={(e) => setTheme(e.target.value)} placeholder="Tema / vinkling…" className="h-10 px-4 rounded-full bg-white ring-1 ring-[#eee] text-[12.5px] text-[#0a0a0a] outline-none focus:ring-[#dcdcdc] flex-1 min-w-[220px]" />
+        <button onClick={run} disabled={loading} className="h-10 px-5 rounded-full bg-[#0a0a0a] text-white text-[12.5px] font-semibold disabled:opacity-40 inline-flex items-center gap-1.5">{loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />} Generer</button>
+      </div>
+      {err && <div className="mb-4 bg-rose-50 text-rose-600 rounded-xl px-4 py-3 text-[13px]">{err}</div>}
+      {loading && <div className="py-12 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-[#0a0a0a]" /></div>}
+      {out && kind === 'rsa' && !loading && (
+        <div className="grid md:grid-cols-2 gap-4">
+          <div className="bg-white rounded-2xl p-4 shadow-[0_2px_16px_rgba(0,0,0,0.04)]"><p className="font-semibold text-[#0a0a0a] text-[13px] mb-2">Titler ({(out.headlines || []).length})</p><div className="space-y-1.5">{(out.headlines || []).map((h, i) => <Chip key={i} text={h} id={`h${i}`} />)}</div></div>
+          <div className="bg-white rounded-2xl p-4 shadow-[0_2px_16px_rgba(0,0,0,0.04)]"><p className="font-semibold text-[#0a0a0a] text-[13px] mb-2">Beskrivelser ({(out.descriptions || []).length})</p><div className="space-y-1.5">{(out.descriptions || []).map((d, i) => <Chip key={i} text={d} id={`d${i}`} />)}</div></div>
+        </div>
+      )}
+      {out && kind === 'meta' && !loading && (
+        <div className="grid md:grid-cols-2 gap-4">
+          <div className="bg-white rounded-2xl p-4 shadow-[0_2px_16px_rgba(0,0,0,0.04)]"><p className="font-semibold text-[#0a0a0a] text-[13px] mb-2">Primærtekster</p><div className="space-y-1.5">{(out.primaryTexts || []).map((d, i) => <Chip key={i} text={d} id={`p${i}`} />)}</div></div>
+          <div className="bg-white rounded-2xl p-4 shadow-[0_2px_16px_rgba(0,0,0,0.04)]"><p className="font-semibold text-[#0a0a0a] text-[13px] mb-2">Overskrifter</p><div className="space-y-1.5">{(out.headlines || []).map((h, i) => <Chip key={i} text={h} id={`mh${i}`} />)}</div></div>
+        </div>
+      )}
+      {!out && !loading && <div className="bg-white rounded-2xl p-10 text-center text-[#999] text-[13px] shadow-[0_2px_16px_rgba(0,0,0,0.04)]">Generer ferske annonsetekster i DigiHome-stemmen. Klikk en tekst for å kopiere.</div>}
+    </div>
+  );
+}
+
+function OptField({ label, value, onSave }) {
+  const [v, setV] = useState(value);
+  useEffect(() => { setV(value); }, [value]);
+  return (
+    <div>
+      <label className="text-[11px] text-[#999]">{label}</label>
+      <div className="flex items-center gap-1.5 mt-1">
+        <input type="number" value={v} onChange={(e) => setV(e.target.value)} className="h-9 px-3 rounded-lg bg-[#faf9f7] ring-1 ring-[#eee] text-[12.5px] text-[#0a0a0a] outline-none focus:ring-[#dcdcdc] w-full" />
+        <button onClick={() => onSave(Number(v))} className="h-9 w-9 rounded-lg bg-[#0a0a0a] text-white flex items-center justify-center flex-shrink-0"><Save className="w-3.5 h-3.5" /></button>
+      </div>
+    </div>
+  );
+}
+
+function ReportSettingsPanel({ apiKey }) {
+  const [last, setLast] = useState(null);
+  const [cfg, setCfg] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [running, setRunning] = useState(false);
+  const [savingCfg, setSavingCfg] = useState(false);
+  const [err, setErr] = useState('');
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try { const res = await fetch(`/api/admin/ads/optimize/last?key=${encodeURIComponent(apiKey)}`); const j = await res.json(); if (j.ok) { setLast(j.run); setCfg(j.config); } }
+    catch (e) { setErr(e.message); }
+    setLoading(false);
+  }, [apiKey]);
+  useEffect(() => { load(); }, [load]);
+
+  const runNow = async () => {
+    setRunning(true); setErr('');
+    try { const res = await fetch(`/api/admin/ads/optimize/run?key=${encodeURIComponent(apiKey)}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode: 'weekly', dryRun: true }) }); const j = await res.json(); if (!j.ok) throw new Error(j.error || 'Kjøring feilet'); setLast(j.run); }
+    catch (e) { setErr(e.message); }
+    setRunning(false);
+  };
+  const saveCfg = async (patch) => {
+    setSavingCfg(true);
+    try { const res = await fetch(`/api/admin/ads/optimize/config?key=${encodeURIComponent(apiKey)}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ config: patch }) }); const j = await res.json(); if (j.ok) setCfg(j.config); }
+    catch (e) { setErr(e.message); }
+    setSavingCfg(false);
+  };
+
+  if (loading) return <div className="py-16 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-[#0a0a0a]" /></div>;
+  return (
+    <div className="space-y-5">
+      {err && <div className="bg-rose-50 text-rose-600 rounded-xl px-4 py-3 text-[13px]">{err}</div>}
+      <div className="bg-white rounded-2xl p-5 shadow-[0_2px_16px_rgba(0,0,0,0.04)]">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <p className="font-semibold text-[#0a0a0a] text-[14px]">Ukentlig optimaliserings-kjøring</p>
+            <p className="text-[12px] text-[#999] mt-0.5">Henter data, bygger anbefalinger, keyword research + AI-rapport. {last && last.at ? `Sist kjørt ${minsAgo(last.at)}.` : 'Aldri kjørt ennå.'}</p>
+          </div>
+          <button onClick={runNow} disabled={running} className="h-10 px-5 rounded-full bg-[#0a0a0a] text-white text-[12.5px] font-semibold disabled:opacity-40 inline-flex items-center gap-1.5 active:scale-[0.97] transition-transform">{running ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />} Kjør nå</button>
+        </div>
+        {last && last.summary && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-4">
+            {[['Anbefalinger', last.summary.totalRecommendations], ['Est. besparelse', fmtKr(last.summary.estimatedSavings)], ['Søkeordideer', last.summary.keywordIdeas], ['Auto-utført', last.summary.autoApplied]].map(([l, v], i) => (
+              <div key={i} className="bg-[#faf9f7] rounded-xl p-3"><p className="text-[11px] text-[#999]">{l}</p><p className="text-[16px] font-bold text-[#0a0a0a]">{v}</p></div>
+            ))}
+          </div>
+        )}
+      </div>
+      {last && last.report && (
+        <div className="bg-white rounded-2xl p-5 shadow-[0_2px_16px_rgba(0,0,0,0.04)]">
+          <p className="font-semibold text-[#0a0a0a] text-[14px] mb-3 inline-flex items-center gap-2"><FileText className="w-4 h-4" /> AI-ukerapport</p>
+          <div className="text-[13px] text-[#444] whitespace-pre-wrap leading-relaxed">{last.report}</div>
+        </div>
+      )}
+      {cfg && (
+        <div className="bg-white rounded-2xl p-5 shadow-[0_2px_16px_rgba(0,0,0,0.04)]">
+          <p className="font-semibold text-[#0a0a0a] text-[14px] mb-1 inline-flex items-center gap-2"><Settings2 className="w-4 h-4" /> Auto-optimalisering (vakter)</p>
+          <p className="text-[12px] text-[#999] mb-4">Som standard <b>av</b> — anbefalinger krever manuell godkjenning. Skru på for å la systemet utføre trygge handlinger automatisk ved cron-kjøring.</p>
+          <label className="flex items-center justify-between py-2 border-b border-[#f3f3f3]">
+            <span className="text-[13px] text-[#333]">Auto-utfør anbefalinger</span>
+            <button onClick={() => saveCfg({ autoApply: !cfg.autoApply })} disabled={savingCfg} className={`relative w-11 h-6 rounded-full transition-colors ${cfg.autoApply ? 'bg-emerald-500' : 'bg-[#ddd]'}`}><span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${cfg.autoApply ? 'left-[22px]' : 'left-0.5'}`} /></button>
+          </label>
+          <div className="grid grid-cols-2 gap-3 mt-3">
+            <OptField label="Sløsing-grense annonse (kr)" value={cfg.wasteAdCost} onSave={(v) => saveCfg({ wasteAdCost: v })} />
+            <OptField label="Negativ-grense søketerm (kr)" value={cfg.negativeTermCost} onSave={(v) => saveCfg({ negativeTermCost: v })} />
+            <OptField label="Skaler ved ROAS ≥" value={cfg.scaleRoas} onSave={(v) => saveCfg({ scaleRoas: v })} />
+            <OptField label="Maks auto-handlinger" value={cfg.maxAutoActions} onSave={(v) => saveCfg({ maxAutoActions: v })} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

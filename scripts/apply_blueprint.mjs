@@ -5,6 +5,7 @@ const env = fs.readFileSync('/app/.env', 'utf8');
 for (const l of env.split('\n')) { const m = l.match(/^([A-Z0-9_]+)=(.*)$/); if (m && !process.env[m[1]]) process.env[m[1]] = m[2]; }
 const lib = await import('/app/lib/google-ads-native.js');
 const DRY = process.argv.includes('--dry');
+const VALIDATE = process.argv.includes('--validate');
 
 const CAMP_NAME = 'DH | Utleie | Bergen | Search';
 const NEG_LIST_NAME = 'DH – Negative (utleier-intensjon)';
@@ -24,6 +25,16 @@ const AG3 = {
 };
 const NEGATIVES = ['til leie','leilighet til leie','bolig til leie','leie leilighet','leie leilighet bergen','finn leilighet','ledig leilighet','hybel til leie','rom til leie','leie hus','leie bolig bergen','kjøpe','til salgs','selge bolig','boligpriser','jobb','ledig stilling','stilling','lønn','gratis','kurs','utdanning','leiekontrakt mal','kontrakt mal','skjema','hotell','feriebolig','bilutleie','utleie bobil','utleie utstyr','lån','forsikring','kommunal bolig','studentbolig'];
 
+const FINAL_URL_SUFFIX = 'utm_source=google&utm_medium=cpc&utm_campaign=utleie-bergen-search&utm_term={keyword}&utm_content={creative}&matchtype={matchtype}&device={device}&network={network}';
+const SITELINKS = [
+  { text: 'Slik fungerer det', desc1: 'Tre enkle steg', desc2: 'Vi gjør jobben for deg', url: 'https://digihome.no/bli-utleier' },
+  { text: 'Hva tjener boligen?', desc1: 'Gratis inntektsanslag', desc2: 'Svar innen 24 timer', url: 'https://digihome.no/lp/inntekt' },
+  { text: 'Full forvaltning', desc1: 'Leietakere og husleie', desc2: 'Vedlikehold inkludert', url: 'https://digihome.no/lp/forvaltning' },
+  { text: 'Kom i gang gratis', desc1: 'Ingen bindingstid', desc2: 'Ingen oppstartskostnad', url: 'https://digihome.no/bli-utleier' },
+];
+const CALLOUTS = ['Ingen oppstartskostnad','Ingen bindingstid','Gratis vurdering på 24 t','Lokalt team i Bergen','Betal kun ved leieinntekt','Full oversikt i sanntid'];
+const SNIPPET = { header: 'Tjenester', values: ['Annonsering','Leietakeroppfølging','Husleieinnkreving','Vedlikehold','Forvaltning','Korttidsutleie'] };
+
 (async () => {
   const CUST = lib.defaultCustomerId();
   console.log('Kunde:', CUST, '| MCC:', process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID, DRY ? '| (DRY RUN)' : '');
@@ -35,6 +46,8 @@ const NEGATIVES = ['til leie','leilighet til leie','bolig til leie','leie leilig
   console.log('Eksisterende annonsegrupper:', ags.map((a) => `${a.name}(${a.id})`).join(', ') || '(ingen)');
 
   if (DRY) { console.log('\nDRY RUN — ingen endringer gjort.'); return; }
+
+  if (!VALIDATE) {
 
   // A) Bidding → Manuell CPC
   if (camp.biddingStrategyType !== 'MANUAL_CPC') {
@@ -67,6 +80,40 @@ const NEGATIVES = ['til leie','leilighet til leie','bolig til leie','leie leilig
     if (existing.length) console.log('[E] Negativ liste finnes allerede, hopper over.');
     else { const r = await lib.createSharedNegativeList(CUST, { name: NEG_LIST_NAME, negatives: NEGATIVES, campaignId: camp.id }); console.log('[E] Negativ liste opprettet + festet:', r.sharedSetResourceName, `| ${NEGATIVES.length} negative`); }
   } catch (e) { console.log('[E] Negativ liste FEIL:', e.message); }
+  } // slutt !VALIDATE (Runde 1)
+
+  // ===== RUNDE 2: utvidelser (assets) + sporing =====
+  const vo = VALIDATE ? { validateOnly: true } : {};
+  console.log(VALIDATE ? '\n=== RUNDE 2 (VALIDATE-ONLY — ingenting committes) ===' : '\n=== RUNDE 2 (LIVE) ===');
+
+  // F) Final URL-suffiks (UTM-sporing) på kampanjenivå
+  try {
+    const cur = await lib.getCampaignFinalUrlSuffix(CUST, camp.id);
+    if (cur && cur === FINAL_URL_SUFFIX) {
+      console.log('[F] Final URL-suffiks allerede satt korrekt, hopper over.');
+    } else {
+      await lib.setCampaignFinalUrlSuffix(CUST, camp.id, FINAL_URL_SUFFIX, vo);
+      console.log('[F] Final URL-suffiks', VALIDATE ? 'VALIDERT OK' : 'satt: OK', cur ? `(erstattet eksisterende)` : '');
+    }
+  } catch (e) { console.log('[F] Final URL-suffiks FEIL:', e.message); }
+
+  // G) Utvidelser (assets): sitelinks, callouts, structured snippet (idempotent på field_type)
+  try {
+    const have = await lib.listCampaignAssetFieldTypes(CUST, camp.id);
+    const toAdd = {
+      sitelinks: have.has('SITELINK') ? [] : SITELINKS,
+      callouts: have.has('CALLOUT') ? [] : CALLOUTS,
+      structuredSnippet: have.has('STRUCTURED_SNIPPET') ? null : SNIPPET,
+      ...vo,
+    };
+    const nothing = !toAdd.sitelinks.length && !toAdd.callouts.length && !toAdd.structuredSnippet;
+    if (nothing) {
+      console.log('[G] Utvidelser finnes allerede (', [...have].join(', ') || 'ingen', '), hopper over.');
+    } else {
+      const r = await lib.addCampaignAssets(CUST, camp.id, toAdd);
+      console.log('[G] Utvidelser', VALIDATE ? 'VALIDERT' : 'lagt til', '→', JSON.stringify(r.created), `| ${r.operationCount} ops`);
+    }
+  } catch (e) { console.log('[G] Utvidelser FEIL:', e.message); }
 
   console.log('\nFerdig.');
 })().catch((e) => console.log('UNCAUGHT', e.message));

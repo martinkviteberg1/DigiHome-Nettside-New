@@ -8,11 +8,14 @@ import { isBot, buildEvent, ensureAnalyticsIndexes, computeAnalytics, computeLea
 import { deriveChannel, serializeForLLM, computeWebVitals, detectAnomalies, computeLive, computeAdsEconomics, computeMetaEconomics, combineAdsEconomics, computeAdsLeadsSeries } from '@/lib/analytics-server';
 import { parseGoogleAdsCsv } from '@/lib/adsImport';
 import { sendMetaCapiEvent, metaCapiConfigured } from '@/lib/meta-capi';
-import { fetchMetaInsights, fetchMetaAccount, metaAdsConfigured, getCachedMetaReport, META_PERIODS, metaPeriodToRange, getCachedMetaCreatives, fetchMetaPreviewSrc, isValidPreviewFormat } from '@/lib/meta-ads';
+import { fetchMetaInsights, fetchMetaAccount, metaAdsConfigured, getCachedMetaReport, META_PERIODS, metaPeriodToRange, getCachedMetaCreatives, fetchMetaPreviewSrc, isValidPreviewFormat, getCachedMetaAdsTable } from '@/lib/meta-ads';
 import { fetchPages, fetchLeadForms, fetchFormLeads, mapLeadFields, metaLeadAdsConfigured, fetchSingleLead, fetchFormName, fetchPageToken } from '@/lib/meta-leadads';
 import { composioConfigured, createConnectLink, getConnectionStatus, runCampaignReport, defaultCustomerId, getCachedReport, GOOGLE_PERIODS, getCachedCreatives, activeProvider } from '@/lib/google-ads-provider';
-import { googleAdsNativeConfigured, listConversionActions, resolveOfflineConversionAction, uploadClickConversion, toConversionDateTime, listCampaignsDetailed, suggestGeoTargets, setCampaignStatus, updateCampaignBudget, createSearchCampaign } from '@/lib/google-ads-native';
+import { googleAdsNativeConfigured, listConversionActions, resolveOfflineConversionAction, uploadClickConversion, toConversionDateTime, listCampaignsDetailed, suggestGeoTargets, setCampaignStatus, updateCampaignBudget, createSearchCampaign, runAdsWithMetrics, runSearchTerms, runKeywordMetrics, generateKeywordIdeas } from '@/lib/google-ads-native';
 import { dataManagerConfigured, ingestOfflineConversion } from '@/lib/google-ads-datamanager';
+import { buildRecommendations } from '@/lib/ads-recommendations';
+import { generateRsaCopy, generateMetaCopy } from '@/lib/ads-ai';
+import { runOptimization, getOptimizeConfig, setOptimizeConfig, getLastRun, listRuns, applyRecommendation } from '@/lib/ads-optimize';
 import { chatLLM } from '@/lib/llm';
 import { slugify } from '@/lib/site';
 import { getRentReport, refreshRentReport, RENT_CITIES } from '@/lib/rentmarket';
@@ -1780,6 +1783,147 @@ async function handleRoute(request, { params }) {
       } catch (e) {
         return cors(NextResponse.json({ ok: false, error: e.message }, { status: 200 }));
       }
+    }
+
+    // ===================================================================
+    // INTELLIGENS-LAGET (Fase A–D): samlet tabell, anbefalinger, keyword
+    // research, AI-tekster, optimaliserings-kjøring + sikret cron.
+    // ===================================================================
+
+    // Fase A: Samlet per-annonse-tabell (Google + Meta) m/ alle nøkkeltall.
+    if (route === '/admin/ads/table' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const { searchParams } = new URL(request.url);
+      const googlePeriod = GOOGLE_PERIODS.includes(searchParams.get('googlePeriod')) ? searchParams.get('googlePeriod') : 'last_30d';
+      const metaPeriod = META_PERIODS.includes(searchParams.get('metaPeriod')) ? searchParams.get('metaPeriod') : 'last_30d';
+      const refresh = ['1', 'true'].includes(String(searchParams.get('refresh')));
+      const googleTask = (async () => {
+        if (!googleAdsNativeConfigured()) return { ads: [], configured: false };
+        try { const range = metaPeriodToRange(googlePeriod); const r = await runAdsWithMetrics({ since: range.periodFrom, until: range.periodTo }); return { ads: r.ads, configured: true, from: r.from, to: r.to }; }
+        catch (e) { return { ads: [], configured: true, error: e.message }; }
+      })();
+      const metaTask = (async () => {
+        if (!metaAdsConfigured()) return { ads: [], configured: false };
+        try { const r = await getCachedMetaAdsTable(db, metaPeriod, { force: refresh }); return { ads: r.ads, configured: true, fetchedAt: r.fetchedAt, stale: !!r.stale }; }
+        catch (e) { return { ads: [], configured: true, error: e.message }; }
+      })();
+      const [g, m] = await Promise.all([googleTask, metaTask]);
+      const ads = [...(g.ads || []), ...(m.ads || [])];
+      return cors(NextResponse.json({
+        ok: true, ads,
+        google: { configured: g.configured, error: g.error || null, from: g.from || null, to: g.to || null },
+        meta: { configured: m.configured, error: m.error || null, fetchedAt: m.fetchedAt || null, stale: !!m.stale },
+        googlePeriod, metaPeriod,
+      }));
+    }
+
+    // Fase B: Anbefalinger (regelmotor over fersk data).
+    if (route === '/admin/ads/recommendations' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const { searchParams } = new URL(request.url);
+      const period = GOOGLE_PERIODS.includes(searchParams.get('period')) ? searchParams.get('period') : 'last_30d';
+      try {
+        const range = metaPeriodToRange(period);
+        const gOn = googleAdsNativeConfigured(), mOn = metaAdsConfigured();
+        const [googleAds, searchTerms, keywords, campaigns, metaAds] = await Promise.all([
+          gOn ? runAdsWithMetrics({ since: range.periodFrom, until: range.periodTo }).then((r) => r.ads).catch(() => []) : [],
+          gOn ? runSearchTerms({ since: range.periodFrom, until: range.periodTo }).catch(() => []) : [],
+          gOn ? runKeywordMetrics({ since: range.periodFrom, until: range.periodTo }).catch(() => []) : [],
+          gOn ? listCampaignsDetailed().catch(() => []) : [],
+          mOn ? getCachedMetaAdsTable(db, period, {}).then((r) => r.ads).catch(() => []) : [],
+        ]);
+        const cfg = await getOptimizeConfig(db);
+        const recommendations = buildRecommendations({ googleAds, searchTerms, keywords, metaAds, campaigns, config: cfg });
+        const counts = recommendations.reduce((mm, r) => { mm[r.type] = (mm[r.type] || 0) + 1; return mm; }, {});
+        const estimatedSavings = Math.round(recommendations.reduce((s, r) => s + (r.estimatedSaving || 0), 0) * 100) / 100;
+        return cors(NextResponse.json({ ok: true, recommendations, counts, estimatedSavings, period, searchTermsCount: searchTerms.length }));
+      } catch (e) {
+        return cors(NextResponse.json({ ok: false, error: e.message }, { status: 200 }));
+      }
+    }
+
+    // Fase B: Bruk én anbefaling (menneske-godkjent).
+    if (route === '/admin/ads/recommendations/apply' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      const rec = body.recommendation || body.rec || (body.action ? body : null);
+      if (!rec || !rec.action || !rec.action.kind) return cors(NextResponse.json({ ok: false, error: 'Mangler recommendation/action' }, { status: 400 }));
+      try {
+        const res = await applyRecommendation(rec, {});
+        await db.collection('ads_applied_actions').insertOne({ id: uuidv4(), at: new Date().toISOString(), recId: rec.id || null, type: rec.type || null, action: rec.action, result: { ok: !!res.ok, error: res.error || null }, by: 'admin' });
+        return cors(NextResponse.json({ ok: !!res.ok, result: res, error: res.ok ? null : (res.error || 'Handling feilet') }, { status: 200 }));
+      } catch (e) {
+        return cors(NextResponse.json({ ok: false, error: e.message }, { status: 200 }));
+      }
+    }
+
+    // Fase C: Keyword research (nye søkeordideer m/ volum/konkurranse).
+    if (route === '/admin/ads/keyword-research' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!googleAdsNativeConfigured()) return cors(NextResponse.json({ ok: false, error: 'Native Google Ads API er ikke konfigurert' }, { status: 400 }));
+      const { searchParams } = new URL(request.url);
+      const seeds = (searchParams.get('seeds') || '').split(',').map((s) => s.trim()).filter(Boolean);
+      const url = (searchParams.get('url') || '').trim();
+      try {
+        const ideas = await generateKeywordIdeas({ seeds: seeds.length ? seeds : ['leie ut bolig bergen', 'utleie bergen', 'eiendomsforvaltning bergen'], url: url || undefined });
+        return cors(NextResponse.json({ ok: true, ideas, count: ideas.length }));
+      } catch (e) {
+        return cors(NextResponse.json({ ok: false, error: e.message }, { status: 200 }));
+      }
+    }
+
+    // Fase C: AI-genererte annonsetekster (RSA eller Meta).
+    if (route === '/admin/ads/ai/generate' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      const kind = body.kind === 'meta' ? 'meta' : 'rsa';
+      const theme = (body.theme || 'Utleie i Bergen').toString().slice(0, 120);
+      try {
+        if (kind === 'meta') { const r = await generateMetaCopy({ theme }); return cors(NextResponse.json({ ok: true, kind: 'meta', ...r })); }
+        const r = await generateRsaCopy({ theme, examples: Array.isArray(body.examples) ? body.examples : [] });
+        return cors(NextResponse.json({ ok: true, kind: 'rsa', ...r }));
+      } catch (e) {
+        return cors(NextResponse.json({ ok: false, error: e.message }, { status: 200 }));
+      }
+    }
+
+    // Fase B/C/D: Kjør optimalisering nå (dryRun=true som standard → ingen mutasjon).
+    if (route === '/admin/ads/optimize/run' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      const mode = body.mode === 'daily' ? 'daily' : 'weekly';
+      const dryRun = body.dryRun !== false; // default: trygg (ingen auto-apply)
+      try { const run = await runOptimization(db, { mode, dryRun }); return cors(NextResponse.json({ ok: true, run })); }
+      catch (e) { return cors(NextResponse.json({ ok: false, error: e.message }, { status: 200 })); }
+    }
+
+    // Fase B/C: Siste kjøring + historikk + konfig.
+    if (route === '/admin/ads/optimize/last' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const [run, runs, config] = await Promise.all([getLastRun(db), listRuns(db, 10), getOptimizeConfig(db)]);
+      return cors(NextResponse.json({ ok: true, run: run || null, runs, config }));
+    }
+
+    // Fase D: Oppdater optimaliserings-konfig (terskler + auto-apply-vakter).
+    if (route === '/admin/ads/optimize/config' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      const patch = body.config || body || {};
+      delete patch.key; delete patch._id;
+      try { const config = await setOptimizeConfig(db, patch); return cors(NextResponse.json({ ok: true, config })); }
+      catch (e) { return cors(NextResponse.json({ ok: false, error: e.message }, { status: 200 })); }
+    }
+
+    // Fase D: Sikret cron-endepunkt (ekstern planlegger, ukentlig/daglig).
+    if (route === '/cron/ads-optimize' && (method === 'GET' || method === 'POST')) {
+      const sp = new URL(request.url).searchParams;
+      const token = sp.get('token') || request.headers.get('x-cron-token') || '';
+      const cronSecret = (process.env.ADS_CRON_SECRET || '').trim();
+      const okAuth = (cronSecret && token === cronSecret) || (ADMIN_KEY && token === ADMIN_KEY);
+      if (!okAuth) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const mode = sp.get('mode') === 'daily' ? 'daily' : 'weekly';
+      try { const run = await runOptimization(db, { mode, dryRun: false }); return cors(NextResponse.json({ ok: true, mode, summary: run.summary, autoApplied: run.autoApplied })); }
+      catch (e) { return cors(NextResponse.json({ ok: false, error: e.message }, { status: 200 })); }
     }
 
     // --- Admin: Annonser — Google Ads via Composio: synk live kostnad ------
