@@ -15,6 +15,11 @@ export default function ConsentBanner() {
   const cardRef = useRef(null);
   const pathname = usePathname();
   const isAdmin = (pathname || '').startsWith('/admin');
+  // Skjul banneret under offline film-render (?record=1) slik at MP4-rammene blir rene.
+  const [isRecord, setIsRecord] = useState(false);
+  useEffect(() => {
+    try { setIsRecord(new URLSearchParams(window.location.search).get('record') === '1'); } catch (e) {}
+  }, []);
 
   useEffect(() => {
     setMounted(true);
@@ -55,7 +60,7 @@ export default function ConsentBanner() {
     setDecided(true);
   };
 
-  if (!mounted || decided || isAdmin) return null;
+  if (!mounted || decided || isAdmin || isRecord) return null;
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-[120] flex justify-center px-3 pb-3 sm:px-5 sm:pb-5 pointer-events-none">

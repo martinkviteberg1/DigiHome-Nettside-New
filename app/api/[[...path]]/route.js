@@ -1299,7 +1299,7 @@ async function handleRoute(request, { params }) {
         move_in_date: (body.move_in_date || '').toString().slice(0, 40),
         notes: (body.notes || '').toString().slice(0, 4000),
         lead_type: 'leietaker',
-        source: 'nettside',
+        source: (body.source || 'nettside').toString().slice(0, 60),
         attribution: sanitizeAttribution(body.attribution),
         marketingConsent: marketingConsentFromRequest(request),
         status: 'new',
@@ -2434,7 +2434,16 @@ async function handleRoute(request, { params }) {
 
     if (route === '/webhooks/lead-status' && method === 'POST') {
       const secret = process.env.LEAD_SYNC_SECRET || '';
-      const provided = request.headers.get('x-webhook-secret') || '';
+      // Aksepter hemmeligheten via flere konvensjoner (robust mot header-navn-mismatch
+      // fra plattformsiden): X-Webhook-Secret, Authorization: Bearer <secret>, ?secret=.
+      const { searchParams: webhookParams } = new URL(request.url);
+      const authHeader = (request.headers.get('authorization') || '').trim();
+      const bearer = /^bearer\s+/i.test(authHeader) ? authHeader.replace(/^bearer\s+/i, '').trim() : '';
+      const provided =
+        (request.headers.get('x-webhook-secret') || '').trim() ||
+        (request.headers.get('x-lead-sync-secret') || '').trim() ||
+        bearer ||
+        (webhookParams.get('secret') || '').trim();
       if (!secret || provided !== secret) {
         return cors(NextResponse.json({ ok: false, error: 'Uautorisert' }, { status: 401 }));
       }

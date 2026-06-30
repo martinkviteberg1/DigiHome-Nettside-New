@@ -21,15 +21,22 @@ from playwright.async_api import async_playwright
 CAPTURE_FPS = 60   # fanges i 60 fps ...
 OUT_FPS = 30       # ... og blandes ned til 30 fps med motion blur
 CUT60 = "--cut60" in sys.argv
+VERTICAL = ("--vertical" in sys.argv) or ("--9x16" in sys.argv)  # 9:16 social-format
 DURATION = 60 if CUT60 else 108
-URL = "http://localhost:3000/video?record=1" + ("&cut=60" if CUT60 else "")
+_fmt = "9x16" if VERTICAL else "16x9"
+URL = (
+    "http://localhost:3000/video?record=1"
+    + ("&cut=60" if CUT60 else "")
+    + ("&format=9x16" if VERTICAL else "")
+)
 FRAMES_DIR = "/tmp/film_frames"
 WAV_PATH = "/tmp/film_music.wav"
 OUT_PATH = (
-    "/app/public/film/digihome-utleie-pa-autopilot-60s-16x9.mp4"
+    f"/app/public/film/digihome-utleie-pa-autopilot-60s-{_fmt}.mp4"
     if CUT60 else
-    "/app/public/film/digihome-utleie-pa-autopilot-16x9.mp4"
+    f"/app/public/film/digihome-utleie-pa-autopilot-{_fmt}.mp4"
 )
+VIEWPORT = {"width": 1080, "height": 1920} if VERTICAL else {"width": 1920, "height": 1080}
 TEST_MODE = "--test" in sys.argv
 
 TOTAL_FRAMES = CAPTURE_FPS * DURATION if not TEST_MODE else 12
@@ -52,7 +59,7 @@ async def render():
                 "--disable-gpu-vsync",
             ],
         )
-        page = await browser.new_page(viewport={"width": 1920, "height": 1080})
+        page = await browser.new_page(viewport=VIEWPORT)
         await page.goto(URL, wait_until="networkidle")
         await page.wait_for_function("window.__filmReady === true", timeout=30000)
         await page.evaluate("document.fonts.ready")

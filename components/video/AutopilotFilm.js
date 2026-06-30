@@ -185,10 +185,12 @@ export default function AutopilotFilm() {
   const { time, playing, started, ended, play, pause, seekTo, beginPaused, tRef } = useFilmClock(CFG.duration);
   const wrapperRef = useRef(null);
   const stageRef = useRef(null);
+  const verticalRef = useRef(null);
   const progressRef = useRef(null);
   const hideTimer = useRef(null);
   const [chrome, setChrome] = useState(true);
   const [recordMode, setRecordMode] = useState(false);
+  const [vertical, setVertical] = useState(false); /* 9:16 social-format */
   const [muted, setMuted] = useState(false);
   const [dlReady, setDlReady] = useState(false);
   const [idleT, setIdleT] = useState(0);
@@ -197,6 +199,8 @@ export default function AutopilotFilm() {
   playingRef.current = playing;
   const mutedRef = useRef(muted);
   mutedRef.current = muted;
+  const verticalValRef = useRef(vertical);
+  verticalValRef.current = vertical;
 
   /* ---- musikk ---- */
   const audioCtxRef = useRef(null);
@@ -239,6 +243,8 @@ export default function AutopilotFilm() {
   useEffect(() => {
     const sp = new URLSearchParams(window.location.search);
     if (sp.get('cut') === '60') setCut('60');
+    const fmt = (sp.get('format') || '').toLowerCase();
+    if (fmt === '9x16' || fmt === 'vertical' || fmt === 'reel' || sp.get('vertical') === '1') setVertical(true);
     if (sp.get('record') === '1') {
       recordRef.current = true;
       setRecordMode(true);
@@ -255,17 +261,19 @@ export default function AutopilotFilm() {
   }, [cut]);
 
   /* ---- sjekk om MP4 finnes (for nedlasting) ---- */
+  const mp4For = (c, v) => (v ? CUTS[c].mp4.replace('-16x9', '-9x16') : CUTS[c].mp4);
+  const dlNameFor = (c, v) => (v ? CUTS[c].dlName.replace(/\.mp4$/, '-9x16.mp4') : CUTS[c].dlName);
   useEffect(() => {
     setDlReady(false);
-    fetch(CFG.mp4, { method: 'HEAD' })
+    fetch(mp4For(cut, vertical), { method: 'HEAD' })
       .then((r) => { if (r.ok) setDlReady(true); })
       .catch(() => {});
-  }, [CFG.mp4]);
+  }, [cut, vertical]);
 
   const triggerDownload = useCallback(() => {
     const a = document.createElement('a');
-    a.href = CUTS[cutRef.current].mp4;
-    a.download = CUTS[cutRef.current].dlName;
+    a.href = mp4For(cutRef.current, verticalValRef.current);
+    a.download = dlNameFor(cutRef.current, verticalValRef.current);
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -305,6 +313,17 @@ export default function AutopilotFilm() {
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
+
+  /* ---- reel-enhet for 9:16 merkevarefelt: --ru = 1% av reel-bredde ---- */
+  useEffect(() => {
+    const el = verticalRef.current;
+    if (!el || !vertical) return;
+    const ro = new ResizeObserver(([entry]) => {
+      el.style.setProperty('--ru', `${entry.contentRect.width / 100}px`);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [vertical]);
 
   /* ---- auto-skjul kontroller ---- */
   const wake = useCallback(() => {
@@ -385,13 +404,13 @@ export default function AutopilotFilm() {
         if (dlReady) triggerDownload();
       }}
     >
-      {/* 16:9-scene, letterboxet */}
+      {/* scene — 16:9 (letterboxet horisontalt) eller sentrert reel-vindu i 9:16-modus */}
       <div
         ref={stageRef}
         className="relative overflow-hidden"
         style={{
-          width: 'min(100vw, calc(100vh * 1.77778))',
-          height: 'min(100vh, calc(100vw * 0.5625))',
+          width: vertical ? 'min(100vw, calc(100vh * 0.5625))' : 'min(100vw, calc(100vh * 1.77778))',
+          height: vertical ? 'calc(min(100vw, calc(100vh * 0.5625)) * 0.5625)' : 'min(100vh, calc(100vw * 0.5625))',
           background: '#060607',
           '--su': '12px',
         }}
@@ -654,6 +673,55 @@ export default function AutopilotFilm() {
           </div>
         )}
       </div>
+
+      {/* ============ 9:16 SOCIAL-FORMAT — merkevarefelt over/under filmen ============ */}
+      {vertical && (
+        <div className="absolute inset-0 z-[40] flex justify-center pointer-events-none" aria-hidden="true">
+          <style>{`@keyframes dhCapIn{from{opacity:0;transform:translateY(0.9vh)}to{opacity:1;transform:none}}`}</style>
+          <div
+            ref={verticalRef}
+            className="relative flex flex-col items-stretch"
+            style={{ width: 'min(100vw, calc(100vh * 0.5625))', height: '100vh' }}
+          >
+            {/* TOPP */}
+            <div
+              className="flex-1 flex flex-col items-center justify-center text-center"
+              style={{ background: 'linear-gradient(to bottom, #060607 68%, rgba(6,6,7,0.85) 88%, rgba(6,6,7,0) 100%)', padding: '0 calc(var(--ru) * 8)' }}
+            >
+              <img src="/brand/digihome-lockup-white.svg" alt="DigiHome" style={{ height: 'calc(var(--ru) * 7)', width: 'auto', opacity: 0.96 }} />
+              <p className="font-body" style={{ marginTop: 'calc(var(--ru) * 4)', color: 'rgba(207,151,252,0.9)', fontSize: 'calc(var(--ru) * 2.2)', letterSpacing: '0.26em', textTransform: 'uppercase' }}>
+                Eiendomsforvaltning · Bergen
+              </p>
+              <p className="font-heading" style={{ marginTop: 'calc(var(--ru) * 2)', color: '#FDFCFB', fontSize: 'calc(var(--ru) * 6.6)', fontWeight: 700, lineHeight: 1.02, letterSpacing: '-0.02em' }}>
+                Utleie på autopilot
+              </p>
+            </div>
+
+            {/* FILM-VINDU (gjennomsiktig — filmen vises bak) */}
+            <div style={{ flex: '0 0 calc(min(100vw, calc(100vh * 0.5625)) * 0.5625)' }} />
+
+            {/* BUNN */}
+            <div
+              className="flex-1 flex flex-col items-center justify-center text-center"
+              style={{ background: 'linear-gradient(to top, #060607 68%, rgba(6,6,7,0.85) 88%, rgba(6,6,7,0) 100%)', padding: '0 calc(var(--ru) * 8)' }}
+            >
+              <div key={chapterLabel} style={{ animation: recordMode ? 'none' : 'dhCapIn 0.5s cubic-bezier(.16,1,.3,1) both' }}>
+                <p className="font-body" style={{ color: 'rgba(253,252,251,0.45)', fontSize: 'calc(var(--ru) * 2)', letterSpacing: '0.24em', textTransform: 'uppercase' }}>Nå skjer</p>
+                <p className="font-heading" style={{ marginTop: 'calc(var(--ru) * 1.4)', color: '#FDFCFB', fontSize: 'calc(var(--ru) * 7.4)', fontWeight: 700, lineHeight: 1.0, letterSpacing: '-0.02em' }}>{chapterLabel}</p>
+              </div>
+              <div
+                className="font-body"
+                style={{ marginTop: 'calc(var(--ru) * 4.5)', display: 'inline-flex', alignItems: 'center', gap: 'calc(var(--ru) * 1.4)', borderRadius: 999, padding: 'calc(var(--ru) * 1.9) calc(var(--ru) * 4.2)', background: 'linear-gradient(135deg,#CF97FC,#9B5BD6)', color: '#0A0A0A', fontWeight: 600, fontSize: 'calc(var(--ru) * 2.8)', boxShadow: '0 calc(var(--ru)*1.2) calc(var(--ru)*3) rgba(207,151,252,0.3)' }}
+              >
+                Prøv gratis · digihome.no
+              </div>
+              <div style={{ marginTop: 'calc(var(--ru) * 4.5)', width: '72%', height: 'calc(var(--ru) * 0.6)', borderRadius: 99, background: 'rgba(255,255,255,0.16)', overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${pct}%`, background: 'linear-gradient(90deg,#9B5BD6,#CF97FC)' }} />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
