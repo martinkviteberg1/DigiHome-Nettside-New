@@ -16,6 +16,7 @@ import PropertyRegistryPicker from './PropertyRegistryPicker';
 import { FinnLookupField, AddressField, finnToFields, FinnPropertyCard } from './PropertyInputs';
 import { track, getLeadAttribution } from '@/lib/analytics';
 import { trackLead, trackLeadStart, getClickIds } from '@/lib/gtag';
+import { getVariant } from '@/lib/ab';
 import {
   User, Mail, ArrowRight, ArrowLeft, CheckCircle2, Check, Loader2,
   Home, Building2, Warehouse, LayoutGrid, BedDouble, TrendingUp, Shield, Key, Zap, Calendar as CalendarIcon,
@@ -70,6 +71,7 @@ export default function BliUtleierPage() {
   const [errors, setErrors] = useState<any>({});
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [ctaVariant, setCtaVariant] = useState<string>('A');
 
   // Finn-annonse (valgfritt). FinnLookupField håndterer oppslag/forhåndsvisning selv.
   const [finnUrl, setFinnUrl] = useState('');
@@ -119,6 +121,8 @@ export default function BliUtleierPage() {
   }, []);
 
   // Analyse: marker at skjemaet ble startet (én gang) + spor hvert steg (drop-off).
+  // A/B-tildeling (onboard_cta) FØR form_start → varianten følger med på events.
+  useEffect(() => { try { setCtaVariant(getVariant('onboard_cta', ['A', 'B'])); } catch (e) {} }, []);
   useEffect(() => { track('form_start', { form: 'utleier' }); try { trackLeadStart('utleier'); } catch (e) {} }, []);
   useEffect(() => {
     track('form_step', { form: 'utleier', step: step + 1, label: STEPS[step]?.title || `Steg ${step}` });
@@ -809,7 +813,7 @@ export default function BliUtleierPage() {
                 <Button onClick={goNext} data-testid="owner-next-button" className="rounded-full bg-[#0a0a0a] text-white hover:bg-black h-12 px-8 text-[14px] font-semibold gap-2 active:scale-[0.97] transition-transform shadow-[0_6px_20px_-8px_rgba(0,0,0,0.5)]">Neste <ArrowRight className="w-4 h-4" /></Button>
               </div>
             ) : (
-              <Button onClick={handleSubmit} disabled={loading} data-testid="owner-submit-button" className="rounded-full bg-[#0a0a0a] text-white hover:bg-black h-12 px-8 text-[14px] font-semibold gap-2 active:scale-[0.97] transition-transform shadow-[0_6px_20px_-8px_rgba(0,0,0,0.5)]">{loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />} Send henvendelse</Button>
+              <Button onClick={handleSubmit} disabled={loading} data-testid="owner-submit-button" className="rounded-full bg-[#0a0a0a] text-white hover:bg-black h-12 px-8 text-[14px] font-semibold gap-2 active:scale-[0.97] transition-transform shadow-[0_6px_20px_-8px_rgba(0,0,0,0.5)]">{loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />} {ctaVariant === 'B' ? 'Fullfør – helt gratis' : 'Send henvendelse'}</Button>
             )}
           </div>
         </div>

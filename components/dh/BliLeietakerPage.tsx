@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { track, getLeadAttribution } from '@/lib/analytics';
 import { trackLead, trackLeadStart, getClickIds } from '@/lib/gtag';
+import { getVariant, getAssignments } from '@/lib/ab';
 
 const BACKEND_URL = '';
 
@@ -63,12 +64,16 @@ export default function BliLeietakerPage() {
   const [errors, setErrors] = useState<any>({});
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  // A/B: CTA-tekst på siste steg (onboard_cta). Tildelingen festes på alle analytics-events.
+  const [ctaVariant, setCtaVariant] = useState<string>('A');
 
   const updateField = useCallback((field: any, value: any) => {
     setFormData((prev: any) => ({ ...prev, [field]: value }));
     if (errors[field]) setErrors((prev: any) => ({ ...prev, [field]: null }));
   }, [errors]);
 
+  // A/B-tildeling FØR form_start, slik at varianten følger med på første event.
+  useEffect(() => { try { setCtaVariant(getVariant('onboard_cta', ['A', 'B'])); } catch (e) {} }, []);
   // Analyse: skjema startet + steg-sporing (drop-off). trackLeadStart → Meta InitiateCheckout.
   useEffect(() => { track('form_start', { form: 'leietaker' }); try { trackLeadStart('leietaker'); } catch (e) {} }, []);
   useEffect(() => {
@@ -425,7 +430,7 @@ export default function BliLeietakerPage() {
             {step < STEPS.length - 1 ? (
               <Button onClick={goNext} data-testid="tenant-next-button" className="rounded-full bg-[#0a0a0a] text-white hover:bg-black h-12 px-8 text-[14px] font-semibold gap-2 active:scale-[0.97] transition-transform">Neste <ArrowRight className="w-4 h-4" /></Button>
             ) : (
-              <Button onClick={handleSubmit} disabled={loading} data-testid="tenant-submit-button" className="rounded-full bg-[#0a0a0a] text-white hover:bg-black h-12 px-8 text-[14px] font-semibold gap-2 active:scale-[0.97] transition-transform">{loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />} Send registrering</Button>
+              <Button onClick={handleSubmit} disabled={loading} data-testid="tenant-submit-button" className="rounded-full bg-[#0a0a0a] text-white hover:bg-black h-12 px-8 text-[14px] font-semibold gap-2 active:scale-[0.97] transition-transform">{loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />} {ctaVariant === 'B' ? 'Fullfør – helt gratis' : 'Send registrering'}</Button>
             )}
           </div>
         </div>

@@ -4,7 +4,7 @@ import crypto from 'crypto';
 import sharp from 'sharp';
 import { getDb, clean } from '@/lib/mongodb';
 import { getObject, PUBLIC_PREFIX } from '@/lib/objectStorage';
-import { isBot, buildEvent, ensureAnalyticsIndexes, computeAnalytics, computeLeadIntel } from '@/lib/analytics-server';
+import { isBot, buildEvent, ensureAnalyticsIndexes, computeAnalytics, computeLeadIntel, computeFunnels } from '@/lib/analytics-server';
 import { deriveChannel, serializeForLLM, computeWebVitals, detectAnomalies, computeLive, computeAdsEconomics, computeMetaEconomics, combineAdsEconomics, computeAdsLeadsSeries } from '@/lib/analytics-server';
 import { parseGoogleAdsCsv } from '@/lib/adsImport';
 import { sendMetaCapiEvent, metaCapiConfigured } from '@/lib/meta-capi';
@@ -2203,16 +2203,17 @@ async function handleRoute(request, { params }) {
       if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const { searchParams } = new URL(request.url);
       const days = parseInt(searchParams.get('days') || '30', 10) || 30;
-      const [traffic, leadsIntel, webVitals] = await Promise.all([
+      const [traffic, leadsIntel, webVitals, funnels] = await Promise.all([
         computeAnalytics(db, days),
         computeLeadIntel(db, days),
         computeWebVitals(db, days),
+        computeFunnels(db, days),
       ]);
       const anomalies = [
         ...detectAnomalies(traffic.timeseries, 'sessions', 'Økter'),
         ...detectAnomalies(traffic.timeseries, 'leads', 'Leads'),
       ].sort((a, b) => (a.day < b.day ? 1 : -1)).slice(0, 8);
-      return cors(NextResponse.json({ traffic, leads: leadsIntel, webVitals, anomalies }));
+      return cors(NextResponse.json({ traffic, leads: leadsIntel, webVitals, anomalies, funnels }));
     }
 
     // --- Admin: live besøkende akkurat nå ---

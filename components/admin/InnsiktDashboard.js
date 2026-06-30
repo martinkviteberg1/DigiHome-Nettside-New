@@ -5,7 +5,7 @@ import {
   Loader2, RefreshCw, Send, CheckCircle2, AlertCircle, Trash2,
   LayoutDashboard, Activity, BarChart3, Users, Sparkles, Database,
   Radio, Gauge, TrendingUp, TrendingDown, Download, Megaphone,
-  Search, X, ArrowUp, ArrowDown, FileSpreadsheet, ChevronRight,
+  Search, X, ArrowUp, ArrowDown, FileSpreadsheet, ChevronRight, GitBranch,
 } from 'lucide-react';
 import LeadDrawer from '@/components/admin/LeadDrawer';
 import OverviewTab from '@/components/admin/OverviewTab';
@@ -16,11 +16,13 @@ import RentMarketTab from '@/components/admin/RentMarketTab';
 import LiveTab from '@/components/admin/LiveTab';
 import WebVitalsTab from '@/components/admin/WebVitalsTab';
 import AdsTab from '@/components/admin/AdsTab';
+import FunnelTab from '@/components/admin/FunnelTab';
 
 const TABS = [
   { k: 'oversikt', l: 'Oversikt', icon: LayoutDashboard },
   { k: 'live', l: 'Live', icon: Radio },
   { k: 'trafikk', l: 'Trafikk', icon: Activity },
+  { k: 'trakt', l: 'Trakt & A/B', icon: GitBranch },
   { k: 'ytelse', l: 'Ytelse', icon: Gauge },
   { k: 'innsikt', l: 'Lead-innsikt', icon: BarChart3 },
   { k: 'annonser', l: 'Annonser', icon: Megaphone },
@@ -266,6 +268,7 @@ export default function InnsiktDashboard({ apiKey }) {
       )}
       {tab === 'live' && <LiveTab apiKey={apiKey} />}
       {tab === 'trafikk' && <TrafficTab traffic={analytics && analytics.traffic} />}
+      {tab === 'trakt' && <FunnelTab funnels={analytics && analytics.funnels} />}
       {tab === 'ytelse' && <WebVitalsTab webVitals={analytics && analytics.webVitals} />}
       {tab === 'innsikt' && <IntelTab leads={analytics && analytics.leads} />}
       {tab === 'annonser' && <AdsTab apiKey={apiKey} />}
