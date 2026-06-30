@@ -5,6 +5,7 @@ import {
   Loader2, Upload, Megaphone, TrendingUp, AlertCircle, Trash2,
   Coins, MousePointerClick, Target, Wallet, CheckCircle2, Info, RefreshCw, Layers, Link2 as LinkIcon,
   SlidersHorizontal, X, Check, Image as ImageIcon, ExternalLink,
+  Plus, Play, Pause, Save, MapPin, Sparkles,
 } from 'lucide-react';
 
 const nf = new Intl.NumberFormat('nb-NO');
@@ -225,7 +226,7 @@ export default function AdsTab({ apiKey }) {
 
       {/* Visningsbryter: Statistikk vs faktiske annonser/kampanjer */}
       <div className="flex items-center gap-1 bg-[#f1efeb] rounded-full p-1 mb-5 w-fit">
-        {[['stats', 'Statistikk'], ['creatives', 'Annonser & kampanjer']].map(([v, l]) => (
+        {[['stats', 'Statistikk'], ['creatives', 'Annonser & kampanjer'], ['campaigns', 'Kampanjestyring']].map(([v, l]) => (
           <button key={v} onClick={() => setView(v)} className={`px-4 h-9 rounded-full text-[12.5px] font-semibold transition-all ${view === v ? 'bg-white text-[#0a0a0a] shadow-[0_2px_8px_rgba(0,0,0,0.08)]' : 'text-[#888] hover:text-[#0a0a0a]'}`}>{l}</button>
         ))}
       </div>
@@ -240,7 +241,9 @@ export default function AdsTab({ apiKey }) {
 
       {err && <div className="mb-4 bg-rose-50 text-rose-600 rounded-xl px-4 py-3 text-[13px] flex items-center gap-2"><AlertCircle className="w-4 h-4" /> {err}</div>}
 
-      {view === 'creatives' ? (
+      {view === 'campaigns' ? (
+        <CampaignManager apiKey={apiKey} />
+      ) : view === 'creatives' ? (
         <CreativesGallery data={creatives} loading={loadingCre} err={creErr} channel={channel} apiKey={apiKey} onRetry={() => loadCreatives(true)} />
       ) : loading ? (
         <div className="py-20 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-[#0a0a0a]" /></div>
@@ -913,6 +916,340 @@ function EmptyState({ onPick, onMeta, metaSyncing }) {
       <div className="mt-5 flex items-center justify-center gap-2 flex-wrap">
         <button onClick={onPick} className="h-11 px-6 rounded-full bg-[#0a0a0a] text-white text-[13px] font-semibold inline-flex items-center gap-2 active:scale-[0.97] transition-transform"><Upload className="w-4 h-4" /> Importer Google-CSV</button>
         {onMeta && <button onClick={onMeta} disabled={metaSyncing} className="h-11 px-6 rounded-full text-white text-[13px] font-semibold inline-flex items-center gap-2 disabled:opacity-40 active:scale-[0.97] transition-transform" style={{ background: '#1877F2' }}>{metaSyncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />} Hent Meta-forbruk</button>}
+      </div>
+    </div>
+  );
+}
+
+
+// ===========================================================================
+// FASE 3 — Kampanjestyring (native Google Ads API)
+// Opprett/pause/aktiver kampanjer + rediger dagsbudsjett, direkte fra dashbordet.
+// ===========================================================================
+
+function campaignStatusBadge(status) {
+  const s = String(status || '').toUpperCase();
+  const map = {
+    ENABLED: { l: 'Aktiv', c: 'bg-emerald-50 text-emerald-700 ring-emerald-100' },
+    PAUSED: { l: 'Pauset', c: 'bg-amber-50 text-amber-700 ring-amber-100' },
+    REMOVED: { l: 'Fjernet', c: 'bg-[#f3f3f3] text-[#999] ring-[#eee]' },
+  };
+  const m = map[s] || { l: s || '–', c: 'bg-[#f3f3f3] text-[#777] ring-[#eee]' };
+  return <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10.5px] font-bold ring-1 ${m.c}`}>{m.l}</span>;
+}
+
+function CampaignManager({ apiKey }) {
+  const [campaigns, setCampaigns] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState('');
+  const [ca, setCa] = useState(null); // konverteringshandling-status
+  const [busyId, setBusyId] = useState('');
+  const [editId, setEditId] = useState('');
+  const [editVal, setEditVal] = useState('');
+  const [showCreate, setShowCreate] = useState(false);
+  const [toast, setToast] = useState('');
+
+  const load = useCallback(async () => {
+    setLoading(true); setErr('');
+    try {
+      const [rc, ra] = await Promise.all([
+        fetch(`/api/admin/ads/campaigns?key=${apiKey}`).then((r) => r.json()),
+        fetch(`/api/admin/ads/conversion-actions?key=${apiKey}`).then((r) => r.json()),
+      ]);
+      if (!rc.ok) setErr(rc.error || 'Kunne ikke hente kampanjer');
+      setCampaigns(rc.campaigns || []);
+      setCa(ra.ok ? (ra.offlineAction || { resourceName: null }) : { resourceName: null, error: ra.error });
+    } catch (e) { setErr('Nettverksfeil ved henting av kampanjer'); }
+    setLoading(false);
+  }, [apiKey]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const flash = (m) => { setToast(m); setTimeout(() => setToast(''), 3500); };
+
+  const toggleStatus = async (c) => {
+    const next = c.status === 'ENABLED' ? 'PAUSED' : 'ENABLED';
+    setBusyId(c.id);
+    try {
+      const r = await fetch(`/api/admin/ads/campaign/status?key=${apiKey}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ campaignId: c.id, status: next }) }).then((x) => x.json());
+      if (r.ok) { flash(next === 'ENABLED' ? 'Kampanje aktivert' : 'Kampanje pauset'); await load(); }
+      else flash('Feil: ' + (r.error || 'kunne ikke endre status'));
+    } catch (e) { flash('Nettverksfeil'); }
+    setBusyId('');
+  };
+
+  const saveBudget = async (c) => {
+    const v = Number(editVal);
+    if (!(v > 0)) { flash('Ugyldig budsjett'); return; }
+    setBusyId(c.id);
+    try {
+      const r = await fetch(`/api/admin/ads/campaign/budget?key=${apiKey}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ budgetResourceName: c.budgetResourceName, dailyBudget: v }) }).then((x) => x.json());
+      if (r.ok) { flash('Budsjett oppdatert'); setEditId(''); await load(); }
+      else flash('Feil: ' + (r.error || 'kunne ikke endre budsjett'));
+    } catch (e) { flash('Nettverksfeil'); }
+    setBusyId('');
+  };
+
+  if (loading) {
+    return (
+      <div>
+        <div className="h-10 w-56 rounded-xl shimmer mb-5" />
+        <div className="space-y-3">{Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-24 rounded-2xl shimmer" />)}</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="dh-fade-up">
+      {/* Toast */}
+      {toast && <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] bg-[#0a0a0a] text-white text-[12.5px] font-semibold px-5 py-3 rounded-full shadow-2xl">{toast}</div>}
+
+      {/* Header */}
+      <div className="flex items-center justify-between gap-3 mb-5 flex-wrap">
+        <div className="flex items-center gap-2">
+          <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-white ring-1 ring-[#e6e6e6] text-[13px] font-bold" style={{ color: '#4285F4' }}>G</span>
+          <h3 className="text-[15px] font-bold text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>Kampanjestyring</h3>
+          <span className="text-[11.5px] text-[#aaa]">{(campaigns || []).length} kampanjer · native API</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <button onClick={load} className="h-10 w-10 rounded-full bg-white text-[#0a0a0a] flex items-center justify-center shadow-[0_2px_12px_rgba(0,0,0,0.05)] ring-1 ring-transparent hover:ring-[#dcdcdc] active:scale-95 transition-all"><RefreshCw className="w-4 h-4" /></button>
+          <button onClick={() => setShowCreate(true)} className="h-10 pl-3.5 pr-4 rounded-full bg-[#0a0a0a] text-white text-[12.5px] font-semibold inline-flex items-center gap-2 shadow-[0_4px_16px_rgba(0,0,0,0.18)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.24)] active:scale-[0.97] transition-all"><Plus className="w-4 h-4" /> Opprett kampanje</button>
+        </div>
+      </div>
+
+      {err && <div className="mb-4 bg-rose-50 text-rose-600 rounded-xl px-4 py-3 text-[13px] flex items-center gap-2"><AlertCircle className="w-4 h-4" /> {err}</div>}
+
+      {/* Lukket sløyfe-status (konverteringshandling) */}
+      <div className="mb-5 bg-white rounded-2xl p-4 ring-1 ring-[#ececec] shadow-[0_2px_14px_rgba(0,0,0,0.04)] flex items-start gap-3">
+        <span className={`mt-0.5 inline-flex items-center justify-center w-8 h-8 rounded-xl ${ca && ca.resourceName ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
+          {ca && ca.resourceName ? <CheckCircle2 className="w-4.5 h-4.5" /> : <Info className="w-4.5 h-4.5" />}
+        </span>
+        <div className="flex-1 min-w-0">
+          <p className="text-[12.5px] font-bold text-[#0a0a0a]">Lukket sløyfe · konverteringshandling</p>
+          {ca && ca.resourceName ? (
+            <p className="text-[12px] text-[#666] mt-0.5">Konverteringshandlingen <b>«{ca.name}»</b> er aktiv. Vunne leads med gclid registreres mot denne.</p>
+          ) : (
+            <p className="text-[12px] text-[#666] mt-0.5">Ingen UPLOAD_CLICKS-handling funnet. {ca && ca.error ? `(${ca.error})` : ''}</p>
+          )}
+          <p className="text-[11px] text-[#999] mt-1">Merk: Google begrenser nå den klassiske offline-opplastings-API-en til eksisterende brukere — den moderne lukkede sløyfen håndteres av Enhanced Conversions (allerede live).</p>
+        </div>
+      </div>
+
+      {/* Kampanjeliste */}
+      {(campaigns || []).length === 0 ? (
+        <div className="py-16 bg-white rounded-2xl text-center text-[#999] text-[13px] shadow-[0_2px_16px_rgba(0,0,0,0.04)]">
+          Ingen kampanjer ennå. Klikk «Opprett kampanje» for å lage din første.
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {(campaigns || []).map((c, i) => (
+            <div key={c.id} className="dh-fade-up bg-white rounded-2xl ring-1 ring-[#ececec] shadow-[0_2px_14px_rgba(0,0,0,0.04)] p-4 sm:p-5 hover:shadow-[0_10px_30px_rgba(0,0,0,0.07)] transition-all" style={{ animationDelay: `${Math.min(i * 50, 400)}ms` }}>
+              <div className="flex items-start justify-between gap-3 flex-wrap">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="text-[14px] font-bold text-[#0a0a0a] truncate">{c.name}</p>
+                    {campaignStatusBadge(c.status)}
+                    <span className="text-[10.5px] text-[#bbb] font-medium">{c.channelType || 'SEARCH'}</span>
+                  </div>
+                  <div className="flex items-center gap-4 mt-2 flex-wrap">
+                    {/* Budsjett (redigerbar) */}
+                    <div className="flex items-center gap-1.5">
+                      <Wallet className="w-3.5 h-3.5 text-[#aaa]" />
+                      {editId === c.id ? (
+                        <span className="inline-flex items-center gap-1">
+                          <input autoFocus type="number" value={editVal} onChange={(e) => setEditVal(e.target.value)} className="w-20 h-7 px-2 rounded-md ring-1 ring-[#ddd] text-[12px] focus:outline-none focus:ring-[#0a0a0a]" />
+                          <span className="text-[11px] text-[#999]">kr/d</span>
+                          <button disabled={busyId === c.id} onClick={() => saveBudget(c)} className="h-7 w-7 rounded-md bg-[#0a0a0a] text-white flex items-center justify-center disabled:opacity-40">{busyId === c.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}</button>
+                          <button onClick={() => setEditId('')} className="h-7 w-7 rounded-md bg-[#f1f1f1] text-[#666] flex items-center justify-center"><X className="w-3.5 h-3.5" /></button>
+                        </span>
+                      ) : (
+                        <button onClick={() => { setEditId(c.id); setEditVal(String(c.dailyBudget || '')); }} className="text-[12.5px] font-semibold text-[#0a0a0a] hover:underline">{fmtKr(c.dailyBudget)}/dag</button>
+                      )}
+                    </div>
+                    <span className="inline-flex items-center gap-1.5 text-[12px] text-[#666]"><Coins className="w-3.5 h-3.5 text-[#aaa]" /> {fmtKr2(c.cost)} <span className="text-[#bbb]">(30d)</span></span>
+                    <span className="inline-flex items-center gap-1.5 text-[12px] text-[#666]"><MousePointerClick className="w-3.5 h-3.5 text-[#aaa]" /> {fmtNum(c.clicks)} klikk</span>
+                    <span className="inline-flex items-center gap-1.5 text-[12px] text-[#666]"><Target className="w-3.5 h-3.5 text-[#aaa]" /> {fmtNum(c.conversions)} konv.</span>
+                  </div>
+                </div>
+                {/* Pause/Aktiver */}
+                {c.status !== 'REMOVED' && (
+                  <button disabled={busyId === c.id} onClick={() => toggleStatus(c)} className={`h-9 px-4 rounded-full text-[12px] font-semibold inline-flex items-center gap-1.5 active:scale-95 transition-all disabled:opacity-40 ${c.status === 'ENABLED' ? 'bg-amber-50 text-amber-700 hover:bg-amber-100' : 'bg-emerald-600 text-white hover:bg-emerald-700'}`}>
+                    {busyId === c.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : (c.status === 'ENABLED' ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />)}
+                    {c.status === 'ENABLED' ? 'Pause' : 'Aktiver'}
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {showCreate && <CreateCampaignModal apiKey={apiKey} onClose={() => setShowCreate(false)} onCreated={() => { setShowCreate(false); flash('Kampanje opprettet (PAUSED)'); load(); }} />}
+    </div>
+  );
+}
+
+function FormField({ label, hint, children }) {
+  return (
+    <div>
+      <label className="block text-[12px] font-semibold text-[#0a0a0a] mb-1.5">{label} {hint && <span className="font-normal text-[#aaa]">· {hint}</span>}</label>
+      {children}
+    </div>
+  );
+}
+
+function CreateCampaignModal({ apiKey, onClose, onCreated }) {
+  const [name, setName] = useState('');
+  const [dailyBudget, setDailyBudget] = useState('100');
+  const [finalUrl, setFinalUrl] = useState('https://digihome.no/bli-utleier');
+  const [bidding, setBidding] = useState('MAXIMIZE_CONVERSIONS');
+  const [headlines, setHeadlines] = useState(['', '', '']);
+  const [descriptions, setDescriptions] = useState(['', '']);
+  const [keywords, setKeywords] = useState('');
+  const [geos, setGeos] = useState([{ id: '2578', name: 'Norge' }]);
+  const [geoQuery, setGeoQuery] = useState('');
+  const [geoSug, setGeoSug] = useState([]);
+  const [geoSearching, setGeoSearching] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState(null); // {type, text}
+
+  const setArr = (setter, arr, idx, val) => { const a = [...arr]; a[idx] = val; setter(a); };
+  const addItem = (setter, arr, max) => { if (arr.length < max) setter([...arr, '']); };
+  const delItem = (setter, arr, idx, min) => { if (arr.length > min) setter(arr.filter((_, i) => i !== idx)); };
+
+  const searchGeo = async () => {
+    if (!geoQuery.trim()) return;
+    setGeoSearching(true); setGeoSug([]);
+    try {
+      const r = await fetch(`/api/admin/ads/geo-suggest?q=${encodeURIComponent(geoQuery)}&key=${apiKey}`).then((x) => x.json());
+      setGeoSug((r.suggestions || []).slice(0, 8));
+    } catch (e) { /* ignore */ }
+    setGeoSearching(false);
+  };
+  const addGeo = (g) => { if (!geos.find((x) => x.id === g.id)) setGeos([...geos, { id: g.id, name: g.name }]); setGeoSug([]); setGeoQuery(''); };
+  const delGeo = (id) => setGeos(geos.filter((g) => g.id !== id));
+
+  const payload = () => ({
+    name: name.trim(), dailyBudget: Number(dailyBudget), finalUrl: finalUrl.trim(),
+    biddingStrategy: bidding,
+    headlines: headlines.map((h) => h.trim()).filter(Boolean),
+    descriptions: descriptions.map((d) => d.trim()).filter(Boolean),
+    keywords: keywords.split(/[\n,]/).map((k) => k.trim()).filter(Boolean),
+    geoTargetConstantIds: geos.map((g) => g.id),
+  });
+
+  const submit = async (validateOnly) => {
+    setBusy(true); setMsg(null);
+    try {
+      const r = await fetch(`/api/admin/ads/campaign/create?key=${apiKey}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...payload(), validateOnly }) }).then((x) => x.json());
+      if (r.ok) {
+        if (validateOnly) setMsg({ type: 'ok', text: 'Validering OK — alt ser riktig ut. Klar til å opprette.' });
+        else { onCreated(); return; }
+      } else setMsg({ type: 'err', text: r.error || 'Kunne ikke opprette kampanjen' });
+    } catch (e) { setMsg({ type: 'err', text: 'Nettverksfeil' }); }
+    setBusy(false);
+  };
+
+  const Field = FormField;
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center p-0 sm:p-4">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-[#fafafa] w-full sm:max-w-2xl sm:rounded-3xl rounded-t-3xl shadow-2xl max-h-[92vh] overflow-y-auto dh-fade-up">
+        <div className="sticky top-0 z-10 bg-[#fafafa]/95 backdrop-blur px-6 pt-5 pb-4 flex items-center justify-between border-b border-[#eee]">
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-[#0a0a0a] text-white"><Megaphone className="w-4 h-4" /></span>
+            <h3 className="text-[15px] font-bold text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>Ny søkekampanje</h3>
+          </div>
+          <button onClick={onClose} className="h-9 w-9 rounded-full bg-white ring-1 ring-[#eee] flex items-center justify-center text-[#666] hover:text-[#0a0a0a]"><X className="w-4 h-4" /></button>
+        </div>
+
+        <div className="px-6 py-5 space-y-5">
+          <div className="grid sm:grid-cols-2 gap-4">
+            <Field label="Kampanjenavn"><input value={name} onChange={(e) => setName(e.target.value)} placeholder="DH | Utleie | Oslo | Search" className="w-full h-10 px-3 rounded-xl bg-white ring-1 ring-[#e6e6e6] text-[13px] focus:outline-none focus:ring-[#0a0a0a]" /></Field>
+            <Field label="Dagsbudsjett" hint="kr/dag"><input type="number" value={dailyBudget} onChange={(e) => setDailyBudget(e.target.value)} className="w-full h-10 px-3 rounded-xl bg-white ring-1 ring-[#e6e6e6] text-[13px] focus:outline-none focus:ring-[#0a0a0a]" /></Field>
+          </div>
+
+          <Field label="Landingsside-URL"><input value={finalUrl} onChange={(e) => setFinalUrl(e.target.value)} className="w-full h-10 px-3 rounded-xl bg-white ring-1 ring-[#e6e6e6] text-[13px] focus:outline-none focus:ring-[#0a0a0a]" /></Field>
+
+          <Field label="Budstrategi">
+            <div className="inline-flex items-center gap-0.5 p-1 rounded-full bg-[#f1efeb] ring-1 ring-[#e8e6e2]">
+              {[['MAXIMIZE_CONVERSIONS', 'Maks. konverteringer'], ['MANUAL_CPC', 'Manuell CPC']].map(([v, l]) => (
+                <button key={v} onClick={() => setBidding(v)} className={`h-8 px-3.5 rounded-full text-[11.5px] font-semibold transition-all ${bidding === v ? 'bg-[#0a0a0a] text-white' : 'text-[#777] hover:text-[#0a0a0a]'}`}>{l}</button>
+              ))}
+            </div>
+          </Field>
+
+          {/* Geo */}
+          <Field label="Geografisk målretting" hint="legg til steder">
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              {geos.map((g) => (
+                <span key={g.id} className="inline-flex items-center gap-1 bg-white ring-1 ring-[#e6e6e6] rounded-full pl-2.5 pr-1.5 py-1 text-[11.5px] font-semibold text-[#0a0a0a]"><MapPin className="w-3 h-3 text-[#8b5cf6]" /> {g.name} <button onClick={() => delGeo(g.id)} className="text-[#bbb] hover:text-rose-500"><X className="w-3 h-3" /></button></span>
+              ))}
+            </div>
+            <div className="flex items-center gap-2">
+              <input value={geoQuery} onChange={(e) => setGeoQuery(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), searchGeo())} placeholder="Søk sted (f.eks. Bergen)…" className="flex-1 h-10 px-3 rounded-xl bg-white ring-1 ring-[#e6e6e6] text-[13px] focus:outline-none focus:ring-[#0a0a0a]" />
+              <button onClick={searchGeo} disabled={geoSearching} className="h-10 px-4 rounded-xl bg-white ring-1 ring-[#e6e6e6] text-[12.5px] font-semibold text-[#0a0a0a] disabled:opacity-40">{geoSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Søk'}</button>
+            </div>
+            {geoSug.length > 0 && (
+              <div className="mt-2 bg-white ring-1 ring-[#e6e6e6] rounded-xl overflow-hidden">
+                {geoSug.map((g) => (
+                  <button key={g.id} onClick={() => addGeo(g)} className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-[#f7f6f4] transition-colors">
+                    <span className="text-[12.5px] text-[#0a0a0a]">{g.name} <span className="text-[#bbb]">· {g.targetType}</span></span>
+                    <Plus className="w-3.5 h-3.5 text-[#8b5cf6]" />
+                  </button>
+                ))}
+              </div>
+            )}
+          </Field>
+
+          {/* Titler */}
+          <Field label="Annonsetitler" hint="min. 3 · maks 30 tegn">
+            <div className="space-y-2">
+              {headlines.map((h, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <input value={h} maxLength={30} onChange={(e) => setArr(setHeadlines, headlines, i, e.target.value)} placeholder={`Tittel ${i + 1}`} className="flex-1 h-10 px-3 rounded-xl bg-white ring-1 ring-[#e6e6e6] text-[13px] focus:outline-none focus:ring-[#0a0a0a]" />
+                  <span className="text-[10px] text-[#bbb] w-9 text-right">{h.length}/30</span>
+                  {headlines.length > 3 && <button onClick={() => delItem(setHeadlines, headlines, i, 3)} className="text-[#ccc] hover:text-rose-500"><Trash2 className="w-3.5 h-3.5" /></button>}
+                </div>
+              ))}
+            </div>
+            {headlines.length < 15 && <button onClick={() => addItem(setHeadlines, headlines, 15)} className="mt-2 text-[12px] font-semibold text-[#8b5cf6] inline-flex items-center gap-1"><Plus className="w-3.5 h-3.5" /> Legg til tittel</button>}
+          </Field>
+
+          {/* Beskrivelser */}
+          <Field label="Beskrivelser" hint="min. 2 · maks 90 tegn">
+            <div className="space-y-2">
+              {descriptions.map((d, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <input value={d} maxLength={90} onChange={(e) => setArr(setDescriptions, descriptions, i, e.target.value)} placeholder={`Beskrivelse ${i + 1}`} className="flex-1 h-10 px-3 rounded-xl bg-white ring-1 ring-[#e6e6e6] text-[13px] focus:outline-none focus:ring-[#0a0a0a]" />
+                  <span className="text-[10px] text-[#bbb] w-11 text-right">{d.length}/90</span>
+                  {descriptions.length > 2 && <button onClick={() => delItem(setDescriptions, descriptions, i, 2)} className="text-[#ccc] hover:text-rose-500"><Trash2 className="w-3.5 h-3.5" /></button>}
+                </div>
+              ))}
+            </div>
+            {descriptions.length < 4 && <button onClick={() => addItem(setDescriptions, descriptions, 4)} className="mt-2 text-[12px] font-semibold text-[#8b5cf6] inline-flex items-center gap-1"><Plus className="w-3.5 h-3.5" /> Legg til beskrivelse</button>}
+          </Field>
+
+          {/* Søkeord */}
+          <Field label="Søkeord" hint="ett per linje eller kommaseparert (phrase match)">
+            <textarea value={keywords} onChange={(e) => setKeywords(e.target.value)} rows={3} placeholder={'utleie bergen\nleie ut leilighet\nboligforvaltning'} className="w-full p-3 rounded-xl bg-white ring-1 ring-[#e6e6e6] text-[13px] focus:outline-none focus:ring-[#0a0a0a] resize-y" />
+          </Field>
+
+          {msg && (
+            <div className={`rounded-xl px-4 py-3 text-[12.5px] flex items-center gap-2 ${msg.type === 'ok' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-600'}`}>
+              {msg.type === 'ok' ? <CheckCircle2 className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />} {msg.text}
+            </div>
+          )}
+        </div>
+
+        <div className="sticky bottom-0 bg-[#fafafa]/95 backdrop-blur px-6 py-4 border-t border-[#eee] flex items-center justify-between gap-3">
+          <p className="text-[11px] text-[#999] flex items-center gap-1.5"><Info className="w-3.5 h-3.5" /> Opprettes alltid som <b className="text-[#666]">Pauset</b> — ingen pengebruk før du aktiverer.</p>
+          <div className="flex items-center gap-2">
+            <button disabled={busy} onClick={() => submit(true)} className="h-10 px-4 rounded-full bg-white ring-1 ring-[#e6e6e6] text-[12.5px] font-semibold text-[#0a0a0a] disabled:opacity-40 inline-flex items-center gap-1.5">{busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />} Valider</button>
+            <button disabled={busy} onClick={() => submit(false)} className="h-10 px-5 rounded-full bg-[#0a0a0a] text-white text-[12.5px] font-semibold disabled:opacity-40 inline-flex items-center gap-1.5 active:scale-[0.97] transition-transform">{busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />} Opprett kampanje</button>
+          </div>
+        </div>
       </div>
     </div>
   );

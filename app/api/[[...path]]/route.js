@@ -10,7 +10,8 @@ import { parseGoogleAdsCsv } from '@/lib/adsImport';
 import { sendMetaCapiEvent, metaCapiConfigured } from '@/lib/meta-capi';
 import { fetchMetaInsights, fetchMetaAccount, metaAdsConfigured, getCachedMetaReport, META_PERIODS, metaPeriodToRange, getCachedMetaCreatives, fetchMetaPreviewSrc, isValidPreviewFormat } from '@/lib/meta-ads';
 import { fetchPages, fetchLeadForms, fetchFormLeads, mapLeadFields, metaLeadAdsConfigured, fetchSingleLead, fetchFormName, fetchPageToken } from '@/lib/meta-leadads';
-import { composioConfigured, createConnectLink, getConnectionStatus, runCampaignReport, defaultCustomerId, getCachedReport, GOOGLE_PERIODS, getCachedCreatives } from '@/lib/composio-google-ads';
+import { composioConfigured, createConnectLink, getConnectionStatus, runCampaignReport, defaultCustomerId, getCachedReport, GOOGLE_PERIODS, getCachedCreatives, activeProvider } from '@/lib/google-ads-provider';
+import { googleAdsNativeConfigured, listConversionActions, resolveOfflineConversionAction, uploadClickConversion, toConversionDateTime, listCampaignsDetailed, suggestGeoTargets, setCampaignStatus, updateCampaignBudget, createSearchCampaign } from '@/lib/google-ads-native';
 import { chatLLM } from '@/lib/llm';
 import { slugify } from '@/lib/site';
 import { getRentReport, refreshRentReport, RENT_CITIES } from '@/lib/rentmarket';
@@ -1442,12 +1443,13 @@ async function handleRoute(request, { params }) {
             connected = true; live = true; fetchedAt = r.fetchedAt; stale = !!r.stale; error = r.error || null;
             const rep = r.report;
             series = rep.series || [];
+            const liveSource = `google_ads_${activeProvider()}_live`;
             const transImp = {
               id: 'google-live', label: `Google Ads (live) · ${rep.from} – ${rep.to}`, currency: 'NOK',
               periodFrom: new Date(rep.from).toISOString(), periodTo: new Date(`${rep.to}T23:59:59.999Z`).toISOString(),
-              totals: rep.totals, campaigns: rep.campaigns, importedAt: r.fetchedAt, source: 'google_ads_composio_live',
+              totals: rep.totals, campaigns: rep.campaigns, importedAt: r.fetchedAt, source: liveSource,
             };
-            eco = await computeAdsEconomics(db, transImp); source = 'google_ads_composio_live';
+            eco = await computeAdsEconomics(db, transImp); source = liveSource;
           } catch (e) { connected = false; live = false; }
         }
         if (!eco) {
@@ -1628,16 +1630,142 @@ async function handleRoute(request, { params }) {
       if (!composioConfigured()) return cors(NextResponse.json({ ok: true, configured: false, connected: false }));
       try {
         const st = await getConnectionStatus();
-        return cors(NextResponse.json({ ok: true, configured: true, customerId: defaultCustomerId(), ...st }));
+        return cors(NextResponse.json({ ok: true, configured: true, provider: activeProvider(), customerId: defaultCustomerId(), ...st }));
       } catch (e) {
         return cors(NextResponse.json({ ok: true, configured: true, connected: false, status: 'ERROR', error: e.message }));
+      }
+    }
+
+    // =====================================================================
+    // NATIVE Google Ads API — Fase 2 (konverteringer) + Fase 3 (kampanjer)
+    // =====================================================================
+
+    // Fase 2: list konverteringshandlinger (for å finne UPLOAD_CLICKS-handling).
+    if (route === '/admin/ads/conversion-actions' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!googleAdsNativeConfigured()) return cors(NextResponse.json({ ok: false, error: 'Native Google Ads API er ikke konfigurert' }, { status: 400 }));
+      try {
+        const actions = await listConversionActions();
+        const resolved = await resolveOfflineConversionAction(defaultCustomerId(), { create: false });
+        return cors(NextResponse.json({ ok: true, actions, offlineAction: resolved }));
+      } catch (e) {
+        return cors(NextResponse.json({ ok: false, error: e.message }, { status: 200 }));
+      }
+    }
+
+    // Fase 2: sørg for at en UPLOAD_CLICKS-handling finnes (opprett ved behov).
+    if (route === '/admin/ads/conversion-actions/ensure' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!googleAdsNativeConfigured()) return cors(NextResponse.json({ ok: false, error: 'Native Google Ads API er ikke konfigurert' }, { status: 400 }));
+      try {
+        const resolved = await resolveOfflineConversionAction(defaultCustomerId(), { create: true });
+        return cors(NextResponse.json({ ok: !!resolved.resourceName, ...resolved }));
+      } catch (e) {
+        return cors(NextResponse.json({ ok: false, error: e.message }, { status: 200 }));
+      }
+    }
+
+    // Fase 2: manuell test-opplasting av en klikk-konvertering (for verifisering).
+    if (route === '/admin/ads/upload-conversion' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!googleAdsNativeConfigured()) return cors(NextResponse.json({ ok: false, error: 'Native Google Ads API er ikke konfigurert' }, { status: 400 }));
+      let body = {};
+      try { body = await request.json(); } catch (e) { body = {}; }
+      try {
+        const up = await uploadClickConversion(defaultCustomerId(), {
+          gclid: body.gclid, gbraid: body.gbraid, wbraid: body.wbraid,
+          value: body.value, currency: body.currency || 'NOK',
+          conversionDateTime: body.conversionDateTime || toConversionDateTime(body.at),
+          orderId: body.orderId,
+        });
+        return cors(NextResponse.json({ ok: up.ok, result: up }));
+      } catch (e) {
+        return cors(NextResponse.json({ ok: false, error: e.message }, { status: 200 }));
+      }
+    }
+
+    // Fase 3: detaljert kampanjeliste (m/ budsjett + 30-dagers metrikk).
+    if (route === '/admin/ads/campaigns' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!googleAdsNativeConfigured()) return cors(NextResponse.json({ ok: false, error: 'Native Google Ads API er ikke konfigurert' }, { status: 400 }));
+      try {
+        const campaigns = await listCampaignsDetailed();
+        return cors(NextResponse.json({ ok: true, campaigns, customerId: defaultCustomerId() }));
+      } catch (e) {
+        return cors(NextResponse.json({ ok: false, error: e.message }, { status: 200 }));
+      }
+    }
+
+    // Fase 3: geo-forslag (stedsnavn → geoTargetConstant).
+    if (route === '/admin/ads/geo-suggest' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!googleAdsNativeConfigured()) return cors(NextResponse.json({ ok: false, error: 'Native Google Ads API er ikke konfigurert' }, { status: 400 }));
+      const { searchParams } = new URL(request.url);
+      const q = (searchParams.get('q') || '').toString().trim();
+      if (!q) return cors(NextResponse.json({ ok: true, suggestions: [] }));
+      try {
+        const suggestions = await suggestGeoTargets(q.split(',').map((s) => s.trim()).filter(Boolean));
+        return cors(NextResponse.json({ ok: true, suggestions: suggestions.slice(0, 20) }));
+      } catch (e) {
+        return cors(NextResponse.json({ ok: false, error: e.message }, { status: 200 }));
+      }
+    }
+
+    // Fase 3: endre kampanjestatus (PAUSED/ENABLED/REMOVED).
+    if (route === '/admin/ads/campaign/status' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!googleAdsNativeConfigured()) return cors(NextResponse.json({ ok: false, error: 'Native Google Ads API er ikke konfigurert' }, { status: 400 }));
+      let body = {};
+      try { body = await request.json(); } catch (e) { body = {}; }
+      if (!body.campaignId || !body.status) return cors(NextResponse.json({ ok: false, error: 'Mangler campaignId/status' }, { status: 400 }));
+      try {
+        const r = await setCampaignStatus(defaultCustomerId(), body.campaignId, body.status);
+        return cors(NextResponse.json({ ok: true, ...r }));
+      } catch (e) {
+        return cors(NextResponse.json({ ok: false, error: e.message }, { status: 200 }));
+      }
+    }
+
+    // Fase 3: oppdater dagsbudsjett (NOK).
+    if (route === '/admin/ads/campaign/budget' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!googleAdsNativeConfigured()) return cors(NextResponse.json({ ok: false, error: 'Native Google Ads API er ikke konfigurert' }, { status: 400 }));
+      let body = {};
+      try { body = await request.json(); } catch (e) { body = {}; }
+      if (!body.budgetResourceName || !(Number(body.dailyBudget) > 0)) return cors(NextResponse.json({ ok: false, error: 'Mangler budgetResourceName/dailyBudget' }, { status: 400 }));
+      try {
+        const r = await updateCampaignBudget(defaultCustomerId(), body.budgetResourceName, Number(body.dailyBudget));
+        return cors(NextResponse.json({ ok: true, ...r }));
+      } catch (e) {
+        return cors(NextResponse.json({ ok: false, error: e.message }, { status: 200 }));
+      }
+    }
+
+    // Fase 3: opprett SEARCH-kampanje (opprettes PAUSED).
+    if (route === '/admin/ads/campaign/create' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!googleAdsNativeConfigured()) return cors(NextResponse.json({ ok: false, error: 'Native Google Ads API er ikke konfigurert' }, { status: 400 }));
+      let body = {};
+      try { body = await request.json(); } catch (e) { body = {}; }
+      try {
+        const r = await createSearchCampaign(defaultCustomerId(), {
+          name: body.name, dailyBudget: body.dailyBudget, finalUrl: body.finalUrl,
+          headlines: body.headlines || [], descriptions: body.descriptions || [], keywords: body.keywords || [],
+          geoTargetConstantIds: body.geoTargetConstantIds || ['2578'],
+          biddingStrategy: body.biddingStrategy || 'MAXIMIZE_CONVERSIONS',
+          path1: body.path1, path2: body.path2,
+          validateOnly: !!body.validateOnly,
+        });
+        return cors(NextResponse.json({ ok: true, ...r }, { status: 201 }));
+      } catch (e) {
+        return cors(NextResponse.json({ ok: false, error: e.message }, { status: 200 }));
       }
     }
 
     // --- Admin: Annonser — Google Ads via Composio: synk live kostnad ------
     if (route === '/admin/ads/google-sync' && method === 'POST') {
       if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
-      if (!composioConfigured()) return cors(NextResponse.json({ ok: false, error: 'Composio er ikke konfigurert' }, { status: 400 }));
+      if (!composioConfigured()) return cors(NextResponse.json({ ok: false, error: 'Google Ads er ikke konfigurert' }, { status: 400 }));
       let body = {};
       try { body = await request.json(); } catch (e) { body = {}; }
       const presetDays = { last_7d: 7, last_30d: 30, last_90d: 90 };
@@ -1839,6 +1967,19 @@ async function handleRoute(request, { params }) {
             customData: { content_name: existing.lead_type || 'lead', lead_event_id: id },
           });
           await db.collection(coll).updateOne({ id }, { $set: { metaCapiWon: { ok: capi.ok, at: nowIso, error: capi.ok ? null : (capi.error || null) } } });
+        }
+      } catch (e) { /* best-effort */ }
+
+      // Google Ads offline-konvertering (native, lukket sløyfe): vunnet lead m/ gclid.
+      try {
+        const att = existing.attribution || {};
+        if (status === 'won' && googleAdsNativeConfigured() && att.gclid) {
+          const wonVal = update.wonValue || Number(process.env.GOOGLE_ADS_DEFAULT_LEAD_VALUE) || 0;
+          const up = await uploadClickConversion(defaultCustomerId(), {
+            gclid: att.gclid, value: wonVal, currency: update.wonCurrency || 'NOK',
+            conversionDateTime: toConversionDateTime(update.wonAt || nowIso), orderId: id,
+          });
+          await db.collection(coll).updateOne({ id }, { $set: { googleAdsWon: { ok: up.ok, at: nowIso, error: up.ok ? null : (up.error || null) } } });
         }
       } catch (e) { /* best-effort */ }
 
@@ -2060,6 +2201,19 @@ async function handleRoute(request, { params }) {
           });
           metaCapi = { ok: capi.ok, error: capi.ok ? undefined : capi.error };
           await db.collection(coll).updateOne({ id: lead.id }, { $set: { metaCapiWon: { ok: capi.ok, at: nowIso, error: capi.ok ? null : (capi.error || null) } } });
+        }
+      } catch (e) { /* best-effort */ }
+
+      // Google Ads offline-konvertering (native, lukket sløyfe): vunnet lead m/ gclid.
+      try {
+        const att = lead.attribution || {};
+        if (status === 'won' && googleAdsNativeConfigured() && att.gclid) {
+          const wonVal = update.wonValue || Number(process.env.GOOGLE_ADS_DEFAULT_LEAD_VALUE) || 0;
+          const up = await uploadClickConversion(defaultCustomerId(), {
+            gclid: att.gclid, value: wonVal, currency: update.wonCurrency || 'NOK',
+            conversionDateTime: toConversionDateTime(update.wonAt || nowIso), orderId: lead.id,
+          });
+          await db.collection(coll).updateOne({ id: lead.id }, { $set: { googleAdsWon: { ok: up.ok, at: nowIso, error: up.ok ? null : (up.error || null) } } });
         }
       } catch (e) { /* best-effort */ }
 
