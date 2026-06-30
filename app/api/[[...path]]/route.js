@@ -579,6 +579,17 @@ async function reforwardPending(db) {
   return results;
 }
 
+// Selvhelbredende re-forward: trigges opportunistisk når vi VET plattformen er
+// naabar (en fersk forward lyktes nettopp), eller ved admin-last. Throttlet, og
+// fire-and-forget så responsen ikke forsinkes. Billig når ingenting venter.
+let _lastReforward = 0;
+function maybeReforward(db, { force = false } = {}) {
+  const now = Date.now();
+  if (!force && now - _lastReforward < 120000) return; // maks hvert 2. min
+  _lastReforward = now;
+  Promise.resolve().then(() => reforwardPending(db)).catch(() => {});
+}
+
 const RENTAL_LABELS = { dynamisk: 'Dynamisk', korttid: 'Korttid', kortid: 'Korttid', langtid: 'Langtid' };
 
 function streetFromAddress(addr) {
@@ -1238,6 +1249,8 @@ async function handleRoute(request, { params }) {
         forwarded_at: fwd.ok ? new Date().toISOString() : null,
       } });
       lead.forwarded = fwd.ok; lead.platform_id = fwd.id || null;
+      // Selvhelbredende: lyktes denne, er plattformen oppe → catch-up av feilede (throttlet).
+      if (fwd.ok) maybeReforward(db);
 
       // Meta Conversions API (server-side Lead). event_id = lead.id → deduplikeres
       // mot nettleser-pixelens Lead-hendelse. Non-fatal: skal aldri velte lead-flyten.
@@ -1340,6 +1353,7 @@ async function handleRoute(request, { params }) {
         forwarded_at: fwd.ok ? new Date().toISOString() : null,
       } });
       tenant.forwarded = fwd.ok; tenant.platform_id = fwd.id || null;
+      if (fwd.ok) maybeReforward(db);
 
       // Meta Conversions API (server-side Lead for leietaker). event_id = tenant.id.
       try {
@@ -1378,6 +1392,7 @@ async function handleRoute(request, { params }) {
     // --- Admin: lead-oversikt + manuell re-forwarding (enkel nøkkel-gating) ---
     if (route === '/admin/leads' && method === 'GET') {
       if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      maybeReforward(db); // selvhelbredende catch-up ved admin-last (throttlet)
       const leads = await db.collection('leads').find({}).sort({ createdAt: -1 }).limit(500).toArray();
       const tenants = await db.collection('tenant_leads').find({}).sort({ createdAt: -1 }).limit(500).toArray();
       return cors(NextResponse.json({ leads: leads.map(clean), tenants: tenants.map(clean) }));
@@ -2531,6 +2546,28 @@ async function handleRoute(request, { params }) {
       } catch (e) {
         try { await db.collection(coll).updateOne({ id: lead.id }, { $set: { googleAdsWon: { ok: false, at: nowIso, error: e.message } } }); } catch (_) {}
       }
+
+      // Mid-funnel livssyklus-events til Meta (custom/standard) → bedre budoptimalisering
+      // oppover i trakten. Idempotent pr. stadium, samtykke-gated. event_id = <stadium>-<id>.
+      try {
+        const LIFECYCLE = { contacted: 'Contact', qualified: 'QualifiedLead' };
+        const evName = LIFECYCLE[status];
+        const firedKey = `metaCapi_${status}`;
+        if (evName && !(lead[firedKey] && lead[firedKey].ok) && metaCapiConfigured() && marketingAllowed(lead.marketingConsent)) {
+          const att = lead.attribution || {};
+          const capi = await sendMetaCapiEvent({
+            eventName: evName,
+            eventId: `${status}-${lead.id}`,
+            eventTime: changedAt,
+            actionSource: 'system_generated',
+            email: lead.email, phone: lead.phone, fullName: lead.name,
+            fbp: att.fbp, fbc: att.fbc, fbclid: att.fbclid,
+            externalId: att.visitorId, zip: lead.postal_code, country: 'no',
+            customData: { content_name: lead.lead_type || 'lead', lead_event_id: lead.id, lifecycle_stage: status },
+          });
+          await db.collection(coll).updateOne({ id: lead.id }, { $set: { [firedKey]: { event: evName, ok: capi.ok, at: nowIso, error: capi.ok ? null : (capi.error || null) } } });
+        }
+      } catch (e) { /* best-effort */ }
 
       return cors(NextResponse.json({ ok: true, id: lead.id, status, matched_by: matchedBy, meta_capi: metaCapi || undefined }));
     }
