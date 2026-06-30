@@ -17,6 +17,7 @@ import { buildRecommendations } from '@/lib/ads-recommendations';
 import { generateRsaCopy, generateMetaCopy } from '@/lib/ads-ai';
 import { runOptimization, getOptimizeConfig, setOptimizeConfig, getLastRun, listRuns, applyRecommendation } from '@/lib/ads-optimize';
 import { sendWeeklyReport, buildReportData, renderReportHtml } from '@/lib/ads-report';
+import { buildMarketingMetrics } from '@/lib/marketing-metrics';
 import { emailConfigured, reportRecipients } from '@/lib/email';
 import { chatLLM } from '@/lib/llm';
 import { slugify } from '@/lib/site';
@@ -535,6 +536,7 @@ async function reforwardPending(db) {
       postal_code: lead.postal_code, property_type: lead.property_type, rental_model: lead.rental_model,
       bedrooms: lead.bedrooms, sqm: lead.sqm, availability: lead.availability, lead_type: lead.lead_type,
       units: lead.units, num_properties: lead.num_properties, notes: lead.notes,
+      attribution: lead.attribution || undefined,
     });
     if (fwd.ok) results.leads.ok++;
     await db.collection('leads').updateOne({ id: lead.id }, { $set: {
@@ -632,6 +634,10 @@ async function importMetaLeadDoc(db, ml, formName) {
       external_ref: doc.id, source_system: 'digihome-marketing-leadads',
       name: doc.name, email: doc.email, phone: doc.phone, address: doc.address,
       lead_type: doc.lead_type, notes: doc.notes,
+      attribution: {
+        channel: 'Betalt sosialt', source: 'meta', medium: 'paid_social',
+        campaign: doc.meta_campaign_name || '',
+      },
     });
     await db.collection(coll).updateOne({ id: doc.id }, { $set: {
       forwarded: fwd.ok, platform_id: fwd.id || null,
@@ -1206,6 +1212,7 @@ async function handleRoute(request, { params }) {
         registry_owner_name: lead.registry_owner_name || undefined,
         registry_owner_type: lead.registry_owner_type || undefined,
         registry_orgnr: lead.registry_orgnr || undefined,
+        attribution: lead.attribution || undefined,
         notes: fwdNotes,
       });
       await db.collection('leads').updateOne({ id: lead.id }, { $set: {
@@ -1827,6 +1834,28 @@ async function handleRoute(request, { params }) {
         meta: { configured: m.configured, error: m.error || null, fetchedAt: m.fetchedAt || null, stale: !!m.stale },
         googlePeriod, metaPeriod,
       }));
+    }
+
+    // ===================================================================
+    // MARKEDSDATA for plattformens ukentlige management-rapport.
+    // Plattformen eier rapporten (CRM-sannhet) og HENTER annonse-/lead-data
+    // herfra. Auth: admin (?key=) ELLER delt bro-token (x-bridge-token / ?token=).
+    // Param: ?days=7 (1–90). Returnerer stabil, maskinlesbar JSON.
+    // ===================================================================
+    if (route === '/admin/marketing-metrics' && method === 'GET') {
+      if (!bridgeAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const sp = new URL(request.url).searchParams;
+      let days = parseInt(sp.get('days') || '', 10);
+      if (!Number.isFinite(days)) {
+        const p = sp.get('period') || '';
+        days = p === 'last_30d' ? 30 : p === 'last_90d' ? 90 : 7;
+      }
+      try {
+        const metrics = await buildMarketingMetrics(db, { days });
+        return cors(NextResponse.json({ ok: true, source: 'digihome-marketing', ...metrics }));
+      } catch (e) {
+        return cors(NextResponse.json({ ok: false, error: e.message }, { status: 200 }));
+      }
     }
 
     // Fase B: Anbefalinger (regelmotor over fersk data).

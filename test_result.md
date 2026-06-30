@@ -105,6 +105,29 @@
 user_problem_statement: "Bygg DigiHome markedsside (Next.js App Router) etter flyttepakken — Warm Ink Editorial design, norsk bokmål, full SEO, DB-drevet blogg + admin + programmatisk SEO. Fase 1: verdensklasse forside + lead-API."
 
 backend:
+  - task: "Markedsdata-endepunkt for plattformens ukerapport: GET /api/admin/marketing-metrics (token-beskyttet, JSON)"
+    implemented: true
+    working: true
+    file: "app/api/[[...path]]/route.js, lib/marketing-metrics.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "main"
+        -comment: "NYTT. GET /api/admin/marketing-metrics?days=7 (1-90, alt. period=last_7d|last_30d|last_90d). Auth: bridgeAuthed (admin ?key= ELLER delt bro-token x-bridge-token/?token=AGENT_BRIDGE_SECRET). Returnerer stabil JSON: spend{total/google/meta}, performance{impressions/clicks/ctr/conversions/convValue}, leads{new/utleier/leietaker}, marketingAttributedWon{count/value}, efficiency{cpl/cac/roasAds/roasTrue}, channelSplit, topCampaigns[], wow{}, configured{}. Manuelt verifisert via curl: 200 med live Google+Meta-data; 401 uten/feil token. Plattformen henter dette ukentlig og slår sammen med CRM-sannhet (nye kunder + signerte kontrakter) for ÉN management-e-post."
+  - task: "Lead-videresending: korrekt preview/prod-URL + samkjørt X-API-Key + attribution i payload"
+    implemented: true
+    working: true
+    file: "app/api/[[...path]]/route.js, .env"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "main"
+        -comment: "FIKS. (1) DIGIHOME_API_URL(_TEST)=https://tenant-hub-210.preview.emergentagent.com (var stale rental-ops-17), DIGIHOME_API_URL_PROD=https://app.digihome.no (var digihome.no=markedsdomene→loop). Fjernet app.digihome.no→digihome.no omskriving i normalizeCrmUrl(). (2) DIGIHOME_API_KEY* samkjørt til plattformens verdi (rate-limit-bypass). (3) attribution (gclid/fbclid/utm) sendes nå i forward-payload for nettside-leads + Meta Lead Ads. VERIFISERT e2e mot plattformens preview: POST /api/leads → forwarded:true + platform_id returnert + external_ref ekko. Test-leads ryddet etterpå. GJENSTÅR (eier, out-of-band): endelig prod-domene-mapping + LEAD_SYNC_SECRET satt likt på begge sider (closed-loop tilbake)."
+
   - task: "Ukentlig management-rapport (SendGrid): POST /api/admin/ads/report/send + GET /api/admin/ads/report/preview (HTML) + cron-integrasjon"
     implemented: true
     working: true
