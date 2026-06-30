@@ -14,10 +14,11 @@ import {
   PillSelector, NumberSelector, IconCardSelector, ToggleChips, SummaryCard,
 } from './FormFields';
 import {
-  User, Mail, ArrowRight, ArrowLeft, CheckCircle2, Loader2,
+  User, Mail, ArrowRight, ArrowLeft, CheckCircle2, Loader2, Check, MapPin, Sliders,
   Home, Building2, Warehouse, LayoutGrid, BedDouble, Heart, Shield, Calendar as CalendarIcon,
 } from 'lucide-react';
 import { track, getLeadAttribution } from '@/lib/analytics';
+import { trackLead, trackLeadStart, getClickIds } from '@/lib/gtag';
 
 const BACKEND_URL = '';
 
@@ -68,8 +69,8 @@ export default function BliLeietakerPage() {
     if (errors[field]) setErrors((prev: any) => ({ ...prev, [field]: null }));
   }, [errors]);
 
-  // Analyse: skjema startet + steg-sporing (drop-off).
-  useEffect(() => { track('form_start', { form: 'leietaker' }); }, []);
+  // Analyse: skjema startet + steg-sporing (drop-off). trackLeadStart → Meta InitiateCheckout.
+  useEffect(() => { track('form_start', { form: 'leietaker' }); try { trackLeadStart('leietaker'); } catch (e) {} }, []);
   useEffect(() => {
     track('form_step', { form: 'leietaker', step: step + 1, label: STEPS[step]?.title || `Steg ${step}` });
   }, [step]);
@@ -127,7 +128,7 @@ export default function BliLeietakerPage() {
           formData.furnished ? 'Ønsker møblert' : '', formData.washing ? 'Ønsker vaskemaskin' : '',
           formData.notes,
         ].filter(Boolean).join('. '),
-        attribution: getLeadAttribution(),
+        attribution: { ...getLeadAttribution(), ...getClickIds() },
       };
       const res = await fetch(`${BACKEND_URL}/api/tenants`, {
         method: 'POST',
@@ -138,6 +139,7 @@ export default function BliLeietakerPage() {
       if (res.ok && (data.success || data.ok)) {
         setSubmitted(true);
         track('lead_submit', { form: 'leietaker', leadType: 'leietaker' });
+        try { trackLead({ formId: 'leietaker', source: 'bli-leietaker', leadId: data?.tenant?.id, email: formData.email, phone: '+47 ' + formData.phone }); } catch (e) {}
         toast.success('Registreringen er mottatt!');
       } else {
         throw new Error('tenant failed');
@@ -148,15 +150,42 @@ export default function BliLeietakerPage() {
 
   if (submitted) {
     return (
-      <div className="min-h-screen flex items-center justify-center px-5 bg-[#fdfcfb]">
-        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }} className="text-center max-w-md">
-          <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.2, type: 'spring', stiffness: 200 }} className="w-24 h-24 rounded-full bg-[#f5edfc] flex items-center justify-center mx-auto mb-8">
-            <CheckCircle2 className="w-12 h-12 text-[#cf97fc]" />
+      <div className="min-h-screen flex items-center justify-center px-5 py-16 bg-[#fdfcfb] relative overflow-hidden">
+        <div aria-hidden className="pointer-events-none absolute -top-32 left-1/2 -translate-x-1/2 h-[420px] w-[680px] rounded-full" style={{ background: 'radial-gradient(circle at center, rgba(207,151,252,0.16) 0%, rgba(207,151,252,0) 70%)' }} />
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }} className="relative text-center max-w-md w-full">
+          <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.15, type: 'spring', stiffness: 200, damping: 16 }}
+            className="w-20 h-20 rounded-[22px] bg-[#0a0a0a] flex items-center justify-center mx-auto mb-7 shadow-[0_14px_44px_-12px_rgba(0,0,0,0.45)]">
+            <CheckCircle2 className="w-10 h-10 text-[#cf97fc]" />
           </motion.div>
-          <h1 className="text-[36px] font-bold tracking-[-0.03em] text-[#0a0a0a] mb-4" style={{ fontFamily: 'var(--font-heading)' }}>Velkommen til DigiHome!</h1>
-          <p className="text-[16px] text-[#666] mb-3 leading-relaxed">Vi har mottatt registreringen din og matcher deg med passende boliger.</p>
-          <p className="text-[14px] text-[#5b6370] mb-10">Du hører fra oss innen 48 timer.</p>
-          <Button onClick={() => window.location.href = '/'} data-testid="tenant-success-home-button" className="rounded-full bg-[#0a0a0a] text-white hover:bg-black h-12 px-8 text-[14px] font-semibold gap-2 active:scale-[0.97] transition-transform">Tilbake til forsiden <ArrowRight className="w-4 h-4" /></Button>
+          <h1 className="text-[33px] sm:text-[38px] font-bold tracking-[-0.03em] text-[#0a0a0a] mb-3" style={{ fontFamily: 'var(--font-heading)' }}>Velkommen til DigiHome{formData.name ? `, ${formData.name.split(' ')[0]}` : ''}!</h1>
+          <p className="text-[16px] text-[#666] leading-relaxed max-w-[42ch] mx-auto">Vi har mottatt registreringen din og matcher deg nå med boliger som passer ønskene dine.</p>
+
+          <div className="mt-8 text-left bg-white rounded-[22px] p-6 shadow-[0_8px_40px_-24px_rgba(0,0,0,0.35)]">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[#aaa] mb-4">Hva skjer nå</p>
+            <div>
+              {[
+                { t: 'Vi matcher profilen din', s: 'Mot ledige kvalitetsboliger i ønsket område', done: true },
+                { t: 'Du hører fra oss innen 48 timer', s: 'Personlig oppfølging fra en rådgiver' },
+                { t: 'Du får aktuelle boliger tilsendt', s: 'Skreddersydd etter budsjett og ønsker' },
+              ].map((it: any, i: number, arr: any[]) => (
+                <motion.div key={i} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.35 + i * 0.12, duration: 0.35 }} className="flex gap-3.5">
+                  <div className="flex flex-col items-center">
+                    <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${it.done ? 'bg-[#cf97fc] text-white' : 'bg-[#f1ecf8] text-[#b39ddb]'}`}>{it.done ? <Check className="w-3.5 h-3.5" strokeWidth={3} /> : <span className="text-[12px] font-bold">{i + 1}</span>}</div>
+                    {i < arr.length - 1 && <div className="w-[2px] flex-1 min-h-[24px] bg-[#efe9f7] my-1" />}
+                  </div>
+                  <div className="pb-4">
+                    <p className="text-[14.5px] font-semibold text-[#0a0a0a] leading-tight">{it.t}</p>
+                    <p className="text-[13px] text-[#888] mt-0.5">{it.s}</p>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+
+          <Button onClick={() => window.location.href = '/'} data-testid="tenant-success-home-button"
+            className="rounded-full bg-[#0a0a0a] text-white hover:bg-black h-12 px-8 text-[14px] font-semibold gap-2 active:scale-[0.97] transition-transform mt-7">
+            Tilbake til forsiden <ArrowRight className="w-4 h-4" />
+          </Button>
         </motion.div>
       </div>
     );
@@ -169,15 +198,36 @@ export default function BliLeietakerPage() {
         <div className="max-w-[1100px] mx-auto px-6 sm:px-10 py-10 sm:py-16" data-testid="tenant-step-welcome">
           <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center min-h-[calc(100vh-200px)]">
             <motion.div initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}>
-              <div className="rounded-[24px] overflow-hidden shadow-[0_8px_40px_rgba(0,0,0,0.08)]">
-                <img src="/parkveien-bergen.webp" alt="Parkveien i Bergen" loading="eager" className="w-full aspect-[4/5] sm:aspect-[3/4] object-cover" />
+              {/* Mobil: bildekort med stat-overlegg */}
+              <div className="lg:hidden relative rounded-[20px] sm:rounded-[24px] overflow-hidden shadow-[0_8px_30px_rgba(0,0,0,0.08)]">
+                <img src="/parkveien-bergen.webp" alt="Bolig i Bergen" loading="eager" className="w-full aspect-[16/10] sm:aspect-[16/9] object-cover" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-black/5 to-transparent pointer-events-none" />
+                <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between gap-2">
+                  <div className="bg-white/95 backdrop-blur-xl rounded-xl px-3.5 py-2.5 shadow-[0_4px_16px_rgba(0,0,0,0.12)]">
+                    <p className="text-[9px] text-[#5b6370] leading-tight uppercase tracking-[0.04em]">Ledige boliger</p>
+                    <p className="text-[15px] font-bold text-[#0a0a0a] mt-0.5" style={{ fontFamily: 'var(--font-heading)' }}>Nye hver uke</p>
+                  </div>
+                  <div className="bg-white/95 backdrop-blur-xl rounded-xl px-3.5 py-2.5 shadow-[0_4px_16px_rgba(0,0,0,0.12)]">
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-6 h-6 rounded-full bg-[#f5edfc] flex items-center justify-center"><Heart className="w-3 h-3 text-[#cf97fc]" strokeWidth={2.6} /></div>
+                      <div>
+                        <p className="text-[9px] text-[#5b6370] leading-tight uppercase tracking-[0.04em]">Svar</p>
+                        <p className="text-[13px] font-bold text-[#0a0a0a] leading-tight" style={{ fontFamily: 'var(--font-heading)' }}>48 timer</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              {/* Desktop: stort bilde */}
+              <div className="hidden lg:block rounded-[24px] overflow-hidden shadow-[0_8px_40px_rgba(0,0,0,0.08)]">
+                <img src="/parkveien-bergen.webp" alt="Bolig i Bergen" loading="eager" className="w-full aspect-[3/4] object-cover" />
               </div>
             </motion.div>
             <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.15 }}>
-              <p className="text-[11px] font-semibold text-[#7c3aed] uppercase tracking-[0.1em] mb-4">For leietakere</p>
-              <h1 className="text-[36px] sm:text-[46px] font-bold tracking-[-0.03em] leading-[1.08] text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>Finn ditt neste hjem i Bergen</h1>
-              <p className="text-[16px] text-[#666] leading-[1.75] mt-5 max-w-[38ch]">Vi matcher deg med kvalitetsboliger som passer dine ønsker. Det tar kun 2 minutter.</p>
-              <div className="mt-8 space-y-3">
+              <p className="text-[10.5px] sm:text-[11px] font-semibold text-[#7c3aed] uppercase tracking-[0.1em] mb-3 sm:mb-4">For leietakere</p>
+              <h1 className="text-[30px] sm:text-[40px] lg:text-[46px] font-bold tracking-[-0.03em] leading-[1.05] sm:leading-[1.08] text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>Finn ditt neste hjem i Bergen</h1>
+              <p className="text-[15px] sm:text-[16px] text-[#666] leading-[1.65] sm:leading-[1.75] mt-4 sm:mt-5 max-w-[40ch]">Vi matcher deg med kvalitetsboliger som passer dine ønsker — helt gratis. Det tar kun 2 minutter.</p>
+              <div className="mt-6 sm:mt-8 space-y-2.5 sm:space-y-3">
                 {[{ icon: Home, text: 'Kvalitetsboliger med høy standard' }, { icon: Heart, text: 'Personlig oppfølging fra dag én' }, { icon: Shield, text: 'Trygge og transparente leieforhold' }].map((item: any, i: number) => {
                   const Icon = item.icon;
                   return (<motion.div key={i} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.35 + i * 0.08, duration: 0.3 }} className="flex items-center gap-3">
@@ -186,9 +236,13 @@ export default function BliLeietakerPage() {
                   </motion.div>);
                 })}
               </div>
-              <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6, duration: 0.3 }} className="mt-10">
-                <Button onClick={goNext} data-testid="tenant-next-button" className="rounded-full bg-[#0a0a0a] text-white hover:bg-black h-14 px-10 text-[15px] font-semibold gap-2 active:scale-[0.97] transition-transform shadow-[0_4px_20px_rgba(0,0,0,0.12)]">Kom i gang <ArrowRight className="w-4 h-4" /></Button>
-                <p className="text-[12px] text-[#5b6370] mt-4">Gratis og uforpliktende</p>
+              <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6, duration: 0.3 }} className="mt-7 sm:mt-10">
+                <Button onClick={goNext} data-testid="tenant-next-button" className="w-full sm:w-auto rounded-full bg-[#0a0a0a] text-white hover:bg-black px-8 sm:px-10 text-[15px] font-semibold gap-2 active:scale-[0.97] transition-transform shadow-[0_4px_20px_rgba(0,0,0,0.12)]" style={{ height: '52px' }}>Kom i gang <ArrowRight className="w-4 h-4" /></Button>
+                <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1.5">
+                  {['Helt gratis', 'Tar 2 minutter', 'Svar innen 48t'].map((tx) => (
+                    <span key={tx} className="inline-flex items-center gap-1.5 text-[12px] text-[#737373]"><Check className="w-3.5 h-3.5 text-[#cf97fc]" strokeWidth={3} /> {tx}</span>
+                  ))}
+                </div>
               </motion.div>
             </motion.div>
           </div>
@@ -197,21 +251,48 @@ export default function BliLeietakerPage() {
     );
   }
 
-  const progressPercent = (step / (STEPS.length - 1)) * 100;
+  const flowSteps = [1, 2, 3, 4];
+  const curPos = Math.max(0, flowSteps.indexOf(step));
 
   return (
     <div className="min-h-screen bg-[#fdfcfb] flex flex-col" data-testid="tenant-page" onKeyDown={(e: any) => { if (e.key === 'Enter' && !e.shiftKey && step < STEPS.length - 1 && step > 0) { e.preventDefault(); goNext(); } }}>
       <div className="h-[56px] lg:h-[76px]" />
       <div className="flex-1 flex flex-col">
         <div className="max-w-[560px] w-full mx-auto px-6 pt-6">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-3">
-              <button onClick={goBack} className="w-8 h-8 rounded-full border border-[#e5e5e5] hover:bg-[#f5f5f5] flex items-center justify-center transition-colors" data-testid="tenant-back-button"><ArrowLeft className="w-3.5 h-3.5 text-[#888]" /></button>
-              <span className="text-[13px] text-[#737373] font-medium">{step} / {STEPS.length - 1}</span>
+          <div className="flex items-center justify-between mb-5">
+            <button onClick={goBack} className="w-9 h-9 rounded-full border border-[#e8e5e0] hover:bg-[#f5f5f5] flex items-center justify-center transition-colors active:scale-95" data-testid="tenant-back-button" aria-label="Tilbake">
+              <ArrowLeft className="w-4 h-4 text-[#888]" />
+            </button>
+            <div className="text-right">
+              <p className="text-[10.5px] font-semibold text-[#7c3aed] uppercase tracking-[0.1em] leading-none">Steg {curPos + 1} av {flowSteps.length}</p>
+              <p className="text-[13.5px] text-[#0a0a0a] font-semibold mt-1 leading-none">{STEPS[step].title}</p>
             </div>
-            <span className="text-[13px] text-[#737373] font-medium">{STEPS[step].title}</span>
           </div>
-          <div className="h-[2px] bg-[#f0f0f0] rounded-full mb-10 overflow-hidden"><motion.div className="h-full bg-[#cf97fc] rounded-full" animate={{ width: `${progressPercent}%` }} transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }} /></div>
+          {/* Premium stepper — sirkler + animerte koblinger */}
+          <div className="flex items-center mb-9">
+            {flowSteps.map((idx: number, pos: number) => {
+              const done = curPos > pos;
+              const active = step === idx;
+              return (
+                <React.Fragment key={idx}>
+                  <motion.div
+                    initial={false}
+                    animate={{ scale: active ? 1.12 : 1 }}
+                    transition={{ type: 'spring', stiffness: 320, damping: 20 }}
+                    title={STEPS[idx].title}
+                    className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-[12px] font-bold border-2 transition-colors duration-300 ${done ? 'bg-[#cf97fc] border-[#cf97fc] text-white' : active ? 'bg-white border-[#cf97fc] text-[#7c3aed] shadow-[0_0_0_4px_rgba(207,151,252,0.18)]' : 'bg-white border-[#e6e3df] text-[#c4c0bb]'}`}
+                  >
+                    {done ? <Check className="w-4 h-4" strokeWidth={3} /> : pos + 1}
+                  </motion.div>
+                  {pos < flowSteps.length - 1 && (
+                    <div className="flex-1 h-[2px] mx-2 rounded-full bg-[#ece9e4] overflow-hidden">
+                      <motion.div className="h-full bg-[#cf97fc] rounded-full" initial={false} animate={{ width: curPos > pos ? '100%' : '0%' }} transition={{ duration: 0.45, ease: [0.25, 0.1, 0.25, 1] }} />
+                    </div>
+                  )}
+                </React.Fragment>
+              );
+            })}
+          </div>
         </div>
 
         <div className="flex-1 max-w-[560px] w-full mx-auto px-6 pb-24">
@@ -220,6 +301,7 @@ export default function BliLeietakerPage() {
 
               {step === 1 && (
                 <div data-testid="tenant-step-personal">
+                  <div className="inline-flex items-center gap-2 text-[11px] font-semibold text-[#7c3aed] uppercase tracking-[0.1em] mb-3"><User className="w-3.5 h-3.5" /> Om deg</div>
                   <h2 className="text-[28px] sm:text-[34px] font-bold tracking-[-0.03em] text-[#0a0a0a] mb-2" style={{ fontFamily: 'var(--font-heading)' }}>Fortell oss litt om deg</h2>
                   <p className="text-[15px] text-[#888] mb-8">Slik at vi kan kontakte deg med aktuelle boliger.</p>
                   <div className="space-y-5">
@@ -233,6 +315,7 @@ export default function BliLeietakerPage() {
 
               {step === 2 && (
                 <div data-testid="tenant-step-preferences">
+                  <div className="inline-flex items-center gap-2 text-[11px] font-semibold text-[#7c3aed] uppercase tracking-[0.1em] mb-3"><Home className="w-3.5 h-3.5" /> Boligønsker</div>
                   <h2 className="text-[28px] sm:text-[34px] font-bold tracking-[-0.03em] text-[#0a0a0a] mb-2" style={{ fontFamily: 'var(--font-heading)' }}>Hva slags bolig ser du etter?</h2>
                   <p className="text-[15px] text-[#888] mb-8">Velg det som passer deg best.</p>
                   <div className="space-y-8">
@@ -263,6 +346,7 @@ export default function BliLeietakerPage() {
 
               {step === 3 && (
                 <div data-testid="tenant-step-details">
+                  <div className="inline-flex items-center gap-2 text-[11px] font-semibold text-[#7c3aed] uppercase tracking-[0.1em] mb-3"><Sliders className="w-3.5 h-3.5" /> Detaljer</div>
                   <h2 className="text-[28px] sm:text-[34px] font-bold tracking-[-0.03em] text-[#0a0a0a] mb-2" style={{ fontFamily: 'var(--font-heading)' }}>Noen siste detaljer</h2>
                   <p className="text-[15px] text-[#888] mb-8">Jo mer vi vet, desto bedre match finner vi.</p>
                   <div className="space-y-7">
@@ -305,6 +389,7 @@ export default function BliLeietakerPage() {
 
               {step === 4 && (
                 <div data-testid="tenant-step-confirm">
+                  <div className="inline-flex items-center gap-2 text-[11px] font-semibold text-[#7c3aed] uppercase tracking-[0.1em] mb-3"><CheckCircle2 className="w-3.5 h-3.5" /> Oppsummering</div>
                   <h2 className="text-[28px] sm:text-[34px] font-bold tracking-[-0.03em] text-[#0a0a0a] mb-2" style={{ fontFamily: 'var(--font-heading)' }}>Ser dette riktig ut?</h2>
                   <p className="text-[15px] text-[#888] mb-8">Sjekk at alt stemmer før du sender.</p>
                   <div className="space-y-4">

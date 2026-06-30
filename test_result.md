@@ -780,6 +780,18 @@ backend:
 
 
 frontend:
+  - task: "Premium 2026-oppgradering av /bli-leietaker (speilet fra /bli-utleier) + full Meta-sporing"
+    implemented: true
+    working: true
+    file: "components/dh/BliLeietakerPage.tsx, app/api/[[...path]]/route.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "main"
+        -comment: "NYTT. Løftet leietaker-onboarding til samme verdensklasse-nivå som utleier: (1) premium sirkulær stepper (1-4 med animerte koblinger/checkmarks) erstatter tynn progress-bar, (2) rik hero med mobil bildekort + stat-overlegg + tillitsmerker (Helt gratis/Tar 2 minutter/Svar innen 48t), (3) seksjons-eyebrows med ikon på hvert steg, (4) premium suksess-skjerm (mørkt ikon, radial-glød, 'Hva skjer nå'-tidslinje). SPORING (var tidligere bare GA4 'track'): la til trackLeadStart→Meta InitiateCheckout ved mount, trackLead→Meta pixel Lead + GA4 ved submit (bruker tenant.id som event_id), og getClickIds() i attribution. Verifisert visuelt (reduced-motion screenshot: hero + steg 1 stepper) og funksjonelt: POST /api/tenants ok, tenant.id returnert, marketingConsent respektert (consent=1→CAPI {ok:true}; consent=0→ingen CAPI), forwarded:true."
+
   - task: "Bli-utleier Finn-flyt: hele steg 1 blir ett stort eiendomskort + steg-hopping + cookie-banner-fiks"
     implemented: true
     working: true

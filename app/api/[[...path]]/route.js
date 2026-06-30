@@ -1358,6 +1358,7 @@ async function handleRoute(request, { params }) {
             customData: { content_name: 'leietaker' },
           });
           await db.collection('tenant_leads').updateOne({ id: tenant.id }, { $set: { metaCapi: { event: 'Lead', ok: capi.ok, at: new Date().toISOString(), error: capi.ok ? null : (capi.error || null) } } });
+          tenant.metaCapi = { event: 'Lead', ok: capi.ok };
         }
       } catch (e) { /* best-effort */ }
 
