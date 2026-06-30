@@ -1025,13 +1025,13 @@ function CampaignManager({ apiKey }) {
           {ca && ca.resourceName ? <CheckCircle2 className="w-4.5 h-4.5" /> : <Info className="w-4.5 h-4.5" />}
         </span>
         <div className="flex-1 min-w-0">
-          <p className="text-[12.5px] font-bold text-[#0a0a0a]">Lukket sløyfe · konverteringshandling</p>
+          <p className="text-[12.5px] font-bold text-[#0a0a0a]">Lukket sløyfe · automatisk offline-konvertering</p>
           {ca && ca.resourceName ? (
-            <p className="text-[12px] text-[#666] mt-0.5">Konverteringshandlingen <b>«{ca.name}»</b> er aktiv. Vunne leads med gclid registreres mot denne.</p>
+            <p className="text-[12px] text-[#666] mt-0.5">Konverteringshandlingen <b>«{ca.name}»</b> er aktiv. Når en lead settes til <b>«vunnet»</b> med gclid, lastes verdien automatisk opp til Google Ads.</p>
           ) : (
             <p className="text-[12px] text-[#666] mt-0.5">Ingen UPLOAD_CLICKS-handling funnet. {ca && ca.error ? `(${ca.error})` : ''}</p>
           )}
-          <p className="text-[11px] text-[#999] mt-1">Merk: Google begrenser nå den klassiske offline-opplastings-API-en til eksisterende brukere — den moderne lukkede sløyfen håndteres av Enhanced Conversions (allerede live).</p>
+          <p className="text-[11px] text-[#999] mt-1 inline-flex items-center gap-1"><Sparkles className="w-3 h-3 text-[#8b5cf6]" /> Drevet av Googles nye Data Manager API (events:ingest) — den påkrevde veien etter at den klassiske opplastings-API-en ble utfaset.</p>
         </div>
       </div>
 

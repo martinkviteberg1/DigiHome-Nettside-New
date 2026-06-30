@@ -12,6 +12,7 @@ import { fetchMetaInsights, fetchMetaAccount, metaAdsConfigured, getCachedMetaRe
 import { fetchPages, fetchLeadForms, fetchFormLeads, mapLeadFields, metaLeadAdsConfigured, fetchSingleLead, fetchFormName, fetchPageToken } from '@/lib/meta-leadads';
 import { composioConfigured, createConnectLink, getConnectionStatus, runCampaignReport, defaultCustomerId, getCachedReport, GOOGLE_PERIODS, getCachedCreatives, activeProvider } from '@/lib/google-ads-provider';
 import { googleAdsNativeConfigured, listConversionActions, resolveOfflineConversionAction, uploadClickConversion, toConversionDateTime, listCampaignsDetailed, suggestGeoTargets, setCampaignStatus, updateCampaignBudget, createSearchCampaign } from '@/lib/google-ads-native';
+import { dataManagerConfigured, ingestOfflineConversion } from '@/lib/google-ads-datamanager';
 import { chatLLM } from '@/lib/llm';
 import { slugify } from '@/lib/site';
 import { getRentReport, refreshRentReport, RENT_CITIES } from '@/lib/rentmarket';
@@ -1684,6 +1685,25 @@ async function handleRoute(request, { params }) {
       }
     }
 
+    // Fase 2 (Data Manager API): test-ingest av en offline-konvertering (validateOnly mulig).
+    if (route === '/admin/ads/datamanager/test' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!dataManagerConfigured()) return cors(NextResponse.json({ ok: false, error: 'Data Manager API er ikke konfigurert' }, { status: 400 }));
+      let body = {};
+      try { body = await request.json(); } catch (e) { body = {}; }
+      try {
+        const r = await ingestOfflineConversion({
+          gclid: body.gclid || 'TEST_FAKE_GCLID', gbraid: body.gbraid, wbraid: body.wbraid,
+          value: body.value || 1000, currency: body.currency || 'NOK',
+          at: body.at, transactionId: body.transactionId,
+          validateOnly: body.validateOnly !== false, // default true (trygt)
+        });
+        return cors(NextResponse.json({ ok: r.ok, ...r }));
+      } catch (e) {
+        return cors(NextResponse.json({ ok: false, error: e.message }, { status: 200 }));
+      }
+    }
+
     // Fase 3: detaljert kampanjeliste (m/ budsjett + 30-dagers metrikk).
     if (route === '/admin/ads/campaigns' && method === 'GET') {
       if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
@@ -1970,18 +1990,20 @@ async function handleRoute(request, { params }) {
         }
       } catch (e) { /* best-effort */ }
 
-      // Google Ads offline-konvertering (native, lukket sløyfe): vunnet lead m/ gclid.
+      // Google Ads offline-konvertering (Data Manager API, lukket sløyfe): vunnet lead m/ gclid.
       try {
         const att = existing.attribution || {};
-        if (status === 'won' && googleAdsNativeConfigured() && att.gclid) {
+        if (status === 'won' && dataManagerConfigured() && (att.gclid || att.gbraid || att.wbraid)) {
           const wonVal = update.wonValue || Number(process.env.GOOGLE_ADS_DEFAULT_LEAD_VALUE) || 0;
-          const up = await uploadClickConversion(defaultCustomerId(), {
-            gclid: att.gclid, value: wonVal, currency: update.wonCurrency || 'NOK',
-            conversionDateTime: toConversionDateTime(update.wonAt || nowIso), orderId: id,
+          const up = await ingestOfflineConversion({
+            gclid: att.gclid, gbraid: att.gbraid, wbraid: att.wbraid,
+            value: wonVal, currency: update.wonCurrency || 'NOK', at: update.wonAt || nowIso, transactionId: id,
           });
-          await db.collection(coll).updateOne({ id }, { $set: { googleAdsWon: { ok: up.ok, at: nowIso, error: up.ok ? null : (up.error || null) } } });
+          await db.collection(coll).updateOne({ id }, { $set: { googleAdsWon: { ok: up.ok, at: nowIso, requestId: up.requestId || null, error: null } } });
         }
-      } catch (e) { /* best-effort */ }
+      } catch (e) {
+        try { await db.collection(coll).updateOne({ id }, { $set: { googleAdsWon: { ok: false, at: nowIso, error: e.message } } }); } catch (_) {}
+      }
 
       return cors(NextResponse.json({ ok: true, id, status }));
     }
@@ -2204,18 +2226,20 @@ async function handleRoute(request, { params }) {
         }
       } catch (e) { /* best-effort */ }
 
-      // Google Ads offline-konvertering (native, lukket sløyfe): vunnet lead m/ gclid.
+      // Google Ads offline-konvertering (Data Manager API, lukket sløyfe): vunnet lead m/ gclid.
       try {
         const att = lead.attribution || {};
-        if (status === 'won' && googleAdsNativeConfigured() && att.gclid) {
+        if (status === 'won' && dataManagerConfigured() && (att.gclid || att.gbraid || att.wbraid)) {
           const wonVal = update.wonValue || Number(process.env.GOOGLE_ADS_DEFAULT_LEAD_VALUE) || 0;
-          const up = await uploadClickConversion(defaultCustomerId(), {
-            gclid: att.gclid, value: wonVal, currency: update.wonCurrency || 'NOK',
-            conversionDateTime: toConversionDateTime(update.wonAt || nowIso), orderId: lead.id,
+          const up = await ingestOfflineConversion({
+            gclid: att.gclid, gbraid: att.gbraid, wbraid: att.wbraid,
+            value: wonVal, currency: update.wonCurrency || 'NOK', at: update.wonAt || nowIso, transactionId: lead.id,
           });
-          await db.collection(coll).updateOne({ id: lead.id }, { $set: { googleAdsWon: { ok: up.ok, at: nowIso, error: up.ok ? null : (up.error || null) } } });
+          await db.collection(coll).updateOne({ id: lead.id }, { $set: { googleAdsWon: { ok: up.ok, at: nowIso, requestId: up.requestId || null, error: null } } });
         }
-      } catch (e) { /* best-effort */ }
+      } catch (e) {
+        try { await db.collection(coll).updateOne({ id: lead.id }, { $set: { googleAdsWon: { ok: false, at: nowIso, error: e.message } } }); } catch (_) {}
+      }
 
       return cors(NextResponse.json({ ok: true, id: lead.id, status, matched_by: matchedBy, meta_capi: metaCapi || undefined }));
     }
