@@ -5,9 +5,29 @@
 // lib/gtag.js trackLead() med eventID = lead.id (deduplikeres mot CAPI server-side).
 import { useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
-import { hasMarketingConsent } from '@/lib/gtag';
+import { hasMarketingConsent, trackViewContent } from '@/lib/gtag';
 
 const PIXEL_ID = process.env.NEXT_PUBLIC_META_PIXEL_ID || '';
+
+// Hoey-intensjons-ruter → ViewContent (bygger retargeting-publikum). null = ingen.
+function contentNameFor(pathname) {
+  const p = (pathname || '/').toLowerCase();
+  if (p === '/') return 'Forside';
+  if (p.startsWith('/bli-utleier')) return 'Bli utleier';
+  if (p.startsWith('/bli-leietaker')) return 'Bli leietaker';
+  if (p.startsWith('/forvaltning')) return 'Forvaltning';
+  if (p.startsWith('/lp/')) return `Kampanje: ${p.replace('/lp/', '')}`;
+  if (p.startsWith('/utleie/')) return `Utleie: ${p.replace('/utleie/', '')}`;
+  if (p.startsWith('/blogg/')) return 'Blogg-artikkel';
+  if (p.startsWith('/om-oss')) return 'Om oss';
+  if (p.startsWith('/kontakt')) return 'Kontakt';
+  return null;
+}
+
+function fireViewContent(pathname) {
+  const name = contentNameFor(pathname);
+  if (name) trackViewContent(name, { page_path: pathname });
+}
 
 function loadPixel() {
   if (typeof window === 'undefined' || !PIXEL_ID) return;
@@ -26,6 +46,7 @@ function loadPixel() {
   try {
     window.fbq('init', PIXEL_ID);
     window.fbq('track', 'PageView');
+    fireViewContent(window.location.pathname);
   } catch (e) {}
 }
 
@@ -41,11 +62,12 @@ export default function MetaPixel() {
     return () => window.removeEventListener('dh-consent-granted', onConsent);
   }, []);
 
-  // SPA-navigasjon → PageView (hopper over første render; den dekkes av loadPixel).
+  // SPA-navigasjon → PageView + ViewContent (hopper over første render; den dekkes av loadPixel).
   useEffect(() => {
     if (first.current) { first.current = false; return; }
     if (typeof window !== 'undefined' && window.fbq && window.__dhMetaLoaded) {
       try { window.fbq('track', 'PageView'); } catch (e) {}
+      try { fireViewContent(pathname); } catch (e) {}
     }
   }, [pathname]);
 

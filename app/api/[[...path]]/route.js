@@ -1236,6 +1236,7 @@ async function handleRoute(request, { params }) {
             eventSourceUrl: request.headers.get('referer') || (att.landing_page ? `${process.env.NEXT_PUBLIC_BASE_URL || ''}${att.landing_page}` : undefined),
             email: lead.email, phone: lead.phone, fullName: lead.name,
             fbp: att.fbp, fbc: att.fbc, fbclid: att.fbclid,
+            externalId: att.visitorId, zip: lead.postal_code, country: 'no',
             clientIp: clientIp(request), userAgent: request.headers.get('user-agent') || '',
             customData: { content_name: lead.lead_type || 'huseier' },
           });
@@ -1335,6 +1336,7 @@ async function handleRoute(request, { params }) {
             eventSourceUrl: request.headers.get('referer') || undefined,
             email: tenant.email, phone: tenant.phone, fullName: tenant.name,
             fbp: att.fbp, fbc: att.fbc, fbclid: att.fbclid,
+            externalId: att.visitorId, zip: tenant.postal_code, country: 'no',
             clientIp: clientIp(request), userAgent: request.headers.get('user-agent') || '',
             customData: { content_name: 'leietaker' },
           });
@@ -2230,6 +2232,7 @@ async function handleRoute(request, { params }) {
             actionSource: 'system_generated',
             email: existing.email, phone: existing.phone, fullName: existing.name,
             fbp: att.fbp, fbc: att.fbc, fbclid: att.fbclid,
+            externalId: att.visitorId, zip: existing.postal_code, country: 'no',
             value: wonVal, currency: update.wonCurrency || 'NOK',
             customData: { content_name: existing.lead_type || 'lead', lead_event_id: id },
           });
@@ -2484,6 +2487,7 @@ async function handleRoute(request, { params }) {
             actionSource: 'system_generated',
             email: lead.email, phone: lead.phone, fullName: lead.name,
             fbp: att.fbp, fbc: att.fbc, fbclid: att.fbclid,
+            externalId: att.visitorId, zip: lead.postal_code, country: 'no',
             value: wonVal, currency: update.wonCurrency || 'NOK',
             customData: { content_name: lead.lead_type || 'lead', lead_event_id: lead.id },
           });

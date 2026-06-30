@@ -105,6 +105,18 @@
 user_problem_statement: "Bygg DigiHome markedsside (Next.js App Router) etter flyttepakken — Warm Ink Editorial design, norsk bokmål, full SEO, DB-drevet blogg + admin + programmatisk SEO. Fase 1: verdensklasse forside + lead-API."
 
 backend:
+  - task: "Meta-sporing utvidet: ViewContent + InitiateCheckout (skjemastart) + external_id/geo i CAPI"
+    implemented: true
+    working: true
+    file: "components/MetaPixel.js, lib/gtag.js, lib/meta-capi.js, app/api/[[...path]]/route.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "main"
+        -comment: "NYTT (Meta full-trakt). (1) Pixel fyrer nå ViewContent på nøkkelruter (/, /bli-utleier, /bli-leietaker, /forvaltning, /lp/*, /utleie/*, /blogg/*, /om-oss, /kontakt) ved last + SPA-nav. (2) trackLeadStart fyrer nå Meta InitiateCheckout (øvre-trakt-signal) i tillegg til GA4 lead_start. (3) sendMetaCapiEvent utvidet med external_id (hashet visitorId) + geo (hashet postnummer/by/fylke/land) → høyere Event Match Quality. Sendes fra alle 4 CAPI-kallplasser (Lead utleier, Lead leietaker, Purchase won webhook, Purchase won admin). Manuelt verifisert: POST /api/leads → metaCapi Lead {ok:true} med nye felt, visitorId+postnummer lagret, forwarded:true. Forside rendrer fint (pixel i layout, samtykke-gated). GJENSTÅR (bruker, Meta Business Manager): domeneverifisering + Aggregated Event Measurement (iOS prioriterte hendelser)."
+
   - task: "Markedsdata-endepunkt for plattformens ukerapport: GET /api/admin/marketing-metrics (token-beskyttet, JSON)"
     implemented: true
     working: true
