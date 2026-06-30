@@ -1870,8 +1870,10 @@ async function handleRoute(request, { params }) {
         const p = sp.get('period') || '';
         days = p === 'last_30d' ? 30 : p === 'last_90d' ? 90 : 7;
       }
+      const from = (sp.get('from') || '').match(/^\d{4}-\d{2}-\d{2}$/) ? sp.get('from') : undefined;
+      const to = (sp.get('to') || '').match(/^\d{4}-\d{2}-\d{2}$/) ? sp.get('to') : undefined;
       try {
-        const metrics = await buildMarketingMetrics(db, { days });
+        const metrics = await buildMarketingMetrics(db, { days, from, to });
         return cors(NextResponse.json({ ok: true, source: 'digihome-marketing', ...metrics }));
       } catch (e) {
         return cors(NextResponse.json({ ok: false, error: e.message }, { status: 200 }));
