@@ -2311,19 +2311,25 @@ async function handleRoute(request, { params }) {
       const externalRef = (body.external_ref || body.externalRef || '').toString();
       const platformId = (body.platform_id || body.platformId || '').toString();
       const email = (body.email || '').toString().toLowerCase().trim();
+      const phoneDigits = (body.phone || '').toString().replace(/\D/g, '');
+      const last8 = phoneDigits.slice(-8);
 
-      // Match: external_ref (vår id) → platform_id → e-post, på tvers av begge kolleksjoner.
+      // Match: external_ref (vår id) → platform_id → e-post → telefon (siste 8 siffer),
+      // på tvers av begge kolleksjoner.
       let coll = null, lead = null, matchedBy = '';
       for (const c of ['leads', 'tenant_leads']) {
         const or = [];
         if (externalRef) or.push({ id: externalRef });
         if (platformId) or.push({ platform_id: platformId });
         if (email) or.push({ email });
+        if (last8.length === 8) or.push({ phone: { $regex: `${last8}$` } });
         if (!or.length) break;
         const found = await db.collection(c).findOne({ $or: or });
         if (found) {
           coll = c; lead = found;
-          matchedBy = (externalRef && found.id === externalRef) ? 'external_ref' : (platformId && found.platform_id === platformId) ? 'platform_id' : 'email';
+          matchedBy = (externalRef && found.id === externalRef) ? 'external_ref'
+            : (platformId && found.platform_id === platformId) ? 'platform_id'
+            : (email && (found.email || '').toLowerCase() === email) ? 'email' : 'phone';
           break;
         }
       }
@@ -2351,8 +2357,9 @@ async function handleRoute(request, { params }) {
       // Meta CAPI: når et lead vinnes → server-side konvertering med ekte kontraktsverdi.
       // Lar Meta optimalisere mot faktiske kunder (closed-loop). event_id = won-<id> for dedup.
       let metaCapi = null;
+      const alreadyMetaWon = !!(lead.metaCapiWon && lead.metaCapiWon.ok);
       try {
-        if (status === 'won' && metaCapiConfigured()) {
+        if (status === 'won' && !alreadyMetaWon && metaCapiConfigured()) {
           const att = lead.attribution || {};
           const wonVal = update.wonValue || Number(process.env.GOOGLE_ADS_DEFAULT_LEAD_VALUE) || undefined;
           const capi = await sendMetaCapiEvent({
@@ -2371,9 +2378,10 @@ async function handleRoute(request, { params }) {
       } catch (e) { /* best-effort */ }
 
       // Google Ads offline-konvertering (Data Manager API, lukket sløyfe): vunnet lead m/ gclid.
+      const alreadyGoogleWon = !!(lead.googleAdsWon && lead.googleAdsWon.ok);
       try {
         const att = lead.attribution || {};
-        if (status === 'won' && dataManagerConfigured() && (att.gclid || att.gbraid || att.wbraid)) {
+        if (status === 'won' && !alreadyGoogleWon && dataManagerConfigured() && (att.gclid || att.gbraid || att.wbraid)) {
           const wonVal = update.wonValue || Number(process.env.GOOGLE_ADS_DEFAULT_LEAD_VALUE) || 0;
           const up = await ingestOfflineConversion({
             gclid: att.gclid, gbraid: att.gbraid, wbraid: att.wbraid,

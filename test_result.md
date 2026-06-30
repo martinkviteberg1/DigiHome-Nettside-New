@@ -105,6 +105,77 @@
 user_problem_statement: "Bygg DigiHome markedsside (Next.js App Router) etter flyttepakken — Warm Ink Editorial design, norsk bokmål, full SEO, DB-drevet blogg + admin + programmatisk SEO. Fase 1: verdensklasse forside + lead-API."
 
 backend:
+  - task: "Annonse-intelligens Fase A — samlet annonse-tabell (Google+Meta): GET /api/admin/ads/table (per-annonse metrikk: kostnad/visn/klikk/CTR/CPC/konv/CPA/ROAS, normalisert på tvers av kanaler, 10-min Meta-cache)"
+    implemented: true
+    working: true
+    file: "app/api/[[...path]]/route.js, lib/google-ads-native.js (runAdsWithMetrics), lib/meta-ads.js (fetchMetaAdsWithInsights/getCachedMetaAdsTable)"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "NYTT denne økten. GET /api/admin/ads/table?googlePeriod=&metaPeriod=&refresh= → {ok, ads:[{channel,id,name,campaign,adGroup,status,cost,impressions,clicks,ctr,cpc,conversions,cpa,roas,...}], google:{configured,error}, meta:{configured,error,stale}}. Google via native GAQL ad_group_ad (base + metrikk, aggregert per annonse). Meta via /ads insights. Krever ?key=admin. Ekte API-kall → timeout >= 45s."
+        -working: true
+        -agent: "testing"
+        -comment: "✅ FASE A TESTS PASSED (3/3, 100% success). GET /api/admin/ads/table?key=...&googlePeriod=last_30d&metaPeriod=last_30d returns 200 with ok=true, ads array (29 ads), google.configured=true, meta.configured=true. All required fields present in ads: channel, id, name, status, cost, impressions, clicks, ctr, cpc, conversions, cpa, roas. Auth working (401 without key). Invalid periods handled correctly (fallback to last_30d). Endpoint working perfectly with REAL Google+Meta API calls."
+  - task: "Annonse-intelligens Fase B — anbefalingsmotor: GET /api/admin/ads/recommendations (regelmotor: negative søketermer, pause søkeord/annonse, skaler budsjett, lav-CTR) + POST /api/admin/ads/recommendations/apply (menneske-godkjent, muterer LIVE konto)"
+    implemented: true
+    working: true
+    file: "app/api/[[...path]]/route.js, lib/ads-recommendations.js, lib/ads-optimize.js (applyRecommendation), lib/google-ads-native.js (addCampaignNegativeKeywords/setAdGroupCriterionStatus/setAdStatus)"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "NYTT. GET recommendations?period=last_30d → {ok, recommendations:[{id,channel,type,severity,title,rationale,estimatedSaving,action}], counts, estimatedSavings}. *** ADVARSEL: POST .../apply MUTERER LIVE Google Ads-konto (legg til negativ / pause / budsjett). IKKE kall apply med ekte payloads under testing — kun verifiser at GET recommendations og auth (401 uten key) virker, og at apply UTEN gyldig action returnerer 400. ***"
+        -working: true
+        -agent: "testing"
+        -comment: "✅ FASE B TESTS PASSED (4/4, 100% success). GET /api/admin/ads/recommendations?key=...&period=last_30d returns 200 with ok=true, recommendations array (3 recommendations), counts={'pause_ad':3}, estimatedSavings=2968.8 (number). All required fields present: id, channel, type, severity, title, rationale, action. POST /api/admin/ads/recommendations/apply with EMPTY body {} returns 400 ok=false (correctly rejected). Auth working (401 without key on both GET and POST). SAFETY VERIFIED: Did NOT call apply with real recommendation (only empty body test). Recommendations engine working perfectly."
+  - task: "Annonse-intelligens Fase C — keyword research + AI-tekster: GET /api/admin/ads/keyword-research (KeywordPlanIdeaService) + POST /api/admin/ads/ai/generate (RSA/Meta-tekster via Emergent LLM)"
+    implemented: true
+    working: true
+    file: "app/api/[[...path]]/route.js, lib/google-ads-native.js (generateKeywordIdeas/getLanguageConstantId), lib/ads-ai.js, lib/llm.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "NYTT. GET keyword-research?seeds=a,b&url= → {ok, ideas:[{text,avgMonthlySearches,competition,lowBid,highBid}]} (ekte Google-kall, timeout>=45s). POST ai/generate {kind:'rsa'|'meta', theme} → {ok, headlines, descriptions} eller {ok, primaryTexts, headlines} (ekte LLM-kall, timeout>=45s). Begge krever ?key=admin (401 uten)."
+        -working: true
+        -agent: "testing"
+        -comment: "✅ FASE C TESTS PASSED (5/5, 100% success). GET /api/admin/ads/keyword-research?key=...&seeds=utleie bergen,leie ut bolig returns 200 with ok=true, ideas array (200 ideas). All required fields present: text, avgMonthlySearches, competition, lowBid, highBid. Sample idea: 'leie ut leilighet' (260 searches). POST /api/admin/ads/ai/generate?key=... with {kind:'rsa', theme:'Utleie i Bergen'} returns 200 with ok=true, kind='rsa', headlines (15 items, expected 1-15), descriptions (4 items). POST with {kind:'meta'} returns 200 with ok=true, kind='meta', primaryTexts (3 items), headlines (5 items). Auth working (401 without key on both endpoints). Keyword research + AI generation working perfectly with REAL Google API + Emergent LLM calls."
+  - task: "Annonse-intelligens Fase B/C/D — optimaliserings-orkestrator: POST /api/admin/ads/optimize/run (dryRun default=true) + GET /api/admin/ads/optimize/last + POST /api/admin/ads/optimize/config + GET /api/cron/ads-optimize (sikret token)"
+    implemented: true
+    working: true
+    file: "app/api/[[...path]]/route.js, lib/ads-optimize.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "NYTT. POST optimize/run {mode:'weekly',dryRun:true} → {ok, run:{summary,recommendations,keywordIdeas,report}} (lagrer i ads_optimization_runs; dryRun=true muterer INGENTING). GET optimize/last → {ok, run, runs, config}. POST optimize/config {config:{...}} → {ok, config}. *** IKKE send dryRun:false til optimize/run, og IKKE kall /api/cron/ads-optimize (begge kan auto-mutere LIVE konto hvis autoApply er på). *** Verifiser kun dryRun-flyten + auth (401 uten key; cron 401 uten token)."
+        -working: true
+        -agent: "testing"
+        -comment: "✅ FASE D TESTS PASSED (5/5, 100% success). POST /api/admin/ads/optimize/run?key=... with {mode:'weekly', dryRun:true} returns 200 with ok=true, run.id (UUID), run.mode='weekly', run.dryRun=true, summary.totalRecommendations=3, summary.estimatedSavings=2968.8, summary.keywordIdeas=19, summary.autoApplied=0 (CRITICAL: autoApplied is 0, dryRun working correctly). GET /api/admin/ads/optimize/last?key=... returns 200 with ok=true, run (dict), runs array (1 item), config.autoApply=false, config.wasteAdCost=200, config.maxAutoActions=10. POST /api/admin/ads/optimize/config?key=... with {config:{wasteAdCost:250}} returns 200 with ok=true, config.wasteAdCost=250 (updated successfully). Auth working (401 without key on optimize/run). GET /api/cron/ads-optimize without token/key returns 401 (cron endpoint secured). SAFETY VERIFIED: Only dryRun=true used, autoApplied=0, did NOT call cron with valid token. Optimization orchestrator working perfectly."
+  - task: "Closed-loop-forbedring — webhook-mottaker idempotens + telefon-fallback: POST /api/webhooks/lead-status"
+    implemented: true
+    working: true
+    file: "app/api/[[...path]]/route.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "FORBEDRET. Matching utvidet til external_ref → platform_id → e-post → TELEFON (siste 8 siffer, regex). Idempotens: Meta CAPI fyrer kun hvis !metaCapiWon.ok, Google offline-konv. kun hvis !googleAdsWon.ok (hindrer dobbel-fyring ved gjentatte webhooks). Verifiser at eksisterende webhook-flyt fortsatt virker + at gjentatt 'won' ikke endrer matched_by/feiler."
+        -working: true
+        -agent: "testing"
+        -comment: "✅ CLOSED-LOOP WEBHOOK TESTS PASSED (5/5, 100% success). Created test lead via POST /api/leads (201, lead_id='45b43a8b-4a0a-4c0f-bf29-afba5b3f87e4'). POST /api/webhooks/lead-status with header X-Webhook-Secret and body {external_ref, status:'won', value:12000} returns 200 with ok=true, status='won', matched_by='external_ref' (correct). Repeated same webhook call (idempotency test) returns 200 with ok=true, status='won' (no crash, idempotency working). POST with {phone:'91234567', status:'qualified'} returns 200 with ok=true, matched_by='phone' (phone fallback working). POST without secret header returns 401 (authentication working). Webhook improvements working perfectly: idempotency verified, phone fallback verified, authentication verified. Used OBVIOUSLY FAKE test data (qa-loop@example.test, +47 91234567)."
+
   - task: "Composio → Google Ads (live rapportering, midlertidig bro): GET /api/admin/ads/google-status, POST /api/admin/ads/google-connect (OAuth Connect Link), POST /api/admin/ads/google-sync (GAQL via GOOGLEADS_SEARCH_STREAM_GAQL → ad_imports), utvidet /admin/ads/overview (googleConfigured)"
     implemented: true
     working: true
@@ -907,7 +978,11 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Fase 2 (Data Manager API): POST /api/admin/ads/datamanager/test (events:ingest)"
+    - "Annonse-intelligens Fase A — GET /api/admin/ads/table"
+    - "Annonse-intelligens Fase B — GET /api/admin/ads/recommendations (+ apply validering)"
+    - "Annonse-intelligens Fase C — keyword-research + ai/generate"
+    - "Annonse-intelligens Fase B/C/D — optimize/run (dryRun), optimize/last, optimize/config, cron auth"
+    - "Closed-loop webhook idempotens + telefon-fallback"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
@@ -1196,3 +1271,6 @@ agent_communication:
         -comment: "✅ ALL UNIFIED ADS OVERVIEW TESTS PASSED (9/9 tests, 100% success rate). COMPREHENSIVE VERIFICATION OF GOOGLE + META LIVE IN PARALLEL: 1) GET /api/admin/ads/overview?key=dh_admin_b3Kx92Qz7Lm4&googlePeriod=last_30d&metaPeriod=last_30d returns 200 in 0.30s with ALL required fields: googleConfigured=true ✓, googleConnected=true ✓, googleLive=true ✓, googlePeriod='last_30d' ✓, googleFetchedAt='2026-06-29T12:46:13.024Z' (valid ISO string) ✓, metaConfigured=true ✓, metaLive=true ✓, metaPeriod='last_30d' ✓, metaFetchedAt='2026-06-29T12:46:36.618Z' (valid ISO string) ✓, economics present (Google, totals.cost=0 as expected - no active campaigns) ✓, meta present (Meta, totals.cost=3111.09 > 0 as expected) ✓, combined present ✓. 2) META PERIOD 'all': GET ...&metaPeriod=all returns 200 in 0.15s with meta.period.from='2015-01-01T00:00:00.000Z' (approx 2015 as expected) ✓, meta.totals.cost=33545.42 (GREATER than last_30d ~3111, expected ~33000) ✓. 3) META PERIOD 'this_year': GET ...&metaPeriod=this_year returns 200 in 0.60s with meta.period.from='2026-01-01T00:00:00.000Z' (January 1 of current year 2026) ✓. 4) GOOGLE PERIOD 'all': GET ...&googlePeriod=all returns 200 in 0.16s with economics.period.from='2015-01-01T00:00:00.000Z' (approx 2015 as expected) ✓. 5) INVALID PERIODS: GET ...&metaPeriod=foo&googlePeriod=bar returns 200 in 0.15s with googlePeriod='last_30d' (correctly fell back to default) ✓, metaPeriod='last_30d' (correctly fell back to default) ✓. 6) CACHE BEHAVIOR: GET ...&metaPeriod=last_7d called TWICE. First call: 200 in 0.46s (cache-miss) with metaFetchedAt='2026-06-29T12:49:59.292Z' ✓. Second call: 200 in 0.16s (cache-hit, FAST <1s) with metaFetchedAt='2026-06-29T12:49:59.292Z' (UNCHANGED, data served from cache) ✓. Cache working perfectly. 7) FORCE REFRESH: GET ...&metaPeriod=last_7d&metaRefresh=1 returns 200 in 0.70s (forces fresh fetch) with new metaFetchedAt='2026-06-29T12:50:00.656Z' ✓. Force refresh bypasses cache correctly. 8) AUTH: GET /api/admin/ads/overview WITHOUT key returns 401 ✓. Authentication working correctly. 9) REGRESSION: GET /api/ returns 200 {ok:true, message:'DigiHome API'} ✓. Root endpoint working. Unified ads overview endpoint working PERFECTLY: fetches BOTH Google Ads (via Composio) AND Meta (Marketing API) LIVE in parallel with Promise.all, 10-minute server-side cache working per channel (google_report_cache + meta_report_cache), period filters working for both channels (last_7d/last_30d/last_90d/this_year/all), invalid periods fall back to 'last_30d', force refresh (metaRefresh=1/googleRefresh=1) bypasses cache, new fields (googleLive/googlePeriod/googleFetchedAt and metaLive/metaPeriod/metaFetchedAt) present with correct values, Google Ads account OAuth-connected (ACTIVE) with 0 active campaigns (cost=0 expected), Meta account has LIVE data (cost=3111.09 for last_30d, 33545.42 for all), combined economics present, authentication working (401 without key), all regression tests passed. Created backend_test_unified_ads_overview.py for comprehensive testing. Base URL: https://hero-premiere-4.preview.emergentagent.com/api. Admin key: dh_admin_b3Kx92Qz7Lm4. Timeout: 50s (REAL external API calls). Database kept clean (no leads created)."
     -agent: "testing"
     -message: "✅ P0 LATENCY/TIMEOUT FIX VERIFICATION COMPLETE (7/7 tests, 100% success rate). Tested Google Ads overview endpoint after P0 latency/timeout fix in lib/composio-google-ads.js (getCachedReport rewritten to stale-while-revalidate + 6s timeout). CRITICAL ASSERTION VERIFIED: NO REQUEST EXCEEDED 8S THRESHOLD - P0 LATENCY ISSUE COMPLETELY FIXED. RESPONSE TIME MEASUREMENTS: Test 1 (last_30d): 0.18s ✓, Test 2 (cache-hit): 0.12-0.15s ✓, Test 3 (force refresh): 2.12s ✓, Test 4 (cold cache last_90d): 0.15s ✓, Test 5 (invalid period): 0.13s ✓, Test 6 (auth): 401 ✓, Test 7 (regression): 200 ✓. All required fields present (ok, googleConfigured, googleConnected, googleLive, googlePeriod, googleFetchedAt, googleStale, googleError, economics, combined, metaConfigured, metaLive, metaPeriod, metaFetchedAt). Stale-while-revalidate pattern working correctly (serves stale data immediately while refreshing in background), 6s timeout (FETCH_TIMEOUT_MS=6000) working correctly (no request hangs 15-20s), cache-hit is FAST (<1s), force refresh returns within acceptable time (~2s), cold cache returns immediately with pending/stale data, authentication working (401 without key), all regression tests passed. The endpoint NEVER hangs 15-20s anymore - the P0 issue is COMPLETELY RESOLVED. Created backend_test_google_ads_latency.py for comprehensive latency testing. Base URL: https://hero-premiere-4.preview.emergentagent.com/api. Admin key: dh_admin_b3Kx92Qz7Lm4. Client timeout: 35s (to measure actual response time). Database kept clean (no leads created)."
+
+    -agent: "main"
+    -message: "NYE backend-endepunkter å teste (Annonse-intelligens Fase A–D + closed-loop-forbedring). Base: https://hero-premiere-4.preview.emergentagent.com/api. Admin-nøkkel: ?key=dh_admin_b3Kx92Qz7Lm4. *** SIKKERHET — KRITISK: Flere endepunkter kan MUTERE en LIVE Google Ads-konto (Customer ID 9853356154). FØLG DISSE REGLENE: (a) IKKE kall POST /api/admin/ads/recommendations/apply med en ekte/gyldig recommendation (det legger til negative søkeord / pauser annonser / endrer budsjett på LIVE konto). (b) IKKE send dryRun:false til POST /api/admin/ads/optimize/run. (c) IKKE kall GET /api/cron/ads-optimize med gyldig token (den kjører dryRun:false). (d) IKKE opprett leads/tenants. *** Mange kall gjør EKTE Google/Meta/LLM-kall → bruk timeout >= 50s.\n\nTESTER:\n(A1) GET /api/admin/ads/table?key=...&googlePeriod=last_30d&metaPeriod=last_30d → 200 {ok:true, ads:[...], google:{configured:true}, meta:{configured:true}}. Hver ad har feltene channel,id,name,status,cost,impressions,clicks,ctr,cpc,conversions,cpa,roas. (A2) UTEN key → 401. (A3) ?googlePeriod=foo&metaPeriod=bar → 200 (faller tilbake til last_30d).\n(B1) GET /api/admin/ads/recommendations?key=...&period=last_30d → 200 {ok:true, recommendations:[...], counts, estimatedSavings(number)}. Hver rec har id,channel,type,severity,title,rationale,action. (B2) UTEN key → 401. (B3) POST /api/admin/ads/recommendations/apply?key=... med body {} (INGEN action) → 400 {ok:false}. (B4) POST .../apply UTEN key → 401. *** IKKE send en ekte recommendation til apply. ***\n(C1) GET /api/admin/ads/keyword-research?key=...&seeds=utleie%20bergen,leie%20ut%20bolig → 200 {ok:true, ideas:[{text,avgMonthlySearches,competition,lowBid,highBid}], count}. (C2) UTEN key → 401. (C3) POST /api/admin/ads/ai/generate?key=... body {kind:'rsa', theme:'Utleie i Bergen'} → 200 {ok:true, kind:'rsa', headlines:[...], descriptions:[...]} (headlines lengde 1-15). (C4) body {kind:'meta', theme:'Utleie i Bergen'} → 200 {ok:true, kind:'meta', primaryTexts:[...], headlines:[...]}. (C5) ai/generate UTEN key → 401.\n(D1) POST /api/admin/ads/optimize/run?key=... body {mode:'weekly', dryRun:true} → 200 {ok:true, run:{id, at, mode:'weekly', dryRun:true, summary:{totalRecommendations(number), estimatedSavings, keywordIdeas, autoApplied:0}, recommendations:[...], report}}. autoApplied MÅ være 0 og dryRun true. (D2) GET /api/admin/ads/optimize/last?key=... → 200 {ok:true, run:(objekt eller null), runs:[...], config:{autoApply:false, wasteAdCost, negativeTermCost, scaleRoas, maxAutoActions}}. (D3) POST /api/admin/ads/optimize/config?key=... body {config:{wasteAdCost:250}} → 200 {ok:true, config:{wasteAdCost:250, autoApply:false,...}}. (D4) optimize/run UTEN key → 401. (D5) GET /api/cron/ads-optimize UTEN token og UTEN key → 401. *** IKKE kall cron med gyldig token. ***\n(E) CLOSED-LOOP webhook (idempotens + telefon-fallback): Webhook-hemmelighet (header X-Webhook-Secret) = env LEAD_SYNC_SECRET (les fra /app/.env, starter med dhsync_). STEG: (E1) Opprett testlead: POST /api/leads {name:'QA Loop Bot', email:'qa-loop@example.test', phone:'+47 91234567', address:'Testveien 9, 5003 Bergen', property_type:'leilighet', lead_type:'huseier', source:'qa-loop'} → 201, ta vare på data.id. (E2) POST /api/webhooks/lead-status med riktig secret, body {external_ref:<id>, status:'won', value:12000} → 200 {ok:true, status:'won', matched_by:'external_ref'}. (E3) GJENTA nøyaktig samme webhook-kall (idempotens) → 200 {ok:true, status:'won'} (skal IKKE feile/krasje). (E4) TELEFON-FALLBACK: POST webhook med riktig secret, body {phone:'91234567', status:'qualified'} (INGEN external_ref/email) → 200 {ok:true, matched_by:'phone'}. (E5) UTEN secret → 401.\nREGRESJON: GET /api/ → 200 {ok:true}; GET /api/admin/ads/overview?key=... → 200 {ok:true}; GET /api/admin/ads/campaigns?key=... → 200 {ok:true}. Rapporter pass/fail med faktiske statuskoder + observerte felt."
