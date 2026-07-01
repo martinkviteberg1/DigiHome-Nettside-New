@@ -2682,6 +2682,8 @@ async function handleRoute(request, { params }) {
       // Meta CAPI: når et lead vinnes → server-side konvertering med ekte kontraktsverdi.
       // Lar Meta optimalisere mot faktiske kunder (closed-loop). event_id = won-<id> for dedup.
       let metaCapi = null;
+      let googleConv = null;
+      let ga4Conv = null;
       const alreadyMetaWon = !!(lead.metaCapiWon && lead.metaCapiWon.ok);
       try {
         if (status === 'won' && !alreadyMetaWon && metaCapiConfigured() && marketingAllowed(lead.marketingConsent)) {
@@ -2714,8 +2716,10 @@ async function handleRoute(request, { params }) {
             value: wonVal, currency: update.wonCurrency || 'NOK', at: update.wonAt || nowIso, transactionId: lead.id,
           });
           await db.collection(coll).updateOne({ id: lead.id }, { $set: { googleAdsWon: { ok: up.ok, at: nowIso, requestId: up.requestId || null, error: null } } });
+          googleConv = { ok: up.ok, requestId: up.requestId || null };
         }
       } catch (e) {
+        googleConv = { ok: false, error: e.message };
         try { await db.collection(coll).updateOne({ id: lead.id }, { $set: { googleAdsWon: { ok: false, at: nowIso, error: e.message } } }); } catch (_) {}
       }
 
@@ -2731,8 +2735,12 @@ async function handleRoute(request, { params }) {
             params: { lead_source_type: lead.lead_source_type || undefined, campaign: att.campaign || undefined },
           });
           await db.collection(coll).updateOne({ id: lead.id }, { $set: { ga4Won: { ok: g.ok, at: nowIso, status: g.status || null } } });
+          ga4Conv = { ok: g.ok, status: g.status || null, skipped: !!g.skipped };
+        } else if (status === 'won' && !ga4MpConfigured()) {
+          ga4Conv = { ok: false, skipped: true, reason: 'ga4_api_secret_mangler' };
         }
       } catch (e) {
+        ga4Conv = { ok: false, error: e.message };
         try { await db.collection(coll).updateOne({ id: lead.id }, { $set: { ga4Won: { ok: false, at: nowIso, error: e.message } } }); } catch (_) {}
       }
 
@@ -2758,7 +2766,20 @@ async function handleRoute(request, { params }) {
         }
       } catch (e) { /* best-effort */ }
 
-      return cors(NextResponse.json({ ok: true, id: lead.id, status, matched_by: matchedBy, meta_capi: metaCapi || undefined }));
+      return cors(NextResponse.json({
+        ok: true,
+        id: lead.id,
+        matched_ref: lead.id,
+        status,
+        matched_by: matchedBy,
+        match_warning: (matchedBy && matchedBy !== 'external_ref')
+          ? `Matchet via ${matchedBy} (fallback). For robust closed-loop: bruk external_ref = vår lead.id (returnert ved videresending).`
+          : undefined,
+        conversions: (status === 'won')
+          ? { meta: metaCapi || undefined, google: googleConv || undefined, ga4: ga4Conv || undefined }
+          : undefined,
+        meta_capi: metaCapi || undefined,
+      }));
     }
 
     // --- Admin: lead-detalj + kundereise-tidslinje ---
