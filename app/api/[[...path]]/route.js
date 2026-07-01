@@ -1921,7 +1921,9 @@ async function handleRoute(request, { params }) {
     // Fase 3: KONKURRENT-kampanje (competitor conquesting) — mal + oppretting.
     if (route === '/admin/ads/competitor-campaign/template' && method === 'GET') {
       if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
-      const base = (process.env.NEXT_PUBLIC_BASE_URL || '').replace(/\/$/, '');
+      // Annonse-destinasjoner skal ALLTID peke på det verifiserte produksjonsdomenet,
+      // aldri delt preview-host (Google-policy «Compromised Site»).
+      const base = (process.env.NEXT_PUBLIC_CANONICAL_URL || process.env.NEXT_PUBLIC_BASE_URL || '').replace(/\/$/, '');
       const template = {
         competitor: 'Utleiemegleren',
         name: 'DigiHome – Konkurrent · Utleiemegleren',
