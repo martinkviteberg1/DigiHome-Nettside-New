@@ -2101,6 +2101,99 @@ async function handleRoute(request, { params }) {
       return cors(NextResponse.json(out));
     }
 
+    // --- Ende-til-ende-verifisering av lead-sporing (Meta CAPI + Google offline + GA4) ---
+    // TRYGG: Meta-hendelser sendes KUN når ?testEventCode=... oppgis (vises kun i «Test events»,
+    // påvirker IKKE algoritmen). Google offline-konvertering kjøres som validateOnly (dry-run,
+    // ingenting registreres). GA4 rapporteres kun som konfigstatus. Ingen ekte leads opprettes.
+    if (route === '/admin/tracking/verify' && (method === 'GET' || method === 'POST')) {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const { searchParams } = new URL(request.url);
+      let bodyTec = '';
+      if (method === 'POST') { try { const b = await request.json(); bodyTec = (b.testEventCode || b.test_event_code || '').toString(); } catch (_) {} }
+      const testEventCode = (searchParams.get('testEventCode') || searchParams.get('test_event_code') || bodyTec || '').trim();
+
+      const out = {
+        ok: true,
+        generatedAt: new Date().toISOString(),
+        dedup: {
+          leadEventId: 'lead.id (matcher nettleser-pixelens Lead-hendelse)',
+          purchaseEventId: 'won-<lead.id>',
+          note: 'Server-side CAPI og nettleser-pixel deler event_id → Meta dedupliserer automatisk.',
+        },
+        meta: { configured: metaCapiConfigured(), pixelId: process.env.NEXT_PUBLIC_META_PIXEL_ID || null },
+        google: { configured: dataManagerConfigured() },
+        ga4: {
+          configured: ga4MpConfigured(),
+          measurementId: process.env.NEXT_PUBLIC_GA4_ID || null,
+          apiSecret: !!process.env.GA4_API_SECRET,
+        },
+      };
+
+      // 1) Meta CAPI: send test-Lead + test-Purchase med testEventCode (kun «Test events»-fanen).
+      if (metaCapiConfigured() && testEventCode) {
+        const testId = `verify-${uuidv4()}`;
+        try {
+          const leadRes = await sendMetaCapiEvent({
+            eventName: 'Lead',
+            eventId: testId,
+            actionSource: 'website',
+            eventSourceUrl: `${process.env.NEXT_PUBLIC_BASE_URL || ''}/bli-utleier`,
+            email: 'e2e-verify@digihome.test', phone: '+47 90000000', fullName: 'E2E Verifisering',
+            externalId: 'e2e-verify-visitor', zip: '5003', city: 'Bergen', country: 'no',
+            clientIp: clientIp(request), userAgent: request.headers.get('user-agent') || '',
+            customData: { content_name: 'e2e-verify' },
+            testEventCode,
+          });
+          const purchaseRes = await sendMetaCapiEvent({
+            eventName: 'Purchase',
+            eventId: `won-${testId}`,
+            actionSource: 'system_generated',
+            email: 'e2e-verify@digihome.test', phone: '+47 90000000', fullName: 'E2E Verifisering',
+            externalId: 'e2e-verify-visitor', zip: '5003', country: 'no',
+            value: 24000, currency: 'NOK',
+            customData: { content_name: 'e2e-verify', lead_event_id: testId },
+            testEventCode,
+          });
+          out.meta.testEventCode = testEventCode;
+          out.meta.testEventId = testId;
+          out.meta.lead = leadRes;
+          out.meta.purchase = purchaseRes;
+          out.meta.verified = !!(leadRes.ok && purchaseRes.ok);
+        } catch (e) { out.meta.error = e.message; out.meta.verified = false; }
+      } else if (metaCapiConfigured()) {
+        out.meta.note = 'Oppgi ?testEventCode=TESTxxxx (Meta Events Manager → Test events) for å sende en trygg test-hendelse som kun vises i «Test events»-fanen.';
+      }
+
+      // 2) Google offline-konvertering: validateOnly (dry-run) — validerer OAuth + konverteringshandling + format uten å registrere noe.
+      if (dataManagerConfigured()) {
+        try {
+          const dry = await ingestOfflineConversion({
+            gclid: 'E2E_VERIFY_DRYRUN_GCLID',
+            value: 24000, currency: 'NOK', at: new Date().toISOString(),
+            transactionId: `verify-${Date.now()}`,
+            validateOnly: true,
+          });
+          out.google.dryRun = dry;
+          out.google.verified = !!dry.ok;
+        } catch (e) { out.google.error = e.message; out.google.verified = false; }
+      }
+
+      // 3) GA4 Measurement Protocol: kun konfigstatus (unngår støy i GA4-rapporten).
+      out.ga4.verified = ga4MpConfigured();
+      if (!ga4MpConfigured()) out.ga4.note = 'Mangler GA4_API_SECRET. Opprett i GA4 Admin → Datastrømmer → Measurement Protocol API secrets.';
+
+      out.summary = {
+        metaReady: out.meta.configured,
+        metaVerified: !!out.meta.verified,
+        googleReady: out.google.configured,
+        googleVerified: !!out.google.verified,
+        ga4Ready: out.ga4.configured,
+        allGreen: !!(out.meta.verified && out.google.verified),
+      };
+
+      return cors(NextResponse.json(out));
+    }
+
     if (route === '/admin/ads/table' && method === 'GET') {
       if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const { searchParams } = new URL(request.url);
