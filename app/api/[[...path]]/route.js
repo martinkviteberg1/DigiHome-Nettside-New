@@ -8,10 +8,10 @@ import { isBot, buildEvent, ensureAnalyticsIndexes, computeAnalytics, computeLea
 import { deriveChannel, serializeForLLM, computeWebVitals, detectAnomalies, computeLive, computeAdsEconomics, computeMetaEconomics, combineAdsEconomics, computeAdsLeadsSeries } from '@/lib/analytics-server';
 import { parseGoogleAdsCsv } from '@/lib/adsImport';
 import { sendMetaCapiEvent, metaCapiConfigured } from '@/lib/meta-capi';
-import { fetchMetaInsights, fetchMetaAccount, metaAdsConfigured, getCachedMetaReport, META_PERIODS, metaPeriodToRange, getCachedMetaCreatives, fetchMetaPreviewSrc, isValidPreviewFormat, getCachedMetaAdsTable } from '@/lib/meta-ads';
+import { fetchMetaInsights, fetchMetaAccount, metaAdsConfigured, getCachedMetaReport, META_PERIODS, metaPeriodToRange, getCachedMetaCreatives, fetchMetaPreviewSrc, isValidPreviewFormat, getCachedMetaAdsTable, fetchMetaDaily, fetchMetaDailyActions } from '@/lib/meta-ads';
 import { fetchPages, fetchLeadForms, fetchFormLeads, mapLeadFields, metaLeadAdsConfigured, fetchSingleLead, fetchFormName, fetchPageToken } from '@/lib/meta-leadads';
 import { composioConfigured, createConnectLink, getConnectionStatus, runCampaignReport, defaultCustomerId, getCachedReport, GOOGLE_PERIODS, getCachedCreatives, activeProvider } from '@/lib/google-ads-provider';
-import { googleAdsNativeConfigured, listConversionActions, resolveOfflineConversionAction, uploadClickConversion, toConversionDateTime, listCampaignsDetailed, suggestGeoTargets, setCampaignStatus, updateCampaignBudget, createSearchCampaign, createCompetitorCampaign, getCampaignByName, runAdsWithMetrics, runSearchTerms, runKeywordMetrics, generateKeywordIdeas } from '@/lib/google-ads-native';
+import { googleAdsNativeConfigured, listConversionActions, resolveOfflineConversionAction, uploadClickConversion, toConversionDateTime, listCampaignsDetailed, suggestGeoTargets, setCampaignStatus, updateCampaignBudget, createSearchCampaign, createCompetitorCampaign, getCampaignByName, runAdsWithMetrics, runSearchTerms, runKeywordMetrics, generateKeywordIdeas, gaqlSearch } from '@/lib/google-ads-native';
 import { dataManagerConfigured, ingestOfflineConversion } from '@/lib/google-ads-datamanager';
 import { ga4MpConfigured, sendGa4Purchase } from '@/lib/ga4-mp';
 import { buildRecommendations } from '@/lib/ads-recommendations';
@@ -2028,6 +2028,73 @@ async function handleRoute(request, { params }) {
     // ===================================================================
 
     // Fase A: Samlet per-annonse-tabell (Google + Meta) m/ alle nøkkeltall.
+
+    // Annonse-diagnostikk: NÅR startet levering (Google) og NÅR begynte
+    // konverteringssporing å registrere (Meta) — daglig tidsserie + startdatoer.
+    if (route === '/admin/ads/diagnostics' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const gOn = googleAdsNativeConfigured(), mOn = metaAdsConfigured();
+      const out = { ok: true, google: { configured: gOn }, meta: { configured: mOn } };
+
+      if (gOn) {
+        try {
+          const cid = defaultCustomerId();
+          const campQ = "SELECT campaign.id, campaign.name, campaign.status, campaign.serving_status, campaign.start_date, campaign.end_date, campaign.advertising_channel_type FROM campaign WHERE campaign.status != 'REMOVED' ORDER BY campaign.start_date DESC";
+          const dailyQ = "SELECT segments.date, metrics.impressions, metrics.clicks, metrics.cost_micros, metrics.conversions FROM campaign WHERE segments.date DURING LAST_90_DAYS ORDER BY segments.date";
+          const [camps, daily] = await Promise.all([gaqlSearch(cid, campQ), gaqlSearch(cid, dailyQ).catch(() => [])]);
+          out.google.campaigns = camps.map((r) => ({
+            id: String(r.campaign?.id || ''), name: r.campaign?.name || '',
+            status: r.campaign?.status || '', servingStatus: r.campaign?.servingStatus || '',
+            channel: r.campaign?.advertisingChannelType || '',
+            startDate: r.campaign?.startDate || null, endDate: r.campaign?.endDate || null,
+          }));
+          // Aggreger daglig på tvers av kampanjer.
+          const byDay = new Map();
+          for (const r of daily) {
+            const d = r.segments?.date; if (!d) continue;
+            const m = r.metrics || {};
+            const cur = byDay.get(d) || { date: d, impressions: 0, clicks: 0, cost: 0, conversions: 0 };
+            cur.impressions += Number(m.impressions) || 0; cur.clicks += Number(m.clicks) || 0;
+            cur.cost += (Number(m.costMicros) || 0) / 1e6; cur.conversions += Number(m.conversions) || 0;
+            byDay.set(d, cur);
+          }
+          const days = Array.from(byDay.values()).map((x) => ({ ...x, cost: Math.round(x.cost * 100) / 100 })).sort((a, b) => a.date.localeCompare(b.date));
+          const active = days.filter((d) => d.impressions > 0);
+          out.google.daily = days;
+          out.google.summary = {
+            firstServingDate: active.length ? active[0].date : null,
+            lastServingDate: active.length ? active[active.length - 1].date : null,
+            activeDays: active.length,
+            totalImpressions: days.reduce((s, d) => s + d.impressions, 0),
+            totalClicks: days.reduce((s, d) => s + d.clicks, 0),
+            totalCost: Math.round(days.reduce((s, d) => s + d.cost, 0) * 100) / 100,
+            totalConversions: Math.round(days.reduce((s, d) => s + d.conversions, 0) * 100) / 100,
+            firstConversionDate: (days.find((d) => d.conversions > 0) || {}).date || null,
+          };
+        } catch (e) { out.google.error = e.message; }
+      }
+
+      if (mOn) {
+        try {
+          const daily = await fetchMetaDailyActions({ datePreset: 'last_90d' });
+          const active = daily.filter((d) => d.cost > 0);
+          const conv = daily.filter((d) => d.conversions > 0);
+          out.meta.daily = daily.map((d) => ({ ...d, cost: Math.round(d.cost * 100) / 100 }));
+          out.meta.summary = {
+            firstSpendDate: active.length ? active[0].date : null,
+            lastSpendDate: active.length ? active[active.length - 1].date : null,
+            activeSpendDays: active.length,
+            totalCost: Math.round(daily.reduce((s, d) => s + d.cost, 0) * 100) / 100,
+            totalConversions: daily.reduce((s, d) => s + d.conversions, 0),
+            firstConversionDate: conv.length ? conv[0].date : null,
+            conversionDays: conv.length,
+          };
+        } catch (e) { out.meta.error = e.message; }
+      }
+
+      return cors(NextResponse.json(out));
+    }
+
     if (route === '/admin/ads/table' && method === 'GET') {
       if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const { searchParams } = new URL(request.url);
