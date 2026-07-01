@@ -13,6 +13,7 @@ import { fetchPages, fetchLeadForms, fetchFormLeads, mapLeadFields, metaLeadAdsC
 import { composioConfigured, createConnectLink, getConnectionStatus, runCampaignReport, defaultCustomerId, getCachedReport, GOOGLE_PERIODS, getCachedCreatives, activeProvider } from '@/lib/google-ads-provider';
 import { googleAdsNativeConfigured, listConversionActions, resolveOfflineConversionAction, uploadClickConversion, toConversionDateTime, listCampaignsDetailed, suggestGeoTargets, setCampaignStatus, updateCampaignBudget, createSearchCampaign, createCompetitorCampaign, getCampaignByName, runAdsWithMetrics, runSearchTerms, runKeywordMetrics, generateKeywordIdeas, gaqlSearch } from '@/lib/google-ads-native';
 import { dataManagerConfigured, ingestOfflineConversion } from '@/lib/google-ads-datamanager';
+import { IMPORTED_COLL, importRecords, parseCsv, summarizeImported, syncFromPlatform } from '@/lib/imported-leads';
 import { ga4MpConfigured, sendGa4Purchase } from '@/lib/ga4-mp';
 import { buildRecommendations } from '@/lib/ads-recommendations';
 import { generateRsaCopy, generateMetaCopy } from '@/lib/ads-ai';
@@ -2192,6 +2193,79 @@ async function handleRoute(request, { params }) {
       };
 
       return cors(NextResponse.json(out));
+    }
+
+    // ===================================================================
+    // Historiske / plattform-native leads (pre-sporing) — import + synk + oversikt.
+    // Egen kolleksjon `imported_leads`. Flagget pre_tracking → talt i totalbildet,
+    // men holdt UTENFOR betalt ROAS/CAC. Ingen retroaktive konverteringer sendes.
+    // ===================================================================
+    if (route === '/admin/imported-leads' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const sp = new URL(request.url).searchParams;
+      const summary = await summarizeImported(db);
+      if (['1', 'true'].includes(String(sp.get('list')))) {
+        const limit = Math.min(Math.max(Number(sp.get('limit')) || 50, 1), 500);
+        const skip = Math.max(Number(sp.get('skip')) || 0, 0);
+        const q = {};
+        const status = (sp.get('status') || '').trim(); if (status) q.status = status;
+        const channel = (sp.get('channel') || '').trim(); if (channel) q.channel = channel;
+        const batch = (sp.get('batch') || '').trim(); if (batch) q.import_batch_id = batch;
+        const items = await db.collection(IMPORTED_COLL).find(q, { projection: { _id: 0 } })
+          .sort({ created_at: -1, imported_at: -1 }).skip(skip).limit(limit).toArray();
+        const totalMatching = await db.collection(IMPORTED_COLL).countDocuments(q);
+        return cors(NextResponse.json({ ...summary, list: items, listTotal: totalMatching, limit, skip }));
+      }
+      return cors(NextResponse.json(summary));
+    }
+
+    if (route === '/admin/imported-leads/import' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      let rows = [];
+      if (typeof body.csv === 'string' && body.csv.trim()) {
+        const parsed = parseCsv(body.csv);
+        rows = parsed.rows;
+        if (!rows.length) return cors(NextResponse.json({ ok: false, error: 'Fant ingen datarader i CSV-en (sjekk at første linje er kolonneoverskrifter).' }, { status: 400 }));
+      } else if (Array.isArray(body.rows) && body.rows.length) {
+        rows = body.rows;
+      } else {
+        return cors(NextResponse.json({ ok: false, error: 'Mangler data: send enten {csv:"..."} eller {rows:[...]}' }, { status: 400 }));
+      }
+      const result = await importRecords(db, rows, {
+        batchLabel: (body.batchLabel || '').toString().slice(0, 120) || undefined,
+        source: 'csv',
+        channelHint: (body.channelHint || '').toString().slice(0, 80) || undefined,
+      });
+      const summary = await summarizeImported(db);
+      return cors(NextResponse.json({ ...result, summary }, { status: 201 }));
+    }
+
+    if (route === '/admin/imported-leads/sync' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      const target = digiHomeTarget();
+      const result = await syncFromPlatform(db, {
+        target: target.url,
+        secret: process.env.LEAD_SYNC_SECRET || target.key || '',
+        since: (body.since || '').toString().slice(0, 30) || undefined,
+        until: (body.until || '').toString().slice(0, 30) || undefined,
+        channelHint: (body.channelHint || '').toString().slice(0, 80) || undefined,
+      });
+      const summary = await summarizeImported(db);
+      return cors(NextResponse.json({ ...result, platformEnv: target.env, platformUrl: target.url, summary }, { status: result.ok ? 201 : 200 }));
+    }
+
+    if (route === '/admin/imported-leads' && method === 'DELETE') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const sp = new URL(request.url).searchParams;
+      const batch = (sp.get('batch') || '').trim();
+      const all = ['1', 'true'].includes(String(sp.get('all')));
+      if (!batch && !all) return cors(NextResponse.json({ ok: false, error: 'Oppgi ?batch=<id> eller ?all=1' }, { status: 400 }));
+      const q = all ? {} : { import_batch_id: batch };
+      const res = await db.collection(IMPORTED_COLL).deleteMany(q);
+      const summary = await summarizeImported(db);
+      return cors(NextResponse.json({ ok: true, deleted: res.deletedCount, summary }));
     }
 
     if (route === '/admin/ads/table' && method === 'GET') {
