@@ -14,6 +14,7 @@ import { composioConfigured, createConnectLink, getConnectionStatus, runCampaign
 import { googleAdsNativeConfigured, listConversionActions, resolveOfflineConversionAction, uploadClickConversion, toConversionDateTime, listCampaignsDetailed, suggestGeoTargets, setCampaignStatus, updateCampaignBudget, createSearchCampaign, createCompetitorCampaign, getCampaignByName, runAdsWithMetrics, runSearchTerms, runKeywordMetrics, generateKeywordIdeas, gaqlSearch } from '@/lib/google-ads-native';
 import { dataManagerConfigured, ingestOfflineConversion } from '@/lib/google-ads-datamanager';
 import { IMPORTED_COLL, importRecords, parseCsv, summarizeImported, syncFromPlatform } from '@/lib/imported-leads';
+import { computeKpiDashboard, getKpiSettings, setKpiSettings } from '@/lib/kpi-dashboard';
 import { ga4MpConfigured, sendGa4Purchase } from '@/lib/ga4-mp';
 import { buildRecommendations } from '@/lib/ads-recommendations';
 import { generateRsaCopy, generateMetaCopy } from '@/lib/ads-ai';
@@ -2266,6 +2267,34 @@ async function handleRoute(request, { params }) {
       const res = await db.collection(IMPORTED_COLL).deleteMany(q);
       const summary = await summarizeImported(db);
       return cors(NextResponse.json({ ok: true, deleted: res.deletedCount, summary }));
+    }
+
+    // ===================================================================
+    // KPI-dashbord ("Nøkkeltall / Ledelse") — investorklare nøkkeltall.
+    // ===================================================================
+    if (route === '/admin/kpi/settings' && (method === 'GET')) {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const settings = await getKpiSettings(db);
+      return cors(NextResponse.json({ ok: true, settings }));
+    }
+    if (route === '/admin/kpi/settings' && (method === 'PUT' || method === 'POST')) {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      const settings = await setKpiSettings(db, body);
+      return cors(NextResponse.json({ ok: true, settings }));
+    }
+    if (route === '/admin/kpi' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const sp = new URL(request.url).searchParams;
+      const from = (sp.get('from') || '').trim();
+      const to = (sp.get('to') || '').trim();
+      const days = Number(sp.get('days')) || 30;
+      try {
+        const data = await computeKpiDashboard(db, from && to ? { from, to } : { days });
+        return cors(NextResponse.json(data));
+      } catch (e) {
+        return cors(NextResponse.json({ ok: false, error: e.message }, { status: 200 }));
+      }
     }
 
     if (route === '/admin/ads/table' && method === 'GET') {

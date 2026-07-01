@@ -5,15 +5,22 @@ import {
   Loader2, Lock, BarChart3, Users, CreditCard, FileText, LogOut,
   Menu, X, ChevronRight, ShieldCheck, Sparkles, MessageSquare,
   LayoutDashboard, Radio, Activity, GitBranch, Gauge, Megaphone, Database,
-  Command, Search, CornerDownLeft, LayoutTemplate, Crosshair,
+  Command, Search, CornerDownLeft, LayoutTemplate, Crosshair, TrendingUp,
 } from 'lucide-react';
 import InnsiktDashboard from '@/components/admin/InnsiktDashboard';
+import KpiDashboard from '@/components/admin/KpiDashboard';
 import AgentBridge from '@/components/admin/AgentBridge';
 
 const SESSION_KEY = 'dh_admin_session';
 const LEGACY_KEY = 'dh_admin_key';
 
 const NAV = [
+  {
+    group: 'Ledelse',
+    items: [
+      { k: 'nokkeltall', l: 'Nøkkeltall', icon: TrendingUp, desc: 'Investorklare KPIer · CAC · LTV · konvertering' },
+    ],
+  },
   {
     group: 'Analyse',
     items: [
@@ -57,6 +64,7 @@ const INSIGHT_TABS = [
 ];
 
 const SECTION_TITLES = {
+  nokkeltall: { t: 'Nøkkeltall', s: 'Investorklare KPIer · CAC · LTV · tid til kunde · konvertering' },
   innsikt: { t: 'Innsikt', s: 'Førsteparts analyse · cookieless · GDPR-trygt' },
   kunder: { t: 'Kunder', s: 'Kommer snart — hentes fra DigiHome-plattformen' },
   abonnementer: { t: 'Abonnementer', s: 'Kommer snart — aktive avtaler & fakturering' },
@@ -279,6 +287,7 @@ export default function AdminPage() {
   const runNavigate = (sec) => { setSection(sec); setSidebarOpen(false); setPaletteOpen(false); };
   const runInsight = (k) => { setSection('innsikt'); setInsightTab(k); setSidebarOpen(false); setPaletteOpen(false); };
   const paletteCommands = [
+    { id: 'sec-nokkeltall', group: 'Ledelse', label: 'Nøkkeltall', icon: TrendingUp, action: () => runNavigate('nokkeltall') },
     ...INSIGHT_TABS.map((t) => ({ id: `insight-${t.k}`, group: 'Innsikt', label: t.l, icon: t.icon, action: () => runInsight(t.k) })),
     { id: 'sec-kunder', group: 'Forretning', label: 'Kunder', icon: Users, action: () => runNavigate('kunder') },
     { id: 'sec-abonnementer', group: 'Forretning', label: 'Abonnementer', icon: CreditCard, action: () => runNavigate('abonnementer') },
@@ -323,6 +332,7 @@ export default function AdminPage() {
         </div>
 
         <div className="px-4 sm:px-8 py-6 max-w-[1280px]">
+          {section === 'nokkeltall' && <KpiDashboard apiKey={token} />}
           {section === 'innsikt' && <InnsiktDashboard apiKey={token} tab={insightTab} onTabChange={setInsightTab} onStats={setInsightStats} />}
           {section === 'kunder' && <ComingSoon icon={Users} title="Kunder" body="Her samler vi all kundeinformasjon fra DigiHome-plattformen — kontrakter, eiendommer, kontaktlogg og status. Vi kobler dette på i neste fase." />}
           {section === 'abonnementer' && <ComingSoon icon={CreditCard} title="Abonnementer" body="Oversikt over aktive avtaler, fakturering og inntekt per kunde — hentet direkte fra app-prosjektet. Kommer i neste fase." />}
