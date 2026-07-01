@@ -13,6 +13,7 @@ import { fetchPages, fetchLeadForms, fetchFormLeads, mapLeadFields, metaLeadAdsC
 import { composioConfigured, createConnectLink, getConnectionStatus, runCampaignReport, defaultCustomerId, getCachedReport, GOOGLE_PERIODS, getCachedCreatives, activeProvider } from '@/lib/google-ads-provider';
 import { googleAdsNativeConfigured, listConversionActions, resolveOfflineConversionAction, uploadClickConversion, toConversionDateTime, listCampaignsDetailed, suggestGeoTargets, setCampaignStatus, updateCampaignBudget, createSearchCampaign, runAdsWithMetrics, runSearchTerms, runKeywordMetrics, generateKeywordIdeas } from '@/lib/google-ads-native';
 import { dataManagerConfigured, ingestOfflineConversion } from '@/lib/google-ads-datamanager';
+import { ga4MpConfigured, sendGa4Purchase } from '@/lib/ga4-mp';
 import { buildRecommendations } from '@/lib/ads-recommendations';
 import { generateRsaCopy, generateMetaCopy } from '@/lib/ads-ai';
 import { runOptimization, getOptimizeConfig, setOptimizeConfig, getLastRun, listRuns, applyRecommendation } from '@/lib/ads-optimize';
@@ -539,14 +540,24 @@ function bridgeAuthed(request) {
   } catch (e) { return false; }
 }
 
-// Re-forward alle leads/tenants som ikke er videresendt (forwarded !== true)
+// Re-forward leads/tenants som ikke er videresendt (forwarded !== true), med
+// durabel eksponentiell backoff: hver feilede forward planlegges på nytt
+// (next_retry_at) slik at vi ikke hamrer plattformen når den er nede.
+function backoffIso(attempts) {
+  const mins = Math.min(Math.pow(2, Math.max(0, attempts)), 720); // 1,2,4,…,cap 12t
+  return new Date(Date.now() + mins * 60000).toISOString();
+}
 async function reforwardPending(db) {
   const results = { leads: { tried: 0, ok: 0 }, tenants: { tried: 0, ok: 0 } };
-  const pendLeads = await db.collection('leads').find({ forwarded: { $ne: true } }).limit(200).toArray();
+  const nowIso = new Date().toISOString();
+  const dueFilter = { forwarded: { $ne: true }, $or: [{ next_retry_at: { $exists: false } }, { next_retry_at: null }, { next_retry_at: { $lte: nowIso } }] };
+  const pendLeads = await db.collection('leads').find(dueFilter).limit(200).toArray();
   for (const lead of pendLeads) {
     results.leads.tried++;
     const fwd = await forwardToDigiHome('/api/leads', {
       external_ref: lead.id, source_system: 'digihome-marketing',
+      marketing_visitor_id: lead.marketing_visitor_id || undefined,
+      lead_source_type: lead.lead_source_type || undefined, is_paid: lead.is_paid,
       name: lead.name, email: lead.email, phone: lead.phone, address: lead.address,
       postal_code: lead.postal_code, property_type: lead.property_type, rental_model: lead.rental_model,
       bedrooms: lead.bedrooms, sqm: lead.sqm, availability: lead.availability, lead_type: lead.lead_type,
@@ -554,26 +565,32 @@ async function reforwardPending(db) {
       attribution: lead.attribution || undefined,
     });
     if (fwd.ok) results.leads.ok++;
+    const attempts = (Number(lead.forward_attempts) || 0) + 1;
     await db.collection('leads').updateOne({ id: lead.id }, { $set: {
       forwarded: fwd.ok, platform_id: fwd.id || null, forward_error: fwd.ok ? null : (fwd.error || 'ukjent'),
-      forwarded_at: fwd.ok ? new Date().toISOString() : null,
+      forwarded_at: fwd.ok ? new Date().toISOString() : (lead.forwarded_at || null),
+      forward_attempts: attempts, next_retry_at: fwd.ok ? null : backoffIso(attempts),
     } });
   }
-  const pendTenants = await db.collection('tenant_leads').find({ forwarded: { $ne: true } }).limit(200).toArray();
+  const pendTenants = await db.collection('tenant_leads').find(dueFilter).limit(200).toArray();
   for (const t of pendTenants) {
     results.tenants.tried++;
     const budgetStr = (t.budget_min || t.budget_max)
       ? `${t.budget_min || ''}${t.budget_min && t.budget_max ? '–' : ''}${t.budget_max || ''} kr`.trim() : '';
     const fwd = await forwardToDigiHome('/api/tenants', {
       external_ref: t.id, source_system: 'digihome-marketing',
+      marketing_visitor_id: t.marketing_visitor_id || undefined,
+      lead_source_type: t.lead_source_type || undefined, is_paid: t.is_paid,
       name: t.name, email: t.email, phone: t.phone, desired_area: t.preferred_area, address: t.preferred_area,
       budget: budgetStr, bedrooms: t.bedrooms, move_in_date: t.move_in_date, message: t.notes,
-      lead_type: 'leietaker', source: 'nettside',
+      lead_type: 'leietaker', source: t.source || 'nettside',
     });
     if (fwd.ok) results.tenants.ok++;
+    const attempts = (Number(t.forward_attempts) || 0) + 1;
     await db.collection('tenant_leads').updateOne({ id: t.id }, { $set: {
       forwarded: fwd.ok, platform_id: fwd.id || null, forward_error: fwd.ok ? null : (fwd.error || 'ukjent'),
-      forwarded_at: fwd.ok ? new Date().toISOString() : null,
+      forwarded_at: fwd.ok ? new Date().toISOString() : (t.forwarded_at || null),
+      forward_attempts: attempts, next_retry_at: fwd.ok ? null : backoffIso(attempts),
     } });
   }
   return results;
@@ -600,29 +617,53 @@ function streetFromAddress(addr) {
 function sanitizeAttribution(a) {
   if (!a || typeof a !== 'object') return null;
   const s = (v, n = 160) => (v === undefined || v === null ? '' : String(v).slice(0, n));
+  const medium = s(a.medium, 120), source = s(a.source, 120), referrer = s(a.referrer, 400);
+  const channel = s(a.channel, 40) || deriveChannel({ medium, source, referrer });
+  const gclid = s(a.gclid, 200) || undefined;
+  const gbraid = s(a.gbraid, 200) || undefined;
+  const wbraid = s(a.wbraid, 200) || undefined;
+  const msclkid = s(a.msclkid, 200) || undefined;
+  // Betalt-signal: paid-kanal ELLER en sterk betalt-klikk-ID (gclid/gbraid/wbraid/msclkid).
+  // fbclid utelates bevisst (finnes på ALLE Facebook-klikk, også organiske).
+  const isPaid = channel === 'Betalt' || !!(gclid || gbraid || wbraid || msclkid);
+  const CHANNEL_TO_TYPE = { 'Betalt': 'paid', 'Sosialt': 'social', 'E-post': 'email', 'Henvisning': 'referral', 'Organisk': 'organic', 'Direkte': 'direct' };
   return {
-    source: s(a.source, 120),
-    medium: s(a.medium, 120),
+    source, medium,
     campaign: s(a.campaign),
     term: s(a.term),
     content: s(a.content),
-    channel: s(a.channel, 40) || deriveChannel({ medium: s(a.medium, 120), source: s(a.source, 120), referrer: s(a.referrer, 400) }),
-    referrer: s(a.referrer, 400),
+    channel,
+    lead_source_type: isPaid ? 'paid' : (CHANNEL_TO_TYPE[channel] || 'direct'),
+    is_paid: isPaid,
+    referrer,
     landing_page: s(a.landing_page || a.landing, 300),
     device: s(a.device, 20),
     country: s(a.country, 60),
     visitorId: s(a.visitorId, 60),
     sessionId: s(a.sessionId, 60),
+    // GA4 client-id (fra _ga-cookien) → server-side stitching i GA4 Measurement Protocol.
+    ga_client_id: s(a.ga_client_id, 80) || undefined,
     // Rå klikk-ID-er (samtykke-gated på klienten) → for offline-konvertering til Google/Meta Ads.
-    gclid: s(a.gclid, 200) || undefined,
-    gbraid: s(a.gbraid, 200) || undefined,
-    wbraid: s(a.wbraid, 200) || undefined,
+    gclid, gbraid, wbraid,
     fbclid: s(a.fbclid, 200) || undefined,
-    msclkid: s(a.msclkid, 200) || undefined,
+    msclkid,
     // Meta-matching (Conversions API): _fbp/_fbc-cookieverdier fra pixelen.
     fbp: s(a.fbp, 200) || undefined,
     fbc: s(a.fbc, 300) || undefined,
   };
+}
+
+// Klassifiser lead-kilde til toppnivå-felt (lead_source_type + is_paid) for
+// plattform-forward og rapportering. manualHint tvinger 'manual' (admin/telefon).
+function classifyLeadSource(attribution, { manualHint = false, paidSocial = false } = {}) {
+  if (paidSocial) return { lead_source_type: 'paid_social', is_paid: true };
+  if (manualHint && (!attribution || (!attribution.is_paid && attribution.channel !== 'Betalt'))) {
+    return { lead_source_type: 'manual', is_paid: false };
+  }
+  if (attribution && attribution.lead_source_type) {
+    return { lead_source_type: attribution.lead_source_type, is_paid: !!attribution.is_paid };
+  }
+  return { lead_source_type: 'direct', is_paid: false };
 }
 
 // Importer ÉN Meta Lead Ads-lead (delt av manuell synk + webhook). Dedup på meta_leadgen_id.
@@ -1158,6 +1199,8 @@ async function handleRoute(request, { params }) {
       }
 
       const toNum = (v) => (v === null || v === undefined || v === '' ? null : Number(v));
+      const _attr = sanitizeAttribution(body.attribution);
+      const _cls = classifyLeadSource(_attr, { manualHint: /manuell|manual|telefon|crm|admin/i.test((body.source || '')) });
       const lead = {
         id: uuidv4(),
         name: (body.name || '').toString().slice(0, 200),
@@ -1184,10 +1227,14 @@ async function handleRoute(request, { params }) {
         notes: (body.notes || body.message || '').toString().slice(0, 4000),
         finn_url: (body.finn_url || '').toString().slice(0, 600),
         source: (body.source || 'nettside').toString().slice(0, 60),
-        attribution: sanitizeAttribution(body.attribution),
+        attribution: _attr,
+        lead_source_type: _cls.lead_source_type,
+        is_paid: _cls.is_paid,
+        marketing_visitor_id: _attr ? _attr.visitorId : undefined,
         marketingConsent: marketingConsentFromRequest(request),
         status: 'new',
         forwarded: false,
+        forward_attempts: 0,
         createdAt: new Date().toISOString(),
       };
 
@@ -1225,6 +1272,8 @@ async function handleRoute(request, { params }) {
       // Dual-write: videresend til DigiHome-plattformen (DigiHome AS)
       const fwd = await forwardToDigiHome('/api/leads', {
         external_ref: lead.id, source_system: 'digihome-marketing',
+        marketing_visitor_id: lead.marketing_visitor_id || undefined,
+        lead_source_type: lead.lead_source_type, is_paid: lead.is_paid,
         name: lead.name, email: lead.email, phone: lead.phone,
         address: lead.address, postal_code: lead.postal_code,
         property_type: lead.property_type, rental_model: lead.rental_model,
@@ -1287,6 +1336,8 @@ async function handleRoute(request, { params }) {
       }
 
       const toNum = (v) => (v === null || v === undefined || v === '' ? null : Number(v));
+      const _tAttr = sanitizeAttribution(body.attribution);
+      const _tCls = classifyLeadSource(_tAttr, { manualHint: /manuell|manual|telefon|crm|admin/i.test((body.source || '')) });
       const tenant = {
         id: uuidv4(),
         name: (body.name || '').toString().slice(0, 200),
@@ -1300,10 +1351,14 @@ async function handleRoute(request, { params }) {
         notes: (body.notes || '').toString().slice(0, 4000),
         lead_type: 'leietaker',
         source: (body.source || 'nettside').toString().slice(0, 60),
-        attribution: sanitizeAttribution(body.attribution),
+        attribution: _tAttr,
+        lead_source_type: _tCls.lead_source_type,
+        is_paid: _tCls.is_paid,
+        marketing_visitor_id: _tAttr ? _tAttr.visitorId : undefined,
         marketingConsent: marketingConsentFromRequest(request),
         status: 'new',
         forwarded: false,
+        forward_attempts: 0,
         createdAt: new Date().toISOString(),
       };
 
@@ -1336,6 +1391,8 @@ async function handleRoute(request, { params }) {
         : '';
       const fwd = await forwardToDigiHome('/api/tenants', {
         external_ref: tenant.id, source_system: 'digihome-marketing',
+        marketing_visitor_id: tenant.marketing_visitor_id || undefined,
+        lead_source_type: tenant.lead_source_type, is_paid: tenant.is_paid,
         name: tenant.name, email: tenant.email, phone: tenant.phone,
         desired_area: tenant.preferred_area,
         address: tenant.preferred_area,
@@ -2029,8 +2086,19 @@ async function handleRoute(request, { params }) {
       } catch (e) { return cors(NextResponse.json({ ok: false, error: e.message }, { status: 200 })); }
     }
 
-    // ===================================================================
-    // AGENT-BRO: delt postkasse for koordinering mellom markedssiden og
+    // Durabel re-forward-kø: kjør ventende (ikke-videresendte) leads/tenants som
+    // er «due» iht. backoff. Ekstern planlegger kaller denne f.eks. hvert 5.–15. min.
+    if (route === '/cron/reforward-leads' && (method === 'GET' || method === 'POST')) {
+      const sp = new URL(request.url).searchParams;
+      const token = sp.get('token') || request.headers.get('x-cron-token') || '';
+      const cronSecret = (process.env.ADS_CRON_SECRET || '').trim();
+      const okAuth = (cronSecret && token === cronSecret) || (ADMIN_KEY && token === ADMIN_KEY);
+      if (!okAuth) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      try {
+        const results = await reforwardPending(db);
+        return cors(NextResponse.json({ ok: true, ...results }));
+      } catch (e) { return cors(NextResponse.json({ ok: false, error: e.message }, { status: 200 })); }
+    }
     // plattform-prosjektet. Auth: admin (?key=) ELLER ?token=AGENT_BRIDGE_SECRET
     // (header x-bridge-token). Lagres i collection agent_bridge.
     // ===================================================================
@@ -2289,6 +2357,22 @@ async function handleRoute(request, { params }) {
         }
       } catch (e) {
         try { await db.collection(coll).updateOne({ id }, { $set: { googleAdsWon: { ok: false, at: nowIso, error: e.message } } }); } catch (_) {}
+      }
+
+      // GA4 Measurement Protocol (server-side purchase): lukket sløyfe i GA4-rapportering.
+      try {
+        const att = existing.attribution || {};
+        if (status === 'won' && ga4MpConfigured() && marketingAllowed(existing.marketingConsent)) {
+          const g = await sendGa4Purchase({
+            clientId: att.ga_client_id || att.visitorId || existing.marketing_visitor_id,
+            userId: existing.marketing_visitor_id || undefined,
+            value: update.wonValue || 0, currency: update.wonCurrency || 'NOK', transactionId: id,
+            params: { lead_source_type: existing.lead_source_type || undefined, campaign: att.campaign || undefined },
+          });
+          await db.collection(coll).updateOne({ id }, { $set: { ga4Won: { ok: g.ok, at: nowIso, status: g.status || null } } });
+        }
+      } catch (e) {
+        try { await db.collection(coll).updateOne({ id }, { $set: { ga4Won: { ok: false, at: nowIso, error: e.message } } }); } catch (_) {}
       }
 
       return cors(NextResponse.json({ ok: true, id, status }));
@@ -2555,6 +2639,23 @@ async function handleRoute(request, { params }) {
         }
       } catch (e) {
         try { await db.collection(coll).updateOne({ id: lead.id }, { $set: { googleAdsWon: { ok: false, at: nowIso, error: e.message } } }); } catch (_) {}
+      }
+
+      // GA4 Measurement Protocol (server-side purchase) ved won — lukket sløyfe i GA4.
+      try {
+        const att = lead.attribution || {};
+        const alreadyGa4Won = lead.ga4Won && lead.ga4Won.ok;
+        if (status === 'won' && !alreadyGa4Won && ga4MpConfigured() && marketingAllowed(lead.marketingConsent)) {
+          const g = await sendGa4Purchase({
+            clientId: att.ga_client_id || att.visitorId || lead.marketing_visitor_id,
+            userId: lead.marketing_visitor_id || undefined,
+            value: update.wonValue || 0, currency: update.wonCurrency || 'NOK', transactionId: lead.id,
+            params: { lead_source_type: lead.lead_source_type || undefined, campaign: att.campaign || undefined },
+          });
+          await db.collection(coll).updateOne({ id: lead.id }, { $set: { ga4Won: { ok: g.ok, at: nowIso, status: g.status || null } } });
+        }
+      } catch (e) {
+        try { await db.collection(coll).updateOne({ id: lead.id }, { $set: { ga4Won: { ok: false, at: nowIso, error: e.message } } }); } catch (_) {}
       }
 
       // Mid-funnel livssyklus-events til Meta (custom/standard) → bedre budoptimalisering
