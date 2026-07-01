@@ -15,6 +15,7 @@ import { googleAdsNativeConfigured, listConversionActions, resolveOfflineConvers
 import { dataManagerConfigured, ingestOfflineConversion } from '@/lib/google-ads-datamanager';
 import { IMPORTED_COLL, importRecords, parseCsv, summarizeImported, syncFromPlatform } from '@/lib/imported-leads';
 import { computeKpiDashboard, getKpiSettings, setKpiSettings } from '@/lib/kpi-dashboard';
+import { getFinanceSettings, setFinanceSettings, listCosts, upsertCost, deleteCost, listContracts, upsertContract, deleteContract, listEvents, upsertEvent, deleteEvent, computeResultat, computeLikviditet, computeFinanceOverview } from '@/lib/finance';
 import { ga4MpConfigured, sendGa4Purchase } from '@/lib/ga4-mp';
 import { buildRecommendations } from '@/lib/ads-recommendations';
 import { generateRsaCopy, generateMetaCopy } from '@/lib/ads-ai';
@@ -2299,6 +2300,43 @@ async function handleRoute(request, { params }) {
       }
     }
 
+    // ═══════════════════════════════════════════════════════════════════
+    // ØKONOMI — Resultat (P&L) + Likviditet + kostnader/kontrakter/engangsposter
+    // Auth: admin (?key=). Alle beløp NOK eks. mva.
+    // ═══════════════════════════════════════════════════════════════════
+    if (route.startsWith('/admin/finance')) {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const sub = route.slice('/admin/finance'.length); // '' | '/resultat' | '/likviditet' | ...
+      let fbody = {};
+      if (method === 'POST' || method === 'DELETE') { try { fbody = await request.json(); } catch (_) { fbody = {}; } }
+      try {
+        if (sub === '/resultat' && method === 'GET') return cors(NextResponse.json(await computeResultat(db)));
+        if (sub === '/likviditet' && method === 'GET') {
+          const months = Number(new URL(request.url).searchParams.get('months')) || 12;
+          return cors(NextResponse.json(await computeLikviditet(db, { months })));
+        }
+        if (sub === '/overview' && method === 'GET') return cors(NextResponse.json(await computeFinanceOverview(db)));
+
+        if (sub === '/settings' && method === 'GET') return cors(NextResponse.json({ ok: true, settings: await getFinanceSettings(db) }));
+        if (sub === '/settings' && method === 'POST') return cors(NextResponse.json({ ok: true, settings: await setFinanceSettings(db, fbody) }));
+
+        if (sub === '/costs' && method === 'GET') return cors(NextResponse.json({ ok: true, costs: await listCosts(db) }));
+        if (sub === '/costs' && method === 'POST') return cors(NextResponse.json({ ok: true, cost: await upsertCost(db, fbody) }));
+        if (sub === '/costs' && method === 'DELETE') { await deleteCost(db, fbody.id); return cors(NextResponse.json({ ok: true })); }
+
+        if (sub === '/contracts' && method === 'GET') return cors(NextResponse.json({ ok: true, contracts: await listContracts(db) }));
+        if (sub === '/contracts' && method === 'POST') return cors(NextResponse.json({ ok: true, contract: await upsertContract(db, fbody) }));
+        if (sub === '/contracts' && method === 'DELETE') { await deleteContract(db, fbody.id); return cors(NextResponse.json({ ok: true })); }
+
+        if (sub === '/events' && method === 'GET') return cors(NextResponse.json({ ok: true, events: await listEvents(db) }));
+        if (sub === '/events' && method === 'POST') return cors(NextResponse.json({ ok: true, event: await upsertEvent(db, fbody) }));
+        if (sub === '/events' && method === 'DELETE') { await deleteEvent(db, fbody.id); return cors(NextResponse.json({ ok: true })); }
+      } catch (e) {
+        return cors(NextResponse.json({ ok: false, error: e.message }, { status: 200 }));
+      }
+      return cors(NextResponse.json({ ok: false, error: 'Ukjent økonomi-endepunkt' }, { status: 404 }));
+    }
+
     if (route === '/admin/ads/table' && method === 'GET') {
       if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const { searchParams } = new URL(request.url);
@@ -3257,7 +3295,7 @@ async function handleRoute(request, { params }) {
       };
       const SYS = 'Du er en erfaren salgsanalytiker for DigiHome (eiendomsforvaltning i Bergen). Vurder et innkommende lead og returner KUN gyldig JSON (ingen markdown) med feltene: {"score": <0-100 heltall, sannsynlighet for å bli kunde>, "label": "<Varm|Lunken|Kald>", "reasoning": "<1-2 setninger på norsk bokmål>", "nextAction": "<konkret neste steg på norsk bokmål>"}. Vekt: komplett kontaktinfo, eiendom med detaljer, Finn-lenke, flere enheter og kjøpsklar modell høyt. Ikke finn på fakta.';
       try {
-        const answer = await chatLLM({ messages: [{ role: 'system', content: SYS }, { role: 'user', content: `LEAD-DATA:\n${JSON.stringify(ctx)}` }], maxTokens: 300, temperature: 0.2 });
+        const answer = await chatLLM({ messages: [{ role: 'system', content: SYS }, { role: 'user', content: `LEAD-DATA:\n${JSON.stringify(ctx)}` }], maxTokens: 300, temperature: 0.2, feature: 'lead_svar' });
         let parsed = null;
         try { parsed = JSON.parse((answer || '').replace(/```json|```/g, '').trim()); } catch (e) { parsed = null; }
         if (!parsed || typeof parsed.score === 'undefined') {
@@ -3304,7 +3342,7 @@ async function handleRoute(request, { params }) {
         ? [{ role: 'system', content: SYS_ASK }, { role: 'user', content: `ANALYSEDATA:\n${context}\n\nSPØRSMÅL: ${question}` }]
         : [{ role: 'system', content: SYS_SUMMARY }, { role: 'user', content: `ANALYSEDATA (siste ${days} dager):\n${context}` }];
       try {
-        const answer = await chatLLM({ messages, maxTokens: mode === 'ask' ? 500 : 700, temperature: 0.3 });
+        const answer = await chatLLM({ messages, maxTokens: mode === 'ask' ? 500 : 700, temperature: 0.3, feature: 'ai_assistent' });
         return cors(NextResponse.json({ ok: true, answer, mode }));
       } catch (e) {
         return cors(NextResponse.json({ ok: false, error: (e && e.message) || 'AI utilgjengelig' }, { status: 502 }));
@@ -3408,7 +3446,7 @@ async function handleRoute(request, { params }) {
       if (topic.trim().length < 4) return cors(NextResponse.json({ ok: false, error: 'Skriv et tema (minst 4 tegn)' }, { status: 400 }));
       const SYS = 'Du er innholdsredaktør for DigiHome, en AI-drevet eiendomsforvalter i Bergen. Skriv en hjelpsom, faktabasert og engasjerende artikkel på norsk bokmål for selskapets blogg/nyheter, rettet mot boligeiere og leietakere. Følg E-E-A-T: vær presis og nyttig, og IKKE finn på konkrete tall, priser eller lovparagrafer du ikke er sikker på. Returner KUN gyldig JSON (UTEN markdown-kodeblokk rundt) med nøyaktig disse feltene: {"title": string (maks 70 tegn), "excerpt": string (1-2 setninger), "content": string (markdown, 500-800 ord, bruk ## underoverskrifter og en kort ingress øverst, IKKE bruk H1/#), "tags": string[] (2-4 relevante norske tagger), "seoTitle": string (maks 60 tegn), "seoDescription": string (maks 155 tegn)}.';
       try {
-        const raw = await chatLLM({ messages: [{ role: 'system', content: SYS }, { role: 'user', content: `Tema: ${topic}` }], maxTokens: 1800, temperature: 0.6 });
+        const raw = await chatLLM({ messages: [{ role: 'system', content: SYS }, { role: 'user', content: `Tema: ${topic}` }], maxTokens: 1800, temperature: 0.6, feature: 'artikkel' });
         let txt = (raw || '').trim().replace(/^```(json)?/i, '').replace(/```$/i, '').trim();
         const first = txt.indexOf('{'); const last = txt.lastIndexOf('}');
         if (first >= 0 && last > first) txt = txt.slice(first, last + 1);

@@ -5,10 +5,11 @@ import {
   Loader2, Lock, BarChart3, Users, CreditCard, FileText, LogOut,
   Menu, X, ChevronRight, ShieldCheck, Sparkles, MessageSquare,
   LayoutDashboard, Radio, Activity, GitBranch, Gauge, Megaphone, Database,
-  Command, Search, CornerDownLeft, LayoutTemplate, Crosshair, TrendingUp,
+  Command, Search, CornerDownLeft, LayoutTemplate, Crosshair, TrendingUp, Wallet,
 } from 'lucide-react';
 import InnsiktDashboard from '@/components/admin/InnsiktDashboard';
 import KpiDashboard from '@/components/admin/KpiDashboard';
+import FinanceDashboard from '@/components/admin/FinanceDashboard';
 import AgentBridge from '@/components/admin/AgentBridge';
 
 const SESSION_KEY = 'dh_admin_session';
@@ -30,6 +31,7 @@ const NAV = [
   {
     group: 'Forretning',
     items: [
+      { k: 'okonomi', l: 'Økonomi', icon: Wallet, desc: 'Resultat · likviditet · burn · runway' },
       { k: 'kunder', l: 'Kunder', icon: Users, soon: true, desc: 'Kundeinformasjon fra DigiHome-appen' },
       { k: 'abonnementer', l: 'Abonnementer', icon: CreditCard, soon: true, desc: 'Aktive avtaler & fakturering' },
     ],
@@ -66,6 +68,7 @@ const INSIGHT_TABS = [
 const SECTION_TITLES = {
   nokkeltall: { t: 'Nøkkeltall', s: 'Investorklare KPIer · CAC · LTV · tid til kunde · konvertering' },
   innsikt: { t: 'Innsikt', s: 'Førsteparts analyse · cookieless · GDPR-trygt' },
+  okonomi: { t: 'Økonomi', s: 'Resultat & likviditet · honorar (prosent av leie) · burn rate & runway' },
   kunder: { t: 'Kunder', s: 'Kommer snart — hentes fra DigiHome-plattformen' },
   abonnementer: { t: 'Abonnementer', s: 'Kommer snart — aktive avtaler & fakturering' },
   bro: { t: 'Agent-bro', s: 'Delt meldingstråd for koordinering med plattform-prosjektet' },
@@ -333,6 +336,7 @@ export default function AdminPage() {
 
         <div className="px-4 sm:px-8 py-6 max-w-[1280px]">
           {section === 'nokkeltall' && <KpiDashboard apiKey={token} />}
+          {section === 'okonomi' && <FinanceDashboard apiKey={token} />}
           {section === 'innsikt' && <InnsiktDashboard apiKey={token} tab={insightTab} onTabChange={setInsightTab} onStats={setInsightStats} />}
           {section === 'kunder' && <ComingSoon icon={Users} title="Kunder" body="Her samler vi all kundeinformasjon fra DigiHome-plattformen — kontrakter, eiendommer, kontaktlogg og status. Vi kobler dette på i neste fase." />}
           {section === 'abonnementer' && <ComingSoon icon={CreditCard} title="Abonnementer" body="Oversikt over aktive avtaler, fakturering og inntekt per kunde — hentet direkte fra app-prosjektet. Kommer i neste fase." />}
