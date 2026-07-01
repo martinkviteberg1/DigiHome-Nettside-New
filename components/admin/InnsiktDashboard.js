@@ -6,6 +6,7 @@ import {
   LayoutDashboard, Activity, BarChart3, Users, Sparkles, Database,
   Radio, Gauge, TrendingUp, TrendingDown, Download, Megaphone,
   Search, X, ArrowUp, ArrowDown, FileSpreadsheet, ChevronRight, GitBranch,
+  MoreHorizontal, Trophy, Clock, Target, ShieldCheck, Flame,
 } from 'lucide-react';
 import LeadDrawer from '@/components/admin/LeadDrawer';
 import OverviewTab from '@/components/admin/OverviewTab';
@@ -19,16 +20,16 @@ import AdsTab from '@/components/admin/AdsTab';
 import FunnelTab from '@/components/admin/FunnelTab';
 
 const TABS = [
-  { k: 'oversikt', l: 'Oversikt', icon: LayoutDashboard },
-  { k: 'live', l: 'Live', icon: Radio },
-  { k: 'trafikk', l: 'Trafikk', icon: Activity },
-  { k: 'trakt', l: 'Trakt & A/B', icon: GitBranch },
-  { k: 'ytelse', l: 'Ytelse', icon: Gauge },
-  { k: 'innsikt', l: 'Lead-innsikt', icon: BarChart3 },
-  { k: 'annonser', l: 'Annonser', icon: Megaphone },
-  { k: 'leiemarked', l: 'Leiemarked', icon: Database },
-  { k: 'ai', l: 'AI-assistent', icon: Sparkles },
-  { k: 'leads', l: 'Leads', icon: Users },
+  { k: 'oversikt', l: 'Oversikt', icon: LayoutDashboard, d: 'Nøkkeltall og trender på ett blikk' },
+  { k: 'live', l: 'Sanntid', icon: Radio, d: 'Hvem er inne på nettstedet akkurat nå' },
+  { k: 'trafikk', l: 'Trafikk', icon: Activity, d: 'Kilder, kanaler og enheter' },
+  { k: 'trakt', l: 'Trakt & A/B', icon: GitBranch, d: 'Konvertering og eksperimenter' },
+  { k: 'ytelse', l: 'Ytelse', icon: Gauge, d: 'Core Web Vitals og sidehastighet' },
+  { k: 'innsikt', l: 'Lead-innsikt', icon: BarChart3, d: 'Kvalitet, kilder og pipeline' },
+  { k: 'annonser', l: 'Annonser', icon: Megaphone, d: 'Meta & Google Ads · forbruk og ROAS' },
+  { k: 'leiemarked', l: 'Leiemarked', icon: Database, d: 'Priser og etterspørsel i markedet' },
+  { k: 'ai', l: 'AI-assistent', icon: Sparkles, d: 'Spør om dataene dine i naturlig språk' },
+  { k: 'leads', l: 'Leads', icon: Users, d: 'Alle henvendelser — utleiere og leietakere' },
 ];
 
 const STATUS_OPTS = [
@@ -37,14 +38,17 @@ const STATUS_OPTS = [
 ];
 const RANGES = [{ d: 7, l: '7d' }, { d: 30, l: '30d' }, { d: 90, l: '90d' }];
 
-export default function InnsiktDashboard({ apiKey }) {
+export default function InnsiktDashboard({ apiKey, tab: propTab, onTabChange, onStats }) {
   const [data, setData] = useState({ leads: [], tenants: [] });
   const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(false);
   const [forwarding, setForwarding] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [err, setErr] = useState('');
-  const [tab, setTab] = useState('oversikt');
+  const [tabState, setTabState] = useState('oversikt');
+  const tab = propTab || tabState;
+  const setTab = onTabChange || setTabState;
+  const [actionsOpen, setActionsOpen] = useState(false);
   const [leadSub, setLeadSub] = useState('leads');
   const [days, setDays] = useState(30);
   const [scores, setScores] = useState({});
@@ -77,6 +81,13 @@ export default function InnsiktDashboard({ apiKey }) {
   }, [days, apiKey]);
 
   useEffect(() => { if (apiKey) load(); }, [apiKey]); // eslint-disable-line
+
+  // Rapporter nøkkeltall opp til shell-en (badge på «Leads» i sidemenyen)
+  useEffect(() => {
+    if (!onStats) return;
+    const pend = [...data.leads, ...data.tenants].filter((r) => r.forwarded !== true).length;
+    onStats({ pending: pend, leads: data.leads.length, tenants: data.tenants.length });
+  }, [data]); // eslint-disable-line
 
   const changeDays = (d) => { setDays(d); load(d); };
 
@@ -217,18 +228,14 @@ export default function InnsiktDashboard({ apiKey }) {
 
   return (
     <div>
-      {/* Toolbar: periode + oppdater */}
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
-        <div className="flex gap-1.5 overflow-x-auto pb-1 -mb-1">
-          {TABS.map((t) => {
-            const Icon = t.icon;
-            return (
-              <button key={t.k} onClick={() => setTab(t.k)} className={`px-3.5 py-2 rounded-full text-[13px] font-semibold flex items-center gap-2 whitespace-nowrap transition-all ${tab === t.k ? 'bg-[#0a0a0a] text-white shadow-[0_4px_14px_rgba(0,0,0,0.15)]' : 'bg-white text-[#666] shadow-[0_2px_10px_rgba(0,0,0,0.03)] hover:text-[#0a0a0a]'}`}>
-                <Icon className="w-4 h-4" /> {t.l}
-                {t.k === 'leads' && pendingCount > 0 && <span className="ml-0.5 text-[10px] bg-amber-400 text-white rounded-full px-1.5 py-0.5 leading-none">{pendingCount}</span>}
-              </button>
-            );
-          })}
+      {/* Kontekstuell verktøylinje: aktiv visning + periode */}
+      <div className="flex flex-wrap items-end justify-between gap-3 mb-5">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 text-[14px] font-semibold text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>
+            {(() => { const T = TABS.find((x) => x.k === tab) || TABS[0]; const I = T.icon; return <I className="w-4 h-4 text-[#8b5cf6]" />; })()}
+            {(TABS.find((x) => x.k === tab) || TABS[0]).l}
+          </div>
+          <p className="text-[12.5px] text-[#a3a3a3] mt-0.5">{(TABS.find((x) => x.k === tab) || TABS[0]).d}</p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           {tab !== 'annonser' && (
@@ -238,7 +245,7 @@ export default function InnsiktDashboard({ apiKey }) {
                   <button key={r.d} onClick={() => changeDays(r.d)} className={`px-3 py-1.5 rounded-full text-[12px] font-semibold transition-colors ${days === r.d ? 'bg-[#0a0a0a] text-white' : 'text-[#888] hover:text-[#0a0a0a]'}`}>{r.l}</button>
                 ))}
               </div>
-              <button onClick={() => load()} disabled={loading} className="h-9 w-9 rounded-full bg-white shadow-[0_2px_10px_rgba(0,0,0,0.04)] flex items-center justify-center text-[#666] hover:text-[#0a0a0a] transition-colors">{loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}</button>
+              <button onClick={() => load()} disabled={loading} title="Oppdater" className="h-9 w-9 rounded-full bg-white shadow-[0_2px_10px_rgba(0,0,0,0.04)] flex items-center justify-center text-[#666] hover:text-[#0a0a0a] transition-colors">{loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}</button>
             </>
           )}
         </div>
@@ -247,6 +254,7 @@ export default function InnsiktDashboard({ apiKey }) {
       {err && <div className="mb-4 bg-rose-50 text-rose-600 rounded-xl px-4 py-3 text-[13px] flex items-center gap-2"><AlertCircle className="w-4 h-4" /> {err}</div>}
 
       {/* Content */}
+      <div key={tab} className="dh-tab-in">
       {tab === 'oversikt' && (
         <>
           {analytics && analytics.anomalies && analytics.anomalies.length > 0 && (
@@ -278,22 +286,37 @@ export default function InnsiktDashboard({ apiKey }) {
       {tab === 'leads' && (
         <div>
           <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-            <div className="flex gap-2">
-              {[{ k: 'leads', l: `Utleiere (${data.leads.length})` }, { k: 'tenants', l: `Leietakere (${data.tenants.length})` }].map((t) => (
-                <button key={t.k} onClick={() => setLeadSub(t.k)} className={`px-4 py-2 rounded-full text-[13px] font-semibold transition-colors ${leadSub === t.k ? 'bg-[#cf97fc] text-white' : 'bg-white text-[#666] shadow-[0_2px_10px_rgba(0,0,0,0.03)]'}`}>{t.l}</button>
+            {/* Segmentkontroll — utleiere / leietakere */}
+            <div className="inline-flex items-center bg-white rounded-full p-1 shadow-[0_2px_10px_rgba(0,0,0,0.04)]">
+              {[{ k: 'leads', l: 'Utleiere', n: data.leads.length }, { k: 'tenants', l: 'Leietakere', n: data.tenants.length }].map((t) => (
+                <button key={t.k} onClick={() => setLeadSub(t.k)} className={`px-4 py-1.5 rounded-full text-[13px] font-semibold transition-all flex items-center gap-1.5 ${leadSub === t.k ? 'bg-[#0a0a0a] text-white shadow-[0_2px_8px_rgba(0,0,0,0.12)]' : 'text-[#888] hover:text-[#0a0a0a]'}`}>
+                  {t.l}<span className={`text-[11px] font-bold ${leadSub === t.k ? 'text-white/55' : 'text-[#c4c4c4]'}`}>{t.n}</span>
+                </button>
               ))}
             </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              {leadAdsMsg && <span className="text-[12px] text-[#1877F2] font-semibold">{leadAdsMsg}</span>}
-              <button onClick={doLeadAdsSync} disabled={leadAdsSyncing} title="Hent Facebook/Instagram Lead Ads-leads direkte inn i systemet" className="h-9 px-4 rounded-full text-white text-[12px] font-semibold flex items-center gap-2 disabled:opacity-40 active:scale-[0.97] transition-transform" style={{ background: '#1877F2' }}>
-                {leadAdsSyncing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />} Synk Lead Ads
-              </button>
-              <button onClick={exportCsv} disabled={exporting || rows.length === 0} title="Eksporter alle leads til CSV (Excel, æøå)" className="h-9 px-4 rounded-full bg-white text-[#0a0a0a] text-[12px] font-semibold flex items-center gap-2 shadow-[0_2px_10px_rgba(0,0,0,0.03)] disabled:opacity-40 hover:bg-[#f5f5f5] active:scale-[0.97] transition-all">{exporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileSpreadsheet className="w-3.5 h-3.5" />} CSV</button>
-              {leadSub === 'leads' && (
-                <button onClick={downloadAdsFeed} title="Last ned Google Ads offline-konverteringsfeed (vunne leads med gclid)" className="h-9 px-4 rounded-full bg-white text-[#8b5cf6] text-[12px] font-semibold flex items-center gap-2 shadow-[0_2px_10px_rgba(0,0,0,0.03)] hover:bg-[#f4f0fb] active:scale-[0.97] transition-all"><Download className="w-3.5 h-3.5" /> Google Ads-feed</button>
-              )}
-              <button onClick={doForward} disabled={forwarding || pendingCount === 0} className="h-9 px-4 rounded-full bg-[#0a0a0a] text-white text-[12px] font-semibold flex items-center gap-2 disabled:opacity-40 active:scale-[0.97] transition-transform">{forwarding ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />} Re-send {pendingCount > 0 ? `(${pendingCount})` : ''}</button>
-              <button onClick={() => doDelete({ scope: 'pending' }, `Slette ${tabPending} ventende ${leadSub === 'leads' ? 'utleier' : 'leietaker'}-leads? Kan ikke angres.`)} disabled={deleting || tabPending === 0} className="h-9 px-4 rounded-full bg-white text-red-600 text-[12px] font-semibold flex items-center gap-2 shadow-[0_2px_10px_rgba(0,0,0,0.03)] disabled:opacity-40 hover:bg-red-50 active:scale-[0.97] transition-all">{deleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />} Slett ventende {tabPending > 0 ? `(${tabPending})` : ''}</button>
+
+            {/* Handlinger — samlet i én diskret meny */}
+            <div className="flex items-center gap-2.5">
+              {leadAdsMsg && <span className="text-[12px] text-[#8b5cf6] font-semibold dh-fade">{leadAdsMsg}</span>}
+              <div className="relative">
+                <button onClick={() => setActionsOpen((o) => !o)} className="h-9 pl-4 pr-3 rounded-full bg-[#0a0a0a] text-white text-[12.5px] font-semibold flex items-center gap-2 active:scale-[0.97] transition-transform">
+                  <MoreHorizontal className="w-4 h-4" /> Handlinger
+                  {pendingCount > 0 && <span className="text-[10px] bg-amber-400 text-[#0a0a0a] rounded-full px-1.5 py-0.5 leading-none font-bold">{pendingCount}</span>}
+                </button>
+                {actionsOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setActionsOpen(false)} />
+                    <div className="absolute right-0 mt-2 w-64 z-50 bg-white rounded-2xl shadow-[0_16px_50px_rgba(0,0,0,0.14)] border border-black/[0.04] p-1.5 dh-pop origin-top-right">
+                      <MenuItem icon={leadAdsSyncing ? Loader2 : RefreshCw} spin={leadAdsSyncing} label="Synk Lead Ads" hint="Hent fra Facebook / Instagram" onClick={() => { setActionsOpen(false); doLeadAdsSync(); }} />
+                      <MenuItem icon={FileSpreadsheet} label="Eksporter CSV" hint="Åpnes i Excel · æøå" disabled={rows.length === 0} onClick={() => { setActionsOpen(false); exportCsv(); }} />
+                      {leadSub === 'leads' && <MenuItem icon={Download} label="Google Ads-feed" hint="Offline-konverteringer (gclid)" onClick={() => { setActionsOpen(false); downloadAdsFeed(); }} />}
+                      <MenuItem icon={forwarding ? Loader2 : Send} spin={forwarding} label={`Re-send ventende${pendingCount > 0 ? ` (${pendingCount})` : ''}`} hint="Send til CRM på nytt" disabled={pendingCount === 0} onClick={() => { setActionsOpen(false); doForward(); }} />
+                      <div className="my-1 mx-2 h-px bg-black/[0.06]" />
+                      <MenuItem icon={Trash2} danger label={`Slett ventende${tabPending > 0 ? ` (${tabPending})` : ''}`} hint="Kan ikke angres" disabled={tabPending === 0} onClick={() => { setActionsOpen(false); doDelete({ scope: 'pending' }, `Slette ${tabPending} ventende ${leadSub === 'leads' ? 'utleier' : 'leietaker'}-leads? Kan ikke angres.`); }} />
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
           </div>
 
@@ -316,22 +339,19 @@ export default function InnsiktDashboard({ apiKey }) {
             <span className="text-[12px] text-[#aaa] ml-auto whitespace-nowrap">{filteredRows.length} av {rows.length}</span>
           </div>
 
-          {leadSub === 'leads' && analytics && analytics.leads && analytics.leads.totals && (
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-4">
-              {[
-                { l: 'Vunnet', v: analytics.leads.totals.won ?? 0, c: 'text-emerald-600' },
-                { l: 'Tapt', v: analytics.leads.totals.lost ?? 0, c: 'text-rose-600' },
-                { l: 'Vinnrate', v: `${analytics.leads.totals.winRate ?? 0}%`, c: 'text-[#1f1f1f]' },
-                { l: 'Snitt responstid', v: analytics.leads.totals.avgResponseHours != null ? `${analytics.leads.totals.avgResponseHours} t` : '–', c: 'text-[#1f1f1f]' },
-                { l: 'SLA innen 24t', v: analytics.leads.totals.slaPct != null ? `${analytics.leads.totals.slaPct}%` : '–', c: 'text-[#1f1f1f]' },
-              ].map((k) => (
-                <div key={k.l} className="bg-white rounded-xl p-4 shadow-[0_2px_10px_rgba(0,0,0,0.03)]">
-                  <p className="text-[11px] uppercase tracking-[0.06em] text-[#aaa] font-semibold">{k.l}</p>
-                  <p className={`text-[22px] font-bold mt-1 ${k.c}`} style={{ fontFamily: 'var(--font-heading)' }}>{k.v}</p>
-                </div>
-              ))}
-            </div>
-          )}
+          {leadSub === 'leads' && analytics && analytics.leads && analytics.leads.totals && (() => {
+            const t = analytics.leads.totals;
+            const decided = (t.won || 0) + (t.lost || 0);
+            return (
+              <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
+                <KpiCard label="Vunnet" value={t.won ?? 0} icon={Trophy} tone="emerald" sub={`av ${decided} avgjorte`} />
+                <KpiCard label="Tapt" value={t.lost ?? 0} icon={TrendingDown} tone="rose" sub={`${decided} avgjorte totalt`} />
+                <KpiCard label="Vinnrate" value={`${t.winRate ?? 0}%`} icon={Target} tone="violet" progress={t.winRate ?? 0} />
+                <KpiCard label="Snitt responstid" value={t.avgResponseHours != null ? `${t.avgResponseHours} t` : '–'} icon={Clock} tone="slate" sub={t.avgResponseHours != null ? (t.avgResponseHours <= 24 ? 'innenfor mål (24t)' : 'over mål (24t)') : 'ingen data ennå'} />
+                <KpiCard label="SLA innen 24t" value={t.slaPct != null ? `${t.slaPct}%` : '–'} icon={ShieldCheck} tone="violet" progress={t.slaPct != null ? t.slaPct : null} />
+              </div>
+            );
+          })()}
 
           <div className="bg-white rounded-2xl shadow-[0_2px_16px_rgba(0,0,0,0.04)] overflow-hidden">
             <div className="overflow-x-auto">
@@ -347,7 +367,19 @@ export default function InnsiktDashboard({ apiKey }) {
                   <th className="py-3 px-4 font-semibold text-right">Handling</th>
                 </tr></thead>
                 <tbody>
-                  {filteredRows.length === 0 && (<tr><td colSpan={8} className="py-10 text-center text-[14px] text-[#aaa]">{rows.length === 0 ? 'Ingen registreringer ennå' : 'Ingen treff på filteret'}</td></tr>)}
+                  {loading && rows.length === 0 && [0, 1, 2, 3, 4].map((i) => (
+                    <tr key={`sk-${i}`} className="border-b border-[#f6f6f6]">
+                      <td className="py-3.5 px-4"><div className="shimmer h-3.5 rounded w-28" /></td>
+                      <td className="py-3.5 px-4"><div className="shimmer h-3 rounded w-40 mb-1.5" /><div className="shimmer h-3 rounded w-24" /></td>
+                      <td className="py-3.5 px-4"><div className="shimmer h-3 rounded w-36" /></td>
+                      <td className="py-3.5 px-4"><div className="shimmer h-4 rounded-full w-14" /></td>
+                      <td className="py-3.5 px-4"><div className="shimmer h-7 rounded-lg w-20" /></td>
+                      <td className="py-3.5 px-4"><div className="shimmer h-3 rounded w-24" /></td>
+                      <td className="py-3.5 px-4"><div className="shimmer h-3 rounded w-14" /></td>
+                      <td className="py-3.5 px-4"><div className="shimmer h-7 rounded-lg w-16 ml-auto" /></td>
+                    </tr>
+                  ))}
+                  {!loading && filteredRows.length === 0 && (<tr><td colSpan={8} className="py-10 text-center text-[14px] text-[#aaa]">{rows.length === 0 ? 'Ingen registreringer ennå' : 'Ingen treff på filteret'}</td></tr>)}
                   {filteredRows.map((r) => {
                     const rType = leadSub === 'tenants' ? 'tenant' : 'lead';
                     const sc = scores[r.id];
@@ -400,6 +432,7 @@ export default function InnsiktDashboard({ apiKey }) {
           </div>
         </div>
       )}
+      </div>
 
       {drawerLead && (
         <LeadDrawer
@@ -413,6 +446,51 @@ export default function InnsiktDashboard({ apiKey }) {
           onScore={doScore}
           scoring={scoringId}
         />
+      )}
+    </div>
+  );
+}
+
+function MenuItem({ icon: Icon, label, hint, onClick, disabled, danger, spin }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={`w-full flex items-center gap-3 px-2.5 py-2 rounded-xl text-left transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${danger ? 'hover:bg-rose-50' : 'hover:bg-[#f6f4fb]'}`}
+    >
+      <span className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${danger ? 'bg-rose-50 text-rose-500' : 'bg-[#f4f0fb] text-[#8b5cf6]'}`}>
+        <Icon className={`w-4 h-4 ${spin ? 'animate-spin' : ''}`} />
+      </span>
+      <span className="min-w-0">
+        <span className={`block text-[13px] font-semibold leading-tight ${danger ? 'text-rose-600' : 'text-[#1f1f1f]'}`}>{label}</span>
+        {hint && <span className="block text-[11.5px] text-[#a3a3a3] truncate mt-0.5">{hint}</span>}
+      </span>
+    </button>
+  );
+}
+
+function KpiCard({ label, value, icon: Icon, tone = 'slate', sub, progress }) {
+  const TONES = {
+    emerald: { ic: 'bg-emerald-50 text-emerald-600', val: 'text-emerald-600', bar: 'bg-emerald-500' },
+    rose: { ic: 'bg-rose-50 text-rose-500', val: 'text-[#1f1f1f]', bar: 'bg-rose-500' },
+    violet: { ic: 'bg-[#f4f0fb] text-[#8b5cf6]', val: 'text-[#1f1f1f]', bar: 'bg-[#8b5cf6]' },
+    slate: { ic: 'bg-[#f3f3f2] text-[#666]', val: 'text-[#1f1f1f]', bar: 'bg-[#0a0a0a]' },
+  };
+  const c = TONES[tone] || TONES.slate;
+  const pct = progress != null && isFinite(progress) ? Math.max(0, Math.min(100, progress)) : null;
+  return (
+    <div className="bg-white rounded-2xl p-4 shadow-[0_2px_10px_rgba(0,0,0,0.03)] hover:shadow-[0_6px_22px_rgba(0,0,0,0.06)] transition-shadow">
+      <div className="flex items-start justify-between">
+        <p className="text-[11px] uppercase tracking-[0.06em] text-[#a3a3a3] font-semibold">{label}</p>
+        <span className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${c.ic}`}><Icon className="w-4 h-4" /></span>
+      </div>
+      <p className={`text-[26px] font-bold mt-2 leading-none ${c.val}`} style={{ fontFamily: 'var(--font-heading)' }}>{value}</p>
+      {pct != null ? (
+        <div className="mt-3 h-1.5 rounded-full bg-[#f0eef4] overflow-hidden">
+          <div className={`h-full rounded-full ${c.bar} transition-[width] duration-700`} style={{ width: `${pct}%` }} />
+        </div>
+      ) : (
+        sub && <p className="text-[12px] text-[#a3a3a3] mt-1.5">{sub}</p>
       )}
     </div>
   );

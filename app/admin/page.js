@@ -1,9 +1,11 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Loader2, Lock, BarChart3, Users, CreditCard, FileText, LogOut,
   Menu, X, ChevronRight, ShieldCheck, Sparkles, MessageSquare,
+  LayoutDashboard, Radio, Activity, GitBranch, Gauge, Megaphone, Database,
+  Command, Search, CornerDownLeft,
 } from 'lucide-react';
 import InnsiktDashboard from '@/components/admin/InnsiktDashboard';
 import AgentBridge from '@/components/admin/AgentBridge';
@@ -39,6 +41,19 @@ const NAV = [
   },
 ];
 
+const INSIGHT_TABS = [
+  { k: 'oversikt', l: 'Oversikt', icon: LayoutDashboard },
+  { k: 'leads', l: 'Leads', icon: Users, badge: 'pending' },
+  { k: 'live', l: 'Sanntid', icon: Radio },
+  { k: 'trafikk', l: 'Trafikk', icon: Activity },
+  { k: 'trakt', l: 'Trakt & A/B', icon: GitBranch },
+  { k: 'annonser', l: 'Annonser', icon: Megaphone },
+  { k: 'innsikt', l: 'Lead-innsikt', icon: BarChart3 },
+  { k: 'leiemarked', l: 'Leiemarked', icon: Database },
+  { k: 'ytelse', l: 'Ytelse', icon: Gauge },
+  { k: 'ai', l: 'AI-assistent', icon: Sparkles },
+];
+
 const SECTION_TITLES = {
   innsikt: { t: 'Innsikt', s: 'Førsteparts analyse · cookieless · GDPR-trygt' },
   kunder: { t: 'Kunder', s: 'Kommer snart — hentes fra DigiHome-plattformen' },
@@ -55,7 +70,22 @@ export default function AdminPage() {
   const [loggingIn, setLoggingIn] = useState(false);
   const [err, setErr] = useState('');
   const [section, setSection] = useState('innsikt');
+  const [insightTab, setInsightTab] = useState('oversikt');
+  const [insightStats, setInsightStats] = useState({ pending: 0 });
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Global ⌘K / Ctrl+K — åpne kommandopaletten
+  useEffect(() => {
+    const onKey = (e) => {
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
+        e.preventDefault();
+        setPaletteOpen((o) => !o);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   // Gjenopprett sesjon ved oppstart
   useEffect(() => {
@@ -185,13 +215,34 @@ export default function AdminPage() {
                 );
               }
               return (
-                <button
-                  key={it.k}
-                  onClick={() => { setSection(it.k); setSidebarOpen(false); }}
-                  className={`${common} ${active ? 'bg-white/[0.08] text-white' : 'text-white/70 hover:bg-white/[0.05] hover:text-white'}`}
-                >
-                  {content}
-                </button>
+                <div key={it.k}>
+                  <button
+                    onClick={() => { setSection(it.k); setSidebarOpen(false); }}
+                    className={`${common} ${active ? 'bg-white/[0.08] text-white' : 'text-white/70 hover:bg-white/[0.05] hover:text-white'}`}
+                  >
+                    {content}
+                  </button>
+                  {it.k === 'innsikt' && section === 'innsikt' && (
+                    <div className="mt-1 ml-3.5 pl-3 border-l border-white/[0.08] space-y-0.5 dh-fade">
+                      {INSIGHT_TABS.map((st) => {
+                        const SI = st.icon;
+                        const sactive = insightTab === st.k;
+                        const pend = st.badge === 'pending' ? (insightStats.pending || 0) : 0;
+                        return (
+                          <button
+                            key={st.k}
+                            onClick={() => { setSection('innsikt'); setInsightTab(st.k); setSidebarOpen(false); }}
+                            className={`w-full flex items-center gap-2.5 pl-2.5 pr-2 py-2 rounded-lg text-[13px] font-medium transition-all group/sub ${sactive ? 'bg-white/[0.07] text-white' : 'text-white/45 hover:text-white/85 hover:bg-white/[0.04]'}`}
+                          >
+                            <SI className={`w-4 h-4 shrink-0 ${sactive ? 'text-[#cf97fc]' : 'text-white/35 group-hover/sub:text-white/70'}`} />
+                            <span className="flex-1 text-left">{st.l}</span>
+                            {pend > 0 && <span className="text-[9.5px] font-bold bg-amber-400 text-[#0a0a0a] rounded-full px-1.5 py-0.5 leading-none">{pend}</span>}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               );
             })}
           </div>
@@ -222,8 +273,21 @@ export default function AdminPage() {
     </div>
   );
 
+  const activeInsight = INSIGHT_TABS.find((t) => t.k === insightTab) || INSIGHT_TABS[0];
+  const runNavigate = (sec) => { setSection(sec); setSidebarOpen(false); setPaletteOpen(false); };
+  const runInsight = (k) => { setSection('innsikt'); setInsightTab(k); setSidebarOpen(false); setPaletteOpen(false); };
+  const paletteCommands = [
+    ...INSIGHT_TABS.map((t) => ({ id: `insight-${t.k}`, group: 'Innsikt', label: t.l, icon: t.icon, action: () => runInsight(t.k) })),
+    { id: 'sec-kunder', group: 'Forretning', label: 'Kunder', icon: Users, action: () => runNavigate('kunder') },
+    { id: 'sec-abonnementer', group: 'Forretning', label: 'Abonnementer', icon: CreditCard, action: () => runNavigate('abonnementer') },
+    { id: 'sec-artikler', group: 'Innhold', label: 'Artikler', icon: FileText, action: () => { setPaletteOpen(false); window.location.href = '/admin/artikler'; } },
+    { id: 'sec-bro', group: 'Koordinering', label: 'Agent-bro', icon: MessageSquare, action: () => runNavigate('bro') },
+    { id: 'logout', group: 'Konto', label: 'Logg ut', icon: LogOut, action: () => { setPaletteOpen(false); logout(); } },
+  ];
+
   return (
     <div className="min-h-screen bg-[#f7f6f4] flex">
+      <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} commands={paletteCommands} />
       {/* Sidebar — desktop */}
       <aside className="hidden lg:flex w-64 shrink-0 sticky top-0 h-screen">
         <SidebarInner />
@@ -245,13 +309,19 @@ export default function AdminPage() {
             <button onClick={() => setSidebarOpen(true)} className="lg:hidden h-9 w-9 rounded-lg bg-white shadow-[0_2px_10px_rgba(0,0,0,0.05)] flex items-center justify-center text-[#444]"><Menu className="w-5 h-5" /></button>
             <div className="min-w-0">
               <h1 className="text-[20px] sm:text-[22px] font-bold text-[#0a0a0a] tracking-[-0.02em] leading-none" style={{ fontFamily: 'var(--font-heading)' }}>{sectionMeta.t}</h1>
-              <p className="text-[12px] text-[#999] mt-1 truncate">{sectionMeta.s}</p>
+              <p className="text-[12px] text-[#999] mt-1 truncate">{section === 'innsikt' ? `Innsikt · ${activeInsight.l}` : sectionMeta.s}</p>
             </div>
+            <button onClick={() => setPaletteOpen(true)} title="Søk & hurtignavigasjon (⌘K)" className="ml-auto hidden sm:flex items-center gap-2 h-9 pl-3 pr-2 rounded-full bg-white shadow-[0_2px_10px_rgba(0,0,0,0.04)] text-[#9a9a9a] hover:text-[#0a0a0a] transition-colors">
+              <Search className="w-4 h-4" />
+              <span className="text-[12.5px] font-medium">Søk eller hopp til …</span>
+              <span className="ml-1 flex items-center gap-0.5 text-[10.5px] font-semibold text-[#aaa] bg-[#f1f0ee] rounded-md px-1.5 py-1 leading-none"><Command className="w-3 h-3" />K</span>
+            </button>
+            <button onClick={() => setPaletteOpen(true)} aria-label="Søk" className="sm:hidden ml-auto h-9 w-9 rounded-full bg-white shadow-[0_2px_10px_rgba(0,0,0,0.04)] flex items-center justify-center text-[#9a9a9a]"><Search className="w-4 h-4" /></button>
           </div>
         </div>
 
         <div className="px-4 sm:px-8 py-6 max-w-[1280px]">
-          {section === 'innsikt' && <InnsiktDashboard apiKey={token} />}
+          {section === 'innsikt' && <InnsiktDashboard apiKey={token} tab={insightTab} onTabChange={setInsightTab} onStats={setInsightStats} />}
           {section === 'kunder' && <ComingSoon icon={Users} title="Kunder" body="Her samler vi all kundeinformasjon fra DigiHome-plattformen — kontrakter, eiendommer, kontaktlogg og status. Vi kobler dette på i neste fase." />}
           {section === 'abonnementer' && <ComingSoon icon={CreditCard} title="Abonnementer" body="Oversikt over aktive avtaler, fakturering og inntekt per kunde — hentet direkte fra app-prosjektet. Kommer i neste fase." />}
           {section === 'bro' && <AgentBridge apiKey={token} />}
@@ -268,6 +338,88 @@ function ComingSoon({ icon: Icon, title, body }) {
       <div className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.1em] text-[#cf97fc] bg-[#cf97fc]/10 rounded-full px-3 py-1 mb-4"><Sparkles className="w-3 h-3" /> Kommer snart</div>
       <h2 className="text-[24px] font-bold text-[#0a0a0a] tracking-[-0.02em]" style={{ fontFamily: 'var(--font-heading)' }}>{title}</h2>
       <p className="text-[15px] text-[#666] mt-3 leading-relaxed">{body}</p>
+    </div>
+  );
+}
+
+function CommandPalette({ open, onClose, commands }) {
+  const [q, setQ] = useState('');
+  const [active, setActive] = useState(0);
+  const inputRef = useRef(null);
+  const listRef = useRef(null);
+
+  useEffect(() => {
+    if (open) { setQ(''); setActive(0); setTimeout(() => inputRef.current && inputRef.current.focus(), 30); }
+  }, [open]);
+
+  const filtered = useMemo(() => {
+    const s = q.trim().toLowerCase();
+    if (!s) return commands;
+    return commands.filter((c) => `${c.group} ${c.label}`.toLowerCase().includes(s));
+  }, [q, commands]);
+
+  useEffect(() => { if (active >= filtered.length) setActive(0); }, [filtered.length]); // eslint-disable-line
+
+  if (!open) return null;
+
+  const run = (c) => { if (c && c.action) c.action(); };
+
+  const onKeyDown = (e) => {
+    if (e.key === 'ArrowDown') { e.preventDefault(); setActive((i) => Math.min(i + 1, filtered.length - 1)); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); setActive((i) => Math.max(i - 1, 0)); }
+    else if (e.key === 'Enter') { e.preventDefault(); run(filtered[active]); }
+    else if (e.key === 'Escape') { e.preventDefault(); onClose(); }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-start justify-center px-4 pt-[12vh]">
+      <div className="absolute inset-0 bg-[#0a0a0a]/40 backdrop-blur-[2px] dh-fade" onClick={onClose} />
+      <div className="relative w-full max-w-xl bg-white rounded-2xl shadow-[0_24px_80px_rgba(0,0,0,0.28)] overflow-hidden dh-scale-in" role="dialog" aria-modal="true">
+        <div className="flex items-center gap-3 px-4 h-14 border-b border-black/[0.06]">
+          <Search className="w-4 h-4 text-[#bbb] shrink-0" />
+          <input
+            ref={inputRef}
+            value={q}
+            onChange={(e) => { setQ(e.target.value); setActive(0); }}
+            onKeyDown={onKeyDown}
+            placeholder="Søk eller hopp til …"
+            className="flex-1 h-full bg-transparent outline-none text-[15px] text-[#1f1f1f] placeholder:text-[#bbb]"
+          />
+          <button onClick={onClose} className="text-[10.5px] font-semibold text-[#aaa] bg-[#f1f0ee] rounded-md px-2 py-1 leading-none">ESC</button>
+        </div>
+        <div ref={listRef} className="max-h-[52vh] overflow-y-auto p-2">
+          {filtered.length === 0 && (
+            <div className="py-10 text-center text-[14px] text-[#aaa]">Ingen treff på «{q}»</div>
+          )}
+          {filtered.map((c, i) => {
+            const Icon = c.icon;
+            const isActive = i === active;
+            return (
+              <button
+                key={c.id}
+                onMouseEnter={() => setActive(i)}
+                onClick={() => run(c)}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-colors ${isActive ? 'bg-[#f4f0fb]' : 'hover:bg-[#f8f7f5]'}`}
+              >
+                <span className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${isActive ? 'bg-white text-[#8b5cf6] shadow-[0_2px_8px_rgba(0,0,0,0.06)]' : 'bg-[#f3f2f0] text-[#888]'}`}>
+                  {Icon && <Icon className="w-4 h-4" />}
+                </span>
+                <span className="flex-1 min-w-0">
+                  <span className="block text-[14px] font-semibold text-[#1f1f1f] leading-tight">{c.label}</span>
+                  <span className="block text-[11.5px] text-[#a3a3a3]">{c.group}</span>
+                </span>
+                {isActive && <CornerDownLeft className="w-4 h-4 text-[#c9b8e4] shrink-0" />}
+              </button>
+            );
+          })}
+        </div>
+        <div className="flex items-center gap-4 px-4 h-10 border-t border-black/[0.06] text-[11px] text-[#aaa]">
+          <span className="flex items-center gap-1"><span className="font-semibold">↑↓</span> naviger</span>
+          <span className="flex items-center gap-1"><CornerDownLeft className="w-3 h-3" /> velg</span>
+          <span className="flex items-center gap-1"><span className="font-semibold">esc</span> lukk</span>
+          <span className="ml-auto flex items-center gap-1"><Command className="w-3 h-3" />K</span>
+        </div>
+      </div>
     </div>
   );
 }
