@@ -1963,6 +1963,64 @@ async function handleRoute(request, { params }) {
       }
     }
 
+    // Fase 3: KONKURRENTANALYSE — søkevolum/budestimat (Keyword Planner) +
+    // dyplenke til Google Ads Transparency Center (offentlige live-annonser).
+    if (route === '/admin/ads/competitor-analysis' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const { searchParams } = new URL(request.url);
+      const competitor = (searchParams.get('competitor') || 'Utleiemegleren').toString().trim().slice(0, 60);
+      const cLower = competitor.toLowerCase();
+      const brandBase = competitor.toLowerCase().replace(/\s+/g, '');
+      const brandSeeds = [competitor, `${competitor} bergen`, `${competitor} pris`, `${competitor} erfaring`, `${competitor} anmeldelser`, `${competitor} alternativ`];
+      const categorySeeds = ['utleiemegler bergen', 'boligforvaltning bergen', 'leie ut bolig bergen', 'forvaltning utleiebolig', 'utleiemegler', 'utleieforvaltning'];
+
+      // Transparency Center-dyplenke fungerer uansett (krever ikke vår API).
+      const transparency = {
+        searchUrl: `https://adstransparency.google.com/?region=NO&query=${encodeURIComponent(competitor)}`,
+        region: 'NO',
+        note: 'Googles offisielle, offentlige annonseregister. Viser hvilke annonser konkurrenten faktisk kjører nå (tekst/bilde/video) — ikke søkeord eller budsjett.',
+      };
+
+      if (!googleAdsNativeConfigured()) {
+        return cors(NextResponse.json({ ok: true, configured: false, competitor, transparency, keywords: { brand: [], category: [] }, aggregates: null, note: 'Google Ads-API er ikke konfigurert — søkevolum utilgjengelig, men Transparency Center-lenken virker.' }));
+      }
+
+      try {
+        const ideas = await generateKeywordIdeas({ seeds: [...brandSeeds, ...categorySeeds], geoTargetConstantIds: ['2578'], languageCode: 'no', pageSize: 300 });
+        const seen = new Set();
+        const brand = []; const category = [];
+        for (const k of ideas) {
+          const key = k.text.toLowerCase();
+          if (seen.has(key)) continue; seen.add(key);
+          const isBrand = key.includes(cLower) || key.includes(brandBase);
+          (isBrand ? brand : category).push(k);
+        }
+        const top = (arr, n) => arr.slice(0, n);
+        const sum = (arr, f) => arr.reduce((a, x) => a + (f(x) || 0), 0);
+        const bidVals = ideas.filter((k) => k.highBid != null);
+        const avgLow = bidVals.length ? +(sum(ideas, (x) => x.lowBid || 0) / bidVals.length).toFixed(1) : null;
+        const avgHigh = bidVals.length ? +(sum(bidVals, (x) => x.highBid || 0) / bidVals.length).toFixed(1) : null;
+        const compCount = { LOW: 0, MEDIUM: 0, HIGH: 0 };
+        for (const k of ideas) { if (compCount[k.competition] != null) compCount[k.competition]++; }
+        const aggregates = {
+          brandVolume: sum(brand, (x) => x.avgMonthlySearches),
+          categoryVolume: sum(category, (x) => x.avgMonthlySearches),
+          totalKeywords: ideas.length,
+          brandKeywordCount: brand.length,
+          categoryKeywordCount: category.length,
+          avgLowBid: avgLow, avgHighBid: avgHigh,
+          competition: compCount,
+        };
+        return cors(NextResponse.json({
+          ok: true, configured: true, competitor, generatedAt: new Date().toISOString(),
+          aggregates, keywords: { brand: top(brand, 40), category: top(category, 40) }, transparency,
+        }));
+      } catch (e) {
+        return cors(NextResponse.json({ ok: true, configured: true, competitor, transparency, keywords: { brand: [], category: [] }, aggregates: null, error: e.message }, { status: 200 }));
+      }
+    }
+
+
 
     // ===================================================================
     // INTELLIGENS-LAGET (Fase A–D): samlet tabell, anbefalinger, keyword

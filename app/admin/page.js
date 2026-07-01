@@ -5,7 +5,7 @@ import {
   Loader2, Lock, BarChart3, Users, CreditCard, FileText, LogOut,
   Menu, X, ChevronRight, ShieldCheck, Sparkles, MessageSquare,
   LayoutDashboard, Radio, Activity, GitBranch, Gauge, Megaphone, Database,
-  Command, Search, CornerDownLeft, LayoutTemplate,
+  Command, Search, CornerDownLeft, LayoutTemplate, Crosshair,
 } from 'lucide-react';
 import InnsiktDashboard from '@/components/admin/InnsiktDashboard';
 import AgentBridge from '@/components/admin/AgentBridge';
@@ -49,6 +49,7 @@ const INSIGHT_TABS = [
   { k: 'trakt', l: 'Trakt & A/B', icon: GitBranch },
   { k: 'annonser', l: 'Annonser', icon: Megaphone },
   { k: 'landingssider', l: 'Landingssider', icon: LayoutTemplate },
+  { k: 'konkurrent', l: 'Konkurrentanalyse', icon: Crosshair },
   { k: 'innsikt', l: 'Lead-innsikt', icon: BarChart3 },
   { k: 'leiemarked', l: 'Leiemarked', icon: Database },
   { k: 'ytelse', l: 'Ytelse', icon: Gauge },

@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Activity, BarChart3, Users, Sparkles, Database,
   Radio, Gauge, TrendingUp, TrendingDown, Download, Megaphone,
   Search, X, ArrowUp, ArrowDown, FileSpreadsheet, ChevronRight, GitBranch,
-  MoreHorizontal, Trophy, Clock, Target, ShieldCheck, Flame, LayoutTemplate,
+  MoreHorizontal, Trophy, Clock, Target, ShieldCheck, Flame, LayoutTemplate, Crosshair,
 } from 'lucide-react';
 import LeadDrawer from '@/components/admin/LeadDrawer';
 import OverviewTab from '@/components/admin/OverviewTab';
@@ -19,6 +19,7 @@ import WebVitalsTab from '@/components/admin/WebVitalsTab';
 import AdsTab from '@/components/admin/AdsTab';
 import FunnelTab from '@/components/admin/FunnelTab';
 import LandingPagesTab from '@/components/admin/LandingPagesTab';
+import CompetitorAnalysisTab from '@/components/admin/CompetitorAnalysisTab';
 
 const TABS = [
   { k: 'oversikt', l: 'Oversikt', icon: LayoutDashboard, d: 'Nøkkeltall og trender på ett blikk' },
@@ -29,6 +30,7 @@ const TABS = [
   { k: 'innsikt', l: 'Lead-innsikt', icon: BarChart3, d: 'Kvalitet, kilder og pipeline' },
   { k: 'annonser', l: 'Annonser', icon: Megaphone, d: 'Meta & Google Ads · forbruk og ROAS' },
   { k: 'landingssider', l: 'Landingssider', icon: LayoutTemplate, d: 'Kampanjesider · trafikk, konvertering og verdi' },
+  { k: 'konkurrent', l: 'Konkurrentanalyse', icon: Crosshair, d: 'Søkevolum, budestimat og live-annonser for konkurrenter' },
   { k: 'leiemarked', l: 'Leiemarked', icon: Database, d: 'Priser og etterspørsel i markedet' },
   { k: 'ai', l: 'AI-assistent', icon: Sparkles, d: 'Spør om dataene dine i naturlig språk' },
   { k: 'leads', l: 'Leads', icon: Users, d: 'Alle henvendelser — utleiere og leietakere' },
@@ -283,6 +285,7 @@ export default function InnsiktDashboard({ apiKey, tab: propTab, onTabChange, on
       {tab === 'innsikt' && <IntelTab leads={analytics && analytics.leads} />}
       {tab === 'annonser' && <AdsTab apiKey={apiKey} />}
       {tab === 'landingssider' && <LandingPagesTab apiKey={apiKey} days={days} />}
+      {tab === 'konkurrent' && <CompetitorAnalysisTab apiKey={apiKey} />}
       {tab === 'leiemarked' && <RentMarketTab apiKey={apiKey} />}
       {tab === 'ai' && <InsightTab apiKey={apiKey} days={days} />}
 
