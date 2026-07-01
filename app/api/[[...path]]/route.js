@@ -778,10 +778,29 @@ export async function OPTIONS() {
 
 async function handleRoute(request, { params }) {
   const { path = [] } = params;
-  const route = `/${path.join('/')}`;
+  let route = `/${path.join('/')}`;
   const method = request.method;
 
+  // Bro-alias: plattform-agenten prober flere endepunkt-navn. Vi normaliserer dem
+  // til vår kanoniske /agent-bridge slik at agent-til-agent-tilkoblingen blir sømløs.
+  const BRIDGE_ALIASES = ['/bridge/messages', '/bridge', '/agent/messages', '/agent/inbox', '/connector/messages', '/agent-bridge/messages'];
+  if (BRIDGE_ALIASES.includes(route)) route = '/agent-bridge';
+
   try {
+    // --- Bro-discovery/health (ÅPEN — så agenter kan oppdage kanalen) ---
+    if ((route === '/bridge/health' || route === '/agent-bridge/health') && method === 'GET') {
+      return cors(NextResponse.json({
+        ok: true,
+        service: 'digihome-marketing agent-bridge',
+        canonical: '/api/agent-bridge',
+        aliases: BRIDGE_ALIASES,
+        auth: 'token: ?token=<AGENT_BRIDGE_SECRET> eller header x-bridge-token',
+        methods: { list: 'GET /api/agent-bridge?token=…[&thread=…][&since=ISO]', post: 'POST /api/agent-bridge (envelope: threadId,from,type,subject,body,data)' },
+        threads: ['closed-loop', 'world-class', 'integration-contract', 'weekly-report'],
+        contract: '/docs/INTEGRATION_CONTRACT.md',
+      }));
+    }
+
     // --- Media-servering fra objektlagring (/api/media/<sti>) ---
     if (path[0] === 'media' && method === 'GET') {
       return serveMedia(request, path.slice(1));
@@ -2117,14 +2136,15 @@ async function handleRoute(request, { params }) {
     if (route === '/agent-bridge' && method === 'POST') {
       if (!bridgeAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
-      const from = ['marketing', 'platform'].includes(body.from) ? body.from : 'platform';
-      const type = ['brief', 'status', 'question', 'answer', 'note'].includes(body.type) ? body.type : 'note';
-      const subject = (body.subject || '').toString().slice(0, 200);
-      const text = (body.body || body.message || '').toString().slice(0, 20000);
+      const fromRaw = (body.from || body.sender || '').toString();
+      const from = ['marketing', 'platform'].includes(fromRaw) ? fromRaw : 'platform';
+      const type = ['brief', 'status', 'question', 'answer', 'note', 'proposal', 'spec', 'ack', 'test'].includes(body.type) ? body.type : 'note';
+      const subject = (body.subject || body.title || '').toString().slice(0, 200);
+      const text = (body.body || body.message || body.text || body.content || '').toString().slice(0, 20000);
       if (!subject && !text) return cors(NextResponse.json({ ok: false, error: 'Mangler subject/body' }, { status: 400 }));
       const doc = {
         id: uuidv4(),
-        threadId: (body.threadId || body.thread || 'closed-loop').toString().slice(0, 80),
+        threadId: (body.threadId || body.thread || body.thread_id || 'closed-loop').toString().slice(0, 80),
         from, type, subject, body: text,
         data: (body.data && typeof body.data === 'object') ? body.data : null,
         author: (body.author || '').toString().slice(0, 80) || null,
@@ -2132,6 +2152,52 @@ async function handleRoute(request, { params }) {
       };
       await db.collection('agent_bridge').insertOne({ ...doc });
       return cors(NextResponse.json({ ok: true, message: doc }, { status: 201 }));
+    }
+
+    // --- Audiences: suppression + lookalike/customer-match seed (won-kunder) ---
+    // SHA-256-hashede (normaliserte) kontakter, klare for Meta Custom Audience
+    // (eksklusjon + Lookalike) og Google Customer Match. KUN samtykkede kontakter.
+    // Formål: slutt å annonsere til allerede signerte kunder → kutt bortkastet forbruk.
+    if (route === '/admin/audiences/suppression' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const sp = new URL(request.url).searchParams;
+      const format = (sp.get('format') || 'json').toLowerCase();
+      const sha256 = (s) => crypto.createHash('sha256').update(String(s)).digest('hex');
+      const normEmail = (e) => (e || '').toString().trim().toLowerCase();
+      const normPhone = (p) => { let d = (p || '').toString().replace(/\D/g, ''); if (d.length === 8) d = '47' + d; return d; };
+      const rows = [];
+      let considered = 0, skippedConsent = 0;
+      for (const c of ['leads', 'tenant_leads']) {
+        const wons = await db.collection(c).find({ status: 'won' }, { projection: { _id: 0, email: 1, phone: 1, marketingConsent: 1, wonValue: 1 } }).limit(50000).toArray();
+        for (const w of wons) {
+          considered++;
+          if (!marketingAllowed(w.marketingConsent)) { skippedConsent++; continue; }
+          const email = normEmail(w.email);
+          const phone = normPhone(w.phone);
+          if (!email && !phone) continue;
+          rows.push({
+            email_sha256: email ? sha256(email) : null,
+            phone_sha256: phone ? sha256(phone) : null,
+            value: w.wonValue || null,
+          });
+        }
+      }
+      if (format === 'csv') {
+        const header = 'email_sha256,phone_sha256';
+        const lines = rows.map((r) => `${r.email_sha256 || ''},${r.phone_sha256 || ''}`);
+        return new NextResponse([header, ...lines].join('\n'), {
+          status: 200,
+          headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': 'attachment; filename="digihome-won-audience.csv"', 'Access-Control-Allow-Origin': '*' },
+        });
+      }
+      return cors(NextResponse.json({
+        ok: true,
+        generatedAt: new Date().toISOString(),
+        purpose: 'Meta Custom Audience (eksklusjon + Lookalike-seed) & Google Customer Match. Hash = SHA-256 av normalisert e-post (lowercase/trim) og telefon (E.164 uten +, NO=47+8 siffer).',
+        count: rows.length,
+        considered, skippedConsent,
+        audience: rows,
+      }));
     }
 
     // --- Admin: Annonser — Google Ads via Composio: synk live kostnad ------
@@ -2581,6 +2647,18 @@ async function handleRoute(request, { params }) {
         platformTenant: tenant || lead.platformTenant || null,
         platformSyncAt: nowIso,
       };
+      // Cross-system stitching + ack: lagre plattformens kunde-/konverterings-id.
+      const platformCustomerId = (body.platform_customer_id || body.platformCustomerId || '').toString().slice(0, 120);
+      if (platformCustomerId) update.platformCustomerId = platformCustomerId;
+      const platformConversionId = (body.platform_conversion_id || body.platformConversionId || '').toString().slice(0, 160);
+      if (platformConversionId) update.platformConversionId = platformConversionId;
+      // Lost MED årsak → kvalitetsstyring / negativ-målretting.
+      if (status === 'lost') {
+        const LOST = ['spam', 'out_of_area', 'not_serious', 'no_response', 'duplicate', 'other'];
+        const lr = (body.lost_reason || body.lostReason || body.reason || '').toString().toLowerCase().trim();
+        update.lostReason = LOST.includes(lr) ? lr : (lr ? 'other' : null);
+        update.lostAt = lead.lostAt || changedAt;
+      }
       if (status !== 'new' && !lead.firstResponseAt) update.firstResponseAt = changedAt;
       const isValueUpdate = body.value_update === true || body.valueUpdate === true;
       if (status === 'won') {
