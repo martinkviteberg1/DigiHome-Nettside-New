@@ -3,6 +3,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Loader2, Plus, Trash2, Pencil, X, TrendingUp, TrendingDown, Activity,
   Building2, Receipt, Settings2, Zap, Megaphone, Wallet, AlertTriangle, Check,
+  BarChart3, RefreshCw,
 } from 'lucide-react';
 
 // ── Formattering (NOK, nb-NO) ───────────────────────────────────────────────
@@ -14,6 +15,7 @@ const pctFmt = (n) => (n == null ? '—' : `${new Intl.NumberFormat('nb-NO', { m
 const TABS = [
   { k: 'resultat', l: 'Resultat', icon: TrendingUp },
   { k: 'likviditet', l: 'Likviditet', icon: Activity },
+  { k: 'trender', l: 'Trender', icon: BarChart3 },
   { k: 'kontrakter', l: 'Kontrakter', icon: Building2 },
   { k: 'kostnader', l: 'Kostnader', icon: Receipt },
   { k: 'innstillinger', l: 'Innstillinger', icon: Settings2 },
@@ -38,6 +40,9 @@ export default function FinanceDashboard({ apiKey }) {
   const [settings, setSettings] = useState(null);
   const [scenario, setScenario] = useState('forventet');
   const [saving, setSaving] = useState(false);
+  const [trends, setTrends] = useState(null);
+  const [trendsLoading, setTrendsLoading] = useState(false);
+  const [syncing, setSyncing] = useState(false);
 
   const api = useCallback(async (path, opts = {}) => {
     const sep = path.includes('?') ? '&' : '?';
@@ -65,6 +70,22 @@ export default function FinanceDashboard({ apiKey }) {
     const [r, l] = await Promise.all([api('/resultat'), api('/likviditet?months=12')]);
     setResultat(r); setLikviditet(l);
   }, [api]);
+
+  const loadTrends = useCallback(async () => {
+    setTrendsLoading(true);
+    try { const t = await api('/trends?months=12'); setTrends(t); } finally { setTrendsLoading(false); }
+  }, [api]);
+  useEffect(() => { if (apiKey && tab === 'trender' && !trends && !trendsLoading) loadTrends(); }, [apiKey, tab, trends, trendsLoading, loadTrends]);
+
+  const syncContracts = useCallback(async () => {
+    setSyncing(true);
+    try {
+      const res = await api('/sync-contracts', { method: 'POST', body: JSON.stringify({}) });
+      const ct = await api('/contracts'); setContracts(ct.contracts || []);
+      await refresh(); setTrends(null);
+      return res;
+    } finally { setSyncing(false); }
+  }, [api, refresh]);
 
   const saveEntity = async (kind, item) => {
     setSaving(true);
@@ -123,8 +144,9 @@ export default function FinanceDashboard({ apiKey }) {
           events={events} onSaveEvent={(e) => saveEntity('events', e)} onDeleteEvent={(id) => deleteEntity('events', id)}
           settings={settings} onSaveSettings={saveSettings} contracts={contracts} saving={saving} />
       )}
+      {tab === 'trender' && <TrenderTab data={trends} loading={trendsLoading} />}
       {tab === 'kontrakter' && (
-        <KontrakterTab items={contracts} onSave={(c) => saveEntity('contracts', c)} onDelete={(id) => deleteEntity('contracts', id)} saving={saving} />
+        <KontrakterTab items={contracts} onSave={(c) => saveEntity('contracts', c)} onDelete={(id) => deleteEntity('contracts', id)} onSync={syncContracts} syncing={syncing} saving={saving} />
       )}
       {tab === 'kostnader' && (
         <KostnaderTab items={costs} auto={resultat?.configured} onSave={(c) => saveEntity('costs', c)} onDelete={(id) => deleteEntity('costs', id)} saving={saving} />
@@ -330,14 +352,24 @@ function LikviditetTab({ data, scenario, setScenario, events, onSaveEvent, onDel
 }
 
 // ═══════════════════════════ KONTRAKTER ═══════════════════════════
-function KontrakterTab({ items, onSave, onDelete, saving }) {
+function KontrakterTab({ items, onSave, onDelete, onSync, syncing, saving }) {
   const [show, setShow] = useState(false);
   const [edit, setEdit] = useState(null);
+  const [syncMsg, setSyncMsg] = useState('');
+  const doSync = async () => {
+    const r = await onSync();
+    if (r) setSyncMsg(r.ok ? `Synket ${r.upserted} kontrakter fra plattformen` : `Synk feilet: ${r.error || r.status || ''}`);
+    setTimeout(() => setSyncMsg(''), 4000);
+  };
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
         <p className="text-[13px] text-[#888]">{items.length} kontrakter/avtaler · honorar = prosent av leie</p>
-        <button className={btnDark} onClick={() => { setEdit(null); setShow(true); }} data-testid="fin-add-contract"><Plus className="w-4 h-4" /> Ny kontrakt</button>
+        <div className="flex items-center gap-2">
+          {syncMsg && <span className="text-[12px] text-[#1a7f45]">{syncMsg}</span>}
+          <button className={btnGhost} onClick={doSync} disabled={syncing} data-testid="fin-sync-contracts">{syncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />} Synk fra plattform</button>
+          <button className={btnDark} onClick={() => { setEdit(null); setShow(true); }} data-testid="fin-add-contract"><Plus className="w-4 h-4" /> Ny kontrakt</button>
+        </div>
       </div>
       {items.length === 0 ? (
         <Empty msg="Ingen kontrakter ennå. Legg inn leiekontrakter (faktisk leie) og forvaltningsavtaler (antatt leie)." />
@@ -642,4 +674,85 @@ function Toggle({ label, checked, onChange }) {
 }
 function Empty({ msg }) {
   return <div className="rounded-2xl border border-dashed border-[#e5e5ea] bg-[#fafafa] p-10 text-center text-[13px] text-[#999]">{msg}</div>;
+}
+
+// ═══════════════════════════ TRENDER ═══════════════════════════
+function MultiLineChart({ data, lines, height = 180 }) {
+  if (!data || data.length === 0) return <Empty msg="Ingen data ennå." />;
+  const W = 720, H = height, pad = 10, padB = 20;
+  const allVals = [];
+  data.forEach((d) => lines.forEach((l) => { const v = Number(d[l.key]); if (isFinite(v)) allVals.push(v); }));
+  const minV = Math.min(0, ...allVals), maxV = Math.max(1, ...allVals);
+  const range = (maxV - minV) || 1;
+  const xAt = (i) => pad + (i / Math.max(1, data.length - 1)) * (W - pad * 2);
+  const yAt = (v) => (H - padB) - ((v - minV) / range) * (H - padB - pad);
+  return (
+    <div>
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height }} preserveAspectRatio="none">
+        {lines.map((l) => {
+          const pts = data.map((d, i) => `${xAt(i).toFixed(1)},${yAt(Number(d[l.key]) || 0).toFixed(1)}`).join(' ');
+          return <polyline key={l.key} points={pts} fill="none" stroke={l.color} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />;
+        })}
+        {lines.map((l) => data.map((d, i) => <circle key={l.key + i} cx={xAt(i)} cy={yAt(Number(d[l.key]) || 0)} r="2.5" fill={l.color} />))}
+      </svg>
+      <div className="flex justify-between mt-1 text-[10px] text-[#bbb]">{data.map((d, i) => <span key={i}>{d.label}</span>)}</div>
+      {lines.length > 1 && (
+        <div className="flex items-center gap-4 mt-3">
+          {lines.map((l) => <span key={l.key} className="inline-flex items-center gap-1.5 text-[12px] text-[#666]"><span className="w-3 h-3 rounded-full" style={{ background: l.color }} /> {l.label}</span>)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TrenderTab({ data, loading }) {
+  if (loading) return <div className="flex items-center justify-center py-24 text-[#999]"><Loader2 className="w-5 h-5 animate-spin mr-2" /> Laster trender…</div>;
+  if (!data || !data.ok) return <Empty msg="Kunne ikke laste trender." />;
+  const mrr = data.mrrHistory || [];
+  const snaps = (data.snapshots || []).map((s) => ({ ...s, label: (s.ym || '').slice(2) }));
+  const cur = mrr[mrr.length - 1] || {};
+  const first = mrr[0] || {};
+  const growth = first.mrrActual > 0 ? Math.round(((cur.mrrActual - first.mrrActual) / first.mrrActual) * 100) : null;
+  const enoughSnaps = snaps.length >= 2;
+  const lastSnap = snaps[snaps.length - 1] || {};
+  return (
+    <div className="space-y-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <BigStat label="MRR nå (faktisk)" value={kr(cur.mrrActual || 0)} sub={growth != null ? `${growth >= 0 ? '+' : ''}${growth}% siste ${mrr.length} mnd` : '—'} tone="pos" big />
+        <BigStat label="Aktive avtaler" value={`${cur.activeContracts || 0}`} sub="Inntektsgivende nå" />
+        <BigStat label="LTV : CAC" value={lastSnap.ltvCac != null ? `${lastSnap.ltvCac}×` : '—'} sub={lastSnap.cac != null ? `CAC ${kr(lastSnap.cac)} · LTV ${kr(lastSnap.ltv || 0)}` : 'Fra snapshots'} />
+      </div>
+
+      <div className="rounded-2xl border border-[#eee] bg-white p-6">
+        <h3 className="text-[15px] font-bold text-[#111] mb-1">MRR-utvikling</h3>
+        <p className="text-[12px] text-[#999] mb-5">Rekonstruert fra kontraktenes start-/leiestartdatoer (honorar = leie × %).</p>
+        <MultiLineChart data={mrr} lines={[{ key: 'mrrForventet', color: '#cf97fc', label: 'Forventet' }, { key: 'mrrActual', color: '#1a7f45', label: 'Faktisk' }]} />
+      </div>
+
+      <div className="rounded-2xl border border-[#eee] bg-white p-6">
+        <h3 className="text-[15px] font-bold text-[#111] mb-5">Aktive avtaler over tid</h3>
+        <MultiLineChart data={mrr} lines={[{ key: 'activeContracts', color: '#7c3aed', label: 'Aktive avtaler' }]} height={140} />
+      </div>
+
+      <div className="rounded-2xl border border-[#eee] bg-white p-6">
+        <h3 className="text-[15px] font-bold text-[#111] mb-1">Avledede nøkkeltall (månedlige snapshots)</h3>
+        <p className="text-[12px] text-[#999] mb-5">LTV:CAC, margin, burn og MRR fryses hver måned. {enoughSnaps ? '' : 'Historikken bygges opp fra nå — ett datapunkt per måned.'}</p>
+        {enoughSnaps ? (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div><p className="text-[12px] font-semibold text-[#666] mb-3">LTV : CAC</p><MultiLineChart data={snaps} lines={[{ key: 'ltvCac', color: '#7c3aed', label: 'LTV:CAC' }]} height={140} /></div>
+            <div><p className="text-[12px] font-semibold text-[#666] mb-3">Margin (%)</p><MultiLineChart data={snaps} lines={[{ key: 'margin', color: '#1a7f45', label: 'Margin %' }]} height={140} /></div>
+            <div><p className="text-[12px] font-semibold text-[#666] mb-3">Burn rate (kr/mnd)</p><MultiLineChart data={snaps} lines={[{ key: 'burnRate', color: '#e5484d', label: 'Burn' }]} height={140} /></div>
+            <div><p className="text-[12px] font-semibold text-[#666] mb-3">MRR forventet (kr)</p><MultiLineChart data={snaps} lines={[{ key: 'mrrForventet', color: '#cf97fc', label: 'MRR' }]} height={140} /></div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <MiniStat label="LTV:CAC" value={lastSnap.ltvCac != null ? `${lastSnap.ltvCac}×` : '—'} />
+            <MiniStat label="Margin" value={lastSnap.margin != null ? `${lastSnap.margin}%` : '—'} tone={lastSnap.margin >= 0 ? 'pos' : 'neg'} />
+            <MiniStat label="Burn/mnd" value={lastSnap.burnRate ? kr(lastSnap.burnRate) : 'Positiv'} />
+            <MiniStat label="Runway" value={lastSnap.runwayMonths == null ? '12+ mnd' : `${lastSnap.runwayMonths} mnd`} />
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }

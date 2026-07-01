@@ -15,7 +15,8 @@ import { googleAdsNativeConfigured, listConversionActions, resolveOfflineConvers
 import { dataManagerConfigured, ingestOfflineConversion } from '@/lib/google-ads-datamanager';
 import { IMPORTED_COLL, importRecords, parseCsv, summarizeImported, syncFromPlatform } from '@/lib/imported-leads';
 import { computeKpiDashboard, getKpiSettings, setKpiSettings } from '@/lib/kpi-dashboard';
-import { getFinanceSettings, setFinanceSettings, listCosts, upsertCost, deleteCost, listContracts, upsertContract, deleteContract, listEvents, upsertEvent, deleteEvent, computeResultat, computeLikviditet, computeFinanceOverview } from '@/lib/finance';
+import { getFinanceSettings, setFinanceSettings, listCosts, upsertCost, deleteCost, listContracts, upsertContract, deleteContract, listEvents, upsertEvent, deleteEvent, computeResultat, computeLikviditet, computeFinanceOverview, computeTrends, captureSnapshot } from '@/lib/finance';
+import { syncContractsFromPlatform } from '@/lib/contracts-sync';
 import { ga4MpConfigured, sendGa4Purchase } from '@/lib/ga4-mp';
 import { buildRecommendations } from '@/lib/ads-recommendations';
 import { generateRsaCopy, generateMetaCopy } from '@/lib/ads-ai';
@@ -2316,6 +2317,15 @@ async function handleRoute(request, { params }) {
           return cors(NextResponse.json(await computeLikviditet(db, { months })));
         }
         if (sub === '/overview' && method === 'GET') return cors(NextResponse.json(await computeFinanceOverview(db)));
+        if (sub === '/trends' && method === 'GET') {
+          const months = Number(new URL(request.url).searchParams.get('months')) || 12;
+          return cors(NextResponse.json(await computeTrends(db, { months })));
+        }
+        if (sub === '/sync-contracts' && method === 'POST') {
+          const target = digiHomeTarget();
+          const result = await syncContractsFromPlatform(db, { target: target.url, key: target.key });
+          return cors(NextResponse.json({ ...result, platformEnv: target.env, platformUrl: target.url }));
+        }
 
         if (sub === '/settings' && method === 'GET') return cors(NextResponse.json({ ok: true, settings: await getFinanceSettings(db) }));
         if (sub === '/settings' && method === 'POST') return cors(NextResponse.json({ ok: true, settings: await setFinanceSettings(db, fbody) }));
