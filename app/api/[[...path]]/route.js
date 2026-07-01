@@ -11,7 +11,7 @@ import { sendMetaCapiEvent, metaCapiConfigured } from '@/lib/meta-capi';
 import { fetchMetaInsights, fetchMetaAccount, metaAdsConfigured, getCachedMetaReport, META_PERIODS, metaPeriodToRange, getCachedMetaCreatives, fetchMetaPreviewSrc, isValidPreviewFormat, getCachedMetaAdsTable } from '@/lib/meta-ads';
 import { fetchPages, fetchLeadForms, fetchFormLeads, mapLeadFields, metaLeadAdsConfigured, fetchSingleLead, fetchFormName, fetchPageToken } from '@/lib/meta-leadads';
 import { composioConfigured, createConnectLink, getConnectionStatus, runCampaignReport, defaultCustomerId, getCachedReport, GOOGLE_PERIODS, getCachedCreatives, activeProvider } from '@/lib/google-ads-provider';
-import { googleAdsNativeConfigured, listConversionActions, resolveOfflineConversionAction, uploadClickConversion, toConversionDateTime, listCampaignsDetailed, suggestGeoTargets, setCampaignStatus, updateCampaignBudget, createSearchCampaign, runAdsWithMetrics, runSearchTerms, runKeywordMetrics, generateKeywordIdeas } from '@/lib/google-ads-native';
+import { googleAdsNativeConfigured, listConversionActions, resolveOfflineConversionAction, uploadClickConversion, toConversionDateTime, listCampaignsDetailed, suggestGeoTargets, setCampaignStatus, updateCampaignBudget, createSearchCampaign, createCompetitorCampaign, getCampaignByName, runAdsWithMetrics, runSearchTerms, runKeywordMetrics, generateKeywordIdeas } from '@/lib/google-ads-native';
 import { dataManagerConfigured, ingestOfflineConversion } from '@/lib/google-ads-datamanager';
 import { ga4MpConfigured, sendGa4Purchase } from '@/lib/ga4-mp';
 import { buildRecommendations } from '@/lib/ads-recommendations';
@@ -1915,6 +1915,54 @@ async function handleRoute(request, { params }) {
         return cors(NextResponse.json({ ok: false, error: e.message }, { status: 200 }));
       }
     }
+
+    // Fase 3: KONKURRENT-kampanje (competitor conquesting) — mal + oppretting.
+    if (route === '/admin/ads/competitor-campaign/template' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const base = (process.env.NEXT_PUBLIC_BASE_URL || '').replace(/\/$/, '');
+      const template = {
+        competitor: 'Utleiemegleren',
+        name: 'DigiHome – Konkurrent · Utleiemegleren',
+        dailyBudget: 150,
+        finalUrl: `${base}/lp/forvaltning`,
+        geoTargetConstantIds: ['2578'],
+        geoLabel: 'Norge',
+        path1: 'forvaltning', path2: 'bergen',
+        keywords: ['utleiemegleren', 'utleiemegleren bergen', 'utleiemegleren pris', 'utleiemegleren erfaring', 'utleiemegleren alternativ'],
+        negatives: ['jobb', 'ledig stilling', 'logg inn', 'klage', 'oppsigelse', 'svindel'],
+        headlines: ['Utleie på autopilot', 'Proff boligforvaltning', 'Bergens lokale forvalter', 'Full forvaltning i Bergen', '0 kr oppstart, ingen binding', 'Høyere leieinntekt', 'Vi tar oss av alt'],
+        descriptions: [
+          'Annonsering, leietakere, husleie og vedlikehold — vi håndterer alt. Du får inntekten.',
+          'Gratis, uforpliktende vurdering innen 24 timer. Lokalt team midt i Bergen.',
+          'Bytt til en enklere hverdag som utleier. Ingen oppstartskostnad og ingen binding.',
+        ],
+      };
+      let existing = null;
+      if (googleAdsNativeConfigured()) { try { existing = await getCampaignByName(defaultCustomerId(), template.name); } catch (e) { existing = null; } }
+      return cors(NextResponse.json({ ok: true, configured: googleAdsNativeConfigured(), customerId: defaultCustomerId(), template, existing }));
+    }
+
+    if (route === '/admin/ads/competitor-campaign' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!googleAdsNativeConfigured()) return cors(NextResponse.json({ ok: false, error: 'Native Google Ads API er ikke konfigurert' }, { status: 400 }));
+      let body = {};
+      try { body = await request.json(); } catch (e) { body = {}; }
+      try {
+        const r = await createCompetitorCampaign(defaultCustomerId(), {
+          name: body.name, dailyBudget: body.dailyBudget, finalUrl: body.finalUrl,
+          headlines: body.headlines || [], descriptions: body.descriptions || [],
+          keywords: body.keywords || [], negatives: body.negatives || [],
+          geoTargetConstantIds: body.geoTargetConstantIds || ['2578'],
+          path1: body.path1, path2: body.path2,
+          validateOnly: !!body.validateOnly,
+        });
+        const status = (r && r.ok === false) ? 200 : (body.validateOnly ? 200 : 201);
+        return cors(NextResponse.json(r, { status }));
+      } catch (e) {
+        return cors(NextResponse.json({ ok: false, error: e.message }, { status: 200 }));
+      }
+    }
+
 
     // ===================================================================
     // INTELLIGENS-LAGET (Fase A–D): samlet tabell, anbefalinger, keyword

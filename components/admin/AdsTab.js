@@ -6,8 +6,9 @@ import {
   Coins, MousePointerClick, Target, Wallet, CheckCircle2, Info, RefreshCw, Layers, Link2 as LinkIcon,
   SlidersHorizontal, X, Check, Image as ImageIcon, ExternalLink,
   Plus, Play, Pause, Save, MapPin, Sparkles,
-  Search, ArrowUpDown, Lightbulb, Zap, FileText, Settings2, Wand2, TrendingDown, ListChecks,
+  Search, ArrowUpDown, Lightbulb, Zap, FileText, Settings2, Wand2, TrendingDown, ListChecks, Crosshair,
 } from 'lucide-react';
+import CompetitorCampaign from '@/components/admin/CompetitorCampaign';
 
 const nf = new Intl.NumberFormat('nb-NO');
 const fmtNum = (n) => (n == null ? '–' : nf.format(Math.round(n)));
@@ -64,6 +65,7 @@ export default function AdsTab({ apiKey }) {
   const [chartMetric, setChartMetric] = useState('cost'); // 'cost' | 'clicks' | 'leads'
   // Visning: statistikk (tall) eller faktiske annonser/kreativer
   const [view, setView] = useState('stats'); // 'stats' | 'creatives'
+  const [compOpen, setCompOpen] = useState(false); // konkurrent-kampanje modal
   const [creatives, setCreatives] = useState(null);
   const [loadingCre, setLoadingCre] = useState(false);
   const [creErr, setCreErr] = useState('');
@@ -192,6 +194,7 @@ export default function AdsTab({ apiKey }) {
 
   return (
     <div>
+      <CompetitorCampaign apiKey={apiKey} open={compOpen} onClose={() => setCompOpen(false)} />
       {/* Verktøylinje — verdensklasse */}
       <div className="flex flex-wrap items-start justify-between gap-3 mb-5">
         <div>
@@ -210,6 +213,11 @@ export default function AdsTab({ apiKey }) {
               {googleConnecting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <LinkIcon className="w-3.5 h-3.5" />} Koble til Google Ads
             </button>
           )}
+          {/* Konkurrent-kampanje (competitor conquesting) */}
+          <button onClick={() => setCompOpen(true)} title="Opprett Google-søkekampanje mot konkurrenter (opprettes på pause)" className="group h-10 pl-3.5 pr-4 rounded-full bg-white text-[12.5px] font-semibold text-[#0a0a0a] flex items-center gap-2 shadow-[0_2px_12px_rgba(0,0,0,0.05)] ring-1 ring-transparent hover:ring-[#e0d5f2] hover:shadow-[0_6px_20px_rgba(139,92,246,0.14)] active:scale-[0.97] transition-all">
+            <Crosshair className="w-4 h-4 text-[#8b5cf6] group-hover:rotate-12 transition-transform" />
+            <span className="hidden sm:inline">Konkurrent</span>
+          </button>
           {/* Verdensklasse filter-knapp → modal (kanal + periode + import) */}
           <button onClick={openFilter} className="group h-10 pl-3.5 pr-4 rounded-full bg-white text-[12.5px] font-semibold text-[#444] flex items-center gap-2 shadow-[0_2px_12px_rgba(0,0,0,0.05)] ring-1 ring-transparent hover:ring-[#dcdcdc] hover:shadow-[0_6px_20px_rgba(0,0,0,0.08)] active:scale-[0.97] transition-all">
             <SlidersHorizontal className="w-4 h-4 text-[#0a0a0a] group-hover:rotate-6 transition-transform" />

@@ -94,20 +94,20 @@ function TenantForm() {
 
   return (
     <form onSubmit={submit} onFocus={handleStart}
-      className="relative rounded-[24px] bg-surface/95 backdrop-blur-sm border border-hairline shadow-[0_40px_90px_-50px_rgba(10,10,10,0.45)] p-5 sm:p-7 space-y-3.5">
+      className="relative rounded-[24px] bg-surface/95 backdrop-blur-sm shadow-[0_40px_100px_-50px_rgba(10,10,10,0.5),0_2px_12px_rgba(10,10,10,0.05)] p-5 sm:p-7 space-y-3.5">
       <div className="flex items-center justify-between gap-3">
         <p className="font-heading font-bold text-[19px] text-ink leading-tight">Bli varslet om nye boliger</p>
         <span className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-success-bg text-success text-[11px] font-semibold px-2.5 py-1">
           <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" /> Gratis
         </span>
       </div>
-      <input value={form.name} onChange={set('name')} placeholder="Navn" className="w-full h-12 px-4 rounded-[14px] border border-hairline bg-canvas outline-none focus:border-lavender focus:ring-4 focus:ring-lavender/10 text-[15px] placeholder:text-taupe transition-all" />
+      <input value={form.name} onChange={set('name')} placeholder="Navn" className="w-full h-12 px-4 rounded-[14px] border border-hairline bg-canvas outline-none focus:border-[#c9b8e4] focus:shadow-[0_0_0_4px_rgba(155,91,214,0.09)] text-[15px] placeholder:text-taupe transition-all" />
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-        <input value={form.phone} onChange={set('phone')} inputMode="tel" placeholder="Telefon" className="w-full h-12 px-4 rounded-[14px] border border-hairline bg-canvas outline-none focus:border-lavender focus:ring-4 focus:ring-lavender/10 text-[15px] placeholder:text-taupe transition-all" />
-        <input value={form.email} onChange={set('email')} type="email" inputMode="email" placeholder="E-post" className="w-full h-12 px-4 rounded-[14px] border border-hairline bg-canvas outline-none focus:border-lavender focus:ring-4 focus:ring-lavender/10 text-[15px] placeholder:text-taupe transition-all" />
+        <input value={form.phone} onChange={set('phone')} inputMode="tel" placeholder="Telefon" className="w-full h-12 px-4 rounded-[14px] border border-hairline bg-canvas outline-none focus:border-[#c9b8e4] focus:shadow-[0_0_0_4px_rgba(155,91,214,0.09)] text-[15px] placeholder:text-taupe transition-all" />
+        <input value={form.email} onChange={set('email')} type="email" inputMode="email" placeholder="E-post" className="w-full h-12 px-4 rounded-[14px] border border-hairline bg-canvas outline-none focus:border-[#c9b8e4] focus:shadow-[0_0_0_4px_rgba(155,91,214,0.09)] text-[15px] placeholder:text-taupe transition-all" />
       </div>
       <div className="relative">
-        <div className="flex items-center rounded-[14px] border border-hairline bg-canvas px-3.5 focus-within:border-lavender focus-within:ring-4 focus-within:ring-lavender/10 transition-all">
+        <div className="flex items-center rounded-[14px] border border-hairline bg-canvas px-3.5 focus-within:border-[#c9b8e4] focus-within:shadow-[0_0_0_4px_rgba(155,91,214,0.09)] transition-all">
           <MapPin className="h-4 w-4 text-taupe shrink-0" />
           <select value={form.area} onChange={set('area')} className="flex-1 h-12 px-3 bg-transparent outline-none text-[15px] text-ink appearance-none cursor-pointer">
             <option value="">Ønsket område i Bergen</option>
@@ -308,7 +308,7 @@ export default function CampaignLandingTenant() {
         <div className="mt-12 grid md:grid-cols-3 gap-5 relative">
           {steps.map((s, i) => (
             <Reveal key={i} delay={i * 110}>
-              <div className="relative h-full rounded-[22px] bg-surface border border-hairline p-7 hover:shadow-[0_30px_70px_-45px_rgba(10,10,10,0.4)] hover:-translate-y-1 transition-all">
+              <div className="relative h-full rounded-[22px] bg-surface p-7 shadow-[0_2px_18px_rgba(10,10,10,0.045)] hover:shadow-[0_34px_70px_-42px_rgba(10,10,10,0.42)] hover:-translate-y-1 transition-all duration-300">
                 <div className="flex items-center justify-center h-12 w-12 rounded-2xl bg-ink text-canvas"><s.icon className="w-5 h-5" /></div>
                 <h3 className="font-heading font-bold text-[19px] mt-5">{s.t}</h3>
                 <p className="text-quiet text-[14.5px] mt-2 leading-relaxed">{s.d}</p>
@@ -323,7 +323,7 @@ export default function CampaignLandingTenant() {
         <div className="max-w-[1100px] mx-auto px-5 sm:px-8 py-16 sm:py-20 grid sm:grid-cols-3 gap-5">
           {benefits.map((c, i) => (
             <Reveal key={i} delay={i * 100}>
-              <div className="h-full rounded-[22px] bg-surface border border-hairline p-7">
+              <div className="h-full rounded-[22px] bg-surface p-7 shadow-[0_2px_18px_rgba(10,10,10,0.045)] hover:shadow-[0_28px_60px_-42px_rgba(10,10,10,0.4)] transition-shadow duration-300">
                 <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-lavender/10"><c.icon className="w-5 h-5 text-lavender" /></span>
                 <h3 className="font-heading font-bold text-[18px] mt-5">{c.t}</h3>
                 <p className="text-quiet text-[14.5px] mt-2 leading-relaxed">{c.b}</p>
@@ -342,7 +342,7 @@ export default function CampaignLandingTenant() {
         <div className="mt-12 grid md:grid-cols-3 gap-5">
           {testimonials.map((t, i) => (
             <Reveal key={i} delay={i * 110}>
-              <figure className="h-full rounded-[22px] bg-surface border border-hairline p-7 flex flex-col">
+              <figure className="h-full rounded-[22px] bg-surface p-7 shadow-[0_2px_18px_rgba(10,10,10,0.045)] flex flex-col">
                 <div className="flex items-center gap-0.5 text-lavender mb-4">
                   {[0, 1, 2, 3, 4].map((j) => <Star key={j} className="w-4 h-4 fill-current" />)}
                 </div>
@@ -396,7 +396,7 @@ export default function CampaignLandingTenant() {
             const open = openFaq === i;
             return (
               <Reveal key={i} delay={i * 60}>
-                <div className={`rounded-[18px] bg-surface border transition-colors ${open ? 'border-lavender/40' : 'border-hairline'}`}>
+                <div className={`rounded-[18px] bg-surface transition-shadow duration-300 ${open ? 'shadow-[0_14px_44px_-18px_rgba(10,10,10,0.24)]' : 'shadow-[0_2px_12px_rgba(10,10,10,0.035)]'}`}>
                   <button onClick={() => setOpenFaq(open ? -1 : i)} className="w-full flex items-center justify-between gap-4 text-left px-5 sm:px-6 py-4">
                     <span className="font-semibold text-[15.5px] text-ink py-0.5">{f.q}</span>
                     <span className={`shrink-0 flex h-7 w-7 items-center justify-center rounded-full bg-fill text-ink text-[18px] leading-none transition-transform duration-300 ${open ? 'rotate-45' : ''}`}>+</span>
