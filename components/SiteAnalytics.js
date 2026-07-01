@@ -17,6 +17,8 @@ export default function SiteAnalytics() {
   useEffect(() => {
     if (!pathname) return;
     if (pathname.startsWith('/admin')) return;
+    // Admin-forhåndsvisning laster landingssider i en iframe — ikke forurens statistikken.
+    if (typeof window !== 'undefined' && window.self !== window.top) return;
     track('pageview');
     // GA4 SPA-sidevisning (kun ved markedsføringssamtykke; no-op uten GA4/samtykke).
     trackPageview(pathname);
@@ -27,6 +29,7 @@ export default function SiteAnalytics() {
     if (vitalsBound) return;
     if (typeof window === 'undefined') return;
     if (window.location.pathname.startsWith('/admin')) return;
+    if (window.self !== window.top) return; // iframe-forhåndsvisning
     vitalsBound = true;
     let cancelled = false;
     import('web-vitals')

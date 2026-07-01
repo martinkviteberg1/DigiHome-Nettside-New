@@ -4,7 +4,7 @@ import crypto from 'crypto';
 import sharp from 'sharp';
 import { getDb, clean } from '@/lib/mongodb';
 import { getObject, PUBLIC_PREFIX } from '@/lib/objectStorage';
-import { isBot, buildEvent, ensureAnalyticsIndexes, computeAnalytics, computeLeadIntel, computeFunnels } from '@/lib/analytics-server';
+import { isBot, buildEvent, ensureAnalyticsIndexes, computeAnalytics, computeLeadIntel, computeFunnels, computeLandingPages } from '@/lib/analytics-server';
 import { deriveChannel, serializeForLLM, computeWebVitals, detectAnomalies, computeLive, computeAdsEconomics, computeMetaEconomics, combineAdsEconomics, computeAdsLeadsSeries } from '@/lib/analytics-server';
 import { parseGoogleAdsCsv } from '@/lib/adsImport';
 import { sendMetaCapiEvent, metaCapiConfigured } from '@/lib/meta-capi';
@@ -22,6 +22,7 @@ import { buildMarketingMetrics } from '@/lib/marketing-metrics';
 import { emailConfigured, reportRecipients } from '@/lib/email';
 import { chatLLM } from '@/lib/llm';
 import { slugify } from '@/lib/site';
+import { LANDING } from '@/lib/landing';
 import { getRentReport, refreshRentReport, RENT_CITIES } from '@/lib/rentmarket';
 import {
   infotorgConfigured,
@@ -2349,6 +2350,28 @@ async function handleRoute(request, { params }) {
       ].sort((a, b) => (a.day < b.day ? 1 : -1)).slice(0, 8);
       return cors(NextResponse.json({ traffic, leads: leadsIntel, webVitals, anomalies, funnels }));
     }
+
+    // --- Admin: ytelse per landingsside (/lp/{slug}) ---
+    if (route === '/admin/landing-pages' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const { searchParams } = new URL(request.url);
+      const days = parseInt(searchParams.get('days') || '30', 10) || 30;
+      // Katalog: utleier-sider fra LANDING-konfig + leietaker-kampanjesiden.
+      const catalog = Object.values(LANDING).map((c) => ({
+        slug: c.slug, source: c.source, path: `/lp/${c.slug}`, audience: 'huseier',
+        eyebrow: c.eyebrow, h1: c.h1, image: c.image, metaTitle: c.metaTitle,
+      }));
+      catalog.push({
+        slug: 'leietaker', source: 'lp-leietaker', path: '/lp/leietaker', audience: 'leietaker',
+        eyebrow: 'Finn ditt neste hjem', h1: 'Finn ditt neste hjem i Bergen',
+        image: '/interior-living.webp', metaTitle: 'Finn ditt neste hjem i Bergen — DigiHome',
+      });
+      const perf = await computeLandingPages(db, days, catalog.map((c) => ({ slug: c.slug, source: c.source, path: c.path, audience: c.audience })));
+      const meta = Object.fromEntries(catalog.map((c) => [c.slug, c]));
+      const pages = perf.pages.map((p) => ({ ...(meta[p.slug] || {}), ...p }));
+      return cors(NextResponse.json({ ok: true, pages, totals: perf.totals, range: perf.range }));
+    }
+
 
     // --- Admin: live besøkende akkurat nå ---
     if (route === '/admin/live' && method === 'GET') {

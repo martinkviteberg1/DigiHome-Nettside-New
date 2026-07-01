@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Activity, BarChart3, Users, Sparkles, Database,
   Radio, Gauge, TrendingUp, TrendingDown, Download, Megaphone,
   Search, X, ArrowUp, ArrowDown, FileSpreadsheet, ChevronRight, GitBranch,
-  MoreHorizontal, Trophy, Clock, Target, ShieldCheck, Flame,
+  MoreHorizontal, Trophy, Clock, Target, ShieldCheck, Flame, LayoutTemplate,
 } from 'lucide-react';
 import LeadDrawer from '@/components/admin/LeadDrawer';
 import OverviewTab from '@/components/admin/OverviewTab';
@@ -18,6 +18,7 @@ import LiveTab from '@/components/admin/LiveTab';
 import WebVitalsTab from '@/components/admin/WebVitalsTab';
 import AdsTab from '@/components/admin/AdsTab';
 import FunnelTab from '@/components/admin/FunnelTab';
+import LandingPagesTab from '@/components/admin/LandingPagesTab';
 
 const TABS = [
   { k: 'oversikt', l: 'Oversikt', icon: LayoutDashboard, d: 'Nøkkeltall og trender på ett blikk' },
@@ -27,6 +28,7 @@ const TABS = [
   { k: 'ytelse', l: 'Ytelse', icon: Gauge, d: 'Core Web Vitals og sidehastighet' },
   { k: 'innsikt', l: 'Lead-innsikt', icon: BarChart3, d: 'Kvalitet, kilder og pipeline' },
   { k: 'annonser', l: 'Annonser', icon: Megaphone, d: 'Meta & Google Ads · forbruk og ROAS' },
+  { k: 'landingssider', l: 'Landingssider', icon: LayoutTemplate, d: 'Kampanjesider · trafikk, konvertering og verdi' },
   { k: 'leiemarked', l: 'Leiemarked', icon: Database, d: 'Priser og etterspørsel i markedet' },
   { k: 'ai', l: 'AI-assistent', icon: Sparkles, d: 'Spør om dataene dine i naturlig språk' },
   { k: 'leads', l: 'Leads', icon: Users, d: 'Alle henvendelser — utleiere og leietakere' },
@@ -280,6 +282,7 @@ export default function InnsiktDashboard({ apiKey, tab: propTab, onTabChange, on
       {tab === 'ytelse' && <WebVitalsTab webVitals={analytics && analytics.webVitals} />}
       {tab === 'innsikt' && <IntelTab leads={analytics && analytics.leads} />}
       {tab === 'annonser' && <AdsTab apiKey={apiKey} />}
+      {tab === 'landingssider' && <LandingPagesTab apiKey={apiKey} days={days} />}
       {tab === 'leiemarked' && <RentMarketTab apiKey={apiKey} />}
       {tab === 'ai' && <InsightTab apiKey={apiKey} days={days} />}
 
