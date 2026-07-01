@@ -2999,6 +2999,50 @@ async function handleRoute(request, { params }) {
     }
 
     // --- Admin: Analytics + Lead Intelligence (samlet) ---
+    // --- Puls: lette sanntidstall til admin-toppbaren (alltid synlig) ---
+    if (route === '/admin/pulse' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      try {
+        const today = new Date().toISOString().slice(0, 10);
+        const dayStartIso = `${today}T00:00:00.000Z`;
+        const [sessionsAgg, leadsToday, tenantsToday, pendingLeads, pendingTenants, platMrr] = await Promise.all([
+          db.collection('events').aggregate([
+            { $match: { day: today, sessionId: { $nin: [null, ''] } } },
+            { $group: { _id: '$sessionId' } },
+            { $count: 'n' },
+          ]).toArray(),
+          db.collection('leads').countDocuments({ createdAt: { $gte: dayStartIso } }),
+          db.collection('tenant_leads').countDocuments({ createdAt: { $gte: dayStartIso } }),
+          db.collection('leads').countDocuments({ forwarded: { $ne: true } }),
+          db.collection('tenant_leads').countDocuments({ forwarded: { $ne: true } }),
+          db.collection('platform_customers').aggregate([
+            { $match: { status: { $ne: 'churned' } } },
+            { $group: { _id: null, mrr: { $sum: '$mrr' } } },
+          ]).toArray(),
+        ]);
+        let mrr = platMrr.length ? Math.round(platMrr[0].mrr) : null;
+        if (mrr == null) {
+          // Fallback: honorar-MRR fra synkede kontrakter (leie × honorar%)
+          try {
+            const agg = await db.collection('finance_contracts').aggregate([
+              { $match: { active: { $ne: false } } },
+              { $project: { fee: { $multiply: [{ $ifNull: ['$rent', 0] }, { $divide: [{ $ifNull: ['$fee_percent', 0] }, 100] }] } } },
+              { $group: { _id: null, mrr: { $sum: '$fee' } } },
+            ]).toArray();
+            mrr = agg.length ? Math.round(agg[0].mrr) : 0;
+          } catch (e) { mrr = 0; }
+        }
+        return cors(NextResponse.json({
+          ok: true,
+          day: today,
+          sessionsToday: sessionsAgg.length ? sessionsAgg[0].n : 0,
+          leadsToday, tenantsToday,
+          pending: pendingLeads + pendingTenants,
+          mrr,
+        }));
+      } catch (e) { return cors(NextResponse.json({ ok: false, error: e.message }, { status: 200 })); }
+    }
+
     if (route === '/admin/analytics' && method === 'GET') {
       if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const { searchParams } = new URL(request.url);

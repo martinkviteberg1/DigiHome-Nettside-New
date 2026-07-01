@@ -6,6 +6,7 @@ import {
   Menu, X, ChevronRight, ShieldCheck, Sparkles, MessageSquare,
   LayoutDashboard, Radio, Activity, GitBranch, Gauge, Megaphone, Database,
   Command, Search, CornerDownLeft, LayoutTemplate, Crosshair, TrendingUp, Wallet,
+  Globe, ExternalLink, PenLine,
 } from 'lucide-react';
 import InnsiktDashboard from '@/components/admin/InnsiktDashboard';
 import KpiDashboard from '@/components/admin/KpiDashboard';
@@ -214,10 +215,11 @@ export default function AdminPage() {
             {grp.items.map((it) => {
               const Icon = it.icon;
               const active = section === it.k;
-              const common = 'w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[14px] font-medium transition-all group';
+              const common = 'relative w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[14px] font-medium transition-all group';
               const content = (
                 <>
-                  <Icon className={`w-[18px] h-[18px] shrink-0 ${active ? 'text-[#cf97fc]' : 'text-white/50 group-hover:text-white/80'}`} />
+                  {active && <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-full bg-[#cf97fc] shadow-[0_0_12px_rgba(207,151,252,0.8)]" />}
+                  <Icon className={`w-[18px] h-[18px] shrink-0 transition-colors ${active ? 'text-[#cf97fc]' : 'text-white/50 group-hover:text-white/80'}`} />
                   <span className="flex-1 text-left">{it.l}</span>
                   {it.soon && <span className="text-[9.5px] font-semibold uppercase tracking-wide text-[#cf97fc] bg-[#cf97fc]/12 rounded-full px-1.5 py-0.5">Snart</span>}
                   {it.href && <ChevronRight className="w-3.5 h-3.5 text-white/25" />}
@@ -297,6 +299,13 @@ export default function AdminPage() {
     { id: 'sec-abonnementer', group: 'Forretning', label: 'Abonnementer', icon: CreditCard, action: () => runNavigate('abonnementer') },
     { id: 'sec-artikler', group: 'Innhold', label: 'Artikler', icon: FileText, action: () => { setPaletteOpen(false); window.location.href = '/admin/artikler'; } },
     { id: 'sec-bro', group: 'Koordinering', label: 'Agent-bro', icon: MessageSquare, action: () => runNavigate('bro') },
+    // Hurtighandlinger — 2026: gjør ting direkte fra paletten
+    { id: 'qa-site', group: 'Hurtighandlinger', label: 'Åpne nettsiden (ny fane)', icon: Globe, action: () => { setPaletteOpen(false); window.open('/', '_blank'); } },
+    { id: 'qa-artikkel', group: 'Hurtighandlinger', label: 'Skriv ny artikkel', icon: PenLine, action: () => { setPaletteOpen(false); window.location.href = '/admin/artikler'; } },
+    { id: 'qa-lp-inntekt', group: 'Hurtighandlinger', label: 'Åpne landingsside: Inntekt', icon: ExternalLink, action: () => { setPaletteOpen(false); window.open('/lp/inntekt', '_blank'); } },
+    { id: 'qa-lp-forvaltning', group: 'Hurtighandlinger', label: 'Åpne landingsside: Forvaltning', icon: ExternalLink, action: () => { setPaletteOpen(false); window.open('/lp/forvaltning', '_blank'); } },
+    { id: 'qa-lp-10pluss2', group: 'Hurtighandlinger', label: 'Åpne landingsside: 10+2', icon: ExternalLink, action: () => { setPaletteOpen(false); window.open('/lp/10pluss2', '_blank'); } },
+    { id: 'qa-lp-leietaker', group: 'Hurtighandlinger', label: 'Åpne landingsside: Leietaker', icon: ExternalLink, action: () => { setPaletteOpen(false); window.open('/lp/leietaker', '_blank'); } },
     { id: 'logout', group: 'Konto', label: 'Logg ut', icon: LogOut, action: () => { setPaletteOpen(false); logout(); } },
   ];
 
@@ -326,7 +335,8 @@ export default function AdminPage() {
               <h1 className="text-[20px] sm:text-[22px] font-bold text-[#0a0a0a] tracking-[-0.02em] leading-none" style={{ fontFamily: 'var(--font-heading)' }}>{sectionMeta.t}</h1>
               <p className="text-[12px] text-[#999] mt-1 truncate">{section === 'innsikt' ? `Innsikt · ${activeInsight.l}` : sectionMeta.s}</p>
             </div>
-            <button onClick={() => setPaletteOpen(true)} title="Søk & hurtignavigasjon (⌘K)" className="ml-auto hidden sm:flex items-center gap-2 h-9 pl-3 pr-2 rounded-full bg-white shadow-[0_2px_10px_rgba(0,0,0,0.04)] text-[#9a9a9a] hover:text-[#0a0a0a] transition-colors">
+            <PulseStrip token={token} onJump={(sec, tab) => { setSection(sec); if (tab) { setSection('innsikt'); setInsightTab(tab); } }} />
+            <button onClick={() => setPaletteOpen(true)} title="Søk & hurtignavigasjon (⌘K)" className="ml-auto xl:ml-0 hidden sm:flex items-center gap-2 h-9 pl-3 pr-2 rounded-full bg-white shadow-[0_2px_10px_rgba(0,0,0,0.04)] text-[#9a9a9a] hover:text-[#0a0a0a] transition-colors">
               <Search className="w-4 h-4" />
               <span className="text-[12.5px] font-medium">Søk eller hopp til …</span>
               <span className="ml-1 flex items-center gap-0.5 text-[10.5px] font-semibold text-[#aaa] bg-[#f1f0ee] rounded-md px-1.5 py-1 leading-none"><Command className="w-3 h-3" />K</span>
@@ -335,7 +345,7 @@ export default function AdminPage() {
           </div>
         </div>
 
-        <div className="px-4 sm:px-8 py-6 max-w-[1280px]">
+        <div key={section} className="px-4 sm:px-8 py-6 max-w-[1440px] dh-fade">
           {section === 'nokkeltall' && <KpiDashboard apiKey={token} />}
           {section === 'okonomi' && <FinanceDashboard apiKey={token} />}
           {section === 'innsikt' && <InnsiktDashboard apiKey={token} tab={insightTab} onTabChange={setInsightTab} onStats={setInsightStats} />}
@@ -437,6 +447,66 @@ function CommandPalette({ open, onClose, commands }) {
           <span className="ml-auto flex items-center gap-1"><Command className="w-3 h-3" />K</span>
         </div>
       </div>
+    </div>
+  );
+}
+
+/* ==========================================================================
+   PulseStrip — live «mission control»-tall i toppbaren (auto-oppdateres 60s).
+   Klikkbare chips hopper rett til riktig modul.
+   ========================================================================== */
+function PulseStrip({ token, onJump }) {
+  const [p, setP] = useState(null);
+  useEffect(() => {
+    if (!token) return;
+    let alive = true;
+    const load = async () => {
+      try {
+        const r = await fetch(`/api/admin/pulse?key=${encodeURIComponent(token)}`);
+        const j = await r.json();
+        if (alive && j.ok) setP(j);
+      } catch (e) {}
+    };
+    load();
+    const iv = setInterval(load, 60000);
+    return () => { alive = false; clearInterval(iv); };
+  }, [token]);
+
+  const nf = new Intl.NumberFormat('nb-NO');
+  const chips = [
+    { icon: Activity, label: 'økter i dag', value: p ? nf.format(p.sessionsToday) : '·', jump: ['innsikt', 'trafikk'] },
+    { icon: Users, label: 'leads i dag', value: p ? nf.format((p.leadsToday || 0) + (p.tenantsToday || 0)) : '·', jump: ['innsikt', 'leads'] },
+    ...(p && p.pending > 0 ? [{ icon: Radio, label: 'venter', value: nf.format(p.pending), warn: true, jump: ['innsikt', 'leads'] }] : []),
+    { icon: Wallet, label: 'MRR', value: p && p.mrr != null ? `${nf.format(p.mrr)} kr` : '·', jump: ['kunder', null] },
+  ];
+
+  return (
+    <div className="ml-auto hidden xl:flex items-center gap-1.5 mr-2">
+      <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#b5b5b5] mr-1 select-none">
+        <span className="relative flex h-2 w-2">
+          <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60 animate-ping" />
+          <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+        </span>
+        Live
+      </span>
+      {chips.map((c, i) => {
+        const Icon = c.icon;
+        return (
+          <button
+            key={i}
+            onClick={() => onJump(c.jump[0], c.jump[1])}
+            title={`Gå til ${c.jump[1] || c.jump[0]}`}
+            className={`group flex items-center gap-1.5 h-8 pl-2.5 pr-3 rounded-full text-[12px] transition-all active:scale-[0.96] ${c.warn
+              ? 'bg-amber-50 text-amber-700 ring-1 ring-amber-200 hover:bg-amber-100'
+              : 'bg-white shadow-[0_2px_10px_rgba(0,0,0,0.04)] text-[#666] hover:shadow-[0_4px_14px_rgba(0,0,0,0.09)] hover:-translate-y-[1px]'}`}
+          >
+            <Icon className={`w-3.5 h-3.5 transition-colors ${c.warn ? 'text-amber-500' : 'text-[#c9b8e4] group-hover:text-[#8b5cf6]'}`} />
+            <span className="font-bold text-[#0a0a0a] tabular-nums">{c.value}</span>
+            <span className={`font-medium ${c.warn ? 'text-amber-700/80' : 'text-[#a3a3a3] group-hover:text-[#777]'}`}>{c.label}</span>
+          </button>
+        );
+      })}
+      <span className="mx-1 h-5 w-px bg-black/[0.07]" />
     </div>
   );
 }
