@@ -8,7 +8,7 @@ import { isBot, buildEvent, ensureAnalyticsIndexes, computeAnalytics, computeLea
 import { deriveChannel, serializeForLLM, computeWebVitals, detectAnomalies, computeLive, computeAdsEconomics, computeMetaEconomics, combineAdsEconomics, computeAdsLeadsSeries } from '@/lib/analytics-server';
 import { parseGoogleAdsCsv } from '@/lib/adsImport';
 import { sendMetaCapiEvent, metaCapiConfigured } from '@/lib/meta-capi';
-import { fetchMetaInsights, fetchMetaAccount, metaAdsConfigured, getCachedMetaReport, META_PERIODS, metaPeriodToRange, getCachedMetaCreatives, fetchMetaPreviewSrc, isValidPreviewFormat, getCachedMetaAdsTable, fetchMetaDaily, fetchMetaDailyActions } from '@/lib/meta-ads';
+import { fetchMetaInsights, fetchMetaAccount, metaAdsConfigured, getCachedMetaReport, META_PERIODS, metaPeriodToRange, getCachedMetaCreatives, fetchMetaPreviewSrc, isValidPreviewFormat, getCachedMetaAdsTable, fetchMetaDaily, fetchMetaDailyActions, fetchMetaAdsWithInsights } from '@/lib/meta-ads';
 import { fetchPages, fetchLeadForms, fetchFormLeads, mapLeadFields, metaLeadAdsConfigured, fetchSingleLead, fetchFormName, fetchPageToken } from '@/lib/meta-leadads';
 import { composioConfigured, createConnectLink, getConnectionStatus, runCampaignReport, defaultCustomerId, getCachedReport, GOOGLE_PERIODS, getCachedCreatives, activeProvider } from '@/lib/google-ads-provider';
 import { googleAdsNativeConfigured, listConversionActions, resolveOfflineConversionAction, uploadClickConversion, toConversionDateTime, listCampaignsDetailed, suggestGeoTargets, setCampaignStatus, updateCampaignBudget, createSearchCampaign, createCompetitorCampaign, getCampaignByName, runAdsWithMetrics, runSearchTerms, runKeywordMetrics, generateKeywordIdeas, gaqlSearch } from '@/lib/google-ads-native';
@@ -2077,9 +2077,14 @@ async function handleRoute(request, { params }) {
       if (mOn) {
         try {
           const daily = await fetchMetaDailyActions({ datePreset: 'last_90d' });
+          const recent = await fetchMetaDailyActions({ datePreset: 'last_7d' }).catch(() => []);
+          const liveAds = await fetchMetaAdsWithInsights({ datePreset: 'last_7d' }).catch(() => []);
           const active = daily.filter((d) => d.cost > 0);
           const conv = daily.filter((d) => d.conversions > 0);
           out.meta.daily = daily.map((d) => ({ ...d, cost: Math.round(d.cost * 100) / 100 }));
+          out.meta.recent7 = recent.map((d) => ({ ...d, cost: Math.round(d.cost * 100) / 100 }));
+          out.meta.liveAds = (liveAds || []).map((a) => ({ name: a.name, status: a.effectiveStatus || a.status, cost: Math.round((a.cost || a.spend || 0) * 100) / 100, impressions: a.impressions || 0, conversions: a.conversions || 0 }));
+          out.meta.recent7Spend = Math.round(recent.reduce((s, d) => s + d.cost, 0) * 100) / 100;
           out.meta.summary = {
             firstSpendDate: active.length ? active[0].date : null,
             lastSpendDate: active.length ? active[active.length - 1].date : null,
