@@ -15,15 +15,16 @@ import { googleAdsNativeConfigured, listConversionActions, resolveOfflineConvers
 import { dataManagerConfigured, ingestOfflineConversion } from '@/lib/google-ads-datamanager';
 import { IMPORTED_COLL, importRecords, parseCsv, summarizeImported, syncFromPlatform } from '@/lib/imported-leads';
 import { computeKpiDashboard, getKpiSettings, setKpiSettings } from '@/lib/kpi-dashboard';
-import { getFinanceSettings, setFinanceSettings, listCosts, upsertCost, deleteCost, listContracts, upsertContract, deleteContract, listEvents, upsertEvent, deleteEvent, computeResultat, computeLikviditet, computeFinanceOverview, computeTrends, captureSnapshot, computeInvestorMetrics, computeForecast, computeBoardPack, computeCustomers } from '@/lib/finance';
-import { syncContractsFromPlatform } from '@/lib/contracts-sync';
+import { getFinanceSettings, setFinanceSettings, listCosts, upsertCost, deleteCost, listContracts, upsertContract, deleteContract, listEvents, upsertEvent, deleteEvent, computeResultat, computeLikviditet, computeFinanceOverview, computeTrends, captureSnapshot, computeInvestorMetrics, computeForecast, computeBoardPack, computeCustomers, computePlatformCustomers } from '@/lib/finance';
+import { syncContractsFromPlatform, syncCustomersFromPlatform } from '@/lib/contracts-sync';
 import { ga4MpConfigured, sendGa4Purchase } from '@/lib/ga4-mp';
 import { buildRecommendations } from '@/lib/ads-recommendations';
 import { generateRsaCopy, generateMetaCopy } from '@/lib/ads-ai';
 import { runOptimization, getOptimizeConfig, setOptimizeConfig, getLastRun, listRuns, applyRecommendation } from '@/lib/ads-optimize';
 import { sendWeeklyReport, buildReportData, renderReportHtml } from '@/lib/ads-report';
 import { buildMarketingMetrics } from '@/lib/marketing-metrics';
-import { emailConfigured, reportRecipients } from '@/lib/email';
+import { emailConfigured, reportRecipients, sendHtmlEmail } from '@/lib/email';
+import { buildAlerts } from '@/lib/ads-monitor';
 import { chatLLM } from '@/lib/llm';
 import { slugify } from '@/lib/site';
 import { LANDING } from '@/lib/landing';
@@ -39,6 +40,46 @@ import {
   classifyBuildingType,
   matrikkelString,
 } from '@/lib/infotorg';
+
+// --- Annonse-varsler: WoW-totaler (kost/klikk/leads) + Meta-frekvens → buildAlerts ---
+// Brukes både av GET /admin/ads/alerts (UI) og cron ads-optimize (e-postvarsling).
+async function computeAdsAlertsData(db) {
+  const day = (off) => new Date(Date.now() - off * 86400000).toISOString().slice(0, 10);
+  const curFrom = day(7), curTo = day(1), prevFrom = day(14), prevTo = day(8);
+  let gSeries = [], mSeries = [], metaAds = [];
+  if (composioConfigured()) {
+    try { const r = await getCachedReport(db, 'last_30d'); gSeries = (r.report && r.report.series) || []; } catch (e) {}
+  }
+  if (metaAdsConfigured()) {
+    try { const r = await getCachedMetaReport(db, 'last_30d'); mSeries = (r.snap && r.snap.series) || []; } catch (e) {}
+    try { const t = await getCachedMetaAdsTable(db, 'last_30d'); metaAds = t.ads || []; } catch (e) {}
+  }
+  let leadsSeries = [];
+  try { leadsSeries = await computeAdsLeadsSeries(db, `${prevFrom}T00:00:00.000Z`, `${curTo}T23:59:59.999Z`); } catch (e) {}
+  const sum = (from, to) => {
+    const acc = { cost: 0, clicks: 0, impressions: 0, conversions: 0 };
+    for (const d of [...gSeries, ...mSeries]) {
+      if (!d || !d.date || d.date < from || d.date > to) continue;
+      acc.cost += Number(d.cost) || 0;
+      acc.clicks += Number(d.clicks) || 0;
+      acc.impressions += Number(d.impressions) || 0;
+    }
+    for (const d of leadsSeries) {
+      if (!d || !d.date || d.date < from || d.date > to) continue;
+      acc.conversions += Number(d.leads) || 0;
+    }
+    return acc;
+  };
+  const current = sum(curFrom, curTo);
+  const previous = sum(prevFrom, prevTo);
+  const alerts = buildAlerts({ metaAds, googleAds: [], current, previous });
+  return {
+    alerts,
+    window: { current: { from: curFrom, to: curTo }, previous: { from: prevFrom, to: prevTo } },
+    totals: { current, previous },
+    generatedAt: new Date().toISOString(),
+  };
+}
 
 // --- Enkel in-memory rate-limit (per IP) for offentlige eiendomsoppslag ---
 const _rlBuckets = new Map(); // ip -> { count, resetAt }
@@ -655,6 +696,10 @@ function sanitizeAttribution(a) {
     // Meta-matching (Conversions API): _fbp/_fbc-cookieverdier fra pixelen.
     fbp: s(a.fbp, 200) || undefined,
     fbc: s(a.fbc, 300) || undefined,
+    // A/B-tildelinger (eks. lp-h1-inntekt: 'B') → variant-nedbryting av leads i admin.
+    ab: (a.ab && typeof a.ab === 'object' && !Array.isArray(a.ab))
+      ? Object.fromEntries(Object.entries(a.ab).slice(0, 10).map(([k, v]) => [String(k).slice(0, 60), String(v).slice(0, 60)]))
+      : undefined,
   };
 }
 
@@ -2408,10 +2453,27 @@ async function handleRoute(request, { params }) {
           return cors(NextResponse.json(await computeForecast(db, { months, assumptions })));
         }
         if (sub === '/board-pack' && method === 'GET') return cors(NextResponse.json(await computeBoardPack(db)));
-        if (sub === '/customers' && method === 'GET') return cors(NextResponse.json(await computeCustomers(db)));
+        if (sub === '/customers' && method === 'GET') {
+          // Foretrekk plattformens dedikerte kunde-eksport (rikere data);
+          // fall tilbake til kontrakts-avledning hvis ingen synk er kjørt.
+          const forceSrc = new URL(request.url).searchParams.get('source');
+          if (forceSrc !== 'contracts') {
+            try {
+              const plat = await computePlatformCustomers(db);
+              if (plat) return cors(NextResponse.json(plat));
+            } catch (e) { /* fall gjennom til kontrakts-avledning */ }
+          }
+          return cors(NextResponse.json(await computeCustomers(db)));
+        }
         if (sub === '/sync-contracts' && method === 'POST') {
           const target = digiHomeTarget();
           const result = await syncContractsFromPlatform(db, { target: target.url, key: target.key });
+          return cors(NextResponse.json({ ...result, platformEnv: target.env, platformUrl: target.url }));
+        }
+        // Synk KUNDER fra plattformens /api/customers/export (LIVE hos plattformteamet).
+        if (sub === '/sync-customers' && method === 'POST') {
+          const target = digiHomeTarget();
+          const result = await syncCustomersFromPlatform(db, { target: target.url, key: target.key });
           return cors(NextResponse.json({ ...result, platformEnv: target.env, platformUrl: target.url }));
         }
 
@@ -2433,6 +2495,70 @@ async function handleRoute(request, { params }) {
         return cors(NextResponse.json({ ok: false, error: e.message }, { status: 200 }));
       }
       return cors(NextResponse.json({ ok: false, error: 'Ukjent økonomi-endepunkt' }, { status: 404 }));
+    }
+
+    // --- Budsjett-pacing: forbruk måned-til-dato vs. månedsbudsjett per kanal ---
+    if (route === '/admin/ads/pacing' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      try {
+        const r2 = (x) => Math.round((Number(x) || 0) * 100) / 100;
+        const cfgDoc = (await db.collection('ads_optimization_config').findOne({ key: 'pacing' })) || {};
+        const budgets = { google: Number(cfgDoc.monthlyBudgetGoogle) || 0, meta: Number(cfgDoc.monthlyBudgetMeta) || 0 };
+        const now = new Date();
+        const y = now.getUTCFullYear(), mo = now.getUTCMonth();
+        const monthStart = `${y}-${String(mo + 1).padStart(2, '0')}-01`;
+        const daysInMonth = new Date(Date.UTC(y, mo + 1, 0)).getUTCDate();
+        const dayOfMonth = now.getUTCDate();
+        const daysRemaining = Math.max(0, daysInMonth - dayOfMonth);
+        let gSeries = [], mSeries = [];
+        if (composioConfigured()) { try { const r = await getCachedReport(db, 'last_90d'); gSeries = (r.report && r.report.series) || []; } catch (e) {} }
+        if (metaAdsConfigured()) { try { const r = await getCachedMetaReport(db, 'last_90d'); mSeries = (r.snap && r.snap.series) || []; } catch (e) {} }
+        const today = now.toISOString().slice(0, 10);
+        const calc = (series, budget) => {
+          const mtd = series.filter((d) => d && d.date >= monthStart && d.date <= today)
+            .reduce((s, d) => s + (Number(d.cost) || 0), 0);
+          const last7 = series.filter((d) => d && d.date).slice(-7);
+          const avg7 = last7.length ? last7.reduce((s, d) => s + (Number(d.cost) || 0), 0) / last7.length : 0;
+          const projected = mtd + avg7 * daysRemaining;
+          return {
+            mtd: r2(mtd), avg7: r2(avg7), projected: r2(projected), budget: r2(budget),
+            spentPct: budget > 0 ? Math.round((mtd / budget) * 100) : null,
+            pacePct: budget > 0 ? Math.round((projected / budget) * 100) : null,
+          };
+        };
+        const google = calc(gSeries, budgets.google);
+        const meta = calc(mSeries, budgets.meta);
+        const totalBudget = budgets.google + budgets.meta;
+        const total = {
+          mtd: r2(google.mtd + meta.mtd), avg7: r2(google.avg7 + meta.avg7),
+          projected: r2(google.projected + meta.projected), budget: r2(totalBudget),
+          spentPct: totalBudget > 0 ? Math.round(((google.mtd + meta.mtd) / totalBudget) * 100) : null,
+          pacePct: totalBudget > 0 ? Math.round(((google.projected + meta.projected) / totalBudget) * 100) : null,
+        };
+        return cors(NextResponse.json({
+          ok: true, month: monthStart.slice(0, 7), dayOfMonth, daysInMonth, daysRemaining,
+          channels: { google, meta, total },
+          googleConfigured: composioConfigured(), metaConfigured: metaAdsConfigured(),
+        }));
+      } catch (e) { return cors(NextResponse.json({ ok: false, error: e.message }, { status: 200 })); }
+    }
+    if (route === '/admin/ads/pacing' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      const patch = { key: 'pacing' };
+      if (body.monthlyBudgetGoogle !== undefined) patch.monthlyBudgetGoogle = Math.max(0, Number(body.monthlyBudgetGoogle) || 0);
+      if (body.monthlyBudgetMeta !== undefined) patch.monthlyBudgetMeta = Math.max(0, Number(body.monthlyBudgetMeta) || 0);
+      await db.collection('ads_optimization_config').updateOne({ key: 'pacing' }, { $set: patch }, { upsert: true });
+      return cors(NextResponse.json({ ok: true, budgets: { google: patch.monthlyBudgetGoogle, meta: patch.monthlyBudgetMeta } }));
+    }
+
+    // --- Annonse-varsler (anomali-motoren i ads-monitor.js) for admin-UI ---
+    if (route === '/admin/ads/alerts' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      try {
+        const out = await computeAdsAlertsData(db);
+        return cors(NextResponse.json({ ok: true, ...out }));
+      } catch (e) { return cors(NextResponse.json({ ok: false, error: e.message }, { status: 200 })); }
     }
 
     if (route === '/admin/ads/table' && method === 'GET') {
@@ -2615,7 +2741,33 @@ async function handleRoute(request, { params }) {
         if (mode === 'weekly' && emailConfigured() && sp.get('email') !== '0') {
           try { report = await sendWeeklyReport(db, {}); } catch (e) { report = { ok: false, error: e.message }; }
         }
-        return cors(NextResponse.json({ ok: true, mode, summary: run.summary, autoApplied: run.autoApplied, report }));
+        // Kritiske annonse-varsler → e-post (throttlet: maks 1 e-post per varsel-id per 24t).
+        let alertsInfo = null;
+        try {
+          const ad = await computeAdsAlertsData(db);
+          const high = (ad.alerts || []).filter((a) => a.severity === 'high');
+          alertsInfo = { total: (ad.alerts || []).length, high: high.length, emailed: false };
+          const recipients = reportRecipients();
+          if (high.length && emailConfigured() && recipients.length && sp.get('email') !== '0') {
+            const stateColl = db.collection('ads_optimization_config');
+            const state = (await stateColl.findOne({ key: 'alerts_email_state' })) || {};
+            const sent = state.sent || {};
+            const nowMs = Date.now();
+            const fresh = high.filter((a) => !sent[a.id] || (nowMs - new Date(sent[a.id]).getTime()) > 24 * 3600 * 1000);
+            if (fresh.length) {
+              const rows = fresh.map((a) => `<tr><td style="padding:10px 14px;border-bottom:1px solid #eee;"><strong style="color:#b91c1c;">${a.title}</strong><br/><span style="color:#555;font-size:13px;">${a.detail || ''}</span></td></tr>`).join('');
+              const html = `<div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;"><h2 style="color:#0a0a0a;">⚠️ Kritiske annonse-varsler</h2><p style="color:#555;">Anomali-motoren fant ${fresh.length} kritiske varsler (${ad.window.current.from} – ${ad.window.current.to}):</p><table style="width:100%;border-collapse:collapse;background:#fafafa;border-radius:8px;">${rows}</table><p style="color:#999;font-size:12px;margin-top:16px;">Se detaljer i adminpanelet → Annonser. Denne e-posten sendes maks én gang per varsel per døgn.</p></div>`;
+              try {
+                await sendHtmlEmail({ to: recipients, subject: `⚠️ DigiHome annonse-varsel: ${fresh[0].title}`, html });
+                for (const a of fresh) sent[a.id] = new Date().toISOString();
+                await stateColl.updateOne({ key: 'alerts_email_state' }, { $set: { key: 'alerts_email_state', sent } }, { upsert: true });
+                alertsInfo.emailed = true;
+                alertsInfo.emailedCount = fresh.length;
+              } catch (e) { alertsInfo.emailError = e.message; }
+            }
+          }
+        } catch (e) { alertsInfo = { error: e.message }; }
+        return cors(NextResponse.json({ ok: true, mode, summary: run.summary, autoApplied: run.autoApplied, report, alerts: alertsInfo }));
       } catch (e) { return cors(NextResponse.json({ ok: false, error: e.message }, { status: 200 })); }
     }
 

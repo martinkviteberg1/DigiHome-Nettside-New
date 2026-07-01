@@ -128,6 +128,20 @@ function LandingCard({ page: p, base, copied, onCopy }) {
           <Metric label="Vunnet" value={p.won || 0} />
         </div>
 
+        {/* Skjematrakt (2-stegs skjema): start → steg 2 → innsendt */}
+        {p.form && p.form.start > 0 ? (
+          <div className="mt-3 rounded-lg bg-[#faf9fc] border border-[#f0edf7] px-3 py-2.5">
+            <p className="text-[10px] uppercase tracking-[0.06em] text-[#a3a3a3] font-semibold mb-1.5">Skjematrakt</p>
+            <div className="flex items-center gap-1.5">
+              <FunnelStep label="Start" value={p.form.start} pct={100} />
+              <span className="text-[#d8d2e8] text-[11px]">→</span>
+              <FunnelStep label="Steg 2" value={p.form.step2} pct={p.form.step2Rate} />
+              <span className="text-[#d8d2e8] text-[11px]">→</span>
+              <FunnelStep label="Innsendt" value={p.form.submit} pct={p.form.submitRate} final />
+            </div>
+          </div>
+        ) : null}
+
         {/* Bunn */}
         <div className="mt-4 pt-3 border-t border-black/[0.05] flex items-center justify-between">
           <span className="text-[11.5px] text-[#999] flex items-center gap-1.5">
@@ -153,6 +167,20 @@ function Metric({ label, value, valueClass = 'text-[#1f1f1f]', highlight }) {
     <div className={`rounded-lg px-2 py-2 text-center ${highlight ? 'bg-[#f4f0fb]' : 'bg-[#f8f7f5]'}`}>
       <p className={`text-[15px] font-bold leading-none ${valueClass}`} style={{ fontFamily: 'var(--font-heading)' }}>{value}</p>
       <p className="text-[10px] uppercase tracking-[0.05em] text-[#a3a3a3] font-semibold mt-1">{label}</p>
+    </div>
+  );
+}
+
+function FunnelStep({ label, value, pct, final }) {
+  const tone = final
+    ? (pct >= 50 ? 'text-emerald-600' : pct >= 25 ? 'text-[#b76e00]' : 'text-[#b3261e]')
+    : 'text-[#1f1f1f]';
+  return (
+    <div className="flex-1 text-center">
+      <p className={`text-[13px] font-bold leading-none ${tone}`} style={{ fontFamily: 'var(--font-heading)' }}>
+        {value}{pct !== 100 ? <span className="text-[10px] font-semibold text-[#a3a3a3] ml-1">({pct}%)</span> : null}
+      </p>
+      <p className="text-[9.5px] uppercase tracking-[0.05em] text-[#a3a3a3] font-semibold mt-0.5">{label}</p>
     </div>
   );
 }

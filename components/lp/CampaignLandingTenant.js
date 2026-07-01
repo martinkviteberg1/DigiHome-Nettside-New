@@ -9,7 +9,7 @@ import {
   Clock, Star, Home, KeyRound, Search, BadgeCheck, FileSignature, CalendarCheck, Lock, Sparkles,
 } from 'lucide-react';
 import { site, neighborhoods } from '@/lib/site';
-import { getLeadAttribution } from '@/lib/analytics';
+import { getLeadAttribution, track } from '@/lib/analytics';
 import { trackLead, trackLeadStart, getClickIds } from '@/lib/gtag';
 import { Reveal, InitialsAvatar, AvatarStack, StickyMobileCta, ExitIntent } from '@/components/lp/lp-shared';
 
@@ -35,12 +35,14 @@ function TenantForm() {
     if (startedRef.current) return;
     startedRef.current = true;
     try { trackLeadStart(SOURCE); } catch (e) {}
+    try { track('lead_step', { step: 'start', form: SOURCE }); } catch (e) {}
   };
 
   const goStep2 = () => {
     handleStart();
     setStep(2);
     setErr('');
+    try { track('lead_step', { step: 'step2', form: SOURCE }); } catch (e) {}
     setTimeout(() => { try { nameRef.current?.focus({ preventScroll: true }); } catch (e) {} }, 60);
   };
 
@@ -79,6 +81,7 @@ function TenantForm() {
       let data = {};
       try { data = await res.json(); } catch (e2) {}
       try { trackLead({ formId: SOURCE, source: SOURCE, leadId: data?.data?.id, email: form.email, phone: form.phone }); } catch (e2) {}
+      try { track('lead_step', { step: 'submit', form: SOURCE }); } catch (e2) {}
       try { window.dispatchEvent(new CustomEvent('lp:done')); } catch (e2) {}
       setStatus('done');
     } catch (e2) {

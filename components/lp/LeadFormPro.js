@@ -7,7 +7,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { MapPin, ArrowRight, ArrowLeft, Check, Loader2, ShieldCheck, Wallet, Phone, Lock, Sparkles } from 'lucide-react';
 import { site } from '@/lib/site';
-import { getLeadAttribution } from '@/lib/analytics';
+import { getLeadAttribution, track } from '@/lib/analytics';
 import { trackLead, trackLeadStart, getClickIds } from '@/lib/gtag';
 import { useAddressAutocomplete } from '@/components/lp/lp-shared';
 
@@ -37,12 +37,14 @@ export default function LeadFormPro({ cfg }) {
     if (startedRef.current) return;
     startedRef.current = true;
     try { trackLeadStart(cfg.source); } catch (e) {}
+    try { track('lead_step', { step: 'start', form: cfg.source }); } catch (e) {}
   };
 
   const goStep2 = () => {
     handleStart();
     setStep(2);
     setErr('');
+    try { track('lead_step', { step: 'step2', form: cfg.source }); } catch (e) {}
     // Fokus på navn-feltet for flyt (etter render)
     setTimeout(() => { try { nameRef.current?.focus({ preventScroll: true }); } catch (e) {} }, 60);
   };
@@ -82,6 +84,7 @@ export default function LeadFormPro({ cfg }) {
       let data = {};
       try { data = await res.json(); } catch (e2) {}
       try { trackLead({ formId: cfg.source, source: cfg.source, leadId: data?.data?.id, email: form.email, phone: form.phone }); } catch (e2) {}
+      try { track('lead_step', { step: 'submit', form: cfg.source }); } catch (e2) {}
       try { window.dispatchEvent(new CustomEvent('lp:done')); } catch (e2) {}
       setStatus('done');
     } catch (e2) {

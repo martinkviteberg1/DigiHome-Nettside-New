@@ -7,6 +7,7 @@ import {
   SlidersHorizontal, X, Check, Image as ImageIcon, ExternalLink,
   Plus, Play, Pause, Save, MapPin, Sparkles,
   Search, ArrowUpDown, Lightbulb, Zap, FileText, Settings2, Wand2, TrendingDown, ListChecks, Crosshair,
+  ShieldCheck, BellRing, Gauge, Pencil,
 } from 'lucide-react';
 import CompetitorCampaign from '@/components/admin/CompetitorCampaign';
 
@@ -65,6 +66,7 @@ export default function AdsTab({ apiKey }) {
   const [chartMetric, setChartMetric] = useState('cost'); // 'cost' | 'clicks' | 'leads'
   // Visning: statistikk (tall) eller faktiske annonser/kreativer
   const [view, setView] = useState('stats'); // 'stats' | 'creatives'
+  const [verifyOpen, setVerifyOpen] = useState(false);
   const [compOpen, setCompOpen] = useState(false); // konkurrent-kampanje modal
   const [creatives, setCreatives] = useState(null);
   const [loadingCre, setLoadingCre] = useState(false);
@@ -195,6 +197,7 @@ export default function AdsTab({ apiKey }) {
   return (
     <div>
       <CompetitorCampaign apiKey={apiKey} open={compOpen} onClose={() => setCompOpen(false)} />
+      <TrackingVerifyModal apiKey={apiKey} open={verifyOpen} onClose={() => setVerifyOpen(false)} />
       {/* Verktøylinje — verdensklasse */}
       <div className="flex flex-wrap items-start justify-between gap-3 mb-5">
         <div>
@@ -217,6 +220,11 @@ export default function AdsTab({ apiKey }) {
           <button onClick={() => setCompOpen(true)} title="Opprett Google-søkekampanje mot konkurrenter (opprettes på pause)" className="group h-10 pl-3.5 pr-4 rounded-full bg-white text-[12.5px] font-semibold text-[#0a0a0a] flex items-center gap-2 shadow-[0_2px_12px_rgba(0,0,0,0.05)] ring-1 ring-transparent hover:ring-[#e0d5f2] hover:shadow-[0_6px_20px_rgba(139,92,246,0.14)] active:scale-[0.97] transition-all">
             <Crosshair className="w-4 h-4 text-[#8b5cf6] group-hover:rotate-12 transition-transform" />
             <span className="hidden sm:inline">Konkurrent</span>
+          </button>
+          {/* Verifiser sporing (Meta CAPI + Google offline + GA4) */}
+          <button onClick={() => setVerifyOpen(true)} title="Verifiser at closed-loop-sporingen fungerer (Meta CAPI, Google offline-konvertering, GA4)" className="group h-10 pl-3.5 pr-4 rounded-full bg-white text-[12.5px] font-semibold text-[#0a0a0a] flex items-center gap-2 shadow-[0_2px_12px_rgba(0,0,0,0.05)] ring-1 ring-transparent hover:ring-[#c9ead6] hover:shadow-[0_6px_20px_rgba(16,185,129,0.14)] active:scale-[0.97] transition-all">
+            <ShieldCheck className="w-4 h-4 text-emerald-600 group-hover:scale-110 transition-transform" />
+            <span className="hidden sm:inline">Sporing</span>
           </button>
           {/* Verdensklasse filter-knapp → modal (kanal + periode + import) */}
           <button onClick={openFilter} className="group h-10 pl-3.5 pr-4 rounded-full bg-white text-[12.5px] font-semibold text-[#444] flex items-center gap-2 shadow-[0_2px_12px_rgba(0,0,0,0.05)] ring-1 ring-transparent hover:ring-[#dcdcdc] hover:shadow-[0_6px_20px_rgba(0,0,0,0.08)] active:scale-[0.97] transition-all">
@@ -293,6 +301,9 @@ export default function AdsTab({ apiKey }) {
               <SplitBar google={combined.sources.google.cost} meta={combined.sources.meta.cost} />
             </div>
           )}
+
+          {/* Budsjett-pacing + varsler (anomali-motoren) */}
+          <PacingAlertsRow apiKey={apiKey} />
 
           {/* Utvikling over tid — daglig tidsserie */}
           {Array.isArray(data.series) && data.series.length > 0 && (
@@ -1736,6 +1747,302 @@ function ReportSettingsPanel({ apiKey }) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+/* ==========================================================================
+   Budsjett-pacing + varsler — «kontrollrom»-rad øverst i statistikkvisningen.
+   ========================================================================== */
+function PacingAlertsRow({ apiKey }) {
+  return (
+    <div className="grid lg:grid-cols-2 gap-4 mb-6">
+      <PacingCard apiKey={apiKey} />
+      <AlertsCard apiKey={apiKey} />
+    </div>
+  );
+}
+
+function paceTone(pct) {
+  if (pct == null) return { bar: 'bg-[#d8d2e8]', text: 'text-[#999]' };
+  if (pct <= 95) return { bar: 'bg-emerald-500', text: 'text-emerald-600' };
+  if (pct <= 110) return { bar: 'bg-amber-500', text: 'text-amber-600' };
+  return { bar: 'bg-rose-500', text: 'text-rose-600' };
+}
+
+function PacingCard({ apiKey }) {
+  const [data, setData] = useState(null);
+  const [editing, setEditing] = useState(false);
+  const [gBudget, setGBudget] = useState('');
+  const [mBudget, setMBudget] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const load = useCallback(async () => {
+    try {
+      const r = await fetch(`/api/admin/ads/pacing?key=${encodeURIComponent(apiKey)}`);
+      const j = await r.json();
+      if (j.ok) {
+        setData(j);
+        setGBudget(String(j.channels.google.budget || ''));
+        setMBudget(String(j.channels.meta.budget || ''));
+      }
+    } catch (e) {}
+  }, [apiKey]);
+  useEffect(() => { if (apiKey) load(); }, [apiKey, load]);
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      await fetch(`/api/admin/ads/pacing?key=${encodeURIComponent(apiKey)}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ monthlyBudgetGoogle: Number(gBudget) || 0, monthlyBudgetMeta: Number(mBudget) || 0 }),
+      });
+      setEditing(false);
+      await load();
+    } finally { setSaving(false); }
+  };
+
+  const monthName = data ? new Date(`${data.month}-01T12:00:00Z`).toLocaleString('nb-NO', { month: 'long', year: 'numeric' }) : '';
+  const hasBudget = data && (data.channels.google.budget > 0 || data.channels.meta.budget > 0);
+
+  return (
+    <div className="rounded-3xl p-5 bg-white ring-1 ring-[#ececec] shadow-[0_2px_20px_rgba(0,0,0,0.04)]">
+      <div className="flex items-center justify-between gap-2 mb-4">
+        <div className="flex items-center gap-2">
+          <span className="w-7 h-7 rounded-lg bg-[#f6f4f1] flex items-center justify-center"><Gauge className="w-4 h-4 text-[#0a0a0a]" /></span>
+          <h3 className="text-[13px] font-bold uppercase tracking-[0.06em] text-[#555]">Budsjett-pacing</h3>
+          {data && <span className="text-[11.5px] text-[#aaa] font-medium capitalize">{monthName} · dag {data.dayOfMonth}/{data.daysInMonth}</span>}
+        </div>
+        <button onClick={() => setEditing((e) => !e)} title="Sett månedsbudsjett" className="h-8 w-8 rounded-lg flex items-center justify-center text-[#aaa] hover:text-[#0a0a0a] hover:bg-[#f5f4f2] transition-colors">
+          <Pencil className="w-3.5 h-3.5" />
+        </button>
+      </div>
+
+      {!data ? (
+        <div className="py-8 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-[#ccc]" /></div>
+      ) : editing ? (
+        <div className="space-y-3">
+          <p className="text-[12px] text-[#888]">Sett månedsbudsjett per kanal (kr) — prognosen beregnes fra forbruket så langt + snitt siste 7 dager.</p>
+          <div className="grid grid-cols-2 gap-3">
+            <label className="block">
+              <span className="text-[11px] font-semibold uppercase tracking-wide text-[#999]">Google / mnd</span>
+              <input value={gBudget} onChange={(e) => setGBudget(e.target.value.replace(/[^\d]/g, ''))} inputMode="numeric" placeholder="f.eks. 5000"
+                className="mt-1 w-full h-10 px-3 rounded-lg border border-[#e5e5ea] text-[13px] focus:outline-none focus:ring-2 focus:ring-[#cf97fc]/50" />
+            </label>
+            <label className="block">
+              <span className="text-[11px] font-semibold uppercase tracking-wide text-[#999]">Meta / mnd</span>
+              <input value={mBudget} onChange={(e) => setMBudget(e.target.value.replace(/[^\d]/g, ''))} inputMode="numeric" placeholder="f.eks. 8000"
+                className="mt-1 w-full h-10 px-3 rounded-lg border border-[#e5e5ea] text-[13px] focus:outline-none focus:ring-2 focus:ring-[#cf97fc]/50" />
+            </label>
+          </div>
+          <div className="flex items-center gap-2">
+            <button onClick={save} disabled={saving} className="h-9 px-4 rounded-lg bg-[#0a0a0a] text-white text-[12.5px] font-semibold disabled:opacity-50 flex items-center gap-1.5">
+              {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />} Lagre
+            </button>
+            <button onClick={() => setEditing(false)} className="h-9 px-3 rounded-lg text-[12.5px] font-medium text-[#888] hover:bg-[#f5f4f2]">Avbryt</button>
+          </div>
+        </div>
+      ) : !hasBudget ? (
+        <div className="py-4 text-center">
+          <p className="text-[13px] text-[#999]">Ingen månedsbudsjett satt ennå.</p>
+          <button onClick={() => setEditing(true)} className="mt-2 h-9 px-4 rounded-lg bg-[#0a0a0a] text-white text-[12.5px] font-semibold inline-flex items-center gap-1.5">
+            <Plus className="w-3.5 h-3.5" /> Sett budsjett
+          </button>
+          {data.channels.total.mtd > 0 && <p className="text-[11.5px] text-[#bbb] mt-2.5">Forbruk denne måneden så langt: <b className="text-[#555]">{fmtKr(data.channels.total.mtd)}</b></p>}
+        </div>
+      ) : (
+        <div className="space-y-3.5">
+          {[['Google', data.channels.google, '#4285F4'], ['Meta', data.channels.meta, '#0866FF'], ['Totalt', data.channels.total, '#0a0a0a']].map(([label, ch, color]) => {
+            if (label !== 'Totalt' && !(ch.budget > 0) && !(ch.mtd > 0)) return null;
+            const tone = paceTone(ch.pacePct);
+            const spentW = ch.budget > 0 ? Math.min(100, Math.round((ch.mtd / ch.budget) * 100)) : 0;
+            return (
+              <div key={label}>
+                <div className="flex items-center justify-between text-[12px] mb-1">
+                  <span className="font-semibold" style={{ color }}>{label}</span>
+                  <span className="text-[#888]">
+                    {fmtKr(ch.mtd)}{ch.budget > 0 ? <> / {fmtKr(ch.budget)}</> : null}
+                    {ch.pacePct != null && <b className={`ml-2 ${tone.text}`}>→ {fmtKr(ch.projected)} ({ch.pacePct}%)</b>}
+                  </span>
+                </div>
+                <div className="h-2 rounded-full bg-[#f1efeb] overflow-hidden relative">
+                  <div className={`h-full rounded-full ${tone.bar} transition-all`} style={{ width: `${spentW}%` }} />
+                  {/* «Der du burde vært»-markør (lineær pace) */}
+                  {ch.budget > 0 && <div className="absolute top-[-2px] bottom-[-2px] w-[2px] bg-[#0a0a0a]/30" style={{ left: `${Math.min(100, Math.round((data.dayOfMonth / data.daysInMonth) * 100))}%` }} title="Lineær pace i dag" />}
+                </div>
+              </div>
+            );
+          })}
+          <p className="text-[11px] text-[#b5b5b5] pt-0.5">→ = prognose ved månedsslutt (forbruk + snitt siste 7 dager × gjenstående dager). Markøren viser lineær pace i dag.</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const SEV_STYLE = {
+  high: 'bg-rose-50 text-rose-600 ring-rose-100',
+  medium: 'bg-amber-50 text-amber-600 ring-amber-100',
+  low: 'bg-[#f2f2f4] text-[#888] ring-[#e8e8ec]',
+};
+const SEV_LABEL = { high: 'Kritisk', medium: 'Middels', low: 'Lav' };
+
+function AlertsCard({ apiKey }) {
+  const [data, setData] = useState(null);
+  const [loadingA, setLoadingA] = useState(true);
+
+  useEffect(() => {
+    if (!apiKey) return;
+    let alive = true;
+    (async () => {
+      try {
+        const r = await fetch(`/api/admin/ads/alerts?key=${encodeURIComponent(apiKey)}`);
+        const j = await r.json();
+        if (alive) setData(j);
+      } catch (e) { if (alive) setData({ ok: false }); }
+      finally { if (alive) setLoadingA(false); }
+    })();
+    return () => { alive = false; };
+  }, [apiKey]);
+
+  const alerts = (data && data.alerts) || [];
+
+  return (
+    <div className="rounded-3xl p-5 bg-white ring-1 ring-[#ececec] shadow-[0_2px_20px_rgba(0,0,0,0.04)]">
+      <div className="flex items-center justify-between gap-2 mb-4">
+        <div className="flex items-center gap-2">
+          <span className="w-7 h-7 rounded-lg bg-[#f6f4f1] flex items-center justify-center"><BellRing className="w-4 h-4 text-[#0a0a0a]" /></span>
+          <h3 className="text-[13px] font-bold uppercase tracking-[0.06em] text-[#555]">Varsler</h3>
+        </div>
+        {data && data.window && <span className="text-[11.5px] text-[#aaa] font-medium">{data.window.current.from} – {data.window.current.to} vs. uken før</span>}
+      </div>
+      {loadingA ? (
+        <div className="py-8 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-[#ccc]" /></div>
+      ) : alerts.length === 0 ? (
+        <div className="py-6 text-center">
+          <span className="inline-flex w-10 h-10 rounded-full bg-emerald-50 items-center justify-center mb-2"><CheckCircle2 className="w-5 h-5 text-emerald-500" /></span>
+          <p className="text-[13px] font-semibold text-[#333]">Ingen varsler — alt ser bra ut</p>
+          <p className="text-[11.5px] text-[#aaa] mt-1">Overvåker annonsetretthet (Meta-frekvens), CPA-hopp og CTR-fall uke-mot-uke.</p>
+        </div>
+      ) : (
+        <div className="space-y-2.5 max-h-[240px] overflow-y-auto pr-1">
+          {alerts.map((a) => (
+            <div key={a.id} className="flex items-start gap-3 rounded-xl bg-[#fafafa] p-3">
+              <span className={`shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-[10.5px] font-bold ring-1 ${SEV_STYLE[a.severity] || SEV_STYLE.low}`}>{SEV_LABEL[a.severity] || a.severity}</span>
+              <div className="min-w-0">
+                <p className="text-[13px] font-semibold text-[#111] leading-snug">{a.title}</p>
+                <p className="text-[12px] text-[#888] mt-0.5 leading-relaxed">{a.detail}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      <p className="text-[11px] text-[#b5b5b5] mt-3 flex items-center gap-1.5"><Info className="w-3 h-3" /> Kritiske varsler e-postes automatisk (maks 1 gang per varsel per døgn) via cron-jobben.</p>
+    </div>
+  );
+}
+
+/* ==========================================================================
+   «Verifiser sporing» — én-klikks helsesjekk av closed-loop (CAPI/Google/GA4).
+   ========================================================================== */
+function VerifyRow({ ok, warn, label, detail }) {
+  const Icon = ok ? CheckCircle2 : warn ? AlertCircle : X;
+  const tone = ok ? 'text-emerald-600' : warn ? 'text-amber-600' : 'text-rose-500';
+  return (
+    <div className="flex items-start gap-3 rounded-xl bg-[#fafafa] p-3.5">
+      <Icon className={`w-5 h-5 shrink-0 mt-0.5 ${tone}`} />
+      <div className="min-w-0">
+        <p className="text-[13.5px] font-semibold text-[#111]">{label}</p>
+        {detail && <p className="text-[12px] text-[#888] mt-0.5 leading-relaxed break-words">{detail}</p>}
+      </div>
+    </div>
+  );
+}
+
+function TrackingVerifyModal({ apiKey, open, onClose }) {
+  const [res, setRes] = useState(null);
+  const [running, setRunning] = useState(false);
+  const [tec, setTec] = useState('');
+
+  const run = useCallback(async (testEventCode) => {
+    setRunning(true);
+    try {
+      const qp = testEventCode ? `&testEventCode=${encodeURIComponent(testEventCode)}` : '';
+      const r = await fetch(`/api/admin/tracking/verify?key=${encodeURIComponent(apiKey)}${qp}`);
+      setRes(await r.json());
+    } catch (e) { setRes({ ok: false, error: e.message }); }
+    finally { setRunning(false); }
+  }, [apiKey]);
+
+  useEffect(() => { if (open && !res && !running) run(''); }, [open]); // eslint-disable-line
+
+  if (!open) return null;
+  const s = (res && res.summary) || {};
+  return (
+    <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" onClick={onClose} />
+      <div className="relative w-full max-w-[520px] max-h-[85vh] overflow-y-auto rounded-3xl bg-white shadow-2xl p-6">
+        <button onClick={onClose} aria-label="Lukk" className="absolute top-4 right-4 h-8 w-8 rounded-full bg-[#f5f4f2] flex items-center justify-center text-[#666] hover:bg-[#eceae6]"><X className="w-4 h-4" /></button>
+        <div className="flex items-center gap-2.5">
+          <span className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center"><ShieldCheck className="w-5 h-5 text-emerald-600" /></span>
+          <div>
+            <h3 className="text-[16px] font-bold text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>Verifiser sporing</h3>
+            <p className="text-[12px] text-[#999]">Closed-loop: Meta CAPI · Google offline-konvertering · GA4</p>
+          </div>
+        </div>
+
+        {running && !res ? (
+          <div className="py-12 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-[#0a0a0a]" /></div>
+        ) : res ? (
+          <div className="mt-5 space-y-2.5">
+            <VerifyRow
+              ok={!!(res.meta && res.meta.verified)}
+              warn={!!(res.meta && res.meta.configured && !res.meta.verified)}
+              label={`Meta CAPI ${res.meta && res.meta.pixelId ? `· pixel ${res.meta.pixelId}` : ''}`}
+              detail={res.meta && res.meta.verified
+                ? 'Test-Lead + test-Purchase sendt og godkjent (synlig i Test events-fanen).'
+                : (res.meta && res.meta.error) || (res.meta && res.meta.configured ? 'Konfigurert. Kjør full test med testEventCode for å sende trygge test-hendelser.' : 'Ikke konfigurert (META_CAPI_ACCESS_TOKEN mangler).')}
+            />
+            <VerifyRow
+              ok={!!(res.google && res.google.verified)}
+              warn={!!(res.google && res.google.configured && !res.google.verified)}
+              label="Google offline-konvertering (dry-run)"
+              detail={res.google && res.google.verified
+                ? 'OAuth + konverteringshandling + format validert (validateOnly — ingenting registrert).'
+                : (res.google && res.google.error) || (res.google && res.google.configured ? 'Konfigurert, men dry-run feilet.' : 'Ikke konfigurert.')}
+            />
+            <VerifyRow
+              ok={!!(res.ga4 && res.ga4.configured)}
+              warn={!!(res.ga4 && res.ga4.measurementId && !res.ga4.apiSecret)}
+              label={`GA4 Measurement Protocol ${res.ga4 && res.ga4.measurementId ? `· ${res.ga4.measurementId}` : ''}`}
+              detail={(res.ga4 && res.ga4.note) || (res.ga4 && res.ga4.configured ? 'Klar for server-side purchase-events ved «vunnet».' : 'Ikke konfigurert.')}
+            />
+
+            <div className={`rounded-xl p-3.5 text-[12.5px] font-semibold flex items-center gap-2 ${s.allGreen ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
+              {s.allGreen ? <CheckCircle2 className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+              {s.allGreen ? 'Hele sporingskjeden er verifisert — closed-loop fungerer.' : 'Delvis verifisert — se punktene over.'}
+            </div>
+
+            {/* Full Meta-test med testEventCode */}
+            {res.meta && res.meta.configured && !res.meta.verified && (
+              <div className="rounded-xl border border-[#eee] p-3.5">
+                <p className="text-[12px] text-[#888] leading-relaxed">Full Meta-test: lim inn <b>testEventCode</b> fra Meta Events Manager → Test events (f.eks. TEST1234). Hendelsene vises kun i test-fanen — påvirker ikke ekte data.</p>
+                <div className="flex items-center gap-2 mt-2">
+                  <input value={tec} onChange={(e) => setTec(e.target.value.trim())} placeholder="TEST1234"
+                    className="flex-1 h-9 px-3 rounded-lg border border-[#e5e5ea] text-[13px] focus:outline-none focus:ring-2 focus:ring-[#cf97fc]/50" />
+                  <button onClick={() => tec && run(tec)} disabled={running || !tec} className="h-9 px-3.5 rounded-lg bg-[#0a0a0a] text-white text-[12px] font-semibold disabled:opacity-40 flex items-center gap-1.5">
+                    {running ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5" />} Kjør full test
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <button onClick={() => run(tec)} disabled={running} className="w-full h-10 rounded-xl border border-[#e5e5ea] text-[12.5px] font-semibold text-[#333] hover:bg-[#f7f7f8] flex items-center justify-center gap-2 disabled:opacity-50">
+              <RefreshCw className={`w-3.5 h-3.5 ${running ? 'animate-spin' : ''}`} /> Kjør på nytt
+            </button>
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }

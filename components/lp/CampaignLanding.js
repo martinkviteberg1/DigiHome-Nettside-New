@@ -10,11 +10,20 @@ import { COMMON_STEPS, COMMON_TESTIMONIALS, COMMON_CHANNELS } from '@/lib/landin
 import { Reveal, CountUp, AvatarStack, InitialsAvatar, TrustLogos, StickyMobileCta, ExitIntent } from '@/components/lp/lp-shared';
 import LeadFormPro from '@/components/lp/LeadFormPro';
 import RentCalculator from '@/components/lp/RentCalculator';
+import { getVariant } from '@/lib/ab';
 
 export default function CampaignLanding({ cfg }) {
   const [scrolled, setScrolled] = useState(false);
   const [openFaq, setOpenFaq] = useState(0);
+  const [h1, setH1] = useState(cfg.h1);
   const heroStat = cfg.heroStat || { value: site.avgIncome, label: 'snittinntekt i Bergen' };
+
+  // A/B-test av hero-overskrift (sticky per besøkende; variant festes automatisk
+  // på events + lead-attribusjon → nedbrytbar i admin-trakten).
+  useEffect(() => {
+    if (!cfg.h1B) return;
+    try { if (getVariant(`lp-h1-${cfg.slug}`) === 'B') setH1(cfg.h1B); } catch (e) {}
+  }, [cfg.slug, cfg.h1B]);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12);
@@ -67,7 +76,7 @@ export default function CampaignLanding({ cfg }) {
             </Reveal>
             <Reveal delay={60}>
               <h1 className="font-heading font-bold tracking-[-0.04em] leading-[1.02] text-[35px] sm:text-[52px] lg:text-[58px] mt-4 max-w-[16ch]">
-                {cfg.h1}
+                {h1}
               </h1>
             </Reveal>
             <Reveal delay={110}>

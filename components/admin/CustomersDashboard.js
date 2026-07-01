@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Loader2, RefreshCw, Users, Building2, Wallet, TrendingUp, Search,
-  Landmark, AlertCircle, Radio,
+  Landmark, AlertCircle, Radio, Mail, Phone, Briefcase, HeartCrack, PauseCircle,
 } from 'lucide-react';
 
 const nf0 = new Intl.NumberFormat('nb-NO', { maximumFractionDigits: 0 });
@@ -13,6 +13,8 @@ const btnGhost = 'inline-flex items-center gap-2 h-9 px-3 rounded-lg border bord
 
 const STATUS_STYLE = {
   aktiv: 'bg-[#e7f6ee] text-[#1a7f45]',
+  pauset: 'bg-[#fff4e0] text-[#b76e00]',
+  churnet: 'bg-[#fdeaea] text-[#b3261e]',
   venter: 'bg-[#fff4e0] text-[#b76e00]',
   inaktiv: 'bg-[#f2f2f4] text-[#888]',
 };
@@ -23,6 +25,7 @@ export default function CustomersDashboard({ apiKey }) {
   const [syncing, setSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState(null);
   const [q, setQ] = useState('');
+  const [statusFilter, setStatusFilter] = useState('alle');
 
   const api = useCallback(async (path, opts = {}) => {
     const sep = path.includes('?') ? '&' : '?';
@@ -39,28 +42,42 @@ export default function CustomersDashboard({ apiKey }) {
 
   useEffect(() => { if (apiKey) load(); }, [apiKey, load]);
 
+  // Synk begge kildene: kontrakter (økonomimotoren) + kunder (rik kundedata).
   const sync = useCallback(async () => {
     setSyncing(true); setSyncMsg(null);
     try {
-      const res = await api('/sync-contracts', { method: 'POST', body: JSON.stringify({}) });
-      if (res.ok) setSyncMsg(`Synket ${res.upserted ?? res.fetched ?? 0} kontrakter fra plattform (${res.platformEnv || '—'}).`);
-      else setSyncMsg(`Synk feilet: ${res.error || 'ukjent'}`);
+      const [contracts, customers] = await Promise.all([
+        api('/sync-contracts', { method: 'POST', body: JSON.stringify({}) }),
+        api('/sync-customers', { method: 'POST', body: JSON.stringify({}) }),
+      ]);
+      const parts = [];
+      if (contracts.ok) parts.push(`${contracts.upserted ?? contracts.fetched ?? 0} kontrakter`);
+      if (customers.ok) parts.push(`${customers.upserted ?? customers.fetched ?? 0} kunder`);
+      if (parts.length) setSyncMsg(`Synket ${parts.join(' og ')} fra plattform (${contracts.platformEnv || customers.platformEnv || '—'}).`);
+      else setSyncMsg(`Synk feilet: ${contracts.error || customers.error || 'ukjent'}`);
       await load();
     } catch (e) { setSyncMsg('Synk feilet: ' + (e?.message || e)); }
-    finally { setSyncing(false); setTimeout(() => setSyncMsg(null), 6000); }
+    finally { setSyncing(false); setTimeout(() => setSyncMsg(null), 8000); }
   }, [api, load]);
 
   const customers = data?.customers || [];
+  const isPlatform = data?.dataSource === 'platform';
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
-    if (!s) return customers;
-    return customers.filter((c) => (c.name || '').toLowerCase().includes(s) || (c.email || '').toLowerCase().includes(s) || (c.channel || '').toLowerCase().includes(s));
-  }, [customers, q]);
+    return customers.filter((c) => {
+      if (statusFilter !== 'alle' && c.status !== statusFilter) return false;
+      if (!s) return true;
+      return (c.name || '').toLowerCase().includes(s) || (c.email || '').toLowerCase().includes(s)
+        || (c.phone || '').toLowerCase().includes(s) || (c.channel || '').toLowerCase().includes(s)
+        || (c.orgNo || '').toLowerCase().includes(s);
+    });
+  }, [customers, q, statusFilter]);
 
   if (loading) return <div className="flex items-center justify-center py-24 text-[#999]"><Loader2 className="w-5 h-5 animate-spin mr-2" /> Laster kunder…</div>;
   if (!data || !data.ok) return <Empty msg="Kunne ikke laste kundedata." onRetry={load} />;
 
   const s = data.summary || {};
+  const statusCounts = customers.reduce((acc, c) => { acc[c.status] = (acc[c.status] || 0) + 1; return acc; }, {});
 
   return (
     <div className="space-y-8">
@@ -68,7 +85,16 @@ export default function CustomersDashboard({ apiKey }) {
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
           <h2 className="text-[18px] font-bold text-[#0a0a0a] flex items-center gap-2"><Users className="w-5 h-5" /> Kunder (utleiere)</h2>
-          <p className="text-[12px] text-[#999] mt-0.5">Betalende kunder — hentet fra DigiHome-plattformens kontrakter. Leietakere er ikke kunder og vises ikke her.</p>
+          <p className="text-[12px] text-[#999] mt-0.5 flex items-center gap-2 flex-wrap">
+            {isPlatform ? (
+              <>
+                <span className="inline-flex items-center gap-1 text-[#1a7f45] font-semibold"><Radio className="w-3 h-3" /> Live fra plattformens kunde-eksport</span>
+                {data.syncedAt && <span>· sist synket {new Date(data.syncedAt).toLocaleString('nb-NO', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>}
+              </>
+            ) : (
+              <span>Avledet fra synkede kontrakter — klikk «Synk fra plattform» for rik kundedata (kontakt, livssyklus, LTV).</span>
+            )}
+          </p>
         </div>
         <button className={btnDark} onClick={sync} disabled={syncing} data-testid="customers-sync">
           {syncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />} Synk fra plattform
@@ -79,10 +105,16 @@ export default function CustomersDashboard({ apiKey }) {
 
       {/* Nøkkeltall */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Stat icon={Users} label="Betalende kunder" value={`${s.payingCustomers || 0}`} sub={`${s.totalCustomers || 0} totalt · ${s.activeCustomers || 0} aktive`} />
+        <Stat icon={Users} label="Betalende kunder" value={`${s.payingCustomers || 0}`}
+          sub={`${s.totalCustomers || 0} totalt · ${s.activeCustomers || 0} aktive${s.pausedCustomers ? ` · ${s.pausedCustomers} pauset` : ''}`} />
         <Stat icon={Wallet} label="MRR fra kunder" value={kr(s.totalMrr)} sub={`ARR ${kr(s.arr)}`} accent />
         <Stat icon={TrendingUp} label="ARPA" value={kr(s.arpa)} sub="Snitt honorar / kunde / mnd" />
-        <Stat icon={Building2} label="Eiendommer" value={`${s.totalProperties || 0}`} sub="Under forvaltning" />
+        {isPlatform ? (
+          <Stat icon={HeartCrack} label="Churn" value={`${s.churnedCustomers || 0}`}
+            sub={`${s.churnRatePct || 0} % av kundebasen · LTV-honorar totalt ${kr(s.lifetimeFees)}`} />
+        ) : (
+          <Stat icon={Building2} label="Eiendommer" value={`${s.totalProperties || 0}`} sub="Under forvaltning" />
+        )}
       </div>
 
       {/* Attribusjon per kanal */}
@@ -103,8 +135,20 @@ export default function CustomersDashboard({ apiKey }) {
 
       {/* Kundeliste */}
       <div className="rounded-2xl border border-[#eee] bg-white overflow-hidden">
-        <div className="flex items-center justify-between gap-4 px-6 py-4 border-b border-[#f0f0f0]">
-          <h3 className="text-[14px] font-bold text-[#111]">Kundeliste <span className="text-[#bbb] font-medium">({filtered.length})</span></h3>
+        <div className="flex items-center justify-between gap-4 px-6 py-4 border-b border-[#f0f0f0] flex-wrap">
+          <div className="flex items-center gap-3 flex-wrap">
+            <h3 className="text-[14px] font-bold text-[#111]">Kundeliste <span className="text-[#bbb] font-medium">({filtered.length})</span></h3>
+            {isPlatform && (
+              <div className="flex items-center gap-1">
+                {['alle', 'aktiv', 'pauset', 'churnet'].map((st) => (
+                  <button key={st} onClick={() => setStatusFilter(st)}
+                    className={`h-7 px-2.5 rounded-full text-[11.5px] font-semibold capitalize transition-colors ${statusFilter === st ? 'bg-[#0a0a0a] text-white' : 'bg-[#f2f2f4] text-[#666] hover:bg-[#e8e8ec]'}`}>
+                    {st}{st !== 'alle' && statusCounts[st] ? ` (${statusCounts[st]})` : ''}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           <div className="relative">
             <Search className="w-4 h-4 text-[#bbb] absolute left-3 top-1/2 -translate-y-1/2" />
             <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Søk navn, e-post, kilde …"
@@ -113,7 +157,7 @@ export default function CustomersDashboard({ apiKey }) {
         </div>
         {filtered.length === 0 ? (
           <div className="px-6 py-12 text-center text-[#999] text-[13px]">
-            {customers.length === 0 ? 'Ingen kunder ennå. Klikk «Synk fra plattform» for å hente kontrakter.' : 'Ingen treff.'}
+            {customers.length === 0 ? 'Ingen kunder ennå. Klikk «Synk fra plattform» for å hente kundedata.' : 'Ingen treff.'}
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -121,11 +165,13 @@ export default function CustomersDashboard({ apiKey }) {
               <thead>
                 <tr className="text-left text-[11px] uppercase tracking-wide text-[#aaa] border-b border-[#f0f0f0]">
                   <th className="px-6 py-3 font-semibold">Kunde</th>
+                  <th className="px-4 py-3 font-semibold">Kontakt</th>
                   <th className="px-4 py-3 font-semibold">Status</th>
                   <th className="px-4 py-3 font-semibold text-center">Eiendommer</th>
                   <th className="px-4 py-3 font-semibold text-center">Avtaler</th>
                   <th className="px-4 py-3 font-semibold">Kilde</th>
                   <th className="px-4 py-3 font-semibold">Kunde siden</th>
+                  {isPlatform && <th className="px-4 py-3 font-semibold text-right">LTV-honorar</th>}
                   <th className="px-6 py-3 font-semibold text-right">MRR</th>
                 </tr>
               </thead>
@@ -133,18 +179,28 @@ export default function CustomersDashboard({ apiKey }) {
                 {filtered.map((c) => (
                   <tr key={c.key} className="border-b border-[#f6f6f6] hover:bg-[#fafafa] transition-colors">
                     <td className="px-6 py-3.5">
-                      <div className="font-semibold text-[#111]">{c.name}</div>
-                      {(c.email || c.phone) && <div className="text-[11px] text-[#999]">{c.email || c.phone}</div>}
+                      <div className="font-semibold text-[#111] flex items-center gap-1.5">
+                        {c.name}
+                        {c.type === 'bedrift' && <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-[#4b5563] bg-[#f2f2f4] rounded px-1.5 py-0.5"><Briefcase className="w-3 h-3" /> Bedrift</span>}
+                      </div>
+                      {c.orgNo && <div className="text-[11px] text-[#999]">Org.nr {c.orgNo}</div>}
+                    </td>
+                    <td className="px-4 py-3.5">
+                      {c.email && <div className="text-[12px] text-[#555] flex items-center gap-1.5"><Mail className="w-3 h-3 text-[#bbb]" /> {c.email}</div>}
+                      {c.phone && <div className="text-[12px] text-[#555] flex items-center gap-1.5 mt-0.5"><Phone className="w-3 h-3 text-[#bbb]" /> {c.phone}</div>}
+                      {!c.email && !c.phone && <span className="text-[#ccc]">—</span>}
                     </td>
                     <td className="px-4 py-3.5">
                       <span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-semibold capitalize ${STATUS_STYLE[c.status] || STATUS_STYLE.inaktiv}`}>{c.status}</span>
+                      {c.status === 'churnet' && c.churnedAt && <div className="text-[10px] text-[#b3261e] mt-0.5">{c.churnedAt}</div>}
                     </td>
-                    <td className="px-4 py-3.5 text-center text-[#333]">{c.properties}</td>
+                    <td className="px-4 py-3.5 text-center text-[#333]" title={(c.propertyList || []).map((p) => p.address).filter(Boolean).join('\n')}>{c.properties}</td>
                     <td className="px-4 py-3.5 text-center text-[#333]">
                       {c.contracts}{c.pendingContracts > 0 && <span className="text-[10px] text-[#b76e00] ml-1">({c.pendingContracts} venter)</span>}
                     </td>
                     <td className="px-4 py-3.5 text-[#666] capitalize">{c.channel || '—'}</td>
                     <td className="px-4 py-3.5 text-[#666]">{c.since || '—'}</td>
+                    {isPlatform && <td className="px-4 py-3.5 text-right text-[#666]">{c.lifetimeFee > 0 ? kr(c.lifetimeFee) : '—'}</td>}
                     <td className="px-6 py-3.5 text-right font-semibold text-[#0a0a0a]">{c.mrr > 0 ? `${kr(c.mrr)}` : '—'}</td>
                   </tr>
                 ))}
@@ -154,12 +210,21 @@ export default function CustomersDashboard({ apiKey }) {
         )}
       </div>
 
-      {/* Note om rikere data */}
+      {/* Datakilde-notis */}
       <div className="rounded-2xl border border-[#eee] bg-[#fbfbfd] p-5 flex gap-3">
         <AlertCircle className="w-5 h-5 text-[#7c3aed] shrink-0 mt-0.5" />
         <div>
-          <p className="text-[13px] font-semibold text-[#333]">Kundedata avledes fra synkede kontrakter (owner-ID)</p>
-          <p className="text-[12px] text-[#999] mt-1 leading-relaxed">Navn, eiendommer, honorar (MRR) og kilde hentes fra plattformens kontrakts-eksport. Rikere felter — full kontaktinfo, livssyklus (aktiv/pauset/churnet) og historikk — er forespurt fra plattform-teamet via broen (dedikert <span className="font-mono text-[11px] bg-[#f2f0ff] px-1 rounded">/api/customers/export</span>). Kobles på når det er klart.</p>
+          {isPlatform ? (
+            <>
+              <p className="text-[13px] font-semibold text-[#333]">Live kundedata fra plattformens <span className="font-mono text-[11px] bg-[#f2f0ff] px-1 rounded">/api/customers/export</span></p>
+              <p className="text-[12px] text-[#999] mt-1 leading-relaxed">Kontaktinfo, livssyklus (aktiv/pauset/churnet), eiendommer, MRR (honorar) og lifetime-honorar hentes direkte fra DigiHome-plattformen. Kanal-attribusjon kobler kunden til første lead. Synk på nytt for ferske tall.</p>
+            </>
+          ) : (
+            <>
+              <p className="text-[13px] font-semibold text-[#333]">Kundedata avledes foreløpig fra synkede kontrakter (owner-ID)</p>
+              <p className="text-[12px] text-[#999] mt-1 leading-relaxed">Klikk «Synk fra plattform» for å hente den rike kunde-eksporten (kontaktinfo, livssyklus, lifetime-honorar) fra plattformens <span className="font-mono text-[11px] bg-[#f2f0ff] px-1 rounded">/api/customers/export</span>. Krever at endepunktet er deployet på plattform-miljøet det synkes mot.</p>
+            </>
+          )}
         </div>
       </div>
     </div>
