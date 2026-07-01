@@ -1,222 +1,15 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
-import { MapPin, ArrowRight, Check, Loader2, Phone, ShieldCheck, Sparkles, Clock, Star, TrendingUp, Wallet, Home } from 'lucide-react';
+// Google Ads-kampanjeside for utleiere — optimalisert for maksimal konvertering:
+// skjema over folden (2 steg), tillitsrad, leiekalkulator, exit-intent og sticky CTA.
+
+import React, { useState, useEffect } from 'react';
+import { ArrowRight, Check, Phone, ShieldCheck, Sparkles, Clock, Star, Home } from 'lucide-react';
 import { site, stats } from '@/lib/site';
-import { getLeadAttribution } from '@/lib/analytics';
-import { trackLead, trackLeadStart, getClickIds } from '@/lib/gtag';
 import { COMMON_STEPS, COMMON_TESTIMONIALS, COMMON_CHANNELS } from '@/lib/landing';
-
-/* -------------------------- små hjelpe-komponenter -------------------------- */
-
-// Avslører innhold med en myk fade-up når det kommer i viewport.
-function Reveal({ children, delay = 0, className = '', as: Tag = 'div' }) {
-  const ref = useRef(null);
-  const [shown, setShown] = useState(false);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el || typeof IntersectionObserver === 'undefined') { setShown(true); return; }
-    const io = new IntersectionObserver((entries) => {
-      entries.forEach((e) => { if (e.isIntersecting) { setShown(true); io.disconnect(); } });
-    }, { threshold: 0.12, rootMargin: '0px 0px -8% 0px' });
-    io.observe(el);
-    return () => io.disconnect();
-  }, []);
-  return (
-    <Tag
-      ref={ref}
-      className={className}
-      style={{
-        opacity: shown ? 1 : 0,
-        transform: shown ? 'none' : 'translateY(22px)',
-        transition: `opacity .7s cubic-bezier(.16,1,.3,1) ${delay}ms, transform .7s cubic-bezier(.16,1,.3,1) ${delay}ms`,
-      }}
-    >
-      {children}
-    </Tag>
-  );
-}
-
-// Teller opp tallverdien når den vises (beholder suffiks som "kr", "%").
-function CountUp({ value, className = '' }) {
-  const ref = useRef(null);
-  const [display, setDisplay] = useState(value);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const m = String(value).match(/^[\d\s.,]+/);
-    if (!m || typeof IntersectionObserver === 'undefined') { setDisplay(value); return; }
-    const raw = m[0];
-    const suffix = String(value).slice(raw.length);
-    const clean = raw.replace(/\s/g, '').replace(',', '.');
-    const target = parseFloat(clean);
-    if (!isFinite(target)) { setDisplay(value); return; }
-    const decimals = (clean.split('.')[1] || '').length;
-    const fmt = (n) => n.toLocaleString('nb-NO', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
-    let started = false;
-    const io = new IntersectionObserver((entries) => {
-      entries.forEach((e) => {
-        if (e.isIntersecting && !started) {
-          started = true;
-          const dur = 1400; const t0 = performance.now();
-          const tick = (t) => {
-            const p = Math.min(1, (t - t0) / dur);
-            const eased = 1 - Math.pow(1 - p, 3);
-            setDisplay(fmt(target * eased) + suffix);
-            if (p < 1) requestAnimationFrame(tick);
-          };
-          requestAnimationFrame(tick);
-          io.disconnect();
-        }
-      });
-    }, { threshold: 0.5 });
-    io.observe(el);
-    return () => io.disconnect();
-  }, [value]);
-  return <span ref={ref} className={className}>{display}</span>;
-}
-
-/* ------------------------------ adresse-søk ------------------------------ */
-
-function useAddressAutocomplete() {
-  const [query, setQuery] = useState('');
-  const [suggestions, setSuggestions] = useState([]);
-  const [open, setOpen] = useState(false);
-  const abortRef = useRef(null);
-  useEffect(() => {
-    const q = query.trim();
-    if (q.length < 3) { setSuggestions([]); return; }
-    const t = setTimeout(async () => {
-      try {
-        if (abortRef.current) abortRef.current.abort();
-        abortRef.current = new AbortController();
-        const res = await fetch(`/api/address?q=${encodeURIComponent(q)}`, { signal: abortRef.current.signal });
-        const data = await res.json();
-        setSuggestions(Array.isArray(data?.suggestions) ? data.suggestions.slice(0, 6) : []);
-        setOpen(true);
-      } catch (e) { /* abort/feil = ignore */ }
-    }, 220);
-    return () => clearTimeout(t);
-  }, [query]);
-  return { query, setQuery, suggestions, open, setOpen };
-}
-
-/* -------------------------------- skjema -------------------------------- */
-
-function LeadForm({ cfg, compact = false }) {
-  const [form, setForm] = useState({ name: '', phone: '', email: '' });
-  const [status, setStatus] = useState('idle');
-  const [err, setErr] = useState('');
-  const startedRef = useRef(false);
-  const ac = useAddressAutocomplete();
-  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
-
-  const handleStart = () => {
-    if (startedRef.current) return;
-    startedRef.current = true;
-    try { trackLeadStart(cfg.source); } catch (e) {}
-  };
-
-  const submit = async (e) => {
-    e.preventDefault();
-    if (!form.name.trim() || (!form.phone.trim() && !form.email.trim())) {
-      setErr('Fyll inn navn og enten telefon eller e-post.');
-      setStatus('error');
-      return;
-    }
-    setErr(''); setStatus('sending');
-    try {
-      const res = await fetch('/api/leads', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: form.name.trim(), phone: form.phone.trim(), email: form.email.trim(),
-          address: ac.query.trim(), lead_type: 'huseier', source: cfg.source,
-          notes: `Landingsside: ${cfg.h1}`,
-          attribution: { ...getLeadAttribution(), ...getClickIds() },
-        }),
-      });
-      if (!res.ok) throw new Error('api');
-      let data = {};
-      try { data = await res.json(); } catch (e) {}
-      try { trackLead({ formId: cfg.source, source: cfg.source, leadId: data?.data?.id, email: form.email, phone: form.phone }); } catch (e) {}
-      setStatus('done');
-    } catch (e2) {
-      setErr('Noe gikk galt. Prøv igjen — eller ring oss på ' + site.phone + '.');
-      setStatus('error');
-    }
-  };
-
-  if (status === 'done') {
-    return (
-      <div className="rounded-[22px] border border-success/25 bg-success-bg px-6 py-8 text-center">
-        <span className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-white border border-success/30">
-          <Check className="h-6 w-6 text-success" />
-        </span>
-        <p className="font-heading font-bold text-[21px] text-ink">Takk! Vurderingen er på vei.</p>
-        <p className="text-quiet text-[15px] mt-2 leading-relaxed max-w-[42ch] mx-auto">
-          Vi tar kontakt innen 24 timer med en gratis, uforpliktende vurdering{ac.query.trim() ? ` av ${ac.query.trim()}` : ''}.
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <form
-      onSubmit={submit}
-      onFocus={handleStart}
-      className="relative rounded-[24px] bg-surface/95 backdrop-blur-sm shadow-[0_40px_100px_-50px_rgba(10,10,10,0.5),0_2px_12px_rgba(10,10,10,0.05)] p-5 sm:p-7 space-y-3.5"
-    >
-      <div className="flex items-center justify-between gap-3">
-        <p className="font-heading font-bold text-[19px] text-ink leading-tight">Få en gratis verdivurdering</p>
-        <span className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-success-bg text-success text-[11px] font-semibold px-2.5 py-1">
-          <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" /> Svar &lt; 24t
-        </span>
-      </div>
-      <div className="relative">
-        <div className="flex items-center rounded-[14px] border border-hairline bg-canvas px-3.5 focus-within:border-[#c9b8e4] focus-within:shadow-[0_0_0_4px_rgba(155,91,214,0.09)] transition-all">
-          <MapPin className="h-4 w-4 text-taupe shrink-0" />
-          <input
-            value={ac.query}
-            onChange={(e) => ac.setQuery(e.target.value)}
-            onFocus={() => { handleStart(); if (ac.suggestions.length) ac.setOpen(true); }}
-            placeholder="Adressen til boligen din"
-            autoComplete="off"
-            className="flex-1 h-12 px-3 bg-transparent outline-none text-[15px] placeholder:text-taupe"
-          />
-        </div>
-        {ac.open && ac.suggestions.length > 0 && (
-          <ul className="absolute z-30 mt-1.5 w-full rounded-[14px] border border-hairline bg-surface shadow-xl overflow-hidden">
-            {ac.suggestions.map((s, i) => (
-              <li key={i}>
-                <button type="button" onClick={() => { ac.setQuery(s.text || s.label || ''); ac.setOpen(false); }}
-                  className="w-full text-left px-4 py-2.5 text-[14px] hover:bg-fill transition-colors">
-                  <span className="text-ink">{s.text || s.label}</span>
-                  {s.sub ? <span className="text-taupe"> · {s.sub}</span> : null}
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-      <input value={form.name} onChange={set('name')} placeholder="Navn" className="w-full h-12 px-4 rounded-[14px] border border-hairline bg-canvas outline-none focus:border-[#c9b8e4] focus:shadow-[0_0_0_4px_rgba(155,91,214,0.09)] text-[15px] placeholder:text-taupe transition-all" />
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-        <input value={form.phone} onChange={set('phone')} inputMode="tel" placeholder="Telefon" className="w-full h-12 px-4 rounded-[14px] border border-hairline bg-canvas outline-none focus:border-[#c9b8e4] focus:shadow-[0_0_0_4px_rgba(155,91,214,0.09)] text-[15px] placeholder:text-taupe transition-all" />
-        <input value={form.email} onChange={set('email')} type="email" inputMode="email" placeholder="E-post" className="w-full h-12 px-4 rounded-[14px] border border-hairline bg-canvas outline-none focus:border-[#c9b8e4] focus:shadow-[0_0_0_4px_rgba(155,91,214,0.09)] text-[15px] placeholder:text-taupe transition-all" />
-      </div>
-      {err ? <p className="text-[13px] text-rose-500">{err}</p> : null}
-      <button type="submit" disabled={status === 'sending'}
-        className="group w-full h-[52px] rounded-full bg-ink text-canvas font-semibold text-[15px] flex items-center justify-center gap-2 transition-all hover:shadow-[0_18px_40px_-14px_rgba(10,10,10,0.6)] hover:-translate-y-0.5 disabled:opacity-60 disabled:translate-y-0">
-        {status === 'sending' ? <Loader2 className="w-4 h-4 animate-spin" /> : <>Få gratis vurdering <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" /></>}
-      </button>
-      <div className="flex items-center justify-center gap-4 text-[12px] text-taupe pt-0.5">
-        <span className="inline-flex items-center gap-1.5"><ShieldCheck className="w-3.5 h-3.5 text-success" /> Uforpliktende</span>
-        <span className="inline-flex items-center gap-1.5"><Wallet className="w-3.5 h-3.5 text-success" /> 0 kr oppstart</span>
-      </div>
-    </form>
-  );
-}
-
-/* ------------------------------ hovedside ------------------------------ */
+import { Reveal, CountUp, AvatarStack, InitialsAvatar, TrustLogos, StickyMobileCta, ExitIntent } from '@/components/lp/lp-shared';
+import LeadFormPro from '@/components/lp/LeadFormPro';
+import RentCalculator from '@/components/lp/RentCalculator';
 
 export default function CampaignLanding({ cfg }) {
   const [scrolled, setScrolled] = useState(false);
@@ -264,7 +57,7 @@ export default function CampaignLanding({ cfg }) {
         <div aria-hidden className="pointer-events-none absolute -top-48 -right-32 h-[560px] w-[560px] rounded-full" style={{ background: 'radial-gradient(circle at center, rgba(207,151,252,0.30) 0%, rgba(207,151,252,0) 70%)' }} />
         <div aria-hidden className="pointer-events-none absolute top-32 -left-40 h-[420px] w-[420px] rounded-full" style={{ background: 'radial-gradient(circle at center, rgba(155,91,214,0.12) 0%, rgba(155,91,214,0) 70%)' }} />
 
-        <div className="relative max-w-[1200px] mx-auto px-5 sm:px-8 pt-10 sm:pt-16 pb-14 grid lg:grid-cols-[1.05fr_0.95fr] gap-10 lg:gap-16 items-center">
+        <div className="relative max-w-[1200px] mx-auto px-5 sm:px-8 pt-8 sm:pt-14 pb-14 grid lg:grid-cols-[1.05fr_0.95fr] gap-10 lg:gap-16 items-center">
           {/* venstre */}
           <div>
             <Reveal>
@@ -273,38 +66,44 @@ export default function CampaignLanding({ cfg }) {
               </div>
             </Reveal>
             <Reveal delay={60}>
-              <h1 className="font-heading font-bold tracking-[-0.04em] leading-[1.02] text-[38px] sm:text-[52px] lg:text-[58px] mt-5 max-w-[16ch]">
+              <h1 className="font-heading font-bold tracking-[-0.04em] leading-[1.02] text-[35px] sm:text-[52px] lg:text-[58px] mt-4 max-w-[16ch]">
                 {cfg.h1}
               </h1>
             </Reveal>
-            <Reveal delay={120}>
-              <p className="text-quiet text-[17px] sm:text-[19px] mt-5 max-w-[52ch] leading-relaxed">{cfg.sub}</p>
+            <Reveal delay={110}>
+              <p className="text-quiet text-[16px] sm:text-[18px] mt-4 max-w-[52ch] leading-relaxed">{cfg.sub}</p>
             </Reveal>
 
-            <Reveal delay={180}>
-              <div className="mt-6 flex items-center gap-3 flex-wrap">
-                <div className="flex items-center gap-1.5">
-                  <div className="flex -space-x-2">
-                    {[0, 1, 2, 3].map((i) => (
-                      <img key={i} src="/chat-user.webp" alt="" className="h-8 w-8 rounded-full border-2 border-canvas object-cover" />
-                    ))}
-                  </div>
-                  <div className="ml-1">
+            {/* Skjemaet først — over folden, også på mobil */}
+            <Reveal delay={170}>
+              <div id="lp-form" className="mt-6 scroll-mt-24">
+                <LeadFormPro cfg={cfg} />
+              </div>
+            </Reveal>
+
+            {/* Tillitsrad: sosiale bevis + tillitslogoer */}
+            <Reveal delay={230}>
+              <div className="mt-5 flex items-center justify-between gap-x-6 gap-y-3 flex-wrap">
+                <div className="flex items-center gap-2.5">
+                  <AvatarStack size={30} />
+                  <div>
                     <div className="flex items-center gap-0.5 text-lavender">
                       {[0, 1, 2, 3, 4].map((i) => <Star key={i} className="w-3.5 h-3.5 fill-current" />)}
                     </div>
                     <p className="text-[12.5px] text-quiet mt-0.5"><b className="text-ink">4,9/5</b> fra utleiere i Bergen</p>
                   </div>
                 </div>
+                <TrustLogos />
               </div>
             </Reveal>
 
-            <Reveal delay={230}>
-              <ul className="mt-7 space-y-2.5">
+            {/* Kompakte fordels-punkter */}
+            <Reveal delay={280}>
+              <ul className="mt-5 flex flex-wrap gap-x-5 gap-y-2.5">
                 {cfg.bullets.map((b, i) => (
-                  <li key={i} className="flex items-start gap-3 text-[15px] text-ink-soft">
-                    <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-success-bg">
-                      <Check className="h-3 w-3 text-success" />
+                  <li key={i} className="flex items-center gap-2 text-[13.5px] text-ink-soft">
+                    <span className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-success-bg">
+                      <Check className="h-2.5 w-2.5 text-success" />
                     </span>
                     {b}
                   </li>
@@ -312,25 +111,28 @@ export default function CampaignLanding({ cfg }) {
               </ul>
             </Reveal>
 
-            <Reveal delay={300}>
-              <div id="lp-form" className="mt-8 scroll-mt-24">
-                <LeadForm cfg={cfg} />
-              </div>
-            </Reveal>
+            {/* Etisk knapphet */}
+            {cfg.urgency ? (
+              <Reveal delay={330}>
+                <p className="mt-4 inline-flex items-center gap-2 text-[13px] text-quiet">
+                  <span className="h-1.5 w-1.5 rounded-full bg-lavender animate-pulse" /> {cfg.urgency}
+                </p>
+              </Reveal>
+            ) : null}
           </div>
 
           {/* høyre: lagdelt bilde-komposisjon */}
           <div className="relative hidden lg:block">
             <Reveal delay={120}>
               <div className="relative rounded-[28px] overflow-hidden aspect-[4/5] shadow-[0_50px_120px_-50px_rgba(10,10,10,0.55)]">
-                <img src={cfg.image} alt="Utleiebolig i Bergen" className="absolute inset-0 w-full h-full object-cover" width={900} height={1125} />
+                <img src={cfg.image} alt="Utleiebolig i Bergen" fetchPriority="high" className="absolute inset-0 w-full h-full object-cover" width={900} height={1125} />
                 <div className="absolute inset-0 bg-gradient-to-t from-ink/35 via-transparent to-transparent" />
               </div>
             </Reveal>
             {/* flytende inntekts-kort */}
             <div className="absolute -bottom-6 -left-6 rounded-[20px] bg-surface/95 backdrop-blur border border-hairline shadow-[0_30px_70px_-35px_rgba(10,10,10,0.5)] px-6 py-4">
               <div className="flex items-center gap-2 text-taupe">
-                <TrendingUp className="w-4 h-4 text-lavender" />
+                <Sparkles className="w-4 h-4 text-lavender" />
                 <p className="text-[11px] uppercase tracking-[0.12em]">{heroStat.label}</p>
               </div>
               <p className="font-heading font-bold text-[28px] text-ink mt-0.5 leading-none">{heroStat.value}</p>
@@ -357,7 +159,7 @@ export default function CampaignLanding({ cfg }) {
           <p className="text-[12.5px] font-semibold uppercase tracking-[0.14em] text-taupe">Vi annonserer der leietakerne leter</p>
           <div className="flex items-center gap-8 sm:gap-10">
             {COMMON_CHANNELS.map((c, i) => (
-              <img key={i} src={c.src} alt={c.alt} style={{ height: c.h }} className="w-auto object-contain opacity-60 grayscale hover:grayscale-0 hover:opacity-100 transition-all" />
+              <img key={i} src={c.src} alt={c.alt} style={{ height: c.h }} loading="lazy" className="w-auto object-contain opacity-60 grayscale hover:grayscale-0 hover:opacity-100 transition-all" />
             ))}
           </div>
         </div>
@@ -377,7 +179,7 @@ export default function CampaignLanding({ cfg }) {
         </div>
       </section>
 
-      {/* ----------------------- Inntekts-bevis ----------------------- */}
+      {/* ----------------------- Inntekts-bevis + kalkulator ----------------------- */}
       <section className="bg-canvas-alt border-y border-hairline/70">
         <div className="max-w-[1100px] mx-auto px-5 sm:px-8 py-14 sm:py-20 grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
           <Reveal>
@@ -387,35 +189,23 @@ export default function CampaignLanding({ cfg }) {
                 Samme bolig. Tydelig høyere inntekt.
               </h2>
               <p className="text-quiet text-[16px] mt-4 leading-relaxed max-w-[46ch]">{cfg.proofNote}</p>
+              <ul className="mt-6 space-y-2.5">
+                {['Dynamisk prising som følger markedet døgnet rundt', 'Hybrid korttid + langtid når det lønner seg', 'Full oversikt over inntekten i sanntid'].map((t, i) => (
+                  <li key={i} className="flex items-start gap-3 text-[15px] text-ink-soft">
+                    <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-success-bg">
+                      <Check className="h-3 w-3 text-success" />
+                    </span>
+                    {t}
+                  </li>
+                ))}
+              </ul>
               <button onClick={scrollToForm} className="group mt-7 inline-flex items-center gap-2 h-12 rounded-full bg-ink text-canvas px-6 font-semibold text-[15px] hover:-translate-y-0.5 transition-transform">
                 Se hva din kan tjene <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
               </button>
             </div>
           </Reveal>
           <Reveal delay={120}>
-            <div className="rounded-[24px] bg-surface shadow-[0_30px_80px_-42px_rgba(10,10,10,0.42),0_2px_10px_rgba(10,10,10,0.04)] p-6 sm:p-8">
-              <div className="space-y-5">
-                <div>
-                  <div className="flex items-center justify-between text-[13px] text-quiet mb-1.5">
-                    <span>Vanlig utleie</span><span className="font-semibold text-ink">≈ 19 000 kr</span>
-                  </div>
-                  <div className="h-3 rounded-full bg-fill overflow-hidden"><div className="h-full rounded-full bg-taupe/40" style={{ width: '70%' }} /></div>
-                </div>
-                <div>
-                  <div className="flex items-center justify-between text-[13px] text-quiet mb-1.5">
-                    <span className="font-semibold text-ink">Med DigiHome</span><span className="font-semibold text-ink">≈ 25 000 kr</span>
-                  </div>
-                  <div className="h-3 rounded-full bg-fill overflow-hidden"><div className="h-full rounded-full bg-gradient-to-r from-lavender to-lavender-soft" style={{ width: '100%' }} /></div>
-                </div>
-              </div>
-              <div className="mt-6 pt-5 border-t border-hairline flex items-end justify-between">
-                <div>
-                  <p className="text-[12px] uppercase tracking-[0.12em] text-taupe">Potensial</p>
-                  <p className="font-heading font-bold text-[34px] text-ink leading-none mt-1">+30 %</p>
-                </div>
-                <p className="text-[12px] text-taupe max-w-[18ch] text-right">Eksempeltall for Bergen — du får en konkret vurdering av nettopp din bolig.</p>
-              </div>
-            </div>
+            <RentCalculator onCta={scrollToForm} />
           </Reveal>
         </div>
       </section>
@@ -469,7 +259,7 @@ export default function CampaignLanding({ cfg }) {
                 </div>
                 <blockquote className="text-ink-soft text-[15.5px] leading-relaxed flex-1">“{t.quote}”</blockquote>
                 <figcaption className="mt-6 flex items-center gap-3">
-                  <img src={t.avatar} alt="" className="h-10 w-10 rounded-full object-cover" />
+                  <InitialsAvatar name={t.name} index={i} size={40} />
                   <div>
                     <p className="text-[14px] font-semibold text-ink">{t.name}</p>
                     <p className="text-[12.5px] text-taupe">{t.area}, Bergen</p>
@@ -545,12 +335,9 @@ export default function CampaignLanding({ cfg }) {
         </div>
       </footer>
 
-      {/* ----------------------------- Mobil sticky CTA ----------------------------- */}
-      <div className="lg:hidden fixed inset-x-0 bottom-0 z-[90] p-3 bg-gradient-to-t from-canvas via-canvas/95 to-transparent">
-        <button onClick={scrollToForm} className="w-full h-[52px] rounded-full bg-ink text-canvas font-semibold text-[15px] flex items-center justify-center gap-2 shadow-[0_16px_36px_-10px_rgba(10,10,10,0.6)]">
-          Få gratis vurdering <ArrowRight className="w-4 h-4" />
-        </button>
-      </div>
+      {/* --------------------- Sticky mobil-CTA + exit-intent --------------------- */}
+      <StickyMobileCta label={cfg.cta || 'Få gratis vurdering'} onClick={scrollToForm} />
+      <ExitIntent onCta={scrollToForm} />
     </div>
   );
 }
