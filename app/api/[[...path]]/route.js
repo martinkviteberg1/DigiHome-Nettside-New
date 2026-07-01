@@ -15,7 +15,7 @@ import { googleAdsNativeConfigured, listConversionActions, resolveOfflineConvers
 import { dataManagerConfigured, ingestOfflineConversion } from '@/lib/google-ads-datamanager';
 import { IMPORTED_COLL, importRecords, parseCsv, summarizeImported, syncFromPlatform } from '@/lib/imported-leads';
 import { computeKpiDashboard, getKpiSettings, setKpiSettings } from '@/lib/kpi-dashboard';
-import { getFinanceSettings, setFinanceSettings, listCosts, upsertCost, deleteCost, listContracts, upsertContract, deleteContract, listEvents, upsertEvent, deleteEvent, computeResultat, computeLikviditet, computeFinanceOverview, computeTrends, captureSnapshot } from '@/lib/finance';
+import { getFinanceSettings, setFinanceSettings, listCosts, upsertCost, deleteCost, listContracts, upsertContract, deleteContract, listEvents, upsertEvent, deleteEvent, computeResultat, computeLikviditet, computeFinanceOverview, computeTrends, captureSnapshot, computeInvestorMetrics, computeForecast, computeBoardPack, computeCustomers } from '@/lib/finance';
 import { syncContractsFromPlatform } from '@/lib/contracts-sync';
 import { ga4MpConfigured, sendGa4Purchase } from '@/lib/ga4-mp';
 import { buildRecommendations } from '@/lib/ads-recommendations';
@@ -1386,22 +1386,36 @@ async function handleRoute(request, { params }) {
         createdAt: new Date().toISOString(),
       };
 
-      // Idempotens: stopp duplikater fra gjentatte klikk / nettverks-retry.
+      // Idempotens + sammenslåing: unngå duplikater fra gjentatte klikk,
+      // fler-stegs skjema eller innsending på flere sider. Match på e-post ELLER
+      // telefon innen 30 min (uavhengig av preferred_area), og flett inn den
+      // rikeste informasjonen i den eksisterende posten i stedet for å lage ny.
       try {
-        const sinceIso = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-        const idMatch = tenant.email
-          ? { email: tenant.email }
-          : (tenant.phone ? { phone: tenant.phone } : null);
-        if (idMatch) {
-          const dup = await db.collection('tenant_leads').findOne({
-            ...idMatch,
-            preferred_area: tenant.preferred_area,
-            createdAt: { $gte: sinceIso },
-          });
+        const sinceIso = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+        const or = [];
+        if (tenant.email) or.push({ email: tenant.email });
+        if (tenant.phone) or.push({ phone: tenant.phone });
+        if (or.length) {
+          const dup = await db.collection('tenant_leads').findOne({ $or: or, createdAt: { $gte: sinceIso } }, { sort: { createdAt: -1 } });
           if (dup) {
+            const enrich = {};
+            const richer = (nv, ov) => nv != null && String(nv).trim() !== '' && (ov == null || String(ov).trim() === '');
+            if (richer(tenant.preferred_area, dup.preferred_area)) enrich.preferred_area = tenant.preferred_area;
+            if (tenant.budget_max != null && dup.budget_max == null) enrich.budget_max = tenant.budget_max;
+            if (tenant.budget_min != null && dup.budget_min == null) enrich.budget_min = tenant.budget_min;
+            if (richer(tenant.move_in_date, dup.move_in_date)) enrich.move_in_date = tenant.move_in_date;
+            if (tenant.bedrooms != null && (dup.bedrooms == null || dup.bedrooms < tenant.bedrooms)) enrich.bedrooms = tenant.bedrooms;
+            if (richer(tenant.notes, dup.notes)) enrich.notes = tenant.notes;
+            if (tenant.attribution && (!dup.attribution || !dup.attribution.channel)) enrich.attribution = tenant.attribution;
+            let merged = dup;
+            if (Object.keys(enrich).length) {
+              enrich.updatedAt = new Date().toISOString();
+              await db.collection('tenant_leads').updateOne({ id: dup.id }, { $set: enrich });
+              merged = { ...dup, ...enrich };
+            }
             return cors(NextResponse.json({
-              success: true, ok: true, id: dup.id, deduped: true,
-              forwarded: dup.forwarded === true, tenant: clean(dup),
+              success: true, ok: true, id: dup.id, deduped: true, merged: Object.keys(enrich).length > 0,
+              forwarded: dup.forwarded === true, tenant: clean(merged),
             }, { status: 200 }));
           }
         }
@@ -2321,6 +2335,22 @@ async function handleRoute(request, { params }) {
           const months = Number(new URL(request.url).searchParams.get('months')) || 12;
           return cors(NextResponse.json(await computeTrends(db, { months })));
         }
+        if (sub === '/investor' && method === 'GET') {
+          const horizon = Number(new URL(request.url).searchParams.get('horizon')) || 12;
+          return cors(NextResponse.json(await computeInvestorMetrics(db, { horizon })));
+        }
+        if (sub === '/forecast' && method === 'GET') {
+          const sp = new URL(request.url).searchParams;
+          const months = Number(sp.get('months')) || 18;
+          const assumptions = {};
+          for (const k of ['newContractsPerMonth', 'avgRentPerNewContract', 'avgFeePercent', 'monthlyChurnPct', 'opexGrowthPct', 'cacPerContract', 'rampMonths', 'grossMarginPct']) {
+            const v = sp.get(k);
+            if (v != null && v !== '') assumptions[k] = Number(v);
+          }
+          return cors(NextResponse.json(await computeForecast(db, { months, assumptions })));
+        }
+        if (sub === '/board-pack' && method === 'GET') return cors(NextResponse.json(await computeBoardPack(db)));
+        if (sub === '/customers' && method === 'GET') return cors(NextResponse.json(await computeCustomers(db)));
         if (sub === '/sync-contracts' && method === 'POST') {
           const target = digiHomeTarget();
           const result = await syncContractsFromPlatform(db, { target: target.url, key: target.key });

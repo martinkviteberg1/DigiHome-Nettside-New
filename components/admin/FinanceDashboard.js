@@ -1,9 +1,10 @@
 'use client';
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   Loader2, Plus, Trash2, Pencil, X, TrendingUp, TrendingDown, Activity,
   Building2, Receipt, Settings2, Zap, Megaphone, Wallet, AlertTriangle, Check,
-  BarChart3, RefreshCw,
+  BarChart3, RefreshCw, Landmark, Download, FileText, Target, Rocket, PieChart,
+  Percent, ArrowUpRight, ArrowDownRight, Repeat,
 } from 'lucide-react';
 
 // ── Formattering (NOK, nb-NO) ───────────────────────────────────────────────
@@ -16,6 +17,7 @@ const TABS = [
   { k: 'resultat', l: 'Resultat', icon: TrendingUp },
   { k: 'likviditet', l: 'Likviditet', icon: Activity },
   { k: 'trender', l: 'Trender', icon: BarChart3 },
+  { k: 'investor', l: 'Investor', icon: Landmark },
   { k: 'kontrakter', l: 'Kontrakter', icon: Building2 },
   { k: 'kostnader', l: 'Kostnader', icon: Receipt },
   { k: 'innstillinger', l: 'Innstillinger', icon: Settings2 },
@@ -43,6 +45,10 @@ export default function FinanceDashboard({ apiKey }) {
   const [trends, setTrends] = useState(null);
   const [trendsLoading, setTrendsLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [investor, setInvestor] = useState(null);
+  const [forecast, setForecast] = useState(null);
+  const [investorLoading, setInvestorLoading] = useState(false);
+  const [forecastLoading, setForecastLoading] = useState(false);
 
   const api = useCallback(async (path, opts = {}) => {
     const sep = path.includes('?') ? '&' : '?';
@@ -76,6 +82,30 @@ export default function FinanceDashboard({ apiKey }) {
     try { const t = await api('/trends?months=12'); setTrends(t); } finally { setTrendsLoading(false); }
   }, [api]);
   useEffect(() => { if (apiKey && tab === 'trender' && !trends && !trendsLoading) loadTrends(); }, [apiKey, tab, trends, trendsLoading, loadTrends]);
+
+  const loadInvestor = useCallback(async () => {
+    setInvestorLoading(true);
+    try {
+      const [inv, fc] = await Promise.all([api('/investor?horizon=12'), api('/forecast?months=18')]);
+      setInvestor(inv); setForecast(fc);
+    } finally { setInvestorLoading(false); }
+  }, [api]);
+  useEffect(() => { if (apiKey && tab === 'investor' && !investor && !investorLoading) loadInvestor(); }, [apiKey, tab, investor, investorLoading, loadInvestor]);
+
+  const recomputeForecast = useCallback(async (assumptions) => {
+    setForecastLoading(true);
+    try {
+      const qs = new URLSearchParams({ months: '18' });
+      Object.entries(assumptions || {}).forEach(([k, v]) => { if (v !== '' && v != null) qs.set(k, String(v)); });
+      const fc = await api(`/forecast?${qs.toString()}`);
+      setForecast(fc);
+      return fc;
+    } finally { setForecastLoading(false); }
+  }, [api]);
+  const saveForecastAssumptions = useCallback(async (assumptions) => {
+    await api('/settings', { method: 'POST', body: JSON.stringify({ forecast: assumptions }) });
+    const s = await api('/settings'); setSettings(s.settings || null);
+  }, [api]);
 
   const syncContracts = useCallback(async () => {
     setSyncing(true);
@@ -145,6 +175,10 @@ export default function FinanceDashboard({ apiKey }) {
           settings={settings} onSaveSettings={saveSettings} contracts={contracts} saving={saving} />
       )}
       {tab === 'trender' && <TrenderTab data={trends} loading={trendsLoading} />}
+      {tab === 'investor' && (
+        <InvestorTab data={investor} forecast={forecast} loading={investorLoading} forecastLoading={forecastLoading}
+          onRecompute={recomputeForecast} onSaveAssumptions={saveForecastAssumptions} apiKey={apiKey} />
+      )}
       {tab === 'kontrakter' && (
         <KontrakterTab items={contracts} onSave={(c) => saveEntity('contracts', c)} onDelete={(id) => deleteEntity('contracts', id)} onSync={syncContracts} syncing={syncing} saving={saving} />
       )}
@@ -756,3 +790,321 @@ function TrenderTab({ data, loading }) {
     </div>
   );
 }
+
+// ═══════════════════════════ INVESTOR ═══════════════════════════
+const pctSign = (n) => (n == null ? '—' : `${n >= 0 ? '' : '−'}${new Intl.NumberFormat('nb-NO', { maximumFractionDigits: 1 }).format(Math.abs(n))} %`);
+const monthsLabel = (n) => (n == null ? '—' : `${new Intl.NumberFormat('nb-NO', { maximumFractionDigits: 1 }).format(n)} mnd`);
+
+function downloadBlob(text, filename, mime) {
+  const blob = new Blob([text], { type: `${mime};charset=utf-8` });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; document.body.appendChild(a); a.click();
+  setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+}
+const csvCell = (v) => {
+  if (v == null) return '';
+  const s = String(v);
+  return /[";\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+};
+
+// Waterfall/bridge-diagram: Start → +Ny +Ekspansjon −Reduksjon −Churn → Nå
+function WaterfallChart({ w }) {
+  if (!w) return <Empty msg="Ikke nok data for MRR-bevegelse." />;
+  const steps = [
+    { label: 'Start', value: w.start, type: 'total' },
+    { label: 'Ny', value: w.neu, type: 'pos' },
+    { label: 'Ekspansjon', value: w.expansion, type: 'pos' },
+    { label: 'Reduksjon', value: -w.contraction, type: 'neg' },
+    { label: 'Churn', value: -w.churn, type: 'neg' },
+    { label: 'Nå', value: w.end, type: 'total' },
+  ];
+  let running = 0;
+  const bars = steps.map((s) => {
+    if (s.type === 'total') { running = s.value; return { ...s, base: 0, top: s.value, delta: s.value }; }
+    const start = running; const end = running + s.value; running = end;
+    return { ...s, base: Math.min(start, end), top: Math.max(start, end), delta: s.value };
+  });
+  const maxV = Math.max(...bars.map((b) => b.top), 1);
+  const H = 200;
+  return (
+    <div>
+      <div className="flex items-end gap-3" style={{ height: H + 24 }}>
+        {bars.map((b, i) => {
+          const barH = Math.max(2, ((b.top - b.base) / maxV) * H);
+          const bottom = (b.base / maxV) * H;
+          const color = b.type === 'total' ? '#0a0a0a' : b.type === 'pos' ? '#1a7f45' : '#e5484d';
+          const showLabel = b.type === 'total' || Math.abs(b.delta) > 0;
+          return (
+            <div key={i} className="flex-1 flex flex-col items-center justify-end" style={{ height: H + 24 }}>
+              <span className="text-[10px] font-semibold mb-1" style={{ color }}>
+                {showLabel ? (b.type === 'total' ? kr(b.delta) : `${b.delta >= 0 ? '+' : '−'}${nf0.format(Math.abs(Math.round(b.delta)))}`) : ''}
+              </span>
+              <div className="w-full flex justify-center" style={{ height: H, alignItems: 'flex-end' }}>
+                <div style={{ height: barH, marginBottom: bottom, background: color, borderRadius: 6, width: '64%' }} />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div className="flex gap-3 mt-2">
+        {bars.map((b, i) => <span key={i} className="flex-1 text-center text-[10px] text-[#999] font-medium">{b.label}</span>)}
+      </div>
+    </div>
+  );
+}
+
+const FORECAST_FIELDS = [
+  { k: 'newContractsPerMonth', l: 'Nye avtaler / mnd', step: '0.5', suffix: 'stk' },
+  { k: 'avgRentPerNewContract', l: 'Snittleie ny avtale', step: '500', suffix: 'kr' },
+  { k: 'avgFeePercent', l: 'Honorar', step: '0.5', suffix: '%' },
+  { k: 'monthlyChurnPct', l: 'Churn / mnd', step: '0.5', suffix: '%' },
+  { k: 'cacPerContract', l: 'CAC per avtale', step: '250', suffix: 'kr' },
+  { k: 'opexGrowthPct', l: 'OPEX-vekst / mnd', step: '0.5', suffix: '%' },
+  { k: 'rampMonths', l: 'Ramp (forsinkelse)', step: '1', suffix: 'mnd' },
+  { k: 'grossMarginPct', l: 'Bruttomargin', step: '0.05', suffix: '' },
+];
+
+function ForecastPanel({ forecast, loading, onRecompute, onSaveAssumptions }) {
+  const A = forecast?.assumptions || {};
+  const [form, setForm] = useState({});
+  const [scenario, setScenario] = useState('base');
+  const [savedOk, setSavedOk] = useState(false);
+  useEffect(() => {
+    if (forecast?.assumptions) {
+      const f = {}; FORECAST_FIELDS.forEach(({ k }) => { f[k] = forecast.assumptions[k] ?? ''; });
+      setForm(f);
+    }
+  }, [forecast]);
+  if (!forecast || !forecast.ok) return <Empty msg="Kunne ikke laste prognose." />;
+  const set = (k, v) => setForm((p) => ({ ...p, [k]: v }));
+  const sc = (forecast.scenarios && forecast.scenarios[scenario]) || {};
+  const series = sc.series || [];
+  const sum = sc.summary || {};
+  const openingSet = forecast.openingSet;
+
+  return (
+    <div className="rounded-2xl border border-[#eee] bg-white p-6 space-y-6">
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h3 className="text-[15px] font-bold text-[#111] flex items-center gap-2"><Rocket className="w-4 h-4 text-[#7c3aed]" /> Driver-basert prognose</h3>
+          <p className="text-[12px] text-[#999] mt-1">Juster driverne og se effekt på MRR, resultat og kontantbeholdning.</p>
+        </div>
+        <div className="inline-flex rounded-lg border border-[#e5e5ea] p-1 bg-[#f7f7f8]">
+          {[['konservativ', 'Konservativ'], ['base', 'Base'], ['aggressiv', 'Aggressiv']].map(([k, l]) => (
+            <button key={k} onClick={() => setScenario(k)} data-testid={`fc-scenario-${k}`}
+              className={`px-3 py-1.5 rounded-md text-[12px] font-semibold transition-colors ${scenario === k ? 'bg-white text-[#0a0a0a] shadow-sm' : 'text-[#888]'}`}>{l}</button>
+          ))}
+        </div>
+      </div>
+
+      {/* Antakelser */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {FORECAST_FIELDS.map(({ k, l, step, suffix }) => (
+          <div key={k}>
+            <label className="block text-[11px] font-semibold text-[#888] mb-1">{l}{suffix ? ` (${suffix})` : ''}</label>
+            <input type="number" step={step} value={form[k] ?? ''} onChange={(e) => set(k, e.target.value)}
+              data-testid={`fc-input-${k}`}
+              className="w-full h-9 px-2.5 rounded-lg border border-[#e5e5ea] bg-white text-[13px] text-[#111] focus:outline-none focus:ring-2 focus:ring-[#cf97fc]/50" />
+          </div>
+        ))}
+      </div>
+      <div className="flex items-center gap-2 flex-wrap">
+        <button className={btnDark} disabled={loading} onClick={() => onRecompute(form)} data-testid="fc-recompute">
+          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />} Oppdater prognose
+        </button>
+        <button className={btnGhost} onClick={async () => { await onSaveAssumptions(form); setSavedOk(true); setTimeout(() => setSavedOk(false), 2000); }} data-testid="fc-save">
+          <Check className="w-4 h-4" /> Lagre som standard
+        </button>
+        {savedOk && <span className="text-[12px] text-[#1a7f45] font-medium">Lagret ✓</span>}
+        <span className="text-[11px] text-[#bbb] ml-auto">Standard-CAC: {kr(forecast.defaults?.cacDefault || 0)} · Start-MRR: {kr(forecast.defaults?.startMrr || 0)}</span>
+      </div>
+
+      {/* Summary */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <MiniStat label={`MRR om ${forecast.months} mnd`} value={kr(sum.endMrr)} sub={`ARR ${kr(sum.endArr)}`} tone="pos" />
+        <MiniStat label="Break-even (drift)" value={sum.breakevenMonth == null ? 'Ikke i horisont' : `Mnd ${sum.breakevenMonth + 1}`} sub="Første måned med positivt resultat" />
+        <MiniStat label="Runway" value={!openingSet ? '— (mangler saldo)' : (sum.cashoutMonth == null ? `${forecast.months}+ mnd` : `${sum.cashoutMonth} mnd`)} sub={openingSet ? `Slutt-saldo ${kr(sum.endCash)}` : 'Sett banksaldo'} tone={sum.cashoutMonth != null ? 'neg' : undefined} />
+        <MiniStat label="Aktive avtaler (slutt)" value={`${sum.endActiveContracts || 0}`} sub={`Fra ${forecast.defaults?.startCount || 0} i dag`} />
+      </div>
+
+      {/* Chart */}
+      <div>
+        <p className="text-[12px] font-semibold text-[#666] mb-3">MRR{openingSet ? ' + kontantbeholdning' : ''} — {forecast.months} måneder ({scenario})</p>
+        <MultiLineChart data={series} lines={openingSet
+          ? [{ key: 'mrr', color: '#7c3aed', label: 'MRR' }, { key: 'cash', color: '#1a7f45', label: 'Kontantbeholdning' }]
+          : [{ key: 'mrr', color: '#7c3aed', label: 'MRR' }]} height={190} />
+      </div>
+      <p className="text-[11px] text-[#aaa]">Modell: MRR<sub>t</sub> = (MRR<sub>t−1</sub> + nye avtaler × honorar) × (1 − churn). Markedsføringskostnad = nye avtaler × CAC. OPEX (eks. annonse) vokser med angitt månedsrate. Konservativ = halv vekst + 1 %-poeng churn; Aggressiv = dobbel vekst.</p>
+    </div>
+  );
+}
+
+function AttributionCard({ attribution }) {
+  if (!attribution || !attribution.hasData) {
+    return (
+      <div className="rounded-2xl border border-[#eee] bg-white p-6">
+        <h3 className="text-[15px] font-bold text-[#111] mb-1 flex items-center gap-2"><PieChart className="w-4 h-4 text-[#7c3aed]" /> Attribusjon: markedsføring vs. organisk</h3>
+        <p className="text-[13px] text-[#999] mt-3">Ikke nok attribusjonsdata fra plattformen ennå. Når kontrakter synkes med kildeinformasjon (google/meta/organisk), vises MRR-fordelingen her.</p>
+      </div>
+    );
+  }
+  const b = attribution.buckets;
+  const rows = [
+    { key: 'marketing', label: 'Markedsføring (betalt)', color: '#7c3aed', ...b.marketing },
+    { key: 'organisk', label: 'Organisk / henvist', color: '#1a7f45', ...b.organisk },
+    { key: 'ukjent', label: 'Ukjent kilde', color: '#c9c9d0', ...b.ukjent },
+  ];
+  const total = attribution.total || 1;
+  return (
+    <div className="rounded-2xl border border-[#eee] bg-white p-6">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-[15px] font-bold text-[#111] flex items-center gap-2"><PieChart className="w-4 h-4 text-[#7c3aed]" /> Attribusjon: markedsføring vs. organisk</h3>
+        {attribution.marketingSharePct != null && <span className="text-[12px] text-[#666]">{pctFmt(attribution.marketingSharePct)} fra betalt</span>}
+      </div>
+      <div className="space-y-4">
+        {rows.map((r) => (
+          <div key={r.key}>
+            <div className="flex items-center justify-between text-[13px] mb-1">
+              <span className="font-medium text-[#333] flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full" style={{ background: r.color }} /> {r.label} <span className="text-[#bbb]">· {r.count} avtaler</span></span>
+              <span className="text-[#666]">{kr(r.mrr)}/mnd</span>
+            </div>
+            <div className="h-2.5 rounded-full bg-[#f2f2f4] overflow-hidden">
+              <div className="h-full rounded-full" style={{ width: `${(r.mrr / total) * 100}%`, background: r.color }} />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function InvestorTab({ data, forecast, loading, forecastLoading, onRecompute, onSaveAssumptions, apiKey }) {
+  const reportRef = useRef(null);
+  const [exporting, setExporting] = useState(false);
+  const [csvLoading, setCsvLoading] = useState(false);
+
+  const periodTag = useMemo(() => new Date().toISOString().slice(0, 7), []);
+
+  const exportCsv = useCallback(async () => {
+    setCsvLoading(true);
+    try {
+      const bp = await fetch(`/api/admin/finance/board-pack?key=${encodeURIComponent(apiKey)}`).then((r) => r.json());
+      const lines = [];
+      lines.push(['DigiHome — Styrepakke', bp.generatedAt || '']);
+      lines.push([]);
+      lines.push(['NØKKELTALL (nå)']);
+      const m = bp.resultat?.monthly || {};
+      lines.push(['MRR (forventet)', m.incomeForventet]);
+      lines.push(['MRR (faktisk)', m.incomeActual]);
+      lines.push(['ARR (forventet)', bp.investor?.arrNow]);
+      lines.push(['OPEX / mnd', m.opexTotal]);
+      lines.push(['Resultat / mnd (forventet)', m.resultatForventet]);
+      lines.push(['Aktive avtaler', m.activeContracts]);
+      lines.push(['NRR (%)', bp.investor?.retention?.nrr]);
+      lines.push(['GRR (%)', bp.investor?.retention?.grr]);
+      lines.push(['LTV:CAC', bp.investor?.payback?.ltvCac]);
+      lines.push(['CAC payback (mnd)', bp.investor?.payback?.paybackMonths]);
+      lines.push(['Burn rate / mnd', bp.likviditet?.summary?.forventet?.burnRate]);
+      lines.push(['Runway (mnd)', bp.likviditet?.summary?.forventet?.runwayMonths]);
+      lines.push([]);
+      lines.push(['PROGNOSE (base-scenario)']);
+      lines.push(['Måned', 'MRR', 'Ny MRR', 'Churn', 'OPEX', 'Markedsføring', 'Netto', 'Kontantbeholdning', 'Aktive avtaler']);
+      (bp.forecast?.scenarios?.base?.series || []).forEach((p) => lines.push([p.label, p.mrr, p.newMrr, p.churn, p.opex, p.marketing, p.net, p.cash, p.activeContracts]));
+      const csv = '\uFEFF' + lines.map((row) => row.map(csvCell).join(';')).join('\n');
+      downloadBlob(csv, `DigiHome-styrepakke-${periodTag}.csv`, 'text/csv');
+    } finally { setCsvLoading(false); }
+  }, [apiKey, periodTag]);
+
+  const exportPdf = useCallback(async () => {
+    if (!reportRef.current) return;
+    setExporting(true);
+    try {
+      const [{ jsPDF }, html2canvasMod] = await Promise.all([import('jspdf'), import('html2canvas')]);
+      const html2canvas = html2canvasMod.default || html2canvasMod;
+      const canvas = await html2canvas(reportRef.current, { scale: 2, backgroundColor: '#ffffff', useCORS: true, logging: false, windowWidth: reportRef.current.scrollWidth });
+      const img = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pw = pdf.internal.pageSize.getWidth();
+      const ph = pdf.internal.pageSize.getHeight();
+      const imgW = pw; const imgH = (canvas.height * imgW) / canvas.width;
+      let heightLeft = imgH; let position = 0;
+      pdf.addImage(img, 'PNG', 0, position, imgW, imgH); heightLeft -= ph;
+      while (heightLeft > 0) { position -= ph; pdf.addPage(); pdf.addImage(img, 'PNG', 0, position, imgW, imgH); heightLeft -= ph; }
+      pdf.save(`DigiHome-styrepakke-${periodTag}.pdf`);
+    } catch (e) {
+      alert('Kunne ikke lage PDF: ' + (e?.message || e));
+    } finally { setExporting(false); }
+  }, [periodTag]);
+
+  if (loading) return <div className="flex items-center justify-center py-24 text-[#999]"><Loader2 className="w-5 h-5 animate-spin mr-2" /> Laster investordata…</div>;
+  if (!data || !data.ok) return <Empty msg="Kunne ikke laste investordata." />;
+
+  const ret = data.retention || {};
+  const pb = data.payback || {};
+  const nrrTone = ret.nrr == null ? undefined : ret.nrr >= 100 ? 'pos' : 'neg';
+
+  return (
+    <div className="space-y-8">
+      {/* Eksport-topplinje */}
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div>
+          <h2 className="text-[18px] font-bold text-[#0a0a0a] flex items-center gap-2"><Landmark className="w-5 h-5" /> Investor & styrepakke</h2>
+          <p className="text-[12px] text-[#999] mt-0.5">Series A/B due diligence-oversikt · NOK eks. mva · generert {new Date(data.generatedAt).toLocaleString('nb-NO')}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button className={btnGhost} onClick={exportCsv} disabled={csvLoading} data-testid="export-csv">
+            {csvLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />} CSV
+          </button>
+          <button className={btnDark} onClick={exportPdf} disabled={exporting} data-testid="export-pdf">
+            {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />} Last ned styrepakke (PDF)
+          </button>
+        </div>
+      </div>
+
+      <div ref={reportRef} className="space-y-8 bg-white">
+        {/* Retensjon-hero */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <BigStat label="Net Revenue Retention" value={ret.nrr == null ? '—' : pctFmt(ret.nrr)}
+            sub={ret.nrr == null ? 'Trenger ≥ 1 mnd historikk' : `Over ${ret.windowMonths} mnd · fra ${ret.startMonth || '—'}`} tone={nrrTone} big />
+          <BigStat label="Gross Revenue Retention" value={ret.grr == null ? '—' : pctFmt(ret.grr)}
+            sub={ret.grr == null ? '—' : `Churn ${kr(ret.churn)} · reduksjon ${kr(ret.contraction)}`} tone={ret.grr == null ? undefined : (ret.grr >= 90 ? 'pos' : 'neg')} />
+          <BigStat label="CAC payback" value={pb.paybackMonths == null ? '—' : monthsLabel(pb.paybackMonths)}
+            sub={pb.cac != null ? `CAC ${kr(pb.cac)} · brutto ${pctFmt((pb.grossMarginPct || 0) * 100)}` : 'Mangler CAC'} tone={pb.paybackMonths == null ? undefined : (pb.paybackMonths <= 12 ? 'pos' : 'neg')} />
+          <BigStat label="LTV : CAC" value={pb.ltvCac != null ? `${pb.ltvCac}×` : '—'}
+            sub={pb.ltv != null ? `LTV ${kr(pb.ltv)}` : 'Fra KPI-motor'} tone={pb.ltvCac != null && pb.ltvCac >= 3 ? 'pos' : undefined} />
+        </div>
+
+        {/* MRR + ARR nå */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <MiniStat label="MRR nå" value={kr(data.mrrNow)} sub="Månedlig honorarinntekt" tone="pos" />
+          <MiniStat label="ARR (run-rate)" value={kr(data.arrNow)} sub="MRR × 12" />
+          <MiniStat label="Aktive enheter" value={`${data.activeUnits || 0}`} sub="Inntektsgivende nå" />
+          <MiniStat label="ARPA" value={kr(data.arpa)} sub="Snitt honorar / enhet" />
+        </div>
+
+        {/* MRR-waterfall */}
+        <div className="rounded-2xl border border-[#eee] bg-white p-6">
+          <h3 className="text-[15px] font-bold text-[#111] mb-1 flex items-center gap-2"><BarChart3 className="w-4 h-4 text-[#7c3aed]" /> MRR-bevegelse (waterfall)</h3>
+          <p className="text-[12px] text-[#999] mb-6">Fra {data.waterfall?.start ? (ret.startMonth || 'start') : 'start'} til i dag: ny, ekspansjon, reduksjon og churn.</p>
+          <WaterfallChart w={data.waterfall} />
+        </div>
+
+        {/* Måned-for-måned netto ny MRR */}
+        {(data.movement || []).length > 0 && (
+          <div className="rounded-2xl border border-[#eee] bg-white p-6">
+            <h3 className="text-[15px] font-bold text-[#111] mb-5">Netto ny MRR per måned</h3>
+            <MultiLineChart data={data.movement} lines={[{ key: 'netNew', color: '#7c3aed', label: 'Netto ny MRR' }]} height={140} />
+          </div>
+        )}
+
+        {/* Attribusjon */}
+        <AttributionCard attribution={data.attribution} />
+
+        {/* Prognose */}
+        <ForecastPanel forecast={forecast} loading={forecastLoading} onRecompute={onRecompute} onSaveAssumptions={onSaveAssumptions} />
+      </div>
+    </div>
+  );
+}
+
