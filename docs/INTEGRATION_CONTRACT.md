@@ -106,7 +106,48 @@ For at Meta/Google skal optimalisere mot signerte kunder, ikke bare volum:
 
 Kun samtykkede kontakter inkluderes. Formål: slutt å annonsere til allerede signerte kunder → kutt bortkastet forbruk.
 
-## 8. Åpne punkter (koordineres i broen)
+## 8. Kontrakts-/avtale-eksport (plattform → marketing) — for økonomi/likviditet
+
+Markedssiden bygger en **økonomimodul** (Resultat + Likviditet). Honorarmodell = **prosent av leie**.
+For å beregne honorarinntekt (faktisk + forventet) og et 12-mnd likviditetsbudsjett trenger vi et
+**read-only eksport-API** for kontrakter/avtaler.
+
+**Endepunkt (forslag):** `GET {DIGIHOME_API_URL}/api/contracts/export`
+**Auth:** header `X-API-Key: <DIGIHOME_API_KEY>` (samme som listings) — evt. bro-token.
+**Query:** `?since=ISO&until=ISO&limit=200&cursor=…&status=active|all`
+**Svar:** `{ "contracts": [ … ], "nextCursor": "…|null" }` (paginert, idempotent på `contract_id`).
+
+Hvert element:
+
+```json
+{
+  "contract_id": "plattformens id (idempotens-nøkkel)",
+  "type": "leiekontrakt | forvaltningsavtale",
+  "status": "active | signed | pending | terminated | expired",
+  "property": { "id": "…", "address": "…", "city": "Bergen", "sqm": 68, "rental_model": "long|short|hybrid" },
+  "owner":  { "id": "…", "name": "…" },
+  "tenant": { "id": "…", "name": "…" },
+  "monthly_rent": 18000,            // FAKTISK månedsleie (leiekontrakt) → sikkerhet=faktisk
+  "estimated_monthly_rent": 20000,  // ANTATT månedsleie (forvaltningsavtale, ikke utleid) → sikkerhet=forventet
+  "fee_model": "percent",           // 'percent' | 'fixed'
+  "fee_percent": 0.12,              // DigiHomes honorar som andel av leie (12 % = 0.12)
+  "fee_fixed": null,                // hvis fast honorar i stedet
+  "currency": "NOK",
+  "start_date": "2026-03-01",       // avtale-/leiestart
+  "end_date": null,                 // valgfri
+  "expected_rent_start": "2026-06-01", // forvaltningsavtale: forventet leiestart (driver «forventet»-scenario)
+  "billing_day": 1,                 // valgfri: dag i mnd honorar faktureres
+  "external_ref": "vår lead-id hvis kjent (stitching)",
+  "updated_at": "ISO-8601"
+}
+```
+
+**Semantikk:**
+- `leiekontrakt` med `monthly_rent` → **faktisk** honorarinntekt = `monthly_rent × fee_percent`, løpende fra `start_date`.
+- `forvaltningsavtale` uten aktiv leie → **forventet** honorarinntekt = `estimated_monthly_rent × fee_percent`, løpende fra `expected_rent_start`.
+- Beløp føres i **NOK eks. mva**.
+
+## 9. Åpne punkter (koordineres i broen)
 
 1. Plattformen setter identisk `LEAD_SYNC_SECRET` + redeployer (401→404 sett; nesten i mål).
 2. Plattformen sender **hele livssyklusen** + `lost_reason` + `platform_customer_id`.
