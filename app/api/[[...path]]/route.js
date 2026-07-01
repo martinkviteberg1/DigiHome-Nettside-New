@@ -1955,6 +1955,7 @@ async function handleRoute(request, { params }) {
           geoTargetConstantIds: body.geoTargetConstantIds || ['2578'],
           path1: body.path1, path2: body.path2,
           validateOnly: !!body.validateOnly,
+          activate: !!body.activate,
         });
         const status = (r && r.ok === false) ? 200 : (body.validateOnly ? 200 : 201);
         return cors(NextResponse.json(r, { status }));
