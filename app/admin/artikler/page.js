@@ -5,8 +5,9 @@ import Link from 'next/link';
 import {
   Loader2, Lock, Plus, Trash2, Sparkles, ArrowLeft, Save, Eye, FileText, Pencil,
 } from 'lucide-react';
+import { authorList } from '@/lib/authors';
 
-const empty = { id: null, title: '', slug: '', excerpt: '', content: '', coverImage: '', tags: '', seoTitle: '', seoDescription: '', status: 'draft' };
+const empty = { id: null, title: '', slug: '', excerpt: '', content: '', coverImage: '', tags: '', seoTitle: '', seoDescription: '', author: '', status: 'draft' };
 
 export default function AdminArtiklerPage() {
   const [key, setKey] = useState('');
@@ -149,6 +150,12 @@ export default function AdminArtiklerPage() {
             </div>
             <div><label className={labelCls}>Ingress / utdrag</label><textarea value={form.excerpt} onChange={(e) => setForm({ ...form, excerpt: e.target.value })} rows={2} className={inputCls} placeholder="Kort sammendrag (vises i listen og som meta)" /></div>
             <div><label className={labelCls}>Forsidebilde (URL)</label><input value={form.coverImage} onChange={(e) => setForm({ ...form, coverImage: e.target.value })} className={inputCls} placeholder="https://..." /></div>
+            <div><label className={labelCls}>Forfatter</label>
+              <select value={form.author} onChange={(e) => setForm({ ...form, author: e.target.value })} className={inputCls}>
+                <option value="">DigiHome (standard)</option>
+                {authorList.map((a) => (<option key={a.id} value={a.name}>{a.name} — {a.role}</option>))}
+              </select>
+            </div>
             <div><label className={labelCls}>Innhold (Markdown)</label><textarea value={form.content} onChange={(e) => setForm({ ...form, content: e.target.value })} rows={16} className={`${inputCls} font-mono text-[13.5px] leading-relaxed`} placeholder="## Underoverskrift&#10;&#10;Skriv artikkelen i markdown..." /></div>
             <div className="grid sm:grid-cols-2 gap-4 pt-2 border-t border-[#f0f0f0]">
               <div><label className={labelCls}>SEO-tittel</label><input value={form.seoTitle} onChange={(e) => setForm({ ...form, seoTitle: e.target.value })} className={inputCls} placeholder="≤ 60 tegn" maxLength={70} /></div>
@@ -198,5 +205,8 @@ export default function AdminArtiklerPage() {
         </div>
       </div>
     </div>
+  );
+}
+ </div>
   );
 }

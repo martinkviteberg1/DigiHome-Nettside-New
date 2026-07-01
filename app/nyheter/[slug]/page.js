@@ -5,6 +5,7 @@ import Header from '@/components/dh/Header';
 import Footer from '@/components/dh/Footer';
 import { getPostBySlug } from '@/lib/posts';
 import { site } from '@/lib/site';
+import { getAuthorForPost } from '@/lib/authors';
 import { ArrowUpRight, ArrowLeft, Calendar } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
@@ -48,6 +49,7 @@ export default async function ArticlePage({ params }) {
   if (!post) notFound();
 
   const html = marked.parse(post.content || '', { breaks: true, mangle: false, headerIds: false });
+  const author = getAuthorForPost(post);
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -67,7 +69,14 @@ export default async function ArticlePage({ params }) {
         image: post.coverImage || site.url + site.ogImage,
         datePublished: post.publishedAt,
         dateModified: post.updatedAt || post.publishedAt,
-        author: { '@type': 'Organization', name: post.author || site.name, url: site.url },
+        author: {
+          '@type': 'Person',
+          name: author.name,
+          jobTitle: author.role,
+          url: author.url,
+          worksFor: { '@type': 'Organization', name: site.name, url: site.url },
+          sameAs: author.sameAs,
+        },
         publisher: { '@type': 'Organization', name: site.name, url: site.url, logo: { '@type': 'ImageObject', url: `${site.url}/digihome-mark.svg` } },
         mainEntityOfPage: { '@type': 'WebPage', '@id': `${site.url}/nyheter/${post.slug}` },
         keywords: (post.tags || []).join(', '),
@@ -89,11 +98,16 @@ export default async function ArticlePage({ params }) {
               {(post.tags || []).map((t) => (
                 <Link key={t} href={`/nyheter?tag=${encodeURIComponent(t)}`} className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[#7c3aed] bg-[#f4f0fb] px-2.5 py-1 rounded-full hover:bg-[#ece3fb] transition-colors">{t}</Link>
               ))}
-              <span className="inline-flex items-center gap-1.5 text-[13px] text-[#999]"><Calendar className="w-3.5 h-3.5" /> {fmtDate(post.publishedAt)}</span>
             </div>
             <h1 className="text-[34px] sm:text-[46px] font-bold tracking-[-0.025em] leading-[1.08] text-[#1f1f1f]" style={{ fontFamily: 'var(--font-heading)' }}>{post.title}</h1>
-            {post.excerpt && <p className="text-[18px] sm:text-[20px] text-[#555] mt-5 leading-relaxed">{post.excerpt}</p>}
-            <p className="text-[13px] text-[#aaa] mt-6">Av {post.author || 'DigiHome'}</p>
+            {/* Forfatter-byline (E-E-A-T): navngitt person + rolle + dato */}
+            <div className="flex items-center gap-3 mt-7">
+              <div className="w-11 h-11 rounded-full flex items-center justify-center text-white text-[14px] font-bold shrink-0" style={{ background: author.accent, fontFamily: 'var(--font-heading)' }}>{author.initials}</div>
+              <div className="leading-tight">
+                <p className="text-[14px] font-semibold text-[#1f1f1f]">{author.name}</p>
+                <p className="text-[12.5px] text-[#999] mt-0.5 flex items-center gap-1.5 flex-wrap"><span>{author.role}</span><span className="text-[#ddd]">·</span><span className="inline-flex items-center gap-1"><Calendar className="w-3 h-3" />{fmtDate(post.publishedAt)}</span></p>
+              </div>
+            </div>
           </header>
 
           {post.coverImage && (
@@ -104,7 +118,15 @@ export default async function ArticlePage({ params }) {
             </div>
           )}
 
-          <div className={`max-w-[820px] mx-auto px-6 sm:px-8 py-12 lg:py-16 ${ARTICLE_CLS}`} dangerouslySetInnerHTML={{ __html: html }} />
+          {post.excerpt && (
+            <div className="max-w-[820px] mx-auto px-6 sm:px-8 pt-12 lg:pt-14">
+              <div className="rounded-2xl bg-[#faf7ff] border border-[#efe6fb] px-6 py-5">
+                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#9b6cc4] mb-2">Kort fortalt</p>
+                <p className="faq-answer text-[16px] leading-[1.7] text-[#3a3a3a] m-0">{post.excerpt}</p>
+              </div>
+            </div>
+          )}
+          <div className={`max-w-[820px] mx-auto px-6 sm:px-8 ${post.excerpt ? 'pt-8' : 'pt-12'} pb-12 lg:pb-16 ${ARTICLE_CLS}`} dangerouslySetInnerHTML={{ __html: html }} />
         </article>
 
         {/* CTA */}

@@ -9,6 +9,9 @@ import { site, services, faq, neighborhoods } from '@/lib/site';
 export default function StructuredData() {
   const orgId = `${site.url}/#organization`;
   const webId = `${site.url}/#website`;
+  const sarahId = `${site.url}/#person-sarah`;
+  const martinId = `${site.url}/#person-martin`;
+  const pageId = `${site.url}/#webpage`;
 
   const organization = {
     '@type': ['RealEstateAgent', 'Organization', 'LocalBusiness'],
@@ -41,11 +44,8 @@ export default function StructuredData() {
       { '@type': 'City', name: 'Bergen' },
       ...neighborhoods.map((n) => ({ '@type': 'Place', name: `${n}, Bergen` })),
     ],
-    founder: {
-      '@type': 'Person',
-      name: site.ceo,
-      jobTitle: site.ceoTitle,
-    },
+    founder: { '@id': sarahId },
+    employee: [{ '@id': sarahId }, { '@id': martinId }],
     contactPoint: {
       '@type': 'ContactPoint',
       telephone: site.phone,
@@ -65,6 +65,24 @@ export default function StructuredData() {
     description: site.defaultDescription,
     inLanguage: 'nb-NO',
     publisher: { '@id': orgId },
+  };
+
+  const sarah = {
+    '@type': 'Person', '@id': sarahId, name: 'Sarah Sleeman',
+    jobTitle: 'Daglig leder & eiendomsmegler', worksFor: { '@id': orgId },
+    url: `${site.url}/om-oss`, sameAs: [site.social.linkedin],
+  };
+  const martin = {
+    '@type': 'Person', '@id': martinId, name: 'Martin Kviteberg',
+    jobTitle: 'Partner & forretningsutvikling', worksFor: { '@id': orgId },
+    url: `${site.url}/om-oss`, sameAs: [site.social.linkedin],
+  };
+  const webpage = {
+    '@type': 'WebPage', '@id': pageId, url: site.url,
+    name: 'DigiHome — Smartere utleie i Bergen',
+    isPartOf: { '@id': webId }, about: { '@id': orgId }, inLanguage: 'nb-NO',
+    primaryImageOfPage: { '@type': 'ImageObject', url: `${site.url}${site.ogImage}` },
+    speakable: { '@type': 'SpeakableSpecification', cssSelector: ['h1', '.faq-question', '.faq-answer'] },
   };
 
   const offerCatalog = {
@@ -99,7 +117,7 @@ export default function StructuredData() {
 
   const graph = {
     '@context': 'https://schema.org',
-    '@graph': [organization, website, offerCatalog, faqPage],
+    '@graph': [organization, website, webpage, sarah, martin, offerCatalog, faqPage],
   };
 
   return (

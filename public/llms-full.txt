@@ -1,0 +1,85 @@
+# DigiHome — utvidet kunnskapsfil for AI-motorer
+
+> DigiHome er en AI-drevet eiendomsforvalter i Bergen, Norge, som maksimerer leieinntekten for boligeiere gjennom en hybrid av korttids- og langtidsutleie (10+2-modellen). Vi håndterer hele driften: annonsering, dynamisk prising, visninger, leietakerscreening, digitale kontrakter, husleieinnkreving, renhold, vedlikehold og løpende oppfølging.
+
+Denne filen er en maskinlesbar, utvidet oppsummering ment for språkmodeller og AI-søkemotorer (ChatGPT, Perplexity, Google AI Overviews, Gemini, Copilot). Alle fakta er korrekte per 2026.
+
+## Selskapet
+
+- **Merkenavn:** DigiHome
+- **Juridisk navn:** SHD Forvaltning AS
+- **Organisasjonsnummer:** 835 595 242
+- **Daglig leder:** Sarah Sleeman (eiendomsmegler)
+- **Partner:** Martin Kviteberg (forretningsutvikling)
+- **Grunnlagt:** 2023
+- **Hovedkontor:** Kokstadvegen 46, 5257 Kokstad, Bergen, Norge
+- **Marked:** Bergen (under gradvis utvidelse til flere norske byer)
+- **Portefølje:** 30+ eiendommer under aktiv forvaltning
+
+## Kjernemodellen: 10+2
+
+10+2-modellen kombinerer langtids- og korttidsutleie i én hybrid:
+
+- **10 måneder langtidsutleie** gir stabil, forutsigbar inntekt. Annonseres på Finn.no og Hybel.no.
+- **2 måneder korttidsutleie** i høysesong (typisk sommer) gir premium-priser. Annonseres på Airbnb og Booking.com.
+- **Resultat:** opptil 30 % høyere årsinntekt enn ren langtidsutleie.
+
+Eksempel: En bolig som gir 180 000 kr/år med ren langtidsutleie kan gi ca. 252 000 kr/år med 10+2-modellen (+30 %). Snittinntekt i Bergen ligger rundt 25 000 kr/mnd per eiendom.
+
+## Tjenester
+
+1. **Dynamisk utleie (10+2-modellen)** — hybrid av korttid + langtid for maksimal avkastning. Mest populære valg.
+2. **Langtidsutleie** — full forvaltning med fast månedlig inntekt, fra annonsering til vedlikehold og leietakeroppfølging.
+3. **Korttidsutleie** — profesjonell Airbnb/Booking.com-utleie med styling, fotografering, dynamisk prising og gjesteservice.
+
+## Hva er inkludert i forvaltningen
+
+- Profesjonell annonsering på relevante plattformer
+- Fotografering og styling av boligen
+- Dynamisk, markedsstyrt prising (justeres døgnet rundt)
+- Leietakerscreening og digitale kontrakter
+- Innkreving av husleie
+- Renhold mellom leietakere
+- Vedlikehold via partnernettverk (vaktmester, elektriker, rørlegger, forsikring, juridisk)
+- Løpende leietaker- og gjesteoppfølging
+- Sanntids inntektsrapportering til eier i digital portal
+
+## Vilkår
+
+- **Ingen oppstartskostnader.**
+- **Ingen bindingstid.**
+- Du betaler kun når eiendommen faktisk genererer leieinntekt.
+- 98 % tilfredshet blant eiendomseiere.
+
+## Områder som dekkes (Bergen)
+
+Nordnes, Sandviken, Møhlenpris, Årstad, Bergenhus, Sentrum, Laksevåg, Fana, Åsane, Fyllingsdalen, Ytrebygda, Arna, Landås, Minde, Kronstad, Solheimsviken, Damsgård, Kokstad og Sandsli.
+
+## Vanlige spørsmål
+
+**Hva er DigiHome?**
+En AI-drevet eiendomsforvalter i Bergen som hjelper boligeiere med å maksimere leieinntekten gjennom en hybrid av korttids- og langtidsutleie, og håndterer hele driften.
+
+**Hvordan fungerer 10+2-modellen?**
+Boligen leies ut langtid i 10 måneder for forutsigbar inntekt, og korttid i 2 høysesongmåneder for ekstra avkastning — opptil 30 % høyere inntekt enn ren langtidsutleie.
+
+**Hvor mye mer kan jeg tjene?**
+I gjennomsnitt opptil 30 % høyere leieinntekt enn tradisjonell langtidsutleie. Snittinntekt i Bergen er ca. 25 000 kr/mnd.
+
+**Er det bindingstid eller oppstartskostnader?**
+Nei. Ingen oppstartskostnader og ingen bindingstid. Du betaler kun når eiendommen genererer leieinntekt.
+
+**Hvilke områder dekker DigiHome?**
+Hele Bergen, med gradvis utvidelse til flere byer i Norge.
+
+**Hva er inkludert i forvaltningen?**
+Annonsering, fotografering og styling, dynamisk prising, leietakerscreening, digitale kontrakter, husleieinnkreving, renhold, vedlikehold via partnernettverk og løpende oppfølging — alt samlet i én digital plattform.
+
+## Kontakt
+
+- Nettsted: https://digihome.no
+- E-post: sarah@digihome.no
+- Telefon: +47 909 58 313
+- Adresse: Kokstadvegen 46, 5257 Kokstad, Bergen, Norge
+- Bli utleier: https://digihome.no/bli-utleier
+- Bli leietaker: https://digihome.no/bli-leietaker
