@@ -1499,6 +1499,64 @@ async function handleRoute(request, { params }) {
       return cors(NextResponse.json({ success: true, results }));
     }
 
+    // --- Admin: rydd dupliserte leietaker-leads -----------------------------
+    // Slår sammen tenant_leads med samme e-post/telefon: beholder den synkede
+    // (forwarded=true, bevarer platform_id), fletter inn rikeste info fra
+    // duplikatene og sletter resten. Støtter ?dryRun for trygg forhåndsvisning.
+    if (route === '/admin/leads/dedup-tenants' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const body = await request.json().catch(() => ({}));
+      const dryRun = body.dryRun === true || new URL(request.url).searchParams.get('dryRun') === 'true';
+      const tms = (x) => { const t = new Date(x || 0).getTime(); return isFinite(t) ? t : 0; };
+      const norm = (s) => (s || '').toString().trim().toLowerCase();
+      const tenants = await db.collection('tenant_leads').find({}).toArray();
+      const groups = new Map();
+      for (const t of tenants) {
+        const key = norm(t.email) || norm(t.phone) || `id:${t.id}`;
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key).push(t);
+      }
+      const richer = (nv, ov) => nv != null && String(nv).trim() !== '' && (ov == null || String(ov).trim() === '');
+      let merged = 0, deleted = 0, groupsWithDups = 0;
+      const details = [];
+      for (const [key, arr] of groups) {
+        if (arr.length < 2 || key.startsWith('id:')) continue;
+        groupsWithDups++;
+        // Behold helst den synkede posten (bevar platform_id); ellers eldste.
+        const sorted = [...arr].sort((a, b) => {
+          const fa = a.forwarded === true ? 1 : 0, fb = b.forwarded === true ? 1 : 0;
+          if (fb !== fa) return fb - fa;
+          return tms(a.createdAt) - tms(b.createdAt);
+        });
+        const keep = sorted[0];
+        const others = sorted.slice(1);
+        const enrich = {};
+        for (const o of others) {
+          if (richer(o.preferred_area, enrich.preferred_area ?? keep.preferred_area)) enrich.preferred_area = o.preferred_area;
+          if ((enrich.budget_max ?? keep.budget_max) == null && o.budget_max != null) enrich.budget_max = o.budget_max;
+          if ((enrich.budget_min ?? keep.budget_min) == null && o.budget_min != null) enrich.budget_min = o.budget_min;
+          if (richer(o.move_in_date, enrich.move_in_date ?? keep.move_in_date)) enrich.move_in_date = o.move_in_date;
+          if (richer(o.notes, enrich.notes ?? keep.notes)) enrich.notes = o.notes;
+          const curBed = enrich.bedrooms ?? keep.bedrooms;
+          if (o.bedrooms != null && (curBed == null || Number(curBed) < Number(o.bedrooms))) enrich.bedrooms = o.bedrooms;
+          const curChan = (enrich.attribution ?? keep.attribution) && (enrich.attribution ?? keep.attribution).channel;
+          if (!curChan && o.attribution && o.attribution.channel) enrich.attribution = o.attribution;
+          if (richer(o.email, enrich.email ?? keep.email)) enrich.email = o.email;
+          if (richer(o.phone, enrich.phone ?? keep.phone)) enrich.phone = o.phone;
+        }
+        details.push({ key, kept: keep.id, keptForwarded: keep.forwarded === true, removed: others.map((o) => o.id), enriched: Object.keys(enrich) });
+        if (!dryRun) {
+          if (Object.keys(enrich).length) { enrich.updatedAt = new Date().toISOString(); enrich.dedupMergedAt = enrich.updatedAt; await db.collection('tenant_leads').updateOne({ id: keep.id }, { $set: enrich }); merged++; }
+          const rmIds = others.map((o) => o.id).filter(Boolean);
+          if (rmIds.length) { const r = await db.collection('tenant_leads').deleteMany({ id: { $in: rmIds } }); deleted += r.deletedCount; }
+        } else {
+          if (Object.keys(enrich).length) merged++;
+          deleted += others.length;
+        }
+      }
+      return cors(NextResponse.json({ ok: true, dryRun, totalTenants: tenants.length, groupsWithDups, merged, deleted, details: details.slice(0, 100) }));
+    }
+
     // --- Admin: Google Ads offline-konverteringsfeed (CSV) -----------------
     // Eksporterer vunne leads med gclid → "Conversions from clicks"-mal.
     // Lastes opp i Google Ads → Smart Bidding optimaliserer mot ekte kunder.

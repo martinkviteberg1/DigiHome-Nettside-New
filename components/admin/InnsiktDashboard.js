@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Activity, BarChart3, Users, Sparkles, Database,
   Radio, Gauge, TrendingUp, TrendingDown, Download, Megaphone,
   Search, X, ArrowUp, ArrowDown, FileSpreadsheet, ChevronRight, GitBranch,
-  MoreHorizontal, Trophy, Clock, Target, ShieldCheck, Flame, LayoutTemplate, Crosshair,
+  MoreHorizontal, Trophy, Clock, Target, ShieldCheck, Flame, LayoutTemplate, Crosshair, Layers,
 } from 'lucide-react';
 import LeadDrawer from '@/components/admin/LeadDrawer';
 import OverviewTab from '@/components/admin/OverviewTab';
@@ -67,6 +67,7 @@ export default function InnsiktDashboard({ apiKey, tab: propTab, onTabChange, on
   const [exporting, setExporting] = useState(false);
   const [leadAdsSyncing, setLeadAdsSyncing] = useState(false);
   const [leadAdsMsg, setLeadAdsMsg] = useState('');
+  const [dedupBusy, setDedupBusy] = useState(false);
 
   const load = useCallback(async (d) => {
     const dd = d || days;
@@ -116,6 +117,24 @@ export default function InnsiktDashboard({ apiKey, tab: propTab, onTabChange, on
       const json = await res.json();
       if (json.success) await load();
     } catch (e) {} finally { setDeleting(false); }
+  };
+
+  const doDedupTenants = async () => {
+    setDedupBusy(true); setLeadAdsMsg('');
+    try {
+      const prev = await fetch(`/api/admin/leads/dedup-tenants?key=${encodeURIComponent(apiKey)}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dryRun: true }),
+      }).then((r) => r.json());
+      if (!prev.ok) { setLeadAdsMsg('Kunne ikke analysere duplikater'); return; }
+      if ((prev.deleted || 0) === 0) { setLeadAdsMsg('Ingen duplikater funnet'); return; }
+      if (!window.confirm(`Fant ${prev.groupsWithDups} leietaker(e) med duplikater.\n\nSlå sammen og fjern ${prev.deleted} duplikat-post(er)? Rikeste info (område, budsjett, soverom, attribusjon) flettes inn i den beholdte posten. Kan ikke angres.`)) return;
+      const res = await fetch(`/api/admin/leads/dedup-tenants?key=${encodeURIComponent(apiKey)}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dryRun: false }),
+      }).then((r) => r.json());
+      if (res.ok) { setLeadAdsMsg(`Ryddet: flettet ${res.merged}, fjernet ${res.deleted} duplikat(er)`); await load(); }
+      else setLeadAdsMsg('Rydding feilet');
+    } catch (e) { setLeadAdsMsg('Rydding feilet'); }
+    finally { setDedupBusy(false); setTimeout(() => setLeadAdsMsg(''), 8000); }
   };
 
   const doSetStatus = async (id, status, type) => {
@@ -317,6 +336,7 @@ export default function InnsiktDashboard({ apiKey, tab: propTab, onTabChange, on
                       <MenuItem icon={FileSpreadsheet} label="Eksporter CSV" hint="Åpnes i Excel · æøå" disabled={rows.length === 0} onClick={() => { setActionsOpen(false); exportCsv(); }} />
                       {leadSub === 'leads' && <MenuItem icon={Download} label="Google Ads-feed" hint="Offline-konverteringer (gclid)" onClick={() => { setActionsOpen(false); downloadAdsFeed(); }} />}
                       <MenuItem icon={forwarding ? Loader2 : Send} spin={forwarding} label={`Re-send ventende${pendingCount > 0 ? ` (${pendingCount})` : ''}`} hint="Send til CRM på nytt" disabled={pendingCount === 0} onClick={() => { setActionsOpen(false); doForward(); }} />
+                      {leadSub === 'tenants' && <MenuItem icon={dedupBusy ? Loader2 : Layers} spin={dedupBusy} label="Rydd duplikater" hint="Slå sammen samme e-post/telefon" onClick={() => { setActionsOpen(false); doDedupTenants(); }} />}
                       <div className="my-1 mx-2 h-px bg-black/[0.06]" />
                       <MenuItem icon={Trash2} danger label={`Slett ventende${tabPending > 0 ? ` (${tabPending})` : ''}`} hint="Kan ikke angres" disabled={tabPending === 0} onClick={() => { setActionsOpen(false); doDelete({ scope: 'pending' }, `Slette ${tabPending} ventende ${leadSub === 'leads' ? 'utleier' : 'leietaker'}-leads? Kan ikke angres.`); }} />
                     </div>
