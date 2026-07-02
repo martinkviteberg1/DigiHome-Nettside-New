@@ -133,8 +133,15 @@ export default function HistoryTab({ apiKey }) {
         <ShieldQuestion className="w-4 h-4 text-[#9a6ee8] shrink-0 mt-0.5" />
         <p className="text-[12.5px] leading-relaxed text-[#6b5a94]">
           Dette er leads som kom inn <strong>før sporingen startet</strong> — kilden er ukjent til du setter den manuelt.
-          De teller i helhetsbildet og LTV, men holdes <strong>alltid utenfor</strong> betalt ROAS/CAC. Manuelt satte
-          kilder/verdier overlever ny synk. Ingen av disse får markedsføringse-post uten at du aktivt tillater det.
+          De teller i helhetsbildet og LTV, men holdes <strong>alltid utenfor</strong> betalt ROAS/CAC.
+          <strong> Toveis-synk:</strong> status- og verdiendringer du gjør her sendes automatisk tilbake til CRM-et
+          (køes trygt hvis CRM-et er utilgjengelig). Manuelt satte kilder/verdier overlever alltid ny synk.
+          {data?.pushback?.pending > 0 && (
+            <span className="block mt-1 font-semibold">
+              {data.pushback.pending} endring{data.pushback.pending === 1 ? '' : 'er'} venter på levering til CRM-et
+              {data.pushback.lastPendingInfo?.last_error ? ` (${data.pushback.lastPendingInfo.last_error})` : ''} — leveres automatisk.
+            </span>
+          )}
         </p>
       </div>
 

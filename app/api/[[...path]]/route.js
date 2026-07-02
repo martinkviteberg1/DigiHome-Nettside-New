@@ -16,6 +16,7 @@ import { composioConfigured, createConnectLink, getConnectionStatus, runCampaign
 import { googleAdsNativeConfigured, listConversionActions, resolveOfflineConversionAction, uploadClickConversion, toConversionDateTime, listCampaignsDetailed, suggestGeoTargets, setCampaignStatus, updateCampaignBudget, createSearchCampaign, createCompetitorCampaign, getCampaignByName, runAdsWithMetrics, runSearchTerms, runKeywordMetrics, generateKeywordIdeas, gaqlSearch, setCampaignMaximizeClicks, listRsaAds, createRsaAd, setAdStatus } from '@/lib/google-ads-native';
 import { dataManagerConfigured, ingestOfflineConversion } from '@/lib/google-ads-datamanager';
 import { IMPORTED_COLL, importRecords, parseCsv, summarizeImported, syncFromPlatform, listImported, updateImportedOverride } from '@/lib/imported-leads';
+import { queueLeadPushback, flushLeadPushbacks, pushbackStats } from '@/lib/lead-pushback';
 import { computeKpiDashboard, getKpiSettings, setKpiSettings } from '@/lib/kpi-dashboard';
 import { getFinanceSettings, setFinanceSettings, listCosts, upsertCost, deleteCost, listContracts, upsertContract, deleteContract, listEvents, upsertEvent, deleteEvent, computeResultat, computeLikviditet, computeFinanceOverview, computeTrends, captureSnapshot, computeInvestorMetrics, computeForecast, computeBoardPack, computeCustomers, computePlatformCustomers } from '@/lib/finance';
 import { syncContractsFromPlatform, syncCustomersFromPlatform } from '@/lib/contracts-sync';
@@ -2404,6 +2405,7 @@ async function handleRoute(request, { params }) {
       if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const sp = new URL(request.url).searchParams;
       const summary = await summarizeImported(db);
+      let pushback = null; try { pushback = await pushbackStats(db); } catch (e) { pushback = null; }
       if (['1', 'true'].includes(String(sp.get('list')))) {
         const limit = Math.min(Math.max(Number(sp.get('limit')) || 100, 1), 500);
         const skip = Math.max(Number(sp.get('skip')) || 0, 0);
@@ -2413,19 +2415,41 @@ async function handleRoute(request, { params }) {
           q: (sp.get('q') || '').trim() || undefined,
           limit, skip,
         });
-        return cors(NextResponse.json({ ...summary, list: items, listTotal: total, limit, skip }));
+        return cors(NextResponse.json({ ...summary, pushback, list: items, listTotal: total, limit, skip }));
       }
-      return cors(NextResponse.json(summary));
+      return cors(NextResponse.json({ ...summary, pushback }));
     }
 
     // Manuell redigering (enkelt {id} eller bulk {ids}): kilde, status, verdi,
     // notat, markedsførings-OK. Lagres som override → overlever ny synk.
+    // TOVEIS: status/verdi/kilde legges i utboks og skrives tilbake til CRM-et.
     if (route === '/admin/imported-leads' && method === 'PUT') {
       if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
-      const result = await updateImportedOverride(db, { id: body.id, ids: body.ids, patch: body.patch || {} });
+      const patch = body.patch || {};
+      const result = await updateImportedOverride(db, { id: body.id, ids: body.ids, patch });
       if (!result.ok) return cors(NextResponse.json(result, { status: 400 }));
-      return cors(NextResponse.json(result));
+      // Kø endringer som CRM-et skal ha (status/verdi/kilde) — per platform_id.
+      let pushback = null;
+      if (patch.status !== undefined || patch.won_value !== undefined || patch.channel !== undefined) {
+        try {
+          const idList = (Array.isArray(body.ids) && body.ids.length ? body.ids : [body.id]).filter(Boolean);
+          const docs = await db.collection(IMPORTED_COLL)
+            .find({ id: { $in: idList } }, { projection: { _id: 0, id: 1, platform_id: 1, override: 1, status: 1, won_value: 1 } }).toArray();
+          for (const d of docs) {
+            if (!d.platform_id) continue;
+            await queueLeadPushback(db, {
+              platform_id: d.platform_id,
+              ...(patch.status !== undefined ? { status: d.override?.status ?? d.status } : {}),
+              ...(patch.won_value !== undefined ? { won_value: d.override?.won_value ?? d.won_value } : {}),
+              ...(patch.channel !== undefined ? { source: d.override?.channel } : {}),
+            });
+          }
+          const target = digiHomeTarget();
+          pushback = await flushLeadPushbacks(db, { target: target.url, key: target.key });
+        } catch (e) { pushback = { ok: false, error: e.message }; }
+      }
+      return cors(NextResponse.json({ ...result, pushback }));
     }
 
     if (route === '/admin/imported-leads/import' && method === 'POST') {
@@ -2462,7 +2486,11 @@ async function handleRoute(request, { params }) {
         channelHint: (body.channelHint || '').toString().slice(0, 80) || undefined,
       });
       const summary = await summarizeImported(db);
-      return cors(NextResponse.json({ ...result, platformEnv: target.env, platformUrl: target.url, summary }, { status: result.ok ? 201 : 200 }));
+      // Toveis-synk: prøv å levere ventende status/verdi-endringer til CRM-et
+      // (fungerer som retry-loop til plattformens skrive-endepunkt er live).
+      let pushback = null;
+      try { pushback = await flushLeadPushbacks(db, { target: target.url, key: target.key }); } catch (e) { pushback = { ok: false, error: e.message }; }
+      return cors(NextResponse.json({ ...result, platformEnv: target.env, platformUrl: target.url, summary, pushback }, { status: result.ok ? 201 : 200 }));
     }
 
     if (route === '/admin/imported-leads' && method === 'DELETE') {
