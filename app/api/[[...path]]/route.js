@@ -15,7 +15,7 @@ import { fetchPages, fetchLeadForms, fetchFormLeads, mapLeadFields, metaLeadAdsC
 import { composioConfigured, createConnectLink, getConnectionStatus, runCampaignReport, defaultCustomerId, getCachedReport, GOOGLE_PERIODS, getCachedCreatives, activeProvider } from '@/lib/google-ads-provider';
 import { googleAdsNativeConfigured, listConversionActions, resolveOfflineConversionAction, uploadClickConversion, toConversionDateTime, listCampaignsDetailed, suggestGeoTargets, setCampaignStatus, updateCampaignBudget, createSearchCampaign, createCompetitorCampaign, getCampaignByName, runAdsWithMetrics, runSearchTerms, runKeywordMetrics, generateKeywordIdeas, gaqlSearch, setCampaignMaximizeClicks, listRsaAds, createRsaAd, setAdStatus } from '@/lib/google-ads-native';
 import { dataManagerConfigured, ingestOfflineConversion } from '@/lib/google-ads-datamanager';
-import { IMPORTED_COLL, importRecords, parseCsv, summarizeImported, syncFromPlatform } from '@/lib/imported-leads';
+import { IMPORTED_COLL, importRecords, parseCsv, summarizeImported, syncFromPlatform, listImported, updateImportedOverride } from '@/lib/imported-leads';
 import { computeKpiDashboard, getKpiSettings, setKpiSettings } from '@/lib/kpi-dashboard';
 import { getFinanceSettings, setFinanceSettings, listCosts, upsertCost, deleteCost, listContracts, upsertContract, deleteContract, listEvents, upsertEvent, deleteEvent, computeResultat, computeLikviditet, computeFinanceOverview, computeTrends, captureSnapshot, computeInvestorMetrics, computeForecast, computeBoardPack, computeCustomers, computePlatformCustomers } from '@/lib/finance';
 import { syncContractsFromPlatform, syncCustomersFromPlatform } from '@/lib/contracts-sync';
@@ -2405,18 +2405,27 @@ async function handleRoute(request, { params }) {
       const sp = new URL(request.url).searchParams;
       const summary = await summarizeImported(db);
       if (['1', 'true'].includes(String(sp.get('list')))) {
-        const limit = Math.min(Math.max(Number(sp.get('limit')) || 50, 1), 500);
+        const limit = Math.min(Math.max(Number(sp.get('limit')) || 100, 1), 500);
         const skip = Math.max(Number(sp.get('skip')) || 0, 0);
-        const q = {};
-        const status = (sp.get('status') || '').trim(); if (status) q.status = status;
-        const channel = (sp.get('channel') || '').trim(); if (channel) q.channel = channel;
-        const batch = (sp.get('batch') || '').trim(); if (batch) q.import_batch_id = batch;
-        const items = await db.collection(IMPORTED_COLL).find(q, { projection: { _id: 0 } })
-          .sort({ created_at: -1, imported_at: -1 }).skip(skip).limit(limit).toArray();
-        const totalMatching = await db.collection(IMPORTED_COLL).countDocuments(q);
-        return cors(NextResponse.json({ ...summary, list: items, listTotal: totalMatching, limit, skip }));
+        const { items, total } = await listImported(db, {
+          status: (sp.get('status') || '').trim() || undefined,
+          channel: (sp.get('channel') || '').trim() || undefined,
+          q: (sp.get('q') || '').trim() || undefined,
+          limit, skip,
+        });
+        return cors(NextResponse.json({ ...summary, list: items, listTotal: total, limit, skip }));
       }
       return cors(NextResponse.json(summary));
+    }
+
+    // Manuell redigering (enkelt {id} eller bulk {ids}): kilde, status, verdi,
+    // notat, markedsførings-OK. Lagres som override → overlever ny synk.
+    if (route === '/admin/imported-leads' && method === 'PUT') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      const result = await updateImportedOverride(db, { id: body.id, ids: body.ids, patch: body.patch || {} });
+      if (!result.ok) return cors(NextResponse.json(result, { status: 400 }));
+      return cors(NextResponse.json(result));
     }
 
     if (route === '/admin/imported-leads/import' && method === 'POST') {

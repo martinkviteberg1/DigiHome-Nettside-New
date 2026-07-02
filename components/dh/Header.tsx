@@ -65,7 +65,7 @@ export default function Header() {
             data-testid="header-logo-link"
           >
             <img
-              src="/logo.svg"
+              src="/digihome-wordmark-ink.svg"
               alt="DigiHome"
               className="h-[26px] w-auto transition-all duration-300 group-hover:scale-[1.02]"
             />
@@ -221,7 +221,7 @@ export default function Header() {
             >
               <div className="flex flex-col h-full">
                 <div className="p-6 flex items-center justify-between">
-                  <img src="/logo.svg" alt="DigiHome" className="h-7 w-auto" />
+                  <img src="/digihome-wordmark-ink.svg" alt="DigiHome" className="h-7 w-auto" />
                   <button
                     onClick={() => setMobileOpen(false)}
                     className="inline-flex items-center justify-center w-10 h-10 rounded-full hover:bg-[#1f1f1f]/[0.04] transition-colors"

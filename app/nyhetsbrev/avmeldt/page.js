@@ -12,7 +12,7 @@ export default function AvmeldtPage({ searchParams }) {
   return (
     <div className="min-h-screen bg-[#fdfcfb] flex items-center justify-center px-6">
       <div className="w-full max-w-[440px] rounded-3xl bg-white border border-[#eee] shadow-[0_12px_40px_rgba(0,0,0,0.06)] p-10 text-center">
-        <img src="/logo.svg" alt="DigiHome" className="h-[26px] w-auto mx-auto mb-8" />
+        <img src="/digihome-wordmark-ink.svg" alt="DigiHome" className="h-[26px] w-auto mx-auto mb-8" />
         {feil ? (
           <>
             <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-amber-50">

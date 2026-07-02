@@ -52,7 +52,7 @@ export default function CampaignLanding({ cfg }) {
       <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${scrolled ? 'bg-white border-b border-[#1f1f1f]/[0.08] shadow-[0_1px_0_rgba(31,31,31,0.04)]' : 'bg-transparent border-b border-transparent'}`}>
         <div className="w-full px-6 lg:px-12">
           <div className="h-[72px] flex items-center justify-between gap-8">
-            <img src="/logo.svg" alt="DigiHome" className="h-[26px] w-auto" width={130} height={26} />
+            <img src="/digihome-wordmark-ink.svg" alt="DigiHome" className="h-[26px] w-auto" width={130} height={26} />
             <div className="flex items-center gap-5">
               <a href={`tel:${site.phoneHref}`} className="inline-flex items-center gap-2 text-[13.5px] font-medium text-[#1f1f1f]/75 hover:text-[#1f1f1f] transition-colors">
                 <Phone className="w-4 h-4" /> <span className="hidden sm:inline">{site.phone}</span>
