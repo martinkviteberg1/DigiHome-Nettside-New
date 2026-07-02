@@ -309,7 +309,7 @@ export default function BliUtleierPage() {
             className="w-20 h-20 rounded-[22px] bg-[#0a0a0a] flex items-center justify-center mx-auto mb-7 shadow-[0_14px_44px_-12px_rgba(0,0,0,0.45)]">
             <CheckCircle2 className="w-10 h-10 text-[#cf97fc]" />
           </motion.div>
-          <h1 className="text-[33px] sm:text-[38px] font-bold tracking-[-0.03em] text-[#0a0a0a] mb-3" style={{ fontFamily: 'var(--font-heading)' }}>Tusen takk{formData.name ? `, ${formData.name.split(' ')[0]}` : ''}!</h1>
+          <h2 className="text-[33px] sm:text-[38px] font-bold tracking-[-0.03em] text-[#0a0a0a] mb-3" style={{ fontFamily: 'var(--font-heading)' }}>Tusen takk{formData.name ? `, ${formData.name.split(' ')[0]}` : ''}!</h2>
           <p className="text-[16px] text-[#666] leading-relaxed max-w-[42ch] mx-auto">Vi har mottatt henvendelsen din. En rådgiver tar kontakt for en personlig, uforpliktende gjennomgang.</p>
 
           <div className="mt-8 text-left bg-white rounded-[22px] p-6 shadow-[0_8px_40px_-24px_rgba(0,0,0,0.35)]">
@@ -375,7 +375,7 @@ export default function BliUtleierPage() {
             </motion.div>
             <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.15 }}>
               <p className="text-[10.5px] sm:text-[11px] font-semibold text-[#7c3aed] uppercase tracking-[0.1em] mb-3 sm:mb-4">For eiendomseiere</p>
-              <h1 className="text-[30px] sm:text-[40px] lg:text-[46px] font-bold tracking-[-0.03em] leading-[1.05] sm:leading-[1.08] text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>La eiendommen jobbe for deg</h1>
+              <h2 className="text-[30px] sm:text-[40px] lg:text-[46px] font-bold tracking-[-0.03em] leading-[1.05] sm:leading-[1.08] text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>La eiendommen jobbe for deg</h2>
               <p className="text-[15px] sm:text-[16px] text-[#666] leading-[1.65] sm:leading-[1.75] mt-4 sm:mt-5 max-w-[42ch]">DigiHome forvalter eiendommen din profesjonelt — du lener deg tilbake og nyter inntekten.</p>
               <div className="mt-6 sm:mt-8 space-y-2.5 sm:space-y-3">
                 {[{ icon: TrendingUp, text: 'Opptil 40% høyere inntekt' }, { icon: Shield, text: 'Full forvaltning uten stress' }, { icon: Key, text: 'Ingen oppstartskostnader' }].map((item: any, i: number) => {

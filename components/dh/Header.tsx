@@ -15,9 +15,10 @@ import { site } from '@/lib/site';
 const NAV_NO = [
   { href: '/bli-utleier', label: 'For utleiere', testId: 'nav-utleier' },
   { href: '/bli-leietaker', label: 'For leietakere', testId: 'nav-leietaker' },
-  // Midlertidig skjult (kommer senere):
-  // { href: '/forvaltning', label: 'Forvaltning', testId: 'nav-forvaltning' },
-  // { href: '/nyheter', label: 'Nyheter', testId: 'nav-nyheter' },
+  { href: '/leiemarkedet', label: 'Leiemarkedet', testId: 'nav-leiemarkedet' },
+  { href: '/nyheter', label: 'Nyheter', testId: 'nav-nyheter' },
+  { href: '/om-oss', label: 'Om oss', testId: 'nav-om-oss' },
+  { href: '/kontakt', label: 'Kontakt', testId: 'nav-kontakt' },
 ];
 
 export default function Header() {
