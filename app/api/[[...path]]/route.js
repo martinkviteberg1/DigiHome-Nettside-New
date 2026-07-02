@@ -28,6 +28,7 @@ import { buildMarketingMetrics } from '@/lib/marketing-metrics';
 import { emailConfigured, reportRecipients, sendHtmlEmail } from '@/lib/email';
 import { NEWSLETTER_COLL, OPTOUT_COLL, NL_EVENTS_COLL, renderNewsletterHtml, resolveAudience, audienceCounts, sanitizeBlocks, hasContent, buildUnsubUrl, verifyUnsubToken, slugifyCampaign, normEmail as nlNormEmail, recipientId, TEMPLATES, templateBlocks, THEMES, TRACKING_GIF, applyMergeTags } from '@/lib/newsletter';
 import { syncPropertiesFromPlatform, maybeAutoSyncProperties, listAdminProperties, listPublicProperties, setPropertyVisibility, getPropertiesSyncMeta } from '@/lib/properties-sync';
+import { buildLeadReceipt, buildLeadAdminNotification } from '@/lib/lead-emails';
 import { fireLeadEmails } from '@/lib/lead-emails';
 import { buildAlerts } from '@/lib/ads-monitor';
 import { fetchCompetitorGallery, serpApiConfigured } from '@/lib/serpapi';
@@ -2790,6 +2791,36 @@ async function handleRoute(request, { params }) {
       const result = await setPropertyVisibility(db, { id: body.id, ids: body.ids, visible: body.visible });
       if (!result.ok) return cors(NextResponse.json(result, { status: 400 }));
       return cors(NextResponse.json(result));
+    }
+
+    // Admin: forhåndsvis lead-e-poster i nettleser (uten å sende noe).
+    // ?type=receipt|notify — valgfritt ?id=<lead-id> for ekte data, ellers eksempel.
+    if (route === '/admin/leads/email-preview' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const sp = new URL(request.url).searchParams;
+      const type = (sp.get('type') || 'receipt').toLowerCase();
+      const leadId = (sp.get('id') || '').slice(0, 64);
+      let lead = null;
+      if (leadId) lead = await db.collection('leads').findOne({ id: leadId }, { projection: { _id: 0 } });
+      if (!lead) {
+        lead = {
+          name: 'Kari Eksempel', email: 'kari@example.com', phone: '+47 912 34 567',
+          address: 'Olaf Ryes vei 11C', postal_code: '5007', property_type: 'leilighet',
+          bedrooms: 2, sqm: 65, lead_type: 'huseier', source: 'nettside',
+          lead_source_type: 'paid', createdAt: new Date().toISOString(),
+          matrikkel_number: '4601-164/445', bygningstype: 'sameie',
+          registry_owner_name: 'Eksempel Eiendom AS', registry_orgnr: '999 888 777',
+          units: [{ rental_model: 'langtid' }],
+          notes: 'Ønsket modell: langtid. Matrikkel: 4601-164/445, Type: sameie, Hjemmelshaver: Eksempel Eiendom AS. Delvis møblert — hvitevarer følger med',
+          attribution: {
+            source: 'google', medium: 'cpc', campaign: 'DigiHome Søk — Utleie Bergen',
+            content: 'RSA Forvaltning v2', term: 'utleiemegler bergen', channel: 'Betalt',
+            gclid: 'EksempelGclid1234567890', landing_page: '/lp/forvaltning', referrer: 'https://www.google.com/',
+          },
+        };
+      }
+      const built = type === 'notify' ? buildLeadAdminNotification(lead) : buildLeadReceipt(lead);
+      return new NextResponse(built.html, { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' } });
     }
 
     // ===================================================================
