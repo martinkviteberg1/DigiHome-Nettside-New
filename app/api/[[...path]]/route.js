@@ -2787,6 +2787,30 @@ async function handleRoute(request, { params }) {
       return NextResponse.redirect(target, 302);
     }
 
+    // Offentlig påmelding til nyhetsbrev (footer på nettsiden). Eksplisitt
+    // samtykke → eget segment 'abonnenter' i nyhetsbrev-motoren.
+    // Re-påmelding fjerner ev. tidligere avmelding (eksplisitt ny vilje).
+    if (route === '/newsletter/subscribe' && method === 'POST') {
+      let body = {};
+      try { body = await request.json(); } catch (e) { body = {}; }
+      const email = nlNormEmail(body.email);
+      if (!/^\S+@\S+\.\S+$/.test(email) || email.length > 254) {
+        return cors(NextResponse.json({ ok: false, error: 'Ugyldig e-postadresse' }, { status: 400 }));
+      }
+      const name = (body.name || '').toString().trim().slice(0, 120);
+      const source = (body.source || 'footer').toString().slice(0, 40);
+      const now = new Date().toISOString();
+      const setDoc = { updated_at: now, consent: true };
+      if (name) setDoc.name = name;
+      await db.collection('newsletter_subscribers').updateOne(
+        { email },
+        { $setOnInsert: { id: uuidv4(), email, created_at: now, source }, $set: setDoc },
+        { upsert: true }
+      );
+      try { await db.collection(OPTOUT_COLL).deleteOne({ email }); } catch (e) {}
+      return cors(NextResponse.json({ ok: true }));
+    }
+
     // ═══════════════════════════════════════════════════════════════════
     // FORVALTEDE BOLIGER — synk fra plattformen + synlighetsstyring + offentlig
     // visning på forsiden. Kilde: GET {PLATFORM}/api/properties/export.

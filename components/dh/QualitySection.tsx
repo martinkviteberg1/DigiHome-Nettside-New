@@ -57,19 +57,19 @@ export default function QualitySection() {
           >
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-3">
-                <div className="rounded-[16px] overflow-hidden">
-                  <img src="/interior-openplan.webp" alt="Stue" className="w-full aspect-[4/5] object-cover" loading="lazy" />
+                <div className="rounded-[16px] overflow-hidden group">
+                  <img src="/interior-openplan.webp" alt="Stue" className="w-full aspect-[4/5] object-cover group-hover:scale-[1.04] transition-transform duration-700 ease-out" loading="lazy" />
                 </div>
-                <div className="rounded-[16px] overflow-hidden">
-                  <img src="/interior-kitchen.webp" alt="Kjøkken" className="w-full aspect-[4/3] object-cover" loading="lazy" />
+                <div className="rounded-[16px] overflow-hidden group">
+                  <img src="/interior-kitchen.webp" alt="Kjøkken" className="w-full aspect-[4/3] object-cover group-hover:scale-[1.04] transition-transform duration-700 ease-out" loading="lazy" />
                 </div>
               </div>
               <div className="space-y-3 pt-8">
-                <div className="rounded-[16px] overflow-hidden">
-                  <img src="/interior-dining.webp" alt="Spisestue" className="w-full aspect-[4/3] object-cover" loading="lazy" />
+                <div className="rounded-[16px] overflow-hidden group">
+                  <img src="/interior-dining.webp" alt="Spisestue" className="w-full aspect-[4/3] object-cover group-hover:scale-[1.04] transition-transform duration-700 ease-out" loading="lazy" />
                 </div>
-                <div className="rounded-[16px] overflow-hidden">
-                  <img src="/interior-living.webp" alt="Stue" className="w-full aspect-[4/5] object-cover" loading="lazy" />
+                <div className="rounded-[16px] overflow-hidden group">
+                  <img src="/interior-living.webp" alt="Stue" className="w-full aspect-[4/5] object-cover group-hover:scale-[1.04] transition-transform duration-700 ease-out" loading="lazy" />
                 </div>
               </div>
             </div>

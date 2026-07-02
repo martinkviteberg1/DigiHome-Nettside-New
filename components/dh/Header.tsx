@@ -47,6 +47,8 @@ export default function Header() {
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50" data-testid="header">
+      {/* Scroll-fremdrift (ren CSS scroll-driven animation, kun der støttet) */}
+      <div aria-hidden className="dh-scroll-progress" />
       <div
         className={`transition-all duration-500 ${scrolled ? 'px-3 sm:px-5 pt-3' : 'px-0 pt-0'}`}
         style={{ transitionTimingFunction: ease }}

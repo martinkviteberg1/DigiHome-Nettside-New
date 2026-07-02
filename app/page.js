@@ -14,6 +14,7 @@ import TestimonialsSection from '@/components/dh/TestimonialsSection';
 import PartnersBar from '@/components/dh/PartnersBar';
 import CTASection from '@/components/dh/CTASection';
 import Footer from '@/components/dh/Footer';
+import MobileCTA from '@/components/dh/MobileCTA';
 import StructuredData from '@/components/dh/StructuredData';
 import FaqSection from '@/components/dh/FaqSection';
 
@@ -44,6 +45,7 @@ export default function HomePage() {
       <FaqSection />
       <CTASection />
       <Footer />
+      <MobileCTA />
     </div>
   );
 }

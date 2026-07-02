@@ -1,7 +1,68 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
+import { Mail, Check, ArrowRight, Loader2 } from 'lucide-react';
+
+function NewsletterSignup() {
+  const [email, setEmail] = useState('');
+  const [status, setStatus] = useState<'idle' | 'sending' | 'done' | 'error'>('idle');
+
+  const submit = async (e: any) => {
+    e.preventDefault();
+    if (!/^\S+@\S+\.\S+$/.test(email)) { setStatus('error'); return; }
+    setStatus('sending');
+    try {
+      const r = await fetch('/api/newsletter/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, source: 'footer' }),
+      });
+      setStatus(r.ok ? 'done' : 'error');
+      if (r.ok) setEmail('');
+    } catch (err) { setStatus('error'); }
+  };
+
+  if (status === 'done') {
+    return (
+      <div className="flex items-center gap-3.5 lg:justify-self-end" data-testid="footer-newsletter-done">
+        <div className="w-10 h-10 rounded-full bg-[#cf97fc]/15 border border-[#cf97fc]/25 flex items-center justify-center shrink-0">
+          <Check className="w-4.5 h-4.5 w-[18px] h-[18px] text-[#cf97fc]" strokeWidth={2.5} />
+        </div>
+        <div>
+          <p className="text-[15px] font-semibold text-white" style={{ fontFamily: 'var(--font-heading)' }}>Takk — du er påmeldt!</p>
+          <p className="text-[13px] text-white/45 mt-0.5">Første innsikt lander i innboksen din snart.</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <form onSubmit={submit} className="w-full max-w-[460px] lg:justify-self-end">
+      <div className="flex items-center rounded-full bg-white/[0.06] border border-white/[0.1] focus-within:border-[#cf97fc]/50 focus-within:bg-white/[0.08] focus-within:shadow-[0_0_0_4px_rgba(207,151,252,0.08)] transition-all duration-300 p-1.5 pl-5">
+        <Mail className="w-4 h-4 text-white/35 shrink-0" />
+        <input
+          type="email"
+          value={email}
+          onChange={(e) => { setEmail(e.target.value); if (status === 'error') setStatus('idle'); }}
+          placeholder="din@epost.no"
+          className="flex-1 min-w-0 bg-transparent h-[44px] px-3 text-[14px] text-white placeholder:text-white/35 outline-none focus:outline-none"
+          data-testid="footer-newsletter-input"
+        />
+        <button
+          type="submit"
+          disabled={status === 'sending'}
+          className="h-[42px] px-5 rounded-full bg-white text-[#0a0a0a] text-[13px] font-semibold hover:bg-[#f3eafc] transition-colors disabled:opacity-60 inline-flex items-center gap-1.5 shrink-0"
+          data-testid="footer-newsletter-submit"
+        >
+          {status === 'sending' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <>Meld meg på <ArrowRight className="w-3.5 h-3.5" /></>}
+        </button>
+      </div>
+      {status === 'error' && <p className="text-[12px] text-rose-300/90 mt-2 ml-5">Sjekk e-postadressen og prøv igjen.</p>}
+      <p className="text-[11px] text-white/50 mt-2.5 ml-5 leading-relaxed">Maks én e-post i måneden. Meld deg av når som helst — se <a href="/personvern" className="underline hover:text-white/60 transition-colors">personvern</a>.</p>
+    </form>
+  );
+}
 
 const cols = [
   { title: 'Tjenester', links: [{ l: 'Dynamisk utleie', h: '/tjenester' }, { l: 'Langtidsutleie', h: '/tjenester' }, { l: 'Korttidsutleie', h: '/tjenester' }, { l: 'Rådgivning', h: '/radgivning' }] },
@@ -48,6 +109,14 @@ export default function Footer({ org }: { org?: { company_name?: string; org_num
               <ul className="space-y-3">{c.links.map((l: any) => (<li key={l.l}><Link href={l.h} className="text-[14px] text-white/50 hover:text-white/70 transition-colors duration-200">{l.l}</Link></li>))}</ul>
             </div>
           ))}
+        </div>
+        {/* Nyhetsbrev */}
+        <div className="border-t border-white/[0.06] py-12 grid gap-8 lg:grid-cols-2 lg:items-center">
+          <div>
+            <h2 className="text-[22px] sm:text-[26px] font-bold tracking-[-0.02em] text-white" style={{ fontFamily: 'var(--font-heading)' }}>Innsikt om leiemarkedet, rett i innboksen</h2>
+            <p className="text-[14px] text-white/50 mt-2 max-w-[52ch] leading-relaxed">Markedsdata, skattetips og guider for boligeiere i Bergen — kort og konkret.</p>
+          </div>
+          <NewsletterSignup />
         </div>
         {/* Signatur-wordmark */}
         <div aria-hidden className="select-none pointer-events-none overflow-hidden -mb-2 sm:-mb-3">
