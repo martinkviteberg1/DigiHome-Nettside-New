@@ -6,7 +6,7 @@ import {
   Menu, X, ChevronRight, ShieldCheck, Sparkles, MessageSquare,
   LayoutDashboard, Radio, Activity, GitBranch, Gauge, Megaphone, Database,
   Command, Search, CornerDownLeft, LayoutTemplate, Crosshair, TrendingUp, Wallet,
-  Globe, ExternalLink, PenLine, Mail,
+  Globe, ExternalLink, PenLine, Mail, Home,
 } from 'lucide-react';
 import InnsiktDashboard from '@/components/admin/InnsiktDashboard';
 import KpiDashboard from '@/components/admin/KpiDashboard';
@@ -15,6 +15,7 @@ import CustomersDashboard from '@/components/admin/CustomersDashboard';
 import AgentBridge from '@/components/admin/AgentBridge';
 import PlaybookTab from '@/components/admin/PlaybookTab';
 import NewsletterTab from '@/components/admin/NewsletterTab';
+import PropertiesTab from '@/components/admin/PropertiesTab';
 
 const SESSION_KEY = 'dh_admin_session';
 const LEGACY_KEY = 'dh_admin_key';
@@ -46,6 +47,7 @@ const NAV = [
     items: [
       { k: 'artikler', l: 'Artikler', icon: FileText, href: '/admin/artikler' },
       { k: 'nyhetsbrev', l: 'Nyhetsbrev', icon: Mail, desc: 'E-post til leads & kunder — komponer, test og send' },
+      { k: 'boliger', l: 'Boliger', icon: Home, desc: 'Vis forvaltede boliger på forsiden — synk & synlighet' },
     ],
   },
   {
@@ -80,6 +82,7 @@ const SECTION_TITLES = {
   abonnementer: { t: 'Abonnementer', s: 'Kommer snart — aktive avtaler & fakturering' },
   bro: { t: 'Agent-bro', s: 'Delt meldingstråd for koordinering med plattform-prosjektet' },
   nyhetsbrev: { t: 'Nyhetsbrev', s: 'Komponer, forhåndsvis og send e-post til leads og kunder — med samtykke-merking og avmelding' },
+  boliger: { t: 'Boliger på forsiden', s: 'Synk forvaltede boliger fra plattformen og velg hvilke som vises offentlig — personvern-trygt' },
 };
 
 export default function AdminPage() {
@@ -304,6 +307,8 @@ export default function AdminPage() {
     { id: 'sec-kunder', group: 'Forretning', label: 'Kunder', icon: Users, action: () => runNavigate('kunder') },
     { id: 'sec-abonnementer', group: 'Forretning', label: 'Abonnementer', icon: CreditCard, action: () => runNavigate('abonnementer') },
     { id: 'sec-artikler', group: 'Innhold', label: 'Artikler', icon: FileText, action: () => { setPaletteOpen(false); window.location.href = '/admin/artikler'; } },
+    { id: 'sec-nyhetsbrev', group: 'Innhold', label: 'Nyhetsbrev', icon: Mail, action: () => runNavigate('nyhetsbrev') },
+    { id: 'sec-boliger', group: 'Innhold', label: 'Boliger på forsiden', icon: Home, action: () => runNavigate('boliger') },
     { id: 'sec-bro', group: 'Koordinering', label: 'Agent-bro', icon: MessageSquare, action: () => runNavigate('bro') },
     // Hurtighandlinger — 2026: gjør ting direkte fra paletten
     { id: 'qa-site', group: 'Hurtighandlinger', label: 'Åpne nettsiden (ny fane)', icon: Globe, action: () => { setPaletteOpen(false); window.open('/', '_blank'); } },
@@ -355,6 +360,7 @@ export default function AdminPage() {
           {section === 'nokkeltall' && <KpiDashboard apiKey={token} />}
           {section === 'playbook' && <PlaybookTab apiKey={token} />}
           {section === 'nyhetsbrev' && <NewsletterTab apiKey={token} />}
+          {section === 'boliger' && <PropertiesTab apiKey={token} />}
           {section === 'okonomi' && <FinanceDashboard apiKey={token} />}
           {section === 'innsikt' && <InnsiktDashboard apiKey={token} tab={insightTab} onTabChange={setInsightTab} onStats={setInsightStats} />}
           {section === 'kunder' && <CustomersDashboard apiKey={token} />}

@@ -26,7 +26,8 @@ import { runOptimization, getOptimizeConfig, setOptimizeConfig, getLastRun, list
 import { sendWeeklyReport, buildReportData, renderReportHtml } from '@/lib/ads-report';
 import { buildMarketingMetrics } from '@/lib/marketing-metrics';
 import { emailConfigured, reportRecipients, sendHtmlEmail } from '@/lib/email';
-import { NEWSLETTER_COLL, OPTOUT_COLL, renderNewsletterHtml, resolveAudience, audienceCounts, sanitizeBlocks, buildUnsubUrl, verifyUnsubToken, slugifyCampaign, normEmail as nlNormEmail } from '@/lib/newsletter';
+import { NEWSLETTER_COLL, OPTOUT_COLL, NL_EVENTS_COLL, renderNewsletterHtml, resolveAudience, audienceCounts, sanitizeBlocks, hasContent, buildUnsubUrl, verifyUnsubToken, slugifyCampaign, normEmail as nlNormEmail, recipientId, TEMPLATES, templateBlocks, THEMES, TRACKING_GIF, applyMergeTags } from '@/lib/newsletter';
+import { syncPropertiesFromPlatform, maybeAutoSyncProperties, listAdminProperties, listPublicProperties, setPropertyVisibility, getPropertiesSyncMeta } from '@/lib/properties-sync';
 import { fireLeadEmails } from '@/lib/lead-emails';
 import { buildAlerts } from '@/lib/ads-monitor';
 import { fetchCompetitorGallery, serpApiConfigured } from '@/lib/serpapi';
@@ -2486,8 +2487,10 @@ async function handleRoute(request, { params }) {
         subject: (body.subject || '').toString().slice(0, 200),
         preheader: (body.preheader || '').toString().slice(0, 200),
         blocks,
+        theme: (body.theme || 'lavendel').toString(),
         unsubUrl: `${base}/nyhetsbrev/avmeldt?demo=1`,
         campaignSlug: slugifyCampaign(body.subject),
+        recipient: { name: 'Martin Kviteberg' }, // eksempel for merge-tags i forhåndsvisning
       });
       return cors(NextResponse.json({ ok: true, html }));
     }
@@ -2504,44 +2507,158 @@ async function handleRoute(request, { params }) {
       const base = process.env.NEXT_PUBLIC_BASE_URL || new URL(request.url).origin;
       const html = renderNewsletterHtml({
         subject, preheader: (body.preheader || '').toString().slice(0, 200), blocks,
+        theme: (body.theme || 'lavendel').toString(),
         unsubUrl: buildUnsubUrl(base, to), campaignSlug: slugifyCampaign(subject),
+        recipient: { name: (body.sampleName || 'Martin Kviteberg').toString() },
       });
       try {
-        await sendHtmlEmail({ to, subject: `[TEST] ${subject}`, html });
+        await sendHtmlEmail({ to, subject: `[TEST] ${subject}`, html, fromName: (body.fromName || 'DigiHome').toString().slice(0, 80) });
         return cors(NextResponse.json({ ok: true, sentTo: to }));
       } catch (e) {
         return cors(NextResponse.json({ ok: false, error: e.message }, { status: 502 }));
       }
     }
 
+    // Opprett utkast fra mal ("Velg et startpunkt")
+    if (route === '/admin/newsletter/draft' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      const tpl = TEMPLATES.find((t) => t.key === body.template) || TEMPLATES[0];
+      const now = new Date().toISOString();
+      const doc = {
+        id: uuidv4(),
+        title: (body.title || tpl.label).toString().slice(0, 160),
+        subject: '', preheader: '', fromName: 'DigiHome',
+        theme: 'lavendel',
+        blocks: templateBlocks(tpl.key),
+        segments: [], excludedEmails: [],
+        status: 'draft', template: tpl.key,
+        createdAt: now, updatedAt: now,
+        recipients: 0, sent: 0, failedCount: 0, opens: 0, clicks: 0, openedR: [], clickedR: [],
+      };
+      await db.collection(NEWSLETTER_COLL).insertOne({ ...doc });
+      return cors(NextResponse.json({ ok: true, campaign: doc }, { status: 201 }));
+    }
+
+    // Autolagring av utkast (body: {id, ...felter})
+    if (route === '/admin/newsletter/draft' && method === 'PUT') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      const id = (body.id || '').toString();
+      if (!id) return cors(NextResponse.json({ ok: false, error: 'Mangler id' }, { status: 400 }));
+      const existing = await db.collection(NEWSLETTER_COLL).findOne({ id }, { projection: { _id: 0, status: 1 } });
+      if (!existing) return cors(NextResponse.json({ ok: false, error: 'Fant ikke kampanjen' }, { status: 404 }));
+      if (existing.status === 'sent') return cors(NextResponse.json({ ok: false, error: 'Sendte kampanjer kan ikke endres' }, { status: 400 }));
+      const set = { updatedAt: new Date().toISOString() };
+      if (body.title !== undefined) set.title = String(body.title).slice(0, 160);
+      if (body.subject !== undefined) set.subject = String(body.subject).slice(0, 200);
+      if (body.preheader !== undefined) set.preheader = String(body.preheader).slice(0, 200);
+      if (body.fromName !== undefined) set.fromName = String(body.fromName).slice(0, 80);
+      if (body.theme !== undefined) set.theme = THEMES[body.theme] ? String(body.theme) : 'lavendel';
+      if (body.blocks !== undefined) set.blocks = sanitizeBlocks(body.blocks);
+      if (body.segments !== undefined) set.segments = (Array.isArray(body.segments) ? body.segments : []).filter((s) => ['kunder', 'leads', 'leietakere'].includes(s));
+      if (body.excludedEmails !== undefined) set.excludedEmails = (Array.isArray(body.excludedEmails) ? body.excludedEmails : []).slice(0, 5000).map((e) => nlNormEmail(e)).filter(Boolean);
+      await db.collection(NEWSLETTER_COLL).updateOne({ id }, { $set: set });
+      return cors(NextResponse.json({ ok: true, updatedAt: set.updatedAt }));
+    }
+
+    // Hent én kampanje (med statistikk og klikk per lenke)
+    if (route === '/admin/newsletter/campaign' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const id = (new URL(request.url).searchParams.get('id') || '').toString();
+      const c = await db.collection(NEWSLETTER_COLL).findOne({ id }, { projection: { _id: 0 } });
+      if (!c) return cors(NextResponse.json({ ok: false, error: 'Fant ikke kampanjen' }, { status: 404 }));
+      let clicksByUrl = [];
+      if (c.status === 'sent') {
+        clicksByUrl = await db.collection(NL_EVENTS_COLL).aggregate([
+          { $match: { campaignId: id, type: 'click' } },
+          { $group: { _id: '$url', total: { $sum: 1 }, unique: { $addToSet: '$rid' } } },
+          { $project: { _id: 0, url: '$_id', total: 1, unique: { $size: '$unique' } } },
+          { $sort: { total: -1 } }, { $limit: 30 },
+        ]).toArray();
+      }
+      const opensUnique = (c.openedR || []).length;
+      const clicksUnique = (c.clickedR || []).length;
+      return cors(NextResponse.json({
+        ok: true,
+        campaign: { ...c, openedR: undefined, clickedR: undefined },
+        stats: {
+          recipients: c.recipients || 0, sent: c.sent || 0, failedCount: c.failedCount || 0,
+          opens: c.opens || 0, opensUnique, clicks: c.clicks || 0, clicksUnique,
+          openRate: c.sent ? Math.round((opensUnique / c.sent) * 1000) / 10 : null,
+          clickRate: c.sent ? Math.round((clicksUnique / c.sent) * 1000) / 10 : null,
+          clicksByUrl,
+        },
+      }));
+    }
+
+    if (route === '/admin/newsletter/campaign' && method === 'DELETE') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const id = (new URL(request.url).searchParams.get('id') || '').toString();
+      const res = await db.collection(NEWSLETTER_COLL).deleteOne({ id });
+      await db.collection(NL_EVENTS_COLL).deleteMany({ campaignId: id });
+      return cors(NextResponse.json({ ok: true, deleted: res.deletedCount }));
+    }
+
+    if (route === '/admin/newsletter/duplicate' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      const src = await db.collection(NEWSLETTER_COLL).findOne({ id: (body.id || '').toString() }, { projection: { _id: 0 } });
+      if (!src) return cors(NextResponse.json({ ok: false, error: 'Fant ikke kampanjen' }, { status: 404 }));
+      const now = new Date().toISOString();
+      const doc = {
+        ...src, id: uuidv4(), title: `Kopi av ${src.title || 'kampanje'}`.slice(0, 160),
+        status: 'draft', createdAt: now, updatedAt: now, sentAt: undefined,
+        recipients: 0, sent: 0, failedCount: 0, failed: undefined, skipped: undefined,
+        opens: 0, clicks: 0, openedR: [], clickedR: [],
+      };
+      await db.collection(NEWSLETTER_COLL).insertOne({ ...doc });
+      return cors(NextResponse.json({ ok: true, campaign: doc }, { status: 201 }));
+    }
+
+    // Mottakerliste for målgruppe-redigering (se nøyaktige e-poster)
+    if (route === '/admin/newsletter/recipients' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const sp = new URL(request.url).searchParams;
+      const segments = (sp.get('segments') || '').split(',').map((s) => s.trim()).filter((s) => ['kunder', 'leads', 'leietakere'].includes(s));
+      const { recipients, skipped } = await resolveAudience(db, segments, []);
+      return cors(NextResponse.json({ ok: true, recipients: recipients.slice(0, 2000), total: recipients.length, skipped }));
+    }
+
+    // Send kampanje (body: {campaignId}) — bruker lagrede segmenter + ekskluderinger
     if (route === '/admin/newsletter/send' && method === 'POST') {
       if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       if (!emailConfigured()) return cors(NextResponse.json({ ok: false, error: 'SendGrid er ikke konfigurert (SENDGRID_API_KEY)' }, { status: 400 }));
       let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
-      const segments = Array.isArray(body.segments) ? body.segments.filter((s) => ['kunder', 'leads', 'leietakere'].includes(s)) : [];
-      if (!segments.length) return cors(NextResponse.json({ ok: false, error: 'Velg minst én målgruppe' }, { status: 400 }));
-      const blocks = sanitizeBlocks(body.blocks);
-      if (!blocks.length) return cors(NextResponse.json({ ok: false, error: 'Nyhetsbrevet har ikke noe innhold ennå' }, { status: 400 }));
-      const subject = (body.subject || '').toString().slice(0, 200).trim();
-      if (!subject) return cors(NextResponse.json({ ok: false, error: 'Emnefelt mangler' }, { status: 400 }));
-      const preheader = (body.preheader || '').toString().slice(0, 200);
+      const campaignId = (body.campaignId || '').toString();
+      if (!campaignId) return cors(NextResponse.json({ ok: false, error: 'Mangler campaignId' }, { status: 400 }));
+      const c = await db.collection(NEWSLETTER_COLL).findOne({ id: campaignId }, { projection: { _id: 0 } });
+      if (!c) return cors(NextResponse.json({ ok: false, error: 'Fant ikke kampanjen' }, { status: 404 }));
+      if (c.status === 'sent') return cors(NextResponse.json({ ok: false, error: 'Kampanjen er allerede sendt' }, { status: 400 }));
+      const subject = (c.subject || '').trim();
+      if (!subject) return cors(NextResponse.json({ ok: false, error: 'Emnefelt mangler — fyll inn under Oppsett' }, { status: 400 }));
+      if (!hasContent(c.blocks)) return cors(NextResponse.json({ ok: false, error: 'Nyhetsbrevet har ikke noe innhold ennå' }, { status: 400 }));
+      if (!(c.segments || []).length) return cors(NextResponse.json({ ok: false, error: 'Velg minst én målgruppe' }, { status: 400 }));
 
-      const { recipients, skipped } = await resolveAudience(db, segments);
-      if (!recipients.length) return cors(NextResponse.json({ ok: false, error: 'Ingen mottakere i valgt målgruppe (etter avmeldte/duplikater)' }, { status: 400 }));
+      const { recipients, skipped } = await resolveAudience(db, c.segments, c.excludedEmails || []);
+      if (!recipients.length) return cors(NextResponse.json({ ok: false, error: 'Ingen mottakere i valgt målgruppe (etter avmeldte/ekskluderte)' }, { status: 400 }));
       if (recipients.length > 2000) return cors(NextResponse.json({ ok: false, error: `For mange mottakere i én utsending (${recipients.length} > 2000)` }, { status: 400 }));
 
       const base = process.env.NEXT_PUBLIC_BASE_URL || new URL(request.url).origin;
       const slug = slugifyCampaign(subject);
-      const campaignId = uuidv4();
       let sent = 0; const failed = [];
-      // Individuell utsending (personlig avmeldingslenke) i små parallelle bunker.
       const CHUNK = 8;
       for (let i = 0; i < recipients.length; i += CHUNK) {
         const chunk = recipients.slice(i, i + CHUNK);
         await Promise.all(chunk.map(async (r) => {
           try {
-            const html = renderNewsletterHtml({ subject, preheader, blocks, unsubUrl: buildUnsubUrl(base, r.email), campaignSlug: slug });
-            await sendHtmlEmail({ to: r.email, subject, html });
+            const html = renderNewsletterHtml({
+              subject, preheader: c.preheader || '', blocks: c.blocks || [], theme: c.theme || 'lavendel',
+              unsubUrl: buildUnsubUrl(base, r.email), campaignSlug: slug,
+              recipient: r,
+              tracking: { trackBase: base, campaignId, rid: recipientId(r.email) },
+            });
+            await sendHtmlEmail({ to: r.email, subject: applyMergeTags(subject, r), html, fromName: c.fromName || 'DigiHome' });
             sent++;
           } catch (e) {
             failed.push({ email: r.email, error: (e.message || 'ukjent').slice(0, 200) });
@@ -2549,23 +2666,37 @@ async function handleRoute(request, { params }) {
         }));
       }
 
-      const doc = {
-        id: campaignId, subject, preheader, blocks, segments, slug,
+      const now = new Date().toISOString();
+      const upd = {
+        status: 'sent', sentAt: now, updatedAt: now, slug,
         recipients: recipients.length, sent, failedCount: failed.length,
-        failed: failed.slice(0, 50), skipped,
-        sentAt: new Date().toISOString(), sentBy: 'admin',
+        failed: failed.slice(0, 50), skipped, opens: 0, clicks: 0, openedR: [], clickedR: [],
       };
-      await db.collection(NEWSLETTER_COLL).insertOne({ ...doc });
-      return cors(NextResponse.json({ ok: true, campaign: doc }, { status: 201 }));
+      await db.collection(NEWSLETTER_COLL).updateOne({ id: campaignId }, { $set: upd });
+      return cors(NextResponse.json({ ok: true, campaign: { ...c, ...upd } }, { status: 201 }));
     }
 
     if (route === '/admin/newsletter' && method === 'GET') {
       if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const items = await db.collection(NEWSLETTER_COLL)
         .find({}, { projection: { _id: 0, blocks: 0, failed: 0 } })
-        .sort({ sentAt: -1 }).limit(50).toArray();
+        .sort({ updatedAt: -1, sentAt: -1 }).limit(100).toArray();
+      const campaigns = items.map((c) => {
+        const opensUnique = (c.openedR || []).length;
+        const clicksUnique = (c.clickedR || []).length;
+        return {
+          ...c, openedR: undefined, clickedR: undefined, excludedEmails: undefined,
+          opensUnique, clicksUnique,
+          openRate: c.sent ? Math.round((opensUnique / c.sent) * 1000) / 10 : null,
+          clickRate: c.sent ? Math.round((clicksUnique / c.sent) * 1000) / 10 : null,
+        };
+      });
       const optouts = await db.collection(OPTOUT_COLL).countDocuments();
-      return cors(NextResponse.json({ ok: true, campaigns: items, optouts }));
+      return cors(NextResponse.json({
+        ok: true, campaigns, optouts,
+        templates: TEMPLATES.map((t) => ({ key: t.key, label: t.label, desc: t.desc })),
+        themes: Object.keys(THEMES).map((k) => ({ key: k, accent: THEMES[k].accent })),
+      }));
     }
 
     // Offentlig avmelding — HMAC-verifisert lenke fra e-posten. Ingen auth.
@@ -2587,6 +2718,79 @@ async function handleRoute(request, { params }) {
       return NextResponse.redirect(`${base}/nyhetsbrev/avmeldt`, 302);
     }
 
+    // Åpningssporing — 1x1 GIF (offentlig, ingen auth)
+    if (route === '/newsletter/open' && method === 'GET') {
+      const sp = new URL(request.url).searchParams;
+      const c = (sp.get('c') || '').toString().slice(0, 64);
+      const r = (sp.get('r') || '').toString().slice(0, 32);
+      if (c && r) {
+        try {
+          await db.collection(NEWSLETTER_COLL).updateOne({ id: c, status: 'sent' }, { $inc: { opens: 1 }, $addToSet: { openedR: r } });
+          await db.collection(NL_EVENTS_COLL).insertOne({ id: uuidv4(), campaignId: c, rid: r, type: 'open', at: new Date().toISOString() });
+        } catch (e) {}
+      }
+      return new NextResponse(TRACKING_GIF, { status: 200, headers: { 'Content-Type': 'image/gif', 'Cache-Control': 'no-store, no-cache, must-revalidate', 'Content-Length': String(TRACKING_GIF.length) } });
+    }
+
+    // Klikksporing — logg + redirect til mål-URL (offentlig, ingen auth)
+    if (route === '/newsletter/click' && method === 'GET') {
+      const sp = new URL(request.url).searchParams;
+      const c = (sp.get('c') || '').toString().slice(0, 64);
+      const r = (sp.get('r') || '').toString().slice(0, 32);
+      let target = (sp.get('u') || '').toString().slice(0, 1000);
+      const base = process.env.NEXT_PUBLIC_BASE_URL || new URL(request.url).origin;
+      if (!/^https?:\/\//i.test(target)) target = base; // kun http(s)-mål
+      if (c && r) {
+        try {
+          await db.collection(NEWSLETTER_COLL).updateOne({ id: c, status: 'sent' }, { $inc: { clicks: 1 }, $addToSet: { clickedR: r } });
+          await db.collection(NL_EVENTS_COLL).insertOne({ id: uuidv4(), campaignId: c, rid: r, type: 'click', url: target.slice(0, 500), at: new Date().toISOString() });
+        } catch (e) {}
+      }
+      return NextResponse.redirect(target, 302);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // FORVALTEDE BOLIGER — synk fra plattformen + synlighetsstyring + offentlig
+    // visning på forsiden. Kilde: GET {PLATFORM}/api/properties/export.
+    // Personvern: plattformen leverer allerede PII-frie felt; VI styrer
+    // synlighet per bolig (default skjult).
+    // ═══════════════════════════════════════════════════════════════════
+
+    // Offentlig: kun synlige boliger (brukes av forsiden). Auto-resynk i
+    // bakgrunnen hvis data er >1t gamle — svarer alltid umiddelbart fra cache.
+    if (route === '/public/properties' && method === 'GET') {
+      const sp = new URL(request.url).searchParams;
+      const limit = Number(sp.get('limit')) || 12;
+      let properties = [];
+      try { properties = await listPublicProperties(db, { limit }); } catch (e) { properties = []; }
+      try { maybeAutoSyncProperties(db, digiHomeTarget); } catch (e) {}
+      return cors(NextResponse.json({ ok: true, properties, count: properties.length }, { headers: { 'Cache-Control': 'public, max-age=120, stale-while-revalidate=600' } }));
+    }
+
+    // Admin: liste over alle synkede boliger + synk-metadata
+    if (route === '/admin/properties' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const [properties, meta] = await Promise.all([listAdminProperties(db), getPropertiesSyncMeta(db)]);
+      const visibleCount = properties.filter((p) => p.visible).length;
+      return cors(NextResponse.json({ ok: true, properties, total: properties.length, visibleCount, meta: meta ? { lastSyncAt: meta.lastSyncAt || null, lastError: meta.lastError || null, platformTotal: meta.platformTotal ?? null } : null }));
+    }
+
+    // Admin: manuell synk fra plattformen
+    if (route === '/admin/properties/sync' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const target = digiHomeTarget();
+      const result = await syncPropertiesFromPlatform(db, { target: target.url, key: target.key });
+      return cors(NextResponse.json({ ...result, platformEnv: target.env, platformUrl: target.url }, { status: result.ok ? 200 : 502 }));
+    }
+
+    // Admin: sett synlighet (enkelt {id, visible} eller bulk {ids:[], visible})
+    if (route === '/admin/properties/visibility' && (method === 'PUT' || method === 'POST')) {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      const result = await setPropertyVisibility(db, { id: body.id, ids: body.ids, visible: body.visible });
+      if (!result.ok) return cors(NextResponse.json(result, { status: 400 }));
+      return cors(NextResponse.json(result));
+    }
 
     // ===================================================================
     // KPI-dashbord ("Nøkkeltall / Ledelse") — investorklare nøkkeltall.
