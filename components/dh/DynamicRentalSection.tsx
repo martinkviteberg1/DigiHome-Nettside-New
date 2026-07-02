@@ -251,7 +251,7 @@ function FinnCard() {
               <span className="text-white text-[10px] font-bold">D</span>
             </div>
             <div>
-              <p className="text-[11px] font-semibold text-[#333]">SHD Forvaltning AS</p>
+              <p className="text-[11px] font-semibold text-[#333]">Digihome AS</p>
               <p className="text-[10px] text-[#6b6b6b]">Profesjonell utleier</p>
             </div>
           </div>

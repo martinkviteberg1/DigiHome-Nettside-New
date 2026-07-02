@@ -83,7 +83,7 @@ export function Footer() {
 
         <div className="mt-14 pt-8 border-t border-white/10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <p className="text-xs text-white/50">
-            © {year} SHD Forvaltning AS (DigiHome) · Org.nr {site.orgNr} · {site.address.street}, {site.address.postal} {site.address.city}
+            © {year} Digihome AS · Org.nr {site.orgNr} · {site.address.street}, {site.address.postal} {site.address.city}
           </p>
           <div className="flex items-center gap-5 text-xs text-white/50">
             <a href={`mailto:${site.email}`} className="hover:text-white transition-colors">{site.email}</a>

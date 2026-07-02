@@ -36,3 +36,9 @@ Google Ads-styring via native REST API).
 - Backend-testagent 2026-07-02: 12/12 bestått (bidding validateOnly, lead-e-post,
   SEO-artikkel, regresjon pulse/campaigns/lp-sammenlign). Test-leads slettet.
 - Admin: martin@kviteberg.no / Pyramiden2025## · legacy-nøkkel dh_admin_b3Kx92Qz7Lm4.
+
+## 2026-07-02: LP-redesign (root-paritet)
+- `/lp/*` (CampaignLanding, LeadFormPro, RentCalculator, lp-shared) redesignet til root-sidens designspraak: samme palett (#0a0a0a/#555/#888, lavendel #D298FF/#AE68E4/#9333EA), 1400px-container, fast header (72px, logo.svg, pill-CTA med sirkelpil), dot-grid-hero, bento-bildekomposisjon, root-stil kort/stats/testimonials/moerk CTA/FAQ.
+- All konverteringslogikk beholdt uendret: 2-stegs skjema, tracking (GA4/Meta), A/B-test av H1, exit-intent, sticky mobil-CTA, leiekalkulator-event.
+- Verifisert med skjermbilder desktop (1920px) og mobil (390px) paa /lp/inntekt og /lp/sammenlign.
+- `/lp/leietaker` (CampaignLandingTenant) er IKKE redesignet enda.

@@ -1262,6 +1262,39 @@ async function handleRoute(request, { params }) {
     }
 
     // --- Leads (huseier/utleier-skjema) ---
+    // --- Kontosletting (Apple 5.1.1(v)): offentlig forespørsel fra /slett-konto ---
+    if (route === '/account-deletion' && method === 'POST') {
+      const body = await request.json().catch(() => ({}));
+      if (body.website) return cors(NextResponse.json({ ok: true })); // honeypot: lat som alt er OK
+      const email = String(body.email || '').trim().toLowerCase();
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return cors(NextResponse.json({ ok: false, error: 'Ugyldig e-postadresse' }, { status: 400 }));
+      const reqDoc = {
+        id: uuidv4(),
+        email,
+        message: String(body.message || '').slice(0, 2000),
+        status: 'new',
+        source: 'web',
+        createdAt: new Date().toISOString(),
+      };
+      await db.collection('deletion_requests').insertOne(reqDoc);
+      // Varsle admin umiddelbart (best-effort)
+      try {
+        if (emailConfigured()) {
+          const to = (process.env.LEAD_NOTIFY_RECIPIENTS || process.env.ADS_REPORT_RECIPIENTS || process.env.ADMIN_SEED_EMAIL || '').split(',').map((s) => s.trim()).filter(Boolean);
+          if (to.length) {
+            await sendHtmlEmail({
+              to,
+              subject: `Sletteforespørsel (GDPR): ${email}`,
+              html: `<p><b>Ny forespørsel om kontosletting</b></p><p>E-post: ${email}</p><p>Melding: ${String(body.message || '').slice(0, 500) || '(ingen)'}</p><p>Mottatt: ${new Date().toLocaleString('nb-NO', { timeZone: 'Europe/Oslo' })}</p><p>Frist: bekreftelse innen 72 t · sletting innen 30 dager.</p>`,
+              fromName: 'DigiHome Personvern',
+              replyTo: email,
+            });
+          }
+        }
+      } catch (e) { /* varsling er best-effort */ }
+      return cors(NextResponse.json({ ok: true, id: reqDoc.id }, { status: 201 }));
+    }
+
     if (route === '/leads' && method === 'POST') {
       let body = {};
       try { body = await request.json(); } catch (e) { body = {}; }

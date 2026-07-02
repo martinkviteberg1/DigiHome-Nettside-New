@@ -144,7 +144,7 @@ export default function DeckGate({ children }) {
           </form>
 
           <p className="text-center text-[11px] mt-7" style={{ color: 'rgba(255,255,255,0.32)' }}>
-            DigiHome · SHD Forvaltning AS
+            DigiHome · Digihome AS
           </p>
         </div>
       )}

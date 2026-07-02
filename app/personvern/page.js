@@ -4,13 +4,13 @@ import Footer from '@/components/dh/Footer';
 import { site } from '@/lib/site';
 
 export const metadata = {
-  title: 'Personvern og vilkår',
+  title: 'Personvernerklæring',
   description:
-    'Slik behandler DigiHome personopplysninger i tråd med GDPR og norsk personvernlovgivning — hvilke data vi samler inn, hvorfor, hvor lenge, og hvilke rettigheter du har. Inkluderer våre vilkår for bruk.',
+    'Slik behandler DigiHome personopplysninger i nettsiden, web-plattformen og mobil-appen — i tråd med GDPR. Hvilke data vi samler inn, databehandlere vi bruker, lagringstid og dine rettigheter.',
   alternates: { canonical: '/personvern' },
 };
 
-const updated = '1. februar 2026';
+const updated = '2. juli 2026';
 
 function Section({ id, n, title, children }) {
   return (
@@ -31,12 +31,13 @@ export default function PersonvernPage() {
       <section className="max-w-[820px] mx-auto px-6 sm:px-10 lg:px-16 pt-32 sm:pt-36 pb-10">
         <p className="text-[12px] font-semibold uppercase tracking-[0.16em] text-[#9333EA] mb-3">Juridisk</p>
         <h1 className="text-[34px] sm:text-[46px] font-bold tracking-[-0.03em] leading-[1.05] text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>
-          Personvern og vilkår
+          Personvernerklæring
         </h1>
         <p className="text-[15px] sm:text-[17px] text-[#555] leading-relaxed mt-5 max-w-[60ch]">
           Personvernet ditt er viktig for oss. Denne erklæringen forklarer hvilke
-          personopplysninger {site.name} samler inn, hvordan vi bruker dem, og
-          hvilke rettigheter du har etter personvernforordningen (GDPR).
+          personopplysninger {site.name} samler inn — via nettsiden, web-plattformen
+          og mobil-appen — hvordan vi bruker dem, og hvilke rettigheter du har etter
+          personvernforordningen (GDPR).
         </p>
         <p className="text-[13px] text-[#888] mt-4">Sist oppdatert: {updated}</p>
       </section>
@@ -44,21 +45,30 @@ export default function PersonvernPage() {
       <div className="max-w-[820px] mx-auto px-6 sm:px-10 lg:px-16 pb-24 space-y-12">
         <Section id="behandlingsansvarlig" n="1." title="Behandlingsansvarlig">
           <p>
-            {site.name} (org.nr {site.orgNr}) er behandlingsansvarlig for
-            personopplysningene som behandles via denne nettsiden. Har du spørsmål
-            om personvern, kontakt oss på{' '}
-            <a href={`mailto:${site.email}`} className="text-[#9333EA] underline underline-offset-2">{site.email}</a>{' '}
+            {site.legalName} (org.nr {site.orgNr}), {site.address.street},{' '}
+            {site.address.postal} {site.address.city}, er behandlingsansvarlig for
+            personopplysningene som behandles via nettsiden, web-plattformen og
+            mobil-appen. Har du spørsmål om personvern, kontakt oss på{' '}
+            <a href="mailto:personvern@digihome.no" className="text-[#9333EA] underline underline-offset-2">personvern@digihome.no</a>{' '}
             eller {site.phone}.
           </p>
         </Section>
 
         <Section id="hvilke-data" n="2." title="Hvilke opplysninger vi samler inn">
-          <p>Vi samler kun inn det vi trenger for å levere tjenesten vår:</p>
+          <p><strong>På nettsiden (digihome.no):</strong></p>
           <ul className="list-disc pl-5 space-y-1.5">
             <li><strong>Kontaktopplysninger</strong> du selv oppgir i skjemaer — navn, e-post, telefon og adresse på boligen.</li>
             <li><strong>Eiendomsinformasjon</strong> du oppgir for verdivurdering (boligtype, areal, antall soverom, ønsket utleiemodell m.m.).</li>
             <li><strong>Bruksdata</strong> via vår egen, informasjonskapselfrie statistikk (anonymisert sidevisning, kilde og enhetstype) for å forbedre nettsiden.</li>
             <li><strong>Markedsføringsdata</strong> (f.eks. Google-klikk-ID) — kun dersom du har samtykket til markedsføringskapsler.</li>
+          </ul>
+          <p><strong>I plattformen og mobil-appen (for utleiere, leietakere og forvaltere):</strong></p>
+          <ul className="list-disc pl-5 space-y-1.5">
+            <li><strong>Kontoopplysninger</strong> — navn, e-post, telefon og rolle (utleier, leietaker eller forvalter).</li>
+            <li><strong>Leieforholds- og eiendomsdata</strong> — adresser, kontrakter, henvendelser/saker og betalingshistorikk knyttet til leieforholdet.</li>
+            <li><strong>Bilder du laster opp</strong> — f.eks. i saker (feil/mangler) og overtakelsesprotokoller.</li>
+            <li><strong>Push-varsler</strong> — enhets-token for å kunne sende deg varsler (kan skrus av i enhetens innstillinger).</li>
+            <li><strong>Betalingsinformasjon</strong> — betalinger på web behandles av Stripe; vi lagrer ikke fullstendige kortopplysninger selv.</li>
           </ul>
         </Section>
 
@@ -82,13 +92,25 @@ export default function PersonvernPage() {
           </p>
         </Section>
 
-        <Section id="deling" n="5." title="Deling med tredjeparter">
+        <Section id="deling" n="5." title="Databehandlere og deling med tredjeparter">
           <p>
             Vi selger aldri personopplysningene dine. Vi deler dem kun med
-            databehandlere som hjelper oss å drifte tjenesten (f.eks. skylagring,
-            CRM, e-post og — ved samtykke — Google Analytics/Ads). Alle
-            databehandlere er underlagt databehandleravtaler og behandler data på
-            våre vegne i samsvar med GDPR.
+            databehandlere som hjelper oss å levere tjenesten, underlagt
+            databehandleravtaler i samsvar med GDPR:
+          </p>
+          <ul className="list-disc pl-5 space-y-1.5">
+            <li><strong>SendGrid (Twilio)</strong> — utsending av transaksjons- og varslings-e-post.</li>
+            <li><strong>PowerOffice Go</strong> — regnskap og fakturering.</li>
+            <li><strong>Posten Signering</strong> — elektronisk signering av avtaler.</li>
+            <li><strong>Microsoft 365</strong> — e-post og dokumenthåndtering internt.</li>
+            <li><strong>Expo, Apple og Google</strong> — levering av push-varsler til mobil-appen.</li>
+            <li><strong>Stripe</strong> — behandling av betalinger på web-plattformen.</li>
+            <li><strong>Google Analytics/Ads og Meta</strong> — kun ved samtykke til markedsføringskapsler på nettsiden.</li>
+          </ul>
+          <p>
+            Enkelte leverandører kan behandle data utenfor EØS. I slike tilfeller
+            sikres overføringen med EU-kommisjonens standardkontrakter (SCC) eller
+            tilsvarende garantier.
           </p>
         </Section>
 
@@ -114,9 +136,11 @@ export default function PersonvernPage() {
           </ul>
           <p>
             Send en e-post til{' '}
-            <a href={`mailto:${site.email}`} className="text-[#9333EA] underline underline-offset-2">{site.email}</a>{' '}
-            for å bruke rettighetene dine. Du kan også klage til Datatilsynet
-            (datatilsynet.no).
+            <a href="mailto:personvern@digihome.no" className="text-[#9333EA] underline underline-offset-2">personvern@digihome.no</a>{' '}
+            for å bruke rettighetene dine. Vil du slette kontoen din i plattformen
+            eller appen, kan du gjøre det direkte via{' '}
+            <Link href="/slett-konto" className="text-[#9333EA] underline underline-offset-2">digihome.no/slett-konto</Link>.
+            Du kan også klage til Datatilsynet (datatilsynet.no).
           </p>
         </Section>
 
@@ -132,19 +156,11 @@ export default function PersonvernPage() {
 
         <Section id="vilkar" n="9." title="Vilkår for bruk">
           <p>
-            Ved å bruke nettsiden og tjenestene til {site.name} godtar du følgende
-            vilkår. Informasjonen på nettsiden er av generell karakter og utgjør
-            ikke bindende tilbud. Verdivurderinger og inntektsestimater er
-            veiledende anslag basert på markedsdata, og er ikke en garanti for
-            faktisk leieinntekt. En endelig avtale inngås alltid skriftlig mellom
-            deg og {site.name}.
-          </p>
-          <p>
-            Innhold på nettsiden (tekst, design, grafikk og logoer) tilhører
-            {' '}{site.name} og kan ikke gjenbrukes uten skriftlig samtykke.
-            Vi tar forbehold om feil og kan oppdatere innhold og vilkår uten
-            forhåndsvarsel. Norsk lov gjelder, og eventuelle tvister løses ved
-            Bergen tingrett.
+            Vilkårene for bruk av nettsiden, plattformen og mobil-appen er skilt ut
+            på en egen side:{' '}
+            <Link href="/vilkar" className="text-[#9333EA] underline underline-offset-2">digihome.no/vilkar</Link>.
+            Der finner du blant annet regler for brukerkontoer og roller, akseptabel
+            bruk, betaling, ansvar og lovvalg.
           </p>
         </Section>
 

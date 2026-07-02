@@ -12,7 +12,7 @@ const cols = [
 
 export default function Footer({ org }: { org?: { company_name?: string; org_number?: string; company_address?: string; company_email?: string; company_phone?: string } | null }) {
   const fmtOrg = (n?: string) => (n || '').replace(/\D/g, '').replace(/(\d{3})(?=\d)/g, '$1 ').trim();
-  const name = org?.company_name || 'SHD Forvaltning AS';
+  const name = org?.company_name || 'Digihome AS';
   const orgNr = org?.org_number ? fmtOrg(org.org_number) : '835 595 242';
   const email = org?.company_email || 'sarah@digihome.no';
   const phone = org?.company_phone || '+47 909 58 313';

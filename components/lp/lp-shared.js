@@ -79,10 +79,10 @@ export function CountUp({ value, className = '' }) {
 /* --------------------------- Initial-avatarer --------------------------- */
 // Ekte-følelse uten falske stockbilder: fargede initial-sirkler i merkevarepaletten.
 const AVATAR_STYLES = [
-  { bg: 'linear-gradient(135deg,#9B5BD6,#CF97FC)', color: '#fff' },
-  { bg: 'linear-gradient(135deg,#0A0A0A,#3d3d3d)', color: '#fff' },
-  { bg: 'linear-gradient(135deg,#18794E,#3fae7c)', color: '#fff' },
-  { bg: 'linear-gradient(135deg,#B98A2E,#dfae55)', color: '#fff' },
+  { bg: '#f0ebf5', color: '#8b6aad' },
+  { bg: '#e8f4ee', color: '#18794E' },
+  { bg: '#fdf0e2', color: '#b3702a' },
+  { bg: '#e9eef7', color: '#4a6da7' },
 ];
 
 export function InitialsAvatar({ name = '', index = 0, size = 40, className = '' }) {
@@ -109,7 +109,7 @@ export function AvatarStack({ names = ['Anette H.', 'Stian M.', 'Marianne L.', '
   return (
     <div className="flex -space-x-2">
       {names.map((n, i) => (
-        <span key={i} className="rounded-full border-2 border-canvas inline-flex">
+        <span key={i} className="rounded-full border-2 border-white inline-flex">
           <InitialsAvatar name={n} index={i} size={size} />
         </span>
       ))}
@@ -155,16 +155,16 @@ export function StickyMobileCta({ label = 'Få gratis vurdering', onClick }) {
   if (done) return null;
   return (
     <div
-      className="lg:hidden fixed inset-x-0 bottom-0 z-[90] p-3 bg-gradient-to-t from-canvas via-canvas/95 to-transparent transition-all duration-300"
+      className="lg:hidden fixed inset-x-0 bottom-0 z-[90] p-3 bg-gradient-to-t from-white via-white/95 to-transparent transition-all duration-300"
       style={{ transform: hidden ? 'translateY(110%)' : 'none', opacity: hidden ? 0 : 1, pointerEvents: hidden ? 'none' : 'auto' }}
     >
       <div className="flex items-center gap-2.5">
-        <button onClick={onClick} className="flex-1 h-[52px] rounded-full bg-ink text-canvas font-semibold text-[15px] flex items-center justify-center gap-2 shadow-[0_16px_36px_-10px_rgba(10,10,10,0.6)]">
+        <button onClick={onClick} className="flex-1 h-[52px] rounded-full bg-[#0a0a0a] text-white font-semibold text-[15px] flex items-center justify-center gap-2 shadow-[0_8px_24px_-8px_rgba(31,31,31,0.5)] active:scale-[0.98] transition-transform">
           {label} <ArrowRight className="w-4 h-4" />
         </button>
         <a href={`tel:${site.phoneHref}`} aria-label="Ring oss"
-          className="h-[52px] w-[52px] shrink-0 rounded-full bg-surface border border-hairline shadow-[0_12px_28px_-12px_rgba(10,10,10,0.35)] flex items-center justify-center">
-          <Phone className="w-5 h-5 text-ink" />
+          className="h-[52px] w-[52px] shrink-0 rounded-full bg-white border border-[#e5e5e5] shadow-[0_4px_16px_rgba(0,0,0,0.08)] flex items-center justify-center">
+          <Phone className="w-5 h-5 text-[#0a0a0a]" />
         </a>
       </div>
     </div>
@@ -197,28 +197,28 @@ export function ExitIntent({ headline = 'Vent — vil du vite hva boligen din ka
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-[120] flex items-center justify-center p-5" role="dialog" aria-modal="true">
-      <div className="absolute inset-0 bg-ink/45 backdrop-blur-[2px]" onClick={() => setOpen(false)} />
-      <div className="relative w-full max-w-[440px] rounded-[26px] bg-surface shadow-[0_60px_140px_-40px_rgba(10,10,10,0.6)] p-8 text-center">
+      <div className="absolute inset-0 bg-black/45 backdrop-blur-[2px]" onClick={() => setOpen(false)} />
+      <div className="relative w-full max-w-[440px] rounded-[24px] bg-white shadow-[0_60px_140px_-40px_rgba(0,0,0,0.5)] p-8 text-center">
         <button onClick={() => setOpen(false)} aria-label="Lukk"
-          className="absolute top-4 right-4 h-8 w-8 rounded-full bg-fill flex items-center justify-center text-ink hover:bg-hairline transition-colors">
+          className="absolute top-4 right-4 h-8 w-8 rounded-full bg-[#f5f3f0] flex items-center justify-center text-[#555] hover:bg-[#edeae6] transition-colors">
           <X className="w-4 h-4" />
         </button>
-        <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-lavender/10">
-          <Clock className="w-5 h-5 text-lavender" />
+        <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl" style={{ background: '#f3ebff' }}>
+          <Clock className="w-5 h-5" style={{ color: '#AE68E4' }} />
         </span>
-        <p className="font-heading font-bold text-[24px] leading-tight text-ink mt-4">{headline}</p>
-        <p className="text-quiet text-[14.5px] mt-2.5 leading-relaxed">{body}</p>
+        <p className="font-heading font-bold text-[24px] leading-tight text-[#0a0a0a] mt-4">{headline}</p>
+        <p className="text-[#888] text-[14.5px] mt-2.5 leading-relaxed">{body}</p>
         <button
           onClick={() => { setOpen(false); if (onCta) onCta(); }}
-          className="group mt-6 w-full h-[52px] rounded-full bg-ink text-canvas font-semibold text-[15px] flex items-center justify-center gap-2 hover:-translate-y-0.5 transition-transform"
+          className="group mt-6 w-full h-[52px] rounded-full bg-[#0a0a0a] text-white font-semibold text-[15px] flex items-center justify-center gap-2 transition-all duration-200 hover:shadow-[0_8px_24px_rgba(0,0,0,0.2)] active:scale-[0.98]"
         >
           {cta} <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
         </button>
-        <a href={`tel:${site.phoneHref}`} className="mt-3 inline-flex items-center gap-2 text-[14px] font-medium text-ink hover:text-lavender transition-colors">
+        <a href={`tel:${site.phoneHref}`} className="mt-3 inline-flex items-center gap-2 text-[14px] font-medium text-[#0a0a0a] hover:text-[#a463e8] transition-colors">
           <Phone className="w-4 h-4" /> …eller ring oss: {site.phone}
         </a>
-        <p className="mt-4 text-[12px] text-taupe inline-flex items-center gap-1.5 justify-center">
-          <ShieldCheck className="w-3.5 h-3.5 text-success" /> Uforpliktende · 0 kr oppstart · Svar umiddelbart
+        <p className="mt-4 text-[12px] text-[#999] inline-flex items-center gap-1.5 justify-center">
+          <ShieldCheck className="w-3.5 h-3.5 text-[#18794E]" /> Uforpliktende · 0 kr oppstart · Svar umiddelbart
         </p>
       </div>
     </div>
