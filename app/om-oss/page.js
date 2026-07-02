@@ -31,10 +31,11 @@ export default function Page() {
       </section>
 
       <section className="max-w-[1000px] mx-auto px-6 sm:px-10 lg:px-16 py-16 lg:py-24">
-        <h2 className="text-[26px] sm:text-[34px] font-bold tracking-[-0.02em] mb-6" style={{ fontFamily: 'var(--font-heading)' }}>Vår historie</h2>
-        <div className="space-y-5 text-[17px] leading-relaxed text-[#444]">
-          <p>DigiHome startet med en enkel observasjon: utleie i Bergen var unødvendig komplisert, tidkrevende og lite lønnsomt for boligeiere som ville gjøre det riktig. Annonser, prising, visninger, kontrakter, husleie, renhold, vedlikehold — alt lå spredt, og ingen hadde tid til å gøre det optimalt.</p>
-          <p>Vi bygde en plattform som samler alt på étt sted, drevet av smart teknologi og et dedikert lokalt team. Resultatet er vår dynamiske 10+2-modell, som kombinerer trygg langtidsutleie med lønnsom korttidsutleie i høysesong — og gir eiere opptil 30 % høyere inntekt.</p>
+        <p className="text-[12px] font-semibold uppercase tracking-[0.16em] text-[#9b6cc4] mb-4">Historien vår</p>
+        <h2 className="text-[28px] sm:text-[38px] font-bold tracking-[-0.03em] leading-[1.08] mb-8" style={{ fontFamily: 'var(--font-heading)' }}>Fra frustrasjon til forvaltning i verdensklasse</h2>
+        <div className="space-y-5 text-[17px] leading-[1.85] text-[#444]">
+          <p>DigiHome startet med en enkel observasjon: utleie i Bergen var unødvendig komplisert, tidkrevende og lite lønnsomt for boligeiere som ville gjøre det riktig. Annonser, prising, visninger, kontrakter, husleie, renhold, vedlikehold — alt lå spredt, og ingen hadde tid til å gjøre det optimalt.</p>
+          <p>Vi bygde en plattform som samler alt på ett sted, drevet av smart teknologi og et dedikert lokalt team. Resultatet er vår dynamiske 10+2-modell, som kombinerer trygg langtidsutleie med lønnsom korttidsutleie i høysesong — og gir eiere opptil 30 % høyere inntekt.</p>
           <p>I dag forvalter vi eiendommer i hele Bergen, og vi vokser. Målet er det samme som dag én: å gjøre utleie helt sorgløst for boligeieren, og samtidig hente ut det fulle potensialet i hver eneste bolig.</p>
         </div>
       </section>
@@ -46,7 +47,7 @@ export default function Page() {
               const Icon = v.icon;
               return (
                 <div key={v.t} className="bg-white rounded-2xl p-7 shadow-[0_8px_36px_-20px_rgba(0,0,0,0.10)]">
-                  <div className="w-11 h-11 rounded-2xl bg-[#f4f0fb] flex items-center justify-center mb-4"><Icon className="w-5 h-5 text-[#7c3aed]" /></div>
+                  <div className="w-11 h-11 rounded-2xl bg-[#f4f0fb] flex items-center justify-center mb-4"><Icon className="w-5 h-5 text-[#a765e0]" /></div>
                   <h3 className="text-[18px] font-bold mb-1.5" style={{ fontFamily: 'var(--font-heading)' }}>{v.t}</h3>
                   <p className="text-[14.5px] text-[#666] leading-relaxed">{v.b}</p>
                 </div>
@@ -71,12 +72,14 @@ export default function Page() {
       </section>
 
       <section className="max-w-[1000px] mx-auto px-6 sm:px-10 lg:px-16 py-16 lg:py-20">
-        <div className="bg-white rounded-3xl p-8 sm:p-10 shadow-[0_10px_40px_-20px_rgba(0,0,0,0.12)] flex flex-col sm:flex-row items-start gap-6">
-          <div className="w-16 h-16 rounded-2xl bg-[#f4f0fb] flex items-center justify-center shrink-0"><span className="text-[24px] font-bold text-[#7c3aed]" style={{ fontFamily: 'var(--font-heading)' }}>SS</span></div>
+        <div className="bg-white rounded-3xl p-8 sm:p-10 shadow-[0_10px_40px_-20px_rgba(0,0,0,0.12)] border border-[#f0ece6] flex flex-col sm:flex-row items-start gap-7">
+          <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl overflow-hidden shrink-0 shadow-[0_8px_24px_-10px_rgba(0,0,0,0.25)]">
+            <img src="/sarah.webp" alt={site.ceo} className="w-full h-full object-cover object-top" loading="lazy" />
+          </div>
           <div>
             <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-[#5b6370] mb-1">Daglig leder</p>
             <h3 className="text-[22px] font-bold" style={{ fontFamily: 'var(--font-heading)' }}>{site.ceo}</h3>
-            <p className="text-[14px] text-[#7c3aed] font-medium mb-3">{site.ceoTitle}</p>
+            <p className="text-[14px] text-[#a765e0] font-medium mb-3">{site.ceoTitle}</p>
             <p className="text-[15px] text-[#555] leading-relaxed">«Vårt løfte er enkelt: du skal slippe å tenke på utleien, og samtidig tjene mer enn du gjorde før. Vi behandler hver bolig som om den var vår egen.»</p>
           </div>
         </div>

@@ -42,8 +42,7 @@ export default function HowItWorksSection() {
             whileInView={{ opacity: 1 }}
             viewport={{ once: true }}
             transition={{ duration: 0.4 }}
-            className="text-[13px] font-semibold uppercase tracking-[0.15em] mb-3"
-            style={{ color: '#9333EA' }}
+            className="text-[12px] font-semibold uppercase tracking-[0.16em] text-[#9b6cc4] mb-4"
           >
             Slik fungerer det
           </Reveal>
@@ -52,8 +51,8 @@ export default function HowItWorksSection() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: '-80px' }}
             transition={{ duration: 0.5 }}
-            className="text-[36px] sm:text-[42px] font-bold tracking-[-0.03em] leading-[1.1] text-[#222] mb-4"
-            style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+            className="text-[36px] sm:text-[46px] font-bold tracking-[-0.03em] leading-[1.08] text-[#0a0a0a] mb-5"
+            style={{ fontFamily: 'var(--font-heading)' }}
           >
             Fra henvendelse til utbetaling
           </Reveal>
@@ -62,44 +61,53 @@ export default function HowItWorksSection() {
             whileInView={{ opacity: 1 }}
             viewport={{ once: true }}
             transition={{ duration: 0.4, delay: 0.1 }}
-            className="text-[16px] text-[#888] max-w-[440px] mx-auto leading-relaxed"
+            className="text-[16px] text-[#777] max-w-[440px] mx-auto leading-[1.75]"
           >
             Fire steg. Null stress. Vi håndterer alt — du nyter inntekten.
           </Reveal>
         </div>
 
-        {/* Steps — clean cards */}
+        {/* Steps — premium cards with ghost numerals */}
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
           {steps.map((step: any, i: number) => {
             const Icon = step.icon;
             return (
               <Reveal as="div"
                 key={step.num}
-                initial={{ opacity: 0, y: 16 }}
+                initial={{ opacity: 0, y: 18 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: '-40px' }}
-                transition={{ duration: 0.4, delay: i * 0.08 }}
-                className="group p-7 rounded-2xl transition-all duration-300 hover:shadow-[0_4px_20px_rgba(0,0,0,0.06)]"
-                style={{ backgroundColor: '#F2F1F0' }}
+                transition={{ duration: 0.45, delay: i * 0.09 }}
+                className="group relative bg-white rounded-[20px] border border-[#eeeae3] p-8 transition-all duration-500 hover:-translate-y-1.5 hover:shadow-[0_24px_50px_-24px_rgba(20,10,40,0.18)] hover:border-[#e5d6f6] overflow-hidden"
                 data-testid={`how-step-${step.num}`}
               >
-                {/* Number */}
-                <span className="text-[11px] font-bold tracking-[0.15em] transition-colors duration-300" style={{ color: '#D298FF', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-                  STEG {step.num}
+                {/* Ghost numeral */}
+                <span
+                  aria-hidden
+                  className="absolute -top-3 right-5 text-[76px] font-bold leading-none select-none pointer-events-none text-[#f4eefb] group-hover:text-[#ecdff9] transition-colors duration-500"
+                  style={{ fontFamily: 'var(--font-heading)' }}
+                >
+                  {step.num}
                 </span>
 
                 {/* Icon */}
-                <div className="w-11 h-11 rounded-xl flex items-center justify-center mt-4 mb-5 transition-colors duration-300" style={{ backgroundColor: '#f3ebff' }}>
-                  <Icon className="w-5 h-5 transition-colors duration-300" style={{ color: '#AE68E4' }} strokeWidth={1.5} />
+                <div className="relative w-12 h-12 rounded-2xl bg-[#f5edfc] group-hover:bg-[#0a0a0a] flex items-center justify-center mb-6 transition-colors duration-400">
+                  <Icon className="w-5 h-5 text-[#a765e0] group-hover:text-[#cf97fc] transition-colors duration-400" strokeWidth={1.7} />
                 </div>
 
                 {/* Text */}
-                <h3 className="text-[17px] font-bold text-[#222] mb-2" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                <span className="text-[11px] font-semibold tracking-[0.18em] text-[#b98fe0]">
+                  STEG {step.num}
+                </span>
+                <h3 className="text-[18px] font-bold text-[#0a0a0a] mt-2.5 mb-2" style={{ fontFamily: 'var(--font-heading)' }}>
                   {step.title}
                 </h3>
-                <p className="text-[14px] text-[#888] leading-[1.65]">
+                <p className="text-[14px] text-[#888] leading-[1.7]">
                   {step.desc}
                 </p>
+
+                {/* Accent underline on hover */}
+                <div className="absolute bottom-0 left-0 right-0 h-[2.5px] bg-gradient-to-r from-[#cf97fc] to-[#9b6cc4] scale-x-0 group-hover:scale-x-100 origin-left transition-transform duration-500" />
               </Reveal>
             );
           })}

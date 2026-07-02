@@ -37,17 +37,25 @@ function Counter({ end, prefix = '', suffix = '' }: any) {
 
 export default function StatsSection() {
   return (
-    <section className="py-20 sm:py-24 bg-white">
+    <section className="py-20 sm:py-28 bg-white">
       <div className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16">
-        <div className="grid sm:grid-cols-3 gap-10 lg:gap-6 text-center">
+        <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ duration: 0.5 }}
+          className="flex items-center justify-between border-b border-[#eee] pb-6 mb-12">
+          <p className="text-[12px] font-semibold uppercase tracking-[0.16em] text-[#9b6cc4]">DigiHome i tall</p>
+          <p className="text-[12px] text-[#bbb] hidden sm:block">Bergen · Oppdatert 2026</p>
+        </motion.div>
+        <div className="grid sm:grid-cols-3 gap-12 sm:gap-6">
           {stats.map((s: any, i: number) => (
             <motion.div key={s.label} initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: '-60px' }} transition={{ duration: 0.5, delay: i * 0.12 }}
-              className={`${i < stats.length - 1 ? 'sm:border-r sm:border-[#eee]' : ''}`}>
-              <p className="text-[48px] sm:text-[56px] font-bold text-[#0a0a0a] leading-none tracking-[-0.04em]" style={{ fontFamily: 'var(--font-heading)' }}>
+              className={`relative ${i > 0 ? 'sm:border-l sm:border-[#eee] sm:pl-10' : ''}`}>
+              <p className="text-[56px] sm:text-[64px] lg:text-[72px] font-bold text-[#0a0a0a] leading-none tracking-[-0.045em]" style={{ fontFamily: 'var(--font-heading)' }}>
                 <Counter end={s.end} prefix={s.prefix} suffix={s.suffix} />
               </p>
-              <p className="text-[15px] font-semibold text-[#0a0a0a] mt-3" style={{ fontFamily: 'var(--font-heading)' }}>{s.label}</p>
-              <p className="text-[13px] text-[#aaa] mt-1 leading-relaxed">{s.sub}</p>
+              <div className="flex items-center gap-2.5 mt-4">
+                <span className="w-5 h-[2px] rounded-full bg-[#cf97fc]" />
+                <p className="text-[15px] font-semibold text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>{s.label}</p>
+              </div>
+              <p className="text-[13px] text-[#999] mt-1.5 leading-relaxed">{s.sub}</p>
             </motion.div>
           ))}
         </div>

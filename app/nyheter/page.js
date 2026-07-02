@@ -34,7 +34,7 @@ export default async function NyheterIndex() {
       <Header />
       <main className="pt-[72px]">
         <section className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16 pt-16 lg:pt-20 pb-10">
-          <div className="inline-flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.14em] text-[#7c3aed] mb-4"><Newspaper className="w-3.5 h-3.5" /> Nyheter & guider</div>
+          <div className="inline-flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.14em] text-[#9b6cc4] mb-4"><Newspaper className="w-3.5 h-3.5" /> Nyheter & guider</div>
           <h1 className="text-[40px] sm:text-[54px] lg:text-[60px] font-bold tracking-[-0.025em] leading-[1.04] max-w-[20ch]" style={{ fontFamily: 'var(--font-heading)' }}>
             Innsikt om utleie og eiendom
           </h1>
@@ -79,10 +79,10 @@ export default async function NyheterIndex() {
                     </div>
                     <div className="p-6">
                       <div className="flex items-center gap-2 mb-2">
-                        {(p.tags || []).slice(0, 1).map((t) => <span key={t} className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#7c3aed]">{t}</span>)}
+                        {(p.tags || []).slice(0, 1).map((t) => <span key={t} className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#9b6cc4]">{t}</span>)}
                         <span className="text-[12px] text-[#aaa]">{fmtDate(p.publishedAt)}</span>
                       </div>
-                      <h3 className="text-[18px] font-bold text-[#1f1f1f] tracking-[-0.01em] leading-snug group-hover:text-[#7c3aed] transition-colors" style={{ fontFamily: 'var(--font-heading)' }}>{p.title}</h3>
+                      <h3 className="text-[18px] font-bold text-[#1f1f1f] tracking-[-0.01em] leading-snug group-hover:text-[#9b6cc4] transition-colors" style={{ fontFamily: 'var(--font-heading)' }}>{p.title}</h3>
                       <p className="text-[14px] text-[#666] mt-2 leading-relaxed line-clamp-3">{p.excerpt}</p>
                     </div>
                   </Link>

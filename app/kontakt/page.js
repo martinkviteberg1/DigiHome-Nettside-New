@@ -38,7 +38,7 @@ export default function Page() {
                 const Icon = it.icon;
                 const inner = (
                   <div className="flex items-center gap-4 bg-white rounded-2xl p-5 shadow-[0_6px_30px_-18px_rgba(0,0,0,0.12)]">
-                    <div className="w-11 h-11 rounded-2xl bg-[#f4f0fb] flex items-center justify-center shrink-0"><Icon className="w-5 h-5 text-[#7c3aed]" /></div>
+                    <div className="w-11 h-11 rounded-2xl bg-[#f4f0fb] flex items-center justify-center shrink-0"><Icon className="w-5 h-5 text-[#a765e0]" /></div>
                     <div><p className="text-[12px] text-[#5b6370] font-medium">{it.label}</p><p className="text-[15.5px] font-semibold text-[#1f1f1f]">{it.value}</p></div>
                   </div>
                 );

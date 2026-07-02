@@ -1,5 +1,6 @@
-// Ren presentasjons-seksjon — server-komponent (ingen hydrering nødvendig).
+// Ren presentasjons-seksjon — server-komponent (kun Reveal hydreres).
 import React from 'react';
+import Reveal from '@/components/dh/Reveal';
 import { Sparkles, Wrench, Droplets, Zap, Scale, ShieldCheck, Brush } from 'lucide-react';
 
 const services = [
@@ -17,47 +18,81 @@ export default function NetworkSection() {
       <div className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16">
         <div className="grid lg:grid-cols-2 gap-16 lg:gap-24 items-center">
           {/* Left: Image */}
-          <div className="relative">
-            <div className="rounded-2xl overflow-hidden shadow-[0_8px_30px_rgba(0,0,0,0.06)]">
-              <img src="/bergen-harbor.webp" alt="Bergen" width={1200} height={900} className="w-full aspect-[4/3] object-cover" loading="lazy" decoding="async" />
+          <Reveal as="div"
+            initial={{ opacity: 0, y: 18 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-60px' }}
+            transition={{ duration: 0.6 }}
+            className="relative"
+          >
+            <div className="rounded-[24px] overflow-hidden shadow-[0_8px_30px_rgba(0,0,0,0.06)] group">
+              <img src="/bergen-harbor.webp" alt="Bergen" width={1200} height={900} className="w-full aspect-[4/3] object-cover group-hover:scale-[1.03] transition-transform duration-[1200ms] ease-out" loading="lazy" decoding="async" />
             </div>
             {/* Floating badge */}
-            <div className="absolute -bottom-4 -right-4 bg-white rounded-2xl p-5 shadow-[0_8px_30px_rgba(0,0,0,0.08)]">
+            <div className="absolute -bottom-5 -right-3 sm:-right-5 bg-white/95 backdrop-blur-xl rounded-2xl p-5 shadow-[0_16px_44px_-14px_rgba(20,10,40,0.22)] border border-[#f0ece6]">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: '#f3ebff' }}>
-                  <Sparkles className="w-5 h-5" style={{ color: '#AE68E4' }} strokeWidth={1.5} />
+                <div className="w-11 h-11 rounded-xl bg-[#f5edfc] flex items-center justify-center">
+                  <Sparkles className="w-5 h-5 text-[#a765e0]" strokeWidth={1.6} />
                 </div>
                 <div>
-                  <p className="text-[18px] font-bold text-[#222]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Én kontaktperson</p>
-                  <p className="text-[12px] text-[#6b6b6b]">Vi koordinerer alt</p>
+                  <p className="text-[17px] font-bold text-[#0a0a0a] leading-tight" style={{ fontFamily: 'var(--font-heading)' }}>Én kontaktperson</p>
+                  <p className="text-[12px] text-[#888] mt-0.5">Vi koordinerer alt</p>
                 </div>
               </div>
             </div>
-          </div>
+          </Reveal>
 
           {/* Right: Content */}
           <div>
-            <p className="text-[13px] font-semibold uppercase tracking-[0.15em] mb-3" style={{ color: '#9333EA' }}>Vårt nettverk</p>
-            <h2 className="text-[32px] font-bold text-[#222] tracking-[-0.03em] leading-tight mb-4" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+            <Reveal as="p"
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.4 }}
+              className="text-[12px] font-semibold uppercase tracking-[0.16em] text-[#9b6cc4] mb-4"
+            >
+              Vårt nettverk
+            </Reveal>
+            <Reveal as="h2"
+              initial={{ opacity: 0, y: 12 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: '-80px' }}
+              transition={{ duration: 0.5 }}
+              className="text-[32px] sm:text-[40px] font-bold text-[#0a0a0a] tracking-[-0.03em] leading-[1.08] mb-5"
+              style={{ fontFamily: 'var(--font-heading)' }}
+            >
               Komplett forvaltning med lokale partnere
-            </h2>
-            <p className="text-[16px] text-[#717171] leading-relaxed mb-8">
+            </Reveal>
+            <Reveal as="p"
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.4, delay: 0.08 }}
+              className="text-[15px] text-[#777] leading-[1.75] mb-9 max-w-[52ch]"
+            >
               Vi har bygget et nettverk av kvalitetsleverandører i Bergen som sikrer rask respons og profesjonell håndtering av alle behov knyttet til din eiendom.
-            </p>
+            </Reveal>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3.5">
               {services.map((s: any, i: number) => {
                 const Icon = s.icon;
                 return (
-                  <div key={i} className="flex items-start gap-3 rounded-xl p-4 transition-all hover:shadow-sm" style={{ backgroundColor: '#F5F5F5' }}>
-                    <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: '#f3ebff' }}>
-                      <Icon className="w-[16px] h-[16px]" style={{ color: '#AE68E4' }} strokeWidth={1.5} />
+                  <Reveal as="div"
+                    key={s.name}
+                    initial={{ opacity: 0, y: 10 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true, margin: '-30px' }}
+                    transition={{ duration: 0.35, delay: i * 0.05 }}
+                    className="group flex items-start gap-3 rounded-2xl p-4 bg-white border border-[#eeeae3] transition-all duration-400 hover:-translate-y-0.5 hover:shadow-[0_14px_32px_-18px_rgba(20,10,40,0.18)] hover:border-[#e5d6f6]"
+                  >
+                    <div className="w-9 h-9 rounded-xl bg-[#f5edfc] flex items-center justify-center shrink-0 transition-colors duration-300 group-hover:bg-[#efe2fb]">
+                      <Icon className="w-4 h-4 text-[#a765e0]" strokeWidth={1.7} />
                     </div>
                     <div>
-                      <p className="text-[14px] font-semibold text-[#222]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{s.name}</p>
-                      <p className="text-[12px] text-[#6b6b6b] leading-relaxed mt-0.5">{s.desc}</p>
+                      <p className="text-[14px] font-semibold text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>{s.name}</p>
+                      <p className="text-[12px] text-[#888] leading-relaxed mt-0.5">{s.desc}</p>
                     </div>
-                  </div>
+                  </Reveal>
                 );
               })}
             </div>

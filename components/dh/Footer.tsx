@@ -49,6 +49,10 @@ export default function Footer({ org }: { org?: { company_name?: string; org_num
             </div>
           ))}
         </div>
+        {/* Signatur-wordmark */}
+        <div aria-hidden className="select-none pointer-events-none overflow-hidden -mb-2 sm:-mb-3">
+          <p className="text-center font-bold leading-[0.78] tracking-[-0.05em] text-white/[0.05] text-[18.5vw] whitespace-nowrap" style={{ fontFamily: 'var(--font-heading)' }}>digihome</p>
+        </div>
         <div className="border-t border-white/[0.06] py-8 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-[12px] text-white/50">&copy; {new Date().getFullYear()} {name} · Org.nr {orgNr} · {addr}</p>
           <div className="flex items-center gap-6"><a href="/personvern" className="text-[12px] text-white/50 hover:text-white/70 transition-colors">Personvern</a><a href="/personvern#vilkar" className="text-[12px] text-white/50 hover:text-white/70 transition-colors">Vilkår</a></div>

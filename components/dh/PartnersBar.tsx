@@ -3,70 +3,14 @@ import React from 'react';
 import Reveal from '@/components/dh/Reveal';
 
 const partners = [
-  {
-    name: 'Finn.no',
-    logo: (
-      <span className="text-[18px] sm:text-[20px] font-bold tracking-tight" style={{ fontFamily: 'var(--font-heading)' }}>
-        Finn.no
-      </span>
-    ),
-  },
-  {
-    name: 'Airbnb',
-    logo: (
-      <span className="text-[18px] sm:text-[20px] font-bold tracking-tight" style={{ fontFamily: 'var(--font-heading)' }}>
-        Airbnb
-      </span>
-    ),
-  },
-  {
-    name: 'Booking.com',
-    logo: (
-      <span className="text-[18px] sm:text-[20px] font-bold tracking-tight" style={{ fontFamily: 'var(--font-heading)' }}>
-        Booking.com
-      </span>
-    ),
-  },
-  {
-    name: 'Ability',
-    logo: (
-      <span className="text-[18px] sm:text-[20px] font-bold tracking-tight" style={{ fontFamily: 'var(--font-heading)' }}>
-        Ability
-      </span>
-    ),
-  },
-  {
-    name: 'HG Eiendomservice',
-    logo: (
-      <span className="text-[18px] sm:text-[20px] font-bold tracking-tight" style={{ fontFamily: 'var(--font-heading)' }}>
-        HG Eiendomservice
-      </span>
-    ),
-  },
-  {
-    name: 'Hoffmann Thinn',
-    logo: (
-      <span className="text-[18px] sm:text-[20px] font-bold tracking-tight" style={{ fontFamily: 'var(--font-heading)' }}>
-        Hoffmann Thinn
-      </span>
-    ),
-  },
-  {
-    name: 'Söderberg & Partners',
-    logo: (
-      <span className="text-[18px] sm:text-[20px] font-bold tracking-tight" style={{ fontFamily: 'var(--font-heading)' }}>
-        Söderberg & Partners
-      </span>
-    ),
-  },
-  {
-    name: 'IKEA',
-    logo: (
-      <span className="text-[18px] sm:text-[20px] font-bold tracking-tight" style={{ fontFamily: 'var(--font-heading)' }}>
-        IKEA
-      </span>
-    ),
-  },
+  'Finn.no',
+  'Airbnb',
+  'Booking.com',
+  'Ability',
+  'HG Eiendomservice',
+  'Hoffmann Thinn',
+  'Söderberg & Partners',
+  'IKEA',
 ];
 
 export default function PartnersSection() {
@@ -78,29 +22,37 @@ export default function PartnersSection() {
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
           transition={{ duration: 0.5 }}
-          className="text-center text-[12px] font-semibold text-[#737373] uppercase tracking-[0.1em] mb-10"
+          className="text-center text-[12px] font-semibold text-[#9b6cc4] uppercase tracking-[0.16em] mb-10"
         >
           Samarbeidspartnere
         </Reveal>
-
-        <Reveal as="div"
-          initial={{ opacity: 0, y: 10 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5, delay: 0.1 }}
-          className="flex flex-wrap items-center justify-center gap-x-10 sm:gap-x-14 lg:gap-x-20 gap-y-6"
-        >
-          {partners.map((p: any) => (
-            <div
-              key={p.name}
-              className="text-[#c0c0c0] hover:text-[#888] transition-colors duration-300"
-              title={p.name}
-            >
-              {p.logo}
-            </div>
-          ))}
-        </Reveal>
       </div>
+
+      {/* Uendelig marquee med kant-fade */}
+      <Reveal as="div"
+        initial={{ opacity: 0 }}
+        whileInView={{ opacity: 1 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.6, delay: 0.1 }}
+        className="relative overflow-hidden marquee-paused"
+        style={{
+          maskImage: 'linear-gradient(to right, transparent, black 14%, black 86%, transparent)',
+          WebkitMaskImage: 'linear-gradient(to right, transparent, black 14%, black 86%, transparent)',
+        }}
+      >
+        <div className="marquee-track flex items-center gap-x-16 sm:gap-x-24 w-max pr-16 sm:pr-24">
+          {[...partners, ...partners].map((name: string, i: number) => (
+            <span
+              key={`${name}-${i}`}
+              className="text-[18px] sm:text-[21px] font-bold tracking-tight text-[#c6c2bc] hover:text-[#8a8a8a] transition-colors duration-300 whitespace-nowrap"
+              style={{ fontFamily: 'var(--font-heading)' }}
+              title={name}
+            >
+              {name}
+            </span>
+          ))}
+        </div>
+      </Reveal>
     </section>
   );
 }
