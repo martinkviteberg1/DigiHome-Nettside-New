@@ -89,3 +89,4 @@ credentials.json
 .env
 .env.*
 *.env
+.next/cache/webpack/server-production/1.pack

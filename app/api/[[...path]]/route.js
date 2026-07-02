@@ -1763,6 +1763,21 @@ async function handleRoute(request, { params }) {
       const leadsTask = computeAdsLeadsSeries(db, leadsRange.periodFrom, leadsRange.periodTo).catch(() => []);
       const [imports, g, m, leadsSeries] = await Promise.all([importsP, googleTask, metaTask, leadsTask]);
       const googleEco = g.eco, metaEco = m.eco;
+      // Data-modenhet: berik kampanjerader med alder/fase (cachet 6t — startdato endres sjelden).
+      try {
+        if (googleEco && Array.isArray(googleEco.campaigns) && googleAdsNativeConfigured()) {
+          const now = Date.now();
+          if (!globalThis.__dhMaturity || (now - globalThis.__dhMaturity.at) > 6 * 3600 * 1000) {
+            const list = await listCampaignsDetailed().catch(() => []);
+            globalThis.__dhMaturity = { at: now, map: new Map(list.map((c) => [c.name, { startDate: c.startDate, ...c.maturity }])) };
+          }
+          const mmap = globalThis.__dhMaturity.map;
+          for (const row of googleEco.campaigns) {
+            const mt = mmap.get(row.name);
+            if (mt) row.maturity = mt;
+          }
+        }
+      } catch (e) { /* modenhet er berikelse — aldri kritisk */ }
       // Slå sammen daglige serier (Google + Meta forbruk/klikk + leads) til én tidslinje for grafer.
       const adsSeries = (() => {
         const map = new Map();

@@ -650,6 +650,16 @@ function CampaignTable({ eco }) {
               <tr key={i} className="border-b border-[#f6f6f6] hover:bg-[#fafafa] transition-colors">
                 <td className="py-3 px-4 font-medium text-[#222] max-w-[260px] truncate" title={c.name}>
                   {c.name}
+                  {c.maturity && c.maturity.phase === 'LÆRING' && (
+                    <span className="ml-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-sky-50 text-sky-700 text-[10px] font-semibold align-middle" title={c.maturity.note}>
+                      <span className="w-1.5 h-1.5 rounded-full bg-sky-500 animate-pulse" /> Læringsfase · dag {(c.maturity.daysLive ?? 0) + 1}
+                    </span>
+                  )}
+                  {c.maturity && c.maturity.phase === 'KALIBRERING' && (
+                    <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded-full bg-[#f4f1ea] text-[#8a7a55] text-[10px] font-semibold align-middle" title={c.maturity.note}>
+                      Kalibrering · {c.maturity.daysLive} d
+                    </span>
+                  )}
                   {!c.matched && <span className="ml-2 text-[10px] text-[#bbb]" title="Ingen leads matchet på utm_campaign">ingen match</span>}
                 </td>
                 <td className="py-3 px-3 text-right text-[#444]">{fmtKr(c.cost)}</td>
@@ -1511,7 +1521,9 @@ function RecommendationsPanel({ apiKey }) {
                   <p className="text-[12.5px] text-[#777] mt-1 leading-relaxed">{r.rationale}</p>
                 </div>
                 <div className="flex-shrink-0 text-right">
-                  {st === 'ok' ? (
+                  {r.type === 'info' ? (
+                    <span className="text-[11px] text-sky-600 font-semibold inline-flex items-center gap-1"><Info className="w-3.5 h-3.5" /> Kontekst</span>
+                  ) : st === 'ok' ? (
                     <span className="text-[12px] font-semibold text-emerald-600 inline-flex items-center gap-1"><CheckCircle2 className="w-4 h-4" /> Utført</span>
                   ) : isAi ? (
                     <span className="text-[11px] text-[#aaa]">Se «AI-tekster»</span>
