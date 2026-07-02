@@ -11,7 +11,7 @@ import { sendMetaCapiEvent, metaCapiConfigured } from '@/lib/meta-capi';
 import { fetchMetaInsights, fetchMetaAccount, metaAdsConfigured, getCachedMetaReport, META_PERIODS, metaPeriodToRange, getCachedMetaCreatives, fetchMetaPreviewSrc, isValidPreviewFormat, getCachedMetaAdsTable, fetchMetaDaily, fetchMetaDailyActions, fetchMetaAdsWithInsights } from '@/lib/meta-ads';
 import { fetchPages, fetchLeadForms, fetchFormLeads, mapLeadFields, metaLeadAdsConfigured, fetchSingleLead, fetchFormName, fetchPageToken } from '@/lib/meta-leadads';
 import { composioConfigured, createConnectLink, getConnectionStatus, runCampaignReport, defaultCustomerId, getCachedReport, GOOGLE_PERIODS, getCachedCreatives, activeProvider } from '@/lib/google-ads-provider';
-import { googleAdsNativeConfigured, listConversionActions, resolveOfflineConversionAction, uploadClickConversion, toConversionDateTime, listCampaignsDetailed, suggestGeoTargets, setCampaignStatus, updateCampaignBudget, createSearchCampaign, createCompetitorCampaign, getCampaignByName, runAdsWithMetrics, runSearchTerms, runKeywordMetrics, generateKeywordIdeas, gaqlSearch } from '@/lib/google-ads-native';
+import { googleAdsNativeConfigured, listConversionActions, resolveOfflineConversionAction, uploadClickConversion, toConversionDateTime, listCampaignsDetailed, suggestGeoTargets, setCampaignStatus, updateCampaignBudget, createSearchCampaign, createCompetitorCampaign, getCampaignByName, runAdsWithMetrics, runSearchTerms, runKeywordMetrics, generateKeywordIdeas, gaqlSearch, setCampaignMaximizeClicks, listRsaAds, createRsaAd, setAdStatus } from '@/lib/google-ads-native';
 import { dataManagerConfigured, ingestOfflineConversion } from '@/lib/google-ads-datamanager';
 import { IMPORTED_COLL, importRecords, parseCsv, summarizeImported, syncFromPlatform } from '@/lib/imported-leads';
 import { computeKpiDashboard, getKpiSettings, setKpiSettings } from '@/lib/kpi-dashboard';
@@ -24,6 +24,7 @@ import { runOptimization, getOptimizeConfig, setOptimizeConfig, getLastRun, list
 import { sendWeeklyReport, buildReportData, renderReportHtml } from '@/lib/ads-report';
 import { buildMarketingMetrics } from '@/lib/marketing-metrics';
 import { emailConfigured, reportRecipients, sendHtmlEmail } from '@/lib/email';
+import { fireLeadEmails } from '@/lib/lead-emails';
 import { buildAlerts } from '@/lib/ads-monitor';
 import { fetchCompetitorGallery, serpApiConfigured } from '@/lib/serpapi';
 import { chatLLM } from '@/lib/llm';
@@ -1392,6 +1393,20 @@ async function handleRoute(request, { params }) {
         }
       } catch (e) { /* CAPI er best-effort */ }
 
+      // Auto-kvittering til lead + umiddelbar admin-varsling (SendGrid).
+      // Innfrir «Svar umiddelbart»-løftet. Best-effort — velter aldri lead-flyten.
+      try {
+        const mail = await fireLeadEmails(lead, { kind: 'huseier' });
+        if (mail.receipt || mail.adminNotify) {
+          await db.collection('leads').updateOne({ id: lead.id }, { $set: {
+            receipt_email: mail.receipt || null,
+            admin_notify: mail.adminNotify || null,
+          } });
+          lead.receipt_email = mail.receipt || null;
+          lead.admin_notify = mail.adminNotify || null;
+        }
+      } catch (e) { /* e-post er best-effort */ }
+
       return cors(NextResponse.json({ success: true, ok: true, data: { id: lead.id }, forwarded: fwd.ok, lead: clean(lead) }, { status: 201 }));
     }
 
@@ -1516,6 +1531,15 @@ async function handleRoute(request, { params }) {
           tenant.metaCapi = { event: 'Lead', ok: capi.ok };
         }
       } catch (e) { /* best-effort */ }
+
+      // Admin-varsling for leietaker-lead (ingen auto-kvittering — de venter på boligtilbud).
+      try {
+        const mail = await fireLeadEmails({ ...tenant, lead_type: 'leietaker' }, { kind: 'leietaker', receipt: false });
+        if (mail.adminNotify) {
+          await db.collection('tenant_leads').updateOne({ id: tenant.id }, { $set: { admin_notify: mail.adminNotify } });
+          tenant.admin_notify = mail.adminNotify;
+        }
+      } catch (e) { /* e-post er best-effort */ }
 
       return cors(NextResponse.json({ success: true, ok: true, data: { id: tenant.id }, forwarded: fwd.ok, tenant: clean(tenant) }, { status: 201 }));
     }
@@ -2496,6 +2520,84 @@ async function handleRoute(request, { params }) {
         return cors(NextResponse.json({ ok: false, error: e.message }, { status: 200 }));
       }
       return cors(NextResponse.json({ ok: false, error: 'Ukjent økonomi-endepunkt' }, { status: 404 }));
+    }
+
+    // --- Budstrategi: Maximize Clicks med CPC-tak (bytter fra Manual CPC / Max Conv) ---
+    if (route === '/admin/ads/campaign/bidding' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      const { campaignId, cpcCeiling, validateOnly } = body;
+      if (!campaignId || !(Number(cpcCeiling) > 0)) return cors(NextResponse.json({ ok: false, error: 'campaignId og cpcCeiling (NOK) kreves' }, { status: 400 }));
+      try {
+        const out = await setCampaignMaximizeClicks(undefined, campaignId, Number(cpcCeiling), { validateOnly: validateOnly === true });
+        return cors(NextResponse.json(out));
+      } catch (e) { return cors(NextResponse.json({ ok: false, error: e.message }, { status: 200 })); }
+    }
+
+    // --- RSA meldings-oppdatering: «24 timer» → «umiddelbart» + prisforankring ---
+    // RSA-er er immutable: vi oppretter ny annonse med oppdatert tekst og pauser den gamle.
+    if (route === '/admin/ads/update-messaging' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      const dryRun = body.dryRun !== false; // default: dry-run (trygt)
+      const transform = (t) => t
+        .replace(/svar innen 24 ?t(?:imer)?\b/gi, 'Svar umiddelbart')
+        .replace(/\binnen 24 ?t(?:imer)?\b/gi, 'umiddelbart')
+        .replace(/\bpå 24 ?t(?:imer)?\b/gi, 'umiddelbart')
+        .replace(/\b24 ?timer\b/gi, 'umiddelbart')
+        .replace(/\b24 ?t\b/gi, 'umiddelbart');
+      try {
+        const rsas = await listRsaAds(undefined, { campaignId: body.campaignId });
+        const results = [];
+        for (const ad of rsas) {
+          if (ad.status !== 'ENABLED') continue;
+          let changed = false;
+          // Titler: transformér (maks 30 tegn — fall tilbake til kort variant), dedupe
+          const seenH = new Set();
+          const headlines = [];
+          for (const h of ad.headlines) {
+            let txt = transform(h.text);
+            if (txt !== h.text) { changed = true; if (txt.length > 30) txt = 'Svar umiddelbart'; }
+            const key = txt.toLowerCase();
+            if (seenH.has(key)) { changed = true; continue; }
+            seenH.add(key);
+            headlines.push({ ...h, text: txt });
+          }
+          // Prisforankring + umiddelbarhet hvis plass (RSA maks 15 titler)
+          const joined = headlines.map((h) => h.text.toLowerCase()).join(' | ');
+          if (!joined.includes('0 kr oppstart') && headlines.length < 15) { headlines.push({ text: '0 kr oppstart – ingen binding' }); changed = true; }
+          if (!joined.includes('umiddelbart') && headlines.length < 15) { headlines.push({ text: 'Svar umiddelbart' }); changed = true; }
+          // Beskrivelser: transformér (maks 90 tegn — behold original hvis for lang), dedupe
+          const seenD = new Set();
+          const descriptions = [];
+          for (const d of ad.descriptions) {
+            let txt = transform(d.text);
+            if (txt !== d.text) { if (txt.length > 90) txt = d.text; else changed = true; }
+            const key = txt.toLowerCase();
+            if (seenD.has(key)) { changed = true; continue; }
+            seenD.add(key);
+            descriptions.push({ ...d, text: txt });
+          }
+          if (!changed) { results.push({ adGroup: ad.adGroupName, campaign: ad.campaignName, changed: false }); continue; }
+          const entry = {
+            adGroup: ad.adGroupName, campaign: ad.campaignName, changed: true,
+            newHeadlines: headlines.map((h) => h.text), newDescriptions: descriptions.map((d) => d.text),
+          };
+          if (!dryRun) {
+            try {
+              const created = await createRsaAd(undefined, {
+                adGroupId: ad.adGroupId, headlines, descriptions,
+                finalUrls: ad.finalUrls, path1: ad.path1, path2: ad.path2,
+              });
+              entry.createdAd = created.resourceName;
+              const paused = await setAdStatus(undefined, ad.adResourceName, 'PAUSED');
+              entry.pausedOldAd = paused.resourceName;
+            } catch (e) { entry.error = e.message; }
+          }
+          results.push(entry);
+        }
+        return cors(NextResponse.json({ ok: true, dryRun, totalAds: rsas.length, results }));
+      } catch (e) { return cors(NextResponse.json({ ok: false, error: e.message }, { status: 200 })); }
     }
 
     // --- Konkurrentens faktiske annonser (SerpApi → Google Ads Transparency Center) ---

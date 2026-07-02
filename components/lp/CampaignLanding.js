@@ -4,7 +4,7 @@
 // skjema over folden (2 steg), tillitsrad, leiekalkulator, exit-intent og sticky CTA.
 
 import React, { useState, useEffect } from 'react';
-import { ArrowRight, Check, Phone, ShieldCheck, Sparkles, Clock, Star, Home } from 'lucide-react';
+import { ArrowRight, Check, Phone, ShieldCheck, Sparkles, Clock, Star, Home, X, Minus } from 'lucide-react';
 import { site, stats } from '@/lib/site';
 import { COMMON_STEPS, COMMON_TESTIMONIALS, COMMON_CHANNELS } from '@/lib/landing';
 import { Reveal, CountUp, AvatarStack, InitialsAvatar, TrustLogos, StickyMobileCta, ExitIntent } from '@/components/lp/lp-shared';
@@ -173,6 +173,71 @@ export default function CampaignLanding({ cfg }) {
           </div>
         </div>
       </section>
+
+      {/* ------------------- Sammenligningstabell (kun m/ cfg.comparison) ------------------- */}
+      {cfg.comparison ? (
+        <section className="max-w-[1000px] mx-auto px-5 sm:px-8 py-14 sm:py-20 w-full">
+          <Reveal className="text-center max-w-[640px] mx-auto">
+            <p className="text-[12px] font-semibold uppercase tracking-[0.16em] text-lavender">{cfg.comparison.eyebrow || 'Se forskjellen'}</p>
+            <h2 className="font-heading font-bold text-[28px] sm:text-[38px] tracking-[-0.03em] leading-[1.08] mt-3">{cfg.comparison.title}</h2>
+            <p className="text-quiet text-[16px] mt-4 leading-relaxed">{cfg.comparison.intro}</p>
+          </Reveal>
+          <Reveal delay={120}>
+            <div className="mt-10 overflow-hidden rounded-[26px] border border-hairline bg-surface shadow-[0_30px_80px_-45px_rgba(10,10,10,0.35)]">
+              {/* Kolonneoverskrifter */}
+              <div className="grid grid-cols-[1.15fr_1fr_1fr] sm:grid-cols-[1.4fr_1fr_1fr] border-b border-hairline">
+                <div className="px-4 sm:px-6 py-4" />
+                <div className="px-3 sm:px-6 py-4 text-center bg-ink text-canvas">
+                  <p className="font-heading font-bold text-[15px] sm:text-[17px] leading-tight">{cfg.comparison.us}</p>
+                  <p className="text-[10.5px] sm:text-[11px] text-canvas/60 mt-0.5 uppercase tracking-[0.1em]">Anbefalt</p>
+                </div>
+                <div className="px-3 sm:px-6 py-4 text-center">
+                  <p className="font-heading font-semibold text-[14px] sm:text-[16px] text-quiet leading-tight">{cfg.comparison.them}</p>
+                </div>
+              </div>
+              {/* Rader */}
+              {cfg.comparison.rows.map((r, i) => {
+                const cell = (v, us) => {
+                  if (v === true) return (
+                    <span className={`inline-flex h-6 w-6 items-center justify-center rounded-full ${us ? 'bg-success-bg' : 'bg-fill'}`}>
+                      <Check className={`h-3.5 w-3.5 ${us ? 'text-success' : 'text-quiet'}`} />
+                    </span>
+                  );
+                  if (v === false) return (
+                    <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-fill">
+                      <X className="h-3.5 w-3.5 text-taupe" />
+                    </span>
+                  );
+                  if (v === 'Varierer') return (
+                    <span className="inline-flex items-center gap-1 text-[13px] text-taupe"><Minus className="h-3.5 w-3.5" /> Varierer</span>
+                  );
+                  return <span className={`text-[13px] sm:text-[14.5px] leading-snug ${us ? 'font-bold text-ink' : 'text-quiet'}`}>{v}</span>;
+                };
+                return (
+                  <div key={i} className={`grid grid-cols-[1.15fr_1fr_1fr] sm:grid-cols-[1.4fr_1fr_1fr] items-center ${i % 2 ? 'bg-canvas-alt/60' : ''} ${i < cfg.comparison.rows.length - 1 ? 'border-b border-hairline/60' : ''}`}>
+                    <div className="px-4 sm:px-6 py-3.5 text-[13px] sm:text-[14.5px] font-medium text-ink-soft leading-snug">{r.label}</div>
+                    <div className="px-3 sm:px-6 py-3.5 text-center bg-lavender/[0.06]">{cell(r.us, true)}</div>
+                    <div className="px-3 sm:px-6 py-3.5 text-center">{cell(r.them, false)}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </Reveal>
+          {cfg.comparison.footnote ? (
+            <Reveal delay={180}>
+              <p className="mt-4 text-[12px] text-taupe text-center max-w-[70ch] mx-auto leading-relaxed">{cfg.comparison.footnote}</p>
+            </Reveal>
+          ) : null}
+          <Reveal delay={220} className="text-center">
+            <button onClick={scrollToForm} className="group mt-7 inline-flex items-center gap-2 h-12 rounded-full bg-ink text-canvas px-7 font-semibold text-[15px] hover:-translate-y-0.5 transition-transform">
+              {cfg.cta || 'Se hva du sparer'} <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+            </button>
+            <p className="mt-3 text-[12.5px] text-taupe inline-flex items-center gap-1.5 justify-center w-full">
+              <ShieldCheck className="w-3.5 h-3.5 text-success" /> Uforpliktende · 0 kr oppstart · Svar umiddelbart
+            </p>
+          </Reveal>
+        </section>
+      ) : null}
 
       {/* --------------------------- Statband --------------------------- */}
       <section className="max-w-[1100px] mx-auto px-5 sm:px-8 py-12 sm:py-16 w-full">
