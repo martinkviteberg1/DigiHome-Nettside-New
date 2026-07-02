@@ -32,7 +32,7 @@ export function SeksjonAvslutt() {
             <div className="relative">
               <span className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-[12px] font-semibold text-white/80" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.14)' }}>
                 <span className="h-1.5 w-1.5 rounded-full" style={{ background: '#34D399' }} />
-                Gratis & uforpliktende · Svar innen 24 timer
+                Gratis & uforpliktende · Svar umiddelbart
               </span>
               <h2 className="mt-7 font-heading font-bold tracking-[-0.035em] leading-[1.05] text-[clamp(32px,5vw,60px)] text-white max-w-3xl mx-auto text-balance">
                 Klar for å la boligen jobbe for deg?

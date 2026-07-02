@@ -147,7 +147,7 @@ export function HeroLeadFormLight() {
         <div>
           <p className="text-ink font-semibold">Takk! Vurderingen er på vei.</p>
           <p className="text-quiet text-sm mt-0.5">
-            Vi tar kontakt innen 24 timer med en gratis verdivurdering av {address}.
+            Vi tar kontakt umiddelbart med en gratis verdivurdering av {address}.
           </p>
         </div>
       </div>
@@ -253,7 +253,7 @@ export function HeroLeadFormLight() {
         {error ? (
           <span className="text-rose-600">{error}</span>
         ) : step === 'address' ? (
-          'Gratis og uforpliktende · Svar innen 24 timer'
+          'Gratis og uforpliktende · Svar umiddelbart'
         ) : (
           'Hvor når vi deg? Kun for å sende vurderingen.'
         )}

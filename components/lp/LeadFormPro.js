@@ -107,7 +107,7 @@ export default function LeadFormPro({ cfg }) {
         <ol className="mt-5 space-y-3">
           {[
             'Vi analyserer boligen og leiemarkedet i området ditt',
-            'Du får en konkret vurdering innen 24 timer',
+            'Du hører fra oss umiddelbart med en konkret vurdering',
             'Du bestemmer — helt uforpliktende',
           ].map((t, i) => (
             <li key={i} className="flex items-start gap-3 text-[14.5px] text-ink-soft">
@@ -133,7 +133,7 @@ export default function LeadFormPro({ cfg }) {
         <div className="flex items-center justify-between gap-3">
           <p className="font-heading font-bold text-[19px] text-ink leading-tight">{cfg.formTitle || 'Se hva boligen din kan tjene'}</p>
           <span className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-success-bg text-success text-[11px] font-semibold px-2.5 py-1">
-            <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" /> Svar &lt; 24t
+            <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" /> Svar umiddelbart
           </span>
         </div>
         <p className="text-[13.5px] text-quiet mt-1">Gratis og uforpliktende — det tar under ett minutt.</p>
@@ -250,7 +250,7 @@ export default function LeadFormPro({ cfg }) {
       </button>
       <div className="flex items-center justify-center gap-4 text-[12px] text-taupe pt-0.5 flex-wrap">
         <span className="inline-flex items-center gap-1.5"><Lock className="w-3.5 h-3.5 text-success" /> Vi deler aldri opplysningene dine</span>
-        <span className="inline-flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5 text-success" /> Svar innen 24 timer</span>
+        <span className="inline-flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5 text-success" /> Svar umiddelbart</span>
       </div>
     </form>
   );

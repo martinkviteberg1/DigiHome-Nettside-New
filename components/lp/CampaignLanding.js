@@ -291,7 +291,7 @@ export default function CampaignLanding({ cfg }) {
                 Se hva boligen din kan tjene — gratis
               </h2>
               <p className="text-canvas/70 text-[16px] sm:text-[18px] mt-4 max-w-[48ch] mx-auto leading-relaxed">
-                En konkret, uforpliktende vurdering innen 24 timer. Ingen oppstartskostnader, ingen binding.
+                En konkret, uforpliktende vurdering — svar umiddelbart. Ingen oppstartskostnader, ingen binding.
               </p>
               <button onClick={scrollToForm} className="group mt-8 inline-flex items-center gap-2 h-14 rounded-full bg-canvas text-ink px-8 font-semibold text-[16px] hover:-translate-y-0.5 transition-transform shadow-[0_24px_50px_-20px_rgba(0,0,0,0.5)]">
                 Få gratis vurdering <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
@@ -299,7 +299,7 @@ export default function CampaignLanding({ cfg }) {
               <div className="mt-7 flex items-center justify-center gap-5 text-[12.5px] text-canvas/55 flex-wrap">
                 <span className="inline-flex items-center gap-1.5"><Home className="w-3.5 h-3.5" /> Lokalt team i Bergen</span>
                 <span className="inline-flex items-center gap-1.5"><ShieldCheck className="w-3.5 h-3.5" /> Trygt og uforpliktende</span>
-                <span className="inline-flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> Svar innen 24 timer</span>
+                <span className="inline-flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> Svar umiddelbart</span>
               </div>
             </div>
           </div>

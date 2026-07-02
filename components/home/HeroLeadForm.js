@@ -63,7 +63,7 @@ export function HeroLeadForm() {
         <div>
           <p className="text-white font-semibold">Takk! Vurderingen er på vei.</p>
           <p className="text-white/55 text-sm mt-0.5">
-            Vi tar kontakt innen 24 timer med en gratis verdivurdering av {address}.
+            Vi tar kontakt umiddelbart med en gratis verdivurdering av {address}.
           </p>
         </div>
       </div>
@@ -131,7 +131,7 @@ export function HeroLeadForm() {
         {error ? (
           <span className="text-rose-300">{error}</span>
         ) : step === 'address' ? (
-          'Gratis og uforpliktende · Svar innen 24 timer'
+          'Gratis og uforpliktende · Svar umiddelbart'
         ) : (
           'Hvor når vi deg? Kun for å sende vurderingen.'
         )}

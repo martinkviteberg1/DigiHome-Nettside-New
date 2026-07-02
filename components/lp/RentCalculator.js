@@ -98,7 +98,7 @@ export default function RentCalculator({ onCta }) {
         className="group mt-5 w-full h-[52px] rounded-full bg-ink text-canvas font-semibold text-[15px] flex items-center justify-center gap-2 hover:-translate-y-0.5 hover:shadow-[0_18px_40px_-14px_rgba(10,10,10,0.6)] transition-all">
         Få nøyaktig vurdering — gratis <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
       </button>
-      <p className="mt-3 text-[12px] text-taupe text-center">Estimat basert på markedsdata for Bergen. Du får en konkret vurdering av nettopp din bolig — innen 24 timer.</p>
+      <p className="mt-3 text-[12px] text-taupe text-center">Estimat basert på markedsdata for Bergen. Du får en konkret vurdering av nettopp din bolig — umiddelbart.</p>
     </div>
   );
 }
