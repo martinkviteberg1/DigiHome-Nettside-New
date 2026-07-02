@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   Loader2, Search, Crosshair, TrendingUp, Wallet, Layers, AlertCircle,
   ExternalLink, Eye, Tag, Gauge, Sparkles, Info,
+  Image as ImageIcon, Film, Type, RefreshCw, Clock, Award,
 } from 'lucide-react';
 
 const nf = new Intl.NumberFormat('nb-NO');
@@ -95,6 +96,9 @@ export default function CompetitorAnalysisTab({ apiKey }) {
             <div className="mb-5 bg-amber-50 text-amber-700 rounded-xl px-4 py-3 text-[13px] flex items-center gap-2"><AlertCircle className="w-4 h-4" /> Google Ads-API er ikke konfigurert — søkevolum og budestimater er utilgjengelig. Transparency Center-lenken over virker uansett.</div>
           )}
 
+          {/* Annonsegalleri — konkurrentens faktiske annonser via SerpApi */}
+          <AdGallery apiKey={apiKey} competitor={data.competitor || competitor} />
+
           {/* Søkeord-tabeller */}
           {(brand.length > 0 || category.length > 0) && (
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
@@ -174,6 +178,137 @@ function Stat({ label, value, sub, icon: Icon, tone = 'slate', small }) {
       </div>
       <p className={`font-bold mt-2 leading-none text-[#1f1f1f] ${small ? 'text-[17px]' : 'text-[24px]'}`} style={{ fontFamily: 'var(--font-heading)' }}>{value}</p>
       {sub && <p className="text-[12px] text-[#a3a3a3] mt-1.5">{sub}</p>}
+    </div>
+  );
+}
+
+/* ==========================================================================
+   AdGallery — konkurrentens faktiske annonser (SerpApi → Transparency Center).
+   Sortert på total visningstid: lang levetid = bevist lønnsom annonse.
+   ========================================================================== */
+const FMT_META = {
+  text: { l: 'Tekst', icon: Type, cls: 'bg-[#eef2ff] text-[#4f46e5]' },
+  image: { l: 'Bilde', icon: ImageIcon, cls: 'bg-[#fdf2f8] text-[#db2777]' },
+  video: { l: 'Video', icon: Film, cls: 'bg-[#fff7ed] text-[#ea580c]' },
+};
+
+function AdGallery({ apiKey, competitor }) {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [fmt, setFmt] = useState('alle');
+  const [shown, setShown] = useState(18);
+
+  const load = useCallback(async (force = false) => {
+    force ? setRefreshing(true) : setLoading(true);
+    try {
+      const r = await fetch(`/api/admin/ads/competitor-gallery?key=${encodeURIComponent(apiKey)}&competitor=${encodeURIComponent(competitor)}${force ? '&force=1' : ''}`);
+      setData(await r.json());
+    } catch (e) { setData({ ok: false, error: 'Kunne ikke laste galleri' }); }
+    finally { setLoading(false); setRefreshing(false); setShown(18); }
+  }, [apiKey, competitor]);
+
+  useEffect(() => { if (apiKey && competitor) load(false); }, [apiKey, competitor, load]);
+
+  if (loading) {
+    return (
+      <div className="mt-6 grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
+        {[...Array(6)].map((_, i) => <div key={i} className="shimmer h-44 rounded-2xl" />)}
+      </div>
+    );
+  }
+  if (!data) return null;
+  if (!data.configured) {
+    return <div className="mt-6 bg-amber-50 text-amber-700 rounded-xl px-4 py-3 text-[13px] flex items-center gap-2"><AlertCircle className="w-4 h-4" /> SERPAPI_KEY mangler — annonsegalleriet er ikke aktivt.</div>;
+  }
+
+  const ads = data.ads || [];
+  const counts = ads.reduce((m, a) => { m[a.format] = (m[a.format] || 0) + 1; return m; }, {});
+  const filtered = fmt === 'alle' ? ads : ads.filter((a) => a.format === fmt);
+  const maxDays = Math.max(1, ...ads.map((a) => a.totalDaysShown || 0));
+
+  return (
+    <div className="mt-6">
+      <div className="flex items-center justify-between gap-3 flex-wrap mb-4">
+        <div>
+          <h3 className="text-[16px] font-bold text-[#1a1a1a] flex items-center gap-2" style={{ fontFamily: 'var(--font-heading)' }}>
+            <span className="w-8 h-8 rounded-lg bg-[#f4f0fb] text-[#8b5cf6] flex items-center justify-center"><ImageIcon className="w-4 h-4" /></span>
+            Annonsegalleri {data.advertiser ? `— ${data.advertiser.name}` : ''}
+          </h3>
+          <p className="text-[12px] text-[#a3a3a3] mt-1">
+            {ads.length} annonser · sortert på levetid (lang levetid = bevist lønnsom) ·
+            {data.source === 'cache' ? ` cachet ${new Date(data.fetchedAt).toLocaleDateString('nb-NO')}` : ' hentet nå'}
+          </p>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          {['alle', 'text', 'image', 'video'].filter((f) => f === 'alle' || counts[f]).map((f) => (
+            <button key={f} onClick={() => setFmt(f)}
+              className={`h-8 px-3 rounded-full text-[12px] font-semibold transition-colors ${fmt === f ? 'bg-[#0a0a0a] text-white' : 'bg-white text-[#666] shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:text-[#0a0a0a]'}`}>
+              {f === 'alle' ? `Alle (${ads.length})` : `${(FMT_META[f] || {}).l || f} (${counts[f] || 0})`}
+            </button>
+          ))}
+          <button onClick={() => load(true)} disabled={refreshing} title="Hent ferske annonser (bruker 1–2 av SerpApi-kvoten)"
+            className="h-8 px-3 rounded-full bg-white text-[12px] font-semibold text-[#666] shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:text-[#0a0a0a] flex items-center gap-1.5 disabled:opacity-50">
+            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} /> Oppdater
+          </button>
+        </div>
+      </div>
+
+      {filtered.length === 0 ? (
+        <div className="bg-white rounded-2xl p-10 text-center text-[13px] text-[#bbb] shadow-[0_2px_10px_rgba(0,0,0,0.03)]">
+          {data.note || 'Ingen annonser i dette formatet.'}
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
+            {filtered.slice(0, shown).map((a, i) => {
+              const meta = FMT_META[a.format] || { l: a.format, icon: Type, cls: 'bg-[#f3f2f0] text-[#999]' };
+              const MetaIcon = meta.icon;
+              const days = a.totalDaysShown || 0;
+              const winner = days >= 365;
+              return (
+                <a key={a.id || i} href={a.detailsLink || a.link || '#'} target="_blank" rel="noopener noreferrer"
+                  className="group bg-white rounded-2xl overflow-hidden shadow-[0_2px_10px_rgba(0,0,0,0.04)] hover:shadow-[0_16px_36px_-16px_rgba(10,10,10,0.25)] hover:-translate-y-0.5 transition-all">
+                  <div className="relative h-32 bg-[#f7f6f4] flex items-center justify-center overflow-hidden">
+                    {a.image ? (
+                      <img src={a.image} alt="Annonse" loading="lazy" className="w-full h-full object-contain p-1.5" />
+                    ) : (
+                      <MetaIcon className="w-7 h-7 text-[#d8d2e8]" />
+                    )}
+                    {winner && (
+                      <span className="absolute top-2 left-2 inline-flex items-center gap-1 rounded-full bg-[#0a0a0a]/85 text-[#f5d565] text-[10px] font-bold px-2 py-0.5 backdrop-blur-sm">
+                        <Award className="w-3 h-3" /> Langtidsvinner
+                      </span>
+                    )}
+                    <span className={`absolute top-2 right-2 inline-flex items-center gap-1 rounded-full text-[10px] font-bold px-2 py-0.5 ${meta.cls}`}>{meta.l}</span>
+                  </div>
+                  <div className="p-3">
+                    {a.text ? <p className="text-[11.5px] text-[#444] leading-snug line-clamp-2 mb-1.5">{a.text}</p> : null}
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="inline-flex items-center gap-1 text-[11px] text-[#888] font-medium"><Clock className="w-3 h-3" /> {days ? `${nf.format(days)} dager` : '–'}</span>
+                      <span className="text-[10.5px] text-[#bbb] tabular-nums">{a.lastShown || ''}</span>
+                    </div>
+                    <div className="mt-1.5 h-1 rounded-full bg-[#f0eef4] overflow-hidden">
+                      <div className="h-full rounded-full bg-gradient-to-r from-[#8b5cf6] to-[#cf97fc]" style={{ width: `${Math.max(4, Math.round((days / maxDays) * 100))}%` }} />
+                    </div>
+                  </div>
+                </a>
+              );
+            })}
+          </div>
+          {filtered.length > shown && (
+            <div className="mt-4 text-center">
+              <button onClick={() => setShown((n) => n + 18)} className="h-9 px-5 rounded-full bg-white text-[12.5px] font-semibold text-[#333] shadow-[0_2px_10px_rgba(0,0,0,0.05)] hover:shadow-[0_6px_18px_rgba(0,0,0,0.08)] transition-shadow">
+                Vis flere ({filtered.length - shown} igjen)
+              </button>
+            </div>
+          )}
+          <p className="mt-4 text-[12px] text-[#b0b0b0] flex items-start gap-1.5 leading-relaxed">
+            <Sparkles className="w-3.5 h-3.5 mt-0.5 shrink-0 text-[#cf97fc]" />
+            Strategi-tips: Annonser med lang levetid («Langtidsvinner») er bevist lønnsomme for konkurrenten — analysér budskap og vinkel, og lag en bedre versjon med DigiHomes fordeler (0 kr oppstart, svar umiddelbart). Galleriet caches i 7 dager for å spare SerpApi-kvoten.
+          </p>
+        </>
+      )}
     </div>
   );
 }

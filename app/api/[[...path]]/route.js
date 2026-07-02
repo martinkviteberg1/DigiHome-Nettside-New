@@ -25,6 +25,7 @@ import { sendWeeklyReport, buildReportData, renderReportHtml } from '@/lib/ads-r
 import { buildMarketingMetrics } from '@/lib/marketing-metrics';
 import { emailConfigured, reportRecipients, sendHtmlEmail } from '@/lib/email';
 import { buildAlerts } from '@/lib/ads-monitor';
+import { fetchCompetitorGallery, serpApiConfigured } from '@/lib/serpapi';
 import { chatLLM } from '@/lib/llm';
 import { slugify } from '@/lib/site';
 import { LANDING } from '@/lib/landing';
@@ -2495,6 +2496,24 @@ async function handleRoute(request, { params }) {
         return cors(NextResponse.json({ ok: false, error: e.message }, { status: 200 }));
       }
       return cors(NextResponse.json({ ok: false, error: 'Ukjent økonomi-endepunkt' }, { status: 404 }));
+    }
+
+    // --- Konkurrentens faktiske annonser (SerpApi → Google Ads Transparency Center) ---
+    // Kvote-bevisst: 7 dagers server-cache; force=1 tvinger ny henting (bruker 1–3 søk).
+    if (route === '/admin/ads/competitor-gallery' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const gsp = new URL(request.url).searchParams;
+      const competitor = (gsp.get('competitor') || 'Utleiemegleren').trim();
+      const force = gsp.get('force') === '1';
+      if (!serpApiConfigured()) {
+        return cors(NextResponse.json({ ok: false, configured: false, error: 'SERPAPI_KEY mangler i miljøvariablene.' }, { status: 200 }));
+      }
+      try {
+        const out = await fetchCompetitorGallery(db, { competitor, force });
+        return cors(NextResponse.json(out));
+      } catch (e) {
+        return cors(NextResponse.json({ ok: false, configured: true, error: e.message }, { status: 200 }));
+      }
     }
 
     // --- Budsjett-pacing: forbruk måned-til-dato vs. månedsbudsjett per kanal ---
