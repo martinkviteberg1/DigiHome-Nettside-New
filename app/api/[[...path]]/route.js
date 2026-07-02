@@ -26,6 +26,7 @@ import { runOptimization, getOptimizeConfig, setOptimizeConfig, getLastRun, list
 import { sendWeeklyReport, buildReportData, renderReportHtml } from '@/lib/ads-report';
 import { buildMarketingMetrics } from '@/lib/marketing-metrics';
 import { emailConfigured, reportRecipients, sendHtmlEmail } from '@/lib/email';
+import { NEWSLETTER_COLL, OPTOUT_COLL, renderNewsletterHtml, resolveAudience, audienceCounts, sanitizeBlocks, buildUnsubUrl, verifyUnsubToken, slugifyCampaign, normEmail as nlNormEmail } from '@/lib/newsletter';
 import { fireLeadEmails } from '@/lib/lead-emails';
 import { buildAlerts } from '@/lib/ads-monitor';
 import { fetchCompetitorGallery, serpApiConfigured } from '@/lib/serpapi';
@@ -2464,6 +2465,128 @@ async function handleRoute(request, { params }) {
       const summary = await summarizeImported(db);
       return cors(NextResponse.json({ ok: true, deleted: res.deletedCount, summary }));
     }
+
+    // ===================================================================
+    // Nyhetsbrev — komponering, målgrupper, test-/masseutsending og avmelding.
+    // Samtykke: kunder = kundeforhold (trygt); åpne leads = grå sone (merkes).
+    // Suppresjonsliste `email_optouts` respekteres ALLTID.
+    // ===================================================================
+    if (route === '/admin/newsletter/audiences' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const data = await audienceCounts(db);
+      return cors(NextResponse.json({ ok: true, ...data, emailConfigured: emailConfigured() }));
+    }
+
+    if (route === '/admin/newsletter/preview' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      const blocks = sanitizeBlocks(body.blocks);
+      const base = process.env.NEXT_PUBLIC_BASE_URL || new URL(request.url).origin;
+      const html = renderNewsletterHtml({
+        subject: (body.subject || '').toString().slice(0, 200),
+        preheader: (body.preheader || '').toString().slice(0, 200),
+        blocks,
+        unsubUrl: `${base}/nyhetsbrev/avmeldt?demo=1`,
+        campaignSlug: slugifyCampaign(body.subject),
+      });
+      return cors(NextResponse.json({ ok: true, html }));
+    }
+
+    if (route === '/admin/newsletter/test' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!emailConfigured()) return cors(NextResponse.json({ ok: false, error: 'SendGrid er ikke konfigurert (SENDGRID_API_KEY)' }, { status: 400 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      const to = nlNormEmail(body.to);
+      if (!/^\S+@\S+\.\S+$/.test(to)) return cors(NextResponse.json({ ok: false, error: 'Ugyldig test-adresse' }, { status: 400 }));
+      const blocks = sanitizeBlocks(body.blocks);
+      if (!blocks.length) return cors(NextResponse.json({ ok: false, error: 'Nyhetsbrevet har ikke noe innhold ennå' }, { status: 400 }));
+      const subject = (body.subject || 'DigiHome — nyhetsbrev').toString().slice(0, 200);
+      const base = process.env.NEXT_PUBLIC_BASE_URL || new URL(request.url).origin;
+      const html = renderNewsletterHtml({
+        subject, preheader: (body.preheader || '').toString().slice(0, 200), blocks,
+        unsubUrl: buildUnsubUrl(base, to), campaignSlug: slugifyCampaign(subject),
+      });
+      try {
+        await sendHtmlEmail({ to, subject: `[TEST] ${subject}`, html });
+        return cors(NextResponse.json({ ok: true, sentTo: to }));
+      } catch (e) {
+        return cors(NextResponse.json({ ok: false, error: e.message }, { status: 502 }));
+      }
+    }
+
+    if (route === '/admin/newsletter/send' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!emailConfigured()) return cors(NextResponse.json({ ok: false, error: 'SendGrid er ikke konfigurert (SENDGRID_API_KEY)' }, { status: 400 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      const segments = Array.isArray(body.segments) ? body.segments.filter((s) => ['kunder', 'leads', 'leietakere'].includes(s)) : [];
+      if (!segments.length) return cors(NextResponse.json({ ok: false, error: 'Velg minst én målgruppe' }, { status: 400 }));
+      const blocks = sanitizeBlocks(body.blocks);
+      if (!blocks.length) return cors(NextResponse.json({ ok: false, error: 'Nyhetsbrevet har ikke noe innhold ennå' }, { status: 400 }));
+      const subject = (body.subject || '').toString().slice(0, 200).trim();
+      if (!subject) return cors(NextResponse.json({ ok: false, error: 'Emnefelt mangler' }, { status: 400 }));
+      const preheader = (body.preheader || '').toString().slice(0, 200);
+
+      const { recipients, skipped } = await resolveAudience(db, segments);
+      if (!recipients.length) return cors(NextResponse.json({ ok: false, error: 'Ingen mottakere i valgt målgruppe (etter avmeldte/duplikater)' }, { status: 400 }));
+      if (recipients.length > 2000) return cors(NextResponse.json({ ok: false, error: `For mange mottakere i én utsending (${recipients.length} > 2000)` }, { status: 400 }));
+
+      const base = process.env.NEXT_PUBLIC_BASE_URL || new URL(request.url).origin;
+      const slug = slugifyCampaign(subject);
+      const campaignId = uuidv4();
+      let sent = 0; const failed = [];
+      // Individuell utsending (personlig avmeldingslenke) i små parallelle bunker.
+      const CHUNK = 8;
+      for (let i = 0; i < recipients.length; i += CHUNK) {
+        const chunk = recipients.slice(i, i + CHUNK);
+        await Promise.all(chunk.map(async (r) => {
+          try {
+            const html = renderNewsletterHtml({ subject, preheader, blocks, unsubUrl: buildUnsubUrl(base, r.email), campaignSlug: slug });
+            await sendHtmlEmail({ to: r.email, subject, html });
+            sent++;
+          } catch (e) {
+            failed.push({ email: r.email, error: (e.message || 'ukjent').slice(0, 200) });
+          }
+        }));
+      }
+
+      const doc = {
+        id: campaignId, subject, preheader, blocks, segments, slug,
+        recipients: recipients.length, sent, failedCount: failed.length,
+        failed: failed.slice(0, 50), skipped,
+        sentAt: new Date().toISOString(), sentBy: 'admin',
+      };
+      await db.collection(NEWSLETTER_COLL).insertOne({ ...doc });
+      return cors(NextResponse.json({ ok: true, campaign: doc }, { status: 201 }));
+    }
+
+    if (route === '/admin/newsletter' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const items = await db.collection(NEWSLETTER_COLL)
+        .find({}, { projection: { _id: 0, blocks: 0, failed: 0 } })
+        .sort({ sentAt: -1 }).limit(50).toArray();
+      const optouts = await db.collection(OPTOUT_COLL).countDocuments();
+      return cors(NextResponse.json({ ok: true, campaigns: items, optouts }));
+    }
+
+    // Offentlig avmelding — HMAC-verifisert lenke fra e-posten. Ingen auth.
+    if (route === '/newsletter/unsubscribe' && method === 'GET') {
+      const sp = new URL(request.url).searchParams;
+      let email = '';
+      try { email = Buffer.from((sp.get('e') || '').toString(), 'base64url').toString('utf8'); } catch (e) { email = ''; }
+      const token = (sp.get('t') || '').toString();
+      const base = process.env.NEXT_PUBLIC_BASE_URL || new URL(request.url).origin;
+      if (!email || !verifyUnsubToken(email, token)) {
+        return NextResponse.redirect(`${base}/nyhetsbrev/avmeldt?feil=1`, 302);
+      }
+      const norm = nlNormEmail(email);
+      await db.collection(OPTOUT_COLL).updateOne(
+        { email: norm },
+        { $setOnInsert: { email: norm, at: new Date().toISOString(), source: 'link' } },
+        { upsert: true }
+      );
+      return NextResponse.redirect(`${base}/nyhetsbrev/avmeldt`, 302);
+    }
+
 
     // ===================================================================
     // KPI-dashbord ("Nøkkeltall / Ledelse") — investorklare nøkkeltall.

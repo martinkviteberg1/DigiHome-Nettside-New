@@ -6,7 +6,7 @@ import {
   Menu, X, ChevronRight, ShieldCheck, Sparkles, MessageSquare,
   LayoutDashboard, Radio, Activity, GitBranch, Gauge, Megaphone, Database,
   Command, Search, CornerDownLeft, LayoutTemplate, Crosshair, TrendingUp, Wallet,
-  Globe, ExternalLink, PenLine,
+  Globe, ExternalLink, PenLine, Mail,
 } from 'lucide-react';
 import InnsiktDashboard from '@/components/admin/InnsiktDashboard';
 import KpiDashboard from '@/components/admin/KpiDashboard';
@@ -14,6 +14,7 @@ import FinanceDashboard from '@/components/admin/FinanceDashboard';
 import CustomersDashboard from '@/components/admin/CustomersDashboard';
 import AgentBridge from '@/components/admin/AgentBridge';
 import PlaybookTab from '@/components/admin/PlaybookTab';
+import NewsletterTab from '@/components/admin/NewsletterTab';
 
 const SESSION_KEY = 'dh_admin_session';
 const LEGACY_KEY = 'dh_admin_key';
@@ -44,6 +45,7 @@ const NAV = [
     group: 'Innhold',
     items: [
       { k: 'artikler', l: 'Artikler', icon: FileText, href: '/admin/artikler' },
+      { k: 'nyhetsbrev', l: 'Nyhetsbrev', icon: Mail, desc: 'E-post til leads & kunder — komponer, test og send' },
     ],
   },
   {
@@ -77,6 +79,7 @@ const SECTION_TITLES = {
   kunder: { t: 'Kunder', s: 'Utleiere (betalende kunder) · kontrakter · eiendommer · MRR — synket fra plattformen' },
   abonnementer: { t: 'Abonnementer', s: 'Kommer snart — aktive avtaler & fakturering' },
   bro: { t: 'Agent-bro', s: 'Delt meldingstråd for koordinering med plattform-prosjektet' },
+  nyhetsbrev: { t: 'Nyhetsbrev', s: 'Komponer, forhåndsvis og send e-post til leads og kunder — med samtykke-merking og avmelding' },
 };
 
 export default function AdminPage() {
@@ -351,6 +354,7 @@ export default function AdminPage() {
         <div key={section} className="px-4 sm:px-8 py-6 max-w-[1440px] dh-fade">
           {section === 'nokkeltall' && <KpiDashboard apiKey={token} />}
           {section === 'playbook' && <PlaybookTab apiKey={token} />}
+          {section === 'nyhetsbrev' && <NewsletterTab apiKey={token} />}
           {section === 'okonomi' && <FinanceDashboard apiKey={token} />}
           {section === 'innsikt' && <InnsiktDashboard apiKey={token} tab={insightTab} onTabChange={setInsightTab} onStats={setInsightStats} />}
           {section === 'kunder' && <CustomersDashboard apiKey={token} />}
