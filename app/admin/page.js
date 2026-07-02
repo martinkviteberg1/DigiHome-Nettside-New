@@ -13,6 +13,7 @@ import KpiDashboard from '@/components/admin/KpiDashboard';
 import FinanceDashboard from '@/components/admin/FinanceDashboard';
 import CustomersDashboard from '@/components/admin/CustomersDashboard';
 import AgentBridge from '@/components/admin/AgentBridge';
+import PlaybookTab from '@/components/admin/PlaybookTab';
 
 const SESSION_KEY = 'dh_admin_session';
 const LEGACY_KEY = 'dh_admin_key';
@@ -22,6 +23,7 @@ const NAV = [
     group: 'Ledelse',
     items: [
       { k: 'nokkeltall', l: 'Nøkkeltall', icon: TrendingUp, desc: 'Investorklare KPIer · CAC · LTV · konvertering' },
+      { k: 'playbook', l: 'Playbook', icon: FileText, desc: 'Marketing-strategi · konkurrentanalyse · 90-dagersplan' },
     ],
   },
   {
@@ -69,6 +71,7 @@ const INSIGHT_TABS = [
 
 const SECTION_TITLES = {
   nokkeltall: { t: 'Nøkkeltall', s: 'Investorklare KPIer · CAC · LTV · tid til kunde · konvertering' },
+  playbook: { t: 'Playbook', s: 'Head of Marketing-strategi · Utleiemegleren-analyse · 90-dagersplan · budsjettmatematikk' },
   innsikt: { t: 'Innsikt', s: 'Førsteparts analyse · cookieless · GDPR-trygt' },
   okonomi: { t: 'Økonomi', s: 'Resultat & likviditet · honorar (prosent av leie) · burn rate & runway' },
   kunder: { t: 'Kunder', s: 'Utleiere (betalende kunder) · kontrakter · eiendommer · MRR — synket fra plattformen' },
@@ -347,6 +350,7 @@ export default function AdminPage() {
 
         <div key={section} className="px-4 sm:px-8 py-6 max-w-[1440px] dh-fade">
           {section === 'nokkeltall' && <KpiDashboard apiKey={token} />}
+          {section === 'playbook' && <PlaybookTab apiKey={token} />}
           {section === 'okonomi' && <FinanceDashboard apiKey={token} />}
           {section === 'innsikt' && <InnsiktDashboard apiKey={token} tab={insightTab} onTabChange={setInsightTab} onStats={setInsightStats} />}
           {section === 'kunder' && <CustomersDashboard apiKey={token} />}

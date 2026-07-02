@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 import crypto from 'crypto';
 import sharp from 'sharp';
+import { promises as fsp } from 'fs';
+import nodePath from 'path';
 import { getDb, clean } from '@/lib/mongodb';
 import { getObject, PUBLIC_PREFIX } from '@/lib/objectStorage';
 import { isBot, buildEvent, ensureAnalyticsIndexes, computeAnalytics, computeLeadIntel, computeFunnels, computeLandingPages } from '@/lib/analytics-server';
@@ -3136,6 +3138,29 @@ async function handleRoute(request, { params }) {
 
     // --- Admin: Analytics + Lead Intelligence (samlet) ---
     // --- Puls: lette sanntidstall til admin-toppbaren (alltid synlig) ---
+    if (route === '/admin/playbook' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      try {
+        // Fil er kilden i dev; DB er fallback i produksjon (standalone-build sporer ikke docs/).
+        let markdown = null, updatedAt = null, source = 'db';
+        try {
+          const p = nodePath.join(process.cwd(), 'docs', 'MARKETING_PLAYBOOK.md');
+          markdown = await fsp.readFile(p, 'utf8');
+          const st = await fsp.stat(p);
+          updatedAt = st.mtime.toISOString();
+          source = 'fil';
+          await db.collection('documents').updateOne({ id: 'marketing-playbook' }, { $set: { id: 'marketing-playbook', markdown, updatedAt } }, { upsert: true });
+        } catch (_) {
+          const doc = await db.collection('documents').findOne({ id: 'marketing-playbook' });
+          if (doc) { markdown = doc.markdown; updatedAt = doc.updatedAt; }
+        }
+        if (!markdown) return cors(NextResponse.json({ ok: false, error: 'Playbook ikke funnet' }, { status: 404 }));
+        return cors(NextResponse.json({ ok: true, markdown, updatedAt, source }));
+      } catch (e) {
+        return cors(NextResponse.json({ ok: false, error: e.message }, { status: 500 }));
+      }
+    }
+
     if (route === '/admin/pulse' && method === 'GET') {
       if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       try {

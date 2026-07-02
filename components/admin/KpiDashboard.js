@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Loader2, TrendingUp, TrendingDown, Sliders, Maximize2, Minimize2,
   RefreshCw, Zap, X, Check, Info, Gauge, Activity, Users, Clock, Wallet,
@@ -153,6 +154,113 @@ function AreaChart({ data = [], color = EMER, height = 200 }) {
   );
 }
 
+// --- Månedlige vekstsøyler (leads + kunder, 12 mnd) ---
+function MonthlyBars({ data = [], height = 190 }) {
+  const max = Math.max(1, ...data.map((d) => Math.max(Number(d.leads) || 0, Number(d.customers) || 0)));
+  const barH = (v) => Math.max(v > 0 ? 5 : 2, (v / max) * (height - 40));
+  return (
+    <div>
+      <div style={{ height }} className="flex items-end gap-[5px] sm:gap-2">
+        {data.map((d, i) => {
+          const active = i === data.length - 1;
+          return (
+            <div key={d.month} className="flex-1 min-w-0 flex flex-col items-center justify-end">
+              <span className={`text-[10px] tabular-nums mb-1 ${d.leads > 0 ? 'text-white/70' : 'text-white/15'}`}>{d.leads > 0 ? d.leads : ''}</span>
+              <div className="w-full flex items-end justify-center gap-[3px]">
+                <div className="w-[46%] rounded-t-[5px] transition-all duration-700" style={{ height: barH(d.leads), background: active ? ACCENT : `${ACCENT}59` }} title={`${d.label}: ${d.leads} leads`} />
+                <div className="w-[46%] rounded-t-[5px] transition-all duration-700" style={{ height: barH(d.customers), background: active ? EMER : `${EMER}59` }} title={`${d.label}: ${d.customers} kunder`} />
+              </div>
+              <span className="mt-1.5 text-[9.5px] text-white/30 truncate w-full text-center">{d.label}</span>
+            </div>
+          );
+        })}
+      </div>
+      <div className="mt-3 flex items-center gap-4 text-[11px] text-white/45">
+        <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-sm" style={{ background: ACCENT }} /> Leads</span>
+        <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-sm" style={{ background: EMER }} /> Kunder</span>
+      </div>
+    </div>
+  );
+}
+
+// --- Kanal-splitt (hvor leads kommer fra) ---
+const CHANNEL_COLORS = { Betalt: '#cf97fc', Organisk: '#34d399', Direkte: '#60a5fa', Henvisning: '#fbbf24', 'E-post': '#f472b6' };
+function ChannelBars({ channels = [] }) {
+  if (!channels.length) return <p className="text-white/25 text-[13px]">Ingen leads i perioden</p>;
+  const max = Math.max(1, ...channels.map((c) => c.leads));
+  return (
+    <div className="space-y-3">
+      {channels.map((c) => {
+        const color = CHANNEL_COLORS[c.channel] || '#94a3b8';
+        return (
+          <div key={c.channel}>
+            <div className="flex items-center justify-between text-[12px] mb-1">
+              <span className="text-white/60 font-medium">{c.channel}</span>
+              <span className="text-white/40 tabular-nums">{fmtNum(c.leads)} · {c.share}%{c.customers > 0 && <span className="ml-1.5 text-emerald-300">({c.customers} kunde{c.customers > 1 ? 'r' : ''})</span>}</span>
+            </div>
+            <div className="h-2.5 rounded-full bg-white/[0.05] overflow-hidden">
+              <div className="h-full rounded-full transition-all duration-700" style={{ width: `${Math.max(4, (c.leads / max) * 100)}%`, background: `linear-gradient(90deg, ${color}, ${color}77)` }} />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// --- Pipeline-kort (åpne leads + modellert potensial) ---
+const STAGE_COLORS = { new: '#60a5fa', contacted: '#cf97fc', qualified: '#fbbf24', won: '#34d399', lost: '#64748b' };
+function PipelineCard({ pipeline = [], pv }) {
+  const total = pipeline.reduce((s, p) => s + p.count, 0) || 1;
+  return (
+    <div className="rounded-2xl bg-white/[0.035] p-5 sm:p-6">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.13em] text-white/45 mb-3">Pipeline (nå)</p>
+      <div className="flex h-3 rounded-full overflow-hidden bg-white/[0.05]">
+        {pipeline.filter((p) => p.count > 0).map((p) => (
+          <div key={p.stage} style={{ width: `${(p.count / total) * 100}%`, background: STAGE_COLORS[p.stage] || '#94a3b8' }} title={`${p.label}: ${p.count}`} />
+        ))}
+      </div>
+      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5">
+        {pipeline.map((p) => (
+          <span key={p.stage} className="inline-flex items-center gap-1.5 text-[11.5px] text-white/50">
+            <span className="h-2 w-2 rounded-full" style={{ background: STAGE_COLORS[p.stage] || '#94a3b8' }} />{p.label} <b className="text-white/80 tabular-nums">{p.count}</b>
+          </span>
+        ))}
+      </div>
+      {pv && pv.open > 0 && (
+        <div className="mt-4 pt-4 border-t border-white/[0.06]">
+          <p className="text-[11px] text-white/35 uppercase tracking-[0.1em] font-semibold">Potensial i åpne leads</p>
+          <p className="mt-1 text-white font-bold text-[26px] leading-none tabular-nums">{fmtKrFull(pv.potential)} <span className="text-white/40 text-[14px] font-semibold">kr</span></p>
+          <p className="mt-1 text-[11px] text-white/30">{pv.open} åpne · {pv.basis}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// --- Momentum-strip (live puls) ---
+function MomentumStrip({ momentum, platform }) {
+  if (!momentum && !platform) return null;
+  return (
+    <div className="relative mx-5 sm:mx-8 mt-1 mb-2 flex flex-wrap items-center gap-x-5 gap-y-2 rounded-2xl bg-white/[0.03] px-4 py-2.5 text-[12.5px]">
+      <span className="inline-flex items-center gap-1.5 font-bold text-emerald-300 text-[11px] uppercase tracking-[0.12em]">
+        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" style={{ animation: 'kpiPulse 1.6s ease-in-out infinite' }} /> Live
+      </span>
+      {momentum && (
+        <>
+          <span className="text-white/45">I dag: <b className="text-white tabular-nums">{fmtNum(momentum.sessionsToday)}</b> økter · <b className="text-white tabular-nums">{fmtNum(momentum.leadsToday)}</b> leads</span>
+          <span className="text-white/45">Siste 7 d: <b className="text-white tabular-nums">{fmtNum(momentum.sessions7d)}</b> økter · <b className="text-white tabular-nums">{fmtNum(momentum.leads7d)}</b> leads</span>
+        </>
+      )}
+      {platform && (
+        <span className="ml-auto inline-flex items-center gap-1.5 rounded-full bg-emerald-400/10 text-emerald-300 font-semibold px-2.5 py-1 text-[11.5px]">
+          <Zap className="w-3 h-3" /> MRR live: {fmtKrFull(platform.mrr)} kr · {fmtNum(platform.customers)} aktive kunder
+        </span>
+      )}
+    </div>
+  );
+}
+
 // --- LTV:CAC helsevurdering ---
 function ratingFor(ratio) {
   if (ratio == null) return { label: '—', color: '#94a3b8', pct: 0 };
@@ -286,8 +394,10 @@ function KpiDashboardInner({ apiKey }) {
   const chartData = chartMode === 'revenue' ? (data?.series?.cumulativeRevenue || []) : (data?.series?.leads || []);
 
   if (present) {
-    return <PresentationMode data={data} northStarView={northStarView} hero={hero} m={m} rating={rating}
+    const overlay = <PresentationMode data={data} northStarView={northStarView} hero={hero} m={m} rating={rating}
       chartData={data?.series?.cumulativeRevenue || []} period={period} setPeriod={setPeriod} periods={PERIODS} onExit={() => setPresent(false)} />;
+    // Portal til body: garanterer at overlayet ligger over topbar/sidebar uansett stacking-context.
+    return typeof document !== 'undefined' ? createPortal(overlay, document.body) : overlay;
   }
 
   return (
@@ -328,6 +438,7 @@ function KpiDashboardInner({ apiKey }) {
         <div className="h-[460px] grid place-items-center"><Loader2 className="w-6 h-6 animate-spin" style={{ color: ACCENT }} /></div>
       ) : (
         <div className="relative px-5 sm:px-8 pb-8">
+          <div className="-mx-5 sm:-mx-8"><MomentumStrip momentum={data?.momentum} platform={data?.platform} /></div>
           {/* NORTH STAR + Enhetsøkonomi */}
           <Reveal delay={40}>
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 mt-2 mb-4">
@@ -388,23 +499,30 @@ function KpiDashboardInner({ apiKey }) {
               <div className="lg:col-span-2 rounded-2xl bg-white/[0.035] p-5 sm:p-6">
                 <div className="flex items-center justify-between mb-1">
                   <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.13em] text-white/45">{chartMode === 'revenue' ? 'Omsetning (kumulativ)' : 'Nye leads (daglig)'}</p>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.13em] text-white/45">{chartMode === 'revenue' ? 'Omsetning (kumulativ)' : chartMode === 'monthly' ? 'Vekst måned for måned (12 mnd)' : 'Nye leads (daglig)'}</p>
                     <p className="mt-1 text-white font-bold text-[26px] leading-none tracking-[-0.02em] tabular-nums">
-                      {chartMode === 'revenue' ? `${fmtKrFull(m.revenue?.value)} kr` : `${fmtNum(m.newLeads?.value)}`}
+                      {chartMode === 'revenue' ? `${fmtKrFull(m.revenue?.value)} kr` : chartMode === 'monthly' ? `${fmtNum((data?.series?.monthly || []).reduce((s, x) => s + (x.leads || 0), 0))} leads · ${fmtNum((data?.series?.monthly || []).reduce((s, x) => s + (x.customers || 0), 0))} kunder` : `${fmtNum(m.newLeads?.value)}`}
                       {chartMode === 'revenue' && m.revenue?.delta != null && <span className="ml-2 align-middle"><Delta value={m.revenue.delta} /></span>}
                     </p>
                   </div>
                   <div className="flex items-center gap-0.5 rounded-full bg-white/[0.06] p-0.5">
+                    <button onClick={() => setChartMode('monthly')} data-testid="kpi-chart-monthly" className={`px-3 h-7 rounded-full text-[11.5px] font-semibold transition-all ${chartMode === 'monthly' ? 'bg-white text-[#0a0a0a]' : 'text-white/55'}`}>12 mnd</button>
                     <button onClick={() => setChartMode('revenue')} className={`px-3 h-7 rounded-full text-[11.5px] font-semibold transition-all ${chartMode === 'revenue' ? 'bg-white text-[#0a0a0a]' : 'text-white/55'}`}>Omsetning</button>
                     <button onClick={() => setChartMode('leads')} className={`px-3 h-7 rounded-full text-[11.5px] font-semibold transition-all ${chartMode === 'leads' ? 'bg-white text-[#0a0a0a]' : 'text-white/55'}`}>Leads</button>
                   </div>
                 </div>
                 <div className="mt-4">
-                  <AreaChart data={chartData} color={chartMode === 'revenue' ? EMER : ACCENT} height={200} />
-                  <div className="flex justify-between text-[10.5px] text-white/25 mt-2">
-                    <span>{chartData[0]?.day || ''}</span>
-                    <span>{chartData[chartData.length - 1]?.day || ''}</span>
-                  </div>
+                  {chartMode === 'monthly' ? (
+                    <MonthlyBars data={data?.series?.monthly || []} height={200} />
+                  ) : (
+                    <>
+                      <AreaChart data={chartData} color={chartMode === 'revenue' ? EMER : ACCENT} height={200} />
+                      <div className="flex justify-between text-[10.5px] text-white/25 mt-2">
+                        <span>{chartData[0]?.day || ''}</span>
+                        <span>{chartData[chartData.length - 1]?.day || ''}</span>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
               <div className="rounded-2xl bg-white/[0.035] p-5 sm:p-6">
@@ -417,7 +535,13 @@ function KpiDashboardInner({ apiKey }) {
           {/* Run-rate (kun løpende LTV) + sekundær-strip */}
           <Reveal delay={320}>
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4 mt-3 sm:mt-4">
-              {data?.runRate ? (
+              {data?.platform ? (
+                <div data-testid="kpi-platform-mrr" className="rounded-2xl p-5 sm:p-6 relative overflow-hidden" style={{ background: `linear-gradient(135deg, ${EMER}22 0%, ${EMER}05 60%)` }}>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.13em] text-emerald-200/80 flex items-center gap-1.5"><Zap className="w-3.5 h-3.5" /> MRR — live fra plattformen</p>
+                  <p className="mt-3 text-white font-bold text-[40px] leading-none tracking-[-0.03em] tabular-nums"><CountNumber value={data.platform.mrr} format={fmtKrFull} /> <span className="text-white/40 text-[18px] font-semibold">kr/mnd</span></p>
+                  <p className="mt-2 text-[12.5px] text-white/45">ARR-run-rate {fmtKrFull(data.platform.arr)} kr · {fmtNum(data.platform.customers)} aktive kunder · {data.platform.source === 'platform' ? 'synket fra driftsplattformen' : 'beregnet fra kontrakter'}</p>
+                </div>
+              ) : data?.runRate ? (
                 <div className="rounded-2xl p-5 sm:p-6 relative overflow-hidden" style={{ background: `linear-gradient(135deg, ${EMER}22 0%, ${EMER}05 60%)` }}>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.13em] text-emerald-200/80 flex items-center gap-1.5"><Zap className="w-3.5 h-3.5" /> Run-rate (ARR)</p>
                   <p className="mt-3 text-white font-bold text-[40px] leading-none tracking-[-0.03em] tabular-nums"><CountNumber value={data.runRate.arr} format={fmtKrFull} /> <span className="text-white/40 text-[18px] font-semibold">kr</span></p>
@@ -432,6 +556,28 @@ function KpiDashboardInner({ apiKey }) {
                 <MiniStat label="Total kunder" value={fmtNum(m.totalCustomers?.value)} sub={m.totalCustomers?.historical ? `+${fmtNum(m.totalCustomers.historical)} hist.` : 'sporet'} />
                 <MiniStat label="Responstid" value={m.responseHours?.value != null ? fmtNum(m.responseHours.value) : '—'} suffix="t" sub={m.responseHours?.sla24hPct != null ? `${m.responseHours.sla24hPct}% <24t` : ''} />
                 <MiniStat label="ROAS" value={fmtRatio(m.roasTrue?.value)} suffix="x" sub="omsetn. ÷ forbruk" />
+              </div>
+            </div>
+          </Reveal>
+
+          {/* Pipeline + kanaler + etterspørsel */}
+          <Reveal delay={380}>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4 mt-3 sm:mt-4">
+              <PipelineCard pipeline={m.pipeline || []} pv={data?.pipelineValue} />
+              <div className="rounded-2xl bg-white/[0.035] p-5 sm:p-6" data-testid="kpi-channels">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.13em] text-white/45 mb-4">Leads per kanal <span className="normal-case tracking-normal text-white/25">· {data?.period?.label || ''}</span></p>
+                <ChannelBars channels={data?.channels || []} />
+              </div>
+              <div className="rounded-2xl bg-white/[0.035] p-5 sm:p-6 flex flex-col justify-between" data-testid="kpi-demand">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.13em] text-white/45 flex items-center gap-1.5"><Users className="w-3.5 h-3.5 text-white/30" /> Etterspørsel · leietakere</p>
+                  <div className="mt-3 flex items-end gap-1.5">
+                    <CountNumber value={m.newTenantLeads?.value} format={fmtNum} className="font-bold tracking-[-0.03em] text-white tabular-nums text-[38px] leading-none" />
+                    {m.newTenantLeads?.delta != null && <span className="mb-1"><Delta value={m.newTenantLeads.delta} /></span>}
+                  </div>
+                  <p className="mt-1.5 text-[12.5px] text-white/40">boligsøkere i perioden</p>
+                </div>
+                <p className="mt-4 pt-4 border-t border-white/[0.06] text-[11.5px] text-white/35 leading-relaxed">Etterspørselssiden av markedsplassen — leietakerkø gjør boligene raskere utleid, men telles ikke i CAC/LTV.</p>
               </div>
             </div>
           </Reveal>
@@ -552,11 +698,30 @@ function PresentationMode({ data, northStarView, hero, m, rating, chartData, per
           <div className="mt-8 w-full max-w-3xl opacity-80"><AreaChart data={chartData} color={EMER} height={140} /></div>
         </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 pb-6">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 pb-5">
           <BigPresent label="Kost per kunde" value={hero.cac?.value} format={fmtKrFull} suffix="kr" />
           <BigPresent label="Snitt kundeverdi" value={hero.avgCustomerValue?.value} format={fmtKrFull} suffix="kr" />
           <BigPresent label="Nye kunder" value={m.newCustomers?.value} format={fmtNum} delta={m.newCustomers?.delta} />
           <BigPresent label="Tid til kunde" value={hero.timeToWin?.value} format={fmtNum} suffix="dager" />
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 pb-8">
+          <div className="lg:col-span-2 rounded-2xl bg-white/[0.04] px-6 py-6">
+            <div className="flex items-center justify-between">
+              <p className="text-[12px] font-semibold uppercase tracking-[0.14em] text-white/40">Vekst · siste 12 måneder</p>
+              {data?.platform && <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-400/10 text-emerald-300 font-semibold px-2.5 py-1 text-[12px]"><Zap className="w-3 h-3" /> MRR live: {fmtKrFull(data.platform.mrr)} kr</span>}
+            </div>
+            <div className="mt-4"><MonthlyBars data={data?.series?.monthly || []} height={150} /></div>
+          </div>
+          <div className="rounded-2xl bg-white/[0.04] px-6 py-6">
+            <p className="text-[12px] font-semibold uppercase tracking-[0.14em] text-white/40 mb-4">Leads per kanal</p>
+            <ChannelBars channels={data?.channels || []} />
+            {data?.momentum && (
+              <p className="mt-4 pt-4 border-t border-white/[0.06] text-[12px] text-white/40">
+                Siste 7 dager: <b className="text-white">{fmtNum(data.momentum.sessions7d)}</b> økter · <b className="text-white">{fmtNum(data.momentum.leads7d)}</b> leads
+              </p>
+            )}
+          </div>
         </div>
       </div>
     </div>
