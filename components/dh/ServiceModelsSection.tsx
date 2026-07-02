@@ -109,7 +109,10 @@ export default function ServiceModelsSection() {
           transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
           className="text-center max-w-[760px] mx-auto mb-12 sm:mb-14"
         >
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#cf97fc] mb-3">Slik fungerer det</p>
+          <span className="inline-flex items-center gap-2 px-3.5 py-[7px] rounded-full bg-[#f5edfc] border border-[#e9d9fa] mb-5">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#a765e0]" />
+            <span className="text-[11px] font-semibold uppercase tracking-[0.15em] text-[#8b5fc0]">Se filmen</span>
+          </span>
           <h2 className="text-[36px] sm:text-[48px] lg:text-[56px] font-extrabold tracking-[-0.034em] leading-[1.02] text-[#0a0a0a]">
             Slik jobber DigiHome for deg.
           </h2>
@@ -226,16 +229,18 @@ export default function ServiceModelsSection() {
         <div className="h-24 sm:h-28 lg:h-32" aria-hidden />
 
         <div className="text-center mb-16">
-          <motion.p
+          <motion.div
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
             viewport={{ once: true }}
             transition={{ duration: 0.4 }}
-            className="text-[11px] font-semibold uppercase tracking-[0.15em] mb-3"
-            style={{ color: '#9333EA' }}
+            className="mb-5"
           >
-            Våre tjenester
-          </motion.p>
+            <span className="inline-flex items-center gap-2 px-3.5 py-[7px] rounded-full bg-[#f5edfc] border border-[#e9d9fa]">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#a765e0]" />
+              <span className="text-[11px] font-semibold uppercase tracking-[0.15em] text-[#8b5fc0]">Våre tjenester</span>
+            </span>
+          </motion.div>
           <motion.h2
             initial={{ opacity: 0, y: 12 }}
             whileInView={{ opacity: 1, y: 0 }}

@@ -16,7 +16,10 @@ export default function TestimonialsSection() {
         <Reveal as="div" initial={{ opacity: 0, y: 12 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: '-80px' }} transition={{ duration: 0.5 }}
           className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-5 mb-14">
           <div>
-            <p className="text-[12px] font-semibold uppercase tracking-[0.16em] text-[#9b6cc4] mb-4">Kundehistorier</p>
+            <span className="inline-flex items-center gap-2 px-3.5 py-[7px] rounded-full bg-[#f5edfc] border border-[#e9d9fa] mb-5">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#a765e0]" />
+              <span className="text-[11px] font-semibold uppercase tracking-[0.15em] text-[#8b5fc0]">Kundehistorier</span>
+            </span>
             <h2 className="text-[34px] sm:text-[42px] font-bold tracking-[-0.03em] leading-[1.08] text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>
               Hva våre eiere sier
             </h2>

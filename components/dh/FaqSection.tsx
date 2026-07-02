@@ -21,8 +21,9 @@ export default function FaqSection() {
           transition={{ duration: 0.5 }}
           className="text-center mb-14"
         >
-          <span className="inline-flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.14em] text-[#9b6cc4]">
-            <MessageCircleQuestion className="w-4 h-4" /> Ofte stilte spørsmål
+          <span className="inline-flex items-center gap-2 px-3.5 py-[7px] rounded-full bg-[#f5edfc] border border-[#e9d9fa]">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#a765e0]" />
+            <span className="text-[11px] font-semibold uppercase tracking-[0.15em] text-[#8b5fc0] inline-flex items-center gap-1.5"><MessageCircleQuestion className="w-3.5 h-3.5" /> Ofte stilte spørsmål</span>
           </span>
           <h2
             className="text-[34px] sm:text-[42px] font-bold tracking-[-0.03em] leading-[1.08] text-[#0a0a0a] mt-4"

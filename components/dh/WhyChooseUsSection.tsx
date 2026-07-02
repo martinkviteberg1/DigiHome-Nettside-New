@@ -22,6 +22,12 @@ export default function WhyChooseUsSection() {
             </div>
           </Reveal>
           <div className="order-1 lg:order-2">
+            <Reveal as="div" initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ duration: 0.4 }} className="mb-5">
+              <span className="inline-flex items-center gap-2 px-3.5 py-[7px] rounded-full bg-[#f5edfc] border border-[#e9d9fa]">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#a765e0]" />
+                <span className="text-[11px] font-semibold uppercase tracking-[0.15em] text-[#8b5fc0]">Fordelene</span>
+              </span>
+            </Reveal>
             <Reveal as="h2" initial={{ opacity: 0, y: 12 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: '-80px' }} transition={{ duration: 0.5 }}
               className="text-[34px] sm:text-[42px] font-bold tracking-[-0.03em] leading-[1.08] text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>
               Hvorfor eiere velger DigiHome

@@ -23,7 +23,10 @@ export default function CTASection() {
         <motion.div initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: '-80px' }} transition={{ duration: 0.5 }}
           className="py-24 sm:py-32 grid lg:grid-cols-2 gap-12 items-center">
           <div>
-            <p className="text-[12px] font-semibold uppercase tracking-[0.16em] text-[#cf97fc] mb-5">Kom i gang</p>
+            <span className="inline-flex items-center gap-2 px-3.5 py-[7px] rounded-full bg-white/[0.06] border border-white/[0.12] mb-6">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#cf97fc]" />
+              <span className="text-[11px] font-semibold uppercase tracking-[0.15em] text-[#cf97fc]">Kom i gang</span>
+            </span>
             <h2 className="text-[36px] sm:text-[46px] lg:text-[54px] font-bold tracking-[-0.03em] leading-[1.06] text-white" style={{ fontFamily: 'var(--font-heading)' }} data-testid="cta-start-onboarding-button">
               Klar for å la eiendommen jobbe for deg?
             </h2>

@@ -66,10 +66,17 @@ export default function HeroSection() {
         <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 xl:gap-20 items-center">
           {/* Left */}
           <div>
+            <div className="dh-fade-up inline-flex items-center gap-2.5 px-4 py-2 rounded-full bg-white border border-[#ece5f5] shadow-[0_2px_12px_rgba(20,10,40,0.05)] mb-7">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#cf97fc] opacity-60" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-[#a765e0]" />
+              </span>
+              <span className="text-[12px] font-semibold text-[#555] tracking-[0.02em]">Eiendomsforvaltning i Bergen &middot; 150+ boliger</span>
+            </div>
             <h1
-              className="dh-rise text-[38px] sm:text-[48px] lg:text-[56px] xl:text-[62px] font-bold tracking-[-0.035em] leading-[1.06] text-[#0a0a0a]"
+              className="dh-rise text-[40px] sm:text-[52px] lg:text-[58px] xl:text-[66px] font-bold tracking-[-0.035em] leading-[1.04] text-[#0a0a0a]"
               style={{ fontFamily: 'var(--font-heading)', animationDelay: '0.05s' }}
-            >{T.heading[locale]}</h1>
+            >Smartere utleie.<br /><span className="dh-ink-shine">H&oslash;yere inntekt.</span></h1>
 
             <p className="dh-fade-up text-[16px] sm:text-[17px] text-[#555] leading-[1.75] mt-7 max-w-[44ch]" style={{ animationDelay: '0.15s' }}>
               {T.sub[locale]}
@@ -79,12 +86,12 @@ export default function HeroSection() {
               <div
                 onFocus={() => setFocused(true)}
                 onBlur={() => setFocused(false)}
-                className={`flex items-center max-w-[460px] rounded-2xl bg-white border transition-all duration-400 ${
+                className={`flex items-center max-w-[480px] rounded-full bg-white border transition-all duration-400 ${
                 focused
-                  ? 'border-[#cf97fc]/60 shadow-[0_0_0_3px_rgba(207,151,252,0.16),0_12px_40px_rgba(0,0,0,0.08)]'
-                  : 'border-[#e5e5e5] shadow-[0_2px_12px_rgba(0,0,0,0.04)] hover:shadow-[0_6px_24px_rgba(0,0,0,0.07)]'
+                  ? 'border-[#cf97fc]/60 shadow-[0_0_0_4px_rgba(207,151,252,0.14),0_16px_44px_rgba(20,10,40,0.10)]'
+                  : 'border-[#e5e5e5] shadow-[0_2px_14px_rgba(0,0,0,0.05)] hover:shadow-[0_8px_28px_rgba(20,10,40,0.09)]'
               }`}>
-                <div className="pl-5"><Search className="w-[18px] h-[18px] text-[#737373]" /></div>
+                <div className="pl-6"><Search className="w-[18px] h-[18px] text-[#737373]" /></div>
                 <AddressAutocomplete
                   value={address}
                   onChange={setAddress}
@@ -92,12 +99,12 @@ export default function HeroSection() {
                   placeholder={T.placeholder[locale]}
                   showIcon={false}
                   dataTestId="hero-address-input"
-                  inputClassName="flex-1 h-[56px] px-3.5 text-[15px] bg-transparent border-0 outline-none focus:outline-none focus-visible:outline-none focus:ring-0 placeholder:text-[#737373] w-full"
+                  inputClassName="flex-1 h-[60px] px-3.5 text-[15px] bg-transparent border-0 outline-none focus:outline-none focus-visible:outline-none focus:ring-0 placeholder:text-[#737373] w-full"
                   className="flex-1"
                 />
-                <div className="pr-1.5">
+                <div className="pr-2">
                   <Button type="submit" data-testid="hero-address-submit-button"
-                    className="rounded-xl bg-[#0a0a0a] text-white hover:bg-black h-[44px] px-6 text-[13px] font-semibold transition-all duration-200 hover:shadow-[0_4px_12px_rgba(0,0,0,0.2)] active:scale-[0.97] gap-1.5">
+                    className="rounded-full bg-[#0a0a0a] text-white hover:bg-black h-[46px] px-6 text-[13px] font-semibold transition-all duration-300 hover:shadow-[0_6px_20px_rgba(167,101,224,0.35)] active:scale-[0.97] gap-1.5">
                     {T.cta[locale]} <ArrowRight className="w-3.5 h-3.5" />
                   </Button>
                 </div>
@@ -105,11 +112,14 @@ export default function HeroSection() {
               <p className="text-[12px] text-[#737373] mt-3 ml-1">Gratis og uforpliktende &middot; Svar innen 24 timer</p>
             </form>
 
-            <div className="dh-fade-up flex items-center gap-10 mt-12" style={{ animationDelay: '0.35s' }}>
+            <div className="dh-fade-up flex items-center gap-8 sm:gap-10 mt-12" style={{ animationDelay: '0.35s' }}>
               {[{ n: '150+', l: 'Boliger' }, { n: '98%', l: 'Tilfredshet' }, { n: '+30%', l: 'Høyere inntekt' }].map((s: any) => (
                 <div key={s.l}>
-                  <p className="text-[22px] font-bold text-[#0a0a0a] tracking-tight" style={{ fontFamily: 'var(--font-heading)' }}>{s.n}</p>
-                  <p className="text-[11px] text-[#aaa] mt-0.5">{s.l}</p>
+                  <p className="text-[24px] font-bold text-[#0a0a0a] tracking-tight" style={{ fontFamily: 'var(--font-heading)' }}>{s.n}</p>
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <span className="w-3.5 h-[2px] rounded-full bg-[#cf97fc]" />
+                    <p className="text-[11px] text-[#999]">{s.l}</p>
+                  </div>
                 </div>
               ))}
             </div>

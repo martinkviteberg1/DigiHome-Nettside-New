@@ -41,7 +41,10 @@ export default function StatsSection() {
       <div className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16">
         <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ duration: 0.5 }}
           className="flex items-center justify-between border-b border-[#eee] pb-6 mb-12">
-          <p className="text-[12px] font-semibold uppercase tracking-[0.16em] text-[#9b6cc4]">DigiHome i tall</p>
+          <span className="inline-flex items-center gap-2 px-3.5 py-[7px] rounded-full bg-[#f5edfc] border border-[#e9d9fa]">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#a765e0]" />
+            <span className="text-[11px] font-semibold uppercase tracking-[0.15em] text-[#8b5fc0]">DigiHome i tall</span>
+          </span>
           <p className="text-[12px] text-[#bbb] hidden sm:block">Bergen · Oppdatert 2026</p>
         </motion.div>
         <div className="grid sm:grid-cols-3 gap-12 sm:gap-6">

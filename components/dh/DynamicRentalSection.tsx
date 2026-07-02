@@ -44,6 +44,18 @@ export default function DynamicRentalSection() {
 
           {/* ── Left: Text ── */}
           <div>
+            <motion.div
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.4 }}
+              className="mb-5"
+            >
+              <span className="inline-flex items-center gap-2 px-3.5 py-[7px] rounded-full bg-[#f5edfc] border border-[#e9d9fa]">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#a765e0]" />
+                <span className="text-[11px] font-semibold uppercase tracking-[0.15em] text-[#8b5fc0]">10+2-modellen</span>
+              </span>
+            </motion.div>
             <motion.h2
               initial={{ opacity: 0, y: 12 }}
               whileInView={{ opacity: 1, y: 0 }}
