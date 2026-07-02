@@ -141,13 +141,12 @@ export default function ServiceModelsSection() {
             loop
             playsInline
             preload="none"
-            poster={videoInView ? '/langtid-hero-poster.webp' : undefined}
+            poster={videoInView ? '/brandfilm-poster.jpg' : undefined}
             aria-hidden={audioMode}
             className="w-full h-auto block aspect-video object-cover transition-opacity duration-500"
             style={{ opacity: audioMode ? 0 : 1 }}
           >
-            {videoInView && <source src="/langtid-hero-720p.mp4" media="(max-width: 768px)" type="video/mp4" />}
-            {videoInView && <source src="/langtid-hero.mp4" type="video/mp4" />}
+            {videoInView && <source src="/brandfilm-web.mp4" type="video/mp4" />}
             Nettleseren din støtter ikke video.
           </video>
 
@@ -156,13 +155,13 @@ export default function ServiceModelsSection() {
             ref={audioRef}
             playsInline
             preload="none"
-            poster={videoInView ? '/langtid-hero-poster.webp' : undefined}
+            poster={videoInView ? '/brandfilm-poster.jpg' : undefined}
             onEnded={handleAudioEnded}
             className="absolute inset-0 w-full h-full object-cover transition-opacity duration-500"
             style={{ opacity: audioMode ? 1 : 0, pointerEvents: audioMode ? 'auto' : 'none' }}
             data-testid="service-models-video-audio"
           >
-            <source src="/langtid-hero-audio.mp4" type="video/mp4" />
+            <source src="/brandfilm-web.mp4" type="video/mp4" />
           </video>
 
           {/* Subtle bottom gradient — only on ambient state */}

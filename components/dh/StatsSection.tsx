@@ -5,7 +5,7 @@ import { motion } from '@/lib/motion-lite';
 
 const stats = [
   { end: 30, suffix: '%', label: 'Høyere inntekt', sub: 'sammenlignet med tradisjonell utleie', prefix: '+' },
-  { end: 30, suffix: '+', label: 'Eiendommer', sub: 'under aktiv forvaltning i Bergen', prefix: '' },
+  { end: 150, suffix: '+', label: 'Boliger', sub: 'under aktiv forvaltning i Bergen', prefix: '' },
   { end: 98, suffix: '%', label: 'Tilfredshet', sub: 'blant våre eiendomseiere', prefix: '' },
 ];
 

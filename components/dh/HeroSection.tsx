@@ -106,7 +106,7 @@ export default function HeroSection() {
             </form>
 
             <div className="dh-fade-up flex items-center gap-10 mt-12" style={{ animationDelay: '0.35s' }}>
-              {[{ n: '30+', l: 'Eiendommer' }, { n: '98%', l: 'Tilfredshet' }, { n: '+30%', l: 'Høyere inntekt' }].map((s: any) => (
+              {[{ n: '150+', l: 'Boliger' }, { n: '98%', l: 'Tilfredshet' }, { n: '+30%', l: 'Høyere inntekt' }].map((s: any) => (
                 <div key={s.l}>
                   <p className="text-[22px] font-bold text-[#0a0a0a] tracking-tight" style={{ fontFamily: 'var(--font-heading)' }}>{s.n}</p>
                   <p className="text-[11px] text-[#aaa] mt-0.5">{s.l}</p>
