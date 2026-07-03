@@ -76,13 +76,13 @@ export default function HeroSection() {
             <h1
               className="dh-rise text-[40px] sm:text-[52px] lg:text-[58px] xl:text-[66px] font-bold tracking-[-0.035em] leading-[1.04] text-[#0a0a0a]"
               style={{ fontFamily: 'var(--font-heading)', animationDelay: '0.05s' }}
-            >Smartere utleie.<br /><span className="dh-ink-shine">H&oslash;yere inntekt.</span></h1>
+            >Smartere utleie.<br />H&oslash;yere inntekt.</h1>
 
             <p className="dh-fade-up text-[16px] sm:text-[17px] text-[#555] leading-[1.75] mt-7 max-w-[44ch]" style={{ animationDelay: '0.15s' }}>
               {T.sub[locale]}
             </p>
 
-            <form onSubmit={handleSubmit} className="dh-fade-up mt-9" style={{ animationDelay: '0.25s' }}>
+            <form onSubmit={handleSubmit} className="dh-fade-up relative z-30 mt-9" style={{ animationDelay: '0.25s' }}>
               <div
                 onFocus={() => setFocused(true)}
                 onBlur={() => setFocused(false)}
