@@ -5,7 +5,7 @@ import sharp from 'sharp';
 import { promises as fsp } from 'fs';
 import nodePath from 'path';
 import { getDb, clean } from '@/lib/mongodb';
-import { getObject, PUBLIC_PREFIX } from '@/lib/objectStorage';
+import { getObject, putObject, PUBLIC_PREFIX } from '@/lib/objectStorage';
 import { isBot, buildEvent, ensureAnalyticsIndexes, computeAnalytics, computeLeadIntel, computeFunnels, computeLandingPages } from '@/lib/analytics-server';
 import { deriveChannel, serializeForLLM, computeWebVitals, detectAnomalies, computeLive, computeAdsEconomics, computeMetaEconomics, combineAdsEconomics, computeAdsLeadsSeries } from '@/lib/analytics-server';
 import { parseGoogleAdsCsv } from '@/lib/adsImport';
@@ -17,6 +17,17 @@ import { googleAdsNativeConfigured, listConversionActions, resolveOfflineConvers
 import { dataManagerConfigured, ingestOfflineConversion } from '@/lib/google-ads-datamanager';
 import { IMPORTED_COLL, importRecords, parseCsv, summarizeImported, syncFromPlatform, listImported, updateImportedOverride } from '@/lib/imported-leads';
 import { queueLeadPushback, flushLeadPushbacks, pushbackStats } from '@/lib/lead-pushback';
+import {
+  DD_SECTIONS, DD_CATEGORIES,
+  createLink as ddCreateLink, listLinks as ddListLinks, updateLink as ddUpdateLink, deleteLink as ddDeleteLink,
+  validateToken as ddValidateToken, recordView as ddRecordView, logAudit as ddLogAudit, listAudit as ddListAudit,
+  validateFileMeta as ddValidateFileMeta, createDocument as ddCreateDocument, addVersion as ddAddVersion,
+  listDocuments as ddListDocuments, updateDocument as ddUpdateDocument, getDocument as ddGetDocument,
+  deleteDocument as ddDeleteDocument, publicDocumentView as ddPublicDocView,
+  saveChunk as ddSaveChunk, assembleChunks as ddAssembleChunks, cleanupChunks as ddCleanupChunks,
+  askQuestion as ddAskQuestion, listQuestionsForLink as ddListQuestionsForLink,
+  listAllQuestions as ddListAllQuestions, answerQuestion as ddAnswerQuestion, deleteQuestion as ddDeleteQuestion,
+} from '@/lib/investor-room';
 import { computeKpiDashboard, getKpiSettings, setKpiSettings } from '@/lib/kpi-dashboard';
 import { getFinanceSettings, setFinanceSettings, listCosts, upsertCost, deleteCost, listContracts, upsertContract, deleteContract, listEvents, upsertEvent, deleteEvent, computeResultat, computeLikviditet, computeFinanceOverview, computeTrends, captureSnapshot, computeInvestorMetrics, computeForecast, computeBoardPack, computeCustomers, computePlatformCustomers } from '@/lib/finance';
 import { syncContractsFromPlatform, syncCustomersFromPlatform } from '@/lib/contracts-sync';
@@ -2612,6 +2623,223 @@ async function handleRoute(request, { params }) {
       const summary = await summarizeImported(db);
       return cors(NextResponse.json({ ok: true, deleted: res.deletedCount, summary }));
     }
+
+    // ===================================================================
+    // INVESTOR-ROM (levende DD-rom) — magic links, dokumenthvelv, audit, Q&A.
+    // Admin-siden er nøkkel-gatet; investor-siden gates av revokerbare tokens.
+    // Tall gjenbrukes fra finance-motoren (computeBoardPack) — NULL PII.
+    // ===================================================================
+    if (route === '/admin/investor-room' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const [links, documents, questions, audit] = await Promise.all([
+        ddListLinks(db), ddListDocuments(db, { includeArchived: true }), ddListAllQuestions(db), ddListAudit(db, { limit: 60 }),
+      ]);
+      return cors(NextResponse.json({
+        ok: true, links, documents, questions, audit,
+        categories: DD_CATEGORIES, sections: DD_SECTIONS,
+        baseUrl: process.env.NEXT_PUBLIC_BASE_URL || '',
+      }));
+    }
+
+    if (route === '/admin/investor-room/links' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      const result = await ddCreateLink(db, body);
+      if (!result.ok) return cors(NextResponse.json(result, { status: 400 }));
+      const url = `${process.env.NEXT_PUBLIC_BASE_URL || ''}/investor?t=${result.link.token}`;
+      return cors(NextResponse.json({ ...result, url }, { status: 201 }));
+    }
+
+    if (route === '/admin/investor-room/links' && method === 'PUT') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      const result = await ddUpdateLink(db, { id: body.id, patch: body.patch || {} });
+      return cors(NextResponse.json(result, { status: result.ok ? 200 : 400 }));
+    }
+
+    if (route === '/admin/investor-room/links' && method === 'DELETE') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const id = (new URL(request.url).searchParams.get('id') || '').trim();
+      const result = await ddDeleteLink(db, id);
+      return cors(NextResponse.json(result, { status: result.ok ? 200 : 400 }));
+    }
+
+    // Chunked opplasting til dokumenthvelvet (omgår proxy-grenser, maks 15MB).
+    if (route === '/admin/investor-room/upload-chunk' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      const result = await ddSaveChunk(db, body);
+      return cors(NextResponse.json(result, { status: result.ok ? 200 : 400 }));
+    }
+
+    if (route === '/admin/investor-room/upload-complete' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      const metaCheck = ddValidateFileMeta({ filename: body.filename, size: body.size });
+      if (!metaCheck.ok) return cors(NextResponse.json(metaCheck, { status: 400 }));
+      const asm = await ddAssembleChunks(db, { uploadId: body.uploadId, total: body.total });
+      if (!asm.ok) return cors(NextResponse.json(asm, { status: 400 }));
+      const fileId = uuidv4();
+      const safeName = (body.filename || 'dokument').toString().replace(/[^\w.\-æøåÆØÅ ]/g, '_').slice(0, 150);
+      const objectPath = `digihome/dd/${fileId}/${encodeURIComponent(safeName)}`;
+      try {
+        await putObject(objectPath, asm.buffer, body.mime || 'application/octet-stream');
+      } catch (e) {
+        await ddCleanupChunks(db, body.uploadId);
+        return cors(NextResponse.json({ ok: false, error: `Objektlagring feilet: ${e.message}` }, { status: 502 }));
+      }
+      await ddCleanupChunks(db, body.uploadId);
+      const file = { objectPath, filename: safeName, size: asm.buffer.length, mime: (body.mime || 'application/octet-stream').slice(0, 100) };
+      let result;
+      if (body.docId) {
+        result = await ddAddVersion(db, { docId: body.docId, file });
+        if (result.ok) result.docId = body.docId;
+      } else {
+        result = await ddCreateDocument(db, { title: body.title, category: body.category, description: body.description, file });
+      }
+      return cors(NextResponse.json(result, { status: result.ok ? 201 : 400 }));
+    }
+
+    if (route === '/admin/investor-room/docs' && method === 'PUT') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      const result = await ddUpdateDocument(db, { id: body.id, patch: body.patch || {} });
+      return cors(NextResponse.json(result, { status: result.ok ? 200 : 400 }));
+    }
+
+    if (route === '/admin/investor-room/docs' && method === 'DELETE') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const id = (new URL(request.url).searchParams.get('id') || '').trim();
+      const result = await ddDeleteDocument(db, id);
+      return cors(NextResponse.json(result, { status: result.ok ? 200 : 400 }));
+    }
+
+    if (route === '/admin/investor-room/file' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const sp = new URL(request.url).searchParams;
+      const doc = await ddGetDocument(db, (sp.get('docId') || '').trim());
+      if (!doc) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
+      const vNum = Number(sp.get('version')) || doc.currentVersion;
+      const ver = (doc.versions || []).find((v) => v.version === vNum) || doc.versions[doc.versions.length - 1];
+      const obj = await getObject(ver.objectPath);
+      if (!obj) return cors(NextResponse.json({ ok: false, error: 'Filen finnes ikke i lagringen' }, { status: 404 }));
+      const res = new NextResponse(obj.buffer, { status: 200 });
+      res.headers.set('Content-Type', ver.mime || obj.contentType || 'application/octet-stream');
+      res.headers.set('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(ver.filename)}`);
+      res.headers.set('Cache-Control', 'no-store');
+      return cors(res);
+    }
+
+    if (route === '/admin/investor-room/qa' && method === 'PUT') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      const result = await ddAnswerQuestion(db, { id: body.id, answer: body.answer, isPublic: body.isPublic });
+      return cors(NextResponse.json(result, { status: result.ok ? 200 : 400 }));
+    }
+
+    if (route === '/admin/investor-room/qa' && method === 'DELETE') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const id = (new URL(request.url).searchParams.get('id') || '').trim();
+      const result = await ddDeleteQuestion(db, id);
+      return cors(NextResponse.json(result, { status: result.ok ? 200 : 400 }));
+    }
+
+    // --- Investor-rom: offentlige token-gatede endepunkter ------------------
+    // GET /investor/room?t=<token> → levende datapakke scopet til lenkens seksjoner.
+    if (route === '/investor/room' && method === 'GET') {
+      const sp = new URL(request.url).searchParams;
+      const link = await ddValidateToken(db, sp.get('t'));
+      if (!link) return cors(NextResponse.json({ ok: false, error: 'Ugyldig lenke' }, { status: 401 }));
+      if (link.invalid) {
+        return cors(NextResponse.json({
+          ok: false,
+          error: link.invalid === 'revoked' ? 'Tilgangen er trukket tilbake' : 'Lenken er utløpt',
+          reason: link.invalid,
+        }, { status: 403 }));
+      }
+      await ddRecordView(db, link.id);
+      ddLogAudit(db, { linkId: link.id, label: link.label, event: 'view_room', ua: request.headers.get('user-agent') });
+
+      // Board-pack er tung (KPI + live ads-kall) → 5 min prosess-cache.
+      const CACHE_MS = 5 * 60 * 1000;
+      const g = globalThis;
+      let pack = null;
+      if (g.__ddBoardPack && (Date.now() - g.__ddBoardPack.at) < CACHE_MS) {
+        pack = g.__ddBoardPack.data;
+      } else {
+        try {
+          pack = await computeBoardPack(db);
+          g.__ddBoardPack = { at: Date.now(), data: pack };
+        } catch (e) { pack = null; }
+      }
+
+      const has = (s) => (link.sections || []).includes(s);
+      const out = {
+        ok: true,
+        company: { name: 'DigiHome', tagline: 'AI-drevet eiendomsforvaltning · Bergen' },
+        viewer: { label: link.label, sections: link.sections },
+        generatedAt: pack?.generatedAt || new Date().toISOString(),
+        currency: 'NOK',
+      };
+      if (pack) {
+        if (has('metrics')) {
+          out.metrics = {
+            investor: pack.investor || null,
+            mrrHistory: pack.mrrHistory || null,
+          };
+        }
+        if (has('economy')) {
+          out.economy = {
+            resultat: pack.resultat || null,
+            likviditet: pack.likviditet ? { summary: pack.likviditet.summary, opening: pack.likviditet.opening, months: pack.likviditet.months, scenarios: pack.likviditet.scenarios } : null,
+          };
+        }
+        if (has('forecast')) out.forecast = pack.forecast || null;
+      }
+      if (has('docs')) {
+        const docs = await ddListDocuments(db, { includeArchived: false });
+        out.documents = docs.map(ddPublicDocView);
+        out.categories = DD_CATEGORIES.map(({ key, label }) => ({ key, label }));
+      }
+      if (has('qa')) {
+        out.questions = await ddListQuestionsForLink(db, link.id);
+      }
+      const res = cors(NextResponse.json(out));
+      res.headers.set('Cache-Control', 'no-store');
+      return res;
+    }
+
+    // GET /investor/file?t=<token>&docId=<id> → nedlasting m/ audit-logg.
+    if (route === '/investor/file' && method === 'GET') {
+      const sp = new URL(request.url).searchParams;
+      const link = await ddValidateToken(db, sp.get('t'));
+      if (!link || link.invalid) return cors(NextResponse.json({ ok: false, error: 'Ugyldig lenke' }, { status: link ? 403 : 401 }));
+      if (!(link.sections || []).includes('docs')) return cors(NextResponse.json({ ok: false, error: 'Ingen dokumenttilgang' }, { status: 403 }));
+      const doc = await ddGetDocument(db, (sp.get('docId') || '').trim());
+      if (!doc || doc.archived) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
+      const ver = (doc.versions || [])[doc.versions.length - 1];
+      const obj = await getObject(ver.objectPath);
+      if (!obj) return cors(NextResponse.json({ ok: false, error: 'Filen finnes ikke i lagringen' }, { status: 404 }));
+      ddLogAudit(db, { linkId: link.id, label: link.label, event: 'download_doc', meta: { docId: doc.id, title: doc.title, version: ver.version }, ua: request.headers.get('user-agent') });
+      const res = new NextResponse(obj.buffer, { status: 200 });
+      res.headers.set('Content-Type', ver.mime || obj.contentType || 'application/octet-stream');
+      res.headers.set('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(ver.filename)}`);
+      res.headers.set('Cache-Control', 'no-store');
+      return cors(res);
+    }
+
+    // POST /investor/qa?t=<token> {question} → still spørsmål (logges).
+    if (route === '/investor/qa' && method === 'POST') {
+      const sp = new URL(request.url).searchParams;
+      const link = await ddValidateToken(db, sp.get('t'));
+      if (!link || link.invalid) return cors(NextResponse.json({ ok: false, error: 'Ugyldig lenke' }, { status: link ? 403 : 401 }));
+      if (!(link.sections || []).includes('qa')) return cors(NextResponse.json({ ok: false, error: 'Q&A er ikke aktivert for din tilgang' }, { status: 403 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      const result = await ddAskQuestion(db, { linkId: link.id, label: link.label, question: body.question });
+      if (result.ok) ddLogAudit(db, { linkId: link.id, label: link.label, event: 'ask_question', meta: { preview: (body.question || '').slice(0, 80) } });
+      return cors(NextResponse.json(result, { status: result.ok ? 201 : 400 }));
+    }
+
 
     // ===================================================================
     // Nyhetsbrev — komponering, målgrupper, test-/masseutsending og avmelding.

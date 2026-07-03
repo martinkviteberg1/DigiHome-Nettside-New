@@ -16,7 +16,8 @@ export default function SiteAnalytics() {
 
   useEffect(() => {
     if (!pathname) return;
-    if (pathname.startsWith('/admin')) return;
+    // Ingen sporing i admin eller det konfidensielle investor-rommet.
+    if (pathname.startsWith('/admin') || pathname.startsWith('/investor')) return;
     // Admin-forhåndsvisning laster landingssider i en iframe — ikke forurens statistikken.
     if (typeof window !== 'undefined' && window.self !== window.top) return;
     track('pageview');
@@ -28,7 +29,7 @@ export default function SiteAnalytics() {
   useEffect(() => {
     if (vitalsBound) return;
     if (typeof window === 'undefined') return;
-    if (window.location.pathname.startsWith('/admin')) return;
+    if (window.location.pathname.startsWith('/admin') || window.location.pathname.startsWith('/investor')) return;
     if (window.self !== window.top) return; // iframe-forhåndsvisning
     vitalsBound = true;
     let cancelled = false;

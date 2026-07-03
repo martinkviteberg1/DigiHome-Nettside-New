@@ -6,7 +6,7 @@ import {
   Menu, X, ChevronRight, ShieldCheck, Sparkles, MessageSquare,
   LayoutDashboard, Radio, Activity, GitBranch, Gauge, Megaphone, Database,
   Command, Search, CornerDownLeft, LayoutTemplate, Crosshair, TrendingUp, Wallet,
-  Globe, ExternalLink, PenLine, Mail, Home, History,
+  Globe, ExternalLink, PenLine, Mail, Home, History, Landmark,
 } from 'lucide-react';
 import InnsiktDashboard from '@/components/admin/InnsiktDashboard';
 import KpiDashboard from '@/components/admin/KpiDashboard';
@@ -17,6 +17,7 @@ import PlaybookTab from '@/components/admin/PlaybookTab';
 import NewsletterTab from '@/components/admin/NewsletterTab';
 import PropertiesTab from '@/components/admin/PropertiesTab';
 import HistoryTab from '@/components/admin/HistoryTab';
+import InvestorRoomTab from '@/components/admin/InvestorRoomTab';
 
 const SESSION_KEY = 'dh_admin_session';
 const LEGACY_KEY = 'dh_admin_key';
@@ -26,6 +27,7 @@ const NAV = [
     group: 'Ledelse',
     items: [
       { k: 'nokkeltall', l: 'Nøkkeltall', icon: TrendingUp, desc: 'Investorklare KPIer · CAC · LTV · konvertering' },
+      { k: 'investorrom', l: 'Investor-rom', icon: Landmark, desc: 'Levende DD-rom — tilgangslenker, dokumenter & Q&A' },
       { k: 'playbook', l: 'Playbook', icon: FileText, desc: 'Marketing-strategi · konkurrentanalyse · 90-dagersplan' },
     ],
   },
@@ -77,6 +79,7 @@ const INSIGHT_TABS = [
 
 const SECTION_TITLES = {
   nokkeltall: { t: 'Nøkkeltall', s: 'Investorklare KPIer · CAC · LTV · tid til kunde · konvertering' },
+  investorrom: { t: 'Investor-rom', s: 'Levende DD-rom — del tilgangslenker, administrer dokumenthvelv og svar på investorspørsmål. All aktivitet logges' },
   playbook: { t: 'Playbook', s: 'Head of Marketing-strategi · Utleiemegleren-analyse · 90-dagersplan · budsjettmatematikk' },
   innsikt: { t: 'Innsikt', s: 'Førsteparts analyse · cookieless · GDPR-trygt' },
   okonomi: { t: 'Økonomi', s: 'Resultat & likviditet · honorar (prosent av leie) · burn rate & runway' },
@@ -306,6 +309,7 @@ export default function AdminPage() {
   const runInsight = (k) => { setSection('innsikt'); setInsightTab(k); setSidebarOpen(false); setPaletteOpen(false); };
   const paletteCommands = [
     { id: 'sec-nokkeltall', group: 'Ledelse', label: 'Nøkkeltall', icon: TrendingUp, action: () => runNavigate('nokkeltall') },
+    { id: 'sec-investorrom', group: 'Ledelse', label: 'Investor-rom (DD)', icon: Landmark, action: () => runNavigate('investorrom') },
     ...INSIGHT_TABS.map((t) => ({ id: `insight-${t.k}`, group: 'Innsikt', label: t.l, icon: t.icon, action: () => runInsight(t.k) })),
     { id: 'sec-kunder', group: 'Forretning', label: 'Kunder', icon: Users, action: () => runNavigate('kunder') },
     { id: 'sec-abonnementer', group: 'Forretning', label: 'Abonnementer', icon: CreditCard, action: () => runNavigate('abonnementer') },
@@ -362,6 +366,7 @@ export default function AdminPage() {
 
         <div key={section} className="px-4 sm:px-8 py-6 max-w-[1440px] dh-fade">
           {section === 'nokkeltall' && <KpiDashboard apiKey={token} />}
+          {section === 'investorrom' && <InvestorRoomTab apiKey={token} />}
           {section === 'playbook' && <PlaybookTab apiKey={token} />}
           {section === 'nyhetsbrev' && <NewsletterTab apiKey={token} />}
           {section === 'boliger' && <PropertiesTab apiKey={token} />}
