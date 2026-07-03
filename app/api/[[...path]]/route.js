@@ -1626,12 +1626,49 @@ async function handleRoute(request, { params }) {
     }
 
     // --- Admin: lead-oversikt + manuell re-forwarding (enkel nøkkel-gating) ---
+    // Historiske leads (imported_leads) flettes inn i samme pipeline-visning med
+    // pre_tracking:true — de vises/håndteres som vanlige leads i UI-et, men
+    // holdes UTENFOR betalt ROAS/CAC (egen kolleksjon → aldri med i beregningene).
     if (route === '/admin/leads' && method === 'GET') {
       if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       maybeReforward(db); // selvhelbredende catch-up ved admin-last (throttlet)
       const leads = await db.collection('leads').find({}).sort({ createdAt: -1 }).limit(500).toArray();
       const tenants = await db.collection('tenant_leads').find({}).sort({ createdAt: -1 }).limit(500).toArray();
-      return cors(NextResponse.json({ leads: leads.map(clean), tenants: tenants.map(clean) }));
+      let importedMapped = [];
+      try {
+        const imported = await db.collection(IMPORTED_COLL).aggregate([
+          { $addFields: {
+            eff_channel: { $ifNull: ['$override.channel', '$channel'] },
+            eff_status: { $ifNull: ['$override.status', '$status'] },
+            eff_won_value: { $ifNull: ['$override.won_value', '$won_value'] },
+          } },
+          { $sort: { created_at: -1, imported_at: -1 } },
+          { $limit: 500 },
+          { $project: { _id: 0 } },
+        ]).toArray();
+        importedMapped = imported.map((l) => ({
+          id: l.id,
+          name: l.name || '', email: l.email || '', phone: l.phone || '',
+          address: l.address || '', postal_code: l.postal_code || '',
+          createdAt: l.created_at || l.imported_at || null,
+          status: l.eff_status || 'new',
+          wonValue: l.eff_won_value != null ? l.eff_won_value : null,
+          wonCurrency: l.currency || 'NOK',
+          channel: l.eff_channel || 'unknown',
+          source: l.eff_channel || 'unknown',
+          lead_type: l.lead_type || 'huseier',
+          platform_id: l.platform_id || null,
+          note: (l.override && l.override.note) || null,
+          pre_tracking: true,
+          imported: true,
+          forwarded: true, // kom FRA CRM-et → skal aldri i «venter»-køen
+          syncedFromPlatform: !!l.platform_id,
+        }));
+      } catch (e) { importedMapped = []; }
+      const byDate = (a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+      const mergedLeads = [...leads.map(clean), ...importedMapped.filter((x) => x.lead_type !== 'leietaker')].sort(byDate);
+      const mergedTenants = [...tenants.map(clean), ...importedMapped.filter((x) => x.lead_type === 'leietaker')].sort(byDate);
+      return cors(NextResponse.json({ leads: mergedLeads, tenants: mergedTenants, importedCount: importedMapped.length }));
     }
 
     if (route === '/admin/forward' && method === 'POST') {
@@ -2438,6 +2475,20 @@ async function handleRoute(request, { params }) {
       const sp = new URL(request.url).searchParams;
       const summary = await summarizeImported(db);
       let pushback = null; try { pushback = await pushbackStats(db); } catch (e) { pushback = null; }
+      // Historisk annonseforbruk (før sporing) — seedes med kjente tall første gang,
+      // kan justeres i UI. Brukes til blandet CPL/CAC i «Historisk analyse».
+      let historicalSpend = null;
+      try {
+        await db.collection('marketing_settings').updateOne(
+          { id: 'historical_spend' },
+          { $setOnInsert: {
+            id: 'historical_spend', meta: 34400, google: 41, other: 0, currency: 'NOK',
+            note: 'Annonseforbruk før sporing ble aktivert (est.)', updated_at: new Date().toISOString(),
+          } },
+          { upsert: true }
+        );
+        historicalSpend = await db.collection('marketing_settings').findOne({ id: 'historical_spend' }, { projection: { _id: 0 } });
+      } catch (e) { historicalSpend = null; }
       if (['1', 'true'].includes(String(sp.get('list')))) {
         const limit = Math.min(Math.max(Number(sp.get('limit')) || 100, 1), 500);
         const skip = Math.max(Number(sp.get('skip')) || 0, 0);
@@ -2447,9 +2498,34 @@ async function handleRoute(request, { params }) {
           q: (sp.get('q') || '').trim() || undefined,
           limit, skip,
         });
-        return cors(NextResponse.json({ ...summary, pushback, list: items, listTotal: total, limit, skip }));
+        return cors(NextResponse.json({ ...summary, pushback, historicalSpend, list: items, listTotal: total, limit, skip }));
       }
-      return cors(NextResponse.json({ ...summary, pushback }));
+      return cors(NextResponse.json({ ...summary, pushback, historicalSpend }));
+    }
+
+    // Oppdater historisk annonseforbruk (Meta/Google/annet) — grunnlag for
+    // blandet CPL/CAC i «Historisk analyse». Kun tall ≥ 0 godtas.
+    if (route === '/admin/imported-leads/spend' && method === 'PUT') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      const set = {};
+      for (const k of ['meta', 'google', 'other']) {
+        if (body[k] !== undefined) {
+          const v = Number(body[k]);
+          if (!isFinite(v) || v < 0) return cors(NextResponse.json({ ok: false, error: `Ugyldig beløp for ${k}` }, { status: 400 }));
+          set[k] = Math.round(v * 100) / 100;
+        }
+      }
+      if (body.note !== undefined) set.note = String(body.note || '').slice(0, 300);
+      if (!Object.keys(set).length) return cors(NextResponse.json({ ok: false, error: 'Ingen felt å oppdatere' }, { status: 400 }));
+      set.updated_at = new Date().toISOString();
+      await db.collection('marketing_settings').updateOne(
+        { id: 'historical_spend' },
+        { $set: set, $setOnInsert: { id: 'historical_spend', currency: 'NOK' } },
+        { upsert: true }
+      );
+      const historicalSpend = await db.collection('marketing_settings').findOne({ id: 'historical_spend' }, { projection: { _id: 0 } });
+      return cors(NextResponse.json({ ok: true, historicalSpend }));
     }
 
     // Manuell redigering (enkelt {id} eller bulk {ids}): kilde, status, verdi,
@@ -4190,8 +4266,27 @@ async function handleRoute(request, { params }) {
       const id = (searchParams.get('id') || '').toString();
       const coll = searchParams.get('type') === 'tenant' ? 'tenant_leads' : 'leads';
       if (!id) return cors(NextResponse.json({ ok: false, error: 'Mangler id' }, { status: 400 }));
-      const lead = await db.collection(coll).findOne({ id });
-      if (!lead) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
+      let lead = await db.collection(coll).findOne({ id });
+      if (!lead) {
+        // Historisk lead (imported_leads) — returner effektive felter, ingen tidslinje
+        // (kom inn før sporing → ingen hendelser å vise).
+        const imp = await db.collection(IMPORTED_COLL).findOne({ id }, { projection: { _id: 0 } });
+        if (imp) {
+          const effLead = {
+            ...imp,
+            createdAt: imp.created_at || imp.imported_at || null,
+            status: (imp.override && imp.override.status) || imp.status || 'new',
+            wonValue: (imp.override && imp.override.won_value != null) ? imp.override.won_value : (imp.won_value != null ? imp.won_value : null),
+            wonCurrency: imp.currency || 'NOK',
+            channel: (imp.override && imp.override.channel) || imp.channel || 'unknown',
+            pre_tracking: true,
+            forwarded: true,
+            syncedFromPlatform: !!imp.platform_id,
+          };
+          return cors(NextResponse.json({ ok: true, lead: effLead, timeline: [] }));
+        }
+        return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
+      }
       const sid = lead.attribution && lead.attribution.sessionId;
       const vid = lead.attribution && lead.attribution.visitorId;
       let timeline = [];

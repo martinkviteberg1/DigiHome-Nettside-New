@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Activity, BarChart3, Users, Sparkles, Database,
   Radio, Gauge, TrendingUp, TrendingDown, Download, Megaphone,
   Search, X, ArrowUp, ArrowDown, FileSpreadsheet, ChevronRight, GitBranch,
-  MoreHorizontal, Trophy, Clock, Target, ShieldCheck, Flame, LayoutTemplate, Crosshair, Layers,
+  MoreHorizontal, Trophy, Clock, Target, ShieldCheck, Flame, LayoutTemplate, Crosshair, Layers, History,
 } from 'lucide-react';
 import LeadDrawer from '@/components/admin/LeadDrawer';
 import OverviewTab from '@/components/admin/OverviewTab';
@@ -40,6 +40,16 @@ const STATUS_OPTS = [
   { v: 'new', l: 'Ny' }, { v: 'contacted', l: 'Kontaktet' }, { v: 'qualified', l: 'Kvalifisert' },
   { v: 'won', l: 'Vunnet' }, { v: 'lost', l: 'Tapt' },
 ];
+// Historiske leads følger CRM-pipelinen (flere steg) — vises kun for pre_tracking-rader.
+const IMPORTED_STATUS_OPTS = [
+  { v: 'new', l: 'Ny' }, { v: 'contacted', l: 'Kontaktet' }, { v: 'qualified', l: 'Kvalifisert' },
+  { v: 'viewing', l: 'Befaring' }, { v: 'offer', l: 'Tilbud sendt' },
+  { v: 'won', l: 'Vunnet' }, { v: 'lost', l: 'Tapt' },
+];
+const IMPORTED_CHANNELS = [
+  ['unknown', 'Ukjent'], ['google', 'Google Ads'], ['meta', 'Meta'], ['finn', 'FINN'],
+  ['referral', 'Anbefaling'], ['phone', 'Telefon'], ['organic', 'Organisk'], ['email', 'E-post'],
+];
 const RANGES = [{ d: 7, l: '7d' }, { d: 30, l: '30d' }, { d: 90, l: '90d' }];
 
 export default function InnsiktDashboard({ apiKey, tab: propTab, onTabChange, onStats }) {
@@ -64,6 +74,7 @@ export default function InnsiktDashboard({ apiKey, tab: propTab, onTabChange, on
   const [channelFilter, setChannelFilter] = useState('all');
   const [sortBy, setSortBy] = useState('createdAt');
   const [sortDir, setSortDir] = useState('desc');
+  const [showImported, setShowImported] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [leadAdsSyncing, setLeadAdsSyncing] = useState(false);
   const [leadAdsMsg, setLeadAdsMsg] = useState('');
@@ -138,22 +149,48 @@ export default function InnsiktDashboard({ apiKey, tab: propTab, onTabChange, on
   };
 
   const doSetStatus = async (id, status, type) => {
+    // Historiske leads (pre_tracking) oppdateres via imported-leads-endepunktet
+    // → lagres som override + køes automatisk for toveis-synk tilbake til CRM-et.
+    const row = [...data.leads, ...data.tenants].find((x) => x.id === id);
+    const isImported = row && row.pre_tracking === true;
     let value;
     if (status === 'won') {
-      const input = window.prompt('Kontraktsverdi for Google Ads (NOK, valgfritt). La stå tom for å bruke standardverdi:', '');
+      const input = window.prompt(isImported
+        ? 'Kontraktsverdi (NOK/mnd, valgfritt):'
+        : 'Kontraktsverdi for Google Ads (NOK, valgfritt). La stå tom for å bruke standardverdi:', '');
       if (input === null) return; // avbrutt
       const n = Number((input || '').replace(/[^\d.,]/g, '').replace(',', '.'));
       if (isFinite(n) && n > 0) value = n;
     }
     setStatusBusy(id);
     try {
-      await fetch(`/api/admin/lead-status?key=${encodeURIComponent(apiKey)}`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, status, type: type || 'lead', value }),
-      });
+      if (isImported) {
+        await fetch(`/api/admin/imported-leads?key=${encodeURIComponent(apiKey)}`, {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids: [id], patch: { status, ...(value != null ? { won_value: value } : {}) } }),
+        });
+      } else {
+        await fetch(`/api/admin/lead-status?key=${encodeURIComponent(apiKey)}`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id, status, type: type || 'lead', value }),
+        });
+      }
       await load();
       // Trigg ny henting i drawer (ny objekt-referanse → useEffect kjører på nytt)
       setDrawerLead((dl) => (dl && dl.id === id ? { ...dl } : dl));
+    } catch (e) {} finally { setStatusBusy(''); }
+  };
+
+  // Manuell kilde-attribusjon for historiske leads (påvirker kun kildefordeling/LTV,
+  // aldri live ROAS/CAC). Synkes også tilbake til CRM-et via utboksen.
+  const doSetImportedChannel = async (id, channel) => {
+    setStatusBusy(id);
+    try {
+      await fetch(`/api/admin/imported-leads?key=${encodeURIComponent(apiKey)}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: [id], patch: { channel } }),
+      });
+      await load();
     } catch (e) {} finally { setStatusBusy(''); }
   };
 
@@ -209,6 +246,7 @@ export default function InnsiktDashboard({ apiKey, tab: propTab, onTabChange, on
   const rows = leadSub === 'leads' ? data.leads : data.tenants;
   const pendingCount = [...data.leads, ...data.tenants].filter((r) => r.forwarded !== true).length;
   const tabPending = rows.filter((r) => r.forwarded !== true).length;
+  const importedInTab = rows.filter((r) => r.pre_tracking === true).length;
 
   const channelOf = (r) => (r.attribution && r.attribution.channel) || r.source || '—';
 
@@ -220,6 +258,7 @@ export default function InnsiktDashboard({ apiKey, tab: propTab, onTabChange, on
 
   const filteredRows = useMemo(() => {
     let r = [...rows];
+    if (!showImported) r = r.filter((x) => x.pre_tracking !== true);
     const q = query.trim().toLowerCase();
     if (q) {
       r = r.filter((x) => [x.name, x.email, x.phone, x.address, x.preferred_area, x.source, x.matrikkel_number, x.registry_owner_name]
@@ -361,6 +400,13 @@ export default function InnsiktDashboard({ apiKey, tab: propTab, onTabChange, on
               <option value="all">Alle kilder</option>
               {channelOptions.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
+            {importedInTab > 0 && (
+              <button onClick={() => setShowImported((v) => !v)}
+                title="Historiske leads kom inn før sporingen — teller aldri i live ROAS/CAC"
+                className={`h-9 px-3.5 rounded-full text-[12.5px] font-semibold flex items-center gap-1.5 transition-colors ${showImported ? 'bg-[#f4f0fb] text-[#8b5cf6] ring-1 ring-[#e3d7f8]' : 'bg-white text-[#999] shadow-[0_2px_10px_rgba(0,0,0,0.03)] hover:text-[#0a0a0a]'}`}>
+                <History className="w-3.5 h-3.5" /> Historiske ({importedInTab})
+              </button>
+            )}
             {filtersActive && <button onClick={() => { setQuery(''); setStatusFilter('all'); setChannelFilter('all'); }} className="h-9 px-3 rounded-full text-[12px] font-semibold text-[#888] hover:text-[#0a0a0a] hover:bg-white transition-colors">Nullstill</button>}
             <span className="text-[12px] text-[#aaa] ml-auto whitespace-nowrap">{filteredRows.length} av {rows.length}</span>
           </div>
@@ -408,6 +454,7 @@ export default function InnsiktDashboard({ apiKey, tab: propTab, onTabChange, on
                   {!loading && filteredRows.length === 0 && (<tr><td colSpan={8} className="py-10 text-center text-[14px] text-[#aaa]">{rows.length === 0 ? 'Ingen registreringer ennå' : 'Ingen treff på filteret'}</td></tr>)}
                   {filteredRows.map((r) => {
                     const rType = leadSub === 'tenants' ? 'tenant' : 'lead';
+                    const isImp = r.pre_tracking === true;
                     const sc = scores[r.id];
                     return (
                     <tr key={r.id} onClick={() => setDrawerLead(r)} className="border-b border-[#f6f6f6] hover:bg-[#faf8fe] transition-colors cursor-pointer group">
@@ -420,8 +467,17 @@ export default function InnsiktDashboard({ apiKey, tab: propTab, onTabChange, on
                           ? <span>{r.address || '—'}{r.property_type ? ` · ${r.property_type}` : ''}{r.sqm ? ` · ${r.sqm} m²` : ''}{r.num_properties > 1 ? ` · ${r.num_properties} enheter` : ''}</span>
                           : <span>{r.preferred_area || '—'}{r.budget_max ? ` · inntil ${r.budget_max} kr` : ''}{r.bedrooms ? ` · ${r.bedrooms} sov` : ''}</span>}
                       </td>
-                      <td className="py-3 px-4 text-[12px]">
-                        {(r.attribution && r.attribution.channel)
+                      <td className="py-3 px-4 text-[12px]" onClick={isImp ? (e) => e.stopPropagation() : undefined}>
+                        {isImp ? (
+                          <select
+                            value={r.channel || 'unknown'} disabled={statusBusy === r.id}
+                            onChange={(e) => doSetImportedChannel(r.id, e.target.value)}
+                            title="Sett kilde manuelt — påvirker kun kildefordeling, aldri live ROAS/CAC"
+                            className={`text-[12px] font-semibold rounded-lg border px-2 py-1.5 outline-none focus:border-[#cf97fc] disabled:opacity-50 cursor-pointer ${(r.channel || 'unknown') === 'unknown' ? 'border-amber-200 bg-amber-50/60 text-amber-700' : 'border-[#e6e3df] bg-white text-[#555]'}`}
+                          >
+                            {IMPORTED_CHANNELS.map(([k, lab]) => <option key={k} value={k}>{lab}</option>)}
+                          </select>
+                        ) : (r.attribution && r.attribution.channel)
                           ? <span className="inline-flex items-center rounded-full bg-[#f4f0fb] text-[#8b5cf6] px-2 py-0.5 font-semibold">{r.attribution.channel}</span>
                           : <span className="text-[#bbb]">{r.source || '—'}</span>}
                       </td>
@@ -432,23 +488,31 @@ export default function InnsiktDashboard({ apiKey, tab: propTab, onTabChange, on
                             onChange={(e) => doSetStatus(r.id, e.target.value, rType)}
                             className={`text-[12px] font-semibold rounded-lg border border-[#e6e3df] bg-white px-2 py-1.5 outline-none focus:border-[#cf97fc] disabled:opacity-50 cursor-pointer ${r.status === 'won' ? 'text-emerald-600' : r.status === 'lost' ? 'text-rose-600' : 'text-[#555]'}`}
                           >
-                            {STATUS_OPTS.map((o) => <option key={o.v} value={o.v}>{o.l}</option>)}
+                            {(isImp ? IMPORTED_STATUS_OPTS : STATUS_OPTS).map((o) => <option key={o.v} value={o.v}>{o.l}</option>)}
                           </select>
                           {statusBusy === r.id && <Loader2 className="w-3.5 h-3.5 animate-spin text-[#bbb]" />}
                         </div>
                       </td>
                       <td className="py-3 px-4 text-[12px] text-[#999] whitespace-nowrap">{r.createdAt ? new Date(r.createdAt).toLocaleString('nb-NO', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'}</td>
                       <td className="py-3 px-4">
-                        {r.forwarded === true
+                        {isImp
+                          ? <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-[#8b5cf6]" title="Historisk lead — kom inn før sporingen. Teller i helhetsbildet, aldri i live ROAS/CAC. Endringer synkes til CRM-et."><History className="w-3.5 h-3.5" /> Historisk</span>
+                          : r.forwarded === true
                           ? <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-emerald-600"><CheckCircle2 className="w-3.5 h-3.5" /> Sendt</span>
                           : <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-amber-600" title={r.forward_error || ''}><AlertCircle className="w-3.5 h-3.5" /> Venter</span>}
                       </td>
                       <td className="py-3 px-4 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                        <button onClick={() => doScore(r.id, rType)} disabled={scoringId === r.id} title="AI-vurder dette leadet" className="inline-flex items-center gap-1 mr-1 h-8 px-2.5 rounded-lg text-[12px] font-semibold text-[#8b5cf6] hover:bg-[#f4f0fb] transition-colors disabled:opacity-40">
-                          {scoringId === r.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
-                          {sc && !sc.error ? sc.score : 'AI'}
-                        </button>
-                        <button onClick={() => doDelete({ id: r.id }, `Slette lead fra ${r.name || r.email || 'denne kontakten'}?`)} disabled={deleting} aria-label="Slett" className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-[#bbb] hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-40"><Trash2 className="w-4 h-4" /></button>
+                        {isImp ? (
+                          <span className="text-[11.5px] text-[#c4c4c4] pr-1" title="Historiske leads administreres også i Historikk-fanen">CRM</span>
+                        ) : (
+                          <>
+                            <button onClick={() => doScore(r.id, rType)} disabled={scoringId === r.id} title="AI-vurder dette leadet" className="inline-flex items-center gap-1 mr-1 h-8 px-2.5 rounded-lg text-[12px] font-semibold text-[#8b5cf6] hover:bg-[#f4f0fb] transition-colors disabled:opacity-40">
+                              {scoringId === r.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                              {sc && !sc.error ? sc.score : 'AI'}
+                            </button>
+                            <button onClick={() => doDelete({ id: r.id }, `Slette lead fra ${r.name || r.email || 'denne kontakten'}?`)} disabled={deleting} aria-label="Slett" className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-[#bbb] hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-40"><Trash2 className="w-4 h-4" /></button>
+                          </>
+                        )}
                       </td>
                     </tr>
                   );})}

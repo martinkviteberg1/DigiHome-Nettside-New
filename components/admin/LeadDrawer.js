@@ -4,16 +4,23 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   X, Loader2, Mail, Phone, MapPin, Home, Ruler, BedDouble, Hash, Building2,
   Sparkles, Eye, Search, FileEdit, Send, MousePointerClick, ExternalLink,
-  CheckCircle2, Clock, Route, Target, ShieldCheck, Zap, BadgeCheck,
+  CheckCircle2, Clock, Route, Target, ShieldCheck, Zap, BadgeCheck, History,
 } from 'lucide-react';
 
 const STATUS_OPTS = [
   { v: 'new', l: 'Ny' }, { v: 'contacted', l: 'Kontaktet' }, { v: 'qualified', l: 'Kvalifisert' },
   { v: 'won', l: 'Vunnet' }, { v: 'lost', l: 'Tapt' },
 ];
+// Historiske leads følger CRM-pipelinen med flere steg (befaring, tilbud).
+const IMPORTED_STATUS_OPTS = [
+  { v: 'new', l: 'Ny' }, { v: 'contacted', l: 'Kontaktet' }, { v: 'qualified', l: 'Kvalifisert' },
+  { v: 'viewing', l: 'Befaring' }, { v: 'offer', l: 'Tilbud sendt' },
+  { v: 'won', l: 'Vunnet' }, { v: 'lost', l: 'Tapt' },
+];
 const STATUS_COLOR = {
   new: 'text-[#555] bg-[#f3f3f3]', contacted: 'text-sky-600 bg-sky-50',
-  qualified: 'text-violet-600 bg-violet-50', won: 'text-emerald-600 bg-emerald-50', lost: 'text-rose-600 bg-rose-50',
+  qualified: 'text-violet-600 bg-violet-50', viewing: 'text-blue-600 bg-blue-50',
+  offer: 'text-indigo-600 bg-indigo-50', won: 'text-emerald-600 bg-emerald-50', lost: 'text-rose-600 bg-rose-50',
 };
 
 // Hendelsestype → norsk etikett + ikon (kundereise)
@@ -90,6 +97,9 @@ export default function LeadDrawer({ apiKey, lead, type, onClose, onStatusChange
           <div className="min-w-0">
             <div className="flex items-center gap-2 mb-1">
               <span className="text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#b39ddb]">{isTenant ? 'Leietaker' : 'Utleier'}</span>
+              {d.pre_tracking && (
+                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-[#8b5cf6] bg-[#f4f0fb] rounded-full px-1.5 py-0.5" title="Kom inn før sporingen — teller i helhetsbildet, aldri i live ROAS/CAC"><History className="w-3 h-3" /> Historisk</span>
+              )}
               {d.syncedFromPlatform && (
                 <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600 bg-emerald-50 rounded-full px-1.5 py-0.5"><BadgeCheck className="w-3 h-3" /> Synket{d.platformTenant ? ` · ${d.platformTenant}` : ''}</span>
               )}
@@ -111,7 +121,7 @@ export default function LeadDrawer({ apiKey, lead, type, onClose, onStatusChange
                     onChange={(e) => onStatusChange(d.id, e.target.value, isTenant ? 'tenant' : 'lead')}
                     className={`text-[13px] font-semibold rounded-lg border-0 px-2.5 py-1.5 outline-none ${STATUS_COLOR[status] || STATUS_COLOR.new}`}
                   >
-                    {STATUS_OPTS.map((o) => <option key={o.v} value={o.v}>{o.l}</option>)}
+                    {(d.pre_tracking ? IMPORTED_STATUS_OPTS : STATUS_OPTS).map((o) => <option key={o.v} value={o.v}>{o.l}</option>)}
                   </select>
                   {statusBusy === d.id && <Loader2 className="w-4 h-4 animate-spin text-[#bbb]" />}
                 </div>
@@ -165,11 +175,12 @@ export default function LeadDrawer({ apiKey, lead, type, onClose, onStatusChange
             <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#1f1f1f] mb-3">Attribusjon</p>
             <div className="flex flex-wrap gap-2 mb-3">
               {att.channel && <span className="inline-flex items-center gap-1 text-[12px] font-semibold text-[#8b5cf6] bg-[#f4f0fb] rounded-full px-2.5 py-1"><Target className="w-3 h-3" />{att.channel}</span>}
+              {!att.channel && d.pre_tracking && d.channel && d.channel !== 'unknown' && <span className="inline-flex items-center gap-1 text-[12px] font-semibold text-[#8b5cf6] bg-[#f4f0fb] rounded-full px-2.5 py-1"><Target className="w-3 h-3" />{d.channel} (manuelt satt)</span>}
               {att.source && <span className="text-[12px] text-[#666] bg-[#f5f5f5] rounded-full px-2.5 py-1">{att.source}{att.medium ? ` / ${att.medium}` : ''}</span>}
               {att.campaign && <span className="text-[12px] text-[#666] bg-[#f5f5f5] rounded-full px-2.5 py-1">{att.campaign}</span>}
             </div>
             {att.gclid && <p className="text-[11px] text-[#999] flex items-center gap-1.5"><Zap className="w-3 h-3 text-amber-500" /> gclid: <code className="text-[#666] break-all">{att.gclid}</code></p>}
-            {!att.channel && !att.source && !att.gclid && <p className="text-[13px] text-[#aaa]">Ingen attribusjonsdata</p>}
+            {!att.channel && !att.source && !att.gclid && !(d.pre_tracking && d.channel && d.channel !== 'unknown') && <p className="text-[13px] text-[#aaa]">{d.pre_tracking ? 'Kilde ukjent — kan settes manuelt i lead-oversikten eller Historikk-fanen.' : 'Ingen attribusjonsdata'}</p>}
           </div>
 
           {/* Kundereise / tidslinje */}
@@ -178,7 +189,7 @@ export default function LeadDrawer({ apiKey, lead, type, onClose, onStatusChange
             {loading ? (
               <div className="flex items-center gap-2 text-[13px] text-[#aaa] py-4"><Loader2 className="w-4 h-4 animate-spin" /> Henter reisen …</div>
             ) : timeline.length === 0 ? (
-              <p className="text-[13px] text-[#aaa] py-2">Ingen sporingshendelser knyttet til denne kontakten (kan skyldes manglende samtykke eller direkte registrering).</p>
+              <p className="text-[13px] text-[#aaa] py-2">{d.pre_tracking ? 'Historisk lead — kom inn før sporingen ble aktivert, så ingen kundereise er registrert.' : 'Ingen sporingshendelser knyttet til denne kontakten (kan skyldes manglende samtykke eller direkte registrering).'}</p>
             ) : (
               <ol className="relative border-l-2 border-[#f0ecf8] ml-1.5 space-y-4">
                 {timeline.map((e, i) => {
@@ -200,7 +211,8 @@ export default function LeadDrawer({ apiKey, lead, type, onClose, onStatusChange
             )}
           </div>
 
-          {/* AI-vurdering */}
+          {/* AI-vurdering (ikke for historiske — mangler sporings-/skjemadata) */}
+          {!d.pre_tracking && (
           <div className="bg-white rounded-2xl p-4 shadow-[0_2px_12px_rgba(0,0,0,0.04)]">
             <div className="flex items-center justify-between gap-3">
               <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#1f1f1f]">AI-vurdering</p>
@@ -220,6 +232,7 @@ export default function LeadDrawer({ apiKey, lead, type, onClose, onStatusChange
             )}
             {scoreData && scoreData.error && <p className="text-[12.5px] text-rose-500 mt-2">AI-scoring feilet: {scoreData.error}</p>}
           </div>
+          )}
 
           <p className="text-[11px] text-[#bbb] text-center pt-1">Mottatt {d.createdAt ? fmtTime(d.createdAt) : '—'}</p>
         </div>

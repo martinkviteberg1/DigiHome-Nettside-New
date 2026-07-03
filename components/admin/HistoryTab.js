@@ -7,7 +7,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Loader2, RefreshCw, Search, CheckCircle2, AlertTriangle, History,
-  Trophy, Coins, ShieldQuestion, ChevronDown,
+  Trophy, Coins, ShieldQuestion, ChevronDown, Wallet, Calculator, Clock, Pencil, BarChart3,
 } from 'lucide-react';
 
 const CHANNELS = [
@@ -127,6 +127,18 @@ export default function HistoryTab({ apiKey }) {
           {msg.ok ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <AlertTriangle className="w-4 h-4 shrink-0" />}
           {msg.text}
         </div>
+      )}
+
+      {/* Historisk analyse — blandet CPL/CAC på annonseforbruk før sporing */}
+      {(data?.total || 0) > 0 && (
+        <HistoricalAnalysis
+          spend={data?.historicalSpend}
+          total={data?.total || 0}
+          won={data?.won || 0}
+          wonValue={data?.wonValue || 0}
+          q={q}
+          onSaved={load}
+        />
       )}
 
       <div className="flex items-start gap-2.5 rounded-xl bg-[#f7f3ff] px-4 py-3">
@@ -270,6 +282,116 @@ export default function HistoryTab({ apiKey }) {
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Historisk analyse — blandet CPL/CAC basert på annonseforbruk FØR sporing.
+// Forbruket (Meta/Google/annet) kan justeres manuelt og lagres i settings.
+// «Blandet» = alle kanaler samlet, siden kilden per lead ofte er ukjent.
+// Tallene her blandes ALDRI inn i live ROAS/CAC på Annonser/Økonomi-fanene.
+// ---------------------------------------------------------------------------
+function HistoricalAnalysis({ spend, total, won, wonValue, q, onSaved }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState({ meta: '', google: '', other: '' });
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+
+  useEffect(() => {
+    if (spend) setDraft({ meta: spend.meta ?? 0, google: spend.google ?? 0, other: spend.other ?? 0 });
+  }, [spend]);
+
+  const totalSpend = (Number(spend?.meta) || 0) + (Number(spend?.google) || 0) + (Number(spend?.other) || 0);
+  const cpl = total > 0 && totalSpend > 0 ? totalSpend / total : null;
+  const cac = won > 0 && totalSpend > 0 ? totalSpend / won : null;
+  const avgMonthly = won > 0 && wonValue > 0 ? wonValue / won : null; // snitt kontraktsverdi (kr/mnd) per vunnet
+  const paybackMonths = cac != null && avgMonthly > 0 ? cac / avgMonthly : null;
+
+  const save = async () => {
+    setBusy(true); setErr('');
+    try {
+      const r = await fetch(`/api/admin/imported-leads/spend?${q}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          meta: Number(draft.meta) || 0,
+          google: Number(draft.google) || 0,
+          other: Number(draft.other) || 0,
+        }),
+      });
+      const j = await r.json();
+      if (j.ok) { setEditing(false); if (onSaved) await onSaved(); }
+      else setErr(j.error || 'Lagring feilet');
+    } catch (e) { setErr('Nettverksfeil ved lagring'); }
+    setBusy(false);
+  };
+
+  const fmt0 = (v) => nf.format(Math.round(v));
+
+  return (
+    <div className="rounded-2xl bg-white shadow-[0_2px_14px_rgba(0,0,0,0.04)] p-5">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+        <div className="flex items-center gap-2">
+          <span className="w-8 h-8 rounded-lg bg-[#f4f0fb] text-[#8b5cf6] flex items-center justify-center"><BarChart3 className="w-4 h-4" /></span>
+          <div>
+            <h3 className="text-[15px] font-bold text-[#0a0a0a] leading-tight" style={{ fontFamily: 'var(--font-heading)' }}>Historisk analyse</h3>
+            <p className="text-[12px] text-[#999]">Blandet kostnad per lead/kunde for perioden før sporing — holdes utenfor live ROAS/CAC</p>
+          </div>
+        </div>
+        <button onClick={() => { setEditing((v) => !v); setErr(''); }}
+          className={`h-9 px-4 rounded-full text-[12.5px] font-semibold flex items-center gap-1.5 transition-colors ${editing ? 'bg-[#0a0a0a] text-white' : 'bg-[#f5f5f4] text-[#555] hover:bg-[#ecebe9]'}`}>
+          <Pencil className="w-3.5 h-3.5" /> {editing ? 'Lukk' : 'Juster forbruk'}
+        </button>
+      </div>
+
+      {editing && (
+        <div className="mb-4 rounded-xl bg-[#faf9f7] p-4">
+          <p className="text-[12.5px] text-[#777] mb-3">Registrer hvor mye som ble brukt på annonser <strong>før sporingen startet</strong>. Tallene brukes kun til denne analysen.</p>
+          <div className="flex flex-wrap items-end gap-3">
+            {[['meta', 'Meta (kr)'], ['google', 'Google Ads (kr)'], ['other', 'Annet (kr)']].map(([k, label]) => (
+              <label key={k} className="block">
+                <span className="block text-[11px] font-semibold uppercase tracking-wider text-[#aaa] mb-1">{label}</span>
+                <input type="number" min="0" value={draft[k]}
+                  onChange={(e) => setDraft((d) => ({ ...d, [k]: e.target.value }))}
+                  className="h-9 w-[130px] rounded-lg bg-white text-[13px] px-3 outline-none ring-1 ring-black/[0.06] focus:ring-2 focus:ring-[#d9c4f5]" />
+              </label>
+            ))}
+            <button onClick={save} disabled={busy}
+              className="h-9 px-5 rounded-full bg-[#0a0a0a] text-white text-[13px] font-semibold flex items-center gap-2 disabled:opacity-60">
+              {busy && <Loader2 className="w-3.5 h-3.5 animate-spin" />} Lagre
+            </button>
+          </div>
+          {err && <p className="text-[12.5px] text-[#c0392b] mt-2">{err}</p>}
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="rounded-xl bg-[#faf9f7] p-4">
+          <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-[#aaa]"><Wallet className="w-3.5 h-3.5 text-[#b98cf7]" /> Historisk forbruk</div>
+          <p className="text-[24px] font-bold text-[#0a0a0a] mt-1.5 leading-none" style={{ fontFamily: 'var(--font-heading)' }}>{fmt0(totalSpend)} kr</p>
+          <p className="text-[11.5px] text-[#999] mt-1.5">Meta {fmt0(Number(spend?.meta) || 0)} · Google {fmt0(Number(spend?.google) || 0)}{(Number(spend?.other) || 0) > 0 ? ` · Annet ${fmt0(Number(spend.other))}` : ''}</p>
+        </div>
+        <div className="rounded-xl bg-[#faf9f7] p-4">
+          <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-[#aaa]"><Calculator className="w-3.5 h-3.5 text-[#b98cf7]" /> Blandet CPL</div>
+          <p className="text-[24px] font-bold text-[#0a0a0a] mt-1.5 leading-none" style={{ fontFamily: 'var(--font-heading)' }}>{cpl != null ? `${fmt0(cpl)} kr` : '—'}</p>
+          <p className="text-[11.5px] text-[#999] mt-1.5">{fmt0(totalSpend)} kr / {total} leads</p>
+        </div>
+        <div className="rounded-xl bg-[#faf9f7] p-4">
+          <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-[#aaa]"><Trophy className="w-3.5 h-3.5 text-[#7fc79e]" /> Historisk CAC</div>
+          <p className="text-[24px] font-bold text-[#0a0a0a] mt-1.5 leading-none" style={{ fontFamily: 'var(--font-heading)' }}>{cac != null ? `${fmt0(cac)} kr` : '—'}</p>
+          <p className="text-[11.5px] text-[#999] mt-1.5">{won > 0 ? `${fmt0(totalSpend)} kr / ${won} vunnet` : 'Ingen vunnede ennå'}</p>
+        </div>
+        <div className="rounded-xl bg-[#faf9f7] p-4">
+          <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-[#aaa]"><Clock className="w-3.5 h-3.5 text-[#e0b64f]" /> Tilbakebetaling</div>
+          <p className="text-[24px] font-bold text-[#0a0a0a] mt-1.5 leading-none" style={{ fontFamily: 'var(--font-heading)' }}>{paybackMonths != null ? `${(Math.round(paybackMonths * 10) / 10).toLocaleString('nb-NO')} mnd` : '—'}</p>
+          <p className="text-[11.5px] text-[#999] mt-1.5">{avgMonthly ? `CAC / snittverdi ${fmt0(avgMonthly)} kr/mnd` : 'Krever vunnet verdi'}</p>
+        </div>
+      </div>
+
+      <p className="text-[11.5px] text-[#b3a8c9] mt-3 leading-relaxed">
+        «Blandet» betyr at alle kanaler regnes samlet, siden kilden per lead fra denne perioden ofte er ukjent.
+        Setter du kilder manuelt i listen under, forbedres kildefordelingen — men live-KPI-ene på Annonser/Økonomi-fanene påvirkes aldri av historiske tall.
+      </p>
     </div>
   );
 }
