@@ -40,9 +40,9 @@ export default function CTASection() {
                 className="rounded-full bg-white text-[#0a0a0a] hover:bg-[#f3eafc] h-[52px] px-8 text-[14px] font-semibold transition-all duration-300 hover:shadow-[0_8px_32px_rgba(207,151,252,0.28)] active:scale-[0.97] gap-2">
                 Få gratis vurdering <ArrowRight className="w-4 h-4" />
               </Button>
-              <Button onClick={() => router.push('/kontakt')} variant="ghost"
+              <Button onClick={() => router.push('/priskalkulator')} variant="ghost"
                 className="rounded-full text-white/60 hover:text-white hover:bg-white/5 h-[52px] px-8 text-[14px]">
-                Kontakt oss
+                Se hva det koster
               </Button>
             </div>
             <div className="flex flex-wrap items-center gap-x-6 gap-y-2 mt-8 lg:justify-end">

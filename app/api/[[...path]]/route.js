@@ -392,6 +392,38 @@ async function geonorgeSearch(q) {
 
 const ADMIN_KEY = process.env.ADMIN_KEY || '';
 
+// ── Priskalkulator: standardkatalog (overstyres via settings.wizard_catalog) ──
+const WIZARD_CATALOG_DEFAULT = {
+  serviceLevels: [
+    {
+      key: 'selvbetjent', name: 'Selvbetjent', pct: 5, minMonthly: 500, badge: 'Nyhet',
+      tagline: 'Du gjør jobben — vi leverer systemet',
+      included: ['Annonsering på FINN.no', 'Digital kontrakt med BankID-signering', 'Husleieinnkreving og purring', 'Depositumskonto', 'Chat med leietaker', 'Utleiedashboard med full oversikt'],
+      notIncluded: ['Visninger og leietakervalg', 'Inn- og utflyttingsbefaring', 'Vedlikeholdskoordinering'],
+      models: ['langtid'],
+    },
+    {
+      key: 'fullforvaltning', name: 'Fullforvaltning', pct: 10, minMonthly: 0, badge: 'Mest valgt',
+      tagline: 'Vi gjør alt — du får utbetalingen',
+      included: ['Alt i Selvbetjent', 'Visninger og leietakervalg', 'Inn- og utflyttingsbefaring', 'Vedlikeholdskoordinering døgnet rundt', 'Dynamisk prisoptimalisering', 'Dedikert forvalter'],
+      notIncluded: [],
+      models: ['langtid', 'hybrid'],
+    },
+  ],
+  models: [
+    { key: 'langtid', name: 'Langtidsutleie', desc: 'Stabil leietaker og forutsigbar månedlig leie' },
+    { key: 'hybrid', name: 'Dynamisk utleie (10+2)', desc: 'Langtid + korttid i høysesong — typisk 20–30 % høyere inntekt', upliftPct: 25 },
+  ],
+  addons: [
+    { key: 'markedspakke', name: 'Markedspakke', price: 4900, once: true, popular: true, desc: 'Profesjonell boligfoto, plantegning og premium FINN-annonse' },
+    { key: 'foto', name: 'Profesjonell boligfoto', price: 2900, once: true, desc: 'Fotograf og redigering — 15–25 leveringsklare bilder' },
+    { key: 'kredittsjekk', name: 'Kreditt- og referansesjekk', price: 490, once: true, desc: 'Grundig sjekk av leietaker før kontrakt (per kandidat)' },
+    { key: 'innflytting', name: 'Innflyttingsklar', price: 3900, once: true, desc: 'Nedvask, nøkkelbokser og komplett klargjøring' },
+    { key: 'visningshjelp', name: 'Visningshjelp', price: 1490, once: true, for: 'selvbetjent', desc: 'Vi holder visningen for deg (pris per visning)' },
+    { key: 'juridisk', name: 'Juridisk trygghetspakke', price: 1990, once: true, desc: 'Kvalitetssikret kontrakt og rådgivning via Hoffmann Thinn' },
+  ],
+};
+
 // --- Finn-annonse forhåndsvisning (server-side scrape: og:-tags + nøkkelinfo) ---
 const _finnCache = new Map();
 const FINN_TTL_MS = 30 * 60 * 1000;
@@ -2808,6 +2840,30 @@ async function handleRoute(request, { params }) {
         { upsert: true }
       );
       try { await db.collection(OPTOUT_COLL).deleteOne({ email }); } catch (e) {}
+      return cors(NextResponse.json({ ok: true }));
+    }
+
+    // ── Priskalkulator: produktkatalog ─────────────────────────────────────
+    // Offentlig lesing (wizard på /priskalkulator) + admin-skriving.
+    // Én kilde til sannhet i settings-collection — byttes til plattformens
+    // katalog-API når de bygger fakturering (v2).
+    if (route === '/wizard/catalog' && method === 'GET') {
+      const doc = await db.collection('settings').findOne({ key: 'wizard_catalog' });
+      const catalog = (doc && doc.value) || WIZARD_CATALOG_DEFAULT;
+      return cors(NextResponse.json({ ok: true, catalog, source: doc ? 'db' : 'default' }));
+    }
+    if (route === '/admin/wizard/catalog' && method === 'PUT') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {};
+      try { body = await request.json(); } catch (e) { body = {}; }
+      if (!body.catalog || typeof body.catalog !== 'object') {
+        return cors(NextResponse.json({ ok: false, error: 'Mangler catalog-objekt' }, { status: 400 }));
+      }
+      await db.collection('settings').updateOne(
+        { key: 'wizard_catalog' },
+        { $set: { value: { ...body.catalog, updated_at: new Date().toISOString() } } },
+        { upsert: true }
+      );
       return cors(NextResponse.json({ ok: true }));
     }
 

@@ -67,7 +67,7 @@ function NewsletterSignup() {
 const cols = [
   { title: 'Tjenester', links: [{ l: 'Dynamisk utleie', h: '/tjenester' }, { l: 'Langtidsutleie', h: '/tjenester' }, { l: 'Korttidsutleie', h: '/tjenester' }, { l: 'Rådgivning', h: '/radgivning' }] },
   { title: 'Områder', links: [{ l: 'Utleie i Bergen', h: '/utleie/bergen' }, { l: 'Sentrum', h: '/utleie/sentrum' }, { l: 'Nordnes', h: '/utleie/nordnes' }, { l: 'Leiemarkedet i Bergen', h: '/leiemarkedet/bergen' }, { l: 'Alle områder', h: '/utleie' }] },
-  { title: 'Selskap', links: [{ l: 'Bli utleier', h: '/bli-utleier' }, { l: 'Bli leietaker', h: '/bli-leietaker' }, { l: 'Nyheter', h: '/nyheter' }, { l: 'Kontakt', h: '/kontakt' }] },
+  { title: 'Selskap', links: [{ l: 'Bli utleier', h: '/bli-utleier' }, { l: 'Priskalkulator', h: '/priskalkulator' }, { l: 'Bli leietaker', h: '/bli-leietaker' }, { l: 'Nyheter', h: '/nyheter' }, { l: 'Kontakt', h: '/kontakt' }] },
   { title: 'Ressurser', links: [{ l: 'Leiemarkedsrapport', h: '/leiemarkedet' }, { l: 'Om oss', h: '/om-oss' }, { l: 'Kontakt', h: '/kontakt' }, { l: 'Personvern', h: '/personvern' }] },
 ];
 
