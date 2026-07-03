@@ -370,6 +370,39 @@ html { scroll-behavior: smooth; }
 
 /* === DigiHome — 2026 global detalj-polish === */
 
+/* Premium range-slider (priskalkulator) */
+.dh-range {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 6px;
+  border-radius: 999px;
+  outline: none;
+}
+.dh-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #0a0a0a;
+  border: 3px solid #fff;
+  box-shadow: 0 4px 14px rgba(20, 10, 40, 0.35), 0 0 0 1px rgba(0,0,0,0.06);
+  cursor: grab;
+  transition: transform 0.15s ease;
+}
+.dh-range::-webkit-slider-thumb:hover { transform: scale(1.12); }
+.dh-range::-webkit-slider-thumb:active { cursor: grabbing; transform: scale(1.05); }
+.dh-range::-moz-range-thumb {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #0a0a0a;
+  border: 3px solid #fff;
+  box-shadow: 0 4px 14px rgba(20, 10, 40, 0.35);
+  cursor: grab;
+}
+
+
 /* Scroll-fremdriftslinje: ren CSS scroll-driven animation (progressiv forbedring) */
 .dh-scroll-progress { display: none; }
 @supports (animation-timeline: scroll()) {
