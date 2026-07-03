@@ -370,6 +370,13 @@ html { scroll-behavior: smooth; }
 
 /* === DigiHome — 2026 global detalj-polish === */
 
+/* Retningsbaserte steg-overganger (priskalkulator) */
+@keyframes dh-slide-in-r { from { opacity: 0; transform: translateX(28px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes dh-slide-in-l { from { opacity: 0; transform: translateX(-28px); } to { opacity: 1; transform: translateX(0); } }
+.dh-slide-r { animation: dh-slide-in-r 0.45s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.dh-slide-l { animation: dh-slide-in-l 0.45s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+
 /* Premium range-slider (priskalkulator) */
 .dh-range {
   -webkit-appearance: none;
