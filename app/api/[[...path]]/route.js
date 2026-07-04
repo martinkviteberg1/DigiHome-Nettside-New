@@ -1397,6 +1397,12 @@ async function handleRoute(request, { params }) {
         forward_attempts: 0,
         createdAt: new Date().toISOString(),
       };
+      // To-nivå-modellen: hvilket spor valgte kunden i skjemaet? + klikk-aksept
+      // av selvforvaltningsavtalen (server-tidsstempel for integritet).
+      lead.tier = ['selvforvaltning', 'full_forvaltning'].includes((body.tier || '').toString()) ? body.tier : null;
+      lead.terms_accepted = body.terms && body.terms.version
+        ? { version: String(body.terms.version).slice(0, 40), at: new Date().toISOString() }
+        : null;
 
       // Idempotens: stopp duplikater fra gjentatte klikk / nettverks-retry.
       // Identisk henvendelse (samme e-post/telefon + adresse + type) innen 5 min
@@ -1470,6 +1476,8 @@ async function handleRoute(request, { params }) {
         registry_owner_type: lead.registry_owner_type || undefined,
         registry_orgnr: lead.registry_orgnr || undefined,
         attribution: lead.attribution || undefined,
+        tier: lead.tier || undefined,
+        terms_accepted: lead.terms_accepted || undefined,
         notes: fwdNotes,
       });
       await db.collection('leads').updateOne({ id: lead.id }, { $set: {
@@ -4497,7 +4505,9 @@ async function handleRoute(request, { params }) {
       }
     }
 
-    if (route === '/webhooks/lead-status' && method === 'POST') {
+    // Konverterings-/status-webhook fra plattformen. `/webhooks/conversion` er
+    // alias for samme handler (navnet plattform-agenten fikk i Agent Bridge-avtalen).
+    if ((route === '/webhooks/lead-status' || route === '/webhooks/conversion') && method === 'POST') {
       const secret = process.env.LEAD_SYNC_SECRET || '';
       // Aksepter hemmeligheten via flere konvensjoner (robust mot header-navn-mismatch
       // fra plattformsiden): X-Webhook-Secret, Authorization: Bearer <secret>, ?secret=.
@@ -4515,14 +4525,22 @@ async function handleRoute(request, { params }) {
       let body = {};
       try { body = await request.json(); } catch (e) { body = {}; }
       const VALID = ['new', 'contacted', 'qualified', 'won', 'lost'];
-      const raw = (body.status || '').toString().toLowerCase().trim();
+      // To-nivå-modellen: plattformen kan sende `event` i stedet for `status`.
+      // avtale_signert (selvbetjent klikk-aksept) / tilbud_akseptert → won,
+      // tilbud_avslatt → lost. eiendom_onboardet / leie_aktiv er aktiverings-
+      // milepæler UTEN statusendring (leaden er allerede vunnet).
+      const evt = (body.event || '').toString().toLowerCase().trim();
+      const EVT_TO_STATUS = { avtale_signert: 'won', tilbud_akseptert: 'won', tilbud_avslatt: 'lost' };
+      const ACTIVATION_EVENTS = ['eiendom_onboardet', 'leie_aktiv'];
+      const isActivationOnly = ACTIVATION_EVENTS.includes(evt) && !body.status;
+      const raw = (body.status || EVT_TO_STATUS[evt] || '').toString().toLowerCase().trim();
       const map = {
         ny: 'new', open: 'new', åpen: 'new', kontaktet: 'contacted', contacted: 'contacted',
         kvalifisert: 'qualified', qualified: 'qualified', vunnet: 'won', won: 'won', signed: 'won',
         signert: 'won', closed_won: 'won', tapt: 'lost', lost: 'lost', closed_lost: 'lost', avvist: 'lost',
       };
       const status = VALID.includes(raw) ? raw : (map[raw] || '');
-      if (!status) return cors(NextResponse.json({ ok: false, error: 'Ugyldig status', got: raw }, { status: 400 }));
+      if (!status && !isActivationOnly) return cors(NextResponse.json({ ok: false, error: 'Ugyldig status', got: raw || evt }, { status: 400 }));
 
       const externalRef = (body.external_ref || body.externalRef || '').toString();
       const platformId = (body.platform_id || body.platformId || '').toString();
@@ -4554,6 +4572,36 @@ async function handleRoute(request, { params }) {
       const nowIso = new Date().toISOString();
       const changedAt = body.changed_at ? new Date(body.changed_at).toISOString() : nowIso;
       const tenant = (body.tenant || '').toString().slice(0, 60) || null;
+
+      // Aktiverings-milepæl (eiendom_onboardet / leie_aktiv): logg på leaden,
+      // ingen statusendring. leie_aktiv → Meta 'Subscribe' (recurring startet).
+      if (isActivationOnly) {
+        const activation = [...(lead.activation || []), { event: evt, at: changedAt, via: 'platform' }].slice(-30);
+        await db.collection(coll).updateOne({ id: lead.id }, { $set: {
+          activation, activationStage: evt, platformSyncAt: nowIso,
+          syncedFromPlatform: true, platformTenant: tenant || lead.platformTenant || null,
+        } });
+        let metaSub = null;
+        try {
+          const alreadyActive = !!(lead.metaCapiActive && lead.metaCapiActive.ok);
+          if (evt === 'leie_aktiv' && !alreadyActive && metaCapiConfigured() && marketingAllowed(lead.marketingConsent)) {
+            const att = lead.attribution || {};
+            const capi = await sendMetaCapiEvent({
+              eventName: 'Subscribe',
+              eventId: `active-${lead.id}`,
+              eventTime: changedAt,
+              actionSource: 'system_generated',
+              email: lead.email, phone: lead.phone, fullName: lead.name,
+              fbp: att.fbp, fbc: att.fbc, fbclid: att.fbclid,
+              externalId: att.visitorId, zip: lead.postal_code, country: 'no',
+              customData: { content_name: lead.tier || 'forvaltning', lead_event_id: lead.id },
+            });
+            metaSub = { ok: capi.ok };
+            await db.collection(coll).updateOne({ id: lead.id }, { $set: { metaCapiActive: { ok: capi.ok, at: nowIso, error: capi.ok ? null : (capi.error || null) } } });
+          }
+        } catch (e) { /* best-effort */ }
+        return cors(NextResponse.json({ ok: true, id: lead.id, matchedBy, event: evt, activationStage: evt, metaCapi: metaSub }));
+      }
       const update = {
         status,
         statusUpdatedAt: changedAt,
@@ -4562,6 +4610,11 @@ async function handleRoute(request, { params }) {
         platformTenant: tenant || lead.platformTenant || null,
         platformSyncAt: nowIso,
       };
+      // Hendelses-spor: logg også status-endrende hendelser (avtale_signert m.fl.)
+      if (evt) {
+        update.activation = [...(lead.activation || []), { event: evt, at: changedAt, via: 'platform' }].slice(-30);
+        update.activationStage = evt;
+      }
       // Cross-system stitching + ack: lagre plattformens kunde-/konverterings-id.
       const platformCustomerId = (body.platform_customer_id || body.platformCustomerId || '').toString().slice(0, 120);
       if (platformCustomerId) update.platformCustomerId = platformCustomerId;

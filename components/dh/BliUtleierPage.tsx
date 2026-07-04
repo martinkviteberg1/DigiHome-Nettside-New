@@ -30,8 +30,35 @@ const STEPS = [
   { id: 'address', title: 'Adresse' },      // 1
   { id: 'property', title: 'Eiendommen' },  // 2
   { id: 'personal', title: 'Om deg' },      // 3
-  { id: 'goals', title: 'Dine mål' },       // 4
-  { id: 'confirm', title: 'Bekreft' },      // 5
+  { id: 'tier', title: 'Forvaltning' },     // 4 — to-nivå: selvforvaltning (5 %) vs. full forvaltning (tilbud)
+  { id: 'goals', title: 'Dine mål' },       // 5
+  { id: 'confirm', title: 'Bekreft' },      // 6
+];
+
+// Avtaleversjon for klikk-aksept av selvforvaltning (lagres server-side m/tidsstempel).
+const SELF_TERMS_VERSION = 'selvforvaltning-2025-06';
+
+// To-nivå-modellen. VIKTIG: Full forvaltning viser ALDRI pris — kun «Få tilbud».
+const TIERS = [
+  {
+    value: 'selvforvaltning',
+    label: 'Selvforvaltning',
+    price: '5 %',
+    priceNote: 'per utleie',
+    icon: Key,
+    desc: 'Gjør det selv med våre profesjonelle verktøy. Du styrer alt — vi gjør det enkelt.',
+    bullets: ['Annonsering på Finn.no', 'Digitale kontrakter og signering', 'Automatisk husleie og oppgjør'],
+  },
+  {
+    value: 'full_forvaltning',
+    label: 'Full forvaltning',
+    price: null, // ingen pris — kun tilbud
+    priceNote: 'Få tilbud',
+    icon: Shield,
+    popular: true,
+    desc: 'Vi tar oss av alt — annonsering, visninger, leietakere og oppfølging. Du mottar bare inntekten.',
+    bullets: ['Alt håndtert av lokalt team', 'Opptil 40 % høyere inntekt', 'Skreddersydd tilbud — uforpliktende'],
+  },
 ];
 
 const propertyTypes = [
@@ -62,6 +89,7 @@ export default function BliUtleierPage() {
     name: '', email: '', phone: '',
     address: '', postal_code: '', property_type: '', bedrooms: '', sqm: '',
     rental_model: '', availability: '', notes: '',
+    tier: '', // 'selvforvaltning' | 'full_forvaltning' — velges ETTER kontaktinfo
     // Eiendomsregisteret (Infotorg EDR) — fylles av PropertyRegistryPicker
     matrikkel_number: '', seksjonsnr: '', andelsnr: '', bygningstype: '',
     registry_owner_name: '', registry_owner_type: '', registry_orgnr: '',
@@ -72,6 +100,8 @@ export default function BliUtleierPage() {
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [ctaVariant, setCtaVariant] = useState<string>('A');
+  // Klikk-aksept av selvforvaltningsavtalen — «avtalen som et steg i flyten».
+  const [termsAccepted, setTermsAccepted] = useState(false);
 
   // Finn-annonse (valgfritt). FinnLookupField håndterer oppslag/forhåndsvisning selv.
   const [finnUrl, setFinnUrl] = useState('');
@@ -151,7 +181,7 @@ export default function BliUtleierPage() {
     setExtraUnits((prev) => prev.map((u, idx) => (idx === i ? { ...u, ...obj } : u)));
 
   // Finn-flyten hopper over «Om eiendommen» (steg 2) — alt redigeres på steg 1.
-  const flowSteps = inputMode === 'finn' ? [1, 3, 4, 5] : [1, 2, 3, 4, 5];
+  const flowSteps = inputMode === 'finn' ? [1, 3, 4, 5, 6] : [1, 2, 3, 4, 5, 6];
 
   // Ved stegbytte: scroll til toppen av SKJEMAET (#skjema) — ikke toppen av
   // hele siden (skjemaet ligger under hero-innholdet på /bli-utleier).
@@ -194,6 +224,10 @@ export default function BliUtleierPage() {
       if (!formData.phone.trim() || formData.phone.replace(/\s/g, '').length < 8) newErrors.phone = 'Vennligst oppgi et gyldig telefonnummer (8 siffer)';
     }
     if (step === 4) {
+      if (!formData.tier) newErrors.tier = 'Velg hvordan du vil leie ut';
+      else if (formData.tier === 'selvforvaltning' && !termsAccepted) newErrors.terms = 'Godta avtalen for å fortsette med selvforvaltning';
+    }
+    if (step === 5) {
       if (!formData.rental_model) newErrors.rental_model = 'Velg utleiemodell';
       if (!formData.availability) newErrors.availability = 'Velg tilgjengelighetsdato';
     }
@@ -298,6 +332,9 @@ export default function BliUtleierPage() {
         registry_owner_name: formData.registry_owner_name || undefined,
         registry_owner_type: formData.registry_owner_type || undefined,
         registry_orgnr: formData.registry_orgnr || undefined,
+        // To-nivå-modellen: valgt spor + klikk-aksept av selvforvaltningsavtalen.
+        tier: formData.tier || undefined,
+        terms: formData.tier === 'selvforvaltning' && termsAccepted ? { version: SELF_TERMS_VERSION } : undefined,
         attribution: { ...getLeadAttribution(), ...getClickIds() },
         notes: [
           formData.rental_model ? `Ønsket modell: ${formData.rental_model}` : '',
@@ -314,7 +351,7 @@ export default function BliUtleierPage() {
       const data = await res.json().catch(() => ({}));
       if (res.ok && (data.success || data.ok)) {
         setSubmitted(true);
-        track('lead_submit', { form: 'utleier', leadType: 'huseier', properties: units.length });
+        track('lead_submit', { form: 'utleier', leadType: 'huseier', properties: units.length, tier: formData.tier || 'ukjent' });
         try { trackLead({ formId: 'utleier', source: 'bli-utleier', leadId: data?.data?.id, email: formData.email, phone: '+47 ' + formData.phone }); } catch (e) {}
         toast.success('Takk! Vi tar kontakt snart.');
       } else {
@@ -327,6 +364,30 @@ export default function BliUtleierPage() {
     finally { setLoading(false); }
   };
 
+  // Tier-tilpasset suksess-innhold (selvforvaltning = konto-oppsett, full = tilbud).
+  const successSub = formData.tier === 'selvforvaltning'
+    ? 'Avtalen din om selvforvaltning er registrert. Vi setter opp kontoen din og sender deg tilgang på e-post.'
+    : formData.tier === 'full_forvaltning'
+      ? 'Vi har mottatt henvendelsen din. En lokal rådgiver kontakter deg med et skreddersydd, uforpliktende tilbud.'
+      : 'Vi har mottatt henvendelsen din. En rådgiver tar kontakt for en personlig, uforpliktende gjennomgang.';
+  const successSteps = formData.tier === 'selvforvaltning'
+    ? [
+        { t: 'Avtale registrert', s: '5 % per utleieforhold — ingen faste kostnader', done: true },
+        { t: 'Vi setter opp kontoen din', s: 'Du får e-post med tilgang til plattformen' },
+        { t: 'Publiser boligen og lei ut', s: 'Annonsering, kontrakter og betaling — alt digitalt' },
+      ]
+    : formData.tier === 'full_forvaltning'
+      ? [
+          { t: 'Vi vurderer eiendommen', s: 'Inntektspotensial og beste utleiemodell', done: true },
+          { t: 'Rådgiver ringer innen 24 timer', s: 'Personlig gjennomgang — helt uforpliktende' },
+          { t: 'Du får et skreddersydd tilbud', s: 'Konkret plan for inntekt og neste steg' },
+        ]
+      : [
+          { t: 'Vi vurderer eiendommen', s: 'Inntektspotensial og beste utleiemodell', done: true },
+          { t: 'Vi ringer deg innen 24 timer', s: 'Personlig gjennomgang — helt uforpliktende' },
+          { t: 'Du får en skreddersydd plan', s: 'Klar oversikt over inntekt og neste steg' },
+        ];
+
   if (submitted) {
     return (
       <div className="min-h-screen flex items-center justify-center px-5 py-16 bg-[#fdfcfb] relative overflow-hidden">
@@ -337,16 +398,12 @@ export default function BliUtleierPage() {
             <CheckCircle2 className="w-10 h-10 text-[#cf97fc]" />
           </motion.div>
           <h2 className="text-[33px] sm:text-[38px] font-bold tracking-[-0.03em] text-[#0a0a0a] mb-3" style={{ fontFamily: 'var(--font-heading)' }}>Tusen takk{formData.name ? `, ${formData.name.split(' ')[0]}` : ''}!</h2>
-          <p className="text-[16px] text-[#666] leading-relaxed max-w-[42ch] mx-auto">Vi har mottatt henvendelsen din. En rådgiver tar kontakt for en personlig, uforpliktende gjennomgang.</p>
+          <p className="text-[16px] text-[#666] leading-relaxed max-w-[42ch] mx-auto">{successSub}</p>
 
           <div className="mt-8 text-left bg-white rounded-[22px] p-6 shadow-[0_8px_40px_-24px_rgba(0,0,0,0.35)]">
             <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[#aaa] mb-4">Hva skjer nå</p>
             <div>
-              {[
-                { t: 'Vi vurderer eiendommen', s: 'Inntektspotensial og beste utleiemodell', done: true },
-                { t: 'Vi ringer deg innen 24 timer', s: 'Personlig gjennomgang — helt uforpliktende' },
-                { t: 'Du får en skreddersydd plan', s: 'Klar oversikt over inntekt og neste steg' },
-              ].map((it: any, i: number, arr: any[]) => (
+              {successSteps.map((it: any, i: number, arr: any[]) => (
                 <motion.div key={i} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.35 + i * 0.12, duration: 0.35 }} className="flex gap-3.5">
                   <div className="flex flex-col items-center">
                     <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${it.done ? 'bg-[#cf97fc] text-white' : 'bg-[#f1ecf8] text-[#b39ddb]'}`}>{it.done ? <Check className="w-3.5 h-3.5" strokeWidth={3} /> : <span className="text-[12px] font-bold">{i + 1}</span>}</div>
@@ -735,8 +792,111 @@ export default function BliUtleierPage() {
                 </div>
               )}
 
-              {/* STEG 4 — DINE MÅL */}
+              {/* STEG 4 — FORVALTNINGSNIVÅ (to-nivå: 5 % selv vs. full — kun tilbud) */}
               {step === 4 && (
+                <div data-testid="owner-step-tier">
+                  <div className="inline-flex items-center gap-2 text-[11px] font-semibold text-[#7c3aed] uppercase tracking-[0.1em] mb-3">
+                    <Shield className="w-3.5 h-3.5" /> Forvaltning
+                  </div>
+                  <h2 className="text-[28px] sm:text-[34px] font-bold tracking-[-0.03em] text-[#0a0a0a] mb-2" style={{ fontFamily: 'var(--font-heading)' }}>Hvordan vil du leie ut?</h2>
+                  <p className="text-[15px] text-[#888] mb-7 max-w-[46ch]">Velg nivået som passer deg best — du kan bytte når som helst.</p>
+                  <div className="space-y-3.5">
+                    {TIERS.map((t: any) => {
+                      const Icon = t.icon;
+                      const selected = formData.tier === t.value;
+                      return (
+                        <button
+                          key={t.value}
+                          type="button"
+                          data-testid={`owner-tier-${t.value}`}
+                          onClick={() => {
+                            const next = selected ? '' : t.value;
+                            updateField('tier', next);
+                            setTermsAccepted(false);
+                            setErrors((prev: any) => ({ ...prev, tier: null, terms: null }));
+                            if (next) { try { track('tier_select', { form: 'utleier', tier: next }); } catch (e) {} }
+                          }}
+                          className={`w-full text-left rounded-2xl border-2 p-5 transition-all duration-200 relative ${selected ? 'border-[#cf97fc] bg-[#faf5ff] shadow-[0_10px_30px_-18px_rgba(124,58,237,0.45)]' : 'border-[#eee] bg-white hover:border-[#ddd]'}`}
+                        >
+                          {t.popular && (<span className="absolute -top-2.5 right-4 text-[9px] font-bold uppercase tracking-[0.08em] px-2.5 py-1 rounded-full bg-gradient-to-r from-[#c084fc] to-[#AE68E4] text-white">Mest valgt</span>)}
+                          <div className="flex items-start gap-4">
+                            <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${selected ? 'bg-[#cf97fc]' : 'bg-[#f0f0f0]'}`}>
+                              <Icon className="w-5 h-5" style={{ color: selected ? '#fff' : '#aaa' }} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between gap-3 flex-wrap">
+                                <p className={`text-[15.5px] font-bold ${selected ? 'text-[#0a0a0a]' : 'text-[#333]'}`} style={{ fontFamily: 'var(--font-heading)' }}>{t.label}</p>
+                                {t.price ? (
+                                  <span className="inline-flex items-baseline gap-1 rounded-full bg-[#f1e8fd] text-[#7A3EC8] px-3 py-1">
+                                    <span className="text-[14px] font-bold" style={{ fontFamily: 'var(--font-heading)' }}>{t.price}</span>
+                                    <span className="text-[10.5px] font-medium">{t.priceNote}</span>
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center rounded-full bg-[#0a0a0a] text-white px-3.5 py-1.5 text-[11px] font-bold uppercase tracking-[0.05em]">{t.priceNote}</span>
+                                )}
+                              </div>
+                              <p className="text-[13px] text-[#888] mt-1.5 leading-relaxed">{t.desc}</p>
+                              <div className="mt-3 space-y-1.5">
+                                {t.bullets.map((b: string) => (
+                                  <div key={b} className="flex items-center gap-2 text-[12.5px] text-[#666]">
+                                    <Check className="w-3.5 h-3.5 text-[#cf97fc] shrink-0" strokeWidth={3} /> {b}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {errors.tier && <p className="text-[12px] text-red-500 mt-2" data-testid="owner-tier-error">{errors.tier}</p>}
+
+                  <AnimatePresence mode="wait" initial={false}>
+                    {formData.tier === 'selvforvaltning' && (
+                      <motion.div key="self-terms" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.25 }}
+                        className="mt-5 rounded-2xl border border-[#e8dcf7] bg-gradient-to-br from-[#faf7ff] to-[#f5eefc] p-5" data-testid="owner-tier-terms">
+                        <p className="text-[13.5px] font-bold text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>Avtale om selvforvaltning</p>
+                        <div className="mt-2.5 space-y-1.5">
+                          {['5 % per utleieforhold — ingen faste kostnader', 'Ingen bindingstid — avslutt når du vil', 'Du godkjenner leietakere og priser selv'].map((b) => (
+                            <div key={b} className="flex items-center gap-2 text-[12.5px] text-[#666]">
+                              <Check className="w-3.5 h-3.5 text-[#7c3aed] shrink-0" strokeWidth={3} /> {b}
+                            </div>
+                          ))}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => { setTermsAccepted((v) => !v); setErrors((prev: any) => ({ ...prev, terms: null })); }}
+                          data-testid="owner-terms-checkbox"
+                          className="mt-4 w-full flex items-start gap-3 text-left group"
+                        >
+                          <span className={`mt-0.5 w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-colors ${termsAccepted ? 'bg-[#cf97fc] border-[#cf97fc]' : 'bg-white border-[#d9cfe9] group-hover:border-[#cf97fc]'}`}>
+                            {termsAccepted && <Check className="w-3.5 h-3.5 text-white" strokeWidth={3.5} />}
+                          </span>
+                          <span className="text-[13px] text-[#555] leading-relaxed">
+                            Jeg godtar <a href="/vilkar" target="_blank" rel="noopener noreferrer" onClick={(e: any) => e.stopPropagation()} className="text-[#7c3aed] font-semibold underline underline-offset-2">avtalen om selvforvaltning</a> (5 % per utleieforhold). Avtalen bekreftes digitalt — ingen papirer.
+                          </span>
+                        </button>
+                        {errors.terms && <p className="text-[12px] text-red-500 mt-2" data-testid="owner-terms-error">{errors.terms}</p>}
+                      </motion.div>
+                    )}
+                    {formData.tier === 'full_forvaltning' && (
+                      <motion.div key="full-info" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.25 }}
+                        className="mt-5 rounded-2xl bg-[#f7f4ef] border border-[#ece7de] p-5 flex items-start gap-3.5" data-testid="owner-tier-full-info">
+                        <div className="w-9 h-9 rounded-xl bg-white flex items-center justify-center shrink-0 shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
+                          <Sparkles className="w-4 h-4 text-[#7c3aed]" />
+                        </div>
+                        <div>
+                          <p className="text-[13.5px] font-bold text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>Skreddersydd tilbud — helt uforpliktende</p>
+                          <p className="text-[13px] text-[#666] mt-1 leading-relaxed">En lokal rådgiver kontakter deg med et konkret tilbud for boligen din — som regel samme dag.</p>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              )}
+
+              {/* STEG 5 — DINE MÅL */}
+              {step === 5 && (
                 <div data-testid="owner-step-goals">
                   <h2 className="text-[28px] sm:text-[34px] font-bold tracking-[-0.03em] text-[#0a0a0a] mb-2" style={{ fontFamily: 'var(--font-heading)' }}>Hva er viktigst for deg?</h2>
                   <p className="text-[15px] text-[#888] mb-8">Vi anbefaler den optimale strategien basert på dine preferanser.</p>
@@ -784,8 +944,8 @@ export default function BliUtleierPage() {
                 </div>
               )}
 
-              {/* STEG 5 — BEKREFT */}
-              {step === 5 && (
+              {/* STEG 6 — BEKREFT */}
+              {step === 6 && (
                 <div data-testid="owner-step-confirm">
                   <h2 className="text-[28px] sm:text-[34px] font-bold tracking-[-0.03em] text-[#0a0a0a] mb-2" style={{ fontFamily: 'var(--font-heading)' }}>Ser dette riktig ut?</h2>
                   <p className="text-[15px] text-[#888] mb-8">Sjekk at alt stemmer før du sender.</p>
@@ -794,6 +954,21 @@ export default function BliUtleierPage() {
                       <p className="text-[15px] text-[#333] font-medium">{formData.name}</p>
                       <p className="text-[14px] text-[#666]">{formData.email}</p>
                       <p className="text-[14px] text-[#666]">+47 {formData.phone}</p>
+                    </SummaryCard>
+                    <SummaryCard title="Forvaltning" onEdit={() => { setDir(-1); setStep(4); }} testId="owner-edit-tier">
+                      {formData.tier === 'selvforvaltning' ? (
+                        <>
+                          <p className="text-[15px] text-[#333] font-medium">Selvforvaltning — 5 % per utleie</p>
+                          <p className="text-[13px] mt-1 inline-flex items-center gap-1.5 text-[#16a34a] font-semibold"><CheckCircle2 className="w-3.5 h-3.5" /> Avtale godtatt digitalt</p>
+                        </>
+                      ) : formData.tier === 'full_forvaltning' ? (
+                        <>
+                          <p className="text-[15px] text-[#333] font-medium">Full forvaltning</p>
+                          <p className="text-[13px] text-[#666] mt-0.5">Du får et skreddersydd, uforpliktende tilbud</p>
+                        </>
+                      ) : (
+                        <p className="text-[13px] text-[#737373]">Ikke valgt</p>
+                      )}
                     </SummaryCard>
                     <SummaryCard title={extraUnits.filter((u: any) => (u.address || '').trim()).length > 0 ? `Eiendommer (${1 + extraUnits.filter((u: any) => (u.address || '').trim()).length})` : 'Eiendommen'} onEdit={() => { setDir(-1); setStep(1); }} testId="owner-edit-property">
                       <p className="text-[14px] text-[#333] font-medium">{formData.address || '—'}</p>
@@ -818,7 +993,7 @@ export default function BliUtleierPage() {
                         </div>
                       ))}
                     </SummaryCard>
-                    <SummaryCard title="Dine mål" onEdit={() => { setDir(-1); setStep(4); }} testId="owner-edit-goals">
+                    <SummaryCard title="Dine mål" onEdit={() => { setDir(-1); setStep(5); }} testId="owner-edit-goals">
                       {formData.rental_model && <p className="text-[14px] text-[#333]">Modell: <span className="font-medium capitalize">{formData.rental_model}</span></p>}
                       {formData.availability && <p className="text-[14px] text-[#666]">Tilgjengelig: {new Date(formData.availability + 'T12:00:00').toLocaleDateString('nb-NO', { day: 'numeric', month: 'long', year: 'numeric' })}</p>}
                       {formData.notes && <p className="text-[13px] text-[#5b6370] mt-1">{formData.notes}</p>}
@@ -840,7 +1015,7 @@ export default function BliUtleierPage() {
                 <Button onClick={goNext} data-testid="owner-next-button" className="rounded-full bg-[#0a0a0a] text-white hover:bg-black h-12 px-8 text-[14px] font-semibold gap-2 active:scale-[0.97] transition-transform shadow-[0_6px_20px_-8px_rgba(0,0,0,0.5)]">Neste <ArrowRight className="w-4 h-4" /></Button>
               </div>
             ) : (
-              <Button onClick={handleSubmit} disabled={loading} data-testid="owner-submit-button" className="rounded-full bg-[#0a0a0a] text-white hover:bg-black h-12 px-8 text-[14px] font-semibold gap-2 active:scale-[0.97] transition-transform shadow-[0_6px_20px_-8px_rgba(0,0,0,0.5)]">{loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />} {ctaVariant === 'B' ? 'Fullfør – helt gratis' : 'Send henvendelse'}</Button>
+              <Button onClick={handleSubmit} disabled={loading} data-testid="owner-submit-button" className="rounded-full bg-[#0a0a0a] text-white hover:bg-black h-12 px-8 text-[14px] font-semibold gap-2 active:scale-[0.97] transition-transform shadow-[0_6px_20px_-8px_rgba(0,0,0,0.5)]">{loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />} {formData.tier === 'full_forvaltning' ? 'Få tilbud' : formData.tier === 'selvforvaltning' ? 'Fullfør registrering' : (ctaVariant === 'B' ? 'Fullfør – helt gratis' : 'Send henvendelse')}</Button>
             )}
           </div>
         </div>
