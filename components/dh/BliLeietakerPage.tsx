@@ -149,7 +149,10 @@ export default function BliLeietakerPage() {
       } else {
         throw new Error('tenant failed');
       }
-    } catch { toast.error('Noe gikk galt. Prøv igjen.'); }
+    } catch {
+      try { track('form_error', { form: 'leietaker', kind: 'submit' }); } catch (e) {}
+      toast.error('Noe gikk galt. Prøv igjen.');
+    }
     finally { setLoading(false); }
   };
 

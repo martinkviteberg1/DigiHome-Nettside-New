@@ -15,6 +15,7 @@ import CustomersDashboard from '@/components/admin/CustomersDashboard';
 import AgentBridge from '@/components/admin/AgentBridge';
 import PlaybookTab from '@/components/admin/PlaybookTab';
 import NewsletterTab from '@/components/admin/NewsletterTab';
+import LandingPagesTab from '@/components/admin/LandingPagesTab';
 import PropertiesTab from '@/components/admin/PropertiesTab';
 import HistoryTab from '@/components/admin/HistoryTab';
 import InvestorRoomTab from '@/components/admin/InvestorRoomTab';
@@ -51,6 +52,7 @@ const NAV = [
     items: [
       { k: 'artikler', l: 'Artikler', icon: FileText, href: '/admin/artikler' },
       { k: 'nyhetsbrev', l: 'Nyhetsbrev', icon: Mail, desc: 'E-post til leads & kunder — komponer, test og send' },
+      { k: 'landingssider', l: 'Landingssider', icon: LayoutTemplate, desc: 'Kampanjesider · annonse-LP-er · hovedsider — med live ytelse' },
       { k: 'boliger', l: 'Boliger', icon: Home, desc: 'Vis forvaltede boliger på forsiden — synk & synlighet' },
     ],
   },
@@ -69,7 +71,6 @@ const INSIGHT_TABS = [
   { k: 'trafikk', l: 'Trafikk', icon: Activity },
   { k: 'trakt', l: 'Trakt & A/B', icon: GitBranch },
   { k: 'annonser', l: 'Annonser', icon: Megaphone },
-  { k: 'landingssider', l: 'Landingssider', icon: LayoutTemplate },
   { k: 'konkurrent', l: 'Konkurrentanalyse', icon: Crosshair },
   { k: 'innsikt', l: 'Lead-innsikt', icon: BarChart3 },
   { k: 'leiemarked', l: 'Leiemarked', icon: Database },
@@ -87,6 +88,7 @@ const SECTION_TITLES = {
   abonnementer: { t: 'Abonnementer', s: 'Kommer snart — aktive avtaler & fakturering' },
   bro: { t: 'Agent-bro', s: 'Delt meldingstråd for koordinering med plattform-prosjektet' },
   nyhetsbrev: { t: 'Nyhetsbrev', s: 'Komponer, forhåndsvis og send e-post til leads og kunder — med samtykke-merking og avmelding' },
+  landingssider: { t: 'Landingssider', s: 'Alle konverteringssider på ett sted — kampanjer, annonse-LP-er og hovedsider med live ytelse' },
   boliger: { t: 'Boliger på forsiden', s: 'Synk forvaltede boliger fra plattformen og velg hvilke som vises offentlig — personvern-trygt' },
   historikk: { t: 'Historikk', s: 'Leads fra før sporingen startet — sett kilde, status og verdi manuelt. Teller i helhetsbildet, aldri i annonse-ROAS' },
 };
@@ -369,6 +371,7 @@ export default function AdminPage() {
           {section === 'investorrom' && <InvestorRoomTab apiKey={token} />}
           {section === 'playbook' && <PlaybookTab apiKey={token} />}
           {section === 'nyhetsbrev' && <NewsletterTab apiKey={token} />}
+          {section === 'landingssider' && <LandingPagesTab apiKey={token} />}
           {section === 'boliger' && <PropertiesTab apiKey={token} />}
           {section === 'historikk' && <HistoryTab apiKey={token} />}
           {section === 'okonomi' && <FinanceDashboard apiKey={token} />}

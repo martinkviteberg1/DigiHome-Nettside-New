@@ -358,8 +358,8 @@ async function geonorgeSearch(q) {
   if (hit && Date.now() - hit.at < ADDR_TTL_MS) return hit.suggestions;
 
   const url = `https://ws.geonorge.no/adresser/v1/sok?sok=${encodeURIComponent(q)}` +
-    `&fuzzy=true&treffPerSide=6&side=0&asciiKompatibel=true` +
-    `&filtrer=adresser.adressetekst,adresser.postnummer,adresser.poststed`;
+    `&fuzzy=true&treffPerSide=20&side=0&asciiKompatibel=true` +
+    `&filtrer=adresser.adressetekst,adresser.postnummer,adresser.poststed,adresser.kommunenummer`;
 
   let suggestions = [];
   let ok = false;
@@ -376,13 +376,20 @@ async function geonorgeSearch(q) {
         .map((a) => {
           const text = a.adressetekst || '';
           const sub = `${a.postnummer || ''} ${a.poststed || ''}`.trim();
-          return { text, sub, label: sub ? `${text}, ${sub}` : text };
+          const knr = String(a.kommunenummer || '');
+          // Geo-prioritering: Bergen (4601) først, deretter Vestland (46xx),
+          // så resten — vi er et Bergen-selskap og trafikken er lokal.
+          const rank = knr === '4601' ? 0 : knr.startsWith('46') ? 1 : 2;
+          return { text, sub, label: sub ? `${text}, ${sub}` : text, rank };
         })
         .filter((s) => {
           if (!s.text || seen.has(s.label)) return false;
           seen.add(s.label);
           return true;
-        });
+        })
+        .sort((a, b) => a.rank - b.rank)
+        .slice(0, 7)
+        .map(({ rank, ...s }) => s);
       ok = true;
       break;
     } catch (e) {
@@ -1416,6 +1423,27 @@ async function handleRoute(request, { params }) {
       } catch (e) { /* dedupe er best-effort; fall gjennom til normal insert */ }
 
       await db.collection('leads').insertOne(lead);
+
+      // Nyhetsbrev-attribusjon: kom leaden fra en kampanje-CTA (?c=&r= på
+      // landingssiden) eller finnes e-posten i mottaker-kartet? Stemple leaden.
+      try {
+        let nlStamp = null;
+        const bodyCamp = (body.nl_campaign || '').toString().slice(0, 64);
+        const bodyRid = (body.nl_rid || '').toString().slice(0, 32);
+        if (bodyCamp) {
+          nlStamp = { campaignId: bodyCamp, rid: bodyRid || null, via: 'landing' };
+        } else if (lead.email) {
+          const rec = await db.collection('newsletter_recipients')
+            .findOne({ email: lead.email.toLowerCase() }, { sort: { sentAt: -1 }, projection: { _id: 0, campaignId: 1, rid: 1 } });
+          if (rec) nlStamp = { campaignId: rec.campaignId, rid: rec.rid, via: 'email-match' };
+        }
+        if (nlStamp) {
+          const camp = await db.collection(NEWSLETTER_COLL).findOne({ id: nlStamp.campaignId }, { projection: { _id: 0, subject: 1, slug: 1 } });
+          const full = { ...nlStamp, campaign: camp?.slug || camp?.subject || nlStamp.campaignId, at: new Date().toISOString() };
+          await db.collection('leads').updateOne({ id: lead.id }, { $set: { newsletter_source: full } });
+          lead.newsletter_source = full;
+        }
+      } catch (e) { /* attribusjon er best-effort */ }
 
       // Inkluder Finn-lenken i notatet som videresendes, så CRM-teamet ser annonsen.
       const fwdNotes = lead.finn_url
@@ -2846,6 +2874,63 @@ async function handleRoute(request, { params }) {
     // Samtykke: kunder = kundeforhold (trygt); åpne leads = grå sone (merkes).
     // Suppresjonsliste `email_optouts` respekteres ALLTID.
     // ===================================================================
+    // ── Bildeopplasting for nyhetsbrev (drag & drop i editoren) ────────────
+    // Lagres i MongoDB (overlever deploys) og serveres via /api/newsletter/asset
+    // → absolutte URL-er som fungerer i e-postklienter.
+    if (route === '/admin/newsletter/upload' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      try {
+        const form = await request.formData();
+        const file = form.get('file');
+        if (!file || typeof file.arrayBuffer !== 'function') {
+          return cors(NextResponse.json({ ok: false, error: 'Mangler fil' }, { status: 400 }));
+        }
+        const raw = Buffer.from(await file.arrayBuffer());
+        if (raw.length > 12 * 1024 * 1024) {
+          return cors(NextResponse.json({ ok: false, error: 'Bildet er for stort (maks 12 MB)' }, { status: 400 }));
+        }
+        const sharp = (await import('sharp')).default;
+        const meta = await sharp(raw).metadata();
+        if (!meta.format || !['jpeg', 'png', 'webp', 'gif', 'heif', 'avif', 'svg', 'tiff'].includes(meta.format)) {
+          return cors(NextResponse.json({ ok: false, error: 'Ugyldig bildeformat' }, { status: 400 }));
+        }
+        // E-postvennlig: maks 1200px bredt (600px @2x), PNG ved alpha ellers JPEG
+        const hasAlpha = !!meta.hasAlpha;
+        let pipe = sharp(raw).resize({ width: 1200, withoutEnlargement: true });
+        let contentType = 'image/jpeg';
+        let out;
+        if (hasAlpha) { out = await pipe.png({ compressionLevel: 9 }).toBuffer(); contentType = 'image/png'; }
+        else { out = await pipe.jpeg({ quality: 82, mozjpeg: true }).toBuffer(); }
+        const outMeta = await sharp(out).metadata();
+        const id = uuidv4();
+        await db.collection('newsletter_assets').insertOne({
+          id, contentType, data: out.toString('base64'),
+          width: outMeta.width || null, height: outMeta.height || null,
+          bytes: out.length, filename: (file.name || 'bilde').toString().slice(0, 200),
+          createdAt: new Date().toISOString(),
+        });
+        return cors(NextResponse.json({ ok: true, id, url: `/api/newsletter/asset?id=${id}`, width: outMeta.width, height: outMeta.height }, { status: 201 }));
+      } catch (e) {
+        return cors(NextResponse.json({ ok: false, error: 'Opplasting feilet: ' + (e.message || 'ukjent') }, { status: 500 }));
+      }
+    }
+
+    // Offentlig asset-visning (bilder i e-post må være åpne URL-er)
+    if (route === '/newsletter/asset' && method === 'GET') {
+      const id = (new URL(request.url).searchParams.get('id') || '').toString().slice(0, 64);
+      const doc = await db.collection('newsletter_assets').findOne({ id }, { projection: { _id: 0, data: 1, contentType: 1 } });
+      if (!doc) return new NextResponse('Not found', { status: 404 });
+      const buf = Buffer.from(doc.data, 'base64');
+      return new NextResponse(buf, {
+        status: 200,
+        headers: {
+          'Content-Type': doc.contentType || 'image/jpeg',
+          'Content-Length': String(buf.length),
+          'Cache-Control': 'public, max-age=31536000, immutable',
+        },
+      });
+    }
+
     if (route === '/admin/newsletter/audiences' && method === 'GET') {
       if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const data = await audienceCounts(db);
@@ -2905,7 +2990,7 @@ async function handleRoute(request, { params }) {
         subject: '', preheader: '', fromName: 'DigiHome',
         theme: 'lavendel',
         blocks: templateBlocks(tpl.key),
-        segments: [], excludedEmails: [],
+        segments: [], excludedEmails: [], extraEmails: [],
         status: 'draft', template: tpl.key,
         createdAt: now, updatedAt: now,
         recipients: 0, sent: 0, failedCount: 0, opens: 0, clicks: 0, openedR: [], clickedR: [],
@@ -2930,8 +3015,11 @@ async function handleRoute(request, { params }) {
       if (body.fromName !== undefined) set.fromName = String(body.fromName).slice(0, 80);
       if (body.theme !== undefined) set.theme = THEMES[body.theme] ? String(body.theme) : 'lavendel';
       if (body.blocks !== undefined) set.blocks = sanitizeBlocks(body.blocks);
-      if (body.segments !== undefined) set.segments = (Array.isArray(body.segments) ? body.segments : []).filter((s) => ['kunder', 'leads', 'leietakere'].includes(s));
+      if (body.segments !== undefined) set.segments = (Array.isArray(body.segments) ? body.segments : []).filter((s) => ['kunder', 'abonnenter', 'leads', 'leietakere'].includes(s));
       if (body.excludedEmails !== undefined) set.excludedEmails = (Array.isArray(body.excludedEmails) ? body.excludedEmails : []).slice(0, 5000).map((e) => nlNormEmail(e)).filter(Boolean);
+      if (body.extraEmails !== undefined) set.extraEmails = (Array.isArray(body.extraEmails) ? body.extraEmails : []).slice(0, 500)
+        .map((x) => (typeof x === 'string' ? { email: nlNormEmail(x), name: '' } : { email: nlNormEmail(x?.email), name: String(x?.name || '').slice(0, 120) }))
+        .filter((x) => /^\S+@\S+\.\S+$/.test(x.email));
       await db.collection(NEWSLETTER_COLL).updateOne({ id }, { $set: set });
       return cors(NextResponse.json({ ok: true, updatedAt: set.updatedAt }));
     }
@@ -2943,6 +3031,8 @@ async function handleRoute(request, { params }) {
       const c = await db.collection(NEWSLETTER_COLL).findOne({ id }, { projection: { _id: 0 } });
       if (!c) return cors(NextResponse.json({ ok: false, error: 'Fant ikke kampanjen' }, { status: 404 }));
       let clicksByUrl = [];
+      let timeline = [];
+      let recipientDetails = [];
       if (c.status === 'sent') {
         clicksByUrl = await db.collection(NL_EVENTS_COLL).aggregate([
           { $match: { campaignId: id, type: 'click' } },
@@ -2950,6 +3040,24 @@ async function handleRoute(request, { params }) {
           { $project: { _id: 0, url: '$_id', total: 1, unique: { $size: '$unique' } } },
           { $sort: { total: -1 } }, { $limit: 30 },
         ]).toArray();
+        // Aktivitet per dag (åpninger/klikk) — for tidslinje i UI
+        timeline = await db.collection(NL_EVENTS_COLL).aggregate([
+          { $match: { campaignId: id } },
+          { $group: { _id: { day: { $substr: ['$at', 0, 10] }, type: '$type' }, n: { $sum: 1 } } },
+          { $group: { _id: '$_id.day', opens: { $sum: { $cond: [{ $eq: ['$_id.type', 'open'] }, '$n', 0] } }, clicks: { $sum: { $cond: [{ $eq: ['$_id.type', 'click'] }, '$n', 0] } } } },
+          { $project: { _id: 0, day: '$_id', opens: 1, clicks: 1 } },
+          { $sort: { day: 1 } }, { $limit: 60 },
+        ]).toArray();
+        // Mottaker-nivå: hvem åpnet og klikket (e-post fra mottaker-kartet)
+        const openedSet = new Set(c.openedR || []);
+        const clickedSet = new Set(c.clickedR || []);
+        const recRows = await db.collection('newsletter_recipients')
+          .find({ campaignId: id }, { projection: { _id: 0, rid: 1, email: 1, name: 1, segment: 1, failed: 1 } })
+          .limit(2000).toArray();
+        recipientDetails = recRows.map((r) => ({
+          email: r.email, name: r.name || '', segment: r.segment || '',
+          opened: openedSet.has(r.rid), clicked: clickedSet.has(r.rid), failed: !!r.failed,
+        })).sort((a, b) => (b.clicked - a.clicked) || (b.opened - a.opened) || a.email.localeCompare(b.email));
       }
       const opensUnique = (c.openedR || []).length;
       const clicksUnique = (c.clickedR || []).length;
@@ -2961,7 +3069,7 @@ async function handleRoute(request, { params }) {
           opens: c.opens || 0, opensUnique, clicks: c.clicks || 0, clicksUnique,
           openRate: c.sent ? Math.round((opensUnique / c.sent) * 1000) / 10 : null,
           clickRate: c.sent ? Math.round((clicksUnique / c.sent) * 1000) / 10 : null,
-          clicksByUrl,
+          clicksByUrl, timeline, recipientDetails,
         },
       }));
     }
@@ -2971,6 +3079,7 @@ async function handleRoute(request, { params }) {
       const id = (new URL(request.url).searchParams.get('id') || '').toString();
       const res = await db.collection(NEWSLETTER_COLL).deleteOne({ id });
       await db.collection(NL_EVENTS_COLL).deleteMany({ campaignId: id });
+      await db.collection('newsletter_recipients').deleteMany({ campaignId: id });
       return cors(NextResponse.json({ ok: true, deleted: res.deletedCount }));
     }
 
@@ -2994,7 +3103,7 @@ async function handleRoute(request, { params }) {
     if (route === '/admin/newsletter/recipients' && method === 'GET') {
       if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const sp = new URL(request.url).searchParams;
-      const segments = (sp.get('segments') || '').split(',').map((s) => s.trim()).filter((s) => ['kunder', 'leads', 'leietakere'].includes(s));
+      const segments = (sp.get('segments') || '').split(',').map((s) => s.trim()).filter((s) => ['kunder', 'abonnenter', 'leads', 'leietakere'].includes(s));
       const { recipients, skipped } = await resolveAudience(db, segments, []);
       return cors(NextResponse.json({ ok: true, recipients: recipients.slice(0, 2000), total: recipients.length, skipped }));
     }
@@ -3012,9 +3121,9 @@ async function handleRoute(request, { params }) {
       const subject = (c.subject || '').trim();
       if (!subject) return cors(NextResponse.json({ ok: false, error: 'Emnefelt mangler — fyll inn under Oppsett' }, { status: 400 }));
       if (!hasContent(c.blocks)) return cors(NextResponse.json({ ok: false, error: 'Nyhetsbrevet har ikke noe innhold ennå' }, { status: 400 }));
-      if (!(c.segments || []).length) return cors(NextResponse.json({ ok: false, error: 'Velg minst én målgruppe' }, { status: 400 }));
+      if (!(c.segments || []).length && !(c.extraEmails || []).length) return cors(NextResponse.json({ ok: false, error: 'Velg minst én målgruppe eller legg til mottakere manuelt' }, { status: 400 }));
 
-      const { recipients, skipped } = await resolveAudience(db, c.segments, c.excludedEmails || []);
+      const { recipients, skipped } = await resolveAudience(db, c.segments, c.excludedEmails || [], c.extraEmails || []);
       if (!recipients.length) return cors(NextResponse.json({ ok: false, error: 'Ingen mottakere i valgt målgruppe (etter avmeldte/ekskluderte)' }, { status: 400 }));
       if (recipients.length > 2000) return cors(NextResponse.json({ ok: false, error: `For mange mottakere i én utsending (${recipients.length} > 2000)` }, { status: 400 }));
 
@@ -3041,6 +3150,15 @@ async function handleRoute(request, { params }) {
       }
 
       const now = new Date().toISOString();
+      // Lagre mottaker-kart (rid → e-post) for klikk→lead-attribusjon og analyse
+      try {
+        const recDocs = recipients.map((r) => ({
+          id: uuidv4(), campaignId, rid: recipientId(r.email),
+          email: r.email, name: r.name || '', segment: r.segment || '',
+          failed: failed.some((f) => f.email === r.email), sentAt: now,
+        }));
+        if (recDocs.length) await db.collection('newsletter_recipients').insertMany(recDocs, { ordered: false });
+      } catch (e) {}
       const upd = {
         status: 'sent', sentAt: now, updatedAt: now, slug,
         recipients: recipients.length, sent, failedCount: failed.length,
@@ -3071,6 +3189,60 @@ async function handleRoute(request, { params }) {
         templates: TEMPLATES.map((t) => ({ key: t.key, label: t.label, desc: t.desc })),
         themes: Object.keys(THEMES).map((k) => ({ key: k, accent: THEMES[k].accent })),
       }));
+    }
+
+    // ── Abonnent-administrasjon ────────────────────────────────────────────
+    // GET: full oversikt (abonnenter + kryss-sjekk mot leads), POST: legg til,
+    // DELETE: fjern abonnent (?email=). Avmeldte vises med status.
+    if (route === '/admin/newsletter/subscribers' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const subs = await db.collection('newsletter_subscribers')
+        .find({}, { projection: { _id: 0 } }).sort({ subscribedAt: -1 }).limit(5000).toArray();
+      const optoutRows = await db.collection(OPTOUT_COLL).find({}, { projection: { _id: 0, email: 1 } }).toArray();
+      const optouts = new Set(optoutRows.map((o) => nlNormEmail(o.email)));
+      // Kryss-sjekk: hvilke abonnenter er også leads/kunder?
+      const leadEmails = new Set();
+      for (const coll of ['leads', 'tenant_leads', 'imported_leads']) {
+        const rows = await db.collection(coll).find({ email: { $exists: true, $ne: '' } }, { projection: { _id: 0, email: 1 } }).limit(20000).toArray();
+        for (const r of rows) leadEmails.add(nlNormEmail(r.email));
+      }
+      const items = subs.map((s) => {
+        const em = nlNormEmail(s.email);
+        return { ...s, email: em, unsubscribed: optouts.has(em), isLead: leadEmails.has(em) };
+      });
+      return cors(NextResponse.json({
+        ok: true, subscribers: items,
+        counts: {
+          total: items.length,
+          active: items.filter((s) => !s.unsubscribed).length,
+          unsubscribed: items.filter((s) => s.unsubscribed).length,
+          pureSubscribers: items.filter((s) => !s.isLead && !s.unsubscribed).length,
+        },
+      }));
+    }
+
+    if (route === '/admin/newsletter/subscribers' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      const email = nlNormEmail(body.email);
+      if (!/^\S+@\S+\.\S+$/.test(email)) return cors(NextResponse.json({ ok: false, error: 'Ugyldig e-postadresse' }, { status: 400 }));
+      const now = new Date().toISOString();
+      await db.collection('newsletter_subscribers').updateOne(
+        { email },
+        { $set: { name: String(body.name || '').slice(0, 120), source: 'admin', updatedAt: now }, $setOnInsert: { email, subscribedAt: now, consent: true } },
+        { upsert: true }
+      );
+      // Admin-tillegg opphever ev. tidligere avmelding (eksplisitt handling)
+      await db.collection(OPTOUT_COLL).deleteOne({ email });
+      return cors(NextResponse.json({ ok: true }, { status: 201 }));
+    }
+
+    if (route === '/admin/newsletter/subscribers' && method === 'DELETE') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const email = nlNormEmail(new URL(request.url).searchParams.get('email') || '');
+      if (!email) return cors(NextResponse.json({ ok: false, error: 'Mangler email' }, { status: 400 }));
+      const res = await db.collection('newsletter_subscribers').deleteOne({ email });
+      return cors(NextResponse.json({ ok: true, deleted: res.deletedCount }));
     }
 
     // Offentlig avmelding — HMAC-verifisert lenke fra e-posten. Ingen auth.
@@ -3118,6 +3290,26 @@ async function handleRoute(request, { params }) {
         try {
           await db.collection(NEWSLETTER_COLL).updateOne({ id: c, status: 'sent' }, { $inc: { clicks: 1 }, $addToSet: { clickedR: r } });
           await db.collection(NL_EVENTS_COLL).insertOne({ id: uuidv4(), campaignId: c, rid: r, type: 'click', url: target.slice(0, 500), at: new Date().toISOString() });
+          // Klikk → lead-attribusjon: finn mottakerens e-post via rid og stemple leaden
+          const rec = await db.collection('newsletter_recipients').findOne({ campaignId: c, rid: r }, { projection: { _id: 0, email: 1 } });
+          if (rec?.email) {
+            const camp = await db.collection(NEWSLETTER_COLL).findOne({ id: c }, { projection: { _id: 0, subject: 1, slug: 1 } });
+            const stamp = {
+              campaignId: c, campaign: camp?.slug || camp?.subject || c,
+              url: target.slice(0, 300), at: new Date().toISOString(),
+            };
+            const emailRe = new RegExp(`^${rec.email.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
+            for (const coll of ['leads', 'tenant_leads', 'imported_leads']) {
+              await db.collection(coll).updateMany(
+                { email: emailRe },
+                { $set: { newsletter_last_click: stamp }, $inc: { newsletter_clicks: 1 } }
+              );
+            }
+            await db.collection('newsletter_subscribers').updateOne(
+              { email: rec.email },
+              { $set: { last_click_at: stamp.at, last_campaign: stamp.campaign }, $inc: { clicks: 1 } }
+            );
+          }
         } catch (e) {}
       }
       return NextResponse.redirect(target, 302);
@@ -4038,16 +4230,28 @@ async function handleRoute(request, { params }) {
       if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const { searchParams } = new URL(request.url);
       const days = parseInt(searchParams.get('days') || '30', 10) || 30;
-      // Katalog: utleier-sider fra LANDING-konfig + leietaker-kampanjesiden.
+      // Katalog: annonse-LP-er fra LANDING-konfig + kampanjesider + hovedsider.
       const catalog = Object.values(LANDING).map((c) => ({
-        slug: c.slug, source: c.source, path: `/lp/${c.slug}`, audience: 'huseier',
+        slug: c.slug, source: c.source, path: `/lp/${c.slug}`, audience: 'huseier', group: 'annonse',
         eyebrow: c.eyebrow, h1: c.h1, image: c.image, metaTitle: c.metaTitle,
       }));
       catalog.push({
-        slug: 'leietaker', source: 'lp-leietaker', path: '/lp/leietaker', audience: 'leietaker',
+        slug: 'leietaker', source: 'lp-leietaker', path: '/lp/leietaker', audience: 'leietaker', group: 'annonse',
         eyebrow: 'Finn ditt neste hjem', h1: 'Finn ditt neste hjem i Bergen',
         image: '/interior-living.webp', metaTitle: 'Finn ditt neste hjem i Bergen — DigiHome',
       });
+      // Kampanjesider (nyhetsbrev/sesong)
+      catalog.push({
+        slug: 'sommer', source: 'sommerkampanje-2026', path: '/sommer', audience: 'huseier', group: 'kampanje',
+        eyebrow: 'Nyhetsbrev & annonser · frist 10. juli', h1: 'Sommerkampanje — 10 % honorar + 0 kr i oppstart',
+        image: '/bergen-rooftops.webp', metaTitle: 'Sommerkampanje | DigiHome',
+      });
+      // Hovedsider (permanente konverteringssider)
+      catalog.push(
+        { slug: 'bli-utleier', source: 'nettside', path: '/bli-utleier', audience: 'huseier', group: 'hoved', eyebrow: 'Hovedskjema · utleiere', h1: 'Bli utleier', metaTitle: 'Bli utleier — DigiHome' },
+        { slug: 'bli-leietaker', source: 'nettside', path: '/bli-leietaker', audience: 'leietaker', group: 'hoved', eyebrow: 'Hovedskjema · leietakere', h1: 'Bli leietaker', metaTitle: 'Bli leietaker — DigiHome' },
+        { slug: 'priskalkulator', source: 'priskalkulator', path: '/priskalkulator', audience: 'huseier', group: 'hoved', eyebrow: 'Selvbetjent prisestimat', h1: 'Priskalkulator', metaTitle: 'Priskalkulator — DigiHome' },
+      );
       const perf = await computeLandingPages(db, days, catalog.map((c) => ({ slug: c.slug, source: c.source, path: c.path, audience: c.audience })));
       const meta = Object.fromEntries(catalog.map((c) => [c.slug, c]));
       const pages = perf.pages.map((p) => ({ ...(meta[p.slug] || {}), ...p }));

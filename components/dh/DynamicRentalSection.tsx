@@ -235,7 +235,7 @@ function FinnCard() {
         </h3>
         <div className="flex items-center gap-1.5 mt-1.5">
           <MapPin className="w-3 h-3 text-[#0063fb]" />
-          <span className="text-[13px] text-[#555]">Nordnesveien 8, 5005 Bergen</span>
+          <span className="text-[13px] text-[#555]">Nordnesveien 13, 5005 Bergen</span>
         </div>
 
         {/* Details row */}

@@ -1,204 +1,162 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+/*
+ * LandingPagesTab — egen modul for alle landingssider (flyttet ut av Innsikt).
+ * Grupperer: Kampanjesider (nyhetsbrev/sesong) · Annonse-landingssider (/lp/*)
+ * · Hovedsider (permanente konverteringssider). Live ytelse fra
+ * GET /api/admin/landing-pages (økter, visninger, skjematrakt, leads, CVR).
+ */
+
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  Loader2, ExternalLink, Copy, Check, TrendingUp, Users, MousePointerClick,
-  Trophy, Target, AlertCircle, Home, KeyRound, Megaphone,
+  ExternalLink, Copy, Check, Loader2, Megaphone, Sun, Home,
+  Users, MousePointerClick, Target, TrendingUp,
 } from 'lucide-react';
 
-const kr = (n) => (n || n === 0) ? `${Math.round(n).toLocaleString('nb-NO')} kr` : '–';
+const nf = new Intl.NumberFormat('nb-NO');
+const GROUPS = [
+  { key: 'kampanje', label: 'Kampanjesider', desc: 'Tidsbegrensede kampanjer — koblet til nyhetsbrev og annonser', icon: Sun },
+  { key: 'annonse', label: 'Annonse-landingssider', desc: 'Dedikerte sider for Google- og Meta-annonser (/lp/*)', icon: Megaphone },
+  { key: 'hoved', label: 'Hovedsider', desc: 'Permanente konverteringssider på nettstedet', icon: Home },
+];
 
-export default function LandingPagesTab({ apiKey, days = 30 }) {
+export default function LandingPagesTab({ apiKey }) {
+  const q = `key=${encodeURIComponent(apiKey)}`;
+  const [days, setDays] = useState(30);
   const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState('');
+  const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState('');
 
-  const load = useCallback(async () => {
-    setLoading(true); setErr('');
+  const load = useCallback(async (d) => {
+    setLoading(true);
     try {
-      const res = await fetch(`/api/admin/landing-pages?key=${encodeURIComponent(apiKey)}&days=${days}`);
-      if (res.status === 401) { setErr('Sesjonen er utløpt — logg inn på nytt.'); setLoading(false); return; }
-      const j = await res.json();
-      if (!res.ok || !j.ok) { setErr(j.error || 'Kunne ikke laste landingssider'); }
-      else setData(j);
-    } catch (e) { setErr('Kunne ikke laste landingssider'); }
-    finally { setLoading(false); }
-  }, [apiKey, days]);
+      const r = await fetch(`/api/admin/landing-pages?days=${d}&${q}`);
+      const j = await r.json();
+      if (j.ok) setData(j);
+    } catch (e) {}
+    setLoading(false);
+  }, [q]);
+  useEffect(() => { load(days); }, [load, days]);
 
-  useEffect(() => { if (apiKey) load(); }, [apiKey, days]); // eslint-disable-line
-
-  const base = (typeof window !== 'undefined') ? window.location.origin : '';
-  const copyLink = (path) => {
-    try { navigator.clipboard.writeText(`${base}${path}`); setCopied(path); setTimeout(() => setCopied(''), 1800); } catch (e) {}
+  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+  const copyUrl = (path) => {
+    try {
+      navigator.clipboard.writeText(`${origin}${path}`);
+      setCopied(path);
+      setTimeout(() => setCopied(''), 1600);
+    } catch (e) {}
   };
 
-  const pages = (data && data.pages) || [];
-  const totals = (data && data.totals) || null;
+  const grouped = useMemo(() => {
+    const pages = data?.pages || [];
+    const by = { kampanje: [], annonse: [], hoved: [] };
+    for (const p of pages) (by[p.group] || by.annonse).push(p);
+    return by;
+  }, [data]);
+
+  const t = data?.totals || {};
 
   return (
-    <div>
-      {err && <div className="mb-4 bg-rose-50 text-rose-600 rounded-xl px-4 py-3 text-[13px] flex items-center gap-2"><AlertCircle className="w-4 h-4" /> {err}</div>}
-
-      {/* Sammendrag */}
-      {totals && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
-          <SummaryStat label="Sider" value={pages.length} icon={Megaphone} tone="violet" />
-          <SummaryStat label="Økter (alle sider)" value={(totals.sessions || 0).toLocaleString('nb-NO')} icon={MousePointerClick} tone="slate" />
-          <SummaryStat label="Leads" value={totals.leads || 0} sub={`${totals.conversionRate || 0}% konvertering`} icon={Users} tone="slate" />
-          <SummaryStat label="Vunnet verdi" value={kr(totals.wonValue)} sub={`${totals.won || 0} vunne`} icon={Trophy} tone="emerald" />
+    <div data-testid="lp-tab">
+      {/* Topp: periode + totaler */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex gap-1.5">
+          {[[7, '7 dager'], [30, '30 dager'], [90, '90 dager']].map(([d, l]) => (
+            <button key={d} onClick={() => setDays(d)}
+              className={`h-[32px] rounded-full text-[12px] font-semibold px-3.5 ${days === d ? 'bg-[#0a0a0a] text-white' : 'bg-[#f4f2ef] text-[#777] hover:bg-[#ece9e4]'}`}>{l}</button>
+          ))}
         </div>
-      )}
-
-      {/* Grid */}
-      {loading && !data ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-3 gap-4">
-          {[0, 1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="bg-white rounded-2xl shadow-[0_2px_16px_rgba(0,0,0,0.04)] overflow-hidden">
-              <div className="shimmer h-44 w-full" />
-              <div className="p-4 space-y-3">
-                <div className="shimmer h-3 rounded w-24" />
-                <div className="shimmer h-4 rounded w-3/4" />
-                <div className="grid grid-cols-4 gap-2 pt-2">{[0, 1, 2, 3].map((k) => <div key={k} className="shimmer h-10 rounded-lg" />)}</div>
+        <div className="flex gap-2 flex-wrap">
+          {[
+            { l: 'Økter', v: t.sessions != null ? nf.format(t.sessions) : '—', icon: Users },
+            { l: 'Skjema startet', v: t.formStart != null ? nf.format(t.formStart) : '—', icon: MousePointerClick },
+            { l: 'Leads', v: t.leads != null ? nf.format(t.leads) : '—', icon: Target },
+            { l: 'CVR', v: t.conversionRate != null ? `${t.conversionRate} %` : '—', icon: TrendingUp },
+          ].map((k) => (
+            <div key={k.l} className="rounded-xl border border-[#f0f0f0] bg-white px-3.5 py-2 flex items-center gap-2.5">
+              {React.createElement(k.icon, { size: 14, className: 'text-[#c9b3e0]' })}
+              <div>
+                <p className="text-[15px] font-bold tabular-nums leading-none text-[#111]">{k.v}</p>
+                <p className="text-[9.5px] font-semibold uppercase tracking-[0.06em] text-[#aaa] mt-0.5">{k.l}</p>
               </div>
             </div>
           ))}
         </div>
+      </div>
+
+      {loading && !data ? (
+        <div className="py-20 text-center"><Loader2 size={22} className="animate-spin inline text-[#a052e0]" /></div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-3 gap-4 dh-tab-in">
-          {pages.map((p) => (
-            <LandingCard key={p.slug} page={p} base={base} copied={copied === p.path} onCopy={() => copyLink(p.path)} />
-          ))}
-          {pages.length === 0 && !loading && (
-            <div className="col-span-full py-14 text-center text-[14px] text-[#aaa]">Ingen landingssider funnet</div>
-          )}
-        </div>
-      )}
+        GROUPS.map((g) => {
+          const pages = grouped[g.key] || [];
+          if (!pages.length) return null;
+          return (
+            <div key={g.key} className="mt-8" data-testid={`lp-group-${g.key}`}>
+              <div className="flex items-center gap-2.5 flex-wrap">
+                {React.createElement(g.icon, { size: 16, className: 'text-[#a052e0]' })}
+                <h3 className="text-[15px] font-bold tracking-[-0.01em] text-[#111]">{g.label}</h3>
+                <span className="text-[11px] text-[#bbb]">· {g.desc}</span>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 mt-3">
+                {pages.map((p) => {
+                  const isKampanje = g.key === 'kampanje';
+                  return (
+                    <div key={p.slug}
+                      className={`rounded-2xl border bg-white p-5 transition-all hover:shadow-[0_10px_30px_-18px_rgba(160,82,224,0.25)] ${isKampanje ? 'border-[#d8c3ec] bg-gradient-to-b from-[#fdfbff] to-white' : 'border-[#f0f0f0] hover:border-[#e0d5ec]'}`}
+                      data-testid={`lp-card-${p.slug}`}>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          {p.eyebrow ? <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#a052e0] truncate">{p.eyebrow}</p> : null}
+                          <p className="text-[14.5px] font-bold tracking-[-0.01em] text-[#111] mt-1 truncate" title={p.h1}>{p.h1 || p.slug}</p>
+                          <p className="text-[11.5px] text-[#999] mt-0.5 font-mono">{p.path}</p>
+                        </div>
+                        <div className="flex gap-1 shrink-0">
+                          <button onClick={() => copyUrl(p.path)} title="Kopier URL"
+                            className="w-8 h-8 rounded-lg border border-[#eee] flex items-center justify-center text-[#999] hover:border-[#c99df0] hover:text-[#a052e0]">
+                            {copied === p.path ? <Check size={13} className="text-emerald-500" /> : <Copy size={13} />}
+                          </button>
+                          <a href={p.path} target="_blank" rel="noopener noreferrer" title="Åpne siden"
+                            className="w-8 h-8 rounded-lg bg-[#0a0a0a] flex items-center justify-center text-white hover:opacity-80"
+                            data-testid={`lp-open-${p.slug}`}>
+                            <ExternalLink size={13} />
+                          </a>
+                        </div>
+                      </div>
 
-      <p className="mt-5 text-[12px] text-[#b0b0b0] flex items-center gap-1.5">
-        <AlertCircle className="w-3.5 h-3.5" /> Live-forhåndsvisning lastes direkte fra sidene — den påvirker ikke besøksstatistikken.
-      </p>
-    </div>
-  );
-}
+                      {/* Ytelse */}
+                      <div className="grid grid-cols-4 gap-2 mt-4 pt-3.5 border-t border-[#f6f6f6]">
+                        {[
+                          ['Økter', nf.format(p.sessions || 0)],
+                          ['Skjema', nf.format(p.form?.start || 0)],
+                          ['Leads', nf.format(p.leads || p.form?.submit || 0)],
+                          ['CVR', p.sessions ? `${p.conversionRate} %` : '—'],
+                        ].map(([l, v]) => (
+                          <div key={l}>
+                            <p className="text-[14px] font-bold tabular-nums text-[#111]">{v}</p>
+                            <p className="text-[9.5px] font-semibold uppercase tracking-[0.06em] text-[#aaa]">{l}</p>
+                          </div>
+                        ))}
+                      </div>
 
-function LandingCard({ page: p, base, copied, onCopy }) {
-  const isTenant = p.audience === 'leietaker';
-  const conv = p.conversionRate || 0;
-  const convTone = conv >= 5 ? 'text-emerald-600' : conv >= 2 ? 'text-[#1f1f1f]' : 'text-[#999]';
-  return (
-    <div className="group bg-white rounded-2xl shadow-[0_2px_16px_rgba(0,0,0,0.04)] hover:shadow-[0_12px_40px_rgba(0,0,0,0.09)] transition-shadow overflow-hidden flex flex-col">
-      {/* Live-forhåndsvisning */}
-      <div className="relative h-44 bg-[#0a0a0a] overflow-hidden">
-        <iframe
-          src={`${p.path}?preview=1`}
-          title={p.h1 || p.slug}
-          loading="lazy"
-          scrolling="no"
-          aria-hidden="true"
-          tabIndex={-1}
-          style={{ width: '1280px', height: '800px', transform: 'scale(0.5)', transformOrigin: 'top left', border: 0, pointerEvents: 'none' }}
-          className="absolute top-0 left-0"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-transparent pointer-events-none" />
-        <span className={`absolute top-3 left-3 inline-flex items-center gap-1 text-[10.5px] font-semibold rounded-full px-2 py-1 leading-none ${isTenant ? 'bg-[#0a0a0a]/70 text-white' : 'bg-white/85 text-[#0a0a0a]'} backdrop-blur-sm`}>
-          {isTenant ? <KeyRound className="w-3 h-3" /> : <Home className="w-3 h-3" />} {isTenant ? 'Leietaker' : 'Utleier'}
-        </span>
-        <a
-          href={p.path} target="_blank" rel="noopener noreferrer"
-          className="absolute inset-0 flex items-center justify-center bg-[#0a0a0a]/0 group-hover:bg-[#0a0a0a]/35 transition-colors"
-        >
-          <span className="opacity-0 group-hover:opacity-100 translate-y-1 group-hover:translate-y-0 transition-all inline-flex items-center gap-1.5 h-9 px-4 rounded-full bg-white text-[#0a0a0a] text-[12.5px] font-semibold shadow-lg">
-            <ExternalLink className="w-3.5 h-3.5" /> Åpne live
-          </span>
-        </a>
-      </div>
-
-      {/* Innhold */}
-      <div className="p-4 flex-1 flex flex-col">
-        <p className="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[#8b5cf6]">{p.eyebrow || 'Kampanjeside'}</p>
-        <h3 className="text-[15px] font-bold text-[#1a1a1a] leading-snug mt-1 line-clamp-2" style={{ fontFamily: 'var(--font-heading)' }}>{p.h1 || p.slug}</h3>
-        <p className="text-[11.5px] text-[#b0b0b0] mt-1 font-mono truncate">{p.path}</p>
-
-        {/* Nøkkeltall */}
-        <div className="grid grid-cols-4 gap-1.5 mt-3.5">
-          <Metric label="Økter" value={(p.sessions || 0).toLocaleString('nb-NO')} />
-          <Metric label="Leads" value={p.leads || 0} />
-          <Metric label="Konv." value={`${conv}%`} valueClass={convTone} highlight />
-          <Metric label="Vunnet" value={p.won || 0} />
-        </div>
-
-        {/* Skjematrakt (2-stegs skjema): start → steg 2 → innsendt */}
-        {p.form && p.form.start > 0 ? (
-          <div className="mt-3 rounded-lg bg-[#faf9fc] border border-[#f0edf7] px-3 py-2.5">
-            <p className="text-[10px] uppercase tracking-[0.06em] text-[#a3a3a3] font-semibold mb-1.5">Skjematrakt</p>
-            <div className="flex items-center gap-1.5">
-              <FunnelStep label="Start" value={p.form.start} pct={100} />
-              <span className="text-[#d8d2e8] text-[11px]">→</span>
-              <FunnelStep label="Steg 2" value={p.form.step2} pct={p.form.step2Rate} />
-              <span className="text-[#d8d2e8] text-[11px]">→</span>
-              <FunnelStep label="Innsendt" value={p.form.submit} pct={p.form.submitRate} final />
+                      {/* Skjematrakt-bar */}
+                      {p.form?.start > 0 ? (
+                        <div className="mt-3">
+                          <div className="h-[5px] rounded-full bg-[#f4f2ef] overflow-hidden">
+                            <div className="h-full rounded-full" style={{ width: `${Math.min(100, p.form.submitRate || 0)}%`, background: '#d298ff' }} />
+                          </div>
+                          <p className="text-[10px] text-[#bbb] mt-1">{p.form.submitRate} % fullfører skjemaet ({p.form.submit} av {p.form.start})</p>
+                        </div>
+                      ) : (
+                        <p className="text-[10px] text-[#ccc] mt-3">Ingen skjema-aktivitet i perioden</p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        ) : null}
-
-        {/* Bunn */}
-        <div className="mt-4 pt-3 border-t border-black/[0.05] flex items-center justify-between">
-          <span className="text-[11.5px] text-[#999] flex items-center gap-1.5">
-            <TrendingUp className="w-3.5 h-3.5 text-[#c9b8e4]" />
-            {p.wonValue ? kr(p.wonValue) : (p.paidShare ? `${p.paidShare}% betalt` : 'Ingen konv. ennå')}
-          </span>
-          <div className="flex items-center gap-1">
-            <button onClick={onCopy} title="Kopier lenke" className="h-8 w-8 rounded-lg flex items-center justify-center text-[#aaa] hover:text-[#0a0a0a] hover:bg-[#f5f4f2] transition-colors">
-              {copied ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
-            </button>
-            <a href={p.path} target="_blank" rel="noopener noreferrer" title="Åpne i ny fane" className="h-8 w-8 rounded-lg flex items-center justify-center text-[#aaa] hover:text-[#0a0a0a] hover:bg-[#f5f4f2] transition-colors">
-              <ExternalLink className="w-4 h-4" />
-            </a>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function Metric({ label, value, valueClass = 'text-[#1f1f1f]', highlight }) {
-  return (
-    <div className={`rounded-lg px-2 py-2 text-center ${highlight ? 'bg-[#f4f0fb]' : 'bg-[#f8f7f5]'}`}>
-      <p className={`text-[15px] font-bold leading-none ${valueClass}`} style={{ fontFamily: 'var(--font-heading)' }}>{value}</p>
-      <p className="text-[10px] uppercase tracking-[0.05em] text-[#a3a3a3] font-semibold mt-1">{label}</p>
-    </div>
-  );
-}
-
-function FunnelStep({ label, value, pct, final }) {
-  const tone = final
-    ? (pct >= 50 ? 'text-emerald-600' : pct >= 25 ? 'text-[#b76e00]' : 'text-[#b3261e]')
-    : 'text-[#1f1f1f]';
-  return (
-    <div className="flex-1 text-center">
-      <p className={`text-[13px] font-bold leading-none ${tone}`} style={{ fontFamily: 'var(--font-heading)' }}>
-        {value}{pct !== 100 ? <span className="text-[10px] font-semibold text-[#a3a3a3] ml-1">({pct}%)</span> : null}
-      </p>
-      <p className="text-[9.5px] uppercase tracking-[0.05em] text-[#a3a3a3] font-semibold mt-0.5">{label}</p>
-    </div>
-  );
-}
-
-function SummaryStat({ label, value, sub, icon: Icon, tone = 'slate' }) {
-  const TONES = {
-    violet: 'bg-[#f4f0fb] text-[#8b5cf6]',
-    emerald: 'bg-emerald-50 text-emerald-600',
-    slate: 'bg-[#f3f3f2] text-[#666]',
-  };
-  return (
-    <div className="bg-white rounded-2xl p-4 shadow-[0_2px_10px_rgba(0,0,0,0.03)]">
-      <div className="flex items-start justify-between">
-        <p className="text-[11px] uppercase tracking-[0.06em] text-[#a3a3a3] font-semibold">{label}</p>
-        <span className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${TONES[tone] || TONES.slate}`}><Icon className="w-4 h-4" /></span>
-      </div>
-      <p className="text-[24px] font-bold mt-2 leading-none text-[#1f1f1f]" style={{ fontFamily: 'var(--font-heading)' }}>{value}</p>
-      {sub && <p className="text-[12px] text-[#a3a3a3] mt-1.5">{sub}</p>}
+          );
+        })
+      )}
     </div>
   );
 }

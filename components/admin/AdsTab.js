@@ -7,7 +7,7 @@ import {
   SlidersHorizontal, X, Check, Image as ImageIcon, ExternalLink,
   Plus, Play, Pause, Save, MapPin, Sparkles,
   Search, ArrowUpDown, Lightbulb, Zap, FileText, Settings2, Wand2, TrendingDown, ListChecks, Crosshair,
-  ShieldCheck, BellRing, Gauge, Pencil,
+  ShieldCheck, BellRing, Gauge, Pencil, Globe,
 } from 'lucide-react';
 import CompetitorCampaign from '@/components/admin/CompetitorCampaign';
 
@@ -1395,6 +1395,7 @@ function AdsTable({ apiKey, period, channel }) {
                   {sortBtn('conversions', 'Konv.')}
                   {sortBtn('cpa', 'CPA')}
                   {sortBtn('roas', 'ROAS')}
+                  <th className="px-3 py-2.5 text-right">Åpne</th>
                 </tr>
               </thead>
               <tbody>
@@ -1413,6 +1414,31 @@ function AdsTable({ apiKey, period, channel }) {
                     <td className="px-3 py-2.5 text-right text-[#666]">{r.conversions ? fmtNum(r.conversions) : '–'}</td>
                     <td className="px-3 py-2.5 text-right text-[#666]">{r.cpa != null ? fmtKr(r.cpa) : '–'}</td>
                     <td className={`px-3 py-2.5 text-right font-semibold ${roasColor(r.roas)}`}>{r.roas != null ? fmtX(r.roas) : '–'}</td>
+                    <td className="px-3 py-2.5 text-right whitespace-nowrap">
+                      {(() => {
+                        const lp = r.channel === 'google' ? r.finalUrl : r.link;
+                        const adUrl = r.channel === 'google'
+                          ? (r.campaignId && r.adGroupId ? `https://ads.google.com/aw/ads?campaignId=${r.campaignId}&adGroupId=${r.adGroupId}` : 'https://ads.google.com/aw/ads')
+                          : `/api/admin/ads/preview?id=${encodeURIComponent(r.id)}&format=MOBILE_FEED_STANDARD&key=${encodeURIComponent(apiKey || '')}`;
+                        return (
+                          <span className="inline-flex items-center gap-1">
+                            {lp ? (
+                              <a href={lp} target="_blank" rel="noopener noreferrer" title={`Åpne landingssiden: ${lp}`}
+                                 className="inline-flex items-center justify-center w-7 h-7 rounded-lg border border-[#eee] text-[#8b5cf6] hover:border-[#c99df0] hover:bg-[#faf6fe]" onClick={(e) => e.stopPropagation()}>
+                                <Globe className="w-3.5 h-3.5" />
+                              </a>
+                            ) : (
+                              <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg border border-[#f4f4f4] text-[#ddd]" title="Ingen landingsside-URL tilgjengelig"><Globe className="w-3.5 h-3.5" /></span>
+                            )}
+                            <a href={adUrl} target="_blank" rel="noopener noreferrer"
+                               title={r.channel === 'google' ? 'Åpne annonsen i Google Ads' : 'Se annonsen (Meta-forhåndsvisning)'}
+                               className="inline-flex items-center justify-center w-7 h-7 rounded-lg border border-[#eee] text-[#666] hover:border-[#0a0a0a] hover:text-[#0a0a0a]" onClick={(e) => e.stopPropagation()}>
+                              <ExternalLink className="w-3.5 h-3.5" />
+                            </a>
+                          </span>
+                        );
+                      })()}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -1425,6 +1451,7 @@ function AdsTable({ apiKey, period, channel }) {
                   <td className="px-3 py-2.5 text-right text-[#bbb]">–</td>
                   <td className="px-3 py-2.5 text-right text-[#bbb]">–</td>
                   <td className="px-3 py-2.5 text-right">{fmtNum(totals.conversions)}</td>
+                  <td className="px-3 py-2.5 text-right text-[#bbb]">–</td>
                   <td className="px-3 py-2.5 text-right text-[#bbb]">–</td>
                   <td className="px-3 py-2.5 text-right text-[#bbb]">–</td>
                 </tr>

@@ -1,71 +1,58 @@
 'use client';
 
-// Nyhetsbrev v2 — Mailchimp-klasse.
-// Visninger: liste (kampanjer + stats) → editor (palett + canvas + panel) → stats.
-// Autosave av utkast, mal-velger, tema, målgruppe-redigering på e-postnivå,
-// forhåndsvisning (desktop/mobil), test-utsending og åpnings-/klikksporing.
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+/*
+ * NewsletterTab — DigiHome Nyhetsbrev-studio (2026-utgave).
+ * Views: list (studio-hjem) · editor (WYSIWYG) · stats (analyse) · subs (abonnenter).
+ * Backend: /api/admin/newsletter/* — se route.js.
+ */
+
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Loader2, Mail, Send, Plus, Trash2, ChevronUp, ChevronDown, Type, AlignLeft,
-  MousePointerClick, Image as ImageIcon, Minus, ShieldCheck, AlertTriangle,
-  CheckCircle2, XCircle, Eye, Users, ArrowLeft, Copy, List, Quote as QuoteIcon,
-  MoveVertical, PenLine, Sparkles, Monitor, Smartphone, X, Search, RotateCcw,
-  MousePointer2, MailOpen, BarChart3, Palette, Settings2, UserMinus,
+  Plus, ArrowLeft, Send, Eye, FlaskConical, Loader2, Check, Trash2, Copy,
+  Monitor, Smartphone, Users, Settings2, ChevronRight, X, Mail, MailOpen,
+  MousePointerClick, PenLine, Search, UsersRound,
 } from 'lucide-react';
+import { PALETTE, defaultsFor, CanvasBlock, BlockInspector } from './newsletter/EditorBlocks';
+import SubscribersView from './newsletter/SubscribersView';
+import StatsView from './newsletter/StatsView';
 
-const uid = () => Math.random().toString(36).slice(2, 9);
-const inputCls = 'w-full h-10 px-3.5 rounded-xl border border-[#e5e5e5] bg-white text-[14px] text-[#0a0a0a] placeholder:text-[#999] outline-none focus:border-[#cf97fc]/60 focus:shadow-[0_0_0_3px_rgba(207,151,252,0.14)] transition-all';
-const THEME_SWATCHES = [
-  { key: 'lavendel', label: 'Lavendel', accent: '#d298ff' },
-  { key: 'skifer', label: 'Skifer', accent: '#0a0a0a' },
-  { key: 'salvie', label: 'Salvie', accent: '#7fc79e' },
-  { key: 'rav', label: 'Rav', accent: '#f0c86b' },
-];
-const TPL_ICONS = { tom: PenLine, signatur: Sparkles, tilbud: Mail, kunngjoring: Send, digest: List, reengasjement: RotateCcw };
-const SEG_LABEL = { kunder: 'Kunder', leads: 'Utleier-leads', leietakere: 'Leietakere' };
-
+const uid = () => Math.random().toString(36).slice(2, 10);
+const SEG_LABEL = { kunder: 'Kunder', abonnenter: 'Abonnenter', leads: 'Utleier-leads', leietakere: 'Leietakere', manuell: 'Manuelt lagt til' };
 const fmtDate = (iso) => (iso ? new Date(iso).toLocaleString('nb-NO', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—');
-
-// Auto-voksende tekstfelt for canvas
-function AutoArea({ value, onChange, placeholder, className, style }) {
-  const ref = useRef(null);
-  useEffect(() => {
-    const el = ref.current;
-    if (el) { el.style.height = 'auto'; el.style.height = `${el.scrollHeight}px`; }
-  }, [value]);
-  return (
-    <textarea ref={ref} value={value} onChange={onChange} placeholder={placeholder} rows={1}
-      className={`w-full resize-none bg-transparent outline-none overflow-hidden ${className || ''}`} style={style} />
-  );
-}
+const normEmail = (e) => (e || '').toString().trim().toLowerCase();
 
 export default function NewsletterTab({ apiKey }) {
   const q = `key=${encodeURIComponent(apiKey)}`;
-  const [view, setView] = useState('list'); // list | editor | stats
+  const [view, setView] = useState('list'); // list | editor | stats | subs
   const [listData, setListData] = useState(null);
   const [audiences, setAudiences] = useState(null);
   const [filter, setFilter] = useState('alle');
   const [tplOpen, setTplOpen] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  // Aktiv kampanje (editor/stats)
   const [camp, setCamp] = useState(null);
   const [stats, setStats] = useState(null);
-  const [saveState, setSaveState] = useState('idle'); // idle | saving | saved
-  const [panelTab, setPanelTab] = useState('oppsett'); // oppsett | tema | malgruppe
+  const [saveState, setSaveState] = useState('idle');
+  const [panelTab, setPanelTab] = useState('oppsett'); // oppsett | mottakere (når ingen blokk er valgt)
   const [selectedBlock, setSelectedBlock] = useState(null);
+  const [device, setDevice] = useState('desktop');
   const [previewOpen, setPreviewOpen] = useState(false);
-  const [previewMode, setPreviewMode] = useState('desktop');
   const [previewHtml, setPreviewHtml] = useState('');
+  const [testOpen, setTestOpen] = useState(false);
   const [testTo, setTestTo] = useState('');
   const [testState, setTestState] = useState({ s: 'idle', msg: '' });
   const [confirming, setConfirming] = useState(false);
   const [sendState, setSendState] = useState('idle');
   const [sendErr, setSendErr] = useState('');
-  const [recips, setRecips] = useState(null); // {recipients, total}
+  const [recips, setRecips] = useState(null);
   const [recipSearch, setRecipSearch] = useState('');
+  const [extraInput, setExtraInput] = useState('');
+  const [uploadingId, setUploadingId] = useState(null);
   const saveTimer = useRef(null);
   const firstLoad = useRef(true);
+  const dragId = useRef(null);
+
+  useEffect(() => { try { setTestTo(localStorage.getItem('nl_test_to') || ''); } catch (e) {} }, []);
 
   /* ------------------------------ Datalasting ------------------------------ */
   const loadList = useCallback(async () => {
@@ -106,7 +93,7 @@ export default function NewsletterTab({ apiKey }) {
         body: JSON.stringify({
           id: c.id, title: c.title, subject: c.subject, preheader: c.preheader,
           fromName: c.fromName, theme: c.theme, segments: c.segments,
-          excludedEmails: c.excludedEmails,
+          excludedEmails: c.excludedEmails, extraEmails: c.extraEmails,
           blocks: c.blocks.map(({ id, ...rest }) => rest),
         }),
       });
@@ -118,13 +105,14 @@ export default function NewsletterTab({ apiKey }) {
     if (!camp || view !== 'editor') return;
     if (firstLoad.current) { firstLoad.current = false; return; }
     if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => persist(camp), 800);
+    saveTimer.current = setTimeout(() => persist(camp), 700);
     return () => clearTimeout(saveTimer.current);
   }, [camp, view, persist]);
 
+  /* ------------------------------ Blokk-API -------------------------------- */
   const patch = (p) => setCamp((c) => ({ ...c, ...p }));
   const patchBlock = (id, p) => setCamp((c) => ({ ...c, blocks: c.blocks.map((b) => (b.id === id ? { ...b, ...p } : b)) }));
-  const removeBlock = (id) => setCamp((c) => ({ ...c, blocks: c.blocks.filter((b) => b.id !== id) }));
+  const removeBlock = (id) => { setCamp((c) => ({ ...c, blocks: c.blocks.filter((b) => b.id !== id) })); setSelectedBlock((s) => (s === id ? null : s)); };
   const moveBlock = (id, dir) => setCamp((c) => {
     const i = c.blocks.findIndex((b) => b.id === id); const j = i + dir;
     if (i < 0 || j < 0 || j >= c.blocks.length) return c;
@@ -138,20 +126,51 @@ export default function NewsletterTab({ apiKey }) {
     const next = [...c.blocks]; next.splice(i + 1, 0, copy);
     return { ...c, blocks: next };
   });
-  const addBlock = (type) => {
-    const nb = { id: uid(), type };
-    if (type === 'bullets') nb.items = ['Første punkt'];
-    if (type === 'button') { nb.label = 'Les mer'; nb.url = 'https://digihome.no'; }
-    if (type === 'cta-card') { nb.title = 'Er du interessert?'; nb.text = ''; nb.label = 'Ja, jeg er interessert'; nb.url = 'https://digihome.no/bli-utleier'; }
-    if (type === 'signature') { nb.name = 'Martin Kviteberg'; nb.title = 'DigiHome — lokalt team i Bergen'; }
-    if (type === 'spacer') nb.size = 'm';
-    setCamp((c) => ({ ...c, blocks: [...c.blocks, nb] }));
+  const addBlock = (type, atIndex = null) => {
+    const nb = { id: uid(), type, ...defaultsFor(type) };
+    setCamp((c) => {
+      const next = [...c.blocks];
+      if (atIndex === null) next.push(nb); else next.splice(atIndex, 0, nb);
+      return { ...c, blocks: next };
+    });
     setSelectedBlock(nb.id);
   };
 
-  /* ------------------------------ Målgruppe -------------------------------- */
+  /* --------------------------- Drag-reorder --------------------------------- */
+  const onDragStartBlock = (e, id) => { dragId.current = id; e.dataTransfer.effectAllowed = 'move'; };
+  const onDragOverBlock = (e) => { if (dragId.current) e.preventDefault(); };
+  const onDropBlock = (e, targetIndex) => {
+    e.preventDefault();
+    const id = dragId.current; dragId.current = null;
+    if (!id) return;
+    setCamp((c) => {
+      const i = c.blocks.findIndex((b) => b.id === id);
+      if (i < 0 || i === targetIndex) return c;
+      const next = [...c.blocks];
+      const [item] = next.splice(i, 1);
+      next.splice(targetIndex > i ? targetIndex - 1 : targetIndex, 0, item);
+      return { ...c, blocks: next };
+    });
+  };
+
+  /* --------------------------- Bildeopplasting ------------------------------ */
+  const uploadImage = async (blockId, file) => {
+    setUploadingId(blockId);
+    try {
+      const fd = new FormData(); fd.append('file', file);
+      const r = await fetch(`/api/admin/newsletter/upload?${q}`, { method: 'POST', body: fd });
+      const j = await r.json();
+      if (j.ok && j.url) {
+        const b = camp?.blocks.find((x) => x.id === blockId);
+        patchBlock(blockId, b?.type === 'sender' ? { photoUrl: j.url } : { url: j.url });
+      } else { alert(j.error || 'Opplasting feilet'); }
+    } catch (e) { alert('Opplasting feilet'); }
+    setUploadingId(null);
+  };
+
+  /* ------------------------------ Målgruppe --------------------------------- */
   const loadRecipients = useCallback(async (segments) => {
-    if (!segments?.length) { setRecips({ recipients: [], total: 0 }); return; }
+    if (!(segments || []).length) { setRecips({ recipients: [], total: 0 }); return; }
     try {
       const r = await fetch(`/api/admin/newsletter/recipients?segments=${segments.join(',')}&${q}`);
       const j = await r.json();
@@ -159,681 +178,495 @@ export default function NewsletterTab({ apiKey }) {
     } catch (e) {}
   }, [q]);
   useEffect(() => {
-    if (view === 'editor' && panelTab === 'malgruppe' && camp) loadRecipients(camp.segments);
-  }, [view, panelTab, camp?.segments?.join(','), loadRecipients]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (view === 'editor' && panelTab === 'mottakere' && !selectedBlock && camp) loadRecipients(camp.segments);
+  }, [view, panelTab, selectedBlock, camp?.segments?.join(','), loadRecipients]); // eslint-disable-line
 
-  const excluded = useMemo(() => new Set((camp?.excludedEmails || [])), [camp?.excludedEmails]);
-  const netCount = recips ? recips.recipients.filter((r) => !excluded.has(r.email)).length : null;
+  const excludedSet = useMemo(() => new Set((camp?.excludedEmails || [])), [camp?.excludedEmails]);
   const toggleExclude = (email) => setCamp((c) => {
     const set = new Set(c.excludedEmails || []);
-    if (set.has(email)) set.delete(email); else set.add(email);
+    set.has(email) ? set.delete(email) : set.add(email);
     return { ...c, excludedEmails: [...set] };
   });
-
-  /* --------------------------- Forhåndsvisning ----------------------------- */
-  const fetchPreview = useCallback(async () => {
-    if (!camp) return;
-    try {
-      const r = await fetch(`/api/admin/newsletter/preview?${q}`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ subject: camp.subject, preheader: camp.preheader, theme: camp.theme, blocks: camp.blocks.map(({ id, ...rest }) => rest) }),
-      });
-      const j = await r.json();
-      if (j.ok) setPreviewHtml(j.html);
-    } catch (e) {}
-  }, [camp, q]);
-  useEffect(() => { if (previewOpen) fetchPreview(); }, [previewOpen, fetchPreview]);
-
-  const sendTest = async () => {
-    setTestState({ s: 'sending', msg: '' });
-    try {
-      const r = await fetch(`/api/admin/newsletter/test?${q}`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ to: testTo, subject: camp.subject || camp.title, preheader: camp.preheader, theme: camp.theme, fromName: camp.fromName, blocks: camp.blocks.map(({ id, ...rest }) => rest) }),
-      });
-      const j = await r.json();
-      setTestState(j.ok ? { s: 'ok', msg: `Test sendt til ${j.sentTo}` } : { s: 'err', msg: j.error || 'Ukjent feil' });
-    } catch (e) { setTestState({ s: 'err', msg: 'Nettverksfeil' }); }
+  const addExtra = () => {
+    const email = normEmail(extraInput);
+    if (!/^\S+@\S+\.\S+$/.test(email)) return;
+    setCamp((c) => {
+      const cur = c.extraEmails || [];
+      if (cur.some((x) => x.email === email)) return c;
+      return { ...c, extraEmails: [...cur, { email, name: '' }] };
+    });
+    setExtraInput('');
   };
+  const removeExtra = (email) => setCamp((c) => ({ ...c, extraEmails: (c.extraEmails || []).filter((x) => x.email !== email) }));
 
-  const doSend = async () => {
-    setSendState('sending'); setSendErr('');
-    try {
-      await persist(camp);
-      const r = await fetch(`/api/admin/newsletter/send?${q}`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ campaignId: camp.id }),
-      });
-      const j = await r.json();
-      if (j.ok) {
-        setSendState('ok'); setConfirming(false);
-        await loadList();
-        await openCampaign(camp.id); // → statsvisning
-      } else { setSendState('err'); setSendErr(j.error || 'Ukjent feil'); }
-    } catch (e) { setSendState('err'); setSendErr('Nettverksfeil'); }
-  };
+  const netCount = useMemo(() => {
+    if (!camp) return null;
+    const extras = camp.extraEmails || [];
+    if (!recips) return null;
+    const segEmails = new Set(recips.recipients.map((r) => r.email));
+    const fromSegs = recips.recipients.filter((r) => !excludedSet.has(r.email)).length;
+    const fromExtras = extras.filter((x) => !segEmails.has(x.email) && !excludedSet.has(x.email)).length;
+    return fromSegs + fromExtras;
+  }, [camp, recips, excludedSet]);
 
+  /* ------------------------------ Handlinger -------------------------------- */
   const createDraft = async (template) => {
-    setBusy(true); setTplOpen(false);
+    setBusy(true);
     try {
       const r = await fetch(`/api/admin/newsletter/draft?${q}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ template }),
       });
       const j = await r.json();
-      if (j.ok) { await loadList(); await openCampaign(j.campaign.id); }
+      if (j.ok) { setTplOpen(false); await openCampaign(j.campaign.id); await loadList(); }
     } catch (e) {}
     setBusy(false);
   };
 
   const deleteCampaign = async (id) => {
-    if (!window.confirm('Slette denne kampanjen?')) return;
+    if (!confirm('Slette denne kampanjen? Kan ikke angres.')) return;
     await fetch(`/api/admin/newsletter/campaign?id=${encodeURIComponent(id)}&${q}`, { method: 'DELETE' });
-    loadList();
+    await loadList();
+    if (camp?.id === id) { setCamp(null); setView('list'); }
   };
+
   const duplicateCampaign = async (id) => {
-    const r = await fetch(`/api/admin/newsletter/duplicate?${q}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
+    const r = await fetch(`/api/admin/newsletter/duplicate?${q}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }),
+    });
     const j = await r.json();
     if (j.ok) { await loadList(); await openCampaign(j.campaign.id); }
   };
 
-  const accent = THEME_SWATCHES.find((t) => t.key === (camp?.theme || 'lavendel'))?.accent || '#d298ff';
+  const openPreview = async () => {
+    setPreviewOpen(true); setPreviewHtml('');
+    try {
+      const r = await fetch(`/api/admin/newsletter/preview?${q}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ blocks: camp.blocks.map(({ id, ...rest }) => rest), theme: camp.theme, subject: camp.subject, preheader: camp.preheader }),
+      });
+      const j = await r.json();
+      if (j.ok) setPreviewHtml(j.html);
+    } catch (e) {}
+  };
 
-  /* ============================== LISTEVISNING ============================== */
-  if (view === 'list') {
-    const campaigns = (listData?.campaigns || []).filter((c) => filter === 'alle' || c.status === (filter === 'utkast' ? 'draft' : 'sent'));
-    const totalAvail = (audiences?.segments || []).reduce((a, s) => a + s.count, 0);
+  const sendTest = async () => {
+    setTestState({ s: 'sending', msg: '' });
+    try {
+      try { localStorage.setItem('nl_test_to', testTo); } catch (e) {}
+      const r = await fetch(`/api/admin/newsletter/test?${q}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: testTo, blocks: camp.blocks.map(({ id, ...rest }) => rest),
+          subject: camp.subject, preheader: camp.preheader, theme: camp.theme, fromName: camp.fromName,
+        }),
+      });
+      const j = await r.json();
+      if (!j.ok) throw new Error(j.error || 'Test feilet');
+      setTestState({ s: 'sent', msg: `Test sendt til ${j.sentTo}` });
+      setTimeout(() => { setTestState({ s: 'idle', msg: '' }); setTestOpen(false); }, 2500);
+    } catch (e) { setTestState({ s: 'error', msg: e.message }); }
+  };
+
+  const doSend = async () => {
+    setSendState('sending'); setSendErr('');
+    try {
+      await persist(camp); // sikre at siste endringer er lagret før sending
+      const r = await fetch(`/api/admin/newsletter/send?${q}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ campaignId: camp.id }),
+      });
+      const j = await r.json();
+      if (!j.ok) throw new Error(j.error || 'Sending feilet');
+      setSendState('sent'); setConfirming(false);
+      await loadList();
+      await openCampaign(camp.id); // → stats-view
+    } catch (e) { setSendState('idle'); setSendErr(e.message); }
+  };
+
+  /* ------------------------------ Tema/accent ------------------------------- */
+  const themes = listData?.themes || [{ key: 'lavendel', accent: '#d298ff' }];
+  const accent = themes.find((t) => t.key === camp?.theme)?.accent || '#d298ff';
+
+  /* ========================== VIEW: ABONNENTER ============================== */
+  if (view === 'subs') return <SubscribersView q={q} onBack={() => setView('list')} />;
+
+  /* ============================ VIEW: STATS ================================= */
+  if (view === 'stats' && camp) {
+    return <StatsView camp={camp} stats={stats} onBack={() => { setCamp(null); setView('list'); loadList(); }} onDuplicate={() => duplicateCampaign(camp.id)} />;
+  }
+
+  /* ============================ VIEW: EDITOR ================================ */
+  if (view === 'editor' && camp) {
+    const selected = camp.blocks.find((b) => b.id === selectedBlock) || null;
     return (
-      <div className="space-y-6" data-testid="newsletter-tab">
-        {/* Mottaker-oversikt */}
-        <div>
-          <p className="text-[11.5px] font-semibold uppercase tracking-[0.14em] text-[#999] mb-3 flex items-center gap-2">
-            <Users className="w-3.5 h-3.5" /> Tilgjengelige mottakere · {totalAvail}
-          </p>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {(audiences?.segments || []).map((s) => (
-              <div key={s.key} className="rounded-2xl bg-white border border-[#eee] px-5 py-4">
-                <p className="font-heading font-bold text-[26px] text-[#0a0a0a] leading-none">{s.count}</p>
-                <p className="text-[12.5px] text-[#888] mt-1.5">{s.label.replace(' (vunnede utleiere)', '')}</p>
-                <span className={`mt-1.5 inline-flex items-center gap-1 text-[10.5px] font-medium ${s.consent === 'safe' ? 'text-[#18794E]' : 'text-amber-600'}`}>
-                  {s.consent === 'safe' ? <ShieldCheck className="w-3 h-3" /> : <AlertTriangle className="w-3 h-3" />}
-                  {s.consent === 'safe' ? 'Kundeforhold' : 'Grå sone'}
-                </span>
-              </div>
-            ))}
-            <div className="rounded-2xl bg-white border border-[#eee] px-5 py-4">
-              <p className="font-heading font-bold text-[26px] text-[#0a0a0a] leading-none">{audiences?.optouts ?? '—'}</p>
-              <p className="text-[12.5px] text-[#888] mt-1.5">Avmeldte</p>
-              <span className="mt-1.5 inline-flex items-center gap-1 text-[10.5px] text-[#999]"><UserMinus className="w-3 h-3" /> Ekskluderes alltid</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Filterlinje + ny kampanje */}
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          <div className="inline-flex rounded-full bg-[#f5f3f0] p-1">
-            {[['alle', 'Alle'], ['utkast', 'Utkast'], ['sendt', 'Sendt']].map(([k, l]) => (
-              <button key={k} onClick={() => setFilter(k)}
-                className={`h-8 px-4 rounded-full text-[13px] font-medium transition-all ${filter === k ? 'bg-white text-[#0a0a0a] shadow-sm' : 'text-[#888] hover:text-[#0a0a0a]'}`}>
-                {l}
+      <div className="-m-1" data-testid="nl-editor">
+        {/* Toppbar (under admin-headeren, h-16 = 64px) */}
+        <div className="sticky top-16 z-20 flex items-center gap-3 rounded-2xl border border-[#f0f0f0] bg-white/95 backdrop-blur px-4 py-2.5 shadow-[0_6px_24px_-16px_rgba(0,0,0,0.15)]">
+          <button onClick={() => { setCamp(null); setView('list'); loadList(); }} className="flex items-center gap-1 text-[12.5px] font-medium text-[#888] hover:text-[#111]" data-testid="nl-back">
+            <ArrowLeft size={14} /> Oversikt
+          </button>
+          <div className="w-px h-5 bg-[#eee]" />
+          <input value={camp.title || ''} onChange={(e) => patch({ title: e.target.value })} placeholder="Navn på kampanjen…"
+            className="flex-1 min-w-0 bg-transparent text-[14px] font-semibold text-[#111] outline-none" data-testid="nl-title-input" />
+          <span className={`text-[11px] font-medium shrink-0 ${saveState === 'saving' ? 'text-amber-500' : 'text-[#b5b5b5]'}`}>
+            {saveState === 'saving' ? 'Lagrer…' : saveState === 'saved' ? <span className="inline-flex items-center gap-1"><Check size={11} /> Lagret</span> : ''}
+          </span>
+          <div className="flex items-center rounded-full bg-[#f4f2ef] p-0.5">
+            {[['desktop', Monitor], ['mobile', Smartphone]].map(([k, Icon]) => (
+              <button key={k} onClick={() => setDevice(k)} className={`w-8 h-7 rounded-full flex items-center justify-center ${device === k ? 'bg-white shadow-sm text-[#111]' : 'text-[#999]'}`}>
+                <Icon size={13} />
               </button>
             ))}
           </div>
-          <button onClick={() => setTplOpen(true)} data-testid="nl-new-campaign"
-            className="inline-flex items-center gap-2 h-10 px-5 rounded-full bg-[#0a0a0a] text-white text-[13.5px] font-semibold hover:shadow-[0_8px_24px_rgba(0,0,0,0.2)] active:scale-[0.98] transition-all">
-            <Plus className="w-4 h-4" /> Ny kampanje
+          <div className="relative">
+            <button onClick={() => setTestOpen((v) => !v)} className="h-[34px] rounded-full border border-[#e5e5e5] text-[12px] font-semibold px-3.5 flex items-center gap-1.5 hover:border-[#c99df0]" data-testid="nl-test-open">
+              <FlaskConical size={13} /> Test
+            </button>
+            {testOpen ? (
+              <div className="absolute right-0 top-[42px] w-[280px] rounded-2xl border border-[#eee] bg-white shadow-xl p-4 z-30">
+                <p className="text-[12px] font-bold text-[#111]">Send test-nyhetsbrev</p>
+                <input value={testTo} onChange={(e) => setTestTo(e.target.value)} placeholder="din@epost.no" data-testid="nl-test-to"
+                  className="w-full h-[36px] rounded-lg border border-[#e8e8e8] px-3 text-[13px] outline-none focus:border-[#c99df0] mt-2" />
+                <button onClick={sendTest} disabled={testState.s === 'sending' || !testTo.trim()} data-testid="nl-test-send"
+                  className="w-full h-[36px] rounded-full bg-[#0a0a0a] text-white text-[12.5px] font-semibold mt-2 disabled:opacity-50 flex items-center justify-center gap-1.5">
+                  {testState.s === 'sending' ? <Loader2 size={13} className="animate-spin" /> : <Send size={12} />} Send test
+                </button>
+                {testState.msg ? <p className={`text-[11.5px] mt-2 ${testState.s === 'error' ? 'text-red-500' : 'text-emerald-600'}`}>{testState.msg}</p> : null}
+              </div>
+            ) : null}
+          </div>
+          <button onClick={openPreview} className="h-[34px] rounded-full border border-[#e5e5e5] text-[12px] font-semibold px-3.5 flex items-center gap-1.5 hover:border-[#c99df0]" data-testid="nl-preview">
+            <Eye size={13} /> Forhåndsvis
+          </button>
+          <button onClick={() => { setConfirming(true); if (!recips) loadRecipients(camp.segments); }} data-testid="nl-send-button"
+            className="h-[34px] rounded-full bg-[#0a0a0a] text-white text-[12px] font-bold px-4 flex items-center gap-1.5">
+            <Send size={12} /> Send{netCount != null ? ` (${netCount})` : ''}
           </button>
         </div>
 
-        {/* Kampanjeliste */}
-        <div className="rounded-3xl bg-white border border-[#eee] overflow-hidden">
-          {!listData ? (
-            <div className="h-40 grid place-items-center"><Loader2 className="w-5 h-5 animate-spin text-[#9B5BD6]" /></div>
-          ) : campaigns.length === 0 ? (
-            <div className="py-16 text-center">
-              <Mail className="w-8 h-8 text-[#ddd] mx-auto mb-3" />
-              <p className="text-[14px] text-[#999]">Ingen kampanjer {filter !== 'alle' ? 'i dette filteret' : 'ennå'} — trykk «Ny kampanje» for å komme i gang.</p>
-            </div>
-          ) : (
-            <div className="divide-y divide-[#f3f3f3]">
-              {/* Kolonneoverskrifter */}
-              <div className="hidden sm:grid grid-cols-[1fr_110px_110px_110px_90px] gap-3 px-6 py-3 text-[10.5px] uppercase tracking-[0.1em] font-semibold text-[#aaa]">
-                <span>Kampanje</span><span className="text-right">Mottakere</span>
-                <span className="text-right inline-flex items-center justify-end gap-1"><MailOpen className="w-3 h-3" /> Åpnet</span>
-                <span className="text-right inline-flex items-center justify-end gap-1"><MousePointer2 className="w-3 h-3" /> Klikket</span>
-                <span />
-              </div>
-              {campaigns.map((c) => (
-                <div key={c.id} className="grid sm:grid-cols-[1fr_110px_110px_110px_90px] gap-3 items-center px-6 py-4 hover:bg-[#fafafa] transition-colors cursor-pointer group" onClick={() => openCampaign(c.id)}>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2.5">
-                      <span className={`shrink-0 inline-flex items-center rounded-full px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-wide ${c.status === 'sent' ? 'bg-[#E8F4EE] text-[#18794E]' : 'bg-amber-50 text-amber-600'}`}>
-                        {c.status === 'sent' ? 'Sendt' : 'Utkast'}
-                      </span>
-                      <p className="font-semibold text-[14.5px] text-[#0a0a0a] truncate">{c.title || 'Uten tittel'}</p>
-                    </div>
-                    <p className="text-[12.5px] text-[#999] mt-0.5 truncate">{c.subject || 'Uten emne'} · {c.status === 'sent' ? fmtDate(c.sentAt) : `endret ${fmtDate(c.updatedAt)}`}</p>
-                  </div>
-                  <div className="text-right text-[13.5px] text-[#555] font-medium">{c.status === 'sent' ? c.recipients : '—'}</div>
-                  <div className="text-right">
-                    {c.status === 'sent' ? (
-                      <><span className="text-[13.5px] font-semibold text-[#0a0a0a]">{c.opensUnique}</span><span className="text-[11.5px] text-[#999] ml-1">{c.openRate != null ? `${String(c.openRate).replace('.', ',')} %` : ''}</span></>
-                    ) : <span className="text-[#ccc]">—</span>}
-                  </div>
-                  <div className="text-right">
-                    {c.status === 'sent' ? (
-                      <><span className="text-[13.5px] font-semibold text-[#0a0a0a]">{c.clicksUnique}</span><span className="text-[11.5px] text-[#999] ml-1">{c.clickRate != null ? `${String(c.clickRate).replace('.', ',')} %` : ''}</span></>
-                    ) : <span className="text-[#ccc]">—</span>}
-                  </div>
-                  <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
-                    <button title="Dupliser" onClick={() => duplicateCampaign(c.id)} className="h-8 w-8 rounded-lg grid place-items-center text-[#999] hover:bg-[#f0f0f0] hover:text-[#0a0a0a]"><Copy className="w-3.5 h-3.5" /></button>
-                    <button title="Slett" onClick={() => deleteCampaign(c.id)} className="h-8 w-8 rounded-lg grid place-items-center text-[#999] hover:bg-rose-50 hover:text-rose-500"><Trash2 className="w-3.5 h-3.5" /></button>
-                  </div>
-                </div>
+        {/* 3 kolonner */}
+        <div className="grid grid-cols-[210px_1fr_300px] gap-4 mt-4 items-start">
+          {/* Palett */}
+          <div className="rounded-2xl border border-[#f0f0f0] bg-white p-3 sticky top-[132px]">
+            <p className="text-[10.5px] font-bold uppercase tracking-[0.1em] text-[#aaa] px-1">Blokker</p>
+            <div className="grid grid-cols-2 gap-1.5 mt-2">
+              {PALETTE.map((p) => (
+                <button key={p.type} onClick={() => addBlock(p.type)} data-testid={`nl-add-${p.type}`}
+                  className="rounded-xl border border-[#f2f0ed] bg-[#fbfaf9] hover:border-[#d8c3ec] hover:bg-[#faf6fe] px-2 py-2.5 flex flex-col items-center gap-1.5 transition-colors">
+                  {React.createElement(p.icon, { size: 15, className: 'text-[#a07cc4]' })}
+                  <span className="text-[10px] font-semibold text-[#666] leading-tight text-center">{p.label}</span>
+                </button>
               ))}
             </div>
-          )}
-        </div>
-
-        {/* Mal-velger */}
-        {tplOpen ? (
-          <div className="fixed inset-0 z-[130] flex items-center justify-center p-5">
-            <div className="absolute inset-0 bg-black/45 backdrop-blur-[2px]" onClick={() => setTplOpen(false)} />
-            <div className="relative w-full max-w-[620px] rounded-3xl bg-white shadow-[0_60px_140px_-40px_rgba(0,0,0,0.5)] p-8">
-              <h3 className="font-heading font-bold text-[20px] text-[#0a0a0a]">Velg et startpunkt</h3>
-              <p className="text-[13.5px] text-[#888] mt-1">Begynn med en mal eller helt blankt. Du kan endre alt etterpå.</p>
-              <div className="mt-5 grid sm:grid-cols-2 gap-3">
-                {(listData?.templates || []).map((t) => {
-                  const Icon = TPL_ICONS[t.key] || Mail;
-                  return (
-                    <button key={t.key} onClick={() => createDraft(t.key)} disabled={busy} data-testid={`nl-tpl-${t.key}`}
-                      className="text-left rounded-2xl border border-[#eee] hover:border-[#9B5BD6]/50 hover:bg-[#faf7ff] p-4 transition-all group">
-                      <span className="inline-flex h-9 w-9 rounded-xl bg-[#f3ebff] items-center justify-center mb-2.5"><Icon className="w-4 h-4 text-[#9B5BD6]" /></span>
-                      <p className="font-semibold text-[14px] text-[#0a0a0a]">{t.label}</p>
-                      <p className="text-[12px] text-[#999] mt-0.5 leading-relaxed">{t.desc}</p>
-                    </button>
-                  );
-                })}
-              </div>
-              <button onClick={() => setTplOpen(false)} className="absolute top-4 right-4 h-8 w-8 rounded-full bg-[#f5f3f0] grid place-items-center text-[#555] hover:bg-[#eee]"><X className="w-4 h-4" /></button>
+            <p className="text-[10.5px] font-bold uppercase tracking-[0.1em] text-[#aaa] px-1 mt-4">Tema</p>
+            <div className="flex flex-wrap gap-1.5 mt-2 px-1">
+              {themes.map((t) => (
+                <button key={t.key} onClick={() => patch({ theme: t.key })} title={t.key}
+                  className={`w-7 h-7 rounded-full border-2 ${camp.theme === t.key ? 'border-[#0a0a0a]' : 'border-transparent'}`}
+                  style={{ background: t.accent }} />
+              ))}
             </div>
           </div>
-        ) : null}
-        {busy ? <div className="fixed bottom-6 right-6 z-[140] rounded-full bg-[#0a0a0a] text-white px-4 py-2 text-[12.5px] inline-flex items-center gap-2"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Åpner…</div> : null}
-      </div>
-    );
-  }
 
-  if (!camp) return <div className="h-60 grid place-items-center rounded-3xl bg-white border border-[#eee]"><Loader2 className="w-6 h-6 animate-spin text-[#9B5BD6]" /></div>;
-
-  /* ============================== STATSVISNING ============================== */
-  if (view === 'stats') {
-    const s = stats || {};
-    const cards = [
-      { l: 'Mottakere', v: s.recipients ?? 0, icon: Users },
-      { l: 'Levert', v: s.sent ?? 0, sub: s.failedCount ? `${s.failedCount} feilet` : null, icon: Send },
-      { l: 'Åpnet (unike)', v: s.opensUnique ?? 0, sub: s.openRate != null ? `${String(s.openRate).replace('.', ',')} % åpningsrate` : null, icon: MailOpen },
-      { l: 'Klikket (unike)', v: s.clicksUnique ?? 0, sub: s.clickRate != null ? `${String(s.clickRate).replace('.', ',')} % klikkrate` : null, icon: MousePointer2 },
-    ];
-    return (
-      <div className="space-y-5" data-testid="newsletter-stats">
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          <div className="flex items-center gap-3 min-w-0">
-            <button onClick={() => { setView('list'); loadList(); }} className="h-9 w-9 rounded-xl bg-white border border-[#eee] grid place-items-center text-[#555] hover:bg-[#fafafa]"><ArrowLeft className="w-4 h-4" /></button>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2.5">
-                <h3 className="font-heading font-bold text-[18px] text-[#0a0a0a] truncate">{camp.title}</h3>
-                <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[10.5px] font-bold uppercase bg-[#E8F4EE] text-[#18794E]">Sendt</span>
+          {/* Canvas */}
+          <div className="min-w-0">
+            <div className="mx-auto transition-all" style={{ maxWidth: device === 'mobile' ? 400 : 660 }}>
+              <div className="rounded-[22px] p-4 sm:p-6" style={{ background: '#f0ede9' }} onClick={() => setSelectedBlock(null)}>
+                {/* logo-header som i e-posten */}
+                <div className="px-2 pb-3"><img src="/email-logo.png" alt="DigiHome" style={{ height: 22 }} /></div>
+                <div className={`rounded-2xl bg-white overflow-hidden pb-5 ${camp.blocks[0]?.type === 'hero' ? '' : 'pt-5'}`} onClick={(e) => e.stopPropagation()} data-testid="nl-canvas">
+                  {camp.blocks.length === 0 ? (
+                    <div className="px-10 py-14 text-center">
+                      <p className="text-[15px] font-semibold text-[#555]">Bygg nyhetsbrevet ditt</p>
+                      <p className="text-[12.5px] text-[#aaa] mt-1.5">Velg blokker fra venstre — eller start med hero-bilde og tilbudskort.</p>
+                    </div>
+                  ) : camp.blocks.map((b, i) => (
+                    <CanvasBlock key={b.id} b={b} i={i} total={camp.blocks.length} accent={accent}
+                      selected={selectedBlock === b.id} onSelect={setSelectedBlock}
+                      onPatch={(p) => patchBlock(b.id, p)} onMove={moveBlock} onDup={duplicateBlock} onDel={removeBlock}
+                      onUploadImage={uploadImage} uploadingId={uploadingId}
+                      onDragStartBlock={onDragStartBlock} onDragOverBlock={onDragOverBlock} onDropBlock={onDropBlock} />
+                  ))}
+                </div>
+                <p className="text-center text-[10.5px] text-[#b3a89b] pt-3">Avmeldingslenke og bunntekst legges til automatisk</p>
               </div>
-              <p className="text-[12.5px] text-[#999] mt-0.5">{camp.subject} · {fmtDate(camp.sentAt)}</p>
             </div>
           </div>
-          <button onClick={() => duplicateCampaign(camp.id)} className="inline-flex items-center gap-2 h-9 px-4 rounded-full bg-white border border-[#ddd] text-[13px] font-medium text-[#555] hover:bg-[#fafafa]">
-            <Copy className="w-3.5 h-3.5" /> Bruk som utgangspunkt
-          </button>
-        </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          {cards.map((c, i) => (
-            <div key={i} className="rounded-2xl bg-white border border-[#eee] px-5 py-4">
-              <span className="inline-flex h-8 w-8 rounded-lg bg-[#f3ebff] items-center justify-center mb-2"><c.icon className="w-4 h-4 text-[#9B5BD6]" /></span>
-              <p className="font-heading font-bold text-[26px] text-[#0a0a0a] leading-none">{c.v}</p>
-              <p className="text-[12px] text-[#888] mt-1.5">{c.l}{c.sub ? <span className="text-[#18794E] font-medium"> · {c.sub}</span> : null}</p>
-            </div>
-          ))}
-        </div>
-
-        <div className="grid lg:grid-cols-2 gap-5 items-start">
-          <div className="rounded-3xl bg-white border border-[#eee] p-6">
-            <h4 className="text-[15px] font-bold text-[#0a0a0a] mb-4 inline-flex items-center gap-2"><BarChart3 className="w-4 h-4 text-[#9B5BD6]" /> Klikk per lenke</h4>
-            {(s.clicksByUrl || []).length === 0 ? (
-              <p className="text-[13px] text-[#999]">Ingen klikk registrert ennå. Klikk dukker opp her i sanntid.</p>
+          {/* Inspektør */}
+          <div className="rounded-2xl border border-[#f0f0f0] bg-white p-4 sticky top-[132px] max-h-[calc(100vh-160px)] overflow-y-auto">
+            {selected ? (
+              <BlockInspector b={selected} onPatch={(p) => patchBlock(selected.id, p)} onDel={removeBlock}
+                onUploadImage={uploadImage} uploadingId={uploadingId} />
             ) : (
-              <div className="space-y-2.5">
-                {s.clicksByUrl.map((u, i) => (
-                  <div key={i} className="flex items-center justify-between gap-3 rounded-xl bg-[#fafafa] px-3.5 py-2.5">
-                    <span className="text-[12.5px] text-[#555] truncate">{u.url.replace(/^https?:\/\//, '').split('?')[0]}</span>
-                    <span className="shrink-0 text-[12.5px] font-semibold text-[#0a0a0a]">{u.unique} <span className="text-[#999] font-normal">unike · {u.total} totalt</span></span>
-                  </div>
-                ))}
-              </div>
-            )}
-            {(camp.failed || []).length > 0 ? (
-              <div className="mt-5 pt-4 border-t border-[#eee]">
-                <p className="text-[12.5px] font-semibold text-amber-600 mb-2">Feilet ({camp.failedCount})</p>
-                {(camp.failed || []).slice(0, 5).map((f, i) => <p key={i} className="text-[12px] text-[#999] truncate">{f.email} — {f.error}</p>)}
-              </div>
-            ) : null}
-          </div>
-          <div className="rounded-3xl bg-white border border-[#eee] overflow-hidden">
-            <div className="px-5 py-3 border-b border-[#eee] text-[13px] font-semibold text-[#0a0a0a] inline-flex items-center gap-2 w-full"><Eye className="w-4 h-4 text-[#9B5BD6]" /> Innholdet som ble sendt</div>
-            <StatsPreview camp={camp} q={q} />
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  /* ================================ EDITOR ================================= */
-  const segCounts = Object.fromEntries((audiences?.segments || []).map((s) => [s.key, s.count]));
-  const approxCount = netCount != null ? netCount : (camp.segments || []).reduce((a, k) => a + (segCounts[k] || 0), 0) - (camp.excludedEmails || []).length;
-
-  return (
-    <div className="space-y-4" data-testid="newsletter-editor">
-      {/* Topplinje */}
-      <div className="flex items-center justify-between gap-3 flex-wrap rounded-2xl bg-white border border-[#eee] px-4 py-3">
-        <div className="flex items-center gap-3 min-w-0 flex-1">
-          <button onClick={() => { setView('list'); loadList(); }} data-testid="nl-back"
-            className="h-9 w-9 shrink-0 rounded-xl bg-[#fafafa] border border-[#eee] grid place-items-center text-[#555] hover:bg-[#f0f0f0]"><ArrowLeft className="w-4 h-4" /></button>
-          <div className="min-w-0 flex-1">
-            <input value={camp.title || ''} onChange={(e) => patch({ title: e.target.value })} placeholder="Kampanjenavn"
-              className="w-full max-w-[340px] bg-transparent outline-none font-heading font-bold text-[16.5px] text-[#0a0a0a] placeholder:text-[#bbb]" />
-            <p className="text-[11px] text-[#aaa] leading-none mt-0.5">
-              <span className="inline-flex items-center rounded-full bg-amber-50 text-amber-600 px-1.5 py-px text-[9.5px] font-bold uppercase mr-1.5">Utkast</span>
-              {saveState === 'saving' ? 'Lagrer…' : saveState === 'saved' ? 'Alle endringer lagret' : ' '}
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <button onClick={() => setPreviewOpen(true)} className="inline-flex items-center gap-1.5 h-9 px-4 rounded-full bg-white border border-[#ddd] text-[13px] font-medium text-[#555] hover:bg-[#fafafa]">
-            <Eye className="w-3.5 h-3.5" /> Forhåndsvis
-          </button>
-          <button onClick={() => setConfirming(true)} disabled={sendState === 'sending'} data-testid="nl-send"
-            className="inline-flex items-center gap-1.5 h-9 px-5 rounded-full bg-[#0a0a0a] text-white text-[13px] font-semibold hover:shadow-[0_8px_24px_rgba(0,0,0,0.2)] active:scale-[0.98] transition-all disabled:opacity-50">
-            <Send className="w-3.5 h-3.5" /> Send
-          </button>
-        </div>
-      </div>
-      {sendErr ? (
-        <div className="rounded-2xl bg-rose-50 border border-rose-200 px-4 py-3 flex items-center gap-2.5">
-          <XCircle className="w-4 h-4 text-rose-500 shrink-0" /><p className="text-[13px] text-rose-700">{sendErr}</p>
-        </div>
-      ) : null}
-
-      <div className="grid grid-cols-1 lg:grid-cols-[170px_1fr_300px] gap-4 items-start">
-        {/* -------- Palett -------- */}
-        <div className="rounded-2xl bg-white border border-[#eee] p-3 lg:sticky lg:top-4">
-          {[
-            ['Innhold', [['heading', 'Overskrift', Type], ['text', 'Tekst', AlignLeft], ['bullets', 'Punktliste', List], ['image', 'Bilde', ImageIcon], ['button', 'Knapp', MousePointerClick]]],
-            ['Layout', [['quote', 'Sitat', QuoteIcon], ['divider', 'Skillelinje', Minus], ['spacer', 'Luft', MoveVertical]]],
-            ['Spesial', [['cta-card', 'Interesse-kort', Sparkles], ['signature', 'Signatur', PenLine]]],
-          ].map(([group, items]) => (
-            <div key={group} className="mb-3 last:mb-0">
-              <p className="text-[10px] uppercase tracking-[0.12em] font-bold text-[#bbb] px-2 mb-1.5">{group}</p>
-              <div className="space-y-1">
-                {items.map(([type, label, Icon]) => (
-                  <button key={type} onClick={() => addBlock(type)} data-testid={`nl-add-${type}`}
-                    className="w-full flex items-center gap-2.5 rounded-xl px-2.5 py-2 text-left hover:bg-[#faf7ff] transition-colors group">
-                    <span className="h-7 w-7 shrink-0 rounded-lg bg-[#f5f3f0] group-hover:bg-[#f3ebff] grid place-items-center transition-colors"><Icon className="w-3.5 h-3.5 text-[#888] group-hover:text-[#9B5BD6]" /></span>
-                    <span className="text-[12.5px] font-medium text-[#555] group-hover:text-[#0a0a0a]">{label}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* -------- Canvas -------- */}
-        <div className="rounded-2xl bg-[#f5f3f0] border border-[#eee] p-4 sm:p-7 min-h-[560px]">
-          <div className="max-w-[600px] mx-auto">
-            <p className="text-[16px] font-extrabold text-[#0a0a0a] tracking-[-0.02em] mb-3 px-1">DigiHome<span style={{ color: accent === '#0a0a0a' ? '#d298ff' : accent }}>.</span></p>
-            <div className="rounded-[18px] bg-white overflow-hidden shadow-[0_4px_24px_rgba(0,0,0,0.05)]">
-              <div style={{ height: 5, background: accent }} />
-              <div className="py-5">
-                {camp.blocks.length === 0 ? (
-                  <div className="py-14 text-center px-8">
-                    <Sparkles className="w-6 h-6 text-[#ddd] mx-auto mb-2" />
-                    <p className="text-[13.5px] text-[#aaa]">Tomt nyhetsbrev — legg til blokker fra paletten til venstre.</p>
-                  </div>
-                ) : camp.blocks.map((b, i) => (
-                  <CanvasBlock key={b.id} b={b} i={i} total={camp.blocks.length} accent={accent}
-                    selected={selectedBlock === b.id} onSelect={() => setSelectedBlock(b.id)}
-                    onPatch={(p) => patchBlock(b.id, p)} onMove={(d) => moveBlock(b.id, d)}
-                    onDup={() => duplicateBlock(b.id)} onDel={() => removeBlock(b.id)} />
-                ))}
-              </div>
-            </div>
-            <p className="text-center text-[10.5px] text-[#bbb] mt-3 leading-relaxed">DigiHome AS · Bergen · Meld deg av her<br />Avmeldingslenken settes inn automatisk for hver mottaker</p>
-          </div>
-        </div>
-
-        {/* -------- Innstillingspanel -------- */}
-        <div className="rounded-2xl bg-white border border-[#eee] lg:sticky lg:top-4 overflow-hidden">
-          <div className="flex border-b border-[#eee]">
-            {[['oppsett', 'Oppsett', Settings2], ['tema', 'Tema', Palette], ['malgruppe', 'Målgruppe', Users]].map(([k, l, Icon]) => (
-              <button key={k} onClick={() => setPanelTab(k)} data-testid={`nl-panel-${k}`}
-                className={`flex-1 h-11 inline-flex items-center justify-center gap-1.5 text-[12.5px] font-semibold transition-colors ${panelTab === k ? 'text-[#0a0a0a] border-b-2 border-[#9B5BD6] -mb-px' : 'text-[#999] hover:text-[#555]'}`}>
-                <Icon className="w-3.5 h-3.5" /> {l}
-              </button>
-            ))}
-          </div>
-          <div className="p-4 space-y-4 max-h-[70vh] overflow-y-auto">
-            {panelTab === 'oppsett' ? (
               <>
-                <div>
-                  <label className="text-[11.5px] font-bold uppercase tracking-[0.08em] text-[#999] block mb-1.5">Emne</label>
-                  <input value={camp.subject || ''} onChange={(e) => patch({ subject: e.target.value })} placeholder={'Hei {{first_name}}, …'} className={inputCls} data-testid="nl-subject" />
-                </div>
-                <div>
-                  <label className="text-[11.5px] font-bold uppercase tracking-[0.08em] text-[#999] block mb-1.5">Forhåndstekst</label>
-                  <input value={camp.preheader || ''} onChange={(e) => patch({ preheader: e.target.value })} placeholder="Vises som forhåndsvisning i innboksen" className={inputCls} />
-                </div>
-                <div>
-                  <label className="text-[11.5px] font-bold uppercase tracking-[0.08em] text-[#999] block mb-1.5">Avsendernavn</label>
-                  <input value={camp.fromName || ''} onChange={(e) => patch({ fromName: e.target.value })} placeholder="DigiHome" className={inputCls} />
-                </div>
-                <div className="rounded-xl bg-[#faf7ff] border border-[#eee] px-3.5 py-3">
-                  <p className="text-[11.5px] text-[#8b6aad] leading-relaxed"><b>Flettefelt:</b> Skriv <code className="bg-white rounded px-1">{'{{first_name}}'}</code> hvor som helst — byttes automatisk med mottakerens fornavn.</p>
-                </div>
-                <div className="pt-1 border-t border-[#eee]">
-                  <label className="text-[11.5px] font-bold uppercase tracking-[0.08em] text-[#999] block mb-1.5 pt-3">Send test</label>
-                  <div className="flex gap-2">
-                    <input value={testTo} onChange={(e) => { setTestTo(e.target.value); setTestState({ s: 'idle', msg: '' }); }} placeholder="din@epost.no" className={inputCls} data-testid="nl-test-email" />
-                    <button onClick={sendTest} disabled={testState.s === 'sending' || !testTo.trim()} data-testid="nl-test-send"
-                      className="shrink-0 h-10 px-3.5 rounded-xl bg-[#f5f3f0] hover:bg-[#edeae6] text-[12.5px] font-semibold text-[#0a0a0a] disabled:opacity-50 inline-flex items-center gap-1.5">
-                      {testState.s === 'sending' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
-                    </button>
-                  </div>
-                  {testState.msg ? <p className={`text-[11.5px] mt-1.5 ${testState.s === 'ok' ? 'text-[#18794E]' : 'text-rose-500'}`}>{testState.msg}</p> : null}
-                </div>
-              </>
-            ) : null}
-
-            {panelTab === 'tema' ? (
-              <div>
-                <label className="text-[11.5px] font-bold uppercase tracking-[0.08em] text-[#999] block mb-2.5">Aksentfarge</label>
-                <div className="grid grid-cols-2 gap-2.5">
-                  {THEME_SWATCHES.map((t) => (
-                    <button key={t.key} onClick={() => patch({ theme: t.key })}
-                      className={`rounded-xl border px-3 py-3 text-left transition-all ${camp.theme === t.key ? 'border-[#9B5BD6]/60 bg-[#faf7ff]' : 'border-[#eee] hover:bg-[#fafafa]'}`}>
-                      <span className="block h-6 w-full rounded-lg mb-2" style={{ background: t.accent }} />
-                      <span className="text-[12.5px] font-medium text-[#555]">{t.label}</span>
+                <div className="flex rounded-full bg-[#f4f2ef] p-0.5">
+                  {[['oppsett', 'Oppsett', Settings2], ['mottakere', 'Mottakere', Users]].map(([k, l, Icon]) => (
+                    <button key={k} onClick={() => setPanelTab(k)}
+                      className={`flex-1 h-[30px] rounded-full text-[11.5px] font-semibold flex items-center justify-center gap-1.5 ${panelTab === k ? 'bg-white shadow-sm text-[#111]' : 'text-[#999]'}`}>
+                      <Icon size={12} /> {l}
                     </button>
                   ))}
                 </div>
-                <p className="text-[11.5px] text-[#999] mt-3 leading-relaxed">Aksenten brukes på topplinjen, punktlister, sitater og interesse-kortet.</p>
-              </div>
-            ) : null}
 
-            {panelTab === 'malgruppe' ? (
-              <>
-                <div className="space-y-2">
-                  {(audiences?.segments || []).map((s) => {
-                    const on = (camp.segments || []).includes(s.key);
-                    return (
-                      <button key={s.key} data-testid={`nl-seg-${s.key}`}
-                        onClick={() => patch({ segments: on ? camp.segments.filter((k) => k !== s.key) : [...(camp.segments || []), s.key] })}
-                        className={`w-full flex items-center justify-between gap-2 rounded-xl border px-3 py-2.5 text-left transition-all ${on ? 'border-[#9B5BD6]/50 bg-[#faf7ff]' : 'border-[#eee] hover:bg-[#fafafa]'}`}>
-                        <span className="flex items-center gap-2.5 min-w-0">
-                          <span className={`h-4.5 w-4.5 shrink-0 rounded grid place-items-center border ${on ? 'bg-[#9B5BD6] border-[#9B5BD6]' : 'border-[#ccc]'}`} style={{ width: 18, height: 18 }}>
-                            {on ? <CheckCircle2 className="w-3 h-3 text-white" /> : null}
-                          </span>
-                          <span className="min-w-0">
-                            <span className="block text-[12.5px] font-semibold text-[#0a0a0a] truncate">{s.label.replace(' (vunnede utleiere)', '')} · {s.count}</span>
-                            <span className={`text-[10px] font-medium ${s.consent === 'safe' ? 'text-[#18794E]' : 'text-amber-600'}`}>{s.consent === 'safe' ? 'Kundeforhold — trygt' : 'Grå sone'}</span>
-                          </span>
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Mottakerliste med ekskludering */}
-                <div className="pt-3 border-t border-[#eee]">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-[11.5px] font-bold uppercase tracking-[0.08em] text-[#999]">Mottakere</p>
-                    {recips ? <span className="text-[11.5px] font-semibold text-[#0a0a0a]">{netCount} av {recips.total}</span> : null}
+                {panelTab === 'oppsett' ? (
+                  <div className="mt-4">
+                    <label className="text-[11px] font-semibold text-[#777] block mb-1.5">Emnefelt *</label>
+                    <input value={camp.subject || ''} onChange={(e) => patch({ subject: e.target.value })} data-testid="nl-subject-input"
+                      placeholder="F.eks. {{first_name}}, sommertilbud på forvaltning"
+                      className="w-full h-[38px] rounded-lg border border-[#e8e8e8] px-3 text-[13px] outline-none focus:border-[#c99df0]" />
+                    <label className="text-[11px] font-semibold text-[#777] block mb-1.5 mt-4">Forhåndstekst</label>
+                    <input value={camp.preheader || ''} onChange={(e) => patch({ preheader: e.target.value })}
+                      placeholder="Vises etter emnet i innboksen"
+                      className="w-full h-[38px] rounded-lg border border-[#e8e8e8] px-3 text-[13px] outline-none focus:border-[#c99df0]" />
+                    <label className="text-[11px] font-semibold text-[#777] block mb-1.5 mt-4">Avsendernavn</label>
+                    <input value={camp.fromName || ''} onChange={(e) => patch({ fromName: e.target.value })}
+                      placeholder="DigiHome"
+                      className="w-full h-[38px] rounded-lg border border-[#e8e8e8] px-3 text-[13px] outline-none focus:border-[#c99df0]" />
+                    <p className="text-[10.5px] text-[#bbb] leading-[1.5] mt-4">Flettekoder: <code className="bg-[#f4f2ef] px-1 rounded">{'{{name}}'}</code> <code className="bg-[#f4f2ef] px-1 rounded">{'{{first_name}}'}</code> — fungerer i emnefelt og tekstblokker.</p>
                   </div>
-                  {(camp.segments || []).length === 0 ? (
-                    <p className="text-[12px] text-[#999]">Velg minst én målgruppe over for å se mottakerne.</p>
-                  ) : !recips ? (
-                    <div className="h-16 grid place-items-center"><Loader2 className="w-4 h-4 animate-spin text-[#9B5BD6]" /></div>
-                  ) : (
-                    <>
-                      <div className="relative mb-2">
-                        <Search className="w-3.5 h-3.5 text-[#aaa] absolute left-3 top-1/2 -translate-y-1/2" />
-                        <input value={recipSearch} onChange={(e) => setRecipSearch(e.target.value)} placeholder="Søk e-post eller navn…"
-                          className="w-full h-9 pl-8.5 pr-3 rounded-xl border border-[#e5e5e5] bg-white text-[12.5px] outline-none focus:border-[#cf97fc]/60" style={{ paddingLeft: 34 }} data-testid="nl-recip-search" />
+                ) : (
+                  <div className="mt-4" data-testid="nl-audience-panel">
+                    {/* Segmenter */}
+                    {(audiences?.segments || []).map((s) => {
+                      const on = (camp.segments || []).includes(s.key);
+                      return (
+                        <button key={s.key} data-testid={`nl-audience-${s.key}`}
+                          onClick={() => patch({ segments: on ? camp.segments.filter((x) => x !== s.key) : [...(camp.segments || []), s.key] })}
+                          className={`w-full flex items-center justify-between rounded-xl border px-3 py-2.5 mb-1.5 text-left transition-colors ${on ? 'border-[#c99df0] bg-[#faf6fe]' : 'border-[#f0f0f0] bg-white hover:border-[#e0d5ec]'}`}>
+                          <span>
+                            <span className="text-[12.5px] font-semibold text-[#111] block">{s.label}</span>
+                            <span className="text-[10.5px] text-[#999]">{s.desc}</span>
+                          </span>
+                          <span className={`text-[12px] font-bold tabular-nums ${on ? 'text-[#a052e0]' : 'text-[#bbb]'}`}>{s.count}</span>
+                        </button>
+                      );
+                    })}
+
+                    {/* Manuelle mottakere */}
+                    <p className="text-[11px] font-semibold text-[#777] mt-4 mb-1.5">Legg til mottakere manuelt</p>
+                    <div className="flex gap-1.5">
+                      <input value={extraInput} onChange={(e) => setExtraInput(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addExtra(); } }}
+                        placeholder="epost@eksempel.no" data-testid="nl-extra-input"
+                        className="flex-1 h-[34px] rounded-lg border border-[#e8e8e8] px-3 text-[12.5px] outline-none focus:border-[#c99df0]" />
+                      <button onClick={addExtra} data-testid="nl-extra-add" className="w-[34px] h-[34px] rounded-lg bg-[#0a0a0a] text-white flex items-center justify-center"><Plus size={14} /></button>
+                    </div>
+                    {(camp.extraEmails || []).length ? (
+                      <div className="flex flex-wrap gap-1.5 mt-2">
+                        {camp.extraEmails.map((x) => (
+                          <span key={x.email} className="inline-flex items-center gap-1 rounded-full bg-[#f5edfc] text-[#7b3fb0] text-[11px] font-medium pl-2.5 pr-1 py-1">
+                            {x.email}
+                            <button onClick={() => removeExtra(x.email)} className="hover:text-red-500"><X size={11} /></button>
+                          </span>
+                        ))}
                       </div>
-                      <div className="max-h-[260px] overflow-y-auto space-y-1 pr-0.5" data-testid="nl-recip-list">
-                        {recips.recipients
-                          .filter((r) => !recipSearch || r.email.includes(recipSearch.toLowerCase()) || (r.name || '').toLowerCase().includes(recipSearch.toLowerCase()))
-                          .map((r) => {
-                            const off = excluded.has(r.email);
-                            return (
-                              <div key={r.email} className={`flex items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 ${off ? 'bg-[#fafafa] opacity-55' : 'hover:bg-[#fafafa]'}`}>
-                                <div className="min-w-0">
-                                  <p className={`text-[12px] font-medium truncate ${off ? 'line-through text-[#999]' : 'text-[#0a0a0a]'}`}>{r.email}</p>
-                                  <p className="text-[10.5px] text-[#999] truncate">{r.name || '—'} · {SEG_LABEL[r.segment] || r.segment}</p>
-                                </div>
-                                <button onClick={() => toggleExclude(r.email)} title={off ? 'Ta med igjen' : 'Ikke send til denne'}
-                                  className={`shrink-0 h-7 w-7 rounded-lg grid place-items-center transition-colors ${off ? 'text-[#18794E] hover:bg-[#E8F4EE]' : 'text-[#bbb] hover:bg-rose-50 hover:text-rose-500'}`}>
-                                  {off ? <RotateCcw className="w-3.5 h-3.5" /> : <UserMinus className="w-3.5 h-3.5" />}
-                                </button>
-                              </div>
-                            );
-                          })}
-                      </div>
-                      <p className="text-[10.5px] text-[#aaa] mt-2">Avmeldte og duplikater fjernes alltid automatisk i tillegg.</p>
-                    </>
-                  )}
-                </div>
+                    ) : null}
+
+                    {/* Mottakerliste med ekskludering */}
+                    <div className="flex items-center justify-between mt-4 mb-1.5">
+                      <p className="text-[11px] font-semibold text-[#777]">Mottakere fra målgrupper</p>
+                      <span className="text-[11px] font-bold text-[#a052e0] tabular-nums">{netCount != null ? `${netCount} netto` : ''}</span>
+                    </div>
+                    <div className="relative">
+                      <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#bbb]" />
+                      <input value={recipSearch} onChange={(e) => setRecipSearch(e.target.value)} placeholder="Søk…"
+                        className="w-full h-[32px] rounded-lg border border-[#e8e8e8] pl-7 pr-3 text-[12px] outline-none focus:border-[#c99df0]" />
+                    </div>
+                    <div className="max-h-[260px] overflow-y-auto mt-1.5 -mx-1 px-1">
+                      {!recips ? (
+                        <p className="text-[11.5px] text-[#aaa] py-3 text-center"><Loader2 size={13} className="animate-spin inline" /></p>
+                      ) : recips.recipients.length === 0 ? (
+                        <p className="text-[11.5px] text-[#aaa] py-3 text-center">Velg minst én målgruppe over.</p>
+                      ) : recips.recipients
+                        .filter((r) => !recipSearch || (r.email + ' ' + (r.name || '')).toLowerCase().includes(recipSearch.toLowerCase()))
+                        .slice(0, 400)
+                        .map((r) => {
+                          const off = excludedSet.has(r.email);
+                          return (
+                            <button key={r.email} onClick={() => toggleExclude(r.email)}
+                              className={`w-full flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left hover:bg-[#faf8f5] ${off ? 'opacity-45' : ''}`}>
+                              <span className="min-w-0">
+                                <span className={`text-[12px] font-medium block truncate ${off ? 'line-through text-[#999]' : 'text-[#222]'}`}>{r.email}</span>
+                                <span className="text-[10px] text-[#aaa] truncate block">{r.name || '—'} · {SEG_LABEL[r.segment] || r.segment}</span>
+                              </span>
+                              <span className={`text-[10px] font-bold shrink-0 ${off ? 'text-red-400' : 'text-emerald-500'}`}>{off ? 'Ekskludert' : 'Med'}</span>
+                            </button>
+                          );
+                        })}
+                    </div>
+                  </div>
+                )}
               </>
-            ) : null}
+            )}
           </div>
         </div>
-      </div>
 
-      {/* Forhåndsvisning-modal */}
-      {previewOpen ? (
-        <div className="fixed inset-0 z-[130] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/55 backdrop-blur-[2px]" onClick={() => setPreviewOpen(false)} />
-          <div className="relative w-full max-w-[860px] h-[86vh] rounded-3xl bg-white shadow-2xl overflow-hidden flex flex-col">
-            <div className="flex items-center justify-between px-5 py-3 border-b border-[#eee]">
-              <p className="text-[14px] font-bold text-[#0a0a0a]">Forhåndsvisning</p>
-              <div className="flex items-center gap-2">
-                <div className="inline-flex rounded-full bg-[#f5f3f0] p-1">
-                  <button onClick={() => setPreviewMode('desktop')} className={`h-8 w-9 rounded-full grid place-items-center ${previewMode === 'desktop' ? 'bg-white shadow-sm text-[#0a0a0a]' : 'text-[#999]'}`}><Monitor className="w-4 h-4" /></button>
-                  <button onClick={() => setPreviewMode('mobile')} className={`h-8 w-9 rounded-full grid place-items-center ${previewMode === 'mobile' ? 'bg-white shadow-sm text-[#0a0a0a]' : 'text-[#999]'}`}><Smartphone className="w-4 h-4" /></button>
-                </div>
-                <button onClick={() => setPreviewOpen(false)} className="h-8 w-8 rounded-full bg-[#f5f3f0] grid place-items-center text-[#555] hover:bg-[#eee]"><X className="w-4 h-4" /></button>
+        {/* Forhåndsvisning */}
+        {previewOpen ? (
+          <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-6" onClick={() => setPreviewOpen(false)}>
+            <div className="bg-[#f0ede9] rounded-2xl overflow-hidden max-h-[90vh] w-full" style={{ maxWidth: device === 'mobile' ? 420 : 700 }} onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center justify-between bg-white px-4 py-2.5 border-b border-[#eee]">
+                <p className="text-[12.5px] font-bold">Forhåndsvisning</p>
+                <button onClick={() => setPreviewOpen(false)}><X size={16} className="text-[#999] hover:text-[#111]" /></button>
               </div>
-            </div>
-            <div className="flex-1 bg-[#eae7e2] grid place-items-center overflow-auto p-4">
-              {previewHtml ? (
-                <iframe title="Forhåndsvisning" srcDoc={previewHtml} className="bg-white rounded-xl shadow-lg h-full transition-all" style={{ width: previewMode === 'mobile' ? 375 : '100%', maxWidth: 760 }} />
-              ) : <Loader2 className="w-6 h-6 animate-spin text-[#9B5BD6]" />}
+              {previewHtml
+                ? <iframe title="preview" srcDoc={previewHtml} className="w-full" style={{ height: '78vh', border: 0 }} />
+                : <div className="h-[300px] flex items-center justify-center"><Loader2 size={20} className="animate-spin text-[#a052e0]" /></div>}
             </div>
           </div>
-        </div>
-      ) : null}
+        ) : null}
 
-      {/* Send-bekreftelse */}
-      {confirming ? (
-        <div className="fixed inset-0 z-[130] flex items-center justify-center p-5">
-          <div className="absolute inset-0 bg-black/45 backdrop-blur-[2px]" onClick={() => sendState !== 'sending' && setConfirming(false)} />
-          <div className="relative w-full max-w-[420px] rounded-3xl bg-white shadow-2xl p-7 text-center">
-            <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-[#f3ebff]"><Send className="w-5 h-5 text-[#9B5BD6]" /></span>
-            <h3 className="font-heading font-bold text-[20px] text-[#0a0a0a] mt-4">Send «{camp.title || 'kampanjen'}»?</h3>
-            <p className="text-[13.5px] text-[#888] mt-2 leading-relaxed">
-              Sendes til <b className="text-[#0a0a0a]">~{Math.max(approxCount, 0)} mottakere</b>
-              {(camp.excludedEmails || []).length ? ` (${camp.excludedEmails.length} manuelt ekskludert)` : ''}. Kan ikke angres.
-            </p>
-            {!camp.subject?.trim() ? <p className="mt-2 text-[12.5px] text-amber-600 inline-flex items-center gap-1.5"><AlertTriangle className="w-3.5 h-3.5" /> Emnefeltet er tomt — fyll inn under Oppsett.</p> : null}
-            <div className="mt-5 flex gap-2.5">
-              <button onClick={doSend} disabled={sendState === 'sending'} data-testid="nl-send-confirm"
-                className="flex-1 h-11 rounded-full bg-[#0a0a0a] text-white text-[14px] font-semibold inline-flex items-center justify-center gap-2 disabled:opacity-60">
-                {sendState === 'sending' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />} Ja, send nå
-              </button>
-              <button onClick={() => setConfirming(false)} disabled={sendState === 'sending'} className="h-11 px-5 rounded-full bg-white border border-[#ddd] text-[13.5px] font-medium text-[#555]">Avbryt</button>
+        {/* Send-bekreftelse */}
+        {confirming ? (
+          <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-6" onClick={() => setConfirming(false)}>
+            <div className="bg-white rounded-3xl p-7 w-full max-w-[440px]" onClick={(e) => e.stopPropagation()}>
+              <p className="text-[18px] font-bold tracking-[-0.01em]">Klar til å sende?</p>
+              <div className="rounded-2xl bg-[#faf8f5] border border-[#f0ede8] p-4 mt-4 space-y-2">
+                <div className="flex justify-between text-[13px]"><span className="text-[#888]">Emne</span><span className="font-semibold text-right max-w-[260px] truncate">{camp.subject || <em className="text-red-500 not-italic">mangler</em>}</span></div>
+                <div className="flex justify-between text-[13px]"><span className="text-[#888]">Målgrupper</span><span className="font-semibold">{(camp.segments || []).map((s) => SEG_LABEL[s]).join(', ') || '—'}</span></div>
+                <div className="flex justify-between text-[13px]"><span className="text-[#888]">Manuelt lagt til</span><span className="font-semibold">{(camp.extraEmails || []).length}</span></div>
+                <div className="flex justify-between text-[13px]"><span className="text-[#888]">Ekskludert</span><span className="font-semibold">{(camp.excludedEmails || []).length}</span></div>
+                <div className="flex justify-between text-[14px] pt-1 border-t border-[#eee]"><span className="text-[#888]">Netto mottakere</span><span className="font-bold text-[#a052e0]">{netCount != null ? netCount : '…'}</span></div>
+              </div>
+              {sendErr ? <p className="text-[12.5px] text-red-500 mt-3">{sendErr}</p> : null}
+              <div className="flex gap-2 mt-5">
+                <button onClick={() => setConfirming(false)} className="flex-1 h-[42px] rounded-full border border-[#e5e5e5] text-[13px] font-semibold">Avbryt</button>
+                <button onClick={doSend} disabled={sendState === 'sending' || !camp.subject} data-testid="nl-confirm-send"
+                  className="flex-1 h-[42px] rounded-full bg-[#0a0a0a] text-white text-[13px] font-bold disabled:opacity-50 flex items-center justify-center gap-2">
+                  {sendState === 'sending' ? <Loader2 size={14} className="animate-spin" /> : <Send size={13} />} Send nå
+                </button>
+              </div>
+              <p className="text-[10.5px] text-[#bbb] text-center mt-3">Avmeldte og ugyldige adresser filtreres automatisk. Kan ikke angres.</p>
             </div>
           </div>
-        </div>
-      ) : null}
-    </div>
-  );
-}
+        ) : null}
+      </div>
+    );
+  }
 
-/* ------------------------- Canvas-blokk (WYSIWYG) ------------------------- */
-function CanvasBlock({ b, i, total, accent, selected, onSelect, onPatch, onMove, onDup, onDel }) {
-  const soft = accent === '#0a0a0a' ? '#f0f0f0' : `${accent}22`;
+  /* ============================= VIEW: LIST ================================= */
+  const campaigns = (listData?.campaigns || []).filter((c) =>
+    filter === 'alle' ? true : filter === 'utkast' ? c.status !== 'sent' : c.status === 'sent');
+  const sentC = (listData?.campaigns || []).filter((c) => c.status === 'sent');
+  const avg = (arr) => (arr.length ? Math.round((arr.reduce((a, b) => a + b, 0) / arr.length) * 10) / 10 : null);
+  const avgOpen = avg(sentC.map((c) => c.openRate).filter((x) => x != null));
+  const avgClick = avg(sentC.map((c) => c.clickRate).filter((x) => x != null));
+  const subsCount = (audiences?.segments || []).find((s) => s.key === 'abonnenter')?.count;
+
   return (
-    <div onClick={onSelect}
-      className={`relative group px-10 py-1.5 transition-shadow ${selected ? 'ring-2 ring-[#9B5BD6]/40 ring-inset rounded-lg' : 'hover:ring-1 hover:ring-[#e5d5f5] hover:ring-inset rounded-lg'}`}>
-      {/* Kontroller */}
-      <div className={`absolute right-2 top-1 z-10 flex items-center gap-0.5 rounded-lg bg-white border border-[#eee] shadow-sm px-0.5 py-0.5 transition-opacity ${selected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
-        <button onClick={(e) => { e.stopPropagation(); onMove(-1); }} disabled={i === 0} className="h-6 w-6 rounded grid place-items-center text-[#999] hover:bg-[#f5f3f0] disabled:opacity-25"><ChevronUp className="w-3 h-3" /></button>
-        <button onClick={(e) => { e.stopPropagation(); onMove(1); }} disabled={i === total - 1} className="h-6 w-6 rounded grid place-items-center text-[#999] hover:bg-[#f5f3f0] disabled:opacity-25"><ChevronDown className="w-3 h-3" /></button>
-        <button onClick={(e) => { e.stopPropagation(); onDup(); }} className="h-6 w-6 rounded grid place-items-center text-[#999] hover:bg-[#f5f3f0]"><Copy className="w-3 h-3" /></button>
-        <button onClick={(e) => { e.stopPropagation(); onDel(); }} className="h-6 w-6 rounded grid place-items-center text-[#999] hover:bg-rose-50 hover:text-rose-500"><Trash2 className="w-3 h-3" /></button>
+    <div data-testid="nl-list">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h2 className="text-[22px] font-bold tracking-[-0.02em] text-[#111]">Nyhetsbrev-studio</h2>
+          <p className="text-[13px] text-[#999] mt-0.5">Design, send og analyser — alt på ett sted.</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setView('subs')} data-testid="nl-open-subs"
+            className="h-[38px] rounded-full border border-[#e5e5e5] bg-white text-[12.5px] font-semibold px-4 flex items-center gap-1.5 hover:border-[#c99df0]">
+            <UsersRound size={14} /> Abonnenter{subsCount != null ? ` (${subsCount})` : ''}
+          </button>
+          <button onClick={() => setTplOpen(true)} data-testid="nl-new-button"
+            className="h-[38px] rounded-full bg-[#0a0a0a] text-white text-[12.5px] font-bold px-5 flex items-center gap-1.5">
+            <Plus size={14} /> Nytt nyhetsbrev
+          </button>
+        </div>
       </div>
 
-      {b.type === 'heading' ? (
-        <AutoArea value={b.text || ''} onChange={(e) => onPatch({ text: e.target.value })} placeholder="Overskrift…"
-          className="font-bold text-[22px] leading-[1.3] text-[#0a0a0a] tracking-[-0.02em] placeholder:text-[#ccc]" />
-      ) : null}
+      {/* KPI-stripe */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5">
+        {[
+          { l: 'Sendte kampanjer', v: sentC.length, icon: Mail },
+          { l: 'Snitt åpningsrate', v: avgOpen != null ? `${avgOpen} %` : '—', icon: MailOpen },
+          { l: 'Snitt klikkrate', v: avgClick != null ? `${avgClick} %` : '—', icon: MousePointerClick },
+          { l: 'Utkast', v: (listData?.campaigns || []).filter((c) => c.status !== 'sent').length, icon: PenLine },
+        ].map((k) => (
+          <div key={k.l} className="rounded-2xl border border-[#f0f0f0] bg-white px-4 py-3.5 flex items-center gap-3">
+            {React.createElement(k.icon, { size: 16, className: 'text-[#c9b3e0] shrink-0' })}
+            <div>
+              <p className="text-[18px] font-bold tabular-nums leading-none text-[#111]">{k.v}</p>
+              <p className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-[#aaa] mt-1">{k.l}</p>
+            </div>
+          </div>
+        ))}
+      </div>
 
-      {b.type === 'text' ? (
-        <AutoArea value={b.text || ''} onChange={(e) => onPatch({ text: e.target.value })} placeholder="Skriv tekst her… (tom linje = nytt avsnitt)"
-          className="text-[15px] leading-[1.75] text-[#555] placeholder:text-[#ccc]" />
-      ) : null}
+      {/* Filter */}
+      <div className="flex gap-1.5 mt-6">
+        {[['alle', 'Alle'], ['utkast', 'Utkast'], ['sendt', 'Sendt']].map(([k, l]) => (
+          <button key={k} onClick={() => setFilter(k)}
+            className={`h-[30px] rounded-full text-[12px] font-semibold px-3.5 ${filter === k ? 'bg-[#0a0a0a] text-white' : 'bg-[#f4f2ef] text-[#777] hover:bg-[#ece9e4]'}`}>{l}</button>
+        ))}
+      </div>
 
-      {b.type === 'bullets' ? (
-        <div className="space-y-1.5 py-1">
-          {(b.items || []).map((it, idx) => (
-            <div key={idx} className="flex items-start gap-2.5">
-              <span className="mt-[9px] h-[7px] w-[7px] shrink-0 rounded-full" style={{ background: accent }} />
-              <AutoArea value={it} onChange={(e) => { const items = [...b.items]; items[idx] = e.target.value; onPatch({ items }); }} placeholder="Punkt…"
-                className="text-[15px] leading-[1.6] text-[#444] placeholder:text-[#ccc]" />
-              <button onClick={(e) => { e.stopPropagation(); onPatch({ items: b.items.filter((_, x) => x !== idx) }); }} className="mt-1 shrink-0 text-[#ccc] hover:text-rose-400"><X className="w-3 h-3" /></button>
+      {/* Kampanjekort */}
+      {campaigns.length === 0 ? (
+        <div className="rounded-3xl border border-dashed border-[#e2dcea] bg-[#fdfcfb] py-16 text-center mt-4">
+          <Mail size={22} className="text-[#cbb8de] inline" />
+          <p className="text-[14.5px] font-semibold text-[#555] mt-3">Ingen kampanjer her ennå</p>
+          <p className="text-[12.5px] text-[#aaa] mt-1">Trykk «Nytt nyhetsbrev» — sommermalen ligger klar.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 mt-4">
+          {campaigns.map((c) => (
+            <div key={c.id} onClick={() => openCampaign(c.id)} data-testid="nl-campaign-card"
+              className="group rounded-2xl border border-[#f0f0f0] bg-white p-5 cursor-pointer hover:border-[#d8c3ec] hover:shadow-[0_10px_30px_-18px_rgba(160,82,224,0.25)] transition-all">
+              <div className="flex items-center justify-between">
+                {c.status === 'sent'
+                  ? <span className="rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold uppercase tracking-[0.08em] px-2 py-0.5">Sendt</span>
+                  : <span className="rounded-full bg-amber-50 text-amber-700 text-[10px] font-bold uppercase tracking-[0.08em] px-2 py-0.5">Utkast</span>}
+                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button onClick={(e) => { e.stopPropagation(); duplicateCampaign(c.id); }} title="Dupliser" className="p-1.5 text-[#bbb] hover:text-[#111]"><Copy size={13} /></button>
+                  <button onClick={(e) => { e.stopPropagation(); deleteCampaign(c.id); }} title="Slett" className="p-1.5 text-[#bbb] hover:text-red-500"><Trash2 size={13} /></button>
+                </div>
+              </div>
+              <p className="text-[15px] font-bold tracking-[-0.01em] text-[#111] mt-3 truncate">{c.title || 'Uten navn'}</p>
+              <p className="text-[12.5px] text-[#999] mt-0.5 truncate">{c.subject || 'Emnefelt mangler'}</p>
+              <div className="flex items-center justify-between mt-4 pt-3 border-t border-[#f6f6f6]">
+                {c.status === 'sent' ? (
+                  <div className="flex gap-4">
+                    <span className="text-[11.5px] text-[#777]"><strong className="text-[#111] tabular-nums">{c.sent}</strong> sendt</span>
+                    <span className="text-[11.5px] text-[#777]"><strong className="text-[#111] tabular-nums">{c.openRate ?? '—'}%</strong> åpnet</span>
+                    <span className="text-[11.5px] text-[#777]"><strong className="text-[#111] tabular-nums">{c.clickRate ?? '—'}%</strong> klikk</span>
+                  </div>
+                ) : (
+                  <span className="text-[11.5px] text-[#aaa]">Endret {fmtDate(c.updatedAt)}</span>
+                )}
+                <ChevronRight size={14} className="text-[#ccc] group-hover:text-[#a052e0] transition-colors" />
+              </div>
             </div>
           ))}
-          <button onClick={(e) => { e.stopPropagation(); onPatch({ items: [...(b.items || []), ''] }); }} className="text-[12px] text-[#9B5BD6] font-medium hover:underline ml-5">+ Legg til punkt</button>
         </div>
-      ) : null}
+      )}
 
-      {b.type === 'button' ? (
-        <div className="py-2 text-center">
-          <span className="inline-flex items-center rounded-full bg-[#0a0a0a] px-2 py-1">
-            <input value={b.label || ''} onChange={(e) => onPatch({ label: e.target.value })} placeholder="Knappetekst"
-              className="bg-transparent outline-none text-white text-[14px] font-semibold text-center placeholder:text-white/40" style={{ width: `${Math.max((b.label || 'Knappetekst').length, 8) + 2}ch`, padding: '8px 12px' }} />
-          </span>
-          {selected ? <input value={b.url || ''} onChange={(e) => onPatch({ url: e.target.value })} placeholder="https://…" className="mt-2 mx-auto block w-4/5 h-8 px-3 rounded-lg border border-[#e5e5e5] text-[12px] text-[#555] outline-none focus:border-[#cf97fc]/60" onClick={(e) => e.stopPropagation()} /> : null}
-        </div>
-      ) : null}
-
-      {b.type === 'image' ? (
-        <div className="py-1.5">
-          {b.url ? (
-            /* eslint-disable-next-line @next/next/no-img-element */
-            <img src={b.url} alt={b.alt || ''} className="w-full rounded-xl" />
-          ) : (
-            <div className="h-28 rounded-xl bg-[#fafafa] border border-dashed border-[#ddd] grid place-items-center"><span className="text-[12px] text-[#aaa] inline-flex items-center gap-1.5"><ImageIcon className="w-3.5 h-3.5" /> Lim inn bilde-URL under</span></div>
-          )}
-          {selected ? (
-            <div className="grid grid-cols-2 gap-2 mt-2" onClick={(e) => e.stopPropagation()}>
-              <input value={b.url || ''} onChange={(e) => onPatch({ url: e.target.value })} placeholder="https://… (bilde-URL)" className="h-8 px-3 rounded-lg border border-[#e5e5e5] text-[12px] outline-none focus:border-[#cf97fc]/60" />
-              <input value={b.alt || ''} onChange={(e) => onPatch({ alt: e.target.value })} placeholder="Alt-tekst" className="h-8 px-3 rounded-lg border border-[#e5e5e5] text-[12px] outline-none focus:border-[#cf97fc]/60" />
+      {/* Mal-galleri */}
+      {tplOpen ? (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-6" onClick={() => setTplOpen(false)}>
+          <div className="bg-white rounded-3xl p-7 w-full max-w-[620px]" onClick={(e) => e.stopPropagation()}>
+            <p className="text-[18px] font-bold tracking-[-0.01em]">Velg et startpunkt</p>
+            <p className="text-[12.5px] text-[#999] mt-1">Alle maler kan tilpasses fritt etterpå.</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-5">
+              {(listData?.templates || []).map((t) => {
+                const hot = t.key === 'sommer';
+                return (
+                  <button key={t.key} onClick={() => createDraft(t.key)} disabled={busy} data-testid={`nl-template-${t.key}`}
+                    className={`rounded-2xl border p-4 text-left transition-all hover:shadow-sm ${hot ? 'border-[#c99df0] bg-[#faf6fe]' : 'border-[#eee] bg-white hover:border-[#d8c3ec]'}`}>
+                    <div className="flex items-center justify-between">
+                      <p className="text-[13.5px] font-bold text-[#111]">{t.label}</p>
+                      {hot ? <span className="rounded-full bg-[#a052e0] text-white text-[9.5px] font-bold uppercase tracking-[0.08em] px-2 py-0.5">Anbefalt nå</span> : null}
+                    </div>
+                    <p className="text-[11.5px] text-[#999] leading-[1.5] mt-1">{t.desc}</p>
+                  </button>
+                );
+              })}
             </div>
-          ) : null}
-        </div>
-      ) : null}
-
-      {b.type === 'quote' ? (
-        <div className="rounded-xl overflow-hidden flex my-1" style={{ background: soft }}>
-          <span className="w-1 shrink-0" style={{ background: accent }} />
-          <div className="p-4 flex-1">
-            <AutoArea value={b.text || ''} onChange={(e) => onPatch({ text: e.target.value })} placeholder="Sitat…"
-              className="text-[15px] leading-[1.7] text-[#333] italic placeholder:text-[#bbb]" />
-            <input value={b.author || ''} onChange={(e) => onPatch({ author: e.target.value })} placeholder="— Hvem sa det?"
-              className="w-full bg-transparent outline-none text-[12.5px] text-[#888] mt-1 placeholder:text-[#bbb]" onClick={(e) => e.stopPropagation()} />
+            <button onClick={() => setTplOpen(false)} className="w-full h-[40px] rounded-full border border-[#e5e5e5] text-[13px] font-semibold mt-4">Avbryt</button>
           </div>
         </div>
       ) : null}
 
-      {b.type === 'divider' ? <div className="py-3"><div className="h-px bg-[#eee]" /></div> : null}
-
-      {b.type === 'spacer' ? (
-        <div className="grid place-items-center rounded-lg bg-[#fafafa]/60 border border-dashed border-[#eee]" style={{ height: b.size === 'l' ? 40 : b.size === 's' ? 12 : 24 }}>
-          {selected ? (
-            <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-              {['s', 'm', 'l'].map((s) => (
-                <button key={s} onClick={() => onPatch({ size: s })} className={`h-5 px-2 rounded text-[10px] font-bold uppercase ${b.size === s ? 'bg-[#9B5BD6] text-white' : 'bg-white border border-[#ddd] text-[#999]'}`}>{s}</button>
-              ))}
-            </div>
-          ) : null}
-        </div>
-      ) : null}
-
-      {b.type === 'cta-card' ? (
-        <div className="rounded-2xl text-center px-6 py-6 my-1" style={{ background: soft }}>
-          <input value={b.title || ''} onChange={(e) => onPatch({ title: e.target.value })} placeholder="Tittel på kortet"
-            className="w-full bg-transparent outline-none text-center text-[18px] font-bold text-[#0a0a0a] placeholder:text-[#bbb]" onClick={(e) => e.stopPropagation()} />
-          <AutoArea value={b.text || ''} onChange={(e) => onPatch({ text: e.target.value })} placeholder="Kort forklaring…"
-            className="text-center text-[14px] leading-[1.65] text-[#555] mt-1 placeholder:text-[#bbb]" />
-          <span className="inline-flex items-center rounded-full px-2 py-1 mt-3" style={{ background: accent }}>
-            <input value={b.label || ''} onChange={(e) => onPatch({ label: e.target.value })} placeholder="Knappetekst"
-              className="bg-transparent outline-none text-[#1f1f1f] text-[14px] font-bold text-center placeholder:text-[#1f1f1f]/40" style={{ width: `${Math.max((b.label || 'Knappetekst').length, 8) + 2}ch`, padding: '7px 10px' }} onClick={(e) => e.stopPropagation()} />
-          </span>
-          {selected ? (
-            <div className="grid gap-2 mt-3" onClick={(e) => e.stopPropagation()}>
-              <input value={b.url || ''} onChange={(e) => onPatch({ url: e.target.value })} placeholder="https://… (lenke)" className="h-8 px-3 rounded-lg border border-[#e5e5e5] bg-white text-[12px] outline-none focus:border-[#cf97fc]/60" />
-              <input value={b.footnote || ''} onChange={(e) => onPatch({ footnote: e.target.value })} placeholder="Liten tekst under knappen (valgfritt)" className="h-8 px-3 rounded-lg border border-[#e5e5e5] bg-white text-[12px] outline-none focus:border-[#cf97fc]/60" />
-            </div>
-          ) : b.footnote ? <p className="text-[12px] text-[#999] mt-2.5">{b.footnote}</p> : null}
-        </div>
-      ) : null}
-
-      {b.type === 'signature' ? (
-        <div className="flex items-center gap-3 py-2">
-          <span className="h-[42px] w-[42px] shrink-0 rounded-full grid place-items-center text-[14px] font-bold text-[#8b6aad]" style={{ background: soft }}>
-            {(b.name || 'D').trim().split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase()}
-          </span>
-          <div className="flex-1">
-            <input value={b.name || ''} onChange={(e) => onPatch({ name: e.target.value })} placeholder="Navn" className="w-full bg-transparent outline-none text-[14.5px] font-bold text-[#0a0a0a] placeholder:text-[#ccc]" onClick={(e) => e.stopPropagation()} />
-            <input value={b.title || ''} onChange={(e) => onPatch({ title: e.target.value })} placeholder="Tittel / rolle" className="w-full bg-transparent outline-none text-[12.5px] text-[#999] placeholder:text-[#ccc]" onClick={(e) => e.stopPropagation()} />
-          </div>
-        </div>
-      ) : null}
+      {busy ? <div className="fixed inset-0 z-40 flex items-center justify-center pointer-events-none"><Loader2 size={22} className="animate-spin text-[#a052e0]" /></div> : null}
     </div>
   );
-}
-
-/* --------------------- Forhåndsvisning i statsvisning --------------------- */
-function StatsPreview({ camp, q }) {
-  const [html, setHtml] = useState('');
-  useEffect(() => {
-    (async () => {
-      try {
-        const r = await fetch(`/api/admin/newsletter/preview?${q}`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ subject: camp.subject, preheader: camp.preheader, theme: camp.theme, blocks: camp.blocks || [] }),
-        });
-        const j = await r.json();
-        if (j.ok) setHtml(j.html);
-      } catch (e) {}
-    })();
-  }, [camp, q]);
-  if (!html) return <div className="h-[420px] grid place-items-center"><Loader2 className="w-5 h-5 animate-spin text-[#9B5BD6]" /></div>;
-  return <iframe title="Sendt innhold" srcDoc={html} className="w-full h-[420px] bg-[#f5f3f0]" />;
 }

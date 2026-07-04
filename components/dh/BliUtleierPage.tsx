@@ -320,7 +320,10 @@ export default function BliUtleierPage() {
       } else {
         throw new Error('lead failed');
       }
-    } catch { toast.error('Noe gikk galt. Prøv igjen.'); }
+    } catch {
+      try { track('form_error', { form: 'utleier', kind: 'submit' }); } catch (e) {}
+      toast.error('Noe gikk galt. Prøv igjen.');
+    }
     finally { setLoading(false); }
   };
 
@@ -505,7 +508,7 @@ export default function BliUtleierPage() {
                         postalCode={formData.postal_code}
                         autoConfirm
                         error={errors.address}
-                        placeholder="F.eks. Nordnesveien 8, Bergen"
+                        placeholder="F.eks. Nordnesveien 13, Bergen"
                         testIdPrefix="owner-address"
                         onChange={(v: any) => updateField('address', v)}
                         onSelect={(data: any) => {
