@@ -2880,7 +2880,10 @@ async function handleRoute(request, { params }) {
     if (route === '/admin/newsletter/upload' && method === 'POST') {
       if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       try {
-        const form = await request.formData();
+        let form;
+        try { form = await request.formData(); } catch (e) {
+          return cors(NextResponse.json({ ok: false, error: 'Ugyldig opplasting — multipart/form-data kreves' }, { status: 400 }));
+        }
         const file = form.get('file');
         if (!file || typeof file.arrayBuffer !== 'function') {
           return cors(NextResponse.json({ ok: false, error: 'Mangler fil' }, { status: 400 }));
@@ -2890,7 +2893,10 @@ async function handleRoute(request, { params }) {
           return cors(NextResponse.json({ ok: false, error: 'Bildet er for stort (maks 12 MB)' }, { status: 400 }));
         }
         const sharp = (await import('sharp')).default;
-        const meta = await sharp(raw).metadata();
+        let meta;
+        try { meta = await sharp(raw).metadata(); } catch (e) {
+          return cors(NextResponse.json({ ok: false, error: 'Ugyldig bildeformat' }, { status: 400 }));
+        }
         if (!meta.format || !['jpeg', 'png', 'webp', 'gif', 'heif', 'avif', 'svg', 'tiff'].includes(meta.format)) {
           return cors(NextResponse.json({ ok: false, error: 'Ugyldig bildeformat' }, { status: 400 }));
         }
