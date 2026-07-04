@@ -51,9 +51,9 @@ export default function DynamicRentalSection() {
               transition={{ duration: 0.4 }}
               className="mb-5"
             >
-              <span className="inline-flex items-center gap-2 px-3.5 py-[7px] rounded-full bg-[#f5edfc] border border-[#e9d9fa]">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#a765e0]" />
-                <span className="text-[11px] font-semibold uppercase tracking-[0.15em] text-[#8b5fc0]">10+2-modellen</span>
+              <span className="inline-flex items-center gap-3">
+                <span className="w-7 h-px bg-[#0a0a0a]/25" />
+                <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#8f8a80]">10+2-modellen</span>
               </span>
             </motion.div>
             <motion.h2
@@ -115,14 +115,14 @@ export default function DynamicRentalSection() {
                 transition={{ duration: 0.4, delay: 0.18 }}
                 className={`flex gap-4 p-4 rounded-2xl cursor-pointer transition-all duration-300 ${
                   mode === 'short'
-                    ? 'bg-[#faf5ff] shadow-[0_1px_4px_rgba(207,151,252,0.08)]'
+                    ? 'bg-[#f6f5f2] shadow-[0_1px_4px_rgba(0,0,0,0.04)]'
                     : 'bg-transparent hover:bg-[#fafaf9]'
                 }`}
                 onClick={() => pick('short')}
                 data-testid="mode-short-term"
               >
                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-colors duration-300 ${
-                  mode === 'short' ? 'bg-[#cf97fc]' : 'bg-[#f0f0f0]'
+                  mode === 'short' ? 'bg-[#0a0a0a]' : 'bg-[#f0f0f0]'
                 }`}>
                   <Sun className="w-4 h-4" style={{ color: mode === 'short' ? '#fff' : '#aaa' }} />
                 </div>
@@ -151,7 +151,7 @@ export default function DynamicRentalSection() {
               </div>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ddd" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
               <div>
-                <p className="text-[11px] text-[#9b6cc4] uppercase tracking-[0.05em] font-medium">10+2 modellen</p>
+                <p className="text-[11px] text-[#8f8a80] uppercase tracking-[0.14em] font-semibold">10+2 modellen</p>
                 <p className="text-[18px] font-bold text-[#0a0a0a] mt-0.5" style={{ fontFamily: 'var(--font-heading)' }}>252 000 kr</p>
               </div>
               <div className="ml-auto">

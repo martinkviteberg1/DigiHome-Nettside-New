@@ -17,9 +17,9 @@ export default function QualitySection() {
             transition={{ duration: 0.5 }}
           >
             <div className="mb-5">
-              <span className="inline-flex items-center gap-2 px-3.5 py-[7px] rounded-full bg-[#f5edfc] border border-[#e9d9fa]">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#a765e0]" />
-                <span className="text-[11px] font-semibold uppercase tracking-[0.15em] text-[#8b5fc0]">Vår standard</span>
+              <span className="inline-flex items-center gap-3">
+                <span className="w-7 h-px bg-[#0a0a0a]/25" />
+                <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#8f8a80]">Vår standard</span>
               </span>
             </div>
             <h2 className="text-[34px] sm:text-[42px] font-bold tracking-[-0.03em] leading-[1.08] text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>
@@ -41,7 +41,7 @@ export default function QualitySection() {
                   transition={{ delay: 0.2 + i * 0.08, duration: 0.3 }}
                   className="flex items-center gap-3"
                 >
-                  <div className="w-1.5 h-1.5 rounded-full bg-[#cf97fc] shrink-0" />
+                  <div className="w-1.5 h-1.5 rounded-full bg-[#0a0a0a]/35 shrink-0" />
                   <span className="text-[14px] text-[#555]">{text}</span>
                 </Reveal>
               ))}

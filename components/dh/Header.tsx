@@ -9,9 +9,10 @@ import { Menu, ArrowUpRight, X, Phone, Mail } from 'lucide-react';
 import { site } from '@/lib/site';
 
 /**
- * DigiHome navbar — 2026 «floating glass pill»
- * Øverst: rolig, frostet fullbredde-linje. Ved scroll: løsner til en flytende
- * glass-pille med blur, hairline-border og myk skygge.
+ * DigiHome navbar — 2026 redaksjonell fullbredde-header.
+ * Innholdet ligger i SAMME container som seksjonene under
+ * (max-w-[1400px] + px-6/10/16) slik at logo og CTA flukter med innholdet.
+ * Ved scroll: frostet glass + hairline-underlinje (ingen skygge — roligere).
  */
 
 const NAV_NO = [
@@ -50,14 +51,16 @@ export default function Header() {
       {/* Scroll-fremdrift (ren CSS scroll-driven animation, kun der støttet) */}
       <div aria-hidden className="dh-scroll-progress" />
       <div
-        className={`transition-all duration-500 ${scrolled ? 'px-3 sm:px-5 pt-3' : 'px-0 pt-0'}`}
+        className={`transition-all duration-500 border-b ${
+          scrolled
+            ? 'bg-white/85 backdrop-blur-2xl border-[#0a0a0a]/[0.06]'
+            : 'bg-white/55 backdrop-blur-xl border-transparent'
+        }`}
         style={{ transitionTimingFunction: ease }}
       >
         <div
-          className={`mx-auto flex items-center justify-between gap-6 transition-all duration-500 ${
-            scrolled
-              ? 'max-w-[1180px] h-[58px] rounded-full bg-white/85 backdrop-blur-2xl border border-[#0a0a0a]/[0.07] shadow-[0_16px_44px_-16px_rgba(20,10,40,0.22)] pl-5 pr-3 sm:pl-7 sm:pr-2.5'
-              : 'max-w-full h-[72px] rounded-none bg-white/55 backdrop-blur-xl border border-transparent px-6 lg:px-12'
+          className={`max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16 flex items-center justify-between gap-6 transition-all duration-500 ${
+            scrolled ? 'h-[62px]' : 'h-[76px]'
           }`}
           style={{ transitionTimingFunction: ease }}
         >
@@ -132,7 +135,7 @@ export default function Header() {
             <button
               onClick={() => router.push('/bli-utleier')}
               data-testid="header-cta-start-onboarding-button"
-              className={`group relative inline-flex items-center gap-2 pl-5 pr-1.5 rounded-full text-[13px] font-semibold tracking-[-0.008em] overflow-hidden transition-all duration-500 active:scale-[0.97] bg-[#0a0a0a] text-white hover:shadow-[0_12px_32px_-10px_rgba(167,101,224,0.5)] ${scrolled ? 'h-[42px]' : 'h-[44px]'}`}
+              className={`group relative inline-flex items-center gap-2 pl-5 pr-1.5 rounded-full text-[13px] font-semibold tracking-[-0.008em] overflow-hidden transition-all duration-500 active:scale-[0.97] bg-[#0a0a0a] text-white hover:shadow-[0_12px_32px_-10px_rgba(10,10,10,0.4)] ${scrolled ? 'h-[42px]' : 'h-[44px]'}`}
               style={{ transitionTimingFunction: ease, boxShadow: '0 8px 24px -8px rgba(31,31,31,0.35)' }}
             >
               <span className="relative z-10">{ctaText}</span>
@@ -172,7 +175,7 @@ export default function Header() {
                       href={l.href}
                       onClick={() => setMobileOpen(false)}
                       className={`dh-fade-up flex items-center justify-between py-4 text-[19px] tracking-[-0.015em] font-semibold transition-colors border-b border-[#1f1f1f]/[0.06] ${
-                        activeHref === l.href ? 'text-[#a463e8]' : 'text-[#1f1f1f] hover:text-[#a463e8]'
+                        activeHref === l.href ? 'text-[#0a0a0a] underline underline-offset-8 decoration-[1.5px] decoration-[#0a0a0a]/30' : 'text-[#1f1f1f] hover:opacity-60'
                       }`}
                       style={{ animationDelay: `${0.05 + idx * 0.055}s`, fontFamily: 'var(--font-heading)' }}
                     >
@@ -208,7 +211,7 @@ export default function Header() {
                       setMobileOpen(false);
                       router.push('/bli-utleier');
                     }}
-                    className="w-full rounded-full bg-[#0a0a0a] text-white h-12 text-[14px] font-semibold hover:bg-[#a463e8] transition-colors"
+                    className="w-full rounded-full bg-[#0a0a0a] text-white h-12 text-[14px] font-semibold hover:bg-[#2a2a2a] transition-colors"
                   >
                     {ctaText}
                   </button>

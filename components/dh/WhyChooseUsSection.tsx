@@ -23,9 +23,9 @@ export default function WhyChooseUsSection() {
           </Reveal>
           <div className="order-1 lg:order-2">
             <Reveal as="div" initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ duration: 0.4 }} className="mb-5">
-              <span className="inline-flex items-center gap-2 px-3.5 py-[7px] rounded-full bg-[#f5edfc] border border-[#e9d9fa]">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#a765e0]" />
-                <span className="text-[11px] font-semibold uppercase tracking-[0.15em] text-[#8b5fc0]">Fordelene</span>
+              <span className="inline-flex items-center gap-3">
+                <span className="w-7 h-px bg-[#0a0a0a]/25" />
+                <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#8f8a80]">Fordelene</span>
               </span>
             </Reveal>
             <Reveal as="h2" initial={{ opacity: 0, y: 12 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: '-80px' }} transition={{ duration: 0.5 }}
@@ -36,8 +36,8 @@ export default function WhyChooseUsSection() {
               {benefits.map((b: any, i: number) => (
                 <Reveal as="div" key={b.title} data-testid="why-us-benefit-item" initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: '-40px' }} transition={{ duration: 0.35, delay: i * 0.07 }}
                   className="flex gap-4">
-                  <div className="w-6 h-6 rounded-full bg-[#f3eafc] flex items-center justify-center shrink-0 mt-0.5">
-                    <Check className="w-3 h-3 text-[#cf97fc]" strokeWidth={3} />
+                  <div className="w-6 h-6 rounded-full bg-[#f2f0eb] flex items-center justify-center shrink-0 mt-0.5">
+                    <Check className="w-3 h-3 text-[#0a0a0a]" strokeWidth={3} />
                   </div>
                   <div>
                     <h3 className="text-[15px] font-semibold text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>{b.title}</h3>

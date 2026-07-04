@@ -41,9 +41,9 @@ export default function StatsSection() {
       <div className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16">
         <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ duration: 0.5 }}
           className="flex items-center justify-between border-b border-[#eee] pb-6 mb-12">
-          <span className="inline-flex items-center gap-2 px-3.5 py-[7px] rounded-full bg-[#f5edfc] border border-[#e9d9fa]">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#a765e0]" />
-            <span className="text-[11px] font-semibold uppercase tracking-[0.15em] text-[#8b5fc0]">DigiHome i tall</span>
+          <span className="inline-flex items-center gap-3">
+            <span className="w-7 h-px bg-[#0a0a0a]/25" />
+            <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#8f8a80]">DigiHome i tall</span>
           </span>
           <p className="text-[12px] text-[#bbb] hidden sm:block">Bergen · Oppdatert 2026</p>
         </motion.div>
@@ -55,7 +55,7 @@ export default function StatsSection() {
                 <Counter end={s.end} prefix={s.prefix} suffix={s.suffix} />
               </p>
               <div className="flex items-center gap-2.5 mt-4">
-                <span className="w-5 h-[2px] rounded-full bg-[#cf97fc]" />
+                <span className="w-5 h-[2px] rounded-full bg-[#0a0a0a]/25" />
                 <p className="text-[15px] font-semibold text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>{s.label}</p>
               </div>
               <p className="text-[13px] text-[#999] mt-1.5 leading-relaxed">{s.sub}</p>

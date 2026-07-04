@@ -22,7 +22,7 @@ export default function PartnersSection() {
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
           transition={{ duration: 0.5 }}
-          className="text-center text-[12px] font-semibold text-[#9b6cc4] uppercase tracking-[0.16em] mb-10"
+          className="text-center text-[11px] font-semibold text-[#8f8a80] uppercase tracking-[0.22em] mb-10"
         >
           Samarbeidspartnere
         </Reveal>

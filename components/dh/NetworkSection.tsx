@@ -31,8 +31,8 @@ export default function NetworkSection() {
             {/* Floating badge */}
             <div className="absolute -bottom-5 -right-3 sm:-right-5 bg-white/95 backdrop-blur-xl rounded-2xl p-5 shadow-[0_16px_44px_-14px_rgba(20,10,40,0.22)] border border-[#f0ece6]">
               <div className="flex items-center gap-3">
-                <div className="w-11 h-11 rounded-xl bg-[#f5edfc] flex items-center justify-center">
-                  <Sparkles className="w-5 h-5 text-[#a765e0]" strokeWidth={1.6} />
+                <div className="w-11 h-11 rounded-xl bg-[#f2f0eb] flex items-center justify-center">
+                  <Sparkles className="w-5 h-5 text-[#0a0a0a]" strokeWidth={1.6} />
                 </div>
                 <div>
                   <p className="text-[17px] font-bold text-[#0a0a0a] leading-tight" style={{ fontFamily: 'var(--font-heading)' }}>Én kontaktperson</p>
@@ -51,9 +51,9 @@ export default function NetworkSection() {
               transition={{ duration: 0.4 }}
               className="mb-5"
             >
-              <span className="inline-flex items-center gap-2 px-3.5 py-[7px] rounded-full bg-[#f5edfc] border border-[#e9d9fa]">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#a765e0]" />
-                <span className="text-[11px] font-semibold uppercase tracking-[0.15em] text-[#8b5fc0]">Vårt nettverk</span>
+              <span className="inline-flex items-center gap-3">
+                <span className="w-7 h-px bg-[#0a0a0a]/25" />
+                <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#8f8a80]">Vårt nettverk</span>
               </span>
             </Reveal>
             <Reveal as="h2"
@@ -86,10 +86,10 @@ export default function NetworkSection() {
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true, margin: '-30px' }}
                     transition={{ duration: 0.35, delay: i * 0.05 }}
-                    className="group flex items-start gap-3 rounded-2xl p-4 bg-white border border-[#eeeae3] transition-all duration-400 hover:-translate-y-0.5 hover:shadow-[0_14px_32px_-18px_rgba(20,10,40,0.18)] hover:border-[#e5d6f6]"
+                    className="group flex items-start gap-3 rounded-2xl p-4 bg-white border border-[#eeeae3] transition-all duration-400 hover:-translate-y-0.5 hover:shadow-[0_14px_32px_-18px_rgba(20,10,40,0.18)] hover:border-[#d8d3c8]"
                   >
-                    <div className="w-9 h-9 rounded-xl bg-[#f5edfc] flex items-center justify-center shrink-0 transition-colors duration-300 group-hover:bg-[#efe2fb]">
-                      <Icon className="w-4 h-4 text-[#a765e0]" strokeWidth={1.7} />
+                    <div className="w-9 h-9 rounded-xl bg-[#f2f0eb] flex items-center justify-center shrink-0 transition-colors duration-300 group-hover:bg-[#e9e6de]">
+                      <Icon className="w-4 h-4 text-[#0a0a0a]" strokeWidth={1.7} />
                     </div>
                     <div>
                       <p className="text-[14px] font-semibold text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>{s.name}</p>

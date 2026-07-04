@@ -18,9 +18,9 @@ export default function AboutCEOSection() {
               transition={{ duration: 0.4 }}
               className="mb-6"
             >
-              <span className="inline-flex items-center gap-2 px-3.5 py-[7px] rounded-full bg-[#f5edfc] border border-[#e9d9fa]">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#a765e0]" />
-                <span className="text-[11px] font-semibold uppercase tracking-[0.15em] text-[#8b5fc0]">Om DigiHome</span>
+              <span className="inline-flex items-center gap-3">
+                <span className="w-7 h-px bg-[#0a0a0a]/25" />
+                <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#8f8a80]">Om DigiHome</span>
               </span>
             </Reveal>
 
@@ -59,7 +59,7 @@ export default function AboutCEOSection() {
               className="mt-10"
             >
               <div className="flex items-center gap-4">
-                <div className="w-[3px] h-12 rounded-full bg-[#cf97fc]" />
+                <div className="w-[3px] h-12 rounded-full bg-[#0a0a0a]/20" />
                 <div>
                   <p className="text-[16px] font-semibold text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>Sarah Sleeman</p>
                   <p className="text-[13px] text-[#6b6b6b] mt-0.5">Daglig leder &amp; eiendomsmegler, DigiHome</p>

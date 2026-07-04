@@ -26,8 +26,8 @@ function NewsletterSignup() {
   if (status === 'done') {
     return (
       <div className="flex items-center gap-3.5 lg:justify-self-end" data-testid="footer-newsletter-done">
-        <div className="w-10 h-10 rounded-full bg-[#cf97fc]/15 border border-[#cf97fc]/25 flex items-center justify-center shrink-0">
-          <Check className="w-4.5 h-4.5 w-[18px] h-[18px] text-[#cf97fc]" strokeWidth={2.5} />
+        <div className="w-10 h-10 rounded-full bg-emerald-400/15 border border-emerald-400/25 flex items-center justify-center shrink-0">
+          <Check className="w-4.5 h-4.5 w-[18px] h-[18px] text-emerald-400" strokeWidth={2.5} />
         </div>
         <div>
           <p className="text-[15px] font-semibold text-white" style={{ fontFamily: 'var(--font-heading)' }}>Takk — du er påmeldt!</p>
@@ -39,7 +39,7 @@ function NewsletterSignup() {
 
   return (
     <form onSubmit={submit} className="w-full max-w-[460px] lg:justify-self-end">
-      <div className="flex items-center rounded-full bg-white/[0.06] border border-white/[0.1] focus-within:border-[#cf97fc]/50 focus-within:bg-white/[0.08] focus-within:shadow-[0_0_0_4px_rgba(207,151,252,0.08)] transition-all duration-300 p-1.5 pl-5">
+      <div className="flex items-center rounded-full bg-white/[0.06] border border-white/[0.1] focus-within:border-white/35 focus-within:bg-white/[0.08] focus-within:shadow-[0_0_0_4px_rgba(255,255,255,0.06)] transition-all duration-300 p-1.5 pl-5">
         <Mail className="w-4 h-4 text-white/35 shrink-0" />
         <input
           type="email"

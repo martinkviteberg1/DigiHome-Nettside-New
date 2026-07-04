@@ -109,9 +109,9 @@ export default function ServiceModelsSection() {
           transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
           className="text-center max-w-[760px] mx-auto mb-12 sm:mb-14"
         >
-          <span className="inline-flex items-center gap-2 px-3.5 py-[7px] rounded-full bg-[#f5edfc] border border-[#e9d9fa] mb-5">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#a765e0]" />
-            <span className="text-[11px] font-semibold uppercase tracking-[0.15em] text-[#8b5fc0]">Se filmen</span>
+          <span className="inline-flex items-center gap-3 mb-5">
+            <span className="w-7 h-px bg-[#0a0a0a]/25" />
+            <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#8f8a80]">Se filmen</span>
           </span>
           <h2 className="text-[36px] sm:text-[48px] lg:text-[56px] font-extrabold tracking-[-0.034em] leading-[1.02] text-[#0a0a0a]">
             Slik jobber DigiHome for deg.
@@ -236,9 +236,9 @@ export default function ServiceModelsSection() {
             transition={{ duration: 0.4 }}
             className="mb-5"
           >
-            <span className="inline-flex items-center gap-2 px-3.5 py-[7px] rounded-full bg-[#f5edfc] border border-[#e9d9fa]">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#a765e0]" />
-              <span className="text-[11px] font-semibold uppercase tracking-[0.15em] text-[#8b5fc0]">Våre tjenester</span>
+            <span className="inline-flex items-center gap-3">
+              <span className="w-7 h-px bg-[#0a0a0a]/25" />
+              <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#8f8a80]">Våre tjenester</span>
             </span>
           </motion.div>
           <motion.h2
@@ -295,8 +295,9 @@ export default function ServiceModelsSection() {
                     <span
                       className="absolute -top-3 left-8 text-[10px] font-bold uppercase tracking-[0.12em] px-4 py-1.5 rounded-full"
                       style={{
-                        background: 'linear-gradient(135deg, #c084fc, #AE68E4)',
-                        color: '#fff',
+                        background: '#ffffff',
+                        color: '#0a0a0a',
+                        boxShadow: '0 2px 10px rgba(0,0,0,0.12)',
                       }}
                     >
                       Mest populær
@@ -307,12 +308,12 @@ export default function ServiceModelsSection() {
                   <div
                     className="w-12 h-12 rounded-2xl flex items-center justify-center mb-7 transition-transform duration-500 group-hover:scale-105"
                     style={{
-                      backgroundColor: m.popular ? 'rgba(174,104,228,0.2)' : '#e2e2e2',
+                      backgroundColor: m.popular ? 'rgba(255,255,255,0.10)' : '#e9e6df',
                     }}
                   >
                     <Icon
                       className="w-5 h-5"
-                      style={{ color: m.popular ? '#c9a0f0' : '#777' }}
+                      style={{ color: m.popular ? '#ffffff' : '#6b675e' }}
                       strokeWidth={1.8}
                     />
                   </div>
@@ -353,7 +354,7 @@ export default function ServiceModelsSection() {
                   >
                     <span
                       className="text-[13px] font-semibold"
-                      style={{ color: m.popular ? '#c9a0f0' : '#AE68E4' }}
+                      style={{ color: m.popular ? '#ffffff' : '#0a0a0a' }}
                     >
                       {m.highlight}
                     </span>
