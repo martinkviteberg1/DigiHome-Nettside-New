@@ -89,3 +89,37 @@ Google Ads-styring via native REST API).
 - UTFORT I KONTOEN (kampanje 23984331113): (1) AG3: pauset «kombinere korttid og langtid», «trygg utleie av bolig», «utleie uten risiko»; lagt til «airbnb forvaltning» + «korttidsutleie av bolig» (geo tar Bergen). (2) NY AG4 - Airbnb (adGroups/206548314668) -> https://digihome.no/lp/airbnb-langtid m/ RSA (norsk, path1=airbnb) + sokeord: «leie ut på airbnb», «airbnb utleie», «drifte airbnb», «airbnb vert», «hjelp med airbnb». Feilstavet utkast (uten å) pauset og erstattet. Policy: under review (normalt).
 - BESLUTNING: arvet-bolig far IKKE search-annonser (nullvolum-intent) — reservert Meta.
 - NESTE: folge opp AG4-visninger om ~1 uke; Meta prospecting-diskusjon startet med bruker.
+
+## Økt 4. juli 2026 — To-nivå tier-modell + Google Maps-adressesøk
+- ✅ FERDIG: «Bli utleier» har nytt steg 4 «Forvaltning» (ETTER adresse+kontaktinfo):
+  Selvforvaltning (5 % per utleie, klikk-aksept av avtale kreves — versjon
+  'selvforvaltning-2025-06') vs. Full forvaltning (INGEN pris vises — kun «Få tilbud»,
+  «Mest valgt»-badge). Skjemaet er nå 6 steg. Tier-tilpasset bekreftelsesside, submit-CTA
+  («Fullfør registrering» / «Få tilbud») og suksess-skjerm.
+- ✅ Backend: POST /api/leads aksepterer tier (whitelist) + terms{version} → terms_accepted
+  {version, at:<server-tid>}; begge videresendes til plattformen. Webhook-alias
+  POST /api/webhooks/conversion (= lead-status-handler, samme LEAD_SYNC_SECRET).
+  Backend-testet 7/7 (test-leads slettet).
+- ✅ E-poster: buildLeadReceipt har 3 varianter (selvforvaltning: avtale-kvittering m/
+  tidsstempel + konto-steg; full: tilbuds-løp UTEN pris; default uendret).
+  Admin-varsel: gul tier-pill + «Valgt spor»/«Avtale»-rader + tier i emnet.
+- ✅ Google Maps-migrering (ALLE adressefelter — brukers P0 fra forrige økt):
+  /api/address bruker nå Google Places Autocomplete (Bergen-bias 30 km, country:no,
+  language:no) med Geonorge som fallback. Nytt: ?place_id= → Place Details for
+  postnummer/poststed. Nøkkel: GOOGLE_MAPS_API_KEY i .env (samme som deckens statiske
+  kart — verifisert at Places API er aktivert). AddressAutocomplete velger nå postnummer
+  via Details-oppslag. Migrerer automatisk: BliUtleier, Hero-søk, PriceWizard, /sommer.
+- ✅ Mobil-UX-fiks adressefeltet: ved fokus (<768px) scrolles feltet til toppen så
+  forslagslisten ikke skjules bak sticky-bar/cookiebanner; dropdown har maks-høyde+scroll.
+- ✅ Agent Bridge: kontraktsmelding sendt til plattform-agenten (tråd integration-contract,
+  id ffc74201): tier-ruting, terms_accepted, webhook-events (avtale_signert/tilbud_akseptert/
+  tilbud_avslatt/eiendom_onboardet/leie_aktiv), BankID hos plattformen, ingen prislekkasje
+  for full forvaltning.
+- VIKTIG FOR PROD: GOOGLE_MAPS_API_KEY må også settes i produksjonsmiljøet ved neste deploy.
+
+## Gjenstående etter denne økten
+- Vente på svar fra plattform-agenten i integration-contract-tråden (tier-ruting bekreftet?).
+- Google Ads API-nøkler mangler fortsatt i PROD (bruker må redeploye med env-vars).
+- P3: Skjule/nedprioritere Historikk-fanen i admin.
+- P2: Refaktorere app/api/[[...path]]/route.js (~5200 linjer) til moduler.
+- P3: Programmatiske SEO-sider /utleie/[bydel]. P4: Meta prospecting-kampanje.

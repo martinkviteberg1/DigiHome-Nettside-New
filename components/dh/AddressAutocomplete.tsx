@@ -60,17 +60,44 @@ export function AddressAutocomplete({
     return () => document.removeEventListener('mousedown', onDoc);
   }, []);
 
-  const choose = useCallback((s: any) => {
+  const choose = useCallback(async (s: any) => {
     skipRef.current = true;
     onChange(s.text);
     setOpen(false);
     setSuggestions([]);
     try { track('address_search', { selected: true }); } catch (e) {}
-    if (onSelect) {
-      const m = (s.sub || '').match(/(\d{4})\s+(.+)/);
-      onSelect({ address: s.label || s.text, postalCode: m ? m[1] : '', city: m ? m[2] : '', raw: s });
+    if (!onSelect) return;
+    // Google-forslag mangler postnummer → hent fra Place Details (server-proxy).
+    if (s.place_id) {
+      try {
+        const r = await fetch(`/api/address?place_id=${encodeURIComponent(s.place_id)}`);
+        const d = await r.json();
+        if (d && d.ok && (d.postalCode || d.address)) {
+          skipRef.current = true; // parent setter full label → ikke trigg nytt søk
+          onSelect({ address: d.label || d.address || s.label || s.text, postalCode: d.postalCode || '', city: d.city || '', raw: s });
+          return;
+        }
+      } catch (e) { /* faller tilbake til forslags-teksten under */ }
+      skipRef.current = true;
+      onSelect({ address: s.label || s.text, postalCode: '', city: '', raw: s });
+      return;
     }
+    // Geonorge-format: postnummer ligger i sub («5005 BERGEN»).
+    const m = (s.sub || '').match(/(\d{4})\s+(.+)/);
+    onSelect({ address: s.label || s.text, postalCode: m ? m[1] : '', city: m ? m[2] : '', raw: s });
   }, [onChange, onSelect]);
+
+  // Mobil-UX: sticky bunn-bar + cookiebanner spiser ~300px — scroll feltet opp
+  // ved fokus slik at forslagslisten får plass under input.
+  const onFocusField = useCallback((e: any) => {
+    if (suggestions.length) setOpen(true);
+    try {
+      if (window.innerWidth < 768 && wrapperRef.current) {
+        const top = wrapperRef.current.getBoundingClientRect().top;
+        if (top > 140) window.scrollTo({ top: top + window.scrollY - 110, behavior: 'smooth' });
+      }
+    } catch (err) { /* ignore */ }
+  }, [suggestions.length]);
 
   const onKey = (e: any) => {
     if (!open || suggestions.length === 0) return;
@@ -91,7 +118,7 @@ export function AddressAutocomplete({
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        onFocus={() => { if (suggestions.length) setOpen(true); }}
+        onFocus={onFocusField}
         onKeyDown={onKey}
         placeholder={placeholder}
         className={inputClassName}
@@ -100,7 +127,7 @@ export function AddressAutocomplete({
       />
       {open && suggestions.length > 0 && (
         <div
-          className="absolute left-0 right-0 top-[calc(100%+4px)] z-[10000] bg-white rounded-xl border border-[#e5e5e5] shadow-[0_8px_30px_rgba(0,0,0,0.08)] py-1 overflow-hidden"
+          className="absolute left-0 right-0 top-[calc(100%+4px)] z-[10000] bg-white rounded-xl border border-[#e5e5e5] shadow-[0_8px_30px_rgba(0,0,0,0.08)] py-1 overflow-hidden max-h-[min(300px,42vh)] overflow-y-auto"
           style={{ fontFamily: 'var(--font-body), sans-serif' }}
         >
           {suggestions.map((s: any, i: number) => (

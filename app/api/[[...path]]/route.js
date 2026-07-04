@@ -410,6 +410,79 @@ async function geonorgeSearch(q) {
 
 const ADMIN_KEY = process.env.ADMIN_KEY || '';
 
+// ── Google Places (Autocomplete + Details) — primær adressekilde ─────────────
+// Geonorge foreslo adresser i hele landet (Nord-Norge før Bergen) og ga 56 %
+// drop-off på adressesteget. Google gir relevans-rangering med Bergen-bias.
+// Geonorge beholdes som fallback (gratis, ingen nøkkel) hvis Google feiler.
+const BERGEN_LAT = 60.3913;
+const BERGEN_LNG = 5.3221;
+
+async function googlePlacesSearch(q) {
+  const key = (process.env.GOOGLE_MAPS_API_KEY || '').trim();
+  if (!key) return null; // ikke konfigurert → fallback til Geonorge
+  const cacheKey = 'g:' + q.toLowerCase();
+  const hit = _addrCache.get(cacheKey);
+  if (hit && Date.now() - hit.at < ADDR_TTL_MS) return hit.suggestions;
+
+  const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(q)}` +
+    `&types=address&components=country:no&language=no` +
+    `&location=${BERGEN_LAT},${BERGEN_LNG}&radius=30000&key=${key}`; // Bergen-bias, ikke strict
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 4000);
+    const r = await fetch(url, { signal: ctrl.signal });
+    clearTimeout(timer);
+    if (!r.ok) return null;
+    const data = await r.json();
+    if (data.status !== 'OK' && data.status !== 'ZERO_RESULTS') return null; // kvote/nøkkelfeil → fallback
+    const suggestions = (data.predictions || []).slice(0, 7).map((p) => ({
+      text: (p.structured_formatting && p.structured_formatting.main_text) || p.description || '',
+      sub: (p.structured_formatting && p.structured_formatting.secondary_text || '').replace(/,\s*(Norge|Norway)$/i, ''),
+      label: (p.description || '').replace(/,\s*(Norge|Norway)$/i, ''),
+      place_id: p.place_id || undefined,
+    })).filter((s) => s.text);
+    _addrCache.set(cacheKey, { at: Date.now(), suggestions });
+    if (_addrCache.size > ADDR_CACHE_MAX) _addrCache.delete(_addrCache.keys().next().value);
+    return suggestions;
+  } catch (e) { return null; }
+}
+
+// Place Details → postnummer/poststed (Autocomplete-forslag mangler postnummer).
+// Kalles av frontend ved valg av forslag. Cache: place_id er stabil.
+async function googlePlaceDetails(placeId) {
+  const key = (process.env.GOOGLE_MAPS_API_KEY || '').trim();
+  if (!key || !placeId) return null;
+  const cacheKey = 'gd:' + placeId;
+  const hit = _addrCache.get(cacheKey);
+  if (hit && Date.now() - hit.at < ADDR_TTL_MS) return hit.suggestions;
+  const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${encodeURIComponent(placeId)}` +
+    `&fields=address_component,formatted_address&language=no&key=${key}`;
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 4000);
+    const r = await fetch(url, { signal: ctrl.signal });
+    clearTimeout(timer);
+    if (!r.ok) return null;
+    const data = await r.json();
+    if (data.status !== 'OK') return null;
+    const comps = (data.result && data.result.address_components) || [];
+    const get = (type) => ((comps.find((c) => (c.types || []).includes(type)) || {}).long_name || '');
+    const street = [get('route'), get('street_number')].filter(Boolean).join(' ');
+    const postalCode = get('postal_code');
+    const city = get('postal_town') || get('locality') || get('sublocality') || '';
+    const address = street || String((data.result && data.result.formatted_address) || '').replace(/,\s*(Norge|Norway)$/i, '');
+    const out = {
+      address,
+      postalCode,
+      city,
+      label: [address, [postalCode, city].filter(Boolean).join(' ')].filter(Boolean).join(', '),
+    };
+    _addrCache.set(cacheKey, { at: Date.now(), suggestions: out });
+    if (_addrCache.size > ADDR_CACHE_MAX) _addrCache.delete(_addrCache.keys().next().value);
+    return out;
+  } catch (e) { return null; }
+}
+
 // ── Priskalkulator: standardkatalog (overstyres via settings.wizard_catalog) ──
 const WIZARD_CATALOG_DEFAULT = {
   serviceLevels: [
@@ -949,13 +1022,25 @@ async function handleRoute(request, { params }) {
       }));
     }
 
-    // --- Adresse-autofullføring (Geonorge, gratis offentlig API, ingen nøkkel) ---
+    // --- Adresse-autofullføring (Google Places m/Bergen-bias, Geonorge-fallback) ---
     if (route === '/address' && method === 'GET') {
       const { searchParams } = new URL(request.url);
+      // Detalj-oppslag ved valg av forslag: postnummer/poststed fra Place Details.
+      const placeId = (searchParams.get('place_id') || '').trim();
+      if (placeId) {
+        const d = await googlePlaceDetails(placeId);
+        if (!d) return cors(NextResponse.json({ ok: false }, { status: 502 }));
+        const res = cors(NextResponse.json({ ok: true, ...d }));
+        res.headers.set('Cache-Control', 'private, max-age=600');
+        return res;
+      }
       const q = (searchParams.get('q') || '').trim();
       if (q.length < 3) return cors(NextResponse.json({ suggestions: [] }));
-      const suggestions = await geonorgeSearch(q);
-      const res = cors(NextResponse.json({ suggestions }));
+      // Google først (relevans + Bergen-bias); null = ikke konfigurert/feil → Geonorge.
+      let suggestions = await googlePlacesSearch(q);
+      let source = 'google';
+      if (!suggestions) { suggestions = await geonorgeSearch(q); source = 'geonorge'; }
+      const res = cors(NextResponse.json({ suggestions, source }));
       // La nettleseren cache identiske søk kort (rask gjentatt skriving/sletting).
       res.headers.set('Cache-Control', 'private, max-age=120');
       return res;
