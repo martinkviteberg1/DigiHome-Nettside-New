@@ -110,7 +110,7 @@ export default function ServiceModelsSection() {
           className="text-center max-w-[760px] mx-auto mb-12 sm:mb-14"
         >
           <span className="inline-flex items-center gap-3 mb-5">
-            <span className="w-7 h-px bg-[#0a0a0a]/25" />
+            <span className="w-7 h-[2px] rounded-full bg-[#d298ff]" />
             <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#8f8a80]">Se filmen</span>
           </span>
           <h2 className="text-[36px] sm:text-[48px] lg:text-[56px] font-extrabold tracking-[-0.034em] leading-[1.02] text-[#0a0a0a]">
@@ -237,7 +237,7 @@ export default function ServiceModelsSection() {
             className="mb-5"
           >
             <span className="inline-flex items-center gap-3">
-              <span className="w-7 h-px bg-[#0a0a0a]/25" />
+              <span className="w-7 h-[2px] rounded-full bg-[#d298ff]" />
               <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#8f8a80]">Våre tjenester</span>
             </span>
           </motion.div>
@@ -354,7 +354,7 @@ export default function ServiceModelsSection() {
                   >
                     <span
                       className="text-[13px] font-semibold"
-                      style={{ color: m.popular ? '#ffffff' : '#0a0a0a' }}
+                      style={{ color: m.popular ? '#d298ff' : '#0a0a0a' }}
                     >
                       {m.highlight}
                     </span>
@@ -367,7 +367,7 @@ export default function ServiceModelsSection() {
                       <ArrowRight
                         className="w-3.5 h-3.5 transition-colors duration-300"
                         style={{
-                          color: m.popular ? '#c9a0f0' : '#999',
+                          color: m.popular ? '#d298ff' : '#999',
                         }}
                         strokeWidth={2}
                       />

@@ -52,7 +52,7 @@ function NewsletterSignup() {
         <button
           type="submit"
           disabled={status === 'sending'}
-          className="h-[42px] px-5 rounded-full bg-white text-[#0a0a0a] text-[13px] font-semibold hover:bg-[#f3eafc] transition-colors disabled:opacity-60 inline-flex items-center gap-1.5 shrink-0"
+          className="h-[42px] px-5 rounded-full bg-white text-[#0a0a0a] text-[13px] font-semibold hover:bg-[#d298ff] transition-colors disabled:opacity-60 inline-flex items-center gap-1.5 shrink-0"
           data-testid="footer-newsletter-submit"
         >
           {status === 'sending' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <>Meld meg på <ArrowRight className="w-3.5 h-3.5" /></>}

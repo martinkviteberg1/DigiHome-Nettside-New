@@ -18,7 +18,7 @@ export default function QualitySection() {
           >
             <div className="mb-5">
               <span className="inline-flex items-center gap-3">
-                <span className="w-7 h-px bg-[#0a0a0a]/25" />
+                <span className="w-7 h-[2px] rounded-full bg-[#d298ff]" />
                 <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#8f8a80]">Vår standard</span>
               </span>
             </div>
@@ -41,7 +41,7 @@ export default function QualitySection() {
                   transition={{ delay: 0.2 + i * 0.08, duration: 0.3 }}
                   className="flex items-center gap-3"
                 >
-                  <div className="w-1.5 h-1.5 rounded-full bg-[#0a0a0a]/35 shrink-0" />
+                  <div className="w-1.5 h-1.5 rounded-full bg-[#d298ff] shrink-0" />
                   <span className="text-[14px] text-[#555]">{text}</span>
                 </Reveal>
               ))}

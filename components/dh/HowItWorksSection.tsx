@@ -43,7 +43,7 @@ export default function HowItWorksSection() {
               className="mb-5"
             >
               <span className="inline-flex items-center gap-3">
-                <span className="w-7 h-px bg-[#0a0a0a]/25" />
+                <span className="w-7 h-[2px] rounded-full bg-[#d298ff]" />
                 <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#8f8a80]">Slik fungerer det</span>
               </span>
             </Reveal>
@@ -78,7 +78,7 @@ export default function HowItWorksSection() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: '-40px' }}
               transition={{ duration: 0.45, delay: i * 0.08 }}
-              className="group border-t border-[#e3dfd6] pt-7 transition-colors duration-500 hover:border-[#0a0a0a]"
+              className="group border-t border-[#e3dfd6] pt-7 transition-colors duration-500 hover:border-[#d298ff]"
               data-testid={`how-step-${step.num}`}
             >
               <span className="block text-[13px] font-semibold text-[#b3ada1] tabular-nums transition-colors duration-500 group-hover:text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>

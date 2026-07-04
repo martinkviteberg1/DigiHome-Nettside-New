@@ -17,7 +17,7 @@ export default function TestimonialsSection() {
           className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-5 mb-14">
           <div>
             <span className="inline-flex items-center gap-3 mb-5">
-              <span className="w-7 h-px bg-[#0a0a0a]/25" />
+              <span className="w-7 h-[2px] rounded-full bg-[#d298ff]" />
               <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#8f8a80]">Kundehistorier</span>
             </span>
             <h2 className="text-[34px] sm:text-[42px] font-bold tracking-[-0.03em] leading-[1.08] text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>

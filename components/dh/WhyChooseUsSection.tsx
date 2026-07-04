@@ -24,7 +24,7 @@ export default function WhyChooseUsSection() {
           <div className="order-1 lg:order-2">
             <Reveal as="div" initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ duration: 0.4 }} className="mb-5">
               <span className="inline-flex items-center gap-3">
-                <span className="w-7 h-px bg-[#0a0a0a]/25" />
+                <span className="w-7 h-[2px] rounded-full bg-[#d298ff]" />
                 <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#8f8a80]">Fordelene</span>
               </span>
             </Reveal>

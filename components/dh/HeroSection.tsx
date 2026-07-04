@@ -76,7 +76,7 @@ export default function HeroSection() {
             <h1
               className="dh-rise text-[40px] sm:text-[52px] lg:text-[58px] xl:text-[66px] font-bold tracking-[-0.035em] leading-[1.04] text-[#0a0a0a]"
               style={{ fontFamily: 'var(--font-heading)', animationDelay: '0.05s' }}
-            >Smartere utleie.<br />H&oslash;yere inntekt.</h1>
+            >Smartere utleie.<br />H&oslash;yere inntekt<span style={{ color: '#d298ff' }}>.</span></h1>
 
             <p className="dh-fade-up text-[16px] sm:text-[17px] text-[#555] leading-[1.75] mt-7 max-w-[44ch]" style={{ animationDelay: '0.15s' }}>
               {T.sub[locale]}
@@ -117,7 +117,7 @@ export default function HeroSection() {
                 <div key={s.l}>
                   <p className="text-[24px] font-bold text-[#0a0a0a] tracking-tight" style={{ fontFamily: 'var(--font-heading)' }}>{s.n}</p>
                   <div className="flex items-center gap-1.5 mt-1">
-                    <span className="w-3.5 h-[2px] rounded-full bg-[#0a0a0a]/25" />
+                    <span className="w-3.5 h-[2px] rounded-full bg-[#d298ff]" />
                     <p className="text-[11px] text-[#999]">{s.l}</p>
                   </div>
                 </div>

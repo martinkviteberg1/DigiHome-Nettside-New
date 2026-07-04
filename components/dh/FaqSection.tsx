@@ -22,7 +22,7 @@ export default function FaqSection() {
           className="text-center mb-14"
         >
           <span className="inline-flex items-center gap-3">
-            <span className="w-7 h-px bg-[#0a0a0a]/25" />
+            <span className="w-7 h-[2px] rounded-full bg-[#d298ff]" />
             <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#8f8a80] inline-flex items-center gap-1.5"><MessageCircleQuestion className="w-3.5 h-3.5" /> Ofte stilte spørsmål</span>
           </span>
           <h2

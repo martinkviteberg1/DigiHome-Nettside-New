@@ -419,7 +419,7 @@ html { scroll-behavior: smooth; }
     top: 0; left: 0; right: 0;
     height: 2.5px;
     z-index: 70;
-    background: #0a0a0a;
+    background: #d298ff;
     transform-origin: 0 50%;
     transform: scaleX(0);
     animation: dh-progress-grow linear forwards;
