@@ -31,7 +31,8 @@ const levelTone = (level) => {
 
 export default function LocationPage({ loc, related = [], rent = null }) {
   const isBydel = loc.type === 'bydel';
-  const ctaAddress = isBydel ? `${loc.name}, Bergen` : loc.name;
+  // (Skjema-CTA-ene bruker /bli-utleier?start=1 — hopper til skjemaet uten å
+  //  pre-fylle bynavn som adresse eller trigge register-oppslag.)
   const area = rent?.area || null; // bydel-spesifikk etterspørsel
   const demandIndex = area?.index ?? rent?.cityIndex ?? null;
   const demandLevel = area?.level ?? rent?.cityLevel ?? loc.market?.demand ?? null;
@@ -114,7 +115,7 @@ export default function LocationPage({ loc, related = [], rent = null }) {
           </div>
 
           <div className="mt-7">
-            <Link href={`/bli-utleier?address=${encodeURIComponent(ctaAddress)}`} className="group inline-flex items-center gap-2 h-[50px] pl-6 pr-2.5 rounded-full bg-[#d298ff] text-[#1f1f1f] text-[14.5px] font-semibold active:scale-[0.98] transition-transform shadow-[0_12px_32px_-10px_rgba(210,152,255,0.6)]">
+            <Link href={`/bli-utleier?start=1`} className="group inline-flex items-center gap-2 h-[50px] pl-6 pr-2.5 rounded-full bg-[#d298ff] text-[#1f1f1f] text-[14.5px] font-semibold active:scale-[0.98] transition-transform shadow-[0_12px_32px_-10px_rgba(210,152,255,0.6)]">
               Få gratis verdivurdering
               <span className="inline-flex items-center justify-center w-[34px] h-[34px] rounded-full bg-[#1f1f1f] text-[#d298ff]"><ArrowUpRight className="w-4 h-4" strokeWidth={2.6} /></span>
             </Link>
@@ -274,7 +275,7 @@ export default function LocationPage({ loc, related = [], rent = null }) {
             Eier du en bolig i {loc.name}?
           </h2>
           <p className="text-white/70 text-[16px] max-w-[48ch] mx-auto mb-8">Få en gratis, uforpliktende verdivurdering av utleiepotensialet. Ingen oppstartskostnader, ingen bindingstid.</p>
-          <Link href={`/bli-utleier?address=${encodeURIComponent(ctaAddress)}`} className="group inline-flex items-center gap-2 h-[54px] pl-7 pr-3 rounded-full bg-[#d298ff] text-[#1f1f1f] text-[15px] font-semibold active:scale-[0.98] transition-transform">
+          <Link href={`/bli-utleier?start=1`} className="group inline-flex items-center gap-2 h-[54px] pl-7 pr-3 rounded-full bg-[#d298ff] text-[#1f1f1f] text-[15px] font-semibold active:scale-[0.98] transition-transform">
             Kom i gang
             <span className="inline-flex items-center justify-center w-[38px] h-[38px] rounded-full bg-[#1f1f1f] text-[#d298ff]"><ArrowUpRight className="w-4 h-4" strokeWidth={2.6} /></span>
           </Link>

@@ -108,13 +108,23 @@ export default function BliUtleierPage() {
     try { track('form_input_mode', { form: 'utleier', mode: 'adresse' }); } catch (e) {}
   }, []);
 
-  // Forhåndsutfyll adresse fra ?address= (fra hero-søket) → rett til adresse-steget
+  // Forhåndsutfyll adresse fra ?address= (fra hero-søket) → rett til adresse-steget.
+  // VIKTIG: kun ekte gateadresser (med husnummer) pre-fylles og slås opp i
+  // Eiendomsregisteret. Bynavn o.l. (f.eks. ?address=Bergen fra gamle
+  // landingsside-lenker) skal IKKE fylles inn eller trigge hjemmelshaver-oppslag.
   useEffect(() => {
     try {
-      const p = new URLSearchParams(window.location.search).get('address');
+      const sp = new URLSearchParams(window.location.search);
+      const p = sp.get('address');
       if (p) {
-        setFormData((prev: any) => ({ ...prev, address: p }));
-        setRegistryQuery(p);
+        const looksLikeStreetAddress = /\d/.test(p); // norske gateadresser har husnummer
+        if (looksLikeStreetAddress) {
+          setFormData((prev: any) => ({ ...prev, address: p }));
+          setRegistryQuery(p);
+        }
+        setStep(1);
+      } else if (sp.get('start')) {
+        // ?start=1 (landingssider/annonser): rett til adressesteget, uten pre-fill.
         setStep(1);
       }
     } catch (e) { /* ignore */ }
@@ -142,6 +152,20 @@ export default function BliUtleierPage() {
 
   // Finn-flyten hopper over «Om eiendommen» (steg 2) — alt redigeres på steg 1.
   const flowSteps = inputMode === 'finn' ? [1, 3, 4, 5] : [1, 2, 3, 4, 5];
+
+  // Ved stegbytte: scroll til toppen av SKJEMAET (#skjema) — ikke toppen av
+  // hele siden (skjemaet ligger under hero-innholdet på /bli-utleier).
+  // Scroller kun når skjematoppen er utenfor synsfeltet, ellers står vi i ro.
+  const scrollToFormTop = () => {
+    try {
+      const el = document.getElementById('skjema');
+      if (!el) { window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
+      const top = el.getBoundingClientRect().top;
+      if (top < -8 || top > 120) {
+        window.scrollTo({ top: top + window.scrollY - 84, behavior: 'smooth' }); // 84px ≈ sticky navbar
+      }
+    } catch (e) { /* ignore */ }
+  };
 
   const goNext = () => {
     const newErrors: Record<string, any> = {};
@@ -180,7 +204,7 @@ export default function BliUtleierPage() {
       const pos = flowSteps.indexOf(step);
       setStep(pos >= 0 && pos < flowSteps.length - 1 ? flowSteps[pos + 1] : step);
     }
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    scrollToFormTop();
   };
 
   const goBack = () => {
@@ -190,7 +214,7 @@ export default function BliUtleierPage() {
       const pos = flowSteps.indexOf(step);
       setStep(pos > 0 ? flowSteps[pos - 1] : 1);
     }
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    scrollToFormTop();
   };
 
   // Felles: berik skjemaet med matrikkel/eier fra Eiendomsregisteret.
