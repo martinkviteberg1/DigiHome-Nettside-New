@@ -3002,7 +3002,7 @@ const SRevenue = (p: any) => {
   const AC = '#a052e0', INK = '#0c0c0c', INK2 = '#1c1714', SUB = '#57514a', MUT = '#8a8278';
   const HAIR = 'rgba(20,15,10,0.10)';
   const engines = [
-    { num: '01', title: 'Egen forvaltning', badge: 'Flaggskip', metric: '10', unit: '% av leien', lead: 'Bergen-flaggskipet vi drifter selv. Full forvaltningsmargin — beviset og cash-en.', bullets: ['≈ 2 000 kr/enhet/mnd (modell) — Bergen i dag ~3 000', 'Dagens 40 boliger ligger her', 'Referansene franchise hviler på'] },
+    { num: '01', title: 'Forvaltning · to nivåer', badge: 'Flaggskip', metric: '5–15', unit: '% av leien', lead: 'Selvbetjent (5 %) som trakt inn — full forvaltning (10–15 %) som flaggskip. Bergen drifter vi selv.', bullets: ['Selvbetjent: hele plattformen, huseier drifter', 'Full service: ≈ 2 000–3 000 kr/enhet/mnd — dagens 40 boliger', 'Hver 5 %-kunde er en varm lead til full forvaltning'] },
     { num: '02', title: 'Franchise · plattform', badge: 'Recurring', metric: 'fra 199', unit: 'kr/enhet/mnd', lead: 'Lokale operatører driver på DigiHome-plattformen. Skalerbar, recurring kjerne-ARR.', bullets: ['+ royalty ~10 % av operatørens honorar', '≈ 1,4 MNOK/år per moden franchise', '300+ enheter per franchise'] },
     { num: '03', title: 'Franchise · etablering', badge: 'Engangs', metric: '~200', unit: 'k per franchise', lead: 'Etableringsavgift når en ny operatør går inn i nettverket. Finansierer onboarding.', bullets: ['Opplæring, oppsett og merkevare', 'Kapital-lett — operatør tar driften', 'Skalerer med antall nye franchises'] },
     { num: '04', title: 'Utleiemegling & transaksjoner', badge: 'Alle segmenter', metric: '+30–80', unit: 'kr ARPU', lead: 'Utleiemegling per leieforhold + depositum, kredittsjekk og forsikring. Høy margin.', bullets: ['Engangsgebyr ved nytt leieforhold', 'Depositum · kredittsjekk · forsikring', 'Trakt inn til full forvaltning'] },
@@ -4007,7 +4007,7 @@ const SAsk = (p: any) => {
         </h2>
         <p className="text-[12.5px] sm:text-[13px] text-[#3a3530] leading-[1.6] mt-3 max-w-[880px] font-light"
            style={{ ...F, animation: active ? 'askFadeUp 0.9s cubic-bezier(0.22,1,0.36,1) 0.55s both' : undefined, opacity: active ? undefined : 0 }}>
-          DigiHome Tech AS henter 3 MNOK i ny egenkapital for å ta selskapet fra bevist Bergen-drift til et skalerbart franchise-nettverk.
+          DigiHome Tech AS henter 3 MNOK i ny egenkapital for å bevise enhetsøkonomien i Bergen som blåkopi — deretter en større seed-runde for å trykke på gassen med nordisk franchise-utrulling.
         </p>
       </div>
 
@@ -5735,17 +5735,24 @@ const SDriftsgearing = (p: any) => {
 
 
 
-/* ═══ FORRETNINGSMODELLER — Egen forvaltning (bevis) + Franchise (skalering) · én plattform ═══ */
+/* ═══ FORRETNINGSMODELLER — Tre motorer: Selvbetjent (trakt) + Full forvaltning (flaggskip) + Franchise (skalering) · én plattform ═══ */
 const BIZ_MODELS = [
   {
-    idx: '01', tag: 'EGEN DRIFT', market: 'Flaggskip', label: 'DigiHome forvaltning',
-    who: 'Egendrevet — Bergen først',
-    desc: 'Vi drifter selv som profesjonell utleiemegler og forvalter. Beviser enhetsøkonomien, bygger merkevaren og leverer referansene franchisemodellen hviler på.',
-    traits: 'Full forvaltning · Take-rate · FINN-trygt',
-    model: 'Forvaltningshonorar', modelSub: '~10 % av leien',
+    idx: '01', tag: 'SELVBETJENT', market: 'Trakten inn', label: 'Selvforvaltning',
+    who: 'Huseiere som drifter selv — på vår plattform',
+    desc: 'Huseier beholder driften, men får hele DigiHome-plattformen: annonsering, kontrakter, betaling og AI-kommunikasjon. Laveste terskel inn — og en naturlig trakt til full forvaltning.',
+    traits: 'Selvbetjent · Hele plattformen · Oppgrader når som helst',
+    model: '5 % av leien', modelSub: 'land-and-expand',
   },
   {
-    idx: '02', tag: 'FRANCHISE', market: 'Skalering', label: 'Lokale DigiHome-operatører',
+    idx: '02', tag: 'FULL SERVICE', market: 'Flaggskip', label: 'Full forvaltning',
+    who: 'Egendrevet — Bergen først',
+    desc: 'Vi tar hele driften som profesjonell utleiemegler og forvalter. Beviser enhetsøkonomien, bygger merkevaren og leverer referansene franchisemodellen hviler på.',
+    traits: 'Full forvaltning · Take-rate · FINN-trygt',
+    model: '10–15 % av leien', modelSub: 'forvaltningshonorar',
+  },
+  {
+    idx: '03', tag: 'FRANCHISE', market: 'Skalering', label: 'Lokale DigiHome-operatører',
     who: 'Franchisetakere over hele landet',
     desc: 'Lokale operatører driver forvaltning under DigiHome-merket, på vår plattform. Kapital-lett skalering — de tar med lokal kapital, relasjoner og drift.',
     traits: 'Plattform · Nasjonal merkevare · Per enhet',
@@ -5784,50 +5791,50 @@ const SBusinessModels = (p: any) => {
         <span className="text-[11px] font-bold uppercase tracking-[0.28em]" style={{ ...F, color: AC }}>Forretningsmodell</span>
         <h2 className="tracking-[-0.03em] leading-[1.05] mt-5"
             style={{ ...FH, fontWeight: 700, fontSize: 'clamp(28px, 3.4vw, 46px)', color: INK }}>
-          To spor. Én plattform.
+          Tre motorer. Én plattform.
         </h2>
-        <p className="text-[14.5px] sm:text-[16px] font-normal leading-[1.6] mt-4 max-w-[600px]" style={{ ...F, color: SUB }}>
-          DigiHome vokser i to spor — egen drift som bevis, franchise som motor — på samme plattform.
+        <p className="text-[14.5px] sm:text-[16px] font-normal leading-[1.6] mt-4 max-w-[640px]" style={{ ...F, color: SUB }}>
+          Selvbetjent forvaltning senker terskelen inn, full forvaltning tar verdien — og franchise skalerer det nasjonalt. Alt på samme plattform.
         </p>
       </div>
 
       {/* hårlinje */}
       <div className="h-px w-full mt-10 origin-left" style={{ background: HAIR, animation: anim ? 'bmGrow 0.9s cubic-bezier(0.4,0,0.1,1) 0.35s both' : undefined, opacity: show ? undefined : 0 }} />
 
-      {/* to spalter — nøytralt skille, ingen pynt */}
-      <div className="grid grid-cols-1 md:grid-cols-2 mt-12 sm:mt-14">
+      {/* tre spalter — nøytralt skille, ingen pynt */}
+      <div className="grid grid-cols-1 md:grid-cols-3 mt-12 sm:mt-14">
         {BIZ_MODELS.map((m: any, i: number) => (
           <div key={m.tag}
-               className={`relative ${i === 0 ? 'md:pr-16' : 'md:pl-16 md:border-l border-t md:border-t-0 mt-12 pt-12 md:mt-0 md:pt-0'}`}
+               className={`relative ${i === 0 ? 'md:pr-10' : i === 1 ? 'md:px-10 md:border-l border-t md:border-t-0 mt-12 pt-12 md:mt-0 md:pt-0' : 'md:pl-10 md:border-l border-t md:border-t-0 mt-12 pt-12 md:mt-0 md:pt-0'}`}
                style={{ borderColor: HAIR,
                         animation: anim ? `bmFade 0.8s cubic-bezier(0.22,1,0.36,1) ${0.5 + i * 0.12}s both` : undefined,
                         opacity: show ? undefined : 0 }}>
 
             {/* index + marked + tag */}
             <div className="flex items-baseline justify-between">
-              <div className="flex items-baseline gap-3.5">
-                <span className="text-[14px] font-bold tabular-nums tracking-[-0.01em]" style={{ ...F, color: AC }}>{m.idx}</span>
-                <span className="text-[11px] font-semibold uppercase tracking-[0.24em]" style={{ ...F, color: MUT }}>{m.market}</span>
+              <div className="flex items-baseline gap-3">
+                <span className="text-[13px] font-bold tabular-nums tracking-[-0.01em]" style={{ ...F, color: AC }}>{m.idx}</span>
+                <span className="text-[10px] font-semibold uppercase tracking-[0.2em]" style={{ ...F, color: MUT }}>{m.market}</span>
               </div>
-              <span className="text-[11px] font-medium tracking-[0.16em]" style={{ ...F, color: FAINT }}>{m.tag}</span>
+              <span className="text-[10px] font-medium tracking-[0.14em]" style={{ ...F, color: FAINT }}>{m.tag}</span>
             </div>
 
             {/* tittel + hvem */}
-            <h3 className="text-[26px] sm:text-[32px] font-bold tracking-[-0.028em] leading-[1.05] mt-7" style={{ ...FH, color: INK }}>{m.label}</h3>
-            <p className="text-[13.5px] font-medium mt-2.5" style={{ ...F, color: MUT }}>{m.who}</p>
+            <h3 className="text-[22px] sm:text-[25px] font-bold tracking-[-0.028em] leading-[1.08] mt-6" style={{ ...FH, color: INK }}>{m.label}</h3>
+            <p className="text-[12.5px] font-medium mt-2" style={{ ...F, color: MUT }}>{m.who}</p>
 
             {/* verdi */}
-            <p className="text-[14px] sm:text-[15px] font-normal leading-[1.65] mt-6 max-w-[400px]" style={{ ...F, color: SUB }}>{m.desc}</p>
+            <p className="text-[13px] sm:text-[13.5px] font-normal leading-[1.6] mt-5 max-w-[400px]" style={{ ...F, color: SUB }}>{m.desc}</p>
 
             {/* egenskaper */}
-            <p className="text-[12.5px] font-normal tracking-[0.005em] leading-[1.5] mt-7" style={{ ...F, color: MUT }}>{m.traits}</p>
+            <p className="text-[11.5px] font-normal tracking-[0.005em] leading-[1.5] mt-5" style={{ ...F, color: MUT }}>{m.traits}</p>
 
             {/* inntektsmodell */}
-            <div className="inline-flex items-baseline gap-2.5 mt-9 flex-wrap rounded-xl px-4 py-3"
+            <div className="inline-flex items-baseline gap-2 mt-7 flex-wrap rounded-xl px-3.5 py-2.5"
                  style={{ background: 'rgba(160,82,224,0.05)', border: `1px solid ${HAIR}` }}>
-              <span className="text-[10px] font-semibold uppercase tracking-[0.22em]" style={{ ...F, color: AC }}>Inntekt</span>
-              <span className="text-[17px] sm:text-[19px] font-semibold tracking-[-0.015em]" style={{ ...FH, color: INK2 }}>{m.model}</span>
-              <span className="text-[13px] font-normal" style={{ ...F, color: MUT }}>· {m.modelSub}</span>
+              <span className="text-[9.5px] font-semibold uppercase tracking-[0.2em]" style={{ ...F, color: AC }}>Inntekt</span>
+              <span className="text-[15px] sm:text-[16.5px] font-semibold tracking-[-0.015em]" style={{ ...FH, color: INK2 }}>{m.model}</span>
+              <span className="text-[11.5px] font-normal" style={{ ...F, color: MUT }}>· {m.modelSub}</span>
             </div>
           </div>
         ))}
@@ -5839,7 +5846,7 @@ const SBusinessModels = (p: any) => {
       {/* payoff — rolig, uten fargeord */}
       <p className="text-[14.5px] sm:text-[16px] font-normal leading-[1.6] mt-7 max-w-[680px]"
          style={{ ...F, color: SUB, animation: anim ? 'bmFade 0.9s cubic-bezier(0.22,1,0.36,1) 1.1s both' : undefined, opacity: show ? undefined : 0 }}>
-        <span style={{ color: INK2, fontWeight: 600 }}>Egen drift beviser modellen — franchise skalerer den.</span> Vi tjener recurring per enhet på tvers av nettverket, mens lokale operatører tar med kapital og drift. Kapital-lett vekst på samme infrastruktur.
+        <span style={{ color: INK2, fontWeight: 600 }}>Selvbetjent senker terskelen — full forvaltning beviser verdien — franchise skalerer den.</span> Hver 5 %-kunde er en varm lead til full forvaltning. Vi tjener recurring per enhet på tvers av nettverket, mens lokale operatører tar med kapital og drift. Kapital-lett vekst på samme infrastruktur.
       </p>
     </div>
   </SlideFrame>
@@ -5862,7 +5869,13 @@ const SBetalingsmodell = (p: any) => {
   const HAIR = 'rgba(20,15,10,0.10)';
   const TIERS = [
     {
-      seg: 'Huseier · Forvaltning', name: 'Full forvaltning', pre: '', big: '10%', unit: 'av leien',
+      seg: 'Huseier · Selvbetjent', name: 'Selvforvaltning', pre: '', big: '5%', unit: 'av leien',
+      desc: 'Huseier drifter selv — med hele DigiHome-plattformen i ryggen. Trakten inn.',
+      feats: ['Annonsering, kontrakt og e-sign', 'Betalinger og purringer — automatisk', 'AI-svar på leietaker-henvendelser', 'Oppgrader til full forvaltning når som helst'],
+      hl: false, badge: '',
+    },
+    {
+      seg: 'Huseier · Full service', name: 'Full forvaltning', pre: '', big: '10–15%', unit: 'av leien',
       desc: 'Vi tar hele driften — som en profesjonell utleiemegler. Langtid.',
       feats: ['Annonsering, visning og kontrakt', 'All leietaker-kommunikasjon — automatisert', 'Drift, vedlikehold og oppgjør', 'Huseier løfter aldri en finger'],
       hl: false, badge: '',
@@ -5872,12 +5885,6 @@ const SBetalingsmodell = (p: any) => {
       desc: 'Lokale operatører driver på DigiHome-plattformen. Recurring og skalerbart.',
       feats: ['Plattform + nasjonal merkevare', 'Etableringsavgift ved oppstart', 'Royalty ~10 % av operatørens honorar', '3–4× flere enheter per årsverk'],
       hl: true, badge: 'Vekstmotoren',
-    },
-    {
-      seg: 'Transaksjon · Engangs', name: 'Finn leietaker', pre: '', big: 'Engangs', unit: 'utleiemegling per leieforhold',
-      desc: 'Frittstående utleiemegling — og trakt inn til full forvaltning.',
-      feats: ['Engangsgebyr ved nytt leieforhold', 'Depositum, kredittsjekk, e-sign', 'Kanalpublisering inkludert', 'Oppselg til løpende forvaltning'],
-      hl: false, badge: '',
     },
   ];
   useEffect(() => { p.onLight?.(active && !isPdf); }, [active, isPdf]);
@@ -5900,7 +5907,7 @@ const SBetalingsmodell = (p: any) => {
           Prising som følger verdien.
         </h2>
         <p className="text-[14.5px] sm:text-[16px] font-normal leading-[1.6] mt-4 max-w-[660px]" style={{ ...F, color: SUB }}>
-          Tre inntektskilder: forvaltningshonorar fra huseier, recurring plattformavgift fra franchise, og utleiemegling per leieforhold.
+          To forvaltningsnivåer for huseier — selvbetjent (5 %) og full service (10–15 %) — pluss recurring plattformavgift fra franchise.
         </p>
       </div>
 
@@ -5954,7 +5961,7 @@ const SBetalingsmodell = (p: any) => {
       {/* payoff */}
       <p className="text-[14px] sm:text-[15px] font-normal leading-[1.6] mt-9 text-center mx-auto max-w-[720px]"
          style={{ ...F, color: SUB, animation: anim ? 'payFade 0.9s cubic-bezier(0.22,1,0.36,1) 0.95s both' : undefined, opacity: show ? undefined : 0 }}>
-        <span style={{ color: INK2, fontWeight: 600 }}>Prisen følger verdien vi skaper.</span> Recurring per enhet på tvers av nettverket — og vi tjener først når utleier får leid ut. Ingen bindingstid, ingen skjulte gebyrer.
+        <span style={{ color: INK2, fontWeight: 600 }}>Prisen følger verdien vi skaper.</span> Selvbetjent er trakten inn — full forvaltning er oppsalget. I tillegg: engangs utleiemegling per leieforhold (depositum, kredittsjekk, e-sign). Ingen bindingstid, ingen skjulte gebyrer.
       </p>
     </div>
   </SlideFrame>
@@ -5975,7 +5982,7 @@ const SAlleredeInntekter = (p: any) => {
   useEffect(() => { p.onLight?.(active && !isPdf); }, [active, isPdf]);
 
   const STATS = [
-    { big: '40', unit: '', label: 'Boliger på fullforvaltning', sub: 'under egen drift · DigiHome AS', hl: false },
+    { big: '40', unit: '', label: 'Boliger under forvaltning', sub: 'kunder på både 5 %- og 10–15 %-nivået', hl: false },
     { big: '3 000', unit: 'kr', label: 'Snitt inntekt per bolig / mnd', sub: 'sentral fullservice-portefølje Bergen · 10 % av leien', hl: false },
     { big: '120 000', unit: 'kr', label: 'Månedlig inntekt · MRR', sub: 'tilbakevendende, hver måned', hl: false },
     { big: '1,44', unit: 'MNOK', label: 'Årlig inntektsbasis · ARR', sub: 'i DigiHome AS (drift) · før skalert salg', hl: true },
@@ -6004,7 +6011,7 @@ const SAlleredeInntekter = (p: any) => {
           Vi genererer allerede <span style={{ color: AC }}>inntekter.</span>
         </h2>
         <p className="text-[14.5px] sm:text-[16px] font-normal leading-[1.6] mt-4 max-w-[700px]" style={{ ...F, color: SUB }}>
-          DigiHome er ikke et produktkonsept. Vi har <span style={{ color: INK2, fontWeight: 600 }}>40 betalende boliger</span> på fullforvaltning i Bergen i dag — den beviste prototypen hver franchise skal replikere. Neste steg er å bevise at modellen kan pakkes og replikeres.
+          DigiHome er ikke et produktkonsept. Vi har <span style={{ color: INK2, fontWeight: 600 }}>40 boliger under forvaltning</span> i Bergen i dag — med aktive, betalende kunder på <span style={{ color: INK2, fontWeight: 600 }}>begge nivåer</span>: selvbetjent (5 %) og full forvaltning (10–15 %). Dette er den beviste blåkopien hver franchise skal replikere.
         </p>
       </div>
 
