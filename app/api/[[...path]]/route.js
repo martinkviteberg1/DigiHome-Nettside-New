@@ -3279,6 +3279,110 @@ Svar som JSON:
       }
     }
 
+    // AI-generert kampanjeside (message match): skriv LP-innhold fra annonsen.
+    // body: { brief?, message, headline, description?, cta? } → { ok, lp } (IKKE lagret)
+    if (route === '/admin/adstudio/lp/generate' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      if (!String(body.message || '').trim() || !String(body.headline || '').trim()) {
+        return cors(NextResponse.json({ ok: false, error: 'Annonsetekst og overskrift må være på plass først' }, { status: 400 }));
+      }
+      try {
+        const raw = await chatLLM({
+          feature: 'annonsestudio_lp',
+          maxTokens: 900,
+          temperature: 0.7,
+          messages: [
+            { role: 'system', content: 'Du skriver konverteringsoptimaliserte landingssider på norsk bokmål for DigiHome — profesjonell utleieforvaltning i Bergen (gratis leievurdering på 60 sek, 0 kr oppstart, ingen bindingstid, to modeller: Selvforvaltning 5% og Full forvaltning 10+2, opptil 30% høyere leieinntekt m/ dynamisk prising). VIKTIGSTE REGEL: message match — sidens språk skal speile annonsens budskap og vinkel 1:1, slik at den som klikker kjenner seg igjen umiddelbart. Ingen superlativ-spam. Svar KUN med gyldig JSON.' },
+            { role: 'user', content: `Annonsen som sender trafikk til siden:
+${body.brief ? `Brief: ${String(body.brief).slice(0, 400)}` : ''}
+Primærtekst: ${String(body.message).slice(0, 800)}
+Overskrift: ${String(body.headline).slice(0, 120)}
+${body.description ? `Beskrivelse: ${String(body.description).slice(0, 120)}` : ''}
+CTA: ${String(body.cta || 'LEARN_MORE')}
+
+Skriv landingssiden som JSON:
+{
+  "slug": "kort-url-slug (a-z, 0-9, bindestrek, 3-40 tegn, beskriver vinkelen)",
+  "eyebrow": "kategori-linje over overskriften, maks 40 tegn",
+  "h1": "hovedoverskrift som speiler annonsens budskap, maks 60 tegn",
+  "h1B": "linje 2 av overskriften (valgfri tvist/utdyping), maks 60 tegn",
+  "sub": "underoverskrift 1-2 setninger som utdyper løftet + 'svar umiddelbart', maks 220 tegn",
+  "bullets": ["3 konkrete punkter som matcher annonsen", "…", "…"],
+  "heroStat": { "value": "kort talløfte f.eks '+30%' eller '0 kr'", "label": "maks 35 tegn" },
+  "proofNote": "1-2 setninger sosial bevis/logikk + peker til kalkulatoren, maks 200 tegn",
+  "formTitle": "tittel på lead-skjemaet, maks 50 tegn",
+  "cta": "knappetekst, maks 30 tegn",
+  "metaTitle": "SEO-tittel maks 60 tegn — DigiHome",
+  "metaDesc": "meta-beskrivelse maks 155 tegn"
+}` },
+          ],
+        });
+        const parsed = JSON.parse(raw.slice(raw.indexOf('{'), raw.lastIndexOf('}') + 1));
+        const clean = (v, n) => String(v || '').replace(/\s+/g, ' ').trim().slice(0, n);
+        const lp = {
+          slug: clean(parsed.slug, 40).toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '') || 'kampanje',
+          eyebrow: clean(parsed.eyebrow, 40), h1: clean(parsed.h1, 70), h1B: clean(parsed.h1B, 70) || undefined,
+          sub: clean(parsed.sub, 240),
+          bullets: (Array.isArray(parsed.bullets) ? parsed.bullets : []).map((b) => clean(b, 70)).filter(Boolean).slice(0, 3),
+          heroStat: { value: clean(parsed.heroStat?.value, 20) || '0 kr', label: clean(parsed.heroStat?.label, 40) || 'oppstart · ingen binding' },
+          proofNote: clean(parsed.proofNote, 220), formTitle: clean(parsed.formTitle, 60),
+          cta: clean(parsed.cta, 34) || 'Start gratis vurdering',
+          metaTitle: clean(parsed.metaTitle, 65), metaDesc: clean(parsed.metaDesc, 160),
+        };
+        if (!lp.h1 || lp.bullets.length < 2) throw new Error('ufullstendig svar');
+        return cors(NextResponse.json({ ok: true, lp }));
+      } catch (e) {
+        return cors(NextResponse.json({ ok: false, error: 'Kunne ikke generere siden — prøv igjen' }, { status: 502 }));
+      }
+    }
+
+    // Publiser AI-generert kampanjeside → live på /lp/<slug> umiddelbart.
+    // body: { lp: {...fra /lp/generate, evt. redigert}, imageUrl?, adName? }
+    if (route === '/admin/adstudio/lp' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      const lp = body.lp || {};
+      if (!String(lp.h1 || '').trim()) return cors(NextResponse.json({ ok: false, error: 'Siden mangler overskrift' }, { status: 400 }));
+      try {
+        let slug = String(lp.slug || 'kampanje').toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40);
+        if (slug.length < 3) slug = `kampanje-${slug}`.slice(0, 40);
+        // Unik: kollider ikke med statiske sider eller andre studio-sider.
+        const staticSlugs = new Set(Object.keys(LANDING));
+        let candidate = slug; let i = 2;
+        while (staticSlugs.has(candidate) || await db.collection('studio_lps').findOne({ slug: candidate }, { projection: { _id: 1 } })) {
+          candidate = `${slug}-${i++}`.slice(0, 44);
+          if (i > 20) { candidate = `${slug}-${Date.now() % 10000}`; break; }
+        }
+        const doc = {
+          id: uuidv4(), slug: candidate, status: 'live',
+          eyebrow: String(lp.eyebrow || '').slice(0, 40), h1: String(lp.h1).slice(0, 70),
+          h1B: lp.h1B ? String(lp.h1B).slice(0, 70) : null, sub: String(lp.sub || '').slice(0, 240),
+          bullets: (Array.isArray(lp.bullets) ? lp.bullets : []).map((b) => String(b).slice(0, 70)).filter(Boolean).slice(0, 4),
+          heroStat: { value: String(lp.heroStat?.value || '0 kr').slice(0, 20), label: String(lp.heroStat?.label || '').slice(0, 40) },
+          proofNote: String(lp.proofNote || '').slice(0, 220), formTitle: String(lp.formTitle || '').slice(0, 60),
+          cta: String(lp.cta || 'Start gratis vurdering').slice(0, 34),
+          metaTitle: String(lp.metaTitle || '').slice(0, 65), metaDesc: String(lp.metaDesc || '').slice(0, 160),
+          image: body.imageUrl ? String(body.imageUrl).slice(0, 500) : null,
+          adName: body.adName ? String(body.adName).slice(0, 150) : null,
+          createdAt: new Date().toISOString(),
+        };
+        await db.collection('studio_lps').insertOne(doc);
+        const base = (process.env.NEXT_PUBLIC_CANONICAL_URL || process.env.NEXT_PUBLIC_BASE_URL || '').replace(/\/$/, '');
+        return cors(NextResponse.json({ ok: true, slug: candidate, path: `/lp/${candidate}`, url: `${base}/lp/${candidate}` }, { status: 201 }));
+      } catch (e) {
+        return cors(NextResponse.json({ ok: false, error: e.message }, { status: 502 }));
+      }
+    }
+
+    // Liste over publiserte studio-kampanjesider (til destinasjonsvelgeren).
+    if (route === '/admin/adstudio/lps' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const docs = await db.collection('studio_lps').find({ status: 'live' }, { projection: { _id: 0, slug: 1, h1: 1, createdAt: 1 } }).sort({ createdAt: -1 }).limit(30).toArray();
+      const base = (process.env.NEXT_PUBLIC_CANONICAL_URL || process.env.NEXT_PUBLIC_BASE_URL || '').replace(/\/$/, '');
+      return cors(NextResponse.json({ ok: true, lps: docs.map((d) => ({ slug: d.slug, h1: d.h1, url: `${base}/lp/${d.slug}`, path: `/lp/${d.slug}`, createdAt: d.createdAt })) }));
+    }
+
     // AI-tekstpakke: primærtekster, overskrifter, beskrivelser + CTA-forslag.
     // body: { brief, angle?, audience?, imageNote?, landing? }
     if (route === '/admin/adstudio/copy' && method === 'POST') {

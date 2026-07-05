@@ -100,6 +100,10 @@ export default function AdStudioTab({ apiKey }) {
   const [adsBusy, setAdsBusy] = useState(false);
   const [briefIdeas, setBriefIdeas] = useState(null); // AI-genererte brief-forslag
   const [briefBusy, setBriefBusy] = useState(false);
+  const [lpDraft, setLpDraft] = useState(null);   // AI-generert kampanjeside (utkast)
+  const [lpBusy, setLpBusy] = useState('');       // '' | 'gen' | 'save'
+  const [lpCreated, setLpCreated] = useState(null); // { slug, url, path }
+  const [customLinks, setCustomLinks] = useState([]); // egne kampanjesider i destinasjonsvelgeren
   const fileRef = useRef(null);
 
   /* ------------------------------ Data inn -------------------------------- */
@@ -152,6 +156,38 @@ export default function AdStudioTab({ apiKey }) {
     setBriefBusy(false);
   };
 
+  /* ---------- Kampanjeside (message match): generer + publiser ------------ */
+  const generateLp = async () => {
+    setLpBusy('gen'); setErr('');
+    try {
+      const r = await fetch(`/api/admin/adstudio/lp/generate?${q}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ brief, message, headline, description, cta }),
+      });
+      const j = await r.json();
+      if (j.ok) setLpDraft(j.lp); else setErr(j.error || 'Kunne ikke generere siden');
+    } catch (e) { setErr('Kunne ikke generere siden'); }
+    setLpBusy('');
+  };
+
+  const publishLp = async () => {
+    if (!lpDraft) return;
+    setLpBusy('save'); setErr('');
+    try {
+      const r = await fetch(`/api/admin/adstudio/lp?${q}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lp: lpDraft, imageUrl: media?.url || undefined, adName: adName || autoName() }),
+      });
+      const j = await r.json();
+      if (j.ok) {
+        const opt = { v: j.url, l: `/lp/${j.slug} — din kampanjeside (message match)` };
+        setCustomLinks((p) => [opt, ...p.filter((x) => x.v !== j.url)]);
+        setLink(j.url); setLpCreated(j); setLpDraft(null);
+      } else setErr(j.error || 'Publisering feilet');
+    } catch (e) { setErr('Publisering feilet'); }
+    setLpBusy('');
+  };
+
   /* ----------------------- Utkast: lagre + gjenopprett -------------------- */
   useEffect(() => {
     try {
@@ -171,12 +207,12 @@ export default function AdStudioTab({ apiKey }) {
       try {
         localStorage.setItem(DRAFT_KEY, JSON.stringify({
           savedAt: Date.now(), step, adsetId: adset?.id || null, brief, media, formats, aiPrompt, aiStyle,
-          imageNote, message, headline, description, cta, link, adName, abTexts, pkg,
+          imageNote, message, headline, description, cta, link, adName, abTexts, pkg, lpCreated, customLinks,
         }));
       } catch (e) {}
     }, 600);
     return () => clearTimeout(t);
-  }, [step, adset, brief, media, formats, aiPrompt, aiStyle, imageNote, message, headline, description, cta, link, adName, abTexts, pkg, created]);
+  }, [step, adset, brief, media, formats, aiPrompt, aiStyle, imageNote, message, headline, description, cta, link, adName, abTexts, pkg, lpCreated, customLinks, created]);
 
   const restoreDraft = () => {
     const d = draftFound; if (!d) return;
@@ -184,6 +220,7 @@ export default function AdStudioTab({ apiKey }) {
     setAiStyle(d.aiStyle || 'foto'); setImageNote(d.imageNote || ''); setMessage(d.message || '');
     setHeadline(d.headline || ''); setDescription(d.description || ''); setCta(d.cta || 'LEARN_MORE');
     setLink(d.link || LINKS[0].v); setAdName(d.adName || ''); setAbTexts(d.abTexts || []); setPkg(d.pkg || null);
+    setLpCreated(d.lpCreated || null); setCustomLinks(d.customLinks || []);
     if (d.adsetId && ctx) {
       for (const c of ctx.campaigns || []) {
         const s = (c.adsets || []).find((x) => x.id === d.adsetId);
@@ -382,6 +419,7 @@ export default function AdStudioTab({ apiKey }) {
     setStep(0); setAdset(null); setBrief(''); setMedia(null); setFormats(null); setAiPrompt(''); setImageNote('');
     setPkg(null); setMessage(''); setHeadline(''); setDescription(''); setCta('LEARN_MORE');
     setAbTexts([]); setPreviews(null); setAdName(''); setValState(''); setCreated(null); setErr(''); setBriefIdeas(null);
+    setLpDraft(null); setLpCreated(null);
     try { localStorage.removeItem(DRAFT_KEY); } catch (e) {}
   };
 
@@ -635,8 +673,62 @@ export default function AdStudioTab({ apiKey }) {
                   {imageNote ? <p className="text-[11.5px] text-[#a052e0] mt-1 flex items-center gap-1"><ScanEye size={12} /> Tekstpakken tilpasses bildet: «{imageNote.slice(0, 80)}…»</p> : null}
                   <label className={label}>Destinasjon</label>
                   <select value={link} onChange={(e) => setLink(e.target.value)} className={input} data-testid="adstudio-link">
-                    {LINKS.map((l) => <option key={l.v} value={l.v}>{l.l}</option>)}
+                    {[...customLinks, ...LINKS].map((l) => <option key={l.v} value={l.v}>{l.l}</option>)}
                   </select>
+
+                  {/* Egen kampanjeside — perfekt message match mellom annonse og side */}
+                  <div className="mt-3 rounded-2xl border border-[#e9dcf7] bg-gradient-to-b from-[#faf5ff] to-white p-4" data-testid="adstudio-lp">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-[12px] font-bold text-[#111] flex items-center gap-1.5"><Globe size={13} className="text-[#a052e0]" /> Egen kampanjeside — message match</p>
+                      <span className="text-[9px] font-bold uppercase text-[#a052e0] bg-[#f0e4fb] rounded-full px-1.5 py-0.5">Konverterer best</span>
+                    </div>
+                    {lpCreated ? (
+                      <div className="mt-2.5 dh-fade-up" data-testid="adstudio-lp-created">
+                        <p className="text-[12px] font-bold text-emerald-600 flex items-center gap-1.5"><CheckCircle2 size={13} /> Siden er live og satt som destinasjon</p>
+                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                          <code className="text-[11.5px] bg-white border border-[#eee] rounded-lg px-2.5 py-1.5 text-[#555]">digihome.no{lpCreated.path}</code>
+                          <a href={lpCreated.path} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[11.5px] font-bold text-[#a052e0] hover:text-[#7A3EC8]"><ExternalLink size={11} /> Åpne siden</a>
+                          <button onClick={() => setLpCreated(null)} className="text-[11px] font-bold text-[#999] hover:text-[#555]">Lag en ny</button>
+                        </div>
+                      </div>
+                    ) : lpDraft ? (
+                      <div className="mt-2.5 dh-fade-up" data-testid="adstudio-lp-draft">
+                        <div className="rounded-xl border border-[#eee] bg-white p-3.5">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[11px] text-[#999] shrink-0">digihome.no/lp/</span>
+                            <input value={lpDraft.slug} onChange={(e) => setLpDraft({ ...lpDraft, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]+/g, '-') })}
+                              className="flex-1 h-7 rounded-lg border border-[#e5e5e5] px-2 text-[11.5px] font-semibold text-[#333] focus:border-[#a052e0] focus:outline-none" data-testid="adstudio-lp-slug" />
+                          </div>
+                          <p className="mt-2.5 text-[9.5px] font-bold uppercase tracking-wide text-[#a052e0]">{lpDraft.eyebrow}</p>
+                          <p className="text-[14px] font-black text-[#111] leading-tight">{lpDraft.h1}{lpDraft.h1B ? <span className="block text-[#777]">{lpDraft.h1B}</span> : null}</p>
+                          <p className="mt-1 text-[11.5px] text-[#666] leading-snug">{lpDraft.sub}</p>
+                          <ul className="mt-2 space-y-1">
+                            {(lpDraft.bullets || []).map((b, i) => (
+                              <li key={i} className="flex items-start gap-1.5 text-[11.5px] text-[#333]"><Check size={11} className="text-emerald-500 shrink-0 mt-0.5" /> {b}</li>
+                            ))}
+                          </ul>
+                          <p className="mt-2 text-[10.5px] text-[#999]">Hero-tall: <b className="text-[#333]">{lpDraft.heroStat?.value}</b> {lpDraft.heroStat?.label} · Skjema: «{lpDraft.formTitle}» · Knapp: «{lpDraft.cta}»{media ? ' · bruker annonsebildet i hero' : ''}</p>
+                        </div>
+                        <div className="mt-2.5 flex flex-wrap gap-2">
+                          <button onClick={publishLp} disabled={lpBusy === 'save' || (lpDraft.slug || '').length < 3} className={`${btnPrimary} h-9`} data-testid="adstudio-lp-publish">
+                            {lpBusy === 'save' ? <><Loader2 size={12} className="animate-spin" /> Publiserer …</> : <><Globe size={12} /> Publiser siden (live)</>}
+                          </button>
+                          <button onClick={generateLp} disabled={lpBusy === 'gen'} className={`${btnGhost} h-9`}>
+                            {lpBusy === 'gen' ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />} Ny versjon
+                          </button>
+                          <button onClick={() => setLpDraft(null)} className={`${btnGhost} h-9`}><Trash2 size={12} /> Forkast</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <p className="text-[11px] text-[#999] mt-1">AI skriver en egen landingsside som speiler annonsens budskap 1:1 (samme overskrift-vinkel, bullets og CTA) — den som klikker kjenner seg igjen umiddelbart. Går live på /lp/… og settes som destinasjon.</p>
+                        <button onClick={generateLp} disabled={lpBusy === 'gen' || !message || !headline} className={`${btnPrimary} w-full mt-2.5 h-9`} data-testid="adstudio-lp-generate">
+                          {lpBusy === 'gen' ? <><Loader2 size={13} className="animate-spin" /> Skriver siden fra annonsen …</> : <><Wand2 size={13} /> Generer kampanjeside fra annonsen</>}
+                        </button>
+                        {!message || !headline ? <p className="text-[10.5px] text-amber-600 mt-1.5">Velg primærtekst og overskrift først — siden bygges fra dem.</p> : null}
+                      </>
+                    )}
+                  </div>
                   <button onClick={generateCopy} disabled={copyBusy || !brief.trim()} className={`${btnPrimary} mt-4`} data-testid="adstudio-gen-copy">
                     {copyBusy ? <><Loader2 size={13} className="animate-spin" /> Skriver 4 vinkler …</> : <><Sparkles size={13} /> {pkg ? 'Generer på nytt' : 'Generer tekstpakke'}</>}
                   </button>
