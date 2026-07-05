@@ -2993,13 +2993,16 @@ async function handleRoute(request, { params }) {
         if (!meta.format || !['jpeg', 'png', 'webp', 'gif', 'heif', 'avif', 'svg', 'tiff'].includes(meta.format)) {
           return cors(NextResponse.json({ ok: false, error: 'Ugyldig bildeformat' }, { status: 400 }));
         }
-        // E-postvennlig: maks 1200px bredt (600px @2x), PNG ved alpha ellers JPEG
-        const hasAlpha = !!meta.hasAlpha;
-        let pipe = sharp(raw).resize({ width: 1200, withoutEnlargement: true });
-        let contentType = 'image/jpeg';
-        let out;
-        if (hasAlpha) { out = await pipe.png({ compressionLevel: 9 }).toBuffer(); contentType = 'image/png'; }
-        else { out = await pipe.jpeg({ quality: 82, mozjpeg: true }).toBuffer(); }
+        // E-postvennlig: maks 1200px bredt (600px @2x) + WebP-konvertering.
+        // WebP gir ~30 % mindre filer enn JPEG (støttes av Gmail, Apple Mail,
+        // Outlook web/Mac). Animerte GIF-er beholder animasjonen i WebP.
+        const animated = meta.format === 'gif' && (meta.pages || 1) > 1;
+        const contentType = 'image/webp';
+        const out = await sharp(raw, { animated })
+          .rotate() // respekter EXIF-orientering fra mobilkamera
+          .resize({ width: 1200, withoutEnlargement: true })
+          .webp({ quality: 80, effort: 4 })
+          .toBuffer();
         const outMeta = await sharp(out).metadata();
         const id = uuidv4();
         await db.collection('newsletter_assets').insertOne({
@@ -3057,24 +3060,33 @@ async function handleRoute(request, { params }) {
       if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       if (!emailConfigured()) return cors(NextResponse.json({ ok: false, error: 'SendGrid er ikke konfigurert (SENDGRID_API_KEY)' }, { status: 400 }));
       let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
-      const to = nlNormEmail(body.to);
-      if (!/^\S+@\S+\.\S+$/.test(to)) return cors(NextResponse.json({ ok: false, error: 'Ugyldig test-adresse' }, { status: 400 }));
+      // Flere mottakere: array eller kommaseparert streng (maks 10 per test)
+      const rawTo = Array.isArray(body.to) ? body.to : String(body.to || '').split(/[,;\n]+/);
+      const emails = [...new Set(rawTo.map((e) => nlNormEmail(e)).filter((e) => /^\S+@\S+\.\S+$/.test(e)))].slice(0, 10);
+      if (!emails.length) return cors(NextResponse.json({ ok: false, error: 'Ingen gyldige test-adresser' }, { status: 400 }));
       const blocks = sanitizeBlocks(body.blocks);
       if (!blocks.length) return cors(NextResponse.json({ ok: false, error: 'Nyhetsbrevet har ikke noe innhold ennå' }, { status: 400 }));
       const subject = (body.subject || 'DigiHome — nyhetsbrev').toString().slice(0, 200);
       const base = process.env.NEXT_PUBLIC_BASE_URL || new URL(request.url).origin;
-      const html = renderNewsletterHtml({
-        subject, preheader: (body.preheader || '').toString().slice(0, 200), blocks,
-        theme: (body.theme || 'lavendel').toString(),
-        unsubUrl: buildUnsubUrl(base, to), campaignSlug: slugifyCampaign(subject),
-        recipient: { name: (body.sampleName || 'Martin Kviteberg').toString() },
-      });
-      try {
-        await sendHtmlEmail({ to, subject: `[TEST] ${subject}`, html, fromName: (body.fromName || 'DigiHome').toString().slice(0, 80) });
-        return cors(NextResponse.json({ ok: true, sentTo: to }));
-      } catch (e) {
-        return cors(NextResponse.json({ ok: false, error: e.message }, { status: 502 }));
+      // Valgfri melding fra avsender — vises i gult banner øverst (kun i test)
+      const testNote = String(body.message || '').slice(0, 1000).trim();
+      const fromName = (body.fromName || 'DigiHome').toString().slice(0, 80);
+      const sent = []; const failed = [];
+      for (const to of emails) {
+        const html = renderNewsletterHtml({
+          subject, preheader: (body.preheader || '').toString().slice(0, 200), blocks,
+          theme: (body.theme || 'lavendel').toString(),
+          unsubUrl: buildUnsubUrl(base, to), campaignSlug: slugifyCampaign(subject),
+          recipient: { name: (body.sampleName || 'Martin Kviteberg').toString() },
+          testNote,
+        });
+        try {
+          await sendHtmlEmail({ to, subject: `[TEST] ${subject}`, html, fromName });
+          sent.push(to);
+        } catch (e) { failed.push({ to, error: e.message }); }
       }
+      if (!sent.length) return cors(NextResponse.json({ ok: false, error: failed[0]?.error || 'Sending feilet' }, { status: 502 }));
+      return cors(NextResponse.json({ ok: true, sentTo: sent, sentCount: sent.length, failed }));
     }
 
     // Opprett utkast fra mal ("Velg et startpunkt")

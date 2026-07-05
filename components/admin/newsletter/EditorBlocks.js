@@ -10,6 +10,7 @@ import {
   Type, AlignLeft, Image as ImageIcon, MousePointerClick, LayoutPanelTop,
   List, Quote, UserRound, PenLine, Minus, MoveVertical, BadgePercent,
   ArrowUp, ArrowDown, Copy, Trash2, UploadCloud, Loader2, GripVertical, Sparkles,
+  Home, Check, RefreshCw,
 } from 'lucide-react';
 
 /* ------------------------------- Palett ---------------------------------- */
@@ -18,6 +19,7 @@ export const PALETTE = [
   { type: 'text',      label: 'Tekst',        icon: AlignLeft },
   { type: 'hero',      label: 'Hero-bilde',   icon: LayoutPanelTop },
   { type: 'image',     label: 'Bilde',        icon: ImageIcon },
+  { type: 'properties', label: 'Boliger',     icon: Home },
   { type: 'offer',     label: 'Tilbudskort',  icon: BadgePercent },
   { type: 'button',    label: 'Knapp',        icon: MousePointerClick },
   { type: 'cta-card',  label: 'CTA-kort',     icon: Sparkles },
@@ -40,8 +42,9 @@ export function defaultsFor(type) {
     case 'sender':   return { name: 'Sarah Sleeman', title: 'Daglig leder, DigiHome', note: '', photoUrl: '/sarah-sleeman.jpg' };
     case 'signature': return { name: 'Sarah Sleeman', title: 'Daglig leder — DigiHome, Bergen' };
     case 'spacer':   return { size: 'm' };
-    case 'hero':     return { url: '', alt: '' };
-    case 'image':    return { url: '', alt: '' };
+    case 'hero':     return { url: '', alt: '', height: null, fit: 'cover' };
+    case 'image':    return { url: '', alt: '', height: null, fit: 'cover' };
+    case 'properties': return { title: 'Ledige boliger i Bergen', items: [], cta: 'Se alle ledige boliger', url: 'https://digihome.no/bli-leietaker' };
     default:         return {};
   }
 }
@@ -92,10 +95,34 @@ export function DropImage({ onUpload, uploading, compact = false, label = 'Slipp
   );
 }
 
-/* -------- Bilde med «bytt»-overlay (for blokker som allerede har bilde) --- */
-function ImageWithSwap({ src, alt, onUpload, uploading, rounded = 'rounded-xl' }) {
+/* -------- Bilde med «bytt»-overlay + dra-håndtak for høyde ---------------- */
+function ImageWithSwap({ src, alt, onUpload, uploading, rounded = 'rounded-xl', height, fit, onResize }) {
   const [over, setOver] = useState(false);
+  const [dragH, setDragH] = useState(null); // live-høyde under draing
   const fileRef = useRef(null);
+  const imgRef = useRef(null);
+
+  const startResize = (e) => {
+    e.preventDefault(); e.stopPropagation();
+    const startH = Number(height) > 0 ? Number(height) : (imgRef.current ? imgRef.current.clientHeight : 300);
+    const startY = e.clientY;
+    setDragH(startH);
+    const move = (ev) => {
+      const h = Math.max(60, Math.min(900, Math.round(startH + (ev.clientY - startY))));
+      setDragH(h);
+    };
+    const up = (ev) => {
+      window.removeEventListener('mousemove', move);
+      window.removeEventListener('mouseup', up);
+      const h = Math.max(60, Math.min(900, Math.round(startH + (ev.clientY - startY))));
+      setDragH(null);
+      onResize && onResize(h);
+    };
+    window.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', up);
+  };
+
+  const h = dragH != null ? dragH : (Number(height) > 0 ? Number(height) : null);
   return (
     <div className={`relative group/img overflow-hidden ${rounded}`}
       onDragOver={(e) => { e.preventDefault(); setOver(true); }}
@@ -103,11 +130,22 @@ function ImageWithSwap({ src, alt, onUpload, uploading, rounded = 'rounded-xl' }
       onDrop={(e) => { e.preventDefault(); setOver(false); const f = e.dataTransfer.files?.[0]; if (f && f.type.startsWith('image/')) onUpload(f); }}>
       <input ref={fileRef} type="file" accept="image/*" className="hidden"
         onChange={(e) => { const f = e.target.files?.[0]; if (f) onUpload(f); e.target.value = ''; }} />
-      <img src={src} alt={alt || ''} className="w-full block" style={{ opacity: uploading ? 0.5 : 1 }} />
+      <img ref={imgRef} src={src} alt={alt || ''} className="w-full block"
+        style={{ opacity: uploading ? 0.5 : 1, height: h ? `${h}px` : 'auto', objectFit: h ? (fit || 'cover') : undefined }} />
       <button type="button" onClick={() => fileRef.current?.click()}
         className={`absolute inset-0 flex items-center justify-center bg-black/40 text-white text-[12.5px] font-semibold gap-2 transition-opacity ${over ? 'opacity-100' : 'opacity-0 group-hover/img:opacity-100'}`}>
         {uploading ? <Loader2 size={16} className="animate-spin" /> : <UploadCloud size={15} />} Bytt bilde
       </button>
+      {onResize ? (<>
+        <div onMouseDown={startResize} data-testid="nl-img-resize"
+          className={`absolute bottom-0 inset-x-0 h-[16px] z-10 cursor-ns-resize flex items-end justify-center transition-opacity ${dragH != null ? 'opacity-100' : 'opacity-0 group-hover/img:opacity-100'}`}
+          title="Dra for å endre høyde">
+          <div className="mb-[4px] w-12 h-[5px] rounded-full bg-white shadow-md border border-black/10" />
+        </div>
+        {dragH != null ? (
+          <span className="absolute top-2 left-2 z-10 rounded-md bg-black/75 text-white text-[11px] font-semibold px-2 py-0.5">{dragH}px · {fit || 'cover'}</span>
+        ) : null}
+      </>) : null}
     </div>
   );
 }
@@ -144,12 +182,46 @@ export function CanvasBlock({ b, i, total, accent, selected, onSelect, onPatch, 
         );
       case 'image':
         return b.url
-          ? <ImageWithSwap src={b.url} alt={b.alt} onUpload={upload} uploading={uploading} />
+          ? <ImageWithSwap src={b.url} alt={b.alt} onUpload={upload} uploading={uploading}
+              height={b.height} fit={b.fit} onResize={(h) => onPatch({ height: h })} />
           : <DropImage onUpload={upload} uploading={uploading} compact />;
       case 'hero':
         return b.url
-          ? <ImageWithSwap src={b.url} alt={b.alt} onUpload={upload} uploading={uploading} rounded="rounded-none" />
+          ? <ImageWithSwap src={b.url} alt={b.alt} onUpload={upload} uploading={uploading} rounded="rounded-none"
+              height={b.height} fit={b.fit} onResize={(h) => onPatch({ height: h })} />
           : <DropImage onUpload={upload} uploading={uploading} label="Slipp hero-bildet her — vises i full bredde øverst" />;
+      case 'properties': {
+        const items = b.items || [];
+        return (
+          <div>
+            <AutoArea value={b.title} onChange={(e) => onPatch({ title: e.target.value })} placeholder="Tittel (f.eks. Ledige boliger i Bergen)…"
+              className="text-[19px] font-bold tracking-[-0.01em] leading-[1.3] text-[#111]" />
+            {items.length ? (
+              <div className="grid grid-cols-2 gap-3 mt-2">
+                {items.map((p, idx) => (
+                  <div key={p.pid || idx} className="rounded-[14px] border border-[#ece8e2] bg-white overflow-hidden">
+                    {p.image
+                      ? <img src={p.image} alt="" className="w-full h-[110px] object-cover block" />
+                      : <div className="w-full h-[110px] bg-[#f4f2ef] flex items-center justify-center"><Home size={18} className="text-[#cbc4ba]" /></div>}
+                    <div className="px-3 py-2.5">
+                      <p className="text-[12.5px] font-bold text-[#111] leading-[1.35] truncate">{p.title}</p>
+                      {p.meta ? <p className="text-[11px] text-[#999] mt-0.5 truncate">{p.meta}</p> : null}
+                      {p.band ? <p className="text-[11.5px] font-bold text-[#111] mt-1">{p.band}</p> : null}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-2xl border-2 border-dashed border-[#e2dcea] bg-[#fbfaf9] py-8 text-center mt-2" data-testid="nl-properties-empty">
+                <Home size={20} className="mx-auto text-[#b7a8c9]" />
+                <p className="text-[12.5px] font-medium text-[#666] mt-2">Ingen boliger valgt ennå</p>
+                <p className="text-[11px] text-[#aaa] mt-1">Velg boliger i panelet til høyre →</p>
+              </div>
+            )}
+            {b.cta ? <p className="text-center text-[12.5px] font-bold mt-3" style={{ color: '#7A3EC8' }}>{b.cta} →</p> : null}
+          </div>
+        );
+      }
       case 'button':
         return (
           <div className="text-center py-1">
@@ -278,8 +350,89 @@ export function CanvasBlock({ b, i, total, accent, selected, onSelect, onPatch, 
   );
 }
 
+/* --------------------- Boligvelger (for Boliger-blokken) ------------------ */
+function PropertyPicker({ b, onPatch, apiQ }) {
+  const [list, setList] = useState(null); // null = laster
+  const [err, setErr] = useState('');
+  const load = async () => {
+    setList(null); setErr('');
+    try {
+      // Admin-lista viser alle synkede boliger; fall tilbake til offentlig liste
+      let props = [];
+      if (apiQ) {
+        try {
+          const r = await fetch(`/api/admin/properties?${apiQ}`);
+          const j = await r.json();
+          if (j.ok) props = j.properties || [];
+        } catch (e) {}
+      }
+      if (!props.length) {
+        const r = await fetch('/api/public/properties?limit=24');
+        const j = await r.json();
+        if (j.ok) props = j.properties || [];
+      }
+      setList(props);
+    } catch (e) { setErr('Kunne ikke hente boliger'); setList([]); }
+  };
+  useEffect(() => { load(); }, []); // eslint-disable-line
+
+  const selected = new Set((b.items || []).map((x) => x.pid));
+  const toItem = (p) => ({
+    pid: p.id,
+    title: p.title || 'Bolig',
+    image: (Array.isArray(p.images) && p.images[0]) || '',
+    meta: [p.area || p.city, p.bedrooms ? `${p.bedrooms} soverom` : null, p.sqm ? `${p.sqm} m²` : null].filter(Boolean).join(' · '),
+    band: p.monthlyRentBand || '',
+  });
+  const toggle = (p) => {
+    const cur = b.items || [];
+    if (selected.has(p.id)) onPatch({ items: cur.filter((x) => x.pid !== p.id) });
+    else if (cur.length < 6) onPatch({ items: [...cur, toItem(p)] });
+  };
+
+  return (
+    <div className="mt-1">
+      <div className="flex items-center justify-between">
+        <label className={labelCls} style={{ marginTop: 0 }}>Velg boliger ({(b.items || []).length}/6)</label>
+        <button onClick={load} className="text-[#aaa] hover:text-[#555] mt-1" title="Oppdater lista"><RefreshCw size={12} /></button>
+      </div>
+      {list === null ? (
+        <div className="flex items-center gap-2 text-[12px] text-[#999] py-3"><Loader2 size={13} className="animate-spin" /> Henter boliger…</div>
+      ) : err ? (
+        <p className="text-[12px] text-red-500 py-2">{err}</p>
+      ) : !list.length ? (
+        <p className="text-[12px] text-[#999] py-2">Ingen boliger funnet. Synk boliger under «Boliger»-fanen først.</p>
+      ) : (
+        <div className="max-h-[260px] overflow-y-auto rounded-xl border border-[#f0ede8] divide-y divide-[#f5f2ee]" data-testid="nl-property-picker">
+          {list.map((p) => {
+            const on = selected.has(p.id);
+            const full = !on && (b.items || []).length >= 6;
+            return (
+              <button key={p.id} onClick={() => toggle(p)} disabled={full} data-testid={`nl-prop-${p.id}`}
+                className={`w-full flex items-center gap-2.5 px-2.5 py-2 text-left transition-colors ${on ? 'bg-[#faf5ff]' : 'hover:bg-[#fbfaf9]'} ${full ? 'opacity-40 cursor-not-allowed' : ''}`}>
+                {(Array.isArray(p.images) && p.images[0])
+                  ? <img src={p.images[0]} alt="" className="w-[42px] h-[32px] rounded-md object-cover shrink-0" />
+                  : <div className="w-[42px] h-[32px] rounded-md bg-[#f4f2ef] flex items-center justify-center shrink-0"><Home size={13} className="text-[#cbc4ba]" /></div>}
+                <div className="flex-1 min-w-0">
+                  <p className="text-[12px] font-semibold text-[#111] truncate">{p.title || 'Bolig'}</p>
+                  <p className="text-[10.5px] text-[#999] truncate">
+                    {[p.area || p.city, p.sqm ? `${p.sqm} m²` : null, p.status === 'rented' ? 'Utleid' : 'Ledig'].filter(Boolean).join(' · ')}
+                  </p>
+                </div>
+                <span className={`w-[18px] h-[18px] rounded-md border flex items-center justify-center shrink-0 ${on ? 'bg-[#0a0a0a] border-[#0a0a0a] text-white' : 'border-[#ddd] text-transparent'}`}>
+                  <Check size={11} />
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ------------------------ Inspektør for valgt blokk ----------------------- */
-export function BlockInspector({ b, onPatch, onDel, onUploadImage, uploadingId }) {
+export function BlockInspector({ b, onPatch, onDel, onUploadImage, uploadingId, apiQ }) {
   if (!b) return null;
   const meta = PALETTE.find((p) => p.type === b.type);
   const uploading = uploadingId === b.id;
@@ -304,6 +457,32 @@ export function BlockInspector({ b, onPatch, onDel, onUploadImage, uploadingId }
         <DropImage compact onUpload={(f) => onUploadImage(b.id, f)} uploading={uploading} label="Slipp nytt bilde her" />
         <label className={labelCls}>Alt-tekst</label>
         <input value={b.alt || ''} onChange={(e) => onPatch({ alt: e.target.value })} className={inputCls} placeholder="Beskrivelse av bildet" />
+        <label className={labelCls}>Høyde</label>
+        <div className="flex gap-1.5">
+          <input type="number" min={60} max={900} value={b.height || ''} data-testid="nl-insp-height"
+            onChange={(e) => onPatch({ height: e.target.value ? Math.max(60, Math.min(900, Math.round(Number(e.target.value)))) : null })}
+            className={`${inputCls} flex-1`} placeholder="Auto" />
+          <button onClick={() => onPatch({ height: null })} data-testid="nl-insp-height-auto"
+            className={`h-[36px] px-3 rounded-lg text-[12px] font-semibold ${!b.height ? 'bg-[#0a0a0a] text-white' : 'bg-[#f4f2ef] text-[#777] hover:bg-[#ece9e4]'}`}>Auto</button>
+        </div>
+        <p className="text-[10.5px] text-[#aaa] mt-1.5">Tips: dra i håndtaket nederst på bildet for å justere høyden visuelt.</p>
+        <label className={labelCls}>Tilpasning</label>
+        <div className="flex gap-1.5" data-testid="nl-insp-fit">
+          {[['cover', 'Fyll'], ['contain', 'Tilpass'], ['fill', 'Strekk']].map(([k, l]) => (
+            <button key={k} onClick={() => onPatch({ fit: k })}
+              className={`flex-1 h-[32px] rounded-lg text-[12px] font-semibold ${(b.fit || 'cover') === k ? 'bg-[#0a0a0a] text-white' : 'bg-[#f4f2ef] text-[#777]'}`}>{l}</button>
+          ))}
+        </div>
+        <p className="text-[10.5px] text-[#aaa] mt-1.5">«Fyll» beskjærer, «Tilpass» viser hele bildet, «Strekk» fyller uten beskjæring. Gjelder når høyden er satt.</p>
+      </>) : null}
+
+      {b.type === 'properties' ? (<>
+        <PropertyPicker b={b} onPatch={onPatch} apiQ={apiQ} />
+        <label className={labelCls}>Lenketekst nederst</label>
+        <input value={b.cta || ''} onChange={(e) => onPatch({ cta: e.target.value })} className={inputCls} placeholder="Se alle ledige boliger" />
+        <label className={labelCls}>Lenke (URL)</label>
+        <input value={b.url || ''} onChange={(e) => onPatch({ url: e.target.value })} className={inputCls} placeholder="https://digihome.no/bli-leietaker" />
+        <p className="text-[10.5px] text-[#aaa] mt-1.5">Alle boligkort og lenken peker hit. Klikk spores automatisk.</p>
       </>) : null}
 
       {b.type === 'sender' ? (<>

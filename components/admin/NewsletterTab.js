@@ -40,6 +40,7 @@ export default function NewsletterTab({ apiKey }) {
   const [previewHtml, setPreviewHtml] = useState('');
   const [testOpen, setTestOpen] = useState(false);
   const [testTo, setTestTo] = useState('');
+  const [testMsg, setTestMsg] = useState('');
   const [testState, setTestState] = useState({ s: 'idle', msg: '' });
   const [confirming, setConfirming] = useState(false);
   const [sendState, setSendState] = useState('idle');
@@ -257,13 +258,15 @@ export default function NewsletterTab({ apiKey }) {
       const r = await fetch(`/api/admin/newsletter/test?${q}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          to: testTo, blocks: camp.blocks.map(({ id, ...rest }) => rest),
+          to: testTo, message: testMsg, blocks: camp.blocks.map(({ id, ...rest }) => rest),
           subject: camp.subject, preheader: camp.preheader, theme: camp.theme, fromName: camp.fromName,
         }),
       });
       const j = await r.json();
       if (!j.ok) throw new Error(j.error || 'Test feilet');
-      setTestState({ s: 'sent', msg: `Test sendt til ${j.sentTo}` });
+      const n = j.sentCount || (Array.isArray(j.sentTo) ? j.sentTo.length : 1);
+      const failedN = (j.failed || []).length;
+      setTestState({ s: 'sent', msg: `Test sendt til ${n} mottaker${n === 1 ? '' : 'e'}${failedN ? ` · ${failedN} feilet` : ''}` });
       setTimeout(() => { setTestState({ s: 'idle', msg: '' }); setTestOpen(false); }, 2500);
     } catch (e) { setTestState({ s: 'error', msg: e.message }); }
   };
@@ -324,10 +327,15 @@ export default function NewsletterTab({ apiKey }) {
               <FlaskConical size={13} /> Test
             </button>
             {testOpen ? (
-              <div className="absolute right-0 top-[42px] w-[280px] rounded-2xl border border-[#eee] bg-white shadow-xl p-4 z-30">
+              <div className="absolute right-0 top-[42px] w-[320px] rounded-2xl border border-[#eee] bg-white shadow-xl p-4 z-30">
                 <p className="text-[12px] font-bold text-[#111]">Send test-nyhetsbrev</p>
-                <input value={testTo} onChange={(e) => setTestTo(e.target.value)} placeholder="din@epost.no" data-testid="nl-test-to"
+                <input value={testTo} onChange={(e) => setTestTo(e.target.value)} placeholder="epost1@…, epost2@…, epost3@…" data-testid="nl-test-to"
                   className="w-full h-[36px] rounded-lg border border-[#e8e8e8] px-3 text-[13px] outline-none focus:border-[#c99df0] mt-2" />
+                <p className="text-[10.5px] text-[#aaa] mt-1">Skill flere mottakere med komma (maks 10).</p>
+                <textarea value={testMsg} onChange={(e) => setTestMsg(e.target.value)} rows={3} data-testid="nl-test-message"
+                  placeholder="Melding til mottakerne (valgfritt) — f.eks. «Hva synes dere om utkastet?»"
+                  className="w-full rounded-lg border border-[#e8e8e8] px-3 py-2 text-[12.5px] outline-none focus:border-[#c99df0] mt-2 resize-none" />
+                <p className="text-[10.5px] text-[#aaa] mt-0.5">Vises i et gult banner øverst — kun i testen.</p>
                 <button onClick={sendTest} disabled={testState.s === 'sending' || !testTo.trim()} data-testid="nl-test-send"
                   className="w-full h-[36px] rounded-full bg-[#0a0a0a] text-white text-[12.5px] font-semibold mt-2 disabled:opacity-50 flex items-center justify-center gap-1.5">
                   {testState.s === 'sending' ? <Loader2 size={13} className="animate-spin" /> : <Send size={12} />} Send test
@@ -398,7 +406,7 @@ export default function NewsletterTab({ apiKey }) {
           <div className="rounded-2xl border border-[#f0f0f0] bg-white p-4 sticky top-[132px] max-h-[calc(100vh-160px)] overflow-y-auto">
             {selected ? (
               <BlockInspector b={selected} onPatch={(p) => patchBlock(selected.id, p)} onDel={removeBlock}
-                onUploadImage={uploadImage} uploadingId={uploadingId} />
+                onUploadImage={uploadImage} uploadingId={uploadingId} apiQ={q} />
             ) : (
               <>
                 <div className="flex rounded-full bg-[#f4f2ef] p-0.5">
