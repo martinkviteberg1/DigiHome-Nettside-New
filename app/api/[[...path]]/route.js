@@ -45,6 +45,7 @@ import { fireLeadEmails } from '@/lib/lead-emails';
 import { buildAlerts } from '@/lib/ads-monitor';
 import { fetchCompetitorGallery, serpApiConfigured } from '@/lib/serpapi';
 import { chatLLM } from '@/lib/llm';
+import { adstudioConfigured, fetchAdStudioContext, uploadAdImage, buildCreativeSpec, generatePreviews, createStudioAd, setAdStatus as adstudioSetAdStatus, fetchAdsLive } from '@/lib/adstudio';
 import { slugify } from '@/lib/site';
 import { LANDING } from '@/lib/landing';
 import { getRentReport, refreshRentReport, RENT_CITIES } from '@/lib/rentmarket';
@@ -3146,6 +3147,185 @@ async function handleRoute(request, { params }) {
         return cors(NextResponse.json({ ok: true, id, url: `/api/newsletter/asset?id=${id}`, width: outMeta.width, height: outMeta.height }, { status: 201 }));
       } catch (e) {
         return cors(NextResponse.json({ ok: false, error: 'Opplasting feilet: ' + (e.message || 'ukjent') }, { status: 500 }));
+      }
+    }
+
+    // ======================= ANNONSESTUDIO (Meta) ==========================
+    // Kontekst for veiviseren: konto, side, kampanjer + annonsesett (10 min cache).
+    if (route === '/admin/adstudio/context' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!adstudioConfigured()) return cors(NextResponse.json({ ok: false, error: 'Meta-nøkler mangler' }, { status: 503 }));
+      try {
+        const force = new URL(request.url).searchParams.get('refresh') === '1';
+        const now = Date.now();
+        if (!force && global._adstudioCtx && (now - global._adstudioCtx.ts) < 10 * 60 * 1000) {
+          return cors(NextResponse.json({ ok: true, cached: true, ...global._adstudioCtx.data }));
+        }
+        const data = await fetchAdStudioContext();
+        global._adstudioCtx = { ts: now, data };
+        return cors(NextResponse.json({ ok: true, cached: false, ...data }));
+      } catch (e) {
+        return cors(NextResponse.json({ ok: false, error: e.message }, { status: 502 }));
+      }
+    }
+
+    // AI-tekstpakke: primærtekster, overskrifter, beskrivelser + CTA-forslag.
+    // body: { brief, angle?, audience?, imageNote?, landing? }
+    if (route === '/admin/adstudio/copy' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      const brief = String(body.brief || '').slice(0, 800).trim();
+      if (!brief) return cors(NextResponse.json({ ok: false, error: 'Skriv en kort brief først' }, { status: 400 }));
+      try {
+        const raw = await chatLLM({
+          feature: 'annonsestudio_tekst',
+          maxTokens: 1400,
+          temperature: 0.8,
+          messages: [
+            { role: 'system', content: 'Du er en prisbelønt norsk performance-tekstforfatter for Meta-annonser (Facebook/Instagram). Du skriver på norsk bokmål, konkret og uten superlativ-støy. Du kan reglene: primærtekst bør fungere selv om den kuttes etter ~125 tegn (frontlast budskapet), overskrift maks 40 tegn, beskrivelse maks 30 tegn. Aldri lov garantert avkastning eller bruk påstander som ikke står i briefen. Svar KUN med gyldig JSON.' },
+            { role: 'user', content: `Selskap: DigiHome — profesjonell utleieforvaltning i Bergen. Tilbud: gratis leievurdering på 60 sekunder, valget mellom Selvforvaltning (5%) og Full forvaltning. Landingsside: ${String(body.landing || 'https://digihome.no/bli-utleier')}.
+
+Brief fra markedsfører: ${brief}
+${body.audience ? `Målgruppe: ${String(body.audience).slice(0, 200)}` : ''}
+${body.imageNote ? `Bildet i annonsen viser: ${String(body.imageNote).slice(0, 300)}` : ''}
+
+Lag en komplett tekstpakke som JSON:
+{
+ "primaryTexts": [ { "angle": "kort vinkel-navn", "text": "primærtekst 2-4 setninger, gjerne med linjeskift \\n\\n og maks 1-2 relevante emojis" } x4 — fire ULIKE vinkler (f.eks. smertepunkt, sosial proof, tilbud, spørsmål) ],
+ "headlines": [ 5 overskrifter, maks 40 tegn hver ],
+ "descriptions": [ 3 beskrivelser, maks 30 tegn hver ],
+ "cta": "en av: LEARN_MORE|GET_QUOTE|SIGN_UP|CONTACT_US|APPLY_NOW — best egnet"
+}` },
+          ],
+        });
+        const jsonStr = raw.slice(raw.indexOf('{'), raw.lastIndexOf('}') + 1);
+        const pkg = JSON.parse(jsonStr);
+        return cors(NextResponse.json({ ok: true, package: pkg }));
+      } catch (e) {
+        return cors(NextResponse.json({ ok: false, error: 'AI-teksten feilet — prøv igjen: ' + (e.message || '') }, { status: 502 }));
+      }
+    }
+
+    // Media: last opp bilde (base64) ELLER generer med AI (Nano Banana Pro).
+    // body: { imageB64?, filename? } | { aiPrompt, style? }
+    // Bildet optimaliseres (1080-bredde JPEG) og lastes opp til Metas bildebibliotek.
+    if (route === '/admin/adstudio/media' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      try {
+        let buf = null;
+        let filename = String(body.filename || 'annonse.jpg').slice(0, 120);
+        if (body.imageB64) {
+          buf = Buffer.from(String(body.imageB64).replace(/^data:[^;]+;base64,/, ''), 'base64');
+        } else if (body.aiPrompt) {
+          const style = ['foto', 'illustrasjon', 'minimal'].includes(body.style) ? body.style : 'foto';
+          const STYLES = {
+            foto: 'photorealistic, natural Scandinavian light, editorial quality',
+            illustrasjon: 'modern flat illustration, warm palette, clean shapes',
+            minimal: 'minimalist composition, generous negative space, soft neutral tones',
+          };
+          const fullPrompt = `${String(body.aiPrompt).slice(0, 800)}. Style: ${STYLES[style]}. Square 1:1 composition optimized as a Facebook/Instagram feed ad image. No text, no watermarks, no logos.`;
+          const genWithModel = async (model, timeoutMs) => {
+            const ctrl = new AbortController();
+            const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+            try {
+              const res = await fetch('https://integrations.emergentagent.com/llm/v1/images/generations', {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${process.env.EMERGENT_LLM_KEY}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ model, prompt: fullPrompt, n: 1 }),
+                signal: ctrl.signal,
+              });
+              if (!res.ok) return null;
+              const json = await res.json();
+              return json?.data?.[0]?.b64_json || null;
+            } catch (err) { return null; } finally { clearTimeout(timer); }
+          };
+          let b64 = await genWithModel('gemini/gemini-3-pro-image-preview', 90000);
+          if (!b64) b64 = await genWithModel('gemini/gemini-2.5-flash-image', 60000);
+          if (!b64) return cors(NextResponse.json({ ok: false, error: 'AI-bildet feilet — prøv igjen' }, { status: 502 }));
+          buf = Buffer.from(b64, 'base64');
+          filename = 'ai-annonse.jpg';
+        }
+        if (!buf || buf.length < 100) return cors(NextResponse.json({ ok: false, error: 'Mangler bilde' }, { status: 400 }));
+        // Meta anbefaler ≥1080px. Behold 1:1-følelse: begrens bredde, ikke beskjær.
+        const out = await sharp(buf).rotate().resize({ width: 1440, withoutEnlargement: true }).jpeg({ quality: 88, mozjpeg: true }).toBuffer();
+        const meta = await sharp(out).metadata();
+        const up = await uploadAdImage(out, filename);
+        // Speil i asset-biblioteket slik at bildet også kan gjenbrukes senere.
+        const assetId = uuidv4();
+        await db.collection('newsletter_assets').insertOne({
+          id: assetId, contentType: 'image/jpeg', data: out.toString('base64'),
+          width: meta.width || null, height: meta.height || null, bytes: out.length,
+          filename, adstudio: true, metaImageHash: up.hash, createdAt: new Date().toISOString(),
+        });
+        return cors(NextResponse.json({ ok: true, hash: up.hash, url: `/api/newsletter/asset?id=${assetId}`, metaUrl: up.url, width: meta.width, height: meta.height }, { status: 201 }));
+      } catch (e) {
+        return cors(NextResponse.json({ ok: false, error: 'Medieopplasting feilet: ' + (e.message || '') }, { status: 502 }));
+      }
+    }
+
+    // Ekte Meta-forhåndsvisninger (iframe-HTML) — oppretter ingenting.
+    // body: { pageId, link, message, headline, description, imageHash, cta }
+    if (route === '/admin/adstudio/preview' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      try {
+        const spec = buildCreativeSpec(body);
+        const previews = await generatePreviews(spec);
+        return cors(NextResponse.json({ ok: true, previews }));
+      } catch (e) {
+        return cors(NextResponse.json({ ok: false, error: e.message }, { status: 502 }));
+      }
+    }
+
+    // Opprett annonsen — ALLTID pauset. validateOnly=true → kun Metas validering.
+    // body: { adsetId, adName, pageId, link, message, headline, description, imageHash, cta, validateOnly }
+    if (route === '/admin/adstudio/create' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      const required = ['adsetId', 'adName', 'pageId', 'link', 'message', 'headline', 'imageHash'];
+      const missing = required.filter((k) => !String(body[k] || '').trim());
+      if (missing.length) return cors(NextResponse.json({ ok: false, error: `Mangler: ${missing.join(', ')}` }, { status: 400 }));
+      try {
+        const spec = buildCreativeSpec(body);
+        const result = await createStudioAd({ adsetId: body.adsetId, adName: String(body.adName).slice(0, 150), creativeSpec: spec, validateOnly: !!body.validateOnly });
+        if (body.validateOnly) return cors(NextResponse.json({ ok: true, validated: true }));
+        await db.collection('studio_ads').insertOne({
+          id: uuidv4(), metaAdId: result.adId, metaCreativeId: result.creativeId,
+          adsetId: body.adsetId, adName: String(body.adName).slice(0, 150),
+          link: String(body.link).slice(0, 500), message: String(body.message).slice(0, 2000),
+          headline: String(body.headline).slice(0, 120), description: String(body.description || '').slice(0, 120),
+          cta: String(body.cta || 'LEARN_MORE'), imageHash: String(body.imageHash),
+          imageUrl: String(body.imageUrl || ''), status: 'PAUSED', createdAt: new Date().toISOString(),
+        });
+        return cors(NextResponse.json({ ok: true, adId: result.adId, creativeId: result.creativeId }, { status: 201 }));
+      } catch (e) {
+        return cors(NextResponse.json({ ok: false, error: e.message }, { status: 502 }));
+      }
+    }
+
+    // Pause/aktiver en studio-annonse.
+    if (route === '/admin/adstudio/adstate' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      try {
+        await setAdStatus(String(body.adId || ''), String(body.status || ''));
+        await db.collection('studio_ads').updateOne({ metaAdId: String(body.adId) }, { $set: { status: String(body.status), updatedAt: new Date().toISOString() } });
+        return cors(NextResponse.json({ ok: true }));
+      } catch (e) {
+        return cors(NextResponse.json({ ok: false, error: e.message }, { status: 502 }));
+      }
+    }
+
+    // Liste over annonser laget i studioet + live status/tall fra Meta.
+    if (route === '/admin/adstudio/ads' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      try {
+        const rows = await db.collection('studio_ads').find({}, { projection: { _id: 0, message: 0 } }).sort({ createdAt: -1 }).limit(50).toArray();
+        const live = await fetchAdsLive(rows.map((r) => r.metaAdId).filter(Boolean));
+        return cors(NextResponse.json({ ok: true, ads: rows.map((r) => ({ ...r, live: live[r.metaAdId] || null })) }));
+      } catch (e) {
+        return cors(NextResponse.json({ ok: false, error: e.message }, { status: 502 }));
       }
     }
 

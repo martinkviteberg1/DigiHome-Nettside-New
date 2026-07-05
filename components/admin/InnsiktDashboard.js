@@ -17,6 +17,7 @@ import RentMarketTab from '@/components/admin/RentMarketTab';
 import LiveTab from '@/components/admin/LiveTab';
 import WebVitalsTab from '@/components/admin/WebVitalsTab';
 import AdsTab from '@/components/admin/AdsTab';
+import AdStudioTab from '@/components/admin/AdStudioTab';
 import FunnelTab from '@/components/admin/FunnelTab';
 import LandingPagesTab from '@/components/admin/LandingPagesTab';
 import CompetitorAnalysisTab from '@/components/admin/CompetitorAnalysisTab';
@@ -342,6 +343,7 @@ export default function InnsiktDashboard({ apiKey, tab: propTab, onTabChange, on
       {tab === 'ytelse' && <WebVitalsTab webVitals={analytics && analytics.webVitals} />}
       {tab === 'innsikt' && <IntelTab leads={analytics && analytics.leads} />}
       {tab === 'annonser' && <AdsTab apiKey={apiKey} />}
+      {tab === 'annonsestudio' && <AdStudioTab apiKey={apiKey} />}
       {tab === 'landingssider' && <LandingPagesTab apiKey={apiKey} days={days} />}
       {tab === 'konkurrent' && <CompetitorAnalysisTab apiKey={apiKey} />}
       {tab === 'leiemarked' && <RentMarketTab apiKey={apiKey} />}
