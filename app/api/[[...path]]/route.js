@@ -5338,10 +5338,16 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
       const ACTIVATION_EVENTS = ['eiendom_onboardet', 'leie_aktiv'];
       const isActivationOnly = ACTIVATION_EVENTS.includes(evt) && !body.status;
       const raw = (body.status || EVT_TO_STATUS[evt] || '').toString().toLowerCase().trim();
+      // Mid-funnel-statuser fra plattformen (visning booket / tilbud sendt):
+      // pipelinen vår holder seg til de 5 kjernestatusene, så disse mappes til
+      // 'qualified' MEN den granulære fasen bevares i funnelStage + historikk.
+      const MID_FUNNEL = { viewing_booked: 'qualified', contract_sent: 'qualified' };
+      const midFunnelStage = MID_FUNNEL[raw] ? raw : null;
       const map = {
         ny: 'new', open: 'new', åpen: 'new', kontaktet: 'contacted', contacted: 'contacted',
         kvalifisert: 'qualified', qualified: 'qualified', vunnet: 'won', won: 'won', signed: 'won',
         signert: 'won', closed_won: 'won', tapt: 'lost', lost: 'lost', closed_lost: 'lost', avvist: 'lost',
+        ...MID_FUNNEL,
       };
       const status = VALID.includes(raw) ? raw : (map[raw] || '');
       if (!status && !isActivationOnly) return cors(NextResponse.json({ ok: false, error: 'Ugyldig status', got: raw || evt }, { status: 400 }));
@@ -5409,11 +5415,13 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
       const update = {
         status,
         statusUpdatedAt: changedAt,
-        statusHistory: [...(lead.statusHistory || []), { status, at: changedAt, via: 'platform', tenant: tenant || undefined }].slice(-30),
+        statusHistory: [...(lead.statusHistory || []), { status, stage: midFunnelStage || undefined, at: changedAt, via: 'platform', tenant: tenant || undefined }].slice(-30),
         syncedFromPlatform: true,
         platformTenant: tenant || lead.platformTenant || null,
         platformSyncAt: nowIso,
       };
+      // Granulær mid-funnel-fase (viewing_booked / contract_sent) bevares separat.
+      if (midFunnelStage) update.funnelStage = midFunnelStage;
       // Hendelses-spor: logg også status-endrende hendelser (avtale_signert m.fl.)
       if (evt) {
         update.activation = [...(lead.activation || []), { event: evt, at: changedAt, via: 'platform' }].slice(-30);
@@ -5426,7 +5434,7 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
       if (platformConversionId) update.platformConversionId = platformConversionId;
       // Lost MED årsak → kvalitetsstyring / negativ-målretting.
       if (status === 'lost') {
-        const LOST = ['spam', 'out_of_area', 'not_serious', 'no_response', 'duplicate', 'other'];
+        const LOST = ['spam', 'out_of_area', 'not_serious', 'no_response', 'duplicate', 'wrong_segment', 'other'];
         const lr = (body.lost_reason || body.lostReason || body.reason || '').toString().toLowerCase().trim();
         update.lostReason = LOST.includes(lr) ? lr : (lr ? 'other' : null);
         update.lostAt = lead.lostAt || changedAt;

@@ -105,6 +105,18 @@
 user_problem_statement: "Bygg DigiHome markedsside (Next.js App Router) etter flyttepakken — Warm Ink Editorial design, norsk bokmål, full SEO, DB-drevet blogg + admin + programmatisk SEO. Fase 1: verdensklasse forside + lead-API."
 
 backend:
+  - task: "Webhook-kontrakt v2: mid-funnel-statuser (viewing_booked/contract_sent→qualified + funnelStage) og wrong_segment i lost-reason-enum"
+    implemented: true
+    working: true
+    file: "/app/app/api/[[...path]]/route.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "main"
+        -comment: "Svar på plattform-agentens bro-melding 2026-07-05T17:00Z: (1) POST /webhooks/lead-status|conversion aksepterer nå status viewing_booked og contract_sent — mappes til pipeline-status 'qualified', granulær fase bevares i funnelStage-feltet + statusHistory[].stage. (2) lost_reason-enum utvidet med 'wrong_segment' (presis negativ målretting for «Feil segment / kun korttid»). (3) .env DIGIHOME_API_URL + _TEST oppdatert fra døde tenant-hub-210 til forvalter-redesign.preview.emergentagent.com (plattformens nye kanoniske preview; helsesjekk leads/export→200). Verifisert ikke-destruktivt m/korrekt secret mot ukjent lead: viewing_booked→404 (validering OK), contract_sent→404, lost+wrong_segment→404, tullestatus→400, uten secret→401. Bro-svar sendt i tråd integration-contract (kvittering på alle 4 punkter + varsel om deres 2x401 på webhook + purring på /api/usage/external som fortsatt er ubesvart/404)."
+
   - task: "API-forbruk: GET /admin/usage/api (LLM per leverandør/modell/funksjon + ext-telling + plattform-polling) og PUT /admin/usage/llm/model (modellbytte per funksjon)"
     implemented: true
     working: true
