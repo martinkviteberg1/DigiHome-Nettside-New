@@ -36,7 +36,7 @@ const nextConfig = {
     // KRITISK for prod: output:'standalone' inkluderer ikke /public, men OG-bildene
     // (next/og) leser merkefontene fra public/fonts. Trace dem inn i standalone-bygget.
     outputFileTracingIncludes: {
-      '/**': ['./public/fonts/**/*.woff'],
+      '/**': ['./public/fonts/**/*.woff', './lib/llms-content.txt'],
     },
   },
   webpack(config, { dev }) {

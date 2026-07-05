@@ -154,3 +154,20 @@ Google Ads-styring via native REST API).
 - Verifisert: full HTTP-audit (alle sider 200, ingen dobbel branding, schema OK) + skjermbilder.
 - GJENSTÅR (anbefalt senere): flere leiemarked-byer (krever verifiserte SSB-data),
   10-15 flere artikler, kildehenvisning på «98 %»-påstanden.
+
+## Økt 5. juli 2026 (del 2) — E-postfikser (lead-varsler + kvittering) + llms.txt prod-fix
+- ✅ FONTER: Fjernet @font-face (PP Right Grotesk/ABC Diatype) fra e-postene — ga uskarp/
+  rar fallback i e-postklienter. Nå ren systemstack i lead-emails.js (nyhetsbrev hadde det alt).
+- ✅ KAPITALISERING: cap()/titleCase()-hjelpere — Boligtype/Bygningstype/pills/modell vises nå
+  «Leilighet», «Enebolig», «Huseier»; hjemmelshaver fra grunnbok CAPS → «Lilleng Anita»
+  (selskapsformer AS/ASA/DA bevares i versaler).
+- ✅ FJERNET «Søkeord» og «Klikk-ID» fra Sporing-seksjonen i admin-varselet (brukers ønske).
+- ✅ LANDINGSSIDE er nå klikkbar lenke til full URL (BASE_URL + sti, «/» vises som «Forsiden»).
+- ✅ LOGO: email-logo.png lastet opp til objektlagring (scripts/upload_public_to_storage.mjs
+  --only email-logo.png) og e-poster (lead + nyhetsbrev) peker nå på /api/media/email-logo.png
+  — /public følger IKKE med standalone-bygget i prod (rotårsak til 404 i brukers e-postklient).
+- ✅ llms.txt VAR DØD I PROD (404 på digihome.no/llms.txt av samme grunn): innholdet flyttet til
+  /lib/llms-content.txt + ny route /app/app/llms.txt/route.js + outputFileTracingIncludes.
+  public/llms.txt er FJERNET (route + public-fil gir konflikt).
+- Verifisert: 10/10 innholdssjekker + visuelle skjermbilder av admin-varsel og kvittering
+  via /api/admin/leads/email-preview. /llms.txt 200 lokalt. Prod-logo verifisert 200 på digihome.no.
