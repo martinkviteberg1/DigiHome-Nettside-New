@@ -47,7 +47,7 @@ import { fireLeadEmails } from '@/lib/lead-emails';
 import { buildAlerts } from '@/lib/ads-monitor';
 import { fetchCompetitorGallery, serpApiConfigured } from '@/lib/serpapi';
 import { chatLLM } from '@/lib/llm';
-import { adstudioConfigured, fetchAdStudioContext, uploadAdImage, buildCreativeSpec, generatePreviews, createStudioAd, setAdStatus as adstudioSetAdStatus, fetchAdsLive } from '@/lib/adstudio';
+import { adstudioConfigured, fetchAdStudioContext, uploadAdImage, buildCreativeSpec, buildAssetFeedSpec, generatePreviews, createStudioAd, setAdStatus as adstudioSetAdStatus, fetchAdsLive, searchGeoLocations, createCampaign, createAdSet } from '@/lib/adstudio';
 import { slugify } from '@/lib/site';
 import { LANDING } from '@/lib/landing';
 import { getRentReport, refreshRentReport, RENT_CITIES } from '@/lib/rentmarket';
@@ -3175,6 +3175,110 @@ async function handleRoute(request, { params }) {
       }
     }
 
+    // Geo-søk for kampanjeopprettelse: finn Metas by-/regionnøkler.
+    if (route === '/admin/adstudio/geosearch' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      try {
+        const qq = new URL(request.url).searchParams.get('q') || '';
+        if (qq.trim().length < 2) return cors(NextResponse.json({ ok: true, results: [] }));
+        const results = await searchGeoLocations(qq.trim());
+        return cors(NextResponse.json({ ok: true, results }));
+      } catch (e) {
+        return cors(NextResponse.json({ ok: false, error: e.message }, { status: 502 }));
+      }
+    }
+
+    // Opprett NY kampanje + annonsesett — ALLTID PAUSED. validateOnly støttes.
+    // body: { name, objective: 'leads'|'traffic', dailyBudget (NOK), adsetName?,
+    //         geo?: { type:'country' } | { type:'city', key, name, radius? },
+    //         ageMin?, ageMax?, validateOnly? }
+    if (route === '/admin/adstudio/campaign' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      const name = String(body.name || '').trim().slice(0, 150);
+      if (!name) return cors(NextResponse.json({ ok: false, error: 'Kampanjen trenger et navn' }, { status: 400 }));
+      const objective = body.objective === 'traffic' ? 'OUTCOME_TRAFFIC' : 'OUTCOME_LEADS';
+      const dailyBudget = Math.min(Math.max(Number(body.dailyBudget) || 150, 50), 10000);
+      try {
+        if (body.validateOnly) {
+          await createCampaign({ name, objective, validateOnly: true });
+          return cors(NextResponse.json({ ok: true, validated: true }));
+        }
+        const camp = await createCampaign({ name, objective });
+        const geo = body.geo && body.geo.type === 'city' && body.geo.key
+          ? { type: 'city', key: String(body.geo.key), radius: Number(body.geo.radius) || 25 }
+          : { type: 'country' };
+        const adsetName = String(body.adsetName || '').trim().slice(0, 150)
+          || `${name} — ${geo.type === 'city' ? (body.geo?.name || 'by') : 'Norge'}`;
+        let adset;
+        try {
+          adset = await createAdSet({
+            campaignId: camp.campaignId, name: adsetName, dailyBudgetNok: dailyBudget,
+            optimization: body.objective === 'traffic' ? 'traffic' : 'leads',
+            geo, ageMin: body.ageMin, ageMax: body.ageMax,
+            pixelId: process.env.NEXT_PUBLIC_META_PIXEL_ID || '',
+          });
+        } catch (e) {
+          // Kampanjen finnes (pauset) men annonsesettet feilet — meld tydelig fra.
+          global._adstudioCtx = null;
+          return cors(NextResponse.json({ ok: false, campaignId: camp.campaignId, error: `Kampanjen ble opprettet (pauset), men annonsesettet feilet: ${e.message}` }, { status: 502 }));
+        }
+        await db.collection('studio_campaigns').insertOne({
+          id: uuidv4(), metaCampaignId: camp.campaignId, metaAdsetId: adset.adsetId,
+          name, adsetName, objective, dailyBudget,
+          geo: geo.type === 'city' ? `${body.geo?.name || geo.key} (+${geo.radius} km)` : 'Norge',
+          ageMin: Number(body.ageMin) || 25, ageMax: Number(body.ageMax) || 65,
+          status: 'PAUSED', createdAt: new Date().toISOString(),
+        });
+        global._adstudioCtx = null; // tving fersk kontekst neste gang
+        return cors(NextResponse.json({ ok: true, campaignId: camp.campaignId, adsetId: adset.adsetId, adsetName }, { status: 201 }));
+      } catch (e) {
+        return cors(NextResponse.json({ ok: false, error: e.message }, { status: 502 }));
+      }
+    }
+
+    // AI-brief: skriv et ferdig annonsebrief basert på sesong + ferske tall.
+    // body: { landing?, goal? }
+    if (route === '/admin/adstudio/aibrief' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      try {
+        const now = new Date();
+        const monthName = now.toLocaleDateString('nb-NO', { month: 'long' });
+        const since = new Date(now.getTime() - 30 * 24 * 3600 * 1000).toISOString();
+        const [leads30, topAd] = await Promise.all([
+          db.collection('leads').countDocuments({ createdAt: { $gte: since } }).catch(() => 0),
+          db.collection('studio_ads').find({}, { projection: { _id: 0, adName: 1, headline: 1 } }).sort({ createdAt: -1 }).limit(3).toArray().catch(() => []),
+        ]);
+        const raw = await chatLLM({
+          feature: 'annonsestudio_brief',
+          maxTokens: 500,
+          temperature: 0.9,
+          messages: [
+            { role: 'system', content: 'Du er markedssjef for DigiHome — profesjonell utleieforvaltning i Bergen. Du skriver korte, konkrete annonse-briefer på norsk bokmål for Meta-annonser. En brief sier: hvem vi skal nå, hvilket budskap/vinkel, og hvilken sesongkrok som gjør den aktuell AKKURAT nå. Svar KUN med gyldig JSON.' },
+            { role: 'user', content: `Dato: ${now.toLocaleDateString('nb-NO', { day: 'numeric', month: 'long', year: 'numeric' })} (${monthName}).
+Tilbud: gratis leievurdering på 60 sekunder. To modeller: Selvforvaltning (5%) og Full forvaltning (10+2).
+Landingsside: ${String(body.landing || 'https://digihome.no/bli-utleier')}.
+Leads siste 30 dager: ${leads30}.
+${topAd.length ? `Nylige annonser (unngå å gjenta vinkelen): ${topAd.map((a) => a.headline || a.adName).filter(Boolean).join(' · ')}` : ''}
+${body.goal ? `Ønsket fokus fra markedsfører: ${String(body.goal).slice(0, 200)}` : ''}
+
+Tenk på norske sesongkroker (${monthName}): studiestart/semesterstart, jobbflytting, skattemelding og leieinntekt, sommerutleie, vinterklargjøring av bolig, nyttårsforsetter om passiv inntekt, osv. Velg den mest relevante NÅ.
+
+Svar som JSON:
+{ "briefs": [ { "label": "kort navn på vinkelen", "text": "selve briefen, 2-3 setninger: målgruppe + budskap + sesongkrok. Skrives slik at den kan limes rett inn." } x3 — tre ULIKE vinkler ] }` },
+          ],
+        });
+        const jsonStr = raw.slice(raw.indexOf('{'), raw.lastIndexOf('}') + 1);
+        const parsed = JSON.parse(jsonStr);
+        const briefs = (parsed.briefs || []).slice(0, 3).map((b) => ({ label: String(b.label || '').slice(0, 60), text: String(b.text || '').slice(0, 600) })).filter((b) => b.text);
+        if (!briefs.length) throw new Error('tomt svar');
+        return cors(NextResponse.json({ ok: true, briefs }));
+      } catch (e) {
+        return cors(NextResponse.json({ ok: false, error: 'AI-briefen feilet — prøv igjen' }, { status: 502 }));
+      }
+    }
+
     // AI-tekstpakke: primærtekster, overskrifter, beskrivelser + CTA-forslag.
     // body: { brief, angle?, audience?, imageNote?, landing? }
     if (route === '/admin/adstudio/copy' && method === 'POST') {
@@ -3272,14 +3376,109 @@ Lag en komplett tekstpakke som JSON:
       }
     }
 
+    // Plasseringsformater: generer 9:16 (Story/Reels) + 1.91:1 (bred) fra
+    // 1:1-bildet. Primært via Nano Banana Pro (bilde-til-bilde outpainting) —
+    // faller tilbake til smart uskarp utvidelse (sharp) hvis AI feiler.
+    // body: { assetId }
+    if (route === '/admin/adstudio/formats' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      try {
+        const asset = await db.collection('newsletter_assets').findOne({ id: String(body.assetId || '') }, { projection: { data: 1 } });
+        if (!asset || !asset.data) return cors(NextResponse.json({ ok: false, error: 'Fant ikke kildebildet' }, { status: 404 }));
+        const src = Buffer.from(asset.data, 'base64');
+
+        // AI-outpainting via Emergent /images/edits (verifisert: Nano Banana Pro
+        // respekterer format-instruks i prompt; n-parameter støttes IKKE).
+        const editWithNano = async (promptText, timeoutMs = 95000) => {
+          const ctrl = new AbortController();
+          const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+          try {
+            const form = new FormData();
+            form.append('model', 'gemini/gemini-3-pro-image-preview');
+            form.append('prompt', promptText);
+            form.append('image', new Blob([src], { type: 'image/jpeg' }), 'source.jpg');
+            const res = await fetch('https://integrations.emergentagent.com/llm/v1/images/edits', {
+              method: 'POST', headers: { Authorization: `Bearer ${process.env.EMERGENT_LLM_KEY}` },
+              body: form, signal: ctrl.signal,
+            });
+            if (!res.ok) return null;
+            const json = await res.json();
+            const b64 = json?.data?.[0]?.b64_json;
+            return b64 ? Buffer.from(b64, 'base64') : null;
+          } catch (err) { return null; } finally { clearTimeout(timer); }
+        };
+
+        // Fallback: uskarp bakgrunn (cover) + originalen sentrert (contain).
+        const blurExtend = async (W, H) => {
+          const bg = await sharp(src).resize(W, H, { fit: 'cover' }).blur(38).modulate({ brightness: 0.88, saturation: 1.05 }).toBuffer();
+          const m = await sharp(src).metadata();
+          const scale = Math.min(W / m.width, H / m.height);
+          const fw = Math.round(m.width * scale), fh = Math.round(m.height * scale);
+          const fg = await sharp(src).resize(fw, fh).toBuffer();
+          return sharp(bg).composite([{ input: fg, left: Math.round((W - fw) / 2), top: Math.round((H - fh) / 2) }]).jpeg({ quality: 88, mozjpeg: true }).toBuffer();
+        };
+
+        const TARGETS = {
+          story: {
+            W: 1080, H: 1920, arMin: 0.48, arMax: 0.68,
+            prompt: 'Reframe this square ad photo into a vertical 9:16 (1080x1920) composition. Keep the main subject and all existing content EXACTLY as-is, perfectly intact. Seamlessly extend the scene upward and downward (outpainting) matching light, colors and style. Photorealistic continuation, no text, no logos, no borders.',
+          },
+          landscape: {
+            W: 1200, H: 628, arMin: 1.6, arMax: 2.25,
+            prompt: 'Reframe this square ad photo into a wide 1.91:1 landscape (1200x628) composition. Keep the main subject and all existing content EXACTLY as-is, perfectly intact. Seamlessly extend the scene to the left and right (outpainting) matching light, colors and style. Photorealistic continuation, no text, no logos, no borders.',
+          },
+        };
+
+        const makeFormat = async (kind) => {
+          const t = TARGETS[kind];
+          let out = null; let method = 'ai';
+          const ai = await editWithNano(t.prompt);
+          if (ai) {
+            try {
+              const m = await sharp(ai).metadata();
+              const ar = (m.width || 1) / (m.height || 1);
+              if (ar >= t.arMin && ar <= t.arMax) {
+                // Riktig retning — normaliser til eksakt målformat.
+                out = await sharp(ai).resize(t.W, t.H, { fit: 'cover' }).jpeg({ quality: 88, mozjpeg: true }).toBuffer();
+              }
+            } catch (err) { out = null; }
+          }
+          if (!out) { out = await blurExtend(t.W, t.H); method = 'smart'; }
+          else { logImageUsage(db, { model: 'gemini-3-pro-image-preview', feature: 'annonsestudio_format' }).catch(() => {}); }
+          const up = await uploadAdImage(out, `annonse-${kind}.jpg`);
+          const outMeta = await sharp(out).metadata();
+          const newId = uuidv4();
+          await db.collection('newsletter_assets').insertOne({
+            id: newId, contentType: 'image/jpeg', data: out.toString('base64'),
+            width: outMeta.width || null, height: outMeta.height || null, bytes: out.length,
+            filename: `annonse-${kind}.jpg`, adstudio: true, formatKind: kind,
+            sourceAssetId: String(body.assetId), metaImageHash: up.hash, createdAt: new Date().toISOString(),
+          });
+          return { hash: up.hash, url: `/api/newsletter/asset?id=${newId}`, width: outMeta.width, height: outMeta.height, method };
+        };
+
+        const [story, landscape] = await Promise.all([makeFormat('story'), makeFormat('landscape')]);
+        return cors(NextResponse.json({ ok: true, story, landscape }, { status: 201 }));
+      } catch (e) {
+        return cors(NextResponse.json({ ok: false, error: 'Formatgenerering feilet: ' + (e.message || '') }, { status: 502 }));
+      }
+    }
+
     // Ekte Meta-forhåndsvisninger (iframe-HTML) — oppretter ingenting.
     // body: { pageId, link, message, headline, description, imageHash, cta }
     if (route === '/admin/adstudio/preview' && method === 'POST') {
       if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
       try {
-        const spec = buildCreativeSpec(body);
-        const previews = await generatePreviews(spec);
+        const hasFormats = !!(body.storyHash || body.landscapeHash);
+        const spec = hasFormats
+          ? buildAssetFeedSpec({ pageId: body.pageId, link: body.link, message: body.message, headline: body.headline, description: body.description, cta: body.cta, images: { square: body.imageHash, story: body.storyHash || null, landscape: body.landscapeHash || null } })
+          : buildCreativeSpec(body);
+        const formats = hasFormats
+          ? ['DESKTOP_FEED_STANDARD', 'MOBILE_FEED_STANDARD', 'INSTAGRAM_STANDARD', 'INSTAGRAM_STORY']
+          : ['DESKTOP_FEED_STANDARD', 'MOBILE_FEED_STANDARD', 'INSTAGRAM_STANDARD'];
+        const previews = await generatePreviews(spec, formats);
         return cors(NextResponse.json({ ok: true, previews }));
       } catch (e) {
         return cors(NextResponse.json({ ok: false, error: e.message }, { status: 502 }));
@@ -3345,13 +3544,19 @@ Lag en komplett tekstpakke som JSON:
       const missing = required.filter((k) => !String(body[k] || '').trim());
       if (missing.length) return cors(NextResponse.json({ ok: false, error: `Mangler: ${missing.join(', ')}` }, { status: 400 }));
       try {
+        // Plasseringstilpasning: når 9:16/1.91:1-varianter finnes, bygges
+        // asset_feed_spec slik at Meta viser riktig bilde per plassering.
+        const hasFormats = !!(body.storyHash || body.landscapeHash);
+        const makeSpec = (msg, head, desc) => hasFormats
+          ? buildAssetFeedSpec({ pageId: body.pageId, link: body.link, message: msg, headline: head, description: desc, cta: body.cta, images: { square: body.imageHash, story: body.storyHash || null, landscape: body.landscapeHash || null } })
+          : buildCreativeSpec({ ...body, message: msg, headline: head, description: desc });
         // A/B: body.variants = [{ message, headline?, description?, angle? }] →
         // oppretter flere annonser med samme bilde/lenke i samme annonsesett.
         const variants = Array.isArray(body.variants) && body.variants.length
           ? body.variants.slice(0, 3)
           : [{ message: body.message, headline: body.headline, description: body.description, angle: null }];
         if (body.validateOnly) {
-          const spec = buildCreativeSpec({ ...body, message: variants[0].message, headline: variants[0].headline || body.headline });
+          const spec = makeSpec(variants[0].message, variants[0].headline || body.headline, variants[0].description != null ? variants[0].description : body.description);
           await createStudioAd({ adsetId: body.adsetId, adName: String(body.adName).slice(0, 150), creativeSpec: spec, validateOnly: true });
           return cors(NextResponse.json({ ok: true, validated: true }));
         }
@@ -3362,7 +3567,7 @@ Lag en komplett tekstpakke som JSON:
           const adName = variants.length > 1
             ? `${String(body.adName).slice(0, 130)} · ${v.angle || `variant ${i + 1}`}`
             : String(body.adName).slice(0, 150);
-          const spec = buildCreativeSpec({ ...body, message: v.message, headline: v.headline || body.headline, description: v.description != null ? v.description : body.description });
+          const spec = makeSpec(v.message, v.headline || body.headline, v.description != null ? v.description : body.description);
           const result = await createStudioAd({ adsetId: body.adsetId, adName, creativeSpec: spec, validateOnly: false });
           await db.collection('studio_ads').insertOne({
             id: uuidv4(), metaAdId: result.adId, metaCreativeId: result.creativeId,
@@ -3370,7 +3575,11 @@ Lag en komplett tekstpakke som JSON:
             link: String(body.link).slice(0, 500), message: String(v.message).slice(0, 2000),
             headline: String(v.headline || body.headline).slice(0, 120), description: String(v.description != null ? v.description : body.description || '').slice(0, 120),
             cta: String(body.cta || 'LEARN_MORE'), imageHash: String(body.imageHash),
-            imageUrl: String(body.imageUrl || ''), status: 'PAUSED', createdAt: new Date().toISOString(),
+            imageUrl: String(body.imageUrl || ''),
+            storyHash: body.storyHash ? String(body.storyHash) : null,
+            landscapeHash: body.landscapeHash ? String(body.landscapeHash) : null,
+            placementCustomized: hasFormats,
+            status: 'PAUSED', createdAt: new Date().toISOString(),
           });
           createdAds.push({ adId: result.adId, adName });
         }

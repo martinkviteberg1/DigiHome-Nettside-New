@@ -14,13 +14,14 @@
 //  · Utkast overlever refresh. Alt opprettes ALLTID pauset.
 // ---------------------------------------------------------------------------
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Loader2, Upload, Sparkles, Wand2, Check, ChevronRight, ChevronLeft,
   Image as ImageIcon, Megaphone, Play, Pause, RefreshCw, ExternalLink,
   AlertCircle, CheckCircle2, Globe, ThumbsUp, MessageCircle, Share2,
   MousePointerClick, Coins, Eye, LayoutList, PlusCircle, ShieldCheck, Info,
   ScanEye, FlaskConical, Gauge, RotateCcw, Trash2, MapPin, Bookmark, Heart,
-  Send, MoreHorizontal, Pencil,
+  Send, MoreHorizontal, Pencil, Smartphone, Crop, ListChecks,
 } from 'lucide-react';
 
 const nf = new Intl.NumberFormat('nb-NO');
@@ -67,6 +68,8 @@ export default function AdStudioTab({ apiKey }) {
   const [brief, setBrief] = useState('');
   const [media, setMedia] = useState(null);
   const [mediaBusy, setMediaBusy] = useState('');
+  const [formats, setFormats] = useState(null); // { story:{hash,url,method}, landscape:{...} }
+  const [formatsBusy, setFormatsBusy] = useState(false);
   const [aiPrompt, setAiPrompt] = useState('');
   const [aiStyle, setAiStyle] = useState('foto');
   const [promptBusy, setPromptBusy] = useState(false);
@@ -95,6 +98,8 @@ export default function AdStudioTab({ apiKey }) {
 
   const [myAds, setMyAds] = useState(null);
   const [adsBusy, setAdsBusy] = useState(false);
+  const [briefIdeas, setBriefIdeas] = useState(null); // AI-genererte brief-forslag
+  const [briefBusy, setBriefBusy] = useState(false);
   const fileRef = useRef(null);
 
   /* ------------------------------ Data inn -------------------------------- */
@@ -118,6 +123,35 @@ export default function AdStudioTab({ apiKey }) {
 
   useEffect(() => { loadCtx(); loadMyAds(); }, [loadCtx, loadMyAds]);
 
+  /* -------------- Ny kampanje opprettet → hent fersk kontekst ------------- */
+  const handleCampaignCreated = useCallback(async (adsetId) => {
+    try {
+      const r = await fetch(`/api/admin/adstudio/context?${q}&refresh=1`);
+      const j = await r.json();
+      if (j.ok) {
+        setCtx(j);
+        for (const c of j.campaigns || []) {
+          const s = (c.adsets || []).find((x) => x.id === adsetId);
+          if (s) { setAdset({ ...s, campaignName: c.name, campaignId: c.id }); break; }
+        }
+      }
+    } catch (e) {}
+  }, [q]);
+
+  /* ------------------- AI-brief: sesongbaserte forslag -------------------- */
+  const suggestBriefs = async () => {
+    setBriefBusy(true); setErr('');
+    try {
+      const r = await fetch(`/api/admin/adstudio/aibrief?${q}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ landing: link, goal: brief.trim() || undefined }),
+      });
+      const j = await r.json();
+      if (j.ok && j.briefs?.length) setBriefIdeas(j.briefs); else setErr(j.error || 'AI-briefen feilet');
+    } catch (e) { setErr('AI-briefen feilet'); }
+    setBriefBusy(false);
+  };
+
   /* ----------------------- Utkast: lagre + gjenopprett -------------------- */
   useEffect(() => {
     try {
@@ -136,17 +170,17 @@ export default function AdStudioTab({ apiKey }) {
     const t = setTimeout(() => {
       try {
         localStorage.setItem(DRAFT_KEY, JSON.stringify({
-          savedAt: Date.now(), step, adsetId: adset?.id || null, brief, media, aiPrompt, aiStyle,
+          savedAt: Date.now(), step, adsetId: adset?.id || null, brief, media, formats, aiPrompt, aiStyle,
           imageNote, message, headline, description, cta, link, adName, abTexts, pkg,
         }));
       } catch (e) {}
     }, 600);
     return () => clearTimeout(t);
-  }, [step, adset, brief, media, aiPrompt, aiStyle, imageNote, message, headline, description, cta, link, adName, abTexts, pkg, created]);
+  }, [step, adset, brief, media, formats, aiPrompt, aiStyle, imageNote, message, headline, description, cta, link, adName, abTexts, pkg, created]);
 
   const restoreDraft = () => {
     const d = draftFound; if (!d) return;
-    setBrief(d.brief || ''); setMedia(d.media || null); setAiPrompt(d.aiPrompt || '');
+    setBrief(d.brief || ''); setMedia(d.media || null); setFormats(d.formats || null); setAiPrompt(d.aiPrompt || '');
     setAiStyle(d.aiStyle || 'foto'); setImageNote(d.imageNote || ''); setMessage(d.message || '');
     setHeadline(d.headline || ''); setDescription(d.description || ''); setCta(d.cta || 'LEARN_MORE');
     setLink(d.link || LINKS[0].v); setAdName(d.adName || ''); setAbTexts(d.abTexts || []); setPkg(d.pkg || null);
@@ -164,6 +198,7 @@ export default function AdStudioTab({ apiKey }) {
   /* ------------------------------ Media ----------------------------------- */
   const afterMedia = async (m) => {
     setMedia(m);
+    setFormats(null); // nytt hovedbilde → gamle formatvarianter gjelder ikke lenger
     const assetId = m?.url?.match(/id=([a-f0-9-]+)/)?.[1];
     if (!assetId) return;
     setNoteBusy(true); setImageNote('');
@@ -223,6 +258,23 @@ export default function AdStudioTab({ apiKey }) {
     setMediaBusy('');
   };
 
+  /* -------------- Plasseringsformater: 9:16 + 1.91:1 automatisk ----------- */
+  const generateFormats = async () => {
+    const assetId = media?.url?.match(/id=([a-f0-9-]+)/)?.[1];
+    if (!assetId) return;
+    setFormatsBusy(true); setErr('');
+    try {
+      const r = await fetch(`/api/admin/adstudio/formats?${q}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ assetId }),
+      });
+      const j = await r.json();
+      if (j.ok) { setFormats({ story: j.story, landscape: j.landscape }); setPreviews(null); }
+      else setErr(j.error || 'Formatgenereringen feilet');
+    } catch (e) { setErr('Formatgenereringen feilet'); }
+    setFormatsBusy(false);
+  };
+
   /* ------------------------------ Tekst ------------------------------------ */
   const generateCopy = async () => {
     if (!brief.trim()) return;
@@ -262,7 +314,10 @@ export default function AdStudioTab({ apiKey }) {
     try {
       const r = await fetch(`/api/admin/adstudio/preview?${q}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pageId: ctx.page.id, link, message, headline, description, imageHash: media.hash, cta }),
+        body: JSON.stringify({
+          pageId: ctx.page.id, link, message, headline, description, imageHash: media.hash, cta,
+          storyHash: formats?.story?.hash || undefined, landscapeHash: formats?.landscape?.hash || undefined,
+        }),
       });
       const j = await r.json();
       if (j.ok) setPreviews(j.previews || []); else setErr(j.error || 'Forhåndsvisning feilet');
@@ -282,6 +337,7 @@ export default function AdStudioTab({ apiKey }) {
   const buildPayload = (validateOnly) => ({
     validateOnly, adsetId: adset.id, adName: adName || autoName(), pageId: ctx.page.id,
     link, message, headline, description, imageHash: media.hash, cta, imageUrl: media.url,
+    storyHash: formats?.story?.hash || undefined, landscapeHash: formats?.landscape?.hash || undefined,
     ...(isAb ? { variants: abTexts.map((t) => ({ angle: t.angle, message: t.text })) } : {}),
   });
 
@@ -323,9 +379,9 @@ export default function AdStudioTab({ apiKey }) {
   };
 
   const resetWizard = () => {
-    setStep(0); setAdset(null); setBrief(''); setMedia(null); setAiPrompt(''); setImageNote('');
+    setStep(0); setAdset(null); setBrief(''); setMedia(null); setFormats(null); setAiPrompt(''); setImageNote('');
     setPkg(null); setMessage(''); setHeadline(''); setDescription(''); setCta('LEARN_MORE');
-    setAbTexts([]); setPreviews(null); setAdName(''); setValState(''); setCreated(null); setErr('');
+    setAbTexts([]); setPreviews(null); setAdName(''); setValState(''); setCreated(null); setErr(''); setBriefIdeas(null);
     try { localStorage.removeItem(DRAFT_KEY); } catch (e) {}
   };
 
@@ -336,13 +392,14 @@ export default function AdStudioTab({ apiKey }) {
     const checks = [
       { ok: !!media && (media.width || 0) >= 1080, l: 'Bilde ≥ 1080 px bredt', fix: 'Last opp større bilde eller generer med AI' },
       { ok: ratio != null && ratio >= 0.8 && ratio <= 1.3, l: 'Nær kvadratisk (1:1) — best i Feed', fix: 'Kvadratiske bilder får mer plass i feeden' },
+      { ok: !!(formats?.story && formats?.landscape), l: 'Alle plasseringer dekket (9:16 + 1.91:1)', fix: 'Generer formatvarianter i «Brief & media» — gir lavere CPM' },
       { ok: !!imageNote, l: 'AI har synkronisert bilde og tekst', fix: 'Skjer automatisk når bilde er valgt' },
       { ok: firstPara.length > 0 && firstPara.length <= 150, l: 'Frontlastet primærtekst (~125 tegn)', fix: 'Sett hovedbudskapet i første setning' },
       { ok: headline.length > 0 && headline.length <= 40, l: 'Overskrift ≤ 40 tegn', fix: 'Kortere overskrifter kuttes ikke' },
       { ok: !description || description.length <= 30, l: 'Beskrivelse ≤ 30 tegn', fix: 'Kort eller tom — begge er fint' },
     ];
     return { checks, score: checks.filter((c) => c.ok).length, total: checks.length };
-  }, [media, imageNote, message, headline, description]);
+  }, [media, formats, imageNote, message, headline, description]);
 
   const canNext = [!!adset, !!media, !!(message && headline), true, false][step];
   const appModeError = String(err || (valState.startsWith('feil:') ? valState.slice(5) : '')).includes('utviklingsmodus');
@@ -418,19 +475,24 @@ export default function AdStudioTab({ apiKey }) {
       {view === 'mine' ? (
         <MyAds ads={myAds} busy={adsBusy} onRefresh={loadMyAds} onToggle={toggleAdState} actId={actId} />
       ) : created ? (
-        <div className={`${card} p-10 text-center dh-fade-up`} data-testid="adstudio-success">
-          <span className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50"><CheckCircle2 size={32} className="text-emerald-500" /></span>
+        <motion.div className={`${card} p-10 text-center`} data-testid="adstudio-success"
+          initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}>
+          <motion.span className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50"
+            initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 260, damping: 14, delay: 0.15 }}>
+            <CheckCircle2 size={32} className="text-emerald-500" />
+          </motion.span>
           <h3 className="mt-4 text-[19px] font-black tracking-tight text-[#111]">{created.ads?.length > 1 ? `${created.ads.length} annonser opprettet som A/B-test` : 'Annonsen er opprettet'}</h3>
           <p className="mt-1.5 text-[13px] text-[#777] max-w-md mx-auto">Alt ligger trygt <b>pauset</b> i Meta. Den automatiske gjennomgangen tar minutter til få timer — aktiver når du er klar.</p>
           <div className="mt-4 flex flex-wrap justify-center gap-2">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-[#f7f7f7] px-3 py-1.5 text-[11.5px] font-semibold text-[#555]"><MapPin size={11} /> {adset?.campaignName} → {adset?.name}</span>
+            {formats?.story ? <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-[11.5px] font-bold text-emerald-700"><Smartphone size={11} /> Tilpasset alle plasseringer</span> : null}
             {created.ads?.length > 1 ? <span className="inline-flex items-center gap-1.5 rounded-full bg-[#f0e4fb] px-3 py-1.5 text-[11.5px] font-bold text-[#7A3EC8]"><FlaskConical size={11} /> {created.ads.length} varianter</span> : null}
           </div>
           <div className="mt-6 flex justify-center gap-2">
             <button onClick={() => { setView('mine'); loadMyAds(); }} className={btnPrimary}><LayoutList size={14} /> Mine annonser</button>
             <button onClick={resetWizard} className={btnGhost}><PlusCircle size={14} /> Lag en til</button>
           </div>
-        </div>
+        </motion.div>
       ) : (
         <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-5 items-start">
           {/* Venstre: veiviseren */}
@@ -446,18 +508,47 @@ export default function AdStudioTab({ apiKey }) {
               </div>
             ) : null}
 
-            <div className={`${card} p-5 dh-fade-up`} key={`step-${step}`}>
+            <AnimatePresence mode="wait">
+            <motion.div className={`${card} p-5`} key={`step-${step}`}
+              initial={{ opacity: 0, x: 26, filter: 'blur(2px)' }} animate={{ opacity: 1, x: 0, filter: 'blur(0px)' }}
+              exit={{ opacity: 0, x: -26, filter: 'blur(2px)' }} transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}>
               {step === 0 ? (
-                <StepPlacement ctx={ctx} adset={adset} setAdset={setAdset} onRefresh={() => loadCtx(true)} />
+                <StepPlacement ctx={ctx} adset={adset} setAdset={setAdset} onRefresh={() => loadCtx(true)} q={q} onCreated={handleCampaignCreated} />
               ) : step === 1 ? (
                 <div data-testid="adstudio-step-media">
                   <h3 className="text-[14px] font-black text-[#111]">Brief & media</h3>
                   <p className="text-[12px] text-[#999] mt-0.5">Én brief driver alt: AI-en bruker den til både bildeforslag og tekstpakke.</p>
 
-                  <label className={label}>Brief — hva skal annonsen si, og til hvem?</label>
+                  <div className="flex items-center justify-between mt-4 mb-1.5">
+                    <label className={`${label} mt-0 mb-0`}>Brief — hva skal annonsen si, og til hvem?</label>
+                    <button onClick={suggestBriefs} disabled={briefBusy} data-testid="adstudio-ai-brief"
+                      className="inline-flex items-center gap-1 text-[11px] font-bold text-[#a052e0] hover:text-[#7A3EC8] disabled:opacity-50 transition-colors">
+                      {briefBusy ? <Loader2 size={11} className="animate-spin" /> : <Wand2 size={11} />}
+                      {briefBusy ? 'AI tenker sesong & vinkler …' : 'La AI foreslå brief'}
+                    </button>
+                  </div>
                   <textarea value={brief} onChange={(e) => setBrief(e.target.value)} rows={2} autoFocus
                     placeholder="F.eks. «Nå boligeiere i Bergen som er lei av leietaker-mas. Fremhev gratis leievurdering på 60 sekunder.»"
                     className={`${input} resize-none`} data-testid="adstudio-brief" />
+
+                  {briefIdeas?.length ? (
+                    <div className="mt-2.5 rounded-xl border border-[#e9dcf7] bg-[#faf5ff] p-3 dh-fade-up" data-testid="adstudio-brief-ideas">
+                      <div className="flex items-center justify-between">
+                        <p className="text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#a052e0] flex items-center gap-1"><Sparkles size={10} /> AI-forslag — klikk for å bruke</p>
+                        <button onClick={() => setBriefIdeas(null)} className="text-[#bba5d6] hover:text-[#7A3EC8]" aria-label="Lukk forslag"><Trash2 size={11} /></button>
+                      </div>
+                      <div className="mt-2 grid gap-1.5">
+                        {briefIdeas.map((b, i) => (
+                          <button key={i} onClick={() => { setBrief(b.text); setBriefIdeas(null); }}
+                            data-testid={`adstudio-brief-idea-${i}`}
+                            className={`text-left rounded-lg border px-3 py-2 transition-all hover:-translate-y-px ${brief === b.text ? 'border-[#a052e0] bg-white' : 'border-[#eee0fb] bg-white/70 hover:border-[#c99df0]'}`}>
+                            <span className="text-[10px] font-bold uppercase tracking-wide text-[#a052e0]">{b.label}</span>
+                            <p className="text-[12px] text-[#333] mt-0.5 leading-snug">{b.text}</p>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
 
                   <div className="grid sm:grid-cols-2 gap-4 mt-4">
                     <div className="rounded-2xl border-2 border-dashed border-[#e5e5e5] p-5 text-center hover:border-[#c99df0] hover:bg-[#fdfbff] transition-colors cursor-pointer group"
@@ -501,6 +592,40 @@ export default function AdStudioTab({ apiKey }) {
                         <ScanEye size={13} className="text-[#a052e0] shrink-0 mt-0.5" />
                         {noteBusy ? <span className="text-[#999] inline-flex items-center gap-1"><Loader2 size={10} className="animate-spin" /> AI ser på bildet …</span> : imageNote ? <span><b className="text-[#a052e0]">AI ser:</b> {imageNote}</span> : <span className="text-[#bbb]">Ingen bildeanalyse</span>}
                       </div>
+                    </div>
+                  ) : null}
+
+                  {media?.hash ? (
+                    <div className="mt-3 rounded-2xl border border-[#e9dcf7] bg-gradient-to-b from-[#faf5ff] to-white p-4 dh-fade-up" data-testid="adstudio-formats">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-[12px] font-bold text-[#111] flex items-center gap-1.5"><Crop size={13} className="text-[#a052e0]" /> Formater for alle plasseringer</p>
+                        <span className="text-[9px] font-bold uppercase text-[#a052e0] bg-[#f0e4fb] rounded-full px-1.5 py-0.5">Senker CPM</span>
+                        {formats ? <span className="ml-auto inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600"><CheckCircle2 size={12} /> Klart</span> : null}
+                      </div>
+                      <p className="text-[11px] text-[#999] mt-1">AI utvider bildet til 9:16 (Stories/Reels) og 1.91:1 (bred) — Meta viser riktig format per plassering automatisk.</p>
+                      {formats ? (
+                        <div className="mt-3 flex items-end gap-3" data-testid="adstudio-formats-done">
+                          <figure className="text-center">
+                            <img src={media.url} alt="1:1" className="h-20 w-20 rounded-lg object-cover border border-[#eee]" />
+                            <figcaption className="text-[9.5px] font-bold text-[#999] mt-1">1:1 Feed</figcaption>
+                          </figure>
+                          <figure className="text-center">
+                            <img src={formats.story?.url} alt="9:16" className="h-24 w-[54px] rounded-lg object-cover border border-[#eee]" />
+                            <figcaption className="text-[9.5px] font-bold text-[#999] mt-1">9:16 Story {formats.story?.method === 'ai' ? '· AI' : '· smart'}</figcaption>
+                          </figure>
+                          <figure className="text-center">
+                            <img src={formats.landscape?.url} alt="1.91:1" className="h-12 w-[92px] rounded-lg object-cover border border-[#eee]" />
+                            <figcaption className="text-[9.5px] font-bold text-[#999] mt-1">1.91:1 Bred {formats.landscape?.method === 'ai' ? '· AI' : '· smart'}</figcaption>
+                          </figure>
+                          <button onClick={generateFormats} disabled={formatsBusy} className="ml-auto text-[11px] font-bold text-[#a052e0] hover:text-[#7A3EC8] inline-flex items-center gap-1 disabled:opacity-50">
+                            {formatsBusy ? <Loader2 size={11} className="animate-spin" /> : <RefreshCw size={11} />} På nytt
+                          </button>
+                        </div>
+                      ) : (
+                        <button onClick={generateFormats} disabled={formatsBusy} className={`${btnPrimary} w-full mt-3 h-9`} data-testid="adstudio-formats-generate">
+                          {formatsBusy ? <><Loader2 size={13} className="animate-spin" /> AI utvider scenen … (30–90 s)</> : <><Smartphone size={13} /> Generer 9:16 + 1.91:1 automatisk</>}
+                        </button>
+                      )}
                     </div>
                   ) : null}
                 </div>
@@ -582,7 +707,7 @@ export default function AdStudioTab({ apiKey }) {
                     <button onClick={loadPreviews} className={btnGhost} disabled={previewBusy}><RefreshCw size={13} className={previewBusy ? 'animate-spin' : ''} /> Oppdater</button>
                   </div>
                   <div className="flex gap-1.5 mt-3">
-                    {['Desktop Feed', 'Mobil Feed', 'Instagram'].map((t, i) => (
+                    {(formats ? ['Desktop Feed', 'Mobil Feed', 'Instagram', 'Story'] : ['Desktop Feed', 'Mobil Feed', 'Instagram']).map((t, i) => (
                       <button key={t} onClick={() => setPreviewTab(i)} className={`rounded-full px-3 h-8 text-[12px] font-bold transition-colors ${previewTab === i ? 'bg-[#0a0a0a] text-white' : 'bg-[#f3f3f3] text-[#888] hover:bg-[#eaeaea]'}`}>{t}</button>
                     ))}
                   </div>
@@ -604,12 +729,33 @@ export default function AdStudioTab({ apiKey }) {
                   <h3 className="text-[14px] font-black text-[#111]">Publiser — trygt og pauset</h3>
                   <label className={label}>Annonsenavn (internt i Meta)</label>
                   <input value={adName} onChange={(e) => setAdName(e.target.value)} placeholder={autoName()} className={input} data-testid="adstudio-adname" />
-                  <div className="mt-4 rounded-xl border border-[#eee] p-4 text-[12.5px] text-[#555] space-y-1.5">
-                    <p><b className="text-[#111]">Plassering:</b> {adset?.campaignName} → {adset?.name}</p>
-                    <p><b className="text-[#111]">Destinasjon:</b> {link}</p>
-                    <p><b className="text-[#111]">Overskrift:</b> {headline}</p>
-                    <p><b className="text-[#111]">CTA:</b> {ctaLabel(cta)}</p>
-                    {isAb ? <p className="text-[#a052e0] font-semibold flex items-center gap-1"><FlaskConical size={13} /> A/B-test: {abTexts.length} annonser med ulik primærtekst</p> : null}
+
+                  {/* Pre-flight: alt du bør vite før du trykker på knappen */}
+                  <div className="mt-4 rounded-xl border border-[#eee] overflow-hidden" data-testid="adstudio-preflight">
+                    <div className="flex items-center gap-2 bg-[#fafafa] px-4 py-2.5 border-b border-[#f0f0f0]">
+                      <ListChecks size={14} className="text-[#a052e0]" />
+                      <p className="text-[12px] font-black text-[#111]">Pre-flight sjekkliste</p>
+                      <span className="ml-auto text-[10.5px] font-bold text-[#999]">{[
+                        !!adset, (media?.width || 0) >= 1080, !!(formats?.story && formats?.landscape),
+                        headline.length > 0 && headline.length <= 40, message.length > 0, valState === 'ok',
+                      ].filter(Boolean).length}/6</span>
+                    </div>
+                    <div className="px-4 py-3 space-y-2">
+                      {[
+                        { ok: !!adset, l: <>Plassering: <b>{adset?.campaignName}</b> → {adset?.name}</> },
+                        { ok: (media?.width || 0) >= 1080, l: <>Bildekvalitet ≥ 1080 px ({media?.width}×{media?.height})</> },
+                        { ok: !!(formats?.story && formats?.landscape), soft: true, l: formats?.story ? <>Plasseringstilpasset: 1:1 + 9:16 + 1.91:1</> : <>Kun 1:1 — Story/bred plassering gjenbruker kvadratet (høyere CPM)</> },
+                        { ok: headline.length > 0 && headline.length <= 40, l: <>Overskrift: «{headline || '—'}» · CTA: {ctaLabel(cta)}</> },
+                        { ok: message.length > 0, l: <>Destinasjon: {link.replace('https://', '')}{isAb ? <span className="text-[#a052e0] font-bold"> · A/B med {abTexts.length} varianter</span> : null}</> },
+                        { ok: valState === 'ok', soft: true, l: valState === 'ok' ? <>Godkjent av Metas validering</> : <>Metas validering ikke kjørt — anbefales før publisering</> },
+                        { ok: true, l: <>Opprettes <b>PAUSET</b> · UTM-sporing legges på automatisk</> },
+                      ].map((c, i) => (
+                        <p key={i} className={`flex items-start gap-2 text-[12px] leading-snug ${c.ok ? 'text-[#333]' : c.soft ? 'text-amber-700' : 'text-rose-600'}`}>
+                          {c.ok ? <CheckCircle2 size={13} className="text-emerald-500 shrink-0 mt-0.5" /> : c.soft ? <AlertCircle size={13} className="text-amber-500 shrink-0 mt-0.5" /> : <AlertCircle size={13} className="text-rose-500 shrink-0 mt-0.5" />}
+                          <span>{c.l}</span>
+                        </p>
+                      ))}
+                    </div>
                   </div>
                   <div className="mt-4 flex flex-wrap items-center gap-2">
                     <button onClick={validate} disabled={valState === 'busy'} className={btnGhost} data-testid="adstudio-validate">
@@ -637,7 +783,8 @@ export default function AdStudioTab({ apiKey }) {
                   <button onClick={() => setStep(3)} className={btnGhost}><ChevronLeft size={14} /> Tilbake</button>
                 </div>
               )}
-            </div>
+            </motion.div>
+            </AnimatePresence>
           </div>
 
           {/* Høyre (desktop) / under (mobil): mockup + kvalitetsscore */}
@@ -646,18 +793,25 @@ export default function AdStudioTab({ apiKey }) {
               <div className="flex items-center justify-between mb-2">
                 <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#999]">Live utkast</p>
                 <div className="flex rounded-full bg-[#f3f3f3] p-0.5" role="tablist" aria-label="Plattform">
-                  {[['facebook', 'Facebook'], ['instagram', 'Instagram']].map(([k, l]) => (
+                  {[['facebook', 'Facebook'], ['instagram', 'Instagram'], ['story', 'Story']].map(([k, l]) => (
                     <button key={k} onClick={() => setPlatform(k)} role="tab" aria-selected={platform === k}
                       className={`rounded-full px-2.5 h-6 text-[10.5px] font-bold transition-colors ${platform === k ? 'bg-white text-[#111] shadow-sm' : 'text-[#999]'}`} data-testid={`adstudio-platform-${k}`}>{l}</button>
                   ))}
                 </div>
               </div>
               <div className="flex justify-center xl:justify-start">
-                {platform === 'facebook' ? (
-                  <FeedMockup pageName={ctx.page?.name || 'DigiHome'} message={message} headline={headline} description={description} cta={ctaLabel(cta)} imageUrl={media?.url} link={link} />
-                ) : (
-                  <InstaMockup pageName={ctx.page?.name || 'DigiHome'} message={message} cta={ctaLabel(cta)} imageUrl={media?.url} />
-                )}
+                <AnimatePresence mode="wait">
+                  <motion.div key={platform} initial={{ opacity: 0, scale: 0.97, y: 8 }} animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.97, y: -8 }} transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}>
+                    {platform === 'facebook' ? (
+                      <FeedMockup pageName={ctx.page?.name || 'DigiHome'} message={message} headline={headline} description={description} cta={ctaLabel(cta)} imageUrl={media?.url} link={link} />
+                    ) : platform === 'instagram' ? (
+                      <InstaMockup pageName={ctx.page?.name || 'DigiHome'} message={message} cta={ctaLabel(cta)} imageUrl={media?.url} />
+                    ) : (
+                      <StoryMockup pageName={ctx.page?.name || 'DigiHome'} message={message} cta={ctaLabel(cta)} imageUrl={formats?.story?.url || media?.url} hasStoryFormat={!!formats?.story} />
+                    )}
+                  </motion.div>
+                </AnimatePresence>
               </div>
             </div>
             <QualityPanel quality={quality} />
@@ -697,41 +851,190 @@ function Stepper({ step, onJump }) {
 }
 
 /* ---------------------- Steg 1: kampanje + annonsesett --------------------- */
-function StepPlacement({ ctx, adset, setAdset, onRefresh }) {
+function StepPlacement({ ctx, adset, setAdset, onRefresh, q, onCreated }) {
+  const [mode, setMode] = useState('eksisterende'); // 'eksisterende' | 'ny'
   return (
     <div data-testid="adstudio-step-placement">
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-[14px] font-black text-[#111]">Hvor skal annonsen bo?</h3>
-          <p className="text-[12px] text-[#999] mt-0.5">Velg annonsesett — annonsen arver targeting og budsjett derfra. Aktive leads-kampanjer anbefales.</p>
+          <p className="text-[12px] text-[#999] mt-0.5">{mode === 'ny' ? 'Lag en helt ny kampanje med eget budsjett og målgruppe — alt opprettes pauset.' : 'Velg annonsesett — annonsen arver targeting og budsjett derfra. Aktive leads-kampanjer anbefales.'}</p>
         </div>
         <button onClick={onRefresh} className="text-[#999] hover:text-[#555] transition-colors" aria-label="Oppdater kampanjer"><RefreshCw size={14} /></button>
       </div>
-      <div className="mt-4 space-y-3 max-h-[480px] overflow-auto pr-1">
-        {(ctx.campaigns || []).map((c) => (
-          <div key={c.id} className="rounded-xl border border-[#eee] p-3">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className={`h-2 w-2 rounded-full ${c.status === 'ACTIVE' ? 'bg-emerald-500' : 'bg-[#ccc]'}`} />
-              <p className="text-[12.5px] font-bold text-[#222]">{c.name}</p>
-              {String(c.objective).includes('LEAD') ? <span className="text-[9.5px] font-bold uppercase text-emerald-700 bg-emerald-50 rounded-full px-2 py-0.5">Leads ✓ anbefalt</span> : <span className="text-[9.5px] font-bold uppercase text-[#999] bg-[#f3f3f3] rounded-full px-2 py-0.5">{String(c.objective || '').replace('OUTCOME_', '')}</span>}
-            </div>
-            <div className="mt-2 grid gap-1.5">
-              {(c.adsets || []).map((s) => (
-                <button key={s.id} onClick={() => setAdset({ ...s, campaignName: c.name, campaignId: c.id })}
-                  data-testid={`adstudio-adset-${s.id}`}
-                  className={`flex items-center justify-between rounded-lg border px-3 py-2 text-left transition-all ${adset?.id === s.id ? 'border-[#a052e0] bg-[#faf5ff] shadow-[0_2px_8px_rgba(160,82,224,0.12)]' : 'border-[#f0f0f0] hover:border-[#ddd] hover:-translate-y-px'}`}>
-                  <div>
-                    <p className="text-[12px] font-semibold text-[#333]">{s.name}</p>
-                    <p className="text-[10.5px] text-[#999]">{s.status} {s.dailyBudget ? `· ${nf.format(s.dailyBudget)} kr/dag` : ''} {s.geo ? `· ${s.geo}` : ''} {s.age ? `· ${s.age} år` : ''}</p>
-                  </div>
-                  {adset?.id === s.id ? <CheckCircle2 size={16} className="text-[#a052e0]" /> : <span className="h-4 w-4 rounded-full border border-[#e0e0e0]" />}
-                </button>
-              ))}
-              {!c.adsets?.length ? <p className="text-[11px] text-[#bbb] italic">Ingen annonsesett</p> : null}
-            </div>
-          </div>
+
+      <div className="mt-3 flex rounded-xl bg-[#f5f5f5] p-1" role="tablist" aria-label="Plasseringsmodus">
+        {[['eksisterende', 'Eksisterende annonsesett'], ['ny', '+ Ny kampanje']].map(([k, l]) => (
+          <button key={k} onClick={() => setMode(k)} role="tab" aria-selected={mode === k}
+            data-testid={`adstudio-placement-mode-${k}`}
+            className={`flex-1 h-8 rounded-lg text-[12px] font-bold transition-all ${mode === k ? 'bg-white text-[#111] shadow-sm' : 'text-[#999] hover:text-[#666]'}`}>{l}</button>
         ))}
       </div>
+
+      {mode === 'ny' ? (
+        <NewCampaignPanel q={q} onCreated={onCreated} onDone={() => setMode('eksisterende')} />
+      ) : (
+        <div className="mt-4 space-y-3 max-h-[480px] overflow-auto pr-1">
+          {(ctx.campaigns || []).map((c) => (
+            <div key={c.id} className="rounded-xl border border-[#eee] p-3">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className={`h-2 w-2 rounded-full ${c.status === 'ACTIVE' ? 'bg-emerald-500' : 'bg-[#ccc]'}`} />
+                <p className="text-[12.5px] font-bold text-[#222]">{c.name}</p>
+                {String(c.objective).includes('LEAD') ? <span className="text-[9.5px] font-bold uppercase text-emerald-700 bg-emerald-50 rounded-full px-2 py-0.5">Leads ✓ anbefalt</span> : <span className="text-[9.5px] font-bold uppercase text-[#999] bg-[#f3f3f3] rounded-full px-2 py-0.5">{String(c.objective || '').replace('OUTCOME_', '')}</span>}
+              </div>
+              <div className="mt-2 grid gap-1.5">
+                {(c.adsets || []).map((s) => (
+                  <button key={s.id} onClick={() => setAdset({ ...s, campaignName: c.name, campaignId: c.id })}
+                    data-testid={`adstudio-adset-${s.id}`}
+                    className={`flex items-center justify-between rounded-lg border px-3 py-2 text-left transition-all ${adset?.id === s.id ? 'border-[#a052e0] bg-[#faf5ff] shadow-[0_2px_8px_rgba(160,82,224,0.12)]' : 'border-[#f0f0f0] hover:border-[#ddd] hover:-translate-y-px'}`}>
+                    <div>
+                      <p className="text-[12px] font-semibold text-[#333]">{s.name}</p>
+                      <p className="text-[10.5px] text-[#999]">{s.status} {s.dailyBudget ? `· ${nf.format(s.dailyBudget)} kr/dag` : ''} {s.geo ? `· ${s.geo}` : ''} {s.age ? `· ${s.age} år` : ''}</p>
+                    </div>
+                    {adset?.id === s.id ? <CheckCircle2 size={16} className="text-[#a052e0]" /> : <span className="h-4 w-4 rounded-full border border-[#e0e0e0]" />}
+                  </button>
+                ))}
+                {!c.adsets?.length ? <p className="text-[11px] text-[#bbb] italic">Ingen annonsesett</p> : null}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* -------------------- Ny kampanje: skjema + geo-søk ------------------------ */
+function NewCampaignPanel({ q, onCreated, onDone }) {
+  const monthLabel = new Date().toLocaleDateString('nb-NO', { month: 'long', year: 'numeric' });
+  const [name, setName] = useState(`DigiHome Leads — ${monthLabel}`);
+  const [objective, setObjective] = useState('leads');
+  const [budget, setBudget] = useState(150);
+  const [geoMode, setGeoMode] = useState('norge'); // 'norge' | 'by'
+  const [geoQuery, setGeoQuery] = useState('');
+  const [geoResults, setGeoResults] = useState([]);
+  const [geoPick, setGeoPick] = useState(null);
+  const [ageMin, setAgeMin] = useState(28);
+  const [ageMax, setAgeMax] = useState(65);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [okMsg, setOkMsg] = useState('');
+
+  // Geo-søk med liten debounce
+  useEffect(() => {
+    if (geoMode !== 'by' || geoQuery.trim().length < 2 || geoPick) { setGeoResults([]); return; }
+    const t = setTimeout(async () => {
+      try {
+        const r = await fetch(`/api/admin/adstudio/geosearch?${q}&q=${encodeURIComponent(geoQuery.trim())}`);
+        const j = await r.json();
+        if (j.ok) setGeoResults(j.results || []);
+      } catch (e) {}
+    }, 350);
+    return () => clearTimeout(t);
+  }, [geoQuery, geoMode, geoPick, q]);
+
+  const create = async () => {
+    setBusy(true); setError(''); setOkMsg('');
+    try {
+      const r = await fetch(`/api/admin/adstudio/campaign?${q}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: name.trim(), objective, dailyBudget: Number(budget) || 150,
+          geo: geoMode === 'by' && geoPick ? { type: 'city', key: geoPick.key, name: geoPick.name, radius: 25 } : { type: 'country' },
+          ageMin: Number(ageMin) || 28, ageMax: Number(ageMax) || 65,
+        }),
+      });
+      const j = await r.json();
+      if (j.ok) {
+        setOkMsg(`Kampanjen «${name.trim()}» og annonsesettet «${j.adsetName}» er opprettet — pauset og klart.`);
+        await onCreated(j.adsetId);
+        setTimeout(() => onDone(), 1400);
+      } else setError(j.error || 'Opprettelsen feilet');
+    } catch (e) { setError('Opprettelsen feilet — prøv igjen'); }
+    setBusy(false);
+  };
+
+  const geoLabel = geoMode === 'by' && geoPick ? `${geoPick.name} (+25 km)` : 'Hele Norge';
+
+  return (
+    <div className="mt-4 dh-fade-up" data-testid="adstudio-newcampaign">
+      <label className={label}>Kampanjenavn</label>
+      <input value={name} onChange={(e) => setName(e.target.value)} className={input} maxLength={120} data-testid="adstudio-camp-name" />
+
+      <div className="grid sm:grid-cols-2 gap-3">
+        <div>
+          <label className={label}>Mål</label>
+          <div className="flex gap-1.5">
+            {[['leads', 'Leads (anbefalt)'], ['traffic', 'Trafikk']].map(([k, l]) => (
+              <button key={k} onClick={() => setObjective(k)}
+                className={`flex-1 h-9 rounded-xl text-[12px] font-bold border transition-colors ${objective === k ? 'bg-[#0a0a0a] text-white border-[#0a0a0a]' : 'border-[#e5e5e5] text-[#777] hover:border-[#bbb]'}`}
+                data-testid={`adstudio-camp-obj-${k}`}>{l}</button>
+            ))}
+          </div>
+        </div>
+        <div>
+          <label className={label}>Dagsbudsjett (kr)</label>
+          <input type="number" min={50} max={10000} value={budget} onChange={(e) => setBudget(e.target.value)} className={input} data-testid="adstudio-camp-budget" />
+        </div>
+      </div>
+
+      <label className={label}>Geografi</label>
+      <div className="flex gap-1.5">
+        <button onClick={() => { setGeoMode('norge'); setGeoPick(null); }}
+          className={`h-9 px-4 rounded-xl text-[12px] font-bold border transition-colors ${geoMode === 'norge' ? 'bg-[#0a0a0a] text-white border-[#0a0a0a]' : 'border-[#e5e5e5] text-[#777] hover:border-[#bbb]'}`}
+          data-testid="adstudio-camp-geo-norge">Hele Norge</button>
+        <button onClick={() => setGeoMode('by')}
+          className={`h-9 px-4 rounded-xl text-[12px] font-bold border transition-colors ${geoMode === 'by' ? 'bg-[#0a0a0a] text-white border-[#0a0a0a]' : 'border-[#e5e5e5] text-[#777] hover:border-[#bbb]'}`}
+          data-testid="adstudio-camp-geo-by">By/område</button>
+      </div>
+      {geoMode === 'by' ? (
+        <div className="mt-2 relative">
+          {geoPick ? (
+            <div className="flex items-center gap-2 rounded-xl border border-[#a052e0] bg-[#faf5ff] px-3.5 py-2.5">
+              <MapPin size={13} className="text-[#a052e0]" />
+              <span className="text-[12.5px] font-semibold text-[#333] flex-1">{geoPick.name}{geoPick.region ? `, ${geoPick.region}` : ''} · radius 25 km</span>
+              <button onClick={() => { setGeoPick(null); setGeoQuery(''); }} className="text-[11px] font-bold text-[#a052e0]">Endre</button>
+            </div>
+          ) : (
+            <>
+              <input value={geoQuery} onChange={(e) => setGeoQuery(e.target.value)} placeholder="Søk by — f.eks. Bergen" className={input} data-testid="adstudio-camp-geosearch" />
+              {geoResults.length ? (
+                <div className="absolute z-10 mt-1 w-full rounded-xl border border-[#eee] bg-white shadow-lg overflow-hidden">
+                  {geoResults.map((g) => (
+                    <button key={g.key} onClick={() => { setGeoPick(g); setGeoResults([]); }}
+                      className="w-full text-left px-3.5 py-2 text-[12.5px] hover:bg-[#faf5ff] transition-colors flex items-center gap-2">
+                      <MapPin size={12} className="text-[#a052e0]" /> {g.name}{g.region ? `, ${g.region}` : ''} <span className="text-[10px] text-[#bbb] uppercase ml-auto">{g.type}</span>
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </>
+          )}
+        </div>
+      ) : null}
+
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className={label}>Alder fra</label>
+          <input type="number" min={18} max={65} value={ageMin} onChange={(e) => setAgeMin(e.target.value)} className={input} />
+        </div>
+        <div>
+          <label className={label}>Alder til</label>
+          <input type="number" min={18} max={65} value={ageMax} onChange={(e) => setAgeMax(e.target.value)} className={input} />
+        </div>
+      </div>
+
+      <div className="mt-4 rounded-xl border border-[#f0e4fb] bg-[#faf5ff] p-3 text-[11.5px] text-[#555] flex items-start gap-2">
+        <ShieldCheck size={13} className="text-[#a052e0] shrink-0 mt-0.5" />
+        <span>Oppsummert: <b>{objective === 'leads' ? 'Leads' : 'Trafikk'}</b> · {nf.format(Number(budget) || 150)} kr/dag · {geoLabel} · {ageMin}–{ageMax} år. Kampanje og annonsesett opprettes <b>pauset</b> — ingenting bruker penger før du aktiverer.</span>
+      </div>
+
+      {error ? <p className="mt-2 text-[12px] font-semibold text-rose-500" data-testid="adstudio-camp-err">{error}</p> : null}
+      {okMsg ? <p className="mt-2 text-[12px] font-bold text-emerald-600 flex items-center gap-1.5" data-testid="adstudio-camp-ok"><CheckCircle2 size={13} /> {okMsg}</p> : null}
+
+      <button onClick={create} disabled={busy || !name.trim() || (geoMode === 'by' && !geoPick)} className={`${btnPrimary} w-full mt-3`} data-testid="adstudio-camp-create">
+        {busy ? <><Loader2 size={13} className="animate-spin" /> Oppretter i Meta …</> : <><PlusCircle size={14} /> Opprett kampanje + annonsesett (pauset)</>}
+      </button>
     </div>
   );
 }
@@ -807,6 +1110,44 @@ function InstaMockup({ pageName, message, cta, imageUrl }) {
   );
 }
 
+/* --------------------------- Story-mockup (9:16) --------------------------- */
+function StoryMockup({ pageName, message, cta, imageUrl, hasStoryFormat }) {
+  const firstLine = (message || '').split('\n')[0] || 'Primærteksten din vises her …';
+  return (
+    <div className="relative rounded-[26px] border border-[#e5e5e5] bg-[#111] shadow-[0_6px_24px_rgba(16,10,40,0.18)] overflow-hidden" data-testid="adstudio-mockup-story" style={{ width: 250, height: 444 }}>
+      {imageUrl ? (
+        <img src={imageUrl} alt="Story-annonse" className="absolute inset-0 h-full w-full object-cover" />
+      ) : (
+        <div className="absolute inset-0 flex items-center justify-center text-[#444]"><ImageIcon size={34} /></div>
+      )}
+      <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/60 to-transparent" />
+      <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black/70 to-transparent" />
+      <div className="absolute inset-x-0 top-0 p-3">
+        <div className="flex gap-1">
+          <span className="h-[3px] flex-1 rounded-full bg-white/90" />
+          <span className="h-[3px] flex-1 rounded-full bg-white/30" />
+          <span className="h-[3px] flex-1 rounded-full bg-white/30" />
+        </div>
+        <div className="mt-2.5 flex items-center gap-2">
+          <span className="h-8 w-8 rounded-full bg-white text-[#0a0a0a] flex items-center justify-center text-[12px] font-black">D</span>
+          <div>
+            <p className="text-[11.5px] font-bold text-white leading-tight">{pageName}</p>
+            <p className="text-[9.5px] text-white/70">Sponset</p>
+          </div>
+          <MoreHorizontal size={15} className="text-white/80 ml-auto" />
+        </div>
+      </div>
+      <div className="absolute inset-x-0 bottom-0 p-3.5 text-center">
+        <p className="text-[11px] text-white/90 leading-snug line-clamp-2 mb-2.5">{firstLine}</p>
+        <div className="mx-auto inline-flex items-center gap-1.5 rounded-full bg-white px-4 py-2 text-[11.5px] font-bold text-[#111] shadow-lg">
+          <ChevronRight size={12} className="-rotate-90" /> {cta}
+        </div>
+        {!hasStoryFormat ? <p className="mt-2 text-[8.5px] text-white/60">1:1-bildet beskjæres i Story — generer 9:16 for full flate</p> : null}
+      </div>
+    </div>
+  );
+}
+
 /* --------------------------- Kvalitetsscore -------------------------------- */
 function QualityPanel({ quality }) {
   const pct = Math.round((quality.score / quality.total) * 100);
@@ -870,7 +1211,7 @@ function MyAds({ ads, busy, onRefresh, onToggle, actId }) {
               <div key={a.id} className="flex flex-wrap items-center gap-3 px-5 py-3.5 hover:bg-[#fcfcfc] transition-colors">
                 {a.imageUrl ? <img src={a.imageUrl} alt="" className="h-11 w-11 rounded-lg object-cover" /> : <div className="h-11 w-11 rounded-lg bg-[#f3f3f3] flex items-center justify-center text-[#ccc]"><ImageIcon size={16} /></div>}
                 <div className="min-w-0 flex-1">
-                  <p className="text-[12.5px] font-bold text-[#222] truncate">{a.adName} {a.abGroup ? <span className="ml-1 text-[9.5px] font-bold uppercase text-[#a052e0] bg-[#f0e4fb] rounded-full px-1.5 py-0.5"><FlaskConical size={9} className="inline -mt-0.5" /> A/B {a.abIndex}/{a.abTotal}</span> : null}</p>
+                  <p className="text-[12.5px] font-bold text-[#222] truncate">{a.adName} {a.abGroup ? <span className="ml-1 text-[9.5px] font-bold uppercase text-[#a052e0] bg-[#f0e4fb] rounded-full px-1.5 py-0.5"><FlaskConical size={9} className="inline -mt-0.5" /> A/B {a.abIndex}/{a.abTotal}</span> : null} {a.placementCustomized ? <span className="ml-1 text-[9.5px] font-bold uppercase text-emerald-700 bg-emerald-50 rounded-full px-1.5 py-0.5"><Smartphone size={9} className="inline -mt-0.5" /> Alle formater</span> : null}</p>
                   <p className="text-[10.5px] text-[#999]">{a.headline} · {new Date(a.createdAt).toLocaleDateString('nb-NO')}</p>
                 </div>
                 <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${active ? 'bg-emerald-50 text-emerald-700' : String(live.status || a.status).includes('PAUSED') ? 'bg-amber-50 text-amber-700' : 'bg-[#f3f3f3] text-[#999]'}`}>{live.status || a.status}</span>
