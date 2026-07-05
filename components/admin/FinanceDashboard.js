@@ -7,6 +7,8 @@ import {
   Percent, ArrowUpRight, ArrowDownRight, Repeat,
 } from 'lucide-react';
 
+import ApiUsageTab from '@/components/admin/ApiUsageTab';
+
 // ── Formattering (NOK, nb-NO) ───────────────────────────────────────────────
 const nf0 = new Intl.NumberFormat('nb-NO', { maximumFractionDigits: 0 });
 const kr = (n) => `${nf0.format(Math.round(Number(n) || 0))} kr`;
@@ -20,6 +22,7 @@ const TABS = [
   { k: 'investor', l: 'Investor', icon: Landmark },
   { k: 'kontrakter', l: 'Kontrakter', icon: Building2 },
   { k: 'kostnader', l: 'Kostnader', icon: Receipt },
+  { k: 'api', l: 'API-forbruk', icon: Zap },
   { k: 'innstillinger', l: 'Innstillinger', icon: Settings2 },
 ];
 
@@ -185,6 +188,7 @@ export default function FinanceDashboard({ apiKey }) {
       {tab === 'kostnader' && (
         <KostnaderTab items={costs} auto={resultat?.configured} onSave={(c) => saveEntity('costs', c)} onDelete={(id) => deleteEntity('costs', id)} saving={saving} />
       )}
+      {tab === 'api' && <ApiUsageTab apiKey={apiKey} />}
       {tab === 'innstillinger' && <InnstillingerTab settings={settings} onSave={saveSettings} saving={saving} />}
     </div>
   );

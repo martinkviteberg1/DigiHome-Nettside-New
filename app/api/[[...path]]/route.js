@@ -29,6 +29,8 @@ import {
   listAllQuestions as ddListAllQuestions, answerQuestion as ddAnswerQuestion, deleteQuestion as ddDeleteQuestion,
 } from '@/lib/investor-room';
 import { computeKpiDashboard, getKpiSettings, setKpiSettings } from '@/lib/kpi-dashboard';
+import { computeLlmUsageDashboard, getModelOverrides, setModelOverride, logImageUsage, AVAILABLE_MODELS, DEFAULT_MODEL } from '@/lib/llm-usage';
+import { logExtUsage, summarizeExtUsage } from '@/lib/ext-usage';
 import { getFinanceSettings, setFinanceSettings, listCosts, upsertCost, deleteCost, listContracts, upsertContract, deleteContract, listEvents, upsertEvent, deleteEvent, computeResultat, computeLikviditet, computeFinanceOverview, computeTrends, captureSnapshot, computeInvestorMetrics, computeForecast, computeBoardPack, computeCustomers, computePlatformCustomers } from '@/lib/finance';
 import { syncContractsFromPlatform, syncCustomersFromPlatform } from '@/lib/contracts-sync';
 import { ga4MpConfigured, sendGa4Purchase } from '@/lib/ga4-mp';
@@ -450,6 +452,7 @@ async function googlePlacesSearch(q) {
     const timer = setTimeout(() => ctrl.abort(), 4000);
     const r = await fetch(url, { signal: ctrl.signal });
     clearTimeout(timer);
+    getDb().then((db) => logExtUsage(db, 'google_maps_autocomplete', 1)).catch(() => {}); // forbrukstelling (kun ekte kall, ikke cache)
     if (!r.ok) return null;
     const data = await r.json();
     if (data.status !== 'OK' && data.status !== 'ZERO_RESULTS') return null; // kvote/nøkkelfeil → fallback
@@ -480,6 +483,7 @@ async function googlePlaceDetails(placeId) {
     const timer = setTimeout(() => ctrl.abort(), 4000);
     const r = await fetch(url, { signal: ctrl.signal });
     clearTimeout(timer);
+    getDb().then((db) => logExtUsage(db, 'google_maps_details', 1)).catch(() => {}); // forbrukstelling (kun ekte kall, ikke cache)
     if (!r.ok) return null;
     const data = await r.json();
     if (data.status !== 'OK') return null;
@@ -3241,8 +3245,10 @@ Lag en komplett tekstpakke som JSON:
             } catch (err) { return null; } finally { clearTimeout(timer); }
           };
           let b64 = await genWithModel('gemini/gemini-3-pro-image-preview', 90000);
-          if (!b64) b64 = await genWithModel('gemini/gemini-2.5-flash-image', 60000);
+          let aiImgModel = 'gemini-3-pro-image-preview';
+          if (!b64) { b64 = await genWithModel('gemini/gemini-2.5-flash-image', 60000); aiImgModel = 'gemini-2.5-flash-image'; }
           if (!b64) return cors(NextResponse.json({ ok: false, error: 'AI-bildet feilet — prøv igjen' }, { status: 502 }));
+          logImageUsage(db, { model: aiImgModel, feature: 'annonsestudio_bilde' }).catch(() => {}); // kostnadstelling
           buf = Buffer.from(b64, 'base64');
           filename = 'ai-annonse.jpg';
         }
@@ -3461,6 +3467,7 @@ Lag en komplett tekstpakke som JSON:
           modelUsed = 'gemini-2.5-flash-image';
         }
         if (!b64) return cors(NextResponse.json({ ok: false, error: 'AI ga ikke noe bilde — prøv et annet prompt' }, { status: 502 }));
+        logImageUsage(db, { model: modelUsed, feature: 'nyhetsbrev_bilde' }).catch(() => {}); // kostnadstelling
         // E-postsikker JPEG (Outlook støtter ikke WebP) + hard optimalisering
         const sharp = (await import('sharp')).default;
         const out = await sharp(Buffer.from(b64, 'base64'))
@@ -4199,6 +4206,80 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
       } catch (e) {
         return cors(NextResponse.json({ ok: false, error: e.message }, { status: 200 }));
       }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // API-FORBRUK — samlet kostnadspanel: LLM (self-metering, per modell/
+    // funksjon m/ drilldown), eksterne tjenester (egen telling) og
+    // plattform-prosjektets /api/usage/external (polles m/ 10 min cache).
+    // Modellbytte per funksjon: PUT /admin/usage/llm/model {feature, model}.
+    // ═══════════════════════════════════════════════════════════════════
+    if (route === '/admin/usage/api' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const sp = new URL(request.url).searchParams;
+      const days = Math.max(1, Math.min(365, Number(sp.get('days')) || 30));
+
+      // Plattform-forbruk: hent med 10 min DB-cache (unngå å hamre CRM-et).
+      const fetchPlatformUsage = async () => {
+        const CACHE_KEY = 'platform_usage_external';
+        try {
+          const hit = await db.collection('kv_cache').findOne({ key: CACHE_KEY });
+          if (hit && hit.at && Date.now() - new Date(hit.at).getTime() < 10 * 60000 && !sp.get('fresh')) return hit.value;
+        } catch (_) {}
+        const target = digiHomeTarget();
+        let value = { status: 'waiting', services: null, llm: null, env: target.env, checkedAt: new Date().toISOString() };
+        try {
+          const ctrl = new AbortController();
+          const timer = setTimeout(() => ctrl.abort(), 8000);
+          const r = await fetch(`${target.url}/api/usage/external`, {
+            headers: {
+              'X-Bridge-Token': process.env.AGENT_BRIDGE_SECRET || '',
+              ...(target.key ? { 'X-API-Key': target.key } : {}),
+            },
+            signal: ctrl.signal,
+          });
+          clearTimeout(timer);
+          if (r.ok) {
+            const j = await r.json().catch(() => null);
+            if (j && j.ok) value = { status: 'ok', month: j.month || null, generatedAt: j.generatedAt || null, services: j.services || [], llm: j.llm || null, env: target.env, checkedAt: new Date().toISOString() };
+            else value.status = 'invalid';
+          } else {
+            value.status = r.status === 404 ? 'waiting' : 'error';
+            value.httpStatus = r.status;
+          }
+        } catch (_) { value.status = 'error'; }
+        try { await db.collection('kv_cache').updateOne({ key: CACHE_KEY }, { $set: { at: new Date().toISOString(), value } }, { upsert: true }); } catch (_) {}
+        return value;
+      };
+
+      try {
+        const [llm, ext, overrides, platform] = await Promise.all([
+          computeLlmUsageDashboard(db, days),
+          summarizeExtUsage(db, days),
+          getModelOverrides(db),
+          fetchPlatformUsage(),
+        ]);
+        return cors(NextResponse.json({
+          ok: true, days, llm, ext, platform, overrides,
+          models: AVAILABLE_MODELS, defaultModel: DEFAULT_MODEL,
+          generatedAt: new Date().toISOString(),
+        }));
+      } catch (e) {
+        return cors(NextResponse.json({ ok: false, error: e.message }, { status: 500 }));
+      }
+    }
+    if (route === '/admin/usage/llm/model' && method === 'PUT') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      const feature = String(body.feature || '').trim().slice(0, 60);
+      const model = String(body.model || '').trim().slice(0, 60);
+      if (!feature) return cors(NextResponse.json({ ok: false, error: 'Mangler feature' }, { status: 400 }));
+      if (model && !AVAILABLE_MODELS.some((m) => m.id === model)) {
+        return cors(NextResponse.json({ ok: false, error: `Ukjent modell: ${model}` }, { status: 400 }));
+      }
+      await setModelOverride(db, feature, model || null);
+      const overrides = await getModelOverrides(db);
+      return cors(NextResponse.json({ ok: true, feature, model: model || null, defaultModel: DEFAULT_MODEL, overrides }));
     }
 
     // ═══════════════════════════════════════════════════════════════════
