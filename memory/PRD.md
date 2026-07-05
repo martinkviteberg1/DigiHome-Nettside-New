@@ -276,3 +276,17 @@ Google Ads-styring via native REST API).
   since-markør per miljø, idempotens på id, eksakte JSON-envelopes, kuratert modelliste,
   krav om kvittering til SAMME miljø, testprosedyre. + pointer-note i integration-contract.
   Verifisert lesbar via GET /api/agent-bridge?thread=model-control.
+
+## Økt 5. juli 2026 (del 7) — Verdensklasse performanceanalyse (PROD, read-only)
+- Prod-tilgang verifisert: admin-API på digihome.no svarer med samme ADMIN_KEY (kun GETs brukt).
+- FUNN: 58 huseier-leads (mars–juli), uke 27 beste uke (8). 90d: 18 526 kr annonser → blandet CPL 394 kr
+  (30d: 214 kr). Juni-forbruk -53% men leads stabile → organisk base ~14/mnd. Google mikrotest CPL ~51 kr
+  vs Meta 6 107 kr/pixel-lead. Skjema-funnel lekker 61% på steg 2 «Dine mål» (56 starts → 7 submits).
+- KRITISK: CRM-webhooks peker på PREVIEW (bekreftet i broen 5/7) → prod-statuser frosset (49/58 new),
+  wonValue=0. tier=None på alle prod-leads. 52/58 mangler attribution (eldre leads).
+- STAGES: bevisst mapping (IKKE identiske): vi new/contacted/qualified/won/lost + funnelStage
+  (viewing_booked/contract_sent) ↔ CRM new/contacted/qualified/viewing/proposal/signed/lost/disqualified.
+  Avtalt i kontrakt: viewing→viewing_booked, proposal→contract_sent, signed→won, offer→proposal.
+- BRO-STATUS: alt besvart unntatt model-control (0 svar); åpent: CRM-webhooks→prod, usage/external 404 i
+  CRM-prod, deres webhook-401.
+- Scripts: /app/scripts/fetch-prod-analysis.sh + analyse-prod.py (gjenbrukbare).
