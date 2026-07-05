@@ -270,3 +270,9 @@ Google Ads-styring via native REST API).
   plattform-agenten «les broen (integration-contract) og implementer model-control».
 - TESTET: backend-agent 7/7 PASS (request/pending/applied/rejected/validering/
   regresjon/opprydding). Whitelist-fix eksplisitt verifisert.
+- ✅ (del 6b) KOMPLETT driftsinstruks publisert på broen (scripts/publish-model-control-ops.mjs):
+  spec-melding i thread 'model-control' (data.kind ops_instructions) med poll-URL-er for
+  BÅDE preview og prod (digihome.no), auth (samme AGENT_BRIDGE_SECRET), 5-min polling m/
+  since-markør per miljø, idempotens på id, eksakte JSON-envelopes, kuratert modelliste,
+  krav om kvittering til SAMME miljø, testprosedyre. + pointer-note i integration-contract.
+  Verifisert lesbar via GET /api/agent-bridge?thread=model-control.
