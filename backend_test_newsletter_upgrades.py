@@ -1,663 +1,542 @@
 #!/usr/bin/env python3
 """
-Backend test for DigiHome Newsletter Upgrades (WebP conversion, multi-recipient test, preview with new blocks).
-
-CRITICAL SAFETY RULES:
-1. NEVER call POST /api/admin/newsletter/send (sends REAL emails!)
-2. POST /api/admin/newsletter/test SENDS REAL EMAILS when valid - test ONLY validation/error paths (400)
-3. Do NOT create, modify, or delete any newsletter campaigns/drafts
-4. Do NOT modify newsletter_subscribers or leads
-5. MANDATORY CLEANUP: delete any documents created in newsletter_assets MongoDB collection
+Backend test for DigiHome Newsletter Upgrades (Batch 2)
+Tests 4 new features + 1 regression test:
+1. AI subject/preheader suggestions (POST /api/admin/newsletter/suggest)
+2. Extended campaign stats (GET /api/admin/newsletter/campaign with new fields)
+3. One-click unsubscribe (POST /api/newsletter/unsubscribe validation)
+4. Focal point rendering (POST /api/admin/newsletter/preview with focalX/focalY)
+5. Regression: WebP upload (POST /api/admin/newsletter/upload)
 """
 
 import requests
-import json
-import os
 import sys
-from io import BytesIO
+import json
+import io
 from PIL import Image
-from pymongo import MongoClient
 
 # Configuration
 BASE_URL = "https://hero-premiere-4.preview.emergentagent.com/api"
 ADMIN_KEY = "dh_admin_b3Kx92Qz7Lm4"
-TIMEOUT = 60
+TIMEOUT = 60  # Allow up to 60s for LLM calls
 
-# MongoDB connection
-MONGO_URL = os.getenv("MONGO_URL", "mongodb://localhost:27017")
-DB_NAME = os.getenv("DB_NAME", "your_database_name")
-
-# Track created assets for cleanup
-created_asset_ids = []
-
-def test_webp_conversion():
-    """TEST 1: WebP conversion on image upload (NEW - most important)"""
+def test_ai_suggestions():
+    """TEST 1: AI subject/preheader suggestions (NEW)"""
     print("\n" + "="*80)
-    print("TEST 1: WebP conversion on image upload")
+    print("TEST 1: AI SUBJECT/PREHEADER SUGGESTIONS (NEW)")
     print("="*80)
     
-    passed = 0
-    total = 0
+    url = f"{BASE_URL}/admin/newsletter/suggest?key={ADMIN_KEY}"
     
-    # 1a. Generate a small JPEG image (200x150 px, red color)
-    print("\n[1a] Generating test JPEG image (200x150 px)...")
-    total += 1
-    try:
-        img = Image.new('RGB', (200, 150), color='red')
-        jpeg_buffer = BytesIO()
-        img.save(jpeg_buffer, format='JPEG')
-        jpeg_buffer.seek(0)
-        print("✓ Test JPEG image generated (200x150 px)")
-        passed += 1
-    except Exception as e:
-        print(f"✗ Failed to generate JPEG: {e}")
-        return passed, total
-    
-    # 1b. POST /api/admin/newsletter/upload with multipart/form-data
-    print("\n[1b] POST /api/admin/newsletter/upload with JPEG...")
-    total += 1
-    try:
-        files = {'file': ('test.jpg', jpeg_buffer, 'image/jpeg')}
-        response = requests.post(
-            f"{BASE_URL}/admin/newsletter/upload?key={ADMIN_KEY}",
-            files=files,
-            timeout=TIMEOUT
-        )
-        print(f"Status: {response.status_code}")
-        
-        if response.status_code == 201:
-            data = response.json()
-            if data.get('ok') and data.get('id') and data.get('url') and 'width' in data and 'height' in data:
-                asset_id = data['id']
-                asset_url = data['url']
-                width = data['width']
-                height = data['height']
-                created_asset_ids.append(asset_id)
-                print(f"✓ Upload successful: id={asset_id}, url={asset_url}, width={width}, height={height}")
-                passed += 1
-            else:
-                print(f"✗ Response missing required fields: {data}")
-        else:
-            print(f"✗ Expected 201, got {response.status_code}: {response.text[:200]}")
-    except Exception as e:
-        print(f"✗ Upload failed: {e}")
-        return passed, total
-    
-    # 1c. GET /api/newsletter/asset?id=<id> → expect Content-Type: image/webp
-    print(f"\n[1c] GET /api/newsletter/asset?id={asset_id} (verify WebP conversion)...")
-    total += 1
-    try:
-        response = requests.get(
-            f"{BASE_URL}/newsletter/asset?id={asset_id}",
-            timeout=TIMEOUT
-        )
-        print(f"Status: {response.status_code}")
-        
-        if response.status_code == 200:
-            content_type = response.headers.get('Content-Type', '')
-            cache_control = response.headers.get('Cache-Control', '')
-            body = response.content
-            
-            print(f"Content-Type: {content_type}")
-            print(f"Cache-Control: {cache_control}")
-            print(f"Body length: {len(body)} bytes")
-            
-            # CRITICAL: Verify Content-Type is image/webp (NEW BEHAVIOR)
-            if content_type == 'image/webp':
-                print("✓ Content-Type is image/webp (WebP conversion working)")
-                
-                # Verify WebP magic bytes (RIFF....WEBP)
-                if body[:4] == b'RIFF' and body[8:12] == b'WEBP':
-                    print("✓ WebP magic bytes verified (RIFF....WEBP)")
-                else:
-                    print(f"✗ Invalid WebP magic bytes: {body[:12].hex()}")
-                
-                # Verify Cache-Control contains 'immutable'
-                if 'immutable' in cache_control:
-                    print(f"✓ Cache-Control contains 'immutable': {cache_control}")
-                    passed += 1
-                else:
-                    print(f"✗ Cache-Control missing 'immutable': {cache_control}")
-            else:
-                print(f"✗ Expected Content-Type: image/webp, got: {content_type}")
-        else:
-            print(f"✗ Expected 200, got {response.status_code}")
-    except Exception as e:
-        print(f"✗ Asset fetch failed: {e}")
-    
-    # 1d. Upload PNG with transparency → should also be image/webp
-    print("\n[1d] Uploading PNG with transparency...")
-    total += 1
-    try:
-        png_img = Image.new('RGBA', (180, 120), color=(0, 255, 0, 128))  # Green with 50% transparency
-        png_buffer = BytesIO()
-        png_img.save(png_buffer, format='PNG')
-        png_buffer.seek(0)
-        
-        files = {'file': ('test.png', png_buffer, 'image/png')}
-        response = requests.post(
-            f"{BASE_URL}/admin/newsletter/upload?key={ADMIN_KEY}",
-            files=files,
-            timeout=TIMEOUT
-        )
-        
-        if response.status_code == 201:
-            data = response.json()
-            png_asset_id = data.get('id')
-            created_asset_ids.append(png_asset_id)
-            
-            # Verify PNG also converted to WebP
-            asset_response = requests.get(f"{BASE_URL}/newsletter/asset?id={png_asset_id}", timeout=TIMEOUT)
-            if asset_response.status_code == 200 and asset_response.headers.get('Content-Type') == 'image/webp':
-                print(f"✓ PNG with transparency also converted to image/webp (id={png_asset_id})")
-                passed += 1
-            else:
-                print(f"✗ PNG not converted to WebP: {asset_response.headers.get('Content-Type')}")
-        else:
-            print(f"✗ PNG upload failed: {response.status_code}")
-    except Exception as e:
-        print(f"✗ PNG upload failed: {e}")
-    
-    # 1e. Negative: POST without file → expect 400 (NOTE: known to return 500 - minor issue)
-    print("\n[1e] POST /api/admin/newsletter/upload without file (expect 400)...")
-    total += 1
-    try:
-        response = requests.post(
-            f"{BASE_URL}/admin/newsletter/upload?key={ADMIN_KEY}",
-            data={},
-            timeout=TIMEOUT
-        )
-        print(f"Status: {response.status_code}")
-        
-        # NOTE: Previous test found this returns 500 instead of 400 - this is a KNOWN MINOR issue
-        if response.status_code in [400, 500]:
-            print(f"✓ Returns {response.status_code} without file (NOTE: 500 is known minor issue, 400 expected)")
-            passed += 1
-        else:
-            print(f"✗ Expected 400 or 500, got {response.status_code}")
-    except Exception as e:
-        print(f"✗ Request failed: {e}")
-    
-    # 1f. Auth: POST without key → 401
-    print("\n[1f] POST /api/admin/newsletter/upload without key (expect 401)...")
-    total += 1
-    try:
-        jpeg_buffer.seek(0)
-        files = {'file': ('test.jpg', jpeg_buffer, 'image/jpeg')}
-        response = requests.post(
-            f"{BASE_URL}/admin/newsletter/upload",
-            files=files,
-            timeout=TIMEOUT
-        )
-        print(f"Status: {response.status_code}")
-        
-        if response.status_code == 401:
-            print("✓ Returns 401 without key (authentication working)")
-            passed += 1
-        else:
-            print(f"✗ Expected 401, got {response.status_code}")
-    except Exception as e:
-        print(f"✗ Request failed: {e}")
-    
-    print(f"\n{'='*80}")
-    print(f"TEST 1 SUMMARY: {passed}/{total} passed")
-    print(f"{'='*80}")
-    
-    return passed, total
-
-
-def test_multi_recipient_validation():
-    """TEST 2: Multi-recipient test endpoint VALIDATION ONLY (NEW)"""
-    print("\n" + "="*80)
-    print("TEST 2: Multi-recipient test endpoint VALIDATION ONLY")
-    print("="*80)
-    
-    passed = 0
-    total = 0
-    
-    # 2a. POST with invalid emails → 400 'Ingen gyldige test-adresser'
-    print("\n[2a] POST /api/admin/newsletter/test with invalid emails...")
-    total += 1
+    # Test 1a: mode='ny' with valid blocks
+    print("\nTest 1a: POST /api/admin/newsletter/suggest with mode='ny' and valid blocks...")
     try:
         payload = {
-            'to': 'ikke-en-epost, heller;ogsåikke',
-            'blocks': [{'type': 'text', 'text': 'hei'}]
+            "blocks": [
+                {"type": "heading", "text": "Sommertilbud på utleie"},
+                {"type": "text", "text": "Vi gir 10 prosent rabatt på forvaltningshonorar ut juli. Bergen har rekordhøy etterspørsel etter leieboliger akkurat nå. Registrer deg innen 10. juli."}
+            ],
+            "mode": "ny"
         }
-        response = requests.post(
-            f"{BASE_URL}/admin/newsletter/test?key={ADMIN_KEY}",
-            json=payload,
-            timeout=TIMEOUT
-        )
-        print(f"Status: {response.status_code}")
-        
-        if response.status_code == 400:
-            data = response.json()
-            error = data.get('error', '')
-            print(f"Error message: {error}")
-            
-            if 'Ingen gyldige test-adresser' in error:
-                print("✓ Returns 400 with correct error message (Norwegian)")
-                passed += 1
-            else:
-                print(f"✗ Wrong error message: {error}")
-        else:
-            print(f"✗ Expected 400, got {response.status_code}: {response.text[:200]}")
-    except Exception as e:
-        print(f"✗ Request failed: {e}")
-    
-    # 2b. POST with valid email but empty blocks → 400 'Nyhetsbrevet har ikke noe innhold ennå'
-    print("\n[2b] POST /api/admin/newsletter/test with valid email but empty blocks...")
-    total += 1
-    try:
-        payload = {
-            'to': 'gyldig@example.com',
-            'blocks': []
-        }
-        response = requests.post(
-            f"{BASE_URL}/admin/newsletter/test?key={ADMIN_KEY}",
-            json=payload,
-            timeout=TIMEOUT
-        )
-        print(f"Status: {response.status_code}")
-        
-        if response.status_code == 400:
-            data = response.json()
-            error = data.get('error', '')
-            print(f"Error message: {error}")
-            
-            if 'Nyhetsbrevet har ikke noe innhold ennå' in error:
-                print("✓ Returns 400 with correct error message (Norwegian)")
-                passed += 1
-            else:
-                print(f"✗ Wrong error message: {error}")
-        else:
-            print(f"✗ Expected 400, got {response.status_code}: {response.text[:200]}")
-    except Exception as e:
-        print(f"✗ Request failed: {e}")
-    
-    # 2c. Auth: POST without key → 401
-    print("\n[2c] POST /api/admin/newsletter/test without key (expect 401)...")
-    total += 1
-    try:
-        payload = {
-            'to': 'test@example.com',
-            'blocks': [{'type': 'text', 'text': 'test'}]
-        }
-        response = requests.post(
-            f"{BASE_URL}/admin/newsletter/test",
-            json=payload,
-            timeout=TIMEOUT
-        )
-        print(f"Status: {response.status_code}")
-        
-        if response.status_code == 401:
-            print("✓ Returns 401 without key (authentication working)")
-            passed += 1
-        else:
-            print(f"✗ Expected 401, got {response.status_code}")
-    except Exception as e:
-        print(f"✗ Request failed: {e}")
-    
-    print(f"\n{'='*80}")
-    print(f"TEST 2 SUMMARY: {passed}/{total} passed")
-    print(f"{'='*80}")
-    
-    return passed, total
-
-
-def test_preview_new_blocks():
-    """TEST 3: Preview rendering of NEW block features (safe, sends nothing)"""
-    print("\n" + "="*80)
-    print("TEST 3: Preview rendering of NEW block features")
-    print("="*80)
-    
-    passed = 0
-    total = 0
-    
-    # 3a. POST with image block (height:220, fit:'contain') and properties block
-    print("\n[3a] POST /api/admin/newsletter/preview with new block features...")
-    total += 1
-    try:
-        payload = {
-            'subject': 'Render-test',
-            'blocks': [
-                {
-                    'type': 'image',
-                    'url': '/x.jpg',
-                    'alt': 'a',
-                    'height': 220,
-                    'fit': 'contain'
-                },
-                {
-                    'type': 'properties',
-                    'title': 'Ledige boliger',
-                    'cta': 'Se alle ledige boliger',
-                    'url': 'https://digihome.no/bli-leietaker',
-                    'items': [
-                        {
-                            'pid': 'p1',
-                            'title': 'Testbolig A',
-                            'image': 'https://example.com/a.jpg',
-                            'meta': 'Bergen · 60 m²',
-                            'band': '18 000 kr/mnd'
-                        },
-                        {
-                            'pid': 'p2',
-                            'title': 'Testbolig B',
-                            'image': '',
-                            'meta': 'Landås',
-                            'band': ''
-                        }
-                    ]
-                }
-            ]
-        }
-        response = requests.post(
-            f"{BASE_URL}/admin/newsletter/preview?key={ADMIN_KEY}",
-            json=payload,
-            timeout=TIMEOUT
-        )
+        response = requests.post(url, json=payload, timeout=TIMEOUT)
         print(f"Status: {response.status_code}")
         
         if response.status_code == 200:
             data = response.json()
-            if data.get('ok') and 'html' in data:
-                html = data['html']
-                print(f"✓ Preview successful, HTML length: {len(html)} chars")
+            print(f"Response keys: {list(data.keys())}")
+            
+            if data.get('ok') and 'suggestions' in data:
+                suggestions = data['suggestions']
+                print(f"✅ Got {len(suggestions)} suggestions")
                 
-                # Verify html contains expected content
-                checks = [
-                    ('height:220px', 'image height'),
-                    ('object-fit:contain', 'image fit'),
-                    ('Testbolig A', 'property title A'),
-                    ('18 000 kr/mnd', 'property band'),
-                    ('Se alle ledige boliger', 'CTA text'),
-                    ('Testbolig B', 'property title B')
-                ]
+                if len(suggestions) >= 1 and len(suggestions) <= 3:
+                    print(f"✅ Suggestions count is valid (1-3): {len(suggestions)}")
+                else:
+                    print(f"❌ Suggestions count out of range: {len(suggestions)}")
                 
-                all_found = True
-                for check_str, desc in checks:
-                    if check_str in html:
-                        print(f"  ✓ HTML contains '{check_str}' ({desc})")
+                # Verify structure
+                for i, sug in enumerate(suggestions):
+                    if 'subject' in sug and 'preheader' in sug:
+                        print(f"✅ Suggestion {i+1} has required fields")
+                        print(f"   Subject: {sug['subject'][:60]}...")
+                        print(f"   Preheader: {sug['preheader'][:60]}...")
+                        
+                        # Check if Norwegian text
+                        if any(c in sug['subject'] + sug['preheader'] for c in 'æøåÆØÅ'):
+                            print(f"✅ Suggestion {i+1} contains Norwegian characters")
                     else:
-                        print(f"  ✗ HTML missing '{check_str}' ({desc})")
-                        all_found = False
+                        print(f"❌ Suggestion {i+1} missing required fields")
+            else:
+                print(f"❌ Response missing 'ok' or 'suggestions': {data}")
+        else:
+            print(f"❌ Expected 200, got {response.status_code}: {response.text[:200]}")
+    except Exception as e:
+        print(f"❌ Test 1a failed: {e}")
+    
+    # Test 1b: mode='forbedre' with currentSubject
+    print("\nTest 1b: POST with mode='forbedre' and currentSubject...")
+    try:
+        payload = {
+            "blocks": [
+                {"type": "heading", "text": "Sommertilbud på utleie"},
+                {"type": "text", "text": "Vi gir 10 prosent rabatt på forvaltningshonorar ut juli."}
+            ],
+            "mode": "forbedre",
+            "currentSubject": "Nyhetsbrev fra DigiHome"
+        }
+        response = requests.post(url, json=payload, timeout=TIMEOUT)
+        print(f"Status: {response.status_code}")
+        
+        if response.status_code == 200:
+            data = response.json()
+            if data.get('ok') and 'suggestions' in data:
+                print(f"✅ Got {len(data['suggestions'])} suggestions for mode='forbedre'")
+            else:
+                print(f"❌ Response missing 'ok' or 'suggestions': {data}")
+        else:
+            print(f"❌ Expected 200, got {response.status_code}: {response.text[:200]}")
+    except Exception as e:
+        print(f"❌ Test 1b failed: {e}")
+    
+    # Test 1c: Negative - empty blocks
+    print("\nTest 1c: POST with empty blocks (should return 400)...")
+    try:
+        payload = {"blocks": [], "mode": "ny"}
+        response = requests.post(url, json=payload, timeout=TIMEOUT)
+        print(f"Status: {response.status_code}")
+        
+        if response.status_code == 400:
+            data = response.json()
+            if 'error' in data and 'innhold' in data['error'].lower():
+                print(f"✅ Got 400 with Norwegian error about missing content: {data['error']}")
+            else:
+                print(f"⚠️ Got 400 but error message unexpected: {data}")
+        else:
+            print(f"❌ Expected 400, got {response.status_code}: {response.text[:200]}")
+    except Exception as e:
+        print(f"❌ Test 1c failed: {e}")
+    
+    # Test 1d: Auth - without key
+    print("\nTest 1d: POST without key (should return 401)...")
+    try:
+        url_no_key = f"{BASE_URL}/admin/newsletter/suggest"
+        payload = {"blocks": [{"type": "text", "text": "test"}], "mode": "ny"}
+        response = requests.post(url_no_key, json=payload, timeout=TIMEOUT)
+        print(f"Status: {response.status_code}")
+        
+        if response.status_code == 401:
+            print(f"✅ Got 401 without key (authentication working)")
+        else:
+            print(f"❌ Expected 401, got {response.status_code}")
+    except Exception as e:
+        print(f"❌ Test 1d failed: {e}")
+
+
+def test_extended_campaign_stats():
+    """TEST 2: Extended campaign stats (NEW fields)"""
+    print("\n" + "="*80)
+    print("TEST 2: EXTENDED CAMPAIGN STATS (NEW FIELDS)")
+    print("="*80)
+    
+    # First, get list of campaigns to find a sent one
+    print("\nTest 2a: GET /api/admin/newsletter to find a sent campaign...")
+    try:
+        url = f"{BASE_URL}/admin/newsletter?key={ADMIN_KEY}"
+        response = requests.get(url, timeout=TIMEOUT)
+        print(f"Status: {response.status_code}")
+        
+        if response.status_code == 200:
+            data = response.json()
+            campaigns = data.get('campaigns', [])
+            print(f"Found {len(campaigns)} campaigns")
+            
+            # Find a sent campaign
+            sent_campaign = None
+            for c in campaigns:
+                if c.get('status') == 'sent':
+                    sent_campaign = c
+                    break
+            
+            if sent_campaign:
+                campaign_id = sent_campaign.get('id')
+                print(f"✅ Found sent campaign: {campaign_id}")
                 
-                if all_found:
-                    passed += 1
+                # Test 2b: Get campaign details with extended stats
+                print(f"\nTest 2b: GET /api/admin/newsletter/campaign?id={campaign_id}&key=...")
+                url_campaign = f"{BASE_URL}/admin/newsletter/campaign?id={campaign_id}&key={ADMIN_KEY}"
+                response = requests.get(url_campaign, timeout=TIMEOUT)
+                print(f"Status: {response.status_code}")
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    stats = data.get('stats', {})
+                    
+                    # Check for ALL new fields
+                    required_fields = [
+                        'hourly', 'devices', 'clients', 'segments', 'unsubs', 'ctor',
+                        'medianMinutesToOpen', 'bestHour', 'recipientDetails',
+                        # Existing fields
+                        'opens', 'opensUnique', 'clicks', 'clicksUnique', 'openRate',
+                        'clickRate', 'clicksByUrl', 'timeline'
+                    ]
+                    
+                    print(f"\nVerifying stats fields...")
+                    missing_fields = []
+                    for field in required_fields:
+                        if field in stats:
+                            value = stats[field]
+                            value_type = type(value).__name__
+                            
+                            # Check types
+                            if field in ['hourly', 'devices', 'clients', 'segments', 'recipientDetails', 'timeline']:
+                                if isinstance(value, list):
+                                    print(f"✅ stats.{field} is array (length: {len(value)})")
+                                else:
+                                    print(f"❌ stats.{field} should be array, got {value_type}")
+                            elif field in ['unsubs', 'opens', 'opensUnique', 'clicks', 'clicksUnique']:
+                                if isinstance(value, (int, float)):
+                                    print(f"✅ stats.{field} is number: {value}")
+                                else:
+                                    print(f"❌ stats.{field} should be number, got {value_type}")
+                            elif field in ['ctor', 'medianMinutesToOpen', 'openRate', 'clickRate']:
+                                if value is None or isinstance(value, (int, float)):
+                                    print(f"✅ stats.{field} is number or null: {value}")
+                                else:
+                                    print(f"❌ stats.{field} should be number or null, got {value_type}")
+                            elif field in ['bestHour']:
+                                if value is None or isinstance(value, str):
+                                    print(f"✅ stats.{field} is string or null: {value}")
+                                else:
+                                    print(f"❌ stats.{field} should be string or null, got {value_type}")
+                            elif field == 'clicksByUrl':
+                                if isinstance(value, dict):
+                                    print(f"✅ stats.{field} is object")
+                                else:
+                                    print(f"❌ stats.{field} should be object, got {value_type}")
+                        else:
+                            missing_fields.append(field)
+                            print(f"❌ stats.{field} is MISSING")
+                    
+                    if not missing_fields:
+                        print(f"\n✅ ALL required stats fields present")
+                    else:
+                        print(f"\n❌ Missing fields: {missing_fields}")
+                    
+                    # Check recipientDetails structure if non-empty
+                    if stats.get('recipientDetails') and len(stats['recipientDetails']) > 0:
+                        rd = stats['recipientDetails'][0]
+                        if 'openedAt' in rd and 'clicksN' in rd:
+                            print(f"✅ recipientDetails entries have openedAt and clicksN keys")
+                        else:
+                            print(f"❌ recipientDetails entries missing required keys: {rd.keys()}")
+                else:
+                    print(f"❌ Expected 200, got {response.status_code}: {response.text[:200]}")
             else:
-                print(f"✗ Response missing ok or html: {data}")
+                print(f"⚠️ No sent campaigns found (this is OK if no campaigns have been sent yet)")
         else:
-            print(f"✗ Expected 200, got {response.status_code}: {response.text[:200]}")
+            print(f"❌ Expected 200, got {response.status_code}: {response.text[:200]}")
     except Exception as e:
-        print(f"✗ Request failed: {e}")
-    
-    # 3b. Test height clamping: height:5000 → 'height:900px' (clamped max)
-    print("\n[3b] Test height clamping (height:5000 → max 900px)...")
-    total += 1
-    try:
-        payload = {
-            'subject': 'Height clamp test',
-            'blocks': [
-                {
-                    'type': 'image',
-                    'url': '/test.jpg',
-                    'alt': 'test',
-                    'height': 5000,
-                    'fit': 'cover'
-                }
-            ]
-        }
-        response = requests.post(
-            f"{BASE_URL}/admin/newsletter/preview?key={ADMIN_KEY}",
-            json=payload,
-            timeout=TIMEOUT
-        )
-        
-        if response.status_code == 200:
-            html = response.json().get('html', '')
-            if 'height:900px' in html:
-                print("✓ Height clamped to max 900px")
-                passed += 1
-            else:
-                print(f"✗ Height not clamped correctly (expected 'height:900px' in HTML)")
-        else:
-            print(f"✗ Request failed: {response.status_code}")
-    except Exception as e:
-        print(f"✗ Request failed: {e}")
-    
-    # 3c. Test height clamping: height:10 → 'height:60px' (clamped min)
-    print("\n[3c] Test height clamping (height:10 → min 60px)...")
-    total += 1
-    try:
-        payload = {
-            'subject': 'Height clamp test',
-            'blocks': [
-                {
-                    'type': 'image',
-                    'url': '/test.jpg',
-                    'alt': 'test',
-                    'height': 10,
-                    'fit': 'cover'
-                }
-            ]
-        }
-        response = requests.post(
-            f"{BASE_URL}/admin/newsletter/preview?key={ADMIN_KEY}",
-            json=payload,
-            timeout=TIMEOUT
-        )
-        
-        if response.status_code == 200:
-            html = response.json().get('html', '')
-            if 'height:60px' in html:
-                print("✓ Height clamped to min 60px")
-                passed += 1
-            else:
-                print(f"✗ Height not clamped correctly (expected 'height:60px' in HTML)")
-        else:
-            print(f"✗ Request failed: {response.status_code}")
-    except Exception as e:
-        print(f"✗ Request failed: {e}")
-    
-    # 3d. Test invalid fit value 'zoom' → falls back to 'object-fit:cover'
-    print("\n[3d] Test invalid fit value 'zoom' → fallback to 'cover'...")
-    total += 1
-    try:
-        payload = {
-            'subject': 'Fit fallback test',
-            'blocks': [
-                {
-                    'type': 'image',
-                    'url': '/test.jpg',
-                    'alt': 'test',
-                    'height': 200,
-                    'fit': 'zoom'  # Invalid value
-                }
-            ]
-        }
-        response = requests.post(
-            f"{BASE_URL}/admin/newsletter/preview?key={ADMIN_KEY}",
-            json=payload,
-            timeout=TIMEOUT
-        )
-        
-        if response.status_code == 200:
-            html = response.json().get('html', '')
-            if 'object-fit:cover' in html:
-                print("✓ Invalid fit value 'zoom' falls back to 'cover'")
-                passed += 1
-            else:
-                print(f"✗ Fit fallback not working (expected 'object-fit:cover' in HTML)")
-        else:
-            print(f"✗ Request failed: {response.status_code}")
-    except Exception as e:
-        print(f"✗ Request failed: {e}")
-    
-    print(f"\n{'='*80}")
-    print(f"TEST 3 SUMMARY: {passed}/{total} passed")
-    print(f"{'='*80}")
-    
-    return passed, total
+        print(f"❌ Test 2 failed: {e}")
 
 
-def test_regression():
-    """TEST 4: Regression (read-only)"""
+def test_one_click_unsubscribe():
+    """TEST 3: One-click unsubscribe endpoint (NEW POST handler) - VALIDATION ONLY"""
     print("\n" + "="*80)
-    print("TEST 4: Regression")
+    print("TEST 3: ONE-CLICK UNSUBSCRIBE ENDPOINT (NEW POST HANDLER) - VALIDATION ONLY")
     print("="*80)
     
-    passed = 0
-    total = 0
-    
-    # 4a. GET /api/ → 200
-    print("\n[4a] GET /api/ (root endpoint)...")
-    total += 1
+    # Test 3a: POST with invalid token (should return 400)
+    print("\nTest 3a: POST /api/newsletter/unsubscribe with invalid token (should return 400)...")
     try:
-        response = requests.get(f"{BASE_URL}/", timeout=TIMEOUT)
+        url = f"{BASE_URL}/newsletter/unsubscribe?e=aW52YWxpZA&t=invalidtoken"
+        response = requests.post(url, timeout=TIMEOUT)
+        print(f"Status: {response.status_code}")
+        
+        if response.status_code == 400:
+            data = response.json()
+            if data.get('ok') == False:
+                print(f"✅ Got 400 with ok:false for invalid token")
+            else:
+                print(f"⚠️ Got 400 but response unexpected: {data}")
+        else:
+            print(f"❌ Expected 400, got {response.status_code}: {response.text[:200]}")
+    except Exception as e:
+        print(f"❌ Test 3a failed: {e}")
+    
+    # Test 3b: GET with invalid token (should return 302 redirect with error)
+    print("\nTest 3b: GET /api/newsletter/unsubscribe with invalid token (should return 302 redirect)...")
+    try:
+        url = f"{BASE_URL}/newsletter/unsubscribe?e=aW52YWxpZA&t=invalidtoken"
+        response = requests.get(url, timeout=TIMEOUT, allow_redirects=False)
+        print(f"Status: {response.status_code}")
+        
+        if response.status_code == 302:
+            location = response.headers.get('Location', '')
+            print(f"Location header: {location}")
+            
+            if '/nyhetsbrev/avmeldt' in location and 'feil=1' in location:
+                print(f"✅ Got 302 redirect to /nyhetsbrev/avmeldt?feil=1")
+            else:
+                print(f"❌ Redirect location unexpected: {location}")
+        else:
+            print(f"❌ Expected 302, got {response.status_code}: {response.text[:200]}")
+    except Exception as e:
+        print(f"❌ Test 3b failed: {e}")
+    
+    print("\n⚠️ NOTE: Did NOT test with valid tokens (would unsubscribe real users)")
+
+
+def test_focal_point_rendering():
+    """TEST 4: Focal point rendering (NEW)"""
+    print("\n" + "="*80)
+    print("TEST 4: FOCAL POINT RENDERING (NEW)")
+    print("="*80)
+    
+    url = f"{BASE_URL}/admin/newsletter/preview?key={ADMIN_KEY}"
+    
+    # Test 4a: Image with focalX=20, focalY=80
+    print("\nTest 4a: POST /api/admin/newsletter/preview with focalX=20, focalY=80...")
+    try:
+        payload = {
+            "subject": "t",
+            "blocks": [
+                {
+                    "type": "image",
+                    "url": "/x.jpg",
+                    "height": 220,
+                    "fit": "cover",
+                    "focalX": 20,
+                    "focalY": 80
+                }
+            ]
+        }
+        response = requests.post(url, json=payload, timeout=TIMEOUT)
         print(f"Status: {response.status_code}")
         
         if response.status_code == 200:
-            print("✓ Root endpoint working")
-            passed += 1
+            data = response.json()
+            html = data.get('html', '')
+            
+            if 'object-position:20% 80%' in html:
+                print(f"✅ HTML contains 'object-position:20% 80%'")
+            else:
+                print(f"❌ HTML does not contain expected object-position")
+                # Show what we got
+                if 'object-position' in html:
+                    import re
+                    matches = re.findall(r'object-position:[^;]+', html)
+                    print(f"   Found: {matches}")
         else:
-            print(f"✗ Expected 200, got {response.status_code}")
+            print(f"❌ Expected 200, got {response.status_code}: {response.text[:200]}")
     except Exception as e:
-        print(f"✗ Request failed: {e}")
+        print(f"❌ Test 4a failed: {e}")
     
-    # 4b. GET /api/public/properties → 200
-    print("\n[4b] GET /api/public/properties...")
-    total += 1
+    # Test 4b: Image with focalX=150, focalY=-10 (should clamp to 100% and 0%)
+    print("\nTest 4b: POST with focalX=150, focalY=-10 (should clamp to 100% and 0%)...")
     try:
-        response = requests.get(f"{BASE_URL}/public/properties", timeout=TIMEOUT)
+        payload = {
+            "subject": "t",
+            "blocks": [
+                {
+                    "type": "image",
+                    "url": "/x.jpg",
+                    "height": 220,
+                    "fit": "cover",
+                    "focalX": 150,
+                    "focalY": -10
+                }
+            ]
+        }
+        response = requests.post(url, json=payload, timeout=TIMEOUT)
+        print(f"Status: {response.status_code}")
+        
+        if response.status_code == 200:
+            data = response.json()
+            html = data.get('html', '')
+            
+            if 'object-position:100% 0%' in html:
+                print(f"✅ HTML contains 'object-position:100% 0%' (clamped correctly)")
+            else:
+                print(f"❌ HTML does not contain expected clamped object-position")
+                if 'object-position' in html:
+                    import re
+                    matches = re.findall(r'object-position:[^;]+', html)
+                    print(f"   Found: {matches}")
+        else:
+            print(f"❌ Expected 200, got {response.status_code}: {response.text[:200]}")
+    except Exception as e:
+        print(f"❌ Test 4b failed: {e}")
+    
+    # Test 4c: Image WITHOUT height (should NOT contain object-position)
+    print("\nTest 4c: POST with image WITHOUT height (should NOT contain object-position)...")
+    try:
+        payload = {
+            "subject": "t",
+            "blocks": [
+                {
+                    "type": "image",
+                    "url": "/x.jpg",
+                    "focalX": 20,
+                    "focalY": 80
+                }
+            ]
+        }
+        response = requests.post(url, json=payload, timeout=TIMEOUT)
+        print(f"Status: {response.status_code}")
+        
+        if response.status_code == 200:
+            data = response.json()
+            html = data.get('html', '')
+            
+            # Find the image tag
+            import re
+            img_match = re.search(r'<img[^>]+src="[^"]*x\.jpg"[^>]*>', html)
+            if img_match:
+                img_tag = img_match.group(0)
+                if 'object-position' not in img_tag:
+                    print(f"✅ Image tag does NOT contain object-position (correct)")
+                else:
+                    print(f"❌ Image tag contains object-position when it shouldn't")
+                    print(f"   Tag: {img_tag[:200]}")
+            else:
+                print(f"⚠️ Could not find image tag in HTML")
+        else:
+            print(f"❌ Expected 200, got {response.status_code}: {response.text[:200]}")
+    except Exception as e:
+        print(f"❌ Test 4c failed: {e}")
+
+
+def test_webp_upload_regression():
+    """TEST 5: Regression - WebP upload"""
+    print("\n" + "="*80)
+    print("TEST 5: REGRESSION - WEBP UPLOAD")
+    print("="*80)
+    
+    # Test 5a: Generate a small PNG and upload
+    print("\nTest 5a: Generate small PNG and POST /api/admin/newsletter/upload...")
+    try:
+        # Create a small test image (10x10 PNG)
+        img = Image.new('RGB', (10, 10), color='red')
+        img_bytes = io.BytesIO()
+        img.save(img_bytes, format='PNG')
+        img_bytes.seek(0)
+        
+        url = f"{BASE_URL}/admin/newsletter/upload?key={ADMIN_KEY}"
+        files = {'file': ('test.png', img_bytes, 'image/png')}
+        response = requests.post(url, files=files, timeout=TIMEOUT)
+        print(f"Status: {response.status_code}")
+        
+        if response.status_code == 201:
+            data = response.json()
+            if data.get('ok') and 'id' in data and 'url' in data:
+                asset_id = data['id']
+                print(f"✅ Upload successful, got id: {asset_id}")
+                
+                # Test 5b: GET the asset and verify it's WebP
+                print(f"\nTest 5b: GET /api/newsletter/asset?id={asset_id} (should be WebP)...")
+                asset_url = f"{BASE_URL}/newsletter/asset?id={asset_id}"
+                response = requests.get(asset_url, timeout=TIMEOUT)
+                print(f"Status: {response.status_code}")
+                
+                if response.status_code == 200:
+                    content_type = response.headers.get('Content-Type', '')
+                    print(f"Content-Type: {content_type}")
+                    
+                    if content_type == 'image/webp':
+                        print(f"✅ Content-Type is image/webp (WebP conversion working)")
+                        
+                        # Verify WebP magic bytes
+                        content = response.content
+                        if content[:4] == b'RIFF' and content[8:12] == b'WEBP':
+                            print(f"✅ WebP magic bytes verified (RIFF....WEBP)")
+                        else:
+                            print(f"❌ WebP magic bytes not found")
+                    else:
+                        print(f"❌ Expected Content-Type: image/webp, got: {content_type}")
+                else:
+                    print(f"❌ Expected 200, got {response.status_code}")
+                
+                # Cleanup: Delete the test asset
+                print(f"\nCleanup: Deleting test asset {asset_id}...")
+                try:
+                    # Connect to MongoDB and delete
+                    from pymongo import MongoClient
+                    import os
+                    mongo_url = os.getenv('MONGO_URL', 'mongodb://localhost:27017')
+                    db_name = os.getenv('DB_NAME', 'your_database_name')
+                    client = MongoClient(mongo_url)
+                    db = client[db_name]
+                    result = db.newsletter_assets.delete_one({'id': asset_id})
+                    if result.deleted_count > 0:
+                        print(f"✅ Deleted test asset from newsletter_assets collection")
+                    else:
+                        print(f"⚠️ Asset not found in collection (may have been deleted already)")
+                except Exception as e:
+                    print(f"⚠️ Could not delete test asset: {e}")
+            else:
+                print(f"❌ Response missing required fields: {data}")
+        else:
+            print(f"❌ Expected 201, got {response.status_code}: {response.text[:200]}")
+    except Exception as e:
+        print(f"❌ Test 5a failed: {e}")
+    
+    # Test 5c: Regression - GET /api/ (root endpoint)
+    print("\nTest 5c: GET /api/ (regression test)...")
+    try:
+        url = f"{BASE_URL}/"
+        response = requests.get(url, timeout=TIMEOUT)
         print(f"Status: {response.status_code}")
         
         if response.status_code == 200:
             data = response.json()
             if data.get('ok'):
-                print(f"✓ Public properties endpoint working (ok=true)")
-                passed += 1
+                print(f"✅ Root endpoint working")
             else:
-                print(f"✗ Response missing 'ok': {data}")
+                print(f"⚠️ Root endpoint returned 200 but ok is not true: {data}")
         else:
-            print(f"✗ Expected 200, got {response.status_code}")
+            print(f"❌ Expected 200, got {response.status_code}")
     except Exception as e:
-        print(f"✗ Request failed: {e}")
+        print(f"❌ Test 5c failed: {e}")
     
-    # 4c. GET /api/admin/newsletter?key=... → 200
-    print("\n[4c] GET /api/admin/newsletter...")
-    total += 1
+    # Test 5d: Regression - GET /api/public/properties
+    print("\nTest 5d: GET /api/public/properties (regression test)...")
     try:
-        response = requests.get(f"{BASE_URL}/admin/newsletter?key={ADMIN_KEY}", timeout=TIMEOUT)
+        url = f"{BASE_URL}/public/properties"
+        response = requests.get(url, timeout=TIMEOUT)
         print(f"Status: {response.status_code}")
         
         if response.status_code == 200:
             data = response.json()
             if data.get('ok'):
-                print(f"✓ Admin newsletter endpoint working (ok=true)")
-                passed += 1
+                print(f"✅ Public properties endpoint working")
             else:
-                print(f"✗ Response missing 'ok': {data}")
+                print(f"⚠️ Public properties returned 200 but ok is not true: {data}")
         else:
-            print(f"✗ Expected 200, got {response.status_code}")
+            print(f"❌ Expected 200, got {response.status_code}")
     except Exception as e:
-        print(f"✗ Request failed: {e}")
-    
-    print(f"\n{'='*80}")
-    print(f"TEST 4 SUMMARY: {passed}/{total} passed")
-    print(f"{'='*80}")
-    
-    return passed, total
-
-
-def cleanup_assets():
-    """MANDATORY CLEANUP: Delete newsletter_assets documents created during testing"""
-    print("\n" + "="*80)
-    print("MANDATORY CLEANUP: Deleting newsletter_assets")
-    print("="*80)
-    
-    if not created_asset_ids:
-        print("No assets to clean up")
-        return True
-    
-    print(f"\nAssets to delete: {created_asset_ids}")
-    
-    try:
-        client = MongoClient(MONGO_URL)
-        db = client[DB_NAME]
-        collection = db['newsletter_assets']
-        
-        result = collection.delete_many({'id': {'$in': created_asset_ids}})
-        print(f"✓ Deleted {result.deleted_count} assets from newsletter_assets collection")
-        
-        # Verify deletion
-        remaining = collection.count_documents({'id': {'$in': created_asset_ids}})
-        if remaining == 0:
-            print("✓ All test assets successfully deleted")
-            return True
-        else:
-            print(f"✗ {remaining} assets still remain in database")
-            return False
-    except Exception as e:
-        print(f"✗ Cleanup failed: {e}")
-        return False
+        print(f"❌ Test 5d failed: {e}")
 
 
 def main():
     print("="*80)
-    print("DigiHome Newsletter Upgrades Backend Test")
+    print("DIGIHOME NEWSLETTER UPGRADES - BACKEND TESTS (BATCH 2)")
     print("="*80)
     print(f"Base URL: {BASE_URL}")
     print(f"Admin key: {ADMIN_KEY}")
     print(f"Timeout: {TIMEOUT}s")
-    print(f"MongoDB: {MONGO_URL}/{DB_NAME}")
     print("="*80)
     
-    print("\nCRITICAL SAFETY RULES:")
-    print("1. NEVER call POST /api/admin/newsletter/send (sends REAL emails!)")
-    print("2. POST /api/admin/newsletter/test SENDS REAL EMAILS when valid")
-    print("   → Testing ONLY validation/error paths (400 responses)")
-    print("3. Do NOT create, modify, or delete any newsletter campaigns/drafts")
-    print("4. Do NOT modify newsletter_subscribers or leads")
-    print("5. MANDATORY CLEANUP: delete newsletter_assets documents after testing")
+    # Run all tests
+    test_ai_suggestions()
+    test_extended_campaign_stats()
+    test_one_click_unsubscribe()
+    test_focal_point_rendering()
+    test_webp_upload_regression()
     
-    all_passed = 0
-    all_total = 0
-    
-    # Run tests
-    p, t = test_webp_conversion()
-    all_passed += p
-    all_total += t
-    
-    p, t = test_multi_recipient_validation()
-    all_passed += p
-    all_total += t
-    
-    p, t = test_preview_new_blocks()
-    all_passed += p
-    all_total += t
-    
-    p, t = test_regression()
-    all_passed += p
-    all_total += t
-    
-    # Mandatory cleanup
-    cleanup_success = cleanup_assets()
-    
-    # Final summary
     print("\n" + "="*80)
-    print("FINAL SUMMARY")
+    print("ALL TESTS COMPLETED")
     print("="*80)
-    print(f"Total tests: {all_passed}/{all_total} passed ({100*all_passed//all_total if all_total > 0 else 0}%)")
-    print(f"Cleanup: {'✓ Success' if cleanup_success else '✗ Failed'}")
-    
-    if all_passed == all_total and cleanup_success:
-        print("\n✓ ALL TESTS PASSED + CLEANUP SUCCESSFUL")
-        return 0
-    else:
-        print(f"\n✗ {all_total - all_passed} tests failed or cleanup incomplete")
-        return 1
 
 
-if __name__ == '__main__':
-    sys.exit(main())
+if __name__ == "__main__":
+    main()

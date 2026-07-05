@@ -7,19 +7,49 @@
  */
 
 import React, { useMemo, useState } from 'react';
-import { ArrowLeft, Copy, Search, MousePointerClick, MailOpen, Send as SendIcon, AlertTriangle } from 'lucide-react';
+import {
+  ArrowLeft, Copy, Search, MousePointerClick, MailOpen, Send as SendIcon,
+  AlertTriangle, Eye, X, Loader2, UserMinus, Timer, Monitor, Smartphone,
+} from 'lucide-react';
 
 const fmtDate = (iso) => (iso ? new Date(iso).toLocaleString('nb-NO', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—');
+const fmtTime = (iso) => (iso ? new Date(iso).toLocaleString('nb-NO', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : null);
+const fmtMins = (m) => (m == null ? '—' : m < 60 ? `${m} min` : m < 1440 ? `${Math.round(m / 60)} t` : `${Math.round(m / 1440)} d`);
+const DEVICE_LABEL = { mobil: 'Mobil', desktop: 'Desktop', nettbrett: 'Nettbrett', proxy: 'Skjult (proxy)', ukjent: 'Ukjent' };
+const CLIENT_LABEL = { gmail: 'Gmail', apple: 'Apple Mail', outlook: 'Outlook', thunderbird: 'Thunderbird', nettleser: 'Nettleser', annet: 'Annet' };
+const SEG_LABEL = { kunder: 'Kunder', abonnenter: 'Abonnenter', leads: 'Utleier-leads', leietakere: 'Leietakere', manuell: 'Manuelt lagt til', ukjent: 'Ukjent' };
 
-export default function StatsView({ camp, stats, onBack, onDuplicate }) {
+export default function StatsView({ camp, stats, q, onBack, onDuplicate }) {
   const [search, setSearch] = useState('');
   const [onlyEngaged, setOnlyEngaged] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewHtml, setPreviewHtml] = useState('');
+  const [previewDevice, setPreviewDevice] = useState('desktop');
   const s = stats || {};
+
+  // Slik så nyhetsbrevet ut — rendres fra kampanjens lagrede blokker
+  const openPreview = async () => {
+    setPreviewOpen(true);
+    if (previewHtml) return;
+    try {
+      const r = await fetch(`/api/admin/newsletter/preview?${q}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          blocks: (camp?.blocks || []).map(({ id, ...rest }) => rest),
+          theme: camp?.theme, subject: camp?.subject, preheader: camp?.preheader,
+        }),
+      });
+      const j = await r.json();
+      if (j.ok) setPreviewHtml(j.html);
+    } catch (e) {}
+  };
 
   const KPIS = [
     { l: 'Sendt', v: s.sent ?? 0, sub: s.failedCount ? `${s.failedCount} feilet` : 'alle levert til SendGrid', icon: SendIcon, warn: !!s.failedCount },
     { l: 'Åpningsrate', v: s.openRate != null ? `${s.openRate} %` : '—', sub: `${s.opensUnique ?? 0} unike · ${s.opens ?? 0} totalt`, icon: MailOpen },
     { l: 'Klikkrate', v: s.clickRate != null ? `${s.clickRate} %` : '—', sub: `${s.clicksUnique ?? 0} unike · ${s.clicks ?? 0} totalt`, icon: MousePointerClick },
+    { l: 'Klikk av åpnet', v: s.ctor != null ? `${s.ctor} %` : '—', sub: 'CTOR — innholdets treffsikkerhet', icon: MousePointerClick },
+    { l: 'Avmeldt', v: s.unsubs ?? 0, sub: s.sent ? `${Math.round(((s.unsubs || 0) / s.sent) * 1000) / 10} % av sendte` : '—', icon: UserMinus, warn: (s.unsubs || 0) > 0 && s.sent && (s.unsubs / s.sent) > 0.02 },
   ];
 
   const rows = useMemo(() => {
@@ -45,24 +75,69 @@ export default function StatsView({ camp, stats, onBack, onDuplicate }) {
           <h2 className="text-[22px] font-bold tracking-[-0.02em] text-[#111] mt-2">{camp?.subject || camp?.title}</h2>
           <p className="text-[13px] text-[#999] mt-0.5">Fra {camp?.fromName || 'DigiHome'} · {s.recipients ?? 0} mottakere</p>
         </div>
-        <button onClick={onDuplicate} className="h-[38px] rounded-full border border-[#e5e5e5] bg-white text-[12.5px] font-semibold px-4 flex items-center gap-1.5 hover:border-[#c99df0]">
-          <Copy size={13} /> Dupliser som ny
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={openPreview} data-testid="nl-stats-view-newsletter"
+            className="h-[38px] rounded-full bg-[#0a0a0a] text-white text-[12.5px] font-semibold px-4 flex items-center gap-1.5">
+            <Eye size={13} /> Se nyhetsbrevet
+          </button>
+          <button onClick={onDuplicate} className="h-[38px] rounded-full border border-[#e5e5e5] bg-white text-[12.5px] font-semibold px-4 flex items-center gap-1.5 hover:border-[#c99df0]">
+            <Copy size={13} /> Dupliser som ny
+          </button>
+        </div>
       </div>
 
       {/* KPI-er */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mt-6">
         {KPIS.map((k) => (
-          <div key={k.l} className="rounded-2xl border border-[#f0f0f0] bg-white p-5">
+          <div key={k.l} className="rounded-2xl border border-[#f0f0f0] bg-white p-4">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#aaa]">{k.l}</span>
-              {React.createElement(k.icon, { size: 15, className: k.warn ? 'text-amber-500' : 'text-[#c9b3e0]' })}
+              <span className="text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#aaa]">{k.l}</span>
+              {React.createElement(k.icon, { size: 14, className: k.warn ? 'text-amber-500' : 'text-[#c9b3e0]' })}
             </div>
-            <p className="text-[30px] font-bold tabular-nums tracking-[-0.02em] text-[#111] mt-2">{k.v}</p>
-            <p className={`text-[11.5px] mt-0.5 ${k.warn ? 'text-amber-600 font-medium' : 'text-[#999]'}`}>{k.warn ? <AlertTriangle size={11} className="inline mr-1" /> : null}{k.sub}</p>
+            <p className="text-[26px] font-bold tabular-nums tracking-[-0.02em] text-[#111] mt-1.5">{k.v}</p>
+            <p className={`text-[11px] mt-0.5 ${k.warn ? 'text-amber-600 font-medium' : 'text-[#999]'}`}>{k.warn ? <AlertTriangle size={10} className="inline mr-1" /> : null}{k.sub}</p>
           </div>
         ))}
       </div>
+
+      {/* Innsikt: tid til åpning + beste time */}
+      {(s.medianMinutesToOpen != null || s.bestHour) ? (
+        <div className="flex flex-wrap gap-2 mt-3">
+          {s.medianMinutesToOpen != null ? (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-[#faf6fe] border border-[#eee0f8] text-[12px] font-medium text-[#7A3EC8] px-3.5 py-1.5">
+              <Timer size={12} /> Median tid til åpning: <b>{fmtMins(s.medianMinutesToOpen)}</b>
+            </span>
+          ) : null}
+          {s.bestHour ? (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-[#faf6fe] border border-[#eee0f8] text-[12px] font-medium text-[#7A3EC8] px-3.5 py-1.5">
+              <MailOpen size={12} /> Flest åpninger: <b>{new Date(s.bestHour + ':00:00').toLocaleString('nb-NO', { day: '2-digit', month: 'short' })} kl. {s.bestHour.slice(11, 13)}</b>
+            </span>
+          ) : null}
+        </div>
+      ) : null}
+
+      {/* Engasjement time for time (første 48 t) */}
+      {(s.hourly || []).length > 0 ? (
+        <div className="rounded-2xl border border-[#f0f0f0] bg-white p-5 mt-3">
+          <p className="text-[13px] font-bold text-[#111]">Engasjement time for time</p>
+          <div className="flex items-end gap-[3px] mt-4 h-[110px]">
+            {s.hourly.slice(0, 48).map((h) => {
+              const hMax = Math.max(1, ...s.hourly.slice(0, 48).map((x) => x.opens + x.clicks));
+              return (
+                <div key={h.hour} className="flex-1 min-w-[4px] flex flex-col justify-end h-full group relative" title={`${h.hour.slice(11, 13)}:00 — ${h.opens} åpn. · ${h.clicks} klikk`}>
+                  <div className="rounded-t-[3px]" style={{ height: `${(h.clicks / hMax) * 100}%`, background: '#d298ff', minHeight: h.clicks ? 3 : 0 }} />
+                  <div className="rounded-t-[3px]" style={{ height: `${(h.opens / hMax) * 100}%`, background: '#0a0a0a', minHeight: h.opens ? 3 : 0 }} />
+                </div>
+              );
+            })}
+          </div>
+          <div className="flex justify-between mt-1.5">
+            <span className="text-[10px] text-[#bbb]">{s.hourly[0] ? `${new Date(s.hourly[0].hour + ':00:00').toLocaleDateString('nb-NO', { day: '2-digit', month: 'short' })} kl. ${s.hourly[0].hour.slice(11, 13)}` : ''}</span>
+            <span className="text-[10.5px] text-[#bbb]"><span className="inline-block w-2 h-2 rounded-full bg-[#0a0a0a] mr-1" />Åpninger <span className="inline-block w-2 h-2 rounded-full ml-3 mr-1" style={{ background: '#d298ff' }} />Klikk</span>
+            <span className="text-[10px] text-[#bbb]">{s.hourly.length > 1 ? `kl. ${s.hourly[Math.min(47, s.hourly.length - 1)].hour.slice(11, 13)}` : ''}</span>
+          </div>
+        </div>
+      ) : null}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mt-3">
         {/* Klikk per lenke */}
@@ -111,6 +186,59 @@ export default function StatsView({ camp, stats, onBack, onDuplicate }) {
         </div>
       </div>
 
+      {/* Enheter/klienter + segmenter */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mt-3">
+        <div className="rounded-2xl border border-[#f0f0f0] bg-white p-5">
+          <p className="text-[13px] font-bold text-[#111]">Enheter og e-postklienter <span className="font-normal text-[11px] text-[#aaa]">(unike åpnere)</span></p>
+          {(s.devices || []).length === 0 && (s.clients || []).length === 0 ? (
+            <p className="text-[12.5px] text-[#aaa] mt-3">Ingen åpninger registrert ennå.</p>
+          ) : (
+            <div className="grid grid-cols-2 gap-5 mt-3">
+              {[['Enhet', s.devices || [], DEVICE_LABEL, Smartphone], ['Klient', s.clients || [], CLIENT_LABEL, Monitor]].map(([title, list, labels, Icon]) => {
+                const max = Math.max(1, ...list.map((x) => x.n));
+                return (
+                  <div key={title}>
+                    <p className="text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#bbb] flex items-center gap-1"><Icon size={11} /> {title}</p>
+                    <div className="mt-2 space-y-2">
+                      {list.slice(0, 5).map((d) => (
+                        <div key={d.key}>
+                          <div className="flex items-baseline justify-between gap-2">
+                            <span className="text-[11.5px] text-[#555]">{labels[d.key] || d.key}</span>
+                            <span className="text-[11.5px] font-bold tabular-nums text-[#111]">{d.n}</span>
+                          </div>
+                          <div className="h-[4px] rounded-full bg-[#f4f2ef] mt-0.5"><div className="h-full rounded-full bg-[#0a0a0a]" style={{ width: `${(d.n / max) * 100}%` }} /></div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          <p className="text-[10px] text-[#bbb] mt-3">Gmail/Apple henter bilder via proxy — «Skjult (proxy)» betyr at reell enhet ikke kan avleses.</p>
+        </div>
+        <div className="rounded-2xl border border-[#f0f0f0] bg-white p-5">
+          <p className="text-[13px] font-bold text-[#111]">Engasjement per målgruppe</p>
+          {(s.segments || []).length === 0 ? (
+            <p className="text-[12.5px] text-[#aaa] mt-3">Ingen segmentdata.</p>
+          ) : (
+            <div className="mt-3 space-y-2.5">
+              <div className="grid grid-cols-[1.4fr_0.6fr_1fr_1fr] gap-2 text-[10.5px] font-bold uppercase tracking-[0.06em] text-[#bbb]">
+                <span>Segment</span><span className="text-right">Sendt</span><span className="text-right">Åpnet</span><span className="text-right">Klikket</span>
+              </div>
+              {s.segments.map((g) => (
+                <div key={g.segment} className="grid grid-cols-[1.4fr_0.6fr_1fr_1fr] gap-2 items-center">
+                  <span className="text-[12px] font-semibold text-[#111] truncate">{SEG_LABEL[g.segment] || g.segment}</span>
+                  <span className="text-[12px] tabular-nums text-[#777] text-right">{g.sent}</span>
+                  <span className="text-[12px] tabular-nums text-right font-semibold text-emerald-600">{g.opened} <span className="font-normal text-[#bbb]">({g.sent ? Math.round((g.opened / g.sent) * 100) : 0} %)</span></span>
+                  <span className="text-[12px] tabular-nums text-right font-semibold text-[#a052e0]">{g.clicked} <span className="font-normal text-[#bbb]">({g.sent ? Math.round((g.clicked / g.sent) * 100) : 0} %)</span></span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Mottakere */}
       <div className="rounded-2xl border border-[#f0f0f0] bg-white mt-3 overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5 border-b border-[#f4f4f4]">
@@ -131,16 +259,43 @@ export default function StatsView({ camp, stats, onBack, onDuplicate }) {
           {rows.length === 0 ? (
             <p className="text-[12.5px] text-[#aaa] text-center py-10">Ingen mottakere matcher.</p>
           ) : rows.map((r) => (
-            <div key={r.email} className="grid grid-cols-[1.7fr_1fr_0.7fr_0.7fr_0.7fr] gap-3 px-5 py-2.5 border-b border-[#fafafa] items-center">
+            <div key={r.email} className="grid grid-cols-[1.6fr_1fr_1fr_0.7fr_0.6fr] gap-3 px-5 py-2.5 border-b border-[#fafafa] items-center">
               <span className="text-[12.5px] font-medium text-[#111] truncate">{r.email}</span>
-              <span className="text-[11.5px] text-[#999] truncate">{r.name || '—'} · {r.segment}</span>
-              <span className={`text-[11px] font-semibold ${r.opened ? 'text-emerald-600' : 'text-[#ccc]'}`}>{r.opened ? '✓ Åpnet' : '— Åpnet'}</span>
-              <span className={`text-[11px] font-semibold ${r.clicked ? 'text-[#a052e0]' : 'text-[#ccc]'}`}>{r.clicked ? '✓ Klikket' : '— Klikk'}</span>
+              <span className="text-[11.5px] text-[#999] truncate">{r.name || '—'} · {SEG_LABEL[r.segment] || r.segment}</span>
+              <span className={`text-[11px] font-semibold ${r.opened ? 'text-emerald-600' : 'text-[#ccc]'}`}>
+                {r.opened ? `✓ ${fmtTime(r.openedAt) || 'Åpnet'}` : '— Ikke åpnet'}
+              </span>
+              <span className={`text-[11px] font-semibold ${r.clicked ? 'text-[#a052e0]' : 'text-[#ccc]'}`}>{r.clicked ? `✓ ${r.clicksN || 1} klikk` : '— Klikk'}</span>
               <span className={`text-[11px] font-semibold ${r.failed ? 'text-red-500' : 'text-[#ccc]'}`}>{r.failed ? 'Feilet' : 'Levert'}</span>
             </div>
           ))}
         </div>
       </div>
+
+      {/* Slik så nyhetsbrevet ut */}
+      {previewOpen ? (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-6" onClick={() => setPreviewOpen(false)}>
+          <div className="bg-[#f0ede9] rounded-2xl overflow-hidden max-h-[90vh] w-full" style={{ maxWidth: previewDevice === 'mobile' ? 420 : 700 }} onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between bg-white px-4 py-2.5 border-b border-[#eee]">
+              <p className="text-[12.5px] font-bold">Slik så nyhetsbrevet ut</p>
+              <div className="flex items-center gap-2">
+                <div className="flex rounded-full bg-[#f4f2ef] p-0.5">
+                  {[['desktop', Monitor], ['mobile', Smartphone]].map(([k, Icon]) => (
+                    <button key={k} onClick={() => setPreviewDevice(k)}
+                      className={`w-[30px] h-[24px] rounded-full flex items-center justify-center ${previewDevice === k ? 'bg-white shadow-sm text-[#111]' : 'text-[#999]'}`}>
+                      <Icon size={12} />
+                    </button>
+                  ))}
+                </div>
+                <button onClick={() => setPreviewOpen(false)}><X size={16} className="text-[#999] hover:text-[#111]" /></button>
+              </div>
+            </div>
+            {previewHtml
+              ? <iframe title="sent-preview" srcDoc={previewHtml} className="w-full" style={{ height: '78vh', border: 0 }} />
+              : <div className="h-[300px] flex items-center justify-center"><Loader2 size={20} className="animate-spin text-[#a052e0]" /></div>}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

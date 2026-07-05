@@ -120,6 +120,23 @@ function clientIp(request) {
   const xff = request.headers.get('x-forwarded-for') || '';
   return (xff.split(',')[0] || '').trim() || request.headers.get('x-real-ip') || 'unknown';
 }
+// Klassifiser user-agent for nyhetsbrev-sporing (enhet + e-postklient).
+// NB: Gmail/Apple proxyer bildeåpninger — 'proxy' = reell enhet ukjent.
+function nlClassifyUa(ua = '') {
+  const s = String(ua);
+  let client = 'annet';
+  if (/GoogleImageProxy/i.test(s)) client = 'gmail';
+  else if (/Outlook|Microsoft Office|MSOffice/i.test(s)) client = 'outlook';
+  else if (/Thunderbird/i.test(s)) client = 'thunderbird';
+  else if (/iPhone|iPad|Macintosh/.test(s) && /AppleWebKit/.test(s) && !/Chrome|CriOS/.test(s)) client = 'apple';
+  else if (/Chrome|CriOS/i.test(s)) client = 'nettleser';
+  let device = 'ukjent';
+  if (/GoogleImageProxy/i.test(s)) device = 'proxy';
+  else if (/iPad|Tablet/i.test(s)) device = 'nettbrett';
+  else if (/Mobile|iPhone|Android/i.test(s)) device = 'mobil';
+  else if (/Macintosh|Windows|X11|Linux/i.test(s)) device = 'desktop';
+  return { device, client };
+}
 // Markedsføringssamtykke fra lett cookie (dh_consent_mkt=1|0) satt av samtykke-banneret.
 // Returnerer true (godtatt), false (eksplisitt avslått) eller null (ukjent/ikke satt).
 function marketingConsentFromRequest(request) {
@@ -3056,6 +3073,61 @@ async function handleRoute(request, { params }) {
       return cors(NextResponse.json({ ok: true, html }));
     }
 
+    // AI-forslag til emnefelt + forhåndstekst (Emergent LLM). body: {blocks,
+    // title, currentSubject, currentPreheader, mode:'ny'|'forbedre'}.
+    // Returnerer 3 forslag — det første autofylles i UI, resten vises som valg.
+    if (route === '/admin/newsletter/suggest' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      const blocks = sanitizeBlocks(body.blocks);
+      // Trekk ut tekstinnholdet fra brevet som kontekst for modellen
+      const parts = [];
+      for (const b of blocks) {
+        if (b.type === 'heading' && b.text) parts.push(`OVERSKRIFT: ${b.text}`);
+        else if (b.type === 'text' && b.text) parts.push(b.text);
+        else if (b.type === 'bullets' && (b.items || []).length) parts.push('PUNKTER: ' + b.items.filter(Boolean).join(' · '));
+        else if (b.type === 'offer' && (b.big || b.eyebrow)) parts.push(`TILBUD: ${b.eyebrow || ''} ${b.big || ''} ${b.bigLabel || ''} ${b.second || ''} ${b.deadline || ''}`.trim());
+        else if (b.type === 'cta-card' && b.title) parts.push(`CTA: ${b.title} ${b.text || ''}`.trim());
+        else if (b.type === 'quote' && b.text) parts.push(`SITAT: «${b.text}»`);
+        else if (b.type === 'properties' && (b.items || []).length) parts.push(`BOLIGER SOM VISES: ${b.items.map((p) => p.title).join(', ')}`);
+      }
+      const content = parts.join('\n').slice(0, 4000);
+      if (!content.trim()) return cors(NextResponse.json({ ok: false, error: 'Nyhetsbrevet har ikke nok innhold ennå — legg til tekst først' }, { status: 400 }));
+      const mode = body.mode === 'forbedre' ? 'forbedre' : 'ny';
+      const cur = mode === 'forbedre' && (body.currentSubject || body.currentPreheader)
+        ? `\n\nNÅVÆRENDE (forbedre disse, behold intensjonen):\nEmne: ${String(body.currentSubject || '').slice(0, 200)}\nForhåndstekst: ${String(body.currentPreheader || '').slice(0, 200)}`
+        : '';
+      const SYS = `Du er Norges beste e-postmarkedsfører og skriver for DigiHome — et utleieforvaltnings-selskap i Bergen (varme, ærlige, konkrete — aldri clickbait eller SPAM-ord som «GRATIS!!!»).
+Lag 3 forslag til emnefelt + forhåndstekst for nyhetsbrevet under, på norsk bokmål.
+Regler:
+- Emnefelt: maks 55 tegn, konkret verdi/nysgjerrighet, gjerne personlig. Flettekoden {{first_name}} kan brukes (teller som ~6 tegn).
+- Forhåndstekst: 40–90 tegn, utfyller emnet (ikke gjentar det), skaper lyst til å åpne.
+- Varier de 3: ett trygt/klassisk, ett personlig, ett med urgency (hvis innholdet har frist/tilbud).
+Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...},{...}]}`;
+      try {
+        const raw = await chatLLM({
+          messages: [
+            { role: 'system', content: SYS },
+            { role: 'user', content: `NYHETSBREVETS INNHOLD:\n${content}${cur}` },
+          ],
+          maxTokens: 500, temperature: mode === 'forbedre' ? 0.5 : 0.8, feature: 'nyhetsbrev_emne',
+        });
+        const jsonStr = String(raw).replace(/```json|```/g, '').trim();
+        let parsed = null;
+        try { parsed = JSON.parse(jsonStr); } catch (e) {
+          const m = jsonStr.match(/\{[\s\S]*\}/);
+          if (m) { try { parsed = JSON.parse(m[0]); } catch (e2) {} }
+        }
+        const suggestions = (parsed?.forslag || [])
+          .map((f) => ({ subject: String(f?.emne || '').slice(0, 120).trim(), preheader: String(f?.forhandstekst || '').slice(0, 160).trim() }))
+          .filter((f) => f.subject).slice(0, 3);
+        if (!suggestions.length) return cors(NextResponse.json({ ok: false, error: 'AI ga ikke brukbare forslag — prøv igjen' }, { status: 502 }));
+        return cors(NextResponse.json({ ok: true, suggestions }));
+      } catch (e) {
+        return cors(NextResponse.json({ ok: false, error: 'AI-tjenesten er utilgjengelig akkurat nå — prøv igjen om litt' }, { status: 502 }));
+      }
+    }
+
     if (route === '/admin/newsletter/test' && method === 'POST') {
       if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       if (!emailConfigured()) return cors(NextResponse.json({ ok: false, error: 'SendGrid er ikke konfigurert (SENDGRID_API_KEY)' }, { status: 400 }));
@@ -3143,7 +3215,13 @@ async function handleRoute(request, { params }) {
       if (!c) return cors(NextResponse.json({ ok: false, error: 'Fant ikke kampanjen' }, { status: 404 }));
       let clicksByUrl = [];
       let timeline = [];
+      let hourly = [];
+      let devices = [];
+      let clients = [];
+      let segments = [];
       let recipientDetails = [];
+      let medianMinutesToOpen = null;
+      let bestHour = null;
       if (c.status === 'sent') {
         clicksByUrl = await db.collection(NL_EVENTS_COLL).aggregate([
           { $match: { campaignId: id, type: 'click' } },
@@ -3159,28 +3237,87 @@ async function handleRoute(request, { params }) {
           { $project: { _id: 0, day: '$_id', opens: 1, clicks: 1 } },
           { $sort: { day: 1 } }, { $limit: 60 },
         ]).toArray();
+        // Aktivitet per time (første 72 t) — finmasket engasjementskurve
+        hourly = await db.collection(NL_EVENTS_COLL).aggregate([
+          { $match: { campaignId: id, type: { $in: ['open', 'click'] } } },
+          { $group: { _id: { h: { $substr: ['$at', 0, 13] }, type: '$type' }, n: { $sum: 1 } } },
+          { $group: { _id: '$_id.h', opens: { $sum: { $cond: [{ $eq: ['$_id.type', 'open'] }, '$n', 0] } }, clicks: { $sum: { $cond: [{ $eq: ['$_id.type', 'click'] }, '$n', 0] } } } },
+          { $project: { _id: 0, hour: '$_id', opens: 1, clicks: 1 } },
+          { $sort: { hour: 1 } }, { $limit: 96 },
+        ]).toArray();
+        // Enheter/klienter (unike åpnere) — proxy = Gmail/Apple skjuler enheten
+        const devAgg = await db.collection(NL_EVENTS_COLL).aggregate([
+          { $match: { campaignId: id, type: 'open' } },
+          { $group: { _id: { device: { $ifNull: ['$device', 'ukjent'] }, client: { $ifNull: ['$client', 'annet'] } }, rids: { $addToSet: '$rid' } } },
+          { $project: { _id: 0, device: '$_id.device', client: '$_id.client', n: { $size: '$rids' } } },
+        ]).toArray();
+        const devMap = new Map(); const cliMap = new Map();
+        for (const d of devAgg) {
+          devMap.set(d.device, (devMap.get(d.device) || 0) + d.n);
+          cliMap.set(d.client, (cliMap.get(d.client) || 0) + d.n);
+        }
+        devices = [...devMap.entries()].map(([k, n]) => ({ key: k, n })).sort((a, b) => b.n - a.n);
+        clients = [...cliMap.entries()].map(([k, n]) => ({ key: k, n })).sort((a, b) => b.n - a.n);
+        // Per-mottaker-hendelser: første åpning, antall klikk, siste aktivitet
+        const perRid = await db.collection(NL_EVENTS_COLL).aggregate([
+          { $match: { campaignId: id, type: { $in: ['open', 'click'] } } },
+          { $group: { _id: '$rid',
+            firstOpenAt: { $min: { $cond: [{ $eq: ['$type', 'open'] }, '$at', null] } },
+            clicksN: { $sum: { $cond: [{ $eq: ['$type', 'click'] }, 1, 0] } },
+            lastAt: { $max: '$at' } } },
+        ]).toArray();
+        const ridInfo = new Map(perRid.map((p) => [p._id, p]));
+        // Median tid til første åpning + beste time (flest åpninger)
+        if (c.sentAt) {
+          const sentMs = Date.parse(c.sentAt);
+          const mins = perRid.map((p) => p.firstOpenAt ? Math.round((Date.parse(p.firstOpenAt) - sentMs) / 60000) : null)
+            .filter((m) => m != null && m >= 0).sort((a, b) => a - b);
+          if (mins.length) medianMinutesToOpen = mins[Math.floor(mins.length / 2)];
+        }
+        if (hourly.length) {
+          const top = [...hourly].sort((a, b) => b.opens - a.opens)[0];
+          if (top && top.opens > 0) bestHour = top.hour; // 'YYYY-MM-DDTHH'
+        }
         // Mottaker-nivå: hvem åpnet og klikket (e-post fra mottaker-kartet)
         const openedSet = new Set(c.openedR || []);
         const clickedSet = new Set(c.clickedR || []);
         const recRows = await db.collection('newsletter_recipients')
           .find({ campaignId: id }, { projection: { _id: 0, rid: 1, email: 1, name: 1, segment: 1, failed: 1 } })
           .limit(2000).toArray();
-        recipientDetails = recRows.map((r) => ({
-          email: r.email, name: r.name || '', segment: r.segment || '',
-          opened: openedSet.has(r.rid), clicked: clickedSet.has(r.rid), failed: !!r.failed,
-        })).sort((a, b) => (b.clicked - a.clicked) || (b.opened - a.opened) || a.email.localeCompare(b.email));
+        recipientDetails = recRows.map((r) => {
+          const info = ridInfo.get(r.rid);
+          return {
+            email: r.email, name: r.name || '', segment: r.segment || '',
+            opened: openedSet.has(r.rid), clicked: clickedSet.has(r.rid), failed: !!r.failed,
+            openedAt: info?.firstOpenAt || null, clicksN: info?.clicksN || 0, lastAt: info?.lastAt || null,
+          };
+        }).sort((a, b) => (b.clicksN - a.clicksN) || (b.clicked - a.clicked) || (b.opened - a.opened) || a.email.localeCompare(b.email));
+        // Engasjement per segment
+        const segMap = new Map();
+        for (const r of recRows) {
+          const key = r.segment || 'ukjent';
+          const s = segMap.get(key) || { segment: key, sent: 0, opened: 0, clicked: 0 };
+          s.sent++;
+          if (openedSet.has(r.rid)) s.opened++;
+          if (clickedSet.has(r.rid)) s.clicked++;
+          segMap.set(key, s);
+        }
+        segments = [...segMap.values()].sort((a, b) => b.sent - a.sent);
       }
       const opensUnique = (c.openedR || []).length;
       const clicksUnique = (c.clickedR || []).length;
+      const unsubs = c.unsubs || 0;
       return cors(NextResponse.json({
         ok: true,
         campaign: { ...c, openedR: undefined, clickedR: undefined },
         stats: {
           recipients: c.recipients || 0, sent: c.sent || 0, failedCount: c.failedCount || 0,
-          opens: c.opens || 0, opensUnique, clicks: c.clicks || 0, clicksUnique,
+          opens: c.opens || 0, opensUnique, clicks: c.clicks || 0, clicksUnique, unsubs,
           openRate: c.sent ? Math.round((opensUnique / c.sent) * 1000) / 10 : null,
           clickRate: c.sent ? Math.round((clicksUnique / c.sent) * 1000) / 10 : null,
-          clicksByUrl, timeline, recipientDetails,
+          ctor: opensUnique ? Math.round((clicksUnique / opensUnique) * 1000) / 10 : null,
+          medianMinutesToOpen, bestHour,
+          clicksByUrl, timeline, hourly, devices, clients, segments, recipientDetails,
         },
       }));
     }
@@ -3240,19 +3377,31 @@ async function handleRoute(request, { params }) {
 
       const base = process.env.NEXT_PUBLIC_BASE_URL || new URL(request.url).origin;
       const slug = slugifyCampaign(subject);
+      const fromEmail = (process.env.SENDGRID_FROM_EMAIL || 'hei@digihome.no').trim();
       let sent = 0; const failed = [];
       const CHUNK = 8;
       for (let i = 0; i < recipients.length; i += CHUNK) {
         const chunk = recipients.slice(i, i + CHUNK);
         await Promise.all(chunk.map(async (r) => {
           try {
+            const unsubUrl = buildUnsubUrl(base, r.email, campaignId);
             const html = renderNewsletterHtml({
               subject, preheader: c.preheader || '', blocks: c.blocks || [], theme: c.theme || 'lavendel',
-              unsubUrl: buildUnsubUrl(base, r.email), campaignSlug: slug,
+              unsubUrl, campaignSlug: slug,
               recipient: r,
               tracking: { trackBase: base, campaignId, rid: recipientId(r.email) },
             });
-            await sendHtmlEmail({ to: r.email, subject: applyMergeTags(subject, r), html, fromName: c.fromName || 'DigiHome' });
+            await sendHtmlEmail({
+              to: r.email, subject: applyMergeTags(subject, r), html, fromName: c.fromName || 'DigiHome',
+              replyTo: fromEmail,
+              // One-click avmelding (RFC 8058) — kreves av Gmail/Yahoo for bulk
+              // og bedrer fane-plassering/leveringsevne betydelig.
+              headers: {
+                'List-Unsubscribe': `<mailto:${fromEmail}?subject=avmelding>, <${unsubUrl}>`,
+                'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+              },
+              categories: ['nyhetsbrev', slug.slice(0, 50)],
+            });
             sent++;
           } catch (e) {
             failed.push({ email: r.email, error: (e.message || 'ukjent').slice(0, 200) });
@@ -3357,21 +3506,33 @@ async function handleRoute(request, { params }) {
     }
 
     // Offentlig avmelding — HMAC-verifisert lenke fra e-posten. Ingen auth.
-    if (route === '/newsletter/unsubscribe' && method === 'GET') {
+    // GET = klikk fra e-post (redirect til bekreftelsesside).
+    // POST = One-Click avmelding (RFC 8058 — Gmail/Yahoo poster hit automatisk).
+    if (route === '/newsletter/unsubscribe' && (method === 'GET' || method === 'POST')) {
       const sp = new URL(request.url).searchParams;
       let email = '';
       try { email = Buffer.from((sp.get('e') || '').toString(), 'base64url').toString('utf8'); } catch (e) { email = ''; }
       const token = (sp.get('t') || '').toString();
+      const campId = (sp.get('c') || '').toString().slice(0, 64);
       const base = process.env.NEXT_PUBLIC_BASE_URL || new URL(request.url).origin;
       if (!email || !verifyUnsubToken(email, token)) {
+        if (method === 'POST') return cors(NextResponse.json({ ok: false }, { status: 400 }));
         return NextResponse.redirect(`${base}/nyhetsbrev/avmeldt?feil=1`, 302);
       }
       const norm = nlNormEmail(email);
-      await db.collection(OPTOUT_COLL).updateOne(
+      const res = await db.collection(OPTOUT_COLL).updateOne(
         { email: norm },
-        { $setOnInsert: { email: norm, at: new Date().toISOString(), source: 'link' } },
+        { $setOnInsert: { email: norm, at: new Date().toISOString(), source: method === 'POST' ? 'one-click' : 'link' } },
         { upsert: true }
       );
+      // Kampanjekoblet avmeldingsstatistikk (kun første gang for denne e-posten)
+      if (campId && res.upsertedCount) {
+        try {
+          await db.collection(NEWSLETTER_COLL).updateOne({ id: campId, status: 'sent' }, { $inc: { unsubs: 1 } });
+          await db.collection(NL_EVENTS_COLL).insertOne({ id: uuidv4(), campaignId: campId, rid: recipientId(norm), type: 'unsub', at: new Date().toISOString() });
+        } catch (e) {}
+      }
+      if (method === 'POST') return cors(NextResponse.json({ ok: true }));
       return NextResponse.redirect(`${base}/nyhetsbrev/avmeldt`, 302);
     }
 
@@ -3382,8 +3543,9 @@ async function handleRoute(request, { params }) {
       const r = (sp.get('r') || '').toString().slice(0, 32);
       if (c && r) {
         try {
+          const ua = (request.headers.get('user-agent') || '').slice(0, 300);
           await db.collection(NEWSLETTER_COLL).updateOne({ id: c, status: 'sent' }, { $inc: { opens: 1 }, $addToSet: { openedR: r } });
-          await db.collection(NL_EVENTS_COLL).insertOne({ id: uuidv4(), campaignId: c, rid: r, type: 'open', at: new Date().toISOString() });
+          await db.collection(NL_EVENTS_COLL).insertOne({ id: uuidv4(), campaignId: c, rid: r, type: 'open', at: new Date().toISOString(), ...nlClassifyUa(ua) });
         } catch (e) {}
       }
       return new NextResponse(TRACKING_GIF, { status: 200, headers: { 'Content-Type': 'image/gif', 'Cache-Control': 'no-store, no-cache, must-revalidate', 'Content-Length': String(TRACKING_GIF.length) } });
@@ -3399,8 +3561,9 @@ async function handleRoute(request, { params }) {
       if (!/^https?:\/\//i.test(target)) target = base; // kun http(s)-mål
       if (c && r) {
         try {
+          const ua = (request.headers.get('user-agent') || '').slice(0, 300);
           await db.collection(NEWSLETTER_COLL).updateOne({ id: c, status: 'sent' }, { $inc: { clicks: 1 }, $addToSet: { clickedR: r } });
-          await db.collection(NL_EVENTS_COLL).insertOne({ id: uuidv4(), campaignId: c, rid: r, type: 'click', url: target.slice(0, 500), at: new Date().toISOString() });
+          await db.collection(NL_EVENTS_COLL).insertOne({ id: uuidv4(), campaignId: c, rid: r, type: 'click', url: target.slice(0, 500), at: new Date().toISOString(), ...nlClassifyUa(ua) });
           // Klikk → lead-attribusjon: finn mottakerens e-post via rid og stemple leaden
           const rec = await db.collection('newsletter_recipients').findOne({ campaignId: c, rid: r }, { projection: { _id: 0, email: 1 } });
           if (rec?.email) {

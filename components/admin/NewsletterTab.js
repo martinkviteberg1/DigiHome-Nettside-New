@@ -10,7 +10,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Plus, ArrowLeft, Send, Eye, FlaskConical, Loader2, Check, Trash2, Copy,
   Monitor, Smartphone, Users, Settings2, ChevronRight, X, Mail, MailOpen,
-  MousePointerClick, PenLine, Search, UsersRound,
+  MousePointerClick, PenLine, Search, UsersRound, Sparkles, RefreshCw,
 } from 'lucide-react';
 import { PALETTE, defaultsFor, CanvasBlock, BlockInspector } from './newsletter/EditorBlocks';
 import SubscribersView from './newsletter/SubscribersView';
@@ -49,6 +49,10 @@ export default function NewsletterTab({ apiKey }) {
   const [recipSearch, setRecipSearch] = useState('');
   const [extraInput, setExtraInput] = useState('');
   const [uploadingId, setUploadingId] = useState(null);
+  const [aiState, setAiState] = useState('idle'); // idle | loading | error
+  const [aiAlts, setAiAlts] = useState([]);       // alternative AI-forslag
+  const [aiErr, setAiErr] = useState('');
+  const aiAutoTried = useRef({});                  // per kampanje-id: auto-forslag kjørt?
   const saveTimer = useRef(null);
   const firstLoad = useRef(true);
   const dragId = useRef(null);
@@ -271,6 +275,41 @@ export default function NewsletterTab({ apiKey }) {
     } catch (e) { setTestState({ s: 'error', msg: e.message }); }
   };
 
+  /* -------------------------- AI: emne + forhåndstekst ---------------------- */
+  const suggestAI = async (mode = 'ny') => {
+    if (!camp) return;
+    setAiState('loading'); setAiErr('');
+    try {
+      const r = await fetch(`/api/admin/newsletter/suggest?${q}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          blocks: camp.blocks.map(({ id, ...rest }) => rest),
+          title: camp.title, mode,
+          currentSubject: camp.subject || '', currentPreheader: camp.preheader || '',
+        }),
+      });
+      const j = await r.json();
+      if (!j.ok) throw new Error(j.error || 'AI-forslag feilet');
+      const first = j.suggestions[0];
+      patch({ subject: first.subject, preheader: first.preheader || '' });
+      setAiAlts(j.suggestions);
+      setAiState('idle');
+    } catch (e) { setAiState('error'); setAiErr(e.message); }
+  };
+
+  // Auto-forslag: fyll inn emne/forhåndstekst med AI når begge er tomme og
+  // brevet har reelt innhold (kjøres maks én gang per kampanje per økt).
+  useEffect(() => {
+    if (view !== 'editor' || !camp || camp.status === 'sent') return;
+    if ((camp.subject || '').trim() || (camp.preheader || '').trim()) return;
+    if (aiAutoTried.current[camp.id]) return;
+    const hasText = (camp.blocks || []).some((b) =>
+      (b.type === 'text' && (b.text || '').trim().length > 40) || b.type === 'offer' || (b.type === 'heading' && (b.text || '').trim().length > 10));
+    if (!hasText) return;
+    aiAutoTried.current[camp.id] = true;
+    suggestAI('ny');
+  }, [view, camp?.id]); // eslint-disable-line
+
   const doSend = async () => {
     setSendState('sending'); setSendErr('');
     try {
@@ -296,7 +335,7 @@ export default function NewsletterTab({ apiKey }) {
 
   /* ============================ VIEW: STATS ================================= */
   if (view === 'stats' && camp) {
-    return <StatsView camp={camp} stats={stats} onBack={() => { setCamp(null); setView('list'); loadList(); }} onDuplicate={() => duplicateCampaign(camp.id)} />;
+    return <StatsView camp={camp} stats={stats} q={q} onBack={() => { setCamp(null); setView('list'); loadList(); }} onDuplicate={() => duplicateCampaign(camp.id)} />;
   }
 
   /* ============================ VIEW: EDITOR ================================ */
@@ -353,10 +392,10 @@ export default function NewsletterTab({ apiKey }) {
           </button>
         </div>
 
-        {/* 3 kolonner */}
-        <div className="grid grid-cols-[210px_1fr_300px] gap-4 mt-4 items-start">
+        {/* 3 kolonner (desktop) → stables på smalere skjermer */}
+        <div className="grid grid-cols-1 lg:grid-cols-[190px_minmax(0,1fr)_280px] xl:grid-cols-[210px_minmax(0,1fr)_300px] gap-4 mt-4 items-start">
           {/* Palett */}
-          <div className="rounded-2xl border border-[#f0f0f0] bg-white p-3 sticky top-[132px]">
+          <div className="rounded-2xl border border-[#f0f0f0] bg-white p-3 lg:sticky lg:top-[132px]">
             <p className="text-[10.5px] font-bold uppercase tracking-[0.1em] text-[#aaa] px-1">Blokker</p>
             <div className="grid grid-cols-2 gap-1.5 mt-2">
               {PALETTE.map((p) => (
@@ -403,7 +442,7 @@ export default function NewsletterTab({ apiKey }) {
           </div>
 
           {/* Inspektør */}
-          <div className="rounded-2xl border border-[#f0f0f0] bg-white p-4 sticky top-[132px] max-h-[calc(100vh-160px)] overflow-y-auto">
+          <div className="rounded-2xl border border-[#f0f0f0] bg-white p-4 lg:sticky lg:top-[132px] lg:max-h-[calc(100vh-160px)] overflow-y-auto">
             {selected ? (
               <BlockInspector b={selected} onPatch={(p) => patchBlock(selected.id, p)} onDel={removeBlock}
                 onUploadImage={uploadImage} uploadingId={uploadingId} apiQ={q} />
@@ -420,7 +459,14 @@ export default function NewsletterTab({ apiKey }) {
 
                 {panelTab === 'oppsett' ? (
                   <div className="mt-4">
-                    <label className="text-[11px] font-semibold text-[#777] block mb-1.5">Emnefelt *</label>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="text-[11px] font-semibold text-[#777]">Emnefelt *</label>
+                      <button onClick={() => suggestAI(camp.subject ? 'forbedre' : 'ny')} disabled={aiState === 'loading'} data-testid="nl-ai-suggest"
+                        className="flex items-center gap-1 text-[11px] font-bold text-[#a052e0] hover:text-[#7A3EC8] disabled:opacity-50">
+                        {aiState === 'loading' ? <Loader2 size={11} className="animate-spin" /> : <Sparkles size={11} />}
+                        {aiState === 'loading' ? 'AI skriver…' : camp.subject ? 'Forbedre med AI' : 'Foreslå med AI'}
+                      </button>
+                    </div>
                     <input value={camp.subject || ''} onChange={(e) => patch({ subject: e.target.value })} data-testid="nl-subject-input"
                       placeholder="F.eks. {{first_name}}, sommertilbud på forvaltning"
                       className="w-full h-[38px] rounded-lg border border-[#e8e8e8] px-3 text-[13px] outline-none focus:border-[#c99df0]" />
@@ -428,6 +474,23 @@ export default function NewsletterTab({ apiKey }) {
                     <input value={camp.preheader || ''} onChange={(e) => patch({ preheader: e.target.value })}
                       placeholder="Vises etter emnet i innboksen"
                       className="w-full h-[38px] rounded-lg border border-[#e8e8e8] px-3 text-[13px] outline-none focus:border-[#c99df0]" />
+                    {aiState === 'error' && aiErr ? <p className="text-[11px] text-red-500 mt-2">{aiErr}</p> : null}
+                    {aiAlts.length > 1 ? (
+                      <div className="mt-3 rounded-xl bg-[#faf7fe] border border-[#efe6f9] p-2.5" data-testid="nl-ai-alts">
+                        <div className="flex items-center justify-between px-0.5">
+                          <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[#a98cc9] flex items-center gap-1"><Sparkles size={10} /> AI-forslag — klikk for å bruke</p>
+                          <button onClick={() => suggestAI('ny')} disabled={aiState === 'loading'} title="Lag helt nye forslag"
+                            className="text-[#a98cc9] hover:text-[#7A3EC8] disabled:opacity-50"><RefreshCw size={11} className={aiState === 'loading' ? 'animate-spin' : ''} /></button>
+                        </div>
+                        {aiAlts.map((a, i) => (
+                          <button key={i} onClick={() => patch({ subject: a.subject, preheader: a.preheader })}
+                            className={`w-full text-left rounded-lg border px-2.5 py-2 mt-1.5 transition-colors ${camp.subject === a.subject ? 'border-[#c99df0] bg-white' : 'border-transparent bg-white/60 hover:bg-white hover:border-[#e5d8f2]'}`}>
+                            <span className="text-[11.5px] font-semibold text-[#111] block leading-snug">{a.subject}</span>
+                            {a.preheader ? <span className="text-[10px] text-[#999] block mt-0.5 leading-snug">{a.preheader}</span> : null}
+                          </button>
+                        ))}
+                      </div>
+                    ) : null}
                     <label className="text-[11px] font-semibold text-[#777] block mb-1.5 mt-4">Avsendernavn</label>
                     <input value={camp.fromName || ''} onChange={(e) => patch({ fromName: e.target.value })}
                       placeholder="DigiHome"

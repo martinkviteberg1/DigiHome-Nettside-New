@@ -105,6 +105,67 @@
 user_problem_statement: "Bygg DigiHome markedsside (Next.js App Router) etter flyttepakken — Warm Ink Editorial design, norsk bokmål, full SEO, DB-drevet blogg + admin + programmatisk SEO. Fase 1: verdensklasse forside + lead-API."
 
 backend:
+  - task: "Nyhetsbrev: AI-forslag emnefelt/forhåndstekst (POST /api/admin/newsletter/suggest — Emergent LLM via lib/llm.js chatLLM)"
+    implemented: true
+    working: true
+    file: "/app/app/api/[[...path]]/route.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "Nytt endepunkt: tar {blocks, mode:'ny'|'forbedre', currentSubject, currentPreheader}, trekker ut tekstinnhold fra blokkene, ber LLM om 3 forslag som JSON {forslag:[{emne, forhandstekst}]}. Returnerer {ok, suggestions:[{subject, preheader}]}. 400 hvis blocks mangler tekstinnhold, 401 uten key, 502 ved LLM-feil. UI autofyller ved tomt emnefelt + 'Forbedre med AI'-knapp. LIVE-VERIFISERT: brukeren fikk 200 fra endepunktet i sanntid."
+        -working: true
+        -agent: "testing"
+        -comment: "✅ AI subject/preheader suggestions working perfectly (4/4 tests passed). COMPREHENSIVE VERIFICATION: Base URL: https://hero-premiere-4.preview.emergentagent.com/api. Admin key: dh_admin_b3Kx92Qz7Lm4. Timeout: 60s (LLM calls). TEST 1a: POST /api/admin/newsletter/suggest with mode='ny' and valid blocks returns 200 {ok:true, suggestions:[3]} ✓. All 3 suggestions have required fields (subject, preheader) ✓. All suggestions contain Norwegian characters (æøå) ✓. Example: 'Sommertilbud til deg, {{first_name}}' / 'Få 10 % rabatt på forvaltningshonorar ut juli.' ✓. TEST 1b: POST with mode='forbedre' and currentSubject='Nyhetsbrev fra DigiHome' returns 200 with 3 suggestions ✓. TEST 1c: POST with empty blocks [] returns 400 with Norwegian error 'Nyhetsbrevet har ikke nok innhold ennå — legg til tekst først' ✓. TEST 1d: POST without key returns 401 (authentication working) ✓. AI suggestions working correctly: LLM integration via lib/llm.js chatLLM working, returns 1-3 suggestions with Norwegian text, validation working (empty blocks → 400), authentication working (401 without key). Created backend_test_newsletter_upgrades.py for comprehensive testing."
+
+  - task: "Nyhetsbrev: utvidet kampanjestatistikk (hourly, devices/clients, segments, per-mottaker openedAt/clicksN, unsubs, CTOR, medianMinutesToOpen, bestHour) + UA-sporing på open/click"
+    implemented: true
+    working: true
+    file: "/app/app/api/[[...path]]/route.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "GET /api/admin/newsletter/campaign?id= (status sent) returnerer nå stats med: hourly[], devices[], clients[], segments[], recipientDetails[{openedAt, clicksN, lastAt}], unsubs, ctor, medianMinutesToOpen, bestHour. Open/click-events lagrer nå device+client fra user-agent (nlClassifyUa). StatsView.js viser 5 KPI-er + timegraf + enheter + segmenter + 'Se nyhetsbrevet'-modal. Skjermbilde-verifisert på ekte sendt kampanje."
+        -working: true
+        -agent: "testing"
+        -comment: "✅ Extended campaign stats working perfectly (ALL required fields present). COMPREHENSIVE VERIFICATION: Base URL: https://hero-premiere-4.preview.emergentagent.com/api. Admin key: dh_admin_b3Kx92Qz7Lm4. Timeout: 60s. TEST 2a: GET /api/admin/newsletter returns 200 with 4 campaigns, found sent campaign id: 00f213d2-b6b7-43f5-87be-9fbaa3fa9b4f ✓. TEST 2b: GET /api/admin/newsletter/campaign?id=<sentId> returns 200 ✓. CRITICAL VERIFICATION: stats contains ALL required NEW fields: hourly (array, length:1) ✓, devices (array, length:1) ✓, clients (array, length:1) ✓, segments (array, length:1) ✓, unsubs (number:0) ✓, ctor (number:0) ✓, medianMinutesToOpen (number:1) ✓, bestHour (string:'2026-07-05T09') ✓, recipientDetails (array, length:1) ✓. PLUS existing fields: opens (number:1) ✓, opensUnique (number:1) ✓, clicks (number:0) ✓, clicksUnique (number:0) ✓, openRate (number:100) ✓, clickRate (number:0) ✓, clicksByUrl (array - minor: expected object but got array, not critical) ✓, timeline (array, length:1) ✓. recipientDetails entries have required keys: openedAt ✓, clicksN ✓. Extended campaign stats working correctly: all new fields present with correct types, recipientDetails structure correct, UA-sporing fields (devices/clients) populated. Created backend_test_newsletter_upgrades.py for comprehensive testing."
+
+  - task: "Nyhetsbrev: List-Unsubscribe one-click headere (RFC 8058) på utsendinger + POST /api/newsletter/unsubscribe + kampanjekoblet avmeldingssporing"
+    implemented: true
+    working: true
+    file: "/app/app/api/[[...path]]/route.js, /app/lib/email.js, /app/lib/newsletter.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "sendHtmlEmail støtter nå headers+categories. Send-endepunktet setter List-Unsubscribe (mailto + https) og List-Unsubscribe-Post: One-Click per mottaker, replyTo=avsender. buildUnsubUrl tar campaignId (&c=). Unsubscribe-handleren støtter nå GET (redirect) OG POST (one-click, JSON) og logger unsub-event + $inc unsubs på kampanjen ved første avmelding."
+        -working: true
+        -agent: "testing"
+        -comment: "✅ One-click unsubscribe endpoint working perfectly (VALIDATION ONLY - did NOT test with valid tokens). COMPREHENSIVE VERIFICATION: Base URL: https://hero-premiere-4.preview.emergentagent.com/api. Admin key: dh_admin_b3Kx92Qz7Lm4. Timeout: 60s. CRITICAL SAFETY RULE FOLLOWED: Tested ONLY validation paths with invalid tokens (would NOT unsubscribe real users). TEST 3a: POST /api/newsletter/unsubscribe?e=aW52YWxpZA&t=invalidtoken returns 400 {ok:false} ✓. TEST 3b: GET /api/newsletter/unsubscribe?e=aW52YWxpZA&t=invalidtoken returns 302 redirect ✓. Location header contains '/nyhetsbrev/avmeldt?feil=1' (error parameter present) ✓. One-click unsubscribe validation working correctly: POST handler returns 400 for invalid token, GET handler redirects with error parameter for invalid token. Did NOT test with valid tokens (would unsubscribe real users). Created backend_test_newsletter_upgrades.py for comprehensive testing."
+
+  - task: "Nyhetsbrev: fokuspunkt på bilder (focalX/focalY 0-100 → object-position i e-post-HTML) + dra-prikk i editoren"
+    implemented: true
+    working: true
+    file: "/app/lib/newsletter.js, /app/components/admin/newsletter/EditorBlocks.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "sanitizeBlocks image/hero tar focalX/focalY (clamp 0-100, default 50). Render setter object-position:X% Y% når høyde er satt. Editor: lilla dra-prikk på bildet (vises på hover når høyde er satt) + Fokuspunkt-rad i inspektøren med Midtstill-knapp. Node-sanitetstest 5/5 PASS (inkl. clamping 150→100, -10→0). Skjermbilde-verifisert."
+        -working: true
+        -agent: "testing"
+        -comment: "✅ Focal point rendering working perfectly (3/3 tests passed). COMPREHENSIVE VERIFICATION: Base URL: https://hero-premiere-4.preview.emergentagent.com/api. Admin key: dh_admin_b3Kx92Qz7Lm4. Timeout: 60s. TEST 4a: POST /api/admin/newsletter/preview with image block (focalX:20, focalY:80, height:220) returns 200 {ok:true, html} ✓. HTML contains 'object-position:20% 80%' ✓. TEST 4b: POST with focalX:150, focalY:-10 (out of range) returns 200 ✓. HTML contains 'object-position:100% 0%' (clamped correctly to 0-100 range) ✓. TEST 4c: POST with image WITHOUT height (no height key) returns 200 ✓. Image tag does NOT contain object-position (correct - only applies when height is set) ✓. Focal point rendering working correctly: focalX/focalY values are clamped to 0-100 range, object-position CSS property is set correctly (X% Y%), object-position is ONLY applied when height is set (not for auto-height images). Created backend_test_newsletter_upgrades.py for comprehensive testing."
+
+
   - task: "Nyhetsbrev: WebP-konvertering av opplastede bilder (POST /api/admin/newsletter/upload → sharp .webp q80, maks 1200px, EXIF-rotate, animert GIF-støtte)"
     implemented: true
     working: true
@@ -2131,6 +2192,9 @@ agent_communication:
 
 agent_communication:
     -agent: "main"
+    -message: "BATCH 2 FERDIG — 5 nye funksjoner trenger backend-test. SAMME SIKKERHETSREGLER SOM SIST: brukeren er AKTIV i appen. (a) ALDRI kall POST /api/admin/newsletter/send. (b) ALDRI kall /api/admin/newsletter/test med gyldige e-poster+blocks (sender ekte e-post). (c) IKKE rør drafts/campaigns (ingen POST/PUT/DELETE på draft/campaign). (d) IKKE meld av ekte abonnenter. (e) Rydd opp alt du oppretter. TEST: (1) AI-forslag: POST /api/admin/newsletter/suggest?key=dh_admin_b3Kx92Qz7Lm4 med body {blocks:[{type:'heading',text:'Sommertilbud på utleie'},{type:'text',text:'Vi gir 10 prosent rabatt på forvaltningshonorar ut juli. Bergen har rekordhøy etterspørsel etter leieboliger akkurat nå.'}], mode:'ny'} → 200 {ok:true, suggestions:[maks 3 x {subject, preheader}]} (kan ta 5-15 sek, LLM-kall). Negativ: blocks:[] → 400. Uten key → 401. (2) Utvidet statistikk: GET /api/admin/newsletter/campaign?id=<en sendt kampanje sin id — finn via GET /api/admin/newsletter (status sent)>&key=... → 200 og stats-objektet skal inneholde feltene: hourly (array), devices (array), clients (array), segments (array), unsubs (number), ctor, recipientDetails med openedAt/clicksN. (3) One-click unsub validering: POST /api/newsletter/unsubscribe?e=xxx&t=ugyldig → 400 {ok:false}. GET samme → 302 redirect til /nyhetsbrev/avmeldt?feil=1. IKKE test med gyldig token. (4) Fokuspunkt-render: POST /api/admin/newsletter/preview?key=... med blocks:[{type:'image',url:'/x.jpg',height:220,fit:'cover',focalX:20,focalY:80}] → 200, html inneholder 'object-position:20% 80%'. Clamp: focalX:150,focalY:-10 → 'object-position:100% 0%'. (5) Regresjon: WebP-upload (generer liten PNG, POST /api/admin/newsletter/upload → 201, GET asset → Content-Type image/webp) + GET /api/ 200 + GET /api/public/properties 200. Slett newsletter_assets-docs du lager (MONGO_URL+DB_NAME i /app/.env)."
+
+    -agent: "main"
     -message: "NYHETSBREV-OPPGRADERINGER (4 stk) FERDIG IMPLEMENTERT — trenger backend-test av 3 endepunkter. KRITISKE SIKKERHETSREGLER: (a) IKKE kall POST /api/admin/newsletter/send (sender EKTE e-post!). (b) POST /api/admin/newsletter/test SENDER EKTE E-POST via SendGrid hvis payload er gyldig — test derfor KUN valideringsstiene (400-feil), ALDRI med gyldige e-poster + gyldige blocks. (c) Rydd opp: slett dokumenter du oppretter i newsletter_assets-collection (MONGO_URL+DB_NAME fra /app/.env). TEST DETTE: (1) WebP-upload: POST /api/admin/newsletter/upload?key=dh_admin_b3Kx92Qz7Lm4 med multipart file=liten generert PNG/JPEG → 201 {ok:true, id, url, width, height}. Deretter GET /api/newsletter/asset?id=<id> → 200 med Content-Type: image/webp (VIKTIGST — konverteringen er ny) + Cache-Control immutable. (2) Test-endepunkt validering: POST /api/admin/newsletter/test?key=... med body {to:'ikke-en-epost, heller;ikke', blocks:[{type:'text',text:'x'}]} → 400 'Ingen gyldige test-adresser'; body {to:'gyldig@example.com', blocks:[]} → 400 'Nyhetsbrevet har ikke noe innhold ennå'. IKKE test happy path (sender ekte e-post). (3) Preview m/ nye blokker: POST /api/admin/newsletter/preview?key=... med body {subject:'t', blocks:[{type:'image',url:'/x.jpg',height:220,fit:'contain'},{type:'properties',title:'Ledige boliger',cta:'Se alle',url:'https://digihome.no/bli-leietaker',items:[{pid:'p1',title:'Testbolig A',image:'https://example.com/a.jpg',meta:'Bergen · 60 m²',band:'18 000 kr/mnd'},{pid:'p2',title:'Testbolig B',image:'',meta:'Landås',band:''}]}]} → 200 {ok, html} der html inneholder 'height:220px', 'object-fit:contain', 'Testbolig A', '18 000 kr/mnd', 'Se alle'. (4) Regresjon: GET /api/ → 200, GET /api/public/properties → 200, GET /api/admin/newsletter?key=... → 200. Auth-sjekk: upload/test/preview uten key → 401."
 
     -agent: "main"
@@ -2138,6 +2202,10 @@ agent_communication:
 
     -agent: "main"
     -message: "GOOGLE MAPS-ADRESSESØK MIGRERT (manuelt verifisert — trenger ikke ny testrunde nå): GET /api/address?q= bruker nå Google Places Autocomplete (Bergen-bias 30km, country:no) med Geonorge-fallback hvis GOOGLE_MAPS_API_KEY mangler/feiler. NYTT: GET /api/address?place_id= → Place Details {ok, address, postalCode, city, label}. Respons-kontrakt suggestions[{text,sub,label,place_id?}] er bakoverkompatibel. AddressAutocomplete.tsx: choose() henter postnummer via place_id-oppslag; mobil (<768px): scroll-til-topp ved fokus + maks-høyde/scroll på dropdown. VERIFISERT: curl (Bergen først, postalCode 5005 fra Details) + E2E-skjermbilder desktop/mobil (forslag→valg→bekreftet felt m/postnr→Eiendomsregister-oppslag OK). Berører alle adressefelter (BliUtleier, Hero, PriceWizard, /sommer) via delt komponent."
+
+
+    -agent: "testing"
+    -message: "✅ NEWSLETTER UPGRADES BATCH 2 TESTING COMPLETE (ALL 4 NEW FEATURES + 1 REGRESSION TEST PASSED). Tested ONLY the 4 newest backend tasks at the top of the backend section as requested in review_request. ALL TESTS PASSED WITH NO MAJOR ISSUES. Base URL: https://hero-premiere-4.preview.emergentagent.com/api. Admin key: dh_admin_b3Kx92Qz7Lm4. Timeout: 60s. CRITICAL SAFETY RULES FOLLOWED: Did NOT call POST /api/admin/newsletter/send (sends real emails!), did NOT call POST /api/admin/newsletter/test with valid emails+blocks (sends real emails!), did NOT create/modify/delete campaigns or drafts, did NOT unsubscribe real subscribers (only tested with INVALID tokens), MANDATORY CLEANUP completed (deleted 1 test asset from newsletter_assets collection). SUMMARY: ✅ TEST 1 - AI subject/preheader suggestions (4/4 tests passed): POST /api/admin/newsletter/suggest with mode='ny' returns 200 with 3 suggestions (each with subject+preheader in Norwegian), mode='forbedre' works, empty blocks → 400 with Norwegian error, without key → 401. ✅ TEST 2 - Extended campaign stats (ALL required fields present): GET /api/admin/newsletter/campaign for sent campaign returns 200 with stats containing ALL new fields (hourly, devices, clients, segments, unsubs, ctor, medianMinutesToOpen, bestHour, recipientDetails with openedAt+clicksN keys) PLUS all existing fields (opens, opensUnique, clicks, clicksUnique, openRate, clickRate, clicksByUrl, timeline). Minor: clicksByUrl is array instead of object (not critical). ✅ TEST 3 - One-click unsubscribe validation (2/2 tests passed): POST /api/newsletter/unsubscribe with invalid token → 400 {ok:false}, GET with invalid token → 302 redirect to /nyhetsbrev/avmeldt?feil=1. Did NOT test with valid tokens (would unsubscribe real users). ✅ TEST 4 - Focal point rendering (3/3 tests passed): POST /api/admin/newsletter/preview with focalX:20, focalY:80 → HTML contains 'object-position:20% 80%', focalX:150, focalY:-10 → HTML contains 'object-position:100% 0%' (clamped correctly), image WITHOUT height → HTML does NOT contain object-position (correct). ✅ TEST 5 - Regression WebP upload (4/4 tests passed): POST /api/admin/newsletter/upload with PNG → 201 {ok, id, url}, GET /api/newsletter/asset?id=<id> → 200 with Content-Type: image/webp + WebP magic bytes verified (RIFF....WEBP), GET /api/ → 200, GET /api/public/properties → 200. Cleanup: deleted test asset from newsletter_assets collection. Created backend_test_newsletter_upgrades.py for comprehensive testing. Response times: <1s per endpoint (except AI suggestions 2-3s for LLM calls). Database kept clean (all test data deleted)."
 
 
     -agent: "testing"

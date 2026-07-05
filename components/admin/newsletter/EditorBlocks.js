@@ -42,8 +42,8 @@ export function defaultsFor(type) {
     case 'sender':   return { name: 'Sarah Sleeman', title: 'Daglig leder, DigiHome', note: '', photoUrl: '/sarah-sleeman.jpg' };
     case 'signature': return { name: 'Sarah Sleeman', title: 'Daglig leder — DigiHome, Bergen' };
     case 'spacer':   return { size: 'm' };
-    case 'hero':     return { url: '', alt: '', height: null, fit: 'cover' };
-    case 'image':    return { url: '', alt: '', height: null, fit: 'cover' };
+    case 'hero':     return { url: '', alt: '', height: null, fit: 'cover', focalX: 50, focalY: 50 };
+    case 'image':    return { url: '', alt: '', height: null, fit: 'cover', focalX: 50, focalY: 50 };
     case 'properties': return { title: 'Ledige boliger i Bergen', items: [], cta: 'Se alle ledige boliger', url: 'https://digihome.no/bli-leietaker' };
     default:         return {};
   }
@@ -95,12 +95,14 @@ export function DropImage({ onUpload, uploading, compact = false, label = 'Slipp
   );
 }
 
-/* -------- Bilde med «bytt»-overlay + dra-håndtak for høyde ---------------- */
-function ImageWithSwap({ src, alt, onUpload, uploading, rounded = 'rounded-xl', height, fit, onResize }) {
+/* -------- Bilde med «bytt»-overlay + dra-håndtak for høyde + fokuspunkt --- */
+function ImageWithSwap({ src, alt, onUpload, uploading, rounded = 'rounded-xl', height, fit, onResize, focalX, focalY, onFocal }) {
   const [over, setOver] = useState(false);
   const [dragH, setDragH] = useState(null); // live-høyde under draing
+  const [dragF, setDragF] = useState(null); // live-fokuspunkt under draing
   const fileRef = useRef(null);
   const imgRef = useRef(null);
+  const boxRef = useRef(null);
 
   const startResize = (e) => {
     e.preventDefault(); e.stopPropagation();
@@ -122,30 +124,64 @@ function ImageWithSwap({ src, alt, onUpload, uploading, rounded = 'rounded-xl', 
     window.addEventListener('mouseup', up);
   };
 
+  // Fokuspunkt: dra den lilla prikken dit motivet skal ankres (object-position)
+  const startFocal = (e) => {
+    e.preventDefault(); e.stopPropagation();
+    const rect = boxRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const calc = (ev) => ({
+      x: Math.max(0, Math.min(100, Math.round(((ev.clientX - rect.left) / rect.width) * 100))),
+      y: Math.max(0, Math.min(100, Math.round(((ev.clientY - rect.top) / rect.height) * 100))),
+    });
+    setDragF(calc(e));
+    const move = (ev) => setDragF(calc(ev));
+    const up = (ev) => {
+      window.removeEventListener('mousemove', move);
+      window.removeEventListener('mouseup', up);
+      const p = calc(ev);
+      setDragF(null);
+      onFocal && onFocal(p.x, p.y);
+    };
+    window.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', up);
+  };
+
   const h = dragH != null ? dragH : (Number(height) > 0 ? Number(height) : null);
+  const fx = dragF ? dragF.x : (Number.isFinite(Number(focalX)) ? Number(focalX) : 50);
+  const fy = dragF ? dragF.y : (Number.isFinite(Number(focalY)) ? Number(focalY) : 50);
   return (
-    <div className={`relative group/img overflow-hidden ${rounded}`}
+    <div ref={boxRef} className={`relative group/img overflow-hidden ${rounded}`}
       onDragOver={(e) => { e.preventDefault(); setOver(true); }}
       onDragLeave={() => setOver(false)}
       onDrop={(e) => { e.preventDefault(); setOver(false); const f = e.dataTransfer.files?.[0]; if (f && f.type.startsWith('image/')) onUpload(f); }}>
       <input ref={fileRef} type="file" accept="image/*" className="hidden"
         onChange={(e) => { const f = e.target.files?.[0]; if (f) onUpload(f); e.target.value = ''; }} />
       <img ref={imgRef} src={src} alt={alt || ''} className="w-full block"
-        style={{ opacity: uploading ? 0.5 : 1, height: h ? `${h}px` : 'auto', objectFit: h ? (fit || 'cover') : undefined }} />
+        style={{ opacity: uploading ? 0.5 : 1, height: h ? `${h}px` : 'auto', objectFit: h ? (fit || 'cover') : undefined, objectPosition: h ? `${fx}% ${fy}%` : undefined }} />
       <button type="button" onClick={() => fileRef.current?.click()}
         className={`absolute inset-0 flex items-center justify-center bg-black/40 text-white text-[12.5px] font-semibold gap-2 transition-opacity ${over ? 'opacity-100' : 'opacity-0 group-hover/img:opacity-100'}`}>
         {uploading ? <Loader2 size={16} className="animate-spin" /> : <UploadCloud size={15} />} Bytt bilde
       </button>
-      {onResize ? (<>
+      {onResize ? (
         <div onMouseDown={startResize} data-testid="nl-img-resize"
           className={`absolute bottom-0 inset-x-0 h-[16px] z-10 cursor-ns-resize flex items-end justify-center transition-opacity ${dragH != null ? 'opacity-100' : 'opacity-0 group-hover/img:opacity-100'}`}
           title="Dra for å endre høyde">
           <div className="mb-[4px] w-12 h-[5px] rounded-full bg-white shadow-md border border-black/10" />
         </div>
-        {dragH != null ? (
-          <span className="absolute top-2 left-2 z-10 rounded-md bg-black/75 text-white text-[11px] font-semibold px-2 py-0.5">{dragH}px · {fit || 'cover'}</span>
-        ) : null}
-      </>) : null}
+      ) : null}
+      {onFocal && h ? (
+        <div onMouseDown={startFocal} data-testid="nl-img-focal"
+          className={`absolute z-10 w-[24px] h-[24px] -ml-[12px] -mt-[12px] rounded-full border-2 border-white shadow-lg cursor-move transition-opacity ${dragF ? 'opacity-100 scale-110' : 'opacity-0 group-hover/img:opacity-100'}`}
+          style={{ left: `${fx}%`, top: `${fy}%`, background: 'rgba(160,82,224,0.9)' }}
+          title="Fokuspunkt — dra prikken dit motivet skal være i fokus">
+          <span className="absolute inset-[7px] rounded-full bg-white pointer-events-none" />
+        </div>
+      ) : null}
+      {dragH != null ? (
+        <span className="absolute top-2 left-2 z-10 rounded-md bg-black/75 text-white text-[11px] font-semibold px-2 py-0.5">{dragH}px · {fit || 'cover'}</span>
+      ) : dragF != null ? (
+        <span className="absolute top-2 left-2 z-10 rounded-md bg-black/75 text-white text-[11px] font-semibold px-2 py-0.5">Fokus {dragF.x} % / {dragF.y} %</span>
+      ) : null}
     </div>
   );
 }
@@ -183,12 +219,14 @@ export function CanvasBlock({ b, i, total, accent, selected, onSelect, onPatch, 
       case 'image':
         return b.url
           ? <ImageWithSwap src={b.url} alt={b.alt} onUpload={upload} uploading={uploading}
-              height={b.height} fit={b.fit} onResize={(h) => onPatch({ height: h })} />
+              height={b.height} fit={b.fit} onResize={(h) => onPatch({ height: h })}
+              focalX={b.focalX} focalY={b.focalY} onFocal={(x, y) => onPatch({ focalX: x, focalY: y })} />
           : <DropImage onUpload={upload} uploading={uploading} compact />;
       case 'hero':
         return b.url
           ? <ImageWithSwap src={b.url} alt={b.alt} onUpload={upload} uploading={uploading} rounded="rounded-none"
-              height={b.height} fit={b.fit} onResize={(h) => onPatch({ height: h })} />
+              height={b.height} fit={b.fit} onResize={(h) => onPatch({ height: h })}
+              focalX={b.focalX} focalY={b.focalY} onFocal={(x, y) => onPatch({ focalX: x, focalY: y })} />
           : <DropImage onUpload={upload} uploading={uploading} label="Slipp hero-bildet her — vises i full bredde øverst" />;
       case 'properties': {
         const items = b.items || [];
@@ -337,8 +375,8 @@ export function CanvasBlock({ b, i, total, accent, selected, onSelect, onPatch, 
       data-testid={`nl-block-${b.type}`}
       className={`relative group transition-shadow ${fullBleed ? '' : 'px-10'} py-2 ${selected ? 'ring-2 ring-[#c99df0] ring-inset rounded-lg' : 'hover:ring-1 hover:ring-[#eadff5] hover:ring-inset rounded-lg'}`}
     >
-      {/* verktøylinje */}
-      <div className={`absolute -top-3 right-3 z-10 flex items-center gap-0.5 rounded-full border border-[#eee] bg-white shadow-sm px-1 py-0.5 transition-opacity ${selected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+      {/* verktøylinje — legges INNENFOR blokken på første/hero (unngår klipping av overflow-hidden) */}
+      <div className={`absolute ${(fullBleed || i === 0) ? 'top-2' : '-top-3'} right-3 z-10 flex items-center gap-0.5 rounded-full border border-[#eee] bg-white shadow-sm px-1 py-0.5 transition-opacity ${selected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
         <span draggable onDragStart={(e) => onDragStartBlock(e, b.id)} className="cursor-grab active:cursor-grabbing p-1 text-[#bbb] hover:text-[#555]" title="Dra for å flytte"><GripVertical size={13} /></span>
         <button onClick={(e) => { stop(e); onMove(b.id, -1); }} disabled={i === 0} className="p-1 text-[#999] hover:text-[#111] disabled:opacity-30"><ArrowUp size={13} /></button>
         <button onClick={(e) => { stop(e); onMove(b.id, 1); }} disabled={i === total - 1} className="p-1 text-[#999] hover:text-[#111] disabled:opacity-30"><ArrowDown size={13} /></button>
@@ -474,6 +512,15 @@ export function BlockInspector({ b, onPatch, onDel, onUploadImage, uploadingId, 
           ))}
         </div>
         <p className="text-[10.5px] text-[#aaa] mt-1.5">«Fyll» beskjærer, «Tilpass» viser hele bildet, «Strekk» fyller uten beskjæring. Gjelder når høyden er satt.</p>
+        <label className={labelCls}>Fokuspunkt</label>
+        <div className="flex items-center gap-2">
+          <span className="text-[12px] text-[#777] tabular-nums flex-1" data-testid="nl-insp-focal">
+            {b.height ? `${b.focalX ?? 50} % fra venstre · ${b.focalY ?? 50} % fra toppen` : 'Sett en høyde først'}
+          </span>
+          <button onClick={() => onPatch({ focalX: 50, focalY: 50 })} disabled={!b.height} data-testid="nl-insp-focal-reset"
+            className="h-[28px] px-3 rounded-lg bg-[#f4f2ef] text-[12px] font-semibold text-[#777] hover:bg-[#ece9e4] disabled:opacity-40">Midtstill</button>
+        </div>
+        <p className="text-[10.5px] text-[#aaa] mt-1.5">Hold musen over bildet og dra den lilla prikken dit motivet skal være i fokus — styrer hva som beholdes ved beskjæring («Fyll»).</p>
       </>) : null}
 
       {b.type === 'properties' ? (<>
