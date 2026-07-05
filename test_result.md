@@ -1272,6 +1272,18 @@ backend:
 
 
 frontend:
+  - task: "Nøkkeltall-dashbord redesign: lyst investorklart Stripe/Carta-design (KpiDashboard.js)"
+    implemented: true
+    working: true
+    file: "/app/components/admin/KpiDashboard.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "main"
+        -comment: "Fullstendig visuell omskriving fra mørkt til lyst tema (Stripe/Carta-stil): hvite kort m/hairline-border + myk skygge, tabular-nums overalt, delta-chips m/«vs forrige periode»-tekst, fotnote-markører (¹–⁵) på LTV/CAC/CPL/ROAS/Payback, nytt «Definisjoner & datagrunnlag»-panel nederst m/kilder+oppdatert-tidsstempel, North Star-hero m/lys lavendel-gradient + benchmark-bar, MRR-kort m/emerald-gradient, lys presentasjonsmodus (keynote-stil) og lys LTV-innstillingsmodal. Alle data-testids og API-kall uendret (kun frontend). Visuelt verifisert m/skjermbilder: hoveddashbord (topp/midt/bunn), presentasjonsmodus og innstillingsmodal — alt rendres korrekt, ingen konsollfeil."
+
   - task: "Admin: ny fane «Trakt & A/B» — drop-off pr. skjema + A/B-eksperimentvinner (FunnelTab.js)"
     implemented: true
     working: true
