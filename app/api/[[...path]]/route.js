@@ -1102,12 +1102,13 @@ async function handleRoute(request, { params }) {
       }
     }
 
-    const db = await getDb();
-
-    // Health
+    // Health — MÅ svare uten DB-tilkobling (readiness-proben i produksjon
+    // skal ikke avhenge av at Atlas svarer i det sekundet poden starter).
     if ((route === '/' || route === '/root') && method === 'GET') {
       return cors(NextResponse.json({ message: 'DigiHome API', ok: true }));
     }
+
+    const db = await getDb();
 
     // ──────────────────────────────────────────────────────────────────────
     // Admin-innlogging (e-post/passord → signert sesjonstoken)
