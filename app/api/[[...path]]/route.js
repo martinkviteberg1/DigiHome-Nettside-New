@@ -3278,6 +3278,56 @@ Lag en komplett tekstpakke som JSON:
       }
     }
 
+    // AI: foreslå bildeprompt fra briefen (brukes i Media-steget).
+    // body: { brief, landing? }
+    if (route === '/admin/adstudio/imageprompt' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      const brief = String(body.brief || '').slice(0, 600).trim();
+      if (!brief) return cors(NextResponse.json({ ok: false, error: 'Skriv en brief først' }, { status: 400 }));
+      try {
+        const prompt = (await chatLLM({
+          feature: 'annonsestudio_bildeprompt',
+          maxTokens: 140,
+          temperature: 0.7,
+          messages: [
+            { role: 'system', content: 'You write ONE concise English image-generation prompt (max 40 words) for a Facebook ad photo. Concrete subject, setting, mood, light. Scandinavian/Bergen context when relevant. No text overlays, no logos. Reply with the prompt only.' },
+            { role: 'user', content: `Ad brief (Norwegian): ${brief}\nCompany: DigiHome — professional rental property management in Bergen, Norway. Target: homeowners/landlords.` },
+          ],
+        })).trim().replace(/^["']|["']$/g, '').slice(0, 500);
+        return cors(NextResponse.json({ ok: true, prompt }));
+      } catch (e) {
+        return cors(NextResponse.json({ ok: false, error: 'AI-forslaget feilet — prøv igjen' }, { status: 502 }));
+      }
+    }
+
+    // AI-syn: analyser annonsebildet (gpt-4o-mini vision) → kort norsk
+    // beskrivelse som gjør tekstpakken bildebevisst.
+    // body: { assetId }
+    if (route === '/admin/adstudio/imagenote' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      try {
+        const asset = await db.collection('newsletter_assets').findOne({ id: String(body.assetId || '') }, { projection: { data: 1, contentType: 1 } });
+        if (!asset || !asset.data) return cors(NextResponse.json({ ok: false, error: 'Fant ikke bildet' }, { status: 404 }));
+        const note = (await chatLLM({
+          feature: 'annonsestudio_bildesyn',
+          maxTokens: 80,
+          temperature: 0.3,
+          messages: [{
+            role: 'user',
+            content: [
+              { type: 'text', text: 'Beskriv dette annonsebildet i ÉN kort norsk setning (maks 18 ord): motiv, setting og stemning. Kun setningen.' },
+              { type: 'image_url', image_url: { url: `data:${asset.contentType || 'image/jpeg'};base64,${asset.data}` } },
+            ],
+          }],
+        })).trim().replace(/^["']|["']$/g, '').slice(0, 240);
+        return cors(NextResponse.json({ ok: true, note }));
+      } catch (e) {
+        return cors(NextResponse.json({ ok: false, error: 'Bildeanalysen feilet' }, { status: 502 }));
+      }
+    }
+
     // Opprett annonsen — ALLTID pauset. validateOnly=true → kun Metas validering.
     // body: { adsetId, adName, pageId, link, message, headline, description, imageHash, cta, validateOnly }
     if (route === '/admin/adstudio/create' && method === 'POST') {
@@ -3287,18 +3337,36 @@ Lag en komplett tekstpakke som JSON:
       const missing = required.filter((k) => !String(body[k] || '').trim());
       if (missing.length) return cors(NextResponse.json({ ok: false, error: `Mangler: ${missing.join(', ')}` }, { status: 400 }));
       try {
-        const spec = buildCreativeSpec(body);
-        const result = await createStudioAd({ adsetId: body.adsetId, adName: String(body.adName).slice(0, 150), creativeSpec: spec, validateOnly: !!body.validateOnly });
-        if (body.validateOnly) return cors(NextResponse.json({ ok: true, validated: true }));
-        await db.collection('studio_ads').insertOne({
-          id: uuidv4(), metaAdId: result.adId, metaCreativeId: result.creativeId,
-          adsetId: body.adsetId, adName: String(body.adName).slice(0, 150),
-          link: String(body.link).slice(0, 500), message: String(body.message).slice(0, 2000),
-          headline: String(body.headline).slice(0, 120), description: String(body.description || '').slice(0, 120),
-          cta: String(body.cta || 'LEARN_MORE'), imageHash: String(body.imageHash),
-          imageUrl: String(body.imageUrl || ''), status: 'PAUSED', createdAt: new Date().toISOString(),
-        });
-        return cors(NextResponse.json({ ok: true, adId: result.adId, creativeId: result.creativeId }, { status: 201 }));
+        // A/B: body.variants = [{ message, headline?, description?, angle? }] →
+        // oppretter flere annonser med samme bilde/lenke i samme annonsesett.
+        const variants = Array.isArray(body.variants) && body.variants.length
+          ? body.variants.slice(0, 3)
+          : [{ message: body.message, headline: body.headline, description: body.description, angle: null }];
+        if (body.validateOnly) {
+          const spec = buildCreativeSpec({ ...body, message: variants[0].message, headline: variants[0].headline || body.headline });
+          await createStudioAd({ adsetId: body.adsetId, adName: String(body.adName).slice(0, 150), creativeSpec: spec, validateOnly: true });
+          return cors(NextResponse.json({ ok: true, validated: true }));
+        }
+        const abGroup = variants.length > 1 ? uuidv4() : null;
+        const createdAds = [];
+        for (let i = 0; i < variants.length; i++) {
+          const v = variants[i];
+          const adName = variants.length > 1
+            ? `${String(body.adName).slice(0, 130)} · ${v.angle || `variant ${i + 1}`}`
+            : String(body.adName).slice(0, 150);
+          const spec = buildCreativeSpec({ ...body, message: v.message, headline: v.headline || body.headline, description: v.description != null ? v.description : body.description });
+          const result = await createStudioAd({ adsetId: body.adsetId, adName, creativeSpec: spec, validateOnly: false });
+          await db.collection('studio_ads').insertOne({
+            id: uuidv4(), metaAdId: result.adId, metaCreativeId: result.creativeId,
+            adsetId: body.adsetId, adName, abGroup, abIndex: variants.length > 1 ? i + 1 : null, abTotal: variants.length > 1 ? variants.length : null,
+            link: String(body.link).slice(0, 500), message: String(v.message).slice(0, 2000),
+            headline: String(v.headline || body.headline).slice(0, 120), description: String(v.description != null ? v.description : body.description || '').slice(0, 120),
+            cta: String(body.cta || 'LEARN_MORE'), imageHash: String(body.imageHash),
+            imageUrl: String(body.imageUrl || ''), status: 'PAUSED', createdAt: new Date().toISOString(),
+          });
+          createdAds.push({ adId: result.adId, adName });
+        }
+        return cors(NextResponse.json({ ok: true, ads: createdAds, adId: createdAds[0].adId, abGroup }, { status: 201 }));
       } catch (e) {
         return cors(NextResponse.json({ ok: false, error: e.message }, { status: 502 }));
       }
@@ -3309,7 +3377,7 @@ Lag en komplett tekstpakke som JSON:
       if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
       try {
-        await setAdStatus(String(body.adId || ''), String(body.status || ''));
+        await adstudioSetAdStatus(String(body.adId || ''), String(body.status || ''));
         await db.collection('studio_ads').updateOne({ metaAdId: String(body.adId) }, { $set: { status: String(body.status), updatedAt: new Date().toISOString() } });
         return cors(NextResponse.json({ ok: true }));
       } catch (e) {
