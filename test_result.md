@@ -1299,6 +1299,18 @@ backend:
 
 
 frontend:
+  - task: "API-forbruk: plattform-kortet viser nå CRM-tjenester + deres LLM per funksjon (tilkoblet-tilstand)"
+    implemented: true
+    working: true
+    file: "/app/components/admin/ApiUsageTab.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "main"
+        -comment: "Plattform-prosjektet LEVERTE /api/usage/external (live på deres nye preview forvalter-redesign; prod krever Publish hos dem). Verifisert e2e: vårt GET /admin/usage/api returnerer platform.status='ok' med services (twilio_sms exact, posten_esignering, keyhole_kredittsjekk) + llm.byModel/byFeature (gemini foto-styling, claude innboks-klassifisering). UI utvidet: plattform-kortet rendrer nå «Deres AI-forbruk · per funksjon»-seksjon + månedslinje ved status ok. Skjermbilde-verifisert: grønn «Tilkoblet»-badge, alle tre tjenester + LLM-drilldown vises. Bekreftelse sendt i bro-tråd integration-contract (ba også om Stripe/Vipps i services[] når betaling går live, og minnet om prod-Publish)."
+
   - task: "Nøkkeltall-dashbord redesign: lyst investorklart Stripe/Carta-design (KpiDashboard.js)"
     implemented: true
     working: true

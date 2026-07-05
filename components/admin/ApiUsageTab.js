@@ -337,19 +337,41 @@ export default function ApiUsageTab({ apiKey }) {
             {(platform.status === 'error' || platform.status === 'invalid') && <span className="inline-flex items-center gap-1 text-[10.5px] font-bold rounded-full px-2 py-0.5 text-rose-700 bg-rose-50" data-testid="usage-platform-status"><AlertTriangle className="w-3 h-3" /> Får ikke kontakt</span>}
           </div>
           {platform.status === 'ok' ? (
-            <div className="divide-y divide-black/[0.04]">
-              {(platform.services || []).map((s) => (
-                <div key={s.service} className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0">
-                  <span className="min-w-0">
-                    <span className="block text-[13px] font-semibold text-[#16141d]">{s.label || s.service}</span>
-                    <span className="block text-[11px] text-[#a5a3af]">{s.source === 'exact' ? 'eksakt fra leverandør' : 'estimat'}</span>
-                  </span>
-                  <span className="ml-auto text-[11.5px] text-[#a5a3af] tabular-nums shrink-0">{nf0.format(s.used || 0)} {s.unit || ''}</span>
-                  <span className="text-[12.5px] font-semibold text-[#16141d] tabular-nums shrink-0">{s.cost != null ? `${nf2.format(s.cost)} ${s.currency || ''}` : '—'}</span>
+            <>
+              <div className="divide-y divide-black/[0.04]">
+                {(platform.services || []).map((s) => (
+                  <div key={s.service} className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0">
+                    <span className="min-w-0">
+                      <span className="block text-[13px] font-semibold text-[#16141d]">{s.label || s.service}</span>
+                      <span className="block text-[11px] text-[#a5a3af]">{s.source === 'exact' ? 'eksakt fra leverandør' : 'estimat'}</span>
+                    </span>
+                    <span className="ml-auto text-[11.5px] text-[#a5a3af] tabular-nums shrink-0">{nf0.format(s.used || 0)} {s.unit || ''}</span>
+                    <span className="text-[12.5px] font-semibold text-[#16141d] tabular-nums shrink-0">{s.cost != null ? `${nf2.format(s.cost)} ${s.currency || ''}` : '—'}</span>
+                  </div>
+                ))}
+                {(platform.services || []).length === 0 && <p className="text-[12.5px] text-[#b8b6c0] py-2">Ingen tjenester rapportert ennå</p>}
+              </div>
+              {platform.llm && (platform.llm.byFeature || []).length > 0 && (
+                <div className="mt-3 pt-3 border-t border-black/[0.05]">
+                  <p className="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[#a5a3af] mb-1.5 flex items-center gap-1.5"><Cpu className="w-3 h-3" /> Deres AI-forbruk · per funksjon</p>
+                  <div className="divide-y divide-black/[0.04]">
+                    {platform.llm.byFeature.map((f) => (
+                      <div key={f.feature} className="flex items-center gap-3 py-2 text-[12px]">
+                        <span className="min-w-0">
+                          <span className="block font-semibold text-[#16141d] truncate">{f.label || f.feature}</span>
+                          <span className="block text-[10.5px] text-[#a5a3af] font-mono truncate">{f.model}</span>
+                        </span>
+                        <span className="ml-auto text-[11px] text-[#a5a3af] tabular-nums shrink-0">{nf0.format(f.calls || 0)} kall · {fmtTok(f.tokens)}</span>
+                        <span className="font-semibold text-[#16141d] tabular-nums shrink-0">{f.cost != null ? `${nf2.format(f.cost)} ${f.currency || ''}` : '—'}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              ))}
-              {(platform.services || []).length === 0 && <p className="text-[12.5px] text-[#b8b6c0] py-2">Ingen tjenester rapportert ennå</p>}
-            </div>
+              )}
+              <p className="mt-3 pt-3 border-t border-black/[0.05] text-[11px] text-[#b8b6c0] tabular-nums">
+                Måned {platform.month || '—'} · synkes automatisk hvert 10. min fra plattform-prosjektet
+              </p>
+            </>
           ) : (
             <div className="rounded-xl bg-[#fafafb] border border-dashed border-black/[0.08] p-4">
               <p className="text-[13px] text-[#514e5a] leading-relaxed">
