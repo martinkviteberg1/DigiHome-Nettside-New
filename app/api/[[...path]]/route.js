@@ -29,7 +29,7 @@ import {
   listAllQuestions as ddListAllQuestions, answerQuestion as ddAnswerQuestion, deleteQuestion as ddDeleteQuestion,
 } from '@/lib/investor-room';
 import { computeKpiDashboard, getKpiSettings, setKpiSettings } from '@/lib/kpi-dashboard';
-import { computeLlmUsageDashboard, getModelOverrides, setModelOverride, logImageUsage, AVAILABLE_MODELS, DEFAULT_MODEL, USD_TO_NOK } from '@/lib/llm-usage';
+import { computeLlmUsageDashboard, getModelOverrides, setModelOverride, logImageUsage, AVAILABLE_MODELS, PLATFORM_MODELS, DEFAULT_MODEL, USD_TO_NOK } from '@/lib/llm-usage';
 import { logExtUsage, summarizeExtUsage, getPlatformUsage } from '@/lib/ext-usage';
 import { getFinanceSettings, setFinanceSettings, listCosts, upsertCost, deleteCost, listContracts, upsertContract, deleteContract, listEvents, upsertEvent, deleteEvent, computeResultat, computeLikviditet, computeFinanceOverview, computeTrends, captureSnapshot, computeInvestorMetrics, computeForecast, computeBoardPack, computeCustomers, computePlatformCustomers } from '@/lib/finance';
 import { syncContractsFromPlatform, syncCustomersFromPlatform } from '@/lib/contracts-sync';
@@ -4541,9 +4541,28 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
           getModelOverrides(db),
           getPlatformUsage(db, { fresh: !!sp.get('fresh') }), // 10 min DB-cache i lib
         ]);
+        // Plattform-modellstyring: status per funksjon utledes kronologisk fra
+        // broens 'model-control'-tråd (request → pending, applied/rejected → svar).
+        const platformControl = {};
+        try {
+          const ctrlMsgs = await db.collection('agent_bridge')
+            .find({ threadId: 'model-control' }, { projection: { _id: 0, type: 1, data: 1, createdAt: 1 } })
+            .sort({ createdAt: 1 }).limit(500).toArray();
+          for (const m of ctrlMsgs) {
+            const kind = (m.type === 'model_override_request' || m.data?.kind === 'model_override_request') ? 'request'
+              : (m.type === 'model_override_applied' || m.data?.kind === 'model_override_applied') ? 'applied'
+              : (m.type === 'model_override_rejected' || m.data?.kind === 'model_override_rejected') ? 'rejected' : null;
+            const f = m.data?.feature;
+            if (!kind || !f) continue;
+            if (kind === 'request') platformControl[f] = { model: m.data.model || '', status: 'pending', requestedAt: m.createdAt };
+            else if (kind === 'applied') platformControl[f] = { ...(platformControl[f] || {}), model: m.data.model || platformControl[f]?.model || '', status: 'applied', appliedAt: m.createdAt };
+            else platformControl[f] = { ...(platformControl[f] || {}), status: 'rejected', reason: String(m.data?.reason || '').slice(0, 200), rejectedAt: m.createdAt };
+          }
+        } catch (_) { /* broen er valgfri — tåler feil stille */ }
         return cors(NextResponse.json({
           ok: true, days, llm, ext, platform, overrides,
           models: AVAILABLE_MODELS, defaultModel: DEFAULT_MODEL, usdToNok: USD_TO_NOK,
+          platformControl, platformModels: PLATFORM_MODELS,
           generatedAt: new Date().toISOString(),
         }));
       } catch (e) {
@@ -4556,6 +4575,30 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
       const feature = String(body.feature || '').trim().slice(0, 60);
       const model = String(body.model || '').trim().slice(0, 60);
       if (!feature) return cors(NextResponse.json({ ok: false, error: 'Mangler feature' }, { status: 400 }));
+
+      // ---- Plattform-scope: send styringsforespørsel over Agent-broen ------
+      // Plattform-CRM-et eier sine egne modellvalg; vi legger en
+      // model_override_request i broen (thread 'model-control') som
+      // plattform-agenten plukker opp, anvender og kvitterer på.
+      if (body.scope === 'platform') {
+        if (!model || !/^[a-z0-9.\-]{2,60}$/i.test(model)) {
+          return cors(NextResponse.json({ ok: false, error: 'Ugyldig modellnavn' }, { status: 400 }));
+        }
+        const msg = {
+          id: uuidv4(),
+          threadId: 'model-control',
+          from: 'marketing',
+          type: 'model_override_request',
+          subject: `Modellbytte: ${feature} → ${model}`,
+          body: `Landingsside-admin ber plattformen bytte LLM-modell for funksjonen «${feature}» til «${model}». Når endringen er aktiv: POST tilbake på broen med threadId 'model-control', type 'model_override_applied' og data { "feature": "${feature}", "model": "${model}" }. Hvis modellen ikke støttes: svar med type 'model_override_rejected' og data { "feature": "${feature}", "model": "${model}", "reason": "…" }. Full protokoll: thread 'integration-contract'.`,
+          data: { kind: 'model_override_request', feature, model, requestedBy: 'landingsside-admin' },
+          author: 'landingsside-admin',
+          createdAt: new Date().toISOString(),
+        };
+        await db.collection('agent_bridge').insertOne({ ...msg });
+        return cors(NextResponse.json({ ok: true, scope: 'platform', request: { feature, model, status: 'pending', requestedAt: msg.createdAt } }, { status: 201 }));
+      }
+
       if (model && !AVAILABLE_MODELS.some((m) => m.id === model)) {
         return cors(NextResponse.json({ ok: false, error: `Ukjent modell: ${model}` }, { status: 400 }));
       }
@@ -5046,7 +5089,7 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
       let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
       const fromRaw = (body.from || body.sender || '').toString();
       const from = ['marketing', 'platform'].includes(fromRaw) ? fromRaw : 'platform';
-      const type = ['brief', 'status', 'question', 'answer', 'note', 'proposal', 'spec', 'ack', 'test'].includes(body.type) ? body.type : 'note';
+      const type = ['brief', 'status', 'question', 'answer', 'note', 'proposal', 'spec', 'ack', 'test', 'model_override_request', 'model_override_applied', 'model_override_rejected'].includes(body.type) ? body.type : 'note';
       const subject = (body.subject || body.title || '').toString().slice(0, 200);
       const text = (body.body || body.message || body.text || body.content || '').toString().slice(0, 20000);
       if (!subject && !text) return cors(NextResponse.json({ ok: false, error: 'Mangler subject/body' }, { status: 400 }));

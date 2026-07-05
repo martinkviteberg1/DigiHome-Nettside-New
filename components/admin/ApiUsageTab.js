@@ -143,15 +143,19 @@ export default function ApiUsageTab({ apiKey }) {
 
   useEffect(() => { load(); }, [load]);
 
-  const setModel = async (feature, model) => {
-    setSavingFeature(feature);
+  const setModel = async (feature, model, scope) => {
+    const saveKey = scope === 'platform' ? `pf:${feature}` : feature;
+    setSavingFeature(saveKey);
     try {
       const res = await fetch(`/api/admin/usage/llm/model?key=${encodeURIComponent(apiKey)}`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ feature, model }),
+        body: JSON.stringify(scope === 'platform' ? { feature, model, scope: 'platform' } : { feature, model }),
       });
       const j = await res.json();
-      if (j.ok) setOverrides(j.overrides || {});
+      if (j.ok && scope === 'platform') {
+        // Forespørselen ligger nå i broen — vis «venter på plattformen» umiddelbart.
+        setData((d) => (d ? { ...d, platformControl: { ...(d.platformControl || {}), [feature]: j.request } } : d));
+      } else if (j.ok) setOverrides(j.overrides || {});
       else setErr(j.error || 'Kunne ikke lagre modellvalg');
     } catch (e) { setErr('Nettverksfeil ved lagring'); }
     finally { setSavingFeature(null); }
@@ -161,6 +165,8 @@ export default function ApiUsageTab({ apiKey }) {
   const ext = data?.ext || { services: [], totalNok: 0 };
   const platform = data?.platform || { status: 'waiting' };
   const models = data?.models || [];
+  const platformControl = data?.platformControl || {};
+  const platformModels = data?.platformModels || [];
   const defaultModel = data?.defaultModel || 'gpt-4o-mini';
   const usdToNok = Number(data?.usdToNok) || 11;
   const toNok = (cost, currency) => ((currency || 'USD').toUpperCase() === 'NOK' ? (Number(cost) || 0) : (Number(cost) || 0) * usdToNok);
@@ -203,10 +209,10 @@ export default function ApiUsageTab({ apiKey }) {
       // 4) Plattformens AI-funksjoner
       for (const f of (platform.llm && platform.llm.byFeature) || []) {
         out.push({
-          key: `pf-ai-${f.feature}`, project: 'plattform', type: 'ai',
+          key: `pf-ai-${f.feature}`, project: 'plattform', type: 'ai', feature: f.feature,
           title: f.label || f.feature, sub: f.model || '', calls: f.calls || 0, tokens: f.tokens || 0,
           nok: toNok(f.cost, f.currency), origCost: f.cost, origCurrency: f.currency,
-          badge: 'denne mnd', switchable: false, fixedModel: f.model,
+          badge: 'denne mnd', switchable: false, platformSwitchable: true, fixedModel: f.model,
         });
       }
     }
@@ -380,6 +386,38 @@ export default function ApiUsageTab({ apiKey }) {
                           <span className="text-[10px] font-bold uppercase tracking-[0.06em] rounded-full px-2 py-0.5 shrink-0" style={{ color: VIOLET, background: `${VIOLET}14` }}>Overstyrt</span>
                         ) : null}
                       </>
+                    ) : r.platformSwitchable ? (
+                      (() => {
+                        const ctrl = platformControl[r.feature];
+                        const current = ctrl?.model || r.fixedModel || '';
+                        const opts = platformModels.some((m) => m.id === current) || !current
+                          ? platformModels
+                          : [{ id: current, label: current, note: 'i bruk nå' }, ...platformModels];
+                        return (
+                          <>
+                            <select
+                              data-testid={`usage-pf-model-select-${r.feature}`}
+                              value={current}
+                              disabled={savingFeature === `pf:${r.feature}`}
+                              onChange={(e) => { if (e.target.value && e.target.value !== current) setModel(r.feature, e.target.value, 'platform'); }}
+                              className="w-full max-w-[210px] h-9 px-2 rounded-lg border border-black/[0.1] bg-white text-[12px] text-[#16141d] focus:outline-none focus:border-[#4f7df0] disabled:opacity-50"
+                            >
+                              {opts.map((m) => (
+                                <option key={m.id} value={m.id}>{m.label}{m.note ? ` · ${m.note}` : ''}</option>
+                              ))}
+                            </select>
+                            {savingFeature === `pf:${r.feature}` ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin text-[#a5a3af] shrink-0" />
+                            ) : ctrl?.status === 'pending' ? (
+                              <span className="text-[10px] font-bold uppercase tracking-[0.04em] rounded-full px-2 py-0.5 shrink-0 whitespace-nowrap text-amber-600 bg-amber-500/10" title={`Forespurt ${ctrl.requestedAt ? new Date(ctrl.requestedAt).toLocaleString('nb-NO') : ''} — plattform-agenten må bekrefte via broen`}>⏳ venter</span>
+                            ) : ctrl?.status === 'applied' ? (
+                              <span className="text-[10px] font-bold uppercase tracking-[0.04em] rounded-full px-2 py-0.5 shrink-0 whitespace-nowrap text-emerald-600 bg-emerald-500/10" title={`Bekreftet av plattformen ${ctrl.appliedAt ? new Date(ctrl.appliedAt).toLocaleString('nb-NO') : ''}`}>✓ aktiv</span>
+                            ) : ctrl?.status === 'rejected' ? (
+                              <span className="text-[10px] font-bold uppercase tracking-[0.04em] rounded-full px-2 py-0.5 shrink-0 whitespace-nowrap text-rose-600 bg-rose-500/10" title={ctrl.reason || 'Avvist av plattformen'}>avvist</span>
+                            ) : null}
+                          </>
+                        );
+                      })()
                     ) : r.isImage ? (
                       <span className="inline-flex items-center gap-1.5 text-[11.5px] font-medium text-[#8b8894] bg-black/[0.04] rounded-lg px-2.5 py-1.5"><ImageIcon className="w-3 h-3" /> Nano Banana (fast)</span>
                     ) : r.fixedModel ? (

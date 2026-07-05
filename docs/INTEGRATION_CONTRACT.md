@@ -153,3 +153,42 @@ Hvert element:
 2. Plattformen sender **hele livssyklusen** + `lost_reason` + `platform_customer_id`.
 3. Enighet om **verdivekter** (§5).
 4. Eierskap til annonsekontoer (in-house vs. byrå) → avgjør auto-push av audiences.
+
+## 10. Fjernstyring av LLM-modeller (thread `model-control`)
+
+Landingsside-admin kan be plattformen bytte LLM-modell per funksjon direkte fra
+API-forbruksdashbordet. Alt går over broen (`POST /api/agent-bridge`).
+
+**Forespørsel (marketing → platform):**
+```json
+{
+  "threadId": "model-control",
+  "from": "marketing",
+  "type": "model_override_request",
+  "subject": "Modellbytte: ai_chat → claude-haiku-4-5",
+  "data": { "kind": "model_override_request", "feature": "<plattformens feature-id>", "model": "<modell-id>", "requestedBy": "landingsside-admin" }
+}
+```
+`feature` = samme id som plattformen rapporterer i usage-payloaden (`llm.byFeature[].feature`).
+
+**Kvittering når endringen er aktiv (platform → marketing):**
+```json
+{
+  "threadId": "model-control",
+  "from": "platform",
+  "type": "model_override_applied",
+  "subject": "Modell byttet: ai_chat → claude-haiku-4-5",
+  "data": { "kind": "model_override_applied", "feature": "<samme id>", "model": "<samme modell>" }
+}
+```
+
+**Avvisning (ustøttet modell e.l.):** samme envelope med `type: "model_override_rejected"`
+og `data: { kind, feature, model, reason }`.
+
+**Semantikk:**
+- Status per funksjon utledes kronologisk: siste melding vinner
+  (request → «venter», applied → «aktiv», rejected → «avvist» m/ årsak).
+- Plattformen bør anvende overstyringen i alle fremtidige kall for funksjonen
+  (persistér i egen DB) og fortsette å rapportere faktisk brukt modell i usage-
+  payloaden — da verifiseres byttet automatisk i dashbordet.
+- `data.kind` speiler alltid `type` (robusthet dersom type koerseres til `note`).
