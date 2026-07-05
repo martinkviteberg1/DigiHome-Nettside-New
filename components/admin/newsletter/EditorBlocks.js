@@ -13,6 +13,18 @@ import {
   Home, Check, RefreshCw,
 } from 'lucide-react';
 
+/* --------------------------- Deploy-sikre bilder -------------------------- */
+// /public-filer følger ikke alltid prod-bygget — rot-relative stier serveres
+// derfor via /api/media/<sti> (objektlagring). ?v=2 buster en tidligere
+// CDN-cachet 404 (nyhetsbrev-hero-hendelsen 5. juli).
+export function mediaSrc(u) {
+  const s = String(u || '').trim();
+  if (!s || /^(https?:|data:|blob:)/i.test(s)) return s;
+  if (s.startsWith('/api/')) return s;
+  const p = s.startsWith('/') ? s : `/${s}`;
+  return `/api/media${p}${p.includes('?') ? '&' : '?'}v=2`;
+}
+
 /* ------------------------------- Palett ---------------------------------- */
 export const PALETTE = [
   { type: 'heading',   label: 'Overskrift',   icon: Type },
@@ -231,7 +243,7 @@ function ImageWithSwap({ src, alt, onUpload, uploading, rounded = 'rounded-xl', 
       onDrop={(e) => { e.preventDefault(); setOver(false); const f = e.dataTransfer.files?.[0]; if (f && f.type.startsWith('image/')) onUpload(f); }}>
       <input ref={fileRef} type="file" accept="image/*" className="hidden"
         onChange={(e) => { const f = e.target.files?.[0]; if (f) onUpload(f); e.target.value = ''; }} />
-      <img ref={imgRef} src={src} alt={alt || ''} className="w-full block"
+      <img ref={imgRef} src={mediaSrc(src)} alt={alt || ''} className="w-full block"
         style={{ opacity: uploading ? 0.5 : 1, height: h ? `${h}px` : 'auto', objectFit: h ? (fit || 'cover') : undefined, objectPosition: h ? `${fx}% ${fy}%` : undefined }} />
       <button type="button" onClick={() => fileRef.current?.click()}
         className={`absolute inset-0 flex items-center justify-center bg-black/40 text-white text-[12.5px] font-semibold gap-2 transition-opacity ${over ? 'opacity-100' : 'opacity-0 group-hover/img:opacity-100'}`}>
@@ -314,7 +326,7 @@ export function CanvasBlock({ b, i, total, accent, selected, onSelect, onPatch, 
                 {items.map((p, idx) => (
                   <div key={p.pid || idx} className="rounded-[14px] border border-[#ece8e2] bg-white overflow-hidden">
                     {p.image
-                      ? <img src={p.image} alt="" className="w-full h-[110px] object-cover block" />
+                      ? <img src={mediaSrc(p.image)} alt="" className="w-full h-[110px] object-cover block" />
                       : <div className="w-full h-[110px] bg-[#f4f2ef] flex items-center justify-center"><Home size={18} className="text-[#cbc4ba]" /></div>}
                     <div className="px-3 py-2.5">
                       <p className="text-[12.5px] font-bold text-[#111] leading-[1.35] truncate">{p.title}</p>
@@ -524,7 +536,7 @@ function PropertyPicker({ b, onPatch, apiQ }) {
               <button key={p.id} onClick={() => toggle(p)} disabled={full} data-testid={`nl-prop-${p.id}`}
                 className={`w-full flex items-center gap-2.5 px-2.5 py-2 text-left transition-colors ${on ? 'bg-[#faf5ff]' : 'hover:bg-[#fbfaf9]'} ${full ? 'opacity-40 cursor-not-allowed' : ''}`}>
                 {(Array.isArray(p.images) && p.images[0])
-                  ? <img src={p.images[0]} alt="" className="w-[42px] h-[32px] rounded-md object-cover shrink-0" />
+                  ? <img src={mediaSrc(p.images[0])} alt="" className="w-[42px] h-[32px] rounded-md object-cover shrink-0" />
                   : <div className="w-[42px] h-[32px] rounded-md bg-[#f4f2ef] flex items-center justify-center shrink-0"><Home size={13} className="text-[#cbc4ba]" /></div>}
                 <div className="flex-1 min-w-0">
                   <p className="text-[12px] font-semibold text-[#111] truncate">{p.title || 'Bolig'}</p>

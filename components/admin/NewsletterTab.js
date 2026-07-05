@@ -12,7 +12,7 @@ import {
   Monitor, Smartphone, Users, Settings2, ChevronRight, X, Mail, MailOpen,
   MousePointerClick, PenLine, Search, UsersRound, Sparkles, RefreshCw,
 } from 'lucide-react';
-import { PALETTE, defaultsFor, CanvasBlock, BlockInspector } from './newsletter/EditorBlocks';
+import { PALETTE, defaultsFor, CanvasBlock, BlockInspector, mediaSrc } from './newsletter/EditorBlocks';
 import SubscribersView from './newsletter/SubscribersView';
 import StatsView from './newsletter/StatsView';
 
@@ -421,7 +421,7 @@ export default function NewsletterTab({ apiKey }) {
             <div className="mx-auto transition-all" style={{ maxWidth: device === 'mobile' ? 400 : 660 }}>
               <div className="rounded-[22px] p-4 sm:p-6" style={{ background: '#f0ede9' }} onClick={() => setSelectedBlock(null)}>
                 {/* logo-header som i e-posten */}
-                <div className="px-2 pb-3"><img src="/email-logo.png" alt="DigiHome" style={{ height: 22 }} /></div>
+                <div className="px-2 pb-3"><img src={mediaSrc('/email-logo.png')} alt="DigiHome" style={{ height: 22 }} /></div>
                 <div className={`rounded-2xl bg-white overflow-hidden pb-5 ${camp.blocks[0]?.type === 'hero' ? '' : 'pt-5'}`} onClick={(e) => e.stopPropagation()} data-testid="nl-canvas">
                   {camp.blocks.length === 0 ? (
                     <div className="px-10 py-14 text-center">

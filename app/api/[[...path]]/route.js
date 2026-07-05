@@ -202,10 +202,12 @@ async function serveMedia(request, segments) {
     // Lageret returnerer 500 for ikke-eksisterende objekter (ikke 404). For
     // mediaservering behandler vi enhver henting-feil som «ikke funnet» — det
     // er forventet nettleseroppførsel for en manglende statisk fil.
-    return cors(NextResponse.json({ error: 'Ikke funnet' }, { status: 404 }));
+    // VIKTIG: no-store — ellers kan CDN-en cache 404-en i timevis og «forgifte»
+    // URL-en selv etter at filen er lastet opp (skjedde med nyhetsbrev-hero).
+    return cors(NextResponse.json({ error: 'Ikke funnet' }, { status: 404, headers: { 'Cache-Control': 'no-store' } }));
   }
   if (!obj) {
-    return cors(NextResponse.json({ error: 'Ikke funnet' }, { status: 404 }));
+    return cors(NextResponse.json({ error: 'Ikke funnet' }, { status: 404, headers: { 'Cache-Control': 'no-store' } }));
   }
   const contentType = mediaContentType(rel, obj.contentType);
 
