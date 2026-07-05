@@ -1,4 +1,6 @@
 import AutopilotFilm from '@/components/video/AutopilotFilm';
+import { JsonLd } from '@/components/site/JsonLd';
+import { breadcrumbLd } from '@/lib/seo';
 
 export const metadata = {
   title: 'Utleie på autopilot — Filmen',
@@ -12,5 +14,12 @@ export const metadata = {
 };
 
 export default function VideoPage() {
-  return <AutopilotFilm />;
+  return (
+    <>
+      {/* Semantisk H1 for SEO/skjermlesere — filmens animerte titler er nå <div>. */}
+      <h1 className="sr-only">Utleie på autopilot — se hvordan DigiHome automatiserer hele utleien</h1>
+      <JsonLd data={breadcrumbLd([{ name: 'Filmen', path: '/video' }])} />
+      <AutopilotFilm />
+    </>
+  );
 }

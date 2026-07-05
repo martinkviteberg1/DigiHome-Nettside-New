@@ -1,6 +1,8 @@
 import Header from '@/components/dh/Header';
 import Footer from '@/components/dh/Footer';
 import KontaktForm from '@/components/dh/KontaktForm';
+import { JsonLd } from '@/components/site/JsonLd';
+import { breadcrumbLd, webPageLd } from '@/lib/seo';
 import { site } from '@/lib/site';
 import { Phone, Mail, MapPin, Clock } from 'lucide-react';
 
@@ -53,6 +55,13 @@ export default function Page() {
           </div>
         </div>
       </section>
+      <JsonLd data={breadcrumbLd([{ name: 'Kontakt', path: '/kontakt' }])} />
+      <JsonLd data={webPageLd({
+        name: 'Kontakt DigiHome',
+        description: 'Kontakt DigiHome for en uforpliktende prat om utleie i Bergen — telefon, e-post eller skjema.',
+        path: '/kontakt',
+        type: 'ContactPage',
+      })} />
       <Footer />
     </div>
   );

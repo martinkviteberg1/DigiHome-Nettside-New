@@ -123,3 +123,34 @@ Google Ads-styring via native REST API).
 - P3: Skjule/nedprioritere Historikk-fanen i admin.
 - P2: Refaktorere app/api/[[...path]]/route.js (~5200 linjer) til moduler.
 - P3: Programmatiske SEO-sider /utleie/[bydel]. P4: Meta prospecting-kampanje.
+
+## Økt 5. juli 2026 — Komplett SEO/AEO-overhaling (alle P0+P1+P2 fikset)
+- ✅ TITLER: Fjernet dobbel/trippel «| DigiHome» på 8 sider + alle artikler
+  (rotårsak: layout-template `%s | DigiHome` + branding i side-titler/seoTitle;
+  artikkel-metadata stripper nå innbakt branding fra DB-verdier).
+  /bli-leietaker fikk ny SEO-tittel «Leie bolig i Bergen — kvalitetssikrede utleieboliger».
+- ✅ llms.txt totalskrevet: Digihome AS (ikke SHD), 150+ boliger (ikke 30+), konsistent
+  «opptil 30 %», ny seksjon om to-nivå-modellen, alle nye sider + oppdatert FAQ.
+- ✅ KONSISTENS: BliUtleierPage endret 40 % → 30 % (3 steder: welcome-badge, welcome-bullet,
+  tier-bullet) så hele nettstedet + llms.txt sier samme tall. NB: si fra hvis 40 % var ønsket!
+- ✅ /investor: noindex via ny app/investor/layout.js (var indekserbar!).
+- ✅ /blogg → /nyheter: 308 permanent redirect i next.config.js (+ /blogg/:slug), nav-data fikset.
+- ✅ Leiemarked-titler bruker inneværende år (2026) — datakildeår beholdes i beskrivelsen.
+- ✅ SITEMAP: +priskalkulator, +sommer, +support, +vilkar, +personvern (36 URL-er totalt).
+- ✅ JSON-LD på alle sider som manglet: tjenester/forvaltning/bli-utleier/bli-leietaker/
+  radgivning (Service+Breadcrumb), om-oss (AboutPage), kontakt (ContactPage),
+  nyheter (CollectionPage+ItemList), leiemarkedet (CollectionPage), priskalkulator
+  (WebApplication), video/sommer (Breadcrumb). Ny delt lib: /app/lib/seo.js.
+- ✅ FAQ-seksjoner (synlig innhold + FAQPage-schema) via ny /app/components/site/FaqSection.js:
+  /forvaltning (5 spm — INGEN pris for full forvaltning, kun «tilbud»), /tjenester (4 spm),
+  /bli-leietaker (5 spm). Tynt innhold fikset: bli-leietaker 186→370 ord, tjenester 349→493,
+  forvaltning 339→531, leiemarkedet 166→292 (ny metode/bruksverdi-seksjon).
+- ✅ H1-fikser: /video hadde 2×H1 (animasjonstitler → div, sr-only H1 på siden),
+  /priskalkulator hadde 0 H1 (sr-only H1 + schema). Typo «Snåkk»→«Snakk» på /radgivning.
+- ✅ 2 NYE AEO-ARTIKLER publisert i posts-collection:
+  «Leie ut bolig i Bergen: Komplett guide (2026)» (slug leie-ut-bolig-i-bergen-komplett-guide-2026)
+  og «Selvforvaltning eller full forvaltning» (slug selvforvaltning-eller-full-forvaltning) —
+  begge med interne lenker, unsplash-covers (vision_expert), BlogPosting-schema. 6 artikler totalt.
+- Verifisert: full HTTP-audit (alle sider 200, ingen dobbel branding, schema OK) + skjermbilder.
+- GJENSTÅR (anbefalt senere): flere leiemarked-byer (krever verifiserte SSB-data),
+  10-15 flere artikler, kildehenvisning på «98 %»-påstanden.

@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import Header from '@/components/dh/Header';
 import Footer from '@/components/dh/Footer';
+import { JsonLd } from '@/components/site/JsonLd';
+import { breadcrumbLd, webPageLd } from '@/lib/seo';
 import { site } from '@/lib/site';
 import { RENT_CITIES, getRentReport } from '@/lib/rentmarket';
 import { ArrowUpRight, BarChart3, Database } from 'lucide-react';
@@ -61,6 +63,40 @@ export default async function Page() {
           })}
         </div>
       </section>
+
+      {/* SEO/AEO: forklarende innhold (metode + bruksverdi) — gjør siden
+          siterbar for AI-søk og gir crawlere reell tekst, ikke bare kort-grid. */}
+      <section className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16 pb-24">
+        <div className="grid md:grid-cols-2 gap-10 max-w-[1100px]">
+          <div>
+            <h2 className="text-[22px] sm:text-[26px] font-bold tracking-[-0.02em] mb-3" style={{ fontFamily: 'var(--font-heading)' }}>Slik lager vi rapportene</h2>
+            <p className="text-[15px] text-[#555] leading-[1.75]">
+              Rapportene kombinerer to kilder: offisiell leiestatistikk fra Statistisk sentralbyrås
+              leiemarkedsundersøkelse, og DigiHomes egne forvaltningsdata fra utleieboliger i Bergen.
+              SSB-tallene gir det store bildet — snittleie per boligtype og prisutvikling over tid —
+              mens våre egne data viser hva som faktisk skjer i markedet akkurat nå: etterspørsel,
+              utleietid og hvilke områder som er mest attraktive.
+            </p>
+          </div>
+          <div>
+            <h2 className="text-[22px] sm:text-[26px] font-bold tracking-[-0.02em] mb-3" style={{ fontFamily: 'var(--font-heading)' }}>Hva kan du bruke tallene til?</h2>
+            <p className="text-[15px] text-[#555] leading-[1.75]">
+              Skal du sette riktig husleie, vurdere kjøp av utleiebolig eller velge mellom korttids-
+              og langtidsutleie? Rapportene viser hva en 2-roms faktisk leies ut for, hvordan prisene
+              utvikler seg, og hvor i byen etterspørselen er størst — så du kan ta beslutninger basert
+              på tall, ikke magefølelse. Vil du ha en konkret vurdering av din bolig, får du en{' '}
+              <Link href="/bli-utleier" className="text-[#7c3aed] font-semibold underline underline-offset-2">gratis verdivurdering her</Link>.
+            </p>
+          </div>
+        </div>
+      </section>
+      <JsonLd data={breadcrumbLd([{ name: 'Leiemarkedet', path: '/leiemarkedet' }])} />
+      <JsonLd data={webPageLd({
+        name: 'Leiemarkedet i Norge — leiepriser og etterspørsel',
+        description: 'Datadrevne leiemarkedsrapporter basert på SSB og DigiHomes etterspørselsindeks.',
+        path: '/leiemarkedet',
+        type: 'CollectionPage',
+      })} />
       <Footer />
     </div>
   );

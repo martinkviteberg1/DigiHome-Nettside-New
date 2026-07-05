@@ -324,7 +324,7 @@ export function SceneOpening({ t }) {
         >
           DigiHome presenterer
         </div>
-        <h1
+        <div
           className="font-heading font-bold"
           style={{
             fontSize: 'calc(var(--su) * 10.5)', color: '#0A0A0A', lineHeight: 1.06, display: 'flex',
@@ -340,7 +340,7 @@ export function SceneOpening({ t }) {
               </span>
             );
           })}
-        </h1>
+        </div>
       </div>
       {/* glødende rim langs sveipekanten */}
       {wipe > 0.005 && wipe < 0.995 && (
@@ -369,7 +369,7 @@ export function SceneOpening({ t }) {
           }}
         />
         <div className="absolute inset-0 flex items-center justify-center">
-          <h1
+          <div
             className="font-heading font-bold"
             style={{
               fontSize: 'calc(var(--su) * 11)', color: '#FDFCFB', lineHeight: 1.06, display: 'flex',
@@ -384,7 +384,7 @@ export function SceneOpening({ t }) {
                 </span>
               );
             })}
-          </h1>
+          </div>
         </div>
       </div>
     </Shell>

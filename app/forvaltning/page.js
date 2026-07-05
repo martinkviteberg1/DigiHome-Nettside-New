@@ -1,6 +1,9 @@
 import Link from 'next/link';
 import Header from '@/components/dh/Header';
 import Footer from '@/components/dh/Footer';
+import FaqSection from '@/components/site/FaqSection';
+import { JsonLd } from '@/components/site/JsonLd';
+import { breadcrumbLd, serviceLd } from '@/lib/seo';
 import { reasons, statStrip, network } from '@/lib/site';
 import { BadgeCheck, TrendingUp, Eye, Users, Wrench, Plug, Droplets, Scale, Umbrella, Sparkles, ArrowUpRight, Check, Building2 } from 'lucide-react';
 
@@ -16,10 +19,20 @@ const pipeline = [
 ];
 
 export const metadata = {
-  title: 'Full eiendomsforvaltning i Bergen | DigiHome',
+  title: 'Full eiendomsforvaltning i Bergen',
   description: 'DigiHome håndterer hele utleieprosessen for deg — annonsering, prising, visninger, kontrakter, husleie, renhold og vedlikehold. Trygg, transparent og helautomatisk.',
   alternates: { canonical: '/forvaltning' },
 };
+
+// Synlig FAQ + FAQPage-schema (AEO: direkte siterbare svar for AI-søk).
+// VIKTIG: aldri oppgi pris for full forvaltning — kun «uforpliktende tilbud».
+const FAQS = [
+  { q: 'Hva koster full forvaltning hos DigiHome?', a: 'Prisen avtales individuelt ut fra boligen, beliggenheten og utleiemodellen. Du får et konkret, uforpliktende tilbud fra en lokal rådgiver — som regel samme dag. Det er ingen oppstartskostnader og ingen bindingstid.' },
+  { q: 'Hva er inkludert i full forvaltning?', a: 'Alt: profesjonell annonsering med styling og foto, intelligent prising, visninger og screening av leietakere, digitale kontrakter med BankID-signering, automatisk husleieinnkreving, samt renhold og vedlikehold via vårt lokale partnernettverk i Bergen.' },
+  { q: 'Hva er forskjellen på selvforvaltning og full forvaltning?', a: 'Med selvforvaltning (5 % per utleieforhold) leier du ut selv med DigiHomes digitale verktøy — annonsering, kontrakter og betaling. Med full forvaltning håndterer vi hele utleien for deg, fra første annonse til siste utbetaling — du mottar bare inntekten.' },
+  { q: 'Er det bindingstid?', a: 'Nei. Både selvforvaltning og full forvaltning er uten bindingstid — du kan avslutte når du vil.' },
+  { q: 'Hvordan kommer jeg i gang?', a: 'Registrer boligen på digihome.no/bli-utleier — det tar under to minutter. Velg om du vil forvalte selv eller få et tilbud på full forvaltning, så tar en rådgiver kontakt samme dag.' },
+];
 
 export default function Page() {
   return (
@@ -85,6 +98,18 @@ export default function Page() {
           <Link href="/bli-utleier" className="group inline-flex items-center gap-2 h-[54px] pl-7 pr-3 rounded-full bg-[#d298ff] text-[#1f1f1f] text-[15px] font-semibold active:scale-[0.98] transition-transform">Kom i gang<span className="inline-flex items-center justify-center w-[38px] h-[38px] rounded-full bg-[#1f1f1f] text-[#d298ff]"><ArrowUpRight className="w-4 h-4" strokeWidth={2.6} /></span></Link>
         </div>
       </section>
+      <FaqSection
+        title="Ofte stilte spørsmål om forvaltning"
+        intro="Det viktigste å vite før du overlater utleien til oss."
+        faqs={FAQS}
+      />
+      <JsonLd data={breadcrumbLd([{ name: 'Forvaltning', path: '/forvaltning' }])} />
+      <JsonLd data={serviceLd({
+        name: 'Full eiendomsforvaltning',
+        description: 'Komplett forvaltning av utleieboliger i Bergen: annonsering, prising, visninger, screening, digitale kontrakter, husleie, renhold og vedlikehold.',
+        path: '/forvaltning',
+        serviceType: 'Eiendomsforvaltning',
+      })} />
       <Footer />
     </div>
   );

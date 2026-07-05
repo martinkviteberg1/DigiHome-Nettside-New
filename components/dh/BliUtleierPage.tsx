@@ -57,7 +57,7 @@ const TIERS = [
     icon: Shield,
     popular: true,
     desc: 'Vi tar oss av alt — annonsering, visninger, leietakere og oppfølging. Du mottar bare inntekten.',
-    bullets: ['Alt håndtert av lokalt team', 'Opptil 40 % høyere inntekt', 'Skreddersydd tilbud — uforpliktende'],
+    bullets: ['Alt håndtert av lokalt team', 'Opptil 30 % høyere inntekt', 'Skreddersydd tilbud — uforpliktende'],
   },
 ];
 
@@ -447,7 +447,7 @@ export default function BliUtleierPage() {
                       <div className="w-6 h-6 rounded-full bg-[#f5edfc] flex items-center justify-center"><TrendingUp className="w-3 h-3 text-[#cf97fc]" strokeWidth={2.6} /></div>
                       <div>
                         <p className="text-[9px] text-[#5b6370] leading-tight uppercase tracking-[0.04em]">Avkastning</p>
-                        <p className="text-[13px] font-bold text-[#0a0a0a] leading-tight" style={{ fontFamily: 'var(--font-heading)' }}>+40%</p>
+                        <p className="text-[13px] font-bold text-[#0a0a0a] leading-tight" style={{ fontFamily: 'var(--font-heading)' }}>+30%</p>
                       </div>
                     </div>
                   </div>
@@ -462,7 +462,7 @@ export default function BliUtleierPage() {
               <h2 className="text-[30px] sm:text-[40px] lg:text-[46px] font-bold tracking-[-0.03em] leading-[1.05] sm:leading-[1.08] text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>La eiendommen jobbe for deg</h2>
               <p className="text-[15px] sm:text-[16px] text-[#666] leading-[1.65] sm:leading-[1.75] mt-4 sm:mt-5 max-w-[42ch]">DigiHome forvalter eiendommen din profesjonelt — du lener deg tilbake og nyter inntekten.</p>
               <div className="mt-6 sm:mt-8 space-y-2.5 sm:space-y-3">
-                {[{ icon: TrendingUp, text: 'Opptil 40% høyere inntekt' }, { icon: Shield, text: 'Full forvaltning uten stress' }, { icon: Key, text: 'Ingen oppstartskostnader' }].map((item: any, i: number) => {
+                {[{ icon: TrendingUp, text: 'Opptil 30% høyere inntekt' }, { icon: Shield, text: 'Full forvaltning uten stress' }, { icon: Key, text: 'Ingen oppstartskostnader' }].map((item: any, i: number) => {
                   const Icon = item.icon;
                   return (<motion.div key={i} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.35 + i * 0.08, duration: 0.3 }} className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-lg bg-[#f5edfc] flex items-center justify-center shrink-0"><Icon className="w-4 h-4 text-[#cf97fc]" /></div>

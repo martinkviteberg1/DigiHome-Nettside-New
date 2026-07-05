@@ -17,20 +17,24 @@ function fmtDate(d) {
 
 export async function generateMetadata({ params }) {
   const post = await getPostBySlug(params.slug);
-  if (!post) return { title: 'Ikke funnet | DigiHome', robots: { index: false } };
-  const title = (post.seoTitle || post.title) + ' | DigiHome';
+  if (!post) return { title: 'Ikke funnet', robots: { index: false } };
+  // Strip evt. innbakt «| DigiHome» fra seoTitle i DB — layout-templaten
+  // (`%s | DigiHome`) legger til merkenavnet, ellers blir det dobbelt/trippelt.
+  const baseTitle = String(post.seoTitle || post.title).replace(/(\s*[|—-]\s*DigiHome)+\s*$/i, '').trim();
+  const title = baseTitle; // template gir «… | DigiHome» i <title>
+  const ogTitle = `${baseTitle} | DigiHome`; // og:title bruker ikke templaten
   const desc = (post.seoDescription || post.excerpt || '').slice(0, 160);
   return {
     title,
     description: desc,
     alternates: { canonical: `/nyheter/${post.slug}` },
     openGraph: {
-      title, description: desc, url: `${site.url}/nyheter/${post.slug}`,
+      title: ogTitle, description: desc, url: `${site.url}/nyheter/${post.slug}`,
       type: 'article', locale: 'nb_NO',
       publishedTime: post.publishedAt, modifiedTime: post.updatedAt,
       images: post.coverImage ? [{ url: post.coverImage }] : [{ url: site.url + site.ogImage }],
     },
-    twitter: { card: 'summary_large_image', title, description: desc, images: post.coverImage ? [post.coverImage] : undefined },
+    twitter: { card: 'summary_large_image', title: ogTitle, description: desc, images: post.coverImage ? [post.coverImage] : undefined },
   };
 }
 

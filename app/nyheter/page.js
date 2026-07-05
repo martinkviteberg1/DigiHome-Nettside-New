@@ -2,13 +2,15 @@ import Link from 'next/link';
 import Header from '@/components/dh/Header';
 import Footer from '@/components/dh/Footer';
 import { getPublishedPosts } from '@/lib/posts';
+import { JsonLd } from '@/components/site/JsonLd';
+import { breadcrumbLd } from '@/lib/seo';
 import { site } from '@/lib/site';
 import { ArrowUpRight, Newspaper } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
 export const metadata = {
-  title: 'Nyheter & guider om utleie | DigiHome',
+  title: 'Nyheter & guider om utleie',
   description:
     'Artikler, guider og råd om utleie, eiendomsforvaltning, skatt og leiemarkedet i Bergen og Norge — fra DigiHome.',
   alternates: { canonical: '/nyheter' },
@@ -29,8 +31,31 @@ export default async function NyheterIndex() {
   const posts = await getPublishedPosts(60);
   const [featured, ...rest] = posts;
 
+  // CollectionPage + ItemList: gjør artikkeloversikten maskinlesbar for
+  // Google (rich results) og AI-crawlere (AEO).
+  const collectionLd = {
+    '@context': 'https://schema.org',
+    '@type': 'CollectionPage',
+    name: 'Nyheter & guider om utleie',
+    description: 'Praktiske guider og råd om utleie, skatt, kontrakter og leiemarkedet i Bergen og Norge.',
+    url: `${site.url}/nyheter`,
+    inLanguage: 'nb-NO',
+    isPartOf: { '@id': `${site.url}/#website` },
+    mainEntity: {
+      '@type': 'ItemList',
+      itemListElement: posts.map((p, i) => ({
+        '@type': 'ListItem',
+        position: i + 1,
+        name: p.title,
+        url: `${site.url}/nyheter/${p.slug}`,
+      })),
+    },
+  };
+
   return (
     <div className="bg-[#fdfcfb] text-[#1f1f1f] min-h-screen">
+      <JsonLd data={collectionLd} />
+      <JsonLd data={breadcrumbLd([{ name: 'Nyheter', path: '/nyheter' }])} />
       <Header />
       <main className="pt-[72px]">
         <section className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16 pt-16 lg:pt-20 pb-10">

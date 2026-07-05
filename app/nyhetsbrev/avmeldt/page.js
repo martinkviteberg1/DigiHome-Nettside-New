@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { CheckCircle2, AlertTriangle } from 'lucide-react';
 
 export const metadata = {
-  title: 'Avmeldt — DigiHome',
+  title: 'Avmeldt',
   robots: { index: false, follow: false },
 };
 

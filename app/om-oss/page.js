@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import Header from '@/components/dh/Header';
 import Footer from '@/components/dh/Footer';
+import { JsonLd } from '@/components/site/JsonLd';
+import { breadcrumbLd, webPageLd } from '@/lib/seo';
 import { site, statStrip, partners } from '@/lib/site';
 import { ArrowUpRight, Building2, Heart, Target, Users } from 'lucide-react';
 
@@ -99,6 +101,13 @@ export default function Page() {
           <Link href="/kontakt" className="group inline-flex items-center gap-2 h-[54px] pl-7 pr-3 rounded-full bg-[#d298ff] text-[#1f1f1f] text-[15px] font-semibold active:scale-[0.98] transition-transform">Ta kontakt<span className="inline-flex items-center justify-center w-[38px] h-[38px] rounded-full bg-[#1f1f1f] text-[#d298ff]"><ArrowUpRight className="w-4 h-4" strokeWidth={2.6} /></span></Link>
         </div>
       </section>
+      <JsonLd data={breadcrumbLd([{ name: 'Om oss', path: '/om-oss' }])} />
+      <JsonLd data={webPageLd({
+        name: 'Om DigiHome — Bergens smarteste eiendomsforvalter',
+        description: 'Historien og teamet bak DigiHome: AI-drevet eiendomsforvaltning med lokal forankring i Bergen.',
+        path: '/om-oss',
+        type: 'AboutPage',
+      })} />
       <Footer />
     </div>
   );

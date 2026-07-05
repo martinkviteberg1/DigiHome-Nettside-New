@@ -1,17 +1,19 @@
 import Link from 'next/link';
 import Header from '@/components/dh/Header';
 import Footer from '@/components/dh/Footer';
+import { JsonLd } from '@/components/site/JsonLd';
+import { breadcrumbLd, serviceLd } from '@/lib/seo';
 import { ArrowUpRight, Calculator, TrendingUp, BarChart3, Scale, Compass } from 'lucide-react';
 
 const cards = [
   { icon: Calculator, t: 'Verdivurdering', b: 'Gratis, datadrevet vurdering av hva boligen din realistisk kan leies ut for — basert på markedstall og lokal erfaring.', href: '/bli-utleier', cta: 'Be om verdivurdering' },
   { icon: TrendingUp, t: 'Investeringsrådgivning', b: 'Skal du kjøpe for utleie? Vi hjelper deg vurdere yield, beliggenhet og riktig utleiemodell før du kjøper.', href: '/kontakt', cta: 'Ta kontakt' },
   { icon: BarChart3, t: 'Markedsinnsikt', b: 'Tilgang til oppdaterte leiepriser, prisutvikling og vår etterspørselsindeks — se hvor i Bergen etterspørselen er størst.', href: '/leiemarkedet/bergen', cta: 'Se leiemarkedsrapporten' },
-  { icon: Scale, t: 'Juridisk rådgivning', b: 'Husleiekontrakter, depositum og tvistehåndtering kvalitetssikret gjennom vår juridiske partner Hoffmann Thinn.', href: '/kontakt', cta: 'Snåkk med oss' },
+  { icon: Scale, t: 'Juridisk rådgivning', b: 'Husleiekontrakter, depositum og tvistehåndtering kvalitetssikret gjennom vår juridiske partner Hoffmann Thinn.', href: '/kontakt', cta: 'Snakk med oss' },
 ];
 
 export const metadata = {
-  title: 'Rådgivning — verdivurdering, investering og markedsinnsikt | DigiHome',
+  title: 'Rådgivning — verdivurdering, investering og markedsinnsikt',
   description: 'Få datadrevet rådgivning om utleie i Bergen: gratis verdivurdering, investeringsråd, markedsinnsikt og juridisk bistand. DigiHome kjenner det lokale leiemarkedet.',
   alternates: { canonical: '/radgivning' },
 };
@@ -53,6 +55,13 @@ export default function Page() {
           <Link href="/kontakt" className="group inline-flex items-center gap-2 h-[54px] pl-7 pr-3 rounded-full bg-[#d298ff] text-[#1f1f1f] text-[15px] font-semibold active:scale-[0.98] transition-transform">Kontakt oss<span className="inline-flex items-center justify-center w-[38px] h-[38px] rounded-full bg-[#1f1f1f] text-[#d298ff]"><ArrowUpRight className="w-4 h-4" strokeWidth={2.6} /></span></Link>
         </div>
       </section>
+      <JsonLd data={breadcrumbLd([{ name: 'Rådgivning', path: '/radgivning' }])} />
+      <JsonLd data={serviceLd({
+        name: 'Utleierådgivning',
+        description: 'Datadrevet rådgivning for utleiere i Bergen: gratis verdivurdering, investeringsråd, markedsinnsikt og juridisk bistand.',
+        path: '/radgivning',
+        serviceType: 'Eiendomsrådgivning',
+      })} />
       <Footer />
     </div>
   );

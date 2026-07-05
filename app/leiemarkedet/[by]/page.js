@@ -18,7 +18,10 @@ export async function generateMetadata({ params }) {
   const year = report?.year || new Date().getFullYear();
   const two = report?.headline?.typical2rom;
   // Tittel uten merkevare – layout-templaten ('%s | DigiHome') legger den til én gang.
-  const title = `Leiemarkedet i ${city.label} ${year} — snittleie, priser og etterspørsel`;
+  // Tittel-året = inneværende år (søkeintensjon «leiepriser 2026»); beskrivelsen
+  // oppgir datakildeåret ærlig (SSB-tallene kan ligge ett år bak).
+  const titleYear = Math.max(year, new Date().getFullYear());
+  const title = `Leiemarkedet i ${city.label} ${titleYear} — snittleie, priser og etterspørsel`;
   const ogTitle = `${title} | DigiHome`;
   const desc = two
     ? `En 2-roms i ${city.label} leies i snitt for ${Number(two).toLocaleString('nb-NO')} kr/mnd (${year}). Se snittleie per boligtype, prisutvikling og hvor etterspørselen er størst. Kilde: SSB + DigiHome.`

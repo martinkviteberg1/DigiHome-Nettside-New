@@ -1,5 +1,13 @@
 const nextConfig = {
   output: 'standalone',
+  // SEO: gamle /blogg-URL-er (nav-historikk + evt. eksterne lenker) sendes
+  // permanent (308/301) til /nyheter så lenkekraft ikke går tapt i 404.
+  async redirects() {
+    return [
+      { source: '/blogg', destination: '/nyheter', permanent: true },
+      { source: '/blogg/:slug*', destination: '/nyheter/:slug*', permanent: true },
+    ];
+  },
   // Ported .tsx files (deck + dh pages) contain type-only errors that do not
   // affect runtime. `next build` runs full type-check + ESLint and would fail
   // the production build, so we skip those phases here (dev already works).

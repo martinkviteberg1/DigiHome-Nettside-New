@@ -2085,6 +2085,9 @@ agent_communication:
 
 agent_communication:
     -agent: "main"
+    -message: "SEO/AEO-OVERHALING GJENNOMFØRT (ingen API-endringer — kun sider/metadata/innhold, verifisert med HTTP-audit + skjermbilder): (1) Dedupliserte titler på 8 sider + artikler (template-konflikt). (2) llms.txt omskrevet m/korrekte fakta + to-nivå-modell. (3) /investor noindex (ny layout.js). (4) /blogg→/nyheter 308-redirect i next.config.js. (5) Sitemap +5 URL-er. (6) JSON-LD på 11 sider (ny lib/seo.js + components/site/FaqSection.js). (7) FAQ-seksjoner m/synlig innhold på forvaltning/tjenester/bli-leietaker. (8) H1-fikser video/priskalkulator. (9) 2 nye artikler i posts-collection. (10) 40%→30% konsistens i BliUtleierPage. VIKTIG for fremtidig testing: FilmScenes.js animasjonstitler er nå <div> (ikke h1); /bli-leietaker har FAQ-seksjon under skjemaet."
+
+    -agent: "main"
     -message: "GOOGLE MAPS-ADRESSESØK MIGRERT (manuelt verifisert — trenger ikke ny testrunde nå): GET /api/address?q= bruker nå Google Places Autocomplete (Bergen-bias 30km, country:no) med Geonorge-fallback hvis GOOGLE_MAPS_API_KEY mangler/feiler. NYTT: GET /api/address?place_id= → Place Details {ok, address, postalCode, city, label}. Respons-kontrakt suggestions[{text,sub,label,place_id?}] er bakoverkompatibel. AddressAutocomplete.tsx: choose() henter postnummer via place_id-oppslag; mobil (<768px): scroll-til-topp ved fokus + maks-høyde/scroll på dropdown. VERIFISERT: curl (Bergen først, postalCode 5005 fra Details) + E2E-skjermbilder desktop/mobil (forslag→valg→bekreftet felt m/postnr→Eiendomsregister-oppslag OK). Berører alle adressefelter (BliUtleier, Hero, PriceWizard, /sommer) via delt komponent."
 
     -agent: "main"

@@ -22,6 +22,11 @@ export default async function sitemap() {
     { url: `${base}/utleie`, lastModified: now, changeFrequency: 'weekly', priority: 0.8 },
     { url: `${base}/leiemarkedet`, lastModified: now, changeFrequency: 'weekly', priority: 0.8 },
     { url: `${base}/nyheter`, lastModified: now, changeFrequency: 'weekly', priority: 0.7 },
+    { url: `${base}/priskalkulator`, lastModified: now, changeFrequency: 'monthly', priority: 0.7 },
+    { url: `${base}/sommer`, lastModified: now, changeFrequency: 'weekly', priority: 0.6 },
+    { url: `${base}/support`, lastModified: now, changeFrequency: 'monthly', priority: 0.4 },
+    { url: `${base}/vilkar`, lastModified: now, changeFrequency: 'yearly', priority: 0.3 },
+    { url: `${base}/personvern`, lastModified: now, changeFrequency: 'yearly', priority: 0.3 },
     { url: `${base}/video`, lastModified: now, changeFrequency: 'yearly', priority: 0.4 },
   ];
 

@@ -1,6 +1,9 @@
 import Link from 'next/link';
 import Header from '@/components/dh/Header';
 import Footer from '@/components/dh/Footer';
+import FaqSection from '@/components/site/FaqSection';
+import { JsonLd } from '@/components/site/JsonLd';
+import { breadcrumbLd, serviceLd } from '@/lib/seo';
 import { site, services, network, steps } from '@/lib/site';
 import {
   Sparkles, ShieldCheck, CalendarRange, Wrench, Plug, Droplets, Scale, Umbrella,
@@ -10,7 +13,7 @@ import {
 const ICONS = { Sparkles, ShieldCheck, CalendarRange, Wrench, Plug, Droplets, Scale, Umbrella, Repeat, LineChart, Settings2, Smartphone };
 
 export const metadata = {
-  title: 'Tjenester — dynamisk, langtids- og korttidsutleie | DigiHome',
+  title: 'Tjenester — dynamisk, langtids- og korttidsutleie',
   description: 'DigiHome tilbyr full forvaltning av utleieboliger i Bergen: dynamisk hybridutleie (10+2), langtidsutleie og korttidsutleie. Alt fra annonsering til vedlikehold på én plattform.',
   alternates: { canonical: '/tjenester' },
 };
@@ -83,6 +86,18 @@ export default function Page() {
         </div>
       </section>
 
+      <FaqSection
+        title="Ofte stilte spørsmål om utleiemodellene"
+        intro="Slik velger du riktig modell for boligen din."
+        faqs={[
+          { q: 'Hva er dynamisk utleie (10+2-modellen)?', a: 'Boligen leies ut langsiktig i 10 måneder og som korttidsutleie i 2 måneder (sommer/høysesong). Kombinasjonen gir opptil 30 % høyere samlet årsinntekt enn ren langtidsutleie — uten at du mister forutsigbarheten.' },
+          { q: 'Hvilken utleiemodell passer for min bolig?', a: 'Det avhenger av beliggenhet, standard og hva du vil oppnå. Sentrumsnære boliger egner seg ofte for dynamisk utleie, mens boliger i rolige nabolag gjerne gir best resultat med langtidsleie. Vi gir deg en gratis, datadrevet anbefaling.' },
+          { q: 'Kan jeg bytte utleiemodell underveis?', a: 'Ja. Det er ingen bindingstid hos DigiHome, og vi justerer modellen når markedet eller din situasjon endrer seg.' },
+          { q: 'Håndterer dere både korttids- og langtidsleie?', a: 'Ja. Vi annonserer på Finn.no for langtidsleie og på Airbnb/Booking.com for korttidsleie, og håndterer kontrakter, betaling, renhold og oppfølging i begge modeller.' },
+        ]}
+      />
+      <JsonLd data={breadcrumbLd([{ name: 'Tjenester', path: '/tjenester' }])} />
+      <JsonLd data={serviceLd({ name: 'Dynamisk utleie (10+2)', description: '10 måneder langtidsutleie + 2 måneder korttidsutleie for opptil 30 % høyere årsinntekt.', path: '/tjenester', serviceType: 'Eiendomsforvaltning' })} />
       <CTA />
       <Footer />
     </div>
