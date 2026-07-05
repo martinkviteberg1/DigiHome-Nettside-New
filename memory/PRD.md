@@ -171,3 +171,22 @@ Google Ads-styring via native REST API).
   public/llms.txt er FJERNET (route + public-fil gir konflikt).
 - Verifisert: 10/10 innholdssjekker + visuelle skjermbilder av admin-varsel og kvittering
   via /api/admin/leads/email-preview. /llms.txt 200 lokalt. Prod-logo verifisert 200 på digihome.no.
+
+## Økt 5. juli 2026 (del 3) — Nyhetsbrev-editor: 4 oppgraderinger (Melding 281)
+- ✅ TEST-UTSENDING: POST /api/admin/newsletter/test tar nå flere mottakere (kommaseparert
+  eller array, maks 10, dedupe/validering) + valgfri `message` → gult banner «Melding fra
+  avsender · vises kun i test» øverst i e-posten (renderNewsletterHtml({testNote})).
+  UI: popover m/ flermottaker-felt + meldingstekstboks (NewsletterTab.js).
+- ✅ WEBP: /api/admin/newsletter/upload konverterer nå ALT til WebP (sharp, q80, maks 1200px,
+  EXIF-rotate, animert GIF beholder animasjon). Content-Type image/webp verifisert av testagent.
+- ✅ BILDEKONTROLLER: Dra-håndtak nederst på bilde/hero i editoren (60–900px clamp, live
+  px-badge) + inspektørfelt Høyde (tall/Auto) og Tilpasning (Fyll/Tilpass/Strekk = cover/
+  contain/fill). Serialiseres til e-post-HTML (height + object-fit; klienter uten støtte
+  viser bildet uskalert).
+- ✅ BOLIGER-BLOKK: Ny «Boliger»-blokk i paletten. PropertyPicker i inspektøren henter
+  /api/admin/properties (fallback /api/public/properties), maks 6 valg, snapshot
+  {pid,title,image,meta,band} lagres i blokken. E-post: 2-kolonners kortgrid + sporet CTA.
+- Testet: backend-agent 15/16 PASS (eneste avvik: Cache-Control immutable overstyres i dev
+  — uvesentlig). Node-sanitetstest av render 10/10. Skjermbilder: palett, picker m/ ekte
+  boliger, valgte kort i canvas, 220px+contain, dra-håndtak, test-popover.
+- OBS: Testutkast «Sommerkampanje 2026» (opprettet av automasjonen) er slettet fra DB.
