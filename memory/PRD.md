@@ -250,3 +250,23 @@ Google Ads-styring via native REST API).
   persisteres i draft. Annonsebildet (media.url) brukes som LP-hero.
 - TESTET: backend-agent 16/16 PASS (generate/publish/unikhet/liste/rendering/noindex/
   regresjon/opprydding). LP-generering ~13 sek.
+
+## Økt 5. juli 2026 (del 6) — Fjernstyring av plattformens LLM-modeller (via broen)
+- ✅ PUT /admin/usage/llm/model med scope:'platform' → model_override_request i
+  agent_bridge (thread 'model-control', from 'marketing', data {kind, feature, model}).
+  Uten scope: uendret (landingsside-overrides m/ AVAILABLE_MODELS-validering).
+- ✅ GET /admin/usage/api: nye felter platformControl (status per feature utledet
+  kronologisk fra model-control-tråden: pending/applied/rejected, både type og
+  data.kind sjekkes) + platformModels (7 kuraterte: gpt-5.4, gpt-5-mini, gpt-4o-mini,
+  claude-sonnet-4-6, claude-haiku-4-5, gemini-2.5-pro, gemini-2.5-flash).
+- ✅ POST /agent-bridge: whitelistet model_override_request/applied/rejected
+  (koerseres ikke lenger til 'note').
+- ✅ UI (ApiUsageTab): plattformens AI-rader har modellvelger + statuschip
+  (⏳ venter / ✓ aktiv / avvist m/ årsak i tooltip). Optimistisk oppdatering.
+- ✅ Kontrakt: docs/INTEGRATION_CONTRACT.md §10 + spec-melding annonsert på broen
+  (scripts/announce-model-control.mjs — kjørt, 24 mld i integration-contract).
+- VIKTIG: Faktisk modellbytte krever at PLATTFORM-agenten implementerer mottak
+  (poll model-control → anvend → kvitter model_override_applied). Bruker må be
+  plattform-agenten «les broen (integration-contract) og implementer model-control».
+- TESTET: backend-agent 7/7 PASS (request/pending/applied/rejected/validering/
+  regresjon/opprydding). Whitelist-fix eksplisitt verifisert.
