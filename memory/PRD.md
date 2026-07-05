@@ -190,3 +190,41 @@ Google Ads-styring via native REST API).
   — uvesentlig). Node-sanitetstest av render 10/10. Skjermbilder: palett, picker m/ ekte
   boliger, valgte kort i canvas, 220px+contain, dra-håndtak, test-popover.
 - OBS: Testutkast «Sommerkampanje 2026» (opprettet av automasjonen) er slettet fra DB.
+
+## Økt 5. juli 2026 (del 4) — Annonsestudio "Verdensklasse 2026": Fase A + B + C
+- ✅ FASE A — AI-briefs + nye kampanjer fra UI:
+  - lib/adstudio.js: searchGeoLocations (Meta adgeolocation, NO), createCampaign (PAUSED,
+    validate_only-støtte), createAdSet (PAUSED, leads→OFFSITE_CONVERSIONS+pixel LEAD /
+    traffic→LINK_CLICKS, geo land/by+radius, alder, advantage_audience 0 m/ auto-retry).
+  - route.js: GET /admin/adstudio/geosearch, POST /admin/adstudio/campaign (lagrer i
+    studio_campaigns, nullstiller ctx-cache), POST /admin/adstudio/aibrief (3 sesong-
+    baserte briefs m/ leads-count + siste annonser som kontekst, LLM-feature annonsestudio_brief).
+  - UI: Steg 0 har nå fane «Eksisterende annonsesett | + Ny kampanje» (NewCampaignPanel:
+    navn, mål, dagsbudsjett, geo-søk m/ debounce, alder, oppsummering, auto-velg nytt adset
+    etter opprettelse). Brief-steget har «La AI foreslå brief»-tryllestav → 3 klikkbare forslag.
+- ✅ FASE B — Per-plassering autoformatering (9:16 + 1.91:1):
+  - VIKTIG FUNN (empirisk verifisert, scripts/test-image-edit.mjs): Emergent
+    /llm/v1/images/edits STØTTER bilde-til-bilde med gemini/gemini-3-pro-image-preview
+    (multipart: model+prompt+image, INGEN n-param → 400). Modellen respekterer 9:16-
+    instruks i prompt (768x1376, motiv bevart). gemini-2.5-flash-image ignorerer AR.
+  - POST /admin/adstudio/formats {assetId} → story 1080x1920 + landscape 1200x628
+    parallelt (AI-outpainting m/ AR-validering + sharp cover-normalisering; fallback
+    sharp blur-extend method 'smart'), laster opp til Meta, logger bildeforbruk.
+  - buildAssetFeedSpec (asset_feed_spec m/ adlabels dh_kvadrat/dh_story/dh_bred +
+    asset_customization_rules: story→FB/IG story+reels, bred→right_column+search,
+    kvadrat→catch-all). create + preview bruker den når storyHash/landscapeHash sendes;
+    preview får da INSTAGRAM_STORY som 4. format. studio_ads lagrer placementCustomized.
+  - UI: «Formater for alle plasseringer»-panel etter bildevalg (genererer, viser 3 thumbs
+    m/ AI/smart-badge), kvalitetssjekk «Alle plasseringer dekket», formats i draft.
+- ✅ FASE C — Verdensklasse 2026 UI:
+  - Framer Motion: steg-overganger (AnimatePresence slide+blur), mockup-crossfade,
+    suksess-skjerm m/ spring-ikon.
+  - 3-veis mockup-veksler Facebook/Instagram/Story + ny StoryMockup (9:16 telefonramme,
+    gradient-overlays, progresjonsbar, CTA-pille; bruker formats.story.url når generert).
+  - Pre-flight sjekkliste i Publiser-steget (7 punkter m/ grønn/gul/rød status + teller).
+  - «Alle formater»-badge i Mine annonser.
+- TESTET: backend-agent 21/21 PASS (geosearch/aibrief/campaign-validate/media/formats/
+  preview/regresjon). formats: begge method='ai' på 18,5s. campaign validateOnly → 502
+  'utviklingsmodus' er FORVENTET til Meta-appen settes Live.
+- OBS: screenshot_tool klarte ikke admin-innlogging (kjent gjenganger) — frontend visuelt
+  uverifisert av hovedagent; venter på bruker/frontend-agent.
