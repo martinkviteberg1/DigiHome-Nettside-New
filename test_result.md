@@ -105,6 +105,18 @@
 user_problem_statement: "Bygg DigiHome markedsside (Next.js App Router) etter flyttepakken — Warm Ink Editorial design, norsk bokmål, full SEO, DB-drevet blogg + admin + programmatisk SEO. Fase 1: verdensklasse forside + lead-API."
 
 backend:
+  - task: "LLM leverandørkjede: egen OpenAI-nøkkel primær + Emergent fallback (lib/llm.js, lib/llm-usage.js)"
+    implemented: true
+    working: true
+    file: "/app/lib/llm.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "main"
+        -comment: "chatLLM bruker nå leverandørkjede: OPENAI_API_KEY (api.openai.com) primært, EMERGENT_LLM_KEY som fallback (maks 2 forsøk per leverandør, 4xx → hopp direkte til neste). logLlmUsage lagrer nå provider-felt. Verifisert ende-til-ende: POST /api/admin/newsletter/suggest ga 3 forslag, siste llm_usage-dok har provider:'openai', costNok logget. Nøkkel validert direkte mot OpenAI (200). Bildegenerering (genimage) bruker fortsatt Emergent-nøkkelen inntil Google AI Studio-nøkkel mottas. Objektlagring bruker alltid Emergent-nøkkelen."
+
   - task: "AI-bildegenerering nyhetsbrev (POST /api/admin/newsletter/genimage — Nano Banana Pro gemini-3-pro-image-preview m/ fallback til gemini-2.5-flash-image, suggestOnly-modus)"
     implemented: true
     working: true
