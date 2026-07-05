@@ -243,6 +243,8 @@ function ResultatTab({ data }) {
         <div className="mt-4 pt-4 border-t border-[#f0f0f0] flex flex-wrap gap-x-6 gap-y-1 text-[12px] text-[#888]">
           <span className="inline-flex items-center gap-1.5"><Megaphone className="w-3.5 h-3.5" /> Annonse auto: {kr(m.adSpendMonthly)}/mnd</span>
           <span className="inline-flex items-center gap-1.5"><Zap className="w-3.5 h-3.5" /> LLM auto: {kr(m.llmMonthly)}/mnd</span>
+          {m.extMonthly > 0 && <span className="inline-flex items-center gap-1.5"><Zap className="w-3.5 h-3.5" /> API-tjenester auto: {kr(m.extMonthly)}/mnd</span>}
+          {m.platformMonthly > 0 && <span className="inline-flex items-center gap-1.5"><Zap className="w-3.5 h-3.5" /> Plattform-CRM auto: {kr(m.platformMonthly)}/mnd</span>}
         </div>
       </div>
 
@@ -467,6 +469,8 @@ function KostnaderTab({ items, auto, onSave, onDelete, saving }) {
       <div className="flex flex-wrap gap-x-6 gap-y-1 text-[12px] text-[#888] rounded-xl bg-[#f7f7f8] px-4 py-3">
         <span className="inline-flex items-center gap-1.5"><Megaphone className="w-3.5 h-3.5" /> Annonseforbruk hentes automatisk: <strong className="text-[#555]">{kr(auto?.adSpendMonthly || 0)}/mnd</strong></span>
         <span className="inline-flex items-center gap-1.5"><Zap className="w-3.5 h-3.5" /> LLM-kostnad hentes automatisk: <strong className="text-[#555]">{kr(auto?.llmMonthly || 0)}/mnd</strong></span>
+        <span className="inline-flex items-center gap-1.5"><Zap className="w-3.5 h-3.5" /> API-tjenester (SendGrid/SerpAPI/Maps): <strong className="text-[#555]">{kr(auto?.extMonthly || 0)}/mnd</strong></span>
+        <span className="inline-flex items-center gap-1.5"><Zap className="w-3.5 h-3.5" /> Plattform-CRM (Twilio, e-sign, AI): <strong className="text-[#555]">{kr(auto?.platformMonthly || 0)}/mnd</strong>{auto?.platform === false && <em className="text-[#bbb] not-italic">(venter på tilkobling)</em>}</span>
       </div>
       {items.length === 0 ? (
         <Empty msg="Ingen faste kostnader ennå. Legg inn lønn, husleie, programvare, regnskap m.m." />
@@ -510,9 +514,11 @@ function InnstillingerTab({ settings, onSave, saving }) {
   const [date, setDate] = useState(settings?.openingCashDate || '');
   const [ads, setAds] = useState(settings?.includeAdSpend !== false);
   const [llm, setLlm] = useState(settings?.includeLlm !== false);
+  const [ext, setExt] = useState(settings?.includeExt !== false);
+  const [plat, setPlat] = useState(settings?.includePlatform !== false);
   const [ok, setOk] = useState(false);
-  useEffect(() => { setBal(settings?.openingCashBalance ?? ''); setDate(settings?.openingCashDate || ''); setAds(settings?.includeAdSpend !== false); setLlm(settings?.includeLlm !== false); }, [settings]);
-  const save = async () => { await onSave({ openingCashBalance: bal === '' ? null : bal, openingCashDate: date, includeAdSpend: ads, includeLlm: llm }); setOk(true); setTimeout(() => setOk(false), 2000); };
+  useEffect(() => { setBal(settings?.openingCashBalance ?? ''); setDate(settings?.openingCashDate || ''); setAds(settings?.includeAdSpend !== false); setLlm(settings?.includeLlm !== false); setExt(settings?.includeExt !== false); setPlat(settings?.includePlatform !== false); }, [settings]);
+  const save = async () => { await onSave({ openingCashBalance: bal === '' ? null : bal, openingCashDate: date, includeAdSpend: ads, includeLlm: llm, includeExt: ext, includePlatform: plat }); setOk(true); setTimeout(() => setOk(false), 2000); };
   return (
     <div className="max-w-[560px] space-y-6">
       <div className="rounded-2xl border border-[#eee] bg-white p-6 space-y-4">
@@ -527,6 +533,8 @@ function InnstillingerTab({ settings, onSave, saving }) {
         <h3 className="text-[15px] font-bold text-[#111]">Automatiske kostnader</h3>
         <Toggle label="Inkluder annonseforbruk (Google/Meta) som kostnad" checked={ads} onChange={setAds} />
         <Toggle label="Inkluder LLM-kostnad (self-metered) som kostnad" checked={llm} onChange={setLlm} />
+        <Toggle label="Inkluder eksterne API-tjenester (SendGrid/SerpAPI/Maps) som kostnad" checked={ext} onChange={setExt} />
+        <Toggle label="Inkluder plattform-CRM-kostnader (Twilio, e-sign, deres AI) som kostnad" checked={plat} onChange={setPlat} />
       </div>
       <div className="flex items-center gap-3">
         <button className={btnDark} onClick={save} disabled={saving}>{saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />} Lagre innstillinger</button>

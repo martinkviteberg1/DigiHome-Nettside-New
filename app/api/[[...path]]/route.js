@@ -30,7 +30,7 @@ import {
 } from '@/lib/investor-room';
 import { computeKpiDashboard, getKpiSettings, setKpiSettings } from '@/lib/kpi-dashboard';
 import { computeLlmUsageDashboard, getModelOverrides, setModelOverride, logImageUsage, AVAILABLE_MODELS, DEFAULT_MODEL } from '@/lib/llm-usage';
-import { logExtUsage, summarizeExtUsage } from '@/lib/ext-usage';
+import { logExtUsage, summarizeExtUsage, getPlatformUsage } from '@/lib/ext-usage';
 import { getFinanceSettings, setFinanceSettings, listCosts, upsertCost, deleteCost, listContracts, upsertContract, deleteContract, listEvents, upsertEvent, deleteEvent, computeResultat, computeLikviditet, computeFinanceOverview, computeTrends, captureSnapshot, computeInvestorMetrics, computeForecast, computeBoardPack, computeCustomers, computePlatformCustomers } from '@/lib/finance';
 import { syncContractsFromPlatform, syncCustomersFromPlatform } from '@/lib/contracts-sync';
 import { ga4MpConfigured, sendGa4Purchase } from '@/lib/ga4-mp';
@@ -4219,45 +4219,12 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
       const sp = new URL(request.url).searchParams;
       const days = Math.max(1, Math.min(365, Number(sp.get('days')) || 30));
 
-      // Plattform-forbruk: hent med 10 min DB-cache (unngå å hamre CRM-et).
-      const fetchPlatformUsage = async () => {
-        const CACHE_KEY = 'platform_usage_external';
-        try {
-          const hit = await db.collection('kv_cache').findOne({ key: CACHE_KEY });
-          if (hit && hit.at && Date.now() - new Date(hit.at).getTime() < 10 * 60000 && !sp.get('fresh')) return hit.value;
-        } catch (_) {}
-        const target = digiHomeTarget();
-        let value = { status: 'waiting', services: null, llm: null, env: target.env, checkedAt: new Date().toISOString() };
-        try {
-          const ctrl = new AbortController();
-          const timer = setTimeout(() => ctrl.abort(), 8000);
-          const r = await fetch(`${target.url}/api/usage/external`, {
-            headers: {
-              'X-Bridge-Token': process.env.AGENT_BRIDGE_SECRET || '',
-              ...(target.key ? { 'X-API-Key': target.key } : {}),
-            },
-            signal: ctrl.signal,
-          });
-          clearTimeout(timer);
-          if (r.ok) {
-            const j = await r.json().catch(() => null);
-            if (j && j.ok) value = { status: 'ok', month: j.month || null, generatedAt: j.generatedAt || null, services: j.services || [], llm: j.llm || null, env: target.env, checkedAt: new Date().toISOString() };
-            else value.status = 'invalid';
-          } else {
-            value.status = r.status === 404 ? 'waiting' : 'error';
-            value.httpStatus = r.status;
-          }
-        } catch (_) { value.status = 'error'; }
-        try { await db.collection('kv_cache').updateOne({ key: CACHE_KEY }, { $set: { at: new Date().toISOString(), value } }, { upsert: true }); } catch (_) {}
-        return value;
-      };
-
       try {
         const [llm, ext, overrides, platform] = await Promise.all([
           computeLlmUsageDashboard(db, days),
           summarizeExtUsage(db, days),
           getModelOverrides(db),
-          fetchPlatformUsage(),
+          getPlatformUsage(db, { fresh: !!sp.get('fresh') }), // 10 min DB-cache i lib
         ]);
         return cors(NextResponse.json({
           ok: true, days, llm, ext, platform, overrides,
