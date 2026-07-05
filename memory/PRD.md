@@ -228,3 +228,25 @@ Google Ads-styring via native REST API).
   'utviklingsmodus' er FORVENTET til Meta-appen settes Live.
 - OBS: screenshot_tool klarte ikke admin-innlogging (kjent gjenganger) — frontend visuelt
   uverifisert av hovedagent; venter på bruker/frontend-agent.
+
+## Økt 5. juli 2026 (del 5) — Annonsestudio Fase 2: AI-kampanjesider (message match)
+- ✅ POST /admin/adstudio/lp/generate: LLM (feature annonsestudio_lp) skriver komplett
+  LP-config {slug, eyebrow, h1, h1B, sub, bullets[3], heroStat, proofNote, formTitle,
+  cta, metaTitle, metaDesc} med message match 1:1 mot annonseteksten. 400 uten message/headline.
+- ✅ POST /admin/adstudio/lp: publiserer til studio_lps (status live) m/ slug-sanitering
+  + unikhet (suffix -2, -3 mot statiske LANDING-slugs og DB). Returnerer {slug, path, url}.
+  GET /admin/adstudio/lps: liste (maks 30) til destinasjonsvelgeren.
+- ✅ lib/landing.js: normalizeStudioLp(doc) → eksakt samme cfg-form som statiske sider
+  (CampaignLanding rendrer 1:1, faq=COMMON_FAQ, source=lp-<slug> → lead-sporing gratis).
+- ✅ /app/app/lp/[slug]/page.js: dynamicParams=true + revalidate=60 (ISR) +
+  generateStaticParams for statiske slugs; resolveCfg = getLanding || studio_lps-oppslag.
+  notFound() kastes i generateMetadata. KJENT DEV-QUIRK: ukjent slug → 200 m/ 'Ikke
+  funnet'-tittel i dev (rot-loading.js streamer); prod/ISR gir ekte 404. IKKE en bug.
+  MERK: force-dynamic ble prøvd først men ga 200 på ukjente slugs → byttet til ISR.
+- ✅ AdStudioTab (Tekst-steget): «Egen kampanjeside — message match»-panel under
+  Destinasjon: Generer (krever message+headline) → redigerbart utkast (slug-input,
+  h1/sub/bullets/heroStat-preview) → Publiser (live) → settes automatisk som
+  destinasjon + legges i destinasjonsvelgeren (customLinks). lpCreated/customLinks
+  persisteres i draft. Annonsebildet (media.url) brukes som LP-hero.
+- TESTET: backend-agent 16/16 PASS (generate/publish/unikhet/liste/rendering/noindex/
+  regresjon/opprydding). LP-generering ~13 sek.
