@@ -29,7 +29,7 @@ import {
   listAllQuestions as ddListAllQuestions, answerQuestion as ddAnswerQuestion, deleteQuestion as ddDeleteQuestion,
 } from '@/lib/investor-room';
 import { computeKpiDashboard, getKpiSettings, setKpiSettings } from '@/lib/kpi-dashboard';
-import { computeLlmUsageDashboard, getModelOverrides, setModelOverride, logImageUsage, AVAILABLE_MODELS, DEFAULT_MODEL } from '@/lib/llm-usage';
+import { computeLlmUsageDashboard, getModelOverrides, setModelOverride, logImageUsage, AVAILABLE_MODELS, DEFAULT_MODEL, USD_TO_NOK } from '@/lib/llm-usage';
 import { logExtUsage, summarizeExtUsage, getPlatformUsage } from '@/lib/ext-usage';
 import { getFinanceSettings, setFinanceSettings, listCosts, upsertCost, deleteCost, listContracts, upsertContract, deleteContract, listEvents, upsertEvent, deleteEvent, computeResultat, computeLikviditet, computeFinanceOverview, computeTrends, captureSnapshot, computeInvestorMetrics, computeForecast, computeBoardPack, computeCustomers, computePlatformCustomers } from '@/lib/finance';
 import { syncContractsFromPlatform, syncCustomersFromPlatform } from '@/lib/contracts-sync';
@@ -4230,7 +4230,7 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
         ]);
         return cors(NextResponse.json({
           ok: true, days, llm, ext, platform, overrides,
-          models: AVAILABLE_MODELS, defaultModel: DEFAULT_MODEL,
+          models: AVAILABLE_MODELS, defaultModel: DEFAULT_MODEL, usdToNok: USD_TO_NOK,
           generatedAt: new Date().toISOString(),
         }));
       } catch (e) {
