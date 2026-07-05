@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from '@/lib/motion-lite';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -10,7 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { format } from 'date-fns';
 import { nb } from 'date-fns/locale';
 import {
-  TextInput, PhoneInput, IconCardSelector, NumberSelector, SummaryCard,
+  TextInput, PhoneInput, IconCardSelector, NumberSelector,
 } from './FormFields';
 import PropertyRegistryPicker from './PropertyRegistryPicker';
 import { FinnLookupField, AddressField, finnToFields, FinnPropertyCard } from './PropertyInputs';
@@ -25,14 +25,18 @@ import {
 
 const BACKEND_URL = '';
 
+// NY 3-STEGS FLYT (CRO-optimalisert juli 2026): Velkommen-steget fjernet
+// (kostet ~47 % frafall), eiendomsdetaljer flettet inn i steg 1, forvaltning
+// flettet inn i «Dine mål», og kontaktinfo SIST med kompakt oppsummering.
+// Indeksene beholdes for stabilitet — flyten styres av flowSteps [1, 5, 3].
 const STEPS = [
-  { id: 'welcome', title: 'Velkommen' },   // 0
-  { id: 'address', title: 'Adresse' },      // 1
-  { id: 'property', title: 'Eiendommen' },  // 2
-  { id: 'personal', title: 'Om deg' },      // 3
-  { id: 'tier', title: 'Forvaltning' },     // 4 — to-nivå: selvforvaltning (5 %) vs. full forvaltning (tilbud)
-  { id: 'goals', title: 'Dine mål' },       // 5
-  { id: 'confirm', title: 'Bekreft' },      // 6
+  { id: 'welcome', title: 'Velkommen' },    // 0 — UTGÅTT (fjernet fra flyt)
+  { id: 'property', title: 'Eiendommen' },  // 1 — adresse/Finn + detaljer + estimat
+  { id: 'details', title: 'Eiendommen' },   // 2 — UTGÅTT (flettet inn i steg 1)
+  { id: 'contact', title: 'Om deg' },       // 3 — SISTE: kontakt + oppsummering + send
+  { id: 'tier', title: 'Dine mål' },        // 4 — UTGÅTT (flettet inn i steg 5)
+  { id: 'goals', title: 'Dine mål' },       // 5 — mål + forvaltningsnivå
+  { id: 'confirm', title: 'Bekreft' },      // 6 — UTGÅTT (oppsummering på steg 3)
 ];
 
 // Avtaleversjon for klikk-aksept av selvforvaltning (lagres server-side m/tidsstempel).
@@ -82,8 +86,49 @@ const stepVariants = {
   exit: (dir: any) => ({ opacity: 0, x: dir > 0 ? -40 : 40 }),
 };
 
+// Verdi-teaser: estimert leieinntekt basert på SSB-leiepriser (via /api/rent-estimate).
+// Vises så snart soverom er valgt — trekker brukeren gjennom skjemaet.
+function RentEstimateCard({ bedrooms }: any) {
+  const [est, setEst] = useState<any>(null);
+  const [loadingEst, setLoadingEst] = useState(false);
+  useEffect(() => {
+    const n = parseInt(String(bedrooms), 10) || (String(bedrooms).includes('5') ? 5 : 0);
+    if (!n) { setEst(null); return; }
+    let alive = true;
+    setLoadingEst(true);
+    fetch(`/api/rent-estimate?bedrooms=${n}`)
+      .then((r) => r.json())
+      .then((j) => { if (!alive) return; setEst(j.ok ? j : null); setLoadingEst(false); })
+      .catch(() => { if (alive) { setEst(null); setLoadingEst(false); } });
+    return () => { alive = false; };
+  }, [bedrooms]);
+  if (!est && !loadingEst) return null;
+  const fmt = (x: number) => (x || 0).toLocaleString('nb-NO');
+  return (
+    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}
+      className="rounded-2xl bg-gradient-to-br from-[#f7f0fe] to-[#f0e6fb] border border-[#e6d6f8] p-5" data-testid="owner-rent-estimate">
+      {loadingEst && !est ? (
+        <div className="flex items-center gap-2 text-[13px] text-[#8b6db0]"><Loader2 className="w-4 h-4 animate-spin" /> Beregner leieestimat…</div>
+      ) : est ? (
+        <>
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-white flex items-center justify-center shadow-[0_2px_8px_rgba(124,58,237,0.12)]"><TrendingUp className="w-3.5 h-3.5 text-[#7c3aed]" strokeWidth={2.5} /></div>
+            <p className="text-[10.5px] font-bold uppercase tracking-[0.1em] text-[#8b6db0]">Estimert leieinntekt</p>
+          </div>
+          <p className="text-[26px] sm:text-[30px] font-bold tracking-[-0.02em] text-[#0a0a0a] mt-2" style={{ fontFamily: 'var(--font-heading)' }}>
+            {fmt(est.low)} – {fmt(est.high)} kr<span className="text-[14px] font-medium text-[#8b6db0] ml-1">/mnd</span>
+          </p>
+          <p className="text-[11.5px] text-[#9a86b5] mt-1.5 leading-relaxed">
+            Basert på SSB-leiepriser for {est.label} i {est.city} ({est.year}) og DigiHomes dynamiske prismodell. Uforpliktende estimat — du får en presis vurdering av en rådgiver.
+          </p>
+        </>
+      ) : null}
+    </motion.div>
+  );
+}
+
 export default function BliUtleierPage() {
-  const [step, setStep] = useState(0);
+  const [step, setStep] = useState(1); // starter rett på Eiendommen (ingen velkomst)
   const [dir, setDir] = useState(1);
   const [formData, setFormData] = useState({
     name: '', email: '', phone: '',
@@ -152,11 +197,8 @@ export default function BliUtleierPage() {
           setFormData((prev: any) => ({ ...prev, address: p }));
           setRegistryQuery(p);
         }
-        setStep(1);
-      } else if (sp.get('start')) {
-        // ?start=1 (landingssider/annonser): rett til adressesteget, uten pre-fill.
-        setStep(1);
       }
+      // ?start=1 trengs ikke lenger — skjemaet starter alltid rett på Eiendommen.
     } catch (e) { /* ignore */ }
   }, []);
 
@@ -165,8 +207,11 @@ export default function BliUtleierPage() {
   useEffect(() => { try { setCtaVariant(getVariant('onboard_cta', ['A', 'B'])); } catch (e) {} }, []);
   useEffect(() => { track('form_start', { form: 'utleier' }); try { trackLeadStart('utleier'); } catch (e) {} }, []);
   useEffect(() => {
-    track('form_step', { form: 'utleier', step: step + 1, label: STEPS[step]?.title || `Steg ${step}` });
-  }, [step]);
+    // Spor flyt-posisjon (1–3) — ikke interne indekser — så trakten i admin
+    // viser rene steg: 1 Eiendommen → 2 Dine mål → 3 Om deg.
+    const pos = Math.max(0, flowSteps.indexOf(step));
+    track('form_step', { form: 'utleier', step: pos + 1, label: STEPS[step]?.title || `Steg ${pos + 1}` });
+  }, [step]); // eslint-disable-line
 
   const updateField = useCallback((field: any, value: any) => {
     setFormData((prev: any) => ({ ...prev, [field]: value }));
@@ -180,8 +225,9 @@ export default function BliUtleierPage() {
   const updateExtraMany = (i: number, obj: any) =>
     setExtraUnits((prev) => prev.map((u, idx) => (idx === i ? { ...u, ...obj } : u)));
 
-  // Finn-flyten hopper over «Om eiendommen» (steg 2) — alt redigeres på steg 1.
-  const flowSteps = inputMode === 'finn' ? [1, 3, 4, 5, 6] : [1, 2, 3, 4, 5, 6];
+  // NY FLYT: 3 steg — Eiendommen (1) → Dine mål (5) → Om deg + send (3).
+  // Eiendomsdetaljene redigeres på steg 1 i BEGGE moduser (adresse og Finn).
+  const flowSteps = [1, 5, 3];
 
   // Ved stegbytte: scroll til toppen av SKJEMAET (#skjema) — ikke toppen av
   // hele siden (skjemaet ligger under hero-innholdet på /bli-utleier).
@@ -200,55 +246,76 @@ export default function BliUtleierPage() {
   const goNext = () => {
     const newErrors: Record<string, any> = {};
     if (step === 1) {
+      // Steg 1 samler nå adresse + eiendomsdetaljer (begge moduser).
       if (!formData.address.trim() && !finnMatrikkel) {
         newErrors.address = inputMode === 'finn'
           ? 'Lim inn en gyldig Finn-lenke til boligen'
           : 'Vennligst oppgi adressen til eiendommen';
-      }
-      // I Finn-flyten valideres eiendomsdetaljene her (det finnes ikke noe steg 2).
-      if (inputMode === 'finn') {
+      } else {
         if (!String(formData.sqm || '').trim()) newErrors.sqm = 'Oppgi størrelse';
         if (!formData.property_type) newErrors.property_type = 'Velg boligtype';
         if (!formData.bedrooms) newErrors.bedrooms = 'Velg antall soverom';
       }
     }
-    if (step === 2) {
-      if (!String(formData.sqm || '').trim()) newErrors.sqm = 'Oppgi størrelse';
-      if (!formData.property_type) newErrors.property_type = 'Velg boligtype';
-      if (!formData.bedrooms) newErrors.bedrooms = 'Velg antall soverom';
-    }
-    if (step === 3) {
-      if (!formData.name.trim()) newErrors.name = 'Vennligst oppgi navnet ditt';
-      if (!formData.email.trim()) newErrors.email = 'Vennligst oppgi e-postadressen din';
-      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) newErrors.email = 'Ugyldig e-postadresse';
-      if (!formData.phone.trim() || formData.phone.replace(/\s/g, '').length < 8) newErrors.phone = 'Vennligst oppgi et gyldig telefonnummer (8 siffer)';
-    }
-    if (step === 4) {
+    if (step === 5) {
+      // Steg 2 i flyten: mål + forvaltningsnivå (flettet).
+      if (!formData.rental_model) newErrors.rental_model = 'Velg utleiemodell';
+      if (!formData.availability) newErrors.availability = 'Velg tilgjengelighetsdato';
       if (!formData.tier) newErrors.tier = 'Velg hvordan du vil leie ut';
       else if (formData.tier === 'selvforvaltning' && !termsAccepted) newErrors.terms = 'Godta avtalen for å fortsette med selvforvaltning';
     }
-    if (step === 5) {
-      if (!formData.rental_model) newErrors.rental_model = 'Velg utleiemodell';
-      if (!formData.availability) newErrors.availability = 'Velg tilgjengelighetsdato';
-    }
     if (Object.keys(newErrors).length > 0) { setErrors(newErrors); return; }
     setDir(1);
-    if (step === 0) { setStep(1); }
-    else {
-      const pos = flowSteps.indexOf(step);
-      setStep(pos >= 0 && pos < flowSteps.length - 1 ? flowSteps[pos + 1] : step);
-    }
+    const pos = flowSteps.indexOf(step);
+    setStep(pos >= 0 && pos < flowSteps.length - 1 ? flowSteps[pos + 1] : step);
     scrollToFormTop();
   };
 
   const goBack = () => {
     setDir(-1);
-    if (step <= 1) { setStep(0); }
-    else {
-      const pos = flowSteps.indexOf(step);
-      setStep(pos > 0 ? flowSteps[pos - 1] : 1);
-    }
+    const pos = flowSteps.indexOf(step);
+    if (pos > 0) setStep(flowSteps[pos - 1]);
     scrollToFormTop();
+  };
+
+  // Kontaktvalidering — kjøres ved innsending (kontaktinfo ligger på siste steg).
+  const validateContact = () => {
+    const newErrors: Record<string, any> = {};
+    if (!formData.name.trim()) newErrors.name = 'Vennligst oppgi navnet ditt';
+    if (!formData.email.trim()) newErrors.email = 'Vennligst oppgi e-postadressen din';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) newErrors.email = 'Ugyldig e-postadresse';
+    if (!formData.phone.trim() || formData.phone.replace(/\s/g, '').length < 8) newErrors.phone = 'Vennligst oppgi et gyldig telefonnummer (8 siffer)';
+    if (Object.keys(newErrors).length > 0) { setErrors(newErrors); return false; }
+    return true;
+  };
+
+  // Delvis lead: fanger kontaktinfo i det den er gyldig (blur på siste steg) —
+  // gir salgsteamet mulighet til å følge opp de som faller av før innsending.
+  const partialSentRef = useRef('');
+  const sendPartialLead = () => {
+    try {
+      if (submitted || loading) return;
+      const email = (formData.email || '').trim();
+      const phone = (formData.phone || '').trim();
+      const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+      const phoneOk = phone.replace(/\D/g, '').length >= 8;
+      if (!emailOk && !phoneOk) return;
+      const sig = `${email}|${phone}`;
+      if (partialSentRef.current === sig) return;
+      partialSentRef.current = sig;
+      fetch('/api/lead/partial', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        keepalive: true,
+        body: JSON.stringify({
+          form: 'utleier',
+          name: formData.name, email, phone: phone ? `+47 ${phone}` : '',
+          address: formData.address, postal_code: formData.postal_code,
+          sqm: formData.sqm, bedrooms: formData.bedrooms, property_type: formData.property_type,
+          rental_model: formData.rental_model, tier: formData.tier,
+        }),
+      }).catch(() => {});
+    } catch (e) { /* ignore */ }
   };
 
   // Felles: berik skjemaet med matrikkel/eier fra Eiendomsregisteret.
@@ -271,11 +338,13 @@ export default function BliUtleierPage() {
     if (tag === 'TEXTAREA') return;
     if (t && t.closest && t.closest('[data-no-enter-advance]')) return;
     e.preventDefault();
-    if (step < STEPS.length - 1) goNext(); else handleSubmit();
+    const isLast = flowSteps.indexOf(step) === flowSteps.length - 1;
+    if (!isLast) goNext(); else handleSubmit();
   };
 
   const handleSubmit = async () => {
     if (loading) return;
+    if (!validateContact()) return;
     setLoading(true);
     try {
       const validExtras = extraUnits.filter((u) => (u.address || '').trim());
@@ -427,66 +496,8 @@ export default function BliUtleierPage() {
     );
   }
 
-  if (step === 0) {
-    return (
-      <div className="min-h-screen bg-[#fdfcfb]" data-testid="owner-page" style={{ paddingBottom: 'var(--dh-consent-h, 0px)' }}>
-        <div className="h-[56px] lg:h-[76px]" />
-        <div className="max-w-[1100px] mx-auto px-5 sm:px-10 py-6 sm:py-12 lg:py-16" data-testid="owner-step-welcome">
-          <div className="grid lg:grid-cols-2 gap-7 sm:gap-10 lg:gap-16 items-center lg:min-h-[calc(100vh-200px)]">
-            <motion.div initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}>
-              <div className="lg:hidden relative rounded-[20px] sm:rounded-[24px] overflow-hidden shadow-[0_8px_30px_rgba(0,0,0,0.08)]">
-                <img src="/interior-openplan.webp" alt="Premium leilighet i Bergen" loading="eager" className="w-full aspect-[16/10] sm:aspect-[16/9] object-cover" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-black/5 to-transparent pointer-events-none" />
-                <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between gap-2">
-                  <div className="bg-white/95 backdrop-blur-xl rounded-xl px-3.5 py-2.5 shadow-[0_4px_16px_rgba(0,0,0,0.12)]">
-                    <p className="text-[9px] text-[#5b6370] leading-tight uppercase tracking-[0.04em]">Snittinntekt Bergen</p>
-                    <p className="text-[15px] font-bold text-[#0a0a0a] mt-0.5" style={{ fontFamily: 'var(--font-heading)' }}>25 000 kr<span className="text-[10px] font-normal text-[#5b6370] ml-0.5">/mnd</span></p>
-                  </div>
-                  <div className="bg-white/95 backdrop-blur-xl rounded-xl px-3.5 py-2.5 shadow-[0_4px_16px_rgba(0,0,0,0.12)]">
-                    <div className="flex items-center gap-1.5">
-                      <div className="w-6 h-6 rounded-full bg-[#f5edfc] flex items-center justify-center"><TrendingUp className="w-3 h-3 text-[#cf97fc]" strokeWidth={2.6} /></div>
-                      <div>
-                        <p className="text-[9px] text-[#5b6370] leading-tight uppercase tracking-[0.04em]">Avkastning</p>
-                        <p className="text-[13px] font-bold text-[#0a0a0a] leading-tight" style={{ fontFamily: 'var(--font-heading)' }}>+30%</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="hidden lg:block rounded-[24px] overflow-hidden shadow-[0_8px_40px_rgba(0,0,0,0.08)]">
-                <img src="/bergen-rooftops.webp" alt="Bergen fra høyden" loading="eager" className="w-full aspect-[3/4] object-cover" />
-              </div>
-            </motion.div>
-            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.15 }}>
-              <p className="text-[10.5px] sm:text-[11px] font-semibold text-[#7c3aed] uppercase tracking-[0.1em] mb-3 sm:mb-4">For eiendomseiere</p>
-              <h2 className="text-[30px] sm:text-[40px] lg:text-[46px] font-bold tracking-[-0.03em] leading-[1.05] sm:leading-[1.08] text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>La eiendommen jobbe for deg</h2>
-              <p className="text-[15px] sm:text-[16px] text-[#666] leading-[1.65] sm:leading-[1.75] mt-4 sm:mt-5 max-w-[42ch]">DigiHome forvalter eiendommen din profesjonelt — du lener deg tilbake og nyter inntekten.</p>
-              <div className="mt-6 sm:mt-8 space-y-2.5 sm:space-y-3">
-                {[{ icon: TrendingUp, text: 'Opptil 30% høyere inntekt' }, { icon: Shield, text: 'Full forvaltning uten stress' }, { icon: Key, text: 'Ingen oppstartskostnader' }].map((item: any, i: number) => {
-                  const Icon = item.icon;
-                  return (<motion.div key={i} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.35 + i * 0.08, duration: 0.3 }} className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-[#f5edfc] flex items-center justify-center shrink-0"><Icon className="w-4 h-4 text-[#cf97fc]" /></div>
-                    <span className="text-[14px] text-[#555]">{item.text}</span>
-                  </motion.div>);
-                })}
-              </div>
-              <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6, duration: 0.3 }} className="mt-7 sm:mt-10">
-                <Button onClick={goNext} data-testid="owner-next-button" className="w-full sm:w-auto rounded-full bg-[#0a0a0a] text-white hover:bg-black px-8 sm:px-10 text-[15px] font-semibold gap-2 active:scale-[0.97] transition-transform shadow-[0_4px_20px_rgba(0,0,0,0.12)]" style={{ height: '52px' }}>
-                  Kom i gang <ArrowRight className="w-4 h-4" />
-                </Button>
-                <p className="text-[12px] text-[#737373] mt-3 sm:mt-4">Gratis og uforpliktende</p>
-                <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1.5">
-                  {['Tar 2 minutter', 'Registerverifisert', 'Svar innen 24t'].map((tx) => (
-                    <span key={tx} className="inline-flex items-center gap-1.5 text-[12px] text-[#737373]"><Check className="w-3.5 h-3.5 text-[#cf97fc]" strokeWidth={3} /> {tx}</span>
-                  ))}
-                </div>
-              </motion.div>
-            </motion.div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // Velkomststeget er fjernet (juli 2026): trakten viste ~47 % frafall der.
+  // Brukeren går nå rett inn i skjemaet med adressen fra hero-søket forhåndsutfylt.
 
   // Flyt-bevisst progresjon (Finn hopper over steg 2).
   const curPos = Math.max(0, flowSteps.indexOf(step));
@@ -501,9 +512,13 @@ export default function BliUtleierPage() {
       <div className="flex-1 flex flex-col">
         <div className="max-w-[600px] w-full mx-auto px-6 pt-6">
           <div className="flex items-center justify-between mb-5">
-            <button onClick={goBack} className="w-9 h-9 rounded-full border border-[#e8e5e0] hover:bg-[#f5f5f5] flex items-center justify-center transition-colors active:scale-95" data-testid="owner-back-button" aria-label="Tilbake">
-              <ArrowLeft className="w-4 h-4 text-[#888]" />
-            </button>
+            {curPos > 0 ? (
+              <button onClick={goBack} className="w-9 h-9 rounded-full border border-[#e8e5e0] hover:bg-[#f5f5f5] flex items-center justify-center transition-colors active:scale-95" data-testid="owner-back-button" aria-label="Tilbake">
+                <ArrowLeft className="w-4 h-4 text-[#888]" />
+              </button>
+            ) : (
+              <div className="w-9 h-9" aria-hidden="true" />
+            )}
             <div className="text-right">
               <p className="text-[10.5px] font-semibold text-[#7c3aed] uppercase tracking-[0.1em] leading-none">Steg {curPos + 1} av {flowSteps.length}</p>
               <p className="text-[13.5px] text-[#0a0a0a] font-semibold mt-1 leading-none">{stepTitle}</p>
@@ -681,45 +696,32 @@ export default function BliUtleierPage() {
                       </AnimatePresence>
                     </div>
                   )}
-                </div>
-              )}
 
-              {/* STEG 2 — EIENDOMMEN (detaljer) */}
-              {step === 2 && (
-                <div data-testid="owner-step-property">
-                  <h2 className="text-[28px] sm:text-[34px] font-bold tracking-[-0.03em] text-[#0a0a0a] mb-2" style={{ fontFamily: 'var(--font-heading)' }}>Om eiendommen</h2>
-                  <p className="text-[15px] text-[#888] mb-8">Fortell oss om boligen du vil leie ut.</p>
-                  <div className="space-y-6">
-                    {/* Finn-snarvei: lim inn lenke → forhåndsvisning + auto-utfylling */}
-                    <div className="rounded-2xl bg-gradient-to-br from-[#faf5ff] to-[#f4eefb] border border-[#efe6fb] p-5" data-testid="owner-finn-block">
-                      <div className="flex items-center gap-2 mb-1.5">
-                        <Sparkles className="w-[15px] h-[15px] text-[#cf97fc]" />
-                        <Label className="text-[13px] font-semibold text-[#333]">Har du allerede en Finn-annonse? <span className="text-[#5b6370] font-normal">(valgfritt)</span></Label>
+                  {/* Eiendomsdetaljer — samme steg (adresse-modus). I Finn-modus redigeres de i Finn-kortet. */}
+                  {inputMode === 'address' && (formData.address.trim() || registryQuery) ? (
+                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }} className="mt-8 pt-7 border-t border-[#f0ece6] space-y-6" data-testid="owner-property-details">
+                      <TextInput label="Størrelse (m²)" required error={errors.sqm} value={formData.sqm} onChange={(v: any) => updateField('sqm', v)} placeholder="F.eks. 65" type="number" testId="owner-sqm-input" />
+                      <div>
+                        <Label className="text-[13px] font-semibold text-[#333] mb-3 block">Boligtype <span className="text-[#7c3aed]">*</span></Label>
+                        <IconCardSelector options={propertyTypes} selected={formData.property_type} onChange={(v: any) => updateField('property_type', v)} testIdPrefix="owner-type" />
+                        {errors.property_type && <p className="text-[12px] text-red-500 mt-1.5">{errors.property_type}</p>}
                       </div>
-                      <p className="text-[12.5px] text-[#888] mb-3 leading-relaxed">Lim inn lenken til salgs- eller leieannonsen, så fyller vi inn detaljene for deg.</p>
-                      <FinnLookupField
-                        value={finnUrl}
-                        onChange={setFinnUrl}
-                        testId="owner-finn"
-                        onResult={(d: any) => {
-                          setFormData((prev: any) => ({ ...prev, ...finnToFields(d) }));
-                          setErrors((prev: any) => ({ ...prev, sqm: null, property_type: null, bedrooms: null }));
-                        }}
-                      />
-                    </div>
+                      <div>
+                        <Label className="text-[13px] font-semibold text-[#333] mb-3 block">Soverom <span className="text-[#7c3aed]">*</span></Label>
+                        <NumberSelector options={['1', '2', '3', '4', '5+']} selected={formData.bedrooms} onChange={(v: any) => updateField('bedrooms', v)} testIdPrefix="owner-bedrooms" />
+                        {errors.bedrooms && <p className="text-[12px] text-red-500 mt-1.5">{errors.bedrooms}</p>}
+                      </div>
+                    </motion.div>
+                  ) : null}
 
-                    <TextInput label="Størrelse (m²)" required error={errors.sqm} value={formData.sqm} onChange={(v: any) => updateField('sqm', v)} placeholder="F.eks. 65" type="number" testId="owner-sqm-input" />
-                    <div>
-                      <Label className="text-[13px] font-semibold text-[#333] mb-3 block">Boligtype <span className="text-[#7c3aed]">*</span></Label>
-                      <IconCardSelector options={propertyTypes} selected={formData.property_type} onChange={(v: any) => updateField('property_type', v)} testIdPrefix="owner-type" />
-                      {errors.property_type && <p className="text-[12px] text-red-500 mt-1.5">{errors.property_type}</p>}
-                    </div>
-                    <div>
-                      <Label className="text-[13px] font-semibold text-[#333] mb-3 block">Soverom <span className="text-[#7c3aed]">*</span></Label>
-                      <NumberSelector options={['1', '2', '3', '4', '5+']} selected={formData.bedrooms} onChange={(v: any) => updateField('bedrooms', v)} testIdPrefix="owner-bedrooms" />
-                      {errors.bedrooms && <p className="text-[12px] text-red-500 mt-1.5">{errors.bedrooms}</p>}
-                    </div>
-                    <div className="pt-6 border-t border-[#f0f0f0]" data-testid="owner-extra-units-section">
+                  {/* Verdi-teaser: estimert leieinntekt (SSB) så snart soverom er valgt */}
+                  {formData.bedrooms && (inputMode === 'address' ? (formData.address.trim() || registryQuery) : !!finnData) ? (
+                    <div className="mt-6"><RentEstimateCard bedrooms={formData.bedrooms} /></div>
+                  ) : null}
+
+                  {/* Flere eiendommer (valgfritt) — flettet inn fra gamle «Om eiendommen»-steget */}
+                  {(inputMode === 'address' ? (formData.address.trim() || registryQuery) : !!finnData) ? (
+                    <div className="mt-8 pt-6 border-t border-[#f0f0f0]" data-testid="owner-extra-units-section">
                       <div className="flex items-center justify-between mb-1"><p className="text-[13px] font-semibold text-[#333]">Har du flere eiendommer?</p><span className="text-[12px] text-[#5b6370]">Valgfritt</span></div>
                       <p className="text-[13px] text-[#888] mb-4">Legg til flere boliger du vil leie ut — vi vurderer dem samlet.</p>
                       <AnimatePresence initial={false}>
@@ -773,30 +775,61 @@ export default function BliUtleierPage() {
                       </AnimatePresence>
                       <button type="button" onClick={addExtra} data-testid="owner-add-unit-button" className="w-full flex items-center justify-center gap-2 h-12 rounded-2xl border-2 border-dashed border-[#e0d4f0] text-[#cf97fc] hover:border-[#cf97fc] hover:bg-[#faf5ff] text-[14px] font-semibold transition-all"><Plus className="w-4 h-4" /> Legg til {extraUnits.length > 0 ? 'enda en' : 'eiendom'}</button>
                     </div>
-                  </div>
-                  <p className="text-[11px] text-[#5b6370] mt-6"><span className="text-[#7c3aed]">*</span> Påkrevde felt</p>
+                  ) : null}
                 </div>
               )}
 
               {/* STEG 3 — OM DEG (kontaktinformasjon) */}
               {step === 3 && (
-                <div data-testid="owner-step-personal">
-                  <h2 className="text-[28px] sm:text-[34px] font-bold tracking-[-0.03em] text-[#0a0a0a] mb-2" style={{ fontFamily: 'var(--font-heading)' }}>Fortell oss om deg</h2>
-                  <p className="text-[15px] text-[#888] mb-8">Slik at vi kan ta kontakt med en personlig vurdering.</p>
+                <div data-testid="owner-step-personal" onBlurCapture={sendPartialLead}>
+                  <h2 className="text-[28px] sm:text-[34px] font-bold tracking-[-0.03em] text-[#0a0a0a] mb-2" style={{ fontFamily: 'var(--font-heading)' }}>Nesten i mål!</h2>
+                  <p className="text-[15px] text-[#888] mb-8">Hvem skal vi sende vurderingen til?</p>
                   <div className="space-y-5">
                     <TextInput label="Fullt navn" required error={errors.name} icon={User} value={formData.name} onChange={(v: any) => updateField('name', v)} placeholder="Ola Nordmann" autoComplete="name" autoFocus testId="owner-name-input" />
                     <TextInput label="E-post" required error={errors.email} icon={Mail} value={formData.email} type="email" onChange={(v: any) => updateField('email', v)} placeholder="ola@eksempel.no" autoComplete="email" testId="owner-email-input" />
                     <PhoneInput value={formData.phone} onChange={(v: any) => updateField('phone', v)} error={errors.phone} testId="owner-phone-input" />
                   </div>
-                  <p className="text-[11px] text-[#5b6370] mt-6"><span className="text-[#7c3aed]">*</span> Påkrevde felt</p>
+                  <p className="text-[11px] text-[#5b6370] mt-5"><span className="text-[#7c3aed]">*</span> Påkrevde felt</p>
+
+                  {/* Kompakt oppsummering — erstatter det gamle Bekreft-steget */}
+                  <div className="mt-8 rounded-2xl border border-[#eee9e2] bg-[#faf9f7] p-5" data-testid="owner-final-summary">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[#999] mb-3">Oppsummering</p>
+                    <div className="space-y-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-[13.5px] font-semibold text-[#333] truncate">{formData.address || 'Adresse ikke oppgitt'}</p>
+                          <p className="text-[12px] text-[#888] mt-0.5">
+                            {[formData.sqm ? `${formData.sqm} m²` : null, formData.property_type || null, formData.bedrooms ? `${formData.bedrooms} sov.` : null].filter(Boolean).join(' · ') || '—'}
+                            {extraUnits.filter((u: any) => (u.address || '').trim()).length > 0 ? ` · +${extraUnits.filter((u: any) => (u.address || '').trim()).length} eiendom(mer)` : ''}
+                          </p>
+                          {(formData.registry_owner_name || formData.seksjonsnr || formData.andelsnr) && (
+                            <span className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-[#e7f7ee] text-[#16a34a] px-2 py-0.5 text-[11px] font-semibold"><CheckCircle2 className="w-3 h-3" /> Verifisert i registeret</span>
+                          )}
+                        </div>
+                        <button type="button" onClick={() => { setDir(-1); setStep(1); }} data-testid="owner-edit-property" className="text-[12px] font-semibold text-[#7c3aed] hover:underline shrink-0">Endre</button>
+                      </div>
+                      <div className="flex items-start justify-between gap-3 pt-3 border-t border-[#f0ece6]">
+                        <div className="min-w-0">
+                          <p className="text-[13.5px] font-semibold text-[#333]">
+                            {formData.tier === 'selvforvaltning' ? 'Selvforvaltning — 5 % per utleie' : formData.tier === 'full_forvaltning' ? 'Full forvaltning — skreddersydd tilbud' : 'Forvaltning ikke valgt'}
+                          </p>
+                          <p className="text-[12px] text-[#888] mt-0.5">
+                            {[formData.rental_model ? `Modell: ${formData.rental_model}` : null, formData.availability ? `Ledig ${new Date(formData.availability + 'T12:00:00').toLocaleDateString('nb-NO', { day: 'numeric', month: 'short' })}` : null].filter(Boolean).join(' · ') || '—'}
+                          </p>
+                        </div>
+                        <button type="button" onClick={() => { setDir(-1); setStep(5); }} data-testid="owner-edit-goals" className="text-[12px] font-semibold text-[#7c3aed] hover:underline shrink-0">Endre</button>
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-[12px] text-[#999] mt-4 flex items-center gap-1.5"><Shield className="w-3.5 h-3.5 text-[#cf97fc]" /> Gratis og uforpliktende — svar innen 24 timer.</p>
                 </div>
               )}
 
-              {/* STEG 4 — FORVALTNINGSNIVÅ (to-nivå: 5 % selv vs. full — kun tilbud) */}
-              {step === 4 && (
+              {/* STEG 5a — FORVALTNINGSNIVÅ (flettet inn i «Dine mål»-steget) */}
+              {step === 5 && (
                 <div data-testid="owner-step-tier">
                   <div className="inline-flex items-center gap-2 text-[11px] font-semibold text-[#7c3aed] uppercase tracking-[0.1em] mb-3">
-                    <Shield className="w-3.5 h-3.5" /> Forvaltning
+                    <Shield className="w-3.5 h-3.5" /> Dine mål
                   </div>
                   <h2 className="text-[28px] sm:text-[34px] font-bold tracking-[-0.03em] text-[#0a0a0a] mb-2" style={{ fontFamily: 'var(--font-heading)' }}>Hvordan vil du leie ut?</h2>
                   <p className="text-[15px] text-[#888] mb-7 max-w-[46ch]">Velg nivået som passer deg best — du kan bytte når som helst.</p>
@@ -895,11 +928,11 @@ export default function BliUtleierPage() {
                 </div>
               )}
 
-              {/* STEG 5 — DINE MÅL */}
+              {/* STEG 5b — MÅL OG PREFERANSER (samme steg som forvaltningsvalget) */}
               {step === 5 && (
-                <div data-testid="owner-step-goals">
-                  <h2 className="text-[28px] sm:text-[34px] font-bold tracking-[-0.03em] text-[#0a0a0a] mb-2" style={{ fontFamily: 'var(--font-heading)' }}>Hva er viktigst for deg?</h2>
-                  <p className="text-[15px] text-[#888] mb-8">Vi anbefaler den optimale strategien basert på dine preferanser.</p>
+                <div data-testid="owner-step-goals" className="mt-10 pt-8 border-t border-[#f0ece6]">
+                  <h3 className="text-[19px] sm:text-[22px] font-bold tracking-[-0.02em] text-[#0a0a0a] mb-1.5" style={{ fontFamily: 'var(--font-heading)' }}>Hva er viktigst for deg?</h3>
+                  <p className="text-[14px] text-[#888] mb-6">Vi anbefaler den optimale strategien basert på dine preferanser.</p>
                   <div className="space-y-7">
                     <div>
                       <Label className="text-[13px] font-semibold text-[#333] mb-3 block">Foretrukket utleiemodell <span className="text-[#7c3aed]">*</span></Label>
@@ -944,71 +977,18 @@ export default function BliUtleierPage() {
                 </div>
               )}
 
-              {/* STEG 6 — BEKREFT */}
-              {step === 6 && (
-                <div data-testid="owner-step-confirm">
-                  <h2 className="text-[28px] sm:text-[34px] font-bold tracking-[-0.03em] text-[#0a0a0a] mb-2" style={{ fontFamily: 'var(--font-heading)' }}>Ser dette riktig ut?</h2>
-                  <p className="text-[15px] text-[#888] mb-8">Sjekk at alt stemmer før du sender.</p>
-                  <div className="space-y-4">
-                    <SummaryCard title="Om deg" onEdit={() => { setDir(-1); setStep(3); }} testId="owner-edit-personal">
-                      <p className="text-[15px] text-[#333] font-medium">{formData.name}</p>
-                      <p className="text-[14px] text-[#666]">{formData.email}</p>
-                      <p className="text-[14px] text-[#666]">+47 {formData.phone}</p>
-                    </SummaryCard>
-                    <SummaryCard title="Forvaltning" onEdit={() => { setDir(-1); setStep(4); }} testId="owner-edit-tier">
-                      {formData.tier === 'selvforvaltning' ? (
-                        <>
-                          <p className="text-[15px] text-[#333] font-medium">Selvforvaltning — 5 % per utleie</p>
-                          <p className="text-[13px] mt-1 inline-flex items-center gap-1.5 text-[#16a34a] font-semibold"><CheckCircle2 className="w-3.5 h-3.5" /> Avtale godtatt digitalt</p>
-                        </>
-                      ) : formData.tier === 'full_forvaltning' ? (
-                        <>
-                          <p className="text-[15px] text-[#333] font-medium">Full forvaltning</p>
-                          <p className="text-[13px] text-[#666] mt-0.5">Du får et skreddersydd, uforpliktende tilbud</p>
-                        </>
-                      ) : (
-                        <p className="text-[13px] text-[#737373]">Ikke valgt</p>
-                      )}
-                    </SummaryCard>
-                    <SummaryCard title={extraUnits.filter((u: any) => (u.address || '').trim()).length > 0 ? `Eiendommer (${1 + extraUnits.filter((u: any) => (u.address || '').trim()).length})` : 'Eiendommen'} onEdit={() => { setDir(-1); setStep(1); }} testId="owner-edit-property">
-                      <p className="text-[14px] text-[#333] font-medium">{formData.address || '—'}</p>
-                      <div className="flex gap-4 mt-1 text-[13px] text-[#888]">
-                        {formData.postal_code && <span>{formData.postal_code}</span>}
-                        {formData.sqm && <span>{formData.sqm} m²</span>}
-                        {formData.property_type && <span className="capitalize">{formData.property_type}</span>}
-                        {formData.bedrooms && <span>{formData.bedrooms} sov.</span>}
-                      </div>
-                      {(formData.registry_owner_name || formData.seksjonsnr || formData.andelsnr) && (
-                        <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[12px]">
-                          <span className="inline-flex items-center gap-1 rounded-full bg-[#e7f7ee] text-[#16a34a] px-2 py-0.5 font-semibold"><CheckCircle2 className="w-3 h-3" /> Verifisert i registeret</span>
-                          {formData.seksjonsnr && <span className="text-[#888]">Seksjon {formData.seksjonsnr}</span>}
-                          {formData.andelsnr && <span className="text-[#888]">Andel {formData.andelsnr}</span>}
-                          {formData.registry_owner_name && <span className="text-[#888]">· {formData.registry_owner_name}</span>}
-                        </div>
-                      )}
-                      {extraUnits.filter((u: any) => (u.address || '').trim()).map((u: any, i: number) => (
-                        <div key={i} className="mt-3 pt-3 border-t border-[#f3f3f3]" data-testid={`owner-summary-extra-${i}`}>
-                          <p className="text-[14px] text-[#333] font-medium">{u.address}</p>
-                          <div className="flex gap-4 mt-1 text-[13px] text-[#888]">{u.postal_code && <span>{u.postal_code}</span>}{u.sqm && <span>{u.sqm} m²</span>}{u.property_type && <span className="capitalize">{u.property_type}</span>}{u.bedrooms && <span>{u.bedrooms} sov.</span>}</div>
-                        </div>
-                      ))}
-                    </SummaryCard>
-                    <SummaryCard title="Dine mål" onEdit={() => { setDir(-1); setStep(5); }} testId="owner-edit-goals">
-                      {formData.rental_model && <p className="text-[14px] text-[#333]">Modell: <span className="font-medium capitalize">{formData.rental_model}</span></p>}
-                      {formData.availability && <p className="text-[14px] text-[#666]">Tilgjengelig: {new Date(formData.availability + 'T12:00:00').toLocaleDateString('nb-NO', { day: 'numeric', month: 'long', year: 'numeric' })}</p>}
-                      {formData.notes && <p className="text-[13px] text-[#5b6370] mt-1">{formData.notes}</p>}
-                      {!formData.rental_model && !formData.availability && !formData.notes && <p className="text-[13px] text-[#737373]">Ingen preferanser valgt</p>}
-                    </SummaryCard>
-                  </div>
-                </div>
-              )}
+              {/* Bekreft-steget er fjernet — kompakt oppsummering ligger nå på siste steg (Om deg). */}
             </motion.div>
           </AnimatePresence>
         </div>
 
         <div className="sticky z-30 mt-auto bg-white/90 backdrop-blur-xl border-t border-[#f0f0f0]" style={{ bottom: 'var(--dh-consent-h, 0px)' }}>
           <div className="max-w-[600px] mx-auto px-6 py-4 flex items-center justify-between gap-4">
-            <button onClick={goBack} className="text-[14px] font-semibold text-[#666] hover:text-[#333] underline underline-offset-4 transition-colors" data-testid="owner-back-link">Tilbake</button>
+            {curPos > 0 ? (
+              <button onClick={goBack} className="text-[14px] font-semibold text-[#666] hover:text-[#333] underline underline-offset-4 transition-colors" data-testid="owner-back-link">Tilbake</button>
+            ) : (
+              <span className="text-[12px] text-[#aaa] inline-flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-[#cf97fc]" strokeWidth={3} /> Gratis og uforpliktende</span>
+            )}
             {nextStepIdx != null ? (
               <div className="flex items-center gap-3">
                 <span className="hidden sm:block text-[12px] text-[#aaa]">Neste: <span className="text-[#666] font-medium">{nextStepTitle}</span></span>

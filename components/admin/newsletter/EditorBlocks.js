@@ -95,6 +95,81 @@ export function DropImage({ onUpload, uploading, compact = false, label = 'Slipp
   );
 }
 
+/* ------------------- AI-bildegenerering (Nano Banana Pro) ----------------- */
+function AIImagePanel({ b, onPatch, blocks, apiQ }) {
+  const [prompt, setPrompt] = useState('');
+  const [style, setStyle] = useState('foto');
+  const [genState, setGenState] = useState('idle');       // idle | suggesting | generating
+  const [err, setErr] = useState('');
+
+  const suggest = async () => {
+    setGenState('suggesting'); setErr('');
+    try {
+      const r = await fetch(`/api/admin/newsletter/genimage?${apiQ}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ auto: true, suggestOnly: true, blocks: (blocks || []).map(({ id, ...rest }) => rest) }),
+      });
+      const j = await r.json();
+      if (j.ok && j.prompt) setPrompt(j.prompt);
+      else setErr(j.error || 'Kunne ikke foreslå prompt');
+    } catch (e) { setErr('Kunne ikke foreslå prompt — prøv igjen'); }
+    setGenState('idle');
+  };
+
+  const generate = async () => {
+    if (!prompt.trim() || genState !== 'idle') return;
+    setGenState('generating'); setErr('');
+    try {
+      const r = await fetch(`/api/admin/newsletter/genimage?${apiQ}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: prompt.trim(), style }),
+      });
+      const j = await r.json();
+      if (j.ok && j.url) {
+        onPatch({ url: j.url, ...(b.alt ? {} : { alt: prompt.trim().slice(0, 120) }) });
+      } else setErr(j.error || 'Bildegenerering feilet — prøv igjen');
+    } catch (e) { setErr('Bildegenerering feilet — prøv igjen'); }
+    setGenState('idle');
+  };
+
+  const busy = genState !== 'idle';
+  return (
+    <div className="mt-4 rounded-2xl border border-[#e9dcf7] bg-gradient-to-b from-[#faf5ff] to-white p-3.5" data-testid="nl-ai-image-panel">
+      <div className="flex items-center justify-between">
+        <p className="text-[12px] font-bold text-[#111] flex items-center gap-1.5">
+          <Sparkles size={13} className="text-[#a052e0]" /> Lag bilde med AI
+        </p>
+        <span className="text-[9.5px] font-bold uppercase tracking-[0.08em] text-[#a052e0] bg-[#f0e4fb] rounded-full px-2 py-0.5">Nano Banana Pro</span>
+      </div>
+      <textarea
+        value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={3} data-testid="nl-ai-image-prompt"
+        placeholder="Beskriv bildet… f.eks. «Moderne stue i bergensleilighet med utsikt mot Bryggen, kveldslys»"
+        className="mt-2.5 w-full resize-none rounded-lg border border-[#e8e8e8] bg-white px-3 py-2 text-[12.5px] leading-[1.5] outline-none focus:border-[#c99df0] focus:ring-2 focus:ring-[#f0e4fb]" />
+      <button onClick={suggest} disabled={busy} data-testid="nl-ai-image-suggest"
+        className="flex items-center gap-1 text-[11px] font-bold text-[#a052e0] hover:text-[#7A3EC8] disabled:opacity-50 mt-1">
+        {genState === 'suggesting' ? <Loader2 size={11} className="animate-spin" /> : <Sparkles size={11} />}
+        {genState === 'suggesting' ? 'AI leser nyhetsbrevet…' : 'Foreslå prompt fra innholdet'}
+      </button>
+      <label className={labelCls}>Stil</label>
+      <div className="flex gap-1.5" data-testid="nl-ai-image-style">
+        {[['foto', 'Foto'], ['illustrasjon', 'Illustrasjon'], ['minimal', 'Minimal']].map(([k, l]) => (
+          <button key={k} onClick={() => setStyle(k)} disabled={busy}
+            className={`flex-1 h-[30px] rounded-lg text-[11.5px] font-semibold transition-colors ${style === k ? 'bg-[#0a0a0a] text-white' : 'bg-white border border-[#e8e8e8] text-[#777] hover:border-[#c99df0]'}`}>{l}</button>
+        ))}
+      </div>
+      <button onClick={generate} disabled={busy || !prompt.trim()} data-testid="nl-ai-image-generate"
+        className="mt-3 w-full h-[38px] rounded-xl bg-[#0a0a0a] text-white text-[12.5px] font-bold flex items-center justify-center gap-2 hover:bg-[#222] disabled:opacity-40 transition-colors">
+        {genState === 'generating' ? <><Loader2 size={13} className="animate-spin" /> Genererer bilde…</> : <><ImageIcon size={13} /> Generer bilde</>}
+      </button>
+      {genState === 'generating' ? (
+        <p className="text-[10.5px] text-[#a052e0] mt-1.5 text-center">Kan ta 30–60 sekunder — bildet settes inn automatisk</p>
+      ) : null}
+      {err ? <p className="text-[11px] text-red-500 mt-1.5">{err}</p> : null}
+      <p className="text-[10.5px] text-[#aaa] mt-1.5">Bildet optimaliseres automatisk for e-post (JPEG, 1200 px bredt).</p>
+    </div>
+  );
+}
+
 /* -------- Bilde med «bytt»-overlay + dra-håndtak for høyde + fokuspunkt --- */
 function ImageWithSwap({ src, alt, onUpload, uploading, rounded = 'rounded-xl', height, fit, onResize, focalX, focalY, onFocal }) {
   const [over, setOver] = useState(false);
@@ -470,7 +545,7 @@ function PropertyPicker({ b, onPatch, apiQ }) {
 }
 
 /* ------------------------ Inspektør for valgt blokk ----------------------- */
-export function BlockInspector({ b, onPatch, onDel, onUploadImage, uploadingId, apiQ }) {
+export function BlockInspector({ b, onPatch, onDel, onUploadImage, uploadingId, apiQ, blocks }) {
   if (!b) return null;
   const meta = PALETTE.find((p) => p.type === b.type);
   const uploading = uploadingId === b.id;
@@ -493,6 +568,7 @@ export function BlockInspector({ b, onPatch, onDel, onUploadImage, uploadingId, 
       {(b.type === 'image' || b.type === 'hero') ? (<>
         <label className={labelCls}>Bilde</label>
         <DropImage compact onUpload={(f) => onUploadImage(b.id, f)} uploading={uploading} label="Slipp nytt bilde her" />
+        <AIImagePanel b={b} onPatch={onPatch} blocks={blocks} apiQ={apiQ} />
         <label className={labelCls}>Alt-tekst</label>
         <input value={b.alt || ''} onChange={(e) => onPatch({ alt: e.target.value })} className={inputCls} placeholder="Beskrivelse av bildet" />
         <label className={labelCls}>Høyde</label>

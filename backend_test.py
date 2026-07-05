@@ -1,475 +1,607 @@
 #!/usr/bin/env python3
 """
-Backend testing for DigiHome Marketing API - NEW SESSION CHANGES ONLY
-Tests ONLY the 4 newest tasks from this session:
-(A) BIDDING-FIX (P0 regression)
-(B) LEAD-EMAIL (auto-receipt + admin notification via SendGrid)
-(C) SEO-ARTICLE
-(D) REGRESSION
+Backend test for 3 NEW DigiHome backend changes:
+1. AI-bildegenerering nyhetsbrev (POST /api/admin/newsletter/genimage)
+2. Lead-kvitteringsepost: bilder via /api/media + mobilresponsivitet
+3. Nyhetsbrev absAssetUrl deploy-sikker
 
 CRITICAL SECURITY RULES:
-1. POST /api/admin/ads/campaign/bidding MUTATES LIVE Google Ads account (9853356154)
-   - Test ONLY with validateOnly:true in body
-   - NEVER send request without validateOnly:true
-2. Each POST /api/leads sends REAL email to martin@kviteberg.no
-   - Run MAX 2 lead inserts total
-   - Use obviously fake data
-   - CLEAN UP (delete) both test leads afterwards
-3. DO NOT call other ads endpoints that mutate
-4. Real Google Ads calls can take time - use timeout >= 45s
+- NEVER call POST /api/admin/newsletter/send (sends REAL emails)
+- NEVER call POST /api/admin/newsletter/test with valid emails+blocks (sends REAL emails)
+- NEVER create leads via POST /api/leads (triggers REAL emails)
+- MANDATORY CLEANUP: delete all documents created in newsletter_assets collection
 """
 
 import requests
 import json
 import time
-from datetime import datetime
+import os
+from pymongo import MongoClient
 
 # Configuration
 BASE_URL = "https://hero-premiere-4.preview.emergentagent.com/api"
 ADMIN_KEY = "dh_admin_b3Kx92Qz7Lm4"
-TIMEOUT = 60  # 60s for Google Ads calls
+MONGO_URL = os.getenv("MONGO_URL", "mongodb://localhost:27017")
+DB_NAME = os.getenv("DB_NAME", "your_database_name")
 
-# Test results tracking
-test_results = {
-    "passed": 0,
-    "failed": 0,
-    "tests": []
-}
+# Track created assets for cleanup
+created_assets = []
 
-def log_test(name, passed, details=""):
-    """Log test result"""
-    status = "✅ PASS" if passed else "❌ FAIL"
-    print(f"{status}: {name}")
-    if details:
-        print(f"  Details: {details}")
-    
-    test_results["tests"].append({
-        "name": name,
-        "passed": passed,
-        "details": details
-    })
-    
-    if passed:
-        test_results["passed"] += 1
-    else:
-        test_results["failed"] += 1
+def log(msg):
+    print(f"[TEST] {msg}")
 
-def print_summary():
-    """Print test summary"""
-    total = test_results["passed"] + test_results["failed"]
-    print(f"\n{'='*80}")
-    print(f"TEST SUMMARY: {test_results['passed']}/{total} tests passed")
-    print(f"{'='*80}")
+def cleanup_assets():
+    """Delete all test assets from newsletter_assets collection"""
+    if not created_assets:
+        log("No assets to clean up")
+        return
     
-    if test_results["failed"] > 0:
-        print("\nFailed tests:")
-        for test in test_results["tests"]:
-            if not test["passed"]:
-                print(f"  ❌ {test['name']}")
-                if test["details"]:
-                    print(f"     {test['details']}")
-
-# Track created lead IDs for cleanup
-created_lead_ids = []
-
-try:
-    print("="*80)
-    print("DIGIHOME BACKEND TESTING - NEW SESSION CHANGES ONLY")
-    print("="*80)
-    print(f"Base URL: {BASE_URL}")
-    print(f"Admin key: {ADMIN_KEY}")
-    print(f"Timeout: {TIMEOUT}s")
-    print(f"Started: {datetime.now().isoformat()}")
-    print("="*80)
-    
-    # ========================================================================
-    # (A) BIDDING-FIX (P0 regression - rotårsak: duplisert export)
-    # ========================================================================
-    print("\n(A) BIDDING-FIX TESTS")
-    print("-"*80)
-    
-    # A1: POST /api/admin/ads/campaign/bidding with validateOnly:true
-    print("\n(A1) POST /api/admin/ads/campaign/bidding with validateOnly:true...")
     try:
-        start_time = time.time()
-        response = requests.post(
-            f"{BASE_URL}/admin/ads/campaign/bidding",
-            params={"key": ADMIN_KEY},
-            json={
-                "campaignId": "23984331113",
-                "cpcCeiling": 32,
-                "validateOnly": True
-            },
-            timeout=TIMEOUT
-        )
-        elapsed = time.time() - start_time
+        client = MongoClient(MONGO_URL)
+        db = client[DB_NAME]
+        for asset_id in created_assets:
+            result = db.newsletter_assets.delete_one({"id": asset_id})
+            if result.deleted_count > 0:
+                log(f"✓ Deleted asset {asset_id}")
+            else:
+                log(f"⚠ Asset {asset_id} not found (may have been deleted already)")
+        client.close()
+        log(f"Cleanup complete: {len(created_assets)} assets processed")
+    except Exception as e:
+        log(f"❌ Cleanup failed: {e}")
+
+# ============================================================================
+# TEST 1: AI-bildegenerering (POST /api/admin/newsletter/genimage)
+# ============================================================================
+
+def test_1a_suggest_only():
+    """TEST 1a: suggestOnly-modus (returns prompt without generating image)"""
+    log("\n=== TEST 1a: AI image suggestion (suggestOnly=true) ===")
+    try:
+        url = f"{BASE_URL}/admin/newsletter/genimage?key={ADMIN_KEY}"
+        payload = {
+            "auto": True,
+            "suggestOnly": True,
+            "blocks": [
+                {"type": "heading", "text": "Sommertilbud på utleie i Bergen"},
+                {"type": "text", "text": "Vi tilbyr profesjonell utleieforvaltning med 10 prosent rabatt ut juli. Bergen har rekordhøy etterspørsel etter leieboliger."}
+            ]
+        }
+        
+        log(f"POST {url}")
+        log(f"Body: {json.dumps(payload, indent=2)}")
+        
+        start = time.time()
+        response = requests.post(url, json=payload, timeout=60)
+        elapsed = time.time() - start
+        
+        log(f"Status: {response.status_code} (took {elapsed:.2f}s)")
         
         if response.status_code == 200:
             data = response.json()
-            if data.get("ok") and data.get("validateOnly") and data.get("strategy") == "MAXIMIZE_CLICKS":
-                log_test(
-                    "A1: POST bidding with validateOnly:true",
-                    True,
-                    f"200 OK in {elapsed:.2f}s, validateOnly={data.get('validateOnly')}, strategy={data.get('strategy')}, cpcCeiling={data.get('cpcCeiling')}"
-                )
+            log(f"Response: {json.dumps(data, indent=2)}")
+            
+            if data.get("ok") and data.get("prompt"):
+                prompt = data["prompt"]
+                if len(prompt) > 0 and len(prompt) < 1000:
+                    log(f"✅ TEST 1a PASSED: Got prompt suggestion (length: {len(prompt)})")
+                    log(f"   Prompt: {prompt[:100]}...")
+                    return True
+                else:
+                    log(f"❌ TEST 1a FAILED: Prompt length invalid ({len(prompt)})")
+                    return False
             else:
-                log_test(
-                    "A1: POST bidding with validateOnly:true",
-                    False,
-                    f"200 but unexpected response: {json.dumps(data)}"
-                )
+                log(f"❌ TEST 1a FAILED: Missing ok=true or prompt in response")
+                return False
         else:
-            log_test(
-                "A1: POST bidding with validateOnly:true",
-                False,
-                f"HTTP {response.status_code}: {response.text[:200]}"
-            )
+            log(f"❌ TEST 1a FAILED: Expected 200, got {response.status_code}")
+            log(f"   Response: {response.text}")
+            return False
+            
     except Exception as e:
-        log_test("A1: POST bidding with validateOnly:true", False, f"Exception: {str(e)}")
-    
-    # A2: POST without key → 401
-    print("\n(A2) POST bidding without key (expect 401)...")
+        log(f"❌ TEST 1a EXCEPTION: {e}")
+        return False
+
+def test_1b_full_generation():
+    """TEST 1b: Full image generation (ONLY ONCE - costs money and takes time)"""
+    log("\n=== TEST 1b: AI full image generation (ONE TIME ONLY) ===")
     try:
-        response = requests.post(
-            f"{BASE_URL}/admin/ads/campaign/bidding",
-            json={
-                "campaignId": "23984331113",
-                "cpcCeiling": 32,
-                "validateOnly": True
-            },
-            timeout=TIMEOUT
-        )
+        url = f"{BASE_URL}/admin/newsletter/genimage?key={ADMIN_KEY}"
+        payload = {
+            "prompt": "A cozy modern Scandinavian living room with large windows",
+            "style": "foto"
+        }
+        
+        log(f"POST {url}")
+        log(f"Body: {json.dumps(payload, indent=2)}")
+        log("⚠ This will take 30-90 seconds (Nano Banana Pro generation)...")
+        
+        start = time.time()
+        response = requests.post(url, json=payload, timeout=120)
+        elapsed = time.time() - start
+        
+        log(f"Status: {response.status_code} (took {elapsed:.2f}s)")
+        
+        if response.status_code == 201:
+            data = response.json()
+            log(f"Response: {json.dumps(data, indent=2)}")
+            
+            if data.get("ok") and data.get("id") and data.get("url"):
+                asset_id = data["id"]
+                asset_url = data["url"]
+                width = data.get("width", 0)
+                height = data.get("height", 0)
+                model = data.get("model", "unknown")
+                
+                # Track for cleanup
+                created_assets.append(asset_id)
+                
+                log(f"✅ Image generated successfully")
+                log(f"   ID: {asset_id}")
+                log(f"   URL: {asset_url}")
+                log(f"   Dimensions: {width}x{height}")
+                log(f"   Model used: {model}")
+                
+                # Verify the asset is accessible
+                log(f"\n   Verifying asset accessibility...")
+                asset_response = requests.get(f"{BASE_URL}/newsletter/asset?id={asset_id}", timeout=10)
+                
+                if asset_response.status_code == 200:
+                    content_type = asset_response.headers.get("Content-Type", "")
+                    content_length = len(asset_response.content)
+                    
+                    log(f"   ✓ Asset accessible: {content_type}, {content_length} bytes")
+                    
+                    if content_type == "image/jpeg" and content_length > 10000:
+                        log(f"✅ TEST 1b PASSED: Full generation working (model: {model})")
+                        return True, model
+                    else:
+                        log(f"❌ TEST 1b FAILED: Invalid content type or size")
+                        return False, model
+                else:
+                    log(f"❌ TEST 1b FAILED: Asset not accessible ({asset_response.status_code})")
+                    return False, model
+            else:
+                log(f"❌ TEST 1b FAILED: Missing required fields in response")
+                return False, "unknown"
+        else:
+            log(f"❌ TEST 1b FAILED: Expected 201, got {response.status_code}")
+            log(f"   Response: {response.text}")
+            return False, "unknown"
+            
+    except Exception as e:
+        log(f"❌ TEST 1b EXCEPTION: {e}")
+        return False, "unknown"
+
+def test_1c_validation():
+    """TEST 1c: Validation tests"""
+    log("\n=== TEST 1c: Validation tests ===")
+    
+    passed = 0
+    total = 3
+    
+    # Test 1c.1: No prompt, no auto
+    try:
+        log("\n  Test 1c.1: Empty body (no prompt, no auto)")
+        url = f"{BASE_URL}/admin/newsletter/genimage?key={ADMIN_KEY}"
+        response = requests.post(url, json={}, timeout=10)
+        
+        if response.status_code == 400:
+            data = response.json()
+            if not data.get("ok") and "error" in data:
+                log(f"  ✅ Test 1c.1 PASSED: Got 400 with error message")
+                passed += 1
+            else:
+                log(f"  ❌ Test 1c.1 FAILED: 400 but wrong response format")
+        else:
+            log(f"  ❌ Test 1c.1 FAILED: Expected 400, got {response.status_code}")
+    except Exception as e:
+        log(f"  ❌ Test 1c.1 EXCEPTION: {e}")
+    
+    # Test 1c.2: auto=true, suggestOnly=true, but empty blocks
+    try:
+        log("\n  Test 1c.2: auto=true, suggestOnly=true, empty blocks")
+        url = f"{BASE_URL}/admin/newsletter/genimage?key={ADMIN_KEY}"
+        response = requests.post(url, json={"auto": True, "suggestOnly": True, "blocks": []}, timeout=10)
+        
+        if response.status_code == 400:
+            log(f"  ✅ Test 1c.2 PASSED: Got 400 for empty blocks")
+            passed += 1
+        else:
+            log(f"  ❌ Test 1c.2 FAILED: Expected 400, got {response.status_code}")
+    except Exception as e:
+        log(f"  ❌ Test 1c.2 EXCEPTION: {e}")
+    
+    # Test 1c.3: No key (authentication)
+    try:
+        log("\n  Test 1c.3: No admin key (authentication)")
+        url = f"{BASE_URL}/admin/newsletter/genimage"
+        response = requests.post(url, json={"prompt": "test"}, timeout=10)
         
         if response.status_code == 401:
-            log_test("A2: POST bidding without key", True, "401 Unauthorized (correct)")
+            log(f"  ✅ Test 1c.3 PASSED: Got 401 without key")
+            passed += 1
         else:
-            log_test("A2: POST bidding without key", False, f"Expected 401, got {response.status_code}")
+            log(f"  ❌ Test 1c.3 FAILED: Expected 401, got {response.status_code}")
     except Exception as e:
-        log_test("A2: POST bidding without key", False, f"Exception: {str(e)}")
+        log(f"  ❌ Test 1c.3 EXCEPTION: {e}")
     
-    # A3: POST with empty body → 400
-    print("\n(A3) POST bidding with empty body (expect 400)...")
+    log(f"\n✅ TEST 1c: {passed}/{total} validation tests passed")
+    return passed == total
+
+# ============================================================================
+# TEST 2: Lead-e-post bilder + mobilresponsivitet
+# ============================================================================
+
+def test_2a_receipt_preview():
+    """TEST 2a: Receipt email preview with images and mobile responsiveness"""
+    log("\n=== TEST 2a: Receipt email preview (images + mobile) ===")
     try:
-        response = requests.post(
-            f"{BASE_URL}/admin/ads/campaign/bidding",
-            params={"key": ADMIN_KEY},
-            json={},
-            timeout=TIMEOUT
-        )
+        url = f"{BASE_URL}/admin/leads/email-preview?type=receipt&key={ADMIN_KEY}"
         
-        if response.status_code == 400:
-            log_test("A3: POST bidding with empty body", True, "400 Bad Request (correct)")
-        else:
-            log_test("A3: POST bidding with empty body", False, f"Expected 400, got {response.status_code}")
-    except Exception as e:
-        log_test("A3: POST bidding with empty body", False, f"Exception: {str(e)}")
-    
-    # A4: GET /api/admin/ads/campaigns
-    print("\n(A4) GET /api/admin/ads/campaigns...")
-    try:
-        response = requests.get(
-            f"{BASE_URL}/admin/ads/campaigns",
-            params={"key": ADMIN_KEY},
-            timeout=TIMEOUT
-        )
+        log(f"GET {url}")
+        response = requests.get(url, timeout=10)
+        
+        log(f"Status: {response.status_code}")
         
         if response.status_code == 200:
-            data = response.json()
-            if data.get("ok") and "campaigns" in data:
-                campaigns = data.get("campaigns", [])
-                # Check if both campaigns have biddingStrategyType='TARGET_SPEND'
-                campaign_23984331113 = next((c for c in campaigns if str(c.get("id")) == "23984331113"), None)
-                campaign_23995748632 = next((c for c in campaigns if str(c.get("id")) == "23995748632"), None)
+            html = response.text
+            log(f"Response length: {len(html)} chars")
+            
+            # Check for required images via /api/media
+            checks = {
+                "email-hero.jpg": "/api/media/email-hero.jpg" in html,
+                "team-sarah.jpg": "/api/media/team-sarah.jpg" in html,
+                "email-logo.png": "/api/media/email-logo.png" in html,
+                "mobile_media_query": "@media only screen and (max-width:600px)" in html or "@media only screen and (max-width: 600px)" in html,
+                "dh-pad_class": 'class="dh-pad"' in html,
+                "dh-btns_class": 'class="dh-btns"' in html or 'dh-btns' in html,
+                "dh-photo_class": "dh-photo" in html,
+                "no_direct_public_paths": "digihome.no/email-hero.jpg" not in html and "https://hero-premiere-4.preview.emergentagent.com/email-hero.jpg" not in html
+            }
+            
+            log("\n  Verification checks:")
+            all_passed = True
+            for check_name, result in checks.items():
+                status = "✓" if result else "✗"
+                log(f"    {status} {check_name}: {result}")
+                if not result:
+                    all_passed = False
+            
+            if all_passed:
+                log(f"✅ TEST 2a PASSED: All checks passed")
+                return True
+            else:
+                log(f"❌ TEST 2a FAILED: Some checks failed")
+                return False
+        else:
+            log(f"❌ TEST 2a FAILED: Expected 200, got {response.status_code}")
+            return False
+            
+    except Exception as e:
+        log(f"❌ TEST 2a EXCEPTION: {e}")
+        return False
+
+def test_2b_notify_preview():
+    """TEST 2b: Admin notification email preview with mobile responsiveness"""
+    log("\n=== TEST 2b: Admin notification email preview (mobile) ===")
+    try:
+        url = f"{BASE_URL}/admin/leads/email-preview?type=notify&key={ADMIN_KEY}"
+        
+        log(f"GET {url}")
+        response = requests.get(url, timeout=10)
+        
+        log(f"Status: {response.status_code}")
+        
+        if response.status_code == 200:
+            html = response.text
+            log(f"Response length: {len(html)} chars")
+            
+            # Check for mobile responsiveness
+            checks = {
+                "mobile_media_query": "@media only screen and (max-width:600px)" in html or "@media only screen and (max-width: 600px)" in html,
+                "dh-pad_class": "dh-pad" in html,
+            }
+            
+            log("\n  Verification checks:")
+            all_passed = True
+            for check_name, result in checks.items():
+                status = "✓" if result else "✗"
+                log(f"    {status} {check_name}: {result}")
+                if not result:
+                    all_passed = False
+            
+            if all_passed:
+                log(f"✅ TEST 2b PASSED: Mobile responsiveness present")
+                return True
+            else:
+                log(f"❌ TEST 2b FAILED: Mobile responsiveness missing")
+                return False
+        else:
+            log(f"❌ TEST 2b FAILED: Expected 200, got {response.status_code}")
+            return False
+            
+    except Exception as e:
+        log(f"❌ TEST 2b EXCEPTION: {e}")
+        return False
+
+def test_2c_media_serving():
+    """TEST 2c: Media serving endpoints"""
+    log("\n=== TEST 2c: Media serving (/api/media/*) ===")
+    
+    passed = 0
+    total = 3
+    
+    media_files = [
+        ("email-hero.jpg", "image/jpeg", 10000),
+        ("team-sarah.jpg", "image/jpeg", 5000),
+        ("sarah-sleeman.jpg", "image/jpeg", 5000),
+    ]
+    
+    for filename, expected_type, min_size in media_files:
+        try:
+            log(f"\n  Testing {filename}...")
+            url = f"{BASE_URL}/media/{filename}"
+            response = requests.get(url, timeout=10)
+            
+            if response.status_code == 200:
+                content_type = response.headers.get("Content-Type", "")
+                content_length = len(response.content)
                 
-                if campaign_23984331113 and campaign_23995748632:
-                    bidding_1 = campaign_23984331113.get("biddingStrategyType")
-                    bidding_2 = campaign_23995748632.get("biddingStrategyType")
-                    log_test(
-                        "A4: GET campaigns",
-                        True,
-                        f"200 OK, campaigns count={len(campaigns)}, campaign 23984331113 biddingStrategyType={bidding_1}, campaign 23995748632 biddingStrategyType={bidding_2}"
-                    )
+                if expected_type in content_type and content_length > min_size:
+                    log(f"  ✅ {filename}: {content_type}, {content_length} bytes")
+                    passed += 1
                 else:
-                    log_test("A4: GET campaigns", True, f"200 OK, campaigns count={len(campaigns)} (target campaigns not found, but endpoint working)")
+                    log(f"  ❌ {filename}: Wrong type or size ({content_type}, {content_length} bytes)")
             else:
-                log_test("A4: GET campaigns", False, f"200 but missing ok/campaigns: {json.dumps(data)[:200]}")
-        else:
-            log_test("A4: GET campaigns", False, f"HTTP {response.status_code}: {response.text[:200]}")
-    except Exception as e:
-        log_test("A4: GET campaigns", False, f"Exception: {str(e)}")
+                log(f"  ❌ {filename}: Got {response.status_code}")
+        except Exception as e:
+            log(f"  ❌ {filename} EXCEPTION: {e}")
     
-    # A5: GET /api/admin/pulse (was also broken by same root cause)
-    print("\n(A5) GET /api/admin/pulse...")
+    log(f"\n✅ TEST 2c: {passed}/{total} media files served correctly")
+    return passed == total
+
+# ============================================================================
+# TEST 3: absAssetUrl deploy-sikker (nyhetsbrev-render)
+# ============================================================================
+
+def test_3a_sender_photo_mapping():
+    """TEST 3a: Sender photo URL mapping to /api/media"""
+    log("\n=== TEST 3a: Sender photo URL mapping ===")
     try:
-        response = requests.get(
-            f"{BASE_URL}/admin/pulse",
-            params={"key": ADMIN_KEY},
-            timeout=TIMEOUT
-        )
+        url = f"{BASE_URL}/admin/newsletter/preview?key={ADMIN_KEY}"
+        payload = {
+            "subject": "test",
+            "blocks": [
+                {
+                    "type": "sender",
+                    "name": "Sarah Sleeman",
+                    "title": "Daglig leder",
+                    "photoUrl": "/sarah-sleeman.jpg"
+                }
+            ]
+        }
+        
+        log(f"POST {url}")
+        response = requests.post(url, json=payload, timeout=10)
+        
+        log(f"Status: {response.status_code}")
         
         if response.status_code == 200:
             data = response.json()
-            log_test("A5: GET pulse", True, f"200 OK (regression test passed)")
-        else:
-            log_test("A5: GET pulse", False, f"HTTP {response.status_code}: {response.text[:200]}")
-    except Exception as e:
-        log_test("A5: GET pulse", False, f"Exception: {str(e)}")
-    
-    # ========================================================================
-    # (B) LEAD-EMAIL (auto-receipt + admin notification via SendGrid)
-    # ========================================================================
-    print("\n(B) LEAD-EMAIL TESTS")
-    print("-"*80)
-    print("⚠️  CRITICAL: Each POST /api/leads sends REAL email to martin@kviteberg.no")
-    print("⚠️  Running MAX 2 lead inserts with obviously fake data")
-    print("⚠️  Will clean up both test leads afterwards")
-    
-    # B1: POST /api/leads with email (should send receipt + admin notification)
-    print("\n(B1) POST /api/leads with email (expect receipt_email.ok=true AND admin_notify.ok=true)...")
-    try:
-        response = requests.post(
-            f"{BASE_URL}/leads",
-            json={
-                "name": "QA Epost Bot",
-                "email": "qa-epost@example.test",
-                "phone": "+47 90000077",
-                "address": "Testveien 5, Bergen",
-                "lead_type": "huseier",
-                "source": "qa-epost"
-            },
-            timeout=30
-        )
-        
-        if response.status_code == 201:
-            data = response.json()
-            lead_id = data.get("id") or (data.get("lead", {}).get("id"))
-            if lead_id:
-                created_lead_ids.append(lead_id)
-            
-            lead = data.get("lead", {})
-            receipt_email = lead.get("receipt_email", {})
-            admin_notify = lead.get("admin_notify", {})
-            
-            receipt_ok = receipt_email.get("ok") == True
-            admin_ok = admin_notify.get("ok") == True
-            
-            if receipt_ok and admin_ok:
-                log_test(
-                    "B1: POST leads with email",
-                    True,
-                    f"201 Created, lead_id={lead_id}, receipt_email.ok={receipt_ok}, admin_notify.ok={admin_ok}"
-                )
+            if data.get("ok") and data.get("html"):
+                html = data["html"]
+                
+                # Check that /sarah-sleeman.jpg is mapped to /api/media/sarah-sleeman.jpg
+                has_api_media = "/api/media/sarah-sleeman.jpg" in html
+                has_direct_path = "digihome.no/sarah-sleeman.jpg" in html and "/api/media" not in html.split("digihome.no/sarah-sleeman.jpg")[0][-50:]
+                
+                log(f"\n  Checks:")
+                log(f"    ✓ Contains /api/media/sarah-sleeman.jpg: {has_api_media}")
+                log(f"    ✓ No direct digihome.no/sarah-sleeman.jpg: {not has_direct_path}")
+                
+                if has_api_media and not has_direct_path:
+                    log(f"✅ TEST 3a PASSED: Photo URL correctly mapped to /api/media")
+                    return True
+                else:
+                    log(f"❌ TEST 3a FAILED: Photo URL not correctly mapped")
+                    return False
             else:
-                log_test(
-                    "B1: POST leads with email",
-                    False,
-                    f"201 but email status incorrect: receipt_email.ok={receipt_ok}, admin_notify.ok={admin_ok}"
-                )
+                log(f"❌ TEST 3a FAILED: Missing ok or html in response")
+                return False
         else:
-            log_test("B1: POST leads with email", False, f"HTTP {response.status_code}: {response.text[:200]}")
+            log(f"❌ TEST 3a FAILED: Expected 200, got {response.status_code}")
+            return False
+            
     except Exception as e:
-        log_test("B1: POST leads with email", False, f"Exception: {str(e)}")
-    
-    # B2: POST /api/leads WITHOUT email (should NOT send receipt, but SHOULD send admin notification)
-    print("\n(B2) POST /api/leads WITHOUT email (expect receipt_email=null/absent, admin_notify.ok=true)...")
+        log(f"❌ TEST 3a EXCEPTION: {e}")
+        return False
+
+def test_3b_api_paths_preserved():
+    """TEST 3b: API paths (like /api/newsletter/asset) should NOT be prefixed"""
+    log("\n=== TEST 3b: API paths preserved (not prefixed) ===")
     try:
-        response = requests.post(
-            f"{BASE_URL}/leads",
-            json={
-                "name": "QA UtenEpost",
-                "phone": "+47 90000078",
-                "address": "Testveien 6, Bergen",
-                "lead_type": "huseier",
-                "source": "qa-epost"
-            },
-            timeout=30
-        )
+        url = f"{BASE_URL}/admin/newsletter/preview?key={ADMIN_KEY}"
+        payload = {
+            "subject": "test",
+            "blocks": [
+                {
+                    "type": "image",
+                    "url": "/api/newsletter/asset?id=abc123",
+                    "height": 200
+                }
+            ]
+        }
         
-        if response.status_code == 201:
-            data = response.json()
-            lead_id = data.get("id") or (data.get("lead", {}).get("id"))
-            if lead_id:
-                created_lead_ids.append(lead_id)
-            
-            lead = data.get("lead", {})
-            receipt_email = lead.get("receipt_email")
-            admin_notify = lead.get("admin_notify", {})
-            
-            receipt_absent = receipt_email is None or receipt_email == {}
-            admin_ok = admin_notify.get("ok") == True
-            
-            if receipt_absent and admin_ok:
-                log_test(
-                    "B2: POST leads without email",
-                    True,
-                    f"201 Created, lead_id={lead_id}, receipt_email=null/absent (correct), admin_notify.ok={admin_ok}"
-                )
-            else:
-                log_test(
-                    "B2: POST leads without email",
-                    False,
-                    f"201 but email status incorrect: receipt_email={receipt_email}, admin_notify.ok={admin_ok}"
-                )
-        else:
-            log_test("B2: POST leads without email", False, f"HTTP {response.status_code}: {response.text[:200]}")
-    except Exception as e:
-        log_test("B2: POST leads without email", False, f"Exception: {str(e)}")
-    
-    # B3: POST with empty body → 400
-    print("\n(B3) POST /api/leads with empty body (expect 400)...")
-    try:
-        response = requests.post(
-            f"{BASE_URL}/leads",
-            json={},
-            timeout=30
-        )
+        log(f"POST {url}")
+        response = requests.post(url, json=payload, timeout=10)
         
-        if response.status_code == 400:
-            log_test("B3: POST leads with empty body", True, "400 Bad Request (correct)")
-        else:
-            log_test("B3: POST leads with empty body", False, f"Expected 400, got {response.status_code}")
-    except Exception as e:
-        log_test("B3: POST leads with empty body", False, f"Exception: {str(e)}")
-    
-    # ========================================================================
-    # (C) SEO-ARTICLE
-    # ========================================================================
-    print("\n(C) SEO-ARTICLE TEST")
-    print("-"*80)
-    
-    # C1: GET /api/posts?slug=hva-koster-utleiemegler-i-bergen-2026
-    print("\n(C1) GET /api/posts?slug=hva-koster-utleiemegler-i-bergen-2026...")
-    try:
-        response = requests.get(
-            f"{BASE_URL}/posts",
-            params={"slug": "hva-koster-utleiemegler-i-bergen-2026"},
-            timeout=30
-        )
+        log(f"Status: {response.status_code}")
         
         if response.status_code == 200:
             data = response.json()
-            post = data.get("post", {})
-            
-            status = post.get("status")
-            title = post.get("title", "")
-            content = post.get("content", "")
-            
-            status_ok = status == "published"
-            title_ok = "Hva koster utleiemegler" in title
-            content_ok = len(content) > 3000
-            
-            if status_ok and title_ok and content_ok:
-                log_test(
-                    "C1: GET SEO article",
-                    True,
-                    f"200 OK, status={status}, title contains 'Hva koster utleiemegler', content length={len(content)} (>3000)"
-                )
+            if data.get("ok") and data.get("html"):
+                html = data["html"]
+                
+                # Check that /api/newsletter/asset?id=abc123 is preserved (not changed to /api/media/api/newsletter/asset)
+                has_correct_path = "/api/newsletter/asset?id=abc123" in html
+                has_double_api = "/api/media/api/newsletter" in html
+                
+                log(f"\n  Checks:")
+                log(f"    ✓ Contains /api/newsletter/asset?id=abc123: {has_correct_path}")
+                log(f"    ✓ No double /api/media/api/newsletter: {not has_double_api}")
+                
+                if has_correct_path and not has_double_api:
+                    log(f"✅ TEST 3b PASSED: API paths preserved correctly")
+                    return True
+                else:
+                    log(f"❌ TEST 3b FAILED: API paths not preserved correctly")
+                    return False
             else:
-                log_test(
-                    "C1: GET SEO article",
-                    False,
-                    f"200 but validation failed: status={status} (expected 'published'), title_ok={title_ok}, content_length={len(content)} (expected >3000)"
-                )
+                log(f"❌ TEST 3b FAILED: Missing ok or html in response")
+                return False
         else:
-            log_test("C1: GET SEO article", False, f"HTTP {response.status_code}: {response.text[:200]}")
+            log(f"❌ TEST 3b FAILED: Expected 200, got {response.status_code}")
+            return False
+            
     except Exception as e:
-        log_test("C1: GET SEO article", False, f"Exception: {str(e)}")
+        log(f"❌ TEST 3b EXCEPTION: {e}")
+        return False
+
+# ============================================================================
+# TEST 4: Regression tests
+# ============================================================================
+
+def test_4_regression():
+    """TEST 4: Regression tests"""
+    log("\n=== TEST 4: Regression tests ===")
     
-    # ========================================================================
-    # (D) REGRESSION
-    # ========================================================================
-    print("\n(D) REGRESSION TESTS")
-    print("-"*80)
+    passed = 0
+    total = 3
     
-    # D1: GET /api/ (root endpoint)
-    print("\n(D1) GET /api/ (root endpoint)...")
+    # Test 4a: Root endpoint
     try:
-        response = requests.get(f"{BASE_URL}/", timeout=30)
-        
+        log("\n  Test 4a: GET /api/")
+        response = requests.get(f"{BASE_URL}/", timeout=10)
+        if response.status_code == 200:
+            log(f"  ✅ Test 4a PASSED: Root endpoint working")
+            passed += 1
+        else:
+            log(f"  ❌ Test 4a FAILED: Got {response.status_code}")
+    except Exception as e:
+        log(f"  ❌ Test 4a EXCEPTION: {e}")
+    
+    # Test 4b: Public properties
+    try:
+        log("\n  Test 4b: GET /api/public/properties")
+        response = requests.get(f"{BASE_URL}/public/properties", timeout=10)
         if response.status_code == 200:
             data = response.json()
             if data.get("ok"):
-                log_test("D1: GET root endpoint", True, f"200 OK, ok={data.get('ok')}")
+                log(f"  ✅ Test 4b PASSED: Public properties working")
+                passed += 1
             else:
-                log_test("D1: GET root endpoint", False, f"200 but ok=false: {json.dumps(data)}")
+                log(f"  ❌ Test 4b FAILED: Missing ok in response")
         else:
-            log_test("D1: GET root endpoint", False, f"HTTP {response.status_code}: {response.text[:200]}")
+            log(f"  ❌ Test 4b FAILED: Got {response.status_code}")
     except Exception as e:
-        log_test("D1: GET root endpoint", False, f"Exception: {str(e)}")
+        log(f"  ❌ Test 4b EXCEPTION: {e}")
     
-    # D2: GET /api/admin/leads
-    print("\n(D2) GET /api/admin/leads...")
+    # Test 4c: Newsletter audiences
     try:
-        response = requests.get(
-            f"{BASE_URL}/admin/leads",
-            params={"key": ADMIN_KEY},
-            timeout=30
-        )
-        
+        log("\n  Test 4c: GET /api/admin/newsletter?key=...")
+        response = requests.get(f"{BASE_URL}/admin/newsletter?key={ADMIN_KEY}", timeout=10)
         if response.status_code == 200:
-            data = response.json()
-            log_test("D2: GET admin/leads", True, f"200 OK (regression test passed)")
+            log(f"  ✅ Test 4c PASSED: Newsletter endpoint working")
+            passed += 1
         else:
-            log_test("D2: GET admin/leads", False, f"HTTP {response.status_code}: {response.text[:200]}")
+            log(f"  ❌ Test 4c FAILED: Got {response.status_code}")
     except Exception as e:
-        log_test("D2: GET admin/leads", False, f"Exception: {str(e)}")
+        log(f"  ❌ Test 4c EXCEPTION: {e}")
     
-    # D3: GET /lp/sammenlign (frontend URL, status code check only)
-    print("\n(D3) GET /lp/sammenlign (frontend URL, status code check only)...")
+    log(f"\n✅ TEST 4: {passed}/{total} regression tests passed")
+    return passed == total
+
+# ============================================================================
+# Main test runner
+# ============================================================================
+
+def main():
+    log("=" * 80)
+    log("DigiHome Backend Test - 3 NEW Backend Changes")
+    log("=" * 80)
+    log(f"Base URL: {BASE_URL}")
+    log(f"Admin key: {ADMIN_KEY}")
+    log(f"MongoDB: {MONGO_URL}/{DB_NAME}")
+    log("=" * 80)
+    
+    results = {}
+    model_used = "unknown"
+    
     try:
-        response = requests.get(
-            "https://hero-premiere-4.preview.emergentagent.com/lp/sammenlign",
-            timeout=30
-        )
+        # TEST 1: AI-bildegenerering
+        log("\n" + "=" * 80)
+        log("TEST 1: AI-bildegenerering nyhetsbrev")
+        log("=" * 80)
         
-        if response.status_code == 200:
-            log_test("D3: GET /lp/sammenlign", True, f"200 OK (frontend page renders)")
-        else:
-            log_test("D3: GET /lp/sammenlign", False, f"HTTP {response.status_code}")
-    except Exception as e:
-        log_test("D3: GET /lp/sammenlign", False, f"Exception: {str(e)}")
+        results["1a_suggest_only"] = test_1a_suggest_only()
+        results["1b_full_generation"], model_used = test_1b_full_generation()
+        results["1c_validation"] = test_1c_validation()
+        
+        # TEST 2: Lead-e-post bilder + mobilresponsivitet
+        log("\n" + "=" * 80)
+        log("TEST 2: Lead-e-post bilder + mobilresponsivitet")
+        log("=" * 80)
+        
+        results["2a_receipt_preview"] = test_2a_receipt_preview()
+        results["2b_notify_preview"] = test_2b_notify_preview()
+        results["2c_media_serving"] = test_2c_media_serving()
+        
+        # TEST 3: absAssetUrl deploy-sikker
+        log("\n" + "=" * 80)
+        log("TEST 3: absAssetUrl deploy-sikker")
+        log("=" * 80)
+        
+        results["3a_sender_photo"] = test_3a_sender_photo_mapping()
+        results["3b_api_paths"] = test_3b_api_paths_preserved()
+        
+        # TEST 4: Regression
+        log("\n" + "=" * 80)
+        log("TEST 4: Regression tests")
+        log("=" * 80)
+        
+        results["4_regression"] = test_4_regression()
+        
+    finally:
+        # MANDATORY CLEANUP
+        log("\n" + "=" * 80)
+        log("MANDATORY CLEANUP: Deleting test assets")
+        log("=" * 80)
+        cleanup_assets()
     
-    # ========================================================================
-    # CLEANUP: Delete test leads
-    # ========================================================================
-    print("\n" + "="*80)
-    print("CLEANUP: Deleting test leads")
-    print("="*80)
+    # Summary
+    log("\n" + "=" * 80)
+    log("TEST SUMMARY")
+    log("=" * 80)
     
-    for lead_id in created_lead_ids:
-        print(f"\nDeleting lead {lead_id}...")
-        try:
-            # Try DELETE /api/admin/leads with body
-            response = requests.delete(
-                f"{BASE_URL}/admin/leads",
-                params={"key": ADMIN_KEY},
-                json={"id": lead_id},
-                timeout=30
-            )
-            
-            if response.status_code in [200, 204]:
-                print(f"  ✅ Deleted lead {lead_id}")
-            else:
-                print(f"  ⚠️  Could not delete lead {lead_id}: HTTP {response.status_code}")
-                print(f"     Main agent should clean up lead ID: {lead_id}")
-        except Exception as e:
-            print(f"  ⚠️  Exception deleting lead {lead_id}: {str(e)}")
-            print(f"     Main agent should clean up lead ID: {lead_id}")
+    passed = sum(1 for v in results.values() if v)
+    total = len(results)
     
-    # Print summary
-    print_summary()
+    for test_name, result in results.items():
+        status = "✅ PASSED" if result else "❌ FAILED"
+        log(f"{status}: {test_name}")
     
-    # Print lead IDs for main agent if cleanup failed
-    if created_lead_ids:
-        print(f"\n⚠️  IMPORTANT: Main agent should verify cleanup of lead IDs: {', '.join(created_lead_ids)}")
+    log("\n" + "=" * 80)
+    log(f"OVERALL: {passed}/{total} tests passed ({passed*100//total}%)")
+    log(f"AI Model used in TEST 1b: {model_used}")
+    log("=" * 80)
+    
+    if passed == total:
+        log("\n🎉 ALL TESTS PASSED! 🎉")
+        return 0
+    else:
+        log(f"\n⚠ {total - passed} test(s) failed")
+        return 1
 
-except Exception as e:
-    print(f"\n❌ FATAL ERROR: {str(e)}")
-    import traceback
-    traceback.print_exc()
-    
-    # Still try to print summary
-    print_summary()
-
-print(f"\nCompleted: {datetime.now().isoformat()}")
-print("="*80)
+if __name__ == "__main__":
+    exit(main())

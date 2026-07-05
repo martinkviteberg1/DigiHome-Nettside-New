@@ -1451,6 +1451,88 @@ async function handleRoute(request, { params }) {
       return cors(NextResponse.json({ ok: true, id: reqDoc.id }, { status: 201 }));
     }
 
+    // Leieestimat (offentlig) — driver verdi-teaseren i Bli utleier-skjemaet.
+    // Basert på SSB-leiepriser (rent_reports-cache) + DigiHome-modellens løft.
+    if (route === '/rent-estimate' && method === 'GET') {
+      const sp = new URL(request.url).searchParams;
+      const bedrooms = Math.max(0, Math.min(6, parseInt(sp.get('bedrooms') || '0', 10) || 0));
+      const citySlug = RENT_CITIES[(sp.get('city') || '').toLowerCase()] ? (sp.get('city') || '').toLowerCase() : 'bergen';
+      try {
+        const report = await getRentReport(citySlug, { db });
+        const byRoom = (report && report.byRoom) || [];
+        if (!byRoom.length) return cors(NextResponse.json({ ok: false, error: 'Ingen markedsdata' }, { status: 404 }));
+        // Norsk «X-roms» = soverom + stue. Clamp til datagrunnlaget (1–4-roms).
+        const rooms = Math.max(1, Math.min(byRoom.length, bedrooms + 1));
+        const row = byRoom.find((r) => String(r.roomKey) === String(rooms)) || byRoom[byRoom.length - 1];
+        const base = Number(row.current) || 0;
+        if (!base) return cors(NextResponse.json({ ok: false, error: 'Ingen markedsdata' }, { status: 404 }));
+        const round100 = (n) => Math.round(n / 100) * 100;
+        return cors(NextResponse.json({
+          ok: true,
+          low: round100(base),
+          high: round100(base * 1.28), // DigiHome dynamisk modell: opptil ~30 % løft
+          label: row.label || `${rooms}-roms`,
+          year: row.currentYear || '',
+          city: (RENT_CITIES[citySlug] && RENT_CITIES[citySlug].label) || 'Bergen',
+        }));
+      } catch (e) {
+        return cors(NextResponse.json({ ok: false, error: 'Estimat utilgjengelig' }, { status: 502 }));
+      }
+    }
+
+    // Delvis lead (offentlig) — fanges når kontaktfelt er utfylt men skjemaet
+    // ikke er sendt. Gir salgsteamet mulighet til å følge opp «nesten-leads».
+    // Upsertes per e-post/telefon; markeres 'converted' når ekte lead sendes.
+    if (route === '/lead/partial' && method === 'POST') {
+      if (!rateLimit(clientIp(request), 30)) return cors(NextResponse.json({ ok: false }, { status: 429 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      const email = (body.email || '').toString().toLowerCase().trim().slice(0, 200);
+      const phone = (body.phone || '').toString().replace(/\s/g, '').slice(0, 30);
+      const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+      const phoneOk = phone.replace(/\D/g, '').length >= 8;
+      if (!emailOk && !phoneOk) return cors(NextResponse.json({ ok: false, error: 'Trenger gyldig e-post eller telefon' }, { status: 400 }));
+      // Har personen allerede sendt inn ekte lead nylig? Da er delvis uinteressant.
+      const ors = [];
+      if (emailOk) ors.push({ email: { $regex: `^${email.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' } });
+      if (phoneOk) ors.push({ phone: { $regex: phone.replace(/\D/g, '').slice(-8) + '$' } });
+      const existing = await db.collection('leads').findOne({ $or: ors }, { projection: { _id: 0, id: 1 } });
+      if (existing) return cors(NextResponse.json({ ok: true, skipped: 'lead-exists' }));
+      const key = emailOk ? { email } : { phone };
+      const now = new Date().toISOString();
+      await db.collection('partial_leads').updateOne(
+        { ...key, status: 'partial' },
+        {
+          $set: {
+            name: (body.name || '').toString().slice(0, 200),
+            email: emailOk ? email : (body.email || '').toString().slice(0, 200),
+            phone,
+            address: (body.address || '').toString().slice(0, 300),
+            postal_code: (body.postal_code || '').toString().slice(0, 20),
+            property_type: (body.property_type || '').toString().slice(0, 60),
+            sqm: body.sqm ? Number(body.sqm) || null : null,
+            bedrooms: body.bedrooms ? Number(body.bedrooms) || null : null,
+            rental_model: (body.rental_model || '').toString().slice(0, 60),
+            tier: (body.tier || '').toString().slice(0, 40),
+            form: (body.form || 'utleier').toString().slice(0, 40),
+            updatedAt: now,
+          },
+          $setOnInsert: { id: uuidv4(), status: 'partial', createdAt: now },
+        },
+        { upsert: true }
+      );
+      return cors(NextResponse.json({ ok: true }));
+    }
+
+    // Admin: delvise leads (ikke konverterte) — for manuell oppfølging.
+    if (route === '/admin/leads/partial' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const rows = await db.collection('partial_leads')
+        .find({ status: 'partial' }, { projection: { _id: 0 } })
+        .sort({ updatedAt: -1 }).limit(100).toArray();
+      const converted = await db.collection('partial_leads').countDocuments({ status: 'converted' });
+      return cors(NextResponse.json({ ok: true, partials: rows, convertedCount: converted }));
+    }
+
     if (route === '/leads' && method === 'POST') {
       let body = {};
       try { body = await request.json(); } catch (e) { body = {}; }
@@ -1531,6 +1613,38 @@ async function handleRoute(request, { params }) {
       } catch (e) { /* dedupe er best-effort; fall gjennom til normal insert */ }
 
       await db.collection('leads').insertOne(lead);
+
+      // Delvis lead → konvertert: hvis samme e-post/telefon lå i partial_leads
+      // (fanget mens skjemaet ble fylt ut), marker som fullført (best-effort).
+      try {
+        const ors = [];
+        if (lead.email) ors.push({ email: lead.email.toLowerCase().trim() });
+        if (lead.phone) ors.push({ phone: lead.phone.replace(/\s/g, '') });
+        if (ors.length) {
+          await db.collection('partial_leads').updateMany(
+            { $or: ors, status: 'partial' },
+            { $set: { status: 'converted', convertedAt: new Date().toISOString(), leadId: lead.id } }
+          );
+        }
+      } catch (e) { /* best-effort */ }
+
+      // Nyhetsbrev-stempel på NYE leads: var denne e-posten en engasjert
+      // nyhetsbrevmottaker før konvertering? (klikk-stempelet over treffer bare
+      // leads som allerede eksisterte). → synlig multi-touch på leaden.
+      try {
+        if (lead.email) {
+          const sub = await db.collection('newsletter_subscribers').findOne(
+            { email: lead.email.toLowerCase().trim() },
+            { projection: { _id: 0, last_click_at: 1, last_campaign: 1, clicks: 1 } }
+          );
+          if (sub && (sub.clicks || sub.last_click_at)) {
+            await db.collection('leads').updateOne(
+              { id: lead.id },
+              { $set: { newsletter_engaged: { clicks: sub.clicks || 0, last_click_at: sub.last_click_at || null, last_campaign: sub.last_campaign || null } } }
+            );
+          }
+        }
+      } catch (e) { /* best-effort */ }
 
       // Nyhetsbrev-attribusjon: kom leaden fra en kampanje-CTA (?c=&r= på
       // landingssiden) eller finnes e-posten i mottaker-kartet? Stemple leaden.
@@ -3010,16 +3124,16 @@ async function handleRoute(request, { params }) {
         if (!meta.format || !['jpeg', 'png', 'webp', 'gif', 'heif', 'avif', 'svg', 'tiff'].includes(meta.format)) {
           return cors(NextResponse.json({ ok: false, error: 'Ugyldig bildeformat' }, { status: 400 }));
         }
-        // E-postvennlig: maks 1200px bredt (600px @2x) + WebP-konvertering.
-        // WebP gir ~30 % mindre filer enn JPEG (støttes av Gmail, Apple Mail,
-        // Outlook web/Mac). Animerte GIF-er beholder animasjonen i WebP.
-        const animated = meta.format === 'gif' && (meta.pages || 1) > 1;
-        const contentType = 'image/webp';
-        const out = await sharp(raw, { animated })
-          .rotate() // respekter EXIF-orientering fra mobilkamera
-          .resize({ width: 1200, withoutEnlargement: true })
-          .webp({ quality: 80, effort: 4 })
-          .toBuffer();
+        // E-POSTSIKKERT format: Outlook for Windows (Word-motoren) viser IKKE
+        // WebP — nyhetsbrevbilder må være JPEG/PNG. Vi optimaliserer hardt i
+        // stedet: maks 1200px + mozjpeg q80 (≈ samme størrelse som WebP q80).
+        // PNG kun ved transparens. (WebP-forsøk 05.07 ga knekte bilder i Outlook.)
+        const hasAlpha = !!meta.hasAlpha;
+        let contentType = 'image/jpeg';
+        let out;
+        const pipe = sharp(raw).rotate().resize({ width: 1200, withoutEnlargement: true });
+        if (hasAlpha) { out = await pipe.png({ compressionLevel: 9, palette: true }).toBuffer(); contentType = 'image/png'; }
+        else { out = await pipe.jpeg({ quality: 80, mozjpeg: true }).toBuffer(); }
         const outMeta = await sharp(out).metadata();
         const id = uuidv4();
         await db.collection('newsletter_assets').insertOne({
@@ -3031,6 +3145,92 @@ async function handleRoute(request, { params }) {
         return cors(NextResponse.json({ ok: true, id, url: `/api/newsletter/asset?id=${id}`, width: outMeta.width, height: outMeta.height }, { status: 201 }));
       } catch (e) {
         return cors(NextResponse.json({ ok: false, error: 'Opplasting feilet: ' + (e.message || 'ukjent') }, { status: 500 }));
+      }
+    }
+
+    // AI-bildegenerering for nyhetsbrev (Gemini Nano Banana via Emergent-nøkkelen).
+    // body: { prompt?, auto?, blocks?, style: 'foto'|'illustrasjon'|'minimal' }
+    // auto=true → LLM skriver bildeprompt fra nyhetsbrevets innhold først.
+    // Resultatet optimaliseres til e-postsikker JPEG og lagres som vanlig asset.
+    if (route === '/admin/newsletter/genimage' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      const style = ['foto', 'illustrasjon', 'minimal'].includes(body.style) ? body.style : 'foto';
+      let userPrompt = String(body.prompt || '').slice(0, 1000).trim();
+      try {
+        if (!userPrompt && body.auto) {
+          // Trekk ut innholdet og la tekst-LLM-en formulere et presist bildeprompt
+          const blocks = sanitizeBlocks(body.blocks);
+          const parts = [];
+          for (const b of blocks) {
+            if (b.type === 'heading' && b.text) parts.push(b.text);
+            else if (b.type === 'text' && b.text) parts.push(b.text);
+            else if (b.type === 'offer' && (b.big || b.eyebrow)) parts.push(`${b.eyebrow || ''} ${b.big || ''} ${b.bigLabel || ''}`.trim());
+          }
+          const content = parts.join('\n').slice(0, 3000);
+          if (!content.trim()) return cors(NextResponse.json({ ok: false, error: 'Nyhetsbrevet har ikke nok tekst til å foreslå et bilde — skriv et prompt selv' }, { status: 400 }));
+          userPrompt = (await chatLLM({
+            messages: [
+              { role: 'system', content: 'You write ONE concise English image-generation prompt (max 50 words) for a marketing email hero image for DigiHome, a Bergen (Norway) rental-management company. Describe a concrete visual scene matching the newsletter content. Never include text, logos or people\'s faces in the image description. Reply with the prompt only.' },
+              { role: 'user', content: `Newsletter content:\n${content}` },
+            ],
+            maxTokens: 120, temperature: 0.7, feature: 'nyhetsbrev_bildeprompt',
+          })).trim().replace(/^["']|["']$/g, '').slice(0, 600);
+        }
+        if (!userPrompt) return cors(NextResponse.json({ ok: false, error: 'Skriv hva bildet skal vise' }, { status: 400 }));
+        // suggestOnly=true → returner bare det foreslåtte promptet (brukeren kan justere før generering)
+        if (body.suggestOnly) return cors(NextResponse.json({ ok: true, prompt: userPrompt }));
+        const STYLES = {
+          foto: 'Professional photorealistic photograph, natural Scandinavian light, warm and inviting, high detail',
+          illustrasjon: 'Flat modern vector illustration, soft lavender (#cf97fc) and warm neutral palette, clean geometric shapes',
+          minimal: 'Minimalist composition, generous negative space, soft neutral tones with a subtle lavender accent',
+        };
+        const fullPrompt = `${userPrompt}. Style: ${STYLES[style]}. Wide 3:2 landscape composition suitable as an email header image. No text, no watermarks, no logos.`;
+        // Nano Banana Pro (gemini-3-pro-image-preview) er beste tilgjengelige bildemodell.
+        // Faller tilbake til Nano Banana (2.5-flash-image) hvis Pro feiler.
+        const genWithModel = async (model, timeoutMs) => {
+          const ctrl = new AbortController();
+          const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+          try {
+            const res = await fetch('https://integrations.emergentagent.com/llm/v1/images/generations', {
+              method: 'POST',
+              headers: { Authorization: `Bearer ${process.env.EMERGENT_LLM_KEY}`, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ model, prompt: fullPrompt, n: 1 }),
+              signal: ctrl.signal,
+            });
+            if (!res.ok) return null;
+            const json = await res.json();
+            return json?.data?.[0]?.b64_json || null;
+          } catch (err) {
+            return null;
+          } finally { clearTimeout(timer); }
+        };
+        let b64 = await genWithModel('gemini/gemini-3-pro-image-preview', 90000);
+        let modelUsed = 'gemini-3-pro-image-preview';
+        if (!b64) {
+          b64 = await genWithModel('gemini/gemini-2.5-flash-image', 60000);
+          modelUsed = 'gemini-2.5-flash-image';
+        }
+        if (!b64) return cors(NextResponse.json({ ok: false, error: 'AI ga ikke noe bilde — prøv et annet prompt' }, { status: 502 }));
+        // E-postsikker JPEG (Outlook støtter ikke WebP) + hard optimalisering
+        const sharp = (await import('sharp')).default;
+        const out = await sharp(Buffer.from(b64, 'base64'))
+          .resize({ width: 1200, withoutEnlargement: true })
+          .jpeg({ quality: 80, mozjpeg: true })
+          .toBuffer();
+        const outMeta = await sharp(out).metadata();
+        const id = uuidv4();
+        await db.collection('newsletter_assets').insertOne({
+          id, contentType: 'image/jpeg', data: out.toString('base64'),
+          width: outMeta.width || null, height: outMeta.height || null,
+          bytes: out.length, filename: 'ai-generert.jpg',
+          ai: true, prompt: userPrompt.slice(0, 400), style, model: modelUsed,
+          createdAt: new Date().toISOString(),
+        });
+        return cors(NextResponse.json({ ok: true, id, url: `/api/newsletter/asset?id=${id}`, width: outMeta.width, height: outMeta.height, promptUsed: userPrompt }, { status: 201 }));
+      } catch (e) {
+        const msg = e.name === 'AbortError' ? 'AI-bildegenerering tok for lang tid — prøv igjen' : 'Bildegenerering feilet: ' + (e.message || 'ukjent');
+        return cors(NextResponse.json({ ok: false, error: msg }, { status: 502 }));
       }
     }
 
@@ -3559,6 +3759,20 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
       let target = (sp.get('u') || '').toString().slice(0, 1000);
       const base = process.env.NEXT_PUBLIC_BASE_URL || new URL(request.url).origin;
       if (!/^https?:\/\//i.test(target)) target = base; // kun http(s)-mål
+      // Beste praksis-attribusjon: klikk til egne sider auto-tagges med UTM,
+      // slik at first/last-touch-sporingen på nettsiden krediterer nyhetsbrevet
+      // (f.eks. lead fra Meta som konverterer via nyhetsbrev → first: meta,
+      // last: nyhetsbrev — begge bevares i marketing-metrikkene på leaden).
+      try {
+        const tu = new URL(target);
+        const own = tu.hostname.endsWith('digihome.no') || tu.hostname === new URL(base).hostname;
+        if (own && !tu.searchParams.get('utm_source')) {
+          tu.searchParams.set('utm_source', 'nyhetsbrev');
+          tu.searchParams.set('utm_medium', 'email');
+          if (c) tu.searchParams.set('utm_campaign', c.slice(0, 40));
+          target = tu.toString();
+        }
+      } catch (e) { /* behold target som den er */ }
       if (c && r) {
         try {
           const ua = (request.headers.get('user-agent') || '').slice(0, 300);

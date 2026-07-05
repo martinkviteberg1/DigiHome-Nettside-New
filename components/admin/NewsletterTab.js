@@ -445,7 +445,7 @@ export default function NewsletterTab({ apiKey }) {
           <div className="rounded-2xl border border-[#f0f0f0] bg-white p-4 lg:sticky lg:top-[132px] lg:max-h-[calc(100vh-160px)] overflow-y-auto">
             {selected ? (
               <BlockInspector b={selected} onPatch={(p) => patchBlock(selected.id, p)} onDel={removeBlock}
-                onUploadImage={uploadImage} uploadingId={uploadingId} apiQ={q} />
+                onUploadImage={uploadImage} uploadingId={uploadingId} apiQ={q} blocks={camp.blocks} />
             ) : (
               <>
                 <div className="flex rounded-full bg-[#f4f2ef] p-0.5">
