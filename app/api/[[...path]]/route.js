@@ -14,6 +14,7 @@ import { fetchMetaInsights, fetchMetaAccount, metaAdsConfigured, getCachedMetaRe
 import { fetchPages, fetchLeadForms, fetchFormLeads, mapLeadFields, metaLeadAdsConfigured, fetchSingleLead, fetchFormName, fetchPageToken } from '@/lib/meta-leadads';
 import { composioConfigured, createConnectLink, getConnectionStatus, runCampaignReport, defaultCustomerId, getCachedReport, GOOGLE_PERIODS, getCachedCreatives, activeProvider } from '@/lib/google-ads-provider';
 import { googleAdsNativeConfigured, listConversionActions, resolveOfflineConversionAction, uploadClickConversion, toConversionDateTime, listCampaignsDetailed, suggestGeoTargets, setCampaignStatus, updateCampaignBudget, createSearchCampaign, createCompetitorCampaign, getCampaignByName, runAdsWithMetrics, runSearchTerms, runKeywordMetrics, generateKeywordIdeas, gaqlSearch, setCampaignMaximizeClicks, listRsaAds, createRsaAd, setAdStatus } from '@/lib/google-ads-native';
+import { runAdsWithMetricsViaComposio } from '@/lib/composio-google-ads';
 import { dataManagerConfigured, ingestOfflineConversion } from '@/lib/google-ads-datamanager';
 import { IMPORTED_COLL, importRecords, parseCsv, summarizeImported, syncFromPlatform, listImported, updateImportedOverride } from '@/lib/imported-leads';
 import { queueLeadPushback, flushLeadPushbacks, pushbackStats } from '@/lib/lead-pushback';

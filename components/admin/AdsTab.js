@@ -261,7 +261,7 @@ export default function AdsTab({ apiKey }) {
       {view === 'campaigns' ? (
         <CampaignManager apiKey={apiKey} />
       ) : view === 'table' ? (
-        <AdsTable apiKey={apiKey} period={period} channel={channel} />
+        <AdsTable apiKey={apiKey} period={period} channel={channel} periodLabel={periodLabel} onOpenFilter={openFilter} />
       ) : view === 'optimize' ? (
         <OptimizePanel apiKey={apiKey} />
       ) : view === 'creatives' ? (
@@ -388,7 +388,7 @@ export default function AdsTab({ apiKey }) {
       {showFilter && (
         <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center">
           <div onClick={() => setShowFilter(false)} className={`absolute inset-0 bg-[#0a0a0a]/45 backdrop-blur-[3px] transition-opacity duration-300 ${filterMounted ? 'opacity-100' : 'opacity-0'}`} />
-          <div className={`relative w-full sm:max-w-lg bg-white rounded-t-[28px] sm:rounded-[28px] shadow-[0_30px_90px_rgba(0,0,0,0.28)] p-6 sm:p-7 transition-all duration-300 ${filterMounted ? 'opacity-100 translate-y-0 sm:scale-100' : 'opacity-0 translate-y-8 sm:translate-y-2 sm:scale-95'}`}>
+          <div className={`relative w-full sm:max-w-lg max-h-[92dvh] overflow-y-auto overscroll-contain bg-white rounded-t-[28px] sm:rounded-[28px] shadow-[0_30px_90px_rgba(0,0,0,0.28)] p-6 sm:p-7 transition-all duration-300 ${filterMounted ? 'opacity-100 translate-y-0 sm:scale-100' : 'opacity-0 translate-y-8 sm:translate-y-2 sm:scale-95'}`}>
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-xl bg-[#0a0a0a] flex items-center justify-center shadow-[0_8px_20px_rgba(10,10,10,0.18)]"><SlidersHorizontal className="w-4 h-4 text-white" /></div>
@@ -1305,8 +1305,57 @@ function channelPill(ch) {
     ? <span className="text-[10.5px] font-bold text-[#1877F2] bg-[#eaf2fe] px-1.5 py-0.5 rounded">Meta</span>
     : <span className="text-[10.5px] font-bold text-[#0F9D58] bg-[#eafaf0] px-1.5 py-0.5 rounded">Google</span>;
 }
+function scopeBadge(scope) {
+  if (scope !== 'lifetime') return null;
+  return <span title="Ingen aktivitet i valgt periode — viser samlede livstidstall (teller ikke i period-summen)" className="text-[10px] font-bold text-[#8b5cf6] bg-[#f4f0fb] px-1.5 py-0.5 rounded-full whitespace-nowrap">Livstid</span>;
+}
+function adLinks(r, apiKey) {
+  const lp = r.channel === 'google' ? r.finalUrl : r.link;
+  const adUrl = r.channel === 'google'
+    ? (r.campaignId && r.adGroupId ? `https://ads.google.com/aw/ads?campaignId=${r.campaignId}&adGroupId=${r.adGroupId}` : 'https://ads.google.com/aw/ads')
+    : `/api/admin/ads/preview?id=${encodeURIComponent(r.id)}&format=MOBILE_FEED_STANDARD&key=${encodeURIComponent(apiKey || '')}`;
+  return { lp, adUrl };
+}
+// Kompakt kortvisning per annonse — mobil (<640px)
+function MobileAdCard({ r, apiKey }) {
+  const { lp, adUrl } = adLinks(r, apiKey);
+  return (
+    <div className="px-4 py-3.5">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5 flex-wrap">{channelPill(r.channel)}{statusPill(r.status)}{scopeBadge(r.statsScope)}</div>
+          <p className="mt-1.5 text-[13px] font-semibold text-[#0a0a0a] leading-snug line-clamp-2" title={r.name}>{r.name || '–'}</p>
+          <p className="text-[11px] text-[#aaa] truncate" title={`${r.campaign}${r.adGroup ? ` · ${r.adGroup}` : ''}`}>{r.campaign}{r.adGroup ? ` · ${r.adGroup}` : ''}</p>
+        </div>
+        <div className="text-right shrink-0">
+          <p className="text-[14.5px] font-bold text-[#0a0a0a]">{fmtKr(r.cost)}</p>
+          {r.roas != null && <p className={`text-[11px] font-semibold ${roasColor(r.roas)}`}>ROAS {fmtX(r.roas)}</p>}
+        </div>
+      </div>
+      <div className="mt-2.5 grid grid-cols-4 gap-1.5">
+        {[['Visn.', fmtNum(r.impressions)], ['Klikk', fmtNum(r.clicks)], ['CTR', fmtPct(r.ctr)], ['Konv.', r.conversions ? fmtNum(r.conversions) : '–']].map(([l, v]) => (
+          <div key={l} className="bg-[#faf9f7] rounded-lg px-1.5 py-1.5 text-center">
+            <p className="text-[9.5px] uppercase tracking-wide text-[#b3b3b3] font-bold">{l}</p>
+            <p className="text-[12px] font-semibold text-[#333]">{v}</p>
+          </div>
+        ))}
+      </div>
+      <div className="mt-2 flex items-center gap-2">
+        {lp && (
+          <a href={lp} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full bg-[#faf6fe] text-[#8b5cf6] text-[11.5px] font-semibold">
+            <Globe className="w-3.5 h-3.5" /> Landingsside
+          </a>
+        )}
+        <a href={adUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full bg-[#f6f4f1] text-[#555] text-[11.5px] font-semibold">
+          <ExternalLink className="w-3.5 h-3.5" /> {r.channel === 'google' ? 'Google Ads' : 'Forhåndsvis'}
+        </a>
+        {r.cpc != null && <span className="ml-auto text-[11px] text-[#999]">CPC {fmtKr2(r.cpc)}</span>}
+      </div>
+    </div>
+  );
+}
 
-function AdsTable({ apiKey, period, channel }) {
+function AdsTable({ apiKey, period, channel, periodLabel, onOpenFilter }) {
   const [rows, setRows] = useState(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState('');
@@ -1314,8 +1363,9 @@ function AdsTable({ apiKey, period, channel }) {
   const [sortKey, setSortKey] = useState('cost');
   const [sortDir, setSortDir] = useState('desc');
   const [statusF, setStatusF] = useState('all');
-  const [chan, setChan] = useState(channel === 'both' ? 'all' : channel);
   const [q, setQ] = useState('');
+  // Kanal styres av det globale filteret (én kilde til sannhet — ikke egne chips her)
+  const chan = channel === 'both' ? 'all' : channel;
 
   const load = useCallback(async (force) => {
     setLoading(true); setErr('');
@@ -1332,11 +1382,19 @@ function AdsTable({ apiKey, period, channel }) {
   }, [apiKey, period]);
   useEffect(() => { load(); }, [load]);
 
-  const filtered = (rows || []).filter((r) => {
+  const base = (rows || []).filter((r) => {
     if (chan !== 'all' && r.channel !== chan) return false;
+    if (q && !(`${r.name} ${r.campaign} ${r.adGroup}`.toLowerCase().includes(q.toLowerCase()))) return false;
+    return true;
+  });
+  const counts = {
+    all: base.length,
+    active: base.filter((r) => STATUS_ACTIVE(r.status)).length,
+  };
+  counts.paused = counts.all - counts.active;
+  const filtered = base.filter((r) => {
     if (statusF === 'active' && !STATUS_ACTIVE(r.status)) return false;
     if (statusF === 'paused' && STATUS_ACTIVE(r.status)) return false;
-    if (q && !(`${r.name} ${r.campaign} ${r.adGroup}`.toLowerCase().includes(q.toLowerCase()))) return false;
     return true;
   });
   const sorted = [...filtered].sort((a, b) => {
@@ -1345,7 +1403,9 @@ function AdsTable({ apiKey, period, channel }) {
     const an = av == null ? -Infinity : av, bn = bv == null ? -Infinity : bv;
     return sortDir === 'asc' ? (an - bn) : (bn - an);
   });
-  const totals = filtered.reduce((t, r) => ({ cost: t.cost + (r.cost || 0), clicks: t.clicks + (r.clicks || 0), impressions: t.impressions + (r.impressions || 0), conversions: t.conversions + (r.conversions || 0) }), { cost: 0, clicks: 0, impressions: 0, conversions: 0 });
+  // Livstidsrader holdes UTENFOR summene — ellers blandes historikk inn i perioden.
+  const periodRows = filtered.filter((r) => r.statsScope !== 'lifetime');
+  const totals = periodRows.reduce((t, r) => ({ cost: t.cost + (r.cost || 0), clicks: t.clicks + (r.clicks || 0), impressions: t.impressions + (r.impressions || 0), conversions: t.conversions + (r.conversions || 0) }), { cost: 0, clicks: 0, impressions: 0, conversions: 0 });
 
   const sortBtn = (key, label) => (
     <th className="px-3 py-2.5 text-right cursor-pointer select-none hover:text-[#0a0a0a] whitespace-nowrap" onClick={() => { if (sortKey === key) setSortDir((d) => d === 'asc' ? 'desc' : 'asc'); else { setSortKey(key); setSortDir('desc'); } }}>
@@ -1355,22 +1415,37 @@ function AdsTable({ apiKey, period, channel }) {
 
   return (
     <div>
-      <div className="flex flex-wrap items-center gap-2 mb-4">
-        <div className="flex items-center gap-1 bg-[#f1efeb] rounded-full p-1">
-          {[['all', 'Alle'], ['google', 'Google'], ['meta', 'Meta']].map(([v, l]) => (
-            <button key={v} onClick={() => setChan(v)} className={`px-3 h-8 rounded-full text-[12px] font-semibold transition-all ${chan === v ? 'bg-white text-[#0a0a0a] shadow-sm' : 'text-[#888] hover:text-[#0a0a0a]'}`}>{l}</button>
+      <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 mb-4">
+        <div className="flex items-center gap-2">
+          {/* Kanal + periode styres av det globale filteret — én kilde til sannhet */}
+          <button onClick={onOpenFilter} className="h-10 pl-3.5 pr-4 rounded-full bg-white text-[12.5px] font-semibold text-[#444] inline-flex items-center gap-2 shadow-sm ring-1 ring-[#eee] hover:ring-[#dcdcdc] active:scale-[0.97] transition-all">
+            <SlidersHorizontal className="w-3.5 h-3.5 text-[#0a0a0a]" />
+            <span className="text-[#777]">{channel === 'google' ? 'Google' : channel === 'meta' ? 'Meta' : 'Alle kanaler'}</span>
+            <span className="text-[#ddd]">·</span>
+            <span className="text-[#0a0a0a]">{periodLabel}</span>
+          </button>
+          <button onClick={() => load(true)} disabled={loading} title="Oppdater nå" className="sm:hidden h-10 w-10 rounded-full bg-white flex items-center justify-center shadow-sm ring-1 ring-[#eee] hover:ring-[#dcdcdc] disabled:opacity-40 ml-auto"><RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /></button>
+        </div>
+        <div className="flex items-center gap-1 bg-[#f1efeb] rounded-full p-1 w-fit">
+          {[['all', `Alle (${counts.all})`], ['active', `Aktive (${counts.active})`], ['paused', `Pauset (${counts.paused})`]].map(([v, l]) => (
+            <button key={v} onClick={() => setStatusF(v)} className={`px-3 h-8 rounded-full text-[12px] font-semibold transition-all whitespace-nowrap ${statusF === v ? 'bg-white text-[#0a0a0a] shadow-sm' : 'text-[#888] hover:text-[#0a0a0a]'}`}>{l}</button>
           ))}
         </div>
-        <div className="flex items-center gap-1 bg-[#f1efeb] rounded-full p-1">
-          {[['all', 'Alle'], ['active', 'Aktive'], ['paused', 'Pauset']].map(([v, l]) => (
-            <button key={v} onClick={() => setStatusF(v)} className={`px-3 h-8 rounded-full text-[12px] font-semibold transition-all ${statusF === v ? 'bg-white text-[#0a0a0a] shadow-sm' : 'text-[#888] hover:text-[#0a0a0a]'}`}>{l}</button>
-          ))}
-        </div>
-        <div className="relative">
+        <div className="relative flex-1 sm:flex-none">
           <Search className="w-4 h-4 text-[#bbb] absolute left-3 top-1/2 -translate-y-1/2" />
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Søk annonse/kampanje…" className="h-10 pl-9 pr-3 rounded-full bg-white ring-1 ring-[#eee] text-[12.5px] text-[#0a0a0a] outline-none focus:ring-[#dcdcdc] w-[220px]" />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Søk annonse/kampanje…" className="h-10 pl-9 pr-3 rounded-full bg-white ring-1 ring-[#eee] text-[12.5px] text-[#0a0a0a] outline-none focus:ring-[#dcdcdc] w-full sm:w-[220px]" />
         </div>
-        <button onClick={() => load(true)} disabled={loading} className="h-10 w-10 rounded-full bg-white flex items-center justify-center shadow-sm ring-1 ring-transparent hover:ring-[#dcdcdc] disabled:opacity-40 ml-auto"><RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /></button>
+        {/* Sortering på mobil (desktop sorterer via kolonneoverskrifter) */}
+        <select value={`${sortKey}:${sortDir}`} onChange={(e) => { const [k, d] = e.target.value.split(':'); setSortKey(k); setSortDir(d); }} className="sm:hidden h-10 px-3 rounded-full bg-white ring-1 ring-[#eee] text-[12.5px] font-semibold text-[#444] outline-none focus:ring-[#dcdcdc] appearance-none">
+          <option value="cost:desc">Høyest kostnad</option>
+          <option value="clicks:desc">Flest klikk</option>
+          <option value="impressions:desc">Flest visninger</option>
+          <option value="conversions:desc">Flest konverteringer</option>
+          <option value="ctr:desc">Høyest CTR</option>
+          <option value="roas:desc">Høyest ROAS</option>
+          <option value="name:asc">Navn A–Å</option>
+        </select>
+        <button onClick={() => load(true)} disabled={loading} title="Oppdater nå" className="hidden sm:flex h-10 w-10 rounded-full bg-white items-center justify-center shadow-sm ring-1 ring-transparent hover:ring-[#dcdcdc] disabled:opacity-40 ml-auto"><RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /></button>
       </div>
 
       {err && <div className="mb-4 bg-rose-50 text-rose-600 rounded-xl px-4 py-3 text-[13px] flex items-center gap-2"><AlertCircle className="w-4 h-4" /> {err}</div>}
@@ -1381,7 +1456,16 @@ function AdsTable({ apiKey, period, channel }) {
         <div className="bg-white rounded-2xl p-10 text-center text-[#999] text-[13px] shadow-[0_2px_16px_rgba(0,0,0,0.04)]">Ingen annonser matcher filteret i denne perioden.</div>
       ) : (
         <div className="bg-white rounded-2xl shadow-[0_2px_16px_rgba(0,0,0,0.04)] overflow-hidden">
-          <div className="overflow-x-auto">
+          {/* Mobil: kompakte kort */}
+          <div className="sm:hidden divide-y divide-[#f4f4f4]">
+            {sorted.map((r) => <MobileAdCard key={`m-${r.channel}-${r.id}`} r={r} apiKey={apiKey} />)}
+            <div className="px-4 py-3 bg-[#fafafa] flex items-center justify-between text-[12px] font-semibold text-[#0a0a0a]">
+              <span>{filtered.length} annonser</span>
+              <span>{fmtKr(totals.cost)} · {fmtNum(totals.clicks)} klikk</span>
+            </div>
+          </div>
+          {/* Desktop: full tabell */}
+          <div className="hidden sm:block overflow-x-auto">
             <table className="w-full text-[12.5px]">
               <thead className="text-[#999] text-[11px] uppercase tracking-wide border-b border-[#f0f0f0]">
                 <tr>
@@ -1405,7 +1489,7 @@ function AdsTable({ apiKey, period, channel }) {
                       <div className="flex items-center gap-2">{channelPill(r.channel)}<span className="font-semibold text-[#0a0a0a] truncate" title={r.name}>{r.name || '–'}</span></div>
                       <div className="text-[11px] text-[#aaa] truncate" title={`${r.campaign} · ${r.adGroup}`}>{r.campaign}{r.adGroup ? ` · ${r.adGroup}` : ''}</div>
                     </td>
-                    <td className="px-3 py-2.5">{statusPill(r.status)}</td>
+                    <td className="px-3 py-2.5"><span className="inline-flex items-center gap-1.5 flex-wrap">{statusPill(r.status)}{scopeBadge(r.statsScope)}</span></td>
                     <td className="px-3 py-2.5 text-right font-semibold text-[#0a0a0a]">{fmtKr(r.cost)}</td>
                     <td className="px-3 py-2.5 text-right text-[#666]">{fmtNum(r.impressions)}</td>
                     <td className="px-3 py-2.5 text-right text-[#666]">{fmtNum(r.clicks)}</td>
@@ -1416,10 +1500,7 @@ function AdsTable({ apiKey, period, channel }) {
                     <td className={`px-3 py-2.5 text-right font-semibold ${roasColor(r.roas)}`}>{r.roas != null ? fmtX(r.roas) : '–'}</td>
                     <td className="px-3 py-2.5 text-right whitespace-nowrap">
                       {(() => {
-                        const lp = r.channel === 'google' ? r.finalUrl : r.link;
-                        const adUrl = r.channel === 'google'
-                          ? (r.campaignId && r.adGroupId ? `https://ads.google.com/aw/ads?campaignId=${r.campaignId}&adGroupId=${r.adGroupId}` : 'https://ads.google.com/aw/ads')
-                          : `/api/admin/ads/preview?id=${encodeURIComponent(r.id)}&format=MOBILE_FEED_STANDARD&key=${encodeURIComponent(apiKey || '')}`;
+                        const { lp, adUrl } = adLinks(r, apiKey);
                         return (
                           <span className="inline-flex items-center gap-1">
                             {lp ? (
@@ -1444,7 +1525,7 @@ function AdsTable({ apiKey, period, channel }) {
               </tbody>
               <tfoot className="border-t-2 border-[#f0f0f0] bg-[#fafafa] font-semibold text-[#0a0a0a]">
                 <tr>
-                  <td className="px-3 py-2.5" colSpan={2}>{filtered.length} annonser</td>
+                  <td className="px-3 py-2.5" colSpan={2}>{filtered.length} annonser · sum for perioden</td>
                   <td className="px-3 py-2.5 text-right">{fmtKr(totals.cost)}</td>
                   <td className="px-3 py-2.5 text-right">{fmtNum(totals.impressions)}</td>
                   <td className="px-3 py-2.5 text-right">{fmtNum(totals.clicks)}</td>
@@ -1459,6 +1540,9 @@ function AdsTable({ apiKey, period, channel }) {
             </table>
           </div>
         </div>
+      )}
+      {!loading && sorted.some((r) => r.statsScope === 'lifetime') && (
+        <p className="mt-2.5 text-[11.5px] text-[#999] leading-relaxed">Rader merket <span className="font-bold text-[#8b5cf6]">Livstid</span> hadde ingen aktivitet i valgt periode og viser i stedet samlede tall for hele annonsens levetid. Disse telles ikke med i period-summen nederst.</p>
       )}
       {meta.google && meta.google.error && <p className="mt-2 text-[11px] text-amber-600">Google: {meta.google.error}</p>}
       {meta.meta && meta.meta.error && <p className="mt-2 text-[11px] text-amber-600">Meta: {meta.meta.error}</p>}

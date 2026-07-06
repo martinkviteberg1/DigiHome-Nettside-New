@@ -1374,6 +1374,30 @@ backend:
 
 
 frontend:
+  - task: "AdsTab verdensklasse-overhaul: responsiv annonse-tabell (mobilkort), Livstid-merking, filter-chips m/tellere, fix av ødelagt kanal-chips (setChan-krasj)"
+    implemented: true
+    working: true
+    file: "/app/components/admin/AdsTab.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "main"
+        -comment: "Fullførte avbrutt UI-overhaul: (1) Fjernet ødelagt kanal-chips i AdsTable som kalte ikke-eksisterende setChan (runtime-krasj) — erstattet med chip som åpner globalt filter (onOpenFilter) og viser kanal+periode. (2) Status-chips viser nå tellere: Alle (36) / Aktive (8) / Pauset (28). (3) Ny mobil kortvisning (<640px): MobileAdCard m/kanal+status+Livstid-badges, 4-stats-grid (Visn/Klikk/CTR/Konv), lenker til landingsside+forhåndsvisning. Desktop-tabell skjult på mobil (hidden sm:block). (4) Livstid-badge (scopeBadge) på rader m/statsScope='lifetime' (pausede annonser u/aktivitet i perioden viser samlede tall) + fotnote som forklarer at disse ikke telles i period-summen. (5) Mobil sorterings-select (Høyest kostnad/Flest klikk osv). (6) Søkefelt full bredde på mobil. (7) Filtermodal: max-h-[92dvh] + overflow-y-auto. Skjermbilde-verifisert desktop 1920px (Google+Meta-rader, Livstid-merker, sum-rad) og mobil 390px (kortvisning perfekt)."
+
+  - task: "KRITISK CSS-fix: .dh-tab-in fill-mode both → backwards (position:fixed-modaler var brutt i ALLE Innsikt-faner)"
+    implemented: true
+    working: true
+    file: "/app/app/globals.css"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "main"
+        -comment: "ROTÅRSAK til at filtermodalen (og alle andre modaler i faner) framsto som «ikke responsiv»: .dh-tab-in hadde animation-fill-mode:both, og Chromium beholder da en identitets-transform (matrix(1,0,0,1,0,0)) på fane-wrapperen ETTER at animasjonen er ferdig. En ancestor med transform gjør at position:fixed-etterkommere posisjoneres mot wrapperen i stedet for viewporten — modalen ble rendret ~6800px ned på siden (bounding box-bevist) og backdrop-overlayet dekket hele innholdet (dette var «blurringen» brukeren så). Fix: fill-mode backwards (transform slippes etter animasjon). Verifisert m/skjermbilde 390px: filtermodal rendres nå korrekt som bottom sheet, «Bruk filter» på y=772 (innenfor 844px viewport). Fikser samtidig TrackingVerifyModal, CreateCampaignModal, CompetitorCampaign og alle andre fixed-modaler i alle faner."
+
   - task: "API-forbruk: plattform-kortet viser nå CRM-tjenester + deres LLM per funksjon (tilkoblet-tilstand)"
     implemented: true
     working: true
