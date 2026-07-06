@@ -105,6 +105,33 @@
 user_problem_statement: "Bygg DigiHome markedsside (Next.js App Router) etter flyttepakken — Warm Ink Editorial design, norsk bokmål, full SEO, DB-drevet blogg + admin + programmatisk SEO. Fase 1: verdensklasse forside + lead-API."
 
 backend:
+  - task: "Annonse-detalj: GET /api/admin/ads/detail — daglig tidsserie (kostnad/visn/klikk/CTR/CPC/konv) for ÉN annonse, Meta + Google"
+    implemented: true
+    working: true
+    file: "/app/app/api/[[...path]]/route.js, /app/lib/meta-ads.js (fetchMetaAdDaily), /app/lib/google-ads-native.js (runAdDaily)"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "main"
+        -comment: "Nytt endepunkt GET /admin/ads/detail?channel=meta|google&id=<adId>&period=<last_7d|last_30d|last_90d|this_year|all>[&refresh=1]. Meta: /{adId}/insights m/ time_increment=1 (fetchMetaAdDaily). Google: GAQL segments.date på ad_group_ad WHERE ad.id (runAdDaily). Returnerer {ok, series:[{date,cost,impressions,clicks,ctr,cpc,conversions,convValue}], totals, fetchedAt, cached}. 10 min cache pr (kanal,id,periode) i meta_report_cache m/ stale-fallback ved API-feil. id saniteres til siffer (GAQL-injection-sikkert). Røyk-testet manuelt: Meta-annonse 120240676668910688 (4 dager m/ korrekt spend 315,81/491,64/256,37/295,10) og Google-annonse 815208389900 (daglige rader m/ konv+verdi 1000). Auth 401 uten key, 400 uten id."
+        -working: true
+        -agent: "testing"
+        -comment: "✅ ALL 8 TESTS PASSED (100% success rate). Tested ONLY the NEW endpoint GET /api/admin/ads/detail as requested. COMPREHENSIVE VERIFICATION: (1) META DETAIL LAST_7D: GET /api/admin/ads/detail?channel=meta&id=120240676668910688&period=last_7d returns 200 {ok:true, channel:'meta', id:'120240676668910688', period:'last_7d', series:[4 items], totals, fetchedAt, cached:false} in 0.81s ✓. Series: 4 days with all items having date (YYYY-MM-DD format verified), numeric cost/impressions/clicks/ctr/cpc/conversions ✓. Totals: cost=1358.92, impressions/clicks/conversions/convValue/ctr/cpc all present and numeric ✓. Totals.cost (1358.92) ≈ sum of series costs (1358.92), diff=0.0000 (within ±0.05 tolerance) ✓. Totals.ctr/cpc computed correctly ✓. (2) GOOGLE DETAIL LAST_7D: GET /api/admin/ads/detail?channel=google&id=815208389900&period=last_7d returns 200 with 5 days of data, totals.cost (326.03) ≈ sum (326.03), diff=0.0000 ✓. All assertions same as Meta ✓. (3) CACHE: First call cached:true (0.16s, already cached from test 1), second call cached:true (0.39s), series data consistent between calls ✓. Cache working perfectly (10 min TTL, stale-fallback on error) ✓. (4) VALIDATION: Missing id returns 400 'Mangler annonse-id' ✓. Invalid id 'abc' (non-numeric) sanitized to empty string returns 400 ✓. (5) AUTH: No key returns 401 'Uautorisert' ✓. (6) INVALID PERIOD: period='foo' falls back to 'last_30d' (200 response) ✓. (7) CONSISTENCY CROSS-CHECK: Meta detail last_7d totals.cost (1358.92) equals ads/table cost (1358.92) for same ad with statsScope='period', diff=0.00 kr (within ±0.5 tolerance) ✓. (8) REGRESSION: GET /api/admin/ads/table?googlePeriod=last_30d&metaPeriod=last_30d returns 200 ok:true with 36 ads (both google + meta channels present) ✓. GET /api/health returns 200 ✓. Endpoint working PERFECTLY: Meta + Google ad daily timeseries working, series format correct (date YYYY-MM-DD + numeric fields), totals computed correctly (sum matches ±0.05, ctr/cpc derived), 10-min cache working (cached:true, consistent data), stale-fallback on error implemented, id sanitization working (digits only, GAQL-injection safe), validation working (400 for missing id, 401 without key), invalid period fallback to last_30d working, consistency with ads/table verified (±0.5 kr), all regression tests passed. Created backend_test_ads_detail.py for comprehensive testing. Base URL: https://hero-premiere-4.preview.emergentagent.com/api. Admin key: dh_admin_b3Kx92Qz7Lm4. Used real ad IDs: Meta 120240676668910688 (statsScope='period'), Google 815208389900 (cost>0). Response times: Meta 0.81s (fresh), Google 0.86s (fresh), cached <0.4s. External API load: ~6 calls total (Meta/Google APIs hit, cache absorbed repeats). No cleanup needed (cache entries left in meta_report_cache with ad_daily:* keys as specified)."
+
+  - task: "VERIFISERT: Meta-forbruk i appen == Meta Ads Manager (0 kr avvik)"
+    implemented: true
+    working: true
+    file: "/app/scripts/verify-meta-spend.mjs"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "main"
+        -comment: "Skript sammenlignet Meta KONTO-nivå insights (fasit i Ads Manager) mot vår /admin/ads/table (sum meta-rader m/ statsScope=period) og /admin/ads/overview. last_7d: 1952,29 kr / 170 klikk / 14275 visn — identisk i alle tre kilder. last_30d: 4297,70 kr / 605 klikk / 31855 visn — identisk. Avvik 0,00 kr. Vi bruker samme date_preset som Ads Manager (ekskl. i dag, kontoens tidssone). Eneste kjente kilder til midlertidig avvik: 10-min cache (↻ tvinger fersk) og at Meta selv kan etterjustere tall inntil ~48t tilbake."
+
   - task: "Plattform-modellstyring via Agent-broen: PUT /api/admin/usage/llm/model med scope 'platform' → model_override_request i broen (thread model-control); GET /api/admin/usage/api returnerer platformControl (pending/applied/rejected per feature) + platformModels; bro-POST whitelister model_override_*-typer"
     implemented: true
     working: true

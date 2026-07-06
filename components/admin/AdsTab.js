@@ -1317,10 +1317,10 @@ function adLinks(r, apiKey) {
   return { lp, adUrl };
 }
 // Kompakt kortvisning per annonse — mobil (<640px)
-function MobileAdCard({ r, apiKey }) {
+function MobileAdCard({ r, apiKey, onOpen }) {
   const { lp, adUrl } = adLinks(r, apiKey);
   return (
-    <div className="px-4 py-3.5">
+    <div className="px-4 py-3.5 active:bg-[#fafafa] cursor-pointer" onClick={() => onOpen && onOpen(r)}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5 flex-wrap">{channelPill(r.channel)}{statusPill(r.status)}{scopeBadge(r.statsScope)}</div>
@@ -1342,14 +1342,181 @@ function MobileAdCard({ r, apiKey }) {
       </div>
       <div className="mt-2 flex items-center gap-2">
         {lp && (
-          <a href={lp} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full bg-[#faf6fe] text-[#8b5cf6] text-[11.5px] font-semibold">
+          <a href={lp} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full bg-[#faf6fe] text-[#8b5cf6] text-[11.5px] font-semibold">
             <Globe className="w-3.5 h-3.5" /> Landingsside
           </a>
         )}
-        <a href={adUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full bg-[#f6f4f1] text-[#555] text-[11.5px] font-semibold">
+        <a href={adUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full bg-[#f6f4f1] text-[#555] text-[11.5px] font-semibold">
           <ExternalLink className="w-3.5 h-3.5" /> {r.channel === 'google' ? 'Google Ads' : 'Forhåndsvis'}
         </a>
         {r.cpc != null && <span className="ml-auto text-[11px] text-[#999]">CPC {fmtKr2(r.cpc)}</span>}
+      </div>
+    </div>
+  );
+}
+
+// === Detalj-modal: daglig forbruk/klikk/visninger for ÉN annonse ===
+const DETAIL_METRICS = [
+  ['cost', 'Kostnad', (v) => fmtKr(v)],
+  ['clicks', 'Klikk', (v) => fmtNum(v)],
+  ['impressions', 'Visn.', (v) => fmtNum(v)],
+  ['conversions', 'Konv.', (v) => fmtNum(v)],
+];
+function AdDetailModal({ ad, apiKey, period, periodLabel, onClose }) {
+  const [mounted, setMounted] = useState(false);
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState('');
+  const [metric, setMetric] = useState('cost');
+  const lifetime = ad.statsScope === 'lifetime';
+  const effPeriod = lifetime ? 'all' : period;
+
+  useEffect(() => {
+    const t = setTimeout(() => setMounted(true), 10);
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    if (typeof document !== 'undefined') document.body.style.overflow = 'hidden';
+    return () => { clearTimeout(t); window.removeEventListener('keydown', onKey); if (typeof document !== 'undefined') document.body.style.overflow = ''; };
+  }, [onClose]);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      setLoading(true); setErr('');
+      try {
+        const params = new URLSearchParams({ key: apiKey, channel: ad.channel, id: String(ad.id), period: effPeriod });
+        const res = await fetch(`/api/admin/ads/detail?${params.toString()}`);
+        const j = await res.json();
+        if (!alive) return;
+        if (!j.ok) { setErr(j.error || 'Kunne ikke hente daglig data'); setData(null); }
+        else setData(j);
+      } catch (e) { if (alive) setErr('Nettverksfeil'); }
+      finally { if (alive) setLoading(false); }
+    })();
+    return () => { alive = false; };
+  }, [apiKey, ad.channel, ad.id, effPeriod]);
+
+  const series = (data && data.series) || [];
+  const totals = (data && data.totals) || {};
+  const chart = series.slice(-90); // maks 90 søyler i grafen; tabellen viser alt
+  const maxVal = Math.max(1, ...chart.map((d) => d[metric] || 0));
+  const fmtMetric = (DETAIL_METRICS.find(([k]) => k === metric) || DETAIL_METRICS[0])[2];
+  const desc = [...series].reverse();
+  const { lp, adUrl } = adLinks(ad, apiKey);
+
+  return (
+    <div className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center">
+      <div onClick={onClose} className={`absolute inset-0 bg-[#0a0a0a]/45 backdrop-blur-[3px] transition-opacity duration-300 ${mounted ? 'opacity-100' : 'opacity-0'}`} />
+      <div className={`relative w-full sm:max-w-2xl max-h-[92dvh] overflow-y-auto overscroll-contain bg-white rounded-t-[28px] sm:rounded-[28px] shadow-[0_30px_90px_rgba(0,0,0,0.28)] p-5 sm:p-7 transition-all duration-300 ${mounted ? 'opacity-100 translate-y-0 sm:scale-100' : 'opacity-0 translate-y-8 sm:translate-y-2 sm:scale-95'}`}>
+        {/* Header */}
+        <div className="flex items-start justify-between gap-3 mb-4">
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5 flex-wrap">{channelPill(ad.channel)}{statusPill(ad.status)}{scopeBadge(ad.statsScope)}</div>
+            <h3 className="mt-1.5 text-[16px] font-bold text-[#0a0a0a] leading-snug" style={{ fontFamily: 'var(--font-heading)' }}>{ad.name || '–'}</h3>
+            <p className="text-[11.5px] text-[#aaa] truncate">{ad.campaign}{ad.adGroup ? ` · ${ad.adGroup}` : ''}</p>
+          </div>
+          <button onClick={onClose} className="shrink-0 w-8 h-8 rounded-full hover:bg-[#f4f0fb] text-[#999] hover:text-[#8b5cf6] flex items-center justify-center transition-colors"><X className="w-4 h-4" /></button>
+        </div>
+        <p className="text-[11.5px] text-[#999] mb-4">
+          {lifetime
+            ? 'Ingen aktivitet i valgt periode — viser daglig historikk for hele annonsens levetid.'
+            : `Daglig utvikling · ${periodLabel}`}
+          {data && data.fetchedAt ? ` · oppdatert ${minsAgo(data.fetchedAt) || 'nylig'}` : ''}
+        </p>
+
+        {loading ? (
+          <div className="py-16 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-[#0a0a0a]" /></div>
+        ) : err ? (
+          <div className="bg-rose-50 text-rose-600 rounded-xl px-4 py-3 text-[13px] flex items-center gap-2"><AlertCircle className="w-4 h-4" /> {err}</div>
+        ) : series.length === 0 ? (
+          <div className="bg-[#faf9f7] rounded-2xl p-8 text-center text-[#999] text-[13px]">Ingen daglig data i denne perioden.</div>
+        ) : (
+          <>
+            {/* KPI-rad (sum for perioden) */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-5">
+              {[['Kostnad', fmtKr(totals.cost)], ['Klikk', fmtNum(totals.clicks)], ['Visninger', fmtNum(totals.impressions)], ['Konvert.', totals.conversions ? fmtNum(totals.conversions) : '–']].map(([l, v]) => (
+                <div key={l} className="bg-[#faf9f7] rounded-xl px-3 py-2.5">
+                  <p className="text-[10px] uppercase tracking-[0.06em] text-[#b3b3b3] font-bold">{l}</p>
+                  <p className="text-[15px] font-bold text-[#0a0a0a]">{v}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Metric-bryter + søylegraf */}
+            <div className="flex items-center gap-1 bg-[#f1efeb] rounded-full p-1 w-fit mb-3">
+              {DETAIL_METRICS.map(([k, l]) => (
+                <button key={k} onClick={() => setMetric(k)} className={`px-3 h-7.5 py-1 rounded-full text-[11.5px] font-semibold transition-all ${metric === k ? 'bg-white text-[#0a0a0a] shadow-sm' : 'text-[#888] hover:text-[#0a0a0a]'}`}>{l}</button>
+              ))}
+            </div>
+            <div className="flex items-end gap-px h-28 mb-1.5 rounded-xl bg-[#faf9f7] px-2 pt-2">
+              {chart.map((d) => (
+                <div key={d.date} className="flex-1 min-w-0 group relative flex items-end h-full" title={`${fmtDayLabel(d.date)} · ${fmtMetric(d[metric])}`}>
+                  <div className="w-full rounded-t-[3px] bg-[#0a0a0a] group-hover:bg-[#8b5cf6] transition-colors" style={{ height: `${Math.max(2, ((d[metric] || 0) / maxVal) * 100)}%`, opacity: (d[metric] || 0) > 0 ? 1 : 0.12 }} />
+                </div>
+              ))}
+            </div>
+            <div className="flex justify-between text-[10.5px] text-[#b3b3b3] mb-5">
+              <span>{chart[0] ? fmtDayLabel(chart[0].date) : ''}</span>
+              {series.length > 90 && <span>viser siste 90 dager i grafen</span>}
+              <span>{chart[chart.length - 1] ? fmtDayLabel(chart[chart.length - 1].date) : ''}</span>
+            </div>
+
+            {/* Daglig tabell (nyeste først) */}
+            <div className="rounded-2xl ring-1 ring-[#f0f0f0] overflow-hidden">
+              <div className="overflow-x-auto max-h-[300px] overflow-y-auto">
+                <table className="w-full text-[12px]">
+                  <thead className="text-[#999] text-[10.5px] uppercase tracking-wide bg-[#fafafa] sticky top-0">
+                    <tr>
+                      <th className="px-3 py-2 text-left">Dato</th>
+                      <th className="px-3 py-2 text-right">Kostnad</th>
+                      <th className="px-3 py-2 text-right">Visn.</th>
+                      <th className="px-3 py-2 text-right">Klikk</th>
+                      <th className="px-3 py-2 text-right">CTR</th>
+                      <th className="px-3 py-2 text-right">CPC</th>
+                      <th className="px-3 py-2 text-right">Konv.</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {desc.map((d) => (
+                      <tr key={d.date} className="border-t border-[#f6f6f6] hover:bg-[#fafafa]">
+                        <td className="px-3 py-2 font-semibold text-[#0a0a0a] whitespace-nowrap">{fmtDayLabel(d.date)}</td>
+                        <td className="px-3 py-2 text-right font-semibold text-[#0a0a0a]">{fmtKr2(d.cost)}</td>
+                        <td className="px-3 py-2 text-right text-[#666]">{fmtNum(d.impressions)}</td>
+                        <td className="px-3 py-2 text-right text-[#666]">{fmtNum(d.clicks)}</td>
+                        <td className="px-3 py-2 text-right text-[#666]">{fmtPct(d.ctr)}</td>
+                        <td className="px-3 py-2 text-right text-[#666]">{fmtKr2(d.cpc)}</td>
+                        <td className="px-3 py-2 text-right text-[#666]">{d.conversions ? fmtNum(d.conversions) : '–'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot className="border-t-2 border-[#f0f0f0] bg-[#fafafa] font-semibold text-[#0a0a0a]">
+                    <tr>
+                      <td className="px-3 py-2">{series.length} dager</td>
+                      <td className="px-3 py-2 text-right">{fmtKr(totals.cost)}</td>
+                      <td className="px-3 py-2 text-right">{fmtNum(totals.impressions)}</td>
+                      <td className="px-3 py-2 text-right">{fmtNum(totals.clicks)}</td>
+                      <td className="px-3 py-2 text-right text-[#bbb]">{fmtPct(totals.ctr)}</td>
+                      <td className="px-3 py-2 text-right text-[#bbb]">{fmtKr2(totals.cpc)}</td>
+                      <td className="px-3 py-2 text-right">{totals.conversions ? fmtNum(totals.conversions) : '–'}</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+
+            {/* Handlinger */}
+            <div className="flex items-center gap-2 mt-4">
+              {lp && (
+                <a href={lp} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 h-9 px-4 rounded-full bg-[#faf6fe] text-[#8b5cf6] text-[12px] font-semibold hover:bg-[#f0e6fc] transition-colors">
+                  <Globe className="w-3.5 h-3.5" /> Landingsside
+                </a>
+              )}
+              <a href={adUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 h-9 px-4 rounded-full bg-[#f6f4f1] text-[#555] text-[12px] font-semibold hover:bg-[#efeae3] transition-colors">
+                <ExternalLink className="w-3.5 h-3.5" /> {ad.channel === 'google' ? 'Åpne i Google Ads' : 'Forhåndsvis annonsen'}
+              </a>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
@@ -1364,6 +1531,7 @@ function AdsTable({ apiKey, period, channel, periodLabel, onOpenFilter }) {
   const [sortDir, setSortDir] = useState('desc');
   const [statusF, setStatusF] = useState('all');
   const [q, setQ] = useState('');
+  const [detail, setDetail] = useState(null); // annonse valgt for daglig detalj-modal
   // Kanal styres av det globale filteret (én kilde til sannhet — ikke egne chips her)
   const chan = channel === 'both' ? 'all' : channel;
 
@@ -1458,7 +1626,7 @@ function AdsTable({ apiKey, period, channel, periodLabel, onOpenFilter }) {
         <div className="bg-white rounded-2xl shadow-[0_2px_16px_rgba(0,0,0,0.04)] overflow-hidden">
           {/* Mobil: kompakte kort */}
           <div className="sm:hidden divide-y divide-[#f4f4f4]">
-            {sorted.map((r) => <MobileAdCard key={`m-${r.channel}-${r.id}`} r={r} apiKey={apiKey} />)}
+            {sorted.map((r) => <MobileAdCard key={`m-${r.channel}-${r.id}`} r={r} apiKey={apiKey} onOpen={setDetail} />)}
             <div className="px-4 py-3 bg-[#fafafa] flex items-center justify-between text-[12px] font-semibold text-[#0a0a0a]">
               <span>{filtered.length} annonser</span>
               <span>{fmtKr(totals.cost)} · {fmtNum(totals.clicks)} klikk</span>
@@ -1484,7 +1652,7 @@ function AdsTable({ apiKey, period, channel, periodLabel, onOpenFilter }) {
               </thead>
               <tbody>
                 {sorted.map((r) => (
-                  <tr key={`${r.channel}-${r.id}`} className="border-b border-[#f6f6f6] hover:bg-[#fafafa]">
+                  <tr key={`${r.channel}-${r.id}`} onClick={() => setDetail(r)} className="border-b border-[#f6f6f6] hover:bg-[#fafafa] cursor-pointer" title="Klikk for daglig utvikling">
                     <td className="px-3 py-2.5 max-w-[280px]">
                       <div className="flex items-center gap-2">{channelPill(r.channel)}<span className="font-semibold text-[#0a0a0a] truncate" title={r.name}>{r.name || '–'}</span></div>
                       <div className="text-[11px] text-[#aaa] truncate" title={`${r.campaign} · ${r.adGroup}`}>{r.campaign}{r.adGroup ? ` · ${r.adGroup}` : ''}</div>
@@ -1544,6 +1712,7 @@ function AdsTable({ apiKey, period, channel, periodLabel, onOpenFilter }) {
       {!loading && sorted.some((r) => r.statsScope === 'lifetime') && (
         <p className="mt-2.5 text-[11.5px] text-[#999] leading-relaxed">Rader merket <span className="font-bold text-[#8b5cf6]">Livstid</span> hadde ingen aktivitet i valgt periode og viser i stedet samlede tall for hele annonsens levetid. Disse telles ikke med i period-summen nederst.</p>
       )}
+      {detail && <AdDetailModal ad={detail} apiKey={apiKey} period={period} periodLabel={periodLabel} onClose={() => setDetail(null)} />}
       {meta.google && meta.google.error && <p className="mt-2 text-[11px] text-amber-600">Google: {meta.google.error}</p>}
       {meta.meta && meta.meta.error && <p className="mt-2 text-[11px] text-amber-600">Meta: {meta.meta.error}</p>}
     </div>

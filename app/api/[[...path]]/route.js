@@ -10,10 +10,10 @@ import { isBot, buildEvent, ensureAnalyticsIndexes, computeAnalytics, computeLea
 import { deriveChannel, serializeForLLM, computeWebVitals, detectAnomalies, computeLive, computeAdsEconomics, computeMetaEconomics, combineAdsEconomics, computeAdsLeadsSeries } from '@/lib/analytics-server';
 import { parseGoogleAdsCsv } from '@/lib/adsImport';
 import { sendMetaCapiEvent, metaCapiConfigured } from '@/lib/meta-capi';
-import { fetchMetaInsights, fetchMetaAccount, metaAdsConfigured, getCachedMetaReport, META_PERIODS, metaPeriodToRange, getCachedMetaCreatives, fetchMetaPreviewSrc, isValidPreviewFormat, getCachedMetaAdsTable, fetchMetaDaily, fetchMetaDailyActions, fetchMetaAdsWithInsights } from '@/lib/meta-ads';
+import { fetchMetaInsights, fetchMetaAccount, metaAdsConfigured, getCachedMetaReport, META_PERIODS, metaPeriodToRange, getCachedMetaCreatives, fetchMetaPreviewSrc, isValidPreviewFormat, getCachedMetaAdsTable, fetchMetaDaily, fetchMetaDailyActions, fetchMetaAdsWithInsights, fetchMetaAdDaily, metaPeriodToPreset } from '@/lib/meta-ads';
 import { fetchPages, fetchLeadForms, fetchFormLeads, mapLeadFields, metaLeadAdsConfigured, fetchSingleLead, fetchFormName, fetchPageToken } from '@/lib/meta-leadads';
 import { composioConfigured, createConnectLink, getConnectionStatus, runCampaignReport, defaultCustomerId, getCachedReport, GOOGLE_PERIODS, getCachedCreatives, activeProvider } from '@/lib/google-ads-provider';
-import { googleAdsNativeConfigured, listConversionActions, resolveOfflineConversionAction, uploadClickConversion, toConversionDateTime, listCampaignsDetailed, suggestGeoTargets, setCampaignStatus, updateCampaignBudget, createSearchCampaign, createCompetitorCampaign, getCampaignByName, runAdsWithMetrics, runSearchTerms, runKeywordMetrics, generateKeywordIdeas, gaqlSearch, setCampaignMaximizeClicks, listRsaAds, createRsaAd, setAdStatus } from '@/lib/google-ads-native';
+import { googleAdsNativeConfigured, listConversionActions, resolveOfflineConversionAction, uploadClickConversion, toConversionDateTime, listCampaignsDetailed, suggestGeoTargets, setCampaignStatus, updateCampaignBudget, createSearchCampaign, createCompetitorCampaign, getCampaignByName, runAdsWithMetrics, runSearchTerms, runKeywordMetrics, generateKeywordIdeas, gaqlSearch, setCampaignMaximizeClicks, listRsaAds, createRsaAd, setAdStatus, runAdDaily } from '@/lib/google-ads-native';
 import { runAdsWithMetricsViaComposio } from '@/lib/composio-google-ads';
 import { dataManagerConfigured, ingestOfflineConversion } from '@/lib/google-ads-datamanager';
 import { IMPORTED_COLL, importRecords, parseCsv, summarizeImported, syncFromPlatform, listImported, updateImportedOverride } from '@/lib/imported-leads';
@@ -4871,6 +4871,55 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
         meta: { configured: m.configured, error: m.error || null, fetchedAt: m.fetchedAt || null, stale: !!m.stale },
         googlePeriod, metaPeriod,
       }));
+    }
+
+    // ===================================================================
+    // Detalj for ÉN annonse: daglig tidsserie (kostnad/visn/klikk/CTR/CPC/konv.)
+    // GET /admin/ads/detail?channel=meta|google&id=<adId>&period=<p>[&refresh=1]
+    // Cachet 10 min pr. (kanal, id, periode) i meta_report_cache.
+    // ===================================================================
+    if (route === '/admin/ads/detail' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const { searchParams } = new URL(request.url);
+      const channel = searchParams.get('channel') === 'google' ? 'google' : 'meta';
+      const id = String(searchParams.get('id') || '').replace(/\D/g, '');
+      if (!id) return cors(NextResponse.json({ ok: false, error: 'Mangler annonse-id' }, { status: 400 }));
+      const period = META_PERIODS.includes(searchParams.get('period')) ? searchParams.get('period') : 'last_30d';
+      const refresh = ['1', 'true'].includes(String(searchParams.get('refresh')));
+      const cacheKey = `ad_daily:${channel}:${id}:${period}`;
+      const coll = db.collection('meta_report_cache');
+      const existing = await coll.findOne({ key: cacheKey });
+      const ageMs = existing ? (Date.now() - new Date(existing.fetchedAt).getTime()) : Infinity;
+      if (!refresh && existing && ageMs < 10 * 60 * 1000) {
+        return cors(NextResponse.json({ ok: true, channel, id, period, series: existing.series, totals: existing.totals, fetchedAt: existing.fetchedAt, cached: true }));
+      }
+      try {
+        let series;
+        if (channel === 'google') {
+          if (!googleAdsNativeConfigured()) return cors(NextResponse.json({ ok: false, error: 'Google Ads er ikke konfigurert' }, { status: 400 }));
+          const range = metaPeriodToRange(period);
+          series = await runAdDaily({ adId: id, since: range.periodFrom, until: range.periodTo });
+        } else {
+          if (!metaAdsConfigured()) return cors(NextResponse.json({ ok: false, error: 'Meta er ikke konfigurert' }, { status: 400 }));
+          series = await fetchMetaAdDaily(id, { datePreset: metaPeriodToPreset(period) });
+        }
+        const totals = series.reduce((t, d) => ({
+          cost: t.cost + (d.cost || 0), impressions: t.impressions + (d.impressions || 0),
+          clicks: t.clicks + (d.clicks || 0), conversions: t.conversions + (d.conversions || 0),
+          convValue: t.convValue + (d.convValue || 0),
+        }), { cost: 0, impressions: 0, clicks: 0, conversions: 0, convValue: 0 });
+        totals.cost = Math.round(totals.cost * 100) / 100;
+        totals.conversions = Math.round(totals.conversions * 100) / 100;
+        totals.convValue = Math.round(totals.convValue * 100) / 100;
+        totals.ctr = totals.impressions > 0 ? Math.round((totals.clicks / totals.impressions) * 10000) / 100 : 0;
+        totals.cpc = totals.clicks > 0 ? Math.round((totals.cost / totals.clicks) * 100) / 100 : 0;
+        const fetchedAt = new Date().toISOString();
+        await coll.updateOne({ key: cacheKey }, { $set: { key: cacheKey, series, totals, fetchedAt } }, { upsert: true });
+        return cors(NextResponse.json({ ok: true, channel, id, period, series, totals, fetchedAt, cached: false }));
+      } catch (e) {
+        if (existing) return cors(NextResponse.json({ ok: true, channel, id, period, series: existing.series, totals: existing.totals, fetchedAt: existing.fetchedAt, cached: true, stale: true, error: e.message }));
+        return cors(NextResponse.json({ ok: false, error: e.message }, { status: 200 }));
+      }
     }
 
     // ===================================================================
