@@ -339,7 +339,7 @@ export default function InnsiktDashboard({ apiKey, tab: propTab, onTabChange, on
       )}
       {tab === 'live' && <LiveTab apiKey={apiKey} />}
       {tab === 'trafikk' && <TrafficTab traffic={analytics && analytics.traffic} />}
-      {tab === 'trakt' && <FunnelTab funnels={analytics && analytics.funnels} />}
+      {tab === 'trakt' && <FunnelTab funnels={analytics && analytics.funnels} paid={analytics && analytics.paid} />}
       {tab === 'ytelse' && <WebVitalsTab webVitals={analytics && analytics.webVitals} />}
       {tab === 'innsikt' && <IntelTab leads={analytics && analytics.leads} />}
       {tab === 'annonser' && <AdsTab apiKey={apiKey} />}

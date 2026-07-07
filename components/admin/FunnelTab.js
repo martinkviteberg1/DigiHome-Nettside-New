@@ -66,6 +66,92 @@ function FormFunnel({ f }) {
   );
 }
 
+// --- Betalt trakt: annonseklikk → økt → skjema → lead → kunde, per kanal ---
+const PAID_ROWS = [
+  ['adClicks', 'Lenkeklikk på annonse'],
+  ['sessions', 'Økter på siden'],
+  ['formPage', 'Så skjemaside'],
+  ['start', 'Startet skjema'],
+  ['step2', 'Steg 2'],
+  ['step3', 'Steg 3'],
+  ['submit', 'Sendt inn'],
+  ['leads', 'Lead registrert'],
+  ['qualified', 'Kvalifisert (CRM)'],
+  ['won', 'Vunnet'],
+];
+const PAID_COLORS = {
+  google: { dot: '#0F9D58', bar: 'linear-gradient(90deg,#34d399,#0F9D58)' },
+  meta: { dot: '#1877F2', bar: 'linear-gradient(90deg,#7fb3fa,#1877F2)' },
+  other: { dot: '#a78bfa', bar: 'linear-gradient(90deg,#cf97fc,#a78bfa)' },
+};
+const kr = (n) => `${new Intl.NumberFormat('nb-NO', { maximumFractionDigits: 0 }).format(n || 0)} kr`;
+
+function PaidChannelCard({ ch }) {
+  const colors = PAID_COLORS[ch.key] || PAID_COLORS.other;
+  const rows = PAID_ROWS
+    .map(([key, label]) => ({ key, label, v: ch[key] }))
+    .filter((r) => r.v != null);
+  const base = Math.max(1, ...rows.map((r) => r.v));
+  // Størst prosentvis frafall mellom to ledd (ignorer 0→0)
+  let worst = null;
+  for (let i = 1; i < rows.length; i++) {
+    const prev = rows[i - 1].v;
+    if (prev > 0) {
+      const dr = Math.round(((prev - rows[i].v) / prev) * 100);
+      if (dr > 0 && (!worst || dr > worst.dr)) worst = { idx: i, dr, lost: prev - rows[i].v };
+    }
+  }
+  return (
+    <div className="bg-white rounded-2xl p-5 shadow-[0_2px_16px_rgba(0,0,0,0.04)]">
+      <div className="flex items-start justify-between mb-4">
+        <div>
+          <h3 className="text-[15px] font-bold text-[#0a0a0a] flex items-center gap-2" style={{ fontFamily: 'var(--font-heading)' }}>
+            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: colors.dot }} /> {ch.label}
+          </h3>
+          {ch.spend != null && <p className="text-[12px] text-[#999] mt-0.5">{kr(ch.spend)} brukt{ch.clickToSession != null ? ` · ${ch.clickToSession} % av klikk blir økter` : ''}</p>}
+          {ch.spend == null && <p className="text-[12px] text-[#999] mt-0.5">uten annonsekost</p>}
+        </div>
+        {ch.cpl != null && (
+          <div className="text-right">
+            <p className="text-[22px] leading-none font-bold text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>{kr(ch.cpl)}</p>
+            <p className="text-[10.5px] uppercase tracking-[0.08em] text-[#bbb] font-semibold mt-1">pr. lead</p>
+          </div>
+        )}
+      </div>
+      <div className="space-y-2">
+        {rows.map((r, i) => {
+          const prev = i > 0 ? rows[i - 1].v : null;
+          const dr = prev > 0 ? Math.round(((prev - r.v) / prev) * 100) : null;
+          const isWorst = worst && worst.idx === i;
+          return (
+            <div key={r.key}>
+              <div className="flex items-center justify-between text-[12.5px] mb-0.5">
+                <span className="text-[#444] font-medium">{r.label}</span>
+                <span className="text-[#0a0a0a] font-semibold tabular-nums">
+                  {nf(r.v)}
+                  {dr != null && dr > 0 && <span className={`ml-2 text-[11px] font-semibold ${isWorst ? 'text-rose-500' : 'text-amber-500'}`}>−{dr}%</span>}
+                </span>
+              </div>
+              <div className="h-5 rounded-md bg-[#f6f4f1] overflow-hidden">
+                <div className="h-full rounded-md transition-all" style={{ width: `${Math.max(2, Math.round((r.v / base) * 100))}%`, background: r.key === 'won' && r.v > 0 ? 'linear-gradient(90deg,#22c55e,#16a34a)' : colors.bar, opacity: r.v === 0 ? 0.25 : 1 }} />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      {ch.won > 0 && ch.wonValue > 0 && (
+        <p className="mt-3 text-[12px] text-emerald-600 font-semibold">{nf(ch.won)} vunnet · {kr(ch.wonValue)} i kontraktsverdi</p>
+      )}
+      {worst && worst.dr >= 50 && (
+        <div className="mt-3 flex items-start gap-2 rounded-xl bg-rose-50/70 px-3 py-2">
+          <ArrowDownRight className="w-3.5 h-3.5 text-rose-500 shrink-0 mt-0.5" />
+          <p className="text-[12px] text-[#7a2e3a] leading-snug">Størst lekkasje: <b>{rows[worst.idx - 1].label}</b> → <b>{rows[worst.idx].label}</b> (−{worst.dr} %, {nf(worst.lost)} mistet)</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // A/B-eksperiment: sammenlign varianter på konverteringsrate, marker vinner.
 function ExperimentCard({ exp }) {
   const variants = exp.variants || [];
@@ -119,7 +205,7 @@ function ExperimentCard({ exp }) {
   );
 }
 
-export default function FunnelTab({ funnels }) {
+export default function FunnelTab({ funnels, paid }) {
   const forms = (funnels && funnels.forms) || [];
   const experiments = (funnels && funnels.experiments) || [];
 
@@ -148,6 +234,19 @@ export default function FunnelTab({ funnels }) {
           </div>
         ))}
       </div>
+
+      {/* Betalt trakt: annonseklikk → kunde, per kanal */}
+      {paid && paid.channels && (
+        <div>
+          <h2 className="text-[13px] font-semibold uppercase tracking-[0.1em] text-[#999] mb-3 flex items-center gap-2"><TrendingUp className="w-4 h-4" /> Betalt trakt — fra annonseklikk til kunde (siste {paid.days} dager)</h2>
+          <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-5">
+            {paid.channels.map((ch) => <PaidChannelCard key={ch.key} ch={ch} />)}
+          </div>
+          <p className="mt-2.5 text-[11.5px] text-[#999] leading-relaxed">
+            «Lenkeklikk» hentes fra annonseplattformene, resten fra egen førsteparts-sporing. Gapet klikk → økt skyldes typisk treg lasting i app-nettlesere, folk som lukker før siden laster, og besøk som ikke kan spores (samtykke/ITP). {paid.metaNote}
+          </p>
+        </div>
+      )}
 
       {/* Trakt pr. skjema */}
       <div>

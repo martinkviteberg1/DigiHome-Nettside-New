@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { motion } from '@/lib/motion-lite';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, Check } from 'lucide-react';
+import { track } from '@/lib/analytics';
 
 const assurances = ['Gratis vurdering', 'Svar innen 24 timer', 'Ingen binding'];
 
@@ -36,7 +37,7 @@ export default function CTASection() {
               Få en gratis vurdering og se nøyaktig hva eiendommen din kan tjene. Ingen forpliktelser.
             </p>
             <div className="flex flex-wrap items-center gap-4 lg:justify-end">
-              <Button onClick={() => router.push('/bli-utleier')}
+              <Button onClick={() => { try { track('cta_click', { cta: 'cta_section' }); } catch (e) {} router.push('/bli-utleier'); }}
                 className="rounded-full bg-white text-[#0a0a0a] hover:bg-[#f2f0eb] h-[52px] px-8 text-[14px] font-semibold transition-all duration-300 hover:shadow-[0_8px_32px_rgba(210,152,255,0.35)] active:scale-[0.97] gap-2">
                 Få gratis vurdering <ArrowRight className="w-4 h-4" />
               </Button>

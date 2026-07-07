@@ -6,7 +6,7 @@ import { promises as fsp } from 'fs';
 import nodePath from 'path';
 import { getDb, clean } from '@/lib/mongodb';
 import { getObject, putObject, PUBLIC_PREFIX } from '@/lib/objectStorage';
-import { isBot, buildEvent, ensureAnalyticsIndexes, computeAnalytics, computeLeadIntel, computeFunnels, computeLandingPages } from '@/lib/analytics-server';
+import { isBot, buildEvent, ensureAnalyticsIndexes, computeAnalytics, computeLeadIntel, computeFunnels, computeLandingPages, buildPaidFunnel } from '@/lib/analytics-server';
 import { deriveChannel, serializeForLLM, computeWebVitals, detectAnomalies, computeLive, computeAdsEconomics, computeMetaEconomics, combineAdsEconomics, computeAdsLeadsSeries } from '@/lib/analytics-server';
 import { parseGoogleAdsCsv } from '@/lib/adsImport';
 import { sendMetaCapiEvent, metaCapiConfigured } from '@/lib/meta-capi';
@@ -5405,17 +5405,38 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
       if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const { searchParams } = new URL(request.url);
       const days = parseInt(searchParams.get('days') || '30', 10) || 30;
-      const [traffic, leadsIntel, webVitals, funnels] = await Promise.all([
+      // Betalt trakt: hent klikk/forbruk fra Ads-API-ene (cachet) — best-effort.
+      const adStatsTask = (async () => {
+        const preset = days <= 7 ? 'last_7d' : days <= 30 ? 'last_30d' : days <= 90 ? 'last_90d' : 'this_year';
+        const out = {};
+        try {
+          if (composioConfigured()) {
+            const r = await getCachedReport(db, preset, {});
+            const t = (r.report && r.report.totals) || {};
+            out.google = { clicks: Number(t.clicks) || 0, spend: Number(t.cost ?? t.spend) || 0 };
+          }
+        } catch (e) { /* best-effort */ }
+        try {
+          if (metaAdsConfigured()) {
+            const r = await getCachedMetaReport(db, preset, {});
+            const t = (r.snap && r.snap.totals) || {};
+            out.meta = { clicks: Number(t.linkClicks) || Number(t.clicks) || 0, spend: Number(t.cost ?? t.spend) || 0 };
+          }
+        } catch (e) { /* best-effort */ }
+        return out;
+      })();
+      const [traffic, leadsIntel, webVitals, funnels, paid] = await Promise.all([
         computeAnalytics(db, days),
         computeLeadIntel(db, days),
         computeWebVitals(db, days),
         computeFunnels(db, days),
+        adStatsTask.then((adStats) => buildPaidFunnel(db, { days, adStats })).catch(() => null),
       ]);
       const anomalies = [
         ...detectAnomalies(traffic.timeseries, 'sessions', 'Økter'),
         ...detectAnomalies(traffic.timeseries, 'leads', 'Leads'),
       ].sort((a, b) => (a.day < b.day ? 1 : -1)).slice(0, 8);
-      return cors(NextResponse.json({ traffic, leads: leadsIntel, webVitals, anomalies, funnels }));
+      return cors(NextResponse.json({ traffic, leads: leadsIntel, webVitals, anomalies, funnels, paid }));
     }
 
     // --- Admin: ytelse per landingsside (/lp/{slug}) ---
