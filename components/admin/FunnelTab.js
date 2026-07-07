@@ -83,6 +83,7 @@ const PAID_COLORS = {
   google: { dot: '#0F9D58', bar: 'linear-gradient(90deg,#34d399,#0F9D58)' },
   meta: { dot: '#1877F2', bar: 'linear-gradient(90deg,#7fb3fa,#1877F2)' },
   other: { dot: '#a78bfa', bar: 'linear-gradient(90deg,#cf97fc,#a78bfa)' },
+  untracked: { dot: '#b3b3b3', bar: 'linear-gradient(90deg,#d6d6d6,#b3b3b3)' },
 };
 const kr = (n) => `${new Intl.NumberFormat('nb-NO', { maximumFractionDigits: 0 }).format(n || 0)} kr`;
 
@@ -109,7 +110,7 @@ function PaidChannelCard({ ch }) {
             <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: colors.dot }} /> {ch.label}
           </h3>
           {ch.spend != null && <p className="text-[12px] text-[#999] mt-0.5">{kr(ch.spend)} brukt{ch.clickToSession != null ? ` · ${ch.clickToSession} % av klikk blir økter` : ''}</p>}
-          {ch.spend == null && <p className="text-[12px] text-[#999] mt-0.5">uten annonsekost</p>}
+          {ch.spend == null && <p className="text-[12px] text-[#999] mt-0.5">{ch.key === 'untracked' ? 'leads uten attribusjon (opprettet før sporingen)' : 'uten annonsekost'}</p>}
         </div>
         {ch.cpl != null && (
           <div className="text-right">

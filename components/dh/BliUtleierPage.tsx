@@ -147,6 +147,9 @@ export default function BliUtleierPage() {
   const [ctaVariant, setCtaVariant] = useState<string>('A');
   // Klikk-aksept av selvforvaltningsavtalen — «avtalen som et steg i flyten».
   const [termsAccepted, setTermsAccepted] = useState(false);
+  // CRO: hurtigvalg for tilgjengelighet (chips i stedet for tvungen kalender)
+  const [availChoice, setAvailChoice] = useState('');
+  const [showNotes, setShowNotes] = useState(false);
 
   // Finn-annonse (valgfritt). FinnLookupField håndterer oppslag/forhåndsvisning selv.
   const [finnUrl, setFinnUrl] = useState('');
@@ -259,8 +262,10 @@ export default function BliUtleierPage() {
     }
     if (step === 5) {
       // Steg 2 i flyten: mål + forvaltningsnivå (flettet).
-      if (!formData.rental_model) newErrors.rental_model = 'Velg utleiemodell';
-      if (!formData.availability) newErrors.availability = 'Velg tilgjengelighetsdato';
+      // CRO-fix (48 % frafall her): utleiemodell er VALGFRI (usikre brukere
+      // skal ikke stoppes), og tilgjengelighet velges via hurtigvalg-chips
+      // i stedet for tvungen kalenderdato.
+      if (!formData.availability) newErrors.availability = 'Velg når boligen er ledig';
       if (!formData.tier) newErrors.tier = 'Velg hvordan du vil leie ut';
       else if (formData.tier === 'selvforvaltning' && !termsAccepted) newErrors.terms = 'Godta avtalen for å fortsette med selvforvaltning';
     }
@@ -935,7 +940,8 @@ export default function BliUtleierPage() {
                   <p className="text-[14px] text-[#888] mb-6">Vi anbefaler den optimale strategien basert på dine preferanser.</p>
                   <div className="space-y-7">
                     <div>
-                      <Label className="text-[13px] font-semibold text-[#333] mb-3 block">Foretrukket utleiemodell <span className="text-[#7c3aed]">*</span></Label>
+                      <Label className="text-[13px] font-semibold text-[#333] mb-1 block">Foretrukket utleiemodell <span className="text-[#737373] font-normal">(valgfritt)</span></Label>
+                      <p className="text-[12px] text-[#999] mb-3">Usikker? Hopp over — vi anbefaler den beste modellen for boligen din.</p>
                       <div className="space-y-2.5">
                         {rentalModels.map((m: any) => {
                           const Icon = m.icon;
@@ -953,25 +959,54 @@ export default function BliUtleierPage() {
                       {errors.rental_model && <p className="text-[12px] text-red-500 mt-1.5">{errors.rental_model}</p>}
                     </div>
                     <div>
-                      <Label className="text-[13px] font-semibold text-[#333] mb-2 block">Når er eiendommen tilgjengelig? <span className="text-[#7c3aed]">*</span></Label>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <button type="button" data-testid="owner-availability-input" className={`w-full h-[52px] px-4 text-left text-[15px] bg-white border rounded-2xl outline-none transition-all flex items-center gap-3 ${formData.availability ? 'border-[#e0e0e0] text-[#333]' : 'border-[#e0e0e0] text-[#737373]'} hover:border-[#cf97fc] focus:border-[#cf97fc] focus:shadow-[0_0_0_3px_rgba(207,151,252,0.12)]`}>
-                            <CalendarIcon className="w-4 h-4 text-[#5b6370] shrink-0" />
-                            {formData.availability ? format(new Date(formData.availability + 'T12:00:00'), 'd. MMMM yyyy', { locale: nb }) : 'Velg dato...'}
-                          </button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0 rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.12)] border-0" align="start">
-                          <Calendar mode="single" locale={nb} selected={formData.availability ? new Date(formData.availability + 'T12:00:00') : undefined}
-                            onSelect={(d: any) => { if (d) { const y = d.getFullYear(); const m = String(d.getMonth()+1).padStart(2,'0'); const day = String(d.getDate()).padStart(2,'0'); updateField('availability', `${y}-${m}-${day}`); } }}
-                            disabled={(date: any) => date < new Date()} className="rounded-2xl" />
-                        </PopoverContent>
-                      </Popover>
+                      <Label className="text-[13px] font-semibold text-[#333] mb-2 block">Når er boligen ledig for utleie? <span className="text-[#7c3aed]">*</span></Label>
+                      {/* CRO: hurtigvalg — ingen tvungen kalender. Eksakt dato er valgfritt. */}
+                      <div className="flex flex-wrap gap-2" data-testid="owner-availability-chips">
+                        {[
+                          ['asap', 'Så snart som mulig', 0],
+                          ['1m', 'Innen 1 måned', 30],
+                          ['3m', 'Innen 3 måneder', 90],
+                          ['later', 'Senere / usikker', 180],
+                        ].map(([val, label, days]: any) => {
+                          const selected = availChoice === val;
+                          return (
+                            <button key={val} type="button" data-testid={`owner-availability-${val}`}
+                              onClick={() => {
+                                setAvailChoice(val);
+                                const d = new Date(Date.now() + days * 86400000);
+                                updateField('availability', `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`);
+                                setErrors((prev: any) => ({ ...prev, availability: null }));
+                              }}
+                              className={`h-11 px-4 rounded-full border-2 text-[13.5px] font-semibold transition-all ${selected ? 'border-[#cf97fc] bg-[#faf5ff] text-[#0a0a0a]' : 'border-[#eee] bg-white text-[#666] hover:border-[#ddd]'}`}>
+                              {label}
+                            </button>
+                          );
+                        })}
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <button type="button" data-testid="owner-availability-input" className={`h-11 px-4 rounded-full border-2 text-[13.5px] font-semibold transition-all inline-flex items-center gap-2 ${availChoice === 'custom' ? 'border-[#cf97fc] bg-[#faf5ff] text-[#0a0a0a]' : 'border-[#eee] bg-white text-[#666] hover:border-[#ddd]'}`}>
+                              <CalendarIcon className="w-4 h-4 shrink-0" />
+                              {availChoice === 'custom' && formData.availability ? format(new Date(formData.availability + 'T12:00:00'), 'd. MMM yyyy', { locale: nb }) : 'Velg dato'}
+                            </button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0 rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.12)] border-0" align="start">
+                            <Calendar mode="single" locale={nb} selected={availChoice === 'custom' && formData.availability ? new Date(formData.availability + 'T12:00:00') : undefined}
+                              onSelect={(d: any) => { if (d) { const y = d.getFullYear(); const m = String(d.getMonth()+1).padStart(2,'0'); const day = String(d.getDate()).padStart(2,'0'); setAvailChoice('custom'); updateField('availability', `${y}-${m}-${day}`); setErrors((prev: any) => ({ ...prev, availability: null })); } }}
+                              disabled={(date: any) => date < new Date()} className="rounded-2xl" />
+                          </PopoverContent>
+                        </Popover>
+                      </div>
                       {errors.availability && <p className="text-[12px] text-red-500 mt-1.5">{errors.availability}</p>}
                     </div>
                     <div>
-                      <Label className="text-[13px] font-semibold text-[#333]">Kommentarer <span className="text-[#737373] font-normal">(valgfritt)</span></Label>
-                      <textarea value={formData.notes} onChange={(e: any) => updateField('notes', e.target.value)} placeholder="Er det noe spesielt vi bør vite?" rows={3} className="w-full mt-2 px-4 py-3.5 text-[15px] rounded-2xl border border-[#e0e0e0] bg-white focus:outline-none focus:ring-2 focus:ring-[#cf97fc] resize-none placeholder:text-[#737373]" data-testid="owner-notes-textarea" />
+                      {(showNotes || formData.notes) ? (
+                        <>
+                          <Label className="text-[13px] font-semibold text-[#333]">Kommentarer <span className="text-[#737373] font-normal">(valgfritt)</span></Label>
+                          <textarea value={formData.notes} onChange={(e: any) => updateField('notes', e.target.value)} placeholder="Er det noe spesielt vi bør vite?" rows={3} autoFocus={showNotes && !formData.notes} className="w-full mt-2 px-4 py-3.5 text-[15px] rounded-2xl border border-[#e0e0e0] bg-white focus:outline-none focus:ring-2 focus:ring-[#cf97fc] resize-none placeholder:text-[#737373]" data-testid="owner-notes-textarea" />
+                        </>
+                      ) : (
+                        <button type="button" onClick={() => setShowNotes(true)} data-testid="owner-notes-toggle" className="text-[13px] font-semibold text-[#7c3aed] hover:underline underline-offset-2">+ Legg til en kommentar (valgfritt)</button>
+                      )}
                     </div>
                   </div>
                 </div>
