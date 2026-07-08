@@ -290,3 +290,20 @@ Google Ads-styring via native REST API).
 - BRO-STATUS: alt besvart unntatt model-control (0 svar); åpent: CRM-webhooks→prod, usage/external 404 i
   CRM-prod, deres webhook-401.
 - Scripts: /app/scripts/fetch-prod-analysis.sh + analyse-prod.py (gjenbrukbare).
+
+## FINN-studio (jul 2026) — FINN.no som tredje markedsføringskanal
+- Research: FINN har IKKE annonsør-API (display bookes via selger, materiell → adops@finn.no 3 virkedager før).
+  Priser 2026: Board/Netboard på FINN eiendom 110 CPM (+45 Bergen-lokasjon ≈ 155 kr CPM). Import-API for
+  rubrikkannonser finnes (partneravtale) — mulig fremtidig auto-publisering av utleieboliger.
+- Bygget komplett FINN-studio under Innsikt (Layers-ikon): 3 faner.
+  1) Bannerstudio: WOW-motor i /app/lib/finn-banners.js (SVG→sharp, 4 temaer: midnatt/nordlys/krem(serif)/plakat,
+     eyebrow-chip, aksentord, CTA-pil, alle 7 FINN-formater innenfor vektgrenser). Live preview m/ FINN-feed-mock,
+     AI-tekst (4 vinkler), AI-bakgrunn (Nano Banana), design-bibliotek (finn_designs), ZIP m/ leveringsinstruks.
+  2) Planlegger: budsjett/CPL-kalkulator (scenarioer), ferdig booking-e-post (m/ skreddersøm-spørsmål om
+     utleier-segment), pilot-sjekkliste (localStorage).
+  3) Kampanjer & måling: manuell FINN-rapport (finn_campaigns) + automatisk UTM-måling (utm_source=finn&utm_medium=display),
+     benchmark mot Meta/Google CPL, budsjettprogresjon.
+- Betalt trakt: 'finn' er egen betalt kanal (paidChannelOf i analytics-server.js); forbruk/klikk fra finn_campaigns.
+- API: /api/admin/finnstudio/{copy,render,genbg,designs,campaigns} — alle testet 33/33 PASS.
+- AdsTrendView («Utvikling» i AdsTab): full filtrering lagt til (søk/kanal/status/kampanje, stabile farger).
+- ÅPENT: «Brukere & tilgang» (invitere markedsføringsteam, roller owner/markedsfører, SendGrid-invitasjon) — diskutert, ikke bygget.
