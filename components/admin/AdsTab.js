@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   Loader2, Upload, Megaphone, TrendingUp, AlertCircle, Trash2,
   Coins, MousePointerClick, Target, Wallet, CheckCircle2, Info, RefreshCw, Layers, Link2 as LinkIcon,
@@ -243,7 +243,7 @@ export default function AdsTab({ apiKey }) {
 
       {/* Visningsbryter: Statistikk vs faktiske annonser/kampanjer */}
       <div className="flex items-center gap-1 bg-[#f1efeb] rounded-full p-1 mb-5 w-fit">
-        {[['stats', 'Statistikk'], ['table', 'Annonse-tabell'], ['creatives', 'Annonser & kampanjer'], ['campaigns', 'Kampanjestyring'], ['optimize', 'AI & optimalisering']].map(([v, l]) => (
+        {[['stats', 'Statistikk'], ['table', 'Annonse-tabell'], ['trend', 'Utvikling'], ['creatives', 'Annonser & kampanjer'], ['campaigns', 'Kampanjestyring'], ['optimize', 'AI & optimalisering']].map(([v, l]) => (
           <button key={v} onClick={() => setView(v)} className={`px-4 h-9 rounded-full text-[12.5px] font-semibold transition-all ${view === v ? 'bg-white text-[#0a0a0a] shadow-[0_2px_8px_rgba(0,0,0,0.08)]' : 'text-[#888] hover:text-[#0a0a0a]'}`}>{l}</button>
         ))}
       </div>
@@ -262,6 +262,8 @@ export default function AdsTab({ apiKey }) {
         <CampaignManager apiKey={apiKey} />
       ) : view === 'table' ? (
         <AdsTable apiKey={apiKey} period={period} channel={channel} periodLabel={periodLabel} onOpenFilter={openFilter} />
+      ) : view === 'trend' ? (
+        <AdsTrendView apiKey={apiKey} period={period} channel={channel} periodLabel={periodLabel} onOpenFilter={openFilter} />
       ) : view === 'optimize' ? (
         <OptimizePanel apiKey={apiKey} />
       ) : view === 'creatives' ? (
@@ -1355,6 +1357,213 @@ function MobileAdCard({ r, apiKey, onOpen }) {
   );
 }
 
+// === Utvikling: flerlinje-graf som sammenligner annonsers ytelse over tid ===
+const TREND_COLORS = ['#0a0a0a', '#8b5cf6', '#0F9D58', '#1877F2', '#f59e0b', '#ef4444', '#14b8a6', '#ec4899'];
+const TREND_METRICS = [
+  ['cost', 'Kostnad', (v) => fmtKr2(v), true],
+  ['clicks', 'Klikk', (v) => fmtNum(v), true],
+  ['impressions', 'Visn.', (v) => fmtNum(v), true],
+  ['ctr', 'CTR', (v) => fmtPct(v), false],
+  ['cpc', 'CPC', (v) => fmtKr2(v), false],
+  ['conversions', 'Konv.', (v) => fmtNum(v), true],
+];
+
+function AdsTrendView({ apiKey, period, channel, periodLabel, onOpenFilter }) {
+  const [ads, setAds] = useState(null);          // topp-annonser fra tabellen
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState('');
+  const [selected, setSelected] = useState([]);  // nøkler `${channel}-${id}`
+  const [seriesMap, setSeriesMap] = useState({}); // nøkkel -> {loading, series}
+  const [metric, setMetric] = useState('cost');
+  const [hover, setHover] = useState(null);      // indeks på dato-aksen
+
+  const chan = channel === 'both' ? 'all' : channel;
+  const effPeriod = period === 'all' ? 'last_90d' : period; // daglig akse trenger avgrensning
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      setLoading(true); setErr(''); setSelected([]); setSeriesMap({}); setHover(null);
+      try {
+        const params = new URLSearchParams({ key: apiKey, googlePeriod: effPeriod, metaPeriod: effPeriod });
+        const res = await fetch(`/api/admin/ads/table?${params.toString()}`);
+        const j = await res.json();
+        if (!alive) return;
+        if (!j.ok) { setErr(j.error || 'Kunne ikke hente annonser'); return; }
+        let list = (j.ads || []).filter((a) => chan === 'all' || a.channel === chan);
+        list = list
+          .filter((a) => (a.cost || 0) > 0 && a.statsScope !== 'lifetime')
+          .sort((a, b) => (b.cost || 0) - (a.cost || 0))
+          .slice(0, 10);
+        setAds(list);
+        setSelected(list.slice(0, 4).map((a) => `${a.channel}-${a.id}`));
+      } catch (e) { if (alive) setErr('Nettverksfeil'); }
+      finally { if (alive) setLoading(false); }
+    })();
+    return () => { alive = false; };
+  }, [apiKey, effPeriod, chan]);
+
+  // Hent daglig serie for valgte annonser (server-cachet 10 min)
+  useEffect(() => {
+    for (const key of selected) {
+      if (seriesMap[key]) continue;
+      const [ch, ...rest] = key.split('-');
+      const id = rest.join('-');
+      setSeriesMap((m) => ({ ...m, [key]: { loading: true, series: [] } }));
+      (async () => {
+        try {
+          const params = new URLSearchParams({ key: apiKey, channel: ch, id, period: effPeriod });
+          const res = await fetch(`/api/admin/ads/detail?${params.toString()}`);
+          const j = await res.json();
+          setSeriesMap((m) => ({ ...m, [key]: { loading: false, series: (j.ok && j.series) || [] } }));
+        } catch (e) {
+          setSeriesMap((m) => ({ ...m, [key]: { loading: false, series: [] } }));
+        }
+      })();
+    }
+  }, [selected, apiKey, effPeriod]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const colorOf = (key) => TREND_COLORS[(ads || []).findIndex((a) => `${a.channel}-${a.id}` === key) % TREND_COLORS.length];
+  const adOf = (key) => (ads || []).find((a) => `${a.channel}-${a.id}` === key);
+  const mDef = TREND_METRICS.find(([k]) => k === metric) || TREND_METRICS[0];
+  const [, mLabel, mFmt, mAdditive] = mDef;
+
+  // Felles dato-akse = union av lastede serier (maks 90 punkter)
+  const dates = useMemo(() => {
+    const set = new Set();
+    for (const key of selected) for (const d of (seriesMap[key]?.series || [])) set.add(d.date);
+    return [...set].sort().slice(-90);
+  }, [selected, seriesMap]);
+
+  const lines = useMemo(() => selected.map((key) => {
+    const byDate = new Map((seriesMap[key]?.series || []).map((d) => [d.date, d]));
+    const vals = dates.map((dt) => {
+      const row = byDate.get(dt);
+      if (!row) return mAdditive ? 0 : null;
+      return row[metric] ?? (mAdditive ? 0 : null);
+    });
+    return { key, vals };
+  }), [selected, seriesMap, dates, metric, mAdditive]);
+
+  const maxVal = Math.max(1e-9, ...lines.flatMap((l) => l.vals.filter((v) => v != null)));
+  const anyLoading = selected.some((key) => seriesMap[key]?.loading);
+
+  const pathOf = (vals) => {
+    let d = ''; let pen = false;
+    vals.forEach((v, i) => {
+      if (v == null) { pen = false; return; }
+      const x = dates.length > 1 ? (i / (dates.length - 1)) * 100 : 50;
+      const y = 98 - (v / maxVal) * 92;
+      d += `${pen ? ' L' : ' M'}${x.toFixed(2)} ${y.toFixed(2)}`;
+      pen = true;
+    });
+    return d;
+  };
+
+  const toggle = (key) => setSelected((s) => s.includes(key) ? s.filter((k) => k !== key) : (s.length >= TREND_COLORS.length ? s : [...s, key]));
+
+  if (loading) return <div className="py-20 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-[#0a0a0a]" /></div>;
+  if (err) return <div className="bg-rose-50 text-rose-600 rounded-xl px-4 py-3 text-[13px] flex items-center gap-2"><AlertCircle className="w-4 h-4" /> {err}</div>;
+  if (!ads || ads.length === 0) return <div className="bg-white rounded-2xl p-10 text-center text-[#999] text-[13px] shadow-[0_2px_16px_rgba(0,0,0,0.04)]">Ingen annonser med forbruk i valgt periode.</div>;
+
+  return (
+    <div>
+      {/* Verktøylinje: periode-chip + metric-bryter */}
+      <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 mb-4">
+        <button onClick={onOpenFilter} className="h-10 pl-3.5 pr-4 rounded-full bg-white text-[12.5px] font-semibold text-[#444] inline-flex items-center gap-2 shadow-sm ring-1 ring-[#eee] hover:ring-[#dcdcdc] active:scale-[0.97] transition-all w-fit">
+          <SlidersHorizontal className="w-3.5 h-3.5 text-[#0a0a0a]" />
+          <span className="text-[#777]">{channel === 'google' ? 'Google' : channel === 'meta' ? 'Meta' : 'Alle kanaler'}</span>
+          <span className="text-[#ddd]">·</span>
+          <span className="text-[#0a0a0a]">{period === 'all' ? 'Siste 90 dager' : periodLabel}</span>
+        </button>
+        <div className="flex items-center gap-1 bg-[#f1efeb] rounded-full p-1 w-fit overflow-x-auto max-w-full">
+          {TREND_METRICS.map(([k, l]) => (
+            <button key={k} onClick={() => setMetric(k)} className={`px-3 h-8 rounded-full text-[12px] font-semibold transition-all whitespace-nowrap ${metric === k ? 'bg-white text-[#0a0a0a] shadow-sm' : 'text-[#888] hover:text-[#0a0a0a]'}`}>{l}</button>
+          ))}
+        </div>
+        {anyLoading && <span className="inline-flex items-center gap-1.5 text-[11.5px] text-[#999]"><Loader2 className="w-3.5 h-3.5 animate-spin" /> henter daglig data…</span>}
+      </div>
+
+      {/* Graf */}
+      <div className="bg-white rounded-2xl p-5 shadow-[0_2px_16px_rgba(0,0,0,0.04)]">
+        <div className="flex items-start justify-between gap-3 mb-3 min-h-[38px]">
+          <div>
+            <h3 className="text-[14px] font-bold text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>{mLabel} per dag — annonse for annonse</h3>
+            <p className="text-[11.5px] text-[#999]">Klikk på annonsene under for å vise/skjule linjer (maks {TREND_COLORS.length}).</p>
+          </div>
+          {hover != null && dates[hover] && (
+            <div className="text-right shrink-0">
+              <p className="text-[11px] font-bold text-[#0a0a0a]">{fmtDayLabel(dates[hover])}</p>
+              {lines.map((l) => (l.vals[hover] != null && (
+                <p key={l.key} className="text-[11px] text-[#666] flex items-center gap-1.5 justify-end">
+                  <span className="w-2 h-2 rounded-full shrink-0" style={{ background: colorOf(l.key) }} />
+                  <span className="truncate max-w-[180px]">{(adOf(l.key)?.name || '').slice(0, 26)}</span>
+                  <span className="font-semibold text-[#0a0a0a] tabular-nums">{mFmt(l.vals[hover])}</span>
+                </p>
+              )))}
+            </div>
+          )}
+        </div>
+
+        <div
+          className="relative h-64 sm:h-72 lg:h-80 cursor-crosshair"
+          onMouseMove={(e) => {
+            if (dates.length < 2) return;
+            const r = e.currentTarget.getBoundingClientRect();
+            const idx = Math.round(((e.clientX - r.left) / r.width) * (dates.length - 1));
+            setHover(Math.max(0, Math.min(dates.length - 1, idx)));
+          }}
+          onMouseLeave={() => setHover(null)}
+        >
+          <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 w-full h-full">
+            {[25, 50, 75].map((y) => <line key={y} x1="0" y1={y} x2="100" y2={y} stroke="#f2f0ec" strokeWidth="1" vectorEffect="non-scaling-stroke" />)}
+            <line x1="0" y1="98" x2="100" y2="98" stroke="#e8e5df" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+            {hover != null && dates.length > 1 && (
+              <line x1={(hover / (dates.length - 1)) * 100} y1="0" x2={(hover / (dates.length - 1)) * 100} y2="100" stroke="#d9d4ca" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+            )}
+            {lines.map((l) => (
+              <path key={l.key} d={pathOf(l.vals)} fill="none" stroke={colorOf(l.key)} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" opacity={seriesMap[l.key]?.loading ? 0.25 : 0.95} />
+            ))}
+            {hover != null && dates.length > 1 && lines.map((l) => (l.vals[hover] != null && (
+              <circle key={`pt-${l.key}`} cx={(hover / (dates.length - 1)) * 100} cy={98 - (l.vals[hover] / maxVal) * 92} r="3" fill={colorOf(l.key)} vectorEffect="non-scaling-stroke" />
+            )))}
+          </svg>
+          {/* Y-maks-etikett */}
+          <span className="absolute top-0 left-0 text-[10px] text-[#b3b3b3] bg-white/80 px-1 rounded">{mFmt(maxVal)}</span>
+        </div>
+        <div className="flex justify-between text-[10.5px] text-[#b3b3b3] mt-1.5">
+          <span>{dates[0] ? fmtDayLabel(dates[0]) : ''}</span>
+          <span>{dates.length > 2 ? fmtDayLabel(dates[Math.floor((dates.length - 1) / 2)]) : ''}</span>
+          <span>{dates.length > 1 ? fmtDayLabel(dates[dates.length - 1]) : ''}</span>
+        </div>
+      </div>
+
+      {/* Annonse-velger / legende m/ sum for perioden */}
+      <div className="mt-4 grid sm:grid-cols-2 xl:grid-cols-3 gap-2">
+        {ads.map((a) => {
+          const key = `${a.channel}-${a.id}`;
+          const on = selected.includes(key);
+          const line = lines.find((l) => l.key === key);
+          const vals = (line?.vals || []).filter((v) => v != null);
+          const agg = vals.length ? (mAdditive ? vals.reduce((t, v) => t + v, 0) : vals.reduce((t, v) => t + v, 0) / vals.length) : null;
+          return (
+            <button key={key} onClick={() => toggle(key)} className={`text-left bg-white rounded-xl px-3.5 py-2.5 shadow-[0_2px_10px_rgba(0,0,0,0.03)] ring-1 transition-all ${on ? 'ring-[#dcd6ca]' : 'ring-transparent opacity-55 hover:opacity-90'}`}>
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: on ? colorOf(key) : '#d5d5d5' }} />
+                {channelPill(a.channel)}
+                <span className="text-[12px] font-semibold text-[#0a0a0a] truncate flex-1" title={a.name}>{a.name || '–'}</span>
+                {on && agg != null && <span className="text-[11.5px] font-bold text-[#0a0a0a] tabular-nums shrink-0">{mAdditive ? mFmt(agg) : `Ø ${mFmt(agg)}`}</span>}
+              </div>
+              <p className="text-[10.5px] text-[#aaa] truncate mt-0.5 pl-[18px]">{a.campaign}{a.adGroup ? ` · ${a.adGroup}` : ''}</p>
+            </button>
+          );
+        })}
+      </div>
+      <p className="mt-2.5 text-[11.5px] text-[#999]">Viser de {ads.length} annonsene med høyest forbruk i perioden. Ø = snitt per dag for forholdstall (CTR/CPC); ellers sum for perioden.</p>
+    </div>
+  );
+}
+
 // === Detalj-modal: daglig forbruk/klikk/visninger for ÉN annonse ===
 const DETAIL_METRICS = [
   ['cost', 'Kostnad', (v) => fmtKr(v)],
@@ -1407,7 +1616,7 @@ function AdDetailModal({ ad, apiKey, period, periodLabel, onClose }) {
   return (
     <div className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center">
       <div onClick={onClose} className={`absolute inset-0 bg-[#0a0a0a]/45 backdrop-blur-[3px] transition-opacity duration-300 ${mounted ? 'opacity-100' : 'opacity-0'}`} />
-      <div className={`relative w-full sm:max-w-2xl max-h-[92dvh] overflow-y-auto overscroll-contain bg-white rounded-t-[28px] sm:rounded-[28px] shadow-[0_30px_90px_rgba(0,0,0,0.28)] p-5 sm:p-7 transition-all duration-300 ${mounted ? 'opacity-100 translate-y-0 sm:scale-100' : 'opacity-0 translate-y-8 sm:translate-y-2 sm:scale-95'}`}>
+      <div className={`relative w-full sm:max-w-2xl lg:max-w-4xl xl:max-w-5xl max-h-[92dvh] overflow-y-auto overscroll-contain bg-white rounded-t-[28px] sm:rounded-[28px] shadow-[0_30px_90px_rgba(0,0,0,0.28)] p-5 sm:p-7 transition-all duration-300 ${mounted ? 'opacity-100 translate-y-0 sm:scale-100' : 'opacity-0 translate-y-8 sm:translate-y-2 sm:scale-95'}`}>
         {/* Header */}
         <div className="flex items-start justify-between gap-3 mb-4">
           <div className="min-w-0">
@@ -1431,91 +1640,108 @@ function AdDetailModal({ ad, apiKey, period, periodLabel, onClose }) {
         ) : series.length === 0 ? (
           <div className="bg-[#faf9f7] rounded-2xl p-8 text-center text-[#999] text-[13px]">Ingen daglig data i denne perioden.</div>
         ) : (
-          <>
-            {/* KPI-rad (sum for perioden) */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-5">
-              {[['Kostnad', fmtKr(totals.cost)], ['Klikk', fmtNum(totals.clicks)], ['Visninger', fmtNum(totals.impressions)], ['Konvert.', totals.conversions ? fmtNum(totals.conversions) : '–']].map(([l, v]) => (
-                <div key={l} className="bg-[#faf9f7] rounded-xl px-3 py-2.5">
-                  <p className="text-[10px] uppercase tracking-[0.06em] text-[#b3b3b3] font-bold">{l}</p>
-                  <p className="text-[15px] font-bold text-[#0a0a0a]">{v}</p>
-                </div>
-              ))}
-            </div>
+          <div className="lg:grid lg:grid-cols-2 lg:gap-x-8 lg:items-start">
+            {/* Venstre kolonne (desktop): KPI + graf + handlinger */}
+            <div>
+              {/* KPI-rad (sum for perioden) */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-2 gap-2 mb-5">
+                {[['Kostnad', fmtKr(totals.cost)], ['Klikk', fmtNum(totals.clicks)], ['Visninger', fmtNum(totals.impressions)], ['Konvert.', totals.conversions ? fmtNum(totals.conversions) : '–']].map(([l, v]) => (
+                  <div key={l} className="bg-[#faf9f7] rounded-xl px-3 py-2.5 lg:py-3.5">
+                    <p className="text-[10px] uppercase tracking-[0.06em] text-[#b3b3b3] font-bold">{l}</p>
+                    <p className="text-[15px] lg:text-[17px] font-bold text-[#0a0a0a]">{v}</p>
+                  </div>
+                ))}
+              </div>
 
-            {/* Metric-bryter + søylegraf */}
-            <div className="flex items-center gap-1 bg-[#f1efeb] rounded-full p-1 w-fit mb-3">
-              {DETAIL_METRICS.map(([k, l]) => (
-                <button key={k} onClick={() => setMetric(k)} className={`px-3 h-7.5 py-1 rounded-full text-[11.5px] font-semibold transition-all ${metric === k ? 'bg-white text-[#0a0a0a] shadow-sm' : 'text-[#888] hover:text-[#0a0a0a]'}`}>{l}</button>
-              ))}
-            </div>
-            <div className="flex items-end gap-px h-28 mb-1.5 rounded-xl bg-[#faf9f7] px-2 pt-2">
-              {chart.map((d) => (
-                <div key={d.date} className="flex-1 min-w-0 group relative flex items-end h-full" title={`${fmtDayLabel(d.date)} · ${fmtMetric(d[metric])}`}>
-                  <div className="w-full rounded-t-[3px] bg-[#0a0a0a] group-hover:bg-[#8b5cf6] transition-colors" style={{ height: `${Math.max(2, ((d[metric] || 0) / maxVal) * 100)}%`, opacity: (d[metric] || 0) > 0 ? 1 : 0.12 }} />
-                </div>
-              ))}
-            </div>
-            <div className="flex justify-between text-[10.5px] text-[#b3b3b3] mb-5">
-              <span>{chart[0] ? fmtDayLabel(chart[0].date) : ''}</span>
-              {series.length > 90 && <span>viser siste 90 dager i grafen</span>}
-              <span>{chart[chart.length - 1] ? fmtDayLabel(chart[chart.length - 1].date) : ''}</span>
-            </div>
+              {/* Metric-bryter + søylegraf */}
+              <div className="flex items-center gap-1 bg-[#f1efeb] rounded-full p-1 w-fit mb-3">
+                {DETAIL_METRICS.map(([k, l]) => (
+                  <button key={k} onClick={() => setMetric(k)} className={`px-3 h-7.5 py-1 rounded-full text-[11.5px] font-semibold transition-all ${metric === k ? 'bg-white text-[#0a0a0a] shadow-sm' : 'text-[#888] hover:text-[#0a0a0a]'}`}>{l}</button>
+                ))}
+              </div>
+              <div className="flex items-end gap-px h-28 sm:h-32 lg:h-44 mb-1.5 rounded-xl bg-[#faf9f7] px-2 pt-2">
+                {chart.map((d) => (
+                  <div key={d.date} className="flex-1 min-w-0 group relative flex items-end h-full" title={`${fmtDayLabel(d.date)} · ${fmtMetric(d[metric])}`}>
+                    <div className="w-full rounded-t-[3px] bg-[#0a0a0a] group-hover:bg-[#8b5cf6] transition-colors" style={{ height: `${Math.max(2, ((d[metric] || 0) / maxVal) * 100)}%`, opacity: (d[metric] || 0) > 0 ? 1 : 0.12 }} />
+                  </div>
+                ))}
+              </div>
+              <div className="flex justify-between text-[10.5px] text-[#b3b3b3] mb-5">
+                <span>{chart[0] ? fmtDayLabel(chart[0].date) : ''}</span>
+                {series.length > 90 && <span>viser siste 90 dager i grafen</span>}
+                <span>{chart[chart.length - 1] ? fmtDayLabel(chart[chart.length - 1].date) : ''}</span>
+              </div>
 
-            {/* Daglig tabell (nyeste først) */}
-            <div className="rounded-2xl ring-1 ring-[#f0f0f0] overflow-hidden">
-              <div className="overflow-x-auto max-h-[300px] overflow-y-auto">
-                <table className="w-full text-[12px]">
-                  <thead className="text-[#999] text-[10.5px] uppercase tracking-wide bg-[#fafafa] sticky top-0">
-                    <tr>
-                      <th className="px-3 py-2 text-left">Dato</th>
-                      <th className="px-3 py-2 text-right">Kostnad</th>
-                      <th className="px-3 py-2 text-right">Visn.</th>
-                      <th className="px-3 py-2 text-right">Klikk</th>
-                      <th className="px-3 py-2 text-right">CTR</th>
-                      <th className="px-3 py-2 text-right">CPC</th>
-                      <th className="px-3 py-2 text-right">Konv.</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {desc.map((d) => (
-                      <tr key={d.date} className="border-t border-[#f6f6f6] hover:bg-[#fafafa]">
-                        <td className="px-3 py-2 font-semibold text-[#0a0a0a] whitespace-nowrap">{fmtDayLabel(d.date)}</td>
-                        <td className="px-3 py-2 text-right font-semibold text-[#0a0a0a]">{fmtKr2(d.cost)}</td>
-                        <td className="px-3 py-2 text-right text-[#666]">{fmtNum(d.impressions)}</td>
-                        <td className="px-3 py-2 text-right text-[#666]">{fmtNum(d.clicks)}</td>
-                        <td className="px-3 py-2 text-right text-[#666]">{fmtPct(d.ctr)}</td>
-                        <td className="px-3 py-2 text-right text-[#666]">{fmtKr2(d.cpc)}</td>
-                        <td className="px-3 py-2 text-right text-[#666]">{d.conversions ? fmtNum(d.conversions) : '–'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                  <tfoot className="border-t-2 border-[#f0f0f0] bg-[#fafafa] font-semibold text-[#0a0a0a]">
-                    <tr>
-                      <td className="px-3 py-2">{series.length} dager</td>
-                      <td className="px-3 py-2 text-right">{fmtKr(totals.cost)}</td>
-                      <td className="px-3 py-2 text-right">{fmtNum(totals.impressions)}</td>
-                      <td className="px-3 py-2 text-right">{fmtNum(totals.clicks)}</td>
-                      <td className="px-3 py-2 text-right text-[#bbb]">{fmtPct(totals.ctr)}</td>
-                      <td className="px-3 py-2 text-right text-[#bbb]">{fmtKr2(totals.cpc)}</td>
-                      <td className="px-3 py-2 text-right">{totals.conversions ? fmtNum(totals.conversions) : '–'}</td>
-                    </tr>
-                  </tfoot>
-                </table>
+              {/* Handlinger — synlige uten scroll på desktop */}
+              <div className="hidden lg:flex items-center gap-2">
+                {lp && (
+                  <a href={lp} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 h-9 px-4 rounded-full bg-[#faf6fe] text-[#8b5cf6] text-[12px] font-semibold hover:bg-[#f0e6fc] transition-colors">
+                    <Globe className="w-3.5 h-3.5" /> Landingsside
+                  </a>
+                )}
+                <a href={adUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 h-9 px-4 rounded-full bg-[#f6f4f1] text-[#555] text-[12px] font-semibold hover:bg-[#efeae3] transition-colors">
+                  <ExternalLink className="w-3.5 h-3.5" /> {ad.channel === 'google' ? 'Åpne i Google Ads' : 'Forhåndsvis annonsen'}
+                </a>
               </div>
             </div>
 
-            {/* Handlinger */}
-            <div className="flex items-center gap-2 mt-4">
-              {lp && (
-                <a href={lp} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 h-9 px-4 rounded-full bg-[#faf6fe] text-[#8b5cf6] text-[12px] font-semibold hover:bg-[#f0e6fc] transition-colors">
-                  <Globe className="w-3.5 h-3.5" /> Landingsside
+            {/* Høyre kolonne (desktop): daglig tabell */}
+            <div>
+              <div className="rounded-2xl ring-1 ring-[#f0f0f0] overflow-hidden">
+                <div className="overflow-x-auto max-h-[300px] lg:max-h-[440px] overflow-y-auto">
+                  <table className="w-full text-[12px]">
+                    <thead className="text-[#999] text-[10.5px] uppercase tracking-wide bg-[#fafafa] sticky top-0">
+                      <tr>
+                        <th className="px-3 py-2 text-left">Dato</th>
+                        <th className="px-3 py-2 text-right">Kostnad</th>
+                        <th className="px-3 py-2 text-right">Visn.</th>
+                        <th className="px-3 py-2 text-right">Klikk</th>
+                        <th className="px-3 py-2 text-right">CTR</th>
+                        <th className="px-3 py-2 text-right">CPC</th>
+                        <th className="px-3 py-2 text-right">Konv.</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {desc.map((d) => (
+                        <tr key={d.date} className="border-t border-[#f6f6f6] hover:bg-[#fafafa]">
+                          <td className="px-3 py-2 font-semibold text-[#0a0a0a] whitespace-nowrap">{fmtDayLabel(d.date)}</td>
+                          <td className="px-3 py-2 text-right font-semibold text-[#0a0a0a]">{fmtKr2(d.cost)}</td>
+                          <td className="px-3 py-2 text-right text-[#666]">{fmtNum(d.impressions)}</td>
+                          <td className="px-3 py-2 text-right text-[#666]">{fmtNum(d.clicks)}</td>
+                          <td className="px-3 py-2 text-right text-[#666]">{fmtPct(d.ctr)}</td>
+                          <td className="px-3 py-2 text-right text-[#666]">{fmtKr2(d.cpc)}</td>
+                          <td className="px-3 py-2 text-right text-[#666]">{d.conversions ? fmtNum(d.conversions) : '–'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot className="border-t-2 border-[#f0f0f0] bg-[#fafafa] font-semibold text-[#0a0a0a]">
+                      <tr>
+                        <td className="px-3 py-2">{series.length} dager</td>
+                        <td className="px-3 py-2 text-right">{fmtKr(totals.cost)}</td>
+                        <td className="px-3 py-2 text-right">{fmtNum(totals.impressions)}</td>
+                        <td className="px-3 py-2 text-right">{fmtNum(totals.clicks)}</td>
+                        <td className="px-3 py-2 text-right text-[#bbb]">{fmtPct(totals.ctr)}</td>
+                        <td className="px-3 py-2 text-right text-[#bbb]">{fmtKr2(totals.cpc)}</td>
+                        <td className="px-3 py-2 text-right">{totals.conversions ? fmtNum(totals.conversions) : '–'}</td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
+
+              {/* Handlinger — mobil/nettbrett (under tabellen) */}
+              <div className="flex lg:hidden items-center gap-2 mt-4">
+                {lp && (
+                  <a href={lp} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 h-9 px-4 rounded-full bg-[#faf6fe] text-[#8b5cf6] text-[12px] font-semibold hover:bg-[#f0e6fc] transition-colors">
+                    <Globe className="w-3.5 h-3.5" /> Landingsside
+                  </a>
+                )}
+                <a href={adUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 h-9 px-4 rounded-full bg-[#f6f4f1] text-[#555] text-[12px] font-semibold hover:bg-[#efeae3] transition-colors">
+                  <ExternalLink className="w-3.5 h-3.5" /> {ad.channel === 'google' ? 'Åpne i Google Ads' : 'Forhåndsvis annonsen'}
                 </a>
-              )}
-              <a href={adUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 h-9 px-4 rounded-full bg-[#f6f4f1] text-[#555] text-[12px] font-semibold hover:bg-[#efeae3] transition-colors">
-                <ExternalLink className="w-3.5 h-3.5" /> {ad.channel === 'google' ? 'Åpne i Google Ads' : 'Forhåndsvis annonsen'}
-              </a>
+              </div>
             </div>
-          </>
+          </div>
         )}
       </div>
     </div>
