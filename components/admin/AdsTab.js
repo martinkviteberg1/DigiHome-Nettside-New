@@ -1369,13 +1369,20 @@ const TREND_METRICS = [
 ];
 
 function AdsTrendView({ apiKey, period, channel, periodLabel, onOpenFilter }) {
-  const [ads, setAds] = useState(null);          // topp-annonser fra tabellen
+  const [allAds, setAllAds] = useState(null);    // alle annonser med forbruk (fra tabellen)
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState('');
   const [selected, setSelected] = useState([]);  // nøkler `${channel}-${id}`
+  const [colorMap, setColorMap] = useState({});  // nøkkel -> farge (stabil selv ved filtrering)
   const [seriesMap, setSeriesMap] = useState({}); // nøkkel -> {loading, series}
   const [metric, setMetric] = useState('cost');
   const [hover, setHover] = useState(null);      // indeks på dato-aksen
+  // Lokale filtre for annonse-listen under grafen
+  const [q, setQ] = useState('');
+  const [localChan, setLocalChan] = useState('all');  // 'all' | 'google' | 'meta'
+  const [statusF, setStatusF] = useState('all');      // 'all' | 'active' | 'paused'
+  const [campF, setCampF] = useState('all');          // 'all' | kampanjenavn
+  const [showAll, setShowAll] = useState(false);
 
   const chan = channel === 'both' ? 'all' : channel;
   const effPeriod = period === 'all' ? 'last_90d' : period; // daglig akse trenger avgrensning
@@ -1383,7 +1390,8 @@ function AdsTrendView({ apiKey, period, channel, periodLabel, onOpenFilter }) {
   useEffect(() => {
     let alive = true;
     (async () => {
-      setLoading(true); setErr(''); setSelected([]); setSeriesMap({}); setHover(null);
+      setLoading(true); setErr(''); setSelected([]); setColorMap({}); setSeriesMap({}); setHover(null);
+      setQ(''); setLocalChan('all'); setStatusF('all'); setCampF('all'); setShowAll(false);
       try {
         const params = new URLSearchParams({ key: apiKey, googlePeriod: effPeriod, metaPeriod: effPeriod });
         const res = await fetch(`/api/admin/ads/table?${params.toString()}`);
@@ -1393,10 +1401,11 @@ function AdsTrendView({ apiKey, period, channel, periodLabel, onOpenFilter }) {
         let list = (j.ads || []).filter((a) => chan === 'all' || a.channel === chan);
         list = list
           .filter((a) => (a.cost || 0) > 0 && a.statsScope !== 'lifetime')
-          .sort((a, b) => (b.cost || 0) - (a.cost || 0))
-          .slice(0, 10);
-        setAds(list);
-        setSelected(list.slice(0, 4).map((a) => `${a.channel}-${a.id}`));
+          .sort((a, b) => (b.cost || 0) - (a.cost || 0));
+        setAllAds(list);
+        const init = list.slice(0, 4).map((a) => `${a.channel}-${a.id}`);
+        setSelected(init);
+        setColorMap(Object.fromEntries(init.map((k, i) => [k, TREND_COLORS[i]])));
       } catch (e) { if (alive) setErr('Nettverksfeil'); }
       finally { if (alive) setLoading(false); }
     })();
@@ -1423,8 +1432,32 @@ function AdsTrendView({ apiKey, period, channel, periodLabel, onOpenFilter }) {
     }
   }, [selected, apiKey, effPeriod]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const colorOf = (key) => TREND_COLORS[(ads || []).findIndex((a) => `${a.channel}-${a.id}` === key) % TREND_COLORS.length];
-  const adOf = (key) => (ads || []).find((a) => `${a.channel}-${a.id}` === key);
+  const colorOf = (key) => colorMap[key] || '#d5d5d5';
+  const adOf = (key) => (allAds || []).find((a) => `${a.channel}-${a.id}` === key);
+
+  // Unike kampanjenavn (for kampanje-filter)
+  const campaigns = useMemo(() => {
+    const set = new Set((allAds || []).map((a) => a.campaign).filter(Boolean));
+    return [...set].sort((a, b) => a.localeCompare(b, 'nb'));
+  }, [allAds]);
+
+  // Filtrert annonse-liste (søk + kanal + status + kampanje)
+  const filtered = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    return (allAds || []).filter((a) => {
+      if (localChan !== 'all' && a.channel !== localChan) return false;
+      if (statusF === 'active' && !STATUS_ACTIVE(a.status)) return false;
+      if (statusF === 'paused' && !String(a.status || '').toUpperCase().includes('PAUSED')) return false;
+      if (campF !== 'all' && a.campaign !== campF) return false;
+      if (needle && !`${a.name || ''} ${a.campaign || ''} ${a.adGroup || ''}`.toLowerCase().includes(needle)) return false;
+      return true;
+    });
+  }, [allAds, q, localChan, statusF, campF]);
+
+  const visibleAds = showAll ? filtered : filtered.slice(0, 12);
+  const filterActive = q.trim() !== '' || localChan !== 'all' || statusF !== 'all' || campF !== 'all';
+  const resetFilters = () => { setQ(''); setLocalChan('all'); setStatusF('all'); setCampF('all'); setShowAll(false); };
+
   const mDef = TREND_METRICS.find(([k]) => k === metric) || TREND_METRICS[0];
   const [, mLabel, mFmt, mAdditive] = mDef;
 
@@ -1460,11 +1493,31 @@ function AdsTrendView({ apiKey, period, channel, periodLabel, onOpenFilter }) {
     return d;
   };
 
-  const toggle = (key) => setSelected((s) => s.includes(key) ? s.filter((k) => k !== key) : (s.length >= TREND_COLORS.length ? s : [...s, key]));
+  const toggle = (key) => {
+    setSelected((s) => {
+      if (s.includes(key)) {
+        setColorMap((m) => { const n = { ...m }; delete n[key]; return n; });
+        return s.filter((k) => k !== key);
+      }
+      if (s.length >= TREND_COLORS.length) return s;
+      setColorMap((m) => {
+        const used = new Set(Object.values(m));
+        const free = TREND_COLORS.find((c) => !used.has(c)) || TREND_COLORS[0];
+        return { ...m, [key]: free };
+      });
+      return [...s, key];
+    });
+  };
+  const clearAll = () => { setSelected([]); setColorMap({}); };
+  const selectTop = () => {
+    const top = filtered.slice(0, 4).map((a) => `${a.channel}-${a.id}`);
+    setSelected(top);
+    setColorMap(Object.fromEntries(top.map((k, i) => [k, TREND_COLORS[i]])));
+  };
 
   if (loading) return <div className="py-20 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-[#0a0a0a]" /></div>;
   if (err) return <div className="bg-rose-50 text-rose-600 rounded-xl px-4 py-3 text-[13px] flex items-center gap-2"><AlertCircle className="w-4 h-4" /> {err}</div>;
-  if (!ads || ads.length === 0) return <div className="bg-white rounded-2xl p-10 text-center text-[#999] text-[13px] shadow-[0_2px_16px_rgba(0,0,0,0.04)]">Ingen annonser med forbruk i valgt periode.</div>;
+  if (!allAds || allAds.length === 0) return <div className="bg-white rounded-2xl p-10 text-center text-[#999] text-[13px] shadow-[0_2px_16px_rgba(0,0,0,0.04)]">Ingen annonser med forbruk i valgt periode.</div>;
 
   return (
     <div>
@@ -1538,28 +1591,101 @@ function AdsTrendView({ apiKey, period, channel, periodLabel, onOpenFilter }) {
         </div>
       </div>
 
-      {/* Annonse-velger / legende m/ sum for perioden */}
-      <div className="mt-4 grid sm:grid-cols-2 xl:grid-cols-3 gap-2">
-        {ads.map((a) => {
-          const key = `${a.channel}-${a.id}`;
-          const on = selected.includes(key);
-          const line = lines.find((l) => l.key === key);
-          const vals = (line?.vals || []).filter((v) => v != null);
-          const agg = vals.length ? (mAdditive ? vals.reduce((t, v) => t + v, 0) : vals.reduce((t, v) => t + v, 0) / vals.length) : null;
-          return (
-            <button key={key} onClick={() => toggle(key)} className={`text-left bg-white rounded-xl px-3.5 py-2.5 shadow-[0_2px_10px_rgba(0,0,0,0.03)] ring-1 transition-all ${on ? 'ring-[#dcd6ca]' : 'ring-transparent opacity-55 hover:opacity-90'}`}>
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: on ? colorOf(key) : '#d5d5d5' }} />
-                {channelPill(a.channel)}
-                <span className="text-[12px] font-semibold text-[#0a0a0a] truncate flex-1" title={a.name}>{a.name || '–'}</span>
-                {on && agg != null && <span className="text-[11.5px] font-bold text-[#0a0a0a] tabular-nums shrink-0">{mAdditive ? mFmt(agg) : `Ø ${mFmt(agg)}`}</span>}
-              </div>
-              <p className="text-[10.5px] text-[#aaa] truncate mt-0.5 pl-[18px]">{a.campaign}{a.adGroup ? ` · ${a.adGroup}` : ''}</p>
+      {/* Filter-verktøylinje for annonse-listen */}
+      <div className="mt-4 flex flex-col lg:flex-row lg:items-center gap-2">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="w-3.5 h-3.5 text-[#aaa] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <input
+            value={q} onChange={(e) => setQ(e.target.value)} placeholder="Søk i annonser, kampanjer, annonsegrupper …"
+            className="w-full h-10 pl-9 pr-9 rounded-full bg-white text-[12.5px] text-[#0a0a0a] placeholder:text-[#b3b3b3] outline-none shadow-sm ring-1 ring-[#eee] focus:ring-[#dcd6ca] transition-all"
+          />
+          {q && (
+            <button onClick={() => setQ('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#aaa] hover:text-[#0a0a0a] transition-colors" title="Tøm søk">
+              <X className="w-3.5 h-3.5" />
             </button>
-          );
-        })}
+          )}
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          {chan === 'all' && (
+            <div className="flex items-center gap-1 bg-[#f1efeb] rounded-full p-1">
+              {[['all', 'Alle kanaler'], ['google', 'Google'], ['meta', 'Meta']].map(([v, l]) => (
+                <button key={v} onClick={() => setLocalChan(v)} className={`px-3 h-8 rounded-full text-[11.5px] font-semibold transition-all whitespace-nowrap ${localChan === v ? 'bg-white text-[#0a0a0a] shadow-sm' : 'text-[#888] hover:text-[#0a0a0a]'}`}>{l}</button>
+              ))}
+            </div>
+          )}
+          <div className="flex items-center gap-1 bg-[#f1efeb] rounded-full p-1">
+            {[['all', 'Alle statuser'], ['active', 'Aktive'], ['paused', 'Pauset']].map(([v, l]) => (
+              <button key={v} onClick={() => setStatusF(v)} className={`px-3 h-8 rounded-full text-[11.5px] font-semibold transition-all whitespace-nowrap ${statusF === v ? 'bg-white text-[#0a0a0a] shadow-sm' : 'text-[#888] hover:text-[#0a0a0a]'}`}>{l}</button>
+            ))}
+          </div>
+          {campaigns.length > 1 && (
+            <select
+              value={campF} onChange={(e) => setCampF(e.target.value)}
+              className={`h-10 px-3.5 rounded-full bg-white text-[12px] font-semibold shadow-sm ring-1 outline-none max-w-[230px] cursor-pointer transition-all ${campF !== 'all' ? 'text-[#0a0a0a] ring-[#dcd6ca]' : 'text-[#666] ring-[#eee] hover:ring-[#dcdcdc]'}`}
+            >
+              <option value="all">Alle kampanjer</option>
+              {campaigns.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+          )}
+        </div>
       </div>
-      <p className="mt-2.5 text-[11.5px] text-[#999]">Viser de {ads.length} annonsene med høyest forbruk i perioden. Ø = snitt per dag for forholdstall (CTR/CPC); ellers sum for perioden.</p>
+
+      {/* Tellelinje + hurtigvalg */}
+      <div className="mt-2 flex items-center justify-between gap-2 flex-wrap">
+        <p className="text-[11.5px] text-[#999]">
+          <span className="font-semibold text-[#0a0a0a]">{selected.length}</span> av {TREND_COLORS.length} mulige linjer valgt
+          <span className="text-[#ddd] mx-1.5">·</span>
+          {filtered.length} {filtered.length === 1 ? 'annonse' : 'annonser'}{filterActive ? ' etter filter' : ' totalt'}
+        </p>
+        <div className="flex items-center gap-1.5">
+          {filtered.length > 0 && (
+            <button onClick={selectTop} className="h-8 px-3 rounded-full bg-white text-[11.5px] font-semibold text-[#444] shadow-sm ring-1 ring-[#eee] hover:ring-[#dcdcdc] active:scale-[0.97] transition-all">Velg topp 4</button>
+          )}
+          {selected.length > 0 && (
+            <button onClick={clearAll} className="h-8 px-3 rounded-full bg-white text-[11.5px] font-semibold text-rose-500 shadow-sm ring-1 ring-[#eee] hover:ring-rose-200 active:scale-[0.97] transition-all">Fjern alle</button>
+          )}
+          {filterActive && (
+            <button onClick={resetFilters} className="h-8 px-3 rounded-full bg-[#0a0a0a] text-[11.5px] font-semibold text-white active:scale-[0.97] transition-all inline-flex items-center gap-1.5"><X className="w-3 h-3" /> Nullstill filter</button>
+          )}
+        </div>
+      </div>
+
+      {/* Annonse-velger / legende m/ sum for perioden */}
+      {filtered.length === 0 ? (
+        <div className="mt-2 bg-white rounded-2xl p-8 text-center shadow-[0_2px_16px_rgba(0,0,0,0.04)]">
+          <p className="text-[13px] text-[#999]">Ingen annonser matcher filteret.</p>
+          <button onClick={resetFilters} className="mt-3 h-9 px-4 rounded-full bg-[#0a0a0a] text-white text-[12px] font-semibold active:scale-[0.97] transition-all">Nullstill filter</button>
+        </div>
+      ) : (
+        <div className="mt-2 grid sm:grid-cols-2 xl:grid-cols-3 gap-2">
+          {visibleAds.map((a) => {
+            const key = `${a.channel}-${a.id}`;
+            const on = selected.includes(key);
+            const line = lines.find((l) => l.key === key);
+            const vals = (line?.vals || []).filter((v) => v != null);
+            const agg = vals.length ? (mAdditive ? vals.reduce((t, v) => t + v, 0) : vals.reduce((t, v) => t + v, 0) / vals.length) : null;
+            const paused = String(a.status || '').toUpperCase().includes('PAUSED');
+            return (
+              <button key={key} onClick={() => toggle(key)} className={`text-left bg-white rounded-xl px-3.5 py-2.5 shadow-[0_2px_10px_rgba(0,0,0,0.03)] ring-1 transition-all ${on ? 'ring-[#dcd6ca]' : 'ring-transparent opacity-55 hover:opacity-90'}`}>
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: on ? colorOf(key) : '#d5d5d5' }} />
+                  {channelPill(a.channel)}
+                  <span className="text-[12px] font-semibold text-[#0a0a0a] truncate flex-1" title={a.name}>{a.name || '–'}</span>
+                  {paused && <span className="text-[10px] font-semibold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded-full shrink-0">Pauset</span>}
+                  {on && agg != null && <span className="text-[11.5px] font-bold text-[#0a0a0a] tabular-nums shrink-0">{mAdditive ? mFmt(agg) : `Ø ${mFmt(agg)}`}</span>}
+                </div>
+                <p className="text-[10.5px] text-[#aaa] truncate mt-0.5 pl-[18px]">{a.campaign}{a.adGroup ? ` · ${a.adGroup}` : ''}</p>
+              </button>
+            );
+          })}
+        </div>
+      )}
+      {!showAll && filtered.length > 12 && (
+        <button onClick={() => setShowAll(true)} className="mt-2 w-full h-9 rounded-xl bg-white text-[12px] font-semibold text-[#444] shadow-[0_2px_10px_rgba(0,0,0,0.03)] ring-1 ring-[#eee] hover:ring-[#dcdcdc] active:scale-[0.99] transition-all">
+          Vis alle {filtered.length} annonser
+        </button>
+      )}
+      <p className="mt-2.5 text-[11.5px] text-[#999]">Sortert etter forbruk i perioden. Klikk et kort for å vise/skjule linjen i grafen. Ø = snitt per dag for forholdstall (CTR/CPC); ellers sum for perioden.</p>
     </div>
   );
 }
