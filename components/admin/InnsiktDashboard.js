@@ -18,6 +18,7 @@ import LiveTab from '@/components/admin/LiveTab';
 import WebVitalsTab from '@/components/admin/WebVitalsTab';
 import AdsTab from '@/components/admin/AdsTab';
 import AdStudioTab from '@/components/admin/AdStudioTab';
+import FinnStudioTab from '@/components/admin/FinnStudioTab';
 import FunnelTab from '@/components/admin/FunnelTab';
 import LandingPagesTab from '@/components/admin/LandingPagesTab';
 import CompetitorAnalysisTab from '@/components/admin/CompetitorAnalysisTab';
@@ -30,6 +31,7 @@ const TABS = [
   { k: 'ytelse', l: 'Ytelse', icon: Gauge, d: 'Core Web Vitals og sidehastighet' },
   { k: 'innsikt', l: 'Lead-innsikt', icon: BarChart3, d: 'Kvalitet, kilder og pipeline' },
   { k: 'annonser', l: 'Annonser', icon: Megaphone, d: 'Meta & Google Ads · forbruk og ROAS' },
+  { k: 'finnstudio', l: 'FINN-studio', icon: Layers, d: 'FINN.no display — bannere, UTM-lenker og kampanjemåling' },
   { k: 'landingssider', l: 'Landingssider', icon: LayoutTemplate, d: 'Kampanjesider · trafikk, konvertering og verdi' },
   { k: 'konkurrent', l: 'Konkurrentanalyse', icon: Crosshair, d: 'Søkevolum, budestimat og live-annonser for konkurrenter' },
   { k: 'leiemarked', l: 'Leiemarked', icon: Database, d: 'Priser og etterspørsel i markedet' },
@@ -301,7 +303,7 @@ export default function InnsiktDashboard({ apiKey, tab: propTab, onTabChange, on
           <p className="text-[12.5px] text-[#a3a3a3] mt-0.5">{(TABS.find((x) => x.k === tab) || TABS[0]).d}</p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          {tab !== 'annonser' && (
+          {!['annonser', 'finnstudio', 'annonsestudio'].includes(tab) && (
             <>
               <div className="flex items-center bg-white rounded-full p-1 shadow-[0_2px_10px_rgba(0,0,0,0.04)]">
                 {RANGES.map((r) => (
@@ -344,6 +346,7 @@ export default function InnsiktDashboard({ apiKey, tab: propTab, onTabChange, on
       {tab === 'innsikt' && <IntelTab leads={analytics && analytics.leads} />}
       {tab === 'annonser' && <AdsTab apiKey={apiKey} />}
       {tab === 'annonsestudio' && <AdStudioTab apiKey={apiKey} />}
+      {tab === 'finnstudio' && <FinnStudioTab apiKey={apiKey} />}
       {tab === 'landingssider' && <LandingPagesTab apiKey={apiKey} days={days} />}
       {tab === 'konkurrent' && <CompetitorAnalysisTab apiKey={apiKey} />}
       {tab === 'leiemarked' && <RentMarketTab apiKey={apiKey} />}

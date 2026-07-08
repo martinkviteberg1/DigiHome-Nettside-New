@@ -18,6 +18,7 @@ import { runAdsWithMetricsViaComposio } from '@/lib/composio-google-ads';
 import { dataManagerConfigured, ingestOfflineConversion } from '@/lib/google-ads-datamanager';
 import { IMPORTED_COLL, importRecords, parseCsv, summarizeImported, syncFromPlatform, listImported, updateImportedOverride } from '@/lib/imported-leads';
 import { queueLeadPushback, flushLeadPushbacks, pushbackStats } from '@/lib/lead-pushback';
+import { renderFinnBanners, FINN_THEMES } from '@/lib/finn-banners';
 import {
   DD_SECTIONS, DD_CATEGORIES,
   createLink as ddCreateLink, listLinks as ddListLinks, updateLink as ddUpdateLink, deleteLink as ddDeleteLink,
@@ -3719,6 +3720,299 @@ Lag en komplett tekstpakke som JSON:
       }
     }
 
+    // ===================================================================
+    // FINN-STUDIO — bannergenerator + manuell kampanjemåling for FINN.no
+    // FINN har ikke annonse-API: bannere bookes via FINN-selger og leveres
+    // på e-post (adops@finn.no). Vi genererer materiell i alle FINN-formater
+    // server-side (SVG → sharp → PNG/JPEG) og måler effekt via UTM + manuelt
+    // registrerte kampanjetall (finn_campaigns-collection).
+    // ===================================================================
+
+    // AI-tekstforslag tilpasset banner-format (svært korte tekster).
+    // body: { brief, landing? } → { ok, variants:[{angle, headline, subtext, cta} x4] }
+    if (route === '/admin/finnstudio/copy' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      const brief = String(body.brief || '').slice(0, 600).trim();
+      if (!brief) return cors(NextResponse.json({ ok: false, error: 'Skriv en kort brief først' }, { status: 400 }));
+      try {
+        const raw = await chatLLM({
+          feature: 'finnstudio_tekst',
+          maxTokens: 900,
+          temperature: 0.8,
+          messages: [
+            { role: 'system', content: 'Du er en norsk tekstforfatter for display-bannere på FINN.no. Bannere har MINIMAL plass: overskrift maks 30 tegn, undertekst maks 45 tegn, CTA-knapp maks 14 tegn. Konteksten er unik: leseren blar i boligannonser på FINN eiendom akkurat nå — spill gjerne på det. Norsk bokmål, konkret, null superlativ-støy, ingen anførselstegn. Svar KUN med gyldig JSON.' },
+            { role: 'user', content: `Selskap: DigiHome — profesjonell utleieforvaltning i Bergen. Tilbud: gratis leievurdering på 60 sekunder. Landingsside: ${String(body.landing || 'https://digihome.no/bli-utleier')}.
+
+Brief: ${brief}
+
+Lag 4 banner-varianter som JSON:
+{ "variants": [ { "angle": "kort vinkelnavn", "headline": "maks 30 tegn", "subtext": "maks 45 tegn", "cta": "maks 14 tegn" } x4 — fire ULIKE vinkler, f.eks. «ikke selg – lei ut», markedsleie-nysgjerrighet, tidsbesparelse, trygghet ] }` },
+          ],
+        });
+        const jsonStr = raw.slice(raw.indexOf('{'), raw.lastIndexOf('}') + 1);
+        const pkg = JSON.parse(jsonStr);
+        const variants = (Array.isArray(pkg.variants) ? pkg.variants : []).slice(0, 4).map((v) => ({
+          angle: String(v.angle || '').slice(0, 40),
+          headline: String(v.headline || '').slice(0, 34),
+          subtext: String(v.subtext || '').slice(0, 50),
+          cta: String(v.cta || 'Les mer').slice(0, 16),
+        }));
+        if (!variants.length) return cors(NextResponse.json({ ok: false, error: 'AI ga ikke gyldige varianter — prøv igjen' }, { status: 502 }));
+        return cors(NextResponse.json({ ok: true, variants }));
+      } catch (e) {
+        return cors(NextResponse.json({ ok: false, error: 'AI-teksten feilet: ' + (e.message || '') }, { status: 502 }));
+      }
+    }
+
+    // Render bannere i alle valgte FINN-formater (WOW-motor i lib/finn-banners.js).
+    // body: { headline, subtext?, cta?, eyebrow?, theme:'midnatt'|'nordlys'|'krem'|'plakat', imageB64?, formats?:[keys] }
+    // → { ok, banners: [{key,label,w,h,bytes,maxKb,group,type,dataUrl}] }
+    if (route === '/admin/finnstudio/render' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      const headline = String(body.headline || '').slice(0, 60).trim();
+      if (!headline) return cors(NextResponse.json({ ok: false, error: 'Overskrift mangler' }, { status: 400 }));
+      try {
+        let imgBuf = null;
+        if (body.imageB64) {
+          try { imgBuf = Buffer.from(String(body.imageB64).replace(/^data:[^;]+;base64,/, ''), 'base64'); } catch (e) { imgBuf = null; }
+        }
+        const banners = await renderFinnBanners({
+          headline,
+          subtext: String(body.subtext || '').slice(0, 90).trim(),
+          cta: String(body.cta || 'Les mer').slice(0, 20).trim(),
+          eyebrow: String(body.eyebrow ?? 'Utleieforvaltning i Bergen').slice(0, 40).trim(),
+          theme: FINN_THEMES[body.theme] ? body.theme : 'midnatt',
+          imgBuf,
+          formats: Array.isArray(body.formats) && body.formats.length ? body.formats : null,
+        });
+        if (!banners.length) return cors(NextResponse.json({ ok: false, error: 'Ingen gyldige formater valgt' }, { status: 400 }));
+        return cors(NextResponse.json({ ok: true, banners }));
+      } catch (e) {
+        return cors(NextResponse.json({ ok: false, error: 'Rendering feilet: ' + (e.message || '') }, { status: 500 }));
+      }
+    }
+
+    // AI-generert bakgrunnsfoto for bannere (Nano Banana Pro m/ fallback) → dataUrl.
+    // Lagres ikke — frontend sender dataUrl videre til /render som imageB64.
+    if (route === '/admin/finnstudio/genbg' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      const userPrompt = String(body.prompt || '').slice(0, 400).trim()
+        || 'Elegant Scandinavian apartment interior in Bergen, Norway — soft evening light through large windows, glimpse of colorful Bergen wooden houses outside';
+      const fullPrompt = `${userPrompt}. Photorealistic, cinematic and premium, moody dark-toned edges and bottom (white text will be overlaid), shallow depth of field, visual focus in the upper center. No text, no watermarks, no logos, no people.`;
+      const genWithModel = async (model, timeoutMs) => {
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+        try {
+          const res = await fetch('https://integrations.emergentagent.com/llm/v1/images/generations', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${process.env.EMERGENT_LLM_KEY}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ model, prompt: fullPrompt, n: 1 }),
+            signal: ctrl.signal,
+          });
+          if (!res.ok) return null;
+          const json = await res.json();
+          return json?.data?.[0]?.b64_json || null;
+        } catch (err) {
+          return null;
+        } finally { clearTimeout(timer); }
+      };
+      try {
+        let b64 = await genWithModel('gemini/gemini-3-pro-image-preview', 90000);
+        let modelUsed = 'gemini-3-pro-image-preview';
+        if (!b64) { b64 = await genWithModel('gemini/gemini-2.5-flash-image', 60000); modelUsed = 'gemini-2.5-flash-image'; }
+        if (!b64) return cors(NextResponse.json({ ok: false, error: 'AI ga ikke noe bilde — prøv igjen' }, { status: 502 }));
+        logImageUsage(db, { model: modelUsed, feature: 'finnstudio_bakgrunn' }).catch(() => {}); // kostnadstelling
+        const out = await sharp(Buffer.from(b64, 'base64'))
+          .resize({ width: 1600, withoutEnlargement: true })
+          .jpeg({ quality: 84, mozjpeg: true })
+          .toBuffer();
+        return cors(NextResponse.json({ ok: true, dataUrl: `data:image/jpeg;base64,${out.toString('base64')}`, model: modelUsed }));
+      } catch (e) {
+        const msg = e.name === 'AbortError' ? 'AI-bildegenerering tok for lang tid — prøv igjen' : 'Bildegenerering feilet: ' + (e.message || 'ukjent');
+        return cors(NextResponse.json({ ok: false, error: msg }, { status: 502 }));
+      }
+    }
+
+    // Design-bibliotek: lagre og gjenbruk bannerdesign (finn_designs).
+    if (route === '/admin/finnstudio/designs' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      try {
+        const { searchParams } = new URL(request.url);
+        const id = searchParams.get('id');
+        if (id) {
+          const d = await db.collection('finn_designs').findOne({ id: String(id) }, { projection: { _id: 0 } });
+          if (!d) return cors(NextResponse.json({ ok: false, error: 'Fant ikke designet' }, { status: 404 }));
+          return cors(NextResponse.json({ ok: true, design: d }));
+        }
+        const rows = await db.collection('finn_designs').find({}).project({ _id: 0, photo: 0 }).sort({ updatedAt: -1 }).limit(30).toArray();
+        return cors(NextResponse.json({ ok: true, designs: rows }));
+      } catch (e) {
+        return cors(NextResponse.json({ ok: false, error: e.message }, { status: 500 }));
+      }
+    }
+
+    if (route === '/admin/finnstudio/designs' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      const name = String(body.name || '').slice(0, 80).trim();
+      if (!name) return cors(NextResponse.json({ ok: false, error: 'Designnavn mangler' }, { status: 400 }));
+      const photo = typeof body.photo === 'string' && body.photo.startsWith('data:image/') ? body.photo.slice(0, 3_000_000) : null;
+      const doc = {
+        name,
+        eyebrow: String(body.eyebrow || '').slice(0, 40),
+        headline: String(body.headline || '').slice(0, 60),
+        subtext: String(body.subtext || '').slice(0, 90),
+        cta: String(body.cta || '').slice(0, 20),
+        theme: String(body.theme || 'midnatt').slice(0, 20),
+        landing: String(body.landing || '').slice(0, 300),
+        utmCampaign: String(body.utmCampaign || '').slice(0, 80),
+        photo, hasPhoto: !!photo,
+        updatedAt: new Date().toISOString(),
+      };
+      try {
+        if (body.id) {
+          const r = await db.collection('finn_designs').updateOne({ id: String(body.id) }, { $set: doc });
+          if (!r.matchedCount) return cors(NextResponse.json({ ok: false, error: 'Fant ikke designet' }, { status: 404 }));
+          return cors(NextResponse.json({ ok: true, id: String(body.id) }));
+        }
+        doc.id = uuidv4();
+        doc.createdAt = doc.updatedAt;
+        await db.collection('finn_designs').insertOne({ ...doc });
+        return cors(NextResponse.json({ ok: true, id: doc.id }, { status: 201 }));
+      } catch (e) {
+        return cors(NextResponse.json({ ok: false, error: e.message }, { status: 500 }));
+      }
+    }
+
+    if (route === '/admin/finnstudio/designs' && method === 'DELETE') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const { searchParams } = new URL(request.url);
+      const id = String(searchParams.get('id') || '');
+      if (!id) return cors(NextResponse.json({ ok: false, error: 'Mangler id' }, { status: 400 }));
+      try {
+        const r = await db.collection('finn_designs').deleteOne({ id });
+        return cors(NextResponse.json({ ok: true, deleted: r.deletedCount }));
+      } catch (e) {
+        return cors(NextResponse.json({ ok: false, error: e.message }, { status: 500 }));
+      }
+    }
+
+    // Manuelle FINN-kampanjer: liste m/ målte resultater (UTM-join mot events + leads).
+    if (route === '/admin/finnstudio/campaigns' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      try {
+        const rows = await db.collection('finn_campaigns').find({}).project({ _id: 0 }).sort({ startDate: -1, createdAt: -1 }).toArray();
+        const FINN_RE = /finn/i;
+        const round2 = (n) => Math.round((n || 0) * 100) / 100;
+        // Hent alle finn-attribuerte leads én gang
+        const allLeads = await db.collection('leads')
+          .find({ 'attribution.source': { $regex: 'finn', $options: 'i' } })
+          .project({ _id: 0, createdAt: 1, status: 1, wonValue: 1, value: 1, attribution: 1 })
+          .limit(20000).toArray();
+        const campaigns = [];
+        for (const c of rows) {
+          const fromIso = c.startDate ? `${c.startDate}T00:00:00.000Z` : '1970-01-01T00:00:00.000Z';
+          const toIso = c.endDate ? `${c.endDate}T23:59:59.999Z` : '9999-12-31T23:59:59.999Z';
+          const utm = String(c.utmCampaign || '').trim().toLowerCase();
+          const leads = allLeads.filter((l) => {
+            if (l.createdAt < fromIso || l.createdAt > toIso) return false;
+            if (utm) return String((l.attribution && l.attribution.campaign) || '').trim().toLowerCase() === utm;
+            return true;
+          });
+          const won = leads.filter((l) => l.status === 'won');
+          const wonValue = won.reduce((a, l) => a + (Number(l.wonValue) || Number(l.value) || 0), 0);
+          // Økter fra events (unike sessionId med finn-kilde i perioden)
+          let sessions = 0;
+          try {
+            const q = { ts: { $gte: fromIso, $lte: toIso }, source: { $regex: 'finn', $options: 'i' } };
+            if (utm) q.campaign = { $regex: `^${utm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' };
+            const ids = await db.collection('events').distinct('sessionId', q);
+            sessions = ids.filter(Boolean).length;
+          } catch (e) { /* best-effort */ }
+          const spend = Number(c.spendNok) || 0;
+          const clicks = Number(c.clicks) || 0;
+          const imps = Number(c.impressions) || 0;
+          campaigns.push({
+            ...c,
+            measured: {
+              sessions, leads: leads.length, won: won.length, wonValue: round2(wonValue),
+              cpl: leads.length && spend ? round2(spend / leads.length) : null,
+              cpa: won.length && spend ? round2(spend / won.length) : null,
+              roas: spend ? round2(wonValue / spend) : null,
+              ctr: imps && clicks ? round2((clicks / imps) * 100) : null,
+              cpc: clicks && spend ? round2(spend / clicks) : null,
+              cpm: imps && spend ? round2((spend / imps) * 1000) : null,
+              clickToSession: clicks ? round2((sessions / clicks) * 100) : null,
+            },
+          });
+        }
+        const tot = campaigns.reduce((a, c) => ({
+          spend: a.spend + (Number(c.spendNok) || 0),
+          impressions: a.impressions + (Number(c.impressions) || 0),
+          clicks: a.clicks + (Number(c.clicks) || 0),
+          sessions: a.sessions + (c.measured.sessions || 0),
+          leads: a.leads + (c.measured.leads || 0),
+          won: a.won + (c.measured.won || 0),
+          wonValue: a.wonValue + (c.measured.wonValue || 0),
+        }), { spend: 0, impressions: 0, clicks: 0, sessions: 0, leads: 0, won: 0, wonValue: 0 });
+        tot.cpl = tot.leads && tot.spend ? round2(tot.spend / tot.leads) : null;
+        tot.spend = round2(tot.spend); tot.wonValue = round2(tot.wonValue);
+        return cors(NextResponse.json({ ok: true, campaigns, totals: tot }));
+      } catch (e) {
+        return cors(NextResponse.json({ ok: false, error: e.message }, { status: 500 }));
+      }
+    }
+
+    // Opprett/oppdater manuell FINN-kampanje. body: {id?, name, utmCampaign?, startDate?, endDate?, budgetNok?, spendNok?, impressions?, clicks?, status?, note?}
+    if (route === '/admin/finnstudio/campaigns' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      const name = String(body.name || '').slice(0, 120).trim();
+      if (!name) return cors(NextResponse.json({ ok: false, error: 'Kampanjenavn mangler' }, { status: 400 }));
+      const day = (v) => (/^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) ? String(v) : null);
+      const num = (v) => (v === '' || v == null || isNaN(Number(v)) ? null : Math.max(0, Number(v)));
+      const doc = {
+        name,
+        utmCampaign: String(body.utmCampaign || '').slice(0, 80).trim().toLowerCase().replace(/\s+/g, '-') || null,
+        startDate: day(body.startDate), endDate: day(body.endDate),
+        budgetNok: num(body.budgetNok), spendNok: num(body.spendNok) || 0,
+        impressions: Math.round(num(body.impressions) || 0), clicks: Math.round(num(body.clicks) || 0),
+        status: ['planlagt', 'aktiv', 'avsluttet'].includes(body.status) ? body.status : 'planlagt',
+        note: String(body.note || '').slice(0, 500),
+        updatedAt: new Date().toISOString(),
+      };
+      try {
+        if (body.id) {
+          const r = await db.collection('finn_campaigns').updateOne({ id: String(body.id) }, { $set: doc });
+          if (!r.matchedCount) return cors(NextResponse.json({ ok: false, error: 'Fant ikke kampanjen' }, { status: 404 }));
+          const saved = await db.collection('finn_campaigns').findOne({ id: String(body.id) }, { projection: { _id: 0 } });
+          return cors(NextResponse.json({ ok: true, campaign: saved }));
+        }
+        doc.id = uuidv4();
+        doc.createdAt = doc.updatedAt;
+        await db.collection('finn_campaigns').insertOne({ ...doc });
+        return cors(NextResponse.json({ ok: true, campaign: doc }, { status: 201 }));
+      } catch (e) {
+        return cors(NextResponse.json({ ok: false, error: e.message }, { status: 500 }));
+      }
+    }
+
+    if (route === '/admin/finnstudio/campaigns' && method === 'DELETE') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const { searchParams } = new URL(request.url);
+      const id = String(searchParams.get('id') || '');
+      if (!id) return cors(NextResponse.json({ ok: false, error: 'Mangler id' }, { status: 400 }));
+      try {
+        const r = await db.collection('finn_campaigns').deleteOne({ id });
+        return cors(NextResponse.json({ ok: true, deleted: r.deletedCount }));
+      } catch (e) {
+        return cors(NextResponse.json({ ok: false, error: e.message }, { status: 500 }));
+      }
+    }
+
     // AI-bildegenerering for nyhetsbrev (Gemini Nano Banana via Emergent-nøkkelen).
     // body: { prompt?, auto?, blocks?, style: 'foto'|'illustrasjon'|'minimal' }
     // auto=true → LLM skriver bildeprompt fra nyhetsbrevets innhold først.
@@ -5422,6 +5716,18 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
             const t = (r.snap && r.snap.totals) || {};
             out.meta = { clicks: Number(t.linkClicks) || Number(t.clicks) || 0, spend: Number(t.cost ?? t.spend) || 0 };
           }
+        } catch (e) { /* best-effort */ }
+        try {
+          // FINN.no: manuelt registrerte kampanjer (finn_campaigns) — summer forbruk/klikk
+          // for kampanjer som overlapper perioden.
+          const fromDay = new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
+          const rows = await db.collection('finn_campaigns').find({}).project({ _id: 0 }).toArray();
+          let spend = 0, clicks = 0, any = false;
+          for (const c of rows) {
+            const end = String(c.endDate || '9999-12-31');
+            if (end >= fromDay) { spend += Number(c.spendNok) || 0; clicks += Number(c.clicks) || 0; any = true; }
+          }
+          if (any) out.finn = { clicks, spend };
         } catch (e) { /* best-effort */ }
         return out;
       })();

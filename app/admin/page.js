@@ -6,7 +6,7 @@ import {
   Menu, X, ChevronRight, ShieldCheck, Sparkles, MessageSquare,
   LayoutDashboard, Radio, Activity, GitBranch, Gauge, Megaphone, Database,
   Command, Search, CornerDownLeft, LayoutTemplate, Crosshair, TrendingUp, Wallet,
-  Globe, ExternalLink, PenLine, Mail, Home, History, Landmark, Wand2,
+  Globe, ExternalLink, PenLine, Mail, Home, History, Landmark, Wand2, Layers,
 } from 'lucide-react';
 import InnsiktDashboard from '@/components/admin/InnsiktDashboard';
 import KpiDashboard from '@/components/admin/KpiDashboard';
@@ -72,6 +72,7 @@ const INSIGHT_TABS = [
   { k: 'trakt', l: 'Trakt & A/B', icon: GitBranch },
   { k: 'annonser', l: 'Annonser', icon: Megaphone },
   { k: 'annonsestudio', l: 'Annonsestudio', icon: Wand2 },
+  { k: 'finnstudio', l: 'FINN-studio', icon: Layers },
   { k: 'konkurrent', l: 'Konkurrentanalyse', icon: Crosshair },
   { k: 'innsikt', l: 'Lead-innsikt', icon: BarChart3 },
   { k: 'leiemarked', l: 'Leiemarked', icon: Database },

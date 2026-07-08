@@ -105,7 +105,96 @@
 user_problem_statement: "Bygg DigiHome markedsside (Next.js App Router) etter flyttepakken — Warm Ink Editorial design, norsk bokmål, full SEO, DB-drevet blogg + admin + programmatisk SEO. Fase 1: verdensklasse forside + lead-API."
 
 backend:
-  - task: "Betalt trakt: leads uten attribusjon (før sporing gikk live 2. juli) skilles ut i egen «untracked»-kategori"
+  - task: "FINN-studio: design-bibliotek (GET/POST/DELETE /api/admin/finnstudio/designs)"
+    implemented: true
+    working: true
+    file: "/app/app/api/[[...path]]/route.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "Ny collection finn_designs. POST {id?, name*, eyebrow, headline, subtext, cta, theme, landing, utmCampaign, photo?(dataUrl, maks 3M tegn)} → 201 (ny) / 200 (oppdatering med id). GET → liste (uten photo-felt, med hasPhoto-flagg, maks 30). GET ?id= → fullt design inkl. photo. DELETE ?id=. Navn mangler → 400, ukjent id → 404, uten key → 401. Testagent MÅ rydde opp egne QA-design."
+        -working: true
+        -agent: "testing"
+        -comment: "✅ PASS (11/11 tests). DESIGN LIBRARY COMPLETE: (1a) POST create design with all fields (name, eyebrow, headline, subtext, cta, theme, landing, utmCampaign, photo) returns 201 {ok:true, id} ✓. (1b) GET list returns 200 with designs array, QA design present with hasPhoto=true and NO photo field (correct) ✓. (1c) GET single design with ?id= returns 200 with design object INCLUDING photo field (dataUrl) and all text fields ✓. (1d) POST update with {id, name:'QA Design v2', theme:'plakat'} returns 200, GET verifies name and theme updated ✓. (1e) VALIDATION: POST without name returns 400 ✓, GET with non-existent id returns 404 ✓, DELETE returns 200 {deleted:1} and design removed from list ✓. AUTH: GET/POST/DELETE without key all return 401 ✓. MANDATORY CLEANUP COMPLETED: finn_designs collection is EMPTY (no QA designs) ✓. Endpoint working PERFECTLY. All CRUD operations, validation, auth, and cleanup verified."
+
+  - task: "FINN-studio: AI-tekstforslag for bannere (POST /api/admin/finnstudio/copy)"
+    implemented: true
+    working: true
+    file: "/app/app/api/[[...path]]/route.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "Nytt endepunkt: POST /admin/finnstudio/copy body {brief, landing?} → chatLLM (feature finnstudio_tekst) → {ok, variants:[{angle, headline(≤34), subtext(≤50), cta(≤16)} x4]}. Tom brief → 400. Uten key → 401. Gjør ETT ekte LLM-kall per forespørsel — testagent: maks 1 kall."
+        -working: true
+        -agent: "testing"
+        -comment: "✅ PASS (3/3 tests). POST /copy with valid brief 'Nå boligeiere i Bergen som vurderer å selge — vinkle mot utleie i stedet' returns 200 in 6.32s with ok:true and 4 variants ✓. Each variant has correct structure: angle (string), headline (≤34 chars), subtext (≤50 chars), cta (≤16 chars) ✓. Example variant: angle='ikke selg – lei ut', headline='Leie i stedet for salg?' (23 chars), subtext='Få gratis leievurdering nå.' (27 chars), cta='Se mer' (6 chars) ✓. Empty brief returns 400 with Norwegian error message ✓. Without key returns 401 ✓. CRITICAL: Made exactly 1 LLM call as required. Endpoint working PERFECTLY."
+
+  - task: "FINN-studio: banner-rendering i alle FINN-formater (POST /api/admin/finnstudio/render)"
+    implemented: true
+    working: true
+    file: "/app/app/api/[[...path]]/route.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "OPPGRADERT til WOW-motor i /app/lib/finn-banners.js: POST /admin/finnstudio/render body {headline, subtext?, cta?, eyebrow?, theme:'midnatt'|'nordlys'|'krem'|'plakat', imageB64?, formats?:[keys]}. 7 formater: board 320×250, board_xl 320×400, netboard 580×400, fullskjerm 1080×1920, hestesko_topp 1010×150, hestesko_side 180×700, wallpaper_bakgrunn 1920×1300. Respons: {ok, banners:[{key,label,w,h,bytes,maxKb,group('mobil'|'desktop'),type,dataUrl}]}. Vektgrenser håndheves (PNG→JPEG-fallback). Manglende headline → 400. Ukjent theme faller tilbake til midnatt. Rendering er lokal (sharp) — trygt å teste. Motor verifisert manuelt med node-script (alle formater innenfor vekt, visuelt inspisert)."
+        -working: true
+        -agent: "testing"
+        -comment: "✅ PASS (8/8 tests). POST /render with all fields returns 200 in 0.55s with exactly 7 banners ✓. ALL formats present with correct dimensions: board 320×250, board_xl 320×400, netboard 580×400, fullskjerm 1080×1920, hestesko_topp 1010×150, hestesko_side 180×700, wallpaper_bakgrunn 1920×1300 ✓. Each banner has correct structure: key, label, w, h, bytes (>1000), maxKb, group (mobil/desktop), type (png/jpeg), dataUrl (starts with 'data:image/') ✓. ALL banners within size limits (bytes ≤ maxKb*1024) ✓. Board banner decoded successfully with valid PNG magic bytes (89 50 4E 47) ✓. Single format (formats:['board']) returns exactly 1 banner ✓. Themes 'krem' and 'plakat' each return 7 banners ✓. Unknown theme 'foo' returns 200 with 7 banners (fallback to midnatt working) ✓. With imageB64: board has type='jpeg' (photo composite), hestesko_topp has type='png' (photoOk=false) ✓. Without headline returns 400 ✓. Without key returns 401 ✓. Endpoint working PERFECTLY."
+
+  - task: "FINN-studio: AI-bakgrunnsfoto (POST /api/admin/finnstudio/genbg)"
+    implemented: true
+    working: true
+    file: "/app/app/api/[[...path]]/route.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "Nytt endepunkt: POST /admin/finnstudio/genbg body {prompt?} → Nano Banana Pro (gemini-3-pro-image-preview, fallback gemini-2.5-flash-image) via EMERGENT_LLM_KEY → sharp jpeg 1600w → {ok, dataUrl, model}. Uten key → 401. KOSTER ekte bildegenerering — testagent: MAKS 1 kall, bruk timeout 120s. 502 aksepteres kun hvis feilmelding er fornuftig (AI-tjeneste nede)."
+        -working: true
+        -agent: "testing"
+        -comment: "✅ PASS (2/2 tests). POST /genbg with default prompt (empty body) returns 200 in 6.78s with ok:true, dataUrl (starts with 'data:image/jpeg;base64,'), and model field ✓. CRITICAL: Made exactly 1 AI image generation call as required (within 120s timeout) ✓. Without key returns 401 ✓. Endpoint working PERFECTLY. NOTE: 502 with Norwegian error message about AI service being down/timeout would be acceptable (MINOR issue), but not encountered in this test."
+
+  - task: "FINN-studio: manuelle kampanjer CRUD + UTM-måling (GET/POST/DELETE /api/admin/finnstudio/campaigns)"
+    implemented: true
+    working: true
+    file: "/app/app/api/[[...path]]/route.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "Ny collection finn_campaigns. POST oppretter/oppdaterer (id i body = oppdater): {name*, utmCampaign?, startDate?, endDate?, budgetNok?, spendNok?, impressions?, clicks?, status planlagt|aktiv|avsluttet, note?}. GET beriker hver kampanje med measured{sessions(events m/ source~finn), leads/won/wonValue (leads m/ attribution.source~finn + evt. campaign-match), cpl, cpa, roas, ctr, cpc, cpm, clickToSession} + totals. DELETE ?id=. Navn mangler → 400. Testagent MÅ rydde opp: slett alle QA-kampanjer etter test."
+        -working: true
+        -agent: "testing"
+        -comment: "✅ PASS (9/9 tests). CREATE: POST /campaigns with full campaign data (name='QA FINN Test', spendNok=1500, clicks=25, impressions=10000) returns 201 with ok:true and campaign.id ✓. GET: Returns 200 with ok:true, campaigns array, and totals object ✓. QA campaign found in list with correct measured calculations: ctr=0.25% (25/10000), cpc=60 (1500/25), cpm=150 ((1500/10000)*1000), sessions=0, leads=0 (no finn traffic exists) ✓. totals.spend=1500, totals.clicks=25 ✓. UPDATE: POST with id updates spendNok from 1500 to 2000, measured.cpc correctly recalculated to 80 (2000/25) ✓. VALIDATION: POST without name returns 400 ✓. POST with non-existent id returns 404 ✓. DELETE: Returns 200 with ok:true and deleted:1, campaign removed from list ✓. AUTH: GET/POST/DELETE without key all return 401 ✓. MANDATORY CLEANUP COMPLETED: finn_campaigns collection is EMPTY after test ✓. Endpoint working PERFECTLY."
+
+  - task: "Betalt trakt: FINN.no som egen betalt kanal (paidChannelOf + buildPaidFunnel + adStats fra finn_campaigns)"
+    implemented: true
+    working: true
+    file: "/app/lib/analytics-server.js + /app/app/api/[[...path]]/route.js (/admin/analytics)"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "paidChannelOf gjenkjenner nå utm_source~finn + utm_medium cpc/paid/display/cpm/banner → kanal 'finn'. buildPaidFunnel har finn-bøtte + kanalrad 'FINN.no' (mellom Meta og Organisk). /admin/analytics adStatsTask summerer forbruk/klikk fra finn_campaigns (manuelt registrert) for kampanjer som overlapper perioden → spend/cpl på finn-raden i Betalt trakt."
+        -working: true
+        -agent: "testing"
+        -comment: "✅ PASS (2/2 tests). GET /admin/analytics?days=30 returns 200 with paid object ✓. paid.channels is array containing finn channel ✓. finn channel has key='finn' and label='FINN.no' ✓. finn channel positioned correctly between meta and other channels (meta < finn < other) ✓. All stage fields (sessions, formPage, start, step2, step3, submit, leads, qualified, won, wonValue) are numeric or null ✓. finn channel spend is null (correct after cleanup - no active campaigns), sessions=0, leads=0 (no finn traffic exists yet) ✓. REGRESSION: google, meta, and other channels still exist with correct structure ✓. Without key returns 401 ✓. GET /api/ returns 200 (regression) ✓. Endpoint working PERFECTLY. FINN.no successfully integrated as 4th paid channel in analytics."
+
     implemented: true
     working: true
     file: "/app/lib/analytics-server.js (buildPaidFunnel)"
@@ -1838,12 +1927,19 @@ metadata:
 
 test_plan:
   current_focus:
-    - "API-forbruk: GET /admin/usage/api (LLM per leverandør/modell/funksjon + ext-telling + plattform-polling) og PUT /admin/usage/llm/model (modellbytte per funksjon)"
+    - "FINN-studio: design-bibliotek (GET/POST/DELETE /api/admin/finnstudio/designs)"
+    - "FINN-studio: AI-tekstforslag for bannere (POST /api/admin/finnstudio/copy)"
+    - "FINN-studio: banner-rendering i alle FINN-formater (POST /api/admin/finnstudio/render)"
+    - "FINN-studio: AI-bakgrunnsfoto (POST /api/admin/finnstudio/genbg)"
+    - "FINN-studio: manuelle kampanjer CRUD + UTM-måling (GET/POST/DELETE /api/admin/finnstudio/campaigns)"
+    - "Betalt trakt: FINN.no som egen betalt kanal (paidChannelOf + buildPaidFunnel + adStats fra finn_campaigns)"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
 
 agent_communication:
+    -agent: "main"
+    -message: "NY MODUL Å TESTE: FINN-STUDIO (5 tasks i current_focus). Base: https://hero-premiere-4.preview.emergentagent.com/api. Admin-nøkkel: ?key=dh_admin_b3Kx92Qz7Lm4. Timeout 120s (genbg gjør ekte AI-bildegenerering). VIKTIG: finnstudio/copy gjør ekte LLM-kall (maks 1 kall) og finnstudio/genbg gjør ekte bildegenerering (maks 1 kall). RYDD OPP alle QA-kampanjer etter test. Full testsekvens er gitt i testagent-oppdraget."
     -agent: "testing"
     -message: "✅ PAID FUNNEL (BETALT TRAKT) TESTING COMPLETE (88/88 tests, 100% success rate). Tested ONLY the EXTENDED endpoint GET /api/admin/analytics with NEW `paid` feature as requested in review_request. ALL TESTS PASSED WITH NO MAJOR ISSUES. Base URL: https://hero-premiere-4.preview.emergentagent.com/api. Admin key: dh_admin_b3Kx92Qz7Lm4. COMPREHENSIVE VERIFICATION: Response includes NEW `paid` field alongside existing traffic/leads/webVitals/anomalies/funnels ✓. paid.channels has exactly 3 channels in correct order (google, meta, other) ✓. All stage fields numeric and >= 0 ✓. Google: 30 adClicks, 923.06 spend, 12 sessions, 3 leads, CPL=307.69 ✓. Meta: 425 adClicks, 4800.66 spend, 38 sessions, 4 leads, CPL=1200.17 ✓. Other: null adClicks/spend/cpl as expected ✓. Monotonic sanity checks passed for all channels (sessions >= formPage >= start >= step2 >= step3 >= submit) ✓. CPL calculations correct (within ±0.05 tolerance) ✓. clickToSession calculations correct (within ±0.2 tolerance) ✓. days parameter working correctly (7d spend <= 30d spend) ✓. All regression tests passed (traffic, leads, webVitals, anomalies, funnels still present) ✓. Meta ads now have link populated (26/26 meta ads have non-empty link - new asset_feed_spec fallback working) ✓. Auth working correctly (401 without key) ✓. Paid funnel feature working PERFECTLY: correct channel classification (gclid→google, fbclid→meta, else→other), accurate stage aggregation per distinct sessionId, correct lead attribution with qualified/won tracking, adStats integration from cached Google/Meta reports, CPL/costPerSession/clickToSession calculations accurate, monotonic funnel progression verified, days parameter working, all regression tests passed. Created backend_test_analytics_paid.py for comprehensive testing. Response times: 0.45s (30d), 0.72s (7d). CRITICAL SAFETY RULES FOLLOWED: READ-ONLY testing, no POST/PUT/DELETE, no lead creation, max 8 GET requests (endpoints hit real Meta/Google APIs via caches), no force refresh params."
     -agent: "testing"
