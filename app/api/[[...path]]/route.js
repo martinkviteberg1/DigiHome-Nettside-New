@@ -45,7 +45,7 @@ import { emailConfigured, reportRecipients, sendHtmlEmail } from '@/lib/email';
 import { NEWSLETTER_COLL, OPTOUT_COLL, NL_EVENTS_COLL, renderNewsletterHtml, resolveAudience, audienceCounts, sanitizeBlocks, hasContent, buildUnsubUrl, verifyUnsubToken, verifyInterestToken, slugifyCampaign, normEmail as nlNormEmail, recipientId, TEMPLATES, templateBlocks, THEMES, TRACKING_GIF, applyMergeTags } from '@/lib/newsletter';
 import { syncPropertiesFromPlatform, maybeAutoSyncProperties, listAdminProperties, listPublicProperties, setPropertyVisibility, getPropertiesSyncMeta } from '@/lib/properties-sync';
 import { buildLeadReceipt, buildLeadAdminNotification } from '@/lib/lead-emails';
-import { fireLeadEmails } from '@/lib/lead-emails';
+import { fireLeadEmails, sendReEngagedNotification } from '@/lib/lead-emails';
 import { buildAlerts } from '@/lib/ads-monitor';
 import { fetchCompetitorGallery, serpApiConfigured } from '@/lib/serpapi';
 import { chatLLM } from '@/lib/llm';
@@ -1626,6 +1626,7 @@ async function handleRoute(request, { params }) {
         forward_attempts: 0,
         createdAt: new Date().toISOString(),
       };
+      lead.last_activity_at = lead.createdAt; // oppdateres ved re-engasjement
       // To-nivå-modellen: hvilket spor valgte kunden i skjemaet? + klikk-aksept
       // av selvforvaltningsavtalen (server-tidsstempel for integritet).
       lead.tier = ['selvforvaltning', 'full_forvaltning'].includes((body.tier || '').toString()) ? body.tier : null;
@@ -1656,6 +1657,65 @@ async function handleRoute(request, { params }) {
           }
         }
       } catch (e) { /* dedupe er best-effort; fall gjennom til normal insert */ }
+
+      // HYBRID RE-ENGASJEMENT: finnes en ÅPEN lead (new/contacted/qualified) på
+      // samme e-post, stemples fornyet interesse på den eksisterende leaden i
+      // stedet for å opprette duplikat (unngår dobbel oppfølging + skjeve
+      // konverteringstall). NY lead opprettes likevel når: (a) forrige sak er
+      // LUKKET (won/lost) — genuint ny salgsmulighet, eller (b) innsendingen
+      // gjelder en ANNEN eiendom (vesentlig ulik adresse) — ny sak.
+      try {
+        if (lead.email) {
+          const emailRx = { $regex: `^${lead.email.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' };
+          const OPEN_STATUSES = ['new', 'contacted', 'qualified'];
+          const found = await db.collection('leads')
+            .find({ email: emailRx, lead_type: lead.lead_type, $or: [{ status: { $in: OPEN_STATUSES } }, { status: { $exists: false } }, { status: null }] })
+            .sort({ createdAt: -1 }).limit(1).toArray();
+          const ex = found[0];
+          const normAddr = (a) => String(a || '').toLowerCase().replace(/[,.]/g, ' ').replace(/\s+/g, ' ').trim();
+          const na = normAddr(lead.address);
+          const ea = ex ? normAddr(ex.address) : '';
+          const sameProperty = !na || !ea || na === ea || na.startsWith(ea) || ea.startsWith(na);
+          if (ex && sameProperty) {
+            const nowIso = new Date().toISOString();
+            const entry = {
+              at: nowIso,
+              via: lead.source || 'nettside',
+              campaignId: (body.nl_campaign || '').toString().slice(0, 64) || null,
+              rid: (body.nl_rid || '').toString().slice(0, 32) || null,
+              note: lead.notes ? lead.notes.slice(0, 500) : null,
+            };
+            if (entry.campaignId) {
+              try {
+                const camp = await db.collection(NEWSLETTER_COLL).findOne({ id: entry.campaignId }, { projection: { _id: 0, subject: 1, slug: 1 } });
+                entry.campaign = camp?.slug || camp?.subject || entry.campaignId;
+              } catch (e) { /* best-effort */ }
+            }
+            // Berik TOMME kontaktfelter fra innsendingen (overskriv aldri data).
+            const enrich = {};
+            for (const f of ['phone', 'address', 'postal_code', 'property_type', 'rental_model']) {
+              if (!ex[f] && lead[f]) enrich[f] = lead[f];
+            }
+            await db.collection('leads').updateOne({ id: ex.id }, {
+              $push: { re_engaged: entry },
+              $set: { ...enrich, re_engaged_at: nowIso, last_activity_at: nowIso },
+            });
+            // Intern «varm lead»-varsling til teamet (martin@/sarah@ via
+            // NL_INTEREST_NOTIFY eller LEAD_NOTIFY_RECIPIENTS). Best-effort.
+            let notify = null;
+            try { notify = await sendReEngagedNotification({ ...ex, ...enrich }, entry); } catch (e) { notify = { ok: false }; }
+            try {
+              await db.collection('leads').updateOne({ id: ex.id }, { $set: { reengage_notify: { ok: !!(notify && notify.ok), at: nowIso } } });
+            } catch (e) { /* best-effort */ }
+            const updated = { ...ex, ...enrich, re_engaged: [...(ex.re_engaged || []), entry], re_engaged_at: nowIso, last_activity_at: nowIso };
+            return cors(NextResponse.json({
+              success: true, ok: true, id: ex.id, reEngaged: true,
+              data: { id: ex.id },
+              forwarded: ex.forwarded === true, lead: clean(updated),
+            }, { status: 200 }));
+          }
+        }
+      } catch (e) { /* hybrid er best-effort — fall gjennom til normal insert */ }
 
       await db.collection('leads').insertOne(lead);
 
@@ -4693,7 +4753,7 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
         if (!r.ok || j.success === false) {
           return cors(NextResponse.json({ ok: false, error: 'Kunne ikke registrere — prøv skjemaet' }, { status: 502 }));
         }
-        return cors(NextResponse.json({ ok: true, firstName: name ? name.split(/\s+/)[0] : '', leadId: j?.data?.id || null }));
+        return cors(NextResponse.json({ ok: true, firstName: name ? name.split(/\s+/)[0] : '', leadId: j?.data?.id || null, reEngaged: j?.reEngaged === true }));
       } catch (e) {
         return cors(NextResponse.json({ ok: false, error: 'Kunne ikke registrere — prøv skjemaet' }, { status: 502 }));
       }

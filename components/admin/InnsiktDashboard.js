@@ -273,7 +273,12 @@ export default function InnsiktDashboard({ apiKey, tab: propTab, onTabChange, on
       let av, bv;
       if (sortBy === 'name') { av = (a.name || '').toLowerCase(); bv = (b.name || '').toLowerCase(); }
       else if (sortBy === 'status') { av = a.status || 'new'; bv = b.status || 'new'; }
-      else { av = a.createdAt || ''; bv = b.createdAt || ''; }
+      else {
+        // «Sist aktivitet»: re-engasjement (fornyet interesse) løfter leaden
+        // øverst — varm lead skal ringes først.
+        av = (a.re_engaged_at && a.re_engaged_at > (a.createdAt || '')) ? a.re_engaged_at : (a.createdAt || '');
+        bv = (b.re_engaged_at && b.re_engaged_at > (b.createdAt || '')) ? b.re_engaged_at : (b.createdAt || '');
+      }
       if (av < bv) return sortDir === 'asc' ? -1 : 1;
       if (av > bv) return sortDir === 'asc' ? 1 : -1;
       return 0;
@@ -465,6 +470,13 @@ export default function InnsiktDashboard({ apiKey, tab: propTab, onTabChange, on
                     <tr key={r.id} onClick={() => setDrawerLead(r)} className="border-b border-[#f6f6f6] hover:bg-[#faf8fe] transition-colors cursor-pointer group">
                       <td className="py-3 px-4 text-[14px] font-medium text-[#222]">
                         <span className="inline-flex items-center gap-1.5">{r.name || '—'}<ChevronRight className="w-3.5 h-3.5 text-[#cf97fc] opacity-0 group-hover:opacity-100 transition-opacity" /></span>
+                        {Array.isArray(r.re_engaged) && r.re_engaged.length > 0 && (
+                          <span className="block mt-1">
+                            <span className="inline-flex items-center gap-1 rounded-full bg-orange-50 border border-orange-200 text-orange-700 px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-wide" title={`Bekreftet interesse på nytt ${r.re_engaged.length > 1 ? r.re_engaged.length + ' ganger' : ''} — sist ${new Date(r.re_engaged_at || r.re_engaged[r.re_engaged.length - 1].at).toLocaleDateString('nb-NO')}`}>
+                              Interesse igjen{r.re_engaged.length > 1 ? ` ×${r.re_engaged.length}` : ''}
+                            </span>
+                          </span>
+                        )}
                       </td>
                       <td className="py-3 px-4 text-[13px] text-[#666]"><div>{r.email}</div><div className="text-[#aaa]">{r.phone}</div></td>
                       <td className="py-3 px-4 text-[13px] text-[#666] max-w-[260px]">
