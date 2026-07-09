@@ -4209,14 +4209,55 @@ Lag 4 banner-varianter som JSON:
 
     // Offentlig asset-visning (bilder i e-post må være åpne URL-er)
     if (route === '/newsletter/asset' && method === 'GET') {
-      const id = (new URL(request.url).searchParams.get('id') || '').toString().slice(0, 64);
+      const sp = new URL(request.url).searchParams;
+      const id = (sp.get('id') || '').toString().slice(0, 64);
       const doc = await db.collection('newsletter_assets').findOne({ id }, { projection: { _id: 0, data: 1, contentType: 1 } });
       if (!doc) return new NextResponse('Not found', { status: 404 });
-      const buf = Buffer.from(doc.data, 'base64');
+      let buf = Buffer.from(doc.data, 'base64');
+      let ctype = doc.contentType || 'image/jpeg';
+      // Valgfri serverside-beskjæring (?w=&h=&fx=&fy=): e-postklienter som Outlook
+      // mobil ignorerer CSS object-fit/height — utsnittet må derfor bakes inn i
+      // selve bildefilen. fx/fy = fokuspunkt i prosent. Resultatet caches i Mongo.
+      const w = Math.min(2400, Math.max(0, parseInt(sp.get('w') || '0', 10) || 0));
+      const h = Math.min(2400, Math.max(0, parseInt(sp.get('h') || '0', 10) || 0));
+      if (w && h && /^image\/(jpeg|png|webp)$/i.test(ctype)) {
+        const fx = Math.min(100, Math.max(0, parseInt(sp.get('fx') || '50', 10) || 50));
+        const fy = Math.min(100, Math.max(0, parseInt(sp.get('fy') || '50', 10) || 50));
+        const key = `${id}:${w}x${h}:${fx},${fy}`;
+        try {
+          const cached = await db.collection('newsletter_assets_derived').findOne({ key }, { projection: { _id: 0, data: 1, contentType: 1 } });
+          if (cached) {
+            buf = Buffer.from(cached.data, 'base64');
+            ctype = cached.contentType || ctype;
+          } else {
+            const sharp = (await import('sharp')).default;
+            const img = sharp(buf, { failOn: 'none' });
+            const meta = await img.metadata();
+            const sw = meta.width || 0; const sh = meta.height || 0;
+            if (sw && sh) {
+              // Ikke oppskaler små kilder — behold sideforholdet på målboksen
+              const f = Math.min(1, sw / w, sh / h);
+              const tw = Math.max(1, Math.round(w * f)); const th2 = Math.max(1, Math.round(h * f));
+              const scale = Math.max(tw / sw, th2 / sh);
+              const rw = Math.max(tw, Math.round(sw * scale)); const rh = Math.max(th2, Math.round(sh * scale));
+              const left = Math.round(Math.min(Math.max((rw * fx / 100) - tw / 2, 0), rw - tw));
+              const top = Math.round(Math.min(Math.max((rh * fy / 100) - th2 / 2, 0), rh - th2));
+              let out = img.resize(rw, rh).extract({ left, top, width: tw, height: th2 });
+              out = /png/i.test(ctype) ? out.png() : /webp/i.test(ctype) ? out.webp({ quality: 82 }) : out.jpeg({ quality: 82, mozjpeg: true });
+              buf = await out.toBuffer();
+              await db.collection('newsletter_assets_derived').updateOne(
+                { key },
+                { $set: { key, assetId: id, data: buf.toString('base64'), contentType: ctype, createdAt: new Date().toISOString() } },
+                { upsert: true }
+              );
+            }
+          }
+        } catch (e) { /* beskjæring feilet → server originalbildet */ }
+      }
       return new NextResponse(buf, {
         status: 200,
         headers: {
-          'Content-Type': doc.contentType || 'image/jpeg',
+          'Content-Type': ctype,
           'Content-Length': String(buf.length),
           'Cache-Control': 'public, max-age=31536000, immutable',
         },
@@ -4326,7 +4367,7 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
           testNote,
         });
         try {
-          await sendHtmlEmail({ to, subject: `[TEST] ${subject}`, html, fromName });
+          await sendHtmlEmail({ to, subject: `[TEST] ${applyMergeTags(subject, { name: (body.sampleName || 'Martin Kviteberg').toString() })}`, html, fromName });
           sent.push(to);
         } catch (e) { failed.push({ to, error: e.message }); }
       }
