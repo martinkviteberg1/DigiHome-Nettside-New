@@ -18,6 +18,7 @@ const COLUMNS = [
   { k: 'offer', l: 'Tilbud sendt', dot: '#6366f1' },
   { k: 'won', l: 'Vunnet', dot: '#10b981' },
   { k: 'lost', l: 'Tapt', dot: '#f43f5e', muted: true },
+  { k: 'disqualified', l: 'Diskvalifisert', dot: '#a3a3a3', muted: true },
 ];
 
 const fmtKr = (n) => {

@@ -4271,6 +4271,59 @@ Lag 4 banner-varianter som JSON:
       return cors(NextResponse.json({ ok: true, ...data, emailConfigured: emailConfigured() }));
     }
 
+    // Henter Open Graph-metadata (bilde/tittel/site) fra en ekstern artikkel-URL —
+    // brukes av Markedsinnsikt-blokken for valgfritt forhåndsvisningsbilde fra kilden.
+    if (route === '/admin/link-preview' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const { searchParams } = new URL(request.url);
+      const raw = (searchParams.get('url') || '').trim();
+      let target;
+      try {
+        target = new URL(raw.startsWith('http') ? raw : `https://${raw}`);
+        if (!/^https?:$/.test(target.protocol)) throw new Error('bad proto');
+      } catch (e) { return cors(NextResponse.json({ ok: false, error: 'Ugyldig URL' }, { status: 400 })); }
+      try {
+        const r = await fetch(target.toString(), {
+          redirect: 'follow',
+          signal: AbortSignal.timeout(8000),
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36',
+            Accept: 'text/html,application/xhtml+xml',
+          },
+        });
+        const htmlText = (await r.text()).slice(0, 400000);
+        const pick = (patterns) => {
+          for (const re of patterns) { const m = htmlText.match(re); if (m && m[1]) return m[1].trim(); }
+          return '';
+        };
+        const decode = (s) => String(s || '').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#0?39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+        let image = pick([
+          /<meta[^>]+property=["']og:image(?::secure_url)?["'][^>]+content=["']([^"']+)["']/i,
+          /<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image(?::secure_url)?["']/i,
+          /<meta[^>]+name=["']twitter:image(?::src)?["'][^>]+content=["']([^"']+)["']/i,
+          /<meta[^>]+content=["']([^"']+)["'][^>]+name=["']twitter:image(?::src)?["']/i,
+        ]);
+        const title = decode(pick([
+          /<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i,
+          /<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:title["']/i,
+          /<title[^>]*>([^<]+)<\/title>/i,
+        ])).slice(0, 200);
+        const site = decode(pick([
+          /<meta[^>]+property=["']og:site_name["'][^>]+content=["']([^"']+)["']/i,
+          /<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:site_name["']/i,
+        ])).slice(0, 100);
+        if (image) {
+          image = decode(image);
+          try { image = new URL(image, r.url || target.toString()).toString(); } catch (e2) { image = ''; }
+          if (!/^https:\/\//i.test(image)) image = ''; // e-postklienter krever https-bilder
+        }
+        if (!image) return cors(NextResponse.json({ ok: false, error: 'Fant ikke noe forhåndsvisningsbilde på siden' }, { status: 404 }));
+        return cors(NextResponse.json({ ok: true, image, title, site }));
+      } catch (e) {
+        return cors(NextResponse.json({ ok: false, error: 'Fikk ikke hentet siden (tidsavbrudd eller blokkert)' }, { status: 502 }));
+      }
+    }
+
     if (route === '/admin/newsletter/preview' && method === 'POST') {
       if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
@@ -4926,6 +4979,36 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
         { upsert: true }
       );
       try { await db.collection(OPTOUT_COLL).deleteOne({ email }); } catch (e) {}
+      // BRO-AVTALE (tråd newsletter, 9. juli): hver påmelding pushes til
+      // plattformens CRM-mottak POST /api/newsletters/subscribe (X-API-Key).
+      // Best-effort m/kort timeout — påmeldingen hos oss feiler ALDRI pga.
+      // plattform-nedetid; synk-status lagres på abonnenten for re-push.
+      try {
+        const target = digiHomeTarget();
+        if (target.url && target.key) {
+          const pr = await fetch(`${target.url.replace(/\/$/, '')}/api/newsletters/subscribe`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-API-Key': target.key },
+            signal: AbortSignal.timeout(5000),
+            body: JSON.stringify({
+              email,
+              name: name || undefined,
+              consent: true,
+              consent_text: 'Jeg vil motta nyhetsbrev og markedsoppdateringer fra DigiHome (samtykke gitt via skjema på digihome.no)',
+              source_system: 'digihome-marketing',
+              lead_type: 'nyhetsbrev',
+              source,
+              subscribed_at: now,
+            }),
+          });
+          await db.collection('newsletter_subscribers').updateOne({ email }, { $set: {
+            platform_synced: pr.ok, platform_sync_at: new Date().toISOString(),
+            platform_sync_error: pr.ok ? null : `HTTP ${pr.status}`,
+          } });
+        }
+      } catch (e) {
+        try { await db.collection('newsletter_subscribers').updateOne({ email }, { $set: { platform_synced: false, platform_sync_error: e.message } }); } catch (e2) {}
+      }
       return cors(NextResponse.json({ ok: true }));
     }
 
@@ -6025,6 +6108,65 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
     }
 
     // --- Admin: oppdater lead-status (pipeline) ---
+    // ── DEDUPE-OPPRYDDING (bro-avtale 9. juli, tråd leads-dedupe) ────────────
+    // Full-reconcile fra plattformen skapte bare speil-tvillinger (kun e-post/
+    // telefon, uten navn) for historiske CRM-leads der external_ref var ukjent
+    // og telefon-/e-postformatet avvek. Dette endepunktet MERGER tvillingene inn
+    // i den rike eksisterende leaden (behold navn/adresse + plattformens status
+    // og id) og sletter den bare posten. dryRun=true (standard) viser kun planen.
+    if (route === '/admin/leads/dedupe-crm' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {};
+      try { body = await request.json(); } catch (e) { body = {}; }
+      const apply = body.dryRun === false;
+      const escRe = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      // Tvilling-kandidater: speilet fra plattformen, uten navn (bare poster).
+      const twins = await db.collection('leads')
+        .find({ mirrored: true, $or: [{ name: '' }, { name: null }, { name: { $exists: false } }] })
+        .limit(500).toArray();
+      const report = [];
+      let merged = 0, unmatched = 0;
+      for (const twin of twins) {
+        const or = [];
+        const em = (twin.email || '').toLowerCase().trim();
+        const digits = (twin.phone || '').replace(/\D/g, '').slice(-8);
+        if (em) or.push({ email: { $regex: `^${escRe(em)}$`, $options: 'i' } });
+        if (digits.length === 8) or.push({ phone: { $regex: `${digits.split('').map(escRe).join('\\D*')}\\D*$` } });
+        if (!or.length) { unmatched++; report.push({ twin: twin.id, email: em, action: 'ingen e-post/telefon å matche på' }); continue; }
+        // Rik kandidat: en ANNEN lead med navn (foretrekk ikke-speilet/eldst).
+        const rich = await db.collection('leads')
+          .find({ id: { $ne: twin.id }, name: { $nin: ['', null] }, $or: or })
+          .sort({ createdAt: 1 }).limit(1).next();
+        if (!rich) { unmatched++; report.push({ twin: twin.id, email: em, action: 'ingen rik lead å merge inn i' }); continue; }
+        const matchedBy = em && (rich.email || '').toLowerCase() === em ? 'email' : 'phone';
+        if (apply) {
+          const set = {
+            platform_id: twin.platform_id || twin.id,
+            syncedFromPlatform: true,
+            platformSyncAt: new Date().toISOString(),
+          };
+          // Plattformen er source of truth for status: ta tvillingens (nyeste) status.
+          if (twin.status && twin.status !== 'new') {
+            set.status = twin.status;
+            set.statusUpdatedAt = twin.statusUpdatedAt || new Date().toISOString();
+          }
+          const hist = [...(rich.statusHistory || []), ...(twin.statusHistory || [])]
+            .sort((a, b) => String(a.at || '').localeCompare(String(b.at || ''))).slice(-30);
+          if (hist.length) set.statusHistory = hist;
+          for (const f of ['funnelStage', 'lostReason', 'lostAt', 'disqualifyReason', 'disqualifiedAt', 'wonAt', 'wonValue', 'wonValueActual', 'wonValueEstimate', 'wonCurrency', 'platformTenant', 'platformCustomerId', 'activationStage']) {
+            if (twin[f] != null && rich[f] == null) set[f] = twin[f];
+          }
+          if (!rich.email && twin.email) set.email = twin.email;
+          if (!rich.phone && twin.phone) set.phone = twin.phone;
+          await db.collection('leads').updateOne({ id: rich.id }, { $set: set });
+          await db.collection('leads').deleteOne({ id: twin.id });
+        }
+        merged++;
+        report.push({ twin: twin.id, email: em, mergedInto: rich.id, richName: rich.name, matchedBy, statusApplied: twin.status || null, applied: apply });
+      }
+      return cors(NextResponse.json({ ok: true, dryRun: !apply, twinsFound: twins.length, merged, unmatched, report }));
+    }
+
     if (route === '/admin/lead-status' && method === 'POST') {
       if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       let body = {};
@@ -6033,8 +6175,9 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
       const status = (body.status || '').toString();
       const coll = body.type === 'tenant' ? 'tenant_leads' : 'leads';
       // Full CRM-pipeline — speiler stegene i plattformen (befaring/tilbud inngår
-      // i toveis-synken begge veier).
-      const VALID = ['new', 'contacted', 'qualified', 'viewing', 'offer', 'won', 'lost'];
+      // i toveis-synken begge veier). 'disqualified' = ikke relevant (egen bøtte,
+      // holdes utenfor vinnrate/tapt-KPI-er — bro-avtale 9. juli).
+      const VALID = ['new', 'contacted', 'qualified', 'viewing', 'offer', 'won', 'lost', 'disqualified'];
       if (!id || !VALID.includes(status)) {
         return cors(NextResponse.json({ ok: false, error: 'Ugyldig forespørsel' }, { status: 400 }));
       }
@@ -6067,7 +6210,9 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
         if (pid) {
           await queueLeadPushback(db, {
             platform_id: pid,
-            status,
+            // Utgående vokabular-oversettelse: vår «offer»-kolonne heter
+            // «proposal» hos plattformen (bro-avtale 9. juli).
+            status: ({ offer: 'proposal' })[status] || status,
             won_value: update.wonValue !== undefined ? update.wonValue : undefined,
             origin: 'lead-status',
           });
@@ -6291,7 +6436,7 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
       }
       let body = {};
       try { body = await request.json(); } catch (e) { body = {}; }
-      const VALID = ['new', 'contacted', 'qualified', 'won', 'lost'];
+      const VALID = ['new', 'contacted', 'qualified', 'viewing', 'offer', 'won', 'lost', 'disqualified'];
       // To-nivå-modellen: plattformen kan sende `event` i stedet for `status`.
       // avtale_signert (selvbetjent klikk-aksept) / tilbud_akseptert → won,
       // tilbud_avslatt → lost. eiendom_onboardet / leie_aktiv er aktiverings-
@@ -6301,16 +6446,18 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
       const ACTIVATION_EVENTS = ['eiendom_onboardet', 'leie_aktiv'];
       const isActivationOnly = ACTIVATION_EVENTS.includes(evt) && !body.status;
       const raw = (body.status || EVT_TO_STATUS[evt] || '').toString().toLowerCase().trim();
-      // Mid-funnel-statuser fra plattformen (visning booket / tilbud sendt):
-      // pipelinen vår holder seg til de 5 kjernestatusene, så disse mappes til
-      // 'qualified' MEN den granulære fasen bevares i funnelStage + historikk.
-      const MID_FUNNEL = { viewing_booked: 'qualified', contract_sent: 'qualified' };
-      const midFunnelStage = MID_FUNNEL[raw] ? raw : null;
+      // Mid-trakt-granularitet (bro-avtale 9. juli): viewing (befaring) og
+      // proposal (tilbud sendt) er nå FULLVERDIGE statuser hos oss — mappes til
+      // våre interne kolonner 'viewing'/'offer' i stedet for å kollapses til
+      // qualified. Gamle aliaser (viewing_booked/contract_sent) oppgraderes likt.
+      const midFunnelStage = ['viewing_booked', 'contract_sent'].includes(raw) ? raw : null;
       const map = {
         ny: 'new', open: 'new', åpen: 'new', kontaktet: 'contacted', contacted: 'contacted',
         kvalifisert: 'qualified', qualified: 'qualified', vunnet: 'won', won: 'won', signed: 'won',
         signert: 'won', closed_won: 'won', tapt: 'lost', lost: 'lost', closed_lost: 'lost', avvist: 'lost',
-        ...MID_FUNNEL,
+        viewing: 'viewing', befaring: 'viewing', viewing_booked: 'viewing',
+        proposal: 'offer', offer: 'offer', tilbud_sendt: 'offer', contract_sent: 'offer',
+        disqualified: 'disqualified', not_relevant: 'disqualified', irrelevant: 'disqualified', ikke_relevant: 'disqualified', diskvalifisert: 'disqualified',
       };
       const status = VALID.includes(raw) ? raw : (map[raw] || '');
       if (!status && !isActivationOnly) return cors(NextResponse.json({ ok: false, error: 'Ugyldig status', got: raw || evt }, { status: 400 }));
@@ -6326,20 +6473,33 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
       const bodySourceType = (body.lead_source_type || '').toString().toLowerCase().trim() || null;
 
       // Match: external_ref (vår id) → platform_id → e-post → telefon (siste 8 siffer),
-      // på tvers av begge kolleksjoner.
+      // på tvers av begge kolleksjoner. Dedupe-herding (bro-avtale 9. juli):
+      // e-post matches case-UavhengIG og telefon tolererer mellomrom/+47/bindestrek
+      // i det LAGREDE feltet («926 04 070» ≡ «92604070») — det var formatavvik her
+      // som gjorde at full-reconcile bommet på historiske leads og skapte tvillinger.
+      const escRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const phoneTolerantRe = last8.length === 8 ? `${last8.split('').map(escRe).join('\\D*')}\\D*$` : null;
       let coll = null, lead = null, matchedBy = '';
       for (const c of ['leads', 'tenant_leads']) {
         const or = [];
         if (externalRef) or.push({ id: externalRef });
         if (platformId) or.push({ platform_id: platformId });
-        if (email) or.push({ email });
-        if (last8.length === 8) or.push({ phone: { $regex: `${last8}$` } });
+        if (externalRef) or.push({ platform_id: externalRef });
+        if (email) or.push({ email: { $regex: `^${escRe(email)}$`, $options: 'i' } });
+        if (phoneTolerantRe) or.push({ phone: { $regex: phoneTolerantRe } });
         if (!or.length) break;
-        const found = await db.collection(c).findOne({ $or: or });
-        if (found) {
+        // Foretrekk rike poster (med navn) over bare speil-tvillinger ved flere treff.
+        const candidates = await db.collection(c).find({ $or: or }).limit(5).toArray();
+        if (candidates.length) {
+          const score = (l) =>
+            (externalRef && l.id === externalRef ? 8 : 0) +
+            ((platformId && l.platform_id === platformId) || (externalRef && l.platform_id === externalRef) ? 4 : 0) +
+            (l.name ? 2 : 0) + (l.mirrored ? 0 : 1);
+          candidates.sort((a, b) => score(b) - score(a));
+          const found = candidates[0];
           coll = c; lead = found;
           matchedBy = (externalRef && found.id === externalRef) ? 'external_ref'
-            : (platformId && found.platform_id === platformId) ? 'platform_id'
+            : (found.platform_id && (found.platform_id === platformId || found.platform_id === externalRef)) ? 'platform_id'
             : (email && (found.email || '').toLowerCase() === email) ? 'email' : 'phone';
           break;
         }
@@ -6434,6 +6594,25 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
       if (platformCustomerId) update.platformCustomerId = platformCustomerId;
       const platformConversionId = (body.platform_conversion_id || body.platformConversionId || '').toString().slice(0, 160);
       if (platformConversionId) update.platformConversionId = platformConversionId;
+      // Dedupe-herding (bro-avtale 9. juli): ved match på e-post/telefon lagres
+      // plattformens id på leaden slik at NESTE event treffer direkte på
+      // external_ref/platform_id (backfill — hindrer fremtidige tvillinger).
+      if (!lead.platform_id && (platformId || externalRef)) update.platform_id = platformId || externalRef;
+      // Berik leaden med identitetsfelter plattformen sender (reconcile-payloaden
+      // har nå name+address+postal_code) — fyller hull, overskriver aldri.
+      if (!lead.name && body.name) update.name = body.name.toString().slice(0, 120);
+      if (!lead.email && email) update.email = email;
+      if (!lead.phone && body.phone) update.phone = body.phone.toString().slice(0, 40);
+      if (!lead.address && body.address) update.address = body.address.toString().slice(0, 200);
+      if (!lead.postal_code && body.postal_code) update.postal_code = body.postal_code.toString().slice(0, 10);
+      // Diskvalifisert (ikke relevant): EGEN bøtte, atskilt fra tapt — telles ikke
+      // som tapt salg og holdes utenfor vinnrate/ROAS (analytics teller på won/lost).
+      if (status === 'disqualified') {
+        const DQ = ['spam', 'out_of_area', 'not_serious', 'no_response', 'duplicate', 'wrong_segment', 'other'];
+        const dr = (body.lost_reason || body.lostReason || body.reason || '').toString().toLowerCase().trim();
+        update.disqualifyReason = DQ.includes(dr) ? dr : (dr ? 'other' : null);
+        update.disqualifiedAt = lead.disqualifiedAt || changedAt;
+      }
       // Lost MED årsak → kvalitetsstyring / negativ-målretting.
       if (status === 'lost') {
         const LOST = ['spam', 'out_of_area', 'not_serious', 'no_response', 'duplicate', 'wrong_segment', 'other'];

@@ -67,6 +67,7 @@ export function defaultsFor(type) {
       text: 'Husleiebarometeret for 2. kvartal 2026 viser at leieprisene steg 5,1 prosent nasjonalt det siste året — i Bergen er veksten mer enn dobbelt så høy. For deg som utleier betyr det at riktig prissetting aldri har vært viktigere.',
       source: 'Kilde: Husleiebarometeret Q2 2026 — Hybel AS / Menon Economics',
       sourceUrl: '',
+      imageUrl: '',
     };
     case 'signature': return { name: 'Sarah Sleeman', title: 'Daglig leder — DigiHome, Bergen' };
     case 'spacer':   return { size: 'm' };
@@ -458,7 +459,17 @@ export function CanvasBlock({ b, i, total, accent, selected, onSelect, onPatch, 
           onPatch({ stats: next });
         };
         return (
-          <div className="rounded-[18px] px-6 py-6" style={{ background: 'var(--nl-soft, #f5edfc)' }}>
+          <div className="rounded-[18px] overflow-hidden" style={{ background: 'var(--nl-soft, #f5edfc)' }}>
+            {b.imageUrl ? (
+              <div className="relative group/statimg">
+                <img src={b.imageUrl} alt="" className="w-full h-auto block" />
+                <button type="button" onClick={(e) => { stop(e); onPatch({ imageUrl: '' }); }} title="Fjern bilde" data-testid="nl-stat-img-remove"
+                  className="absolute top-2 right-2 rounded-full bg-black/60 hover:bg-black/85 text-white text-[11px] font-semibold px-2.5 py-1 opacity-0 group-hover/statimg:opacity-100 transition-opacity flex items-center gap-1">
+                  <Trash2 size={11} /> Fjern bilde
+                </button>
+              </div>
+            ) : null}
+            <div className="px-6 py-6">
             <input value={b.eyebrow || ''} onChange={(e) => onPatch({ eyebrow: e.target.value })} onClick={stop}
               className="bg-transparent w-full text-[10.5px] font-extrabold uppercase tracking-[0.14em] outline-none" style={{ color: 'var(--nl-deep, #7A3EC8)' }} placeholder="MARKEDSINNSIKT" />
             <AutoArea value={b.title} onChange={(e) => onPatch({ title: e.target.value })} placeholder="Tittel — f.eks. Leieprisene fortsetter å stige…"
@@ -489,6 +500,7 @@ export function CanvasBlock({ b, i, total, accent, selected, onSelect, onPatch, 
                 className="bg-transparent w-full text-[11.5px] text-[#8a8a8a] outline-none" placeholder="Kilde: f.eks. Husleiebarometeret Q2 2026 — Hybel AS / Menon Economics" data-testid="nl-stat-source" />
               <input value={b.sourceUrl || ''} onChange={(e) => onPatch({ sourceUrl: e.target.value })} onClick={stop}
                 className="bg-transparent w-full text-[11px] text-[#b3a8c4] outline-none mt-1" placeholder="Lenke til kilden (valgfritt — viser «Les mer →»)" data-testid="nl-stat-source-url" />
+            </div>
             </div>
           </div>
         );
@@ -658,6 +670,49 @@ function PropertyPicker({ b, onPatch, apiQ }) {
 }
 
 /* ------------------------ Inspektør for valgt blokk ----------------------- */
+/* --------- Markedsinnsikt: forhåndsvisningsbilde fra ekstern kilde --------- */
+function StatImagePanel({ b, onPatch, apiQ }) {
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const [okMsg, setOkMsg] = useState('');
+  const fetchPreview = async () => {
+    setErr(''); setOkMsg('');
+    const src = (b.sourceUrl || '').trim();
+    if (!src) { setErr('Lim inn kilde-lenken i blokken først (feltet nederst i kortet)'); return; }
+    setBusy(true);
+    try {
+      const r = await fetch(`/api/admin/link-preview?${apiQ}&url=${encodeURIComponent(src)}`);
+      const j = await r.json();
+      if (j.ok && j.image) { onPatch({ imageUrl: j.image }); setOkMsg(j.site ? `Hentet fra ${j.site}` : 'Bilde hentet'); }
+      else setErr(j.error || 'Fant ikke noe bilde på siden');
+    } catch (e) { setErr('Nettverksfeil — prøv igjen'); }
+    setBusy(false);
+  };
+  return (
+    <>
+      <label className={labelCls}>Forhåndsvisningsbilde (valgfritt)</label>
+      {b.imageUrl ? (
+        <div className="relative rounded-xl overflow-hidden border border-[#e8e8e8] mb-2">
+          <img src={b.imageUrl} alt="" className="w-full h-[110px] object-cover block" />
+          <button type="button" onClick={() => onPatch({ imageUrl: '' })} data-testid="nl-insp-stat-img-remove"
+            className="absolute top-1.5 right-1.5 rounded-full bg-black/60 hover:bg-black/85 text-white text-[10.5px] font-semibold px-2 py-0.5">Fjern</button>
+        </div>
+      ) : null}
+      <button type="button" onClick={fetchPreview} disabled={busy} data-testid="nl-insp-stat-img-fetch"
+        className="w-full h-[36px] rounded-lg bg-[#0a0a0a] text-white text-[12.5px] font-semibold flex items-center justify-center gap-2 disabled:opacity-60">
+        {busy ? <Loader2 size={13} className="animate-spin" /> : <ImageIcon size={13} />}
+        {busy ? 'Henter…' : (b.imageUrl ? 'Hent på nytt fra kilde-lenken' : 'Hent bilde fra kilde-lenken')}
+      </button>
+      {okMsg ? <p className="text-[11px] text-emerald-600 mt-1.5">{okMsg}</p> : null}
+      {err ? <p className="text-[11px] text-rose-500 mt-1.5">{err}</p> : null}
+      <label className={labelCls}>… eller lim inn bilde-URL manuelt</label>
+      <input value={b.imageUrl || ''} onChange={(e) => onPatch({ imageUrl: e.target.value })} className={inputCls}
+        placeholder="https://…/bilde.jpg" data-testid="nl-insp-stat-img-url" />
+      <p className="text-[10.5px] text-[#aaa] mt-1.5">Bildet vises øverst i kortet. Vi henter artikkelens eget delingsbilde (og:image) — husk at eksterne bilder kan kreve tillatelse fra kilden.</p>
+    </>
+  );
+}
+
 export function BlockInspector({ b, onPatch, onDel, onUploadImage, uploadingId, apiQ, blocks }) {
   if (!b) return null;
   const meta = PALETTE.find((p) => p.type === b.type);
@@ -677,6 +732,8 @@ export function BlockInspector({ b, onPatch, onDel, onUploadImage, uploadingId, 
         <input value={b.url || ''} onChange={(e) => onPatch({ url: e.target.value })} className={inputCls} placeholder="https://digihome.no/sommer" data-testid="nl-insp-url" />
         <p className="text-[10.5px] text-[#aaa] mt-1.5">Klikk spores automatisk og registreres på leaden.</p>
       </>) : null}
+
+      {b.type === 'stat' ? <StatImagePanel b={b} onPatch={onPatch} apiQ={apiQ} /> : null}
 
       {(b.type === 'image' || b.type === 'hero') ? (<>
         <label className={labelCls}>Bilde</label>

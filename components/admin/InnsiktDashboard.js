@@ -44,7 +44,7 @@ const TABS = [
 const STATUS_OPTS = [
   { v: 'new', l: 'Ny' }, { v: 'contacted', l: 'Kontaktet' }, { v: 'qualified', l: 'Kvalifisert' },
   { v: 'viewing', l: 'Befaring' }, { v: 'offer', l: 'Tilbud sendt' },
-  { v: 'won', l: 'Vunnet' }, { v: 'lost', l: 'Tapt' },
+  { v: 'won', l: 'Vunnet' }, { v: 'lost', l: 'Tapt' }, { v: 'disqualified', l: 'Diskvalifisert' },
 ];
 // Samme fulle CRM-pipeline for alle leads (backend + toveis-synk støtter alle stegene).
 const IMPORTED_STATUS_OPTS = STATUS_OPTS;
