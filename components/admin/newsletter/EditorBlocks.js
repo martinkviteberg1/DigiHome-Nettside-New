@@ -50,7 +50,11 @@ export function defaultsFor(type) {
     case 'bullets':  return { items: ['Første punkt'] };
     case 'button':   return { label: 'Les mer', url: 'https://digihome.no' };
     case 'cta-card': return { title: 'Er du interessert?', text: '', label: 'Ja, jeg er interessert', url: 'https://digihome.no/bli-utleier', footnote: '' };
-    case 'offer':    return { eyebrow: 'Sommerkampanje · Begrenset periode', big: '10 %', bigLabel: 'forvaltningshonorar — alt inkludert', second: '+ 0 kr i oppstartskostnad', deadline: 'Gjelder til 10. juli', label: 'Ja, jeg vil vite mer', url: 'https://digihome.no/sommer', footnote: 'Uforpliktende — vi tar kontakt.' };
+    case 'offer':    return { eyebrow: 'Sommerkampanje · Begrenset periode', big: '10 %', was: 'Normalt 15 %', bigLabel: 'forvaltningshonorar — alt inkludert', second: '', items: [
+      { title: 'Oppstartskostnad', was: '', now: '0 kr' },
+      { title: 'Første visning', was: '625 kr', now: 'Gratis' },
+      { title: 'Markedspakke', was: '2 490 kr', now: '1 245 kr (−50 %)' },
+    ], deadline: 'Gjelder alle som registrerer seg innen 10. juli', label: 'Ja, jeg vil vite mer', url: 'https://digihome.no/sommer', footnote: 'Normalpriser inkl. mva. Uforpliktende — vi tar kontakt.' };
     case 'sender':   return { name: 'Sarah Sleeman', title: 'Daglig leder, DigiHome', note: '', photoUrl: '/sarah-sleeman.jpg' };
     case 'signature': return { name: 'Sarah Sleeman', title: 'Daglig leder — DigiHome, Bergen' };
     case 'spacer':   return { size: 'm' };
@@ -373,29 +377,66 @@ export function CanvasBlock({ b, i, total, accent, selected, onSelect, onPatch, 
             ) : null}
           </div>
         );
-      case 'offer':
+      case 'offer': {
+        const items = Array.isArray(b.items) ? b.items : [];
+        const patchItem = (i, key, val) => {
+          const next = items.map((x, j) => (j === i ? { ...x, [key]: val } : x));
+          onPatch({ items: next });
+        };
+        const removeItem = (i) => onPatch({ items: items.filter((_, j) => j !== i) });
+        const addItem = () => onPatch({ items: [...items, { title: '', was: '', now: '' }] });
         return (
-          <div className="rounded-[20px] px-7 py-8 text-center" style={{ background: '#0a0a0a' }}>
-            <input value={b.eyebrow || ''} onChange={(e) => onPatch({ eyebrow: e.target.value })} onClick={stop}
-              className="bg-transparent w-full text-center text-[11px] font-bold uppercase tracking-[0.18em] outline-none" style={{ color: accent }} placeholder="EYEBROW-TEKST" />
+          <div className="rounded-[22px] px-7 py-8 text-center" style={{ background: 'linear-gradient(150deg,#17111f 0%,#0a0a0a 52%,#1b1226 100%)' }}>
+            <div className="inline-block rounded-full border border-white/20 px-4 py-1.5">
+              <input value={b.eyebrow || ''} onChange={(e) => onPatch({ eyebrow: e.target.value })} onClick={stop}
+                className="bg-transparent text-center text-[10.5px] font-bold uppercase tracking-[0.16em] outline-none w-[260px]" style={{ color: accent }} placeholder="EYEBROW-TEKST" />
+            </div>
             <input value={b.big || ''} onChange={(e) => onPatch({ big: e.target.value })} onClick={stop}
-              className="bg-transparent w-full text-center text-[52px] font-extrabold tracking-[-0.03em] text-white outline-none mt-1" placeholder="10 %" />
+              className="bg-transparent w-full text-center text-[52px] font-extrabold tracking-[-0.03em] text-white outline-none mt-3" placeholder="10 %" />
+            <input value={b.was || ''} onChange={(e) => onPatch({ was: e.target.value })} onClick={stop}
+              className="bg-transparent w-full text-center text-[13.5px] text-[#8d8d8d] line-through outline-none mt-1" placeholder="Normalpris (gjennomstrekes)…" />
             <input value={b.bigLabel || ''} onChange={(e) => onPatch({ bigLabel: e.target.value })} onClick={stop}
-              className="bg-transparent w-full text-center text-[14px] text-[#bbb] outline-none mt-1" placeholder="forklarende tekst…" />
-            <div className="inline-block rounded-full border border-white/15 bg-white/10 px-4 py-1.5 mt-3">
-              <input value={b.second || ''} onChange={(e) => onPatch({ second: e.target.value })} onClick={stop}
-                className="bg-transparent text-center text-[12.5px] font-semibold text-white outline-none w-[220px]" placeholder="+ sekundært tilbud…" />
+              className="bg-transparent w-full text-center text-[14px] text-[#ccc] outline-none mt-1" placeholder="forklarende tekst…" />
+            {b.second ? (
+              <div className="inline-block rounded-full border border-white/15 bg-white/10 px-4 py-1.5 mt-3">
+                <input value={b.second || ''} onChange={(e) => onPatch({ second: e.target.value })} onClick={stop}
+                  className="bg-transparent text-center text-[12.5px] font-semibold text-white outline-none w-[220px]" placeholder="+ sekundært tilbud…" />
+              </div>
+            ) : null}
+            {/* Tilbudslinjer — gjennomstreket normalpris → nå-pris */}
+            <div className="mt-5 rounded-2xl border border-white/10 bg-white/5 px-4 py-1.5 text-left">
+              {items.map((x, i) => (
+                <div key={i} className={`flex items-center gap-2 py-2.5 group/oline ${i > 0 ? 'border-t border-white/10' : ''}`}>
+                  <input value={x.title || ''} onChange={(e) => patchItem(i, 'title', e.target.value)} onClick={stop}
+                    className="flex-1 min-w-0 bg-transparent text-[13px] font-semibold text-[#f2f2f2] outline-none" placeholder="Hva gjelder tilbudet?" />
+                  <input value={x.was || ''} onChange={(e) => patchItem(i, 'was', e.target.value)} onClick={stop}
+                    className="w-[92px] bg-transparent text-right text-[12px] text-[#8d8d8d] line-through outline-none" placeholder="Normalt…" />
+                  <input value={x.now || ''} onChange={(e) => patchItem(i, 'now', e.target.value)} onClick={stop}
+                    className="w-[120px] bg-transparent text-right text-[13.5px] font-extrabold outline-none" style={{ color: accent }} placeholder="Nå…" />
+                  <button type="button" onClick={(e) => { stop(e); removeItem(i); }} title="Fjern linje"
+                    className="opacity-0 group-hover/oline:opacity-100 text-white/35 hover:text-rose-400 transition-all shrink-0" data-testid={`nl-offer-line-remove-${i}`}>
+                    <Trash2 size={13} />
+                  </button>
+                </div>
+              ))}
+              {items.length < 4 && (
+                <button type="button" onClick={(e) => { stop(e); addItem(); }} data-testid="nl-offer-line-add"
+                  className={`w-full text-center text-[11.5px] font-semibold text-white/40 hover:text-white/80 py-2.5 transition-colors ${items.length ? 'border-t border-white/10' : ''}`}>
+                  + Legg til tilbudslinje
+                </button>
+              )}
             </div>
             <input value={b.deadline || ''} onChange={(e) => onPatch({ deadline: e.target.value })} onClick={stop}
-              className="bg-transparent w-full text-center text-[12px] font-semibold outline-none mt-3" style={{ color: accent }} placeholder="Frist…" />
+              className="bg-transparent w-full text-center text-[12px] font-bold outline-none mt-4" style={{ color: accent }} placeholder="Frist…" />
             <span className="inline-block rounded-full px-8 py-3 mt-4" style={{ background: accent }}>
               <input value={b.label || ''} onChange={(e) => onPatch({ label: e.target.value })} onClick={stop}
                 className="bg-transparent text-[#1f1f1f] text-[14px] font-bold text-center outline-none w-[180px]" placeholder="CTA-tekst…" />
             </span>
             <input value={b.footnote || ''} onChange={(e) => onPatch({ footnote: e.target.value })} onClick={stop}
-              className="bg-transparent w-full text-center text-[11px] text-[#888] outline-none mt-3" placeholder="Fotnote (valgfritt)…" />
+              className="bg-transparent w-full text-center text-[11px] text-[#8d8d8d] outline-none mt-3" placeholder="Fotnote (valgfritt)…" />
           </div>
         );
+      }
       case 'quote':
         return (
           <div className="pl-4" style={{ borderLeft: `3px solid ${accent}` }}>

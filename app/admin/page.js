@@ -3,10 +3,10 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Loader2, Lock, BarChart3, Users, CreditCard, FileText, LogOut,
-  Menu, X, ChevronRight, ShieldCheck, Sparkles, MessageSquare,
+  Menu, X, ChevronRight, ChevronDown, ShieldCheck, Sparkles, MessageSquare,
   LayoutDashboard, Radio, Activity, GitBranch, Gauge, Megaphone, Database,
   Command, Search, CornerDownLeft, LayoutTemplate, Crosshair, TrendingUp, Wallet,
-  Globe, ExternalLink, PenLine, Mail, Home, History, Landmark, Wand2, Layers,
+  Globe, ExternalLink, PenLine, Mail, Home, History, Landmark, Wand2, Layers, UserPlus,
 } from 'lucide-react';
 import InnsiktDashboard from '@/components/admin/InnsiktDashboard';
 import KpiDashboard from '@/components/admin/KpiDashboard';
@@ -23,36 +23,55 @@ import InvestorRoomTab from '@/components/admin/InvestorRoomTab';
 const SESSION_KEY = 'dh_admin_session';
 const LEGACY_KEY = 'dh_admin_key';
 
+// Menystruktur 2026 — gruppert etter jobben som skal gjøres, ikke etter modul.
+// Elementer med `insight` peker inn i Innsikt-motoren (samme data, ny inngang).
 const NAV = [
   {
     group: 'Ledelse',
     items: [
       { k: 'nokkeltall', l: 'Nøkkeltall', icon: TrendingUp, desc: 'Investorklare KPIer · CAC · LTV · konvertering' },
+      { k: 'okonomi', l: 'Økonomi', icon: Wallet, desc: 'Resultat · likviditet · burn · runway' },
       { k: 'investorrom', l: 'Investor-rom', icon: Landmark, desc: 'Levende DD-rom — tilgangslenker, dokumenter & Q&A' },
       { k: 'playbook', l: 'Playbook', icon: FileText, desc: 'Marketing-strategi · konkurrentanalyse · 90-dagersplan' },
     ],
   },
   {
-    group: 'Analyse',
+    group: 'Salg',
     items: [
-      { k: 'innsikt', l: 'Innsikt', icon: BarChart3, desc: 'Trafikk · Leads · Annonser · Ytelse' },
-    ],
-  },
-  {
-    group: 'Forretning',
-    items: [
-      { k: 'okonomi', l: 'Økonomi', icon: Wallet, desc: 'Resultat · likviditet · burn · runway' },
+      { k: 'i-leads', insight: 'leads', l: 'Leads', icon: UserPlus, badge: 'pending', desc: 'Innkommende leads — status, kilde og CRM-synk' },
       { k: 'kunder', l: 'Kunder', icon: Users, desc: 'Utleiere · kontrakter · MRR fra plattformen' },
       { k: 'historikk', l: 'Historikk', icon: History, desc: 'Leads fra før sporingen — sett kilde & verdi manuelt' },
       { k: 'abonnementer', l: 'Abonnementer', icon: CreditCard, soon: true, desc: 'Aktive avtaler & fakturering' },
     ],
   },
   {
+    group: 'Markedsføring',
+    items: [
+      { k: 'i-annonser', insight: 'annonser', l: 'Annonser', icon: Megaphone, desc: 'Meta & Google Ads — forbruk, ROAS og resultater' },
+      { k: 'i-annonsestudio', insight: 'annonsestudio', l: 'Annonsestudio', icon: Wand2, desc: 'Lag og publiser annonser med AI' },
+      { k: 'nyhetsbrev', l: 'Nyhetsbrev', icon: Mail, desc: 'E-post til leads & kunder — komponer, test og send' },
+      { k: 'landingssider', l: 'Landingssider', icon: LayoutTemplate, desc: 'Kampanjesider · annonse-LP-er · hovedsider — med live ytelse' },
+      { k: 'i-finnstudio', insight: 'finnstudio', l: 'FINN-studio', icon: Layers, desc: 'FINN-annonser — analyse og optimalisering' },
+      { k: 'i-konkurrent', insight: 'konkurrent', l: 'Konkurrentanalyse', icon: Crosshair, desc: 'Overvåk konkurrentene i Bergen' },
+    ],
+  },
+  {
+    group: 'Analyse',
+    items: [
+      { k: 'i-oversikt', insight: 'oversikt', l: 'Oversikt', icon: LayoutDashboard, desc: 'Totalbildet — trafikk, leads og kanaler' },
+      { k: 'i-trafikk', insight: 'trafikk', l: 'Trafikk', icon: Activity, desc: 'Økter, kilder og sider — cookieless' },
+      { k: 'i-live', insight: 'live', l: 'Sanntid', icon: Radio, desc: 'Hvem er på nettsiden akkurat nå' },
+      { k: 'i-trakt', insight: 'trakt', l: 'Trakt & A/B', icon: GitBranch, desc: 'Konverteringstrakt og eksperimenter' },
+      { k: 'i-innsikt', insight: 'innsikt', l: 'Lead-innsikt', icon: BarChart3, desc: 'Dybdeinnsikt i leads og segmenter' },
+      { k: 'i-leiemarked', insight: 'leiemarked', l: 'Leiemarked', icon: Database, desc: 'Leiepriser og markedsdata for Bergen' },
+      { k: 'i-ytelse', insight: 'ytelse', l: 'Ytelse', icon: Gauge, desc: 'Web Vitals og teknisk ytelse' },
+      { k: 'i-ai', insight: 'ai', l: 'AI-assistent', icon: Sparkles, desc: 'Spør AI om dataene dine' },
+    ],
+  },
+  {
     group: 'Innhold',
     items: [
       { k: 'artikler', l: 'Artikler', icon: FileText, href: '/admin/artikler' },
-      { k: 'nyhetsbrev', l: 'Nyhetsbrev', icon: Mail, desc: 'E-post til leads & kunder — komponer, test og send' },
-      { k: 'landingssider', l: 'Landingssider', icon: LayoutTemplate, desc: 'Kampanjesider · annonse-LP-er · hovedsider — med live ytelse' },
       { k: 'boliger', l: 'Boliger', icon: Home, desc: 'Vis forvaltede boliger på forsiden — synk & synlighet' },
     ],
   },
@@ -95,6 +114,26 @@ const SECTION_TITLES = {
   historikk: { t: 'Historikk', s: 'Leads fra før sporingen startet — sett kilde, status og verdi manuelt. Teller i helhetsbildet, aldri i annonse-ROAS' },
 };
 
+// Undertitler i toppbaren når en Innsikt-modul er aktiv (egen inngang i menyen)
+const INSIGHT_SUBTITLES = {
+  oversikt: 'Totalbildet — trafikk, leads og kanaler · cookieless · GDPR-trygt',
+  leads: 'Innkommende leads — status, kilde og toveis CRM-synk',
+  live: 'Sanntidsaktivitet på nettsiden akkurat nå',
+  trafikk: 'Økter, kilder og sider — førsteparts og cookieless',
+  trakt: 'Konverteringstrakt og A/B-eksperimenter',
+  annonser: 'Meta & Google Ads — forbruk, ROAS og resultater',
+  annonsestudio: 'Lag og publiser annonser med AI',
+  finnstudio: 'FINN-annonser — analyse og optimalisering',
+  konkurrent: 'Konkurrentanalyse og markedsovervåking',
+  innsikt: 'Dybdeinnsikt i leads og segmenter',
+  leiemarked: 'Leiepriser og markedsdata for Bergen',
+  ytelse: 'Web Vitals og teknisk ytelse',
+  ai: 'Spør AI om dataene dine — trafikk, leads og annonser',
+};
+
+const NAV_OPEN_KEY = 'dh_admin_nav_open';
+
+
 export default function AdminPage() {
   const [token, setToken] = useState('');
   const [user, setUser] = useState(null);
@@ -108,6 +147,17 @@ export default function AdminPage() {
   const [insightStats, setInsightStats] = useState({ pending: 0 });
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  // Sammenleggbare menygrupper — false = manuelt lukket (persisteres).
+  // Gruppen med aktivt element tvinges alltid åpen, så man aldri «mister» seg selv.
+  const [navOpen, setNavOpen] = useState({});
+  useEffect(() => {
+    try { setNavOpen(JSON.parse(localStorage.getItem(NAV_OPEN_KEY) || '{}') || {}); } catch (e) {}
+  }, []);
+  const toggleGroup = (g) => setNavOpen((prev) => {
+    const next = { ...prev, [g]: prev[g] === false };
+    try { localStorage.setItem(NAV_OPEN_KEY, JSON.stringify(next)); } catch (e) {}
+    return next;
+  });
 
   // Global ⌘K / Ctrl+K — åpne kommandopaletten
   useEffect(() => {
@@ -226,20 +276,34 @@ export default function AdminPage() {
   const sectionMeta = SECTION_TITLES[section] || { t: section, s: '' };
 
   const NavList = () => (
-    <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-6">
-      {NAV.map((grp) => (
+    <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-4">
+      {NAV.map((grp) => {
+        const containsActive = grp.items.some((it) => (it.insight ? (section === 'innsikt' && insightTab === it.insight) : section === it.k));
+        const isOpen = navOpen[grp.group] !== false || containsActive;
+        return (
         <div key={grp.group}>
-          <p className="px-3 mb-2 text-[10.5px] font-semibold uppercase tracking-[0.12em] text-white/30">{grp.group}</p>
-          <div className="space-y-1">
+          <button
+            onClick={() => toggleGroup(grp.group)}
+            className="w-full px-3 mb-1.5 flex items-center justify-between group/hdr"
+            aria-expanded={isOpen}
+            data-testid={`nav-group-${grp.group}`}
+          >
+            <span className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-white/30 group-hover/hdr:text-white/55 transition-colors">{grp.group}</span>
+            <ChevronDown className={`w-3 h-3 text-white/20 group-hover/hdr:text-white/55 transition-transform duration-200 ${isOpen ? '' : '-rotate-90'}`} />
+          </button>
+          {isOpen && (
+          <div className="space-y-0.5 dh-fade">
             {grp.items.map((it) => {
               const Icon = it.icon;
-              const active = section === it.k;
-              const common = 'relative w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[14px] font-medium transition-all group';
+              const active = it.insight ? (section === 'innsikt' && insightTab === it.insight) : section === it.k;
+              const pend = it.badge === 'pending' ? (insightStats.pending || 0) : 0;
+              const common = 'relative w-full flex items-center gap-3 px-3 py-2 rounded-xl text-[13.5px] font-medium transition-all group';
               const content = (
                 <>
                   {active && <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-full bg-[#cf97fc] shadow-[0_0_12px_rgba(207,151,252,0.8)]" />}
-                  <Icon className={`w-[18px] h-[18px] shrink-0 transition-colors ${active ? 'text-[#cf97fc]' : 'text-white/50 group-hover:text-white/80'}`} />
+                  <Icon className={`w-[17px] h-[17px] shrink-0 transition-colors ${active ? 'text-[#cf97fc]' : 'text-white/50 group-hover:text-white/80'}`} />
                   <span className="flex-1 text-left">{it.l}</span>
+                  {pend > 0 && <span className="text-[9.5px] font-bold bg-amber-400 text-[#0a0a0a] rounded-full px-1.5 py-0.5 leading-none">{pend}</span>}
                   {it.soon && <span className="text-[9.5px] font-semibold uppercase tracking-wide text-[#cf97fc] bg-[#cf97fc]/12 rounded-full px-1.5 py-0.5">Snart</span>}
                   {it.href && <ChevronRight className="w-3.5 h-3.5 text-white/25" />}
                 </>
@@ -250,39 +314,25 @@ export default function AdminPage() {
                 );
               }
               return (
-                <div key={it.k}>
-                  <button
-                    onClick={() => { setSection(it.k); setSidebarOpen(false); }}
-                    className={`${common} ${active ? 'bg-white/[0.08] text-white' : 'text-white/70 hover:bg-white/[0.05] hover:text-white'}`}
-                  >
-                    {content}
-                  </button>
-                  {it.k === 'innsikt' && section === 'innsikt' && (
-                    <div className="mt-1 ml-3.5 pl-3 border-l border-white/[0.08] space-y-0.5 dh-fade">
-                      {INSIGHT_TABS.map((st) => {
-                        const SI = st.icon;
-                        const sactive = insightTab === st.k;
-                        const pend = st.badge === 'pending' ? (insightStats.pending || 0) : 0;
-                        return (
-                          <button
-                            key={st.k}
-                            onClick={() => { setSection('innsikt'); setInsightTab(st.k); setSidebarOpen(false); }}
-                            className={`w-full flex items-center gap-2.5 pl-2.5 pr-2 py-2 rounded-lg text-[13px] font-medium transition-all group/sub ${sactive ? 'bg-white/[0.07] text-white' : 'text-white/45 hover:text-white/85 hover:bg-white/[0.04]'}`}
-                          >
-                            <SI className={`w-4 h-4 shrink-0 ${sactive ? 'text-[#cf97fc]' : 'text-white/35 group-hover/sub:text-white/70'}`} />
-                            <span className="flex-1 text-left">{st.l}</span>
-                            {pend > 0 && <span className="text-[9.5px] font-bold bg-amber-400 text-[#0a0a0a] rounded-full px-1.5 py-0.5 leading-none">{pend}</span>}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
+                <button
+                  key={it.k}
+                  onClick={() => {
+                    if (it.insight) { setSection('innsikt'); setInsightTab(it.insight); }
+                    else setSection(it.k);
+                    setSidebarOpen(false);
+                  }}
+                  data-testid={`nav-item-${it.k}`}
+                  className={`${common} ${active ? 'bg-white/[0.08] text-white' : 'text-white/70 hover:bg-white/[0.05] hover:text-white'}`}
+                >
+                  {content}
+                </button>
               );
             })}
           </div>
+          )}
         </div>
-      ))}
+        );
+      })}
     </nav>
   );
 
@@ -312,16 +362,16 @@ export default function AdminPage() {
   const runNavigate = (sec) => { setSection(sec); setSidebarOpen(false); setPaletteOpen(false); };
   const runInsight = (k) => { setSection('innsikt'); setInsightTab(k); setSidebarOpen(false); setPaletteOpen(false); };
   const paletteCommands = [
-    { id: 'sec-nokkeltall', group: 'Ledelse', label: 'Nøkkeltall', icon: TrendingUp, action: () => runNavigate('nokkeltall') },
-    { id: 'sec-investorrom', group: 'Ledelse', label: 'Investor-rom (DD)', icon: Landmark, action: () => runNavigate('investorrom') },
-    ...INSIGHT_TABS.map((t) => ({ id: `insight-${t.k}`, group: 'Innsikt', label: t.l, icon: t.icon, action: () => runInsight(t.k) })),
-    { id: 'sec-kunder', group: 'Forretning', label: 'Kunder', icon: Users, action: () => runNavigate('kunder') },
-    { id: 'sec-abonnementer', group: 'Forretning', label: 'Abonnementer', icon: CreditCard, action: () => runNavigate('abonnementer') },
-    { id: 'sec-artikler', group: 'Innhold', label: 'Artikler', icon: FileText, action: () => { setPaletteOpen(false); window.location.href = '/admin/artikler'; } },
-    { id: 'sec-nyhetsbrev', group: 'Innhold', label: 'Nyhetsbrev', icon: Mail, action: () => runNavigate('nyhetsbrev') },
-    { id: 'sec-boliger', group: 'Innhold', label: 'Boliger på forsiden', icon: Home, action: () => runNavigate('boliger') },
-    { id: 'sec-historikk', group: 'Forretning', label: 'Historikk (leads før sporing)', icon: History, action: () => runNavigate('historikk') },
-    { id: 'sec-bro', group: 'Koordinering', label: 'Agent-bro', icon: MessageSquare, action: () => runNavigate('bro') },
+    // Hele menyen — automatisk fra NAV-strukturen (alltid i synk med sidemenyen)
+    ...NAV.flatMap((g) => g.items.filter((it) => !it.soon).map((it) => ({
+      id: `nav-${it.k}`, group: g.group, label: it.l, icon: it.icon,
+      action: () => {
+        setPaletteOpen(false);
+        if (it.href) { window.location.href = it.href; return; }
+        if (it.insight) { runInsight(it.insight); return; }
+        runNavigate(it.k);
+      },
+    }))),
     // Hurtighandlinger — 2026: gjør ting direkte fra paletten
     { id: 'qa-site', group: 'Hurtighandlinger', label: 'Åpne nettsiden (ny fane)', icon: Globe, action: () => { setPaletteOpen(false); window.open('/', '_blank'); } },
     { id: 'qa-artikkel', group: 'Hurtighandlinger', label: 'Skriv ny artikkel', icon: PenLine, action: () => { setPaletteOpen(false); window.location.href = '/admin/artikler'; } },
@@ -355,8 +405,8 @@ export default function AdminPage() {
           <div className="h-16 px-4 sm:px-8 flex items-center gap-3">
             <button onClick={() => setSidebarOpen(true)} className="lg:hidden h-9 w-9 rounded-lg bg-white shadow-[0_2px_10px_rgba(0,0,0,0.05)] flex items-center justify-center text-[#444]"><Menu className="w-5 h-5" /></button>
             <div className="min-w-0">
-              <h1 className="text-[20px] sm:text-[22px] font-bold text-[#0a0a0a] tracking-[-0.02em] leading-none" style={{ fontFamily: 'var(--font-heading)' }}>{sectionMeta.t}</h1>
-              <p className="text-[12px] text-[#999] mt-1 truncate">{section === 'innsikt' ? `Innsikt · ${activeInsight.l}` : sectionMeta.s}</p>
+              <h1 className="text-[20px] sm:text-[22px] font-bold text-[#0a0a0a] tracking-[-0.02em] leading-none" style={{ fontFamily: 'var(--font-heading)' }}>{section === 'innsikt' ? activeInsight.l : sectionMeta.t}</h1>
+              <p className="text-[12px] text-[#999] mt-1 truncate">{section === 'innsikt' ? (INSIGHT_SUBTITLES[insightTab] || 'Førsteparts analyse · cookieless · GDPR-trygt') : sectionMeta.s}</p>
             </div>
             <PulseStrip token={token} onJump={(sec, tab) => { setSection(sec); if (tab) { setSection('innsikt'); setInsightTab(tab); } }} />
             <button onClick={() => setPaletteOpen(true)} title="Søk & hurtignavigasjon (⌘K)" className="ml-auto xl:ml-0 hidden sm:flex items-center gap-2 h-9 pl-3 pr-2 rounded-full bg-white shadow-[0_2px_10px_rgba(0,0,0,0.04)] text-[#9a9a9a] hover:text-[#0a0a0a] transition-colors">
