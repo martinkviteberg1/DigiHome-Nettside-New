@@ -6006,6 +6006,29 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
       }
       await db.collection(coll).updateOne({ id }, { $set: update });
 
+      // TOVEIS SYNK: manuell statusendring i VÅR admin → skriv tilbake til
+      // CRM-et via utboksen (samme robuste mekanisme som Historikk-fanen:
+      // retry ved nedetid, idempotens, siste-vinner-merge per lead).
+      // Løkke-sikkert: statusendringer som kommer FRA plattformen (webhook)
+      // rører aldri utboksen — kun denne manuelle admin-ruten gjør det.
+      let crmSync = null;
+      try {
+        const pid = existing.platform_id || (existing.mirrored ? existing.id : null);
+        if (pid) {
+          await queueLeadPushback(db, {
+            platform_id: pid,
+            status,
+            won_value: update.wonValue !== undefined ? update.wonValue : undefined,
+            origin: 'lead-status',
+          });
+          const target = digiHomeTarget();
+          if (target.url) crmSync = await flushLeadPushbacks(db, { target: target.url, key: target.key });
+          else crmSync = { ok: false, skipped: 'plattform-URL ikke konfigurert' };
+        } else {
+          crmSync = { ok: false, skipped: 'ingen platform_id — leaden er ikke videresendt til CRM ennå (synces automatisk når forward lykkes)' };
+        }
+      } catch (e) { crmSync = { ok: false, error: e.message }; }
+
       // Meta CAPI: admin markerer vunnet → server-side Purchase (samme event_id som
       // webhook-veien → deduplikeres). Closed-loop også for manuelle utfall.
       try {
@@ -6058,7 +6081,7 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
         try { await db.collection(coll).updateOne({ id }, { $set: { ga4Won: { ok: false, at: nowIso, error: e.message } } }); } catch (_) {}
       }
 
-      return cors(NextResponse.json({ ok: true, id, status }));
+      return cors(NextResponse.json({ ok: true, id, status, crmSync }));
     }
 
     // --- Webhook: lead-status-sync FRA DigiHome-plattformen (to-veis closed-loop) ---
