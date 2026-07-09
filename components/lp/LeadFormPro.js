@@ -54,6 +54,67 @@ export default function LeadFormPro({ cfg }) {
     setTimeout(() => { try { nameRef.current?.focus({ preventScroll: true }); } catch (e) {} }, 60);
   };
 
+  // Adressen MÅ velges fra listen (postnr + husnummer) — eller hoppes helt over.
+  // Stopper ufullstendige adresser («Snikvegen 65A» uten postnr) i CRM-et.
+  const [addrSel, setAddrSel] = useState(null); // { postalCode } når valgt fra listen
+  const [addrHint, setAddrHint] = useState('');
+
+  const chooseSuggestion = async (s) => {
+    const txt = (s.text || s.label || '').trim();
+    if (!/\d/.test(txt)) {
+      // Gate uten husnummer → be om nummer (nytt søk gir nummer-forslag)
+      ac.setQuery(txt + ' ');
+      setAddrSel(null);
+      setAddrHint('Legg til husnummer (f.eks. 12) og velg adressen fra listen.');
+      ac.setOpen(false);
+      return;
+    }
+    ac.skipRef.current = true;
+    ac.setQuery(txt);
+    ac.setOpen(false);
+    setAddrHint('');
+    let postal = '';
+    if (s.place_id) {
+      try {
+        const r = await fetch(`/api/address?place_id=${encodeURIComponent(s.place_id)}`);
+        const d = await r.json();
+        if (d && d.ok) {
+          postal = d.postalCode || '';
+          if (d.label || d.address) { ac.skipRef.current = true; ac.setQuery(d.label || d.address); }
+        }
+      } catch (e) { /* beholder forslags-teksten */ }
+    } else {
+      const m = (s.sub || '').match(/(\d{4})/);
+      postal = m ? m[1] : '';
+    }
+    setAddrSel({ postalCode: postal });
+  };
+
+  const tryGoStep2 = () => {
+    const q = ac.query.trim();
+    if (q && !addrSel) {
+      // Eksakt tekstmatch mot et forslag → auto-velg (null ekstra friksjon)
+      const hit = ac.suggestions.find((s) => (s.text || s.label || '').trim().toLowerCase() === q.toLowerCase());
+      if (hit && /\d/.test(hit.text || hit.label || '')) { chooseSuggestion(hit).then(goStep2); return; }
+      setAddrHint('Velg adressen fra forslagslisten — eller trykk «Hopp over» under.');
+      if (ac.suggestions.length) ac.setOpen(true);
+      try { track('lead_step', { step: 'address_unverified', form: cfg.source }); } catch (e) {}
+      return;
+    }
+    goStep2();
+  };
+
+  const skipAddress = () => {
+    // «Har ikke adressen klar» = bevisst hopp: tomt adressefelt (ingen halvferdig
+    // fritekst i CRM) — Sarah henter adressen i førstesamtalen.
+    ac.skipRef.current = true;
+    ac.setQuery('');
+    setAddrSel(null);
+    setAddrHint('');
+    ac.setOpen(false);
+    goStep2();
+  };
+
   const validate = () => {
     const fe = {};
     if (!form.name.trim()) fe.name = 'Hva heter du?';
@@ -80,7 +141,8 @@ export default function LeadFormPro({ cfg }) {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: form.name.trim(), phone: form.phone.trim(), email: form.email.trim(),
-          address: ac.query.trim(), lead_type: 'huseier', source: cfg.source,
+          address: ac.query.trim(), postal_code: (addrSel && addrSel.postalCode) || undefined,
+          lead_type: 'huseier', source: cfg.source,
           notes,
           attribution: { ...getLeadAttribution(), ...getClickIds() },
         }),
@@ -148,9 +210,16 @@ export default function LeadFormPro({ cfg }) {
             <MapPin className="h-[18px] w-[18px] text-[#737373] shrink-0" />
             <input
               value={ac.query}
-              onChange={(e) => ac.setQuery(e.target.value)}
+              onChange={(e) => { ac.setQuery(e.target.value); if (addrSel) setAddrSel(null); if (addrHint) setAddrHint(''); }}
               onFocus={() => { handleStart(); if (ac.suggestions.length) ac.setOpen(true); }}
-              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); ac.setOpen(false); goStep2(); } }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  // Enter med åpne forslag = velg det første (standard UX)
+                  if (ac.open && ac.suggestions.length) chooseSuggestion(ac.suggestions[0]);
+                  else tryGoStep2();
+                }
+              }}
               placeholder="Adressen til boligen din"
               autoComplete="off"
               enterKeyHint="go"
@@ -158,17 +227,18 @@ export default function LeadFormPro({ cfg }) {
             />
             <button
               type="button"
-              onClick={() => { ac.setOpen(false); goStep2(); }}
+              onClick={tryGoStep2}
               className="group hidden sm:inline-flex shrink-0 h-[44px] items-center gap-1.5 rounded-xl bg-[#0a0a0a] text-white hover:bg-black px-6 text-[13px] font-semibold transition-all duration-200 hover:shadow-[0_4px_12px_rgba(0,0,0,0.2)] active:scale-[0.97]"
             >
               {cfg.cta || 'Start gratis vurdering'} <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
             </button>
           </div>
+          {addrHint && <p className="text-[12px] text-amber-700 mt-1.5" data-testid="lp-address-hint">{addrHint}</p>}
           {ac.open && ac.suggestions.length > 0 && (
             <ul className="absolute z-30 mt-1.5 w-full rounded-xl border border-[#eee] bg-white shadow-[0_12px_40px_rgba(0,0,0,0.10)] overflow-hidden">
               {ac.suggestions.map((s, i) => (
                 <li key={i}>
-                  <button type="button" onClick={() => { ac.setQuery(s.text || s.label || ''); ac.setOpen(false); }}
+                  <button type="button" onClick={() => chooseSuggestion(s)}
                     className="w-full text-left px-4 py-2.5 text-[14px] hover:bg-[#fafafa] transition-colors">
                     <span className="text-[#0a0a0a]">{s.text || s.label}</span>
                     {s.sub ? <span className="text-[#999]"> · {s.sub}</span> : null}
@@ -181,7 +251,7 @@ export default function LeadFormPro({ cfg }) {
 
         <button
           type="button"
-          onClick={() => { ac.setOpen(false); goStep2(); }}
+          onClick={tryGoStep2}
           className="group sm:hidden mt-3 w-full h-[52px] rounded-full bg-[#0a0a0a] text-white font-semibold text-[15px] flex items-center justify-center gap-2 shadow-[0_8px_24px_-8px_rgba(31,31,31,0.35)] active:scale-[0.98] transition-transform"
         >
           {cfg.cta || 'Start gratis vurdering'} <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
@@ -192,7 +262,7 @@ export default function LeadFormPro({ cfg }) {
             <span className="inline-flex items-center gap-1.5"><ShieldCheck className="w-3.5 h-3.5 text-[#18794E]" /> Uforpliktende</span>
             <span className="inline-flex items-center gap-1.5"><Wallet className="w-3.5 h-3.5 text-[#18794E]" /> 0 kr oppstart</span>
           </div>
-          <button type="button" onClick={goStep2} className="text-[12.5px] text-[#888] underline underline-offset-2 hover:text-[#0a0a0a] transition-colors">
+          <button type="button" onClick={skipAddress} className="text-[12.5px] text-[#888] underline underline-offset-2 hover:text-[#0a0a0a] transition-colors">
             Har ikke adressen klar? Hopp over
           </button>
         </div>

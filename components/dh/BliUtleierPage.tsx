@@ -254,6 +254,10 @@ export default function BliUtleierPage() {
         newErrors.address = inputMode === 'finn'
           ? 'Lim inn en gyldig Finn-lenke til boligen'
           : 'Vennligst oppgi adressen til eiendommen';
+      } else if (inputMode !== 'finn' && formData.address.trim() && (!formData.postal_code || !/\d/.test(formData.address))) {
+        // Tvungen listevalg: adresse skrevet uten å velge fra forslagslisten
+        // mangler postnummer/husnummer → ufullstendige leads i CRM-et.
+        newErrors.address = 'Velg adressen fra forslagslisten — da får vi med postnummer og husnummer';
       } else {
         if (!String(formData.sqm || '').trim()) newErrors.sqm = 'Oppgi størrelse';
         if (!formData.property_type) newErrors.property_type = 'Velg boligtype';
@@ -587,7 +591,7 @@ export default function BliUtleierPage() {
                         error={errors.address}
                         placeholder="F.eks. Nordnesveien 13, Bergen"
                         testIdPrefix="owner-address"
-                        onChange={(v: any) => updateField('address', v)}
+                        onChange={(v: any) => { updateField('address', v); if (formData.postal_code) updateField('postal_code', ''); }}
                         onSelect={(data: any) => {
                           const addr = data.address ? data.address.replace(/,\s*(Norway|Norge)$/i, '') : '';
                           if (addr) { updateField('address', addr); setRegistryQuery(addr); }

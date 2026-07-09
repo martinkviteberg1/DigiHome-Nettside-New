@@ -74,6 +74,7 @@ export function AddressField({
           onSelect?.(data);
           setEditing(false);
         }}
+        requireSelection
         placeholder={placeholder}
         showIcon
         inputClassName={inputWrapClass}

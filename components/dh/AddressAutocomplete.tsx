@@ -17,15 +17,26 @@ export function AddressAutocomplete({
   inputClassName = '',
   showIcon = true,
   dataTestId = 'address-autocomplete',
+  requireSelection = false,
+  onVerifiedChange,
 }: any) {
   const wrapperRef = useRef<any>(null);
+  const inputRef = useRef<any>(null);
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
+  // «Bekreftet» = valgt fra listen (med husnummer). Manuell skriving nullstiller.
+  const [verified, setVerified] = useState(false);
+  const [needNumber, setNeedNumber] = useState(false);
   const skipRef = useRef(false);
   const cacheRef = useRef<Map<string, any[]>>(new Map());
   const abortRef = useRef<any>(null);
   const reqIdRef = useRef(0);
+
+  const setVerifiedBoth = useCallback((v: boolean) => {
+    setVerified(v);
+    try { onVerifiedChange?.(v); } catch (e) {}
+  }, [onVerifiedChange]);
 
   // Debounced Geonorge-oppslag med klient-cache + request-guard (rask, ingen blink)
   useEffect(() => {
@@ -66,11 +77,25 @@ export function AddressAutocomplete({
   }, []);
 
   const choose = useCallback(async (s: any) => {
+    // Gate-forslag UTEN husnummer («Sverres gate, Bergen»): ikke godta valget —
+    // legg gatenavnet i feltet og be om husnummer (nytt søk gir nummer-forslag).
+    if (!/\d/.test(String(s.text || ''))) {
+      onChange(String(s.text || '') + ' ');
+      setNeedNumber(true);
+      setVerifiedBoth(false);
+      setOpen(false);
+      setSuggestions([]);
+      try { inputRef.current?.focus(); } catch (e) {}
+      try { track('address_search', { selected: true, need_number: true }); } catch (e) {}
+      return;
+    }
+    setNeedNumber(false);
     skipRef.current = true;
     onChange(s.text);
     setOpen(false);
     setSuggestions([]);
     try { track('address_search', { selected: true }); } catch (e) {}
+    setVerifiedBoth(true);
     if (!onSelect) return;
     // Google-forslag mangler postnummer → hent fra Place Details (server-proxy).
     if (s.place_id) {
@@ -90,7 +115,17 @@ export function AddressAutocomplete({
     // Geonorge-format: postnummer ligger i sub («5005 BERGEN»).
     const m = (s.sub || '').match(/(\d{4})\s+(.+)/);
     onSelect({ address: s.label || s.text, postalCode: m ? m[1] : '', city: m ? m[2] : '', raw: s });
-  }, [onChange, onSelect]);
+  }, [onChange, onSelect, setVerifiedBoth]);
+
+  // Blur: matcher teksten et forslag eksakt → auto-velg (brukeren skrev alt selv).
+  const onBlurField = useCallback(() => {
+    if (verified) return;
+    const t = String(value || '').trim().toLowerCase();
+    if (!t) { setNeedNumber(false); return; }
+    const hit = suggestions.find((s: any) =>
+      String(s.text || '').trim().toLowerCase() === t || String(s.label || '').trim().toLowerCase() === t);
+    if (hit && /\d/.test(String(hit.text || ''))) choose(hit);
+  }, [verified, value, suggestions, choose]);
 
   // Mobil-UX: sticky bunn-bar + cookiebanner spiser ~300px — scroll feltet opp
   // ved fokus slik at forslagslisten får plass under input.
@@ -120,16 +155,30 @@ export function AddressAutocomplete({
         </div>
       )}
       <input
+        ref={inputRef}
         type="text"
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(e) => { onChange(e.target.value); if (verified) setVerifiedBoth(false); }}
         onFocus={onFocusField}
+        onBlur={onBlurField}
         onKeyDown={onKey}
         placeholder={placeholder}
         className={inputClassName}
         data-testid={dataTestId}
         autoComplete="off"
       />
+      {/* Veiledningshint: be om husnummer / valg fra listen (myk, ikke-blokkerende her —
+          selve blokkeringen skjer i skjemaets submit-validering) */}
+      {needNumber && (
+        <p className="text-[12px] text-amber-700 mt-1.5" data-testid={`${dataTestId}-hint`}>
+          Legg til husnummer (f.eks. 12) og velg adressen fra listen.
+        </p>
+      )}
+      {!needNumber && requireSelection && !verified && String(value || '').trim().length >= 3 && (
+        <p className="text-[12px] text-amber-700 mt-1.5" data-testid={`${dataTestId}-hint`}>
+          Velg adressen fra forslagslisten — da får vi med postnummer og husnummer.
+        </p>
+      )}
       {open && suggestions.length > 0 && (
         <div
           className="absolute left-0 right-0 top-[calc(100%+4px)] z-[10000] bg-white rounded-xl border border-[#e5e5e5] shadow-[0_8px_30px_rgba(0,0,0,0.08)] py-1 overflow-hidden max-h-[min(300px,42vh)] overflow-y-auto"

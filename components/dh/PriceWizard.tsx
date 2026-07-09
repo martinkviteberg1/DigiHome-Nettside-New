@@ -343,8 +343,9 @@ export default function PriceWizard() {
                   <label className="block text-[13px] font-semibold text-[#0a0a0a] mb-2.5" style={{ fontFamily: 'var(--font-heading)' }}>Adresse <span className="font-normal text-[#aaa]">(valgfritt)</span></label>
                   <div className="flex items-center rounded-full bg-white border border-[#e8e3da] focus-within:border-[#cf97fc]/60 focus-within:shadow-[0_0_0_4px_rgba(207,151,252,0.12)] transition-all mb-9 max-w-[520px] relative z-30">
                     <div className="pl-5"><MapPin className="w-[17px] h-[17px] text-[#999]" /></div>
-                    <AddressAutocomplete value={address} onChange={setAddress}
+                    <AddressAutocomplete value={address} onChange={(v: string) => { setAddress(v); setPostal(''); }}
                       onSelect={(s: any) => { setAddress(s.address); setPostal(s.postalCode || ''); }}
+                      requireSelection
                       placeholder="Gateadresse, sted" showIcon={false} dataTestId="wizard-address-input"
                       inputClassName="flex-1 h-[54px] px-3.5 text-[15px] bg-transparent border-0 outline-none focus:outline-none w-full placeholder:text-[#999]" className="flex-1" />
                   </div>

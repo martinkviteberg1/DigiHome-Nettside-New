@@ -1627,6 +1627,9 @@ async function handleRoute(request, { params }) {
         createdAt: new Date().toISOString(),
       };
       lead.last_activity_at = lead.createdAt; // oppdateres ved re-engasjement
+      // Datakvalitet-backstopp: adresse uten husnummer/postnr flagges (synlig
+      // for admin) — skal normalt ikke skje etter tvungen listevalg i skjemaene.
+      if (lead.address && (!/\d/.test(lead.address) || !lead.postal_code)) lead.address_incomplete = true;
       // To-nivå-modellen: hvilket spor valgte kunden i skjemaet? + klikk-aksept
       // av selvforvaltningsavtalen (server-tidsstempel for integritet).
       lead.tier = ['selvforvaltning', 'full_forvaltning'].includes((body.tier || '').toString()) ? body.tier : null;
@@ -6244,6 +6247,10 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
       const email = (body.email || '').toString().toLowerCase().trim();
       const phoneDigits = (body.phone || '').toString().replace(/\D/g, '');
       const last8 = phoneDigits.slice(-8);
+      // NYE FELTER (bro-avtale 9. juli): plattformen sender nå ALLE leads
+      // (også organiske). is_paid styrer om annonse-konverteringer skal fyres.
+      const bodyIsPaid = body.is_paid === true ? true : (body.is_paid === false ? false : null);
+      const bodySourceType = (body.lead_source_type || '').toString().toLowerCase().trim() || null;
 
       // Match: external_ref (vår id) → platform_id → e-post → telefon (siste 8 siffer),
       // på tvers av begge kolleksjoner.
@@ -6264,7 +6271,42 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
           break;
         }
       }
+      // CRM-SPEILING (bro-avtale): ukjent external_ref = organisk plattform-lead
+      // (FINN/telefon/CRM-manuell). Opprett speil-lead i stedet for 404, slik at
+      // admin-lista viser HELE pipelinen. id = plattformens lead_id (idempotent:
+      // neste event matcher på external_ref).
+      let mirrored = false;
+      if (!lead && externalRef) {
+        const nowIso0 = new Date().toISOString();
+        const mirrorLead = {
+          id: externalRef,
+          name: (body.name || '').toString().slice(0, 120),
+          email: email || '',
+          phone: (body.phone || '').toString().slice(0, 40),
+          address: (body.address || '').toString().slice(0, 200),
+          postal_code: (body.postal_code || '').toString().slice(0, 10),
+          lead_type: ['huseier', 'leietaker'].includes((body.lead_type || '').toString()) ? body.lead_type : 'huseier',
+          source: (body.source || 'crm-plattform').toString().slice(0, 60),
+          lead_source_type: bodySourceType || 'organic',
+          is_paid: bodyIsPaid === true,
+          mirrored: true,               // speilet fra plattformen — IKKE vår akkvisisjon
+          origin: 'platform',
+          platform_id: platformId || externalRef,
+          forwarded: true,              // plattformen ER kilden; aldri re-forward
+          status: 'new',
+          statusHistory: [],
+          createdAt: nowIso0,
+          last_activity_at: nowIso0,
+        };
+        await db.collection('leads').insertOne(mirrorLead);
+        coll = 'leads'; lead = mirrorLead; matchedBy = 'mirrored'; mirrored = true;
+      }
       if (!lead) return cors(NextResponse.json({ ok: false, error: 'Lead ikke funnet' }, { status: 404 }));
+
+      // Annonse-konverteringsgate (bro-avtale punkt b): Meta/Google fyres KUN for
+      // betalte leads. Eldre payloads uten is_paid → vår egen klassifisering
+      // (uendret oppførsel). Speilede organiske leads fyrer ALDRI.
+      const allowAdConversions = bodyIsPaid === true || (bodyIsPaid === null && !mirrored && lead.mirrored !== true);
 
       const nowIso = new Date().toISOString();
       const changedAt = body.changed_at ? new Date(body.changed_at).toISOString() : nowIso;
@@ -6281,7 +6323,7 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
         let metaSub = null;
         try {
           const alreadyActive = !!(lead.metaCapiActive && lead.metaCapiActive.ok);
-          if (evt === 'leie_aktiv' && !alreadyActive && metaCapiConfigured() && marketingAllowed(lead.marketingConsent)) {
+          if (evt === 'leie_aktiv' && !alreadyActive && allowAdConversions && metaCapiConfigured() && marketingAllowed(lead.marketingConsent)) {
             const att = lead.attribution || {};
             const capi = await sendMetaCapiEvent({
               eventName: 'Subscribe',
@@ -6353,7 +6395,7 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
       let ga4Conv = null;
       const alreadyMetaWon = !!(lead.metaCapiWon && lead.metaCapiWon.ok);
       try {
-        if (status === 'won' && !alreadyMetaWon && metaCapiConfigured() && marketingAllowed(lead.marketingConsent)) {
+        if (status === 'won' && !alreadyMetaWon && allowAdConversions && metaCapiConfigured() && marketingAllowed(lead.marketingConsent)) {
           const att = lead.attribution || {};
           const wonVal = update.wonValue || Number(process.env.GOOGLE_ADS_DEFAULT_LEAD_VALUE) || undefined;
           const capi = await sendMetaCapiEvent({
@@ -6376,7 +6418,7 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
       const alreadyGoogleWon = !!(lead.googleAdsWon && lead.googleAdsWon.ok);
       try {
         const att = lead.attribution || {};
-        if (status === 'won' && !alreadyGoogleWon && dataManagerConfigured() && marketingAllowed(lead.marketingConsent) && (att.gclid || att.gbraid || att.wbraid)) {
+        if (status === 'won' && !alreadyGoogleWon && allowAdConversions && dataManagerConfigured() && marketingAllowed(lead.marketingConsent) && (att.gclid || att.gbraid || att.wbraid)) {
           const wonVal = update.wonValue || Number(process.env.GOOGLE_ADS_DEFAULT_LEAD_VALUE) || 0;
           const up = await ingestOfflineConversion({
             gclid: att.gclid, gbraid: att.gbraid, wbraid: att.wbraid,
@@ -6417,7 +6459,7 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
         const LIFECYCLE = { contacted: 'Contact', qualified: 'QualifiedLead' };
         const evName = LIFECYCLE[status];
         const firedKey = `metaCapi_${status}`;
-        if (evName && !(lead[firedKey] && lead[firedKey].ok) && metaCapiConfigured() && marketingAllowed(lead.marketingConsent)) {
+        if (evName && !(lead[firedKey] && lead[firedKey].ok) && allowAdConversions && metaCapiConfigured() && marketingAllowed(lead.marketingConsent)) {
           const att = lead.attribution || {};
           const capi = await sendMetaCapiEvent({
             eventName: evName,
@@ -6437,9 +6479,10 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
         ok: true,
         id: lead.id,
         matched_ref: lead.id,
+        mirrored,
         status,
         matched_by: matchedBy,
-        match_warning: (matchedBy && matchedBy !== 'external_ref')
+        match_warning: (matchedBy && matchedBy !== 'external_ref' && matchedBy !== 'mirrored')
           ? `Matchet via ${matchedBy} (fallback). For robust closed-loop: bruk external_ref = vår lead.id (returnert ved videresending).`
           : undefined,
         conversions: (status === 'won')

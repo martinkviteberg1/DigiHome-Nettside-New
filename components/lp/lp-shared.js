@@ -231,7 +231,9 @@ export function useAddressAutocomplete() {
   const [suggestions, setSuggestions] = useState([]);
   const [open, setOpen] = useState(false);
   const abortRef = useRef(null);
+  const skipRef = useRef(false); // settes ved programmatisk setQuery (valg) → ikke nytt søk
   useEffect(() => {
+    if (skipRef.current) { skipRef.current = false; return; }
     const q = query.trim();
     if (q.length < 3) { setSuggestions([]); return; }
     const t = setTimeout(async () => {
@@ -246,5 +248,5 @@ export function useAddressAutocomplete() {
     }, 220);
     return () => clearTimeout(t);
   }, [query]);
-  return { query, setQuery, suggestions, open, setOpen };
+  return { query, setQuery, suggestions, open, setOpen, skipRef };
 }

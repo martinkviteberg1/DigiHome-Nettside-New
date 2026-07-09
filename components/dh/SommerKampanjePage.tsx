@@ -93,10 +93,17 @@ export default function SommerKampanjePage() {
   };
 
   const valid = name.trim().length >= 2 && phone.replace(/\D/g, '').length >= 8 && /\S+@\S+\.\S+/.test(email);
+  // Adresse er valgfri — men er den fylt inn, MÅ den være valgt fra listen
+  // (postnummer + husnummer). Hindrer ufullstendige adresser i CRM-et.
+  const addressOk = !address.trim() || (!!postal && /\d/.test(address));
 
   const submit = async (e: any) => {
     e.preventDefault();
     if (!valid || sending) return;
+    if (!addressOk) {
+      setErr('Velg adressen fra forslagslisten — da får vi med postnummer og husnummer.');
+      return;
+    }
     setSending(true);
     setErr('');
     try {
@@ -336,8 +343,9 @@ export default function SommerKampanjePage() {
                     <label className="text-[12px] font-semibold text-[#555] block mb-1.5">Adresse på utleieboligen <span className="font-normal text-[#aaa]">(valgfritt)</span></label>
                     <AddressAutocomplete
                       value={address}
-                      onChange={(v: string) => { markStart(); setAddress(v); }}
+                      onChange={(v: string) => { markStart(); setAddress(v); setPostal(''); if (err) setErr(''); }}
                       onSelect={(s: any) => { setAddress(s.address); setPostal(s.postalCode || ''); }}
+                      requireSelection
                       placeholder="F.eks. Nordnesveien 13, Bergen"
                       dataTestId="sommer-address"
                       inputClassName="w-full h-[46px] rounded-xl border border-[#e8e2ef] bg-white px-3.5 text-[14.5px] outline-none focus:border-[#c99df0] focus:ring-2 focus:ring-[#f0e4fb]"
