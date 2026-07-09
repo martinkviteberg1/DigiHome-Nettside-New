@@ -46,7 +46,12 @@ export function AddressAutocomplete({
         const r = await fetch(`/api/address?q=${encodeURIComponent(q)}`, { signal: ctrl.signal });
         const data = await r.json();
         const list = data.suggestions || [];
-        cacheRef.current.set(q.toLowerCase(), list);
+        // Cache KUN ikke-tomme lister: et forbigående tomt svar (nettglipp/kvote)
+        // skal ikke gjøre adressen «usøkbar» resten av økten.
+        if (list.length) {
+          cacheRef.current.set(q.toLowerCase(), list);
+          if (cacheRef.current.size > 300) cacheRef.current.delete(cacheRef.current.keys().next().value);
+        }
         if (myId === reqIdRef.current) { setSuggestions(list); setOpen(list.length > 0); setActive(-1); }
       } catch (e) { /* abort/ignorer — eldre svar overskriver ikke nyere */ }
     }, 150);

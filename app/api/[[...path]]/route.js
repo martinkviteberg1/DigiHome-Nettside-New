@@ -379,10 +379,12 @@ const ADDR_CACHE_MAX = 600;
 async function geonorgeSearch(q) {
   const key = q.toLowerCase();
   const hit = _addrCache.get(key);
-  if (hit && Date.now() - hit.at < ADDR_TTL_MS) return hit.suggestions;
+  if (hit && Date.now() - hit.at < (hit.ttl || ADDR_TTL_MS)) return hit.suggestions;
 
+  // treffPerSide=50: «Lien», «Skoglien» o.l. finnes over hele landet — med bare
+  // 20 nasjonale treff kunne Bergen-adressen falle utenfor FØR geo-sorteringen.
   const url = `https://ws.geonorge.no/adresser/v1/sok?sok=${encodeURIComponent(q)}` +
-    `&fuzzy=true&treffPerSide=20&side=0&asciiKompatibel=true` +
+    `&fuzzy=true&treffPerSide=50&side=0&asciiKompatibel=true` +
     `&filtrer=adresser.adressetekst,adresser.postnummer,adresser.poststed,adresser.kommunenummer`;
 
   let suggestions = [];
@@ -390,7 +392,7 @@ async function geonorgeSearch(q) {
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
       const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), 4000);
+      const timer = setTimeout(() => ctrl.abort(), 2500);
       const r = await fetch(url, { headers: { Accept: 'application/json' }, signal: ctrl.signal });
       clearTimeout(timer);
       if (!r.ok) { if (attempt === 0) continue; break; }      // 500 → ett raskt retry
@@ -421,13 +423,16 @@ async function geonorgeSearch(q) {
     }
   }
 
-  // Cache KUN vellykkede svar (ikke feil/timeout — da vil vi prøve igjen neste tastetrykk).
+  // Cache vellykkede svar i full TTL. Feil/timeout negativ-caches KORT (60s):
+  // vi prøver snart igjen, men hamrer ikke en nede-tjeneste for hvert tastetrykk.
   if (ok) {
     _addrCache.set(key, { at: Date.now(), suggestions });
     if (_addrCache.size > ADDR_CACHE_MAX) {
       const oldest = _addrCache.keys().next().value;
       _addrCache.delete(oldest);
     }
+  } else {
+    _addrCache.set(key, { at: Date.now(), suggestions: [], ttl: 60 * 1000 });
   }
   return suggestions;
 }
@@ -446,7 +451,7 @@ async function googlePlacesSearch(q) {
   if (!key) return null; // ikke konfigurert → fallback til Geonorge
   const cacheKey = 'g:' + q.toLowerCase();
   const hit = _addrCache.get(cacheKey);
-  if (hit && Date.now() - hit.at < ADDR_TTL_MS) return hit.suggestions;
+  if (hit && Date.now() - hit.at < (hit.ttl || ADDR_TTL_MS)) return hit.suggestions;
 
   const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(q)}` +
     `&types=address&components=country:no&language=no` +
@@ -466,7 +471,9 @@ async function googlePlacesSearch(q) {
       label: (p.description || '').replace(/,\s*(Norge|Norway)$/i, ''),
       place_id: p.place_id || undefined,
     })).filter((s) => s.text);
-    _addrCache.set(cacheKey, { at: Date.now(), suggestions });
+    // Tomt svar caches KORT (60s): et forbigående ZERO_RESULTS skal ikke gjøre
+    // adressen «usøkbar» i 10 minutter for alle brukere.
+    _addrCache.set(cacheKey, { at: Date.now(), suggestions, ttl: suggestions.length ? 0 : 60 * 1000 });
     if (_addrCache.size > ADDR_CACHE_MAX) _addrCache.delete(_addrCache.keys().next().value);
     return suggestions;
   } catch (e) { return null; }
@@ -1065,10 +1072,16 @@ async function handleRoute(request, { params }) {
       // Google først (relevans + Bergen-bias); null = ikke konfigurert/feil → Geonorge.
       let suggestions = await googlePlacesSearch(q);
       let source = 'google';
-      if (!suggestions) { suggestions = await geonorgeSearch(q); source = 'geonorge'; }
+      if (!suggestions || suggestions.length === 0) {
+        // Fallback OGSÅ ved tomt Google-svar: Geonorge/matrikkelen er det
+        // autoritative registeret — nyregistrerte adresser finnes der først.
+        const geo = await geonorgeSearch(q);
+        if (!suggestions || (geo && geo.length)) { suggestions = geo || []; source = 'geonorge'; }
+      }
       const res = cors(NextResponse.json({ suggestions, source }));
       // La nettleseren cache identiske søk kort (rask gjentatt skriving/sletting).
-      res.headers.set('Cache-Control', 'private, max-age=120');
+      // Tomme svar caches kortere — forbigående feil skal ikke bli «klistrende».
+      res.headers.set('Cache-Control', suggestions.length ? 'private, max-age=120' : 'private, max-age=30');
       return res;
     }
 
@@ -1180,9 +1193,31 @@ async function handleRoute(request, { params }) {
       if (mIn && mIn.kommunenr && mIn.gaardsnr && mIn.bruksnr) {
         matrikkel = { kommunenr: String(mIn.kommunenr), gaardsnr: String(mIn.gaardsnr), bruksnr: String(mIn.bruksnr) };
       } else if (address) {
-        matrikkel = await addressToMatrikkel(address);
-        if (!matrikkel) {
-          return cors(NextResponse.json({ status: 'not_found', message: 'Fant ikke adressen i Kartverket' }, { status: 404 }));
+        // Persistent adresse→matrikkel-cache: tidligere oppslåtte adresser
+        // fungerer selv når Kartverket er nede (matrikkelnr endres ikke).
+        const addrKey = address.toLowerCase().replace(/,/g, ' ').replace(/\s+/g, ' ').trim();
+        let cachedAddr = null;
+        try { cachedAddr = await db.collection('addr_matrikkel_cache').findOne({ key: addrKey }, { projection: { _id: 0 } }); } catch (e) {}
+        if (cachedAddr && cachedAddr.matrikkel) {
+          matrikkel = cachedAddr.matrikkel;
+        } else {
+          matrikkel = await addressToMatrikkel(address);
+          if (matrikkel && matrikkel.unavailable) {
+            // Kartverket svarer ikke — dette er IKKE «adressen finnes ikke».
+            // 502 (ikke 503): frontenden viser da «prøv igjen»-melding i stedet
+            // for å skjule registeret helt (503 = modulen er avslått).
+            return cors(NextResponse.json({ status: 'error', message: 'Kartverket svarer ikke akkurat nå. Prøv igjen om litt.' }, { status: 502 }));
+          }
+          if (!matrikkel) {
+            return cors(NextResponse.json({ status: 'not_found', message: 'Fant ikke adressen i Kartverket' }, { status: 404 }));
+          }
+          try {
+            await db.collection('addr_matrikkel_cache').updateOne(
+              { key: addrKey },
+              { $set: { key: addrKey, matrikkel, updated_at: new Date().toISOString() } },
+              { upsert: true },
+            );
+          } catch (e) { /* best-effort */ }
         }
       } else {
         return cors(NextResponse.json({ status: 'error', message: 'Mangler adresse eller matrikkel' }, { status: 400 }));
