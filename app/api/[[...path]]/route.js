@@ -6030,7 +6030,9 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
       const id = (body.id || '').toString();
       const status = (body.status || '').toString();
       const coll = body.type === 'tenant' ? 'tenant_leads' : 'leads';
-      const VALID = ['new', 'contacted', 'qualified', 'won', 'lost'];
+      // Full CRM-pipeline — speiler stegene i plattformen (befaring/tilbud inngår
+      // i toveis-synken begge veier).
+      const VALID = ['new', 'contacted', 'qualified', 'viewing', 'offer', 'won', 'lost'];
       if (!id || !VALID.includes(status)) {
         return cors(NextResponse.json({ ok: false, error: 'Ugyldig forespørsel' }, { status: 400 }));
       }

@@ -7,7 +7,9 @@ import {
   Radio, Gauge, TrendingUp, TrendingDown, Download, Megaphone,
   Search, X, ArrowUp, ArrowDown, FileSpreadsheet, ChevronRight, GitBranch,
   MoreHorizontal, Trophy, Clock, Target, ShieldCheck, Flame, LayoutTemplate, Crosshair, Layers, History,
+  Columns3, List,
 } from 'lucide-react';
+import LeadsPipeline from '@/components/admin/LeadsPipeline';
 import LeadDrawer from '@/components/admin/LeadDrawer';
 import OverviewTab from '@/components/admin/OverviewTab';
 import TrafficTab from '@/components/admin/TrafficTab';
@@ -41,14 +43,11 @@ const TABS = [
 
 const STATUS_OPTS = [
   { v: 'new', l: 'Ny' }, { v: 'contacted', l: 'Kontaktet' }, { v: 'qualified', l: 'Kvalifisert' },
-  { v: 'won', l: 'Vunnet' }, { v: 'lost', l: 'Tapt' },
-];
-// Historiske leads følger CRM-pipelinen (flere steg) — vises kun for pre_tracking-rader.
-const IMPORTED_STATUS_OPTS = [
-  { v: 'new', l: 'Ny' }, { v: 'contacted', l: 'Kontaktet' }, { v: 'qualified', l: 'Kvalifisert' },
   { v: 'viewing', l: 'Befaring' }, { v: 'offer', l: 'Tilbud sendt' },
   { v: 'won', l: 'Vunnet' }, { v: 'lost', l: 'Tapt' },
 ];
+// Samme fulle CRM-pipeline for alle leads (backend + toveis-synk støtter alle stegene).
+const IMPORTED_STATUS_OPTS = STATUS_OPTS;
 const IMPORTED_CHANNELS = [
   ['unknown', 'Ukjent'], ['google', 'Google Ads'], ['meta', 'Meta'], ['finn', 'FINN'],
   ['referral', 'Anbefaling'], ['phone', 'Telefon'], ['organic', 'Organisk'], ['email', 'E-post'],
@@ -82,6 +81,15 @@ export default function InnsiktDashboard({ apiKey, tab: propTab, onTabChange, on
   const [leadAdsSyncing, setLeadAdsSyncing] = useState(false);
   const [leadAdsMsg, setLeadAdsMsg] = useState('');
   const [dedupBusy, setDedupBusy] = useState(false);
+  // Pipeline (kanban) eller liste — valget huskes per nettleser.
+  const [leadView, setLeadView] = useState('pipeline');
+  useEffect(() => {
+    try { const v = localStorage.getItem('dh_leads_view'); if (v === 'list' || v === 'pipeline') setLeadView(v); } catch (e) {}
+  }, []);
+  const changeLeadView = (v) => {
+    setLeadView(v);
+    try { localStorage.setItem('dh_leads_view', v); } catch (e) {}
+  };
 
   const load = useCallback(async (d) => {
     const dd = d || days;
@@ -360,13 +368,27 @@ export default function InnsiktDashboard({ apiKey, tab: propTab, onTabChange, on
       {tab === 'leads' && (
         <div>
           <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-            {/* Segmentkontroll — utleiere / leietakere */}
-            <div className="inline-flex items-center bg-white rounded-full p-1 shadow-[0_2px_10px_rgba(0,0,0,0.04)]">
-              {[{ k: 'leads', l: 'Utleiere', n: data.leads.length }, { k: 'tenants', l: 'Leietakere', n: data.tenants.length }].map((t) => (
-                <button key={t.k} onClick={() => setLeadSub(t.k)} className={`px-4 py-1.5 rounded-full text-[13px] font-semibold transition-all flex items-center gap-1.5 ${leadSub === t.k ? 'bg-[#0a0a0a] text-white shadow-[0_2px_8px_rgba(0,0,0,0.12)]' : 'text-[#888] hover:text-[#0a0a0a]'}`}>
-                  {t.l}<span className={`text-[11px] font-bold ${leadSub === t.k ? 'text-white/55' : 'text-[#c4c4c4]'}`}>{t.n}</span>
-                </button>
-              ))}
+            {/* Segmentkontroll — utleiere / leietakere + visningsvalg */}
+            <div className="flex items-center gap-2.5">
+              <div className="inline-flex items-center bg-white rounded-full p-1 shadow-[0_2px_10px_rgba(0,0,0,0.04)]">
+                {[{ k: 'leads', l: 'Utleiere', n: data.leads.length }, { k: 'tenants', l: 'Leietakere', n: data.tenants.length }].map((t) => (
+                  <button key={t.k} onClick={() => setLeadSub(t.k)} className={`px-4 py-1.5 rounded-full text-[13px] font-semibold transition-all flex items-center gap-1.5 ${leadSub === t.k ? 'bg-[#0a0a0a] text-white shadow-[0_2px_8px_rgba(0,0,0,0.12)]' : 'text-[#888] hover:text-[#0a0a0a]'}`}>
+                    {t.l}<span className={`text-[11px] font-bold ${leadSub === t.k ? 'text-white/55' : 'text-[#c4c4c4]'}`}>{t.n}</span>
+                  </button>
+                ))}
+              </div>
+              {/* Pipeline / Liste — samme veksler som i CRM-plattformen */}
+              <div className="inline-flex items-center bg-white rounded-full p-1 shadow-[0_2px_10px_rgba(0,0,0,0.04)]">
+                {[{ k: 'pipeline', l: 'Pipeline', icon: Columns3 }, { k: 'list', l: 'Liste', icon: List }].map((v) => {
+                  const VI = v.icon;
+                  return (
+                    <button key={v.k} onClick={() => changeLeadView(v.k)} data-testid={`leads-view-${v.k}`}
+                      className={`px-3.5 py-1.5 rounded-full text-[12.5px] font-semibold transition-all flex items-center gap-1.5 ${leadView === v.k ? 'bg-[#0a0a0a] text-white shadow-[0_2px_8px_rgba(0,0,0,0.12)]' : 'text-[#888] hover:text-[#0a0a0a]'}`}>
+                      <VI className="w-3.5 h-3.5" /> {v.l}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             {/* Handlinger — samlet i én diskret meny */}
@@ -435,6 +457,16 @@ export default function InnsiktDashboard({ apiKey, tab: propTab, onTabChange, on
             );
           })()}
 
+          {leadView === 'pipeline' ? (
+            <LeadsPipeline
+              rows={filteredRows}
+              type={leadSub === 'tenants' ? 'tenant' : 'lead'}
+              loading={loading}
+              busyId={statusBusy}
+              onOpen={setDrawerLead}
+              onSetStatus={doSetStatus}
+            />
+          ) : (
           <div className="bg-white rounded-2xl shadow-[0_2px_16px_rgba(0,0,0,0.04)] overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left">
@@ -537,6 +569,7 @@ export default function InnsiktDashboard({ apiKey, tab: propTab, onTabChange, on
               </table>
             </div>
           </div>
+          )}
         </div>
       )}
       </div>

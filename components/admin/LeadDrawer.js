@@ -9,14 +9,11 @@ import {
 
 const STATUS_OPTS = [
   { v: 'new', l: 'Ny' }, { v: 'contacted', l: 'Kontaktet' }, { v: 'qualified', l: 'Kvalifisert' },
-  { v: 'won', l: 'Vunnet' }, { v: 'lost', l: 'Tapt' },
-];
-// Historiske leads følger CRM-pipelinen med flere steg (befaring, tilbud).
-const IMPORTED_STATUS_OPTS = [
-  { v: 'new', l: 'Ny' }, { v: 'contacted', l: 'Kontaktet' }, { v: 'qualified', l: 'Kvalifisert' },
   { v: 'viewing', l: 'Befaring' }, { v: 'offer', l: 'Tilbud sendt' },
   { v: 'won', l: 'Vunnet' }, { v: 'lost', l: 'Tapt' },
 ];
+// Samme fulle CRM-pipeline for alle leads — historiske og nye.
+const IMPORTED_STATUS_OPTS = STATUS_OPTS;
 const STATUS_COLOR = {
   new: 'text-[#555] bg-[#f3f3f3]', contacted: 'text-sky-600 bg-sky-50',
   qualified: 'text-violet-600 bg-violet-50', viewing: 'text-blue-600 bg-blue-50',
