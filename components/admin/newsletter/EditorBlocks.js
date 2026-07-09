@@ -10,7 +10,7 @@ import {
   Type, AlignLeft, Image as ImageIcon, MousePointerClick, LayoutPanelTop,
   List, Quote, UserRound, PenLine, Minus, MoveVertical, BadgePercent,
   ArrowUp, ArrowDown, Copy, Trash2, UploadCloud, Loader2, GripVertical, Sparkles,
-  Home, Check, RefreshCw,
+  Home, Check, RefreshCw, TrendingUp,
 } from 'lucide-react';
 
 /* --------------------------- Deploy-sikre bilder -------------------------- */
@@ -33,6 +33,7 @@ export const PALETTE = [
   { type: 'image',     label: 'Bilde',        icon: ImageIcon },
   { type: 'properties', label: 'Boliger',     icon: Home },
   { type: 'offer',     label: 'Tilbudskort',  icon: BadgePercent },
+  { type: 'stat',      label: 'Markedsinnsikt', icon: TrendingUp },
   { type: 'button',    label: 'Knapp',        icon: MousePointerClick },
   { type: 'cta-card',  label: 'CTA-kort',     icon: Sparkles },
   { type: 'bullets',   label: 'Punktliste',   icon: List },
@@ -56,6 +57,17 @@ export function defaultsFor(type) {
       { title: 'Markedspakke', was: '2 490 kr', now: '1 245 kr (−50 %)' },
     ], deadline: 'Gjelder alle som registrerer seg innen 10. juli', label: 'Ja, jeg vil vite mer', url: 'https://digihome.no/sommer', footnote: 'Normalpriser inkl. mva. Uforpliktende — vi tar kontakt.' };
     case 'sender':   return { name: 'Sarah Sleeman', title: 'Daglig leder, DigiHome', note: '', photoUrl: '/sarah-sleeman.jpg' };
+    case 'stat':     return {
+      eyebrow: 'Markedsinnsikt',
+      title: 'Leieprisene fortsetter å stige',
+      stats: [
+        { value: '+5,1 %', label: 'Norge — siste 12 mnd' },
+        { value: '2×', label: 'Bergen vokser dobbelt så raskt' },
+      ],
+      text: 'Husleiebarometeret for 2. kvartal 2026 viser at leieprisene steg 5,1 prosent nasjonalt det siste året — i Bergen er veksten mer enn dobbelt så høy. For deg som utleier betyr det at riktig prissetting aldri har vært viktigere.',
+      source: 'Kilde: Husleiebarometeret Q2 2026 — Hybel AS / Menon Economics',
+      sourceUrl: '',
+    };
     case 'signature': return { name: 'Sarah Sleeman', title: 'Daglig leder — DigiHome, Bergen' };
     case 'spacer':   return { size: 'm' };
     case 'hero':     return { url: '', alt: '', height: null, fit: 'cover', focalX: 50, focalY: 50 };
@@ -435,6 +447,49 @@ export function CanvasBlock({ b, i, total, accent, selected, onSelect, onPatch, 
             </span>
             <input value={b.footnote || ''} onChange={(e) => onPatch({ footnote: e.target.value })} onClick={stop}
               className="bg-transparent w-full text-center text-[11px] text-[#8d8d8d] outline-none mt-3" placeholder="Fotnote (valgfritt)…" />
+          </div>
+        );
+      }
+      case 'stat': {
+        // Markedsinnsikt — nøkkeltall fra ekstern kilde med kildehenvisning
+        const stats = Array.isArray(b.stats) ? b.stats : [];
+        const patchStat = (i, key, val) => {
+          const next = stats.map((x, j) => (j === i ? { ...x, [key]: val } : x));
+          onPatch({ stats: next });
+        };
+        return (
+          <div className="rounded-[18px] px-6 py-6" style={{ background: 'var(--nl-soft, #f5edfc)' }}>
+            <input value={b.eyebrow || ''} onChange={(e) => onPatch({ eyebrow: e.target.value })} onClick={stop}
+              className="bg-transparent w-full text-[10.5px] font-extrabold uppercase tracking-[0.14em] outline-none" style={{ color: 'var(--nl-deep, #7A3EC8)' }} placeholder="MARKEDSINNSIKT" />
+            <AutoArea value={b.title} onChange={(e) => onPatch({ title: e.target.value })} placeholder="Tittel — f.eks. Leieprisene fortsetter å stige…"
+              className="text-[19px] font-bold tracking-[-0.01em] leading-[1.35] text-[#111] mt-1" />
+            <div className="flex items-stretch justify-center gap-2 mt-3">
+              {stats.map((x, idx) => (
+                <div key={idx} className="flex-1 min-w-0 text-center rounded-xl bg-white/55 px-2 py-3 relative group/stat">
+                  <input value={x.value || ''} onChange={(e) => patchStat(idx, 'value', e.target.value)} onClick={stop}
+                    className="bg-transparent w-full text-center text-[26px] font-extrabold tracking-[-0.02em] outline-none" style={{ color: 'var(--nl-deep, #7A3EC8)' }} placeholder="+5,1 %" />
+                  <input value={x.label || ''} onChange={(e) => patchStat(idx, 'label', e.target.value)} onClick={stop}
+                    className="bg-transparent w-full text-center text-[10px] font-bold uppercase tracking-[0.05em] text-[#8a8a8a] outline-none mt-1" placeholder="forklaring…" />
+                  <button type="button" onClick={(e) => { stop(e); onPatch({ stats: stats.filter((_, k) => k !== idx) }); }} title="Fjern nøkkeltall"
+                    className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-white shadow border border-black/5 items-center justify-center text-[#bbb] hover:text-rose-500 hidden group-hover/stat:flex" data-testid={`nl-stat-remove-${idx}`}>
+                    <Trash2 size={11} />
+                  </button>
+                </div>
+              ))}
+              {stats.length < 3 && (
+                <button type="button" onClick={(e) => { stop(e); onPatch({ stats: [...stats, { value: '', label: '' }] }); }} data-testid="nl-stat-add"
+                  className={`${stats.length ? 'w-9 shrink-0' : 'flex-1 py-3'} rounded-xl border-2 border-dashed border-[#d8cfe6] text-[#a08cc0] hover:border-[#a052e0] hover:text-[#a052e0] flex items-center justify-center text-[16px] font-bold transition-colors`}
+                  title="Legg til nøkkeltall">+</button>
+              )}
+            </div>
+            <AutoArea value={b.text} onChange={(e) => onPatch({ text: e.target.value })} placeholder="Tekst — hva betyr tallene, og hvorfor er det relevant for mottakeren?"
+              className="text-[13.5px] leading-[1.7] text-[#4a4a4a] mt-3" />
+            <div className="border-t border-black/10 mt-3 pt-2.5">
+              <input value={b.source || ''} onChange={(e) => onPatch({ source: e.target.value })} onClick={stop}
+                className="bg-transparent w-full text-[11.5px] text-[#8a8a8a] outline-none" placeholder="Kilde: f.eks. Husleiebarometeret Q2 2026 — Hybel AS / Menon Economics" data-testid="nl-stat-source" />
+              <input value={b.sourceUrl || ''} onChange={(e) => onPatch({ sourceUrl: e.target.value })} onClick={stop}
+                className="bg-transparent w-full text-[11px] text-[#b3a8c4] outline-none mt-1" placeholder="Lenke til kilden (valgfritt — viser «Les mer →»)" data-testid="nl-stat-source-url" />
+            </div>
           </div>
         );
       }

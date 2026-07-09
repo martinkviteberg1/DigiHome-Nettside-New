@@ -4138,6 +4138,7 @@ Lag 4 banner-varianter som JSON:
             if (b.type === 'heading' && b.text) parts.push(b.text);
             else if (b.type === 'text' && b.text) parts.push(b.text);
             else if (b.type === 'offer' && (b.big || b.eyebrow)) parts.push(`${b.eyebrow || ''} ${b.big || ''}${b.was ? ` (før: ${b.was})` : ''} ${b.bigLabel || ''} ${(b.items || []).map((x) => `${x.title}: ${x.now}${x.was ? ` (før ${x.was})` : ''}`).join(' · ')}`.trim());
+            else if (b.type === 'stat' && (b.title || b.text)) parts.push(`${b.title || ''} ${(b.stats || []).map((x) => `${x.value} ${x.label}`.trim()).join(' · ')} ${b.text || ''}`.trim());
           }
           const content = parts.join('\n').slice(0, 3000);
           if (!content.trim()) return cors(NextResponse.json({ ok: false, error: 'Nyhetsbrevet har ikke nok tekst til å foreslå et bilde — skriv et prompt selv' }, { status: 400 }));
@@ -4301,6 +4302,7 @@ Lag 4 banner-varianter som JSON:
         else if (b.type === 'text' && b.text) parts.push(b.text);
         else if (b.type === 'bullets' && (b.items || []).length) parts.push('PUNKTER: ' + b.items.filter(Boolean).join(' · '));
         else if (b.type === 'offer' && (b.big || b.eyebrow)) parts.push(`TILBUD: ${b.eyebrow || ''} ${b.big || ''}${b.was ? ` (normalt ${b.was})` : ''} ${b.bigLabel || ''} ${b.second || ''} ${(b.items || []).map((x) => `${x.title}: ${x.now}${x.was ? ` (normalt ${x.was})` : ''}`).join(' · ')} ${b.deadline || ''}`.trim());
+        else if (b.type === 'stat' && (b.title || b.text)) parts.push(`MARKEDSINNSIKT: ${b.title || ''} ${(b.stats || []).map((x) => `${x.value} ${x.label}`.trim()).join(' · ')} ${b.text || ''} (${b.source || 'ekstern kilde'})`.trim());
         else if (b.type === 'cta-card' && b.title) parts.push(`CTA: ${b.title} ${b.text || ''}`.trim());
         else if (b.type === 'quote' && b.text) parts.push(`SITAT: «${b.text}»`);
         else if (b.type === 'properties' && (b.items || []).length) parts.push(`BOLIGER SOM VISES: ${b.items.map((p) => p.title).join(', ')}`);
