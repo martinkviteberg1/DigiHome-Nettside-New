@@ -2694,6 +2694,12 @@ agent_communication:
       - working: true
         agent: "main"
         comment: "Røyktestet 7/7 lokalt (test_sync_v2.js). Trenger regresjonstest av webhook-hotpath: idempotens, aktiveringsevents, won-konvertering, nedgradering, 400 på ukjent status."
+      - working: true
+        agent: "testing"
+        comment: "REGRESJONSTEST 19/19 PASS (webhook speiling/idempotens/statusflyt/nedgradering/400/401, case-insensitiv+formattolerant matching m/backfill, viewing/proposal→offer/disqualified/viewing_booked→viewing, admin lead-status m/nye statuser, dedupe-crm 401+dryRun+apply, nyhetsbrev-push platform_synced=true). All QA-data ryddet."
+      - working: true
+        agent: "main"
+        comment: "BRO-SVAR LEVERT på PROD-broen (digihome.no) 9/7: punktvise svar i leads-dedupe (rotårsak: lagret telefon m/mellomrom vs. streng regex; herding + backfill + dedupe-crm-verktøy), integration-contract (viewing/proposal/disqualified AKSEPTERT, disqualified utenfor vinnrate/ROAS, wrong_segment live, rekkefølge: publiser prod → kvitter på bro → dedupe-crm apply → plattformen flipper map + re-reconcile) og newsletter (feltliste, push implementert+verifisert 200, single opt-in, avmelding: vårt /api/newsletter/unsubscribe åpent for dem, venter deres spec for utgående). Diskvalifisert-kolonne verifisert synlig i pipeline-UI (playwright, 0 JS-feil). VENTER PÅ: Martin publiserer prod → kvitter «prod publisert» på PROD-broen (både closed-loop- og integration-contract-tråden venter på dette) → plattformen kjører re-send/re-reconcile."
 
   - task: "CRM-synk regresjonstest: webhook matching-logikk + nye statuser + dedupe-endepunkt"
     implemented: true
