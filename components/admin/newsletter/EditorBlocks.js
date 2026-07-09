@@ -296,9 +296,9 @@ export function CanvasBlock({ b, i, total, accent, selected, onSelect, onPatch, 
           <div className="space-y-1.5">
             {(b.items || []).map((it, idx) => (
               <div key={idx} className="flex items-start gap-2.5">
-                <span className="mt-[9px] w-[5px] h-[5px] rounded-full shrink-0" style={{ background: accent }} />
+                <span className="mt-[5px] w-[19px] h-[19px] rounded-full shrink-0 flex items-center justify-center text-[10px] font-extrabold" style={{ background: 'var(--nl-soft, #f5edfc)', color: 'var(--nl-deep, #7A3EC8)' }}>✓</span>
                 <AutoArea value={it} onChange={(e) => { const items = [...b.items]; items[idx] = e.target.value; onPatch({ items }); }}
-                  placeholder="Punkt…" className="text-[14px] leading-[1.6] text-[#444]" />
+                  placeholder="Punkt…" className="text-[14px] leading-[1.7] text-[#444]" />
                 <button onClick={(e) => { stop(e); onPatch({ items: b.items.filter((_, k) => k !== idx) }); }}
                   className="text-[#ccc] hover:text-red-500 mt-1"><Trash2 size={13} /></button>
               </div>
@@ -387,14 +387,15 @@ export function CanvasBlock({ b, i, total, accent, selected, onSelect, onPatch, 
         const addItem = () => onPatch({ items: [...items, { title: '', was: '', now: '' }] });
         return (
           <div className="rounded-[22px] px-7 py-8 text-center" style={{ background: 'linear-gradient(150deg,#17111f 0%,#0a0a0a 52%,#1b1226 100%)' }}>
-            <div className="inline-block rounded-full border border-white/20 px-4 py-1.5">
+            <div className="inline-block max-w-full rounded-full border border-white/20 px-4 py-1.5">
               <input value={b.eyebrow || ''} onChange={(e) => onPatch({ eyebrow: e.target.value })} onClick={stop}
-                className="bg-transparent text-center text-[10.5px] font-bold uppercase tracking-[0.16em] outline-none w-[260px]" style={{ color: accent }} placeholder="EYEBROW-TEKST" />
+                className="bg-transparent text-center text-[10.5px] font-bold uppercase tracking-[0.16em] outline-none max-w-full"
+                style={{ color: accent, width: `${Math.min(52, Math.max(18, ((b.eyebrow || '').length * 1.45) + 3))}ch` }} placeholder="EYEBROW-TEKST" />
             </div>
             <input value={b.big || ''} onChange={(e) => onPatch({ big: e.target.value })} onClick={stop}
               className="bg-transparent w-full text-center text-[52px] font-extrabold tracking-[-0.03em] text-white outline-none mt-3" placeholder="10 %" />
             <input value={b.was || ''} onChange={(e) => onPatch({ was: e.target.value })} onClick={stop}
-              className="bg-transparent w-full text-center text-[13.5px] text-[#8d8d8d] line-through outline-none mt-1" placeholder="Normalpris (gjennomstrekes)…" />
+              className={`bg-transparent w-full text-center text-[13.5px] text-[#8d8d8d] outline-none mt-1 ${b.was ? 'line-through' : ''}`} placeholder="Normalpris (gjennomstrekes)…" />
             <input value={b.bigLabel || ''} onChange={(e) => onPatch({ bigLabel: e.target.value })} onClick={stop}
               className="bg-transparent w-full text-center text-[14px] text-[#ccc] outline-none mt-1" placeholder="forklarende tekst…" />
             {b.second ? (
@@ -410,7 +411,7 @@ export function CanvasBlock({ b, i, total, accent, selected, onSelect, onPatch, 
                   <input value={x.title || ''} onChange={(e) => patchItem(i, 'title', e.target.value)} onClick={stop}
                     className="flex-1 min-w-0 bg-transparent text-[13px] font-semibold text-[#f2f2f2] outline-none" placeholder="Hva gjelder tilbudet?" />
                   <input value={x.was || ''} onChange={(e) => patchItem(i, 'was', e.target.value)} onClick={stop}
-                    className="w-[92px] bg-transparent text-right text-[12px] text-[#8d8d8d] line-through outline-none" placeholder="Normalt…" />
+                    className={`w-[92px] bg-transparent text-right text-[12px] text-[#8d8d8d] outline-none ${x.was ? 'line-through' : ''}`} placeholder="Normalt…" />
                   <input value={x.now || ''} onChange={(e) => patchItem(i, 'now', e.target.value)} onClick={stop}
                     className="w-[120px] bg-transparent text-right text-[13.5px] font-extrabold outline-none" style={{ color: accent }} placeholder="Nå…" />
                   <button type="button" onClick={(e) => { stop(e); removeItem(i); }} title="Fjern linje"
@@ -439,11 +440,15 @@ export function CanvasBlock({ b, i, total, accent, selected, onSelect, onPatch, 
       }
       case 'quote':
         return (
-          <div className="pl-4" style={{ borderLeft: `3px solid ${accent}` }}>
+          <div className="rounded-[18px] px-6 py-5" style={{ background: 'var(--nl-soft, #f5edfc)' }}>
+            <div className="text-[38px] leading-[0.6] font-serif" style={{ color: accent }}>“</div>
             <AutoArea value={b.text} onChange={(e) => onPatch({ text: e.target.value })} placeholder="Sitat…"
-              className="text-[15px] italic leading-[1.65] text-[#555]" />
-            <input value={b.author || ''} onChange={(e) => onPatch({ author: e.target.value })} onClick={stop}
-              className="bg-transparent text-[12px] font-semibold text-[#999] outline-none w-full mt-1" placeholder="— Hvem sa det?" />
+              className="text-[15px] italic leading-[1.7] text-[#333] mt-2" />
+            <div className="flex items-center gap-2.5 mt-2">
+              <span className="w-6 h-[2px] rounded-full shrink-0" style={{ background: 'var(--nl-deep, #7A3EC8)' }} />
+              <input value={b.author || ''} onChange={(e) => onPatch({ author: e.target.value })} onClick={stop}
+                className="bg-transparent text-[12px] font-bold text-[#7a7a7a] outline-none w-full" placeholder="Hvem sa det?" />
+            </div>
           </div>
         );
       case 'sender': {
