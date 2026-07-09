@@ -7,7 +7,7 @@ import {
   Radio, Gauge, TrendingUp, TrendingDown, Download, Megaphone,
   Search, X, ArrowUp, ArrowDown, FileSpreadsheet, ChevronRight, GitBranch,
   MoreHorizontal, Trophy, Clock, Target, ShieldCheck, Flame, LayoutTemplate, Crosshair, Layers, History,
-  Columns3, List,
+  Columns3, List, SlidersHorizontal,
 } from 'lucide-react';
 import LeadsPipeline from '@/components/admin/LeadsPipeline';
 import LeadDrawer from '@/components/admin/LeadDrawer';
@@ -65,6 +65,7 @@ export default function InnsiktDashboard({ apiKey, tab: propTab, onTabChange, on
   const tab = propTab || tabState;
   const setTab = onTabChange || setTabState;
   const [actionsOpen, setActionsOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [leadSub, setLeadSub] = useState('leads');
   const [days, setDays] = useState(30);
   const [scores, setScores] = useState({});
@@ -302,32 +303,23 @@ export default function InnsiktDashboard({ apiKey, tab: propTab, onTabChange, on
     if (sortBy !== col) return <ArrowUp className="w-3 h-3 text-[#ddd]" />;
     return sortDir === 'asc' ? <ArrowUp className="w-3 h-3 text-[#0a0a0a]" /> : <ArrowDown className="w-3 h-3 text-[#0a0a0a]" />;
   };
-  const filtersActive = query.trim() || statusFilter !== 'all' || channelFilter !== 'all';
+  const activeFilterCount = (statusFilter !== 'all' ? 1 : 0) + (channelFilter !== 'all' ? 1 : 0) + (!showImported ? 1 : 0);
+  const filtersActive = Boolean(query.trim()) || activeFilterCount > 0;
 
   return (
     <div>
-      {/* Kontekstuell verktøylinje: aktiv visning + periode */}
-      <div className="flex flex-wrap items-end justify-between gap-3 mb-5">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2 text-[14px] font-semibold text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>
-            {(() => { const T = TABS.find((x) => x.k === tab) || TABS[0]; const I = T.icon; return <I className="w-4 h-4 text-[#8b5cf6]" />; })()}
-            {(TABS.find((x) => x.k === tab) || TABS[0]).l}
+      {/* Periode + oppdater — modulnavn/undertittel vises allerede i topplinjen
+          (ingen dobbel tittel). Leads har egen samlet verktøylinje med periode. */}
+      {!['annonser', 'finnstudio', 'annonsestudio', 'leads'].includes(tab) && (
+        <div className="flex items-center justify-end gap-2 mb-4">
+          <div className="flex items-center bg-white rounded-full p-1 shadow-[0_2px_10px_rgba(0,0,0,0.04)]">
+            {RANGES.map((r) => (
+              <button key={r.d} onClick={() => changeDays(r.d)} className={`px-3 py-1.5 rounded-full text-[12px] font-semibold transition-colors ${days === r.d ? 'bg-[#0a0a0a] text-white' : 'text-[#888] hover:text-[#0a0a0a]'}`}>{r.l}</button>
+            ))}
           </div>
-          <p className="text-[12.5px] text-[#a3a3a3] mt-0.5">{(TABS.find((x) => x.k === tab) || TABS[0]).d}</p>
+          <button onClick={() => load()} disabled={loading} title="Oppdater" className="h-9 w-9 rounded-full bg-white shadow-[0_2px_10px_rgba(0,0,0,0.04)] flex items-center justify-center text-[#666] hover:text-[#0a0a0a] transition-colors">{loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}</button>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          {!['annonser', 'finnstudio', 'annonsestudio'].includes(tab) && (
-            <>
-              <div className="flex items-center bg-white rounded-full p-1 shadow-[0_2px_10px_rgba(0,0,0,0.04)]">
-                {RANGES.map((r) => (
-                  <button key={r.d} onClick={() => changeDays(r.d)} className={`px-3 py-1.5 rounded-full text-[12px] font-semibold transition-colors ${days === r.d ? 'bg-[#0a0a0a] text-white' : 'text-[#888] hover:text-[#0a0a0a]'}`}>{r.l}</button>
-                ))}
-              </div>
-              <button onClick={() => load()} disabled={loading} title="Oppdater" className="h-9 w-9 rounded-full bg-white shadow-[0_2px_10px_rgba(0,0,0,0.04)] flex items-center justify-center text-[#666] hover:text-[#0a0a0a] transition-colors">{loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}</button>
-            </>
-          )}
-        </div>
-      </div>
+      )}
 
       {err && <div className="mb-4 bg-rose-50 text-rose-600 rounded-xl px-4 py-3 text-[13px] flex items-center gap-2"><AlertCircle className="w-4 h-4" /> {err}</div>}
 
@@ -367,9 +359,8 @@ export default function InnsiktDashboard({ apiKey, tab: propTab, onTabChange, on
 
       {tab === 'leads' && (
         <div>
-          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-            {/* Segmentkontroll — utleiere / leietakere + visningsvalg */}
-            <div className="flex items-center gap-2.5">
+          {/* Én samlet verktøylinje — segment og visning til venstre, søk/filter/handlinger til høyre */}
+          <div className="flex flex-wrap items-center gap-2 mb-3.5">
               <div className="inline-flex items-center bg-white rounded-full p-1 shadow-[0_2px_10px_rgba(0,0,0,0.04)]">
                 {[{ k: 'leads', l: 'Utleiere', n: data.leads.length }, { k: 'tenants', l: 'Leietakere', n: data.tenants.length }].map((t) => (
                   <button key={t.k} onClick={() => setLeadSub(t.k)} className={`px-4 py-1.5 rounded-full text-[13px] font-semibold transition-all flex items-center gap-1.5 ${leadSub === t.k ? 'bg-[#0a0a0a] text-white shadow-[0_2px_8px_rgba(0,0,0,0.12)]' : 'text-[#888] hover:text-[#0a0a0a]'}`}>
@@ -389,11 +380,68 @@ export default function InnsiktDashboard({ apiKey, tab: propTab, onTabChange, on
                   );
                 })}
               </div>
-            </div>
 
-            {/* Handlinger — samlet i én diskret meny */}
-            <div className="flex items-center gap-2.5">
+            {/* Høyre side: søk, filter og handlinger */}
+            <div className="flex flex-wrap items-center gap-2 ml-auto">
               {leadAdsMsg && <span className="text-[12px] text-[#8b5cf6] font-semibold dh-fade">{leadAdsMsg}</span>}
+              {filtersActive && <span className="text-[12px] text-[#aaa] whitespace-nowrap hidden sm:inline">{filteredRows.length} av {rows.length}</span>}
+
+              {/* Søk */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#bbb] pointer-events-none" />
+                <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Søk leads …"
+                  className="h-9 w-[170px] focus:w-[250px] transition-[width] duration-200 pl-9 pr-8 rounded-full bg-white text-[13px] text-[#222] shadow-[0_2px_10px_rgba(0,0,0,0.04)] outline-none focus:ring-2 focus:ring-[#cf97fc]/40 placeholder:text-[#bbb]" />
+                {query && <button onClick={() => setQuery('')} aria-label="Tøm søk" className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#bbb] hover:text-[#666]"><X className="w-4 h-4" /></button>}
+              </div>
+
+              {/* Filter — alle filtre samlet i én diskret popover */}
+              <div className="relative">
+                <button onClick={() => setFiltersOpen((o) => !o)} data-testid="leads-filter-btn"
+                  className={`h-9 px-3.5 rounded-full text-[12.5px] font-semibold flex items-center gap-1.5 transition-colors ${activeFilterCount > 0 ? 'bg-[#f4f0fb] text-[#8b5cf6] ring-1 ring-[#e3d7f8]' : 'bg-white text-[#666] shadow-[0_2px_10px_rgba(0,0,0,0.04)] hover:text-[#0a0a0a]'}`}>
+                  <SlidersHorizontal className="w-3.5 h-3.5" /> Filter
+                  {activeFilterCount > 0 && <span className="text-[10px] bg-[#8b5cf6] text-white rounded-full min-w-[16px] h-4 px-1 flex items-center justify-center leading-none font-bold">{activeFilterCount}</span>}
+                </button>
+                {filtersOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setFiltersOpen(false)} />
+                    <div className="absolute right-0 mt-2 w-72 z-50 bg-white rounded-2xl shadow-[0_16px_50px_rgba(0,0,0,0.14)] border border-black/[0.04] p-4 dh-pop origin-top-right">
+                      <div className="space-y-3.5">
+                        <div>
+                          <label className="block text-[11px] uppercase tracking-[0.06em] text-[#a3a3a3] font-semibold mb-1.5">Status</label>
+                          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="w-full h-9 rounded-xl bg-[#faf9f7] border border-[#eeece8] text-[13px] font-medium text-[#333] px-3 outline-none focus:border-[#cf97fc] cursor-pointer">
+                            <option value="all">Alle statuser</option>
+                            {STATUS_OPTS.map((o) => <option key={o.v} value={o.v}>{o.l}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-[11px] uppercase tracking-[0.06em] text-[#a3a3a3] font-semibold mb-1.5">Kilde</label>
+                          <select value={channelFilter} onChange={(e) => setChannelFilter(e.target.value)} className="w-full h-9 rounded-xl bg-[#faf9f7] border border-[#eeece8] text-[13px] font-medium text-[#333] px-3 outline-none focus:border-[#cf97fc] cursor-pointer">
+                            <option value="all">Alle kilder</option>
+                            {channelOptions.map((c) => <option key={c} value={c}>{c}</option>)}
+                          </select>
+                        </div>
+                        {importedInTab > 0 && (
+                          <button onClick={() => setShowImported((v) => !v)}
+                            title="Historiske leads kom inn før sporingen — teller aldri i live ROAS/CAC"
+                            className="w-full flex items-center justify-between rounded-xl bg-[#faf9f7] border border-[#eeece8] px-3 py-2.5 hover:border-[#e3d7f8] transition-colors">
+                            <span className="flex items-center gap-2 text-[13px] font-medium text-[#333]"><History className="w-3.5 h-3.5 text-[#8b5cf6]" /> Historiske <span className="text-[#b3aea7]">({importedInTab})</span></span>
+                            <span className={`w-8 h-[18px] rounded-full relative transition-colors ${showImported ? 'bg-[#8b5cf6]' : 'bg-[#ddd]'}`}>
+                              <span className={`absolute top-[2px] w-[14px] h-[14px] rounded-full bg-white shadow transition-all ${showImported ? 'left-[16px]' : 'left-[2px]'}`} />
+                            </span>
+                          </button>
+                        )}
+                        <div className="flex items-center justify-between pt-0.5">
+                          <span className="text-[12px] text-[#aaa]">{filteredRows.length} av {rows.length} treff</span>
+                          <button onClick={() => { setQuery(''); setStatusFilter('all'); setChannelFilter('all'); setShowImported(true); }} disabled={!filtersActive}
+                            className="text-[12px] font-semibold text-[#8b5cf6] hover:text-[#6d28d9] disabled:text-[#ccc] disabled:cursor-not-allowed transition-colors">Nullstill alt</button>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Handlinger — samlet i én diskret meny */}
               <div className="relative">
                 <button onClick={() => setActionsOpen((o) => !o)} className="h-9 pl-4 pr-3 rounded-full bg-[#0a0a0a] text-white text-[12.5px] font-semibold flex items-center gap-2 active:scale-[0.97] transition-transform">
                   <MoreHorizontal className="w-4 h-4" /> Handlinger
@@ -417,42 +465,17 @@ export default function InnsiktDashboard({ apiKey, tab: propTab, onTabChange, on
             </div>
           </div>
 
-          {/* Søk + filtre */}
-          <div className="flex flex-wrap items-center gap-2 mb-4">
-            <div className="relative flex-1 min-w-[220px] max-w-[380px]">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#bbb]" />
-              <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Søk navn, e-post, telefon, adresse …" className="w-full h-9 pl-9 pr-8 rounded-full bg-white text-[13px] text-[#222] shadow-[0_2px_10px_rgba(0,0,0,0.03)] outline-none focus:ring-2 focus:ring-[#cf97fc]/40 placeholder:text-[#bbb]" />
-              {query && <button onClick={() => setQuery('')} aria-label="Tøm søk" className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#bbb] hover:text-[#666]"><X className="w-4 h-4" /></button>}
-            </div>
-            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="h-9 rounded-full bg-white text-[12.5px] font-semibold text-[#555] px-3.5 shadow-[0_2px_10px_rgba(0,0,0,0.03)] outline-none focus:ring-2 focus:ring-[#cf97fc]/40 cursor-pointer">
-              <option value="all">Alle statuser</option>
-              {STATUS_OPTS.map((o) => <option key={o.v} value={o.v}>{o.l}</option>)}
-            </select>
-            <select value={channelFilter} onChange={(e) => setChannelFilter(e.target.value)} className="h-9 rounded-full bg-white text-[12.5px] font-semibold text-[#555] px-3.5 shadow-[0_2px_10px_rgba(0,0,0,0.03)] outline-none focus:ring-2 focus:ring-[#cf97fc]/40 cursor-pointer">
-              <option value="all">Alle kilder</option>
-              {channelOptions.map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
-            {importedInTab > 0 && (
-              <button onClick={() => setShowImported((v) => !v)}
-                title="Historiske leads kom inn før sporingen — teller aldri i live ROAS/CAC"
-                className={`h-9 px-3.5 rounded-full text-[12.5px] font-semibold flex items-center gap-1.5 transition-colors ${showImported ? 'bg-[#f4f0fb] text-[#8b5cf6] ring-1 ring-[#e3d7f8]' : 'bg-white text-[#999] shadow-[0_2px_10px_rgba(0,0,0,0.03)] hover:text-[#0a0a0a]'}`}>
-                <History className="w-3.5 h-3.5" /> Historiske ({importedInTab})
-              </button>
-            )}
-            {filtersActive && <button onClick={() => { setQuery(''); setStatusFilter('all'); setChannelFilter('all'); }} className="h-9 px-3 rounded-full text-[12px] font-semibold text-[#888] hover:text-[#0a0a0a] hover:bg-white transition-colors">Nullstill</button>}
-            <span className="text-[12px] text-[#aaa] ml-auto whitespace-nowrap">{filteredRows.length} av {rows.length}</span>
-          </div>
-
+          {/* Kompakt nøkkeltallstripe — diskret, så pipelinen får plassen */}
           {leadSub === 'leads' && analytics && analytics.leads && analytics.leads.totals && (() => {
             const t = analytics.leads.totals;
             const decided = (t.won || 0) + (t.lost || 0);
             return (
-              <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
-                <KpiCard label="Vunnet" value={t.won ?? 0} icon={Trophy} tone="emerald" sub={`av ${decided} avgjorte`} />
-                <KpiCard label="Tapt" value={t.lost ?? 0} icon={TrendingDown} tone="rose" sub={`${decided} avgjorte totalt`} />
-                <KpiCard label="Vinnrate" value={`${t.winRate ?? 0}%`} icon={Target} tone="violet" progress={t.winRate ?? 0} />
-                <KpiCard label="Snitt responstid" value={t.avgResponseHours != null ? `${t.avgResponseHours} t` : '–'} icon={Clock} tone="slate" sub={t.avgResponseHours != null ? (t.avgResponseHours <= 24 ? 'innenfor mål (24t)' : 'over mål (24t)') : 'ingen data ennå'} />
-                <KpiCard label="SLA innen 24t" value={t.slaPct != null ? `${t.slaPct}%` : '–'} icon={ShieldCheck} tone="violet" progress={t.slaPct != null ? t.slaPct : null} />
+              <div className="flex items-stretch bg-white rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.03)] mb-4 overflow-x-auto divide-x divide-[#f4f2ef]">
+                <MiniStat icon={Trophy} tone="emerald" value={t.won ?? 0} label="Vunnet" sub={decided > 0 ? `av ${decided} avgjorte` : null} />
+                <MiniStat icon={TrendingDown} tone="rose" value={t.lost ?? 0} label="Tapt" />
+                <MiniStat icon={Target} tone="violet" value={`${t.winRate ?? 0}%`} label="Vinnrate" />
+                <MiniStat icon={Clock} tone="slate" value={t.avgResponseHours != null ? `${t.avgResponseHours} t` : '–'} label="Responstid" sub={t.avgResponseHours != null ? (t.avgResponseHours <= 24 ? 'innenfor mål' : 'over mål 24t') : null} />
+                <MiniStat icon={ShieldCheck} tone="violet" value={t.slaPct != null ? `${t.slaPct}%` : '–'} label="SLA 24t" />
               </div>
             );
           })()}
@@ -609,29 +632,22 @@ function MenuItem({ icon: Icon, label, hint, onClick, disabled, danger, spin }) 
   );
 }
 
-function KpiCard({ label, value, icon: Icon, tone = 'slate', sub, progress }) {
+function MiniStat({ icon: Icon, label, value, tone = 'slate', sub }) {
   const TONES = {
-    emerald: { ic: 'bg-emerald-50 text-emerald-600', val: 'text-emerald-600', bar: 'bg-emerald-500' },
-    rose: { ic: 'bg-rose-50 text-rose-500', val: 'text-[#1f1f1f]', bar: 'bg-rose-500' },
-    violet: { ic: 'bg-[#f4f0fb] text-[#8b5cf6]', val: 'text-[#1f1f1f]', bar: 'bg-[#8b5cf6]' },
-    slate: { ic: 'bg-[#f3f3f2] text-[#666]', val: 'text-[#1f1f1f]', bar: 'bg-[#0a0a0a]' },
+    emerald: 'bg-emerald-50 text-emerald-600',
+    rose: 'bg-rose-50 text-rose-500',
+    violet: 'bg-[#f4f0fb] text-[#8b5cf6]',
+    slate: 'bg-[#f3f3f2] text-[#666]',
   };
-  const c = TONES[tone] || TONES.slate;
-  const pct = progress != null && isFinite(progress) ? Math.max(0, Math.min(100, progress)) : null;
   return (
-    <div className="bg-white rounded-2xl p-4 shadow-[0_2px_10px_rgba(0,0,0,0.03)] hover:shadow-[0_6px_22px_rgba(0,0,0,0.06)] transition-shadow">
-      <div className="flex items-start justify-between">
-        <p className="text-[11px] uppercase tracking-[0.06em] text-[#a3a3a3] font-semibold">{label}</p>
-        <span className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${c.ic}`}><Icon className="w-4 h-4" /></span>
-      </div>
-      <p className={`text-[26px] font-bold mt-2 leading-none ${c.val}`} style={{ fontFamily: 'var(--font-heading)' }}>{value}</p>
-      {pct != null ? (
-        <div className="mt-3 h-1.5 rounded-full bg-[#f0eef4] overflow-hidden">
-          <div className={`h-full rounded-full ${c.bar} transition-[width] duration-700`} style={{ width: `${pct}%` }} />
-        </div>
-      ) : (
-        sub && <p className="text-[12px] text-[#a3a3a3] mt-1.5">{sub}</p>
-      )}
+    <div className="flex items-center gap-2.5 px-4 py-2.5 min-w-[128px] flex-1">
+      <span className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${TONES[tone] || TONES.slate}`}><Icon className="w-4 h-4" /></span>
+      <span className="min-w-0">
+        <span className="block text-[17px] font-bold text-[#1f1f1f] leading-none" style={{ fontFamily: 'var(--font-heading)' }}>{value}</span>
+        <span className="block text-[10.5px] uppercase tracking-[0.05em] text-[#a3a3a3] font-semibold mt-1 whitespace-nowrap">
+          {label}{sub ? <span className="normal-case tracking-normal text-[#c4bfb8] font-medium"> · {sub}</span> : null}
+        </span>
+      </span>
     </div>
   );
 }
