@@ -33,7 +33,13 @@ export default function HeroSection() {
     e.preventDefault();
     try { track('cta_click', { cta: 'hero_vurdering', hasAddress: !!address }); } catch (err) {}
     try { trackLeadStart('hero'); } catch (err) {}
-    const q = address ? `?address=${encodeURIComponent(address)}` : '';
+    const params = new URLSearchParams();
+    if (address) params.set('address', address);
+    // Geo-ruting i onboarding: send med postnr/poststed når adressen ble valgt fra listen,
+    // slik at /bli-utleier/start kan vise riktige tjenester (Bergen vs. resten av landet).
+    if (selectedData?.postalCode) params.set('postal', selectedData.postalCode);
+    if (selectedData?.city) params.set('city', selectedData.city);
+    const q = params.toString() ? `?${params.toString()}` : '';
     router.push(`/bli-utleier/start${q}`);
   };
 

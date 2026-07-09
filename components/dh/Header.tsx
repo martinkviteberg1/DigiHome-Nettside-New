@@ -113,19 +113,6 @@ export default function Header() {
 
           {/* ─── RIGHT CLUSTER ─── */}
           <div className="hidden sm:flex items-center gap-3.5 shrink-0">
-            <button
-              className="group inline-flex items-center gap-1 text-[12px] font-semibold tracking-[0.06em] uppercase text-[#1f1f1f]/60 hover:text-[#0a0a0a] transition-colors"
-              aria-label={`Velg språk (${locale === 'en' ? 'EN' : 'NO'})`}
-              data-testid="header-locale-button"
-            >
-              <span>{locale === 'en' ? 'EN' : 'NO'}</span>
-              <svg className="w-3 h-3 opacity-50 group-hover:opacity-90 transition-opacity" viewBox="0 0 12 12" fill="none" aria-hidden>
-                <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </button>
-
-            <span className="h-4 w-px bg-[#1f1f1f]/10" aria-hidden />
-
             <Link
               href={site.loginUrl}
               className="text-[13.5px] font-medium tracking-[-0.005em] text-[#1f1f1f]/70 hover:text-[#0a0a0a] transition-colors"

@@ -14,6 +14,7 @@ import {
 } from './FormFields';
 import PropertyRegistryPicker from './PropertyRegistryPicker';
 import { FinnLookupField, AddressField, finnToFields, FinnPropertyCard } from './PropertyInputs';
+import { AddressAutocomplete } from './AddressAutocomplete';
 import { track, getLeadAttribution } from '@/lib/analytics';
 import { trackLead, trackLeadStart, getClickIds } from '@/lib/gtag';
 import { getVariant } from '@/lib/ab';
@@ -141,12 +142,18 @@ function RentEstimateCard({ bedrooms }: any) {
 
 export default function BliUtleierPage({ fullscreen = false }: any) {
   const [step, setStep] = useState(1); // starter rett på Eiendommen (ingen velkomst)
-  // Fullskjerm «Kom i gang»-flyt: steg 0 = valg av spor FØR skjemaet.
-  const [entryDone, setEntryDone] = useState(!fullscreen);
+  // Fullskjerm «Kom i gang»-flyt (adresse-først, 2026): fase 'address' = adressesøk,
+  // fase 'tier' = geo-tilpasset tjenestevalg (Bergen: begge — ellers kun selvforvaltning),
+  // fase 'done' = selve skjemaet.
+  const [entryPhase, setEntryPhase] = useState<'address' | 'tier' | 'done'>(fullscreen ? 'address' : 'done');
+  // Tjeneste valgt på inngangssteget → vises som kompakt kort på «Dine mål» (ingen dobbel-spørring).
+  const [tierLocked, setTierLocked] = useState(false);
+  // Adresse valgt fra forslagslisten på inngangssteget (tvungen listevalg → komplette leads).
+  const [entryVerified, setEntryVerified] = useState(false);
   const [dir, setDir] = useState(1);
   const [formData, setFormData] = useState({
     name: '', email: '', phone: '',
-    address: '', postal_code: '', property_type: '', bedrooms: '', sqm: '',
+    address: '', postal_code: '', city: '', property_type: '', bedrooms: '', sqm: '',
     rental_model: '', availability: '', notes: '',
     tier: '', // 'selvforvaltning' | 'full_forvaltning' — velges ETTER kontaktinfo
     // Eiendomsregisteret (Infotorg EDR) — fylles av PropertyRegistryPicker
@@ -200,7 +207,8 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
     try { track('form_input_mode', { form: 'utleier', mode: 'adresse' }); } catch (e) {}
   }, []);
 
-  // Forhåndsutfyll adresse fra ?address= (fra hero-søket) → rett til adresse-steget.
+  // Forhåndsutfyll adresse fra ?address= (fra hero-søket) → hopp RETT til det
+  // geo-tilpassede tjenestevalget (adressesteget er allerede besvart på forsiden).
   // VIKTIG: kun ekte gateadresser (med husnummer) pre-fylles og slås opp i
   // Eiendomsregisteret. Bynavn o.l. (f.eks. ?address=Bergen fra gamle
   // landingsside-lenker) skal IKKE fylles inn eller trigge hjemmelshaver-oppslag.
@@ -211,11 +219,25 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
       if (p) {
         const looksLikeStreetAddress = /\d/.test(p); // norske gateadresser har husnummer
         if (looksLikeStreetAddress) {
-          setFormData((prev: any) => ({ ...prev, address: p }));
+          // Geo-data: helst fra egne URL-parametre (hero sender postal/city ved
+          // listevalg) — ellers heuristikk fra selve adressestrengen.
+          const qsPostal = (sp.get('postal') || '').trim();
+          const qsCity = (sp.get('city') || '').trim();
+          const m = p.match(/(\d{4})\s+([A-Za-zÆØÅæøåÉé .-]+?)\s*$/);
+          const lastSeg = (p.split(',').pop() || '').trim();
+          const postal = qsPostal || (m ? m[1] : '');
+          const city = qsCity || (m ? m[2].trim() : (p.includes(',') && !/\d/.test(lastSeg) ? lastSeg : ''));
+          setFormData((prev: any) => ({
+            ...prev,
+            address: p,
+            ...(postal ? { postal_code: postal } : {}),
+            ...(city ? { city } : {}),
+          }));
           setRegistryQuery(p);
+          setEntryVerified(true);
+          setEntryPhase((cur) => (cur === 'address' ? 'tier' : cur)); // hopp over adressesteget
         }
       }
-      // ?start=1 trengs ikke lenger — skjemaet starter alltid rett på Eiendommen.
     } catch (e) { /* ignore */ }
   }, []);
 
@@ -543,40 +565,216 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
     </div>
   ) : null;
 
-  // ---------- Fullskjerm steg 0: «Hvordan vil du leie ut?» (forgreningen) ----------
-  if (fullscreen && !entryDone) {
+  // ---------- Adresse-først-inngangen (fullskjerm): geo-evaluering ----------
+  const hasGeo = !!((formData.postal_code || '').trim() || (formData.city || '').trim());
+  const inBergen = isBergenArea(formData.postal_code, formData.city);
+
+  // Tjenestevalg på inngangssteget → lås valget (vises kompakt på «Dine mål»).
+  const chooseEntryTier = (value: string) => {
+    updateField('tier', value);
+    setTierLocked(true);
+    setTermsAccepted(false);
+    setErrors((prev: any) => ({ ...prev, tier: null, terms: null }));
+    setDir(1);
+    setStep(1);
+    setEntryPhase('done');
+    try { track('tier_entry_choice', { tier: value, form: 'utleier-start', in_bergen: inBergen, has_geo: hasGeo }); } catch (e) {}
+  };
+
+  // Steg 0 — adresse valgt fra forslagslisten (tvungen): lagre postnr/poststed
+  // for geo-rutingen og gå automatisk videre til tjenestevalget.
+  const onEntryAddressSelect = (data: any) => {
+    const addr = data.address ? data.address.replace(/,\s*(Norway|Norge)$/i, '') : '';
+    setFormData((prev: any) => ({
+      ...prev,
+      ...(addr ? { address: addr } : {}),
+      postal_code: data.postalCode || '',
+      city: data.city || '',
+    }));
+    if (addr) setRegistryQuery(addr);
+    setEntryVerified(true);
+    try { track('entry_address_selected', { form: 'utleier-start', postal: data.postalCode || '', city: data.city || '' }); } catch (e) {}
+    setTimeout(() => { setDir(1); setEntryPhase('tier'); }, 220); // kort pust → føles flytende, ikke brått
+  };
+
+  // ---------- Fullskjerm steg 0: «Hvor ligger boligen?» (adresse-først) ----------
+  if (fullscreen && entryPhase === 'address') {
     return (
-      <div className="min-h-screen bg-[#fdfcfb] flex flex-col" data-testid="start-entry">
+      <div className="min-h-screen bg-[#fdfcfb] flex flex-col relative overflow-hidden" data-testid="start-entry-address">
         {fsTopbar}
-        <div className="flex-1 flex items-center justify-center px-5 py-12">
-          <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }} className="w-full max-w-[680px]">
-            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#b18ae0] text-center">Kom i gang</p>
-            <h1 className="text-[30px] sm:text-[38px] font-bold tracking-[-0.03em] text-[#0a0a0a] text-center mt-2" style={{ fontFamily: 'var(--font-heading)' }}>Hvordan vil du leie ut?</h1>
-            <p className="text-[14.5px] text-[#888] text-center mt-2.5 max-w-[46ch] mx-auto leading-relaxed">Velg sporet som passer deg best — du kan ombestemme deg senere i skjemaet.</p>
-            <div className="grid sm:grid-cols-2 gap-4 mt-9">
-              {TIERS.map((t: any) => {
-                const I = t.icon;
-                return (
-                  <button key={t.value} type="button" data-testid={`entry-tier-${t.value}`}
-                    onClick={() => { updateField('tier', t.value); setEntryDone(true); try { track('tier_entry_choice', { tier: t.value, form: 'utleier-start' }); } catch (e) {} }}
-                    className="relative text-left rounded-[22px] border-2 border-[#eceae6] bg-white p-6 hover:border-[#cf97fc] hover:shadow-[0_16px_50px_-24px_rgba(124,58,237,0.35)] transition-all duration-200 active:scale-[0.985] group">
-                    {t.badge && (
-                      <span className={`absolute -top-2.5 right-5 text-[9px] font-bold uppercase tracking-[0.08em] px-2.5 py-1 rounded-full ${t.badge.tone === 'green' ? 'bg-gradient-to-r from-[#16a34a] to-[#15803d] text-white' : 'bg-[#0a0a0a] text-white'}`}>{t.badge.text}</span>
-                    )}
-                    <div className="w-11 h-11 rounded-2xl bg-[#f7f0fe] flex items-center justify-center">
-                      <I className="w-5 h-5 text-[#7c3aed]" strokeWidth={2.2} />
-                    </div>
-                    <p className="text-[19px] font-bold tracking-[-0.01em] text-[#0a0a0a] mt-4" style={{ fontFamily: 'var(--font-heading)' }}>{t.label}</p>
-                    <p className="text-[13px] text-[#888] mt-1.5 leading-relaxed sm:min-h-[58px]">{t.desc}</p>
-                    <p className={`inline-flex items-center gap-1.5 mt-2 text-[11.5px] font-semibold ${t.value === 'selvforvaltning' ? 'text-[#15803d]' : 'text-[#777]'}`}><MapPin className="w-3 h-3" /> {t.area}</p>
-                    <div className="mt-4 pt-4 border-t border-[#f2f0ec] flex items-center justify-between">
-                      <span className="text-[15px] font-bold text-[#0a0a0a]">{t.price ? `${t.price} ` : ''}<span className="text-[12px] font-medium text-[#999]">{t.priceNote}</span></span>
-                      <span className="inline-flex items-center gap-1 text-[13px] font-semibold text-[#7c3aed] group-hover:gap-2 transition-all">{t.value === 'selvforvaltning' ? 'Kom i gang nå' : 'Få tilbud'} <ArrowRight className="w-3.5 h-3.5" /></span>
-                    </div>
+        {/* Myk lavendel-glød + prikk-grid — samme formspråk som forsiden */}
+        <div aria-hidden className="pointer-events-none absolute inset-0" style={{
+          backgroundImage: 'radial-gradient(circle, #c8c8c8 0.8px, transparent 0.8px)', backgroundSize: '24px 24px', opacity: 0.35,
+          maskImage: 'radial-gradient(ellipse 70% 50% at 50% 40%, black 25%, transparent 72%)', WebkitMaskImage: 'radial-gradient(ellipse 70% 50% at 50% 40%, black 25%, transparent 72%)',
+        }} />
+        <div aria-hidden className="pointer-events-none absolute -top-40 left-1/2 -translate-x-1/2 w-[760px] h-[560px] rounded-full" style={{ background: 'radial-gradient(circle, rgba(207,151,252,0.10) 0%, transparent 65%)' }} />
+        <div className="flex-1 flex items-center justify-center px-5 py-12 relative">
+          <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }} className="w-full max-w-[640px]">
+            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#b18ae0] text-center">Kom i gang — tar under 2 minutter</p>
+            <h1 className="text-[32px] sm:text-[42px] font-bold tracking-[-0.03em] text-[#0a0a0a] text-center mt-3 leading-[1.08]" style={{ fontFamily: 'var(--font-heading)' }}>
+              Hvor ligger boligen<br className="hidden sm:block" /> du vil leie ut?
+            </h1>
+            <p className="text-[15px] text-[#888] text-center mt-3.5 max-w-[46ch] mx-auto leading-relaxed">
+              Start med adressen — vi finner tjenestene som er tilgjengelige i ditt område og estimerer leiepotensialet.
+            </p>
+
+            <div className="mt-9" data-no-enter-advance>
+              <div className="flex items-center rounded-full bg-white border-2 border-[#e8e5e0] shadow-[0_2px_14px_rgba(0,0,0,0.05)] transition-all duration-300 focus-within:border-[#0a0a0a]/35 focus-within:shadow-[0_0_0_4px_rgba(10,10,10,0.05),0_16px_44px_rgba(20,10,40,0.10)] hover:shadow-[0_8px_28px_rgba(20,10,40,0.09)]">
+                <div className="pl-5 sm:pl-6"><MapPin className="w-[18px] h-[18px] text-[#7c3aed]" /></div>
+                <AddressAutocomplete
+                  value={formData.address}
+                  onChange={(v: any) => {
+                    updateField('address', v);
+                    setEntryVerified(false);
+                    if (formData.postal_code || formData.city) setFormData((prev: any) => ({ ...prev, address: v, postal_code: '', city: '' }));
+                  }}
+                  onSelect={onEntryAddressSelect}
+                  placeholder="F.eks. Nordnesveien 13, Bergen"
+                  showIcon={false}
+                  dataTestId="entry-address-input"
+                  inputClassName="flex-1 h-[62px] px-3.5 text-[15.5px] bg-transparent border-0 outline-none focus:outline-none focus-visible:outline-none focus:ring-0 placeholder:text-[#999] w-full"
+                  className="flex-1"
+                />
+                <div className="pr-2">
+                  <button
+                    type="button"
+                    onClick={() => { setDir(1); setEntryPhase('tier'); }}
+                    disabled={!entryVerified}
+                    data-testid="entry-address-continue"
+                    aria-label="Fortsett"
+                    className={`w-[48px] h-[48px] rounded-full flex items-center justify-center transition-all duration-300 ${entryVerified ? 'bg-[#0a0a0a] text-white hover:shadow-[0_6px_20px_rgba(167,101,224,0.35)] active:scale-95' : 'bg-[#f0eee9] text-[#c2beb6] cursor-not-allowed'}`}
+                  >
+                    <ArrowRight className="w-[18px] h-[18px]" />
                   </button>
-                );
-              })}
+                </div>
+              </div>
+              <p className="text-[12px] text-[#999] text-center mt-3.5">Velg adressen fra forslagslisten — da finner vi riktig område automatisk.</p>
             </div>
+
+            <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 mt-9">
+              {['Gratis og uforpliktende', 'Svar innen 24 timer', '150+ boliger forvaltet'].map((t) => (
+                <span key={t} className="inline-flex items-center gap-1.5 text-[12px] text-[#999]"><Check className="w-3.5 h-3.5 text-[#cf97fc]" strokeWidth={3} /> {t}</span>
+              ))}
+            </div>
+
+            <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 mt-8 pt-6 border-t border-[#f0ede8]">
+              <button type="button" data-testid="entry-mode-finn"
+                onClick={() => { setInputMode('finn'); setDir(1); setEntryPhase('tier'); try { track('form_input_mode', { form: 'utleier-start', mode: 'finn' }); } catch (e) {} }}
+                className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#7c3aed] hover:text-[#8a45d6] transition-colors">
+                <Zap className="w-3.5 h-3.5" /> Har du en Finn-annonse? Bruk den i stedet
+              </button>
+              <span className="hidden sm:block h-3.5 w-px bg-[#e5e0d8]" aria-hidden />
+              <button type="button" data-testid="entry-skip-address" onClick={() => { setDir(1); setEntryPhase('tier'); }} className="text-[13px] font-medium text-[#999] hover:text-[#555] transition-colors">
+                Hopp over
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      </div>
+    );
+  }
+
+  // ---------- Fullskjerm steg 0.5: geo-tilpasset tjenestevalg ----------
+  if (fullscreen && entryPhase === 'tier') {
+    const selfTier: any = TIERS.find((t: any) => t.value === 'selvforvaltning');
+    const fullTier: any = TIERS.find((t: any) => t.value === 'full_forvaltning');
+    const showBoth = !hasGeo || inBergen; // ukjent geo → vis begge (Full har «Kun i Bergen»-badge)
+    const placeLabel = (formData.city || '').trim() || ((formData.postal_code || '').trim() ? `postnummer ${formData.postal_code}` : '');
+    const renderTierCard = (t: any, featured = false) => {
+      const I = t.icon;
+      return (
+        <button key={t.value} type="button" data-testid={`entry-tier-${t.value}`}
+          onClick={() => chooseEntryTier(t.value)}
+          className={`relative text-left rounded-[22px] border-2 bg-white p-6 transition-all duration-200 active:scale-[0.985] group ${featured ? 'border-[#cf97fc] shadow-[0_16px_50px_-24px_rgba(124,58,237,0.4)]' : 'border-[#eceae6] hover:border-[#cf97fc] hover:shadow-[0_16px_50px_-24px_rgba(124,58,237,0.35)]'}`}>
+          {t.badge && (
+            <span className={`absolute -top-2.5 right-5 text-[9px] font-bold uppercase tracking-[0.08em] px-2.5 py-1 rounded-full ${featured || t.badge.tone === 'green' ? 'bg-gradient-to-r from-[#16a34a] to-[#15803d] text-white' : 'bg-[#0a0a0a] text-white'}`}>{featured ? 'Tilgjengelig på din adresse' : t.badge.text}</span>
+          )}
+          <div className="w-11 h-11 rounded-2xl bg-[#f7f0fe] flex items-center justify-center">
+            <I className="w-5 h-5 text-[#7c3aed]" strokeWidth={2.2} />
+          </div>
+          <p className="text-[19px] font-bold tracking-[-0.01em] text-[#0a0a0a] mt-4" style={{ fontFamily: 'var(--font-heading)' }}>{t.label}</p>
+          <p className="text-[13px] text-[#888] mt-1.5 leading-relaxed sm:min-h-[58px]">{t.desc}</p>
+          <p className={`inline-flex items-center gap-1.5 mt-2 text-[11.5px] font-semibold ${t.value === 'selvforvaltning' ? 'text-[#15803d]' : 'text-[#777]'}`}><MapPin className="w-3 h-3" /> {t.area}</p>
+          <div className="mt-3 space-y-1.5">
+            {t.bullets.map((b: string) => (
+              <div key={b} className="flex items-start gap-2 text-[12.5px] text-[#666]">
+                <Check className="w-3.5 h-3.5 text-[#cf97fc] shrink-0 mt-0.5" strokeWidth={3} /> {b}
+              </div>
+            ))}
+          </div>
+          <div className="mt-4 pt-4 border-t border-[#f2f0ec] flex items-center justify-between">
+            <span className="text-[15px] font-bold text-[#0a0a0a]">{t.price ? `${t.price} ` : ''}<span className="text-[12px] font-medium text-[#999]">{t.priceNote}</span></span>
+            <span className="inline-flex items-center gap-1 text-[13px] font-semibold text-[#7c3aed] group-hover:gap-2 transition-all">{t.value === 'selvforvaltning' ? 'Kom i gang nå' : 'Få tilbud'} <ArrowRight className="w-3.5 h-3.5" /></span>
+          </div>
+        </button>
+      );
+    };
+    return (
+      <div className="min-h-screen bg-[#fdfcfb] flex flex-col relative overflow-hidden" data-testid="start-entry">
+        {fsTopbar}
+        <div aria-hidden className="pointer-events-none absolute -top-40 left-1/2 -translate-x-1/2 w-[760px] h-[560px] rounded-full" style={{ background: 'radial-gradient(circle, rgba(207,151,252,0.10) 0%, transparent 65%)' }} />
+        <div className="flex-1 flex items-center justify-center px-5 py-12 relative">
+          <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }} className="w-full max-w-[680px]">
+
+            {/* Valgt adresse — chip med «Endre» tilbake til adressesteget */}
+            {formData.address ? (
+              <div className="flex justify-center mb-6">
+                <div className="inline-flex items-center gap-2.5 rounded-full bg-white border border-[#e8e2f2] pl-3.5 pr-1.5 py-1.5 shadow-[0_2px_12px_rgba(20,10,40,0.06)] max-w-full" data-testid="entry-address-chip">
+                  <MapPin className="w-3.5 h-3.5 text-[#7c3aed] shrink-0" />
+                  <span className="text-[13px] font-semibold text-[#0a0a0a] truncate max-w-[200px] sm:max-w-[340px]">{formData.address}</span>
+                  {formData.postal_code && !(formData.address || '').includes(formData.postal_code) ? <span className="text-[12px] text-[#999] hidden sm:inline shrink-0">{formData.postal_code} {formData.city}</span> : null}
+                  <button type="button" data-testid="entry-address-edit" onClick={() => { setDir(-1); setEntryPhase('address'); }}
+                    className="text-[11.5px] font-semibold text-[#7c3aed] hover:bg-[#faf5ff] rounded-full px-2.5 py-1.5 transition-colors shrink-0">Endre</button>
+                </div>
+              </div>
+            ) : null}
+
+            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#b18ae0] text-center">
+              {hasGeo ? (inBergen ? 'Gode nyheter' : 'Tilgjengelig i ditt område') : 'Kom i gang'}
+            </p>
+            <h1 className="text-[30px] sm:text-[38px] font-bold tracking-[-0.03em] text-[#0a0a0a] text-center mt-2" style={{ fontFamily: 'var(--font-heading)' }}>
+              {hasGeo && inBergen ? 'Vi er i ditt område!' : hasGeo ? 'Slik leier du ut med DigiHome' : 'Hvordan vil du leie ut?'}
+            </h1>
+            <p className="text-[14.5px] text-[#888] text-center mt-2.5 max-w-[54ch] mx-auto leading-relaxed">
+              {hasGeo && inBergen
+                ? 'DigiHome tilbyr alle tjenester i Bergen. Velg sporet som passer deg best — du kan ombestemme deg senere.'
+                : hasGeo
+                  ? `Selvforvaltning er tilgjengelig i hele landet — også ${placeLabel ? `i ${placeLabel}` : 'hos deg'}. Full forvaltning tilbys foreløpig kun i Bergen.`
+                  : 'Velg sporet som passer deg best — du kan ombestemme deg senere i skjemaet.'}
+            </p>
+
+            {showBoth ? (
+              <div className="grid sm:grid-cols-2 gap-4 mt-9">
+                {renderTierCard(selfTier)}
+                {renderTierCard(fullTier)}
+              </div>
+            ) : (
+              <div className="mt-9">
+                {renderTierCard(selfTier, true)}
+                {/* Full forvaltning — utilgjengelig utenfor Bergensområdet (ekspansjonssignal via «Meld interesse») */}
+                <div className="mt-4 rounded-[22px] border-2 border-dashed border-[#e8e4de] bg-[#faf9f7] p-5 sm:p-6" data-testid="entry-tier-full-unavailable">
+                  <div className="flex items-start gap-4">
+                    <div className="w-10 h-10 rounded-xl bg-[#f0eee9] flex items-center justify-center shrink-0">
+                      <Shield className="w-[18px] h-[18px] text-[#b5b0a8]" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-[15px] font-bold text-[#8a857d]" style={{ fontFamily: 'var(--font-heading)' }}>Full forvaltning</p>
+                        <span className="text-[9px] font-bold uppercase tracking-[0.08em] px-2 py-0.5 rounded-full bg-[#ece9e3] text-[#8a857d]">Kun i Bergen</span>
+                      </div>
+                      <p className="text-[12.5px] text-[#9a958c] mt-1 leading-relaxed">
+                        Ikke tilgjengelig {placeLabel ? `i ${placeLabel}` : 'på din adresse'} ennå — vi utvider stadig til nye områder.
+                      </p>
+                      <button type="button" data-testid="entry-tier-full-interest" onClick={() => chooseEntryTier('full_forvaltning')}
+                        className="mt-2.5 text-[12.5px] font-semibold text-[#7c3aed] hover:underline underline-offset-2 text-left">
+                        Meld interesse likevel — vi kontakter deg når vi kommer til ditt område →
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <p className="text-[12px] text-[#aaa] text-center mt-6">Uforpliktende — ingen betaling før boligen din er leid ut.</p>
           </motion.div>
         </div>
@@ -599,6 +797,10 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
           <div className="flex items-center justify-between mb-5">
             {curPos > 0 ? (
               <button onClick={goBack} className="w-9 h-9 rounded-full border border-[#e8e5e0] hover:bg-[#f5f5f5] flex items-center justify-center transition-colors active:scale-95" data-testid="owner-back-button" aria-label="Tilbake">
+                <ArrowLeft className="w-4 h-4 text-[#888]" />
+              </button>
+            ) : fullscreen ? (
+              <button onClick={() => { setDir(-1); setEntryPhase(formData.tier ? 'tier' : 'address'); }} className="w-9 h-9 rounded-full border border-[#e8e5e0] hover:bg-[#f5f5f5] flex items-center justify-center transition-colors active:scale-95" data-testid="owner-back-to-entry" aria-label="Tilbake til tjenestevalget">
                 <ArrowLeft className="w-4 h-4 text-[#888]" />
               </button>
             ) : (
@@ -926,8 +1128,22 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
                   <div className="inline-flex items-center gap-2 text-[11px] font-semibold text-[#7c3aed] uppercase tracking-[0.1em] mb-3">
                     <Shield className="w-3.5 h-3.5" /> Dine mål
                   </div>
-                  <h2 className="text-[28px] sm:text-[34px] font-bold tracking-[-0.03em] text-[#0a0a0a] mb-2" style={{ fontFamily: 'var(--font-heading)' }}>Hvordan vil du leie ut?</h2>
-                  <p className="text-[15px] text-[#888] mb-7 max-w-[46ch]">Velg nivået som passer deg best — du kan bytte når som helst.</p>
+                  <h2 className="text-[28px] sm:text-[34px] font-bold tracking-[-0.03em] text-[#0a0a0a] mb-2" style={{ fontFamily: 'var(--font-heading)' }}>{tierLocked && formData.tier ? 'Ditt valg' : 'Hvordan vil du leie ut?'}</h2>
+                  <p className="text-[15px] text-[#888] mb-7 max-w-[46ch]">{tierLocked && formData.tier ? 'Basert på valget ditt i starten — du kan endre det når som helst.' : 'Velg nivået som passer deg best — du kan bytte når som helst.'}</p>
+                  {tierLocked && formData.tier ? (() => {
+                    const t: any = TIERS.find((x: any) => x.value === formData.tier);
+                    const LockedIcon = t.icon;
+                    return (
+                      <div className="w-full rounded-2xl border-2 border-[#cf97fc] bg-[#faf5ff] p-5 flex items-center gap-4 shadow-[0_10px_30px_-18px_rgba(124,58,237,0.45)]" data-testid="owner-tier-locked">
+                        <div className="w-11 h-11 rounded-xl bg-[#cf97fc] flex items-center justify-center shrink-0"><LockedIcon className="w-5 h-5 text-white" /></div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[15.5px] font-bold text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>{t.label}</p>
+                          <p className="text-[12.5px] text-[#888] mt-0.5">{t.price ? `${t.price} ${t.priceNote} — ingen faste kostnader` : 'Skreddersydd tilbud — helt uforpliktende'}</p>
+                        </div>
+                        <button type="button" onClick={() => setTierLocked(false)} data-testid="owner-tier-change" className="text-[12.5px] font-semibold text-[#7c3aed] hover:underline underline-offset-2 shrink-0">Endre</button>
+                      </div>
+                    );
+                  })() : (
                   <div className="space-y-3.5">
                     {TIERS.map((t: any) => {
                       const Icon = t.icon;
@@ -984,6 +1200,7 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
                       );
                     })}
                   </div>
+                  )}
                   {errors.tier && <p className="text-[12px] text-red-500 mt-2" data-testid="owner-tier-error">{errors.tier}</p>}
 
                   {/* Geo-varsel: Full forvaltning valgt, men boligen ligger utenfor Bergensområdet */}
