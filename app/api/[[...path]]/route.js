@@ -1722,6 +1722,10 @@ async function handleRoute(request, { params }) {
         external_ref: lead.id, source_system: 'digihome-marketing',
         marketing_visitor_id: lead.marketing_visitor_id || undefined,
         lead_source_type: lead.lead_source_type, is_paid: lead.is_paid,
+        // Strukturert kilde + nyhetsbrev-attribusjon over broen: plattformen kan
+        // da filtrere/rapportere «leads fra nyhetsbrev X» uten å parse notes.
+        source: lead.source || undefined,
+        newsletter_source: lead.newsletter_source || undefined,
         name: lead.name, email: lead.email, phone: lead.phone,
         address: lead.address, postal_code: lead.postal_code,
         property_type: lead.property_type, rental_model: lead.rental_model,
