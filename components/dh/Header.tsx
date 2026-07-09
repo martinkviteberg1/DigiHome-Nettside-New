@@ -134,7 +134,7 @@ export default function Header() {
               {loginText}
             </Link>
             <button
-              onClick={() => { try { track('cta_click', { cta: 'header' }); } catch (e) {} router.push('/bli-utleier'); }}
+              onClick={() => { try { track('cta_click', { cta: 'header' }); } catch (e) {} router.push('/bli-utleier/start'); }}
               data-testid="header-cta-start-onboarding-button"
               className={`group relative inline-flex items-center gap-2 pl-5 pr-1.5 rounded-full text-[13px] font-semibold tracking-[-0.008em] overflow-hidden transition-all duration-500 active:scale-[0.97] bg-[#0a0a0a] text-white hover:shadow-[0_12px_32px_-10px_rgba(10,10,10,0.4)] ${scrolled ? 'h-[42px]' : 'h-[44px]'}`}
               style={{ transitionTimingFunction: ease, boxShadow: '0 8px 24px -8px rgba(31,31,31,0.35)' }}
@@ -211,7 +211,7 @@ export default function Header() {
                     onClick={() => {
                       try { track('cta_click', { cta: 'header_mobile_menu' }); } catch (e) {}
                       setMobileOpen(false);
-                      router.push('/bli-utleier');
+                      router.push('/bli-utleier/start');
                     }}
                     className="w-full rounded-full bg-[#0a0a0a] text-white h-12 text-[14px] font-semibold hover:bg-[#2a2a2a] transition-colors"
                   >

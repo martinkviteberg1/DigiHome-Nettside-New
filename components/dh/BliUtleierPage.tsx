@@ -43,6 +43,7 @@ const STEPS = [
 const SELF_TERMS_VERSION = 'selvforvaltning-2025-06';
 
 // To-nivå-modellen. VIKTIG: Full forvaltning viser ALDRI pris — kun «Få tilbud».
+// Full forvaltning tilbys P.T. KUN i Bergen (badge + geo-sjekk i skjemaet).
 const TIERS = [
   {
     value: 'selvforvaltning',
@@ -50,8 +51,10 @@ const TIERS = [
     price: '5 %',
     priceNote: 'per utleie',
     icon: Key,
-    desc: 'Gjør det selv med våre profesjonelle verktøy. Du styrer alt — vi gjør det enkelt.',
-    bullets: ['Annonsering på Finn.no', 'Digitale kontrakter og signering', 'Automatisk husleie og oppgjør'],
+    badge: { text: 'Kom i gang i dag', tone: 'green' },
+    area: 'Tilgjengelig i hele landet',
+    desc: 'Gjør det selv med våre profesjonelle verktøy. Alt er heldigitalt — du kan starte umiddelbart.',
+    bullets: ['Kom i gang umiddelbart — helt selvbetjent', 'Annonsering på Finn.no', 'Digitale kontrakter, husleie og oppgjør'],
   },
   {
     value: 'full_forvaltning',
@@ -59,11 +62,20 @@ const TIERS = [
     price: null, // ingen pris — kun tilbud
     priceNote: 'Få tilbud',
     icon: Shield,
-    popular: true,
+    badge: { text: 'Kun i Bergen', tone: 'dark' },
+    area: 'Bergen og omegn (foreløpig)',
     desc: 'Vi tar oss av alt — annonsering, visninger, leietakere og oppfølging. Du mottar bare inntekten.',
-    bullets: ['Alt håndtert av lokalt team', 'Opptil 30 % høyere inntekt', 'Skreddersydd tilbud — uforpliktende'],
+    bullets: ['Alt håndtert av lokalt team i Bergen', 'Opptil 30 % høyere inntekt', 'Skreddersydd tilbud — uforpliktende'],
   },
 ];
+
+// Geo-sjekk: Full forvaltning krever bolig i Bergensområdet. Bruker poststed
+// fra adressevalget når vi har det, ellers postnummer-område 50xx–52xx.
+const isBergenArea = (postal?: string, city?: string) => {
+  if ((city || '').trim().toLowerCase() === 'bergen') return true;
+  const p = (postal || '').trim();
+  return /^5[0-2]\d\d$/.test(p);
+};
 
 const propertyTypes = [
   { value: 'leilighet', label: 'Leilighet', icon: Building2 },
@@ -127,8 +139,10 @@ function RentEstimateCard({ bedrooms }: any) {
   );
 }
 
-export default function BliUtleierPage() {
+export default function BliUtleierPage({ fullscreen = false }: any) {
   const [step, setStep] = useState(1); // starter rett på Eiendommen (ingen velkomst)
+  // Fullskjerm «Kom i gang»-flyt: steg 0 = valg av spor FØR skjemaet.
+  const [entryDone, setEntryDone] = useState(!fullscreen);
   const [dir, setDir] = useState(1);
   const [formData, setFormData] = useState({
     name: '', email: '', phone: '',
@@ -395,6 +409,9 @@ export default function BliUtleierPage() {
       });
       const payload = {
         address: formData.address, postal_code: formData.postal_code,
+        city: formData.city || undefined,
+        // Ekspansjonssignal: Full forvaltning valgt utenfor Bergensområdet
+        outside_area: (formData.tier === 'full_forvaltning' && formData.postal_code && !isBergenArea(formData.postal_code, formData.city)) ? true : undefined,
         sqm: formData.sqm ? parseInt(formData.sqm) : 60,
         bedrooms: parseInt(formData.bedrooms) || 2, property_type: formData.property_type || 'leilighet',
         name: formData.name, email: formData.email, phone: '+47 ' + formData.phone,
@@ -496,6 +513,14 @@ export default function BliUtleierPage() {
             </div>
           </div>
 
+          {/* Estimat-avsløringen: gulroten leveres ETTER konvertering — som
+              intervall, tydelig merket foreløpig (rådgiveren eier sluttallet). */}
+          {formData.bedrooms ? (
+            <div className="mt-5 text-left" data-testid="owner-success-estimate">
+              <RentEstimateCard bedrooms={formData.bedrooms} />
+            </div>
+          ) : null}
+
           <Button onClick={() => window.location.href = '/'} data-testid="owner-success-home-button"
             className="rounded-full bg-[#0a0a0a] text-white hover:bg-black h-12 px-8 text-[14px] font-semibold gap-2 active:scale-[0.97] transition-transform mt-7">
             Tilbake til forsiden <ArrowRight className="w-4 h-4" />
@@ -508,6 +533,57 @@ export default function BliUtleierPage() {
   // Velkomststeget er fjernet (juli 2026): trakten viste ~47 % frafall der.
   // Brukeren går nå rett inn i skjemaet med adressen fra hero-søket forhåndsutfylt.
 
+  // ---------- Fullskjerm-chrome: egen minimal topplinje (logo + Avslutt) ----------
+  const fsTopbar = fullscreen ? (
+    <div className="sticky top-0 z-40 bg-[#fdfcfb]/90 backdrop-blur-md border-b border-[#f0ede8]">
+      <div className="max-w-[680px] mx-auto px-6 h-[58px] flex items-center justify-between">
+        <a href="/" className="text-[18px] font-bold tracking-[-0.02em] text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>digihome<span style={{ color: '#cf97fc' }}>.</span></a>
+        <a href="/bli-utleier" data-testid="start-exit" className="text-[13px] font-medium text-[#999] hover:text-[#0a0a0a] transition-colors">Avslutt</a>
+      </div>
+    </div>
+  ) : null;
+
+  // ---------- Fullskjerm steg 0: «Hvordan vil du leie ut?» (forgreningen) ----------
+  if (fullscreen && !entryDone) {
+    return (
+      <div className="min-h-screen bg-[#fdfcfb] flex flex-col" data-testid="start-entry">
+        {fsTopbar}
+        <div className="flex-1 flex items-center justify-center px-5 py-12">
+          <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }} className="w-full max-w-[680px]">
+            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#b18ae0] text-center">Kom i gang</p>
+            <h1 className="text-[30px] sm:text-[38px] font-bold tracking-[-0.03em] text-[#0a0a0a] text-center mt-2" style={{ fontFamily: 'var(--font-heading)' }}>Hvordan vil du leie ut?</h1>
+            <p className="text-[14.5px] text-[#888] text-center mt-2.5 max-w-[46ch] mx-auto leading-relaxed">Velg sporet som passer deg best — du kan ombestemme deg senere i skjemaet.</p>
+            <div className="grid sm:grid-cols-2 gap-4 mt-9">
+              {TIERS.map((t: any) => {
+                const I = t.icon;
+                return (
+                  <button key={t.value} type="button" data-testid={`entry-tier-${t.value}`}
+                    onClick={() => { updateField('tier', t.value); setEntryDone(true); try { track('tier_entry_choice', { tier: t.value, form: 'utleier-start' }); } catch (e) {} }}
+                    className="relative text-left rounded-[22px] border-2 border-[#eceae6] bg-white p-6 hover:border-[#cf97fc] hover:shadow-[0_16px_50px_-24px_rgba(124,58,237,0.35)] transition-all duration-200 active:scale-[0.985] group">
+                    {t.badge && (
+                      <span className={`absolute -top-2.5 right-5 text-[9px] font-bold uppercase tracking-[0.08em] px-2.5 py-1 rounded-full ${t.badge.tone === 'green' ? 'bg-gradient-to-r from-[#16a34a] to-[#15803d] text-white' : 'bg-[#0a0a0a] text-white'}`}>{t.badge.text}</span>
+                    )}
+                    <div className="w-11 h-11 rounded-2xl bg-[#f7f0fe] flex items-center justify-center">
+                      <I className="w-5 h-5 text-[#7c3aed]" strokeWidth={2.2} />
+                    </div>
+                    <p className="text-[19px] font-bold tracking-[-0.01em] text-[#0a0a0a] mt-4" style={{ fontFamily: 'var(--font-heading)' }}>{t.label}</p>
+                    <p className="text-[13px] text-[#888] mt-1.5 leading-relaxed sm:min-h-[58px]">{t.desc}</p>
+                    <p className={`inline-flex items-center gap-1.5 mt-2 text-[11.5px] font-semibold ${t.value === 'selvforvaltning' ? 'text-[#15803d]' : 'text-[#777]'}`}><MapPin className="w-3 h-3" /> {t.area}</p>
+                    <div className="mt-4 pt-4 border-t border-[#f2f0ec] flex items-center justify-between">
+                      <span className="text-[15px] font-bold text-[#0a0a0a]">{t.price ? `${t.price} ` : ''}<span className="text-[12px] font-medium text-[#999]">{t.priceNote}</span></span>
+                      <span className="inline-flex items-center gap-1 text-[13px] font-semibold text-[#7c3aed] group-hover:gap-2 transition-all">{t.value === 'selvforvaltning' ? 'Kom i gang nå' : 'Få tilbud'} <ArrowRight className="w-3.5 h-3.5" /></span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-[12px] text-[#aaa] text-center mt-6">Uforpliktende — ingen betaling før boligen din er leid ut.</p>
+          </motion.div>
+        </div>
+      </div>
+    );
+  }
+
   // Flyt-bevisst progresjon (Finn hopper over steg 2).
   const curPos = Math.max(0, flowSteps.indexOf(step));
   const finnCardShown = step === 1 && inputMode === 'finn' && !!finnData;
@@ -517,7 +593,7 @@ export default function BliUtleierPage() {
 
   return (
     <div className="min-h-screen bg-[#fdfcfb] flex flex-col" data-testid="owner-page">
-      <div className="h-[56px] lg:h-[76px]" />
+      {fullscreen ? fsTopbar : <div className="h-[56px] lg:h-[76px]" />}
       <div className="flex-1 flex flex-col">
         <div className="max-w-[600px] w-full mx-auto px-6 pt-6">
           <div className="flex items-center justify-between mb-5">
@@ -596,6 +672,7 @@ export default function BliUtleierPage() {
                           const addr = data.address ? data.address.replace(/,\s*(Norway|Norge)$/i, '') : '';
                           if (addr) { updateField('address', addr); setRegistryQuery(addr); }
                           if (data.postalCode) updateField('postal_code', data.postalCode);
+                          if (data.city) updateField('city', data.city); // for Bergen-sjekk på tier-steget
                         }}
                       />
 
@@ -723,9 +800,18 @@ export default function BliUtleierPage() {
                     </motion.div>
                   ) : null}
 
-                  {/* Verdi-teaser: estimert leieinntekt (SSB) så snart soverom er valgt */}
+                  {/* Estimat-teaser: selve tallet vises FØRST etter innsending
+                      (nysgjerrighetsgap → høyere fullføring, og rådgiveren
+                      eier det endelige tallet i samtalen). */}
                   {formData.bedrooms && (inputMode === 'address' ? (formData.address.trim() || registryQuery) : !!finnData) ? (
-                    <div className="mt-6"><RentEstimateCard bedrooms={formData.bedrooms} /></div>
+                    <div className="mt-6 rounded-2xl border border-[#e6d6f8] bg-gradient-to-br from-[#f7f0fe] to-[#f0e6fb] p-4 flex items-center gap-3" data-testid="owner-estimate-teaser">
+                      <div className="w-9 h-9 rounded-xl bg-white flex items-center justify-center shadow-[0_2px_8px_rgba(124,58,237,0.12)] shrink-0">
+                        <TrendingUp className="w-4 h-4 text-[#7c3aed]" strokeWidth={2.5} />
+                      </div>
+                      <p className="text-[12.5px] text-[#6d5691] leading-relaxed">
+                        <strong className="text-[#0a0a0a]">Leieestimatet ditt er klart.</strong> Vi viser intervallet straks du har sendt inn — uforpliktende, basert på SSB-leiepriser.
+                      </p>
+                    </div>
                   ) : null}
 
                   {/* Flere eiendommer (valgfritt) — flettet inn fra gamle «Om eiendommen»-steget */}
@@ -860,7 +946,9 @@ export default function BliUtleierPage() {
                           }}
                           className={`w-full text-left rounded-2xl border-2 p-5 transition-all duration-200 relative ${selected ? 'border-[#cf97fc] bg-[#faf5ff] shadow-[0_10px_30px_-18px_rgba(124,58,237,0.45)]' : 'border-[#eee] bg-white hover:border-[#ddd]'}`}
                         >
-                          {t.popular && (<span className="absolute -top-2.5 right-4 text-[9px] font-bold uppercase tracking-[0.08em] px-2.5 py-1 rounded-full bg-gradient-to-r from-[#c084fc] to-[#AE68E4] text-white">Mest valgt</span>)}
+                          {t.badge && (
+                            <span className={`absolute -top-2.5 right-4 text-[9px] font-bold uppercase tracking-[0.08em] px-2.5 py-1 rounded-full ${t.badge.tone === 'green' ? 'bg-gradient-to-r from-[#16a34a] to-[#15803d] text-white' : 'bg-[#0a0a0a] text-white'}`}>{t.badge.text}</span>
+                          )}
                           <div className="flex items-start gap-4">
                             <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${selected ? 'bg-[#cf97fc]' : 'bg-[#f0f0f0]'}`}>
                               <Icon className="w-5 h-5" style={{ color: selected ? '#fff' : '#aaa' }} />
@@ -878,6 +966,11 @@ export default function BliUtleierPage() {
                                 )}
                               </div>
                               <p className="text-[13px] text-[#888] mt-1.5 leading-relaxed">{t.desc}</p>
+                              {t.area && (
+                                <p className={`inline-flex items-center gap-1.5 mt-2 text-[11.5px] font-semibold ${t.value === 'selvforvaltning' ? 'text-[#15803d]' : 'text-[#777]'}`}>
+                                  <MapPin className="w-3 h-3" /> {t.area}
+                                </p>
+                              )}
                               <div className="mt-3 space-y-1.5">
                                 {t.bullets.map((b: string) => (
                                   <div key={b} className="flex items-center gap-2 text-[12.5px] text-[#666]">
@@ -892,6 +985,24 @@ export default function BliUtleierPage() {
                     })}
                   </div>
                   {errors.tier && <p className="text-[12px] text-red-500 mt-2" data-testid="owner-tier-error">{errors.tier}</p>}
+
+                  {/* Geo-varsel: Full forvaltning valgt, men boligen ligger utenfor Bergensområdet */}
+                  <AnimatePresence initial={false}>
+                    {formData.tier === 'full_forvaltning' && formData.postal_code && !isBergenArea(formData.postal_code, formData.city) && (
+                      <motion.div key="outside-area" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.25 }}
+                        className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-5" data-testid="owner-outside-area">
+                        <p className="text-[13.5px] font-bold text-amber-900" style={{ fontFamily: 'var(--font-heading)' }}>Boligen ser ut til å ligge utenfor Bergen</p>
+                        <p className="text-[12.5px] text-amber-800 mt-1.5 leading-relaxed">
+                          Full forvaltning tilbys foreløpig kun i Bergensområdet. Du kan velge <strong>Selvforvaltning</strong> (tilgjengelig i hele landet, kom i gang i dag) — eller sende inn likevel, så kontakter vi deg når vi utvider til ditt område.
+                        </p>
+                        <button type="button" data-testid="owner-switch-to-self"
+                          onClick={() => { updateField('tier', 'selvforvaltning'); setTermsAccepted(false); setErrors((prev: any) => ({ ...prev, tier: null, terms: null })); try { track('tier_switch_outside_area', { form: 'utleier' }); } catch (e) {} }}
+                          className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-[#0a0a0a] text-white px-4 py-2 text-[12.5px] font-semibold hover:bg-black active:scale-[0.97] transition-transform">
+                          Bytt til selvforvaltning <ArrowRight className="w-3.5 h-3.5" />
+                        </button>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
 
                   <AnimatePresence mode="wait" initial={false}>
                     {formData.tier === 'selvforvaltning' && (

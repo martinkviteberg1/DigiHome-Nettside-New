@@ -34,11 +34,11 @@ export default function HeroSection() {
     try { track('cta_click', { cta: 'hero_vurdering', hasAddress: !!address }); } catch (err) {}
     try { trackLeadStart('hero'); } catch (err) {}
     const q = address ? `?address=${encodeURIComponent(address)}` : '';
-    router.push(`/bli-utleier${q}`);
+    router.push(`/bli-utleier/start${q}`);
   };
 
   // Forhåndslast skjemaet så «Få vurdering» åpner umiddelbart (ingen ventetid).
-  useEffect(() => { try { router.prefetch('/bli-utleier'); } catch (e) {} }, [router]);
+  useEffect(() => { try { router.prefetch('/bli-utleier/start'); } catch (e) {} }, [router]);
 
   const handleAddressSelect = useCallback((data: any) => {
     setSelectedData(data);

@@ -1597,6 +1597,7 @@ async function handleRoute(request, { params }) {
         phone: (body.phone || '').toString().slice(0, 60),
         address: (body.address || '').toString().slice(0, 300),
         postal_code: (body.postal_code || '').toString().slice(0, 20),
+        city: (body.city || '').toString().slice(0, 60),
         property_type: (body.property_type || body.propertyType || '').toString().slice(0, 120),
         sqm: toNum(body.sqm),
         bedrooms: toNum(body.bedrooms),
@@ -1633,6 +1634,8 @@ async function handleRoute(request, { params }) {
       // To-nivå-modellen: hvilket spor valgte kunden i skjemaet? + klikk-aksept
       // av selvforvaltningsavtalen (server-tidsstempel for integritet).
       lead.tier = ['selvforvaltning', 'full_forvaltning'].includes((body.tier || '').toString()) ? body.tier : null;
+      // Ekspansjonssignal: Full forvaltning ønsket utenfor Bergensområdet.
+      if (body.outside_area === true) lead.outside_area = true;
       lead.terms_accepted = body.terms && body.terms.version
         ? { version: String(body.terms.version).slice(0, 40), at: new Date().toISOString() }
         : null;
@@ -1806,6 +1809,8 @@ async function handleRoute(request, { params }) {
         attribution: lead.attribution || undefined,
         tier: lead.tier || undefined,
         terms_accepted: lead.terms_accepted || undefined,
+        outside_area: lead.outside_area || undefined,
+        city: lead.city || undefined,
         notes: fwdNotes,
       });
       await db.collection('leads').updateOne({ id: lead.id }, { $set: {
