@@ -23,6 +23,20 @@ const INCLUDED = [
   { t: 'Husleie rett på konto', d: 'Automatisk innkreving — vi følger opp og purrer om det trengs.' },
 ];
 
+// «Magic link»-hjelpere: e-post ligger base64url-kodet i ?e= på nyhetsbrev-CTAer.
+// Vises kun delvis maskert i UI (trygt hvis lenken videresendes).
+const decodeB64url = (v: string) => {
+  try {
+    const b = String(v || '').replace(/-/g, '+').replace(/_/g, '/');
+    return decodeURIComponent(escape(window.atob(b)));
+  } catch (e) { return ''; }
+};
+const maskEmail = (em: string) => {
+  const [u, d] = String(em || '').split('@');
+  if (!u || !d) return '';
+  return `${u.slice(0, 2)}····@${d}`;
+};
+
 export default function SommerKampanjePage() {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
@@ -35,10 +49,33 @@ export default function SommerKampanjePage() {
   const startedRef = useRef(false);
   const nlRef = useRef({ c: '', r: '' });
 
+  // «Magic link» (ettklikks-interesse fra nyhetsbrev): ?e=<b64url-epost>&t=<hmac>
+  // Lead opprettes ALDRI automatisk ved sidevisning (e-postskannere GET-er alle
+  // lenker) — kun ved aktivt klikk som sender POST til /api/interesse/confirm.
+  const [magic, setMagic] = useState<any>({ status: 'none', firstName: '', e: '', t: '', maskedEmail: '', err: '' });
+  const [magicPhone, setMagicPhone] = useState('');
+
   useEffect(() => {
     try {
       const sp = new URLSearchParams(window.location.search);
       nlRef.current = { c: sp.get('c') || '', r: sp.get('r') || '' };
+      const e = sp.get('e') || '';
+      const t = sp.get('t') || '';
+      if (e && t) {
+        setMagic((m: any) => ({ ...m, status: 'loading', e, t, maskedEmail: maskEmail(decodeB64url(e)) }));
+        fetch(`/api/interesse/lookup?e=${encodeURIComponent(e)}&t=${encodeURIComponent(t)}`)
+          .then((r) => r.json().then((j) => ({ okHttp: r.ok, j })).catch(() => ({ okHttp: false, j: {} as any })))
+          .then(({ okHttp, j }: any) => {
+            if (okHttp && j.ok) {
+              setMagic((m: any) => ({ ...m, status: 'ready', firstName: j.firstName || '' }));
+              try { track('magic_link_view', { form: 'sommer', campaign: 'sommer2026' }); } catch (e2) {}
+            } else {
+              // Ugyldig/utløpt token → stille fallback til vanlig skjema
+              setMagic((m: any) => ({ ...m, status: 'none' }));
+            }
+          })
+          .catch(() => setMagic((m: any) => ({ ...m, status: 'none' })));
+      }
     } catch (e) {}
     track('page_view_campaign', { campaign: 'sommer2026' });
   }, []);
@@ -97,6 +134,53 @@ export default function SommerKampanjePage() {
       setSending(false);
     }
   };
+
+  // Ettklikks-bekreftelse — sender POST (aldri GET) med signert token.
+  const confirmMagic = async () => {
+    if (magic.status === 'confirming' || expired) return;
+    const phoneDigits = magicPhone.replace(/\D/g, '');
+    if (magic.status === 'needPhone' && phoneDigits.length < 8) {
+      setMagic((m: any) => ({ ...m, err: 'Fyll inn et gyldig telefonnummer (8 siffer).' }));
+      return;
+    }
+    const prevStatus = magic.status;
+    setMagic((m: any) => ({ ...m, status: 'confirming', err: '' }));
+    try {
+      const nl = nlRef.current;
+      const res = await fetch('/api/interesse/confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          e: magic.e,
+          t: magic.t,
+          phone: phoneDigits.length >= 8 ? '+47 ' + phoneDigits : undefined,
+          campaign: 'sommer2026',
+          nl_campaign: nl.c || undefined,
+          nl_rid: nl.r || undefined,
+          attribution: getLeadAttribution(),
+        }),
+      });
+      const j = await res.json().catch(() => ({} as any));
+      if (res.ok && j.ok) {
+        try {
+          track('lead_submit', { form: 'sommer-ettklikk', campaign: 'sommer2026' });
+          trackLead({ formId: 'sommer-ettklikk', source: 'nyhetsbrev-ettklikk', leadId: j.leadId });
+        } catch (e2) {}
+        setDone(true);
+        try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (e3) {}
+      } else if (j && j.needPhone) {
+        // Kontakten mangler telefonnummer — be om det (eneste feltet vi trenger)
+        setMagic((m: any) => ({ ...m, status: 'needPhone', err: '' }));
+      } else {
+        try { track('form_error', { form: 'sommer-ettklikk', kind: 'confirm' }); } catch (e4) {}
+        setMagic((m: any) => ({ ...m, status: prevStatus === 'needPhone' ? 'needPhone' : 'ready', err: 'Noe gikk galt. Prøv igjen — eller bruk skjemaet.' }));
+      }
+    } catch {
+      setMagic((m: any) => ({ ...m, status: prevStatus === 'needPhone' ? 'needPhone' : 'ready', err: 'Noe gikk galt. Prøv igjen — eller bruk skjemaet.' }));
+    }
+  };
+
+  const magicActive = magic.status === 'loading' || magic.status === 'ready' || magic.status === 'confirming' || magic.status === 'needPhone';
 
   return (
     <div className="min-h-screen bg-white text-[#0a0a0a]" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
@@ -163,8 +247,68 @@ export default function SommerKampanjePage() {
               </p>
             </div>
 
-            {/* ---------- Høyre: skjema ---------- */}
+            {/* ---------- Høyre: skjema eller ettklikks-bekreftelse ---------- */}
             <div>
+              {magicActive ? (
+                /* «Magic link» fra nyhetsbrev: vi kjenner mottakeren — ett klikk holder */
+                <div className="rounded-3xl border border-[#eee7f5] bg-[#fdfcfe] p-6 sm:p-7 lg:sticky lg:top-8" style={{ boxShadow: '0 20px 60px -30px rgba(160,82,224,0.18)' }} data-testid="sommer-magic">
+                  {magic.status === 'loading' ? (
+                    <div className="py-10 text-center" data-testid="sommer-magic-loading">
+                      <div className="w-10 h-10 rounded-full border-[3px] border-[#eee7f5] mx-auto animate-spin" style={{ borderTopColor: '#a052e0' }} />
+                      <p className="text-[13.5px] text-[#999] mt-4">Henter opplysningene dine…</p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="inline-flex items-center gap-2 rounded-full px-3 py-1" style={{ background: 'rgba(210,152,255,0.14)' }}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#a052e0" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" /><path d="M22 6l-10 7L2 6" /></svg>
+                        <span className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-[#7b3fb0]">Fra nyhetsbrevet</span>
+                      </div>
+                      <p className="text-[21px] font-bold tracking-[-0.01em] mt-4" data-testid="sommer-magic-greeting">
+                        Hei{magic.firstName ? ` ${magic.firstName}` : ''}!
+                      </p>
+                      <p className="text-[14px] text-[#666] leading-[1.65] mt-2">
+                        Vi har allerede opplysningene dine{magic.maskedEmail ? <> (<span className="font-semibold text-[#0a0a0a]">{magic.maskedEmail}</span>)</> : null}. Ett klikk under, så er kampanjeprisen din — <strong className="text-[#0a0a0a]">ingen skjema</strong>.
+                      </p>
+
+                      <div className="mt-5 rounded-2xl border border-[#eee7f5] bg-white px-4 py-3.5">
+                        <p className="text-[13px] font-bold" style={{ color: '#a052e0' }}>10 % forvaltningshonorar · 0 kr i oppstart</p>
+                        <p className="text-[11.5px] text-[#999] mt-0.5">Reserveres for deg — gjelder til 10. juli</p>
+                      </div>
+
+                      {magic.status === 'needPhone' ? (
+                        <div className="mt-5">
+                          <label className="text-[12px] font-semibold text-[#555] block mb-1.5">Telefon — så ringer vi deg *</label>
+                          <div className="flex">
+                            <span className="h-[46px] px-3 rounded-l-xl border border-r-0 border-[#e8e2ef] bg-[#f7f4fa] text-[13.5px] text-[#888] flex items-center">+47</span>
+                            <input value={magicPhone} onChange={(e) => setMagicPhone(e.target.value.replace(/[^\d\s]/g, ''))} placeholder="900 00 000" inputMode="tel" data-testid="sommer-magic-phone" autoFocus
+                              className="w-full h-[46px] rounded-r-xl border border-[#e8e2ef] bg-white px-3.5 text-[14.5px] outline-none focus:border-[#c99df0] focus:ring-2 focus:ring-[#f0e4fb]" />
+                          </div>
+                          <p className="text-[11.5px] text-[#aaa] mt-1.5">Vi mangler bare telefonnummeret ditt — resten har vi.</p>
+                        </div>
+                      ) : null}
+
+                      {magic.err ? <p className="text-[13px] text-red-600 mt-4" data-testid="sommer-magic-error">{magic.err}</p> : null}
+
+                      <button type="button" onClick={confirmMagic} disabled={magic.status === 'confirming' || expired} data-testid="sommer-magic-confirm"
+                        className="w-full h-[52px] rounded-full mt-5 text-[15px] font-bold transition-all disabled:opacity-40"
+                        style={{ background: '#0a0a0a', color: '#fff' }}>
+                        {magic.status === 'confirming' ? 'Bekrefter…' : expired ? 'Kampanjen er avsluttet' : 'Ja, sikre kampanjeprisen for meg →'}
+                      </button>
+                      <p className="text-[11.5px] text-[#999] text-center mt-3">Helt uforpliktende — vi tar kontakt for en kort prat først.</p>
+
+                      <div className="flex items-center gap-2.5 mt-5 pt-5 border-t border-[#f0ede8]">
+                        <img src="/sarah-sleeman.jpg" alt="Sarah Sleeman" className="w-[34px] h-[34px] rounded-full object-cover" />
+                        <p className="text-[11.5px] text-[#999] leading-[1.5]">Sarah Sleeman (daglig leder) tar personlig kontakt innen 24 timer.</p>
+                      </div>
+
+                      <button type="button" onClick={() => setMagic((m: any) => ({ ...m, status: 'none' }))} data-testid="sommer-magic-fallback"
+                        className="block w-full text-center text-[12px] text-[#bbb] underline underline-offset-2 mt-4 hover:text-[#666]">
+                        Ikke deg{magic.firstName ? `, ${magic.firstName}` : ''}? Bruk skjemaet i stedet
+                      </button>
+                    </>
+                  )}
+                </div>
+              ) : (
               <form onSubmit={submit} className="rounded-3xl border border-[#eee7f5] bg-[#fdfcfe] p-6 sm:p-7 lg:sticky lg:top-8" style={{ boxShadow: '0 20px 60px -30px rgba(160,82,224,0.18)' }} data-testid="sommer-form">
                 <p className="text-[17px] font-bold tracking-[-0.01em]">Sikre deg kampanjeprisen</p>
                 <p className="text-[13px] text-[#999] mt-1">Tar under ett minutt — helt uforpliktende.</p>
@@ -214,6 +358,7 @@ export default function SommerKampanjePage() {
                   <p className="text-[11.5px] text-[#999] leading-[1.5]">Sarah Sleeman (daglig leder) tar personlig kontakt innen 24 timer.</p>
                 </div>
               </form>
+              )}
             </div>
           </div>
         )}

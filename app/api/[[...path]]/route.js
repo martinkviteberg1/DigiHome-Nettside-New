@@ -42,7 +42,7 @@ import { runOptimization, getOptimizeConfig, setOptimizeConfig, getLastRun, list
 import { sendWeeklyReport, buildReportData, renderReportHtml } from '@/lib/ads-report';
 import { buildMarketingMetrics } from '@/lib/marketing-metrics';
 import { emailConfigured, reportRecipients, sendHtmlEmail } from '@/lib/email';
-import { NEWSLETTER_COLL, OPTOUT_COLL, NL_EVENTS_COLL, renderNewsletterHtml, resolveAudience, audienceCounts, sanitizeBlocks, hasContent, buildUnsubUrl, verifyUnsubToken, slugifyCampaign, normEmail as nlNormEmail, recipientId, TEMPLATES, templateBlocks, THEMES, TRACKING_GIF, applyMergeTags } from '@/lib/newsletter';
+import { NEWSLETTER_COLL, OPTOUT_COLL, NL_EVENTS_COLL, renderNewsletterHtml, resolveAudience, audienceCounts, sanitizeBlocks, hasContent, buildUnsubUrl, verifyUnsubToken, verifyInterestToken, slugifyCampaign, normEmail as nlNormEmail, recipientId, TEMPLATES, templateBlocks, THEMES, TRACKING_GIF, applyMergeTags } from '@/lib/newsletter';
 import { syncPropertiesFromPlatform, maybeAutoSyncProperties, listAdminProperties, listPublicProperties, setPropertyVisibility, getPropertiesSyncMeta } from '@/lib/properties-sync';
 import { buildLeadReceipt, buildLeadAdminNotification } from '@/lib/lead-emails';
 import { fireLeadEmails } from '@/lib/lead-emails';
@@ -4574,6 +4574,92 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
     // Offentlig avmelding — HMAC-verifisert lenke fra e-posten. Ingen auth.
     // GET = klikk fra e-post (redirect til bekreftelsesside).
     // POST = One-Click avmelding (RFC 8058 — Gmail/Yahoo poster hit automatisk).
+    // =====================================================================
+    // ETTKLIKKS-INTERESSE fra nyhetsbrev («magic link»). CTA-lenker bærer
+    // ?e=<base64url-epost>&t=<hmac>. GET /lookup identifiserer mottakeren
+    // (kun visningsdata — aldri full telefon). POST /confirm oppretter lead
+    // via det ordinære /leads-endepunktet (dedupe/klassifisering/videresending
+    // gjenbrukes). Roboter/e-postskannere GET-er lenker men POST-er aldri.
+    // =====================================================================
+    async function findNlContact(dbx, email) {
+      const em = String(email || '').trim().toLowerCase();
+      if (!em) return null;
+      const rx = { $regex: `^${em.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' };
+      try {
+        const lead = await dbx.collection('leads').find({ email: rx }).sort({ createdAt: -1 }).limit(1).toArray();
+        if (lead[0]) return { name: lead[0].name || '', phone: lead[0].phone || '', address: lead[0].address || '' };
+        const sub = await dbx.collection('newsletter_subscribers').findOne({ email: rx });
+        if (sub) return { name: sub.name || '', phone: sub.phone || '', address: '' };
+        const tn = await dbx.collection('tenant_leads').find({ email: rx }).sort({ createdAt: -1 }).limit(1).toArray();
+        if (tn[0]) return { name: tn[0].name || '', phone: tn[0].phone || '', address: '' };
+      } catch (e) { /* best-effort */ }
+      return null;
+    }
+    const decodeMagicEmail = (v) => {
+      try { return Buffer.from(String(v || ''), 'base64url').toString('utf8').trim().toLowerCase(); } catch (e) { return ''; }
+    };
+
+    if (route === '/interesse/lookup' && method === 'GET') {
+      const { searchParams } = new URL(request.url);
+      const email = decodeMagicEmail(searchParams.get('e'));
+      if (!email || !verifyInterestToken(email, searchParams.get('t'))) {
+        return cors(NextResponse.json({ ok: false, error: 'Ugyldig eller utløpt lenke' }, { status: 401 }));
+      }
+      const contact = await findNlContact(db, email);
+      const name = (contact && contact.name) || '';
+      const phone = ((contact && contact.phone) || '').replace(/\s+/g, '');
+      return cors(NextResponse.json({
+        ok: true,
+        firstName: name ? name.split(/\s+/)[0] : '',
+        name,
+        hasPhone: phone.replace(/\D/g, '').length >= 8,
+        maskedPhone: phone ? `··· ${phone.slice(-2)}` : '',
+      }));
+    }
+
+    if (route === '/interesse/confirm' && method === 'POST') {
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      const email = decodeMagicEmail(body.e);
+      if (!email || !verifyInterestToken(email, body.t)) {
+        return cors(NextResponse.json({ ok: false, error: 'Ugyldig eller utløpt lenke' }, { status: 401 }));
+      }
+      const contact = await findNlContact(db, email);
+      const phoneIn = String(body.phone || '').trim();
+      const phone = (phoneIn || (contact && contact.phone) || '').toString().slice(0, 60);
+      if (phone.replace(/\D/g, '').length < 8) {
+        return cors(NextResponse.json({ ok: false, needPhone: true, error: 'Vi mangler telefonnummer — fyll inn så ringer vi deg' }, { status: 400 }));
+      }
+      const name = ((contact && contact.name) || String(body.name || '')).toString().slice(0, 200).trim();
+      const campaign = String(body.campaign || '').slice(0, 80);
+      const leadBody = {
+        name, email, phone,
+        address: (contact && contact.address) || '',
+        lead_type: 'huseier',
+        rental_model: 'langtid',
+        source: 'nyhetsbrev-ettklikk',
+        notes: `Ettklikks-bekreftelse fra nyhetsbrev${campaign ? ` (kampanje: ${campaign})` : ''} — kontaktdata hentet automatisk fra mottakerregisteret.`,
+        nl_campaign: body.nl_campaign || undefined,
+        nl_rid: body.nl_rid || undefined,
+        attribution: body.attribution || undefined,
+      };
+      try {
+        // Gjenbruk hele lead-løypa (dedupe, klassifisering, CRM-videresending)
+        const base = (process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000').replace(/\/$/, '');
+        const r = await fetch(`${base}/api/leads`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', cookie: request.headers.get('cookie') || '' },
+          body: JSON.stringify(leadBody),
+        });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok || j.success === false) {
+          return cors(NextResponse.json({ ok: false, error: 'Kunne ikke registrere — prøv skjemaet' }, { status: 502 }));
+        }
+        return cors(NextResponse.json({ ok: true, firstName: name ? name.split(/\s+/)[0] : '', leadId: j?.data?.id || null }));
+      } catch (e) {
+        return cors(NextResponse.json({ ok: false, error: 'Kunne ikke registrere — prøv skjemaet' }, { status: 502 }));
+      }
+    }
+
     if (route === '/newsletter/unsubscribe' && (method === 'GET' || method === 'POST')) {
       const sp = new URL(request.url).searchParams;
       let email = '';
