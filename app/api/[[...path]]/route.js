@@ -4774,6 +4774,71 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
       return cors(NextResponse.json({ ok: true, deleted: res.deletedCount }));
     }
 
+    // Kandidater til abonnentlisten fra CRM-et: alle leads/leietakere med gyldig
+    // e-post, flagget med om de allerede er abonnent eller har meldt seg av.
+    // Brukes av «Legg til fra leads»-modalen i abonnent-admin.
+    if (route === '/admin/newsletter/subscriber-candidates' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const subRows = await db.collection('newsletter_subscribers').find({}, { projection: { _id: 0, email: 1 } }).limit(50000).toArray();
+      const subSet = new Set(subRows.map((s) => nlNormEmail(s.email)));
+      const optRows = await db.collection(OPTOUT_COLL).find({}, { projection: { _id: 0, email: 1 } }).toArray();
+      const optSet = new Set(optRows.map((o) => nlNormEmail(o.email)));
+      const seen = new Set();
+      const candidates = [];
+      const consider = (r, type) => {
+        const em = nlNormEmail(r.email);
+        if (!em || !/^\S+@\S+\.\S+$/.test(em) || seen.has(em)) return;
+        seen.add(em);
+        candidates.push({
+          email: em,
+          name: String(r.name || '').slice(0, 120),
+          status: r.status || 'new',
+          type, // 'lead' (utleier) | 'tenant' (leietaker)
+          createdAt: r.createdAt || '',
+          alreadySubscriber: subSet.has(em),
+          unsubscribed: optSet.has(em),
+        });
+      };
+      const proj = { projection: { _id: 0, name: 1, email: 1, status: 1, createdAt: 1 } };
+      const owners = await db.collection('leads').find({ email: { $exists: true, $nin: [null, ''] } }, proj).sort({ createdAt: -1 }).limit(5000).toArray();
+      for (const r of owners) consider(r, 'lead');
+      const tenants = await db.collection('tenant_leads').find({ email: { $exists: true, $nin: [null, ''] } }, proj).sort({ createdAt: -1 }).limit(5000).toArray();
+      for (const r of tenants) consider(r, 'tenant');
+      return cors(NextResponse.json({ ok: true, candidates }));
+    }
+
+    // Bulk-import av abonnenter fra CRM-et (valgt i modalen). VIKTIG: avmeldte
+    // (email_optouts) hoppes ALLTID over — bulk-import skal aldri overstyre et
+    // eksplisitt avmeldingsønske (i motsetning til enkelt-tillegg over, som er
+    // en bevisst manuell handling). source='import-leads' for sporbarhet.
+    if (route === '/admin/newsletter/subscribers/import' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      const items = Array.isArray(body.items) ? body.items.slice(0, 2000) : [];
+      if (!items.length) return cors(NextResponse.json({ ok: false, error: 'Ingen mottakere valgt' }, { status: 400 }));
+      const optRows = await db.collection(OPTOUT_COLL).find({}, { projection: { _id: 0, email: 1 } }).toArray();
+      const optSet = new Set(optRows.map((o) => nlNormEmail(o.email)));
+      const now = new Date().toISOString();
+      let added = 0, already = 0, skippedOptout = 0, skippedInvalid = 0;
+      const seenIm = new Set();
+      for (const it of items) {
+        const email = nlNormEmail(typeof it === 'string' ? it : it?.email);
+        if (!/^\S+@\S+\.\S+$/.test(email) || email.length > 254 || seenIm.has(email)) { skippedInvalid++; continue; }
+        seenIm.add(email);
+        if (optSet.has(email)) { skippedOptout++; continue; }
+        const name = String((typeof it === 'object' && it?.name) || '').slice(0, 120);
+        const set = { updatedAt: now };
+        if (name) set.name = name;
+        const res = await db.collection('newsletter_subscribers').updateOne(
+          { email },
+          { $set: set, $setOnInsert: { email, subscribedAt: now, consent: true, source: 'import-leads' } },
+          { upsert: true }
+        );
+        if (res.upsertedCount) added++; else already++;
+      }
+      return cors(NextResponse.json({ ok: true, added, already, skippedOptout, skippedInvalid }, { status: 201 }));
+    }
+
     // Offentlig avmelding — HMAC-verifisert lenke fra e-posten. Ingen auth.
     // GET = klikk fra e-post (redirect til bekreftelsesside).
     // POST = One-Click avmelding (RFC 8058 — Gmail/Yahoo poster hit automatisk).

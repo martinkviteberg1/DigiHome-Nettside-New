@@ -6,7 +6,9 @@
  */
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, Plus, Search, Trash2, Loader2, MailX, BadgeCheck } from 'lucide-react';
+import { ArrowLeft, Plus, Search, Trash2, Loader2, MailX, BadgeCheck, UserPlus, X } from 'lucide-react';
+
+const STATUS_LABEL = { new: 'Ny', contacted: 'Kontaktet', qualified: 'Kvalifisert', viewing: 'Befaring', offer: 'Tilbud', won: 'Kunde', lost: 'Tapt', disqualified: 'Diskv.' };
 
 export default function SubscribersView({ q, onBack }) {
   const [data, setData] = useState(null);
@@ -45,6 +47,73 @@ export default function SubscribersView({ q, onBack }) {
     if (!confirm(`Fjerne ${email} fra abonnentlisten?`)) return;
     await fetch(`/api/admin/newsletter/subscribers?email=${encodeURIComponent(email)}&${q}`, { method: 'DELETE' });
     await load();
+  };
+
+  // ── «Legg til fra leads»-modal ──────────────────────────────────────────
+  const [importOpen, setImportOpen] = useState(false);
+  const [cands, setCands] = useState(null); // null = laster
+  const [sel, setSel] = useState(() => new Set());
+  const [candFilter, setCandFilter] = useState('alle');
+  const [candSearch, setCandSearch] = useState('');
+  const [importBusy, setImportBusy] = useState(false);
+  const [importMsg, setImportMsg] = useState(null);
+
+  const openImport = async () => {
+    setImportOpen(true); setCands(null); setSel(new Set()); setCandFilter('alle'); setCandSearch(''); setImportMsg(null);
+    try {
+      const r = await fetch(`/api/admin/newsletter/subscriber-candidates?${q}`);
+      const j = await r.json();
+      setCands(j.ok ? j.candidates : []);
+    } catch (e) { setCands([]); }
+  };
+
+  const filteredCands = useMemo(() => {
+    let list = cands || [];
+    if (candFilter === 'kunder') list = list.filter((c) => c.type === 'lead' && c.status === 'won');
+    else if (candFilter === 'leads') list = list.filter((c) => c.type === 'lead' && c.status !== 'won');
+    else if (candFilter === 'leietakere') list = list.filter((c) => c.type === 'tenant');
+    const s = candSearch.trim().toLowerCase();
+    if (s) list = list.filter((c) => (c.email + ' ' + (c.name || '')).toLowerCase().includes(s));
+    return list;
+  }, [cands, candFilter, candSearch]);
+
+  const selectable = useMemo(() => filteredCands.filter((c) => !c.alreadySubscriber && !c.unsubscribed), [filteredCands]);
+  const allSelected = selectable.length > 0 && selectable.every((c) => sel.has(c.email));
+
+  const toggleOne = (email) => setSel((prev) => {
+    const n = new Set(prev);
+    if (n.has(email)) n.delete(email); else n.add(email);
+    return n;
+  });
+  const toggleAll = () => setSel((prev) => {
+    const n = new Set(prev);
+    if (allSelected) selectable.forEach((c) => n.delete(c.email));
+    else selectable.forEach((c) => n.add(c.email));
+    return n;
+  });
+
+  const doImport = async () => {
+    const items = (cands || []).filter((c) => sel.has(c.email)).map((c) => ({ email: c.email, name: c.name }));
+    if (!items.length) return;
+    setImportBusy(true); setImportMsg(null);
+    try {
+      const r = await fetch(`/api/admin/newsletter/subscribers/import?${q}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items }),
+      });
+      const j = await r.json();
+      if (!j.ok) throw new Error(j.error || 'Import feilet');
+      setImportMsg(j);
+      setSel(new Set());
+      await load();
+      // Oppdater kandidatlisten så nye abonnenter vises som «Abonnent»
+      try {
+        const r2 = await fetch(`/api/admin/newsletter/subscriber-candidates?${q}`);
+        const j2 = await r2.json();
+        if (j2.ok) setCands(j2.candidates);
+      } catch (e) {}
+    } catch (e) { setImportMsg({ ok: false, error: e.message }); }
+    setImportBusy(false);
   };
 
   const rows = useMemo(() => {
@@ -86,6 +155,10 @@ export default function SubscribersView({ q, onBack }) {
           className="h-[38px] rounded-full bg-[#0a0a0a] text-white text-[12.5px] font-semibold px-5 flex items-center gap-1.5 disabled:opacity-50">
           {busy ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />} Legg til abonnent
         </button>
+        <button onClick={openImport} data-testid="nl-import-open"
+          className="h-[38px] rounded-full bg-white border border-[#e3d7f8] text-[#7b3fb0] text-[12.5px] font-semibold px-4 flex items-center gap-1.5 hover:bg-[#faf7fe]">
+          <UserPlus size={13} /> Legg til fra leads
+        </button>
         {err ? <span className="text-[12px] text-red-500">{err}</span> : null}
         <div className="ml-auto relative">
           <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#bbb]" />
@@ -122,6 +195,93 @@ export default function SubscribersView({ q, onBack }) {
           </div>
         ))}
       </div>
+
+      {/* «Legg til fra leads»-modal */}
+      {importOpen && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40" onClick={() => !importBusy && setImportOpen(false)} />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl p-6 flex flex-col max-h-[85vh]" data-testid="nl-import-modal">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h3 className="text-[17px] font-bold text-[#111]">Legg til abonnenter fra leads</h3>
+                <p className="text-[12.5px] text-[#888] mt-0.5 leading-relaxed">
+                  Velg hvem fra CRM-et som skal inn i abonnentlisten. Avmeldte kan aldri legges til
+                  (avmeldingsønsket respekteres alltid), og eksisterende abonnenter hoppes over.
+                </p>
+              </div>
+              <button onClick={() => !importBusy && setImportOpen(false)} className="text-[#bbb] hover:text-[#111] shrink-0 mt-0.5"><X size={18} /></button>
+            </div>
+
+            {/* Filtre + søk */}
+            <div className="flex flex-wrap items-center gap-2 mt-4">
+              {[['alle', 'Alle'], ['kunder', 'Kunder'], ['leads', 'Utleier-leads'], ['leietakere', 'Leietakere']].map(([k, l]) => (
+                <button key={k} onClick={() => setCandFilter(k)}
+                  className={`h-8 px-3.5 rounded-full text-[12px] font-semibold transition-colors ${candFilter === k ? 'bg-[#0a0a0a] text-white' : 'bg-[#f4f2ef] text-[#666] hover:bg-[#ece9e4]'}`}>
+                  {l}
+                </button>
+              ))}
+              <div className="ml-auto relative">
+                <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#bbb]" />
+                <input value={candSearch} onChange={(e) => setCandSearch(e.target.value)} placeholder="Søk navn/e-post …"
+                  className="h-8 w-[190px] rounded-lg border border-[#e8e8e8] pl-8 pr-3 text-[12.5px] outline-none focus:border-[#c99df0]" />
+              </div>
+            </div>
+
+            {/* Velg alle + teller */}
+            <div className="flex items-center justify-between mt-3 px-1">
+              <label className="flex items-center gap-2 text-[12.5px] font-semibold text-[#555] cursor-pointer select-none">
+                <input type="checkbox" checked={allSelected} onChange={toggleAll} disabled={selectable.length === 0} className="accent-[#8b5cf6]" data-testid="nl-import-select-all" />
+                Velg alle valgbare ({selectable.length})
+              </label>
+              <span className="text-[12px] text-[#aaa]">{sel.size} valgt · {filteredCands.length} treff</span>
+            </div>
+
+            {/* Kandidatliste */}
+            <div className="mt-2 rounded-xl border border-[#eee] divide-y divide-[#f6f6f6] overflow-y-auto flex-1 min-h-[180px]">
+              {cands === null ? (
+                <div className="py-14 text-center text-[#aaa]"><Loader2 size={18} className="animate-spin inline" /> <span className="text-[12.5px] ml-1">Henter leads …</span></div>
+              ) : filteredCands.length === 0 ? (
+                <div className="py-14 text-center text-[12.5px] text-[#aaa]">Ingen treff</div>
+              ) : filteredCands.map((c) => {
+                const disabled = c.alreadySubscriber || c.unsubscribed;
+                return (
+                  <label key={c.email} data-testid={`nl-import-row-${c.email}`}
+                    className={`flex items-center gap-3 px-3.5 py-2.5 ${disabled ? 'opacity-55 cursor-not-allowed bg-[#fafafa]' : 'cursor-pointer hover:bg-[#fcfbfa]'}`}>
+                    <input type="checkbox" disabled={disabled} checked={sel.has(c.email)} onChange={() => toggleOne(c.email)} className="accent-[#8b5cf6] shrink-0" />
+                    <span className="flex-1 min-w-0">
+                      <span className="block text-[13px] font-medium text-[#111] truncate">{c.name || c.email}</span>
+                      {c.name ? <span className="block text-[11.5px] text-[#999] truncate">{c.email}</span> : null}
+                    </span>
+                    <span className={`text-[10.5px] font-semibold rounded-full px-2 py-0.5 shrink-0 ${c.status === 'won' ? 'bg-emerald-50 text-emerald-700' : 'bg-[#f4f0fb] text-[#8b5cf6]'}`}>
+                      {c.type === 'tenant' ? 'Leietaker' : (STATUS_LABEL[c.status] || c.status)}
+                    </span>
+                    {c.alreadySubscriber && <span className="text-[10.5px] font-semibold text-[#999] bg-[#f0f0ef] rounded-full px-2 py-0.5 shrink-0">Abonnent</span>}
+                    {c.unsubscribed && <span className="inline-flex items-center gap-1 text-[10.5px] font-semibold text-red-500 bg-red-50 rounded-full px-2 py-0.5 shrink-0"><MailX size={10} /> Avmeldt</span>}
+                  </label>
+                );
+              })}
+            </div>
+
+            {/* Resultat + handlinger */}
+            <div className="flex items-center justify-between gap-3 mt-4">
+              <span className="text-[12px] min-w-0 truncate" data-testid="nl-import-result">
+                {importMsg ? (importMsg.ok
+                  ? <span className="text-emerald-600 font-semibold">La til {importMsg.added} ny{importMsg.added === 1 ? '' : 'e'}{importMsg.already ? ` · ${importMsg.already} fantes fra før` : ''}{importMsg.skippedOptout ? ` · ${importMsg.skippedOptout} avmeldt (hoppet over)` : ''}</span>
+                  : <span className="text-red-500 font-semibold">{importMsg.error}</span>) : null}
+              </span>
+              <div className="flex items-center gap-2 shrink-0">
+                <button onClick={() => setImportOpen(false)} disabled={importBusy}
+                  className="h-10 px-4 rounded-full text-[13px] font-semibold text-[#666] hover:bg-[#f4f4f2] transition-colors">Lukk</button>
+                <button onClick={doImport} disabled={importBusy || sel.size === 0} data-testid="nl-import-submit"
+                  className="h-10 px-5 rounded-full bg-[#0a0a0a] text-white text-[13px] font-semibold disabled:opacity-40 flex items-center gap-2 active:scale-[0.97] transition-transform">
+                  {importBusy ? <Loader2 size={14} className="animate-spin" /> : <UserPlus size={14} />}
+                  Legg til {sel.size > 0 ? `(${sel.size})` : ''}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
