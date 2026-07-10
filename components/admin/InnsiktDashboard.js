@@ -66,6 +66,12 @@ export default function InnsiktDashboard({ apiKey, tab: propTab, onTabChange, on
   const setTab = onTabChange || setTabState;
   const [actionsOpen, setActionsOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  // CRM-duplikater (speilede tvillinger fra reconcile) — modal m/dryRun-plan
+  const [crmDedupeOpen, setCrmDedupeOpen] = useState(false);
+  const [crmDedupeBusy, setCrmDedupeBusy] = useState(false);
+  const [crmDedupePlan, setCrmDedupePlan] = useState(null);
+  const [crmDedupePurge, setCrmDedupePurge] = useState(false);
+  const [crmDedupeResult, setCrmDedupeResult] = useState(null);
   const [leadSub, setLeadSub] = useState('leads');
   const [days, setDays] = useState(30);
   const [scores, setScores] = useState({});
@@ -159,6 +165,27 @@ export default function InnsiktDashboard({ apiKey, tab: propTab, onTabChange, on
     } catch (e) { setLeadAdsMsg('Rydding feilet'); }
     finally { setDedupBusy(false); setTimeout(() => setLeadAdsMsg(''), 8000); }
   };
+
+  // CRM-dedupe: analyserer/merger speilede tvillinger via /admin/leads/dedupe-crm.
+  // dryRun først (plan vises i modal), apply kun etter eksplisitt bekreftelse.
+  const runCrmDedupe = async (apply, purge) => {
+    setCrmDedupeBusy(true);
+    try {
+      const res = await fetch(`/api/admin/leads/dedupe-crm?key=${encodeURIComponent(apiKey)}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dryRun: !apply, purgeTest: !!purge }),
+      });
+      const j = await res.json();
+      if (apply) { setCrmDedupeResult(j); await load(); } else setCrmDedupePlan(j);
+    } catch (e) {
+      setCrmDedupePlan({ ok: false, error: 'Analysen feilet — prøv igjen' });
+    } finally { setCrmDedupeBusy(false); }
+  };
+  const openCrmDedupe = () => {
+    setCrmDedupeOpen(true); setCrmDedupePlan(null); setCrmDedupeResult(null); setCrmDedupePurge(false);
+    runCrmDedupe(false, false);
+  };
+
 
   const doSetStatus = async (id, status, type) => {
     // Historiske leads (pre_tracking) oppdateres via imported-leads-endepunktet
@@ -456,6 +483,7 @@ export default function InnsiktDashboard({ apiKey, tab: propTab, onTabChange, on
                       {leadSub === 'leads' && <MenuItem icon={Download} label="Google Ads-feed" hint="Offline-konverteringer (gclid)" onClick={() => { setActionsOpen(false); downloadAdsFeed(); }} />}
                       <MenuItem icon={forwarding ? Loader2 : Send} spin={forwarding} label={`Re-send ventende${pendingCount > 0 ? ` (${pendingCount})` : ''}`} hint="Send til CRM på nytt" disabled={pendingCount === 0} onClick={() => { setActionsOpen(false); doForward(); }} />
                       {leadSub === 'tenants' && <MenuItem icon={dedupBusy ? Loader2 : Layers} spin={dedupBusy} label="Rydd duplikater" hint="Slå sammen samme e-post/telefon" onClick={() => { setActionsOpen(false); doDedupTenants(); }} />}
+                      {leadSub === 'leads' && <MenuItem icon={Layers} label="Rydd CRM-duplikater" hint="Slå sammen speilede tvillinger" onClick={() => { setActionsOpen(false); openCrmDedupe(); }} />}
                       <div className="my-1 mx-2 h-px bg-black/[0.06]" />
                       <MenuItem icon={Trash2} danger label={`Slett ventende${tabPending > 0 ? ` (${tabPending})` : ''}`} hint="Kan ikke angres" disabled={tabPending === 0} onClick={() => { setActionsOpen(false); doDelete({ scope: 'pending' }, `Slette ${tabPending} ventende ${leadSub === 'leads' ? 'utleier' : 'leietaker'}-leads? Kan ikke angres.`); }} />
                     </div>
@@ -464,6 +492,70 @@ export default function InnsiktDashboard({ apiKey, tab: propTab, onTabChange, on
               </div>
             </div>
           </div>
+
+          {/* CRM-dedupe-modal: dryRun-plan → eksplisitt bekreftelse → apply */}
+          {crmDedupeOpen && (
+            <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+              <div className="absolute inset-0 bg-black/40" onClick={() => !crmDedupeBusy && setCrmDedupeOpen(false)} />
+              <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6 dh-pop" data-testid="crm-dedupe-modal">
+                <h3 className="text-[17px] font-bold text-[#111]" style={{ fontFamily: 'var(--font-heading)' }}>Rydd CRM-duplikater</h3>
+                <p className="text-[12.5px] text-[#888] mt-1 leading-relaxed">Slår sammen speilede tvillinger fra CRM-synken med den opprinnelige leaden. Originalen beholder kilde og annonse-attribusjon — CRM-statusen (nyest) vinner, og tvillingen slettes. Ekte organiske CRM-leads røres ikke.</p>
+                {crmDedupeResult ? (
+                  <div className="mt-4">
+                    <div className="rounded-xl bg-emerald-50 text-emerald-700 text-[13px] font-semibold px-4 py-3" data-testid="crm-dedupe-result">
+                      Ferdig: {crmDedupeResult.merged || 0} slått sammen{crmDedupeResult.purged ? ` · ${crmDedupeResult.purged} testdata slettet` : ''}{crmDedupeResult.unmatched ? ` · ${crmDedupeResult.unmatched} beholdt` : ''}
+                    </div>
+                    <div className="flex justify-end mt-4">
+                      <button onClick={() => setCrmDedupeOpen(false)} className="h-10 px-5 rounded-full bg-[#0a0a0a] text-white text-[13px] font-semibold">Lukk</button>
+                    </div>
+                  </div>
+                ) : !crmDedupePlan ? (
+                  <div className="flex items-center gap-2 text-[13px] text-[#888] py-8 justify-center"><Loader2 className="w-4 h-4 animate-spin" /> Analyserer speilede leads …</div>
+                ) : crmDedupePlan.ok === false ? (
+                  <p className="text-[13px] text-rose-500 py-6 text-center">{crmDedupePlan.error || 'Analysen feilet'}</p>
+                ) : (
+                  <div className="mt-4">
+                    <div className="flex flex-wrap gap-2 text-[12px] font-semibold">
+                      <span className="px-2.5 py-1 rounded-full bg-[#f3f3f2] text-[#555]">{crmDedupePlan.twinsFound} speilede sjekket</span>
+                      <span className="px-2.5 py-1 rounded-full bg-[#f4f0fb] text-[#8b5cf6]" data-testid="crm-dedupe-merge-count">{crmDedupePlan.merged} slås sammen</span>
+                      <span className="px-2.5 py-1 rounded-full bg-[#f3f3f2] text-[#999]">{crmDedupePlan.unmatched} beholdes</span>
+                      {crmDedupePlan.purged > 0 && <span className="px-2.5 py-1 rounded-full bg-rose-50 text-rose-500">{crmDedupePlan.purged} testdata slettes</span>}
+                    </div>
+                    <div className="mt-3 max-h-56 overflow-y-auto rounded-xl border border-[#eee] divide-y divide-[#f4f4f4]">
+                      {(crmDedupePlan.report || []).map((p, i) => (
+                        <div key={i} className="px-3 py-2 text-[12px] flex items-center gap-1.5 min-w-0">
+                          {p.mergedInto ? (
+                            <>
+                              <span className="text-[#8b5cf6] font-bold shrink-0">→</span>
+                              <span className="truncate text-[#555]">{p.email || p.twin}</span>
+                              <span className="text-[#c4c4c4] shrink-0">inn i</span>
+                              <span className="font-semibold text-[#222] truncate">«{p.origName || p.mergedInto}»</span>
+                              {p.statusApplied && <span className="ml-auto shrink-0 text-[10px] uppercase tracking-wide font-bold text-[#999] bg-[#f5f5f4] rounded-full px-2 py-0.5">{p.statusApplied}</span>}
+                            </>
+                          ) : (
+                            <span className="text-[#b3aea7] truncate">{p.email || p.twin} — {p.action}</span>
+                          )}
+                        </div>
+                      ))}
+                      {(crmDedupePlan.report || []).length === 0 && <div className="px-3 py-6 text-center text-[12.5px] text-[#aaa]">Ingen speilede leads å rydde</div>}
+                    </div>
+                    <label className="flex items-center gap-2 mt-3 text-[12.5px] text-[#666] cursor-pointer select-none">
+                      <input type="checkbox" checked={crmDedupePurge} disabled={crmDedupeBusy} onChange={(e) => { setCrmDedupePurge(e.target.checked); runCrmDedupe(false, e.target.checked); }} className="accent-[#8b5cf6]" />
+                      Slett også åpenbar testdata (@example.com / @example.no)
+                    </label>
+                    <div className="flex items-center justify-end gap-2 mt-4">
+                      <button onClick={() => setCrmDedupeOpen(false)} disabled={crmDedupeBusy} className="h-10 px-4 rounded-full text-[13px] font-semibold text-[#666] hover:bg-[#f4f4f2] transition-colors">Avbryt</button>
+                      <button data-testid="crm-dedupe-apply" disabled={crmDedupeBusy || ((crmDedupePlan.merged || 0) + (crmDedupePlan.purged || 0)) === 0}
+                        onClick={() => { if (window.confirm(`Slå sammen ${crmDedupePlan.merged} duplikat(er)${crmDedupePurge && crmDedupePlan.purged ? ` og slette ${crmDedupePlan.purged} testdata-post(er)` : ''}? Kan ikke angres.`)) runCrmDedupe(true, crmDedupePurge); }}
+                        className="h-10 px-5 rounded-full bg-[#0a0a0a] text-white text-[13px] font-semibold disabled:opacity-40 flex items-center gap-2 active:scale-[0.97] transition-transform">
+                        {crmDedupeBusy && <Loader2 className="w-4 h-4 animate-spin" />} Kjør opprydding{crmDedupePlan.merged ? ` (${crmDedupePlan.merged})` : ''}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Kompakt nøkkeltallstripe — diskret, så pipelinen får plassen */}
           {leadSub === 'leads' && analytics && analytics.leads && analytics.leads.totals && (() => {
