@@ -8,7 +8,7 @@
 // status via kortet (drawer) eller listevisningen.
 
 import React, { useMemo, useRef, useState } from 'react';
-import { Loader2, History, CheckCircle2, AlertCircle, Home, MapPin } from 'lucide-react';
+import { Loader2, History, CheckCircle2, AlertCircle, Home, MapPin, FileSpreadsheet } from 'lucide-react';
 
 const COLUMNS = [
   { k: 'new', l: 'Ny', dot: '#64748b' },
@@ -38,7 +38,7 @@ const initials = (name) => {
   return (parts[0][0] + (parts.length > 1 ? parts[parts.length - 1][0] : '')).toUpperCase();
 };
 
-export default function LeadsPipeline({ rows, type, loading, busyId, onOpen, onSetStatus }) {
+export default function LeadsPipeline({ rows, type, loading, busyId, onOpen, onSetStatus, onExport, exporting, filtered }) {
   const [dragId, setDragId] = useState('');
   const [overCol, setOverCol] = useState('');
   // Klikk-vakt: ikke åpne drawer rett etter et drag
@@ -84,8 +84,31 @@ export default function LeadsPipeline({ rows, type, loading, busyId, onOpen, onS
     );
   }
 
+  const total = (rows || []).length;
+
   return (
-    <div className="flex gap-3 overflow-x-auto pb-3 items-start" data-testid="leads-pipeline">
+    <div data-testid="leads-pipeline">
+      {/* Verktøylinje for tavlen — eksport av det som faktisk vises (filtre respekteres) */}
+      <div className="flex items-center justify-between mb-2.5 px-0.5">
+        <span className="text-[11.5px] text-[#b3aea7] font-medium">
+          {total} {type === 'tenant' ? 'leietaker' : 'utleier'}-lead{total === 1 ? '' : 's'}
+          {filtered ? ' (filtrert)' : ''} · dra kort for å endre status
+        </span>
+        {onExport && (
+          <button
+            data-testid="pipeline-export-btn"
+            onClick={onExport}
+            disabled={exporting || total === 0}
+            title={filtered ? 'Eksporterer kun de filtrerte leadsene på tavlen' : 'Eksporter alle leads på tavlen — åpnes i Excel (æøå støttes)'}
+            className="h-8 pl-3 pr-3.5 rounded-full bg-white border border-[#e8e4de] text-[12px] font-semibold text-[#3a3a3a] flex items-center gap-1.5 hover:border-[#cf97fc] hover:text-[#8b5cf6] disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.97] transition-all shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
+          >
+            {exporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileSpreadsheet className="w-3.5 h-3.5" />}
+            {exporting ? 'Eksporterer …' : `Eksporter til Excel${filtered ? ` (${total})` : ''}`}
+          </button>
+        )}
+      </div>
+
+      <div className="flex gap-3 overflow-x-auto pb-3 items-start">
       {COLUMNS.map((col) => {
         const cards = byStatus[col.k] || [];
         const isOver = overCol === col.k;
@@ -166,6 +189,7 @@ export default function LeadsPipeline({ rows, type, loading, busyId, onOpen, onS
           </div>
         );
       })}
+      </div>
     </div>
   );
 }

@@ -250,6 +250,31 @@ export default function InnsiktDashboard({ apiKey, tab: propTab, onTabChange, on
     setTimeout(() => setExporting(false), 1200);
   };
 
+  // Eksport fra pipeline-visningen: respekterer aktive filtre (søk, status,
+  // kilde, historiske) ved å sende de synlige kortenes ids til backend.
+  const exportPipelineCsv = async () => {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      const type = leadSub === 'tenants' ? 'tenant' : 'lead';
+      const ids = filteredRows.map((r) => r.id).filter(Boolean);
+      const res = await fetch(`/api/admin/leads/export?key=${encodeURIComponent(apiKey)}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type, ids }),
+      });
+      if (!res.ok) throw new Error('Eksport feilet');
+      const blob = await res.blob();
+      const cd = res.headers.get('Content-Disposition') || '';
+      const m = cd.match(/filename="([^"]+)"/);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = m ? m[1] : `digihome-${type === 'tenant' ? 'leietakere' : 'utleiere'}-${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 4000);
+    } catch (e) {} finally { setExporting(false); }
+  };
+
   const doLeadAdsSync = async () => {
     setLeadAdsSyncing(true); setLeadAdsMsg('');
     try {
@@ -580,6 +605,9 @@ export default function InnsiktDashboard({ apiKey, tab: propTab, onTabChange, on
               busyId={statusBusy}
               onOpen={setDrawerLead}
               onSetStatus={doSetStatus}
+              onExport={exportPipelineCsv}
+              exporting={exporting}
+              filtered={filteredRows.length !== rows.length}
             />
           ) : (
           <div className="bg-white rounded-2xl shadow-[0_2px_16px_rgba(0,0,0,0.04)] overflow-hidden">

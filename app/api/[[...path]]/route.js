@@ -6808,12 +6808,24 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
     }
 
     // --- Admin: eksporter leads til CSV (BOM for æøå i Excel) ---
-    if (route === '/admin/leads/export' && method === 'GET') {
+    // GET = alle leads av typen. POST = kun oppgitte ids (pipeline-eksport som
+    // respekterer aktive filtre — frontend sender de synlige kortenes ids).
+    if (route === '/admin/leads/export' && (method === 'GET' || method === 'POST')) {
       if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const { searchParams } = new URL(request.url);
-      const isTenant = searchParams.get('type') === 'tenant';
+      let isTenant = searchParams.get('type') === 'tenant';
+      let ids = null;
+      if (method === 'POST') {
+        let body = {};
+        try { body = await request.json(); } catch (e) { body = {}; }
+        if (body.type) isTenant = body.type === 'tenant';
+        if (Array.isArray(body.ids)) {
+          ids = body.ids.map((x) => String(x)).filter(Boolean).slice(0, 10000);
+        }
+      }
       const coll = isTenant ? 'tenant_leads' : 'leads';
-      const docs = await db.collection(coll).find({}).sort({ createdAt: -1 }).limit(10000).toArray();
+      const query = ids && ids.length > 0 ? { id: { $in: ids } } : {};
+      const docs = await db.collection(coll).find(query).sort({ createdAt: -1 }).limit(10000).toArray();
       const cols = isTenant
         ? ['createdAt', 'name', 'email', 'phone', 'preferred_area', 'budget_min', 'budget_max', 'bedrooms', 'move_in_date', 'status', 'channel', 'source', 'campaign', 'forwarded', 'syncedFromPlatform']
         : ['createdAt', 'name', 'email', 'phone', 'address', 'postal_code', 'property_type', 'sqm', 'bedrooms', 'num_properties', 'matrikkel_number', 'seksjonsnr', 'registry_owner_name', 'status', 'wonValue', 'wonCurrency', 'channel', 'source', 'campaign', 'gclid', 'forwarded', 'syncedFromPlatform'];
