@@ -307,3 +307,38 @@ Google Ads-styring via native REST API).
 - API: /api/admin/finnstudio/{copy,render,genbg,designs,campaigns} — alle testet 33/33 PASS.
 - AdsTrendView («Utvikling» i AdsTab): full filtrering lagt til (søk/kanal/status/kampanje, stabile farger).
 - ÅPENT: «Brukere & tilgang» (invitere markedsføringsteam, roller owner/markedsfører, SendGrid-invitasjon) — diskutert, ikke bygget.
+
+## Økt 10. juli 2026 — RecipientPicker ferdig + selvbetjent løp + toveis slette-synk
+- ✅ RecipientPicker (nyhetsbrev-mottakervelger): forrige økts integrasjon var UFULLSTENDIG
+  (manglet import/state/rendering i NewsletterTab.js — knappen ville krasjet). Fikset +
+  verifisert med skjermbilder (43 mottakere, status-chips, søk, ekskludering, bulk).
+- ✅ SELVBETJENT LØP (beslutning: selvforvaltning = kunde, ikke salgslead):
+  POST /api/leads m/ tier='selvforvaltning' + terms → status='won' + self_service=true +
+  wonAt=createdAt + statusHistory via 'self_service'. Holdes utenfor computeVelocity.
+  Admin-e-post har egen variant («Ny kunde (selvforvaltning): … — opprett konto», lilla
+  eyebrow + infoboks om manuell konto-opprettelse inntil auto-provisjonering).
+  «Selvbetjent»-badge (amber) i LeadsPipeline + LeadDrawer. forwardToDigiHome returnerer
+  nå account (magic link-forberedelse) → lagres som platform_account + returneres i
+  API-respons; BliUtleierPage viser «Gå til kontoen din»-knapp når account.onboarding_url
+  kommer (validerer https). Backend-testet 8/8 (QA-leads slettet).
+- ✅ SPEC SENDT over broen (tråd selfservice-provisioning, id d8365496): plattformen skal
+  auto-provisjonere konto ved tier=selvforvaltning + terms_accepted, returnere synkron
+  magic link i POST /api/leads-responsen, sende velkomst-e-post (re-inngang + e-postverif.)
+  og webhooks (avtale_signert → won-bekreftelse, leie_aktiv → value_update). VENTER SVAR
+  (Q1 synkron mulig? Q2 BankID vs e-postverif.? Q3 bekreft tier-ruting 04.07, Q4 ETA).
+- ✅ TOVEIS SLETTE-SYNK (etter diskusjon om sletting/KPI-er):
+  INN: webhook godtar event:'lead_deleted' (aliaser lead_archived/deleted/slettet) →
+  soft delete m/ tombstone (deletedBy:'platform') i leads/tenant_leads/imported_leads;
+  ukjent ref → 200 skipped, ALDRI speil-opprettelse for slette-events.
+  UT: archive/undo/hard-delete sender archived:true|false via lead_pushback_outbox til
+  PATCH /api/leads/status (nytt felt i queueLeadPushback); respons har crmSync.
+  Backend-testet 11/11 (QA ryddet, baseline 19 verifisert).
+- ✅ PURRING + kontrakt sendt i closed-loop-tråden (id 7a4bfbd6): lead_deleted-mottak LIVE
+  hos oss, archived-utsending LIVE — plattformen må implementere begge + svare på
+  09:49-spørsmålene (soft/hard delete hos dem? event i dag? ukjente felter i updates[]?).
+- KPI-forklaring gitt bruker: arkivert/hard-slettet teller INGENSTEDS (deleted-filter
+  overalt); disqualified teller i CPL/råvolum men UTENFOR vinnrate; Meta/Google beholder
+  alt som allerede er fyrt uansett sletting hos oss.
+- GJENSTÅR/VENTER: (a) plattform-svar på selfservice-provisioning-spec, (b) plattform-svar
+  på slette-synk-kontrakten, (c) Geonorge/Infotorg-adressebytte (BLOKKERT av bruker),
+  (d) prod-publish av alt dette når bruker er klar.
