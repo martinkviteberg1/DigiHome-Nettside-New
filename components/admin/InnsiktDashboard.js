@@ -524,7 +524,7 @@ export default function InnsiktDashboard({ apiKey, tab: propTab, onTabChange, on
               <div className="absolute inset-0 bg-black/40" onClick={() => !crmDedupeBusy && setCrmDedupeOpen(false)} />
               <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6 dh-pop" data-testid="crm-dedupe-modal">
                 <h3 className="text-[17px] font-bold text-[#111]" style={{ fontFamily: 'var(--font-heading)' }}>Rydd CRM-duplikater</h3>
-                <p className="text-[12.5px] text-[#888] mt-1 leading-relaxed">Slår sammen speilede tvillinger fra CRM-synken med den opprinnelige leaden. Originalen beholder kilde og annonse-attribusjon — CRM-statusen (nyest) vinner, og tvillingen slettes. Ekte organiske CRM-leads røres ikke.</p>
+                <p className="text-[12.5px] text-[#888] mt-1 leading-relaxed">Slår sammen speilede tvillinger fra CRM-synken med den opprinnelige leaden — også når originalen ligger blant historiske leads (Historikk-synken). Originalen beholder kilde og annonse-attribusjon — CRM-statusen (nyest) vinner, og tvillingen slettes. Ekte organiske CRM-leads røres ikke.</p>
                 {crmDedupeResult ? (
                   <div className="mt-4">
                     <div className="rounded-xl bg-emerald-50 text-emerald-700 text-[13px] font-semibold px-4 py-3" data-testid="crm-dedupe-result">
@@ -555,6 +555,7 @@ export default function InnsiktDashboard({ apiKey, tab: propTab, onTabChange, on
                               <span className="truncate text-[#555]">{p.email || p.twin}</span>
                               <span className="text-[#c4c4c4] shrink-0">inn i</span>
                               <span className="font-semibold text-[#222] truncate">«{p.origName || p.mergedInto}»</span>
+                              {p.historic && <span className="shrink-0 text-[10px] font-bold text-[#8b5cf6] bg-[#f4f0fb] rounded-full px-2 py-0.5" title="Originalen ligger blant historiske leads (Historikk-synken)">historisk</span>}
                               {p.statusApplied && <span className="ml-auto shrink-0 text-[10px] uppercase tracking-wide font-bold text-[#999] bg-[#f5f5f4] rounded-full px-2 py-0.5">{p.statusApplied}</span>}
                             </>
                           ) : (

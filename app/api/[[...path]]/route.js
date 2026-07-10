@@ -6208,6 +6208,50 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
         cands.sort((a, b) => ((a.mirrored ? 1 : 0) - (b.mirrored ? 1 : 0)) || String(a.createdAt || '').localeCompare(String(b.createdAt || '')));
         const orig = cands[0];
         if (!orig) {
+          // V2 (fix 10. juli): originalen kan ligge blant HISTORISKE leads
+          // (imported_leads fra Historikk-synken) — det var her prod-tvillingene
+          // hørte hjemme. Sterkeste nøkkel: platform_id (= plattformens lead_id).
+          const pidT = twin.platform_id || twin.id;
+          const orImp = [];
+          if (pidT) orImp.push({ platform_id: pidT });
+          if (em) orImp.push({ email: { $regex: `^${escRe(em)}$`, $options: 'i' } });
+          if (digits.length === 8) orImp.push({ phone: { $regex: `${digits.split('').map(escRe).join('\\D*')}\\D*$` } });
+          let imp = null;
+          if (orImp.length) {
+            const impCands = await db.collection('imported_leads').find({ $or: orImp }).limit(5).toArray();
+            impCands.sort((a, b) => ((b.platform_id === pidT ? 1 : 0) - (a.platform_id === pidT ? 1 : 0)));
+            imp = impCands[0] || null;
+          }
+          if (imp) {
+            if (apply) {
+              const setImp = { updated_at: new Date().toISOString() };
+              if (!imp.platform_id && pidT) setImp.platform_id = pidT;
+              // Plattformen er fasit for status: ta tvillingens (nyeste fra CRM).
+              if (twin.status && twin.status !== 'new') setImp.status = twin.status;
+              if (twin.wonAt && !imp.won_at) setImp.won_at = twin.wonAt;
+              if (twin.wonValue != null && imp.won_value == null) setImp.won_value = twin.wonValue;
+              if (twin.disqualifyReason && !imp.disqualify_reason) setImp.disqualify_reason = twin.disqualifyReason;
+              if (twin.lostReason && !imp.lost_reason) setImp.lost_reason = twin.lostReason;
+              for (const f of ['name', 'email', 'phone', 'address', 'postal_code']) {
+                if (twin[f] && !imp[f]) setImp[f] = twin[f];
+              }
+              const updImp = { $set: setImp };
+              // Avvikende manuell status-override ryddes (CRM = fasit); kanal-/
+              // verdi-overrides (attribusjon) beholdes urørt.
+              if (setImp.status && imp.override && imp.override.status && imp.override.status !== setImp.status) updImp.$unset = { 'override.status': '' };
+              await db.collection('imported_leads').updateOne({ id: imp.id }, updImp);
+              await db.collection('leads').deleteOne({ id: twin.id });
+            }
+            merged++;
+            report.push({
+              twin: twin.id, email: em, mergedInto: imp.id, origName: imp.name || '',
+              matchedBy: imp.platform_id === pidT ? 'platform_id' : (em && (imp.email || '').toLowerCase() === em ? 'email' : 'phone'),
+              historic: true,
+              statusApplied: (twin.status && twin.status !== 'new') ? twin.status : null,
+              applied: apply,
+            });
+            continue;
+          }
           // Foreldreløs tvilling: legit organisk CRM-lead (FINN/telefon) — beholdes.
           // Unntak: åpenbar test-data kan slettes med purgeTest=true.
           if (purgeTest && TEST_RX.test(em)) {
@@ -6590,6 +6634,59 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
           break;
         }
       }
+      // HISTORISKE LEADS (fix 10. juli): originalene fra Historikk-synken ligger
+      // i imported_leads — match der FØR vi oppretter speil-tvilling. Dette var
+      // rotårsaken til at full-reconcile skapte duplikater av historiske leads
+      // på prod (webhooken så bare i leads/tenant_leads). Sterkeste nøkkel
+      // først: platform_id (= plattformens lead_id), så e-post/telefon.
+      if (!lead) {
+        const orImp = [];
+        if (externalRef) orImp.push({ platform_id: externalRef });
+        if (platformId) orImp.push({ platform_id: platformId });
+        if (externalRef) orImp.push({ id: externalRef });
+        if (email) orImp.push({ email: { $regex: `^${escRe(email)}$`, $options: 'i' } });
+        if (phoneTolerantRe) orImp.push({ phone: { $regex: phoneTolerantRe } });
+        if (orImp.length) {
+          const impCands = await db.collection('imported_leads').find({ $or: orImp }).limit(5).toArray();
+          if (impCands.length) {
+            const pidWanted = platformId || externalRef;
+            impCands.sort((a, b) =>
+              (((b.platform_id && b.platform_id === pidWanted) || b.id === externalRef ? 1 : 0) -
+               ((a.platform_id && a.platform_id === pidWanted) || a.id === externalRef ? 1 : 0)));
+            const imp = impCands[0];
+            const nowIsoImp = new Date().toISOString();
+            const changedAtImp = body.changed_at ? new Date(body.changed_at).toISOString() : nowIsoImp;
+            if (isActivationOnly) {
+              await db.collection('imported_leads').updateOne({ id: imp.id }, { $set: { activation_stage: evt, updated_at: nowIsoImp, platform_sync_at: nowIsoImp } });
+              return cors(NextResponse.json({ ok: true, id: imp.id, matchedBy: 'imported', historic: true, event: evt }));
+            }
+            const setImp = { status, updated_at: nowIsoImp, platform_sync_at: nowIsoImp };
+            if (!imp.platform_id && pidWanted) setImp.platform_id = pidWanted;
+            if (status === 'won') {
+              if (!imp.won_at) setImp.won_at = changedAtImp;
+              const vImp = Number(body.value);
+              if (isFinite(vImp) && vImp > 0 && imp.won_value == null) setImp.won_value = Math.round(vImp * 100) / 100;
+            }
+            const rznImp = (body.lost_reason || body.lostReason || body.reason || '').toString().toLowerCase().trim();
+            if (status === 'disqualified' && rznImp) setImp.disqualify_reason = rznImp.slice(0, 40);
+            if (status === 'lost' && rznImp) setImp.lost_reason = rznImp.slice(0, 40);
+            // Berik tomme identitetsfelter — overskriver aldri.
+            if (!imp.name && body.name) setImp.name = body.name.toString().slice(0, 120);
+            if (!imp.email && email) setImp.email = email;
+            if (!imp.phone && body.phone) setImp.phone = body.phone.toString().slice(0, 40);
+            if (!imp.address && body.address) setImp.address = body.address.toString().slice(0, 200);
+            if (!imp.postal_code && body.postal_code) setImp.postal_code = body.postal_code.toString().slice(0, 10);
+            // Plattformen er fasit: manuell status-override som avviker ryddes,
+            // slik at effektiv status (override ?? status) speiler CRM-et 1:1.
+            // Kanal-/verdi-overrides (attribusjon) beholdes.
+            const updImp = { $set: setImp };
+            if (imp.override && imp.override.status && imp.override.status !== status) updImp.$unset = { 'override.status': '' };
+            await db.collection('imported_leads').updateOne({ id: imp.id }, updImp);
+            // Historiske leads er pre-tracking → fyrer ALDRI annonse-konverteringer.
+            return cors(NextResponse.json({ ok: true, id: imp.id, matchedBy: 'imported', historic: true, status, mirrored: false }));
+          }
+        }
+      }
       // CRM-SPEILING (bro-avtale): ukjent external_ref = organisk plattform-lead
       // (FINN/telefon/CRM-manuell). Opprett speil-lead i stedet for 404, slik at
       // admin-lista viser HELE pipelinen. id = plattformens lead_id (idempotent:
@@ -6891,11 +6988,36 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
       const coll = isTenant ? 'tenant_leads' : 'leads';
       const query = ids && ids.length > 0 ? { id: { $in: ids } } : {};
       const docs = await db.collection(coll).find(query).sort({ createdAt: -1 }).limit(10000).toArray();
+      // HISTORISKE leads (imported_leads fra Historikk-synken) vises i samme
+      // pipeline — de skal derfor MED i eksporten (fix 10. juli: eksporten
+      // dekket bare halve tavlen). Mappes til samme kolonner + historisk-flagg.
+      let impDocs = [];
+      try {
+        const impQuery = {
+          ...(ids && ids.length > 0 ? { id: { $in: ids } } : {}),
+          lead_type: isTenant ? 'leietaker' : { $ne: 'leietaker' },
+        };
+        impDocs = await db.collection('imported_leads').find(impQuery).sort({ created_at: -1 }).limit(10000).toArray();
+      } catch (e) { impDocs = []; }
+      const impMapped = impDocs.map((l) => ({
+        createdAt: l.created_at || l.imported_at || '',
+        name: l.name || '', email: l.email || '', phone: l.phone || '',
+        address: l.address || '', postal_code: l.postal_code || '',
+        status: (l.override && l.override.status) || l.status || 'new',
+        wonValue: (l.override && l.override.won_value != null) ? l.override.won_value : (l.won_value != null ? l.won_value : ''),
+        wonCurrency: l.currency || 'NOK',
+        attribution: { channel: (l.override && l.override.channel) || l.channel || 'unknown' },
+        source: (l.override && l.override.channel) || l.channel || 'unknown',
+        forwarded: true,
+        syncedFromPlatform: !!l.platform_id,
+        historisk: true,
+      }));
+      const all = [...docs, ...impMapped].sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
       const cols = isTenant
-        ? ['createdAt', 'name', 'email', 'phone', 'preferred_area', 'budget_min', 'budget_max', 'bedrooms', 'move_in_date', 'status', 'channel', 'source', 'campaign', 'forwarded', 'syncedFromPlatform']
-        : ['createdAt', 'name', 'email', 'phone', 'address', 'postal_code', 'property_type', 'sqm', 'bedrooms', 'num_properties', 'matrikkel_number', 'seksjonsnr', 'registry_owner_name', 'status', 'wonValue', 'wonCurrency', 'channel', 'source', 'campaign', 'gclid', 'forwarded', 'syncedFromPlatform'];
+        ? ['createdAt', 'name', 'email', 'phone', 'preferred_area', 'budget_min', 'budget_max', 'bedrooms', 'move_in_date', 'status', 'channel', 'source', 'campaign', 'forwarded', 'syncedFromPlatform', 'historisk']
+        : ['createdAt', 'name', 'email', 'phone', 'address', 'postal_code', 'property_type', 'sqm', 'bedrooms', 'num_properties', 'matrikkel_number', 'seksjonsnr', 'registry_owner_name', 'status', 'wonValue', 'wonCurrency', 'channel', 'source', 'campaign', 'gclid', 'forwarded', 'syncedFromPlatform', 'historisk'];
       const lines = [cols.join(',')];
-      for (const d of docs) {
+      for (const d of all) {
         const att = d.attribution || {};
         const row = cols.map((c) => {
           let v;
