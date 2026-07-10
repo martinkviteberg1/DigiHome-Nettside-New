@@ -6626,6 +6626,9 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
       const EVT_TO_STATUS = { avtale_signert: 'won', tilbud_akseptert: 'won', tilbud_avslatt: 'lost' };
       const ACTIVATION_EVENTS = ['eiendom_onboardet', 'leie_aktiv'];
       const isActivationOnly = ACTIVATION_EVENTS.includes(evt) && !body.status;
+      // SLETTE-SYNK (10/7): lead_deleted fra plattformen → vi soft-sletter vårt
+      // speil (deleted:true, spor beholdes, ut av pipeline/KPI-er). Idempotent.
+      const isDeleteEvent = ['lead_deleted', 'lead_archived', 'deleted', 'slettet'].includes(evt) && !body.status;
       const raw = (body.status || EVT_TO_STATUS[evt] || '').toString().toLowerCase().trim();
       // Mid-trakt-granularitet (bro-avtale 9. juli): viewing (befaring) og
       // proposal (tilbud sendt) er nå FULLVERDIGE statuser hos oss — mappes til
@@ -6641,7 +6644,7 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
         disqualified: 'disqualified', not_relevant: 'disqualified', irrelevant: 'disqualified', ikke_relevant: 'disqualified', diskvalifisert: 'disqualified',
       };
       const status = VALID.includes(raw) ? raw : (map[raw] || '');
-      if (!status && !isActivationOnly) return cors(NextResponse.json({ ok: false, error: 'Ugyldig status', got: raw || evt }, { status: 400 }));
+      if (!status && !isActivationOnly && !isDeleteEvent) return cors(NextResponse.json({ ok: false, error: 'Ugyldig status', got: raw || evt }, { status: 400 }));
 
       const externalRef = (body.external_ref || body.externalRef || '').toString();
       const platformId = (body.platform_id || body.platformId || '').toString();
@@ -6711,6 +6714,15 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
               await db.collection('imported_leads').updateOne({ id: imp.id }, { $set: { activation_stage: evt, updated_at: nowIsoImp, platform_sync_at: nowIsoImp } });
               return cors(NextResponse.json({ ok: true, id: imp.id, matchedBy: 'imported', historic: true, event: evt }));
             }
+            // Slette-synk: plattformen slettet en historisk lead → soft delete her.
+            if (isDeleteEvent) {
+              await db.collection('imported_leads').updateOne({ id: imp.id }, { $set: {
+                deleted: true, deletedAt: body.deleted_at ? new Date(body.deleted_at).toISOString() : nowIsoImp,
+                deleteReason: `crm: ${(body.reason || 'slettet i CRM-et').toString()}`.slice(0, 200),
+                deletedBy: 'platform', platform_sync_at: nowIsoImp,
+              } });
+              return cors(NextResponse.json({ ok: true, id: imp.id, matchedBy: 'imported', historic: true, deleted: true }));
+            }
             const setImp = { status, updated_at: nowIsoImp, platform_sync_at: nowIsoImp };
             if (!imp.platform_id && pidWanted) setImp.platform_id = pidWanted;
             if (status === 'won') {
@@ -6743,7 +6755,7 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
       // admin-lista viser HELE pipelinen. id = plattformens lead_id (idempotent:
       // neste event matcher på external_ref).
       let mirrored = false;
-      if (!lead && externalRef) {
+      if (!lead && externalRef && !isDeleteEvent) {
         const nowIso0 = new Date().toISOString();
         const mirrorLead = {
           id: externalRef,
@@ -6768,7 +6780,12 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
         await db.collection('leads').insertOne(mirrorLead);
         coll = 'leads'; lead = mirrorLead; matchedBy = 'mirrored'; mirrored = true;
       }
-      if (!lead) return cors(NextResponse.json({ ok: false, error: 'Lead ikke funnet' }, { status: 404 }));
+      if (!lead) {
+        // Slette-event for en lead vi ikke har: idempotent OK (ingenting å slette)
+        // — 200 så plattformen ikke retryer. Aldri opprett speil av slettede.
+        if (isDeleteEvent) return cors(NextResponse.json({ ok: true, skipped: 'ikke-funnet (ingenting å slette)' }));
+        return cors(NextResponse.json({ ok: false, error: 'Lead ikke funnet' }, { status: 404 }));
+      }
 
       // Annonse-konverteringsgate (bro-avtale punkt b): Meta/Google fyres KUN for
       // betalte leads. Eldre payloads uten is_paid → vår egen klassifisering
@@ -6778,6 +6795,18 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
       const nowIso = new Date().toISOString();
       const changedAt = body.changed_at ? new Date(body.changed_at).toISOString() : nowIso;
       const tenant = (body.tenant || '').toString().slice(0, 60) || null;
+
+      // Slette-synk: plattformen slettet leaden → soft delete her (spor beholdes,
+      // ut av pipeline/KPI-er). Loop-sikkert: webhook-veien rører aldri utboksen.
+      if (isDeleteEvent) {
+        await db.collection(coll).updateOne({ id: lead.id }, { $set: {
+          deleted: true,
+          deletedAt: body.deleted_at ? new Date(body.deleted_at).toISOString() : changedAt,
+          deleteReason: `crm: ${(body.reason || 'slettet i CRM-et').toString()}`.slice(0, 200),
+          deletedBy: 'platform', platformSyncAt: nowIso,
+        } });
+        return cors(NextResponse.json({ ok: true, id: lead.id, matchedBy, deleted: true }));
+      }
 
       // Aktiverings-milepæl (eiendom_onboardet / leie_aktiv): logg på leaden,
       // ingen statusendring. leie_aktiv → Meta 'Subscribe' (recurring startet).
@@ -7032,16 +7061,31 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
       if (!id) return cors(NextResponse.json({ ok: false, error: 'Mangler id' }, { status: 400 }));
       const doc = await db.collection(collName).findOne({ id });
       if (!doc) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
+      // TOVEIS SLETTE-SYNK (10/7): meld arkivering/gjenoppretting til CRM-et via
+      // den robuste utboksen (retry ved nedetid) — ellers blir leaden liggende
+      // som aktiv der (drift). Kontrakt spesifisert i closed-loop-tråden.
+      const syncArchiveToCrm = async (archived) => {
+        try {
+          const pid = doc.platform_id || (doc.mirrored ? doc.id : null);
+          if (!pid) return { ok: false, skipped: 'ingen platform_id — leaden finnes ikke i CRM-et' };
+          await queueLeadPushback(db, { platform_id: pid, archived, origin: 'lead-archive' });
+          const target = digiHomeTarget();
+          if (!target.url) return { ok: false, skipped: 'plattform-URL ikke konfigurert' };
+          return await flushLeadPushbacks(db, { target: target.url, key: target.key });
+        } catch (e) { return { ok: false, error: e.message }; }
+      };
       if (body.undo === true) {
         await db.collection(collName).updateOne({ id }, { $unset: { deleted: '', deletedAt: '', deleteReason: '' } });
-        return cors(NextResponse.json({ ok: true, id, deleted: false }));
+        const crmSync = await syncArchiveToCrm(false);
+        return cors(NextResponse.json({ ok: true, id, deleted: false, crmSync }));
       }
       await db.collection(collName).updateOne({ id }, { $set: {
         deleted: true,
         deletedAt: new Date().toISOString(),
         deleteReason: (body.reason || '').toString().slice(0, 200) || null,
       } });
-      return cors(NextResponse.json({ ok: true, id, deleted: true }));
+      const crmSync = await syncArchiveToCrm(true);
+      return cors(NextResponse.json({ ok: true, id, deleted: true, crmSync }));
     }
 
     // --- Admin: slett lead PERMANENT (kun testdata/GDPR — krever confirm:'SLETT') ---
@@ -7052,9 +7096,22 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
       const collName = body.type === 'tenant' ? 'tenant_leads' : (body.type === 'imported' ? 'imported_leads' : 'leads');
       if (!id) return cors(NextResponse.json({ ok: false, error: 'Mangler id' }, { status: 400 }));
       if (body.confirm !== 'SLETT') return cors(NextResponse.json({ ok: false, error: "Bekreft med confirm:'SLETT'" }, { status: 400 }));
+      const docDel = await db.collection(collName).findOne({ id });
+      if (!docDel) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
+      // Toveis slette-synk: meld også permanent sletting til CRM-et (de soft-
+      // sletter sin — GDPR-fysisk sletting hos dem er deres egen prosess).
+      let crmSync = null;
+      try {
+        const pid = docDel.platform_id || (docDel.mirrored ? docDel.id : null);
+        if (pid) {
+          await queueLeadPushback(db, { platform_id: pid, archived: true, origin: 'lead-delete' });
+          const target = digiHomeTarget();
+          if (target.url) crmSync = await flushLeadPushbacks(db, { target: target.url, key: target.key });
+        } else crmSync = { ok: false, skipped: 'ingen platform_id' };
+      } catch (e) { crmSync = { ok: false, error: e.message }; }
       const res = await db.collection(collName).deleteOne({ id });
       if (!res.deletedCount) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
-      return cors(NextResponse.json({ ok: true, id, purged: true }));
+      return cors(NextResponse.json({ ok: true, id, purged: true, crmSync }));
     }
 
     // --- Admin: re-send lead til CRM-plattformen (Tone Krogh-tilfellet: levert
