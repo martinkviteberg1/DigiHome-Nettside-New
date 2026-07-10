@@ -173,6 +173,7 @@ export default function LeadsPipeline({ rows, type, loading, busyId, onOpen, onS
                     <div className="flex items-center gap-1.5 mt-2.5 flex-wrap">
                       {won && <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 rounded-full px-1.5 py-0.5">{fmtKr(Number(r.wonValue || r.won_value))}/mnd</span>}
                       {chan && <span className="text-[10px] font-semibold text-[#8b5cf6] bg-[#f4f0fb] rounded-full px-1.5 py-0.5 truncate max-w-[110px]">{chan}</span>}
+                      {r.self_service && <span className="text-[10px] font-bold text-amber-700 bg-amber-50 rounded-full px-1.5 py-0.5" title="Selvforvaltning — avtale akseptert digitalt i skjemaet, hoppet rett til Kunde">Selvbetjent</span>}
                       {isImp && <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-[#8b5cf6]" title="Historisk lead — endringer synkes til CRM-et"><History className="w-3 h-3" /> Historisk</span>}
                       {reEng && <span className="text-[10px] font-bold text-orange-700 bg-orange-50 rounded-full px-1.5 py-0.5" title="Bekreftet interesse på nytt">Interesse igjen{r.re_engaged.length > 1 ? ` ×${r.re_engaged.length}` : ''}</span>}
                       <span className="ml-auto inline-flex items-center gap-1 text-[10.5px] text-[#b3aea7]" title={r.statusUpdatedAt ? 'Tid i dette steget' : 'Tid siden mottatt'}>

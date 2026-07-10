@@ -360,7 +360,11 @@ async function forwardToDigiHome(path, payload) {
     let data = {};
     try { data = await res.json(); } catch (e) { data = {}; }
     if (res.ok && (data.success || data.ok)) {
-      return { ok: true, id: (data.data && data.data.id) || null };
+      // account (valgfritt, selvbetjent løp): plattformen kan returnere
+      // { account: { onboarding_url, account_id, expires_at } } ved synkron
+      // kontoprovisjonering (tier=selvforvaltning) — se bro-spec 10/7.
+      const account = (data.account || (data.data && data.data.account)) || null;
+      return { ok: true, id: (data.data && data.data.id) || null, account };
     }
     return { ok: false, error: `HTTP ${res.status}`, status: res.status };
   } catch (e) {
@@ -1639,6 +1643,17 @@ async function handleRoute(request, { params }) {
       lead.terms_accepted = body.terms && body.terms.version
         ? { version: String(body.terms.version).slice(0, 40), at: new Date().toISOString() }
         : null;
+      // SELVBETJENT LØP (10/7-beslutning): selvforvaltning m/ klikk-akseptert
+      // avtale = signert kunde — det finnes ingen salgsjobb. Lead-posten
+      // beholdes for attribusjon (CAC/ROAS), men hopper rett til 'won' og
+      // flagges self_service → rett i Kunde-kolonnen, utenfor velocity/SLA.
+      // Faktisk verdi kommer senere via value_update (leie_aktiv) fra CRM-et.
+      if (lead.tier === 'selvforvaltning' && lead.terms_accepted) {
+        lead.status = 'won';
+        lead.self_service = true;
+        lead.wonAt = lead.createdAt;
+        lead.statusHistory = [{ status: 'won', at: lead.createdAt, via: 'self_service', note: 'Avtale akseptert digitalt i skjemaet' }];
+      }
 
       // Idempotens: stopp duplikater fra gjentatte klikk / nettverks-retry.
       // Identisk henvendelse (samme e-post/telefon + adresse + type) innen 5 min
@@ -1818,8 +1833,10 @@ async function handleRoute(request, { params }) {
         platform_id: fwd.id || null,
         forward_error: fwd.ok ? null : (fwd.error || 'ukjent'),
         forwarded_at: fwd.ok ? new Date().toISOString() : null,
+        ...(fwd.account ? { platform_account: fwd.account } : {}),
       } });
       lead.forwarded = fwd.ok; lead.platform_id = fwd.id || null;
+      if (fwd.account) lead.platform_account = fwd.account;
       // Selvhelbredende: lyktes denne, er plattformen oppe → catch-up av feilede (throttlet).
       if (fwd.ok) maybeReforward(db);
 
@@ -1858,7 +1875,7 @@ async function handleRoute(request, { params }) {
         }
       } catch (e) { /* e-post er best-effort */ }
 
-      return cors(NextResponse.json({ success: true, ok: true, data: { id: lead.id }, forwarded: fwd.ok, lead: clean(lead) }, { status: 201 }));
+      return cors(NextResponse.json({ success: true, ok: true, data: { id: lead.id }, forwarded: fwd.ok, account: fwd.account || null, lead: clean(lead) }, { status: 201 }));
     }
 
     // --- Tenants (leietaker-skjema) ---

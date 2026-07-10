@@ -149,6 +149,9 @@ export default function LeadDrawer({ apiKey, lead, type, onClose, onStatusChange
               {d.pre_tracking && (
                 <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-[#8b5cf6] bg-[#f4f0fb] rounded-full px-1.5 py-0.5" title="Kom inn før sporingen — teller i helhetsbildet, aldri i live ROAS/CAC"><History className="w-3 h-3" /> Historisk</span>
               )}
+              {d.self_service && (
+                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-50 rounded-full px-1.5 py-0.5" title="Selvforvaltning — avtale akseptert digitalt i skjemaet, hoppet rett til Kunde">Selvbetjent</span>
+              )}
               {d.syncedFromPlatform && (
                 <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600 bg-emerald-50 rounded-full px-1.5 py-0.5"><BadgeCheck className="w-3 h-3" /> Synket{d.platformTenant ? ` · ${d.platformTenant}` : ''}</span>
               )}

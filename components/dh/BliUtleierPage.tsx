@@ -165,6 +165,9 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
   const [errors, setErrors] = useState<any>({});
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  // Selvbetjent løp: settes når plattformen returnerer en engangs onboarding-
+  // lenke (magic link) ved synkron kontoprovisjonering — se bro-spec 10/7.
+  const [accountUrl, setAccountUrl] = useState<string | null>(null);
   const [ctaVariant, setCtaVariant] = useState<string>('A');
   // Klikk-aksept av selvforvaltningsavtalen — «avtalen som et steg i flyten».
   const [termsAccepted, setTermsAccepted] = useState(false);
@@ -467,6 +470,12 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok && (data.success || data.ok)) {
+        // Synkron kontoprovisjonering (selvforvaltning): plattformen kan
+        // returnere account.onboarding_url → vis «Gå til kontoen din»-knapp.
+        const acct = data.account || data?.data?.account;
+        if (acct && typeof acct.onboarding_url === 'string' && /^https:\/\//.test(acct.onboarding_url)) {
+          setAccountUrl(acct.onboarding_url);
+        }
         setSubmitted(true);
         track('lead_submit', { form: 'utleier', leadType: 'huseier', properties: units.length, tier: formData.tier || 'ukjent' });
         try { trackLead({ formId: 'utleier', source: 'bli-utleier', leadId: data?.data?.id, email: formData.email, phone: '+47 ' + formData.phone }); } catch (e) {}
@@ -483,14 +492,18 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
 
   // Tier-tilpasset suksess-innhold (selvforvaltning = konto-oppsett, full = tilbud).
   const successSub = formData.tier === 'selvforvaltning'
-    ? 'Avtalen din om selvforvaltning er registrert. Vi setter opp kontoen din og sender deg tilgang på e-post.'
+    ? (accountUrl
+        ? 'Avtalen din er registrert og kontoen din er klar — du kan gå rett inn og legge inn boligen din.'
+        : 'Avtalen din om selvforvaltning er registrert. Vi setter opp kontoen din og sender deg tilgang på e-post.')
     : formData.tier === 'full_forvaltning'
       ? 'Vi har mottatt henvendelsen din. En lokal rådgiver kontakter deg med et skreddersydd, uforpliktende tilbud.'
       : 'Vi har mottatt henvendelsen din. En rådgiver tar kontakt for en personlig, uforpliktende gjennomgang.';
   const successSteps = formData.tier === 'selvforvaltning'
     ? [
         { t: 'Avtale registrert', s: '5 % per utleieforhold — ingen faste kostnader', done: true },
-        { t: 'Vi setter opp kontoen din', s: 'Du får e-post med tilgang til plattformen' },
+        accountUrl
+          ? { t: 'Kontoen din er klar', s: 'Gå rett inn — du får også en lenke på e-post', done: true }
+          : { t: 'Vi setter opp kontoen din', s: 'Du får e-post med tilgang til plattformen' },
         { t: 'Publiser boligen og lei ut', s: 'Annonsering, kontrakter og betaling — alt digitalt' },
       ]
     : formData.tier === 'full_forvaltning'
@@ -543,10 +556,22 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
             </div>
           ) : null}
 
-          <Button onClick={() => window.location.href = '/'} data-testid="owner-success-home-button"
-            className="rounded-full bg-[#0a0a0a] text-white hover:bg-black h-12 px-8 text-[14px] font-semibold gap-2 active:scale-[0.97] transition-transform mt-7">
-            Tilbake til forsiden <ArrowRight className="w-4 h-4" />
-          </Button>
+          {accountUrl ? (
+            <>
+              <Button onClick={() => { window.location.href = accountUrl; }} data-testid="owner-success-account-button"
+                className="rounded-full bg-[#0a0a0a] text-white hover:bg-black h-12 px-8 text-[14px] font-semibold gap-2 active:scale-[0.97] transition-transform mt-7">
+                Gå til kontoen din <ArrowRight className="w-4 h-4" />
+              </Button>
+              <p className="mt-3">
+                <a href="/" data-testid="owner-success-home-link" className="text-[13px] text-[#999] underline underline-offset-2 hover:text-[#555]">Tilbake til forsiden</a>
+              </p>
+            </>
+          ) : (
+            <Button onClick={() => window.location.href = '/'} data-testid="owner-success-home-button"
+              className="rounded-full bg-[#0a0a0a] text-white hover:bg-black h-12 px-8 text-[14px] font-semibold gap-2 active:scale-[0.97] transition-transform mt-7">
+              Tilbake til forsiden <ArrowRight className="w-4 h-4" />
+            </Button>
+          )}
         </motion.div>
       </div>
     );
