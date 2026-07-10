@@ -6109,62 +6109,83 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
 
     // --- Admin: oppdater lead-status (pipeline) ---
     // ── DEDUPE-OPPRYDDING (bro-avtale 9. juli, tråd leads-dedupe) ────────────
-    // Full-reconcile fra plattformen skapte bare speil-tvillinger (kun e-post/
-    // telefon, uten navn) for historiske CRM-leads der external_ref var ukjent
-    // og telefon-/e-postformatet avvek. Dette endepunktet MERGER tvillingene inn
-    // i den rike eksisterende leaden (behold navn/adresse + plattformens status
-    // og id) og sletter den bare posten. dryRun=true (standard) viser kun planen.
+    // Full-reconcile fra plattformen skapte speil-tvillinger for historiske
+    // CRM-leads (external_ref ukjent + formatavvik i telefon/e-post). Senere
+    // reconciles BERIKET tvillingene med navn — så kriteriet er ikke «uten navn»,
+    // men: speilet lead som deler e-post/telefon med en ELDRE eksisterende lead.
+    // Merge: behold originalen (kilde/attribusjon), ta plattformens status +
+    // platform_id fra tvillingen (CRM = source of truth), slett tvillingen.
+    // dryRun=true (standard) viser kun planen. purgeTest=true sletter foreldre-
+    // løse tvillinger med åpenbare test-e-poster (example.com/test-mønstre).
     if (route === '/admin/leads/dedupe-crm' && method === 'POST') {
       if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       let body = {};
       try { body = await request.json(); } catch (e) { body = {}; }
       const apply = body.dryRun === false;
+      const purgeTest = body.purgeTest === true;
       const escRe = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      // Tvilling-kandidater: speilet fra plattformen, uten navn (bare poster).
-      const twins = await db.collection('leads')
-        .find({ mirrored: true, $or: [{ name: '' }, { name: null }, { name: { $exists: false } }] })
-        .limit(500).toArray();
+      // KUN utvetydige testdomener — aldri mønstre som kan treffe ekte personer.
+      const TEST_RX = /@example\.(com|no)$/i;
+      // Kandidater: alle speilede leads (uansett navn — kan være beriket i ettertid).
+      const twins = await db.collection('leads').find({ mirrored: true }).limit(1000).toArray();
       const report = [];
-      let merged = 0, unmatched = 0;
+      let merged = 0, unmatched = 0, purged = 0;
       for (const twin of twins) {
         const or = [];
         const em = (twin.email || '').toLowerCase().trim();
         const digits = (twin.phone || '').replace(/\D/g, '').slice(-8);
         if (em) or.push({ email: { $regex: `^${escRe(em)}$`, $options: 'i' } });
         if (digits.length === 8) or.push({ phone: { $regex: `${digits.split('').map(escRe).join('\\D*')}\\D*$` } });
-        if (!or.length) { unmatched++; report.push({ twin: twin.id, email: em, action: 'ingen e-post/telefon å matche på' }); continue; }
-        // Rik kandidat: en ANNEN lead med navn (foretrekk ikke-speilet/eldst).
-        const rich = await db.collection('leads')
-          .find({ id: { $ne: twin.id }, name: { $nin: ['', null] }, $or: or })
-          .sort({ createdAt: 1 }).limit(1).next();
-        if (!rich) { unmatched++; report.push({ twin: twin.id, email: em, action: 'ingen rik lead å merge inn i' }); continue; }
-        const matchedBy = em && (rich.email || '').toLowerCase() === em ? 'email' : 'phone';
+        if (!or.length) { unmatched++; report.push({ twin: twin.id, name: twin.name || '', action: 'ingen e-post/telefon å matche på' }); continue; }
+        // Original: en ANNEN, ELDRE lead med samme identitet — foretrekk ikke-speilet.
+        const cands = (await db.collection('leads').find({ id: { $ne: twin.id }, $or: or }).limit(5).toArray())
+          .filter((l) => String(l.createdAt || '') < String(twin.createdAt || '') || (!l.mirrored && twin.mirrored));
+        cands.sort((a, b) => ((a.mirrored ? 1 : 0) - (b.mirrored ? 1 : 0)) || String(a.createdAt || '').localeCompare(String(b.createdAt || '')));
+        const orig = cands[0];
+        if (!orig) {
+          // Foreldreløs tvilling: legit organisk CRM-lead (FINN/telefon) — beholdes.
+          // Unntak: åpenbar test-data kan slettes med purgeTest=true.
+          if (purgeTest && TEST_RX.test(em)) {
+            if (apply) await db.collection('leads').deleteOne({ id: twin.id });
+            purged++;
+            report.push({ twin: twin.id, email: em, action: 'test-data — slettet' + (apply ? '' : ' (plan)'), applied: apply });
+          } else {
+            unmatched++;
+            report.push({ twin: twin.id, email: em, name: twin.name || '', action: 'foreldreløs — beholdes (legit organisk CRM-lead eller ukjent)' });
+          }
+          continue;
+        }
+        const matchedBy = em && (orig.email || '').toLowerCase() === em ? 'email' : 'phone';
         if (apply) {
           const set = {
+            // Tvillingens platform_id er den plattformen bruker NÅ → overskriv.
             platform_id: twin.platform_id || twin.id,
             syncedFromPlatform: true,
             platformSyncAt: new Date().toISOString(),
           };
-          // Plattformen er source of truth for status: ta tvillingens (nyeste) status.
+          // Plattformen er source of truth for status: ta tvillingens (nyeste).
           if (twin.status && twin.status !== 'new') {
             set.status = twin.status;
             set.statusUpdatedAt = twin.statusUpdatedAt || new Date().toISOString();
           }
-          const hist = [...(rich.statusHistory || []), ...(twin.statusHistory || [])]
+          const hist = [...(orig.statusHistory || []), ...(twin.statusHistory || [])]
             .sort((a, b) => String(a.at || '').localeCompare(String(b.at || ''))).slice(-30);
           if (hist.length) set.statusHistory = hist;
-          for (const f of ['funnelStage', 'lostReason', 'lostAt', 'disqualifyReason', 'disqualifiedAt', 'wonAt', 'wonValue', 'wonValueActual', 'wonValueEstimate', 'wonCurrency', 'platformTenant', 'platformCustomerId', 'activationStage']) {
-            if (twin[f] != null && rich[f] == null) set[f] = twin[f];
+          // Status-relaterte felter fra tvillingen har forrang (nyest fra CRM);
+          // øvrige felter fylles kun der originalen mangler.
+          for (const f of ['lostReason', 'lostAt', 'disqualifyReason', 'disqualifiedAt', 'funnelStage', 'platformTenant', 'platformCustomerId', 'activationStage']) {
+            if (twin[f] != null) set[f] = twin[f];
           }
-          if (!rich.email && twin.email) set.email = twin.email;
-          if (!rich.phone && twin.phone) set.phone = twin.phone;
-          await db.collection('leads').updateOne({ id: rich.id }, { $set: set });
+          for (const f of ['wonAt', 'wonValue', 'wonValueActual', 'wonValueEstimate', 'wonCurrency', 'name', 'email', 'phone', 'address', 'postal_code']) {
+            if (twin[f] != null && twin[f] !== '' && (orig[f] == null || orig[f] === '')) set[f] = twin[f];
+          }
+          await db.collection('leads').updateOne({ id: orig.id }, { $set: set });
           await db.collection('leads').deleteOne({ id: twin.id });
         }
         merged++;
-        report.push({ twin: twin.id, email: em, mergedInto: rich.id, richName: rich.name, matchedBy, statusApplied: twin.status || null, applied: apply });
+        report.push({ twin: twin.id, email: em, mergedInto: orig.id, origName: orig.name || '', matchedBy, statusApplied: (twin.status && twin.status !== 'new') ? twin.status : null, applied: apply });
       }
-      return cors(NextResponse.json({ ok: true, dryRun: !apply, twinsFound: twins.length, merged, unmatched, report }));
+      return cors(NextResponse.json({ ok: true, dryRun: !apply, twinsFound: twins.length, merged, unmatched, purged, report }));
     }
 
     if (route === '/admin/lead-status' && method === 'POST') {
