@@ -15,6 +15,7 @@ import {
 import { PALETTE, defaultsFor, CanvasBlock, BlockInspector, mediaSrc } from './newsletter/EditorBlocks';
 import SubscribersView from './newsletter/SubscribersView';
 import StatsView from './newsletter/StatsView';
+import RecipientPicker from './newsletter/RecipientPicker';
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 const SEG_LABEL = { kunder: 'Kunder', abonnenter: 'Abonnenter', leads: 'Utleier-leads', leietakere: 'Leietakere', manuell: 'Manuelt lagt til' };
@@ -46,6 +47,7 @@ export default function NewsletterTab({ apiKey }) {
   const [sendState, setSendState] = useState('idle');
   const [sendErr, setSendErr] = useState('');
   const [recips, setRecips] = useState(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [recipSearch, setRecipSearch] = useState('');
   const [extraInput, setExtraInput] = useState('');
   const [uploadingId, setUploadingId] = useState(null);
@@ -190,6 +192,11 @@ export default function NewsletterTab({ apiKey }) {
   const toggleExclude = (email) => setCamp((c) => {
     const set = new Set(c.excludedEmails || []);
     set.has(email) ? set.delete(email) : set.add(email);
+    return { ...c, excludedEmails: [...set] };
+  });
+  const bulkExclude = (emails, exclude) => setCamp((c) => {
+    const set = new Set(c.excludedEmails || []);
+    emails.forEach((e) => (exclude ? set.add(e) : set.delete(e)));
     return { ...c, excludedEmails: [...set] };
   });
   const addExtra = () => {
@@ -535,38 +542,18 @@ export default function NewsletterTab({ apiKey }) {
                       </div>
                     ) : null}
 
-                    {/* Mottakerliste med ekskludering */}
+                    {/* Mottakerliste — åpnes i egen velger-modal */}
                     <div className="flex items-center justify-between mt-4 mb-1.5">
                       <p className="text-[11px] font-semibold text-[#777]">Mottakere fra målgrupper</p>
                       <span className="text-[11px] font-bold text-[#a052e0] tabular-nums">{netCount != null ? `${netCount} netto` : ''}</span>
                     </div>
-                    <div className="relative">
-                      <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#bbb]" />
-                      <input value={recipSearch} onChange={(e) => setRecipSearch(e.target.value)} placeholder="Søk…"
-                        className="w-full h-[32px] rounded-lg border border-[#e8e8e8] pl-7 pr-3 text-[12px] outline-none focus:border-[#c99df0]" />
-                    </div>
-                    <div className="max-h-[260px] overflow-y-auto mt-1.5 -mx-1 px-1">
-                      {!recips ? (
-                        <p className="text-[11.5px] text-[#aaa] py-3 text-center"><Loader2 size={13} className="animate-spin inline" /></p>
-                      ) : recips.recipients.length === 0 ? (
-                        <p className="text-[11.5px] text-[#aaa] py-3 text-center">Velg minst én målgruppe over.</p>
-                      ) : recips.recipients
-                        .filter((r) => !recipSearch || (r.email + ' ' + (r.name || '')).toLowerCase().includes(recipSearch.toLowerCase()))
-                        .slice(0, 400)
-                        .map((r) => {
-                          const off = excludedSet.has(r.email);
-                          return (
-                            <button key={r.email} onClick={() => toggleExclude(r.email)}
-                              className={`w-full flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left hover:bg-[#faf8f5] ${off ? 'opacity-45' : ''}`}>
-                              <span className="min-w-0">
-                                <span className={`text-[12px] font-medium block truncate ${off ? 'line-through text-[#999]' : 'text-[#222]'}`}>{r.email}</span>
-                                <span className="text-[10px] text-[#aaa] truncate block">{r.name || '—'} · {SEG_LABEL[r.segment] || r.segment}</span>
-                              </span>
-                              <span className={`text-[10px] font-bold shrink-0 ${off ? 'text-red-400' : 'text-emerald-500'}`}>{off ? 'Ekskludert' : 'Med'}</span>
-                            </button>
-                          );
-                        })}
-                    </div>
+                    <button onClick={() => { setPickerOpen(true); if (!recips) loadRecipients(camp.segments); }} data-testid="nl-open-picker"
+                      className="w-full h-[42px] rounded-xl border border-[#e3d7f8] bg-[#faf7fe] hover:bg-[#f5edfc] text-[12.5px] font-semibold text-[#7b3fb0] flex items-center justify-center gap-2 transition-colors">
+                      <Users size={14} /> Se og velg mottakere{recips ? ` (${recips.recipients.length})` : ''}
+                    </button>
+                    {excludedSet.size > 0 && (
+                      <p className="text-[11px] text-[#b3aea7] mt-1.5 text-center">{excludedSet.size} manuelt ekskludert</p>
+                    )}
                   </div>
                 )}
               </>
@@ -613,6 +600,18 @@ export default function NewsletterTab({ apiKey }) {
             </div>
           </div>
         ) : null}
+
+        {/* Mottaker-velger */}
+        <RecipientPicker
+          open={pickerOpen}
+          onClose={() => setPickerOpen(false)}
+          recips={recips}
+          loading={!recips}
+          excludedSet={excludedSet}
+          onToggle={toggleExclude}
+          onBulk={bulkExclude}
+          netCount={netCount}
+        />
       </div>
     );
   }
