@@ -68,6 +68,7 @@ export function defaultsFor(type) {
       source: 'Kilde: Husleiebarometeret Q2 2026 — Hybel AS / Menon Economics',
       sourceUrl: '',
       imageUrl: '',
+      height: null, fit: 'cover', focalX: 50, focalY: 50,
     };
     case 'signature': return { name: 'Sarah Sleeman', title: 'Daglig leder — DigiHome, Bergen' };
     case 'spacer':   return { size: 'm' };
@@ -367,9 +368,10 @@ export function CanvasBlock({ b, i, total, accent, selected, onSelect, onPatch, 
       case 'button':
         return (
           <div className="text-center py-1">
-            <span className="inline-block rounded-full px-7 py-3" style={{ background: '#0a0a0a' }}>
+            <span className="inline-block max-w-[94%] rounded-full px-7 py-3" style={{ background: '#0a0a0a' }}>
               <input value={b.label || ''} onChange={(e) => onPatch({ label: e.target.value })} onClick={stop}
-                className="bg-transparent text-white text-[14px] font-semibold text-center outline-none w-[180px]" placeholder="Knappetekst…" />
+                className="bg-transparent text-white text-[14px] font-semibold text-center outline-none max-w-full"
+                style={{ width: `${Math.min(36, Math.max(14, (b.label || '').length + 3))}ch` }} placeholder="Knappetekst…" />
             </span>
           </div>
         );
@@ -380,9 +382,10 @@ export function CanvasBlock({ b, i, total, accent, selected, onSelect, onPatch, 
               className="text-[19px] font-bold tracking-[-0.01em] text-[#111] text-center" />
             <AutoArea value={b.text} onChange={(e) => onPatch({ text: e.target.value })} placeholder="Kort tekst (valgfritt)…"
               className="text-[13.5px] leading-[1.6] text-[#555] text-center mt-1" />
-            <span className="inline-block rounded-full px-6 py-2.5 mt-3" style={{ background: '#0a0a0a' }}>
+            <span className="inline-block max-w-[94%] rounded-full px-6 py-2.5 mt-3" style={{ background: '#0a0a0a' }}>
               <input value={b.label || ''} onChange={(e) => onPatch({ label: e.target.value })} onClick={stop}
-                className="bg-transparent text-white text-[13px] font-semibold text-center outline-none w-[170px]" placeholder="Knappetekst…" />
+                className="bg-transparent text-white text-[13px] font-semibold text-center outline-none max-w-full"
+                style={{ width: `${Math.min(38, Math.max(14, (b.label || '').length + 3))}ch` }} placeholder="Knappetekst…" />
             </span>
             {b.footnote !== undefined ? (
               <AutoArea value={b.footnote} onChange={(e) => onPatch({ footnote: e.target.value })} placeholder="Fotnote (valgfritt)…"
@@ -412,9 +415,10 @@ export function CanvasBlock({ b, i, total, accent, selected, onSelect, onPatch, 
             <input value={b.bigLabel || ''} onChange={(e) => onPatch({ bigLabel: e.target.value })} onClick={stop}
               className="bg-transparent w-full text-center text-[14px] text-[#ccc] outline-none mt-1" placeholder="forklarende tekst…" />
             {b.second ? (
-              <div className="inline-block rounded-full border border-white/15 bg-white/10 px-4 py-1.5 mt-3">
+              <div className="inline-block max-w-[94%] rounded-full border border-white/15 bg-white/10 px-4 py-1.5 mt-3">
                 <input value={b.second || ''} onChange={(e) => onPatch({ second: e.target.value })} onClick={stop}
-                  className="bg-transparent text-center text-[12.5px] font-semibold text-white outline-none w-[220px]" placeholder="+ sekundært tilbud…" />
+                  className="bg-transparent text-center text-[12.5px] font-semibold text-white outline-none max-w-full"
+                  style={{ width: `${Math.min(44, Math.max(18, (b.second || '').length + 3))}ch` }} placeholder="+ sekundært tilbud…" />
               </div>
             ) : null}
             {/* Tilbudslinjer — gjennomstreket normalpris → nå-pris */}
@@ -442,9 +446,10 @@ export function CanvasBlock({ b, i, total, accent, selected, onSelect, onPatch, 
             </div>
             <input value={b.deadline || ''} onChange={(e) => onPatch({ deadline: e.target.value })} onClick={stop}
               className="bg-transparent w-full text-center text-[12px] font-bold outline-none mt-4" style={{ color: accent }} placeholder="Frist…" />
-            <span className="inline-block rounded-full px-8 py-3 mt-4" style={{ background: accent }}>
+            <span className="inline-block max-w-[94%] rounded-full px-8 py-3 mt-4" style={{ background: accent }}>
               <input value={b.label || ''} onChange={(e) => onPatch({ label: e.target.value })} onClick={stop}
-                className="bg-transparent text-[#1f1f1f] text-[14px] font-bold text-center outline-none w-[180px]" placeholder="CTA-tekst…" />
+                className="bg-transparent text-[#1f1f1f] text-[14px] font-bold text-center outline-none max-w-full"
+                style={{ width: `${Math.min(36, Math.max(14, (b.label || '').length + 3))}ch` }} placeholder="CTA-tekst…" />
             </span>
             <input value={b.footnote || ''} onChange={(e) => onPatch({ footnote: e.target.value })} onClick={stop}
               className="bg-transparent w-full text-center text-[11px] text-[#8d8d8d] outline-none mt-3" placeholder="Fotnote (valgfritt)…" />
@@ -462,9 +467,11 @@ export function CanvasBlock({ b, i, total, accent, selected, onSelect, onPatch, 
           <div className="rounded-[18px] overflow-hidden" style={{ background: 'var(--nl-soft, #f5edfc)' }}>
             {b.imageUrl ? (
               <div className="relative group/statimg">
-                <img src={b.imageUrl} alt="" className="w-full h-auto block" />
+                <ImageWithSwap src={b.imageUrl} alt="" onUpload={upload} uploading={uploading} rounded="rounded-none"
+                  height={b.height || 240} fit={b.fit} onResize={(h) => onPatch({ height: h })}
+                  focalX={b.focalX} focalY={b.focalY} onFocal={(x, y) => onPatch({ focalX: x, focalY: y })} />
                 <button type="button" onClick={(e) => { stop(e); onPatch({ imageUrl: '' }); }} title="Fjern bilde" data-testid="nl-stat-img-remove"
-                  className="absolute top-2 right-2 rounded-full bg-black/60 hover:bg-black/85 text-white text-[11px] font-semibold px-2.5 py-1 opacity-0 group-hover/statimg:opacity-100 transition-opacity flex items-center gap-1">
+                  className="absolute top-2 right-2 z-20 rounded-full bg-black/60 hover:bg-black/85 text-white text-[11px] font-semibold px-2.5 py-1 opacity-0 group-hover/statimg:opacity-100 transition-opacity flex items-center gap-1">
                   <Trash2 size={11} /> Fjern bilde
                 </button>
               </div>
@@ -573,7 +580,7 @@ export function CanvasBlock({ b, i, total, accent, selected, onSelect, onPatch, 
       onDragOver={(e) => onDragOverBlock(e, i)}
       onDrop={(e) => onDropBlock(e, i)}
       data-testid={`nl-block-${b.type}`}
-      className={`relative group transition-shadow ${fullBleed ? '' : 'px-10'} py-2 ${selected ? 'ring-2 ring-[#c99df0] ring-inset rounded-lg' : 'hover:ring-1 hover:ring-[#eadff5] hover:ring-inset rounded-lg'}`}
+      className={`relative group transition-shadow ${fullBleed ? '' : 'px-10'} ${fullBleed && i === 0 ? 'pt-0 pb-2' : 'py-2'} ${selected ? 'ring-2 ring-[#c99df0] ring-inset rounded-lg' : 'hover:ring-1 hover:ring-[#eadff5] hover:ring-inset rounded-lg'}`}
     >
       {/* verktøylinje — legges INNENFOR blokken på første/hero (unngår klipping av overflow-hidden) */}
       <div className={`absolute ${(fullBleed || i === 0) ? 'top-2' : '-top-3'} right-3 z-10 flex items-center gap-0.5 rounded-full border border-[#eee] bg-white shadow-sm px-1 py-0.5 transition-opacity ${selected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
@@ -712,6 +719,33 @@ function StatImagePanel({ b, onPatch, apiQ, onUploadImage, uploading }) {
       <input value={b.imageUrl || ''} onChange={(e) => onPatch({ imageUrl: e.target.value })} className={inputCls}
         placeholder="https://…/bilde.jpg" data-testid="nl-insp-stat-img-url" />
       <p className="text-[10.5px] text-[#aaa] mt-1.5">Bildet vises øverst i kortet. Last opp eget bilde (beskjæres automatisk til bannerformat i e-posten), hent artikkelens delingsbilde fra kilde-lenken, eller lim inn en bilde-URL.</p>
+      {b.imageUrl ? (<>
+        <label className={labelCls}>Høyde</label>
+        <div className="flex gap-1.5">
+          <input type="number" min={60} max={900} value={b.height || ''} data-testid="nl-insp-stat-height"
+            onChange={(e) => onPatch({ height: e.target.value ? Math.max(60, Math.min(900, Math.round(Number(e.target.value)))) : null })}
+            className={`${inputCls} flex-1`} placeholder="Auto (240 px banner)" />
+          <button onClick={() => onPatch({ height: null })} data-testid="nl-insp-stat-height-auto"
+            className={`h-[36px] px-3 rounded-lg text-[12px] font-semibold ${!b.height ? 'bg-[#0a0a0a] text-white' : 'bg-[#f4f2ef] text-[#777] hover:bg-[#ece9e4]'}`}>Auto</button>
+        </div>
+        <p className="text-[10.5px] text-[#aaa] mt-1.5">Tips: dra i håndtaket nederst på bildet i brevet for å justere høyden visuelt. «Auto» = bannerformat (240 px).</p>
+        <label className={labelCls}>Tilpasning</label>
+        <div className="flex gap-1.5" data-testid="nl-insp-stat-fit">
+          {[['cover', 'Fyll'], ['contain', 'Tilpass'], ['fill', 'Strekk']].map(([k, l]) => (
+            <button key={k} onClick={() => onPatch({ fit: k })}
+              className={`flex-1 h-[32px] rounded-lg text-[12px] font-semibold ${(b.fit || 'cover') === k ? 'bg-[#0a0a0a] text-white' : 'bg-[#f4f2ef] text-[#777]'}`}>{l}</button>
+          ))}
+        </div>
+        <label className={labelCls}>Fokuspunkt</label>
+        <div className="flex items-center gap-2">
+          <span className="text-[12px] text-[#777] tabular-nums flex-1" data-testid="nl-insp-stat-focal">
+            {(b.focalX ?? 50)} % fra venstre · {(b.focalY ?? 50)} % fra toppen
+          </span>
+          <button onClick={() => onPatch({ focalX: 50, focalY: 50 })} data-testid="nl-insp-stat-focal-reset"
+            className="h-[28px] px-3 rounded-lg bg-[#f4f2ef] text-[12px] font-semibold text-[#777] hover:bg-[#ece9e4]">Midtstill</button>
+        </div>
+        <p className="text-[10.5px] text-[#aaa] mt-1.5">Hold musen over bildet i brevet og dra den lilla prikken dit motivet skal være i fokus — styrer hva som beholdes ved beskjæring («Fyll»).</p>
+      </>) : null}
     </>
   );
 }
