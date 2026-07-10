@@ -6,7 +6,7 @@ import { promises as fsp } from 'fs';
 import nodePath from 'path';
 import { getDb, clean } from '@/lib/mongodb';
 import { getObject, putObject, PUBLIC_PREFIX } from '@/lib/objectStorage';
-import { isBot, buildEvent, ensureAnalyticsIndexes, computeAnalytics, computeLeadIntel, computeFunnels, computeLandingPages, buildPaidFunnel } from '@/lib/analytics-server';
+import { isBot, buildEvent, ensureAnalyticsIndexes, computeAnalytics, computeLeadIntel, computeFunnels, computeLandingPages, buildPaidFunnel, computeVelocity, computeMarketingTrends } from '@/lib/analytics-server';
 import { deriveChannel, serializeForLLM, computeWebVitals, detectAnomalies, computeLive, computeAdsEconomics, computeMetaEconomics, combineAdsEconomics, computeAdsLeadsSeries } from '@/lib/analytics-server';
 import { parseGoogleAdsCsv } from '@/lib/adsImport';
 import { sendMetaCapiEvent, metaCapiConfigured } from '@/lib/meta-capi';
@@ -6078,6 +6078,39 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
           mrr,
         }));
       } catch (e) { return cors(NextResponse.json({ ok: false, error: e.message }, { status: 200 })); }
+    }
+
+    // --- Admin: pipeline-hastighet (tid i steg, tid til salg, flaskehalser) ---
+    if (route === '/admin/analytics/velocity' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const { searchParams } = new URL(request.url);
+      const days = Math.min(365, Math.max(7, parseInt(searchParams.get('days') || '90', 10) || 90));
+      const v = await computeVelocity(db, days);
+      return cors(NextResponse.json(v));
+    }
+
+    // --- Admin: utvikling over tid (CPL/CAC/forbruk/ROAS per uke per kanal).
+    // Henter daglige forbruksserier fra annonse-API-ene (cachet, best-effort)
+    // og persisterer dem i daily_metrics → varig historikk. ---
+    if (route === '/admin/analytics/trends' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const { searchParams } = new URL(request.url);
+      const days = Math.min(365, Math.max(14, parseInt(searchParams.get('days') || '84', 10) || 84));
+      const adSeries = {};
+      try {
+        if (composioConfigured()) {
+          const r = await getCachedReport(db, 'last_90d', {});
+          adSeries.google = (r.report && r.report.series) || [];
+        }
+      } catch (e) { /* best-effort */ }
+      try {
+        if (metaAdsConfigured()) {
+          const r = await getCachedMetaReport(db, 'last_90d', {});
+          adSeries.meta = (r.snap && r.snap.series) || [];
+        }
+      } catch (e) { /* best-effort */ }
+      const t = await computeMarketingTrends(db, { days, adSeries });
+      return cors(NextResponse.json(t));
     }
 
     if (route === '/admin/analytics' && method === 'GET') {

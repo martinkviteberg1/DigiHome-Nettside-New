@@ -10,6 +10,7 @@ import {
   Columns3, List, SlidersHorizontal,
 } from 'lucide-react';
 import LeadsPipeline from '@/components/admin/LeadsPipeline';
+import LeadsVelocity from '@/components/admin/LeadsVelocity';
 import LeadDrawer from '@/components/admin/LeadDrawer';
 import OverviewTab from '@/components/admin/OverviewTab';
 import TrafficTab from '@/components/admin/TrafficTab';
@@ -91,7 +92,7 @@ export default function InnsiktDashboard({ apiKey, tab: propTab, onTabChange, on
   // Pipeline (kanban) eller liste — valget huskes per nettleser.
   const [leadView, setLeadView] = useState('pipeline');
   useEffect(() => {
-    try { const v = localStorage.getItem('dh_leads_view'); if (v === 'list' || v === 'pipeline') setLeadView(v); } catch (e) {}
+    try { const v = localStorage.getItem('dh_leads_view'); if (v === 'list' || v === 'pipeline' || v === 'velocity') setLeadView(v); } catch (e) {}
   }, []);
   const changeLeadView = (v) => {
     setLeadView(v);
@@ -422,7 +423,7 @@ export default function InnsiktDashboard({ apiKey, tab: propTab, onTabChange, on
               </div>
               {/* Pipeline / Liste — samme veksler som i CRM-plattformen */}
               <div className="inline-flex items-center bg-white rounded-full p-1 shadow-[0_2px_10px_rgba(0,0,0,0.04)]">
-                {[{ k: 'pipeline', l: 'Pipeline', icon: Columns3 }, { k: 'list', l: 'Liste', icon: List }].map((v) => {
+                {[{ k: 'pipeline', l: 'Pipeline', icon: Columns3 }, { k: 'list', l: 'Liste', icon: List }, { k: 'velocity', l: 'Hastighet', icon: Gauge }].map((v) => {
                   const VI = v.icon;
                   return (
                     <button key={v.k} onClick={() => changeLeadView(v.k)} data-testid={`leads-view-${v.k}`}
@@ -598,7 +599,12 @@ export default function InnsiktDashboard({ apiKey, tab: propTab, onTabChange, on
             );
           })()}
 
-          {leadView === 'pipeline' ? (
+          {leadView === 'velocity' ? (
+            <LeadsVelocity
+              apiKey={apiKey}
+              onOpenLead={(id) => { const r = rows.find((x) => x.id === id); if (r) setDrawerLead(r); }}
+            />
+          ) : leadView === 'pipeline' ? (
             <LeadsPipeline
               rows={filteredRows}
               type={leadSub === 'tenants' ? 'tenant' : 'lead'}

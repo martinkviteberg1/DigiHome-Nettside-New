@@ -10,6 +10,7 @@ import {
   ShieldCheck, BellRing, Gauge, Pencil, Globe,
 } from 'lucide-react';
 import CompetitorCampaign from '@/components/admin/CompetitorCampaign';
+import TrendsSection from '@/components/admin/TrendsSection';
 
 const nf = new Intl.NumberFormat('nb-NO');
 const fmtNum = (n) => (n == null ? '–' : nf.format(Math.round(n)));
@@ -311,6 +312,10 @@ export default function AdsTab({ apiKey }) {
           {Array.isArray(data.series) && data.series.length > 0 && (
             <TrendChart series={data.series} channel={channel} metric={chartMetric} onMetric={setChartMetric} periodLabel={periodLabel} />
           )}
+
+          {/* Kostnadseffektivitet over tid: CPL/CAC/ROAS per uke per kanal
+              (varig historikk via daily_metrics — vokser forbi API-vinduene) */}
+          <TrendsSection apiKey={apiKey} />
 
           {/* Google-seksjon */}
           {channel !== 'meta' && google && (
