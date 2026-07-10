@@ -729,6 +729,7 @@ export default function InnsiktDashboard({ apiKey, tab: propTab, onTabChange, on
           scoreData={scores[drawerLead.id]}
           onScore={doScore}
           scoring={scoringId}
+          onChanged={() => load()}
         />
       )}
     </div>

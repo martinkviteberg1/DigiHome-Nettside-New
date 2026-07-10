@@ -2012,11 +2012,12 @@ async function handleRoute(request, { params }) {
     if (route === '/admin/leads' && method === 'GET') {
       if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       maybeReforward(db); // selvhelbredende catch-up ved admin-last (throttlet)
-      const leads = await db.collection('leads').find({}).sort({ createdAt: -1 }).limit(500).toArray();
-      const tenants = await db.collection('tenant_leads').find({}).sort({ createdAt: -1 }).limit(500).toArray();
+      const leads = await db.collection('leads').find({ deleted: { $ne: true } }).sort({ createdAt: -1 }).limit(500).toArray();
+      const tenants = await db.collection('tenant_leads').find({ deleted: { $ne: true } }).sort({ createdAt: -1 }).limit(500).toArray();
       let importedMapped = [];
       try {
         const imported = await db.collection(IMPORTED_COLL).aggregate([
+          { $match: { deleted: { $ne: true } } },
           { $addFields: {
             eff_channel: { $ifNull: ['$override.channel', '$channel'] },
             eff_status: { $ifNull: ['$override.status', '$status'] },
@@ -4800,9 +4801,9 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
         });
       };
       const proj = { projection: { _id: 0, name: 1, email: 1, status: 1, createdAt: 1 } };
-      const owners = await db.collection('leads').find({ email: { $exists: true, $nin: [null, ''] } }, proj).sort({ createdAt: -1 }).limit(5000).toArray();
+      const owners = await db.collection('leads').find({ email: { $exists: true, $nin: [null, ''] }, deleted: { $ne: true } }, proj).sort({ createdAt: -1 }).limit(5000).toArray();
       for (const r of owners) consider(r, 'lead');
-      const tenants = await db.collection('tenant_leads').find({ email: { $exists: true, $nin: [null, ''] } }, proj).sort({ createdAt: -1 }).limit(5000).toArray();
+      const tenants = await db.collection('tenant_leads').find({ email: { $exists: true, $nin: [null, ''] }, deleted: { $ne: true } }, proj).sort({ createdAt: -1 }).limit(5000).toArray();
       for (const r of tenants) consider(r, 'tenant');
       return cors(NextResponse.json({ ok: true, candidates }));
     }
@@ -6192,7 +6193,7 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
       // KUN utvetydige testdomener — aldri mønstre som kan treffe ekte personer.
       const TEST_RX = /@example\.(com|no)$/i;
       // Kandidater: alle speilede leads (uansett navn — kan være beriket i ettertid).
-      const twins = await db.collection('leads').find({ mirrored: true }).limit(1000).toArray();
+      const twins = await db.collection('leads').find({ mirrored: true, deleted: { $ne: true } }).limit(1000).toArray();
       const report = [];
       let merged = 0, unmatched = 0, purged = 0;
       for (const twin of twins) {
@@ -6970,6 +6971,68 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
     }
 
     // --- Admin: eksporter leads til CSV (BOM for æøå i Excel) ---
+    // --- Admin: arkiver lead (soft delete m/tombstone) + gjenopprett ---
+    // Best practice: raden består med deleted-flagg (spor/attribusjon beholdes),
+    // skjules fra pipeline, eksport, analytics og abonnent-kandidater.
+    if (route === '/admin/leads/archive' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      const id = (body.id || '').toString();
+      const collName = body.type === 'tenant' ? 'tenant_leads' : (body.type === 'imported' ? 'imported_leads' : 'leads');
+      if (!id) return cors(NextResponse.json({ ok: false, error: 'Mangler id' }, { status: 400 }));
+      const doc = await db.collection(collName).findOne({ id });
+      if (!doc) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
+      if (body.undo === true) {
+        await db.collection(collName).updateOne({ id }, { $unset: { deleted: '', deletedAt: '', deleteReason: '' } });
+        return cors(NextResponse.json({ ok: true, id, deleted: false }));
+      }
+      await db.collection(collName).updateOne({ id }, { $set: {
+        deleted: true,
+        deletedAt: new Date().toISOString(),
+        deleteReason: (body.reason || '').toString().slice(0, 200) || null,
+      } });
+      return cors(NextResponse.json({ ok: true, id, deleted: true }));
+    }
+
+    // --- Admin: slett lead PERMANENT (kun testdata/GDPR — krever confirm:'SLETT') ---
+    if (route === '/admin/leads/delete' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      const id = (body.id || '').toString();
+      const collName = body.type === 'tenant' ? 'tenant_leads' : (body.type === 'imported' ? 'imported_leads' : 'leads');
+      if (!id) return cors(NextResponse.json({ ok: false, error: 'Mangler id' }, { status: 400 }));
+      if (body.confirm !== 'SLETT') return cors(NextResponse.json({ ok: false, error: "Bekreft med confirm:'SLETT'" }, { status: 400 }));
+      const res = await db.collection(collName).deleteOne({ id });
+      if (!res.deletedCount) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
+      return cors(NextResponse.json({ ok: true, id, purged: true }));
+    }
+
+    // --- Admin: re-send lead til CRM-plattformen (Tone Krogh-tilfellet: levert
+    // men mistet hos motparten). Nullstiller forward-felter og trigger den
+    // durable re-forward-mekanismen synkront — svarer med faktisk utfall. ---
+    if (route === '/admin/leads/resend' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      const id = (body.id || '').toString();
+      const collName = body.type === 'tenant' ? 'tenant_leads' : 'leads';
+      if (!id) return cors(NextResponse.json({ ok: false, error: 'Mangler id' }, { status: 400 }));
+      const doc = await db.collection(collName).findOne({ id });
+      if (!doc) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
+      if (doc.mirrored === true) return cors(NextResponse.json({ ok: false, error: 'Leaden kommer FRA CRM-et (speil) — re-send gir ikke mening' }, { status: 400 }));
+      await db.collection(collName).updateOne({ id }, { $set: {
+        forwarded: false, next_retry_at: null, forward_attempts: 0,
+        resend_requested_at: new Date().toISOString(),
+      } });
+      try { await reforwardPending(db); } catch (e) { /* utfall leses under */ }
+      const after = await db.collection(collName).findOne({ id }, { projection: { _id: 0, forwarded: 1, platform_id: 1, forward_error: 1, forwarded_at: 1 } });
+      return cors(NextResponse.json({
+        ok: true, id,
+        forwarded: after?.forwarded === true,
+        platform_id: after?.platform_id || null,
+        error: after?.forwarded === true ? null : (after?.forward_error || 'Plattformen svarte ikke — prøves automatisk igjen'),
+      }));
+    }
+
     // GET = alle leads av typen. POST = kun oppgitte ids (pipeline-eksport som
     // respekterer aktive filtre — frontend sender de synlige kortenes ids).
     if (route === '/admin/leads/export' && (method === 'GET' || method === 'POST')) {
@@ -6986,7 +7049,7 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
         }
       }
       const coll = isTenant ? 'tenant_leads' : 'leads';
-      const query = ids && ids.length > 0 ? { id: { $in: ids } } : {};
+      const query = { ...(ids && ids.length > 0 ? { id: { $in: ids } } : {}), deleted: { $ne: true } };
       const docs = await db.collection(coll).find(query).sort({ createdAt: -1 }).limit(10000).toArray();
       // HISTORISKE leads (imported_leads fra Historikk-synken) vises i samme
       // pipeline — de skal derfor MED i eksporten (fix 10. juli: eksporten
@@ -6996,6 +7059,7 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
         const impQuery = {
           ...(ids && ids.length > 0 ? { id: { $in: ids } } : {}),
           lead_type: isTenant ? 'leietaker' : { $ne: 'leietaker' },
+          deleted: { $ne: true },
         };
         impDocs = await db.collection('imported_leads').find(impQuery).sort({ created_at: -1 }).limit(10000).toArray();
       } catch (e) { impDocs = []; }

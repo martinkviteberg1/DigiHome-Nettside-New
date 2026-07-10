@@ -5,6 +5,7 @@ import {
   X, Loader2, Mail, Phone, MapPin, Home, Ruler, BedDouble, Hash, Building2,
   Sparkles, Eye, Search, FileEdit, Send, MousePointerClick, ExternalLink,
   CheckCircle2, Clock, Route, Target, ShieldCheck, Zap, BadgeCheck, History,
+  Archive, Trash2, RefreshCw, Undo2, AlertTriangle,
 } from 'lucide-react';
 
 const STATUS_OPTS = [
@@ -54,10 +55,12 @@ function Field({ icon: Icon, label, value }) {
   );
 }
 
-export default function LeadDrawer({ apiKey, lead, type, onClose, onStatusChange, statusBusy, scoreData, onScore, scoring }) {
+export default function LeadDrawer({ apiKey, lead, type, onClose, onStatusChange, statusBusy, scoreData, onScore, scoring, onChanged }) {
   const [detail, setDetail] = useState(null);
   const [timeline, setTimeline] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [actionBusy, setActionBusy] = useState(null); // 'resend' | 'archive' | 'delete' | 'restore'
+  const [resendResult, setResendResult] = useState(null);
   const isTenant = type === 'tenant';
 
   const load = useCallback(async () => {
@@ -82,6 +85,55 @@ export default function LeadDrawer({ apiKey, lead, type, onClose, onStatusChange
   const att = d.attribution || {};
   const status = d.status || 'new';
   const wonStr = fmtMoney(d.wonValue, d.wonCurrency);
+
+  // Kolleksjonstype for arkiver/slett (historiske ligger i egen samling)
+  const recType = isTenant ? 'tenant' : (d.pre_tracking ? 'imported' : 'lead');
+
+  const doResend = async () => {
+    setActionBusy('resend'); setResendResult(null);
+    try {
+      const r = await fetch(`/api/admin/leads/resend?key=${encodeURIComponent(apiKey)}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: d.id, type: isTenant ? 'tenant' : 'lead' }),
+      });
+      const j = await r.json();
+      setResendResult(j.ok && j.forwarded ? { ok: true } : { ok: false, error: j.error || 'Levering feilet' });
+      if (j.ok) { await load(); onChanged?.(); }
+    } catch (e) { setResendResult({ ok: false, error: e.message }); }
+    setActionBusy(null);
+  };
+
+  const doArchive = async (undo) => {
+    if (!undo && !confirm(`Arkivere ${d.name || d.email || 'denne leaden'}?\n\nLeaden skjules fra pipeline, eksport og statistikk — men sporet beholdes og den kan gjenopprettes.`)) return;
+    setActionBusy(undo ? 'restore' : 'archive');
+    try {
+      const r = await fetch(`/api/admin/leads/archive?key=${encodeURIComponent(apiKey)}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: d.id, type: recType, undo: !!undo }),
+      });
+      const j = await r.json();
+      if (j.ok) {
+        onChanged?.();
+        if (undo) await load(); else onClose();
+      }
+    } catch (e) {}
+    setActionBusy(null);
+  };
+
+  const doHardDelete = async () => {
+    const svar = prompt(`SLETT PERMANENT — kun for testdata/GDPR.\n\n«${d.name || d.email || d.id}» fjernes for alltid, inkludert attribusjon og historikk.\n\nSkriv SLETT for å bekrefte:`);
+    if (svar !== 'SLETT') return;
+    setActionBusy('delete');
+    try {
+      const r = await fetch(`/api/admin/leads/delete?key=${encodeURIComponent(apiKey)}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: d.id, type: recType, confirm: 'SLETT' }),
+      });
+      const j = await r.json();
+      if (j.ok) { onChanged?.(); onClose(); }
+    } catch (e) {}
+    setActionBusy(null);
+  };
 
   return (
     <div className="fixed inset-0 z-[200] flex justify-end">
@@ -230,6 +282,48 @@ export default function LeadDrawer({ apiKey, lead, type, onClose, onStatusChange
             {scoreData && scoreData.error && <p className="text-[12.5px] text-rose-500 mt-2">AI-scoring feilet: {scoreData.error}</p>}
           </div>
           )}
+
+          {/* Handlinger: re-send til CRM, arkiver (soft delete), slett permanent */}
+          <div className="bg-white rounded-2xl p-4 shadow-[0_2px_12px_rgba(0,0,0,0.04)]" data-testid="lead-actions">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#1f1f1f] mb-3">Handlinger</p>
+            {d.deleted ? (
+              <div className="flex items-center justify-between gap-3 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2.5">
+                <span className="text-[12.5px] text-amber-700 font-medium flex items-center gap-1.5"><Archive className="w-3.5 h-3.5" /> Arkivert {d.deletedAt ? fmtTime(d.deletedAt) : ''}</span>
+                <button onClick={() => doArchive(true)} disabled={!!actionBusy} data-testid="lead-restore-btn"
+                  className="h-8 px-3 rounded-full text-[12px] font-semibold text-amber-700 bg-white border border-amber-200 hover:bg-amber-100 disabled:opacity-40 flex items-center gap-1.5">
+                  {actionBusy === 'restore' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Undo2 className="w-3.5 h-3.5" />} Gjenopprett
+                </button>
+              </div>
+            ) : (
+              <div className="flex flex-wrap items-center gap-2">
+                {!d.mirrored && !d.pre_tracking && (
+                  <button onClick={doResend} disabled={!!actionBusy} data-testid="lead-resend-btn"
+                    title="Leverer leaden til CRM-plattformen på nytt (for leads som er mistet der)"
+                    className="h-9 px-3.5 rounded-full text-[12.5px] font-semibold text-[#8b5cf6] bg-[#f4f0fb] hover:bg-[#ece2fb] disabled:opacity-40 flex items-center gap-1.5 transition-colors">
+                    {actionBusy === 'resend' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />} Send til CRM på nytt
+                  </button>
+                )}
+                <button onClick={() => doArchive(false)} disabled={!!actionBusy} data-testid="lead-archive-btn"
+                  title="Skjules fra pipeline/eksport/statistikk — sporet beholdes og kan gjenopprettes"
+                  className="h-9 px-3.5 rounded-full text-[12.5px] font-semibold text-[#666] bg-[#f4f4f2] hover:bg-[#ebebe8] disabled:opacity-40 flex items-center gap-1.5 transition-colors">
+                  {actionBusy === 'archive' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Archive className="w-3.5 h-3.5" />} Arkiver
+                </button>
+                <button onClick={doHardDelete} disabled={!!actionBusy} data-testid="lead-delete-btn"
+                  title="Kun for testdata/GDPR — fjernes for alltid"
+                  className="h-9 px-3.5 rounded-full text-[12.5px] font-semibold text-rose-500 bg-rose-50 hover:bg-rose-100 disabled:opacity-40 flex items-center gap-1.5 transition-colors ml-auto">
+                  {actionBusy === 'delete' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />} Slett permanent
+                </button>
+              </div>
+            )}
+            {resendResult && (
+              <p className={`text-[12px] mt-2.5 flex items-center gap-1.5 font-medium ${resendResult.ok ? 'text-emerald-600' : 'text-rose-500'}`} data-testid="lead-resend-result">
+                {resendResult.ok ? <><CheckCircle2 className="w-3.5 h-3.5" /> Levert til CRM-et ✓</> : <><AlertTriangle className="w-3.5 h-3.5" /> {resendResult.error}</>}
+              </p>
+            )}
+            {!d.deleted && (d.mirrored || d.pre_tracking) && (
+              <p className="text-[11px] text-[#bbb] mt-2.5">Denne leaden {d.mirrored ? 'kommer fra CRM-et (speil)' : 'er historisk (finnes allerede i CRM-et)'} — re-send er derfor ikke aktuelt.</p>
+            )}
+          </div>
 
           <p className="text-[11px] text-[#bbb] text-center pt-1">Mottatt {d.createdAt ? fmtTime(d.createdAt) : '—'}</p>
         </div>
