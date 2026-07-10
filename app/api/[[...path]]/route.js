@@ -4509,7 +4509,20 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
       let recipientDetails = [];
       let medianMinutesToOpen = null;
       let bestHour = null;
+      let leadsGenerated = [];
       if (c.status === 'sent') {
+        // KONVERTERINGER (10/7): leads stemplet med denne kampanjen via
+        // newsletter_source (CTA-param på landingssiden ELLER e-post-match mot
+        // mottakerloggen) — lukker løkken sendt → åpnet → klikket → lead.
+        leadsGenerated = await db.collection('leads')
+          .find({ 'newsletter_source.campaignId': id, deleted: { $ne: true } })
+          .project({ _id: 0, id: 1, name: 1, email: 1, status: 1, createdAt: 1, wonValue: 1, self_service: 1, newsletter_source: 1 })
+          .sort({ createdAt: -1 }).limit(200).toArray();
+        leadsGenerated = leadsGenerated.map((l) => ({
+          id: l.id, name: l.name || '', email: l.email || '', status: l.status || 'new',
+          createdAt: l.createdAt, wonValue: l.wonValue || null, selfService: l.self_service === true,
+          via: l.newsletter_source?.via || null,
+        }));
         clicksByUrl = await db.collection(NL_EVENTS_COLL).aggregate([
           { $match: { campaignId: id, type: 'click' } },
           { $group: { _id: '$url', total: { $sum: 1 }, unique: { $addToSet: '$rid' } } },
@@ -4605,6 +4618,9 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
           ctor: opensUnique ? Math.round((clicksUnique / opensUnique) * 1000) / 10 : null,
           medianMinutesToOpen, bestHour,
           clicksByUrl, timeline, hourly, devices, clients, segments, recipientDetails,
+          leadsGenerated,
+          leadsCount: leadsGenerated.length,
+          leadsWon: leadsGenerated.filter((l) => l.status === 'won').length,
         },
       }));
     }

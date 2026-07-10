@@ -9,7 +9,7 @@
 import React, { useMemo, useState } from 'react';
 import {
   ArrowLeft, Copy, Search, MousePointerClick, MailOpen, Send as SendIcon,
-  AlertTriangle, Eye, X, Loader2, UserMinus, Timer, Monitor, Smartphone,
+  AlertTriangle, Eye, X, Loader2, UserMinus, Timer, Monitor, Smartphone, UserPlus,
 } from 'lucide-react';
 
 const fmtDate = (iso) => (iso ? new Date(iso).toLocaleString('nb-NO', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—');
@@ -18,6 +18,16 @@ const fmtMins = (m) => (m == null ? '—' : m < 60 ? `${m} min` : m < 1440 ? `${
 const DEVICE_LABEL = { mobil: 'Mobil', desktop: 'Desktop', nettbrett: 'Nettbrett', proxy: 'Skjult (proxy)', ukjent: 'Ukjent' };
 const CLIENT_LABEL = { gmail: 'Gmail', apple: 'Apple Mail', outlook: 'Outlook', thunderbird: 'Thunderbird', nettleser: 'Nettleser', annet: 'Annet' };
 const SEG_LABEL = { kunder: 'Kunder', abonnenter: 'Abonnenter', leads: 'Utleier-leads', leietakere: 'Leietakere', manuell: 'Manuelt lagt til', ukjent: 'Ukjent' };
+const LEAD_STATUS = {
+  new: { l: 'Ny', cls: 'text-[#555] bg-[#f3f3f3]' },
+  contacted: { l: 'Kontaktet', cls: 'text-sky-700 bg-sky-50' },
+  qualified: { l: 'Kvalifisert', cls: 'text-violet-700 bg-violet-50' },
+  viewing: { l: 'Befaring', cls: 'text-blue-700 bg-blue-50' },
+  offer: { l: 'Tilbud sendt', cls: 'text-indigo-700 bg-indigo-50' },
+  won: { l: 'Vunnet', cls: 'text-emerald-700 bg-emerald-50' },
+  lost: { l: 'Tapt', cls: 'text-red-700 bg-red-50' },
+  disqualified: { l: 'Ikke relevant', cls: 'text-[#888] bg-[#f4f2ef]' },
+};
 
 export default function StatsView({ camp, stats, q, onBack, onDuplicate }) {
   const [search, setSearch] = useState('');
@@ -49,6 +59,7 @@ export default function StatsView({ camp, stats, q, onBack, onDuplicate }) {
     { l: 'Åpningsrate', v: s.openRate != null ? `${s.openRate} %` : '—', sub: `${s.opensUnique ?? 0} unike · ${s.opens ?? 0} totalt`, icon: MailOpen },
     { l: 'Klikkrate', v: s.clickRate != null ? `${s.clickRate} %` : '—', sub: `${s.clicksUnique ?? 0} unike · ${s.clicks ?? 0} totalt`, icon: MousePointerClick },
     { l: 'Klikk av åpnet', v: s.ctor != null ? `${s.ctor} %` : '—', sub: 'CTOR — innholdets treffsikkerhet', icon: MousePointerClick },
+    { l: 'Leads', v: s.leadsCount ?? 0, sub: s.leadsWon ? `${s.leadsWon} vunnet` : 'skjema-innsendinger', icon: UserPlus, hot: (s.leadsCount || 0) > 0 },
     { l: 'Avmeldt', v: s.unsubs ?? 0, sub: s.sent ? `${Math.round(((s.unsubs || 0) / s.sent) * 1000) / 10} % av sendte` : '—', icon: UserMinus, warn: (s.unsubs || 0) > 0 && s.sent && (s.unsubs / s.sent) > 0.02 },
   ];
 
@@ -87,15 +98,15 @@ export default function StatsView({ camp, stats, q, onBack, onDuplicate }) {
       </div>
 
       {/* KPI-er */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mt-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mt-6">
         {KPIS.map((k) => (
-          <div key={k.l} className="rounded-2xl border border-[#f0f0f0] bg-white p-4">
+          <div key={k.l} className={`rounded-2xl border bg-white p-4 ${k.hot ? 'border-[#e3d7f8] bg-[#fdfbff]' : 'border-[#f0f0f0]'}`}>
             <div className="flex items-center justify-between">
               <span className="text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#aaa]">{k.l}</span>
-              {React.createElement(k.icon, { size: 14, className: k.warn ? 'text-amber-500' : 'text-[#c9b3e0]' })}
+              {React.createElement(k.icon, { size: 14, className: k.warn ? 'text-amber-500' : k.hot ? 'text-[#a052e0]' : 'text-[#c9b3e0]' })}
             </div>
             <p className="text-[26px] font-bold tabular-nums tracking-[-0.02em] text-[#111] mt-1.5">{k.v}</p>
-            <p className={`text-[11px] mt-0.5 ${k.warn ? 'text-amber-600 font-medium' : 'text-[#999]'}`}>{k.warn ? <AlertTriangle size={10} className="inline mr-1" /> : null}{k.sub}</p>
+            <p className={`text-[11px] mt-0.5 ${k.warn ? 'text-amber-600 font-medium' : k.hot ? 'text-[#a052e0] font-medium' : 'text-[#999]'}`}>{k.warn ? <AlertTriangle size={10} className="inline mr-1" /> : null}{k.sub}</p>
           </div>
         ))}
       </div>
@@ -184,6 +195,40 @@ export default function StatsView({ camp, stats, q, onBack, onDuplicate }) {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Leads fra dette nyhetsbrevet — lukker løkken sendt → åpnet → klikket → lead */}
+      <div className="rounded-2xl border border-[#f0f0f0] bg-white p-5 mt-3" data-testid="nl-stats-leads">
+        <div className="flex items-baseline justify-between gap-3">
+          <p className="text-[13px] font-bold text-[#111] flex items-center gap-1.5"><UserPlus size={13} className="text-[#a052e0]" /> Leads fra dette nyhetsbrevet</p>
+          {(s.leadsGenerated || []).length > 0 && (
+            <span className="text-[11.5px] font-bold text-[#a052e0] tabular-nums">{s.leadsCount}{s.leadsWon ? ` · ${s.leadsWon} vunnet` : ''}</span>
+          )}
+        </div>
+        {(s.leadsGenerated || []).length === 0 ? (
+          <p className="text-[12.5px] text-[#aaa] mt-3">Ingen skjema-innsendinger sporet til denne kampanjen ennå. Leads fanges både via kampanje-lenkene og ved at mottakerens e-post gjenkjennes i skjemaet senere.</p>
+        ) : (
+          <div className="divide-y divide-[#f7f6f4] mt-2">
+            {s.leadsGenerated.map((l) => {
+              const st = LEAD_STATUS[l.status] || LEAD_STATUS.new;
+              return (
+                <div key={l.id} className="flex items-center gap-3 py-2.5">
+                  <span className="flex-1 min-w-0">
+                    <span className="block text-[13px] font-medium text-[#1c1c1c] truncate">{l.name || l.email || '(uten navn)'}</span>
+                    {l.name && l.email ? <span className="block text-[11px] text-[#aaa] truncate">{l.email}</span> : null}
+                  </span>
+                  <span className="text-[10.5px] text-[#b3aea7] shrink-0 hidden sm:block" title={l.via === 'landing' ? 'Kom via kampanje-lenke i nyhetsbrevet' : 'E-postadressen gjenkjent fra mottakerlisten'}>
+                    {l.via === 'landing' ? 'via lenke' : 'e-post-match'}
+                  </span>
+                  {l.selfService && <span className="text-[10px] font-bold text-amber-700 bg-amber-50 rounded-full px-1.5 py-0.5 shrink-0">Selvbetjent</span>}
+                  {l.wonValue ? <span className="text-[10.5px] font-bold text-emerald-700 bg-emerald-50 rounded-full px-2 py-0.5 shrink-0">{Math.round(l.wonValue).toLocaleString('nb-NO')} kr</span> : null}
+                  <span className={`text-[10.5px] font-semibold rounded-full px-2 py-0.5 shrink-0 ${st.cls}`}>{st.l}</span>
+                  <span className="text-[11px] tabular-nums text-[#999] shrink-0 w-[92px] text-right">{fmtDate(l.createdAt)}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Enheter/klienter + segmenter */}

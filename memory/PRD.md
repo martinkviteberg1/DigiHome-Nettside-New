@@ -342,3 +342,11 @@ Google Ads-styring via native REST API).
 - GJENSTÅR/VENTER: (a) plattform-svar på selfservice-provisioning-spec, (b) plattform-svar
   på slette-synk-kontrakten, (c) Geonorge/Infotorg-adressebytte (BLOKKERT av bruker),
   (d) prod-publish av alt dette når bruker er klar.
+
+## Økt 10. juli 2026 (kveld) — Nyhetsbrev-konvertering synlig i admin
+- ✅ «Leads generert»-løkken lukket visuelt: GET /admin/newsletter/campaign returnerer nå
+  stats.leadsGenerated/leadsCount/leadsWon (match på newsletter_source.campaignId).
+  StatsView: 6. KPI-kort «Leads» + seksjon «Leads fra dette nyhetsbrevet» (navn, via
+  lenke/e-post-match, verdi, status, tid). LeadDrawer: «Nyhetsbrev · <kampanje>»-badge.
+  Verifisert m/ QA-seed + skjermbilder, QA slettet (baseline 19). MERK: collection =
+  'newsletters' (ikke 'newsletter_campaigns').

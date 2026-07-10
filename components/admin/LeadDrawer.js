@@ -152,6 +152,12 @@ export default function LeadDrawer({ apiKey, lead, type, onClose, onStatusChange
               {d.self_service && (
                 <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-50 rounded-full px-1.5 py-0.5" title="Selvforvaltning — avtale akseptert digitalt i skjemaet, hoppet rett til Kunde">Selvbetjent</span>
               )}
+              {d.newsletter_source && (
+                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[#7A3EC8] bg-[#f6f0fe] rounded-full px-1.5 py-0.5 max-w-[200px]"
+                  title={`${d.newsletter_source.via === 'landing' ? 'Kom via kampanje-lenke i nyhetsbrevet' : 'E-postadressen gjenkjent fra nyhetsbrevets mottakerliste'}${d.newsletter_source.at ? ' · ' + new Date(d.newsletter_source.at).toLocaleDateString('nb-NO') : ''}`}>
+                  <span className="truncate">Nyhetsbrev · {d.newsletter_source.campaign || d.newsletter_source.campaignId}</span>
+                </span>
+              )}
               {d.syncedFromPlatform && (
                 <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600 bg-emerald-50 rounded-full px-1.5 py-0.5"><BadgeCheck className="w-3 h-3" /> Synket{d.platformTenant ? ` · ${d.platformTenant}` : ''}</span>
               )}
