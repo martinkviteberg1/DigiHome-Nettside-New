@@ -167,7 +167,7 @@ export default function NewsletterTab({ apiKey }) {
       const j = await r.json();
       if (j.ok && j.url) {
         const b = camp?.blocks.find((x) => x.id === blockId);
-        patchBlock(blockId, b?.type === 'sender' ? { photoUrl: j.url } : { url: j.url });
+        patchBlock(blockId, b?.type === 'sender' ? { photoUrl: j.url } : b?.type === 'stat' ? { imageUrl: j.url } : { url: j.url });
       } else { alert(j.error || 'Opplasting feilet'); }
     } catch (e) { alert('Opplasting feilet'); }
     setUploadingId(null);

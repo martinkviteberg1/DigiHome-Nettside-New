@@ -671,7 +671,7 @@ function PropertyPicker({ b, onPatch, apiQ }) {
 
 /* ------------------------ Inspektør for valgt blokk ----------------------- */
 /* --------- Markedsinnsikt: forhåndsvisningsbilde fra ekstern kilde --------- */
-function StatImagePanel({ b, onPatch, apiQ }) {
+function StatImagePanel({ b, onPatch, apiQ, onUploadImage, uploading }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [okMsg, setOkMsg] = useState('');
@@ -690,7 +690,7 @@ function StatImagePanel({ b, onPatch, apiQ }) {
   };
   return (
     <>
-      <label className={labelCls}>Forhåndsvisningsbilde (valgfritt)</label>
+      <label className={labelCls}>Bilde i kortet (valgfritt)</label>
       {b.imageUrl ? (
         <div className="relative rounded-xl overflow-hidden border border-[#e8e8e8] mb-2">
           <img src={b.imageUrl} alt="" className="w-full h-[110px] object-cover block" />
@@ -698,8 +698,11 @@ function StatImagePanel({ b, onPatch, apiQ }) {
             className="absolute top-1.5 right-1.5 rounded-full bg-black/60 hover:bg-black/85 text-white text-[10.5px] font-semibold px-2 py-0.5">Fjern</button>
         </div>
       ) : null}
+      {/* 1) Last opp eget bilde (lagres hos oss, serverside-beskjæres for e-post) */}
+      <DropImage compact onUpload={(f) => onUploadImage(b.id, f)} uploading={uploading} label={b.imageUrl ? 'Slipp nytt bilde her' : 'Last opp eget bilde'} />
+      {/* 2) …eller hent artikkelens delingsbilde fra kilde-lenken */}
       <button type="button" onClick={fetchPreview} disabled={busy} data-testid="nl-insp-stat-img-fetch"
-        className="w-full h-[36px] rounded-lg bg-[#0a0a0a] text-white text-[12.5px] font-semibold flex items-center justify-center gap-2 disabled:opacity-60">
+        className="w-full h-[36px] mt-2 rounded-lg bg-[#0a0a0a] text-white text-[12.5px] font-semibold flex items-center justify-center gap-2 disabled:opacity-60">
         {busy ? <Loader2 size={13} className="animate-spin" /> : <ImageIcon size={13} />}
         {busy ? 'Henter…' : (b.imageUrl ? 'Hent på nytt fra kilde-lenken' : 'Hent bilde fra kilde-lenken')}
       </button>
@@ -708,7 +711,7 @@ function StatImagePanel({ b, onPatch, apiQ }) {
       <label className={labelCls}>… eller lim inn bilde-URL manuelt</label>
       <input value={b.imageUrl || ''} onChange={(e) => onPatch({ imageUrl: e.target.value })} className={inputCls}
         placeholder="https://…/bilde.jpg" data-testid="nl-insp-stat-img-url" />
-      <p className="text-[10.5px] text-[#aaa] mt-1.5">Bildet vises øverst i kortet. Vi henter artikkelens eget delingsbilde (og:image) — husk at eksterne bilder kan kreve tillatelse fra kilden.</p>
+      <p className="text-[10.5px] text-[#aaa] mt-1.5">Bildet vises øverst i kortet. Last opp eget bilde (beskjæres automatisk til bannerformat i e-posten), hent artikkelens delingsbilde fra kilde-lenken, eller lim inn en bilde-URL.</p>
     </>
   );
 }
@@ -733,7 +736,7 @@ export function BlockInspector({ b, onPatch, onDel, onUploadImage, uploadingId, 
         <p className="text-[10.5px] text-[#aaa] mt-1.5">Klikk spores automatisk og registreres på leaden.</p>
       </>) : null}
 
-      {b.type === 'stat' ? <StatImagePanel b={b} onPatch={onPatch} apiQ={apiQ} /> : null}
+      {b.type === 'stat' ? <StatImagePanel b={b} onPatch={onPatch} apiQ={apiQ} onUploadImage={onUploadImage} uploading={uploading} /> : null}
 
       {(b.type === 'image' || b.type === 'hero') ? (<>
         <label className={labelCls}>Bilde</label>
