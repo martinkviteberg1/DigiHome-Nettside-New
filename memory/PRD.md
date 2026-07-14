@@ -374,3 +374,12 @@ Google Ads-styring via native REST API).
   URL-input. Hero ruter via ?finn=-param som bootstrappes i wizarden. CRO-sporing:
   form_input_mode {trigger: paste|url-param}. Verifisert m/ Playwright 8/8.
 - Nøkkelfunksjoner: detectFinnUrl/looksLikeUrl (PropertyInputs), AddressField onFinnUrl-prop.
+
+## Økt 14. juli 2026 (del 3) — Kanonisk skjema-trakt + designløft skjemasider
+- ✅ TRAKT-FIKS: Skjema-flyt i admin var feil (blandet utgåtte steg Velkommen/Bekreft m/
+  scramblet rekkefølge). Nå: form_step m/ flow:'utleier-v3', entry-fasene spores,
+  kanonisk 1 Adresse → 2 Tjenestevalg → 3 Eiendommen → 4 Dine mål → 5 Om deg. Gamle
+  events ignoreres (ren start). Verifisert m/ syntetiske events (ryddet).
+- ✅ DESIGNLØFT: fsTopbar m/ ekte DigiHome-wordmark, faseindikator m/ progresjon,
+  telefonnr; logo-topplinje på suksess-skjermen. Verifisert m/ skjermbilder.
+- MERK: /api/track filtrerer bot-UA → Playwright genererer aldri analytics-events.

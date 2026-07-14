@@ -18,10 +18,11 @@ import { AddressAutocomplete } from './AddressAutocomplete';
 import { track, getLeadAttribution } from '@/lib/analytics';
 import { trackLead, trackLeadStart, getClickIds } from '@/lib/gtag';
 import { getVariant } from '@/lib/ab';
+import { site } from '@/lib/site';
 import {
   User, Mail, ArrowRight, ArrowLeft, CheckCircle2, Check, Loader2,
   Home, Building2, Warehouse, LayoutGrid, BedDouble, TrendingUp, Shield, Key, Zap, Calendar as CalendarIcon,
-  X, Plus, Sparkles, MapPin, Link2,
+  X, Plus, Sparkles, MapPin, Link2, Phone,
 } from 'lucide-react';
 
 const BACKEND_URL = '';
@@ -260,12 +261,19 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
   // A/B-tildeling (onboard_cta) FØR form_start → varianten følger med på events.
   useEffect(() => { try { setCtaVariant(getVariant('onboard_cta', ['A', 'B'])); } catch (e) {} }, []);
   useEffect(() => { track('form_start', { form: 'utleier' }); try { trackLeadStart('utleier'); } catch (e) {} }, []);
+  // KANONISK TRAKT (14/7, flow: utleier-v3) — speiler dagens faktiske flyt:
+  // 1 Adresse (entry) → 2 Tjenestevalg (entry) → 3 Eiendommen → 4 Dine mål → 5 Om deg.
   useEffect(() => {
-    // Spor flyt-posisjon (1–3) — ikke interne indekser — så trakten i admin
-    // viser rene steg: 1 Eiendommen → 2 Dine mål → 3 Om deg.
+    if (!fullscreen) return;
+    if (entryPhase === 'address') track('form_step', { form: 'utleier', flow: 'utleier-v3', step: 1, label: 'Adresse' });
+    else if (entryPhase === 'tier') track('form_step', { form: 'utleier', flow: 'utleier-v3', step: 2, label: 'Tjenestevalg' });
+  }, [entryPhase, fullscreen]); // eslint-disable-line
+  useEffect(() => {
+    // Wizard-stegene spores først når entry-fasene er passert (posisjon 3–5).
+    if (fullscreen && entryPhase !== 'done') return;
     const pos = Math.max(0, flowSteps.indexOf(step));
-    track('form_step', { form: 'utleier', step: pos + 1, label: STEPS[step]?.title || `Steg ${pos + 1}` });
-  }, [step]); // eslint-disable-line
+    track('form_step', { form: 'utleier', flow: 'utleier-v3', step: pos + 3, label: STEPS[step]?.title || `Steg ${pos + 3}` });
+  }, [step, entryPhase]); // eslint-disable-line
 
   const updateField = useCallback((field: any, value: any) => {
     setFormData((prev: any) => ({ ...prev, [field]: value }));
@@ -532,7 +540,13 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
 
   if (submitted) {
     return (
-      <div className="min-h-screen flex items-center justify-center px-5 py-16 bg-[#fdfcfb] relative overflow-hidden">
+      <div className="min-h-screen flex items-center justify-center px-5 pt-24 pb-16 bg-[#fdfcfb] relative overflow-hidden">
+        {/* Logo-topplinje (14/7): merkevaren følger hele reisen — også kvitteringen */}
+        <div className="absolute top-0 inset-x-0 h-[58px] flex items-center justify-center border-b border-[#f0ede8]/70 bg-[#fdfcfb]/80 backdrop-blur-sm z-10">
+          <a href="/" aria-label="DigiHome — til forsiden" data-testid="success-logo-link">
+            <img src="/digihome-wordmark-ink.svg" alt="DigiHome" className="h-[20px] w-auto" />
+          </a>
+        </div>
         <div aria-hidden className="pointer-events-none absolute -top-32 left-1/2 -translate-x-1/2 h-[420px] w-[680px] rounded-full" style={{ background: 'radial-gradient(circle at center, rgba(207,151,252,0.16) 0%, rgba(207,151,252,0) 70%)' }} />
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }} className="relative text-center max-w-md w-full">
           <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.15, type: 'spring', stiffness: 200, damping: 16 }}
@@ -592,12 +606,36 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
   // Velkomststeget er fjernet (juli 2026): trakten viste ~47 % frafall der.
   // Brukeren går nå rett inn i skjemaet med adressen fra hero-søket forhåndsutfylt.
 
-  // ---------- Fullskjerm-chrome: egen minimal topplinje (logo + Avslutt) ----------
+  // ---------- Fullskjerm-chrome: topplinje m/ ekte logo + faseindikator ----------
+  // (14/7-designløft: DigiHome-wordmark i stedet for ren tekst, fase-breadcrumb
+  //  som viser hvor i reisen man er, og telefon som trygghetsanker.)
+  const fsPhase = entryPhase === 'address' ? 0 : entryPhase === 'tier' ? 1 : 2;
+  const FS_PHASES = ['Adresse', 'Tjeneste', 'Detaljer'];
   const fsTopbar = fullscreen ? (
     <div className="sticky top-0 z-40 bg-[#fdfcfb]/90 backdrop-blur-md border-b border-[#f0ede8]">
-      <div className="max-w-[680px] mx-auto px-6 h-[58px] flex items-center justify-between">
-        <a href="/" className="text-[18px] font-bold tracking-[-0.02em] text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>digihome<span style={{ color: '#cf97fc' }}>.</span></a>
-        <a href="/bli-utleier" data-testid="start-exit" className="text-[13px] font-medium text-[#999] hover:text-[#0a0a0a] transition-colors">Avslutt</a>
+      <div className="max-w-[1080px] mx-auto px-5 sm:px-6 h-[58px] grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+        <a href="/" className="justify-self-start inline-flex items-center" aria-label="DigiHome — til forsiden" data-testid="fs-logo-link">
+          <img src="/digihome-wordmark-ink.svg" alt="DigiHome" className="h-[19px] sm:h-[21px] w-auto" />
+        </a>
+        <div className="hidden sm:flex items-center gap-2.5" aria-hidden data-testid="fs-phase-indicator">
+          {FS_PHASES.map((l, i) => (
+            <React.Fragment key={l}>
+              {i > 0 && <span className={`w-7 h-px transition-colors duration-300 ${i <= fsPhase ? 'bg-[#cf97fc]' : 'bg-[#e8e4de]'}`} />}
+              <span className={`inline-flex items-center gap-1.5 text-[11.5px] font-semibold transition-colors duration-300 ${i === fsPhase ? 'text-[#7c3aed]' : i < fsPhase ? 'text-[#0a0a0a]' : 'text-[#b8b3ac]'}`}>
+                <span className={`w-[18px] h-[18px] rounded-full border flex items-center justify-center text-[9.5px] font-bold transition-colors duration-300 ${i < fsPhase ? 'bg-[#cf97fc] border-[#cf97fc] text-white' : i === fsPhase ? 'border-[#cf97fc] text-[#7c3aed] bg-white' : 'border-[#e0dcd5] text-[#c4c0bb] bg-white'}`}>
+                  {i < fsPhase ? <Check className="w-[10px] h-[10px]" strokeWidth={3.5} /> : i + 1}
+                </span>
+                {l}
+              </span>
+            </React.Fragment>
+          ))}
+        </div>
+        <div className="justify-self-end flex items-center gap-4">
+          <a href={`tel:${site.phoneHref}`} className="hidden md:inline-flex items-center gap-1.5 text-[12.5px] font-medium text-[#999] hover:text-[#0a0a0a] transition-colors">
+            <Phone className="w-3.5 h-3.5" /> {site.phone}
+          </a>
+          <a href="/bli-utleier" data-testid="start-exit" className="text-[13px] font-medium text-[#999] hover:text-[#0a0a0a] transition-colors">Avslutt</a>
+        </div>
       </div>
     </div>
   ) : null;

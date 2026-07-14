@@ -2873,3 +2873,15 @@ agent_communication:
         -working: true
         -agent: "main"
         -comment: "NYTT (14/7): (1) detectFinnUrl/looksLikeUrl eksportert fra PropertyInputs. (2) AddressField har onFinnUrl-prop: finn.no-lenke i feltet → Finn-flyt; annen URL → varsel '…kun annonser fra finn.no' (testid <prefix>-url-hint). (3) AddressAutocomplete fyrer ALDRI adressesøk for URL-aktig input. (4) Wizard steg 1: onFinnUrl → setFinnUrl + switchToFinn('paste'); Finn-snarveipanelet (owner-mode-finn) FJERNET → passiv hint (owner-finn-hint); tømmes finn-feltet → auto-retur til adressemodus. (5) Entry-skjermen på /start: smart deteksjon i hovedfeltet → rett til tier-fasen; entry-mode-finn-knappen FJERNET. (6) ?finn=-param bootstrappes (fra hero) → tier-fasen m/ finn-modus klar. (7) Ekstra-enheter: ett smart felt (finn_url settes ved paste, FinnLookupField m/ preview tar over, onResult fyller nå også address/postal_code). (8) Hero på forsiden: FINN-lenke → /bli-utleier/start?finn=…. Sporing: form_input_mode m/ trigger paste/url-param. VERIFISERT m/ Playwright 8/8 (hero-ruting, bootstrap, steg1-finn-modus m/ oppslag, knapp borte, hint, url-varsel, smart paste)."
+
+  - task: "Skjema-flyt-trakt matcher faktiske steg (kanonisk v3) + designløft skjemasider (ekte logo, faseindikator)"
+    implemented: true
+    working: true
+    file: "/app/lib/analytics-server.js, /app/components/dh/BliUtleierPage.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "main"
+        -comment: "NYTT (14/7): TRAKT: form_step-events har nå flow:'utleier-v3'; analytics teller KUN v3-events og viser kanonisk rekkefølge 1 Adresse → 2 Tjenestevalg → 3 Eiendommen → 4 Dine mål → 5 Om deg (alle steg alltid med, også 0). Entry-fasene spores nå (adresse/tier); wizard-steg = posisjon 3–5, spores først etter entry (guard entryPhase!=='done'). Historiske labels (Velkommen/Bekreft/gamle posisjoner) ignoreres — trakten starter ren. VERIFISERT: syntetiske v3-events ga Adresse=1|Tjenestevalg=1|Eiendommen=1, gammelt format ignorert; testevents slettet. MERK: /api/track dropper bot-UA (HeadlessChrome) — Playwright kan ikke generere events (ønsket). DESIGN: fsTopbar m/ ekte logo (/digihome-wordmark-ink.svg), faseindikator (Adresse→Tjeneste→Detaljer m/ check-sirkler), telefon + Avslutt; suksess-skjermen har egen logo-topplinje. Skjermbilder bekreftet alle tre fasene."
