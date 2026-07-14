@@ -167,7 +167,7 @@ export default function CustomersDashboard({ apiKey }) {
                   <th className="px-6 py-3 font-semibold">Kunde</th>
                   <th className="px-4 py-3 font-semibold">Kontakt</th>
                   <th className="px-4 py-3 font-semibold">Status</th>
-                  <th className="px-4 py-3 font-semibold text-center">Eiendommer</th>
+                  <th className="px-4 py-3 font-semibold text-center">Enheter</th>
                   <th className="px-4 py-3 font-semibold text-center">Avtaler</th>
                   <th className="px-4 py-3 font-semibold">Kilde</th>
                   <th className="px-4 py-3 font-semibold">Kunde siden</th>
@@ -194,7 +194,13 @@ export default function CustomersDashboard({ apiKey }) {
                       <span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-semibold capitalize ${STATUS_STYLE[c.status] || STATUS_STYLE.inaktiv}`}>{c.status}</span>
                       {c.status === 'churnet' && c.churnedAt && <div className="text-[10px] text-[#b3261e] mt-0.5">{c.churnedAt}</div>}
                     </td>
-                    <td className="px-4 py-3.5 text-center text-[#333]" title={(c.propertyList || []).map((p) => p.address).filter(Boolean).join('\n')}>{c.properties}</td>
+                    <td className="px-4 py-3.5 text-center text-[#333]"
+                      title={((c.units || []).length ? c.units.map((u) => `${u.label || 'Enhet'}${u.status ? ' · ' + u.status : ''}${u.monthlyRent ? ' · ' + Math.round(u.monthlyRent).toLocaleString('nb-NO') + ' kr/mnd' : ''}`) : (c.propertyList || []).map((p) => p.address).filter(Boolean)).join('\n')}>
+                      {c.unitsCount || c.properties}
+                      {(c.unitsCount || 0) > (c.propertyList || []).length && (c.propertyList || []).length > 0 ? (
+                        <span className="block text-[10.5px] text-[#999]">{(c.propertyList || []).length} bygg</span>
+                      ) : null}
+                    </td>
                     <td className="px-4 py-3.5 text-center text-[#333]">
                       {c.contracts}{c.pendingContracts > 0 && <span className="text-[10px] text-[#b76e00] ml-1">({c.pendingContracts} venter)</span>}
                     </td>

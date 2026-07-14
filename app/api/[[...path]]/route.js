@@ -372,6 +372,83 @@ async function forwardToDigiHome(path, payload) {
   }
 }
 
+// --- SELVBETJENT PROVISJONERING (14/7, bro-spec «self-service-provisioning») ---
+// Pusher kunden til plattformens POST /api/bridge/self-service-customer i det
+// 5 %-avtalen aksepteres. 200 → konto opprettet + engangs handoff_url (magic
+// login, 15 min) som suksess-skjermen viser som «Gå til kontoen din». 202 →
+// pending_manual (forvalter fullfører manuelt; fallback = dagens e-postløp).
+// Idempotent på event_id (= lead.id) — trygt å retrye. MERK: plattformen
+// speiler selv kunden som PASSIVT won-lead (uten closed-loop-ekko), så vanlig
+// /api/leads-forward skal IKKE kjøres i tillegg (ville gitt duplikat hos dem).
+const SS_UNIT_TYPE = { leilighet: 'Leilighet', enebolig: 'Enebolig', rekkehus: 'Rekkehus', tomannsbolig: 'Tomannsbolig', hybel: 'Hybel', naeringsbygg: 'Næringsbygg', annet: 'Annet' };
+async function provisionSelfService(lead, request) {
+  const target = digiHomeTarget();
+  if (!target.url) return { ok: false, error: 'Plattform-URL mangler' };
+  const att = lead.attribution || {};
+  const bedrooms = parseInt(String(lead.bedrooms || '').replace('+', ''), 10);
+  const payload = {
+    event_id: lead.id,
+    contact: {
+      name: lead.name || '', email: lead.email || '', phone: lead.phone || '',
+      org_no: lead.registry_orgnr || '',
+      type: lead.registry_owner_type === 'org' || lead.registry_orgnr ? 'business' : 'private',
+    },
+    agreement: {
+      version: (lead.terms_accepted && lead.terms_accepted.version) || 'selvforvaltning-2025-06',
+      accepted_at: (lead.terms_accepted && lead.terms_accepted.at) || lead.createdAt,
+      fee_percent: 5,
+      pdf_url: `${process.env.NEXT_PUBLIC_BASE_URL || 'https://digihome.no'}/vilkar`,
+      acceptance_ip: clientIp(request) || '',
+    },
+    property: {
+      address: lead.address || '', postal_code: lead.postal_code || '', city: lead.city || '',
+      matrikkel: lead.matrikkel_number || '',
+      unit_type: SS_UNIT_TYPE[(lead.property_type || '').toLowerCase()] || 'Annet',
+      area_m2: Number(lead.sqm) > 0 ? Number(lead.sqm) : undefined,
+      bedrooms: Number.isFinite(bedrooms) && bedrooms > 0 ? bedrooms : undefined,
+      desired_model: RENTAL_LABELS[(lead.rental_model || '').toLowerCase()] || 'Dynamisk',
+      track: 'selvforvaltning',
+    },
+    attribution: {
+      source: lead.source || att.source || (lead.is_paid ? 'Betalt' : 'Direkte'),
+      campaign: att.campaign || '',
+      ad: att.ad || att.content || '',
+      landing_page: att.landing_page || '',
+    },
+  };
+  try {
+    const res = await fetch(`${target.url}/api/bridge/self-service-customer`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Bridge-Secret': (process.env.AGENT_BRIDGE_SECRET || '').trim(),
+        'X-API-Key': target.key,
+      },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(8000),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.status === 200 && (data.success || data.status === 'provisioned') && data.handoff_url) {
+      return { ok: true, id: null, account: {
+        onboarding_url: data.handoff_url,
+        portal_url: data.portal_url || null,
+        owner_user_id: data.owner_user_id || null,
+        property_id: data.property_id || null,
+        unit_id: data.unit_id || null,
+        agreement_id: data.agreement_id || null,
+        status: 'provisioned',
+        provisioned_at: new Date().toISOString(),
+        ...(data.idempotent === true ? { idempotent: true } : {}),
+      } };
+    }
+    // 202 pending_manual: IKKE feil — forvalter fullfører manuelt (avtalt kontrakt).
+    if (res.status === 202) return { ok: true, id: null, account: null, pendingManual: true };
+    return { ok: false, error: `HTTP ${res.status}: ${JSON.stringify(data).slice(0, 250)}` };
+  } catch (e) {
+    return { ok: false, error: e && e.name === 'TimeoutError' ? 'Tidsavbrudd (8s)' : ((e && e.message) || String(e)) };
+  }
+}
+
 // --- Adressesøk (Geonorge) med in-memory cache + retry + timeout ---
 // Gjør autofullføringen rask og robust: Geonorge svarer tidvis 500 (overbelastet),
 // og uten cache blir hvert tastetrykk et fullt rundturskall. Vi cacher vellykkede
@@ -764,7 +841,9 @@ function backoffIso(attempts) {
 async function reforwardPending(db) {
   const results = { leads: { tried: 0, ok: 0 }, tenants: { tried: 0, ok: 0 } };
   const nowIso = new Date().toISOString();
-  const dueFilter = { forwarded: { $ne: true }, $or: [{ next_retry_at: { $exists: false } }, { next_retry_at: null }, { next_retry_at: { $lte: nowIso } }] };
+  // self_service ekskluderes: de provisjoneres via /api/bridge/self-service-customer
+  // (plattformen speiler selv) — re-forward via /api/leads ville gitt duplikat.
+  const dueFilter = { forwarded: { $ne: true }, self_service: { $ne: true }, $or: [{ next_retry_at: { $exists: false } }, { next_retry_at: null }, { next_retry_at: { $lte: nowIso } }] };
   const pendLeads = await db.collection('leads').find(dueFilter).limit(200).toArray();
   for (const lead of pendLeads) {
     results.leads.tried++;
@@ -1798,8 +1877,13 @@ async function handleRoute(request, { params }) {
         ? `${lead.notes ? lead.notes + '. ' : ''}Finn-annonse: ${lead.finn_url}`.slice(0, 4000)
         : lead.notes;
 
-      // Dual-write: videresend til DigiHome-plattformen (DigiHome AS)
-      const fwd = await forwardToDigiHome('/api/leads', {
+      // Dual-write: videresend til DigiHome-plattformen (DigiHome AS).
+      // SELVBETJENT (14/7): provisjoneres via plattformens bro-endepunkt i
+      // stedet — de speiler selv kunden som passivt won-lead, så /api/leads-
+      // forward ville gitt duplikat hos dem.
+      const fwd = lead.self_service
+        ? await provisionSelfService(lead, request)
+        : await forwardToDigiHome('/api/leads', {
         external_ref: lead.id, source_system: 'digihome-marketing',
         marketing_visitor_id: lead.marketing_visitor_id || undefined,
         lead_source_type: lead.lead_source_type, is_paid: lead.is_paid,
@@ -1834,9 +1918,11 @@ async function handleRoute(request, { params }) {
         forward_error: fwd.ok ? null : (fwd.error || 'ukjent'),
         forwarded_at: fwd.ok ? new Date().toISOString() : null,
         ...(fwd.account ? { platform_account: fwd.account } : {}),
+        ...(lead.self_service ? { provisioning_status: fwd.account ? 'provisioned' : (fwd.pendingManual ? 'pending_manual' : 'failed') } : {}),
       } });
       lead.forwarded = fwd.ok; lead.platform_id = fwd.id || null;
       if (fwd.account) lead.platform_account = fwd.account;
+      if (lead.self_service) lead.provisioning_status = fwd.account ? 'provisioned' : (fwd.pendingManual ? 'pending_manual' : 'failed');
       // Selvhelbredende: lyktes denne, er plattformen oppe → catch-up av feilede (throttlet).
       if (fwd.ok) maybeReforward(db);
 
