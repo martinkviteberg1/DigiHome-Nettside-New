@@ -2849,3 +2849,15 @@ agent_communication:
         -working: true
         -agent: "main"
         -comment: "NYTT (10/7): GET /admin/newsletter/campaign returnerer nå stats.leadsGenerated (leads m/ newsletter_source.campaignId == kampanje-id, deleted!=true, maks 200) + leadsCount + leadsWon. StatsView: 6. KPI-kort 'Leads' (lilla highlight ved >0) + egen seksjon m/ navn/e-post, via-kilde (via lenke/e-post-match), Selvbetjent-badge, vunnet-verdi, status-pill og tidspunkt. LeadDrawer: 'Nyhetsbrev · <kampanje>'-badge m/ tooltip. VERIFISERT med QA-seed (kampanje + 2 leads): endpoint ga leadsCount=2/leadsWon=1, skjermbilde bekreftet KPI-kort + liste, drawer-badge bekreftet via Playwright (True). QA-data slettet etterpå (baseline 19 leads). MERK: nyhetsbrev-collection heter 'newsletters' (NEWSLETTER_COLL), IKKE 'newsletter_campaigns'."
+
+  - task: "Bli utleier: fullskjerm-flyt som eneste inngang (innbakt skjema fjernet, CTA-seksjon + sticky mobil-CTA + redirect)"
+    implemented: true
+    working: true
+    file: "/app/app/bli-utleier/page.js, /app/components/dh/UtleierInfo.tsx, /app/components/dh/ScrollToForm.tsx, /app/components/dh/UtleierStickyCta.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "main"
+        -comment: "NYTT (14/7): /bli-utleier har ikke lenger innbakt wizard nederst (#skjema-seksjonen fjernet). (1) Ny UtleierCta-seksjon (mørkt kort, 'Klar til å leie ut — uten stresset?', CTA → /bli-utleier/start + telefon + trustpunkter). (2) Begge #skjema-lenker i UtleierInfo → /bli-utleier/start. (3) ScrollToForm omskrevet: ?address=/?start/#skjema → window.location.replace('/bli-utleier/start?<alle params bevart>') — betalt trafikk brekker ikke. (4) Ny UtleierStickyCta (mobil, vises etter 560px scroll, skjules når CTA-seksjonen er synlig via IntersectionObserver, z-40). VERIFISERT m/ Playwright: #skjema=0, hero-CTA href=/bli-utleier/start, CTA-seksjon rendrer, redirect ga /bli-utleier/start?address=Testveien+1&utm_source=google, sticky skjult før/synlig etter scroll."

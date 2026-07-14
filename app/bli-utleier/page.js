@@ -1,14 +1,14 @@
 import Header from '@/components/dh/Header';
 import Footer from '@/components/dh/Footer';
-import BliUtleierPage from '@/components/dh/BliUtleierPage';
 import ServiceModelsSection from '@/components/dh/ServiceModelsSection';
 import DynamicRentalSection from '@/components/dh/DynamicRentalSection';
 import ShowcaseSection from '@/components/dh/ShowcaseSection';
 import TestimonialsSection from '@/components/dh/TestimonialsSection';
 import ScrollToForm from '@/components/dh/ScrollToForm';
+import UtleierStickyCta from '@/components/dh/UtleierStickyCta';
 import { JsonLd } from '@/components/site/JsonLd';
 import { breadcrumbLd, serviceLd } from '@/lib/seo';
-import { UtleierHero, UtleierServices, UtleierPrisModell, UtleierFaq } from '@/components/dh/UtleierInfo';
+import { UtleierHero, UtleierServices, UtleierPrisModell, UtleierFaq, UtleierCta } from '@/components/dh/UtleierInfo';
 
 export const metadata = {
   title: 'Utleiemegler i Bergen — full utleieforvaltning',
@@ -40,10 +40,9 @@ export default function Page() {
         <ShowcaseSection />
         <TestimonialsSection />
         <UtleierFaq />
-        <section id="skjema" className="scroll-mt-20 border-t border-[#f0efec]">
-          <BliUtleierPage />
-        </section>
+        <UtleierCta />
       </main>
+      <UtleierStickyCta />
       <Footer />
     </>
   );

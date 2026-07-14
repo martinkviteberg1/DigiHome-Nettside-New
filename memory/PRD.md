@@ -350,3 +350,18 @@ Google Ads-styring via native REST API).
   lenke/e-post-match, verdi, status, tid). LeadDrawer: «Nyhetsbrev · <kampanje>»-badge.
   Verifisert m/ QA-seed + skjermbilder, QA slettet (baseline 19). MERK: collection =
   'newsletters' (ikke 'newsletter_campaigns').
+
+## Økt 14. juli 2026 — Fullskjerm-flyt på Bli utleier + Øvregaten-avvik til plattformen
+- ✅ /bli-utleier: innbakt skjema nederst FJERNET → én kanonisk fullskjerm-flyt
+  (/bli-utleier/start). Ny UtleierCta-seksjon (mørk, premium) + UtleierStickyCta (mobil).
+  ScrollToForm = redirect m/ alle params (address/utm) → betalt trafikk uberørt.
+  Verifisert m/ skjermbilder + redirect-test.
+- 📤 BRO (closed-loop, id b892d8ba): PROD-avvik i /api/customers/export meldt:
+  ØVREGATEN 15 AS (org 928459268) = 'churned' tross nysignert leiekontrakt + aktiv
+  leietaker (58m²-enhet Utleid), OG properties[] har 1 element mens plattformen har
+  2 enheter (58m² + 85m²). Spurt: lifecycle-avledning, bygg-vs-enheter i kontrakten
+  (foreslått units_count/units[]), fiks i prod → vi re-synker m/ POST
+  /admin/economy/sync-customers. VENTER SVAR. Vår side speiler eksporten 1:1
+  (lib/contracts-sync.js normalizeCustomer + lib/finance.js computePlatformCustomers)
+  — ingen feil hos oss.
+- VENTER FORTSATT: selfservice-provisioning-spec-svar, slette-synk-svar (begge broen).

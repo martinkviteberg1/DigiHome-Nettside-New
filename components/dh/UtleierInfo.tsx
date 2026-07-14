@@ -30,7 +30,7 @@ export function UtleierHero() {
               utleiemegler som håndterer hele utleien, mens du beholder inntekten og roen.
             </p>
             <div className="flex flex-wrap items-center gap-3 mt-8">
-              <a href="#skjema" data-testid="utleier-hero-cta" className="inline-flex items-center gap-2 h-[52px] px-7 rounded-full bg-[#0a0a0a] text-white text-[15px] font-semibold hover:bg-[#2a2a2a] transition-colors">
+              <a href="/bli-utleier/start" data-testid="utleier-hero-cta" className="inline-flex items-center gap-2 h-[52px] px-7 rounded-full bg-[#0a0a0a] text-white text-[15px] font-semibold hover:bg-[#2a2a2a] transition-colors">
                 Få tilbud innen 24 timer
                 <span aria-hidden>→</span>
               </a>
@@ -127,7 +127,7 @@ export function UtleierPrisModell() {
             Nøyaktig pris avhenger av boligen og utleiemodellen du velger. Du får et konkret,
             uforpliktende tilbud innen 24 timer — helt gratis.
           </p>
-          <a href="#skjema" className="inline-flex items-center gap-2 h-[52px] px-8 rounded-full bg-white text-[#0a0a0a] text-[15px] font-semibold mt-8 hover:bg-[#f0eae2] transition-colors">
+          <a href="/bli-utleier/start" className="inline-flex items-center gap-2 h-[52px] px-8 rounded-full bg-white text-[#0a0a0a] text-[15px] font-semibold mt-8 hover:bg-[#f0eae2] transition-colors">
             Få ditt tilbud <span aria-hidden>→</span>
           </a>
         </Reveal>
@@ -180,6 +180,52 @@ export function UtleierFaq() {
           <a href={`tel:${site.phoneHref}`} className="text-[#7c3aed] font-semibold">{site.phone}</a>
           {' '}— vi svarer gjerne.
         </p>
+      </div>
+    </section>
+  );
+}
+
+// ─── AVSLUTTENDE CTA (10/7) ─────────────────────────────────────────────────
+// Erstatter det innbakte skjemaet nederst: én kanonisk konverteringsflyt i
+// fullskjerm (/bli-utleier/start) — som header-CTA og forsidens adressesøk.
+export function UtleierCta() {
+  return (
+    <section className="py-20 sm:py-28 bg-[#faf9f7]" data-testid="utleier-cta">
+      <div className="max-w-[1080px] mx-auto px-6 sm:px-10">
+        <Reveal as="div" initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: '-80px' }} transition={{ duration: 0.55 }}
+          className="relative overflow-hidden rounded-[32px] bg-[#0a0a0a] px-7 sm:px-14 py-14 sm:py-[72px] text-center">
+          <div aria-hidden className="absolute -top-24 -right-24 w-[340px] h-[340px] rounded-full bg-[#7c3aed]/25 blur-[110px]" />
+          <div aria-hidden className="absolute -bottom-28 -left-20 w-[300px] h-[300px] rounded-full bg-[#c9a8f0]/15 blur-[100px]" />
+          <div className="relative">
+            <span className="inline-flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.14em] text-[#c9a8f0]">
+              <KeyRound className="w-4 h-4" /> Kom i gang
+            </span>
+            <h2 className="text-[32px] sm:text-[44px] font-bold tracking-[-0.03em] leading-[1.08] text-white mt-4" style={headingFont}>
+              Klar til å leie ut — uten stresset?
+            </h2>
+            <p className="text-[15.5px] leading-relaxed text-white/60 mt-4 max-w-[520px] mx-auto">
+              Fortell oss om boligen din, så tar vi det derfra. Det tar under to minutter
+              — og du forplikter deg ikke til noe.
+            </p>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-9">
+              <a href="/bli-utleier/start" data-testid="utleier-cta-start"
+                className="inline-flex items-center justify-center gap-2 h-[54px] px-9 rounded-full bg-white text-[#0a0a0a] text-[15.5px] font-semibold hover:bg-[#f0eae2] transition-colors w-full sm:w-auto">
+                Kom i gang — tar 2 minutter <span aria-hidden>→</span>
+              </a>
+              <a href={`tel:${site.phoneHref}`}
+                className="inline-flex items-center justify-center gap-2 h-[54px] px-7 rounded-full bg-white/[0.08] text-white text-[15px] font-semibold hover:bg-white/[0.14] transition-colors w-full sm:w-auto">
+                <Phone className="w-4 h-4" /> {site.phone}
+              </a>
+            </div>
+            <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 mt-8">
+              {['Svar umiddelbart', '0 kr oppstart', 'Helt uforpliktende'].map((t) => (
+                <span key={t} className="inline-flex items-center gap-1.5 text-[13px] text-white/55">
+                  <Check className="w-3.5 h-3.5 text-[#c9a8f0]" /> {t}
+                </span>
+              ))}
+            </div>
+          </div>
+        </Reveal>
       </div>
     </section>
   );
