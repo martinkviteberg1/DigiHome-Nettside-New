@@ -2,6 +2,7 @@ import { site } from '@/lib/site';
 import { locations } from '@/lib/locations';
 import { getAllPublishedSlugs } from '@/lib/posts';
 import { rentCitySlugs } from '@/lib/rentmarket';
+import { guides } from '@/lib/guides';
 
 // Dynamisk sitemap.xml (Next.js App Router).
 // Inneholder kun offentlige, indekserbare sider. Film-/deck-/admin-ruter
@@ -24,6 +25,8 @@ export default async function sitemap() {
     { url: `${base}/utleie`, lastModified: now, changeFrequency: 'weekly', priority: 0.8 },
     { url: `${base}/leiemarkedet`, lastModified: now, changeFrequency: 'weekly', priority: 0.8 },
     { url: `${base}/nyheter`, lastModified: now, changeFrequency: 'weekly', priority: 0.7 },
+    { url: `${base}/guider`, lastModified: now, changeFrequency: 'weekly', priority: 0.8 },
+    ...guides.map((g) => ({ url: `${base}/guider/${g.slug}`, lastModified: g.updated, changeFrequency: 'monthly', priority: 0.7 })),
     { url: `${base}/priskalkulator`, lastModified: now, changeFrequency: 'monthly', priority: 0.7 },
     { url: `${base}/sommer`, lastModified: now, changeFrequency: 'weekly', priority: 0.6 },
     { url: `${base}/support`, lastModified: now, changeFrequency: 'monthly', priority: 0.4 },

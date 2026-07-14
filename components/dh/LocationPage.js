@@ -256,7 +256,7 @@ export default function LocationPage({ loc, related = [], rent = null }) {
           <div className="grid sm:grid-cols-3 gap-4">
             {related.map((r) => (
               <Link key={r.slug} href={`/utleie/${r.slug}`} className="group relative h-44 rounded-2xl overflow-hidden">
-                <img src={sized(r.image, 768)} srcSet={srcSet(r.image)} sizes="(max-width: 640px) 100vw, 33vw" alt="" width={768} height={512} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" decoding="async" />
+                <img src={sized(r.image, 768)} srcSet={srcSet(r.image)} sizes="(max-width: 640px) 100vw, 33vw" alt={`Utleie i ${r.name} — se leiepriser og forvaltning`} width={768} height={512} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" decoding="async" />
                 <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, transparent 30%, rgba(10,10,10,0.75) 100%)' }} />
                 <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between">
                   <span className="text-white font-semibold text-[16px]">{r.name}</span>

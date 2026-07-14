@@ -14,7 +14,7 @@ const ICONS = { Sparkles, ShieldCheck, CalendarRange, Wrench, Plug, Droplets, Sc
 
 export const metadata = {
   title: 'Tjenester — dynamisk, langtids- og korttidsutleie',
-  description: 'DigiHome tilbyr full forvaltning av utleieboliger i Bergen: dynamisk hybridutleie (10+2), langtidsutleie og korttidsutleie. Alt fra annonsering til vedlikehold på én plattform.',
+  description: 'Full forvaltning av utleieboliger i Bergen: dynamisk hybridutleie (10+2), langtids- og korttidsutleie. Fra annonsering til vedlikehold på én plattform.',
   alternates: { canonical: '/tjenester' },
 };
 

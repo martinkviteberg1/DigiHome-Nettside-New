@@ -14,7 +14,7 @@ export function generateMetadata({ params }) {
   const loc = getLocation(params.by);
   if (!loc) return { title: 'Ikke funnet' };
   // Tittel uten merkevare – layout-templaten ('%s | DigiHome') legger den til én gang.
-  const title = `Utleie i ${loc.name} – profesjonell eiendomsforvaltning`;
+  const title = `Utleie i ${loc.name} — priser og forvaltning`;
   const ogTitle = `Utleie i ${loc.name} | DigiHome`;
   const desc = loc.intro.slice(0, 155);
   return {

@@ -1,15 +1,17 @@
 import SommerKampanjePage from '@/components/dh/SommerKampanjePage';
 import { JsonLd } from '@/components/site/JsonLd';
 import { breadcrumbLd } from '@/lib/seo';
+import { site } from '@/lib/site';
 
 export const metadata = {
-  title: 'Sommerkampanje: 10 % forvaltningshonorar + 0 kr i oppstart',
+  title: 'Sommerkampanje: 10 % honorar + 0 kr oppstart',
   description:
-    'Sommerkampanje fra DigiHome: 10 % forvaltningshonorar og ingen oppstartskostnad på full utleieforvaltning i Bergen. Gjelder til 10. juli. Uforpliktende — vi tar kontakt.',
+    'Sommerkampanje fra DigiHome: 10 % forvaltningshonorar og 0 kr i oppstart på full utleieforvaltning i Bergen. Uforpliktende — vi tar kontakt.',
   alternates: { canonical: '/sommer' },
   openGraph: {
     title: 'Sommerkampanje: 10 % forvaltningshonorar + 0 kr i oppstart',
     description: 'Full utleieforvaltning i Bergen — kampanjepris til 10. juli. Uforpliktende registrering.',
+    images: [{ url: site.url + site.ogImage }],
   },
 };
 

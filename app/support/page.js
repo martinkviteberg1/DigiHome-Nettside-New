@@ -2,6 +2,8 @@ import Link from 'next/link';
 import Header from '@/components/dh/Header';
 import Footer from '@/components/dh/Footer';
 import { site } from '@/lib/site';
+import { JsonLd } from '@/components/site/JsonLd';
+import { breadcrumbLd, webPageLd } from '@/lib/seo';
 import { Mail, Phone, Trash2, ShieldCheck, FileText, MessageCircle } from 'lucide-react';
 
 export const metadata = {
@@ -13,6 +15,8 @@ export const metadata = {
 export default function SupportPage() {
   return (
     <div className="bg-[#fdfcfb] text-[#1f1f1f] min-h-screen">
+      <JsonLd data={breadcrumbLd([{ name: 'Support', path: '/support' }])} />
+      <JsonLd data={webPageLd({ name: 'Support og hjelp', description: 'Kontakt DigiHome-support på e-post eller telefon — vi svarer raskt.', path: '/support' })} />
       <Header />
 
       <section className="max-w-[820px] mx-auto px-6 sm:px-10 lg:px-16 pt-32 sm:pt-36 pb-10">

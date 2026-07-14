@@ -2,6 +2,7 @@ import Link from 'next/link';
 import Header from '@/components/dh/Header';
 import Footer from '@/components/dh/Footer';
 import { getPublishedPosts } from '@/lib/posts';
+import { guides } from '@/lib/guides';
 import { JsonLd } from '@/components/site/JsonLd';
 import { breadcrumbLd } from '@/lib/seo';
 import { site } from '@/lib/site';
@@ -116,6 +117,26 @@ export default async function NyheterIndex() {
             )}
           </section>
         )}
+
+        {/* Evergreen guider — interne lenker + innholdsdybde på oversikten */}
+        <section className="mt-14">
+          <div className="flex items-end justify-between gap-4 mb-6">
+            <div>
+              <h2 className="text-[24px] sm:text-[30px] font-bold tracking-[-0.02em]" style={{ fontFamily: 'var(--font-heading)' }}>Guider for utleiere</h2>
+              <p className="text-[14.5px] text-[#666] mt-1">Grundige, tidløse guider om pris, skatt og reglene du må kunne.</p>
+            </div>
+            <Link href="/guider" className="hidden sm:inline-flex items-center gap-1.5 text-[14px] font-semibold text-[#7c3aed] hover:underline shrink-0">Alle guider <ArrowUpRight className="w-4 h-4" /></Link>
+          </div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            {guides.slice(0, 4).map((g) => (
+              <Link key={g.slug} href={`/guider/${g.slug}`} className="group bg-white rounded-2xl p-5 shadow-[0_4px_24px_-14px_rgba(0,0,0,0.10)] hover:shadow-[0_12px_36px_-12px_rgba(0,0,0,0.16)] transition-shadow">
+                <span className="inline-flex px-2.5 py-1 rounded-full bg-[#f4f0fb] text-[#7c3aed] text-[11px] font-semibold mb-3">{g.category}</span>
+                <h3 className="text-[15.5px] font-bold leading-snug group-hover:text-[#7c3aed] transition-colors" style={{ fontFamily: 'var(--font-heading)' }}>{g.title}</h3>
+                <p className="text-[12.5px] text-[#999] mt-2">{g.readMinutes} min lesetid</p>
+              </Link>
+            ))}
+          </div>
+        </section>
       </main>
       <Footer />
     </div>

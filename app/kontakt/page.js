@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import Header from '@/components/dh/Header';
 import Footer from '@/components/dh/Footer';
 import KontaktForm from '@/components/dh/KontaktForm';
@@ -52,6 +53,25 @@ export default function Page() {
           <div>
             <h2 className="text-[24px] sm:text-[30px] font-bold tracking-[-0.02em] mb-6" style={{ fontFamily: 'var(--font-heading)' }}>Send oss en melding</h2>
             <KontaktForm />
+          </div>
+        </div>
+      </section>
+
+      {/* Mini-FAQ — nyttig innhold som også styrker sidens SEO-dybde */}
+      <section className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16 pb-14 lg:pb-20">
+        <h2 className="text-[24px] sm:text-[30px] font-bold tracking-[-0.02em] mb-6" style={{ fontFamily: 'var(--font-heading)' }}>Før du tar kontakt</h2>
+        <div className="grid sm:grid-cols-3 gap-6">
+          <div className="bg-white rounded-2xl p-6 shadow-[0_6px_30px_-18px_rgba(0,0,0,0.12)]">
+            <h3 className="text-[15.5px] font-bold mb-1.5" style={{ fontFamily: 'var(--font-heading)' }}>Hvor raskt svarer dere?</h3>
+            <p className="text-[14px] text-[#5b6370] leading-relaxed">Vi svarer vanligvis innen én virkedag — ofte samme dag. Registrerer du boligen din via <Link href="/bli-utleier" className="text-[#7c3aed] font-semibold hover:underline">Bli utleier</Link>, får du et konkret tilbud innen 24 timer.</p>
+          </div>
+          <div className="bg-white rounded-2xl p-6 shadow-[0_6px_30px_-18px_rgba(0,0,0,0.12)]">
+            <h3 className="text-[15.5px] font-bold mb-1.5" style={{ fontFamily: 'var(--font-heading)' }}>Hvor holder dere til?</h3>
+            <p className="text-[14px] text-[#5b6370] leading-relaxed">Vi er basert i Bergen og forvalter utleieboliger i alle bydeler — se <Link href="/utleie" className="text-[#7c3aed] font-semibold hover:underline">områdene vi dekker</Link>. Møter tar vi gjerne hjemme hos deg, i boligen eller digitalt.</p>
+          </div>
+          <div className="bg-white rounded-2xl p-6 shadow-[0_6px_30px_-18px_rgba(0,0,0,0.12)]">
+            <h3 className="text-[15.5px] font-bold mb-1.5" style={{ fontFamily: 'var(--font-heading)' }}>Hva koster en prat?</h3>
+            <p className="text-[14px] text-[#5b6370] leading-relaxed">Ingenting. Både verdivurdering av leiepotensialet og rådgivningssamtalen er gratis og uforpliktende — prøv også <Link href="/priskalkulator" className="text-[#7c3aed] font-semibold hover:underline">priskalkulatoren</Link>.</p>
           </div>
         </div>
       </section>

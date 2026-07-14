@@ -444,9 +444,9 @@ export default function AutopilotFilm() {
 
         {/* forhåndslast styling-bildene (unngå hikk ved 14s) */}
         <div aria-hidden="true" style={{ display: 'none' }}>
-          <img src="/film/styling/room-before.jpg" alt="" />
-          <img src="/film/styling/room-day.jpg" alt="" />
-          <img src="/film/styling/room-evening.jpg" alt="" />
+          <img src="/film/styling/room-before.jpg" alt="Umøblert stue før styling" />
+          <img src="/film/styling/room-day.jpg" alt="Profesjonelt stylet stue i dagslys" />
+          <img src="/film/styling/room-evening.jpg" alt="Stylet stue i kveldsbelysning" />
         </div>
 
         {/* lys-sveip ved aktskifter */}
@@ -468,7 +468,7 @@ export default function AutopilotFilm() {
         {started && watermark > 0.01 && (
           <img
             src="/brand/digihome-lockup-white.svg"
-            alt=""
+            alt="DigiHome-logo"
             className="absolute pointer-events-none"
             style={{ top: 'calc(var(--su) * 3)', left: 'calc(var(--su) * 3.5)', height: 'calc(var(--su) * 2.2)', width: 'auto', opacity: watermark }}
           />

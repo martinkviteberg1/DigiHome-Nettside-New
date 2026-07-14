@@ -1,6 +1,7 @@
 import PriceWizard from '@/components/dh/PriceWizard';
 import { JsonLd } from '@/components/site/JsonLd';
 import { breadcrumbLd, webPageLd } from '@/lib/seo';
+import { site } from '@/lib/site';
 
 export const metadata = {
   title: 'Priskalkulator — se hva utleie koster',
@@ -9,6 +10,7 @@ export const metadata = {
   openGraph: {
     title: 'Priskalkulator — se hva utleie koster | DigiHome',
     description: 'Bygg din egen forvaltningspakke og se prisen med en gang. Gratis og uforpliktende.',
+    images: [{ url: site.url + site.ogImage }],
   },
 };
 

@@ -7,7 +7,7 @@ import { breadcrumbLd, serviceLd } from '@/lib/seo';
 
 export const metadata = {
   title: 'Leie bolig i Bergen — kvalitetssikrede utleieboliger',
-  description: 'Finn din neste leiebolig i Bergen gjennom DigiHome: kvalitetssikrede boliger, digitale kontrakter med BankID og profesjonell oppfølging gjennom hele leieforholdet — helt gratis for leietakere.',
+  description: 'Finn din neste leiebolig i Bergen: kvalitetssikrede boliger, digitale kontrakter med BankID og profesjonell oppfølging — gratis for leietakere.',
   alternates: { canonical: '/bli-leietaker' },
 };
 

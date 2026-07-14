@@ -156,6 +156,42 @@ export default function RentMarketPage({ report }) {
         </div>
       </section>
 
+      {/* SITERBAR PRISTABELL — semantisk <table> som featured snippets og
+          AI-motorer kan plukke opp direkte (grafer siteres ikke, tabeller gjør) */}
+      <section className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16 pt-14 lg:pt-20">
+        <h2 className="text-[24px] sm:text-[32px] font-bold tracking-[-0.02em] mb-2" style={{ fontFamily: 'var(--font-heading)' }}>
+          Snittleie i {r.cityLabel} {r.year} per boligtype
+        </h2>
+        <p className="text-[14.5px] text-[#666] mb-6 max-w-[62ch]">
+          Gjennomsnittlig månedsleie basert på SSBs leiemarkedsundersøkelse, bearbeidet av DigiHome. Fritt å sitere med kildehenvisning.
+        </p>
+        <figure className="bg-white rounded-2xl shadow-[0_8px_36px_-18px_rgba(0,0,0,0.12)] overflow-hidden max-w-[760px]">
+          <table className="w-full text-left">
+            <thead>
+              <tr className="border-b border-black/[0.06]">
+                <th scope="col" className="px-6 py-4 text-[12px] font-semibold uppercase tracking-[0.08em] text-[#999]">Boligtype</th>
+                <th scope="col" className="px-6 py-4 text-[12px] font-semibold uppercase tracking-[0.08em] text-[#999] text-right">Snittleie (kr/mnd)</th>
+                <th scope="col" className="px-6 py-4 text-[12px] font-semibold uppercase tracking-[0.08em] text-[#999] text-right">Endring fra {r.prevYear}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {r.byRoom.filter((b) => b.current).map((b) => (
+                <tr key={b.label} className="border-b border-black/[0.04] last:border-0">
+                  <th scope="row" className="px-6 py-3.5 text-[14.5px] font-semibold text-[#1f1f1f]">{b.label}</th>
+                  <td className="px-6 py-3.5 text-[14.5px] text-right font-semibold">{nf(b.current)} kr</td>
+                  <td className={`px-6 py-3.5 text-[14px] text-right font-medium ${b.yoyPct == null ? 'text-[#999]' : b.yoyPct >= 0 ? 'text-emerald-600' : 'text-rose-500'}`}>
+                    {b.yoyPct == null ? '–' : `${b.yoyPct >= 0 ? '+' : ''}${b.yoyPct} %`}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <figcaption className="px-6 py-3.5 text-[12px] text-[#999] bg-[#fafaf9]">
+            Kilde: SSB leiemarkedsundersøkelsen ({r.year}) · bearbeidet av DigiHome · {site.url.replace('https://', '')}/leiemarkedet/{r.city}
+          </figcaption>
+        </figure>
+      </section>
+
       {/* EDITORIAL SUMMARY + INSIGHTS */}
       <section className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16 py-16 lg:py-24">
         <div className="grid lg:grid-cols-[1.4fr_1fr] gap-12 lg:gap-20 items-start">

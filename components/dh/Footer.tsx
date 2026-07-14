@@ -68,7 +68,7 @@ const cols = [
   { title: 'Tjenester', links: [{ l: 'Dynamisk utleie', h: '/tjenester' }, { l: 'Utleiemegler i Bergen', h: '/utleiemegler-bergen' }, { l: 'Airbnb-forvaltning', h: '/airbnb-forvaltning-bergen' }, { l: 'Langtidsutleie', h: '/tjenester' }, { l: 'Rådgivning', h: '/radgivning' }] },
   { title: 'Områder', links: [{ l: 'Utleie i Bergen', h: '/utleie/bergen' }, { l: 'Sentrum', h: '/utleie/sentrum' }, { l: 'Nordnes', h: '/utleie/nordnes' }, { l: 'Leiemarkedet i Bergen', h: '/leiemarkedet/bergen' }, { l: 'Alle områder', h: '/utleie' }] },
   { title: 'Selskap', links: [{ l: 'Bli utleier', h: '/bli-utleier' }, { l: 'Priskalkulator', h: '/priskalkulator' }, { l: 'Bli leietaker', h: '/bli-leietaker' }, { l: 'Nyheter', h: '/nyheter' }, { l: 'Kontakt', h: '/kontakt' }] },
-  { title: 'Ressurser', links: [{ l: 'Leiemarkedsrapport', h: '/leiemarkedet' }, { l: 'Om oss', h: '/om-oss' }, { l: 'Kontakt', h: '/kontakt' }, { l: 'Personvern', h: '/personvern' }] },
+  { title: 'Ressurser', links: [{ l: 'Guider for utleiere', h: '/guider' }, { l: 'Leiemarkedsrapport', h: '/leiemarkedet' }, { l: 'Om oss', h: '/om-oss' }, { l: 'Kontakt', h: '/kontakt' }, { l: 'Personvern', h: '/personvern' }] },
 ];
 
 export default function Footer({ org }: { org?: { company_name?: string; org_number?: string; company_address?: string; company_email?: string; company_phone?: string } | null }) {

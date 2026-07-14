@@ -12,7 +12,7 @@ import { UtleierHero, UtleierServices, UtleierPrisModell, UtleierFaq, UtleierCta
 
 export const metadata = {
   title: 'Utleiemegler i Bergen — full utleieforvaltning',
-  description: 'Vi tar oss av alt ved utleie av boligen din: annonsering, visninger, leietakersjekk, kontrakt, husleie og vedlikehold. 0 kr oppstart, ingen bindingstid. Få uforpliktende tilbud innen 24 timer.',
+  description: 'Vi tar alt ved utleie av boligen din: annonsering, visninger, leietakersjekk, kontrakt og husleie. 0 kr oppstart, ingen bindingstid. Tilbud innen 24 t.',
   alternates: { canonical: '/bli-utleier' },
 };
 

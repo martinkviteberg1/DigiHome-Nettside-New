@@ -303,7 +303,7 @@ export function SceneOpening({ t }) {
           />
           <img
             src="/brand/digihome-icon-purple.svg"
-            alt=""
+            alt="DigiHome-logo"
             style={{
               width: 'calc(var(--su) * 11)', height: 'calc(var(--su) * 11)',
               borderRadius: 'calc(var(--su) * 1.6)',
@@ -2063,7 +2063,7 @@ export function SceneKontrakt({ t }) {
               borderRadius: 999, padding: 'calc(var(--su) * 1.1) calc(var(--su) * 2.4)',
             }}
           >
-            <img src="/brand/digihome-icon-purple.svg" alt="" style={{ height: 'calc(var(--su) * 2.2)', width: 'auto', borderRadius: 'calc(var(--su)*0.4)' }} />
+            <img src="/brand/digihome-icon-purple.svg" alt="DigiHome-logo" style={{ height: 'calc(var(--su) * 2.2)', width: 'auto', borderRadius: 'calc(var(--su)*0.4)' }} />
             <span className="font-body" style={{ fontSize: 'calc(var(--su) * 1.7)', color: 'rgba(253,252,251,0.8)' }}>DigiHome → Din konto</span>
             <span className="font-body" style={{ fontSize: 'calc(var(--su) * 1.4)', color: '#7ee2a8', background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.35)', borderRadius: 999, padding: 'calc(var(--su)*0.4) calc(var(--su)*1.1)' }}>
               Utbetalt ✓
@@ -2491,7 +2491,7 @@ export function SceneChat({ t }) {
             <div aria-hidden="true" style={{ position: 'absolute', top: 'calc(var(--su) * 0.75)', left: '50%', transform: 'translateX(-50%)', width: 'calc(var(--su) * 4.4)', height: 'calc(var(--su) * 1.25)', borderRadius: 999, background: '#000', boxShadow: 'inset 0 0 calc(var(--su)*0.3) rgba(255,255,255,0.06)' }} />
             {/* chat-header */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 'calc(var(--su) * 0.9)', padding: 'calc(var(--su) * 1.1) calc(var(--su) * 1.5) calc(var(--su) * 0.95)', borderBottom: '1px solid rgba(255,255,255,0.07)', position: 'relative' }}>
-              <img src="/brand/digihome-icon-purple.svg" alt="" style={{ width: 'calc(var(--su) * 2.5)', height: 'calc(var(--su) * 2.5)', borderRadius: 'calc(var(--su) * 0.65)' }} />
+              <img src="/brand/digihome-icon-purple.svg" alt="DigiHome-logo" style={{ width: 'calc(var(--su) * 2.5)', height: 'calc(var(--su) * 2.5)', borderRadius: 'calc(var(--su) * 0.65)' }} />
               <div style={{ flex: 1 }}>
                 <div className="font-body" style={{ fontSize: 'calc(var(--su) * 1.35)', fontWeight: 500, color: '#FDFCFB' }}>DigiHome</div>
                 <div className="font-body" style={{ fontSize: 'calc(var(--su) * 0.95)', color: '#7ee2a8', display: 'flex', alignItems: 'center', gap: 'calc(var(--su) * 0.4)' }}>

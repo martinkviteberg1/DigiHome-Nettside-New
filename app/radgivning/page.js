@@ -13,8 +13,8 @@ const cards = [
 ];
 
 export const metadata = {
-  title: 'Rådgivning — verdivurdering, investering og markedsinnsikt',
-  description: 'Få datadrevet rådgivning om utleie i Bergen: gratis verdivurdering, investeringsråd, markedsinnsikt og juridisk bistand. DigiHome kjenner det lokale leiemarkedet.',
+  title: 'Rådgivning — verdivurdering og investering',
+  description: 'Datadrevet rådgivning om utleie i Bergen: gratis verdivurdering, investeringsråd, markedsinnsikt og juridisk bistand fra lokale eksperter.',
   alternates: { canonical: '/radgivning' },
 };
 

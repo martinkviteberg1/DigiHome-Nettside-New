@@ -2,6 +2,8 @@ import Link from 'next/link';
 import Header from '@/components/dh/Header';
 import Footer from '@/components/dh/Footer';
 import { site } from '@/lib/site';
+import { JsonLd } from '@/components/site/JsonLd';
+import { breadcrumbLd, webPageLd } from '@/lib/seo';
 
 export const metadata = {
   title: 'Brukervilkår',
@@ -25,6 +27,8 @@ function Section({ id, n, title, children }) {
 export default function VilkarPage() {
   return (
     <div className="bg-[#fdfcfb] text-[#1f1f1f] min-h-screen">
+      <JsonLd data={breadcrumbLd([{ name: 'Brukervilkår', path: '/vilkar' }])} />
+      <JsonLd data={webPageLd({ name: 'Brukervilkår', description: 'Vilkår for bruk av DigiHome — nettsiden, plattformen og mobil-appen.', path: '/vilkar' })} />
       <Header />
 
       <section className="max-w-[820px] mx-auto px-6 sm:px-10 lg:px-16 pt-32 sm:pt-36 pb-10">

@@ -11,7 +11,7 @@ export const revalidate = 3600;
 
 export const metadata = {
   title: 'Leiemarkedet i Norge — leiepriser og etterspørsel',
-  description: 'Datadrevne leiemarkedsrapporter basert på SSBs leiemarkedsundersøkelse og DigiHomes egen etterspørselsindeks. Se snittleie, prisutvikling og hvor etterspørselen er størst.',
+  description: 'Datadrevne leiemarkedsrapporter basert på SSB og DigiHomes etterspørselsindeks. Se snittleie, prisutvikling og hvor etterspørselen er størst.',
   alternates: { canonical: '/leiemarkedet' },
   openGraph: {
     title: 'Leiemarkedet i Norge — leiepriser og etterspørsel | DigiHome',

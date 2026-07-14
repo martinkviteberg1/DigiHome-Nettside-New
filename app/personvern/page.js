@@ -2,11 +2,13 @@ import Link from 'next/link';
 import Header from '@/components/dh/Header';
 import Footer from '@/components/dh/Footer';
 import { site } from '@/lib/site';
+import { JsonLd } from '@/components/site/JsonLd';
+import { breadcrumbLd, webPageLd } from '@/lib/seo';
 
 export const metadata = {
   title: 'Personvernerklæring',
   description:
-    'Slik behandler DigiHome personopplysninger i nettsiden, web-plattformen og mobil-appen — i tråd med GDPR. Hvilke data vi samler inn, databehandlere vi bruker, lagringstid og dine rettigheter.',
+    'Slik behandler DigiHome personopplysninger — i tråd med GDPR. Hva vi samler inn, databehandlere, lagringstid og dine rettigheter.',
   alternates: { canonical: '/personvern' },
 };
 
@@ -26,6 +28,8 @@ function Section({ id, n, title, children }) {
 export default function PersonvernPage() {
   return (
     <div className="bg-[#fdfcfb] text-[#1f1f1f] min-h-screen">
+      <JsonLd data={breadcrumbLd([{ name: 'Personvern', path: '/personvern' }])} />
+      <JsonLd data={webPageLd({ name: 'Personvernerklæring', description: 'Slik behandler DigiHome personopplysninger — i tråd med GDPR.', path: '/personvern' })} />
       <Header />
 
       <section className="max-w-[820px] mx-auto px-6 sm:px-10 lg:px-16 pt-32 sm:pt-36 pb-10">
