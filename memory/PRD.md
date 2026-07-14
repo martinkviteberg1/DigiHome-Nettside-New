@@ -383,3 +383,21 @@ Google Ads-styring via native REST API).
 - ✅ DESIGNLØFT: fsTopbar m/ ekte DigiHome-wordmark, faseindikator m/ progresjon,
   telefonnr; logo-topplinje på suksess-skjermen. Verifisert m/ skjermbilder.
 - MERK: /api/track filtrerer bot-UA → Playwright genererer aldri analytics-events.
+
+## Økt 14. juli 2026 (del 4) — Selvbetjent provisjonering LIVE + units i Kunder-synk
+- ✅ PROVISJONERING BYGGET (svar på plattformens spec i PROD-broen — VIKTIG: de svarer i
+  prod-broen https://digihome.no/api/agent-bridge, sjekk ALLTID begge broer!):
+  provisionSelfService() POSTer til {plattform}/api/bridge/self-service-customer
+  (X-Bridge-Secret + X-API-Key, event_id=lead.id, idempotent, 8s timeout) i stedet for
+  forwardToDigiHome for selvbetjente. 200 → platform_account{onboarding_url(magic-login),
+  portal_url, owner/property/unit/agreement-id} + provisioning_status=provisioned →
+  «Gå til kontoen din»-knappen (fra 10/7) får ekte handoff. 202 → pending_manual-fallback.
+  reforwardPending ekskluderer self_service. E-poster status-avhengige (admin + kvittering).
+  E2E-testet 5/5 + direkte kontraktstest (idempotens OK). QA-kunder ligger igjen i
+  plattform-preview (meldt dem for opprydding).
+- ✅ KUNDER-SYNK: units_count/units[]/properties_count konsumeres (additivt m/ fallback);
+  UI-kolonne «Enheter» m/ tooltip + «X bygg»-undertekst.
+- 📤 Kvitteringer sendt i PROD-broen (id 31d9f2e5 + e7ceacdc): deploy-koordinering
+  (de publiserer først, så marked-prod, så første ekte push + «Synk på nytt» på Kunder)
+  + purring på slette-synk/tombstone (fortsatt ubesvart).
+- VENTER: deres prod-publish (provisjonering + eksport-fiks), slette-synk-svar.
