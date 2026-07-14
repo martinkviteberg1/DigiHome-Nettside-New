@@ -9,7 +9,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   Loader2, RefreshCw, ChevronDown, ChevronRight, Search, Sparkles, Wrench,
   Settings2, TrendingUp, TrendingDown, Minus, ExternalLink, AlertTriangle,
-  CheckCircle2, Info, Bot, Globe, Save, Play,
+  CheckCircle2, Info, Bot, Globe, Save, Play, BarChart3, MousePointerClick, Eye, Target,
 } from 'lucide-react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 
@@ -64,7 +64,7 @@ function RunButton({ label, running, onClick, sub }) {
 export default function SeoAeoTab({ apiKey }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState('posisjoner');
+  const [tab, setTab] = useState('gsc');
   const [running, setRunning] = useState(null); // 'rank' | 'aeo' | 'tech'
   const [error, setError] = useState(null);
   const [expanded, setExpanded] = useState(null);
@@ -105,6 +105,7 @@ export default function SeoAeoTab({ apiKey }) {
   const top30 = rank.keywords.filter((k) => k.position != null).length;
 
   const TABS = [
+    { k: 'gsc', l: 'Search Console', icon: BarChart3 },
     { k: 'posisjoner', l: 'Posisjoner', icon: Search },
     { k: 'ai', l: 'AI-synlighet', icon: Sparkles },
     { k: 'teknisk', l: 'Teknisk helse', icon: Wrench },
@@ -132,6 +133,9 @@ export default function SeoAeoTab({ apiKey }) {
       {error && (
         <div className="flex items-center gap-2 bg-red-50 text-red-600 text-[13px] rounded-xl px-4 py-3"><AlertTriangle className="w-4 h-4 shrink-0" /> {error}</div>
       )}
+
+      {/* ---------------- SEARCH CONSOLE (ekte Google-data) ---------------- */}
+      {tab === 'gsc' && <GscPanel apiKey={apiKey} />}
 
       {/* ---------------- POSISJONER ---------------- */}
       {tab === 'posisjoner' && (
@@ -436,3 +440,249 @@ function SeoSettings({ apiKey, config, onSaved }) {
     </Card>
   );
 }
+
+// ---------------------------------------------------------------------------
+// Search Console-panelet — ekte Google-data (klikk/visninger/CTR/posisjon),
+// «nesten der»-listen (posisjon 8–20) og indekseringssjekk per URL.
+// Data caches 6 t server-side; «Oppdater» tvinger fersk henting.
+// ---------------------------------------------------------------------------
+const KEY_PAGES = [
+  'https://digihome.no/',
+  'https://digihome.no/bli-utleier',
+  'https://digihome.no/utleiemegler-bergen',
+  'https://digihome.no/airbnb-forvaltning-bergen',
+  'https://digihome.no/tjenester',
+  'https://digihome.no/priskalkulator',
+];
+
+function GscPanel({ apiKey }) {
+  const [days, setDays] = useState(28);
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [inspections, setInspections] = useState({}); // url -> result
+  const [inspecting, setInspecting] = useState(null);
+  const [customUrl, setCustomUrl] = useState('');
+
+  const load = useCallback(async (force = false) => {
+    force ? setRefreshing(true) : setLoading(true);
+    try {
+      const r = await fetch(`/api/admin/seo/gsc/overview?key=${encodeURIComponent(apiKey)}&days=${days}${force ? '&force=1' : ''}`);
+      setData(await r.json());
+    } catch (e) { setData({ ok: false, error: e.message }); }
+    setLoading(false); setRefreshing(false);
+  }, [apiKey, days]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const inspect = async (url) => {
+    setInspecting(url);
+    try {
+      const r = await fetch(`/api/admin/seo/gsc/inspect?key=${encodeURIComponent(apiKey)}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url }),
+      });
+      const j = await r.json();
+      setInspections((prev) => ({ ...prev, [url]: j.ok ? j.result : { error: j.error } }));
+    } catch (e) { setInspections((prev) => ({ ...prev, [url]: { error: e.message } })); }
+    setInspecting(null);
+  };
+
+  if (loading) return <div className="flex items-center justify-center py-24 text-[#999]"><Loader2 className="w-6 h-6 animate-spin mr-2" /> Henter data fra Google Search Console …</div>;
+
+  if (!data || (!data.ok && data.configured === false)) {
+    return (
+      <Card className="p-8 max-w-2xl">
+        <div className="flex items-start gap-3">
+          <Info className="w-5 h-5 text-[#7c5cf0] mt-0.5" />
+          <div>
+            <div className="text-[15px] font-bold mb-1">Search Console er ikke koblet til</div>
+            <p className="text-[13.5px] text-[#666] leading-relaxed">Legg inn GSC_CLIENT_EMAIL og GSC_PRIVATE_KEY (service-konto) i miljøvariablene, og gi kontoen tilgang i Search Console.</p>
+          </div>
+        </div>
+      </Card>
+    );
+  }
+  if (!data.ok) {
+    return <div className="flex items-center gap-2 bg-red-50 text-red-600 text-[13px] rounded-xl px-4 py-3"><AlertTriangle className="w-4 h-4" /> {data.error}</div>;
+  }
+
+  const t = data.totals || {};
+  const d = data.delta || {};
+  const noData = !data.series || data.series.length === 0;
+  const fmtN = (n) => (n == null ? '—' : new Intl.NumberFormat('nb-NO').format(n));
+  const DeltaTag = ({ v, suffix = '', invert = false }) => {
+    if (v == null || v === 0) return null;
+    const good = invert ? v < 0 : v > 0;
+    return (
+      <span className={`inline-flex items-center gap-0.5 text-[11.5px] font-semibold ${good ? 'text-emerald-600' : 'text-red-500'}`}>
+        {v > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}{v > 0 ? '+' : ''}{v}{suffix}
+      </span>
+    );
+  };
+
+  const KPIS = [
+    { icon: MousePointerClick, label: 'Klikk', value: fmtN(t.clicks), delta: <DeltaTag v={d.clicks} /> },
+    { icon: Eye, label: 'Visninger', value: fmtN(t.impressions), delta: <DeltaTag v={d.impressions} /> },
+    { icon: Target, label: 'CTR', value: t.ctr != null ? `${t.ctr}%` : '—', delta: <DeltaTag v={d.ctr} suffix=" pp" /> },
+    { icon: BarChart3, label: 'Snittposisjon', value: t.position != null ? `#${t.position}` : '—', delta: <DeltaTag v={d.position} /> },
+  ];
+
+  const QTable = ({ rows, keyField, label }) => (
+    <Card className="overflow-hidden">
+      <div className="px-5 py-4 border-b border-black/[0.05] text-[14px] font-bold">{label}</div>
+      {(!rows || rows.length === 0) ? (
+        <div className="px-5 py-8 text-center text-[#999] text-[13px]">Ingen data ennå.</div>
+      ) : (
+        <div className="divide-y divide-black/[0.04]">
+          <div className="grid grid-cols-[1fr_60px_74px_54px_54px] gap-2 px-5 py-2 text-[10.5px] font-semibold uppercase tracking-wide text-[#bbb]">
+            <span>{keyField === 'query' ? 'Søkeord' : 'Side'}</span><span className="text-right">Klikk</span><span className="text-right">Visn.</span><span className="text-right">CTR</span><span className="text-right">Pos.</span>
+          </div>
+          {rows.slice(0, 12).map((r) => (
+            <div key={r[keyField]} className="grid grid-cols-[1fr_60px_74px_54px_54px] gap-2 px-5 py-2.5 text-[13px] hover:bg-[#fafaf9]">
+              <span className="truncate font-medium text-[#0a0a0a]" title={r[keyField]}>{keyField === 'page' ? r.page.replace(/^https?:\/\/[^/]+/, '') || '/' : r.query}</span>
+              <span className="text-right font-semibold">{fmtN(r.clicks)}</span>
+              <span className="text-right text-[#777]">{fmtN(r.impressions)}</span>
+              <span className="text-right text-[#777]">{r.ctr}%</span>
+              <span className="text-right"><span className={`font-semibold ${r.position <= 10 ? 'text-emerald-600' : r.position <= 20 ? 'text-amber-600' : 'text-[#999]'}`}>#{Math.round(r.position)}</span></span>
+            </div>
+          ))}
+        </div>
+      )}
+    </Card>
+  );
+
+  const VerdictChip = ({ res }) => {
+    if (!res) return null;
+    if (res.error) return <Chip tone="red"><AlertTriangle className="w-3 h-3" /> {res.error.slice(0, 60)}</Chip>;
+    const tone = res.verdict === 'PASS' ? 'green' : res.verdict === 'FAIL' ? 'red' : 'amber';
+    return (
+      <span className="flex flex-wrap items-center gap-1.5">
+        <Chip tone={tone}>{res.verdict === 'PASS' ? <CheckCircle2 className="w-3 h-3" /> : <AlertTriangle className="w-3 h-3" />} {res.coverageState || res.verdict}</Chip>
+        {res.lastCrawlTime && <span className="text-[11.5px] text-[#999]">crawlet {fmtDate(res.lastCrawlTime)}</span>}
+      </span>
+    );
+  };
+
+  return (
+    <div className="space-y-5">
+      {/* Topplinje: eiendom + periodevelger + oppdater */}
+      <div className="flex flex-wrap items-center gap-2">
+        <Chip tone="violet"><Globe className="w-3 h-3" /> {data.property}</Chip>
+        <Chip>{data.range?.start} → {data.range?.end}</Chip>
+        {data.cached && <Chip>Cache · {fmtDate(data.cachedAt)}</Chip>}
+        <div className="ml-auto flex items-center gap-2">
+          <div className="flex items-center bg-white rounded-full shadow-[0_2px_10px_rgba(0,0,0,0.04)] p-1">
+            {[7, 28, 90].map((n) => (
+              <button key={n} onClick={() => setDays(n)} className={`h-7 px-3 rounded-full text-[12.5px] font-semibold transition-colors ${days === n ? 'bg-[#0a0a0a] text-white' : 'text-[#999] hover:text-[#0a0a0a]'}`}>{n} d</button>
+            ))}
+          </div>
+          <button onClick={() => load(true)} disabled={refreshing} title="Hent ferske tall fra Google" className="h-9 w-9 rounded-full bg-white shadow-[0_2px_10px_rgba(0,0,0,0.04)] flex items-center justify-center text-[#999] hover:text-[#0a0a0a] disabled:opacity-50">
+            {refreshing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+          </button>
+        </div>
+      </div>
+
+      {/* KPI-kort */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        {KPIS.map((k) => (
+          <Card key={k.label} className="p-5">
+            <div className="flex items-center gap-1.5 text-[12px] text-[#999] font-medium"><k.icon className="w-3.5 h-3.5" /> {k.label}</div>
+            <div className="flex items-baseline gap-2 mt-1">
+              <span className="text-[30px] font-bold tracking-tight">{k.value}</span>
+              {k.delta}
+            </div>
+            <div className="text-[11px] text-[#bbb] mt-0.5">vs. forrige {data.days} d</div>
+          </Card>
+        ))}
+      </div>
+
+      {noData && (
+        <div className="flex items-start gap-3 bg-[#7c5cf0]/[0.06] rounded-2xl px-5 py-4">
+          <Info className="w-5 h-5 text-[#7c5cf0] shrink-0 mt-0.5" />
+          <div className="text-[13.5px] text-[#555] leading-relaxed">
+            <b>Eiendommen ble nylig koblet til Search Console.</b> Google begynner å samle søkedata fra i dag og viser dem med ~2 døgns etterslep — grafer og søkeord-tabeller fylles automatisk i løpet av 1–3 døgn. <b>Indekseringssjekken under fungerer allerede nå.</b>
+          </div>
+        </div>
+      )}
+
+      {/* Trendgraf */}
+      {!noData && (
+        <Card className="p-5">
+          <div className="text-[13px] font-bold mb-3">Klikk og visninger per dag</div>
+          <div className="h-[220px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={data.series} margin={{ top: 8, right: 8, bottom: 0, left: -14 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0efed" />
+                <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#bbb' }} tickFormatter={(v) => v.slice(5)} />
+                <YAxis yAxisId="l" tick={{ fontSize: 10, fill: '#bbb' }} allowDecimals={false} />
+                <YAxis yAxisId="r" orientation="right" tick={{ fontSize: 10, fill: '#ddd' }} allowDecimals={false} />
+                <Tooltip contentStyle={{ borderRadius: 12, border: '1px solid #eee', fontSize: 12 }} />
+                <Line yAxisId="l" type="monotone" dataKey="clicks" name="Klikk" stroke={VIOLET} strokeWidth={2} dot={false} />
+                <Line yAxisId="r" type="monotone" dataKey="impressions" name="Visninger" stroke="#c9c4bd" strokeWidth={2} dot={false} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+      )}
+
+      {/* «Nesten der» — raskeste gevinster */}
+      {data.nearWins && data.nearWins.length > 0 && (
+        <Card className="overflow-hidden border-2 border-[#7c5cf0]/20">
+          <div className="px-5 py-4 border-b border-black/[0.05]">
+            <div className="text-[14px] font-bold flex items-center gap-2"><Target className="w-4 h-4 text-[#7c5cf0]" /> Nesten der — posisjon 8–20</div>
+            <div className="text-[12px] text-[#999]">Søkeord rett utenfor topplasseringene. Styrk disse sidene = raskeste SEO-gevinst.</div>
+          </div>
+          <div className="divide-y divide-black/[0.04]">
+            {data.nearWins.map((q) => (
+              <div key={q.query} className="flex items-center gap-3 px-5 py-3 text-[13.5px]">
+                <span className="inline-flex items-center justify-center min-w-[44px] h-7 rounded-full bg-amber-100 text-amber-700 text-[13px] font-bold">#{Math.round(q.position)}</span>
+                <span className="font-semibold text-[#0a0a0a] truncate">{q.query}</span>
+                <span className="ml-auto text-[12.5px] text-[#999] shrink-0">{fmtN(q.impressions)} visn. · {fmtN(q.clicks)} klikk</span>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {/* Toppsøkeord + toppsider */}
+      <div className="grid lg:grid-cols-2 gap-5">
+        <QTable rows={data.queries} keyField="query" label="Toppsøkeord" />
+        <QTable rows={data.pages} keyField="page" label="Toppsider" />
+      </div>
+
+      {/* Indekseringssjekk */}
+      <Card className="overflow-hidden">
+        <div className="px-5 py-4 border-b border-black/[0.05]">
+          <div className="text-[14px] font-bold">Indekseringssjekk (URL Inspection)</div>
+          <div className="text-[12px] text-[#999]">Spør Google direkte om en side er indeksert · caches 24 t per URL · kvote 2 000/dag</div>
+        </div>
+        <div className="divide-y divide-black/[0.04]">
+          {KEY_PAGES.map((url) => {
+            const path = url.replace(/^https?:\/\/[^/]+/, '') || '/';
+            const res = inspections[url];
+            return (
+              <div key={url} className="flex flex-wrap items-center gap-3 px-5 py-3">
+                <span className="text-[13.5px] font-semibold text-[#0a0a0a] min-w-[180px]">{path}</span>
+                <VerdictChip res={res} />
+                <button onClick={() => inspect(url)} disabled={inspecting === url}
+                  className="ml-auto inline-flex items-center gap-1.5 h-8 px-3.5 rounded-full bg-[#f1f0ee] text-[12.5px] font-semibold text-[#555] hover:bg-[#e8e6e3] disabled:opacity-50">
+                  {inspecting === url ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />} Sjekk
+                </button>
+              </div>
+            );
+          })}
+          <div className="flex flex-wrap items-center gap-2 px-5 py-3.5">
+            <input value={customUrl} onChange={(e) => setCustomUrl(e.target.value)} placeholder="https://digihome.no/…"
+              className="flex-1 min-w-[240px] h-9 rounded-full border border-black/[0.08] bg-white px-4 text-[13px] focus:outline-none focus:ring-2 focus:ring-[#7c5cf0]/30" />
+            <button onClick={() => customUrl && inspect(customUrl.trim())} disabled={!customUrl || !!inspecting}
+              className="inline-flex items-center gap-1.5 h-9 px-4 rounded-full bg-[#0a0a0a] text-white text-[12.5px] font-semibold hover:bg-[#2a2a2a] disabled:opacity-50">
+              {inspecting === customUrl.trim() ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />} Sjekk URL
+            </button>
+            {customUrl && inspections[customUrl.trim()] && <div className="w-full"><VerdictChip res={inspections[customUrl.trim()]} /></div>}
+          </div>
+        </div>
+      </Card>
+    </div>
+  );
+}
+

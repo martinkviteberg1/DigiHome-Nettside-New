@@ -49,6 +49,7 @@ import { fireLeadEmails, sendReEngagedNotification } from '@/lib/lead-emails';
 import { buildAlerts } from '@/lib/ads-monitor';
 import { fetchCompetitorGallery, serpApiConfigured } from '@/lib/serpapi';
 import { getSeoConfig, saveSeoConfig, runRankCheck, runAeoCheck, runTechAudit, getSeoOverview, RANK_COLL as SEO_RANK_COLL } from '@/lib/seo-monitor';
+import { gscConfigured, gscStatus, computeGscOverview, inspectUrl as gscInspectUrl } from '@/lib/gsc';
 import { chatLLM } from '@/lib/llm';
 import { adstudioConfigured, fetchAdStudioContext, uploadAdImage, buildCreativeSpec, buildAssetFeedSpec, generatePreviews, createStudioAd, setAdStatus as adstudioSetAdStatus, fetchAdsLive, searchGeoLocations, createCampaign, createAdSet } from '@/lib/adstudio';
 import { slugify } from '@/lib/site';
@@ -5975,6 +5976,31 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
       try { return cors(NextResponse.json({ ok: true, config: await saveSeoConfig(db, body) })); }
       catch (e) { return cors(NextResponse.json({ ok: false, error: e.message }, { status: 200 })); }
     }
+    // --- Google Search Console (ekte Google-data via service-konto) --------
+    if (route === '/admin/seo/gsc/status' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      try { return cors(NextResponse.json({ ok: true, ...(await gscStatus()) })); }
+      catch (e) { return cors(NextResponse.json({ ok: false, error: e.message }, { status: 200 })); }
+    }
+    if (route === '/admin/seo/gsc/overview' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!gscConfigured()) return cors(NextResponse.json({ ok: false, configured: false, error: 'GSC ikke konfigurert' }, { status: 200 }));
+      try {
+        const sp = new URL(request.url).searchParams;
+        const data = await computeGscOverview(db, { days: sp.get('days') || 28, force: sp.get('force') === '1' });
+        return cors(NextResponse.json(data));
+      } catch (e) { return cors(NextResponse.json({ ok: false, error: e.message }, { status: 200 })); }
+    }
+    if (route === '/admin/seo/gsc/inspect' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!gscConfigured()) return cors(NextResponse.json({ ok: false, error: 'GSC ikke konfigurert' }, { status: 200 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      try {
+        const result = await gscInspectUrl(db, body.url, { force: !!body.force });
+        return cors(NextResponse.json({ ok: true, result }));
+      } catch (e) { return cors(NextResponse.json({ ok: false, error: e.message }, { status: 200 })); }
+    }
+
     if (route === '/admin/seo/run' && method === 'POST') {
       if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
