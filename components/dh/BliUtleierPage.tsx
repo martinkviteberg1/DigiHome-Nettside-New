@@ -13,7 +13,7 @@ import {
   TextInput, PhoneInput, IconCardSelector, NumberSelector,
 } from './FormFields';
 import PropertyRegistryPicker from './PropertyRegistryPicker';
-import { FinnLookupField, AddressField, finnToFields, FinnPropertyCard } from './PropertyInputs';
+import { FinnLookupField, AddressField, finnToFields, FinnPropertyCard, detectFinnUrl } from './PropertyInputs';
 import { AddressAutocomplete } from './AddressAutocomplete';
 import { track, getLeadAttribution } from '@/lib/analytics';
 import { trackLead, trackLeadStart, getClickIds } from '@/lib/gtag';
@@ -201,9 +201,10 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
   }, []);
 
   // Bytt inngangsvei (adresse ↔ Finn) + spor hvilken vei brukeren velger (CRO-funnel).
-  const switchToFinn = useCallback(() => {
+  // trigger: 'paste' (smart felt), 'url-param' (?finn= fra hero) — 'knapp' er historisk.
+  const switchToFinn = useCallback((trigger: string = 'knapp') => {
     setInputMode('finn');
-    try { track('form_input_mode', { form: 'utleier', mode: 'finn' }); } catch (e) {}
+    try { track('form_input_mode', { form: 'utleier', mode: 'finn', trigger }); } catch (e) {}
   }, []);
   const switchToAddress = useCallback(() => {
     setInputMode('address');
@@ -218,6 +219,17 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
   useEffect(() => {
     try {
       const sp = new URLSearchParams(window.location.search);
+      // ?finn= (fra forsidens hero-søk, 14/7): lim inn FINN-lenke der → hopp
+      // rett til tjenestevalget med Finn-flyten klar; oppslaget kjører når
+      // eiendomssteget vises.
+      const finnParam = sp.get('finn') ? detectFinnUrl(sp.get('finn') as string) : null;
+      if (finnParam) {
+        setFinnUrl(finnParam);
+        setInputMode('finn');
+        setEntryPhase((cur) => (cur === 'address' ? 'tier' : cur));
+        try { track('form_input_mode', { form: 'utleier', mode: 'finn', trigger: 'url-param' }); } catch (e) {}
+        return;
+      }
       const p = sp.get('address');
       if (p) {
         const looksLikeStreetAddress = /\d/.test(p); // norske gateadresser har husnummer
@@ -649,12 +661,21 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
                 <AddressAutocomplete
                   value={formData.address}
                   onChange={(v: any) => {
+                    // Smart felt (14/7): FINN-lenke limt rett i adressefeltet → Finn-flyt.
+                    const finn = detectFinnUrl(v);
+                    if (finn) {
+                      setFinnUrl(finn);
+                      setInputMode('finn');
+                      setDir(1); setEntryPhase('tier');
+                      try { track('form_input_mode', { form: 'utleier-start', mode: 'finn', trigger: 'paste' }); } catch (e) {}
+                      return;
+                    }
                     updateField('address', v);
                     setEntryVerified(false);
                     if (formData.postal_code || formData.city) setFormData((prev: any) => ({ ...prev, address: v, postal_code: '', city: '' }));
                   }}
                   onSelect={onEntryAddressSelect}
-                  placeholder="F.eks. Nordnesveien 13, Bergen"
+                  placeholder="F.eks. Nordnesveien 13 — eller FINN-lenke"
                   showIcon={false}
                   dataTestId="entry-address-input"
                   inputClassName="flex-1 h-[62px] px-3.5 text-[15.5px] bg-transparent border-0 outline-none focus:outline-none focus-visible:outline-none focus:ring-0 placeholder:text-[#999] w-full"
@@ -673,7 +694,7 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
                   </button>
                 </div>
               </div>
-              <p className="text-[12px] text-[#999] text-center mt-3.5">Velg adressen fra forslagslisten — da finner vi riktig område automatisk.</p>
+              <p className="text-[12px] text-[#999] text-center mt-3.5">Velg adressen fra forslagslisten — eller lim inn en FINN-lenke, så fyller vi inn alt automatisk.</p>
             </div>
 
             <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 mt-9">
@@ -683,12 +704,6 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
             </div>
 
             <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 mt-8 pt-6 border-t border-[#f0ede8]">
-              <button type="button" data-testid="entry-mode-finn"
-                onClick={() => { setInputMode('finn'); setDir(1); setEntryPhase('tier'); try { track('form_input_mode', { form: 'utleier-start', mode: 'finn' }); } catch (e) {} }}
-                className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#7c3aed] hover:text-[#8a45d6] transition-colors">
-                <Zap className="w-3.5 h-3.5" /> Har du en Finn-annonse? Bruk den i stedet
-              </button>
-              <span className="hidden sm:block h-3.5 w-px bg-[#e5e0d8]" aria-hidden />
               <button type="button" data-testid="entry-skip-address" onClick={() => { setDir(1); setEntryPhase('tier'); }} className="text-[13px] font-medium text-[#999] hover:text-[#555] transition-colors">
                 Hopp over
               </button>
@@ -880,8 +895,8 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
                     {finnCardShown
                       ? 'Vi hentet alt fra annonsen og verifiserte mot Eiendomsregisteret. Sjekk at detaljene stemmer — du kan justere direkte.'
                       : inputMode === 'finn'
-                        ? 'Lim inn lenken til boligen på finn.no, så fyller vi inn adresse, areal, matrikkel og eierforslag automatisk.'
-                        : 'Skriv inn adressen — vi henter matrikkel og eierforslag automatisk fra Eiendomsregisteret.'}
+                        ? 'Vi henter adresse, areal, matrikkel og eierforslag automatisk fra annonsen.'
+                        : 'Skriv inn adressen — eller lim inn en FINN-lenke, så fyller vi inn alt automatisk.'}
                   </p>
 
                   {inputMode === 'address' ? (
@@ -892,8 +907,9 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
                         postalCode={formData.postal_code}
                         autoConfirm
                         error={errors.address}
-                        placeholder="F.eks. Nordnesveien 13, Bergen"
+                        placeholder="F.eks. Nordnesveien 13 — eller FINN-lenke"
                         testIdPrefix="owner-address"
+                        onFinnUrl={(url: string) => { setFinnUrl(url); switchToFinn('paste'); }}
                         onChange={(v: any) => { updateField('address', v); if (formData.postal_code) updateField('postal_code', ''); }}
                         onSelect={(data: any) => {
                           const addr = data.address ? data.address.replace(/,\s*(Norway|Norge)$/i, '') : '';
@@ -903,27 +919,19 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
                         }}
                       />
 
-                      {/* Premium Finn-snarvei — vises før adresse er valgt (ikke alle har en annonse) */}
+                      {/* Passiv hint (14/7): feltet ER Finn-inngangen — ingen egen modusknapp */}
                       <AnimatePresence initial={false}>
                         {!registryQuery && (
-                          <motion.button
-                            key="finn-shortcut"
-                            type="button"
-                            onClick={switchToFinn}
-                            data-testid="owner-mode-finn"
-                            initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
-                            transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-                            className="group mt-4 w-full flex items-center gap-3.5 rounded-2xl border border-[#ece7f5] bg-gradient-to-r from-[#faf7ff] to-[#f5eefc] px-4 py-3.5 text-left transition-all hover:border-[#d9c7f3] hover:shadow-[0_10px_30px_-18px_rgba(124,58,237,0.55)] active:scale-[0.99]"
+                          <motion.p
+                            key="finn-hint"
+                            initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
+                            transition={{ duration: 0.25 }}
+                            data-testid="owner-finn-hint"
+                            className="mt-3 flex items-center gap-1.5 text-[12.5px] text-[#999]"
                           >
-                            <span className="w-9 h-9 rounded-xl bg-white flex items-center justify-center shrink-0 shadow-[0_2px_8px_rgba(124,58,237,0.12)]">
-                              <Zap className="w-4 h-4 text-[#7c3aed]" fill="#7c3aed" />
-                            </span>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-[13.5px] font-semibold text-[#0a0a0a] leading-tight">Har du allerede en Finn-annonse?</p>
-                              <p className="text-[12.5px] text-[#888] mt-0.5 leading-snug">Lim inn lenken — så fyller vi inn alt automatisk.</p>
-                            </div>
-                            <ArrowRight className="w-4 h-4 text-[#bbb] shrink-0 transition-all group-hover:text-[#7c3aed] group-hover:translate-x-0.5" />
-                          </motion.button>
+                            <Zap className="w-3.5 h-3.5 text-[#cf97fc] shrink-0" fill="#cf97fc" />
+                            Har du annonsen på FINN? Lim lenken rett i adressefeltet — vi fyller inn alt automatisk.
+                          </motion.p>
                         )}
                       </AnimatePresence>
 
@@ -954,7 +962,7 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
                             <p className="text-[13px] text-[#888] mb-3">Lim inn lenken til boligen på finn.no — vi henter adresse, areal, matrikkel og eierforslag automatisk.</p>
                             <FinnLookupField
                               value={finnUrl}
-                              onChange={setFinnUrl}
+                              onChange={(v: any) => { setFinnUrl(v); if (!String(v || '').trim()) switchToAddress(); }}
                               testId="owner-step1-finn"
                               hidePreview
                               onResult={(d: any) => {
@@ -1053,34 +1061,44 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
                               <button type="button" onClick={() => removeExtra(i)} data-testid={`owner-extra-remove-${i}`} className="w-7 h-7 rounded-full flex items-center justify-center text-[#bbb] hover:text-red-500 hover:bg-red-50 transition-colors"><X className="w-4 h-4" /></button>
                             </div>
                             <div className="space-y-5">
-                              <div>
-                                <Label className="text-[12.5px] font-semibold text-[#555] mb-2 block">Adresse</Label>
-                                <AddressField
-                                  compact
-                                  value={u.address}
-                                  postalCode={u.postal_code}
-                                  placeholder="Adresse til eiendommen"
-                                  testIdPrefix={`owner-extra-address-${i}`}
-                                  onChange={(v: any) => updateExtra(i, 'address', v)}
-                                  onSelect={(data: any) => {
-                                    if (data.address) updateExtra(i, 'address', data.address.replace(/,\s*(Norway|Norge)$/i, ''));
-                                    if (data.postalCode) updateExtra(i, 'postal_code', data.postalCode);
-                                  }}
-                                />
-                              </div>
-
-                              <div className="rounded-xl bg-[#faf7fe] border border-[#efe6fb] p-3.5">
-                                <div className="flex items-center gap-1.5 mb-2">
-                                  <Sparkles className="w-[13px] h-[13px] text-[#cf97fc]" />
-                                  <span className="text-[12px] font-semibold text-[#555]">Finn-annonse <span className="text-[#5b6370] font-normal">(valgfritt)</span></span>
+                              {!u.finn_url ? (
+                                <div>
+                                  <Label className="text-[12.5px] font-semibold text-[#555] mb-2 block">Adresse</Label>
+                                  <AddressField
+                                    compact
+                                    value={u.address}
+                                    postalCode={u.postal_code}
+                                    placeholder="Adresse — eller lim inn FINN-lenke"
+                                    testIdPrefix={`owner-extra-address-${i}`}
+                                    onFinnUrl={(url: string) => {
+                                      updateExtra(i, 'finn_url', url);
+                                      try { track('form_input_mode', { form: 'utleier-extra', mode: 'finn', trigger: 'paste' }); } catch (e) {}
+                                    }}
+                                    onChange={(v: any) => updateExtra(i, 'address', v)}
+                                    onSelect={(data: any) => {
+                                      if (data.address) updateExtra(i, 'address', data.address.replace(/,\s*(Norway|Norge)$/i, ''));
+                                      if (data.postalCode) updateExtra(i, 'postal_code', data.postalCode);
+                                    }}
+                                  />
                                 </div>
-                                <FinnLookupField
-                                  value={u.finn_url || ''}
-                                  onChange={(v: any) => updateExtra(i, 'finn_url', v)}
-                                  testId={`owner-extra-finn-${i}`}
-                                  onResult={(d: any) => updateExtraMany(i, finnToFields(d))}
-                                />
-                              </div>
+                              ) : (
+                                <div className="rounded-xl bg-[#faf7fe] border border-[#efe6fb] p-3.5">
+                                  <div className="flex items-center gap-1.5 mb-2">
+                                    <Sparkles className="w-[13px] h-[13px] text-[#cf97fc]" />
+                                    <span className="text-[12px] font-semibold text-[#555]">Finn-annonse</span>
+                                  </div>
+                                  <FinnLookupField
+                                    value={u.finn_url || ''}
+                                    onChange={(v: any) => updateExtra(i, 'finn_url', v)}
+                                    testId={`owner-extra-finn-${i}`}
+                                    onResult={(d: any) => updateExtraMany(i, {
+                                      ...finnToFields(d),
+                                      ...(d?.address ? { address: d.address.replace(/,\s*(Norway|Norge)$/i, '') } : {}),
+                                      ...(d?.postalCode ? { postal_code: d.postalCode } : {}),
+                                    })}
+                                  />
+                                </div>
+                              )}
 
                               <TextInput label="Størrelse (m²)" value={u.sqm} onChange={(v: any) => updateExtra(i, 'sqm', v)} placeholder="F.eks. 65" type="number" testId={`owner-extra-sqm-${i}`} />
                               <div>

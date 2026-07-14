@@ -2861,3 +2861,15 @@ agent_communication:
         -working: true
         -agent: "main"
         -comment: "NYTT (14/7): /bli-utleier har ikke lenger innbakt wizard nederst (#skjema-seksjonen fjernet). (1) Ny UtleierCta-seksjon (mørkt kort, 'Klar til å leie ut — uten stresset?', CTA → /bli-utleier/start + telefon + trustpunkter). (2) Begge #skjema-lenker i UtleierInfo → /bli-utleier/start. (3) ScrollToForm omskrevet: ?address=/?start/#skjema → window.location.replace('/bli-utleier/start?<alle params bevart>') — betalt trafikk brekker ikke. (4) Ny UtleierStickyCta (mobil, vises etter 560px scroll, skjules når CTA-seksjonen er synlig via IntersectionObserver, z-40). VERIFISERT m/ Playwright: #skjema=0, hero-CTA href=/bli-utleier/start, CTA-seksjon rendrer, redirect ga /bli-utleier/start?address=Testveien+1&utm_source=google, sticky skjult før/synlig etter scroll."
+
+  - task: "Smart adressefelt: alle adressefelt aksepterer FINN-lenke (egen modusknapp fjernet)"
+    implemented: true
+    working: true
+    file: "/app/components/dh/PropertyInputs.tsx, /app/components/dh/BliUtleierPage.tsx, /app/components/dh/AddressAutocomplete.tsx, /app/components/dh/HeroSection.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "main"
+        -comment: "NYTT (14/7): (1) detectFinnUrl/looksLikeUrl eksportert fra PropertyInputs. (2) AddressField har onFinnUrl-prop: finn.no-lenke i feltet → Finn-flyt; annen URL → varsel '…kun annonser fra finn.no' (testid <prefix>-url-hint). (3) AddressAutocomplete fyrer ALDRI adressesøk for URL-aktig input. (4) Wizard steg 1: onFinnUrl → setFinnUrl + switchToFinn('paste'); Finn-snarveipanelet (owner-mode-finn) FJERNET → passiv hint (owner-finn-hint); tømmes finn-feltet → auto-retur til adressemodus. (5) Entry-skjermen på /start: smart deteksjon i hovedfeltet → rett til tier-fasen; entry-mode-finn-knappen FJERNET. (6) ?finn=-param bootstrappes (fra hero) → tier-fasen m/ finn-modus klar. (7) Ekstra-enheter: ett smart felt (finn_url settes ved paste, FinnLookupField m/ preview tar over, onResult fyller nå også address/postal_code). (8) Hero på forsiden: FINN-lenke → /bli-utleier/start?finn=…. Sporing: form_input_mode m/ trigger paste/url-param. VERIFISERT m/ Playwright 8/8 (hero-ruting, bootstrap, steg1-finn-modus m/ oppslag, knapp borte, hint, url-varsel, smart paste)."

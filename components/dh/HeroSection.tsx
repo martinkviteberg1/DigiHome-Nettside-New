@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { ArrowRight, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AddressAutocomplete } from './AddressAutocomplete';
+import { detectFinnUrl } from './PropertyInputs';
 import { track } from '@/lib/analytics';
 import { trackLeadStart } from '@/lib/gtag';
 
@@ -33,6 +34,13 @@ export default function HeroSection() {
     e.preventDefault();
     try { track('cta_click', { cta: 'hero_vurdering', hasAddress: !!address }); } catch (err) {}
     try { trackLeadStart('hero'); } catch (err) {}
+    // Smart felt (14/7): FINN-lenke limt i hero-søket → rett inn i Finn-flyten.
+    const finn = detectFinnUrl(address);
+    if (finn) {
+      try { track('form_input_mode', { form: 'hero', mode: 'finn', trigger: 'paste' }); } catch (err) {}
+      router.push(`/bli-utleier/start?finn=${encodeURIComponent(finn)}`);
+      return;
+    }
     const params = new URLSearchParams();
     if (address) params.set('address', address);
     // Geo-ruting i onboarding: send med postnr/poststed når adressen ble valgt fra listen,

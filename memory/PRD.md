@@ -365,3 +365,12 @@ Google Ads-styring via native REST API).
   (lib/contracts-sync.js normalizeCustomer + lib/finance.js computePlatformCustomers)
   — ingen feil hos oss.
 - VENTER FORTSATT: selfservice-provisioning-spec-svar, slette-synk-svar (begge broen).
+
+## Økt 14. juli 2026 (del 2) — Smart adressefelt (FINN-lenke aksepteres overalt)
+- ✅ Alle adressefelt (hero forside, /start-entry, wizard steg 1, ekstra-enheter) oppdager
+  limt finn.no-lenke og bytter sømløst til Finn-flyten. Egne FINN-modusknapper FJERNET
+  (entry-mode-finn + owner-mode-finn) → erstattet m/ passiv hint + oppdaterte placeholders
+  («…eller lim inn FINN-lenke»). Ikke-finn-URL → tydelig varsel. Adressesøk dempes for
+  URL-input. Hero ruter via ?finn=-param som bootstrappes i wizarden. CRO-sporing:
+  form_input_mode {trigger: paste|url-param}. Verifisert m/ Playwright 8/8.
+- Nøkkelfunksjoner: detectFinnUrl/looksLikeUrl (PropertyInputs), AddressField onFinnUrl-prop.

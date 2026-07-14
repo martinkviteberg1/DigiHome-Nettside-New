@@ -18,6 +18,20 @@ export function finnToFields(d: any) {
   return out;
 }
 
+/** Smart felt (14/7): oppdager finn.no-lenke i fritekst (med/uten protokoll)
+ *  og normaliserer til full https-URL. Adresser kan aldri matche. */
+export function detectFinnUrl(v: string): string | null {
+  const m = (v || '').trim().match(/(?:https?:\/\/)?(?:www\.)?finn\.no\/\S+/i);
+  if (!m) return null;
+  let url = m[0].replace(/^(?:https?:\/\/)?(?:www\.)?/i, '');
+  return `https://www.${url}`;
+}
+
+/** Ser input ut som en lenke (men ikke nødvendigvis finn.no)? */
+export function looksLikeUrl(v: string): boolean {
+  return /^(https?:\/\/|www\.)/i.test((v || '').trim());
+}
+
 /* ──────────────────────────────────────────────────────────────────────────
    AddressField — bekreftet adresse-kort med «Endre», ellers autofullføring.
    ────────────────────────────────────────────────────────────────────────── */
@@ -31,8 +45,10 @@ export function AddressField({
   autoConfirm = false,
   error,
   compact = false,
+  onFinnUrl = null, // smart felt (14/7): limes en finn.no-lenke inn → ruter til Finn-flyten
 }: any) {
   const [editing, setEditing] = useState(!(autoConfirm && value));
+  const [urlHint, setUrlHint] = useState(false);
   const inputWrapClass = compact
     ? 'w-full h-[46px] pl-10 pr-3.5 text-[14px] bg-white border border-[#e0e0e0] rounded-xl outline-none focus:border-[#cf97fc] focus:shadow-[0_0_0_3px_rgba(207,151,252,0.12)] transition-all placeholder:text-[#9a9a9a]'
     : 'w-full h-[52px] pl-11 pr-4 text-[15px] bg-white border border-[#e0e0e0] rounded-xl outline-none focus:border-[#cf97fc] focus:shadow-[0_0_0_3px_rgba(207,151,252,0.14)] transition-all placeholder:text-[#9a9a9a]';
@@ -69,7 +85,15 @@ export function AddressField({
     <div>
       <AddressAutocomplete
         value={value}
-        onChange={onChange}
+        onChange={(v: any) => {
+          // Smart felt: finn.no-lenke limt rett i adressefeltet → Finn-flyt.
+          if (onFinnUrl) {
+            const finn = detectFinnUrl(v);
+            if (finn) { setUrlHint(false); onFinnUrl(finn); return; }
+            setUrlHint(looksLikeUrl(v));
+          }
+          onChange(v);
+        }}
         onSelect={(data: any) => {
           onSelect?.(data);
           setEditing(false);
@@ -81,6 +105,11 @@ export function AddressField({
         className="w-full"
         dataTestId={`${testIdPrefix}-input`}
       />
+      {onFinnUrl && urlHint && (
+        <p className="text-[12px] text-[#8a6d3b] mt-1.5" data-testid={`${testIdPrefix}-url-hint`}>
+          Dette ser ut som en lenke — vi støtter foreløpig kun annonser fra finn.no.
+        </p>
+      )}
       {error && <p className="text-[12px] text-red-500 mt-1.5">{error}</p>}
     </div>
   );
