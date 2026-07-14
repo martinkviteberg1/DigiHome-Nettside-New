@@ -460,3 +460,29 @@ Google Ads-styring via native REST API).
   ACK slettesynk + re-send gamle arkiveringer + spøkelse-id-er. (2) Frontend-testing
   av SEO-fanen ikke kjørt (venter bruker-OK). (3) «Verdivurdering fullskjerm/modal»-
   spørsmål fra bruker gjaldt DET ANDRE prosjektet — IGNORER.
+
+## Økt 14. juli 2026 (del 7) — SEO-innholdspakken («Fortsett med alt»)
+- ✅ TEKNISKE FIKSER (tech-revisjon 88→forventet ~100 etter prod-publish):
+  Alle titler ≤60 / metas ≤160 på: sommer, video, personvern, bli-utleier,
+  bli-leietaker, tjenester, utleie, leiemarkedet, radgivning + MALENE for
+  /utleie/[by] («Utleie i X — priser og forvaltning») og /leiemarkedet/[by]
+  («Leiemarkedet i X ÅR — snittleie og priser»). Alt-tekster: LocationPage
+  relaterte-kort, AutopilotFilm (3), FilmScenes (3 DigiHome-logoer). og:image:
+  sommer/video/priskalkulator (krevde site-import!). JSON-LD: personvern/
+  support/vilkar (webPageLd). Mini-FAQ-seksjon på /kontakt (tynt innhold).
+  LOKAL SLUTTKONTROLL: 20/20 sider uten funn.
+- ✅ GUIDE-HUB (/guider): /app/lib/guides.js med 5 grundige guider
+  (hva-koster-utleiemegler, leie-ut-leilighet-bergen, depositum-regler,
+  skatt-pa-utleie, korttidsutleie-regler). Artikkelmal /guider/[slug] med
+  AEO «Kort svar»-boks øverst, Article+FAQPage+Breadcrumb-schema, relaterte
+  guider, CTA per guide, disclaimer på jus/skatt. Hub-side med kortgrid.
+  Lenket fra: sitemap (prio 0.8/0.7), llms-content.txt, Footer «Ressurser»,
+  guide-seksjon på /nyheter. Juridiske fakta verifisert (husleieloven §3-5,
+  eierseksjonsloven §24 90-døgn, borettslag 30-døgn, skattesjablonger).
+- ✅ SITERBAR STATISTIKK: semantisk <table> «Snittleie i {by} {år} per
+  boligtype» m/ figcaption-kildehenvisning på RentMarketPage — Dataset-schema
+  m/ variableMeasured fantes allerede.
+- Backend-regresjon: 26/26 bestått. Skjermbilder verifisert (hub, artikkel, tabell).
+- GJENSTÅR FOR BRUKER: publisere prod (alt innhold/fikser er kun i preview),
+  Google Business Profile (anbefalt sterkt), Google-anmeldelser, bro-svar
+  (self-service «A» + slettesynk-ACK) venter fortsatt på bruker-OK.
