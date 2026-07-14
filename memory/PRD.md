@@ -436,3 +436,27 @@ Google Ads-styring via native REST API).
   dedikerte /api/bridge/self-service-customer — DET VI ALLEREDE BRUKER OG HAR E2E-TESTET)
   eller B (utvide POST /api/leads). RIKTIG SVAR: A — vi er live mot A. VENTER PÅ BRUKER-OK
   før bro-svar sendes.
+
+## Økt 14. juli 2026 (del 6) — Google Search Console-integrasjon (verdensklasse)
+- ✅ GSC KOBLET TIL: Bruker opprettet service-konto (digihome-seo@digihome-477122.iam.
+  gserviceaccount.com) + ga tilgang i Search Console. Env: GSC_CLIENT_EMAIL +
+  GSC_PRIVATE_KEY i /app/.env (\n-escapet, koden håndterer begge former).
+- ✅ /app/lib/gsc.js: EGEN RS256-JWT-signering (Node crypto, NULL nye avhengigheter)
+  → token mot oauth2.googleapis.com (scope webmasters.readonly, cache 55 min).
+  Eiendom auto-detektert via sites.list: sc-domain:digihome.no (siteFullUser).
+  computeGscOverview (3 API-kall, delta mot forrige periode, nearWins pos 8–20,
+  cache 6 t i gsc_cache, force=1), inspectUrl (URL Inspection, kun digihome.no-URLer,
+  cache 24 t i gsc_inspections), gscStatus.
+- ✅ Endepunkter: GET /api/admin/seo/gsc/status, GET /api/admin/seo/gsc/overview
+  ?days=7|28|90[&force=1], POST /api/admin/seo/gsc/inspect {url}. Backend-testet 13/13.
+- ✅ UI: «Search Console» er ny STANDARDFANE i SEO & AEO-modulen: KPI m/ delta,
+  klikk/visninger-graf (to y-akser), «Nesten der»-liste (pos 8–20), toppsøkeord/
+  toppsider, indekseringssjekk m/ 6 nøkkelsider + egendefinert URL. Skjermbilde-OK.
+- VIKTIG KONTEKST: Eiendommen er NYOPPRETTET → Search Analytics = 0 rader (fylles
+  1–3 døgn, UI viser forklarings-banner). URL Inspection LIVE: / og /bli-utleier =
+  PASS «Innsendt og indeksert» (crawlet 14/7); /utleiemegler-bergen = NEUTRAL
+  (ikke indeksert — finnes kun i preview til bruker publiserer prod).
+- FORTSATT ÅPENT: (1) Bruker har ikke svart på bro-replikk: «A» på self-service +
+  ACK slettesynk + re-send gamle arkiveringer + spøkelse-id-er. (2) Frontend-testing
+  av SEO-fanen ikke kjørt (venter bruker-OK). (3) «Verdivurdering fullskjerm/modal»-
+  spørsmål fra bruker gjaldt DET ANDRE prosjektet — IGNORER.
