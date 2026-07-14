@@ -33,6 +33,8 @@ DigiHome drives av Digihome AS (org.nr 835 595 242), med kontor på Kokstadvegen
 - [Bli utleier](https://digihome.no/bli-utleier): Registrer eiendommen din — velg selvforvaltning (5 %) eller få tilbud på full forvaltning.
 - [Priskalkulator](https://digihome.no/priskalkulator): Bygg din egen forvaltningspakke og se prisen med en gang.
 - [Full forvaltning](https://digihome.no/forvaltning): Alt om fullforvaltningstjenesten.
+- [Utleiemegler i Bergen](https://digihome.no/utleiemegler-bergen): Moderne alternativ til tradisjonell utleiemegler — hva en utleiemegler gjør, hva det koster, og hvordan DigiHome skiller seg ut.
+- [Airbnb-forvaltning i Bergen](https://digihome.no/airbnb-forvaltning-bergen): Full service korttidsutleie — annonser, dynamisk prising, gjester, renhold og oppgjør, kombinert med 10+2-modellen.
 - [Tjenester](https://digihome.no/tjenester): Dynamisk, langtids- og korttidsutleie forklart.
 - [Leiemarkedet i Bergen](https://digihome.no/leiemarkedet/bergen): Datadrevet leiemarkedsrapport — snittleie per boligtype, prisutvikling og etterspørsel (kilde: SSB + DigiHomes etterspørselsindeks).
 - [Utleie bydel for bydel](https://digihome.no/utleie): Lokalkunnskap for Sentrum, Nordnes, Sandviken, Møhlenpris, Åsane, Fana, Laksevåg, Årstad, Fyllingsdalen, Ytrebygda og Arna.

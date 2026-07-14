@@ -19,6 +19,7 @@ import LandingPagesTab from '@/components/admin/LandingPagesTab';
 import PropertiesTab from '@/components/admin/PropertiesTab';
 import HistoryTab from '@/components/admin/HistoryTab';
 import InvestorRoomTab from '@/components/admin/InvestorRoomTab';
+import SeoAeoTab from '@/components/admin/SeoAeoTab';
 
 const SESSION_KEY = 'dh_admin_session';
 const LEGACY_KEY = 'dh_admin_key';
@@ -53,6 +54,7 @@ const NAV = [
       { k: 'landingssider', l: 'Landingssider', icon: LayoutTemplate, desc: 'Kampanjesider · annonse-LP-er · hovedsider — med live ytelse' },
       { k: 'i-finnstudio', insight: 'finnstudio', l: 'FINN-studio', icon: Layers, desc: 'FINN-annonser — analyse og optimalisering' },
       { k: 'i-konkurrent', insight: 'konkurrent', l: 'Konkurrentanalyse', icon: Crosshair, desc: 'Overvåk konkurrentene i Bergen' },
+      { k: 'seo', l: 'SEO & AEO', icon: Globe, desc: 'Google-posisjoner · AI-synlighet · teknisk SEO-helse' },
     ],
   },
   {
@@ -112,6 +114,7 @@ const SECTION_TITLES = {
   landingssider: { t: 'Landingssider', s: 'Alle konverteringssider på ett sted — kampanjer, annonse-LP-er og hovedsider med live ytelse' },
   boliger: { t: 'Boliger på forsiden', s: 'Synk forvaltede boliger fra plattformen og velg hvilke som vises offentlig — personvern-trygt' },
   historikk: { t: 'Historikk', s: 'Leads fra før sporingen startet — sett kilde, status og verdi manuelt. Teller i helhetsbildet, aldri i annonse-ROAS' },
+  seo: { t: 'SEO & AEO', s: 'Google-posisjoner (Bergen) · synlighet i AI-svar · teknisk revisjon av alle sider' },
 };
 
 // Undertitler i toppbaren når en Innsikt-modul er aktiv (egen inngang i menyen)
@@ -426,6 +429,7 @@ export default function AdminPage() {
           {section === 'landingssider' && <LandingPagesTab apiKey={token} />}
           {section === 'boliger' && <PropertiesTab apiKey={token} />}
           {section === 'historikk' && <HistoryTab apiKey={token} />}
+          {section === 'seo' && <SeoAeoTab apiKey={token} />}
           {section === 'okonomi' && <FinanceDashboard apiKey={token} />}
           {section === 'innsikt' && <InnsiktDashboard apiKey={token} tab={insightTab} onTabChange={setInsightTab} onStats={setInsightStats} />}
           {section === 'kunder' && <CustomersDashboard apiKey={token} />}

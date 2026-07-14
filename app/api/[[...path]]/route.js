@@ -48,6 +48,7 @@ import { buildLeadReceipt, buildLeadAdminNotification } from '@/lib/lead-emails'
 import { fireLeadEmails, sendReEngagedNotification } from '@/lib/lead-emails';
 import { buildAlerts } from '@/lib/ads-monitor';
 import { fetchCompetitorGallery, serpApiConfigured } from '@/lib/serpapi';
+import { getSeoConfig, saveSeoConfig, runRankCheck, runAeoCheck, runTechAudit, getSeoOverview, RANK_COLL as SEO_RANK_COLL } from '@/lib/seo-monitor';
 import { chatLLM } from '@/lib/llm';
 import { adstudioConfigured, fetchAdStudioContext, uploadAdImage, buildCreativeSpec, buildAssetFeedSpec, generatePreviews, createStudioAd, setAdStatus as adstudioSetAdStatus, fetchAdsLive, searchGeoLocations, createCampaign, createAdSet } from '@/lib/adstudio';
 import { slugify } from '@/lib/site';
@@ -5951,6 +5952,78 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
       };
       await db.collection('agent_bridge').insertOne({ ...doc });
       return cors(NextResponse.json({ ok: true, message: doc }, { status: 201 }));
+    }
+
+    // ===================================================================
+    // SEO & AEO — posisjonstracker (SerpApi), AI-synlighet (OpenAI) og
+    // teknisk sitemap-revisjon. Kvote-bevisst: SerpApi ~100 søk/mnd deles
+    // med konkurrentgalleriet → rank-kjøring viser alltid estimert kost.
+    // ===================================================================
+    if (route === '/admin/seo/overview' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      try { return cors(NextResponse.json(await getSeoOverview(db))); }
+      catch (e) { return cors(NextResponse.json({ ok: false, error: e.message }, { status: 200 })); }
+    }
+    if (route === '/admin/seo/config' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      try { return cors(NextResponse.json({ ok: true, config: await getSeoConfig(db) })); }
+      catch (e) { return cors(NextResponse.json({ ok: false, error: e.message }, { status: 200 })); }
+    }
+    if (route === '/admin/seo/config' && method === 'PUT') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      try { return cors(NextResponse.json({ ok: true, config: await saveSeoConfig(db, body) })); }
+      catch (e) { return cors(NextResponse.json({ ok: false, error: e.message }, { status: 200 })); }
+    }
+    if (route === '/admin/seo/run' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      const type = (body.type || '').toString();
+      try {
+        if (type === 'rank') {
+          // dry=true → kun kvote-estimat, INGEN SerpApi-kall (brukes av UI/tester).
+          if (body.dry) {
+            const cfg = await getSeoConfig(db);
+            return cors(NextResponse.json({ ok: true, dry: true, wouldUseSearches: cfg.keywords.length }));
+          }
+          const result = await runRankCheck(db, { keywords: body.keywords });
+          return cors(NextResponse.json(result, { status: result.ok ? 200 : 502 }));
+        }
+        if (type === 'aeo') {
+          const result = await runAeoCheck(db, { questions: body.questions });
+          return cors(NextResponse.json(result, { status: result.ok ? 200 : 502 }));
+        }
+        if (type === 'tech') {
+          const result = await runTechAudit(db, { limit: body.limit });
+          return cors(NextResponse.json(result, { status: result.ok ? 200 : 502 }));
+        }
+        return cors(NextResponse.json({ ok: false, error: 'Ukjent type (rank|aeo|tech)' }, { status: 400 }));
+      } catch (e) { return cors(NextResponse.json({ ok: false, error: e.message }, { status: 200 })); }
+    }
+    // Ukentlig SEO-cron: kjører alle tre løpene, men self-throttler til maks
+    // én gang per 6 døgn (en daglig planlegger kan trygt treffe endepunktet).
+    if (route === '/cron/seo-weekly' && (method === 'GET' || method === 'POST')) {
+      const sp = new URL(request.url).searchParams;
+      const token = sp.get('token') || request.headers.get('x-cron-token') || '';
+      const cronSecret = (process.env.ADS_CRON_SECRET || '').trim();
+      const okAuth = (cronSecret && token === cronSecret) || (ADMIN_KEY && token === ADMIN_KEY);
+      if (!okAuth) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      try {
+        const force = sp.get('force') === '1';
+        const last = await db.collection(SEO_RANK_COLL).findOne({}, { sort: { checkedAt: -1 }, projection: { checkedAt: 1 } });
+        if (!force && last && Date.now() - new Date(last.checkedAt).getTime() < 6 * 86400000) {
+          return cors(NextResponse.json({ ok: true, skipped: true, reason: 'Siste kjøring er under 6 døgn gammel', lastRunAt: last.checkedAt }));
+        }
+        const rank = await runRankCheck(db, {});
+        const aeo = await runAeoCheck(db, {});
+        const tech = await runTechAudit(db, {});
+        return cors(NextResponse.json({
+          ok: true,
+          rank: { ok: rank.ok, searchesUsed: rank.searchesUsed, error: rank.error || null },
+          aeo: { ok: aeo.ok, summary: aeo.summary || null, error: aeo.error || null },
+          tech: { ok: tech.ok, avgScore: tech.avgScore ?? null, pageCount: tech.pageCount ?? null, error: tech.error || null },
+        }));
+      } catch (e) { return cors(NextResponse.json({ ok: false, error: e.message }, { status: 200 })); }
     }
 
     // --- Audiences: suppression + lookalike/customer-match seed (won-kunder) ---

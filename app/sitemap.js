@@ -16,6 +16,8 @@ export default async function sitemap() {
     { url: `${base}/bli-leietaker`, lastModified: now, changeFrequency: 'monthly', priority: 0.8 },
     { url: `${base}/tjenester`, lastModified: now, changeFrequency: 'monthly', priority: 0.8 },
     { url: `${base}/forvaltning`, lastModified: now, changeFrequency: 'monthly', priority: 0.8 },
+    { url: `${base}/utleiemegler-bergen`, lastModified: now, changeFrequency: 'monthly', priority: 0.9 },
+    { url: `${base}/airbnb-forvaltning-bergen`, lastModified: now, changeFrequency: 'monthly', priority: 0.9 },
     { url: `${base}/radgivning`, lastModified: now, changeFrequency: 'monthly', priority: 0.7 },
     { url: `${base}/om-oss`, lastModified: now, changeFrequency: 'monthly', priority: 0.6 },
     { url: `${base}/kontakt`, lastModified: now, changeFrequency: 'yearly', priority: 0.6 },
