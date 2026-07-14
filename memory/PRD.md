@@ -401,3 +401,38 @@ Google Ads-styring via native REST API).
   (de publiserer først, så marked-prod, så første ekte push + «Synk på nytt» på Kunder)
   + purring på slette-synk/tombstone (fortsatt ubesvart).
 - VENTER: deres prod-publish (provisjonering + eksport-fiks), slette-synk-svar.
+
+## Økt 14. juli 2026 (del 5) — SEO & AEO-modul + 2 kommersielle SEO-sider + portal-revisjon
+- ✅ PORTAL-REVISJON (Huseierportalen hos plattformen): logget inn m/ fersk magic link
+  (QA-persona qa-portal-audit-2026-07, idempotent provisjonering). Finnes: Oversikt,
+  Meldinger (chat OK), Saker (kun visning — mangler «Ny sak»), Mine eiendommer (mangler
+  «Legg til eiendom»), Økonomi/Eieroppgjør (OK), Dokumenter (KUN placeholder «kommer
+  snart»). Mangler kritisk for selvforvaltning: utleieprosess-status (annonsering/
+  interessenter), kontonummer for utbetaling, leietaker-/kontraktinfo, profil/innstillinger.
+  Bruker sa NEI til å sende kravliste i broen foreløpig.
+- ✅ SEO & AEO-MODUL (bruker: «Forbedre alt ja tenk selv»):
+  · /app/lib/seo-monitor.js: runRankCheck (SerpApi, Bergen, num=30, ext_usage-telling,
+    KVOTE ~100 søk/mnd delt m/ konkurrentgalleri, maks 15 kw), runAeoCheck (gpt-4o-mini
+    modellkunnskap + gpt-4o-search-preview web-søk m/ url_citations), runTechAudit
+    (crawler PROD-sitemap, score 0–100/side), config i settings key 'seo_config'.
+  · Endepunkter: GET/PUT /api/admin/seo/config, GET /api/admin/seo/overview,
+    POST /api/admin/seo/run {type: rank|aeo|tech, dry}, GET /api/cron/seo-weekly?token=
+    (self-throttle 6 døgn, force=1). Samlinger: seo_rank_checks/seo_aeo_checks/seo_tech_audits.
+  · Admin: ny seksjon «SEO & AEO» (Markedsføring) — SeoAeoTab.js m/ 4 faner
+    (Posisjoner m/ trendgraf & topp-10-konkurrenter, AI-synlighet m/ siteringer,
+    Teknisk helse side-for-side, Innstillinger). Backend-testet 9/9.
+  · FØRSTE MÅLING: alle 10 kw utenfor topp 30 i Google; AEO web-sitering 50 %
+    (digihome.no siteres i 3/6 AI-websvar!); tech-snitt 88/100 (30 sider, verste:
+    /sommer 67, /video 67 — lange metas + manglende alt-tekster).
+- ✅ INNHOLD: /utleiemegler-bergen + /airbnb-forvaltning-bergen (eksakt-match kommersielle
+  sider, FAQPage+Service+Breadcrumb-schema, sammenligningstabell, bydelslenker) + i
+  sitemap.js, llms-content.txt, Footer «Tjenester». MERK: teller først når bruker
+  publiserer til PROD (rank/tech måler digihome.no).
+- 📬 BRO-NYTT 14/7 13:06 (preview-broen): (1) SLETTE-SYNK LEVERT fra plattformen:
+  lead_deleted UT (verifisert mot vårt mottak, HTTP 200), archived INN i PATCH
+  /api/leads/status (de ber oss RE-SENDE arkiveringer gjort FØR nå), tombstones i
+  /api/leads/export. De ber om platform_id/e-post for spøkelsene kari@fjordbygg.no +
+  Mona Evelyn Bergstø. (2) SELF-SERVICE A/B-SPØRSMÅL: de spør om vi vil ha A (deres
+  dedikerte /api/bridge/self-service-customer — DET VI ALLEREDE BRUKER OG HAR E2E-TESTET)
+  eller B (utvide POST /api/leads). RIKTIG SVAR: A — vi er live mot A. VENTER PÅ BRUKER-OK
+  før bro-svar sendes.
