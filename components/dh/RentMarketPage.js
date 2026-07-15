@@ -86,7 +86,15 @@ export default function RentMarketPage({ report }) {
         variableMeasured: r.byRoom.filter((b) => b.current).map((b) => ({
           '@type': 'PropertyValue', name: `Snittleie ${b.label}`, value: b.current, unitText: 'NOK/måned',
         })),
-        isBasedOn: r.source?.tables?.map((t) => ({ '@type': 'Dataset', name: `SSB tabell ${t.id}`, url: t.url })),
+        isBasedOn: r.source?.tables?.map((t) => ({
+          '@type': 'Dataset',
+          name: `SSB tabell ${t.id}`,
+          url: t.url,
+          description: `Statistisk sentralbyrå, statistikkbanktabell ${t.id}: grunnlagsdata for gjennomsnittlig månedlig leie i det norske leiemarkedet, fordelt på region, antall rom og år. Brukt som kilde for DigiHomes leiemarkedsrapport for ${r.cityLabel}.`,
+          license: 'https://data.norge.no/nlod/no/2.0',
+          creator: { '@type': 'Organization', name: 'Statistisk sentralbyrå', url: 'https://www.ssb.no' },
+          publisher: { '@type': 'Organization', name: 'Statistisk sentralbyrå', url: 'https://www.ssb.no' },
+        })),
       },
       {
         '@type': 'Article',

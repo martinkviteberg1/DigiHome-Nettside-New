@@ -13,6 +13,7 @@ import {
   TextInput, PhoneInput, IconCardSelector, NumberSelector,
 } from './FormFields';
 import PropertyRegistryPicker from './PropertyRegistryPicker';
+import WizardShowcase from './WizardShowcase';
 import { FinnLookupField, AddressField, finnToFields, FinnPropertyCard, detectFinnUrl } from './PropertyInputs';
 import { AddressAutocomplete } from './AddressAutocomplete';
 import { track, getLeadAttribution } from '@/lib/analytics';
@@ -614,9 +615,11 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
   const fsTopbar = fullscreen ? (
     <div className="sticky top-0 z-40 bg-[#fdfcfb]/90 backdrop-blur-md border-b border-[#f0ede8]">
       <div className="max-w-[1080px] mx-auto px-5 sm:px-6 h-[58px] grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-        <a href="/" className="justify-self-start inline-flex items-center" aria-label="DigiHome — til forsiden" data-testid="fs-logo-link">
+        {/* Logo kun på mobil/nettbrett — på lg+ bærer den mørke sidebaren merkevaren (unngå dobbel logo) */}
+        <a href="/" className="justify-self-start inline-flex items-center lg:hidden" aria-label="DigiHome — til forsiden" data-testid="fs-logo-link">
           <img src="/digihome-wordmark-ink.svg" alt="DigiHome" className="h-[19px] sm:h-[21px] w-auto" />
         </a>
+        <span className="hidden lg:block" aria-hidden />
         <div className="hidden sm:flex items-center gap-2.5" aria-hidden data-testid="fs-phase-indicator">
           {FS_PHASES.map((l, i) => (
             <React.Fragment key={l}>
@@ -675,7 +678,9 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
   // ---------- Fullskjerm steg 0: «Hvor ligger boligen?» (adresse-først) ----------
   if (fullscreen && entryPhase === 'address') {
     return (
-      <div className="min-h-screen bg-[#fdfcfb] flex flex-col relative overflow-hidden" data-testid="start-entry-address">
+      <div className="min-h-screen bg-[#fdfcfb] lg:grid lg:grid-cols-[minmax(400px,0.9fr)_1.25fr]" data-testid="start-entry-address">
+        <WizardShowcase phase={0} />
+        <div className="flex flex-col min-h-screen relative overflow-hidden">
         {fsTopbar}
         {/* Myk lavendel-glød + prikk-grid — samme formspråk som forsiden */}
         <div aria-hidden className="pointer-events-none absolute inset-0" style={{
@@ -684,18 +689,18 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
         }} />
         <div aria-hidden className="pointer-events-none absolute -top-40 left-1/2 -translate-x-1/2 w-[760px] h-[560px] rounded-full" style={{ background: 'radial-gradient(circle, rgba(207,151,252,0.10) 0%, transparent 65%)' }} />
         <div className="flex-1 flex items-center justify-center px-5 py-12 relative">
-          <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }} className="w-full max-w-[640px]">
-            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#b18ae0] text-center">Kom i gang — tar under 2 minutter</p>
-            <h1 className="text-[32px] sm:text-[42px] font-bold tracking-[-0.03em] text-[#0a0a0a] text-center mt-3 leading-[1.08]" style={{ fontFamily: 'var(--font-heading)' }}>
+          <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }} className="w-full max-w-[660px]">
+            <p className="text-[11.5px] font-bold uppercase tracking-[0.18em] text-[#a678e8] text-center">Kom i gang — tar under 2 minutter</p>
+            <h1 className="text-[34px] sm:text-[46px] xl:text-[52px] font-bold tracking-[-0.035em] text-[#0a0a0a] text-center mt-4 leading-[1.04]" style={{ fontFamily: 'var(--font-heading)' }}>
               Hvor ligger boligen<br className="hidden sm:block" /> du vil leie ut?
             </h1>
-            <p className="text-[15px] text-[#888] text-center mt-3.5 max-w-[46ch] mx-auto leading-relaxed">
+            <p className="text-[15.5px] sm:text-[16.5px] text-[#8a8178] text-center mt-4 max-w-[48ch] mx-auto leading-relaxed">
               Start med adressen — vi finner tjenestene som er tilgjengelige i ditt område og estimerer leiepotensialet.
             </p>
 
-            <div className="mt-9" data-no-enter-advance>
-              <div className="flex items-center rounded-full bg-white border-2 border-[#e8e5e0] shadow-[0_2px_14px_rgba(0,0,0,0.05)] transition-all duration-300 focus-within:border-[#0a0a0a]/35 focus-within:shadow-[0_0_0_4px_rgba(10,10,10,0.05),0_16px_44px_rgba(20,10,40,0.10)] hover:shadow-[0_8px_28px_rgba(20,10,40,0.09)]">
-                <div className="pl-5 sm:pl-6"><MapPin className="w-[18px] h-[18px] text-[#7c3aed]" /></div>
+            <div className="mt-10" data-no-enter-advance>
+              <div className="flex items-center rounded-full bg-white border-2 border-[#e6e2dc] shadow-[0_3px_18px_rgba(20,10,40,0.06)] transition-all duration-300 focus-within:border-[#7c3aed]/45 focus-within:shadow-[0_0_0_5px_rgba(124,58,237,0.07),0_20px_54px_rgba(20,10,40,0.12)] hover:shadow-[0_10px_34px_rgba(20,10,40,0.10)]">
+                <div className="pl-6 sm:pl-7"><MapPin className="w-5 h-5 text-[#7c3aed]" /></div>
                 <AddressAutocomplete
                   value={formData.address}
                   onChange={(v: any) => {
@@ -716,37 +721,45 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
                   placeholder="F.eks. Nordnesveien 13 — eller FINN-lenke"
                   showIcon={false}
                   dataTestId="entry-address-input"
-                  inputClassName="flex-1 h-[62px] px-3.5 text-[15.5px] bg-transparent border-0 outline-none focus:outline-none focus-visible:outline-none focus:ring-0 placeholder:text-[#999] w-full"
+                  inputClassName="flex-1 h-[68px] px-4 text-[16.5px] bg-transparent border-0 outline-none focus:outline-none focus-visible:outline-none focus:ring-0 placeholder:text-[#a29b92] w-full"
                   className="flex-1"
                 />
-                <div className="pr-2">
+                <div className="pr-2.5">
                   <button
                     type="button"
                     onClick={() => { setDir(1); setEntryPhase('tier'); }}
                     disabled={!entryVerified}
                     data-testid="entry-address-continue"
                     aria-label="Fortsett"
-                    className={`w-[48px] h-[48px] rounded-full flex items-center justify-center transition-all duration-300 ${entryVerified ? 'bg-[#0a0a0a] text-white hover:shadow-[0_6px_20px_rgba(167,101,224,0.35)] active:scale-95' : 'bg-[#f0eee9] text-[#c2beb6] cursor-not-allowed'}`}
+                    className={`w-[52px] h-[52px] rounded-full flex items-center justify-center transition-all duration-300 ${entryVerified ? 'bg-[#0a0a0a] text-white hover:shadow-[0_8px_24px_rgba(124,58,237,0.4)] hover:scale-[1.04] active:scale-95' : 'bg-[#f0eee9] text-[#c2beb6] cursor-not-allowed'}`}
                   >
-                    <ArrowRight className="w-[18px] h-[18px]" />
+                    <ArrowRight className="w-5 h-5" />
                   </button>
                 </div>
               </div>
-              <p className="text-[12px] text-[#999] text-center mt-3.5">Velg adressen fra forslagslisten — eller lim inn en FINN-lenke, så fyller vi inn alt automatisk.</p>
+              <p className="text-[12.5px] text-[#a29b92] text-center mt-4">Velg adressen fra forslagslisten — eller lim inn en FINN-lenke, så fyller vi inn alt automatisk.</p>
+              {/* Sikkerhetsventil: vises KUN når brukeren har skrevet uten å få valgt
+                  fra forslagslisten (f.eks. ved ustabilt adresse-API) — adressen kan
+                  ellers ikke hoppes over. */}
+              {!entryVerified && (formData.address || '').trim().length >= 4 ? (
+                <p className="text-center mt-5">
+                  <button type="button" data-testid="entry-address-fallback" onClick={() => { setDir(1); setEntryPhase('tier'); }} className="text-[12.5px] font-medium text-[#b3aca3] hover:text-[#0a0a0a] underline underline-offset-4 decoration-[#ddd6cc] transition-colors">
+                    Får du ikke treff på adressen? Fortsett likevel
+                  </button>
+                </p>
+              ) : null}
             </div>
 
-            <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 mt-9">
+            <div className="flex flex-wrap items-center justify-center gap-x-7 gap-y-2.5 mt-11">
               {['Gratis og uforpliktende', 'Svar innen 24 timer', '150+ boliger forvaltet'].map((t) => (
-                <span key={t} className="inline-flex items-center gap-1.5 text-[12px] text-[#999]"><Check className="w-3.5 h-3.5 text-[#cf97fc]" strokeWidth={3} /> {t}</span>
+                <span key={t} className="inline-flex items-center gap-2 text-[12.5px] font-medium text-[#8a857d]">
+                  <span className="w-[18px] h-[18px] rounded-full bg-[#f1e8fd] flex items-center justify-center"><Check className="w-3 h-3 text-[#7c3aed]" strokeWidth={3.2} /></span>
+                  {t}
+                </span>
               ))}
             </div>
-
-            <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 mt-8 pt-6 border-t border-[#f0ede8]">
-              <button type="button" data-testid="entry-skip-address" onClick={() => { setDir(1); setEntryPhase('tier'); }} className="text-[13px] font-medium text-[#999] hover:text-[#555] transition-colors">
-                Hopp over
-              </button>
-            </div>
           </motion.div>
+        </div>
         </div>
       </div>
     );
@@ -763,7 +776,7 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
       return (
         <button key={t.value} type="button" data-testid={`entry-tier-${t.value}`}
           onClick={() => chooseEntryTier(t.value)}
-          className={`relative text-left rounded-[22px] border-2 bg-white p-6 transition-all duration-200 active:scale-[0.985] group ${featured ? 'border-[#cf97fc] shadow-[0_16px_50px_-24px_rgba(124,58,237,0.4)]' : 'border-[#eceae6] hover:border-[#cf97fc] hover:shadow-[0_16px_50px_-24px_rgba(124,58,237,0.35)]'}`}>
+          className={`relative text-left rounded-[24px] border-2 bg-white p-6 sm:p-7 transition-all duration-200 active:scale-[0.985] group ${featured ? 'border-[#cf97fc] shadow-[0_16px_50px_-24px_rgba(124,58,237,0.4)]' : 'border-[#eceae6] hover:border-[#cf97fc] hover:shadow-[0_16px_50px_-24px_rgba(124,58,237,0.35)] hover:-translate-y-0.5'}`}>
           {t.badge && (
             <span className={`absolute -top-2.5 right-5 text-[9px] font-bold uppercase tracking-[0.08em] px-2.5 py-1 rounded-full ${featured || t.badge.tone === 'green' ? 'bg-gradient-to-r from-[#16a34a] to-[#15803d] text-white' : 'bg-[#0a0a0a] text-white'}`}>{featured ? 'Tilgjengelig på din adresse' : t.badge.text}</span>
           )}
@@ -788,11 +801,18 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
       );
     };
     return (
-      <div className="min-h-screen bg-[#fdfcfb] flex flex-col relative overflow-hidden" data-testid="start-entry">
+      <div className="min-h-screen bg-[#fdfcfb] lg:grid lg:grid-cols-[minmax(400px,0.9fr)_1.25fr]" data-testid="start-entry">
+        <WizardShowcase phase={1} />
+        <div className="flex flex-col min-h-screen relative overflow-hidden">
         {fsTopbar}
+        {/* Myk lavendel-glød + prikk-grid — samme formspråk som adressesteget */}
+        <div aria-hidden className="pointer-events-none absolute inset-0" style={{
+          backgroundImage: 'radial-gradient(circle, #c8c8c8 0.8px, transparent 0.8px)', backgroundSize: '24px 24px', opacity: 0.35,
+          maskImage: 'radial-gradient(ellipse 70% 50% at 50% 40%, black 25%, transparent 72%)', WebkitMaskImage: 'radial-gradient(ellipse 70% 50% at 50% 40%, black 25%, transparent 72%)',
+        }} />
         <div aria-hidden className="pointer-events-none absolute -top-40 left-1/2 -translate-x-1/2 w-[760px] h-[560px] rounded-full" style={{ background: 'radial-gradient(circle, rgba(207,151,252,0.10) 0%, transparent 65%)' }} />
         <div className="flex-1 flex items-center justify-center px-5 py-12 relative">
-          <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }} className="w-full max-w-[680px]">
+          <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }} className="w-full max-w-[720px]">
 
             {/* Valgt adresse — chip med «Endre» tilbake til adressesteget */}
             {formData.address ? (
@@ -807,13 +827,13 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
               </div>
             ) : null}
 
-            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#b18ae0] text-center">
+            <p className="text-[11.5px] font-bold uppercase tracking-[0.18em] text-[#a678e8] text-center">
               {hasGeo ? (inBergen ? 'Gode nyheter' : 'Tilgjengelig i ditt område') : 'Kom i gang'}
             </p>
-            <h1 className="text-[30px] sm:text-[38px] font-bold tracking-[-0.03em] text-[#0a0a0a] text-center mt-2" style={{ fontFamily: 'var(--font-heading)' }}>
+            <h1 className="text-[32px] sm:text-[42px] font-bold tracking-[-0.035em] text-[#0a0a0a] text-center mt-3 leading-[1.06]" style={{ fontFamily: 'var(--font-heading)' }}>
               {hasGeo && inBergen ? 'Vi er i ditt område!' : hasGeo ? 'Slik leier du ut med DigiHome' : 'Hvordan vil du leie ut?'}
             </h1>
-            <p className="text-[14.5px] text-[#888] text-center mt-2.5 max-w-[54ch] mx-auto leading-relaxed">
+            <p className="text-[15px] sm:text-[15.5px] text-[#8a8178] text-center mt-3.5 max-w-[54ch] mx-auto leading-relaxed">
               {hasGeo && inBergen
                 ? 'DigiHome tilbyr alle tjenester i Bergen. Velg sporet som passer deg best — du kan ombestemme deg senere.'
                 : hasGeo
@@ -822,12 +842,12 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
             </p>
 
             {showBoth ? (
-              <div className="grid sm:grid-cols-2 gap-4 mt-9">
+              <div className="grid sm:grid-cols-2 gap-5 mt-10">
                 {renderTierCard(selfTier)}
                 {renderTierCard(fullTier)}
               </div>
             ) : (
-              <div className="mt-9">
+              <div className="mt-10">
                 {renderTierCard(selfTier, true)}
                 {/* Full forvaltning — utilgjengelig utenfor Bergensområdet (ekspansjonssignal via «Meld interesse») */}
                 <div className="mt-4 rounded-[22px] border-2 border-dashed border-[#e8e4de] bg-[#faf9f7] p-5 sm:p-6" data-testid="entry-tier-full-unavailable">
@@ -853,8 +873,9 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
               </div>
             )}
 
-            <p className="text-[12px] text-[#aaa] text-center mt-6">Uforpliktende — ingen betaling før boligen din er leid ut.</p>
+            <p className="text-[12px] text-[#a8a199] text-center mt-8">Uforpliktende — ingen betaling før boligen din er leid ut.</p>
           </motion.div>
+        </div>
         </div>
       </div>
     );
@@ -868,10 +889,13 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
   const nextStepTitle = nextStepIdx != null ? STEPS[nextStepIdx].title : '';
 
   return (
-    <div className="min-h-screen bg-[#fdfcfb] flex flex-col" data-testid="owner-page">
+    <div className={`min-h-screen bg-[#fdfcfb] ${fullscreen ? 'lg:grid lg:grid-cols-[minmax(400px,0.9fr)_1.25fr]' : 'flex flex-col'}`} data-testid="owner-page">
+      {fullscreen ? <WizardShowcase phase={fsPhase} /> : null}
+      <div className={`flex flex-col min-w-0 relative ${fullscreen ? 'min-h-screen' : 'flex-1'}`}>
       {fullscreen ? fsTopbar : <div className="h-[56px] lg:h-[76px]" />}
+      {fullscreen ? <div aria-hidden className="pointer-events-none absolute top-0 left-1/2 -translate-x-1/2 w-[720px] h-[420px] rounded-full" style={{ background: 'radial-gradient(circle, rgba(207,151,252,0.08) 0%, transparent 65%)' }} /> : null}
       <div className="flex-1 flex flex-col">
-        <div className="max-w-[600px] w-full mx-auto px-6 pt-6">
+        <div className="max-w-[600px] w-full mx-auto px-6 pt-7 relative">
           <div className="flex items-center justify-between mb-5">
             {curPos > 0 ? (
               <button onClick={goBack} className="w-9 h-9 rounded-full border border-[#e8e5e0] hover:bg-[#f5f5f5] flex items-center justify-center transition-colors active:scale-95" data-testid="owner-back-button" aria-label="Tilbake">
@@ -890,7 +914,7 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
             </div>
           </div>
           {/* Premium stepper — sirkler + animerte koblinger (flyt-bevisst) */}
-          <div className="flex items-center mb-9">
+          <div className="flex items-center mb-10">
             {flowSteps.map((idx: number, pos: number) => {
               const done = curPos > pos;
               const active = step === idx;
@@ -1447,6 +1471,7 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
             )}
           </div>
         </div>
+      </div>
       </div>
     </div>
   );
