@@ -37,7 +37,7 @@ export default function Page() {
           {cards.map((c) => {
             const Icon = c.icon;
             return (
-              <div key={c.t} className="bg-white rounded-3xl p-8 shadow-[0_10px_40px_-20px_rgba(0,0,0,0.12)] flex flex-col">
+              <div key={c.t} className="bg-white rounded-3xl p-8 border border-[#f0ece6] shadow-[0_10px_40px_-20px_rgba(0,0,0,0.12)] hover:border-[#cf97fc] hover:shadow-[0_18px_54px_-24px_rgba(124,58,237,0.3)] hover:-translate-y-0.5 transition-all flex flex-col">
                 <div className="w-12 h-12 rounded-2xl bg-[#f4f0fb] flex items-center justify-center mb-5"><Icon className="w-6 h-6 text-[#7c3aed]" /></div>
                 <h2 className="text-[21px] font-bold mb-2" style={{ fontFamily: 'var(--font-heading)' }}>{c.t}</h2>
                 <p className="text-[14.5px] text-[#666] leading-relaxed mb-6 flex-1">{c.b}</p>

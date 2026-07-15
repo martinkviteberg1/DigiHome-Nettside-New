@@ -31,7 +31,7 @@ export default function UtleieIndex() {
   };
 
   const Card = ({ l, large }) => (
-    <Link href={`/utleie/${l.slug}`} className={`group relative rounded-3xl overflow-hidden ${large ? 'h-[340px]' : 'h-[230px]'}`}>
+    <Link href={`/utleie/${l.slug}`} className={`group relative block rounded-3xl overflow-hidden ${large ? 'h-[340px]' : 'h-[230px]'}`}>
       <img src={l.image} alt={`Utleie i ${l.name}`} className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.04] transition-transform duration-[700ms]" loading={large ? 'eager' : 'lazy'} decoding="async" />
       <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(10,10,10,0.15) 0%, rgba(10,10,10,0.20) 45%, rgba(10,10,10,0.82) 100%)' }} />
       <div className="absolute inset-0 p-6 flex flex-col justify-end">

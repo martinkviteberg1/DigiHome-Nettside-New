@@ -23,7 +23,7 @@ export default function Page() {
     <div className="bg-[#fdfcfb] text-[#1f1f1f] min-h-screen">
       <Header />
       <section className="relative min-h-[56vh] flex items-end overflow-hidden">
-        <img src="/bryggen-alley.webp" alt="Bergen" className="absolute inset-0 w-full h-full object-cover" width={1600} height={900} fetchPriority="high" />
+        <img src="/bergen-harbor.webp" alt="Bergen sett fra sjøen — byen DigiHome forvalter boliger i" className="absolute inset-0 w-full h-full object-cover" width={1600} height={900} fetchPriority="high" />
         <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(8,8,12,0.45) 0%, rgba(8,8,12,0.3) 40%, rgba(8,8,12,0.9) 100%)' }} />
         <div className="relative w-full max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16 pb-14 pt-32">
           <div className="inline-flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.16em] text-[#d298ff] mb-4"><Building2 className="w-3.5 h-3.5" /> Om oss</div>
@@ -48,7 +48,7 @@ export default function Page() {
             {values.map((v) => {
               const Icon = v.icon;
               return (
-                <div key={v.t} className="bg-white rounded-2xl p-7 shadow-[0_8px_36px_-20px_rgba(0,0,0,0.10)]">
+                <div key={v.t} className="bg-white rounded-2xl p-7 border border-transparent shadow-[0_8px_36px_-20px_rgba(0,0,0,0.10)] hover:border-[#cf97fc] hover:-translate-y-0.5 hover:shadow-[0_16px_44px_-24px_rgba(124,58,237,0.3)] transition-all">
                   <div className="w-11 h-11 rounded-2xl bg-[#f4f0fb] flex items-center justify-center mb-4"><Icon className="w-5 h-5 text-[#a765e0]" /></div>
                   <h3 className="text-[18px] font-bold mb-1.5" style={{ fontFamily: 'var(--font-heading)' }}>{v.t}</h3>
                   <p className="text-[14.5px] text-[#666] leading-relaxed">{v.b}</p>

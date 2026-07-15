@@ -2976,3 +2976,15 @@ agent_communication:
         -working: "NA"
         -agent: "main"
         -comment: "NYTT (15/7 del 2): (1) WizardShowcase utvidet med props: phases (egendefinerte fase-lister), embedded (sticky top-[76px] under global Header + logo skjult for å unngå duplikat). Testimonial nå valgfri per fase. VIKTIG LÆRDOM: parallelle search_replace på samme fil klobbet hverandre — én edit gikk tapt og ga TypeError p.testimonial.quote; re-applisert og verifisert. (2) BliLeietakerPage: TENANT_PHASES (4 faser m/ egne bilder/chips, ingen testimonials siden sitatene er fra utleiere) + split-screen grid rundt steg 1-4 (embedded-modus, global Header beholdes). Welcome-steget (step 0) uendret. Emoji-fiks: Heis 🛀→🛗. (3) BliUtleierPage suksess-skjerm: i fullscreen-modus nå split-screen m/ WizardShowcase phase 2, logo-topplinjen lg:hidden i fullscreen (sidebar bærer merkevaren). (4) /support: mørk hero m/ lilla glød (matcher /kontakt), kort m/ ikonbrikker + hover-løft. Visuelt verifisert: leietaker steg 1 m/ sidebar, /support. Suksess-skjermen IKKE live-testet (krever ekte innsending → CRM-støy); endringen er en ren wrapper. Skjermbilde-verktøy: HUSK await + emulate_media(reduced_motion='reduce')."
+
+  - task: "Verdensklasse-løft runde 3 (tenk selv): utleie-hub bugfiks, om-oss, radgivning, forvaltning, kontaktform"
+    implemented: true
+    working: "NA"
+    file: "/app/app/utleie/page.js, /app/app/om-oss/page.js, /app/app/radgivning/page.js, /app/app/forvaltning/page.js, /app/components/dh/KontaktForm.js"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "NYTT (15/7 del 3): (1) EKTE BUG FIKSET på /utleie: det store by-kortet (Bergen) kollapset fordi Link er display:inline som standard og h-[340px] ble ignorert (kun BY-etiketten synlig, overlappet ingressen). Fiks: la til 'block' i Link className. Verifisert m/ skjermbilde — kortet rendrer nå perfekt. De små bydel-kortene var OK fordi grid-barn blir blockified. (2) /om-oss: hero-bilde byttet fra /bryggen-alley.webp (gavebutikk-smug, irrelevant) til /bergen-harbor.webp + beskrivende alt-tekst. Verdikort fikk hover-løft. (3) /radgivning + /forvaltning: kort fikk konsistent hover (lilla border + -translate-y + skygge). (4) KontaktForm: fokus-glød (0_0_0_4px lilla) på alle felt + CTA rounded-full m/ skygge. Triage-konklusjon: /tjenester, /nyheter, /leiemarkedet, /priskalkulator, /kontakt, /bli-leietaker-hero allerede moderne — ikke rørt. Alle 9 nøkkelsider svarer 200."
