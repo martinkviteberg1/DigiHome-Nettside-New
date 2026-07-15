@@ -13,9 +13,11 @@ import {
   TextInput, PhoneInput, BudgetInput,
   PillSelector, NumberSelector, IconCardSelector, ToggleChips, SummaryCard,
 } from './FormFields';
+import WizardShowcase from './WizardShowcase';
 import {
   User, Mail, ArrowRight, ArrowLeft, CheckCircle2, Loader2, Check, MapPin, Sliders,
   Home, Building2, Warehouse, LayoutGrid, BedDouble, Heart, Shield, Calendar as CalendarIcon,
+  Clock3, Sparkles, ShieldCheck,
 } from 'lucide-react';
 import { track, getLeadAttribution } from '@/lib/analytics';
 import { trackLead, trackLeadStart, getClickIds } from '@/lib/gtag';
@@ -42,6 +44,55 @@ const boligTypes = [
   { value: 'rekkehus', label: 'Rekkehus', icon: LayoutGrid },
   { value: 'hybel', label: 'Hybel', icon: BedDouble },
   { value: 'annet', label: 'Annet', icon: Warehouse },
+];
+
+// Fase-innhold for den mørke showcase-panelen (leietaker-reisen, premium 2026).
+// Ingen kundesitater her — sitatene i lib/site er fra utleiere, ikke leietakere.
+const TENANT_PHASES = [
+  {
+    kicker: 'Steg 1 — Om deg',
+    title: 'Ditt neste hjem i Bergen',
+    sub: 'Fortell oss hvem du er, så matcher vi deg med kvalitetsboliger — ofte før de annonseres offentlig.',
+    image: '/bergen-street.webp',
+    imageAlt: 'Gate i Bergen med utleieboliger',
+    chips: [
+      { icon: Clock3, value: '48 t', label: 'svar fra lokal rådgiver' },
+      { icon: Heart, value: '0 kr', label: 'helt gratis for leietakere' },
+    ],
+  },
+  {
+    kicker: 'Steg 2 — Boligønsker',
+    title: 'Boliger som faktisk passer deg',
+    sub: 'Velg områder og boligtype — vi varsler deg når noe dukker opp som matcher profilen din.',
+    image: '/interior-openplan.webp',
+    imageAlt: 'Lys og åpen stue i utleiebolig',
+    chips: [
+      { icon: Home, value: '150+', label: 'boliger i porteføljen' },
+      { icon: MapPin, value: '10+', label: 'områder i Bergen' },
+    ],
+  },
+  {
+    kicker: 'Steg 3 — Detaljene',
+    title: 'Jo mer vi vet, desto bedre match',
+    sub: 'Budsjett, innflytting og fasiliteter — så treffer vi presist på første forsøk.',
+    image: '/interior-kitchen.webp',
+    imageAlt: 'Moderne kjøkken i utleiebolig',
+    chips: [
+      { icon: Sparkles, value: 'BankID', label: 'digital leiekontrakt' },
+      { icon: ShieldCheck, value: '3 mnd', label: 'depositum på egen låst konto' },
+    ],
+  },
+  {
+    kicker: 'Steg 4 — Bekreft',
+    title: 'Nesten i mål',
+    sub: 'Sjekk at alt stemmer — så starter matchingen med en gang.',
+    image: '/interior-bedroom2.webp',
+    imageAlt: 'Soverom i utleiebolig',
+    chips: [
+      { icon: Clock3, value: '< 48 t', label: 'første oppfølging' },
+      { icon: Heart, value: '0 kr', label: 'gratis — alltid' },
+    ],
+  },
 ];
 
 const stepVariants = {
@@ -263,10 +314,13 @@ export default function BliLeietakerPage() {
   const curPos = Math.max(0, flowSteps.indexOf(step));
 
   return (
-    <div className="min-h-screen bg-[#fdfcfb] flex flex-col" data-testid="tenant-page" onKeyDown={(e: any) => { if (e.key === 'Enter' && !e.shiftKey && step < STEPS.length - 1 && step > 0) { e.preventDefault(); goNext(); } }}>
+    <div className="min-h-screen bg-[#fdfcfb] lg:grid lg:grid-cols-[minmax(400px,0.9fr)_1.25fr]" data-testid="tenant-page" onKeyDown={(e: any) => { if (e.key === 'Enter' && !e.shiftKey && step < STEPS.length - 1 && step > 0) { e.preventDefault(); goNext(); } }}>
+      <WizardShowcase phase={curPos} phases={TENANT_PHASES} embedded />
+      <div className="flex flex-col min-h-screen min-w-0 relative">
       <div className="h-[56px] lg:h-[76px]" />
+      <div aria-hidden className="pointer-events-none absolute top-0 left-1/2 -translate-x-1/2 w-[720px] h-[420px] rounded-full" style={{ background: 'radial-gradient(circle, rgba(207,151,252,0.08) 0%, transparent 65%)' }} />
       <div className="flex-1 flex flex-col">
-        <div className="max-w-[560px] w-full mx-auto px-6 pt-6">
+        <div className="max-w-[560px] w-full mx-auto px-6 pt-7 relative">
           <div className="flex items-center justify-between mb-5">
             <button onClick={goBack} className="w-9 h-9 rounded-full border border-[#e8e5e0] hover:bg-[#f5f5f5] flex items-center justify-center transition-colors active:scale-95" data-testid="tenant-back-button" aria-label="Tilbake">
               <ArrowLeft className="w-4 h-4 text-[#888]" />
@@ -384,7 +438,7 @@ export default function BliLeietakerPage() {
                     </div>
                     <div>
                       <Label className="text-[13px] font-semibold text-[#333] mb-3 block">Fasiliteter</Label>
-                      <ToggleChips options={[{ key: 'pets', label: 'Kjæledyr', emoji: '🐾' }, { key: 'parking', label: 'Parkering', emoji: '🚗' }, { key: 'balcony', label: 'Balkong', emoji: '🌿' }, { key: 'elevator', label: 'Heis', emoji: '🛀' }, { key: 'furnished', label: 'Møblert', emoji: '🛋️' }, { key: 'washing', label: 'Vaskemaskin', emoji: '🧺' }]} values={formData} onChange={(k: any, v: any) => updateField(k, v)} />
+                      <ToggleChips options={[{ key: 'pets', label: 'Kjæledyr', emoji: '🐾' }, { key: 'parking', label: 'Parkering', emoji: '🚗' }, { key: 'balcony', label: 'Balkong', emoji: '🌿' }, { key: 'elevator', label: 'Heis', emoji: '🛗' }, { key: 'furnished', label: 'Møblert', emoji: '🛋️' }, { key: 'washing', label: 'Vaskemaskin', emoji: '🧺' }]} values={formData} onChange={(k: any, v: any) => updateField(k, v)} />
                     </div>
                     <div>
                       <Label className="text-[13px] font-semibold text-[#333]">Noe annet vi bør vite? <span className="text-[#737373] font-normal">(valgfritt)</span></Label>
@@ -431,12 +485,13 @@ export default function BliLeietakerPage() {
           <div className="max-w-[560px] mx-auto px-6 py-4 flex items-center justify-between">
             <button onClick={goBack} className="text-[14px] font-semibold text-[#666] hover:text-[#333] underline underline-offset-4 transition-colors" data-testid="tenant-back-link">Tilbake</button>
             {step < STEPS.length - 1 ? (
-              <Button onClick={goNext} data-testid="tenant-next-button" className="rounded-full bg-[#0a0a0a] text-white hover:bg-black h-12 px-8 text-[14px] font-semibold gap-2 active:scale-[0.97] transition-transform">Neste <ArrowRight className="w-4 h-4" /></Button>
+              <Button onClick={goNext} data-testid="tenant-next-button" className="rounded-full bg-[#0a0a0a] text-white hover:bg-black h-12 px-8 text-[14px] font-semibold gap-2 active:scale-[0.97] transition-transform shadow-[0_6px_20px_-8px_rgba(0,0,0,0.5)]">Neste <ArrowRight className="w-4 h-4" /></Button>
             ) : (
-              <Button onClick={handleSubmit} disabled={loading} data-testid="tenant-submit-button" className="rounded-full bg-[#0a0a0a] text-white hover:bg-black h-12 px-8 text-[14px] font-semibold gap-2 active:scale-[0.97] transition-transform">{loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />} {ctaVariant === 'B' ? 'Fullfør – helt gratis' : 'Send registrering'}</Button>
+              <Button onClick={handleSubmit} disabled={loading} data-testid="tenant-submit-button" className="rounded-full bg-[#0a0a0a] text-white hover:bg-black h-12 px-8 text-[14px] font-semibold gap-2 active:scale-[0.97] transition-transform shadow-[0_6px_20px_-8px_rgba(0,0,0,0.5)]">{loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />} {ctaVariant === 'B' ? 'Fullfør – helt gratis' : 'Send registrering'}</Button>
             )}
           </div>
         </div>
+      </div>
       </div>
     </div>
   );

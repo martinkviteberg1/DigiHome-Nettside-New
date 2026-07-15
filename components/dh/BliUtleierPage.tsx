@@ -541,9 +541,11 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
 
   if (submitted) {
     return (
-      <div className="min-h-screen flex items-center justify-center px-5 pt-24 pb-16 bg-[#fdfcfb] relative overflow-hidden">
-        {/* Logo-topplinje (14/7): merkevaren følger hele reisen — også kvitteringen */}
-        <div className="absolute top-0 inset-x-0 h-[58px] flex items-center justify-center border-b border-[#f0ede8]/70 bg-[#fdfcfb]/80 backdrop-blur-sm z-10">
+      <div className={`min-h-screen bg-[#fdfcfb] ${fullscreen ? 'lg:grid lg:grid-cols-[minmax(400px,0.9fr)_1.25fr]' : ''}`}>
+        {fullscreen ? <WizardShowcase phase={2} /> : null}
+        <div className="min-h-screen flex items-center justify-center px-5 pt-24 pb-16 relative overflow-hidden">
+        {/* Logo-topplinje — skjules på lg i fullskjerm (sidebaren bærer merkevaren der) */}
+        <div className={`absolute top-0 inset-x-0 h-[58px] flex items-center justify-center border-b border-[#f0ede8]/70 bg-[#fdfcfb]/80 backdrop-blur-sm z-10 ${fullscreen ? 'lg:hidden' : ''}`}>
           <a href="/" aria-label="DigiHome — til forsiden" data-testid="success-logo-link">
             <img src="/digihome-wordmark-ink.svg" alt="DigiHome" className="h-[20px] w-auto" />
           </a>
@@ -600,6 +602,7 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
             </Button>
           )}
         </motion.div>
+        </div>
       </div>
     );
   }

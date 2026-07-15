@@ -2964,3 +2964,15 @@ agent_communication:
         -working: "NA"
         -agent: "main"
         -comment: "NYTT (15/7): (1) SPLIT-SCREEN FULLFØRT: WizardShowcase (mørk sidebar) nå i ALLE tre fullskjerm-faser — adresse (phase 0), tjenestevalg (phase 1) og hovedveiviser (phase fsPhase=2). Grid lg:grid-cols-[minmax(400px,0.9fr)_1.25fr]. Ikke-fullskjerm (innebygd på /bli-utleier) beholder gammel layout uendret. (2) «Hopp over»-knappen FJERNET fra adressesteget (data-testid entry-skip-address finnes ikke lenger). Ny diskret fallback data-testid=entry-address-fallback vises KUN når bruker har skrevet >=4 tegn uten å velge fra forslagslisten (sikkerhetsventil ved Geonorge-ustabilitet). (3) Typografi/spacing-løft: større H1 (op til 52px xl), større søkefelt (h-68), lilla fokusring, trust-markører m/ sirkel-checks, tier-kort p-7/rounded-24/hover-lift. (4) Duplikat-logo fikset: fsTopbar-logoen er lg:hidden (sidebar bærer merkevaren på desktop, mobil beholder topbar-logo). (5) GSC DATASET-FIKS: isBasedOn-datasettene (SSB-tabeller) i RentMarketPage manglet description/license/creator — nå beriket (NLOD 2.0-lisens, SSB som creator/publisher). Verifisert via JSON-parse av /leiemarkedet/bergen: alle felter OK på hoved- og nestede datasett. Visuelt verifisert med skjermbilder: alle 3 faser + Eiendomsregister-oppslag fungerer ende-til-ende. VIKTIG FOR TESTING: bruk prefers-reduced-motion=reduce i headless (motion-lite avslører ellers ikke innhold pga rAF-throttling i headless)."
+
+  - task: "Verdensklasse-løft runde 2: leietaker-veiviser split-screen, suksess-skjerm, support-hero"
+    implemented: true
+    working: "NA"
+    file: "/app/components/dh/BliLeietakerPage.tsx, /app/components/dh/WizardShowcase.tsx, /app/components/dh/BliUtleierPage.tsx, /app/app/support/page.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "NYTT (15/7 del 2): (1) WizardShowcase utvidet med props: phases (egendefinerte fase-lister), embedded (sticky top-[76px] under global Header + logo skjult for å unngå duplikat). Testimonial nå valgfri per fase. VIKTIG LÆRDOM: parallelle search_replace på samme fil klobbet hverandre — én edit gikk tapt og ga TypeError p.testimonial.quote; re-applisert og verifisert. (2) BliLeietakerPage: TENANT_PHASES (4 faser m/ egne bilder/chips, ingen testimonials siden sitatene er fra utleiere) + split-screen grid rundt steg 1-4 (embedded-modus, global Header beholdes). Welcome-steget (step 0) uendret. Emoji-fiks: Heis 🛀→🛗. (3) BliUtleierPage suksess-skjerm: i fullscreen-modus nå split-screen m/ WizardShowcase phase 2, logo-topplinjen lg:hidden i fullscreen (sidebar bærer merkevaren). (4) /support: mørk hero m/ lilla glød (matcher /kontakt), kort m/ ikonbrikker + hover-løft. Visuelt verifisert: leietaker steg 1 m/ sidebar, /support. Suksess-skjermen IKKE live-testet (krever ekte innsending → CRM-støy); endringen er en ren wrapper. Skjermbilde-verktøy: HUSK await + emulate_media(reduced_motion='reduce')."

@@ -50,11 +50,12 @@ const PHASES = [
   },
 ];
 
-export default function WizardShowcase({ phase = 0 }: { phase?: number }) {
-  const p = PHASES[Math.min(Math.max(phase, 0), PHASES.length - 1)];
+export default function WizardShowcase({ phase = 0, phases, embedded = false }: { phase?: number; phases?: any[]; embedded?: boolean }) {
+  const list = phases && phases.length ? phases : PHASES;
+  const p = list[Math.min(Math.max(phase, 0), list.length - 1)];
   return (
     <aside
-      className="hidden lg:flex flex-col justify-between relative overflow-hidden lg:sticky lg:top-0 lg:h-screen p-10 xl:p-12"
+      className={`hidden lg:flex flex-col justify-between relative overflow-hidden p-10 xl:p-12 ${embedded ? 'lg:sticky lg:top-[76px] lg:h-[calc(100vh-76px)]' : 'lg:sticky lg:top-0 lg:h-screen'}`}
       style={{ background: 'linear-gradient(165deg, #120b22 0%, #1a1030 42%, #0b0714 100%)' }}
       aria-hidden
       data-testid="wizard-showcase"
@@ -68,10 +69,12 @@ export default function WizardShowcase({ phase = 0 }: { phase?: number }) {
         @keyframes dhFloatB { 0%,100%{ transform: translate(0,0) } 50%{ transform: translate(-24px,-26px) } }
       `}</style>
 
-      {/* Logo */}
-      <a href="/" className="relative z-10 inline-flex w-fit" aria-label="DigiHome — til forsiden">
-        <img src="/brand/digihome-lockup-white.svg" alt="DigiHome" className="h-[24px] w-auto" />
-      </a>
+      {/* Logo — skjules i embedded-modus (global Header bærer merkevaren der) */}
+      {embedded ? <span aria-hidden /> : (
+        <a href="/" className="relative z-10 inline-flex w-fit" aria-label="DigiHome — til forsiden">
+          <img src="/brand/digihome-lockup-white.svg" alt="DigiHome" className="h-[24px] w-auto" />
+        </a>
+      )}
 
       {/* Fase-innhold — myk crossfade */}
       <div className="relative z-10 my-8 flex-1 flex flex-col justify-center max-w-[460px]">
@@ -117,9 +120,10 @@ export default function WizardShowcase({ phase = 0 }: { phase?: number }) {
         </AnimatePresence>
       </div>
 
-      {/* Kundesitat — glass-kort */}
+      {/* Kundesitat — glass-kort (valgfritt per fase) */}
       <div className="relative z-10">
         <AnimatePresence mode="wait">
+          {p.testimonial ? (
           <motion.figure
             key={`t-${phase}`}
             initial={{ opacity: 0, y: 10 }}
@@ -134,6 +138,7 @@ export default function WizardShowcase({ phase = 0 }: { phase?: number }) {
             <blockquote className="text-white/85 text-[13.5px] leading-relaxed">«{p.testimonial.quote}»</blockquote>
             <figcaption className="mt-3 text-[12px] text-white/50 font-medium">{p.testimonial.name} · {p.testimonial.role}</figcaption>
           </motion.figure>
+          ) : null}
         </AnimatePresence>
       </div>
     </aside>
