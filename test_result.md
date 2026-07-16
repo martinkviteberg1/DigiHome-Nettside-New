@@ -3000,3 +3000,15 @@ agent_communication:
         -working: "NA"
         -agent: "main"
         -comment: "NYTT (16/7): Forside-analyse + refaktor etter brukerens 'tenk verdensklasse, motsatt av AI slop'. (1) P0 TALLKONSISTENS: DynamicRental sa 'opptil 40%' mens resten av siten sier 30% og eksempel-labelen sa +30% — samkjørt til 30% overalt (KONSERVATIVT VALG, bruker svarte ikke på 30/40-spørsmålet). Eksempel: 252 000 → 234 000 kr (180k*1.3, matte stemmer nå). (2) HowItWorks omskrevet fra 4 funksjoner til EKTE kundereise (Registrer boligen → Få vurdering og pris → Vi finner leietakerne → Du får utbetalt) + overskrift 'Fra adresse til utbetaling' + stille CTA-lenke til /bli-utleier/start (data-testid how-it-works-cta). (3) ServiceModels: grå #eeeeee-kort → hvite m/ hairline #eceae4 + lilla hover-border (inline styles pga eksisterende mønster). (4) page.js REORDEN: WhyChooseUsSection FJERNET (redundant - komponentfil beholdt men ubrukt/død kode), PartnersBar flyttet fra bunn til etter StatsSection, TestimonialsSection flyttet til etter DynamicRental (bevis etter pengeargument, skiller kundesitater fra CEO-sitat). Ny rekkefølge: Hero→ServiceModels→Stats→Partners→HowItWorks→ImageBreak→Quality→Showcase→DynamicRental→Testimonials→Network→AboutCEO→FAQ→CTA. (5) NetworkSection bilde: bergen-harbor (duplikat m/ ImageBreak) → parkveien-bergen + beskrivende alt. UTESTÅENDE: 4,9-rating mangler kilde — venter på ekte Google-anmeldelsestall fra bruker. Visuelt verifisert: tjenestekort, prosess-seksjon m/ partner-marquee, 10+2-tall."
+
+  - task: "Forside tonal dramaturgi: varme flater, full-bleed pausebilde, lavendel-kapittel, korn på mørk finale"
+    implemented: true
+    working: "NA"
+    file: "/app/components/dh/HowItWorksSection.tsx, /app/components/dh/ImageBreak.tsx, /app/components/dh/QualitySection.tsx, /app/components/dh/TestimonialsSection.tsx, /app/components/dh/CTASection.tsx, /app/components/dh/DynamicRentalSection.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "NYTT (16/7 del 2): Bruker syntes siden var 'veldig hvit og platt' — implementerte oppvarmings-pass (bruker AVSLO mørkt midtkapittel eksplisitt, IKKE gjør 10+2 mørk). (1) HowItWorks: prikk-grid-tekstur + lavendel-glød (samme formspråk som veiviser). (2) ImageBreak: full-bleed edge-to-edge (sidens ENESTE grid-brudd), tekst følger 1400px-container, høyde op til 560px. (3) QualitySection: bg white → varm grå #f6f4f1. (4) TestimonialsSection: 'menneske-kapittel' m/ lavendel-gradient bg (faf7fe→f6f1fc) + gløder, kort-border → #e9e1f4 m/ lilla hover-skygge. (5) CTASection: SVG feTurbulence korn-overlay (opacity 0.06 mix-blend-overlay) på den mørke flaten. (6) DynamicRental: myk glød + +30%-tallet i lilla gradient-tekst (ENESTE gradient-tekst på siden — ikke spre den). Alt visuelt verifisert m/ skjermbilder. Prinsipp fulgt: hver tonal endring = kapittel i fortellingen, ingen dekorasjon for dekorasjonens skyld."

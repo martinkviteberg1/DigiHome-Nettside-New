@@ -20,6 +20,8 @@ export default function CTASection() {
       <div className="absolute -bottom-56 -left-40 w-[600px] h-[600px] rounded-full pointer-events-none" style={{
         background: 'radial-gradient(circle, rgba(210,152,255,0.10) 0%, transparent 60%)',
       }} />
+      {/* Kornstruktur — fjerner «digital plast»-følelsen fra den store mørke flaten */}
+      <div aria-hidden className="pointer-events-none absolute inset-0 opacity-[0.06] mix-blend-overlay" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")` }} />
       <div className="relative max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16">
         <motion.div initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: '-80px' }} transition={{ duration: 0.5 }}
           className="py-24 sm:py-32 grid lg:grid-cols-2 gap-12 items-center">

@@ -11,8 +11,11 @@ const testimonials = [
 
 export default function TestimonialsSection() {
   return (
-    <section className="py-24 sm:py-32 bg-white">
-      <div className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16">
+    <section className="py-24 sm:py-32 relative overflow-hidden" style={{ background: 'linear-gradient(180deg, #faf7fe 0%, #f6f1fc 100%)' }}>
+      {/* Menneske-kapitlet: sidens ene lavendel-tonede sone — sosialt bevis med egen kapittelfarge */}
+      <div aria-hidden className="pointer-events-none absolute -top-40 left-[12%] w-[680px] h-[520px] rounded-full" style={{ background: 'radial-gradient(circle, rgba(207,151,252,0.12) 0%, transparent 65%)' }} />
+      <div aria-hidden className="pointer-events-none absolute -bottom-48 right-[6%] w-[560px] h-[480px] rounded-full" style={{ background: 'radial-gradient(circle, rgba(255,255,255,0.8) 0%, transparent 60%)' }} />
+      <div className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16 relative">
         <Reveal as="div" initial={{ opacity: 0, y: 12 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: '-80px' }} transition={{ duration: 0.5 }}
           className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-5 mb-14">
           <div>
@@ -34,7 +37,7 @@ export default function TestimonialsSection() {
         <div className="grid sm:grid-cols-3 gap-6 lg:gap-7">
           {testimonials.map((t: any, i: number) => (
             <Reveal as="div" key={t.name} initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: '-40px' }} transition={{ duration: 0.45, delay: i * 0.1 }}
-              className="group bg-white rounded-[20px] p-7 sm:p-8 border border-[#eeeae3] transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_24px_50px_-26px_rgba(20,10,40,0.2)] hover:border-[#d8d3c8] relative flex flex-col">
+              className="group bg-white rounded-[20px] p-7 sm:p-8 border border-[#e9e1f4] shadow-[0_6px_24px_-16px_rgba(90,50,150,0.12)] transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_24px_50px_-26px_rgba(90,50,150,0.28)] hover:border-[#d8c7ee] relative flex flex-col">
               <div className="flex items-center gap-0.5 mb-6">
                 {[...Array(5)].map((_, j) => <Star key={j} className="w-[15px] h-[15px] text-[#cda45c] fill-[#cda45c]" strokeWidth={0} />)}
               </div>

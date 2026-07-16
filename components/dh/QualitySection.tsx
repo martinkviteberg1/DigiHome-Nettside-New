@@ -5,7 +5,7 @@ import { Sparkles } from 'lucide-react';
 
 export default function QualitySection() {
   return (
-    <section className="py-24 sm:py-28 bg-white" data-testid="quality-section">
+    <section className="py-24 sm:py-28" style={{ backgroundColor: '#f6f4f1' }} data-testid="quality-section">
       <div className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16">
 
         <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">

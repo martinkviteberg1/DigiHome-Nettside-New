@@ -32,8 +32,14 @@ const steps = [
 
 export default function HowItWorksSection() {
   return (
-    <section className="py-24 sm:py-32" style={{ backgroundColor: '#fdfcfb' }} data-testid="how-it-works-section">
-      <div className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16">
+    <section className="py-24 sm:py-32 relative overflow-hidden" style={{ backgroundColor: '#fdfcfb' }} data-testid="how-it-works-section">
+      {/* Varm tekstur — samme formspråk som veiviseren: prikk-grid + myk lavendel-glød */}
+      <div aria-hidden className="pointer-events-none absolute inset-0" style={{
+        backgroundImage: 'radial-gradient(circle, #c8c8c8 0.8px, transparent 0.8px)', backgroundSize: '26px 26px', opacity: 0.28,
+        maskImage: 'radial-gradient(ellipse 60% 55% at 22% 30%, black 20%, transparent 70%)', WebkitMaskImage: 'radial-gradient(ellipse 60% 55% at 22% 30%, black 20%, transparent 70%)',
+      }} />
+      <div aria-hidden className="pointer-events-none absolute -top-32 right-[8%] w-[640px] h-[520px] rounded-full" style={{ background: 'radial-gradient(circle, rgba(207,151,252,0.07) 0%, transparent 65%)' }} />
+      <div className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16 relative">
 
         {/* Header — venstrestilt, redaksjonelt */}
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6 mb-16 sm:mb-20">
