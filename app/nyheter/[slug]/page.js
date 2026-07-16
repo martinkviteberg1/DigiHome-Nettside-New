@@ -109,7 +109,7 @@ export default async function ArticlePage({ params }) {
               <div className="w-11 h-11 rounded-full flex items-center justify-center text-white text-[14px] font-bold shrink-0" style={{ background: author.accent, fontFamily: 'var(--font-heading)' }}>{author.initials}</div>
               <div className="leading-tight">
                 <p className="text-[14px] font-semibold text-[#1f1f1f]">{author.name}</p>
-                <p className="text-[12.5px] text-[#999] mt-0.5 flex items-center gap-1.5 flex-wrap"><span>{author.role}</span><span className="text-[#ddd]">·</span><span className="inline-flex items-center gap-1"><Calendar className="w-3 h-3" />{fmtDate(post.publishedAt)}</span></p>
+                <p className="text-[12.5px] text-[#716b63] mt-0.5 flex items-center gap-1.5 flex-wrap"><span>{author.role}</span><span className="text-[#ddd]">·</span><span className="inline-flex items-center gap-1"><Calendar className="w-3 h-3" />{fmtDate(post.publishedAt)}</span></p>
               </div>
             </div>
           </header>

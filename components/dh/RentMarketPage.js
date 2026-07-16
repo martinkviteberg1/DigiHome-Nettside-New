@@ -177,9 +177,9 @@ export default function RentMarketPage({ report }) {
           <table className="w-full text-left">
             <thead>
               <tr className="border-b border-black/[0.06]">
-                <th scope="col" className="px-6 py-4 text-[12px] font-semibold uppercase tracking-[0.08em] text-[#999]">Boligtype</th>
-                <th scope="col" className="px-6 py-4 text-[12px] font-semibold uppercase tracking-[0.08em] text-[#999] text-right">Snittleie (kr/mnd)</th>
-                <th scope="col" className="px-6 py-4 text-[12px] font-semibold uppercase tracking-[0.08em] text-[#999] text-right">Endring fra {r.prevYear}</th>
+                <th scope="col" className="px-6 py-4 text-[12px] font-semibold uppercase tracking-[0.08em] text-[#716b63]">Boligtype</th>
+                <th scope="col" className="px-6 py-4 text-[12px] font-semibold uppercase tracking-[0.08em] text-[#716b63] text-right">Snittleie (kr/mnd)</th>
+                <th scope="col" className="px-6 py-4 text-[12px] font-semibold uppercase tracking-[0.08em] text-[#716b63] text-right">Endring fra {r.prevYear}</th>
               </tr>
             </thead>
             <tbody>
@@ -187,14 +187,14 @@ export default function RentMarketPage({ report }) {
                 <tr key={b.label} className="border-b border-black/[0.04] last:border-0">
                   <th scope="row" className="px-6 py-3.5 text-[14.5px] font-semibold text-[#1f1f1f]">{b.label}</th>
                   <td className="px-6 py-3.5 text-[14.5px] text-right font-semibold">{nf(b.current)} kr</td>
-                  <td className={`px-6 py-3.5 text-[14px] text-right font-medium ${b.yoyPct == null ? 'text-[#999]' : b.yoyPct >= 0 ? 'text-emerald-600' : 'text-rose-500'}`}>
+                  <td className={`px-6 py-3.5 text-[14px] text-right font-medium ${b.yoyPct == null ? 'text-[#716b63]' : b.yoyPct >= 0 ? 'text-emerald-600' : 'text-rose-500'}`}>
                     {b.yoyPct == null ? '–' : `${b.yoyPct >= 0 ? '+' : ''}${b.yoyPct} %`}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-          <figcaption className="px-6 py-3.5 text-[12px] text-[#999] bg-[#fafaf9]">
+          <figcaption className="px-6 py-3.5 text-[12px] text-[#716b63] bg-[#fafaf9]">
             Kilde: SSB leiemarkedsundersøkelsen ({r.year}) · bearbeidet av DigiHome · {site.url.replace('https://', '')}/leiemarkedet/{r.city}
           </figcaption>
         </figure>

@@ -197,7 +197,7 @@ export function SummaryCard({ title, onEdit, testId, children }: any) {
   return (
     <div className="bg-white rounded-2xl border border-[#eee] p-5 hover:border-[#ddd] transition-colors duration-200">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-[12px] font-semibold text-[#aaa] uppercase tracking-[0.06em]">{title}</h3>
+        <h3 className="text-[12px] font-semibold text-[#78726a] uppercase tracking-[0.06em]">{title}</h3>
         <button onClick={onEdit} className="text-[12px] text-[#cf97fc] font-semibold hover:underline" data-testid={testId}>Endre</button>
       </div>
       <div className="space-y-1.5">{children}</div>

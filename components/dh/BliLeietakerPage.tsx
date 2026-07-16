@@ -220,7 +220,7 @@ export default function BliLeietakerPage() {
           <p className="text-[16px] text-[#666] leading-relaxed max-w-[42ch] mx-auto">Vi har mottatt registreringen din og matcher deg nå med boliger som passer ønskene dine.</p>
 
           <div className="mt-8 text-left bg-white rounded-[22px] p-6 shadow-[0_8px_40px_-24px_rgba(0,0,0,0.35)]">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[#aaa] mb-4">Hva skjer nå</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[#78726a] mb-4">Hva skjer nå</p>
             <div>
               {[
                 { t: 'Vi matcher profilen din', s: 'Mot ledige kvalitetsboliger i ønsket område', done: true },
@@ -397,7 +397,7 @@ export default function BliLeietakerPage() {
                     </div>
                     <div>
                       <Label className="text-[13px] font-semibold text-[#333] mb-2 block">Ønsket område i Bergen <span className="text-[#7c3aed]">*</span></Label>
-                      <p className="text-[12px] text-[#aaa] mb-3">Velg ett eller flere områder</p>
+                      <p className="text-[12px] text-[#78726a] mb-3">Velg ett eller flere områder</p>
                       <PillSelector options={areaOptions} selected={formData.preferred_areas} onToggle={toggleArea} multi testIdPrefix="tenant-area" />
                       {errors.preferred_areas && <p className="text-[12px] text-red-500 mt-1.5">{errors.preferred_areas}</p>}
                     </div>
@@ -426,7 +426,7 @@ export default function BliLeietakerPage() {
                       <Popover>
                         <PopoverTrigger asChild>
                           <button type="button" data-testid="tenant-move-date-input" className={`w-full h-[52px] px-4 text-left text-[15px] bg-white border rounded-2xl outline-none transition-all flex items-center gap-3 ${formData.move_in_date ? 'border-[#e0e0e0] text-[#333]' : 'border-[#e0e0e0] text-[#737373]'} hover:border-[#cf97fc] focus:border-[#cf97fc] focus:shadow-[0_0_0_3px_rgba(207,151,252,0.12)]`}>
-                            <CalendarIcon className="w-4 h-4 text-[#999] shrink-0" />
+                            <CalendarIcon className="w-4 h-4 text-[#716b63] shrink-0" />
                             {formData.move_in_date ? format(new Date(formData.move_in_date), 'd. MMMM yyyy', { locale: nb }) : 'Velg dato...'}
                           </button>
                         </PopoverTrigger>
@@ -467,12 +467,12 @@ export default function BliLeietakerPage() {
                     </SummaryCard>
                     <SummaryCard title="Detaljer" onEdit={() => { setDir(-1); setStep(3); }} testId="tenant-edit-details">
                       <div className="grid grid-cols-2 gap-x-4 gap-y-2">
-                        <div><p className="text-[11px] text-[#aaa]">Soverom</p><p className="text-[14px] text-[#333] font-medium">{formData.bedrooms}</p></div>
-                        <div><p className="text-[11px] text-[#aaa]">Budsjett</p><p className="text-[14px] text-[#333] font-medium">{formData.budget_min || formData.budget_max ? `${parseInt(String(formData.budget_min || 0)).toLocaleString('nb-NO')} – ${parseInt(String(formData.budget_max || 0)).toLocaleString('nb-NO')} kr` : 'Ikke oppgitt'}</p></div>
-                        {formData.move_in_date && <div><p className="text-[11px] text-[#aaa]">Innflytting</p><p className="text-[14px] text-[#333] font-medium">{new Date(formData.move_in_date).toLocaleDateString('nb-NO', { day: 'numeric', month: 'long', year: 'numeric' })}</p></div>}
-                        {(formData.pets || formData.parking || formData.balcony || formData.elevator || formData.furnished || formData.washing) && <div className="col-span-2"><p className="text-[11px] text-[#aaa]">Fasiliteter</p><p className="text-[14px] text-[#333] font-medium">{[formData.pets && 'Kjæledyr', formData.parking && 'Parkering', formData.balcony && 'Balkong', formData.elevator && 'Heis', formData.furnished && 'Møblert', formData.washing && 'Vaskemaskin'].filter(Boolean).join(', ')}</p></div>}
+                        <div><p className="text-[11px] text-[#78726a]">Soverom</p><p className="text-[14px] text-[#333] font-medium">{formData.bedrooms}</p></div>
+                        <div><p className="text-[11px] text-[#78726a]">Budsjett</p><p className="text-[14px] text-[#333] font-medium">{formData.budget_min || formData.budget_max ? `${parseInt(String(formData.budget_min || 0)).toLocaleString('nb-NO')} – ${parseInt(String(formData.budget_max || 0)).toLocaleString('nb-NO')} kr` : 'Ikke oppgitt'}</p></div>
+                        {formData.move_in_date && <div><p className="text-[11px] text-[#78726a]">Innflytting</p><p className="text-[14px] text-[#333] font-medium">{new Date(formData.move_in_date).toLocaleDateString('nb-NO', { day: 'numeric', month: 'long', year: 'numeric' })}</p></div>}
+                        {(formData.pets || formData.parking || formData.balcony || formData.elevator || formData.furnished || formData.washing) && <div className="col-span-2"><p className="text-[11px] text-[#78726a]">Fasiliteter</p><p className="text-[14px] text-[#333] font-medium">{[formData.pets && 'Kjæledyr', formData.parking && 'Parkering', formData.balcony && 'Balkong', formData.elevator && 'Heis', formData.furnished && 'Møblert', formData.washing && 'Vaskemaskin'].filter(Boolean).join(', ')}</p></div>}
                       </div>
-                      {formData.notes && <div className="mt-3 pt-3 border-t border-[#f0f0f0]"><p className="text-[11px] text-[#aaa] mb-1">Kommentar</p><p className="text-[13px] text-[#666]">{formData.notes}</p></div>}
+                      {formData.notes && <div className="mt-3 pt-3 border-t border-[#f0f0f0]"><p className="text-[11px] text-[#78726a] mb-1">Kommentar</p><p className="text-[13px] text-[#666]">{formData.notes}</p></div>}
                     </SummaryCard>
                   </div>
                 </div>

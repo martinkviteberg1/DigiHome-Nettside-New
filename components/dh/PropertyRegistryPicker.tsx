@@ -271,7 +271,7 @@ export function PropertyRegistryPicker({
     return (
       <div className="mt-3 text-center" data-testid="registry-auto-selected">
         <button type="button" onClick={() => setOverrideOpen(true)}
-          className="text-[12.5px] text-[#999] hover:text-[#7c3aed] transition-colors underline underline-offset-2 decoration-[#e0d8ee]">
+          className="text-[12.5px] text-[#716b63] hover:text-[#7c3aed] transition-colors underline underline-offset-2 decoration-[#e0d8ee]">
           Feil {kindLabel}? Velg en annen
         </button>
       </div>
@@ -300,11 +300,11 @@ export function PropertyRegistryPicker({
         {items.length > 4 && (
           <div className="px-5 sm:px-6 pt-4">
             <div className="flex items-center gap-2.5 rounded-2xl border border-[#e9e4f2] bg-[#fbfaff] px-4 h-12 focus-within:border-[#cf97fc] transition-colors">
-              <Search className="w-4 h-4 text-[#aaa] shrink-0" />
+              <Search className="w-4 h-4 text-[#78726a] shrink-0" />
               <input
                 value={search} onChange={(e) => setSearch(e.target.value)}
                 placeholder={`Søk ${kindLabel} eller hjemmelshaver …`}
-                className="flex-1 bg-transparent outline-none text-[14.5px] text-[#0a0a0a] placeholder:text-[#aaa]"
+                className="flex-1 bg-transparent outline-none text-[14.5px] text-[#0a0a0a] placeholder:text-[#78726a]"
                 data-testid="registry-search"
               />
             </div>
@@ -314,11 +314,11 @@ export function PropertyRegistryPicker({
         {/* Liste */}
         <div className="px-5 sm:px-6 py-4 max-h-[420px] overflow-y-auto space-y-5">
           {filtered.length === 0 && (
-            <p className="text-center text-[13.5px] text-[#999] py-8">Ingen treff på «{search}».</p>
+            <p className="text-center text-[13.5px] text-[#716b63] py-8">Ingen treff på «{search}».</p>
           )}
           {groups.map((g, gi) => (
             <div key={gi}>
-              {g.label && <p className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-[#aaa] mb-2 px-1">{g.label}</p>}
+              {g.label && <p className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-[#78726a] mb-2 px-1">{g.label}</p>}
               <div className="space-y-2">
                 {g.items.map((it) => {
                   const active = selected === it.key;
@@ -380,7 +380,7 @@ export function PropertyRegistryPicker({
             {singleOwner ? (
               <span className="mt-0.5 flex items-center gap-1.5 text-[13px] text-[#737373]"><User className="w-3.5 h-3.5 text-[#bbb]" /> {singleOwner.navn} <span className="text-[#bbb]">· hjemmelshaver</span></span>
             ) : (
-              <p className="text-[12.5px] text-[#999] mt-0.5">Matrikkel {matrikkelStr(lookup.matrikkel)}</p>
+              <p className="text-[12.5px] text-[#716b63] mt-0.5">Matrikkel {matrikkelStr(lookup.matrikkel)}</p>
             )}
           </div>
         </div>

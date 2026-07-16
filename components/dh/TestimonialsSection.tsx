@@ -48,7 +48,7 @@ export default function TestimonialsSection() {
                 <div className="w-10 h-10 rounded-full bg-[#f2f0eb] flex items-center justify-center text-[12px] font-bold text-[#5a564d]" style={{ fontFamily: 'var(--font-heading)' }}>{t.initials}</div>
                 <div>
                   <p className="text-[14px] font-semibold text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>{t.name}</p>
-                  <p className="text-[12px] text-[#aaa] mt-0.5">{t.role}</p>
+                  <p className="text-[12px] text-[#78726a] mt-0.5">{t.role}</p>
                 </div>
               </div>
             </Reveal>

@@ -560,7 +560,7 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
           <p className="text-[16px] text-[#666] leading-relaxed max-w-[42ch] mx-auto">{successSub}</p>
 
           <div className="mt-8 text-left bg-white rounded-[22px] p-6 shadow-[0_8px_40px_-24px_rgba(0,0,0,0.35)]">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[#aaa] mb-4">Hva skjer nå</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[#78726a] mb-4">Hva skjer nå</p>
             <div>
               {successSteps.map((it: any, i: number, arr: any[]) => (
                 <motion.div key={i} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.35 + i * 0.12, duration: 0.35 }} className="flex gap-3.5">
@@ -592,7 +592,7 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
                 Gå til kontoen din <ArrowRight className="w-4 h-4" />
               </Button>
               <p className="mt-3">
-                <a href="/" data-testid="owner-success-home-link" className="text-[13px] text-[#999] underline underline-offset-2 hover:text-[#555]">Tilbake til forsiden</a>
+                <a href="/" data-testid="owner-success-home-link" className="text-[13px] text-[#716b63] underline underline-offset-2 hover:text-[#555]">Tilbake til forsiden</a>
               </p>
             </>
           ) : (
@@ -637,10 +637,10 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
           ))}
         </div>
         <div className="justify-self-end flex items-center gap-4">
-          <a href={`tel:${site.phoneHref}`} className="hidden md:inline-flex items-center gap-1.5 text-[12.5px] font-medium text-[#999] hover:text-[#0a0a0a] transition-colors">
+          <a href={`tel:${site.phoneHref}`} className="hidden md:inline-flex items-center gap-1.5 text-[12.5px] font-medium text-[#716b63] hover:text-[#0a0a0a] transition-colors">
             <Phone className="w-3.5 h-3.5" /> {site.phone}
           </a>
-          <a href="/bli-utleier" data-testid="start-exit" className="text-[13px] font-medium text-[#999] hover:text-[#0a0a0a] transition-colors">Avslutt</a>
+          <a href="/bli-utleier" data-testid="start-exit" className="text-[13px] font-medium text-[#716b63] hover:text-[#0a0a0a] transition-colors">Avslutt</a>
         </div>
       </div>
     </div>
@@ -797,7 +797,7 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
             ))}
           </div>
           <div className="mt-4 pt-4 border-t border-[#f2f0ec] flex items-center justify-between">
-            <span className="text-[15px] font-bold text-[#0a0a0a]">{t.price ? `${t.price} ` : ''}<span className="text-[12px] font-medium text-[#999]">{t.priceNote}</span></span>
+            <span className="text-[15px] font-bold text-[#0a0a0a]">{t.price ? `${t.price} ` : ''}<span className="text-[12px] font-medium text-[#716b63]">{t.priceNote}</span></span>
             <span className="inline-flex items-center gap-1 text-[13px] font-semibold text-[#7c3aed] group-hover:gap-2 transition-all">{t.value === 'selvforvaltning' ? 'Kom i gang nå' : 'Få tilbud'} <ArrowRight className="w-3.5 h-3.5" /></span>
           </div>
         </button>
@@ -823,7 +823,7 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
                 <div className="inline-flex items-center gap-2.5 rounded-full bg-white border border-[#e8e2f2] pl-3.5 pr-1.5 py-1.5 shadow-[0_2px_12px_rgba(20,10,40,0.06)] max-w-full" data-testid="entry-address-chip">
                   <MapPin className="w-3.5 h-3.5 text-[#7c3aed] shrink-0" />
                   <span className="text-[13px] font-semibold text-[#0a0a0a] truncate max-w-[200px] sm:max-w-[340px]">{formData.address}</span>
-                  {formData.postal_code && !(formData.address || '').includes(formData.postal_code) ? <span className="text-[12px] text-[#999] hidden sm:inline shrink-0">{formData.postal_code} {formData.city}</span> : null}
+                  {formData.postal_code && !(formData.address || '').includes(formData.postal_code) ? <span className="text-[12px] text-[#716b63] hidden sm:inline shrink-0">{formData.postal_code} {formData.city}</span> : null}
                   <button type="button" data-testid="entry-address-edit" onClick={() => { setDir(-1); setEntryPhase('address'); }}
                     className="text-[11.5px] font-semibold text-[#7c3aed] hover:bg-[#faf5ff] rounded-full px-2.5 py-1.5 transition-colors shrink-0">Endre</button>
                 </div>
@@ -992,7 +992,7 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
                             initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
                             transition={{ duration: 0.25 }}
                             data-testid="owner-finn-hint"
-                            className="mt-3 flex items-center gap-1.5 text-[12.5px] text-[#999]"
+                            className="mt-3 flex items-center gap-1.5 text-[12.5px] text-[#716b63]"
                           >
                             <Zap className="w-3.5 h-3.5 text-[#cf97fc] shrink-0" fill="#cf97fc" />
                             Har du annonsen på FINN? Lim lenken rett i adressefeltet — vi fyller inn alt automatisk.
@@ -1198,7 +1198,7 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
 
                   {/* Kompakt oppsummering — erstatter det gamle Bekreft-steget */}
                   <div className="mt-8 rounded-2xl border border-[#eee9e2] bg-[#faf9f7] p-5" data-testid="owner-final-summary">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[#999] mb-3">Oppsummering</p>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[#716b63] mb-3">Oppsummering</p>
                     <div className="space-y-3">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
@@ -1226,7 +1226,7 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
                       </div>
                     </div>
                   </div>
-                  <p className="text-[12px] text-[#999] mt-4 flex items-center gap-1.5"><Shield className="w-3.5 h-3.5 text-[#cf97fc]" /> Gratis og uforpliktende — svar innen 24 timer.</p>
+                  <p className="text-[12px] text-[#716b63] mt-4 flex items-center gap-1.5"><Shield className="w-3.5 h-3.5 text-[#cf97fc]" /> Gratis og uforpliktende — svar innen 24 timer.</p>
                 </div>
               )}
 
@@ -1381,7 +1381,7 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
                   <div className="space-y-7">
                     <div>
                       <Label className="text-[13px] font-semibold text-[#333] mb-1 block">Foretrukket utleiemodell <span className="text-[#737373] font-normal">(valgfritt)</span></Label>
-                      <p className="text-[12px] text-[#999] mb-3">Usikker? Hopp over — vi anbefaler den beste modellen for boligen din.</p>
+                      <p className="text-[12px] text-[#716b63] mb-3">Usikker? Hopp over — vi anbefaler den beste modellen for boligen din.</p>
                       <div className="space-y-2.5">
                         {rentalModels.map((m: any) => {
                           const Icon = m.icon;
@@ -1462,11 +1462,11 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
             {curPos > 0 ? (
               <button onClick={goBack} className="text-[14px] font-semibold text-[#666] hover:text-[#333] underline underline-offset-4 transition-colors" data-testid="owner-back-link">Tilbake</button>
             ) : (
-              <span className="text-[12px] text-[#aaa] inline-flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-[#cf97fc]" strokeWidth={3} /> Gratis og uforpliktende</span>
+              <span className="text-[12px] text-[#78726a] inline-flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-[#cf97fc]" strokeWidth={3} /> Gratis og uforpliktende</span>
             )}
             {nextStepIdx != null ? (
               <div className="flex items-center gap-3">
-                <span className="hidden sm:block text-[12px] text-[#aaa]">Neste: <span className="text-[#666] font-medium">{nextStepTitle}</span></span>
+                <span className="hidden sm:block text-[12px] text-[#78726a]">Neste: <span className="text-[#666] font-medium">{nextStepTitle}</span></span>
                 <Button onClick={goNext} data-testid="owner-next-button" className="rounded-full bg-[#0a0a0a] text-white hover:bg-black h-12 px-8 text-[14px] font-semibold gap-2 active:scale-[0.97] transition-transform shadow-[0_6px_20px_-8px_rgba(0,0,0,0.5)]">Neste <ArrowRight className="w-4 h-4" /></Button>
               </div>
             ) : (

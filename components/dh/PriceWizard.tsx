@@ -340,19 +340,19 @@ export default function PriceWizard() {
 
               {step === 0 && (
                 <div>
-                  <label className="block text-[13px] font-semibold text-[#0a0a0a] mb-2.5" style={{ fontFamily: 'var(--font-heading)' }}>Adresse <span className="font-normal text-[#aaa]">(valgfritt)</span></label>
+                  <label className="block text-[13px] font-semibold text-[#0a0a0a] mb-2.5" style={{ fontFamily: 'var(--font-heading)' }}>Adresse <span className="font-normal text-[#78726a]">(valgfritt)</span></label>
                   <div className="flex items-center rounded-full bg-white border border-[#e8e3da] focus-within:border-[#cf97fc]/60 focus-within:shadow-[0_0_0_4px_rgba(207,151,252,0.12)] transition-all mb-9 max-w-[520px] relative z-30">
-                    <div className="pl-5"><MapPin className="w-[17px] h-[17px] text-[#999]" /></div>
+                    <div className="pl-5"><MapPin className="w-[17px] h-[17px] text-[#716b63]" /></div>
                     <AddressAutocomplete value={address} onChange={(v: string) => { setAddress(v); setPostal(''); }}
                       onSelect={(s: any) => { setAddress(s.address); setPostal(s.postalCode || ''); }}
                       requireSelection
                       placeholder="Gateadresse, sted" showIcon={false} dataTestId="wizard-address-input"
-                      inputClassName="flex-1 h-[54px] px-3.5 text-[15px] bg-transparent border-0 outline-none focus:outline-none w-full placeholder:text-[#999]" className="flex-1" />
+                      inputClassName="flex-1 h-[54px] px-3.5 text-[15px] bg-transparent border-0 outline-none focus:outline-none w-full placeholder:text-[#716b63]" className="flex-1" />
                   </div>
 
                   <label className="block text-[13px] font-semibold text-[#0a0a0a] mb-2" style={{ fontFamily: 'var(--font-heading)' }}>Forventet månedsleie</label>
                   <p className="text-[40px] sm:text-[48px] font-bold text-[#0a0a0a] tracking-[-0.02em] mb-4 leading-none" style={{ fontFamily: 'var(--font-heading)' }}>
-                    <AnimatedNumber value={rent} /> <span className="text-[16px] font-medium text-[#999]">kr/mnd</span>
+                    <AnimatedNumber value={rent} /> <span className="text-[16px] font-medium text-[#716b63]">kr/mnd</span>
                   </p>
                   <input type="range" min={8000} max={45000} step={500} value={rent} onChange={(e) => setRent(Number(e.target.value))}
                     className="dh-range w-full max-w-[520px] cursor-pointer"
@@ -399,7 +399,7 @@ export default function PriceWizard() {
                         <p className="text-[13px] text-[#888] mb-4">{l.tagline}</p>
                         <div className={`rounded-2xl px-4 py-3.5 mb-5 transition-colors ${active ? 'bg-[#0a0a0a]' : 'bg-[#faf8f5] border border-[#f0ece6]'}`}>
                           <p className={`text-[11px] uppercase tracking-[0.1em] font-semibold ${active ? 'text-[#cf97fc]' : 'text-[#9b6cc4]'}`}>{l.pct} % av leien — for din bolig:</p>
-                          <p className={`text-[24px] font-bold leading-tight tabular-nums ${active ? 'text-white' : 'text-[#0a0a0a]'}`} style={{ fontFamily: 'var(--font-heading)' }}>{fmt(lFee)} <span className={`text-[12px] font-medium ${active ? 'text-white/45' : 'text-[#aaa]'}`}>kr/mnd</span></p>
+                          <p className={`text-[24px] font-bold leading-tight tabular-nums ${active ? 'text-white' : 'text-[#0a0a0a]'}`} style={{ fontFamily: 'var(--font-heading)' }}>{fmt(lFee)} <span className={`text-[12px] font-medium ${active ? 'text-white/45' : 'text-[#78726a]'}`}>kr/mnd</span></p>
                         </div>
                         <div className="space-y-2 flex-1">
                           {(l.included || []).map((f: string) => (
@@ -409,7 +409,7 @@ export default function PriceWizard() {
                             <div key={f} className="flex items-start gap-2.5 opacity-45"><Minus className="w-4 h-4 text-[#bbb] mt-0.5 shrink-0" /><span className="text-[13px] text-[#888] leading-snug line-through decoration-[#ccc]">{f}</span></div>
                           ))}
                         </div>
-                        {l.minMonthly ? <p className="text-[11px] text-[#aaa] mt-4">Minstepris {fmt(l.minMonthly)} kr/mnd</p> : null}
+                        {l.minMonthly ? <p className="text-[11px] text-[#78726a] mt-4">Minstepris {fmt(l.minMonthly)} kr/mnd</p> : null}
                       </button>
                     );
                   })}
@@ -440,8 +440,8 @@ export default function PriceWizard() {
                                 ))}
                               </div>
                               <div className="flex justify-between mt-2">
-                                <span className="text-[11px] text-[#999]">10 mnd langtidsleie</span>
-                                <span className={`text-[11px] font-semibold ${active ? 'text-[#8b5fc0]' : 'text-[#999]'}`}>2 mnd korttid</span>
+                                <span className="text-[11px] text-[#716b63]">10 mnd langtidsleie</span>
+                                <span className={`text-[11px] font-semibold ${active ? 'text-[#8b5fc0]' : 'text-[#716b63]'}`}>2 mnd korttid</span>
                               </div>
                             </div>
                             <div className="mt-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#f5edfc] border border-[#e9d9fa]">
@@ -452,7 +452,7 @@ export default function PriceWizard() {
                         ) : (
                           <div className="mt-5">
                             <div className="flex gap-1 items-end">{Array.from({ length: 12 }).map((_, i) => <div key={i} className={`flex-1 h-8 rounded-[5px] ${active ? 'bg-[#eee0fb]' : 'bg-[#f0ece6]'}`} />)}</div>
-                            <p className="text-[11px] text-[#999] mt-2">12 mnd stabil langtidsleie</p>
+                            <p className="text-[11px] text-[#716b63] mt-2">12 mnd stabil langtidsleie</p>
                           </div>
                         )}
                       </button>
@@ -482,7 +482,7 @@ export default function PriceWizard() {
                         </div>
                         <h3 className="text-[15.5px] font-bold text-[#0a0a0a] mb-1" style={{ fontFamily: 'var(--font-heading)' }}>{a.name}</h3>
                         <p className="text-[12.5px] text-[#888] leading-relaxed mb-3">{a.desc}</p>
-                        <p className="text-[15px] font-bold text-[#0a0a0a] tabular-nums" style={{ fontFamily: 'var(--font-heading)' }}>{fmt(a.price)} kr <span className="text-[11px] font-normal text-[#aaa]">engangs</span></p>
+                        <p className="text-[15px] font-bold text-[#0a0a0a] tabular-nums" style={{ fontFamily: 'var(--font-heading)' }}>{fmt(a.price)} kr <span className="text-[11px] font-normal text-[#78726a]">engangs</span></p>
                       </button>
                     );
                   })}
@@ -494,7 +494,7 @@ export default function PriceWizard() {
                   <div className="rounded-[20px] bg-white border border-[#eeeae3] divide-y divide-[#f3f0ea] mb-8 overflow-hidden" data-testid="wizard-summary">
                     {summaryRows.map((r: any) => (
                       <div key={r.label} className="flex items-center gap-4 px-5 py-3.5">
-                        <span className="text-[12px] font-semibold text-[#999] w-[92px] shrink-0 uppercase tracking-[0.04em]">{r.label}</span>
+                        <span className="text-[12px] font-semibold text-[#716b63] w-[92px] shrink-0 uppercase tracking-[0.04em]">{r.label}</span>
                         <span className="text-[13.5px] text-[#333] flex-1 min-w-0 truncate">{r.value}</span>
                         <button type="button" onClick={() => goTo(r.jump)} data-testid={`wizard-edit-${r.jump}`}
                           className="inline-flex items-center gap-1 text-[12px] font-medium text-[#9b6cc4] hover:text-[#7a4bb0] transition-colors shrink-0"><Pencil className="w-3 h-3" /> Endre</button>
@@ -503,19 +503,19 @@ export default function PriceWizard() {
                   </div>
                   <form onSubmit={submit} className="max-w-[520px] space-y-4">
                     <input type="text" required placeholder="Fullt navn" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} data-testid="wizard-name-input"
-                      className="w-full h-[54px] px-5 rounded-full bg-white border border-[#e8e3da] text-[15px] outline-none focus:border-[#cf97fc]/60 focus:shadow-[0_0_0_4px_rgba(207,151,252,0.12)] transition-all placeholder:text-[#999]" />
+                      className="w-full h-[54px] px-5 rounded-full bg-white border border-[#e8e3da] text-[15px] outline-none focus:border-[#cf97fc]/60 focus:shadow-[0_0_0_4px_rgba(207,151,252,0.12)] transition-all placeholder:text-[#716b63]" />
                     <div className="grid sm:grid-cols-2 gap-4">
                       <input type="email" placeholder="E-post" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} data-testid="wizard-email-input"
-                        className="w-full h-[54px] px-5 rounded-full bg-white border border-[#e8e3da] text-[15px] outline-none focus:border-[#cf97fc]/60 focus:shadow-[0_0_0_4px_rgba(207,151,252,0.12)] transition-all placeholder:text-[#999]" />
+                        className="w-full h-[54px] px-5 rounded-full bg-white border border-[#e8e3da] text-[15px] outline-none focus:border-[#cf97fc]/60 focus:shadow-[0_0_0_4px_rgba(207,151,252,0.12)] transition-all placeholder:text-[#716b63]" />
                       <input type="tel" placeholder="Telefon" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} data-testid="wizard-phone-input"
-                        className="w-full h-[54px] px-5 rounded-full bg-white border border-[#e8e3da] text-[15px] outline-none focus:border-[#cf97fc]/60 focus:shadow-[0_0_0_4px_rgba(207,151,252,0.12)] transition-all placeholder:text-[#999]" />
+                        className="w-full h-[54px] px-5 rounded-full bg-white border border-[#e8e3da] text-[15px] outline-none focus:border-[#cf97fc]/60 focus:shadow-[0_0_0_4px_rgba(207,151,252,0.12)] transition-all placeholder:text-[#716b63]" />
                     </div>
                     {error && <p className="text-[13px] text-rose-500 px-2">{error}</p>}
                     <Button type="submit" disabled={sending} data-testid="wizard-submit-button"
                       className="w-full h-[58px] rounded-full bg-[#0a0a0a] text-white text-[15px] font-semibold hover:shadow-[0_14px_40px_-8px_rgba(167,101,224,0.55)] transition-all duration-300 active:scale-[0.98] gap-2">
                       {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <>Send inn pakken min <ArrowRight className="w-4 h-4" /></>}
                     </Button>
-                    <p className="flex items-center justify-center gap-1.5 text-[12px] text-[#999] pt-1"><ShieldCheck className="w-3.5 h-3.5 text-[#a765e0]" /> Gratis og uforpliktende · Svar innen 24 timer · Ingen binding</p>
+                    <p className="flex items-center justify-center gap-1.5 text-[12px] text-[#716b63] pt-1"><ShieldCheck className="w-3.5 h-3.5 text-[#a765e0]" /> Gratis og uforpliktende · Svar innen 24 timer · Ingen binding</p>
                   </form>
                 </div>
               )}

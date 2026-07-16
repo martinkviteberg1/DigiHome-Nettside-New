@@ -197,7 +197,7 @@ export default function SommerKampanjePage() {
           <Link href="/" aria-label="DigiHome forside">
             <img src="/deck-logo-dark.svg" alt="DigiHome" className="h-[26px] w-auto" />
           </Link>
-          <span className="text-[12px] font-semibold uppercase tracking-[0.16em] text-[#999]">Sommerkampanje 2026</span>
+          <span className="text-[12px] font-semibold uppercase tracking-[0.16em] text-[#716b63]">Sommerkampanje 2026</span>
         </div>
       </header>
 
@@ -214,7 +214,7 @@ export default function SommerKampanjePage() {
               <img src="/sarah-sleeman.jpg" alt="Sarah Sleeman" className="w-[52px] h-[52px] rounded-full object-cover" />
               <div>
                 <p className="text-[14px] font-bold">Sarah Sleeman tar kontakt innen 24 timer</p>
-                <p className="text-[12.5px] text-[#999] mt-0.5">Daglig leder, DigiHome</p>
+                <p className="text-[12.5px] text-[#716b63] mt-0.5">Daglig leder, DigiHome</p>
               </div>
             </div>
           </div>
@@ -249,7 +249,7 @@ export default function SommerKampanjePage() {
                 ))}
               </div>
 
-              <p className="text-[12px] text-[#aaa] leading-[1.6] mt-6 max-w-[480px]">
+              <p className="text-[12px] text-[#78726a] leading-[1.6] mt-6 max-w-[480px]">
                 Kampanjen gjelder nye avtaler om full forvaltning inngått innen 10. juli 2026. Ingen bindingstid, ingen skjulte gebyrer. Uforpliktende registrering — vi tar kontakt for en kort prat først.
               </p>
             </div>
@@ -262,7 +262,7 @@ export default function SommerKampanjePage() {
                   {magic.status === 'loading' ? (
                     <div className="py-10 text-center" data-testid="sommer-magic-loading">
                       <div className="w-10 h-10 rounded-full border-[3px] border-[#eee7f5] mx-auto animate-spin" style={{ borderTopColor: '#a052e0' }} />
-                      <p className="text-[13.5px] text-[#999] mt-4">Henter opplysningene dine…</p>
+                      <p className="text-[13.5px] text-[#716b63] mt-4">Henter opplysningene dine…</p>
                     </div>
                   ) : (
                     <>
@@ -279,7 +279,7 @@ export default function SommerKampanjePage() {
 
                       <div className="mt-5 rounded-2xl border border-[#eee7f5] bg-white px-4 py-3.5">
                         <p className="text-[13px] font-bold" style={{ color: '#a052e0' }}>10 % forvaltningshonorar · 0 kr i oppstart</p>
-                        <p className="text-[11.5px] text-[#999] mt-0.5">Reserveres for deg — gjelder til 10. juli</p>
+                        <p className="text-[11.5px] text-[#716b63] mt-0.5">Reserveres for deg — gjelder til 10. juli</p>
                       </div>
 
                       {magic.status === 'needPhone' ? (
@@ -290,7 +290,7 @@ export default function SommerKampanjePage() {
                             <input value={magicPhone} onChange={(e) => setMagicPhone(e.target.value.replace(/[^\d\s]/g, ''))} placeholder="900 00 000" inputMode="tel" data-testid="sommer-magic-phone" autoFocus
                               className="w-full h-[46px] rounded-r-xl border border-[#e8e2ef] bg-white px-3.5 text-[14.5px] outline-none focus:border-[#c99df0] focus:ring-2 focus:ring-[#f0e4fb]" />
                           </div>
-                          <p className="text-[11.5px] text-[#aaa] mt-1.5">Vi mangler bare telefonnummeret ditt — resten har vi.</p>
+                          <p className="text-[11.5px] text-[#78726a] mt-1.5">Vi mangler bare telefonnummeret ditt — resten har vi.</p>
                         </div>
                       ) : null}
 
@@ -301,11 +301,11 @@ export default function SommerKampanjePage() {
                         style={{ background: '#0a0a0a', color: '#fff' }}>
                         {magic.status === 'confirming' ? 'Bekrefter…' : expired ? 'Kampanjen er avsluttet' : 'Ja, sikre kampanjeprisen for meg →'}
                       </button>
-                      <p className="text-[11.5px] text-[#999] text-center mt-3">Helt uforpliktende — vi tar kontakt for en kort prat først.</p>
+                      <p className="text-[11.5px] text-[#716b63] text-center mt-3">Helt uforpliktende — vi tar kontakt for en kort prat først.</p>
 
                       <div className="flex items-center gap-2.5 mt-5 pt-5 border-t border-[#f0ede8]">
                         <img src="/sarah-sleeman.jpg" alt="Sarah Sleeman" className="w-[34px] h-[34px] rounded-full object-cover" />
-                        <p className="text-[11.5px] text-[#999] leading-[1.5]">Sarah Sleeman (daglig leder) tar personlig kontakt innen 24 timer.</p>
+                        <p className="text-[11.5px] text-[#716b63] leading-[1.5]">Sarah Sleeman (daglig leder) tar personlig kontakt innen 24 timer.</p>
                       </div>
 
                       <button type="button" onClick={() => setMagic((m: any) => ({ ...m, status: 'none' }))} data-testid="sommer-magic-fallback"
@@ -318,7 +318,7 @@ export default function SommerKampanjePage() {
               ) : (
               <form onSubmit={submit} className="rounded-3xl border border-[#eee7f5] bg-[#fdfcfe] p-6 sm:p-7 lg:sticky lg:top-8" style={{ boxShadow: '0 20px 60px -30px rgba(160,82,224,0.18)' }} data-testid="sommer-form">
                 <p className="text-[17px] font-bold tracking-[-0.01em]">Sikre deg kampanjeprisen</p>
-                <p className="text-[13px] text-[#999] mt-1">Tar under ett minutt — helt uforpliktende.</p>
+                <p className="text-[13px] text-[#716b63] mt-1">Tar under ett minutt — helt uforpliktende.</p>
 
                 <div className="mt-6 space-y-4">
                   <div>
@@ -340,7 +340,7 @@ export default function SommerKampanjePage() {
                       className="w-full h-[46px] rounded-xl border border-[#e8e2ef] bg-white px-3.5 text-[14.5px] outline-none focus:border-[#c99df0] focus:ring-2 focus:ring-[#f0e4fb]" />
                   </div>
                   <div>
-                    <label className="text-[12px] font-semibold text-[#555] block mb-1.5">Adresse på utleieboligen <span className="font-normal text-[#aaa]">(valgfritt)</span></label>
+                    <label className="text-[12px] font-semibold text-[#555] block mb-1.5">Adresse på utleieboligen <span className="font-normal text-[#78726a]">(valgfritt)</span></label>
                     <AddressAutocomplete
                       value={address}
                       onChange={(v: string) => { markStart(); setAddress(v); setPostal(''); if (err) setErr(''); }}
@@ -363,7 +363,7 @@ export default function SommerKampanjePage() {
 
                 <div className="flex items-center gap-2.5 mt-5">
                   <img src="/sarah-sleeman.jpg" alt="Sarah Sleeman" className="w-[34px] h-[34px] rounded-full object-cover" />
-                  <p className="text-[11.5px] text-[#999] leading-[1.5]">Sarah Sleeman (daglig leder) tar personlig kontakt innen 24 timer.</p>
+                  <p className="text-[11.5px] text-[#716b63] leading-[1.5]">Sarah Sleeman (daglig leder) tar personlig kontakt innen 24 timer.</p>
                 </div>
               </form>
               )}
@@ -375,7 +375,7 @@ export default function SommerKampanjePage() {
       <footer className="border-t border-[#f0ede8]">
         <div className="max-w-[1080px] mx-auto px-5 h-[58px] flex items-center justify-between">
           <span className="text-[12px] text-[#bbb]">DigiHome · Bergen</span>
-          <Link href="/" className="text-[12px] text-[#999] hover:text-[#0a0a0a]">digihome.no</Link>
+          <Link href="/" className="text-[12px] text-[#716b63] hover:text-[#0a0a0a]">digihome.no</Link>
         </div>
       </footer>
     </div>

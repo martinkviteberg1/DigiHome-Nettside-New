@@ -58,7 +58,7 @@ export default function StatsSection() {
                 <span className="w-5 h-[2px] rounded-full bg-[#d298ff]" />
                 <p className="text-[15px] font-semibold text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>{s.label}</p>
               </div>
-              <p className="text-[13px] text-[#999] mt-1.5 leading-relaxed">{s.sub}</p>
+              <p className="text-[13px] text-[#716b63] mt-1.5 leading-relaxed">{s.sub}</p>
             </motion.div>
           ))}
         </div>

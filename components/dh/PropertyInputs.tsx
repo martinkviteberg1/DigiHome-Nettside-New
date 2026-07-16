@@ -67,7 +67,7 @@ export function AddressField({
         </span>
         <div className="min-w-0 flex-1">
           <p className={`font-semibold text-[#1a1a1a] truncate ${compact ? 'text-[13.5px]' : 'text-[15px]'}`}>{value}</p>
-          {postalCode && <p className="text-[12px] text-[#999] truncate">{postalCode}</p>}
+          {postalCode && <p className="text-[12px] text-[#716b63] truncate">{postalCode}</p>}
         </div>
         <button
           type="button"
@@ -155,7 +155,7 @@ export function FinnLookupField({ value, onChange, onResult, testId = 'finn', co
   return (
     <div>
       <div className="relative">
-        <Link2 className="w-[16px] h-[16px] text-[#aaa] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none z-10" />
+        <Link2 className="w-[16px] h-[16px] text-[#78726a] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none z-10" />
         <input
           type="url"
           inputMode="url"
@@ -307,7 +307,7 @@ export function FinnPropertyCard({
           <div className="flex items-center gap-2 min-w-0">
             <span className="w-7 h-7 rounded-full bg-[#f4eefb] flex items-center justify-center shrink-0"><Link2 className="w-3.5 h-3.5 text-[#7c3aed]" /></span>
             <div className="min-w-0">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#aaa] leading-none">Hentet fra annonse</p>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#78726a] leading-none">Hentet fra annonse</p>
               <p className="text-[12.5px] font-medium text-[#555] truncate leading-tight mt-0.5">{host || 'finn.no'}</p>
             </div>
           </div>
@@ -336,7 +336,7 @@ export function FinnPropertyCard({
       ) : (
         <div className="px-5 pt-5">
           <p className="text-[20px] font-bold text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>{data.address || data.title}</p>
-          {matrikkelStr && <p className="text-[12.5px] text-[#999] mt-1 inline-flex items-center gap-1"><Hash className="w-3 h-3" /> Matrikkel {matrikkelStr}</p>}
+          {matrikkelStr && <p className="text-[12.5px] text-[#716b63] mt-1 inline-flex items-center gap-1"><Hash className="w-3 h-3" /> Matrikkel {matrikkelStr}</p>}
         </div>
       )}
 
@@ -346,7 +346,7 @@ export function FinnPropertyCard({
           <span className="inline-flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-[0.07em] text-[#9a5fd0] bg-[#f5edfc] rounded-full px-2.5 py-1">
             <Sparkles className="w-3 h-3" /> Auto-utfylt
           </span>
-          <span className="inline-flex items-center gap-1.5 text-[12px] text-[#999]">
+          <span className="inline-flex items-center gap-1.5 text-[12px] text-[#716b63]">
             <Pencil className="w-3 h-3" /> Trykk for å endre
           </span>
         </div>
@@ -377,7 +377,7 @@ export function FinnPropertyCard({
               </button>
             </PopoverTrigger>
             <PopoverContent align="start" sideOffset={8} className="w-[208px] p-2 rounded-2xl border border-[#efe9f7] shadow-[0_18px_50px_-22px_rgba(0,0,0,0.35)]">
-              <p className="text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[#aaa] px-1.5 pb-2">Antall soverom</p>
+              <p className="text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[#78726a] px-1.5 pb-2">Antall soverom</p>
               <div className="grid grid-cols-5 gap-1.5">
                 {FINN_BED_OPTS.map((n) => {
                   const sel = String(bedrooms) === n;

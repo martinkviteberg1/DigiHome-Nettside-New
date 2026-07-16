@@ -73,7 +73,7 @@ export default function ShowcaseSection() {
               <div className="flex items-start justify-between">
                 <div>
                   <div className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-[#ccc]" /><h3 className="text-[15px] font-semibold text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>{p.location}</h3></div>
-                  <p className="text-[12px] text-[#aaa] mt-1 ml-5">{p.type}</p>
+                  <p className="text-[12px] text-[#78726a] mt-1 ml-5">{p.type}</p>
                 </div>
                 {p.income && (
                   <div className="text-right shrink-0 ml-4"><p className="text-[16px] font-bold text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>{p.income}</p><p className="text-[11px] text-[#737373]">kr/mnd</p></div>

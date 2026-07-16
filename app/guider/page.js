@@ -51,7 +51,7 @@ export default function GuiderPage() {
               <div className="p-6 flex flex-col flex-1">
                 <div className="flex items-center gap-2 mb-3">
                   <span className={`inline-flex px-2.5 py-1 rounded-full text-[11.5px] font-semibold ${CATEGORY_COLORS[g.category] || 'bg-[#f1f0ee] text-[#666]'}`}>{g.category}</span>
-                  <span className="inline-flex items-center gap-1 text-[12px] text-[#999]"><Clock className="w-3 h-3" /> {g.readMinutes} min</span>
+                  <span className="inline-flex items-center gap-1 text-[12px] text-[#716b63]"><Clock className="w-3 h-3" /> {g.readMinutes} min</span>
                 </div>
                 <h2 className="text-[18px] font-bold leading-snug mb-2 group-hover:text-[#7c3aed] transition-colors" style={{ fontFamily: 'var(--font-heading)' }}>{g.title}</h2>
                 <p className="text-[14px] text-[#666] leading-relaxed flex-1">{g.description}</p>

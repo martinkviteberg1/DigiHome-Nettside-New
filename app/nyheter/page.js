@@ -72,7 +72,7 @@ export default async function NyheterIndex() {
         {posts.length === 0 ? (
           <section className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16 pb-24">
             <div className="bg-white rounded-3xl p-16 text-center shadow-[0_4px_24px_-12px_rgba(0,0,0,0.08)]">
-              <p className="text-[16px] text-[#999]">Ingen artikler er publisert ennå. Kom snart tilbake.</p>
+              <p className="text-[16px] text-[#716b63]">Ingen artikler er publisert ennå. Kom snart tilbake.</p>
             </div>
           </section>
         ) : (
@@ -106,7 +106,7 @@ export default async function NyheterIndex() {
                     <div className="p-6">
                       <div className="flex items-center gap-2 mb-2">
                         {(p.tags || []).slice(0, 1).map((t) => <span key={t} className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#9b6cc4]">{t}</span>)}
-                        <span className="text-[12px] text-[#aaa]">{fmtDate(p.publishedAt)}</span>
+                        <span className="text-[12px] text-[#78726a]">{fmtDate(p.publishedAt)}</span>
                       </div>
                       <h3 className="text-[18px] font-bold text-[#1f1f1f] tracking-[-0.01em] leading-snug group-hover:text-[#9b6cc4] transition-colors" style={{ fontFamily: 'var(--font-heading)' }}>{p.title}</h3>
                       <p className="text-[14px] text-[#666] mt-2 leading-relaxed line-clamp-3">{p.excerpt}</p>
@@ -132,7 +132,7 @@ export default async function NyheterIndex() {
               <Link key={g.slug} href={`/guider/${g.slug}`} className="group bg-white rounded-2xl p-5 shadow-[0_4px_24px_-14px_rgba(0,0,0,0.10)] hover:shadow-[0_12px_36px_-12px_rgba(0,0,0,0.16)] transition-shadow">
                 <span className="inline-flex px-2.5 py-1 rounded-full bg-[#f4f0fb] text-[#7c3aed] text-[11px] font-semibold mb-3">{g.category}</span>
                 <h3 className="text-[15.5px] font-bold leading-snug group-hover:text-[#7c3aed] transition-colors" style={{ fontFamily: 'var(--font-heading)' }}>{g.title}</h3>
-                <p className="text-[12.5px] text-[#999] mt-2">{g.readMinutes} min lesetid</p>
+                <p className="text-[12.5px] text-[#716b63] mt-2">{g.readMinutes} min lesetid</p>
               </Link>
             ))}
           </div>

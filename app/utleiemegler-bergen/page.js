@@ -95,7 +95,7 @@ export default function Page() {
         <h2 className="text-[26px] sm:text-[36px] font-bold tracking-[-0.02em] mb-3 max-w-[24ch]" style={{ fontFamily: 'var(--font-heading)' }}>Tradisjonell utleiemegler vs. DigiHome</h2>
         <p className="text-[#666] text-[15.5px] max-w-[58ch] mb-10">Samme trygghet og service — men bygget på teknologi i stedet for timepris.</p>
         <div className="bg-white rounded-3xl shadow-[0_8px_36px_-18px_rgba(0,0,0,0.12)] overflow-hidden">
-          <div className="hidden sm:grid grid-cols-[1.1fr_1.4fr_1.6fr] gap-4 px-7 py-4 border-b border-black/[0.06] text-[12px] font-semibold uppercase tracking-[0.1em] text-[#999]">
+          <div className="hidden sm:grid grid-cols-[1.1fr_1.4fr_1.6fr] gap-4 px-7 py-4 border-b border-black/[0.06] text-[12px] font-semibold uppercase tracking-[0.1em] text-[#716b63]">
             <span />
             <span>Tradisjonell utleiemegler</span>
             <span className="text-[#7c3aed]">DigiHome</span>

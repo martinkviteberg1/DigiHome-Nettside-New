@@ -39,13 +39,13 @@ export default function SupportPage() {
             <div className="w-10 h-10 rounded-xl bg-[#f7f0fe] flex items-center justify-center"><Mail className="w-[18px] h-[18px] text-[#9333EA]" /></div>
             <p className="font-bold text-[16px] text-[#0a0a0a] mt-3.5" style={{ fontFamily: 'var(--font-heading)' }}>E-post</p>
             <p className="text-[14.5px] text-[#555] mt-1">support@digihome.no</p>
-            <p className="text-[12.5px] text-[#999] mt-2">Svar innen få timer på hverdager</p>
+            <p className="text-[12.5px] text-[#716b63] mt-2">Svar innen få timer på hverdager</p>
           </a>
           <a href={`tel:${site.phoneHref}`} className="rounded-2xl border border-[#eee] bg-white p-6 hover:border-[#9333EA] hover:shadow-[0_16px_44px_-24px_rgba(124,58,237,0.35)] hover:-translate-y-0.5 transition-all group">
             <div className="w-10 h-10 rounded-xl bg-[#f7f0fe] flex items-center justify-center"><Phone className="w-[18px] h-[18px] text-[#9333EA]" /></div>
             <p className="font-bold text-[16px] text-[#0a0a0a] mt-3.5" style={{ fontFamily: 'var(--font-heading)' }}>Telefon</p>
             <p className="text-[14.5px] text-[#555] mt-1">{site.phone}</p>
-            <p className="text-[12.5px] text-[#999] mt-2">Man–fre 09–16</p>
+            <p className="text-[12.5px] text-[#716b63] mt-2">Man–fre 09–16</p>
           </a>
         </div>
 

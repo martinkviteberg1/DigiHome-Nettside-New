@@ -40,7 +40,7 @@ export default async function Page() {
         <p className="text-[17px] sm:text-[19px] text-[#666] mt-5 max-w-[60ch] leading-relaxed">
           Datadrevne rapporter som kombinerer offisiell statistikk fra Statistisk sentralbyrå med DigiHomes egen etterspørselsindeks. Oppdateres løpende.
         </p>
-        <p className="text-[12.5px] text-[#aaa] mt-4 flex items-center gap-2"><Database className="w-3.5 h-3.5" /> Kilde: SSB leiemarkedsundersøkelse + DigiHome forvaltningsdata</p>
+        <p className="text-[12.5px] text-[#78726a] mt-4 flex items-center gap-2"><Database className="w-3.5 h-3.5" /> Kilde: SSB leiemarkedsundersøkelse + DigiHome forvaltningsdata</p>
       </section>
 
       <section className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16 pb-24">

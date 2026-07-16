@@ -62,7 +62,7 @@ export default function GuidePage({ params }) {
       <article className="max-w-[820px] mx-auto px-6 sm:px-10 pt-32 sm:pt-36 pb-16">
         <Link href="/guider" className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#7c3aed] hover:underline mb-6"><ArrowLeft className="w-3.5 h-3.5" /> Alle guider</Link>
 
-        <div className="flex flex-wrap items-center gap-3 mb-4 text-[12.5px] text-[#999]">
+        <div className="flex flex-wrap items-center gap-3 mb-4 text-[12.5px] text-[#716b63]">
           <span className="inline-flex px-2.5 py-1 rounded-full bg-[#f4f0fb] text-[#7c3aed] font-semibold">{g.category}</span>
           <span className="inline-flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> {g.readMinutes} min lesetid</span>
           <span className="inline-flex items-center gap-1"><CalendarDays className="w-3.5 h-3.5" /> Oppdatert {new Date(g.updated).toLocaleDateString('nb-NO', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
@@ -101,7 +101,7 @@ export default function GuidePage({ params }) {
         </div>
 
         {g.disclaimer && (
-          <p className="mt-10 text-[12.5px] text-[#999] leading-relaxed border-t border-black/[0.06] pt-5">Innholdet er generell veiledning per {new Date(g.updated).toLocaleDateString('nb-NO', { month: 'long', year: 'numeric' })} og erstatter ikke individuell juridisk eller skattemessig rådgivning. Regler kan endres — sjekk alltid gjeldende satser hos Skatteetaten og gjeldende lovtekst på Lovdata.</p>
+          <p className="mt-10 text-[12.5px] text-[#716b63] leading-relaxed border-t border-black/[0.06] pt-5">Innholdet er generell veiledning per {new Date(g.updated).toLocaleDateString('nb-NO', { month: 'long', year: 'numeric' })} og erstatter ikke individuell juridisk eller skattemessig rådgivning. Regler kan endres — sjekk alltid gjeldende satser hos Skatteetaten og gjeldende lovtekst på Lovdata.</p>
         )}
 
         {/* CTA */}
