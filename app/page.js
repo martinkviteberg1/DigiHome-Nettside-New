@@ -8,7 +8,6 @@ import DynamicRentalSection from '@/components/dh/DynamicRentalSection';
 import QualitySection from '@/components/dh/QualitySection';
 import NetworkSection from '@/components/dh/NetworkSection';
 import ShowcaseSection from '@/components/dh/ShowcaseSection';
-import WhyChooseUsSection from '@/components/dh/WhyChooseUsSection';
 import AboutCEOSection from '@/components/dh/AboutCEOSection';
 import TestimonialsSection from '@/components/dh/TestimonialsSection';
 import PartnersBar from '@/components/dh/PartnersBar';
@@ -32,16 +31,17 @@ export default function HomePage() {
       <HeroSection />
       <ServiceModelsSection />
       <StatsSection />
+      {/* Lånt autoritet tidlig: partnerlogoene svarer på «kan jeg stole på tallene?» */}
+      <PartnersBar />
       <HowItWorksSection />
       <ImageBreak />
       <QualitySection />
       <ShowcaseSection />
       <DynamicRentalSection />
-      <NetworkSection />
-      <WhyChooseUsSection />
-      <AboutCEOSection />
+      {/* Kundebevis rett etter penge-argumentet — og adskilt fra CEO-sitatet */}
       <TestimonialsSection />
-      <PartnersBar />
+      <NetworkSection />
+      <AboutCEOSection />
       <FaqSection />
       <CTASection />
       <Footer />

@@ -1,29 +1,32 @@
 
 import React from 'react';
 import Reveal from '@/components/dh/Reveal';
+import { ArrowRight } from 'lucide-react';
 
 // Redaksjonelt, minimalistisk prosess-grid — ingen kort, chips eller dekor.
 // Hairline-linjer + små numeraler i ink. Lilla brukes ikke her (kun logo/CTA).
+// VIKTIG: Dette er en EKTE kundereise (adresse → utbetaling) — ikke en
+// funksjonsliste. Funksjonene dekkes av tjenestekortene og 10+2-seksjonen.
 const steps = [
   {
     num: '01',
-    title: 'Dynamisk utleie',
-    desc: 'Korttids- og langtidsutleie i én hybridmodell. Tilpasses automatisk etter sesong og etterspørsel.',
+    title: 'Registrer boligen',
+    desc: 'Skriv inn adressen — det tar under to minutter. Vi henter boligdata automatisk fra Eiendomsregisteret.',
   },
   {
     num: '02',
-    title: 'Intelligent prising',
-    desc: 'Prisalgoritmer overvåker markedet døgnet rundt og justerer for optimal avkastning.',
+    title: 'Få vurdering og pris',
+    desc: 'Innen 24 timer får du en datadrevet leievurdering og anbefalt utleiemodell for akkurat din bolig.',
   },
   {
     num: '03',
-    title: 'Helhetlig drift',
-    desc: 'Nøkler, rengjøring, gjestekommunikasjon og vedlikehold — alt håndtert av vårt team.',
+    title: 'Vi finner leietakerne',
+    desc: 'Profesjonell annonsering, visninger og grundig screening. Kontrakten signeres digitalt med BankID.',
   },
   {
     num: '04',
-    title: 'Leietakerportal',
-    desc: 'Betaling, kommunikasjon og henvendelser samlet på én plattform.',
+    title: 'Du får utbetalt',
+    desc: 'Husleien kommer automatisk hver måned — med full oversikt i portalen. Vi håndterer alt underveis.',
   },
 ];
 
@@ -55,7 +58,7 @@ export default function HowItWorksSection() {
               className="text-[36px] sm:text-[46px] font-bold tracking-[-0.03em] leading-[1.08] text-[#0a0a0a]"
               style={{ fontFamily: 'var(--font-heading)' }}
             >
-              Fra henvendelse<br className="hidden sm:block" /> til utbetaling
+              Fra adresse<br className="hidden sm:block" /> til utbetaling
             </Reveal>
           </div>
           <Reveal as="p"
@@ -93,6 +96,20 @@ export default function HowItWorksSection() {
             </Reveal>
           ))}
         </div>
+
+        {/* Stille CTA — kobler prosessen direkte til adressefeltet i veiviseren */}
+        <Reveal as="div"
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.4, delay: 0.2 }}
+          className="mt-14 sm:mt-16"
+        >
+          <a href="/bli-utleier/start" className="group inline-flex items-center gap-2 text-[14.5px] font-semibold text-[#0a0a0a]" data-testid="how-it-works-cta">
+            <span className="underline underline-offset-4 decoration-[#d8d3c8] group-hover:decoration-[#d298ff] transition-colors">Start med adressen din</span>
+            <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+          </a>
+        </Reveal>
 
       </div>
     </section>

@@ -75,7 +75,7 @@ export default function DynamicRentalSection() {
               className="text-[15px] text-[#777] leading-[1.75] mt-5 max-w-[46ch]"
             >
               V&#229;r 10+2-modell kombinerer det beste fra to verdener &mdash;
-              og gir deg opptil 40&nbsp;% h&#248;yere &#229;rsinntekt enn tradisjonell utleie.
+              og gir deg opptil 30&nbsp;% h&#248;yere &#229;rsinntekt enn tradisjonell utleie.
             </motion.p>
 
             {/* Two modes */}
@@ -152,7 +152,7 @@ export default function DynamicRentalSection() {
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ddd" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
               <div>
                 <p className="text-[11px] text-[#8f8a80] uppercase tracking-[0.14em] font-semibold">10+2 modellen</p>
-                <p className="text-[18px] font-bold text-[#0a0a0a] mt-0.5" style={{ fontFamily: 'var(--font-heading)' }}>252 000 kr</p>
+                <p className="text-[18px] font-bold text-[#0a0a0a] mt-0.5" style={{ fontFamily: 'var(--font-heading)' }}>234 000 kr</p>
               </div>
               <div className="ml-auto">
                 <p className="text-[28px] font-bold text-[#0a0a0a] leading-none tracking-tight" style={{ fontFamily: 'var(--font-heading)' }}>+30%</p>

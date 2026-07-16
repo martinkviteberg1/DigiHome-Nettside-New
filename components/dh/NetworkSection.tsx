@@ -26,7 +26,7 @@ export default function NetworkSection() {
             className="relative"
           >
             <div className="rounded-[24px] overflow-hidden shadow-[0_8px_30px_rgba(0,0,0,0.06)] group">
-              <img src="/bergen-harbor.webp" alt="Bergen" width={1200} height={900} className="w-full aspect-[4/3] object-cover group-hover:scale-[1.03] transition-transform duration-[1200ms] ease-out" loading="lazy" decoding="async" />
+              <img src="/parkveien-bergen.webp" alt="Parkveien i Bergen — nabolag der DigiHome forvalter boliger" width={1200} height={900} className="w-full aspect-[4/3] object-cover group-hover:scale-[1.03] transition-transform duration-[1200ms] ease-out" loading="lazy" decoding="async" />
             </div>
             {/* Floating badge */}
             <div className="absolute -bottom-5 -right-3 sm:-right-5 bg-white/95 backdrop-blur-xl rounded-2xl p-5 shadow-[0_16px_44px_-14px_rgba(20,10,40,0.22)] border border-[#f0ece6]">

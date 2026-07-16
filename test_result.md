@@ -2988,3 +2988,15 @@ agent_communication:
         -working: "NA"
         -agent: "main"
         -comment: "NYTT (15/7 del 3): (1) EKTE BUG FIKSET på /utleie: det store by-kortet (Bergen) kollapset fordi Link er display:inline som standard og h-[340px] ble ignorert (kun BY-etiketten synlig, overlappet ingressen). Fiks: la til 'block' i Link className. Verifisert m/ skjermbilde — kortet rendrer nå perfekt. De små bydel-kortene var OK fordi grid-barn blir blockified. (2) /om-oss: hero-bilde byttet fra /bryggen-alley.webp (gavebutikk-smug, irrelevant) til /bergen-harbor.webp + beskrivende alt-tekst. Verdikort fikk hover-løft. (3) /radgivning + /forvaltning: kort fikk konsistent hover (lilla border + -translate-y + skygge). (4) KontaktForm: fokus-glød (0_0_0_4px lilla) på alle felt + CTA rounded-full m/ skygge. Triage-konklusjon: /tjenester, /nyheter, /leiemarkedet, /priskalkulator, /kontakt, /bli-leietaker-hero allerede moderne — ikke rørt. Alle 9 nøkkelsider svarer 200."
+
+  - task: "Forside verdensklasse-refaktor: tallkonsistens, ekte prosess-seksjon, dramaturgi-reorden"
+    implemented: true
+    working: "NA"
+    file: "/app/app/page.js, /app/components/dh/DynamicRentalSection.tsx, /app/components/dh/HowItWorksSection.tsx, /app/components/dh/ServiceModelsSection.tsx, /app/components/dh/NetworkSection.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "NYTT (16/7): Forside-analyse + refaktor etter brukerens 'tenk verdensklasse, motsatt av AI slop'. (1) P0 TALLKONSISTENS: DynamicRental sa 'opptil 40%' mens resten av siten sier 30% og eksempel-labelen sa +30% — samkjørt til 30% overalt (KONSERVATIVT VALG, bruker svarte ikke på 30/40-spørsmålet). Eksempel: 252 000 → 234 000 kr (180k*1.3, matte stemmer nå). (2) HowItWorks omskrevet fra 4 funksjoner til EKTE kundereise (Registrer boligen → Få vurdering og pris → Vi finner leietakerne → Du får utbetalt) + overskrift 'Fra adresse til utbetaling' + stille CTA-lenke til /bli-utleier/start (data-testid how-it-works-cta). (3) ServiceModels: grå #eeeeee-kort → hvite m/ hairline #eceae4 + lilla hover-border (inline styles pga eksisterende mønster). (4) page.js REORDEN: WhyChooseUsSection FJERNET (redundant - komponentfil beholdt men ubrukt/død kode), PartnersBar flyttet fra bunn til etter StatsSection, TestimonialsSection flyttet til etter DynamicRental (bevis etter pengeargument, skiller kundesitater fra CEO-sitat). Ny rekkefølge: Hero→ServiceModels→Stats→Partners→HowItWorks→ImageBreak→Quality→Showcase→DynamicRental→Testimonials→Network→AboutCEO→FAQ→CTA. (5) NetworkSection bilde: bergen-harbor (duplikat m/ ImageBreak) → parkveien-bergen + beskrivende alt. UTESTÅENDE: 4,9-rating mangler kilde — venter på ekte Google-anmeldelsestall fra bruker. Visuelt verifisert: tjenestekort, prosess-seksjon m/ partner-marquee, 10+2-tall."

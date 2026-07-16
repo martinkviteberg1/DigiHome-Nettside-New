@@ -278,16 +278,23 @@ export default function ServiceModelsSection() {
                   data-testid={`service-model-card-${i}`}
                   className="group relative block rounded-[20px] p-8 sm:p-9 transition-all duration-500 hover:-translate-y-1.5 h-full"
                   style={{
-                    backgroundColor: m.popular ? '#0a0a0a' : '#eeeeee',
+                    backgroundColor: m.popular ? '#0a0a0a' : '#ffffff',
+                    border: m.popular ? '1px solid transparent' : '1px solid #eceae4',
                     boxShadow: m.popular
                       ? '0 8px 40px rgba(0,0,0,0.20)'
                       : '0 0 0 0 transparent',
                   }}
                   onMouseEnter={(e) => {
-                    if (!m.popular) e.currentTarget.style.boxShadow = '0 12px 40px rgba(0,0,0,0.08)';
+                    if (!m.popular) {
+                      e.currentTarget.style.boxShadow = '0 18px 50px -20px rgba(124,58,237,0.18)';
+                      e.currentTarget.style.borderColor = '#dcc9f5';
+                    }
                   }}
                   onMouseLeave={(e) => {
-                    if (!m.popular) e.currentTarget.style.boxShadow = '0 0 0 0 transparent';
+                    if (!m.popular) {
+                      e.currentTarget.style.boxShadow = '0 0 0 0 transparent';
+                      e.currentTarget.style.borderColor = '#eceae4';
+                    }
                   }}
                 >
                   {/* Popular badge */}
@@ -308,7 +315,7 @@ export default function ServiceModelsSection() {
                   <div
                     className="w-12 h-12 rounded-2xl flex items-center justify-center mb-7 transition-transform duration-500 group-hover:scale-105"
                     style={{
-                      backgroundColor: m.popular ? 'rgba(255,255,255,0.10)' : '#e9e6df',
+                      backgroundColor: m.popular ? 'rgba(255,255,255,0.10)' : '#f2f0eb',
                     }}
                   >
                     <Icon
@@ -349,7 +356,7 @@ export default function ServiceModelsSection() {
                     style={{
                       borderTop: m.popular
                         ? '1px solid rgba(255,255,255,0.1)'
-                        : '1px solid #e0e0e0',
+                        : '1px solid #f0ece6',
                     }}
                   >
                     <span
@@ -361,7 +368,7 @@ export default function ServiceModelsSection() {
                     <div
                       className="w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 group-hover:translate-x-0.5"
                       style={{
-                        backgroundColor: m.popular ? 'rgba(255,255,255,0.08)' : '#e2e2e2',
+                        backgroundColor: m.popular ? 'rgba(255,255,255,0.08)' : '#f2f0eb',
                       }}
                     >
                       <ArrowRight
