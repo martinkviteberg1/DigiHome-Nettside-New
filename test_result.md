@@ -3012,3 +3012,15 @@ agent_communication:
         -working: "NA"
         -agent: "main"
         -comment: "NYTT (16/7 del 2): Bruker syntes siden var 'veldig hvit og platt' — implementerte oppvarmings-pass (bruker AVSLO mørkt midtkapittel eksplisitt, IKKE gjør 10+2 mørk). (1) HowItWorks: prikk-grid-tekstur + lavendel-glød (samme formspråk som veiviser). (2) ImageBreak: full-bleed edge-to-edge (sidens ENESTE grid-brudd), tekst følger 1400px-container, høyde op til 560px. (3) QualitySection: bg white → varm grå #f6f4f1. (4) TestimonialsSection: 'menneske-kapittel' m/ lavendel-gradient bg (faf7fe→f6f1fc) + gløder, kort-border → #e9e1f4 m/ lilla hover-skygge. (5) CTASection: SVG feTurbulence korn-overlay (opacity 0.06 mix-blend-overlay) på den mørke flaten. (6) DynamicRental: myk glød + +30%-tallet i lilla gradient-tekst (ENESTE gradient-tekst på siden — ikke spre den). Alt visuelt verifisert m/ skjermbilder. Prinsipp fulgt: hver tonal endring = kapittel i fortellingen, ingen dekorasjon for dekorasjonens skyld."
+
+  - task: "Bro-oppfølging 16/7: Option A valgt + self-service integrasjonstest GRØNN + slettesynk verifisert"
+    implemented: true
+    working: true
+    file: "ingen kodeendringer — verifisering + bro-kommunikasjon"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "main"
+        -comment: "NYTT (16/7): Sjekket agent-broen på brukerens forespørsel. 3 svar fra platform: (1) toveis slettesynk LEVERT deres side 14/7 (soft delete m/ tombstone, lead_deleted UT live, archived INN, tombstones i export), (2) Øvregaten 15 AS-avvik fikset (deres bugs, prod ved neste publish), (3) Self-service GO 16/7 — de ba oss velge Option A/B. VALGTE OPTION A (vår side var ALLEREDE bygget: provisionSelfService() i route.js linje ~386 pusher til deres /api/bridge/self-service-customer m/ X-Bridge-Secret, idempotent event_id=lead.id, 200→account.onboarding_url, 202→pending_manual). INTEGRASJONSTEST GRØNN: POST /api/leads (tier=selvforvaltning+terms) → provisioned hos platform-preview (owner/property/unit/agreement-id-er mottatt + handoff_url). Test-lead: 08aadb24-6208-4cae-ac46-2c588c72514d (test-selfservice-0716@digihome.no). SLETTESYNK VERIFISERT: simulerte deres lead_deleted-payload mot /api/webhooks/lead-status → HTTP 200, fullt tombstone hos oss (deleted/deletedAt/deleteReason/deletedBy=platform — MERK camelCase-felter). Test-leaden er dermed også ryddet (soft-deleted). Bro-svar sendt i tråd 'selfservice-provisioning' (id 0fe2dc45). Issue 2 (slettesynk) = RESOLVED. VIKTIG: DIGIHOME_API_URL_TEST peker på platform-preview; PROD peker på app.digihome.no — ingen env-endringer gjort."
