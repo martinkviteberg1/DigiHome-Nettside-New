@@ -127,7 +127,7 @@ function RentEstimateCard({ bedrooms }: any) {
       ) : est ? (
         <>
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-white flex items-center justify-center shadow-[0_2px_8px_rgba(124,58,237,0.12)]"><TrendingUp className="w-3.5 h-3.5 text-[#7c3aed]" strokeWidth={2.5} /></div>
+            <div className="w-7 h-7 rounded-lg bg-white flex items-center justify-center shadow-[0_2px_8px_rgba(210,152,255,0.12)]"><TrendingUp className="w-3.5 h-3.5 text-[#7e22ce]" strokeWidth={2.5} /></div>
             <p className="text-[10.5px] font-bold uppercase tracking-[0.1em] text-[#8b6db0]">Estimert leieinntekt</p>
           </div>
           <p className="text-[26px] sm:text-[30px] font-bold tracking-[-0.02em] text-[#0a0a0a] mt-2" style={{ fontFamily: 'var(--font-heading)' }}>
@@ -541,20 +541,20 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
 
   if (submitted) {
     return (
-      <div className={`min-h-screen bg-[#fdfcfb] ${fullscreen ? 'lg:grid lg:grid-cols-[minmax(400px,0.9fr)_1.25fr]' : ''}`}>
+      <div className={`min-h-screen ${fullscreen ? 'bg-[#ebebeb] lg:grid lg:grid-cols-[1.1fr_0.9fr]' : 'bg-[#fdfcfb]'}`}>
         {fullscreen ? <WizardShowcase phase={2} /> : null}
         <div className="min-h-screen flex items-center justify-center px-5 pt-24 pb-16 relative overflow-hidden">
-        {/* Logo-topplinje — skjules på lg i fullskjerm (sidebaren bærer merkevaren der) */}
-        <div className={`absolute top-0 inset-x-0 h-[58px] flex items-center justify-center border-b border-[#f0ede8]/70 bg-[#fdfcfb]/80 backdrop-blur-sm z-10 ${fullscreen ? 'lg:hidden' : ''}`}>
+        {/* Logo-topplinje — panelet bærer ikke lenger merkevaren, så logoen vises alltid */}
+        <div className="absolute top-0 inset-x-0 h-[58px] flex items-center justify-center border-b border-black/5 bg-white/40 backdrop-blur-sm z-10">
           <a href="/" aria-label="DigiHome — til forsiden" data-testid="success-logo-link">
             <img src="/digihome-wordmark-ink.svg" alt="DigiHome" className="h-[20px] w-auto" />
           </a>
         </div>
-        <div aria-hidden className="pointer-events-none absolute -top-32 left-1/2 -translate-x-1/2 h-[420px] w-[680px] rounded-full" style={{ background: 'radial-gradient(circle at center, rgba(207,151,252,0.16) 0%, rgba(207,151,252,0) 70%)' }} />
+        <div aria-hidden className="pointer-events-none absolute -top-32 left-1/2 -translate-x-1/2 h-[420px] w-[680px] rounded-full" style={{ background: 'radial-gradient(circle at center, rgba(210,152,255,0.16) 0%, rgba(210,152,255,0) 70%)' }} />
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }} className="relative text-center max-w-md w-full">
           <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.15, type: 'spring', stiffness: 200, damping: 16 }}
             className="w-20 h-20 rounded-[22px] bg-[#0a0a0a] flex items-center justify-center mx-auto mb-7 shadow-[0_14px_44px_-12px_rgba(0,0,0,0.45)]">
-            <CheckCircle2 className="w-10 h-10 text-[#cf97fc]" />
+            <CheckCircle2 className="w-10 h-10 text-[#d298ff]" />
           </motion.div>
           <h2 className="text-[33px] sm:text-[38px] font-bold tracking-[-0.03em] text-[#0a0a0a] mb-3" style={{ fontFamily: 'var(--font-heading)' }}>Tusen takk{formData.name ? `, ${formData.name.split(' ')[0]}` : ''}!</h2>
           <p className="text-[16px] text-[#666] leading-relaxed max-w-[42ch] mx-auto">{successSub}</p>
@@ -565,7 +565,7 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
               {successSteps.map((it: any, i: number, arr: any[]) => (
                 <motion.div key={i} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.35 + i * 0.12, duration: 0.35 }} className="flex gap-3.5">
                   <div className="flex flex-col items-center">
-                    <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${it.done ? 'bg-[#cf97fc] text-white' : 'bg-[#f1ecf8] text-[#b39ddb]'}`}>{it.done ? <Check className="w-3.5 h-3.5" strokeWidth={3} /> : <span className="text-[12px] font-bold">{i + 1}</span>}</div>
+                    <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${it.done ? 'bg-[#d298ff] text-white' : 'bg-[#f1ecf8] text-[#b39ddb]'}`}>{it.done ? <Check className="w-3.5 h-3.5" strokeWidth={3} /> : <span className="text-[12px] font-bold">{i + 1}</span>}</div>
                     {i < arr.length - 1 && <div className="w-[2px] flex-1 min-h-[24px] bg-[#efe9f7] my-1" />}
                   </div>
                   <div className="pb-4">
@@ -616,19 +616,18 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
   const fsPhase = entryPhase === 'address' ? 0 : entryPhase === 'tier' ? 1 : 2;
   const FS_PHASES = ['Adresse', 'Tjeneste', 'Detaljer'];
   const fsTopbar = fullscreen ? (
-    <div className="sticky top-0 z-40 bg-[#fdfcfb]/90 backdrop-blur-md border-b border-[#f0ede8]">
+    <div className="sticky top-0 z-40 bg-[#ebebeb]/85 backdrop-blur-md border-b border-black/5">
       <div className="max-w-[1080px] mx-auto px-5 sm:px-6 h-[58px] grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-        {/* Logo kun på mobil/nettbrett — på lg+ bærer den mørke sidebaren merkevaren (unngå dobbel logo) */}
-        <a href="/" className="justify-self-start inline-flex items-center lg:hidden" aria-label="DigiHome — til forsiden" data-testid="fs-logo-link">
+        {/* Logo — vises alltid (skjemaet ligger nå til venstre, panelet bærer ikke merkevaren) */}
+        <a href="/" className="justify-self-start inline-flex items-center" aria-label="DigiHome — til forsiden" data-testid="fs-logo-link">
           <img src="/digihome-wordmark-ink.svg" alt="DigiHome" className="h-[19px] sm:h-[21px] w-auto" />
         </a>
-        <span className="hidden lg:block" aria-hidden />
         <div className="hidden sm:flex items-center gap-2.5" aria-hidden data-testid="fs-phase-indicator">
           {FS_PHASES.map((l, i) => (
             <React.Fragment key={l}>
-              {i > 0 && <span className={`w-7 h-px transition-colors duration-300 ${i <= fsPhase ? 'bg-[#cf97fc]' : 'bg-[#e8e4de]'}`} />}
-              <span className={`inline-flex items-center gap-1.5 text-[11.5px] font-semibold transition-colors duration-300 ${i === fsPhase ? 'text-[#7c3aed]' : i < fsPhase ? 'text-[#0a0a0a]' : 'text-[#b8b3ac]'}`}>
-                <span className={`w-[18px] h-[18px] rounded-full border flex items-center justify-center text-[9.5px] font-bold transition-colors duration-300 ${i < fsPhase ? 'bg-[#cf97fc] border-[#cf97fc] text-white' : i === fsPhase ? 'border-[#cf97fc] text-[#7c3aed] bg-white' : 'border-[#e0dcd5] text-[#c4c0bb] bg-white'}`}>
+              {i > 0 && <span className={`w-7 h-px transition-colors duration-300 ${i <= fsPhase ? 'bg-[#d298ff]' : 'bg-[#e8e4de]'}`} />}
+              <span className={`inline-flex items-center gap-1.5 text-[11.5px] font-semibold transition-colors duration-300 ${i === fsPhase ? 'text-[#7e22ce]' : i < fsPhase ? 'text-[#0a0a0a]' : 'text-[#b8b3ac]'}`}>
+                <span className={`w-[18px] h-[18px] rounded-full border flex items-center justify-center text-[9.5px] font-bold transition-colors duration-300 ${i < fsPhase ? 'bg-[#d298ff] border-[#d298ff] text-white' : i === fsPhase ? 'border-[#d298ff] text-[#7e22ce] bg-white' : 'border-[#e0dcd5] text-[#c4c0bb] bg-white'}`}>
                   {i < fsPhase ? <Check className="w-[10px] h-[10px]" strokeWidth={3.5} /> : i + 1}
                 </span>
                 {l}
@@ -681,29 +680,24 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
   // ---------- Fullskjerm steg 0: «Hvor ligger boligen?» (adresse-først) ----------
   if (fullscreen && entryPhase === 'address') {
     return (
-      <div className="min-h-screen bg-[#fdfcfb] lg:grid lg:grid-cols-[minmax(400px,0.9fr)_1.25fr]" data-testid="start-entry-address">
+      <div className="min-h-screen bg-[#ebebeb] lg:grid lg:grid-cols-[1.1fr_0.9fr]" data-testid="start-entry-address">
         <WizardShowcase phase={0} />
-        <div className="flex flex-col min-h-screen relative overflow-hidden">
+        <div className="flex flex-col min-h-screen relative">
         {fsTopbar}
-        {/* Myk lavendel-glød + prikk-grid — samme formspråk som forsiden */}
-        <div aria-hidden className="pointer-events-none absolute inset-0" style={{
-          backgroundImage: 'radial-gradient(circle, #c8c8c8 0.8px, transparent 0.8px)', backgroundSize: '24px 24px', opacity: 0.35,
-          maskImage: 'radial-gradient(ellipse 70% 50% at 50% 40%, black 25%, transparent 72%)', WebkitMaskImage: 'radial-gradient(ellipse 70% 50% at 50% 40%, black 25%, transparent 72%)',
-        }} />
-        <div aria-hidden className="pointer-events-none absolute -top-40 left-1/2 -translate-x-1/2 w-[760px] h-[560px] rounded-full" style={{ background: 'radial-gradient(circle, rgba(207,151,252,0.10) 0%, transparent 65%)' }} />
+        {/* Sømløs, ensartet flate (#ebebeb) — innholdet står alene, uten dekor (2026-spec) */}
         <div className="flex-1 flex items-center justify-center px-5 py-12 relative">
-          <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }} className="w-full max-w-[660px]">
-            <p className="text-[11.5px] font-bold uppercase tracking-[0.18em] text-[#a678e8] text-center">Kom i gang — tar under 2 minutter</p>
-            <h1 className="text-[34px] sm:text-[46px] xl:text-[52px] font-bold tracking-[-0.035em] text-[#0a0a0a] text-center mt-4 leading-[1.04]" style={{ fontFamily: 'var(--font-heading)' }}>
+          <div className="w-full max-w-[660px]">
+            <motion.p initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }} className="text-[11.5px] font-bold uppercase tracking-[0.18em] text-[#7e22ce] text-center">Kom i gang — tar under 2 minutter</motion.p>
+            <motion.h1 initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.12, ease: [0.16, 1, 0.3, 1] }} className="text-[34px] sm:text-[46px] xl:text-[52px] font-bold tracking-[-0.035em] text-[#0a0a0a] text-center mt-4 leading-[1.04]" style={{ fontFamily: 'var(--font-heading)' }}>
               Hvor ligger boligen<br className="hidden sm:block" /> du vil leie ut?
-            </h1>
-            <p className="text-[15.5px] sm:text-[16.5px] text-[#8a8178] text-center mt-4 max-w-[48ch] mx-auto leading-relaxed">
+            </motion.h1>
+            <motion.p initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.24, ease: [0.16, 1, 0.3, 1] }} className="text-[15.5px] sm:text-[16.5px] text-[#8a8178] text-center mt-4 max-w-[48ch] mx-auto leading-relaxed">
               Start med adressen — vi finner tjenestene som er tilgjengelige i ditt område og estimerer leiepotensialet.
-            </p>
+            </motion.p>
 
-            <div className="mt-10" data-no-enter-advance>
-              <div className="flex items-center rounded-full bg-white border-2 border-[#e6e2dc] shadow-[0_3px_18px_rgba(20,10,40,0.06)] transition-all duration-300 focus-within:border-[#7c3aed]/45 focus-within:shadow-[0_0_0_5px_rgba(124,58,237,0.07),0_20px_54px_rgba(20,10,40,0.12)] hover:shadow-[0_10px_34px_rgba(20,10,40,0.10)]">
-                <div className="pl-6 sm:pl-7"><MapPin className="w-5 h-5 text-[#7c3aed]" /></div>
+            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.36, ease: [0.16, 1, 0.3, 1] }} className="mt-10" data-no-enter-advance>
+              <div className="flex items-center rounded-full bg-white border-2 border-white shadow-[0_3px_18px_rgba(20,10,40,0.06)] transition-all duration-300 focus-within:border-[#d298ff] focus-within:shadow-[0_0_0_5px_rgba(210,152,255,0.16),0_20px_54px_rgba(20,10,40,0.12)] hover:shadow-[0_10px_34px_rgba(20,10,40,0.10)]">
+                <div className="pl-6 sm:pl-7"><MapPin className="w-5 h-5 text-[#7e22ce]" /></div>
                 <AddressAutocomplete
                   value={formData.address}
                   onChange={(v: any) => {
@@ -734,7 +728,7 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
                     disabled={!entryVerified}
                     data-testid="entry-address-continue"
                     aria-label="Fortsett"
-                    className={`w-[52px] h-[52px] rounded-full flex items-center justify-center transition-all duration-300 ${entryVerified ? 'bg-[#0a0a0a] text-white hover:shadow-[0_8px_24px_rgba(124,58,237,0.4)] hover:scale-[1.04] active:scale-95' : 'bg-[#f0eee9] text-[#c2beb6] cursor-not-allowed'}`}
+                    className={`w-[52px] h-[52px] rounded-full flex items-center justify-center transition-all duration-300 ${entryVerified ? 'bg-[#d298ff] text-[#14081f] hover:shadow-[0_8px_24px_rgba(210,152,255,0.65)] hover:scale-[1.04] active:scale-95' : 'bg-[#f1f1f1] text-[#b5b5b5] cursor-not-allowed'}`}
                   >
                     <ArrowRight className="w-5 h-5" />
                   </button>
@@ -751,17 +745,17 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
                   </button>
                 </p>
               ) : null}
-            </div>
+            </motion.div>
 
-            <div className="flex flex-wrap items-center justify-center gap-x-7 gap-y-2.5 mt-11">
+            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.48, ease: [0.16, 1, 0.3, 1] }} className="flex flex-wrap items-center justify-center gap-x-7 gap-y-2.5 mt-11">
               {['Gratis og uforpliktende', 'Svar innen 24 timer', '150+ boliger forvaltet'].map((t) => (
                 <span key={t} className="inline-flex items-center gap-2 text-[12.5px] font-medium text-[#8a857d]">
-                  <span className="w-[18px] h-[18px] rounded-full bg-[#f1e8fd] flex items-center justify-center"><Check className="w-3 h-3 text-[#7c3aed]" strokeWidth={3.2} /></span>
+                  <span className="w-[18px] h-[18px] rounded-full bg-[#f1e8fd] flex items-center justify-center"><Check className="w-3 h-3 text-[#7e22ce]" strokeWidth={3.2} /></span>
                   {t}
                 </span>
               ))}
-            </div>
-          </motion.div>
+            </motion.div>
+          </div>
         </div>
         </div>
       </div>
@@ -779,12 +773,12 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
       return (
         <button key={t.value} type="button" data-testid={`entry-tier-${t.value}`}
           onClick={() => chooseEntryTier(t.value)}
-          className={`relative text-left rounded-[24px] border-2 bg-white p-6 sm:p-7 transition-all duration-200 active:scale-[0.985] group ${featured ? 'border-[#cf97fc] shadow-[0_16px_50px_-24px_rgba(124,58,237,0.4)]' : 'border-[#eceae6] hover:border-[#cf97fc] hover:shadow-[0_16px_50px_-24px_rgba(124,58,237,0.35)] hover:-translate-y-0.5'}`}>
+          className={`relative text-left rounded-[24px] border-2 bg-white p-6 sm:p-7 transition-all duration-200 active:scale-[0.985] group ${featured ? 'border-[#d298ff] shadow-[0_16px_50px_-24px_rgba(210,152,255,0.4)]' : 'border-[#eceae6] hover:border-[#d298ff] hover:shadow-[0_16px_50px_-24px_rgba(210,152,255,0.35)] hover:-translate-y-0.5'}`}>
           {t.badge && (
             <span className={`absolute -top-2.5 right-5 text-[9px] font-bold uppercase tracking-[0.08em] px-2.5 py-1 rounded-full ${featured || t.badge.tone === 'green' ? 'bg-gradient-to-r from-[#16a34a] to-[#15803d] text-white' : 'bg-[#0a0a0a] text-white'}`}>{featured ? 'Tilgjengelig på din adresse' : t.badge.text}</span>
           )}
           <div className="w-11 h-11 rounded-2xl bg-[#f7f0fe] flex items-center justify-center">
-            <I className="w-5 h-5 text-[#7c3aed]" strokeWidth={2.2} />
+            <I className="w-5 h-5 text-[#7e22ce]" strokeWidth={2.2} />
           </div>
           <p className="text-[19px] font-bold tracking-[-0.01em] text-[#0a0a0a] mt-4" style={{ fontFamily: 'var(--font-heading)' }}>{t.label}</p>
           <p className="text-[13px] text-[#888] mt-1.5 leading-relaxed sm:min-h-[58px]">{t.desc}</p>
@@ -792,28 +786,23 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
           <div className="mt-3 space-y-1.5">
             {t.bullets.map((b: string) => (
               <div key={b} className="flex items-start gap-2 text-[12.5px] text-[#666]">
-                <Check className="w-3.5 h-3.5 text-[#cf97fc] shrink-0 mt-0.5" strokeWidth={3} /> {b}
+                <Check className="w-3.5 h-3.5 text-[#d298ff] shrink-0 mt-0.5" strokeWidth={3} /> {b}
               </div>
             ))}
           </div>
           <div className="mt-4 pt-4 border-t border-[#f2f0ec] flex items-center justify-between">
             <span className="text-[15px] font-bold text-[#0a0a0a]">{t.price ? `${t.price} ` : ''}<span className="text-[12px] font-medium text-[#716b63]">{t.priceNote}</span></span>
-            <span className="inline-flex items-center gap-1 text-[13px] font-semibold text-[#7c3aed] group-hover:gap-2 transition-all">{t.value === 'selvforvaltning' ? 'Kom i gang nå' : 'Få tilbud'} <ArrowRight className="w-3.5 h-3.5" /></span>
+            <span className="inline-flex items-center gap-1 text-[13px] font-semibold text-[#7e22ce] group-hover:gap-2 transition-all">{t.value === 'selvforvaltning' ? 'Kom i gang nå' : 'Få tilbud'} <ArrowRight className="w-3.5 h-3.5" /></span>
           </div>
         </button>
       );
     };
     return (
-      <div className="min-h-screen bg-[#fdfcfb] lg:grid lg:grid-cols-[minmax(400px,0.9fr)_1.25fr]" data-testid="start-entry">
+      <div className="min-h-screen bg-[#ebebeb] lg:grid lg:grid-cols-[1.1fr_0.9fr]" data-testid="start-entry">
         <WizardShowcase phase={1} />
-        <div className="flex flex-col min-h-screen relative overflow-hidden">
+        <div className="flex flex-col min-h-screen relative">
         {fsTopbar}
-        {/* Myk lavendel-glød + prikk-grid — samme formspråk som adressesteget */}
-        <div aria-hidden className="pointer-events-none absolute inset-0" style={{
-          backgroundImage: 'radial-gradient(circle, #c8c8c8 0.8px, transparent 0.8px)', backgroundSize: '24px 24px', opacity: 0.35,
-          maskImage: 'radial-gradient(ellipse 70% 50% at 50% 40%, black 25%, transparent 72%)', WebkitMaskImage: 'radial-gradient(ellipse 70% 50% at 50% 40%, black 25%, transparent 72%)',
-        }} />
-        <div aria-hidden className="pointer-events-none absolute -top-40 left-1/2 -translate-x-1/2 w-[760px] h-[560px] rounded-full" style={{ background: 'radial-gradient(circle, rgba(207,151,252,0.10) 0%, transparent 65%)' }} />
+        {/* Sømløs, ensartet flate (#ebebeb) — samme formspråk som adressesteget */}
         <div className="flex-1 flex items-center justify-center px-5 py-12 relative">
           <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }} className="w-full max-w-[720px]">
 
@@ -821,16 +810,16 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
             {formData.address ? (
               <div className="flex justify-center mb-6">
                 <div className="inline-flex items-center gap-2.5 rounded-full bg-white border border-[#e8e2f2] pl-3.5 pr-1.5 py-1.5 shadow-[0_2px_12px_rgba(20,10,40,0.06)] max-w-full" data-testid="entry-address-chip">
-                  <MapPin className="w-3.5 h-3.5 text-[#7c3aed] shrink-0" />
+                  <MapPin className="w-3.5 h-3.5 text-[#7e22ce] shrink-0" />
                   <span className="text-[13px] font-semibold text-[#0a0a0a] truncate max-w-[200px] sm:max-w-[340px]">{formData.address}</span>
                   {formData.postal_code && !(formData.address || '').includes(formData.postal_code) ? <span className="text-[12px] text-[#716b63] hidden sm:inline shrink-0">{formData.postal_code} {formData.city}</span> : null}
                   <button type="button" data-testid="entry-address-edit" onClick={() => { setDir(-1); setEntryPhase('address'); }}
-                    className="text-[11.5px] font-semibold text-[#7c3aed] hover:bg-[#faf5ff] rounded-full px-2.5 py-1.5 transition-colors shrink-0">Endre</button>
+                    className="text-[11.5px] font-semibold text-[#7e22ce] hover:bg-[#faf5ff] rounded-full px-2.5 py-1.5 transition-colors shrink-0">Endre</button>
                 </div>
               </div>
             ) : null}
 
-            <p className="text-[11.5px] font-bold uppercase tracking-[0.18em] text-[#a678e8] text-center">
+            <p className="text-[11.5px] font-bold uppercase tracking-[0.18em] text-[#7e22ce] text-center">
               {hasGeo ? (inBergen ? 'Gode nyheter' : 'Tilgjengelig i ditt område') : 'Kom i gang'}
             </p>
             <h1 className="text-[32px] sm:text-[42px] font-bold tracking-[-0.035em] text-[#0a0a0a] text-center mt-3 leading-[1.06]" style={{ fontFamily: 'var(--font-heading)' }}>
@@ -867,7 +856,7 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
                         Ikke tilgjengelig {placeLabel ? `i ${placeLabel}` : 'på din adresse'} ennå — vi utvider stadig til nye områder.
                       </p>
                       <button type="button" data-testid="entry-tier-full-interest" onClick={() => chooseEntryTier('full_forvaltning')}
-                        className="mt-2.5 text-[12.5px] font-semibold text-[#7c3aed] hover:underline underline-offset-2 text-left">
+                        className="mt-2.5 text-[12.5px] font-semibold text-[#7e22ce] hover:underline underline-offset-2 text-left">
                         Meld interesse likevel — vi kontakter deg når vi kommer til ditt område →
                       </button>
                     </div>
@@ -892,11 +881,10 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
   const nextStepTitle = nextStepIdx != null ? STEPS[nextStepIdx].title : '';
 
   return (
-    <div className={`min-h-screen bg-[#fdfcfb] ${fullscreen ? 'lg:grid lg:grid-cols-[minmax(400px,0.9fr)_1.25fr]' : 'flex flex-col'}`} data-testid="owner-page">
+    <div className={`min-h-screen ${fullscreen ? 'bg-[#ebebeb] lg:grid lg:grid-cols-[1.1fr_0.9fr]' : 'bg-[#fdfcfb] flex flex-col'}`} data-testid="owner-page">
       {fullscreen ? <WizardShowcase phase={fsPhase} /> : null}
       <div className={`flex flex-col min-w-0 relative ${fullscreen ? 'min-h-screen' : 'flex-1'}`}>
       {fullscreen ? fsTopbar : <div className="h-[56px] lg:h-[76px]" />}
-      {fullscreen ? <div aria-hidden className="pointer-events-none absolute top-0 left-1/2 -translate-x-1/2 w-[720px] h-[420px] rounded-full" style={{ background: 'radial-gradient(circle, rgba(207,151,252,0.08) 0%, transparent 65%)' }} /> : null}
       <div className="flex-1 flex flex-col">
         <div className="max-w-[600px] w-full mx-auto px-6 pt-7 relative">
           <div className="flex items-center justify-between mb-5">
@@ -912,7 +900,7 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
               <div className="w-9 h-9" aria-hidden="true" />
             )}
             <div className="text-right">
-              <p className="text-[10.5px] font-semibold text-[#7c3aed] uppercase tracking-[0.1em] leading-none">Steg {curPos + 1} av {flowSteps.length}</p>
+              <p className="text-[10.5px] font-semibold text-[#7e22ce] uppercase tracking-[0.1em] leading-none">Steg {curPos + 1} av {flowSteps.length}</p>
               <p className="text-[13.5px] text-[#0a0a0a] font-semibold mt-1 leading-none">{stepTitle}</p>
             </div>
           </div>
@@ -928,13 +916,13 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
                     animate={{ scale: active ? 1.12 : 1 }}
                     transition={{ type: 'spring', stiffness: 320, damping: 20 }}
                     title={STEPS[idx].title}
-                    className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-[12px] font-bold border-2 transition-colors duration-300 ${done ? 'bg-[#cf97fc] border-[#cf97fc] text-white' : active ? 'bg-white border-[#cf97fc] text-[#7c3aed] shadow-[0_0_0_4px_rgba(207,151,252,0.18)]' : 'bg-white border-[#e6e3df] text-[#c4c0bb]'}`}
+                    className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-[12px] font-bold border-2 transition-colors duration-300 ${done ? 'bg-[#d298ff] border-[#d298ff] text-white' : active ? 'bg-white border-[#d298ff] text-[#7e22ce] shadow-[0_0_0_4px_rgba(210,152,255,0.18)]' : 'bg-white border-[#e6e3df] text-[#c4c0bb]'}`}
                   >
                     {done ? <Check className="w-4 h-4" strokeWidth={3} /> : pos + 1}
                   </motion.div>
                   {pos < flowSteps.length - 1 && (
                     <div className="flex-1 h-[2px] mx-2 rounded-full bg-[#ece9e4] overflow-hidden">
-                      <motion.div className="h-full bg-[#cf97fc] rounded-full" initial={false} animate={{ width: curPos > pos ? '100%' : '0%' }} transition={{ duration: 0.45, ease: [0.25, 0.1, 0.25, 1] }} />
+                      <motion.div className="h-full bg-[#d298ff] rounded-full" initial={false} animate={{ width: curPos > pos ? '100%' : '0%' }} transition={{ duration: 0.45, ease: [0.25, 0.1, 0.25, 1] }} />
                     </div>
                   )}
                 </React.Fragment>
@@ -950,7 +938,7 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
               {/* STEG 1 — ADRESSE eller FINN-ANNONSE → eiendomsregister-søk */}
               {step === 1 && (
                 <div data-testid="owner-step-address" data-no-enter-advance>
-                  <div className="inline-flex items-center gap-2 text-[11px] font-semibold text-[#7c3aed] uppercase tracking-[0.1em] mb-3">
+                  <div className="inline-flex items-center gap-2 text-[11px] font-semibold text-[#7e22ce] uppercase tracking-[0.1em] mb-3">
                     <MapPin className="w-3.5 h-3.5" /> Eiendommen
                   </div>
                   <h2 className="text-[28px] sm:text-[34px] font-bold tracking-[-0.03em] text-[#0a0a0a] mb-2" style={{ fontFamily: 'var(--font-heading)' }}>
@@ -966,7 +954,7 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
 
                   {inputMode === 'address' ? (
                     <div>
-                      <Label className="text-[13px] font-semibold text-[#333] mb-2 block">Adresse <span className="text-[#7c3aed]">*</span></Label>
+                      <Label className="text-[13px] font-semibold text-[#333] mb-2 block">Adresse <span className="text-[#7e22ce]">*</span></Label>
                       <AddressField
                         value={formData.address}
                         postalCode={formData.postal_code}
@@ -994,7 +982,7 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
                             data-testid="owner-finn-hint"
                             className="mt-3 flex items-center gap-1.5 text-[12.5px] text-[#716b63]"
                           >
-                            <Zap className="w-3.5 h-3.5 text-[#cf97fc] shrink-0" fill="#cf97fc" />
+                            <Zap className="w-3.5 h-3.5 text-[#d298ff] shrink-0" fill="#d298ff" />
                             Har du annonsen på FINN? Lim lenken rett i adressefeltet — vi fyller inn alt automatisk.
                           </motion.p>
                         )}
@@ -1014,7 +1002,7 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
                           type="button"
                           onClick={switchToAddress}
                           data-testid="owner-mode-address"
-                          className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#7c3aed] hover:text-[#8a45d6] mb-5 transition-colors"
+                          className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#7e22ce] hover:text-[#8a45d6] mb-5 transition-colors"
                         >
                           <ArrowLeft className="w-3.5 h-3.5" /> Bruk adresse i stedet
                         </button>
@@ -1023,7 +1011,7 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
                       <AnimatePresence mode="wait" initial={false}>
                         {!finnData ? (
                           <motion.div key="finn-input" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.25 }}>
-                            <Label className="text-[13px] font-semibold text-[#333] mb-1.5 block">Lenke til Finn-annonse <span className="text-[#7c3aed]">*</span></Label>
+                            <Label className="text-[13px] font-semibold text-[#333] mb-1.5 block">Lenke til Finn-annonse <span className="text-[#7e22ce]">*</span></Label>
                             <p className="text-[13px] text-[#888] mb-3">Lim inn lenken til boligen på finn.no — vi henter adresse, areal, matrikkel og eierforslag automatisk.</p>
                             <FinnLookupField
                               value={finnUrl}
@@ -1088,12 +1076,12 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
                     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }} className="mt-8 pt-7 border-t border-[#f0ece6] space-y-6" data-testid="owner-property-details">
                       <TextInput label="Størrelse (m²)" required error={errors.sqm} value={formData.sqm} onChange={(v: any) => updateField('sqm', v)} placeholder="F.eks. 65" type="number" testId="owner-sqm-input" />
                       <div>
-                        <Label className="text-[13px] font-semibold text-[#333] mb-3 block">Boligtype <span className="text-[#7c3aed]">*</span></Label>
+                        <Label className="text-[13px] font-semibold text-[#333] mb-3 block">Boligtype <span className="text-[#7e22ce]">*</span></Label>
                         <IconCardSelector options={propertyTypes} selected={formData.property_type} onChange={(v: any) => updateField('property_type', v)} testIdPrefix="owner-type" />
                         {errors.property_type && <p className="text-[12px] text-red-500 mt-1.5">{errors.property_type}</p>}
                       </div>
                       <div>
-                        <Label className="text-[13px] font-semibold text-[#333] mb-3 block">Soverom <span className="text-[#7c3aed]">*</span></Label>
+                        <Label className="text-[13px] font-semibold text-[#333] mb-3 block">Soverom <span className="text-[#7e22ce]">*</span></Label>
                         <NumberSelector options={['1', '2', '3', '4', '5+']} selected={formData.bedrooms} onChange={(v: any) => updateField('bedrooms', v)} testIdPrefix="owner-bedrooms" />
                         {errors.bedrooms && <p className="text-[12px] text-red-500 mt-1.5">{errors.bedrooms}</p>}
                       </div>
@@ -1105,8 +1093,8 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
                       eier det endelige tallet i samtalen). */}
                   {formData.bedrooms && (inputMode === 'address' ? (formData.address.trim() || registryQuery) : !!finnData) ? (
                     <div className="mt-6 rounded-2xl border border-[#e6d6f8] bg-gradient-to-br from-[#f7f0fe] to-[#f0e6fb] p-4 flex items-center gap-3" data-testid="owner-estimate-teaser">
-                      <div className="w-9 h-9 rounded-xl bg-white flex items-center justify-center shadow-[0_2px_8px_rgba(124,58,237,0.12)] shrink-0">
-                        <TrendingUp className="w-4 h-4 text-[#7c3aed]" strokeWidth={2.5} />
+                      <div className="w-9 h-9 rounded-xl bg-white flex items-center justify-center shadow-[0_2px_8px_rgba(210,152,255,0.12)] shrink-0">
+                        <TrendingUp className="w-4 h-4 text-[#7e22ce]" strokeWidth={2.5} />
                       </div>
                       <p className="text-[12.5px] text-[#6d5691] leading-relaxed">
                         <strong className="text-[#0a0a0a]">Leieestimatet ditt er klart.</strong> Vi viser intervallet straks du har sendt inn — uforpliktende, basert på SSB-leiepriser.
@@ -1149,7 +1137,7 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
                               ) : (
                                 <div className="rounded-xl bg-[#faf7fe] border border-[#efe6fb] p-3.5">
                                   <div className="flex items-center gap-1.5 mb-2">
-                                    <Sparkles className="w-[13px] h-[13px] text-[#cf97fc]" />
+                                    <Sparkles className="w-[13px] h-[13px] text-[#d298ff]" />
                                     <span className="text-[12px] font-semibold text-[#555]">Finn-annonse</span>
                                   </div>
                                   <FinnLookupField
@@ -1178,7 +1166,7 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
                           </motion.div>
                         ))}
                       </AnimatePresence>
-                      <button type="button" onClick={addExtra} data-testid="owner-add-unit-button" className="w-full flex items-center justify-center gap-2 h-12 rounded-2xl border-2 border-dashed border-[#e0d4f0] text-[#cf97fc] hover:border-[#cf97fc] hover:bg-[#faf5ff] text-[14px] font-semibold transition-all"><Plus className="w-4 h-4" /> Legg til {extraUnits.length > 0 ? 'enda en' : 'eiendom'}</button>
+                      <button type="button" onClick={addExtra} data-testid="owner-add-unit-button" className="w-full flex items-center justify-center gap-2 h-12 rounded-2xl border-2 border-dashed border-[#e0d4f0] text-[#d298ff] hover:border-[#d298ff] hover:bg-[#faf5ff] text-[14px] font-semibold transition-all"><Plus className="w-4 h-4" /> Legg til {extraUnits.length > 0 ? 'enda en' : 'eiendom'}</button>
                     </div>
                   ) : null}
                 </div>
@@ -1194,7 +1182,7 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
                     <TextInput label="E-post" required error={errors.email} icon={Mail} value={formData.email} type="email" onChange={(v: any) => updateField('email', v)} placeholder="ola@eksempel.no" autoComplete="email" testId="owner-email-input" />
                     <PhoneInput value={formData.phone} onChange={(v: any) => updateField('phone', v)} error={errors.phone} testId="owner-phone-input" />
                   </div>
-                  <p className="text-[11px] text-[#5b6370] mt-5"><span className="text-[#7c3aed]">*</span> Påkrevde felt</p>
+                  <p className="text-[11px] text-[#5b6370] mt-5"><span className="text-[#7e22ce]">*</span> Påkrevde felt</p>
 
                   {/* Kompakt oppsummering — erstatter det gamle Bekreft-steget */}
                   <div className="mt-8 rounded-2xl border border-[#eee9e2] bg-[#faf9f7] p-5" data-testid="owner-final-summary">
@@ -1211,7 +1199,7 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
                             <span className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-[#e7f7ee] text-[#16a34a] px-2 py-0.5 text-[11px] font-semibold"><CheckCircle2 className="w-3 h-3" /> Verifisert i registeret</span>
                           )}
                         </div>
-                        <button type="button" onClick={() => { setDir(-1); setStep(1); }} data-testid="owner-edit-property" className="text-[12px] font-semibold text-[#7c3aed] hover:underline shrink-0">Endre</button>
+                        <button type="button" onClick={() => { setDir(-1); setStep(1); }} data-testid="owner-edit-property" className="text-[12px] font-semibold text-[#7e22ce] hover:underline shrink-0">Endre</button>
                       </div>
                       <div className="flex items-start justify-between gap-3 pt-3 border-t border-[#f0ece6]">
                         <div className="min-w-0">
@@ -1222,18 +1210,18 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
                             {[formData.rental_model ? `Modell: ${formData.rental_model}` : null, formData.availability ? `Ledig ${new Date(formData.availability + 'T12:00:00').toLocaleDateString('nb-NO', { day: 'numeric', month: 'short' })}` : null].filter(Boolean).join(' · ') || '—'}
                           </p>
                         </div>
-                        <button type="button" onClick={() => { setDir(-1); setStep(5); }} data-testid="owner-edit-goals" className="text-[12px] font-semibold text-[#7c3aed] hover:underline shrink-0">Endre</button>
+                        <button type="button" onClick={() => { setDir(-1); setStep(5); }} data-testid="owner-edit-goals" className="text-[12px] font-semibold text-[#7e22ce] hover:underline shrink-0">Endre</button>
                       </div>
                     </div>
                   </div>
-                  <p className="text-[12px] text-[#716b63] mt-4 flex items-center gap-1.5"><Shield className="w-3.5 h-3.5 text-[#cf97fc]" /> Gratis og uforpliktende — svar innen 24 timer.</p>
+                  <p className="text-[12px] text-[#716b63] mt-4 flex items-center gap-1.5"><Shield className="w-3.5 h-3.5 text-[#d298ff]" /> Gratis og uforpliktende — svar innen 24 timer.</p>
                 </div>
               )}
 
               {/* STEG 5a — FORVALTNINGSNIVÅ (flettet inn i «Dine mål»-steget) */}
               {step === 5 && (
                 <div data-testid="owner-step-tier">
-                  <div className="inline-flex items-center gap-2 text-[11px] font-semibold text-[#7c3aed] uppercase tracking-[0.1em] mb-3">
+                  <div className="inline-flex items-center gap-2 text-[11px] font-semibold text-[#7e22ce] uppercase tracking-[0.1em] mb-3">
                     <Shield className="w-3.5 h-3.5" /> Dine mål
                   </div>
                   <h2 className="text-[28px] sm:text-[34px] font-bold tracking-[-0.03em] text-[#0a0a0a] mb-2" style={{ fontFamily: 'var(--font-heading)' }}>{tierLocked && formData.tier ? 'Ditt valg' : 'Hvordan vil du leie ut?'}</h2>
@@ -1242,13 +1230,13 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
                     const t: any = TIERS.find((x: any) => x.value === formData.tier);
                     const LockedIcon = t.icon;
                     return (
-                      <div className="w-full rounded-2xl border-2 border-[#cf97fc] bg-[#faf5ff] p-5 flex items-center gap-4 shadow-[0_10px_30px_-18px_rgba(124,58,237,0.45)]" data-testid="owner-tier-locked">
-                        <div className="w-11 h-11 rounded-xl bg-[#cf97fc] flex items-center justify-center shrink-0"><LockedIcon className="w-5 h-5 text-white" /></div>
+                      <div className="w-full rounded-2xl border-2 border-[#d298ff] bg-[#faf5ff] p-5 flex items-center gap-4 shadow-[0_10px_30px_-18px_rgba(210,152,255,0.45)]" data-testid="owner-tier-locked">
+                        <div className="w-11 h-11 rounded-xl bg-[#d298ff] flex items-center justify-center shrink-0"><LockedIcon className="w-5 h-5 text-white" /></div>
                         <div className="flex-1 min-w-0">
                           <p className="text-[15.5px] font-bold text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>{t.label}</p>
                           <p className="text-[12.5px] text-[#888] mt-0.5">{t.price ? `${t.price} ${t.priceNote} — ingen faste kostnader` : 'Skreddersydd tilbud — helt uforpliktende'}</p>
                         </div>
-                        <button type="button" onClick={() => setTierLocked(false)} data-testid="owner-tier-change" className="text-[12.5px] font-semibold text-[#7c3aed] hover:underline underline-offset-2 shrink-0">Endre</button>
+                        <button type="button" onClick={() => setTierLocked(false)} data-testid="owner-tier-change" className="text-[12.5px] font-semibold text-[#7e22ce] hover:underline underline-offset-2 shrink-0">Endre</button>
                       </div>
                     );
                   })() : (
@@ -1268,13 +1256,13 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
                             setErrors((prev: any) => ({ ...prev, tier: null, terms: null }));
                             if (next) { try { track('tier_select', { form: 'utleier', tier: next }); } catch (e) {} }
                           }}
-                          className={`w-full text-left rounded-2xl border-2 p-5 transition-all duration-200 relative ${selected ? 'border-[#cf97fc] bg-[#faf5ff] shadow-[0_10px_30px_-18px_rgba(124,58,237,0.45)]' : 'border-[#eee] bg-white hover:border-[#ddd]'}`}
+                          className={`w-full text-left rounded-2xl border-2 p-5 transition-all duration-200 relative ${selected ? 'border-[#d298ff] bg-[#faf5ff] shadow-[0_10px_30px_-18px_rgba(210,152,255,0.45)]' : 'border-[#eee] bg-white hover:border-[#ddd]'}`}
                         >
                           {t.badge && (
                             <span className={`absolute -top-2.5 right-4 text-[9px] font-bold uppercase tracking-[0.08em] px-2.5 py-1 rounded-full ${t.badge.tone === 'green' ? 'bg-gradient-to-r from-[#16a34a] to-[#15803d] text-white' : 'bg-[#0a0a0a] text-white'}`}>{t.badge.text}</span>
                           )}
                           <div className="flex items-start gap-4">
-                            <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${selected ? 'bg-[#cf97fc]' : 'bg-[#f0f0f0]'}`}>
+                            <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${selected ? 'bg-[#d298ff]' : 'bg-[#f0f0f0]'}`}>
                               <Icon className="w-5 h-5" style={{ color: selected ? '#fff' : '#aaa' }} />
                             </div>
                             <div className="flex-1 min-w-0">
@@ -1298,7 +1286,7 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
                               <div className="mt-3 space-y-1.5">
                                 {t.bullets.map((b: string) => (
                                   <div key={b} className="flex items-center gap-2 text-[12.5px] text-[#666]">
-                                    <Check className="w-3.5 h-3.5 text-[#cf97fc] shrink-0" strokeWidth={3} /> {b}
+                                    <Check className="w-3.5 h-3.5 text-[#d298ff] shrink-0" strokeWidth={3} /> {b}
                                   </div>
                                 ))}
                               </div>
@@ -1337,7 +1325,7 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
                         <div className="mt-2.5 space-y-1.5">
                           {['5 % per utleieforhold — ingen faste kostnader', 'Ingen bindingstid — avslutt når du vil', 'Du godkjenner leietakere og priser selv'].map((b) => (
                             <div key={b} className="flex items-center gap-2 text-[12.5px] text-[#666]">
-                              <Check className="w-3.5 h-3.5 text-[#7c3aed] shrink-0" strokeWidth={3} /> {b}
+                              <Check className="w-3.5 h-3.5 text-[#7e22ce] shrink-0" strokeWidth={3} /> {b}
                             </div>
                           ))}
                         </div>
@@ -1347,11 +1335,11 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
                           data-testid="owner-terms-checkbox"
                           className="mt-4 w-full flex items-start gap-3 text-left group"
                         >
-                          <span className={`mt-0.5 w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-colors ${termsAccepted ? 'bg-[#cf97fc] border-[#cf97fc]' : 'bg-white border-[#d9cfe9] group-hover:border-[#cf97fc]'}`}>
+                          <span className={`mt-0.5 w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-colors ${termsAccepted ? 'bg-[#d298ff] border-[#d298ff]' : 'bg-white border-[#d9cfe9] group-hover:border-[#d298ff]'}`}>
                             {termsAccepted && <Check className="w-3.5 h-3.5 text-white" strokeWidth={3.5} />}
                           </span>
                           <span className="text-[13px] text-[#555] leading-relaxed">
-                            Jeg godtar <a href="/vilkar" target="_blank" rel="noopener noreferrer" onClick={(e: any) => e.stopPropagation()} className="text-[#7c3aed] font-semibold underline underline-offset-2">avtalen om selvforvaltning</a> (5 % per utleieforhold). Avtalen bekreftes digitalt — ingen papirer.
+                            Jeg godtar <a href="/vilkar" target="_blank" rel="noopener noreferrer" onClick={(e: any) => e.stopPropagation()} className="text-[#7e22ce] font-semibold underline underline-offset-2">avtalen om selvforvaltning</a> (5 % per utleieforhold). Avtalen bekreftes digitalt — ingen papirer.
                           </span>
                         </button>
                         {errors.terms && <p className="text-[12px] text-red-500 mt-2" data-testid="owner-terms-error">{errors.terms}</p>}
@@ -1361,7 +1349,7 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
                       <motion.div key="full-info" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.25 }}
                         className="mt-5 rounded-2xl bg-[#f7f4ef] border border-[#ece7de] p-5 flex items-start gap-3.5" data-testid="owner-tier-full-info">
                         <div className="w-9 h-9 rounded-xl bg-white flex items-center justify-center shrink-0 shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
-                          <Sparkles className="w-4 h-4 text-[#7c3aed]" />
+                          <Sparkles className="w-4 h-4 text-[#7e22ce]" />
                         </div>
                         <div>
                           <p className="text-[13.5px] font-bold text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>Skreddersydd tilbud — helt uforpliktende</p>
@@ -1388,9 +1376,9 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
                           const selected = formData.rental_model === m.value;
                           return (
                             <button key={m.value} type="button" onClick={() => updateField('rental_model', selected ? '' : m.value)} data-testid={`owner-model-${m.value}`}
-                              className={`w-full flex items-center gap-4 p-4 rounded-2xl border-2 text-left transition-all duration-200 relative ${selected ? 'border-[#cf97fc] bg-[#faf5ff]' : 'border-[#eee] bg-white hover:border-[#ddd]'}`}>
+                              className={`w-full flex items-center gap-4 p-4 rounded-2xl border-2 text-left transition-all duration-200 relative ${selected ? 'border-[#d298ff] bg-[#faf5ff]' : 'border-[#eee] bg-white hover:border-[#ddd]'}`}>
                               {m.recommended && (<span className="absolute -top-2.5 right-4 text-[9px] font-bold uppercase tracking-[0.08em] px-2.5 py-1 rounded-full bg-gradient-to-r from-[#c084fc] to-[#AE68E4] text-white">Anbefalt</span>)}
-                              <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${selected ? 'bg-[#cf97fc]' : 'bg-[#f0f0f0]'}`}><Icon className="w-5 h-5" style={{ color: selected ? '#fff' : '#aaa' }} /></div>
+                              <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${selected ? 'bg-[#d298ff]' : 'bg-[#f0f0f0]'}`}><Icon className="w-5 h-5" style={{ color: selected ? '#fff' : '#aaa' }} /></div>
                               <div><p className={`text-[14px] font-semibold ${selected ? 'text-[#0a0a0a]' : 'text-[#555]'}`}>{m.label}</p><p className="text-[12px] text-[#5b6370] mt-0.5">{m.desc}</p></div>
                             </button>
                           );
@@ -1399,7 +1387,7 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
                       {errors.rental_model && <p className="text-[12px] text-red-500 mt-1.5">{errors.rental_model}</p>}
                     </div>
                     <div>
-                      <Label className="text-[13px] font-semibold text-[#333] mb-2 block">Når er boligen ledig for utleie? <span className="text-[#7c3aed]">*</span></Label>
+                      <Label className="text-[13px] font-semibold text-[#333] mb-2 block">Når er boligen ledig for utleie? <span className="text-[#7e22ce]">*</span></Label>
                       {/* CRO: hurtigvalg — ingen tvungen kalender. Eksakt dato er valgfritt. */}
                       <div className="flex flex-wrap gap-2" data-testid="owner-availability-chips">
                         {[
@@ -1417,14 +1405,14 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
                                 updateField('availability', `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`);
                                 setErrors((prev: any) => ({ ...prev, availability: null }));
                               }}
-                              className={`h-11 px-4 rounded-full border-2 text-[13.5px] font-semibold transition-all ${selected ? 'border-[#cf97fc] bg-[#faf5ff] text-[#0a0a0a]' : 'border-[#eee] bg-white text-[#666] hover:border-[#ddd]'}`}>
+                              className={`h-11 px-4 rounded-full border-2 text-[13.5px] font-semibold transition-all ${selected ? 'border-[#d298ff] bg-[#faf5ff] text-[#0a0a0a]' : 'border-[#eee] bg-white text-[#666] hover:border-[#ddd]'}`}>
                               {label}
                             </button>
                           );
                         })}
                         <Popover>
                           <PopoverTrigger asChild>
-                            <button type="button" data-testid="owner-availability-input" className={`h-11 px-4 rounded-full border-2 text-[13.5px] font-semibold transition-all inline-flex items-center gap-2 ${availChoice === 'custom' ? 'border-[#cf97fc] bg-[#faf5ff] text-[#0a0a0a]' : 'border-[#eee] bg-white text-[#666] hover:border-[#ddd]'}`}>
+                            <button type="button" data-testid="owner-availability-input" className={`h-11 px-4 rounded-full border-2 text-[13.5px] font-semibold transition-all inline-flex items-center gap-2 ${availChoice === 'custom' ? 'border-[#d298ff] bg-[#faf5ff] text-[#0a0a0a]' : 'border-[#eee] bg-white text-[#666] hover:border-[#ddd]'}`}>
                               <CalendarIcon className="w-4 h-4 shrink-0" />
                               {availChoice === 'custom' && formData.availability ? format(new Date(formData.availability + 'T12:00:00'), 'd. MMM yyyy', { locale: nb }) : 'Velg dato'}
                             </button>
@@ -1442,10 +1430,10 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
                       {(showNotes || formData.notes) ? (
                         <>
                           <Label className="text-[13px] font-semibold text-[#333]">Kommentarer <span className="text-[#737373] font-normal">(valgfritt)</span></Label>
-                          <textarea value={formData.notes} onChange={(e: any) => updateField('notes', e.target.value)} placeholder="Er det noe spesielt vi bør vite?" rows={3} autoFocus={showNotes && !formData.notes} className="w-full mt-2 px-4 py-3.5 text-[15px] rounded-2xl border border-[#e0e0e0] bg-white focus:outline-none focus:ring-2 focus:ring-[#cf97fc] resize-none placeholder:text-[#737373]" data-testid="owner-notes-textarea" />
+                          <textarea value={formData.notes} onChange={(e: any) => updateField('notes', e.target.value)} placeholder="Er det noe spesielt vi bør vite?" rows={3} autoFocus={showNotes && !formData.notes} className="w-full mt-2 px-4 py-3.5 text-[15px] rounded-2xl border border-[#e0e0e0] bg-white focus:outline-none focus:ring-2 focus:ring-[#d298ff] resize-none placeholder:text-[#737373]" data-testid="owner-notes-textarea" />
                         </>
                       ) : (
-                        <button type="button" onClick={() => setShowNotes(true)} data-testid="owner-notes-toggle" className="text-[13px] font-semibold text-[#7c3aed] hover:underline underline-offset-2">+ Legg til en kommentar (valgfritt)</button>
+                        <button type="button" onClick={() => setShowNotes(true)} data-testid="owner-notes-toggle" className="text-[13px] font-semibold text-[#7e22ce] hover:underline underline-offset-2">+ Legg til en kommentar (valgfritt)</button>
                       )}
                     </div>
                   </div>
@@ -1462,15 +1450,15 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
             {curPos > 0 ? (
               <button onClick={goBack} className="text-[14px] font-semibold text-[#666] hover:text-[#333] underline underline-offset-4 transition-colors" data-testid="owner-back-link">Tilbake</button>
             ) : (
-              <span className="text-[12px] text-[#78726a] inline-flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-[#cf97fc]" strokeWidth={3} /> Gratis og uforpliktende</span>
+              <span className="text-[12px] text-[#78726a] inline-flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-[#d298ff]" strokeWidth={3} /> Gratis og uforpliktende</span>
             )}
             {nextStepIdx != null ? (
               <div className="flex items-center gap-3">
                 <span className="hidden sm:block text-[12px] text-[#78726a]">Neste: <span className="text-[#666] font-medium">{nextStepTitle}</span></span>
-                <Button onClick={goNext} data-testid="owner-next-button" className="rounded-full bg-[#0a0a0a] text-white hover:bg-black h-12 px-8 text-[14px] font-semibold gap-2 active:scale-[0.97] transition-transform shadow-[0_6px_20px_-8px_rgba(0,0,0,0.5)]">Neste <ArrowRight className="w-4 h-4" /></Button>
+                <Button onClick={goNext} data-testid="owner-next-button" className="rounded-full bg-[#d298ff] text-[#14081f] hover:bg-[#c67ffc] h-12 px-8 text-[14px] font-semibold gap-2 active:scale-[0.97] transition-transform shadow-[0_6px_20px_-8px_rgba(210,152,255,0.9)]">Neste <ArrowRight className="w-4 h-4" /></Button>
               </div>
             ) : (
-              <Button onClick={handleSubmit} disabled={loading} data-testid="owner-submit-button" className="rounded-full bg-[#0a0a0a] text-white hover:bg-black h-12 px-8 text-[14px] font-semibold gap-2 active:scale-[0.97] transition-transform shadow-[0_6px_20px_-8px_rgba(0,0,0,0.5)]">{loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />} {formData.tier === 'full_forvaltning' ? 'Få tilbud' : formData.tier === 'selvforvaltning' ? 'Fullfør registrering' : (ctaVariant === 'B' ? 'Fullfør – helt gratis' : 'Send henvendelse')}</Button>
+              <Button onClick={handleSubmit} disabled={loading} data-testid="owner-submit-button" className="rounded-full bg-[#d298ff] text-[#14081f] hover:bg-[#c67ffc] h-12 px-8 text-[14px] font-semibold gap-2 active:scale-[0.97] transition-transform shadow-[0_6px_20px_-8px_rgba(210,152,255,0.9)]">{loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />} {formData.tier === 'full_forvaltning' ? 'Få tilbud' : formData.tier === 'selvforvaltning' ? 'Fullfør registrering' : (ctaVariant === 'B' ? 'Fullfør – helt gratis' : 'Send henvendelse')}</Button>
             )}
           </div>
         </div>

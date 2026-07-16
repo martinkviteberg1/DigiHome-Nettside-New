@@ -17,7 +17,7 @@ import { track } from '@/lib/analytics';
 const BRAND = '#7c3aed';
 
 const IMGS = {
-  hero: 'https://images.pexels.com/photos/29938561/pexels-photo-29938561.jpeg?auto=compress&cs=tinysrgb&w=1920',
+  hero: 'https://customer-assets-0z36b82j.emergentagent.net/job_a2e68e8c-4f87-418f-b57e-d72a68ad9d32/artifacts/aovxlvrp_image0056.webp',
   card: 'https://images.unsplash.com/photo-1631679706909-1844bbd07221?q=80&w=900&auto=format&fit=crop',
   prop1: 'https://images.pexels.com/photos/11622889/pexels-photo-11622889.jpeg?auto=compress&cs=tinysrgb&w=1200',
   prop2: 'https://images.unsplash.com/photo-1631679706909-1844bbd07221?q=80&w=1200&auto=format&fit=crop',
