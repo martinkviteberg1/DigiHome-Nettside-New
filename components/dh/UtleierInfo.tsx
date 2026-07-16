@@ -35,13 +35,13 @@ export function UtleierHero() {
                 <span aria-hidden>→</span>
               </a>
               <a href={`tel:${site.phoneHref}`} className="inline-flex items-center gap-2 h-[52px] px-6 rounded-full bg-white text-[#0a0a0a] text-[15px] font-semibold shadow-[0_2px_12px_rgba(0,0,0,0.06)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.1)] transition-shadow">
-                <Phone className="w-4 h-4 text-[#7c3aed]" /> {site.phone}
+                <Phone className="w-4 h-4 text-[#7e22ce]" /> {site.phone}
               </a>
             </div>
             <div className="flex flex-wrap gap-x-6 gap-y-2 mt-8">
               {['150+ boliger under forvaltning', '0 kr oppstart', 'Ingen bindingstid'].map((t) => (
                 <span key={t} className="inline-flex items-center gap-1.5 text-[13px] text-[#57504A]">
-                  <Check className="w-4 h-4 text-[#7c3aed]" /> {t}
+                  <Check className="w-4 h-4 text-[#7e22ce]" /> {t}
                 </span>
               ))}
             </div>
@@ -87,7 +87,7 @@ export function UtleierServices() {
             <Reveal as="div" key={s.t} initial={{ opacity: 0, y: 14 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: '-40px' }} transition={{ duration: 0.45, delay: (i % 4) * 0.07 }}
               className="rounded-2xl bg-[#faf9f7] p-6">
               <div className="w-11 h-11 rounded-xl bg-[#f1e8fd] flex items-center justify-center mb-4">
-                <s.icon className="w-5 h-5 text-[#7c3aed]" />
+                <s.icon className="w-5 h-5 text-[#7e22ce]" />
               </div>
               <h3 className="text-[16px] font-bold text-[#0a0a0a]" style={headingFont}>{s.t}</h3>
               <p className="text-[13.5px] leading-relaxed text-[#57504A] mt-2">{s.d}</p>
@@ -177,7 +177,7 @@ export function UtleierFaq() {
         </div>
         <p className="text-center text-[14px] text-[#8A8178] mt-8">
           Fant du ikke svaret? Ring oss på{' '}
-          <a href={`tel:${site.phoneHref}`} className="text-[#7c3aed] font-semibold">{site.phone}</a>
+          <a href={`tel:${site.phoneHref}`} className="text-[#7e22ce] font-semibold">{site.phone}</a>
           {' '}— vi svarer gjerne.
         </p>
       </div>
@@ -194,7 +194,7 @@ export function UtleierCta() {
       <div className="max-w-[1080px] mx-auto px-6 sm:px-10">
         <Reveal as="div" initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: '-80px' }} transition={{ duration: 0.55 }}
           className="relative overflow-hidden rounded-[32px] bg-[#0a0a0a] px-7 sm:px-14 py-14 sm:py-[72px] text-center">
-          <div aria-hidden className="absolute -top-24 -right-24 w-[340px] h-[340px] rounded-full bg-[#7c3aed]/25 blur-[110px]" />
+          <div aria-hidden className="absolute -top-24 -right-24 w-[340px] h-[340px] rounded-full bg-[#7e22ce]/25 blur-[110px]" />
           <div aria-hidden className="absolute -bottom-28 -left-20 w-[300px] h-[300px] rounded-full bg-[#c9a8f0]/15 blur-[100px]" />
           <div className="relative">
             <span className="inline-flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.14em] text-[#c9a8f0]">

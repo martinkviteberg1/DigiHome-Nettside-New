@@ -50,8 +50,8 @@ export function AddressField({
   const [editing, setEditing] = useState(!(autoConfirm && value));
   const [urlHint, setUrlHint] = useState(false);
   const inputWrapClass = compact
-    ? 'w-full h-[46px] pl-10 pr-3.5 text-[14px] bg-white border border-[#e0e0e0] rounded-xl outline-none focus:border-[#cf97fc] focus:shadow-[0_0_0_3px_rgba(207,151,252,0.12)] transition-all placeholder:text-[#9a9a9a]'
-    : 'w-full h-[52px] pl-11 pr-4 text-[15px] bg-white border border-[#e0e0e0] rounded-xl outline-none focus:border-[#cf97fc] focus:shadow-[0_0_0_3px_rgba(207,151,252,0.14)] transition-all placeholder:text-[#9a9a9a]';
+    ? 'w-full h-[46px] pl-10 pr-3.5 text-[14px] bg-white border border-[#e0e0e0] rounded-xl outline-none focus:border-[#d298ff] focus:shadow-[0_0_0_3px_rgba(210,152,255,0.12)] transition-all placeholder:text-[#9a9a9a]'
+    : 'w-full h-[52px] pl-11 pr-4 text-[15px] bg-white border border-[#e0e0e0] rounded-xl outline-none focus:border-[#d298ff] focus:shadow-[0_0_0_3px_rgba(210,152,255,0.14)] transition-all placeholder:text-[#9a9a9a]';
 
   if (!editing && value) {
     return (
@@ -63,7 +63,7 @@ export function AddressField({
         data-testid={`${testIdPrefix}-confirmed`}
       >
         <span className="flex-shrink-0 w-8 h-8 rounded-full bg-[#f4eefb] flex items-center justify-center">
-          <MapPin className="w-[15px] h-[15px] text-[#7c3aed]" />
+          <MapPin className="w-[15px] h-[15px] text-[#7e22ce]" />
         </span>
         <div className="min-w-0 flex-1">
           <p className={`font-semibold text-[#1a1a1a] truncate ${compact ? 'text-[13.5px]' : 'text-[15px]'}`}>{value}</p>
@@ -73,7 +73,7 @@ export function AddressField({
           type="button"
           onClick={() => setEditing(true)}
           data-testid={`${testIdPrefix}-edit`}
-          className="flex-shrink-0 inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-[#7c3aed] hover:text-[#8a45d6] transition-colors px-2.5 py-1.5 rounded-lg hover:bg-[#faf5ff]"
+          className="flex-shrink-0 inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-[#7e22ce] hover:text-[#8a45d6] transition-colors px-2.5 py-1.5 rounded-lg hover:bg-[#faf5ff]"
         >
           <Pencil className="w-[13px] h-[13px]" /> Endre
         </button>
@@ -163,7 +163,7 @@ export function FinnLookupField({ value, onChange, onResult, testId = 'finn', co
           onChange={(e: any) => onChange(e.target.value)}
           placeholder="https://www.finn.no/realestate/..."
           data-testid={`${testId}-input`}
-          className="w-full h-[48px] pl-10 pr-10 text-[14px] bg-white border border-[#e6dcf5] rounded-xl outline-none focus:border-[#cf97fc] focus:shadow-[0_0_0_3px_rgba(207,151,252,0.14)] transition-all placeholder:text-[#bbb] relative"
+          className="w-full h-[48px] pl-10 pr-10 text-[14px] bg-white border border-[#e6dcf5] rounded-xl outline-none focus:border-[#d298ff] focus:shadow-[0_0_0_3px_rgba(210,152,255,0.14)] transition-all placeholder:text-[#bbb] relative"
         />
         {/* Scanning-strek under feltet mens vi henter */}
         <AnimatePresence>
@@ -173,14 +173,14 @@ export function FinnLookupField({ value, onChange, onResult, testId = 'finn', co
               className="absolute left-2 right-2 -bottom-[3px] h-[2px] overflow-hidden rounded-full"
             >
               <motion.div
-                className="h-full w-1/3 rounded-full bg-gradient-to-r from-transparent via-[#cf97fc] to-transparent"
+                className="h-full w-1/3 rounded-full bg-gradient-to-r from-transparent via-[#d298ff] to-transparent"
                 animate={{ x: ['-120%', '320%'] }}
                 transition={{ repeat: Infinity, duration: 1.1, ease: 'easeInOut' }}
               />
             </motion.div>
           )}
         </AnimatePresence>
-        {loading && <Loader2 className="w-[16px] h-[16px] text-[#cf97fc] animate-spin absolute right-3.5 top-1/2 -translate-y-1/2" />}
+        {loading && <Loader2 className="w-[16px] h-[16px] text-[#d298ff] animate-spin absolute right-3.5 top-1/2 -translate-y-1/2" />}
         {!loading && value && (
           <button type="button" onClick={() => onChange('')} aria-label="Fjern lenke" className="absolute right-3 top-1/2 -translate-y-1/2 text-[#bbb] hover:text-[#666] transition-colors"><X className="w-[15px] h-[15px]" /></button>
         )}
@@ -291,7 +291,7 @@ export function FinnPropertyCard({
   // Felles flis-skall — tydelig «kan redigeres»-affordans (border, pencil, fokus-glød).
   const tileShell = (editing: boolean, hasError: boolean) =>
     `group/tile relative rounded-2xl bg-white p-3.5 text-left border transition-all duration-200 ${
-      hasError ? 'border-red-300' : editing ? 'border-[#cf97fc] shadow-[0_0_0_4px_rgba(207,151,252,0.16)]' : 'border-[#ece7f3] hover:border-[#cdbcf0] hover:shadow-[0_8px_24px_-18px_rgba(124,58,237,0.5)]'
+      hasError ? 'border-red-300' : editing ? 'border-[#d298ff] shadow-[0_0_0_4px_rgba(210,152,255,0.16)]' : 'border-[#ece7f3] hover:border-[#cdbcf0] hover:shadow-[0_8px_24px_-18px_rgba(210,152,255,0.5)]'
     }`;
 
   return (
@@ -305,7 +305,7 @@ export function FinnPropertyCard({
       {(host || onReset) && (
         <div className="flex items-center justify-between gap-3 px-4 sm:px-5 py-3 border-b border-[#f3f0f7]">
           <div className="flex items-center gap-2 min-w-0">
-            <span className="w-7 h-7 rounded-full bg-[#f4eefb] flex items-center justify-center shrink-0"><Link2 className="w-3.5 h-3.5 text-[#7c3aed]" /></span>
+            <span className="w-7 h-7 rounded-full bg-[#f4eefb] flex items-center justify-center shrink-0"><Link2 className="w-3.5 h-3.5 text-[#7e22ce]" /></span>
             <div className="min-w-0">
               <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#78726a] leading-none">Hentet fra annonse</p>
               <p className="text-[12.5px] font-medium text-[#555] truncate leading-tight mt-0.5">{host || 'finn.no'}</p>
@@ -313,7 +313,7 @@ export function FinnPropertyCard({
           </div>
           {onReset && (
             <button type="button" onClick={onReset} data-testid="finn-card-reset"
-              className="shrink-0 inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-[#7c3aed] hover:text-[#8a45d6] transition-colors px-2.5 py-1.5 rounded-lg hover:bg-[#faf5ff]">
+              className="shrink-0 inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-[#7e22ce] hover:text-[#8a45d6] transition-colors px-2.5 py-1.5 rounded-lg hover:bg-[#faf5ff]">
               <Pencil className="w-[13px] h-[13px]" /> Bytt annonse
             </button>
           )}
@@ -353,10 +353,10 @@ export function FinnPropertyCard({
 
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
           {/* Areal — redigerbart tallfelt */}
-          <label className={`${tileShell(false, !!errors.sqm)} block cursor-text focus-within:border-[#cf97fc] focus-within:shadow-[0_0_0_4px_rgba(207,151,252,0.16)]`}>
+          <label className={`${tileShell(false, !!errors.sqm)} block cursor-text focus-within:border-[#d298ff] focus-within:shadow-[0_0_0_4px_rgba(210,152,255,0.16)]`}>
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-1.5"><Ruler className="w-4 h-4 text-[#b39ddb]" /><span className="text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[#a3a0ab]">Areal</span></div>
-              <Pencil className="w-[13px] h-[13px] text-[#d2c6ea] transition-colors group-hover/tile:text-[#7c3aed]" />
+              <Pencil className="w-[13px] h-[13px] text-[#d2c6ea] transition-colors group-hover/tile:text-[#7e22ce]" />
             </div>
             <div className="flex items-baseline gap-1">
               <input type="number" inputMode="numeric" value={sqm || ''} onChange={(e: any) => onSqm(e.target.value)} placeholder="—"
@@ -371,7 +371,7 @@ export function FinnPropertyCard({
               <button type="button" data-testid="finn-card-bedrooms" className={tileShell(bedOpen, !!errors.bedrooms)}>
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-1.5"><BedDouble className="w-4 h-4 text-[#b39ddb]" /><span className="text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[#a3a0ab]">Soverom</span></div>
-                  <ChevronDown className={`w-[15px] h-[15px] transition-all ${bedOpen ? 'rotate-180 text-[#7c3aed]' : 'text-[#d2c6ea] group-hover/tile:text-[#7c3aed]'}`} />
+                  <ChevronDown className={`w-[15px] h-[15px] transition-all ${bedOpen ? 'rotate-180 text-[#7e22ce]' : 'text-[#d2c6ea] group-hover/tile:text-[#7e22ce]'}`} />
                 </div>
                 <span className="block text-[22px] font-bold leading-none text-left" style={{ fontFamily: 'var(--font-heading)' }}>{bedrooms ? <span className="text-[#0a0a0a]">{bedrooms}</span> : <span className="text-[#d4cce2]">—</span>}</span>
               </button>
@@ -383,7 +383,7 @@ export function FinnPropertyCard({
                   const sel = String(bedrooms) === n;
                   return (
                     <button key={n} type="button" onClick={() => { onBedrooms(n); setBedOpen(false); }}
-                      className={`h-10 rounded-xl text-[15px] font-bold transition-all active:scale-95 ${sel ? 'bg-[#cf97fc] text-white shadow-[0_4px_14px_-4px_rgba(207,151,252,0.8)]' : 'bg-[#f6f3fb] text-[#5b5570] hover:bg-[#efe7fb]'}`} style={{ fontFamily: 'var(--font-heading)' }}>{n}</button>
+                      className={`h-10 rounded-xl text-[15px] font-bold transition-all active:scale-95 ${sel ? 'bg-[#d298ff] text-white shadow-[0_4px_14px_-4px_rgba(210,152,255,0.8)]' : 'bg-[#f6f3fb] text-[#5b5570] hover:bg-[#efe7fb]'}`} style={{ fontFamily: 'var(--font-heading)' }}>{n}</button>
                   );
                 })}
               </div>
@@ -396,10 +396,10 @@ export function FinnPropertyCard({
               <button type="button" data-testid="finn-card-type" className={`${tileShell(typeOpen, !!errors.property_type)} col-span-2 sm:col-span-1`}>
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-1.5"><Home className="w-4 h-4 text-[#b39ddb]" /><span className="text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[#a3a0ab]">Boligtype</span></div>
-                  <ChevronDown className={`w-[15px] h-[15px] transition-all ${typeOpen ? 'rotate-180 text-[#7c3aed]' : 'text-[#d2c6ea] group-hover/tile:text-[#7c3aed]'}`} />
+                  <ChevronDown className={`w-[15px] h-[15px] transition-all ${typeOpen ? 'rotate-180 text-[#7e22ce]' : 'text-[#d2c6ea] group-hover/tile:text-[#7e22ce]'}`} />
                 </div>
                 <span className="flex items-center gap-2 text-[19px] font-bold leading-none" style={{ fontFamily: 'var(--font-heading)' }}>
-                  {typeMeta ? (<><TypeIcon className="w-[18px] h-[18px] text-[#7c3aed]" /><span className="text-[#0a0a0a]">{typeMeta.label}</span></>) : <span className="text-[#d4cce2]">Velg</span>}
+                  {typeMeta ? (<><TypeIcon className="w-[18px] h-[18px] text-[#7e22ce]" /><span className="text-[#0a0a0a]">{typeMeta.label}</span></>) : <span className="text-[#d4cce2]">Velg</span>}
                 </span>
               </button>
             </PopoverTrigger>
@@ -409,9 +409,9 @@ export function FinnPropertyCard({
                 return (
                   <button key={o.value} type="button" onClick={() => { onType(o.value); setTypeOpen(false); }}
                     className={`w-full flex items-center gap-3 px-2.5 h-11 rounded-xl text-[14.5px] font-medium transition-colors ${sel ? 'bg-[#faf5ff] text-[#0a0a0a]' : 'text-[#555] hover:bg-[#f7f4fc]'}`}>
-                    <span className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${sel ? 'bg-[#cf97fc] text-white' : 'bg-[#f1ecf8] text-[#a78bda]'}`}><Icon className="w-4 h-4" /></span>
+                    <span className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${sel ? 'bg-[#d298ff] text-white' : 'bg-[#f1ecf8] text-[#a78bda]'}`}><Icon className="w-4 h-4" /></span>
                     <span className="flex-1 text-left">{o.label}</span>
-                    {sel && <Check className="w-4 h-4 text-[#7c3aed]" strokeWidth={3} />}
+                    {sel && <Check className="w-4 h-4 text-[#7e22ce]" strokeWidth={3} />}
                   </button>
                 );
               })}
@@ -426,7 +426,7 @@ export function FinnPropertyCard({
           {verifying ? (
             <motion.div key="verifying" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               className="flex items-center gap-2.5 px-5 py-3.5 bg-[#faf8fe] border-t border-[#f1ebfb]" data-testid="finn-card-verifying">
-              <Loader2 className="w-4 h-4 text-[#7c3aed] animate-spin shrink-0" />
+              <Loader2 className="w-4 h-4 text-[#7e22ce] animate-spin shrink-0" />
               <span className="text-[13.5px] text-[#5b6370]">Søker i Eiendomsregisteret …</span>
             </motion.div>
           ) : ownerName ? (
@@ -441,7 +441,7 @@ export function FinnPropertyCard({
           ) : needsSelect ? (
             <motion.div key="select" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               className="flex items-center gap-2.5 px-5 py-3.5 bg-[#faf8fe] border-t border-[#f1ebfb]" data-testid="finn-card-select">
-              <span className="w-6 h-6 rounded-full bg-[#f4eefb] flex items-center justify-center shrink-0"><CheckCircle2 className="w-4 h-4 text-[#7c3aed]" /></span>
+              <span className="w-6 h-6 rounded-full bg-[#f4eefb] flex items-center justify-center shrink-0"><CheckCircle2 className="w-4 h-4 text-[#7e22ce]" /></span>
               <span className="text-[13.5px] text-[#0a0a0a] leading-snug"><span className="font-semibold">Funnet i registeret</span><span className="text-[#5b6370]"> · velg din enhet nedenfor</span></span>
             </motion.div>
           ) : registryFailed ? (

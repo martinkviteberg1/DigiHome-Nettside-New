@@ -204,7 +204,7 @@ export default function RentMarketPage({ report }) {
       <section className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16 py-16 lg:py-24">
         <div className="grid lg:grid-cols-[1.4fr_1fr] gap-12 lg:gap-20 items-start">
           <div>
-            <div className="inline-flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.14em] text-[#7c3aed] mb-4">
+            <div className="inline-flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.14em] text-[#7e22ce] mb-4">
               <Sparkles className="w-3.5 h-3.5" /> Markedsvurdering
             </div>
             <h2 className="text-[28px] sm:text-[38px] font-bold tracking-[-0.02em] leading-[1.08] mb-6" style={{ fontFamily: 'var(--font-heading)' }}>
@@ -226,7 +226,7 @@ export default function RentMarketPage({ report }) {
               {r.insights.map((ins, i) => (
                 <li key={i} className="flex items-start gap-3">
                   <span className="mt-1 w-5 h-5 rounded-full bg-[#f4f0fb] flex items-center justify-center shrink-0">
-                    <BadgeCheck className="w-3.5 h-3.5 text-[#7c3aed]" />
+                    <BadgeCheck className="w-3.5 h-3.5 text-[#7e22ce]" />
                   </span>
                   <span className="text-[15px] leading-relaxed text-[#333]">{ins}</span>
                 </li>
@@ -241,7 +241,7 @@ export default function RentMarketPage({ report }) {
         <div className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16 py-16 lg:py-20">
           <div className="flex items-end justify-between gap-6 flex-wrap mb-10">
             <div>
-              <div className="inline-flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.14em] text-[#7c3aed] mb-3"><Building2 className="w-3.5 h-3.5" /> Snittleie per boligtype</div>
+              <div className="inline-flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.14em] text-[#7e22ce] mb-3"><Building2 className="w-3.5 h-3.5" /> Snittleie per boligtype</div>
               <h2 className="text-[26px] sm:text-[34px] font-bold tracking-[-0.02em]" style={{ fontFamily: 'var(--font-heading)' }}>Hva koster det å leie i {r.cityLabel}?</h2>
             </div>
             <p className="text-[13px] text-[#5b6370] max-w-[34ch]">Gjennomsnittlig månedlig leie ({r.year}). Tall i parentes viser endring fra {r.prevYear}.</p>
@@ -273,7 +273,7 @@ export default function RentMarketPage({ report }) {
       <section className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16 py-16 lg:py-24">
         <div className="grid lg:grid-cols-[1fr_1.6fr] gap-10 lg:gap-16 items-center">
           <div>
-            <div className="inline-flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.14em] text-[#7c3aed] mb-3"><Activity className="w-3.5 h-3.5" /> Prisutvikling</div>
+            <div className="inline-flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.14em] text-[#7e22ce] mb-3"><Activity className="w-3.5 h-3.5" /> Prisutvikling</div>
             <h2 className="text-[26px] sm:text-[34px] font-bold tracking-[-0.02em] leading-tight mb-5" style={{ fontFamily: 'var(--font-heading)' }}>Leieprisene over tid</h2>
             <p className="text-[15.5px] leading-relaxed text-[#555]">Gjennomsnittlig månedsleie på tvers av boligstørrelser i {r.cityLabel}, {r.years?.[0]}–{r.year}. Et stigende marked betyr økt avkastningspotensial — men også et marked der riktig prising blir stadig viktigere.</p>
           </div>
@@ -291,7 +291,7 @@ export default function RentMarketPage({ report }) {
           <p className="text-white/55 text-[15px] max-w-[60ch] mb-12">Predikert månedsleie etter boligstørrelse og prissone ({r.year}). Sentrale boliger oppnår en tydelig premie — særlig for små enheter.</p>
           <div className="grid md:grid-cols-2 gap-6">
             {r.zones.map((z, zi) => (
-              <div key={z.code} className={`rounded-3xl p-7 sm:p-8 ${zi === 0 ? 'bg-gradient-to-br from-[#1f1538] to-[#120c22] ring-1 ring-[#7c3aed]/30' : 'bg-white/[0.04]'}`}>
+              <div key={z.code} className={`rounded-3xl p-7 sm:p-8 ${zi === 0 ? 'bg-gradient-to-br from-[#1f1538] to-[#120c22] ring-1 ring-[#7e22ce]/30' : 'bg-white/[0.04]'}`}>
                 <div className="flex items-center justify-between mb-6">
                   <div>
                     <h3 className="text-[20px] font-bold" style={{ fontFamily: 'var(--font-heading)' }}>{z.label}</h3>
@@ -318,12 +318,12 @@ export default function RentMarketPage({ report }) {
 
       {/* DIGIHOME ETTERSPØRSELSINDEKS */}
       <section className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16 py-16 lg:py-24">
-        <div className="inline-flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.14em] text-[#7c3aed] mb-3"><Sparkles className="w-3.5 h-3.5" /> DigiHome Etterspørselsindeks</div>
+        <div className="inline-flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.14em] text-[#7e22ce] mb-3"><Sparkles className="w-3.5 h-3.5" /> DigiHome Etterspørselsindeks</div>
         <div className="grid lg:grid-cols-[1fr_1.5fr] gap-10 lg:gap-16 items-start">
           <div>
             <h2 className="text-[26px] sm:text-[34px] font-bold tracking-[-0.02em] leading-tight mb-4" style={{ fontFamily: 'var(--font-heading)' }}>Hvor er etterspørselen størst?</h2>
             <div className="flex items-end gap-4 mb-5">
-              <div className="text-[64px] sm:text-[80px] font-bold leading-none text-[#7c3aed]" style={{ fontFamily: 'var(--font-heading)' }}>{r.demand.index}</div>
+              <div className="text-[64px] sm:text-[80px] font-bold leading-none text-[#7e22ce]" style={{ fontFamily: 'var(--font-heading)' }}>{r.demand.index}</div>
               <div className="pb-2">
                 <p className="text-[13px] text-[#5b6370]">av 100</p>
                 <p className="text-[17px] font-bold text-[#1f1f1f]">{r.demand.level}</p>
@@ -339,8 +339,8 @@ export default function RentMarketPage({ report }) {
                 <Link key={a.slug} href={`/utleie/${a.slug}`} className="group block bg-white rounded-2xl p-5 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.10)] hover:shadow-[0_12px_40px_-16px_rgba(0,0,0,0.18)] transition-shadow">
                   <div className="flex items-center justify-between mb-2.5">
                     <div className="flex items-center gap-2">
-                      <span className="text-[15.5px] font-semibold text-[#1f1f1f] group-hover:text-[#7c3aed] transition-colors">{a.area}</span>
-                      <ArrowUpRight className="w-3.5 h-3.5 text-[#ccc] group-hover:text-[#7c3aed] group-hover:translate-x-0.5 transition-all" />
+                      <span className="text-[15.5px] font-semibold text-[#1f1f1f] group-hover:text-[#7e22ce] transition-colors">{a.area}</span>
+                      <ArrowUpRight className="w-3.5 h-3.5 text-[#ccc] group-hover:text-[#7e22ce] group-hover:translate-x-0.5 transition-all" />
                     </div>
                     <span className={`text-[11.5px] font-semibold px-2.5 py-1 rounded-full ${tone.bg} ${tone.text}`}>{a.level}</span>
                   </div>
@@ -370,7 +370,7 @@ export default function RentMarketPage({ report }) {
               <ul className="space-y-2">
                 {r.source.tables.map((t) => (
                   <li key={t.id}>
-                    <a href={t.url} target="_blank" rel="noopener noreferrer" className="text-[#7c3aed] hover:underline font-medium">SSB tabell {t.id}</a> — {t.title}
+                    <a href={t.url} target="_blank" rel="noopener noreferrer" className="text-[#7e22ce] hover:underline font-medium">SSB tabell {t.id}</a> — {t.title}
                   </li>
                 ))}
               </ul>

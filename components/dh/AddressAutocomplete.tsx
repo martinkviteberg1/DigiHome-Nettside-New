@@ -195,7 +195,7 @@ export function AddressAutocomplete({
               onMouseEnter={() => setActive(i)}
               className={`w-full text-left px-3.5 py-2.5 flex items-start gap-2.5 transition-colors ${active === i ? 'bg-[#f5edfc]' : 'hover:bg-[#f8f7f5]'}`}
             >
-              <MapPin className="w-3.5 h-3.5 text-[#cf97fc] mt-0.5 shrink-0" />
+              <MapPin className="w-3.5 h-3.5 text-[#d298ff] mt-0.5 shrink-0" />
               <span className="min-w-0">
                 <span className="block text-[14px] text-[#222] font-medium leading-tight truncate">{s.text}</span>
                 {s.sub && <span className="block text-[12px] text-[#716b63] mt-0.5 truncate">{s.sub}</span>}

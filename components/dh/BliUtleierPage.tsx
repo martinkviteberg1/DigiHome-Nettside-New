@@ -287,10 +287,18 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
   const removeExtra = (i: number) => setExtraUnits((prev) => prev.filter((_, idx) => idx !== i));
   const updateExtraMany = (i: number, obj: any) =>
     setExtraUnits((prev) => prev.map((u, idx) => (idx === i ? { ...u, ...obj } : u)));
+  // Fullskjerm: «flere boliger» er én enkel avkrysning — rådgiveren følger opp (ikke fulle kort).
+  const [multiProperty, setMultiProperty] = useState(false);
 
-  // NY FLYT: 3 steg — Eiendommen (1) → Dine mål (5) → Om deg + send (3).
-  // Eiendomsdetaljene redigeres på steg 1 i BEGGE moduser (adresse og Finn).
-  const flowSteps = [1, 5, 3];
+  // 2026-FLYT (fullskjerm): sporene er helt ulike.
+  //  - Selvforvaltning = kontoregistrering → KUN kontakt + avtale ([3]).
+  //    Boligdetaljer, modell og dato legges inn i Huseierportalen etterpå.
+  //  - Full forvaltning = tilbudsforespørsel → Boligen (1) → Om deg + send (3).
+  //    Seksjonsvelger og «flere eiendommer»-kort er fjernet fra kundeflyten.
+  //  - Utenfor fullskjerm (/bli-utleier innebygd) beholdes 3-stegsflyten.
+  const flowSteps = fullscreen
+    ? (formData.tier === 'selvforvaltning' ? [3] : [1, 3])
+    : [1, 5, 3];
 
   // Ved stegbytte: scroll til toppen av SKJEMAET (#skjema) — ikke toppen av
   // hele siden (skjemaet ligger under hero-innholdet på /bli-utleier).
@@ -314,7 +322,7 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
         newErrors.address = inputMode === 'finn'
           ? 'Lim inn en gyldig Finn-lenke til boligen'
           : 'Vennligst oppgi adressen til eiendommen';
-      } else if (inputMode !== 'finn' && formData.address.trim() && (!formData.postal_code || !/\d/.test(formData.address))) {
+      } else if (!fullscreen && inputMode !== 'finn' && formData.address.trim() && (!formData.postal_code || !/\d/.test(formData.address))) {
         // Tvungen listevalg: adresse skrevet uten å velge fra forslagslisten
         // mangler postnummer/husnummer → ufullstendige leads i CRM-et.
         newErrors.address = 'Velg adressen fra forslagslisten — da får vi med postnummer og husnummer';
@@ -414,6 +422,12 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
   const handleSubmit = async () => {
     if (loading) return;
     if (!validateContact()) return;
+    // Fullskjerm-sporene: vilkår (selvforvaltning) og ledig-dato (full) ligger
+    // nå på siste steg — valider dem her før innsending.
+    const finalErrors: Record<string, any> = {};
+    if (formData.tier === 'selvforvaltning' && !termsAccepted) finalErrors.terms = 'Godta avtalen for å fullføre registreringen';
+    if (fullscreen && formData.tier && formData.tier !== 'selvforvaltning' && !formData.availability) finalErrors.availability = 'Velg når boligen er ledig';
+    if (Object.keys(finalErrors).length > 0) { setErrors((prev: any) => ({ ...prev, ...finalErrors })); return; }
     setLoading(true);
     try {
       const validExtras = extraUnits.filter((u) => (u.address || '').trim());
@@ -461,10 +475,12 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
         sqm: formData.sqm ? parseInt(formData.sqm) : 60,
         bedrooms: parseInt(formData.bedrooms) || 2, property_type: formData.property_type || 'leilighet',
         name: formData.name, email: formData.email, phone: '+47 ' + formData.phone,
-        availability: formData.availability,
+        // Selvforvaltning setter ingen dato (kontoregistrering) → default i dag.
+        availability: formData.availability || (formData.tier === 'selvforvaltning' ? new Date().toISOString().slice(0, 10) : ''),
         lead_type: 'huseier',
         units,
         num_properties: units.length,
+        multiple_properties: multiProperty || undefined,
         finn_url: finnUrl || undefined,
         matrikkel_number: formData.matrikkel_number || undefined,
         seksjonsnr: formData.seksjonsnr || undefined,
@@ -479,6 +495,7 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
         attribution: { ...getLeadAttribution(), ...getClickIds() },
         notes: [
           formData.rental_model ? `Ønsket modell: ${formData.rental_model}` : '',
+          multiProperty ? 'Har flere boliger de vurderer å leie ut — ta en samlet vurdering' : '',
           registrySummary,
           formData.notes,
           ...extrasSummary,
@@ -649,14 +666,16 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
   const hasGeo = !!((formData.postal_code || '').trim() || (formData.city || '').trim());
   const inBergen = isBergenArea(formData.postal_code, formData.city);
 
-  // Tjenestevalg på inngangssteget → lås valget (vises kompakt på «Dine mål»).
+  // Tjenestevalg på inngangssteget → lås valget (vises kompakt på siste steg).
   const chooseEntryTier = (value: string) => {
     updateField('tier', value);
     setTierLocked(true);
     setTermsAccepted(false);
     setErrors((prev: any) => ({ ...prev, tier: null, terms: null }));
     setDir(1);
-    setStep(1);
+    // Selvforvaltning = kontoregistrering → rett til kontakt/avtale (steg 3).
+    // Full forvaltning = tilbud → boligdetaljer først (steg 1).
+    setStep(value === 'selvforvaltning' ? 3 : 1);
     setEntryPhase('done');
     try { track('tier_entry_choice', { tier: value, form: 'utleier-start', in_bergen: inBergen, has_geo: hasGeo }); } catch (e) {}
   };
@@ -880,6 +899,51 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
   const nextStepIdx = curPos < flowSteps.length - 1 ? flowSteps[curPos + 1] : null;
   const nextStepTitle = nextStepIdx != null ? STEPS[nextStepIdx].title : '';
 
+  // Delt blokk: «Når er boligen ledig?» — hurtigchips + valgfri kalender.
+  // Brukes på «Dine mål» (innebygd flyt) og på siste steg i fullskjerm (full forvaltning).
+  const availabilityPicker = (
+    <div>
+      <Label className="text-[13px] font-semibold text-[#333] mb-2 block">Når er boligen ledig for utleie? <span className="text-[#7e22ce]">*</span></Label>
+      {/* CRO: hurtigvalg — ingen tvungen kalender. Eksakt dato er valgfritt. */}
+      <div className="flex flex-wrap gap-2" data-testid="owner-availability-chips">
+        {[
+          ['asap', 'Så snart som mulig', 0],
+          ['1m', 'Innen 1 måned', 30],
+          ['3m', 'Innen 3 måneder', 90],
+          ['later', 'Senere / usikker', 180],
+        ].map(([val, label, days]: any) => {
+          const selected = availChoice === val;
+          return (
+            <button key={val} type="button" data-testid={`owner-availability-${val}`}
+              onClick={() => {
+                setAvailChoice(val);
+                const d = new Date(Date.now() + days * 86400000);
+                updateField('availability', `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`);
+                setErrors((prev: any) => ({ ...prev, availability: null }));
+              }}
+              className={`h-11 px-4 rounded-full border-2 text-[13.5px] font-semibold transition-all ${selected ? 'border-[#d298ff] bg-[#faf5ff] text-[#0a0a0a]' : 'border-[#eee] bg-white text-[#666] hover:border-[#ddd]'}`}>
+              {label}
+            </button>
+          );
+        })}
+        <Popover>
+          <PopoverTrigger asChild>
+            <button type="button" data-testid="owner-availability-input" className={`h-11 px-4 rounded-full border-2 text-[13.5px] font-semibold transition-all inline-flex items-center gap-2 ${availChoice === 'custom' ? 'border-[#d298ff] bg-[#faf5ff] text-[#0a0a0a]' : 'border-[#eee] bg-white text-[#666] hover:border-[#ddd]'}`}>
+              <CalendarIcon className="w-4 h-4 shrink-0" />
+              {availChoice === 'custom' && formData.availability ? format(new Date(formData.availability + 'T12:00:00'), 'd. MMM yyyy', { locale: nb }) : 'Velg dato'}
+            </button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0 rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.12)] border-0" align="start">
+            <Calendar mode="single" locale={nb} selected={availChoice === 'custom' && formData.availability ? new Date(formData.availability + 'T12:00:00') : undefined}
+              onSelect={(d: any) => { if (d) { const y = d.getFullYear(); const m = String(d.getMonth()+1).padStart(2,'0'); const day = String(d.getDate()).padStart(2,'0'); setAvailChoice('custom'); updateField('availability', `${y}-${m}-${day}`); setErrors((prev: any) => ({ ...prev, availability: null })); } }}
+              disabled={(date: any) => date < new Date()} className="rounded-2xl" />
+          </PopoverContent>
+        </Popover>
+      </div>
+      {errors.availability && <p className="text-[12px] text-red-500 mt-1.5" data-testid="owner-availability-error">{errors.availability}</p>}
+    </div>
+  );
+
   return (
     <div className={`min-h-screen ${fullscreen ? 'bg-[#ebebeb] lg:grid lg:grid-cols-[1.1fr_0.9fr]' : 'bg-[#fdfcfb] flex flex-col'}`} data-testid="owner-page">
       {fullscreen ? <WizardShowcase phase={fsPhase} /> : null}
@@ -900,11 +964,12 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
               <div className="w-9 h-9" aria-hidden="true" />
             )}
             <div className="text-right">
-              <p className="text-[10.5px] font-semibold text-[#7e22ce] uppercase tracking-[0.1em] leading-none">Steg {curPos + 1} av {flowSteps.length}</p>
-              <p className="text-[13.5px] text-[#0a0a0a] font-semibold mt-1 leading-none">{stepTitle}</p>
+              <p className="text-[10.5px] font-semibold text-[#7e22ce] uppercase tracking-[0.1em] leading-none">{flowSteps.length > 1 ? `Steg ${curPos + 1} av ${flowSteps.length}` : 'Siste steg'}</p>
+              <p className="text-[13.5px] text-[#0a0a0a] font-semibold mt-1 leading-none">{flowSteps.length > 1 ? stepTitle : 'Kontoregistrering'}</p>
             </div>
           </div>
-          {/* Premium stepper — sirkler + animerte koblinger (flyt-bevisst) */}
+          {/* Premium stepper — sirkler + animerte koblinger (skjules i ettstegs-flyt) */}
+          {flowSteps.length > 1 ? (
           <div className="flex items-center mb-10">
             {flowSteps.map((idx: number, pos: number) => {
               const done = curPos > pos;
@@ -929,6 +994,7 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
               );
             })}
           </div>
+          ) : <div className="mb-4" aria-hidden />}
         </div>
 
         <div className="flex-1 max-w-[600px] w-full mx-auto px-6 pb-[calc(6rem+var(--dh-consent-h,0px))]" onKeyDown={onKeyDownAdvance}>
@@ -942,17 +1008,33 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
                     <MapPin className="w-3.5 h-3.5" /> Eiendommen
                   </div>
                   <h2 className="text-[28px] sm:text-[34px] font-bold tracking-[-0.03em] text-[#0a0a0a] mb-2" style={{ fontFamily: 'var(--font-heading)' }}>
-                    {finnCardShown ? 'Bekreft eiendommen' : inputMode === 'finn' ? 'Lim inn Finn-annonsen' : 'Hvor ligger eiendommen?'}
+                    {finnCardShown ? 'Bekreft eiendommen' : inputMode === 'finn' ? 'Lim inn Finn-annonsen' : fullscreen ? 'Litt om boligen' : 'Hvor ligger eiendommen?'}
                   </h2>
                   <p className="text-[15px] text-[#888] mb-7 max-w-[46ch]">
                     {finnCardShown
                       ? 'Vi hentet alt fra annonsen og verifiserte mot Eiendomsregisteret. Sjekk at detaljene stemmer — du kan justere direkte.'
                       : inputMode === 'finn'
                         ? 'Vi henter adresse, areal, matrikkel og eierforslag automatisk fra annonsen.'
-                        : 'Skriv inn adressen — eller lim inn en FINN-lenke, så fyller vi inn alt automatisk.'}
+                        : fullscreen
+                          ? 'Tre raske valg — det er alt vi trenger for å vurdere potensialet.'
+                          : 'Skriv inn adressen — eller lim inn en FINN-lenke, så fyller vi inn alt automatisk.'}
                   </p>
 
                   {inputMode === 'address' ? (
+                    fullscreen ? (
+                      /* Fullskjerm: adressen er allerede valgt i inngangen — vis kompakt
+                         chip. Seksjonsvelgeren er bevisst FJERNET fra kundeflyten
+                         (rådgiveren avklarer seksjon/andel i oppfølgingen). */
+                      <div>
+                        <div className="flex items-center gap-2.5 rounded-2xl bg-white border border-[#e3e3e3] px-4 py-3.5" data-testid="owner-address-chip">
+                          <MapPin className="w-4 h-4 text-[#7e22ce] shrink-0" />
+                          <span className="text-[14px] font-semibold text-[#0a0a0a] truncate">{formData.address || 'Adresse ikke oppgitt'}</span>
+                          {formData.postal_code && !(formData.address || '').includes(formData.postal_code) ? <span className="text-[12.5px] text-[#716b63] hidden sm:inline shrink-0">{formData.postal_code} {formData.city}</span> : null}
+                          <button type="button" onClick={() => { setDir(-1); setEntryPhase('address'); }} data-testid="owner-address-edit" className="ml-auto text-[12px] font-semibold text-[#7e22ce] hover:bg-[#faf5ff] rounded-full px-2.5 py-1.5 transition-colors shrink-0">Endre</button>
+                        </div>
+                        {errors.address && <p className="text-[12px] text-red-500 mt-2">{errors.address}</p>}
+                      </div>
+                    ) : (
                     <div>
                       <Label className="text-[13px] font-semibold text-[#333] mb-2 block">Adresse <span className="text-[#7e22ce]">*</span></Label>
                       <AddressField
@@ -994,6 +1076,7 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
                         onResolved={applyRegistry}
                       />
                     </div>
+                    )
                   ) : (
                     <div>
                       {/* Tilbake til adresse-veien (kun før Finn-treff) */}
@@ -1072,7 +1155,7 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
                   )}
 
                   {/* Eiendomsdetaljer — samme steg (adresse-modus). I Finn-modus redigeres de i Finn-kortet. */}
-                  {inputMode === 'address' && (formData.address.trim() || registryQuery) ? (
+                  {inputMode === 'address' && (fullscreen || formData.address.trim() || registryQuery) ? (
                     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }} className="mt-8 pt-7 border-t border-[#f0ece6] space-y-6" data-testid="owner-property-details">
                       <TextInput label="Størrelse (m²)" required error={errors.sqm} value={formData.sqm} onChange={(v: any) => updateField('sqm', v)} placeholder="F.eks. 65" type="number" testId="owner-sqm-input" />
                       <div>
@@ -1102,8 +1185,9 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
                     </div>
                   ) : null}
 
-                  {/* Flere eiendommer (valgfritt) — flettet inn fra gamle «Om eiendommen»-steget */}
-                  {(inputMode === 'address' ? (formData.address.trim() || registryQuery) : !!finnData) ? (
+                  {/* Flere eiendommer — innebygd flyt: fulle kort. Fullskjerm: én enkel
+                      avkrysning (rådgiveren tar samlet vurdering — mindre friksjon). */}
+                  {!fullscreen && (inputMode === 'address' ? (formData.address.trim() || registryQuery) : !!finnData) ? (
                     <div className="mt-8 pt-6 border-t border-[#f0f0f0]" data-testid="owner-extra-units-section">
                       <div className="flex items-center justify-between mb-1"><p className="text-[13px] font-semibold text-[#333]">Har du flere eiendommer?</p><span className="text-[12px] text-[#5b6370]">Valgfritt</span></div>
                       <p className="text-[13px] text-[#888] mb-4">Legg til flere boliger du vil leie ut — vi vurderer dem samlet.</p>
@@ -1169,20 +1253,77 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
                       <button type="button" onClick={addExtra} data-testid="owner-add-unit-button" className="w-full flex items-center justify-center gap-2 h-12 rounded-2xl border-2 border-dashed border-[#e0d4f0] text-[#d298ff] hover:border-[#d298ff] hover:bg-[#faf5ff] text-[14px] font-semibold transition-all"><Plus className="w-4 h-4" /> Legg til {extraUnits.length > 0 ? 'enda en' : 'eiendom'}</button>
                     </div>
                   ) : null}
+
+                  {/* Fullskjerm: «flere boliger» = ett tastetrykk — rådgiveren følger opp */}
+                  {fullscreen ? (
+                    <div className="mt-7">
+                      <button type="button" onClick={() => setMultiProperty((v) => !v)} data-testid="owner-multi-toggle"
+                        className={`w-full flex items-center gap-3.5 rounded-2xl border-2 p-4 text-left transition-all duration-200 ${multiProperty ? 'border-[#d298ff] bg-[#faf5ff]' : 'border-[#e5e5e5] bg-white hover:border-[#d5d5d5]'}`}>
+                        <span className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-colors ${multiProperty ? 'bg-[#d298ff] border-[#d298ff]' : 'bg-white border-[#d5d5d5]'}`}>
+                          {multiProperty && <Check className="w-3.5 h-3.5 text-[#14081f]" strokeWidth={3.5} />}
+                        </span>
+                        <span>
+                          <span className="block text-[14px] font-semibold text-[#0a0a0a]">Jeg har flere boliger jeg vurderer å leie ut</span>
+                          <span className="block text-[12.5px] text-[#888] mt-0.5">Rådgiveren tar en samlet vurdering — du trenger ikke fylle inn mer nå.</span>
+                        </span>
+                      </button>
+                    </div>
+                  ) : null}
                 </div>
               )}
 
               {/* STEG 3 — OM DEG (kontaktinformasjon) */}
               {step === 3 && (
                 <div data-testid="owner-step-personal" onBlurCapture={sendPartialLead}>
-                  <h2 className="text-[28px] sm:text-[34px] font-bold tracking-[-0.03em] text-[#0a0a0a] mb-2" style={{ fontFamily: 'var(--font-heading)' }}>Nesten i mål!</h2>
-                  <p className="text-[15px] text-[#888] mb-8">Hvem skal vi sende vurderingen til?</p>
+                  <h2 className="text-[28px] sm:text-[34px] font-bold tracking-[-0.03em] text-[#0a0a0a] mb-2" style={{ fontFamily: 'var(--font-heading)' }}>
+                    {fullscreen && formData.tier === 'selvforvaltning' ? 'Opprett kontoen din' : 'Nesten i mål!'}
+                  </h2>
+                  <p className="text-[15px] text-[#888] mb-8">
+                    {fullscreen && formData.tier === 'selvforvaltning'
+                      ? 'Gratis å opprette — du legger inn boligen og alt annet i portalen etterpå.'
+                      : fullscreen && formData.tier === 'full_forvaltning'
+                        ? 'Hvem skal vi sende tilbudet til?'
+                        : 'Hvem skal vi sende vurderingen til?'}
+                  </p>
                   <div className="space-y-5">
                     <TextInput label="Fullt navn" required error={errors.name} icon={User} value={formData.name} onChange={(v: any) => updateField('name', v)} placeholder="Ola Nordmann" autoComplete="name" autoFocus testId="owner-name-input" />
                     <TextInput label="E-post" required error={errors.email} icon={Mail} value={formData.email} type="email" onChange={(v: any) => updateField('email', v)} placeholder="ola@eksempel.no" autoComplete="email" testId="owner-email-input" />
                     <PhoneInput value={formData.phone} onChange={(v: any) => updateField('phone', v)} error={errors.phone} testId="owner-phone-input" />
                   </div>
                   <p className="text-[11px] text-[#5b6370] mt-5"><span className="text-[#7e22ce]">*</span> Påkrevde felt</p>
+
+                  {/* Fullskjerm, full forvaltning: ledig-dato flyttet hit (ett tema per steg) */}
+                  {fullscreen && formData.tier && formData.tier !== 'selvforvaltning' ? (
+                    <div className="mt-8">{availabilityPicker}</div>
+                  ) : null}
+
+                  {/* Fullskjerm, selvforvaltning: avtalen bekreftes her — siste handling før konto */}
+                  {fullscreen && formData.tier === 'selvforvaltning' ? (
+                    <div className="mt-8 rounded-2xl border border-[#e8dcf7] bg-gradient-to-br from-[#faf7ff] to-[#f5eefc] p-5" data-testid="owner-account-terms">
+                      <p className="text-[13.5px] font-bold text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>Avtale om selvforvaltning</p>
+                      <div className="mt-2.5 space-y-1.5">
+                        {['5 % per utleieforhold — ingen faste kostnader', 'Ingen bindingstid — avslutt når du vil', 'Du godkjenner leietakere og priser selv'].map((b) => (
+                          <div key={b} className="flex items-center gap-2 text-[12.5px] text-[#666]">
+                            <Check className="w-3.5 h-3.5 text-[#7e22ce] shrink-0" strokeWidth={3} /> {b}
+                          </div>
+                        ))}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => { setTermsAccepted((v) => !v); setErrors((prev: any) => ({ ...prev, terms: null })); }}
+                        data-testid="owner-terms-checkbox"
+                        className="mt-4 w-full flex items-start gap-3 text-left group"
+                      >
+                        <span className={`mt-0.5 w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-colors ${termsAccepted ? 'bg-[#d298ff] border-[#d298ff]' : 'bg-white border-[#d9cfe9] group-hover:border-[#d298ff]'}`}>
+                          {termsAccepted && <Check className="w-3.5 h-3.5 text-[#14081f]" strokeWidth={3.5} />}
+                        </span>
+                        <span className="text-[13px] text-[#555] leading-relaxed">
+                          Jeg godtar <a href="/vilkar" target="_blank" rel="noopener noreferrer" onClick={(e: any) => e.stopPropagation()} className="text-[#7e22ce] font-semibold underline underline-offset-2">avtalen om selvforvaltning</a> (5 % per utleieforhold). Avtalen bekreftes digitalt — ingen papirer.
+                        </span>
+                      </button>
+                      {errors.terms && <p className="text-[12px] text-red-500 mt-2" data-testid="owner-terms-error">{errors.terms}</p>}
+                    </div>
+                  ) : null}
 
                   {/* Kompakt oppsummering — erstatter det gamle Bekreft-steget */}
                   <div className="mt-8 rounded-2xl border border-[#eee9e2] bg-[#faf9f7] p-5" data-testid="owner-final-summary">
@@ -1192,14 +1333,15 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
                         <div className="min-w-0">
                           <p className="text-[13.5px] font-semibold text-[#333] truncate">{formData.address || 'Adresse ikke oppgitt'}</p>
                           <p className="text-[12px] text-[#888] mt-0.5">
-                            {[formData.sqm ? `${formData.sqm} m²` : null, formData.property_type || null, formData.bedrooms ? `${formData.bedrooms} sov.` : null].filter(Boolean).join(' · ') || '—'}
+                            {[formData.sqm ? `${formData.sqm} m²` : null, formData.property_type || null, formData.bedrooms ? `${formData.bedrooms} sov.` : null].filter(Boolean).join(' · ') || (fullscreen && formData.tier === 'selvforvaltning' ? 'Boligdetaljene legger du inn i portalen' : '—')}
                             {extraUnits.filter((u: any) => (u.address || '').trim()).length > 0 ? ` · +${extraUnits.filter((u: any) => (u.address || '').trim()).length} eiendom(mer)` : ''}
+                            {multiProperty ? ' · Flere boliger vurderes' : ''}
                           </p>
                           {(formData.registry_owner_name || formData.seksjonsnr || formData.andelsnr) && (
                             <span className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-[#e7f7ee] text-[#16a34a] px-2 py-0.5 text-[11px] font-semibold"><CheckCircle2 className="w-3 h-3" /> Verifisert i registeret</span>
                           )}
                         </div>
-                        <button type="button" onClick={() => { setDir(-1); setStep(1); }} data-testid="owner-edit-property" className="text-[12px] font-semibold text-[#7e22ce] hover:underline shrink-0">Endre</button>
+                        <button type="button" onClick={() => { setDir(-1); if (fullscreen && formData.tier === 'selvforvaltning') { setEntryPhase('address'); } else { setStep(1); } }} data-testid="owner-edit-property" className="text-[12px] font-semibold text-[#7e22ce] hover:underline shrink-0">Endre</button>
                       </div>
                       <div className="flex items-start justify-between gap-3 pt-3 border-t border-[#f0ece6]">
                         <div className="min-w-0">
@@ -1207,10 +1349,10 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
                             {formData.tier === 'selvforvaltning' ? 'Selvforvaltning — 5 % per utleie' : formData.tier === 'full_forvaltning' ? 'Full forvaltning — skreddersydd tilbud' : 'Forvaltning ikke valgt'}
                           </p>
                           <p className="text-[12px] text-[#888] mt-0.5">
-                            {[formData.rental_model ? `Modell: ${formData.rental_model}` : null, formData.availability ? `Ledig ${new Date(formData.availability + 'T12:00:00').toLocaleDateString('nb-NO', { day: 'numeric', month: 'short' })}` : null].filter(Boolean).join(' · ') || '—'}
+                            {[formData.rental_model ? `Modell: ${formData.rental_model}` : null, formData.availability ? `Ledig ${new Date(formData.availability + 'T12:00:00').toLocaleDateString('nb-NO', { day: 'numeric', month: 'short' })}` : null].filter(Boolean).join(' · ') || (formData.tier === 'selvforvaltning' ? 'Ingen bindingstid — avslutt når du vil' : '—')}
                           </p>
                         </div>
-                        <button type="button" onClick={() => { setDir(-1); setStep(5); }} data-testid="owner-edit-goals" className="text-[12px] font-semibold text-[#7e22ce] hover:underline shrink-0">Endre</button>
+                        <button type="button" onClick={() => { setDir(-1); if (fullscreen) { setEntryPhase('tier'); } else { setStep(5); } }} data-testid="owner-edit-goals" className="text-[12px] font-semibold text-[#7e22ce] hover:underline shrink-0">Endre</button>
                       </div>
                     </div>
                   </div>
@@ -1386,46 +1528,7 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
                       </div>
                       {errors.rental_model && <p className="text-[12px] text-red-500 mt-1.5">{errors.rental_model}</p>}
                     </div>
-                    <div>
-                      <Label className="text-[13px] font-semibold text-[#333] mb-2 block">Når er boligen ledig for utleie? <span className="text-[#7e22ce]">*</span></Label>
-                      {/* CRO: hurtigvalg — ingen tvungen kalender. Eksakt dato er valgfritt. */}
-                      <div className="flex flex-wrap gap-2" data-testid="owner-availability-chips">
-                        {[
-                          ['asap', 'Så snart som mulig', 0],
-                          ['1m', 'Innen 1 måned', 30],
-                          ['3m', 'Innen 3 måneder', 90],
-                          ['later', 'Senere / usikker', 180],
-                        ].map(([val, label, days]: any) => {
-                          const selected = availChoice === val;
-                          return (
-                            <button key={val} type="button" data-testid={`owner-availability-${val}`}
-                              onClick={() => {
-                                setAvailChoice(val);
-                                const d = new Date(Date.now() + days * 86400000);
-                                updateField('availability', `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`);
-                                setErrors((prev: any) => ({ ...prev, availability: null }));
-                              }}
-                              className={`h-11 px-4 rounded-full border-2 text-[13.5px] font-semibold transition-all ${selected ? 'border-[#d298ff] bg-[#faf5ff] text-[#0a0a0a]' : 'border-[#eee] bg-white text-[#666] hover:border-[#ddd]'}`}>
-                              {label}
-                            </button>
-                          );
-                        })}
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <button type="button" data-testid="owner-availability-input" className={`h-11 px-4 rounded-full border-2 text-[13.5px] font-semibold transition-all inline-flex items-center gap-2 ${availChoice === 'custom' ? 'border-[#d298ff] bg-[#faf5ff] text-[#0a0a0a]' : 'border-[#eee] bg-white text-[#666] hover:border-[#ddd]'}`}>
-                              <CalendarIcon className="w-4 h-4 shrink-0" />
-                              {availChoice === 'custom' && formData.availability ? format(new Date(formData.availability + 'T12:00:00'), 'd. MMM yyyy', { locale: nb }) : 'Velg dato'}
-                            </button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0 rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.12)] border-0" align="start">
-                            <Calendar mode="single" locale={nb} selected={availChoice === 'custom' && formData.availability ? new Date(formData.availability + 'T12:00:00') : undefined}
-                              onSelect={(d: any) => { if (d) { const y = d.getFullYear(); const m = String(d.getMonth()+1).padStart(2,'0'); const day = String(d.getDate()).padStart(2,'0'); setAvailChoice('custom'); updateField('availability', `${y}-${m}-${day}`); setErrors((prev: any) => ({ ...prev, availability: null })); } }}
-                              disabled={(date: any) => date < new Date()} className="rounded-2xl" />
-                          </PopoverContent>
-                        </Popover>
-                      </div>
-                      {errors.availability && <p className="text-[12px] text-red-500 mt-1.5">{errors.availability}</p>}
-                    </div>
+                    {availabilityPicker}
                     <div>
                       {(showNotes || formData.notes) ? (
                         <>

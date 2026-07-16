@@ -1,7 +1,7 @@
 'use client';
 
 // /ny2 — Premium 2026 editorial-konsept (design-lab B). Bygget etter brukerens
-// referanse-spec, tilpasset DigiHome: norsk copy, lilla #7c3aed som merkefarge,
+// referanse-spec, tilpasset DigiHome: norsk copy, merkelilla #d298ff (ink-tekst på lilla flater),
 // ekte testimonials fra lib/site (én innholdskilde), 30 %-påstanden konsistent.
 // framer-motion: fadeInUp + staggerContainer + AnimatedText (ord-for-ord).
 
@@ -14,7 +14,8 @@ import {
 import { testimonials } from '@/lib/site';
 import { track } from '@/lib/analytics';
 
-const BRAND = '#7c3aed';
+const BRAND = '#d298ff';
+const INK = '#14081f';
 
 const IMGS = {
   hero: 'https://customer-assets-0z36b82j.emergentagent.net/job_a2e68e8c-4f87-418f-b57e-d72a68ad9d32/artifacts/aovxlvrp_image0056.webp',
@@ -100,9 +101,9 @@ export default function Ny2Page() {
             <a href="/leiemarkedet" className="hover:text-white transition-colors">Innsikt</a>
             <a href="/kontakt" className="hover:text-white transition-colors">Kontakt</a>
           </nav>
-          <a href="/bli-utleier/start" data-testid="ny2-nav-cta" className="group inline-flex items-center gap-2.5 text-white text-[13.5px] font-semibold pl-5 pr-1.5 py-1.5 rounded-full transition-transform active:scale-[0.97]" style={{ backgroundColor: BRAND }}>
+          <a href="/bli-utleier/start" data-testid="ny2-nav-cta" className="group inline-flex items-center gap-2.5 text-[13.5px] font-semibold pl-5 pr-1.5 py-1.5 rounded-full transition-transform active:scale-[0.97]" style={{ backgroundColor: BRAND, color: INK }}>
             Book vurdering
-            <span className="w-8 h-8 rounded-full bg-white flex items-center justify-center transition-transform group-hover:translate-x-0.5"><ArrowRight className="w-4 h-4" style={{ color: BRAND }} /></span>
+            <span className="w-8 h-8 rounded-full flex items-center justify-center transition-transform group-hover:translate-x-0.5" style={{ backgroundColor: INK }}><ArrowRight className="w-4 h-4" style={{ color: BRAND }} /></span>
           </a>
         </div>
       </header>
@@ -122,9 +123,9 @@ export default function Ny2Page() {
               Du lener deg tilbake — vi håndterer alt, og inntekten vokser med opptil 30 %.
             </motion.p>
             <motion.div variants={fadeInUp} className="mt-8">
-              <a href="/bli-utleier/start" data-testid="ny2-hero-cta" className="group inline-flex items-center gap-3 text-white text-[15px] font-semibold pl-7 pr-2 py-2 rounded-full transition-all active:scale-[0.97] hover:shadow-[0_12px_36px_rgba(124,58,237,0.5)]" style={{ backgroundColor: BRAND }}>
+              <a href="/bli-utleier/start" data-testid="ny2-hero-cta" className="group inline-flex items-center gap-3 text-[15px] font-semibold pl-7 pr-2 py-2 rounded-full transition-all active:scale-[0.97] hover:shadow-[0_12px_36px_rgba(210,152,255,0.55)]" style={{ backgroundColor: BRAND, color: INK }}>
                 Utforsk mulighetene
-                <span className="w-10 h-10 rounded-full bg-white flex items-center justify-center transition-transform group-hover:translate-x-0.5"><ArrowRight className="w-4.5 h-4.5 w-[18px] h-[18px]" style={{ color: BRAND }} /></span>
+                <span className="w-10 h-10 rounded-full flex items-center justify-center transition-transform group-hover:translate-x-0.5" style={{ backgroundColor: INK }}><ArrowRight className="w-[18px] h-[18px]" style={{ color: BRAND }} /></span>
               </a>
             </motion.div>
           </motion.div>
@@ -133,7 +134,7 @@ export default function Ny2Page() {
           <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.35, ease: [0.16, 1, 0.3, 1] }} className="w-full lg:w-[400px] bg-white/10 backdrop-blur-xl border border-white/20 p-3 rounded-3xl" data-testid="ny2-glass-card">
             <div className="relative rounded-2xl overflow-hidden">
               <img src={IMGS.card} alt="Varm nordisk stue — forvaltet av DigiHome" className="w-full h-48 md:h-56 object-cover" />
-              <a href="/bli-utleier/start" aria-label="Se mer" className="absolute top-3 right-3 w-9 h-9 rounded-full flex items-center justify-center transition-transform hover:scale-105" style={{ backgroundColor: BRAND }}><ArrowRight className="w-4 h-4 text-white" /></a>
+              <a href="/bli-utleier/start" aria-label="Se mer" className="absolute top-3 right-3 w-9 h-9 rounded-full flex items-center justify-center transition-transform hover:scale-105" style={{ backgroundColor: BRAND }}><ArrowRight className="w-4 h-4" style={{ color: INK }} /></a>
             </div>
             <p className="text-white text-[15.5px] font-medium leading-snug px-2 pb-2 pt-4">Opplev den perfekte balansen mellom stil, komfort og lønnsomhet.</p>
             <div className="flex gap-1.5 px-2 pb-2">
@@ -231,7 +232,7 @@ export default function Ny2Page() {
             </div>
             <a href="/leiemarkedet" data-testid="ny2-featured-cta" className="group inline-flex items-center gap-3 w-fit bg-[#e4e4e4] text-zinc-900 text-[14px] font-semibold pl-6 pr-2 py-2 rounded-full transition-transform active:scale-[0.97]">
               Se leiemarkedet
-              <span className="w-9 h-9 rounded-full flex items-center justify-center transition-transform group-hover:rotate-12" style={{ backgroundColor: BRAND }}><ArrowUpRight className="w-4 h-4 text-white" /></span>
+              <span className="w-9 h-9 rounded-full flex items-center justify-center transition-transform group-hover:rotate-12" style={{ backgroundColor: BRAND }}><ArrowUpRight className="w-4 h-4" style={{ color: INK }} /></span>
             </a>
           </div>
           <div className="relative flex-1 min-h-[400px] lg:min-h-full">

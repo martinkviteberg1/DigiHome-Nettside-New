@@ -55,20 +55,20 @@ export default function KontaktForm() {
       <div className="grid sm:grid-cols-2 gap-4">
         <div>
           <label className="block text-[12.5px] font-semibold text-[#666] mb-1.5">Navn *</label>
-          <input value={form.name} onChange={set('name')} required placeholder="Ditt navn" className="w-full h-12 px-4 rounded-xl border border-[#e6e3df] bg-[#fdfcfb] outline-none focus:border-[#cf97fc] focus:shadow-[0_0_0_4px_rgba(207,151,252,0.15)] focus-visible:outline-none text-[15px] transition-colors" data-testid="kontakt-name" />
+          <input value={form.name} onChange={set('name')} required placeholder="Ditt navn" className="w-full h-12 px-4 rounded-xl border border-[#e6e3df] bg-[#fdfcfb] outline-none focus:border-[#d298ff] focus:shadow-[0_0_0_4px_rgba(210,152,255,0.15)] focus-visible:outline-none text-[15px] transition-colors" data-testid="kontakt-name" />
         </div>
         <div>
           <label className="block text-[12.5px] font-semibold text-[#666] mb-1.5">Telefon</label>
-          <input value={form.phone} onChange={set('phone')} inputMode="tel" placeholder="+47 …" className="w-full h-12 px-4 rounded-xl border border-[#e6e3df] bg-[#fdfcfb] outline-none focus:border-[#cf97fc] focus:shadow-[0_0_0_4px_rgba(207,151,252,0.15)] focus-visible:outline-none text-[15px] transition-colors" data-testid="kontakt-phone" />
+          <input value={form.phone} onChange={set('phone')} inputMode="tel" placeholder="+47 …" className="w-full h-12 px-4 rounded-xl border border-[#e6e3df] bg-[#fdfcfb] outline-none focus:border-[#d298ff] focus:shadow-[0_0_0_4px_rgba(210,152,255,0.15)] focus-visible:outline-none text-[15px] transition-colors" data-testid="kontakt-phone" />
         </div>
       </div>
       <div>
         <label className="block text-[12.5px] font-semibold text-[#666] mb-1.5">E-post</label>
-        <input value={form.email} onChange={set('email')} type="email" inputMode="email" placeholder="din@epost.no" className="w-full h-12 px-4 rounded-xl border border-[#e6e3df] bg-[#fdfcfb] outline-none focus:border-[#cf97fc] focus:shadow-[0_0_0_4px_rgba(207,151,252,0.15)] focus-visible:outline-none text-[15px] transition-colors" data-testid="kontakt-email" />
+        <input value={form.email} onChange={set('email')} type="email" inputMode="email" placeholder="din@epost.no" className="w-full h-12 px-4 rounded-xl border border-[#e6e3df] bg-[#fdfcfb] outline-none focus:border-[#d298ff] focus:shadow-[0_0_0_4px_rgba(210,152,255,0.15)] focus-visible:outline-none text-[15px] transition-colors" data-testid="kontakt-email" />
       </div>
       <div>
         <label className="block text-[12.5px] font-semibold text-[#666] mb-1.5">Melding</label>
-        <textarea value={form.message} onChange={set('message')} rows={4} placeholder="Hva kan vi hjelpe deg med?" className="w-full px-4 py-3 rounded-xl border border-[#e6e3df] bg-[#fdfcfb] outline-none focus:border-[#cf97fc] focus:shadow-[0_0_0_4px_rgba(207,151,252,0.15)] focus-visible:outline-none text-[15px] resize-none transition-colors" data-testid="kontakt-message" />
+        <textarea value={form.message} onChange={set('message')} rows={4} placeholder="Hva kan vi hjelpe deg med?" className="w-full px-4 py-3 rounded-xl border border-[#e6e3df] bg-[#fdfcfb] outline-none focus:border-[#d298ff] focus:shadow-[0_0_0_4px_rgba(210,152,255,0.15)] focus-visible:outline-none text-[15px] resize-none transition-colors" data-testid="kontakt-message" />
       </div>
       {status === 'error' && <p className="text-[13px] text-rose-500">Fyll inn navn og enten e-post eller telefon.</p>}
       <button type="submit" disabled={status === 'sending'} data-testid="kontakt-submit" className="w-full h-13 py-3.5 rounded-full bg-[#0a0a0a] hover:bg-black text-white font-semibold text-[15px] flex items-center justify-center gap-2 active:scale-[0.99] transition-all shadow-[0_6px_20px_-8px_rgba(0,0,0,0.5)] disabled:opacity-60">

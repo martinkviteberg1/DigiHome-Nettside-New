@@ -235,15 +235,15 @@ export function PropertyRegistryPicker({
   if (state === 'loading') {
     if (!renderSingle) return null;
     return (
-      <div className="mt-5 rounded-[24px] border border-[#efe6fb] bg-white p-8 sm:p-10 text-center shadow-[0_8px_40px_-24px_rgba(124,58,237,0.35)]" data-testid="registry-loading">
+      <div className="mt-5 rounded-[24px] border border-[#efe6fb] bg-white p-8 sm:p-10 text-center shadow-[0_8px_40px_-24px_rgba(210,152,255,0.35)]" data-testid="registry-loading">
         <div className="mx-auto w-14 h-14 rounded-2xl bg-[#faf5ff] flex items-center justify-center mb-5">
-          <Loader2 className="w-6 h-6 text-[#7c3aed] animate-spin" />
+          <Loader2 className="w-6 h-6 text-[#7e22ce] animate-spin" />
         </div>
         <h3 className="text-[19px] font-bold text-[#0a0a0a] tracking-[-0.01em]" style={{ fontFamily: 'var(--font-heading)' }}>Søker i Eiendomsregisteret</h3>
         <p className="text-[14px] text-[#888] mt-2 max-w-[34ch] mx-auto leading-relaxed">Vi henter informasjon om eiendommen fra offentlige registre …</p>
         {addressLabel && (
           <div className="mt-5 inline-flex items-center gap-2 text-[13px] text-[#5b6370] bg-[#f8f6fc] rounded-full px-3.5 py-1.5">
-            <Building2 className="w-3.5 h-3.5 text-[#cf97fc]" /> {addressLabel}
+            <Building2 className="w-3.5 h-3.5 text-[#d298ff]" /> {addressLabel}
           </div>
         )}
       </div>
@@ -263,7 +263,7 @@ export function PropertyRegistryPicker({
             <span className="font-semibold text-[#0a0a0a]">{kindLabel === 'andel' ? 'Andel' : 'Seksjon'} {selected}</span>
             <span className="text-[#5b6370]"> — hentet fra annonsen{ow ? ` · ${ow.navn}` : ''}</span>
           </div>
-          <button type="button" onClick={() => setOverrideOpen(true)} className="shrink-0 text-[12.5px] font-semibold text-[#7c3aed] hover:text-[#8a45d6]">Endre</button>
+          <button type="button" onClick={() => setOverrideOpen(true)} className="shrink-0 text-[12.5px] font-semibold text-[#7e22ce] hover:text-[#8a45d6]">Endre</button>
         </div>
       );
     }
@@ -271,7 +271,7 @@ export function PropertyRegistryPicker({
     return (
       <div className="mt-3 text-center" data-testid="registry-auto-selected">
         <button type="button" onClick={() => setOverrideOpen(true)}
-          className="text-[12.5px] text-[#716b63] hover:text-[#7c3aed] transition-colors underline underline-offset-2 decoration-[#e0d8ee]">
+          className="text-[12.5px] text-[#716b63] hover:text-[#7e22ce] transition-colors underline underline-offset-2 decoration-[#e0d8ee]">
           Feil {kindLabel}? Velg en annen
         </button>
       </div>
@@ -283,7 +283,7 @@ export function PropertyRegistryPicker({
     const kindLabel = state === 'borettslag' ? 'andel' : 'seksjon';
     const selectedOwner = selected ? owners[selected] : null;
     return (
-      <div className="mt-5 rounded-[24px] border border-[#efe6fb] bg-white overflow-hidden shadow-[0_8px_40px_-24px_rgba(124,58,237,0.35)]" data-testid={`registry-${state}`}>
+      <div className="mt-5 rounded-[24px] border border-[#efe6fb] bg-white overflow-hidden shadow-[0_8px_40px_-24px_rgba(210,152,255,0.35)]" data-testid={`registry-${state}`}>
         {/* Header */}
         <div className="px-5 sm:px-6 pt-5 pb-4 border-b border-[#f3eefb]">
           <div className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-[#16a34a] mb-2.5">
@@ -299,7 +299,7 @@ export function PropertyRegistryPicker({
         {/* Søk */}
         {items.length > 4 && (
           <div className="px-5 sm:px-6 pt-4">
-            <div className="flex items-center gap-2.5 rounded-2xl border border-[#e9e4f2] bg-[#fbfaff] px-4 h-12 focus-within:border-[#cf97fc] transition-colors">
+            <div className="flex items-center gap-2.5 rounded-2xl border border-[#e9e4f2] bg-[#fbfaff] px-4 h-12 focus-within:border-[#d298ff] transition-colors">
               <Search className="w-4 h-4 text-[#78726a] shrink-0" />
               <input
                 value={search} onChange={(e) => setSearch(e.target.value)}
@@ -326,9 +326,9 @@ export function PropertyRegistryPicker({
                     <button
                       key={it.key} type="button" onClick={() => handleSelect(it.key)}
                       data-testid={`registry-unit-${it.key}`}
-                      className={`w-full flex items-center gap-3.5 p-3.5 rounded-2xl border text-left transition-all duration-150 ${active ? 'border-[#cf97fc] bg-[#faf5ff] shadow-[0_2px_14px_-6px_rgba(207,151,252,0.5)]' : 'border-[#eee] bg-white hover:border-[#e0d4f0] hover:bg-[#fcfbfe]'}`}
+                      className={`w-full flex items-center gap-3.5 p-3.5 rounded-2xl border text-left transition-all duration-150 ${active ? 'border-[#d298ff] bg-[#faf5ff] shadow-[0_2px_14px_-6px_rgba(210,152,255,0.5)]' : 'border-[#eee] bg-white hover:border-[#e0d4f0] hover:bg-[#fcfbfe]'}`}
                     >
-                      <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-colors ${active ? 'bg-[#cf97fc]' : 'bg-[#f5f2fb]'}`}>
+                      <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-colors ${active ? 'bg-[#d298ff]' : 'bg-[#f5f2fb]'}`}>
                         <Home className={`w-[18px] h-[18px] ${active ? 'text-white' : 'text-[#b794e8]'}`} />
                       </div>
                       <div className="min-w-0 flex-1">
@@ -342,7 +342,7 @@ export function PropertyRegistryPicker({
                           <span className="mt-0.5 block text-[12.5px] text-[#bbb]">Hjemmelshaver ikke tilgjengelig</span>
                         )}
                       </div>
-                      <span className={`w-[22px] h-[22px] rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${active ? 'border-[#cf97fc] bg-[#cf97fc]' : 'border-[#dcdce0]'}`}>
+                      <span className={`w-[22px] h-[22px] rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${active ? 'border-[#d298ff] bg-[#d298ff]' : 'border-[#dcdce0]'}`}>
                         {active && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
                       </span>
                     </button>
@@ -368,7 +368,7 @@ export function PropertyRegistryPicker({
   if (state === 'single' && lookup) {
     if (!renderSingle) return null;
     return (
-      <div className="mt-5 rounded-[24px] border border-[#efe6fb] bg-white p-5 sm:p-6 shadow-[0_8px_40px_-24px_rgba(124,58,237,0.35)]" data-testid="registry-single">
+      <div className="mt-5 rounded-[24px] border border-[#efe6fb] bg-white p-5 sm:p-6 shadow-[0_8px_40px_-24px_rgba(210,152,255,0.35)]" data-testid="registry-single">
         <div className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-[#16a34a] mb-3">
           <span className="w-5 h-5 rounded-full bg-[#e7f7ee] flex items-center justify-center"><Check className="w-3 h-3" strokeWidth={3} /></span>
           Verifisert i Eiendomsregisteret

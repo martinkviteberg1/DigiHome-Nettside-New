@@ -10,7 +10,7 @@ export function FormField({ label, required, error, icon: Icon, children, classN
     <div className={className}>
       <Label className="text-[13px] font-semibold text-[#333] flex items-center gap-1">
         {label}
-        {required && <span className="text-[#cf97fc]">*</span>}
+        {required && <span className="text-[#d298ff]">*</span>}
       </Label>
       <div className="relative mt-2">
         {Icon && <Icon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#ccc] pointer-events-none" />}
@@ -25,7 +25,7 @@ export function FormField({ label, required, error, icon: Icon, children, classN
 export function PhoneInput({ value, onChange, error, testId }: any) {
   return (
     <FormField label="Telefon" required error={error}>
-      <div className={`flex items-center h-[52px] rounded-2xl border bg-white overflow-hidden transition-all duration-200 focus-within:ring-2 focus-within:ring-[#cf97fc] ${error ? 'border-red-400 ring-2 ring-red-400' : 'border-[#e0e0e0]'}`}>
+      <div className={`flex items-center h-[52px] rounded-2xl border bg-white overflow-hidden transition-all duration-200 focus-within:ring-2 focus-within:ring-[#d298ff] ${error ? 'border-red-400 ring-2 ring-red-400' : 'border-[#e0e0e0]'}`}>
         <div className="flex items-center gap-1.5 pl-4 pr-3 h-full border-r border-[#e8e8e8] bg-[#fafafa] shrink-0 select-none">
           <span className="text-[14px]">🇳🇴</span>
           <span className="text-[14px] text-[#555] font-medium">+47</span>
@@ -55,7 +55,7 @@ export function DatePickerInput({ label, value, onChange, placeholder, testId, r
         type="date"
         value={value}
         onChange={(e: any) => onChange(e.target.value)}
-        className="w-full h-[52px] px-4 text-[15px] rounded-2xl border border-[#e0e0e0] bg-white outline-none focus:ring-2 focus:ring-[#cf97fc] focus:border-transparent transition-all duration-200 text-[#333] placeholder:text-[#737373]"
+        className="w-full h-[52px] px-4 text-[15px] rounded-2xl border border-[#e0e0e0] bg-white outline-none focus:ring-2 focus:ring-[#d298ff] focus:border-transparent transition-all duration-200 text-[#333] placeholder:text-[#737373]"
         data-testid={testId}
         min={new Date().toISOString().split('T')[0]}
       />
@@ -79,7 +79,7 @@ export function TextInput({ label, required, error, icon: Icon, value, onChange,
         autoComplete={autoComplete}
         maxLength={maxLength}
         inputMode={inputMode}
-        className={`h-[52px] ${Icon ? 'pl-11' : 'pl-4'} rounded-2xl border-[#e0e0e0] text-[15px] focus-visible:ring-[#cf97fc] bg-white ${error ? 'ring-2 ring-red-400' : ''}`}
+        className={`h-[52px] ${Icon ? 'pl-11' : 'pl-4'} rounded-2xl border-[#e0e0e0] text-[15px] focus-visible:ring-[#d298ff] bg-white ${error ? 'ring-2 ring-red-400' : ''}`}
         data-testid={testId}
       />
     </FormField>
@@ -101,14 +101,14 @@ export function BudgetInput({ minValue, maxValue, onMinChange, onMaxChange, minT
         <div>
           <div className="relative">
             <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[13px] text-[#737373] font-medium pointer-events-none">kr</span>
-            <Input type="text" inputMode="numeric" value={formatBudget(minValue)} onChange={(e: any) => onMinChange(parseBudget(e.target.value))} placeholder="8 000" className="h-[52px] pl-10 rounded-2xl border-[#e0e0e0] text-[15px] focus-visible:ring-[#cf97fc] bg-white" data-testid={minTestId} />
+            <Input type="text" inputMode="numeric" value={formatBudget(minValue)} onChange={(e: any) => onMinChange(parseBudget(e.target.value))} placeholder="8 000" className="h-[52px] pl-10 rounded-2xl border-[#e0e0e0] text-[15px] focus-visible:ring-[#d298ff] bg-white" data-testid={minTestId} />
           </div>
           <p className="text-[11px] text-[#737373] mt-1 ml-1">Minimum</p>
         </div>
         <div>
           <div className="relative">
             <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[13px] text-[#737373] font-medium pointer-events-none">kr</span>
-            <Input type="text" inputMode="numeric" value={formatBudget(maxValue)} onChange={(e: any) => onMaxChange(parseBudget(e.target.value))} placeholder="18 000" className="h-[52px] pl-10 rounded-2xl border-[#e0e0e0] text-[15px] focus-visible:ring-[#cf97fc] bg-white" data-testid={maxTestId} />
+            <Input type="text" inputMode="numeric" value={formatBudget(maxValue)} onChange={(e: any) => onMaxChange(parseBudget(e.target.value))} placeholder="18 000" className="h-[52px] pl-10 rounded-2xl border-[#e0e0e0] text-[15px] focus-visible:ring-[#d298ff] bg-white" data-testid={maxTestId} />
           </div>
           <p className="text-[11px] text-[#737373] mt-1 ml-1">Maksimum</p>
         </div>
@@ -126,7 +126,7 @@ export function PillSelector({ options, selected, onToggle, multi = false, testI
         return (
           <button key={opt} type="button" onClick={() => onToggle(opt)}
             data-testid={`${testIdPrefix}-${opt.toLowerCase().replace(/[åæø\s]/g, '-')}`}
-            className={`px-4 py-2.5 rounded-full text-[13px] font-medium border transition-all duration-200 ${isSelected ? 'border-[#cf97fc] bg-[#faf5ff] text-[#8b5fc0]' : 'border-[#e5e5e5] bg-white text-[#666] hover:border-[#ccc] hover:bg-[#fafafa]'}`}>
+            className={`px-4 py-2.5 rounded-full text-[13px] font-medium border transition-all duration-200 ${isSelected ? 'border-[#d298ff] bg-[#faf5ff] text-[#8b5fc0]' : 'border-[#e5e5e5] bg-white text-[#666] hover:border-[#ccc] hover:bg-[#fafafa]'}`}>
             {isSelected && <CheckMark />}
             {opt}
           </button>
@@ -152,7 +152,7 @@ export function NumberSelector({ options, selected, onChange, testIdPrefix }: an
         const isSelected = selected === n;
         return (
           <button key={n} type="button" onClick={() => onChange(n)} data-testid={`${testIdPrefix}-${n}`}
-            className={`w-14 h-14 rounded-2xl text-[15px] font-semibold border-2 transition-all duration-200 active:scale-[0.93] ${isSelected ? 'border-[#cf97fc] bg-[#faf5ff] text-[#8b5fc0] shadow-[0_4px_16px_-6px_rgba(207,151,252,0.6)] -translate-y-0.5' : 'border-[#eee] bg-white text-[#888] hover:border-[#ddd] hover:-translate-y-0.5'}`}>{n}</button>
+            className={`w-14 h-14 rounded-2xl text-[15px] font-semibold border-2 transition-all duration-200 active:scale-[0.93] ${isSelected ? 'border-[#d298ff] bg-[#faf5ff] text-[#8b5fc0] shadow-[0_4px_16px_-6px_rgba(210,152,255,0.6)] -translate-y-0.5' : 'border-[#eee] bg-white text-[#888] hover:border-[#ddd] hover:-translate-y-0.5'}`}>{n}</button>
         );
       })}
     </div>
@@ -168,8 +168,8 @@ export function IconCardSelector({ options, selected, onChange, testIdPrefix }: 
         const isSelected = selected === type.value;
         return (
           <button key={type.value} type="button" onClick={() => onChange(isSelected ? '' : type.value)} data-testid={`${testIdPrefix}-${type.value}`}
-            className={`flex flex-col items-center gap-2 py-4 px-2 rounded-2xl border-2 transition-all duration-200 active:scale-[0.95] ${isSelected ? 'border-[#cf97fc] bg-[#faf5ff] shadow-[0_4px_18px_-6px_rgba(207,151,252,0.55)] -translate-y-0.5' : 'border-[#eee] bg-white hover:border-[#ddd] hover:bg-[#fafafa] hover:-translate-y-0.5'}`}>
-            <Icon className={`w-5 h-5 transition-colors ${isSelected ? 'text-[#cf97fc]' : 'text-[#737373]'}`} strokeWidth={1.8} />
+            className={`flex flex-col items-center gap-2 py-4 px-2 rounded-2xl border-2 transition-all duration-200 active:scale-[0.95] ${isSelected ? 'border-[#d298ff] bg-[#faf5ff] shadow-[0_4px_18px_-6px_rgba(210,152,255,0.55)] -translate-y-0.5' : 'border-[#eee] bg-white hover:border-[#ddd] hover:bg-[#fafafa] hover:-translate-y-0.5'}`}>
+            <Icon className={`w-5 h-5 transition-colors ${isSelected ? 'text-[#d298ff]' : 'text-[#737373]'}`} strokeWidth={1.8} />
             <span className={`text-[12px] font-medium ${isSelected ? 'text-[#8b5fc0]' : 'text-[#888]'}`}>{type.label}</span>
           </button>
         );
@@ -184,7 +184,7 @@ export function ToggleChips({ options, values, onChange }: any) {
     <div className="flex flex-wrap gap-3">
       {options.map((toggle: any) => (
         <button key={toggle.key} type="button" onClick={() => onChange(toggle.key, !values[toggle.key])} data-testid={`toggle-${toggle.key}`}
-          className={`flex items-center gap-2 px-5 py-3 rounded-2xl border-2 text-[13px] font-medium transition-all duration-200 ${values[toggle.key] ? 'border-[#cf97fc] bg-[#faf5ff] text-[#8b5fc0]' : 'border-[#eee] bg-white text-[#888] hover:border-[#ddd]'}`}>
+          className={`flex items-center gap-2 px-5 py-3 rounded-2xl border-2 text-[13px] font-medium transition-all duration-200 ${values[toggle.key] ? 'border-[#d298ff] bg-[#faf5ff] text-[#8b5fc0]' : 'border-[#eee] bg-white text-[#888] hover:border-[#ddd]'}`}>
           <span>{toggle.emoji}</span> {toggle.label}
         </button>
       ))}
@@ -198,7 +198,7 @@ export function SummaryCard({ title, onEdit, testId, children }: any) {
     <div className="bg-white rounded-2xl border border-[#eee] p-5 hover:border-[#ddd] transition-colors duration-200">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-[12px] font-semibold text-[#78726a] uppercase tracking-[0.06em]">{title}</h3>
-        <button onClick={onEdit} className="text-[12px] text-[#cf97fc] font-semibold hover:underline" data-testid={testId}>Endre</button>
+        <button onClick={onEdit} className="text-[12px] text-[#d298ff] font-semibold hover:underline" data-testid={testId}>Endre</button>
       </div>
       <div className="space-y-1.5">{children}</div>
     </div>

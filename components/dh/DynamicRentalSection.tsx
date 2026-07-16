@@ -39,7 +39,7 @@ export default function DynamicRentalSection() {
 
   return (
     <section className="py-24 sm:py-32 relative overflow-hidden" style={{ backgroundColor: '#fdfcfb' }} data-testid="dynamic-rental-section">
-      <div aria-hidden className="pointer-events-none absolute -top-24 right-[4%] w-[700px] h-[560px] rounded-full" style={{ background: 'radial-gradient(circle, rgba(207,151,252,0.08) 0%, transparent 65%)' }} />
+      <div aria-hidden className="pointer-events-none absolute -top-24 right-[4%] w-[700px] h-[560px] rounded-full" style={{ background: 'radial-gradient(circle, rgba(210,152,255,0.08) 0%, transparent 65%)' }} />
       <div className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16 relative">
         <div className="grid lg:grid-cols-2 gap-16 lg:gap-24 items-center">
 
@@ -156,7 +156,7 @@ export default function DynamicRentalSection() {
                 <p className="text-[18px] font-bold text-[#0a0a0a] mt-0.5" style={{ fontFamily: 'var(--font-heading)' }}>234 000 kr</p>
               </div>
               <div className="ml-auto">
-                <p className="text-[28px] font-bold leading-none tracking-tight" style={{ fontFamily: 'var(--font-heading)', background: 'linear-gradient(135deg, #7c3aed 0%, #cf97fc 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>+30%</p>
+                <p className="text-[28px] font-bold leading-none tracking-tight" style={{ fontFamily: 'var(--font-heading)', background: 'linear-gradient(135deg, #7e22ce 0%, #d298ff 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>+30%</p>
                 <p className="text-[11px] text-[#737373] mt-0.5">&#229;rlig merinntekt</p>
               </div>
             </motion.div>
