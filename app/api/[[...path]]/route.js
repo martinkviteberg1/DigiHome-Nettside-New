@@ -333,7 +333,7 @@ function digiHomeTarget() {
     url: normalizeCrmUrl(
       process.env.DIGIHOME_API_URL_TEST ||
       process.env.DIGIHOME_API_URL ||
-      'https://tenant-hub-210.preview.emergentagent.com'
+      'https://bli-utleier-redesign.preview.emergentagent.com'
     ),
     key: process.env.DIGIHOME_API_KEY_TEST || process.env.DIGIHOME_API_KEY || '',
     env: 'test',

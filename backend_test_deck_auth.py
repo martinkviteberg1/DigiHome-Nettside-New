@@ -9,7 +9,7 @@ import json
 import sys
 
 # Base URL from environment
-BASE_URL = "https://hero-premiere-4.preview.emergentagent.com/api"
+BASE_URL = "https://bli-utleier-redesign.preview.emergentagent.com/api"
 CORRECT_PASSWORD = "DigiHome2026##"
 
 def test_deck_auth():

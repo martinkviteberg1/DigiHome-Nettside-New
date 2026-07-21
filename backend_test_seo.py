@@ -15,7 +15,7 @@ import sys
 import time
 
 # Configuration
-BASE_URL = "https://hero-premiere-4.preview.emergentagent.com/api"
+BASE_URL = "https://bli-utleier-redesign.preview.emergentagent.com/api"
 ADMIN_KEY = "dh_admin_b3Kx92Qz7Lm4"
 TIMEOUT = 120  # 120s for AEO/tech tests
 
@@ -545,9 +545,9 @@ def test_regression():
         print(f"❌ FAIL: {e}")
     
     # 9.3: GET {base}/utleiemegler-bergen → 200 with title and FAQPage
-    print("9.3: GET https://hero-premiere-4.preview.emergentagent.com/utleiemegler-bergen → 200")
+    print("9.3: GET https://bli-utleier-redesign.preview.emergentagent.com/utleiemegler-bergen → 200")
     try:
-        r = requests.get("https://hero-premiere-4.preview.emergentagent.com/utleiemegler-bergen", timeout=10)
+        r = requests.get("https://bli-utleier-redesign.preview.emergentagent.com/utleiemegler-bergen", timeout=10)
         if r.status_code == 200:
             html = r.text
             if '<title>Utleiemegler i Bergen' in html and '"@type":"FAQPage"' in html:
@@ -563,9 +563,9 @@ def test_regression():
         print(f"❌ FAIL: {e}")
     
     # 9.4: GET {base}/airbnb-forvaltning-bergen → 200 with FAQPage
-    print("9.4: GET https://hero-premiere-4.preview.emergentagent.com/airbnb-forvaltning-bergen → 200")
+    print("9.4: GET https://bli-utleier-redesign.preview.emergentagent.com/airbnb-forvaltning-bergen → 200")
     try:
-        r = requests.get("https://hero-premiere-4.preview.emergentagent.com/airbnb-forvaltning-bergen", timeout=10)
+        r = requests.get("https://bli-utleier-redesign.preview.emergentagent.com/airbnb-forvaltning-bergen", timeout=10)
         if r.status_code == 200:
             html = r.text
             if '"@type":"FAQPage"' in html:
@@ -579,9 +579,9 @@ def test_regression():
         print(f"❌ FAIL: {e}")
     
     # 9.5: GET {base}/sitemap.xml contains both pages
-    print("9.5: GET https://hero-premiere-4.preview.emergentagent.com/sitemap.xml → contains both pages")
+    print("9.5: GET https://bli-utleier-redesign.preview.emergentagent.com/sitemap.xml → contains both pages")
     try:
-        r = requests.get("https://hero-premiere-4.preview.emergentagent.com/sitemap.xml", timeout=10)
+        r = requests.get("https://bli-utleier-redesign.preview.emergentagent.com/sitemap.xml", timeout=10)
         if r.status_code == 200:
             xml = r.text
             has_utleiemegler = 'utleiemegler-bergen' in xml

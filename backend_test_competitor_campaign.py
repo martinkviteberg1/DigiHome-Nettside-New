@@ -29,7 +29,7 @@ async def test_competitor_campaign():
     """Test competitor campaign endpoints with CRITICAL SAFETY: validateOnly:true ALWAYS"""
     
     # Configuration
-    BASE_URL = os.getenv('NEXT_PUBLIC_BASE_URL', 'https://hero-premiere-4.preview.emergentagent.com')
+    BASE_URL = os.getenv('NEXT_PUBLIC_BASE_URL', 'https://bli-utleier-redesign.preview.emergentagent.com')
     API_BASE = f"{BASE_URL}/api"
     ADMIN_KEY = "dh_admin_b3Kx92Qz7Lm4"
     TIMEOUT = 60  # seconds

@@ -8,7 +8,7 @@ import requests
 import json
 import sys
 
-BASE_URL = "https://hero-premiere-4.preview.emergentagent.com/api"
+BASE_URL = "https://bli-utleier-redesign.preview.emergentagent.com/api"
 
 def test_post_leads_huseier():
     """Test 1: POST /api/leads with rich huseier payload including units array"""

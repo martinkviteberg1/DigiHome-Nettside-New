@@ -9,7 +9,7 @@ CRITICAL SAFETY:
 - DO NOT call campaign/create with validateOnly=false
 - DO NOT create leads
 
-Base URL: https://hero-premiere-4.preview.emergentagent.com/api
+Base URL: https://bli-utleier-redesign.preview.emergentagent.com/api
 Admin key: dh_admin_b3Kx92Qz7Lm4
 Timeout: 30s (native calls hit real Google API ~0.3-2s)
 """
@@ -19,7 +19,7 @@ import json
 import sys
 from datetime import datetime
 
-BASE_URL = "https://hero-premiere-4.preview.emergentagent.com/api"
+BASE_URL = "https://bli-utleier-redesign.preview.emergentagent.com/api"
 ADMIN_KEY = "dh_admin_b3Kx92Qz7Lm4"
 TIMEOUT = 30
 

@@ -8,7 +8,7 @@ import json
 import time
 import os
 
-BASE_URL = "https://hero-premiere-4.preview.emergentagent.com/api"
+BASE_URL = "https://bli-utleier-redesign.preview.emergentagent.com/api"
 ADMIN_KEY = "dh_admin_b3Kx92Qz7Lm4"
 ADS_CRON_SECRET = "dhcron_a086510e5c7b578259dcc1c6d45149d8c46442d4"
 TIMEOUT = 30

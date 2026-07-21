@@ -5,7 +5,7 @@ Tests the two NEW endpoints that power the "actual ads/creatives gallery" in adm
 This is an ADDITIVE change - verify they work and nothing else broke.
 
 ENVIRONMENT:
-- Base URL: https://hero-premiere-4.preview.emergentagent.com/api
+- Base URL: https://bli-utleier-redesign.preview.emergentagent.com/api
 - Admin auth: query param ?key=dh_admin_b3Kx92Qz7Lm4
 - READ-ONLY. Do NOT create leads.
 
@@ -32,7 +32,7 @@ import time
 import sys
 from urllib.parse import quote
 
-BASE_URL = "https://hero-premiere-4.preview.emergentagent.com/api"
+BASE_URL = "https://bli-utleier-redesign.preview.emergentagent.com/api"
 ADMIN_KEY = "dh_admin_b3Kx92Qz7Lm4"
 TIMEOUT = 45  # Allow up to 45s for cold Composio calls
 

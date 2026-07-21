@@ -20,7 +20,7 @@ import httpx
 import sys
 import time
 
-BASE_URL = "https://hero-premiere-4.preview.emergentagent.com/api"
+BASE_URL = "https://bli-utleier-redesign.preview.emergentagent.com/api"
 ADMIN_KEY = "dh_admin_b3Kx92Qz7Lm4"
 TIMEOUT = 30.0  # 30s timeout (endpoint makes real Meta Graph API call ~0.3-1s)
 

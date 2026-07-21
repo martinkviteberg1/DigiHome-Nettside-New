@@ -16,7 +16,7 @@ Versjon: 1.0 · Vedlikeholdes av marketing-agenten. Endringer koordineres i broe
 | Markedsmetrikker (plattform leser) | `GET {MARKETING}/api/admin/marketing-metrics` | bro-token |
 | Suppression/audience (plattform/byrå leser) | `GET {MARKETING}/api/admin/audiences/*` | admin `?key=` |
 
-> `{MARKETING}` = `https://hero-premiere-4.preview.emergentagent.com` (preview) / prod-URL.
+> `{MARKETING}` = `https://bli-utleier-redesign.preview.emergentagent.com` (preview) / prod-URL.
 
 ## 2. Meldingskonvolutt (agent-bro)
 

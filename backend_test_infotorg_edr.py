@@ -17,7 +17,7 @@ import json
 import time
 import sys
 
-BASE_URL = "https://hero-premiere-4.preview.emergentagent.com/api"
+BASE_URL = "https://bli-utleier-redesign.preview.emergentagent.com/api"
 TIMEOUT = 30  # 30 seconds for slow EDR calls
 
 def test_infotorg_lookup_sameie():

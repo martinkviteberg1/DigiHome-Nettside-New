@@ -33,7 +33,7 @@ Content-Type: application/json
 X-Webhook-Secret: <DELT HEMMELIGHET>
 ```
 
-> **Test/preview-miljø:** `https://hero-premiere-4.preview.emergentagent.com/api/webhooks/lead-status`
+> **Test/preview-miljø:** `https://bli-utleier-redesign.preview.emergentagent.com/api/webhooks/lead-status`
 
 ### Autentisering
 - Send headeren **`X-Webhook-Secret`** med den delte hemmeligheten.

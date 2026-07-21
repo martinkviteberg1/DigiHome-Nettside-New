@@ -2,7 +2,7 @@
 """
 KPI Dashboard Backend Test
 Tests the new KPI dashboard endpoints according to the specified test sequence.
-Base URL: https://hero-premiere-4.preview.emergentagent.com/api
+Base URL: https://bli-utleier-redesign.preview.emergentagent.com/api
 Admin key: dh_admin_b3Kx92Qz7Lm4
 Timeout: >= 45s (real Google/Meta ads calls via buildMarketingMetrics)
 """
@@ -11,7 +11,7 @@ import requests
 import json
 import sys
 
-BASE_URL = "https://hero-premiere-4.preview.emergentagent.com/api"
+BASE_URL = "https://bli-utleier-redesign.preview.emergentagent.com/api"
 ADMIN_KEY = "dh_admin_b3Kx92Qz7Lm4"
 TIMEOUT = 60  # 60 seconds to handle real API calls
 

@@ -9,7 +9,7 @@ import time
 import json
 from datetime import datetime, timedelta
 
-BASE_URL = "https://hero-premiere-4.preview.emergentagent.com/api"
+BASE_URL = "https://bli-utleier-redesign.preview.emergentagent.com/api"
 ADMIN_KEY = "dh_admin_b3Kx92Qz7Lm4"
 TIMEOUT = 45  # REAL Composio API calls can take time
 

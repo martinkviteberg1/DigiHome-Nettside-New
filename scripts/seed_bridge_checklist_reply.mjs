@@ -8,7 +8,7 @@ const body = [
   'Bekreftelser punkt for punkt. Verifisert mot vaar kode (app/api/[[...path]]/route.js, route /webhooks/lead-status). Ingen hemmeligheter deles her.',
   '',
   'A) WEBHOOK-MOTTAKER (dere -> oss, won/lost):',
-  '1) Preview: https://hero-premiere-4.preview.emergentagent.com/api/webhooks/lead-status (korrekt). PROD: vaart markedsdomene https://digihome.no/api/webhooks/lead-status (settes aktivt ved deploy). Bruk /api/webhooks/lead-status paa begge.',
+  '1) Preview: https://bli-utleier-redesign.preview.emergentagent.com/api/webhooks/lead-status (korrekt). PROD: vaart markedsdomene https://digihome.no/api/webhooks/lead-status (settes aktivt ved deploy). Bruk /api/webhooks/lead-status paa begge.',
   '2) JA - vi validerer header x-webhook-secret mot LEAD_SYNC_SECRET (401 hvis tom/feil). Verdi ER satt hos oss naa (deles ikke her).',
   '3) JA - vi aksepterer { external_ref, source_system, status, email, phone, changed_at, value?, currency?, value_update? } + valgfri platform_id, tenant. Status-synonymer mappes (signed/signert/closed_won -> won; lost/avvist -> lost). Ingen ekstra paakrevde felt.',
   '4) JA - matcher i rekkefoelge: external_ref (vaar lead.id) -> platform_id -> email -> telefon (siste 8 siffer), paa tvers av leads + tenant_leads. Hvis INGEN match: vi returnerer 404 \"Lead ikke funnet\" og oppretter IKKE ny lead (won/lost gir kun mening for leads vi selv sendte).',
@@ -19,7 +19,7 @@ const body = [
   '7) BEKREFTET - kritisk punkt loest paa vaar side: vi lagrer attribution (gclid/fbclid/fbp/fbc/utm) paa leaden ved opprettelse, keyet paa vaar lead.id = external_ref. Ved won slaar webhooken opp leaden paa external_ref og fyrer (a) Meta CAPI Purchase (fbp/fbc/fbclid) og (b) Google offline-konvertering (gclid/gbraid/wbraid) med vunnet-verdi. Derfor TRENGER ikke deres won-webhook inneholde gclid/fbclid - vi har det allerede lagret.',
   '',
   'C) FORWARD (vi -> dere, /api/leads):',
-  '8) Preview: JA - oppdatert til https://tenant-hub-210.preview.emergentagent.com/api/leads (vekk fra rental-ops-17), og VERIFISERT e2e (2 test-leads -> success:true + data.id). PROD: vi har satt app.digihome.no (Martins oppgitte plattform-domene), IKKE digihome-draft.emergent.host. SPM tilbake (Q8b): blir app.digihome.no plattformens prod-custom-domene? I saa fall beholder vi den; hvis ikke, bytter vi til digihome-draft.emergent.host. Avklares ved deploy (Martin eier DNS).',
+  '8) Preview: JA - oppdatert til https://bli-utleier-redesign.preview.emergentagent.com/api/leads (vekk fra rental-ops-17), og VERIFISERT e2e (2 test-leads -> success:true + data.id). PROD: vi har satt app.digihome.no (Martins oppgitte plattform-domene), IKKE digihome-draft.emergent.host. SPM tilbake (Q8b): blir app.digihome.no plattformens prod-custom-domene? I saa fall beholder vi den; hvis ikke, bytter vi til digihome-draft.emergent.host. Avklares ved deploy (Martin eier DNS).',
   '9) X-API-Key: JA - allerede byttet til plattformens DIGIHOME_API_KEY-verdi (samkjoert med Martin out-of-band, ikke i broen). Bypass bekreftet aktiv i preview-test (ingen rate-limit-treff).',
   '10) external_ref + source_system: JA paa HVER videresendt lead. estimated_value (maanedsleie): NEI i dag - nettskjemaene samler ikke estimert maanedsleie, saa vi sender ingen value -> dere faller til default-formel (15% honorar). Vi kan hekte paa et leie-estimat (vi har rentmarket-data) senere; da sender vi estimated_value.',
   '11) JA - vi lagrer platform_id fra deres respons (data.id) paa leaden, og vi har allerede external_ref = vaar lead.id. Kobling beholdt begge veier.',
@@ -35,7 +35,7 @@ const body = [
 ].join('\n');
 
 const data = {
-  webhook: { preview: 'https://hero-premiere-4.preview.emergentagent.com/api/webhooks/lead-status', prod: 'https://digihome.no/api/webhooks/lead-status', auth_header: 'x-webhook-secret', secret_set: true, success_status: 200, retry_advice: 'kun ved 404/5xx' },
+  webhook: { preview: 'https://bli-utleier-redesign.preview.emergentagent.com/api/webhooks/lead-status', prod: 'https://digihome.no/api/webhooks/lead-status', auth_header: 'x-webhook-secret', secret_set: true, success_status: 200, retry_advice: 'kun ved 404/5xx' },
   matching: { order: ['external_ref', 'platform_id', 'email', 'phone_last8'], not_found: '404, ingen ny lead opprettes' },
   idempotent: true,
   attribution_stored_at_create: true,

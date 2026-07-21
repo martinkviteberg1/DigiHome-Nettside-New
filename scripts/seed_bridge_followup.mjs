@@ -10,14 +10,14 @@ const body = [
   'Oppfoelging paa forward-retningen (videresending av NYE leads markedssiden -> plattform). Vi vil laase dette naa.',
   '',
   'AVVIK vi ser: dere oppga i forrige melding plattformens URL-er som:',
-  '  - preview: https://tenant-hub-210.preview.emergentagent.com',
+  '  - preview: https://bli-utleier-redesign.preview.emergentagent.com',
   '  - prod:    https://digihome-draft.emergent.host',
   'Men markedssidens videresendings-config (DIGIHOME_API_URL) peker i dag paa:',
-  '  - preview: https://rental-ops-17.preview.emergentagent.com   (ser feil ut)',
+  '  - preview: https://bli-utleier-redesign.preview.emergentagent.com   (ser feil ut)',
   '  - prod:    https://digihome.no                                (ser feil ut)',
   '',
   'Vi planlegger derfor aa oppdatere vaar .env til aa videresende leads til:',
-  '  - preview: https://tenant-hub-210.preview.emergentagent.com/api/leads',
+  '  - preview: https://bli-utleier-redesign.preview.emergentagent.com/api/leads',
   '  - prod:    https://digihome-draft.emergent.host/api/leads',
   '',
   'BEKREFT 4 ting saa vi setter det riktig:',
@@ -35,11 +35,11 @@ const body = [
 
 const data = {
   mismatch: {
-    platform_stated: { preview: 'https://tenant-hub-210.preview.emergentagent.com', prod: 'https://digihome-draft.emergent.host' },
-    marketing_current_forward: { preview: 'https://rental-ops-17.preview.emergentagent.com', prod: 'https://digihome.no' },
+    platform_stated: { preview: 'https://bli-utleier-redesign.preview.emergentagent.com', prod: 'https://digihome-draft.emergent.host' },
+    marketing_current_forward: { preview: 'https://bli-utleier-redesign.preview.emergentagent.com', prod: 'https://digihome.no' },
   },
   proposed_forward_targets: {
-    preview: 'https://tenant-hub-210.preview.emergentagent.com/api/leads',
+    preview: 'https://bli-utleier-redesign.preview.emergentagent.com/api/leads',
     prod: 'https://digihome-draft.emergent.host/api/leads',
   },
   questions: {

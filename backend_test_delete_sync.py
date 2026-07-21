@@ -20,7 +20,7 @@ from datetime import datetime
 from pymongo import MongoClient
 
 # Configuration
-BASE_URL = os.getenv('NEXT_PUBLIC_BASE_URL', 'https://hero-premiere-4.preview.emergentagent.com')
+BASE_URL = os.getenv('NEXT_PUBLIC_BASE_URL', 'https://bli-utleier-redesign.preview.emergentagent.com')
 API_URL = f"{BASE_URL}/api"
 ADMIN_KEY = 'dh_admin_b3Kx92Qz7Lm4'
 WEBHOOK_SECRET = 'dhsync_dc0dc1750aff067a4baef7adafc7991f7340eacc44f27036'

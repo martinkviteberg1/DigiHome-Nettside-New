@@ -10,7 +10,7 @@ import sys
 from bs4 import BeautifulSoup
 
 # Base URL from .env
-BASE_URL = "https://hero-premiere-4.preview.emergentagent.com"
+BASE_URL = "https://bli-utleier-redesign.preview.emergentagent.com"
 ADMIN_KEY = "dh_admin_b3Kx92Qz7Lm4"
 
 # Test results

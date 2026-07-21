@@ -20,7 +20,7 @@ GJØR FØLGENDE:
    • Deres PROD (app.digihome.no):
      MARKETING_WEBHOOK_URL=https://digihome.no/api/webhooks/lead-status
      MARKETING_METRICS_BASE_URL=https://digihome.no
-   • Deres PREVIEW: behold https://hero-premiere-4.preview.emergentagent.com (som i dag).
+   • Deres PREVIEW: behold https://bli-utleier-redesign.preview.emergentagent.com (som i dag).
    Regel: prod↔prod, preview↔preview. Samme LEAD_SYNC_SECRET (dhsync_…) som dere allerede har — identisk i begge våre miljøer. Vårt prod-endepunkt er verifisert live (POST uten secret → 401 som forventet).
 
 2) REDEPLOY deres prod etter env-endringen.
@@ -36,7 +36,7 @@ VIKTIG SIDEBESTILLING (samme miljøregel): GET /api/usage/external gir fortsatt 
       kind: 'env_fix_and_reconcile',
       prodWebhook: 'https://digihome.no/api/webhooks/lead-status',
       prodMetricsBase: 'https://digihome.no',
-      previewWebhook: 'https://hero-premiere-4.preview.emergentagent.com/api/webhooks/lead-status',
+      previewWebhook: 'https://bli-utleier-redesign.preview.emergentagent.com/api/webhooks/lead-status',
       rule: 'prod<->prod, preview<->preview',
       reconcile: { target: 'prod', idempotency: 'event_id {lead_id}:{status}', includeWonValues: true },
       also: 'deploy /api/usage/external til deres prod',

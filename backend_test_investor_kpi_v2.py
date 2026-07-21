@@ -5,7 +5,7 @@ Tests ONLY the two new endpoints:
 1. GET /api/admin/kpi (with new fields: momentum, platform, pipelineValue, channels, series.monthly)
 2. GET /api/admin/playbook
 
-Base URL: https://hero-premiere-4.preview.emergentagent.com/api
+Base URL: https://bli-utleier-redesign.preview.emergentagent.com/api
 Admin key: dh_admin_b3Kx92Qz7Lm4
 """
 
@@ -13,7 +13,7 @@ import requests
 import json
 import sys
 
-BASE_URL = "https://hero-premiere-4.preview.emergentagent.com/api"
+BASE_URL = "https://bli-utleier-redesign.preview.emergentagent.com/api"
 ADMIN_KEY = "dh_admin_b3Kx92Qz7Lm4"
 TIMEOUT = 60
 
