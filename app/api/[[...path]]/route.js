@@ -739,10 +739,10 @@ async function fetchFinnPreview(rawUrl) {
   const text = decodeEntities(htmlStr.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' '));
   const num = (re) => { const m = re.exec(text); return m ? m[1].replace(/\s/g, '') : ''; };
 
-  const bedrooms = num(/Soverom\s+(\d+)/);
-  const sqm = num(/Prim[æa]rrom\s+(\d{1,4})\s*m/) || num(/Bruksareal\s+(\d{1,4})\s*m/) || num(/Bruttoareal\s+(\d{1,4})\s*m/);
-  const rent = num(/M[åa]nedsleie\s+([\d\s]{2,9}?)\s*kr/);
-  const ptRaw = (/Boligtype\s+([A-Za-zÆØÅæøå]+)/.exec(text) || [])[1] || '';
+  const bedrooms = num(/Soverom\s*(\d+)/);
+  const sqm = num(/Internt bruksareal\s*(\d{1,4})\s*m/i) || num(/Prim[æa]rrom\s*(\d{1,4})\s*m/i) || num(/Bruksareal\s*(\d{1,4})\s*m/i) || num(/Bruttoareal\s*(\d{1,4})\s*m/i);
+  const rent = num(/M[åa]nedsleie\s*([\d\s]{2,9}?)\s*kr/i);
+  const ptRaw = (/Boligtype\s*([A-Za-zÆØÅæøå]+)/i.exec(text) || [])[1] || '';
   const propertyType = mapFinnPropertyType(ptRaw);
   const kind = /\/lettings\//.test(key) || rent ? 'leie' : (/\/homes\//.test(key) ? 'salg' : '');
 
@@ -760,24 +760,38 @@ async function fetchFinnPreview(rawUrl) {
   const matrikkel = (kommunenr && gaardsnr && bruksnr)
     ? { kommunenr, gaardsnr, bruksnr, seksjonsnr: seksjonsnr || '', festenr: festenr || '', andelsnr: andelsnr || '' }
     : null;
-  // Ekte gateadresse ligger i kartlenken (data-testid="map-link"); fall tilbake til og:title.
+  // Ekte gateadresse ligger i kartlenken. Noen FINN-annonser skjuler gaten og
+  // viser bare «Kart, 5254 Sandsli» — det er en lokasjon, aldri en adresse.
   let address = '';
   const am = /"([^"]{5,120}?,\s*\d{4}\s[^"]{1,60}?)"\s+data-testid="map-link"/i.exec(htmlStr)
           || /data-testid="map-link"[^>]*?(?:title|aria-label)="([^"]{5,120})"/i.exec(htmlStr);
   if (am) address = decodeEntities(am[1]).trim();
-  // Strip evt. «Åpne kart for …»/«Vis kart …»-prefiks fra aria-label.
   if (address) address = address.replace(/^(åpne|vis|se)\s+(i\s+)?kart(et)?\s*(for\s+)?/i, '').trim();
-  if (!address) address = (title || '').replace(/\s*[-–|]\s*FINN.*$/i, '').trim();
+  if (/^kart\s*,/i.test(address) || !/\d/.test((address.split(',')[0] || '').trim())) address = '';
+
   let postalCode = '';
-  const pm = /,\s*(\d{4})\s+\S/.exec(address);
-  if (pm) postalCode = pm[1];
+  let city = '';
+  const fullPm = /,\s*(\d{4})\s+([A-Za-zÆØÅæøåÉé .'-]{2,60})/.exec(address);
+  if (fullPm) {
+    postalCode = fullPm[1];
+    city = fullPm[2].trim();
+  } else {
+    const loc = /Kart\s*,?\s*(\d{4})\s+([A-Za-zÆØÅæøåÉé .'-]{2,40}?)(?=\s+(?:M[åa]nedsleie|Nøkkelinfo|Internt|Prim[æa]rrom|Boligtype|Soverom))/i.exec(text);
+    if (loc) { postalCode = loc[1]; city = loc[2].trim(); }
+  }
+  let finnCode = '';
+  try {
+    const parsed = new URL(key);
+    finnCode = parsed.searchParams.get('finnkode') || (parsed.pathname.match(/\b(\d{8,10})\b/) || [])[1] || '';
+  } catch (e) { /* URL er allerede validert av endepunktet */ }
 
   const data = {
     ok: !!title,
-    finnUrl: key, title, image, description, kind,
+    finnUrl: key, finnCode, title, image, description, kind,
     propertyType, propertyTypeRaw: ptRaw,
     bedrooms: bedrooms || '', sqm: sqm || '', rent: rent || '',
-    matrikkel, address, postalCode,
+    matrikkel, address, postalCode, city,
+    addressHidden: !address && !!(postalCode || city),
   };
   if (data.ok) {
     _finnCache.set(key, { at: Date.now(), data });
@@ -1732,12 +1746,30 @@ async function handleRoute(request, { params }) {
       const toNum = (v) => (v === null || v === undefined || v === '' ? null : Number(v));
       const _attr = sanitizeAttribution(body.attribution);
       const _cls = classifyLeadSource(_attr, { manualHint: /manuell|manual|telefon|crm|admin/i.test((body.source || '')) });
+      // Defensiv FINN-normalisering: en 8–10-sifret kode er aldri en gateadresse.
+      // Eldre klienter kunne sende koden i address-feltet; bevar den som klikkbar
+      // FINN-referanse og la adressen være tom dersom annonsen skjuler gaten.
+      const rawAddress = (body.address || '').toString().trim();
+      const bareFinnCode = (/^(\d{8,10})$/.exec(rawAddress) || [])[1] || '';
+      const normalizedFinnUrl = (body.finn_url || (bareFinnCode ? `https://www.finn.no/${bareFinnCode}` : '')).toString().slice(0, 600);
+      const normalizedAddress = bareFinnCode ? '' : rawAddress.slice(0, 300);
+      const normalizedUnits = Array.isArray(body.units) ? body.units.slice(0, 25).map((u) => {
+        const unit = u && typeof u === 'object' ? { ...u } : {};
+        const unitAddress = String(unit.address || '').trim();
+        const unitCode = (/^(\d{8,10})$/.exec(unitAddress) || [])[1] || '';
+        if (unitCode) {
+          unit.address = '';
+          if (!unit.finn_url) unit.finn_url = `https://www.finn.no/${unitCode}`;
+        }
+        return unit;
+      }) : [];
+
       const lead = {
         id: uuidv4(),
         name: (body.name || '').toString().slice(0, 200),
         email: (body.email || '').toString().slice(0, 200),
         phone: (body.phone || '').toString().slice(0, 60),
-        address: (body.address || '').toString().slice(0, 300),
+        address: normalizedAddress,
         postal_code: (body.postal_code || '').toString().slice(0, 20),
         city: (body.city || '').toString().slice(0, 60),
         property_type: (body.property_type || body.propertyType || '').toString().slice(0, 120),
@@ -1747,7 +1779,7 @@ async function handleRoute(request, { params }) {
         availability: (body.availability || '').toString().slice(0, 40),
         lead_type: (body.lead_type || 'huseier').toString().slice(0, 40),
         num_properties: toNum(body.num_properties) || 1,
-        units: Array.isArray(body.units) ? body.units.slice(0, 25) : [],
+        units: normalizedUnits,
         // Eiendomsregisteret (Infotorg EDR) — primær eiendom
         matrikkel_number: (body.matrikkel_number || '').toString().slice(0, 60),
         seksjonsnr: (body.seksjonsnr || '').toString().slice(0, 12),
@@ -1757,7 +1789,7 @@ async function handleRoute(request, { params }) {
         registry_owner_type: (body.registry_owner_type || '').toString().slice(0, 40),
         registry_orgnr: (body.registry_orgnr || '').toString().slice(0, 20),
         notes: (body.notes || body.message || '').toString().slice(0, 4000),
-        finn_url: (body.finn_url || '').toString().slice(0, 600),
+        finn_url: normalizedFinnUrl,
         source: (body.source || 'nettside').toString().slice(0, 60),
         attribution: _attr,
         lead_source_type: _cls.lead_source_type,

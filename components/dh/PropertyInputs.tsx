@@ -27,6 +27,17 @@ export function detectFinnUrl(v: string): string | null {
   return `https://www.${url}`;
 }
 
+/** Oppdager enten full FINN-lenke eller en frittstående FINN-kode.
+ *  Korte URL-er (finn.no/<kode>) videresender til riktig annonsekategori. */
+export function detectFinnReference(v: string): string | null {
+  const url = detectFinnUrl(v);
+  if (url) return url;
+  const raw = (v || '').trim();
+  const m = raw.match(/^(?:finn(?:-?kode)?\s*[:#-]?\s*)?(\d{8,10})$/i);
+  return m ? `https://www.finn.no/${m[1]}` : null;
+}
+
+
 /** Ser input ut som en lenke (men ikke nødvendigvis finn.no)? */
 export function looksLikeUrl(v: string): boolean {
   return /^(https?:\/\/|www\.)/i.test((v || '').trim());

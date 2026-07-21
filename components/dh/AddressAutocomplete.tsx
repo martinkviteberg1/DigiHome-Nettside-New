@@ -45,7 +45,7 @@ export function AddressAutocomplete({
     if (q.length < 3) { setSuggestions([]); setOpen(false); return; }
     // Smart felt (14/7): URL-aktig input (limt lenke) skal aldri fyre adressesøk
     // — Finn-deteksjonen i felteieren tar over, og lenker gir uansett null treff.
-    if (/^(https?:\/\/|www\.)/i.test(q) || /finn\.no\//i.test(q)) { setSuggestions([]); setOpen(false); return; }
+    if (/^(https?:\/\/|www\.)/i.test(q) || /finn\.no\//i.test(q) || /^\d{8,10}$/.test(q)) { setSuggestions([]); setOpen(false); return; }
 
     // Instant fra cache (føles umiddelbart ved backspace / gjentatte søk)
     const cached = cacheRef.current.get(q.toLowerCase());

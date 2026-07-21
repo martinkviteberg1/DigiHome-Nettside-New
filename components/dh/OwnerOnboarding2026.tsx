@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AddressAutocomplete } from './AddressAutocomplete';
-import { detectFinnUrl } from './PropertyInputs';
+import { detectFinnReference } from './PropertyInputs';
 import { track, getLeadAttribution } from '@/lib/analytics';
 import { trackLead, trackLeadStart, getClickIds } from '@/lib/gtag';
 import { site } from '@/lib/site';
@@ -32,6 +32,9 @@ type FormState = {
   address: string;
   postalCode: string;
   city: string;
+  propertyType: string;
+  sqm: string;
+  bedrooms: string;
   name: string;
   email: string;
   phone: string;
@@ -210,6 +213,9 @@ export default function OwnerOnboarding2026() {
     address: '',
     postalCode: '',
     city: '',
+    propertyType: '',
+    sqm: '',
+    bedrooms: '',
     name: '',
     email: '',
     phone: '',
@@ -217,6 +223,9 @@ export default function OwnerOnboarding2026() {
   });
   const [addressVerified, setAddressVerified] = useState(false);
   const [finnUrl, setFinnUrl] = useState('');
+  const [finnCode, setFinnCode] = useState('');
+  const [finnLookupLoading, setFinnLookupLoading] = useState(false);
+  const [finnLookupNote, setFinnLookupNote] = useState('');
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
@@ -226,7 +235,10 @@ export default function OwnerOnboarding2026() {
 
   const phaseIndex = PHASES.findIndex((item) => item.id === phase);
   const selectedService = SERVICES.find((item) => item.id === form.service);
-  const addressLabel = finnUrl ? 'FINN-annonsen din' : form.address;
+  const finnLocation = [form.postalCode, form.city].filter(Boolean).join(' ').trim();
+  const addressLabel = finnUrl
+    ? (form.address || [finnCode ? `FINN ${finnCode}` : 'FINN-annonse', finnLocation].filter(Boolean).join(' · '))
+    : form.address;
   const outsideArea = form.service === 'full_forvaltning' && !!form.postalCode && !isBergenArea(form.postalCode, form.city);
 
   const setField = useCallback((field: keyof FormState, value: string) => {
@@ -239,21 +251,77 @@ export default function OwnerOnboarding2026() {
     });
   }, []);
 
+  const resolveFinnReference = useCallback(async (input: string) => {
+    const url = detectFinnReference(input);
+    if (!url) return false;
+
+    let code = '';
+    try {
+      const parsed = new URL(url);
+      code = parsed.searchParams.get('finnkode') || (parsed.pathname.match(/\b(\d{8,10})\b/) || [])[1] || '';
+    } catch { /* detectFinnReference returnerer alltid en gyldig URL */ }
+
+    setFinnUrl(url);
+    setFinnCode(code);
+    setAddressVerified(true);
+    setErrors({});
+    setFinnLookupLoading(true);
+    setFinnLookupNote('Henter boligopplysninger fra FINN …');
+    // En FINN-kode er aldri en gateadresse. Nullstill gamle/falske boligdata før oppslag.
+    setForm((current) => ({
+      ...current,
+      address: '', postalCode: '', city: '', propertyType: '', sqm: '', bedrooms: '',
+    }));
+
+    try {
+      const response = await fetch(`/api/finn-preview?url=${encodeURIComponent(url)}`);
+      const data = await response.json().catch(() => ({}));
+      if (response.ok && data?.ok) {
+        const resolvedAddress = String(data.address || '').trim();
+        const postalCode = String(data.postalCode || '').trim();
+        const city = String(data.city || '').trim();
+        setForm((current) => ({
+          ...current,
+          address: resolvedAddress,
+          postalCode,
+          city,
+          propertyType: String(data.propertyType || ''),
+          sqm: data.sqm ? String(data.sqm) : '',
+          bedrooms: data.bedrooms ? String(data.bedrooms) : '',
+        }));
+        setFinnCode(String(data.finnCode || code));
+        setFinnLookupNote(resolvedAddress
+          ? 'Boligopplysningene er hentet fra FINN.'
+          : `Gateadressen er skjult i FINN-annonsen${postalCode || city ? ` — vi har registrert ${[postalCode, city].filter(Boolean).join(' ')}` : ''}.`);
+      } else {
+        setFinnLookupNote('Vi lagrer FINN-annonsen, men boligdetaljene må avklares i oppfølgingen.');
+      }
+    } catch {
+      setFinnLookupNote('Vi lagrer FINN-annonsen, men boligdetaljene må avklares i oppfølgingen.');
+    } finally {
+      setFinnLookupLoading(false);
+      setPhase('service');
+    }
+    return true;
+  }, []);
+
   useEffect(() => {
     try {
       const params = new URLSearchParams(window.location.search);
       const incomingFinn = params.get('finn');
-      const detectedFinn = incomingFinn ? detectFinnUrl(incomingFinn) : null;
-      if (detectedFinn) {
-        setFinnUrl(detectedFinn);
-        setForm((current) => ({ ...current, address: 'FINN-annonse' }));
-        setAddressVerified(true);
-        setPhase('service');
+      if (incomingFinn && detectFinnReference(incomingFinn)) {
+        resolveFinnReference(incomingFinn);
         return;
       }
 
       const address = (params.get('address') || '').trim();
-      if (address && /\d/.test(address)) {
+      if (address && detectFinnReference(address)) {
+        resolveFinnReference(address);
+        return;
+      }
+      // Ekte gateadresse må inneholde både bokstaver og husnummer. Et rent tall
+      // (postnummer/telefon/ukjent kode) skal aldri auto-godkjennes som adresse.
+      if (address && /[A-Za-zÆØÅæøå]/.test(address) && /\d/.test(address)) {
         setForm((current) => ({
           ...current,
           address,
@@ -266,7 +334,7 @@ export default function OwnerOnboarding2026() {
     } catch {
       // URL-parametere er en forbedring, ikke en forutsetning for flyten.
     }
-  }, []);
+  }, [resolveFinnReference]);
 
   useEffect(() => {
     try { trackLeadStart('utleier'); } catch { /* analyse må aldri blokkere skjemaet */ }
@@ -278,20 +346,19 @@ export default function OwnerOnboarding2026() {
     try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch { /* eldre nettlesere kan mangle smooth scroll */ }
   }, [phase, phaseIndex]);
 
-  const continueFromAddress = () => {
+  const continueFromAddress = async () => {
     const value = form.address.trim();
-    const detectedFinn = detectFinnUrl(value);
-    if (detectedFinn) {
-      setFinnUrl(detectedFinn);
-      setAddressVerified(true);
-      setErrors({});
-      setPhase('service');
+    if (detectFinnReference(value)) {
+      await resolveFinnReference(value);
       return;
     }
-    if (value.length < 4) {
-      setErrors({ address: 'Skriv inn adressen til boligen.' });
+    if (value.length < 4 || !/[A-Za-zÆØÅæøå]/.test(value)) {
+      setErrors({ address: 'Skriv en gateadresse, full FINN-lenke eller FINN-kode.' });
       return;
     }
+    setFinnUrl('');
+    setFinnCode('');
+    setFinnLookupNote('');
     setErrors({});
     setPhase('service');
   };
@@ -322,22 +389,24 @@ export default function OwnerOnboarding2026() {
 
     setLoading(true);
     setSubmitError('');
-    const today = new Date().toISOString().slice(0, 10);
     const cleanPhone = normalizePhone(form.phone);
-    const leadAddress = finnUrl ? '' : form.address.trim();
+    const leadAddress = form.address.trim();
+    const sqm = form.sqm ? Number(form.sqm) || null : null;
+    const bedrooms = form.bedrooms ? Number(form.bedrooms) || null : null;
+    const propertyType = form.propertyType || '';
 
     const payload = {
       address: leadAddress,
       postal_code: form.postalCode,
       city: form.city || undefined,
       outside_area: outsideArea || undefined,
-      sqm: 60,
-      bedrooms: 2,
-      property_type: 'leilighet',
+      sqm,
+      bedrooms,
+      property_type: propertyType,
       name: form.name.trim(),
       email: form.email.trim(),
       phone: `+47 ${cleanPhone}`,
-      availability: today,
+      availability: '',
       lead_type: 'huseier',
       tier: form.service,
       terms: form.service === 'selvforvaltning' && termsAccepted ? { version: SELF_TERMS_VERSION } : undefined,
@@ -345,14 +414,16 @@ export default function OwnerOnboarding2026() {
       units: [{
         address: leadAddress,
         postal_code: form.postalCode,
-        property_type: 'leilighet',
-        sqm: 60,
-        bedrooms: 2,
+        property_type: propertyType,
+        sqm,
+        bedrooms,
         finn_url: finnUrl || undefined,
       }],
       num_properties: 1,
       attribution: { ...getLeadAttribution(), ...getClickIds() },
-      notes: 'Mobiloptimalisert hurtigregistrering — boligdetaljer avklares senere.',
+      notes: finnUrl
+        ? `FINN${finnCode ? ` ${finnCode}` : ''}: ${finnLookupNote || 'Boligdetaljer avklares i oppfølgingen.'}`
+        : 'Mobiloptimalisert hurtigregistrering — boligdetaljer avklares senere.',
     };
 
     try {
@@ -440,11 +511,19 @@ export default function OwnerOnboarding2026() {
                     <AddressAutocomplete
                       value={form.address}
                       onChange={(value: string) => {
-                        const detectedFinn = detectFinnUrl(value);
-                        setField('address', value);
+                        const detectedFinn = detectFinnReference(value);
                         setAddressVerified(false);
-                        if (!detectedFinn) setFinnUrl('');
-                        if (form.postalCode || form.city) setForm((current) => ({ ...current, address: value, postalCode: '', city: '' }));
+                        setForm((current) => ({
+                          ...current,
+                          address: value,
+                          ...(detectedFinn ? {} : { postalCode: '', city: '', propertyType: '', sqm: '', bedrooms: '' }),
+                        }));
+                        setErrors((current) => ({ ...current, address: '' }));
+                        if (!detectedFinn) {
+                          setFinnUrl('');
+                          setFinnCode('');
+                          setFinnLookupNote('');
+                        }
                       }}
                       onSelect={(data: any) => {
                         const address = String(data?.address || '').replace(/,\s*(Norway|Norge)$/i, '');
@@ -452,7 +531,7 @@ export default function OwnerOnboarding2026() {
                         setAddressVerified(true);
                         setErrors({});
                       }}
-                      placeholder="Skriv gateadresse eller lim inn FINN-lenke"
+                      placeholder="Skriv gateadresse, FINN-lenke eller FINN-kode"
                       showIcon={false}
                       dataTestId="entry-address-input"
                       inputClassName="h-14 w-full min-w-0 rounded-2xl bg-transparent pl-12 pr-4 text-[16px] text-[#171513] outline-none placeholder:text-[#99938c]"
@@ -461,12 +540,17 @@ export default function OwnerOnboarding2026() {
                   </div>
                   {errors.address ? <p className="mt-1.5 text-[12px] font-medium text-red-600">{errors.address}</p> : null}
                   <p className="mt-2 text-[12px] leading-relaxed text-[#716b63]">
-                    {addressVerified ? 'Adressen er bekreftet.' : 'Velg gjerne et forslag. Får du ikke treff, kan du fortsette med adressen du har skrevet.'}
+                    {finnLookupLoading
+                      ? 'Henter boligopplysninger fra FINN …'
+                      : addressVerified
+                        ? 'Adressen er bekreftet.'
+                        : 'Velg et adresseforslag, eller lim inn en FINN-lenke / FINN-kode.'}
                   </p>
                 </div>
 
-                <button type="button" onClick={continueFromAddress} disabled={form.address.trim().length < 4} data-testid="address-continue" className="mt-7 inline-flex h-14 w-full items-center justify-center gap-2 rounded-full bg-[#d298ff] px-6 text-[15px] font-bold text-[#14081f] shadow-[0_12px_28px_-15px_rgba(126,34,206,.65)] transition hover:bg-[#c983ff] disabled:cursor-not-allowed disabled:bg-[#e7e3df] disabled:text-[#9a948d] disabled:shadow-none sm:w-auto sm:min-w-[210px]">
-                  Se dine alternativer <ArrowRight className="h-4 w-4" />
+                <button type="button" onClick={continueFromAddress} disabled={form.address.trim().length < 4 || finnLookupLoading} data-testid="address-continue" className="mt-7 inline-flex h-14 w-full items-center justify-center gap-2 rounded-full bg-[#d298ff] px-6 text-[15px] font-bold text-[#14081f] shadow-[0_12px_28px_-15px_rgba(126,34,206,.65)] transition hover:bg-[#c983ff] disabled:cursor-not-allowed disabled:bg-[#e7e3df] disabled:text-[#9a948d] disabled:shadow-none sm:w-auto sm:min-w-[210px]">
+                  {finnLookupLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                  {finnLookupLoading ? 'Henter FINN-annonsen' : 'Se dine alternativer'} {!finnLookupLoading ? <ArrowRight className="h-4 w-4" /> : null}
                 </button>
 
                 <div className="mt-8 grid grid-cols-1 gap-2.5 border-t border-[#e6e2dc] pt-6 sm:grid-cols-3">
@@ -490,6 +574,12 @@ export default function OwnerOnboarding2026() {
                   <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-[#292621]">{addressLabel}</span>
                   <button type="button" onClick={() => setPhase('address')} className="shrink-0 text-[12px] font-bold text-[#7e22ce]">Endre</button>
                 </div>
+
+                {finnUrl && finnLookupNote ? (
+                  <p className="mt-2 flex items-start gap-2 text-[12px] leading-relaxed text-[#625d57]" data-testid="finn-lookup-note">
+                    <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#7e22ce]" /> {finnLookupNote}
+                  </p>
+                ) : null}
 
                 <div className="mt-6 grid gap-3 sm:grid-cols-2">
                   {SERVICES.map((service) => {
