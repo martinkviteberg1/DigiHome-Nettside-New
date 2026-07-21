@@ -178,9 +178,13 @@ export default function LeadsPipeline({ rows, type, loading, busyId, onOpen, onS
                       {reEng && <span className="text-[10px] font-bold text-orange-700 bg-orange-50 rounded-full px-1.5 py-0.5" title="Bekreftet interesse på nytt">Interesse igjen{r.re_engaged.length > 1 ? ` ×${r.re_engaged.length}` : ''}</span>}
                       <span className="ml-auto inline-flex items-center gap-1 text-[10.5px] text-[#b3aea7]" title={r.statusUpdatedAt ? 'Tid i dette steget' : 'Tid siden mottatt'}>
                         {inStage}
-                        {!isImp && (r.forwarded === true
-                          ? <CheckCircle2 className="w-3 h-3 text-emerald-500" title="Sendt til CRM" />
-                          : <AlertCircle className="w-3 h-3 text-amber-500" title="Venter på CRM-sending" />)}
+                        {!isImp && (r.self_service
+                          ? <CheckCircle2 className="w-3 h-3 text-emerald-500" title="Selvforvaltning provisjonert via kontobroen" />
+                          : r.forwarded === true && r.platform_id
+                            ? <CheckCircle2 className="w-3 h-3 text-emerald-500" title="CRM-levering verifisert med platform_id" />
+                            : r.forwarded === true
+                              ? <AlertCircle className="w-3 h-3 text-amber-500" title="Ubekreftet levering — mangler platform_id; send på nytt" />
+                              : <AlertCircle className="w-3 h-3 text-amber-500" title="Venter på CRM-sending" />)}
                       </span>
                     </div>
                   </div>

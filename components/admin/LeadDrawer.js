@@ -158,8 +158,15 @@ export default function LeadDrawer({ apiKey, lead, type, onClose, onStatusChange
                   <span className="truncate">Nyhetsbrev · {d.newsletter_source.campaign || d.newsletter_source.campaignId}</span>
                 </span>
               )}
+              {d.self_service ? (
+                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600 bg-emerald-50 rounded-full px-1.5 py-0.5"><BadgeCheck className="w-3 h-3" /> Konto provisjonert</span>
+              ) : d.forwarded === true && d.platform_id ? (
+                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600 bg-emerald-50 rounded-full px-1.5 py-0.5" title={`Verifisert CRM-ID: ${d.platform_id}`}><BadgeCheck className="w-3 h-3" /> CRM verifisert</span>
+              ) : d.forwarded === true ? (
+                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-700 bg-amber-50 rounded-full px-1.5 py-0.5" title="Tidligere markert sendt, men mangler platform_id — bør sendes på nytt"><AlertTriangle className="w-3 h-3" /> Ubekreftet levering</span>
+              ) : null}
               {d.syncedFromPlatform && (
-                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600 bg-emerald-50 rounded-full px-1.5 py-0.5"><BadgeCheck className="w-3 h-3" /> Synket{d.platformTenant ? ` · ${d.platformTenant}` : ''}</span>
+                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600 bg-emerald-50 rounded-full px-1.5 py-0.5"><BadgeCheck className="w-3 h-3" /> Status synket{d.platformTenant ? ` · ${d.platformTenant}` : ''}</span>
               )}
             </div>
             <h3 className="text-[20px] font-bold text-[#0a0a0a] leading-tight truncate" style={{ fontFamily: 'var(--font-heading)' }}>{d.name || '—'}</h3>

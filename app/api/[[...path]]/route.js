@@ -341,11 +341,25 @@ function digiHomeTarget() {
 }
 
 // Videresend lead til DigiHome-plattformen (offentlige endepunkter, X-API-Key som id-kort).
-// Best-effort med 8s timeout: feiler stille slik at brukeren alltid får kvittering (lagret lokalt).
-// Plattformen auto-tilordner til standard/eneste tenant = «DigiHome AS».
+// Best-effort med 8s timeout: leadet er alltid lagret lokalt først.
+// VIKTIG: «forwarded» betyr VERIFISERT hos riktig CRM — en 2xx uten kvitterings-ID
+// er ikke nok. Dette hindrer falske grønne statuser som Odin/Mussie-tilfellet.
 async function forwardToDigiHome(path, payload) {
   const target = digiHomeTarget();
-  if (!target.url) return { ok: false, error: 'DIGIHOME_API_URL mangler' };
+  const receiptBase = { targetEnv: target.env, targetUrl: target.url };
+  if (!target.url) return { ok: false, error: 'DIGIHOME_API_URL mangler', ...receiptBase };
+
+  // Vern mot selv-loop i alle miljøer: markedsnettsiden må aldri forwarde
+  // tilbake til sitt eget API. Det skjedde under domeneovergangen og kunne gi
+  // 2xx fra dedupe-ruten uten at leadet noen gang nådde CRM-et.
+  try {
+    const marketingHost = new URL(process.env.NEXT_PUBLIC_BASE_URL || '').host;
+    const crmHost = new URL(target.url).host;
+    if (marketingHost && crmHost && marketingHost === crmHost) {
+      return { ok: false, error: 'CRM-målet peker på markedsnettsiden (selv-loop blokkert)', ...receiptBase };
+    }
+  } catch (e) { /* ugyldig URL håndteres av fetch under */ }
+
   try {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 8000);
@@ -362,15 +376,25 @@ async function forwardToDigiHome(path, payload) {
     let data = {};
     try { data = await res.json(); } catch (e) { data = {}; }
     if (res.ok && (data.success || data.ok)) {
-      // account (valgfritt, selvbetjent løp): plattformen kan returnere
-      // { account: { onboarding_url, account_id, expires_at } } ved synkron
-      // kontoprovisjonering (tier=selvforvaltning) — se bro-spec 10/7.
+      // Plattformversjoner har brukt noen ulike responsformer. Godta kjente
+      // ID-felt, men ALDRI marker som levert uten en konkret CRM-kvittering.
+      const id = data?.data?.id || data?.data?.lead_id || data?.data?.tenant_id ||
+        data?.id || data?.lead_id || data?.tenant_id || data?.lead?.id || data?.tenant?.id || null;
+      if (!id) {
+        return {
+          ok: false,
+          accepted: true,
+          error: 'CRM svarte suksess, men uten platform_id — levering er ikke verifisert',
+          status: res.status,
+          ...receiptBase,
+        };
+      }
       const account = (data.account || (data.data && data.data.account)) || null;
-      return { ok: true, id: (data.data && data.data.id) || null, account };
+      return { ok: true, id: String(id), account, status: res.status, ...receiptBase };
     }
-    return { ok: false, error: `HTTP ${res.status}`, status: res.status };
+    return { ok: false, error: `HTTP ${res.status}`, status: res.status, ...receiptBase };
   } catch (e) {
-    return { ok: false, error: (e && e.message) || String(e) };
+    return { ok: false, error: (e && e.message) || String(e), ...receiptBase };
   }
 }
 
@@ -382,6 +406,27 @@ async function forwardToDigiHome(path, payload) {
 // Idempotent på event_id (= lead.id) — trygt å retrye. MERK: plattformen
 // speiler selv kunden som PASSIVT won-lead (uten closed-loop-ekko), så vanlig
 // /api/leads-forward skal IKKE kjøres i tillegg (ville gitt duplikat hos dem).
+
+// Ensartet, revisjonssikker kvittering på alle dual-write-forsøk. Ingen nøkler
+// lagres — kun målmiljø/vert, HTTP-status og plattformens ID.
+function forwardAuditFields(fwd, { previousPlatformId = null, previousForwardedAt = null, attempts } = {}) {
+  const at = new Date().toISOString();
+  const target = digiHomeTarget();
+  const verified = fwd?.ok === true;
+  return {
+    forwarded: verified,
+    forward_verified: verified,
+    platform_id: verified ? (fwd.id || null) : (previousPlatformId || null),
+    forward_error: verified ? null : (fwd?.error || 'ukjent'),
+    forwarded_at: verified ? at : (previousForwardedAt || null),
+    forward_last_attempt_at: at,
+    forward_target_env: fwd?.targetEnv || target.env,
+    forward_target_url: fwd?.targetUrl || target.url,
+    forward_http_status: Number.isFinite(Number(fwd?.status)) ? Number(fwd.status) : null,
+    ...(attempts !== undefined ? { forward_attempts: attempts } : {}),
+  };
+}
+
 const SS_UNIT_TYPE = { leilighet: 'Leilighet', enebolig: 'Enebolig', rekkehus: 'Rekkehus', tomannsbolig: 'Tomannsbolig', hybel: 'Hybel', naeringsbygg: 'Næringsbygg', annet: 'Annet' };
 async function provisionSelfService(lead, request) {
   const target = digiHomeTarget();
@@ -833,7 +878,8 @@ function bridgeAuthed(request) {
   } catch (e) { return false; }
 }
 
-// Re-forward leads/tenants som ikke er videresendt (forwarded !== true), med
+// Re-forward leads/tenants som mangler VERIFISERT CRM-kvittering
+// (forwarded !== true ELLER platform_id mangler), med
 // durabel eksponentiell backoff: hver feilede forward planlegges på nytt
 // (next_retry_at) slik at vi ikke hamrer plattformen når den er nede.
 function backoffIso(attempts) {
@@ -845,7 +891,13 @@ async function reforwardPending(db) {
   const nowIso = new Date().toISOString();
   // self_service ekskluderes: de provisjoneres via /api/bridge/self-service-customer
   // (plattformen speiler selv) — re-forward via /api/leads ville gitt duplikat.
-  const dueFilter = { forwarded: { $ne: true }, self_service: { $ne: true }, $or: [{ next_retry_at: { $exists: false } }, { next_retry_at: null }, { next_retry_at: { $lte: nowIso } }] };
+  const dueFilter = {
+    self_service: { $ne: true },
+    $and: [
+      { $or: [{ forwarded: { $ne: true } }, { platform_id: { $in: [null, ''] } }, { platform_id: { $exists: false } }] },
+      { $or: [{ next_retry_at: { $exists: false } }, { next_retry_at: null }, { next_retry_at: { $lte: nowIso } }] },
+    ],
+  };
   const pendLeads = await db.collection('leads').find(dueFilter).limit(200).toArray();
   for (const lead of pendLeads) {
     results.leads.tried++;
@@ -862,9 +914,12 @@ async function reforwardPending(db) {
     if (fwd.ok) results.leads.ok++;
     const attempts = (Number(lead.forward_attempts) || 0) + 1;
     await db.collection('leads').updateOne({ id: lead.id }, { $set: {
-      forwarded: fwd.ok, platform_id: fwd.id || null, forward_error: fwd.ok ? null : (fwd.error || 'ukjent'),
-      forwarded_at: fwd.ok ? new Date().toISOString() : (lead.forwarded_at || null),
-      forward_attempts: attempts, next_retry_at: fwd.ok ? null : backoffIso(attempts),
+      ...forwardAuditFields(fwd, {
+        previousPlatformId: lead.platform_id,
+        previousForwardedAt: lead.forwarded_at,
+        attempts,
+      }),
+      next_retry_at: fwd.ok ? null : backoffIso(attempts),
     } });
   }
   const pendTenants = await db.collection('tenant_leads').find(dueFilter).limit(200).toArray();
@@ -883,9 +938,12 @@ async function reforwardPending(db) {
     if (fwd.ok) results.tenants.ok++;
     const attempts = (Number(t.forward_attempts) || 0) + 1;
     await db.collection('tenant_leads').updateOne({ id: t.id }, { $set: {
-      forwarded: fwd.ok, platform_id: fwd.id || null, forward_error: fwd.ok ? null : (fwd.error || 'ukjent'),
-      forwarded_at: fwd.ok ? new Date().toISOString() : (t.forwarded_at || null),
-      forward_attempts: attempts, next_retry_at: fwd.ok ? null : backoffIso(attempts),
+      ...forwardAuditFields(fwd, {
+        previousPlatformId: t.platform_id,
+        previousForwardedAt: t.forwarded_at,
+        attempts,
+      }),
+      next_retry_at: fwd.ok ? null : backoffIso(attempts),
     } });
   }
   return results;
@@ -1006,9 +1064,8 @@ async function importMetaLeadDoc(db, ml, formName) {
       },
     });
     await db.collection(coll).updateOne({ id: doc.id }, { $set: {
-      forwarded: fwd.ok, platform_id: fwd.id || null,
-      forward_error: fwd.ok ? null : (fwd.error || 'ukjent'),
-      forwarded_at: fwd.ok ? new Date().toISOString() : null,
+      ...forwardAuditFields(fwd),
+      next_retry_at: fwd.ok ? null : backoffIso(1),
     } });
     return 'imported';
   } catch (e) { return 'error'; }
@@ -1915,10 +1972,7 @@ async function handleRoute(request, { params }) {
         notes: fwdNotes,
       });
       await db.collection('leads').updateOne({ id: lead.id }, { $set: {
-        forwarded: fwd.ok,
-        platform_id: fwd.id || null,
-        forward_error: fwd.ok ? null : (fwd.error || 'ukjent'),
-        forwarded_at: fwd.ok ? new Date().toISOString() : null,
+        ...forwardAuditFields(fwd),
         ...(fwd.account ? { platform_account: fwd.account } : {}),
         ...(lead.self_service ? { provisioning_status: fwd.account ? 'provisioned' : (fwd.pendingManual ? 'pending_manual' : 'failed') } : {}),
       } });
@@ -2059,10 +2113,8 @@ async function handleRoute(request, { params }) {
         source: 'nettside',
       });
       await db.collection('tenant_leads').updateOne({ id: tenant.id }, { $set: {
-        forwarded: fwd.ok,
-        platform_id: fwd.id || null,
-        forward_error: fwd.ok ? null : (fwd.error || 'ukjent'),
-        forwarded_at: fwd.ok ? new Date().toISOString() : null,
+        ...forwardAuditFields(fwd),
+        next_retry_at: fwd.ok ? null : backoffIso(1),
       } });
       tenant.forwarded = fwd.ok; tenant.platform_id = fwd.id || null;
       if (fwd.ok) maybeReforward(db);
@@ -2186,9 +2238,11 @@ async function handleRoute(request, { params }) {
       for (const [key, arr] of groups) {
         if (arr.length < 2 || key.startsWith('id:')) continue;
         groupsWithDups++;
-        // Behold helst den synkede posten (bevar platform_id); ellers eldste.
+        // Behold helst posten med verifisert CRM-ID; forwarded=true uten ID kan
+        // være en gammel falsk kvittering (Odin/Mussie) og skal ikke vinne.
         const sorted = [...arr].sort((a, b) => {
-          const fa = a.forwarded === true ? 1 : 0, fb = b.forwarded === true ? 1 : 0;
+          const fa = a.forwarded === true && a.platform_id ? 1 : 0;
+          const fb = b.forwarded === true && b.platform_id ? 1 : 0;
           if (fb !== fa) return fb - fa;
           return tms(a.createdAt) - tms(b.createdAt);
         });
@@ -2208,7 +2262,7 @@ async function handleRoute(request, { params }) {
           if (richer(o.email, enrich.email ?? keep.email)) enrich.email = o.email;
           if (richer(o.phone, enrich.phone ?? keep.phone)) enrich.phone = o.phone;
         }
-        details.push({ key, kept: keep.id, keptForwarded: keep.forwarded === true, removed: others.map((o) => o.id), enriched: Object.keys(enrich) });
+        details.push({ key, kept: keep.id, keptForwarded: keep.forwarded === true && !!keep.platform_id, removed: others.map((o) => o.id), enriched: Object.keys(enrich) });
         if (!dryRun) {
           if (Object.keys(enrich).length) { enrich.updatedAt = new Date().toISOString(); enrich.dedupMergedAt = enrich.updatedAt; await db.collection('tenant_leads').updateOne({ id: keep.id }, { $set: enrich }); merged++; }
           const rmIds = others.map((o) => o.id).filter(Boolean);
@@ -7328,15 +7382,23 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
       if (!doc) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
       if (doc.mirrored === true) return cors(NextResponse.json({ ok: false, error: 'Leaden kommer FRA CRM-et (speil) — re-send gir ikke mening' }, { status: 400 }));
       await db.collection(collName).updateOne({ id }, { $set: {
-        forwarded: false, next_retry_at: null, forward_attempts: 0,
+        forwarded: false, forward_verified: false, next_retry_at: null, forward_attempts: 0,
+        forward_error: 'Manuell re-send er forespurt — venter på verifisert CRM-kvittering',
         resend_requested_at: new Date().toISOString(),
       } });
       try { await reforwardPending(db); } catch (e) { /* utfall leses under */ }
-      const after = await db.collection(collName).findOne({ id }, { projection: { _id: 0, forwarded: 1, platform_id: 1, forward_error: 1, forwarded_at: 1 } });
+      const after = await db.collection(collName).findOne({ id }, { projection: {
+        _id: 0, forwarded: 1, forward_verified: 1, platform_id: 1, forward_error: 1,
+        forwarded_at: 1, forward_target_env: 1, forward_target_url: 1, forward_http_status: 1,
+      } });
       return cors(NextResponse.json({
         ok: true, id,
         forwarded: after?.forwarded === true,
+        verified: after?.forward_verified === true,
         platform_id: after?.platform_id || null,
+        target_env: after?.forward_target_env || null,
+        target_url: after?.forward_target_url || null,
+        http_status: after?.forward_http_status || null,
         error: after?.forwarded === true ? null : (after?.forward_error || 'Plattformen svarte ikke — prøves automatisk igjen'),
       }));
     }
@@ -7381,13 +7443,16 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
         attribution: { channel: (l.override && l.override.channel) || l.channel || 'unknown' },
         source: (l.override && l.override.channel) || l.channel || 'unknown',
         forwarded: true,
+        forward_verified: !!l.platform_id,
+        platform_id: l.platform_id || null,
+        forward_target_env: 'platform',
         syncedFromPlatform: !!l.platform_id,
         historisk: true,
       }));
       const all = [...docs, ...impMapped].sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
       const cols = isTenant
-        ? ['createdAt', 'name', 'email', 'phone', 'preferred_area', 'budget_min', 'budget_max', 'bedrooms', 'move_in_date', 'status', 'channel', 'source', 'campaign', 'forwarded', 'syncedFromPlatform', 'historisk']
-        : ['createdAt', 'name', 'email', 'phone', 'address', 'postal_code', 'property_type', 'sqm', 'bedrooms', 'num_properties', 'matrikkel_number', 'seksjonsnr', 'registry_owner_name', 'status', 'wonValue', 'wonCurrency', 'channel', 'source', 'campaign', 'gclid', 'forwarded', 'syncedFromPlatform', 'historisk'];
+        ? ['createdAt', 'name', 'email', 'phone', 'preferred_area', 'budget_min', 'budget_max', 'bedrooms', 'move_in_date', 'status', 'channel', 'source', 'campaign', 'forwarded', 'forward_verified', 'platform_id', 'forward_target_env', 'forward_target_url', 'forward_http_status', 'forward_attempts', 'forwarded_at', 'forward_last_attempt_at', 'forward_error', 'syncedFromPlatform', 'historisk']
+        : ['createdAt', 'name', 'email', 'phone', 'address', 'postal_code', 'property_type', 'sqm', 'bedrooms', 'num_properties', 'matrikkel_number', 'seksjonsnr', 'registry_owner_name', 'status', 'wonValue', 'wonCurrency', 'channel', 'source', 'campaign', 'gclid', 'forwarded', 'forward_verified', 'platform_id', 'forward_target_env', 'forward_target_url', 'forward_http_status', 'forward_attempts', 'forwarded_at', 'forward_last_attempt_at', 'forward_error', 'syncedFromPlatform', 'historisk'];
       const lines = [cols.join(',')];
       for (const d of all) {
         const att = d.attribution || {};

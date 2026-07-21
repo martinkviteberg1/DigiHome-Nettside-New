@@ -120,7 +120,7 @@ export default function InnsiktDashboard({ apiKey, tab: propTab, onTabChange, on
   // Rapporter nøkkeltall opp til shell-en (badge på «Leads» i sidemenyen)
   useEffect(() => {
     if (!onStats) return;
-    const pend = [...data.leads, ...data.tenants].filter((r) => r.forwarded !== true).length;
+    const pend = [...data.leads, ...data.tenants].filter((r) => !r.pre_tracking && !r.self_service && (r.forwarded !== true || !r.platform_id)).length;
     onStats({ pending: pend, leads: data.leads.length, tenants: data.tenants.length });
   }, [data]); // eslint-disable-line
 
@@ -309,8 +309,9 @@ export default function InnsiktDashboard({ apiKey, tab: propTab, onTabChange, on
   };
 
   const rows = leadSub === 'leads' ? data.leads : data.tenants;
-  const pendingCount = [...data.leads, ...data.tenants].filter((r) => r.forwarded !== true).length;
-  const tabPending = rows.filter((r) => r.forwarded !== true).length;
+  const needsCrmAttention = (r) => !r.pre_tracking && !r.self_service && (r.forwarded !== true || !r.platform_id);
+  const pendingCount = [...data.leads, ...data.tenants].filter(needsCrmAttention).length;
+  const tabPending = rows.filter(needsCrmAttention).length;
   const importedInTab = rows.filter((r) => r.pre_tracking === true).length;
 
   const channelOf = (r) => (r.attribution && r.attribution.channel) || r.source || '—';
@@ -696,9 +697,11 @@ export default function InnsiktDashboard({ apiKey, tab: propTab, onTabChange, on
                       <td className="py-3 px-4">
                         {isImp
                           ? <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-[#8b5cf6]" title="Historisk lead — kom inn før sporingen. Teller i helhetsbildet, aldri i live ROAS/CAC. Endringer synkes til CRM-et."><History className="w-3.5 h-3.5" /> Historisk</span>
-                          : r.forwarded === true
-                          ? <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-emerald-600"><CheckCircle2 className="w-3.5 h-3.5" /> Sendt</span>
-                          : <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-amber-600" title={r.forward_error || ''}><AlertCircle className="w-3.5 h-3.5" /> Venter</span>}
+                          : r.self_service
+                          ? <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-emerald-600" title="Selvforvaltning provisjonert via kontobroen"><CheckCircle2 className="w-3.5 h-3.5" /> Provisjonert</span>
+                          : r.forwarded === true && r.platform_id
+                          ? <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-emerald-600" title={`Verifisert CRM-ID: ${r.platform_id}`}><CheckCircle2 className="w-3.5 h-3.5" /> Verifisert</span>
+                          : <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-amber-600" title={r.forwarded === true ? 'Tidligere markert sendt, men mangler platform_id — send på nytt' : (r.forward_error || '')}><AlertCircle className="w-3.5 h-3.5" /> {r.forwarded === true ? 'Ubekreftet' : 'Venter'}</span>}
                       </td>
                       <td className="py-3 px-4 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                         {isImp ? (
