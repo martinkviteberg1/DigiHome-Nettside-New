@@ -2220,6 +2220,9 @@ async function handleRoute(request, { params }) {
           id: l.id,
           name: l.name || '', email: l.email || '', phone: l.phone || '',
           address: l.address || '', postal_code: l.postal_code || '',
+          preferred_area: l.preferred_area || l.address || '',
+          budget_min: l.budget_min ?? null, budget_max: l.budget_max ?? null,
+          bedrooms: l.bedrooms ?? null, move_in_date: l.move_in_date || '',
           createdAt: l.created_at || l.imported_at || null,
           status: l.eff_status || 'new',
           wonValue: l.eff_won_value != null ? l.eff_won_value : null,
@@ -7337,6 +7340,24 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
     }
 
     // --- Admin: eksporter leads til CSV (BOM for æøå i Excel) ---
+    // --- Admin: liste arkiverte leads + gjenopprettingsgrunnlag ---
+    if (route === '/admin/leads/archived' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const projection = { _id: 0, id: 1, name: 1, email: 1, phone: 1, deletedAt: 1, deleteReason: 1, platform_id: 1, lead_type: 1 };
+      const [leadRows, tenantRows, importedRows] = await Promise.all([
+        db.collection('leads').find({ deleted: true }, { projection }).sort({ deletedAt: -1 }).limit(500).toArray(),
+        db.collection('tenant_leads').find({ deleted: true }, { projection }).sort({ deletedAt: -1 }).limit(500).toArray(),
+        db.collection('imported_leads').find({ deleted: true }, { projection }).sort({ deletedAt: -1 }).limit(500).toArray(),
+      ]);
+      const archived = [
+        ...leadRows.map((x) => ({ ...x, type: 'lead' })),
+        ...tenantRows.map((x) => ({ ...x, type: 'tenant' })),
+        ...importedRows.map((x) => ({ ...x, type: 'imported' })),
+      ].sort((a, b) => String(b.deletedAt || '').localeCompare(String(a.deletedAt || '')));
+      return cors(NextResponse.json({ ok: true, archived, count: archived.length }));
+    }
+
+
     // --- Admin: arkiver lead (soft delete m/tombstone) + gjenopprett ---
     // Best practice: raden består med deleted-flagg (spor/attribusjon beholdes),
     // skjules fra pipeline, eksport, analytics og abonnent-kandidater.

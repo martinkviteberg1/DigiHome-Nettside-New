@@ -62,7 +62,10 @@ export default function HistoryTab({ apiKey }) {
       const r = await fetch(`/api/admin/imported-leads/sync?${q}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
       const j = await r.json();
       if (j.ok) {
-        setMsg({ ok: true, text: `Synket fra CRM: ${j.fetched} leads gjennomgått — ${j.inserted} nye historiske, ${j.updatedTracked || 0} av våre egne leads fikk oppdatert status. Manuelle endringer er bevart.` });
+        const tenantPart = j.tenantSyncSupported
+          ? ` · ${j.fetchedTenants || 0} leietakere via ${j.tenantEndpoint}`
+          : ' · NB: plattformen ga ingen egen leietaker-eksport';
+        setMsg({ ok: true, text: `Synket fra CRM: ${j.fetched} leads gjennomgått (${j.fetchedOwners || 0} eiere${tenantPart}) — ${j.inserted} nye historiske, ${j.updatedTracked || 0} av våre egne leads fikk oppdatert status. Manuelle endringer er bevart.` });
         await load();
       } else setMsg({ ok: false, text: j.error || 'Synk feilet' });
     } catch (e) { setMsg({ ok: false, text: 'Nettverksfeil under synk' }); }

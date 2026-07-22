@@ -2,12 +2,12 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
-  Loader2, RefreshCw, Send, CheckCircle2, AlertCircle, Trash2,
+  Loader2, RefreshCw, Send, CheckCircle2, AlertCircle,
   LayoutDashboard, Activity, BarChart3, Users, Sparkles, Database,
   Radio, Gauge, TrendingUp, TrendingDown, Download, Megaphone,
   Search, X, ArrowUp, ArrowDown, FileSpreadsheet, ChevronRight, GitBranch,
   MoreHorizontal, Trophy, Clock, Target, ShieldCheck, Flame, LayoutTemplate, Crosshair, Layers, History,
-  Columns3, List, SlidersHorizontal,
+  Columns3, List, SlidersHorizontal, Archive, Undo2,
 } from 'lucide-react';
 import LeadsPipeline from '@/components/admin/LeadsPipeline';
 import LeadsVelocity from '@/components/admin/LeadsVelocity';
@@ -60,7 +60,9 @@ export default function InnsiktDashboard({ apiKey, tab: propTab, onTabChange, on
   const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(false);
   const [forwarding, setForwarding] = useState(false);
-  const [deleting, setDeleting] = useState(false);
+  const [archiving, setArchiving] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
+  const [archivedRows, setArchivedRows] = useState([]);
   const [err, setErr] = useState('');
   const [tabState, setTabState] = useState('oversikt');
   const tab = propTab || tabState;
@@ -135,18 +137,43 @@ export default function InnsiktDashboard({ apiKey, tab: propTab, onTabChange, on
     } catch (e) {} finally { setForwarding(false); }
   };
 
-  const doDelete = async (payload, confirmMsg) => {
-    if (confirmMsg && !window.confirm(confirmMsg)) return;
-    setDeleting(true);
+  const doArchive = async (row) => {
+    if (!row?.id) return;
+    if (!window.confirm(`Arkivere ${row.name || row.email || 'denne leaden'}?\n\nLeaden skjules fra pipeline og statistikk, men kan gjenopprettes. Permanent sletting gjøres kun fra detaljvisningen.`)) return;
+    setArchiving(true);
     try {
-      const type = payload.type || (leadSub === 'tenants' ? 'tenant' : 'lead');
-      const res = await fetch(`/api/admin/delete?key=${encodeURIComponent(apiKey)}`, {
+      const type = row.pre_tracking ? 'imported' : (leadSub === 'tenants' ? 'tenant' : 'lead');
+      const res = await fetch(`/api/admin/leads/archive?key=${encodeURIComponent(apiKey)}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type, ...payload }),
+        body: JSON.stringify({ id: row.id, type, reason: 'Arkivert fra lead-listen' }),
       });
       const json = await res.json();
-      if (json.success) await load();
-    } catch (e) {} finally { setDeleting(false); }
+      if (json.ok) await load();
+      else setErr(json.error || 'Kunne ikke arkivere leaden');
+    } catch (e) { setErr('Kunne ikke arkivere leaden'); }
+    finally { setArchiving(false); }
+  };
+
+  const loadArchived = async () => {
+    try {
+      const r = await fetch(`/api/admin/leads/archived?key=${encodeURIComponent(apiKey)}`);
+      const j = await r.json();
+      if (j.ok) setArchivedRows(j.archived || []);
+    } catch (e) { setErr('Kunne ikke laste arkiverte leads'); }
+  };
+
+  const restoreArchived = async (row) => {
+    setArchiving(true);
+    try {
+      const r = await fetch(`/api/admin/leads/archive?key=${encodeURIComponent(apiKey)}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: row.id, type: row.type, undo: true }),
+      });
+      const j = await r.json();
+      if (j.ok) { await loadArchived(); await load(); }
+      else setErr(j.error || 'Kunne ikke gjenopprette leaden');
+    } catch (e) { setErr('Kunne ikke gjenopprette leaden'); }
+    finally { setArchiving(false); }
   };
 
   const doDedupTenants = async () => {
@@ -311,7 +338,6 @@ export default function InnsiktDashboard({ apiKey, tab: propTab, onTabChange, on
   const rows = leadSub === 'leads' ? data.leads : data.tenants;
   const needsCrmAttention = (r) => !r.pre_tracking && !r.self_service && (r.forwarded !== true || !r.platform_id);
   const pendingCount = [...data.leads, ...data.tenants].filter(needsCrmAttention).length;
-  const tabPending = rows.filter(needsCrmAttention).length;
   const importedInTab = rows.filter((r) => r.pre_tracking === true).length;
 
   const channelOf = (r) => (r.attribution && r.attribution.channel) || r.source || '—';
@@ -511,14 +537,44 @@ export default function InnsiktDashboard({ apiKey, tab: propTab, onTabChange, on
                       <MenuItem icon={forwarding ? Loader2 : Send} spin={forwarding} label={`Re-send ventende${pendingCount > 0 ? ` (${pendingCount})` : ''}`} hint="Send til CRM på nytt" disabled={pendingCount === 0} onClick={() => { setActionsOpen(false); doForward(); }} />
                       {leadSub === 'tenants' && <MenuItem icon={dedupBusy ? Loader2 : Layers} spin={dedupBusy} label="Rydd duplikater" hint="Slå sammen samme e-post/telefon" onClick={() => { setActionsOpen(false); doDedupTenants(); }} />}
                       {leadSub === 'leads' && <MenuItem icon={Layers} label="Rydd CRM-duplikater" hint="Slå sammen speilede tvillinger" onClick={() => { setActionsOpen(false); openCrmDedupe(); }} />}
+                      <MenuItem icon={Archive} label={`Arkiverte leads${archivedRows.length ? ` (${archivedRows.length})` : ''}`} hint="Vis og gjenopprett" onClick={() => { setActionsOpen(false); setShowArchived(true); loadArchived(); }} />
                       <div className="my-1 mx-2 h-px bg-black/[0.06]" />
-                      <MenuItem icon={Trash2} danger label={`Slett ventende${tabPending > 0 ? ` (${tabPending})` : ''}`} hint="Kan ikke angres" disabled={tabPending === 0} onClick={() => { setActionsOpen(false); doDelete({ scope: 'pending' }, `Slette ${tabPending} ventende ${leadSub === 'leads' ? 'utleier' : 'leietaker'}-leads? Kan ikke angres.`); }} />
+                      {/* Permanent sletting er med vilje fjernet fra bulk-menyen. Arkiver enkeltvis fra listen; hard delete krever SLETT i detaljvisningen. */}
                     </div>
                   </>
                 )}
               </div>
             </div>
           </div>
+
+          {showArchived && (
+            <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+              <div className="absolute inset-0 bg-black/40" onClick={() => setShowArchived(false)} />
+              <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[78vh] overflow-hidden p-6 dh-pop" data-testid="archived-leads-modal">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h3 className="text-[17px] font-bold text-[#111]" style={{ fontFamily: 'var(--font-heading)' }}>Arkiverte leads</h3>
+                    <p className="text-[12.5px] text-[#888] mt-1">Trygt skjult fra pipeline og statistikk. Kan gjenopprettes uten datatap.</p>
+                  </div>
+                  <button onClick={() => setShowArchived(false)} aria-label="Lukk" className="w-8 h-8 rounded-full bg-[#f3f3f3] flex items-center justify-center"><X className="w-4 h-4" /></button>
+                </div>
+                <div className="mt-4 space-y-2 max-h-[58vh] overflow-y-auto pr-1">
+                  {archivedRows.length === 0 ? (
+                    <div className="rounded-xl bg-[#faf9f7] p-5 text-[13px] text-[#888] text-center">Ingen arkiverte leads.</div>
+                  ) : archivedRows.map((row) => (
+                    <div key={`${row.type}-${row.id}`} className="rounded-xl border border-[#ece9e4] px-4 py-3 flex items-center gap-3">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[13.5px] font-semibold text-[#222] truncate">{row.name || row.email || 'Ukjent lead'}</p>
+                        <p className="text-[11.5px] text-[#888] truncate">{row.type === 'tenant' ? 'Leietaker' : row.type === 'imported' ? 'Historisk' : 'Utleier'}{row.deleteReason ? ` · ${row.deleteReason}` : ''}</p>
+                      </div>
+                      <button onClick={() => restoreArchived(row)} disabled={archiving} className="h-8 px-3 rounded-full bg-[#f4f0fb] text-[#7A3EC8] text-[12px] font-semibold flex items-center gap-1.5 disabled:opacity-40"><Undo2 className="w-3.5 h-3.5" /> Gjenopprett</button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
 
           {/* CRM-dedupe-modal: dryRun-plan → eksplisitt bekreftelse → apply */}
           {crmDedupeOpen && (
@@ -712,7 +768,7 @@ export default function InnsiktDashboard({ apiKey, tab: propTab, onTabChange, on
                               {scoringId === r.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
                               {sc && !sc.error ? sc.score : 'AI'}
                             </button>
-                            <button onClick={() => doDelete({ id: r.id }, `Slette lead fra ${r.name || r.email || 'denne kontakten'}?`)} disabled={deleting} aria-label="Slett" className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-[#bbb] hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-40"><Trash2 className="w-4 h-4" /></button>
+                            <button onClick={() => doArchive(r)} disabled={archiving} aria-label="Arkiver" title="Arkiver — kan gjenopprettes" className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-[#bbb] hover:text-amber-600 hover:bg-amber-50 transition-colors disabled:opacity-40"><Archive className="w-4 h-4" /></button>
                           </>
                         )}
                       </td>
