@@ -2017,7 +2017,7 @@ async function handleRoute(request, { params }) {
       // Meta Conversions API (server-side Lead). event_id = lead.id → deduplikeres
       // mot nettleser-pixelens Lead-hendelse. Non-fatal: skal aldri velte lead-flyten.
       try {
-        if (metaCapiConfigured() && marketingAllowed(lead.marketingConsent)) {
+        if (lead.lead_type === 'huseier' && metaCapiConfigured() && marketingAllowed(lead.marketingConsent)) {
           const att = lead.attribution || {};
           const capi = await sendMetaCapiEvent({
             eventName: 'Lead',
@@ -2239,9 +2239,12 @@ async function handleRoute(request, { params }) {
         }));
       } catch (e) { importedMapped = []; }
       const byDate = (a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
-      const mergedLeads = [...leads.map(clean), ...importedMapped.filter((x) => x.lead_type !== 'leietaker')].sort(byDate);
+      const isContactLead = (x) => ['kontakt', 'contact', 'henvendelse', 'inquiry'].includes(String(x.lead_type || '').toLowerCase());
+      const ownerLeads = leads.filter((x) => !isContactLead(x) && String(x.lead_type || 'huseier').toLowerCase() !== 'leietaker');
+      const contacts = [...leads.filter(isContactLead).map(clean), ...importedMapped.filter((x) => x.lead_type === 'kontakt')].sort(byDate);
+      const mergedLeads = [...ownerLeads.map(clean), ...importedMapped.filter((x) => x.lead_type === 'huseier')].sort(byDate);
       const mergedTenants = [...tenants.map(clean), ...importedMapped.filter((x) => x.lead_type === 'leietaker')].sort(byDate);
-      return cors(NextResponse.json({ leads: mergedLeads, tenants: mergedTenants, importedCount: importedMapped.length }));
+      return cors(NextResponse.json({ leads: mergedLeads, tenants: mergedTenants, contacts, importedCount: importedMapped.length }));
     }
 
     if (route === '/admin/forward' && method === 'POST') {
@@ -2321,6 +2324,7 @@ async function handleRoute(request, { params }) {
       const cutoff = new Date(Date.now() - 90 * 86400000).toISOString();
       const won = await db.collection('leads').find({
         status: 'won',
+        lead_type: { $nin: ['kontakt', 'contact', 'henvendelse', 'inquiry', 'leietaker'] },
         'attribution.gclid': { $exists: true, $nin: [null, ''] },
         createdAt: { $gte: cutoff },
       }).sort({ wonAt: -1 }).limit(5000).toArray();
@@ -7080,7 +7084,7 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
       // Annonse-konverteringsgate (bro-avtale punkt b): Meta/Google fyres KUN for
       // betalte leads. Eldre payloads uten is_paid → vår egen klassifisering
       // (uendret oppførsel). Speilede organiske leads fyrer ALDRI.
-      const allowAdConversions = bodyIsPaid === true || (bodyIsPaid === null && !mirrored && lead.mirrored !== true);
+      const allowAdConversions = lead.lead_type === 'huseier' && (bodyIsPaid === true || (bodyIsPaid === null && !mirrored && lead.mirrored !== true));
 
       const nowIso = new Date().toISOString();
       const changedAt = body.changed_at ? new Date(body.changed_at).toISOString() : nowIso;
@@ -7461,18 +7465,25 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
     if (route === '/admin/leads/export' && (method === 'GET' || method === 'POST')) {
       if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const { searchParams } = new URL(request.url);
-      let isTenant = searchParams.get('type') === 'tenant';
+      let exportType = searchParams.get('type') || 'lead';
+      let isTenant = exportType === 'tenant';
+      let isContact = exportType === 'contact';
       let ids = null;
       if (method === 'POST') {
         let body = {};
         try { body = await request.json(); } catch (e) { body = {}; }
-        if (body.type) isTenant = body.type === 'tenant';
+        if (body.type) exportType = body.type;
+        isTenant = exportType === 'tenant';
+        isContact = exportType === 'contact';
         if (Array.isArray(body.ids)) {
           ids = body.ids.map((x) => String(x)).filter(Boolean).slice(0, 10000);
         }
       }
       const coll = isTenant ? 'tenant_leads' : 'leads';
-      const query = { ...(ids && ids.length > 0 ? { id: { $in: ids } } : {}), deleted: { $ne: true } };
+      const leadTypeFilter = isTenant ? {} : isContact
+        ? { lead_type: { $in: ['kontakt', 'contact', 'henvendelse', 'inquiry'] } }
+        : { lead_type: { $nin: ['kontakt', 'contact', 'henvendelse', 'inquiry', 'leietaker'] } };
+      const query = { ...leadTypeFilter, ...(ids && ids.length > 0 ? { id: { $in: ids } } : {}), deleted: { $ne: true } };
       const docs = await db.collection(coll).find(query).sort({ createdAt: -1 }).limit(10000).toArray();
       // HISTORISKE leads (imported_leads fra Historikk-synken) vises i samme
       // pipeline — de skal derfor MED i eksporten (fix 10. juli: eksporten
@@ -7481,7 +7492,9 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
       try {
         const impQuery = {
           ...(ids && ids.length > 0 ? { id: { $in: ids } } : {}),
-          lead_type: isTenant ? 'leietaker' : { $ne: 'leietaker' },
+          lead_type: isTenant ? 'leietaker' : isContact
+            ? { $in: ['kontakt', 'contact', 'henvendelse', 'inquiry'] }
+            : { $nin: ['leietaker', 'kontakt', 'contact', 'henvendelse', 'inquiry'] },
           deleted: { $ne: true },
         };
         impDocs = await db.collection('imported_leads').find(impQuery).sort({ created_at: -1 }).limit(10000).toArray();
@@ -7504,8 +7517,8 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
       }));
       const all = [...docs, ...impMapped].sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
       const cols = isTenant
-        ? ['createdAt', 'name', 'email', 'phone', 'preferred_area', 'budget_min', 'budget_max', 'bedrooms', 'move_in_date', 'status', 'channel', 'source', 'campaign', 'forwarded', 'forward_verified', 'platform_id', 'forward_target_env', 'forward_target_url', 'forward_http_status', 'forward_attempts', 'forwarded_at', 'forward_last_attempt_at', 'forward_error', 'syncedFromPlatform', 'historisk']
-        : ['createdAt', 'name', 'email', 'phone', 'address', 'postal_code', 'property_type', 'sqm', 'bedrooms', 'num_properties', 'matrikkel_number', 'seksjonsnr', 'registry_owner_name', 'status', 'wonValue', 'wonCurrency', 'channel', 'source', 'campaign', 'gclid', 'forwarded', 'forward_verified', 'platform_id', 'forward_target_env', 'forward_target_url', 'forward_http_status', 'forward_attempts', 'forwarded_at', 'forward_last_attempt_at', 'forward_error', 'syncedFromPlatform', 'historisk'];
+        ? ['createdAt', 'lead_type', 'name', 'email', 'phone', 'preferred_area', 'budget_min', 'budget_max', 'bedrooms', 'move_in_date', 'status', 'channel', 'source', 'campaign', 'forwarded', 'forward_verified', 'platform_id', 'forward_target_env', 'forward_target_url', 'forward_http_status', 'forward_attempts', 'forwarded_at', 'forward_last_attempt_at', 'forward_error', 'syncedFromPlatform', 'historisk']
+        : ['createdAt', 'lead_type', 'name', 'email', 'phone', 'address', 'postal_code', 'property_type', 'sqm', 'bedrooms', 'num_properties', 'matrikkel_number', 'seksjonsnr', 'registry_owner_name', 'status', 'wonValue', 'wonCurrency', 'channel', 'source', 'campaign', 'gclid', 'forwarded', 'forward_verified', 'platform_id', 'forward_target_env', 'forward_target_url', 'forward_http_status', 'forward_attempts', 'forwarded_at', 'forward_last_attempt_at', 'forward_error', 'syncedFromPlatform', 'historisk'];
       const lines = [cols.join(',')];
       for (const d of all) {
         const att = d.attribution || {};
@@ -7521,7 +7534,7 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
         lines.push(row.join(','));
       }
       const csv = '\ufeff' + lines.join('\r\n') + '\r\n';
-      const fname = `digihome-${isTenant ? 'leietakere' : 'utleiere'}-${new Date().toISOString().slice(0, 10)}.csv`;
+      const fname = `digihome-${isTenant ? 'leietakere' : isContact ? 'kontakter' : 'utleiere'}-${new Date().toISOString().slice(0, 10)}.csv`;
       const res = new NextResponse(csv, { status: 200 });
       res.headers.set('Content-Type', 'text/csv; charset=utf-8');
       res.headers.set('Content-Disposition', `attachment; filename="${fname}"`);

@@ -56,7 +56,7 @@ const IMPORTED_CHANNELS = [
 const RANGES = [{ d: 7, l: '7d' }, { d: 30, l: '30d' }, { d: 90, l: '90d' }];
 
 export default function InnsiktDashboard({ apiKey, tab: propTab, onTabChange, onStats }) {
-  const [data, setData] = useState({ leads: [], tenants: [] });
+  const [data, setData] = useState({ leads: [], tenants: [], contacts: [] });
   const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(false);
   const [forwarding, setForwarding] = useState(false);
@@ -111,7 +111,7 @@ export default function InnsiktDashboard({ apiKey, tab: propTab, onTabChange, on
       ]);
       if (r1.status === 401) { setErr('Sesjonen er utløpt — logg inn på nytt.'); setLoading(false); return; }
       const j1 = await r1.json();
-      setData({ leads: j1.leads || [], tenants: j1.tenants || [] });
+      setData({ leads: j1.leads || [], tenants: j1.tenants || [], contacts: j1.contacts || [] });
       if (r2.ok) { const j2 = await r2.json(); setAnalytics(j2); }
     } catch (e) { setErr('Kunne ikke laste data'); }
     finally { setLoading(false); }
@@ -122,8 +122,8 @@ export default function InnsiktDashboard({ apiKey, tab: propTab, onTabChange, on
   // Rapporter nøkkeltall opp til shell-en (badge på «Leads» i sidemenyen)
   useEffect(() => {
     if (!onStats) return;
-    const pend = [...data.leads, ...data.tenants].filter((r) => !r.pre_tracking && !r.self_service && (r.forwarded !== true || !r.platform_id)).length;
-    onStats({ pending: pend, leads: data.leads.length, tenants: data.tenants.length });
+    const pend = [...data.leads, ...data.tenants, ...data.contacts].filter((r) => !r.pre_tracking && !r.self_service && (r.forwarded !== true || !r.platform_id)).length;
+    onStats({ pending: pend, leads: data.leads.length, tenants: data.tenants.length, contacts: data.contacts.length });
   }, [data]); // eslint-disable-line
 
   const changeDays = (d) => { setDays(d); load(d); };
@@ -270,7 +270,7 @@ export default function InnsiktDashboard({ apiKey, tab: propTab, onTabChange, on
 
   const exportCsv = () => {
     setExporting(true);
-    const type = leadSub === 'tenants' ? 'tenant' : 'lead';
+    const type = leadSub === 'tenants' ? 'tenant' : leadSub === 'contacts' ? 'contact' : 'lead';
     const url = `/api/admin/leads/export?type=${type}&key=${encodeURIComponent(apiKey)}`;
     const a = document.createElement('a');
     a.href = url; a.rel = 'noopener';
@@ -284,7 +284,7 @@ export default function InnsiktDashboard({ apiKey, tab: propTab, onTabChange, on
     if (exporting) return;
     setExporting(true);
     try {
-      const type = leadSub === 'tenants' ? 'tenant' : 'lead';
+      const type = leadSub === 'tenants' ? 'tenant' : leadSub === 'contacts' ? 'contact' : 'lead';
       const ids = filteredRows.map((r) => r.id).filter(Boolean);
       const res = await fetch(`/api/admin/leads/export?key=${encodeURIComponent(apiKey)}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -335,9 +335,9 @@ export default function InnsiktDashboard({ apiKey, tab: propTab, onTabChange, on
     finally { setScoringId(''); }
   };
 
-  const rows = leadSub === 'leads' ? data.leads : data.tenants;
+  const rows = leadSub === 'leads' ? data.leads : leadSub === 'tenants' ? data.tenants : data.contacts;
   const needsCrmAttention = (r) => !r.pre_tracking && !r.self_service && (r.forwarded !== true || !r.platform_id);
-  const pendingCount = [...data.leads, ...data.tenants].filter(needsCrmAttention).length;
+  const pendingCount = [...data.leads, ...data.tenants, ...data.contacts].filter(needsCrmAttention).length;
   const importedInTab = rows.filter((r) => r.pre_tracking === true).length;
 
   const channelOf = (r) => (r.attribution && r.attribution.channel) || r.source || '—';
@@ -442,8 +442,12 @@ export default function InnsiktDashboard({ apiKey, tab: propTab, onTabChange, on
           {/* Én samlet verktøylinje — segment og visning til venstre, søk/filter/handlinger til høyre */}
           <div className="flex flex-wrap items-center gap-2 mb-3.5">
               <div className="inline-flex items-center bg-white rounded-full p-1 shadow-[0_2px_10px_rgba(0,0,0,0.04)]">
-                {[{ k: 'leads', l: 'Utleiere', n: data.leads.length }, { k: 'tenants', l: 'Leietakere', n: data.tenants.length }].map((t) => (
-                  <button key={t.k} onClick={() => setLeadSub(t.k)} className={`px-4 py-1.5 rounded-full text-[13px] font-semibold transition-all flex items-center gap-1.5 ${leadSub === t.k ? 'bg-[#0a0a0a] text-white shadow-[0_2px_8px_rgba(0,0,0,0.12)]' : 'text-[#888] hover:text-[#0a0a0a]'}`}>
+                {[
+                  { k: 'leads', l: 'Utleiere', n: data.leads.length },
+                  { k: 'tenants', l: 'Leietakere', n: data.tenants.length },
+                  { k: 'contacts', l: 'Kontakter', n: data.contacts.length },
+                ].map((t) => (
+                  <button key={t.k} onClick={() => { setLeadSub(t.k); if (t.k === 'contacts') setLeadView('list'); }} className={`px-4 py-1.5 rounded-full text-[13px] font-semibold transition-all flex items-center gap-1.5 ${leadSub === t.k ? 'bg-[#0a0a0a] text-white shadow-[0_2px_8px_rgba(0,0,0,0.12)]' : 'text-[#888] hover:text-[#0a0a0a]'}`}>
                     {t.l}<span className={`text-[11px] font-bold ${leadSub === t.k ? 'text-white/55' : 'text-[#c4c4c4]'}`}>{t.n}</span>
                   </button>
                 ))}
@@ -656,12 +660,12 @@ export default function InnsiktDashboard({ apiKey, tab: propTab, onTabChange, on
             );
           })()}
 
-          {leadView === 'velocity' ? (
+          {leadSub !== 'contacts' && leadView === 'velocity' ? (
             <LeadsVelocity
               apiKey={apiKey}
               onOpenLead={(id) => { const r = rows.find((x) => x.id === id); if (r) setDrawerLead(r); }}
             />
-          ) : leadView === 'pipeline' ? (
+          ) : leadSub !== 'contacts' && leadView === 'pipeline' ? (
             <LeadsPipeline
               rows={filteredRows}
               type={leadSub === 'tenants' ? 'tenant' : 'lead'}
@@ -680,7 +684,7 @@ export default function InnsiktDashboard({ apiKey, tab: propTab, onTabChange, on
                 <thead><tr className="border-b border-[#f0f0f0] text-[11px] uppercase tracking-[0.06em] text-[#aaa]">
                   <th className="py-3 px-4 font-semibold"><button onClick={() => toggleSort('name')} className="inline-flex items-center gap-1 uppercase tracking-[0.06em] hover:text-[#0a0a0a] transition-colors">Navn <SortIcon col="name" /></button></th>
                   <th className="py-3 px-4 font-semibold">Kontakt</th>
-                  <th className="py-3 px-4 font-semibold">{leadSub === 'leads' ? 'Eiendom' : 'Ønsker'}</th>
+                  <th className="py-3 px-4 font-semibold">{leadSub === 'leads' ? 'Eiendom' : leadSub === 'tenants' ? 'Ønsker' : 'Henvendelse'}</th>
                   <th className="py-3 px-4 font-semibold">Kilde</th>
                   <th className="py-3 px-4 font-semibold"><button onClick={() => toggleSort('status')} className="inline-flex items-center gap-1 uppercase tracking-[0.06em] hover:text-[#0a0a0a] transition-colors">Status <SortIcon col="status" /></button></th>
                   <th className="py-3 px-4 font-semibold"><button onClick={() => toggleSort('createdAt')} className="inline-flex items-center gap-1 uppercase tracking-[0.06em] hover:text-[#0a0a0a] transition-colors">Mottatt <SortIcon col="createdAt" /></button></th>
@@ -721,7 +725,9 @@ export default function InnsiktDashboard({ apiKey, tab: propTab, onTabChange, on
                       <td className="py-3 px-4 text-[13px] text-[#666] max-w-[260px]">
                         {leadSub === 'leads'
                           ? <span>{r.address || '—'}{r.property_type ? ` · ${r.property_type}` : ''}{r.sqm ? ` · ${r.sqm} m²` : ''}{r.num_properties > 1 ? ` · ${r.num_properties} enheter` : ''}</span>
-                          : <span>{r.preferred_area || '—'}{r.budget_max ? ` · inntil ${r.budget_max} kr` : ''}{r.bedrooms ? ` · ${r.bedrooms} sov` : ''}</span>}
+                          : leadSub === 'tenants'
+                            ? <span>{r.preferred_area || '—'}{r.budget_max ? ` · inntil ${r.budget_max} kr` : ''}{r.bedrooms ? ` · ${r.bedrooms} sov` : ''}</span>
+                            : <span className="line-clamp-2">{r.notes || 'Generell henvendelse'}</span>}
                       </td>
                       <td className="py-3 px-4 text-[12px]" onClick={isImp ? (e) => e.stopPropagation() : undefined}>
                         {isImp ? (
@@ -787,7 +793,7 @@ export default function InnsiktDashboard({ apiKey, tab: propTab, onTabChange, on
         <LeadDrawer
           apiKey={apiKey}
           lead={drawerLead}
-          type={leadSub === 'tenants' ? 'tenant' : 'lead'}
+          type={leadSub === 'tenants' ? 'tenant' : leadSub === 'contacts' ? 'contact' : 'lead'}
           onClose={() => setDrawerLead(null)}
           onStatusChange={doSetStatus}
           statusBusy={statusBusy}

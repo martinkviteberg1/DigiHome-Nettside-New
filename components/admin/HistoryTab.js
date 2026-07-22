@@ -65,7 +65,10 @@ export default function HistoryTab({ apiKey }) {
         const tenantPart = j.tenantSyncSupported
           ? ` · ${j.fetchedTenants || 0} leietakere via ${j.tenantEndpoint}`
           : ' · NB: plattformen ga ingen egen leietaker-eksport';
-        setMsg({ ok: true, text: `Synket fra CRM: ${j.fetched} leads gjennomgått (${j.fetchedOwners || 0} eiere${tenantPart}) — ${j.inserted} nye historiske, ${j.updatedTracked || 0} av våre egne leads fikk oppdatert status. Manuelle endringer er bevart.` });
+        const reconcilePart = j.reconciliation
+          ? ` · Avvik: ${j.reconciliation.onlyWebsiteCount || 0} kun nettside, ${j.reconciliation.onlyPlatformCount || 0} kun app, ${j.reconciliation.statusMismatchCount || 0} status`
+          : '';
+        setMsg({ ok: true, text: `Synket fra CRM: ${j.fetched} leads gjennomgått (${j.fetchedOwners || 0} eiere, ${j.fetchedContacts || 0} kontakter${tenantPart}) — ${j.inserted} nye historiske, ${j.updatedTracked || 0} av våre egne leads fikk oppdatert status. Manuelle endringer er bevart${reconcilePart}.` });
         await load();
       } else setMsg({ ok: false, text: j.error || 'Synk feilet' });
     } catch (e) { setMsg({ ok: false, text: 'Nettverksfeil under synk' }); }

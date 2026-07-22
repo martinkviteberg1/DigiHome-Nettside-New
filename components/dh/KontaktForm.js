@@ -2,8 +2,8 @@
 
 import React, { useState, useRef } from 'react';
 import { Loader2, CheckCircle2, Send } from 'lucide-react';
-import { getLeadAttribution } from '@/lib/analytics';
-import { trackLead, trackLeadStart, getClickIds } from '@/lib/gtag';
+import { track, getLeadAttribution } from '@/lib/analytics';
+import { trackLeadStart, getClickIds } from '@/lib/gtag';
 
 export default function KontaktForm() {
   const [form, setForm] = useState({ name: '', email: '', phone: '', message: '' });
@@ -14,7 +14,7 @@ export default function KontaktForm() {
   const handleStart = () => {
     if (startedRef.current) return;
     startedRef.current = true;
-    try { trackLeadStart('kontakt'); } catch (e) {}
+    try { trackLeadStart('kontakt'); } catch (e) { /* analyse må aldri blokkere kontaktskjemaet */ }
   };
 
   const submit = async (e) => {
@@ -32,8 +32,8 @@ export default function KontaktForm() {
       });
       if (res.ok) {
         let data = {};
-        try { data = await res.json(); } catch (e) {}
-        try { trackLead({ formId: 'kontakt', source: 'kontakt', leadId: data?.data?.id, email: form.email, phone: form.phone }); } catch (e) {}
+        try { data = await res.json(); } catch (e) { /* 2xx uten JSON er fortsatt en godkjent innsending */ }
+        try { track('contact_submit', { form: 'kontakt', leadId: data?.data?.id || null }); } catch (e) { /* analyse må aldri blokkere kvitteringen */ }
         setStatus('done'); setForm({ name: '', email: '', phone: '', message: '' });
       }
       else setStatus('error');

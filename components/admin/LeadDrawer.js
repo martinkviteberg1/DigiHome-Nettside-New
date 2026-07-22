@@ -11,7 +11,7 @@ import {
 const STATUS_OPTS = [
   { v: 'new', l: 'Ny' }, { v: 'contacted', l: 'Kontaktet' }, { v: 'qualified', l: 'Kvalifisert' },
   { v: 'viewing', l: 'Befaring' }, { v: 'offer', l: 'Tilbud sendt' },
-  { v: 'won', l: 'Vunnet' }, { v: 'lost', l: 'Tapt' },
+  { v: 'won', l: 'Vunnet' }, { v: 'lost', l: 'Tapt' }, { v: 'disqualified', l: 'Diskvalifisert' },
 ];
 // Samme fulle CRM-pipeline for alle leads — historiske og nye.
 const IMPORTED_STATUS_OPTS = STATUS_OPTS;
@@ -19,6 +19,7 @@ const STATUS_COLOR = {
   new: 'text-[#555] bg-[#f3f3f3]', contacted: 'text-sky-600 bg-sky-50',
   qualified: 'text-violet-600 bg-violet-50', viewing: 'text-blue-600 bg-blue-50',
   offer: 'text-indigo-600 bg-indigo-50', won: 'text-emerald-600 bg-emerald-50', lost: 'text-rose-600 bg-rose-50',
+  disqualified: 'text-slate-600 bg-slate-100',
 };
 
 // Hendelsestype → norsk etikett + ikon (kundereise)
@@ -62,6 +63,7 @@ export default function LeadDrawer({ apiKey, lead, type, onClose, onStatusChange
   const [actionBusy, setActionBusy] = useState(null); // 'resend' | 'archive' | 'delete' | 'restore'
   const [resendResult, setResendResult] = useState(null);
   const isTenant = type === 'tenant';
+  const isContact = type === 'contact';
 
   const load = useCallback(async () => {
     if (!lead) return;
@@ -145,7 +147,7 @@ export default function LeadDrawer({ apiKey, lead, type, onClose, onStatusChange
         <div className="sticky top-0 z-10 bg-white/90 backdrop-blur-xl border-b border-[#f0f0f0] px-5 py-4 flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="flex items-center gap-2 mb-1">
-              <span className="text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#b39ddb]">{isTenant ? 'Leietaker' : 'Utleier'}</span>
+              <span className="text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#b39ddb]">{isTenant ? 'Leietaker' : isContact ? 'Kontakt' : 'Utleier'}</span>
               {d.pre_tracking && (
                 <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-[#8b5cf6] bg-[#f4f0fb] rounded-full px-1.5 py-0.5" title="Kom inn før sporingen — teller i helhetsbildet, aldri i live ROAS/CAC"><History className="w-3 h-3" /> Historisk</span>
               )}
