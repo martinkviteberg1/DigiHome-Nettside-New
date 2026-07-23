@@ -105,6 +105,20 @@ export default function LeadDrawer({ apiKey, lead, type, onClose, onStatusChange
     setActionBusy(null);
   };
 
+  const updatePropertyInterest = async (propertyId, status) => {
+    setActionBusy(`interest-${propertyId}`);
+    try {
+      const r = await fetch(`/api/admin/tenant-interest?key=${encodeURIComponent(apiKey)}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: d.id, type: d.pre_tracking ? 'imported' : 'tenant', propertyId, status }),
+      });
+      const j = await r.json();
+      if (j.ok) { await load(); onChanged?.(); }
+    } catch (e) { /* status kan forsøkes igjen uten datatap */ }
+    setActionBusy(null);
+  };
+
+
   const doArchive = async (undo) => {
     if (!undo && !confirm(`Arkivere ${d.name || d.email || 'denne leaden'}?\n\nLeaden skjules fra pipeline, eksport og statistikk — men sporet beholdes og den kan gjenopprettes.`)) return;
     setActionBusy(undo ? 'restore' : 'archive');
@@ -204,6 +218,29 @@ export default function LeadDrawer({ apiKey, lead, type, onClose, onStatusChange
               <p className="text-[11.5px] text-[#999] mt-2.5 flex items-center gap-1.5"><ShieldCheck className="w-3.5 h-3.5 text-emerald-500" /> Utfall styres av plattformen{d.statusUpdatedAt ? ` · oppdatert ${fmtTime(d.statusUpdatedAt)}` : ''}</p>
             )}
           </div>
+
+
+          {isTenant && Array.isArray(d.property_interests) && d.property_interests.length > 0 ? (
+            <div className="rounded-2xl border border-[#eadff5] bg-[#faf7fe] p-4" data-testid="tenant-property-interests">
+              <div className="flex items-center justify-between gap-3">
+                <div><p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#8b5cf6]">Interessert i</p><p className="mt-1 text-[12px] text-[#777]">Registrert fra boligutsendelse</p></div>
+                <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-bold text-[#7A3EC8]">{d.property_interests.length}</span>
+              </div>
+              <div className="mt-3 space-y-2.5">
+                {[...d.property_interests].reverse().map((interest) => (
+                  <div key={`${interest.propertyId}-${interest.at}`} className="rounded-xl border border-[#ece6f3] bg-white p-3">
+                    <p className="text-[13px] font-bold text-[#222]">{interest.propertyTitle || interest.propertyId}</p>
+                    <p className="mt-0.5 text-[11px] text-[#999]">{interest.propertyArea || 'Område ikke oppgitt'}{interest.at ? ` · ${new Date(interest.at).toLocaleString('nb-NO')}` : ''}</p>
+                    <select value={interest.status || 'interested'} onChange={(e) => updatePropertyInterest(interest.propertyId, e.target.value)} disabled={actionBusy === `interest-${interest.propertyId}`}
+                      data-testid={`tenant-interest-status-${interest.propertyId}`}
+                      className="mt-2 h-8 w-full rounded-lg border border-[#e7e0ee] bg-[#faf8fc] px-2.5 text-[11.5px] font-semibold text-[#5e4677] outline-none disabled:opacity-50">
+                      <option value="interested">Interessert</option><option value="contacted">Kontaktet</option><option value="viewing">Visning</option><option value="matched">Matchet</option><option value="declined">Avslått</option>
+                    </select>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
 
           {/* Kontakt */}
           <div className="bg-white rounded-2xl p-4 shadow-[0_2px_12px_rgba(0,0,0,0.04)] space-y-3.5">

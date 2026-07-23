@@ -74,7 +74,7 @@ export function defaultsFor(type) {
     case 'spacer':   return { size: 'm' };
     case 'hero':     return { url: '', alt: '', height: null, fit: 'cover', focalX: 50, focalY: 50 };
     case 'image':    return { url: '', alt: '', height: null, fit: 'cover', focalX: 50, focalY: 50 };
-    case 'properties': return { title: 'Ledige boliger i Bergen', items: [], cta: 'Se alle ledige boliger', url: 'https://digihome.no/bli-leietaker' };
+    case 'properties': return { title: 'Ledige boliger i Bergen', items: [], cta: '', url: '' };
     default:         return {};
   }
 }
@@ -340,16 +340,17 @@ export function CanvasBlock({ b, i, total, accent, selected, onSelect, onPatch, 
             <AutoArea value={b.title} onChange={(e) => onPatch({ title: e.target.value })} placeholder="Tittel (f.eks. Ledige boliger i Bergen)…"
               className="text-[19px] font-bold tracking-[-0.01em] leading-[1.3] text-[#111]" />
             {items.length ? (
-              <div className="grid grid-cols-2 gap-3 mt-2">
+              <div className="space-y-3 mt-3">
                 {items.map((p, idx) => (
-                  <div key={p.pid || idx} className="rounded-[14px] border border-[#ece8e2] bg-white overflow-hidden">
+                  <div key={p.pid || idx} className="rounded-[18px] border border-[#ece8e2] bg-white overflow-hidden sm:flex">
                     {p.image
-                      ? <img src={mediaSrc(p.image)} alt="" className="w-full h-[110px] object-cover block" />
-                      : <div className="w-full h-[110px] bg-[#f4f2ef] flex items-center justify-center"><Home size={18} className="text-[#cbc4ba]" /></div>}
-                    <div className="px-3 py-2.5">
-                      <p className="text-[12.5px] font-bold text-[#111] leading-[1.35] truncate">{p.title}</p>
-                      {p.meta ? <p className="text-[11px] text-[#999] mt-0.5 truncate">{p.meta}</p> : null}
-                      {p.band ? <p className="text-[11.5px] font-bold text-[#111] mt-1">{p.band}</p> : null}
+                      ? <img src={mediaSrc(p.image)} alt="" className="w-full sm:w-[190px] h-[150px] object-cover block shrink-0" />
+                      : <div className="w-full sm:w-[190px] h-[150px] bg-[#f4f2ef] flex items-center justify-center shrink-0"><Home size={20} className="text-[#cbc4ba]" /></div>}
+                    <div className="px-4 py-4 flex-1 min-w-0">
+                      <p className="text-[14.5px] font-bold text-[#111] leading-[1.35]">{p.title}</p>
+                      {p.meta ? <p className="text-[11.5px] text-[#888] mt-1.5">{p.meta}</p> : null}
+                      {p.band ? <p className="text-[13px] font-bold text-[#111] mt-2">{p.band}</p> : null}
+                      <span className="inline-flex mt-3 rounded-full px-4 py-2 text-[11.5px] font-bold" style={{ background: 'var(--nl-soft, #f5edfc)', color: 'var(--nl-deep, #7A3EC8)' }}>Se bolig og meld interesse →</span>
                     </div>
                   </div>
                 ))}
@@ -623,22 +624,25 @@ function PropertyPicker({ b, onPatch, apiQ }) {
 
   const selected = new Set((b.items || []).map((x) => x.pid));
   const toItem = (p) => ({
-    pid: p.id,
+    pid: p.externalId || p.id,
+    localId: p.id || '',
     title: p.title || 'Bolig',
     image: (Array.isArray(p.images) && p.images[0]) || '',
-    meta: [p.area || p.city, p.bedrooms ? `${p.bedrooms} soverom` : null, p.sqm ? `${p.sqm} m²` : null].filter(Boolean).join(' · '),
+    meta: [p.area || p.city, p.bedrooms ? `${p.bedrooms} soverom` : null, p.sqm ? `${p.sqm} m²` : null, p.availableFrom ? `Ledig ${p.availableFrom}` : null].filter(Boolean).join(' · '),
     band: p.monthlyRentBand || '',
+    status: p.status || 'active',
   });
   const toggle = (p) => {
     const cur = b.items || [];
-    if (selected.has(p.id)) onPatch({ items: cur.filter((x) => x.pid !== p.id) });
-    else if (cur.length < 6) onPatch({ items: [...cur, toItem(p)] });
+    const pid = p.externalId || p.id;
+    if (selected.has(pid)) onPatch({ items: cur.filter((x) => x.pid !== pid) });
+    else onPatch({ items: [...cur, toItem(p)] });
   };
 
   return (
     <div className="mt-1">
       <div className="flex items-center justify-between">
-        <label className={labelCls} style={{ marginTop: 0 }}>Velg boliger ({(b.items || []).length}/6)</label>
+        <label className={labelCls} style={{ marginTop: 0 }}>Velg boliger ({(b.items || []).length} valgt)</label>
         <button onClick={load} className="text-[#aaa] hover:text-[#555] mt-1" title="Oppdater lista"><RefreshCw size={12} /></button>
       </div>
       {list === null ? (
@@ -650,11 +654,12 @@ function PropertyPicker({ b, onPatch, apiQ }) {
       ) : (
         <div className="max-h-[260px] overflow-y-auto rounded-xl border border-[#f0ede8] divide-y divide-[#f5f2ee]" data-testid="nl-property-picker">
           {list.map((p) => {
-            const on = selected.has(p.id);
-            const full = !on && (b.items || []).length >= 6;
+            const pid = p.externalId || p.id;
+            const on = selected.has(pid);
+            const unavailable = p.status !== 'active';
             return (
-              <button key={p.id} onClick={() => toggle(p)} disabled={full} data-testid={`nl-prop-${p.id}`}
-                className={`w-full flex items-center gap-2.5 px-2.5 py-2 text-left transition-colors ${on ? 'bg-[#faf5ff]' : 'hover:bg-[#fbfaf9]'} ${full ? 'opacity-40 cursor-not-allowed' : ''}`}>
+              <button key={pid} onClick={() => toggle(p)} disabled={!on && unavailable} data-testid={`nl-prop-${pid}`}
+                className={`w-full flex items-center gap-2.5 px-2.5 py-2 text-left transition-colors ${on ? 'bg-[#faf5ff]' : 'hover:bg-[#fbfaf9]'} ${!on && unavailable ? 'opacity-45 cursor-not-allowed' : ''}`}>
                 {(Array.isArray(p.images) && p.images[0])
                   ? <img src={mediaSrc(p.images[0])} alt="" className="w-[42px] h-[32px] rounded-md object-cover shrink-0" />
                   : <div className="w-[42px] h-[32px] rounded-md bg-[#f4f2ef] flex items-center justify-center shrink-0"><Home size={13} className="text-[#cbc4ba]" /></div>}
@@ -672,6 +677,9 @@ function PropertyPicker({ b, onPatch, apiQ }) {
           })}
         </div>
       )}
+      {(b.items || []).length > 10 ? (
+        <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-[10.5px] leading-relaxed text-amber-700">Mange boligkort kan gjøre e-posten svært lang. Gmail kan klippe meldinger over ca. 102 KB — vurder flere utsendinger hvis du velger svært mange.</p>
+      ) : null}
     </div>
   );
 }

@@ -42,7 +42,7 @@ import { runOptimization, getOptimizeConfig, setOptimizeConfig, getLastRun, list
 import { sendWeeklyReport, buildReportData, renderReportHtml } from '@/lib/ads-report';
 import { buildMarketingMetrics } from '@/lib/marketing-metrics';
 import { emailConfigured, reportRecipients, sendHtmlEmail } from '@/lib/email';
-import { NEWSLETTER_COLL, OPTOUT_COLL, NL_EVENTS_COLL, renderNewsletterHtml, resolveAudience, audienceCounts, sanitizeBlocks, hasContent, buildUnsubUrl, verifyUnsubToken, verifyInterestToken, slugifyCampaign, normEmail as nlNormEmail, recipientId, TEMPLATES, templateBlocks, THEMES, TRACKING_GIF, applyMergeTags } from '@/lib/newsletter';
+import { NEWSLETTER_COLL, OPTOUT_COLL, NL_EVENTS_COLL, renderNewsletterHtml, resolveAudience, audienceCounts, sanitizeBlocks, hasContent, buildUnsubUrl, verifyUnsubToken, verifyInterestToken, propertyInterestToken, verifyPropertyInterestToken, slugifyCampaign, normEmail as nlNormEmail, recipientId, TEMPLATES, templateBlocks, THEMES, TRACKING_GIF, applyMergeTags } from '@/lib/newsletter';
 import { syncPropertiesFromPlatform, maybeAutoSyncProperties, listAdminProperties, listPublicProperties, setPropertyVisibility, getPropertiesSyncMeta } from '@/lib/properties-sync';
 import { buildLeadReceipt, buildLeadAdminNotification } from '@/lib/lead-emails';
 import { fireLeadEmails, sendReEngagedNotification } from '@/lib/lead-emails';
@@ -425,6 +425,40 @@ function forwardAuditFields(fwd, { previousPlatformId = null, previousForwardedA
     forward_http_status: Number.isFinite(Number(fwd?.status)) ? Number(fwd.status) : null,
     ...(attempts !== undefined ? { forward_attempts: attempts } : {}),
   };
+}
+
+// Oppdater bolig-snapshots fra systemet og fjern boliger som ikke lenger er
+// aktive. Brukes i preview/test/send — ingen utsending kan inneholde utleid bolig.
+async function resolveDraftProperties(dbx, blocks) {
+  const cleanBlocks = sanitizeBlocks(blocks);
+  const ids = [...new Set(cleanBlocks.filter((b) => b.type === 'properties').flatMap((b) => (b.items || []).map((p) => p.pid)).filter(Boolean))];
+  if (!ids.length) return { blocks: cleanBlocks, unavailable: [] };
+  const liveRows = await dbx.collection('platform_properties').find(
+    { stale: { $ne: true }, $or: [{ externalId: { $in: ids } }, { id: { $in: ids } }] },
+    { projection: { _id: 0, id: 1, externalId: 1, title: 1, area: 1, city: 1, type: 1, bedrooms: 1, sqm: 1, images: 1, status: 1, monthlyRentBand: 1, availableFrom: 1 } }
+  ).toArray();
+  const byId = new Map();
+  liveRows.forEach((p) => { byId.set(p.externalId, p); byId.set(p.id, p); });
+  const unavailable = [];
+  const hydrated = cleanBlocks.map((b) => {
+    if (b.type !== 'properties') return b;
+    const items = (b.items || []).map((snap) => {
+      const live = byId.get(snap.pid);
+      if (!live || live.status !== 'active') { unavailable.push({ pid: snap.pid, title: snap.title || live?.title || 'Bolig', status: live?.status || 'missing' }); return null; }
+      return {
+        ...snap,
+        pid: live.externalId || snap.pid,
+        localId: live.id,
+        title: live.title || snap.title,
+        image: (Array.isArray(live.images) && live.images[0]) || snap.image || '',
+        meta: [live.area || live.city, live.bedrooms ? `${live.bedrooms} soverom` : null, live.sqm ? `${live.sqm} m²` : null, live.availableFrom ? `Ledig ${live.availableFrom}` : null].filter(Boolean).join(' · '),
+        band: live.monthlyRentBand || '',
+        status: live.status,
+      };
+    }).filter(Boolean);
+    return { ...b, items };
+  });
+  return { blocks: hydrated, unavailable };
 }
 
 const SS_UNIT_TYPE = { leilighet: 'Leilighet', enebolig: 'Enebolig', rekkehus: 'Rekkehus', tomannsbolig: 'Tomannsbolig', hybel: 'Hybel', naeringsbygg: 'Næringsbygg', annet: 'Annet' };
@@ -4526,7 +4560,8 @@ Lag 4 banner-varianter som JSON:
     if (route === '/admin/newsletter/preview' && method === 'POST') {
       if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
-      const blocks = sanitizeBlocks(body.blocks);
+      const resolved = await resolveDraftProperties(db, body.blocks);
+      const blocks = resolved.blocks;
       const base = process.env.NEXT_PUBLIC_BASE_URL || new URL(request.url).origin;
       const html = renderNewsletterHtml({
         subject: (body.subject || '').toString().slice(0, 200),
@@ -4537,7 +4572,7 @@ Lag 4 banner-varianter som JSON:
         campaignSlug: slugifyCampaign(body.subject),
         recipient: { name: 'Martin Kviteberg' }, // eksempel for merge-tags i forhåndsvisning
       });
-      return cors(NextResponse.json({ ok: true, html }));
+      return cors(NextResponse.json({ ok: true, html, unavailableProperties: resolved.unavailable }));
     }
 
     // AI-forslag til emnefelt + forhåndstekst (Emergent LLM). body: {blocks,
@@ -4604,7 +4639,9 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
       const rawTo = Array.isArray(body.to) ? body.to : String(body.to || '').split(/[,;\n]+/);
       const emails = [...new Set(rawTo.map((e) => nlNormEmail(e)).filter((e) => /^\S+@\S+\.\S+$/.test(e)))].slice(0, 10);
       if (!emails.length) return cors(NextResponse.json({ ok: false, error: 'Ingen gyldige test-adresser' }, { status: 400 }));
-      const blocks = sanitizeBlocks(body.blocks);
+      const resolved = await resolveDraftProperties(db, body.blocks);
+      const blocks = resolved.blocks;
+      if (resolved.unavailable.length) return cors(NextResponse.json({ ok: false, error: `${resolved.unavailable.length} valgt bolig er ikke ledig lenger — oppdater boligblokken før test`, unavailableProperties: resolved.unavailable }, { status: 409 }));
       if (!blocks.length) return cors(NextResponse.json({ ok: false, error: 'Nyhetsbrevet har ikke noe innhold ennå' }, { status: 400 }));
       const subject = (body.subject || 'DigiHome — nyhetsbrev').toString().slice(0, 200);
       const base = process.env.NEXT_PUBLIC_BASE_URL || new URL(request.url).origin;
@@ -4617,7 +4654,7 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
           subject, preheader: (body.preheader || '').toString().slice(0, 200), blocks,
           theme: (body.theme || 'lavendel').toString(),
           unsubUrl: buildUnsubUrl(base, to), campaignSlug: slugifyCampaign(subject),
-          recipient: { name: (body.sampleName || 'Martin Kviteberg').toString() },
+          recipient: { name: (body.sampleName || 'Martin Kviteberg').toString(), email: to },
           testNote,
         });
         try {
@@ -4638,10 +4675,12 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
       const doc = {
         id: uuidv4(),
         title: (body.title || tpl.label).toString().slice(0, 160),
-        subject: '', preheader: '', fromName: 'DigiHome',
+        subject: tpl.key === 'boliger' ? '{{first_name}}, nye ledige boliger fra DigiHome' : '',
+        preheader: tpl.key === 'boliger' ? 'Se boligene og meld interesse med noen få trykk.' : '',
+        fromName: 'DigiHome',
         theme: 'lavendel',
         blocks: templateBlocks(tpl.key),
-        segments: [], excludedEmails: [], extraEmails: [],
+        segments: tpl.key === 'boliger' ? ['leietakere'] : [], excludedEmails: [], extraEmails: [],
         status: 'draft', template: tpl.key,
         createdAt: now, updatedAt: now,
         recipients: 0, sent: 0, failedCount: 0, opens: 0, clicks: 0, openedR: [], clickedR: [],
@@ -4656,9 +4695,9 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
       let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
       const id = (body.id || '').toString();
       if (!id) return cors(NextResponse.json({ ok: false, error: 'Mangler id' }, { status: 400 }));
-      const existing = await db.collection(NEWSLETTER_COLL).findOne({ id }, { projection: { _id: 0, status: 1 } });
+      const existing = await db.collection(NEWSLETTER_COLL).findOne({ id }, { projection: { _id: 0, status: 1, scheduledFor: 1 } });
       if (!existing) return cors(NextResponse.json({ ok: false, error: 'Fant ikke kampanjen' }, { status: 404 }));
-      if (existing.status === 'sent') return cors(NextResponse.json({ ok: false, error: 'Sendte kampanjer kan ikke endres' }, { status: 400 }));
+      if (existing.status === 'sent') return cors(NextResponse.json({ ok: false, error: 'Sendte eller planlagte kampanjer kan ikke endres' }, { status: 400 }));
       const set = { updatedAt: new Date().toISOString() };
       if (body.title !== undefined) set.title = String(body.title).slice(0, 160);
       if (body.subject !== undefined) set.subject = String(body.subject).slice(0, 200);
@@ -4671,6 +4710,10 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
       if (body.extraEmails !== undefined) set.extraEmails = (Array.isArray(body.extraEmails) ? body.extraEmails : []).slice(0, 500)
         .map((x) => (typeof x === 'string' ? { email: nlNormEmail(x), name: '' } : { email: nlNormEmail(x?.email), name: String(x?.name || '').slice(0, 120) }))
         .filter((x) => /^\S+@\S+\.\S+$/.test(x.email));
+      if (body.scheduledFor !== undefined) {
+        const iso = body.scheduledFor ? new Date(body.scheduledFor).toISOString() : null;
+        set.scheduledFor = iso && Date.parse(iso) > Date.now() + 5 * 60 * 1000 ? iso : null;
+      }
       await db.collection(NEWSLETTER_COLL).updateOne({ id }, { $set: set });
       return cors(NextResponse.json({ ok: true, updatedAt: set.updatedAt }));
     }
@@ -4799,6 +4842,7 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
           ctor: opensUnique ? Math.round((clicksUnique / opensUnique) * 1000) / 10 : null,
           medianMinutesToOpen, bestHour,
           clicksByUrl, timeline, hourly, devices, clients, segments, recipientDetails,
+          propertyInterests: c.propertyInterests || 0,
           leadsGenerated,
           leadsCount: leadsGenerated.length,
           leadsWon: leadsGenerated.filter((l) => l.status === 'won').length,
@@ -4855,10 +4899,21 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
       if (!hasContent(c.blocks)) return cors(NextResponse.json({ ok: false, error: 'Nyhetsbrevet har ikke noe innhold ennå' }, { status: 400 }));
       if (!(c.segments || []).length && !(c.extraEmails || []).length) return cors(NextResponse.json({ ok: false, error: 'Velg minst én målgruppe eller legg til mottakere manuelt' }, { status: 400 }));
 
+      const propertyResolution = await resolveDraftProperties(db, c.blocks || []);
+      if (propertyResolution.unavailable.length) {
+        return cors(NextResponse.json({ ok: false, error: `${propertyResolution.unavailable.length} valgt bolig er ikke ledig lenger — åpne boligblokken og oppdater utvalget`, unavailableProperties: propertyResolution.unavailable }, { status: 409 }));
+      }
+      const sendBlocks = propertyResolution.blocks;
+
       const { recipients, skipped } = await resolveAudience(db, c.segments, c.excludedEmails || [], c.extraEmails || []);
       if (!recipients.length) return cors(NextResponse.json({ ok: false, error: 'Ingen mottakere i valgt målgruppe (etter avmeldte/ekskluderte)' }, { status: 400 }));
       if (recipients.length > 2000) return cors(NextResponse.json({ ok: false, error: `For mange mottakere i én utsending (${recipients.length} > 2000)` }, { status: 400 }));
 
+      const scheduledFor = c.scheduledFor ? Date.parse(c.scheduledFor) : null;
+      if (scheduledFor && (scheduledFor < Date.now() + 5 * 60 * 1000 || scheduledFor > Date.now() + 72 * 60 * 60 * 1000)) {
+        return cors(NextResponse.json({ ok: false, error: 'Planlagt tidspunkt må være mellom 5 minutter og 72 timer frem i tid' }, { status: 400 }));
+      }
+      const sendAt = scheduledFor ? Math.floor(scheduledFor / 1000) : undefined;
       const base = process.env.NEXT_PUBLIC_BASE_URL || new URL(request.url).origin;
       const slug = slugifyCampaign(subject);
       const fromEmail = (process.env.SENDGRID_FROM_EMAIL || 'hei@digihome.no').trim();
@@ -4870,7 +4925,7 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
           try {
             const unsubUrl = buildUnsubUrl(base, r.email, campaignId);
             const html = renderNewsletterHtml({
-              subject, preheader: c.preheader || '', blocks: c.blocks || [], theme: c.theme || 'lavendel',
+              subject, preheader: c.preheader || '', blocks: sendBlocks, theme: c.theme || 'lavendel',
               unsubUrl, campaignSlug: slug,
               recipient: r,
               tracking: { trackBase: base, campaignId, rid: recipientId(r.email) },
@@ -4885,6 +4940,7 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
                 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
               },
               categories: ['nyhetsbrev', slug.slice(0, 50)],
+              sendAt,
             });
             sent++;
           } catch (e) {
@@ -4899,12 +4955,13 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
         const recDocs = recipients.map((r) => ({
           id: uuidv4(), campaignId, rid: recipientId(r.email),
           email: r.email, name: r.name || '', segment: r.segment || '',
-          failed: failed.some((f) => f.email === r.email), sentAt: now,
+          tenantId: r.segment === 'leietakere' ? (r.id || '') : '',
+          failed: failed.some((f) => f.email === r.email), sentAt: scheduledFor ? c.scheduledFor : now,
         }));
         if (recDocs.length) await db.collection('newsletter_recipients').insertMany(recDocs, { ordered: false });
       } catch (e) {}
       const upd = {
-        status: 'sent', sentAt: now, updatedAt: now, slug,
+        status: 'sent', sentAt: scheduledFor ? c.scheduledFor : now, scheduledFor: c.scheduledFor || null, queuedAt: scheduledFor ? now : null, updatedAt: now, slug,
         recipients: recipients.length, sent, failedCount: failed.length,
         failed: failed.slice(0, 50), skipped, opens: 0, clicks: 0, openedR: [], clickedR: [],
       };
@@ -5081,6 +5138,107 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
     const decodeMagicEmail = (v) => {
       try { return Buffer.from(String(v || ''), 'base64url').toString('utf8').trim().toLowerCase(); } catch (e) { return ''; }
     };
+
+    const findNewsletterProperty = async (dbx, propertyId) => {
+      const pid = String(propertyId || '').slice(0, 80);
+      if (!pid) return null;
+      return dbx.collection('platform_properties').findOne(
+        { stale: { $ne: true }, $or: [{ externalId: pid }, { id: pid }] },
+        { projection: { _id: 0, id: 1, externalId: 1, title: 1, area: 1, city: 1, type: 1, bedrooms: 1, sqm: 1, images: 1, status: 1, monthlyRentBand: 1, availableFrom: 1 } }
+      );
+    };
+
+    // Boligspesifikk interesse fra nyhetsbrev. GET er alltid read-only (beskytter
+    // mot e-postskannere); først POST-bekreftelse skriver til leietakerkortet.
+    if (route === '/newsletter/property-interest/lookup' && method === 'GET') {
+      const sp = new URL(request.url).searchParams;
+      const campaignId = String(sp.get('c') || '').slice(0, 80);
+      const rid = String(sp.get('r') || '').slice(0, 32);
+      const propertyKey = String(sp.get('property') || '').slice(0, 80);
+      const property = await findNewsletterProperty(db, propertyKey);
+      if (!property) return cors(NextResponse.json({ ok: false, error: 'Boligen finnes ikke lenger' }, { status: 404 }));
+      const recipient = await db.collection('newsletter_recipients').findOne({ campaignId, rid }, { projection: { _id: 0, email: 1, tenantId: 1 } });
+      const tokenOk = verifyPropertyInterestToken(campaignId, rid, propertyKey, sp.get('pt'));
+      if (!recipient?.email || !tokenOk) {
+        // Admin-/e-postpreview uten mottakeridentitet: boligen kan vises, men
+        // bekreftelsesknappen er deaktivert og ingen leaddata eksponeres.
+        return cors(NextResponse.json({ ok: true, preview: true, firstName: '', property, available: property.status === 'active', campaignId: '' }));
+      }
+      const email = nlNormEmail(recipient.email);
+      const contact = await findNlContact(db, email);
+      return cors(NextResponse.json({
+        ok: true,
+        firstName: contact?.name ? String(contact.name).split(/\s+/)[0] : '',
+        property,
+        available: property.status === 'active',
+        campaignId,
+      }));
+    }
+
+    if (route === '/newsletter/property-interest/confirm' && method === 'POST') {
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      const campaignId = String(body.campaign || '').slice(0, 80);
+      const rid = String(body.r || '').slice(0, 32);
+      const propertyKey = String(body.property || '').slice(0, 80);
+      const recipient = await db.collection('newsletter_recipients').findOne({ campaignId, rid }, { projection: { _id: 0, email: 1, tenantId: 1 } });
+      if (!recipient?.email || !verifyPropertyInterestToken(campaignId, rid, propertyKey, body.pt)) {
+        return cors(NextResponse.json({ ok: false, error: 'Ugyldig eller utløpt lenke' }, { status: 401 }));
+      }
+      const email = nlNormEmail(recipient.email);
+      const property = await findNewsletterProperty(db, propertyKey);
+      if (!property) return cors(NextResponse.json({ ok: false, error: 'Boligen finnes ikke lenger' }, { status: 404 }));
+      if (property.status !== 'active') return cors(NextResponse.json({ ok: false, error: 'Boligen er dessverre ikke ledig lenger' }, { status: 409 }));
+
+      const emailRe = new RegExp(`^${email.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
+      let tenant = await db.collection('tenant_leads').find({ email: emailRe, deleted: { $ne: true } }).sort({ createdAt: -1 }).limit(1).next();
+      let coll = 'tenant_leads';
+      if (!tenant) {
+        tenant = await db.collection('imported_leads').find({ email: emailRe, lead_type: 'leietaker', deleted: { $ne: true } }).sort({ createdAt: -1 }).limit(1).next();
+        coll = 'imported_leads';
+      }
+      if (!tenant?.id) return cors(NextResponse.json({ ok: false, error: 'Fant ikke leietakerprofilen din' }, { status: 404 }));
+
+      const at = new Date().toISOString();
+      const propertyId = property.externalId || property.id;
+      const previous = (Array.isArray(tenant.property_interests) ? tenant.property_interests : []).find((x) => String(x.propertyId) === String(propertyId));
+      const interest = {
+        propertyId,
+        localPropertyId: property.id,
+        propertyTitle: property.title || '',
+        propertyArea: property.area || property.city || '',
+        status: previous?.status || 'interested',
+        at: previous?.at || at,
+        lastConfirmedAt: at,
+        campaignId,
+        rid,
+        source: 'nyhetsbrev-bolig',
+      };
+      await db.collection(coll).updateOne(
+        { id: tenant.id },
+        {
+          $set: { updatedAt: at, last_property_interest_at: at },
+          $pull: { property_interests: { propertyId } },
+        }
+      );
+      await db.collection(coll).updateOne({ id: tenant.id }, { $push: { property_interests: interest } });
+      const eventResult = await db.collection('property_interest_events').updateOne(
+        { email, propertyId, campaignId },
+        {
+          $set: { email, tenantId: tenant.id, tenantCollection: coll, ...interest, lastConfirmedAt: at },
+          $setOnInsert: { id: uuidv4(), createdAt: at },
+        },
+        { upsert: true }
+      );
+      if (campaignId && rid && eventResult.upsertedCount) {
+        try {
+          await db.collection(NL_EVENTS_COLL).insertOne({ id: uuidv4(), campaignId, rid, type: 'property_interest', propertyId, tenantId: tenant.id, at });
+          await db.collection(NEWSLETTER_COLL).updateOne({ id: campaignId }, { $inc: { propertyInterests: 1 } });
+        } catch (e) { /* interesse på kortet er allerede lagret */ }
+      }
+      return cors(NextResponse.json({ ok: true, tenantId: tenant.id, property, interest }));
+    }
+
+
 
     if (route === '/interesse/lookup' && method === 'GET') {
       const { searchParams } = new URL(request.url);
@@ -7309,6 +7467,7 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
       const coll = searchParams.get('type') === 'tenant' ? 'tenant_leads' : 'leads';
       if (!id) return cors(NextResponse.json({ ok: false, error: 'Mangler id' }, { status: 400 }));
       let lead = await db.collection(coll).findOne({ id });
+
       if (!lead) {
         // Historisk lead (imported_leads) — returner effektive felter, ingen tidslinje
         // (kom inn før sporing → ingen hendelser å vise).
@@ -7361,6 +7520,31 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
       return cors(NextResponse.json({ ok: true, archived, count: archived.length }));
     }
 
+
+    // --- Admin: oppdater status på boliginteresse fra leietakerkortet ---
+    if (route === '/admin/tenant-interest' && (method === 'PUT' || method === 'POST')) {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      const id = String(body.id || '').slice(0, 80);
+      const propertyId = String(body.propertyId || '').slice(0, 80);
+      const status = String(body.status || '').slice(0, 30);
+      const allowed = ['interested', 'contacted', 'viewing', 'matched', 'declined'];
+      if (!id || !propertyId || !allowed.includes(status)) return cors(NextResponse.json({ ok: false, error: 'Ugyldig id, bolig eller status' }, { status: 400 }));
+      const coll = body.type === 'imported' ? 'imported_leads' : 'tenant_leads';
+      const doc = await db.collection(coll).findOne({ id }, { projection: { _id: 0, property_interests: 1 } });
+      if (!doc) return cors(NextResponse.json({ ok: false, error: 'Fant ikke leietakeren' }, { status: 404 }));
+      const at = new Date().toISOString();
+      let found = false;
+      const interests = (Array.isArray(doc.property_interests) ? doc.property_interests : []).map((x) => {
+        if (String(x.propertyId) !== propertyId) return x;
+        found = true;
+        return { ...x, status, statusUpdatedAt: at };
+      });
+      if (!found) return cors(NextResponse.json({ ok: false, error: 'Fant ikke boliginteressen' }, { status: 404 }));
+      await db.collection(coll).updateOne({ id }, { $set: { property_interests: interests, updatedAt: at } });
+      await db.collection('property_interest_events').updateMany({ tenantId: id, propertyId }, { $set: { status, statusUpdatedAt: at } });
+      return cors(NextResponse.json({ ok: true, interests }));
+    }
 
     // --- Admin: arkiver lead (soft delete m/tombstone) + gjenopprett ---
     // Best practice: raden består med deleted-flagg (spor/attribusjon beholdes),

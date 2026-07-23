@@ -21,6 +21,13 @@ const uid = () => Math.random().toString(36).slice(2, 10);
 const SEG_LABEL = { kunder: 'Kunder', abonnenter: 'Abonnenter', leads: 'Utleier-leads', leietakere: 'Leietakere', manuell: 'Manuelt lagt til' };
 const fmtDate = (iso) => (iso ? new Date(iso).toLocaleString('nb-NO', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—');
 const normEmail = (e) => (e || '').toString().trim().toLowerCase();
+const localDateTimeValue = (iso) => {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+};
+
 
 export default function NewsletterTab({ apiKey }) {
   const q = `key=${encodeURIComponent(apiKey)}`;
@@ -100,7 +107,7 @@ export default function NewsletterTab({ apiKey }) {
         body: JSON.stringify({
           id: c.id, title: c.title, subject: c.subject, preheader: c.preheader,
           fromName: c.fromName, theme: c.theme, segments: c.segments,
-          excludedEmails: c.excludedEmails, extraEmails: c.extraEmails,
+          excludedEmails: c.excludedEmails, extraEmails: c.extraEmails, scheduledFor: c.scheduledFor || null,
           blocks: c.blocks.map(({ id, ...rest }) => rest),
         }),
       });
@@ -502,6 +509,14 @@ export default function NewsletterTab({ apiKey }) {
                     <input value={camp.fromName || ''} onChange={(e) => patch({ fromName: e.target.value })}
                       placeholder="DigiHome"
                       className="w-full h-[38px] rounded-lg border border-[#e8e8e8] px-3 text-[13px] outline-none focus:border-[#c99df0]" />
+                    <label className="text-[11px] font-semibold text-[#777] block mb-1.5 mt-4">Planlegg utsendelse (valgfritt)</label>
+                    <input type="datetime-local" value={localDateTimeValue(camp.scheduledFor)}
+                      min={localDateTimeValue(new Date(Date.now() + 5 * 60 * 1000).toISOString())}
+                      onChange={(e) => patch({ scheduledFor: e.target.value ? new Date(e.target.value).toISOString() : null })}
+                      data-testid="nl-scheduled-for"
+                      className="w-full h-[38px] rounded-lg border border-[#e8e8e8] px-3 text-[13px] outline-none focus:border-[#c99df0]" />
+                    <p className="text-[10.5px] text-[#aaa] mt-1.5">Ved bekreftet utsendelse køer SendGrid hver personlig e-post til valgt tidspunkt. Maks 72 timer frem i tid.</p>
+
                     <p className="text-[10.5px] text-[#bbb] leading-[1.5] mt-4">Flettekoder: <code className="bg-[#f4f2ef] px-1 rounded">{'{{name}}'}</code> <code className="bg-[#f4f2ef] px-1 rounded">{'{{first_name}}'}</code> — fungerer i emnefelt og tekstblokker.</p>
                   </div>
                 ) : (
@@ -587,13 +602,14 @@ export default function NewsletterTab({ apiKey }) {
                 <div className="flex justify-between text-[13px]"><span className="text-[#888]">Manuelt lagt til</span><span className="font-semibold">{(camp.extraEmails || []).length}</span></div>
                 <div className="flex justify-between text-[13px]"><span className="text-[#888]">Ekskludert</span><span className="font-semibold">{(camp.excludedEmails || []).length}</span></div>
                 <div className="flex justify-between text-[14px] pt-1 border-t border-[#eee]"><span className="text-[#888]">Netto mottakere</span><span className="font-bold text-[#a052e0]">{netCount != null ? netCount : '…'}</span></div>
+                {camp.scheduledFor ? <div className="flex justify-between text-[13px]"><span className="text-[#888]">Planlagt</span><span className="font-semibold">{new Date(camp.scheduledFor).toLocaleString('nb-NO')}</span></div> : null}
               </div>
               {sendErr ? <p className="text-[12.5px] text-red-500 mt-3">{sendErr}</p> : null}
               <div className="flex gap-2 mt-5">
                 <button onClick={() => setConfirming(false)} className="flex-1 h-[42px] rounded-full border border-[#e5e5e5] text-[13px] font-semibold">Avbryt</button>
                 <button onClick={doSend} disabled={sendState === 'sending' || !camp.subject} data-testid="nl-confirm-send"
                   className="flex-1 h-[42px] rounded-full bg-[#0a0a0a] text-white text-[13px] font-bold disabled:opacity-50 flex items-center justify-center gap-2">
-                  {sendState === 'sending' ? <Loader2 size={14} className="animate-spin" /> : <Send size={13} />} Send nå
+                  {sendState === 'sending' ? <Loader2 size={14} className="animate-spin" /> : <Send size={13} />} {camp.scheduledFor ? 'Planlegg utsendelse' : 'Send nå'}
                 </button>
               </div>
               <p className="text-[10.5px] text-[#bbb] text-center mt-3">Avmeldte og ugyldige adresser filtreres automatisk. Kan ikke angres.</p>

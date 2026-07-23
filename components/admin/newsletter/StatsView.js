@@ -60,6 +60,7 @@ export default function StatsView({ camp, stats, q, onBack, onDuplicate }) {
     { l: 'Klikkrate', v: s.clickRate != null ? `${s.clickRate} %` : '—', sub: `${s.clicksUnique ?? 0} unike · ${s.clicks ?? 0} totalt`, icon: MousePointerClick },
     { l: 'Klikk av åpnet', v: s.ctor != null ? `${s.ctor} %` : '—', sub: 'CTOR — innholdets treffsikkerhet', icon: MousePointerClick },
     { l: 'Leads', v: s.leadsCount ?? 0, sub: s.leadsWon ? `${s.leadsWon} vunnet` : 'skjema-innsendinger', icon: UserPlus, hot: (s.leadsCount || 0) > 0 },
+    { l: 'Boliginteresser', v: s.propertyInterests ?? 0, sub: 'bekreftet på leietakerkort', icon: MousePointerClick, hot: (s.propertyInterests || 0) > 0 },
     { l: 'Avmeldt', v: s.unsubs ?? 0, sub: s.sent ? `${Math.round(((s.unsubs || 0) / s.sent) * 1000) / 10} % av sendte` : '—', icon: UserMinus, warn: (s.unsubs || 0) > 0 && s.sent && (s.unsubs / s.sent) > 0.02 },
   ];
 
