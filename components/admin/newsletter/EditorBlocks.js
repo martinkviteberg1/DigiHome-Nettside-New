@@ -74,7 +74,7 @@ export function defaultsFor(type) {
     case 'spacer':   return { size: 'm' };
     case 'hero':     return { url: '', alt: '', height: null, fit: 'cover', focalX: 50, focalY: 50 };
     case 'image':    return { url: '', alt: '', height: null, fit: 'cover', focalX: 50, focalY: 50 };
-    case 'properties': return { title: 'Ledige boliger i Bergen', items: [], cta: '', url: '' };
+    case 'properties': return { title: 'Ledige boliger i Bergen', items: [], cta: '', url: '', grouping: 'auto', groupingThreshold: 6 };
     default:         return {};
   }
 }
@@ -335,22 +335,39 @@ export function CanvasBlock({ b, i, total, accent, selected, onSelect, onPatch, 
           : <DropImage onUpload={upload} uploading={uploading} label="Slipp hero-bildet her — vises i full bredde øverst" />;
       case 'properties': {
         const items = b.items || [];
+        const threshold = Math.max(2, Number(b.groupingThreshold) || 6);
+        const shouldGroup = b.grouping === 'always' || (b.grouping !== 'off' && items.length >= threshold);
+        const groups = shouldGroup
+          ? Object.entries(items.reduce((acc, item) => { const key = item.district || 'Andre områder'; (acc[key] ||= []).push(item); return acc; }, {}))
+          : [['', items]];
         return (
           <div>
             <AutoArea value={b.title} onChange={(e) => onPatch({ title: e.target.value })} placeholder="Tittel (f.eks. Ledige boliger i Bergen)…"
               className="text-[19px] font-bold tracking-[-0.01em] leading-[1.3] text-[#111]" />
             {items.length ? (
-              <div className="space-y-3 mt-3">
-                {items.map((p, idx) => (
-                  <div key={p.pid || idx} className="rounded-[18px] border border-[#ece8e2] bg-white overflow-hidden sm:flex">
-                    {p.image
-                      ? <img src={mediaSrc(p.image)} alt="" className="w-full sm:w-[190px] h-[150px] object-cover block shrink-0" />
-                      : <div className="w-full sm:w-[190px] h-[150px] bg-[#f4f2ef] flex items-center justify-center shrink-0"><Home size={20} className="text-[#cbc4ba]" /></div>}
-                    <div className="px-4 py-4 flex-1 min-w-0">
-                      <p className="text-[14.5px] font-bold text-[#111] leading-[1.35]">{p.title}</p>
-                      {p.meta ? <p className="text-[11.5px] text-[#888] mt-1.5">{p.meta}</p> : null}
-                      {p.band ? <p className="text-[13px] font-bold text-[#111] mt-2">{p.band}</p> : null}
-                      <span className="inline-flex mt-3 rounded-full px-4 py-2 text-[11.5px] font-bold" style={{ background: 'var(--nl-soft, #f5edfc)', color: 'var(--nl-deep, #7A3EC8)' }}>Se bolig og meld interesse →</span>
+              <div className="space-y-5 mt-3">
+                {groups.map(([district, groupItems]) => (
+                  <div key={district || 'all'}>
+                    {district ? (
+                      <div className="mb-2.5 flex items-center justify-between border-b border-[#eee9f3] pb-2">
+                        <p className="text-[12px] font-extrabold uppercase tracking-[0.1em] text-[#7A3EC8]">{district}</p>
+                        <span className="rounded-full bg-[#f5edfc] px-2.5 py-1 text-[10.5px] font-bold text-[#8b5cf6]">{groupItems.length} {groupItems.length === 1 ? 'bolig' : 'boliger'}</span>
+                      </div>
+                    ) : null}
+                    <div className="space-y-3">
+                      {groupItems.map((p, idx) => (
+                        <div key={p.pid || idx} className="rounded-[18px] border border-[#ece8e2] bg-white overflow-hidden sm:flex">
+                          {p.image
+                            ? <img src={mediaSrc(p.image)} alt="" className="w-full sm:w-[190px] h-[150px] object-cover block shrink-0" />
+                            : <div className="w-full sm:w-[190px] h-[150px] bg-[#f4f2ef] flex items-center justify-center shrink-0"><Home size={20} className="text-[#cbc4ba]" /></div>}
+                          <div className="px-4 py-4 flex-1 min-w-0">
+                            <p className="text-[14.5px] font-bold text-[#111] leading-[1.35]">{p.title}</p>
+                            {p.meta ? <p className="text-[11.5px] text-[#888] mt-1.5">{p.meta}</p> : null}
+                            {p.band ? <p className="text-[13px] font-bold text-[#111] mt-2">{p.band}</p> : null}
+                            <span className="inline-flex mt-3 rounded-full px-4 py-2 text-[11.5px] font-bold" style={{ background: 'var(--nl-soft, #f5edfc)', color: 'var(--nl-deep, #7A3EC8)' }}>Se bolig og meld interesse →</span>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 ))}
@@ -631,6 +648,7 @@ function PropertyPicker({ b, onPatch, apiQ }) {
     meta: [p.area || p.city, p.bedrooms ? `${p.bedrooms} soverom` : null, p.sqm ? `${p.sqm} m²` : null, p.availableFrom ? `Ledig ${p.availableFrom}` : null].filter(Boolean).join(' · '),
     band: p.monthlyRentBand || '',
     status: p.status || 'active',
+    district: p.district || p.area || p.city || 'Andre områder',
   });
   const toggle = (p) => {
     const cur = b.items || [];
@@ -816,6 +834,14 @@ export function BlockInspector({ b, onPatch, onDel, onUploadImage, uploadingId, 
 
       {b.type === 'properties' ? (<>
         <PropertyPicker b={b} onPatch={onPatch} apiQ={apiQ} />
+        <label className={labelCls}>Gruppering etter bydel/område</label>
+        <div className="grid grid-cols-3 gap-1.5" data-testid="nl-properties-grouping">
+          {[['off', 'Ingen'], ['auto', 'Auto 6+'], ['always', 'Alltid']].map(([key, label]) => (
+            <button key={key} type="button" onClick={() => onPatch({ grouping: key })}
+              className={`h-8 rounded-lg text-[11.5px] font-semibold ${(b.grouping || 'auto') === key ? 'bg-[#0a0a0a] text-white' : 'bg-[#f4f2ef] text-[#777]'}`}>{label}</button>
+          ))}
+        </div>
+        <p className="text-[10.5px] text-[#aaa] mt-1.5">Auto grupperer ved 6 eller flere boliger. Feltet «district» fra appen brukes når det finnes; ellers brukes område.</p>
         <label className={labelCls}>Lenketekst nederst</label>
         <input value={b.cta || ''} onChange={(e) => onPatch({ cta: e.target.value })} className={inputCls} placeholder="Se alle ledige boliger" />
         <label className={labelCls}>Lenke (URL)</label>

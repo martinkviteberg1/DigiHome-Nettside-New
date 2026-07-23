@@ -453,6 +453,7 @@ async function resolveDraftProperties(dbx, blocks) {
         image: (Array.isArray(live.images) && live.images[0]) || snap.image || '',
         meta: [live.area || live.city, live.bedrooms ? `${live.bedrooms} soverom` : null, live.sqm ? `${live.sqm} m²` : null, live.availableFrom ? `Ledig ${live.availableFrom}` : null].filter(Boolean).join(' · '),
         band: live.monthlyRentBand || '',
+        district: live.district || live.area || live.city || snap.district || 'Andre områder',
         status: live.status,
       };
     }).filter(Boolean);
@@ -5144,7 +5145,7 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
       if (!pid) return null;
       return dbx.collection('platform_properties').findOne(
         { stale: { $ne: true }, $or: [{ externalId: pid }, { id: pid }] },
-        { projection: { _id: 0, id: 1, externalId: 1, title: 1, area: 1, city: 1, type: 1, bedrooms: 1, sqm: 1, images: 1, status: 1, monthlyRentBand: 1, availableFrom: 1 } }
+        { projection: { _id: 0, id: 1, externalId: 1, title: 1, area: 1, district: 1, city: 1, type: 1, bedrooms: 1, sqm: 1, images: 1, status: 1, monthlyRentBand: 1, availableFrom: 1 } }
       );
     };
 
