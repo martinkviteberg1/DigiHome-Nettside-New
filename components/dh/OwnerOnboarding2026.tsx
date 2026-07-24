@@ -53,8 +53,8 @@ const SERVICES = [
     icon: KeyRound,
     title: 'Selvforvaltning',
     eyebrow: 'Tilgjengelig i hele Norge',
-    description: 'Du får verktøyene. Du beholder kontrollen.',
-    points: ['Opprett konto med én gang', '5 % per utleieforhold'],
+    description: 'For deg som vil gjøre jobben selv — med profesjonelle verktøy i ryggen.',
+    points: ['Opprett konto med én gang', 'Digital kontrakt og samlet oversikt', '5 % per utleieforhold · ingen bindingstid'],
     action: 'Opprett konto',
   },
   {
@@ -62,8 +62,8 @@ const SERVICES = [
     icon: ShieldCheck,
     title: 'Full forvaltning',
     eyebrow: 'Bergen og omegn',
-    description: 'Vi håndterer utleien. Du får inntekten.',
-    points: ['Personlig tilbud innen 24 timer', 'Gratis og uforpliktende'],
+    description: 'For deg som vil slippe hele jobben — fra annonsering til løpende oppfølging.',
+    points: ['Personlig tilbud innen 24 timer', 'Annonsering, visninger og leietakervalg', 'Kontrakt, depositum og løpende oppfølging'],
     action: 'Få et tilbud',
   },
 ];
@@ -138,24 +138,12 @@ function DesktopProof({ phase }: { phase: Phase }) {
           <span className="h-2 w-2 rounded-full bg-[#d298ff] shadow-[0_0_0_4px_rgba(210,152,255,.18)]" /> {copy.eyebrow}
         </span>
 
-        <div className="max-w-[560px] rounded-[28px] border border-white/15 bg-[#15110f]/55 p-7 shadow-[0_28px_80px_-30px_rgba(0,0,0,.55)] backdrop-blur-xl xl:p-9">
-          <h2 className="text-[40px] font-bold leading-[1.01] tracking-[-0.045em] text-white xl:text-[54px]" style={{ fontFamily: 'var(--font-heading)' }}>{copy.title}</h2>
-          <p className="mt-4 max-w-[46ch] text-[15px] leading-relaxed text-white/75 xl:text-[16px]">{copy.text}</p>
-
-          <div className="mt-7 grid grid-cols-2 divide-x divide-white/15 border-y border-white/15 py-4">
-            <div className="pr-5">
-              <p className="text-[25px] font-bold tracking-[-0.03em] text-white">150+</p>
-              <p className="mt-1 text-[11.5px] text-white/60">boliger forvaltet</p>
-            </div>
-            <div className="pl-5">
-              <p className="text-[25px] font-bold tracking-[-0.03em] text-white">&lt; 24 t</p>
-              <p className="mt-1 text-[11.5px] text-white/60">normal svartid</p>
-            </div>
-          </div>
-
-          <div className="mt-5 flex items-start gap-3">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#d298ff]/15"><ShieldCheck className="h-4.5 w-4.5 text-[#e2b8ff]" /></span>
-            <p className="pt-0.5 text-[12.5px] leading-relaxed text-white/70">Gratis og uforpliktende. Opplysningene dine behandles trygt og deles ikke med uvedkommende.</p>
+        <div className="max-w-[470px] rounded-[24px] border border-white/15 bg-[#15110f]/50 p-6 shadow-[0_24px_70px_-36px_rgba(0,0,0,.5)] backdrop-blur-lg xl:p-7">
+          <h2 className="text-[36px] font-bold leading-[1.02] tracking-[-0.045em] text-white xl:text-[46px]" style={{ fontFamily: 'var(--font-heading)' }}>{copy.title}</h2>
+          <p className="mt-3 max-w-[42ch] text-[14px] leading-relaxed text-white/75 xl:text-[15px]">{copy.text}</p>
+          <div className="mt-5 flex items-center gap-3 border-t border-white/15 pt-4">
+            <ShieldCheck className="h-4.5 w-4.5 shrink-0 text-[#e2b8ff]" />
+            <p className="text-[11.5px] font-semibold leading-relaxed text-white/75">150+ boliger · svar innen 24 t · trygt og uforpliktende</p>
           </div>
         </div>
       </div>
@@ -505,8 +493,88 @@ export default function OwnerOnboarding2026() {
     );
   }
 
+  if (phase === 'service') {
+    const self = SERVICES[0];
+    const full = SERVICES[1];
+    const fullUnavailable = !!form.postalCode && !isBergenArea(form.postalCode, form.city);
+
+    return (
+      <div className="relative min-h-[100dvh] overflow-x-hidden bg-[#f7f4f0]" data-testid="owner-onboarding-2026">
+        <TopBar phase="service" />
+        <div className="pointer-events-none absolute left-[-140px] top-[18%] h-[360px] w-[360px] rounded-full bg-[#d298ff]/10 blur-3xl" />
+        <div className="pointer-events-none absolute bottom-[-160px] right-[-80px] h-[420px] w-[420px] rounded-full bg-[#ead9f5]/40 blur-3xl" />
+
+        <main className="relative mx-auto w-full max-w-[1240px] px-5 pb-14 pt-7 sm:px-8 sm:pb-20 sm:pt-9 lg:px-10 lg:pt-10" data-testid="onboarding-service-step">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <BackButton onClick={() => setPhase('address')} />
+            <div className="flex min-w-0 items-center gap-2.5 rounded-full border border-[#e3ddd6] bg-white/90 px-4 py-2.5 shadow-sm backdrop-blur" data-testid="selected-address-row">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#f2e5fb]"><MapPin className="h-3.5 w-3.5 text-[#7e22ce]" /></span>
+              <span className="min-w-0 max-w-[360px] flex-1 truncate text-[12.5px] font-semibold text-[#3c3833]">{addressLabel}</span>
+              <button type="button" onClick={() => setPhase('address')} className="shrink-0 text-[11.5px] font-bold text-[#7e22ce]">Endre</button>
+            </div>
+          </div>
+
+          <div className="mx-auto mt-5 max-w-[760px] text-center sm:mt-2">
+            <span className="inline-flex items-center gap-2 rounded-full bg-[#eee3f7] px-3.5 py-1.5 text-[10.5px] font-extrabold uppercase tracking-[0.14em] text-[#7e22ce]">
+              <Sparkles className="h-3.5 w-3.5" /> Steg 2 av 3
+            </span>
+            <h1 className="mt-4 text-[34px] font-bold leading-[1.02] tracking-[-0.045em] text-[#151310] sm:text-[48px] lg:text-[56px]" style={{ fontFamily: 'var(--font-heading)' }}>Velg hvordan du vil leie ut</h1>
+            <p className="mx-auto mt-4 max-w-[54ch] text-[14.5px] leading-relaxed text-[#6d6760] sm:text-[16px]">To tydelige løsninger. Du kan endre mening senere, og ingen av valgene binder deg i dag.</p>
+          </div>
+
+          {finnUrl && finnLookupNote ? (
+            <p className="mx-auto mt-4 flex max-w-[700px] items-start justify-center gap-2 text-center text-[11.5px] leading-relaxed text-[#625d57]" data-testid="finn-lookup-note"><CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#7e22ce]" /> {finnLookupNote}</p>
+          ) : null}
+
+          <div className="mx-auto mt-8 grid max-w-[1120px] gap-5 lg:grid-cols-2 lg:gap-6">
+            <button type="button" onClick={() => selectService(self.id)} data-testid="service-selvforvaltning" className="group relative flex min-h-[470px] min-w-0 flex-col overflow-hidden rounded-[28px] border border-[#e0dbd5] bg-white p-6 text-left shadow-[0_24px_70px_-52px_rgba(35,25,18,.6)] transition-all hover:-translate-y-1 hover:border-[#cfa1ee] hover:shadow-[0_30px_80px_-48px_rgba(113,54,151,.5)] active:translate-y-0 sm:p-8">
+              <div className="flex items-start justify-between gap-4">
+                <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#f2e6fb] text-[#7e22ce]"><KeyRound className="h-5.5 w-5.5" /></span>
+                <span className="rounded-full bg-[#f5f2ee] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.1em] text-[#77716a]">Hele Norge</span>
+              </div>
+              <p className="mt-7 text-[10.5px] font-extrabold uppercase tracking-[0.13em] text-[#7e22ce]">For deg som vil gjøre det selv</p>
+              <h2 className="mt-2 text-[29px] font-bold tracking-[-0.035em] text-[#171513] sm:text-[34px]" style={{ fontFamily: 'var(--font-heading)' }}>{self.title}</h2>
+              <p className="mt-3 max-w-[42ch] text-[13.5px] leading-relaxed text-[#6d6760]">{self.description}</p>
+
+              <div className="mt-6 flex items-end gap-2 border-y border-[#eee9e3] py-5">
+                <span className="text-[45px] font-bold leading-none tracking-[-0.05em] text-[#171513]">5 %</span>
+                <span className="pb-1 text-[12px] font-semibold leading-snug text-[#77716a]">per utleieforhold<br />ingen bindingstid</span>
+              </div>
+              <div className="mt-5 space-y-3">
+                {self.points.map((point) => <p key={point} className="flex items-start gap-2.5 text-[13px] leading-snug text-[#403c37]"><span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#f2e6fb]"><Check className="h-3 w-3 text-[#7e22ce]" strokeWidth={3} /></span>{point}</p>)}
+              </div>
+              <span className="mt-auto inline-flex h-12 w-full items-center justify-center gap-2 rounded-full border border-[#d7c7e3] bg-[#faf7fc] px-5 text-[13.5px] font-bold text-[#5c2d79] transition group-hover:border-[#c889f5] group-hover:bg-[#f3e7fb]">Velg selvforvaltning <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" /></span>
+            </button>
+
+            <button type="button" onClick={() => selectService(full.id)} data-testid="service-full_forvaltning" className="group relative flex min-h-[470px] min-w-0 flex-col overflow-hidden rounded-[28px] border border-[#2d2631] bg-[#17131b] p-6 text-left shadow-[0_28px_80px_-44px_rgba(33,16,44,.8)] transition-all hover:-translate-y-1 hover:border-[#d298ff]/60 hover:shadow-[0_34px_90px_-42px_rgba(96,36,131,.75)] active:translate-y-0 sm:p-8">
+              <div className="absolute right-0 top-0 h-48 w-48 rounded-full bg-[#d298ff]/15 blur-3xl" />
+              <div className="relative flex items-start justify-between gap-4">
+                <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#d298ff]/15 text-[#dca9ff]"><ShieldCheck className="h-5.5 w-5.5" /></span>
+                <span className="rounded-full border border-[#d298ff]/30 bg-[#d298ff]/10 px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.1em] text-[#e2b8ff]">Mest komplett</span>
+              </div>
+              <p className="relative mt-7 text-[10.5px] font-extrabold uppercase tracking-[0.13em] text-[#dca9ff]">For deg som vil slippe hele jobben</p>
+              <h2 className="relative mt-2 text-[29px] font-bold tracking-[-0.035em] text-white sm:text-[34px]" style={{ fontFamily: 'var(--font-heading)' }}>{full.title}</h2>
+              <p className="relative mt-3 max-w-[42ch] text-[13.5px] leading-relaxed text-white/70">{fullUnavailable ? 'Tjenesten er ikke lansert i området ditt ennå. Du kan likevel registrere interesse.' : full.description}</p>
+
+              <div className="relative mt-6 border-y border-white/10 py-5">
+                <p className="text-[24px] font-bold tracking-[-0.025em] text-white">{fullUnavailable ? 'Registrer interesse' : 'Personlig tilbud'}</p>
+                <p className="mt-1 text-[12px] font-semibold text-white/50">tilpasset boligen · svar innen 24 timer</p>
+              </div>
+              <div className="relative mt-5 space-y-3">
+                {full.points.map((point) => <p key={point} className="flex items-start gap-2.5 text-[13px] leading-snug text-white/75"><span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#d298ff]/15"><Check className="h-3 w-3 text-[#dca9ff]" strokeWidth={3} /></span>{point}</p>)}
+              </div>
+              <span className="relative mt-auto inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[#d298ff] px-5 text-[13.5px] font-bold text-[#1a0b23] transition group-hover:bg-[#c983ff]">{fullUnavailable ? 'Registrer interesse' : 'Få personlig tilbud'} <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" /></span>
+            </button>
+          </div>
+
+          <p className="mt-6 text-center text-[11.5px] font-medium text-[#88817a]"><ShieldCheck className="mr-1.5 inline h-3.5 w-3.5 text-[#8b5cf6]" /> Begge løsninger er trygge, uforpliktende å utforske og kan endres senere.</p>
+        </main>
+      </div>
+    );
+  }
+
   return (
-    <div className="grid min-h-[100dvh] overflow-x-hidden bg-[#faf9f7] lg:grid-cols-[minmax(0,1.04fr)_minmax(420px,0.96fr)]" data-testid="owner-onboarding-2026">
+    <div className="grid min-h-[100dvh] overflow-x-hidden bg-[#faf9f7] lg:grid-cols-[minmax(0,1.18fr)_minmax(380px,0.82fr)]" data-testid="owner-onboarding-2026">
       <main className="flex min-w-0 flex-col">
         <TopBar phase={phase} />
         <div className="flex flex-1 justify-center px-5 pb-10 pt-7 sm:px-8 sm:pb-14 sm:pt-10 lg:items-center lg:px-12 lg:py-10 xl:px-16">
@@ -579,49 +647,6 @@ export default function OwnerOnboarding2026() {
                       {item}
                     </div>
                   ))}
-                </div>
-              </section>
-            ) : null}
-
-            {phase === 'service' ? (
-              <section data-testid="onboarding-service-step">
-                <BackButton onClick={() => setPhase('address')} />
-                <StepHeading eyebrow="Steg 2 av 3" title="Hvor mye vil du gjøre selv?" text="Velg det som passer nå. Du kan endre mening senere." />
-
-                <div className="mt-6 flex min-w-0 items-center gap-2.5 rounded-2xl border border-[#e2ded8] bg-white px-4 py-3" data-testid="selected-address-row">
-                  <MapPin className="h-4 w-4 shrink-0 text-[#7e22ce]" />
-                  <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-[#292621]">{addressLabel}</span>
-                  <button type="button" onClick={() => setPhase('address')} className="shrink-0 text-[12px] font-bold text-[#7e22ce]">Endre</button>
-                </div>
-
-                {finnUrl && finnLookupNote ? (
-                  <p className="mt-2 flex items-start gap-2 text-[12px] leading-relaxed text-[#625d57]" data-testid="finn-lookup-note">
-                    <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#7e22ce]" /> {finnLookupNote}
-                  </p>
-                ) : null}
-
-                <div className="mt-6 grid gap-3 sm:grid-cols-2">
-                  {SERVICES.map((service) => {
-                    const Icon = service.icon;
-                    const unavailableHere = service.id === 'full_forvaltning' && !!form.postalCode && !isBergenArea(form.postalCode, form.city);
-                    return (
-                      <button key={service.id} type="button" onClick={() => selectService(service.id)} data-testid={`service-${service.id}`} className="group flex min-w-0 flex-col rounded-3xl border border-[#dedad4] bg-white p-5 text-left transition hover:-translate-y-0.5 hover:border-[#d298ff] hover:shadow-[0_16px_40px_-28px_rgba(126,34,206,.65)] active:translate-y-0 sm:p-6">
-                        <div className="flex items-start justify-between gap-3">
-                          <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#f2e8fb] text-[#7e22ce]"><Icon className="h-5 w-5" /></span>
-                          <ArrowRight className="h-5 w-5 text-[#a59e96] transition group-hover:translate-x-0.5 group-hover:text-[#7e22ce]" />
-                        </div>
-                        <p className="mt-5 text-[10.5px] font-bold uppercase tracking-[0.11em] text-[#7e22ce]">{unavailableHere ? 'Meld interesse' : service.eyebrow}</p>
-                        <h2 className="mt-1.5 text-[21px] font-bold tracking-[-0.025em] text-[#171513]" style={{ fontFamily: 'var(--font-heading)' }}>{service.title}</h2>
-                        <p className="mt-2 text-[13.5px] leading-relaxed text-[#6d6760]">{unavailableHere ? 'Ikke lansert i ditt område ennå. Du kan likevel registrere interesse.' : service.description}</p>
-                        <div className="mt-4 space-y-2">
-                          {service.points.map((point) => (
-                            <p key={point} className="flex items-start gap-2 text-[12.5px] leading-snug text-[#4f4a45]"><Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#7e22ce]" strokeWidth={3} /> {point}</p>
-                          ))}
-                        </div>
-                        <span className="mt-5 border-t border-[#eeeae5] pt-4 text-[13px] font-bold text-[#171513]">{unavailableHere ? 'Registrer interesse' : service.action}</span>
-                      </button>
-                    );
-                  })}
                 </div>
               </section>
             ) : null}
