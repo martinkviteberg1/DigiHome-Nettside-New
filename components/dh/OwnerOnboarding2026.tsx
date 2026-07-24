@@ -102,49 +102,51 @@ function TopBar({ phase }: { phase: Phase }) {
 function DesktopProof({ phase }: { phase: Phase }) {
   const copy = {
     address: {
-      eyebrow: 'Raskt og enkelt',
-      title: 'Start med boligen.',
-      text: 'Adressen er nok. Vi spør ikke om detaljer vi kan avklare senere.',
+      eyebrow: 'Raskt, trygt og uforpliktende',
+      title: 'Utleie, gjort enklere.',
+      text: 'Start med adressen. Deretter velger du om du vil gjøre det selv eller la oss håndtere hele utleien.',
     },
     service: {
-      eyebrow: 'Du velger nivået',
-      title: 'Gjør det selv — eller la oss ta alt.',
-      text: 'To tydelige alternativer. Ingen kompliserte pakker eller skjulte steg.',
+      eyebrow: 'Du beholder kontrollen',
+      title: 'Velg hjelpen som passer deg.',
+      text: 'To tydelige løsninger, forklart uten kompliserte pakker eller skjulte steg.',
     },
     contact: {
       eyebrow: 'Siste steg',
-      title: 'Vi trenger bare å vite hvem du er.',
-      text: 'Ingen lang oppsummering. Ingen tekniske spørsmål. Bare det vi trenger for å hjelpe deg videre.',
+      title: 'Så enkelt er det.',
+      text: 'Legg igjen kontaktinformasjonen din. Vi følger opp personlig og hjelper deg trygt videre.',
     },
   }[phase];
 
   return (
-    <aside className="relative hidden min-h-[100dvh] overflow-hidden bg-[#17131b] lg:block" aria-label="Om DigiHome">
-      <img src="/interior-living.webp" alt="Lys stue i en utleiebolig" className="absolute inset-0 h-full w-full object-cover opacity-70" />
-      <div className="absolute inset-0 bg-gradient-to-b from-[#17131b]/35 via-[#17131b]/20 to-[#17131b]/95" />
+    <aside className="relative hidden min-h-[100dvh] overflow-hidden bg-[#2b2523] lg:block" aria-label="Om DigiHome">
+      <img src="/owner-onboarding-living-room.webp" alt="Lys og moderne stue i Bergen" className="absolute inset-0 h-full w-full object-cover object-center" />
+      <div className="absolute inset-0 bg-gradient-to-b from-[#1b1714]/10 via-[#1b1714]/15 to-[#171210]/90" />
+      <div className="absolute inset-0 bg-gradient-to-r from-black/5 via-transparent to-black/10" />
+
       <div className="relative flex h-full min-h-[100dvh] flex-col justify-between p-10 xl:p-14">
-        <span className="inline-flex w-fit items-center gap-2 rounded-full border border-white/20 bg-black/20 px-3.5 py-2 text-[11px] font-bold uppercase tracking-[0.14em] text-white backdrop-blur-md">
-          <span className="h-2 w-2 rounded-full bg-[#d298ff]" /> {copy.eyebrow}
+        <span className="inline-flex w-fit items-center gap-2 rounded-full border border-white/30 bg-white/15 px-4 py-2 text-[10.5px] font-bold uppercase tracking-[0.14em] text-white shadow-sm backdrop-blur-xl">
+          <span className="h-2 w-2 rounded-full bg-[#d298ff] shadow-[0_0_0_4px_rgba(210,152,255,.18)]" /> {copy.eyebrow}
         </span>
 
-        <div className="max-w-[520px]">
-          <h2 className="text-[38px] font-bold leading-[1.02] tracking-[-0.04em] text-white xl:text-[50px]" style={{ fontFamily: 'var(--font-heading)' }}>{copy.title}</h2>
-          <p className="mt-4 max-w-[44ch] text-[15px] leading-relaxed text-white/75 xl:text-[16px]">{copy.text}</p>
+        <div className="max-w-[560px] rounded-[28px] border border-white/15 bg-[#15110f]/55 p-7 shadow-[0_28px_80px_-30px_rgba(0,0,0,.55)] backdrop-blur-xl xl:p-9">
+          <h2 className="text-[40px] font-bold leading-[1.01] tracking-[-0.045em] text-white xl:text-[54px]" style={{ fontFamily: 'var(--font-heading)' }}>{copy.title}</h2>
+          <p className="mt-4 max-w-[46ch] text-[15px] leading-relaxed text-white/75 xl:text-[16px]">{copy.text}</p>
 
-          <div className="mt-8 grid grid-cols-2 gap-3">
-            <div className="rounded-2xl border border-white/15 bg-white/10 p-4 backdrop-blur-xl">
-              <p className="text-[22px] font-bold text-white">150+</p>
-              <p className="mt-1 text-[11.5px] leading-snug text-white/65">boliger forvaltet</p>
+          <div className="mt-7 grid grid-cols-2 divide-x divide-white/15 border-y border-white/15 py-4">
+            <div className="pr-5">
+              <p className="text-[25px] font-bold tracking-[-0.03em] text-white">150+</p>
+              <p className="mt-1 text-[11.5px] text-white/60">boliger forvaltet</p>
             </div>
-            <div className="rounded-2xl border border-white/15 bg-white/10 p-4 backdrop-blur-xl">
-              <p className="text-[22px] font-bold text-white">&lt; 24 t</p>
-              <p className="mt-1 text-[11.5px] leading-snug text-white/65">normal svartid</p>
+            <div className="pl-5">
+              <p className="text-[25px] font-bold tracking-[-0.03em] text-white">&lt; 24 t</p>
+              <p className="mt-1 text-[11.5px] text-white/60">normal svartid</p>
             </div>
           </div>
 
-          <div className="mt-4 flex items-start gap-3 rounded-2xl border border-white/15 bg-black/20 p-4 backdrop-blur-xl">
-            <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-[#d298ff]" />
-            <p className="text-[13px] leading-relaxed text-white/80">Gratis og uforpliktende. Informasjonen din behandles trygt og deles ikke med uvedkommende.</p>
+          <div className="mt-5 flex items-start gap-3">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#d298ff]/15"><ShieldCheck className="h-4.5 w-4.5 text-[#e2b8ff]" /></span>
+            <p className="pt-0.5 text-[12.5px] leading-relaxed text-white/70">Gratis og uforpliktende. Opplysningene dine behandles trygt og deles ikke med uvedkommende.</p>
           </div>
         </div>
       </div>
@@ -495,19 +497,21 @@ export default function OwnerOnboarding2026() {
   }
 
   return (
-    <div className="grid min-h-[100dvh] overflow-x-hidden bg-[#f8f7f5] lg:grid-cols-[minmax(0,1.08fr)_minmax(380px,0.92fr)]" data-testid="owner-onboarding-2026">
+    <div className="grid min-h-[100dvh] overflow-x-hidden bg-[#faf9f7] lg:grid-cols-[minmax(0,1.04fr)_minmax(420px,0.96fr)]" data-testid="owner-onboarding-2026">
       <main className="flex min-w-0 flex-col">
         <TopBar phase={phase} />
-        <div className="flex flex-1 justify-center px-5 pb-10 pt-7 sm:px-8 sm:pb-14 sm:pt-10 lg:items-center lg:px-10 lg:py-12">
+        <div className="flex flex-1 justify-center px-5 pb-10 pt-7 sm:px-8 sm:pb-14 sm:pt-10 lg:items-center lg:px-12 lg:py-10 xl:px-16">
           <div className="w-full max-w-[620px] min-w-0">
             {phase === 'address' ? (
-              <section data-testid="onboarding-address-step">
-                <StepHeading eyebrow="Steg 1 av 3" title="Hvor ligger boligen?" text="Det holder med adressen. Resten kan vi finne ut sammen senere." />
+              <section data-testid="onboarding-address-step" className="rounded-[28px] border border-[#ece8e2] bg-white p-5 shadow-[0_24px_70px_-48px_rgba(43,30,20,.55)] sm:p-8 lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none">
+                <StepHeading eyebrow="Steg 1 av 3" title="Hvor ligger boligen?" text="Skriv inn adressen eller lim inn en FINN-annonse. Det er alt vi trenger nå." />
 
                 <div className="mt-8 min-w-0" data-no-enter-advance>
                   <label htmlFor="entry-address-input" className="mb-2 block text-[13px] font-semibold text-[#292621]">Adresse</label>
-                  <div className={`relative min-w-0 rounded-2xl border bg-white transition-shadow focus-within:border-[#d298ff] focus-within:shadow-[0_0_0_4px_rgba(210,152,255,0.18)] ${errors.address ? 'border-red-400' : 'border-[#dedad4]'}`}>
-                    <MapPin className="pointer-events-none absolute left-4 top-7 z-10 h-5 w-5 -translate-y-1/2 text-[#7e22ce]" />
+                  <div className={`relative min-w-0 rounded-[18px] border bg-white transition-all focus-within:border-[#b45cff] focus-within:shadow-[0_0_0_4px_rgba(210,152,255,0.16),0_14px_35px_-24px_rgba(106,43,154,.55)] ${errors.address ? 'border-red-400' : addressVerified ? 'border-[#c889f5] shadow-[0_10px_30px_-26px_rgba(126,34,206,.55)]' : 'border-[#dcd6cf]'}`}>
+                    <span className={`pointer-events-none absolute left-4 top-7 z-10 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-lg ${addressVerified ? 'bg-[#f1e4fb]' : 'bg-[#f5f2ef]'}`}>
+                      {addressVerified ? <Check className="h-3.5 w-3.5 text-[#7e22ce]" strokeWidth={3} /> : <MapPin className="h-4 w-4 text-[#7e22ce]" />}
+                    </span>
                     <AddressAutocomplete
                       value={form.address}
                       onChange={(value: string) => {
@@ -539,24 +543,27 @@ export default function OwnerOnboarding2026() {
                     />
                   </div>
                   {errors.address ? <p className="mt-1.5 text-[12px] font-medium text-red-600">{errors.address}</p> : null}
-                  <p className="mt-2 text-[12px] leading-relaxed text-[#716b63]">
-                    {finnLookupLoading
-                      ? 'Henter boligopplysninger fra FINN …'
-                      : addressVerified
-                        ? 'Adressen er bekreftet.'
-                        : 'Velg et adresseforslag, eller lim inn en FINN-lenke / FINN-kode.'}
-                  </p>
+                  <div className="mt-2.5 min-h-[20px] text-[12px] leading-relaxed">
+                    {finnLookupLoading ? (
+                      <span className="inline-flex items-center gap-1.5 text-[#716b63]"><Loader2 className="h-3.5 w-3.5 animate-spin text-[#7e22ce]" /> Henter boligopplysninger fra FINN …</span>
+                    ) : addressVerified ? (
+                      <span className="inline-flex items-center gap-1.5 font-semibold text-[#674179]"><CheckCircle2 className="h-3.5 w-3.5 text-[#8d35c7]" /> Adressen er bekreftet</span>
+                    ) : (
+                      <span className="text-[#77716a]">Velg et adresseforslag, eller lim inn en FINN-lenke / FINN-kode.</span>
+                    )}
+                  </div>
                 </div>
 
-                <button type="button" onClick={continueFromAddress} disabled={form.address.trim().length < 4 || finnLookupLoading} data-testid="address-continue" className="mt-7 inline-flex h-14 w-full items-center justify-center gap-2 rounded-full bg-[#d298ff] px-6 text-[15px] font-bold text-[#14081f] shadow-[0_12px_28px_-15px_rgba(126,34,206,.65)] transition hover:bg-[#c983ff] disabled:cursor-not-allowed disabled:bg-[#e7e3df] disabled:text-[#9a948d] disabled:shadow-none sm:w-auto sm:min-w-[210px]">
+                <button type="button" onClick={continueFromAddress} disabled={form.address.trim().length < 4 || finnLookupLoading} data-testid="address-continue" className="mt-6 inline-flex h-14 w-full items-center justify-center gap-3 rounded-full bg-[#d298ff] px-7 text-[15px] font-bold text-[#180a22] shadow-[0_16px_34px_-18px_rgba(126,34,206,.75)] transition-all hover:-translate-y-0.5 hover:bg-[#c983ff] hover:shadow-[0_20px_40px_-18px_rgba(126,34,206,.7)] active:translate-y-0 disabled:cursor-not-allowed disabled:bg-[#e7e3df] disabled:text-[#9a948d] disabled:shadow-none sm:w-auto sm:min-w-[190px]">
                   {finnLookupLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                  {finnLookupLoading ? 'Henter FINN-annonsen' : 'Se dine alternativer'} {!finnLookupLoading ? <ArrowRight className="h-4 w-4" /> : null}
+                  {finnLookupLoading ? 'Henter FINN-annonsen' : 'Fortsett'} {!finnLookupLoading ? <ArrowRight className="h-4 w-4" /> : null}
                 </button>
+                <p className="mt-3 text-[11.5px] font-medium text-[#77716a]">Neste: Velg hvordan du vil forvalte boligen.</p>
 
-                <div className="mt-8 grid grid-cols-1 gap-2.5 border-t border-[#e6e2dc] pt-6 sm:grid-cols-3">
-                  {['Gratis og uforpliktende', 'Tar under 1 minutt', 'Svar innen 24 timer'].map((item) => (
-                    <div key={item} className="flex items-center gap-2 text-[12.5px] font-medium text-[#625d57]">
-                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#eee2f9]"><Check className="h-3 w-3 text-[#7e22ce]" strokeWidth={3} /></span>
+                <div className="mt-7 flex flex-wrap gap-x-5 gap-y-2.5 border-t border-[#ebe6df] pt-5">
+                  {['Gratis og uforpliktende', 'Under 1 minutt', 'Svar innen 24 timer'].map((item) => (
+                    <div key={item} className="flex items-center gap-2 text-[11.5px] font-semibold text-[#625d57]">
+                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#f2e5fb]"><Check className="h-3 w-3 text-[#7e22ce]" strokeWidth={3} /></span>
                       {item}
                     </div>
                   ))}
