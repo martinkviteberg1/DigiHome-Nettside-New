@@ -22,7 +22,6 @@ import {
   User,
 } from 'lucide-react';
 
-const BRAND = '#d298ff';
 const SELF_TERMS_VERSION = 'selvforvaltning-2025-06';
 
 type Phase = 'address' | 'service' | 'contact';
@@ -89,56 +88,29 @@ function TopBar({ phase }: { phase: Phase }) {
   const progress = ((current + 1) / PHASES.length) * 100;
 
   return (
-    <header className="sticky top-0 z-40 bg-[#f8f7f5]/95 backdrop-blur-xl">
+    <header className="sticky top-0 z-40 bg-[#faf9f7]/95 backdrop-blur-xl">
       <div className="mx-auto flex h-16 w-full max-w-[760px] items-center justify-between px-5 sm:px-8 lg:max-w-none lg:px-10">
-        <a href="/" aria-label="DigiHome — til forsiden" data-testid="onboarding-logo-link" className="inline-flex min-w-0 items-center">
-          <img src="/digihome-wordmark-ink.svg" alt="DigiHome" className="h-5 w-auto" />
-        </a>
+        <a href="/" aria-label="DigiHome — til forsiden" data-testid="onboarding-logo-link" className="inline-flex min-w-0 items-center"><img src="/digihome-wordmark-ink.svg" alt="DigiHome" className="h-5 w-auto" /></a>
+        <nav className="hidden items-center gap-5 md:flex" aria-label="Fremdrift">
+          {PHASES.map((item, index) => (
+            <span key={item.id} className={`text-[10.5px] font-bold uppercase tracking-[0.11em] ${index === current ? 'text-[#292621]' : index < current ? 'text-[#77716a]' : 'text-[#bbb5ae]'}`}>{index + 1}. {item.label}</span>
+          ))}
+        </nav>
         <div className="flex items-center gap-4">
-          <a href={`tel:${site.phoneHref}`} className="hidden items-center gap-1.5 text-[13px] font-medium text-[#5f5a54] hover:text-black sm:inline-flex">
-            <Phone className="h-3.5 w-3.5" /> {site.phone}
-          </a>
+          <a href={`tel:${site.phoneHref}`} className="hidden items-center gap-1.5 text-[13px] font-medium text-[#5f5a54] hover:text-black lg:inline-flex"><Phone className="h-3.5 w-3.5" /> {site.phone}</a>
           <a href="/bli-utleier" data-testid="onboarding-exit" className="text-[13px] font-semibold text-[#5f5a54] hover:text-black">Lukk</a>
         </div>
       </div>
-      <div className="h-[3px] bg-[#ebe8e3]" aria-label={`Steg ${current + 1} av ${PHASES.length}`}>
-        <div className="h-full rounded-r-full transition-[width] duration-500 ease-out" style={{ width: `${progress}%`, backgroundColor: BRAND }} />
-      </div>
+      <div className="h-px bg-[#e8e4de]" aria-label={`Steg ${current + 1} av ${PHASES.length}`}><div className="h-full bg-[#a56bc7] transition-[width] duration-500 ease-out" style={{ width: `${progress}%` }} /></div>
     </header>
   );
 }
 
-function DesktopProof({ phase }: { phase: Phase }) {
-  const copy = {
-    address: {
-      eyebrow: 'Raskt, trygt og uforpliktende',
-      title: 'Utleie, gjort enklere.',
-      text: 'Start med adressen. Deretter velger du om du vil gjøre det selv eller la oss håndtere hele utleien.',
-    },
-    service: {
-      eyebrow: 'Du beholder kontrollen',
-      title: 'Velg hjelpen som passer deg.',
-      text: 'To tydelige løsninger, forklart uten kompliserte pakker eller skjulte steg.',
-    },
-    contact: {
-      eyebrow: 'Siste steg',
-      title: 'Så enkelt er det.',
-      text: 'Legg igjen kontaktinformasjonen din. Vi følger opp personlig og hjelper deg trygt videre.',
-    },
-  }[phase];
-
+function DesktopProof() {
   return (
-    <aside className="relative hidden min-h-[100dvh] overflow-hidden bg-[#2b2523] lg:block" aria-label="Om DigiHome">
+    <aside className="relative hidden min-h-[100dvh] overflow-hidden bg-[#ddd6cf] lg:block" aria-label="DigiHome boliginteriør">
       <img src="/owner-onboarding-living-room.webp" alt="Lys og moderne stue i Bergen" className="absolute inset-0 h-full w-full object-cover object-center" />
-      <div className="absolute inset-0 bg-gradient-to-b from-black/0 via-black/5 to-[#171210]/82" />
-      <div className="relative flex min-h-[100dvh] items-end p-10 xl:p-14">
-        <div className="max-w-[450px] pb-2 text-white drop-shadow-sm">
-          <p className="text-[10.5px] font-bold uppercase tracking-[0.15em] text-white/70">{copy.eyebrow}</p>
-          <h2 className="mt-3 text-[38px] font-bold leading-[1.02] tracking-[-0.045em] text-white xl:text-[48px]" style={{ fontFamily: 'var(--font-heading)' }}>{copy.title}</h2>
-          <p className="mt-3 max-w-[42ch] text-[14px] leading-relaxed text-white/75 xl:text-[15px]">{copy.text}</p>
-          <p className="mt-5 border-t border-white/25 pt-4 text-[11.5px] font-semibold text-white/75"><ShieldCheck className="mr-2 inline h-4 w-4 text-white/85" />150+ boliger · svar innen 24 t · trygt og uforpliktende</p>
-        </div>
-      </div>
+      <div className="absolute inset-0 bg-[#7a6a5f]/5" />
     </aside>
   );
 }
@@ -146,7 +118,7 @@ function DesktopProof({ phase }: { phase: Phase }) {
 function StepHeading({ eyebrow, title, text }: { eyebrow: string; title: string; text: string }) {
   return (
     <div>
-      <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#7e22ce]">{eyebrow}</p>
+      <p className="text-[10.5px] font-bold uppercase tracking-[0.16em] text-[#77716a]">{eyebrow}</p>
       <h1 className="mt-3 max-w-[14ch] text-[32px] font-bold leading-[1.02] tracking-[-0.04em] text-[#111] sm:text-[42px]" style={{ fontFamily: 'var(--font-heading)' }}>{title}</h1>
       <p className="mt-3 max-w-[48ch] text-[15px] leading-relaxed text-[#6d6760] sm:text-[16px]">{text}</p>
     </div>
@@ -177,7 +149,7 @@ function TextField({
   return (
     <div>
       <label htmlFor={id} className="mb-2 block text-[13px] font-semibold text-[#292621]">{label}</label>
-      <div className={`relative rounded-2xl border bg-white transition-shadow focus-within:border-[#d298ff] focus-within:shadow-[0_0_0_4px_rgba(210,152,255,0.18)] ${error ? 'border-red-400' : 'border-[#dedad4]'}`}>
+      <div className={`relative rounded-[14px] border bg-white transition-shadow focus-within:border-[#292621] focus-within:shadow-[0_0_0_3px_rgba(32,29,26,0.06)] ${error ? 'border-red-400' : 'border-[#d9d4cd]'}`}>
         <Icon className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8b8580]" />
         <input
           id={id}
@@ -501,10 +473,10 @@ export default function OwnerOnboarding2026() {
             <p className="mx-auto mt-4 flex max-w-[700px] items-start justify-center gap-2 text-center text-[11.5px] leading-relaxed text-[#625d57]" data-testid="finn-lookup-note"><CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#7e22ce]" /> {finnLookupNote}</p>
           ) : null}
 
-          <div className="mx-auto mt-8 grid max-w-[1120px] gap-5 lg:grid-cols-2 lg:gap-6">
-            <button type="button" onClick={() => selectService(self.id)} data-testid="service-selvforvaltning" className="group relative flex min-h-[470px] min-w-0 flex-col overflow-hidden rounded-[28px] border border-[#e0dbd5] bg-white p-6 text-left shadow-[0_24px_70px_-52px_rgba(35,25,18,.6)] transition-all hover:-translate-y-1 hover:border-[#cfa1ee] hover:shadow-[0_30px_80px_-48px_rgba(113,54,151,.5)] active:translate-y-0 sm:p-8">
+          <div className="mx-auto mt-9 grid max-w-[1120px] gap-0 overflow-hidden border-y border-[#dcd7d0] lg:grid-cols-2">
+            <button type="button" onClick={() => selectService(self.id)} data-testid="service-selvforvaltning" className="group relative flex min-h-[460px] min-w-0 flex-col border-b border-[#dcd7d0] bg-white/45 p-6 text-left transition-colors hover:bg-white/80 lg:border-b-0 lg:border-r sm:p-8 lg:p-9">
               <div className="flex items-start justify-between gap-4">
-                <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#f0ede8] text-[#403c37]"><KeyRound className="h-5.5 w-5.5" /></span>
+                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#ece9e4] text-[#403c37]"><KeyRound className="h-5 w-5" /></span>
                 <span className="rounded-full bg-[#f5f2ee] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.1em] text-[#77716a]">Hele Norge</span>
               </div>
               <p className="mt-7 text-[10.5px] font-extrabold uppercase tracking-[0.13em] text-[#77716a]">For deg som vil gjøre det selv</p>
@@ -516,18 +488,17 @@ export default function OwnerOnboarding2026() {
                 <span className="pb-1 text-[12px] font-semibold leading-snug text-[#77716a]">per utleieforhold<br />ingen bindingstid</span>
               </div>
               <div className="mt-5 space-y-3">
-                {self.points.map((point) => <p key={point} className="flex items-start gap-2.5 text-[13px] leading-snug text-[#403c37]"><span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#f2e6fb]"><Check className="h-3 w-3 text-[#7e22ce]" strokeWidth={3} /></span>{point}</p>)}
+                {self.points.map((point) => <p key={point} className="flex items-start gap-2.5 text-[13px] leading-snug text-[#403c37]"><span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#ece9e4]"><Check className="h-3 w-3 text-[#4e4944]" strokeWidth={3} /></span>{point}</p>)}
               </div>
               <span className="mt-auto inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[#171513] px-5 text-[13.5px] font-bold text-white transition group-hover:bg-[#2b2824]">Velg selvforvaltning <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" /></span>
             </button>
 
-            <button type="button" onClick={() => selectService(full.id)} data-testid="service-full_forvaltning" className="group relative flex min-h-[470px] min-w-0 flex-col overflow-hidden rounded-[28px] border border-[#2d2631] bg-[#17131b] p-6 text-left shadow-[0_28px_80px_-44px_rgba(33,16,44,.8)] transition-all hover:-translate-y-1 hover:border-[#d298ff]/60 hover:shadow-[0_34px_90px_-42px_rgba(96,36,131,.75)] active:translate-y-0 sm:p-8">
-              <div className="absolute right-0 top-0 h-48 w-48 rounded-full bg-[#d298ff]/15 blur-3xl" />
+            <button type="button" onClick={() => selectService(full.id)} data-testid="service-full_forvaltning" className="group relative flex min-h-[460px] min-w-0 flex-col bg-[#1d1c1a] p-6 text-left transition-colors hover:bg-[#242220] sm:p-8 lg:p-9">
               <div className="relative flex items-start justify-between gap-4">
-                <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#d298ff]/15 text-[#dca9ff]"><ShieldCheck className="h-5.5 w-5.5" /></span>
-                <span className="rounded-full border border-[#d298ff]/30 bg-[#d298ff]/10 px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.1em] text-[#e2b8ff]">Mest komplett</span>
+                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/10 text-white/85"><ShieldCheck className="h-5 w-5" /></span>
+                <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.1em] text-white/70">Mest komplett</span>
               </div>
-              <p className="relative mt-7 text-[10.5px] font-extrabold uppercase tracking-[0.13em] text-[#dca9ff]">For deg som vil slippe hele jobben</p>
+              <p className="relative mt-7 text-[10.5px] font-bold uppercase tracking-[0.13em] text-white/55">For deg som vil slippe hele jobben</p>
               <h2 className="relative mt-2 text-[29px] font-bold tracking-[-0.035em] text-white sm:text-[34px]" style={{ fontFamily: 'var(--font-heading)' }}>{full.title}</h2>
               <p className="relative mt-3 max-w-[42ch] text-[13.5px] leading-relaxed text-white/70">{fullUnavailable ? 'Tjenesten er ikke lansert i området ditt ennå. Du kan likevel registrere interesse.' : full.description}</p>
 
@@ -562,9 +533,9 @@ export default function OwnerOnboarding2026() {
             <p className="mx-auto mt-3 max-w-[50ch] text-[14.5px] leading-relaxed text-[#6d6760] sm:text-[15.5px]">{isSelf ? 'Kun kontaktinformasjon. Boligen legger du enkelt inn når kontoen er klar.' : 'Vi trenger bare kontaktinformasjonen din for å følge opp tilbudet.'}</p>
           </div>
 
-          <div className="mt-7 flex flex-col gap-2.5 rounded-2xl border border-[#e5e0da] bg-white px-4 py-3.5 sm:flex-row sm:items-center" data-testid="contact-context">
-            <div className="flex min-w-0 flex-1 items-center gap-2.5"><CheckCircle2 className="h-4 w-4 shrink-0 text-[#6f6a64]" /><span className="truncate text-[12.5px] text-[#4e4944]"><strong>{selectedService?.title}</strong> · {addressLabel}</span></div>
-            <button type="button" onClick={() => setPhase('service')} className="self-start text-[11.5px] font-bold text-[#5f5a54] underline decoration-[#bbb3aa] underline-offset-4 sm:self-auto">Endre valg</button>
+          <div className="mt-6 flex items-center justify-between border-b border-[#d9d4cd] pb-3" data-testid="contact-context">
+            <p className="min-w-0 truncate text-[12px] text-[#5f5a54]"><strong className="text-[#292621]">{selectedService?.title}</strong> · {addressLabel}</p>
+            <button type="button" onClick={() => setPhase('service')} className="ml-4 shrink-0 text-[11.5px] font-semibold text-[#5f5a54] underline decoration-[#bbb3aa] underline-offset-4">Endre</button>
           </div>
 
           <div className="mt-7 space-y-4">
@@ -604,12 +575,12 @@ export default function OwnerOnboarding2026() {
         <div className="flex flex-1 justify-center px-5 pb-10 pt-7 sm:px-8 sm:pb-14 sm:pt-10 lg:items-center lg:px-12 lg:py-10 xl:px-16">
           <div className="w-full max-w-[620px] min-w-0">
             {phase === 'address' ? (
-              <section data-testid="onboarding-address-step" className="rounded-[28px] border border-[#ece8e2] bg-white p-5 shadow-[0_24px_70px_-48px_rgba(43,30,20,.55)] sm:p-8 lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none">
+              <section data-testid="onboarding-address-step">
                 <StepHeading eyebrow="Steg 1 av 3" title="Hvor ligger boligen?" text="Skriv inn adressen eller lim inn en FINN-annonse. Det er alt vi trenger nå." />
 
                 <div className="mt-8 min-w-0" data-no-enter-advance>
                   <label htmlFor="entry-address-input" className="mb-2 block text-[13px] font-semibold text-[#292621]">Adresse</label>
-                  <div className={`relative min-w-0 rounded-[18px] border bg-white transition-all focus-within:border-[#b45cff] focus-within:shadow-[0_0_0_4px_rgba(210,152,255,0.16),0_14px_35px_-24px_rgba(106,43,154,.55)] ${errors.address ? 'border-red-400' : addressVerified ? 'border-[#c889f5] shadow-[0_10px_30px_-26px_rgba(126,34,206,.55)]' : 'border-[#dcd6cf]'}`}>
+                  <div className={`relative min-w-0 rounded-[14px] border bg-white transition-all focus-within:border-[#292621] focus-within:shadow-[0_0_0_3px_rgba(32,29,26,0.06)] ${errors.address ? 'border-red-400' : addressVerified ? 'border-[#8e8680]' : 'border-[#dcd6cf]'}`}>
                     <span className={`pointer-events-none absolute left-4 top-7 z-10 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-lg ${addressVerified ? 'bg-[#f1e4fb]' : 'bg-[#f5f2ef]'}`}>
                       {addressVerified ? <Check className="h-3.5 w-3.5 text-[#7e22ce]" strokeWidth={3} /> : <MapPin className="h-4 w-4 text-[#7e22ce]" />}
                     </span>
@@ -664,21 +635,14 @@ export default function OwnerOnboarding2026() {
                 </button>
                 <p className="mt-3 text-[11.5px] font-medium text-[#77716a]">Neste: Velg hvordan du vil forvalte boligen.</p>
 
-                <div className="mt-7 flex flex-wrap gap-x-5 gap-y-2.5 border-t border-[#ebe6df] pt-5">
-                  {['Gratis og uforpliktende', 'Under 1 minutt', 'Svar innen 24 timer'].map((item) => (
-                    <div key={item} className="flex items-center gap-2 text-[11.5px] font-semibold text-[#625d57]">
-                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#f2e5fb]"><Check className="h-3 w-3 text-[#7e22ce]" strokeWidth={3} /></span>
-                      {item}
-                    </div>
-                  ))}
-                </div>
+                <div className="mt-7 flex flex-wrap gap-x-5 gap-y-2.5 border-t border-[#ebe6df] pt-4 text-[11.5px] font-medium text-[#77716a]"><span>Gratis og uforpliktende</span><span>·</span><span>Under 1 minutt</span><span>·</span><span>Svar innen 24 timer</span></div>
               </section>
             ) : null}
 
           </div>
         </div>
       </main>
-      <DesktopProof phase={phase} />
+      <DesktopProof />
     </div>
   );
 }
