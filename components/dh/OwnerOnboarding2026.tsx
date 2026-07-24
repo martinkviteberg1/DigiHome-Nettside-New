@@ -75,6 +75,15 @@ const isBergenArea = (postalCode = '', city = '') => {
 
 const normalizePhone = (value: string) => value.replace(/\D/g, '').slice(0, 8);
 
+const isCompleteAddress = (address = '', postalCode = '', city = '') => {
+  const street = String(address).split(',')[0].trim();
+  return /[A-Za-zÆØÅæøå]/.test(street)
+    && /\d+[A-Za-z]?\b/.test(street)
+    && /^\d{4}$/.test(String(postalCode).trim())
+    && /[A-Za-zÆØÅæøå]{2}/.test(String(city).trim());
+};
+
+
 function TopBar({ phase }: { phase: Phase }) {
   const current = PHASES.findIndex((item) => item.id === phase);
   const progress = ((current + 1) / PHASES.length) * 100;
@@ -317,21 +326,21 @@ export default function OwnerOnboarding2026() {
       }
 
       const address = (params.get('address') || '').trim();
+      const postal = (params.get('postal') || '').trim();
+      const city = (params.get('city') || '').trim();
       if (address && detectFinnReference(address)) {
         resolveFinnReference(address);
         return;
       }
-      // Ekte gateadresse må inneholde både bokstaver og husnummer. Et rent tall
-      // (postnummer/telefon/ukjent kode) skal aldri auto-godkjennes som adresse.
-      if (address && /[A-Za-zÆØÅæøå]/.test(address) && /\d/.test(address)) {
-        setForm((current) => ({
-          ...current,
-          address,
-          postalCode: (params.get('postal') || '').trim(),
-          city: (params.get('city') || '').trim(),
-        }));
+      // Prefyll må følge samme kvalitetskrav som manuell input — ingen snarvei
+      // til neste steg uten gate/husnummer + postnummer + poststed.
+      if (isCompleteAddress(address, postal, city)) {
+        setForm((current) => ({ ...current, address, postalCode: postal, city }));
         setAddressVerified(true);
         setPhase('service');
+      } else if (address) {
+        setForm((current) => ({ ...current, address, postalCode: postal, city }));
+        setAddressVerified(false);
       }
     } catch {
       // URL-parametere er en forbedring, ikke en forutsetning for flyten.
@@ -354,8 +363,8 @@ export default function OwnerOnboarding2026() {
       await resolveFinnReference(value);
       return;
     }
-    if (value.length < 4 || !/[A-Za-zÆØÅæøå]/.test(value)) {
-      setErrors({ address: 'Skriv en gateadresse, full FINN-lenke eller FINN-kode.' });
+    if (!addressVerified || !isCompleteAddress(value, form.postalCode, form.city)) {
+      setErrors({ address: 'Velg en fullstendig adresse fra listen — med husnummer, postnummer og poststed.' });
       return;
     }
     setFinnUrl('');
@@ -531,9 +540,12 @@ export default function OwnerOnboarding2026() {
                       }}
                       onSelect={(data: any) => {
                         const address = String(data?.address || '').replace(/,\s*(Norway|Norge)$/i, '');
-                        setForm((current) => ({ ...current, address, postalCode: data?.postalCode || '', city: data?.city || '' }));
-                        setAddressVerified(true);
-                        setErrors({});
+                        const postalCode = String(data?.postalCode || '').trim();
+                        const city = String(data?.city || '').trim();
+                        const complete = isCompleteAddress(address, postalCode, city);
+                        setForm((current) => ({ ...current, address, postalCode, city }));
+                        setAddressVerified(complete);
+                        setErrors(complete ? {} : { address: 'Adresseforslaget mangler husnummer, postnummer eller poststed.' });
                       }}
                       placeholder="Skriv gateadresse, FINN-lenke eller FINN-kode"
                       showIcon={false}
@@ -549,12 +561,12 @@ export default function OwnerOnboarding2026() {
                     ) : addressVerified ? (
                       <span className="inline-flex items-center gap-1.5 font-semibold text-[#674179]"><CheckCircle2 className="h-3.5 w-3.5 text-[#8d35c7]" /> Adressen er bekreftet</span>
                     ) : (
-                      <span className="text-[#77716a]">Velg et adresseforslag, eller lim inn en FINN-lenke / FINN-kode.</span>
+                      <span className="text-[#77716a]">Skriv gate og husnummer, og velg hele adressen fra listen. FINN-lenke eller FINN-kode fungerer også.</span>
                     )}
                   </div>
                 </div>
 
-                <button type="button" onClick={continueFromAddress} disabled={form.address.trim().length < 4 || finnLookupLoading} data-testid="address-continue" className="mt-6 inline-flex h-14 w-full items-center justify-center gap-3 rounded-full bg-[#d298ff] px-7 text-[15px] font-bold text-[#180a22] shadow-[0_16px_34px_-18px_rgba(126,34,206,.75)] transition-all hover:-translate-y-0.5 hover:bg-[#c983ff] hover:shadow-[0_20px_40px_-18px_rgba(126,34,206,.7)] active:translate-y-0 disabled:cursor-not-allowed disabled:bg-[#e7e3df] disabled:text-[#9a948d] disabled:shadow-none sm:w-auto sm:min-w-[190px]">
+                <button type="button" onClick={continueFromAddress} disabled={finnLookupLoading || (!addressVerified && !detectFinnReference(form.address))} data-testid="address-continue" className="mt-6 inline-flex h-14 w-full items-center justify-center gap-3 rounded-full bg-[#d298ff] px-7 text-[15px] font-bold text-[#180a22] shadow-[0_16px_34px_-18px_rgba(126,34,206,.75)] transition-all hover:-translate-y-0.5 hover:bg-[#c983ff] hover:shadow-[0_20px_40px_-18px_rgba(126,34,206,.7)] active:translate-y-0 disabled:cursor-not-allowed disabled:bg-[#e7e3df] disabled:text-[#9a948d] disabled:shadow-none sm:w-auto sm:min-w-[190px]">
                   {finnLookupLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                   {finnLookupLoading ? 'Henter FINN-annonsen' : 'Fortsett'} {!finnLookupLoading ? <ArrowRight className="h-4 w-4" /> : null}
                 </button>

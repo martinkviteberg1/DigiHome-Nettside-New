@@ -3173,7 +3173,7 @@ agent_communication:
     status_history:
         -working: "NA"
         -agent: "main"
-        -comment: "Bruker godkjente redesign. Implementert anbefalingene: byttet vague 'Se dine alternativer' til 'Fortsett' + hjelpetekst om neste tjenestevalg; bruker eksakt opplastet varmt stuebilde på desktop; ny lys/varm 52/48 split, subtil gradient og premium dark-glass proof-card; strammere copy/spacing; adressefelt har tydelig bekreftet state; trygghetspunkter kompakte; mobil får skjema-kort først uten stor hero. Ingen form-/API-logikk endret. ESLint 0. Screenshot-verifisert desktop 1440x900 og mobil 390x844, nytt bilde lastet, CTA korrekt og ingen horisontal overflow. Frontend-agenttest avventes eksplisitt brukervalg."
+        -comment: "Bruker godkjente redesign + streng adressevalidering. Implementert: byttet vague 'Se dine alternativer' til 'Fortsett' + hjelpetekst om neste tjenestevalg; eksakt opplastet varmt stuebilde på desktop; lys/varm 52/48 split, subtil gradient og premium proof-card; strammere copy/spacing; mobil får skjema-kort først uten stor hero. ADRESSE-FIKS: CTA er disabled til brukeren velger et konkret forslag med gate/husnummer + 4-sifret postnummer + poststed; onSelect validerer alle feltene; ufullstendig URL-prefill kan ikke bypass; gyldig FINN-lenke/kode er eksplisitt unntak. Ingen lead-/API-logikk endret. ESLint/TS 0. Screenshot-verifisert desktop 1440x900 og mobil 390x844: 'olaf ryes vei' blokkert, valgt Olaf Ryes vei 11C åpner CTA, confirmed state synlig, ingen overflow. Frontend-agenttest krever eksplisitt brukervalg."
 
 metadata:
   current_focus:
