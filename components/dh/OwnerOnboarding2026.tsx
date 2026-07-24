@@ -130,21 +130,13 @@ function DesktopProof({ phase }: { phase: Phase }) {
   return (
     <aside className="relative hidden min-h-[100dvh] overflow-hidden bg-[#2b2523] lg:block" aria-label="Om DigiHome">
       <img src="/owner-onboarding-living-room.webp" alt="Lys og moderne stue i Bergen" className="absolute inset-0 h-full w-full object-cover object-center" />
-      <div className="absolute inset-0 bg-gradient-to-b from-[#1b1714]/10 via-[#1b1714]/15 to-[#171210]/90" />
-      <div className="absolute inset-0 bg-gradient-to-r from-black/5 via-transparent to-black/10" />
-
-      <div className="relative flex h-full min-h-[100dvh] flex-col justify-between p-10 xl:p-14">
-        <span className="inline-flex w-fit items-center gap-2 rounded-full border border-white/30 bg-white/15 px-4 py-2 text-[10.5px] font-bold uppercase tracking-[0.14em] text-white shadow-sm backdrop-blur-xl">
-          <span className="h-2 w-2 rounded-full bg-[#d298ff] shadow-[0_0_0_4px_rgba(210,152,255,.18)]" /> {copy.eyebrow}
-        </span>
-
-        <div className="max-w-[470px] rounded-[24px] border border-white/15 bg-[#15110f]/50 p-6 shadow-[0_24px_70px_-36px_rgba(0,0,0,.5)] backdrop-blur-lg xl:p-7">
-          <h2 className="text-[36px] font-bold leading-[1.02] tracking-[-0.045em] text-white xl:text-[46px]" style={{ fontFamily: 'var(--font-heading)' }}>{copy.title}</h2>
+      <div className="absolute inset-0 bg-gradient-to-b from-black/0 via-black/5 to-[#171210]/82" />
+      <div className="relative flex min-h-[100dvh] items-end p-10 xl:p-14">
+        <div className="max-w-[450px] pb-2 text-white drop-shadow-sm">
+          <p className="text-[10.5px] font-bold uppercase tracking-[0.15em] text-white/70">{copy.eyebrow}</p>
+          <h2 className="mt-3 text-[38px] font-bold leading-[1.02] tracking-[-0.045em] text-white xl:text-[48px]" style={{ fontFamily: 'var(--font-heading)' }}>{copy.title}</h2>
           <p className="mt-3 max-w-[42ch] text-[14px] leading-relaxed text-white/75 xl:text-[15px]">{copy.text}</p>
-          <div className="mt-5 flex items-center gap-3 border-t border-white/15 pt-4">
-            <ShieldCheck className="h-4.5 w-4.5 shrink-0 text-[#e2b8ff]" />
-            <p className="text-[11.5px] font-semibold leading-relaxed text-white/75">150+ boliger · svar innen 24 t · trygt og uforpliktende</p>
-          </div>
+          <p className="mt-5 border-t border-white/25 pt-4 text-[11.5px] font-semibold text-white/75"><ShieldCheck className="mr-2 inline h-4 w-4 text-white/85" />150+ boliger · svar innen 24 t · trygt og uforpliktende</p>
         </div>
       </div>
     </aside>
@@ -449,46 +441,31 @@ export default function OwnerOnboarding2026() {
   if (submitted) {
     const isSelf = form.service === 'selvforvaltning';
     return (
-      <div className="grid min-h-[100dvh] overflow-x-hidden bg-[#f8f7f5] lg:grid-cols-[minmax(0,1.08fr)_minmax(380px,0.92fr)]" data-testid="onboarding-success">
-        <main className="flex min-w-0 flex-col">
-          <TopBar phase="contact" />
-          <div className="flex flex-1 items-start justify-center px-5 py-10 sm:items-center sm:px-8 sm:py-16">
-            <div className="w-full max-w-[560px]">
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[#17131b] shadow-[0_18px_38px_-18px_rgba(0,0,0,.45)]">
-                <CheckCircle2 className="h-8 w-8 text-[#d298ff]" />
-              </div>
-              <p className="mt-8 text-[11px] font-bold uppercase tracking-[0.16em] text-[#7e22ce]">Alt er registrert</p>
-              <h1 className="mt-3 text-[36px] font-bold leading-[1.02] tracking-[-0.04em] text-[#111] sm:text-[48px]" style={{ fontFamily: 'var(--font-heading)' }}>
-                Takk, {form.name.trim().split(' ')[0]}.
-              </h1>
-              <p className="mt-4 max-w-[46ch] text-[16px] leading-relaxed text-[#625d57]">
-                {isSelf
-                  ? accountUrl ? 'Kontoen din er klar. Du kan gå direkte videre og legge inn boligen.' : 'Vi setter opp kontoen din og sender tilgang til e-posten din.'
-                  : 'En lokal rådgiver vurderer henvendelsen og tar kontakt innen 24 timer.'}
-              </p>
+      <div className="min-h-[100dvh] overflow-x-hidden bg-[#f7f6f3]" data-testid="onboarding-success">
+        <TopBar phase="contact" />
+        <main className="mx-auto flex min-h-[calc(100dvh-67px)] w-full max-w-[680px] items-center px-5 py-12 sm:px-8 sm:py-16">
+          <div className="w-full text-center">
+            <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#171513]"><CheckCircle2 className="h-6 w-6 text-white" /></span>
+            <p className="mt-6 text-[10.5px] font-bold uppercase tracking-[0.15em] text-[#77716a]">Alt er registrert</p>
+            <h1 className="mt-3 text-[38px] font-bold leading-[1.02] tracking-[-0.045em] text-[#151310] sm:text-[52px]" style={{ fontFamily: 'var(--font-heading)' }}>Takk, {form.name.trim().split(' ')[0]}.</h1>
+            <p className="mx-auto mt-4 max-w-[46ch] text-[15.5px] leading-relaxed text-[#625d57]">
+              {isSelf
+                ? accountUrl ? 'Kontoen din er klar. Du kan gå direkte videre og legge inn boligen.' : 'Vi setter opp kontoen din og sender tilgang til e-posten din.'
+                : 'En lokal rådgiver vurderer henvendelsen og tar kontakt innen 24 timer.'}
+            </p>
 
-              <div className="mt-8 rounded-2xl border border-[#e3dfd9] bg-white p-5">
-                <div className="flex gap-3">
-                  <Check className="mt-0.5 h-5 w-5 shrink-0 text-[#7e22ce]" />
-                  <div>
-                    <p className="text-[14px] font-bold text-[#171513]">Bekreftelse sendt til {form.email}</p>
-                    <p className="mt-1 text-[13px] leading-relaxed text-[#6d6760]">{isSelf ? 'Der finner du neste steg for kontoen din.' : 'Du trenger ikke gjøre noe mer nå.'}</p>
-                  </div>
-                </div>
-              </div>
+            <div className="mx-auto mt-7 max-w-[520px] rounded-2xl border border-[#e3dfd9] bg-white p-5 text-left">
+              <div className="flex gap-3"><Check className="mt-0.5 h-5 w-5 shrink-0 text-[#4e4944]" /><div><p className="text-[14px] font-bold text-[#171513]">Bekreftelse sendt til {form.email}</p><p className="mt-1 text-[13px] leading-relaxed text-[#6d6760]">{isSelf ? 'Der finner du neste steg for kontoen din.' : 'Du trenger ikke gjøre noe mer nå.'}</p></div></div>
+            </div>
 
-              <div className="mt-7 flex flex-col gap-3 sm:flex-row">
-                {accountUrl ? (
-                  <button type="button" onClick={() => window.location.assign(accountUrl)} className="inline-flex h-14 items-center justify-center gap-2 rounded-full bg-[#d298ff] px-7 text-[15px] font-bold text-[#14081f] hover:bg-[#c983ff]" data-testid="onboarding-account-button">
-                    Gå til kontoen <ArrowRight className="h-4 w-4" />
-                  </button>
-                ) : null}
-                <a href="/" className="inline-flex h-14 items-center justify-center rounded-full border border-[#d9d5cf] bg-white px-7 text-[14px] font-semibold text-[#292621] hover:border-[#bcb6ae]">Til forsiden</a>
-              </div>
+            <div className="mt-7 flex flex-col justify-center gap-3 sm:flex-row">
+              {accountUrl ? (
+                <button type="button" onClick={() => window.location.assign(accountUrl)} className="inline-flex h-14 items-center justify-center gap-2 rounded-full bg-[#171513] px-7 text-[14px] font-bold text-white hover:bg-[#2b2824]" data-testid="onboarding-account-button">Gå til kontoen <ArrowRight className="h-4 w-4" /></button>
+              ) : null}
+              <a href="/" className="inline-flex h-14 items-center justify-center rounded-full border border-[#d9d5cf] bg-white px-7 text-[14px] font-semibold text-[#292621] hover:border-[#aaa39b]">Til forsiden</a>
             </div>
           </div>
         </main>
-        <DesktopProof phase="contact" />
       </div>
     );
   }
@@ -499,10 +476,8 @@ export default function OwnerOnboarding2026() {
     const fullUnavailable = !!form.postalCode && !isBergenArea(form.postalCode, form.city);
 
     return (
-      <div className="relative min-h-[100dvh] overflow-x-hidden bg-[#f7f4f0]" data-testid="owner-onboarding-2026">
+      <div className="relative min-h-[100dvh] overflow-x-hidden bg-[#f7f6f3]" data-testid="owner-onboarding-2026">
         <TopBar phase="service" />
-        <div className="pointer-events-none absolute left-[-140px] top-[18%] h-[360px] w-[360px] rounded-full bg-[#d298ff]/10 blur-3xl" />
-        <div className="pointer-events-none absolute bottom-[-160px] right-[-80px] h-[420px] w-[420px] rounded-full bg-[#ead9f5]/40 blur-3xl" />
 
         <main className="relative mx-auto w-full max-w-[1240px] px-5 pb-14 pt-7 sm:px-8 sm:pb-20 sm:pt-9 lg:px-10 lg:pt-10" data-testid="onboarding-service-step">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -515,7 +490,7 @@ export default function OwnerOnboarding2026() {
           </div>
 
           <div className="mx-auto mt-5 max-w-[760px] text-center sm:mt-2">
-            <span className="inline-flex items-center gap-2 rounded-full bg-[#eee3f7] px-3.5 py-1.5 text-[10.5px] font-extrabold uppercase tracking-[0.14em] text-[#7e22ce]">
+            <span className="inline-flex items-center gap-2 rounded-full bg-[#ebe8e3] px-3.5 py-1.5 text-[10.5px] font-extrabold uppercase tracking-[0.14em] text-[#5f5a54]">
               <Sparkles className="h-3.5 w-3.5" /> Steg 2 av 3
             </span>
             <h1 className="mt-4 text-[34px] font-bold leading-[1.02] tracking-[-0.045em] text-[#151310] sm:text-[48px] lg:text-[56px]" style={{ fontFamily: 'var(--font-heading)' }}>Velg hvordan du vil leie ut</h1>
@@ -529,10 +504,10 @@ export default function OwnerOnboarding2026() {
           <div className="mx-auto mt-8 grid max-w-[1120px] gap-5 lg:grid-cols-2 lg:gap-6">
             <button type="button" onClick={() => selectService(self.id)} data-testid="service-selvforvaltning" className="group relative flex min-h-[470px] min-w-0 flex-col overflow-hidden rounded-[28px] border border-[#e0dbd5] bg-white p-6 text-left shadow-[0_24px_70px_-52px_rgba(35,25,18,.6)] transition-all hover:-translate-y-1 hover:border-[#cfa1ee] hover:shadow-[0_30px_80px_-48px_rgba(113,54,151,.5)] active:translate-y-0 sm:p-8">
               <div className="flex items-start justify-between gap-4">
-                <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#f2e6fb] text-[#7e22ce]"><KeyRound className="h-5.5 w-5.5" /></span>
+                <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#f0ede8] text-[#403c37]"><KeyRound className="h-5.5 w-5.5" /></span>
                 <span className="rounded-full bg-[#f5f2ee] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.1em] text-[#77716a]">Hele Norge</span>
               </div>
-              <p className="mt-7 text-[10.5px] font-extrabold uppercase tracking-[0.13em] text-[#7e22ce]">For deg som vil gjøre det selv</p>
+              <p className="mt-7 text-[10.5px] font-extrabold uppercase tracking-[0.13em] text-[#77716a]">For deg som vil gjøre det selv</p>
               <h2 className="mt-2 text-[29px] font-bold tracking-[-0.035em] text-[#171513] sm:text-[34px]" style={{ fontFamily: 'var(--font-heading)' }}>{self.title}</h2>
               <p className="mt-3 max-w-[42ch] text-[13.5px] leading-relaxed text-[#6d6760]">{self.description}</p>
 
@@ -543,7 +518,7 @@ export default function OwnerOnboarding2026() {
               <div className="mt-5 space-y-3">
                 {self.points.map((point) => <p key={point} className="flex items-start gap-2.5 text-[13px] leading-snug text-[#403c37]"><span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#f2e6fb]"><Check className="h-3 w-3 text-[#7e22ce]" strokeWidth={3} /></span>{point}</p>)}
               </div>
-              <span className="mt-auto inline-flex h-12 w-full items-center justify-center gap-2 rounded-full border border-[#d7c7e3] bg-[#faf7fc] px-5 text-[13.5px] font-bold text-[#5c2d79] transition group-hover:border-[#c889f5] group-hover:bg-[#f3e7fb]">Velg selvforvaltning <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" /></span>
+              <span className="mt-auto inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[#171513] px-5 text-[13.5px] font-bold text-white transition group-hover:bg-[#2b2824]">Velg selvforvaltning <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" /></span>
             </button>
 
             <button type="button" onClick={() => selectService(full.id)} data-testid="service-full_forvaltning" className="group relative flex min-h-[470px] min-w-0 flex-col overflow-hidden rounded-[28px] border border-[#2d2631] bg-[#17131b] p-6 text-left shadow-[0_28px_80px_-44px_rgba(33,16,44,.8)] transition-all hover:-translate-y-1 hover:border-[#d298ff]/60 hover:shadow-[0_34px_90px_-42px_rgba(96,36,131,.75)] active:translate-y-0 sm:p-8">
@@ -563,11 +538,60 @@ export default function OwnerOnboarding2026() {
               <div className="relative mt-5 space-y-3">
                 {full.points.map((point) => <p key={point} className="flex items-start gap-2.5 text-[13px] leading-snug text-white/75"><span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#d298ff]/15"><Check className="h-3 w-3 text-[#dca9ff]" strokeWidth={3} /></span>{point}</p>)}
               </div>
-              <span className="relative mt-auto inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[#d298ff] px-5 text-[13.5px] font-bold text-[#1a0b23] transition group-hover:bg-[#c983ff]">{fullUnavailable ? 'Registrer interesse' : 'Få personlig tilbud'} <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" /></span>
+              <span className="relative mt-auto inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-white px-5 text-[13.5px] font-bold text-[#171513] transition group-hover:bg-[#f1eee9]">{fullUnavailable ? 'Registrer interesse' : 'Få personlig tilbud'} <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" /></span>
             </button>
           </div>
 
           <p className="mt-6 text-center text-[11.5px] font-medium text-[#88817a]"><ShieldCheck className="mr-1.5 inline h-3.5 w-3.5 text-[#8b5cf6]" /> Begge løsninger er trygge, uforpliktende å utforske og kan endres senere.</p>
+        </main>
+      </div>
+    );
+  }
+
+  if (phase === 'contact') {
+    const isSelf = form.service === 'selvforvaltning';
+    return (
+      <div className="min-h-[100dvh] overflow-x-hidden bg-[#f7f6f3]" data-testid="owner-onboarding-2026">
+        <TopBar phase="contact" />
+        <main className="mx-auto w-full max-w-[760px] px-5 pb-14 pt-7 sm:px-8 sm:pb-20 sm:pt-10" data-testid="onboarding-contact-step">
+          <BackButton onClick={() => setPhase('service')} />
+
+          <div className="text-center">
+            <p className="text-[10.5px] font-bold uppercase tracking-[0.15em] text-[#77716a]">Siste steg</p>
+            <h1 className="mt-3 text-[34px] font-bold leading-[1.03] tracking-[-0.045em] text-[#151310] sm:text-[48px]" style={{ fontFamily: 'var(--font-heading)' }}>{isSelf ? 'Opprett kontoen din' : 'Hvor kan vi nå deg?'}</h1>
+            <p className="mx-auto mt-3 max-w-[50ch] text-[14.5px] leading-relaxed text-[#6d6760] sm:text-[15.5px]">{isSelf ? 'Kun kontaktinformasjon. Boligen legger du enkelt inn når kontoen er klar.' : 'Vi trenger bare kontaktinformasjonen din for å følge opp tilbudet.'}</p>
+          </div>
+
+          <div className="mt-7 flex flex-col gap-2.5 rounded-2xl border border-[#e5e0da] bg-white px-4 py-3.5 sm:flex-row sm:items-center" data-testid="contact-context">
+            <div className="flex min-w-0 flex-1 items-center gap-2.5"><CheckCircle2 className="h-4 w-4 shrink-0 text-[#6f6a64]" /><span className="truncate text-[12.5px] text-[#4e4944]"><strong>{selectedService?.title}</strong> · {addressLabel}</span></div>
+            <button type="button" onClick={() => setPhase('service')} className="self-start text-[11.5px] font-bold text-[#5f5a54] underline decoration-[#bbb3aa] underline-offset-4 sm:self-auto">Endre valg</button>
+          </div>
+
+          <div className="mt-7 space-y-4">
+            <TextField id="owner-name-input" label="Fullt navn" value={form.name} onChange={(event: any) => setField('name', event.target.value)} autoComplete="name" placeholder="Ola Nordmann" icon={User} error={errors.name} />
+            <TextField id="owner-email-input" label="E-post" type="email" value={form.email} onChange={(event: any) => setField('email', event.target.value)} autoComplete="email" inputMode="email" placeholder="ola@eksempel.no" icon={Mail} error={errors.email} />
+            <TextField id="owner-phone-input" label="Telefon" type="tel" value={form.phone} onChange={(event: any) => setField('phone', normalizePhone(event.target.value))} autoComplete="tel-national" inputMode="tel" placeholder="8 siffer" icon={Phone} error={errors.phone} />
+          </div>
+
+          {isSelf ? (
+            <div className={`mt-5 rounded-2xl border bg-white p-4 ${errors.terms ? 'border-red-400' : 'border-[#dedad4]'}`}>
+              <button type="button" onClick={() => { setTermsAccepted((value) => !value); setErrors((current) => ({ ...current, terms: '' })); }} data-testid="owner-terms-checkbox" className="flex w-full items-start gap-3 text-left">
+                <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-2 ${termsAccepted ? 'border-[#24211e] bg-[#24211e]' : 'border-[#cfc9c2] bg-white'}`}>{termsAccepted ? <Check className="h-3.5 w-3.5 text-white" strokeWidth={3.5} /> : null}</span>
+                <span className="text-[13px] leading-relaxed text-[#504b46]">Jeg godtar <a href="/vilkar" target="_blank" rel="noopener noreferrer" onClick={(event) => event.stopPropagation()} className="font-bold text-[#403c37] underline underline-offset-2">avtalen om selvforvaltning</a> (5 % per utleieforhold, ingen bindingstid).</span>
+              </button>
+              {errors.terms ? <p className="mt-2 text-[12px] font-medium text-red-600">{errors.terms}</p> : null}
+            </div>
+          ) : (
+            <p className="mt-5 flex items-start justify-center gap-2 text-center text-[12px] leading-relaxed text-[#625d57]"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-[#77716a]" /> Gratis og uforpliktende. En lokal rådgiver kontakter deg innen 24 timer.</p>
+          )}
+
+          {submitError ? <div role="alert" className="mt-5 rounded-2xl border border-red-200 bg-red-50 p-4 text-[13px] leading-relaxed text-red-700">{submitError}</div> : null}
+
+          <button type="button" onClick={submit} disabled={loading} data-testid="owner-submit-button" className="mt-7 inline-flex h-14 w-full items-center justify-center gap-2 rounded-full bg-[#171513] px-7 text-[15px] font-bold text-white shadow-[0_16px_34px_-22px_rgba(0,0,0,.65)] transition hover:bg-[#2b2824] disabled:cursor-wait disabled:opacity-60 sm:mx-auto sm:flex sm:max-w-[310px]">
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
+            {isSelf ? 'Opprett konto' : outsideArea ? 'Registrer interesse' : 'Be om tilbud'}
+          </button>
+          <p className="mt-3 text-center text-[11.5px] leading-relaxed text-[#88817a]">Ved innsending godtar du at DigiHome kontakter deg om denne henvendelsen.</p>
         </main>
       </div>
     );
@@ -634,7 +658,7 @@ export default function OwnerOnboarding2026() {
                   </div>
                 </div>
 
-                <button type="button" onClick={continueFromAddress} disabled={finnLookupLoading || (!addressVerified && !detectFinnReference(form.address))} data-testid="address-continue" className="mt-6 inline-flex h-14 w-full items-center justify-center gap-3 rounded-full bg-[#d298ff] px-7 text-[15px] font-bold text-[#180a22] shadow-[0_16px_34px_-18px_rgba(126,34,206,.75)] transition-all hover:-translate-y-0.5 hover:bg-[#c983ff] hover:shadow-[0_20px_40px_-18px_rgba(126,34,206,.7)] active:translate-y-0 disabled:cursor-not-allowed disabled:bg-[#e7e3df] disabled:text-[#9a948d] disabled:shadow-none sm:w-auto sm:min-w-[190px]">
+                <button type="button" onClick={continueFromAddress} disabled={finnLookupLoading || (!addressVerified && !detectFinnReference(form.address))} data-testid="address-continue" className="mt-6 inline-flex h-14 w-full items-center justify-center gap-3 rounded-full bg-[#171513] px-7 text-[15px] font-bold text-white shadow-[0_16px_34px_-20px_rgba(0,0,0,.65)] transition-all hover:-translate-y-0.5 hover:bg-[#2a2723] hover:shadow-[0_20px_40px_-20px_rgba(0,0,0,.6)] active:translate-y-0 disabled:cursor-not-allowed disabled:bg-[#e7e3df] disabled:text-[#9a948d] disabled:shadow-none sm:w-auto sm:min-w-[190px]">
                   {finnLookupLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                   {finnLookupLoading ? 'Henter FINN-annonsen' : 'Fortsett'} {!finnLookupLoading ? <ArrowRight className="h-4 w-4" /> : null}
                 </button>
@@ -651,46 +675,6 @@ export default function OwnerOnboarding2026() {
               </section>
             ) : null}
 
-            {phase === 'contact' ? (
-              <section data-testid="onboarding-contact-step">
-                <BackButton onClick={() => setPhase('service')} />
-                <StepHeading eyebrow="Siste steg" title={form.service === 'selvforvaltning' ? 'Opprett kontoen din.' : 'Hvor kan vi nå deg?'} text={form.service === 'selvforvaltning' ? 'Kun kontaktinformasjon — boligen legger du inn senere.' : 'Vi trenger bare kontaktinformasjonen din for å følge opp tilbudet.'} />
-
-                <div className="mt-6 flex min-w-0 items-center gap-2 rounded-2xl bg-[#eee8f3] px-4 py-3 text-[12.5px] text-[#4d3d5d]" data-testid="contact-context">
-                  <Sparkles className="h-4 w-4 shrink-0 text-[#7e22ce]" />
-                  <span className="min-w-0 flex-1 truncate"><strong>{selectedService?.title}</strong> · {addressLabel}</span>
-                  <button type="button" onClick={() => setPhase('service')} className="shrink-0 font-bold text-[#7e22ce]">Endre</button>
-                </div>
-
-                <div className="mt-7 space-y-4">
-                  <TextField id="owner-name-input" label="Fullt navn" value={form.name} onChange={(event: any) => setField('name', event.target.value)} autoComplete="name" placeholder="Ola Nordmann" icon={User} error={errors.name} />
-                  <TextField id="owner-email-input" label="E-post" type="email" value={form.email} onChange={(event: any) => setField('email', event.target.value)} autoComplete="email" inputMode="email" placeholder="ola@eksempel.no" icon={Mail} error={errors.email} />
-                  <TextField id="owner-phone-input" label="Telefon" type="tel" value={form.phone} onChange={(event: any) => setField('phone', normalizePhone(event.target.value))} autoComplete="tel-national" inputMode="tel" placeholder="8 siffer" icon={Phone} error={errors.phone} />
-                </div>
-
-                {form.service === 'selvforvaltning' ? (
-                  <div className={`mt-5 rounded-2xl border bg-white p-4 ${errors.terms ? 'border-red-400' : 'border-[#dedad4]'}`}>
-                    <button type="button" onClick={() => { setTermsAccepted((value) => !value); setErrors((current) => ({ ...current, terms: '' })); }} data-testid="owner-terms-checkbox" className="flex w-full items-start gap-3 text-left">
-                      <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-2 ${termsAccepted ? 'border-[#d298ff] bg-[#d298ff]' : 'border-[#cfc9c2] bg-white'}`}>
-                        {termsAccepted ? <Check className="h-3.5 w-3.5 text-[#14081f]" strokeWidth={3.5} /> : null}
-                      </span>
-                      <span className="text-[13px] leading-relaxed text-[#504b46]">Jeg godtar <a href="/vilkar" target="_blank" rel="noopener noreferrer" onClick={(event) => event.stopPropagation()} className="font-bold text-[#7e22ce] underline underline-offset-2">avtalen om selvforvaltning</a> (5 % per utleieforhold, ingen bindingstid).</span>
-                    </button>
-                    {errors.terms ? <p className="mt-2 text-[12px] font-medium text-red-600">{errors.terms}</p> : null}
-                  </div>
-                ) : (
-                  <p className="mt-5 flex items-start gap-2 text-[12.5px] leading-relaxed text-[#625d57]"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-[#7e22ce]" /> Gratis og uforpliktende. En lokal rådgiver kontakter deg innen 24 timer.</p>
-                )}
-
-                {submitError ? <div role="alert" className="mt-5 rounded-2xl border border-red-200 bg-red-50 p-4 text-[13px] leading-relaxed text-red-700">{submitError}</div> : null}
-
-                <button type="button" onClick={submit} disabled={loading} data-testid="owner-submit-button" className="mt-7 inline-flex h-14 w-full items-center justify-center gap-2 rounded-full bg-[#d298ff] px-6 text-[15px] font-bold text-[#14081f] shadow-[0_12px_28px_-15px_rgba(126,34,206,.65)] transition hover:bg-[#c983ff] disabled:cursor-wait disabled:opacity-70 sm:w-auto sm:min-w-[230px]">
-                  {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-                  {form.service === 'selvforvaltning' ? 'Opprett konto' : outsideArea ? 'Registrer interesse' : 'Be om tilbud'}
-                </button>
-                <p className="mt-3 text-[11.5px] leading-relaxed text-[#77716a]">Ved innsending godtar du at DigiHome kontakter deg om denne henvendelsen.</p>
-              </section>
-            ) : null}
           </div>
         </div>
       </main>
