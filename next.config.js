@@ -6,7 +6,6 @@ const nextConfig = {
     return [
       { source: '/blogg', destination: '/nyheter', permanent: true },
       { source: '/blogg/:slug*', destination: '/nyheter/:slug*', permanent: true },
-      { source: '/PartDetail.aspx', destination: '/', permanent: true },
     ];
   },
   // Ported .tsx files (deck + dh pages) contain type-only errors that do not
