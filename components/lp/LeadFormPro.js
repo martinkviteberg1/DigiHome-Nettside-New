@@ -41,91 +41,100 @@ export default function LeadFormPro({ cfg }) {
   const handleStart = () => {
     if (startedRef.current) return;
     startedRef.current = true;
-    try { trackLeadStart(cfg.source); } catch (e) {}
-    try { track('lead_step', { step: 'start', form: cfg.source }); } catch (e) {}
+    try { trackLeadStart(cfg.source); } catch (e) { /* best-effort: aldri blokker skjemaet */ }
+    try { track('lead_step', { step: 'start', form: cfg.source }); } catch (e) { /* best-effort: aldri blokker skjemaet */ }
   };
 
   const goStep2 = () => {
     handleStart();
     setStep(2);
     setErr('');
-    try { track('lead_step', { step: 'step2', form: cfg.source }); } catch (e) {}
+    try { track('lead_step', { step: 'step2', form: cfg.source }); } catch (e) { /* best-effort: aldri blokker skjemaet */ }
     // Fokus på navn-feltet for flyt (etter render)
-    setTimeout(() => { try { nameRef.current?.focus({ preventScroll: true }); } catch (e) {} }, 60);
+    setTimeout(() => { try { nameRef.current?.focus({ preventScroll: true }); } catch (e) { /* best-effort: aldri blokker skjemaet */ } }, 60);
   };
 
   // Adressen MÅ velges fra listen (postnr + husnummer) — eller hoppes helt over.
   // Stopper ufullstendige adresser («Snikvegen 65A» uten postnr) i CRM-et.
-  const [addrSel, setAddrSel] = useState(null); // { postalCode } når valgt fra listen
+  const [addrSel, setAddrSel] = useState(null); // { postalCode } når full adresse er verifisert
   const [addrHint, setAddrHint] = useState('');
+  const [addressResolving, setAddressResolving] = useState(false);
 
   const chooseSuggestion = async (s) => {
     const txt = (s.text || s.label || '').trim();
     if (!/\d/.test(txt)) {
-      // Gate uten husnummer → be om nummer (nytt søk gir nummer-forslag)
       ac.setQuery(txt + ' ');
       setAddrSel(null);
       setAddrHint('Legg til husnummer (f.eks. 12) og velg adressen fra listen.');
       ac.setOpen(false);
-      return;
+      return false;
     }
+    setAddressResolving(true);
     ac.skipRef.current = true;
     ac.setQuery(txt);
     ac.setOpen(false);
-    setAddrHint('');
+    setAddrHint('Bekrefter adressen …');
     let postal = '';
-    if (s.place_id) {
-      try {
+    let city = '';
+    try {
+      if (s.place_id) {
         const r = await fetch(`/api/address?place_id=${encodeURIComponent(s.place_id)}`);
         const d = await r.json();
         if (d && d.ok) {
-          postal = d.postalCode || '';
+          postal = String(d.postalCode || '').trim();
+          city = String(d.city || '').trim();
           if (d.label || d.address) { ac.skipRef.current = true; ac.setQuery(d.label || d.address); }
         }
-      } catch (e) { /* beholder forslags-teksten */ }
-    } else {
-      const m = (s.sub || '').match(/(\d{4})/);
-      postal = m ? m[1] : '';
+      } else {
+        const raw = `${s.text || s.label || ''} ${s.sub || ''}`;
+        const m = raw.match(/\b(\d{4})\b/);
+        postal = m ? m[1] : '';
+        city = String(s.city || '').trim();
+      }
+      if (!/^\d{4}$/.test(postal)) {
+        setAddrSel(null);
+        setAddrHint('Forslaget mangler postnummer. Skriv gate og husnummer, og velg en fullstendig adresse.');
+        return false;
+      }
+      setAddrSel({ postalCode: postal, city });
+      setAddrHint('Adressen er bekreftet.');
+      return true;
+    } catch (e) {
+      setAddrSel(null);
+      setAddrHint('Vi klarte ikke å bekrefte adressen. Prøv å velge forslaget på nytt.');
+      return false;
+    } finally {
+      setAddressResolving(false);
     }
-    setAddrSel({ postalCode: postal });
   };
 
-  const tryGoStep2 = () => {
+  const tryGoStep2 = async () => {
+    if (addressResolving) return;
     const q = ac.query.trim();
-    if (q && !addrSel) {
-      // Eksakt tekstmatch mot et forslag → auto-velg (null ekstra friksjon)
+    if (!q || !addrSel || !/^\d{4}$/.test(addrSel.postalCode || '')) {
       const hit = ac.suggestions.find((s) => (s.text || s.label || '').trim().toLowerCase() === q.toLowerCase());
-      if (hit && /\d/.test(hit.text || hit.label || '')) { chooseSuggestion(hit).then(goStep2); return; }
-      setAddrHint('Velg adressen fra forslagslisten — eller trykk «Hopp over» under.');
+      if (hit && /\d/.test(hit.text || hit.label || '')) {
+        const ok = await chooseSuggestion(hit);
+        if (ok) goStep2();
+        return;
+      }
+      setAddrHint(q ? 'Velg en fullstendig adresse fra forslagslisten.' : 'Skriv gate og husnummer, og velg adressen fra listen.');
       if (ac.suggestions.length) ac.setOpen(true);
-      try { track('lead_step', { step: 'address_unverified', form: cfg.source }); } catch (e) {}
+      try { track('lead_step', { step: 'address_unverified', form: cfg.source }); } catch (e) { /* best-effort: aldri blokker skjemaet */ }
       return;
     }
     goStep2();
   };
 
-  const skipAddress = () => {
-    // «Har ikke adressen klar» = bevisst hopp: tomt adressefelt (ingen halvferdig
-    // fritekst i CRM) — Sarah henter adressen i førstesamtalen.
-    ac.skipRef.current = true;
-    ac.setQuery('');
-    setAddrSel(null);
-    setAddrHint('');
-    ac.setOpen(false);
-    goStep2();
-  };
+
 
   const validate = () => {
     const fe = {};
     if (!form.name.trim()) fe.name = 'Hva heter du?';
     const phone = form.phone.trim();
     const email = form.email.trim();
-    if (!phone && !email) {
-      fe.phone = 'Oppgi telefon eller e-post, så når vi deg.';
-    } else {
-      if (phone && !PHONE_RE.test(phone)) fe.phone = 'Sjekk telefonnummeret (8 siffer).';
-      if (email && !EMAIL_RE.test(email)) fe.email = 'Sjekk e-postadressen.';
-    }
+    if (!PHONE_RE.test(phone)) fe.phone = 'Skriv inn et gyldig norsk telefonnummer (8 siffer).';
+    if (!EMAIL_RE.test(email)) fe.email = 'Skriv inn en gyldig e-postadresse.';
     setFieldErr(fe);
     return Object.keys(fe).length === 0;
   };
@@ -149,10 +158,14 @@ export default function LeadFormPro({ cfg }) {
       });
       if (!res.ok) throw new Error('api');
       let data = {};
-      try { data = await res.json(); } catch (e2) {}
-      try { trackLead({ formId: cfg.source, source: cfg.source, leadId: data?.data?.id, email: form.email, phone: form.phone }); } catch (e2) {}
-      try { track('lead_step', { step: 'submit', form: cfg.source }); } catch (e2) {}
-      try { window.dispatchEvent(new CustomEvent('lp:done')); } catch (e2) {}
+      try { data = await res.json(); } catch (e2) { /* best-effort: tracking/JSON må aldri blokkere leadet */ }
+      try { track('lead_submit', { form: cfg.source, leadId: data?.data?.id || null }); } catch (e2) { /* best-effort: tracking/JSON må aldri blokkere leadet */ }
+      try { track('lead_step', { step: 'submit', form: cfg.source }); } catch (e2) { /* best-effort: tracking/JSON må aldri blokkere leadet */ }
+      try { await Promise.race([
+        trackLead({ formId: cfg.source, source: cfg.source, leadId: data?.data?.id, email: form.email, phone: form.phone }),
+        new Promise((resolve) => setTimeout(resolve, 450)),
+      ]); } catch (e2) { /* best-effort: tracking/JSON må aldri blokkere leadet */ }
+      try { window.dispatchEvent(new CustomEvent('lp:done')); } catch (e2) { /* best-effort: tracking/JSON må aldri blokkere leadet */ }
       setStatus('done');
     } catch (e2) {
       setErr('Noe gikk galt. Prøv igjen — eller ring oss på ' + site.phone + '.');
@@ -174,7 +187,7 @@ export default function LeadFormPro({ cfg }) {
         <ol className="mt-5 space-y-3">
           {[
             'Vi analyserer boligen og leiemarkedet i området ditt',
-            'Du hører fra oss umiddelbart med en konkret vurdering',
+            'Du hører fra oss innen 24 timer med en konkret vurdering',
             'Du bestemmer — helt uforpliktende',
           ].map((t, i) => (
             <li key={i} className="flex items-start gap-3 text-[14.5px] text-[#333]">
@@ -200,7 +213,7 @@ export default function LeadFormPro({ cfg }) {
         <div className="flex items-center justify-between gap-3">
           <p className="font-heading font-bold text-[19px] text-[#0a0a0a] leading-tight">{cfg.formTitle || 'Se hva boligen din kan tjene'}</p>
           <span className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-[#E8F4EE] text-[#18794E] text-[11px] font-semibold px-2.5 py-1">
-            <span className="h-1.5 w-1.5 rounded-full bg-[#18794E] animate-pulse" /> Svar umiddelbart
+            <span className="h-1.5 w-1.5 rounded-full bg-[#18794E] animate-pulse" /> Svar innen 24 t
           </span>
         </div>
         <p className="text-[13.5px] text-[#888] mt-1">Gratis og uforpliktende — det tar under ett minutt.</p>
@@ -215,8 +228,7 @@ export default function LeadFormPro({ cfg }) {
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   e.preventDefault();
-                  // Enter med åpne forslag = velg det første (standard UX)
-                  if (ac.open && ac.suggestions.length) chooseSuggestion(ac.suggestions[0]);
+                  if (ac.open && ac.suggestions.length) chooseSuggestion(ac.suggestions[0]).then((ok) => { if (ok) goStep2(); });
                   else tryGoStep2();
                 }
               }}
@@ -228,12 +240,13 @@ export default function LeadFormPro({ cfg }) {
             <button
               type="button"
               onClick={tryGoStep2}
-              className="group hidden sm:inline-flex shrink-0 h-[44px] items-center gap-1.5 rounded-xl bg-[#0a0a0a] text-white hover:bg-black px-6 text-[13px] font-semibold transition-all duration-200 hover:shadow-[0_4px_12px_rgba(0,0,0,0.2)] active:scale-[0.97]"
+              disabled={addressResolving}
+              className="group hidden sm:inline-flex shrink-0 h-[44px] items-center gap-1.5 rounded-xl bg-[#0a0a0a] text-white hover:bg-black px-6 text-[13px] font-semibold transition-all duration-200 hover:shadow-[0_4px_12px_rgba(0,0,0,0.2)] active:scale-[0.97] disabled:cursor-wait disabled:opacity-60"
             >
-              {cfg.cta || 'Start gratis vurdering'} <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
+              {addressResolving ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Bekrefter</> : <>{cfg.cta || 'Få gratis vurdering'} <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" /></>}
             </button>
           </div>
-          {addrHint && <p className="text-[12px] text-amber-700 mt-1.5" data-testid="lp-address-hint">{addrHint}</p>}
+          {addrHint && <p className={`text-[12px] mt-1.5 ${addrSel ? 'text-[#18794E]' : 'text-amber-700'}`} data-testid="lp-address-hint">{addrHint}</p>}
           {ac.open && ac.suggestions.length > 0 && (
             <ul className="absolute z-30 mt-1.5 w-full rounded-xl border border-[#eee] bg-white shadow-[0_12px_40px_rgba(0,0,0,0.10)] overflow-hidden">
               {ac.suggestions.map((s, i) => (
@@ -252,19 +265,15 @@ export default function LeadFormPro({ cfg }) {
         <button
           type="button"
           onClick={tryGoStep2}
-          className="group sm:hidden mt-3 w-full h-[52px] rounded-full bg-[#0a0a0a] text-white font-semibold text-[15px] flex items-center justify-center gap-2 shadow-[0_8px_24px_-8px_rgba(31,31,31,0.35)] active:scale-[0.98] transition-transform"
+          disabled={addressResolving}
+          className="group sm:hidden mt-3 w-full h-[52px] rounded-full bg-[#0a0a0a] text-white font-semibold text-[15px] flex items-center justify-center gap-2 shadow-[0_8px_24px_-8px_rgba(31,31,31,0.35)] active:scale-[0.98] transition-transform disabled:cursor-wait disabled:opacity-60"
         >
-          {cfg.cta || 'Start gratis vurdering'} <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
+          {addressResolving ? <><Loader2 className="w-4 h-4 animate-spin" /> Bekrefter adressen</> : <>{cfg.cta || 'Få gratis vurdering'} <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" /></>}
         </button>
 
-        <div className="mt-3.5 flex items-center justify-between gap-3 flex-wrap">
-          <div className="flex items-center gap-4 text-[12px] text-[#999]">
-            <span className="inline-flex items-center gap-1.5"><ShieldCheck className="w-3.5 h-3.5 text-[#18794E]" /> Uforpliktende</span>
-            <span className="inline-flex items-center gap-1.5"><Wallet className="w-3.5 h-3.5 text-[#18794E]" /> 0 kr oppstart</span>
-          </div>
-          <button type="button" onClick={skipAddress} className="text-[12.5px] text-[#888] underline underline-offset-2 hover:text-[#0a0a0a] transition-colors">
-            Har ikke adressen klar? Hopp over
-          </button>
+        <div className="mt-3.5 flex items-center gap-4 text-[12px] text-[#999]">
+          <span className="inline-flex items-center gap-1.5"><ShieldCheck className="w-3.5 h-3.5 text-[#18794E]" /> Gratis og uforpliktende</span>
+          <span className="inline-flex items-center gap-1.5"><Wallet className="w-3.5 h-3.5 text-[#18794E]" /> Svar innen 24 t</span>
         </div>
       </div>
     );
@@ -302,18 +311,21 @@ export default function LeadFormPro({ cfg }) {
       )}
 
       <div>
-        <input ref={nameRef} value={form.name} onChange={set('name')} placeholder="Navn" autoComplete="name" enterKeyHint="next"
+        <label htmlFor="lp-lead-name" className="mb-1.5 block text-[12px] font-semibold text-[#555]">Fullt navn</label>
+        <input id="lp-lead-name" ref={nameRef} value={form.name} onChange={set('name')} placeholder="Ola Nordmann" autoComplete="name" enterKeyHint="next" required aria-invalid={!!fieldErr.name}
           className={`${inputBase} ${fieldErr.name ? inputErr : inputOk}`} />
         {fieldErr.name ? <p className="text-[12.5px] text-rose-500 mt-1.5 ml-1">{fieldErr.name}</p> : null}
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
         <div>
-          <input value={form.phone} onChange={set('phone')} type="tel" inputMode="tel" placeholder="Telefon" autoComplete="tel" enterKeyHint="next"
+          <label htmlFor="lp-lead-phone" className="mb-1.5 block text-[12px] font-semibold text-[#555]">Telefon</label>
+          <input id="lp-lead-phone" value={form.phone} onChange={set('phone')} type="tel" inputMode="tel" placeholder="8 siffer" autoComplete="tel" enterKeyHint="next" required aria-invalid={!!fieldErr.phone}
             className={`${inputBase} ${fieldErr.phone ? inputErr : inputOk}`} />
           {fieldErr.phone ? <p className="text-[12.5px] text-rose-500 mt-1.5 ml-1">{fieldErr.phone}</p> : null}
         </div>
         <div>
-          <input value={form.email} onChange={set('email')} type="email" inputMode="email" placeholder="E-post" autoComplete="email" enterKeyHint="done"
+          <label htmlFor="lp-lead-email" className="mb-1.5 block text-[12px] font-semibold text-[#555]">E-post</label>
+          <input id="lp-lead-email" value={form.email} onChange={set('email')} type="email" inputMode="email" placeholder="ola@eksempel.no" autoComplete="email" enterKeyHint="done" required aria-invalid={!!fieldErr.email}
             className={`${inputBase} ${fieldErr.email ? inputErr : inputOk}`} />
           {fieldErr.email ? <p className="text-[12.5px] text-rose-500 mt-1.5 ml-1">{fieldErr.email}</p> : null}
         </div>
@@ -325,7 +337,7 @@ export default function LeadFormPro({ cfg }) {
       </button>
       <div className="flex items-center justify-center gap-4 text-[12px] text-[#999] pt-0.5 flex-wrap">
         <span className="inline-flex items-center gap-1.5"><Lock className="w-3.5 h-3.5 text-[#18794E]" /> Vi deler aldri opplysningene dine</span>
-        <span className="inline-flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5 text-[#18794E]" /> Svar umiddelbart</span>
+        <span className="inline-flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5 text-[#18794E]" /> Svar innen 24 t</span>
       </div>
     </form>
   );

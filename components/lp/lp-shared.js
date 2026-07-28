@@ -173,7 +173,7 @@ export function StickyMobileCta({ label = 'Få gratis vurdering', onClick }) {
 
 /* ------------------------------ Exit-intent ------------------------------ */
 // Vises maks én gang per økt, kun desktop, aldri etter innsendt skjema.
-export function ExitIntent({ headline = 'Vent — vil du vite hva boligen din kan tjene?', body = 'Det tar under ett minutt. Gratis, uforpliktende — og du får svar umiddelbart.', cta = 'Se hva boligen kan tjene', onCta }) {
+export function ExitIntent({ headline = 'Vent — vil du vite hva boligen din kan tjene?', body = 'Det tar under ett minutt. Gratis, uforpliktende — og du får svar innen 24 timer.', cta = 'Se hva boligen kan tjene', onCta }) {
   const [open, setOpen] = useState(false);
   const doneRef = useRef(false);
 
@@ -187,7 +187,7 @@ export function ExitIntent({ headline = 'Vent — vil du vite hva boligen din ka
       try {
         if (sessionStorage.getItem('lp_exit_shown')) return;
         sessionStorage.setItem('lp_exit_shown', '1');
-      } catch (err) {}
+      } catch (err) { /* sessionStorage er valgfritt */ }
       setOpen(true);
     };
     document.addEventListener('mouseleave', onLeave);
@@ -218,7 +218,7 @@ export function ExitIntent({ headline = 'Vent — vil du vite hva boligen din ka
           <Phone className="w-4 h-4" /> …eller ring oss: {site.phone}
         </a>
         <p className="mt-4 text-[12px] text-[#999] inline-flex items-center gap-1.5 justify-center">
-          <ShieldCheck className="w-3.5 h-3.5 text-[#18794E]" /> Uforpliktende · 0 kr oppstart · Svar umiddelbart
+          <ShieldCheck className="w-3.5 h-3.5 text-[#18794E]" /> Uforpliktende · 0 kr oppstart · Svar innen 24 t
         </p>
       </div>
     </div>

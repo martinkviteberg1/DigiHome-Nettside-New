@@ -5,10 +5,10 @@
 // Designet speiler root-siden (/) 1:1 — samme palett, typografi og komponentspråk.
 
 import React, { useState, useEffect } from 'react';
-import { ArrowRight, ArrowUpRight, Check, Phone, ShieldCheck, Sparkles, Clock, Star, Home, X, Minus, ClipboardCheck, Camera, Wallet, Quote, ChevronDown } from 'lucide-react';
-import { site, statStrip } from '@/lib/site';
+import { ArrowRight, ArrowUpRight, Check, Phone, ShieldCheck, Sparkles, Clock, Home, X, Minus, ClipboardCheck, Camera, Wallet, Quote, ChevronDown } from 'lucide-react';
+import { site } from '@/lib/site';
 import { COMMON_STEPS, COMMON_TESTIMONIALS, COMMON_CHANNELS } from '@/lib/landing';
-import { Reveal, CountUp, AvatarStack, InitialsAvatar, TrustLogos, StickyMobileCta, ExitIntent } from '@/components/lp/lp-shared';
+import { Reveal, InitialsAvatar, TrustLogos, StickyMobileCta, ExitIntent } from '@/components/lp/lp-shared';
 import LeadFormPro from '@/components/lp/LeadFormPro';
 import RentCalculator from '@/components/lp/RentCalculator';
 import { getVariant } from '@/lib/ab';
@@ -25,7 +25,7 @@ export default function CampaignLanding({ cfg }) {
   // på events + lead-attribusjon → nedbrytbar i admin-trakten).
   useEffect(() => {
     if (!cfg.h1B) return;
-    try { if (getVariant(`lp-h1-${cfg.slug}`) === 'B') setH1(cfg.h1B); } catch (e) {}
+    try { if (getVariant(`lp-h1-${cfg.slug}`) === 'B') setH1(cfg.h1B); } catch (e) { /* A/B-fallback bruker standardoverskriften */ }
   }, [cfg.slug, cfg.h1B]);
 
   useEffect(() => {
@@ -110,17 +110,12 @@ export default function CampaignLanding({ cfg }) {
                 </div>
               </Reveal>
 
-              {/* Tillitsrad: sosiale bevis + tillitslogoer */}
+              {/* Tillitsrad — kun dokumenterbare partnere */}
               <Reveal delay={230}>
                 <div className="mt-6 flex items-center justify-between gap-x-6 gap-y-3 flex-wrap">
-                  <div className="flex items-center gap-2.5">
-                    <AvatarStack size={30} />
-                    <div>
-                      <div className="flex items-center gap-0.5 text-[#d298ff]">
-                        {[0, 1, 2, 3, 4].map((i) => <Star key={i} className="w-3.5 h-3.5 fill-current" />)}
-                      </div>
-                      <p className="text-[12.5px] text-[#888] mt-0.5"><b className="text-[#0a0a0a] font-semibold">4,9/5</b> fra utleiere i Bergen</p>
-                    </div>
+                  <div>
+                    <p className="text-[13px] font-semibold text-[#0a0a0a]">Lokalt team i Bergen</p>
+                    <p className="text-[12px] text-[#888] mt-0.5">Personlig oppfølging · svar innen 24 timer</p>
                   </div>
                   <TrustLogos />
                 </div>
@@ -144,7 +139,7 @@ export default function CampaignLanding({ cfg }) {
               {cfg.urgency ? (
                 <Reveal delay={330}>
                   <p className="mt-4 inline-flex items-center gap-2 text-[13px] text-[#888]">
-                    <span className="h-1.5 w-1.5 rounded-full bg-[#d298ff] animate-pulse" /> {cfg.urgency}
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#18794E]" /> {cfg.urgency}
                   </p>
                 </Reveal>
               ) : null}
@@ -153,7 +148,7 @@ export default function CampaignLanding({ cfg }) {
               <Reveal delay={360}>
                 <div className="lg:hidden mt-8">
                   <div className="relative h-[210px] sm:h-[260px] rounded-[20px] overflow-hidden shadow-[0_8px_30px_rgba(0,0,0,0.06)]">
-                    <img src={cfg.image} alt="Utleiebolig i Bergen" className="absolute inset-0 w-full h-full object-cover" width={800} height={500} />
+                    <img src={cfg.image} alt="Utleiebolig i Bergen" loading="lazy" decoding="async" className="absolute inset-0 w-full h-full object-cover" width={800} height={500} />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
                     <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between gap-2">
                       <div className="bg-white/95 backdrop-blur-xl rounded-xl px-3.5 py-2.5 shadow-[0_4px_16px_rgba(0,0,0,0.1)]">
@@ -196,23 +191,16 @@ export default function CampaignLanding({ cfg }) {
                 <div className="col-span-2 flex flex-col gap-3">
                   <Reveal delay={200} className="flex-1">
                     <div className="relative h-full rounded-[20px] overflow-hidden shadow-[0_8px_30px_rgba(0,0,0,0.06)] group">
-                      <img src={cfg.accent} alt="Bergen" className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-[1000ms] ease-out" width={600} height={500} />
+                      <img src={cfg.accent} alt="Bergen" loading="lazy" decoding="async" className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-[1000ms] ease-out" width={600} height={500} />
                     </div>
                   </Reveal>
                   <Reveal delay={280} className="flex-1">
                     <div className="h-full rounded-[20px] bg-[#0a0a0a] text-white p-6 flex flex-col justify-between shadow-[0_8px_30px_rgba(0,0,0,0.06)]">
-                      <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10">
-                        <ShieldCheck className="w-[18px] h-[18px] text-[#d298ff]" />
-                      </span>
+                      <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10"><ShieldCheck className="w-[18px] h-[18px] text-[#d298ff]" /></span>
                       <div>
                         <p className="text-[15px] font-heading font-bold leading-tight">Lokalt team i Bergen</p>
-                        <p className="text-[12.5px] text-white/50 mt-1 leading-relaxed">Vi kjenner nabolagene, leietakerne og prisene.</p>
-                        <div className="mt-3 flex items-center gap-1.5">
-                          <span className="flex items-center gap-0.5 text-[#d298ff]">
-                            {[0, 1, 2, 3, 4].map((i) => <Star key={i} className="w-3 h-3 fill-current" />)}
-                          </span>
-                          <span className="text-[11.5px] text-white/60">4,9/5 fra utleiere</span>
-                        </div>
+                        <p className="text-[12.5px] text-white/55 mt-1 leading-relaxed">Vi kjenner nabolagene, leietakerne og prisene.</p>
+                        <p className="mt-3 text-[11.5px] font-semibold text-white/75">Personlig vurdering innen 24 timer</p>
                       </div>
                     </div>
                   </Reveal>
@@ -286,33 +274,28 @@ export default function CampaignLanding({ cfg }) {
               </div>
             </Reveal>
             {cfg.comparison.footnote ? (
-              <Reveal delay={180}>
-                <p className="mt-4 text-[12px] text-[#aaa] text-center max-w-[70ch] mx-auto leading-relaxed">{cfg.comparison.footnote}</p>
-              </Reveal>
+              <p className="mt-4 text-[12px] text-[#aaa] text-center max-w-[70ch] mx-auto leading-relaxed">{cfg.comparison.footnote} Se alltid leverandørens gjeldende prisliste og vilkår.</p>
             ) : null}
             <Reveal delay={220} className="text-center">
               <button onClick={scrollToForm} className="group mt-8 inline-flex items-center gap-2 h-[50px] rounded-full bg-[#0a0a0a] text-white px-8 font-semibold text-[14px] transition-all duration-200 hover:shadow-[0_8px_24px_rgba(0,0,0,0.18)] active:scale-[0.97]">
                 {cfg.cta || 'Se hva du sparer'} <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
               </button>
               <p className="mt-3.5 text-[12.5px] text-[#999] inline-flex items-center gap-1.5 justify-center w-full">
-                <ShieldCheck className="w-3.5 h-3.5 text-[#18794E]" /> Uforpliktende · 0 kr oppstart · Svar umiddelbart
+                <ShieldCheck className="w-3.5 h-3.5 text-[#18794E]" /> Uforpliktende · 0 kr oppstart · Svar innen 24 t
               </p>
             </Reveal>
           </div>
         </section>
       ) : null}
 
-      {/* --------------------------- Statband (root-DNA) --------------------------- */}
-      <section className="bg-white py-20 sm:py-24">
-        <div className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16">
-          <div className="grid sm:grid-cols-3 gap-10 lg:gap-6 text-center">
-            {statStrip.map((s, i) => (
-              <Reveal key={i} delay={i * 100} className={i < statStrip.length - 1 ? 'sm:border-r sm:border-[#eee]' : ''}>
-                <p className="font-heading font-bold text-[44px] sm:text-[56px] text-[#0a0a0a] leading-none tracking-[-0.04em]">
-                  <CountUp value={s.value} />
-                </p>
-                <p className="font-heading text-[15px] font-semibold text-[#0a0a0a] mt-3">{s.label}</p>
-                <p className="text-[13px] text-[#aaa] mt-1 leading-relaxed">{s.sub}</p>
+      {/* --------------------------- Dokumenterte nøkkelpunkter --------------------------- */}
+      <section className="bg-white py-16 sm:py-20">
+        <div className="max-w-[1000px] mx-auto px-6 sm:px-10">
+          <div className="grid sm:grid-cols-3 gap-8 text-center">
+            {[['0 kr', 'oppstart'], ['24 t', 'maksimal første svartid'], ['Bergen', 'lokalt forvalterteam']].map(([value, label], i) => (
+              <Reveal key={value} delay={i * 80} className={i < 2 ? 'sm:border-r sm:border-[#eee]' : ''}>
+                <p className="font-heading font-bold text-[34px] sm:text-[42px] text-[#0a0a0a] leading-none tracking-[-0.04em]">{value}</p>
+                <p className="text-[13px] text-[#888] mt-2">{label}</p>
               </Reveal>
             ))}
           </div>
@@ -433,7 +416,7 @@ export default function CampaignLanding({ cfg }) {
               </div>
               <div className="lg:text-right">
                 <p className="text-[16px] text-white/55 mb-8 max-w-[38ch] lg:ml-auto leading-[1.75]">
-                  En konkret, uforpliktende vurdering — svar umiddelbart. Ingen oppstartskostnader, ingen binding.
+                  En konkret, uforpliktende vurdering — svar innen 24 timer. Ingen oppstartskostnader, ingen binding.
                 </p>
                 <div className="flex flex-wrap items-center gap-4 lg:justify-end">
                   <button onClick={scrollToForm} className="group inline-flex items-center gap-2 rounded-full bg-white text-[#0a0a0a] hover:bg-white/90 h-[50px] px-8 text-[14px] font-semibold transition-all duration-200 hover:shadow-[0_4px_20px_rgba(255,255,255,0.15)] active:scale-[0.97]">
@@ -446,7 +429,7 @@ export default function CampaignLanding({ cfg }) {
                 <div className="mt-8 flex items-center gap-5 text-[12.5px] text-white/40 flex-wrap lg:justify-end">
                   <span className="inline-flex items-center gap-1.5"><Home className="w-3.5 h-3.5" /> Lokalt team i Bergen</span>
                   <span className="inline-flex items-center gap-1.5"><ShieldCheck className="w-3.5 h-3.5" /> Trygt og uforpliktende</span>
-                  <span className="inline-flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> Svar umiddelbart</span>
+                  <span className="inline-flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> Svar innen 24 t</span>
                 </div>
               </div>
             </div>
