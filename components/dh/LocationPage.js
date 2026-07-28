@@ -51,7 +51,7 @@ export default function LocationPage({ loc, related = [], rent = null }) {
       {
         '@type': 'RealEstateAgent',
         '@id': `${site.url}/utleie/${loc.slug}#business`,
-        name: `DigiHome — Utleie i ${loc.name}`,
+        name: `DigiHome — Leie ut bolig i ${loc.name}`,
         url: `${site.url}/utleie/${loc.slug}`,
         image: loc.image, description: loc.intro,
         telephone: site.phone, email: site.email, priceRange: site.priceRange,
@@ -75,7 +75,7 @@ export default function LocationPage({ loc, related = [], rent = null }) {
       <section className="relative min-h-[72vh] sm:h-[78vh] w-full overflow-hidden flex items-end">
         <img
           src={sized(loc.image, 1600)} srcSet={srcSet(loc.image)} sizes="100vw"
-          alt={`Utleie i ${loc.name}`} className="absolute inset-0 w-full h-full object-cover"
+          alt={`Leie ut bolig i ${loc.name}`} className="absolute inset-0 w-full h-full object-cover"
           width={1600} height={1067} loading="eager" fetchPriority="high" decoding="async"
         />
         <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(8,8,12,0.42) 0%, rgba(8,8,12,0.28) 38%, rgba(8,8,12,0.9) 100%)' }} />
@@ -92,7 +92,7 @@ export default function LocationPage({ loc, related = [], rent = null }) {
             <MapPin className="w-3.5 h-3.5" /> {isBydel ? 'Bydel i Bergen' : 'By'}
           </div>
           <h1 className="text-white font-bold tracking-[-0.025em] leading-[1.03] text-[40px] sm:text-[58px] lg:text-[68px] max-w-[16ch]" style={{ fontFamily: 'var(--font-heading)' }}>
-            Utleie i {loc.name}
+            Leie ut bolig i {loc.name}
           </h1>
           <p className="text-white/80 text-[16px] sm:text-[19px] mt-4 max-w-[52ch] leading-relaxed">{loc.tagline}</p>
 
@@ -256,7 +256,7 @@ export default function LocationPage({ loc, related = [], rent = null }) {
           <div className="grid sm:grid-cols-3 gap-4">
             {related.map((r) => (
               <Link key={r.slug} href={`/utleie/${r.slug}`} className="group relative h-44 rounded-2xl overflow-hidden">
-                <img src={sized(r.image, 768)} srcSet={srcSet(r.image)} sizes="(max-width: 640px) 100vw, 33vw" alt={`Utleie i ${r.name} — se leiepriser og forvaltning`} width={768} height={512} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" decoding="async" />
+                <img src={sized(r.image, 768)} srcSet={srcSet(r.image)} sizes="(max-width: 640px) 100vw, 33vw" alt={`Leie ut bolig i ${r.name} — se leiepriser og forvaltning`} width={768} height={512} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" decoding="async" />
                 <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, transparent 30%, rgba(10,10,10,0.75) 100%)' }} />
                 <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between">
                   <span className="text-white font-semibold text-[16px]">{r.name}</span>

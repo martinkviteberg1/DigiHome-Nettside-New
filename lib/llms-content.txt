@@ -39,6 +39,7 @@ DigiHome drives av Digihome AS (org.nr 835 595 242), med kontor på Kokstadvegen
 - [Utleiemegler i Bergen](https://digihome.no/utleiemegler-bergen): Pris, oppgaver og sammenligning.
 - [Airbnb-forvaltning i Bergen](https://digihome.no/airbnb-forvaltning-bergen): Korttidsforvaltning og viktige juridiske forbehold.
 - [Guider for utleiere](https://digihome.no/guider): Pris, skatt, depositum og korttidsutleie.
+- [Utleiemegler eller selvforvaltning](https://digihome.no/guider/utleiemegler-vs-selvforvaltning): Sammenligning av pris, tidsbruk, ansvar og risiko.
 - [Leiemarkedet i Bergen](https://digihome.no/leiemarkedet/bergen): Leiemarkedsrapport med datakilder og metode.
 - [Utleie bydel for bydel](https://digihome.no/utleie): Lokalkunnskap for Bergen.
 - [Bli leietaker](https://digihome.no/bli-leietaker): Registrering for leietakere.

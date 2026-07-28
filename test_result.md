@@ -3223,6 +3223,19 @@ test_plan:
     - "ingen DB/data/ekstern API-mutering"
   stuck_tasks: []
   test_all: false
+
+  - task: "SEO/AEO fase 2: content gaps, Airbnb-autoritet og owner-intent lokal SEO"
+    implemented: true
+    working: "NA"
+    file: "/app/lib/guides.js, /app/app/airbnb-forvaltning-bergen/page.js, /app/app/tjenester/page.js, /app/components/dh/DynamicRentalSection.tsx, /app/components/dh/LocationPage.js, /app/lib/llms-content.txt"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "Fase2 implementert: ny /guider/utleiemegler-vs-selvforvaltning med pris/tid/ansvar/risiko, FAQ, sources, author/review/citation schema og CTA; auto i sitemap/guide index/llms. Airbnb-side juridisk korrigert: false primary exemption, 25k average og guaranteed/within-law claims removed; sameie90/borettslag30 and conditional10+2; 30% labeled estimate/not guarantee; response24h; visible rule/source/method links. Tjenester/site FAQ made conditional/estimate. Dynamic rental demo fake4.92 rating replaced with Example badge. Deposit explicitly says same bank NOT general validity condition; tax description/body highlights five-unit overall-assessment. llms exact 'estimat, ikke garanti'. Leiemarket title includes both Leiemarkedet/leiepriser. Location visible H1/schema/alt changed to 'Leie ut bolig i X' owner-intent. All touched JS/TS lint0."
+
   test_priority: "high_first"
 
 agent_communication:

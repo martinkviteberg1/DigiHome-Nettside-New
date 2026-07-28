@@ -33,9 +33,9 @@ const INCLUDED = [
 ];
 
 const FAQS = [
-  { q: 'Hva koster Airbnb-forvaltning i Bergen?', a: 'Full Airbnb-forvaltning hos DigiHome prises individuelt ut fra boligen, beliggenheten og sesongpotensialet — du får et konkret, uforpliktende tilbud fra en lokal rådgiver, som regel samme dag. Det er ingen oppstartskostnader og ingen bindingstid. Vil du gjøre deler av jobben selv, koster selvforvaltning 5 % per utleieforhold.' },
-  { q: 'Hvor mye kan jeg tjene på Airbnb-utleie i Bergen?', a: 'Bergen har sterk turistsesong fra mai til september og høy etterspørsel rundt konferanser og arrangementer. Med vår hybride 10+2-modell — langtidsutleie i 10 måneder og korttidsutleie i 2 høysesongmåneder — oppnår utleiere opptil 30 % høyere årsinntekt enn ren langtidsutleie. Snittinntekten per bolig hos DigiHome er rundt 25 000 kr/mnd.' },
-  { q: 'Er Airbnb-utleie lovlig i Bergen?', a: 'Ja, men reglene avhenger av boligtypen. Kortidsutleie av egen bolig (der du selv bor) er som hovedregel tillatt. For sekundærboliger i eierseksjonssameier gjelder en grense på 90 døgn korttidsutleie per år, og borettslag har egne, strengere regler. DigiHome holder styr på regelverket for deg — 10+2-modellen er nettopp bygget for å maksimere inntekten innenfor rammene.' },
+  { q: 'Hva koster Airbnb-forvaltning i Bergen?', a: 'Full Airbnb-forvaltning hos DigiHome prises individuelt ut fra boligen, beliggenheten og sesongpotensialet. Du får et konkret, uforpliktende tilbud fra en lokal rådgiver innen 24 timer. Det er ingen oppstartskostnader. Se alltid gjeldende avtale for fullstendige vilkår.' },
+  { q: 'Hvor mye kan jeg tjene på Airbnb-utleie i Bergen?', a: 'Inntekten varierer med bolig, område, sesong, pris, kostnader, beleggsgrad og hvilke utleiemodeller som er lovlige. For enkelte egnede boliger kan et kombinert scenario vise opptil 30 % høyere årsinntekt enn et relevant langtidsestimat, men dette er et estimat — ikke en garanti.' },
+  { q: 'Er Airbnb-utleie lovlig i Bergen?', a: 'Ja, men reglene avhenger av eierform, vedtekter og om du leier ut hele boligen eller bare et rom. I eierseksjonssameier er hovedregelen normalt 90 døgn per år for korttidsutleie av hele seksjonen, mens borettslag normalt har en 30-døgnsramme uten styresamtykke når lovens vilkår er oppfylt. Kontroller alltid gjeldende vedtekter og lovverk.' },
   { q: 'Hvem tar seg av gjestene?', a: 'Vi gjør det. All kommunikasjon fra booking til utsjekk, døgnet rundt — inkludert innsjekk, spørsmål underveis og eventuelle problemer. Du trenger aldri svare på en gjestemelding.' },
   { q: 'Er det bindingstid?', a: 'Nei. Airbnb-forvaltning hos DigiHome er uten bindingstid — du kan avslutte eller bytte til ren langtidsutleie når du vil.' },
 ];
@@ -54,7 +54,7 @@ export default function Page() {
           <h1 className="text-white font-bold tracking-[-0.025em] leading-[1.04] text-[38px] sm:text-[56px] lg:text-[66px] max-w-[18ch]" style={{ fontFamily: 'var(--font-heading)' }}>Airbnb-forvaltning i Bergen</h1>
           <p className="text-white/80 text-[16px] sm:text-[19px] mt-5 max-w-[58ch] leading-relaxed">Vi tar hele driften — annonser, dynamisk prising, gjester, renhold og oppgjør. Du ser bare inntekten tikke inn.</p>
           <div className="flex flex-wrap gap-3 mt-8">
-            <Link href="/bli-utleier" className="group inline-flex items-center gap-2 h-[52px] pl-6 pr-3 rounded-full bg-[#d298ff] text-[#1f1f1f] text-[15px] font-semibold active:scale-[0.98] transition-transform">Få tilbud samme dag<span className="inline-flex items-center justify-center w-[36px] h-[36px] rounded-full bg-[#1f1f1f] text-[#d298ff]"><ArrowUpRight className="w-4 h-4" strokeWidth={2.6} /></span></Link>
+            <Link href="/bli-utleier" className="group inline-flex items-center gap-2 h-[52px] pl-6 pr-3 rounded-full bg-[#d298ff] text-[#1f1f1f] text-[15px] font-semibold active:scale-[0.98] transition-transform">Få personlig tilbud<span className="inline-flex items-center justify-center w-[36px] h-[36px] rounded-full bg-[#1f1f1f] text-[#d298ff]"><ArrowUpRight className="w-4 h-4" strokeWidth={2.6} /></span></Link>
             <Link href="/tjenester" className="inline-flex items-center h-[52px] px-6 rounded-full border border-white/25 text-white text-[15px] font-semibold hover:bg-white/10 transition-colors">Se alle tjenester</Link>
           </div>
         </div>
@@ -81,14 +81,14 @@ export default function Page() {
           <div>
             <div className="inline-flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.16em] text-[#d298ff] mb-4"><ShieldCheck className="w-3.5 h-3.5" /> Smartere enn ren Airbnb</div>
             <h2 className="text-[28px] sm:text-[40px] font-bold tracking-[-0.02em] leading-[1.1] max-w-[20ch]" style={{ fontFamily: 'var(--font-heading)' }}>10+2-modellen: Airbnb når det lønner seg — trygg langtidsleie resten av året</h2>
-            <p className="text-white/70 text-[15.5px] leading-relaxed mt-5 max-w-[56ch]">Ren korttidsutleie gir tomme netter i lavsesong, mer slitasje — og for sekundærboliger i sameier en 90-døgnsgrense per år. Derfor kombinerer vi: <strong className="text-white">10 måneder forutsigbar langtidsleie + 2 måneder korttid i høysesongen</strong>, der Bergen-prisene er på sitt høyeste. Resultatet er opptil 30 % høyere årsinntekt — helt innenfor regelverket.</p>
+            <p className="text-white/70 text-[15.5px] leading-relaxed mt-5 max-w-[56ch]">10 måneder forutsigbar langtidsleie kombinert med inntil 2 måneder korttid kan være aktuelt for enkelte eierseksjoner. Modellen må alltid kontrolleres mot eierform, vedtekter, døgnsgrenser og marked. I borettslag kan 30-døgnsrammen gjøre en annen modell nødvendig. For egnede boliger kan scenarioet vise et høyere inntektspotensial, men resultatet er et estimat — ikke en garanti.</p>
             <div className="flex flex-wrap gap-3 mt-8">
               <Link href="/tjenester" className="inline-flex items-center gap-2 h-[48px] px-6 rounded-full bg-white/10 text-white text-[14.5px] font-semibold hover:bg-white/15 transition-colors">Slik fungerer 10+2 <ArrowUpRight className="w-4 h-4" /></Link>
               <Link href="/leiemarkedet/bergen" className="inline-flex items-center gap-2 h-[48px] px-6 rounded-full bg-white/10 text-white text-[14.5px] font-semibold hover:bg-white/15 transition-colors">Leiemarkedet i Bergen <ArrowUpRight className="w-4 h-4" /></Link>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-5">
-            {[{ v: '+30 %', l: 'høyere årsinntekt', s: 'med 10+2 vs. ren langtidsleie' }, { v: '25 000 kr', l: 'snittinntekt per måned', s: 'per bolig i Bergen' }, { v: '90 døgn', l: 'korttidsgrensen', s: 'for sekundærbolig i sameier — vi holder styr' }, { v: '0 kr', l: 'oppstartskostnad', s: 'ingen bindingstid' }].map((x) => (
+            {[{ v: '+30 %', l: 'mulig scenario', s: 'estimat for enkelte egnede boliger — ikke garanti' }, { v: '24 t', l: 'personlig svartid', s: 'på nye henvendelser' }, { v: '90/30', l: 'døgnsgrenser', s: 'sameie og borettslag vurderes ulikt' }, { v: '0 kr', l: 'oppstartskostnad', s: 'se gjeldende avtale og vilkår' }].map((x) => (
               <div key={x.l} className="bg-white/[0.06] rounded-2xl p-6">
                 <p className="text-[30px] sm:text-[36px] font-bold leading-none text-[#d298ff]" style={{ fontFamily: 'var(--font-heading)' }}>{x.v}</p>
                 <p className="text-[14.5px] font-semibold mt-2">{x.l}</p>
@@ -111,11 +111,18 @@ export default function Page() {
         </div>
       </section>
 
+      <section className="max-w-[1000px] mx-auto px-6 sm:px-10 pb-16">
+        <div className="border-t border-[#e5e0d9] pt-6">
+          <h2 className="text-[20px] font-bold" style={{ fontFamily: 'var(--font-heading)' }}>Regler, kilder og forbehold</h2>
+          <p className="mt-2 text-[13.5px] leading-relaxed text-[#625d57]">Korttidsutleie må vurderes mot eierform, vedtekter, døgnsgrenser, skatt og forsikring. Les vår <Link href="/guider/korttidsutleie-regler" className="font-semibold underline underline-offset-3">oppdaterte regelguide med Lovdata- og Skatteetaten-kilder</Link> og <Link href="/metode" className="font-semibold underline underline-offset-3">metoden bak inntektsestimatene</Link>.</p>
+        </div>
+      </section>
+
       {/* CTA */}
       <section className="bg-gradient-to-br from-[#1a1430] to-[#0a0a0a] text-white">
         <div className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16 py-16 lg:py-24 text-center">
           <h2 className="text-[28px] sm:text-[42px] font-bold tracking-[-0.02em] mb-4 max-w-[24ch] mx-auto" style={{ fontFamily: 'var(--font-heading)' }}>Klar for gjester — uten å løfte en finger?</h2>
-          <p className="text-white/70 text-[16px] max-w-[52ch] mx-auto mb-8">Registrer boligen på under to minutter og få et uforpliktende tilbud på Airbnb-forvaltning — som regel samme dag.</p>
+          <p className="text-white/70 text-[16px] max-w-[52ch] mx-auto mb-8">Registrer boligen på under to minutter og få et uforpliktende tilbud på Airbnb-forvaltning innen 24 timer.</p>
           <Link href="/bli-utleier" className="group inline-flex items-center gap-2 h-[54px] pl-7 pr-3 rounded-full bg-[#d298ff] text-[#1f1f1f] text-[15px] font-semibold active:scale-[0.98] transition-transform">Kom i gang<span className="inline-flex items-center justify-center w-[38px] h-[38px] rounded-full bg-[#1f1f1f] text-[#d298ff]"><ArrowUpRight className="w-4 h-4" strokeWidth={2.6} /></span></Link>
         </div>
       </section>

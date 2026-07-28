@@ -90,14 +90,14 @@ export default function Page() {
         title="Ofte stilte spørsmål om utleiemodellene"
         intro="Slik velger du riktig modell for boligen din."
         faqs={[
-          { q: 'Hva er dynamisk utleie (10+2-modellen)?', a: 'Boligen leies ut langsiktig i 10 måneder og som korttidsutleie i 2 måneder (sommer/høysesong). Kombinasjonen gir opptil 30 % høyere samlet årsinntekt enn ren langtidsutleie — uten at du mister forutsigbarheten.' },
+          { q: 'Hva er dynamisk utleie (10+2-modellen)?', a: 'En kombinasjon av langtidsutleie og en avgrenset periode korttidsutleie. Modellen må vurderes mot eierform, vedtekter og døgnsgrenser. For enkelte egnede boliger kan scenarioet vise opptil 30 % høyere inntekt, men dette er et estimat — ikke en garanti.' },
           { q: 'Hvilken utleiemodell passer for min bolig?', a: 'Det avhenger av beliggenhet, standard og hva du vil oppnå. Sentrumsnære boliger egner seg ofte for dynamisk utleie, mens boliger i rolige nabolag gjerne gir best resultat med langtidsleie. Vi gir deg en gratis, datadrevet anbefaling.' },
           { q: 'Kan jeg bytte utleiemodell underveis?', a: 'Ja. Det er ingen bindingstid hos DigiHome, og vi justerer modellen når markedet eller din situasjon endrer seg.' },
           { q: 'Håndterer dere både korttids- og langtidsleie?', a: 'Ja. Vi annonserer på Finn.no for langtidsleie og på Airbnb/Booking.com for korttidsleie, og håndterer kontrakter, betaling, renhold og oppfølging i begge modeller.' },
         ]}
       />
       <JsonLd data={breadcrumbLd([{ name: 'Tjenester', path: '/tjenester' }])} />
-      <JsonLd data={serviceLd({ name: 'Dynamisk utleie (10+2)', description: '10 måneder langtidsutleie + 2 måneder korttidsutleie for opptil 30 % høyere årsinntekt.', path: '/tjenester', serviceType: 'Eiendomsforvaltning' })} />
+      <JsonLd data={serviceLd({ name: 'Dynamisk utleie (10+2)', description: 'Kombinert langtids- og korttidsutleie for egnede boliger, vurdert mot vedtekter, døgnsgrenser og marked. Inntektsøkning er et estimat, ikke en garanti.', path: '/tjenester', serviceType: 'Eiendomsforvaltning' })} />
       <CTA />
       <Footer />
     </div>
