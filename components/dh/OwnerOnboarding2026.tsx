@@ -109,7 +109,7 @@ function TopBar({ phase }: { phase: Phase }) {
 function DesktopProof() {
   return (
     <aside className="relative hidden min-h-[100dvh] overflow-hidden bg-[#ddd6cf] lg:block" aria-label="DigiHome boliginteriør">
-      <img src="/owner-onboarding-living-room.webp" alt="Lys og moderne stue i Bergen" className="absolute inset-0 h-full w-full object-cover object-center" />
+      <img src="/api/media/owner-onboarding-living-room.webp" alt="Lys og moderne stue i Bergen" className="absolute inset-0 h-full w-full object-cover object-center" />
       <div className="absolute inset-0 bg-[#7a6a5f]/5" />
     </aside>
   );
