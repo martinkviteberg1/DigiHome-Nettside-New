@@ -3197,6 +3197,19 @@ agent_communication:
         -agent: "testing"
         -comment: "✅ ALL 32 TESTS PASSED (100% success rate). COMPREHENSIVE BACKEND/STATIC VERIFICATION OF GOOGLE ADS LP P0/P1 FIX: Base URL: https://bli-utleier-redesign.preview.emergentagent.com. CRITICAL SAFETY RULES FOLLOWED: (1) NO POST /api/leads (no email/CAPI/Google-write), (2) NO database changes, (3) ONLY GET requests and source/static inspection. TEST RESULTS: (1) ✅ LANDING PAGES 200 AND NOINDEX (5/5 tests passed): GET /lp/inntekt returns 200 with noindex meta tag ✓, GET /lp/sammenlign returns 200 with noindex ✓, GET /lp/10pluss2 returns 200 with noindex ✓, GET /lp/forvaltning returns 200 with noindex ✓, GET /lp/airbnb-langtid returns 200 with noindex ✓. All five landing pages accessible and properly configured for Google Ads (noindex prevents organic indexing). (2) ✅ SOURCE/STATIC NO IMMEDIATE RESPONSE TEXT (4/4 tests passed): lib/landing.js has NO 'Svar umiddelbart' or 'i løpet av minutter' ✓, has 'innen 24 t/timer' ✓, CampaignLanding.js has NO forbidden text ✓, LeadFormPro.js has NO forbidden text ✓, lp-shared.js has NO forbidden text ✓. All source files verified clean of misleading immediate response promises. (3) ✅ SOURCE/STATIC CTA/FORMTITLE STANDARDIZED (2/2 tests passed): lib/landing.js has 'Få gratis vurdering' or 'Gratis sammenligning' ✓, has 'for boligeiere' qualifier for 10+2 LP ✓. All CTAs and form titles standardized to honest, documentable claims. (4) ✅ LEADFORMPRO ADDRESS VALIDATION (5/5 tests passed): NO skipAddress or 'Hopp over' found ✓, tryGoStep2 function exists (blocks empty/incomplete address) ✓, 4-digit postal regex found ✓, addressResolving found (loading+disabled state) ✓, chooseSuggestion found (return bool) ✓. Address validation fully implemented with no skip path. (5) ✅ CONTACT VALIDATION (4/4 tests passed): name+phone+email fields all present ✓, labels found ✓, required attribute found ✓, aria-invalid found ✓. Contact step requires all fields with proper accessibility. (6) ✅ TRACKING LEAD_SUBMIT (4/4 tests passed): lead_submit event found in LeadFormPro.js ✓, lead_step event retained ✓, Promise.race with 450ms found ✓, transaction_id found in gtag.js ✓. Internal lead_submit fires after res.ok, trackLead bounded with Promise.race 450ms, transactionId logic unchanged. (7) ✅ CONSENTBANNER COMPACT LAYOUT (4/4 tests passed): 920px max-width found in ConsentBanner.js ✓, both 'necessary' and 'all' choices found ✓, /personvern privacy link found ✓, applyConsent imported and called ✓. ConsentBanner reduced from 560px modal to compact 920px privacy-bar with side-by-side buttons. (8) ✅ CAMPAIGNLANDING LAZY IMAGES (3/3 tests passed): lazy loading found ✓, NO Star/AvatarStack/CountUp/statStrip imports or usage ✓, documentable key points (0kr/24t/Bergen) found ✓. Under-fold images lazy loaded, fake components removed, replaced with documentable claims. (9) ✅ REGRESSION API (1/1 test passed): GET /api/ returns 200 with ok=true ✓. No data changed, API working correctly. COMPREHENSIVE VERIFICATION: All 5 Google Ads landing pages working correctly with noindex meta tags, all source files clean of misleading immediate response text ('Svar umiddelbart'/'i løpet av minutter' removed, replaced with 'innen 24 t/timer'), all CTAs/formTitles standardized to 'Få gratis vurdering'/'Gratis sammenligning', 10+2 LP qualifies homeowners explicitly, LeadFormPro requires full verified address (NO skipAddress/Hopp over, tryGoStep2 blocks empty address, 4-digit postal regex, addressResolving loading+disabled, chooseSuggestion returns bool, Enter advances only on success), contact validation requires name+phone+email with labels/required/aria-invalid, tracking: lead_submit fires after res.ok, lead_step retained, trackLead bounded with Promise.race 450ms, transaction_id logic in gtag.js unchanged, ConsentBanner: compact 920px layout, both necessary/all choices, /personvern privacy link, applyConsent unchanged, CampaignLanding: lazy secondary/mobile images, NO Star/AvatarStack/CountUp/statStrip, documentable key points (0kr/24t/Bergen), regression: GET /api/ returns 200. Created backend_test_google_ads_lp_fix.py for comprehensive testing. NO LEADS CREATED, NO DATABASE CHANGES, NO EMAIL/CAPI/GOOGLE-WRITE. All P0/P1 fixes verified and working correctly."
 
+
+  - task: "SEO/AEO P0: juridisk presisjon, E-E-A-T, metodikk og crawlbar datakvalitet"
+    implemented: true
+    working: "NA"
+    file: "/app/lib/guides.js, /app/app/guider/[slug]/page.js, /app/app/metode/page.js, /app/components/dh/StatsSection.tsx, /app/components/dh/HeroSection.tsx, /app/components/dh/ShowcaseSection.tsx, /app/components/dh/HowItWorksSection.tsx, /app/components/dh/TestimonialsSection.tsx, /app/lib/llms-content.txt, /app/app/sitemap.js, /app/next.config.js, /app/app/utleie/[by]/page.js, /app/app/leiemarkedet/[by]/page.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "Fase1 implementert: crawler-nullverdier fjernet (SSR +30/150/24t, ingen animated 0 HTML); 0sqm/0sov skjules; registerclaim gjort sannferdig. Ny /metode med definisjoner/forbehold og links fra hero/stats/testimonials; udokumentert98% og4.9 rating fjernet, 25k merket estimat; llms.txt rewritten med last-updated, sources, no fake satisfaction/average. Deposit/short-term/tax/price metadata og tekst korrigert; official sources, author, review-org, citation JSON-LD og visible source section. Short-term false primary-home exemption removed; sameie90 vs borettslag30/10+2 caveat. Tax five-unit hard rule softened; deposit same-bank claim nuanced + unpaid/private FAQ. Local title owner intent; rentmarket title CTR. Sitemap gets fixed content lastmod, /metode, removes summer/video/legal utility; summer/video noindex. Permanent308 for legacy PartDetail.aspx. No prod deploy yet."
+
 metadata:
   current_focus:
     - "Produksjonsbug: verifisert tenant-forward og legacy false-positive recovery"
@@ -3204,10 +3217,10 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Ledige boliger-mal, ubegrenset boligvalg og live tilgjengelighetsvalidering"
-    - "personlige signerte boliglenker uten PII og GET uten mutasjon"
-    - "POST-bekreftelse er idempotent og oppdaterer leietakerkort/status"
-    - "ingen masseutsendelse eller test-e-post under automatisert test"
+    - "guide metadata/source/author/review/citation schema og juridisk korrigert tekst"
+    - "homepage SSR-statverdier uten0 og showcase uten0sqm/0sov"
+    - "methodology + llms + sitemap/noindex/legacy redirect"
+    - "ingen DB/data/ekstern API-mutering"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"

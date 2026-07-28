@@ -2,6 +2,7 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowRight, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -32,12 +33,12 @@ export default function HeroSection() {
 
   const handleSubmit = (e: any) => {
     e.preventDefault();
-    try { track('cta_click', { cta: 'hero_vurdering', hasAddress: !!address }); } catch (err) {}
-    try { trackLeadStart('hero'); } catch (err) {}
+    try { track('cta_click', { cta: 'hero_vurdering', hasAddress: !!address }); } catch (err) { /* analyse må aldri blokkere hero-flyten */ }
+    try { trackLeadStart('hero'); } catch (err) { /* analyse må aldri blokkere hero-flyten */ }
     // Smart felt (14/7): FINN-lenke limt i hero-søket → rett inn i Finn-flyten.
     const finn = detectFinnUrl(address);
     if (finn) {
-      try { track('form_input_mode', { form: 'hero', mode: 'finn', trigger: 'paste' }); } catch (err) {}
+      try { track('form_input_mode', { form: 'hero', mode: 'finn', trigger: 'paste' }); } catch (err) { /* analyse må aldri blokkere hero-flyten */ }
       router.push(`/bli-utleier/start?finn=${encodeURIComponent(finn)}`);
       return;
     }
@@ -52,7 +53,7 @@ export default function HeroSection() {
   };
 
   // Forhåndslast skjemaet så «Få vurdering» åpner umiddelbart (ingen ventetid).
-  useEffect(() => { try { router.prefetch('/bli-utleier/start'); } catch (e) {} }, [router]);
+  useEffect(() => { try { router.prefetch('/bli-utleier/start'); } catch (e) { /* prefetch er valgfritt */ } }, [router]);
 
   const handleAddressSelect = useCallback((data: any) => {
     setSelectedData(data);
@@ -126,16 +127,16 @@ export default function HeroSection() {
               <p className="text-[12px] text-[#737373] mt-3 ml-1">Gratis og uforpliktende &middot; Svar innen 24 timer</p>
             </form>
 
-            <div className="dh-fade-up flex items-center gap-8 sm:gap-10 mt-12" style={{ animationDelay: '0.35s' }}>
-              {[{ n: '150+', l: 'Boliger' }, { n: '98%', l: 'Tilfredshet' }, { n: '+30%', l: 'Høyere inntekt' }].map((s: any) => (
-                <div key={s.l}>
-                  <p className="text-[24px] font-bold text-[#0a0a0a] tracking-tight" style={{ fontFamily: 'var(--font-heading)' }}>{s.n}</p>
-                  <div className="flex items-center gap-1.5 mt-1">
-                    <span className="w-3.5 h-[2px] rounded-full bg-[#d298ff]" />
-                    <p className="text-[11px] text-[#716b63]">{s.l}</p>
+            <div className="dh-fade-up mt-12" style={{ animationDelay: '0.35s' }}>
+              <div className="flex items-center gap-8 sm:gap-10">
+                {[{ n: '150+', l: 'Boliger' }, { n: '24 t', l: 'Svartid' }, { n: '+30%', l: 'Potensial' }].map((s: any) => (
+                  <div key={s.l}>
+                    <p className="text-[24px] font-bold text-[#0a0a0a] tracking-tight" style={{ fontFamily: 'var(--font-heading)' }}>{s.n}</p>
+                    <div className="flex items-center gap-1.5 mt-1"><span className="w-3.5 h-[2px] rounded-full bg-[#d298ff]" /><p className="text-[11px] text-[#716b63]">{s.l}</p></div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
+              <p className="mt-4 text-[11.5px] text-[#8a837c]"><Link href="/metode" className="underline decoration-[#c9c1b8] underline-offset-4 hover:text-[#7c3aed]">Se metode og forbehold for estimatene</Link></p>
             </div>
           </div>
 
@@ -154,7 +155,7 @@ export default function HeroSection() {
               <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
               <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between gap-2">
                 <div className="bg-white/95 backdrop-blur-xl rounded-xl px-3.5 py-2.5 shadow-[0_4px_16px_rgba(0,0,0,0.1)]">
-                  <p className="text-[9px] text-[#716b63] leading-tight">Snittinntekt Bergen</p>
+                  <p className="text-[9px] text-[#716b63] leading-tight">Veiledende estimat Bergen</p>
                   <p className="text-[15px] font-bold text-[#0a0a0a] mt-0.5" style={{ fontFamily: 'var(--font-heading)' }}>25 000 kr<span className="text-[10px] font-normal text-[#716b63] ml-0.5">/mnd</span></p>
                 </div>
                 <div className="bg-white/95 backdrop-blur-xl rounded-xl px-3.5 py-2.5 shadow-[0_4px_16px_rgba(0,0,0,0.1)]">
@@ -184,7 +185,7 @@ export default function HeroSection() {
                   <div className="dh-fade-up absolute bottom-4 left-4 right-4 bg-white/95 backdrop-blur-xl rounded-2xl px-5 py-3.5 shadow-[0_4px_20px_rgba(0,0,0,0.1)]" style={{ animationDelay: '0.8s' }}>
                     <div className="flex items-center justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="text-[10px] text-[#716b63] leading-tight">Snittinntekt Bergen</p>
+                        <p className="text-[10px] text-[#716b63] leading-tight">Veiledende estimat Bergen</p>
                         <p className="text-[17px] font-bold text-[#0a0a0a] mt-1 whitespace-nowrap" style={{ fontFamily: 'var(--font-heading)' }}>25 000 kr<span className="text-[11px] font-normal text-[#716b63] ml-0.5">/mnd</span></p>
                       </div>
                       <div className="w-9 h-9 rounded-full bg-[#eaf3ed] flex items-center justify-center shrink-0">

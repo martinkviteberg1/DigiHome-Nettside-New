@@ -1,38 +1,19 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
+import React from 'react';
 import { motion } from '@/lib/motion-lite';
 
 const stats = [
   { end: 30, suffix: '%', label: 'Høyere inntekt', sub: 'sammenlignet med tradisjonell utleie', prefix: '+' },
   { end: 150, suffix: '+', label: 'Boliger', sub: 'under aktiv forvaltning i Bergen', prefix: '' },
-  { end: 98, suffix: '%', label: 'Tilfredshet', sub: 'blant våre eiendomseiere', prefix: '' },
+  { end: 24, suffix: ' t', label: 'Svartid', sub: 'på nye henvendelser', prefix: '' },
 ];
 
 function Counter({ end, prefix = '', suffix = '' }: any) {
-  const [count, setCount] = useState(0);
-  const ref = useRef<any>(null);
-  const started = useRef(false);
-  useEffect(() => {
-    const obs = new IntersectionObserver(([e]) => {
-      if (e.isIntersecting && !started.current) {
-        started.current = true;
-        const duration = 1200;
-        const startTime = performance.now();
-        const animate = (now: any) => {
-          const elapsed = now - startTime;
-          const progress = Math.min(elapsed / duration, 1);
-          const eased = 1 - Math.pow(1 - progress, 3);
-          setCount(Math.round(eased * end));
-          if (progress < 1) requestAnimationFrame(animate);
-        };
-        requestAnimationFrame(animate);
-      }
-    }, { threshold: 0.3 });
-    if (ref.current) obs.observe(ref.current);
-    return () => obs.disconnect();
-  }, [end]);
-  return <span ref={ref}>{prefix}{count}{suffix}</span>;
+  // Server-render den faktiske verdien. Tidligere SSR-et vi 0 og lot klienten
+  // telle opp, noe som ga Google/AI-crawlere +0 %, 0+ og 0 %.
+  return <span>{prefix}{end}{suffix}</span>;
 }
 
 export default function StatsSection() {
@@ -62,6 +43,7 @@ export default function StatsSection() {
             </motion.div>
           ))}
         </div>
+        <div className="mt-10 border-t border-[#eee] pt-5 text-center"><Link href="/metode" className="text-[12.5px] font-semibold text-[#625d57] underline decoration-[#c9c1b8] underline-offset-4 hover:text-[#7c3aed]">Slik beregner og dokumenterer vi tallene</Link></div>
       </div>
     </section>
   );

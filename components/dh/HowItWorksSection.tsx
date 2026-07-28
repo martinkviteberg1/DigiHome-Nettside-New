@@ -11,7 +11,7 @@ const steps = [
   {
     num: '01',
     title: 'Registrer boligen',
-    desc: 'Skriv inn adressen — det tar under to minutter. Vi henter boligdata automatisk fra Eiendomsregisteret.',
+    desc: 'Skriv inn adressen — det tar under to minutter. Vi bekrefter adressen og bruker tilgjengelige bolig- og markedsdata i vurderingen.',
   },
   {
     num: '02',

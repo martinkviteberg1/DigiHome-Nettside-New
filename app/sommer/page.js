@@ -8,6 +8,7 @@ export const metadata = {
   description:
     'Sommerkampanje fra DigiHome: 10 % forvaltningshonorar og 0 kr i oppstart på full utleieforvaltning i Bergen. Uforpliktende — vi tar kontakt.',
   alternates: { canonical: '/sommer' },
+  robots: { index: false, follow: true },
   openGraph: {
     title: 'Sommerkampanje: 10 % forvaltningshonorar + 0 kr i oppstart',
     description: 'Full utleieforvaltning i Bergen — kampanjepris til 10. juli. Uforpliktende registrering.',

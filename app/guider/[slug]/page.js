@@ -35,19 +35,30 @@ export function generateMetadata({ params }) {
 }
 
 function articleLd(g) {
-  return {
+  const author = g.author || { name: 'Sarah Sleeman', role: 'Daglig leder og eiendomsmegler', url: `${site.url}/om-oss` };
+  const data = {
     '@context': 'https://schema.org',
     '@type': 'Article',
     headline: g.title,
     description: g.description,
     image: site.url + g.image,
-    datePublished: g.updated,
+    datePublished: g.published || g.updated,
     dateModified: g.updated,
     inLanguage: 'nb-NO',
     mainEntityOfPage: `${site.url}/guider/${g.slug}`,
-    author: { '@type': 'Organization', name: 'DigiHome', url: site.url },
-    publisher: { '@type': 'Organization', name: 'DigiHome', url: site.url, logo: { '@type': 'ImageObject', url: `${site.url}/brand/digihome-icon-purple.svg` } },
+    author: { '@type': 'Person', name: author.name, jobTitle: author.role, url: author.url?.startsWith('http') ? author.url : `${site.url}${author.url || '/om-oss'}`, '@id': `${site.url}/#sarah-sleeman` },
+    publisher: { '@type': 'Organization', '@id': `${site.url}/#organization`, name: 'DigiHome', url: site.url, logo: { '@type': 'ImageObject', url: `${site.url}/brand/digihome-icon-purple.svg` } },
+    citation: (g.sources || []).map((s) => s.url.startsWith('http') ? s.url : `${site.url}${s.url}`),
   };
+  if (g.reviewer) {
+    data.reviewedBy = {
+      '@type': g.reviewer.type || 'Person',
+      name: g.reviewer.name,
+      url: g.reviewer.url?.startsWith('http') ? g.reviewer.url : `${site.url}${g.reviewer.url || '/metode'}`,
+      ...(g.reviewer.type === 'Organization' ? { description: g.reviewer.role } : { jobTitle: g.reviewer.role }),
+    };
+  }
+  return data;
 }
 
 export default function GuidePage({ params }) {
@@ -66,6 +77,12 @@ export default function GuidePage({ params }) {
           <span className="inline-flex px-2.5 py-1 rounded-full bg-[#f4f0fb] text-[#7c3aed] font-semibold">{g.category}</span>
           <span className="inline-flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> {g.readMinutes} min lesetid</span>
           <span className="inline-flex items-center gap-1"><CalendarDays className="w-3.5 h-3.5" /> Oppdatert {new Date(g.updated).toLocaleDateString('nb-NO', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+
+        <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-[12.5px] text-[#625d57]">
+          <span><strong className="text-[#292621]">Skrevet av:</strong> {g.author?.name || 'Sarah Sleeman'} · {g.author?.role || 'Daglig leder og eiendomsmegler'}</span>
+          {g.reviewer ? <span><strong className="text-[#292621]">Faglig kontroll:</strong> {g.reviewer.name} · {g.reviewer.role}</span> : null}
+        </div>
+
         </div>
 
         <h1 className="text-[32px] sm:text-[44px] font-bold tracking-[-0.025em] leading-[1.08]" style={{ fontFamily: 'var(--font-heading)' }}>{g.title}</h1>
@@ -100,8 +117,20 @@ export default function GuidePage({ params }) {
           ))}
         </div>
 
+        {g.sources?.length ? (
+          <section className="mt-10 border-t border-black/[0.06] pt-6">
+            <h2 className="text-[18px] font-bold" style={{ fontFamily: 'var(--font-heading)' }}>Offisielle kilder og videre lesning</h2>
+            <ul className="mt-3 space-y-2">
+              {g.sources.map((source) => (
+                <li key={source.url}><a href={source.url} target={source.url.startsWith('http') ? '_blank' : undefined} rel={source.url.startsWith('http') ? 'noopener noreferrer' : undefined} className="text-[13.5px] text-[#4e4944] underline decoration-[#c8c1b8] underline-offset-4 hover:text-[#7c3aed]">{source.label}</a></li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
+
+
         {g.disclaimer && (
-          <p className="mt-10 text-[12.5px] text-[#716b63] leading-relaxed border-t border-black/[0.06] pt-5">Innholdet er generell veiledning per {new Date(g.updated).toLocaleDateString('nb-NO', { month: 'long', year: 'numeric' })} og erstatter ikke individuell juridisk eller skattemessig rådgivning. Regler kan endres — sjekk alltid gjeldende satser hos Skatteetaten og gjeldende lovtekst på Lovdata.</p>
+          <p className="mt-10 text-[12.5px] text-[#716b63] leading-relaxed border-t border-black/[0.06] pt-5">Innholdet er generell veiledning per {new Date(g.updated).toLocaleDateString('nb-NO', { month: 'long', year: 'numeric' })} og erstatter ikke individuell juridisk eller skattemessig rådgivning. Regler kan endres — bruk kildene ovenfor og kontroller alltid gjeldende informasjon hos den offisielle myndigheten.</p>
         )}
 
         {/* CTA */}

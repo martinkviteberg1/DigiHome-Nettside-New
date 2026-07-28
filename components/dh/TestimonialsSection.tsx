@@ -1,7 +1,7 @@
 
 import React from 'react';
 import Reveal from '@/components/dh/Reveal';
-import { Star } from 'lucide-react';
+import Link from 'next/link';
 
 const testimonials = [
   { quote: 'DigiHome har økt inntekten vår med over 35% sammenlignet med vår forrige langtidsleie. Profesjonelt, enkelt og lønnsomt.', name: 'Maria S.', role: 'Eiendomseier, Nordnes, Bergen', initials: 'MS' },
@@ -27,20 +27,13 @@ export default function TestimonialsSection() {
               Hva våre eiere sier
             </h2>
           </div>
-          <div className="flex items-center gap-3 sm:pb-1.5">
-            <div className="flex items-center gap-0.5">
-              {[...Array(5)].map((_, i) => <Star key={i} className="w-4 h-4 text-[#cda45c] fill-[#cda45c]" strokeWidth={0} />)}
-            </div>
-            <p className="text-[13px] text-[#888]"><span className="font-semibold text-[#0a0a0a]">4,9 av 5</span> fra eiendomseiere</p>
-          </div>
+          <div className="sm:pb-1.5"><Link href="/metode" className="text-[12.5px] font-semibold text-[#625d57] underline decoration-[#c9c1b8] underline-offset-4 hover:text-[#7c3aed]">Metode og dokumentasjon</Link></div>
         </Reveal>
         <div className="grid sm:grid-cols-3 gap-6 lg:gap-7">
           {testimonials.map((t: any, i: number) => (
             <Reveal as="div" key={t.name} initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: '-40px' }} transition={{ duration: 0.45, delay: i * 0.1 }}
               className="group bg-white rounded-[20px] p-7 sm:p-8 border border-[#e9e1f4] shadow-[0_6px_24px_-16px_rgba(90,50,150,0.12)] transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_24px_50px_-26px_rgba(90,50,150,0.28)] hover:border-[#d8c7ee] relative flex flex-col">
-              <div className="flex items-center gap-0.5 mb-6">
-                {[...Array(5)].map((_, j) => <Star key={j} className="w-[15px] h-[15px] text-[#cda45c] fill-[#cda45c]" strokeWidth={0} />)}
-              </div>
+              <div className="mb-6 h-px w-10 bg-[#d298ff]" aria-hidden />
               <blockquote className="text-[16px] text-[#333] leading-[1.75] flex-1">
                 &laquo;{t.quote}&raquo;
               </blockquote>

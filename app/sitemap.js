@@ -9,42 +9,38 @@ import { guides } from '@/lib/guides';
 // (noindex) er bevisst utelatt. Lokasjonssider + publiserte artikler inkluderes dynamisk.
 export default async function sitemap() {
   const base = site.url;
-  const now = new Date();
+  const staticDate = new Date('2026-07-28T00:00:00.000Z');
 
   const core = [
-    { url: `${base}/`, lastModified: now, changeFrequency: 'weekly', priority: 1.0 },
-    { url: `${base}/bli-utleier`, lastModified: now, changeFrequency: 'monthly', priority: 0.9 },
-    { url: `${base}/bli-leietaker`, lastModified: now, changeFrequency: 'monthly', priority: 0.8 },
-    { url: `${base}/tjenester`, lastModified: now, changeFrequency: 'monthly', priority: 0.8 },
-    { url: `${base}/forvaltning`, lastModified: now, changeFrequency: 'monthly', priority: 0.8 },
-    { url: `${base}/utleiemegler-bergen`, lastModified: now, changeFrequency: 'monthly', priority: 0.9 },
-    { url: `${base}/airbnb-forvaltning-bergen`, lastModified: now, changeFrequency: 'monthly', priority: 0.9 },
-    { url: `${base}/radgivning`, lastModified: now, changeFrequency: 'monthly', priority: 0.7 },
-    { url: `${base}/om-oss`, lastModified: now, changeFrequency: 'monthly', priority: 0.6 },
-    { url: `${base}/kontakt`, lastModified: now, changeFrequency: 'yearly', priority: 0.6 },
-    { url: `${base}/utleie`, lastModified: now, changeFrequency: 'weekly', priority: 0.8 },
-    { url: `${base}/leiemarkedet`, lastModified: now, changeFrequency: 'weekly', priority: 0.8 },
-    { url: `${base}/nyheter`, lastModified: now, changeFrequency: 'weekly', priority: 0.7 },
-    { url: `${base}/guider`, lastModified: now, changeFrequency: 'weekly', priority: 0.8 },
+    { url: `${base}/`, lastModified: staticDate, changeFrequency: 'weekly', priority: 1.0 },
+    { url: `${base}/bli-utleier`, lastModified: staticDate, changeFrequency: 'monthly', priority: 0.9 },
+    { url: `${base}/bli-leietaker`, lastModified: staticDate, changeFrequency: 'monthly', priority: 0.8 },
+    { url: `${base}/tjenester`, lastModified: staticDate, changeFrequency: 'monthly', priority: 0.8 },
+    { url: `${base}/forvaltning`, lastModified: staticDate, changeFrequency: 'monthly', priority: 0.8 },
+    { url: `${base}/utleiemegler-bergen`, lastModified: staticDate, changeFrequency: 'monthly', priority: 0.9 },
+    { url: `${base}/airbnb-forvaltning-bergen`, lastModified: staticDate, changeFrequency: 'monthly', priority: 0.9 },
+    { url: `${base}/radgivning`, lastModified: staticDate, changeFrequency: 'monthly', priority: 0.7 },
+    { url: `${base}/om-oss`, lastModified: staticDate, changeFrequency: 'monthly', priority: 0.6 },
+    { url: `${base}/kontakt`, lastModified: staticDate, changeFrequency: 'yearly', priority: 0.6 },
+    { url: `${base}/utleie`, lastModified: staticDate, changeFrequency: 'weekly', priority: 0.8 },
+    { url: `${base}/leiemarkedet`, lastModified: staticDate, changeFrequency: 'weekly', priority: 0.8 },
+    { url: `${base}/nyheter`, lastModified: staticDate, changeFrequency: 'weekly', priority: 0.7 },
+    { url: `${base}/guider`, lastModified: staticDate, changeFrequency: 'weekly', priority: 0.8 },
     ...guides.map((g) => ({ url: `${base}/guider/${g.slug}`, lastModified: g.updated, changeFrequency: 'monthly', priority: 0.7 })),
-    { url: `${base}/priskalkulator`, lastModified: now, changeFrequency: 'monthly', priority: 0.7 },
-    { url: `${base}/sommer`, lastModified: now, changeFrequency: 'weekly', priority: 0.6 },
-    { url: `${base}/support`, lastModified: now, changeFrequency: 'monthly', priority: 0.4 },
-    { url: `${base}/vilkar`, lastModified: now, changeFrequency: 'yearly', priority: 0.3 },
-    { url: `${base}/personvern`, lastModified: now, changeFrequency: 'yearly', priority: 0.3 },
-    { url: `${base}/video`, lastModified: now, changeFrequency: 'yearly', priority: 0.4 },
+    { url: `${base}/metode`, lastModified: staticDate, changeFrequency: 'monthly', priority: 0.5 },
+    { url: `${base}/priskalkulator`, lastModified: staticDate, changeFrequency: 'monthly', priority: 0.7 },
   ];
 
   const locationUrls = locations.map((l) => ({
     url: `${base}/utleie/${l.slug}`,
-    lastModified: now,
+    lastModified: staticDate,
     changeFrequency: 'monthly',
     priority: l.type === 'by' ? 0.8 : 0.7,
   }));
 
   const rentMarketUrls = rentCitySlugs().map((slug) => ({
     url: `${base}/leiemarkedet/${slug}`,
-    lastModified: now,
+    lastModified: staticDate,
     changeFrequency: 'weekly',
     priority: 0.85,
   }));
@@ -54,7 +50,7 @@ export default async function sitemap() {
     const posts = await getAllPublishedSlugs();
     postUrls = posts.map((p) => ({
       url: `${base}/nyheter/${p.slug}`,
-      lastModified: p.updatedAt || p.publishedAt ? new Date(p.updatedAt || p.publishedAt) : now,
+      lastModified: p.updatedAt || p.publishedAt ? new Date(p.updatedAt || p.publishedAt) : staticDate,
       changeFrequency: 'monthly',
       priority: 0.6,
     }));

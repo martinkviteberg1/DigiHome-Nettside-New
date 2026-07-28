@@ -16,8 +16,8 @@ const MODEL_LABEL: Record<string, string> = { langtid: 'Langtidsutleie', korttid
 // Plattform-bolig → kortformat (personvern-trygge felt, ingen adresser)
 function toCard(p: any) {
   const parts = [] as string[];
-  if (p.bedrooms != null) parts.push(`${p.bedrooms} sov`);
-  if (p.sqm != null) parts.push(`${p.sqm} m²`);
+  if (Number(p.bedrooms) > 0) parts.push(`${p.bedrooms} sov`);
+  if (Number(p.sqm) > 0) parts.push(`${p.sqm} m²`);
   return {
     id: p.id,
     image: (p.images && p.images[0]) || null,

@@ -8,6 +8,7 @@ export const metadata = {
   description:
     'Se hvordan DigiHome setter utleien på autopilot: annonsering, visninger, screening, kontrakt og husleie — helt automatisk. 72 sekunder.',
   alternates: { canonical: '/video' },
+  robots: { index: false, follow: true },
   openGraph: {
     title: 'Utleie på autopilot — Filmen | DigiHome',
     description: 'Annonsering, visninger, screening, kontrakt, husleie og leietakeroppfølging — helt automatisk. Se filmen.',

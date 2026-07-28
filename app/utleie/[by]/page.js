@@ -14,9 +14,9 @@ export function generateMetadata({ params }) {
   const loc = getLocation(params.by);
   if (!loc) return { title: 'Ikke funnet' };
   // Tittel uten merkevare – layout-templaten ('%s | DigiHome') legger den til én gang.
-  const title = `Utleie i ${loc.name} — priser og forvaltning`;
-  const ogTitle = `Utleie i ${loc.name} | DigiHome`;
-  const desc = loc.intro.slice(0, 155);
+  const title = `Leie ut bolig i ${loc.name} — pris og forvaltning`;
+  const ogTitle = `Leie ut bolig i ${loc.name} | DigiHome`;
+  const desc = `For boligeiere i ${loc.name}: se leiepriser, lokal etterspørsel og alternativer for selvforvaltning eller full forvaltning. ${loc.intro}`.slice(0, 158);
   return {
     title,
     description: desc,

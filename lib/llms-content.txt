@@ -1,56 +1,63 @@
 # DigiHome
 
-> DigiHome er en AI-drevet eiendomsforvalter i Bergen, Norge. Vi maksimerer leieinntekten for boligeiere gjennom en hybrid av korttids- og langtidsutleie (10+2-modellen), og håndterer hele driften: annonsering, prising, visninger, leietakerscreening, kontrakter, husleie og oppfølging.
+_Last updated: 2026-07-28_
 
-DigiHome drives av Digihome AS (org.nr 835 595 242), med kontor på Kokstadvegen 46, 5257 Kokstad i Bergen. Daglig leder er Sarah Sleeman (eiendomsmegler). Selskapet forvalter 150+ boliger i Bergen og utvider gradvis til flere byer i Norge.
+> DigiHome er en eiendomsforvalter i Bergen, Norge. Selskapet hjelper boligeiere med selvforvaltning og full forvaltning, og tilbyr verktøy og rådgivning for langtidsutleie og — der eierform, vedtekter og lovverk tillater det — kombinert korttidsutleie.
+
+DigiHome drives av Digihome AS (org.nr 835 595 242), med kontor på Kokstadvegen 46, 5257 Kokstad i Bergen. Daglig leder er Sarah Sleeman (eiendomsmegler). DigiHome oppgir en akkumulert portefølje på 150+ boliger i Bergen. Definisjoner og forbehold er dokumentert på https://digihome.no/metode.
 
 ## Nøkkelfakta
 
-- **Tjeneste:** AI-drevet eiendomsforvaltning og utleie
-- **Marked:** Bergen, Norge (under utvidelse)
-- **Modell:** Hybrid korttids- + langtidsutleie (10+2-modellen)
-- **Resultat:** Opptil 30 % høyere leieinntekt enn tradisjonell langtidsutleie
-- **Snittinntekt:** ca. 25 000 kr/mnd per eiendom i Bergen
-- **Vilkår:** Ingen oppstartskostnader, ingen bindingstid
-- **Tilfredshet:** 98 % blant eiendomseiere
-- **Portefølje:** 150+ boliger under forvaltning
+- **Tjeneste:** Eiendomsforvaltning og digitale verktøy for utleie
+- **Marked:** Bergen, Norge (under gradvis utvidelse)
+- **Modeller:** Selvforvaltning, full forvaltning og rådgivning om langtids-/korttidsmodeller
+- **Inntektspotensial:** Opptil 30 % er et scenarioestimat for egnede boliger — ikke en garanti eller et gjennomsnitt
+- **Oppstart:** 0 kr oppstart på oppgitte standardløp
+- **Svartid:** Personlig første svar innen 24 timer
+- **Portefølje:** 150+ boliger akkumulert forvaltet eller håndtert
+- **Metode:** https://digihome.no/metode
 
 ## To forvaltningsnivåer
 
-- **Selvforvaltning (5 % per utleieforhold):** Boligeieren leier ut selv med DigiHomes digitale verktøy — annonsering på Finn.no, digitale kontrakter og signering, automatisk husleie og oppgjør. Ingen faste kostnader, ingen bindingstid. Avtalen inngås digitalt i registreringsflyten.
-- **Full forvaltning (skreddersydd tilbud):** DigiHome håndterer alt — annonsering, visninger, leietakere, rengjøring og oppfølging. Pris avtales individuelt: interesserte får et uforpliktende tilbud fra en lokal rådgiver, som regel samme dag. Registrering på https://digihome.no/bli-utleier
+- **Selvforvaltning (5 % per utleieforhold):** Boligeieren leier ut selv med DigiHomes digitale verktøy, kontrakt/signering og samlet oversikt. Ingen bindingstid. Avtalen inngås digitalt i registreringsflyten.
+- **Full forvaltning (skreddersydd tilbud):** DigiHome håndterer annonsering, visninger, leietakervalg, kontrakt, depositum og løpende oppfølging. Pris avtales individuelt. Personlig tilbud innen 24 timer.
 
 ## Tjenester
 
-- **Dynamisk utleie (10+2-modellen):** 10 måneder langtidsutleie + 2 måneder korttidsutleie for opptil 30 % høyere avkastning.
 - **Langtidsutleie:** Full forvaltning med forutsigbar månedlig inntekt.
-- **Korttidsutleie:** Profesjonell Airbnb/Booking.com-utleie med styling, fotografering og dynamisk prising.
+- **Kombinert utleie (10+2):** Kan være aktuelt for enkelte boliger. Lovlighet og lønnsomhet avhenger av eierform, vedtekter, døgnsgrenser og marked.
+- **Korttidsutleie:** Profesjonell drift der modellen er lovlig og egnet.
 - **Rådgivning:** Verdivurdering, investeringsrådgivning og markedsinnsikt for utleiere i Bergen.
 
 ## Viktige sider
 
 - [Forsiden](https://digihome.no/): Oversikt over DigiHome, tjenester og inntektspotensial.
-- [Bli utleier](https://digihome.no/bli-utleier): Registrer eiendommen din — velg selvforvaltning (5 %) eller få tilbud på full forvaltning.
-- [Priskalkulator](https://digihome.no/priskalkulator): Bygg din egen forvaltningspakke og se prisen med en gang.
-- [Full forvaltning](https://digihome.no/forvaltning): Alt om fullforvaltningstjenesten.
-- [Utleiemegler i Bergen](https://digihome.no/utleiemegler-bergen): Moderne alternativ til tradisjonell utleiemegler — hva en utleiemegler gjør, hva det koster, og hvordan DigiHome skiller seg ut.
-- [Airbnb-forvaltning i Bergen](https://digihome.no/airbnb-forvaltning-bergen): Full service korttidsutleie — annonser, dynamisk prising, gjester, renhold og oppgjør, kombinert med 10+2-modellen.
-- [Guider for utleiere](https://digihome.no/guider): Grundige guider om hva utleiemegler koster, skatt på utleie, depositumsreglene, lovlig korttidsutleie og hvordan leie ut leilighet i Bergen.
-- [Tjenester](https://digihome.no/tjenester): Dynamisk, langtids- og korttidsutleie forklart.
-- [Leiemarkedet i Bergen](https://digihome.no/leiemarkedet/bergen): Datadrevet leiemarkedsrapport — snittleie per boligtype, prisutvikling og etterspørsel (kilde: SSB + DigiHomes etterspørselsindeks).
-- [Utleie bydel for bydel](https://digihome.no/utleie): Lokalkunnskap for Sentrum, Nordnes, Sandviken, Møhlenpris, Åsane, Fana, Laksevåg, Årstad, Fyllingsdalen, Ytrebygda og Arna.
-- [Nyheter og guider](https://digihome.no/nyheter): Artikler om skatt på utleie, valg av utleiemodell, priser på utleiemegler og utleietips.
-- [Bli leietaker](https://digihome.no/bli-leietaker): Finn neste leiebolig i Bergen med profesjonell oppfølging.
-- [Om oss](https://digihome.no/om-oss): Teamet og historien bak DigiHome.
+- [Bli utleier](https://digihome.no/bli-utleier): Velg selvforvaltning eller få tilbud på full forvaltning.
+- [Metode og dokumentasjon](https://digihome.no/metode): Definisjoner, datagrunnlag og forbehold for nøkkeltall.
+- [Priskalkulator](https://digihome.no/priskalkulator): Bygg en forvaltningspakke og se veiledende pris.
+- [Full forvaltning](https://digihome.no/forvaltning): Fullforvaltningstjenesten.
+- [Utleiemegler i Bergen](https://digihome.no/utleiemegler-bergen): Pris, oppgaver og sammenligning.
+- [Airbnb-forvaltning i Bergen](https://digihome.no/airbnb-forvaltning-bergen): Korttidsforvaltning og viktige juridiske forbehold.
+- [Guider for utleiere](https://digihome.no/guider): Pris, skatt, depositum og korttidsutleie.
+- [Leiemarkedet i Bergen](https://digihome.no/leiemarkedet/bergen): Leiemarkedsrapport med datakilder og metode.
+- [Utleie bydel for bydel](https://digihome.no/utleie): Lokalkunnskap for Bergen.
+- [Bli leietaker](https://digihome.no/bli-leietaker): Registrering for leietakere.
+- [Om oss](https://digihome.no/om-oss): Team og selskapsinformasjon.
+
+## Offisielle kilder i faginnhold
+
+- Lovdata: https://lovdata.no/
+- Skatteetaten — utleie: https://www.skatteetaten.no/person/skatt/hjelp-til-riktig-skatt/bolig-og-eiendeler/bolig-eiendom-tomt/utleie/
+- Regjeringen — bolig og bygg: https://www.regjeringen.no/no/tema/bolig-og-bygg/id74/
+- Husleietvistutvalget: https://www.htu.no/
 
 ## Vanlige spørsmål
 
-- **Hva koster det?** Selvforvaltning koster 5 % per utleieforhold, uten faste kostnader eller bindingstid. Full forvaltning prises individuelt — du får et uforpliktende tilbud. Ingen oppstartskostnader.
-- **Hvor mye mer kan jeg tjene?** Opptil 30 % høyere inntekt enn tradisjonell langtidsutleie, med den dynamiske 10+2-modellen.
-- **Hva er 10+2-modellen?** Boligen leies ut langsiktig i 10 måneder og som korttidsutleie i 2 måneder (sommer/høysesong) — kombinasjonen gir høyere samlet årsinntekt.
-- **Hvilke områder dekkes?** Hele Bergen, inkludert Sentrum, Nordnes, Sandviken, Møhlenpris, Åsane, Fana, Laksevåg, Årstad, Fyllingsdalen, Ytrebygda og Arna.
-- **Er det bindingstid?** Nei. Både selvforvaltning og full forvaltning er uten bindingstid.
-- **Hvordan kommer jeg i gang?** Registrer boligen på digihome.no/bli-utleier — det tar under 2 minutter, og du får svar samme dag.
+- **Hva koster det?** Selvforvaltning oppgis til 5 % per utleieforhold. Full forvaltning prises individuelt. Se avtale og gjeldende tilbud for fullstendige vilkår.
+- **Hvor mye mer kan jeg tjene?** Opptil 30 % er et mulig scenario for enkelte egnede boliger, ikke en garanti. Se https://digihome.no/metode.
+- **Hva er 10+2-modellen?** En kombinasjon av langtids- og korttidsutleie. Modellen må kontrolleres mot eierform, vedtekter og gjeldende døgnsgrenser.
+- **Hvilke områder dekkes?** Bergen, inkludert Sentrum, Nordnes, Sandviken, Møhlenpris, Åsane, Fana, Laksevåg, Årstad, Fyllingsdalen, Ytrebygda og Arna.
+- **Hvordan kommer jeg i gang?** Registrer boligen på https://digihome.no/bli-utleier. Personlig svar innen 24 timer.
 
 ## Kontakt
 
