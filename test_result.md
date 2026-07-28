@@ -3181,6 +3181,19 @@ agent_communication:
         -agent: "main"
         -comment: "Bruker ba agent tenke selv og ta designet enda lenger. Sluttretning: editorial/quiet-luxury, varm hvit + blekk, minimalt lilla. Topbar Bolig/Løsning/Kontakt + 1px progress. Steg1: ren 60/40, bildet uten tekst/overlay-card og mørk CTA; steg2 to editorial columns i én hairline-ramme; steg3 fullskjerm 760px med border-bottom summary og nøytrale inputs; success fullskjerm. PRODUKSJONSBUG etter deploy: stuebildet viste alt-tekst fordi Next standalone ikke inkluderer ny /public-fil. ROTÅRSAK bekreftet. FIKS: lastet owner-onboarding-living-room.webp (65,580 bytes) til Emergent object storage på digihome/public/owner-onboarding-living-room.webp og endret src til deploy-safe /api/media/owner-onboarding-living-room.webp. Lokal media-endpoint returnerer 200 image/webp, 65,580 bytes og immutable cache. Ingen state/tracking/payload/API-logikk endret. Frontend/backend testagent må verifisere media-endepunkt og DOM-bilde før ferdigmelding."
 
+
+  - task: "Produksjonsaudit Google Ads-landingssider: tekniske konverteringshindre"
+    implemented: false
+    working: "NA"
+    file: "/app/components/lp/CampaignLanding.js, /app/components/lp/LeadFormPro.js, /app/components/lp/lp-shared.js, /app/lib/landing.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "READ-ONLY audit av fem aktive Google Ads-LP-er. Live Google API: alle aktive annonser APPROVED/SERVING; landingssider offentlige. Kode + mobil Playwright på 10+2 uten submit. Funn: P0 datakvalitet/CRO — alle LP-er tilbyr eksplisitt Hopp over adresse og sender tom adresse, mens hoved-onboarding krever full verifisert adresse; 10+2 har 1,999 kr/50 klikk/0 konverteringer. P0 message mismatch — sidene lover 'Svar umiddelbart/i løpet av minutter' gjentatt, men operativ flyt lover svar innen24t; sannsynlig tillitstap. P0/P1 måling — trackLead returnerer før Google/GA4 conversion når GA4 mangler eller marketing consent ikke er gitt; consent-mode banner viser analytics denied og Google collect abort i QA; dette kan gi store klikk→session/lead-gap. P1 cookie-banner dekker adressefelt/CTA på første mobilbesøk (390x844), stor friksjon. P1 sidene er svært lange/tunge: 10+2 first load ~3.15MB, ~2.18MB scripts, 32 resources; skjema over fold men mange dupliserte CTA/bevisseksjoner. P1 adressevalg har async race: place detail/postal hentes async; CTA kan klikkes før addrSel commit og trenger ekstra klikk/vent. P1 tilbuds-/claimrisiko: +30%, 4.9/5,98%,150+,25k og 'umiddelbart' uten tydelig metode i konverteringsområdet. P2 diagnostic endpoint Google daily=0 er dashboardbug, ikke delivery. Ingen produksjonslead eller kodeendring gjort."
+
 metadata:
   current_focus:
     - "Produksjonsbug: verifisert tenant-forward og legacy false-positive recovery"
