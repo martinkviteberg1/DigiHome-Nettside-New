@@ -43,6 +43,15 @@ function Chip({ tone = 'gray', children }) {
   return <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11.5px] font-semibold ${tones[tone] || tones.gray}`}>{children}</span>;
 }
 
+const AEO_GROUPS = [
+  { k: 'merkevare', l: 'Merkevare og tillit', test: (q) => /digihome|hvem står bak|seriøst/i.test(q) },
+  { k: 'kommersiell', l: 'Kommersielt', test: (q) => /utleiemegler|forvaltning|uten å gjøre jobben/i.test(q) },
+  { k: 'airbnb', l: 'Airbnb og korttid', test: (q) => /airbnb|korttids|10\+2/i.test(q) },
+  { k: 'jus', l: 'Jus og skatt', test: (q) => /skatt|depositum/i.test(q) },
+  { k: 'lokalt', l: 'Lokalt marked', test: () => true },
+];
+const aeoGroup = (question = '') => AEO_GROUPS.find((g) => g.test(question)) || AEO_GROUPS[AEO_GROUPS.length - 1];
+
 const Card = ({ children, className = '' }) => (
   <div className={`bg-white rounded-2xl shadow-[0_2px_16px_rgba(0,0,0,0.04)] ${className}`}>{children}</div>
 );
@@ -103,6 +112,24 @@ export default function SeoAeoTab({ apiKey }) {
 
   const top10 = rank.keywords.filter((k) => k.position != null && k.position <= 10).length;
   const top30 = rank.keywords.filter((k) => k.position != null).length;
+
+  const latestAeoHistory = aeo.history[aeo.history.length - 1] || {};
+  const currentModelRate = latestAeoHistory.modelRate ?? null;
+  const currentWebRate = latestAeoHistory.webRate ?? null;
+  const currentCitationRate = latestAeoHistory.citationRate ?? latestAeoHistory.webCitationRate ?? null;
+  const groupedAeo = AEO_GROUPS.map((group) => {
+    const rows = (aeo.results || []).filter((row) => aeoGroup(row.question).k === group.k);
+    const available = rows.filter((row) => row.web?.available !== false);
+    return {
+      ...group,
+      rows,
+      model: rows.length ? Math.round((rows.filter((row) => row.model?.mentions).length / rows.length) * 100) : null,
+      web: available.length ? Math.round((available.filter((row) => row.web?.mentions).length / available.length) * 100) : null,
+      cited: available.length ? Math.round((available.filter((row) => row.web?.cited).length / available.length) * 100) : null,
+    };
+  });
+
+  const aeoAgeDays = aeo.checkedAt ? Math.floor((Date.now() - new Date(aeo.checkedAt).getTime()) / 86400000) : null;
 
   const TABS = [
     { k: 'gsc', l: 'Search Console', icon: BarChart3 },
@@ -221,18 +248,40 @@ export default function SeoAeoTab({ apiKey }) {
       {/* ---------------- AI-SYNLIGHET ---------------- */}
       {tab === 'ai' && (
         <>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+          {aeoAgeDays != null && aeoAgeDays >= 7 ? (
+            <div className="flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[12.5px] text-amber-800">
+              <span><strong>AEO-dataene er {aeoAgeDays} dager gamle.</strong> Deploy innholdsendringene før du kjører ny måling, ellers tester du gammel produksjon.</span>
+              <button onClick={() => run('aeo')} disabled={running === 'aeo'} className="shrink-0 rounded-full bg-amber-900 px-3 py-1.5 text-[11.5px] font-semibold text-white disabled:opacity-50">Kjør etter deploy</button>
+            </div>
+          ) : null}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <Card className="p-5">
               <div className="flex items-center gap-1.5 text-[12px] text-[#999] font-medium"><Bot className="w-3.5 h-3.5" /> Modellkunnskap</div>
-              <div className="text-[30px] font-bold tracking-tight mt-1">{aeo.history.length ? `${aeo.history[aeo.history.length - 1].modelRate}%` : '—'}</div>
-              <div className="text-[11.5px] text-[#bbb]">av spørsmål der AI nevner DigiHome uten å søke</div>
+              <div className="text-[30px] font-bold tracking-tight mt-1">{currentModelRate != null ? `${currentModelRate}%` : '—'}</div>
+              <div className="text-[11.5px] text-[#bbb]">nevner DigiHome uten nettsøk</div>
             </Card>
             <Card className="p-5">
-              <div className="flex items-center gap-1.5 text-[12px] text-[#999] font-medium"><Globe className="w-3.5 h-3.5" /> Web-søk-sitering</div>
-              <div className="text-[30px] font-bold tracking-tight mt-1" style={{ color: '#059669' }}>{aeo.history.length && aeo.history[aeo.history.length - 1].webRate != null ? `${aeo.history[aeo.history.length - 1].webRate}%` : '—'}</div>
-              <div className="text-[11.5px] text-[#bbb]">av AI-svar med web-søk som siterer/nevner oss</div>
+              <div className="flex items-center gap-1.5 text-[12px] text-[#999] font-medium"><Globe className="w-3.5 h-3.5" /> Nevnt med nettsøk</div>
+              <div className="text-[30px] font-bold tracking-tight mt-1" style={{ color: '#059669' }}>{currentWebRate != null ? `${currentWebRate}%` : '—'}</div>
+              <div className="text-[11.5px] text-[#bbb]">svar som faktisk nevner oss</div>
             </Card>
-            <Card className="p-5 col-span-2 sm:col-span-1"><div className="text-[12px] text-[#999] font-medium">Siste sjekk</div><div className="text-[15px] font-semibold mt-2">{fmtDate(aeo.checkedAt)}</div><div className="text-[11.5px] text-[#bbb] mt-0.5">{aeo.history.length} kjøringer</div></Card>
+            <Card className="p-5">
+              <div className="flex items-center gap-1.5 text-[12px] text-[#999] font-medium"><ExternalLink className="w-3.5 h-3.5" /> Sitert kilde</div>
+              <div className="text-[30px] font-bold tracking-tight mt-1" style={{ color: '#7c5cf0' }}>{currentCitationRate != null ? `${currentCitationRate}%` : '—'}</div>
+              <div className="text-[11.5px] text-[#bbb]">har digihome.no i kildeannotasjonen</div>
+            </Card>
+            <Card className="p-5"><div className="text-[12px] text-[#999] font-medium">Siste sjekk</div><div className="text-[15px] font-semibold mt-2">{fmtDate(aeo.checkedAt)}</div><div className="text-[11.5px] text-[#bbb] mt-0.5">{aeo.history.length} kjøringer · {(aeo.results || []).length} spørsmål</div></Card>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-5">
+            {groupedAeo.map((group) => (
+              <Card key={group.k} className="p-4">
+                <div className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#999]">{group.l}</div>
+                <div className="mt-3 flex items-end justify-between gap-2"><span className="text-[22px] font-bold">{group.cited != null ? `${group.cited}%` : '—'}</span><span className="text-[10.5px] text-[#aaa]">{group.rows.length} spørsmål</span></div>
+                <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[#efeeec]"><div className="h-full rounded-full bg-[#7c5cf0]" style={{ width: `${group.cited || 0}%` }} /></div>
+                <div className="mt-2 text-[10.5px] text-[#999]">Nevnt {group.web ?? '—'}% · Modell {group.model ?? '—'}%</div>
+              </Card>
+            ))}
           </div>
 
           {aeo.history.length >= 2 && (
@@ -276,7 +325,7 @@ export default function SeoAeoTab({ apiKey }) {
                         <span className="text-[14px] font-semibold text-[#0a0a0a] min-w-0 flex-1">{r.question}</span>
                         <Chip tone={m.mentions ? 'green' : 'gray'}><Bot className="w-3 h-3" /> {m.mentions ? 'Nevnt' : 'Ikke nevnt'}</Chip>
                         {w.available === false ? <Chip tone="amber"><Globe className="w-3 h-3" /> Web utilgjengelig</Chip>
-                          : <Chip tone={w.cited ? 'green' : 'red'}><Globe className="w-3 h-3" /> {w.cited ? 'Sitert i web-svar' : 'Ikke sitert'}</Chip>}
+                          : <Chip tone={w.cited ? 'green' : w.mentions ? 'violet' : 'red'}><Globe className="w-3 h-3" /> {w.cited ? 'Sitert med lenke' : w.mentions ? 'Nevnt uten kilde' : 'Ikke nevnt'}</Chip>}
                       </button>
                       {open && (
                         <div className="px-5 pb-5 pt-1 grid lg:grid-cols-2 gap-5">
@@ -431,7 +480,7 @@ function SeoSettings({ apiKey, config, onSaved }) {
         <span>Ett element per linje. Posisjonssjekken bruker <b>ett SerpApi-søk per nøkkelord</b> (kvote ~100/mnd, deles med konkurrentgalleriet) — maks 15 nøkkelord. AI-sjekken bruker OpenAI (liten kostnad per kjøring).</span>
       </div>
       <Field label="Nøkkelord (Google-posisjoner)" sub="Kommersielle søk kundene dine faktisk bruker — maks 15" value={keywords} onChange={setKeywords} rows={10} />
-      <Field label="AEO-spørsmål (AI-synlighet)" sub="Spørsmål slik ekte boligeiere stiller dem til en AI-assistent — maks 10" value={questions} onChange={setQuestions} rows={7} />
+      <Field label="AEO-spørsmål (AI-synlighet)" sub="Spørsmål slik ekte boligeiere stiller dem til en AI-assistent — maks 30" value={questions} onChange={setQuestions} rows={16} />
       <Field label="Konkurrenter (navnegjenkjenning i AI-svar)" sub="Små bokstaver, ett navn per linje" value={competitors} onChange={setCompetitors} rows={6} />
       <button onClick={save} disabled={saving} className="inline-flex items-center gap-2 h-10 px-5 rounded-full bg-[#0a0a0a] text-white text-[13.5px] font-semibold hover:bg-[#2a2a2a] disabled:opacity-60">
         {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : saved ? <CheckCircle2 className="w-4 h-4 text-emerald-400" /> : <Save className="w-4 h-4" />}

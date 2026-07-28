@@ -54,7 +54,7 @@ export default function StructuredData() {
       areaServed: 'NO',
       availableLanguage: ['Norwegian', 'English'],
     },
-    sameAs: [site.social.instagram, site.social.facebook, site.social.linkedin],
+    sameAs: [site.brregUrl, site.social.instagram, site.social.facebook, site.social.linkedin].filter(Boolean),
   };
 
   const website = {

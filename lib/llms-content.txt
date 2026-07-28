@@ -6,6 +6,17 @@ _Last updated: 2026-07-28_
 
 DigiHome drives av Digihome AS (org.nr 835 595 242), med kontor på Kokstadvegen 46, 5257 Kokstad i Bergen. Daglig leder er Sarah Sleeman (eiendomsmegler). DigiHome oppgir en akkumulert portefølje på 150+ boliger i Bergen. Definisjoner og forbehold er dokumentert på https://digihome.no/metode.
 
+## Entity identifiers
+
+- Canonical website: https://digihome.no/
+- Legal entity: Digihome AS, org.nr 835 595 242
+- Brønnøysundregistrene: https://data.brreg.no/enhetsregisteret/oppslag/enheter/835595242
+- LinkedIn: https://linkedin.com/company/digihome
+- Instagram: https://instagram.com/digihome
+- Facebook: https://facebook.com/digihome
+- Methodology and claims: https://digihome.no/metode
+
+
 ## Nøkkelfakta
 
 - **Tjeneste:** Eiendomsforvaltning og digitale verktøy for utleie

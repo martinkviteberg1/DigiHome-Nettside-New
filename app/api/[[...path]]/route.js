@@ -48,7 +48,7 @@ import { buildLeadReceipt, buildLeadAdminNotification } from '@/lib/lead-emails'
 import { fireLeadEmails, sendReEngagedNotification } from '@/lib/lead-emails';
 import { buildAlerts } from '@/lib/ads-monitor';
 import { fetchCompetitorGallery, serpApiConfigured } from '@/lib/serpapi';
-import { getSeoConfig, saveSeoConfig, runRankCheck, runAeoCheck, runTechAudit, getSeoOverview, RANK_COLL as SEO_RANK_COLL } from '@/lib/seo-monitor';
+import { getSeoConfig, saveSeoConfig, runRankCheck, runAeoCheck, runTechAudit, getSeoOverview, RANK_COLL as SEO_RANK_COLL, AEO_COLL as SEO_AEO_COLL, TECH_COLL as SEO_TECH_COLL } from '@/lib/seo-monitor';
 import { gscConfigured, gscStatus, computeGscOverview, inspectUrl as gscInspectUrl } from '@/lib/gsc';
 import { chatLLM } from '@/lib/llm';
 import { adstudioConfigured, fetchAdStudioContext, uploadAdImage, buildCreativeSpec, buildAssetFeedSpec, generatePreviews, createStudioAd, setAdStatus as adstudioSetAdStatus, fetchAdsLive, searchGeoLocations, createCampaign, createAdSet } from '@/lib/adstudio';
@@ -6288,18 +6288,24 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
       if (!okAuth) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       try {
         const force = sp.get('force') === '1';
-        const last = await db.collection(SEO_RANK_COLL).findOne({}, { sort: { checkedAt: -1 }, projection: { checkedAt: 1 } });
-        if (!force && last && Date.now() - new Date(last.checkedAt).getTime() < 6 * 86400000) {
-          return cors(NextResponse.json({ ok: true, skipped: true, reason: 'Siste kjøring er under 6 døgn gammel', lastRunAt: last.checkedAt }));
+        const lastRank = await db.collection(SEO_RANK_COLL).findOne({}, { sort: { checkedAt: -1 }, projection: { checkedAt: 1 } });
+        const lastAeo = await db.collection(SEO_AEO_COLL).findOne({}, { sort: { checkedAt: -1 }, projection: { checkedAt: 1 } });
+        const lastTech = await db.collection(SEO_TECH_COLL).findOne({}, { sort: { runAt: -1 }, projection: { runAt: 1 } });
+        const due = (iso, days) => !iso || Date.now() - new Date(iso).getTime() >= days * 86400000;
+        const runRankNow = force || due(lastRank?.checkedAt, 6);
+        const runAeoNow = force || due(lastAeo?.checkedAt, 13);
+        const runTechNow = force || due(lastTech?.runAt, 6);
+        if (!runRankNow && !runAeoNow && !runTechNow) {
+          return cors(NextResponse.json({ ok: true, skipped: true, reason: 'Ingen SEO/AEO-løp er forfalt', lastRankAt: lastRank?.checkedAt, lastAeoAt: lastAeo?.checkedAt, lastTechAt: lastTech?.runAt }));
         }
-        const rank = await runRankCheck(db, {});
-        const aeo = await runAeoCheck(db, {});
-        const tech = await runTechAudit(db, {});
+        const rank = runRankNow ? await runRankCheck(db, {}) : { ok: true, skipped: true };
+        const aeo = runAeoNow ? await runAeoCheck(db, {}) : { ok: true, skipped: true };
+        const tech = runTechNow ? await runTechAudit(db, {}) : { ok: true, skipped: true };
         return cors(NextResponse.json({
           ok: true,
-          rank: { ok: rank.ok, searchesUsed: rank.searchesUsed, error: rank.error || null },
-          aeo: { ok: aeo.ok, summary: aeo.summary || null, error: aeo.error || null },
-          tech: { ok: tech.ok, avgScore: tech.avgScore ?? null, pageCount: tech.pageCount ?? null, error: tech.error || null },
+          rank: { ok: rank.ok, skipped: !!rank.skipped, searchesUsed: rank.searchesUsed, error: rank.error || null },
+          aeo: { ok: aeo.ok, skipped: !!aeo.skipped, summary: aeo.summary || null, error: aeo.error || null },
+          tech: { ok: tech.ok, skipped: !!tech.skipped, avgScore: tech.avgScore ?? null, pageCount: tech.pageCount ?? null, error: tech.error || null },
         }));
       } catch (e) { return cors(NextResponse.json({ ok: false, error: e.message }, { status: 200 })); }
     }
