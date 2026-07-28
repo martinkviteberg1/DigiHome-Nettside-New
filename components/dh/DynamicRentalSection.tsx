@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from '@/lib/motion-lite';
-import { Star, Heart, MapPin, Home, Sun } from 'lucide-react';
+import { Heart, MapPin, Home, Sun } from 'lucide-react';
 
 const LISTING_IMG = '/interior-kitchen-bar.webp';
 
@@ -319,11 +319,7 @@ function AirbnbCard() {
           <h3 className="text-[17px] font-bold text-[#222] leading-snug" style={{ fontFamily: 'var(--font-heading)' }}>
             Pen og lys 3-roms på Nordnes, Bergen
           </h3>
-          <div className="flex items-center gap-1 shrink-0 mt-0.5">
-            <Star className="w-3.5 h-3.5 fill-[#222] text-[#222]" />
-            <span className="text-[14px] font-bold text-[#222]">4.92</span>
-            <span className="text-[12px] text-[#6b6b6b]">(47)</span>
-          </div>
+          <span className="shrink-0 rounded-full border border-[#ddd7d0] px-2.5 py-1 text-[10.5px] font-semibold text-[#5f5a54]">Eksempel</span>
         </div>
 
         <p className="text-[13px] text-[#717171]">Hele leiligheten &middot; 3 rom &middot; 4 gjester</p>
