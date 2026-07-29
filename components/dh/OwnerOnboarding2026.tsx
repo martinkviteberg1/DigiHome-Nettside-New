@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AddressAutocomplete } from './AddressAutocomplete';
 import { detectFinnReference } from './PropertyInputs';
 import { track, getLeadAttribution } from '@/lib/analytics';
@@ -20,6 +20,8 @@ import {
   ShieldCheck,
   Sparkles,
   User,
+  ChevronDown,
+  Search,
 } from 'lucide-react';
 
 const SELF_TERMS_VERSION = 'selvforvaltning-2025-06';
@@ -72,7 +74,44 @@ const isBergenArea = (postalCode = '', city = '') => {
   return /^5[0-2]\d\d$/.test(postalCode.trim());
 };
 
-const normalizePhone = (value: string) => value.replace(/\D/g, '').slice(0, 8);
+const PHONE_COUNTRIES = [
+  { iso: 'NO', name: 'Norge', dial: '+47', min: 8, max: 8 },
+  { iso: 'SE', name: 'Sverige', dial: '+46', min: 7, max: 10 },
+  { iso: 'DK', name: 'Danmark', dial: '+45', min: 8, max: 8 },
+  { iso: 'FI', name: 'Finland', dial: '+358', min: 6, max: 12 },
+  { iso: 'IS', name: 'Island', dial: '+354', min: 7, max: 7 },
+  { iso: 'GB', name: 'Storbritannia', dial: '+44', min: 9, max: 10 },
+  { iso: 'US', name: 'USA', dial: '+1', min: 10, max: 10 },
+  { iso: 'CA', name: 'Canada', dial: '+1', min: 10, max: 10 },
+  { iso: 'DE', name: 'Tyskland', dial: '+49', min: 7, max: 12 },
+  { iso: 'FR', name: 'Frankrike', dial: '+33', min: 9, max: 9 },
+  { iso: 'ES', name: 'Spania', dial: '+34', min: 9, max: 9 },
+  { iso: 'PL', name: 'Polen', dial: '+48', min: 9, max: 9 },
+  { iso: 'NL', name: 'Nederland', dial: '+31', min: 9, max: 9 },
+  { iso: 'BE', name: 'Belgia', dial: '+32', min: 8, max: 9 },
+  { iso: 'CH', name: 'Sveits', dial: '+41', min: 9, max: 9 },
+  { iso: 'AT', name: 'Østerrike', dial: '+43', min: 7, max: 13 },
+  { iso: 'LT', name: 'Litauen', dial: '+370', min: 8, max: 8 },
+  { iso: 'LV', name: 'Latvia', dial: '+371', min: 8, max: 8 },
+  { iso: 'EE', name: 'Estland', dial: '+372', min: 7, max: 8 },
+  { iso: 'UA', name: 'Ukraina', dial: '+380', min: 9, max: 9 },
+  { iso: 'RO', name: 'Romania', dial: '+40', min: 9, max: 9 },
+  { iso: 'TR', name: 'Tyrkia', dial: '+90', min: 10, max: 10 },
+  { iso: 'IN', name: 'India', dial: '+91', min: 10, max: 10 },
+  { iso: 'PK', name: 'Pakistan', dial: '+92', min: 10, max: 10 },
+];
+const phoneCountry = (iso: string) => PHONE_COUNTRIES.find((c) => c.iso === iso) || PHONE_COUNTRIES[0];
+const normalizePhone = (value: string, max = 15) => value.replace(/\D/g, '').slice(0, max);
+const internationalDigits = (value: string, iso: string) => {
+  const digits = normalizePhone(value);
+  return iso !== 'NO' && digits.startsWith('0') ? digits.slice(1) : digits;
+};
+const phoneIsValid = (value: string, iso: string) => {
+  const country = phoneCountry(iso);
+  const digits = internationalDigits(value, iso);
+  return digits.length >= country.min && digits.length <= country.max;
+};
+const phoneE164 = (value: string, iso: string) => `${phoneCountry(iso).dial}${internationalDigits(value, iso)}`;
 
 const isCompleteAddress = (address = '', postalCode = '', city = '') => {
   const street = String(address).split(',')[0].trim();
@@ -170,6 +209,88 @@ function TextField({
   );
 }
 
+function PhoneField({ country, onCountryChange, value, onChange, error }: any) {
+  const selected = phoneCountry(country);
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const [dropUp, setDropUp] = useState(false);
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const searchRef = useRef<HTMLInputElement | null>(null);
+  const filtered = PHONE_COUNTRIES.filter((item) => `${item.iso} ${item.name} ${item.dial}`.toLocaleLowerCase('nb-NO').includes(search.trim().toLocaleLowerCase('nb-NO')));
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const close = (event: MouseEvent) => { if (!rootRef.current?.contains(event.target as Node)) setOpen(false); };
+    const key = (event: KeyboardEvent) => { if (event.key === 'Escape') setOpen(false); };
+    document.addEventListener('mousedown', close);
+    document.addEventListener('keydown', key);
+    window.setTimeout(() => searchRef.current?.focus(), 40);
+    return () => { document.removeEventListener('mousedown', close); document.removeEventListener('keydown', key); };
+  }, [open]);
+
+  const toggle = () => {
+    if (!open && rootRef.current) {
+      const rect = rootRef.current.getBoundingClientRect();
+      setDropUp(window.innerHeight - rect.bottom < 330 && rect.top > 330);
+      setSearch('');
+    }
+    setOpen((value) => !value);
+  };
+
+  const choose = (iso: string) => {
+    onCountryChange(iso);
+    setOpen(false);
+    setSearch('');
+  };
+
+  return (
+    <div ref={rootRef} className="relative">
+      <label htmlFor="owner-phone-input" className="mb-2 block text-[13px] font-semibold text-[#292621]">Telefon</label>
+      <div className={`flex overflow-hidden rounded-[14px] border bg-white transition-shadow focus-within:border-[#292621] focus-within:shadow-[0_0_0_3px_rgba(32,29,26,0.06)] ${error ? 'border-red-400' : 'border-[#d9d4cd]'}`}>
+        <button type="button" onClick={toggle} aria-haspopup="listbox" aria-expanded={open} aria-label={`Landskode ${selected.name} ${selected.dial}`} data-testid="owner-phone-country"
+          className="group flex h-[52px] w-[116px] shrink-0 items-center gap-2 border-r border-[#e4dfd9] bg-[#faf9f7] px-3 text-left outline-none transition hover:bg-[#f4f1ed]">
+          <span className="flex h-7 w-7 items-center justify-center rounded-full border border-[#ddd7d0] bg-white text-[10px] font-extrabold tracking-[0.04em] text-[#403c37]">{selected.iso}</span>
+          <span className="text-[13px] font-semibold text-[#292621]">{selected.dial}</span>
+          <ChevronDown className={`ml-auto h-3.5 w-3.5 text-[#8b8580] transition-transform ${open ? 'rotate-180' : ''}`} />
+        </button>
+        <div className="relative min-w-0 flex-1">
+          <Phone className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8b8580]" />
+          <input id="owner-phone-input" type="tel" value={value} onChange={onChange} autoComplete="tel" inputMode="tel"
+            placeholder={selected.iso === 'NO' ? '8 siffer' : 'Telefonnummer'} aria-invalid={!!error} aria-describedby={error ? 'owner-phone-input-error' : undefined}
+            data-testid="owner-phone-input" className="h-[52px] w-full min-w-0 bg-transparent pl-10 pr-4 text-[16px] text-[#171513] outline-none placeholder:text-[#99938c]" />
+        </div>
+      </div>
+
+      {open ? (
+        <div className={`absolute left-0 z-[80] w-[320px] max-w-[calc(100vw-40px)] overflow-hidden rounded-2xl border border-[#ded9d2] bg-white shadow-[0_24px_70px_-28px_rgba(20,16,12,.42)] ${dropUp ? 'bottom-[60px]' : 'top-[82px]'}`} data-testid="owner-phone-country-menu">
+          <div className="border-b border-[#eee9e3] p-3">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#99928a]" />
+              <input ref={searchRef} value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Søk land eller kode" aria-label="Søk landskode"
+                className="h-10 w-full rounded-xl border border-[#e3ded7] bg-[#faf9f7] pl-9 pr-3 text-[13px] outline-none focus:border-[#aaa29a]" />
+            </div>
+          </div>
+          <div role="listbox" aria-label="Velg landskode" className="max-h-[250px] overflow-y-auto p-1.5">
+            {filtered.length ? filtered.map((item) => {
+              const active = item.iso === selected.iso;
+              return (
+                <button key={item.iso} type="button" role="option" aria-selected={active} onClick={() => choose(item.iso)} data-testid={`owner-phone-country-${item.iso}`}
+                  className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition ${active ? 'bg-[#f0ede8]' : 'hover:bg-[#faf8f5]'}`}>
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#ddd7d0] bg-white text-[10px] font-extrabold tracking-[0.04em] text-[#403c37]">{item.iso}</span>
+                  <span className="min-w-0 flex-1"><span className="block truncate text-[13px] font-semibold text-[#292621]">{item.name}</span><span className="block text-[11.5px] text-[#8b8580]">{item.dial}</span></span>
+                  {active ? <Check className="h-4 w-4 text-[#292621]" strokeWidth={2.5} /> : null}
+                </button>
+              );
+            }) : <p className="px-3 py-6 text-center text-[12.5px] text-[#8b8580]">Ingen land funnet</p>}
+          </div>
+        </div>
+      ) : null}
+      {error ? <p id="owner-phone-input-error" className="mt-1.5 text-[12px] font-medium text-red-600">{error}</p> : null}
+    </div>
+  );
+}
+
+
 export default function OwnerOnboarding2026() {
   const [phase, setPhase] = useState<Phase>('address');
   const [form, setForm] = useState<FormState>({
@@ -184,6 +305,7 @@ export default function OwnerOnboarding2026() {
     phone: '',
     service: '',
   });
+  const [phoneCountryIso, setPhoneCountryIso] = useState('NO');
   const [addressVerified, setAddressVerified] = useState(false);
   const [finnUrl, setFinnUrl] = useState('');
   const [finnCode, setFinnCode] = useState('');
@@ -213,6 +335,23 @@ export default function OwnerOnboarding2026() {
       return next;
     });
   }, []);
+
+  const handlePhoneInput = useCallback((raw: string) => {
+    const trimmed = String(raw || '').trim();
+    let iso = phoneCountryIso;
+    let local = trimmed;
+    if (trimmed.startsWith('+')) {
+      const match = [...PHONE_COUNTRIES].sort((a, b) => b.dial.length - a.dial.length).find((item) => trimmed.startsWith(item.dial));
+      if (match) { iso = match.iso; local = trimmed.slice(match.dial.length); setPhoneCountryIso(match.iso); }
+    }
+    setField('phone', normalizePhone(local, phoneCountry(iso).max + (iso === 'NO' ? 0 : 1)));
+  }, [phoneCountryIso, setField]);
+
+  const changePhoneCountry = useCallback((iso: string) => {
+    setPhoneCountryIso(iso);
+    setField('phone', normalizePhone(form.phone, phoneCountry(iso).max + (iso === 'NO' ? 0 : 1)));
+  }, [form.phone, setField]);
+
 
   const resolveFinnReference = useCallback(async (input: string) => {
     const url = detectFinnReference(input);
@@ -309,6 +448,16 @@ export default function OwnerOnboarding2026() {
     try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch { /* eldre nettlesere kan mangle smooth scroll */ }
   }, [phase, phaseIndex]);
 
+
+  useEffect(() => {
+    if (!submitted || form.service !== 'selvforvaltning' || !accountUrl) return undefined;
+    const timer = window.setTimeout(() => {
+      try { track('account_handoff_redirect', { form: 'utleier', flow: 'utleier-2026' }); } catch { /* analyse må aldri blokkere handoff */ }
+      window.location.replace(accountUrl);
+    }, 1200);
+    return () => window.clearTimeout(timer);
+  }, [submitted, accountUrl, form.service]);
+
   const continueFromAddress = async () => {
     const value = form.address.trim();
     if (detectFinnReference(value)) {
@@ -338,10 +487,15 @@ export default function OwnerOnboarding2026() {
     const next: Record<string, string> = {};
     if (!form.name.trim()) next.name = 'Skriv inn navnet ditt.';
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) next.email = 'Skriv inn en gyldig e-postadresse.';
-    if (normalizePhone(form.phone).length !== 8) next.phone = 'Skriv inn et gyldig norsk telefonnummer.';
+    if (!phoneIsValid(form.phone, phoneCountryIso)) {
+      const country = phoneCountry(phoneCountryIso);
+      next.phone = country.min === country.max
+        ? `Skriv inn et gyldig nummer for ${country.name} (${country.min} siffer).`
+        : `Skriv inn et gyldig nummer for ${country.name}.`;
+    }
     if (form.service === 'selvforvaltning' && !termsAccepted) next.terms = 'Godta avtalen for å opprette konto.';
     return next;
-  }, [form, termsAccepted]);
+  }, [form, phoneCountryIso, termsAccepted]);
 
   const submit = async () => {
     if (loading) return;
@@ -353,6 +507,7 @@ export default function OwnerOnboarding2026() {
     setLoading(true);
     setSubmitError('');
     const cleanPhone = normalizePhone(form.phone);
+    const fullPhone = phoneE164(cleanPhone, phoneCountryIso);
     const leadAddress = form.address.trim();
     const sqm = form.sqm ? Number(form.sqm) || null : null;
     const bedrooms = form.bedrooms ? Number(form.bedrooms) || null : null;
@@ -368,7 +523,7 @@ export default function OwnerOnboarding2026() {
       property_type: propertyType,
       name: form.name.trim(),
       email: form.email.trim(),
-      phone: `+47 ${cleanPhone}`,
+      phone: fullPhone,
       availability: '',
       lead_type: 'huseier',
       tier: form.service,
@@ -402,7 +557,7 @@ export default function OwnerOnboarding2026() {
       if (typeof onboardingUrl === 'string' && /^https:\/\//.test(onboardingUrl)) setAccountUrl(onboardingUrl);
       setSubmitted(true);
       try { track('lead_submit', { form: 'utleier', flow: 'utleier-2026', tier: form.service }); } catch { /* analyse må aldri blokkere suksess-skjermen */ }
-      try { trackLead({ formId: 'utleier', source: 'bli-utleier', leadId: data?.data?.id, email: form.email.trim(), phone: `+47 ${cleanPhone}` } as any); } catch { /* analyse må aldri blokkere suksess-skjermen */ }
+      try { trackLead({ formId: 'utleier', source: 'bli-utleier', leadId: data?.data?.id, email: form.email.trim(), phone: fullPhone } as any); } catch { /* analyse må aldri blokkere suksess-skjermen */ }
     } catch {
       setSubmitError('Vi fikk ikke sendt inn akkurat nå. Prøv igjen — opplysningene dine er fortsatt her.');
     } finally {
@@ -412,11 +567,30 @@ export default function OwnerOnboarding2026() {
 
   if (submitted) {
     const isSelf = form.service === 'selvforvaltning';
+    if (isSelf && accountUrl) {
+      return (
+        <div className="min-h-[100dvh] overflow-x-hidden bg-[#f7f6f3]" data-testid="onboarding-success">
+          <TopBar phase="contact" />
+          <main className="mx-auto flex min-h-[calc(100dvh-65px)] w-full max-w-[620px] items-center justify-center px-5 py-12 text-center sm:px-8">
+            <div>
+              <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#171513]"><Loader2 className="h-6 w-6 animate-spin text-white" /></span>
+              <p className="mt-6 text-[10.5px] font-bold uppercase tracking-[0.15em] text-[#77716a]">Kontoen er opprettet</p>
+              <h1 className="mt-3 text-[36px] font-bold leading-[1.03] tracking-[-0.045em] text-[#151310] sm:text-[50px]" style={{ fontFamily: 'var(--font-heading)' }}>Åpner portalen …</h1>
+              <p className="mx-auto mt-4 max-w-[44ch] text-[15px] leading-relaxed text-[#625d57]">Du logges inn automatisk og sendes direkte til neste steg for boligen.</p>
+              <button type="button" onClick={() => window.location.replace(accountUrl)} className="mt-7 inline-flex h-12 items-center justify-center gap-2 rounded-full bg-[#171513] px-6 text-[13.5px] font-bold text-white hover:bg-[#2b2824]" data-testid="onboarding-account-button">Åpne portalen nå <ArrowRight className="h-4 w-4" /></button>
+              <p className="mt-3 text-[11.5px] text-[#8b8580]">Hvis redirect blokkeres, bruker du knappen over. Bekreftelse er også sendt til {form.email}.</p>
+            </div>
+          </main>
+        </div>
+      );
+    }
     return (
       <div className="min-h-[100dvh] overflow-x-hidden bg-[#f7f6f3]" data-testid="onboarding-success">
         <TopBar phase="contact" />
         <main className="mx-auto flex min-h-[calc(100dvh-67px)] w-full max-w-[680px] items-center px-5 py-12 sm:px-8 sm:py-16">
           <div className="w-full text-center">
+
+
             <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#171513]"><CheckCircle2 className="h-6 w-6 text-white" /></span>
             <p className="mt-6 text-[10.5px] font-bold uppercase tracking-[0.15em] text-[#77716a]">Alt er registrert</p>
             <h1 className="mt-3 text-[38px] font-bold leading-[1.02] tracking-[-0.045em] text-[#151310] sm:text-[52px]" style={{ fontFamily: 'var(--font-heading)' }}>Takk, {form.name.trim().split(' ')[0]}.</h1>
@@ -541,7 +715,7 @@ export default function OwnerOnboarding2026() {
           <div className="mt-7 space-y-4">
             <TextField id="owner-name-input" label="Fullt navn" value={form.name} onChange={(event: any) => setField('name', event.target.value)} autoComplete="name" placeholder="Ola Nordmann" icon={User} error={errors.name} />
             <TextField id="owner-email-input" label="E-post" type="email" value={form.email} onChange={(event: any) => setField('email', event.target.value)} autoComplete="email" inputMode="email" placeholder="ola@eksempel.no" icon={Mail} error={errors.email} />
-            <TextField id="owner-phone-input" label="Telefon" type="tel" value={form.phone} onChange={(event: any) => setField('phone', normalizePhone(event.target.value))} autoComplete="tel-national" inputMode="tel" placeholder="8 siffer" icon={Phone} error={errors.phone} />
+            <PhoneField country={phoneCountryIso} onCountryChange={changePhoneCountry} value={form.phone} onChange={(event: any) => handlePhoneInput(event.target.value)} error={errors.phone} />
           </div>
 
           {isSelf ? (

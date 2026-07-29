@@ -3223,6 +3223,19 @@ agent_communication:
         -agent: "main"
         -comment: "AEO-monitor utvidet fra max10 til max30 og faktisk config til27 spørsmål over brand/trust, commercial, Airbnb/short-term, legal/tax, local market. Saved custom questions merge with defaults so new coverage survives old DB config. Web mention and real digihome.no citation split; summary/history stores separate webMentionRate/webCitationRate+counts. Dashboard gets four KPI cards, 5 category scorecards, accurate statuses 'Sitert med lenke/Nevnt uten kilde/Ikke nevnt', max30 settings and stale-data warning with run-after-deploy button. Weekly cron now independent cadence: rank+tech6d, AEO13d; one fresh rank no longer suppresses stale AEO. Entity sameAs adds official Brønnøysund URL in Organization schema and llms Entity identifiers. Current run remains July15 intentionally; rerun must happen after production redeploy. No OpenAI/SerpApi run or external cost triggered by agent."
 
+
+  - task: "Self-service UX: premium landskodevelger + automatisk portalhandoff + statusbasert portalspesifikasjon"
+    implemented: true
+    working: "NA"
+    file: "/app/components/dh/OwnerOnboarding2026.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "Premium phone field built: custom searchable popover (not native select), NO+47 default, 24 countries, ISO monogram/name/dial/check, outside-click/Escape, automatic drop-up near viewport bottom, paste +44 auto-detects GB, national trunk0 stripped for E.164, per-country min/max validation, API+tracking get normalized E164. Self-service with valid handoff_url no longer stops at thank-you: 1.2s 'Kontoen er klar — åpner portalen' transition + location.replace + fallback button; full management thank-you unchanged. Portal onboarding v2 proposal sent via bridge message7850af3d: first-visit 3 paths needs_tenant/tenant_found/active_lease, dynamic hero next action, generated checklist collapsed/no duplicate CTA. Screenshot verified mobile and desktop selector; mocked no-DB /api/leads handoff verified transition+auto redirect. No real lead created by agent."
+
 metadata:
   current_focus:
     - "Produksjonsbug: verifisert tenant-forward og legacy false-positive recovery"
