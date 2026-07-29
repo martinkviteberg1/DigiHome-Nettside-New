@@ -101,6 +101,7 @@ const PHONE_COUNTRIES = [
   { iso: 'PK', name: 'Pakistan', dial: '+92', min: 10, max: 10 },
 ];
 const phoneCountry = (iso: string) => PHONE_COUNTRIES.find((c) => c.iso === iso) || PHONE_COUNTRIES[0];
+const countryFlag = (iso: string) => String.fromCodePoint(...iso.toUpperCase().split('').map((char) => 127397 + char.charCodeAt(0)));
 const normalizePhone = (value: string, max = 15) => value.replace(/\D/g, '').slice(0, max);
 const internationalDigits = (value: string, iso: string) => {
   const digits = normalizePhone(value);
@@ -249,7 +250,7 @@ function PhoneField({ country, onCountryChange, value, onChange, error }: any) {
       <div className={`flex overflow-hidden rounded-[14px] border bg-white transition-shadow focus-within:border-[#292621] focus-within:shadow-[0_0_0_3px_rgba(32,29,26,0.06)] ${error ? 'border-red-400' : 'border-[#d9d4cd]'}`}>
         <button type="button" onClick={toggle} aria-haspopup="listbox" aria-expanded={open} aria-label={`Landskode ${selected.name} ${selected.dial}`} data-testid="owner-phone-country"
           className="group flex h-[52px] w-[116px] shrink-0 items-center gap-2 border-r border-[#e4dfd9] bg-[#faf9f7] px-3 text-left outline-none transition hover:bg-[#f4f1ed]">
-          <span className="flex h-7 w-7 items-center justify-center rounded-full border border-[#ddd7d0] bg-white text-[10px] font-extrabold tracking-[0.04em] text-[#403c37]">{selected.iso}</span>
+          <span className="flex h-7 w-7 items-center justify-center rounded-full border border-[#ddd7d0] bg-white text-[17px] leading-none" aria-hidden>{countryFlag(selected.iso)}</span>
           <span className="text-[13px] font-semibold text-[#292621]">{selected.dial}</span>
           <ChevronDown className={`ml-auto h-3.5 w-3.5 text-[#8b8580] transition-transform ${open ? 'rotate-180' : ''}`} />
         </button>
@@ -276,7 +277,7 @@ function PhoneField({ country, onCountryChange, value, onChange, error }: any) {
               return (
                 <button key={item.iso} type="button" role="option" aria-selected={active} onClick={() => choose(item.iso)} data-testid={`owner-phone-country-${item.iso}`}
                   className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition ${active ? 'bg-[#f0ede8]' : 'hover:bg-[#faf8f5]'}`}>
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#ddd7d0] bg-white text-[10px] font-extrabold tracking-[0.04em] text-[#403c37]">{item.iso}</span>
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#ddd7d0] bg-white text-[19px] leading-none" aria-hidden>{countryFlag(item.iso)}</span>
                   <span className="min-w-0 flex-1"><span className="block truncate text-[13px] font-semibold text-[#292621]">{item.name}</span><span className="block text-[11.5px] text-[#8b8580]">{item.dial}</span></span>
                   {active ? <Check className="h-4 w-4 text-[#292621]" strokeWidth={2.5} /> : null}
                 </button>
