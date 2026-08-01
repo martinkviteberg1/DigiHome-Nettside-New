@@ -87,16 +87,22 @@ export default function PropertiesTab({ apiKey }) {
     if (filter === 'skjulte') return !p.visible;
     if (filter === 'ledige') return p.status === 'active';
     if (filter === 'utleid') return p.status === 'rented';
+    if (filter === 'mangler') return p.incomplete;
+    if (filter === 'duplikat') return p.duplicate;
     return true;
   }), [props, filter]);
 
-  const withImages = props.filter((p) => (p.images || []).length > 0);
+  const withImages = props.filter((p) => (p.images || []).length > 0 && !p.duplicate);
+  const incomplete = props.filter((p) => p.incomplete);
+  const duplicates = props.filter((p) => p.duplicate);
   const chips = [
     { k: 'alle', l: `Alle (${props.length})` },
     { k: 'synlige', l: `Synlige (${props.filter((p) => p.visible).length})` },
     { k: 'skjulte', l: `Skjulte (${props.filter((p) => !p.visible).length})` },
     { k: 'ledige', l: `Ledige (${props.filter((p) => p.status === 'active').length})` },
     { k: 'utleid', l: `Utleid (${props.filter((p) => p.status === 'rented').length})` },
+    ...(incomplete.length ? [{ k: 'mangler', l: `Mangler data (${incomplete.length})` }] : []),
+    ...(duplicates.length ? [{ k: 'duplikat', l: `Duplikater (${duplicates.length})` }] : []),
   ];
 
   if (loading) return <div className="flex items-center gap-2 text-[#999] text-[14px] py-16 justify-center"><Loader2 className="w-4 h-4 animate-spin" /> Laster boliger …</div>;
@@ -149,6 +155,24 @@ export default function PropertiesTab({ apiKey }) {
         </p>
       </div>
 
+      {/* Datakvalitet — det som må ryddes i plattformen, ikke her */}
+      {(incomplete.length > 0 || duplicates.length > 0) && (
+        <div className="flex items-start gap-2.5 rounded-xl bg-[#fff8e6] px-4 py-3" data-testid="props-quality-banner">
+          <AlertTriangle className="w-4 h-4 text-[#c98a00] shrink-0 mt-0.5" />
+          <div className="text-[12.5px] leading-relaxed text-[#8a6500]">
+            <p>
+              <strong>{incomplete.length} boliger mangler innhold</strong> fra plattformen (ingen bilder, 0 m², 0 soverom)
+              {duplicates.length > 0 && <> og <strong>{duplicates.length} ser ut som dobbeltregistrering</strong> (helt identiske felt i samme gate)</>}.
+              Disse ser ut som duplikater i lista, og de sperres automatisk fra forsiden og nyhetsbrev — et boligkort uten bilde og uten info skader mer enn det hjelper.
+            </p>
+            <p className="mt-1.5 text-[#a67c00]">
+              Flere boliger i samme gate er normalt: eksporten fjerner husnummer, så ulike leiligheter i samme bygg får samme områdenavn.
+              Vi flagger derfor bare rader som er identiske på gate, type, soverom, areal, bildeantall og leiemodell. Rydd dem i DigiHome-appen — vi kan bare lese herfra.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Filtre + hurtighandlinger */}
       <div className="flex flex-wrap items-center gap-2">
         {chips.map((c) => (
@@ -194,9 +218,11 @@ export default function PropertiesTab({ apiKey }) {
                   <span className="text-[11.5px]">Ingen bilder</span>
                 </div>
               )}
-              <div className="absolute top-2.5 left-2.5 flex gap-1.5">
+              <div className="absolute top-2.5 left-2.5 flex flex-wrap gap-1.5 pr-2.5">
                 <span className={`rounded-lg px-2 py-1 text-[10.5px] font-semibold ${STATUS_CLS[p.status] || STATUS_CLS.paused}`}>{STATUS_LABEL[p.status] || p.status}</span>
                 {p.model && <span className="rounded-lg px-2 py-1 text-[10.5px] font-semibold bg-white/90 backdrop-blur-sm text-[#555]">{MODEL_LABEL[p.model] || p.model}</span>}
+                {p.duplicate && <span className="rounded-lg px-2 py-1 text-[10.5px] font-semibold bg-[#fdecec] text-[#c0392b]" title={`Identisk med ${(p.duplicateGroupSize || 2) - 1} annen bolig i samme gate — rydd i DigiHome-appen`}>Mulig duplikat</span>}
+                {p.incomplete && !p.duplicate && <span className="rounded-lg px-2 py-1 text-[10.5px] font-semibold bg-[#fff8e6] text-[#8a6500]" title="Mangler bilder, areal og soverom fra plattformen">Mangler data</span>}
               </div>
               {(p.images || []).length > 1 && (
                 <span className="absolute bottom-2.5 right-2.5 rounded-md bg-black/50 text-white text-[10.5px] px-1.5 py-0.5">{p.images.length} bilder</span>
@@ -206,7 +232,7 @@ export default function PropertiesTab({ apiKey }) {
               <h3 className="text-[14.5px] font-semibold text-[#0a0a0a] leading-snug" style={{ fontFamily: 'var(--font-heading)' }}>{p.title || 'Bolig'}</h3>
               <div className="flex items-center gap-1.5 mt-1.5 text-[12px] text-[#999]">
                 <MapPin className="w-3.5 h-3.5 text-[#ccc]" />
-                {[p.area, p.city].filter(Boolean).join(', ') || 'Område ukjent'}
+                {[p.area, p.city || p.district].filter(Boolean).join(', ') || p.district || 'Område ukjent'}
               </div>
               <div className="flex items-center gap-3.5 mt-2 text-[12px] text-[#777]">
                 {p.bedrooms != null && <span className="flex items-center gap-1"><BedDouble className="w-3.5 h-3.5 text-[#bbb]" />{p.bedrooms} sov</span>}

@@ -53,7 +53,7 @@ console.log(JSON.stringify({
   bolig: { pid, title: prop.title, district: prop.district },
   campaignId, rid, email,
   lookupUrl: `/api/newsletter/property-interest/lookup?property=${pid}&c=${campaignId}&r=${rid}&pt=${pt}`,
-  confirmBody: { property: pid, c: campaignId, r: rid, pt },
+  confirmBody: { property: pid, campaign: campaignId, r: rid, pt },
   landingUrl: `/boliginteresse?property=${pid}&c=${campaignId}&r=${rid}&pt=${pt}`,
 }, null, 2));
 await client.close();

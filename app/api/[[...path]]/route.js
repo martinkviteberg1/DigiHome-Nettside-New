@@ -45,7 +45,7 @@ import { sendWeeklyReport, buildReportData, renderReportHtml } from '@/lib/ads-r
 import { buildMarketingMetrics } from '@/lib/marketing-metrics';
 import { emailConfigured, reportRecipients, sendHtmlEmail } from '@/lib/email';
 import { NEWSLETTER_COLL, OPTOUT_COLL, NL_EVENTS_COLL, renderNewsletterHtml, resolveAudience, audienceCounts, sanitizeBlocks, hasContent, buildUnsubUrl, verifyUnsubToken, verifyInterestToken, propertyInterestToken, verifyPropertyInterestToken, slugifyCampaign, normEmail as nlNormEmail, recipientId, TEMPLATES, templateBlocks, THEMES, TRACKING_GIF, applyMergeTags } from '@/lib/newsletter';
-import { syncPropertiesFromPlatform, maybeAutoSyncProperties, listAdminProperties, listPublicProperties, setPropertyVisibility, getPropertiesSyncMeta, backfillPropertyDistricts } from '@/lib/properties-sync';
+import { syncPropertiesFromPlatform, maybeAutoSyncProperties, listAdminProperties, listPublicProperties, setPropertyVisibility, getPropertiesSyncMeta, backfillPropertyDistricts, refreshPropertyQuality } from '@/lib/properties-sync';
 import { buildLeadReceipt, buildLeadAdminNotification } from '@/lib/lead-emails';
 import { fireLeadEmails, sendReEngagedNotification } from '@/lib/lead-emails';
 import { buildAlerts } from '@/lib/ads-monitor';
@@ -464,7 +464,7 @@ async function resolveDraftProperties(dbx, blocks) {
   try { await backfillPropertyDistricts(dbx); } catch (_) {}
   const liveRows = await dbx.collection('platform_properties').find(
     { stale: { $ne: true }, $or: [{ externalId: { $in: ids } }, { id: { $in: ids } }] },
-    { projection: { _id: 0, id: 1, externalId: 1, title: 1, area: 1, city: 1, district: 1, type: 1, bedrooms: 1, sqm: 1, images: 1, status: 1, monthlyRentBand: 1, availableFrom: 1 } }
+    { projection: { _id: 0, id: 1, externalId: 1, title: 1, area: 1, city: 1, district: 1, type: 1, bedrooms: 1, sqm: 1, images: 1, status: 1, monthlyRentBand: 1, availableFrom: 1, incomplete: 1, duplicate: 1 } }
   ).toArray();
   const byId = new Map();
   liveRows.forEach((p) => { byId.set(p.externalId, p); byId.set(p.id, p); });
@@ -474,6 +474,14 @@ async function resolveDraftProperties(dbx, blocks) {
     const items = (b.items || []).map((snap) => {
       const live = byId.get(snap.pid);
       if (!live || live.status !== 'active') { unavailable.push({ pid: snap.pid, title: snap.title || live?.title || 'Bolig', status: live?.status || 'missing' }); return null; }
+      // KVALITETSPORT: plattformen har «tomme skall» (ingen bilder, 0 m²,
+      // 0 soverom) og rene duplikater. Slike kort ville gått ut som «Leilighet»
+      // uten bilde og uten info — det skader mer enn det hjelper. Samme regel
+      // som forsiden: uten bilder vises boligen ikke utad.
+      if (live.incomplete || live.duplicate || !(live.images || []).length) {
+        unavailable.push({ pid: snap.pid, title: snap.title || live.title || 'Bolig', status: live.duplicate ? 'duplikat' : 'mangler bilder/data' });
+        return null;
+      }
       return {
         ...snap,
         pid: live.externalId || snap.pid,
@@ -5291,7 +5299,7 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
 
     if (route === '/newsletter/property-interest/confirm' && method === 'POST') {
       let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
-      const campaignId = String(body.campaign || '').slice(0, 80);
+      const campaignId = String(body.campaign || body.c || '').slice(0, 80);
       const rid = String(body.r || '').slice(0, 32);
       const propertyKey = String(body.property || '').slice(0, 80);
       const recipient = await db.collection('newsletter_recipients').findOne({ campaignId, rid }, { projection: { _id: 0, email: 1, tenantId: 1 } });
@@ -5637,10 +5645,13 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
       // den, og plattformen sender den ikke. Idempotent og rører ikke boliger
       // som alt har bydel fra plattformen.
       const districtFill = await backfillPropertyDistricts(db, { force: new URL(request.url).searchParams.get('refreshDistricts') === '1' });
+      const quality = await refreshPropertyQuality(db);
       const [properties, meta] = await Promise.all([listAdminProperties(db), getPropertiesSyncMeta(db)]);
       const visibleCount = properties.filter((p) => p.visible).length;
       const districtCount = properties.filter((p) => p.district).length;
-      return cors(NextResponse.json({ ok: true, properties, total: properties.length, visibleCount, districtCount, districtFill, meta: meta ? { lastSyncAt: meta.lastSyncAt || null, lastError: meta.lastError || null, platformTotal: meta.platformTotal ?? null } : null }));
+      const incompleteCount = properties.filter((p) => p.incomplete).length;
+      const duplicateCount = properties.filter((p) => p.duplicate).length;
+      return cors(NextResponse.json({ ok: true, properties, total: properties.length, visibleCount, districtCount, incompleteCount, duplicateCount, districtFill, quality, meta: meta ? { lastSyncAt: meta.lastSyncAt || null, lastError: meta.lastError || null, platformTotal: meta.platformTotal ?? null } : null }));
     }
 
     // Admin: manuell synk fra plattformen. ?env=prod henter ekte boliger (nødvendig

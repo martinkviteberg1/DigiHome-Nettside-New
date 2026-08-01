@@ -698,17 +698,23 @@ function PropertyPicker({ b, onPatch, apiQ }) {
           {list.map((p) => {
             const pid = p.externalId || p.id;
             const on = selected.has(pid);
-            const unavailable = p.status !== 'active';
+            // Sperret for utsending: utleid, tomt skall (ingen bilder/areal/soverom),
+            // duplikat, eller helt uten bilder. Samme regel som forsiden — et
+            // boligkort uten bilde og uten info skader mer enn det hjelper.
+            const noImages = !(Array.isArray(p.images) && p.images.length);
+            const blocked = p.status !== 'active' || p.incomplete || p.duplicate || noImages;
+            const reason = p.status !== 'active' ? 'Utleid' : (p.duplicate ? 'Duplikat' : (p.incomplete ? 'Mangler data' : (noImages ? 'Ingen bilder' : '')));
             return (
-              <button key={pid} onClick={() => toggle(p)} disabled={!on && unavailable} data-testid={`nl-prop-${pid}`}
-                className={`w-full flex items-center gap-2.5 px-2.5 py-2 text-left transition-colors ${on ? 'bg-[#faf5ff]' : 'hover:bg-[#fbfaf9]'} ${!on && unavailable ? 'opacity-45 cursor-not-allowed' : ''}`}>
+              <button key={pid} onClick={() => toggle(p)} disabled={!on && blocked} data-testid={`nl-prop-${pid}`}
+                title={blocked ? `Kan ikke sendes: ${reason.toLowerCase()}` : ''}
+                className={`w-full flex items-center gap-2.5 px-2.5 py-2 text-left transition-colors ${on ? 'bg-[#faf5ff]' : 'hover:bg-[#fbfaf9]'} ${!on && blocked ? 'opacity-45 cursor-not-allowed' : ''}`}>
                 {(Array.isArray(p.images) && p.images[0])
                   ? <img src={mediaSrc(p.images[0])} alt="" className="w-[42px] h-[32px] rounded-md object-cover shrink-0" />
                   : <div className="w-[42px] h-[32px] rounded-md bg-[#f4f2ef] flex items-center justify-center shrink-0"><Home size={13} className="text-[#cbc4ba]" /></div>}
                 <div className="flex-1 min-w-0">
                   <p className="text-[12px] font-semibold text-[#111] truncate">{p.title || 'Bolig'}</p>
                   <p className="text-[10.5px] text-[#999] truncate">
-                    {[p.area || p.city, p.sqm ? `${p.sqm} m²` : null, p.status === 'rented' ? 'Utleid' : 'Ledig'].filter(Boolean).join(' · ')}
+                    {[p.district || p.area || p.city, p.sqm ? `${p.sqm} m²` : null, reason || 'Ledig'].filter(Boolean).join(' · ')}
                   </p>
                 </div>
                 <span className={`w-[18px] h-[18px] rounded-md border flex items-center justify-center shrink-0 ${on ? 'bg-[#0a0a0a] border-[#0a0a0a] text-white' : 'border-[#ddd] text-transparent'}`}>
