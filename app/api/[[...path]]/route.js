@@ -31,10 +31,11 @@ import {
   listAllQuestions as ddListAllQuestions, answerQuestion as ddAnswerQuestion, deleteQuestion as ddDeleteQuestion,
 } from '@/lib/investor-room';
 import { computeKpiDashboard, getKpiSettings, setKpiSettings } from '@/lib/kpi-dashboard';
+import { computeRevenueModel } from '@/lib/revenue-model';
 import { computeLlmUsageDashboard, getModelOverrides, setModelOverride, logImageUsage, AVAILABLE_MODELS, PLATFORM_MODELS, DEFAULT_MODEL, USD_TO_NOK } from '@/lib/llm-usage';
 import { logExtUsage, summarizeExtUsage, getPlatformUsage } from '@/lib/ext-usage';
 import { getFinanceSettings, setFinanceSettings, listCosts, upsertCost, deleteCost, listContracts, upsertContract, deleteContract, listEvents, upsertEvent, deleteEvent, computeResultat, computeLikviditet, computeFinanceOverview, computeTrends, captureSnapshot, computeInvestorMetrics, computeForecast, computeBoardPack, computeCustomers, computePlatformCustomers } from '@/lib/finance';
-import { syncContractsFromPlatform, syncCustomersFromPlatform } from '@/lib/contracts-sync';
+import { syncContractsFromPlatform, syncCustomersFromPlatform, maybeAutoSyncFinance, getFinanceSyncMeta } from '@/lib/contracts-sync';
 import { ga4MpConfigured, sendGa4Purchase } from '@/lib/ga4-mp';
 import { buildRecommendations } from '@/lib/ads-recommendations';
 import { generateRsaCopy, generateMetaCopy } from '@/lib/ads-ai';
@@ -338,6 +339,29 @@ function digiHomeTarget() {
     key: process.env.DIGIHOME_API_KEY_TEST || process.env.DIGIHOME_API_KEY || '',
     env: 'test',
   };
+}
+
+// Kontrakt-/kundesynk (økonomi) kan eksplisitt peke på prod-CRM via ?env=prod.
+// I produksjon er dette allerede standard; i preview trengs det for å kunne
+// verifisere inntektsmodellen mot ekte kontraktsdata. Kun admin-autentisert.
+function financeSyncTarget(request) {
+  let envOverride = '';
+  try { envOverride = String(new URL(request.url).searchParams.get('env') || '').toLowerCase(); } catch (_) {}
+  if (envOverride === 'prod') {
+    return {
+      url: normalizeCrmUrl(process.env.DIGIHOME_API_URL_PROD || 'https://app.digihome.no'),
+      key: process.env.DIGIHOME_API_KEY_PROD || process.env.DIGIHOME_API_KEY || '',
+      env: 'prod',
+    };
+  }
+  if (envOverride === 'test') {
+    return {
+      url: normalizeCrmUrl(process.env.DIGIHOME_API_URL_TEST || process.env.DIGIHOME_API_URL || ''),
+      key: process.env.DIGIHOME_API_KEY_TEST || process.env.DIGIHOME_API_KEY || '',
+      env: 'test',
+    };
+  }
+  return digiHomeTarget();
 }
 
 // Videresend lead til DigiHome-plattformen (offentlige endepunkter, X-API-Key som id-kort).
@@ -5612,9 +5636,44 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
       const from = (sp.get('from') || '').trim();
       const to = (sp.get('to') || '').trim();
       const days = Number(sp.get('days')) || 30;
+      // Auto-synk kontrakter + kunder fra plattformen før beregning, så
+      // inntektsmodellen (Faktisk/Kontrahert/Potensial MRR og LTV) alltid
+      // bygger på ferske kontraktsdata. Throttlet til hvert 15. minutt.
+      try {
+        await maybeAutoSyncFinance(db, digiHomeTarget, {
+          wait: true,
+          force: ['1', 'true'].includes(String(sp.get('sync') || '').toLowerCase()),
+        });
+      } catch (e) { /* aldri blokker dashbordet */ }
       try {
         const data = await computeKpiDashboard(db, from && to ? { from, to } : { days });
-        return cors(NextResponse.json(data));
+        let financeSync = null;
+        try {
+          const fm = await getFinanceSyncMeta(db);
+          financeSync = fm ? { lastSyncAt: fm.lastSyncAt || null, lastAttemptAt: fm.lastAttemptAt || null, lastError: fm.lastError || null, counts: fm.lastCounts || null } : null;
+        } catch (e2) { financeSync = null; }
+        return cors(NextResponse.json({ ...data, financeSync }));
+      } catch (e) {
+        return cors(NextResponse.json({ ok: false, error: e.message }, { status: 200 }));
+      }
+    }
+
+    // Detaljert inntektsmodell: FAKTISK / KONTRAHERT / POTENSIAL honorar per
+    // kontrakt, aktiveringsrate, tid til første leieinntekt og LTV-sensitivitet.
+    if (route === '/admin/revenue-model' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const sp = new URL(request.url).searchParams;
+      try {
+        await maybeAutoSyncFinance(db, digiHomeTarget, { wait: true, force: ['1', 'true'].includes(String(sp.get('sync') || '').toLowerCase()) });
+      } catch (e) {}
+      try {
+        const settings = await getKpiSettings(db);
+        const lifetimeMonths = sp.get('lifetimeMonths') ? Number(sp.get('lifetimeMonths')) : (settings.lifetimeMonths || 36);
+        const grossMarginPct = sp.get('grossMarginPct') ? Number(sp.get('grossMarginPct')) : settings.grossMarginPct;
+        const leaseActualRule = sp.get('rule') || settings.leaseActualRule;
+        const model = await computeRevenueModel(db, { lifetimeMonths, grossMarginPct, leaseActualRule });
+        const fm = await getFinanceSyncMeta(db);
+        return cors(NextResponse.json({ ...model, settings, financeSync: fm ? { lastSyncAt: fm.lastSyncAt || null, lastError: fm.lastError || null, counts: fm.lastCounts || null } : null }));
       } catch (e) {
         return cors(NextResponse.json({ ok: false, error: e.message }, { status: 200 }));
       }
@@ -5752,13 +5811,13 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
           return cors(NextResponse.json(await computeCustomers(db)));
         }
         if (sub === '/sync-contracts' && method === 'POST') {
-          const target = digiHomeTarget();
+          const target = financeSyncTarget(request);
           const result = await syncContractsFromPlatform(db, { target: target.url, key: target.key });
           return cors(NextResponse.json({ ...result, platformEnv: target.env, platformUrl: target.url }));
         }
         // Synk KUNDER fra plattformens /api/customers/export (LIVE hos plattformteamet).
         if (sub === '/sync-customers' && method === 'POST') {
-          const target = digiHomeTarget();
+          const target = financeSyncTarget(request);
           const result = await syncCustomersFromPlatform(db, { target: target.url, key: target.key });
           return cors(NextResponse.json({ ...result, platformEnv: target.env, platformUrl: target.url }));
         }

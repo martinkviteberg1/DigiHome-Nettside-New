@@ -575,11 +575,19 @@ function KpiDashboardInner({ apiKey }) {
           {/* Run-rate (kun løpende LTV) + sekundær-strip */}
           <Reveal delay={320}>
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4 mt-3 sm:mt-4">
-              {data?.platform ? (
+              {data?.revenueModel?.hasData && data.revenueModel.mrr?.actual > 0 ? (
+                <div data-testid="kpi-platform-mrr" className="rounded-2xl p-5 sm:p-6 relative overflow-hidden border border-emerald-100 shadow-[0_1px_2px_rgba(22,20,29,0.04)]" style={{ background: 'linear-gradient(135deg, #ecfdf5 0%, #ffffff 62%)' }}>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.09em] flex items-center gap-1.5" style={{ color: EMER_TEXT }}><Zap className="w-3.5 h-3.5" /> MRR — faktisk honorar</p>
+                  <p className="mt-3 text-[#16141d] font-bold text-[40px] leading-none tracking-[-0.03em] tabular-nums"><CountNumber value={data.revenueModel.mrr.actual} format={fmtKrFull} /> <span className="text-[#a5a3af] text-[18px] font-semibold">kr/mnd</span></p>
+                  <p className="mt-2 text-[12.5px] text-[#8b8894] tabular-nums">ARR {fmtKrFull(data.revenueModel.tiers.actual.arr)} kr · {fmtNum(data.revenueModel.customers.earning)} kunde{data.revenueModel.customers.earning === 1 ? '' : 'r'} med inngått leiekontrakt</p>
+                  <p className="mt-1 text-[11.5px] text-[#a5a3af] tabular-nums">+ {fmtKrFull(data.revenueModel.mrr.contracted)} kr kontrahert · + {fmtKrFull(data.revenueModel.mrr.potential)} kr potensial</p>
+                </div>
+              ) : data?.platform ? (
                 <div data-testid="kpi-platform-mrr" className="rounded-2xl p-5 sm:p-6 relative overflow-hidden border border-emerald-100 shadow-[0_1px_2px_rgba(22,20,29,0.04)]" style={{ background: 'linear-gradient(135deg, #ecfdf5 0%, #ffffff 62%)' }}>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.09em] flex items-center gap-1.5" style={{ color: EMER_TEXT }}><Zap className="w-3.5 h-3.5" /> MRR — live fra plattformen</p>
                   <p className="mt-3 text-[#16141d] font-bold text-[40px] leading-none tracking-[-0.03em] tabular-nums"><CountNumber value={data.platform.mrr} format={fmtKrFull} /> <span className="text-[#a5a3af] text-[18px] font-semibold">kr/mnd</span></p>
-                  <p className="mt-2 text-[12.5px] text-[#8b8894] tabular-nums">ARR-run-rate {fmtKrFull(data.platform.arr)} kr · {fmtNum(data.platform.customers)} aktive kunder · {data.platform.source === 'platform' ? 'synket fra driftsplattformen' : 'beregnet fra kontrakter'}</p>
+                  <p className="mt-2 text-[12.5px] text-[#8b8894] tabular-nums">ARR-run-rate {fmtKrFull(data.platform.arr)} kr · {fmtNum(data.platform.customers)} aktive kunder{data.platform.customersWithLease != null ? ` · ${fmtNum(data.platform.customersWithLease)} m/ leiekontrakt` : ''}</p>
+                  <p className="mt-1 text-[11.5px] text-amber-600">Inkluderer estimert leie på enheter uten inngått leiekontrakt.</p>
                 </div>
               ) : data?.runRate ? (
                 <div className="rounded-2xl p-5 sm:p-6 relative overflow-hidden border border-emerald-100 shadow-[0_1px_2px_rgba(22,20,29,0.04)]" style={{ background: 'linear-gradient(135deg, #ecfdf5 0%, #ffffff 62%)' }}>
@@ -599,6 +607,13 @@ function KpiDashboardInner({ apiKey }) {
               </div>
             </div>
           </Reveal>
+
+          {/* Inntektskvalitet — faktisk vs kontrahert vs potensial honorar */}
+          {data?.revenueModel?.hasData && (
+            <Reveal delay={350}>
+              <RevenueQualityPanel rm={data.revenueModel} ltvBasis={hero.ltv?.basis} onOpenSettings={() => setSettingsOpen(true)} />
+            </Reveal>
+          )}
 
           {/* Pipeline + kanaler + etterspørsel */}
           <Reveal delay={380}>
@@ -629,15 +644,101 @@ function KpiDashboardInner({ apiKey }) {
         </div>
       )}
 
-      {settingsOpen && <LtvSettingsModal apiKey={apiKey} current={data?.ltvModel} onClose={() => setSettingsOpen(false)} onSaved={() => { setSettingsOpen(false); load(); }} />}
+      {settingsOpen && <LtvSettingsModal apiKey={apiKey} current={data?.ltvModel} revenueModel={data?.revenueModel} onClose={() => setSettingsOpen(false)} onSaved={() => { setSettingsOpen(false); load(); }} />}
     </div>
   );
 }
 
-function LtvSettingsModal({ apiKey, current, onClose, onSaved }) {
-  const [mode, setMode] = useState(current?.ltvMode || 'contract');
+// ---------------------------------------------------------------------------
+// INNTEKTSKVALITET — skiller faktisk honorar fra estimert.
+// Honoraret utløses av en FAKTISK inngått leiekontrakt, ikke av en signert
+// huseierkontrakt med estimert leie. Dette panelet gjør forskjellen synlig.
+// ---------------------------------------------------------------------------
+function RevenueQualityPanel({ rm, ltvBasis, onOpenSettings }) {
+  const tiers = [
+    { k: 'actual', l: 'Faktisk', d: 'Signert og startet leiekontrakt', mrr: rm.mrr.actual, n: rm.tiers.actual.count, color: EMER, text: EMER_TEXT, bg: 'bg-emerald-50' },
+    { k: 'contracted', l: 'Kontrahert', d: 'Leiekontrakt inngått, ikke startet', mrr: rm.mrr.contracted, n: rm.tiers.contracted.count, color: '#f59e0b', text: '#b45309', bg: 'bg-amber-50' },
+    { k: 'potential', l: 'Potensial', d: 'Forvaltningsavtale, estimert leie', mrr: rm.mrr.potential, n: rm.tiers.potential.count, color: '#a5a3af', text: '#67646f', bg: 'bg-black/[0.03]' },
+  ];
+  const total = Math.max(1, rm.mrr.totalPipeline);
+  return (
+    <div className="mt-3 sm:mt-4 rounded-2xl bg-white border border-black/[0.06] shadow-[0_1px_2px_rgba(22,20,29,0.04)] p-5 sm:p-6" data-testid="kpi-revenue-quality">
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.09em] text-[#8b8894] flex items-center gap-1.5"><Wallet className="w-3.5 h-3.5 text-[#c4c2cc]" /> Inntektskvalitet</p>
+          <p className="mt-1 text-[12.5px] text-[#8b8894]">Honoraret utløses av <b>faktisk inngått leiekontrakt</b> — ikke av estimert leie i huseierkontrakten.</p>
+        </div>
+        <div className="flex items-center gap-2">
+          {rm.revenueQualityPct != null && (
+            <span className="rounded-full px-2.5 py-1 text-[11.5px] font-bold tabular-nums bg-emerald-50" style={{ color: EMER_TEXT }} data-testid="revq-pct">
+              {rm.revenueQualityPct} % faktisk
+            </span>
+          )}
+          <button onClick={onOpenSettings} className="rounded-full px-2.5 py-1 text-[11.5px] font-semibold text-[#67646f] bg-black/[0.04] hover:bg-black/[0.08] transition-colors flex items-center gap-1">
+            <Sliders className="w-3 h-3" /> Forutsetninger
+          </button>
+        </div>
+      </div>
+
+      {/* Stablet søyle */}
+      <div className="mt-5 h-3 w-full rounded-full overflow-hidden flex bg-black/[0.04]">
+        {tiers.map((t) => (
+          <div key={t.k} style={{ width: `${(t.mrr / total) * 100}%`, background: t.color }} title={`${t.l}: ${fmtKrFull(t.mrr)} kr/mnd`} />
+        ))}
+      </div>
+
+      <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {tiers.map((t) => (
+          <div key={t.k} className={`rounded-xl px-4 py-3.5 ${t.bg}`} data-testid={`revq-tier-${t.k}`}>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.08em]" style={{ color: t.text }}>{t.l}</p>
+            <p className="mt-1.5 text-[#16141d] font-bold text-[26px] leading-none tracking-[-0.03em] tabular-nums">{fmtKrFull(t.mrr)} <span className="text-[#a5a3af] text-[13px] font-semibold">kr/mnd</span></p>
+            <p className="mt-1.5 text-[11.5px] text-[#8b8894] tabular-nums">{fmtNum(t.n)} kontrakt{t.n === 1 ? '' : 'er'} · {t.d}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-5 pt-5 border-t border-black/[0.05] grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <MiniStat label="Aktiveringsrate" value={rm.customers.activationRatePct != null ? fmtNum(rm.customers.activationRatePct) : '—'} suffix="%"
+          sub={`${fmtNum(rm.customers.earning)} av ${fmtNum(rm.customers.management)} kunder har leieinntekt`} />
+        <MiniStat label="Venter på leiekontrakt" value={fmtNum(rm.customers.awaitingLease)}
+          sub="forvaltningsavtale uten leieinntekt" />
+        <MiniStat label="Tid til leieinntekt" value={rm.timing.daysToFirstLease != null ? fmtNum(rm.timing.daysToFirstLease) : '—'} suffix="d"
+          sub={rm.timing.sampleSize > 0 ? `median · ${fmtNum(rm.timing.sampleSize)} kunder` : 'ikke nok data'} />
+        <MiniStat label="MRR i faresonen" value={fmtKrFull(rm.mrr.atRisk90d)} suffix="kr"
+          sub="leiekontrakter som utløper innen 90 d" />
+      </div>
+
+      <div className="mt-5 pt-5 border-t border-black/[0.05] flex flex-wrap items-center gap-x-6 gap-y-2 text-[12px] text-[#8b8894]">
+        <span>
+          <b className="text-[#16141d]">LTV {rm.ltv.value != null ? `${fmtKrFull(rm.ltv.value)} kr` : '—'}</b>
+          {' '}= {rm.ltv.monthlyFee != null ? `${fmtKrFull(rm.ltv.monthlyFee)} kr/mnd` : '—'} × {rm.lifetimeMonths} mnd
+          {rm.ltv.grossMarginPct < 100 ? ` × ${rm.ltv.grossMarginPct} % margin` : ' (omsetning)'}
+        </span>
+        {rm.ltv.contractedBasis?.value != null && (
+          <span className="tabular-nums" data-testid="revq-ltv-contracted">
+            Med kontraherte leiekontrakter: <b className="text-[#16141d]">{fmtKrFull(rm.ltv.contractedBasis.value)} kr</b> ({fmtKrFull(rm.ltv.contractedBasis.monthlyFee)} kr/mnd × {rm.lifetimeMonths} mnd, {fmtNum(rm.ltv.contractedBasis.customersWithLease)} kunder)
+          </span>
+        )}
+        {rm.ltv.sensitivity?.length > 0 && (
+          <span className="tabular-nums" data-testid="revq-sensitivity">
+            Sensitivitet: {rm.ltv.sensitivity.map((s) => `${s.months} mnd → ${fmtKrFull(s.ltv)} kr`).join('  ·  ')}
+          </span>
+        )}
+        {ltvBasis && ltvBasis !== 'actual' && (
+          <span className="text-amber-600">LTV-modus er «{ltvBasis}» — bytt til «Faktisk honorar» for å bruke tallene over.</span>
+        )}
+        <span className="text-[#c4c2cc]">Regel: {rm.ruleLabel}</span>
+      </div>
+    </div>
+  );
+}
+
+function LtvSettingsModal({ apiKey, current, revenueModel, onClose, onSaved }) {
+  const [mode, setMode] = useState(current?.ltvMode || 'actual');
   const [monthlyFee, setMonthlyFee] = useState(current?.monthlyFee ?? '');
-  const [lifetimeMonths, setLifetimeMonths] = useState(current?.lifetimeMonths ?? '');
+  const [lifetimeMonths, setLifetimeMonths] = useState(current?.lifetimeMonths ?? 36);
+  const [grossMarginPct, setGrossMarginPct] = useState(current?.grossMarginPct ?? '');
+  const [leaseRule, setLeaseRule] = useState(current?.leaseActualRule || 'signed_started');
   const [northStar, setNorthStar] = useState(current?.northStar || 'ltv_cac');
   const [saving, setSaving] = useState(false);
 
@@ -646,47 +747,90 @@ function LtvSettingsModal({ apiKey, current, onClose, onSaved }) {
     try {
       await fetch(`/api/admin/kpi/settings?key=${encodeURIComponent(apiKey)}`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ltvMode: mode, monthlyFee: monthlyFee === '' ? null : Number(monthlyFee), lifetimeMonths: lifetimeMonths === '' ? null : Number(lifetimeMonths), northStar }),
+        body: JSON.stringify({
+          ltvMode: mode,
+          monthlyFee: monthlyFee === '' ? null : Number(monthlyFee),
+          lifetimeMonths: lifetimeMonths === '' ? null : Number(lifetimeMonths),
+          grossMarginPct: grossMarginPct === '' ? null : Number(grossMarginPct),
+          leaseActualRule: leaseRule,
+          northStar,
+        }),
       });
       onSaved();
     } catch (e) { setSaving(false); }
   };
-  const preview = mode === 'recurring' && Number(monthlyFee) > 0 && Number(lifetimeMonths) > 0 ? Number(monthlyFee) * Number(lifetimeMonths) : null;
+  const marginFrac = Number(grossMarginPct) > 0 ? Math.min(100, Number(grossMarginPct)) / 100 : 1;
+  const actualFee = revenueModel?.customers?.feePerEarningCustomer || 0;
+  const preview = mode === 'actual'
+    ? (actualFee > 0 && Number(lifetimeMonths) > 0 ? Math.round(actualFee * Number(lifetimeMonths) * marginFrac) : null)
+    : (mode === 'recurring' && Number(monthlyFee) > 0 && Number(lifetimeMonths) > 0 ? Math.round(Number(monthlyFee) * Number(lifetimeMonths) * marginFrac) : null);
+
+  const MODES = [
+    { k: 'actual', l: 'Faktisk honorar', d: 'Fra inngåtte leiekontrakter' },
+    { k: 'recurring', l: 'Løpende (manuelt)', d: 'Honorar × levetid' },
+    { k: 'contract', l: 'Kontraktsverdi', d: 'Snitt registrert verdi' },
+  ];
 
   return (
-    <div className="fixed inset-0 z-[110] flex items-center justify-center px-4">
+    <div className="fixed inset-0 z-[110] flex items-center justify-center px-4 py-8 overflow-y-auto">
       <div className="absolute inset-0 bg-black/35 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-md rounded-2xl bg-white border border-black/[0.07] p-6 shadow-[0_24px_80px_rgba(22,20,29,0.25)]">
+      <div className="relative w-full max-w-lg rounded-2xl bg-white border border-black/[0.07] p-6 shadow-[0_24px_80px_rgba(22,20,29,0.25)] my-auto">
         <div className="flex items-center justify-between">
           <h3 className="text-[#16141d] text-[17px] font-bold tracking-[-0.01em]">LTV-modell & North Star</h3>
           <button onClick={onClose} className="text-[#a5a3af] hover:text-[#16141d]"><X className="w-5 h-5" /></button>
         </div>
-        <p className="text-[#8b8894] text-[12.5px] mt-1.5">Ingen tall fabrikkeres — løpende LTV krever dine tall.</p>
+        <p className="text-[#8b8894] text-[12.5px] mt-1.5">Honoraret utløses av en <b>faktisk inngått leiekontrakt</b> — ikke av estimert leie i en huseierkontrakt. Ingen tall fabrikkeres.</p>
         <div className="mt-5 space-y-3">
-          <div className="grid grid-cols-2 gap-2">
-            <button onClick={() => setMode('contract')} className={`rounded-xl px-3 py-3 text-left border transition-colors ${mode === 'contract' ? 'border-[#7c5cf0] bg-[#7c5cf0]/[0.06]' : 'border-black/[0.08] hover:border-black/[0.18]'}`}>
-              <p className="text-[#16141d] text-[13px] font-semibold flex items-center gap-1.5">{mode === 'contract' && <Check className="w-3.5 h-3.5" style={{ color: VIOLET }} />}Kontraktsverdi</p>
-              <p className="text-[#8b8894] text-[11.5px] mt-0.5">Faktisk verdi fra data</p>
-            </button>
-            <button onClick={() => setMode('recurring')} className={`rounded-xl px-3 py-3 text-left border transition-colors ${mode === 'recurring' ? 'border-[#7c5cf0] bg-[#7c5cf0]/[0.06]' : 'border-black/[0.08] hover:border-black/[0.18]'}`}>
-              <p className="text-[#16141d] text-[13px] font-semibold flex items-center gap-1.5">{mode === 'recurring' && <Check className="w-3.5 h-3.5" style={{ color: VIOLET }} />}Løpende LTV</p>
-              <p className="text-[#8b8894] text-[11.5px] mt-0.5">Honorar × levetid</p>
-            </button>
+          <div className="grid grid-cols-3 gap-2">
+            {MODES.map((mo) => (
+              <button key={mo.k} onClick={() => setMode(mo.k)} data-testid={`ltv-mode-${mo.k}`}
+                className={`rounded-xl px-3 py-3 text-left border transition-colors ${mode === mo.k ? 'border-[#7c5cf0] bg-[#7c5cf0]/[0.06]' : 'border-black/[0.08] hover:border-black/[0.18]'}`}>
+                <p className="text-[#16141d] text-[12.5px] font-semibold flex items-center gap-1">{mode === mo.k && <Check className="w-3.5 h-3.5 shrink-0" style={{ color: VIOLET }} />}{mo.l}</p>
+                <p className="text-[#8b8894] text-[11px] mt-0.5 leading-tight">{mo.d}</p>
+              </button>
+            ))}
           </div>
-          {mode === 'recurring' && (
-            <div className="grid grid-cols-2 gap-3 pt-1">
-              <div>
-                <label className="text-[#67646f] text-[11px] font-semibold uppercase tracking-[0.08em]">Månedshonorar (kr)</label>
-                <input type="number" value={monthlyFee} onChange={(e) => setMonthlyFee(e.target.value)} placeholder="f.eks. 1500" className="mt-1.5 w-full h-11 px-3 rounded-lg bg-white border border-black/[0.12] text-[#16141d] placeholder:text-[#c4c2cc] outline-none focus:border-[#7c5cf0] text-[14px] tabular-nums" />
-              </div>
-              <div>
-                <label className="text-[#67646f] text-[11px] font-semibold uppercase tracking-[0.08em]">Levetid (mnd)</label>
-                <input type="number" value={lifetimeMonths} onChange={(e) => setLifetimeMonths(e.target.value)} placeholder="f.eks. 36" className="mt-1.5 w-full h-11 px-3 rounded-lg bg-white border border-black/[0.12] text-[#16141d] placeholder:text-[#c4c2cc] outline-none focus:border-[#7c5cf0] text-[14px] tabular-nums" />
-              </div>
-              {preview != null && <p className="col-span-2 text-[12.5px] rounded-lg px-3 py-2 flex items-center gap-2 bg-emerald-50" style={{ color: EMER_TEXT }}><Zap className="w-3.5 h-3.5" /> Beregnet LTV: <b>{fmtKrFull(preview)} kr</b> · ARR-run-rate aktiveres</p>}
+
+          {mode === 'actual' && (
+            <div className="rounded-xl bg-[#7c5cf0]/[0.05] px-3.5 py-3 text-[12.5px] text-[#514e5a]">
+              Månedshonorar hentes automatisk fra plattformens leiekontrakter:{' '}
+              <b>{actualFee > 0 ? `${fmtKrFull(actualFee)} kr/mnd` : 'ingen inngåtte leiekontrakter ennå'}</b>
+              {revenueModel?.customers?.earning > 0 && <> · snitt over {fmtNum(revenueModel.customers.earning)} kunde{revenueModel.customers.earning === 1 ? '' : 'r'} med leieinntekt</>}
             </div>
           )}
-          <div className="pt-2">
+
+          {mode === 'recurring' && (
+            <div>
+              <label className="text-[#67646f] text-[11px] font-semibold uppercase tracking-[0.08em]">Månedshonorar (kr)</label>
+              <input type="number" value={monthlyFee} onChange={(e) => setMonthlyFee(e.target.value)} placeholder="f.eks. 1500" className="mt-1.5 w-full h-11 px-3 rounded-lg bg-white border border-black/[0.12] text-[#16141d] placeholder:text-[#c4c2cc] outline-none focus:border-[#7c5cf0] text-[14px] tabular-nums" />
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-[#67646f] text-[11px] font-semibold uppercase tracking-[0.08em]">Kundelevetid (mnd)</label>
+              <input type="number" data-testid="ltv-lifetime" value={lifetimeMonths} onChange={(e) => setLifetimeMonths(e.target.value)} placeholder="36" className="mt-1.5 w-full h-11 px-3 rounded-lg bg-white border border-black/[0.12] text-[#16141d] placeholder:text-[#c4c2cc] outline-none focus:border-[#7c5cf0] text-[14px] tabular-nums" />
+              <p className="text-[#a5a3af] text-[11px] mt-1">Anbefalt start: 36 mnd. Juster når du har churn-data.</p>
+            </div>
+            <div>
+              <label className="text-[#67646f] text-[11px] font-semibold uppercase tracking-[0.08em]">Bruttomargin (%)</label>
+              <input type="number" data-testid="ltv-margin" value={grossMarginPct} onChange={(e) => setGrossMarginPct(e.target.value)} placeholder="tom = ren omsetning" className="mt-1.5 w-full h-11 px-3 rounded-lg bg-white border border-black/[0.12] text-[#16141d] placeholder:text-[#c4c2cc] outline-none focus:border-[#7c5cf0] text-[14px] tabular-nums" />
+              <p className="text-[#a5a3af] text-[11px] mt-1">La stå tom for LTV som omsetning.</p>
+            </div>
+          </div>
+
+          <div>
+            <label className="text-[#67646f] text-[11px] font-semibold uppercase tracking-[0.08em]">Når er en leiekontrakt faktisk inntekt?</label>
+            <select value={leaseRule} onChange={(e) => setLeaseRule(e.target.value)} data-testid="ltv-lease-rule" className="mt-1.5 w-full h-11 px-3 rounded-lg bg-white border border-black/[0.12] text-[#16141d] outline-none focus:border-[#7c5cf0] text-[14px]">
+              <option value="signed_started">Signert og startet (anbefalt)</option>
+              <option value="signed">Signert, også fremtidig start</option>
+              <option value="pending">Alle leiekontrakter, også ikke ferdig signerte</option>
+            </select>
+          </div>
+
+          {preview != null && <p className="text-[12.5px] rounded-lg px-3 py-2 flex items-center gap-2 bg-emerald-50" style={{ color: EMER_TEXT }}><Zap className="w-3.5 h-3.5" /> Beregnet LTV: <b>{fmtKrFull(preview)} kr</b>{Number(grossMarginPct) > 0 ? ` (bruttofortjeneste, ${grossMarginPct} % margin)` : ' (omsetning)'}</p>}
+
+          <div className="pt-1">
             <label className="text-[#67646f] text-[11px] font-semibold uppercase tracking-[0.08em]">North Star (størst øverst)</label>
             <select value={northStar} onChange={(e) => setNorthStar(e.target.value)} className="mt-1.5 w-full h-11 px-3 rounded-lg bg-white border border-black/[0.12] text-[#16141d] outline-none focus:border-[#7c5cf0] text-[14px]">
               <option value="ltv_cac">LTV : CAC (anbefalt)</option>
@@ -699,7 +843,7 @@ function LtvSettingsModal({ apiKey, current, onClose, onSaved }) {
         </div>
         <div className="mt-6 flex gap-2">
           <button onClick={onClose} className="flex-1 h-11 rounded-xl bg-black/[0.05] text-[#514e5a] font-semibold text-[14px] hover:bg-black/[0.08] transition-colors">Avbryt</button>
-          <button onClick={save} disabled={saving} className="flex-1 h-11 rounded-xl font-semibold text-[14px] text-white grid place-items-center disabled:opacity-60 bg-[#16141d] hover:bg-[#2a2733] transition-colors">{saving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Lagre'}</button>
+          <button onClick={save} disabled={saving} data-testid="ltv-save" className="flex-1 h-11 rounded-xl font-semibold text-[14px] text-white grid place-items-center disabled:opacity-60 bg-[#16141d] hover:bg-[#2a2733] transition-colors">{saving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Lagre'}</button>
         </div>
       </div>
     </div>
