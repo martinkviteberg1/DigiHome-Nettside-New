@@ -45,7 +45,7 @@ import { sendWeeklyReport, buildReportData, renderReportHtml } from '@/lib/ads-r
 import { buildMarketingMetrics } from '@/lib/marketing-metrics';
 import { emailConfigured, reportRecipients, sendHtmlEmail } from '@/lib/email';
 import { NEWSLETTER_COLL, OPTOUT_COLL, NL_EVENTS_COLL, renderNewsletterHtml, resolveAudience, audienceCounts, sanitizeBlocks, hasContent, buildUnsubUrl, verifyUnsubToken, verifyInterestToken, propertyInterestToken, verifyPropertyInterestToken, slugifyCampaign, normEmail as nlNormEmail, recipientId, TEMPLATES, templateBlocks, THEMES, TRACKING_GIF, applyMergeTags } from '@/lib/newsletter';
-import { syncPropertiesFromPlatform, maybeAutoSyncProperties, listAdminProperties, listPublicProperties, setPropertyVisibility, getPropertiesSyncMeta } from '@/lib/properties-sync';
+import { syncPropertiesFromPlatform, maybeAutoSyncProperties, listAdminProperties, listPublicProperties, setPropertyVisibility, getPropertiesSyncMeta, backfillPropertyDistricts } from '@/lib/properties-sync';
 import { buildLeadReceipt, buildLeadAdminNotification } from '@/lib/lead-emails';
 import { fireLeadEmails, sendReEngagedNotification } from '@/lib/lead-emails';
 import { buildAlerts } from '@/lib/ads-monitor';
@@ -344,7 +344,8 @@ function digiHomeTarget() {
 
 // Kontrakt-/kundesynk (økonomi) kan eksplisitt peke på prod-CRM via ?env=prod.
 // I produksjon er dette allerede standard; i preview trengs det for å kunne
-// verifisere inntektsmodellen mot ekte kontraktsdata. Kun admin-autentisert.
+// verifisere inntektsmodellen og boligdata mot ekte plattformdata.
+// Kun admin-autentisert. (Brukes også av boligsynk og avstemming.)
 function financeSyncTarget(request) {
   let envOverride = '';
   try { envOverride = String(new URL(request.url).searchParams.get('env') || '').toLowerCase(); } catch (_) {}
@@ -458,9 +459,12 @@ async function resolveDraftProperties(dbx, blocks) {
   const cleanBlocks = sanitizeBlocks(blocks);
   const ids = [...new Set(cleanBlocks.filter((b) => b.type === 'properties').flatMap((b) => (b.items || []).map((p) => p.pid)).filter(Boolean))];
   if (!ids.length) return { blocks: cleanBlocks, unavailable: [] };
+  // Etterfyll bydel først — ellers hydrerer vi inn tomme district-felt og alt
+  // havner under «Andre områder» i utsendelsen.
+  try { await backfillPropertyDistricts(dbx); } catch (_) {}
   const liveRows = await dbx.collection('platform_properties').find(
     { stale: { $ne: true }, $or: [{ externalId: { $in: ids } }, { id: { $in: ids } }] },
-    { projection: { _id: 0, id: 1, externalId: 1, title: 1, area: 1, city: 1, type: 1, bedrooms: 1, sqm: 1, images: 1, status: 1, monthlyRentBand: 1, availableFrom: 1 } }
+    { projection: { _id: 0, id: 1, externalId: 1, title: 1, area: 1, city: 1, district: 1, type: 1, bedrooms: 1, sqm: 1, images: 1, status: 1, monthlyRentBand: 1, availableFrom: 1 } }
   ).toArray();
   const byId = new Map();
   liveRows.forEach((p) => { byId.set(p.externalId, p); byId.set(p.id, p); });
@@ -478,7 +482,9 @@ async function resolveDraftProperties(dbx, blocks) {
         image: (Array.isArray(live.images) && live.images[0]) || snap.image || '',
         meta: [live.area || live.city, live.bedrooms ? `${live.bedrooms} soverom` : null, live.sqm ? `${live.sqm} m²` : null, live.availableFrom ? `Ledig ${live.availableFrom}` : null].filter(Boolean).join(' · '),
         band: live.monthlyRentBand || '',
-        district: live.district || live.area || live.city || snap.district || 'Andre områder',
+        // Bydel, ALDRI gatenavn: «Sandslimarka» er ikke et byområde. Mangler
+        // bydel helt, grupperes boligen under «Andre områder».
+        district: live.district || snap.district || 'Andre områder',
         status: live.status,
       };
     }).filter(Boolean);
@@ -488,6 +494,34 @@ async function resolveDraftProperties(dbx, blocks) {
 }
 
 const SS_UNIT_TYPE = { leilighet: 'Leilighet', enebolig: 'Enebolig', rekkehus: 'Rekkehus', tomannsbolig: 'Tomannsbolig', hybel: 'Hybel', naeringsbygg: 'Næringsbygg', annet: 'Annet' };
+
+// Oppfrisker bydel på boligkort i et lagret utkast. Utkast laget før bydels-
+// utledningen har tom bydel på kortene, så ALT havnet under «Andre områder» —
+// også i editoren. Vi fikser det på lesetidspunktet i stedet for å kreve at
+// redaktøren plukker boligene på nytt. Endrer ikke det lagrede utkastet;
+// neste lagring persisterer den korrekte bydelen.
+async function hydrateBlockDistricts(dbx, blocks) {
+  if (!Array.isArray(blocks) || !blocks.some((b) => b?.type === 'properties')) return blocks;
+  try { await backfillPropertyDistricts(dbx); } catch (_) {}
+  const ids = [...new Set(blocks.filter((b) => b.type === 'properties').flatMap((b) => (b.items || []).map((p) => p.pid)).filter(Boolean))];
+  if (!ids.length) return blocks;
+  try {
+    const rows = await dbx.collection('platform_properties').find(
+      { $or: [{ externalId: { $in: ids } }, { id: { $in: ids } }] },
+      { projection: { _id: 0, id: 1, externalId: 1, district: 1 } },
+    ).toArray();
+    const byId = new Map();
+    rows.forEach((p) => { byId.set(p.externalId, p); if (p.id) byId.set(p.id, p); });
+    return blocks.map((b) => (b.type !== 'properties' ? b : {
+      ...b,
+      items: (b.items || []).map((it) => {
+        const live = byId.get(it.pid);
+        if (!live) return it;
+        return { ...it, district: live.district || 'Andre områder' };
+      }),
+    }));
+  } catch (_) { return blocks; }
+}
 async function provisionSelfService(lead, request) {
   const target = digiHomeTarget();
   if (!target.url) return { ok: false, error: 'Plattform-URL mangler' };
@@ -4801,6 +4835,9 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
       const id = (new URL(request.url).searchParams.get('id') || '').toString();
       const c = await db.collection(NEWSLETTER_COLL).findOne({ id }, { projection: { _id: 0 } });
       if (!c) return cors(NextResponse.json({ ok: false, error: 'Fant ikke kampanjen' }, { status: 404 }));
+      // Oppfrisk bydel på boligkortene, slik at editoren grupperer riktig også
+      // for utkast som ble laget før bydelsutledningen fantes.
+      if (c.status !== 'sent') { try { c.blocks = await hydrateBlockDistricts(db, c.blocks); } catch (_) {} }
       let clicksByUrl = [];
       let timeline = [];
       let hourly = [];
@@ -5273,7 +5310,31 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
         tenant = await db.collection('imported_leads').find({ email: emailRe, lead_type: 'leietaker', deleted: { $ne: true } }).sort({ createdAt: -1 }).limit(1).next();
         coll = 'imported_leads';
       }
-      if (!tenant?.id) return cors(NextResponse.json({ ok: false, error: 'Fant ikke leietakerprofilen din' }, { status: 404 }));
+      if (!tenant?.id) {
+        // BLINDVEI FIKSET: mottakere som står i nyhetsbrevlista uten å ha en
+        // leietakerprofil (kontakt importert direkte, eller profil arkivert)
+        // fikk «Fant ikke leietakerprofilen din» og interessen gikk tapt.
+        // En bekreftet interesse er for verdifull til å kastes — vi oppretter
+        // profilen fra nyhetsbrevkontakten i stedet. Lenken er HMAC-signert,
+        // så e-posten er alt verifisert.
+        const contact = await findNlContact(db, email);
+        const now = new Date().toISOString();
+        tenant = {
+          id: uuidv4(),
+          email,
+          name: (contact?.name || '').slice(0, 120),
+          phone: (contact?.phone || '').slice(0, 32),
+          lead_type: 'leietaker',
+          status: 'ny',
+          source: 'nyhetsbrev-boliginteresse',
+          createdAt: now,
+          updatedAt: now,
+          property_interests: [],
+          attribution: { source: 'newsletter', medium: 'email', campaign: campaignId || 'ledige-boliger' },
+        };
+        await db.collection('tenant_leads').insertOne({ ...tenant });
+        coll = 'tenant_leads';
+      }
 
       const at = new Date().toISOString();
       const propertyId = property.externalId || property.id;
@@ -5572,15 +5633,21 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
     // Admin: liste over alle synkede boliger + synk-metadata
     if (route === '/admin/properties' && method === 'GET') {
       if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      // Etterfyll bydel før listing — grupperingen i nyhetsbrevet er avhengig av
+      // den, og plattformen sender den ikke. Idempotent og rører ikke boliger
+      // som alt har bydel fra plattformen.
+      const districtFill = await backfillPropertyDistricts(db, { force: new URL(request.url).searchParams.get('refreshDistricts') === '1' });
       const [properties, meta] = await Promise.all([listAdminProperties(db), getPropertiesSyncMeta(db)]);
       const visibleCount = properties.filter((p) => p.visible).length;
-      return cors(NextResponse.json({ ok: true, properties, total: properties.length, visibleCount, meta: meta ? { lastSyncAt: meta.lastSyncAt || null, lastError: meta.lastError || null, platformTotal: meta.platformTotal ?? null } : null }));
+      const districtCount = properties.filter((p) => p.district).length;
+      return cors(NextResponse.json({ ok: true, properties, total: properties.length, visibleCount, districtCount, districtFill, meta: meta ? { lastSyncAt: meta.lastSyncAt || null, lastError: meta.lastError || null, platformTotal: meta.platformTotal ?? null } : null }));
     }
 
-    // Admin: manuell synk fra plattformen
+    // Admin: manuell synk fra plattformen. ?env=prod henter ekte boliger (nødvendig
+    // i preview, der plattform-URLen ellers peker på appen selv og gir 404).
     if (route === '/admin/properties/sync' && method === 'POST') {
       if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
-      const target = digiHomeTarget();
+      const target = financeSyncTarget(request);
       const result = await syncPropertiesFromPlatform(db, { target: target.url, key: target.key });
       return cors(NextResponse.json({ ...result, platformEnv: target.env, platformUrl: target.url }, { status: result.ok ? 200 : 502 }));
     }

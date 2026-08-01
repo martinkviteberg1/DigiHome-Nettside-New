@@ -6,6 +6,7 @@
  */
 
 import React, { useEffect, useRef, useState } from 'react';
+import { sortDistrictGroups } from '@/lib/geo-bergen';
 import {
   Type, AlignLeft, Image as ImageIcon, MousePointerClick, LayoutPanelTop,
   List, Quote, UserRound, PenLine, Minus, MoveVertical, BadgePercent,
@@ -338,7 +339,7 @@ export function CanvasBlock({ b, i, total, accent, selected, onSelect, onPatch, 
         const threshold = Math.max(2, Number(b.groupingThreshold) || 6);
         const shouldGroup = b.grouping === 'always' || (b.grouping !== 'off' && items.length >= threshold);
         const groups = shouldGroup
-          ? Object.entries(items.reduce((acc, item) => { const key = item.district || 'Andre områder'; (acc[key] ||= []).push(item); return acc; }, {}))
+          ? sortDistrictGroups(Object.entries(items.reduce((acc, item) => { const key = item.district || 'Andre områder'; (acc[key] ||= []).push(item); return acc; }, {})))
           : [['', items]];
         return (
           <div>
@@ -639,6 +640,27 @@ function PropertyPicker({ b, onPatch, apiQ }) {
   };
   useEffect(() => { load(); }, []); // eslint-disable-line
 
+  // AUTO-HEAL: utkast laget før bydelsutledningen har tom bydel (eller gatenavn)
+  // lagret på boligkortene, så alt havnet under «Andre områder». Når lista er
+  // hentet, oppdaterer vi bydelen på boliger som alt er valgt — uten at
+  // redaktøren må plukke dem på nytt.
+  useEffect(() => {
+    if (!Array.isArray(list) || !list.length) return;
+    const cur = b.items || [];
+    if (!cur.length) return;
+    const byPid = new Map();
+    list.forEach((p) => { byPid.set(p.externalId || p.id, p); if (p.id) byPid.set(p.id, p); });
+    let changed = false;
+    const next = cur.map((it) => {
+      const live = byPid.get(it.pid);
+      if (!live) return it;
+      const d = live.district || 'Andre områder';
+      if (it.district !== d) { changed = true; return { ...it, district: d }; }
+      return it;
+    });
+    if (changed) onPatch({ items: next });
+  }, [list]); // eslint-disable-line
+
   const selected = new Set((b.items || []).map((x) => x.pid));
   const toItem = (p) => ({
     pid: p.externalId || p.id,
@@ -648,7 +670,9 @@ function PropertyPicker({ b, onPatch, apiQ }) {
     meta: [p.area || p.city, p.bedrooms ? `${p.bedrooms} soverom` : null, p.sqm ? `${p.sqm} m²` : null, p.availableFrom ? `Ledig ${p.availableFrom}` : null].filter(Boolean).join(' · '),
     band: p.monthlyRentBand || '',
     status: p.status || 'active',
-    district: p.district || p.area || p.city || 'Andre områder',
+    // Bydel fra API-et (utledet fra postnummer/poststed). ALDRI gatenavn —
+    // «Sandslimarka» er ikke et byområde og gir en ubrukelig gruppering.
+    district: p.district || 'Andre områder',
   });
   const toggle = (p) => {
     const cur = b.items || [];
@@ -841,7 +865,7 @@ export function BlockInspector({ b, onPatch, onDel, onUploadImage, uploadingId, 
               className={`h-8 rounded-lg text-[11.5px] font-semibold ${(b.grouping || 'auto') === key ? 'bg-[#0a0a0a] text-white' : 'bg-[#f4f2ef] text-[#777]'}`}>{label}</button>
           ))}
         </div>
-        <p className="text-[10.5px] text-[#aaa] mt-1.5">Auto grupperer ved 6 eller flere boliger. Feltet «district» fra appen brukes når det finnes; ellers brukes område.</p>
+        <p className="text-[10.5px] text-[#aaa] mt-1.5">Auto grupperer ved 6 eller flere boliger. Bydel utledes fra postnummer/poststed (Åsane, Fana, Ytrebygda, Bergen sentrum …). Boliger vi ikke kan plassere sikkert havner under «Andre områder» — aldri i feil bydel.</p>
         <label className={labelCls}>Lenketekst nederst</label>
         <input value={b.cta || ''} onChange={(e) => onPatch({ cta: e.target.value })} className={inputCls} placeholder="Se alle ledige boliger" />
         <label className={labelCls}>Lenke (URL)</label>
