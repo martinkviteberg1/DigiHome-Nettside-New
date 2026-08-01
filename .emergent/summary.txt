@@ -1,17 +1,472 @@
-<analysis>/ny2/bli-utleier/start#d298ff/bli-utleier/start/bli-leietaker/ny/ny2/bli-utleier/start#d298ffPropertyRegistryPicker/bli-leietaker/page.js//ny/ny2/app/app/api/[[...path]]/route.js/utleie/[bydel]/ny2image0056.webp#7c3aed#d298ff/bli-utleier/start/bli-utleier/startPropertyRegistryPicker
-/app/
-├── app/
-│   ├── api/[[...path]]/route.js (Monolithic API - ~7700 lines)
-│   ├── admin/
-│   ├── bli-utleier/start/page.js
-│   ├── bli-leietaker/page.js
-│   ├── ny/page.js (Experimental Concept A)
-│   ├── ny2/page.js (Experimental Concept B)
-├── components/
-│   ├── dh/
-│   │   ├── BliUtleierPage.tsx (Heavily modified this session)
-│   │   ├── BliLeietakerPage.tsx 
-│   │   ├── WizardShowcase.tsx
-│   ├── ny2/
-│   │   ├── Ny2Page.jsx 
-leads/app/components/ny2/Ny2Page.jsx/app/components/dh/BliUtleierPage.tsx/app/components/dh/WizardShowcase.tsx/app/test_result.md/app/app/api/[[...path]]/route.jsPOST /api/leadsGET /api/addressPOST /api/infotorg/lookup/app/memory/test_credentials.md/app/test_result.md/ny2#d298ffBliUtleierPage/app/memory/test_credentials.md/bli-utleier/startdeep_testing_frontend_nextjs/bli-leietaker/page.js</analysis>
+<analysis>original_problem_statement:  
+Brukeren ønsker å videreutvikle DigiHome som en konverteringssterk plattform for utleiere og leietakere, med hovedfokus på:
+- Verdensklasse, responsiv og minimalistisk onboarding for utleiere.
+- Bedre CRM-/plattform-synk, særlig for leietaker- og huseierleads.
+- Korrekt FINN-adresse-/boligoppslag.
+- Premium nyhetsbrev for ledige boliger med interessefangst.
+- SEO/AEO-, annonse- og landingssideoptimalisering.
+- Bedre selvforvaltningshandoff til plattformprosjektet.
+- Nåværende siste problem: LTV ser feil ut for en nylig signert kunde i produksjon.
+
+PRODUCT REQUIREMENTS:
+- Kommuniser på norsk bokmål.
+- Ikke endre produksjon direkte; endringer må gjøres i preview og brukeren må redeploye.
+- Ved produksjonsfeil skal agenten avklare miljø, lage og teste fix i preview, og forklare redeploy-behov.
+- Alle bugs skal verifiseres av testing agent før de markeres som løst.
+- Fullstendige passord må aldri sendes gjennom markedsføringsprosjektets API; håndteres i plattformens autentiseringssystem.
+- Høy konvertering har prioritet: få felt, ærlige løfter («svar innen 24 timer»), verifisert full adresse på paid landingssider og tydelig informasjon.
+- Ikke send nyhetsbrev eller kjør irreversible marketing-/annonseringsendringer uten eksplisitt avklaring.
+
+**User's preferred language**: Norsk bokmål. Neste agent skal kun svare på norsk bokmål.
+
+**what currently exists?**
+- Next.js 14/MongoDB-markedsplattform med monolittisk API-route.
+- Landlord onboarding  er kraftig modernisert:
+  - full adresse/FINN-kode-validering,
+  - premium, flaggbasert landskodevelger (Norge som standard),
+  - to tjenestepakker,
+  - selvforvaltning med handoff til plattform-app,
+  - forhåndsvisning av FINN-boligdata.
+- CRM-sync er herdet:
+  - krever reell  før lead markeres som levert,
+  - re-forward/arkiv/gjenoppretting er lagt til,
+  - sync deler leads, tenants og contacts.
+- Nyhetsbrevmodul kan bygge «Ledige boliger»-kampanjer med et vilkårlig antall boliger, områdesortering, personlig interesse-lenke og oppdatering av tenant lead-kort.
+- SEO/AEO P0/P1/P2 er gjennomført i preview:
+  - metodikkside,
+  - juridiske guideforbedringer/kilder,
+  - nye metadata,
+  - llms.txt-opprydding,
+  - legacy redirect,
+  - forbedret SEO/AEO-monitor.
+- Google Ads landingssider er oppdatert med mer ærlige løfter, strengere adressekrav, kompakt samtykke-banner og mer robust konverteringsflyt.
+- Nyeste uavklarte sak er LTV-avvik i produksjon.
+
+**Last working item**:
+- Last item agent was working: Brukeren rapporterte at LTV for en ny signert produksjonskunde virker feil. Agenten startet korrekt med å be om identifikasjon/reproduksjonsdetaljer via , men fikk ikke svar før konteksten endte.
+- Status: BLOCKED
+- Agent Testing Done: N
+- Which testing method agent to use?: Backend testing agent etter root-cause-fix, siden LTV beregnes via CRM-/analytics-data. Først lokal/preview-analyse med API/database mot relevant preview-data; produksjonsdata er ikke direkte tilgjengelig.
+- User Testing Done: N
+
+**All Pending/In progress Issue list**:
+
+Issue 1: Produksjons-LTV ser feil ut for en nylig signert kunde (P0)
+- Attempted fixes:
+  - Ingen teknisk fix ennå.
+  - Agenten ba brukeren spesifisere kunden/lead-ID, forventet LTV og faktisk vist verdi.
+- Next debug checklist:
+  - Avklar hvilken kunde det gjelder, og få skjermbilde/lead-ID/e-post eller anonymisert eksport.
+  - Bekreft om problemet er i plattformappen eller marketing-admin.
+  - Sammenlign , , status, service/pakke, kontraktsperiode og eventuelle LTV-felter i produksjonseksporten.
+  - Inspiser beregninger i , LTV/KPI-endepunktene i , og eventuelle CRM-pushback-/statuswebhooks.
+  - Sjekk at historiske/importerte/mirrored leads ikke blandes inn i live LTV.
+  - Implementer kun preview-fix; brukeren må redeploye.
+  - Oppdater  før testing agent kalles.
+- Why fix this issue and what will be achieved with the fix?
+  - Sikrer korrekt LTV, forecasting, CAC/ROAS og beslutningsgrunnlag for signerte kunder.
+- Status: BLOCKED
+- Is recurring issue?: N
+- Should Test frontend/backend/both after fix?: Backend, eventuelt frontend dersom LTV-visningen endres.
+- Blocked on other issue: Brukerens kundeidentifikasjon og forventet/faktisk LTV.
+
+Issue 2: Plattformens onboarding etter selvforvaltning-handoff (P1)
+- Attempted fixes:
+  - Marketing-prosjektet sender self-service handoff/portalredirect når plattformen returnerer gyldig .
+  - Meldinger er sendt til plattformagenten med spesifikasjon:
+    - nytt brukerpassord opprettes i appen,
+    - statusbasert onboarding med tre utleiespor,
+    - dynamisk neste handling.
+- Next debug checklist:
+  - Sjekk meldingsbroen for svar fra plattformagenten.
+  - Ikke implementer passordfelt i marketing-prosjektet.
+  - Når plattformagenten er ferdig, test marketing → platform handoff i korrekt miljø.
+- Why fix this issue and what will be achieved with the fix?
+  - Gir ny selvforvaltningskunde direkte, trygg og relevant inngang til Min side uten passord over usikker systemgrense.
+- Status: IN PROGRESS (eies primært av andre prosjekt)
+- Is recurring issue?: N
+- Should Test frontend/backend/both after fix?: Both, tverrprosjekt.
+- Blocked on other issue: Plattformagentens implementasjon/svar.
+
+Issue 3: SEO/AEO eksterne autoritetssignaler (P2)
+- Attempted fixes:
+  - Onsite SEO/AEO er forbedret og testet.
+  - AEO-monitor er utvidet til 27 spørsmål og får gruppert visning.
+- Next debug checklist:
+  - Brukeren må etablere/oppdatere Google Business Profile, innhente ekte anmeldelser, publisere dokumenterte caser og sikre relevante eksterne omtaler/lenker.
+  - Be om navngitte jurist-/skatteekspertkontrollører før de brukes som reviewer.
+  - Etter redeploy: be om indeksering av sentrale nye sider og kjøre ny AEO-måling.
+- Why fix this issue and what will be achieved with the fix?
+  - Løfter synlighet i AI-svar uten nettsøk, der ekstern omtale er viktigere enn mer internt innhold.
+- Status: NOT STARTED
+- Is recurring issue?: N
+- Should Test frontend/backend/both after fix?: NA / manuell SEO-AEO-monitorering.
+- Blocked on other issue: Ekstern virksomhets-/innholdsinnsats.
+
+**In progress Task List**:
+- Task 1: Diagnostisere og rette LTV-avvik for nylig signert produksjonskunde (P0).
+  - Where to resume: Vent på svar på aktiv -forespørsel fra siste brukerhenvendelse. Deretter les , analyser relevant kode og preview-data.
+  - What will be achieved with this?: Korrekt LTV i administrasjon/rapportering.
+  - Status: BLOCKED
+  - Should Test frontend/backend/both after fix?: Backend først.
+  - Blocked on something: Kundeidentifikasjon, forventet verdi og synlig faktisk verdi.
+
+- Task 2: Følge opp plattformagentens onboarding-/password-handoff-svar (P1).
+  - Where to resume: Les agent bridge-tråd for /portal onboarding.
+  - What will be achieved with this?: Sikker, statusbasert onboarding i app-prosjektet etter self-service.
+  - Status: IN PROGRESS
+  - Should Test frontend/backend/both after fix?: Both.
+  - Blocked on something: Andre prosjekt.
+
+**Upcoming and Future Tasks**
+- P1: Når LTV-feilen er løst, validere analytics/LTV mot et anonymisert produksjonsutdrag og sikre at signerte kunder, historiske/importerte/mirrored leads og testleads filtreres korrekt.
+- P1: Teste self-service handoff mot plattformens løsning etter at plattformagenten har implementert passordsteg og statusbasert portal-onboarding.
+- P1: Etter redeploy, be Google om indeksering av , Airbnb-siden og sammenligningsguiden; kjøre ny AEO-/SEO-audit.
+- P2: Lage dokumenterte, godkjente case-studier for Airbnb-/forvaltningsresultater.
+- P2: Oppdatere Google Business Profile og arbeide med anmeldelser, lokale partnersider og ekstern autoritet.
+- P2: Få navngitt faglig kontrollør for juridiske/skatteguider.
+- P3: Modulisere  (~8000 linjer).
+- P3: RBAC/invitasjoner til admin for eksterne markedsbyråer.
+- P4: Videreutvikle lokalt SEO-innhold med unike bydelsdata.
+
+**Completed work in this session**
+- CRM-forward hardening, re-forward, arkivering/gjenoppretting og sync-forbedringer (DONE).
+- FINN-kode og adressekvalitet i onboarding (DONE).
+- Premium landlord onboarding inklusive full adressekrav, moderne pakkevalg, responsiv layout og international telefonvelger (DONE).
+- Objektlagring av onboarding-bilde slik at det fungerer etter deploy (DONE).
+- Premium nyhetsbrev med ledige boliger, ubegrenset boligvalg, interessefangst og områdergruppering (DONE).
+- Property-interest-side og tenant lead-interessefelter (DONE).
+- Google Ads landingsside P0/P1-konverteringsforbedringer (DONE).
+- SEO/AEO onsite P0–P2: metodikkside, guider, metadata, structured data, llms.txt, sitemap og gamle URL-redirects (DONE).
+- AEO-monitor utvidet til 27 spørsmål og oppdatert adminvisning (DONE).
+
+- Recently completed:
+  - SEO/AEO onsite-fase, verifisert via backend testing agent.
+  - Flaggbasert landskodevelger på landlord onboarding, verifisert med screenshot.
+  - Self-service transition/redirect-fallback i marketing-prosjektet, verifisert med screenshot.
+
+**Earlier issues found/mentioned but not fixed**
+- Geonorge-adresseoppslag kan være ustabilt. Tidligere forslag var Google Maps/Infotorg, men dette var blokkert av prisklarlegging og er ikke en aktiv brukerprioritet nå.
+- Manglende UTM-parametere på eldre manuelle Meta-annonser er fortsatt ikke løst.
+- Eksterne AEO-signaler (anmeldelser, medieomtale, backlinks, ekspertkontrollører) krever brukerens forretningsinnsats.
+- Plattformens statusbaserte onboarding/passordsteg er ikke implementert i dette prosjektet; annet prosjekt eier dette.
+
+**Known issue recurrence from previous fork**
+- Issue recurrence in previous fork: CRM-tenant mismatch/Odin-Mussie og FINN-kode som adresse.
+- Recurrence count: Resolved.
+- Status: RESOLVED
+- Viktig: Ikke gjeninnfør gammel -logikk uten reell . Ikke tolk FINN-kode som gateadresse.
+
+**Code Architecture**
+
+
+**Key Technical Concepts**
+- Next.js 14 App Router, React, Tailwind, shadcn-style UI.
+- MongoDB with UUID identifiers.
+- Monolithic API route with  prefix.
+- First-party analytics/attribution (, leads, session/visitor IDs).
+- Google Ads native REST, Meta CAPI/Marketing API, Search Console.
+- SendGrid newsletter delivery.
+- Infotorg and Geonorge address/property enrichment.
+- Emergent-managed object storage through .
+- Two-way CRM bridge with external /platform project.
+- SEO technical audit + Search Console + AEO monitor.
+- Production deployment is separate; no direct production code/database access.
+
+**key DB schema**
+- :
+  - uid=0(root) gid=0(root) groups=0(root), , , , , , , , , 
+  - , , , , 
+  - , , , , 
+  - owner leads must be filtered with the relevant owner query; contacts are separated.
+- :
+  - tenant lead data plus  array, .
+- :
+  - historical/platform-synced records, , status/data from CRM.
+- :
+  - first-party analytics events, , timestamps, funnel metadata.
+- , , optout/event collections:
+  - campaign blocks, audience/recipient maps and tracking.
+- :
+  - synced platform property data, uid=0(root) gid=0(root) groups=0(root), , status, images, area/city, etc.
+-  collections:
+  - SEO rank/AEO/audit runs and configuration.
+
+**changes in tech stack**
+- No material stack migration.
+- Added/use continued of Emergent object storage for deploy-safe public images.
+- No database migration.
+
+**All files of reference**
+Created:
+-  — methodology page documenting claims/estimates.
+-  — legacy route compatibility; effective redirect ultimately uses middleware/config.
+-  — property-interest landing page.
+-  — interest confirmation UI.
+-  — legacy  redirect.
+-  — rewritten AEO entity/facts content.
+
+Major updated files:
+-  — landlord onboarding, FINN, phone country selector, self-service success/handoff UX.
+-  — CRM hardening, newsletter/property interest, admin sync, SEO endpoints.
+-  — lead segmentation/analytics filters; likely key LTV reference.
+-  — CRM sync cohorts and lead typing.
+- , ,  — owner/contact/tenant segmentation and CRM actions.
+- 
+- 
+- 
+-  — SEO guide content, sources, metadata, FAQ.
+-  — guide reviewer/source/schema display.
+- , ,  — factual claim presentation/method links.
+- , , , 
+- ,  — expanded AEO monitoring.
+- , , , ,  — Ads landing-page conversion fixes.
+-  and API media route usage — deploy-safe image flow.
+
+**Areas that need refactoring**
+-  is very large and fragile; many incremental edits increase syntax/regression risk. Split into route groups:
+  - CRM/leads,
+  - newsletters,
+  - SEO,
+  - ads,
+  - properties,
+  - admin/auth.
+-  was edited repeatedly and briefly had syntax errors during the phone/success work; it currently linted and screenshot-tested, but should be decomposed into:
+  - address step,
+  - service selection,
+  - contact/phone,
+  - success/handoff components.
+-  has existing lint warnings about nested components during render; not blocking but should be refactored.
+- Several frontend components retain historical empty catch lint patterns. Latest targeted lint checks for active files passed, but avoid unrelated cleanup during LTV bug work.
+
+**key api endpoints**
+-  — owner lead creation and CRM forwarding/self-service provisioning.
+-  — address autocomplete/detail.
+-  — FINN property enrichment.
+-  — property registry lookup.
+-  — segmented leads/contacts/tenants.
+-  — retry pending forwarding.
+-  — soft archive/restore.
+-  — CRM import sync.
+-  — SEO/AEO monitoring configuration.
+-  — monitoring operation with throttling.
+-  — SEO/AEO overview.
+-  — Search Console URL inspection.
+-  — Ads status/performance.
+- Newsletter endpoints under .
+- 
+- 
+- 
+- 
+
+**Critical Info for New Agent**
+- Never expose or relay a plaintext user password through this marketing app/API. Platform app must own password set/reset/auth.
+- Production is now deployed separately. You cannot touch production database/code directly; make preview changes then instruct redeploy.
+- User may reference screenshots from platform project. Confirm which project/environment before changing anything.
+- The current production LTV bug requires data from the user because preview DB is not production truth.
+-  must be read and updated before invoking a testing agent. Do not edit its Testing Protocol section.
+- Backend changes require  before claiming a bug fix. User’s latest report has an explicit mandatory testing-agent reminder.
+- Do not use curl per environment instruction; use supported scripts/API tooling or testing agent.
+- The user likes agents to “think for themselves,” but discussions should still make technical tradeoffs clear.
+- Use  for production platform target. Do not place preview URLs in protected/custom production configuration.
+-  preview-routing proposal was blocked by deployment environment restrictions. Do not bypass this with protected  edits.
+
+**documents and test reports created in this job**
+-  — must remain the canonical agent/testing communication file; many entries appended.
+- Backend test files were reportedly created by testing agents, including:
+  - 
+  - 
+======================================================================
+FINN CODE/ADDRESS DATA QUALITY FIX - BACKEND TESTING
+======================================================================
+
+🎯 Testing fix for production bug:
+   - Lead email showed Address=468898413 (FINN code)
+   - Fake defaults: 60 m², 2 bedrooms, leilighet
+
+🔒 Safety rules:
+   - NO POST to /api/leads or /api/tenants
+   - NO email sending or CAPI
+   - NO DB modifications
+   - Max a few GET requests to FINN-preview
+
+
+📊 DB Baseline: leads=24, imported_leads=44
+
+======================================================================
+TEST 1: GET /api/finn-preview with FINN code 468898413
+======================================================================
+🔍 GET https://bli-utleier-redesign.preview.emergentagent.com/api/finn-preview?url=https%3A%2F%2Fwww.finn.no%2F468898413
+Status: 200
+Response keys: ['ok', 'finnUrl', 'finnCode', 'title', 'image', 'description', 'kind', 'propertyType', 'propertyTypeRaw', 'bedrooms', 'sqm', 'rent', 'matrikkel', 'address', 'postalCode', 'city', 'addressHidden']
+✅ ok:true ✓
+✅ finnCode='468898413' ✓
+📋 Property details:
+   propertyType: 'leilighet'
+   sqm: '42'
+   bedrooms: '1'
+   postalCode: '5254'
+   city: 'Sandsli'
+✅ propertyType='leilighet' ✓
+✅ sqm='42' ✓
+✅ bedrooms='1' ✓
+✅ postalCode='5254' ✓
+✅ city='Sandsli' ✓
+📍 Address handling:
+   address: 'Sandslihovden 36, 5254 Sandsli'
+   addressHidden: False
+✅ address is NOT the FINN code ✓
+✅ address is NOT the ad title ✓
+✅ address is real street address: 'Sandslihovden 36, 5254 Sandsli' ✓
+✅ addressHidden is consistent ✓
+✅ TEST 1 PASSED: finn-preview returns correct data without fake defaults
+
+======================================================================
+TEST 2: Cached finn-preview returns identical data
+======================================================================
+🔍 GET https://bli-utleier-redesign.preview.emergentagent.com/api/finn-preview?url=https%3A%2F%2Fwww.finn.no%2F468898413 (should be cached)
+✅ Cached response returns identical key data ✓
+✅ TEST 2 PASSED
+
+======================================================================
+TEST 3: Source/static inspection
+======================================================================
+✅ detectFinnReference function found ✓
+✅ detectFinnReference supports 8-10 digit FINN code ✓
+✅ detectFinnReference supports full FINN URL ✓
+✅ No hardcoded sqm:60 ✓
+✅ No hardcoded bedrooms:2 ✓
+✅ No hardcoded property_type:'leilighet' ✓
+✅ No hardcoded availability:today ✓
+✅ Payload uses resolved form.sqm/bedrooms/propertyType ✓
+✅ Backend handles finn_url field ✓
+✅ Backend can detect 8-10 digit FINN codes ✓
+✅ TEST 3 PASSED: Source inspection confirms fix implementation
+
+======================================================================
+TEST 5: buildLeadAdminNotification function (no email sending)
+======================================================================
+✅ buildLeadAdminNotification function found ✓
+✅ Email template has addressFinnCode defensive check ✓
+✅ Email template generates clickable FINN link ✓
+✅ Email template has addressDisplay logic ✓
+✅ Email template checks for FINN code pattern in address ✓
+✅ Email template has separate FINN-annonse row ✓
+✅ Email template checks for postal code duplication ✓
+
+📧 Email template verification:
+   ✓ FINN code (468898413) will NOT be shown as address
+   ✓ Clickable FINN link will be shown in separate row
+   ✓ Real address or empty address will be shown
+   ✓ No fake defaults (60 m², 2 bedrooms) will appear
+✅ TEST 5 PASSED: Email template correctly handles FINN codes
+
+======================================================================
+TEST 6: Auth and regression tests
+======================================================================
+🔍 GET /api/
+✅ GET /api/ returns 200 {ok:true} ✓
+
+🔍 GET /api/finn-preview with invalid URL
+✅ Invalid non-FINN URL returns 400 {ok:false} ✓
+
+🔍 GET /api/finn-preview without url parameter
+✅ Missing URL parameter returns 400 ✓
+
+✅ No 500 errors encountered in any test
+✅ TEST 6 PASSED: Auth and regression tests passed
+
+======================================================================
+DB INTEGRITY CHECK
+======================================================================
+✅ DB unchanged: leads=24, imported_leads=44
+
+======================================================================
+TEST SUMMARY
+======================================================================
+✅ PASS: Test 1: finn-preview 468898413
+✅ PASS: Test 2: Cached finn-preview
+✅ PASS: Test 3: Source inspection
+✅ PASS: Test 5: Email template
+✅ PASS: Test 6: Auth/regression
+✅ PASS: DB unchanged
+
+======================================================================
+TOTAL: 6/6 tests passed (100% success rate)
+======================================================================
+
+🎉 ALL TESTS PASSED!
+
+📝 PRODUCTION NOTE:
+   This fix requires a new redeploy to production.
+   Existing Alexandra email cannot be changed retroactively.
+   Future leads will show correct address and FINN link.
+  - 
+  - 
+  - Exact existence should be verified before relying on them.
+
+**Last 10 User Messages and any pending HUMAN messages**
+1. “Hei kan du sjekke.. på prod.. vi har signert en ny kunde, men virker som om ltv er litt rar / ikke riktig” — PENDING; active bug.
+2. “ok det er i orden... kanskje brukeren ... steg om å lage passord før de kommer inn på min side i appen?” — Discussed; sent to platform agent; no marketing-side password field.
+3. “kan vi legge til et felt for å lage passord ... skrive til agenten ...” — Decided platform app should own password step.
+4. “gjorde du endringer her?” — Answered that platform dashboard was not changed; sent spec to platform agent.
+5. “kan vi ikke ha flagg?” — Completed: flag country selector added and screenshot tested.
+6. “vil ha mer moderne ... landskodevelger” — Completed: redesigned premium selector.
+7. “gå for alle dine anbefalinger” on status-based onboarding/phone flow — Marketing-side handoff improvements completed; app implementation pending.
+8. “nå er prod oppe og går” — SEO production check completed and preview SEO improvements made/tested.
+9. “sjekk nå spesielt seo.. er vi optimalisert?” — Completed audit and SEO/AEO phase.
+10. “gå for alle dine anbefalinger.. ikke stopp før det er verdensklasse” — Expanded AEO monitor to 27 questions and prepared next recommendations.
+
+Pending human response:
+- The latest  requests detailed LTV information. Await customer name/lead ID/email (or anonymized production export), expected LTV, actual displayed LTV, and where it is shown.
+
+**Project Health Check:**
+Broken:
+- No confirmed current preview outage.
+- LTV discrepancy in production is uninvestigated and must be treated as P0.
+- Platform onboarding implementation is pending in the other project.
+Mocked:
+- No known intentional mocked production flows.
+- Preview analytics/CRM data can include test/QA data and must not be used as a production financial truth.
+
+**3rd Party Integrations**
+- Google Ads Native REST API v21 — requires user-provided Google Ads credentials.
+- Meta Marketing API / Conversions API — requires user-provided Meta credentials.
+- Google Search Console API — requires user-provided service account JSON.
+- SendGrid — requires user-provided SendGrid API key.
+- OpenAI — requires user-provided key.
+- Infotorg — requires user-provided key.
+- SerpApi — requires user-provided key.
+- Geonorge/Kartverket — public/no key.
+- Emergent managed object storage — uses Emergent LLM Key in platform environment.
+- DigiHome platform/CRM bridge — internal authenticated integration with user-managed URLs/keys.
+- No new third-party integrations should be implemented without  and user credential confirmation.
+
+**Testing status**
+- Testing agent used after significant changes: YES.
+- Latest verified areas:
+  - SEO/AEO content and technical routes.
+  - CRM forwarding hardening.
+  - FINN code/address correction.
+  - Tenant/owner/contact segmentation.
+  - Newsletter/property interest flow.
+  - Google Ads landing page P0/P1 contracts.
+  - Deploy-safe onboarding image.
+- Screenshot/manual tests used:
+  - Owner onboarding responsiveness, full address selection, service selection, phone country selection, self-service handoff transition.
+- Troubleshoot agent used after agent stuck in loop: No.
+- Test files created: See testing docs list above.
+- Known regressions:
+  - No confirmed functional regressions.
+  - LTV production issue remains unverified/unfixed.
+  - Existing frontend lint warnings in some admin components are pre-existing/nonblocking.
+
+**Credentials to test flow:**
+- Read .
+- Do not include credentials in user-facing messages or summaries.
+
+**What agent forgot to execute**
+- For LTV bug: nothing has been fixed or tested yet because the required customer-specific production evidence is pending.
+- The most recent agent must not claim LTV is fixed.
+- Frontend E2E testing was frequently not run because protocol requires explicit user permission; ask after backend verification if a UI change is made.
+</analysis>

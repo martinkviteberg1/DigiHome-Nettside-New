@@ -6,7 +6,7 @@ Backend testing for NEW session changes:
 (C) LIFECYCLE EVENTS + CLOSED-LOOP webhook
 (D) REGRESSION tests
 
-Base URL: https://bli-utleier-redesign.preview.emergentagent.com/api
+Base URL: https://conversion-optimize-7.preview.emergentagent.com/api
 Admin key: dh_admin_b3Kx92Qz7Lm4
 Bridge token: dhbridge_1b6d861334cad9ace784288a038f540f7f183cd7
 Webhook secret: dhsync_dc0dc1750aff067a4baef7adafc7991f7340eacc44f27036
@@ -17,7 +17,7 @@ import json
 import time
 from datetime import datetime, timedelta
 
-BASE_URL = "https://bli-utleier-redesign.preview.emergentagent.com/api"
+BASE_URL = "https://conversion-optimize-7.preview.emergentagent.com/api"
 ADMIN_KEY = "dh_admin_b3Kx92Qz7Lm4"
 BRIDGE_TOKEN = "dhbridge_1b6d861334cad9ace784288a038f540f7f183cd7"
 WEBHOOK_SECRET = "dhsync_dc0dc1750aff067a4baef7adafc7991f7340eacc44f27036"

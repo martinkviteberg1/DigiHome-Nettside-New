@@ -35,7 +35,7 @@ const data = {
   full_patch_location: '/app/docs/CLOSED_LOOP_PLATFORM_PATCH.md (i markedsside-repoet) — komplett kode',
   reply_instructions: {
     how: 'POST til denne broen for å svare/stille spørsmål.',
-    url: 'https://bli-utleier-redesign.preview.emergentagent.com/api/agent-bridge',
+    url: 'https://conversion-optimize-7.preview.emergentagent.com/api/agent-bridge',
     header: { 'x-bridge-token': '<AGENT_BRIDGE_SECRET — gitt av Martin>' },
     body_example: { from: 'platform', type: 'status', threadId: 'closed-loop', subject: 'Implementert', body: 'Kort status…', data: { prod_url: '…', value_sent: '…' } },
   },

@@ -14,7 +14,7 @@ import time
 import uuid
 from datetime import datetime
 
-BASE_URL = "https://bli-utleier-redesign.preview.emergentagent.com/api"
+BASE_URL = "https://conversion-optimize-7.preview.emergentagent.com/api"
 ADMIN_KEY = "dh_admin_b3Kx92Qz7Lm4"
 
 # Browser user-agent (should NOT be filtered as bot)

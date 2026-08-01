@@ -10,7 +10,7 @@ import time
 from urllib.parse import urlencode, quote
 
 # Base URL from .env
-BASE_URL = "https://bli-utleier-redesign.preview.emergentagent.com/api"
+BASE_URL = "https://conversion-optimize-7.preview.emergentagent.com/api"
 
 def test_finn_preview():
     """Test A: GET /api/finn-preview endpoint"""

@@ -6,7 +6,7 @@ Backend testing for 4 NEW tasks:
 3. Analytics Fix (KPI) (GET /api/admin/kpi - verify newTenantLeads, newLeads excludes tenants)
 4. Dedup Hardening /api/tenants (POST /api/tenants - merge on email/phone within 30 min)
 
-Base URL: https://bli-utleier-redesign.preview.emergentagent.com/api
+Base URL: https://conversion-optimize-7.preview.emergentagent.com/api
 Admin key: dh_admin_b3Kx92Qz7Lm4
 Timeout: 60s (investor/forecast/customers make live KPI/ads calls)
 """
@@ -16,7 +16,7 @@ import aiohttp
 import json
 from datetime import datetime
 
-BASE_URL = "https://bli-utleier-redesign.preview.emergentagent.com/api"
+BASE_URL = "https://conversion-optimize-7.preview.emergentagent.com/api"
 ADMIN_KEY = "dh_admin_b3Kx92Qz7Lm4"
 TIMEOUT = 60  # seconds
 

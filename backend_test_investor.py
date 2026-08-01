@@ -2,7 +2,7 @@
 """
 DigiHome Backend API Test Suite - Investor Deck Features
 Tests the NEW investor-interest and investor-deck PDF cache endpoints
-Base URL: https://bli-utleier-redesign.preview.emergentagent.com/api
+Base URL: https://conversion-optimize-7.preview.emergentagent.com/api
 """
 
 import requests
@@ -12,7 +12,7 @@ import os
 import io
 
 # Base URL from environment
-BASE_URL = os.getenv('NEXT_PUBLIC_BASE_URL', 'https://bli-utleier-redesign.preview.emergentagent.com')
+BASE_URL = os.getenv('NEXT_PUBLIC_BASE_URL', 'https://conversion-optimize-7.preview.emergentagent.com')
 API_BASE = f"{BASE_URL}/api"
 
 def print_test(test_num, description):

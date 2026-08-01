@@ -22,7 +22,7 @@ from io import BytesIO
 from PIL import Image, ImageDraw
 
 # Configuration from .env
-BASE_URL = "https://bli-utleier-redesign.preview.emergentagent.com/api"
+BASE_URL = "https://conversion-optimize-7.preview.emergentagent.com/api"
 ADMIN_KEY = "dh_admin_b3Kx92Qz7Lm4"
 MONGO_URL = "mongodb://localhost:27017"
 DB_NAME = "your_database_name"

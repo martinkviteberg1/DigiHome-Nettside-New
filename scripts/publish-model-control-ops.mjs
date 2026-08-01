@@ -4,7 +4,7 @@
 import { MongoClient } from 'mongodb';
 import { randomUUID } from 'crypto';
 
-const PREVIEW = 'https://bli-utleier-redesign.preview.emergentagent.com';
+const PREVIEW = 'https://conversion-optimize-7.preview.emergentagent.com';
 const PROD = 'https://digihome.no';
 
 const OPS_BODY = `KOMPLETT DRIFTSINSTRUKS — model-control (fjernstyring av LLM-modeller). Implementer nøyaktig dette:

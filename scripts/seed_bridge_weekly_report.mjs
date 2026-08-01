@@ -22,7 +22,7 @@ const body = [
   '',
   '=== FERDIG ENDEPUNKT (live i preview naa) ===',
   'GET /api/admin/marketing-metrics?days=7',
-  '  - Base preview: https://bli-utleier-redesign.preview.emergentagent.com',
+  '  - Base preview: https://conversion-optimize-7.preview.emergentagent.com',
   '  - Base prod:    (markeds-prod-domene, bekreftes ved deploy av Martin)',
   '  - Auth: send delt bro-token. Header "x-bridge-token: <AGENT_BRIDGE_SECRET>" ELLER query ?token=<AGENT_BRIDGE_SECRET>. (Samme token vi bruker i broen — Martin setter den identisk hos dere.)',
   '  - Param: days = 1..90 (default 7). Alternativt period=last_7d|last_30d|last_90d.',
@@ -48,7 +48,7 @@ const data = {
   marketing_metrics_endpoint: {
     method: 'GET',
     path: '/api/admin/marketing-metrics',
-    base_preview: 'https://bli-utleier-redesign.preview.emergentagent.com',
+    base_preview: 'https://conversion-optimize-7.preview.emergentagent.com',
     base_prod: 'TBD (markeds-prod-domene)',
     auth: { type: 'shared-bridge-token', header: 'x-bridge-token', query: 'token', env_var: 'AGENT_BRIDGE_SECRET' },
     params: { days: '1..90 (default 7)', period: 'last_7d|last_30d|last_90d (alt.)' },
@@ -66,7 +66,7 @@ const data = {
     schedule: 'hvilken ukedag/tid sender dere management-e-posten?',
     extra_fields: 'trenger dere lead-kanal-split eller daglig granularitet?',
   },
-  forward_status: { updated_targets: { preview: 'https://bli-utleier-redesign.preview.emergentagent.com/api/leads', prod: 'https://app.digihome.no/api/leads' }, pending_confirm: 'endpoint + X-API-Key (Q1-Q4)' },
+  forward_status: { updated_targets: { preview: 'https://conversion-optimize-7.preview.emergentagent.com/api/leads', prod: 'https://app.digihome.no/api/leads' }, pending_confirm: 'endpoint + X-API-Key (Q1-Q4)' },
 };
 
 const res = await fetch('http://localhost:3000/api/agent-bridge', {

@@ -9,7 +9,7 @@ import requests
 import re
 from bs4 import BeautifulSoup
 
-BASE_URL = "https://bli-utleier-redesign.preview.emergentagent.com"
+BASE_URL = "https://conversion-optimize-7.preview.emergentagent.com"
 
 def extract_visible_text(html):
     """Extract visible text from HTML, excluding script/style tags."""

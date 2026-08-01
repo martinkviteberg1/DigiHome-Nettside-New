@@ -11,7 +11,7 @@ import re
 from urllib.parse import urljoin
 
 # Configuration
-BASE_URL = "https://bli-utleier-redesign.preview.emergentagent.com"
+BASE_URL = "https://conversion-optimize-7.preview.emergentagent.com"
 ADMIN_KEY = "dh_admin_b3Kx92Qz7Lm4"
 TIMEOUT = 30
 
