@@ -123,3 +123,9 @@ console.log(`  Honorar per inntektsgivende kunde: ${feePer != null ? nok(feePer)
 console.log(`  LTV (${MONTHS} mnd, omsetning): ${feePer != null ? nok(feePer * MONTHS) + ' kr' : '—'}`);
 for (const m of [24, 36, 48]) console.log(`    ${m} mnd → ${feePer != null ? nok(feePer * m) + ' kr' : '—'}`);
 console.log('');
+
+// Framoverskuende: inkluderer kontraherte leiekontrakter
+const anyLease = new Set([...actual, ...contracted].map(oKey).filter(Boolean));
+const feeFwd = anyLease.size ? r2((mrrA + mrrC) / anyLease.size) : null;
+console.log(`  [framoverskuende] kunder med leiekontrakt (faktisk+kontrahert): ${anyLease.size}`);
+console.log(`  [framoverskuende] honorar per kunde: ${feeFwd != null ? nok(feeFwd) + ' kr/mnd' : '—'}  → LTV ${MONTHS} mnd = ${feeFwd != null ? nok(feeFwd * MONTHS) + ' kr' : '—'}`);
