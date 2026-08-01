@@ -55,6 +55,19 @@ const IMPORTED_CHANNELS = [
 ];
 const RANGES = [{ d: 7, l: '7d' }, { d: 30, l: '30d' }, { d: 90, l: '90d' }];
 
+// «for 3 min siden» — kompakt norsk relativtid for synk-status.
+function agoLabel(iso) {
+  if (!iso) return null;
+  const ms = Date.now() - Date.parse(iso);
+  if (!isFinite(ms)) return null;
+  const m = Math.round(ms / 60000);
+  if (m < 1) return 'nå';
+  if (m < 60) return `${m} min`;
+  const h = Math.round(m / 60);
+  if (h < 24) return `${h} t`;
+  return `${Math.round(h / 24)} d`;
+}
+
 export default function InnsiktDashboard({ apiKey, tab: propTab, onTabChange, onStats }) {
   const [data, setData] = useState({ leads: [], tenants: [], contacts: [] });
   const [analytics, setAnalytics] = useState(null);
@@ -91,6 +104,9 @@ export default function InnsiktDashboard({ apiKey, tab: propTab, onTabChange, on
   const [leadAdsSyncing, setLeadAdsSyncing] = useState(false);
   const [leadAdsMsg, setLeadAdsMsg] = useState('');
   const [dedupBusy, setDedupBusy] = useState(false);
+  // CRM-synk (plattform → markedsføring): status + «sist synket»-metadata.
+  const [crmSyncing, setCrmSyncing] = useState(false);
+  const [syncMeta, setSyncMeta] = useState(null);
   // Pipeline (kanban) eller liste — valget huskes per nettleser.
   const [leadView, setLeadView] = useState('pipeline');
   useEffect(() => {
@@ -112,6 +128,7 @@ export default function InnsiktDashboard({ apiKey, tab: propTab, onTabChange, on
       if (r1.status === 401) { setErr('Sesjonen er utløpt — logg inn på nytt.'); setLoading(false); return; }
       const j1 = await r1.json();
       setData({ leads: j1.leads || [], tenants: j1.tenants || [], contacts: j1.contacts || [] });
+      setSyncMeta(j1.syncMeta || null);
       if (r2.ok) { const j2 = await r2.json(); setAnalytics(j2); }
     } catch (e) { setErr('Kunne ikke laste data'); }
     finally { setLoading(false); }
@@ -135,6 +152,23 @@ export default function InnsiktDashboard({ apiKey, tab: propTab, onTabChange, on
       const json = await res.json();
       if (json.success) await load();
     } catch (e) {} finally { setForwarding(false); }
+  };
+
+  // Manuell CRM-synk (plattform → markedsføring). Kjøres også automatisk ved
+  // admin-last hvert 10. minutt — denne knappen er for «hent nå».
+  const doCrmSync = async () => {
+    setCrmSyncing(true); setLeadAdsMsg('');
+    try {
+      const res = await fetch(`/api/admin/imported-leads/sync?key=${encodeURIComponent(apiKey)}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}',
+      });
+      const j = await res.json();
+      if (j.ok) {
+        setLeadAdsMsg(`Synket: ${j.fetchedOwners || 0} utleiere · ${j.fetchedTenants || 0} leietakere · ${j.fetchedContacts || 0} kontakter — ${j.inserted || 0} nye`);
+        await load();
+      } else setErr(j.error || 'CRM-synk feilet');
+    } catch (e) { setErr('Nettverksfeil under CRM-synk'); }
+    finally { setCrmSyncing(false); setTimeout(() => setLeadAdsMsg(''), 9000); }
   };
 
   const doArchive = async (row) => {
@@ -468,6 +502,15 @@ export default function InnsiktDashboard({ apiKey, tab: propTab, onTabChange, on
             {/* Høyre side: søk, filter og handlinger */}
             <div className="flex flex-wrap items-center gap-2 ml-auto">
               {leadAdsMsg && <span className="text-[12px] text-[#8b5cf6] font-semibold dh-fade">{leadAdsMsg}</span>}
+              {/* CRM-synk-status: alltid synlig, klikkbar for «hent nå» */}
+              <button onClick={doCrmSync} disabled={crmSyncing} data-testid="leads-crm-sync"
+                title={syncMeta?.lastSyncAt
+                  ? `Sist synket fra plattformen: ${new Date(syncMeta.lastSyncAt).toLocaleString('nb-NO')}${syncMeta.tenantAudit ? ` · leietakere i CRM: ${syncMeta.tenantAudit.platform}, synlige her: ${syncMeta.tenantAudit.visible}` : ''}`
+                  : 'Hent utleiere, leietakere og kontakter fra plattformen'}
+                className={`h-9 px-3.5 rounded-full text-[12.5px] font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-50 ${syncMeta?.lastError ? 'bg-rose-50 text-rose-600 ring-1 ring-rose-100' : 'bg-white text-[#666] shadow-[0_2px_10px_rgba(0,0,0,0.04)] hover:text-[#0a0a0a]'}`}>
+                {crmSyncing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                <span className="hidden md:inline">{crmSyncing ? 'Synker CRM …' : syncMeta?.lastSyncAt ? `CRM ${agoLabel(syncMeta.lastSyncAt)}` : 'Synk CRM'}</span>
+              </button>
               {filtersActive && <span className="text-[12px] text-[#aaa] whitespace-nowrap hidden sm:inline">{filteredRows.length} av {rows.length}</span>}
 
               {/* Søk */}
@@ -535,6 +578,7 @@ export default function InnsiktDashboard({ apiKey, tab: propTab, onTabChange, on
                   <>
                     <div className="fixed inset-0 z-40" onClick={() => setActionsOpen(false)} />
                     <div className="absolute right-0 mt-2 w-64 z-50 bg-white rounded-2xl shadow-[0_16px_50px_rgba(0,0,0,0.14)] border border-black/[0.04] p-1.5 dh-pop origin-top-right">
+                      <MenuItem icon={crmSyncing ? Loader2 : RefreshCw} spin={crmSyncing} label="Synk fra plattformen" hint="Hent utleiere, leietakere og kontakter fra CRM" onClick={() => { setActionsOpen(false); doCrmSync(); }} />
                       <MenuItem icon={leadAdsSyncing ? Loader2 : RefreshCw} spin={leadAdsSyncing} label="Synk Lead Ads" hint="Hent fra Facebook / Instagram" onClick={() => { setActionsOpen(false); doLeadAdsSync(); }} />
                       <MenuItem icon={FileSpreadsheet} label="Eksporter CSV" hint="Åpnes i Excel · æøå" disabled={rows.length === 0} onClick={() => { setActionsOpen(false); exportCsv(); }} />
                       {leadSub === 'leads' && <MenuItem icon={Download} label="Google Ads-feed" hint="Offline-konverteringer (gclid)" onClick={() => { setActionsOpen(false); downloadAdsFeed(); }} />}
@@ -550,6 +594,19 @@ export default function InnsiktDashboard({ apiKey, tab: propTab, onTabChange, on
               </div>
             </div>
           </div>
+
+          {syncMeta?.lastError && (
+            <div className="mb-3.5 rounded-xl bg-rose-50 text-rose-600 px-4 py-3 text-[13px] flex items-start gap-2" data-testid="crm-sync-error">
+              <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+              <span>CRM-synk feilet{syncMeta.lastAttemptAt ? ` (${agoLabel(syncMeta.lastAttemptAt)} siden)` : ''}: {syncMeta.lastError}</span>
+            </div>
+          )}
+          {leadSub === 'tenants' && syncMeta?.tenantAudit && syncMeta.tenantAudit.missing > 0 && (
+            <div className="mb-3.5 rounded-xl bg-amber-50 text-amber-700 px-4 py-3 text-[13px] flex items-start gap-2" data-testid="tenant-sync-warning">
+              <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+              <span>Plattformen har <b>{syncMeta.tenantAudit.platform}</b> aktive leietaker-leads, men bare <b>{syncMeta.tenantAudit.visible}</b> vises her — {syncMeta.tenantAudit.missing} mangler. Trykk <b>Synk CRM</b> for å hente dem.</span>
+            </div>
+          )}
 
           {showArchived && (
             <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">

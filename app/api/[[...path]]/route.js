@@ -16,7 +16,7 @@ import { composioConfigured, createConnectLink, getConnectionStatus, runCampaign
 import { googleAdsNativeConfigured, listConversionActions, resolveOfflineConversionAction, uploadClickConversion, toConversionDateTime, listCampaignsDetailed, suggestGeoTargets, setCampaignStatus, updateCampaignBudget, createSearchCampaign, createCompetitorCampaign, getCampaignByName, runAdsWithMetrics, runSearchTerms, runKeywordMetrics, generateKeywordIdeas, gaqlSearch, setCampaignMaximizeClicks, listRsaAds, createRsaAd, setAdStatus, runAdDaily } from '@/lib/google-ads-native';
 import { runAdsWithMetricsViaComposio } from '@/lib/composio-google-ads';
 import { dataManagerConfigured, ingestOfflineConversion } from '@/lib/google-ads-datamanager';
-import { IMPORTED_COLL, importRecords, parseCsv, summarizeImported, syncFromPlatform, listImported, updateImportedOverride } from '@/lib/imported-leads';
+import { IMPORTED_COLL, importRecords, parseCsv, summarizeImported, syncFromPlatform, listImported, updateImportedOverride, getLeadSyncMeta, maybeAutoSyncLeads } from '@/lib/imported-leads';
 import { queueLeadPushback, flushLeadPushbacks, pushbackStats } from '@/lib/lead-pushback';
 import { renderFinnBanners, FINN_THEMES } from '@/lib/finn-banners';
 import {
@@ -2236,8 +2236,17 @@ async function handleRoute(request, { params }) {
     if (route === '/admin/leads' && method === 'GET') {
       if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       maybeReforward(db); // selvhelbredende catch-up ved admin-last (throttlet)
-      const leads = await db.collection('leads').find({ deleted: { $ne: true } }).sort({ createdAt: -1 }).limit(500).toArray();
-      const tenants = await db.collection('tenant_leads').find({ deleted: { $ne: true } }).sort({ createdAt: -1 }).limit(500).toArray();
+      // Automatisk CRM-synk: henter nye plattform-leads (eiere, leietakere,
+      // kontakter) uten at noen må trykke på en knapp. Throttlet til hvert
+      // 10. minutt og aldri blokkerende lenger enn 25 s.
+      const sp0 = new URL(request.url).searchParams;
+      const forceSync = ['1', 'true'].includes(String(sp0.get('sync') || '').toLowerCase());
+      let autoSync = null;
+      try {
+        autoSync = await maybeAutoSyncLeads(db, digiHomeTarget, { wait: true, force: forceSync, timeoutMs: forceSync ? 30000 : 9000 });
+      } catch (e) { autoSync = null; }
+      const leads = await db.collection('leads').find({ deleted: { $ne: true } }).sort({ createdAt: -1 }).limit(1000).toArray();
+      const tenants = await db.collection('tenant_leads').find({ deleted: { $ne: true } }).sort({ createdAt: -1 }).limit(1000).toArray();
       let importedMapped = [];
       try {
         const imported = await db.collection(IMPORTED_COLL).aggregate([
@@ -2248,7 +2257,7 @@ async function handleRoute(request, { params }) {
             eff_won_value: { $ifNull: ['$override.won_value', '$won_value'] },
           } },
           { $sort: { created_at: -1, imported_at: -1 } },
-          { $limit: 500 },
+          { $limit: 1500 },
           { $project: { _id: 0 } },
         ]).toArray();
         importedMapped = imported.map((l) => ({
@@ -2279,7 +2288,24 @@ async function handleRoute(request, { params }) {
       const contacts = [...leads.filter(isContactLead).map(clean), ...importedMapped.filter((x) => x.lead_type === 'kontakt')].sort(byDate);
       const mergedLeads = [...ownerLeads.map(clean), ...importedMapped.filter((x) => x.lead_type === 'huseier')].sort(byDate);
       const mergedTenants = [...tenants.map(clean), ...importedMapped.filter((x) => x.lead_type === 'leietaker')].sort(byDate);
-      return cors(NextResponse.json({ leads: mergedLeads, tenants: mergedTenants, contacts, importedCount: importedMapped.length }));
+      let syncMeta = null;
+      try {
+        const m = await getLeadSyncMeta(db);
+        syncMeta = m ? {
+          lastSyncAt: m.lastSyncAt || null,
+          lastAttemptAt: m.lastAttemptAt || null,
+          lastError: m.lastError || null,
+          lastTrigger: m.lastTrigger || null,
+          counts: m.lastCounts || null,
+          tenantAudit: m.tenantAudit || null,
+        } : null;
+      } catch (e) { syncMeta = null; }
+      return cors(NextResponse.json({
+        leads: mergedLeads, tenants: mergedTenants, contacts,
+        importedCount: importedMapped.length,
+        syncMeta,
+        autoSynced: autoSync ? { ok: !!autoSync.ok, inserted: autoSync.inserted || 0, fetchedTenants: autoSync.fetchedTenants || 0 } : null,
+      }));
     }
 
     if (route === '/admin/forward' && method === 'POST') {
@@ -3199,20 +3225,33 @@ async function handleRoute(request, { params }) {
     if (route === '/admin/imported-leads/sync' && method === 'POST') {
       if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
-      const target = digiHomeTarget();
+      const spSync = new URL(request.url).searchParams;
+      const dryRun = ['1', 'true'].includes(String(spSync.get('dryRun') ?? body.dryRun ?? '').toLowerCase());
+      // Miljø-override er KUN tillatt sammen med dryRun (diagnose fra preview
+      // mot prod-CRM uten å skrive noe i preview-databasen).
+      const envOverride = dryRun ? String(spSync.get('env') || body.env || '').toLowerCase() : '';
+      let target = digiHomeTarget();
+      if (envOverride === 'prod') {
+        target = { url: normalizeCrmUrl(process.env.DIGIHOME_API_URL_PROD || 'https://app.digihome.no'), key: process.env.DIGIHOME_API_KEY_PROD || process.env.DIGIHOME_API_KEY || '', env: 'prod' };
+      } else if (envOverride === 'test') {
+        target = { url: normalizeCrmUrl(process.env.DIGIHOME_API_URL_TEST || process.env.DIGIHOME_API_URL || ''), key: process.env.DIGIHOME_API_KEY_TEST || process.env.DIGIHOME_API_KEY || '', env: 'test' };
+      }
       const result = await syncFromPlatform(db, {
         target: target.url,
         secret: process.env.LEAD_SYNC_SECRET || target.key || '',
         since: (body.since || '').toString().slice(0, 30) || undefined,
         until: (body.until || '').toString().slice(0, 30) || undefined,
         channelHint: (body.channelHint || '').toString().slice(0, 80) || undefined,
+        trigger: dryRun ? 'dry-run' : 'manual',
+        dryRun,
       });
       const summary = await summarizeImported(db);
       // Toveis-synk: prøv å levere ventende status/verdi-endringer til CRM-et
       // (fungerer som retry-loop til plattformens skrive-endepunkt er live).
       let pushback = null;
-      try { pushback = await flushLeadPushbacks(db, { target: target.url, key: target.key }); } catch (e) { pushback = { ok: false, error: e.message }; }
-      return cors(NextResponse.json({ ...result, platformEnv: target.env, platformUrl: target.url, summary, pushback }, { status: result.ok ? 201 : 200 }));
+      if (dryRun) pushback = { skipped: 'dryRun' };
+      else { try { pushback = await flushLeadPushbacks(db, { target: target.url, key: target.key }); } catch (e) { pushback = { ok: false, error: e.message }; } }
+      return cors(NextResponse.json({ ...result, dryRun, platformEnv: target.env, platformUrl: target.url, summary, pushback }, { status: result.ok ? 201 : 200 }));
     }
 
     if (route === '/admin/imported-leads' && method === 'DELETE') {
