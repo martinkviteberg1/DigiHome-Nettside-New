@@ -31,7 +31,7 @@ import {
   listAllQuestions as ddListAllQuestions, answerQuestion as ddAnswerQuestion, deleteQuestion as ddDeleteQuestion,
 } from '@/lib/investor-room';
 import { computeKpiDashboard, getKpiSettings, setKpiSettings } from '@/lib/kpi-dashboard';
-import { computeRevenueModel } from '@/lib/revenue-model';
+import { computeRevenueModel, buildLeadFeeIndex, attachFeeTruth } from '@/lib/revenue-model';
 import { computeLlmUsageDashboard, getModelOverrides, setModelOverride, logImageUsage, AVAILABLE_MODELS, PLATFORM_MODELS, DEFAULT_MODEL, USD_TO_NOK } from '@/lib/llm-usage';
 import { logExtUsage, summarizeExtUsage, getPlatformUsage } from '@/lib/ext-usage';
 import { getFinanceSettings, setFinanceSettings, listCosts, upsertCost, deleteCost, listContracts, upsertContract, deleteContract, listEvents, upsertEvent, deleteEvent, computeResultat, computeLikviditet, computeFinanceOverview, computeTrends, captureSnapshot, computeInvestorMetrics, computeForecast, computeBoardPack, computeCustomers, computePlatformCustomers } from '@/lib/finance';
@@ -2317,6 +2317,13 @@ async function handleRoute(request, { params }) {
       const contacts = [...leads.filter(isContactLead).map(clean), ...importedMapped.filter((x) => x.lead_type === 'kontakt')].sort(byDate);
       const mergedLeads = [...ownerLeads.map(clean), ...importedMapped.filter((x) => x.lead_type === 'huseier')].sort(byDate);
       const mergedTenants = [...tenants.map(clean), ...importedMapped.filter((x) => x.lead_type === 'leietaker')].sort(byDate);
+      // Estimat vs. fasit: koble faktisk årshonorar (fra inngåtte leiekontrakter)
+      // på hvert huseier-lead, slik at `wonValue`-estimatet kan etterprøves.
+      let leadsWithFee = mergedLeads;
+      try {
+        const feeIndex = await buildLeadFeeIndex(db, await getKpiSettings(db));
+        leadsWithFee = mergedLeads.map((l) => attachFeeTruth(l, feeIndex));
+      } catch (e) { leadsWithFee = mergedLeads; }
       let syncMeta = null;
       try {
         const m = await getLeadSyncMeta(db);
@@ -2330,7 +2337,7 @@ async function handleRoute(request, { params }) {
         } : null;
       } catch (e) { syncMeta = null; }
       return cors(NextResponse.json({
-        leads: mergedLeads, tenants: mergedTenants, contacts,
+        leads: leadsWithFee, tenants: mergedTenants, contacts,
         importedCount: importedMapped.length,
         syncMeta,
         autoSynced: autoSync ? { ok: !!autoSync.ok, inserted: autoSync.inserted || 0, fetchedTenants: autoSync.fetchedTenants || 0 } : null,

@@ -83,7 +83,9 @@ export default function LeadDrawer({ apiKey, lead, type, onClose, onStatusChange
     return () => window.removeEventListener('keydown', h);
   }, [onClose]);
 
-  const d = detail || lead || {};
+  // `detail` overstyrer listeraden som før, men feeTruth beregnes i
+  // listeendepunktet — behold den så «estimat vs. fasit» ikke forsvinner.
+  const d = detail ? { ...detail, feeTruth: detail.feeTruth || lead?.feeTruth || null } : (lead || {});
   const att = d.attribution || {};
   const status = d.status || 'new';
   const wonStr = fmtMoney(d.wonValue, d.wonCurrency);
@@ -209,11 +211,38 @@ export default function LeadDrawer({ apiKey, lead, type, onClose, onStatusChange
               </div>
               {wonStr && (
                 <div className="text-right">
-                  <p className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-[#aaa]">Kontraktsverdi</p>
+                  <p className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-[#aaa]">Forventet årshonorar</p>
                   <p className="text-[18px] font-bold text-emerald-600 mt-1" style={{ fontFamily: 'var(--font-heading)' }}>{wonStr}</p>
+                  <p className="text-[10.5px] text-[#aaa]">estimert leie ved signering</p>
                 </div>
               )}
             </div>
+            {/* Estimat vs. fasit: honoraret utløses av faktisk inngått leiekontrakt */}
+            {d.feeTruth && (
+              <div className="mt-3 rounded-xl border border-black/[0.06] bg-[#fafafa] p-3.5" data-testid="lead-fee-truth">
+                <div className="flex items-start justify-between gap-3 flex-wrap">
+                  <div>
+                    <p className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-[#aaa]">Faktisk årshonorar</p>
+                    <p className={`text-[18px] font-bold mt-1 ${d.feeTruth.actualAnnualFee > 0 ? 'text-emerald-600' : 'text-[#bbb]'}`} style={{ fontFamily: 'var(--font-heading)' }}>
+                      {d.feeTruth.actualAnnualFee > 0 ? `${Math.round(d.feeTruth.actualAnnualFee).toLocaleString('nb-NO')} kr` : '— ingen leiekontrakt ennå'}
+                    </p>
+                    <p className="text-[10.5px] text-[#aaa]">
+                      {d.feeTruth.activeLeases > 0
+                        ? `${d.feeTruth.activeLeases} aktiv leiekontrakt${d.feeTruth.activeLeases === 1 ? '' : 'er'} · ${Math.round(d.feeTruth.monthlyFeeActual).toLocaleString('nb-NO')} kr/mnd`
+                        : (d.feeTruth.contractedAnnualFee > 0 ? `Kontrahert: ${Math.round(d.feeTruth.contractedAnnualFee).toLocaleString('nb-NO')} kr/år starter snart` : 'Boligen er ikke utleid ennå')}
+                    </p>
+                  </div>
+                  {d.feeTruth.deltaPct != null && (
+                    <span className={`rounded-full px-2.5 py-1 text-[11.5px] font-bold tabular-nums ${Math.abs(d.feeTruth.deltaPct) <= 15 ? 'bg-emerald-50 text-emerald-700' : (d.feeTruth.deltaPct < 0 ? 'bg-rose-50 text-rose-600' : 'bg-amber-50 text-amber-700')}`}>
+                      {d.feeTruth.deltaPct > 0 ? '+' : ''}{d.feeTruth.deltaPct} % vs. estimat
+                    </span>
+                  )}
+                </div>
+                {d.feeTruth.lifetimeFee > 0 && (
+                  <p className="text-[11px] text-[#999] mt-2">Opptjent honorar til nå: {Math.round(d.feeTruth.lifetimeFee).toLocaleString('nb-NO')} kr</p>
+                )}
+              </div>
+            )}
             {d.syncedFromPlatform && (
               <p className="text-[11.5px] text-[#999] mt-2.5 flex items-center gap-1.5"><ShieldCheck className="w-3.5 h-3.5 text-emerald-500" /> Utfall styres av plattformen{d.statusUpdatedAt ? ` · oppdatert ${fmtTime(d.statusUpdatedAt)}` : ''}</p>
             )}
