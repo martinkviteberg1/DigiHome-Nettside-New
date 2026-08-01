@@ -46,8 +46,8 @@ import { buildMarketingMetrics } from '@/lib/marketing-metrics';
 import { emailConfigured, reportRecipients, sendHtmlEmail } from '@/lib/email';
 import { NEWSLETTER_COLL, OPTOUT_COLL, NL_EVENTS_COLL, renderNewsletterHtml, resolveAudience, audienceCounts, sanitizeBlocks, hasContent, buildUnsubUrl, verifyUnsubToken, verifyInterestToken, propertyInterestToken, verifyPropertyInterestToken, slugifyCampaign, normEmail as nlNormEmail, recipientId, TEMPLATES, templateBlocks, THEMES, TRACKING_GIF, applyMergeTags } from '@/lib/newsletter';
 import { syncPropertiesFromPlatform, maybeAutoSyncProperties, listAdminProperties, listPublicProperties, setPropertyVisibility, getPropertiesSyncMeta, backfillPropertyDistricts, refreshPropertyQuality } from '@/lib/properties-sync';
-import { buildLeadReceipt, buildLeadAdminNotification } from '@/lib/lead-emails';
-import { fireLeadEmails, sendReEngagedNotification } from '@/lib/lead-emails';
+import { buildLeadReceipt, buildLeadAdminNotification, buildPropertyInterestNotification } from '@/lib/lead-emails';
+import { fireLeadEmails, sendReEngagedNotification, sendPropertyInterestNotification } from '@/lib/lead-emails';
 import { buildAlerts } from '@/lib/ads-monitor';
 import { fetchCompetitorGallery, serpApiConfigured } from '@/lib/serpapi';
 import { getSeoConfig, saveSeoConfig, runRankCheck, runAeoCheck, runTechAudit, getSeoOverview, RANK_COLL as SEO_RANK_COLL, AEO_COLL as SEO_AEO_COLL, TECH_COLL as SEO_TECH_COLL } from '@/lib/seo-monitor';
@@ -5314,6 +5314,7 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
       const emailRe = new RegExp(`^${email.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
       let tenant = await db.collection('tenant_leads').find({ email: emailRe, deleted: { $ne: true } }).sort({ createdAt: -1 }).limit(1).next();
       let coll = 'tenant_leads';
+      let tenantCreated = false;
       if (!tenant) {
         tenant = await db.collection('imported_leads').find({ email: emailRe, lead_type: 'leietaker', deleted: { $ne: true } }).sort({ createdAt: -1 }).limit(1).next();
         coll = 'imported_leads';
@@ -5342,6 +5343,7 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
         };
         await db.collection('tenant_leads').insertOne({ ...tenant });
         coll = 'tenant_leads';
+        tenantCreated = true;
       }
 
       const at = new Date().toISOString();
@@ -5381,7 +5383,34 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
           await db.collection(NEWSLETTER_COLL).updateOne({ id: campaignId }, { $inc: { propertyInterests: 1 } });
         } catch (e) { /* interesse på kortet er allerede lagret */ }
       }
-      return cors(NextResponse.json({ ok: true, tenantId: tenant.id, property, interest }));
+
+      // INTERNT VARSEL. Fyres kun ved FØRSTE interesse for denne boligen fra
+      // denne personen — gjentatte klikk skal ikke spamme teamet. Best-effort
+      // og aldri blokkerende: leietakeren skal se «registrert» selv om
+      // e-postleverandøren er nede.
+      let notify = null;
+      if (!previous) {
+        try {
+          let campaignTitle = '';
+          if (campaignId) {
+            const camp = await db.collection(NEWSLETTER_COLL).findOne({ id: campaignId }, { projection: { _id: 0, title: 1, subject: 1 } });
+            campaignTitle = camp?.title || camp?.subject || '';
+          }
+          notify = await sendPropertyInterestNotification(
+            { ...tenant, property_interests: [...(tenant.property_interests || []), interest] },
+            property,
+            { campaignId, campaignTitle, tenantCreated },
+          );
+        } catch (e) { notify = { ok: false, error: String(e.message || e).slice(0, 200) }; }
+        try {
+          await db.collection('property_interest_events').updateOne(
+            { email, propertyId, campaignId },
+            { $set: { notify: { ok: !!(notify && notify.ok), at: new Date().toISOString(), skipped: notify?.skipped || null } } },
+          );
+        } catch (e) { /* varselstatus er sporing, ikke kritisk */ }
+      }
+
+      return cors(NextResponse.json({ ok: true, tenantId: tenant.id, property, interest, notified: !!(notify && notify.ok), isNew: !previous }));
     }
 
 
@@ -5678,6 +5707,18 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
       if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const sp = new URL(request.url).searchParams;
       const type = (sp.get('type') || 'receipt').toLowerCase();
+      // Forhåndsvis boliginteresse-varselet uten å sende noe. Bruker en ekte
+      // ledig bolig når det finnes, ellers et eksempel.
+      if (type === 'property_interest' || type === 'boliginteresse') {
+        const p = await db.collection('platform_properties').findOne(
+          { status: 'active', stale: { $ne: true }, incomplete: { $ne: true }, duplicate: { $ne: true } },
+          { projection: { _id: 0, externalId: 1, id: 1, title: 1, district: 1, area: 1, city: 1, type: 1, bedrooms: 1, sqm: 1, monthlyRentBand: 1, availableFrom: 1 } },
+        );
+        const property = p || { externalId: 'demo', title: 'Møblert leilighet · 2 soverom · 65 m²', district: 'Bergen sentrum', type: 'leilighet', bedrooms: 2, sqm: 65, monthlyRentBand: '14 000 – 16 000 kr', availableFrom: '2026-09-01' };
+        const tenant = { name: 'Kari Eksempel', email: 'kari@example.com', phone: '+47 912 34 567', property_interests: [{ propertyId: property.externalId }, { propertyId: 'annen-bolig' }] };
+        const built = buildPropertyInterestNotification(tenant, property, { campaignTitle: 'Ledige boliger i Bergen', tenantCreated: true });
+        return new NextResponse(built.html, { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8', 'X-Preview-Subject': encodeURIComponent(built.subject) } });
+      }
       const leadId = (sp.get('id') || '').slice(0, 64);
       let lead = null;
       if (leadId) lead = await db.collection('leads').findOne({ id: leadId }, { projection: { _id: 0 } });
