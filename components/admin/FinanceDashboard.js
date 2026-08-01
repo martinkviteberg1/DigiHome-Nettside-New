@@ -435,6 +435,7 @@ function KontrakterTab({ items, onSave, onDelete, onSync, syncing, saving }) {
                     <td className="px-4 py-3">
                       <span className={`inline-block text-[10px] font-bold uppercase px-2 py-0.5 rounded mr-2 ${c.type === 'leiekontrakt' ? 'bg-[#e8f5ee] text-[#1a7f45]' : 'bg-[#f0e9fb] text-[#7c3aed]'}`}>{c.type === 'leiekontrakt' ? 'Leie' : 'Forvaltning'}</span>
                       <span className="font-medium text-[#222]">{c.label || c.propertyAddress || '—'}</span>
+                      {c.orphaned && <span className="ml-2 inline-block text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-[#f5f5f5] text-[#999]" title="Finnes ikke lenger i plattformen. Teller ikke i MRR/LTV.">Foreldreløs</span>}
                     </td>
                     <td className="px-4 py-3 text-right text-[#333]">{rent ? kr(rent) : '—'}{c.type === 'forvaltningsavtale' && <span className="text-[10px] text-[#bbb] ml-1">(antatt)</span>}</td>
                     <td className="px-4 py-3 text-right text-[#666]">{c.feePercent != null ? `${c.feePercent} %` : '—'}</td>

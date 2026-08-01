@@ -6,6 +6,7 @@ import {
   Loader2, TrendingUp, TrendingDown, Sliders, Maximize2, Minimize2,
   RefreshCw, Zap, X, Check, Info, Gauge, Activity, Users, Clock, Wallet, BookOpen,
 } from 'lucide-react';
+import RevenueReconcile from '@/components/admin/RevenueReconcile';
 
 const PERIODS = [
   { k: '7', l: '7 d', days: 7 },
@@ -615,6 +616,11 @@ function KpiDashboardInner({ apiKey }) {
             </Reveal>
           )}
 
+          {/* Prod-fasit — er tallene over faktisk i takt med plattformen? */}
+          <Reveal delay={365}>
+            <RevenueReconcile apiKey={apiKey} days={(PERIODS.find((p) => p.k === period) || PERIODS[2]).days} />
+          </Reveal>
+
           {/* Pipeline + kanaler + etterspørsel */}
           <Reveal delay={380}>
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4 mt-3 sm:mt-4">
@@ -722,6 +728,11 @@ function RevenueQualityPanel({ rm, ltvBasis, onOpenSettings }) {
         {rm.ltv.sensitivity?.length > 0 && (
           <span className="tabular-nums" data-testid="revq-sensitivity">
             Sensitivitet: {rm.ltv.sensitivity.map((s) => `${s.months} mnd → ${fmtKrFull(s.ltv)} kr`).join('  ·  ')}
+          </span>
+        )}
+        {rm.ramp?.length > 0 && rm.mrr.contracted > 0 && (
+          <span className="tabular-nums" data-testid="revq-ramp">
+            Kontrahert leie slår inn: {rm.ramp.map((r) => `+${r.inDays} d → ${fmtKrFull(r.mrr)} kr/mnd`).join('  ·  ')}
           </span>
         )}
         {ltvBasis && ltvBasis !== 'actual' && (

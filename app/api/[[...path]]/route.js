@@ -32,6 +32,7 @@ import {
 } from '@/lib/investor-room';
 import { computeKpiDashboard, getKpiSettings, setKpiSettings } from '@/lib/kpi-dashboard';
 import { computeRevenueModel, buildLeadFeeIndex, attachFeeTruth } from '@/lib/revenue-model';
+import { reconcileRevenue } from '@/lib/revenue-reconcile';
 import { computeLlmUsageDashboard, getModelOverrides, setModelOverride, logImageUsage, AVAILABLE_MODELS, PLATFORM_MODELS, DEFAULT_MODEL, USD_TO_NOK } from '@/lib/llm-usage';
 import { logExtUsage, summarizeExtUsage, getPlatformUsage } from '@/lib/ext-usage';
 import { getFinanceSettings, setFinanceSettings, listCosts, upsertCost, deleteCost, listContracts, upsertContract, deleteContract, listEvents, upsertEvent, deleteEvent, computeResultat, computeLikviditet, computeFinanceOverview, computeTrends, captureSnapshot, computeInvestorMetrics, computeForecast, computeBoardPack, computeCustomers, computePlatformCustomers } from '@/lib/finance';
@@ -5681,6 +5682,38 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
         const model = await computeRevenueModel(db, { lifetimeMonths, grossMarginPct, leaseActualRule });
         const fm = await getFinanceSyncMeta(db);
         return cors(NextResponse.json({ ...model, settings, financeSync: fm ? { lastSyncAt: fm.lastSyncAt || null, lastError: fm.lastError || null, counts: fm.lastCounts || null } : null }));
+      } catch (e) {
+        return cors(NextResponse.json({ ok: false, error: e.message }, { status: 200 }));
+      }
+    }
+
+    // ── PROD-FASIT: avstem Nøkkeltall mot plattformens kontrakter ──────────
+    // 100 % READ-ONLY. Henter kontraktene rett fra plattformen og kjører dem
+    // gjennom SAMME motor som dashbordet, så et avvik alltid er et datagap —
+    // aldri en forskjell i beregningsmåte. ?env=prod avstemmer mot produksjon
+    // (trygt fra preview: ingenting skrives).
+    if (route === '/admin/revenue-reconcile' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const sp = new URL(request.url).searchParams;
+      try {
+        const settings = await getKpiSettings(db);
+        const target = financeSyncTarget(request);
+        const result = await reconcileRevenue(db, {
+          target: target.url,
+          key: target.key,
+          env: target.env,
+          lifetimeMonths: sp.get('lifetimeMonths') ? Number(sp.get('lifetimeMonths')) : (settings.lifetimeMonths || 36),
+          grossMarginPct: sp.get('grossMarginPct') ? Number(sp.get('grossMarginPct')) : settings.grossMarginPct,
+          leaseActualRule: sp.get('rule') || settings.leaseActualRule,
+          withSpend: !['0', 'false'].includes(String(sp.get('spend') || '').toLowerCase()),
+          days: Number(sp.get('days')) || 30,
+        });
+        const fm = await getFinanceSyncMeta(db);
+        return cors(NextResponse.json({
+          ...result,
+          kpiSettings: settings,
+          financeSync: fm ? { lastSyncAt: fm.lastSyncAt || null, lastAttemptAt: fm.lastAttemptAt || null, lastError: fm.lastError || null, counts: fm.lastCounts || null } : null,
+        }));
       } catch (e) {
         return cors(NextResponse.json({ ok: false, error: e.message }, { status: 200 }));
       }
