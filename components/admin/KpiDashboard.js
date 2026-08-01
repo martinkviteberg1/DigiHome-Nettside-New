@@ -265,8 +265,10 @@ function MomentumStrip({ momentum, platform }) {
         </>
       )}
       {platform && (
-        <span className="ml-auto inline-flex items-center gap-1.5 rounded-full bg-emerald-50 font-semibold px-2.5 py-1 text-[11.5px]" style={{ color: EMER_TEXT }}>
+        <span className="ml-auto inline-flex items-center gap-1.5 rounded-full bg-emerald-50 font-semibold px-2.5 py-1 text-[11.5px]" style={{ color: EMER_TEXT }}
+          title={platform.mrrBasis || undefined}>
           <Zap className="w-3 h-3" /> MRR live: {fmtKrFull(platform.mrr)} kr · {fmtNum(platform.customers)} aktive kunder
+          {platform.customersWithLease != null && <span className="opacity-80">({fmtNum(platform.customersWithLease)} m/ leiekontrakt)</span>}
         </span>
       )}
     </div>
@@ -522,7 +524,9 @@ function KpiDashboardInner({ apiKey }) {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
               <KpiCard testid="kpi-cpl" icon={Wallet} label="Kost per lead" fn={3} value={hero.cpl?.value} format={fmtKrFull} suffix="kr" inverse sub="Annonseforbruk ÷ nye leads" />
               <KpiCard testid="kpi-cac" icon={Wallet} label="Kost per kunde" fn={2} value={hero.cac?.value} format={fmtKrFull} suffix="kr" inverse sub="Annonseforbruk ÷ nye kunder" />
-              <KpiCard testid="kpi-avgvalue" icon={Users} label="Snitt kundeverdi" value={hero.avgCustomerValue?.value} format={fmtKrFull} suffix="kr" sub={`${fmtNum(m.totalCustomers?.value)} kunder totalt`} />
+              <KpiCard testid="kpi-avgvalue" icon={Users} label="Snitt kundeverdi" value={hero.avgCustomerValue?.value} format={fmtKrFull} suffix="kr" sub={hero.avgCustomerValue?.missingValue > 0
+                ? `${fmtNum(hero.avgCustomerValue?.basedOn)} av ${fmtNum(m.totalCustomers?.value)} kunder har registrert verdi`
+                : `${fmtNum(m.totalCustomers?.value)} kunder totalt`} />
               <KpiCard testid="kpi-ttw" icon={Clock} label="Tid til kunde" value={hero.timeToWin?.value} format={fmtNum} suffix="dager" inverse sub="Snitt fra lead til signert" />
               <KpiCard testid="kpi-conv" icon={Activity} label="Konverteringsrate" value={hero.conversionRate?.value} format={fmtNum} suffix="%" delta={hero.conversionRate?.delta} sub="Leads → kunder" />
               <KpiCard testid="kpi-newcust" icon={TrendingUp} label="Nye kunder" value={m.newCustomers?.value} format={fmtNum} delta={m.newCustomers?.delta} sub={`av ${fmtNum(m.newLeads?.value)} nye leads`} spark={data?.series?.revenue} sparkColor={EMER} />

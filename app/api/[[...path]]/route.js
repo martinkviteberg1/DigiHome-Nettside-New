@@ -2219,12 +2219,17 @@ async function handleRoute(request, { params }) {
       return cors(NextResponse.json({ success: true, ok: true, data: { id: tenant.id }, forwarded: fwd.ok, tenant: clean(tenant) }, { status: 201 }));
     }
 
+    // Legacy debug-endepunkter. Disse eksponerte tidligere navn, e-post og
+    // telefon på ALLE leads uten autentisering (personvern/GDPR-brudd) og ble
+    // dessuten plukket opp av CRM-synken som «export-endepunkt». Nå admin-gated.
     if (route === '/tenants' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const tenants = await db.collection('tenant_leads').find({}).sort({ createdAt: -1 }).limit(500).toArray();
       return cors(NextResponse.json(tenants.map(clean)));
     }
 
     if (route === '/leads' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const leads = await db.collection('leads').find({}).sort({ createdAt: -1 }).limit(500).toArray();
       return cors(NextResponse.json(leads.map(clean)));
     }
@@ -2990,7 +2995,7 @@ async function handleRoute(request, { params }) {
         try {
           const daily = await fetchMetaDailyActions({ datePreset: 'last_90d' });
           const recent = await fetchMetaDailyActions({ datePreset: 'last_7d' }).catch(() => []);
-          const liveAds = await fetchMetaAdsWithInsights({ datePreset: 'last_7d' }).catch(() => []);
+          const liveAds = await fetchMetaAdsWithInsights({ datePreset: 'last_7d', lifetimeFallback: false }).catch(() => []);
           const active = daily.filter((d) => d.cost > 0);
           const conv = daily.filter((d) => d.conversions > 0);
           out.meta.daily = daily.map((d) => ({ ...d, cost: Math.round(d.cost * 100) / 100 }));
