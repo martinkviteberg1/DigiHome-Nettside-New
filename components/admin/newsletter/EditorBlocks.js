@@ -11,7 +11,7 @@ import {
   Type, AlignLeft, Image as ImageIcon, MousePointerClick, LayoutPanelTop,
   List, Quote, UserRound, PenLine, Minus, MoveVertical, BadgePercent,
   ArrowUp, ArrowDown, Copy, Trash2, UploadCloud, Loader2, GripVertical, Sparkles,
-  Home, Check, RefreshCw, TrendingUp,
+  Home, Check, RefreshCw, TrendingUp, Search, X,
 } from 'lucide-react';
 
 /* --------------------------- Deploy-sikre bilder -------------------------- */
@@ -615,9 +615,25 @@ export function CanvasBlock({ b, i, total, accent, selected, onSelect, onPatch, 
 }
 
 /* --------------------- Boligvelger (for Boliger-blokken) ------------------ */
+// Sperreregel for utsending — samme som forsiden. Ett kilde-sted, brukt både
+// til å deaktivere rader og til «Kun valgbare»-filteret.
+//   • ikke ledig (utleid/pauset)  • tomt skall  • duplikat  • ingen bilder
+// Et boligkort uten bilde ser ødelagt ut i e-post, derfor er bilde et krav.
+export function newsletterBlock(p) {
+  const noImages = !(Array.isArray(p?.images) && p.images.length);
+  const notActive = p?.status !== 'active';
+  const blocked = notActive || !!p?.incomplete || !!p?.duplicate || noImages;
+  const reason = notActive
+    ? (p?.status === 'paused' ? 'Pauset' : 'Utleid')
+    : (p?.duplicate ? 'Duplikat' : (p?.incomplete ? 'Mangler data' : (noImages ? 'Ingen bilder' : '')));
+  return { blocked, reason };
+}
+
 function PropertyPicker({ b, onPatch, apiQ }) {
   const [list, setList] = useState(null); // null = laster
   const [err, setErr] = useState('');
+  const [q, setQ] = useState('');
+  const [onlyOk, setOnlyOk] = useState(false);
   const load = async () => {
     setList(null); setErr('');
     try {
@@ -681,6 +697,26 @@ function PropertyPicker({ b, onPatch, apiQ }) {
     else onPatch({ items: [...cur, toItem(p)] });
   };
 
+  // SØK: plattformens boligtitler er generiske («Møblert leilighet · 1 soverom
+  // · 52 m²»), så gatenavnet er det eneste redaktøren kjenner boligen igjen på.
+  // Vi matcher derfor på gate, bydel, poststed, størrelse, soverom, leiemodell
+  // og prisintervall — alle ord må treffe (AND), slik at «werner 52» fungerer.
+  const all = Array.isArray(list) ? list : [];
+  const tokens = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const okCount = all.filter((p) => !newsletterBlock(p).blocked).length;
+  const shown = all.filter((p) => {
+    const pid = p.externalId || p.id;
+    // Allerede valgte boliger skjules aldri — ellers «forsvinner» de fra lista.
+    if (onlyOk && newsletterBlock(p).blocked && !selected.has(pid)) return false;
+    if (!tokens.length) return true;
+    const hay = [
+      p.title, p.area, p.district, p.city,
+      p.sqm ? `${p.sqm} m2 m²` : '', p.bedrooms ? `${p.bedrooms} soverom` : '',
+      p.model, p.monthlyRentBand,
+    ].filter(Boolean).join(' ').toLowerCase();
+    return tokens.every((t) => hay.includes(t));
+  });
+
   return (
     <div className="mt-1">
       <div className="flex items-center justify-between">
@@ -694,16 +730,39 @@ function PropertyPicker({ b, onPatch, apiQ }) {
       ) : !list.length ? (
         <p className="text-[12px] text-[#999] py-2">Ingen boliger funnet. Synk boliger under «Boliger»-fanen først.</p>
       ) : (
-        <div className="max-h-[260px] overflow-y-auto rounded-xl border border-[#f0ede8] divide-y divide-[#f5f2ee]" data-testid="nl-property-picker">
-          {list.map((p) => {
+        <>
+          <div className="mt-1.5 flex items-center gap-1.5">
+            <div className="relative flex-1">
+              <Search size={12} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[#b8b2aa]" />
+              <input
+                value={q} onChange={(e) => setQ(e.target.value)}
+                placeholder="Søk gate, bydel eller størrelse…"
+                data-testid="nl-property-search"
+                className="h-[30px] w-full rounded-lg border border-[#e8e4de] bg-white pl-7 pr-6 text-[11.5px] text-[#111] outline-none placeholder:text-[#b8b2aa] focus:border-[#c9b6e8]"
+              />
+              {q ? (
+                <button onClick={() => setQ('')} title="Tøm søk" className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[#b8b2aa] hover:text-[#555]"><X size={12} /></button>
+              ) : null}
+            </div>
+            <button
+              onClick={() => setOnlyOk((v) => !v)} data-testid="nl-property-only-ok"
+              title="Vis kun boliger som kan sendes (ledige, med bilder)"
+              className={`h-[30px] shrink-0 rounded-lg border px-2 text-[10.5px] font-semibold transition ${onlyOk ? 'border-[#0a0a0a] bg-[#0a0a0a] text-white' : 'border-[#e8e4de] bg-white text-[#777] hover:text-[#333]'}`}
+            >
+              Kun valgbare · {okCount}
+            </button>
+          </div>
+          <p className="mt-1 text-[10px] text-[#a8a29a]" data-testid="nl-property-count">
+            Viser {shown.length} av {all.length} boliger · {okCount} kan sendes
+          </p>
+          {!shown.length ? (
+            <p className="py-3 text-[12px] text-[#999]">Ingen treff{q ? ` på «${q}»` : ''}.{onlyOk ? ' Slå av «Kun valgbare» for å se alle.' : ''}</p>
+          ) : (
+        <div className="mt-1 max-h-[260px] overflow-y-auto rounded-xl border border-[#f0ede8] divide-y divide-[#f5f2ee]" data-testid="nl-property-picker">
+          {shown.map((p) => {
             const pid = p.externalId || p.id;
             const on = selected.has(pid);
-            // Sperret for utsending: utleid, tomt skall (ingen bilder/areal/soverom),
-            // duplikat, eller helt uten bilder. Samme regel som forsiden — et
-            // boligkort uten bilde og uten info skader mer enn det hjelper.
-            const noImages = !(Array.isArray(p.images) && p.images.length);
-            const blocked = p.status !== 'active' || p.incomplete || p.duplicate || noImages;
-            const reason = p.status !== 'active' ? 'Utleid' : (p.duplicate ? 'Duplikat' : (p.incomplete ? 'Mangler data' : (noImages ? 'Ingen bilder' : '')));
+            const { blocked, reason } = newsletterBlock(p);
             return (
               <button key={pid} onClick={() => toggle(p)} disabled={!on && blocked} data-testid={`nl-prop-${pid}`}
                 title={blocked ? `Kan ikke sendes: ${reason.toLowerCase()}` : ''}
@@ -714,7 +773,7 @@ function PropertyPicker({ b, onPatch, apiQ }) {
                 <div className="flex-1 min-w-0">
                   <p className="text-[12px] font-semibold text-[#111] truncate">{p.title || 'Bolig'}</p>
                   <p className="text-[10.5px] text-[#999] truncate">
-                    {[p.district || p.area || p.city, p.sqm ? `${p.sqm} m²` : null, reason || 'Ledig'].filter(Boolean).join(' · ')}
+                    {[p.area || p.city, p.district, p.sqm ? `${p.sqm} m²` : null, reason || 'Ledig'].filter(Boolean).join(' · ')}
                   </p>
                 </div>
                 <span className={`w-[18px] h-[18px] rounded-md border flex items-center justify-center shrink-0 ${on ? 'bg-[#0a0a0a] border-[#0a0a0a] text-white' : 'border-[#ddd] text-transparent'}`}>
@@ -724,6 +783,8 @@ function PropertyPicker({ b, onPatch, apiQ }) {
             );
           })}
         </div>
+          )}
+        </>
       )}
       {(b.items || []).length > 10 ? (
         <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-[10.5px] leading-relaxed text-amber-700">Mange boligkort kan gjøre e-posten svært lang. Gmail kan klippe meldinger over ca. 102 KB — vurder flere utsendinger hvis du velger svært mange.</p>
