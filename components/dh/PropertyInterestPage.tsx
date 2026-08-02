@@ -1,13 +1,14 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { ArrowRight, CheckCircle2, Home, Loader2, MapPin, ShieldCheck } from 'lucide-react';
+import { ArrowRight, CheckCircle2, ChevronLeft, ChevronRight, ExternalLink, Home, Loader2, MapPin, ShieldCheck } from 'lucide-react';
 
 const PropertyInterestPage = () => {
   const [params, setParams] = useState(null);
   const [data, setData] = useState(null);
   const [state, setState] = useState('loading');
   const [error, setError] = useState('');
+  const [imgIdx, setImgIdx] = useState(0);
 
   useEffect(() => {
     const q = new URLSearchParams(window.location.search);
@@ -65,7 +66,12 @@ const PropertyInterestPage = () => {
   };
 
   const property = data?.property;
-  const image = Array.isArray(property?.images) ? property.images[0] : '';
+  const images = Array.isArray(property?.images) ? property.images.filter(Boolean) : [];
+  const image = images.length ? images[Math.min(imgIdx, images.length - 1)] : '';
+  // FINN-lenken kommer fra boligberikelsen i admin. Den vises som sekundær
+  // utgang — hovedhandlingen er å registrere interessen hos oss, ellers går
+  // henvendelsen via FINNs skjema og aldri inn i DigiHome.
+  const finnUrl = typeof property?.finnUrl === 'string' ? property.finnUrl : '';
 
   return (
     <main className="min-h-[100dvh] overflow-x-hidden bg-[#f4f1ed] text-[#171513]">
@@ -90,10 +96,49 @@ const PropertyInterestPage = () => {
             <h1 className="mx-auto mt-3 max-w-xl text-[34px] font-bold leading-[1.05] tracking-[-0.04em] sm:text-[44px]">Takk{data?.firstName ? `, ${data.firstName}` : ''}!</h1>
             <p className="mx-auto mt-4 max-w-lg text-[15px] leading-relaxed text-[#6d6760]">Vi har lagt <strong>{property?.title}</strong> til på leietakerprofilen din. Teamet vårt følger opp videre.</p>
             <a href="/" className="mt-8 inline-flex h-12 items-center justify-center rounded-full bg-[#d298ff] px-6 text-[13px] font-bold text-[#14081f]">Til DigiHome</a>
+            {finnUrl ? (
+              <p className="mt-5">
+                <a href={finnUrl} target="_blank" rel="noreferrer" data-testid="property-interest-finn-done"
+                  className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#6d6760] underline decoration-[#d5cec6] underline-offset-4 transition hover:text-[#171513]">
+                  Se hele annonsen på FINN mens du venter <ExternalLink className="h-3.5 w-3.5" />
+                </a>
+              </p>
+            ) : null}
           </div>
         ) : (
           <div className="overflow-hidden rounded-3xl border border-[#e4dfd8] bg-white shadow-[0_22px_70px_-42px_rgba(0,0,0,.4)]" data-testid="property-interest-card">
-            {image ? <img src={image} alt={property?.title || 'Ledig bolig'} className="h-[240px] w-full object-cover sm:h-[360px]" /> : <div className="flex h-[220px] items-center justify-center bg-[#eeeae5]"><Home className="h-10 w-10 text-[#b4ada5]" /></div>}
+            {images.length ? (
+              <div className="relative bg-[#eeeae5]">
+                <img src={image} alt={property?.title || 'Ledig bolig'} className="h-[240px] w-full object-cover sm:h-[360px]" />
+                {images.length > 1 ? (
+                  <>
+                    <button type="button" aria-label="Forrige bilde" onClick={() => setImgIdx((i) => (i - 1 + images.length) % images.length)}
+                      className="absolute left-3 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/85 text-[#171513] shadow-sm transition hover:bg-white">
+                      <ChevronLeft className="h-5 w-5" />
+                    </button>
+                    <button type="button" aria-label="Neste bilde" onClick={() => setImgIdx((i) => (i + 1) % images.length)}
+                      className="absolute right-3 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/85 text-[#171513] shadow-sm transition hover:bg-white">
+                      <ChevronRight className="h-5 w-5" />
+                    </button>
+                    <span className="absolute bottom-3 right-3 rounded-full bg-black/55 px-2.5 py-1 text-[11.5px] font-semibold text-white" data-testid="property-interest-image-count">
+                      {Math.min(imgIdx, images.length - 1) + 1} / {images.length}
+                    </span>
+                  </>
+                ) : null}
+              </div>
+            ) : (
+              <div className="flex h-[220px] items-center justify-center bg-[#eeeae5]"><Home className="h-10 w-10 text-[#b4ada5]" /></div>
+            )}
+            {images.length > 1 ? (
+              <div className="flex gap-2 overflow-x-auto px-6 pt-4 sm:px-10" data-testid="property-interest-thumbs">
+                {images.slice(0, 12).map((src, i) => (
+                  <button key={`${src}-${i}`} type="button" onClick={() => setImgIdx(i)} aria-label={`Vis bilde ${i + 1}`}
+                    className={`h-14 w-20 shrink-0 overflow-hidden rounded-lg border-2 transition ${i === Math.min(imgIdx, images.length - 1) ? 'border-[#7A3EC8]' : 'border-transparent opacity-70 hover:opacity-100'}`}>
+                    <img src={src} alt="" className="h-full w-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            ) : null}
             <div className="p-6 sm:p-10">
               <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-[#7A3EC8]">Ledig bolig</p>
               <h1 className="mt-3 text-[30px] font-bold leading-[1.08] tracking-[-0.04em] sm:text-[42px]">{property?.title}</h1>
@@ -114,6 +159,12 @@ const PropertyInterestPage = () => {
                 </>
               )}
               {error ? <p role="alert" className="mt-4 rounded-xl bg-red-50 px-4 py-3 text-[12.5px] text-red-700">{error}</p> : null}
+              {finnUrl ? (
+                <a href={finnUrl} target="_blank" rel="noreferrer" data-testid="property-interest-finn"
+                  className="mt-6 inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#6d6760] underline decoration-[#d5cec6] underline-offset-4 transition hover:text-[#171513]">
+                  Se hele annonsen på FINN <ExternalLink className="h-3.5 w-3.5" />
+                </a>
+              ) : null}
             </div>
           </div>
         )}

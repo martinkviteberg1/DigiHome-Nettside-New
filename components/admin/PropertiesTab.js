@@ -7,6 +7,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Loader2, RefreshCw, Eye, EyeOff, Home, MapPin, BedDouble, Ruler,
   CheckCircle2, AlertTriangle, ImageOff, Sparkles, Globe, ExternalLink,
+  Link2, Download, X, Search,
 } from 'lucide-react';
 
 const MODEL_LABEL = { langtid: 'Langtidsutleie', korttid: 'Korttidsutleie', hybrid: 'Hybridutleie' };
@@ -28,6 +29,13 @@ export default function PropertiesTab({ apiKey }) {
   const [filter, setFilter] = useState('alle');
   const [togglingId, setTogglingId] = useState(null);
   const [bulkBusy, setBulkBusy] = useState(false);
+  const [search, setSearch] = useState('');
+  // FINN-kobling per bolig: hvilken bolig som er åpen, hva som er skrevet inn,
+  // hvem som henter nå, og siste svar.
+  const [finnOpen, setFinnOpen] = useState(null);
+  const [finnInput, setFinnInput] = useState('');
+  const [finnBusy, setFinnBusy] = useState(null);
+  const [finnMsg, setFinnMsg] = useState(null); // {ok, id, text}
 
   const load = useCallback(async () => {
     try {
@@ -81,26 +89,64 @@ export default function PropertiesTab({ apiKey }) {
     setBulkBusy(false);
   };
 
+  // FINN-kobling: hent bilder/pris/areal/postnummer fra utleierens FINN-annonse.
+  // Tom url fjerner koblingen. Vi skriver aldri noe tilbake til plattformen.
+  const saveFinn = async (p, url) => {
+    setFinnBusy(p.id); setFinnMsg(null);
+    try {
+      const r = await fetch(`/api/admin/properties/finn?${q}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: p.id, url }),
+      });
+      const j = await r.json();
+      if (j.ok) {
+        const im = j.imported || {};
+        const filled = (im.filled || []).join(', ');
+        setFinnMsg({
+          ok: true, id: p.id,
+          text: url
+            ? `Hentet ${im.images || 0} bilder fra FINN${filled ? ` · fylte ${filled}` : ''}${im.postalCode ? ` · postnr ${im.postalCode}` : ''}`
+            : 'FINN-koblingen er fjernet',
+        });
+        setFinnOpen(null); setFinnInput('');
+        await load();
+      } else {
+        setFinnMsg({ ok: false, id: p.id, text: j.error || 'Kunne ikke hente annonsen' });
+      }
+    } catch (e) { setFinnMsg({ ok: false, id: p.id, text: 'Nettverksfeil — prøv igjen' }); }
+    setFinnBusy(null);
+  };
+
   const props = data?.properties || [];
+  const tokens = search.trim().toLowerCase().split(/\s+/).filter(Boolean);
   const filtered = useMemo(() => props.filter((p) => {
+    if (tokens.length) {
+      const hay = [p.title, p.area, p.district, p.city, p.sqm ? `${p.sqm} m2 m²` : '', p.bedrooms ? `${p.bedrooms} soverom` : '', p.model, p.monthlyRentBand]
+        .filter(Boolean).join(' ').toLowerCase();
+      if (!tokens.every((t) => hay.includes(t))) return false;
+    }
     if (filter === 'synlige') return p.visible;
     if (filter === 'skjulte') return !p.visible;
     if (filter === 'ledige') return p.status === 'active';
     if (filter === 'utleid') return p.status === 'rented';
     if (filter === 'mangler') return p.incomplete;
     if (filter === 'duplikat') return p.duplicate;
+    if (filter === 'utenbilder') return !(p.images || []).length;
     return true;
-  }), [props, filter]);
+  }), [props, filter, search]);
 
   const withImages = props.filter((p) => (p.images || []).length > 0 && !p.duplicate);
   const incomplete = props.filter((p) => p.incomplete);
   const duplicates = props.filter((p) => p.duplicate);
+  const noImages = props.filter((p) => !(p.images || []).length);
+  const finnLinked = props.filter((p) => p.finnUrl);
   const chips = [
     { k: 'alle', l: `Alle (${props.length})` },
     { k: 'synlige', l: `Synlige (${props.filter((p) => p.visible).length})` },
     { k: 'skjulte', l: `Skjulte (${props.filter((p) => !p.visible).length})` },
     { k: 'ledige', l: `Ledige (${props.filter((p) => p.status === 'active').length})` },
     { k: 'utleid', l: `Utleid (${props.filter((p) => p.status === 'rented').length})` },
+    ...(noImages.length ? [{ k: 'utenbilder', l: `Uten bilder (${noImages.length})` }] : []),
     ...(incomplete.length ? [{ k: 'mangler', l: `Mangler data (${incomplete.length})` }] : []),
     ...(duplicates.length ? [{ k: 'duplikat', l: `Duplikater (${duplicates.length})` }] : []),
   ];
@@ -155,26 +201,45 @@ export default function PropertiesTab({ apiKey }) {
         </p>
       </div>
 
-      {/* Datakvalitet — det som må ryddes i plattformen, ikke her */}
-      {(incomplete.length > 0 || duplicates.length > 0) && (
+      {/* Datakvalitet — hva som mangler fra plattformen, og hva du kan gjøre nå */}
+      {(incomplete.length > 0 || duplicates.length > 0 || noImages.length > 0) && (
         <div className="flex items-start gap-2.5 rounded-xl bg-[#fff8e6] px-4 py-3" data-testid="props-quality-banner">
           <AlertTriangle className="w-4 h-4 text-[#c98a00] shrink-0 mt-0.5" />
           <div className="text-[12.5px] leading-relaxed text-[#8a6500]">
             <p>
-              <strong>{incomplete.length} boliger mangler innhold</strong> fra plattformen (ingen bilder, 0 m², 0 soverom)
-              {duplicates.length > 0 && <> og <strong>{duplicates.length} ser ut som dobbeltregistrering</strong> (helt identiske felt i samme gate)</>}.
-              Disse ser ut som duplikater i lista, og de sperres automatisk fra forsiden og nyhetsbrev — et boligkort uten bilde og uten info skader mer enn det hjelper.
+              <strong>{noImages.length} av {props.length} boliger har ingen bilder</strong> i plattformeksporten
+              {incomplete.length > 0 && <>, og <strong>{incomplete.length}</strong> mangler også areal og soverom</>}
+              {duplicates.length > 0 && <>. <strong>{duplicates.length}</strong> er registrert to ganger</>}.
+              Et boligkort uten bilde kan ikke sendes i nyhetsbrev, så disse er sperret.
             </p>
             <p className="mt-1.5 text-[#a67c00]">
-              Flere boliger i samme gate er normalt: eksporten fjerner husnummer, så ulike leiligheter i samme bygg får samme områdenavn.
-              Vi flagger derfor bare rader som er identiske på gate, type, soverom, areal, bildeantall og leiemodell. Rydd dem i DigiHome-appen — vi kan bare lese herfra.
+              <strong>Løsning nå:</strong> lim inn utleierens FINN-annonse på boligkortet nedenfor — vi henter bilder, pris, areal og postnummer derfra,
+              og boligen blir umiddelbart klar for forsiden og nyhetsbrev. Vi skriver aldri noe tilbake til plattformen.
+              {finnLinked.length > 0 && <> {finnLinked.length} bolig{finnLinked.length === 1 ? '' : 'er'} er alt koblet.</>}
+            </p>
+            <p className="mt-1.5 text-[#a67c00]">
+              Flere boliger i samme gate er normalt: eksporten fjerner husnummer, så ulike leiligheter i samme bygg får samme gatenavn.
+              Vi flagger derfor bare rader som er identiske på gate, type, soverom, areal og bildeantall.
+              Boliger uten areal og bilder er ofte reelle sameie-enheter der utleieren ikke har registrert innhold — de er ikke duplikater.
             </p>
           </div>
         </div>
       )}
 
-      {/* Filtre + hurtighandlinger */}
+      {/* Filtre + søk + hurtighandlinger */}
       <div className="flex flex-wrap items-center gap-2">
+        <div className="relative">
+          <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[#c4bdb4] pointer-events-none" />
+          <input
+            value={search} onChange={(e) => setSearch(e.target.value)}
+            placeholder="Søk gate, bydel, størrelse…"
+            data-testid="props-search"
+            className="h-9 w-[200px] rounded-full bg-white pl-8 pr-7 text-[12.5px] text-[#111] shadow-[0_2px_10px_rgba(0,0,0,0.04)] outline-none placeholder:text-[#c4bdb4]"
+          />
+          {search ? (
+            <button onClick={() => setSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#c4bdb4] hover:text-[#555]"><X className="w-3.5 h-3.5" /></button>
+          ) : null}
+        </div>
         {chips.map((c) => (
           <button key={c.k} onClick={() => setFilter(c.k)}
             className={`h-9 px-3.5 rounded-full text-[12.5px] font-medium transition-colors ${filter === c.k ? 'bg-[#0a0a0a] text-white' : 'bg-white text-[#777] shadow-[0_2px_10px_rgba(0,0,0,0.04)] hover:text-[#0a0a0a]'}`}>
@@ -223,6 +288,7 @@ export default function PropertiesTab({ apiKey }) {
                 {p.model && <span className="rounded-lg px-2 py-1 text-[10.5px] font-semibold bg-white/90 backdrop-blur-sm text-[#555]">{MODEL_LABEL[p.model] || p.model}</span>}
                 {p.duplicate && <span className="rounded-lg px-2 py-1 text-[10.5px] font-semibold bg-[#fdecec] text-[#c0392b]" title={`Identisk med ${(p.duplicateGroupSize || 2) - 1} annen bolig i samme gate — rydd i DigiHome-appen`}>Mulig duplikat</span>}
                 {p.incomplete && !p.duplicate && <span className="rounded-lg px-2 py-1 text-[10.5px] font-semibold bg-[#fff8e6] text-[#8a6500]" title="Mangler bilder, areal og soverom fra plattformen">Mangler data</span>}
+                {p.imageSource === 'finn' && <span className="rounded-lg px-2 py-1 text-[10.5px] font-semibold bg-[#e8f1ff] text-[#1d5bbf]" title="Bildene er hentet fra utleierens FINN-annonse fordi plattformen ikke sendte noen">Bilder fra FINN</span>}
               </div>
               {(p.images || []).length > 1 && (
                 <span className="absolute bottom-2.5 right-2.5 rounded-md bg-black/50 text-white text-[10.5px] px-1.5 py-0.5">{p.images.length} bilder</span>
@@ -246,6 +312,59 @@ export default function PropertiesTab({ apiKey }) {
                   {togglingId === p.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : p.visible ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
                   {p.visible ? 'Synlig' : 'Skjult'}
                 </button>
+              </div>
+
+              {/* FINN-annonse: fyller hull der plattformen mangler bilder/pris/areal */}
+              <div className="mt-3 pt-3 border-t border-[#f1f0ee]">
+                {p.finnUrl ? (
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-2">
+                      <a href={p.finnUrl} target="_blank" rel="noreferrer"
+                        className="flex items-center gap-1.5 text-[12px] font-semibold text-[#1d5bbf] hover:underline">
+                        <Link2 className="w-3.5 h-3.5" /> FINN-annonse{p.finnCode ? ` ${p.finnCode}` : ''}
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
+                      <button onClick={() => saveFinn(p, '')} disabled={finnBusy === p.id}
+                        title="Fjern koblingen og all data hentet fra FINN"
+                        className="ml-auto text-[11.5px] text-[#aaa] hover:text-[#c0392b] disabled:opacity-50">
+                        {finnBusy === p.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Fjern'}
+                      </button>
+                    </div>
+                    {(p.enrichedFields || []).length > 0 && (
+                      <p className="text-[11px] text-[#1f7a4d]">Hentet fra FINN: {(p.enrichedFields || []).join(', ')}</p>
+                    )}
+                  </div>
+                ) : finnOpen === p.id ? (
+                  <div className="space-y-2">
+                    <input
+                      autoFocus value={finnInput} onChange={(e) => setFinnInput(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter' && finnInput.trim()) saveFinn(p, finnInput.trim()); }}
+                      placeholder="https://www.finn.no/realestate/lettings/ad.html?finnkode=…"
+                      data-testid={`props-finn-input-${p.id}`}
+                      className="w-full h-9 rounded-lg border border-[#e8e4de] px-3 text-[11.5px] outline-none focus:border-[#9a6ee8]"
+                    />
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => saveFinn(p, finnInput.trim())} disabled={finnBusy === p.id || !finnInput.trim()}
+                        data-testid={`props-finn-fetch-${p.id}`}
+                        className="h-8 px-3 rounded-full bg-[#0a0a0a] text-white text-[12px] font-semibold flex items-center gap-1.5 disabled:opacity-50">
+                        {finnBusy === p.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                        {finnBusy === p.id ? 'Henter …' : 'Hent bilder og pris'}
+                      </button>
+                      <button onClick={() => { setFinnOpen(null); setFinnInput(''); setFinnMsg(null); }}
+                        className="h-8 px-3 rounded-full bg-[#f5f5f4] text-[#888] text-[12px] font-semibold">Avbryt</button>
+                    </div>
+                  </div>
+                ) : (
+                  <button onClick={() => { setFinnOpen(p.id); setFinnInput(''); setFinnMsg(null); }}
+                    data-testid={`props-finn-open-${p.id}`}
+                    className="flex items-center gap-1.5 text-[12px] font-medium text-[#888] hover:text-[#1d5bbf] transition-colors">
+                    <Link2 className="w-3.5 h-3.5" />
+                    {(p.images || []).length ? 'Koble FINN-annonse' : 'Hent bilder fra FINN-annonse'}
+                  </button>
+                )}
+                {finnMsg && finnMsg.id === p.id && (
+                  <p className={`mt-1.5 text-[11px] leading-relaxed ${finnMsg.ok ? 'text-[#1f7a4d]' : 'text-[#c0392b]'}`}>{finnMsg.text}</p>
+                )}
               </div>
             </div>
           </div>

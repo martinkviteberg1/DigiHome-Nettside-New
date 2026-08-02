@@ -45,7 +45,8 @@ import { sendWeeklyReport, buildReportData, renderReportHtml } from '@/lib/ads-r
 import { buildMarketingMetrics } from '@/lib/marketing-metrics';
 import { emailConfigured, reportRecipients, sendHtmlEmail } from '@/lib/email';
 import { NEWSLETTER_COLL, OPTOUT_COLL, NL_EVENTS_COLL, renderNewsletterHtml, resolveAudience, audienceCounts, sanitizeBlocks, hasContent, buildUnsubUrl, verifyUnsubToken, verifyInterestToken, propertyInterestToken, verifyPropertyInterestToken, slugifyCampaign, normEmail as nlNormEmail, recipientId, TEMPLATES, templateBlocks, THEMES, TRACKING_GIF, applyMergeTags } from '@/lib/newsletter';
-import { syncPropertiesFromPlatform, maybeAutoSyncProperties, listAdminProperties, listPublicProperties, setPropertyVisibility, getPropertiesSyncMeta, backfillPropertyDistricts, refreshPropertyQuality } from '@/lib/properties-sync';
+import { syncPropertiesFromPlatform, maybeAutoSyncProperties, listAdminProperties, listPublicProperties, setPropertyVisibility, getPropertiesSyncMeta, backfillPropertyDistricts, refreshPropertyQuality, applyEnrichment, setPropertyEnrichment } from '@/lib/properties-sync';
+import { postalToDistrict } from '@/lib/geo-bergen';
 import { buildLeadReceipt, buildLeadAdminNotification, buildPropertyInterestNotification } from '@/lib/lead-emails';
 import { fireLeadEmails, sendReEngagedNotification, sendPropertyInterestNotification } from '@/lib/lead-emails';
 import { buildAlerts } from '@/lib/ads-monitor';
@@ -464,10 +465,12 @@ async function resolveDraftProperties(dbx, blocks) {
   try { await backfillPropertyDistricts(dbx); } catch (_) {}
   const liveRows = await dbx.collection('platform_properties').find(
     { stale: { $ne: true }, $or: [{ externalId: { $in: ids } }, { id: { $in: ids } }] },
-    { projection: { _id: 0, id: 1, externalId: 1, title: 1, area: 1, city: 1, district: 1, type: 1, bedrooms: 1, sqm: 1, images: 1, status: 1, monthlyRentBand: 1, availableFrom: 1, incomplete: 1, duplicate: 1 } }
+    { projection: { _id: 0, id: 1, externalId: 1, title: 1, area: 1, city: 1, district: 1, districtSource: 1, type: 1, bedrooms: 1, sqm: 1, images: 1, status: 1, monthlyRentBand: 1, availableFrom: 1, incomplete: 1, duplicate: 1, enrich: 1 } }
   ).toArray();
   const byId = new Map();
-  liveRows.forEach((p) => { byId.set(p.externalId, p); byId.set(p.id, p); });
+  // FINN-berikelse slår inn her også: en bolig der plattformen mangler bilder,
+  // men som har en aktiv FINN-annonse, er fullverdig og skal kunne sendes.
+  liveRows.map(applyEnrichment).forEach((p) => { byId.set(p.externalId, p); byId.set(p.id, p); });
   const unavailable = [];
   const hydrated = cleanBlocks.map((b) => {
     if (b.type !== 'properties') return b;
@@ -887,9 +890,37 @@ async function fetchFinnPreview(rawUrl) {
     finnCode = parsed.searchParams.get('finnkode') || (parsed.pathname.match(/\b(\d{8,10})\b/) || [])[1] || '';
   } catch (e) { /* URL er allerede validert av endepunktet */ }
 
+  // BILDEGALLERI. og:image gir bare forsidebildet, men resten av annonsebildene
+  // ligger som images.finncdn.no-URLer i markupen (carousel + srcSet).
+  // Formatet er /dynamic/{bredde}w/item/{finnkode}/{uuid} — MERK: uten filtype,
+  // så vi kan ikke filtrere på .jpg. Vi krever i stedet at URLen tilhører NETTOPP
+  // denne annonsen (/item/{finnkode}/), dedupliserer på uuid (samme bilde finnes
+  // i 142w/480w/1280w/1600w) og beholder største variant. Forsidebildet først.
+  // Feiler mønsteret, står vi igjen med og:image alene — galleriet er en bonus.
+  const gallery = [];
+  try {
+    const seen = new Map();
+    const re = /https:\/\/images\.finncdn\.no\/[^\s"'\\<>)]+/g;
+    let mm;
+    while ((mm = re.exec(htmlStr)) && seen.size < 60) {
+      const u = decodeEntities(mm[0]).replace(/[),.;]+$/, '');
+      if (!/\/dynamic\//.test(u)) continue;
+      if (finnCode && !u.includes(`/item/${finnCode}/`)) continue;
+      const file = ((u.split('/').pop() || '').split('?')[0] || '').toLowerCase();
+      if (!file || file.length < 8) continue;
+      const width = Number((/\/(\d{2,4})w\//.exec(u) || [])[1] || 0);
+      const prev = seen.get(file);
+      if (!prev || width > prev.width) seen.set(file, { url: u, width });
+    }
+    const coverFile = ((String(image || '').split('/').pop() || '').split('?')[0] || '').toLowerCase();
+    const ordered = [...seen.entries()].sort((a, b) => (b[0] === coverFile ? 1 : 0) - (a[0] === coverFile ? 1 : 0));
+    for (const [, v] of ordered) { if (gallery.length < 12) gallery.push(v.url); }
+    if (!gallery.length && image) gallery.push(image);
+  } catch (_) { /* galleri er en bonus */ }
+
   const data = {
     ok: !!title,
-    finnUrl: key, finnCode, title, image, description, kind,
+    finnUrl: key, finnCode, title, image, gallery, description, kind,
     propertyType, propertyTypeRaw: ptRaw,
     bedrooms: bedrooms || '', sqm: sqm || '', rent: rent || '',
     matrikkel, address, postalCode, city,
@@ -5264,10 +5295,16 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
     const findNewsletterProperty = async (dbx, propertyId) => {
       const pid = String(propertyId || '').slice(0, 80);
       if (!pid) return null;
-      return dbx.collection('platform_properties').findOne(
+      const row = await dbx.collection('platform_properties').findOne(
         { stale: { $ne: true }, $or: [{ externalId: pid }, { id: pid }] },
-        { projection: { _id: 0, id: 1, externalId: 1, title: 1, area: 1, district: 1, city: 1, type: 1, bedrooms: 1, sqm: 1, images: 1, status: 1, monthlyRentBand: 1, availableFrom: 1 } }
+        { projection: { _id: 0, id: 1, externalId: 1, title: 1, area: 1, district: 1, districtSource: 1, city: 1, type: 1, bedrooms: 1, sqm: 1, images: 1, status: 1, monthlyRentBand: 1, availableFrom: 1, enrich: 1 } }
       );
+      if (!row) return null;
+      // Berik med FINN-data (bilder/areal/pris/bydel) der plattformen mangler
+      // dem, og ta med annonselenken slik at leietakeren kan se hele annonsen.
+      const e = applyEnrichment(row);
+      const { missingFields, incomplete, enriched, enrichedFields, districtSource, finnCheckedAt, ...safe } = e;
+      return safe;
     };
 
     // Boligspesifikk interesse fra nyhetsbrev. GET er alltid read-only (beskytter
@@ -5700,6 +5737,72 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
       if (!result.ok) return cors(NextResponse.json(result, { status: 400 }));
       return cors(NextResponse.json(result));
     }
+
+    // Admin: koble en FINN-annonse til en bolig, og hent inn bilder, pris, areal
+    // og postnummer derfra. Bakgrunn: plattformeksporten har images: [] på 14 av
+    // 27 boliger — blant dem fire LEDIGE med prisintervall. Et boligkort uten
+    // bilde kan ikke sendes i et nyhetsbrev, så disse boligene var utilgjengelige
+    // for markedsføring. Utleieren har som regel en FINN-annonse; den bruker vi
+    // som midlertidig kilde til plattformen sender bildene (bestilt i bro-tråd
+    // homepage-properties, melding 2/2). Skriver ALDRI til plattformen.
+    // Body: { id, url } — tom url fjerner koblingen og all berikelse.
+    if (route === '/admin/properties/finn' && (method === 'POST' || method === 'PUT')) {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      const pid = String(body.id || '').trim();
+      const finnUrlIn = String(body.url || '').trim();
+      if (!pid) return cors(NextResponse.json({ ok: false, error: 'Mangler id' }, { status: 400 }));
+      if (!finnUrlIn) {
+        const cleared = await setPropertyEnrichment(db, { id: pid, enrich: null });
+        if (cleared.ok) await refreshPropertyQuality(db);
+        return cors(NextResponse.json({ ...cleared, removed: true }, { status: cleared.ok ? 200 : 404 }));
+      }
+      if (!isFinnUrl(finnUrlIn)) return cors(NextResponse.json({ ok: false, error: 'Ikke en gyldig finn.no-lenke' }, { status: 400 }));
+      const finn = await fetchFinnPreview(finnUrlIn);
+      if (!finn || !finn.ok) {
+        return cors(NextResponse.json({
+          ok: false,
+          finnStatus: 'utgatt',
+          error: 'Fant ikke annonsen på FINN. Den kan være utgått, fjernet eller midlertidig utilgjengelig.',
+          detail: (finn && finn.error) || null,
+        }));
+      }
+      const finnImages = (Array.isArray(finn.gallery) ? finn.gallery : []).filter((u) => /^https:\/\//i.test(u)).slice(0, 12);
+      const finnRent = Number(String(finn.rent || '').replace(/\D/g, '')) || 0;
+      const enrich = {
+        source: 'finn',
+        finnUrl: finn.finnUrl,
+        finnCode: finn.finnCode || '',
+        finnStatus: 'aktiv',
+        finnCheckedAt: new Date().toISOString(),
+        finnTitle: String(finn.title || '').slice(0, 200),
+        images: finnImages,
+        sqm: finn.sqm ? Number(finn.sqm) : null,
+        bedrooms: finn.bedrooms !== '' && finn.bedrooms != null ? Number(finn.bedrooms) : null,
+        // Postnummer fra FINN gir en sikrere bydel enn gatenavn-oppslag.
+        monthlyRentBand: finnRent ? `${finnRent.toLocaleString('nb-NO')} kr/mnd` : null,
+        postalCode: finn.postalCode || null,
+        district: finn.postalCode ? (postalToDistrict(finn.postalCode) || null) : null,
+      };
+      const saved = await setPropertyEnrichment(db, { id: pid, enrich });
+      if (!saved.ok) return cors(NextResponse.json(saved, { status: 404 }));
+      await refreshPropertyQuality(db);
+      return cors(NextResponse.json({
+        ok: true,
+        property: saved.property,
+        imported: {
+          images: finnImages.length,
+          sqm: enrich.sqm,
+          bedrooms: enrich.bedrooms,
+          rent: enrich.monthlyRentBand,
+          postalCode: enrich.postalCode,
+          district: enrich.district,
+          finnTitle: enrich.finnTitle,
+          filled: saved.property.enrichedFields || [],
+        },
+      }));
+    }
+
 
     // Admin: forhåndsvis lead-e-poster i nettleser (uten å sende noe).
     // ?type=receipt|notify — valgfritt ?id=<lead-id> for ekte data, ellers eksempel.
