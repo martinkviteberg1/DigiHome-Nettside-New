@@ -72,6 +72,10 @@ const PropertyInterestPage = () => {
   // utgang — hovedhandlingen er å registrere interessen hos oss, ellers går
   // henvendelsen via FINNs skjema og aldri inn i DigiHome.
   const finnUrl = typeof property?.finnUrl === 'string' ? property.finnUrl : '';
+  // Plattformens egen boligside: full adresse, «Møt utleieren», visningsbooking,
+  // chat og BankID-signering. Vi lenker bare dit når boligen har bilder — ellers
+  // sender vi folk til en tom side.
+  const publicUrl = images.length && typeof property?.publicUrl === 'string' ? property.publicUrl : '';
 
   return (
     <main className="min-h-[100dvh] overflow-x-hidden bg-[#f4f1ed] text-[#171513]">
@@ -96,12 +100,20 @@ const PropertyInterestPage = () => {
             <h1 className="mx-auto mt-3 max-w-xl text-[34px] font-bold leading-[1.05] tracking-[-0.04em] sm:text-[44px]">Takk{data?.firstName ? `, ${data.firstName}` : ''}!</h1>
             <p className="mx-auto mt-4 max-w-lg text-[15px] leading-relaxed text-[#6d6760]">Vi har lagt <strong>{property?.title}</strong> til på leietakerprofilen din. Teamet vårt følger opp videre.</p>
             <a href="/" className="mt-8 inline-flex h-12 items-center justify-center rounded-full bg-[#d298ff] px-6 text-[13px] font-bold text-[#14081f]">Til DigiHome</a>
-            {finnUrl ? (
-              <p className="mt-5">
-                <a href={finnUrl} target="_blank" rel="noreferrer" data-testid="property-interest-finn-done"
-                  className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#6d6760] underline decoration-[#d5cec6] underline-offset-4 transition hover:text-[#171513]">
-                  Se hele annonsen på FINN mens du venter <ExternalLink className="h-3.5 w-3.5" />
-                </a>
+            {publicUrl || finnUrl ? (
+              <p className="mt-5 flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
+                {publicUrl ? (
+                  <a href={publicUrl} target="_blank" rel="noreferrer" data-testid="property-interest-public-done"
+                    className="inline-flex items-center gap-1.5 text-[13px] font-bold text-[#7A3EC8] underline decoration-[#d8c4f5] underline-offset-4 transition hover:text-[#5c2a9c]">
+                    Se hele boligen og book visning <ExternalLink className="h-3.5 w-3.5" />
+                  </a>
+                ) : null}
+                {finnUrl ? (
+                  <a href={finnUrl} target="_blank" rel="noreferrer" data-testid="property-interest-finn-done"
+                    className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#6d6760] underline decoration-[#d5cec6] underline-offset-4 transition hover:text-[#171513]">
+                    Se annonsen på FINN <ExternalLink className="h-3.5 w-3.5" />
+                  </a>
+                ) : null}
               </p>
             ) : null}
           </div>
@@ -159,11 +171,21 @@ const PropertyInterestPage = () => {
                 </>
               )}
               {error ? <p role="alert" className="mt-4 rounded-xl bg-red-50 px-4 py-3 text-[12.5px] text-red-700">{error}</p> : null}
-              {finnUrl ? (
-                <a href={finnUrl} target="_blank" rel="noreferrer" data-testid="property-interest-finn"
-                  className="mt-6 inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#6d6760] underline decoration-[#d5cec6] underline-offset-4 transition hover:text-[#171513]">
-                  Se hele annonsen på FINN <ExternalLink className="h-3.5 w-3.5" />
-                </a>
+              {publicUrl || finnUrl ? (
+                <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2">
+                  {publicUrl ? (
+                    <a href={publicUrl} target="_blank" rel="noreferrer" data-testid="property-interest-public"
+                      className="inline-flex items-center gap-1.5 text-[13px] font-bold text-[#7A3EC8] underline decoration-[#d8c4f5] underline-offset-4 transition hover:text-[#5c2a9c]">
+                      Se hele boligen og book visning <ExternalLink className="h-3.5 w-3.5" />
+                    </a>
+                  ) : null}
+                  {finnUrl ? (
+                    <a href={finnUrl} target="_blank" rel="noreferrer" data-testid="property-interest-finn"
+                      className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#6d6760] underline decoration-[#d5cec6] underline-offset-4 transition hover:text-[#171513]">
+                      Se annonsen på FINN <ExternalLink className="h-3.5 w-3.5" />
+                    </a>
+                  ) : null}
+                </div>
               ) : null}
             </div>
           </div>

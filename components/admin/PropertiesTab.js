@@ -12,6 +12,8 @@ import {
 
 const MODEL_LABEL = { langtid: 'Langtidsutleie', korttid: 'Korttidsutleie', hybrid: 'Hybridutleie' };
 const STATUS_LABEL = { active: 'Ledig', rented: 'Utleid', paused: 'Pauset' };
+// Status fra plattformens enhetseksport (mer presis enn boligeksportens tre trinn)
+const UNIT_STATUS_LABEL = { ledig: 'Ledig', utleid: 'Utleid', under_signering: 'Under signering' };
 const STATUS_CLS = {
   active: 'bg-[#e9f7ef] text-[#1f7a4d]',
   rented: 'bg-[#f0ebff] text-[#6b4fd8]',
@@ -195,7 +197,8 @@ export default function PropertiesTab({ apiKey }) {
       <div className="flex items-start gap-2.5 rounded-xl bg-[#f7f3ff] px-4 py-3">
         <Sparkles className="w-4 h-4 text-[#9a6ee8] shrink-0 mt-0.5" />
         <p className="text-[12.5px] leading-relaxed text-[#6b5a94]">
-          Alle felt er personvern-trygge fra plattformen (ingen adresser, husnummer eller leietaker-info — kun område og by).
+          Denne listen speiler <strong>«Enheter»</strong> i DigiHome-appen — samme enheter, med full adresse, etasje, eier, leietaker og faktisk vs. estimert leie.
+          Disse feltene vises <strong>bare her, bak innlogging</strong>. Forsiden og nyhetsbrevet får kun gatenavn uten husnummer, område, størrelse og prisintervall — aldri adresse, eier eller leietaker.
           Nye boliger er <strong>skjult som standard</strong> — slå på synlighet per bolig for å vise den i «Noen av våre eiendommer» på forsiden.
           Boliger uten bilder vises ikke offentlig selv om de er markert synlige.
         </p>
@@ -296,16 +299,38 @@ export default function PropertiesTab({ apiKey }) {
             </div>
             <div className="p-4">
               <h3 className="text-[14.5px] font-semibold text-[#0a0a0a] leading-snug" style={{ fontFamily: 'var(--font-heading)' }}>{p.title || 'Bolig'}</h3>
-              <div className="flex items-center gap-1.5 mt-1.5 text-[12px] text-[#999]">
-                <MapPin className="w-3.5 h-3.5 text-[#ccc]" />
-                {[p.area, p.city || p.district].filter(Boolean).join(', ') || p.district || 'Område ukjent'}
+              {/* Speiling av «Enheter»-visningen: full adresse med husnummer og
+                  etasje kommer fra plattformens enhetseksport (kun for admin). */}
+              <div className="flex items-start gap-1.5 mt-1.5 text-[12px] text-[#999]">
+                <MapPin className="w-3.5 h-3.5 text-[#ccc] shrink-0 mt-0.5" />
+                <span>
+                  {p.fullAddress || [p.area, p.city || p.district].filter(Boolean).join(', ') || 'Område ukjent'}
+                  {p.floor != null ? <span className="text-[#bbb]"> · {p.floor}. etg</span> : null}
+                  {p.district ? <span className="text-[#bbb]"> · {p.district}</span> : null}
+                </span>
               </div>
               <div className="flex items-center gap-3.5 mt-2 text-[12px] text-[#777]">
                 {p.bedrooms != null && <span className="flex items-center gap-1"><BedDouble className="w-3.5 h-3.5 text-[#bbb]" />{p.bedrooms} sov</span>}
                 {p.sqm != null && <span className="flex items-center gap-1"><Ruler className="w-3.5 h-3.5 text-[#bbb]" />{p.sqm} m²</span>}
+                {p.unitStatus && <span className="text-[#aaa]">{UNIT_STATUS_LABEL[p.unitStatus] || p.unitStatus}</span>}
               </div>
+              {p.hasUnitData && (p.ownerName || p.tenantName) ? (
+                <div className="mt-2.5 space-y-0.5 text-[11.5px] text-[#8a8580]">
+                  {p.ownerName ? <p className="truncate"><span className="text-[#bbb]">Eier:</span> {p.ownerName}</p> : null}
+                  <p className="truncate"><span className="text-[#bbb]">Leietaker:</span> {p.tenantName || 'Ingen aktiv leietaker'}</p>
+                </div>
+              ) : null}
               <div className="flex items-center justify-between mt-3.5 pt-3.5 border-t border-[#f1f0ee]">
-                <span className="text-[12.5px] font-semibold text-[#0a0a0a]">{p.monthlyRentBand || '—'}</span>
+                <span className="flex items-center gap-1.5 text-[12.5px] font-semibold text-[#0a0a0a]">
+                  {/* Faktisk leie vs. estimat kommer nå eksplisitt fra plattformen.
+                      Et estimat skal ALDRI leses som inntekt. */}
+                  {p.rentAmount != null
+                    ? `${Number(p.rentAmount).toLocaleString('nb-NO')} kr/mnd`
+                    : (p.monthlyRentBand || '—')}
+                  {p.rentAmount != null && p.rentIsEstimate ? (
+                    <span className="rounded px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wide bg-[#fff8e6] text-[#8a6500]" title="Estimert leie fra plattformen — teller ikke som inntekt">Estimat</span>
+                  ) : null}
+                </span>
                 <button onClick={() => toggle(p)} disabled={togglingId === p.id}
                   aria-label={p.visible ? 'Skjul fra forsiden' : 'Vis på forsiden'}
                   className={`flex items-center gap-1.5 h-8 px-3 rounded-full text-[12px] font-semibold transition-colors ${p.visible ? 'bg-[#e9f7ef] text-[#1f7a4d] hover:bg-[#dcf0e5]' : 'bg-[#f5f5f4] text-[#888] hover:bg-[#ececea]'}`}>

@@ -5297,13 +5297,24 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
       if (!pid) return null;
       const row = await dbx.collection('platform_properties').findOne(
         { stale: { $ne: true }, $or: [{ externalId: pid }, { id: pid }] },
-        { projection: { _id: 0, id: 1, externalId: 1, title: 1, area: 1, district: 1, districtSource: 1, city: 1, type: 1, bedrooms: 1, sqm: 1, images: 1, status: 1, monthlyRentBand: 1, availableFrom: 1, enrich: 1 } }
+        { projection: { _id: 0, id: 1, externalId: 1, title: 1, area: 1, district: 1, districtSource: 1, city: 1, type: 1, bedrooms: 1, sqm: 1, images: 1, status: 1, monthlyRentBand: 1, availableFrom: 1, enrich: 1, unit: 1 } }
       );
       if (!row) return null;
       // Berik med FINN-data (bilder/areal/pris/bydel) der plattformen mangler
-      // dem, og ta med annonselenken slik at leietakeren kan se hele annonsen.
+      // dem, og ta med annonselenken + plattformens boligside slik at leietakeren
+      // kan se hele boligen. STRIPP alt admininternt: eier- og leietakernavn,
+      // full adresse med husnummer, faktisk leiebeløp og etasje skal aldri ut
+      // på en kunderettet flate.
       const e = applyEnrichment(row);
-      const { missingFields, incomplete, enriched, enrichedFields, districtSource, finnCheckedAt, ...safe } = e;
+      const {
+        missingFields, incomplete, enriched, enrichedFields, districtSource, finnCheckedAt, finnSource,
+        fullAddress, street, houseNumber, floor, rooms, ownerName, tenantName, tenantActiveFrom,
+        rentAmount, rentIsEstimate, buildingId, buildingLabel, unitStatus, hasUnitData, postalCode,
+        ...safe
+      } = e;
+      // Døde FINN-annonser skal ikke lenkes til (plattformen setter 'utgatt' når
+      // boligen er utleid). Da faller vi tilbake på vår egen side.
+      if (safe.finnStatus === 'utgatt') { safe.finnUrl = null; }
       return safe;
     };
 
