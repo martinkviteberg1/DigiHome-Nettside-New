@@ -7,6 +7,7 @@ import {
   RefreshCw, Zap, X, Check, Info, Gauge, Activity, Users, Clock, Wallet, BookOpen,
 } from 'lucide-react';
 import RevenueReconcile from '@/components/admin/RevenueReconcile';
+import { buildExplainers, KpiDetailModal } from '@/components/admin/KpiExplain';
 
 const PERIODS = [
   { k: '7', l: '7 d', days: 7 },
@@ -234,8 +235,9 @@ function ChannelBars({ channels = [] }) {
 
 // --- Pipeline-kort (åpne leads + modellert potensial) ---
 const STAGE_COLORS = { new: '#3b82f6', contacted: '#7c5cf0', qualified: '#f59e0b', won: '#10b981', lost: '#94a3b8' };
-function PipelineCard({ pipeline = [], pv }) {
+function PipelineCard({ pipeline = [], pv, onExplain }) {
   const total = pipeline.reduce((s, p) => s + p.count, 0) || 1;
+  const clickable = typeof onExplain === 'function' && pv && pv.open > 0;
   return (
     <div className="rounded-2xl bg-white border border-black/[0.06] shadow-[0_1px_2px_rgba(22,20,29,0.04)] p-5 sm:p-6">
       <p className="text-[11px] font-semibold uppercase tracking-[0.09em] text-[#8b8894] mb-3">Pipeline (nå)</p>
@@ -252,8 +254,10 @@ function PipelineCard({ pipeline = [], pv }) {
         ))}
       </div>
       {pv && pv.open > 0 && (
-        <div className="mt-4 pt-4 border-t border-black/[0.05]">
-          <p className="text-[11px] text-[#a5a3af] uppercase tracking-[0.08em] font-semibold">Potensial i åpne leads</p>
+        <div className={`group mt-4 pt-4 border-t border-black/[0.05] ${clickable ? 'cursor-pointer' : ''}`}
+          {...(clickable ? { role: 'button', tabIndex: 0, onClick: () => onExplain('pipeline_value'), onKeyDown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onExplain('pipeline_value'); } }, title: 'Klikk for detaljer' } : {})}>
+          <p className="text-[11px] text-[#a5a3af] uppercase tracking-[0.08em] font-semibold flex items-center gap-1">Potensial i åpne leads
+            {clickable && <Info className="w-3 h-3 text-[#e2e0e8] group-hover:text-[#7c5cf0] transition-colors" />}</p>
           <p className="mt-1 text-[#16141d] font-bold text-[26px] leading-none tabular-nums tracking-[-0.02em]">{fmtKrFull(pv.potential)} <span className="text-[#a5a3af] text-[14px] font-semibold">kr</span></p>
           <p className="mt-1 text-[11px] text-[#b0aeb8]">{pv.open} åpne · {pv.basis}</p>
         </div>
@@ -296,15 +300,25 @@ function ratingFor(ratio) {
   return { label: 'Under press', color: '#e11d48', pct: 16 };
 }
 
-// --- KPI-kort ---
-function KpiCard({ label, value, format = fmtNum, suffix, delta, inverse, spark, sparkColor, sub, icon: Icon, fn, testid }) {
+// --- KPI-kort (klikkbart → åpner detaljmodal med formel, tallgrunnlag og kilder) ---
+function KpiCard({ label, value, format = fmtNum, suffix, delta, inverse, spark, sparkColor, sub, icon: Icon, fn, testid, onClick }) {
+  const clickable = typeof onClick === 'function';
+  const act = clickable ? {
+    role: 'button', tabIndex: 0, onClick,
+    onKeyDown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } },
+    title: 'Klikk for å se hvordan tallet regnes',
+  } : {};
   return (
-    <div data-testid={testid} className="group relative rounded-2xl bg-white border border-black/[0.06] shadow-[0_1px_2px_rgba(22,20,29,0.04)] hover:shadow-[0_10px_30px_-14px_rgba(22,20,29,0.16)] hover:-translate-y-0.5 transition-all duration-300 p-5 sm:p-6 overflow-hidden">
+    <div data-testid={testid} {...act}
+      className={`group relative rounded-2xl bg-white border border-black/[0.06] shadow-[0_1px_2px_rgba(22,20,29,0.04)] hover:shadow-[0_10px_30px_-14px_rgba(22,20,29,0.16)] hover:-translate-y-0.5 transition-all duration-300 p-5 sm:p-6 overflow-hidden ${clickable ? 'cursor-pointer hover:border-[#7c5cf0]/25 outline-none focus-visible:ring-2 focus-visible:ring-[#7c5cf0]/40 active:translate-y-0' : ''}`}>
       <div className="flex items-start justify-between gap-2">
         <p className="text-[11px] font-semibold uppercase tracking-[0.09em] text-[#8b8894] flex items-center gap-1.5">
           {Icon && <Icon className="w-3.5 h-3.5 text-[#c4c2cc]" />}{label}{fn != null && <Fn n={fn} />}
         </p>
-        {delta != null && <Delta value={delta} inverse={inverse} />}
+        <span className="flex items-center gap-1.5 shrink-0">
+          {delta != null && <Delta value={delta} inverse={inverse} />}
+          {clickable && <Info className="w-3.5 h-3.5 text-[#dedce4] group-hover:text-[#7c5cf0] transition-colors" />}
+        </span>
       </div>
       <div className="mt-3 flex items-end gap-1.5">
         <CountNumber value={value} format={format} className="font-bold tracking-[-0.03em] text-[#16141d] tabular-nums text-[30px] sm:text-[36px] leading-none" />
@@ -317,10 +331,20 @@ function KpiCard({ label, value, format = fmtNum, suffix, delta, inverse, spark,
   );
 }
 
-function MiniStat({ label, value, suffix, sub, fn }) {
+function MiniStat({ label, value, suffix, sub, fn, onClick, testid }) {
+  const clickable = typeof onClick === 'function';
+  const act = clickable ? {
+    role: 'button', tabIndex: 0, onClick,
+    onKeyDown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } },
+    title: 'Klikk for detaljer',
+  } : {};
   return (
-    <div>
-      <p className="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[#a5a3af]">{label}{fn != null && <Fn n={fn} />}</p>
+    <div data-testid={testid} {...act}
+      className={clickable ? 'group -m-1.5 p-1.5 rounded-xl cursor-pointer hover:bg-[#7c5cf0]/[0.05] outline-none focus-visible:ring-2 focus-visible:ring-[#7c5cf0]/40 transition-colors' : ''}>
+      <p className="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[#a5a3af] flex items-center gap-1">
+        <span>{label}{fn != null && <Fn n={fn} />}</span>
+        {clickable && <Info className="w-3 h-3 shrink-0 text-[#e2e0e8] group-hover:text-[#7c5cf0] transition-colors" />}
+      </p>
       <p className="mt-1.5 text-[#16141d] font-bold text-[24px] leading-none tracking-[-0.02em] tabular-nums">{value}{suffix && <span className="text-[#a5a3af] text-[14px] font-semibold ml-1">{suffix}</span>}</p>
       {sub && <p className="mt-1 text-[11.5px] text-[#b0aeb8]">{sub}</p>}
     </div>
@@ -353,11 +377,11 @@ function Funnel({ funnel = [] }) {
 
 // --- Definisjoner (fotnoter) ---
 const DEFINITIONS = [
-  { n: 1, term: 'LTV', text: 'Livstidsverdi per kunde. Kontraktmodus: snitt av faktiske kontraktsverdier. Løpende modus: månedshonorar × forventet levetid (settes under innstillinger).' },
-  { n: 2, term: 'CAC', text: 'Kundeanskaffelseskost. Annonseforbruk (Google + Meta) delt på nye kunder i perioden.' },
-  { n: 3, term: 'CPL', text: 'Kost per lead. Annonseforbruk delt på nye leads i perioden.' },
-  { n: 4, term: 'ROAS', text: 'Annonseavkastning. Tilskrevet omsetning delt på annonseforbruk. «Ekte» = kun omsetning som kan spores til betalt trafikk.' },
-  { n: 5, term: 'Payback', text: 'Antall måneder før månedshonoraret fra en ny kunde har dekket anskaffelseskostnaden (CAC ÷ månedshonorar).' },
+  { n: 1, term: 'LTV', text: 'Livstidsverdi per kunde. Standard: FAKTISK månedshonorar fra startede leiekontrakter × antatt levetid × bruttomargin. Estimert leie fra forvaltningsavtaler inngår ikke.' },
+  { n: 2, term: 'CAC', text: 'Kundeanskaffelseskost. Annonseforbruk (Google + Meta) delt på nye kunder i perioden — samme kalenderdager for begge.' },
+  { n: 3, term: 'CPL', text: 'Kost per lead. Annonseforbruk delt på nye huseier-leads i perioden. Leietaker-leads holdes utenfor.' },
+  { n: 4, term: 'ROAS', text: 'Annonseavkastning. Registrert kundeverdi delt på annonseforbruk. Kundeverdien er et estimat satt ved signering.' },
+  { n: 5, term: 'Payback', text: 'Måneder før månedshonoraret har dekket anskaffelseskosten (CAC ÷ månedlig bruttofortjeneste), pluss ventetid til første leieinntekt.' },
 ];
 
 function Definitions({ generatedAt }) {
@@ -373,7 +397,7 @@ function Definitions({ generatedAt }) {
         ))}
         <p className="text-[12px] leading-relaxed text-[#8b8894]">
           <Info className="inline w-3.5 h-3.5 mr-1 -mt-0.5 text-[#c4c2cc]" />
-          Totaler og snittverdi viser helhetsbildet (sporet + historisk import). CPL, CAC og ROAS beregnes kun av sporet, betalt trafikk.
+          <b className="text-[#514e5a]">Klikk på et kort</b> for full forklaring: formel med tallene satt inn, hva som er inkludert/ekskludert, forbehold, datakilder og listen over de underliggende kontraktene. Bruk ← / → i modalen for å bla, Esc for å lukke.
         </p>
       </div>
       <p className="mt-3 pt-3 border-t border-black/[0.05] text-[11px] text-[#b8b6c0] tabular-nums">
@@ -409,6 +433,7 @@ function KpiDashboardInner({ apiKey }) {
   const [present, setPresent] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [chartMode, setChartMode] = useState('revenue');
+  const [explainId, setExplainId] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true); setErr('');
@@ -435,6 +460,11 @@ function KpiDashboardInner({ apiKey }) {
   const m = data?.metrics || {};
   const northStar = data?.northStar || 'ltv_cac';
   const rating = ratingFor(hero.ltvCac?.value);
+
+  // Forklaringer bak hvert nøkkeltall — bygges av samme payload som kortene.
+  const explainers = useMemo(() => buildExplainers(data), [data]);
+  const explain = useCallback((id) => setExplainId(id), []);
+  const northStarExplainId = { ltv_cac: 'ltv_cac', new_customers: 'new_customers', revenue: 'revenue', cac: 'cac', avg_value: 'avg_value' }[northStar] || 'ltv_cac';
 
   const northStarView = useMemo(() => {
     switch (northStar) {
@@ -492,8 +522,16 @@ function KpiDashboardInner({ apiKey }) {
           {/* NORTH STAR + Enhetsøkonomi */}
           <Reveal delay={40}>
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 mb-4">
-              <div className="lg:col-span-3 relative rounded-3xl overflow-hidden border border-black/[0.06] shadow-[0_1px_2px_rgba(22,20,29,0.04)] px-6 sm:px-9 py-8 sm:py-9" style={{ background: 'linear-gradient(135deg, #f7f2ff 0%, #ffffff 58%)' }}>
+              <div className="lg:col-span-3 group relative rounded-3xl overflow-hidden border border-black/[0.06] shadow-[0_1px_2px_rgba(22,20,29,0.04)] px-6 sm:px-9 py-8 sm:py-9 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-[#7c5cf0]/40 hover:border-[#7c5cf0]/25 transition-colors"
+                style={{ background: 'linear-gradient(135deg, #f7f2ff 0%, #ffffff 58%)' }}
+                role="button" tabIndex={0} data-testid="kpi-northstar"
+                onClick={() => explain(northStarExplainId)}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); explain(northStarExplainId); } }}
+                title="Klikk for å se hvordan tallet regnes">
                 <div aria-hidden className="pointer-events-none absolute -top-24 -right-10 h-64 w-64 rounded-full blur-2xl" style={{ background: `radial-gradient(circle, ${VIOLET_SOFT}33 0%, transparent 70%)` }} />
+                <span className="absolute top-4 right-4 sm:top-5 sm:right-6 inline-flex items-center gap-1.5 rounded-full bg-white/80 border border-black/[0.06] px-2.5 py-1 text-[11px] font-semibold text-[#8b8894] group-hover:text-[#6d4ce0] group-hover:border-[#7c5cf0]/30 transition-colors">
+                  <Info className="w-3.5 h-3.5" /> Hvordan regnes dette?
+                </span>
                 <div className="flex items-center gap-2">
                   <p className="text-[12px] font-semibold uppercase tracking-[0.16em]" style={{ color: VIOLET }}>{northStarView.label}{northStar === 'ltv_cac' && <><Fn n={1} /><Fn n={2} /></>}</p>
                   {northStarView.rating && <span className="text-[11px] font-bold rounded-full px-2 py-0.5" style={{ color: rating.color, background: `${rating.color}14` }}>{rating.label}</span>}
@@ -515,16 +553,42 @@ function KpiDashboardInner({ apiKey }) {
                     <p className="mt-2 text-[11px] text-[#b0aeb8]">Benchmark: Sunn &gt; 3:1 · Verdensklasse &gt; 5:1</p>
                   </div>
                 )}
+                {data?.revenueModel?.hasData && (
+                  <div className="mt-7 grid grid-cols-3 gap-2.5 max-w-xl" data-testid="kpi-northstar-tiers">
+                    {[
+                      { id: 'mrr_actual', l: 'Realisert', v: data.revenueModel.mrr.actual, c: EMER, sub: 'løper nå' },
+                      { id: 'mrr_contracted', l: 'Kontrahert', v: data.revenueModel.mrr.contracted, c: '#f59e0b', sub: 'signert, ikke startet' },
+                      { id: 'mrr_potential', l: 'Potensial', v: data.revenueModel.mrr.potential, c: '#a5a3af', sub: 'estimert leie' },
+                    ].map((t) => (
+                      <button key={t.id} onClick={(ev) => { ev.stopPropagation(); explain(t.id); }}
+                        className="text-left rounded-xl bg-white/70 hover:bg-white border border-black/[0.05] hover:border-[#7c5cf0]/25 px-3 py-2.5 transition-colors"
+                        title={`Klikk for detaljer om ${t.l.toLowerCase()}`}>
+                        <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.08em] text-[#8b8894]">
+                          <span className="h-1.5 w-1.5 rounded-full" style={{ background: t.c }} />{t.l}
+                        </span>
+                        <span className="block mt-1 text-[#16141d] font-bold text-[17px] leading-none tabular-nums tracking-[-0.02em]">{fmtKrFull(t.v)} <span className="text-[#a5a3af] text-[11px] font-semibold">kr/mnd</span></span>
+                        <span className="block mt-1 text-[10.5px] text-[#b0aeb8]">{t.sub}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
-              <div className="lg:col-span-2 rounded-3xl bg-white border border-black/[0.06] shadow-[0_1px_2px_rgba(22,20,29,0.04)] p-6 flex flex-col justify-center">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.09em] text-[#8b8894] flex items-center gap-1.5 mb-4"><Gauge className="w-3.5 h-3.5 text-[#c4c2cc]" /> Enhetsøkonomi</p>
+              <div className="lg:col-span-2 rounded-3xl bg-white border border-black/[0.06] shadow-[0_1px_2px_rgba(22,20,29,0.04)] p-6 flex flex-col justify-center" data-testid="kpi-unit-economics">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.09em] text-[#8b8894] flex items-center gap-1.5 mb-4"><Gauge className="w-3.5 h-3.5 text-[#c4c2cc]" /> Enhetsøkonomi <span className="normal-case tracking-normal text-[#c4c2cc] font-medium">· klikk for detaljer</span></p>
                 <div className="grid grid-cols-2 gap-y-5 gap-x-4">
-                  <MiniStat label="LTV" fn={1} value={fmtKr(hero.ltv?.value)} suffix="kr" sub={LTV_BASIS_LABEL[hero.ltv?.basis] || 'kontraktsverdi'} />
-                  <MiniStat label="CAC" fn={2} value={fmtKr(hero.cac?.value)} suffix="kr" />
-                  <MiniStat label="Payback" fn={5} value={m.paybackMonths?.value != null ? fmtNum(m.paybackMonths.value) : '—'} suffix="mnd" />
-                  <MiniStat label="ROAS (ekte)" fn={4} value={fmtRatio(m.roasTrue?.value)} suffix="x" />
+                  <MiniStat testid="ue-ltv" label="LTV" fn={1} value={fmtKr(hero.ltv?.value)} suffix="kr" sub={LTV_BASIS_LABEL[hero.ltv?.basis] || 'kontraktsverdi'} onClick={() => explain('ltv')} />
+                  <MiniStat testid="ue-cac" label="CAC" fn={2} value={fmtKr(hero.cac?.value)} suffix="kr" sub="annonseforbruk ÷ nye kunder" onClick={() => explain('cac')} />
+                  <MiniStat testid="ue-ltvcac" label="LTV : CAC · realisert" value={fmtRatio(hero.ltvCac?.value)} suffix=": 1" sub="faktisk startet leie" onClick={() => explain('ltv_cac')} />
+                  <MiniStat testid="ue-ltvcac-contracted" label="LTV : CAC · inkl. kontrahert"
+                    value={hero.ltvCacContracted?.value != null ? fmtRatio(hero.ltvCacContracted.value) : '—'} suffix=": 1"
+                    sub="signert, ikke startet" onClick={() => explain('ltv_cac_contracted')} />
+                  <MiniStat testid="ue-payback" label="Payback" fn={5} value={m.paybackMonths?.value != null ? fmtNum(m.paybackMonths.value) : '—'} suffix="mnd" sub="inkl. ventetid til leie" onClick={() => explain('payback')} />
+                  <MiniStat testid="ue-roas" label="ROAS (ekte)" fn={4} value={fmtRatio(m.roasTrue?.value)} suffix="x" sub="registrert verdi ÷ forbruk" onClick={() => explain('roas')} />
                 </div>
+                <p className="mt-5 pt-4 border-t border-black/[0.05] text-[11px] text-[#b0aeb8] leading-relaxed">
+                  <b className="text-[#8b8894]">Realisert</b> bruker faktisk startet leiekontrakt og faktisk honorar. <b className="text-[#8b8894]">Inkl. kontrahert</b> tar med signert leie som ikke har startet — sikret, men ikke realisert inntekt.
+                </p>
               </div>
             </div>
           </Reveal>
@@ -534,14 +598,14 @@ function KpiDashboardInner({ apiKey }) {
           {/* Hero-grid */}
           <Reveal delay={140}>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-              <KpiCard testid="kpi-cpl" icon={Wallet} label="Kost per lead" fn={3} value={hero.cpl?.value} format={fmtKrFull} suffix="kr" inverse sub="Annonseforbruk ÷ nye huseier-leads" />
-              <KpiCard testid="kpi-cac" icon={Wallet} label="Kost per kunde" fn={2} value={hero.cac?.value} format={fmtKrFull} suffix="kr" inverse sub="Annonseforbruk ÷ nye kunder i perioden" />
-              <KpiCard testid="kpi-avgvalue" icon={Users} label="Snitt kundeverdi" value={hero.avgCustomerValue?.value} format={fmtKrFull} suffix="kr" sub={hero.avgCustomerValue?.missingValue > 0
+              <KpiCard testid="kpi-cpl" icon={Wallet} label="Kost per lead" fn={3} value={hero.cpl?.value} format={fmtKrFull} suffix="kr" inverse sub="Annonseforbruk ÷ nye huseier-leads" onClick={() => explain('cpl')} />
+              <KpiCard testid="kpi-cac" icon={Wallet} label="Kost per kunde" fn={2} value={hero.cac?.value} format={fmtKrFull} suffix="kr" inverse sub="Annonseforbruk ÷ nye kunder i perioden" onClick={() => explain('cac')} />
+              <KpiCard testid="kpi-avgvalue" icon={Users} label="Snitt kundeverdi" value={hero.avgCustomerValue?.value} format={fmtKrFull} suffix="kr" onClick={() => explain('avg_value')} sub={hero.avgCustomerValue?.missingValue > 0
                 ? `${fmtNum(hero.avgCustomerValue?.basedOn)} av ${fmtNum(m.totalCustomers?.value)} kunder har registrert verdi · alle tider`
                 : `${fmtNum(m.totalCustomers?.value)} kunder totalt · alle tider`} />
-              <KpiCard testid="kpi-ttw" icon={Clock} label="Tid til kunde" value={hero.timeToWin?.value} format={fmtNum} suffix="dager" inverse sub="Snitt fra lead til signert" />
-              <KpiCard testid="kpi-conv" icon={Activity} label="Konverteringsrate" value={hero.conversionRate?.value} format={fmtNum} suffix="%" delta={hero.conversionRate?.delta} sub="Leads → kunder" />
-              <KpiCard testid="kpi-newcust" icon={TrendingUp} label="Nye kunder" value={m.newCustomers?.value} format={fmtNum} delta={m.newCustomers?.delta} sub={`av ${fmtNum(m.newLeads?.value)} nye leads`} spark={data?.series?.revenue} sparkColor={EMER} />
+              <KpiCard testid="kpi-ttw" icon={Clock} label="Tid til kunde" value={hero.timeToWin?.value} format={fmtNum} suffix="dager" inverse sub="Snitt fra lead til signert" onClick={() => explain('ttw')} />
+              <KpiCard testid="kpi-conv" icon={Activity} label="Konverteringsrate" value={hero.conversionRate?.value} format={fmtNum} suffix="%" delta={hero.conversionRate?.delta} sub="Leads → kunder" onClick={() => explain('conv')} />
+              <KpiCard testid="kpi-newcust" icon={TrendingUp} label="Nye kunder" value={m.newCustomers?.value} format={fmtNum} delta={m.newCustomers?.delta} sub={`av ${fmtNum(m.newLeads?.value)} nye leads`} spark={data?.series?.revenue} sparkColor={EMER} onClick={() => explain('new_customers')} />
             </div>
           </Reveal>
 
@@ -557,10 +621,14 @@ function KpiDashboardInner({ apiKey }) {
                       {chartMode === 'revenue' && m.revenue?.delta != null && <span className="ml-2 align-middle"><Delta value={m.revenue.delta} /></span>}
                     </p>
                   </div>
-                  <div className="flex items-center gap-0.5 rounded-full bg-black/[0.04] p-0.5">
-                    <button onClick={() => setChartMode('monthly')} data-testid="kpi-chart-monthly" className={`px-3 h-7 rounded-full text-[11.5px] font-semibold transition-all ${chartMode === 'monthly' ? 'bg-white text-[#16141d] shadow-[0_1px_4px_rgba(22,20,29,0.12)]' : 'text-[#8b8894]'}`}>12 mnd</button>
-                    <button onClick={() => setChartMode('revenue')} className={`px-3 h-7 rounded-full text-[11.5px] font-semibold transition-all ${chartMode === 'revenue' ? 'bg-white text-[#16141d] shadow-[0_1px_4px_rgba(22,20,29,0.12)]' : 'text-[#8b8894]'}`}>Omsetning</button>
-                    <button onClick={() => setChartMode('leads')} className={`px-3 h-7 rounded-full text-[11.5px] font-semibold transition-all ${chartMode === 'leads' ? 'bg-white text-[#16141d] shadow-[0_1px_4px_rgba(22,20,29,0.12)]' : 'text-[#8b8894]'}`}>Leads</button>
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-0.5 rounded-full bg-black/[0.04] p-0.5">
+                      <button onClick={() => setChartMode('monthly')} data-testid="kpi-chart-monthly" className={`px-3 h-7 rounded-full text-[11.5px] font-semibold transition-all ${chartMode === 'monthly' ? 'bg-white text-[#16141d] shadow-[0_1px_4px_rgba(22,20,29,0.12)]' : 'text-[#8b8894]'}`}>12 mnd</button>
+                      <button onClick={() => setChartMode('revenue')} className={`px-3 h-7 rounded-full text-[11.5px] font-semibold transition-all ${chartMode === 'revenue' ? 'bg-white text-[#16141d] shadow-[0_1px_4px_rgba(22,20,29,0.12)]' : 'text-[#8b8894]'}`}>Omsetning</button>
+                      <button onClick={() => setChartMode('leads')} className={`px-3 h-7 rounded-full text-[11.5px] font-semibold transition-all ${chartMode === 'leads' ? 'bg-white text-[#16141d] shadow-[0_1px_4px_rgba(22,20,29,0.12)]' : 'text-[#8b8894]'}`}>Leads</button>
+                    </div>
+                    <button onClick={() => explain(chartMode === 'leads' ? 'new_leads' : 'revenue')} title="Hvordan regnes dette?" data-testid="kpi-chart-info"
+                      className="shrink-0 h-7 w-7 rounded-full bg-black/[0.04] text-[#a5a3af] hover:text-[#7c5cf0] hover:bg-[#7c5cf0]/[0.08] grid place-items-center transition-colors"><Info className="w-3.5 h-3.5" /></button>
                   </div>
                 </div>
                 <div className="mt-4">
@@ -588,8 +656,13 @@ function KpiDashboardInner({ apiKey }) {
           <Reveal delay={320}>
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4 mt-3 sm:mt-4">
               {data?.revenueModel?.hasData && data.revenueModel.mrr?.actual > 0 ? (
-                <div data-testid="kpi-platform-mrr" className="rounded-2xl p-5 sm:p-6 relative overflow-hidden border border-emerald-100 shadow-[0_1px_2px_rgba(22,20,29,0.04)]" style={{ background: 'linear-gradient(135deg, #ecfdf5 0%, #ffffff 62%)' }}>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.09em] flex items-center gap-1.5" style={{ color: EMER_TEXT }}><Zap className="w-3.5 h-3.5" /> MRR — faktisk honorar</p>
+                <div data-testid="kpi-platform-mrr" role="button" tabIndex={0}
+                  onClick={() => explain('mrr_actual')}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); explain('mrr_actual'); } }}
+                  title="Klikk for å se hvilke leiekontrakter som utgjør honoraret"
+                  className="group rounded-2xl p-5 sm:p-6 relative overflow-hidden border border-emerald-100 shadow-[0_1px_2px_rgba(22,20,29,0.04)] cursor-pointer hover:shadow-[0_10px_30px_-14px_rgba(22,20,29,0.16)] hover:-translate-y-0.5 outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50 transition-all duration-300" style={{ background: 'linear-gradient(135deg, #ecfdf5 0%, #ffffff 62%)' }}>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.09em] flex items-center gap-1.5" style={{ color: EMER_TEXT }}><Zap className="w-3.5 h-3.5" /> MRR — faktisk honorar
+                    <Info className="w-3.5 h-3.5 ml-auto text-emerald-300 group-hover:text-emerald-600 transition-colors" /></p>
                   <p className="mt-3 text-[#16141d] font-bold text-[40px] leading-none tracking-[-0.03em] tabular-nums"><CountNumber value={data.revenueModel.mrr.actual} format={fmtKrFull} /> <span className="text-[#a5a3af] text-[18px] font-semibold">kr/mnd</span></p>
                   <p className="mt-2 text-[12.5px] text-[#8b8894] tabular-nums">ARR {fmtKrFull(data.revenueModel.tiers.actual.arr)} kr · {fmtNum(data.revenueModel.customers.earning)} kunde{data.revenueModel.customers.earning === 1 ? '' : 'r'} med inngått leiekontrakt</p>
                   <p className="mt-1 text-[11.5px] text-[#a5a3af] tabular-nums">+ {fmtKrFull(data.revenueModel.mrr.contracted)} kr kontrahert · + {fmtKrFull(data.revenueModel.mrr.potential)} kr potensial</p>
@@ -610,12 +683,12 @@ function KpiDashboardInner({ apiKey }) {
               ) : (
                 <KpiCard testid="kpi-totalrev" icon={Wallet} label="Total omsetning" value={m.totalRevenueAllTime?.value} format={fmtKrFull} suffix="kr" sub="all tid · sporet + historisk" />
               )}
-              <KpiCard testid="kpi-spend" icon={Wallet} label="Annonseforbruk" value={m.spend?.total} format={fmtKrFull} suffix="kr" inverse sub={`Google ${fmtKr(m.spend?.google)} · Meta ${fmtKr(m.spend?.meta)}`} />
+              <KpiCard testid="kpi-spend" icon={Wallet} label="Annonseforbruk" value={m.spend?.total} format={fmtKrFull} suffix="kr" inverse sub={`Google ${fmtKr(m.spend?.google)} · Meta ${fmtKr(m.spend?.meta)}`} onClick={() => explain('spend')} />
               <div className="rounded-2xl bg-white border border-black/[0.06] shadow-[0_1px_2px_rgba(22,20,29,0.04)] p-5 sm:p-6 grid grid-cols-2 gap-4">
-                <MiniStat label="Nye leads" value={fmtNum(m.newLeads?.value)} sub={m.newLeads?.delta != null ? `${m.newLeads.delta > 0 ? '+' : ''}${m.newLeads.delta} % vs forrige periode` : ''} />
-                <MiniStat label="Total kunder" value={fmtNum(m.totalCustomers?.value)} sub={m.totalCustomers?.historical ? `+${fmtNum(m.totalCustomers.historical)} hist.` : 'sporet'} />
-                <MiniStat label="Responstid" value={m.responseHours?.value != null ? fmtNum(m.responseHours.value) : '—'} suffix="t" sub={m.responseHours?.sla24hPct != null ? `${m.responseHours.sla24hPct} % <24 t` : ''} />
-                <MiniStat label="ROAS" fn={4} value={fmtRatio(m.roasTrue?.value)} suffix="x" sub="omsetn. ÷ forbruk" />
+                <MiniStat testid="ms-newleads" label="Nye leads" value={fmtNum(m.newLeads?.value)} sub={m.newLeads?.delta != null ? `${m.newLeads.delta > 0 ? '+' : ''}${m.newLeads.delta} % vs forrige periode` : ''} onClick={() => explain('new_leads')} />
+                <MiniStat testid="ms-totalcust" label="Total kunder" value={fmtNum(m.totalCustomers?.value)} sub={m.totalCustomers?.historical ? `+${fmtNum(m.totalCustomers.historical)} hist.` : 'sporet'} onClick={() => explain('total_customers')} />
+                <MiniStat testid="ms-response" label="Responstid" value={m.responseHours?.value != null ? fmtNum(m.responseHours.value) : '—'} suffix="t" sub={m.responseHours?.sla24hPct != null ? `${m.responseHours.sla24hPct} % <24 t` : ''} onClick={() => explain('response')} />
+                <MiniStat testid="ms-roas" label="ROAS" fn={4} value={fmtRatio(m.roasTrue?.value)} suffix="x" sub="omsetn. ÷ forbruk" onClick={() => explain('roas')} />
               </div>
             </div>
           </Reveal>
@@ -623,7 +696,7 @@ function KpiDashboardInner({ apiKey }) {
           {/* Inntektskvalitet — faktisk vs kontrahert vs potensial honorar */}
           {data?.revenueModel?.hasData && (
             <Reveal delay={350}>
-              <RevenueQualityPanel rm={data.revenueModel} ltvBasis={hero.ltv?.basis} onOpenSettings={() => setSettingsOpen(true)} />
+              <RevenueQualityPanel rm={data.revenueModel} ltvBasis={hero.ltv?.basis} hero={hero} onExplain={explain} onOpenSettings={() => setSettingsOpen(true)} />
             </Reveal>
           )}
 
@@ -635,14 +708,18 @@ function KpiDashboardInner({ apiKey }) {
           {/* Pipeline + kanaler + etterspørsel */}
           <Reveal delay={380}>
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4 mt-3 sm:mt-4">
-              <PipelineCard pipeline={m.pipeline || []} pv={data?.pipelineValue} />
+              <PipelineCard pipeline={m.pipeline || []} pv={data?.pipelineValue} onExplain={explain} />
               <div className="rounded-2xl bg-white border border-black/[0.06] shadow-[0_1px_2px_rgba(22,20,29,0.04)] p-5 sm:p-6" data-testid="kpi-channels">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.09em] text-[#8b8894] mb-4">Leads per kanal <span className="normal-case tracking-normal text-[#c4c2cc]">· {data?.period?.label || ''}</span></p>
                 <ChannelBars channels={data?.channels || []} />
               </div>
-              <div className="rounded-2xl bg-white border border-black/[0.06] shadow-[0_1px_2px_rgba(22,20,29,0.04)] p-5 sm:p-6 flex flex-col justify-between" data-testid="kpi-demand">
+              <div role="button" tabIndex={0} onClick={() => explain('tenant_demand')}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); explain('tenant_demand'); } }}
+                title="Klikk for detaljer"
+                className="group rounded-2xl bg-white border border-black/[0.06] shadow-[0_1px_2px_rgba(22,20,29,0.04)] p-5 sm:p-6 flex flex-col justify-between cursor-pointer hover:border-[#7c5cf0]/25 hover:shadow-[0_10px_30px_-14px_rgba(22,20,29,0.16)] outline-none focus-visible:ring-2 focus-visible:ring-[#7c5cf0]/40 transition-all duration-300" data-testid="kpi-demand">
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.09em] text-[#8b8894] flex items-center gap-1.5"><Users className="w-3.5 h-3.5 text-[#c4c2cc]" /> Etterspørsel · leietakere</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.09em] text-[#8b8894] flex items-center gap-1.5"><Users className="w-3.5 h-3.5 text-[#c4c2cc]" /> Etterspørsel · leietakere
+                    <Info className="w-3.5 h-3.5 ml-auto text-[#dedce4] group-hover:text-[#7c5cf0] transition-colors" /></p>
                   <div className="mt-3 flex items-end gap-1.5">
                     <CountNumber value={m.newTenantLeads?.value} format={fmtNum} className="font-bold tracking-[-0.03em] text-[#16141d] tabular-nums text-[38px] leading-none" />
                     {m.newTenantLeads?.delta != null && <span className="mb-1"><Delta value={m.newTenantLeads.delta} /></span>}
@@ -661,6 +738,10 @@ function KpiDashboardInner({ apiKey }) {
         </div>
       )}
 
+      {explainId && explainers.length > 0 && (
+        <KpiDetailModal explainers={explainers} activeId={explainId} apiKey={apiKey} days={data?.period?.days || 90}
+          onClose={() => setExplainId(null)} onNavigate={setExplainId} />
+      )}
       {settingsOpen && <LtvSettingsModal apiKey={apiKey} current={data?.ltvModel} revenueModel={data?.revenueModel} onClose={() => setSettingsOpen(false)} onSaved={() => { setSettingsOpen(false); load(); }} />}
     </div>
   );
@@ -671,11 +752,39 @@ function KpiDashboardInner({ apiKey }) {
 // Honoraret utløses av en FAKTISK inngått leiekontrakt, ikke av en signert
 // huseierkontrakt med estimert leie. Dette panelet gjør forskjellen synlig.
 // ---------------------------------------------------------------------------
-function RevenueQualityPanel({ rm, ltvBasis, onOpenSettings }) {
+function RevenueQualityPanel({ rm, ltvBasis, hero, onExplain, onOpenSettings }) {
+  const ratio = (v) => (v != null ? `${fmtRatio(v)} : 1` : '—');
   const tiers = [
-    { k: 'actual', l: 'Faktisk', d: 'Signert og startet leiekontrakt', mrr: rm.mrr.actual, n: rm.tiers.actual.count, color: EMER, text: EMER_TEXT, bg: 'bg-emerald-50' },
-    { k: 'contracted', l: 'Kontrahert', d: 'Leiekontrakt inngått, ikke startet', mrr: rm.mrr.contracted, n: rm.tiers.contracted.count, color: '#f59e0b', text: '#b45309', bg: 'bg-amber-50' },
-    { k: 'potential', l: 'Potensial', d: 'Forvaltningsavtale, estimert leie', mrr: rm.mrr.potential, n: rm.tiers.potential.count, color: '#a5a3af', text: '#67646f', bg: 'bg-black/[0.03]' },
+    {
+      k: 'actual', id: 'mrr_actual', l: 'Realisert', d: 'Signert og startet leiekontrakt',
+      mrr: rm.mrr.actual, n: rm.tiers.actual.count, color: EMER, text: EMER_TEXT, bg: 'bg-emerald-50',
+      rows: [
+        ['ARR', `${fmtKrFull(rm.tiers.actual.arr)} kr`],
+        ['Kunder med leieinntekt', fmtNum(rm.tiers.actual.customers)],
+        ['LTV per kunde', rm.ltv.value != null ? `${fmtKrFull(rm.ltv.value)} kr` : '—'],
+        ['LTV : CAC', ratio(hero?.ltvCac?.value)],
+      ],
+    },
+    {
+      k: 'contracted', id: 'mrr_contracted', l: 'Kontrahert', d: 'Leiekontrakt inngått, ikke startet',
+      mrr: rm.mrr.contracted, n: rm.tiers.contracted.count, color: '#f59e0b', text: '#b45309', bg: 'bg-amber-50',
+      rows: [
+        ['ARR', `${fmtKrFull(rm.tiers.contracted.arr)} kr`],
+        ['MRR om 90 d', rm.ramp?.length ? `${fmtKrFull(rm.ramp[rm.ramp.length - 1].mrr)} kr` : '—'],
+        ['LTV inkl. kontrahert', rm.ltv.contractedBasis?.value != null ? `${fmtKrFull(rm.ltv.contractedBasis.value)} kr` : '—'],
+        ['LTV : CAC', ratio(hero?.ltvCacContracted?.value)],
+      ],
+    },
+    {
+      k: 'potential', id: 'mrr_potential', l: 'Potensial', d: 'Forvaltningsavtale, estimert leie',
+      mrr: rm.mrr.potential, n: rm.tiers.potential.count, color: '#a5a3af', text: '#67646f', bg: 'bg-black/[0.03]',
+      rows: [
+        ['Med prisestimat', `${fmtNum(rm.tiers.potential.withEstimate)} av ${fmtNum(rm.tiers.potential.count)}`],
+        ['Aktiveringsrate', rm.customers.activationRatePct != null ? `${fmtNum(rm.customers.activationRatePct)} %` : '—'],
+        ['Forventet honorar/ny', rm.ltv.expectedMonthlyFeePerNew != null ? `${fmtKrFull(rm.ltv.expectedMonthlyFeePerNew)} kr/mnd` : '—'],
+        ['Risikojustert LTV', rm.ltv.riskAdjustedNewCustomer != null ? `${fmtKrFull(rm.ltv.riskAdjustedNewCustomer)} kr` : '—'],
+      ],
+    },
   ];
   const total = Math.max(1, rm.mrr.totalPipeline);
   return (
@@ -688,7 +797,7 @@ function RevenueQualityPanel({ rm, ltvBasis, onOpenSettings }) {
         <div className="flex items-center gap-2">
           {rm.revenueQualityPct != null && (
             <span className="rounded-full px-2.5 py-1 text-[11.5px] font-bold tabular-nums bg-emerald-50" style={{ color: EMER_TEXT }} data-testid="revq-pct">
-              {rm.revenueQualityPct} % faktisk
+              {rm.revenueQualityPct} % realisert
             </span>
           )}
           <button onClick={onOpenSettings} className="rounded-full px-2.5 py-1 text-[11.5px] font-semibold text-[#67646f] bg-black/[0.04] hover:bg-black/[0.08] transition-colors flex items-center gap-1">
@@ -706,23 +815,39 @@ function RevenueQualityPanel({ rm, ltvBasis, onOpenSettings }) {
 
       <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
         {tiers.map((t) => (
-          <div key={t.k} className={`rounded-xl px-4 py-3.5 ${t.bg}`} data-testid={`revq-tier-${t.k}`}>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.08em]" style={{ color: t.text }}>{t.l}</p>
+          <div key={t.k} role="button" tabIndex={0}
+            onClick={() => onExplain && onExplain(t.id)}
+            onKeyDown={(e) => { if (onExplain && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onExplain(t.id); } }}
+            title="Klikk for formel, forbehold og kontraktsliste"
+            className={`group relative rounded-xl px-4 py-3.5 ${t.bg} cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-[#7c5cf0]/40 hover:shadow-[0_8px_24px_-14px_rgba(22,20,29,0.25)] hover:-translate-y-0.5 transition-all duration-300`}
+            data-testid={`revq-tier-${t.k}`}>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] flex items-center gap-1.5" style={{ color: t.text }}>
+              <span className="h-1.5 w-1.5 rounded-full" style={{ background: t.color }} />{t.l}
+              <Info className="w-3.5 h-3.5 ml-auto opacity-25 group-hover:opacity-90 transition-opacity" style={{ color: t.text }} />
+            </p>
             <p className="mt-1.5 text-[#16141d] font-bold text-[26px] leading-none tracking-[-0.03em] tabular-nums">{fmtKrFull(t.mrr)} <span className="text-[#a5a3af] text-[13px] font-semibold">kr/mnd</span></p>
             <p className="mt-1.5 text-[11.5px] text-[#8b8894] tabular-nums">{fmtNum(t.n)} kontrakt{t.n === 1 ? '' : 'er'} · {t.d}</p>
+            <div className="mt-3 pt-3 border-t border-black/[0.06] space-y-1">
+              {t.rows.map(([k, v]) => (
+                <div key={k} className="flex items-baseline justify-between gap-2">
+                  <span className="text-[11px] text-[#8b8894] leading-snug">{k}</span>
+                  <span className="text-[11.5px] font-semibold text-[#16141d] tabular-nums whitespace-nowrap">{v}</span>
+                </div>
+              ))}
+            </div>
           </div>
         ))}
       </div>
 
       <div className="mt-5 pt-5 border-t border-black/[0.05] grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <MiniStat label="Aktiveringsrate" value={rm.customers.activationRatePct != null ? fmtNum(rm.customers.activationRatePct) : '—'} suffix="%"
-          sub={`${fmtNum(rm.customers.earning)} av ${fmtNum(rm.customers.management)} kunder har leieinntekt`} />
-        <MiniStat label="Venter på leiekontrakt" value={fmtNum(rm.customers.awaitingLease)}
-          sub="forvaltningsavtale uten leieinntekt" />
-        <MiniStat label="Tid til leieinntekt" value={rm.timing.daysToFirstLease != null ? fmtNum(rm.timing.daysToFirstLease) : '—'} suffix="d"
-          sub={rm.timing.sampleSize > 0 ? `median · ${fmtNum(rm.timing.sampleSize)} kunder` : 'ikke nok data'} />
-        <MiniStat label="MRR i faresonen" value={fmtKrFull(rm.mrr.atRisk90d)} suffix="kr"
-          sub="leiekontrakter som utløper innen 90 d" />
+        <MiniStat testid="revq-activation" label="Aktiveringsrate" value={rm.customers.activationRatePct != null ? fmtNum(rm.customers.activationRatePct) : '—'} suffix="%"
+          sub={`${fmtNum(rm.customers.earning)} av ${fmtNum(rm.customers.management)} kunder har leieinntekt`} onClick={onExplain ? () => onExplain('activation') : undefined} />
+        <MiniStat testid="revq-awaiting" label="Venter på leiekontrakt" value={fmtNum(rm.customers.awaitingLease)}
+          sub="forvaltningsavtale uten leieinntekt" onClick={onExplain ? () => onExplain('mrr_potential') : undefined} />
+        <MiniStat testid="revq-ttr" label="Tid til leieinntekt" value={rm.timing.daysToFirstLease != null ? fmtNum(rm.timing.daysToFirstLease) : '—'} suffix="d"
+          sub={rm.timing.sampleSize > 0 ? `median · ${fmtNum(rm.timing.sampleSize)} kunder` : 'ikke nok data'} onClick={onExplain ? () => onExplain('time_to_rent') : undefined} />
+        <MiniStat testid="revq-atrisk" label="MRR i faresonen" value={fmtKrFull(rm.mrr.atRisk90d)} suffix="kr"
+          sub="leiekontrakter som utløper innen 90 d" onClick={onExplain ? () => onExplain('at_risk') : undefined} />
       </div>
 
       <div className="mt-5 pt-5 border-t border-black/[0.05] flex flex-wrap items-center gap-x-6 gap-y-2 text-[12px] text-[#8b8894]">

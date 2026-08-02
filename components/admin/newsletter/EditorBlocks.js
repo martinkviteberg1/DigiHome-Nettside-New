@@ -623,9 +623,14 @@ export function newsletterBlock(p) {
   const noImages = !(Array.isArray(p?.images) && p.images.length);
   const notActive = p?.status !== 'active';
   const blocked = notActive || !!p?.incomplete || !!p?.duplicate || noImages;
+  // Vis HVA som mangler, ikke bare «mangler data» — da vet man hva eieren
+  // må fylle inn i plattformappen for at boligen skal bli sendbar.
+  const missing = (Array.isArray(p?.missingFields) ? p.missingFields : []).filter((f) => f !== 'gateadresse');
   const reason = notActive
     ? (p?.status === 'paused' ? 'Pauset' : 'Utleid')
-    : (p?.duplicate ? 'Duplikat' : (p?.incomplete ? 'Mangler data' : (noImages ? 'Ingen bilder' : '')));
+    : (p?.duplicate ? 'Duplikat'
+      : (p?.incomplete ? `Mangler ${missing.length ? missing.join(', ') : 'data'}`
+        : (noImages ? 'Ingen bilder' : '')));
   return { blocked, reason };
 }
 

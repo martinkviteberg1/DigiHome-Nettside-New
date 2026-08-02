@@ -31,6 +31,7 @@ import {
   listAllQuestions as ddListAllQuestions, answerQuestion as ddAnswerQuestion, deleteQuestion as ddDeleteQuestion,
 } from '@/lib/investor-room';
 import { computeKpiDashboard, getKpiSettings, setKpiSettings } from '@/lib/kpi-dashboard';
+import { buildKpiDrill, DRILL_METRICS } from '@/lib/kpi-drill';
 import { computeRevenueModel, buildLeadFeeIndex, attachFeeTruth } from '@/lib/revenue-model';
 import { reconcileRevenue } from '@/lib/revenue-reconcile';
 import { computeLlmUsageDashboard, getModelOverrides, setModelOverride, logImageUsage, AVAILABLE_MODELS, PLATFORM_MODELS, DEFAULT_MODEL, USD_TO_NOK } from '@/lib/llm-usage';
@@ -5306,15 +5307,23 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
       // full adresse med husnummer, faktisk leiebeløp og etasje skal aldri ut
       // på en kunderettet flate.
       const e = applyEnrichment(row);
+      // FINN-lenkens PROVENIENS avgjør om vi tør sende en leietaker dit:
+      //  · 'manuell'   = vi har limt inn lenken selv og verifisert den live → trygg
+      //  · 'plattform' = fra units-eksporten. Den returnerer i dag også FINN-koder
+      //    som IKKE tilhører utleiemodulens gjeldende annonse (bekreftet på
+      //    NEDRE GARTNERGATEN 4: finnkode i eksporten, men ingen annonse i
+      //    utleieprosessen). Derfor krever vi eksplisitt finnStatus 'aktiv'.
+      // Plattformteamet er varslet og skal levere finnSource + autoritativ
+      // finnStatus. Inntil da er publicUrl vår videreføring.
+      const finnTrusted = !!e.finnUrl && e.finnStatus !== 'utgatt'
+        && (e.finnSource === 'manuell' || e.finnStatus === 'aktiv');
       const {
         missingFields, incomplete, enriched, enrichedFields, districtSource, finnCheckedAt, finnSource,
         fullAddress, street, houseNumber, floor, rooms, ownerName, tenantName, tenantActiveFrom,
         rentAmount, rentIsEstimate, buildingId, buildingLabel, unitStatus, hasUnitData, postalCode,
         ...safe
       } = e;
-      // Døde FINN-annonser skal ikke lenkes til (plattformen setter 'utgatt' når
-      // boligen er utleid). Da faller vi tilbake på vår egen side.
-      if (safe.finnStatus === 'utgatt') { safe.finnUrl = null; }
+      if (!finnTrusted) { safe.finnUrl = null; safe.finnCode = ''; }
       return safe;
     };
 
@@ -5871,6 +5880,27 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
       const settings = await setKpiSettings(db, body);
       return cors(NextResponse.json({ ok: true, settings }));
     }
+    // Drill-down: hvilke KUNDER og ENHETER ligger bak et nøkkeltall.
+    // Admin-only. Returnerer aldri mer enn det innlogget admin allerede ser.
+    if (route === '/admin/kpi/drill' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const sp = new URL(request.url).searchParams;
+      const metric = (sp.get('metric') || '').trim();
+      if (!metric) return cors(NextResponse.json({ error: 'metric mangler', metrics: DRILL_METRICS }, { status: 400 }));
+      if (!DRILL_METRICS.includes(metric)) return cors(NextResponse.json({ error: `Ukjent nøkkeltall: ${metric}`, metrics: DRILL_METRICS }, { status: 400 }));
+      const from = (sp.get('from') || '').trim();
+      const to = (sp.get('to') || '').trim();
+      const days = Number(sp.get('days')) || 90;
+      try {
+        const out = await buildKpiDrill(db, { metric, days, from: from || undefined, to: to || undefined });
+        if (!out?.ok) return cors(NextResponse.json({ error: out?.error || 'Kunne ikke bygge drill-down' }, { status: 400 }));
+        return cors(NextResponse.json(out));
+      } catch (e) {
+        console.error('[kpi/drill]', e);
+        return cors(NextResponse.json({ error: 'Kunne ikke bygge drill-down', detail: String(e?.message || e) }, { status: 500 }));
+      }
+    }
+
     if (route === '/admin/kpi' && method === 'GET') {
       if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const sp = new URL(request.url).searchParams;

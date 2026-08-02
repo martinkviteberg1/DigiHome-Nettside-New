@@ -349,12 +349,24 @@ export default function PropertiesTab({ apiKey }) {
                         <Link2 className="w-3.5 h-3.5" /> FINN-annonse{p.finnCode ? ` ${p.finnCode}` : ''}
                         <ExternalLink className="w-3 h-3" />
                       </a>
-                      <button onClick={() => saveFinn(p, '')} disabled={finnBusy === p.id}
-                        title="Fjern koblingen og all data hentet fra FINN"
-                        className="ml-auto text-[11.5px] text-[#aaa] hover:text-[#c0392b] disabled:opacity-50">
-                        {finnBusy === p.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Fjern'}
+                      {p.finnSource === 'plattform' && p.finnStatus !== 'aktiv' && (
+                        <span className="rounded-lg px-2 py-0.5 text-[10.5px] font-semibold bg-[#fff4e5] text-[#a15c00]"
+                          title="Lenken kommer fra plattformens enhetseksport, som i dag også returnerer FINN-koder utenfor utleiemodulen">Ubekreftet kilde</span>
+                      )}
+                      {p.finnSource === 'manuell' && (
+                        <span className="rounded-lg px-2 py-0.5 text-[10.5px] font-semibold bg-[#e9f7ef] text-[#1f7a4d]" title="Du har limt inn denne lenken selv, og vi verifiserte den mot FINN">Verifisert</span>
+                      )}
+                      <button onClick={() => (p.finnSource === 'plattform' ? (setFinnOpen(p.id), setFinnInput(''), setFinnMsg(null)) : saveFinn(p, ''))} disabled={finnBusy === p.id}
+                        title={p.finnSource === 'plattform' ? 'Lim inn riktig lenke fra utleiemodulen — den overstyrer plattformens' : 'Fjern koblingen og all data hentet fra FINN'}
+                        className="ml-auto text-[11.5px] text-[#aaa] hover:text-[#1d5bbf] disabled:opacity-50">
+                        {finnBusy === p.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : (p.finnSource === 'plattform' ? 'Overstyr' : 'Fjern')}
                       </button>
                     </div>
+                    {p.finnSource === 'plattform' && p.finnStatus !== 'aktiv' && (
+                      <p className="text-[11px] text-[#a15c00] leading-relaxed">
+                        Vises ikke til leietakere. Plattformen sender denne koden fra registreringen/manuell annonse, ikke fra utleiemodulens aktive annonse — den kan være feil bolig eller utgått. Plattformteamet er varslet. Lim inn riktig lenke for å bruke den.
+                      </p>
+                    )}
                     {(p.enrichedFields || []).length > 0 && (
                       <p className="text-[11px] text-[#1f7a4d]">Hentet fra FINN: {(p.enrichedFields || []).join(', ')}</p>
                     )}
