@@ -23,6 +23,17 @@ const VIOLET_SOFT = '#cf97fc'; // myke fyll (merkevare)
 const EMER = '#10b981';
 const EMER_TEXT = '#059669';
 
+// Hva LTV faktisk bygger på. Sto tidligere «kontrakt» også når grunnlaget var
+// FAKTISK honorar fra inngåtte leiekontrakter — stikk motsatt av modellen, og
+// det er nettopp forskjellen mellom estimert og faktisk leie som betyr noe.
+const LTV_BASIS_LABEL = {
+  actual: 'faktisk leie',
+  recurring: 'løpende honorar',
+  contract: 'kontraktsverdi',
+  potential: 'estimert leie',
+};
+
+
 // --- Formattering (norsk) ---
 const nf0 = new Intl.NumberFormat('nb-NO', { maximumFractionDigits: 0 });
 const nf1 = new Intl.NumberFormat('nb-NO', { maximumFractionDigits: 1 });
@@ -433,7 +444,7 @@ function KpiDashboardInner({ apiKey }) {
       case 'avg_value': return { label: 'Snitt kundeverdi', value: hero.avgCustomerValue?.value, format: fmtKrFull, suffix: 'kr', sub: 'Snitt av alle kunder' };
       default: return {
         label: 'LTV : CAC', value: hero.ltvCac?.value, format: fmtRatio, suffix: ': 1',
-        sub: `LTV ${fmtKrFull(hero.ltvCac?.ltv)} kr · CAC ${fmtKrFull(hero.ltvCac?.cac)} kr${hero.ltvCac?.ltvBasis === 'recurring' ? ' · løpende' : ''}`,
+        sub: `LTV ${fmtKrFull(hero.ltvCac?.ltv)} kr · CAC ${fmtKrFull(hero.ltvCac?.cac)} kr · ${LTV_BASIS_LABEL[hero.ltvCac?.ltvBasis] || 'kontraktsverdi'}`,
         rating: true,
       };
     }
@@ -509,7 +520,7 @@ function KpiDashboardInner({ apiKey }) {
               <div className="lg:col-span-2 rounded-3xl bg-white border border-black/[0.06] shadow-[0_1px_2px_rgba(22,20,29,0.04)] p-6 flex flex-col justify-center">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.09em] text-[#8b8894] flex items-center gap-1.5 mb-4"><Gauge className="w-3.5 h-3.5 text-[#c4c2cc]" /> Enhetsøkonomi</p>
                 <div className="grid grid-cols-2 gap-y-5 gap-x-4">
-                  <MiniStat label="LTV" fn={1} value={fmtKr(hero.ltv?.value)} suffix="kr" sub={hero.ltv?.basis === 'recurring' ? 'løpende' : 'kontrakt'} />
+                  <MiniStat label="LTV" fn={1} value={fmtKr(hero.ltv?.value)} suffix="kr" sub={LTV_BASIS_LABEL[hero.ltv?.basis] || 'kontraktsverdi'} />
                   <MiniStat label="CAC" fn={2} value={fmtKr(hero.cac?.value)} suffix="kr" />
                   <MiniStat label="Payback" fn={5} value={m.paybackMonths?.value != null ? fmtNum(m.paybackMonths.value) : '—'} suffix="mnd" />
                   <MiniStat label="ROAS (ekte)" fn={4} value={fmtRatio(m.roasTrue?.value)} suffix="x" />
@@ -523,11 +534,11 @@ function KpiDashboardInner({ apiKey }) {
           {/* Hero-grid */}
           <Reveal delay={140}>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-              <KpiCard testid="kpi-cpl" icon={Wallet} label="Kost per lead" fn={3} value={hero.cpl?.value} format={fmtKrFull} suffix="kr" inverse sub="Annonseforbruk ÷ nye leads" />
-              <KpiCard testid="kpi-cac" icon={Wallet} label="Kost per kunde" fn={2} value={hero.cac?.value} format={fmtKrFull} suffix="kr" inverse sub="Annonseforbruk ÷ nye kunder" />
+              <KpiCard testid="kpi-cpl" icon={Wallet} label="Kost per lead" fn={3} value={hero.cpl?.value} format={fmtKrFull} suffix="kr" inverse sub="Annonseforbruk ÷ nye huseier-leads" />
+              <KpiCard testid="kpi-cac" icon={Wallet} label="Kost per kunde" fn={2} value={hero.cac?.value} format={fmtKrFull} suffix="kr" inverse sub="Annonseforbruk ÷ nye kunder i perioden" />
               <KpiCard testid="kpi-avgvalue" icon={Users} label="Snitt kundeverdi" value={hero.avgCustomerValue?.value} format={fmtKrFull} suffix="kr" sub={hero.avgCustomerValue?.missingValue > 0
-                ? `${fmtNum(hero.avgCustomerValue?.basedOn)} av ${fmtNum(m.totalCustomers?.value)} kunder har registrert verdi`
-                : `${fmtNum(m.totalCustomers?.value)} kunder totalt`} />
+                ? `${fmtNum(hero.avgCustomerValue?.basedOn)} av ${fmtNum(m.totalCustomers?.value)} kunder har registrert verdi · alle tider`
+                : `${fmtNum(m.totalCustomers?.value)} kunder totalt · alle tider`} />
               <KpiCard testid="kpi-ttw" icon={Clock} label="Tid til kunde" value={hero.timeToWin?.value} format={fmtNum} suffix="dager" inverse sub="Snitt fra lead til signert" />
               <KpiCard testid="kpi-conv" icon={Activity} label="Konverteringsrate" value={hero.conversionRate?.value} format={fmtNum} suffix="%" delta={hero.conversionRate?.delta} sub="Leads → kunder" />
               <KpiCard testid="kpi-newcust" icon={TrendingUp} label="Nye kunder" value={m.newCustomers?.value} format={fmtNum} delta={m.newCustomers?.delta} sub={`av ${fmtNum(m.newLeads?.value)} nye leads`} spark={data?.series?.revenue} sparkColor={EMER} />
