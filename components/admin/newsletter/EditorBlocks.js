@@ -75,7 +75,7 @@ export function defaultsFor(type) {
     case 'spacer':   return { size: 'm' };
     case 'hero':     return { url: '', alt: '', height: null, fit: 'cover', focalX: 50, focalY: 50 };
     case 'image':    return { url: '', alt: '', height: null, fit: 'cover', focalX: 50, focalY: 50 };
-    case 'properties': return { title: 'Ledige boliger i Bergen', items: [], cta: '', url: '', grouping: 'auto', groupingThreshold: 6 };
+    case 'properties': return { title: 'Ledige boliger i Bergen', items: [], cta: '', url: '', grouping: 'auto', groupingThreshold: 6, groupOrder: 'auto' };
     default:         return {};
   }
 }
@@ -793,6 +793,56 @@ function PropertyPicker({ b, onPatch, apiQ }) {
   );
 }
 
+/* ------- Rekkefølge på valgte boliger (styrer visningen i e-posten) ------- */
+// Plattformens boligtitler er generiske, så nummer + gate + bydel er det som
+// gjør lista lesbar. Rekkefølgen her er den samme som e-posten bruker: med
+// bydelsgruppering slått på styrer den plasseringen INNE i hver bydel.
+function PropertyOrderList({ b, onPatch }) {
+  const items = Array.isArray(b.items) ? b.items : [];
+  if (!items.length) return null;
+  const move = (i, dir) => {
+    const j = i + dir;
+    if (j < 0 || j >= items.length) return;
+    const next = [...items];
+    [next[i], next[j]] = [next[j], next[i]];
+    onPatch({ items: next });
+  };
+  const remove = (i) => onPatch({ items: items.filter((_, k) => k !== i) });
+  const grouped = (b.grouping || 'auto') !== 'off'
+    && (b.grouping === 'always' || items.length >= Math.max(2, Number(b.groupingThreshold) || 6));
+
+  return (
+    <div className="mt-3">
+      <label className={labelCls} style={{ marginTop: 0 }}>Rekkefølge i e-posten</label>
+      <div className="rounded-xl border border-[#f0ede8] divide-y divide-[#f5f2ee]" data-testid="nl-property-order">
+        {items.map((it, i) => (
+          <div key={`${it.pid}-${i}`} className="flex items-center gap-1.5 px-2 py-1.5">
+            <span className="w-[14px] shrink-0 text-[10px] font-bold tabular-nums text-[#b8b2aa]">{i + 1}</span>
+            {it.image
+              ? <img src={mediaSrc(it.image)} alt="" className="h-[26px] w-[34px] shrink-0 rounded object-cover" />
+              : <div className="flex h-[26px] w-[34px] shrink-0 items-center justify-center rounded bg-[#f4f2ef]"><Home size={11} className="text-[#cbc4ba]" /></div>}
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[11.5px] font-semibold text-[#111]">{it.title || 'Bolig'}</p>
+              <p className="truncate text-[10px] text-[#a8a29a]">{[it.meta, it.district].filter(Boolean).join(' · ')}</p>
+            </div>
+            <button onClick={() => move(i, -1)} disabled={i === 0} title="Flytt opp" data-testid={`nl-order-up-${i}`}
+              className="p-0.5 text-[#b8b2aa] hover:text-[#111] disabled:opacity-25"><ArrowUp size={12} /></button>
+            <button onClick={() => move(i, 1)} disabled={i === items.length - 1} title="Flytt ned" data-testid={`nl-order-down-${i}`}
+              className="p-0.5 text-[#b8b2aa] hover:text-[#111] disabled:opacity-25"><ArrowDown size={12} /></button>
+            <button onClick={() => remove(i)} title="Fjern fra brevet" data-testid={`nl-order-del-${i}`}
+              className="p-0.5 text-[#b8b2aa] hover:text-red-500"><X size={12} /></button>
+          </div>
+        ))}
+      </div>
+      <p className="mt-1.5 text-[10.5px] leading-relaxed text-[#aaa]">
+        {grouped
+          ? 'Bydelsgruppering er på, så denne rekkefølgen styrer plasseringen inne i hver bydel. Sett «Bydelsrekkefølge» til «Som valgt» for å bestemme hvilken bydel som kommer først.'
+          : 'Boligene vises i denne rekkefølgen i e-posten.'}
+      </p>
+    </div>
+  );
+}
+
 /* ------------------------ Inspektør for valgt blokk ----------------------- */
 /* --------- Markedsinnsikt: forhåndsvisningsbilde fra ekstern kilde --------- */
 function StatImagePanel({ b, onPatch, apiQ, onUploadImage, uploading }) {
@@ -925,6 +975,7 @@ export function BlockInspector({ b, onPatch, onDel, onUploadImage, uploadingId, 
 
       {b.type === 'properties' ? (<>
         <PropertyPicker b={b} onPatch={onPatch} apiQ={apiQ} />
+        <PropertyOrderList b={b} onPatch={onPatch} />
         <label className={labelCls}>Gruppering etter bydel/område</label>
         <div className="grid grid-cols-3 gap-1.5" data-testid="nl-properties-grouping">
           {[['off', 'Ingen'], ['auto', 'Auto 6+'], ['always', 'Alltid']].map(([key, label]) => (
@@ -933,6 +984,16 @@ export function BlockInspector({ b, onPatch, onDel, onUploadImage, uploadingId, 
           ))}
         </div>
         <p className="text-[10.5px] text-[#aaa] mt-1.5">Auto grupperer ved 6 eller flere boliger. Bydel utledes fra postnummer/poststed (Åsane, Fana, Ytrebygda, Bergen sentrum …). Boliger vi ikke kan plassere sikkert havner under «Andre områder» — aldri i feil bydel.</p>
+        {(b.grouping || 'auto') !== 'off' ? (<>
+          <label className={labelCls}>Bydelsrekkefølge</label>
+          <div className="grid grid-cols-2 gap-1.5" data-testid="nl-properties-grouporder">
+            {[['auto', 'Automatisk'], ['manual', 'Som valgt']].map(([key, label]) => (
+              <button key={key} type="button" onClick={() => onPatch({ groupOrder: key })}
+                className={`h-8 rounded-lg text-[11.5px] font-semibold ${(b.groupOrder || 'auto') === key ? 'bg-[#0a0a0a] text-white' : 'bg-[#f4f2ef] text-[#777]'}`}>{label}</button>
+            ))}
+          </div>
+          <p className="text-[10.5px] text-[#aaa] mt-1.5">Automatisk: bydelen med flest boliger først, «Andre områder» sist. Som valgt: bydelene kommer i samme rekkefølge som den første boligen du har lagt inn fra hver bydel.</p>
+        </>) : null}
         <label className={labelCls}>Lenketekst nederst</label>
         <input value={b.cta || ''} onChange={(e) => onPatch({ cta: e.target.value })} className={inputCls} placeholder="Se alle ledige boliger" />
         <label className={labelCls}>Lenke (URL)</label>
