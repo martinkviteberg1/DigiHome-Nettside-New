@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import {
   Loader2, TrendingUp, TrendingDown, Sliders, Maximize2, Minimize2,
   RefreshCw, Zap, X, Check, Info, Gauge, Activity, Users, Clock, Wallet, BookOpen,
+  ArrowUpRight, Home, ChevronRight,
 } from 'lucide-react';
 import RevenueReconcile from '@/components/admin/RevenueReconcile';
 import { buildExplainers, KpiDetailModal } from '@/components/admin/KpiExplain';
@@ -71,10 +72,10 @@ function useCountUp(target, { duration = 1100 } = {}) {
   return typeof target === 'number' ? val : target;
 }
 
-function CountNumber({ value, format = fmtNum, className }) {
+function CountNumber({ value, format = fmtNum, className, style }) {
   const v = useCountUp(value);
-  if (value == null || value === '—') return <span className={className}>—</span>;
-  return <span className={className}>{format(v)}</span>;
+  if (value == null || value === '—') return <span className={className} style={style}>—</span>;
+  return <span className={className} style={style}>{format(v)}</span>;
 }
 
 // --- Entré-koreografi (stagger) ---
@@ -239,7 +240,7 @@ function PipelineCard({ pipeline = [], pv, onExplain }) {
   const total = pipeline.reduce((s, p) => s + p.count, 0) || 1;
   const clickable = typeof onExplain === 'function' && pv && pv.open > 0;
   return (
-    <div className="rounded-2xl bg-white border border-black/[0.06] shadow-[0_1px_2px_rgba(22,20,29,0.04)] p-5 sm:p-6">
+    <div className="rounded-[20px] bg-white border border-black/[0.06] shadow-[0_1px_2px_rgba(16,14,24,0.04)] p-5 sm:p-6">
       <p className="text-[11px] font-semibold uppercase tracking-[0.09em] text-[#8b8894] mb-3">Pipeline (nå)</p>
       <div className="flex h-3 rounded-full overflow-hidden bg-black/[0.05]">
         {pipeline.filter((p) => p.count > 0).map((p) => (
@@ -270,21 +271,21 @@ function PipelineCard({ pipeline = [], pv, onExplain }) {
 function MomentumStrip({ momentum, platform }) {
   if (!momentum && !platform) return null;
   return (
-    <div className="relative mb-4 flex flex-wrap items-center gap-x-5 gap-y-2 rounded-2xl bg-white border border-black/[0.06] shadow-[0_1px_2px_rgba(22,20,29,0.04)] px-4 py-2.5 text-[12.5px]">
-      <span className="inline-flex items-center gap-1.5 font-bold text-[11px] uppercase tracking-[0.12em]" style={{ color: EMER_TEXT }}>
+    <div className="relative mb-3 sm:mb-4 flex flex-wrap items-center gap-x-4 sm:gap-x-5 gap-y-1.5 rounded-[20px] bg-white border border-black/[0.06] shadow-[0_1px_2px_rgba(16,14,24,0.04)] px-3.5 sm:px-4 py-2.5 text-[11.5px] sm:text-[12.5px]">
+      <span className="inline-flex items-center gap-1.5 font-bold text-[10px] sm:text-[11px] uppercase tracking-[0.12em]" style={{ color: EMER_TEXT }}>
         <span className="h-1.5 w-1.5 rounded-full" style={{ background: EMER, animation: 'kpiPulse 1.6s ease-in-out infinite' }} /> Live
       </span>
       {momentum && (
         <>
-          <span className="text-[#8b8894]">I dag: <b className="text-[#16141d] tabular-nums">{fmtNum(momentum.sessionsToday)}</b> økter · <b className="text-[#16141d] tabular-nums">{fmtNum(momentum.leadsToday)}</b> leads</span>
-          <span className="text-[#8b8894]">Siste 7 d: <b className="text-[#16141d] tabular-nums">{fmtNum(momentum.sessions7d)}</b> økter · <b className="text-[#16141d] tabular-nums">{fmtNum(momentum.leads7d)}</b> leads</span>
+          <span className="text-[#8b8894] whitespace-nowrap">I dag: <b className="text-[#16141d] tabular-nums">{fmtNum(momentum.sessionsToday)}</b> økter · <b className="text-[#16141d] tabular-nums">{fmtNum(momentum.leadsToday)}</b> leads</span>
+          <span className="text-[#8b8894] whitespace-nowrap">Siste 7 d: <b className="text-[#16141d] tabular-nums">{fmtNum(momentum.sessions7d)}</b> økter · <b className="text-[#16141d] tabular-nums">{fmtNum(momentum.leads7d)}</b> leads</span>
         </>
       )}
       {platform && (
-        <span className="ml-auto inline-flex items-center gap-1.5 rounded-full bg-emerald-50 font-semibold px-2.5 py-1 text-[11.5px]" style={{ color: EMER_TEXT }}
+        <span className="w-full sm:w-auto sm:ml-auto inline-flex items-center gap-1.5 rounded-full bg-emerald-50 font-semibold px-2.5 py-1 text-[11px] sm:text-[11.5px]" style={{ color: EMER_TEXT }}
           title={platform.mrrBasis || undefined}>
-          <Zap className="w-3 h-3" /> MRR live: {fmtKrFull(platform.mrr)} kr · {fmtNum(platform.customers)} aktive kunder
-          {platform.customersWithLease != null && <span className="opacity-80">({fmtNum(platform.customersWithLease)} m/ leiekontrakt)</span>}
+          <Zap className="w-3 h-3 shrink-0" /> <span className="truncate">MRR live: {fmtKrFull(platform.mrr)} kr · {fmtNum(platform.customers)} aktive kunder
+            {platform.customersWithLease != null && <span className="opacity-80"> ({fmtNum(platform.customersWithLease)} m/ leiekontrakt)</span>}</span>
         </span>
       )}
     </div>
@@ -300,6 +301,18 @@ function ratingFor(ratio) {
   return { label: 'Under press', color: '#e11d48', pct: 16 };
 }
 
+// --- Delte kortstiler: holder alle flater visuelt identiske ---
+const CARD = 'rounded-[20px] bg-white border border-black/[0.06] shadow-[0_1px_2px_rgba(16,14,24,0.04)]';
+const LIFT = 'transition-[transform,box-shadow,border-color] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:shadow-[0_1px_2px_rgba(16,14,24,0.04),0_18px_44px_-22px_rgba(16,14,24,0.24)] hover:-translate-y-[3px] hover:border-[#7c5cf0]/25 active:translate-y-0';
+const RING = 'outline-none focus-visible:ring-2 focus-visible:ring-[#7c5cf0]/45 focus-visible:ring-offset-2 focus-visible:ring-offset-white';
+const CARD_LABEL = 'text-[10px] sm:text-[10.5px] font-semibold uppercase tracking-[0.12em] text-[#8b8894]';
+
+// Klikkbart-hint: pil som glir ut ved hover, diskret prikk p\u00e5 touch.
+function OpenHint({ tone = 'violet' }) {
+  const c = tone === 'emerald' ? 'text-emerald-300 group-hover:text-emerald-600' : 'text-[#dedce4] group-hover:text-[#7c5cf0]';
+  return <ArrowUpRight className={`w-3.5 h-3.5 shrink-0 transition-all duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 ${c}`} />;
+}
+
 // --- KPI-kort (klikkbart → åpner detaljmodal med formel, tallgrunnlag og kilder) ---
 function KpiCard({ label, value, format = fmtNum, suffix, delta, inverse, spark, sparkColor, sub, icon: Icon, fn, testid, onClick }) {
   const clickable = typeof onClick === 'function';
@@ -310,23 +323,22 @@ function KpiCard({ label, value, format = fmtNum, suffix, delta, inverse, spark,
   } : {};
   return (
     <div data-testid={testid} {...act}
-      className={`group relative rounded-2xl bg-white border border-black/[0.06] shadow-[0_1px_2px_rgba(22,20,29,0.04)] hover:shadow-[0_10px_30px_-14px_rgba(22,20,29,0.16)] hover:-translate-y-0.5 transition-all duration-300 p-5 sm:p-6 overflow-hidden ${clickable ? 'cursor-pointer hover:border-[#7c5cf0]/25 outline-none focus-visible:ring-2 focus-visible:ring-[#7c5cf0]/40 active:translate-y-0' : ''}`}>
-      <div className="flex items-start justify-between gap-2">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.09em] text-[#8b8894] flex items-center gap-1.5">
-          {Icon && <Icon className="w-3.5 h-3.5 text-[#c4c2cc]" />}{label}{fn != null && <Fn n={fn} />}
+      className={`group relative flex flex-col ${CARD} p-4 sm:p-5 overflow-hidden ${clickable ? `cursor-pointer ${LIFT} ${RING}` : ''}`}>
+      <div className="flex items-start justify-between gap-1.5">
+        <p className={`${CARD_LABEL} flex items-start gap-1.5 min-w-0`}>
+          {Icon && <Icon className="w-3.5 h-3.5 shrink-0 mt-[-1px] text-[#c9c7d1]" />}
+          <span className="min-w-0 leading-[1.35]">{label}{fn != null && <Fn n={fn} />}</span>
         </p>
-        <span className="flex items-center gap-1.5 shrink-0">
-          {delta != null && <Delta value={delta} inverse={inverse} />}
-          {clickable && <Info className="w-3.5 h-3.5 text-[#dedce4] group-hover:text-[#7c5cf0] transition-colors" />}
-        </span>
+        {clickable && <OpenHint />}
       </div>
-      <div className="mt-3 flex items-end gap-1.5">
-        <CountNumber value={value} format={format} className="font-bold tracking-[-0.03em] text-[#16141d] tabular-nums text-[30px] sm:text-[36px] leading-none" />
-        {suffix && <span className="font-semibold text-[#a5a3af] text-[15px] mb-0.5">{suffix}</span>}
+      <div className="mt-2.5 flex items-end gap-1.5 flex-wrap">
+        <CountNumber value={value} format={format} className="font-bold tracking-[-0.035em] text-[#16141d] tabular-nums leading-[0.95]"
+          style={{ fontSize: 'clamp(1.6rem, 5.6vw, 2.2rem)' }} />
+        {suffix && <span className="font-semibold text-[#a5a3af] text-[13px] sm:text-[14px] mb-[3px]">{suffix}</span>}
+        {delta != null && <span className="mb-[3px] ml-0.5"><Delta value={delta} inverse={inverse} /></span>}
       </div>
-      {sub && <p className="mt-1.5 text-[12.5px] text-[#a5a3af]">{sub}</p>}
-      {delta != null && <p className="mt-1 text-[11px] text-[#b8b6c0]">vs forrige periode</p>}
-      {spark && spark.length > 0 && <div className="mt-4 -mx-1"><Sparkline data={spark} color={sparkColor || VIOLET} height={34} /></div>}
+      {sub && <p className="mt-1.5 text-[11.5px] sm:text-[12px] text-[#a5a3af] leading-snug text-pretty">{sub}</p>}
+      {spark && spark.length > 0 && <div className="mt-auto pt-3.5 -mx-1"><Sparkline data={spark} color={sparkColor || VIOLET} height={30} /></div>}
     </div>
   );
 }
@@ -340,13 +352,15 @@ function MiniStat({ label, value, suffix, sub, fn, onClick, testid }) {
   } : {};
   return (
     <div data-testid={testid} {...act}
-      className={clickable ? 'group -m-1.5 p-1.5 rounded-xl cursor-pointer hover:bg-[#7c5cf0]/[0.05] outline-none focus-visible:ring-2 focus-visible:ring-[#7c5cf0]/40 transition-colors' : ''}>
-      <p className="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[#a5a3af] flex items-center gap-1">
-        <span>{label}{fn != null && <Fn n={fn} />}</span>
-        {clickable && <Info className="w-3 h-3 shrink-0 text-[#e2e0e8] group-hover:text-[#7c5cf0] transition-colors" />}
+      className={`min-w-0 ${clickable ? `group -mx-2 -my-1.5 px-2 py-1.5 rounded-xl cursor-pointer hover:bg-[#7c5cf0]/[0.05] ${RING} transition-colors` : ''}`}>
+      <p className="flex items-start gap-1 text-[9.5px] sm:text-[10px] font-bold uppercase tracking-[0.1em] text-[#a5a3af] leading-[1.3]">
+        <span className="min-w-0">{label}{fn != null && <Fn n={fn} />}</span>
+        {clickable && <ArrowUpRight className="w-3 h-3 shrink-0 mt-[-1px] text-[#e2e0e8] group-hover:text-[#7c5cf0] group-hover:translate-x-0.5 transition-all" />}
       </p>
-      <p className="mt-1.5 text-[#16141d] font-bold text-[24px] leading-none tracking-[-0.02em] tabular-nums">{value}{suffix && <span className="text-[#a5a3af] text-[14px] font-semibold ml-1">{suffix}</span>}</p>
-      {sub && <p className="mt-1 text-[11.5px] text-[#b0aeb8]">{sub}</p>}
+      <p className="mt-1.5 text-[#16141d] font-bold leading-none tracking-[-0.025em] tabular-nums" style={{ fontSize: 'clamp(1.2rem, 4.4vw, 1.5rem)' }}>
+        {value}{suffix && <span className="text-[#a5a3af] text-[12px] sm:text-[13px] font-semibold ml-1">{suffix}</span>}
+      </p>
+      {sub && <p className="mt-1 text-[10.5px] sm:text-[11px] text-[#b0aeb8] leading-snug">{sub}</p>}
     </div>
   );
 }
@@ -386,21 +400,23 @@ const DEFINITIONS = [
 
 function Definitions({ generatedAt }) {
   return (
-    <div className="mt-5 rounded-2xl bg-white border border-black/[0.06] shadow-[0_1px_2px_rgba(22,20,29,0.04)] p-5 sm:p-6" data-testid="kpi-definitions">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.09em] text-[#8b8894] flex items-center gap-1.5 mb-3"><BookOpen className="w-3.5 h-3.5 text-[#c4c2cc]" /> Definisjoner & datagrunnlag</p>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-2.5">
+    <div className="mt-2.5 sm:mt-4 rounded-[20px] bg-white border border-black/[0.06] shadow-[0_1px_2px_rgba(16,14,24,0.04)] p-4 sm:p-6" data-testid="kpi-definisjoner">
+      <p className="text-[10px] sm:text-[10.5px] font-semibold uppercase tracking-[0.12em] text-[#8b8894] flex items-center gap-1.5 mb-3.5"><BookOpen className="w-3.5 h-3.5 text-[#c9c7d1]" /> Definisjoner &amp; datagrunnlag</p>
+      <div className="rounded-2xl bg-[#7c5cf0]/[0.045] border border-[#7c5cf0]/15 px-3.5 py-2.5 mb-3.5">
+        <p className="text-[11.5px] sm:text-[12px] leading-relaxed text-[#67646f] text-pretty">
+          <Info className="inline w-3.5 h-3.5 mr-1 -mt-0.5" style={{ color: VIOLET }} />
+          <b className="text-[#16141d]">Klikk på et kort</b> for full forklaring: formel med tallene satt inn, hva som er inkludert og ekskludert, forbehold, datakilder — og hvilke kunder og enheter som ligger bak. I modalen blar du med <kbd className="rounded bg-white border border-black/10 px-1 text-[10px]">←</kbd> <kbd className="rounded bg-white border border-black/10 px-1 text-[10px]">→</kbd> og lukker med <kbd className="rounded bg-white border border-black/10 px-1 text-[10px]">Esc</kbd>.
+        </p>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-6 gap-y-2.5">
         {DEFINITIONS.map((d) => (
-          <p key={d.n} className="text-[12px] leading-relaxed text-[#8b8894]">
-            <sup className="font-semibold mr-0.5" style={{ color: VIOLET }}>{d.n}</sup>
+          <p key={d.n} className="text-[11.5px] sm:text-[12px] leading-relaxed text-[#8b8894] text-pretty">
+            <sup className="font-bold mr-0.5" style={{ color: VIOLET }}>{d.n}</sup>
             <b className="text-[#514e5a]">{d.term}</b> — {d.text}
           </p>
         ))}
-        <p className="text-[12px] leading-relaxed text-[#8b8894]">
-          <Info className="inline w-3.5 h-3.5 mr-1 -mt-0.5 text-[#c4c2cc]" />
-          <b className="text-[#514e5a]">Klikk på et kort</b> for full forklaring: formel med tallene satt inn, hva som er inkludert/ekskludert, forbehold, datakilder og listen over de underliggende kontraktene. Bruk ← / → i modalen for å bla, Esc for å lukke.
-        </p>
       </div>
-      <p className="mt-3 pt-3 border-t border-black/[0.05] text-[11px] text-[#b8b6c0] tabular-nums">
+      <p className="mt-3.5 pt-3.5 border-t border-black/[0.05] text-[10.5px] text-[#b8b6c0] tabular-nums leading-relaxed">
         Oppdatert {generatedAt ? new Date(generatedAt).toLocaleString('nb-NO', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }) : '—'} · Kilder: leads-database, Google Ads API, Meta Marketing API, driftsplattform
       </p>
     </div>
@@ -412,7 +428,7 @@ class KpiErrorBoundary extends React.Component {
   static getDerivedStateFromError(error) { return { error }; }
   render() {
     if (this.state.error) return (
-      <div className="rounded-3xl bg-white border border-black/[0.06] p-8">
+      <div className="rounded-[24px] bg-white border border-black/[0.06] p-6 sm:p-8">
         <p className="text-rose-600 font-bold text-lg">Nøkkeltall-feil</p>
         <pre className="mt-3 text-[12px] text-[#514e5a] whitespace-pre-wrap break-words">{String(this.state.error?.message || this.state.error)}</pre>
       </div>
@@ -493,101 +509,140 @@ function KpiDashboardInner({ apiKey }) {
     <div className="relative">
       <style>{`@keyframes kpiPulse { 0%,100%{opacity:.45} 50%{opacity:1} }`}</style>
 
-      {/* Topplinje */}
-      <div className="relative flex flex-wrap items-center gap-3 pb-4">
-        <div className="flex items-center gap-2.5">
-          <h2 className="text-[#16141d] text-[20px] sm:text-[22px] font-bold tracking-[-0.02em]" style={{ fontFamily: 'var(--font-heading)' }}>Nøkkeltall</h2>
-          <span className="text-[#a5a3af] text-[13px] hidden sm:inline">· {data?.period?.label || ''}</span>
-          {data?.configured && !data.configured.ads && <span className="text-[10.5px] font-medium text-amber-700 bg-amber-50 border border-amber-100 rounded-full px-2 py-0.5">annonsedata utilgjengelig</span>}
+      {/* Topplinje — kollapser til to rader på mobil */}
+      <div className="pb-4 sm:pb-5">
+        <div className="flex items-start sm:items-center gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-[#16141d] font-bold tracking-[-0.025em] text-[19px] sm:text-[23px] leading-tight" style={{ fontFamily: 'var(--font-heading)' }}>Nøkkeltall</h2>
+              {data?.configured && !data.configured.ads && <span className="text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-100 rounded-full px-2 py-0.5">annonsedata utilgjengelig</span>}
+            </div>
+            <p className="mt-0.5 text-[11.5px] sm:text-[12.5px] text-[#a5a3af] truncate">
+              {data?.period?.label || ''}
+              <span className="hidden sm:inline"> · klikk et kort for formel, tallgrunnlag og kundene bak</span>
+            </p>
+          </div>
+          <div className="shrink-0 flex items-center gap-1.5 sm:gap-2">
+            <div className="hidden sm:flex items-center gap-0.5 rounded-full bg-black/[0.045] p-0.5">
+              {PERIODS.map((p) => (
+                <button key={p.k} onClick={() => setPeriod(p.k)} data-testid={`kpi-period-${p.k}`}
+                  className={`px-2.5 lg:px-3 h-8 rounded-full text-[11.5px] font-semibold transition-all duration-200 ${period === p.k ? 'bg-white text-[#16141d] shadow-[0_1px_4px_rgba(16,14,24,0.13)]' : 'text-[#8b8894] hover:text-[#16141d]'}`}>{p.l}</button>
+              ))}
+            </div>
+            <button onClick={() => setSettingsOpen(true)} title="LTV-modell" data-testid="kpi-settings-btn" aria-label="LTV-modell"
+              className={`h-9 w-9 rounded-full bg-white border border-black/[0.07] text-[#8b8894] hover:text-[#16141d] hover:border-black/[0.16] grid place-items-center transition-colors ${RING}`}><Sliders className="w-4 h-4" /></button>
+            <button onClick={load} title="Oppdater" aria-label="Oppdater"
+              className={`h-9 w-9 rounded-full bg-white border border-black/[0.07] text-[#8b8894] hover:text-[#16141d] hover:border-black/[0.16] grid place-items-center transition-colors ${RING}`}><RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /></button>
+            <button onClick={() => setPresent(true)} data-testid="kpi-present-btn" aria-label="Presentasjon"
+              className={`h-9 rounded-full text-[12px] font-semibold flex items-center gap-1.5 text-white bg-[#16141d] hover:bg-[#2a2733] transition-colors px-2.5 sm:pl-3 sm:pr-3.5 ${RING}`}>
+              <Maximize2 className="w-3.5 h-3.5" /><span className="hidden sm:inline">Presentasjon</span>
+            </button>
+          </div>
         </div>
-        <div className="ml-auto flex items-center gap-2">
-          <div className="flex items-center gap-0.5 rounded-full bg-black/[0.04] p-0.5">
+        {/* Periodevelger på mobil — ruller vannrett */}
+        <div className="sm:hidden mt-3 -mx-4 px-4 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="inline-flex items-center gap-0.5 rounded-full bg-black/[0.045] p-0.5">
             {PERIODS.map((p) => (
-              <button key={p.k} onClick={() => setPeriod(p.k)} data-testid={`kpi-period-${p.k}`}
-                className={`px-2.5 sm:px-3 h-8 rounded-full text-[12px] font-semibold transition-all ${period === p.k ? 'bg-white text-[#16141d] shadow-[0_1px_4px_rgba(22,20,29,0.12)]' : 'text-[#8b8894] hover:text-[#16141d]'}`}>{p.l}</button>
+              <button key={p.k} onClick={() => setPeriod(p.k)} data-testid={`kpi-period-m-${p.k}`}
+                className={`shrink-0 px-3 h-8 rounded-full text-[12px] font-semibold whitespace-nowrap transition-all ${period === p.k ? 'bg-white text-[#16141d] shadow-[0_1px_4px_rgba(16,14,24,0.13)]' : 'text-[#8b8894]'}`}>{p.l}</button>
             ))}
           </div>
-          <button onClick={() => setSettingsOpen(true)} title="LTV-modell" data-testid="kpi-settings-btn" className="h-8 w-8 rounded-full bg-white border border-black/[0.07] text-[#8b8894] hover:text-[#16141d] hover:border-black/[0.14] grid place-items-center transition-colors"><Sliders className="w-4 h-4" /></button>
-          <button onClick={load} title="Oppdater" className="h-8 w-8 rounded-full bg-white border border-black/[0.07] text-[#8b8894] hover:text-[#16141d] hover:border-black/[0.14] grid place-items-center transition-colors"><RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /></button>
-          <button onClick={() => setPresent(true)} data-testid="kpi-present-btn" className="h-8 pl-3 pr-3.5 rounded-full text-[12px] font-semibold flex items-center gap-1.5 text-white bg-[#16141d] hover:bg-[#2a2733] transition-colors"><Maximize2 className="w-3.5 h-3.5" /> Presentasjon</button>
         </div>
       </div>
 
       {loading && !data ? (
-        <div className="h-[460px] grid place-items-center rounded-3xl bg-white border border-black/[0.06]"><Loader2 className="w-6 h-6 animate-spin" style={{ color: VIOLET }} /></div>
+        <div className="space-y-3 sm:space-y-4" aria-busy="true">
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-3 sm:gap-4">
+            <div className="lg:col-span-3 h-[260px] sm:h-[320px] rounded-[24px] bg-black/[0.035] animate-pulse" />
+            <div className="lg:col-span-2 h-[260px] sm:h-[320px] rounded-[24px] bg-black/[0.035] animate-pulse" />
+          </div>
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-4">
+            {[0, 1, 2, 3, 4, 5].map((i) => <div key={i} className="h-[128px] rounded-[20px] bg-black/[0.035] animate-pulse" />)}
+          </div>
+        </div>
       ) : (
         <div className="relative">
           <MomentumStrip momentum={data?.momentum} platform={data?.platform} />
 
           {/* NORTH STAR + Enhetsøkonomi */}
           <Reveal delay={40}>
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 mb-4">
-              <div className="lg:col-span-3 group relative rounded-3xl overflow-hidden border border-black/[0.06] shadow-[0_1px_2px_rgba(22,20,29,0.04)] px-6 sm:px-9 py-8 sm:py-9 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-[#7c5cf0]/40 hover:border-[#7c5cf0]/25 transition-colors"
-                style={{ background: 'linear-gradient(135deg, #f7f2ff 0%, #ffffff 58%)' }}
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-3 sm:gap-4 mb-3 sm:mb-4">
+              <div className="lg:col-span-3 group relative rounded-[24px] overflow-hidden border border-black/[0.06] shadow-[0_1px_2px_rgba(16,14,24,0.04)] px-5 sm:px-8 py-6 sm:py-8 cursor-pointer hover:border-[#7c5cf0]/25 transition-colors"
+                style={{ background: 'linear-gradient(140deg, #F7F2FF 0%, #FDFCFF 46%, #FFFFFF 100%)' }}
                 role="button" tabIndex={0} data-testid="kpi-northstar"
                 onClick={() => explain(northStarExplainId)}
                 onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); explain(northStarExplainId); } }}
                 title="Klikk for å se hvordan tallet regnes">
-                <div aria-hidden className="pointer-events-none absolute -top-24 -right-10 h-64 w-64 rounded-full blur-2xl" style={{ background: `radial-gradient(circle, ${VIOLET_SOFT}33 0%, transparent 70%)` }} />
-                <span className="absolute top-4 right-4 sm:top-5 sm:right-6 inline-flex items-center gap-1.5 rounded-full bg-white/80 border border-black/[0.06] px-2.5 py-1 text-[11px] font-semibold text-[#8b8894] group-hover:text-[#6d4ce0] group-hover:border-[#7c5cf0]/30 transition-colors">
-                  <Info className="w-3.5 h-3.5" /> Hvordan regnes dette?
+                <div aria-hidden className="pointer-events-none absolute -top-24 -right-12 h-72 w-72 rounded-full blur-3xl" style={{ background: `radial-gradient(circle, ${VIOLET_SOFT}3d 0%, transparent 70%)` }} />
+                <div aria-hidden className="pointer-events-none absolute -bottom-20 left-1/3 h-56 w-56 rounded-full blur-3xl" style={{ background: 'radial-gradient(circle, rgba(16,185,129,0.10) 0%, transparent 70%)' }} />
+
+                <span className="absolute top-4 right-4 sm:top-5 sm:right-6 inline-flex items-center gap-1.5 rounded-full bg-white/85 backdrop-blur-sm border border-black/[0.06] px-2 sm:px-2.5 py-1 text-[10.5px] font-semibold text-[#8b8894] group-hover:text-[#6d4ce0] group-hover:border-[#7c5cf0]/30 transition-colors">
+                  <Info className="w-3.5 h-3.5" /><span className="hidden sm:inline">Hvordan regnes dette?</span>
                 </span>
-                <div className="flex items-center gap-2">
-                  <p className="text-[12px] font-semibold uppercase tracking-[0.16em]" style={{ color: VIOLET }}>{northStarView.label}{northStar === 'ltv_cac' && <><Fn n={1} /><Fn n={2} /></>}</p>
-                  {northStarView.rating && <span className="text-[11px] font-bold rounded-full px-2 py-0.5" style={{ color: rating.color, background: `${rating.color}14` }}>{rating.label}</span>}
+
+                <div className="relative flex items-center gap-2 flex-wrap pr-10 sm:pr-0">
+                  <p className="text-[10.5px] sm:text-[11.5px] font-bold uppercase tracking-[0.16em]" style={{ color: VIOLET }}>{northStarView.label}{northStar === 'ltv_cac' && <><Fn n={1} /><Fn n={2} /></>}</p>
+                  {northStarView.rating && <span className="text-[10.5px] font-bold rounded-full px-2 py-0.5" style={{ color: rating.color, background: `${rating.color}18` }}>{rating.label}</span>}
                 </div>
-                <div className="mt-2 flex items-end gap-3">
-                  <CountNumber value={northStarView.value} format={northStarView.format} className="text-[#16141d] font-bold tracking-[-0.04em] tabular-nums text-[62px] sm:text-[86px] leading-[0.88]" />
-                  {northStarView.suffix && <span className="text-[#c4c2cc] font-bold text-[24px] sm:text-[32px] mb-2 sm:mb-3">{northStarView.suffix}</span>}
-                  {northStarView.delta != null && <span className="mb-3 sm:mb-4"><Delta value={northStarView.delta} inverse={northStarView.inverse} size="lg" label /></span>}
+
+                <div className="relative mt-1.5 flex items-end gap-2 sm:gap-3 flex-wrap">
+                  <CountNumber value={northStarView.value} format={northStarView.format} className="text-[#16141d] font-bold tracking-[-0.045em] tabular-nums leading-[0.85]"
+                    style={{ fontSize: 'clamp(3.1rem, 13vw, 5.4rem)' }} />
+                  {northStarView.suffix && <span className="text-[#c4c2cc] font-bold mb-1.5 sm:mb-3" style={{ fontSize: 'clamp(1.25rem, 4.5vw, 2rem)' }}>{northStarView.suffix}</span>}
+                  {northStarView.delta != null && <span className="mb-2 sm:mb-3.5"><Delta value={northStarView.delta} inverse={northStarView.inverse} size="lg" label /></span>}
                 </div>
-                {northStarView.sub && <p className="mt-2 text-[14px] text-[#8b8894] tabular-nums">{northStarView.sub}</p>}
+                {northStarView.sub && <p className="relative mt-1.5 text-[12.5px] sm:text-[14px] text-[#8b8894] tabular-nums text-pretty">{northStarView.sub}</p>}
+
                 {northStarView.rating && (
-                  <div className="mt-6 max-w-md">
-                    <div className="relative h-1.5 rounded-full bg-black/[0.06]">
-                      <div className="absolute inset-y-0 left-0 rounded-full transition-all duration-1000" style={{ width: `${rating.pct}%`, background: rating.color }} />
+                  <div className="relative mt-6 sm:mt-7 max-w-md">
+                    <div className="relative h-1.5 rounded-full bg-black/[0.07]">
+                      <div className="absolute inset-y-0 left-0 rounded-full transition-[width] duration-1000 ease-out" style={{ width: `${rating.pct}%`, background: rating.color }} />
                       {[['1:1', 16], ['3:1', 42], ['5:1', 72]].map(([mk, left]) => (
-                        <span key={mk} className="absolute -top-4 text-[9.5px] text-[#b0aeb8] tabular-nums" style={{ left: `${left}%` }}>{mk}</span>
+                        <span key={mk} className="absolute -top-4 text-[9px] text-[#b0aeb8] tabular-nums" style={{ left: `${left}%` }}>{mk}</span>
                       ))}
                     </div>
-                    <p className="mt-2 text-[11px] text-[#b0aeb8]">Benchmark: Sunn &gt; 3:1 · Verdensklasse &gt; 5:1</p>
+                    <p className="mt-2 text-[10.5px] text-[#b0aeb8]">Benchmark: Sunn &gt; 3:1 · Verdensklasse &gt; 5:1</p>
                   </div>
                 )}
+
                 {data?.revenueModel?.hasData && (
-                  <div className="mt-7 grid grid-cols-3 gap-2.5 max-w-xl" data-testid="kpi-northstar-tiers">
+                  <div className="relative mt-6 sm:mt-7 grid grid-cols-3 gap-2 sm:gap-2.5 max-w-2xl" data-testid="kpi-northstar-tiers">
                     {[
                       { id: 'mrr_actual', l: 'Realisert', v: data.revenueModel.mrr.actual, c: EMER, sub: 'løper nå' },
                       { id: 'mrr_contracted', l: 'Kontrahert', v: data.revenueModel.mrr.contracted, c: '#f59e0b', sub: 'signert, ikke startet' },
                       { id: 'mrr_potential', l: 'Potensial', v: data.revenueModel.mrr.potential, c: '#a5a3af', sub: 'estimert leie' },
                     ].map((t) => (
                       <button key={t.id} onClick={(ev) => { ev.stopPropagation(); explain(t.id); }}
-                        className="text-left rounded-xl bg-white/70 hover:bg-white border border-black/[0.05] hover:border-[#7c5cf0]/25 px-3 py-2.5 transition-colors"
+                        className={`group/t text-left rounded-2xl bg-white/75 hover:bg-white border border-black/[0.05] hover:border-[#7c5cf0]/25 px-2.5 sm:px-3.5 py-2.5 transition-colors ${RING}`}
                         title={`Klikk for detaljer om ${t.l.toLowerCase()}`}>
-                        <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.08em] text-[#8b8894]">
-                          <span className="h-1.5 w-1.5 rounded-full" style={{ background: t.c }} />{t.l}
+                        <span className="flex items-center gap-1.5 text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.1em] text-[#8b8894]">
+                          <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: t.c }} /><span className="truncate">{t.l}</span>
                         </span>
-                        <span className="block mt-1 text-[#16141d] font-bold text-[17px] leading-none tabular-nums tracking-[-0.02em]">{fmtKrFull(t.v)} <span className="text-[#a5a3af] text-[11px] font-semibold">kr/mnd</span></span>
-                        <span className="block mt-1 text-[10.5px] text-[#b0aeb8]">{t.sub}</span>
+                        <span className="block mt-1 text-[#16141d] font-bold leading-none tabular-nums tracking-[-0.025em]" style={{ fontSize: 'clamp(0.95rem, 3.6vw, 1.2rem)' }}>{fmtKrFull(t.v)}</span>
+                        <span className="block mt-0.5 text-[9.5px] font-semibold text-[#a5a3af]">kr/mnd</span>
+                        <span className="block mt-1 text-[9.5px] sm:text-[10.5px] text-[#b0aeb8] leading-snug">{t.sub}</span>
                       </button>
                     ))}
                   </div>
                 )}
               </div>
 
-              <div className="lg:col-span-2 rounded-3xl bg-white border border-black/[0.06] shadow-[0_1px_2px_rgba(22,20,29,0.04)] p-6 flex flex-col justify-center" data-testid="kpi-unit-economics">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.09em] text-[#8b8894] flex items-center gap-1.5 mb-4"><Gauge className="w-3.5 h-3.5 text-[#c4c2cc]" /> Enhetsøkonomi <span className="normal-case tracking-normal text-[#c4c2cc] font-medium">· klikk for detaljer</span></p>
-                <div className="grid grid-cols-2 gap-y-5 gap-x-4">
+              <div className={`lg:col-span-2 ${CARD} p-5 sm:p-6 flex flex-col`} data-testid="kpi-unit-economics">
+                <p className={`${CARD_LABEL} flex items-center gap-1.5 mb-4 sm:mb-5`}>
+                  <Gauge className="w-3.5 h-3.5 text-[#c9c7d1]" /> Enhetsøkonomi
+                </p>
+                <div className="grid grid-cols-2 gap-y-5 sm:gap-y-6 gap-x-4">
                   <MiniStat testid="ue-ltv" label="LTV" fn={1} value={fmtKr(hero.ltv?.value)} suffix="kr" sub={LTV_BASIS_LABEL[hero.ltv?.basis] || 'kontraktsverdi'} onClick={() => explain('ltv')} />
-                  <MiniStat testid="ue-cac" label="CAC" fn={2} value={fmtKr(hero.cac?.value)} suffix="kr" sub="annonseforbruk ÷ nye kunder" onClick={() => explain('cac')} />
+                  <MiniStat testid="ue-cac" label="CAC" fn={2} value={fmtKr(hero.cac?.value)} suffix="kr" sub="forbruk ÷ nye kunder" onClick={() => explain('cac')} />
                   <MiniStat testid="ue-ltvcac" label="LTV : CAC · realisert" value={fmtRatio(hero.ltvCac?.value)} suffix=": 1" sub="faktisk startet leie" onClick={() => explain('ltv_cac')} />
-                  <MiniStat testid="ue-ltvcac-contracted" label="LTV : CAC · inkl. kontrahert"
+                  <MiniStat testid="ue-ltvcac-contracted" label="LTV : CAC · m/ kontrahert"
                     value={hero.ltvCacContracted?.value != null ? fmtRatio(hero.ltvCacContracted.value) : '—'} suffix=": 1"
                     sub="signert, ikke startet" onClick={() => explain('ltv_cac_contracted')} />
                   <MiniStat testid="ue-payback" label="Payback" fn={5} value={m.paybackMonths?.value != null ? fmtNum(m.paybackMonths.value) : '—'} suffix="mnd" sub="inkl. ventetid til leie" onClick={() => explain('payback')} />
                   <MiniStat testid="ue-roas" label="ROAS (ekte)" fn={4} value={fmtRatio(m.roasTrue?.value)} suffix="x" sub="registrert verdi ÷ forbruk" onClick={() => explain('roas')} />
                 </div>
-                <p className="mt-5 pt-4 border-t border-black/[0.05] text-[11px] text-[#b0aeb8] leading-relaxed">
-                  <b className="text-[#8b8894]">Realisert</b> bruker faktisk startet leiekontrakt og faktisk honorar. <b className="text-[#8b8894]">Inkl. kontrahert</b> tar med signert leie som ikke har startet — sikret, men ikke realisert inntekt.
+                <p className="mt-5 sm:mt-auto sm:pt-6 pt-4 border-t border-black/[0.05] text-[10.5px] sm:text-[11px] text-[#b0aeb8] leading-relaxed text-pretty">
+                  <b className="text-[#8b8894]">Realisert</b> bruker faktisk startet leiekontrakt og faktisk honorar. <b className="text-[#8b8894]">M/ kontrahert</b> tar med signert leie som ikke har startet — sikret, men ikke realisert inntekt.
                 </p>
               </div>
             </div>
@@ -597,7 +652,7 @@ function KpiDashboardInner({ apiKey }) {
 
           {/* Hero-grid */}
           <Reveal delay={140}>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-4">
               <KpiCard testid="kpi-cpl" icon={Wallet} label="Kost per lead" fn={3} value={hero.cpl?.value} format={fmtKrFull} suffix="kr" inverse sub="Annonseforbruk ÷ nye huseier-leads" onClick={() => explain('cpl')} />
               <KpiCard testid="kpi-cac" icon={Wallet} label="Kost per kunde" fn={2} value={hero.cac?.value} format={fmtKrFull} suffix="kr" inverse sub="Annonseforbruk ÷ nye kunder i perioden" onClick={() => explain('cac')} />
               <KpiCard testid="kpi-avgvalue" icon={Users} label="Snitt kundeverdi" value={hero.avgCustomerValue?.value} format={fmtKrFull} suffix="kr" onClick={() => explain('avg_value')} sub={hero.avgCustomerValue?.missingValue > 0
@@ -611,24 +666,24 @@ function KpiDashboardInner({ apiKey }) {
 
           {/* Vekstgraf + trakt */}
           <Reveal delay={240}>
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4 mt-3 sm:mt-4">
-              <div className="lg:col-span-2 rounded-2xl bg-white border border-black/[0.06] shadow-[0_1px_2px_rgba(22,20,29,0.04)] p-5 sm:p-6">
-                <div className="flex items-center justify-between mb-1 gap-3 flex-wrap">
-                  <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.09em] text-[#8b8894]">{chartMode === 'revenue' ? 'Omsetning (kumulativ)' : chartMode === 'monthly' ? 'Vekst måned for måned (12 mnd)' : 'Nye leads (daglig)'}</p>
-                    <p className="mt-1 text-[#16141d] font-bold text-[26px] leading-none tracking-[-0.02em] tabular-nums">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-2.5 sm:gap-4 mt-2.5 sm:mt-4">
+              <div className={`lg:col-span-2 ${CARD} p-4 sm:p-6`}>
+                <div className="flex items-start justify-between gap-3 flex-wrap">
+                  <div className="min-w-0">
+                    <p className={CARD_LABEL}>{chartMode === 'revenue' ? 'Omsetning (kumulativ)' : chartMode === 'monthly' ? 'Vekst måned for måned (12 mnd)' : 'Nye leads (daglig)'}</p>
+                    <p className="mt-1.5 text-[#16141d] font-bold leading-none tracking-[-0.03em] tabular-nums" style={{ fontSize: 'clamp(1.35rem, 5vw, 1.7rem)' }}>
                       {chartMode === 'revenue' ? `${fmtKrFull(m.revenue?.value)} kr` : chartMode === 'monthly' ? `${fmtNum((data?.series?.monthly || []).reduce((s, x) => s + (x.leads || 0), 0))} leads · ${fmtNum((data?.series?.monthly || []).reduce((s, x) => s + (x.customers || 0), 0))} kunder` : `${fmtNum(m.newLeads?.value)}`}
                       {chartMode === 'revenue' && m.revenue?.delta != null && <span className="ml-2 align-middle"><Delta value={m.revenue.delta} /></span>}
                     </p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-0.5 rounded-full bg-black/[0.04] p-0.5">
-                      <button onClick={() => setChartMode('monthly')} data-testid="kpi-chart-monthly" className={`px-3 h-7 rounded-full text-[11.5px] font-semibold transition-all ${chartMode === 'monthly' ? 'bg-white text-[#16141d] shadow-[0_1px_4px_rgba(22,20,29,0.12)]' : 'text-[#8b8894]'}`}>12 mnd</button>
-                      <button onClick={() => setChartMode('revenue')} className={`px-3 h-7 rounded-full text-[11.5px] font-semibold transition-all ${chartMode === 'revenue' ? 'bg-white text-[#16141d] shadow-[0_1px_4px_rgba(22,20,29,0.12)]' : 'text-[#8b8894]'}`}>Omsetning</button>
-                      <button onClick={() => setChartMode('leads')} className={`px-3 h-7 rounded-full text-[11.5px] font-semibold transition-all ${chartMode === 'leads' ? 'bg-white text-[#16141d] shadow-[0_1px_4px_rgba(22,20,29,0.12)]' : 'text-[#8b8894]'}`}>Leads</button>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <div className="flex items-center gap-0.5 rounded-full bg-black/[0.045] p-0.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                      <button onClick={() => setChartMode('monthly')} data-testid="kpi-chart-monthly" className={`shrink-0 px-2.5 sm:px-3 h-7 rounded-full text-[11px] font-semibold whitespace-nowrap transition-all ${chartMode === 'monthly' ? 'bg-white text-[#16141d] shadow-[0_1px_4px_rgba(16,14,24,0.13)]' : 'text-[#8b8894]'}`}>12 mnd</button>
+                      <button onClick={() => setChartMode('revenue')} className={`shrink-0 px-2.5 sm:px-3 h-7 rounded-full text-[11px] font-semibold whitespace-nowrap transition-all ${chartMode === 'revenue' ? 'bg-white text-[#16141d] shadow-[0_1px_4px_rgba(16,14,24,0.13)]' : 'text-[#8b8894]'}`}>Omsetning</button>
+                      <button onClick={() => setChartMode('leads')} className={`shrink-0 px-2.5 sm:px-3 h-7 rounded-full text-[11px] font-semibold whitespace-nowrap transition-all ${chartMode === 'leads' ? 'bg-white text-[#16141d] shadow-[0_1px_4px_rgba(16,14,24,0.13)]' : 'text-[#8b8894]'}`}>Leads</button>
                     </div>
-                    <button onClick={() => explain(chartMode === 'leads' ? 'new_leads' : 'revenue')} title="Hvordan regnes dette?" data-testid="kpi-chart-info"
-                      className="shrink-0 h-7 w-7 rounded-full bg-black/[0.04] text-[#a5a3af] hover:text-[#7c5cf0] hover:bg-[#7c5cf0]/[0.08] grid place-items-center transition-colors"><Info className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => explain(chartMode === 'leads' ? 'new_leads' : 'revenue')} title="Hvordan regnes dette?" data-testid="kpi-chart-info" aria-label="Hvordan regnes dette?"
+                      className={`shrink-0 h-7 w-7 rounded-full bg-black/[0.045] text-[#a5a3af] hover:text-[#7c5cf0] hover:bg-[#7c5cf0]/[0.1] grid place-items-center transition-colors ${RING}`}><Info className="w-3.5 h-3.5" /></button>
                   </div>
                 </div>
                 <div className="mt-4">
@@ -637,7 +692,7 @@ function KpiDashboardInner({ apiKey }) {
                   ) : (
                     <>
                       <AreaChart data={chartData} color={chartMode === 'revenue' ? EMER : VIOLET} height={200} />
-                      <div className="flex justify-between text-[10.5px] text-[#b8b6c0] mt-2 tabular-nums">
+                      <div className="flex justify-between text-[10px] text-[#b8b6c0] mt-2 tabular-nums">
                         <span>{chartData[0]?.day || ''}</span>
                         <span>{chartData[chartData.length - 1]?.day || ''}</span>
                       </div>
@@ -645,8 +700,8 @@ function KpiDashboardInner({ apiKey }) {
                   )}
                 </div>
               </div>
-              <div className="rounded-2xl bg-white border border-black/[0.06] shadow-[0_1px_2px_rgba(22,20,29,0.04)] p-5 sm:p-6">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.09em] text-[#8b8894] mb-4">Konverteringstrakt</p>
+              <div className={`${CARD} p-4 sm:p-6`}>
+                <p className={`${CARD_LABEL} mb-4`}>Konverteringstrakt</p>
                 <Funnel funnel={data?.funnel || []} />
               </div>
             </div>
@@ -654,38 +709,43 @@ function KpiDashboardInner({ apiKey }) {
 
           {/* Run-rate (kun løpende LTV) + sekundær-strip */}
           <Reveal delay={320}>
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4 mt-3 sm:mt-4">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-2.5 sm:gap-4 mt-2.5 sm:mt-4">
               {data?.revenueModel?.hasData && data.revenueModel.mrr?.actual > 0 ? (
                 <div data-testid="kpi-platform-mrr" role="button" tabIndex={0}
                   onClick={() => explain('mrr_actual')}
                   onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); explain('mrr_actual'); } }}
                   title="Klikk for å se hvilke leiekontrakter som utgjør honoraret"
-                  className="group rounded-2xl p-5 sm:p-6 relative overflow-hidden border border-emerald-100 shadow-[0_1px_2px_rgba(22,20,29,0.04)] cursor-pointer hover:shadow-[0_10px_30px_-14px_rgba(22,20,29,0.16)] hover:-translate-y-0.5 outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50 transition-all duration-300" style={{ background: 'linear-gradient(135deg, #ecfdf5 0%, #ffffff 62%)' }}>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.09em] flex items-center gap-1.5" style={{ color: EMER_TEXT }}><Zap className="w-3.5 h-3.5" /> MRR — faktisk honorar
-                    <Info className="w-3.5 h-3.5 ml-auto text-emerald-300 group-hover:text-emerald-600 transition-colors" /></p>
-                  <p className="mt-3 text-[#16141d] font-bold text-[40px] leading-none tracking-[-0.03em] tabular-nums"><CountNumber value={data.revenueModel.mrr.actual} format={fmtKrFull} /> <span className="text-[#a5a3af] text-[18px] font-semibold">kr/mnd</span></p>
-                  <p className="mt-2 text-[12.5px] text-[#8b8894] tabular-nums">ARR {fmtKrFull(data.revenueModel.tiers.actual.arr)} kr · {fmtNum(data.revenueModel.customers.earning)} kunde{data.revenueModel.customers.earning === 1 ? '' : 'r'} med inngått leiekontrakt</p>
-                  <p className="mt-1 text-[11.5px] text-[#a5a3af] tabular-nums">+ {fmtKrFull(data.revenueModel.mrr.contracted)} kr kontrahert · + {fmtKrFull(data.revenueModel.mrr.potential)} kr potensial</p>
+                  className={`group rounded-[20px] p-4 sm:p-6 relative overflow-hidden border border-emerald-100 shadow-[0_1px_2px_rgba(16,14,24,0.04)] cursor-pointer hover:shadow-[0_1px_2px_rgba(16,14,24,0.04),0_18px_44px_-22px_rgba(16,14,24,0.24)] hover:-translate-y-[3px] transition-[transform,box-shadow] duration-300 ${RING}`}
+                  style={{ background: 'linear-gradient(140deg, #ECFDF5 0%, #FFFFFF 62%)' }}>
+                  <p className="text-[10px] sm:text-[10.5px] font-semibold uppercase tracking-[0.12em] flex items-center gap-1.5" style={{ color: EMER_TEXT }}>
+                    <Zap className="w-3.5 h-3.5 shrink-0" /> <span className="min-w-0">MRR — faktisk honorar</span>
+                    <span className="ml-auto"><OpenHint tone="emerald" /></span>
+                  </p>
+                  <p className="mt-2.5 text-[#16141d] font-bold leading-none tracking-[-0.035em] tabular-nums" style={{ fontSize: 'clamp(2.1rem, 8vw, 2.6rem)' }}>
+                    <CountNumber value={data.revenueModel.mrr.actual} format={fmtKrFull} /> <span className="text-[#a5a3af] text-[14px] sm:text-[16px] font-semibold">kr/mnd</span>
+                  </p>
+                  <p className="mt-2 text-[11.5px] sm:text-[12.5px] text-[#8b8894] tabular-nums text-pretty">ARR {fmtKrFull(data.revenueModel.tiers.actual.arr)} kr · {fmtNum(data.revenueModel.customers.earning)} kunde{data.revenueModel.customers.earning === 1 ? '' : 'r'} med inngått leiekontrakt</p>
+                  <p className="mt-1 text-[10.5px] sm:text-[11.5px] text-[#a5a3af] tabular-nums">+ {fmtKrFull(data.revenueModel.mrr.contracted)} kr kontrahert · + {fmtKrFull(data.revenueModel.mrr.potential)} kr potensial</p>
                 </div>
               ) : data?.platform ? (
-                <div data-testid="kpi-platform-mrr" className="rounded-2xl p-5 sm:p-6 relative overflow-hidden border border-emerald-100 shadow-[0_1px_2px_rgba(22,20,29,0.04)]" style={{ background: 'linear-gradient(135deg, #ecfdf5 0%, #ffffff 62%)' }}>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.09em] flex items-center gap-1.5" style={{ color: EMER_TEXT }}><Zap className="w-3.5 h-3.5" /> MRR — live fra plattformen</p>
-                  <p className="mt-3 text-[#16141d] font-bold text-[40px] leading-none tracking-[-0.03em] tabular-nums"><CountNumber value={data.platform.mrr} format={fmtKrFull} /> <span className="text-[#a5a3af] text-[18px] font-semibold">kr/mnd</span></p>
-                  <p className="mt-2 text-[12.5px] text-[#8b8894] tabular-nums">ARR-run-rate {fmtKrFull(data.platform.arr)} kr · {fmtNum(data.platform.customers)} aktive kunder{data.platform.customersWithLease != null ? ` · ${fmtNum(data.platform.customersWithLease)} m/ leiekontrakt` : ''}</p>
-                  <p className="mt-1 text-[11.5px] text-amber-600">Inkluderer estimert leie på enheter uten inngått leiekontrakt.</p>
+                <div data-testid="kpi-platform-mrr" className="rounded-[20px] p-4 sm:p-6 relative overflow-hidden border border-emerald-100 shadow-[0_1px_2px_rgba(16,14,24,0.04)]" style={{ background: 'linear-gradient(140deg, #ECFDF5 0%, #FFFFFF 62%)' }}>
+                  <p className="text-[10.5px] font-semibold uppercase tracking-[0.12em] flex items-center gap-1.5" style={{ color: EMER_TEXT }}><Zap className="w-3.5 h-3.5" /> MRR — live fra plattformen</p>
+                  <p className="mt-2.5 text-[#16141d] font-bold leading-none tracking-[-0.035em] tabular-nums" style={{ fontSize: 'clamp(2.1rem, 8vw, 2.6rem)' }}><CountNumber value={data.platform.mrr} format={fmtKrFull} /> <span className="text-[#a5a3af] text-[16px] font-semibold">kr/mnd</span></p>
+                  <p className="mt-2 text-[12.5px] text-[#8b8894] tabular-nums text-pretty">ARR-run-rate {fmtKrFull(data.platform.arr)} kr · {fmtNum(data.platform.customers)} aktive kunder{data.platform.customersWithLease != null ? ` · ${fmtNum(data.platform.customersWithLease)} m/ leiekontrakt` : ''}</p>
+                  <p className="mt-1 text-[11px] text-amber-600">Inkluderer estimert leie på enheter uten inngått leiekontrakt.</p>
                 </div>
               ) : data?.runRate ? (
-                <div className="rounded-2xl p-5 sm:p-6 relative overflow-hidden border border-emerald-100 shadow-[0_1px_2px_rgba(22,20,29,0.04)]" style={{ background: 'linear-gradient(135deg, #ecfdf5 0%, #ffffff 62%)' }}>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.09em] flex items-center gap-1.5" style={{ color: EMER_TEXT }}><Zap className="w-3.5 h-3.5" /> Run-rate (ARR)</p>
-                  <p className="mt-3 text-[#16141d] font-bold text-[40px] leading-none tracking-[-0.03em] tabular-nums"><CountNumber value={data.runRate.arr} format={fmtKrFull} /> <span className="text-[#a5a3af] text-[18px] font-semibold">kr</span></p>
+                <div className="rounded-[20px] p-4 sm:p-6 relative overflow-hidden border border-emerald-100 shadow-[0_1px_2px_rgba(16,14,24,0.04)]" style={{ background: 'linear-gradient(140deg, #ECFDF5 0%, #FFFFFF 62%)' }}>
+                  <p className="text-[10.5px] font-semibold uppercase tracking-[0.12em] flex items-center gap-1.5" style={{ color: EMER_TEXT }}><Zap className="w-3.5 h-3.5" /> Run-rate (ARR)</p>
+                  <p className="mt-2.5 text-[#16141d] font-bold leading-none tracking-[-0.035em] tabular-nums" style={{ fontSize: 'clamp(2.1rem, 8vw, 2.6rem)' }}><CountNumber value={data.runRate.arr} format={fmtKrFull} /> <span className="text-[#a5a3af] text-[16px] font-semibold">kr</span></p>
                   <p className="mt-2 text-[12.5px] text-[#8b8894] tabular-nums">MRR {fmtKrFull(data.runRate.mrr)} kr · {fmtNum(data.runRate.activeCustomers)} kunder × {fmtKrFull(data.runRate.monthlyFee)} kr/mnd</p>
                 </div>
               ) : (
                 <KpiCard testid="kpi-totalrev" icon={Wallet} label="Total omsetning" value={m.totalRevenueAllTime?.value} format={fmtKrFull} suffix="kr" sub="all tid · sporet + historisk" />
               )}
               <KpiCard testid="kpi-spend" icon={Wallet} label="Annonseforbruk" value={m.spend?.total} format={fmtKrFull} suffix="kr" inverse sub={`Google ${fmtKr(m.spend?.google)} · Meta ${fmtKr(m.spend?.meta)}`} onClick={() => explain('spend')} />
-              <div className="rounded-2xl bg-white border border-black/[0.06] shadow-[0_1px_2px_rgba(22,20,29,0.04)] p-5 sm:p-6 grid grid-cols-2 gap-4">
-                <MiniStat testid="ms-newleads" label="Nye leads" value={fmtNum(m.newLeads?.value)} sub={m.newLeads?.delta != null ? `${m.newLeads.delta > 0 ? '+' : ''}${m.newLeads.delta} % vs forrige periode` : ''} onClick={() => explain('new_leads')} />
+              <div className={`${CARD} p-4 sm:p-6 grid grid-cols-2 gap-x-4 gap-y-5`}>
+                <MiniStat testid="ms-newleads" label="Nye leads" value={fmtNum(m.newLeads?.value)} sub={m.newLeads?.delta != null ? `${m.newLeads.delta > 0 ? '+' : ''}${m.newLeads.delta} % vs forrige` : ''} onClick={() => explain('new_leads')} />
                 <MiniStat testid="ms-totalcust" label="Total kunder" value={fmtNum(m.totalCustomers?.value)} sub={m.totalCustomers?.historical ? `+${fmtNum(m.totalCustomers.historical)} hist.` : 'sporet'} onClick={() => explain('total_customers')} />
                 <MiniStat testid="ms-response" label="Responstid" value={m.responseHours?.value != null ? fmtNum(m.responseHours.value) : '—'} suffix="t" sub={m.responseHours?.sla24hPct != null ? `${m.responseHours.sla24hPct} % <24 t` : ''} onClick={() => explain('response')} />
                 <MiniStat testid="ms-roas" label="ROAS" fn={4} value={fmtRatio(m.roasTrue?.value)} suffix="x" sub="omsetn. ÷ forbruk" onClick={() => explain('roas')} />
@@ -707,26 +767,28 @@ function KpiDashboardInner({ apiKey }) {
 
           {/* Pipeline + kanaler + etterspørsel */}
           <Reveal delay={380}>
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4 mt-3 sm:mt-4">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-2.5 sm:gap-4 mt-2.5 sm:mt-4">
               <PipelineCard pipeline={m.pipeline || []} pv={data?.pipelineValue} onExplain={explain} />
-              <div className="rounded-2xl bg-white border border-black/[0.06] shadow-[0_1px_2px_rgba(22,20,29,0.04)] p-5 sm:p-6" data-testid="kpi-channels">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.09em] text-[#8b8894] mb-4">Leads per kanal <span className="normal-case tracking-normal text-[#c4c2cc]">· {data?.period?.label || ''}</span></p>
+              <div className={`${CARD} p-4 sm:p-6`} data-testid="kpi-channels">
+                <p className={`${CARD_LABEL} mb-4`}>Leads per kanal <span className="normal-case tracking-normal text-[#c9c7d1] font-medium">· {data?.period?.label || ''}</span></p>
                 <ChannelBars channels={data?.channels || []} />
               </div>
               <div role="button" tabIndex={0} onClick={() => explain('tenant_demand')}
                 onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); explain('tenant_demand'); } }}
                 title="Klikk for detaljer"
-                className="group rounded-2xl bg-white border border-black/[0.06] shadow-[0_1px_2px_rgba(22,20,29,0.04)] p-5 sm:p-6 flex flex-col justify-between cursor-pointer hover:border-[#7c5cf0]/25 hover:shadow-[0_10px_30px_-14px_rgba(22,20,29,0.16)] outline-none focus-visible:ring-2 focus-visible:ring-[#7c5cf0]/40 transition-all duration-300" data-testid="kpi-demand">
+                className={`group ${CARD} p-4 sm:p-6 flex flex-col justify-between cursor-pointer ${LIFT} ${RING}`} data-testid="kpi-demand">
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.09em] text-[#8b8894] flex items-center gap-1.5"><Users className="w-3.5 h-3.5 text-[#c4c2cc]" /> Etterspørsel · leietakere
-                    <Info className="w-3.5 h-3.5 ml-auto text-[#dedce4] group-hover:text-[#7c5cf0] transition-colors" /></p>
-                  <div className="mt-3 flex items-end gap-1.5">
-                    <CountNumber value={m.newTenantLeads?.value} format={fmtNum} className="font-bold tracking-[-0.03em] text-[#16141d] tabular-nums text-[38px] leading-none" />
+                  <p className={`${CARD_LABEL} flex items-center gap-1.5`}>
+                    <Users className="w-3.5 h-3.5 shrink-0 text-[#c9c7d1]" /> <span className="min-w-0">Etterspørsel · leietakere</span>
+                    <span className="ml-auto"><OpenHint /></span>
+                  </p>
+                  <div className="mt-2.5 flex items-end gap-1.5">
+                    <CountNumber value={m.newTenantLeads?.value} format={fmtNum} className="font-bold tracking-[-0.035em] text-[#16141d] tabular-nums leading-none" style={{ fontSize: 'clamp(2rem, 7vw, 2.4rem)' }} />
                     {m.newTenantLeads?.delta != null && <span className="mb-1"><Delta value={m.newTenantLeads.delta} /></span>}
                   </div>
-                  <p className="mt-1.5 text-[12.5px] text-[#a5a3af]">boligsøkere i perioden</p>
+                  <p className="mt-1.5 text-[12px] sm:text-[12.5px] text-[#a5a3af]">boligsøkere i perioden</p>
                 </div>
-                <p className="mt-4 pt-4 border-t border-black/[0.05] text-[11.5px] text-[#a5a3af] leading-relaxed">Etterspørselssiden av markedsplassen — leietakerkø gjør boligene raskere utleid, men telles ikke i CAC/LTV.</p>
+                <p className="mt-4 pt-4 border-t border-black/[0.05] text-[11px] sm:text-[11.5px] text-[#a5a3af] leading-relaxed text-pretty">Etterspørselssiden av markedsplassen — leietakerkø gjør boligene raskere utleid, men telles ikke i CAC/LTV.</p>
               </div>
             </div>
           </Reveal>
@@ -788,58 +850,61 @@ function RevenueQualityPanel({ rm, ltvBasis, hero, onExplain, onOpenSettings }) 
   ];
   const total = Math.max(1, rm.mrr.totalPipeline);
   return (
-    <div className="mt-3 sm:mt-4 rounded-2xl bg-white border border-black/[0.06] shadow-[0_1px_2px_rgba(22,20,29,0.04)] p-5 sm:p-6" data-testid="kpi-revenue-quality">
+    <div className={`mt-2.5 sm:mt-4 ${CARD} p-4 sm:p-6`} data-testid="kpi-revenue-quality">
       <div className="flex items-start justify-between gap-3 flex-wrap">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.09em] text-[#8b8894] flex items-center gap-1.5"><Wallet className="w-3.5 h-3.5 text-[#c4c2cc]" /> Inntektskvalitet</p>
-          <p className="mt-1 text-[12.5px] text-[#8b8894]">Honoraret utløses av <b>faktisk inngått leiekontrakt</b> — ikke av estimert leie i huseierkontrakten.</p>
+        <div className="min-w-0">
+          <p className={`${CARD_LABEL} flex items-center gap-1.5`}><Wallet className="w-3.5 h-3.5 text-[#c9c7d1]" /> Inntektskvalitet</p>
+          <p className="mt-1.5 text-[12px] sm:text-[12.5px] text-[#8b8894] leading-snug text-pretty">Honoraret utløses av <b className="text-[#514e5a]">faktisk inngått leiekontrakt</b> — ikke av estimert leie i huseierkontrakten.</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 shrink-0">
           {rm.revenueQualityPct != null && (
-            <span className="rounded-full px-2.5 py-1 text-[11.5px] font-bold tabular-nums bg-emerald-50" style={{ color: EMER_TEXT }} data-testid="revq-pct">
+            <span className="rounded-full px-2.5 py-1 text-[11px] font-bold tabular-nums bg-emerald-50 border border-emerald-100" style={{ color: EMER_TEXT }} data-testid="revq-pct">
               {rm.revenueQualityPct} % realisert
             </span>
           )}
-          <button onClick={onOpenSettings} className="rounded-full px-2.5 py-1 text-[11.5px] font-semibold text-[#67646f] bg-black/[0.04] hover:bg-black/[0.08] transition-colors flex items-center gap-1">
-            <Sliders className="w-3 h-3" /> Forutsetninger
+          <button onClick={onOpenSettings} className={`rounded-full px-2.5 py-1 text-[11px] font-semibold text-[#67646f] bg-black/[0.045] hover:bg-black/[0.09] transition-colors flex items-center gap-1 ${RING}`}>
+            <Sliders className="w-3 h-3" /> <span className="hidden xs:inline sm:inline">Forutsetninger</span>
           </button>
         </div>
       </div>
 
       {/* Stablet søyle */}
-      <div className="mt-5 h-3 w-full rounded-full overflow-hidden flex bg-black/[0.04]">
+      <div className="mt-4 sm:mt-5 h-2.5 w-full rounded-full overflow-hidden flex gap-px bg-black/[0.045]">
         {tiers.map((t) => (
-          <div key={t.k} style={{ width: `${(t.mrr / total) * 100}%`, background: t.color }} title={`${t.l}: ${fmtKrFull(t.mrr)} kr/mnd`} />
+          <div key={t.k} className="transition-[width] duration-700 ease-out" style={{ width: `${(t.mrr / total) * 100}%`, background: t.color }} title={`${t.l}: ${fmtKrFull(t.mrr)} kr/mnd`} />
         ))}
       </div>
 
-      <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="mt-3.5 grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3">
         {tiers.map((t) => (
           <div key={t.k} role="button" tabIndex={0}
             onClick={() => onExplain && onExplain(t.id)}
             onKeyDown={(e) => { if (onExplain && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onExplain(t.id); } }}
             title="Klikk for formel, forbehold og kontraktsliste"
-            className={`group relative rounded-xl px-4 py-3.5 ${t.bg} cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-[#7c5cf0]/40 hover:shadow-[0_8px_24px_-14px_rgba(22,20,29,0.25)] hover:-translate-y-0.5 transition-all duration-300`}
+            className={`group relative overflow-hidden rounded-2xl px-3.5 sm:px-4 pt-4 pb-3.5 ${t.bg} cursor-pointer ${RING} hover:shadow-[0_14px_34px_-18px_rgba(16,14,24,0.3)] hover:-translate-y-[3px] transition-[transform,box-shadow] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]`}
             data-testid={`revq-tier-${t.k}`}>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] flex items-center gap-1.5" style={{ color: t.text }}>
-              <span className="h-1.5 w-1.5 rounded-full" style={{ background: t.color }} />{t.l}
-              <Info className="w-3.5 h-3.5 ml-auto opacity-25 group-hover:opacity-90 transition-opacity" style={{ color: t.text }} />
+            <span aria-hidden className="absolute inset-x-0 top-0 h-[3px]" style={{ background: t.color }} />
+            <p className="text-[9.5px] sm:text-[10px] font-bold uppercase tracking-[0.11em] flex items-center gap-1.5" style={{ color: t.text }}>
+              <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: t.color }} /><span className="min-w-0 truncate">{t.l}</span>
+              <ArrowUpRight className="w-3.5 h-3.5 ml-auto shrink-0 opacity-25 group-hover:opacity-95 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" style={{ color: t.text }} />
             </p>
-            <p className="mt-1.5 text-[#16141d] font-bold text-[26px] leading-none tracking-[-0.03em] tabular-nums">{fmtKrFull(t.mrr)} <span className="text-[#a5a3af] text-[13px] font-semibold">kr/mnd</span></p>
-            <p className="mt-1.5 text-[11.5px] text-[#8b8894] tabular-nums">{fmtNum(t.n)} kontrakt{t.n === 1 ? '' : 'er'} · {t.d}</p>
-            <div className="mt-3 pt-3 border-t border-black/[0.06] space-y-1">
+            <p className="mt-1.5 text-[#16141d] font-bold leading-none tracking-[-0.035em] tabular-nums" style={{ fontSize: 'clamp(1.5rem, 5.6vw, 1.75rem)' }}>
+              {fmtKrFull(t.mrr)} <span className="text-[#a5a3af] text-[12px] font-semibold">kr/mnd</span>
+            </p>
+            <p className="mt-1.5 text-[11px] text-[#8b8894] tabular-nums leading-snug">{fmtNum(t.n)} kontrakt{t.n === 1 ? '' : 'er'} · {t.d}</p>
+            <dl className="mt-3 pt-3 border-t border-black/[0.07] space-y-1.5">
               {t.rows.map(([k, v]) => (
                 <div key={k} className="flex items-baseline justify-between gap-2">
-                  <span className="text-[11px] text-[#8b8894] leading-snug">{k}</span>
-                  <span className="text-[11.5px] font-semibold text-[#16141d] tabular-nums whitespace-nowrap">{v}</span>
+                  <dt className="text-[10.5px] text-[#8b8894] leading-snug min-w-0">{k}</dt>
+                  <dd className="text-[11px] font-bold text-[#16141d] tabular-nums whitespace-nowrap">{v}</dd>
                 </div>
               ))}
-            </div>
+            </dl>
           </div>
         ))}
       </div>
 
-      <div className="mt-5 pt-5 border-t border-black/[0.05] grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="mt-5 pt-5 border-t border-black/[0.05] grid grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-5">
         <MiniStat testid="revq-activation" label="Aktiveringsrate" value={rm.customers.activationRatePct != null ? fmtNum(rm.customers.activationRatePct) : '—'} suffix="%"
           sub={`${fmtNum(rm.customers.earning)} av ${fmtNum(rm.customers.management)} kunder har leieinntekt`} onClick={onExplain ? () => onExplain('activation') : undefined} />
         <MiniStat testid="revq-awaiting" label="Venter på leiekontrakt" value={fmtNum(rm.customers.awaitingLease)}
@@ -850,31 +915,65 @@ function RevenueQualityPanel({ rm, ltvBasis, hero, onExplain, onOpenSettings }) 
           sub="leiekontrakter som utløper innen 90 d" onClick={onExplain ? () => onExplain('at_risk') : undefined} />
       </div>
 
-      <div className="mt-5 pt-5 border-t border-black/[0.05] flex flex-wrap items-center gap-x-6 gap-y-2 text-[12px] text-[#8b8894]">
-        <span>
-          <b className="text-[#16141d]">LTV {rm.ltv.value != null ? `${fmtKrFull(rm.ltv.value)} kr` : '—'}</b>
-          {' '}= {rm.ltv.monthlyFee != null ? `${fmtKrFull(rm.ltv.monthlyFee)} kr/mnd` : '—'} × {rm.lifetimeMonths} mnd
-          {rm.ltv.grossMarginPct < 100 ? ` × ${rm.ltv.grossMarginPct} % margin` : ' (omsetning)'}
-        </span>
-        {rm.ltv.contractedBasis?.value != null && (
-          <span className="tabular-nums" data-testid="revq-ltv-contracted">
-            Med kontraherte leiekontrakter: <b className="text-[#16141d]">{fmtKrFull(rm.ltv.contractedBasis.value)} kr</b> ({fmtKrFull(rm.ltv.contractedBasis.monthlyFee)} kr/mnd × {rm.lifetimeMonths} mnd, {fmtNum(rm.ltv.contractedBasis.customersWithLease)} kunder)
-          </span>
-        )}
-        {rm.ltv.sensitivity?.length > 0 && (
-          <span className="tabular-nums" data-testid="revq-sensitivity">
-            Sensitivitet: {rm.ltv.sensitivity.map((s) => `${s.months} mnd → ${fmtKrFull(s.ltv)} kr`).join('  ·  ')}
-          </span>
-        )}
-        {rm.ramp?.length > 0 && rm.mrr.contracted > 0 && (
-          <span className="tabular-nums" data-testid="revq-ramp">
-            Kontrahert leie slår inn: {rm.ramp.map((r) => `+${r.inDays} d → ${fmtKrFull(r.mrr)} kr/mnd`).join('  ·  ')}
-          </span>
-        )}
-        {ltvBasis && ltvBasis !== 'actual' && (
-          <span className="text-amber-600">LTV-modus er «{ltvBasis}» — bytt til «Faktisk honorar» for å bruke tallene over.</span>
-        )}
-        <span className="text-[#c4c2cc]">Regel: {rm.ruleLabel}</span>
+      {/* Forutsetninger — samme tall som over, men vist som regnestykke.
+          Tidligere var dette én lang tekstlinje som brøt over fire rader. */}
+      <div className="mt-5 pt-5 border-t border-black/[0.05]">
+        <p className="text-[9.5px] font-bold uppercase tracking-[0.13em] text-[#a5a3af]">Forutsetninger og sensitivitet</p>
+        <div className="mt-3 grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="rounded-2xl bg-[#faf9fc] ring-1 ring-inset ring-black/[0.045] p-3.5" data-testid="revq-ltv-formula">
+            <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[#a5a3af]">LTV — realisert</p>
+            <p className="mt-1.5 text-[#16141d] font-bold tabular-nums leading-none tracking-[-0.03em]" style={{ fontSize: 'clamp(1.15rem, 4vw, 1.35rem)' }}>
+              {rm.ltv.value != null ? `${fmtKrFull(rm.ltv.value)} kr` : '—'}
+            </p>
+            <p className="mt-1.5 text-[11px] leading-snug text-[#8b8894] tabular-nums">
+              {rm.ltv.monthlyFee != null ? `${fmtKrFull(rm.ltv.monthlyFee)} kr/mnd` : '—'} × {rm.lifetimeMonths} mnd
+              {rm.ltv.grossMarginPct < 100 ? ` × ${rm.ltv.grossMarginPct} % margin` : ' · omsetning, ikke margin'}
+            </p>
+            {rm.ltv.contractedBasis?.value != null && (
+              <p className="mt-2 pt-2 border-t border-black/[0.06] text-[11px] leading-snug text-[#8b8894] tabular-nums" data-testid="revq-ltv-contracted">
+                Med kontraherte: <b className="text-[#16141d]">{fmtKrFull(rm.ltv.contractedBasis.value)} kr</b>
+                <span className="text-[#b6b4bf]"> · {fmtKrFull(rm.ltv.contractedBasis.monthlyFee)} kr/mnd · {fmtNum(rm.ltv.contractedBasis.customersWithLease)} kunder</span>
+              </p>
+            )}
+          </div>
+
+          {rm.ltv.sensitivity?.length > 0 && (
+            <div className="rounded-2xl bg-[#faf9fc] ring-1 ring-inset ring-black/[0.045] p-3.5" data-testid="revq-sensitivity">
+              <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[#a5a3af]">Hvis kunden blir lenger</p>
+              <div className="mt-2 space-y-1">
+                {rm.ltv.sensitivity.map((s) => (
+                  <div key={s.months} className="flex items-baseline justify-between gap-2 tabular-nums">
+                    <span className={`text-[11px] ${s.months === rm.lifetimeMonths ? 'text-[#16141d] font-semibold' : 'text-[#8b8894]'}`}>
+                      {s.months} mnd{s.months === rm.lifetimeMonths ? ' (i bruk)' : ''}
+                    </span>
+                    <span className={`text-[11.5px] font-bold whitespace-nowrap ${s.months === rm.lifetimeMonths ? 'text-[#16141d]' : 'text-[#6f6c7a]'}`}>{fmtKrFull(s.ltv)} kr</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {rm.ramp?.length > 0 && rm.mrr.contracted > 0 && (
+            <div className="rounded-2xl bg-[#faf9fc] ring-1 ring-inset ring-black/[0.045] p-3.5" data-testid="revq-ramp">
+              <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[#a5a3af]">Når kontrahert leie slår inn</p>
+              <div className="mt-2 space-y-1">
+                {rm.ramp.map((r) => (
+                  <div key={r.inDays} className="flex items-baseline justify-between gap-2 tabular-nums">
+                    <span className="text-[11px] text-[#8b8894]">+{r.inDays} dager</span>
+                    <span className="text-[11.5px] font-bold text-[#6f6c7a] whitespace-nowrap">{fmtKrFull(r.mrr)} kr/mnd</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px] text-[#b6b4bf]">
+          <span>Regel: {rm.ruleLabel}</span>
+          {ltvBasis && ltvBasis !== 'actual' && (
+            <span className="text-amber-600 font-medium">LTV-modus er «{ltvBasis}» — bytt til «Faktisk honorar» for å bruke tallene over.</span>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -919,16 +1018,16 @@ function LtvSettingsModal({ apiKey, current, revenueModel, onClose, onSaved }) {
   ];
 
   return (
-    <div className="fixed inset-0 z-[110] flex items-center justify-center px-4 py-8 overflow-y-auto">
-      <div className="absolute inset-0 bg-black/35 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-lg rounded-2xl bg-white border border-black/[0.07] p-6 shadow-[0_24px_80px_rgba(22,20,29,0.25)] my-auto">
-        <div className="flex items-center justify-between">
-          <h3 className="text-[#16141d] text-[17px] font-bold tracking-[-0.01em]">LTV-modell & North Star</h3>
-          <button onClick={onClose} className="text-[#a5a3af] hover:text-[#16141d]"><X className="w-5 h-5" /></button>
+    <div className="fixed inset-0 z-[110] flex items-end sm:items-center justify-center sm:px-4 sm:py-8 overflow-y-auto">
+      <div className="absolute inset-0 bg-[#16141d]/40 backdrop-blur-[3px]" onClick={onClose} />
+      <div className="relative w-full sm:max-w-lg max-h-[92vh] overflow-y-auto rounded-t-[26px] sm:rounded-[26px] bg-white ring-1 ring-black/[0.06] p-5 sm:p-6 shadow-[0_30px_90px_rgba(22,20,29,0.28)] sm:my-auto">
+        <div className="flex items-start justify-between gap-3">
+          <h3 className="text-[#16141d] text-[16px] sm:text-[17px] font-bold tracking-[-0.015em]">LTV-modell &amp; North Star</h3>
+          <button onClick={onClose} aria-label="Lukk" className="-mr-1 -mt-1 shrink-0 rounded-full p-1.5 text-[#a5a3af] hover:bg-black/[0.04] hover:text-[#16141d] transition-colors"><X className="w-[18px] h-[18px]" /></button>
         </div>
-        <p className="text-[#8b8894] text-[12.5px] mt-1.5">Honoraret utløses av en <b>faktisk inngått leiekontrakt</b> — ikke av estimert leie i en huseierkontrakt. Ingen tall fabrikkeres.</p>
+        <p className="text-[#8b8894] text-[12.5px] leading-relaxed mt-1.5">Honoraret utløses av en <b>faktisk inngått leiekontrakt</b> — ikke av estimert leie i en huseierkontrakt. Ingen tall fabrikkeres.</p>
         <div className="mt-5 space-y-3">
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
             {MODES.map((mo) => (
               <button key={mo.k} onClick={() => setMode(mo.k)} data-testid={`ltv-mode-${mo.k}`}
                 className={`rounded-xl px-3 py-3 text-left border transition-colors ${mode === mo.k ? 'border-[#7c5cf0] bg-[#7c5cf0]/[0.06]' : 'border-black/[0.08] hover:border-black/[0.18]'}`}>
@@ -1001,18 +1100,18 @@ function PresentationMode({ data, northStarView, hero, m, rating, chartData, per
   return (
     <div className="fixed inset-0 z-[95] overflow-y-auto" style={{ background: 'linear-gradient(160deg, #fbfaff 0%, #f7f6f4 55%, #f3f0fa 100%)' }}>
       <style>{`@keyframes kpiPulseP { 0%,100%{opacity:.45} 50%{opacity:1} }`}</style>
-      <div className="min-h-screen flex flex-col px-6 sm:px-16 py-9">
-        <div className="flex items-center gap-3">
+      <div className="min-h-screen flex flex-col px-5 sm:px-16 py-6 sm:py-9">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2.5">
           <span className="h-2.5 w-2.5 rounded-full" style={{ background: VIOLET, animation: 'kpiPulseP 2.4s ease-in-out infinite' }} />
-          <span className="text-[#16141d] text-[18px] font-bold tracking-[-0.01em]" style={{ fontFamily: 'var(--font-heading)' }}>DigiHome</span>
-          <span className="text-[#8b8894] text-[13px]">· Nøkkeltall · {data?.period?.label}</span>
-          <div className="ml-auto flex items-center gap-2">
-            <div className="flex items-center gap-0.5 rounded-full bg-black/[0.04] p-0.5">
+          <span className="text-[#16141d] text-[16px] sm:text-[18px] font-bold tracking-[-0.01em]" style={{ fontFamily: 'var(--font-heading)' }}>DigiHome</span>
+          <span className="text-[#8b8894] text-[12px] sm:text-[13px]">· Nøkkeltall · {data?.period?.label}</span>
+          <div className="w-full sm:w-auto sm:ml-auto flex items-center gap-2">
+            <div className="flex flex-1 sm:flex-none items-center gap-0.5 rounded-full bg-black/[0.04] p-0.5">
               {periods.map((p) => (
-                <button key={p.k} onClick={() => setPeriod(p.k)} className={`px-3 h-8 rounded-full text-[12px] font-semibold transition-all ${period === p.k ? 'bg-white text-[#16141d] shadow-[0_1px_4px_rgba(22,20,29,0.12)]' : 'text-[#8b8894] hover:text-[#16141d]'}`}>{p.l}</button>
+                <button key={p.k} onClick={() => setPeriod(p.k)} className={`flex-1 sm:flex-none px-2.5 sm:px-3 h-8 rounded-full text-[12px] font-semibold transition-all ${period === p.k ? 'bg-white text-[#16141d] shadow-[0_1px_4px_rgba(22,20,29,0.12)]' : 'text-[#8b8894] hover:text-[#16141d]'}`}>{p.l}</button>
               ))}
             </div>
-            <button onClick={onExit} className="h-9 pl-3 pr-3.5 rounded-full bg-[#16141d] text-white hover:bg-[#2a2733] text-[13px] font-semibold flex items-center gap-1.5 transition-colors"><Minimize2 className="w-4 h-4" /> Lukk</button>
+            <button onClick={onExit} className="h-9 pl-3 pr-3.5 shrink-0 rounded-full bg-[#16141d] text-white hover:bg-[#2a2733] text-[13px] font-semibold flex items-center gap-1.5 transition-colors"><Minimize2 className="w-4 h-4" /> <span className="hidden sm:inline">Lukk</span></button>
           </div>
         </div>
 
@@ -1037,14 +1136,14 @@ function PresentationMode({ data, northStarView, hero, m, rating, chartData, per
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 pb-8">
-          <div className="lg:col-span-2 rounded-2xl bg-white border border-black/[0.06] shadow-[0_1px_2px_rgba(22,20,29,0.04)] px-6 py-6">
+          <div className="lg:col-span-2 rounded-[20px] bg-white border border-black/[0.06] shadow-[0_1px_2px_rgba(16,14,24,0.04)] px-6 py-6">
             <div className="flex items-center justify-between">
               <p className="text-[12px] font-semibold uppercase tracking-[0.1em] text-[#8b8894]">Vekst · siste 12 måneder</p>
               {data?.platform && <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 font-semibold px-2.5 py-1 text-[12px]" style={{ color: EMER_TEXT }}><Zap className="w-3 h-3" /> MRR live: {fmtKrFull(data.platform.mrr)} kr</span>}
             </div>
             <div className="mt-4"><MonthlyBars data={data?.series?.monthly || []} height={150} /></div>
           </div>
-          <div className="rounded-2xl bg-white border border-black/[0.06] shadow-[0_1px_2px_rgba(22,20,29,0.04)] px-6 py-6">
+          <div className="rounded-[20px] bg-white border border-black/[0.06] shadow-[0_1px_2px_rgba(16,14,24,0.04)] px-6 py-6">
             <p className="text-[12px] font-semibold uppercase tracking-[0.1em] text-[#8b8894] mb-4">Leads per kanal</p>
             <ChannelBars channels={data?.channels || []} />
             {data?.momentum && (
@@ -1061,7 +1160,7 @@ function PresentationMode({ data, northStarView, hero, m, rating, chartData, per
 
 function BigPresent({ label, value, format, suffix, delta }) {
   return (
-    <div className="rounded-2xl bg-white border border-black/[0.06] shadow-[0_1px_2px_rgba(22,20,29,0.04)] px-6 py-7 text-center">
+    <div className="rounded-[20px] bg-white border border-black/[0.06] shadow-[0_1px_2px_rgba(16,14,24,0.04)] px-6 py-7 text-center">
       <p className="text-[12px] font-semibold uppercase tracking-[0.1em] text-[#8b8894]">{label}</p>
       <div className="mt-3 flex items-end justify-center gap-1.5">
         <CountNumber value={value} format={format} className="text-[#16141d] font-bold tracking-[-0.03em] tabular-nums text-[42px] sm:text-[56px] leading-none" />

@@ -46,7 +46,8 @@ import { sendWeeklyReport, buildReportData, renderReportHtml } from '@/lib/ads-r
 import { buildMarketingMetrics } from '@/lib/marketing-metrics';
 import { emailConfigured, reportRecipients, sendHtmlEmail } from '@/lib/email';
 import { NEWSLETTER_COLL, OPTOUT_COLL, NL_EVENTS_COLL, renderNewsletterHtml, resolveAudience, audienceCounts, sanitizeBlocks, hasContent, buildUnsubUrl, verifyUnsubToken, verifyInterestToken, propertyInterestToken, verifyPropertyInterestToken, slugifyCampaign, normEmail as nlNormEmail, recipientId, TEMPLATES, templateBlocks, THEMES, TRACKING_GIF, applyMergeTags } from '@/lib/newsletter';
-import { syncPropertiesFromPlatform, maybeAutoSyncProperties, listAdminProperties, listPublicProperties, setPropertyVisibility, getPropertiesSyncMeta, backfillPropertyDistricts, refreshPropertyQuality, applyEnrichment, setPropertyEnrichment } from '@/lib/properties-sync';
+import { syncPropertiesFromPlatform, maybeAutoSyncProperties, listAdminProperties, listPublicProperties, setPropertyVisibility, getPropertiesSyncMeta, backfillPropertyDistricts, refreshPropertyQuality, applyEnrichment, setPropertyEnrichment, setPropertyFinnSnapshot, setPropertyEditorialTitle, PROPERTIES_COLL } from '@/lib/properties-sync';
+import { cleanFinnTitle, titleCandidates, rentInfo } from '@/lib/listing-title';
 import { postalToDistrict } from '@/lib/geo-bergen';
 import { buildLeadReceipt, buildLeadAdminNotification, buildPropertyInterestNotification } from '@/lib/lead-emails';
 import { fireLeadEmails, sendReEngagedNotification, sendPropertyInterestNotification } from '@/lib/lead-emails';
@@ -5806,6 +5807,21 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
       };
       const saved = await setPropertyEnrichment(db, { id: pid, enrich });
       if (!saved.ok) return cors(NextResponse.json(saved, { status: 404 }));
+      // Lagre også et snapshot av annonsen (tittel + annonsert leie). Tittelen
+      // kan brukes i nyhetsbrevet; leien brukes KUN til avvikskontroll mot
+      // utleiemodulen — den overstyrer aldri plattformens tall.
+      try {
+        await setPropertyFinnSnapshot(db, {
+          id: pid,
+          snap: {
+            url: finn.finnUrl,
+            title: cleanFinnTitle(finn.title),
+            rentAmount: finnRent || null,
+            imageCount: finnImages.length,
+            status: 'aktiv',
+          },
+        });
+      } catch (_) { /* snapshot er en bonus — berikelsen er alt lagret */ }
       await refreshPropertyQuality(db);
       return cors(NextResponse.json({
         ok: true,
@@ -5823,6 +5839,108 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
       }));
     }
 
+
+    // -----------------------------------------------------------------------
+    // Admin: HENT ANNONSEDATA FRA FINN (tittel + annonsert leie) for boliger
+    // som allerede har en FINN-lenke — enkeltvis {id} eller for alle {all:true}.
+    //
+    // Hvorfor: plattformens boligeksport er personvern-trygg og sender derfor en
+    // GENERISK tittel («Møblert leilighet · 1 soverom · 52 m²»). Et nyhetsbrev
+    // med ti slike kort er uleselig. FINN-annonsen har den ekte annonsetittelen.
+    //
+    // Grenser vi ikke bryter:
+    //  · Kjøres KUN når admin trykker. Aldri automatisk i synken.
+    //  · Prisen fra FINN lagres som kontrollsignal, og overstyrer ALDRI
+    //    plattformens leie — utleiemodulen er eneste autoritative kilde.
+    //  · Skriver aldri noe tilbake til plattformen.
+    // -----------------------------------------------------------------------
+    if (route === '/admin/properties/finn-snapshot' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      const pid = String(body.id || '').trim();
+      const all = body.all === true;
+      if (!pid && !all) return cors(NextResponse.json({ ok: false, error: 'Mangler id (eller all:true)' }, { status: 400 }));
+      const coll = db.collection(PROPERTIES_COLL);
+      const raw = pid
+        ? await coll.find({ $or: [{ id: pid }, { externalId: pid }] }, { projection: { _id: 0 } }).limit(1).toArray()
+        : await coll.find({ stale: { $ne: true } }, { projection: { _id: 0 } }).limit(500).toArray();
+      // Bare boliger som FAKTISK har en lenke å hente fra.
+      const cap = Math.min(Math.max(Number(body.limit) || 12, 1), 24);
+      const targets = raw
+        .map((d) => ({ raw: d, p: applyEnrichment(d) }))
+        .filter((x) => !!x.p.finnUrl)
+        .filter((x) => (all && body.onlyMissing === true ? !x.p.finnTitle : true))
+        .slice(0, pid ? 1 : cap);
+      if (!targets.length) {
+        return cors(NextResponse.json({ ok: false, error: pid ? 'Boligen har ingen FINN-lenke' : 'Ingen boliger med FINN-lenke å hente fra' }, { status: 400 }));
+      }
+      const results = [];
+      // Tre om gangen: FINN svarer på ~1–2 s, og 12 i serie ville tatt for lang tid.
+      for (let i = 0; i < targets.length; i += 3) {
+        const chunk = targets.slice(i, i + 3);
+        // eslint-disable-next-line no-await-in-loop
+        await Promise.all(chunk.map(async ({ raw: d, p }) => {
+          try {
+            const finn = await fetchFinnPreview(p.finnUrl);
+            const ok = !!(finn && finn.ok);
+            const title = ok ? cleanFinnTitle(finn.title) : '';
+            const rentAmount = ok ? (Number(String(finn.rent || '').replace(/\D/g, '')) || null) : null;
+            await setPropertyFinnSnapshot(db, {
+              id: d.externalId || d.id,
+              snap: {
+                url: p.finnUrl,
+                title,
+                rentAmount,
+                imageCount: ok ? (finn.gallery || []).length : 0,
+                status: ok ? 'aktiv' : 'utgatt',
+              },
+            });
+            results.push({
+              id: d.id, externalId: d.externalId, area: p.area || null,
+              ok, status: ok ? 'aktiv' : 'utgatt', title: title || null, rentAmount,
+              platformRent: p.rentAmount ?? null,
+              error: ok ? null : ((finn && finn.error) || 'ikke_funnet'),
+            });
+          } catch (e) {
+            results.push({ id: d.id, externalId: d.externalId, ok: false, status: 'feil', error: 'fetch_failed' });
+          }
+        }));
+      }
+      const fresh = await listAdminProperties(db);
+      const byId = new Map(fresh.map((p) => [p.id, p]));
+      const enriched = results.map((r) => {
+        const p = byId.get(r.id);
+        const info = p ? rentInfo(p) : null;
+        return { ...r, deviationPct: info ? info.deviationPct : null, deviates: info ? info.deviates : false, listingTitle: p ? p.listingTitle : null, listingTitleSource: p ? p.listingTitleSource : null };
+      });
+      return cors(NextResponse.json({
+        ok: true,
+        fetched: enriched.length,
+        withTitle: enriched.filter((r) => r.title).length,
+        expired: enriched.filter((r) => !r.ok).length,
+        deviations: enriched.filter((r) => r.deviates).length,
+        results: enriched,
+        properties: pid ? undefined : fresh,
+        property: pid ? byId.get(results[0]?.id) || null : undefined,
+      }));
+    }
+
+    // Admin: redaksjonell tittel på et boligkort. Tom tittel nullstiller, og
+    // hierarkiet (FINN → plattform → avledet) bestemmer igjen.
+    if (route === '/admin/properties/title' && (method === 'PUT' || method === 'POST')) {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      const pid = String(body.id || '').trim();
+      if (!pid) return cors(NextResponse.json({ ok: false, error: 'Mangler id' }, { status: 400 }));
+      const saved = await setPropertyEditorialTitle(db, { id: pid, title: body.title });
+      if (!saved.ok) return cors(NextResponse.json(saved, { status: 404 }));
+      return cors(NextResponse.json({
+        ok: true,
+        cleared: saved.cleared,
+        property: saved.property,
+        candidates: titleCandidates(saved.property),
+      }));
+    }
 
     // Admin: forhåndsvis lead-e-poster i nettleser (uten å sende noe).
     // ?type=receipt|notify — valgfritt ?id=<lead-id> for ekte data, ellers eksempel.

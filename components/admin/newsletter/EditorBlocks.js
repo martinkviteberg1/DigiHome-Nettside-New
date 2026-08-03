@@ -7,6 +7,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { sortDistrictGroups } from '@/lib/geo-bergen';
+import { titleCandidates, rentInfo, TITLE_SOURCE, TITLE_MAX } from '@/lib/listing-title';
 import {
   Type, AlignLeft, Image as ImageIcon, MousePointerClick, LayoutPanelTop,
   List, Quote, UserRound, PenLine, Minus, MoveVertical, BadgePercent,
@@ -634,12 +635,13 @@ export function newsletterBlock(p) {
   return { blocked, reason };
 }
 
-function PropertyPicker({ b, onPatch, apiQ }) {
+/* ---------- Delt boligliste: velgeren OG rekkefølgelista bruker den --------- */
+// Begge panelene trengte de samme boligene. Nå hentes lista én gang og deles,
+// slik at rekkefølgelista også kan tilby annonsetittel-kandidater og FINN-pris.
+function usePropertyList(apiQ) {
   const [list, setList] = useState(null); // null = laster
   const [err, setErr] = useState('');
-  const [q, setQ] = useState('');
-  const [onlyOk, setOnlyOk] = useState(false);
-  const load = async () => {
+  const load = React.useCallback(async () => {
     setList(null); setErr('');
     try {
       // Admin-lista viser alle synkede boliger; fall tilbake til offentlig liste
@@ -658,8 +660,30 @@ function PropertyPicker({ b, onPatch, apiQ }) {
       }
       setList(props);
     } catch (e) { setErr('Kunne ikke hente boliger'); setList([]); }
-  };
-  useEffect(() => { load(); }, []); // eslint-disable-line
+  }, [apiQ]);
+  useEffect(() => { load(); }, [load]);
+  const byPid = React.useMemo(() => {
+    const m = new Map();
+    (Array.isArray(list) ? list : []).forEach((p) => { m.set(p.externalId || p.id, p); if (p.id) m.set(p.id, p); });
+    return m;
+  }, [list]);
+  return { list, err, load, byPid };
+}
+
+export function PropertiesPanel({ b, onPatch, apiQ }) {
+  const { list, err, load, byPid } = usePropertyList(apiQ);
+  return (
+    <>
+      <PropertyPicker b={b} onPatch={onPatch} list={list} err={err} reload={load} />
+      <PropertyOrderList b={b} onPatch={onPatch} byPid={byPid} apiQ={apiQ} onSaved={load} />
+    </>
+  );
+}
+
+function PropertyPicker({ b, onPatch, list, err, reload }) {
+  const [q, setQ] = useState('');
+  const [onlyOk, setOnlyOk] = useState(false);
+  const load = reload;
 
   // AUTO-HEAL: utkast laget før bydelsutledningen har tom bydel (eller gatenavn)
   // lagret på boligkortene, så alt havnet under «Andre områder». Når lista er
@@ -686,10 +710,14 @@ function PropertyPicker({ b, onPatch, apiQ }) {
   const toItem = (p) => ({
     pid: p.externalId || p.id,
     localId: p.id || '',
-    title: p.title || 'Bolig',
+    // Annonsetittel etter kildehierarkiet (redigert → FINN → plattform →
+    // avledet). Plattformtittelen alene er generisk og gjør alle kort like.
+    title: p.listingTitle || p.title || 'Bolig',
+    titleSource: p.listingTitleSource || null,
     image: (Array.isArray(p.images) && p.images[0]) || '',
     meta: [p.area || p.city, p.bedrooms ? `${p.bedrooms} soverom` : null, p.sqm ? `${p.sqm} m²` : null, p.availableFrom ? `Ledig ${p.availableFrom}` : null].filter(Boolean).join(' · '),
     band: p.monthlyRentBand || '',
+    bandSource: p.rentBandSource || null,
     status: p.status || 'active',
     // Bydel fra API-et (utledet fra postnummer/poststed). ALDRI gatenavn —
     // «Sandslimarka» er ikke et byområde og gir en ubrukelig gruppering.
@@ -715,7 +743,7 @@ function PropertyPicker({ b, onPatch, apiQ }) {
     if (onlyOk && newsletterBlock(p).blocked && !selected.has(pid)) return false;
     if (!tokens.length) return true;
     const hay = [
-      p.title, p.area, p.district, p.city,
+      p.listingTitle, p.title, p.area, p.district, p.city,
       p.sqm ? `${p.sqm} m2 m²` : '', p.bedrooms ? `${p.bedrooms} soverom` : '',
       p.model, p.monthlyRentBand,
     ].filter(Boolean).join(' ').toLowerCase();
@@ -776,7 +804,7 @@ function PropertyPicker({ b, onPatch, apiQ }) {
                   ? <img src={mediaSrc(p.images[0])} alt="" className="w-[42px] h-[32px] rounded-md object-cover shrink-0" />
                   : <div className="w-[42px] h-[32px] rounded-md bg-[#f4f2ef] flex items-center justify-center shrink-0"><Home size={13} className="text-[#cbc4ba]" /></div>}
                 <div className="flex-1 min-w-0">
-                  <p className="text-[12px] font-semibold text-[#111] truncate">{p.title || 'Bolig'}</p>
+                  <p className="text-[12px] font-semibold text-[#111] truncate">{p.listingTitle || p.title || 'Bolig'}</p>
                   <p className="text-[10.5px] text-[#999] truncate">
                     {[p.area || p.city, p.district, p.sqm ? `${p.sqm} m²` : null, reason || 'Ledig'].filter(Boolean).join(' · ')}
                   </p>
@@ -798,13 +826,21 @@ function PropertyPicker({ b, onPatch, apiQ }) {
   );
 }
 
-/* ------- Rekkefølge på valgte boliger (styrer visningen i e-posten) ------- */
-// Plattformens boligtitler er generiske, så nummer + gate + bydel er det som
-// gjør lista lesbar. Rekkefølgen her er den samme som e-posten bruker: med
-// bydelsgruppering slått på styrer den plasseringen INNE i hver bydel.
-function PropertyOrderList({ b, onPatch }) {
+/* ------- Valgte boliger: rekkefølge + annonsetittel per bolig ------------- */
+// Rekkefølgen her er den samme som e-posten bruker: med bydelsgruppering på
+// styrer den plasseringen INNE i hver bydel.
+//
+// TITTEL: plattformens boligtittel er personvern-trygg og derfor generisk
+// («Møblert leilighet · 1 soverom · 52 m²»). Kildehierarkiet (redigert → FINN →
+// plattform → avledet) foreslår, men redaktøren har siste ord — og kan lagre
+// valget som standard for boligen, slik at neste utsendelse arver det.
+function PropertyOrderList({ b, onPatch, byPid, apiQ, onSaved }) {
   const items = Array.isArray(b.items) ? b.items : [];
+  const [open, setOpen] = useState(null);
+  const [saving, setSaving] = useState(null);
+  const [msg, setMsg] = useState(null); // {pid, ok, text}
   if (!items.length) return null;
+
   const move = (i, dir) => {
     const j = i + dir;
     if (j < 0 || j >= items.length) return;
@@ -813,32 +849,178 @@ function PropertyOrderList({ b, onPatch }) {
     onPatch({ items: next });
   };
   const remove = (i) => onPatch({ items: items.filter((_, k) => k !== i) });
+  const patchItem = (i, patch) => onPatch({ items: items.map((x, k) => (k === i ? { ...x, ...patch } : x)) });
   const grouped = (b.grouping || 'auto') !== 'off'
     && (b.grouping === 'always' || items.length >= Math.max(2, Number(b.groupingThreshold) || 6));
 
+  const live = (pid) => (byPid && byPid.get ? byPid.get(pid) : null) || null;
+  const kr = (n) => `${Number(n).toLocaleString('nb-NO')} kr/mnd`;
+
+  // Hent tittel/pris/bilde på nytt fra Boliger-modulen for alle valgte kort.
+  // Eksplisitt handling — vi overskriver aldri redaktørens tekst automatisk.
+  const refreshAll = () => {
+    onPatch({
+      items: items.map((it) => {
+        const p = live(it.pid);
+        if (!p) return it;
+        return {
+          ...it,
+          title: p.listingTitle || p.title || it.title,
+          titleSource: p.listingTitleSource || null,
+          band: p.monthlyRentBand || it.band || '',
+          bandSource: p.rentBandSource || null,
+          image: (Array.isArray(p.images) && p.images[0]) || it.image,
+          district: p.district || it.district,
+        };
+      }),
+    });
+    setMsg({ pid: '*', ok: true, text: 'Titler, priser og bilder er hentet på nytt fra Boliger.' });
+  };
+
+  // Lagre tittelen som standard på boligen (gjelder alle framtidige utsendelser).
+  const saveAsDefault = async (it) => {
+    if (!apiQ) return;
+    setSaving(it.pid); setMsg(null);
+    try {
+      const p = live(it.pid);
+      const r = await fetch(`/api/admin/properties/title?${apiQ}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: (p && p.id) || it.localId || it.pid, title: it.title || '' }),
+      });
+      const j = await r.json();
+      if (j.ok) { setMsg({ pid: it.pid, ok: true, text: 'Lagret som standard for boligen.' }); if (onSaved) onSaved(); }
+      else setMsg({ pid: it.pid, ok: false, text: j.error || 'Kunne ikke lagre' });
+    } catch (e) { setMsg({ pid: it.pid, ok: false, text: 'Nettverksfeil — prøv igjen' }); }
+    setSaving(null);
+  };
+
   return (
     <div className="mt-3">
-      <label className={labelCls} style={{ marginTop: 0 }}>Rekkefølge i e-posten</label>
-      <div className="rounded-xl border border-[#f0ede8] divide-y divide-[#f5f2ee]" data-testid="nl-property-order">
-        {items.map((it, i) => (
-          <div key={`${it.pid}-${i}`} className="flex items-center gap-1.5 px-2 py-1.5">
-            <span className="w-[14px] shrink-0 text-[10px] font-bold tabular-nums text-[#b8b2aa]">{i + 1}</span>
-            {it.image
-              ? <img src={mediaSrc(it.image)} alt="" className="h-[26px] w-[34px] shrink-0 rounded object-cover" />
-              : <div className="flex h-[26px] w-[34px] shrink-0 items-center justify-center rounded bg-[#f4f2ef]"><Home size={11} className="text-[#cbc4ba]" /></div>}
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-[11.5px] font-semibold text-[#111]">{it.title || 'Bolig'}</p>
-              <p className="truncate text-[10px] text-[#a8a29a]">{[it.meta, it.district].filter(Boolean).join(' · ')}</p>
-            </div>
-            <button onClick={() => move(i, -1)} disabled={i === 0} title="Flytt opp" data-testid={`nl-order-up-${i}`}
-              className="p-0.5 text-[#b8b2aa] hover:text-[#111] disabled:opacity-25"><ArrowUp size={12} /></button>
-            <button onClick={() => move(i, 1)} disabled={i === items.length - 1} title="Flytt ned" data-testid={`nl-order-down-${i}`}
-              className="p-0.5 text-[#b8b2aa] hover:text-[#111] disabled:opacity-25"><ArrowDown size={12} /></button>
-            <button onClick={() => remove(i)} title="Fjern fra brevet" data-testid={`nl-order-del-${i}`}
-              className="p-0.5 text-[#b8b2aa] hover:text-red-500"><X size={12} /></button>
-          </div>
-        ))}
+      <div className="flex items-center justify-between gap-2">
+        <label className={labelCls} style={{ marginTop: 0 }}>Valgte boliger ({items.length})</label>
+        <button type="button" onClick={refreshAll} data-testid="nl-order-refresh"
+          title="Hent tittel, pris og bilde på nytt fra Boliger-modulen"
+          className="mt-1 flex items-center gap-1 text-[10.5px] font-semibold text-[#888] hover:text-[#111]">
+          <RefreshCw size={11} /> Oppdater fra Boliger
+        </button>
       </div>
+      <div className="rounded-xl border border-[#f0ede8] divide-y divide-[#f5f2ee]" data-testid="nl-property-order">
+        {items.map((it, i) => {
+          const p = live(it.pid);
+          const cands = p ? titleCandidates(p) : [];
+          const matched = cands.find((c) => c.title === (it.title || ''));
+          const srcKey = matched ? matched.source : 'redigert';
+          const src = TITLE_SOURCE[srcKey] || TITLE_SOURCE.redigert;
+          const long = (it.title || '').length > TITLE_MAX;
+          const rent = p ? rentInfo(p) : null;
+          const isOpen = open === it.pid;
+          return (
+            <div key={`${it.pid}-${i}`}>
+              <div className="flex items-center gap-1.5 px-2 py-1.5">
+                <span className="w-[14px] shrink-0 text-[10px] font-bold tabular-nums text-[#b8b2aa]">{i + 1}</span>
+                {it.image
+                  ? <img src={mediaSrc(it.image)} alt="" className="h-[26px] w-[34px] shrink-0 rounded object-cover" />
+                  : <div className="flex h-[26px] w-[34px] shrink-0 items-center justify-center rounded bg-[#f4f2ef]"><Home size={11} className="text-[#cbc4ba]" /></div>}
+                <button type="button" onClick={() => setOpen(isOpen ? null : it.pid)}
+                  data-testid={`nl-order-edit-${i}`} title="Rediger annonsetittel og pris"
+                  className="min-w-0 flex-1 text-left">
+                  <p className="truncate text-[11.5px] font-semibold text-[#111]">{it.title || 'Bolig'}</p>
+                  <p className="truncate text-[10px] text-[#a8a29a]">
+                    <span className="font-semibold text-[#b09be0]">{src.short}</span>
+                    {matched && matched.generic ? <span className="text-[#c08a2e]"> · generisk</span> : null}
+                    {long ? <span className="text-[#c08a2e]"> · lang tittel</span> : null}
+                    {rent && rent.deviates ? <span className="text-[#c08a2e]"> · prisavvik FINN</span> : null}
+                    {[it.meta, it.district].filter(Boolean).length ? ` · ${[it.meta, it.district].filter(Boolean).join(' · ')}` : ''}
+                  </p>
+                </button>
+                <button type="button" onClick={() => setOpen(isOpen ? null : it.pid)} title="Rediger tittel"
+                  className={`p-0.5 ${isOpen ? 'text-[#111]' : 'text-[#b8b2aa] hover:text-[#111]'}`}><PenLine size={11} /></button>
+                <button type="button" onClick={() => move(i, -1)} disabled={i === 0} title="Flytt opp" data-testid={`nl-order-up-${i}`}
+                  className="p-0.5 text-[#b8b2aa] hover:text-[#111] disabled:opacity-25"><ArrowUp size={12} /></button>
+                <button type="button" onClick={() => move(i, 1)} disabled={i === items.length - 1} title="Flytt ned" data-testid={`nl-order-down-${i}`}
+                  className="p-0.5 text-[#b8b2aa] hover:text-[#111] disabled:opacity-25"><ArrowDown size={12} /></button>
+                <button type="button" onClick={() => remove(i)} title="Fjern fra brevet" data-testid={`nl-order-del-${i}`}
+                  className="p-0.5 text-[#b8b2aa] hover:text-red-500"><X size={12} /></button>
+              </div>
+
+              {isOpen ? (
+                <div className="border-t border-[#f5f2ee] bg-[#fdfcfb] px-2.5 py-2.5" data-testid={`nl-order-panel-${i}`}>
+                  <label className="text-[9.5px] font-bold uppercase tracking-[0.09em] text-[#a8a29a]">Annonsetittel i e-posten</label>
+                  <textarea
+                    value={it.title || ''} rows={2}
+                    onChange={(e) => patchItem(i, { title: e.target.value.replace(/\s+/g, ' ').slice(0, 160) })}
+                    data-testid={`nl-order-title-${i}`}
+                    className="mt-1 w-full resize-none rounded-lg border border-[#e8e4de] bg-white px-2.5 py-1.5 text-[11.5px] leading-[1.45] text-[#111] outline-none focus:border-[#c9b6e8]"
+                    placeholder="Skriv en tittel leietakeren kjenner boligen igjen på…"
+                  />
+                  <div className="mt-1 flex items-center justify-between">
+                    <span className={`text-[10px] tabular-nums ${long ? 'text-[#c08a2e]' : 'text-[#b8b2aa]'}`}>
+                      {(it.title || '').length}/{TITLE_MAX} tegn{long ? ' — blir tre linjer i e-posten' : ''}
+                    </span>
+                    {apiQ ? (
+                      <button type="button" onClick={() => saveAsDefault(it)} disabled={saving === it.pid}
+                        data-testid={`nl-order-savedefault-${i}`}
+                        title="Lagres på boligen og brukes i alle framtidige utsendelser"
+                        className="flex items-center gap-1 text-[10.5px] font-semibold text-[#7A3EC8] hover:underline disabled:opacity-50">
+                        {saving === it.pid ? <Loader2 size={10} className="animate-spin" /> : <Check size={10} />} Sett som standard
+                      </button>
+                    ) : null}
+                  </div>
+
+                  {cands.length ? (
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {cands.map((c) => (
+                        <button key={`${c.source}-${c.title}`} type="button" onClick={() => patchItem(i, { title: c.title.slice(0, 160), titleSource: c.source })}
+                          title={`${TITLE_SOURCE[c.source]?.help || ''}\n\n${c.title}`}
+                          data-testid={`nl-order-cand-${i}-${c.source}`}
+                          className={`max-w-full truncate rounded-full border px-2 py-[3px] text-[10px] font-semibold transition ${c.title === it.title ? 'border-[#0a0a0a] bg-[#0a0a0a] text-white' : 'border-[#e8e4de] bg-white text-[#777] hover:border-[#c9b6e8] hover:text-[#111]'}`}>
+                          {TITLE_SOURCE[c.source]?.short || c.source}{c.generic ? ' (generisk)' : ''}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                  {p && !p.finnUrl ? (
+                    <p className="mt-1.5 text-[10px] leading-relaxed text-[#b8b2aa]">Ingen FINN-annonse er koblet til denne boligen. Koble den under «Boliger» for å kunne bruke annonsetittelen.</p>
+                  ) : p && p.finnUrl && !p.finnTitle ? (
+                    <p className="mt-1.5 text-[10px] leading-relaxed text-[#b8b2aa]">FINN-annonse er koblet, men annonsedata er ikke hentet. Trykk «Hent annonsedata» under «Boliger».</p>
+                  ) : null}
+
+                  <label className="mt-3 block text-[9.5px] font-bold uppercase tracking-[0.09em] text-[#a8a29a]">Pris i kortet</label>
+                  <input
+                    value={it.band || ''} onChange={(e) => patchItem(i, { band: e.target.value.slice(0, 60) })}
+                    data-testid={`nl-order-band-${i}`}
+                    placeholder="f.eks. 16 000–18 000 kr"
+                    className="mt-1 h-[30px] w-full rounded-lg border border-[#e8e4de] bg-white px-2.5 text-[11.5px] text-[#111] outline-none focus:border-[#c9b6e8]"
+                  />
+                  <p className="mt-1 text-[10px] leading-relaxed text-[#b8b2aa]">
+                    {it.bandSource === 'finn'
+                      ? 'Prisen er hentet fra FINN fordi utleiemodulen mangler prisintervall — den er ikke bekreftet i plattformen.'
+                      : 'Prisen kommer fra utleiemodulen i plattformen — eneste autoritative kilde.'}
+                  </p>
+                  {rent && rent.finnAmount && rent.platformAmount ? (
+                    <p className={`mt-1 text-[10px] leading-relaxed ${rent.deviates ? 'text-[#c08a2e]' : 'text-[#8a8580]'}`} data-testid={`nl-order-dev-${i}`}>
+                      FINN annonserer {kr(rent.finnAmount)} · plattformen har {kr(rent.platformAmount)}
+                      {rent.deviationPct != null ? ` (${rent.deviationPct > 0 ? '+' : ''}${rent.deviationPct} %)` : ''}
+                      {rent.deviates ? ' — sjekk hvilken som gjelder før du sender.' : ''}
+                    </p>
+                  ) : null}
+                  {rent && rent.finnAmount && !it.band ? (
+                    <button type="button" onClick={() => patchItem(i, { band: kr(rent.finnAmount).replace('/mnd', '/mnd'), bandSource: 'finn' })}
+                      data-testid={`nl-order-usefinn-${i}`}
+                      className="mt-1.5 rounded-full border border-[#e8e4de] bg-white px-2 py-[3px] text-[10px] font-semibold text-[#777] hover:border-[#c9b6e8] hover:text-[#111]">
+                      Bruk FINN-pris {kr(rent.finnAmount)}
+                    </button>
+                  ) : null}
+                  {msg && msg.pid === it.pid ? (
+                    <p className={`mt-1.5 text-[10px] ${msg.ok ? 'text-[#1f7a4d]' : 'text-red-500'}`}>{msg.text}</p>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+          );
+        })}
+      </div>
+      {msg && msg.pid === '*' ? <p className="mt-1.5 text-[10px] text-[#1f7a4d]">{msg.text}</p> : null}
       <p className="mt-1.5 text-[10.5px] leading-relaxed text-[#aaa]">
         {grouped
           ? 'Bydelsgruppering er på, så denne rekkefølgen styrer plasseringen inne i hver bydel. Sett «Bydelsrekkefølge» til «Som valgt» for å bestemme hvilken bydel som kommer først.'
@@ -979,8 +1161,7 @@ export function BlockInspector({ b, onPatch, onDel, onUploadImage, uploadingId, 
       </>) : null}
 
       {b.type === 'properties' ? (<>
-        <PropertyPicker b={b} onPatch={onPatch} apiQ={apiQ} />
-        <PropertyOrderList b={b} onPatch={onPatch} />
+        <PropertiesPanel b={b} onPatch={onPatch} apiQ={apiQ} />
         <label className={labelCls}>Gruppering etter bydel/område</label>
         <div className="grid grid-cols-3 gap-1.5" data-testid="nl-properties-grouping">
           {[['off', 'Ingen'], ['auto', 'Auto 6+'], ['always', 'Alltid']].map(([key, label]) => (

@@ -7,8 +7,19 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Loader2, RefreshCw, Eye, EyeOff, Home, MapPin, BedDouble, Ruler,
   CheckCircle2, AlertTriangle, ImageOff, Sparkles, Globe, ExternalLink,
-  Link2, Download, X, Search,
+  Link2, Download, X, Search, PenLine, Tag,
 } from 'lucide-react';
+import { titleCandidates, rentInfo, finnMatchHint, TITLE_SOURCE, TITLE_MAX } from '@/lib/listing-title';
+
+// Hvor kortets tittel kommer fra. Alltid synlig — en tittel uten kjent kilde er
+// en tittel ingen tar ansvar for.
+const TITLE_SRC_CLS = {
+  redigert: 'bg-[#f0ebff] text-[#6b4fd8]',
+  finn: 'bg-[#e8f1ff] text-[#1d5bbf]',
+  finn_full: 'bg-[#e8f1ff] text-[#1d5bbf]',
+  plattform: 'bg-[#f5f5f4] text-[#888]',
+  avledet: 'bg-[#f5f4f2] text-[#999]',
+};
 
 const MODEL_LABEL = { langtid: 'Langtidsutleie', korttid: 'Korttidsutleie', hybrid: 'Hybridutleie' };
 const STATUS_LABEL = { active: 'Ledig', rented: 'Utleid', paused: 'Pauset' };
@@ -119,11 +130,78 @@ export default function PropertiesTab({ apiKey }) {
     setFinnBusy(null);
   };
 
+  // -------------------------------------------------------------------------
+  // ANNONSETITTEL
+  // Plattformen sender en personvern-trygg og derfor GENERISK tittel («Møblert
+  // leilighet · 1 soverom · 52 m²»). Ti slike kort i et nyhetsbrev er uleselige.
+  // Rekkefølgen er: redigert → FINN-annonse → plattform → avledet fra gate/rom.
+  // Her kan tittelen redigeres, og annonsedata hentes fra en koblet FINN-annonse.
+  //
+  // LEIE følger et annet prinsipp: utleiemodulen er eneste autoritative kilde.
+  // FINN-prisen lagres kun som kontrollsignal og vises som avvik.
+  // -------------------------------------------------------------------------
+  const [titleOpen, setTitleOpen] = useState(null);
+  const [titleInput, setTitleInput] = useState('');
+  const [titleBusy, setTitleBusy] = useState(null);
+  const [snapBusy, setSnapBusy] = useState(null); // bolig-id, eller '*' for alle
+  const [snapMsg, setSnapMsg] = useState(null);   // {ok, text}
+
+  const saveTitle = async (p, title) => {
+    setTitleBusy(p.id);
+    try {
+      const r = await fetch(`/api/admin/properties/title?${q}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: p.id, title }),
+      });
+      const j = await r.json();
+      if (j.ok) { setTitleOpen(null); setTitleInput(''); await load(); }
+    } catch (e) {}
+    setTitleBusy(null);
+  };
+
+  const fetchSnapshot = async (p) => {
+    setSnapBusy(p.id); setSnapMsg(null);
+    try {
+      const r = await fetch(`/api/admin/properties/finn-snapshot?${q}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: p.id }),
+      });
+      const j = await r.json();
+      const res = (j.results || [])[0] || {};
+      if (j.ok && res.ok) {
+        setSnapMsg({ ok: true, text: `Hentet annonsedata for ${res.area || 'boligen'}${res.title ? `: «${res.title}»` : ''}${res.deviates ? ` — NB: FINN-prisen avviker ${res.deviationPct > 0 ? '+' : ''}${res.deviationPct} % fra plattformen` : ''}` });
+      } else {
+        setSnapMsg({ ok: false, text: j.error || 'Annonsen svarte ikke — den kan være utgått' });
+      }
+      await load();
+    } catch (e) { setSnapMsg({ ok: false, text: 'Nettverksfeil — prøv igjen' }); }
+    setSnapBusy(null);
+  };
+
+  const fetchAllSnapshots = async () => {
+    setSnapBusy('*'); setSnapMsg(null);
+    try {
+      const r = await fetch(`/api/admin/properties/finn-snapshot?${q}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ all: true, limit: 24 }),
+      });
+      const j = await r.json();
+      if (j.ok) {
+        setSnapMsg({
+          ok: true,
+          text: `Hentet annonsedata for ${j.fetched} bolig${j.fetched === 1 ? '' : 'er'} — ${j.withTitle} med annonsetittel${j.expired ? `, ${j.expired} annonse${j.expired === 1 ? '' : 'r'} svarte ikke` : ''}${j.deviations ? `, ${j.deviations} med prisavvik mot plattformen` : ''}.`,
+        });
+      } else setSnapMsg({ ok: false, text: j.error || 'Kunne ikke hente annonsedata' });
+      await load();
+    } catch (e) { setSnapMsg({ ok: false, text: 'Nettverksfeil — prøv igjen' }); }
+    setSnapBusy(null);
+  };
+
   const props = data?.properties || [];
   const tokens = search.trim().toLowerCase().split(/\s+/).filter(Boolean);
   const filtered = useMemo(() => props.filter((p) => {
     if (tokens.length) {
-      const hay = [p.title, p.area, p.district, p.city, p.sqm ? `${p.sqm} m2 m²` : '', p.bedrooms ? `${p.bedrooms} soverom` : '', p.model, p.monthlyRentBand]
+      const hay = [p.listingTitle, p.finnTitle, p.title, p.area, p.district, p.city, p.sqm ? `${p.sqm} m2 m²` : '', p.bedrooms ? `${p.bedrooms} soverom` : '', p.model, p.monthlyRentBand]
         .filter(Boolean).join(' ').toLowerCase();
       if (!tokens.every((t) => hay.includes(t))) return false;
     }
@@ -193,6 +271,13 @@ export default function PropertiesTab({ apiKey }) {
         </div>
       )}
 
+      {snapMsg && (
+        <div className={`flex items-start gap-2 text-[13px] rounded-xl px-4 py-3 ${snapMsg.ok ? 'bg-[#e8f1ff] text-[#1d5bbf]' : 'bg-[#fdecec] text-[#c0392b]'}`} data-testid="props-snapshot-msg">
+          {snapMsg.ok ? <Tag className="w-4 h-4 shrink-0 mt-0.5" /> : <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />}
+          <span className="leading-relaxed">{snapMsg.text}</span>
+        </div>
+      )}
+
       {/* Personvern-info */}
       <div className="flex items-start gap-2.5 rounded-xl bg-[#f7f3ff] px-4 py-3">
         <Sparkles className="w-4 h-4 text-[#9a6ee8] shrink-0 mt-0.5" />
@@ -250,6 +335,15 @@ export default function PropertiesTab({ apiKey }) {
           </button>
         ))}
         <div className="ml-auto flex items-center gap-2">
+          {finnLinked.length > 0 && (
+            <button onClick={fetchAllSnapshots} disabled={!!snapBusy}
+              data-testid="props-snapshot-all"
+              title="Henter annonsetittel og annonsert leie fra FINN for boliger som har en koblet annonse. Overstyrer aldri plattformens leie."
+              className="h-9 px-3.5 rounded-full text-[12.5px] font-medium bg-white text-[#1d5bbf] shadow-[0_2px_10px_rgba(0,0,0,0.04)] hover:bg-[#e8f1ff] transition-colors flex items-center gap-1.5 disabled:opacity-50">
+              {snapBusy === '*' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Tag className="w-3.5 h-3.5" />}
+              {snapBusy === '*' ? 'Henter annonsedata …' : `Hent annonsedata (${finnLinked.length})`}
+            </button>
+          )}
           <button onClick={() => bulk(withImages.map((p) => p.id), true)} disabled={bulkBusy || !withImages.length}
             className="h-9 px-3.5 rounded-full text-[12.5px] font-medium bg-white text-[#1f7a4d] shadow-[0_2px_10px_rgba(0,0,0,0.04)] hover:bg-[#e9f7ef] transition-colors flex items-center gap-1.5 disabled:opacity-50">
             <Eye className="w-3.5 h-3.5" /> Vis alle med bilder ({withImages.length})
@@ -298,7 +392,59 @@ export default function PropertiesTab({ apiKey }) {
               )}
             </div>
             <div className="p-4">
-              <h3 className="text-[14.5px] font-semibold text-[#0a0a0a] leading-snug" style={{ fontFamily: 'var(--font-heading)' }}>{p.title || 'Bolig'}</h3>
+              {/* Annonsetittel: kilden er alltid synlig, og kan overstyres.
+                  Plattformtittelen alene gjør alle boligkort identiske. */}
+              {titleOpen === p.id ? (
+                <div className="space-y-2">
+                  <textarea
+                    autoFocus rows={2} value={titleInput}
+                    onChange={(e) => setTitleInput(e.target.value.replace(/\s+/g, ' ').slice(0, 160))}
+                    onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); saveTitle(p, titleInput); } if (e.key === 'Escape') setTitleOpen(null); }}
+                    placeholder="Skriv annonsetittelen slik den skal stå i nyhetsbrevet …"
+                    data-testid={`props-title-input-${p.id}`}
+                    className="w-full resize-none rounded-lg border border-[#e8e4de] px-3 py-2 text-[13px] leading-snug outline-none focus:border-[#9a6ee8]"
+                  />
+                  <div className="flex flex-wrap gap-1">
+                    {titleCandidates(p).map((c) => (
+                      <button key={`${c.source}-${c.title}`} onClick={() => setTitleInput(c.title)}
+                        title={`${TITLE_SOURCE[c.source]?.help || ''}\n\n${c.title}`}
+                        className={`rounded-full border px-2 py-0.5 text-[10.5px] font-semibold transition-colors ${c.title === titleInput ? 'border-[#0a0a0a] bg-[#0a0a0a] text-white' : 'border-[#e8e4de] text-[#888] hover:border-[#9a6ee8] hover:text-[#0a0a0a]'}`}>
+                        {TITLE_SOURCE[c.source]?.short || c.source}{c.generic ? ' (generisk)' : ''}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => saveTitle(p, titleInput)} disabled={titleBusy === p.id}
+                      data-testid={`props-title-save-${p.id}`}
+                      className="h-8 px-3 rounded-full bg-[#0a0a0a] text-white text-[12px] font-semibold flex items-center gap-1.5 disabled:opacity-50">
+                      {titleBusy === p.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null} Lagre tittel
+                    </button>
+                    {p.editorialTitle ? (
+                      <button onClick={() => saveTitle(p, '')} disabled={titleBusy === p.id}
+                        title="Fjern den redigerte tittelen og la kildehierarkiet bestemme igjen"
+                        className="h-8 px-3 rounded-full bg-[#f5f5f4] text-[#888] text-[12px] font-semibold">Nullstill</button>
+                    ) : null}
+                    <button onClick={() => { setTitleOpen(null); setTitleInput(''); }}
+                      className="h-8 px-3 text-[12px] font-semibold text-[#aaa] hover:text-[#555]">Avbryt</button>
+                    <span className={`ml-auto text-[10.5px] tabular-nums ${titleInput.length > TITLE_MAX ? 'text-[#c08a2e]' : 'text-[#c4bdb4]'}`}>{titleInput.length}/{TITLE_MAX}</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-start gap-2">
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-[14.5px] font-semibold text-[#0a0a0a] leading-snug" style={{ fontFamily: 'var(--font-heading)' }} data-testid={`props-title-${p.id}`}>
+                      {p.listingTitle || p.title || 'Bolig'}
+                    </h3>
+                    <span className={`mt-1 inline-flex items-center rounded px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wide ${TITLE_SRC_CLS[p.listingTitleSource] || TITLE_SRC_CLS.avledet}`}
+                      title={TITLE_SOURCE[p.listingTitleSource]?.help || ''}>
+                      {TITLE_SOURCE[p.listingTitleSource]?.short || 'Ukjent'}
+                    </span>
+                  </div>
+                  <button onClick={() => { setTitleOpen(p.id); setTitleInput(p.listingTitle || p.title || ''); }}
+                    data-testid={`props-title-edit-${p.id}`} title="Rediger annonsetittelen"
+                    className="shrink-0 p-1 text-[#c4bdb4] hover:text-[#0a0a0a]"><PenLine className="w-3.5 h-3.5" /></button>
+                </div>
+              )}
               {/* Speiling av «Enheter»-visningen: full adresse med husnummer og
                   etasje kommer fra plattformens enhetseksport (kun for admin). */}
               <div className="flex items-start gap-1.5 mt-1.5 text-[12px] text-[#999]">
@@ -329,6 +475,9 @@ export default function PropertiesTab({ apiKey }) {
                     : (p.monthlyRentBand || '—')}
                   {p.rentAmount != null && p.rentIsEstimate ? (
                     <span className="rounded px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wide bg-[#fff8e6] text-[#8a6500]" title="Estimert leie fra plattformen — teller ikke som inntekt">Estimat</span>
+                  ) : null}
+                  {p.rentAmount == null && p.rentBandSource === 'finn' ? (
+                    <span className="rounded px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wide bg-[#e8f1ff] text-[#1d5bbf]" title="Prisintervallet er hentet fra FINN fordi utleiemodulen ikke har noen leie — ikke bekreftet i plattformen">Fra FINN</span>
                   ) : null}
                 </span>
                 <button onClick={() => toggle(p)} disabled={togglingId === p.id}
@@ -370,6 +519,50 @@ export default function PropertiesTab({ apiKey }) {
                     {(p.enrichedFields || []).length > 0 && (
                       <p className="text-[11px] text-[#1f7a4d]">Hentet fra FINN: {(p.enrichedFields || []).join(', ')}</p>
                     )}
+                    {/* Annonsedata: tittelen kan brukes i nyhetsbrevet, prisen er
+                        KUN kontrollsignal mot utleiemodulen. */}
+                    <div className="rounded-lg bg-[#fafafa] px-2.5 py-2">
+                      {p.finnTitle ? (
+                        <>
+                          <p className="text-[11px] leading-relaxed text-[#666]">
+                            <span className="text-[#aaa]">Annonsetittel:</span> «{p.finnTitle}»
+                          </p>
+                          {(() => {
+                            const r = rentInfo(p);
+                            if (!r.finnAmount) return <p className="mt-0.5 text-[10.5px] text-[#aaa]">Ingen månedsleie oppgitt i annonsen.</p>;
+                            return (
+                              <p className={`mt-0.5 text-[10.5px] leading-relaxed ${r.deviates ? 'text-[#a15c00]' : 'text-[#8a8580]'}`} data-testid={`props-rent-dev-${p.id}`}>
+                                Annonsert leie {Number(r.finnAmount).toLocaleString('nb-NO')} kr/mnd
+                                {r.platformAmount ? ` · plattformen har ${Number(r.platformAmount).toLocaleString('nb-NO')} kr/mnd` : ' · plattformen har ingen leie registrert'}
+                                {r.deviationPct != null ? ` (${r.deviationPct > 0 ? '+' : ''}${r.deviationPct} %)` : ''}
+                                {r.deviates ? ' — plattformen gjelder. Rett i utleiemodulen hvis annonsen er riktig.' : ''}
+                              </p>
+                            );
+                          })()}
+                          <p className="mt-0.5 text-[10px] text-[#c4bdb4]">Hentet {fmtTime(p.finnSnapshotAt)}{p.finnSnapshotStatus === 'utgatt' ? ' · annonsen svarte ikke' : ''}</p>
+                          {(() => {
+                            const hint = finnMatchHint(p);
+                            return hint ? (
+                              <p className="mt-0.5 text-[10.5px] leading-relaxed text-[#1f7a4d]" data-testid={`props-finn-match-${p.id}`}>
+                                Annonsetittelen nevner «{hint.word}» — stemmer med boligens adresse, så lenken peker sannsynligvis riktig.
+                              </p>
+                            ) : (
+                              <p className="mt-0.5 text-[10.5px] leading-relaxed text-[#a15c00]">
+                                Annonsetittelen nevner ikke gate, bydel eller poststed for denne boligen — kontroller at lenken peker på riktig enhet.
+                              </p>
+                            );
+                          })()}
+                        </>
+                      ) : (
+                        <p className="text-[11px] leading-relaxed text-[#999]">Annonsedata er ikke hentet ennå. Hent tittelen for å bruke den i nyhetsbrevet i stedet for plattformens generiske tittel.</p>
+                      )}
+                      <button onClick={() => fetchSnapshot(p)} disabled={snapBusy === p.id || snapBusy === '*'}
+                        data-testid={`props-snapshot-${p.id}`}
+                        className="mt-1.5 flex items-center gap-1.5 text-[11.5px] font-semibold text-[#1d5bbf] hover:underline disabled:opacity-50">
+                        {snapBusy === p.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Tag className="w-3 h-3" />}
+                        {snapBusy === p.id ? 'Henter …' : p.finnTitle ? 'Hent på nytt' : 'Hent annonsedata'}
+                      </button>
+                    </div>
                   </div>
                 ) : finnOpen === p.id ? (
                   <div className="space-y-2">
