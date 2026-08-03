@@ -2,7 +2,8 @@
 
 import React, { useMemo, useState, useEffect } from 'react';
 import Link from 'next/link';
-import { MapPin, Ruler, BedDouble, ArrowUpRight, SlidersHorizontal, X, Bell, Check, Loader2, EyeOff } from 'lucide-react';
+import { MapPin, Ruler, BedDouble, ArrowUpRight, SlidersHorizontal, X, EyeOff } from 'lucide-react';
+import HousingAlertForm from './HousingAlertForm';
 
 // Filtrering skjer i nettleseren på en liste som allerede er server-rendret.
 // Da er boligene i HTML-en for søkemotorer og AI-crawlere, samtidig som
@@ -76,45 +77,8 @@ function ListingCard({ c, preview }) {
 }
 
 // Ingen ledige boliger er ikke en feil — det er en salgsmulighet. I stedet for
-// en tom side fanger vi boligsøkeren i nyhetsbrevet, som allerede er koblet til
-// boligvarslene våre.
-function NotifyForm({ compact }) {
-  const [email, setEmail] = useState('');
-  const [state, setState] = useState('idle');
-  const submit = async (e) => {
-    e.preventDefault();
-    if (!/^\S+@\S+\.\S+$/.test(email)) { setState('invalid'); return; }
-    setState('sending');
-    try {
-      const r = await fetch('/api/newsletter/subscribe', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, source: 'ledige-boliger' }),
-      });
-      const j = await r.json();
-      setState(j.ok ? 'done' : 'error');
-    } catch (err) { setState('error'); }
-  };
-  if (state === 'done') {
-    return (
-      <p className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-4 py-2.5 text-[14px] font-medium text-emerald-800">
-        <Check className="h-4 w-4" /> Du er på lista — vi varsler deg når noe blir ledig.
-      </p>
-    );
-  }
-  return (
-    <form onSubmit={submit} className={`flex w-full flex-col gap-2 sm:flex-row ${compact ? 'max-w-[420px]' : 'max-w-[520px]'}`}>
-      <input type="email" value={email} onChange={(e) => { setEmail(e.target.value); setState('idle'); }}
-        placeholder="din@epost.no" data-testid="listings-notify-email" aria-label="E-postadresse"
-        className="h-12 flex-1 rounded-full bg-white px-5 text-[15px] text-[#1f1f1f] ring-1 ring-inset ring-black/[0.09] outline-none placeholder:text-[#b3ada4] focus:ring-2 focus:ring-[#7c3aed]" />
-      <button type="submit" disabled={state === 'sending'} data-testid="listings-notify-submit"
-        className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-[#0a0a0a] px-6 text-[15px] font-semibold text-white transition-colors hover:bg-[#242424] disabled:opacity-60">
-        {state === 'sending' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Bell className="h-4 w-4" />} Varsle meg
-      </button>
-      {state === 'invalid' && <span className="self-center text-[13px] text-red-600">Sjekk e-postadressen</span>}
-      {state === 'error' && <span className="self-center text-[13px] text-red-600">Noe gikk galt — prøv igjen</span>}
-    </form>
-  );
-}
+// en tom side fanger vi boligsøkerens kriterier i HousingAlertForm, som både
+// gir oss et lead og forteller forvalteren hvilke boliger det venter folk på.
 
 export default function ListingsGrid({ listings = [] }) {
   const [district, setDistrict] = useState('');
@@ -252,9 +216,9 @@ export default function ListingsGrid({ listings = [] }) {
             Ingen ledige boliger akkurat nå
           </h2>
           <p className="mt-4 max-w-[58ch] text-[15.5px] leading-relaxed text-[#4a4a4a]">
-            Boligene vi forvalter går som regel raskt — mange leies ut til noen på varslingslista før annonsen rekker å bli publisert. Legg inn e-posten din, så er du blant de første som hører fra oss.
+            Boligene vi forvalter går ofte til noen på varslingslista før annonsen rekker å bli publisert. Legg inn e-posten din — så kan du si hva du leter etter etterpå, og bare høre fra oss når boligen faktisk passer.
           </p>
-          <div className="mt-6"><NotifyForm /></div>
+          <div className="mt-6"><HousingAlertForm /></div>
           <div className="mt-8 grid gap-4 border-t border-black/[0.06] pt-8 sm:grid-cols-3">
             {[
               { t: 'Vi kvalitetssikrer leietakeren', d: 'Kredittsjekk, referanser og digital kontrakt før noen får nøkkel.' },
@@ -277,7 +241,7 @@ export default function ListingsGrid({ listings = [] }) {
               <p className="text-[17px] font-bold text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>Fant du ikke boligen du lette etter?</p>
               <p className="mt-1.5 max-w-[52ch] text-[14px] leading-relaxed text-[#4c3a75]">Vi får nye boliger fortløpende. Legg inn e-posten din, så varsler vi deg før de annonseres.</p>
             </div>
-            <NotifyForm compact />
+            <HousingAlertForm compact />
           </div>
         </div>
       )}

@@ -48,7 +48,8 @@ import { emailConfigured, reportRecipients, sendHtmlEmail } from '@/lib/email';
 import { NEWSLETTER_COLL, OPTOUT_COLL, NL_EVENTS_COLL, renderNewsletterHtml, resolveAudience, audienceCounts, sanitizeBlocks, hasContent, buildUnsubUrl, verifyUnsubToken, verifyInterestToken, propertyInterestToken, verifyPropertyInterestToken, slugifyCampaign, normEmail as nlNormEmail, recipientId, TEMPLATES, templateBlocks, THEMES, TRACKING_GIF, applyMergeTags } from '@/lib/newsletter';
 import { syncPropertiesFromPlatform, maybeAutoSyncProperties, listAdminProperties, listPublicProperties, setPropertyVisibility, getPropertiesSyncMeta, backfillPropertyDistricts, refreshPropertyQuality, applyEnrichment, setPropertyEnrichment, setPropertyFinnSnapshot, setPropertyEditorialTitle, PROPERTIES_COLL } from '@/lib/properties-sync';
 import { cleanFinnTitle, titleCandidates, rentInfo } from '@/lib/listing-title';
-import { listingGate, listingSlug, toListingCard, toListingDetail, publishReadiness } from '@/lib/listings';
+import { listingGate, listingSlug, toListingCard, toListingDetail, publishReadiness, GATE } from '@/lib/listings';
+import { ALERTS_COLL, ALERT_CONSENT_TEXT, normalizeAlert, alertMatches, alertSummaryText, summarizeDemand, toAdminAlert, normEmail as haNormEmail } from '@/lib/housing-alerts';
 import { postalToDistrict } from '@/lib/geo-bergen';
 import { buildLeadReceipt, buildLeadAdminNotification, buildPropertyInterestNotification } from '@/lib/lead-emails';
 import { fireLeadEmails, sendReEngagedNotification, sendPropertyInterestNotification } from '@/lib/lead-emails';
@@ -6016,6 +6017,133 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
         };
       }
       return cors(NextResponse.json(payload));
+    }
+
+    // ── BOLIGVARSEL (offentlig) ────────────────────────────────────────────
+    // Publiseringsporten er streng, så /ledige-boliger er ofte tynn eller tom.
+    // I stedet for å kaste bort trafikken fanger vi kriteriene til boligsøkeren.
+    //
+    // TO STEG: skjemaet sender først bare e-post (lav terskel), og deretter
+    // kriteriene på samme e-post. Derfor er dette en UPSERT på e-post — samme
+    // person skal aldri bli to varsler.
+    //
+    // Vi sender ALDRI e-post herfra. Et boligvarsel er ikke et hastelead, og
+    // forvalteren ser etterspørselen i adminportalen. Det holder også flyten
+    // fri for irreversible sideeffekter.
+    // -----------------------------------------------------------------------
+    if (route === '/housing-alerts' && method === 'POST') {
+      let body = {};
+      try { body = await request.json(); } catch (e) { body = {}; }
+      const norm = normalizeAlert(body);
+      if (norm.error) return cors(NextResponse.json({ ok: false, error: norm.error }, { status: 400 }));
+
+      const now = new Date().toISOString();
+      const { email, source, ...rest } = norm;
+      const existing = await db.collection(ALERTS_COLL).findOne({ email }, { projection: { _id: 0, id: 1 } });
+      await db.collection(ALERTS_COLL).updateOne(
+        { email },
+        {
+          $setOnInsert: { id: uuidv4(), email, created_at: now, source },
+          $set: { ...rest, updated_at: now, status: 'active', consent: true, consent_text: ALERT_CONSENT_TEXT },
+        },
+        { upsert: true },
+      );
+
+      // Varselet leveres via nyhetsbrevlisten — samme opt-in-kanal som
+      // tom-tilstanden brukte før, så samtykkeomfanget er uendret.
+      try {
+        await db.collection('newsletter_subscribers').updateOne(
+          { email },
+          {
+            $setOnInsert: { id: uuidv4(), email, created_at: now, source: `boligvarsel:${source}` },
+            $set: { updated_at: now, consent: true, ...(rest.name ? { name: rest.name } : {}) },
+          },
+          { upsert: true },
+        );
+        await db.collection(OPTOUT_COLL).deleteOne({ email });
+      } catch (e) {}
+
+      // Vi lover aldri mer enn vi har: vi teller bare PUBLISERTE boliger.
+      let matches = 0;
+      try {
+        const all = await listAdminProperties(db);
+        matches = all.filter((p) => listingGate(p).publishable).map(toListingCard)
+          .filter((c) => alertMatches(norm, c)).length;
+      } catch (e) {}
+
+      const hasCriteria = !!(norm.districts.length || norm.bedroomsMin || norm.maxRent || norm.moveIn);
+      return cors(NextResponse.json({
+        ok: true,
+        isNew: !existing,
+        matches,
+        summary: hasCriteria ? alertSummaryText(norm) : null,
+      }));
+    }
+
+    // ── ADMIN: etterspørsel ────────────────────────────────────────────────
+    // Kobler boligvarslene mot de LEDIGE boligene, også de som ikke kan
+    // publiseres. Svarer på «hvilken bolig skal jeg fikse først?» med et tall
+    // i stedet for en magefølelse.
+    // -----------------------------------------------------------------------
+    if (route === '/admin/housing-alerts' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ ok: false, error: 'Uautorisert' }, { status: 401 }));
+      const raw = await db.collection(ALERTS_COLL).find({}, { projection: { _id: 0 } }).sort({ created_at: -1 }).limit(1000).toArray();
+      const all = await listAdminProperties(db);
+      const rd = publishReadiness(all);
+      const stateById = new Map();
+      for (const r of rd.almost) stateById.set(r.id, { state: 'mangler', gate: r.gate });
+      for (const r of rd.ready) stateById.set(r.id, { state: 'klar', gate: r.gate });
+      for (const r of rd.published) stateById.set(r.id, { state: 'publisert', gate: r.gate });
+
+      const vacant = all.filter((p) => stateById.has(p.id));
+      const demand = summarizeDemand(raw, vacant);
+      const countById = new Map((demand.perProperty || []).map((x) => [x.id, x.matches]));
+      delete demand.perProperty;
+
+      const properties = vacant.map((p) => {
+        const st = stateById.get(p.id) || {};
+        const codes = ((st.gate && st.gate.blocking) || []).filter((c) => c !== 'skjult' && c !== 'ikke_ledig');
+        return {
+          id: p.id,
+          area: p.area || null,
+          title: p.listingTitle || p.title || 'Bolig',
+          district: p.district || null,
+          bedrooms: p.bedrooms || null,
+          rentBand: p.monthlyRentBand || null,
+          state: st.state || 'mangler',
+          missing: codes,
+          missingLabels: codes.map((c) => (GATE[c] && GATE[c].label) || c),
+          fix: codes.length ? ((GATE[codes[0]] && GATE[codes[0]].fix) || null) : null,
+          matches: countById.get(p.id) || 0,
+        };
+      }).sort((a, b) => b.matches - a.matches || a.missing.length - b.missing.length);
+
+      return cors(NextResponse.json({ ok: true, alerts: raw.map(toAdminAlert), demand, properties }));
+    }
+
+    // Admin: slett et boligvarsel (avmelding på forespørsel + QA-opprydding).
+    if (route === '/admin/housing-alerts' && method === 'DELETE') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ ok: false, error: 'Uautorisert' }, { status: 401 }));
+      const sp = new URL(request.url).searchParams;
+      const id = (sp.get('id') || '').trim();
+      const email = haNormEmail(sp.get('email'));
+      if (!id && !email) return cors(NextResponse.json({ ok: false, error: 'Mangler id eller email' }, { status: 400 }));
+      const query = id ? { id } : { email };
+      const doc = await db.collection(ALERTS_COLL).findOne(query, { projection: { _id: 0, email: 1 } });
+      const del = await db.collection(ALERTS_COLL).deleteOne(query);
+      // Abonnenten fjernes BARE hvis den ble opprettet av boligvarselet — en
+      // som meldte seg på nyhetsbrevet selv skal ikke miste det.
+      let deletedSubscriber = 0;
+      if (doc && doc.email) {
+        try {
+          const sub = await db.collection('newsletter_subscribers').findOne({ email: doc.email }, { projection: { _id: 0, source: 1 } });
+          if (sub && String(sub.source || '').startsWith('boligvarsel')) {
+            const r2 = await db.collection('newsletter_subscribers').deleteOne({ email: doc.email });
+            deletedSubscriber = r2.deletedCount || 0;
+          }
+        } catch (e) {}
+      }
+      return cors(NextResponse.json({ ok: true, deleted: del.deletedCount || 0, deletedSubscriber }));
     }
 
     // Admin: forhåndsvis lead-e-poster i nettleser (uten å sende noe).

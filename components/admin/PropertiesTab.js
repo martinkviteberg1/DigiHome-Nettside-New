@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { titleCandidates, rentInfo, finnMatchHint, TITLE_SOURCE, TITLE_MAX } from '@/lib/listing-title';
 import { listingGate, publishReadiness, GATE } from '@/lib/listings';
+import DemandPanel from './DemandPanel';
 
 // Hvor kortets tittel kommer fra. Alltid synlig — en tittel uten kjent kilde er
 // en tittel ingen tar ansvar for.
@@ -338,6 +339,11 @@ export default function PropertiesTab({ apiKey }) {
           </div>
         )}
       </div>
+
+      {/* ETTERSPØRSEL — boligvarsler koblet mot boligene som mangler innhold.
+          Ligger rett under publiseringspanelet med vilje: her ser du hvorfor
+          det er verdt å fylle inn prisen på en bestemt bolig. */}
+      <DemandPanel apiKey={apiKey} />
 
       {/* Datakvalitet — hva som mangler fra plattformen, og hva du kan gjøre nå */}
       {(incomplete.length > 0 || duplicates.length > 0 || noImages.length > 0) && (
