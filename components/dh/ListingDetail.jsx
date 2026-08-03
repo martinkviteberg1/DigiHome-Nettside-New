@@ -1,0 +1,287 @@
+'use client';
+
+import React, { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
+import {
+  MapPin, Ruler, BedDouble, CalendarDays, Building2, ShieldCheck, ExternalLink,
+  ChevronLeft, ChevronRight, X, Check, Loader2, Send, Info,
+} from 'lucide-react';
+
+// Boligsiden. Tre veier videre, i bevisst rekkefølge:
+//  1. «Meld interesse» — vårt eget lead. Havner i CRM med boligen påkoblet.
+//  2. «Book visning i DigiHome» — plattformens egen boligside.
+//  3. «Se annonsen på FINN» — kun når lenken er verifisert i utleiemodulen.
+
+const KR = (n) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0');
+
+function fmtDate(iso) {
+  if (!iso) return null;
+  try {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return null;
+    return d.toLocaleDateString('nb-NO', { day: 'numeric', month: 'long', year: 'numeric' });
+  } catch (e) { return null; }
+}
+
+function Gallery({ images, title }) {
+  const [i, setI] = useState(0);
+  const [open, setOpen] = useState(false);
+  const imgs = Array.isArray(images) ? images.filter(Boolean) : [];
+  const go = useCallback((d) => setI((v) => (imgs.length ? (v + d + imgs.length) % imgs.length : 0)), [imgs.length]);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const onKey = (e) => {
+      if (e.key === 'Escape') setOpen(false);
+      if (e.key === 'ArrowRight') go(1);
+      if (e.key === 'ArrowLeft') go(-1);
+    };
+    window.addEventListener('keydown', onKey);
+    document.body.style.overflow = 'hidden';
+    return () => { window.removeEventListener('keydown', onKey); document.body.style.overflow = ''; };
+  }, [open, go]);
+
+  if (!imgs.length) {
+    return <div className="grid aspect-[16/10] place-items-center rounded-[26px] bg-[#f3f1ee] text-[#c9c3ba]"><Building2 className="h-8 w-8" /></div>;
+  }
+
+  return (
+    <>
+      <div className="overflow-hidden rounded-[26px] bg-[#f3f1ee]">
+        <button type="button" onClick={() => setOpen(true)} data-testid="listing-gallery-main"
+          className="relative block aspect-[16/10] w-full cursor-zoom-in">
+          <img src={imgs[i]} alt={title} className="absolute inset-0 h-full w-full object-cover" />
+          {imgs.length > 1 && (
+            <>
+              <span onClick={(e) => { e.stopPropagation(); e.preventDefault(); go(-1); }}
+                className="absolute left-3 top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-white/85 text-[#0a0a0a] shadow-sm backdrop-blur-sm transition-colors hover:bg-white">
+                <ChevronLeft className="h-5 w-5" />
+              </span>
+              <span onClick={(e) => { e.stopPropagation(); e.preventDefault(); go(1); }}
+                className="absolute right-3 top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-white/85 text-[#0a0a0a] shadow-sm backdrop-blur-sm transition-colors hover:bg-white">
+                <ChevronRight className="h-5 w-5" />
+              </span>
+              <span className="absolute bottom-3 right-3 rounded-lg bg-black/45 px-2.5 py-1 text-[12px] font-medium text-white backdrop-blur-sm tabular-nums">{i + 1} / {imgs.length}</span>
+            </>
+          )}
+        </button>
+      </div>
+      {imgs.length > 1 && (
+        <div className="mt-3 flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'thin' }}>
+          {imgs.map((src, k) => (
+            <button key={src + k} type="button" onClick={() => setI(k)} aria-label={`Bilde ${k + 1}`}
+              className={`h-16 w-[88px] shrink-0 overflow-hidden rounded-xl transition-all ${k === i ? 'ring-2 ring-[#7c3aed] ring-offset-2 ring-offset-[#fdfcfb]' : 'opacity-70 hover:opacity-100'}`}>
+              <img src={src} alt="" loading="lazy" className="h-full w-full object-cover" />
+            </button>
+          ))}
+        </div>
+      )}
+
+      {open && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/92 p-4" onClick={() => setOpen(false)}>
+          <button type="button" onClick={() => setOpen(false)} aria-label="Lukk"
+            className="absolute right-4 top-4 grid h-11 w-11 place-items-center rounded-full bg-white/10 text-white hover:bg-white/20"><X className="h-5 w-5" /></button>
+          <img src={imgs[i]} alt={title} className="max-h-[88vh] max-w-full rounded-2xl object-contain" onClick={(e) => e.stopPropagation()} />
+          {imgs.length > 1 && (
+            <>
+              <button type="button" onClick={(e) => { e.stopPropagation(); go(-1); }} aria-label="Forrige"
+                className="absolute left-4 grid h-12 w-12 place-items-center rounded-full bg-white/10 text-white hover:bg-white/20"><ChevronLeft className="h-6 w-6" /></button>
+              <button type="button" onClick={(e) => { e.stopPropagation(); go(1); }} aria-label="Neste"
+                className="absolute right-4 grid h-12 w-12 place-items-center rounded-full bg-white/10 text-white hover:bg-white/20"><ChevronRight className="h-6 w-6" /></button>
+              <span className="absolute bottom-5 rounded-full bg-white/10 px-3 py-1 text-[13px] text-white tabular-nums">{i + 1} / {imgs.length}</span>
+            </>
+          )}
+        </div>
+      )}
+    </>
+  );
+}
+
+function InterestForm({ listing, available }) {
+  const [f, setF] = useState({ name: '', email: '', phone: '', notes: '' });
+  const [state, setState] = useState('idle');
+  const [err, setErr] = useState('');
+  const set = (k) => (e) => setF((v) => ({ ...v, [k]: e.target.value }));
+
+  const submit = async (e) => {
+    e.preventDefault();
+    setErr('');
+    if (!f.name.trim()) { setErr('Skriv inn navnet ditt'); return; }
+    if (!/^\S+@\S+\.\S+$/.test(f.email)) { setErr('Sjekk e-postadressen'); return; }
+    setState('sending');
+    try {
+      const r = await fetch('/api/tenants', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: f.name, email: f.email, phone: f.phone, notes: f.notes,
+          property: listing.id,
+          preferred_area: [listing.area, listing.district].filter(Boolean).join(', '),
+          bedrooms: listing.bedrooms || undefined,
+          source: 'ledige-boliger',
+        }),
+      });
+      const j = await r.json();
+      if (j.success || j.ok) setState('done');
+      else { setState('idle'); setErr(j.error || 'Noe gikk galt — prøv igjen'); }
+    } catch (e2) { setState('idle'); setErr('Nettverksfeil — prøv igjen'); }
+  };
+
+  if (state === 'done') {
+    return (
+      <div className="rounded-[22px] bg-emerald-50 p-5" data-testid="listing-interest-done">
+        <p className="inline-flex items-center gap-2 text-[15px] font-semibold text-emerald-900"><Check className="h-4 w-4" /> Interessen er registrert</p>
+        <p className="mt-2 text-[13.5px] leading-relaxed text-emerald-900/80">
+          Vi tar kontakt med deg om {listing.title.toLowerCase()}. Du hører fra oss samme dag på hverdager.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <form onSubmit={submit} className="space-y-2.5" data-testid="listing-interest-form">
+      <input value={f.name} onChange={set('name')} placeholder="Navn" autoComplete="name" data-testid="listing-interest-name"
+        className="h-11 w-full rounded-xl bg-white px-4 text-[14.5px] ring-1 ring-inset ring-black/[0.09] outline-none placeholder:text-[#b3ada4] focus:ring-2 focus:ring-[#7c3aed]" />
+      <div className="grid gap-2.5 sm:grid-cols-2">
+        <input value={f.email} onChange={set('email')} type="email" placeholder="E-post" autoComplete="email" data-testid="listing-interest-email"
+          className="h-11 w-full rounded-xl bg-white px-4 text-[14.5px] ring-1 ring-inset ring-black/[0.09] outline-none placeholder:text-[#b3ada4] focus:ring-2 focus:ring-[#7c3aed]" />
+        <input value={f.phone} onChange={set('phone')} type="tel" placeholder="Telefon" autoComplete="tel" data-testid="listing-interest-phone"
+          className="h-11 w-full rounded-xl bg-white px-4 text-[14.5px] ring-1 ring-inset ring-black/[0.09] outline-none placeholder:text-[#b3ada4] focus:ring-2 focus:ring-[#7c3aed]" />
+      </div>
+      <textarea value={f.notes} onChange={set('notes')} rows={2} placeholder="Når vil du flytte inn? Noe vi bør vite?"
+        data-testid="listing-interest-notes"
+        className="w-full resize-none rounded-xl bg-white px-4 py-3 text-[14.5px] leading-relaxed ring-1 ring-inset ring-black/[0.09] outline-none placeholder:text-[#b3ada4] focus:ring-2 focus:ring-[#7c3aed]" />
+      {err && <p className="text-[13px] text-red-600">{err}</p>}
+      <button type="submit" disabled={state === 'sending'} data-testid="listing-interest-submit"
+        className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[#0a0a0a] text-[15px] font-semibold text-white transition-colors hover:bg-[#242424] disabled:opacity-60">
+        {state === 'sending' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+        {available ? 'Meld interesse' : 'Sett meg på lista'}
+      </button>
+      <p className="text-[11.5px] leading-relaxed text-[#a8a29a]">
+        Vi bruker opplysningene til å følge opp henvendelsen din om denne boligen. Ingen deling med tredjeparter.
+      </p>
+    </form>
+  );
+}
+
+export default function ListingDetail({ listing, available }) {
+  const place = [listing.area, listing.district].filter(Boolean).join(', ') || listing.city;
+  const availFrom = fmtDate(listing.availableFrom) || (listing.availableFrom || null);
+  const facts = [
+    listing.sqm ? { icon: Ruler, label: 'Areal', value: `${listing.sqm} m²` } : null,
+    listing.bedrooms ? { icon: BedDouble, label: 'Soverom', value: String(listing.bedrooms) } : null,
+    { icon: Building2, label: 'Boligtype', value: listing.typeLabel },
+    { icon: CalendarDays, label: 'Ledig fra', value: availFrom || 'Etter avtale' },
+  ].filter(Boolean);
+
+  return (
+    <div className="mx-auto max-w-[1400px] px-6 pb-16 pt-6 sm:px-10 lg:px-16">
+      <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_400px] lg:gap-12">
+        <div>
+          <Gallery images={listing.images} title={listing.title} />
+
+          <div className="mt-8">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-lg bg-[#f4f0fb] px-2.5 py-1 text-[12px] font-semibold text-[#7c3aed]">{listing.modelLabel}</span>
+              {!available && <span className="rounded-lg bg-[#0a0a0a] px-2.5 py-1 text-[12px] font-semibold text-white">Utleid</span>}
+              {listing.district && <span className="rounded-lg bg-[#f1f0ee] px-2.5 py-1 text-[12px] font-semibold text-[#5f5a53]">{listing.district}</span>}
+            </div>
+            <h1 className="mt-4 max-w-[26ch] text-[30px] font-bold leading-[1.1] tracking-[-0.025em] sm:text-[40px]" style={{ fontFamily: 'var(--font-heading)' }}>
+              {listing.title}
+            </h1>
+            <p className="mt-3 inline-flex items-center gap-1.5 text-[15px] text-[#78726a]">
+              <MapPin className="h-4 w-4 text-[#c9c3ba]" /> {place}
+            </p>
+          </div>
+
+          <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {facts.map((f) => (
+              <div key={f.label} className="rounded-[20px] bg-white p-4 ring-1 ring-black/[0.05]">
+                <f.icon className="h-4 w-4 text-[#c9c3ba]" />
+                <p className="mt-2 text-[11px] font-bold uppercase tracking-[0.1em] text-[#a8a29a]">{f.label}</p>
+                <p className="mt-0.5 text-[15px] font-semibold text-[#0a0a0a]">{f.value}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-10">
+            <h2 className="text-[20px] font-bold tracking-[-0.02em]" style={{ fontFamily: 'var(--font-heading)' }}>Om boligen</h2>
+            <p className="mt-3 max-w-[68ch] text-[15.5px] leading-relaxed text-[#4a4a4a]">
+              {listing.typeLabel.toLowerCase()} på {listing.sqm ? `${listing.sqm} m²` : 'sentral beliggenhet'}
+              {listing.bedrooms ? ` med ${listing.bedrooms} soverom` : ''} i {place}.
+              {' '}Boligen forvaltes av DigiHome, som håndterer visning, kontrakt, depositumskonto og all oppfølging digitalt.
+              {availFrom ? ` Boligen er ledig fra ${availFrom}.` : ''}
+            </p>
+            <p className="mt-4 max-w-[68ch] text-[14px] leading-relaxed text-[#78726a]">
+              Vil du se flere bilder, plantegning eller detaljer? Meld interesse — da sender vi deg hele boligpresentasjonen og setter opp visning.
+            </p>
+          </div>
+
+          <div className="mt-8 flex flex-wrap gap-3">
+            {listing.platformUrl && (
+              <a href={listing.platformUrl} target="_blank" rel="noopener noreferrer" data-testid="listing-platform-link"
+                className="inline-flex h-11 items-center gap-2 rounded-full bg-white px-5 text-[14px] font-semibold text-[#0a0a0a] ring-1 ring-inset ring-black/[0.1] transition-colors hover:ring-black/[0.22]">
+                Book visning i DigiHome <ExternalLink className="h-3.5 w-3.5" />
+              </a>
+            )}
+            {listing.finnUrl && (
+              <a href={listing.finnUrl} target="_blank" rel="noopener noreferrer" data-testid="listing-finn-link"
+                className="inline-flex h-11 items-center gap-2 rounded-full bg-white px-5 text-[14px] font-semibold text-[#1d5bbf] ring-1 ring-inset ring-[#1d5bbf]/25 transition-colors hover:ring-[#1d5bbf]/45">
+                Se annonsen på FINN <ExternalLink className="h-3.5 w-3.5" />
+              </a>
+            )}
+          </div>
+
+          <div className="mt-10 grid gap-4 rounded-[24px] bg-white p-6 ring-1 ring-black/[0.05] sm:grid-cols-3">
+            {[
+              { t: 'Kredittsjekk og referanser', d: 'Vi kvalitetssikrer begge veier — trygt for både utleier og leietaker.' },
+              { t: 'Digital kontrakt', d: 'Signering med BankID. Alt dokumentert i én løsning.' },
+              { t: 'Depositumskonto i bank', d: 'Pengene står trygt på egen konto i ditt navn.' },
+            ].map((x) => (
+              <div key={x.t}>
+                <ShieldCheck className="h-4 w-4 text-[#7c3aed]" />
+                <p className="mt-2 text-[14.5px] font-semibold text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>{x.t}</p>
+                <p className="mt-1 text-[13px] leading-relaxed text-[#78726a]">{x.d}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <aside className="lg:sticky lg:top-24 lg:self-start">
+          <div className="rounded-[26px] bg-[#f8f6f3] p-6 ring-1 ring-black/[0.05] shadow-[0_14px_50px_-32px_rgba(0,0,0,0.3)]">
+            {listing.rentBand ? (
+              <>
+                <p className="text-[26px] font-bold leading-none tracking-[-0.02em] text-[#0a0a0a] tabular-nums" style={{ fontFamily: 'var(--font-heading)' }}>
+                  {listing.rentBand.replace(/\s*kr\/mnd\s*$/i, '')} <span className="text-[15px] font-semibold text-[#78726a]">kr/mnd</span>
+                </p>
+                {listing.rentIndicative && (
+                  <p className="mt-1.5 inline-flex items-start gap-1.5 text-[12px] leading-snug text-[#8d867d]">
+                    <Info className="mt-[1px] h-3.5 w-3.5 shrink-0" /> Prisantydning — endelig leie avtales i kontrakten.
+                  </p>
+                )}
+              </>
+            ) : (
+              <p className="text-[19px] font-bold text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>Pris på forespørsel</p>
+            )}
+
+            {!available && (
+              <div className="mt-4 rounded-[18px] bg-white p-4 ring-1 ring-black/[0.06]">
+                <p className="text-[14px] font-semibold text-[#0a0a0a]">Denne boligen er utleid</p>
+                <p className="mt-1 text-[13px] leading-relaxed text-[#78726a]">
+                  Legg igjen kontaktinfo, så varsler vi deg når noe tilsvarende blir ledig — eller se{' '}
+                  <Link href="/ledige-boliger" className="font-semibold text-[#7c3aed] hover:underline">alle ledige boliger</Link>.
+                </p>
+              </div>
+            )}
+
+            <div className="mt-5 border-t border-black/[0.07] pt-5">
+              <p className="mb-3 text-[15px] font-bold text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>
+                {available ? 'Meld interesse' : 'Bli varslet'}
+              </p>
+              <InterestForm listing={listing} available={available} />
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  );
+}

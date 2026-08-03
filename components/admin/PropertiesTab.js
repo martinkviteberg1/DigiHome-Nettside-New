@@ -10,6 +10,7 @@ import {
   Link2, Download, X, Search, PenLine, Tag,
 } from 'lucide-react';
 import { titleCandidates, rentInfo, finnMatchHint, TITLE_SOURCE, TITLE_MAX } from '@/lib/listing-title';
+import { listingGate, publishReadiness, GATE } from '@/lib/listings';
 
 // Hvor kortets tittel kommer fra. Alltid synlig — en tittel uten kjent kilde er
 // en tittel ingen tar ansvar for.
@@ -220,6 +221,9 @@ export default function PropertiesTab({ apiKey }) {
   const duplicates = props.filter((p) => p.duplicate);
   const noImages = props.filter((p) => !(p.images || []).length);
   const finnLinked = props.filter((p) => p.finnUrl);
+  // Publiseringsklarhet for /ledige-boliger. Strengere port enn forsiden:
+  // bilder må komme fra utleiemodulen og prisen fra plattformen.
+  const pub = useMemo(() => publishReadiness(props), [props]);
   const chips = [
     { k: 'alle', l: `Alle (${props.length})` },
     { k: 'synlige', l: `Synlige (${props.filter((p) => p.visible).length})` },
@@ -287,6 +291,52 @@ export default function PropertiesTab({ apiKey }) {
           Nye boliger er <strong>skjult som standard</strong> — slå på synlighet per bolig for å vise den i «Noen av våre eiendommer» på forsiden.
           Boliger uten bilder vises ikke offentlig selv om de er markert synlige.
         </p>
+      </div>
+
+      {/* PUBLISERING PÅ NETTSIDEN
+          Siden /ledige-boliger krever mer enn forsiden: bilder fra utleiemodulen
+          (FINN-bilder har vi ikke rettigheter til å publisere) og pris fra
+          plattformen. Her ser du nøyaktig hva som mangler per bolig — og hvor
+          det fikses — i stedet for at siden bare blir stående tom. */}
+      <div className="rounded-2xl bg-white shadow-[0_2px_16px_rgba(0,0,0,0.05)] p-4 sm:p-5" data-testid="props-publish-panel">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h3 className="text-[14px] font-semibold text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>Ledige boliger på nettsiden</h3>
+            <p className="mt-1 text-[12.5px] leading-relaxed text-[#8a8580]">
+              <b className="text-[#1f7a4d]">{pub.published.length} publisert</b>
+              {' · '}<b className={pub.ready.length ? 'text-[#7c3aed]' : ''}>{pub.ready.length} klar, men skjult</b>
+              {' · '}<span>{pub.almost.length} mangler innhold</span>
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <a href="/ledige-boliger" target="_blank" rel="noopener noreferrer" data-testid="props-open-listings"
+              className="h-8 px-3 rounded-full bg-[#f5f5f4] text-[12px] font-semibold text-[#555] hover:bg-[#ebebe9] inline-flex items-center gap-1.5">
+              <Globe className="w-3.5 h-3.5" /> Åpne siden
+            </a>
+            <a href="/ledige-boliger?forhandsvis=1" target="_blank" rel="noopener noreferrer" data-testid="props-preview-listings"
+              title="Viser også boliger som er klare men ikke publisert. Krever at du er innlogget her."
+              className="h-8 px-3 rounded-full bg-[#f0ebff] text-[12px] font-semibold text-[#6b4fd8] hover:bg-[#e6dcff] inline-flex items-center gap-1.5">
+              <Eye className="w-3.5 h-3.5" /> Forhåndsvis
+            </a>
+          </div>
+        </div>
+        {pub.ready.length > 0 && (
+          <p className="mt-3 rounded-lg bg-[#f0ebff] px-3 py-2 text-[12px] leading-relaxed text-[#5b4499]">
+            {pub.ready.length === 1 ? 'Én bolig er' : `${pub.ready.length} boliger er`} klar for publisering: {pub.ready.map((r) => r.area || r.title).join(', ')}. Slå på «Vis på nettsiden» på boligkortet når du vil publisere.
+          </p>
+        )}
+        {pub.almost.length > 0 && (
+          <div className="mt-3 space-y-1">
+            {pub.almost.slice(0, 8).map((r) => (
+              <div key={r.id} className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-[12px]">
+                <span className="font-semibold text-[#0a0a0a]">{r.area || r.title}</span>
+                <span className="text-[#c08a2e]">{r.gate.blocking.filter((c) => c !== 'skjult').map((c) => GATE[c]?.label || c).join(' · ')}</span>
+                <span className="text-[#b8b2aa]">— {GATE[r.gate.blocking.find((c) => c !== 'skjult')]?.fix || 'fyll ut i utleiemodulen'}</span>
+              </div>
+            ))}
+            {pub.almost.length > 8 && <p className="text-[11.5px] text-[#b8b2aa]">+ {pub.almost.length - 8} flere</p>}
+          </div>
+        )}
       </div>
 
       {/* Datakvalitet — hva som mangler fra plattformen, og hva du kan gjøre nå */}

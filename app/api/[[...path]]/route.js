@@ -48,6 +48,7 @@ import { emailConfigured, reportRecipients, sendHtmlEmail } from '@/lib/email';
 import { NEWSLETTER_COLL, OPTOUT_COLL, NL_EVENTS_COLL, renderNewsletterHtml, resolveAudience, audienceCounts, sanitizeBlocks, hasContent, buildUnsubUrl, verifyUnsubToken, verifyInterestToken, propertyInterestToken, verifyPropertyInterestToken, slugifyCampaign, normEmail as nlNormEmail, recipientId, TEMPLATES, templateBlocks, THEMES, TRACKING_GIF, applyMergeTags } from '@/lib/newsletter';
 import { syncPropertiesFromPlatform, maybeAutoSyncProperties, listAdminProperties, listPublicProperties, setPropertyVisibility, getPropertiesSyncMeta, backfillPropertyDistricts, refreshPropertyQuality, applyEnrichment, setPropertyEnrichment, setPropertyFinnSnapshot, setPropertyEditorialTitle, PROPERTIES_COLL } from '@/lib/properties-sync';
 import { cleanFinnTitle, titleCandidates, rentInfo } from '@/lib/listing-title';
+import { listingGate, listingSlug, toListingCard, toListingDetail, publishReadiness } from '@/lib/listings';
 import { postalToDistrict } from '@/lib/geo-bergen';
 import { buildLeadReceipt, buildLeadAdminNotification, buildPropertyInterestNotification } from '@/lib/lead-emails';
 import { fireLeadEmails, sendReEngagedNotification, sendPropertyInterestNotification } from '@/lib/lead-emails';
@@ -2307,12 +2308,54 @@ async function handleRoute(request, { params }) {
         }
       } catch (e) { /* best-effort */ }
 
-      // Admin-varsling for leietaker-lead (ingen auto-kvittering — de venter på boligtilbud).
+      // BOLIGINTERESSE FRA «LEDIGE BOLIGER»
+      // Ligger skjemaet på en boligside, vet vi hvilken enhet henvendelsen
+      // gjelder. Da lagres interessen på leadet, og varselet til oss sier
+      // hvilken bolig det er — ikke bare «ny leietaker».
+      // Boligen valideres mot den PUBLISERTE lista: skjemaet kan aldri brukes
+      // til å bekrefte at en skjult eller upublisert enhet finnes.
+      let interestProp = null;
       try {
-        const mail = await fireLeadEmails({ ...tenant, lead_type: 'leietaker' }, { kind: 'leietaker', receipt: false });
-        if (mail.adminNotify) {
-          await db.collection('tenant_leads').updateOne({ id: tenant.id }, { $set: { admin_notify: mail.adminNotify } });
-          tenant.admin_notify = mail.adminNotify;
+        const pid = String(body.property || '').slice(0, 80);
+        if (pid) {
+          const props = await listAdminProperties(db);
+          const hit = props.find((p) => (p.id === pid || p.externalId === pid) && listingGate(p).publishable);
+          if (hit) {
+            interestProp = hit;
+            const ev = {
+              propertyId: hit.externalId || hit.id,
+              localId: hit.id,
+              title: hit.listingTitle || hit.title || 'Bolig',
+              area: hit.area || null,
+              district: hit.district || null,
+              slug: listingSlug(hit),
+              source: 'ledige-boliger',
+              at: new Date().toISOString(),
+            };
+            await db.collection('tenant_leads').updateOne({ id: tenant.id }, { $push: { property_interests: ev } });
+            tenant.property_interests = [ev];
+          }
+        }
+      } catch (e) { /* interessen er et tillegg — leadet er alt lagret */ }
+
+      // Admin-varsling for leietaker-lead (ingen auto-kvittering — de venter på boligtilbud).
+      // Gjelder henvendelsen en konkret bolig, sendes boliginteresse-varselet
+      // i stedet for det generiske — ett varsel, med boligen i emnefeltet.
+      try {
+        if (interestProp) {
+          const note = await sendPropertyInterestNotification(
+            { ...tenant, lead_type: 'leietaker' },
+            interestProp,
+            { source: 'ledige-boliger' },
+          );
+          await db.collection('tenant_leads').updateOne({ id: tenant.id }, { $set: { admin_notify: { ok: !!note.ok, kind: 'boliginteresse', at: new Date().toISOString(), error: note.ok ? null : (note.error || note.skipped || null) } } });
+          tenant.admin_notify = { ok: !!note.ok, kind: 'boliginteresse' };
+        } else {
+          const mail = await fireLeadEmails({ ...tenant, lead_type: 'leietaker' }, { kind: 'leietaker', receipt: false });
+          if (mail.adminNotify) {
+            await db.collection('tenant_leads').updateOne({ id: tenant.id }, { $set: { admin_notify: mail.adminNotify } });
+            tenant.admin_notify = mail.adminNotify;
+          }
         }
       } catch (e) { /* e-post er best-effort */ }
 
@@ -5940,6 +5983,39 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
         property: saved.property,
         candidates: titleCandidates(saved.property),
       }));
+    }
+
+    // -----------------------------------------------------------------------
+    // OFFENTLIG BOLIGFLATE for /ledige-boliger.
+    // Returnerer bare boliger som er publiseringsklare OG satt synlige.
+    // Publiseringsporten er strengere enn den generelle boligfeeden:
+    //  · bilder KUN fra utleiemodulen (FINN-bilder har vi ikke rettigheter til
+    //    å publisere på egen kommersiell nettside),
+    //  · pris KUN fra plattformen (en FINN-pris blir aldri vår).
+    // ?preview=1 + adminnøkkel legger på upubliserte kandidater og en
+    // klarhetsrapport — brukes av forhåndsvisningen i adminportalen.
+    // -----------------------------------------------------------------------
+    if (route === '/public/listings' && method === 'GET') {
+      const url = new URL(request.url);
+      const wantPreview = url.searchParams.get('preview') === '1';
+      const isAdmin = wantPreview && adminAuthed(request);
+      const all = await listAdminProperties(db);
+      const listings = all.filter((p) => listingGate(p).publishable).map(toListingCard);
+      const payload = { ok: true, listings, total: listings.length };
+      if (wantPreview && !isAdmin) {
+        return cors(NextResponse.json({ ok: false, error: 'Uautorisert — logg inn i adminportalen' }, { status: 401 }));
+      }
+      if (isAdmin) {
+        const rd = publishReadiness(all);
+        payload.candidates = rd.ready.map((r) => toListingDetail(all.find((p) => p.id === r.id)));
+        payload.readiness = {
+          total: rd.total,
+          published: rd.published.length,
+          ready: rd.ready.map((r) => ({ id: r.id, title: r.title, area: r.area })),
+          almost: rd.almost.map((r) => ({ id: r.id, title: r.title, area: r.area, blocking: r.gate.blocking, platformBlockers: r.platformBlockers })),
+        };
+      }
+      return cors(NextResponse.json(payload));
     }
 
     // Admin: forhåndsvis lead-e-poster i nettleser (uten å sende noe).

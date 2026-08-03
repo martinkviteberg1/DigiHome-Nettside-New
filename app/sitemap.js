@@ -3,6 +3,7 @@ import { locations } from '@/lib/locations';
 import { getAllPublishedSlugs } from '@/lib/posts';
 import { rentCitySlugs } from '@/lib/rentmarket';
 import { guides } from '@/lib/guides';
+import { getPublishedListingSlugs } from '@/lib/listings-server';
 
 // Dynamisk sitemap.xml (Next.js App Router).
 // Inneholder kun offentlige, indekserbare sider. Film-/deck-/admin-ruter
@@ -56,5 +57,24 @@ export default async function sitemap() {
     }));
   } catch (e) { postUrls = []; }
 
-  return [...core, ...locationUrls, ...rentMarketUrls, ...postUrls];
+  // LEDIGE BOLIGER. Kun boliger som faktisk er publisert (klar for nettsiden
+  // OG satt synlige) — vi ber aldri Google indeksere en side som ikke finnes.
+  // Boligsider har høy prioritet og endres ofte: de er ferskvare.
+  let listingUrls = [];
+  try {
+    const slugs = await getPublishedListingSlugs();
+    listingUrls = [
+      { url: `${base}/ledige-boliger`, lastModified: new Date(), changeFrequency: 'daily', priority: 0.9 },
+      ...slugs.map((l) => ({
+        url: `${base}/ledige-boliger/${l.slug}`,
+        lastModified: l.updatedAt ? new Date(l.updatedAt) : new Date(),
+        changeFrequency: 'daily',
+        priority: 0.75,
+      })),
+    ];
+  } catch (e) {
+    listingUrls = [{ url: `${base}/ledige-boliger`, lastModified: staticDate, changeFrequency: 'daily', priority: 0.9 }];
+  }
+
+  return [...core, ...locationUrls, ...rentMarketUrls, ...postUrls, ...listingUrls];
 }
