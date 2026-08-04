@@ -96,6 +96,13 @@ module.exports = {
         maxWidth: {
           shell: '1400px',
         },
+        // Tailwinds standardskala for opasitet går i steg på 5. Klasser som
+        // `bg-white/92` eller `border-white/12` ble derfor aldri generert — de
+        // så riktige ut i koden, men ga INGEN bakgrunn/kant i nettleseren.
+        // Det var årsaken til badgen med svart tekst rett på bildet. Vi åpner
+        // hele skalaen 0–100 slik at feilen ikke kan oppstå igjen. JIT lager
+        // bare de verdiene som faktisk brukes, så CSS-en vokser ikke.
+        opacity: Object.fromEntries(Array.from({ length: 101 }, (_, i) => [String(i), String(i / 100)])),
         keyframes: {
           'accordion-down': {
             from: {

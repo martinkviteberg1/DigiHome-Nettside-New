@@ -67,7 +67,7 @@ try {
   ok(!!meta && /Strøken 2-roms i Sandviken med balkong/.test(meta[1]), `meta-beskrivelse bruker annonseteksten: «${meta ? meta[1].slice(0, 90) : '—'}»`);
   const ld = /"@type":"RealEstateListing"[\s\S]{0,900}?"description":"([^"]{0,120})/.exec(html);
   ok(!!ld, `schema.org description satt: «${ld ? ld[1].slice(0, 70) : '—'}»`);
-  ok(!/Baglergaten 8/.test(html), 'PERSONVERN: husnummer lekker ikke ut i HTML');
+  ok(/Baglergaten 8/.test(html), 'ADRESSE: full gateadresse med husnummer vises i annonsen');
 
   // 4. Sitemap
   const sm = await (await fetch(`${BASE}/sitemap.xml`)).text();

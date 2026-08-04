@@ -9,7 +9,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Plus, ArrowLeft, Send, Eye, FlaskConical, Loader2, Check, Trash2, Copy,
-  Monitor, Smartphone, Users, Settings2, ChevronRight, X, Mail, MailOpen,
+  Monitor, Smartphone, Users, Settings2, ChevronRight, ChevronDown, X, Mail, MailOpen,
   MousePointerClick, PenLine, Search, UsersRound, Sparkles, RefreshCw,
 } from 'lucide-react';
 import { PALETTE, defaultsFor, CanvasBlock, BlockInspector, mediaSrc } from './newsletter/EditorBlocks';
@@ -44,6 +44,8 @@ export default function NewsletterTab({ apiKey }) {
   const [panelTab, setPanelTab] = useState('oppsett'); // oppsett | mottakere (når ingen blokk er valgt)
   const [selectedBlock, setSelectedBlock] = useState(null);
   const [device, setDevice] = useState('desktop');
+  // Blokk-paletten er kollapset på mobil (åpnes ved trykk), alltid åpen på lg+.
+  const [blocksOpen, setBlocksOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewHtml, setPreviewHtml] = useState('');
   const [testOpen, setTestOpen] = useState(false);
@@ -61,6 +63,9 @@ export default function NewsletterTab({ apiKey }) {
   const [aiState, setAiState] = useState('idle'); // idle | loading | error
   const [aiAlts, setAiAlts] = useState([]);       // alternative AI-forslag
   const [aiErr, setAiErr] = useState('');
+  // Hva auto-oppfriskingen av boligblokken gjorde sist (utleide boliger fjernet
+  // e.l.). Vises som en rolig beskjed i editoren — aldri som en blokkerende feil.
+  const [propNotice, setPropNotice] = useState(null);
   const aiAutoTried = useRef({});                  // per kampanje-id: auto-forslag kjørt?
   const saveTimer = useRef(null);
   const firstLoad = useRef(true);
@@ -93,9 +98,25 @@ export default function NewsletterTab({ apiKey }) {
         setPanelTab('oppsett'); setSelectedBlock(null); setConfirming(false); setSendErr(''); setSendState('idle');
         firstLoad.current = true;
         setRecips(null); setRecipSearch('');
+        // Serveren oppfrisker boligblokken når utkastet åpnes. Ble noe fjernet,
+        // sier vi det — redaktøren skal aldri oppdage det først i en feilmelding.
+        setPropNotice(j.propertyRefresh || null);
       }
     } catch (e) {}
     setBusy(false);
+  };
+
+  // Fjern boliger serveren har meldt som utleide/ufullstendige fra det lokale
+  // utkastet, slik at lerretet viser det samme som blir sendt.
+  const dropRemovedProperties = (removed) => {
+    const pids = new Set((removed || []).map((x) => x?.pid).filter(Boolean));
+    if (!pids.size) return;
+    setCamp((c) => (c ? {
+      ...c,
+      blocks: c.blocks.map((b) => (b.type === 'properties'
+        ? { ...b, items: (b.items || []).filter((it) => !pids.has(it.pid)) }
+        : b)),
+    } : c));
   };
 
   /* ------------------------------- Autosave -------------------------------- */
@@ -176,7 +197,9 @@ export default function NewsletterTab({ apiKey }) {
       const j = await r.json();
       if (j.ok && j.url) {
         const b = camp?.blocks.find((x) => x.id === blockId);
-        patchBlock(blockId, b?.type === 'sender' ? { photoUrl: j.url } : b?.type === 'stat' ? { imageUrl: j.url } : { url: j.url });
+        // Kart- og markedsinnsikt-blokkene har lenken sin i `url` (kartvisning /
+        // kilde), så et opplastet bilde må lagres i `imageUrl` — ikke i `url`.
+        patchBlock(blockId, b?.type === 'sender' ? { photoUrl: j.url } : (b?.type === 'stat' || b?.type === 'map') ? { imageUrl: j.url } : { url: j.url });
       } else { alert(j.error || 'Opplasting feilet'); }
     } catch (e) { alert('Opplasting feilet'); }
     setUploadingId(null);
@@ -278,9 +301,17 @@ export default function NewsletterTab({ apiKey }) {
         body: JSON.stringify({
           to: testTo, message: testMsg, blocks: camp.blocks.map(({ id, ...rest }) => rest),
           subject: camp.subject, preheader: camp.preheader, theme: camp.theme, fromName: camp.fromName,
+          // Så serveren kan lagre en auto-oppfrisket boligblokk i riktig utkast.
+          campaignId: camp.id,
         }),
       });
       const j = await r.json();
+      // Boliger som ikke lenger kan annonseres er allerede tatt ut av testen —
+      // vi speiler det i lerretet og forteller hva som skjedde.
+      if ((j.removedProperties || []).length) {
+        dropRemovedProperties(j.removedProperties);
+        setPropNotice({ removed: j.removedProperties, emptied: j.emptiedBlocks || [] });
+      }
       if (!j.ok) throw new Error(j.error || 'Test feilet');
       const n = j.sentCount || (Array.isArray(j.sentTo) ? j.sentTo.length : 1);
       const failedN = (j.failed || []).length;
@@ -333,6 +364,10 @@ export default function NewsletterTab({ apiKey }) {
         body: JSON.stringify({ campaignId: camp.id }),
       });
       const j = await r.json();
+      if ((j.removedProperties || []).length) {
+        dropRemovedProperties(j.removedProperties);
+        setPropNotice({ removed: j.removedProperties, emptied: j.emptiedBlocks || [] });
+      }
       if (!j.ok) throw new Error(j.error || 'Sending feilet');
       setSendState('sent'); setConfirming(false);
       await loadList();
@@ -357,76 +392,115 @@ export default function NewsletterTab({ apiKey }) {
     const selected = camp.blocks.find((b) => b.id === selectedBlock) || null;
     return (
       <div className="-m-1" data-testid="nl-editor">
-        {/* Toppbar (under admin-headeren, h-16 = 64px) */}
-        <div className="sticky top-16 z-20 flex items-center gap-3 rounded-2xl border border-[#f0f0f0] bg-white/95 backdrop-blur px-4 py-2.5 shadow-[0_6px_24px_-16px_rgba(0,0,0,0.15)]">
-          <button onClick={() => { setCamp(null); setView('list'); loadList(); }} className="flex items-center gap-1 text-[12.5px] font-medium text-[#888] hover:text-[#111]" data-testid="nl-back">
-            <ArrowLeft size={14} /> Oversikt
-          </button>
-          <div className="w-px h-5 bg-[#eee]" />
-          <input value={camp.title || ''} onChange={(e) => patch({ title: e.target.value })} placeholder="Navn på kampanjen…"
-            className="flex-1 min-w-0 bg-transparent text-[14px] font-semibold text-[#111] outline-none" data-testid="nl-title-input" />
-          <span className={`text-[11px] font-medium shrink-0 ${saveState === 'saving' ? 'text-amber-500' : 'text-[#b5b5b5]'}`}>
-            {saveState === 'saving' ? 'Lagrer…' : saveState === 'saved' ? <span className="inline-flex items-center gap-1"><Check size={11} /> Lagret</span> : ''}
-          </span>
-          <div className="flex items-center rounded-full bg-[#f4f2ef] p-0.5">
-            {[['desktop', Monitor], ['mobile', Smartphone]].map(([k, Icon]) => (
-              <button key={k} onClick={() => setDevice(k)} className={`w-8 h-7 rounded-full flex items-center justify-center ${device === k ? 'bg-white shadow-sm text-[#111]' : 'text-[#999]'}`}>
-                <Icon size={13} />
-              </button>
-            ))}
-          </div>
-          <div className="relative">
-            <button onClick={() => setTestOpen((v) => !v)} className="h-[34px] rounded-full border border-[#e5e5e5] text-[12px] font-semibold px-3.5 flex items-center gap-1.5 hover:border-[#c99df0]" data-testid="nl-test-open">
-              <FlaskConical size={13} /> Test
+        {/* Toppbar (under admin-headeren, h-16 = 64px).
+            MOBIL: knappene ligger på linje 1 og kampanjenavnet bryter ned på
+            egen linje under (order-last + basis-full). Før lå alt på én rad,
+            og «Send» havnet utenfor skjermkanten på telefon. */}
+        <div className="sticky top-16 z-20 rounded-2xl border border-[#f0f0f0] bg-white/95 backdrop-blur px-3 py-2 shadow-[0_6px_24px_-16px_rgba(0,0,0,0.15)] sm:px-4 sm:py-2.5">
+          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-2 sm:gap-x-3">
+            <button onClick={() => { setCamp(null); setView('list'); loadList(); }} className="flex shrink-0 items-center gap-1 text-[12.5px] font-medium text-[#888] hover:text-[#111]" data-testid="nl-back">
+              <ArrowLeft size={14} /> Oversikt
             </button>
-            {testOpen ? (
-              <div className="absolute right-0 top-[42px] w-[320px] rounded-2xl border border-[#eee] bg-white shadow-xl p-4 z-30">
-                <p className="text-[12px] font-bold text-[#111]">Send test-nyhetsbrev</p>
-                <input value={testTo} onChange={(e) => setTestTo(e.target.value)} placeholder="epost1@…, epost2@…, epost3@…" data-testid="nl-test-to"
-                  className="w-full h-[36px] rounded-lg border border-[#e8e8e8] px-3 text-[13px] outline-none focus:border-[#c99df0] mt-2" />
-                <p className="text-[10.5px] text-[#aaa] mt-1">Skill flere mottakere med komma (maks 10).</p>
-                <textarea value={testMsg} onChange={(e) => setTestMsg(e.target.value)} rows={3} data-testid="nl-test-message"
-                  placeholder="Melding til mottakerne (valgfritt) — f.eks. «Hva synes dere om utkastet?»"
-                  className="w-full rounded-lg border border-[#e8e8e8] px-3 py-2 text-[12.5px] outline-none focus:border-[#c99df0] mt-2 resize-none" />
-                <p className="text-[10.5px] text-[#aaa] mt-0.5">Vises i et gult banner øverst — kun i testen.</p>
-                <button onClick={sendTest} disabled={testState.s === 'sending' || !testTo.trim()} data-testid="nl-test-send"
-                  className="w-full h-[36px] rounded-full bg-[#0a0a0a] text-white text-[12.5px] font-semibold mt-2 disabled:opacity-50 flex items-center justify-center gap-1.5">
-                  {testState.s === 'sending' ? <Loader2 size={13} className="animate-spin" /> : <Send size={12} />} Send test
-                </button>
-                {testState.msg ? <p className={`text-[11.5px] mt-2 ${testState.s === 'error' ? 'text-red-500' : 'text-emerald-600'}`}>{testState.msg}</p> : null}
+            <div className="hidden h-5 w-px bg-[#eee] sm:block" />
+            <input value={camp.title || ''} onChange={(e) => patch({ title: e.target.value })} placeholder="Navn på kampanjen…"
+              className="order-last w-full min-w-0 basis-full border-t border-[#f4f4f4] bg-transparent pt-2 text-[14px] font-semibold text-[#111] outline-none sm:order-none sm:flex-1 sm:basis-auto sm:border-0 sm:pt-0" data-testid="nl-title-input" />
+            <span className={`hidden shrink-0 text-[11px] font-medium sm:inline ${saveState === 'saving' ? 'text-amber-500' : 'text-[#b5b5b5]'}`}>
+              {saveState === 'saving' ? 'Lagrer…' : saveState === 'saved' ? <span className="inline-flex items-center gap-1"><Check size={11} /> Lagret</span> : ''}
+            </span>
+            {/* Handlingene holdes samlet og høyrestilt. relative her (ikke på
+                Test-knappen) gjør at test-panelet aldri kan gå utenfor
+                skjermkanten på mobil. */}
+            <div className="relative ml-auto flex shrink-0 items-center gap-2">
+              <div className="hidden items-center rounded-full bg-[#f4f2ef] p-0.5 sm:flex">
+                {[['desktop', Monitor], ['mobile', Smartphone]].map(([k, Icon]) => (
+                  <button key={k} onClick={() => setDevice(k)} aria-label={k === 'desktop' ? 'Vis som desktop' : 'Vis som mobil'}
+                    className={`w-8 h-7 rounded-full flex items-center justify-center ${device === k ? 'bg-white shadow-sm text-[#111]' : 'text-[#999]'}`}>
+                    <Icon size={13} />
+                  </button>
+                ))}
               </div>
-            ) : null}
+              <button onClick={() => setTestOpen((v) => !v)} className="h-[34px] shrink-0 rounded-full border border-[#e5e5e5] px-3 text-[12px] font-semibold flex items-center gap-1.5 hover:border-[#c99df0] sm:px-3.5" data-testid="nl-test-open">
+                <FlaskConical size={13} /> Test
+              </button>
+              <button onClick={openPreview} aria-label="Forhåndsvis" className="h-[34px] shrink-0 rounded-full border border-[#e5e5e5] px-3 text-[12px] font-semibold flex items-center gap-1.5 hover:border-[#c99df0] sm:px-3.5" data-testid="nl-preview">
+                <Eye size={13} /> <span className="hidden sm:inline">Forhåndsvis</span>
+              </button>
+              <button onClick={() => { setConfirming(true); if (!recips) loadRecipients(camp.segments); }} data-testid="nl-send-button"
+                className="h-[34px] shrink-0 rounded-full bg-[#0a0a0a] text-white text-[12px] font-bold px-3.5 flex items-center gap-1.5 sm:px-4">
+                <Send size={12} /> Send{netCount != null ? ` (${netCount})` : ''}
+              </button>
+              {testOpen ? (
+                <div className="absolute right-0 top-[42px] z-30 w-[min(320px,calc(100vw-40px))] rounded-2xl border border-[#eee] bg-white shadow-xl p-4">
+                  <p className="text-[12px] font-bold text-[#111]">Send test-nyhetsbrev</p>
+                  <input value={testTo} onChange={(e) => setTestTo(e.target.value)} placeholder="epost1@…, epost2@…, epost3@…" data-testid="nl-test-to"
+                    className="w-full h-[36px] rounded-lg border border-[#e8e8e8] px-3 text-[13px] outline-none focus:border-[#c99df0] mt-2" />
+                  <p className="text-[10.5px] text-[#aaa] mt-1">Skill flere mottakere med komma (maks 10).</p>
+                  <textarea value={testMsg} onChange={(e) => setTestMsg(e.target.value)} rows={3} data-testid="nl-test-message"
+                    placeholder="Melding til mottakerne (valgfritt) — f.eks. «Hva synes dere om utkastet?»"
+                    className="w-full rounded-lg border border-[#e8e8e8] px-3 py-2 text-[12.5px] outline-none focus:border-[#c99df0] mt-2 resize-none" />
+                  <p className="text-[10.5px] text-[#aaa] mt-0.5">Vises i et gult banner øverst — kun i testen.</p>
+                  <button onClick={sendTest} disabled={testState.s === 'sending' || !testTo.trim()} data-testid="nl-test-send"
+                    className="w-full h-[36px] rounded-full bg-[#0a0a0a] text-white text-[12.5px] font-semibold mt-2 disabled:opacity-50 flex items-center justify-center gap-1.5">
+                    {testState.s === 'sending' ? <Loader2 size={13} className="animate-spin" /> : <Send size={12} />} Send test
+                  </button>
+                  {testState.msg ? <p className={`text-[11.5px] mt-2 ${testState.s === 'error' ? 'text-red-500' : 'text-emerald-600'}`}>{testState.msg}</p> : null}
+                </div>
+              ) : null}
+            </div>
           </div>
-          <button onClick={openPreview} className="h-[34px] rounded-full border border-[#e5e5e5] text-[12px] font-semibold px-3.5 flex items-center gap-1.5 hover:border-[#c99df0]" data-testid="nl-preview">
-            <Eye size={13} /> Forhåndsvis
-          </button>
-          <button onClick={() => { setConfirming(true); if (!recips) loadRecipients(camp.segments); }} data-testid="nl-send-button"
-            className="h-[34px] rounded-full bg-[#0a0a0a] text-white text-[12px] font-bold px-4 flex items-center gap-1.5">
-            <Send size={12} /> Send{netCount != null ? ` (${netCount})` : ''}
-          </button>
         </div>
+
+        {/* AUTO-OPPFRISKET BOLIGBLOKK — systemet har fjernet boliger som ikke
+            lenger kan annonseres. Informasjon, ikke feil. */}
+        {propNotice ? (
+          <div className="mt-3 flex items-start gap-2.5 rounded-2xl border border-[#efe6d4] bg-[#fffaf0] px-4 py-3" data-testid="nl-property-refresh-notice">
+            <RefreshCw size={14} className="mt-0.5 shrink-0 text-[#b98900]" />
+            <div className="min-w-0 flex-1">
+              <p className="text-[12.5px] font-bold text-[#7a5c00]">Boligblokken ble oppdatert automatisk</p>
+              <p className="mt-0.5 text-[12px] leading-relaxed text-[#8a6d1f]">
+                {(propNotice.removed || []).length ? (
+                  <>
+                    {(propNotice.removed || []).length} bolig{(propNotice.removed || []).length === 1 ? '' : 'er'} er ikke ledig{(propNotice.removed || []).length === 1 ? '' : 'e'} lenger og er tatt ut:{' '}
+                    {(propNotice.removed || []).map((x) => `${x.title}${x.status ? ` (${x.status})` : ''}`).join(', ')}.
+                  </>
+                ) : 'Boligkortene er oppdatert med ferske data fra plattformen.'}
+                {(propNotice.emptied || []).length ? ' Velg nye boliger i boligblokken før du sender.' : ''}
+              </p>
+            </div>
+            <button onClick={() => setPropNotice(null)} aria-label="Lukk beskjed" className="shrink-0 text-[#c0a874] hover:text-[#7a5c00]"><X size={14} /></button>
+          </div>
+        ) : null}
 
         {/* 3 kolonner (desktop) → stables på smalere skjermer */}
         <div className="grid grid-cols-1 lg:grid-cols-[190px_minmax(0,1fr)_280px] xl:grid-cols-[210px_minmax(0,1fr)_300px] gap-4 mt-4 items-start">
-          {/* Palett */}
+          {/* Palett — kollapset på mobil. På en telefon skal selve brevet være
+              det første du ser, ikke 14 blokk-knapper. På lg+ er den alltid
+              åpen (hidden lg:block), så desktop-arbeidsflyten er uendret. */}
           <div className="rounded-2xl border border-[#f0f0f0] bg-white p-3 lg:sticky lg:top-[132px]">
-            <p className="text-[10.5px] font-bold uppercase tracking-[0.1em] text-[#aaa] px-1">Blokker</p>
-            <div className="grid grid-cols-2 gap-1.5 mt-2">
-              {PALETTE.map((p) => (
-                <button key={p.type} onClick={() => addBlock(p.type)} data-testid={`nl-add-${p.type}`}
-                  className="rounded-xl border border-[#f2f0ed] bg-[#fbfaf9] hover:border-[#d8c3ec] hover:bg-[#faf6fe] px-2 py-2.5 flex flex-col items-center gap-1.5 transition-colors">
-                  {React.createElement(p.icon, { size: 15, className: 'text-[#a07cc4]' })}
-                  <span className="text-[10px] font-semibold text-[#666] leading-tight text-center">{p.label}</span>
-                </button>
-              ))}
-            </div>
-            <p className="text-[10.5px] font-bold uppercase tracking-[0.1em] text-[#aaa] px-1 mt-4">Tema</p>
-            <div className="flex flex-wrap gap-1.5 mt-2 px-1">
-              {themes.map((t) => (
-                <button key={t.key} onClick={() => patch({ theme: t.key })} title={t.key}
-                  className={`w-7 h-7 rounded-full border-2 ${camp.theme === t.key ? 'border-[#0a0a0a]' : 'border-transparent'}`}
-                  style={{ background: t.accent }} />
-              ))}
+            <button type="button" onClick={() => setBlocksOpen((v) => !v)} aria-expanded={blocksOpen}
+              data-testid="nl-palette-toggle"
+              className="flex w-full items-center justify-between px-1 lg:pointer-events-none">
+              <span className="text-[10.5px] font-bold uppercase tracking-[0.1em] text-[#aaa]">Blokker</span>
+              <ChevronDown className={`h-3.5 w-3.5 text-[#c4c4c4] transition-transform lg:hidden ${blocksOpen ? '' : '-rotate-90'}`} />
+            </button>
+            <div className={blocksOpen ? '' : 'hidden lg:block'}>
+              <div className="grid grid-cols-3 gap-1.5 mt-2 sm:grid-cols-4 lg:grid-cols-2">
+                {PALETTE.map((p) => (
+                  <button key={p.type} onClick={() => addBlock(p.type)} data-testid={`nl-add-${p.type}`}
+                    className="rounded-xl border border-[#f2f0ed] bg-[#fbfaf9] hover:border-[#d8c3ec] hover:bg-[#faf6fe] px-2 py-2.5 flex flex-col items-center gap-1.5 transition-colors">
+                    {React.createElement(p.icon, { size: 15, className: 'text-[#a07cc4]' })}
+                    <span className="text-[10px] font-semibold text-[#666] leading-tight text-center">{p.label}</span>
+                  </button>
+                ))}
+              </div>
+              <p className="text-[10.5px] font-bold uppercase tracking-[0.1em] text-[#aaa] px-1 mt-4">Tema</p>
+              <div className="flex flex-wrap gap-1.5 mt-2 px-1">
+                {themes.map((t) => (
+                  <button key={t.key} onClick={() => patch({ theme: t.key })} title={t.key} aria-label={`Tema ${t.key}`}
+                    className={`w-7 h-7 rounded-full border-2 ${camp.theme === t.key ? 'border-[#0a0a0a]' : 'border-transparent'}`}
+                    style={{ background: t.accent }} />
+                ))}
+              </div>
             </div>
           </div>
 

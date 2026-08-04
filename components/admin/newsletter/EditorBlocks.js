@@ -8,11 +8,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { sortDistrictGroups } from '@/lib/geo-bergen';
 import { titleCandidates, rentInfo, TITLE_SOURCE, TITLE_MAX } from '@/lib/listing-title';
+import { propertyMetaLine, propertyAddressLine, propertyFactsLine, propertyAvailableLine, dedupeFacts } from '@/lib/listings';
 import {
   Type, AlignLeft, Image as ImageIcon, MousePointerClick, LayoutPanelTop,
   List, Quote, UserRound, PenLine, Minus, MoveVertical, BadgePercent,
   ArrowUp, ArrowDown, Copy, Trash2, UploadCloud, Loader2, GripVertical, Sparkles,
-  Home, Check, RefreshCw, TrendingUp, Search, X,
+  Home, Check, RefreshCw, TrendingUp, Search, X, MapPinned, ExternalLink,
 } from 'lucide-react';
 
 /* --------------------------- Deploy-sikre bilder -------------------------- */
@@ -34,6 +35,7 @@ export const PALETTE = [
   { type: 'hero',      label: 'Hero-bilde',   icon: LayoutPanelTop },
   { type: 'image',     label: 'Bilde',        icon: ImageIcon },
   { type: 'properties', label: 'Boliger',     icon: Home },
+  { type: 'map',       label: 'Kart',         icon: MapPinned },
   { type: 'offer',     label: 'Tilbudskort',  icon: BadgePercent },
   { type: 'stat',      label: 'Markedsinnsikt', icon: TrendingUp },
   { type: 'button',    label: 'Knapp',        icon: MousePointerClick },
@@ -53,6 +55,15 @@ export function defaultsFor(type) {
     case 'bullets':  return { items: ['Første punkt'] };
     case 'button':   return { label: 'Les mer', url: 'https://digihome.no' };
     case 'cta-card': return { title: 'Er du interessert?', text: '', label: 'Ja, jeg er interessert', url: 'https://digihome.no/bli-utleier', footnote: '' };
+    // Kartseksjon: lenken limes inn av redaktøren (typisk FINN sin kartvisning).
+    // Tom URL = seksjonen vises ikke i e-posten, bare som påminnelse i editoren.
+    case 'map': return {
+      title: 'Se boligene på kart',
+      text: 'Åpne kartvisningen for å se hvor boligene ligger — og hvor nær de er jobb, skole og bybanen.',
+      url: '', label: 'Åpne kartvisningen', footnote: 'Kartet åpnes i nytt vindu.',
+      imageUrl: '/bergen-rooftops-email.jpg',
+      alt: 'Bergen sett ovenfra',
+    };
     case 'offer':    return { eyebrow: 'Sommerkampanje · Begrenset periode', big: '10 %', was: 'Normalt 15 %', bigLabel: 'forvaltningshonorar — alt inkludert', second: '', items: [
       { title: 'Oppstartskostnad', was: '', now: '0 kr' },
       { title: 'Første visning', was: '625 kr', now: 'Gratis' },
@@ -351,25 +362,38 @@ export function CanvasBlock({ b, i, total, accent, selected, onSelect, onPatch, 
                 {groups.map(([district, groupItems]) => (
                   <div key={district || 'all'}>
                     {district ? (
-                      <div className="mb-2.5 flex items-center justify-between border-b border-[#eee9f3] pb-2">
-                        <p className="text-[12px] font-extrabold uppercase tracking-[0.1em] text-[#7A3EC8]">{district}</p>
-                        <span className="rounded-full bg-[#f5edfc] px-2.5 py-1 text-[10.5px] font-bold text-[#8b5cf6]">{groupItems.length} {groupItems.length === 1 ? 'bolig' : 'boliger'}</span>
+                      <div className="mb-3 flex items-center justify-between border-b border-[#f0ede8] pb-2.5">
+                        <p className="text-[13px] font-extrabold tracking-[-0.005em] text-[#0a0a0a]">{district}</p>
+                        <span className="text-[10.5px] font-bold uppercase tracking-[0.09em] text-[#a8a096]">{groupItems.length} {groupItems.length === 1 ? 'bolig' : 'boliger'}</span>
                       </div>
                     ) : null}
-                    <div className="space-y-3">
-                      {groupItems.map((p, idx) => (
-                        <div key={p.pid || idx} className="rounded-[18px] border border-[#ece8e2] bg-white overflow-hidden sm:flex">
-                          {p.image
-                            ? <img src={mediaSrc(p.image)} alt="" className="w-full sm:w-[190px] h-[150px] object-cover block shrink-0" />
-                            : <div className="w-full sm:w-[190px] h-[150px] bg-[#f4f2ef] flex items-center justify-center shrink-0"><Home size={20} className="text-[#cbc4ba]" /></div>}
-                          <div className="px-4 py-4 flex-1 min-w-0">
-                            <p className="text-[14.5px] font-bold text-[#111] leading-[1.35]">{p.title}</p>
-                            {p.meta ? <p className="text-[11.5px] text-[#888] mt-1.5">{p.meta}</p> : null}
-                            {p.band ? <p className="text-[13px] font-bold text-[#111] mt-2">{p.band}</p> : null}
-                            <span className="inline-flex mt-3 rounded-full px-4 py-2 text-[11.5px] font-bold" style={{ background: 'var(--nl-soft, #f5edfc)', color: 'var(--nl-deep, #7A3EC8)' }}>Se bolig og meld interesse →</span>
+                    <div className="space-y-4">
+                      {groupItems.map((p, idx) => {
+                        // Samme hierarki som i e-posten: bydel/ledig som eyebrow,
+                        // tittel, adresse + fakta, og pris/CTA under en skillelinje.
+                        const eyebrow = [district ? '' : (p.district && p.district !== 'Andre områder' ? p.district : ''), p.available || ''].filter(Boolean).join(' · ');
+                        const factLine = (p.address || p.facts)
+                          ? [p.address, dedupeFacts(p.title, p.facts)].filter(Boolean).join(' · ')
+                          : (p.meta || '');
+                        return (
+                          <div key={p.pid || idx} className="overflow-hidden rounded-[20px] border border-[#efece6] bg-white">
+                            {p.image
+                              ? <img src={mediaSrc(p.image)} alt="" className="block aspect-[16/10] w-full object-cover" />
+                              : <div className="flex h-[150px] w-full items-center justify-center bg-[#f4f2ef]"><Home size={20} className="text-[#cbc4ba]" /></div>}
+                            <div className="px-5 py-5">
+                              {eyebrow ? <p className="text-[10px] font-extrabold uppercase tracking-[0.13em]" style={{ color: 'var(--nl-deep, #7A3EC8)' }}>{eyebrow}</p> : null}
+                              <p className={`text-[16px] font-bold leading-[1.3] tracking-[-0.02em] text-[#0a0a0a] ${eyebrow ? 'mt-2' : ''}`}>{p.title}</p>
+                              {factLine ? <p className="mt-2 text-[12.5px] leading-[1.6] text-[#7b746c]">{factLine}</p> : null}
+                              <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-[#f2efea] pt-4">
+                                {p.band
+                                  ? <p className="whitespace-nowrap text-[15px] font-extrabold text-[#0a0a0a]">{p.band.replace(/\s*kr\/mnd\s*$/i, '')}<span className="text-[11.5px] font-semibold text-[#8b847b]"> kr/mnd</span></p>
+                                  : <p className="text-[12.5px] font-semibold text-[#8b847b]">Pris på forespørsel</p>}
+                                <span className="rounded-full bg-[#0a0a0a] px-4 py-2 text-[11.5px] font-bold text-white">Se bolig og meld interesse →</span>
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 ))}
@@ -382,6 +406,41 @@ export function CanvasBlock({ b, i, total, accent, selected, onSelect, onPatch, 
               </div>
             )}
             {b.cta ? <p className="text-center text-[12.5px] font-bold mt-3" style={{ color: '#7A3EC8' }}>{b.cta} →</p> : null}
+          </div>
+        );
+      }
+      case 'map': {
+        // Mørkt kartkort — samme design som i e-posten, så redaktøren ser
+        // nøyaktig hva mottakeren får. Tom lenke = tydelig påminnelse, fordi
+        // seksjonen da ikke rendres i e-posten (aldri en død kartknapp).
+        const hasUrl = !!String(b.url || '').trim();
+        return (
+          <div className="overflow-hidden rounded-[20px] bg-[#100f0e]">
+            {b.imageUrl
+              ? <img src={mediaSrc(b.imageUrl)} alt={b.alt || ''} className="block aspect-[2/1] w-full object-cover" />
+              : <div className="px-6 pt-6"><DropImage compact onUpload={upload} uploading={uploading} label="Slipp et kartbilde her (valgfritt)" /></div>}
+            <div className="px-6 py-6">
+              <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-[#c9a9f5]">Kart</p>
+              <AutoArea value={b.title} onChange={(e) => onPatch({ title: e.target.value })} placeholder="Tittel…"
+                className="mt-2 text-[18px] font-bold leading-[1.3] tracking-[-0.02em] text-white placeholder:text-[#55504a]" />
+              <AutoArea value={b.text} onChange={(e) => onPatch({ text: e.target.value })} placeholder="Kort tekst (valgfritt)…"
+                className="mt-1 text-[13px] leading-[1.65] text-[#a8a29a] placeholder:text-[#55504a]" />
+              <span className="mt-4 inline-flex items-center rounded-full bg-white px-5 py-2.5">
+                <input value={b.label || ''} onChange={(e) => onPatch({ label: e.target.value })} onClick={stop}
+                  className="bg-transparent text-center text-[12px] font-bold text-[#0a0a0a] outline-none"
+                  style={{ width: `${Math.min(34, Math.max(12, (b.label || '').length + 3))}ch` }} placeholder="Knappetekst…" />
+                <span className="text-[12px] font-bold text-[#0a0a0a]">→</span>
+              </span>
+              {hasUrl ? (
+                <p className="mt-3 flex items-center gap-1.5 truncate text-[10.5px] text-[#6f6a63]" title={b.url}>
+                  <ExternalLink size={11} className="shrink-0" /> {b.url}
+                </p>
+              ) : (
+                <p className="mt-3 rounded-xl bg-[#241f1a] px-3 py-2 text-[11px] font-semibold leading-relaxed text-[#e8b95f]" data-testid="nl-map-missing-url">
+                  Lim inn kartlenken i panelet til høyre — for eksempel FINN sin kartvisning. Seksjonen sendes ikke ut før lenken er satt.
+                </p>
+              )}
+            </div>
           </div>
         );
       }
@@ -715,7 +774,12 @@ function PropertyPicker({ b, onPatch, list, err, reload }) {
     title: p.listingTitle || p.title || 'Bolig',
     titleSource: p.listingTitleSource || null,
     image: (Array.isArray(p.images) && p.images[0]) || '',
-    meta: [p.area || p.city, p.bedrooms ? `${p.bedrooms} soverom` : null, p.sqm ? `${p.sqm} m²` : null, p.availableFrom ? `Ledig ${p.availableFrom}` : null].filter(Boolean).join(' · '),
+    // Samme linjer som serveren og boligsiden bruker: full gateadresse,
+    // fakta og ledig-fra på norsk. `meta` er den sammensatte versjonen.
+    meta: propertyMetaLine(p),
+    address: propertyAddressLine(p),
+    facts: propertyFactsLine(p),
+    available: propertyAvailableLine(p),
     band: p.monthlyRentBand || '',
     bandSource: p.rentBandSource || null,
     status: p.status || 'active',
@@ -1122,6 +1186,30 @@ export function BlockInspector({ b, onPatch, onDel, onUploadImage, uploadingId, 
         <label className={labelCls}>Lenke (URL)</label>
         <input value={b.url || ''} onChange={(e) => onPatch({ url: e.target.value })} className={inputCls} placeholder="https://digihome.no/sommer" data-testid="nl-insp-url" />
         <p className="text-[10.5px] text-[#aaa] mt-1.5">Klikk spores automatisk og registreres på leaden.</p>
+      </>) : null}
+
+      {b.type === 'map' ? (<>
+        <label className={labelCls}>Kartlenke (URL)</label>
+        <input value={b.url || ''} onChange={(e) => onPatch({ url: e.target.value })} className={inputCls}
+          placeholder="https://www.finn.no/… (kartvisning)" data-testid="nl-insp-map-url" />
+        <p className="text-[10.5px] text-[#aaa] mt-1.5">Lim inn lenken til kartvisningen — for eksempel FINN sitt kart med boligene. <b>Uten lenke sendes ikke seksjonen ut.</b> Klikk spores automatisk.</p>
+        <label className={labelCls}>Kartbilde</label>
+        {b.imageUrl ? (
+          <div className="relative mb-2 overflow-hidden rounded-xl border border-[#e8e8e8]">
+            <img src={mediaSrc(b.imageUrl)} alt="" className="block h-[110px] w-full object-cover" />
+            <button type="button" onClick={() => onPatch({ imageUrl: '' })} data-testid="nl-insp-map-img-remove"
+              className="absolute right-1.5 top-1.5 rounded-full bg-black/60 px-2 py-0.5 text-[10.5px] font-semibold text-white hover:bg-black/85">Fjern</button>
+          </div>
+        ) : null}
+        <DropImage compact onUpload={(f) => onUploadImage(b.id, f)} uploading={uploading}
+          label={b.imageUrl ? 'Slipp nytt kartbilde her' : 'Last opp kartbilde'} />
+        <label className={labelCls}>… eller lim inn bilde-URL</label>
+        <input value={b.imageUrl || ''} onChange={(e) => onPatch({ imageUrl: e.target.value })} className={inputCls}
+          placeholder="https://…/kart.jpg" data-testid="nl-insp-map-img-url" />
+        <p className="text-[10.5px] text-[#aaa] mt-1.5">Tips: ta et skjermbilde av kartet med boligene og last det opp — da ser mottakeren området før de klikker.</p>
+        <label className={labelCls}>Fotnote</label>
+        <input value={b.footnote || ''} onChange={(e) => onPatch({ footnote: e.target.value })} className={inputCls}
+          placeholder="Kartet åpnes i nytt vindu." data-testid="nl-insp-map-footnote" />
       </>) : null}
 
       {b.type === 'stat' ? <StatImagePanel b={b} onPatch={onPatch} apiQ={apiQ} onUploadImage={onUploadImage} uploading={uploading} /> : null}

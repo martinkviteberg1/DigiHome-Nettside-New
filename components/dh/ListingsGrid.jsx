@@ -2,8 +2,17 @@
 
 import React, { useMemo, useState, useEffect } from 'react';
 import Link from 'next/link';
-import { MapPin, Ruler, BedDouble, ArrowUpRight, SlidersHorizontal, X, EyeOff } from 'lucide-react';
+import { MapPin, Ruler, BedDouble, CalendarDays, ArrowUpRight, SlidersHorizontal, X, EyeOff } from 'lucide-react';
+import { formatNoDate } from '@/lib/listings';
 import HousingAlertForm from './HousingAlertForm';
+
+// Merkelapper som ligger OVER et bilde trenger sin egen bakgrunn — ellers blir
+// de svart tekst rett på boligbildet. Vi bruker frostet pille med skygge, ikke
+// bare farget tekst, og samme klasse over hele flaten.
+const BADGE_BASE = 'inline-flex items-center rounded-full px-2.5 py-[5px] text-[10.5px] font-bold uppercase tracking-[0.06em] backdrop-blur-md';
+const BADGE_LIGHT = `${BADGE_BASE} bg-white/95 text-[#0a0a0a] ring-1 ring-inset ring-black/[0.05] shadow-[0_2px_10px_-2px_rgba(0,0,0,0.35)]`;
+const BADGE_DARK = `${BADGE_BASE} bg-[#0a0a0a]/70 text-white ring-1 ring-inset ring-white/15`;
+const BADGE_ACCENT = `${BADGE_BASE} bg-[#7c3aed] text-white shadow-[0_2px_10px_-2px_rgba(124,58,237,0.6)]`;
 
 // Filtrering skjer i nettleseren på en liste som allerede er server-rendret.
 // Da er boligene i HTML-en for søkemotorer og AI-crawlere, samtidig som
@@ -32,44 +41,53 @@ function Pill({ active, children, onClick, testId }) {
 
 function ListingCard({ c, preview }) {
   const rented = c.status !== 'active';
+  // Full gateadresse med husnummer — som i alle andre utleieannonser. Bydel
+  // beholdes fordi den er det folk søker på i Bergen.
+  const place = [c.streetAddress || c.area, c.district].filter(Boolean).join(', ') || c.city;
+  const avail = c.availableFrom ? (formatNoDate(c.availableFrom) || c.availableFrom) : null;
   return (
     <Link href={`/ledige-boliger/${c.slug}${preview ? '?forhandsvis=1' : ''}`} data-testid={`listing-card-${c.slug}`}
       className="group flex flex-col overflow-hidden rounded-[26px] bg-white shadow-[0_10px_40px_-22px_rgba(0,0,0,0.22)] ring-1 ring-black/[0.04] transition-shadow hover:shadow-[0_20px_60px_-24px_rgba(0,0,0,0.3)]">
       <div className="relative aspect-[4/3] overflow-hidden bg-[#f3f1ee]">
         {c.images?.[0] ? (
-          <img src={c.images[0]} alt={`${c.typeLabel} i ${c.area || c.city}`} loading="lazy" decoding="async"
+          <img src={c.images[0]} alt={`${c.typeLabel} i ${place}`} loading="lazy" decoding="async"
             className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.04]" />
         ) : (
           <div className="absolute inset-0 grid place-items-center text-[#c9c3ba]"><MapPin className="h-7 w-7" /></div>
         )}
-        <div className="absolute left-3 top-3 flex flex-wrap gap-1.5">
-          <span className="rounded-lg bg-white/92 px-2.5 py-1 text-[11px] font-semibold text-[#4a453e] backdrop-blur-sm">{c.modelLabel}</span>
-          {rented && <span className="rounded-lg bg-[#0a0a0a]/85 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur-sm">Utleid</span>}
-          {preview && <span className="inline-flex items-center gap-1 rounded-lg bg-[#7c3aed] px-2.5 py-1 text-[11px] font-semibold text-white"><EyeOff className="h-3 w-3" /> Ikke publisert</span>}
+        {/* Svak toning i toppen gjør at merkelappene leser rent også mot lyse
+            bilder — uten å legge en grå film over hele boligen. */}
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-black/20 via-black/5 to-transparent" />
+        <div className="absolute inset-x-3 top-3 flex flex-wrap items-center gap-1.5">
+          <span className={BADGE_LIGHT}>{c.modelLabel}</span>
+          {rented && <span className={BADGE_DARK}>Utleid</span>}
+          {preview && <span className={`${BADGE_ACCENT} gap-1`}><EyeOff className="h-3 w-3" /> Ikke publisert</span>}
         </div>
         {c.imageCount > 1 && (
-          <span className="absolute bottom-3 right-3 rounded-lg bg-black/45 px-2 py-0.5 text-[11px] font-medium text-white backdrop-blur-sm">{c.imageCount} bilder</span>
+          <span className={`absolute bottom-3 right-3 ${BADGE_DARK} tabular-nums`}>{c.imageCount} bilder</span>
         )}
       </div>
       <div className="flex flex-1 flex-col p-5">
-        <h3 className="text-[16.5px] font-semibold leading-snug text-[#0a0a0a] group-hover:text-[#7c3aed] transition-colors" style={{ fontFamily: 'var(--font-heading)' }}>{c.title}</h3>
-        <p className="mt-1.5 flex items-center gap-1.5 text-[13px] text-[#78726a]">
-          <MapPin className="h-3.5 w-3.5 text-[#c9c3ba]" />{[c.area, c.district].filter(Boolean).join(', ') || c.city}
+        <h3 className="text-[16.5px] font-semibold leading-snug text-[#0a0a0a] transition-colors group-hover:text-[#7c3aed]" style={{ fontFamily: 'var(--font-heading)' }}>{c.title}</h3>
+        <p className="mt-1.5 flex items-start gap-1.5 text-[13px] text-[#78726a]">
+          <MapPin className="mt-[2px] h-3.5 w-3.5 shrink-0 text-[#c9c3ba]" />
+          <span className="break-words">{place}</span>
         </p>
         <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px] text-[#5f5a53]">
           {c.sqm ? <span className="inline-flex items-center gap-1.5"><Ruler className="h-3.5 w-3.5 text-[#c9c3ba]" />{c.sqm} m²</span> : null}
           {c.bedrooms ? <span className="inline-flex items-center gap-1.5"><BedDouble className="h-3.5 w-3.5 text-[#c9c3ba]" />{c.bedrooms} soverom</span> : null}
+          {avail ? <span className="inline-flex items-center gap-1.5"><CalendarDays className="h-3.5 w-3.5 text-[#c9c3ba]" />{/^\d{4}-/.test(String(c.availableFrom)) ? `Ledig ${avail}` : avail}</span> : null}
         </div>
         <div className="mt-4 flex items-end justify-between gap-3 border-t border-black/[0.05] pt-4">
-          <div>
+          <div className="min-w-0">
             {c.rentBand ? (
               <>
-                <p className="text-[15.5px] font-bold text-[#0a0a0a] tabular-nums" style={{ fontFamily: 'var(--font-heading)' }}>{c.rentBand.replace(/\s*kr\/mnd\s*$/i, '')}</p>
+                <p className="truncate whitespace-nowrap text-[15.5px] font-bold text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>{c.rentBand.replace(/\s*kr\/mnd\s*$/i, '')}</p>
                 <p className="text-[11.5px] text-[#8d867d]">kr/mnd{c.rentIndicative ? ' · prisantydning' : ''}</p>
               </>
             ) : <p className="text-[13px] text-[#8d867d]">Pris på forespørsel</p>}
           </div>
-          <span className="inline-flex items-center gap-1 text-[13px] font-semibold text-[#7c3aed]">Se bolig <ArrowUpRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" /></span>
+          <span className="inline-flex shrink-0 items-center gap-1 text-[13px] font-semibold text-[#7c3aed]">Se bolig <ArrowUpRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" /></span>
         </div>
       </div>
     </Link>

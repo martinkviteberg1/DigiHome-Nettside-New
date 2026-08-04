@@ -103,9 +103,11 @@ try {
   ok(pT.listingTitle === 'Nyoppusset 2-roms i Sandviken', `tittel lagret (${pT.listingTitle})`);
   ok(pT.monthlyRentBand === '16 000–18 000 kr/mnd' && pT.sqm === 42, 'REGRESJON: tittellagring sletter ikke pris/areal');
 
-  // Husnummer skal strippes ut av gatefeltet
+  // Gatefeltet deles: area = gatenavn (gruppering/slug), street = full adresse
   const r3 = await put({ id: bag, fields: { area: 'Baglergaten 8B' } });
-  ok(r3.json?.property?.area === 'Baglergaten', `husnummer strippet: «Baglergaten 8B» → «${r3.json?.property?.area}»`);
+  ok(r3.json?.property?.area === 'Baglergaten', `area uten husnummer: «Baglergaten 8B» → «${r3.json?.property?.area}»`);
+  ok(r3.json?.property?.street === 'Baglergaten 8B', `full gateadresse beholdt: «${r3.json?.property?.street}»`);
+  ok(r3.json?.property?.houseNumber === '8B', `husnummer tatt vare på: «${r3.json?.property?.houseNumber}»`);
 
   // Nullstilling av ett felt → plattformens verdi tilbake
   const r4 = await put({ id: bag, fields: { sqm: '' } });

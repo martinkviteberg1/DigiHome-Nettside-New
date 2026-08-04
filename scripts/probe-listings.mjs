@@ -41,12 +41,14 @@ console.log('  interesseskjema:', det.t.includes('listing-interest-form'));
 console.log('  FINN-lenke:', det.t.includes('listing-finn-link'), '| plattform-lenke:', det.t.includes('listing-platform-link'));
 
 // --- PERSONVERN: ingenting av dette skal finnes i HTML ----------------------
+// NB: full gateadresse MED husnummer er nå bevisst offentlig (avklart med eier,
+// samme praksis som FINN og alle andre utleieannonser). Det som fortsatt aldri
+// skal ut er eier, leietaker og eksakt kontraktsleie — et beløp skal ikke kunne
+// knyttes til en navngitt leieavtale.
 const leaks = [];
 const banned = {
-  husnummer: /Wernersholmvegen\s*\d/i,
   eier: cand.ownerName ? new RegExp(cand.ownerName.split(' ')[0], 'i') : null,
   leietaker: cand.tenantName ? new RegExp(cand.tenantName.split(' ')[0], 'i') : null,
-  fullAdresse: cand.fullAddress ? new RegExp(cand.fullAddress.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i') : null,
   // Nedre grense i prisintervallet er per definisjon lik det avrundede beløpet
   // (16 000 → «16 000–18 000»). Det er IKKE en lekkasje — en leser kan ikke
   // utlede den eksakte leien av et intervall. Vi fjerner derfor intervallet fra
@@ -64,7 +66,7 @@ for (const [k, re] of Object.entries(banned)) {
     : det.t;
   if (re.test(hay)) leaks.push(k);
 }
-console.log('  PERSONVERN:', leaks.length ? `LEKKASJE: ${leaks.join(', ')}` : 'OK — ingen husnummer/eier/leietaker/eksakt leie');
+console.log('  PERSONVERN:', leaks.length ? `LEKKASJE: ${leaks.join(', ')}` : 'OK — ingen eier/leietaker/eksakt leie (full gateadresse er tillatt)');
 
 // --- ukjent slug skal gi 404 -----------------------------------------------
 const ghost = await html(`${BASE}/ledige-boliger/leilighet-oslo-deadbeef`);

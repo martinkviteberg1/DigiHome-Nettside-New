@@ -52,7 +52,7 @@ export function SeksjonPortefolje() {
               <article className="group rounded-[20px] overflow-hidden bg-white transition-all duration-500 hover:-translate-y-1.5" style={{ border: '1px solid rgba(22,18,31,0.06)', boxShadow: '0 2px 4px rgba(22,18,31,0.03)' }}>
                 <div className="relative aspect-[4/3] overflow-hidden">
                   <Image src={h.image} alt={`Bolig i ${h.area}`} fill className="object-cover transition-transform duration-1000 ease-out group-hover:scale-105" sizes="(max-width:768px) 100vw, 33vw" />
-                  <span className="absolute top-4 left-4 rounded-full bg-white/92 backdrop-blur px-3 py-1 text-[11.5px] font-semibold text-ink">{h.type}</span>
+                  <span className="absolute top-4 left-4 rounded-full bg-white/92 px-3 py-1 text-[11.5px] font-semibold text-ink shadow-[0_2px_10px_-2px_rgba(0,0,0,0.3)] ring-1 ring-inset ring-black/[0.04] backdrop-blur-md">{h.type}</span>
                 </div>
                 <div className="p-6">
                   <div className="flex items-center gap-1.5 text-taupe">

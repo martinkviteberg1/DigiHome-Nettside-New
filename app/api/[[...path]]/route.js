@@ -49,7 +49,7 @@ import { NEWSLETTER_COLL, OPTOUT_COLL, NL_EVENTS_COLL, renderNewsletterHtml, res
 import { syncPropertiesFromPlatform, maybeAutoSyncProperties, listAdminProperties, listPublicProperties, setPropertyVisibility, getPropertiesSyncMeta, backfillPropertyDistricts, refreshPropertyQuality, applyEnrichment, setPropertyEnrichment, setPropertyFinnSnapshot, setPropertyEditorialTitle, setPropertyEditorialFields, PROPERTIES_COLL } from '@/lib/properties-sync';
 import { EDITORIAL_FIELDS, stripHouseNumber } from '@/lib/property-editorial';
 import { cleanFinnTitle, titleCandidates, rentInfo } from '@/lib/listing-title';
-import { listingGate, listingSlug, toListingCard, toListingDetail, publishReadiness, GATE, toIsoDate } from '@/lib/listings';
+import { listingGate, listingSlug, toListingCard, toListingDetail, publishReadiness, GATE, toIsoDate, propertyMetaLine, propertyAddressLine, propertyFactsLine, propertyAvailableLine } from '@/lib/listings';
 import { ALERTS_COLL, ALERT_CONSENT_TEXT, normalizeAlert, alertMatches, alertSummaryText, summarizeDemand, toAdminAlert, normEmail as haNormEmail } from '@/lib/housing-alerts';
 import { postalToDistrict } from '@/lib/geo-bergen';
 import { buildLeadReceipt, buildLeadAdminNotification, buildPropertyInterestNotification } from '@/lib/lead-emails';
@@ -470,7 +470,12 @@ async function resolveDraftProperties(dbx, blocks) {
   try { await backfillPropertyDistricts(dbx); } catch (_) {}
   const liveRows = await dbx.collection('platform_properties').find(
     { stale: { $ne: true }, $or: [{ externalId: { $in: ids } }, { id: { $in: ids } }] },
-    { projection: { _id: 0, id: 1, externalId: 1, title: 1, area: 1, city: 1, district: 1, districtSource: 1, type: 1, bedrooms: 1, sqm: 1, images: 1, status: 1, monthlyRentBand: 1, availableFrom: 1, incomplete: 1, duplicate: 1, enrich: 1 } }
+    // NB: `unit` MÅ være med — full gateadresse (street/houseNumber) ligger i
+    // det nestede unit-objektet fra plattformeksporten og flates ut av
+    // applyEnrichment. Uten den ble metalinjen «Baglergaten» i stedet for
+    // «Baglergaten 8». Feltene brukes bare til å bygge metalinjen; eier/leietaker
+    // følger aldri med ut i blokken (items settes eksplisitt under).
+    { projection: { _id: 0, id: 1, externalId: 1, title: 1, area: 1, unit: 1, city: 1, district: 1, districtSource: 1, type: 1, bedrooms: 1, sqm: 1, images: 1, status: 1, monthlyRentBand: 1, availableFrom: 1, incomplete: 1, duplicate: 1, enrich: 1 } }
   ).toArray();
   const byId = new Map();
   // FINN-berikelse slår inn her også: en bolig der plattformen mangler bilder,
@@ -496,7 +501,13 @@ async function resolveDraftProperties(dbx, blocks) {
         localId: live.id,
         title: live.title || snap.title,
         image: (Array.isArray(live.images) && live.images[0]) || snap.image || '',
-        meta: [live.area || live.city, live.bedrooms ? `${live.bedrooms} soverom` : null, live.sqm ? `${live.sqm} m²` : null, live.availableFrom ? `Ledig ${live.availableFrom}` : null].filter(Boolean).join(' · '),
+        // Full gateadresse, fakta og ledig-fra hver for seg — det moderne
+        // boligkortet setter dem på egne linjer. `meta` beholdes for eldre
+        // utkast og kompakte flater. Norsk datoformat, aldri rå ISO i e-post.
+        meta: propertyMetaLine(live),
+        address: propertyAddressLine(live),
+        facts: propertyFactsLine(live),
+        available: propertyAvailableLine(live),
         band: live.monthlyRentBand || '',
         // Bydel, ALDRI gatenavn: «Sandslimarka» er ikke et byområde. Mangler
         // bydel helt, grupperes boligen under «Andre områder».
@@ -506,7 +517,40 @@ async function resolveDraftProperties(dbx, blocks) {
     }).filter(Boolean);
     return { ...b, items };
   });
-  return { blocks: hydrated, unavailable };
+  return { blocks: hydrated, unavailable, requested: ids.length, found: ids.filter((x) => byId.has(x)).length };
+}
+
+// AUTO-OPPFRISK AV BOLIGBLOKKER.
+// Boligene i et nyhetsbrev er levende data: en bolig kan bli utleid mellom at
+// redaktøren plukket den og at brevet sendes. Før stoppet vi med en rød feil
+// («oppdater boligblokken før test») og lot redaktøren rydde manuelt — men det
+// er noe systemet kan gjøre selv. Nå fjerner vi boliger som ikke lenger kan
+// annonseres, oppfrisker tittel/bilde/pris/bydel på resten, og RAPPORTERER hva
+// som ble endret. Ingenting fjernes stille, og ingen utleid bolig kan gå ut.
+async function refreshCampaignProperties(dbx, blocks) {
+  const before = sanitizeBlocks(Array.isArray(blocks) ? blocks : []);
+  const hasProps = before.some((b) => b?.type === 'properties' && (b.items || []).length);
+  if (!hasProps) return { blocks: before, removed: [], emptied: [], changed: false };
+  const resolved = await resolveDraftProperties(dbx, before);
+  // SIKRING MOT SYNKFEIL: hvis INGEN av boligene i utkastet finnes i den
+  // synkede tabellen, er den sannsynlige årsaken en synk-/oppetidsfeil — ikke
+  // at samtlige boliger ble utleid samtidig. Da rører vi ikke utkastet. Uten
+  // denne sikringen kunne en tom boligtabell tømt alle boligblokker.
+  if (resolved.requested > 0 && resolved.found === 0) {
+    return { blocks: before, removed: [], emptied: [], changed: false, unverified: true };
+  }
+  // En blokk som mistet ALLE boligene må redaktøren se på: da står brevet med
+  // et tomt boligavsnitt, og hvilke boliger som skal erstatte dem er en
+  // redaksjonell vurdering vi ikke skal gjette på.
+  const emptied = resolved.blocks
+    .map((b, i) => (b?.type === 'properties' && !(b.items || []).length && (before[i]?.items || []).length ? (b.title || 'Boligblokk') : null))
+    .filter(Boolean);
+  return {
+    blocks: resolved.blocks,
+    removed: resolved.unavailable,
+    emptied,
+    changed: resolved.unavailable.length > 0 || JSON.stringify(resolved.blocks) !== JSON.stringify(before),
+  };
 }
 
 const SS_UNIT_TYPE = { leilighet: 'Leilighet', enebolig: 'Enebolig', rekkehus: 'Rekkehus', tomannsbolig: 'Tomannsbolig', hybel: 'Hybel', naeringsbygg: 'Næringsbygg', annet: 'Annet' };
@@ -4844,9 +4888,30 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
       const rawTo = Array.isArray(body.to) ? body.to : String(body.to || '').split(/[,;\n]+/);
       const emails = [...new Set(rawTo.map((e) => nlNormEmail(e)).filter((e) => /^\S+@\S+\.\S+$/.test(e)))].slice(0, 10);
       if (!emails.length) return cors(NextResponse.json({ ok: false, error: 'Ingen gyldige test-adresser' }, { status: 400 }));
-      const resolved = await resolveDraftProperties(db, body.blocks);
-      const blocks = resolved.blocks;
-      if (resolved.unavailable.length) return cors(NextResponse.json({ ok: false, error: `${resolved.unavailable.length} valgt bolig er ikke ledig lenger — oppdater boligblokken før test`, unavailableProperties: resolved.unavailable }, { status: 409 }));
+      // AUTO-OPPFRISK: boliger som er utleid (eller mangler bilder/data) tas ut
+      // av testen automatisk i stedet for å blokkere den. Endringen lagres i
+      // utkastet når vi vet hvilken kampanje det gjelder, og rapporteres tilbake
+      // slik at editoren kan si det høyt til redaktøren.
+      const refreshed = await refreshCampaignProperties(db, body.blocks);
+      const blocks = refreshed.blocks;
+      const testCampaignId = String(body.campaignId || '').slice(0, 80);
+      if (refreshed.changed && testCampaignId) {
+        try {
+          await db.collection(NEWSLETTER_COLL).updateOne(
+            { id: testCampaignId, status: { $ne: 'sent' } },
+            { $set: { blocks, updatedAt: new Date().toISOString() } },
+          );
+        } catch (_) {}
+      }
+      // Mistet blokken ALLE boligene, er det en redaksjonell beslutning å velge
+      // nye — da stopper vi, men med en beskjed som sier hva som skal gjøres.
+      if (refreshed.emptied.length) {
+        return cors(NextResponse.json({
+          ok: false,
+          error: `Ingen av boligene i «${refreshed.emptied[0]}» er ledige lenger — velg nye boliger i boligblokken`,
+          removedProperties: refreshed.removed, unavailableProperties: refreshed.removed, emptiedBlocks: refreshed.emptied,
+        }, { status: 409 }));
+      }
       if (!blocks.length) return cors(NextResponse.json({ ok: false, error: 'Nyhetsbrevet har ikke noe innhold ennå' }, { status: 400 }));
       const subject = (body.subject || 'DigiHome — nyhetsbrev').toString().slice(0, 200);
       const base = process.env.NEXT_PUBLIC_BASE_URL || new URL(request.url).origin;
@@ -4868,7 +4933,7 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
         } catch (e) { failed.push({ to, error: e.message }); }
       }
       if (!sent.length) return cors(NextResponse.json({ ok: false, error: failed[0]?.error || 'Sending feilet' }, { status: 502 }));
-      return cors(NextResponse.json({ ok: true, sentTo: sent, sentCount: sent.length, failed }));
+      return cors(NextResponse.json({ ok: true, sentTo: sent, sentCount: sent.length, failed, removedProperties: refreshed.removed }));
     }
 
     // Opprett utkast fra mal ("Velg et startpunkt")
@@ -4931,7 +4996,22 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
       if (!c) return cors(NextResponse.json({ ok: false, error: 'Fant ikke kampanjen' }, { status: 404 }));
       // Oppfrisk bydel på boligkortene, slik at editoren grupperer riktig også
       // for utkast som ble laget før bydelsutledningen fantes.
-      if (c.status !== 'sent') { try { c.blocks = await hydrateBlockDistricts(db, c.blocks); } catch (_) {} }
+      let propertyRefresh = null;
+      if (c.status !== 'sent') {
+        try { c.blocks = await hydrateBlockDistricts(db, c.blocks); } catch (_) {}
+        // AUTO-OPPFRISK av boligblokken: utleide/ufullstendige boliger fjernes
+        // og resten oppdateres MENS utkastet åpnes. Da ser redaktøren riktig
+        // utvalg umiddelbart, og test/sending stopper ikke på noe systemet kan
+        // fikse selv. Endringen lagres, og vi rapporterer hva som ble fjernet.
+        try {
+          const rp = await refreshCampaignProperties(db, c.blocks);
+          if (rp.changed) {
+            c.blocks = rp.blocks;
+            await db.collection(NEWSLETTER_COLL).updateOne({ id }, { $set: { blocks: rp.blocks, updatedAt: new Date().toISOString() } });
+          }
+          if (rp.removed.length || rp.emptied.length) propertyRefresh = { removed: rp.removed, emptied: rp.emptied, at: new Date().toISOString() };
+        } catch (_) {}
+      }
       let clicksByUrl = [];
       let timeline = [];
       let hourly = [];
@@ -5042,6 +5122,8 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
       return cors(NextResponse.json({
         ok: true,
         campaign: { ...c, openedR: undefined, clickedR: undefined },
+        // Hva auto-oppfriskingen av boligblokken gjorde (null = ingenting).
+        propertyRefresh,
         stats: {
           recipients: c.recipients || 0, sent: c.sent || 0, failedCount: c.failedCount || 0,
           opens: c.opens || 0, opensUnique, clicks: c.clicks || 0, clicksUnique, unsubs,
@@ -5107,11 +5189,26 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
       if (!hasContent(c.blocks)) return cors(NextResponse.json({ ok: false, error: 'Nyhetsbrevet har ikke noe innhold ennå' }, { status: 400 }));
       if (!(c.segments || []).length && !(c.extraEmails || []).length) return cors(NextResponse.json({ ok: false, error: 'Velg minst én målgruppe eller legg til mottakere manuelt' }, { status: 400 }));
 
-      const propertyResolution = await resolveDraftProperties(db, c.blocks || []);
-      if (propertyResolution.unavailable.length) {
-        return cors(NextResponse.json({ ok: false, error: `${propertyResolution.unavailable.length} valgt bolig er ikke ledig lenger — åpne boligblokken og oppdater utvalget`, unavailableProperties: propertyResolution.unavailable }, { status: 409 }));
-      }
+      // AUTO-OPPFRISK av boligblokken rett før utsending: en bolig kan ha blitt
+      // utleid siden utkastet ble laget. Den tas ut automatisk — en utleid bolig
+      // i et nyhetsbrev er verre enn et brev med én bolig mindre. Blir en
+      // boligblokk helt tom, stopper vi og ber redaktøren velge nye.
+      const propertyResolution = await refreshCampaignProperties(db, c.blocks || []);
       const sendBlocks = propertyResolution.blocks;
+      if (propertyResolution.emptied.length) {
+        return cors(NextResponse.json({
+          ok: false,
+          error: `Ingen av boligene i «${propertyResolution.emptied[0]}» er ledige lenger — åpne boligblokken og velg nye boliger`,
+          removedProperties: propertyResolution.removed, unavailableProperties: propertyResolution.removed,
+          emptiedBlocks: propertyResolution.emptied,
+        }, { status: 409 }));
+      }
+      if (!hasContent(sendBlocks)) return cors(NextResponse.json({ ok: false, error: 'Nyhetsbrevet har ikke noe innhold ennå' }, { status: 400 }));
+      if (propertyResolution.changed) {
+        // Lagre det som faktisk sendes, slik at arkivet og statistikken viser
+        // riktig innhold i ettertid.
+        try { await db.collection(NEWSLETTER_COLL).updateOne({ id: campaignId }, { $set: { blocks: sendBlocks, updatedAt: new Date().toISOString() } }); } catch (_) {}
+      }
 
       const { recipients, skipped } = await resolveAudience(db, c.segments, c.excludedEmails || [], c.extraEmails || []);
       if (!recipients.length) return cors(NextResponse.json({ ok: false, error: 'Ingen mottakere i valgt målgruppe (etter avmeldte/ekskluderte)' }, { status: 400 }));
@@ -5174,7 +5271,7 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
         failed: failed.slice(0, 50), skipped, opens: 0, clicks: 0, openedR: [], clickedR: [],
       };
       await db.collection(NEWSLETTER_COLL).updateOne({ id: campaignId }, { $set: upd });
-      return cors(NextResponse.json({ ok: true, campaign: { ...c, ...upd } }, { status: 201 }));
+      return cors(NextResponse.json({ ok: true, campaign: { ...c, ...upd }, removedProperties: propertyResolution.removed }, { status: 201 }));
     }
 
     if (route === '/admin/newsletter' && method === 'GET') {

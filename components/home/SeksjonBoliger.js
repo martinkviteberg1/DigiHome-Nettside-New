@@ -44,7 +44,7 @@ function Card({ l }) {
         )}
         <div className="absolute top-4 left-4 flex gap-2">
           {l.rentalLabel && (
-            <span className="rounded-full bg-white/92 backdrop-blur px-3 py-1 text-[11.5px] font-semibold text-ink">{l.rentalLabel}</span>
+            <span className="rounded-full bg-white/92 px-3 py-1 text-[11.5px] font-semibold text-ink shadow-[0_2px_10px_-2px_rgba(0,0,0,0.3)] ring-1 ring-inset ring-black/[0.04] backdrop-blur-md">{l.rentalLabel}</span>
           )}
         </div>
         {l.status === 'available' && (

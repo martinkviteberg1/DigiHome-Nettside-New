@@ -46,30 +46,34 @@ function Gallery({ images, title }) {
 
   return (
     <>
-      <div className="overflow-hidden rounded-[26px] bg-[#f3f1ee]">
+      <div className="overflow-hidden rounded-[22px] bg-[#f3f1ee] sm:rounded-[26px]">
         <button type="button" onClick={() => setOpen(true)} data-testid="listing-gallery-main"
-          className="relative block aspect-[16/10] w-full cursor-zoom-in">
+          className="relative block aspect-[4/3] w-full cursor-zoom-in sm:aspect-[16/10]">
           <img src={imgs[i]} alt={title} className="absolute inset-0 h-full w-full object-cover" />
           {imgs.length > 1 && (
             <>
               <span onClick={(e) => { e.stopPropagation(); e.preventDefault(); go(-1); }}
-                className="absolute left-3 top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-white/85 text-[#0a0a0a] shadow-sm backdrop-blur-sm transition-colors hover:bg-white">
+                className="absolute left-2.5 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full bg-white/85 text-[#0a0a0a] shadow-sm backdrop-blur-sm transition-colors hover:bg-white sm:left-3 sm:h-10 sm:w-10">
                 <ChevronLeft className="h-5 w-5" />
               </span>
               <span onClick={(e) => { e.stopPropagation(); e.preventDefault(); go(1); }}
-                className="absolute right-3 top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-white/85 text-[#0a0a0a] shadow-sm backdrop-blur-sm transition-colors hover:bg-white">
+                className="absolute right-2.5 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full bg-white/85 text-[#0a0a0a] shadow-sm backdrop-blur-sm transition-colors hover:bg-white sm:right-3 sm:h-10 sm:w-10">
                 <ChevronRight className="h-5 w-5" />
               </span>
-              <span className="absolute bottom-3 right-3 rounded-lg bg-black/45 px-2.5 py-1 text-[12px] font-medium text-white backdrop-blur-sm tabular-nums">{i + 1} / {imgs.length}</span>
+              <span className="absolute bottom-3 right-3 rounded-full bg-[#0a0a0a]/70 px-2.5 py-1 text-[11.5px] font-semibold text-white ring-1 ring-inset ring-white/15 backdrop-blur-md tabular-nums">{i + 1} / {imgs.length}</span>
             </>
           )}
         </button>
       </div>
       {imgs.length > 1 && (
-        <div className="mt-3 flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'thin' }}>
+        // Miniatyrene ruller horisontalt. De ligger i en kolonne med min-w-0
+        // (se under), ellers ville 12 × 88px tvunget hele siden bred på mobil.
+        // -mx-4 lar stripen gå helt ut til skjermkanten, som i en app.
+        <div className="mt-3 -mx-4 flex snap-x snap-mandatory gap-2 overflow-x-auto px-4 pb-1.5 [scrollbar-width:thin] sm:mx-0 sm:px-0"
+          data-testid="listing-gallery-thumbs">
           {imgs.map((src, k) => (
             <button key={src + k} type="button" onClick={() => setI(k)} aria-label={`Bilde ${k + 1}`}
-              className={`h-16 w-[88px] shrink-0 overflow-hidden rounded-xl transition-all ${k === i ? 'ring-2 ring-[#7c3aed] ring-offset-2 ring-offset-[#fdfcfb]' : 'opacity-70 hover:opacity-100'}`}>
+              className={`h-14 w-[76px] shrink-0 snap-start overflow-hidden rounded-xl transition-all sm:h-16 sm:w-[88px] ${k === i ? 'ring-2 ring-[#7c3aed] ring-offset-2 ring-offset-[#fdfcfb]' : 'opacity-70 hover:opacity-100'}`}>
               <img src={src} alt="" loading="lazy" className="h-full w-full object-cover" />
             </button>
           ))}
@@ -77,16 +81,16 @@ function Gallery({ images, title }) {
       )}
 
       {open && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/92 p-4" onClick={() => setOpen(false)}>
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-[#0a0a0a]/94 p-3 backdrop-blur-sm sm:p-4" onClick={() => setOpen(false)}>
           <button type="button" onClick={() => setOpen(false)} aria-label="Lukk"
-            className="absolute right-4 top-4 grid h-11 w-11 place-items-center rounded-full bg-white/10 text-white hover:bg-white/20"><X className="h-5 w-5" /></button>
-          <img src={imgs[i]} alt={title} className="max-h-[88vh] max-w-full rounded-2xl object-contain" onClick={(e) => e.stopPropagation()} />
+            className="absolute right-3 top-3 z-10 grid h-11 w-11 place-items-center rounded-full bg-white/10 text-white hover:bg-white/20 sm:right-4 sm:top-4"><X className="h-5 w-5" /></button>
+          <img src={imgs[i]} alt={title} className="max-h-[82vh] max-w-full rounded-2xl object-contain sm:max-h-[88vh]" onClick={(e) => e.stopPropagation()} />
           {imgs.length > 1 && (
             <>
               <button type="button" onClick={(e) => { e.stopPropagation(); go(-1); }} aria-label="Forrige"
-                className="absolute left-4 grid h-12 w-12 place-items-center rounded-full bg-white/10 text-white hover:bg-white/20"><ChevronLeft className="h-6 w-6" /></button>
+                className="absolute left-2 grid h-11 w-11 place-items-center rounded-full bg-white/10 text-white hover:bg-white/20 sm:left-4 sm:h-12 sm:w-12"><ChevronLeft className="h-6 w-6" /></button>
               <button type="button" onClick={(e) => { e.stopPropagation(); go(1); }} aria-label="Neste"
-                className="absolute right-4 grid h-12 w-12 place-items-center rounded-full bg-white/10 text-white hover:bg-white/20"><ChevronRight className="h-6 w-6" /></button>
+                className="absolute right-2 grid h-11 w-11 place-items-center rounded-full bg-white/10 text-white hover:bg-white/20 sm:right-4 sm:h-12 sm:w-12"><ChevronRight className="h-6 w-6" /></button>
               <span className="absolute bottom-5 rounded-full bg-white/10 px-3 py-1 text-[13px] text-white tabular-nums">{i + 1} / {imgs.length}</span>
             </>
           )}
@@ -163,7 +167,10 @@ function InterestForm({ listing, available }) {
 }
 
 export default function ListingDetail({ listing, available }) {
-  const place = [listing.area, listing.district].filter(Boolean).join(', ') || listing.city;
+  // Full gateadresse med husnummer + bydel. Fallback til gatenavnet alene
+  // dersom plattformen mangler nummeret på en enhet.
+  const place = [listing.streetAddress || listing.area, listing.district].filter(Boolean).join(', ') || listing.city;
+  const rent = listing.rentBand ? listing.rentBand.replace(/\s*kr\/mnd\s*$/i, '') : null;
   const availFrom = fmtDate(listing.availableFrom) || (listing.availableFrom || null);
   const facts = [
     listing.sqm ? { icon: Ruler, label: 'Areal', value: `${listing.sqm} m²` } : null,
@@ -173,23 +180,44 @@ export default function ListingDetail({ listing, available }) {
   ].filter(Boolean);
 
   return (
-    <div className="mx-auto max-w-[1400px] px-6 pb-16 pt-6 sm:px-10 lg:px-16">
-      <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_400px] lg:gap-12">
-        <div>
+    <div className="mx-auto max-w-[1400px] px-4 pb-16 pt-6 sm:px-10 lg:px-16">
+      {/* grid-cols-1 er ikke overflødig: uten den blir mobilkolonnen
+          innholdsstyrt, og miniatyrbildestripen (12 × 96px) tvang hele siden
+          til 1168px bredde på en 390px skjerm. grid-cols-1 gir minmax(0,1fr),
+          og min-w-0 lar kolonnen krympe under innholdsbredden — først da har
+          overflow-x-auto noe å begrense seg mot. */}
+      <div className="grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1fr)_400px] lg:gap-12">
+        <div className="min-w-0">
           <Gallery images={listing.images} title={listing.title} />
 
           <div className="mt-8">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded-lg bg-[#f4f0fb] px-2.5 py-1 text-[12px] font-semibold text-[#7c3aed]">{listing.modelLabel}</span>
-              {!available && <span className="rounded-lg bg-[#0a0a0a] px-2.5 py-1 text-[12px] font-semibold text-white">Utleid</span>}
-              {listing.district && <span className="rounded-lg bg-[#f1f0ee] px-2.5 py-1 text-[12px] font-semibold text-[#5f5a53]">{listing.district}</span>}
+              <span className="inline-flex items-center rounded-full bg-[#f4f0fb] px-3 py-1 text-[12px] font-semibold text-[#7c3aed] ring-1 ring-inset ring-[#7c3aed]/15">{listing.modelLabel}</span>
+              {!available && <span className="inline-flex items-center rounded-full bg-[#0a0a0a] px-3 py-1 text-[12px] font-semibold text-white">Utleid</span>}
+              {listing.district && <span className="inline-flex items-center rounded-full bg-[#f1f0ee] px-3 py-1 text-[12px] font-semibold text-[#5f5a53]">{listing.district}</span>}
             </div>
-            <h1 className="mt-4 max-w-[26ch] text-[30px] font-bold leading-[1.1] tracking-[-0.025em] sm:text-[40px]" style={{ fontFamily: 'var(--font-heading)' }}>
+            <h1 className="mt-4 max-w-[26ch] break-words text-[27px] font-bold leading-[1.12] tracking-[-0.02em] sm:text-[40px] sm:leading-[1.1] sm:tracking-[-0.025em]" style={{ fontFamily: 'var(--font-heading)' }}>
               {listing.title}
             </h1>
-            <p className="mt-3 inline-flex items-center gap-1.5 text-[15px] text-[#78726a]">
-              <MapPin className="h-4 w-4 text-[#c9c3ba]" /> {place}
+            <p className="mt-3 flex items-start gap-1.5 text-[15px] text-[#78726a]">
+              <MapPin className="mt-[3px] h-4 w-4 shrink-0 text-[#c9c3ba]" />
+              <span className="break-words">{place}</span>
             </p>
+            {/* Pris på mobil: i ett-kolonne-oppsettet havner sidepanelet
+                nederst på siden, og da ligger prisen under fold. Boligsøkere
+                sjekker prisen først — den skal stå ved tittelen. */}
+            <div className="mt-5 lg:hidden" data-testid="listing-price-mobile">
+              {rent ? (
+                <p className="text-[25px] font-bold leading-none tracking-[-0.02em] text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>
+                  <span className="whitespace-nowrap">{rent}</span> <span className="text-[14.5px] font-semibold text-[#78726a]">kr/mnd</span>
+                  {listing.rentIndicative && (
+                    <span className="ml-2 inline-flex items-center rounded-full bg-[#f4f0fb] px-2 py-[3px] align-middle text-[10px] font-bold uppercase tracking-[0.06em] text-[#7c3aed]">Prisantydning</span>
+                  )}
+                </p>
+              ) : (
+                <p className="text-[18px] font-bold text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>Pris på forespørsel</p>
+              )}
+            </div>
           </div>
 
           <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -267,11 +295,11 @@ export default function ListingDetail({ listing, available }) {
         </div>
 
         <aside className="lg:sticky lg:top-24 lg:self-start">
-          <div className="rounded-[26px] bg-[#f8f6f3] p-6 ring-1 ring-black/[0.05] shadow-[0_14px_50px_-32px_rgba(0,0,0,0.3)]">
-            {listing.rentBand ? (
+          <div className="rounded-[26px] bg-[#f8f6f3] p-5 ring-1 ring-black/[0.05] shadow-[0_14px_50px_-32px_rgba(0,0,0,0.3)] sm:p-6">
+            {rent ? (
               <>
-                <p className="text-[26px] font-bold leading-none tracking-[-0.02em] text-[#0a0a0a] tabular-nums" style={{ fontFamily: 'var(--font-heading)' }}>
-                  {listing.rentBand.replace(/\s*kr\/mnd\s*$/i, '')} <span className="text-[15px] font-semibold text-[#78726a]">kr/mnd</span>
+                <p className="text-[26px] font-bold leading-none tracking-[-0.02em] text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>
+                  <span className="whitespace-nowrap">{rent}</span> <span className="text-[15px] font-semibold text-[#78726a]">kr/mnd</span>
                 </p>
                 {listing.rentIndicative && (
                   <p className="mt-1.5 inline-flex items-start gap-1.5 text-[12px] leading-snug text-[#8d867d]">
