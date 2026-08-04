@@ -1,4 +1,4 @@
-// Ende-til-ende: redaksjonell prisantydning + annonsetekst → publisert boligside.
+// Ende-til-ende: redaksjonell månedsleie + annonsetekst → publisert boligside.
 // Gjør boligen KORT synlig, verifiserer HTML/SEO, og setter ALT tilbake.
 // Kjør: node scripts/probe-editorial-publish.mjs
 import fs from 'fs';
@@ -50,8 +50,10 @@ try {
   const pub = await (await fetch(`${BASE}/api/public/listings`)).json();
   ok(pub.total === 1, `1 publisert bolig nå (${pub.total})`);
   const card = (pub.listings || pub.items || [])[0] || {};
-  ok(card.rentIndicative === true, `kortet merker prisen som PRISANTYDNING (rentIndicative=${card.rentIndicative})`);
-  ok(card.rentBand === '22 000–24 000 kr/mnd', `prisintervall: ${card.rentBand}`);
+  ok(card.rentAmount === 22000, `kortet har eksakt månedsleie som tall (rentAmount=${card.rentAmount})`);
+  ok(card.rentText === '22 000 kr/mnd', `månedsleie: ${card.rentText}`);
+  ok(card.rentBand === '22 000 kr/mnd', `bakoverkompatibelt felt følger samme beløp: ${card.rentBand}`);
+  ok(!('rentIndicative' in card), 'prisantydning-flagget er borte fra kortet');
   ok(card.title === 'Strøken 2-roms i Sandviken med balkong', `tittel: ${card.title}`);
   ok(!('description' in card), 'annonsetekst ligger IKKE på listekortet (bare på detaljsiden)');
 
@@ -61,8 +63,11 @@ try {
   ok(html.includes('Strøken 2-roms i Sandviken med balkong'), 'tittel i HTML');
   ok(html.includes('Kort vei til sentrum'), 'ANNONSETEKSTEN publiseres på boligsiden');
   ok(html.includes('data-testid="listing-description"'), 'annonseteksten rendres i eget felt');
-  ok(/22 000/.test(html), 'prisintervall i HTML');
-  ok(/Prisantydning|prisantydning/.test(html), 'prisen presenteres som prisantydning utad');
+  ok(/22 000/.test(html), 'eksakt månedsleie i HTML');
+  ok(!/[Pp]risantydning/.test(html), 'INGEN «prisantydning» utad — vi oppgir månedsleien');
+  ok(/Månedsleie/.test(html), 'prisen er merket «Månedsleie»');
+  ok(/"price":22000/.test(html), 'JSON-LD har månedsleien som ett tall (price:22000)');
+  ok(!/minPrice|maxPrice/.test(html), 'JSON-LD har ikke lenger min/maks-intervall');
   const meta = /<meta name="description" content="([^"]*)"/.exec(html);
   ok(!!meta && /Strøken 2-roms i Sandviken med balkong/.test(meta[1]), `meta-beskrivelse bruker annonseteksten: «${meta ? meta[1].slice(0, 90) : '—'}»`);
   const ld = /"@type":"RealEstateListing"[\s\S]{0,900}?"description":"([^"]{0,120})/.exec(html);

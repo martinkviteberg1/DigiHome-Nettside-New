@@ -25,14 +25,6 @@ const BADGE_SCOPE = `${BADGE_BASE} bg-[#7c3aed]/90 text-white ring-1 ring-inset 
 
 const KR = (n) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0');
 
-function parseBand(band) {
-  const nums = String(band || '').match(/\d[\d\s\u00a0\u202f]*/g);
-  if (!nums) return null;
-  const vals = nums.map((n) => Number(n.replace(/[^\d]/g, ''))).filter(Boolean);
-  if (!vals.length) return null;
-  return { min: Math.min(...vals), max: Math.max(...vals) };
-}
-
 function Pill({ active, children, onClick, testId }) {
   return (
     <button type="button" onClick={onClick} data-testid={testId}
@@ -87,10 +79,10 @@ function ListingCard({ c, preview }) {
         </div>
         <div className="mt-4 flex items-end justify-between gap-3 border-t border-black/[0.05] pt-4">
           <div className="min-w-0">
-            {c.rentBand ? (
+            {c.rentText ? (
               <>
-                <p className="truncate whitespace-nowrap text-[15.5px] font-bold text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>{c.rentBand.replace(/\s*kr\/mnd\s*$/i, '')}</p>
-                <p className="text-[11.5px] text-[#8d867d]">kr/mnd{c.rentScopeNote ? ` · ${c.rentScopeNote}` : ''}{c.rentIndicative ? ' · prisantydning' : ''}</p>
+                <p className="truncate whitespace-nowrap text-[15.5px] font-bold text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>{c.rentText.replace(/\s*kr\/mnd\s*$/i, '')}</p>
+                <p className="text-[11.5px] text-[#8d867d]">kr/mnd{c.rentScopeNote ? ` · ${c.rentScopeNote}` : ''}</p>
               </>
             ) : <p className="text-[13px] text-[#8d867d]">Pris på forespørsel</p>}
           </div>
@@ -143,7 +135,7 @@ export default function ListingsGrid({ listings = [] }) {
 
   const facets = useMemo(() => {
     const c = (key) => all.reduce((a, x) => { const v = x[key]; if (v) a[v] = (a[v] || 0) + 1; return a; }, {});
-    const bands = all.map((x) => parseBand(x.rentBand)).filter(Boolean);
+    const amounts = all.map((x) => Number(x.rentAmount) || 0).filter(Boolean);
     // Utleieenhet: «hele enheten» treffer også boliger som tilbyr BEGGE — leter
     // du etter en hel bolig, er en enhet som også kan leies rom for rom fortsatt
     // aktuell for deg. Filteret vises bare når utvalget faktisk inneholder rom.
@@ -159,8 +151,8 @@ export default function ListingsGrid({ listings = [] }) {
             { key: 'rom', label: 'Rom i bofellesskap', count: scopeCount('rom') },
           ].filter((s) => s.count > 0)
         : [],
-      maxPrice: bands.length ? Math.max(...bands.map((b) => b.max)) : 0,
-      minPrice: bands.length ? Math.min(...bands.map((b) => b.min)) : 0,
+      maxPrice: amounts.length ? Math.max(...amounts) : 0,
+      minPrice: amounts.length ? Math.min(...amounts) : 0,
     };
   }, [all]);
 
@@ -170,7 +162,7 @@ export default function ListingsGrid({ listings = [] }) {
     if (beds) { const n = Number(beds); if (n >= 4 ? !(c.bedrooms >= 4) : c.bedrooms !== n) return false; }
     if (model && c.model !== model) return false;
     if (scope && !(c.scope === scope || c.scope === 'begge')) return false;
-    if (maxRent) { const b = parseBand(c.rentBand); if (b && b.min > maxRent) return false; }
+    if (maxRent && Number(c.rentAmount) > 0 && Number(c.rentAmount) > maxRent) return false;
     return true;
   }), [all, q, district, beds, model, scope, maxRent]);
 

@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { formatNoDate } from '@/lib/listings';
 import {
   MapPin, Ruler, BedDouble, CalendarDays, Building2, ShieldCheck, ExternalLink,
-  ChevronLeft, ChevronRight, X, Check, Loader2, Send, Info, Users, ArrowUpRight,
+  ChevronLeft, ChevronRight, X, Check, Loader2, Send, Users, ArrowUpRight,
 } from 'lucide-react';
 
 // «Book visning i DigiHome» er slått av inntil videre (eierens beslutning).
@@ -344,7 +344,7 @@ export default function ListingDetail({ listing, available, nl = null }) {
   // Full gateadresse med husnummer + bydel. Fallback til gatenavnet alene
   // dersom plattformen mangler nummeret på en enhet.
   const place = [listing.streetAddress || listing.area, listing.district].filter(Boolean).join(', ') || listing.city;
-  const rent = listing.rentBand ? listing.rentBand.replace(/\s*kr\/mnd\s*$/i, '') : null;
+  const rent = listing.rentText ? listing.rentText.replace(/\s*kr\/mnd\s*$/i, '') : null;
   const availFrom = fmtDate(listing.availableFrom) || (listing.availableFrom || null);
   const facts = [
     listing.sqm ? { icon: Ruler, label: 'Areal', value: `${listing.sqm} m²` } : null,
@@ -393,9 +393,6 @@ export default function ListingDetail({ listing, available, nl = null }) {
               {rent ? (
                 <p className="text-[25px] font-bold leading-none tracking-[-0.02em] text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>
                   <span className="whitespace-nowrap">{rent}</span> <span className="text-[14.5px] font-semibold text-[#78726a]">kr/mnd{listing.rentScopeNote ? ` ${listing.rentScopeNote}` : ''}</span>
-                  {listing.rentIndicative && (
-                    <span className="ml-2 inline-flex items-center rounded-full bg-[#f4f0fb] px-2 py-[3px] align-middle text-[10px] font-bold uppercase tracking-[0.06em] text-[#7c3aed]">Prisantydning</span>
-                  )}
                 </p>
               ) : (
                 <p className="text-[18px] font-bold text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>Pris på forespørsel</p>
@@ -511,14 +508,10 @@ export default function ListingDetail({ listing, available, nl = null }) {
           <div className="rounded-[26px] bg-[#f8f6f3] p-5 ring-1 ring-black/[0.05] shadow-[0_14px_50px_-32px_rgba(0,0,0,0.3)] sm:p-6">
             {rent ? (
               <>
-                <p className="text-[26px] font-bold leading-none tracking-[-0.02em] text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>
+                <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#a8a29a]">Månedsleie</p>
+                <p className="mt-1.5 text-[26px] font-bold leading-none tracking-[-0.02em] text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>
                   <span className="whitespace-nowrap">{rent}</span> <span className="text-[15px] font-semibold text-[#78726a]">kr/mnd{listing.rentScopeNote ? ` ${listing.rentScopeNote}` : ''}</span>
                 </p>
-                {listing.rentIndicative && (
-                  <p className="mt-1.5 inline-flex items-start gap-1.5 text-[12px] leading-snug text-[#8d867d]">
-                    <Info className="mt-[1px] h-3.5 w-3.5 shrink-0" /> Prisantydning — endelig leie avtales i kontrakten.
-                  </p>
-                )}
               </>
             ) : (
               <p className="text-[19px] font-bold text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>Pris på forespørsel</p>

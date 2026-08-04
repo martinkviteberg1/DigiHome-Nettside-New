@@ -43,8 +43,9 @@ async function findId(prefix) {
 try {
   // ══ DEL 1: REN PORTLOGIKK ════════════════════════════════════════════════
   console.log('\n— PORTLOGIKK —');
-  const base = { images: ['a.jpg'], monthlyRentBand: '16 000–18 000 kr/mnd', sqm: 40, area: 'Baglergaten', status: 'active', visible: true };
+  const base = { images: ['a.jpg'], monthlyRentBand: '17 000 kr/mnd', sqm: 40, area: 'Baglergaten', status: 'active', visible: true };
   ok(listingGate(base).publishable === true, 'komplett bolig er publiserbar');
+  ok(listingGate({ ...base, monthlyRentBand: '16 000–18 000 kr/mnd' }).blocking.includes('pris_uten_belop'), 'BARE prisintervall er ikke en pris — sperres');
   ok(listingGate({ ...base, rentBandSource: 'finn' }).blocking.includes('pris_fra_finn'), 'pris fra FINN er fortsatt sperret');
   ok(listingGate({ ...base, rentBandSource: 'redaksjonell' }).publishable === true, 'REDAKSJONELL pris slipper gjennom porten');
   ok(listingGate({ ...base, imageSource: 'finn' }).blocking.includes('bilderettigheter'), 'FINN-bilder sperres som før');
@@ -81,7 +82,7 @@ try {
 
   const r1 = await put({ id: bag, fields: { rentAmount: 17000 } });
   const p1 = r1.json?.property || {};
-  ok(r1.status === 200 && p1.monthlyRentBand === '16 000–18 000 kr/mnd', `pris 17000 → intervall «${p1.monthlyRentBand}»`);
+  ok(r1.status === 200 && p1.monthlyRentBand === '17 000 kr/mnd', `pris 17000 → eksakt «${p1.monthlyRentBand}»`);
   ok(p1.rentBandSource === 'redaksjonell', `kilde merket redaksjonell (${p1.rentBandSource})`);
   ok(p1.editorialRentAmount === 17000, `editorialRentAmount=${p1.editorialRentAmount}`);
   ok((p1.rentAmount ?? null) === platformRent, `KPI-TRYGGHET: plattformens rentAmount urørt (${platformRent} → ${p1.rentAmount ?? null})`);
@@ -93,7 +94,7 @@ try {
   const p2 = r2.json?.property || {};
   ok(p2.sqm === 42 && p2.bedrooms === 2, `areal 42 og soverom 2 overstyrt (${p2.sqm}, ${p2.bedrooms})`);
   ok(p2.description === 'Lys og nyoppusset leilighet\n\nmidt i Sandviken.', 'annonsetekst lagret, doble blanklinjer normalisert');
-  ok(p2.monthlyRentBand === '16 000–18 000 kr/mnd', 'prisen står fortsatt etter ny lagring');
+  ok(p2.monthlyRentBand === '17 000 kr/mnd', 'prisen står fortsatt etter ny lagring');
   ok(p2.platformValues?.sqm === 40, `plattformens egen verdi bevart for sammenligning (sqm=${p2.platformValues?.sqm})`);
 
   const rTitle = await fetch(`${BASE}/api/admin/properties/title?${q}`, {
@@ -101,7 +102,7 @@ try {
   });
   const pT = (await rTitle.json()).property || {};
   ok(pT.listingTitle === 'Nyoppusset 2-roms i Sandviken', `tittel lagret (${pT.listingTitle})`);
-  ok(pT.monthlyRentBand === '16 000–18 000 kr/mnd' && pT.sqm === 42, 'REGRESJON: tittellagring sletter ikke pris/areal');
+  ok(pT.monthlyRentBand === '17 000 kr/mnd' && pT.sqm === 42, 'REGRESJON: tittellagring sletter ikke pris/areal');
 
   // Gatefeltet deles: area = gatenavn (gruppering/slug), street = full adresse
   const r3 = await put({ id: bag, fields: { area: 'Baglergaten 8B' } });

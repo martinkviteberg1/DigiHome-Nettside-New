@@ -10,7 +10,7 @@ import {
   Link2, Download, X, Search, PenLine, Tag, Pencil,
 } from 'lucide-react';
 import { titleCandidates, rentInfo, finnMatchHint, TITLE_SOURCE, TITLE_MAX } from '@/lib/listing-title';
-import { listingGate, publishReadiness, GATE } from '@/lib/listings';
+import { listingGate, publishReadiness, GATE, exactRentAmount } from '@/lib/listings';
 import { editorialSummary } from '@/lib/property-editorial';
 import DemandPanel from './DemandPanel';
 import PropertyEditor from './PropertyEditor';
@@ -527,19 +527,22 @@ export default function PropertiesTab({ apiKey }) {
               ) : null}
               <div className="flex items-center justify-between mt-3.5 pt-3.5 border-t border-[#f1f0ee]">
                 <span className="flex items-center gap-1.5 text-[12.5px] font-semibold text-[#0a0a0a]">
-                  {/* Faktisk leie vs. estimat kommer nå eksplisitt fra plattformen.
-                      Et estimat skal ALDRI leses som inntekt. */}
-                  {p.rentAmount != null
-                    ? `${Number(p.rentAmount).toLocaleString('nb-NO')} kr/mnd`
-                    : (p.monthlyRentBand || '—')}
-                  {p.rentAmount != null && p.rentIsEstimate ? (
-                    <span className="rounded px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wide bg-[#fff8e6] text-[#8a6500]" title="Estimert leie fra plattformen — teller ikke som inntekt">Estimat</span>
+                  {/* PUBLISERT MÅNEDSLEIE — det leietakeren faktisk ser. Kilden
+                      merkes ved siden av, fordi et estimat aldri skal leses som
+                      inntekt og en DigiHome-pris ikke er utleiemodulens tall. */}
+                  {p.monthlyRentBand
+                    || (p.rentAmount != null ? `${Number(p.rentAmount).toLocaleString('nb-NO')} kr/mnd` : '—')}
+                  {p.rentIsEstimate && p.rentBandSource === 'plattform-estimat' ? (
+                    <span className="rounded px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wide bg-[#fff8e6] text-[#8a6500]" title="Annonsert leie på en ledig enhet, ikke en signert kontraktsleie — teller ikke som inntekt">Annonsert</span>
                   ) : null}
-                  {p.rentAmount == null && p.rentBandSource === 'finn' ? (
-                    <span className="rounded px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wide bg-[#e8f1ff] text-[#1d5bbf]" title="Prisintervallet er hentet fra FINN fordi utleiemodulen ikke har noen leie — ikke bekreftet i plattformen">Fra FINN</span>
+                  {p.rentBandSource === 'finn' ? (
+                    <span className="rounded px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wide bg-[#e8f1ff] text-[#1d5bbf]" title="Prisen er hentet fra FINN fordi utleiemodulen ikke har noen leie — ikke bekreftet i plattformen, og sperret for publisering">Fra FINN</span>
                   ) : null}
                   {p.rentBandSource === 'redaksjonell' ? (
-                    <span className="rounded px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wide bg-[#f0ebff] text-[#6b4fd8]" title="Prisantydning satt av DigiHome fordi utleiemodulen mangler pris. Teller aldri i nøkkeltall, og overstyres straks plattformen sender en pris.">Prisantydning</span>
+                    <span className="rounded px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wide bg-[#f0ebff] text-[#6b4fd8]" title="Månedsleie satt av DigiHome fordi utleiemodulen mangler beløpet. Teller aldri i nøkkeltall, og overstyres straks plattformen sender en pris.">DigiHome-pris</span>
+                  ) : null}
+                  {p.monthlyRentBand && exactRentAmount(p.monthlyRentBand) <= 0 ? (
+                    <span className="rounded px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wide bg-[#fdeaea] text-[#b3261e]" title="Plattformen sender bare et prisintervall, ikke et beløp. Vi annonserer ikke en pris vi ikke har — skriv inn månedsleien under «Rediger boligdata».">Bare intervall</span>
                   ) : null}
                 </span>
                 <button onClick={() => toggle(p)} disabled={togglingId === p.id}

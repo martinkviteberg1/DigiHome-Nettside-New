@@ -5,7 +5,6 @@ import { JsonLd } from '@/components/site/JsonLd';
 import { breadcrumbLd, webPageLd } from '@/lib/seo';
 import { site } from '@/lib/site';
 import ListingsGrid from '@/components/dh/ListingsGrid';
-import { parseBand } from '@/lib/listings';
 import { getPublishedListings } from '@/lib/listings-server';
 import { Home, ArrowUpRight, ShieldCheck } from 'lucide-react';
 
@@ -37,8 +36,8 @@ export default async function LedigeBoligerPage() {
   const listings = await getPublishedListings();
   const vacant = listings.filter((l) => l.status === 'active');
   const districts = [...new Set(vacant.map((l) => l.district).filter(Boolean))];
-  const bands = vacant.map((l) => parseBand(l.rentBand)).filter(Boolean);
-  const from = bands.length ? Math.min(...bands.map((b) => b.min)) : null;
+  const amounts = vacant.map((l) => Number(l.rentAmount) || 0).filter(Boolean);
+  const from = amounts.length ? Math.min(...amounts) : null;
 
   const itemList = vacant.length ? {
     '@context': 'https://schema.org',

@@ -7,7 +7,6 @@ import { breadcrumbLd } from '@/lib/seo';
 import { site } from '@/lib/site';
 import ListingDetail from '@/components/dh/ListingDetail';
 import ListingPreview from '@/components/dh/ListingPreview';
-import { parseBand } from '@/lib/listings';
 import { getListingBySlug, getListingBySlugForNewsletter } from '@/lib/listings-server';
 import { verifyPropertyInterestToken } from '@/lib/newsletter';
 import { ArrowLeft, ArrowUpRight, MapPin } from 'lucide-react';
@@ -17,8 +16,8 @@ import { ArrowLeft, ArrowUpRight, MapPin } from 'lucide-react';
 // Adresse: full gateadresse med husnummer, som i alle andre utleieannonser —
 // det er informasjon boligsøkeren trenger for å vurdere beliggenheten, og det
 // er samme opplysning som ligger i FINN-annonsen. Personvernregelen gjelder
-// fortsatt for alt annet: aldri eier, aldri leietaker, aldri eksakt
-// kontraktsleie. Prisen vises som intervall/prisantydning.
+// fortsatt for alt annet: aldri eier, aldri leietaker, aldri kontraktsleie på en
+// utleid bolig. Prisen er den annonserte månedsleien fra utleiemodulen.
 //
 // Utleide boliger som fortsatt er synlige beholdes med «ikke ledig»-tilstand i
 // stedet for 404 — vi har sendt lenker til dem i nyhetsbrev. De settes til
@@ -46,7 +45,7 @@ export async function generateMetadata({ params, searchParams }) {
   }
   const { listing, available } = data;
   const place = [listing.streetAddress || listing.area, listing.district].filter(Boolean).join(', ') || listing.city;
-  const facts = [listing.sqm ? `${listing.sqm} m²` : null, listing.bedrooms ? `${listing.bedrooms} soverom` : null, listing.rentBand].filter(Boolean).join(' · ');
+  const facts = [listing.sqm ? `${listing.sqm} m²` : null, listing.bedrooms ? `${listing.bedrooms} soverom` : null, listing.rentText].filter(Boolean).join(' · ');
   // Redaksjonell annonsetekst er den beste meta-beskrivelsen vi kan ha: den er
   // skrevet for denne boligen. Faller tilbake på den avledede når den mangler.
   const editorial = String(listing.description || '').replace(/\s+/g, ' ').trim();
@@ -116,7 +115,7 @@ export default async function ListingPage({ params, searchParams }) {
     notFound();
   }
   const { listing, available, related } = data;
-  const band = parseBand(listing.rentBand);
+  const rentAmount = Number(listing.rentAmount) || 0;
   const place = [listing.streetAddress || listing.area, listing.district].filter(Boolean).join(', ') || listing.city;
 
   const ld = {
@@ -144,18 +143,22 @@ export default async function ListingPage({ params, searchParams }) {
         addressCountry: 'NO',
       },
     },
-    ...(band ? {
+    // Eksakt månedsleie i strukturert data. Google viser prisen i rike
+    // resultater bare når den er et tall — et min/maks-intervall ble filtrert
+    // bort. `price` + UnitPriceSpecification med referenceQuantity 1 måned
+    // sier «23 000 NOK per måned» utvetydig.
+    ...(rentAmount ? {
       offers: {
         '@type': 'Offer',
+        price: rentAmount,
         priceCurrency: 'NOK',
         availability: available ? 'https://schema.org/InStock' : 'https://schema.org/SoldOut',
         ...(listing.availableFrom ? { availabilityStarts: listing.availableFrom } : {}),
         url: `${site.url}/ledige-boliger/${listing.slug}`,
         priceSpecification: {
           '@type': 'UnitPriceSpecification',
+          price: rentAmount,
           priceCurrency: 'NOK',
-          minPrice: band.min,
-          maxPrice: band.max,
           unitText: 'MND',
           referenceQuantity: { '@type': 'QuantitativeValue', value: 1, unitCode: 'MON' },
         },
@@ -190,7 +193,7 @@ export default async function ListingPage({ params, searchParams }) {
                 <div className="p-5">
                   <h3 className="text-[15.5px] font-semibold leading-snug text-[#0a0a0a] group-hover:text-[#7c3aed]" style={{ fontFamily: 'var(--font-heading)' }}>{c.title}</h3>
                   <p className="mt-1.5 flex items-start gap-1.5 text-[13px] text-[#78726a]"><MapPin className="mt-[2px] h-3.5 w-3.5 shrink-0 text-[#c9c3ba]" /><span className="break-words">{[c.streetAddress || c.area, c.district].filter(Boolean).join(', ')}</span></p>
-                  <p className="mt-3 text-[14px] font-semibold text-[#0a0a0a]">{c.rentBand || 'Pris på forespørsel'}</p>
+                  <p className="mt-3 text-[14px] font-semibold text-[#0a0a0a]">{c.rentText || 'Pris på forespørsel'}</p>
                 </div>
               </Link>
             ))}

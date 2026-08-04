@@ -49,7 +49,7 @@ import { NEWSLETTER_COLL, OPTOUT_COLL, NL_EVENTS_COLL, renderNewsletterHtml, res
 import { syncPropertiesFromPlatform, maybeAutoSyncProperties, listAdminProperties, listPublicProperties, setPropertyVisibility, getPropertiesSyncMeta, backfillPropertyDistricts, refreshPropertyQuality, applyEnrichment, setPropertyEnrichment, setPropertyFinnSnapshot, setPropertyEditorialTitle, setPropertyEditorialFields, PROPERTIES_COLL } from '@/lib/properties-sync';
 import { EDITORIAL_FIELDS, stripHouseNumber } from '@/lib/property-editorial';
 import { cleanFinnTitle, titleCandidates, rentInfo } from '@/lib/listing-title';
-import { listingGate, listingSlug, toListingCard, toListingDetail, publishReadiness, GATE, toIsoDate, propertyMetaLine, propertyAddressLine, propertyFactsLine, propertyAvailableLine, scopeOf, scopeOptionsFor, normalizeInterestScope, interestScopeLabel, interestRecord, roomsLine, SCOPE_LABEL } from '@/lib/listings';
+import { listingGate, listingSlug, toListingCard, toListingDetail, publishReadiness, GATE, toIsoDate, propertyMetaLine, propertyAddressLine, propertyFactsLine, propertyAvailableLine, scopeOf, scopeOptionsFor, normalizeInterestScope, interestScopeLabel, interestRecord, roomsLine, SCOPE_LABEL, exactRentAmount } from '@/lib/listings';
 import { ALERTS_COLL, ALERT_CONSENT_TEXT, normalizeAlert, alertMatches, alertSummaryText, summarizeDemand, toAdminAlert, normEmail as haNormEmail } from '@/lib/housing-alerts';
 import { postalToDistrict } from '@/lib/geo-bergen';
 import { buildLeadReceipt, buildLeadAdminNotification, buildPropertyInterestNotification } from '@/lib/lead-emails';
@@ -511,7 +511,9 @@ async function resolveDraftProperties(dbx, blocks) {
         address: propertyAddressLine(live),
         facts: propertyFactsLine(live),
         available: propertyAvailableLine(live),
-        band: live.monthlyRentBand || '',
+        // Bare et eksakt beløp. Har plattformen bare et prisintervall, beholdes
+        // det redaktøren eventuelt har skrevet selv — vi finner ikke opp en pris.
+        band: exactRentAmount(live.monthlyRentBand) > 0 ? live.monthlyRentBand : (snap.band || ''),
         // Utleieenhet: «Rom i bofellesskap» endrer både pris og hverdag, og må
         // stå i nyhetsbrevet også — ellers klikker folk seg inn på noe annet
         // enn de trodde, og forvalteren bruker dagen på å rette misforståelser.
@@ -6729,7 +6731,7 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
           { status: 'active', stale: { $ne: true }, incomplete: { $ne: true }, duplicate: { $ne: true } },
           { projection: { _id: 0, externalId: 1, id: 1, title: 1, district: 1, area: 1, city: 1, type: 1, bedrooms: 1, sqm: 1, monthlyRentBand: 1, availableFrom: 1 } },
         );
-        const property = p || { externalId: 'demo', title: 'Møblert leilighet · 2 soverom · 65 m²', district: 'Bergen sentrum', type: 'leilighet', bedrooms: 2, sqm: 65, monthlyRentBand: '14 000 – 16 000 kr', availableFrom: '2026-09-01' };
+        const property = p || { externalId: 'demo', title: 'Møblert leilighet · 2 soverom · 65 m²', district: 'Bergen sentrum', type: 'leilighet', bedrooms: 2, sqm: 65, monthlyRentBand: '16 000 kr/mnd', availableFrom: '2026-09-01' };
         const tenant = { name: 'Kari Eksempel', email: 'kari@example.com', phone: '+47 912 34 567', property_interests: [{ propertyId: property.externalId }, { propertyId: 'annen-bolig' }] };
         const built = buildPropertyInterestNotification(tenant, property, { campaignTitle: 'Ledige boliger i Bergen', tenantCreated: true });
         return new NextResponse(built.html, { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8', 'X-Preview-Subject': encodeURIComponent(built.subject) } });

@@ -19,7 +19,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { X, Loader2, RotateCcw, Check, Download, AlertTriangle, Link2, Info } from 'lucide-react';
 import { EDITORIAL_FIELDS } from '@/lib/property-editorial';
-import { TYPE_LABEL, MODEL_LABEL, SCOPE_LABEL, GATE, listingGate, formatNoDate } from '@/lib/listings';
+import { TYPE_LABEL, MODEL_LABEL, SCOPE_LABEL, GATE, listingGate, formatNoDate, exactRentAmount } from '@/lib/listings';
 import DateField from './DateField';
 
 const KR = (n) => String(Math.round(n || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
@@ -48,7 +48,16 @@ const optionLabel = (key, v) => {
 // Plattformens egen verdi for feltet — det du overstyrer.
 function platformValue(p, key) {
   const pv = p?.platformValues || {};
-  if (key === 'rentAmount') return pv.monthlyRentBand || (pv.rentAmount ? `${KR(pv.rentAmount)} kr/mnd` : null);
+  // Utleiemodulens eget beløp er det mest presise. Bare hvis det mangler viser
+  // vi pristeksten fra boligeksporten — og da med en tydelig merknad, fordi et
+  // intervall ikke kan annonseres som pris.
+  if (key === 'rentAmount') {
+    if (pv.rentAmount) return `${KR(pv.rentAmount)} kr/mnd`;
+    if (!pv.monthlyRentBand) return null;
+    return exactRentAmount(pv.monthlyRentBand) > 0
+      ? pv.monthlyRentBand
+      : `${pv.monthlyRentBand} — bare intervall, kan ikke publiseres`;
+  }
   if (key === 'title') return p?.title || null;
   if (key === 'description') return null;      // plattformen sender aldri annonsetekst
   if (key === 'imageRights') return null;

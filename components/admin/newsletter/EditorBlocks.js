@@ -8,7 +8,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { sortDistrictGroups } from '@/lib/geo-bergen';
 import { titleCandidates, rentInfo, TITLE_SOURCE, TITLE_MAX } from '@/lib/listing-title';
-import { propertyMetaLine, propertyAddressLine, propertyFactsLine, propertyAvailableLine, dedupeFacts } from '@/lib/listings';
+import { propertyMetaLine, propertyAddressLine, propertyFactsLine, propertyAvailableLine, dedupeFacts, exactRentAmount } from '@/lib/listings';
 import {
   Type, AlignLeft, Image as ImageIcon, MousePointerClick, LayoutPanelTop,
   List, Quote, UserRound, PenLine, Minus, MoveVertical, BadgePercent,
@@ -780,7 +780,10 @@ function PropertyPicker({ b, onPatch, list, err, reload }) {
     address: propertyAddressLine(p),
     facts: propertyFactsLine(p),
     available: propertyAvailableLine(p),
-    band: p.monthlyRentBand || '',
+    // Bare et eksakt beløp havner i kortet. Sender plattformen bare et
+    // prisintervall, står prisfeltet tomt — da ser redaktøren det og kan sette
+    // månedsleien under «Rediger boligdata» i stedet for å sende ut «ca.».
+    band: exactRentAmount(p.monthlyRentBand) > 0 ? p.monthlyRentBand : '',
     bandSource: p.rentBandSource || null,
     status: p.status || 'active',
     // Bydel fra API-et (utledet fra postnummer/poststed). ALDRI gatenavn —
@@ -931,7 +934,7 @@ function PropertyOrderList({ b, onPatch, byPid, apiQ, onSaved }) {
           ...it,
           title: p.listingTitle || p.title || it.title,
           titleSource: p.listingTitleSource || null,
-          band: p.monthlyRentBand || it.band || '',
+          band: exactRentAmount(p.monthlyRentBand) > 0 ? p.monthlyRentBand : (it.band || ''),
           bandSource: p.rentBandSource || null,
           image: (Array.isArray(p.images) && p.images[0]) || it.image,
           district: p.district || it.district,
@@ -1049,17 +1052,19 @@ function PropertyOrderList({ b, onPatch, byPid, apiQ, onSaved }) {
                     <p className="mt-1.5 text-[10px] leading-relaxed text-[#b8b2aa]">FINN-annonse er koblet, men annonsedata er ikke hentet. Trykk «Hent annonsedata» under «Boliger».</p>
                   ) : null}
 
-                  <label className="mt-3 block text-[9.5px] font-bold uppercase tracking-[0.09em] text-[#a8a29a]">Pris i kortet</label>
+                  <label className="mt-3 block text-[9.5px] font-bold uppercase tracking-[0.09em] text-[#a8a29a]">Månedsleie i kortet</label>
                   <input
                     value={it.band || ''} onChange={(e) => patchItem(i, { band: e.target.value.slice(0, 60) })}
                     data-testid={`nl-order-band-${i}`}
-                    placeholder="f.eks. 16 000–18 000 kr"
+                    placeholder="f.eks. 23 000 kr/mnd"
                     className="mt-1 h-[30px] w-full rounded-lg border border-[#e8e4de] bg-white px-2.5 text-[11.5px] text-[#111] outline-none focus:border-[#c9b6e8]"
                   />
                   <p className="mt-1 text-[10px] leading-relaxed text-[#b8b2aa]">
                     {it.bandSource === 'finn'
-                      ? 'Prisen er hentet fra FINN fordi utleiemodulen mangler prisintervall — den er ikke bekreftet i plattformen.'
-                      : 'Prisen kommer fra utleiemodulen i plattformen — eneste autoritative kilde.'}
+                      ? 'Prisen er hentet fra FINN fordi utleiemodulen mangler beløp — den er ikke bekreftet i plattformen.'
+                      : it.bandSource === 'redaksjonell'
+                        ? 'Månedsleien er satt av DigiHome under «Rediger boligdata» fordi utleiemodulen mangler beløpet.'
+                        : 'Månedsleien kommer fra utleiemodulen i plattformen — eneste autoritative kilde.'}
                   </p>
                   {rent && rent.finnAmount && rent.platformAmount ? (
                     <p className={`mt-1 text-[10px] leading-relaxed ${rent.deviates ? 'text-[#c08a2e]' : 'text-[#8a8580]'}`} data-testid={`nl-order-dev-${i}`}>
