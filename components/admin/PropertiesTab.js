@@ -290,8 +290,8 @@ export default function PropertiesTab({ apiKey }) {
       <div className="flex items-start gap-2.5 rounded-xl bg-[#f7f3ff] px-4 py-3">
         <Sparkles className="w-4 h-4 text-[#9a6ee8] shrink-0 mt-0.5" />
         <p className="text-[12.5px] leading-relaxed text-[#6b5a94]">
-          Denne listen speiler <strong>«Enheter»</strong> i DigiHome-appen — samme enheter, med full adresse, etasje, eier, leietaker og faktisk vs. estimert leie.
-          Disse feltene vises <strong>bare her, bak innlogging</strong>. Forsiden og nyhetsbrevet får kun gatenavn uten husnummer, område, størrelse og prisintervall — aldri adresse, eier eller leietaker.
+          Denne listen speiler <strong>«Enheter»</strong> i DigiHome-appen — samme enheter, med eier, leietaker, etasje og faktisk vs. annonsert leie.
+          Eier, leietaker og kontraktsleie vises <strong>bare her, bak innlogging</strong>. Boligsiden og nyhetsbrevet får full gateadresse, område, størrelse og <strong>eksakt annonsert månedsleie</strong> — som i enhver annen utleieannonse — men aldri eier, leietaker eller kontraktsleie.
           Nye boliger er <strong>skjult som standard</strong> — slå på synlighet per bolig for å vise den i «Noen av våre eiendommer» på forsiden.
           Boliger uten bilder vises ikke offentlig selv om de er markert synlige.
         </p>
