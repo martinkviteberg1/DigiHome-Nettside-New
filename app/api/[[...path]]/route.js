@@ -46,7 +46,8 @@ import { sendWeeklyReport, buildReportData, renderReportHtml } from '@/lib/ads-r
 import { buildMarketingMetrics } from '@/lib/marketing-metrics';
 import { emailConfigured, reportRecipients, sendHtmlEmail } from '@/lib/email';
 import { NEWSLETTER_COLL, OPTOUT_COLL, NL_EVENTS_COLL, renderNewsletterHtml, resolveAudience, audienceCounts, sanitizeBlocks, hasContent, buildUnsubUrl, verifyUnsubToken, verifyInterestToken, propertyInterestToken, verifyPropertyInterestToken, slugifyCampaign, normEmail as nlNormEmail, recipientId, TEMPLATES, templateBlocks, THEMES, TRACKING_GIF, applyMergeTags } from '@/lib/newsletter';
-import { syncPropertiesFromPlatform, maybeAutoSyncProperties, listAdminProperties, listPublicProperties, setPropertyVisibility, getPropertiesSyncMeta, backfillPropertyDistricts, refreshPropertyQuality, applyEnrichment, setPropertyEnrichment, setPropertyFinnSnapshot, setPropertyEditorialTitle, PROPERTIES_COLL } from '@/lib/properties-sync';
+import { syncPropertiesFromPlatform, maybeAutoSyncProperties, listAdminProperties, listPublicProperties, setPropertyVisibility, getPropertiesSyncMeta, backfillPropertyDistricts, refreshPropertyQuality, applyEnrichment, setPropertyEnrichment, setPropertyFinnSnapshot, setPropertyEditorialTitle, setPropertyEditorialFields, PROPERTIES_COLL } from '@/lib/properties-sync';
+import { EDITORIAL_FIELDS, stripHouseNumber } from '@/lib/property-editorial';
 import { cleanFinnTitle, titleCandidates, rentInfo } from '@/lib/listing-title';
 import { listingGate, listingSlug, toListingCard, toListingDetail, publishReadiness, GATE } from '@/lib/listings';
 import { ALERTS_COLL, ALERT_CONSENT_TEXT, normalizeAlert, alertMatches, alertSummaryText, summarizeDemand, toAdminAlert, normEmail as haNormEmail } from '@/lib/housing-alerts';
@@ -5971,6 +5972,95 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
 
     // Admin: redaksjonell tittel på et boligkort. Tom tittel nullstiller, og
     // hierarkiet (FINN → plattform → avledet) bestemmer igjen.
+    // ── REDIGER BOLIGDATA (redaksjonelle overstyringer) ────────────────────
+    // Plattformen er autoritativ, men ufullstendig: bare 4 av 13 ledige
+    // enheter har pris, og ingen har annonsetekst. Her kan forvalteren fylle
+    // hullene selv, sporbart og reverserbart per felt.
+    //
+    // Tom verdi ('' / null / false) NULLSTILLER feltet, slik at plattformens
+    // verdi slipper gjennom igjen. resetAll:true fjerner alle overstyringer.
+    // -----------------------------------------------------------------------
+    if (route === '/admin/properties/fields' && (method === 'PUT' || method === 'POST')) {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      const pid = String(body.id || '').trim();
+      if (!pid) return cors(NextResponse.json({ ok: false, error: 'Mangler id' }, { status: 400 }));
+      const saved = await setPropertyEditorialFields(db, {
+        id: pid,
+        fields: body.fields || {},
+        resetAll: body.resetAll === true,
+      });
+      if (!saved.ok) {
+        const code = saved.error === 'Fant ikke boligen' ? 404 : 400;
+        return cors(NextResponse.json(saved, { status: code }));
+      }
+      const gate = listingGate(saved.property);
+      return cors(NextResponse.json({
+        ok: true,
+        cleared: saved.cleared,
+        changed: saved.changed,
+        removed: saved.removed,
+        property: saved.property,
+        // Vi svarer med portstatus, så admin ser umiddelbart om boligen nå kan
+        // publiseres — det er hele poenget med å redigere.
+        gate,
+        publishable: gate.publishable,
+        contentReady: gate.contentReady,
+      }));
+    }
+
+    // Forslag fra FINN UTEN å lagre noe. Admin ser verdiene, velger hva som
+    // skal brukes, og lagrer selv. Da er alt vi publiserer DigiHomes egen
+    // bekreftede opplysning — ikke et automatisk kopi av en annen parts data.
+    if (route === '/admin/properties/finn-suggest' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      let url = String(body.url || '').trim();
+      const pid = String(body.id || '').trim();
+      let current = null;
+      if (pid) {
+        const rows = await listAdminProperties(db, { id: pid });
+        current = (rows || []).find((p) => p.id === pid || p.externalId === pid) || null;
+        if (!url && current) url = String(current.finnUrl || '');
+      }
+      if (!url) return cors(NextResponse.json({ ok: false, error: 'Mangler FINN-lenke' }, { status: 400 }));
+      const prev = await fetchFinnPreview(url);
+      if (!prev || !prev.ok) {
+        return cors(NextResponse.json({ ok: false, error: prev?.error || 'Kunne ikke hente FINN-annonsen' }, { status: 502 }));
+      }
+      const suggest = {
+        title: prev.title || null,
+        description: prev.description || null,
+        rentAmount: prev.rent || null,
+        sqm: prev.sqm || null,
+        bedrooms: prev.bedrooms || null,
+        type: prev.propertyType || null,
+        area: prev.address ? stripHouseNumber(prev.address) : null,
+        district: prev.postalCode ? postalToDistrict(prev.postalCode) : null,
+      };
+      return cors(NextResponse.json({
+        ok: true,
+        url,
+        finnCode: prev.finnCode || null,
+        images: Array.isArray(prev.gallery) ? prev.gallery : [],
+        suggest,
+        // Hva boligen har i dag, slik at admin ser forskjellen før hun velger.
+        current: current ? {
+          title: current.listingTitle || null,
+          description: current.description || null,
+          rentAmount: current.editorialRentAmount || current.rentAmount || null,
+          monthlyRentBand: current.monthlyRentBand || null,
+          sqm: current.sqm || null,
+          bedrooms: current.bedrooms || null,
+          type: current.type || null,
+          area: current.area || null,
+          district: current.district || null,
+          imageCount: (current.images || []).length,
+          imageSource: current.imageSource || null,
+        } : null,
+      }));
+    }
+
     if (route === '/admin/properties/title' && (method === 'PUT' || method === 'POST')) {
       if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       let body = {}; try { body = await request.json(); } catch (e) { body = {}; }

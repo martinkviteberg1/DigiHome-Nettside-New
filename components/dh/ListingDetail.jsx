@@ -205,12 +205,33 @@ export default function ListingDetail({ listing, available }) {
 
           <div className="mt-10">
             <h2 className="text-[20px] font-bold tracking-[-0.02em]" style={{ fontFamily: 'var(--font-heading)' }}>Om boligen</h2>
-            <p className="mt-3 max-w-[68ch] text-[15.5px] leading-relaxed text-[#4a4a4a]">
-              {listing.typeLabel.toLowerCase()} på {listing.sqm ? `${listing.sqm} m²` : 'sentral beliggenhet'}
-              {listing.bedrooms ? ` med ${listing.bedrooms} soverom` : ''} i {place}.
-              {' '}Boligen forvaltes av DigiHome, som håndterer visning, kontrakt, depositumskonto og all oppfølging digitalt.
-              {availFrom ? ` Boligen er ledig fra ${availFrom}.` : ''}
-            </p>
+            {/* Redaksjonell annonsetekst når den finnes. Plattformen sender
+                ingen beskrivelse (0 av 22 enheter), så dette er skrevet i
+                marketing-admin — og det er samtidig det viktigste innholdet
+                på siden både for leser og for søk. Den avledede setningen
+                under er fallback, ikke erstatning. */}
+            {listing.description ? (
+              <div className="mt-3 max-w-[68ch] space-y-3 text-[15.5px] leading-relaxed text-[#4a4a4a]" data-testid="listing-description">
+                {String(listing.description).split(/\n{2,}/).map((para, i) => (
+                  <p key={i}>{para.split('\n').map((line, j) => (
+                    <React.Fragment key={j}>{j > 0 && <br />}{line}</React.Fragment>
+                  ))}</p>
+                ))}
+              </div>
+            ) : (
+              <p className="mt-3 max-w-[68ch] text-[15.5px] leading-relaxed text-[#4a4a4a]">
+                {listing.typeLabel.toLowerCase()} på {listing.sqm ? `${listing.sqm} m²` : 'sentral beliggenhet'}
+                {listing.bedrooms ? ` med ${listing.bedrooms} soverom` : ''} i {place}.
+                {' '}Boligen forvaltes av DigiHome, som håndterer visning, kontrakt, depositumskonto og all oppfølging digitalt.
+                {availFrom ? ` Boligen er ledig fra ${availFrom}.` : ''}
+              </p>
+            )}
+            {listing.description && (
+              <p className="mt-3 max-w-[68ch] text-[14px] leading-relaxed text-[#78726a]">
+                Boligen forvaltes av DigiHome, som håndterer visning, kontrakt, depositumskonto og all oppfølging digitalt.
+                {availFrom ? ` Ledig fra ${availFrom}.` : ''}
+              </p>
+            )}
             <p className="mt-4 max-w-[68ch] text-[14px] leading-relaxed text-[#78726a]">
               Vil du se flere bilder, plantegning eller detaljer? Meld interesse — da sender vi deg hele boligpresentasjonen og setter opp visning.
             </p>

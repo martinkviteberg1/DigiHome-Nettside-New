@@ -28,10 +28,16 @@ export async function generateMetadata({ params }) {
   const { listing, available } = data;
   const place = [listing.area, listing.district].filter(Boolean).join(', ') || listing.city;
   const facts = [listing.sqm ? `${listing.sqm} m²` : null, listing.bedrooms ? `${listing.bedrooms} soverom` : null, listing.rentBand].filter(Boolean).join(' · ');
+  // Redaksjonell annonsetekst er den beste meta-beskrivelsen vi kan ha: den er
+  // skrevet for denne boligen. Faller tilbake på den avledede når den mangler.
+  const editorial = String(listing.description || '').replace(/\s+/g, ' ').trim();
+  const metaDesc = editorial
+    ? `${editorial.slice(0, 155)}${editorial.length > 155 ? '…' : ''}`
+    : `${listing.title} til leie i ${place}. ${facts}. Forvaltet av DigiHome: kredittsjekket leietaker, digital kontrakt og depositumskonto. Meld interesse i dag.`;
   return {
     title: available ? `${listing.title} — til leie i ${place}` : `${listing.title} — utleid`,
     description: available
-      ? `${listing.title} til leie i ${place}. ${facts}. Forvaltet av DigiHome: kredittsjekket leietaker, digital kontrakt og depositumskonto. Meld interesse i dag.`
+      ? metaDesc
       : `${listing.title} i ${place} er utleid. Se andre ledige boliger i Bergen hos DigiHome.`,
     alternates: { canonical: `/ledige-boliger/${listing.slug}` },
     robots: available ? undefined : { index: false, follow: true },
@@ -72,7 +78,7 @@ export default async function ListingPage({ params, searchParams }) {
     '@type': 'RealEstateListing',
     name: listing.title,
     url: `${site.url}/ledige-boliger/${listing.slug}`,
-    description: `${listing.typeLabel} til leie i ${place}.`,
+    description: String(listing.description || '').replace(/\s+/g, ' ').trim() || `${listing.typeLabel} til leie i ${place}.`,
     image: (listing.images || []).slice(0, 6),
     datePosted: listing.updatedAt || undefined,
     provider: { '@type': 'RealEstateAgent', name: site.name, url: site.url, telephone: site.phone },

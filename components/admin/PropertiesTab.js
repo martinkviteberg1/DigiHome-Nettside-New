@@ -7,11 +7,13 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Loader2, RefreshCw, Eye, EyeOff, Home, MapPin, BedDouble, Ruler,
   CheckCircle2, AlertTriangle, ImageOff, Sparkles, Globe, ExternalLink,
-  Link2, Download, X, Search, PenLine, Tag,
+  Link2, Download, X, Search, PenLine, Tag, Pencil,
 } from 'lucide-react';
 import { titleCandidates, rentInfo, finnMatchHint, TITLE_SOURCE, TITLE_MAX } from '@/lib/listing-title';
 import { listingGate, publishReadiness, GATE } from '@/lib/listings';
+import { editorialSummary } from '@/lib/property-editorial';
 import DemandPanel from './DemandPanel';
+import PropertyEditor from './PropertyEditor';
 
 // Hvor kortets tittel kommer fra. Alltid synlig — en tittel uten kjent kilde er
 // en tittel ingen tar ansvar for.
@@ -48,6 +50,7 @@ export default function PropertiesTab({ apiKey }) {
   // FINN-kobling per bolig: hvilken bolig som er åpen, hva som er skrevet inn,
   // hvem som henter nå, og siste svar.
   const [finnOpen, setFinnOpen] = useState(null);
+  const [editing, setEditing] = useState(null);
   const [finnInput, setFinnInput] = useState('');
   const [finnBusy, setFinnBusy] = useState(null);
   const [finnMsg, setFinnMsg] = useState(null); // {ok, id, text}
@@ -535,6 +538,9 @@ export default function PropertiesTab({ apiKey }) {
                   {p.rentAmount == null && p.rentBandSource === 'finn' ? (
                     <span className="rounded px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wide bg-[#e8f1ff] text-[#1d5bbf]" title="Prisintervallet er hentet fra FINN fordi utleiemodulen ikke har noen leie — ikke bekreftet i plattformen">Fra FINN</span>
                   ) : null}
+                  {p.rentBandSource === 'redaksjonell' ? (
+                    <span className="rounded px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wide bg-[#f0ebff] text-[#6b4fd8]" title="Prisantydning satt av DigiHome fordi utleiemodulen mangler pris. Teller aldri i nøkkeltall, og overstyres straks plattformen sender en pris.">Prisantydning</span>
+                  ) : null}
                 </span>
                 <button onClick={() => toggle(p)} disabled={togglingId === p.id}
                   aria-label={p.visible ? 'Skjul fra forsiden' : 'Vis på forsiden'}
@@ -542,6 +548,22 @@ export default function PropertiesTab({ apiKey }) {
                   {togglingId === p.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : p.visible ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
                   {p.visible ? 'Synlig' : 'Skjult'}
                 </button>
+              </div>
+
+              {/* REDIGER BOLIGDATA — plattformen er ufullstendig, så forvalteren
+                  må kunne fylle hullene selv. Overstyringene vises her, slik at
+                  ingen glemmer at et tall er vårt eget og ikke plattformens. */}
+              <div className="mt-3 pt-3 border-t border-[#f1f0ee] flex flex-wrap items-center gap-2">
+                <button onClick={() => setEditing(p)} data-testid={`props-edit-${p.id}`}
+                  title="Sett pris, areal, soverom, annonsetekst m.m. selv — sporbart og reverserbart"
+                  className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full bg-[#f5f5f4] text-[12px] font-semibold text-[#555] hover:bg-[#ebebe9]">
+                  <Pencil className="w-3.5 h-3.5" /> Rediger boligdata
+                </button>
+                {(p.editorialFields || []).length > 0 && (
+                  <span className="text-[11px] text-[#6b4fd8]" data-testid={`props-edited-${p.id}`}>
+                    {editorialSummary(p.editorialFields)}
+                  </span>
+                )}
               </div>
 
               {/* FINN-annonse: fyller hull der plattformen mangler bilder/pris/areal */}
@@ -659,6 +681,15 @@ export default function PropertiesTab({ apiKey }) {
 
       {props.length > 0 && !filtered.length && (
         <p className="text-center text-[13px] text-[#999] py-10">Ingen boliger i dette filteret.</p>
+      )}
+
+      {editing && (
+        <PropertyEditor
+          property={editing}
+          apiKey={apiKey}
+          onClose={() => setEditing(null)}
+          onSaved={async () => { setEditing(null); await load(); }}
+        />
       )}
     </div>
   );
