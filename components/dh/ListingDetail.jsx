@@ -5,13 +5,21 @@ import Link from 'next/link';
 import { formatNoDate } from '@/lib/listings';
 import {
   MapPin, Ruler, BedDouble, CalendarDays, Building2, ShieldCheck, ExternalLink,
-  ChevronLeft, ChevronRight, X, Check, Loader2, Send, Info, Users,
+  ChevronLeft, ChevronRight, X, Check, Loader2, Send, Info, Users, ArrowUpRight,
 } from 'lucide-react';
 
-// Boligsiden. Tre veier videre, i bevisst rekkefølge:
+// «Book visning i DigiHome» er slått av inntil videre (eierens beslutning).
+// Flagget beholdes fordi lenken er bygget, testet og kan slås på igjen med én
+// linje — å slette koden ville betydd å bygge den på nytt senere.
+const SHOW_PLATFORM_BOOKING = false;
+
+// Boligsiden. Veiene videre, i bevisst rekkefølge:
 //  1. «Meld interesse» — vårt eget lead. Havner i CRM med boligen påkoblet.
-//  2. «Book visning i DigiHome» — plattformens egen boligside.
-//  3. «Se annonsen på FINN» — kun når lenken er verifisert i utleiemodulen.
+//  2. «Se annonsen på FINN» — kun når lenken er verifisert i utleiemodulen.
+//     Løftet til et eget kort: annonsen har flere bilder og plantegning, så det
+//     er ofte neste steg for den som er nysgjerrig.
+//  3. «Book visning i DigiHome» — plattformens egen boligside. Slått AV
+//     inntil videre, se SHOW_PLATFORM_BOOKING over.
 
 const KR = (n) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0');
 
@@ -449,20 +457,40 @@ export default function ListingDetail({ listing, available, nl = null }) {
             </p>
           </div>
 
-          <div className="mt-8 flex flex-wrap gap-3">
-            {listing.platformUrl && (
+          {/* BOOKING I PLATTFORMEN ER SLÅTT AV (eierens ønske, «inntil videre»).
+              Koden står igjen bak flagget under, så den kan slås på med én linje
+              den dagen visningsbooking skal være en del av denne siden igjen. */}
+          {SHOW_PLATFORM_BOOKING && listing.platformUrl && (
+            <div className="mt-8">
               <a href={listing.platformUrl} target="_blank" rel="noopener noreferrer" data-testid="listing-platform-link"
                 className="inline-flex h-11 items-center gap-2 rounded-full bg-white px-5 text-[14px] font-semibold text-[#0a0a0a] ring-1 ring-inset ring-black/[0.1] transition-colors hover:ring-black/[0.22]">
                 Book visning i DigiHome <ExternalLink className="h-3.5 w-3.5" />
               </a>
-            )}
-            {listing.finnUrl && (
-              <a href={listing.finnUrl} target="_blank" rel="noopener noreferrer" data-testid="listing-finn-link"
-                className="inline-flex h-11 items-center gap-2 rounded-full bg-white px-5 text-[14px] font-semibold text-[#1d5bbf] ring-1 ring-inset ring-[#1d5bbf]/25 transition-colors hover:ring-[#1d5bbf]/45">
-                Se annonsen på FINN <ExternalLink className="h-3.5 w-3.5" />
-              </a>
-            )}
-          </div>
+            </div>
+          )}
+
+          {/* FINN-ANNONSEN. Løftet fra en beskjeden tekstlenke til et eget kort:
+              annonsen har flere bilder, plantegning og full beskrivelse, så den
+              er ofte det neste folk vil gjøre. FINN-blå (#0063fb) er gjenkjennelig
+              på et halvt sekund — derfor bruker vi den i stedet for vår egen
+              lilla, som ville sett ut som en intern CTA. */}
+          {listing.finnUrl && (
+            <a href={listing.finnUrl} target="_blank" rel="noopener noreferrer" data-testid="listing-finn-link"
+              className="group mt-8 flex items-center justify-between gap-4 rounded-[22px] bg-gradient-to-br from-[#0063fb] via-[#0057e0] to-[#0043b8] p-5 shadow-[0_14px_36px_-14px_rgba(0,99,251,0.6)] transition-all duration-300 hover:-translate-y-[2px] hover:shadow-[0_20px_46px_-14px_rgba(0,99,251,0.7)] sm:p-6">
+              <div className="min-w-0">
+                <p className="text-[10.5px] font-bold uppercase tracking-[0.16em] text-white/65">Annonsen</p>
+                <p className="mt-1.5 text-[18px] font-bold leading-tight tracking-[-0.01em] text-white sm:text-[20px]" style={{ fontFamily: 'var(--font-heading)' }}>
+                  Se annonsen på FINN
+                </p>
+                <p className="mt-1 text-[13px] leading-snug text-white/80">
+                  Alle bildene, plantegning og hele beskrivelsen
+                </p>
+              </div>
+              <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-white/15 ring-1 ring-inset ring-white/25 transition-transform duration-300 group-hover:translate-x-[3px] group-hover:-translate-y-[3px]">
+                <ArrowUpRight className="h-[22px] w-[22px] text-white" />
+              </span>
+            </a>
+          )}
 
           <div className="mt-10 grid gap-4 rounded-[24px] bg-white p-6 ring-1 ring-black/[0.05] sm:grid-cols-3">
             {[
