@@ -38,6 +38,7 @@ import { computeLlmUsageDashboard, getModelOverrides, setModelOverride, logImage
 import { logExtUsage, summarizeExtUsage, getPlatformUsage } from '@/lib/ext-usage';
 import { getFinanceSettings, setFinanceSettings, listCosts, upsertCost, deleteCost, listContracts, upsertContract, deleteContract, listEvents, upsertEvent, deleteEvent, computeResultat, computeLikviditet, computeFinanceOverview, computeTrends, captureSnapshot, computeInvestorMetrics, computeForecast, computeBoardPack, computeCustomers, computePlatformCustomers } from '@/lib/finance';
 import { syncContractsFromPlatform, syncCustomersFromPlatform, maybeAutoSyncFinance, getFinanceSyncMeta } from '@/lib/contracts-sync';
+import { enqueueInterest as deliverInterest, retryInterestWebhooks, webhookTarget as interestWebhookTarget, platformInboxUrl, platformThreadUrl, platformUnitUrl, deliveryView, OUTBOX_COLL as INTEREST_OUTBOX } from '@/lib/interest-webhook';
 import { ga4MpConfigured, sendGa4Purchase } from '@/lib/ga4-mp';
 import { buildRecommendations } from '@/lib/ads-recommendations';
 import { generateRsaCopy, generateMetaCopy } from '@/lib/ads-ai';
@@ -1086,9 +1087,20 @@ function adminAuthed(request) {
   } catch (e) { return false; }
 }
 
+// BOLIGINTERESSE UT TIL PLATTFORMEN: kø (sikkerhetsnett) + webhook (sanntid).
+// Hele leveringslogikken — HMAC-signering, backoff, deep-links til samtalen —
+// bor i lib/interest-webhook.js slik at den kan testes uten å gå via HTTP.
+
 // Auth for agent-bro: admin ELLER delt AGENT_BRIDGE_SECRET (header x-bridge-token / ?token=).
 function bridgeAuthed(request) {
   if (adminAuthed(request)) return true;
+  return bridgeTokenAuthed(request);
+}
+
+// BARE det delte bro-tokenet — altså plattformen, ikke vår egen admin. Brukes
+// der de to sidene ikke må gjøre samme jobb: svar til en interessent skal komme
+// fra ÉN avsender, ellers får hun to e-poster og to tråder.
+function bridgeTokenAuthed(request) {
   try {
     const url = new URL(request.url);
     const token = url.searchParams.get('token') || request.headers.get('x-bridge-token') || '';
@@ -2339,34 +2351,10 @@ async function handleRoute(request, { params }) {
       // EKSISTERENDE lead skal ikke føre til at vi sender personen inn på nytt
       // og lager duplikater i utleiemodulen — men meldingen må likevel fram,
       // knyttet til riktig enhet, med et spor vi kan se.
-      const enqueueInterest = async (leadDoc, ev) => {
-        if (!ev) return null;
-        try {
-          const doc = {
-            id: uuidv4(),
-            leadId: leadDoc.id,
-            platformLeadId: leadDoc.platform_id || null,
-            unitId: ev.unitId || ev.propertyId,
-            propertyId: ev.propertyId,
-            localPropertyId: ev.localPropertyId || null,
-            propertyTitle: ev.propertyTitle,
-            propertyAddress: ev.propertyAddress,
-            propertySlug: ev.propertySlug,
-            propertyUrl: ev.propertyUrl,
-            rentalScope: ev.rentalScope,
-            scope: ev.scope,
-            scopeLabel: ev.scopeLabel,
-            message: ev.message || '',
-            contact: { name: leadDoc.name || '', email: leadDoc.email || '', phone: leadDoc.phone || '' },
-            source: ev.source,
-            at: ev.at,
-            status: 'pending',
-            createdAt: new Date().toISOString(),
-          };
-          await db.collection('platform_interest_outbox').insertOne({ ...doc });
-          return doc.id;
-        } catch (e) { return null; }
-      };
+      // Køen skrives alltid, og webhooken forsøkes umiddelbart etterpå slik at
+      // interessenten havner i forvalterens innboks i sanntid. Feiler pushen,
+      // blir posten liggende «pending» og plattformens pull tar den.
+      const enqueueInterest = (leadDoc, ev) => deliverInterest(db, leadDoc, ev);
       const _tCls = classifyLeadSource(_tAttr, { manualHint: /manuell|manual|telefon|crm|admin/i.test((body.source || '')) });
       const tenant = {
         id: uuidv4(),
@@ -2612,12 +2600,25 @@ async function handleRoute(request, { params }) {
       const status = String(searchParams.get('status') || 'pending').toLowerCase();
       const limit = Math.min(200, Math.max(1, Number(searchParams.get('limit') || 50) || 50));
       const q = (status === 'alle' || status === 'all') ? {} : { status };
-      const items = await db.collection('platform_interest_outbox').find(q, { projection: { _id: 0 } }).sort({ createdAt: 1 }).limit(limit).toArray();
-      const pending = await db.collection('platform_interest_outbox').countDocuments({ status: 'pending' });
+      const items = await db.collection(INTEREST_OUTBOX).find(q, { projection: { _id: 0 } }).sort({ createdAt: 1 }).limit(limit).toArray();
+      const pending = await db.collection(INTEREST_OUTBOX).countDocuments({ status: 'pending' });
+      const wh = interestWebhookTarget();
       return cors(NextResponse.json({
         ok: true,
         count: items.length,
         pending,
+        // SANNTID FØRST: vi pusher nå hvert item til
+        // POST <deres base>/api/public/property-interest/incoming idet interessen
+        // sendes inn, signert med HMAC-SHA256 over rå body
+        // (x-digihome-signature: sha256=<hex>). Denne køen er sikkerhetsnettet —
+        // den inneholder det pushen ikke fikk levert, og kan pulles som før.
+        webhook: {
+          enabled: wh.ok,
+          host: wh.host || null,
+          reason: wh.ok ? null : wh.reason,
+          idempotencyKey: 'item.id',
+          note: 'Items levert live står som status=delivered og dukker ikke opp i status=pending. Ack er fortsatt trygt og idempotent.',
+        },
         contract: {
           purpose: 'Boliginteresse fra digihome.no som skal lagres på enheten i utleiemodulen',
           item: {
@@ -2636,8 +2637,10 @@ async function handleRoute(request, { params }) {
           reply: {
             method: 'POST',
             path: '/api/property-interest/reply',
+            auth: 'BARE bro-token (x-bridge-token / ?token=). Vår egen admin får 409 — se «sender» under.',
             body: { lead_id: 'eller platform_id/email', unit_id: '<enhets-ID>', message: 'svaret til interessenten', from_name: 'forvalterens navn', from_email: 'forvalterens e-post (blir Reply-To)' },
             effect: 'Vi sender svaret som e-post til interessenten og logger det på leadet.',
+            sender: 'Dere sender normalt svaret selv fra «Interessenter». Dette endepunktet er kun for det tilfellet at dere vil at VI skal sende e-posten. Bruk ett av alternativene, aldri begge — ellers får interessenten dobbel e-post.',
           },
         },
         items,
@@ -2650,15 +2653,40 @@ async function handleRoute(request, { params }) {
       const ids = (Array.isArray(body.ids) ? body.ids : [body.id]).map((x) => String(x || '').trim()).filter(Boolean).slice(0, 200);
       if (!ids.length) return cors(NextResponse.json({ ok: false, error: 'Mangler ids' }, { status: 400 }));
       const at = new Date().toISOString();
-      const r = await db.collection('platform_interest_outbox').updateMany(
-        { id: { $in: ids } },
-        { $set: { status: 'delivered', deliveredAt: at, platformRef: String(body.platform_ref || '').slice(0, 120) || null } },
+      const ref = String(body.platform_ref || '').slice(0, 120) || null;
+      // To tilfeller: (1) posten sto i kø og kvitteres nå av pullen, (2) den ble
+      // alt levert live via webhook — da beholder vi «webhook» som kanal og
+      // referansen derfra, men noterer kvitteringen. Ellers ville et ack fra
+      // pullen slettet sporet av at sanntidskanalen faktisk virket.
+      const queued = await db.collection(INTEREST_OUTBOX).updateMany(
+        { id: { $in: ids }, status: { $ne: 'delivered' } },
+        { $set: { status: 'delivered', deliveredAt: at, deliveredVia: 'pull', ackedAt: at, nextWebhookAt: null, ...(ref ? { platformRef: ref } : {}) } },
       );
-      return cors(NextResponse.json({ ok: true, acked: r.modifiedCount, requested: ids.length, at }));
+      const already = await db.collection(INTEREST_OUTBOX).updateMany(
+        { id: { $in: ids }, status: 'delivered' },
+        { $set: { ackedAt: at, ...(ref ? { platformRef: ref } : {}) } },
+      );
+      const r = { modifiedCount: queued.modifiedCount + already.modifiedCount };
+      return cors(NextResponse.json({ ok: true, acked: r.modifiedCount, fromQueue: queued.modifiedCount, alreadyLive: already.modifiedCount, requested: ids.length, at }));
     }
 
     if (route === '/property-interest/reply' && method === 'POST') {
       if (!bridgeAuthed(request)) return cors(NextResponse.json({ ok: false, error: 'Uautorisert' }, { status: 401 }));
+      // ÉN AVSENDER PER SAMTALE. Plattformen eier dialogen med interessenten og
+      // sender svaret selv fra forvalterens «Interessenter»-innboks, med
+      // tokenlenke slik at hun kan svare uten innlogging. Sendte markedssiden
+      // også, ville interessenten fått to e-poster og to tråder — og forvalteren
+      // ville ikke sett sitt eget svar der samtalen faktisk bor.
+      // Endepunktet står derfor åpent for plattformen (bro-token), men avviser
+      // vår egen admin med en forklaring og en lenke til rett sted.
+      if (!bridgeTokenAuthed(request)) {
+        return cors(NextResponse.json({
+          ok: false,
+          error: 'Svar sendes fra DigiHome-appen, ikke herfra',
+          why: 'Plattformen eier samtalen med interessenten og sender e-posten selv. To avsendere gir interessenten dobbel e-post og to tråder.',
+          where: platformInboxUrl(),
+        }, { status: 409 }));
+      }
       let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
       const message = String(body.message || body.body || body.reply || '').replace(/\r\n/g, '\n').trim().slice(0, 6000);
       if (!message) return cors(NextResponse.json({ ok: false, field: 'message', error: 'Svaret er tomt' }, { status: 400 }));
@@ -5937,32 +5965,12 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
         } catch (e) { /* interesse på kortet er allerede lagret */ }
       }
 
-      // Boligmeldingen legges i den kvitterbare køen mot plattformen, på samme
-      // måte som interesse meldt på boligsiden. Én kanal, uansett kilde.
+      // Boligmeldingen legges i den kvitterbare køen mot plattformen OG pushes i
+      // sanntid, på samme måte som interesse meldt på boligsiden. Én kanal,
+      // uansett kilde — ellers ville nyhetsbrev-interesser blitt en annenrangs vei.
       if (!previous) {
         try {
-          await db.collection('platform_interest_outbox').insertOne({
-            id: uuidv4(),
-            leadId: tenant.id,
-            platformLeadId: tenant.platform_id || null,
-            unitId: interest.unitId || interest.propertyId,
-            propertyId: interest.propertyId,
-            localPropertyId: interest.localPropertyId || null,
-            propertyTitle: interest.propertyTitle,
-            propertyAddress: interest.propertyAddress,
-            propertySlug: interest.propertySlug,
-            propertyUrl: interest.propertyUrl,
-            rentalScope: interest.rentalScope,
-            scope: interest.scope,
-            scopeLabel: interest.scopeLabel,
-            message: interest.message || '',
-            contact: { name: tenant.name || '', email: tenant.email || '', phone: tenant.phone || '' },
-            source: interest.source,
-            campaignId: campaignId || null,
-            at: interest.at,
-            status: 'pending',
-            createdAt: new Date().toISOString(),
-          });
+          await deliverInterest(db, tenant, interest, { campaignId: campaignId || null });
         } catch (e) { /* køen er et tillegg — interessen er alt lagret */ }
       }
 
@@ -7471,6 +7479,23 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
         return cors(NextResponse.json({ ok: true, ...results }));
       } catch (e) { return cors(NextResponse.json({ ok: false, error: e.message }, { status: 200 })); }
     }
+
+    // --- Cron: nye forsøk på boliginteresser sanntidspushen bommet på ---------
+    // Sikkerhetsnettet er allerede plattformens 15-minutters pull. Denne sveipen
+    // gjør at et kort avbrudd hos dem ikke koster interessenten en kvarter i kø:
+    // vi prøver på nytt med økende pause, og gir opp SANNTIDSkanalen — aldri køen.
+    if (route === '/cron/interest-webhook-retry' && (method === 'GET' || method === 'POST')) {
+      const sp = new URL(request.url).searchParams;
+      const token = sp.get('token') || request.headers.get('x-cron-token') || '';
+      const cronSecret = (process.env.ADS_CRON_SECRET || '').trim();
+      const okAuth = (cronSecret && token === cronSecret) || (ADMIN_KEY && token === ADMIN_KEY) || adminAuthed(request);
+      if (!okAuth) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      try {
+        const limit = Number(sp.get('limit') || 25) || 25;
+        const results = await retryInterestWebhooks(db, { limit });
+        return cors(NextResponse.json(results));
+      } catch (e) { return cors(NextResponse.json({ ok: false, error: e.message }, { status: 200 })); }
+    }
     // plattform-prosjektet. Auth: admin (?key=) ELLER ?token=AGENT_BRIDGE_SECRET
     // (header x-bridge-token). Lagres i collection agent_bridge.
     // ===================================================================
@@ -8806,7 +8831,33 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
           .find({ $or: or }, { projection: { _id: 0, type: 1, ts: 1, path: 1, channel: 1, device: 1, source: 1, medium: 1, campaign: 1, referrer: 1, meta: 1 } })
           .sort({ ts: 1 }).limit(300).toArray();
       }
-      return cors(NextResponse.json({ ok: true, lead: clean(lead), timeline }));
+
+      // HVOR LIGGER SAMTALEN? Vi pusher boliginteressen til plattformen i sanntid
+      // og lar køen være sikkerhetsnettet de puller. Plattformen eier deretter
+      // dialogen: den oppretter samtalen på enheten og svarer interessenten selv.
+      // Forvalteren må derfor kunne se om en interesse er LEVERT (og hvor tråden
+      // ligger) eller fortsatt står i KØ — ellers gjetter hun, og to svar til
+      // samme person er verre enn ingen svar.
+      const out = clean(lead);
+      if (Array.isArray(out.property_interests) && out.property_interests.length) {
+        const queued = await db.collection(INTEREST_OUTBOX)
+          .find({ leadId: lead.id }, { projection: { _id: 0, unitId: 1, status: 1, deliveredAt: 1, deliveredVia: 1, platformRef: 1, platformStatus: 1, createdAt: 1, webhookAttempts: 1, webhookGaveUp: 1, lastWebhookError: 1 } })
+          .toArray();
+        // Én person kan melde interesse for samme enhet flere ganger. Nyeste
+        // køoppføring beskriver den gjeldende tilstanden.
+        const byUnit = new Map();
+        for (const it of queued) {
+          const k = String(it.unitId || '');
+          const prev = byUnit.get(k);
+          if (!prev || String(it.createdAt || '') > String(prev.createdAt || '')) byUnit.set(k, it);
+        }
+        out.property_interests = out.property_interests.map((x) => {
+          const unitId = x.unitId || x.propertyId || '';
+          const q = byUnit.get(String(unitId)) || null;
+          return { ...x, delivery: deliveryView(q, unitId) };
+        });
+      }
+      return cors(NextResponse.json({ ok: true, lead: out, timeline }));
     }
 
     // --- Admin: eksporter leads til CSV (BOM for æøå i Excel) ---

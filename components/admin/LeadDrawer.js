@@ -56,41 +56,35 @@ function Field({ icon: Icon, label, value }) {
   );
 }
 
-// Forvalterens svar til interessenten. Sendes via
-// POST /api/property-interest/reply — samme endepunkt som DigiHome-plattformen
-// bruker — så svaret ser identisk ut for interessenten uansett hvor forvalteren
-// satt da hun svarte, og alt logges på leadet.
-function InterestReply({ apiKey, leadId, interest, email, replies = [], onSent }) {
-  const [open, setOpen] = useState(false);
-  const [msg, setMsg] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState(null);
+// HVOR SAMTALEN LIGGER — ikke en andre innboks.
+// Plattformen puller boliginteresser fra vår outbox, oppretter samtalen på
+// enheten (rental_leads) og sender svaret til interessenten SELV, med tokenlenke
+// slik at hun kan svare uten innlogging. Derfor har markedssiden ingen
+// svar-komposer lenger: to avsendere ga interessenten dobbel e-post og
+// forvalteren to tråder å holde styr på. Her viser vi i stedet tilstanden —
+// hentet eller i kø — og lenker til rett sted. Historiske svar sendt herfra
+// beholdes lesbare, slik at ingenting forsvinner.
+function InterestConversation({ interest, email, replies = [] }) {
   const unitId = interest.unitId || interest.propertyId || '';
+  const d = interest.delivery || {};
+  // «unmatched» = appen lagret meldingen, men kjente ikke igjen enheten. Da
+  // finnes ingen samtale PÅ boligen, og forvalteren må ikke tro at den ligger der.
+  const unmatched = d.platformStatus === 'unmatched';
+  const state = d.status === 'delivered' ? (unmatched ? 'uten-bolig' : 'levert') : d.status === 'pending' ? 'kø' : 'ukjent';
+  const subject = `Din interesse for ${interest.propertyAddress || interest.propertyTitle || 'boligen'}`;
+  const openUrl = d.threadUrl || d.unitUrl || d.inboxUrl || null;
+  const openLabel = d.threadUrl ? 'Åpne samtalen i appen' : d.unitUrl ? 'Åpne boligen i appen' : 'Åpne DigiHome-appen';
 
-  const send = async () => {
-    if (!msg.trim() || busy) return;
-    setBusy(true); setResult(null);
-    try {
-      const res = await fetch(`/api/property-interest/reply?key=${encodeURIComponent(apiKey)}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lead_id: leadId, unit_id: unitId, message: msg }),
-      });
-      const j = await res.json().catch(() => ({}));
-      if (res.ok && j.ok) {
-        setResult({ ok: true, sent: j.sent, skipped: j.skipped });
-        setMsg(''); setOpen(false);
-        if (onSent) onSent();
-      } else {
-        setResult({ ok: false, error: j.error || 'Kunne ikke sende svaret' });
-      }
-    } catch (e) {
-      setResult({ ok: false, error: 'Nettverksfeil — prøv igjen' });
-    } finally { setBusy(false); }
-  };
+  const HEAD = {
+    levert: { icon: CheckCircle2, cls: 'bg-[#f6fbf7]', tone: 'text-[#5f9c76]', title: 'Samtalen ligger i DigiHome-appen' },
+    'uten-bolig': { icon: Clock, cls: 'bg-[#fffdf5]', tone: 'text-[#b09455]', title: 'Levert — men boligen ble ikke gjenkjent' },
+    kø: { icon: Clock, cls: 'bg-[#fbf9fd]', tone: 'text-[#9b8bb5]', title: 'Hentes av DigiHome-appen' },
+    ukjent: { icon: Mail, cls: 'bg-[#fbf9fd]', tone: 'text-[#a09aa8]', title: 'Svar på e-post' },
+  }[state];
+  const Icon = HEAD.icon;
 
   return (
-    <div className="mt-2 border-t border-[#f0ebf7] pt-2">
+    <div className="mt-2 border-t border-[#f0ebf7] pt-2" data-testid={`interest-conversation-${unitId}`}>
       {replies.length > 0 && (
         <div className="mb-2 space-y-1.5">
           {replies.slice(-3).map((r) => (
@@ -103,34 +97,43 @@ function InterestReply({ apiKey, leadId, interest, email, replies = [], onSent }
           ))}
         </div>
       )}
-      {!open ? (
-        <button type="button" onClick={() => setOpen(true)} disabled={!email} data-testid={`interest-reply-open-${unitId}`}
-          className="inline-flex items-center gap-1.5 text-[11.5px] font-bold text-[#7A3EC8] hover:underline disabled:text-[#bbb] disabled:no-underline">
-          <Send className="h-3 w-3" /> {email ? 'Svar til interessenten' : 'Ingen e-post å svare til'}
-        </button>
-      ) : (
-        <div>
-          <textarea value={msg} onChange={(e) => setMsg(e.target.value)} rows={4} autoFocus
-            data-testid={`interest-reply-input-${unitId}`}
-            placeholder={`Skriv svaret til ${email || 'interessenten'} …`}
-            className="w-full resize-none rounded-lg border border-[#e7e0ee] bg-white p-2.5 text-[12.5px] leading-relaxed text-[#222] outline-none focus:border-[#7A3EC8]" />
-          <div className="mt-1.5 flex items-center gap-2">
-            <button type="button" onClick={send} disabled={busy || !msg.trim()} data-testid={`interest-reply-send-${unitId}`}
-              className="inline-flex h-8 items-center gap-1.5 rounded-full bg-[#0a0a0a] px-3.5 text-[11.5px] font-bold text-white disabled:opacity-40">
-              {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />} Send svar
-            </button>
-            <button type="button" onClick={() => { setOpen(false); setMsg(''); }} className="text-[11.5px] font-semibold text-[#888]">Avbryt</button>
-          </div>
-          <p className="mt-1.5 text-[10.5px] leading-snug text-[#a09aa8]">Svaret sendes som e-post fra DigiHome med boligen som kontekst. Interessenten kan svare direkte.</p>
-        </div>
-      )}
-      {result && (
-        <p className={`mt-1.5 text-[11px] font-semibold ${result.ok ? 'text-emerald-600' : 'text-rose-600'}`} data-testid={`interest-reply-result-${unitId}`}>
-          {result.ok
-            ? (result.sent ? 'Svaret er sendt på e-post.' : `Svaret er logget, men ikke sendt (${result.skipped || 'ukjent årsak'}).`)
-            : result.error}
+
+      <div className={`rounded-lg px-2.5 py-2 ${HEAD.cls}`} data-testid={`interest-delivery-${state}`}>
+        <p className={`flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.08em] ${HEAD.tone}`}>
+          <Icon className="h-3 w-3" /> {HEAD.title}
+          {state === 'levert' && d.via === 'webhook' ? <span className="font-semibold normal-case tracking-normal text-[#8fbfa2]">· sendt i sanntid</span> : null}
         </p>
-      )}
+        <p className="mt-1 text-[11.5px] leading-relaxed text-[#6b6b6b]">
+          {state === 'levert' ? (
+            <>Forvalteren svarer i appen — interessenten får e-posten derfra og kan svare uten innlogging. Ikke svar herfra i tillegg.</>
+          ) : state === 'uten-bolig' ? (
+            <>Appen har lagret meldingen, men fant ikke enheten. Ingen samtale på boligen ennå — sjekk enhets-ID eller svar på e-post.</>
+          ) : state === 'kø' ? (
+            <>{d.gaveUp ? 'Sanntidsleveringen kom ikke fram. Meldingen hentes' : 'Meldingen hentes'} automatisk innen 15 minutter, og samtalen opprettes på enheten.</>
+          ) : (
+            <>Denne interessen kom inn før samtalene flyttet til appen. Svar direkte på e-post.</>
+          )}
+        </p>
+        <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+          {openUrl && state !== 'ukjent' ? (
+            <a href={openUrl} target="_blank" rel="noopener noreferrer" data-testid={`interest-inbox-${unitId}`}
+              className="inline-flex items-center gap-1 text-[11.5px] font-bold text-[#7A3EC8] hover:underline">
+              {openLabel} <ExternalLink className="h-3 w-3" />
+            </a>
+          ) : null}
+          {email ? (
+            <a href={`mailto:${email}?subject=${encodeURIComponent(subject)}`} data-testid={`interest-mailto-${unitId}`}
+              className="inline-flex items-center gap-1 text-[11.5px] font-semibold text-[#8f8f8f] hover:text-[#7A3EC8]">
+              <Mail className="h-3 w-3" /> E-post til {email}
+            </a>
+          ) : (
+            <span className="text-[11.5px] text-[#bbb]">Ingen e-postadresse registrert</span>
+          )}
+          {d.platformRef ? (
+            <span className="text-[10.5px] text-[#b8b2c8]" title="Plattformens referanse til samtalen">ref. {String(d.platformRef).slice(0, 12)}</span>
+          ) : null}
+        </div>
+      </div>
     </div>
   );
 }
@@ -367,9 +370,8 @@ export default function LeadDrawer({ apiKey, lead, type, onClose, onStatusChange
                       className="mt-2 h-8 w-full rounded-lg border border-[#e7e0ee] bg-[#faf8fc] px-2.5 text-[11.5px] font-semibold text-[#5e4677] outline-none disabled:opacity-50">
                       <option value="interested">Interessert</option><option value="contacted">Kontaktet</option><option value="viewing">Visning</option><option value="matched">Matchet</option><option value="declined">Avslått</option>
                     </select>
-                    <InterestReply apiKey={apiKey} leadId={d.id} interest={interest} email={d.email}
-                      replies={(Array.isArray(d.interest_replies) ? d.interest_replies : []).filter((r) => String(r.unitId || '') === String(interest.unitId || interest.propertyId || ''))}
-                      onSent={load} />
+                    <InterestConversation interest={interest} email={d.email}
+                      replies={(Array.isArray(d.interest_replies) ? d.interest_replies : []).filter((r) => String(r.unitId || '') === String(interest.unitId || interest.propertyId || ''))} />
                   </div>
                 ))}
               </div>

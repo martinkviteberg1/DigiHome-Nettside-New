@@ -186,47 +186,76 @@ async function testOutbox() {
   const viaToken = TOKEN ? await j(`/api/property-interest/outbox?token=${encodeURIComponent(TOKEN)}`) : { status: 0, body: null };
   T('bro-token gir tilgang', viaToken.status === 200, String(viaToken.status));
 
-  const res = await j(`/api/property-interest/outbox?key=${KEY}&limit=100`);
+  // HYBRID: interessen pushes til plattformen i sanntid og står som «delivered»
+  // med én gang. Køen er sikkerhetsnettet — den holder bare det pushen ikke
+  // fikk levert. Vi spør derfor etter ALLE poster, ellers tester vi bare
+  // feilstien.
+  const res = await j(`/api/property-interest/outbox?key=${KEY}&limit=100&status=alle`);
   T('utboksen svarer med kontrakt', res.status === 200 && !!res.body?.contract?.reply, JSON.stringify(res.body?.contract || {}).slice(0, 80));
+  T('kontrakten dokumenterer sanntids-webhooken', !!res.body?.webhook && res.body.webhook.idempotencyKey === 'item.id', JSON.stringify(res.body?.webhook || {}));
   const mine = (res.body?.items || []).filter((x) => x.contact?.email === MAIL);
-  T('boligmeldingen ligger i køen', mine.length >= 1, `fant ${mine.length}`);
+  T('boligmeldingen ligger i utboksen', mine.length >= 1, `fant ${mine.length}`);
   const first = mine[0];
   if (first) {
     T('køposten har enhets-ID og adresse', !!first.unitId && /\d/.test(first.propertyAddress || ''), `${first.unitId} / ${first.propertyAddress}`);
     T('køposten har valgt utleieenhet', first.scopeLabel === 'Rom i bofellesskap', first.scopeLabel);
     T('køposten har kontaktinfo og melding', !!first.contact?.email && /katt/i.test(first.message || ''), first.message);
+    T('QA-trafikk er merket test', first.test === true, String(first.test));
+    // Enten levert live (webhook på), eller liggende for pullen (webhook av).
+    // Begge er gyldige driftsmodus — det som ikke er gyldig, er en post uten spor.
+    const live = first.status === 'delivered' && first.deliveredVia === 'webhook';
+    const queued = first.status === 'pending';
+    console.log(`  INFO levering: status=${first.status} · via=${first.deliveredVia || '-'} · ref=${first.platformRef || '-'} · plattformstatus=${first.platformStatus || '-'} · forsøk=${first.webhookAttempts ?? '-'}${first.lastWebhookError ? ` · feil=${first.lastWebhookError}` : ''}`);
+    T('leveringen har et spor: levert live eller i kø', live || queued, `${first.status}/${first.deliveredVia || '-'}`);
+    if (live) T('live-leveringen fikk plattformreferanse', !!first.platformRef || first.platformStatus === 'unmatched', `${first.platformRef} / ${first.platformStatus}`);
     const ack = await post(`/api/property-interest/outbox/ack?key=${KEY}`, { ids: [first.id], platform_ref: 'probe-ref' });
-    T('ack markerer posten som levert', ack.status === 200 && ack.body?.acked === 1, JSON.stringify(ack.body));
+    T('ack er idempotent og kvitterer', ack.status === 200 && ack.body?.acked === 1, JSON.stringify(ack.body));
   }
 }
 
 async function testReply(leadId) {
-  console.log('\n6) Forvalterens svar til interessenten');
+  console.log('\n6) Svar til interessenten — ÉN avsender');
   const unitId = state.both.externalId || state.both.id;
+  const tq = `token=${encodeURIComponent(TOKEN || '')}`;
 
   const noAuth = await post('/api/property-interest/reply', { lead_id: leadId, message: 'hei' });
   T('svar krever auth (401)', noAuth.status === 401, String(noAuth.status));
 
-  const empty = await post(`/api/property-interest/reply?key=${KEY}`, { lead_id: leadId, message: '   ' });
+  // VIKTIG KONTRAKT: plattformen eier samtalen og sender svaret selv fra
+  // «Interessenter». Markedssidens admin skal derfor AVVISES — to avsendere ga
+  // interessenten dobbel e-post og forvalteren to tråder.
+  const viaAdmin = await post(`/api/property-interest/reply?key=${KEY}`, { lead_id: leadId, unit_id: unitId, message: 'Hei!' });
+  T('admin avvises med 409', viaAdmin.status === 409, String(viaAdmin.status));
+  T('avvisningen forklarer hvorfor', /dobbel e-post/i.test(viaAdmin.body?.why || ''), String(viaAdmin.body?.why || '').slice(0, 80));
+  T('avvisningen peker til rett sted', typeof viaAdmin.body?.where === 'string' || viaAdmin.body?.where === null, JSON.stringify(viaAdmin.body?.where));
+
+  const empty = await post(`/api/property-interest/reply?${tq}`, { lead_id: leadId, message: '   ' });
   T('tomt svar avvises (400)', empty.status === 400, String(empty.status));
 
-  const unknown = await post(`/api/property-interest/reply?key=${KEY}`, { lead_id: leadId, unit_id: 'finnes-ikke-123', message: 'Hei!' });
+  const unknown = await post(`/api/property-interest/reply?${tq}`, { lead_id: leadId, unit_id: 'finnes-ikke-123', message: 'Hei!' });
   T('ukjent enhet avvises (404)', unknown.status === 404, String(unknown.status));
 
-  const noWho = await post(`/api/property-interest/reply?key=${KEY}`, { message: 'Hei!' });
+  const noWho = await post(`/api/property-interest/reply?${tq}`, { message: 'Hei!' });
   T('svar uten mottakerreferanse avvises (400)', noWho.status === 400, String(noWho.status));
 
-  const sent = await post(`/api/property-interest/reply?key=${KEY}`, {
+  const sent = await post(`/api/property-interest/reply?${tq}`, {
     lead_id: leadId, unit_id: unitId,
     message: 'Hei! Rommet er ledig fra 1. september, og katt er greit.\n\nPasser onsdag 17:00 for visning?',
     from_name: 'Probe Forvalter', from_email: 'forvalter@example.com',
   });
-  T('svaret godtas og logges (200)', sent.status === 200 && sent.body?.ok, `${sent.status} ${JSON.stringify(sent.body).slice(0, 160)}`);
+  T('plattformen får sende (200)', sent.status === 200 && sent.body?.ok, `${sent.status} ${JSON.stringify(sent.body).slice(0, 160)}`);
   T('svaret sendes ikke til testdomene (guard)', sent.body?.sent === false && sent.body?.skipped === 'test-mottaker', `sent=${sent.body?.sent} skipped=${sent.body?.skipped}`);
   T('svaret knyttes til riktig enhet', sent.body?.unitId === unitId, sent.body?.unitId);
 
-  const viaToken = TOKEN ? await post(`/api/property-interest/reply?token=${encodeURIComponent(TOKEN)}`, { email: MAIL, unit_id: unitId, message: 'Svar via plattformen.' }) : { status: 0, body: null };
-  T('plattformen kan svare med bro-token (200)', viaToken.status === 200 && viaToken.body?.ok, String(viaToken.status));
+  const viaToken = TOKEN ? await post(`/api/property-interest/reply?${tq}`, { email: MAIL, unit_id: unitId, message: 'Svar via plattformen.' }) : { status: 0, body: null };
+  T('plattformen kan slå opp på e-post også (200)', viaToken.status === 200 && viaToken.body?.ok, String(viaToken.status));
+
+  // ADMIN SKAL SE HVOR SAMTALEN LIGGER. Uten dette gjetter forvalteren, og da
+  // svarer hun begge steder.
+  const drawer = await j(`/api/admin/lead?key=${KEY}&id=${encodeURIComponent(leadId)}&type=tenant`);
+  const iv = (drawer.body?.lead?.property_interests || []).find((x) => String(x.unitId || '') === String(unitId));
+  T('lead-detaljen har leveringsstatus per interesse', !!iv?.delivery, JSON.stringify(iv?.delivery || null));
+  T('statusen er kjent (kø eller levert)', ['pending', 'delivered'].includes(iv?.delivery?.status), String(iv?.delivery?.status));
 
   const client = new MongoClient(MONGO);
   await client.connect();
