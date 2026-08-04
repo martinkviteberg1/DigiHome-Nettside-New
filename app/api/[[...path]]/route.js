@@ -40,6 +40,8 @@ import { getFinanceSettings, setFinanceSettings, listCosts, upsertCost, deleteCo
 import { syncContractsFromPlatform, syncCustomersFromPlatform, maybeAutoSyncFinance, getFinanceSyncMeta } from '@/lib/contracts-sync';
 import { enqueueInterest as deliverInterest, retryInterestWebhooks, webhookTarget as interestWebhookTarget, platformInboxUrl, platformThreadUrl, platformUnitUrl, deliveryView, OUTBOX_COLL as INTEREST_OUTBOX } from '@/lib/interest-webhook';
 import { notifyStatus, removeSuppression } from '@/lib/notify-status';
+import { searchBrreg, lookupOrgNo, isValidOrgNr, normalizeOrgNr, companyLine } from '@/lib/brreg';
+import { buildSelfServicePayload, resolveOwnerKind, ownerOrgNo, SS_UNIT_TYPE, RENTAL_LABELS } from '@/lib/self-service';
 import { ga4MpConfigured, sendGa4Purchase } from '@/lib/ga4-mp';
 import { buildRecommendations } from '@/lib/ads-recommendations';
 import { generateRsaCopy, generateMetaCopy } from '@/lib/ads-ai';
@@ -570,8 +572,6 @@ async function refreshCampaignProperties(dbx, blocks) {
   };
 }
 
-const SS_UNIT_TYPE = { leilighet: 'Leilighet', enebolig: 'Enebolig', rekkehus: 'Rekkehus', tomannsbolig: 'Tomannsbolig', hybel: 'Hybel', naeringsbygg: 'Næringsbygg', annet: 'Annet' };
-
 // Oppfrisker bydel på boligkort i et lagret utkast. Utkast laget før bydels-
 // utledningen har tom bydel på kortene, så ALT havnet under «Andre områder» —
 // også i editoren. Vi fikser det på lesetidspunktet i stedet for å kreve at
@@ -602,38 +602,10 @@ async function hydrateBlockDistricts(dbx, blocks) {
 async function provisionSelfService(lead, request) {
   const target = digiHomeTarget();
   if (!target.url) return { ok: false, error: 'Plattform-URL mangler' };
-  const att = lead.attribution || {};
-  const bedrooms = parseInt(String(lead.bedrooms || '').replace('+', ''), 10);
-  const payload = {
-    event_id: lead.id,
-    contact: {
-      name: lead.name || '', email: lead.email || '', phone: lead.phone || '',
-      org_no: lead.registry_orgnr || '',
-      type: lead.registry_owner_type === 'org' || lead.registry_orgnr ? 'business' : 'private',
-    },
-    agreement: {
-      version: (lead.terms_accepted && lead.terms_accepted.version) || 'selvforvaltning-2025-06',
-      accepted_at: (lead.terms_accepted && lead.terms_accepted.at) || lead.createdAt,
-      fee_percent: 5,
-      pdf_url: `${process.env.NEXT_PUBLIC_BASE_URL || 'https://digihome.no'}/vilkar`,
-      acceptance_ip: clientIp(request) || '',
-    },
-    property: {
-      address: lead.address || '', postal_code: lead.postal_code || '', city: lead.city || '',
-      matrikkel: lead.matrikkel_number || '',
-      unit_type: SS_UNIT_TYPE[(lead.property_type || '').toLowerCase()] || 'Annet',
-      area_m2: Number(lead.sqm) > 0 ? Number(lead.sqm) : undefined,
-      bedrooms: Number.isFinite(bedrooms) && bedrooms > 0 ? bedrooms : undefined,
-      desired_model: RENTAL_LABELS[(lead.rental_model || '').toLowerCase()] || 'Dynamisk',
-      track: 'selvforvaltning',
-    },
-    attribution: {
-      source: lead.source || att.source || (lead.is_paid ? 'Betalt' : 'Direkte'),
-      campaign: att.campaign || '',
-      ad: att.ad || att.content || '',
-      landing_page: att.landing_page || '',
-    },
-  };
+  const payload = buildSelfServicePayload(lead, {
+    ip: clientIp(request) || '',
+    termsUrl: `${process.env.NEXT_PUBLIC_BASE_URL || 'https://digihome.no'}/vilkar`,
+  });
   try {
     const res = await fetch(`${target.url}/api/bridge/self-service-customer`, {
       method: 'POST',
@@ -1192,8 +1164,6 @@ function maybeReforward(db, { force = false } = {}) {
   Promise.resolve().then(() => reforwardPending(db)).catch(() => {});
 }
 
-const RENTAL_LABELS = { dynamisk: 'Dynamisk', korttid: 'Korttid', kortid: 'Korttid', langtid: 'Langtid' };
-
 function streetFromAddress(addr) {
   return (addr || '').split(',')[0].trim();
 }
@@ -1468,6 +1438,23 @@ async function handleRoute(request, { params }) {
       }
       const data = await fetchFinnPreview(url);
       return cors(NextResponse.json(data));
+    }
+
+    // --- Selskapsoppslag i Enhetsregisteret (navn ELLER organisasjonsnummer) ---
+    // Brukes av huseier-registreringen når boligen eies av et selskap. Et fritt
+    // skrevet selskapsnavn er en gjetning; et org.nr fra registeret er en
+    // identitet — og det er den som skal stå på leiekontrakt, honoraravtale og
+    // faktura. Vi går via server for å slippe CORS, kunne cache, og for å
+    // slippe å belaste et fellesgode-register med halvferdige søk.
+    if (route === '/brreg' && method === 'GET') {
+      if (!rateLimit(clientIp(request), 40)) {
+        return cors(NextResponse.json({ ok: false, error: 'For mange søk. Vent litt.' }, { status: 429 }));
+      }
+      const q = (new URL(request.url).searchParams.get('q') || '').trim().slice(0, 180);
+      const res = await searchBrreg(q);
+      // Alltid HTTP 200: «fant ingenting» og «ugyldig kontrollsiffer» er svar
+      // skjemaet skal vise pent, ikke feil som skal velte autocomplete.
+      return cors(NextResponse.json(res));
     }
 
     // --- Boliger (proxy til DigiHome-plattformens public listings API) ---
@@ -2006,6 +1993,15 @@ async function handleRoute(request, { params }) {
         registry_owner_name: (body.registry_owner_name || '').toString().slice(0, 200),
         registry_owner_type: (body.registry_owner_type || '').toString().slice(0, 40),
         registry_orgnr: (body.registry_orgnr || '').toString().slice(0, 20),
+        // HUSEIER SOM BEDRIFT (erklært i skjemaet). Holdes bevisst atskilt fra
+        // registry_* som betyr «hentet fra matrikkelen/hjemmelshaver» — kilden
+        // skal alltid være mulig å se. Org.nr valideres på nytt her; en klient
+        // kan sende hva som helst, og et feil org.nr ender på leiekontrakten.
+        owner_kind: /^(business|bedrift)/i.test((body.owner_kind || '').toString()) ? 'business' : 'private',
+        org_no: isValidOrgNr(body.org_no) ? normalizeOrgNr(body.org_no) : '',
+        company_name: (body.company_name || '').toString().slice(0, 200),
+        company_form: (body.company_form || '').toString().slice(0, 120),
+        company_address: (body.company_address || '').toString().slice(0, 240),
         notes: (body.notes || body.message || '').toString().slice(0, 4000),
         finn_url: normalizedFinnUrl,
         source: (body.source || 'nettside').toString().slice(0, 60),
@@ -2041,6 +2037,41 @@ async function handleRoute(request, { params }) {
         lead.self_service = true;
         lead.wonAt = lead.createdAt;
         lead.statusHistory = [{ status: 'won', at: lead.createdAt, via: 'self_service', note: 'Avtale akseptert digitalt i skjemaet' }];
+      }
+
+      // BEDRIFT: bekreft org.nr mot Enhetsregisteret på serveren. Klienten har
+      // alt gjort oppslaget, men vi stoler ikke på at navnet som kom inn hører
+      // til nummeret som kom inn — det er selskapet som blir avtalepart, står på
+      // leiekontrakten og mottar honorarfakturaen. Vi overskriver derfor navn og
+      // form med registerets versjon. Feiler registeret, går leadet gjennom
+      // likevel (ubekreftet): en huseier skal ikke miste registreringen sin
+      // fordi et offentlig API er nede.
+      if (lead.owner_kind === 'business' && lead.org_no) {
+        try {
+          const chk = await lookupOrgNo(lead.org_no);
+          const c = chk.items && chk.items[0];
+          if (c) {
+            lead.company_name = c.name || lead.company_name;
+            lead.company_form = c.formLabel || lead.company_form;
+            lead.company_address = c.address
+              ? [c.address.street, [c.address.postalCode, c.address.city].filter(Boolean).join(' ')].filter(Boolean).join(', ').slice(0, 240)
+              : lead.company_address;
+            lead.company_status = c.status;
+            lead.company_verified = true;
+            lead.company_verified_at = new Date().toISOString();
+          } else {
+            lead.company_verified = false;
+            lead.company_verify_note = chk.message || 'Ikke funnet i Enhetsregisteret';
+          }
+        } catch (e) {
+          lead.company_verified = false;
+          lead.company_verify_note = 'Enhetsregisteret utilgjengelig';
+        }
+      } else if (lead.owner_kind === 'business') {
+        // Bedrift valgt uten gyldig org.nr: registrer det, men ikke lat som om
+        // det er bekreftet. Forvalter må følge opp identiteten manuelt.
+        lead.company_verified = false;
+        lead.company_verify_note = 'Mangler gyldig organisasjonsnummer';
       }
 
       // Idempotens: stopp duplikater fra gjentatte klikk / nettverks-retry.
@@ -2214,6 +2245,13 @@ async function handleRoute(request, { params }) {
         registry_owner_name: lead.registry_owner_name || undefined,
         registry_owner_type: lead.registry_owner_type || undefined,
         registry_orgnr: lead.registry_orgnr || undefined,
+        // Bedrift eller privatperson — plattformen trenger dette for å opprette
+        // riktig kundetype og få org.nr på avtalen/fakturaen.
+        owner_kind: lead.owner_kind || undefined,
+        org_no: lead.org_no || undefined,
+        company_name: lead.company_name || undefined,
+        company_form: lead.company_form || undefined,
+        company_verified: lead.owner_kind === 'business' ? !!lead.company_verified : undefined,
         attribution: lead.attribution || undefined,
         tier: lead.tier || undefined,
         terms_accepted: lead.terms_accepted || undefined,

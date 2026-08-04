@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AddressAutocomplete } from './AddressAutocomplete';
+import CompanyPicker, { type Company } from './CompanyPicker';
 import { detectFinnReference } from './PropertyInputs';
 import { track, getLeadAttribution } from '@/lib/analytics';
 import { trackLead, trackLeadStart, getClickIds } from '@/lib/gtag';
@@ -28,6 +29,9 @@ const SELF_TERMS_VERSION = 'selvforvaltning-2025-06';
 
 type Phase = 'address' | 'service' | 'contact';
 type Service = 'selvforvaltning' | 'full_forvaltning' | '';
+// Eier som privatperson eller selskap. Dette avgjør hvem som blir avtalepart —
+// og dermed hvem som står på leiekontrakten, honoraravtalen og fakturaen.
+type OwnerKind = 'private' | 'business';
 
 type FormState = {
   address: string;
@@ -40,6 +44,7 @@ type FormState = {
   email: string;
   phone: string;
   service: Service;
+  ownerKind: OwnerKind;
 };
 
 const PHASES: { id: Phase; label: string }[] = [
@@ -305,7 +310,11 @@ export default function OwnerOnboarding2026() {
     email: '',
     phone: '',
     service: '',
+    ownerKind: 'private',
   });
+  // Valgt selskap fra Enhetsregisteret (eller manuelt utfylt hvis registeret er nede).
+  const [company, setCompany] = useState<Company | null>(null);
+  const [companyStatusAck, setCompanyStatusAck] = useState(false);
   const [phoneCountryIso, setPhoneCountryIso] = useState('NO');
   const [addressVerified, setAddressVerified] = useState(false);
   const [finnUrl, setFinnUrl] = useState('');
@@ -486,7 +495,7 @@ export default function OwnerOnboarding2026() {
 
   const contactErrors = useMemo(() => {
     const next: Record<string, string> = {};
-    if (!form.name.trim()) next.name = 'Skriv inn navnet ditt.';
+    if (!form.name.trim()) next.name = form.ownerKind === 'business' ? 'Skriv inn navnet på kontaktpersonen.' : 'Skriv inn navnet ditt.';
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) next.email = 'Skriv inn en gyldig e-postadresse.';
     if (!phoneIsValid(form.phone, phoneCountryIso)) {
       const country = phoneCountry(phoneCountryIso);
@@ -494,9 +503,15 @@ export default function OwnerOnboarding2026() {
         ? `Skriv inn et gyldig nummer for ${country.name} (${country.min} siffer).`
         : `Skriv inn et gyldig nummer for ${country.name}.`;
     }
+    // Bedrift uten selskap er ikke en bedrift. Og et selskap som er konkurs
+    // eller under avvikling krever en bevisst bekreftelse — ikke et uhell.
+    if (form.ownerKind === 'business') {
+      if (!company || !company.orgNo) next.company = 'Søk opp selskapet, eller fyll det inn manuelt.';
+      else if (company.status && company.status !== 'aktiv' && !companyStatusAck) next.company = 'Bekreft at selskapet skal registreres selv om statusen er merket.';
+    }
     if (form.service === 'selvforvaltning' && !termsAccepted) next.terms = 'Godta avtalen for å opprette konto.';
     return next;
-  }, [form, phoneCountryIso, termsAccepted]);
+  }, [form, phoneCountryIso, termsAccepted, company, companyStatusAck]);
 
   const submit = async () => {
     if (loading) return;
@@ -528,6 +543,15 @@ export default function OwnerOnboarding2026() {
       availability: '',
       lead_type: 'huseier',
       tier: form.service,
+      // Bedrift eller privatperson. Serveren validerer org.nr på nytt og henter
+      // navn/form fra Enhetsregisteret — klienten er ikke sannhetskilden her.
+      owner_kind: form.ownerKind,
+      org_no: form.ownerKind === 'business' ? (company?.orgNo || '') : undefined,
+      company_name: form.ownerKind === 'business' ? (company?.name || '') : undefined,
+      company_form: form.ownerKind === 'business' ? (company?.formLabel || '') : undefined,
+      company_address: form.ownerKind === 'business' && company?.address
+        ? [company.address.street, [company.address.postalCode, company.address.city].filter(Boolean).join(' ')].filter(Boolean).join(', ')
+        : undefined,
       terms: form.service === 'selvforvaltning' && termsAccepted ? { version: SELF_TERMS_VERSION } : undefined,
       finn_url: finnUrl || undefined,
       units: [{
@@ -714,7 +738,40 @@ export default function OwnerOnboarding2026() {
           </div>
 
           <div className="mt-7 space-y-4">
-            <TextField id="owner-name-input" label="Fullt navn" value={form.name} onChange={(event: any) => setField('name', event.target.value)} autoComplete="name" placeholder="Ola Nordmann" icon={User} error={errors.name} />
+            {/* Privatperson eller bedrift? Spørsmålet står FØR navnefeltet, fordi
+                svaret endrer hva navnet betyr: deg selv, eller kontaktpersonen
+                for selskapet som eier boligen. */}
+            <div>
+              <span className="mb-2 block text-[13px] font-semibold text-[#292621]">Jeg registrerer som</span>
+              <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Registrerer som" data-testid="owner-kind-toggle">
+                {([['private', 'Privatperson'], ['business', 'Bedrift']] as [OwnerKind, string][]).map(([kind, label]) => (
+                  <button key={kind} type="button" role="radio" aria-checked={form.ownerKind === kind}
+                    data-testid={`owner-kind-${kind}`}
+                    onClick={() => {
+                      setField('ownerKind', kind);
+                      setErrors((current) => ({ ...current, company: '' }));
+                      if (kind === 'private') { setCompany(null); setCompanyStatusAck(false); }
+                      try { track('owner_kind_choice', { form: 'utleier-start', kind }); } catch { /* analyse må aldri blokkere skjemaet */ }
+                    }}
+                    className={`h-12 rounded-[14px] border text-[14px] font-semibold transition ${form.ownerKind === kind ? 'border-[#292621] bg-[#292621] text-white' : 'border-[#dcd6cf] bg-white text-[#504b46] hover:border-[#b9b1a9]'}`}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {form.ownerKind === 'business' ? (
+              <CompanyPicker
+                value={company}
+                onSelect={(next) => { setCompany(next); setCompanyStatusAck(false); setErrors((current) => ({ ...current, company: '' })); }}
+                onClear={() => { setCompany(null); setCompanyStatusAck(false); }}
+                error={errors.company}
+                statusAck={companyStatusAck}
+                onStatusAckChange={(next) => { setCompanyStatusAck(next); setErrors((current) => ({ ...current, company: '' })); }}
+              />
+            ) : null}
+
+            <TextField id="owner-name-input" label={form.ownerKind === 'business' ? 'Kontaktperson' : 'Fullt navn'} value={form.name} onChange={(event: any) => setField('name', event.target.value)} autoComplete="name" placeholder="Ola Nordmann" icon={User} error={errors.name} />
             <TextField id="owner-email-input" label="E-post" type="email" value={form.email} onChange={(event: any) => setField('email', event.target.value)} autoComplete="email" inputMode="email" placeholder="ola@eksempel.no" icon={Mail} error={errors.email} />
             <PhoneField country={phoneCountryIso} onCountryChange={changePhoneCountry} value={form.phone} onChange={(event: any) => handlePhoneInput(event.target.value)} error={errors.phone} />
           </div>
@@ -723,7 +780,14 @@ export default function OwnerOnboarding2026() {
             <div className={`mt-5 rounded-2xl border bg-white p-4 ${errors.terms ? 'border-red-400' : 'border-[#dedad4]'}`}>
               <button type="button" onClick={() => { setTermsAccepted((value) => !value); setErrors((current) => ({ ...current, terms: '' })); }} data-testid="owner-terms-checkbox" className="flex w-full items-start gap-3 text-left">
                 <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-2 ${termsAccepted ? 'border-[#24211e] bg-[#24211e]' : 'border-[#cfc9c2] bg-white'}`}>{termsAccepted ? <Check className="h-3.5 w-3.5 text-white" strokeWidth={3.5} /> : null}</span>
-                <span className="text-[13px] leading-relaxed text-[#504b46]">Jeg godtar <a href="/vilkar" target="_blank" rel="noopener noreferrer" onClick={(event) => event.stopPropagation()} className="font-bold text-[#403c37] underline underline-offset-2">avtalen om selvforvaltning</a> (5 % per utleieforhold, ingen bindingstid).</span>
+                <span className="text-[13px] leading-relaxed text-[#504b46]">
+                  Jeg godtar <a href="/vilkar" target="_blank" rel="noopener noreferrer" onClick={(event) => event.stopPropagation()} className="font-bold text-[#403c37] underline underline-offset-2">avtalen om selvforvaltning</a> (5 % per utleieforhold, ingen bindingstid)
+                  {/* Ved bedrift er det selskapet som blir avtalepart. Da må det
+                      stå eksplisitt at personen signerer på selskapets vegne. */}
+                  {form.ownerKind === 'business'
+                    ? <> — og jeg aksepterer <strong className="font-bold text-[#403c37]">på vegne av {company?.name || 'selskapet'}</strong>, som jeg har signaturrett for.</>
+                    : '.'}
+                </span>
               </button>
               {errors.terms ? <p className="mt-2 text-[12px] font-medium text-red-600">{errors.terms}</p> : null}
             </div>

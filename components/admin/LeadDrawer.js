@@ -384,6 +384,29 @@ export default function LeadDrawer({ apiKey, lead, type, onClose, onStatusChange
             {d.email && <a href={`mailto:${d.email}`} className="flex items-center gap-2.5 group"><Mail className="w-4 h-4 text-[#b39ddb] shrink-0" /><span className="text-[13.5px] text-[#1f1f1f] group-hover:text-[#7c3aed] break-all">{d.email}</span></a>}
             {d.phone && <a href={`tel:${d.phone}`} className="flex items-center gap-2.5 group"><Phone className="w-4 h-4 text-[#b39ddb] shrink-0" /><span className="text-[13.5px] text-[#1f1f1f] group-hover:text-[#7c3aed]">{d.phone}</span></a>}
             {!d.email && !d.phone && <p className="text-[13px] text-[#aaa]">Ingen kontaktinfo</p>}
+
+            {/* BEDRIFT: selskapet er avtaleparten — personen over er kontaktperson.
+                Ubekreftet org.nr må vises som ubekreftet, ellers risikerer vi
+                kontrakt og faktura på et selskap ingen har verifisert. */}
+            {d.owner_kind === 'business' && (
+              <div className="pt-1" data-testid="lead-company">
+                <div className={`rounded-xl px-3 py-2.5 ${d.company_verified ? 'bg-[#f7f5fc]' : 'bg-[#fdf6f1]'}`}>
+                  <p className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.08em] text-[#8b7fb0]">
+                    <Building2 className="w-3 h-3" /> Bedrift
+                  </p>
+                  <p className="mt-1 text-[13.5px] font-semibold text-[#1f1f1f]">{d.company_name || 'Navn ikke oppgitt'}</p>
+                  <p className="mt-0.5 text-[12px] text-[#6b6b6b]">
+                    {d.org_no ? `org.nr ${d.org_no}` : 'Uten organisasjonsnummer'}{d.company_form ? ` · ${d.company_form}` : ''}
+                  </p>
+                  {d.company_address ? <p className="mt-0.5 text-[12px] text-[#8f8f8f]">{d.company_address}</p> : null}
+                  <p className={`mt-1.5 text-[11.5px] font-semibold ${d.company_verified ? 'text-[#5f9c76]' : 'text-[#b4531f]'}`}>
+                    {d.company_verified
+                      ? `Bekreftet i Enhetsregisteret${d.company_status && d.company_status !== 'aktiv' ? ` — ${d.company_status}` : ''}`
+                      : `Ikke bekreftet${d.company_verify_note ? ` — ${d.company_verify_note}` : ''}`}
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Eiendom / Ønsker */}
