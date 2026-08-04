@@ -2,8 +2,8 @@
 
 import React, { useMemo, useState, useEffect } from 'react';
 import Link from 'next/link';
-import { MapPin, Ruler, BedDouble, CalendarDays, ArrowUpRight, SlidersHorizontal, X, EyeOff } from 'lucide-react';
-import { formatNoDate } from '@/lib/listings';
+import { MapPin, Ruler, BedDouble, CalendarDays, ArrowUpRight, SlidersHorizontal, X, EyeOff, Search, Users } from 'lucide-react';
+import { formatNoDate, matchesQuery } from '@/lib/listings';
 import HousingAlertForm from './HousingAlertForm';
 
 // Merkelapper som ligger OVER et bilde trenger sin egen bakgrunn — ellers blir
@@ -13,6 +13,11 @@ const BADGE_BASE = 'inline-flex items-center rounded-full px-2.5 py-[5px] text-[
 const BADGE_LIGHT = `${BADGE_BASE} bg-white/95 text-[#0a0a0a] ring-1 ring-inset ring-black/[0.05] shadow-[0_2px_10px_-2px_rgba(0,0,0,0.35)]`;
 const BADGE_DARK = `${BADGE_BASE} bg-[#0a0a0a]/70 text-white ring-1 ring-inset ring-white/15`;
 const BADGE_ACCENT = `${BADGE_BASE} bg-[#7c3aed] text-white shadow-[0_2px_10px_-2px_rgba(124,58,237,0.6)]`;
+// Utleieenhet: «Rom i bofellesskap» er informasjon boligsøkeren MÅ se før hun
+// klikker — den avgjør både pris og hverdag. Egen farge, ikke gjemt i teksten.
+// Merk: bare opacity-trinn fra Tailwinds egen skala (/90, /95) — en verdi som
+// /92 genereres ikke, og badgen ble da svart tekst rett på bildet.
+const BADGE_SCOPE = `${BADGE_BASE} bg-[#7c3aed]/90 text-white ring-1 ring-inset ring-white/20 shadow-[0_2px_10px_-2px_rgba(124,58,237,0.5)]`;
 
 // Filtrering skjer i nettleseren på en liste som allerede er server-rendret.
 // Da er boligene i HTML-en for søkemotorer og AI-crawlere, samtidig som
@@ -60,6 +65,7 @@ function ListingCard({ c, preview }) {
         <div className="pointer-events-none absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-black/20 via-black/5 to-transparent" />
         <div className="absolute inset-x-3 top-3 flex flex-wrap items-center gap-1.5">
           <span className={BADGE_LIGHT}>{c.modelLabel}</span>
+          {c.scope && c.scope !== 'hele' && <span className={BADGE_SCOPE} data-testid={`listing-scope-${c.scope}`}>{c.scopeShort}</span>}
           {rented && <span className={BADGE_DARK}>Utleid</span>}
           {preview && <span className={`${BADGE_ACCENT} gap-1`}><EyeOff className="h-3 w-3" /> Ikke publisert</span>}
         </div>
@@ -76,6 +82,7 @@ function ListingCard({ c, preview }) {
         <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px] text-[#5f5a53]">
           {c.sqm ? <span className="inline-flex items-center gap-1.5"><Ruler className="h-3.5 w-3.5 text-[#c9c3ba]" />{c.sqm} m²</span> : null}
           {c.bedrooms ? <span className="inline-flex items-center gap-1.5"><BedDouble className="h-3.5 w-3.5 text-[#c9c3ba]" />{c.bedrooms} soverom</span> : null}
+          {c.roomsLabel ? <span className="inline-flex items-center gap-1.5" data-testid="listing-rooms"><Users className="h-3.5 w-3.5 text-[#c9c3ba]" />{c.roomsLabel}</span> : null}
           {avail ? <span className="inline-flex items-center gap-1.5"><CalendarDays className="h-3.5 w-3.5 text-[#c9c3ba]" />{/^\d{4}-/.test(String(c.availableFrom)) ? `Ledig ${avail}` : avail}</span> : null}
         </div>
         <div className="mt-4 flex items-end justify-between gap-3 border-t border-black/[0.05] pt-4">
@@ -83,7 +90,7 @@ function ListingCard({ c, preview }) {
             {c.rentBand ? (
               <>
                 <p className="truncate whitespace-nowrap text-[15.5px] font-bold text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>{c.rentBand.replace(/\s*kr\/mnd\s*$/i, '')}</p>
-                <p className="text-[11.5px] text-[#8d867d]">kr/mnd{c.rentIndicative ? ' · prisantydning' : ''}</p>
+                <p className="text-[11.5px] text-[#8d867d]">kr/mnd{c.rentScopeNote ? ` · ${c.rentScopeNote}` : ''}{c.rentIndicative ? ' · prisantydning' : ''}</p>
               </>
             ) : <p className="text-[13px] text-[#8d867d]">Pris på forespørsel</p>}
           </div>
@@ -99,9 +106,11 @@ function ListingCard({ c, preview }) {
 // gir oss et lead og forteller forvalteren hvilke boliger det venter folk på.
 
 export default function ListingsGrid({ listings = [] }) {
+  const [q, setQ] = useState('');
   const [district, setDistrict] = useState('');
   const [beds, setBeds] = useState('');
   const [model, setModel] = useState('');
+  const [scope, setScope] = useState('');
   const [maxRent, setMaxRent] = useState(0);
   const [openFilters, setOpenFilters] = useState(false);
 
@@ -135,25 +144,39 @@ export default function ListingsGrid({ listings = [] }) {
   const facets = useMemo(() => {
     const c = (key) => all.reduce((a, x) => { const v = x[key]; if (v) a[v] = (a[v] || 0) + 1; return a; }, {});
     const bands = all.map((x) => parseBand(x.rentBand)).filter(Boolean);
+    // Utleieenhet: «hele enheten» treffer også boliger som tilbyr BEGGE — leter
+    // du etter en hel bolig, er en enhet som også kan leies rom for rom fortsatt
+    // aktuell for deg. Filteret vises bare når utvalget faktisk inneholder rom.
+    const scopeCount = (v) => all.filter((x) => x.scope === v || x.scope === 'begge').length;
+    const hasRooms = all.some((x) => x.scope && x.scope !== 'hele');
     return {
       districts: Object.entries(c('district')).map(([k, n]) => ({ key: k, label: k, count: n })).sort((a, b) => b.count - a.count),
       models: Object.entries(c('model')).map(([k, n]) => ({ key: k, label: all.find((x) => x.model === k)?.modelLabel || k, count: n })),
       beds: [...new Set(all.map((x) => x.bedrooms).filter(Boolean))].sort((a, b) => a - b),
+      scopes: hasRooms
+        ? [
+            { key: 'hele', label: 'Hele enheten', count: scopeCount('hele') },
+            { key: 'rom', label: 'Rom i bofellesskap', count: scopeCount('rom') },
+          ].filter((s) => s.count > 0)
+        : [],
       maxPrice: bands.length ? Math.max(...bands.map((b) => b.max)) : 0,
       minPrice: bands.length ? Math.min(...bands.map((b) => b.min)) : 0,
     };
   }, [all]);
 
   const filtered = useMemo(() => all.filter((c) => {
+    if (!matchesQuery(c, q)) return false;
     if (district && c.district !== district) return false;
     if (beds) { const n = Number(beds); if (n >= 4 ? !(c.bedrooms >= 4) : c.bedrooms !== n) return false; }
     if (model && c.model !== model) return false;
+    if (scope && !(c.scope === scope || c.scope === 'begge')) return false;
     if (maxRent) { const b = parseBand(c.rentBand); if (b && b.min > maxRent) return false; }
     return true;
-  }), [all, district, beds, model, maxRent]);
+  }), [all, q, district, beds, model, scope, maxRent]);
 
-  const activeFilters = [district, beds, model, maxRent ? '1' : ''].filter(Boolean).length;
-  const reset = () => { setDistrict(''); setBeds(''); setModel(''); setMaxRent(0); };
+  const activeFilters = [district, beds, model, scope, maxRent ? '1' : ''].filter(Boolean).length;
+  const anyActive = activeFilters > 0 || !!q.trim();
+  const reset = () => { setQ(''); setDistrict(''); setBeds(''); setModel(''); setScope(''); setMaxRent(0); };
 
   return (
     <div data-testid="listings-grid">
@@ -168,18 +191,48 @@ export default function ListingsGrid({ listings = [] }) {
       )}
 
       {all.length > 0 && (
-        <div className="mb-8 flex flex-wrap items-center gap-2">
-          <button type="button" onClick={() => setOpenFilters((v) => !v)} data-testid="listings-filter-toggle"
-            className="inline-flex h-9 items-center gap-2 rounded-full bg-white px-3.5 text-[13px] font-semibold text-[#0a0a0a] ring-1 ring-inset ring-black/[0.09]">
-            <SlidersHorizontal className="h-3.5 w-3.5" /> Filtre{activeFilters ? ` (${activeFilters})` : ''}
-          </button>
-          {facets.districts.slice(0, 5).map((d) => (
-            <Pill key={d.key} active={district === d.key} testId={`listings-district-${d.key}`}
-              onClick={() => setDistrict(district === d.key ? '' : d.key)}>{d.label} <span className="opacity-50">{d.count}</span></Pill>
-          ))}
-          <span className="ml-auto text-[13px] text-[#8d867d] tabular-nums" data-testid="listings-count">
-            {filtered.length} av {all.length} {all.length === 1 ? 'bolig' : 'boliger'}
-          </span>
+        <div className="mb-8 space-y-3">
+          {/* Søkefeltet står øverst og alltid åpent. Boligsøkere skriver
+              «sandviken 2 soverom» eller husker bare gatenavnet — de leter ikke
+              gjennom en filtermeny først. Alle ordene må treffe, og æ/ø/å
+              normaliseres, så «nostet» finner «Nøstet». */}
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="relative flex h-10 min-w-[220px] flex-1 items-center sm:max-w-[360px]">
+              <Search className="pointer-events-none absolute left-3.5 h-4 w-4 text-[#b3ada4]" />
+              <input value={q} onChange={(e) => setQ(e.target.value)} data-testid="listings-search" type="search"
+                aria-label="Søk i ledige boliger" placeholder="Søk på adresse, bydel eller boligtype …"
+                className="h-10 w-full rounded-full bg-white pl-10 pr-9 text-[13.5px] text-[#0a0a0a] ring-1 ring-inset ring-black/[0.08] outline-none placeholder:text-[#b3ada4] focus:ring-2 focus:ring-[#7c3aed]" />
+              {q ? (
+                <button type="button" onClick={() => setQ('')} aria-label="Tøm søket" data-testid="listings-search-clear"
+                  className="absolute right-3 grid h-5 w-5 place-items-center rounded-full text-[#b3ada4] transition-colors hover:bg-black/[0.06] hover:text-[#0a0a0a]">
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              ) : null}
+            </label>
+            <button type="button" onClick={() => setOpenFilters((v) => !v)} data-testid="listings-filter-toggle"
+              className="inline-flex h-10 items-center gap-2 rounded-full bg-white px-4 text-[13px] font-semibold text-[#0a0a0a] ring-1 ring-inset ring-black/[0.09]">
+              <SlidersHorizontal className="h-3.5 w-3.5" /> Filtre{activeFilters ? ` (${activeFilters})` : ''}
+            </button>
+            <span className="ml-auto text-[13px] text-[#8d867d] tabular-nums" data-testid="listings-count">
+              {filtered.length} av {all.length} {all.length === 1 ? 'bolig' : 'boliger'}
+            </span>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {facets.districts.slice(0, 5).map((d) => (
+              <Pill key={d.key} active={district === d.key} testId={`listings-district-${d.key}`}
+                onClick={() => setDistrict(district === d.key ? '' : d.key)}>{d.label} <span className="opacity-50">{d.count}</span></Pill>
+            ))}
+            {facets.scopes.map((s) => (
+              <Pill key={s.key} active={scope === s.key} testId={`listings-scope-pill-${s.key}`}
+                onClick={() => setScope(scope === s.key ? '' : s.key)}>{s.label} <span className="opacity-50">{s.count}</span></Pill>
+            ))}
+            {anyActive ? (
+              <button type="button" onClick={reset} data-testid="listings-reset"
+                className="inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-[13px] font-semibold text-[#7c3aed] hover:bg-[#f4f0fb]">
+                <X className="h-3.5 w-3.5" /> Nullstill
+              </button>
+            ) : null}
+          </div>
         </div>
       )}
 
@@ -204,6 +257,18 @@ export default function ListingsGrid({ listings = [] }) {
                 {facets.models.map((m) => <Pill key={m.key} active={model === m.key} onClick={() => setModel(model === m.key ? '' : m.key)}>{m.label}</Pill>)}
               </div>
             </div>
+            {facets.scopes.length > 0 && (
+              <div>
+                <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.12em] text-[#a8a29a]">Utleieenhet</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {facets.scopes.map((s) => (
+                    <Pill key={s.key} active={scope === s.key} testId={`listings-scope-filter-${s.key}`}
+                      onClick={() => setScope(scope === s.key ? '' : s.key)}>{s.label}</Pill>
+                  ))}
+                </div>
+                <p className="mt-1.5 text-[11.5px] leading-snug text-[#a8a29a]">Boliger som kan leies begge veier vises i begge valgene.</p>
+              </div>
+            )}
             <div>
               <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.12em] text-[#a8a29a]">Maks leie{maxRent ? `: ${KR(maxRent)} kr` : ''}</p>
               <input type="range" min={facets.minPrice || 0} max={facets.maxPrice || 0} step={1000} value={maxRent || facets.maxPrice || 0}
@@ -212,7 +277,7 @@ export default function ListingsGrid({ listings = [] }) {
               <p className="mt-1 text-[11.5px] text-[#a8a29a]">{facets.minPrice ? `${KR(facets.minPrice)}–${KR(facets.maxPrice)} kr/mnd i utvalget` : 'Ingen priser i utvalget'}</p>
             </div>
           </div>
-          {activeFilters > 0 && (
+          {anyActive && (
             <button type="button" onClick={reset} className="mt-4 inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#7c3aed]"><X className="h-3.5 w-3.5" /> Nullstill filtre</button>
           )}
         </div>
@@ -223,9 +288,14 @@ export default function ListingsGrid({ listings = [] }) {
           {filtered.map((c) => <ListingCard key={c.id} c={c} preview={c._preview} />)}
         </div>
       ) : all.length > 0 ? (
-        <div className="rounded-[26px] bg-white p-10 text-center ring-1 ring-black/[0.05]">
-          <p className="text-[17px] font-semibold text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>Ingen boliger matcher filtrene</p>
-          <button type="button" onClick={reset} className="mt-3 text-[14px] font-semibold text-[#7c3aed]">Nullstill filtre</button>
+        <div className="rounded-[26px] bg-white p-10 text-center ring-1 ring-black/[0.05]" data-testid="listings-no-match">
+          <p className="text-[17px] font-semibold text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>
+            {q.trim() ? `Ingen boliger matcher «${q.trim()}»` : 'Ingen boliger matcher filtrene'}
+          </p>
+          <p className="mx-auto mt-2 max-w-[46ch] text-[13.5px] leading-relaxed text-[#78726a]">
+            Prøv et bredere søk — eller legg inn e-posten din nederst, så varsler vi deg når en bolig som passer blir ledig.
+          </p>
+          <button type="button" onClick={reset} className="mt-3 text-[14px] font-semibold text-[#7c3aed]">Nullstill søk og filtre</button>
         </div>
       ) : (
         <div className="rounded-[30px] bg-white p-8 sm:p-12 ring-1 ring-black/[0.05] shadow-[0_14px_50px_-30px_rgba(0,0,0,0.3)]" data-testid="listings-empty">

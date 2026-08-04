@@ -49,11 +49,11 @@ import { NEWSLETTER_COLL, OPTOUT_COLL, NL_EVENTS_COLL, renderNewsletterHtml, res
 import { syncPropertiesFromPlatform, maybeAutoSyncProperties, listAdminProperties, listPublicProperties, setPropertyVisibility, getPropertiesSyncMeta, backfillPropertyDistricts, refreshPropertyQuality, applyEnrichment, setPropertyEnrichment, setPropertyFinnSnapshot, setPropertyEditorialTitle, setPropertyEditorialFields, PROPERTIES_COLL } from '@/lib/properties-sync';
 import { EDITORIAL_FIELDS, stripHouseNumber } from '@/lib/property-editorial';
 import { cleanFinnTitle, titleCandidates, rentInfo } from '@/lib/listing-title';
-import { listingGate, listingSlug, toListingCard, toListingDetail, publishReadiness, GATE, toIsoDate, propertyMetaLine, propertyAddressLine, propertyFactsLine, propertyAvailableLine } from '@/lib/listings';
+import { listingGate, listingSlug, toListingCard, toListingDetail, publishReadiness, GATE, toIsoDate, propertyMetaLine, propertyAddressLine, propertyFactsLine, propertyAvailableLine, scopeOf, scopeOptionsFor, normalizeInterestScope, interestScopeLabel, interestRecord, roomsLine, SCOPE_LABEL } from '@/lib/listings';
 import { ALERTS_COLL, ALERT_CONSENT_TEXT, normalizeAlert, alertMatches, alertSummaryText, summarizeDemand, toAdminAlert, normEmail as haNormEmail } from '@/lib/housing-alerts';
 import { postalToDistrict } from '@/lib/geo-bergen';
 import { buildLeadReceipt, buildLeadAdminNotification, buildPropertyInterestNotification } from '@/lib/lead-emails';
-import { fireLeadEmails, sendReEngagedNotification, sendPropertyInterestNotification } from '@/lib/lead-emails';
+import { fireLeadEmails, sendReEngagedNotification, sendPropertyInterestNotification, sendPropertyInterestReceipt, sendInterestReplyEmail } from '@/lib/lead-emails';
 import { buildAlerts } from '@/lib/ads-monitor';
 import { fetchCompetitorGallery, serpApiConfigured } from '@/lib/serpapi';
 import { getSeoConfig, saveSeoConfig, runRankCheck, runAeoCheck, runTechAudit, getSeoOverview, RANK_COLL as SEO_RANK_COLL, AEO_COLL as SEO_AEO_COLL, TECH_COLL as SEO_TECH_COLL } from '@/lib/seo-monitor';
@@ -473,9 +473,12 @@ async function resolveDraftProperties(dbx, blocks) {
     // NB: `unit` MÅ være med — full gateadresse (street/houseNumber) ligger i
     // det nestede unit-objektet fra plattformeksporten og flates ut av
     // applyEnrichment. Uten den ble metalinjen «Baglergaten» i stedet for
-    // «Baglergaten 8». Feltene brukes bare til å bygge metalinjen; eier/leietaker
-    // følger aldri med ut i blokken (items settes eksplisitt under).
-    { projection: { _id: 0, id: 1, externalId: 1, title: 1, area: 1, unit: 1, city: 1, district: 1, districtSource: 1, type: 1, bedrooms: 1, sqm: 1, images: 1, status: 1, monthlyRentBand: 1, availableFrom: 1, incomplete: 1, duplicate: 1, enrich: 1 } }
+    // «Baglergaten 8». `editorial` MÅ også være med: uten den ignorerte
+    // nyhetsbrevet redaktørens overstyringer (tittel, pris, utleieenhet) og
+    // viste plattformens rådata — stikk i strid med kildehierarkiet ellers på
+    // flaten. Feltene brukes bare til å bygge kortet; eier/leietaker følger
+    // aldri med ut i blokken (items settes eksplisitt under).
+    { projection: { _id: 0, id: 1, externalId: 1, title: 1, area: 1, unit: 1, city: 1, district: 1, districtSource: 1, type: 1, bedrooms: 1, sqm: 1, images: 1, status: 1, monthlyRentBand: 1, availableFrom: 1, incomplete: 1, duplicate: 1, enrich: 1, editorial: 1, finnSnap: 1, finnUrl: 1 } }
   ).toArray();
   const byId = new Map();
   // FINN-berikelse slår inn her også: en bolig der plattformen mangler bilder,
@@ -509,6 +512,12 @@ async function resolveDraftProperties(dbx, blocks) {
         facts: propertyFactsLine(live),
         available: propertyAvailableLine(live),
         band: live.monthlyRentBand || '',
+        // Utleieenhet: «Rom i bofellesskap» endrer både pris og hverdag, og må
+        // stå i nyhetsbrevet også — ellers klikker folk seg inn på noe annet
+        // enn de trodde, og forvalteren bruker dagen på å rette misforståelser.
+        scope: scopeOf(live),
+        scopeLabel: SCOPE_LABEL[scopeOf(live)] || '',
+        rooms: roomsLine(live),
         // Bydel, ALDRI gatenavn: «Sandslimarka» er ikke et byområde. Mangler
         // bydel helt, grupperes boligen under «Andre områder».
         district: live.district || snap.district || 'Andre områder',
@@ -2253,7 +2262,105 @@ async function handleRoute(request, { params }) {
       }
 
       const toNum = (v) => (v === null || v === undefined || v === '' ? null : Number(v));
+
+      // ── BOLIGINTERESSE: boligen slås opp FØRST ────────────────────────────
+      // Rekkefølgen er ikke kosmetikk. Tidligere ble boligen slått opp ETTER at
+      // leadet var videresendt til DigiHome-plattformen, og payloaden hadde
+      // dermed ingen enhets-ID: henvendelsen kom fram som en løs
+      // leietakerprofil, og forvalteren kunne ikke se hvilken bolig det gjaldt
+      // eller svare på den. Nå bygges interessen før alt annet, slik at både
+      // plattformen, varselet og kvitteringen har samme boligkontekst.
+      //
+      // Boligen valideres mot den PUBLISERTE lista: skjemaet kan aldri brukes
+      // til å bekrefte at en skjult eller upublisert enhet finnes.
+      const interestBase = (process.env.NEXT_PUBLIC_CANONICAL_URL || process.env.NEXT_PUBLIC_BASE_URL || '').replace(/\/$/, '');
+      let interestProp = null;
+      let interest = null;
+      try {
+        const pid = String(body.property || '').slice(0, 80);
+        if (pid) {
+          const props = await listAdminProperties(db);
+          const hit = props.find((p) => (p.id === pid || p.externalId === pid) && listingGate(p).publishable);
+          if (hit) interestProp = hit;
+        }
+      } catch (e) { /* interessen er et tillegg — leadet skal lagres uansett */ }
+
+      if (interestProp) {
+        // Tilbyr boligen BÅDE hele enheten og rom i bofellesskap, MÅ
+        // interessenten velge. Uten valget vet ikke forvalteren om hun svarer
+        // på en hel leilighet til 18 000 eller ett rom til 7 000 — to helt
+        // forskjellige samtaler. Valideringen ligger her, på serveren, fordi en
+        // klientvalidering alene kan omgås.
+        const choices = scopeOptionsFor(interestProp);
+        const picked = normalizeInterestScope(body.interest_scope ?? body.scope, interestProp);
+        if (choices.length > 1 && !picked.length) {
+          return cors(NextResponse.json({
+            success: false, ok: false, field: 'interest_scope',
+            error: 'Velg om du er interessert i hele enheten eller rom i bofellesskap',
+            options: choices.map((v) => ({ value: v, label: SCOPE_LABEL[v] })),
+          }, { status: 400 }));
+        }
+        interest = interestRecord(interestProp, {
+          scope: picked,
+          message: body.notes,
+          source: (body.source || 'ledige-boliger').toString().slice(0, 60),
+          baseUrl: interestBase,
+        });
+      }
+
       const _tAttr = sanitizeAttribution(body.attribution);
+      // Varsel til forvalter + kvittering til interessenten. Defineres én gang
+      // og brukes fra begge grenene under (nytt lead OG sammenslått lead) —
+      // en boliginteresse er like verdifull når personen alt ligger i basen.
+      const fireInterestEmails = async (leadDoc) => {
+        const out = { notify: null, receipt: null };
+        if (!interestProp || !interest) return out;
+        const stamp = () => new Date().toISOString();
+        await Promise.allSettled([
+          sendPropertyInterestNotification({ ...leadDoc, lead_type: 'leietaker' }, interestProp, { source: interest.source, interest })
+            .then((r) => { out.notify = { ok: !!r.ok, kind: 'boliginteresse', at: stamp(), recipients: r.recipients ?? null, error: r.ok ? null : (r.error || r.skipped || null) }; })
+            .catch((e) => { out.notify = { ok: false, kind: 'boliginteresse', at: stamp(), error: String(e.message || e).slice(0, 300) }; }),
+          sendPropertyInterestReceipt({ ...leadDoc, lead_type: 'leietaker' }, interestProp, { interest })
+            .then((r) => { out.receipt = { ok: !!r.ok, at: stamp(), skipped: r.skipped || null }; })
+            .catch((e) => { out.receipt = { ok: false, at: stamp(), error: String(e.message || e).slice(0, 300) }; }),
+        ]);
+        return out;
+      };
+      // Utboks mot DigiHome-plattformen. Vi videresender leadet som før, men
+      // selve boligmeldingen legges i tillegg i en kvitterbar kø
+      // (platform_interest_outbox) som plattformen henter via
+      // GET /api/property-interest/outbox. Grunnen: en ny interesse på et
+      // EKSISTERENDE lead skal ikke føre til at vi sender personen inn på nytt
+      // og lager duplikater i utleiemodulen — men meldingen må likevel fram,
+      // knyttet til riktig enhet, med et spor vi kan se.
+      const enqueueInterest = async (leadDoc, ev) => {
+        if (!ev) return null;
+        try {
+          const doc = {
+            id: uuidv4(),
+            leadId: leadDoc.id,
+            platformLeadId: leadDoc.platform_id || null,
+            unitId: ev.unitId || ev.propertyId,
+            propertyId: ev.propertyId,
+            localPropertyId: ev.localPropertyId || null,
+            propertyTitle: ev.propertyTitle,
+            propertyAddress: ev.propertyAddress,
+            propertySlug: ev.propertySlug,
+            propertyUrl: ev.propertyUrl,
+            rentalScope: ev.rentalScope,
+            scope: ev.scope,
+            scopeLabel: ev.scopeLabel,
+            message: ev.message || '',
+            contact: { name: leadDoc.name || '', email: leadDoc.email || '', phone: leadDoc.phone || '' },
+            source: ev.source,
+            at: ev.at,
+            status: 'pending',
+            createdAt: new Date().toISOString(),
+          };
+          await db.collection('platform_interest_outbox').insertOne({ ...doc });
+          return doc.id;
+        } catch (e) { return null; }
+      };
       const _tCls = classifyLeadSource(_tAttr, { manualHint: /manuell|manual|telefon|crm|admin/i.test((body.source || '')) });
       const tenant = {
         id: uuidv4(),
@@ -2306,14 +2413,61 @@ async function handleRoute(request, { params }) {
               await db.collection('tenant_leads').updateOne({ id: dup.id }, { $set: enrich });
               merged = { ...dup, ...enrich };
             }
+            // SAMME PERSON, NY BOLIG. Tidligere returnerte dedupe-grenen her —
+            // og interessen for bolig nummer to forsvant sporløst dersom hun
+            // sendte inn to skjemaer innen samme halvtime. Nå kobles boligen på
+            // det eksisterende leadet i stedet.
+            let interestSaved = null;
+            if (interest) {
+              const prevList = Array.isArray(dup.property_interests) ? dup.property_interests : [];
+              const existing = prevList.find((x) => String(x.propertyId) === String(interest.propertyId));
+              const at = interest.at;
+              if (existing) {
+                // Kjent bolig: behold opprinnelig tidspunkt, men la nye
+                // opplysninger (valgt utleieenhet, ny melding) fylle hullene.
+                const mergedEv = {
+                  ...existing,
+                  ...interest,
+                  at: existing.at || at,
+                  status: existing.status || 'interested',
+                  lastConfirmedAt: at,
+                  scope: (interest.scope && interest.scope.length) ? interest.scope : existing.scope,
+                  scopeLabel: interest.scopeLabel || existing.scopeLabel,
+                  message: interest.message || existing.message || '',
+                };
+                await db.collection('tenant_leads').updateOne({ id: dup.id }, { $pull: { property_interests: { propertyId: interest.propertyId } } });
+                await db.collection('tenant_leads').updateOne({ id: dup.id }, { $push: { property_interests: mergedEv }, $set: { last_property_interest_at: at, updatedAt: at } });
+                merged = { ...merged, property_interests: [...prevList.filter((x) => String(x.propertyId) !== String(interest.propertyId)), mergedEv] };
+                interestSaved = { ...mergedEv, isNew: false };
+              } else {
+                await db.collection('tenant_leads').updateOne({ id: dup.id }, { $push: { property_interests: interest }, $set: { last_property_interest_at: at, updatedAt: at } });
+                merged = { ...merged, property_interests: [...prevList, interest] };
+                interestSaved = { ...interest, isNew: true };
+              }
+              if (interestSaved.isNew) {
+                await enqueueInterest(merged, interest);
+                const mails = await fireInterestEmails(merged);
+                const set = {};
+                if (mails.notify) set.admin_notify = mails.notify;
+                if (mails.receipt) set.interest_receipt = mails.receipt;
+                if (Object.keys(set).length) await db.collection('tenant_leads').updateOne({ id: dup.id }, { $set: set });
+              }
+            }
             return cors(NextResponse.json({
               success: true, ok: true, id: dup.id, deduped: true, merged: Object.keys(enrich).length > 0,
-              forwarded: dup.forwarded === true, tenant: clean(merged),
+              forwarded: dup.forwarded === true, interest: interestSaved || null, tenant: clean(merged),
             }, { status: 200 }));
           }
         }
       } catch (e) { /* best-effort */ }
 
+      // Boliginteressen legges inn ved opprettelsen, ikke etterpå: da finnes
+      // den aldri i basen som et lead «uten bolig», og admin kan ikke rekke å
+      // lese en halvferdig post.
+      if (interest) {
+        tenant.property_interests = [interest];
+        tenant.last_property_interest_at = interest.at;
+      }
       await db.collection('tenant_leads').insertOne(tenant);
 
       // Dual-write: videresend til DigiHome-plattformen (felt-mapping til /api/tenants)
@@ -2326,13 +2480,46 @@ async function handleRoute(request, { params }) {
         lead_source_type: tenant.lead_source_type, is_paid: tenant.is_paid,
         name: tenant.name, email: tenant.email, phone: tenant.phone,
         desired_area: tenant.preferred_area,
-        address: tenant.preferred_area,
+        address: interest ? interest.propertyAddress : tenant.preferred_area,
         budget: budgetStr,
         bedrooms: tenant.bedrooms,
         move_in_date: tenant.move_in_date,
         message: tenant.notes,
         lead_type: 'leietaker',
         source: 'nettside',
+        // BOLIGEN henvendelsen gjelder. unit_id er plattformens egen enhets-ID
+        // — den er nøkkelen som gjør at meldingen kan lagres PÅ boligen i
+        // utleiemodulen, og at forvalteren kan svare på noe konkret. Feltene
+        // sendes både flatt og som objekt, slik at mappingen på plattformsiden
+        // kan bruke det som passer uten at vi må gjette på skjemaet deres.
+        ...(interest ? {
+          unit_id: interest.unitId,
+          property_id: interest.propertyId,
+          property_title: interest.propertyTitle,
+          property_address: interest.propertyAddress,
+          property_url: interest.propertyUrl,
+          interest_scope: interest.scope.join(','),
+          interest_scope_label: interest.scopeLabel,
+          property_interest: {
+            unit_id: interest.unitId,
+            property_id: interest.propertyId,
+            local_property_id: interest.localPropertyId,
+            title: interest.propertyTitle,
+            address: interest.propertyAddress,
+            district: interest.propertyDistrict,
+            slug: interest.propertySlug,
+            url: interest.propertyUrl,
+            rental_scope: interest.rentalScope,
+            interest_scope: interest.scope,
+            interest_scope_label: interest.scopeLabel,
+            message: interest.message,
+            source: interest.source,
+            at: interest.at,
+          },
+          // Svarkanalen: forvalteren i plattformen kan POSTe et svar hit, og vi
+          // sender det som e-post til interessenten (auth: delt bro-token).
+          reply_endpoint: interestBase ? `${interestBase}/api/property-interest/reply` : undefined,
+        } : {}),
       });
       await db.collection('tenant_leads').updateOne({ id: tenant.id }, { $set: {
         ...forwardAuditFields(fwd),
@@ -2362,48 +2549,29 @@ async function handleRoute(request, { params }) {
         }
       } catch (e) { /* best-effort */ }
 
-      // BOLIGINTERESSE FRA «LEDIGE BOLIGER»
-      // Ligger skjemaet på en boligside, vet vi hvilken enhet henvendelsen
-      // gjelder. Da lagres interessen på leadet, og varselet til oss sier
-      // hvilken bolig det er — ikke bare «ny leietaker».
-      // Boligen valideres mot den PUBLISERTE lista: skjemaet kan aldri brukes
-      // til å bekrefte at en skjult eller upublisert enhet finnes.
-      let interestProp = null;
-      try {
-        const pid = String(body.property || '').slice(0, 80);
-        if (pid) {
-          const props = await listAdminProperties(db);
-          const hit = props.find((p) => (p.id === pid || p.externalId === pid) && listingGate(p).publishable);
-          if (hit) {
-            interestProp = hit;
-            const ev = {
-              propertyId: hit.externalId || hit.id,
-              localId: hit.id,
-              title: hit.listingTitle || hit.title || 'Bolig',
-              area: hit.area || null,
-              district: hit.district || null,
-              slug: listingSlug(hit),
-              source: 'ledige-boliger',
-              at: new Date().toISOString(),
-            };
-            await db.collection('tenant_leads').updateOne({ id: tenant.id }, { $push: { property_interests: ev } });
-            tenant.property_interests = [ev];
-          }
-        }
-      } catch (e) { /* interessen er et tillegg — leadet er alt lagret */ }
+      // BOLIGINTERESSE: legg meldingen i den kvitterbare køen mot plattformen.
+      // Videresendingen over tok med boligen i payloaden; køen gir i tillegg et
+      // spor forvalteren kan hente og kvittere for, uavhengig av om
+      // lead-endepunktet deres mapper feltene i dag.
+      if (interest) {
+        try { await enqueueInterest(tenant, interest); } catch (e) { /* køen er et tillegg */ }
+      }
 
       // Admin-varsling for leietaker-lead (ingen auto-kvittering — de venter på boligtilbud).
       // Gjelder henvendelsen en konkret bolig, sendes boliginteresse-varselet
-      // i stedet for det generiske — ett varsel, med boligen i emnefeltet.
+      // i stedet for det generiske — ett varsel, med boligen i emnefeltet — OG
+      // en kvittering til interessenten. Uten kvitteringen vet hun ikke om
+      // skjemaet gikk gjennom, og da ringer hun konkurrenten i stedet.
       try {
         if (interestProp) {
-          const note = await sendPropertyInterestNotification(
-            { ...tenant, lead_type: 'leietaker' },
-            interestProp,
-            { source: 'ledige-boliger' },
-          );
-          await db.collection('tenant_leads').updateOne({ id: tenant.id }, { $set: { admin_notify: { ok: !!note.ok, kind: 'boliginteresse', at: new Date().toISOString(), error: note.ok ? null : (note.error || note.skipped || null) } } });
-          tenant.admin_notify = { ok: !!note.ok, kind: 'boliginteresse' };
+          const mails = await fireInterestEmails(tenant);
+          const set = {};
+          if (mails.notify) set.admin_notify = mails.notify;
+          if (mails.receipt) set.interest_receipt = mails.receipt;
+          if (Object.keys(set).length) {
+            await db.collection('tenant_leads').updateOne({ id: tenant.id }, { $set: set });
+            Object.assign(tenant, set);
+          }
         } else {
           const mail = await fireLeadEmails({ ...tenant, lead_type: 'leietaker' }, { kind: 'leietaker', receipt: false });
           if (mail.adminNotify) {
@@ -2413,7 +2581,148 @@ async function handleRoute(request, { params }) {
         }
       } catch (e) { /* e-post er best-effort */ }
 
-      return cors(NextResponse.json({ success: true, ok: true, data: { id: tenant.id }, forwarded: fwd.ok, tenant: clean(tenant) }, { status: 201 }));
+      return cors(NextResponse.json({ success: true, ok: true, data: { id: tenant.id }, forwarded: fwd.ok, interest: interest || null, tenant: clean(tenant) }, { status: 201 }));
+    }
+
+    // ── BOLIGINTERESSE ↔ DIGIHOME-PLATTFORMEN ─────────────────────────────
+    // Interessen fanges hos oss (det er vårt førsteparts lead), men samtalen
+    // hører hjemme der forvalteren jobber — på boligen i utleiemodulen. Tre
+    // endepunkter, alle med samme auth som agent-broen: admin (?key=) ELLER
+    // delt bro-token (x-bridge-token / ?token=AGENT_BRIDGE_SECRET).
+    //
+    //  GET  /api/property-interest/outbox      Hent boligmeldinger som skal
+    //       lagres på enheten. Svaret er selvdokumenterende (contract), slik at
+    //       plattform-agenten kan koble seg på uten en egen spesifikasjon.
+    //  POST /api/property-interest/outbox/ack  Kvitter for mottak (idempotent).
+    //  POST /api/property-interest/reply       Forvalterens svar: vi sender
+    //       e-post til interessenten og logger svaret på leadet.
+    //
+    // Hvorfor en kø, og ikke bare et kall fra oss? Fordi en ny interesse fra en
+    // person som ALT ligger i plattformen ikke skal føre til at vi sender
+    // personen inn på nytt og lager duplikater i utleiemodulen.
+    if (route === '/property-interest/outbox' && method === 'GET') {
+      if (!bridgeAuthed(request)) return cors(NextResponse.json({ ok: false, error: 'Uautorisert' }, { status: 401 }));
+      const { searchParams } = new URL(request.url);
+      const status = String(searchParams.get('status') || 'pending').toLowerCase();
+      const limit = Math.min(200, Math.max(1, Number(searchParams.get('limit') || 50) || 50));
+      const q = (status === 'alle' || status === 'all') ? {} : { status };
+      const items = await db.collection('platform_interest_outbox').find(q, { projection: { _id: 0 } }).sort({ createdAt: 1 }).limit(limit).toArray();
+      const pending = await db.collection('platform_interest_outbox').countDocuments({ status: 'pending' });
+      return cors(NextResponse.json({
+        ok: true,
+        count: items.length,
+        pending,
+        contract: {
+          purpose: 'Boliginteresse fra digihome.no som skal lagres på enheten i utleiemodulen',
+          item: {
+            id: 'uuid — bruk denne i ack',
+            unitId: 'plattformens enhets-ID (samme som externalId i enhetseksporten)',
+            propertyAddress: 'full gateadresse med husnummer',
+            propertyUrl: 'offentlig boligside hos oss',
+            rentalScope: 'hele | rom | begge — hva boligen tilbyr',
+            scope: '["hele"] | ["rom"] — hva interessenten valgte (obligatorisk når rentalScope = begge)',
+            scopeLabel: 'Hele enheten | Rom i bofellesskap',
+            message: 'fritekst fra interessenten (kan være tom)',
+            contact: '{ name, email, phone }',
+            leadId: 'vår lead-ID · platformLeadId: deres, når videresendingen er kvittert',
+          },
+          ack: { method: 'POST', path: '/api/property-interest/outbox/ack', body: { ids: ['<id>'], platform_ref: 'valgfri referanse hos dere' } },
+          reply: {
+            method: 'POST',
+            path: '/api/property-interest/reply',
+            body: { lead_id: 'eller platform_id/email', unit_id: '<enhets-ID>', message: 'svaret til interessenten', from_name: 'forvalterens navn', from_email: 'forvalterens e-post (blir Reply-To)' },
+            effect: 'Vi sender svaret som e-post til interessenten og logger det på leadet.',
+          },
+        },
+        items,
+      }));
+    }
+
+    if (route === '/property-interest/outbox/ack' && method === 'POST') {
+      if (!bridgeAuthed(request)) return cors(NextResponse.json({ ok: false, error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      const ids = (Array.isArray(body.ids) ? body.ids : [body.id]).map((x) => String(x || '').trim()).filter(Boolean).slice(0, 200);
+      if (!ids.length) return cors(NextResponse.json({ ok: false, error: 'Mangler ids' }, { status: 400 }));
+      const at = new Date().toISOString();
+      const r = await db.collection('platform_interest_outbox').updateMany(
+        { id: { $in: ids } },
+        { $set: { status: 'delivered', deliveredAt: at, platformRef: String(body.platform_ref || '').slice(0, 120) || null } },
+      );
+      return cors(NextResponse.json({ ok: true, acked: r.modifiedCount, requested: ids.length, at }));
+    }
+
+    if (route === '/property-interest/reply' && method === 'POST') {
+      if (!bridgeAuthed(request)) return cors(NextResponse.json({ ok: false, error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      const message = String(body.message || body.body || body.reply || '').replace(/\r\n/g, '\n').trim().slice(0, 6000);
+      if (!message) return cors(NextResponse.json({ ok: false, field: 'message', error: 'Svaret er tomt' }, { status: 400 }));
+
+      const leadId = String(body.lead_id || body.leadId || body.external_ref || '').trim().slice(0, 80);
+      const platformId = String(body.platform_id || body.platform_lead_id || '').trim().slice(0, 80);
+      const email = String(body.email || body.to || '').trim().toLowerCase().slice(0, 200);
+      const unitId = String(body.unit_id || body.unitId || body.property_id || '').trim().slice(0, 80);
+
+      const or = [];
+      if (leadId) or.push({ id: leadId });
+      if (platformId) or.push({ platform_id: platformId });
+      if (email) or.push({ email: new RegExp(`^${email.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') });
+      if (!or.length) return cors(NextResponse.json({ ok: false, error: 'Oppgi lead_id, platform_id eller email' }, { status: 400 }));
+
+      const lead = await db.collection('tenant_leads').find({ $or: or, deleted: { $ne: true } }).sort({ createdAt: -1 }).limit(1).next();
+      if (!lead) return cors(NextResponse.json({ ok: false, error: 'Fant ingen interessent som passer' }, { status: 404 }));
+      if (!lead.email) return cors(NextResponse.json({ ok: false, error: 'Interessenten har ingen e-postadresse vi kan svare til' }, { status: 409 }));
+
+      // Svaret skal handle om en KONKRET bolig. Oppgis unit_id, må interessen
+      // finnes på leadet — ellers risikerer vi å sende svar om feil bolig.
+      const list = Array.isArray(lead.property_interests) ? lead.property_interests : [];
+      const hit = unitId
+        ? list.find((x) => String(x.unitId || x.propertyId) === unitId || String(x.propertySlug) === unitId || String(x.localPropertyId) === unitId)
+        : list[list.length - 1];
+      if (unitId && !hit) {
+        return cors(NextResponse.json({ ok: false, error: 'Interessenten har ingen registrert interesse for denne enheten', unit_id: unitId }, { status: 404 }));
+      }
+
+      const fromName = String(body.from_name || body.fromName || '').slice(0, 120);
+      const fromEmail = String(body.from_email || body.fromEmail || '').slice(0, 200);
+      let sent = { ok: false, skipped: 'ikke-forsokt' };
+      try {
+        sent = await sendInterestReplyEmail({ tenant: lead, interest: hit || {}, message, fromName, fromEmail });
+      } catch (e) {
+        sent = { ok: false, error: String(e.message || e).slice(0, 300) };
+      }
+
+      const at = new Date().toISOString();
+      const rec = {
+        id: uuidv4(),
+        leadId: lead.id,
+        platformLeadId: lead.platform_id || null,
+        unitId: (hit && (hit.unitId || hit.propertyId)) || unitId || null,
+        propertyTitle: (hit && hit.propertyTitle) || null,
+        propertyAddress: (hit && hit.propertyAddress) || null,
+        to: lead.email,
+        from: { name: fromName || null, email: fromEmail || null },
+        via: adminAuthed(request) ? 'admin' : 'plattform',
+        message,
+        sent: !!sent.ok,
+        skipped: sent.skipped || null,
+        error: sent.ok ? null : (sent.error || null),
+        at,
+      };
+      try {
+        await db.collection('property_interest_replies').insertOne({ ...rec });
+        await db.collection('tenant_leads').updateOne({ id: lead.id }, {
+          $push: { interest_replies: { id: rec.id, unitId: rec.unitId, message, sent: rec.sent, via: rec.via, from: rec.from, at } },
+          $set: { last_interest_reply_at: at, updatedAt: at },
+        });
+      } catch (e) { /* loggen er sporing, svaret er allerede sendt */ }
+
+      if (!sent.ok && !sent.skipped) {
+        return cors(NextResponse.json({ ok: false, error: 'Svaret kunne ikke sendes', detail: rec.error, id: rec.id }, { status: 502 }));
+      }
+      return cors(NextResponse.json({
+        ok: true, id: rec.id, sent: rec.sent, skipped: rec.skipped,
+        to: lead.email, leadId: lead.id, unitId: rec.unitId, at,
+      }));
     }
 
     // Legacy debug-endepunkter. Disse eksponerte tidligere navn, e-post og
@@ -5557,17 +5866,19 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
       const at = new Date().toISOString();
       const propertyId = property.externalId || property.id;
       const previous = (Array.isArray(tenant.property_interests) ? tenant.property_interests : []).find((x) => String(x.propertyId) === String(propertyId));
+      // Samme kanoniske form som boligsiden bruker: enhets-ID, full adresse,
+      // slug og lenke. Da leser admin, e-posten og DigiHome-plattformen de
+      // samme feltene uansett om interessen kom fra nyhetsbrevet eller nettet.
       const interest = {
-        propertyId,
-        localPropertyId: property.id,
-        propertyTitle: property.title || '',
-        propertyArea: property.area || property.city || '',
+        ...interestRecord(property, {
+          source: 'nyhetsbrev-bolig',
+          at: previous?.at || at,
+          baseUrl: (process.env.NEXT_PUBLIC_CANONICAL_URL || process.env.NEXT_PUBLIC_BASE_URL || '').replace(/\/$/, ''),
+        }),
         status: previous?.status || 'interested',
-        at: previous?.at || at,
         lastConfirmedAt: at,
         campaignId,
         rid,
-        source: 'nyhetsbrev-bolig',
       };
       await db.collection(coll).updateOne(
         { id: tenant.id },
@@ -5592,6 +5903,35 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
         } catch (e) { /* interesse på kortet er allerede lagret */ }
       }
 
+      // Boligmeldingen legges i den kvitterbare køen mot plattformen, på samme
+      // måte som interesse meldt på boligsiden. Én kanal, uansett kilde.
+      if (!previous) {
+        try {
+          await db.collection('platform_interest_outbox').insertOne({
+            id: uuidv4(),
+            leadId: tenant.id,
+            platformLeadId: tenant.platform_id || null,
+            unitId: interest.unitId || interest.propertyId,
+            propertyId: interest.propertyId,
+            localPropertyId: interest.localPropertyId || null,
+            propertyTitle: interest.propertyTitle,
+            propertyAddress: interest.propertyAddress,
+            propertySlug: interest.propertySlug,
+            propertyUrl: interest.propertyUrl,
+            rentalScope: interest.rentalScope,
+            scope: interest.scope,
+            scopeLabel: interest.scopeLabel,
+            message: interest.message || '',
+            contact: { name: tenant.name || '', email: tenant.email || '', phone: tenant.phone || '' },
+            source: interest.source,
+            campaignId: campaignId || null,
+            at: interest.at,
+            status: 'pending',
+            createdAt: new Date().toISOString(),
+          });
+        } catch (e) { /* køen er et tillegg — interessen er alt lagret */ }
+      }
+
       // INTERNT VARSEL. Fyres kun ved FØRSTE interesse for denne boligen fra
       // denne personen — gjentatte klikk skal ikke spamme teamet. Best-effort
       // og aldri blokkerende: leietakeren skal se «registrert» selv om
@@ -5607,7 +5947,7 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
           notify = await sendPropertyInterestNotification(
             { ...tenant, property_interests: [...(tenant.property_interests || []), interest] },
             property,
-            { campaignId, campaignTitle, tenantCreated },
+            { campaignId, campaignTitle, tenantCreated, interest },
           );
         } catch (e) { notify = { ok: false, error: String(e.message || e).slice(0, 200) }; }
         try {

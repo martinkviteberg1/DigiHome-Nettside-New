@@ -19,7 +19,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { X, Loader2, RotateCcw, Check, Download, AlertTriangle, Link2, Info } from 'lucide-react';
 import { EDITORIAL_FIELDS } from '@/lib/property-editorial';
-import { TYPE_LABEL, MODEL_LABEL, GATE, listingGate, formatNoDate } from '@/lib/listings';
+import { TYPE_LABEL, MODEL_LABEL, SCOPE_LABEL, GATE, listingGate, formatNoDate } from '@/lib/listings';
 import DateField from './DateField';
 
 const KR = (n) => String(Math.round(n || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
@@ -27,6 +27,9 @@ const KR = (n) => String(Math.round(n || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, ' 
 const GROUPS = [
   { title: 'Publisert innhold', keys: ['title', 'description'] },
   { title: 'Fakta om boligen', keys: ['rentAmount', 'sqm', 'bedrooms', 'rooms', 'type', 'model', 'availableFrom'] },
+  // Hele enheten, rom i bofellesskap, eller begge — styrer hva interessenten
+  // ser og kan krysse av for. Plattformen har ikke feltet.
+  { title: 'Utleieenhet', keys: ['rentalScope', 'roomsVacant', 'roomsTotal'] },
   { title: 'Sted', keys: ['area', 'district'] },
   { title: 'Rettigheter', keys: ['imageRights'] },
 ];
@@ -36,6 +39,7 @@ const FIELD = EDITORIAL_FIELDS.reduce((a, f) => { a[f.key] = f; return a; }, {})
 const optionLabel = (key, v) => {
   if (key === 'type') return TYPE_LABEL[v] || v;
   if (key === 'model') return MODEL_LABEL[v] || v;
+  if (key === 'rentalScope') return SCOPE_LABEL[v] || v;
   // Datoer vises alltid leselig norsk («1. oktober 2026»), aldri som rå ISO.
   if (key === 'availableFrom') return formatNoDate(v) || v;
   return v;
@@ -180,6 +184,12 @@ export default function PropertyEditor({ property, apiKey, onSaved, onClose }) {
                 {g.keys.map((key) => {
                   const f = FIELD[key];
                   if (!f) return null;
+                  // Romtelling er bare meningsfull når rom leies ut enkeltvis.
+                  // Leies HELE enheten ut, skjules feltene — et tall som ikke
+                  // gjelder er verre enn et tomt felt, og serveren nullstiller
+                  // dem likevel ved lagring.
+                  const scopeNow = vals.rentalScope || property.rentalScope || 'hele';
+                  if ((key === 'roomsVacant' || key === 'roomsTotal') && scopeNow === 'hele') return null;
                   const v = vals[key];
                   const isSet = !(v === '' || v === null || v === undefined || v === false);
                   const pv = platformValue(property, key);

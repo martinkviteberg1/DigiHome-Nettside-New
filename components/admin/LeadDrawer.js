@@ -56,6 +56,85 @@ function Field({ icon: Icon, label, value }) {
   );
 }
 
+// Forvalterens svar til interessenten. Sendes via
+// POST /api/property-interest/reply — samme endepunkt som DigiHome-plattformen
+// bruker — så svaret ser identisk ut for interessenten uansett hvor forvalteren
+// satt da hun svarte, og alt logges på leadet.
+function InterestReply({ apiKey, leadId, interest, email, replies = [], onSent }) {
+  const [open, setOpen] = useState(false);
+  const [msg, setMsg] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState(null);
+  const unitId = interest.unitId || interest.propertyId || '';
+
+  const send = async () => {
+    if (!msg.trim() || busy) return;
+    setBusy(true); setResult(null);
+    try {
+      const res = await fetch(`/api/property-interest/reply?key=${encodeURIComponent(apiKey)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lead_id: leadId, unit_id: unitId, message: msg }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (res.ok && j.ok) {
+        setResult({ ok: true, sent: j.sent, skipped: j.skipped });
+        setMsg(''); setOpen(false);
+        if (onSent) onSent();
+      } else {
+        setResult({ ok: false, error: j.error || 'Kunne ikke sende svaret' });
+      }
+    } catch (e) {
+      setResult({ ok: false, error: 'Nettverksfeil — prøv igjen' });
+    } finally { setBusy(false); }
+  };
+
+  return (
+    <div className="mt-2 border-t border-[#f0ebf7] pt-2">
+      {replies.length > 0 && (
+        <div className="mb-2 space-y-1.5">
+          {replies.slice(-3).map((r) => (
+            <div key={r.id} className="rounded-lg bg-[#f6fbf7] p-2">
+              <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#7fae91]">
+                Svar sendt {r.at ? new Date(r.at).toLocaleString('nb-NO') : ''}{r.sent ? '' : ' (ikke levert)'}
+              </p>
+              <p className="mt-1 line-clamp-3 whitespace-pre-line text-[12px] leading-relaxed text-[#4a4a4a]">{r.message}</p>
+            </div>
+          ))}
+        </div>
+      )}
+      {!open ? (
+        <button type="button" onClick={() => setOpen(true)} disabled={!email} data-testid={`interest-reply-open-${unitId}`}
+          className="inline-flex items-center gap-1.5 text-[11.5px] font-bold text-[#7A3EC8] hover:underline disabled:text-[#bbb] disabled:no-underline">
+          <Send className="h-3 w-3" /> {email ? 'Svar til interessenten' : 'Ingen e-post å svare til'}
+        </button>
+      ) : (
+        <div>
+          <textarea value={msg} onChange={(e) => setMsg(e.target.value)} rows={4} autoFocus
+            data-testid={`interest-reply-input-${unitId}`}
+            placeholder={`Skriv svaret til ${email || 'interessenten'} …`}
+            className="w-full resize-none rounded-lg border border-[#e7e0ee] bg-white p-2.5 text-[12.5px] leading-relaxed text-[#222] outline-none focus:border-[#7A3EC8]" />
+          <div className="mt-1.5 flex items-center gap-2">
+            <button type="button" onClick={send} disabled={busy || !msg.trim()} data-testid={`interest-reply-send-${unitId}`}
+              className="inline-flex h-8 items-center gap-1.5 rounded-full bg-[#0a0a0a] px-3.5 text-[11.5px] font-bold text-white disabled:opacity-40">
+              {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />} Send svar
+            </button>
+            <button type="button" onClick={() => { setOpen(false); setMsg(''); }} className="text-[11.5px] font-semibold text-[#888]">Avbryt</button>
+          </div>
+          <p className="mt-1.5 text-[10.5px] leading-snug text-[#a09aa8]">Svaret sendes som e-post fra DigiHome med boligen som kontekst. Interessenten kan svare direkte.</p>
+        </div>
+      )}
+      {result && (
+        <p className={`mt-1.5 text-[11px] font-semibold ${result.ok ? 'text-emerald-600' : 'text-rose-600'}`} data-testid={`interest-reply-result-${unitId}`}>
+          {result.ok
+            ? (result.sent ? 'Svaret er sendt på e-post.' : `Svaret er logget, men ikke sendt (${result.skipped || 'ukjent årsak'}).`)
+            : result.error}
+        </p>
+      )}
+    </div>
+  );
+}
+
 export default function LeadDrawer({ apiKey, lead, type, onClose, onStatusChange, statusBusy, scoreData, onScore, scoring, onChanged }) {
   const [detail, setDetail] = useState(null);
   const [timeline, setTimeline] = useState([]);
@@ -252,19 +331,45 @@ export default function LeadDrawer({ apiKey, lead, type, onClose, onStatusChange
           {isTenant && Array.isArray(d.property_interests) && d.property_interests.length > 0 ? (
             <div className="rounded-2xl border border-[#eadff5] bg-[#faf7fe] p-4" data-testid="tenant-property-interests">
               <div className="flex items-center justify-between gap-3">
-                <div><p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#8b5cf6]">Interessert i</p><p className="mt-1 text-[12px] text-[#777]">Registrert fra boligutsendelse</p></div>
+                <div><p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#8b5cf6]">Interessert i</p><p className="mt-1 text-[12px] text-[#777]">Boligsiden og nyhetsbrev</p></div>
                 <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-bold text-[#7A3EC8]">{d.property_interests.length}</span>
               </div>
               <div className="mt-3 space-y-2.5">
                 {[...d.property_interests].reverse().map((interest) => (
                   <div key={`${interest.propertyId}-${interest.at}`} className="rounded-xl border border-[#ece6f3] bg-white p-3">
-                    <p className="text-[13px] font-bold text-[#222]">{interest.propertyTitle || interest.propertyId}</p>
-                    <p className="mt-0.5 text-[11px] text-[#999]">{interest.propertyArea || 'Område ikke oppgitt'}{interest.at ? ` · ${new Date(interest.at).toLocaleString('nb-NO')}` : ''}</p>
+                    {/* propertyTitle/propertyAddress er den kanoniske formen. De
+                        gamle feltnavnene (title/area) leses fortsatt, slik at
+                        interesser lagret før feltene ble samkjørt ikke vises som
+                        en rå ID. */}
+                    <p className="text-[13px] font-bold text-[#222]">{interest.propertyAddress || interest.propertyTitle || interest.title || interest.propertyId}</p>
+                    <p className="mt-0.5 text-[11px] text-[#999]">
+                      {interest.propertyTitle && interest.propertyAddress ? `${interest.propertyTitle} · ` : ''}
+                      {interest.propertyDistrict || interest.propertyArea || interest.area || 'Område ikke oppgitt'}
+                      {interest.at ? ` · ${new Date(interest.at).toLocaleString('nb-NO')}` : ''}
+                    </p>
+                    <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                      {interest.scopeLabel ? (
+                        <span className="rounded-full bg-[#f3ecfd] px-2 py-[3px] text-[10.5px] font-bold text-[#6d28d9]" data-testid="interest-scope-label">{interest.scopeLabel}</span>
+                      ) : null}
+                      {interest.unitId ? <span className="rounded-full bg-[#f5f5f5] px-2 py-[3px] text-[10.5px] font-semibold text-[#888]">Enhet {String(interest.unitId).slice(0, 8)}</span> : null}
+                      {interest.propertyUrl ? (
+                        <a href={interest.propertyUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[10.5px] font-bold text-[#7A3EC8] hover:underline">Se boligen <ExternalLink className="h-3 w-3" /></a>
+                      ) : null}
+                    </div>
+                    {interest.message ? (
+                      <div className="mt-2 rounded-lg bg-[#fbf9fd] p-2.5" data-testid="interest-message">
+                        <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#b0a8bb]">Melding</p>
+                        <p className="mt-1 whitespace-pre-line text-[12.5px] leading-relaxed text-[#444]">{interest.message}</p>
+                      </div>
+                    ) : null}
                     <select value={interest.status || 'interested'} onChange={(e) => updatePropertyInterest(interest.propertyId, e.target.value)} disabled={actionBusy === `interest-${interest.propertyId}`}
                       data-testid={`tenant-interest-status-${interest.propertyId}`}
                       className="mt-2 h-8 w-full rounded-lg border border-[#e7e0ee] bg-[#faf8fc] px-2.5 text-[11.5px] font-semibold text-[#5e4677] outline-none disabled:opacity-50">
                       <option value="interested">Interessert</option><option value="contacted">Kontaktet</option><option value="viewing">Visning</option><option value="matched">Matchet</option><option value="declined">Avslått</option>
                     </select>
+                    <InterestReply apiKey={apiKey} leadId={d.id} interest={interest} email={d.email}
+                      replies={(Array.isArray(d.interest_replies) ? d.interest_replies : []).filter((r) => String(r.unitId || '') === String(interest.unitId || interest.propertyId || ''))}
+                      onSent={load} />
                   </div>
                 ))}
               </div>

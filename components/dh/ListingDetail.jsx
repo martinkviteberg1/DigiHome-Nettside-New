@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { formatNoDate } from '@/lib/listings';
 import {
   MapPin, Ruler, BedDouble, CalendarDays, Building2, ShieldCheck, ExternalLink,
-  ChevronLeft, ChevronRight, X, Check, Loader2, Send, Info,
+  ChevronLeft, ChevronRight, X, Check, Loader2, Send, Info, Users,
 } from 'lucide-react';
 
 // Boligsiden. Tre veier videre, i bevisst rekkefølge:
@@ -101,7 +101,12 @@ function Gallery({ images, title }) {
 }
 
 function InterestForm({ listing, available }) {
-  const [f, setF] = useState({ name: '', email: '', phone: '', notes: '' });
+  // Tilbyr boligen BÅDE hele enheten og rom, må interessenten velge. Ellers vet
+  // ikke forvalteren om hun svarer på en hel leilighet eller ett rom — to helt
+  // forskjellige samtaler, priser og visninger. Er bare én ting mulig, settes
+  // valget automatisk og vi maser ikke om noe som er opplagt.
+  const both = listing.scope === 'begge';
+  const [f, setF] = useState({ name: '', email: '', phone: '', notes: '', scope: both ? '' : (listing.scope || 'hele') });
   const [state, setState] = useState('idle');
   const [err, setErr] = useState('');
   const set = (k) => (e) => setF((v) => ({ ...v, [k]: e.target.value }));
@@ -111,6 +116,7 @@ function InterestForm({ listing, available }) {
     setErr('');
     if (!f.name.trim()) { setErr('Skriv inn navnet ditt'); return; }
     if (!/^\S+@\S+\.\S+$/.test(f.email)) { setErr('Sjekk e-postadressen'); return; }
+    if (both && !f.scope) { setErr('Velg om du er interessert i hele enheten eller rom i bofellesskap'); return; }
     setState('sending');
     try {
       const r = await fetch('/api/tenants', {
@@ -118,6 +124,7 @@ function InterestForm({ listing, available }) {
         body: JSON.stringify({
           name: f.name, email: f.email, phone: f.phone, notes: f.notes,
           property: listing.id,
+          interest_scope: f.scope || undefined,
           preferred_area: [listing.area, listing.district].filter(Boolean).join(', '),
           bedrooms: listing.bedrooms || undefined,
           source: 'ledige-boliger',
@@ -134,14 +141,46 @@ function InterestForm({ listing, available }) {
       <div className="rounded-[22px] bg-emerald-50 p-5" data-testid="listing-interest-done">
         <p className="inline-flex items-center gap-2 text-[15px] font-semibold text-emerald-900"><Check className="h-4 w-4" /> Interessen er registrert</p>
         <p className="mt-2 text-[13.5px] leading-relaxed text-emerald-900/80">
-          Vi tar kontakt med deg om {listing.title.toLowerCase()}. Du hører fra oss samme dag på hverdager.
+          Vi tar kontakt med deg om {listing.title.toLowerCase()}
+          {both && f.scope ? ` (${f.scope === 'rom' ? 'rom i bofellesskap' : 'hele enheten'})` : ''}.
+          Du hører fra oss samme dag på hverdager — og får en bekreftelse på e-post nå.
         </p>
       </div>
     );
   }
 
+  const SCOPE_CHOICES = [
+    { value: 'hele', label: 'Hele enheten', hint: 'Du leier hele boligen' },
+    { value: 'rom', label: 'Rom i bofellesskap', hint: 'Du leier ett rom' },
+  ];
+
   return (
     <form onSubmit={submit} className="space-y-2.5" data-testid="listing-interest-form">
+      {both && (
+        <fieldset className="mb-1" data-testid="listing-interest-scope">
+          <legend className="mb-2 text-[12.5px] font-semibold text-[#0a0a0a]">Hva er du interessert i? <span className="font-normal text-[#a8a29a]">(må velges)</span></legend>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {SCOPE_CHOICES.map((c) => (
+              <label key={c.value} data-testid={`listing-interest-scope-${c.value}`}
+                className={`flex cursor-pointer flex-col rounded-xl px-3.5 py-2.5 text-left transition-all ${f.scope === c.value
+                  ? 'bg-white ring-2 ring-[#7c3aed]'
+                  : 'bg-white ring-1 ring-inset ring-black/[0.09] hover:ring-black/[0.2]'}`}>
+                <span className="flex items-center gap-2">
+                  <input type="radio" name="interest_scope" value={c.value} checked={f.scope === c.value}
+                    onChange={() => setF((v) => ({ ...v, scope: c.value }))} className="h-3.5 w-3.5 accent-[#7c3aed]" />
+                  <span className="text-[13.5px] font-semibold text-[#0a0a0a]">{c.label}</span>
+                </span>
+                <span className="mt-0.5 pl-[22px] text-[11.5px] leading-snug text-[#8d867d]">{c.hint}</span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      )}
+      {!both && listing.scope === 'rom' && (
+        <p className="mb-1 rounded-xl bg-[#f4f0fb] px-3.5 py-2.5 text-[12.5px] leading-relaxed text-[#5b3c8f]" data-testid="listing-interest-scope-fixed">
+          Gjelder <strong>rom i bofellesskap</strong>{listing.roomsLabel ? ` — ${listing.roomsLabel.toLowerCase()}` : ''}.
+        </p>
+      )}
       <input value={f.name} onChange={set('name')} placeholder="Navn" autoComplete="name" data-testid="listing-interest-name"
         className="h-11 w-full rounded-xl bg-white px-4 text-[14.5px] ring-1 ring-inset ring-black/[0.09] outline-none placeholder:text-[#b3ada4] focus:ring-2 focus:ring-[#7c3aed]" />
       <div className="grid gap-2.5 sm:grid-cols-2">
@@ -150,9 +189,15 @@ function InterestForm({ listing, available }) {
         <input value={f.phone} onChange={set('phone')} type="tel" placeholder="Telefon" autoComplete="tel" data-testid="listing-interest-phone"
           className="h-11 w-full rounded-xl bg-white px-4 text-[14.5px] ring-1 ring-inset ring-black/[0.09] outline-none placeholder:text-[#b3ada4] focus:ring-2 focus:ring-[#7c3aed]" />
       </div>
-      <textarea value={f.notes} onChange={set('notes')} rows={2} placeholder="Når vil du flytte inn? Noe vi bør vite?"
-        data-testid="listing-interest-notes"
-        className="w-full resize-none rounded-xl bg-white px-4 py-3 text-[14.5px] leading-relaxed ring-1 ring-inset ring-black/[0.09] outline-none placeholder:text-[#b3ada4] focus:ring-2 focus:ring-[#7c3aed]" />
+      {/* Fritekst. Den følger henvendelsen hele veien — til forvalterens varsel,
+          til leadet i admin og videre til DigiHome-plattformen — så spørsmålet
+          om innflytting eller husdyr blir besvart i første svar. */}
+      <label className="block">
+        <span className="mb-1 block text-[12px] font-semibold text-[#5f5a53]">Melding til forvalteren <span className="font-normal text-[#a8a29a]">(valgfritt)</span></span>
+        <textarea value={f.notes} onChange={set('notes')} rows={3} placeholder="Når vil du flytte inn? Spørsmål om boligen? Noe vi bør vite?"
+          data-testid="listing-interest-notes"
+          className="w-full resize-none rounded-xl bg-white px-4 py-3 text-[14.5px] leading-relaxed ring-1 ring-inset ring-black/[0.09] outline-none placeholder:text-[#b3ada4] focus:ring-2 focus:ring-[#7c3aed]" />
+      </label>
       {err && <p className="text-[13px] text-red-600">{err}</p>}
       <button type="submit" disabled={state === 'sending'} data-testid="listing-interest-submit"
         className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[#0a0a0a] text-[15px] font-semibold text-white transition-colors hover:bg-[#242424] disabled:opacity-60">
@@ -176,6 +221,10 @@ export default function ListingDetail({ listing, available }) {
     listing.sqm ? { icon: Ruler, label: 'Areal', value: `${listing.sqm} m²` } : null,
     listing.bedrooms ? { icon: BedDouble, label: 'Soverom', value: String(listing.bedrooms) } : null,
     { icon: Building2, label: 'Boligtype', value: listing.typeLabel },
+    // Utleieenhet står blant fakta, ikke i finstilt tekst: for prisen og
+    // hverdagen er «rom i bofellesskap» minst like avgjørende som arealet.
+    { icon: Users, label: 'Utleieenhet', value: listing.scopeShort || 'Hele enheten' },
+    listing.roomsLabel ? { icon: Users, label: 'Ledige rom', value: listing.roomsLabel } : null,
     { icon: CalendarDays, label: 'Ledig fra', value: availFrom || 'Etter avtale' },
   ].filter(Boolean);
 
@@ -193,6 +242,11 @@ export default function ListingDetail({ listing, available }) {
           <div className="mt-8">
             <div className="flex flex-wrap items-center gap-2">
               <span className="inline-flex items-center rounded-full bg-[#f4f0fb] px-3 py-1 text-[12px] font-semibold text-[#7c3aed] ring-1 ring-inset ring-[#7c3aed]/15">{listing.modelLabel}</span>
+              {listing.scope && listing.scope !== 'hele' && (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-[#7c3aed] px-3 py-1 text-[12px] font-semibold text-white" data-testid="listing-detail-scope">
+                  <Users className="h-3.5 w-3.5" />{listing.scopeLabel}
+                </span>
+              )}
               {!available && <span className="inline-flex items-center rounded-full bg-[#0a0a0a] px-3 py-1 text-[12px] font-semibold text-white">Utleid</span>}
               {listing.district && <span className="inline-flex items-center rounded-full bg-[#f1f0ee] px-3 py-1 text-[12px] font-semibold text-[#5f5a53]">{listing.district}</span>}
             </div>
@@ -209,7 +263,7 @@ export default function ListingDetail({ listing, available }) {
             <div className="mt-5 lg:hidden" data-testid="listing-price-mobile">
               {rent ? (
                 <p className="text-[25px] font-bold leading-none tracking-[-0.02em] text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>
-                  <span className="whitespace-nowrap">{rent}</span> <span className="text-[14.5px] font-semibold text-[#78726a]">kr/mnd</span>
+                  <span className="whitespace-nowrap">{rent}</span> <span className="text-[14.5px] font-semibold text-[#78726a]">kr/mnd{listing.rentScopeNote ? ` ${listing.rentScopeNote}` : ''}</span>
                   {listing.rentIndicative && (
                     <span className="ml-2 inline-flex items-center rounded-full bg-[#f4f0fb] px-2 py-[3px] align-middle text-[10px] font-bold uppercase tracking-[0.06em] text-[#7c3aed]">Prisantydning</span>
                   )}
@@ -229,6 +283,16 @@ export default function ListingDetail({ listing, available }) {
               </div>
             ))}
           </div>
+
+          {listing.scopeNote && (
+            <div className="mt-4 flex items-start gap-3 rounded-[20px] bg-[#f6f1ff] p-4 sm:p-5" data-testid="listing-scope-note">
+              <Users className="mt-[2px] h-4 w-4 shrink-0 text-[#7c3aed]" />
+              <div>
+                <p className="text-[14px] font-semibold text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>{listing.scopeLabel}</p>
+                <p className="mt-1 max-w-[62ch] text-[13.5px] leading-relaxed text-[#4c3a75]">{listing.scopeNote}</p>
+              </div>
+            </div>
+          )}
 
           <div className="mt-10">
             <h2 className="text-[20px] font-bold tracking-[-0.02em]" style={{ fontFamily: 'var(--font-heading)' }}>Om boligen</h2>
@@ -299,7 +363,7 @@ export default function ListingDetail({ listing, available }) {
             {rent ? (
               <>
                 <p className="text-[26px] font-bold leading-none tracking-[-0.02em] text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>
-                  <span className="whitespace-nowrap">{rent}</span> <span className="text-[15px] font-semibold text-[#78726a]">kr/mnd</span>
+                  <span className="whitespace-nowrap">{rent}</span> <span className="text-[15px] font-semibold text-[#78726a]">kr/mnd{listing.rentScopeNote ? ` ${listing.rentScopeNote}` : ''}</span>
                 </p>
                 {listing.rentIndicative && (
                   <p className="mt-1.5 inline-flex items-start gap-1.5 text-[12px] leading-snug text-[#8d867d]">
