@@ -49,7 +49,7 @@ import { NEWSLETTER_COLL, OPTOUT_COLL, NL_EVENTS_COLL, renderNewsletterHtml, res
 import { syncPropertiesFromPlatform, maybeAutoSyncProperties, listAdminProperties, listPublicProperties, setPropertyVisibility, getPropertiesSyncMeta, backfillPropertyDistricts, refreshPropertyQuality, applyEnrichment, setPropertyEnrichment, setPropertyFinnSnapshot, setPropertyEditorialTitle, setPropertyEditorialFields, PROPERTIES_COLL } from '@/lib/properties-sync';
 import { EDITORIAL_FIELDS, stripHouseNumber } from '@/lib/property-editorial';
 import { cleanFinnTitle, titleCandidates, rentInfo } from '@/lib/listing-title';
-import { listingGate, listingSlug, toListingCard, toListingDetail, publishReadiness, GATE } from '@/lib/listings';
+import { listingGate, listingSlug, toListingCard, toListingDetail, publishReadiness, GATE, toIsoDate } from '@/lib/listings';
 import { ALERTS_COLL, ALERT_CONSENT_TEXT, normalizeAlert, alertMatches, alertSummaryText, summarizeDemand, toAdminAlert, normEmail as haNormEmail } from '@/lib/housing-alerts';
 import { postalToDistrict } from '@/lib/geo-bergen';
 import { buildLeadReceipt, buildLeadAdminNotification, buildPropertyInterestNotification } from '@/lib/lead-emails';
@@ -852,6 +852,13 @@ async function fetchFinnPreview(rawUrl) {
   const bedrooms = num(/Soverom\s*(\d+)/);
   const sqm = num(/Internt bruksareal\s*(\d{1,4})\s*m/i) || num(/Prim[æa]rrom\s*(\d{1,4})\s*m/i) || num(/Bruksareal\s*(\d{1,4})\s*m/i) || num(/Bruttoareal\s*(\d{1,4})\s*m/i);
   const rent = num(/M[åa]nedsleie\s*([\d\s]{2,9}?)\s*kr/i);
+  // LEDIG FRA. FINN kaller det «Leieperiode» i nøkkelinfo og «Overtakelse:» i
+  // annonseteksten, alltid på formatet dd.mm.åååå. Vi tar det første som treffer
+  // — normaliseringen til ISO skjer i toIsoDate, ikke her.
+  const availableFrom =
+    (/Leieperiode\s*(\d{1,2}[.\/-]\d{1,2}[.\/-]\d{4})/i.exec(text) || [])[1] ||
+    (/Overtakelse\s*:?\s*(\d{1,2}[.\/-]\d{1,2}[.\/-]\d{4})/i.exec(text) || [])[1] ||
+    (/Ledig\s+fra\s*:?\s*(\d{1,2}[.\/-]\d{1,2}[.\/-]\d{4})/i.exec(text) || [])[1] || '';
   const ptRaw = (/Boligtype\s*([A-Za-zÆØÅæøå]+)/i.exec(text) || [])[1] || '';
   const propertyType = mapFinnPropertyType(ptRaw);
   const kind = /\/lettings\//.test(key) || rent ? 'leie' : (/\/homes\//.test(key) ? 'salg' : '');
@@ -928,6 +935,7 @@ async function fetchFinnPreview(rawUrl) {
     finnUrl: key, finnCode, title, image, gallery, description, kind,
     propertyType, propertyTypeRaw: ptRaw,
     bedrooms: bedrooms || '', sqm: sqm || '', rent: rent || '',
+    availableFrom: availableFrom || '',
     matrikkel, address, postalCode, city,
     addressHidden: !address && !!(postalCode || city),
   };
@@ -6037,6 +6045,9 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
         type: prev.propertyType || null,
         area: prev.address ? stripHouseNumber(prev.address) : null,
         district: prev.postalCode ? postalToDistrict(prev.postalCode) : null,
+        // FINN skriver datoen som dd.mm.åååå — normaliseres til ISO her, slik
+        // at forslaget kan settes rett inn i datofeltet.
+        availableFrom: prev.availableFrom ? toIsoDate(prev.availableFrom) : null,
       };
       return cors(NextResponse.json({
         ok: true,

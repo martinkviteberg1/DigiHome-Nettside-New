@@ -19,7 +19,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { X, Loader2, RotateCcw, Check, Download, AlertTriangle, Link2, Info } from 'lucide-react';
 import { EDITORIAL_FIELDS } from '@/lib/property-editorial';
-import { TYPE_LABEL, MODEL_LABEL, GATE, listingGate } from '@/lib/listings';
+import { TYPE_LABEL, MODEL_LABEL, GATE, listingGate, formatNoDate } from '@/lib/listings';
+import DateField from './DateField';
 
 const KR = (n) => String(Math.round(n || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 
@@ -35,6 +36,8 @@ const FIELD = EDITORIAL_FIELDS.reduce((a, f) => { a[f.key] = f; return a; }, {})
 const optionLabel = (key, v) => {
   if (key === 'type') return TYPE_LABEL[v] || v;
   if (key === 'model') return MODEL_LABEL[v] || v;
+  // Datoer vises alltid leselig norsk («1. oktober 2026»), aldri som rå ISO.
+  if (key === 'availableFrom') return formatNoDate(v) || v;
   return v;
 };
 
@@ -204,6 +207,8 @@ export default function PropertyEditor({ property, apiKey, onSaved, onClose }) {
                             data-testid={`editor-field-${key}`} className="mt-0.5 h-4 w-4 accent-[#7c3aed]" />
                           <span className="text-[12px] leading-relaxed text-[#66625c]">{f.hint}</span>
                         </label>
+                      ) : f.kind === 'date' ? (
+                        <DateField value={v} onChange={(nv) => set(key, nv)} testId={`editor-field-${key}`} />
                       ) : f.kind === 'longtext' ? (
                         <textarea id={`ed-${key}`} rows={5} value={v} onChange={(e) => set(key, e.target.value)} maxLength={f.max}
                           data-testid={`editor-field-${key}`} placeholder="Skriv annonseteksten som skal vises på boligsiden …"

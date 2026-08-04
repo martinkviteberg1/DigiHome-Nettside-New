@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { formatNoDate } from '@/lib/listings';
 import {
   MapPin, Ruler, BedDouble, CalendarDays, Building2, ShieldCheck, ExternalLink,
   ChevronLeft, ChevronRight, X, Check, Loader2, Send, Info,
@@ -14,13 +15,11 @@ import {
 
 const KR = (n) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0');
 
-function fmtDate(iso) {
-  if (!iso) return null;
-  try {
-    const d = new Date(iso);
-    if (Number.isNaN(d.getTime())) return null;
-    return d.toLocaleDateString('nb-NO', { day: 'numeric', month: 'long', year: 'numeric' });
-  } catch (e) { return null; }
+// Datoformatering går via formatNoDate, som tolker BÅDE «2026-10-01» og
+// «01.10.2026». Vi bruker ikke new Date(streng) direkte: den tolker
+// «01.10.2026» som 10. januar, og da annonserer vi feil innflyttingsdato.
+function fmtDate(v) {
+  return formatNoDate(v);
 }
 
 function Gallery({ images, title }) {
