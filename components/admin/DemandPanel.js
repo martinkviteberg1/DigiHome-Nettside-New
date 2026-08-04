@@ -51,6 +51,24 @@ export default function DemandPanel({ apiKey }) {
   const waiting = rows.filter((r) => r.matches > 0);
   const shown = showAll ? rows : waiting.slice(0, 8);
 
+  // TOM TILSTAND SKAL VÆRE STILLE. Et fullt panel med tre setninger forklaring
+  // for «0 varsler» stjeler plassen til boligene under. Én rad er nok.
+  if (!d?.active) {
+    return (
+      <div className="flex flex-wrap items-center gap-2 rounded-2xl bg-white px-4 py-2.5 shadow-[0_2px_10px_rgba(0,0,0,0.04)]" data-testid="demand-panel">
+        <Bell className="h-3.5 w-3.5 shrink-0 text-[#c4bdb4]" />
+        <span className="text-[12.5px] text-[#8a8580]" data-testid="demand-summary">
+          <b className="text-[#0a0a0a]" data-testid="demand-empty">Ingen boligvarsler ennå</b>
+          {' '}— skjemaet på <a href="/ledige-boliger" target="_blank" rel="noopener noreferrer" className="font-semibold text-[#7c3aed]">/ledige-boliger</a> fanger boligsøkere også når vi ikke har noe ledig.
+        </span>
+        <button type="button" onClick={load} disabled={loading} data-testid="demand-refresh"
+          className="ml-auto inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-[12px] font-semibold text-[#a8a29a] hover:bg-[#f5f4f2] hover:text-[#0a0a0a] disabled:opacity-60">
+          {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="rounded-2xl bg-white shadow-[0_2px_16px_rgba(0,0,0,0.05)] p-4 sm:p-5" data-testid="demand-panel">
       <div className="flex flex-wrap items-start justify-between gap-3">
