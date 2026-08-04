@@ -39,6 +39,7 @@ import { logExtUsage, summarizeExtUsage, getPlatformUsage } from '@/lib/ext-usag
 import { getFinanceSettings, setFinanceSettings, listCosts, upsertCost, deleteCost, listContracts, upsertContract, deleteContract, listEvents, upsertEvent, deleteEvent, computeResultat, computeLikviditet, computeFinanceOverview, computeTrends, captureSnapshot, computeInvestorMetrics, computeForecast, computeBoardPack, computeCustomers, computePlatformCustomers } from '@/lib/finance';
 import { syncContractsFromPlatform, syncCustomersFromPlatform, maybeAutoSyncFinance, getFinanceSyncMeta } from '@/lib/contracts-sync';
 import { enqueueInterest as deliverInterest, retryInterestWebhooks, webhookTarget as interestWebhookTarget, platformInboxUrl, platformThreadUrl, platformUnitUrl, deliveryView, OUTBOX_COLL as INTEREST_OUTBOX } from '@/lib/interest-webhook';
+import { notifyStatus, removeSuppression } from '@/lib/notify-status';
 import { ga4MpConfigured, sendGa4Purchase } from '@/lib/ga4-mp';
 import { buildRecommendations } from '@/lib/ads-recommendations';
 import { generateRsaCopy, generateMetaCopy } from '@/lib/ads-ai';
@@ -7478,6 +7479,28 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
         const results = await reforwardPending(db);
         return cors(NextResponse.json({ ok: true, ...results }));
       } catch (e) { return cors(NextResponse.json({ ok: false, error: e.message }, { status: 200 })); }
+    }
+
+    // --- Admin: hvem får varslene — og har SendGrid sperret noen? -----------
+    // Bygget fordi «bare én person får varslene» ikke kan besvares ved å lese
+    // koden: mottakerne kommer fra env (ulik i preview og produksjon), og en
+    // adresse på SendGrids bounce-/blokkeringsliste får aldri e-post igjen
+    // uansett hva koden gjør. Denne ruten viser begge lag i det miljøet den
+    // kjører i.
+    if (route === '/admin/notify-status' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      try { return cors(NextResponse.json(await notifyStatus())); }
+      catch (e) { return cors(NextResponse.json({ ok: false, error: String(e.message || e) }, { status: 200 })); }
+    }
+
+    // Fjern en sperre — bare for adresser som står i våre egne varsellister.
+    if (route === '/admin/notify-status/unblock' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      try {
+        const r = await removeSuppression(body.email);
+        return cors(NextResponse.json(r, { status: r.ok ? 200 : (r.status || 400) }));
+      } catch (e) { return cors(NextResponse.json({ ok: false, error: String(e.message || e) }, { status: 200 })); }
     }
 
     // --- Cron: nye forsøk på boliginteresser sanntidspushen bommet på ---------
