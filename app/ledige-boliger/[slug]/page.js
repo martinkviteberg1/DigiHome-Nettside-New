@@ -8,7 +8,8 @@ import { site } from '@/lib/site';
 import ListingDetail from '@/components/dh/ListingDetail';
 import ListingPreview from '@/components/dh/ListingPreview';
 import { parseBand } from '@/lib/listings';
-import { getListingBySlug } from '@/lib/listings-server';
+import { getListingBySlug, getListingBySlugForNewsletter } from '@/lib/listings-server';
+import { verifyPropertyInterestToken } from '@/lib/newsletter';
 import { ArrowLeft, ArrowUpRight, MapPin } from 'lucide-react';
 
 // BOLIGSIDE — fast, søkbar URL per bolig.
@@ -25,9 +26,24 @@ import { ArrowLeft, ArrowUpRight, MapPin } from 'lucide-react';
 
 export const revalidate = 120;
 
-export async function generateMetadata({ params }) {
+export async function generateMetadata({ params, searchParams }) {
   const data = await getListingBySlug(params.slug);
-  if (!data) return { title: 'Boligen finnes ikke', robots: { index: false, follow: true } };
+  // Lenker fra nyhetsbrev bærer et signert token. Slike URL-er skal ALDRI
+  // indekseres — de er personlige, og boligen bak kan være upublisert.
+  const fromNewsletter = !!searchParams?.pt;
+  if (!data) {
+    if (fromNewsletter) {
+      const nl = await getListingBySlugForNewsletter(params.slug);
+      if (nl) {
+        return {
+          title: `${nl.listing.title} — DigiHome`,
+          description: 'Boligen du fikk tilsendt i nyhetsbrevet fra DigiHome.',
+          robots: { index: false, follow: false },
+        };
+      }
+    }
+    return { title: 'Boligen finnes ikke', robots: { index: false, follow: true } };
+  }
   const { listing, available } = data;
   const place = [listing.streetAddress || listing.area, listing.district].filter(Boolean).join(', ') || listing.city;
   const facts = [listing.sqm ? `${listing.sqm} m²` : null, listing.bedrooms ? `${listing.bedrooms} soverom` : null, listing.rentBand].filter(Boolean).join(' · ');
@@ -55,7 +71,34 @@ export async function generateMetadata({ params }) {
 }
 
 export default async function ListingPage({ params, searchParams }) {
-  const data = await getListingBySlug(params.slug);
+  let data = await getListingBySlug(params.slug);
+
+  // NYHETSBREV-TILGANG. Boligkortene i nyhetsbrevet peker hit — ikke til en egen
+  // bekreftelsesside — fordi dette er den ene siden der boligen er presentert
+  // ordentlig, og fordi det er lenken folk videresender. Men brevet kan
+  // inneholde en bolig som ikke er publisert offentlig, og da ville mottakeren
+  // fått 404 på boligen hun nettopp fikk tilsendt.
+  //
+  // Løsningen er tilgang via det HMAC-signerte tokenet som alt ligger i
+  // e-postlenken: kan vi bekrefte at DENNE mottakeren fikk DENNE boligen i
+  // DENNE kampanjen, viser vi siden (alltid noindex, se generateMetadata).
+  // Tokenet er signert med enten plattformens enhets-ID eller vår lokale id, så
+  // vi prøver begge — da slipper vi å ha ID-en i URL-en.
+  let nl = null;
+  const ptRaw = typeof searchParams?.pt === 'string' ? searchParams.pt : '';
+  const campaignId = typeof searchParams?.c === 'string' ? searchParams.c : '';
+  const rid = typeof searchParams?.r === 'string' ? searchParams.r : '';
+  if (ptRaw && campaignId && rid) {
+    const relaxed = await getListingBySlugForNewsletter(params.slug);
+    if (relaxed) {
+      const candidates = [relaxed.keys.externalId, relaxed.keys.id].filter(Boolean);
+      const match = candidates.find((k) => verifyPropertyInterestToken(campaignId, rid, k, ptRaw));
+      if (match) {
+        data = { listing: relaxed.listing, available: relaxed.available, related: relaxed.related };
+        nl = { c: campaignId, r: rid, pt: ptRaw, property: match };
+      }
+    }
+  }
 
   // Ikke publisert? Vanlige besøkende får 404 — serveren avslører aldri en
   // skjult enhet. Innlogget admin kan legge til ?forhandsvis=1 og se siden slik
@@ -132,7 +175,7 @@ export default async function ListingPage({ params, searchParams }) {
         </Link>
       </div>
 
-      <ListingDetail listing={listing} available={available} />
+      <ListingDetail listing={listing} available={available} nl={nl} />
 
       {related?.length > 0 && (
         <section className="mx-auto max-w-[1400px] px-4 pb-20 sm:px-10 lg:px-16">

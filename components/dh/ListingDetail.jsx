@@ -211,7 +211,128 @@ function InterestForm({ listing, available }) {
   );
 }
 
-export default function ListingDetail({ listing, available }) {
+// ── ETT-KLIKKS INTERESSE FRA NYHETSBREV ────────────────────────────────────
+// Kom du fra nyhetsbrevet, vet vi hvem du er: lenken er HMAC-signert per
+// mottaker og kampanje. Da skal du ikke måtte fylle ut navn og e-post på nytt —
+// ett trykk registrerer interessen på riktig leietakerprofil. Det er den
+// friksjonsfriheten som gjør at folk faktisk melder seg.
+//
+// Ett unntak: tilbyr boligen BÅDE hele enheten og rom, blir ett trykk to trykk.
+// Det er verdt det — uten valget vet ikke forvalteren om hun svarer på en hel
+// leilighet eller ett rom, og da må hun ringe for å spørre om noe vi kunne
+// spurt om her.
+function NewsletterInterest({ listing, nl, available }) {
+  const both = listing.scope === 'begge';
+  const [who, setWho] = useState(null);
+  const [scope, setScope] = useState(both ? '' : (listing.scope || 'hele'));
+  const [note, setNote] = useState('');
+  const [openNote, setOpenNote] = useState(false);
+  const [state, setState] = useState('idle');
+  const [err, setErr] = useState('');
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const qs = new URLSearchParams({ property: nl.property, c: nl.c, r: nl.r, pt: nl.pt });
+        const r = await fetch(`/api/newsletter/property-interest/lookup?${qs.toString()}`);
+        const j = await r.json();
+        if (!alive) return;
+        // `preview: true` betyr at tokenet ikke kunne bekreftes (admin-preview
+        // eller manipulert lenke). Da skal ingen registrere interesse på andres
+        // profil — vi faller tilbake til det vanlige skjemaet.
+        if (j.ok && !j.preview) setWho({ firstName: j.firstName || '', already: !!j.alreadyInterested });
+        else setWho({ firstName: '', invalid: true });
+      } catch (e) { if (alive) setWho({ firstName: '', invalid: true }); }
+    })();
+    return () => { alive = false; };
+  }, [nl.property, nl.c, nl.r, nl.pt]);
+
+  const send = async () => {
+    setErr('');
+    if (both && !scope) { setErr('Velg om du er interessert i hele enheten eller rom i bofellesskap'); return; }
+    setState('sending');
+    try {
+      const r = await fetch('/api/newsletter/property-interest/confirm', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ property: nl.property, c: nl.c, r: nl.r, pt: nl.pt, scope: scope || undefined, message: note || undefined }),
+      });
+      const j = await r.json();
+      if (j.ok) setState('done');
+      else { setState('idle'); setErr(j.error || 'Noe gikk galt — prøv igjen'); }
+    } catch (e) { setState('idle'); setErr('Nettverksfeil — prøv igjen'); }
+  };
+
+  // Ugyldig/utløpt lenke: fall tilbake til det vanlige skjemaet i stedet for en
+  // blindvei. Interessen er for verdifull til å kastes på en teknikalitet.
+  if (who?.invalid) return <InterestForm listing={listing} available={available} />;
+
+  if (state === 'done') {
+    return (
+      <div className="rounded-[22px] bg-emerald-50 p-5" data-testid="nl-interest-done">
+        <p className="inline-flex items-center gap-2 text-[15px] font-semibold text-emerald-900"><Check className="h-4 w-4" /> Interessen er registrert</p>
+        <p className="mt-2 text-[13.5px] leading-relaxed text-emerald-900/80">
+          Takk{who?.firstName ? `, ${who.firstName}` : ''}! Forvalteren tar kontakt
+          {both && scope ? ` om ${scope === 'rom' ? 'rom i bofellesskap' : 'hele enheten'}` : ''} — normalt samme dag på hverdager.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div data-testid="nl-interest">
+      <div className="rounded-[18px] bg-[#f6f1ff] p-4">
+        <p className="text-[14px] font-semibold text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>
+          {who?.firstName ? `Hei ${who.firstName}!` : 'Du kom fra nyhetsbrevet'}
+        </p>
+        <p className="mt-1 text-[13px] leading-relaxed text-[#4c3a75]">
+          {who?.already
+            ? 'Du har alt meldt interesse for denne boligen. Trykk igjen hvis du vil minne oss på det.'
+            : 'Vi har kontaktopplysningene dine — du trenger ikke fylle ut noe.'}
+        </p>
+      </div>
+
+      {both && (
+        <fieldset className="mt-3" data-testid="nl-interest-scope">
+          <legend className="mb-2 text-[12.5px] font-semibold text-[#0a0a0a]">Hva er du interessert i? <span className="font-normal text-[#a8a29a]">(må velges)</span></legend>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {[{ v: 'hele', l: 'Hele enheten', h: 'Du leier hele boligen' }, { v: 'rom', l: 'Rom i bofellesskap', h: 'Du leier ett rom' }].map((c) => (
+              <button key={c.v} type="button" onClick={() => setScope(c.v)} data-testid={`nl-interest-scope-${c.v}`}
+                className={`flex flex-col rounded-xl px-3.5 py-2.5 text-left transition-all ${scope === c.v
+                  ? 'bg-white ring-2 ring-[#7c3aed]'
+                  : 'bg-white ring-1 ring-inset ring-black/[0.09] hover:ring-black/[0.2]'}`}>
+                <span className="text-[13.5px] font-semibold text-[#0a0a0a]">{c.l}</span>
+                <span className="mt-0.5 text-[11.5px] leading-snug text-[#8d867d]">{c.h}</span>
+              </button>
+            ))}
+          </div>
+        </fieldset>
+      )}
+
+      {openNote ? (
+        <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={3} autoFocus
+          data-testid="nl-interest-note" placeholder="Når vil du flytte inn? Spørsmål om boligen?"
+          className="mt-3 w-full resize-none rounded-xl bg-white px-4 py-3 text-[14.5px] leading-relaxed ring-1 ring-inset ring-black/[0.09] outline-none placeholder:text-[#b3ada4] focus:ring-2 focus:ring-[#7c3aed]" />
+      ) : (
+        <button type="button" onClick={() => setOpenNote(true)} data-testid="nl-interest-note-open"
+          className="mt-3 text-[12.5px] font-semibold text-[#7c3aed] hover:underline">Vil du legge ved en melding?</button>
+      )}
+
+      <button type="button" onClick={send} disabled={state === 'sending'} data-testid="nl-interest-send"
+        className="mt-3 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[#0a0a0a] text-[14.5px] font-bold text-white transition-all hover:bg-[#7c3aed] disabled:opacity-60">
+        {state === 'sending' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+        {available ? 'Meld interesse' : 'Varsle meg om tilsvarende'}
+      </button>
+      {err && <p className="mt-2 text-[12.5px] font-semibold text-rose-600" data-testid="nl-interest-error">{err}</p>}
+      <p className="mt-2 text-[11.5px] leading-snug text-[#a8a29a]">
+        Registrert på deg som mottaker av nyhetsbrevet. Ikke deg?{' '}
+        <button type="button" onClick={() => setWho({ firstName: '', invalid: true })} className="font-semibold text-[#7c3aed] hover:underline">Bruk skjemaet i stedet</button>
+      </p>
+    </div>
+  );
+}
+
+export default function ListingDetail({ listing, available, nl = null }) {
   // Full gateadresse med husnummer + bydel. Fallback til gatenavnet alene
   // dersom plattformen mangler nummeret på en enhet.
   const place = [listing.streetAddress || listing.area, listing.district].filter(Boolean).join(', ') || listing.city;
@@ -389,7 +510,9 @@ export default function ListingDetail({ listing, available }) {
               <p className="mb-3 text-[15px] font-bold text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>
                 {available ? 'Meld interesse' : 'Bli varslet'}
               </p>
-              <InterestForm listing={listing} available={available} />
+              {nl
+                ? <NewsletterInterest listing={listing} nl={nl} available={available} />
+                : <InterestForm listing={listing} available={available} />}
             </div>
           </div>
         </aside>

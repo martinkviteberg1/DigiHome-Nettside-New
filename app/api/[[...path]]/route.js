@@ -518,6 +518,10 @@ async function resolveDraftProperties(dbx, blocks) {
         scope: scopeOf(live),
         scopeLabel: SCOPE_LABEL[scopeOf(live)] || '',
         rooms: roomsLine(live),
+        // Slug til VÅR boligside. Nyhetsbrevets CTA peker dit, ikke til en egen
+        // bekreftelsesside: det er der boligen er presentert ordentlig, det er
+        // der utleieenheten vises, og det er lenken folk videresender.
+        slug: listingSlug(live),
         // Bydel, ALDRI gatenavn: «Sandslimarka» er ikke et byområde. Mangler
         // bydel helt, grupperes boligen under «Andre områder».
         district: live.district || snap.district || 'Andre områder',
@@ -5753,12 +5757,15 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
       try { return Buffer.from(String(v || ''), 'base64url').toString('utf8').trim().toLowerCase(); } catch (e) { return ''; }
     };
 
-    const findNewsletterProperty = async (dbx, propertyId) => {
+    const findNewsletterProperty = async (dbx, propertyId, opts = {}) => {
       const pid = String(propertyId || '').slice(0, 80);
       if (!pid) return null;
       const row = await dbx.collection('platform_properties').findOne(
         { stale: { $ne: true }, $or: [{ externalId: pid }, { id: pid }] },
-        { projection: { _id: 0, id: 1, externalId: 1, title: 1, area: 1, district: 1, districtSource: 1, city: 1, type: 1, bedrooms: 1, sqm: 1, images: 1, status: 1, monthlyRentBand: 1, availableFrom: 1, enrich: 1, unit: 1 } }
+        // `editorial` MÅ være med: uten den ignorerte nyhetsbrevflyten
+        // redaktørens overstyringer — inkludert utleieenhet (hele enheten / rom
+        // i bofellesskap), som avgjør om interessenten må velge.
+        { projection: { _id: 0, id: 1, externalId: 1, title: 1, area: 1, district: 1, districtSource: 1, city: 1, type: 1, bedrooms: 1, sqm: 1, images: 1, status: 1, monthlyRentBand: 1, availableFrom: 1, enrich: 1, editorial: 1, unit: 1 } }
       );
       if (!row) return null;
       // Berik med FINN-data (bilder/areal/pris/bydel) der plattformen mangler
@@ -5784,6 +5791,10 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
         ...safe
       } = e;
       if (!finnTrusted) { safe.finnUrl = null; safe.finnCode = ''; }
+      // Interessen som lagres og sendes videre til plattformen trenger den FULLE
+      // boligen (gateadresse med husnummer, utleieenhet). Den brukes bare
+      // server-side; klientflater får alltid `safe`.
+      if (opts.full) return e;
       return safe;
     };
 
@@ -5805,11 +5816,16 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
       }
       const email = nlNormEmail(recipient.email);
       const contact = await findNlContact(db, email);
+      // Har hun alt meldt interesse for denne boligen, skal siden si det — i
+      // stedet for å la henne trykke i tvil om det gikk gjennom forrige gang.
+      const propertyId = property.externalId || property.id;
+      const already = await db.collection('property_interest_events').countDocuments({ email, propertyId });
       return cors(NextResponse.json({
         ok: true,
         firstName: contact?.name ? String(contact.name).split(/\s+/)[0] : '',
         property,
         available: property.status === 'active',
+        alreadyInterested: already > 0,
         campaignId,
       }));
     }
@@ -5824,9 +5840,23 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
         return cors(NextResponse.json({ ok: false, error: 'Ugyldig eller utløpt lenke' }, { status: 401 }));
       }
       const email = nlNormEmail(recipient.email);
-      const property = await findNewsletterProperty(db, propertyKey);
+      const property = await findNewsletterProperty(db, propertyKey, { full: true });
       if (!property) return cors(NextResponse.json({ ok: false, error: 'Boligen finnes ikke lenger' }, { status: 404 }));
       if (property.status !== 'active') return cors(NextResponse.json({ ok: false, error: 'Boligen er dessverre ikke ledig lenger' }, { status: 409 }));
+
+      // UTLEIEENHET. Tilbyr boligen både hele enheten og rom i bofellesskap, må
+      // valget følge med — ellers vet ikke forvalteren om hun svarer på en hel
+      // leilighet eller ett rom. Samme regel som på boligsiden, samme
+      // feilmelding, validert på serveren.
+      const scopeChoices = scopeOptionsFor(property);
+      const pickedScope = normalizeInterestScope(body.scope ?? body.interest_scope, property);
+      if (scopeChoices.length > 1 && !pickedScope.length) {
+        return cors(NextResponse.json({
+          ok: false, field: 'interest_scope',
+          error: 'Velg om du er interessert i hele enheten eller rom i bofellesskap',
+          options: scopeChoices.map((v) => ({ value: v, label: SCOPE_LABEL[v] })),
+        }, { status: 400 }));
+      }
 
       const emailRe = new RegExp(`^${email.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
       let tenant = await db.collection('tenant_leads').find({ email: emailRe, deleted: { $ne: true } }).sort({ createdAt: -1 }).limit(1).next();
@@ -5873,6 +5903,8 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
         ...interestRecord(property, {
           source: 'nyhetsbrev-bolig',
           at: previous?.at || at,
+          scope: pickedScope,
+          message: body.message,
           baseUrl: (process.env.NEXT_PUBLIC_CANONICAL_URL || process.env.NEXT_PUBLIC_BASE_URL || '').replace(/\/$/, ''),
         }),
         status: previous?.status || 'interested',
