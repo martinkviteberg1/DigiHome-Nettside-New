@@ -43,10 +43,10 @@ export function SeksjonHode({ label, tittel, ingress, lenke, lenkeTekst, childre
           {label}
         </span>
       ) : null}
-      <div className="e-reveal mt-6 grid items-end gap-x-10 gap-y-6 sm:mt-8 lg:grid-cols-12">
+      <div className="e-reveal mt-6 grid items-start gap-x-10 gap-y-6 sm:mt-8 lg:grid-cols-12">
         <h2 className="e-h2 max-w-[22ch] lg:col-span-7">{tittel}</h2>
         {(ingress || children || lenke) ? (
-          <div className="lg:col-span-5 lg:pb-1.5">
+          <div className="lg:col-span-5 lg:pt-2.5">
             {ingress ? <p className="e-lead max-w-[44ch]">{ingress}</p> : null}
             {children}
             {lenke ? (

@@ -79,14 +79,8 @@ export default function Footer({ org }: { org?: { company_name?: string; org_num
   const phone = org?.company_phone || '+47 909 58 313';
   const addr = org?.company_address || 'Kokstadvegen 46, 5257 Kokstad';
   return (
-    <footer className="e-tone-sand">
-      <div className="relative overflow-hidden rounded-t-[30px] bg-[#0f0e0d] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.07)] sm:rounded-t-[44px]">
-        {/* Én rolig glød i toppen av flaten, i stedet for en hard svart kant. */}
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute -top-52 left-1/2 h-[460px] w-[900px] -translate-x-1/2 rounded-full"
-          style={{ background: 'radial-gradient(circle, rgba(160,98,222,0.12) 0%, transparent 66%)' }}
-        />
+    <footer className="bg-[#0B0A09] text-white">
+      <div className="relative border-t border-white/[0.08]">
         <div className="relative mx-auto max-w-[1400px] px-6 sm:px-10 lg:px-16">
         <div className="py-16 grid gap-12 sm:grid-cols-2 lg:grid-cols-6">
           <div className="lg:col-span-2">

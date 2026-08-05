@@ -39,7 +39,7 @@ export default function DynamicRentalSection() {
   };
 
   return (
-    <section className="e-section e-tone-sand e-grain" data-testid="dynamic-rental-section">
+    <section className="e-section" data-testid="dynamic-rental-section">
       <div className="e-shell">
         <span className="e-chip">
           <span className="e-chip-dot" aria-hidden="true" />
@@ -60,7 +60,7 @@ export default function DynamicRentalSection() {
                 ikonfirkantene er borte — de sa ingenting «10» og «2» ikke sier. */}
             <div className="mt-10">
               {[
-                { key: 'long', tall: '10', tittel: 'måneder langtidsleie', body: 'Stabil inntekt hele året. Annonseres på Finn.no og Hybel.no.', testId: 'mode-long-term' },
+                { key: 'long', tall: '10', tittel: 'måneder langtidsleie', body: 'Stabil inntekt hele året. Annonsen publiseres på Finn.no.', testId: 'mode-long-term' },
                 { key: 'short', tall: '2', tittel: 'måneder korttidsutleie', body: 'Premium-priser om sommeren. Annonseres på Airbnb og Booking.', testId: 'mode-short-term' },
               ].map((m: any) => {
                 const aktiv = mode === m.key;

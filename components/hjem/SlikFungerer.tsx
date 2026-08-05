@@ -46,15 +46,12 @@ export default function SlikFungerer() {
         lenkeTekst="Registrer boligen"
       />
 
-      <div className="mt-11 grid gap-4 sm:mt-14 sm:grid-cols-2 xl:grid-cols-4 xl:gap-5">
+      <div className="mt-14 grid gap-x-10 gap-y-12 sm:mt-16 sm:grid-cols-2 xl:grid-cols-4">
         {steg.map((s) => (
-          <div
-            key={s.num}
-            className="e-reveal flex flex-col rounded-[26px] border border-[#ece7de] bg-[#f7f4ef] p-6 transition-colors duration-300 hover:bg-[#f3efe7] sm:p-7"
-          >
-            <span className="e-display e-num text-[30px] text-[#cfc6b9]">{s.num}</span>
-            <h3 className="e-h3 mt-5">{s.tittel}</h3>
-            <p className="e-body mt-3">{s.body}</p>
+          <div key={s.num} className="e-reveal border-t border-[#eae5dc] pt-6">
+            <span className="e-num text-[11.5px] font-semibold tracking-[0.14em] text-[#a39b8e]">{s.num}</span>
+            <h3 className="e-h3 mt-4">{s.tittel}</h3>
+            <p className="e-body mt-3 max-w-[34ch]">{s.body}</p>
           </div>
         ))}
       </div>

@@ -9,7 +9,7 @@ export default function Stemmer() {
   if (!forste) return null;
 
   return (
-    <section className="e-section e-tone-sand e-grain" data-testid="testimonials-section">
+    <section className="e-section" data-testid="testimonials-section">
       <div className="e-shell relative">
         <span className="e-chip e-reveal">
           <span className="e-chip-dot" aria-hidden="true" />
@@ -27,9 +27,9 @@ export default function Stemmer() {
           </footer>
         </blockquote>
 
-        <div className="mt-12 grid gap-4 md:grid-cols-2 lg:gap-5">
+        <div className="mt-14 grid gap-x-16 gap-y-12 md:grid-cols-2">
           {resten.map((t: any) => (
-            <blockquote key={t.name} className="e-panel e-reveal p-6 sm:p-7">
+            <blockquote key={t.name} className="e-reveal border-t border-[#eae5dc] pt-6">
               <p className="e-body max-w-[46ch]">«{t.quote}»</p>
               <footer className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1">
                 <span className="text-[13.5px] font-semibold text-[#0a0a0a]">{t.name}</span>

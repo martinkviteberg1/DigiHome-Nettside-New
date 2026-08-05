@@ -14,7 +14,7 @@ const GADS_ID = process.env.NEXT_PUBLIC_GOOGLE_ADS_ID || '';
 export const metadata = {
   metadataBase: new URL(site.url),
   title: {
-    default: 'DigiHome | Smartere utleie i Bergen',
+    default: 'DigiHome | Automatisert utleie i Bergen',
     template: '%s | DigiHome',
   },
   description: site.defaultDescription,
@@ -36,13 +36,13 @@ export const metadata = {
     locale: 'nb_NO',
     url: site.url,
     siteName: 'DigiHome',
-    title: 'DigiHome | Smartere utleie i Bergen',
+    title: 'DigiHome | Automatisert utleie i Bergen',
     description: site.defaultDescription,
     // og:image leveres av app/opengraph-image.js (dynamisk, per side).
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'DigiHome | Smartere utleie i Bergen',
+    title: 'DigiHome | Automatisert utleie i Bergen',
     description: site.defaultDescription,
     // twitter:image leveres av app/twitter-image.js.
   },

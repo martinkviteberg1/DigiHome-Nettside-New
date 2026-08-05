@@ -7,7 +7,7 @@ export const contentType = OG_CONTENT_TYPE;
 export default async function Image() {
   return renderOg({
     eyebrow: 'Eiendomsforvaltning · Bergen',
-    title: 'Smartere utleie. Høyere inntekt.',
-    subtitle: 'AI-drevet eiendomsforvaltning i Bergen — trygt, enkelt og lønnsomt.',
+    title: 'Utleie som går av seg selv.',
+    subtitle: 'Automatisert utleie i Bergen og hele Norge — med eller uten forvalter.',
   });
 }

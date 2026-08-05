@@ -10,23 +10,23 @@ const models = [
     icon: TrendingUp,
     title: 'Dynamisk utleie',
     subtitle: '10+2-modellen',
-    desc: 'Kombiner langtids- og korttidsutleie for maksimal avkastning. 10 måneder fast leietaker, 2 måneder sesongutleie.',
-    highlight: 'Opptil 30% høyere inntekt',
+    desc: 'Ti måneder med fast leietaker, to måneder med sesongutleie. Samme bolig, to markeder.',
+    highlight: 'Opptil 30 % høyere årsinntekt',
     popular: true,
   },
   {
     icon: Home,
     title: 'Langtidsutleie',
     subtitle: 'Trygg og forutsigbar',
-    desc: 'Full forvaltning av langtidsutleie. Vi håndterer alt fra annonsering til vedlikehold og leietakeroppfølging.',
+    desc: 'Én leietaker, fast inntekt. Annonse, kontrakt, depositum og husleie går i plattformen.',
     highlight: 'Fast månedlig inntekt',
   },
   {
     icon: Zap,
     title: 'Korttidsutleie',
-    subtitle: 'Airbnb & Booking.com',
-    desc: 'Profesjonell korttidsutleie med styling, fotografering, dynamisk prising og gjesteservice.',
-    highlight: 'Høy avkastning i sesong',
+    subtitle: 'Airbnb og Booking.com',
+    desc: 'Styling, foto, dynamisk prising og gjesteservice. Vi tar dialogen med gjestene.',
+    highlight: 'Høyest inntekt i sesong',
   },
 ];
 
@@ -109,7 +109,7 @@ export default function ServiceModelsSection() {
           Filmen
         </span>
         <div className="mt-6 sm:mt-8 mb-10 sm:mb-14 grid lg:grid-cols-12 gap-x-10 gap-y-6 items-end">
-          <h2 className="e-h2 lg:col-span-7 max-w-[20ch]">Slik jobber DigiHome for deg.</h2>
+          <h2 className="e-h2 lg:col-span-7 max-w-[20ch]">Se hvordan utleien faktisk drives.</h2>
           <p className="e-lead lg:col-span-5 lg:pb-1.5 max-w-[44ch]">
             Se hvordan vi gjør utleie smartere — fra første visning til siste leiebetaling.
             Trykk hvor som helst i bildet for lyd.
@@ -128,7 +128,7 @@ export default function ServiceModelsSection() {
           tabIndex={audioMode ? -1 : 0}
           onKeyDown={(e) => { if (!audioMode && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); handlePlayWithSound(); } }}
           aria-label={audioMode ? undefined : 'Spill av video med lyd'}
-          className={`group relative overflow-hidden rounded-[8px] bg-[#0a0a0a] ${audioMode ? '' : 'cursor-pointer'}`}
+          className={`group relative overflow-hidden rounded-[18px] bg-[#0a0a0a] ${audioMode ? '' : 'cursor-pointer'}`}
           style={{ boxShadow: '0 28px 70px -36px rgba(20,20,30,0.28)' }}
           data-testid="service-models-video"
         >

@@ -54,11 +54,11 @@ export default function ToVeier() {
         ingress="Automatikken er den samme i begge: annonse, kontrakt med BankID, depositumskonto og husleie. Forskjellen er om en forvalter møter opp for deg — eller om du gjør det selv."
       />
 
-      <div className="mt-11 grid gap-6 sm:mt-14 lg:grid-cols-2 lg:gap-7">
+      <div className="mt-14 grid gap-x-16 gap-y-14 sm:mt-16 lg:grid-cols-2">
         {veier.map((v, i) => (
           <div
             key={v.navn}
-            className="e-panel e-reveal flex flex-col p-6 sm:p-8 lg:p-9"
+            className="e-reveal flex flex-col border-t border-[#eae5dc] pt-7"
           >
             <div className="flex items-baseline justify-between gap-4">
               <h3 className="e-h3 text-[24px] sm:text-[28px]">{v.navn}</h3>
