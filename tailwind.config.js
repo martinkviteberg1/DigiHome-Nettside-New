@@ -23,7 +23,9 @@ module.exports = {
           surface: '#FFFFFF',
           ink: '#0A0A0A',
           'ink-soft': '#1A1A1A',
-          taupe: '#9B9080',
+          // Var #9B9080 (3,14:1 mot hvitt) og brukes kun på tekst, aldri som
+          // bakgrunn — altså 43 steder med tekst under WCAG AA-grensen på 4,5:1.
+          taupe: '#7A7365',
           quiet: '#7C7466',
           fill: '#F5F2EB',
           hairline: '#EBE6DF',

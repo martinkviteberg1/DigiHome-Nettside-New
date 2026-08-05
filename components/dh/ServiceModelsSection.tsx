@@ -111,7 +111,7 @@ export default function ServiceModelsSection() {
         >
           <span className="inline-flex items-center gap-3 mb-5">
             <span className="w-7 h-[2px] rounded-full bg-[#d298ff]" />
-            <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#8f8a80]">Se filmen</span>
+            <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#6f6a60]">Se filmen</span>
           </span>
           <h2 className="text-[36px] sm:text-[48px] lg:text-[56px] font-extrabold tracking-[-0.034em] leading-[1.02] text-[#0a0a0a]">
             Slik jobber DigiHome for deg.
@@ -238,7 +238,7 @@ export default function ServiceModelsSection() {
           >
             <span className="inline-flex items-center gap-3">
               <span className="w-7 h-[2px] rounded-full bg-[#d298ff]" />
-              <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#8f8a80]">Våre tjenester</span>
+              <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#6f6a60]">Våre tjenester</span>
             </span>
           </motion.div>
           <motion.h2
@@ -256,7 +256,7 @@ export default function ServiceModelsSection() {
             whileInView={{ opacity: 1 }}
             viewport={{ once: true }}
             transition={{ duration: 0.4, delay: 0.1 }}
-            className="text-[16px] text-[#888] max-w-[480px] mx-auto leading-relaxed mt-4"
+            className="text-[16px] text-[#6b6b6b] max-w-[480px] mx-auto leading-relaxed mt-4"
           >
             Velg modellen som passer din eiendom best, eller la oss anbefale den optimale løsningen.
           </motion.p>
@@ -337,7 +337,7 @@ export default function ServiceModelsSection() {
                   </h3>
                   <p
                     className="text-[12px] font-medium mt-1.5 tracking-wide uppercase"
-                    style={{ color: m.popular ? 'rgba(255,255,255,0.4)' : '#aaa' }}
+                    style={{ color: m.popular ? 'rgba(255,255,255,0.62)' : '#6b6b6b' }}
                   >
                     {m.subtitle}
                   </p>

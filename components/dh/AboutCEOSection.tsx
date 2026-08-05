@@ -20,7 +20,7 @@ export default function AboutCEOSection() {
             >
               <span className="inline-flex items-center gap-3">
                 <span className="w-7 h-[2px] rounded-full bg-[#d298ff]" />
-                <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#8f8a80]">Om DigiHome</span>
+                <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#6f6a60]">Om DigiHome</span>
               </span>
             </Reveal>
 

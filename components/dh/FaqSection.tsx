@@ -23,7 +23,7 @@ export default function FaqSection() {
         >
           <span className="inline-flex items-center gap-3">
             <span className="w-7 h-[2px] rounded-full bg-[#d298ff]" />
-            <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#8f8a80] inline-flex items-center gap-1.5"><MessageCircleQuestion className="w-3.5 h-3.5" /> Ofte stilte spørsmål</span>
+            <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#6f6a60] inline-flex items-center gap-1.5"><MessageCircleQuestion className="w-3.5 h-3.5" /> Ofte stilte spørsmål</span>
           </span>
           <h2
             className="text-[34px] sm:text-[42px] font-bold tracking-[-0.03em] leading-[1.08] text-[#0a0a0a] mt-4"
@@ -31,7 +31,7 @@ export default function FaqSection() {
           >
             Spørsmål og svar
           </h2>
-          <p className="text-[15px] text-[#777] leading-[1.75] mt-4 max-w-[52ch] mx-auto">
+          <p className="text-[15px] text-[#666] leading-[1.75] mt-4 max-w-[52ch] mx-auto">
             Det viktigste du bør vite om DigiHome, 10+2-modellen og hvordan vi maksimerer leieinntekten din.
           </p>
         </Reveal>
@@ -56,7 +56,7 @@ export default function FaqSection() {
                   {item.q}
                 </h3>
                 <span className="w-8 h-8 rounded-full bg-[#f5f0fb] flex items-center justify-center shrink-0 transition-transform duration-300 [details[open]_&]:rotate-180">
-                  <ChevronDown className="w-4 h-4 text-[#8f8a80]" strokeWidth={2.4} />
+                  <ChevronDown className="w-4 h-4 text-[#6f6a60]" strokeWidth={2.4} />
                 </span>
               </summary>
               <p className="faq-answer text-[15px] text-[#555] leading-[1.8] pb-6 pr-10 -mt-1">{item.a}</p>
@@ -65,7 +65,7 @@ export default function FaqSection() {
         </div>
 
         <div className="text-center mt-12">
-          <p className="text-[14px] text-[#888]">Har du flere spørsmål?</p>
+          <p className="text-[14px] text-[#6b6b6b]">Har du flere spørsmål?</p>
           <Link
             href="/kontakt"
             className="inline-flex items-center gap-2 mt-3 h-11 px-6 rounded-full bg-[#0a0a0a] text-white text-[14px] font-semibold active:scale-[0.98] transition-transform"

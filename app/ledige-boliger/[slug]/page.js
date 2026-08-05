@@ -192,7 +192,7 @@ export default async function ListingPage({ params, searchParams }) {
                 </div>
                 <div className="p-5">
                   <h3 className="text-[15.5px] font-semibold leading-snug text-[#0a0a0a] group-hover:text-[#7c3aed]" style={{ fontFamily: 'var(--font-heading)' }}>{c.title}</h3>
-                  <p className="mt-1.5 flex items-start gap-1.5 text-[13px] text-[#78726a]"><MapPin className="mt-[2px] h-3.5 w-3.5 shrink-0 text-[#c9c3ba]" /><span className="break-words">{[c.streetAddress || c.area, c.district].filter(Boolean).join(', ')}</span></p>
+                  <p className="mt-1.5 flex items-start gap-1.5 text-[13px] text-[#78726a]"><MapPin className="mt-[2px] h-3.5 w-3.5 shrink-0 text-[#8a837a]" /><span className="break-words">{[c.streetAddress || c.area, c.district].filter(Boolean).join(', ')}</span></p>
                   <p className="mt-3 text-[14px] font-semibold text-[#0a0a0a]">{c.rentText || 'Pris på forespørsel'}</p>
                 </div>
               </Link>

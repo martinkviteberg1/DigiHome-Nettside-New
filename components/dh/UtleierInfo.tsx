@@ -10,7 +10,7 @@ import {
 // Bygget etter kundetilbakemelding: direktebesøkende trengte mye mer info
 // (tjenester, prismodell, FAQ) før skjemaet. Skjemaet ligger nederst (#skjema).
 
-const eyebrow = 'inline-flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.14em] text-[#9b6cc4]';
+const eyebrow = 'inline-flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.14em] text-[#7c3aed]';
 const h2cls = 'text-[34px] sm:text-[42px] font-bold tracking-[-0.03em] leading-[1.08] text-[#0a0a0a]';
 const headingFont = { fontFamily: 'var(--font-heading)' } as React.CSSProperties;
 
@@ -49,7 +49,7 @@ export function UtleierHero() {
           <Reveal as="div" initial={{ opacity: 0, y: 18 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6, delay: 0.1 }} className="relative">
             <img src="/showcase-apartment.webp" alt="Lys og moderne utleiebolig forvaltet av DigiHome" className="w-full aspect-[4/3] object-cover rounded-3xl" />
             <div className="absolute -bottom-5 left-6 sm:left-8 bg-white rounded-2xl shadow-[0_10px_34px_rgba(10,10,10,0.12)] px-5 py-4">
-              <p className="text-[12px] text-[#8A8178]">Gjennomsnittlig svartid</p>
+              <p className="text-[12px] text-[#6b665f]">Gjennomsnittlig svartid</p>
               <p className="text-[18px] font-bold text-[#0a0a0a]" style={headingFont}>Samme dag</p>
             </div>
           </Reveal>
@@ -175,7 +175,7 @@ export function UtleierFaq() {
             </details>
           ))}
         </div>
-        <p className="text-center text-[14px] text-[#8A8178] mt-8">
+        <p className="text-center text-[14px] text-[#6b665f] mt-8">
           Fant du ikke svaret? Ring oss på{' '}
           <a href={`tel:${site.phoneHref}`} className="text-[#7e22ce] font-semibold">{site.phone}</a>
           {' '}— vi svarer gjerne.

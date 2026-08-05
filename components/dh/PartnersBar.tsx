@@ -22,7 +22,7 @@ export default function PartnersSection() {
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
           transition={{ duration: 0.5 }}
-          className="text-center text-[11px] font-semibold text-[#8f8a80] uppercase tracking-[0.22em] mb-10"
+          className="text-center text-[11px] font-semibold text-[#6f6a60] uppercase tracking-[0.22em] mb-10"
         >
           Samarbeidspartnere
         </Reveal>
@@ -44,7 +44,7 @@ export default function PartnersSection() {
           {[...partners, ...partners].map((name: string, i: number) => (
             <span
               key={`${name}-${i}`}
-              className="text-[18px] sm:text-[21px] font-bold tracking-tight text-[#c6c2bc] hover:text-[#8a8a8a] transition-colors duration-300 whitespace-nowrap"
+              className="text-[19px] sm:text-[21px] font-bold tracking-tight text-[#8a837a] hover:text-[#55504a] transition-colors duration-300 whitespace-nowrap"
               style={{ fontFamily: 'var(--font-heading)' }}
               title={name}
             >

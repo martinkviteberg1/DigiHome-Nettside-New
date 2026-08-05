@@ -192,7 +192,7 @@ export function HeroAutopilot() {
                 ].map(([v, l], i) => (
                   <div key={l} className={`flex flex-col ${i ? 'pl-7 ml-7 border-l border-white/10' : ''}`}>
                     <dt className="font-heading text-[26px] font-bold text-white tracking-[-0.02em] leading-none">{v}</dt>
-                    <dd className="mt-1.5 text-[11px] uppercase tracking-[0.16em] text-white/35 font-semibold">{l}</dd>
+                    <dd className="mt-1.5 text-[11px] uppercase tracking-[0.16em] text-white/55 font-semibold">{l}</dd>
                   </div>
                 ))}
               </dl>

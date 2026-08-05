@@ -33,7 +33,7 @@ export default function Page() {
       </section>
 
       <section className="max-w-[1000px] mx-auto px-6 sm:px-10 lg:px-16 py-16 lg:py-24">
-        <p className="text-[12px] font-semibold uppercase tracking-[0.16em] text-[#9b6cc4] mb-4">Historien vår</p>
+        <p className="text-[12px] font-semibold uppercase tracking-[0.16em] text-[#7c3aed] mb-4">Historien vår</p>
         <h2 className="text-[28px] sm:text-[38px] font-bold tracking-[-0.03em] leading-[1.08] mb-8" style={{ fontFamily: 'var(--font-heading)' }}>Fra frustrasjon til forvaltning i verdensklasse</h2>
         <div className="space-y-5 text-[17px] leading-[1.85] text-[#444]">
           <p>DigiHome startet med en enkel observasjon: utleie i Bergen var unødvendig komplisert, tidkrevende og lite lønnsomt for boligeiere som ville gjøre det riktig. Annonser, prising, visninger, kontrakter, husleie, renhold, vedlikehold — alt lå spredt, og ingen hadde tid til å gjøre det optimalt.</p>
@@ -81,7 +81,7 @@ export default function Page() {
           <div>
             <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-[#5b6370] mb-1">Daglig leder</p>
             <h3 className="text-[22px] font-bold" style={{ fontFamily: 'var(--font-heading)' }}>{site.ceo}</h3>
-            <p className="text-[14px] text-[#a765e0] font-medium mb-3">{site.ceoTitle}</p>
+            <p className="text-[14px] text-[#7c3aed] font-medium mb-3">{site.ceoTitle}</p>
             <p className="text-[15px] text-[#555] leading-relaxed">«Vårt løfte er enkelt: du skal slippe å tenke på utleien, og samtidig tjene mer enn du gjorde før. Vi behandler hver bolig som om den var vår egen.»</p>
           </div>
         </div>

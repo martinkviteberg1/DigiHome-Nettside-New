@@ -25,7 +25,7 @@ export default function WhyChooseUsSection() {
             <Reveal as="div" initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ duration: 0.4 }} className="mb-5">
               <span className="inline-flex items-center gap-3">
                 <span className="w-7 h-[2px] rounded-full bg-[#d298ff]" />
-                <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#8f8a80]">Fordelene</span>
+                <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#6f6a60]">Fordelene</span>
               </span>
             </Reveal>
             <Reveal as="h2" initial={{ opacity: 0, y: 12 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: '-80px' }} transition={{ duration: 0.5 }}
@@ -41,7 +41,7 @@ export default function WhyChooseUsSection() {
                   </div>
                   <div>
                     <h3 className="text-[15px] font-semibold text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>{b.title}</h3>
-                    <p className="text-[14px] text-[#888] leading-[1.7] mt-0.5">{b.desc}</p>
+                    <p className="text-[14px] text-[#6b6b6b] leading-[1.7] mt-0.5">{b.desc}</p>
                   </div>
                 </Reveal>
               ))}

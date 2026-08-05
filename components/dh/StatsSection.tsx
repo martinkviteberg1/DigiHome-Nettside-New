@@ -24,7 +24,7 @@ export default function StatsSection() {
           className="flex items-center justify-between border-b border-[#eee] pb-6 mb-12">
           <span className="inline-flex items-center gap-3">
             <span className="w-7 h-[2px] rounded-full bg-[#d298ff]" />
-            <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#8f8a80]">DigiHome i tall</span>
+            <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#6f6a60]">DigiHome i tall</span>
           </span>
           <p className="text-[12px] text-[#bbb] hidden sm:block">Bergen · Oppdatert 2026</p>
         </motion.div>

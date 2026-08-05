@@ -49,7 +49,7 @@ function Gallery({ images, title }) {
   }, [open, go]);
 
   if (!imgs.length) {
-    return <div className="grid aspect-[16/10] place-items-center rounded-[26px] bg-[#f3f1ee] text-[#c9c3ba]"><Building2 className="h-8 w-8" /></div>;
+    return <div className="grid aspect-[16/10] place-items-center rounded-[26px] bg-[#f3f1ee] text-[#8a837a]"><Building2 className="h-8 w-8" /></div>;
   }
 
   return (
@@ -166,7 +166,7 @@ function InterestForm({ listing, available }) {
     <form onSubmit={submit} className="space-y-2.5" data-testid="listing-interest-form">
       {both && (
         <fieldset className="mb-1" data-testid="listing-interest-scope">
-          <legend className="mb-2 text-[12.5px] font-semibold text-[#0a0a0a]">Hva er du interessert i? <span className="font-normal text-[#a8a29a]">(må velges)</span></legend>
+          <legend className="mb-2 text-[12.5px] font-semibold text-[#0a0a0a]">Hva er du interessert i? <span className="font-normal text-[#6b665f]">(må velges)</span></legend>
           <div className="grid gap-2 sm:grid-cols-2">
             {SCOPE_CHOICES.map((c) => (
               <label key={c.value} data-testid={`listing-interest-scope-${c.value}`}
@@ -201,7 +201,7 @@ function InterestForm({ listing, available }) {
           til leadet i admin og videre til DigiHome-plattformen — så spørsmålet
           om innflytting eller husdyr blir besvart i første svar. */}
       <label className="block">
-        <span className="mb-1 block text-[12px] font-semibold text-[#5f5a53]">Melding til forvalteren <span className="font-normal text-[#a8a29a]">(valgfritt)</span></span>
+        <span className="mb-1 block text-[12px] font-semibold text-[#5f5a53]">Melding til forvalteren <span className="font-normal text-[#6b665f]">(valgfritt)</span></span>
         <textarea value={f.notes} onChange={set('notes')} rows={3} placeholder="Når vil du flytte inn? Spørsmål om boligen? Noe vi bør vite?"
           data-testid="listing-interest-notes"
           className="w-full resize-none rounded-xl bg-white px-4 py-3 text-[14.5px] leading-relaxed ring-1 ring-inset ring-black/[0.09] outline-none placeholder:text-[#b3ada4] focus:ring-2 focus:ring-[#7c3aed]" />
@@ -212,7 +212,7 @@ function InterestForm({ listing, available }) {
         {state === 'sending' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
         {available ? 'Meld interesse' : 'Sett meg på lista'}
       </button>
-      <p className="text-[11.5px] leading-relaxed text-[#a8a29a]">
+      <p className="text-[11.5px] leading-relaxed text-[#6b665f]">
         Vi bruker opplysningene til å følge opp henvendelsen din om denne boligen. Ingen deling med tredjeparter.
       </p>
     </form>
@@ -302,7 +302,7 @@ function NewsletterInterest({ listing, nl, available }) {
 
       {both && (
         <fieldset className="mt-3" data-testid="nl-interest-scope">
-          <legend className="mb-2 text-[12.5px] font-semibold text-[#0a0a0a]">Hva er du interessert i? <span className="font-normal text-[#a8a29a]">(må velges)</span></legend>
+          <legend className="mb-2 text-[12.5px] font-semibold text-[#0a0a0a]">Hva er du interessert i? <span className="font-normal text-[#6b665f]">(må velges)</span></legend>
           <div className="grid gap-2 sm:grid-cols-2">
             {[{ v: 'hele', l: 'Hele enheten', h: 'Du leier hele boligen' }, { v: 'rom', l: 'Rom i bofellesskap', h: 'Du leier ett rom' }].map((c) => (
               <button key={c.v} type="button" onClick={() => setScope(c.v)} data-testid={`nl-interest-scope-${c.v}`}
@@ -332,7 +332,7 @@ function NewsletterInterest({ listing, nl, available }) {
         {available ? 'Meld interesse' : 'Varsle meg om tilsvarende'}
       </button>
       {err && <p className="mt-2 text-[12.5px] font-semibold text-rose-600" data-testid="nl-interest-error">{err}</p>}
-      <p className="mt-2 text-[11.5px] leading-snug text-[#a8a29a]">
+      <p className="mt-2 text-[11.5px] leading-snug text-[#6b665f]">
         Registrert på deg som mottaker av nyhetsbrevet. Ikke deg?{' '}
         <button type="button" onClick={() => setWho({ firstName: '', invalid: true })} className="font-semibold text-[#7c3aed] hover:underline">Bruk skjemaet i stedet</button>
       </p>
@@ -383,7 +383,7 @@ export default function ListingDetail({ listing, available, nl = null }) {
               {listing.title}
             </h1>
             <p className="mt-3 flex items-start gap-1.5 text-[15px] text-[#78726a]">
-              <MapPin className="mt-[3px] h-4 w-4 shrink-0 text-[#c9c3ba]" />
+              <MapPin className="mt-[3px] h-4 w-4 shrink-0 text-[#8a837a]" />
               <span className="break-words">{place}</span>
             </p>
             {/* Pris på mobil: i ett-kolonne-oppsettet havner sidepanelet
@@ -403,8 +403,8 @@ export default function ListingDetail({ listing, available, nl = null }) {
           <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
             {facts.map((f) => (
               <div key={f.label} className="rounded-[20px] bg-white p-4 ring-1 ring-black/[0.05]">
-                <f.icon className="h-4 w-4 text-[#c9c3ba]" />
-                <p className="mt-2 text-[11px] font-bold uppercase tracking-[0.1em] text-[#a8a29a]">{f.label}</p>
+                <f.icon className="h-4 w-4 text-[#8a837a]" />
+                <p className="mt-2 text-[11px] font-bold uppercase tracking-[0.1em] text-[#6b665f]">{f.label}</p>
                 <p className="mt-0.5 text-[15px] font-semibold text-[#0a0a0a]">{f.value}</p>
               </div>
             ))}
@@ -508,7 +508,7 @@ export default function ListingDetail({ listing, available, nl = null }) {
           <div className="rounded-[26px] bg-[#f8f6f3] p-5 ring-1 ring-black/[0.05] shadow-[0_14px_50px_-32px_rgba(0,0,0,0.3)] sm:p-6">
             {rent ? (
               <>
-                <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#a8a29a]">Månedsleie</p>
+                <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#6b665f]">Månedsleie</p>
                 <p className="mt-1.5 text-[26px] font-bold leading-none tracking-[-0.02em] text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>
                   <span className="whitespace-nowrap">{rent}</span> <span className="text-[15px] font-semibold text-[#78726a]">kr/mnd{listing.rentScopeNote ? ` ${listing.rentScopeNote}` : ''}</span>
                 </p>

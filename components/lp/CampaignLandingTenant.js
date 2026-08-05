@@ -318,19 +318,25 @@ export default function CampaignLandingTenant() {
               </div>
             </Reveal>
 
-            {/* Tillitsrad */}
+            {/* Tillitsrad
+                Her sto tidligere «4,9/5 fra leietakere i Bergen» med fem
+                fylte stjerner. Tallet finnes ikke i noen datakilde i
+                kodebasen, og en vurderingsscore som ikke kan dokumenteres er
+                både et tillitsproblem og noe markedsføringsloven slår ned på.
+                Erstattet med selskapets faktiske, dokumenterte volumtall
+                (statStrip: «150+ boliger — akkumulert forvaltet eller
+                håndtert»). Skal stjernene tilbake, må de kobles til en reell
+                kilde, f.eks. antall Google-vurderinger. */}
             <Reveal delay={230}>
               <div className="mt-5 flex items-center justify-between gap-x-6 gap-y-3 flex-wrap">
                 <div className="flex items-center gap-2.5">
                   <AvatarStack size={30} names={['Sofie R.', 'Henrik B.', 'Amalie T.', 'Jonas F.']} />
                   <div>
-                    <div className="flex items-center gap-0.5 text-lavender">
-                      {[0, 1, 2, 3, 4].map((i) => <Star key={i} className="w-3.5 h-3.5 fill-current" />)}
-                    </div>
-                    <p className="text-[12.5px] text-quiet mt-0.5"><b className="text-ink">4,9/5</b> fra leietakere i Bergen</p>
+                    <p className="text-[13px] font-semibold text-ink leading-tight">150+ boliger håndtert</p>
+                    <p className="text-[12.5px] text-quiet mt-0.5">av vårt lokale team i Bergen</p>
                   </div>
                 </div>
-                <img src="/bankid-logo.png" alt="BankID" style={{ height: 18 }} loading="lazy" className="w-auto object-contain opacity-50 grayscale" />
+                <img src="/bankid-logo.png" alt="BankID" style={{ height: 18 }} loading="lazy" className="w-auto object-contain opacity-60 grayscale" />
               </div>
             </Reveal>
 

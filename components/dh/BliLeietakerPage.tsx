@@ -234,7 +234,7 @@ export default function BliLeietakerPage() {
                   </div>
                   <div className="pb-4">
                     <p className="text-[14.5px] font-semibold text-[#0a0a0a] leading-tight">{it.t}</p>
-                    <p className="text-[13px] text-[#888] mt-0.5">{it.s}</p>
+                    <p className="text-[13px] text-[#6b6b6b] mt-0.5">{it.s}</p>
                   </div>
                 </motion.div>
               ))}
@@ -322,7 +322,7 @@ export default function BliLeietakerPage() {
         <div className="max-w-[560px] w-full mx-auto px-6 pt-7 relative">
           <div className="flex items-center justify-between mb-5">
             <button onClick={goBack} className="w-9 h-9 rounded-full border border-[#e8e5e0] hover:bg-[#f5f5f5] flex items-center justify-center transition-colors active:scale-95" data-testid="tenant-back-button" aria-label="Tilbake">
-              <ArrowLeft className="w-4 h-4 text-[#888]" />
+              <ArrowLeft className="w-4 h-4 text-[#6b6b6b]" />
             </button>
             <div className="text-right">
               <p className="text-[10.5px] font-semibold text-[#7e22ce] uppercase tracking-[0.1em] leading-none">Steg {curPos + 1} av {flowSteps.length}</p>
@@ -364,7 +364,7 @@ export default function BliLeietakerPage() {
                 <div data-testid="tenant-step-personal">
                   <div className="inline-flex items-center gap-2 text-[11px] font-semibold text-[#7e22ce] uppercase tracking-[0.1em] mb-3"><User className="w-3.5 h-3.5" /> Om deg</div>
                   <h2 className="text-[28px] sm:text-[34px] font-bold tracking-[-0.03em] text-[#0a0a0a] mb-2" style={{ fontFamily: 'var(--font-heading)' }}>Fortell oss litt om deg</h2>
-                  <p className="text-[15px] text-[#888] mb-8">Slik at vi kan kontakte deg med aktuelle boliger.</p>
+                  <p className="text-[15px] text-[#6b6b6b] mb-8">Slik at vi kan kontakte deg med aktuelle boliger.</p>
                   <div className="space-y-5">
                     <TextInput label="Fullt navn" required error={errors.name} icon={User} value={formData.name} onChange={(v: any) => updateField('name', v)} placeholder="Ola Nordmann" autoFocus autoComplete="name" testId="tenant-name-input" />
                     <TextInput label="E-post" required error={errors.email} icon={Mail} value={formData.email} type="email" onChange={(v: any) => updateField('email', v)} placeholder="ola@eksempel.no" autoComplete="email" testId="tenant-email-input" />
@@ -378,7 +378,7 @@ export default function BliLeietakerPage() {
                 <div data-testid="tenant-step-preferences">
                   <div className="inline-flex items-center gap-2 text-[11px] font-semibold text-[#7e22ce] uppercase tracking-[0.1em] mb-3"><Home className="w-3.5 h-3.5" /> Boligønsker</div>
                   <h2 className="text-[28px] sm:text-[34px] font-bold tracking-[-0.03em] text-[#0a0a0a] mb-2" style={{ fontFamily: 'var(--font-heading)' }}>Hva slags bolig ser du etter?</h2>
-                  <p className="text-[15px] text-[#888] mb-8">Velg det som passer deg best.</p>
+                  <p className="text-[15px] text-[#6b6b6b] mb-8">Velg det som passer deg best.</p>
                   <div className="space-y-8">
                     <div>
                       <Label className="text-[13px] font-semibold text-[#333] mb-3 block">Boligtype <span className="text-[#7e22ce]">*</span></Label>
@@ -409,7 +409,7 @@ export default function BliLeietakerPage() {
                 <div data-testid="tenant-step-details">
                   <div className="inline-flex items-center gap-2 text-[11px] font-semibold text-[#7e22ce] uppercase tracking-[0.1em] mb-3"><Sliders className="w-3.5 h-3.5" /> Detaljer</div>
                   <h2 className="text-[28px] sm:text-[34px] font-bold tracking-[-0.03em] text-[#0a0a0a] mb-2" style={{ fontFamily: 'var(--font-heading)' }}>Noen siste detaljer</h2>
-                  <p className="text-[15px] text-[#888] mb-8">Jo mer vi vet, desto bedre match finner vi.</p>
+                  <p className="text-[15px] text-[#6b6b6b] mb-8">Jo mer vi vet, desto bedre match finner vi.</p>
                   <div className="space-y-7">
                     <div>
                       <Label className="text-[13px] font-semibold text-[#333] mb-3 block">Antall soverom <span className="text-[#7e22ce]">*</span></Label>
@@ -452,7 +452,7 @@ export default function BliLeietakerPage() {
                 <div data-testid="tenant-step-confirm">
                   <div className="inline-flex items-center gap-2 text-[11px] font-semibold text-[#7e22ce] uppercase tracking-[0.1em] mb-3"><CheckCircle2 className="w-3.5 h-3.5" /> Oppsummering</div>
                   <h2 className="text-[28px] sm:text-[34px] font-bold tracking-[-0.03em] text-[#0a0a0a] mb-2" style={{ fontFamily: 'var(--font-heading)' }}>Ser dette riktig ut?</h2>
-                  <p className="text-[15px] text-[#888] mb-8">Sjekk at alt stemmer før du sender.</p>
+                  <p className="text-[15px] text-[#6b6b6b] mb-8">Sjekk at alt stemmer før du sender.</p>
                   <div className="space-y-4">
                     <SummaryCard title="Om deg" onEdit={() => { setDir(-1); setStep(1); }} testId="tenant-edit-personal">
                       <p className="text-[15px] text-[#333] font-medium">{formData.name}</p>

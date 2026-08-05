@@ -243,7 +243,7 @@ export default function SommerKampanjePage() {
                     <span className="text-[13px] font-bold tabular-nums mt-0.5" style={{ color: '#a052e0' }}>{String(i + 1).padStart(2, '0')}</span>
                     <div>
                       <p className="text-[15px] font-semibold">{x.t}</p>
-                      <p className="text-[13.5px] text-[#888] leading-[1.6] mt-1">{x.d}</p>
+                      <p className="text-[13.5px] text-[#6b6b6b] leading-[1.6] mt-1">{x.d}</p>
                     </div>
                   </div>
                 ))}
@@ -286,7 +286,7 @@ export default function SommerKampanjePage() {
                         <div className="mt-5">
                           <label className="text-[12px] font-semibold text-[#555] block mb-1.5">Telefon — så ringer vi deg *</label>
                           <div className="flex">
-                            <span className="h-[46px] px-3 rounded-l-xl border border-r-0 border-[#e8e2ef] bg-[#f7f4fa] text-[13.5px] text-[#888] flex items-center">+47</span>
+                            <span className="h-[46px] px-3 rounded-l-xl border border-r-0 border-[#e8e2ef] bg-[#f7f4fa] text-[13.5px] text-[#6b6b6b] flex items-center">+47</span>
                             <input value={magicPhone} onChange={(e) => setMagicPhone(e.target.value.replace(/[^\d\s]/g, ''))} placeholder="900 00 000" inputMode="tel" data-testid="sommer-magic-phone" autoFocus
                               className="w-full h-[46px] rounded-r-xl border border-[#e8e2ef] bg-white px-3.5 text-[14.5px] outline-none focus:border-[#c99df0] focus:ring-2 focus:ring-[#f0e4fb]" />
                           </div>
@@ -329,7 +329,7 @@ export default function SommerKampanjePage() {
                   <div>
                     <label className="text-[12px] font-semibold text-[#555] block mb-1.5">Telefon *</label>
                     <div className="flex">
-                      <span className="h-[46px] px-3 rounded-l-xl border border-r-0 border-[#e8e2ef] bg-[#f7f4fa] text-[13.5px] text-[#888] flex items-center">+47</span>
+                      <span className="h-[46px] px-3 rounded-l-xl border border-r-0 border-[#e8e2ef] bg-[#f7f4fa] text-[13.5px] text-[#6b6b6b] flex items-center">+47</span>
                       <input value={phone} onChange={(e) => { markStart(); setPhone(e.target.value.replace(/[^\d\s]/g, '')); }} placeholder="900 00 000" inputMode="tel" data-testid="sommer-phone"
                         className="w-full h-[46px] rounded-r-xl border border-[#e8e2ef] bg-white px-3.5 text-[14.5px] outline-none focus:border-[#c99df0] focus:ring-2 focus:ring-[#f0e4fb]" />
                     </div>

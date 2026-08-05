@@ -169,8 +169,8 @@ export default async function ArticlePage({ params }) {
             <div className="mt-8 pt-6 border-t border-black/[0.07] flex flex-wrap items-center gap-x-5 gap-y-4">
               <div className="flex items-center gap-3">
                 <div
-                  className="w-11 h-11 rounded-full flex items-center justify-center text-white text-[14px] font-bold shrink-0"
-                  style={{ background: author.accent, fontFamily: 'var(--font-heading)' }}
+                  className="w-11 h-11 rounded-full flex items-center justify-center text-[14px] font-bold shrink-0"
+                  style={{ background: author.accent, color: author.fg || '#ffffff', fontFamily: 'var(--font-heading)' }}
                 >
                   {author.initials}
                 </div>
@@ -243,8 +243,8 @@ export default async function ArticlePage({ params }) {
                 {/* Forfatterkort — E-E-A-T: navngitt person med rolle og bio */}
                 <div className="max-w-[68ch] xl:max-w-none mt-9 rounded-2xl bg-white border border-black/[0.06] p-6 flex gap-5">
                   <div
-                    className="w-14 h-14 rounded-full flex items-center justify-center text-white text-[17px] font-bold shrink-0"
-                    style={{ background: author.accent, fontFamily: 'var(--font-heading)' }}
+                    className="w-14 h-14 rounded-full flex items-center justify-center text-[17px] font-bold shrink-0"
+                    style={{ background: author.accent, color: author.fg || '#ffffff', fontFamily: 'var(--font-heading)' }}
                   >
                     {author.initials}
                   </div>

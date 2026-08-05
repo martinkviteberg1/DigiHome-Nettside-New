@@ -358,7 +358,8 @@ export default function CampaignLanding({ cfg }) {
               return (
                 <Reveal key={i} delay={i * 100}>
                   <div className="group h-full p-7 rounded-2xl transition-all duration-300 hover:shadow-[0_4px_20px_rgba(0,0,0,0.06)]" style={{ backgroundColor: '#F2F1F0' }}>
-                    <span className="font-heading text-[11px] font-bold tracking-[0.15em]" style={{ color: '#D298FF' }}>STEG {s.n}</span>
+                    {/* #D298FF på det lyse kortet ga 1,9:1 — praktisk sett usynlig. */}
+                    <span className="font-heading text-[11px] font-bold tracking-[0.15em]" style={{ color: '#7C3AED' }}>STEG {s.n}</span>
                     <div className="w-11 h-11 rounded-xl flex items-center justify-center mt-4 mb-5" style={{ backgroundColor: '#f3ebff' }}>
                       <Icon className="w-5 h-5" style={{ color: '#AE68E4' }} strokeWidth={1.5} />
                     </div>
@@ -452,7 +453,7 @@ export default function CampaignLanding({ cfg }) {
       <section className="bg-white py-16 sm:py-24 lg:py-32">
         <div className="max-w-[820px] mx-auto px-6 sm:px-10 w-full">
           <Reveal className="text-center mb-12">
-            <p className="text-[12px] font-semibold uppercase tracking-[0.14em] text-[#9b6cc4]">Ofte stilte spørsmål</p>
+            <p className="text-[12px] font-semibold uppercase tracking-[0.14em] text-[#7c3aed]">Ofte stilte spørsmål</p>
             <h2 className="font-heading font-bold text-[30px] sm:text-[42px] tracking-[-0.03em] leading-[1.08] text-[#0a0a0a] mt-4">Spørsmål og svar</h2>
           </Reveal>
           <div className="border-t border-[#eee]">

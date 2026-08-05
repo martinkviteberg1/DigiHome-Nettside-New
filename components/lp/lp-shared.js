@@ -107,11 +107,13 @@ export function CountUp({ value, className = '' }) {
 
 /* --------------------------- Initial-avatarer --------------------------- */
 // Ekte-følelse uten falske stockbilder: fargede initial-sirkler i merkevarepaletten.
+// Tekstfargene er mørknet — de opprinnelige (#8b6aad, #b3702a, #4a6da7) lå på
+// 3,5–4,4:1 mot sine egne lyse bakgrunner, altså under WCAG AA for 10–14 px.
 const AVATAR_STYLES = [
-  { bg: '#f0ebf5', color: '#8b6aad' },
+  { bg: '#f0ebf5', color: '#6d4a91' },
   { bg: '#e8f4ee', color: '#18794E' },
-  { bg: '#fdf0e2', color: '#b3702a' },
-  { bg: '#e9eef7', color: '#4a6da7' },
+  { bg: '#fdf0e2', color: '#8a4f14' },
+  { bg: '#e9eef7', color: '#3a5687' },
 ];
 
 export function InitialsAvatar({ name = '', index = 0, size = 40, className = '' }) {

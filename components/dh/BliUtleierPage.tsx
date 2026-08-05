@@ -587,7 +587,7 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
                   </div>
                   <div className="pb-4">
                     <p className="text-[14.5px] font-semibold text-[#0a0a0a] leading-tight">{it.t}</p>
-                    <p className="text-[13px] text-[#888] mt-0.5">{it.s}</p>
+                    <p className="text-[13px] text-[#6b6b6b] mt-0.5">{it.s}</p>
                   </div>
                 </motion.div>
               ))}
@@ -710,7 +710,7 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
             <motion.h1 initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.12, ease: [0.16, 1, 0.3, 1] }} className="text-[34px] sm:text-[46px] xl:text-[52px] font-bold tracking-[-0.035em] text-[#0a0a0a] text-center mt-4 leading-[1.04]" style={{ fontFamily: 'var(--font-heading)' }}>
               Hvor ligger boligen<br className="hidden sm:block" /> du vil leie ut?
             </motion.h1>
-            <motion.p initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.24, ease: [0.16, 1, 0.3, 1] }} className="text-[15.5px] sm:text-[16.5px] text-[#8a8178] text-center mt-4 max-w-[48ch] mx-auto leading-relaxed">
+            <motion.p initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.24, ease: [0.16, 1, 0.3, 1] }} className="text-[15.5px] sm:text-[16.5px] text-[#6b665f] text-center mt-4 max-w-[48ch] mx-auto leading-relaxed">
               Start med adressen — vi finner tjenestene som er tilgjengelige i ditt område og estimerer leiepotensialet.
             </motion.p>
 
@@ -800,8 +800,8 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
             <I className="w-5 h-5 text-[#7e22ce]" strokeWidth={2.2} />
           </div>
           <p className="text-[19px] font-bold tracking-[-0.01em] text-[#0a0a0a] mt-4" style={{ fontFamily: 'var(--font-heading)' }}>{t.label}</p>
-          <p className="text-[13px] text-[#888] mt-1.5 leading-relaxed sm:min-h-[58px]">{t.desc}</p>
-          <p className={`inline-flex items-center gap-1.5 mt-2 text-[11.5px] font-semibold ${t.value === 'selvforvaltning' ? 'text-[#15803d]' : 'text-[#777]'}`}><MapPin className="w-3 h-3" /> {t.area}</p>
+          <p className="text-[13px] text-[#6b6b6b] mt-1.5 leading-relaxed sm:min-h-[58px]">{t.desc}</p>
+          <p className={`inline-flex items-center gap-1.5 mt-2 text-[11.5px] font-semibold ${t.value === 'selvforvaltning' ? 'text-[#15803d]' : 'text-[#666]'}`}><MapPin className="w-3 h-3" /> {t.area}</p>
           <div className="mt-3 space-y-1.5">
             {t.bullets.map((b: string) => (
               <div key={b} className="flex items-start gap-2 text-[12.5px] text-[#666]">
@@ -844,7 +844,7 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
             <h1 className="text-[32px] sm:text-[42px] font-bold tracking-[-0.035em] text-[#0a0a0a] text-center mt-3 leading-[1.06]" style={{ fontFamily: 'var(--font-heading)' }}>
               {hasGeo && inBergen ? 'Vi er i ditt område!' : hasGeo ? 'Slik leier du ut med DigiHome' : 'Hvordan vil du leie ut?'}
             </h1>
-            <p className="text-[15px] sm:text-[15.5px] text-[#8a8178] text-center mt-3.5 max-w-[54ch] mx-auto leading-relaxed">
+            <p className="text-[15px] sm:text-[15.5px] text-[#6b665f] text-center mt-3.5 max-w-[54ch] mx-auto leading-relaxed">
               {hasGeo && inBergen
                 ? 'DigiHome tilbyr alle tjenester i Bergen. Velg sporet som passer deg best — du kan ombestemme deg senere.'
                 : hasGeo
@@ -954,11 +954,11 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
           <div className="flex items-center justify-between mb-5">
             {curPos > 0 ? (
               <button onClick={goBack} className="w-9 h-9 rounded-full border border-[#e8e5e0] hover:bg-[#f5f5f5] flex items-center justify-center transition-colors active:scale-95" data-testid="owner-back-button" aria-label="Tilbake">
-                <ArrowLeft className="w-4 h-4 text-[#888]" />
+                <ArrowLeft className="w-4 h-4 text-[#6b6b6b]" />
               </button>
             ) : fullscreen ? (
               <button onClick={() => { setDir(-1); setEntryPhase(formData.tier ? 'tier' : 'address'); }} className="w-9 h-9 rounded-full border border-[#e8e5e0] hover:bg-[#f5f5f5] flex items-center justify-center transition-colors active:scale-95" data-testid="owner-back-to-entry" aria-label="Tilbake til tjenestevalget">
-                <ArrowLeft className="w-4 h-4 text-[#888]" />
+                <ArrowLeft className="w-4 h-4 text-[#6b6b6b]" />
               </button>
             ) : (
               <div className="w-9 h-9" aria-hidden="true" />
@@ -1010,7 +1010,7 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
                   <h2 className="text-[28px] sm:text-[34px] font-bold tracking-[-0.03em] text-[#0a0a0a] mb-2" style={{ fontFamily: 'var(--font-heading)' }}>
                     {finnCardShown ? 'Bekreft eiendommen' : inputMode === 'finn' ? 'Lim inn Finn-annonsen' : fullscreen ? 'Litt om boligen' : 'Hvor ligger eiendommen?'}
                   </h2>
-                  <p className="text-[15px] text-[#888] mb-7 max-w-[46ch]">
+                  <p className="text-[15px] text-[#6b6b6b] mb-7 max-w-[46ch]">
                     {finnCardShown
                       ? 'Vi hentet alt fra annonsen og verifiserte mot Eiendomsregisteret. Sjekk at detaljene stemmer — du kan justere direkte.'
                       : inputMode === 'finn'
@@ -1095,7 +1095,7 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
                         {!finnData ? (
                           <motion.div key="finn-input" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.25 }}>
                             <Label className="text-[13px] font-semibold text-[#333] mb-1.5 block">Lenke til Finn-annonse <span className="text-[#7e22ce]">*</span></Label>
-                            <p className="text-[13px] text-[#888] mb-3">Lim inn lenken til boligen på finn.no — vi henter adresse, areal, matrikkel og eierforslag automatisk.</p>
+                            <p className="text-[13px] text-[#6b6b6b] mb-3">Lim inn lenken til boligen på finn.no — vi henter adresse, areal, matrikkel og eierforslag automatisk.</p>
                             <FinnLookupField
                               value={finnUrl}
                               onChange={(v: any) => { setFinnUrl(v); if (!String(v || '').trim()) switchToAddress(); }}
@@ -1190,7 +1190,7 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
                   {!fullscreen && (inputMode === 'address' ? (formData.address.trim() || registryQuery) : !!finnData) ? (
                     <div className="mt-8 pt-6 border-t border-[#f0f0f0]" data-testid="owner-extra-units-section">
                       <div className="flex items-center justify-between mb-1"><p className="text-[13px] font-semibold text-[#333]">Har du flere eiendommer?</p><span className="text-[12px] text-[#5b6370]">Valgfritt</span></div>
-                      <p className="text-[13px] text-[#888] mb-4">Legg til flere boliger du vil leie ut — vi vurderer dem samlet.</p>
+                      <p className="text-[13px] text-[#6b6b6b] mb-4">Legg til flere boliger du vil leie ut — vi vurderer dem samlet.</p>
                       <AnimatePresence initial={false}>
                         {extraUnits.map((u: any, i: number) => (
                           <motion.div key={i} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.2 }} className="rounded-2xl border border-[#eee] bg-white p-5 mb-3" data-testid={`owner-extra-unit-${i}`}>
@@ -1264,7 +1264,7 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
                         </span>
                         <span>
                           <span className="block text-[14px] font-semibold text-[#0a0a0a]">Jeg har flere boliger jeg vurderer å leie ut</span>
-                          <span className="block text-[12.5px] text-[#888] mt-0.5">Rådgiveren tar en samlet vurdering — du trenger ikke fylle inn mer nå.</span>
+                          <span className="block text-[12.5px] text-[#6b6b6b] mt-0.5">Rådgiveren tar en samlet vurdering — du trenger ikke fylle inn mer nå.</span>
                         </span>
                       </button>
                     </div>
@@ -1278,7 +1278,7 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
                   <h2 className="text-[28px] sm:text-[34px] font-bold tracking-[-0.03em] text-[#0a0a0a] mb-2" style={{ fontFamily: 'var(--font-heading)' }}>
                     {fullscreen && formData.tier === 'selvforvaltning' ? 'Opprett kontoen din' : 'Nesten i mål!'}
                   </h2>
-                  <p className="text-[15px] text-[#888] mb-8">
+                  <p className="text-[15px] text-[#6b6b6b] mb-8">
                     {fullscreen && formData.tier === 'selvforvaltning'
                       ? 'Gratis å opprette — du legger inn boligen og alt annet i portalen etterpå.'
                       : fullscreen && formData.tier === 'full_forvaltning'
@@ -1332,7 +1332,7 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <p className="text-[13.5px] font-semibold text-[#333] truncate">{formData.address || 'Adresse ikke oppgitt'}</p>
-                          <p className="text-[12px] text-[#888] mt-0.5">
+                          <p className="text-[12px] text-[#6b6b6b] mt-0.5">
                             {[formData.sqm ? `${formData.sqm} m²` : null, formData.property_type || null, formData.bedrooms ? `${formData.bedrooms} sov.` : null].filter(Boolean).join(' · ') || (fullscreen && formData.tier === 'selvforvaltning' ? 'Boligdetaljene legger du inn i portalen' : '—')}
                             {extraUnits.filter((u: any) => (u.address || '').trim()).length > 0 ? ` · +${extraUnits.filter((u: any) => (u.address || '').trim()).length} eiendom(mer)` : ''}
                             {multiProperty ? ' · Flere boliger vurderes' : ''}
@@ -1348,7 +1348,7 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
                           <p className="text-[13.5px] font-semibold text-[#333]">
                             {formData.tier === 'selvforvaltning' ? 'Selvforvaltning — 5 % per utleie' : formData.tier === 'full_forvaltning' ? 'Full forvaltning — skreddersydd tilbud' : 'Forvaltning ikke valgt'}
                           </p>
-                          <p className="text-[12px] text-[#888] mt-0.5">
+                          <p className="text-[12px] text-[#6b6b6b] mt-0.5">
                             {[formData.rental_model ? `Modell: ${formData.rental_model}` : null, formData.availability ? `Ledig ${new Date(formData.availability + 'T12:00:00').toLocaleDateString('nb-NO', { day: 'numeric', month: 'short' })}` : null].filter(Boolean).join(' · ') || (formData.tier === 'selvforvaltning' ? 'Ingen bindingstid — avslutt når du vil' : '—')}
                           </p>
                         </div>
@@ -1367,7 +1367,7 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
                     <Shield className="w-3.5 h-3.5" /> Dine mål
                   </div>
                   <h2 className="text-[28px] sm:text-[34px] font-bold tracking-[-0.03em] text-[#0a0a0a] mb-2" style={{ fontFamily: 'var(--font-heading)' }}>{tierLocked && formData.tier ? 'Ditt valg' : 'Hvordan vil du leie ut?'}</h2>
-                  <p className="text-[15px] text-[#888] mb-7 max-w-[46ch]">{tierLocked && formData.tier ? 'Basert på valget ditt i starten — du kan endre det når som helst.' : 'Velg nivået som passer deg best — du kan bytte når som helst.'}</p>
+                  <p className="text-[15px] text-[#6b6b6b] mb-7 max-w-[46ch]">{tierLocked && formData.tier ? 'Basert på valget ditt i starten — du kan endre det når som helst.' : 'Velg nivået som passer deg best — du kan bytte når som helst.'}</p>
                   {tierLocked && formData.tier ? (() => {
                     const t: any = TIERS.find((x: any) => x.value === formData.tier);
                     const LockedIcon = t.icon;
@@ -1376,7 +1376,7 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
                         <div className="w-11 h-11 rounded-xl bg-[#d298ff] flex items-center justify-center shrink-0"><LockedIcon className="w-5 h-5 text-white" /></div>
                         <div className="flex-1 min-w-0">
                           <p className="text-[15.5px] font-bold text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>{t.label}</p>
-                          <p className="text-[12.5px] text-[#888] mt-0.5">{t.price ? `${t.price} ${t.priceNote} — ingen faste kostnader` : 'Skreddersydd tilbud — helt uforpliktende'}</p>
+                          <p className="text-[12.5px] text-[#6b6b6b] mt-0.5">{t.price ? `${t.price} ${t.priceNote} — ingen faste kostnader` : 'Skreddersydd tilbud — helt uforpliktende'}</p>
                         </div>
                         <button type="button" onClick={() => setTierLocked(false)} data-testid="owner-tier-change" className="text-[12.5px] font-semibold text-[#7e22ce] hover:underline underline-offset-2 shrink-0">Endre</button>
                       </div>
@@ -1419,9 +1419,9 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
                                   <span className="inline-flex items-center rounded-full bg-[#0a0a0a] text-white px-3.5 py-1.5 text-[11px] font-bold uppercase tracking-[0.05em]">{t.priceNote}</span>
                                 )}
                               </div>
-                              <p className="text-[13px] text-[#888] mt-1.5 leading-relaxed">{t.desc}</p>
+                              <p className="text-[13px] text-[#6b6b6b] mt-1.5 leading-relaxed">{t.desc}</p>
                               {t.area && (
-                                <p className={`inline-flex items-center gap-1.5 mt-2 text-[11.5px] font-semibold ${t.value === 'selvforvaltning' ? 'text-[#15803d]' : 'text-[#777]'}`}>
+                                <p className={`inline-flex items-center gap-1.5 mt-2 text-[11.5px] font-semibold ${t.value === 'selvforvaltning' ? 'text-[#15803d]' : 'text-[#666]'}`}>
                                   <MapPin className="w-3 h-3" /> {t.area}
                                 </p>
                               )}
@@ -1507,7 +1507,7 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
               {step === 5 && (
                 <div data-testid="owner-step-goals" className="mt-10 pt-8 border-t border-[#f0ece6]">
                   <h3 className="text-[19px] sm:text-[22px] font-bold tracking-[-0.02em] text-[#0a0a0a] mb-1.5" style={{ fontFamily: 'var(--font-heading)' }}>Hva er viktigst for deg?</h3>
-                  <p className="text-[14px] text-[#888] mb-6">Vi anbefaler den optimale strategien basert på dine preferanser.</p>
+                  <p className="text-[14px] text-[#6b6b6b] mb-6">Vi anbefaler den optimale strategien basert på dine preferanser.</p>
                   <div className="space-y-7">
                     <div>
                       <Label className="text-[13px] font-semibold text-[#333] mb-1 block">Foretrukket utleiemodell <span className="text-[#737373] font-normal">(valgfritt)</span></Label>

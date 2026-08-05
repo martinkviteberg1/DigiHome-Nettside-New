@@ -36,7 +36,7 @@ export default function NetworkSection() {
                 </div>
                 <div>
                   <p className="text-[17px] font-bold text-[#0a0a0a] leading-tight" style={{ fontFamily: 'var(--font-heading)' }}>Én kontaktperson</p>
-                  <p className="text-[12px] text-[#888] mt-0.5">Vi koordinerer alt</p>
+                  <p className="text-[12px] text-[#6b6b6b] mt-0.5">Vi koordinerer alt</p>
                 </div>
               </div>
             </div>
@@ -53,7 +53,7 @@ export default function NetworkSection() {
             >
               <span className="inline-flex items-center gap-3">
                 <span className="w-7 h-[2px] rounded-full bg-[#d298ff]" />
-                <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#8f8a80]">Vårt nettverk</span>
+                <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#6f6a60]">Vårt nettverk</span>
               </span>
             </Reveal>
             <Reveal as="h2"
@@ -71,7 +71,7 @@ export default function NetworkSection() {
               whileInView={{ opacity: 1 }}
               viewport={{ once: true }}
               transition={{ duration: 0.4, delay: 0.08 }}
-              className="text-[15px] text-[#777] leading-[1.75] mb-9 max-w-[52ch]"
+              className="text-[15px] text-[#666] leading-[1.75] mb-9 max-w-[52ch]"
             >
               Vi har bygget et nettverk av kvalitetsleverandører i Bergen som sikrer rask respons og profesjonell håndtering av alle behov knyttet til din eiendom.
             </Reveal>
@@ -93,7 +93,7 @@ export default function NetworkSection() {
                     </div>
                     <div>
                       <p className="text-[14px] font-semibold text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>{s.name}</p>
-                      <p className="text-[12px] text-[#888] leading-relaxed mt-0.5">{s.desc}</p>
+                      <p className="text-[12px] text-[#6b6b6b] leading-relaxed mt-0.5">{s.desc}</p>
                     </div>
                   </Reveal>
                 );

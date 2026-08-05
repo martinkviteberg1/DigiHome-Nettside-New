@@ -53,7 +53,7 @@ export default function HowItWorksSection() {
             >
               <span className="inline-flex items-center gap-3">
                 <span className="w-7 h-[2px] rounded-full bg-[#d298ff]" />
-                <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#8f8a80]">Slik fungerer det</span>
+                <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#6f6a60]">Slik fungerer det</span>
               </span>
             </Reveal>
             <Reveal as="h2"
@@ -72,7 +72,7 @@ export default function HowItWorksSection() {
             whileInView={{ opacity: 1 }}
             viewport={{ once: true }}
             transition={{ duration: 0.4, delay: 0.1 }}
-            className="text-[15.5px] text-[#8a857c] max-w-[300px] leading-[1.75] sm:text-right sm:pb-1.5"
+            className="text-[15.5px] text-[#6b665f] max-w-[300px] leading-[1.75] sm:text-right sm:pb-1.5"
           >
             Fire steg. Null stress. Vi håndterer alt — du nyter inntekten.
           </Reveal>
@@ -90,13 +90,13 @@ export default function HowItWorksSection() {
               className="group border-t border-[#e3dfd6] pt-7 transition-colors duration-500 hover:border-[#d298ff]"
               data-testid={`how-step-${step.num}`}
             >
-              <span className="block text-[13px] font-semibold text-[#b3ada1] tabular-nums transition-colors duration-500 group-hover:text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>
+              <span className="block text-[13px] font-semibold text-[#7c7568] tabular-nums transition-colors duration-500 group-hover:text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>
                 {step.num}
               </span>
               <h3 className="text-[19px] font-bold text-[#0a0a0a] mt-5 mb-2.5 tracking-[-0.01em]" style={{ fontFamily: 'var(--font-heading)' }}>
                 {step.title}
               </h3>
-              <p className="text-[14.5px] text-[#8a857c] leading-[1.75]">
+              <p className="text-[14.5px] text-[#6b665f] leading-[1.75]">
                 {step.desc}
               </p>
             </Reveal>

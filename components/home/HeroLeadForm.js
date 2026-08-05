@@ -80,7 +80,7 @@ export function HeroLeadForm() {
         >
           <Check className="h-3.5 w-3.5 text-emerald-300" />
           {address}
-          <span className="text-white/40 underline underline-offset-2">endre</span>
+          <span className="text-white/60 underline underline-offset-2">endre</span>
         </button>
       )}
 
@@ -88,9 +88,9 @@ export function HeroLeadForm() {
         <div className="flex flex-col sm:flex-row items-stretch gap-2 p-2 rounded-2xl bg-white/[0.06] border border-white/[0.13] backdrop-blur-md shadow-[0_18px_50px_rgba(0,0,0,0.45)] transition-all duration-500 focus-within:border-white/[0.28] focus-within:bg-white/[0.075] focus-within:shadow-[0_18px_50px_rgba(0,0,0,0.45),0_0_44px_rgba(207,151,252,0.12)]">
           <div className="flex items-center gap-2.5 flex-1 px-3">
             {step === 'address' ? (
-              <MapPin className="h-5 w-5 text-white/40 shrink-0" />
+              <MapPin className="h-5 w-5 text-white/60 shrink-0" />
             ) : (
-              <Phone className="h-5 w-5 text-white/40 shrink-0" />
+              <Phone className="h-5 w-5 text-white/60 shrink-0" />
             )}
             {step === 'address' ? (
               <input
@@ -98,7 +98,7 @@ export function HeroLeadForm() {
                 onChange={(e) => setAddress(e.target.value)}
                 placeholder="Hva er adressen din?"
                 aria-label="Adresse"
-                className="w-full bg-transparent outline-none text-white placeholder:text-white/35 h-12 text-base"
+                className="w-full bg-transparent outline-none text-white placeholder:text-white/55 h-12 text-base"
               />
             ) : (
               <input
@@ -107,7 +107,7 @@ export function HeroLeadForm() {
                 onChange={(e) => setContact(e.target.value)}
                 placeholder="Telefon eller e-post"
                 aria-label="Telefon eller e-post"
-                className="w-full bg-transparent outline-none text-white placeholder:text-white/35 h-12 text-base"
+                className="w-full bg-transparent outline-none text-white placeholder:text-white/55 h-12 text-base"
               />
             )}
           </div>
@@ -127,7 +127,7 @@ export function HeroLeadForm() {
         </div>
       </form>
 
-      <p className="mt-3 text-sm text-white/40">
+      <p className="mt-3 text-sm text-white/60">
         {error ? (
           <span className="text-rose-300">{error}</span>
         ) : step === 'address' ? (

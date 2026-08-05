@@ -245,7 +245,7 @@ export function FinnLookupField({ value, onChange, onResult, testId = 'finn', co
                 ><CheckCircle2 className="w-[12px] h-[12px]" /> Fylte inn automatisk</motion.span>
               </div>
               <p className="text-[13px] font-semibold text-[#222] leading-snug line-clamp-2">{preview.title}</p>
-              <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1 text-[12px] text-[#777]">
+              <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1 text-[12px] text-[#666]">
                 {preview.sqm && <span>{preview.sqm} m²</span>}
                 {preview.bedrooms && <span>{preview.bedrooms} soverom</span>}
                 {preview.rent && <span>{Number(preview.rent).toLocaleString('nb-NO')} kr/mnd</span>}

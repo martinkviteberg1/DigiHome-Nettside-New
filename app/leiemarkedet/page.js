@@ -33,7 +33,7 @@ export default async function Page() {
     <div className="bg-[#fdfcfb] text-[#1f1f1f] min-h-screen">
       <Header />
       <section className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16 pt-32 pb-12">
-        <div className="inline-flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.16em] text-[#9b6cc4] mb-4"><BarChart3 className="w-3.5 h-3.5" /> Leiemarkedsrapporter</div>
+        <div className="inline-flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.16em] text-[#7c3aed] mb-4"><BarChart3 className="w-3.5 h-3.5" /> Leiemarkedsrapporter</div>
         <h1 className="text-[40px] sm:text-[60px] font-bold tracking-[-0.025em] leading-[1.04] max-w-[18ch]" style={{ fontFamily: 'var(--font-heading)' }}>
           Leiemarkedet i Norge
         </h1>

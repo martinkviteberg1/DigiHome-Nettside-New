@@ -50,7 +50,7 @@ function ListingCard({ c, preview }) {
           <img src={c.images[0]} alt={`${c.typeLabel} i ${place}`} loading="lazy" decoding="async"
             className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.04]" />
         ) : (
-          <div className="absolute inset-0 grid place-items-center text-[#c9c3ba]"><MapPin className="h-7 w-7" /></div>
+          <div className="absolute inset-0 grid place-items-center text-[#8a837a]"><MapPin className="h-7 w-7" /></div>
         )}
         {/* Svak toning i toppen gjør at merkelappene leser rent også mot lyse
             bilder — uten å legge en grå film over hele boligen. */}
@@ -68,14 +68,14 @@ function ListingCard({ c, preview }) {
       <div className="flex flex-1 flex-col p-5">
         <h3 className="text-[16.5px] font-semibold leading-snug text-[#0a0a0a] transition-colors group-hover:text-[#7c3aed]" style={{ fontFamily: 'var(--font-heading)' }}>{c.title}</h3>
         <p className="mt-1.5 flex items-start gap-1.5 text-[13px] text-[#78726a]">
-          <MapPin className="mt-[2px] h-3.5 w-3.5 shrink-0 text-[#c9c3ba]" />
+          <MapPin className="mt-[2px] h-3.5 w-3.5 shrink-0 text-[#8a837a]" />
           <span className="break-words">{place}</span>
         </p>
         <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px] text-[#5f5a53]">
-          {c.sqm ? <span className="inline-flex items-center gap-1.5"><Ruler className="h-3.5 w-3.5 text-[#c9c3ba]" />{c.sqm} m²</span> : null}
-          {c.bedrooms ? <span className="inline-flex items-center gap-1.5"><BedDouble className="h-3.5 w-3.5 text-[#c9c3ba]" />{c.bedrooms} soverom</span> : null}
-          {c.roomsLabel ? <span className="inline-flex items-center gap-1.5" data-testid="listing-rooms"><Users className="h-3.5 w-3.5 text-[#c9c3ba]" />{c.roomsLabel}</span> : null}
-          {avail ? <span className="inline-flex items-center gap-1.5"><CalendarDays className="h-3.5 w-3.5 text-[#c9c3ba]" />{/^\d{4}-/.test(String(c.availableFrom)) ? `Ledig ${avail}` : avail}</span> : null}
+          {c.sqm ? <span className="inline-flex items-center gap-1.5"><Ruler className="h-3.5 w-3.5 text-[#8a837a]" />{c.sqm} m²</span> : null}
+          {c.bedrooms ? <span className="inline-flex items-center gap-1.5"><BedDouble className="h-3.5 w-3.5 text-[#8a837a]" />{c.bedrooms} soverom</span> : null}
+          {c.roomsLabel ? <span className="inline-flex items-center gap-1.5" data-testid="listing-rooms"><Users className="h-3.5 w-3.5 text-[#8a837a]" />{c.roomsLabel}</span> : null}
+          {avail ? <span className="inline-flex items-center gap-1.5"><CalendarDays className="h-3.5 w-3.5 text-[#8a837a]" />{/^\d{4}-/.test(String(c.availableFrom)) ? `Ledig ${avail}` : avail}</span> : null}
         </div>
         <div className="mt-4 flex items-end justify-between gap-3 border-t border-black/[0.05] pt-4">
           <div className="min-w-0">
@@ -232,41 +232,41 @@ export default function ListingsGrid({ listings = [] }) {
         <div className="mb-8 rounded-[24px] bg-white p-5 ring-1 ring-black/[0.05] shadow-[0_10px_40px_-26px_rgba(0,0,0,0.25)]">
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
             <div>
-              <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.12em] text-[#a8a29a]">Bydel</p>
+              <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.12em] text-[#6b665f]">Bydel</p>
               <div className="flex flex-wrap gap-1.5">
                 {facets.districts.map((d) => <Pill key={d.key} active={district === d.key} onClick={() => setDistrict(district === d.key ? '' : d.key)}>{d.label}</Pill>)}
               </div>
             </div>
             <div>
-              <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.12em] text-[#a8a29a]">Soverom</p>
+              <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.12em] text-[#6b665f]">Soverom</p>
               <div className="flex flex-wrap gap-1.5">
                 {facets.beds.map((n) => <Pill key={n} active={beds === String(n)} onClick={() => setBeds(beds === String(n) ? '' : String(n))}>{n}</Pill>)}
               </div>
             </div>
             <div>
-              <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.12em] text-[#a8a29a]">Utleieform</p>
+              <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.12em] text-[#6b665f]">Utleieform</p>
               <div className="flex flex-wrap gap-1.5">
                 {facets.models.map((m) => <Pill key={m.key} active={model === m.key} onClick={() => setModel(model === m.key ? '' : m.key)}>{m.label}</Pill>)}
               </div>
             </div>
             {facets.scopes.length > 0 && (
               <div>
-                <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.12em] text-[#a8a29a]">Utleieenhet</p>
+                <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.12em] text-[#6b665f]">Utleieenhet</p>
                 <div className="flex flex-wrap gap-1.5">
                   {facets.scopes.map((s) => (
                     <Pill key={s.key} active={scope === s.key} testId={`listings-scope-filter-${s.key}`}
                       onClick={() => setScope(scope === s.key ? '' : s.key)}>{s.label}</Pill>
                   ))}
                 </div>
-                <p className="mt-1.5 text-[11.5px] leading-snug text-[#a8a29a]">Boliger som kan leies begge veier vises i begge valgene.</p>
+                <p className="mt-1.5 text-[11.5px] leading-snug text-[#6b665f]">Boliger som kan leies begge veier vises i begge valgene.</p>
               </div>
             )}
             <div>
-              <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.12em] text-[#a8a29a]">Maks leie{maxRent ? `: ${KR(maxRent)} kr` : ''}</p>
+              <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.12em] text-[#6b665f]">Maks leie{maxRent ? `: ${KR(maxRent)} kr` : ''}</p>
               <input type="range" min={facets.minPrice || 0} max={facets.maxPrice || 0} step={1000} value={maxRent || facets.maxPrice || 0}
                 onChange={(e) => setMaxRent(Number(e.target.value) >= (facets.maxPrice || 0) ? 0 : Number(e.target.value))}
                 className="w-full accent-[#7c3aed]" aria-label="Maks månedsleie" />
-              <p className="mt-1 text-[11.5px] text-[#a8a29a]">{facets.minPrice ? `${KR(facets.minPrice)}–${KR(facets.maxPrice)} kr/mnd i utvalget` : 'Ingen priser i utvalget'}</p>
+              <p className="mt-1 text-[11.5px] text-[#6b665f]">{facets.minPrice ? `${KR(facets.minPrice)}–${KR(facets.maxPrice)} kr/mnd i utvalget` : 'Ingen priser i utvalget'}</p>
             </div>
           </div>
           {anyActive && (

@@ -19,13 +19,13 @@ export default function QualitySection() {
             <div className="mb-5">
               <span className="inline-flex items-center gap-3">
                 <span className="w-7 h-[2px] rounded-full bg-[#d298ff]" />
-                <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#8f8a80]">Vår standard</span>
+                <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#6f6a60]">Vår standard</span>
               </span>
             </div>
             <h2 className="text-[34px] sm:text-[42px] font-bold tracking-[-0.03em] leading-[1.08] text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>
               Kun høykvalitets&shy;boliger
             </h2>
-            <p className="text-[15px] text-[#777] leading-[1.75] mt-5 max-w-[44ch]">
+            <p className="text-[15px] text-[#666] leading-[1.75] mt-5 max-w-[44ch]">
               Vi er selektive. Hver eiendom i DigiHome-porteføljen møter våre strenge krav til standard, innredning og beliggenhet. Det sikrer premium leietakere og høyere avkastning.
             </p>
             <div className="mt-8 space-y-4">

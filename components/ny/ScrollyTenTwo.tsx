@@ -59,7 +59,7 @@ export default function ScrollyTenTwo() {
 
           {/* Venstre: fortellingen (skifter per akt) */}
           <div>
-            <p className="text-[11.5px] font-bold uppercase tracking-[0.18em] text-[#a678e8]">Én bolig. To markeder.</p>
+            <p className="text-[11.5px] font-bold uppercase tracking-[0.18em] text-[#7c3aed]">Én bolig. To markeder.</p>
             <div key={act} style={{ animation: 'nyActIn .5s ease both' }}>
               <p className="inline-flex items-center gap-1.5 mt-5 px-3 py-1.5 rounded-full bg-white border border-[#eae7e0] text-[11.5px] font-bold uppercase tracking-[0.1em] text-[#555]"><CalendarDays className="w-3.5 h-3.5 text-[#7c3aed]" /> {A.kicker}</p>
               <h2 className="text-[30px] sm:text-[42px] font-bold tracking-[-0.03em] text-[#0a0a0a] mt-3 leading-[1.08]" style={{ fontFamily: 'var(--font-heading)' }}>{A.title}</h2>
@@ -124,14 +124,14 @@ export default function ScrollyTenTwo() {
             {/* Resultatpanel */}
             <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 transition-all duration-300" style={{ opacity: resOp, transform: `translateY(calc(-50% + ${(1 - resOp) * 34}px))`, pointerEvents: resOp > 0.5 ? 'auto' : 'none' }}>
               <div className="rounded-[26px] bg-white border border-[#efe9ff] shadow-[0_30px_80px_-32px_rgba(124,58,237,0.4)] p-7 sm:p-9">
-                <p className="text-[11.5px] font-bold uppercase tracking-[0.16em] text-[#a678e8]">Årsinntekt — samme bolig</p>
+                <p className="text-[11.5px] font-bold uppercase tracking-[0.16em] text-[#7c3aed]">Årsinntekt — samme bolig</p>
                 <div className="grid grid-cols-2 gap-6 mt-6">
                   <div>
-                    <p className="text-[11px] text-[#8f8a80] uppercase tracking-[0.12em] font-semibold">Kun langtid</p>
+                    <p className="text-[11px] text-[#6f6a60] uppercase tracking-[0.12em] font-semibold">Kun langtid</p>
                     <p className="text-[26px] sm:text-[30px] font-bold text-[#9a938a] mt-1 line-through decoration-[#d8d2c8] decoration-2" style={{ fontFamily: 'var(--font-heading)' }}>180 000 kr</p>
                   </div>
                   <div>
-                    <p className="text-[11px] text-[#8f8a80] uppercase tracking-[0.12em] font-semibold">10+2-modellen</p>
+                    <p className="text-[11px] text-[#6f6a60] uppercase tracking-[0.12em] font-semibold">10+2-modellen</p>
                     <p className="text-[26px] sm:text-[30px] font-bold mt-1" style={{ fontFamily: 'var(--font-heading)', background: 'linear-gradient(135deg, #7c3aed 0%, #cf97fc 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>234 000 kr</p>
                   </div>
                 </div>
@@ -145,7 +145,7 @@ export default function ScrollyTenTwo() {
 
           {/* Mobil: statisk resultatkort (scrolly-kortene er skjult under sm) */}
           <div className="sm:hidden rounded-[22px] bg-white border border-[#efe9ff] shadow-[0_24px_60px_-28px_rgba(124,58,237,0.35)] p-6">
-            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#a678e8]">Årsinntekt — samme bolig</p>
+            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#7c3aed]">Årsinntekt — samme bolig</p>
             <p className="text-[15px] text-[#716b63] mt-3 line-through">Kun langtid: 180 000 kr</p>
             <p className="text-[24px] font-bold mt-1" style={{ fontFamily: 'var(--font-heading)', background: 'linear-gradient(135deg, #7c3aed 0%, #cf97fc 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>10+2: 234 000 kr (+30 %)</p>
           </div>

@@ -83,7 +83,7 @@ export default function LocationPage({ loc, related = [], rent = null }) {
           <nav className="text-[12.5px] text-white/70 mb-4 flex items-center gap-2 flex-wrap">
             {crumbs.map((c, i) => (
               <span key={c.url} className="flex items-center gap-2">
-                {i > 0 && <span className="text-white/40">/</span>}
+                {i > 0 && <span className="text-white/60">/</span>}
                 {i < crumbs.length - 1 ? <Link href={c.url.replace(site.url, '') || '/'} className="hover:text-white transition-colors">{c.name}</Link> : <span className="text-white/90">{c.name}</span>}
               </span>
             ))}

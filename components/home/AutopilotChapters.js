@@ -199,7 +199,7 @@ export function AutopilotChapters() {
                     <span className={`font-heading text-[13px] font-bold tracking-[0.08em] transition-colors duration-300 ${active ? 'text-[#CF97FC]' : 'text-white/25'}`}>
                       {c.no}
                     </span>
-                    <span className={`flex-1 font-heading text-[17px] sm:text-lg font-bold leading-snug transition-colors duration-300 ${active ? 'text-white' : 'text-white/40 group-hover:text-white/65'}`}>
+                    <span className={`flex-1 font-heading text-[17px] sm:text-lg font-bold leading-snug transition-colors duration-300 ${active ? 'text-white' : 'text-white/60 group-hover:text-white/65'}`}>
                       {c.title}
                     </span>
                     {i < idx && (
@@ -285,7 +285,7 @@ export function AutopilotChapters() {
               <div className="absolute left-2 right-2 top-1 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.7)]" />
-                  <span className="text-[9px] uppercase tracking-[0.32em] font-semibold text-white/35">
+                  <span className="text-[9px] uppercase tracking-[0.32em] font-semibold text-white/55">
                     DigiHome Autopilot
                   </span>
                 </div>

@@ -240,7 +240,7 @@ export function PropertyRegistryPicker({
           <Loader2 className="w-6 h-6 text-[#7e22ce] animate-spin" />
         </div>
         <h3 className="text-[19px] font-bold text-[#0a0a0a] tracking-[-0.01em]" style={{ fontFamily: 'var(--font-heading)' }}>Søker i Eiendomsregisteret</h3>
-        <p className="text-[14px] text-[#888] mt-2 max-w-[34ch] mx-auto leading-relaxed">Vi henter informasjon om eiendommen fra offentlige registre …</p>
+        <p className="text-[14px] text-[#6b6b6b] mt-2 max-w-[34ch] mx-auto leading-relaxed">Vi henter informasjon om eiendommen fra offentlige registre …</p>
         {addressLabel && (
           <div className="mt-5 inline-flex items-center gap-2 text-[13px] text-[#5b6370] bg-[#f8f6fc] rounded-full px-3.5 py-1.5">
             <Building2 className="w-3.5 h-3.5 text-[#d298ff]" /> {addressLabel}
@@ -293,7 +293,7 @@ export function PropertyRegistryPicker({
           <h3 className="text-[22px] sm:text-[24px] font-bold text-[#0a0a0a] tracking-[-0.02em]" style={{ fontFamily: 'var(--font-heading)' }}>
             {state === 'borettslag' ? 'Hvilken bolig?' : 'Hvilken seksjon?'}
           </h3>
-          {addressLabel && <p className="text-[14px] text-[#888] mt-1">{addressLabel}</p>}
+          {addressLabel && <p className="text-[14px] text-[#6b6b6b] mt-1">{addressLabel}</p>}
         </div>
 
         {/* Søk */}

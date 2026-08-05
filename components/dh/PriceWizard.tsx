@@ -77,7 +77,7 @@ function IncomeChart({ rent, hybrid }: any) {
       </div>
       <div className="flex gap-[5px] mt-1.5">
         {MONTHS.map((m, i) => (
-          <span key={i} className={`flex-1 text-center text-[9px] ${hybrid && (i === 6 || i === 7) ? 'text-[#d298ff] font-bold' : 'text-white/30'}`}>{m}</span>
+          <span key={i} className={`flex-1 text-center text-[9px] ${hybrid && (i === 6 || i === 7) ? 'text-[#d298ff] font-bold' : 'text-white/55'}`}>{m}</span>
         ))}
       </div>
     </div>
@@ -235,7 +235,7 @@ export default function PriceWizard() {
           </div>
         )}
         <div className="flex items-center gap-4 shrink-0">
-          <a href={`tel:${site.phoneHref}`} className="hidden sm:inline-flex items-center gap-1.5 text-[12.5px] text-[#888] hover:text-[#0a0a0a] transition-colors">
+          <a href={`tel:${site.phoneHref}`} className="hidden sm:inline-flex items-center gap-1.5 text-[12.5px] text-[#6b6b6b] hover:text-[#0a0a0a] transition-colors">
             <Phone className="w-3.5 h-3.5" /> {site.phone}
           </a>
           <Link href="/" aria-label="Lukk kalkulatoren"
@@ -328,7 +328,7 @@ export default function PriceWizard() {
                     {step === 3 && 'Vil du ha en flying start?'}
                     {step === 4 && 'Hvem skal vi kontakte?'}
                   </h1>
-                  <p className="text-[15px] text-[#777] leading-relaxed max-w-[54ch]">
+                  <p className="text-[15px] text-[#666] leading-relaxed max-w-[54ch]">
                     {step === 0 && 'Tar under 2 minutter — du ser prisen live til høyre.'}
                     {step === 1 && 'Velg servicenivået som passer deg — du kan bytte senere.'}
                     {step === 2 && 'Med Fullforvaltning kan vi kombinere langtid og korttid for høyere inntekt.'}
@@ -396,7 +396,7 @@ export default function PriceWizard() {
                           <h3 className="text-[21px] font-bold text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>{l.name}</h3>
                           <span className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 mt-1 transition-all ${active ? 'bg-[#0a0a0a] border-[#0a0a0a]' : 'border-[#ddd]'}`}>{active && <Check className="w-3.5 h-3.5 text-[#d298ff]" strokeWidth={3} />}</span>
                         </div>
-                        <p className="text-[13px] text-[#888] mb-4">{l.tagline}</p>
+                        <p className="text-[13px] text-[#6b6b6b] mb-4">{l.tagline}</p>
                         <div className={`rounded-2xl px-4 py-3.5 mb-5 transition-colors ${active ? 'bg-[#0a0a0a]' : 'bg-[#faf8f5] border border-[#f0ece6]'}`}>
                           <p className={`text-[11px] uppercase tracking-[0.1em] font-semibold ${active ? 'text-[#d298ff]' : 'text-[#9b6cc4]'}`}>{l.pct} % av leien — for din bolig:</p>
                           <p className={`text-[24px] font-bold leading-tight tabular-nums ${active ? 'text-white' : 'text-[#0a0a0a]'}`} style={{ fontFamily: 'var(--font-heading)' }}>{fmt(lFee)} <span className={`text-[12px] font-medium ${active ? 'text-white/45' : 'text-[#78726a]'}`}>kr/mnd</span></p>
@@ -406,7 +406,7 @@ export default function PriceWizard() {
                             <div key={f} className="flex items-start gap-2.5"><Check className="w-4 h-4 text-[#a765e0] mt-0.5 shrink-0" strokeWidth={2.4} /><span className="text-[13px] text-[#333] leading-snug">{f}</span></div>
                           ))}
                           {(l.notIncluded || []).map((f: string) => (
-                            <div key={f} className="flex items-start gap-2.5 opacity-45"><Minus className="w-4 h-4 text-[#bbb] mt-0.5 shrink-0" /><span className="text-[13px] text-[#888] leading-snug line-through decoration-[#ccc]">{f}</span></div>
+                            <div key={f} className="flex items-start gap-2.5 opacity-45"><Minus className="w-4 h-4 text-[#bbb] mt-0.5 shrink-0" /><span className="text-[13px] text-[#6b6b6b] leading-snug line-through decoration-[#ccc]">{f}</span></div>
                           ))}
                         </div>
                         {l.minMonthly ? <p className="text-[11px] text-[#78726a] mt-4">Minstepris {fmt(l.minMonthly)} kr/mnd</p> : null}
@@ -430,7 +430,7 @@ export default function PriceWizard() {
                           <h3 className="text-[19px] font-bold text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>{m.name}</h3>
                           <span className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${active ? 'bg-[#0a0a0a] border-[#0a0a0a]' : 'border-[#ddd]'}`}>{active && <Check className="w-3.5 h-3.5 text-[#d298ff]" strokeWidth={3} />}</span>
                         </div>
-                        <p className="text-[13.5px] text-[#777] leading-relaxed">{m.desc}</p>
+                        <p className="text-[13.5px] text-[#666] leading-relaxed">{m.desc}</p>
                         {m.key === 'hybrid' ? (
                           <>
                             <div className="mt-5">
@@ -481,7 +481,7 @@ export default function PriceWizard() {
                           <span className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${active ? 'bg-[#0a0a0a] border-[#0a0a0a]' : 'border-[#ddd]'}`}>{active && <Check className="w-3.5 h-3.5 text-[#d298ff]" strokeWidth={3} />}</span>
                         </div>
                         <h3 className="text-[15.5px] font-bold text-[#0a0a0a] mb-1" style={{ fontFamily: 'var(--font-heading)' }}>{a.name}</h3>
-                        <p className="text-[12.5px] text-[#888] leading-relaxed mb-3">{a.desc}</p>
+                        <p className="text-[12.5px] text-[#6b6b6b] leading-relaxed mb-3">{a.desc}</p>
                         <p className="text-[15px] font-bold text-[#0a0a0a] tabular-nums" style={{ fontFamily: 'var(--font-heading)' }}>{fmt(a.price)} kr <span className="text-[11px] font-normal text-[#78726a]">engangs</span></p>
                       </button>
                     );
@@ -528,7 +528,7 @@ export default function PriceWizard() {
               <div className="max-w-[760px] mx-auto flex items-center gap-4">
                 {step > 0 && (
                   <button type="button" onClick={() => goTo(step - 1)} data-testid="wizard-back-button"
-                    className="inline-flex items-center gap-2 text-[14px] font-medium text-[#888] hover:text-[#0a0a0a] transition-colors">
+                    className="inline-flex items-center gap-2 text-[14px] font-medium text-[#6b6b6b] hover:text-[#0a0a0a] transition-colors">
                     <ArrowLeft className="w-4 h-4" /> Tilbake
                   </button>
                 )}
@@ -563,11 +563,11 @@ export default function PriceWizard() {
             {/* Hovedtall */}
             <p className="text-[13px] text-white/45 mb-2">Estimert utbetaling til deg</p>
             <p className="text-[52px] xl:text-[60px] font-bold leading-none tracking-[-0.03em] mb-5" style={{ fontFamily: 'var(--font-heading)' }}>
-              <AnimatedNumber value={payout * mult} /> <span className="text-[15px] font-medium text-white/40">kr/{period === 'aar' ? 'år' : 'mnd'}</span>
+              <AnimatedNumber value={payout * mult} /> <span className="text-[15px] font-medium text-white/60">kr/{period === 'aar' ? 'år' : 'mnd'}</span>
             </p>
 
             <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[11px] text-white/40">Din andel</span>
+              <span className="text-[11px] text-white/60">Din andel</span>
               <span className="text-[11px] font-semibold text-[#d298ff] tabular-nums">Du beholder {keptPct.toFixed(0)} %</span>
             </div>
             <div className="h-[7px] rounded-full bg-white/[0.09] overflow-hidden flex mb-8">
@@ -577,17 +577,17 @@ export default function PriceWizard() {
             {/* Linjer */}
             <div className="space-y-3 mb-8">
               <div className="flex items-center justify-between">
-                <span className="flex items-center gap-2.5 text-[13px] text-white/55"><Home className="w-3.5 h-3.5 text-white/30" /> Leieinntekt{uplift > 0 ? ' (m/dynamisk)' : ''}</span>
+                <span className="flex items-center gap-2.5 text-[13px] text-white/55"><Home className="w-3.5 h-3.5 text-white/55" /> Leieinntekt{uplift > 0 ? ' (m/dynamisk)' : ''}</span>
                 <span className="text-[14px] font-semibold tabular-nums"><AnimatedNumber value={effRent * mult} /> kr</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="flex items-center gap-2.5 text-[13px] text-white/55"><Wallet className="w-3.5 h-3.5 text-white/30" /> {level?.name} ({level?.pct} %)</span>
+                <span className="flex items-center gap-2.5 text-[13px] text-white/55"><Wallet className="w-3.5 h-3.5 text-white/55" /> {level?.name} ({level?.pct} %)</span>
                 <span className="text-[14px] font-semibold text-white/85 tabular-nums">−<AnimatedNumber value={fee * mult} /> kr</span>
               </div>
               {visibleAddons.filter((a: any) => addons.includes(a.key)).map((a: any) => (
                 <div key={a.key} className="flex items-center justify-between">
                   <span className="text-[12.5px] text-white/45 truncate pr-3 pl-6">{a.name}</span>
-                  <span className="text-[12.5px] text-white/70 tabular-nums whitespace-nowrap">{fmt(a.price)} kr <span className="text-white/35">engangs</span></span>
+                  <span className="text-[12.5px] text-white/70 tabular-nums whitespace-nowrap">{fmt(a.price)} kr <span className="text-white/55">engangs</span></span>
                 </div>
               ))}
               {onceTotal > 0 && (
@@ -605,13 +605,13 @@ export default function PriceWizard() {
                 {uplift > 0 && <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-[#d298ff]"><Sparkles className="w-3 h-3" /> +{Math.round(uplift * 100)} % med 10+2</span>}
               </div>
               <IncomeChart rent={rent} hybrid={uplift > 0} />
-              <p className="text-[10.5px] text-white/30 mt-3">Illustrasjon — estimert brutto årsinntekt {fmt(effRent * 12)} kr</p>
+              <p className="text-[10.5px] text-white/55 mt-3">Illustrasjon — estimert brutto årsinntekt {fmt(effRent * 12)} kr</p>
             </div>
           </div>
 
           <div className="relative shrink-0 px-10 xl:px-12 py-5 border-t border-white/[0.07] flex items-center gap-x-5 gap-y-1 flex-wrap">
             {[{ i: ShieldCheck, t: 'Gratis vurdering' }, { i: Clock, t: 'Svar innen 24 timer' }, { i: Check, t: 'Ingen binding' }].map(({ i: I, t }) => (
-              <span key={t} className="inline-flex items-center gap-1.5 text-[11.5px] text-white/40"><I className="w-3 h-3 text-[#d298ff]/70" /> {t}</span>
+              <span key={t} className="inline-flex items-center gap-1.5 text-[11.5px] text-white/60"><I className="w-3 h-3 text-[#d298ff]/70" /> {t}</span>
             ))}
           </div>
         </aside>
@@ -625,7 +625,7 @@ export default function PriceWizard() {
               <div className="flex justify-between"><span className="text-[12.5px] text-white/50">Leieinntekt{uplift > 0 ? ' (m/dynamisk)' : ''}</span><span className="text-[12.5px] text-white/85 tabular-nums">{fmt(effRent)} kr/mnd</span></div>
               <div className="flex justify-between"><span className="text-[12.5px] text-white/50">{level?.name} ({level?.pct} %)</span><span className="text-[12.5px] text-white/85 tabular-nums">−{fmt(fee)} kr/mnd</span></div>
               {visibleAddons.filter((a: any) => addons.includes(a.key)).map((a: any) => (
-                <div key={a.key} className="flex justify-between"><span className="text-[12px] text-white/40 truncate pr-3">{a.name}</span><span className="text-[12px] text-white/70 tabular-nums">{fmt(a.price)} kr</span></div>
+                <div key={a.key} className="flex justify-between"><span className="text-[12px] text-white/60 truncate pr-3">{a.name}</span><span className="text-[12px] text-white/70 tabular-nums">{fmt(a.price)} kr</span></div>
               ))}
               <div className="h-[6px] rounded-full bg-white/[0.09] overflow-hidden flex mt-1"><div className="h-full bg-gradient-to-r from-[#d298ff] to-[#9b6cc4] rounded-full" style={{ width: `${keptPct}%` }} /></div>
             </div>
@@ -643,7 +643,7 @@ export default function PriceWizard() {
               <p className="text-[10.5px] text-white/45 uppercase tracking-[0.1em]">Honorar{onceTotal > 0 ? ' + engangs' : ''}</p>
               <p className="text-[13px] font-semibold text-[#d298ff] tabular-nums">{fmt(fee)} kr/mnd{onceTotal > 0 ? ` · ${fmt(onceTotal)} kr` : ''}</p>
             </div>
-            <ChevronUp className={`w-4 h-4 text-white/40 transition-transform duration-300 ${mobileOpen ? 'rotate-180' : ''}`} />
+            <ChevronUp className={`w-4 h-4 text-white/60 transition-transform duration-300 ${mobileOpen ? 'rotate-180' : ''}`} />
           </div>
         </button>
       </div>

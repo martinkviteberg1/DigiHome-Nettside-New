@@ -40,13 +40,13 @@ function NewsletterSignup() {
   return (
     <form onSubmit={submit} className="w-full max-w-[460px] lg:justify-self-end">
       <div className="flex items-center rounded-full bg-white/[0.06] border border-white/[0.1] focus-within:border-white/35 focus-within:bg-white/[0.08] focus-within:shadow-[0_0_0_4px_rgba(255,255,255,0.06)] transition-all duration-300 p-1.5 pl-5">
-        <Mail className="w-4 h-4 text-white/35 shrink-0" />
+        <Mail className="w-4 h-4 text-white/55 shrink-0" />
         <input
           type="email"
           value={email}
           onChange={(e) => { setEmail(e.target.value); if (status === 'error') setStatus('idle'); }}
           placeholder="din@epost.no"
-          className="flex-1 min-w-0 bg-transparent h-[44px] px-3 text-[14px] text-white placeholder:text-white/35 outline-none focus:outline-none"
+          className="flex-1 min-w-0 bg-transparent h-[44px] px-3 text-[14px] text-white placeholder:text-white/55 outline-none focus:outline-none"
           data-testid="footer-newsletter-input"
         />
         <button

@@ -54,7 +54,7 @@ export default function DynamicRentalSection() {
             >
               <span className="inline-flex items-center gap-3">
                 <span className="w-7 h-[2px] rounded-full bg-[#d298ff]" />
-                <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#8f8a80]">10+2-modellen</span>
+                <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#6f6a60]">10+2-modellen</span>
               </span>
             </motion.div>
             <motion.h2
@@ -73,7 +73,7 @@ export default function DynamicRentalSection() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: '-60px' }}
               transition={{ duration: 0.5, delay: 0.08 }}
-              className="text-[15px] text-[#777] leading-[1.75] mt-5 max-w-[46ch]"
+              className="text-[15px] text-[#666] leading-[1.75] mt-5 max-w-[46ch]"
             >
               V&#229;r 10+2-modell kombinerer det beste fra to verdener &mdash;
               og gir deg opptil 30&nbsp;% h&#248;yere &#229;rsinntekt enn tradisjonell utleie.
@@ -148,11 +148,11 @@ export default function DynamicRentalSection() {
             >
               <div>
                 <p className="text-[11px] text-[#737373] uppercase tracking-[0.05em] font-medium">Kun langtid</p>
-                <p className="text-[18px] font-bold text-[#ccc] mt-0.5" style={{ fontFamily: 'var(--font-heading)' }}>180 000 kr</p>
+                <p className="text-[18px] font-bold text-[#6f6a60] mt-0.5" style={{ fontFamily: 'var(--font-heading)' }}>180 000 kr</p>
               </div>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ddd" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8a837a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
               <div>
-                <p className="text-[11px] text-[#8f8a80] uppercase tracking-[0.14em] font-semibold">10+2 modellen</p>
+                <p className="text-[11px] text-[#6f6a60] uppercase tracking-[0.14em] font-semibold">10+2 modellen</p>
                 <p className="text-[18px] font-bold text-[#0a0a0a] mt-0.5" style={{ fontFamily: 'var(--font-heading)' }}>234 000 kr</p>
               </div>
               <div className="ml-auto">
@@ -202,7 +202,7 @@ function FinnCard() {
       {/* Top bar */}
       <div className="bg-[#0063fb] px-5 py-2.5 flex items-center justify-between">
         <FinnLogo className="text-[16px] text-white" />
-        <span className="text-white/60 text-[11px]">Eiendom &rsaquo; Bolig til leie</span>
+        <span className="text-white text-[11px]">Eiendom &rsaquo; Bolig til leie</span>
       </div>
 
       {/* Image */}

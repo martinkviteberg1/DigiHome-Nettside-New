@@ -225,7 +225,7 @@ function Opener({ pre, p }) {
         </span>
       </p>
       <p
-        className="mt-7 text-[11px] sm:text-sm uppercase tracking-[0.34em] font-semibold text-white/35"
+        className="mt-7 text-[11px] sm:text-sm uppercase tracking-[0.34em] font-semibold text-white/55"
         style={{ opacity: sub, transform: `translateY(${((1 - sub) * 14).toFixed(1)}px)` }}
       >
         Dette er de første 30 dagene
@@ -249,7 +249,7 @@ function Finale({ p }) {
   return (
     <div className="absolute inset-0 z-10 flex flex-col items-center justify-center text-center px-6">
       <p
-        className="text-[11px] sm:text-sm uppercase tracking-[0.34em] font-semibold text-white/40"
+        className="text-[11px] sm:text-sm uppercase tracking-[0.34em] font-semibold text-white/60"
         style={{ opacity: k, transform: `translateY(${((1 - k) * 16).toFixed(1)}px)` }}
       >
         Din samlede innsats etter 30 dager
@@ -309,11 +309,11 @@ function TopChrome({ p, clock }) {
           className="h-1.5 w-1.5 rounded-full bg-emerald-400"
           style={{ boxShadow: '0 0 8px rgba(52,211,153,0.9)', opacity: pulse }}
         />
-        <span className="text-[9px] sm:text-[10px] uppercase tracking-[0.32em] font-semibold text-white/40">
+        <span className="text-[9px] sm:text-[10px] uppercase tracking-[0.32em] font-semibold text-white/60">
           DigiHome Autopilot — live
         </span>
       </span>
-      <span className="text-[9px] sm:text-[10px] uppercase tracking-[0.3em] font-semibold text-white/40 tabular-nums">
+      <span className="text-[9px] sm:text-[10px] uppercase tracking-[0.3em] font-semibold text-white/60 tabular-nums">
         Kap. {idx + 1} / 4
       </span>
     </div>
@@ -366,7 +366,7 @@ function Timeline({ p, onSeek }) {
               />
               <span
                 className={`absolute left-1/2 top-[22px] -translate-x-1/2 whitespace-nowrap text-[9px] sm:text-[10px] uppercase tracking-[0.2em] font-semibold transition-colors duration-300 ${
-                  active ? 'text-white' : 'text-white/30 group-hover:text-white/60'
+                  active ? 'text-white' : 'text-white/55 group-hover:text-white/60'
                 }`}
               >
                 Dag {c.day}
@@ -408,7 +408,7 @@ function JourneyStatic() {
           <span className="block text-[#FDFCFB]">Du sier ja.</span>
           <span className="block dh-platinum">Autopiloten gjør resten.</span>
         </h2>
-        <p className="mt-5 text-[11px] sm:text-sm uppercase tracking-[0.34em] font-semibold text-white/35">
+        <p className="mt-5 text-[11px] sm:text-sm uppercase tracking-[0.34em] font-semibold text-white/55">
           Dette er de første 30 dagene
         </p>
         <div className="mt-20 space-y-24">
@@ -423,7 +423,7 @@ function JourneyStatic() {
           })}
         </div>
         <div className="mt-24 text-center">
-          <p className="text-[11px] sm:text-sm uppercase tracking-[0.34em] font-semibold text-white/40">
+          <p className="text-[11px] sm:text-sm uppercase tracking-[0.34em] font-semibold text-white/60">
             Din samlede innsats etter 30 dager
           </p>
           <p className="mt-4 font-heading font-bold tracking-[-0.035em] text-[clamp(48px,7vw,100px)] dh-platinum">0 minutter.</p>

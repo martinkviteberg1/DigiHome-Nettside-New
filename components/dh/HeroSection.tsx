@@ -136,7 +136,7 @@ export default function HeroSection() {
                   </div>
                 ))}
               </div>
-              <p className="mt-4 text-[11.5px] text-[#8a837c]"><Link href="/metode" className="underline decoration-[#c9c1b8] underline-offset-4 hover:text-[#7c3aed]">Se metode og forbehold for estimatene</Link></p>
+              <p className="mt-4 text-[11.5px] text-[#6b665f]"><Link href="/metode" className="underline decoration-[#c9c1b8] underline-offset-4 hover:text-[#7c3aed]">Se metode og forbehold for estimatene</Link></p>
             </div>
           </div>
 

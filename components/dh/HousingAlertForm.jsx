@@ -130,7 +130,7 @@ export default function HousingAlertForm({ compact = false }) {
 
         <div className="mt-4 space-y-4">
           <div>
-            <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.12em] text-[#a8a29a]">Bydel</p>
+            <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.12em] text-[#6b665f]">Bydel</p>
             <div className="flex flex-wrap gap-1.5">
               {ALERT_DISTRICTS.map((d) => (
                 <Chip key={d} active={districts.includes(d)} onClick={() => toggleDistrict(d)} testId={`housing-alert-district-${slugKey(d)}`}>{d}</Chip>
@@ -139,7 +139,7 @@ export default function HousingAlertForm({ compact = false }) {
           </div>
 
           <div>
-            <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.12em] text-[#a8a29a]">Minst antall soverom</p>
+            <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.12em] text-[#6b665f]">Minst antall soverom</p>
             <div className="flex flex-wrap gap-1.5">
               {[1, 2, 3, 4].map((n) => (
                 <Chip key={n} active={bedroomsMin === n} onClick={() => setBedroomsMin(bedroomsMin === n ? 0 : n)} testId={`housing-alert-beds-${n}`}>
@@ -151,7 +151,7 @@ export default function HousingAlertForm({ compact = false }) {
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label htmlFor="ha-budget" className="mb-2 block text-[11px] font-bold uppercase tracking-[0.12em] text-[#a8a29a]">Maks leie</label>
+              <label htmlFor="ha-budget" className="mb-2 block text-[11px] font-bold uppercase tracking-[0.12em] text-[#6b665f]">Maks leie</label>
               <select id="ha-budget" value={maxRent} onChange={(e) => setMaxRent(Number(e.target.value))} data-testid="housing-alert-maxrent"
                 className="h-10 w-full rounded-xl bg-white px-3 text-[14px] text-[#1f1f1f] ring-1 ring-inset ring-black/[0.09] outline-none focus:ring-2 focus:ring-[#7c3aed]">
                 <option value={0}>Ingen grense</option>
@@ -159,7 +159,7 @@ export default function HousingAlertForm({ compact = false }) {
               </select>
             </div>
             <div>
-              <label htmlFor="ha-movein" className="mb-2 block text-[11px] font-bold uppercase tracking-[0.12em] text-[#a8a29a]">Når vil du flytte?</label>
+              <label htmlFor="ha-movein" className="mb-2 block text-[11px] font-bold uppercase tracking-[0.12em] text-[#6b665f]">Når vil du flytte?</label>
               <select id="ha-movein" value={moveIn} onChange={(e) => setMoveIn(e.target.value)} data-testid="housing-alert-movein"
                 className="h-10 w-full rounded-xl bg-white px-3 text-[14px] text-[#1f1f1f] ring-1 ring-inset ring-black/[0.09] outline-none focus:ring-2 focus:ring-[#7c3aed]">
                 <option value="">Ikke bestemt</option>
@@ -196,7 +196,7 @@ export default function HousingAlertForm({ compact = false }) {
           {state === 'sending' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Bell className="h-4 w-4" />} Varsle meg
         </button>
       </div>
-      <p className="mt-2 text-[11.5px] leading-relaxed text-[#a8a29a]">
+      <p className="mt-2 text-[11.5px] leading-relaxed text-[#6b665f]">
         {state === 'invalid' && <span className="font-semibold text-red-600">Sjekk e-postadressen. </span>}
         {state === 'error' && <span className="font-semibold text-red-600">Noe gikk galt — prøv igjen. </span>}
         Vi varsler deg om ledige boliger i Bergen, også før de annonseres. Du kan melde deg av når som helst.

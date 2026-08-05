@@ -86,8 +86,8 @@ export default function GuidePage({ params }) {
         <div className="mt-7 pt-6 border-t border-black/[0.07] flex flex-wrap items-center gap-x-5 gap-y-4">
           <div className="flex items-center gap-3">
             <div
-              className="w-11 h-11 rounded-full flex items-center justify-center text-white text-[14px] font-bold shrink-0"
-              style={{ background: author.accent, fontFamily: 'var(--font-heading)' }}
+              className="w-11 h-11 rounded-full flex items-center justify-center text-[14px] font-bold shrink-0"
+              style={{ background: author.accent, color: author.fg || '#ffffff', fontFamily: 'var(--font-heading)' }}
             >
               {author.initials}
             </div>
