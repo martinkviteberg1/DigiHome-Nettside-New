@@ -39,12 +39,11 @@ export default function Boligene() {
         ))}
       </div>
 
-      <div className="mt-12 grid lg:grid-cols-3 gap-x-10">
+      <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {qualities.map((q: string) => (
-          <div key={q} className="e-reveal e-rule py-5 lg:py-6">
-            {/* Ingen nummerering her: 01–10 er reservert for seksjonsindeksen,
-                og doble tallserier gjør indeksen meningsløs. */}
-            <p className="text-[16px] font-semibold text-[#0a0a0a] leading-snug max-w-[26ch]">{q}</p>
+          <div key={q} className="e-reveal flex items-start gap-3 rounded-[22px] border border-[#ece7de] bg-[#f7f4ef] px-5 py-5">
+            <span className="mt-[7px] h-[6px] w-[6px] shrink-0 rounded-full bg-[#c79bf0]" aria-hidden="true" />
+            <p className="text-[15.5px] font-semibold leading-snug text-[#0a0a0a]">{q}</p>
           </div>
         ))}
       </div>

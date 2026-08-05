@@ -17,8 +17,8 @@ import MobileCTA from '@/components/dh/MobileCTA';
 import StructuredData from '@/components/dh/StructuredData';
 
 export const metadata = {
-  title: 'DigiHome — Smartere utleie. Høyere inntekt.',
-  description: 'DigiHome kombinerer teknologi med personlig oppfølging for å maksimere leieinntekten din. Hybridløsning av korttids- og langtidsutleie.',
+  title: 'Automatisert utleie i Bergen og hele Norge | DigiHome',
+  description: 'DigiHome automatiserer utleien: annonsering, leiekontrakt med BankID, depositumskonto og husleieinnkreving. Velg full forvaltning i Bergen — eller gjør jobben selv i plattformen.',
   alternates: { canonical: '/' },
 };
 

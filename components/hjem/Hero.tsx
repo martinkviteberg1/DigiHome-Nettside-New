@@ -103,14 +103,15 @@ export default function Hero() {
               </span>
             </div>
 
-            <h1 className="e-display mt-6 text-[38px] leading-[1.03] sm:mt-7 sm:text-[52px] lg:text-[56px] xl:text-[64px]">
-              <span className="e-mask"><span>Vi drifter utleien.</span></span>
-              <span className="e-mask"><span>Du får inntekten<span className="text-[#9B5BD6]">.</span></span></span>
+            <h1 className="e-display mt-6 text-[36px] leading-[1.04] sm:mt-7 sm:text-[46px] lg:text-[50px] xl:text-[56px]">
+              <span className="e-mask"><span>Automatisert utleie.</span></span>
+              <span className="e-mask"><span>Forvalteren er valgfri<span className="text-[#9B5BD6]">.</span></span></span>
             </h1>
 
-            <p className="dh-fade-up e-lead mt-6 max-w-[46ch]" style={{ animationDelay: '0.2s' }}>
-              Vi tar annonsering, visninger, kontrakt, husleie og vedlikehold i Bergen og omegn.
-              Vil du styre det selv, får du det samme systemet som selvforvaltning i hele Norge.
+            <p className="dh-fade-up e-lead mt-6 max-w-[48ch]" style={{ animationDelay: '0.2s' }}>
+              Annonsering, leiekontrakt med BankID, depositumskonto og husleieinnkreving går
+              automatisk i plattformen. Velg full forvaltning i Bergen — eller gjør jobben selv,
+              hvor som helst i Norge.
             </p>
 
             <form onSubmit={handleSubmit} className="dh-fade-up relative z-30 mt-8 max-w-[520px]" style={{ animationDelay: '0.28s' }}>
@@ -140,6 +141,28 @@ export default function Hero() {
               </div>
               <p className="e-meta mt-3">Gratis og uforpliktende &middot; Svar innen 24 timer</p>
             </form>
+
+            {/* De to veiene, som trykkflater rett under handlingen. Valget er
+                selve produktet, og det skal være synlig uten å skrolle. */}
+            <div className="dh-fade-up mt-6 flex flex-wrap items-center gap-2.5" style={{ animationDelay: '0.36s' }}>
+              <span className="text-[12.5px] text-[#6f6a60]">Eller se veiene:</span>
+              <Link
+                href="/forvaltning"
+                className="group inline-flex items-center gap-2 rounded-full border border-[#e0dad0] bg-white/75 px-4 py-[9px] text-[13.5px] font-semibold text-[#25221e] backdrop-blur-sm transition-colors duration-300 hover:border-[#0a0a0a]/25 hover:bg-white"
+              >
+                Full forvaltning
+                <span className="font-normal text-[#8d877d]">Bergen</span>
+                <ArrowRight className="h-3.5 w-3.5 text-[#8d877d] transition-transform duration-300 group-hover:translate-x-0.5" />
+              </Link>
+              <Link
+                href="/selvforvaltning"
+                className="group inline-flex items-center gap-2 rounded-full border border-[#e0dad0] bg-white/75 px-4 py-[9px] text-[13.5px] font-semibold text-[#25221e] backdrop-blur-sm transition-colors duration-300 hover:border-[#0a0a0a]/25 hover:bg-white"
+              >
+                Selvforvaltning
+                <span className="font-normal text-[#8d877d]">hele Norge</span>
+                <ArrowRight className="h-3.5 w-3.5 text-[#8d877d] transition-transform duration-300 group-hover:translate-x-0.5" />
+              </Link>
+            </div>
           </div>
 
           {/* Boligene: myk bento med én produktflate oppå. På desktop står de

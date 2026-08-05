@@ -91,7 +91,7 @@ export default function Footer({ org }: { org?: { company_name?: string; org_num
         <div className="py-16 grid gap-12 sm:grid-cols-2 lg:grid-cols-6">
           <div className="lg:col-span-2">
             <img src="/logo-light.svg" alt="DigiHome" className="h-[26px] w-auto" />
-            <p className="text-[14px] text-white/55 leading-relaxed mt-4 max-w-[28ch]">Smartere utleieadministrasjon med en hybridløsning av korttids- og langtidsutleie.</p>
+            <p className="text-[14px] text-white/60 leading-relaxed mt-4 max-w-[30ch]">Vi automatiserer utleien — annonse, leiekontrakt, depositum og husleie. Med eller uten forvalter.</p>
             <div className="mt-6 space-y-2">
               <a href={`mailto:${email}`} className="block py-0.5 text-[13px] text-white/50 hover:text-white/60 transition-colors">{email}</a>
               <a href={`tel:${phone.replace(/\s/g, '')}`} className="block py-0.5 text-[13px] text-white/50 hover:text-white/60 transition-colors">{phone}</a>

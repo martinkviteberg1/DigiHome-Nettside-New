@@ -17,9 +17,9 @@ const SIDE_TOPP = '/bergen-houses.webp';
 const SIDE_BUNN = '/interior-living.webp';
 
 const steg = [
-  'Annonse publisert p\u00e5 FINN',
+  'Annonse publisert på FINN',
   'Kontrakt signert med BankID',
-  'Husleie og depositum i system',
+  'Depositum og husleie i drift',
 ];
 
 function Produktkort({ className = '' }: { className?: string }) {
@@ -28,7 +28,7 @@ function Produktkort({ className = '' }: { className?: string }) {
       className={`rounded-[22px] border border-white/70 bg-white/95 p-4 backdrop-blur-xl shadow-[0_22px_54px_-22px_rgba(28,22,14,0.38)] ${className}`}
       data-testid="hero-produktkort"
     >
-      <p className="text-[10.5px] font-semibold uppercase tracking-[0.15em] text-[#8d877d]">Leieforholdet</p>
+      <p className="text-[10.5px] font-semibold uppercase tracking-[0.15em] text-[#8d877d]">Automatisk i plattformen</p>
       <ul className="mt-2.5 space-y-[9px]">
         {steg.map((s) => (
           <li key={s} className="flex items-center gap-2.5">

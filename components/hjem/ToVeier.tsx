@@ -32,7 +32,7 @@ const veier = [
     navn: 'Selvforvaltning',
     sted: 'Hele Norge',
     beskrivelse:
-      'Du holder visningene og bestemmer hvem som får boligen. Resten ligger i det samme systemet vi drifter forvaltningsboligene i.',
+      'Du holder visningene og bestemmer hvem som får boligen. Alt det administrative kjører automatisk i samme plattform som vi drifter forvaltningsboligene i.',
     punkter: [
       'FINN-annonse',
       'Leiekontrakt med BankID-signering',
@@ -49,10 +49,9 @@ export default function ToVeier() {
   return (
     <Seksjon testId="to-veier-section" tone="sand">
       <SeksjonHode
-        indeks="01"
         label="Tjenestenivå"
-        tittel="To måter å leie ut. Samme system i bunnen."
-        ingress="Full forvaltning er en tjeneste med mennesker i Bergen. Selvforvaltning er den samme plattformen, uten forvalteren — tilgjengelig for utleiere i hele landet."
+        tittel="Én plattform. To måter å leie ut."
+        ingress="Automatikken er den samme i begge: annonse, kontrakt med BankID, depositumskonto og husleie. Forskjellen er om en forvalter møter opp for deg — eller om du gjør det selv."
       />
 
       <div className="mt-11 grid gap-6 sm:mt-14 lg:grid-cols-2 lg:gap-7">
