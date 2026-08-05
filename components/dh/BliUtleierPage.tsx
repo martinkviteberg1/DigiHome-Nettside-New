@@ -52,7 +52,7 @@ const TIERS = [
     value: 'selvforvaltning',
     label: 'Selvforvaltning',
     price: '5 %',
-    priceNote: 'per utleie',
+    priceNote: 'av husleien',
     icon: Key,
     badge: { text: 'Kom i gang i dag', tone: 'green' },
     area: 'Tilgjengelig i hele landet',

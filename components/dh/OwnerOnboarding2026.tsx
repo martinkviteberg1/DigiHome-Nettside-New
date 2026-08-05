@@ -317,6 +317,11 @@ export default function OwnerOnboarding2026() {
   const [companyStatusAck, setCompanyStatusAck] = useState(false);
   const [phoneCountryIso, setPhoneCountryIso] = useState('NO');
   const [addressVerified, setAddressVerified] = useState(false);
+  // Tjeneste forhåndsvalgt i URL-en (?tier=selvforvaltning). Produktsiden
+  // /selvforvaltning lar brukeren velge FØR hen kommer hit, og da skal vi ikke
+  // stille samme spørsmål på nytt. Full forvaltning honoreres bare når
+  // adressen ligger i Bergen — vi kan ikke levere den andre steder.
+  const [preService, setPreService] = useState<Service>('');
   const [finnUrl, setFinnUrl] = useState('');
   const [finnCode, setFinnCode] = useState('');
   const [finnLookupLoading, setFinnLookupLoading] = useState(false);
@@ -420,6 +425,12 @@ export default function OwnerOnboarding2026() {
   useEffect(() => {
     try {
       const params = new URLSearchParams(window.location.search);
+      // Tjenestevalg fra URL leses først, slik at prefill-grenene under kan
+      // hoppe rett til kontaktsteget.
+      const rawTier = (params.get('tier') || params.get('service') || '').trim();
+      const pre: Service = rawTier === 'selvforvaltning' || rawTier === 'full_forvaltning' ? rawTier : '';
+      if (pre) setPreService(pre);
+
       const incomingFinn = params.get('finn');
       if (incomingFinn && detectFinnReference(incomingFinn)) {
         resolveFinnReference(incomingFinn);
@@ -438,7 +449,7 @@ export default function OwnerOnboarding2026() {
       if (isCompleteAddress(address, postal, city)) {
         setForm((current) => ({ ...current, address, postalCode: postal, city }));
         setAddressVerified(true);
-        setPhase('service');
+        goAfterAddress(pre, postal, city);
       } else if (address) {
         setForm((current) => ({ ...current, address, postalCode: postal, city }));
         setAddressVerified(false);
@@ -482,7 +493,7 @@ export default function OwnerOnboarding2026() {
     setFinnCode('');
     setFinnLookupNote('');
     setErrors({});
-    setPhase('service');
+    goAfterAddress(preService, form.postalCode, form.city);
   };
 
   const selectService = (service: Service) => {
@@ -491,6 +502,19 @@ export default function OwnerOnboarding2026() {
     setTermsAccepted(false);
     try { track('tier_entry_choice', { form: 'utleier-start', tier: service, in_bergen: isBergenArea(form.postalCode, form.city) }); } catch { /* analyse må aldri blokkere skjemaet */ }
     setPhase('contact');
+  };
+
+  // Etter at adressen er bekreftet: hopp over tjenestesteget hvis brukeren
+  // allerede har valgt på produktsiden. Ett steg mindre i et selvbetjent løp er
+  // ikke kosmetikk — hvert ekstra valg koster registreringer.
+  const goAfterAddress = (pre: Service, postalCode: string, city: string) => {
+    const allowed = pre === 'selvforvaltning' || (pre === 'full_forvaltning' && isBergenArea(postalCode, city));
+    if (pre && allowed) {
+      try { track('tier_prefilled', { form: 'utleier-start', tier: pre }); } catch { /* analyse må aldri blokkere skjemaet */ }
+      selectService(pre);
+      return;
+    }
+    setPhase('service');
   };
 
   const contactErrors = useMemo(() => {

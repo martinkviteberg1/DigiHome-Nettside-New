@@ -30,6 +30,9 @@ export default async function sitemap() {
     ...guides.map((g) => ({ url: `${base}/guider/${g.slug}`, lastModified: g.updated, changeFrequency: 'monthly', priority: 0.7 })),
     { url: `${base}/metode`, lastModified: staticDate, changeFrequency: 'monthly', priority: 0.5 },
     { url: `${base}/priskalkulator`, lastModified: staticDate, changeFrequency: 'monthly', priority: 0.7 },
+    // Selvforvaltning er det eneste produktet vi selger i hele landet, og
+    // prisen er offentlig — den skal derfor være indekserbar med høy prioritet.
+    { url: `${base}/selvforvaltning`, lastModified: new Date('2026-08-05T00:00:00.000Z'), changeFrequency: 'monthly', priority: 0.9 },
   ];
 
   const locationUrls = locations.map((l) => ({

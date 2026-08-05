@@ -16,8 +16,12 @@ import { track } from '@/lib/analytics';
  * Ved scroll: frostet glass + hairline-underlinje (ingen skygge — roligere).
  */
 
+// Selvforvaltning ligger som nr. 2 med vilje: produktet selges i hele landet og
+// er det eneste sporet vi kan tilby utenfor Bergen, men det hadde ingen inngang
+// i menyen — det var en radioknapp inne i registreringsskjemaet.
 const NAV_NO = [
   { href: '/bli-utleier', label: 'For utleiere', testId: 'nav-utleier' },
+  { href: '/selvforvaltning', label: 'Selvforvaltning', testId: 'nav-selvforvaltning' },
   { href: '/bli-leietaker', label: 'For leietakere', testId: 'nav-leietaker' },
   { href: '/ledige-boliger', label: 'Ledige boliger', testId: 'nav-ledige-boliger' },
   { href: '/leiemarkedet', label: 'Leiemarkedet', testId: 'nav-leiemarkedet' },

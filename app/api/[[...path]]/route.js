@@ -43,6 +43,7 @@ import { enqueueInterest as deliverInterest, retryInterestWebhooks, webhookTarge
 import { notifyStatus, removeSuppression } from '@/lib/notify-status';
 import { searchBrreg, lookupOrgNo, isValidOrgNr, normalizeOrgNr, companyLine } from '@/lib/brreg';
 import { buildSelfServicePayload, resolveOwnerKind, ownerOrgNo, SS_UNIT_TYPE, RENTAL_LABELS } from '@/lib/self-service';
+import { WIZARD_CATALOG_DEFAULT } from '@/lib/catalog';
 import { ga4MpConfigured, sendGa4Purchase } from '@/lib/ga4-mp';
 import { buildRecommendations } from '@/lib/ads-recommendations';
 import { generateRsaCopy, generateMetaCopy } from '@/lib/ads-ai';
@@ -788,37 +789,9 @@ async function googlePlaceDetails(placeId) {
   } catch (e) { return null; }
 }
 
-// ── Priskalkulator: standardkatalog (overstyres via settings.wizard_catalog) ──
-const WIZARD_CATALOG_DEFAULT = {
-  serviceLevels: [
-    {
-      key: 'selvbetjent', name: 'Selvbetjent', pct: 5, minMonthly: 500, badge: 'Nyhet',
-      tagline: 'Du gjør jobben — vi leverer systemet',
-      included: ['Annonsering på FINN.no', 'Digital kontrakt med BankID-signering', 'Husleieinnkreving og purring', 'Depositumskonto', 'Chat med leietaker', 'Utleiedashboard med full oversikt'],
-      notIncluded: ['Visninger og leietakervalg', 'Inn- og utflyttingsbefaring', 'Vedlikeholdskoordinering'],
-      models: ['langtid'],
-    },
-    {
-      key: 'fullforvaltning', name: 'Fullforvaltning', pct: 10, minMonthly: 0, badge: 'Mest valgt',
-      tagline: 'Vi gjør alt — du får utbetalingen',
-      included: ['Alt i Selvbetjent', 'Visninger og leietakervalg', 'Inn- og utflyttingsbefaring', 'Vedlikeholdskoordinering døgnet rundt', 'Dynamisk prisoptimalisering', 'Dedikert forvalter'],
-      notIncluded: [],
-      models: ['langtid', 'hybrid'],
-    },
-  ],
-  models: [
-    { key: 'langtid', name: 'Langtidsutleie', desc: 'Stabil leietaker og forutsigbar månedlig leie' },
-    { key: 'hybrid', name: 'Dynamisk utleie (10+2)', desc: 'Langtid + korttid i høysesong — typisk 20–30 % høyere inntekt', upliftPct: 25 },
-  ],
-  addons: [
-    { key: 'markedspakke', name: 'Markedspakke', price: 4900, once: true, popular: true, desc: 'Profesjonell boligfoto, plantegning og premium FINN-annonse' },
-    { key: 'foto', name: 'Profesjonell boligfoto', price: 2900, once: true, desc: 'Fotograf og redigering — 15–25 leveringsklare bilder' },
-    { key: 'kredittsjekk', name: 'Kreditt- og referansesjekk', price: 490, once: true, desc: 'Grundig sjekk av leietaker før kontrakt (per kandidat)' },
-    { key: 'innflytting', name: 'Innflyttingsklar', price: 3900, once: true, desc: 'Nedvask, nøkkelbokser og komplett klargjøring' },
-    { key: 'visningshjelp', name: 'Visningshjelp', price: 1490, once: true, for: 'selvbetjent', desc: 'Vi holder visningen for deg (pris per visning)' },
-    { key: 'juridisk', name: 'Juridisk trygghetspakke', price: 1990, once: true, desc: 'Kvalitetssikret kontrakt og rådgivning via Hoffmann Thinn' },
-  ],
-};
+// ── Priskalkulator: standardkatalogen ligger nå i lib/catalog.js ─────────────
+// Flyttet ut fordi de offentlige prissidene må vise SAMME tall som kalkulatoren.
+// Overstyring via settings.wizard_catalog fungerer som før.
 
 // --- Finn-annonse forhåndsvisning (server-side scrape: og:-tags + nøkkelinfo) ---
 const _finnCache = new Map();
