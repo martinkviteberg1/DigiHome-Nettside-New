@@ -98,28 +98,23 @@ export default function ServiceModelsSection() {
   }, [audioMode]);
 
   return (
-    <section className="py-28 sm:py-32 bg-white" data-testid="service-models-section">
-      <div className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16">
+    <section className="e-section bg-white" data-testid="service-models-section">
+      <div className="e-shell">
 
-        {/* ─────── Intro: eyebrow + H2 + subtitle ─────── */}
-        <motion.div
-          initial={{ opacity: 0, y: 14 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: '-80px' }}
-          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-          className="text-center max-w-[760px] mx-auto mb-12 sm:mb-14"
-        >
-          <span className="inline-flex items-center gap-3 mb-5">
-            <span className="w-7 h-[2px] rounded-full bg-[#d298ff]" />
-            <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#6f6a60]">Se filmen</span>
-          </span>
-          <h2 className="text-[36px] sm:text-[48px] lg:text-[56px] font-extrabold tracking-[-0.034em] leading-[1.02] text-[#0a0a0a]">
-            Slik jobber DigiHome for deg.
-          </h2>
-          <p className="mt-5 sm:mt-6 text-[15.5px] sm:text-[17px] text-[#5e5749] leading-[1.6] max-w-[560px] mx-auto">
-            Se hvordan vi gjør langtidsutleie smartere — fra første visning til siste leiebetaling.
+        {/* Redaksjonelt seksjonshode: indeks, label, hårfin linje. Den sentrerte
+            malen med lilla strek over tittelen er fjernet — den er selve
+            signaturen på en generisk side. */}
+        <div className="relative flex items-baseline gap-4">
+          <span className="e-index xl:absolute xl:-left-[52px] xl:top-[2px]">03</span>
+          <span className="e-label">Filmen</span>
+        </div>
+        <div className="e-rule mt-4 pt-8 sm:pt-10 mb-10 sm:mb-14 grid lg:grid-cols-12 gap-x-10 gap-y-6 items-end">
+          <h2 className="e-h2 lg:col-span-7 max-w-[20ch]">Slik jobber DigiHome for deg.</h2>
+          <p className="e-lead lg:col-span-5 lg:pb-1.5 max-w-[44ch]">
+            Se hvordan vi gjør utleie smartere — fra første visning til siste leiebetaling.
+            Trykk hvor som helst i bildet for lyd.
           </p>
-        </motion.div>
+        </div>
 
         {/* ─────── Hero video — ambient + click-anywhere-to-sound ─────── */}
         <motion.div
@@ -133,8 +128,8 @@ export default function ServiceModelsSection() {
           tabIndex={audioMode ? -1 : 0}
           onKeyDown={(e) => { if (!audioMode && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); handlePlayWithSound(); } }}
           aria-label={audioMode ? undefined : 'Spill av video med lyd'}
-          className={`group relative overflow-hidden rounded-[20px] sm:rounded-[28px] bg-[#0a0a0a] ${audioMode ? '' : 'cursor-pointer'}`}
-          style={{ boxShadow: '0 32px 80px -28px rgba(20,20,30,0.28), 0 12px 32px -12px rgba(20,20,30,0.14)' }}
+          className={`group relative overflow-hidden rounded-[8px] bg-[#0a0a0a] ${audioMode ? '' : 'cursor-pointer'}`}
+          style={{ boxShadow: '0 28px 70px -36px rgba(20,20,30,0.28)' }}
           data-testid="service-models-video"
         >
           {/* AMBIENT video — muted, loop; lastes/avspilles først når den nærmer seg visning */}
@@ -225,165 +220,33 @@ export default function ServiceModelsSection() {
           )}
         </motion.div>
 
-        {/* ─────── Big break — separates "story" from "products" ─────── */}
-        <div className="h-24 sm:h-28 lg:h-32" aria-hidden />
+        {/* ─────── Modellene som en hårfin indeks ───────
+            Tre kort der ett er svart med badgen «Mest populær» er den mest
+            gjenkjennelige AI-malen som finnes. Innholdet er det samme, men her
+            leses det som en prisliste i en trykksak: navn, undertittel, én
+            setning og hva modellen gir. Lenkene og testId-ene er uendret. */}
+        <div className="h-16 sm:h-20 lg:h-24" aria-hidden />
 
-        <div className="text-center mb-16">
-          <motion.div
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.4 }}
-            className="mb-5"
-          >
-            <span className="inline-flex items-center gap-3">
-              <span className="w-7 h-[2px] rounded-full bg-[#d298ff]" />
-              <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#6f6a60]">Våre tjenester</span>
-            </span>
-          </motion.div>
-          <motion.h2
-            initial={{ opacity: 0, y: 12 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: '-80px' }}
-            transition={{ duration: 0.5 }}
-            className="text-[36px] sm:text-[42px] font-bold text-[#0a0a0a] tracking-[-0.03em] leading-[1.1]"
-            style={{ fontFamily: 'var(--font-heading)' }}
-          >
-            Tre modeller for utleie
-          </motion.h2>
-          <motion.p
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.4, delay: 0.1 }}
-            className="text-[16px] text-[#6b6b6b] max-w-[480px] mx-auto leading-relaxed mt-4"
-          >
-            Velg modellen som passer din eiendom best, eller la oss anbefale den optimale løsningen.
-          </motion.p>
-        </div>
-
-        <div className="grid md:grid-cols-3 gap-5 lg:gap-6">
-          {models.map((m: any, i: number) => {
-            const Icon = m.icon;
-            return (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: '-40px' }}
-                transition={{ duration: 0.45, delay: i * 0.1 }}
-              >
-                <Link
-                  href="/tjenester"
-                  data-testid={`service-model-card-${i}`}
-                  className="group relative block rounded-[20px] p-8 sm:p-9 transition-all duration-500 hover:-translate-y-1.5 h-full"
-                  style={{
-                    backgroundColor: m.popular ? '#0a0a0a' : '#ffffff',
-                    border: m.popular ? '1px solid transparent' : '1px solid #eceae4',
-                    boxShadow: m.popular
-                      ? '0 8px 40px rgba(0,0,0,0.20)'
-                      : '0 0 0 0 transparent',
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!m.popular) {
-                      e.currentTarget.style.boxShadow = '0 18px 50px -20px rgba(124,58,237,0.18)';
-                      e.currentTarget.style.borderColor = '#dcc9f5';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!m.popular) {
-                      e.currentTarget.style.boxShadow = '0 0 0 0 transparent';
-                      e.currentTarget.style.borderColor = '#eceae4';
-                    }
-                  }}
-                >
-                  {/* Popular badge */}
-                  {m.popular && (
-                    <span
-                      className="absolute -top-3 left-8 text-[10px] font-bold uppercase tracking-[0.12em] px-4 py-1.5 rounded-full"
-                      style={{
-                        background: '#ffffff',
-                        color: '#0a0a0a',
-                        boxShadow: '0 2px 10px rgba(0,0,0,0.12)',
-                      }}
-                    >
-                      Mest populær
-                    </span>
-                  )}
-
-                  {/* Icon */}
-                  <div
-                    className="w-12 h-12 rounded-2xl flex items-center justify-center mb-7 transition-transform duration-500 group-hover:scale-105"
-                    style={{
-                      backgroundColor: m.popular ? 'rgba(255,255,255,0.10)' : '#f2f0eb',
-                    }}
-                  >
-                    <Icon
-                      className="w-5 h-5"
-                      style={{ color: m.popular ? '#ffffff' : '#6b675e' }}
-                      strokeWidth={1.8}
-                    />
-                  </div>
-
-                  {/* Title block */}
-                  <h3
-                    className="text-[20px] sm:text-[22px] font-bold tracking-[-0.02em] leading-tight"
-                    style={{
-                      fontFamily: 'var(--font-heading)',
-                      color: m.popular ? '#ffffff' : '#0a0a0a',
-                    }}
-                  >
-                    {m.title}
-                  </h3>
-                  <p
-                    className="text-[12px] font-medium mt-1.5 tracking-wide uppercase"
-                    style={{ color: m.popular ? 'rgba(255,255,255,0.62)' : '#6b6b6b' }}
-                  >
-                    {m.subtitle}
-                  </p>
-
-                  {/* Description */}
-                  <p
-                    className="text-[14px] leading-[1.7] mt-5"
-                    style={{ color: m.popular ? 'rgba(255,255,255,0.55)' : '#777' }}
-                  >
-                    {m.desc}
-                  </p>
-
-                  {/* Footer */}
-                  <div
-                    className="flex items-center justify-between mt-8 pt-6"
-                    style={{
-                      borderTop: m.popular
-                        ? '1px solid rgba(255,255,255,0.1)'
-                        : '1px solid #f0ece6',
-                    }}
-                  >
-                    <span
-                      className="text-[13px] font-semibold"
-                      style={{ color: m.popular ? '#d298ff' : '#0a0a0a' }}
-                    >
-                      {m.highlight}
-                    </span>
-                    <div
-                      className="w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 group-hover:translate-x-0.5"
-                      style={{
-                        backgroundColor: m.popular ? 'rgba(255,255,255,0.08)' : '#f2f0eb',
-                      }}
-                    >
-                      <ArrowRight
-                        className="w-3.5 h-3.5 transition-colors duration-300"
-                        style={{
-                          color: m.popular ? '#d298ff' : '#999',
-                        }}
-                        strokeWidth={2}
-                      />
-                    </div>
-                  </div>
-                </Link>
-              </motion.div>
-            );
-          })}
+        <span className="e-label">Utleiemodeller</span>
+        <div className="e-rule e-hair mt-4">
+          {models.map((m: any, i: number) => (
+            <Link
+              key={i}
+              href="/tjenester"
+              data-testid={`service-model-card-${i}`}
+              className="group grid lg:grid-cols-12 gap-x-10 gap-y-2 py-6 sm:py-8 items-baseline"
+            >
+              <div className="lg:col-span-4">
+                <h3 className="e-h3 text-[20px] sm:text-[24px] transition-colors duration-300 group-hover:text-[#7c3aed]">{m.title}</h3>
+                <p className="e-label mt-2">{m.subtitle}</p>
+              </div>
+              <p className="e-body lg:col-span-5 max-w-[52ch]">{m.desc}</p>
+              <div className="lg:col-span-3 flex items-center justify-between gap-4 lg:justify-end">
+                <span className="text-[13.5px] font-semibold text-[#0a0a0a]">{m.highlight}</span>
+                <ArrowRight className="w-4 h-4 shrink-0 text-[#8d877d] transition-transform duration-300 group-hover:translate-x-1" strokeWidth={2} />
+              </div>
+            </Link>
+          ))}
         </div>
 
       </div>

@@ -632,3 +632,220 @@ html { scroll-behavior: smooth; }
   transform-origin: 0 50%;
   will-change: transform;
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   REDAKSJONELT SYSTEM — «anti-slop»-laget (2026)
+   ──────────────────────────────────────────────────────────────────────────
+   Hensikten er å fjerne det som får nettsteder til å se maskingenerert ut:
+   kortsuppe, pastellmerker, tintede ikonfirkanter, gradientglød og samme
+   sentrerte rytme i hver seksjon. Virkemidlene her er de motsatte:
+     · typografi med stor skalakontrast (11 px label mot 84 px display)
+     · hårfine 1 px-linjer i stedet for kort og skygger
+     · nesten monokrom palett — lilla kun som detalj
+     · tabulære tall, så tallkolonner faktisk står i kolonne
+     · asymmetriske oppslag på et 12-kolonners rutenett
+   Klassene er få og navngitte med e- (editorial) slik at de ikke kolliderer
+   med den eldre dh-serien. Layout gjøres fortsatt med Tailwind.
+   ══════════════════════════════════════════════════════════════════════════ */
+:root {
+  --e-paper: #FDFCFB;
+  --e-paper-2: #F6F3EE;
+  --e-ink: #0A0A0A;
+  --e-ink-2: #3A3733;
+  --e-ink-3: #6F6A60;
+  --e-line: #E6E1D9;
+  --e-line-2: #D6CFC4;
+  --e-accent: #7C3AED;
+}
+
+/* Bredere skall enn den gamle 1160-malen: redaksjonelle oppslag trenger plass
+   til to spalter uten at lesebredden på brødteksten sprenges (den styres av
+   max-w-[Xch] på selve avsnittet, ikke av skallet). */
+.e-shell { width: 100%; max-width: 1320px; margin-inline: auto; padding-inline: 20px; }
+@media (min-width: 640px)  { .e-shell { padding-inline: 40px; } }
+@media (min-width: 1280px) { .e-shell { padding-inline: 56px; } }
+
+.e-section       { padding-block: clamp(48px, 6vw, 92px); }
+.e-section-tight { padding-block: clamp(36px, 4.4vw, 64px); }
+
+.e-label   { font-size: 11px; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: var(--e-ink-3); }
+.e-index   { font-family: var(--font-heading), sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 0.12em; color: var(--e-ink-3); font-variant-numeric: tabular-nums; }
+.e-display { font-family: var(--font-heading), sans-serif; font-weight: 700; letter-spacing: -0.042em; line-height: 0.99; text-wrap: balance; color: var(--e-ink); }
+.e-h2      { font-family: var(--font-heading), sans-serif; font-weight: 700; letter-spacing: -0.032em; line-height: 1.03; font-size: clamp(29px, 4.1vw, 52px); text-wrap: balance; color: var(--e-ink); }
+.e-h3      { font-family: var(--font-heading), sans-serif; font-weight: 700; letter-spacing: -0.02em;  line-height: 1.16; font-size: clamp(19px, 1.7vw, 23px); color: var(--e-ink); }
+.e-lead    { font-size: clamp(16.5px, 1.25vw, 19px); line-height: 1.62; color: var(--e-ink-2); }
+.e-body    { font-size: 15.5px; line-height: 1.75; color: var(--e-ink-2); }
+.e-meta    { font-size: 13px; line-height: 1.6; color: var(--e-ink-3); }
+.e-num     { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+
+.e-rule   { border-top: 1px solid var(--e-line); }
+.e-rule-b { border-bottom: 1px solid var(--e-line); }
+/* Hårfin liste: linje mellom radene, ingen kort, ingen ikonfirkanter. */
+.e-hair > * + * { border-top: 1px solid var(--e-line); }
+
+.e-link { color: var(--e-ink); text-decoration: underline; text-decoration-color: var(--e-line-2); text-decoration-thickness: 1px; text-underline-offset: 5px; transition: color 0.25s ease, text-decoration-color 0.25s ease; }
+.e-link:hover { color: var(--e-accent); text-decoration-color: var(--e-accent); }
+
+/* Knappene forlater pilleformen. 8 px radius leser som verktøy og trykksak,
+   ikke som app-onboarding. */
+.e-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 52px; padding-inline: 24px; border-radius: 8px; font-size: 15px; font-weight: 600; letter-spacing: -0.005em; transition: background-color 0.25s ease, border-color 0.25s ease, transform 0.2s ease, color 0.25s ease; }
+.e-btn:active { transform: scale(0.985); }
+.e-btn-sm { height: 46px; padding-inline: 18px; font-size: 14px; }
+.e-btn-dark { background: var(--e-ink); color: #fff; }
+.e-btn-dark:hover { background: #232323; }
+.e-btn-ghost { background: transparent; color: var(--e-ink); border: 1px solid var(--e-line-2); }
+.e-btn-ghost:hover { border-color: var(--e-ink); }
+.e-btn-light { background: #fff; color: var(--e-ink); }
+.e-btn-light:hover { background: #f2efe9; }
+
+/* Adressefeltet: rektangulært, hårfin kant, mørk knapp inni. */
+.e-field { display: flex; align-items: center; background: #fff; border: 1px solid var(--e-line-2); border-radius: 10px; transition: border-color 0.25s ease, box-shadow 0.25s ease; }
+.e-field:focus-within { border-color: var(--e-ink); box-shadow: 0 0 0 3px rgba(10, 10, 10, 0.06); }
+
+/* Sitat i display-snitt. Hengende anførselstegn, som i en avis. */
+.e-quote { font-family: var(--font-heading), sans-serif; font-weight: 600; letter-spacing: -0.028em; line-height: 1.16; text-wrap: balance; color: var(--e-ink); }
+
+/* <details> uten ikonfirkant: pluss/minus tegnet i CSS. */
+.e-faq summary::-webkit-details-marker { display: none; }
+.e-faq summary { list-style: none; }
+.e-faq-sign { position: relative; width: 13px; height: 13px; flex: none; }
+.e-faq-sign::before,
+.e-faq-sign::after { content: ''; position: absolute; background: var(--e-ink); transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.3s ease; }
+.e-faq-sign::before { top: 6px; left: 0; width: 13px; height: 1.5px; }
+.e-faq-sign::after  { left: 6px; top: 0; width: 1.5px; height: 13px; }
+details[open] .e-faq-sign::after { transform: rotate(90deg); opacity: 0; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   2026-LAGET — håndverket oppå det redaksjonelle systemet
+   ──────────────────────────────────────────────────────────────────────────
+   Alt her er progressive enhancement: uten støtte for scroll-drevne
+   animasjoner vises innholdet ferdig og i ro. Ingenting skjuler innhold bak
+   JavaScript, og alt skrus av ved prefers-reduced-motion.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* Hårfin linje som eget element, slik at den kan tegnes inn fra venstre. */
+.e-line { height: 1px; background: var(--e-line); }
+
+/* Bildene får en innvendig hårkant. Det er detaljen som skiller et fotografi
+   plassert i et oppsett fra et fotografi som er montert. */
+.e-frame { position: relative; overflow: hidden; border-radius: 6px; background: #f0ece6; }
+.e-frame::after { content: ''; position: absolute; inset: 0; pointer-events: none; box-shadow: inset 0 0 0 1px rgba(10, 10, 10, 0.07); border-radius: inherit; }
+.e-frame img { display: block; width: 100%; height: 100%; object-fit: cover; }
+
+/* Understreking som vokser fra venstre i stedet for å skifte farge brått. */
+.e-link {
+  text-decoration: none;
+  background-image: linear-gradient(var(--e-line-2), var(--e-line-2));
+  background-repeat: no-repeat;
+  background-position: 0 100%;
+  background-size: 100% 1px;
+  padding-bottom: 3px;
+  transition: color 0.3s ease, background-size 0.4s cubic-bezier(0.22, 1, 0.36, 1), background-image 0.3s ease;
+}
+.e-link:hover { color: var(--e-accent); background-image: linear-gradient(var(--e-accent), var(--e-accent)); }
+
+/* Løft på 1 px ved hover. Nok til å kjennes, lite nok til å ikke sprette. */
+.e-btn-dark:hover, .e-btn-light:hover { transform: translateY(-1px); }
+.e-btn-dark:active, .e-btn-light:active { transform: translateY(0) scale(0.985); }
+
+/* Synlig, men rolig tastaturfokus over hele det redaksjonelle laget. */
+.e-shell a:focus-visible,
+.e-shell button:focus-visible,
+.e-shell summary:focus-visible,
+.e-shell input:focus-visible {
+  outline: 2px solid var(--e-accent);
+  outline-offset: 3px;
+  border-radius: 3px;
+}
+
+/* Stort anførselstegn som typografisk element, ikke som ikon. */
+.e-quote-mark {
+  font-family: var(--font-heading), sans-serif;
+  font-weight: 700;
+  line-height: 0.7;
+  color: var(--e-ink);
+  opacity: 0.1;
+  user-select: none;
+}
+
+/* Hårfint rutenett på den mørke flaten: struktur i stedet for gradient. */
+.e-grid-dark {
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.055) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.055) 1px, transparent 1px);
+  background-size: 25% 25%;
+}
+
+/* ── Scroll-drevne animasjoner (uten JavaScript) ──────────────────────────
+   @supports-gaten er viktig: i nettlesere uten animation-timeline blir
+   ingenting skjult, og siden ser ut som en ferdig trykksak med én gang. */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .e-reveal {
+      animation: e-reveal-in linear both;
+      animation-timeline: view();
+      animation-range: entry 4% cover 20%;
+    }
+    @keyframes e-reveal-in {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: none; }
+    }
+
+    .e-line-in {
+      animation: e-line-grow linear both;
+      animation-timeline: view();
+      animation-range: entry 8% cover 24%;
+      transform-origin: left center;
+    }
+    @keyframes e-line-grow {
+      from { transform: scaleX(0); }
+      to   { transform: scaleX(1); }
+    }
+
+    /* Rolig parallakse på store bilder: fotografiet beveger seg litt saktere
+       enn siden, slik at flaten får dybde uten at noe «flyr inn». */
+    .e-parallax img {
+      animation: e-parallax linear both;
+      animation-timeline: view();
+      animation-range: cover 0% cover 100%;
+      will-change: transform;
+    }
+    @keyframes e-parallax {
+      from { transform: scale(1.08) translateY(-2.2%); }
+      to   { transform: scale(1.08) translateY(2.2%); }
+    }
+  }
+}
+
+/* Herotekst som avdekkes linje for linje ved innlasting. Rene transformer, så
+   det koster ingenting i LCP. */
+@media (prefers-reduced-motion: no-preference) {
+  .e-mask { display: block; overflow: hidden; }
+  .e-mask > span { display: block; animation: e-mask-up 0.9s cubic-bezier(0.16, 1, 0.3, 1) both; }
+  .e-mask:nth-of-type(2) > span { animation-delay: 0.09s; }
+  @keyframes e-mask-up {
+    from { transform: translateY(104%); }
+    to   { transform: translateY(0); }
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   MYKERE GEOMETRI — DigiHome-uttrykket tilbake i det redaksjonelle laget
+   ──────────────────────────────────────────────────────────────────────────
+   Det redaksjonelle systemet over ga presis typografi, men for harde kanter:
+   8 px knapper, 6 px bilderammer og rektangulære felt leste som verktøy — ikke
+   som bolig. Radiene under mykner flatene uten å røre typografi, rytme eller
+   farge, og skyggene er varme (brunlig svart), aldri blå/lilla.
+   Blokken står sist i filen med vilje, slik at den overstyrer radiene over.
+   ══════════════════════════════════════════════════════════════════════════ */
+.e-btn   { border-radius: 999px; }
+.e-field { border-radius: 22px; box-shadow: 0 1px 2px rgba(28, 22, 14, 0.03), 0 12px 30px -18px rgba(28, 22, 14, 0.16); }
+@media (min-width: 640px) { .e-field { border-radius: 999px; } }
+.e-field:focus-within { border-color: #0a0a0a; box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.10), 0 14px 34px -18px rgba(28, 22, 14, 0.22); }
+
+.e-frame { border-radius: 20px; }
+@media (min-width: 640px) { .e-frame { border-radius: 26px; } }
+
+.e-soft    { box-shadow: 0 1px 2px rgba(28, 22, 14, 0.03), 0 18px 44px -26px rgba(28, 22, 14, 0.20); }
+.e-soft-sm { box-shadow: 0 1px 2px rgba(28, 22, 14, 0.04), 0 8px 22px -14px rgba(28, 22, 14, 0.16); }
+.e-card    { background: #fff; border: 1px solid var(--e-line); border-radius: 24px; }

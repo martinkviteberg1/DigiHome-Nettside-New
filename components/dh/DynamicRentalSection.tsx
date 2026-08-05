@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import Link from 'next/link';
 import { motion, AnimatePresence } from '@/lib/motion-lite';
 import { Heart, MapPin, Home, Sun } from 'lucide-react';
 
@@ -38,128 +39,73 @@ export default function DynamicRentalSection() {
   };
 
   return (
-    <section className="py-24 sm:py-32 relative overflow-hidden" style={{ backgroundColor: '#fdfcfb' }} data-testid="dynamic-rental-section">
-      <div aria-hidden className="pointer-events-none absolute -top-24 right-[4%] w-[700px] h-[560px] rounded-full" style={{ background: 'radial-gradient(circle, rgba(210,152,255,0.08) 0%, transparent 65%)' }} />
-      <div className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16 relative">
-        <div className="grid lg:grid-cols-2 gap-16 lg:gap-24 items-center">
+    <section className="e-section" style={{ backgroundColor: '#fdfcfb' }} data-testid="dynamic-rental-section">
+      <div className="e-shell">
+        <div className="relative flex items-baseline gap-4">
+          <span className="e-index xl:absolute xl:-left-[52px] xl:top-[2px]">04</span>
+          <span className="e-label">10+2-modellen</span>
+        </div>
 
-          {/* ── Left: Text ── */}
-          <div>
-            <motion.div
-              initial={{ opacity: 0 }}
-              whileInView={{ opacity: 1 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.4 }}
-              className="mb-5"
-            >
-              <span className="inline-flex items-center gap-3">
-                <span className="w-7 h-[2px] rounded-full bg-[#d298ff]" />
-                <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#6f6a60]">10+2-modellen</span>
-              </span>
-            </motion.div>
-            <motion.h2
-              initial={{ opacity: 0, y: 12 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: '-80px' }}
-              transition={{ duration: 0.5 }}
-              className="text-[34px] sm:text-[42px] font-bold tracking-[-0.03em] leading-[1.08] text-[#0a0a0a]"
-              style={{ fontFamily: 'var(--font-heading)' }}
-            >
-              Dynamisk utleie
-            </motion.h2>
+        <div className="e-rule mt-4 pt-8 sm:pt-12 grid lg:grid-cols-12 gap-x-16 gap-y-14 items-start">
 
-            <motion.p
-              initial={{ opacity: 0, y: 10 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: '-60px' }}
-              transition={{ duration: 0.5, delay: 0.08 }}
-              className="text-[15px] text-[#666] leading-[1.75] mt-5 max-w-[46ch]"
-            >
-              V&#229;r 10+2-modell kombinerer det beste fra to verdener &mdash;
-              og gir deg opptil 30&nbsp;% h&#248;yere &#229;rsinntekt enn tradisjonell utleie.
-            </motion.p>
+          {/* ── Venstre: argumentet ── */}
+          <div className="lg:col-span-6">
+            <h2 className="e-h2 max-w-[14ch]">Dynamisk utleie</h2>
+            <p className="e-lead mt-6 max-w-[46ch]">
+              Ti måneder med fast leietaker, to måneder med sesongutleie. For egnede boliger kan
+              scenarioet vise opptil 30 % høyere årsinntekt enn ren langtidsutleie.
+            </p>
 
-            {/* Two modes */}
-            <div className="mt-10 space-y-5">
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: '-40px' }}
-                transition={{ duration: 0.4, delay: 0.12 }}
-                className={`flex gap-4 p-4 rounded-2xl cursor-pointer transition-all duration-300 ${
-                  mode === 'long'
-                    ? 'bg-[#f8f7f5] shadow-[0_1px_4px_rgba(0,0,0,0.04)]'
-                    : 'bg-transparent hover:bg-[#fafaf9]'
-                }`}
-                onClick={() => pick('long')}
-                data-testid="mode-long-term"
-              >
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-colors duration-300 ${
-                  mode === 'long' ? 'bg-[#0a0a0a]' : 'bg-[#f0f0f0]'
-                }`}>
-                  <Home className="w-4 h-4" style={{ color: mode === 'long' ? '#fff' : '#aaa' }} />
-                </div>
-                <div>
-                  <h3 className="text-[15px] font-semibold text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>
-                    10 m&#229;neder langtidsleie
-                  </h3>
-                  <p className="text-[13px] text-[#6b6b6b] leading-[1.6] mt-0.5">
-                    Stabil inntekt hele &#229;ret. Annonseres p&#229; Finn.no og Hybel.no.
-                  </p>
-                </div>
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: '-40px' }}
-                transition={{ duration: 0.4, delay: 0.18 }}
-                className={`flex gap-4 p-4 rounded-2xl cursor-pointer transition-all duration-300 ${
-                  mode === 'short'
-                    ? 'bg-[#f6f5f2] shadow-[0_1px_4px_rgba(0,0,0,0.04)]'
-                    : 'bg-transparent hover:bg-[#fafaf9]'
-                }`}
-                onClick={() => pick('short')}
-                data-testid="mode-short-term"
-              >
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-colors duration-300 ${
-                  mode === 'short' ? 'bg-[#0a0a0a]' : 'bg-[#f0f0f0]'
-                }`}>
-                  <Sun className="w-4 h-4" style={{ color: mode === 'short' ? '#fff' : '#aaa' }} />
-                </div>
-                <div>
-                  <h3 className="text-[15px] font-semibold text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>
-                    2 m&#229;neder korttidsutleie
-                  </h3>
-                  <p className="text-[13px] text-[#6b6b6b] leading-[1.6] mt-0.5">
-                    Premium-priser om sommeren. Annonseres p&#229; Airbnb og Booking.
-                  </p>
-                </div>
-              </motion.div>
+            {/* Modusvelgeren: to hårfine rader der tallet ER ikonet. De tintede
+                ikonfirkantene er borte — de sa ingenting «10» og «2» ikke sier. */}
+            <div className="mt-10">
+              {[
+                { key: 'long', tall: '10', tittel: 'måneder langtidsleie', body: 'Stabil inntekt hele året. Annonseres på Finn.no og Hybel.no.', testId: 'mode-long-term' },
+                { key: 'short', tall: '2', tittel: 'måneder korttidsutleie', body: 'Premium-priser om sommeren. Annonseres på Airbnb og Booking.', testId: 'mode-short-term' },
+              ].map((m: any) => {
+                const aktiv = mode === m.key;
+                return (
+                  <div
+                    key={m.key}
+                    onClick={() => pick(m.key)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e: any) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(m.key); } }}
+                    data-testid={m.testId}
+                    className={`cursor-pointer pl-5 py-4 border-l-2 transition-colors duration-300 ${aktiv ? 'border-[#0a0a0a]' : 'border-[#e6e1d9] hover:border-[#c2bab0]'}`}
+                  >
+                    <div className="flex items-baseline gap-3">
+                      <span className={`e-display e-num text-[27px] ${aktiv ? '' : '!text-[#c2bab0]'}`}>{m.tall}</span>
+                      <h3 className={`text-[15.5px] font-semibold ${aktiv ? 'text-[#0a0a0a]' : 'text-[#6f6a60]'}`}>{m.tittel}</h3>
+                    </div>
+                    <p className="e-meta mt-1.5 max-w-[42ch]">{m.body}</p>
+                  </div>
+                );
+              })}
             </div>
 
-            {/* Income stat */}
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.4, delay: 0.24 }}
-              className="flex items-center gap-6 mt-10 pt-8 border-t border-[#f0f0f0]"
-            >
-              <div>
-                <p className="text-[11px] text-[#737373] uppercase tracking-[0.05em] font-medium">Kun langtid</p>
-                <p className="text-[18px] font-bold text-[#6f6a60] mt-0.5" style={{ fontFamily: 'var(--font-heading)' }}>180 000 kr</p>
+            {/* Regnestykket som tabell, med forbeholdet synlig. Gradienttekst på
+                «+30 %» er fjernet: et tall som betyr noe trenger ikke farge. */}
+            <div className="mt-12 e-rule pt-7">
+              <div className="flex flex-wrap items-end gap-x-14 gap-y-6">
+                <div>
+                  <p className="e-label">Kun langtid</p>
+                  <p className="e-display e-num text-[22px] mt-2 !text-[#6f6a60]">{'180 000 kr'}</p>
+                </div>
+                <div>
+                  <p className="e-label">Med 10+2</p>
+                  <p className="e-display e-num text-[22px] mt-2">{'234 000 kr'}</p>
+                </div>
+                <div className="ml-auto text-right">
+                  <p className="e-display text-[31px] leading-none">+30 %</p>
+                  <p className="e-meta mt-2">årlig merinntekt</p>
+                </div>
               </div>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8a837a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
-              <div>
-                <p className="text-[11px] text-[#6f6a60] uppercase tracking-[0.14em] font-semibold">10+2 modellen</p>
-                <p className="text-[18px] font-bold text-[#0a0a0a] mt-0.5" style={{ fontFamily: 'var(--font-heading)' }}>234 000 kr</p>
-              </div>
-              <div className="ml-auto">
-                <p className="text-[28px] font-bold leading-none tracking-tight" style={{ fontFamily: 'var(--font-heading)', background: 'linear-gradient(135deg, #7e22ce 0%, #d298ff 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>+30%</p>
-                <p className="text-[11px] text-[#737373] mt-0.5">&#229;rlig merinntekt</p>
-              </div>
-            </motion.div>
+              <p className="e-meta mt-6 max-w-[54ch]">
+                Eksempelberegning for en egnet bolig — ikke en garanti.{' '}
+                <Link href="/metode" className="e-link">Se metode og forbehold</Link>.
+              </p>
+            </div>
           </div>
 
           {/* ── Right: Animated Card ── */}
@@ -168,9 +114,10 @@ export default function DynamicRentalSection() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: '-60px' }}
             transition={{ duration: 0.6, delay: 0.1 }}
-            className="relative"
+            className="relative lg:col-span-6"
             style={{ height: '620px' }}
           >
+
             <AnimatePresence mode="wait">
               <motion.div
                 key={mode}

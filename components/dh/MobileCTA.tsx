@@ -38,7 +38,7 @@ export default function MobileCTA() {
       <button
         onClick={go}
         data-testid="mobile-sticky-cta"
-        className="w-full h-[54px] rounded-full bg-[#0a0a0a]/95 backdrop-blur-xl text-white text-[15px] font-semibold flex items-center justify-center gap-2 shadow-[0_16px_44px_-10px_rgba(10,10,10,0.55)] border border-white/[0.08] active:scale-[0.98] transition-transform"
+        className="w-full h-[54px] rounded-[10px] bg-[#0a0a0a]/95 backdrop-blur-xl text-white text-[15px] font-semibold flex items-center justify-center gap-2 shadow-[0_16px_44px_-10px_rgba(10,10,10,0.55)] border border-white/[0.08] active:scale-[0.98] transition-transform"
       >
         Få gratis verdivurdering <ArrowRight className="w-4 h-4 text-[#d298ff]" />
       </button>

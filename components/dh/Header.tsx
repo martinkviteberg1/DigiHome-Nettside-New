@@ -93,14 +93,15 @@ export default function Header() {
                   key={l.href}
                   href={l.href}
                   data-testid={l.testId}
-                  className={`relative px-3.5 py-2 rounded-full transition-colors duration-300 ${
-                    isActive ? '' : 'hover:bg-[#0a0a0a]/[0.045]'
-                  }`}
+                  className="relative px-3 py-2"
                 >
+                  {/* Aktiv side markeres med en hårfin strek under ordet, ikke med
+                      en grå pille. Streken tilhører samme linjespråk som resten
+                      av nettstedet og støyer ikke i toppen av skjermen. */}
                   {isActive && (
                     <motion.span
                       layoutId="nav-active-pill"
-                      className="absolute inset-0 rounded-full bg-[#0a0a0a]/[0.06]"
+                      className="absolute left-3 right-3 -bottom-[3px] h-[1.5px] bg-[#0a0a0a]"
                       transition={{ type: 'spring', bounce: 0.18, duration: 0.55 }}
                     />
                   )}
@@ -128,13 +129,11 @@ export default function Header() {
             <button
               onClick={() => { try { track('cta_click', { cta: 'header' }); } catch (e) {} router.push('/bli-utleier/start'); }}
               data-testid="header-cta-start-onboarding-button"
-              className={`group relative inline-flex items-center gap-2 pl-5 pr-1.5 rounded-full text-[13px] font-semibold tracking-[-0.008em] overflow-hidden transition-all duration-500 active:scale-[0.97] bg-[#0a0a0a] text-white hover:shadow-[0_12px_32px_-10px_rgba(10,10,10,0.4)] ${scrolled ? 'h-[42px]' : 'h-[44px]'}`}
-              style={{ transitionTimingFunction: ease, boxShadow: '0 8px 24px -8px rgba(31,31,31,0.35)' }}
+              className={`group inline-flex items-center gap-2 px-5 rounded-[8px] text-[13.5px] font-semibold tracking-[-0.008em] transition-all duration-300 active:scale-[0.98] bg-[#0a0a0a] text-white hover:bg-[#232323] ${scrolled ? 'h-[40px]' : 'h-[42px]'}`}
+              style={{ transitionTimingFunction: ease }}
             >
-              <span className="relative z-10">{ctaText}</span>
-              <span className="relative z-10 inline-flex items-center justify-center w-[30px] h-[30px] rounded-full bg-[#d298ff] text-[#1f1f1f] transition-transform duration-300 group-hover:rotate-45">
-                <ArrowUpRight className="w-3.5 h-3.5" strokeWidth={2.6} />
-              </span>
+              <span>{ctaText}</span>
+              <ArrowUpRight className="w-3.5 h-3.5 transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" strokeWidth={2.4} />
             </button>
           </div>
 

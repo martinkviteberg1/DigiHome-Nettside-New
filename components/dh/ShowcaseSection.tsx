@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import Reveal from '@/components/dh/Reveal';
-import { MapPin } from 'lucide-react';
 
 // Fallback — vises til ekte boliger er synket & gjort synlige i adminportalen.
 const FALLBACK = [
@@ -47,36 +47,40 @@ export default function ShowcaseSection() {
   }, []);
 
   return (
-    <section id="boliger" className="py-20 sm:py-24 bg-white">
-      <div className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16">
-        <Reveal as="div" initial={{ opacity: 0, y: 12 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: '-80px' }} transition={{ duration: 0.5 }}
-          className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-14">
-          <div>
-            <span className="inline-flex items-center gap-3 mb-5">
-              <span className="w-7 h-[2px] rounded-full bg-[#d298ff]" />
-              <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#6f6a60]">Porteføljen</span>
-            </span>
-            <h2 className="text-[34px] sm:text-[42px] font-bold tracking-[-0.03em] leading-[1.08] text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>Noen av våre eiendommer</h2>
+    <section id="boliger" className="e-section bg-white" data-testid="showcase-section">
+      <div className="e-shell">
+        <div className="relative flex items-baseline gap-4">
+          <span className="e-index xl:absolute xl:-left-[52px] xl:top-[2px]">06</span>
+          <span className="e-label">Porteføljen</span>
+        </div>
+        <div className="e-rule mt-4 pt-8 sm:pt-10 grid lg:grid-cols-12 gap-x-10 gap-y-5 items-end">
+          <h2 className="e-h2 lg:col-span-7 max-w-[18ch]">Boliger vi drifter nå.</h2>
+          <div className="lg:col-span-5 lg:pb-2">
+            <Link href="/ledige-boliger" className="e-link text-[14.5px] font-semibold">Se alle ledige boliger</Link>
           </div>
-        </Reveal>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-7">
+        </div>
+
+        {/* Bildet står for seg, og opplysningene står under en hårfin linje — ikke
+            som pilleformede merker oppe i hjørnet av fotografiet. */}
+        <div className="mt-12 sm:mt-16 grid sm:grid-cols-2 lg:grid-cols-3 gap-x-5 gap-y-10">
           {cards.map((p: any, i: number) => (
-            <Reveal as="div" key={p.id || p.location} initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: '-40px' }} transition={{ duration: 0.45, delay: (i % 3) * 0.1 }}
-              className="group cursor-pointer">
-              <div className="rounded-2xl overflow-hidden mb-4 relative">
-                <img src={p.image} alt={p.location} className="w-full aspect-[5/4] object-cover group-hover:scale-[1.03] transition-transform duration-700 ease-out" loading="lazy" />
-                <div className="absolute top-3 left-3 flex gap-1.5">
-                  <span className="bg-white/90 backdrop-blur-sm rounded-lg px-2.5 py-1 text-[11px] font-medium text-[#555]">{p.tag}</span>
-                  {p.rented && <span className="bg-[#0a0a0a]/80 backdrop-blur-sm rounded-lg px-2.5 py-1 text-[11px] font-medium text-white">Utleid</span>}
-                </div>
+            <Reveal as="div" key={p.id || p.location} initial={{ opacity: 0, y: 14 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: '-40px' }} transition={{ duration: 0.45, delay: (i % 3) * 0.08 }}
+              className="group">
+              <div className="e-frame">
+                <img src={p.image} alt={p.location} loading="lazy" className="w-full aspect-[5/4] object-cover transition-transform duration-[900ms] ease-out group-hover:scale-[1.02]" />
               </div>
-              <div className="flex items-start justify-between">
-                <div>
-                  <div className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-[#ccc]" /><h3 className="text-[15px] font-semibold text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>{p.location}</h3></div>
-                  <p className="text-[12px] text-[#78726a] mt-1 ml-5">{p.type}</p>
+              <div className="e-rule mt-4 pt-3.5 flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <h3 className="text-[15.5px] font-semibold text-[#0a0a0a] truncate" style={{ fontFamily: 'var(--font-heading)' }}>{p.location}</h3>
+                  <p className="e-meta mt-1">
+                    {[p.type, p.tag].filter(Boolean).join(' · ')}{p.rented ? ' · Utleid' : ''}
+                  </p>
                 </div>
                 {p.income && (
-                  <div className="text-right shrink-0 ml-4"><p className="text-[16px] font-bold text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>{p.income}</p><p className="text-[11px] text-[#737373]">kr/mnd</p></div>
+                  <div className="text-right shrink-0">
+                    <p className="e-display e-num text-[17px]">{p.income}</p>
+                    <p className="e-meta mt-0.5">kr/mnd</p>
+                  </div>
                 )}
               </div>
             </Reveal>

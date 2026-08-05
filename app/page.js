@@ -1,21 +1,20 @@
 import Header from '@/components/dh/Header';
-import HeroSection from '@/components/dh/HeroSection';
+import Hero from '@/components/hjem/Hero';
+import ProofBand from '@/components/hjem/ProofBand';
+import ToVeier from '@/components/hjem/ToVeier';
+import SlikFungerer from '@/components/hjem/SlikFungerer';
+import Boligene from '@/components/hjem/Boligene';
+import Stemmer from '@/components/hjem/Stemmer';
+import Nettverk from '@/components/hjem/Nettverk';
+import Sporsmal from '@/components/hjem/Sporsmal';
+import Avslutning from '@/components/hjem/Avslutning';
 import ServiceModelsSection from '@/components/dh/ServiceModelsSection';
-import StatsSection from '@/components/dh/StatsSection';
-import HowItWorksSection from '@/components/dh/HowItWorksSection';
-import ImageBreak from '@/components/dh/ImageBreak';
 import DynamicRentalSection from '@/components/dh/DynamicRentalSection';
-import QualitySection from '@/components/dh/QualitySection';
-import NetworkSection from '@/components/dh/NetworkSection';
 import ShowcaseSection from '@/components/dh/ShowcaseSection';
 import AboutCEOSection from '@/components/dh/AboutCEOSection';
-import TestimonialsSection from '@/components/dh/TestimonialsSection';
-import PartnersBar from '@/components/dh/PartnersBar';
-import CTASection from '@/components/dh/CTASection';
 import Footer from '@/components/dh/Footer';
 import MobileCTA from '@/components/dh/MobileCTA';
 import StructuredData from '@/components/dh/StructuredData';
-import FaqSection from '@/components/dh/FaqSection';
 
 export const metadata = {
   title: 'DigiHome — Smartere utleie. Høyere inntekt.',
@@ -23,27 +22,39 @@ export const metadata = {
   alternates: { canonical: '/' },
 };
 
+// ---------------------------------------------------------------------------
+// Forsiden, satt som en trykksak.
+//
+// Seksjonene er nummererte 01–10 og bygger én argumentrekke: hva du kan velge →
+// hvordan det fungerer → se det → hva det kan gi → standarden → boligene →
+// eierne → fagfolkene → menneskene → spørsmålene. Fire seksjoner er beholdt fra
+// før fordi de har noe ekte i seg: filmen, FINN/Airbnb-kortene, de faktiske
+// annonsene fra API-et og portrettet av daglig leder.
+//
+// Fjernet: StatsSection (tallene ligger i heroen), PartnersBar-marqueen
+// (erstattet av ProofBand), ImageBreak og QualitySection (slått sammen til
+// Boligene), TestimonialsSection, NetworkSection, FaqSection og CTASection
+// (erstattet av redaksjonelle utgaver). Komponentfilene står igjen urørt fordi
+// andre sider importerer flere av dem.
+// ---------------------------------------------------------------------------
 export default function HomePage() {
   return (
     <div>
       <StructuredData />
       <Header />
-      <HeroSection />
+      <Hero />
+      <ProofBand />
+      <ToVeier />
+      <SlikFungerer />
       <ServiceModelsSection />
-      <StatsSection />
-      {/* Lånt autoritet tidlig: partnerlogoene svarer på «kan jeg stole på tallene?» */}
-      <PartnersBar />
-      <HowItWorksSection />
-      <ImageBreak />
-      <QualitySection />
-      <ShowcaseSection />
       <DynamicRentalSection />
-      {/* Kundebevis rett etter penge-argumentet — og adskilt fra CEO-sitatet */}
-      <TestimonialsSection />
-      <NetworkSection />
+      <Boligene />
+      <ShowcaseSection />
+      <Stemmer />
+      <Nettverk />
       <AboutCEOSection />
-      <FaqSection />
-      <CTASection />
+      <Sporsmal />
+      <Avslutning />
       <Footer />
       <MobileCTA />
     </div>

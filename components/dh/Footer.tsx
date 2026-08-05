@@ -39,7 +39,7 @@ function NewsletterSignup() {
 
   return (
     <form onSubmit={submit} className="w-full max-w-[460px] lg:justify-self-end">
-      <div className="flex items-center rounded-full bg-white/[0.06] border border-white/[0.1] focus-within:border-white/35 focus-within:bg-white/[0.08] focus-within:shadow-[0_0_0_4px_rgba(255,255,255,0.06)] transition-all duration-300 p-1.5 pl-5">
+      <div className="flex items-center rounded-[10px] bg-white/[0.06] border border-white/[0.1] focus-within:border-white/35 focus-within:bg-white/[0.08] focus-within:shadow-[0_0_0_4px_rgba(255,255,255,0.06)] transition-all duration-300 p-1.5 pl-5">
         <Mail className="w-4 h-4 text-white/55 shrink-0" />
         <input
           type="email"
@@ -52,7 +52,7 @@ function NewsletterSignup() {
         <button
           type="submit"
           disabled={status === 'sending'}
-          className="h-[42px] px-5 rounded-full bg-white text-[#0a0a0a] text-[13px] font-semibold hover:bg-[#d298ff] transition-colors disabled:opacity-60 inline-flex items-center gap-1.5 shrink-0"
+          className="h-[42px] px-5 rounded-[8px] bg-white text-[#0a0a0a] text-[13px] font-semibold hover:bg-[#d298ff] transition-colors disabled:opacity-60 inline-flex items-center gap-1.5 shrink-0"
           data-testid="footer-newsletter-submit"
         >
           {status === 'sending' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <>Meld meg på <ArrowRight className="w-3.5 h-3.5" /></>}
