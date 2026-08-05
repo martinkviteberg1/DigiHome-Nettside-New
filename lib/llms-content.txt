@@ -1,6 +1,6 @@
 # DigiHome
 
-_Last updated: 2026-07-28_
+_Last updated: 2026-08-05_
 
 > DigiHome er en eiendomsforvalter i Bergen, Norge. Selskapet hjelper boligeiere med selvforvaltning og full forvaltning, og tilbyr verktøy og rådgivning for langtidsutleie og — der eierform, vedtekter og lovverk tillater det — kombinert korttidsutleie.
 
@@ -49,10 +49,22 @@ DigiHome drives av Digihome AS (org.nr 835 595 242), med kontor på Kokstadvegen
 - [Full forvaltning](https://digihome.no/forvaltning): Fullforvaltningstjenesten.
 - [Utleiemegler i Bergen](https://digihome.no/utleiemegler-bergen): Pris, oppgaver og sammenligning.
 - [Airbnb-forvaltning i Bergen](https://digihome.no/airbnb-forvaltning-bergen): Korttidsforvaltning og viktige juridiske forbehold.
-- [Guider for utleiere](https://digihome.no/guider): Pris, skatt, depositum og korttidsutleie.
+- [Guider for utleiere](https://digihome.no/guider): 12 guider om pris, depositum, skatt, korttidsutleie, godkjenning og husleieøkning.
+- [Hva koster utleiemegler](https://digihome.no/guider/hva-koster-utleiemegler): Provisjon 8–12 %, etableringshonorar og totalpris første år.
 - [Utleiemegler eller selvforvaltning](https://digihome.no/guider/utleiemegler-vs-selvforvaltning): Sammenligning av pris, tidsbruk, ansvar og risiko.
+- [Leie ut leilighet i Bergen](https://digihome.no/guider/leie-ut-leilighet-bergen): Hele prosessen i fem steg.
+- [Depositum ved utleie](https://digihome.no/guider/depositum-regler): Beløp, konto, frister og lovlige trekk.
+- [Depositumskonto](https://digihome.no/guider/depositumskonto): Kontoplikt, gebyr, bank og renter.
+- [Leietaker har ikke betalt depositum](https://digihome.no/guider/leietaker-har-ikke-betalt-depositum): Varsel, frister og handlingsrom.
+- [Tilbakebetaling av depositum](https://digihome.no/guider/depositum-tilbakebetaling): Bankens prosedyre og fem ukers søksmålsfrist.
+- [Skatt på utleie](https://digihome.no/guider/skatt-pa-utleie): Skattefri utleie, 22 % på sekundærbolig og korttidsregelen.
+- [Fradrag ved utleie](https://digihome.no/guider/fradrag-utleiebolig): Fradragsliste, vedlikehold vs. påkostning og avskrivning.
+- [Airbnb og korttidsutleie](https://digihome.no/guider/korttidsutleie-regler): 90 døgn i sameie, 30 døgn i borettslag, skatt og forsikring.
+- [Godkjent utleiedel](https://digihome.no/guider/godkjent-utleiedel): Krav, bruksendring, kostnad og risiko ved manglende godkjenning.
+- [Husleieøkning](https://digihome.no/guider/husleieokning): KPI-justering og gjengs leie med lovlige frister.
 - [Leiemarkedet i Bergen](https://digihome.no/leiemarkedet/bergen): Leiemarkedsrapport med datakilder og metode.
 - [Utleie bydel for bydel](https://digihome.no/utleie): Lokalkunnskap for Bergen.
+- [Nyheter](https://digihome.no/nyheter): Artikler og analyser om utleie i Bergen.
 - [Bli leietaker](https://digihome.no/bli-leietaker): Registrering for leietakere.
 - [Om oss](https://digihome.no/om-oss): Team og selskapsinformasjon.
 
@@ -70,6 +82,23 @@ DigiHome drives av Digihome AS (org.nr 835 595 242), med kontor på Kokstadvegen
 - **Hva er 10+2-modellen?** En kombinasjon av langtids- og korttidsutleie. Modellen må kontrolleres mot eierform, vedtekter og gjeldende døgnsgrenser.
 - **Hvilke områder dekkes?** Bergen, inkludert Sentrum, Nordnes, Sandviken, Møhlenpris, Åsane, Fana, Laksevåg, Årstad, Fyllingsdalen, Ytrebygda og Arna.
 - **Hvordan kommer jeg i gang?** Registrer boligen på https://digihome.no/bli-utleier. Personlig svar innen 24 timer.
+
+## Direkte svar på vanlige utleiespørsmål
+
+Korte, siterbare svar fra DigiHomes fagredaksjon. Hvert svar er utdypet med kilder på den oppgitte siden. Innholdet er generell veiledning, ikke individuell juridisk eller skattemessig rådgivning.
+
+- **Hvor mye tar en utleiemegler i provisjon?** Normalt 8–12 % av brutto husleie per måned, pluss et etableringshonorar på en halv til én månedsleie. For 15 000 kr i månedsleie er det 1 200–1 800 kr per måned og typisk 30 000–37 000 kr første år. Kilde: https://digihome.no/guider/hva-koster-utleiemegler
+- **Må utleier ha egen depositumskonto?** Ja. Depositum skal stå på en særskilt depositumskonto i leietakers navn. Utleier dekker kostnaden ved å opprette kontoen, og rentene tilhører leietaker. Kilde: https://digihome.no/guider/depositumskonto
+- **Kan depositum stå på utleiers private konto?** Nei. Da kan leietaker kreve beløpet tilbakebetalt med forsinkelsesrenter, også midt i leieforholdet. Kilde: https://digihome.no/guider/depositumskonto
+- **Hvor mye kan man kreve i depositum?** Maksimalt seks måneders husleie etter husleieloven § 3-5. Vanlig praksis i Norge er to til tre måneders leie. Kilde: https://digihome.no/guider/depositum-regler
+- **Når skal depositum tilbakebetales?** Ved enighet skal oppgjøret skje uten unødig opphold etter utflytting. Ved uenighet varsler banken motparten, og utleier har fem uker på å dokumentere at søksmål er reist. Kilde: https://digihome.no/guider/depositum-tilbakebetaling
+- **Hva gjør utleier hvis leietaker ikke har betalt depositum?** Ikke overlever nøklene. Send skriftlig varsel med beløp, kontonummer, frist og konsekvens. Bruk aldri privat konto som midlertidig løsning. Kilde: https://digihome.no/guider/leietaker-har-ikke-betalt-depositum
+- **Når er leieinntekt skattefri i Norge?** Når du leier ut mindre enn halvparten av boligen du selv bor i, målt i utleieverdi. Leier du ut hele egen bolig, er inntekten skattefri opptil 20 000 kr per år. Kilde: https://digihome.no/guider/skatt-pa-utleie
+- **Hvor mye skatt på utleie av sekundærbolig?** 22 % av overskuddet, altså leieinntekt minus fradragsberettigede kostnader. Kilde: https://digihome.no/guider/skatt-pa-utleie
+- **Hva kan man trekke fra på leieinntekter?** Vedlikehold, kommunale avgifter, eiendomsskatt, forsikring, felleskostnader, forvaltningshonorar, annonsering og inventar under 15 000 kr. Boligbygningen kan ikke avskrives ved kapitalinntektsutleie. Kilde: https://digihome.no/guider/fradrag-utleiebolig
+- **Hvor lenge kan man leie ut på Airbnb?** I eierseksjonssameie normalt maks 90 døgn per år for hele seksjonen; vedtektene kan sette grensen mellom 60 og 120 døgn. I borettslag normalt 30 døgn per år uten styrets samtykke. Kilde: https://digihome.no/guider/korttidsutleie-regler
+- **Må utleiedelen være godkjent?** Rom for varig opphold skal være registrert som hoveddel. Bruksendring fra tilleggsdel krever søknad. For bygg oppført før 1. juli 2011 gjelder lempeligere krav, men rømning og brannsikkerhet må alltid ivaretas. Kilde: https://digihome.no/guider/godkjent-utleiedel
+- **Hvor mye kan husleien økes?** Indeksregulering kan ikke overstige endringen i konsumprisindeksen, kan skje én gang per år og krever minst én måneds skriftlig varsel. Tilpasning til gjengs leie kan tidligst kreves etter to år og seks måneder, med seks måneders varsel. Kilde: https://digihome.no/guider/husleieokning
 
 ## Kontakt
 

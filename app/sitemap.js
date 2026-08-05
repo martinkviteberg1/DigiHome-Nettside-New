@@ -2,7 +2,7 @@ import { site } from '@/lib/site';
 import { locations } from '@/lib/locations';
 import { getAllPublishedSlugs } from '@/lib/posts';
 import { rentCitySlugs } from '@/lib/rentmarket';
-import { guides } from '@/lib/guides';
+import { guides, REDIRECTED_POST_SLUGS } from '@/lib/guides';
 import { getPublishedListingSlugs } from '@/lib/listings-server';
 
 // Dynamisk sitemap.xml (Next.js App Router).
@@ -49,12 +49,16 @@ export default async function sitemap() {
   let postUrls = [];
   try {
     const posts = await getAllPublishedSlugs();
-    postUrls = posts.map((p) => ({
-      url: `${base}/nyheter/${p.slug}`,
-      lastModified: p.updatedAt || p.publishedAt ? new Date(p.updatedAt || p.publishedAt) : staticDate,
-      changeFrequency: 'monthly',
-      priority: 0.6,
-    }));
+    postUrls = posts
+      // Artikler som er 301-redirigert til en guide skal aldri ligge i sitemap.
+      // (Konsolidering av kannibaliserende duplikater — se next.config.js.)
+      .filter((p) => !REDIRECTED_POST_SLUGS[p.slug])
+      .map((p) => ({
+        url: `${base}/nyheter/${p.slug}`,
+        lastModified: p.updatedAt || p.publishedAt ? new Date(p.updatedAt || p.publishedAt) : staticDate,
+        changeFrequency: 'monthly',
+        priority: 0.6,
+      }));
   } catch (e) { postUrls = []; }
 
   // LEDIGE BOLIGER. Kun boliger som faktisk er publisert (klar for nettsiden

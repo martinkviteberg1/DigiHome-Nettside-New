@@ -13,14 +13,24 @@ import { Megaphone, LineChart, Users, FileSignature, Banknote, Wrench, ArrowUpRi
 // AEO: direkte, siterbare svar («Hva koster en utleiemegler?») + FAQPage-schema.
 
 export const metadata = {
-  title: 'Utleiemegler i Bergen — moderne alternativ',
-  description: 'Vurderer du utleiemegler i Bergen? DigiHome gjør hele jobben — annonsering, visninger, kontrakter og husleie — med AI-prising og uten bindingstid.',
+  // «utleiemegler bergen»: 36 visninger, 3 klikk (CTR 8,3 %), posisjon 6,8 —
+  // det mest kommersielle søket vi rangerer på. «Moderne alternativ» sier
+  // ingenting i en SERP. Pris og «ingen binding» er de to tingene folk faktisk
+  // sammenligner på, og de står nå i tittel og beskrivelse.
+  title: 'Utleiemegler i Bergen: pris fra 5 %, ingen binding',
+  description: 'Vurderer du utleiemegler i Bergen? Selvforvaltning fra 5 % eller full forvaltning — annonsering, visninger, kontrakt og husleie. 0 kr oppstart, ingen bindingstid.',
   alternates: { canonical: '/utleiemegler-bergen' },
   openGraph: {
-    title: 'Utleiemegler i Bergen — moderne alternativ | DigiHome',
-    description: 'Alt en utleiemegler gjør — annonsering, visninger, kontrakter og husleie — med AI-prising, uten oppstartskostnader og uten bindingstid.',
+    title: 'Utleiemegler i Bergen: pris fra 5 %, ingen binding | DigiHome',
+    description: 'Alt en utleiemegler gjør — annonsering, visninger, kontrakter og husleie — med AI-prising, 0 kr oppstart og uten bindingstid.',
     url: `${site.url}/utleiemegler-bergen`, type: 'website', locale: 'nb_NO',
     images: [{ url: site.url + site.ogImage }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Utleiemegler i Bergen: pris fra 5 %, ingen binding | DigiHome',
+    description: 'Annonsering, visninger, kontrakt og husleie — 0 kr oppstart, ingen bindingstid.',
+    images: [site.url + site.ogImage],
   },
 };
 

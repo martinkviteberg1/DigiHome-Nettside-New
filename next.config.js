@@ -2,10 +2,24 @@ const nextConfig = {
   output: 'standalone',
   // SEO: gamle /blogg-URL-er (nav-historikk + evt. eksterne lenker) sendes
   // permanent (308/301) til /nyheter så lenkekraft ikke går tapt i 404.
+  //
+  // KONSOLIDERING (2026-08): fire nyhetsartikler dekket eksakt samme
+  // søkeintensjon som fire guider — «skatt på utleie», «hva koster
+  // utleiemegler», «leie ut bolig i Bergen» og «selvforvaltning vs. full
+  // forvaltning». Search Console (90 dager) viste 0 visninger på artiklene,
+  // mens guidene delte rangeringssignalene med dem. Artiklene redirigeres
+  // derfor permanent til den tilsvarende guiden, slik at all lenkekraft og
+  // alle relevanssignaler samles på én URL per søkeintensjon.
+  // Slugs speiles i lib/guides/index.js (REDIRECTED_POST_SLUGS) slik at
+  // sitemap.js aldri lister en URL som redirigerer.
   async redirects() {
     return [
       { source: '/blogg', destination: '/nyheter', permanent: true },
       { source: '/blogg/:slug*', destination: '/nyheter/:slug*', permanent: true },
+      { source: '/nyheter/skatt-pa-utleieinntekt-2026', destination: '/guider/skatt-pa-utleie', permanent: true },
+      { source: '/nyheter/hva-koster-utleiemegler-i-bergen-2026', destination: '/guider/hva-koster-utleiemegler', permanent: true },
+      { source: '/nyheter/leie-ut-bolig-i-bergen-komplett-guide-2026', destination: '/guider/leie-ut-leilighet-bergen', permanent: true },
+      { source: '/nyheter/selvforvaltning-eller-full-forvaltning', destination: '/guider/utleiemegler-vs-selvforvaltning', permanent: true },
     ];
   },
   // Ported .tsx files (deck + dh pages) contain type-only errors that do not

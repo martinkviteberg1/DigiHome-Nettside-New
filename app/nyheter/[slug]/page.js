@@ -4,11 +4,28 @@ import { marked } from 'marked';
 import Header from '@/components/dh/Header';
 import Footer from '@/components/dh/Footer';
 import { getPostBySlug } from '@/lib/posts';
+import { guides } from '@/lib/guides';
 import { site } from '@/lib/site';
 import { getAuthorForPost } from '@/lib/authors';
 import { ArrowUpRight, ArrowLeft, Calendar } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
+
+// Velger de guidene som er mest relevante for artikkelen, basert på
+// overlapp mellom artikkelens tags og guidens kategori/nøkkelord.
+// Faller tilbake til de tre mest kommersielle guidene.
+function relatedGuidesForPost(post) {
+  const tags = (post?.tags || []).map((t) => String(t).toLowerCase());
+  if (!tags.length) return guides.slice(0, 3);
+  const scored = guides.map((g) => {
+    const haystack = [g.category, ...(g.keywords || []), g.title].join(' ').toLowerCase();
+    const score = tags.reduce((acc, t) => acc + (haystack.includes(t) ? 1 : 0), 0);
+    return { g, score };
+  });
+  const hits = scored.filter((s) => s.score > 0).sort((a, b) => b.score - a.score).map((s) => s.g);
+  const rest = guides.filter((g) => !hits.includes(g));
+  return [...hits, ...rest].slice(0, 3);
+}
 
 function fmtDate(d) {
   if (!d) return '';
@@ -54,6 +71,7 @@ export default async function ArticlePage({ params }) {
 
   const html = marked.parse(post.content || '', { breaks: true, mangle: false, headerIds: false });
   const author = getAuthorForPost(post);
+  const guideSuggestions = relatedGuidesForPost(post);
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -68,11 +86,19 @@ export default async function ArticlePage({ params }) {
       },
       {
         '@type': 'BlogPosting',
+        '@id': `${site.url}/nyheter/${post.slug}#article`,
         headline: post.title,
         description: post.excerpt,
+        abstract: post.excerpt,
         image: post.coverImage || site.url + site.ogImage,
         datePublished: post.publishedAt,
         dateModified: post.updatedAt || post.publishedAt,
+        url: `${site.url}/nyheter/${post.slug}`,
+        // AEO: peker AI-motorer og talesøk mot tittel + «Kort fortalt»-boksen.
+        speakable: { '@type': 'SpeakableSpecification', cssSelector: ['h1', '.dh-answer'] },
+        wordCount: String(post.content || '').split(/\s+/).filter(Boolean).length,
+        ...(post.tags?.length ? { articleSection: post.tags[0] } : {}),
+        isPartOf: { '@type': 'Blog', '@id': `${site.url}/nyheter`, name: 'DigiHome nyheter' },
         author: {
           '@type': 'Person',
           name: author.name,
@@ -126,12 +152,30 @@ export default async function ArticlePage({ params }) {
             <div className="max-w-[820px] mx-auto px-6 sm:px-8 pt-12 lg:pt-14">
               <div className="rounded-2xl bg-[#faf7ff] border border-[#efe6fb] px-6 py-5">
                 <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#9b6cc4] mb-2">Kort fortalt</p>
-                <p className="faq-answer text-[16px] leading-[1.7] text-[#3a3a3a] m-0">{post.excerpt}</p>
+                <p className="faq-answer dh-answer text-[16px] leading-[1.7] text-[#3a3a3a] m-0">{post.excerpt}</p>
               </div>
             </div>
           )}
           <div className={`max-w-[820px] mx-auto px-6 sm:px-8 ${post.excerpt ? 'pt-8' : 'pt-12'} pb-12 lg:pb-16 ${ARTICLE_CLS}`} dangerouslySetInnerHTML={{ __html: html }} />
         </article>
+
+        {/* Interne lenker fra artikkel → guider. Guidene er de sidene som
+            faktisk rangerer (73 % av visningene), så artiklene skal sende
+            både lesere og lenkekraft dit. */}
+        {guideSuggestions.length > 0 && (
+          <section className="max-w-[820px] mx-auto px-6 sm:px-8 pb-14">
+            <h2 className="text-[20px] sm:text-[24px] font-bold tracking-[-0.015em] mb-5" style={{ fontFamily: 'var(--font-heading)' }}>Grundige guider om dette</h2>
+            <div className="grid sm:grid-cols-3 gap-4">
+              {guideSuggestions.map((g) => (
+                <Link key={g.slug} href={`/guider/${g.slug}`} className="group bg-white rounded-2xl p-5 border border-black/[0.06] hover:border-[#d9c9f5] transition-colors">
+                  <span className="inline-flex px-2.5 py-1 rounded-full bg-[#f4f0fb] text-[#7c3aed] text-[11px] font-semibold mb-3">{g.category}</span>
+                  <p className="text-[15px] font-bold leading-snug text-[#1f1f1f] group-hover:text-[#7c3aed] transition-colors" style={{ fontFamily: 'var(--font-heading)' }}>{g.title}</p>
+                  <p className="text-[12.5px] text-[#716b63] mt-2">{g.readMinutes} min lesetid</p>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* CTA */}
         <section className="bg-gradient-to-br from-[#1a1430] to-[#0a0a0a] text-white">

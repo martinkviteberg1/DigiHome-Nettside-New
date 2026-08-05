@@ -21,10 +21,13 @@ export async function generateMetadata({ params }) {
   // Tittel-året = inneværende år (søkeintensjon «leiepriser 2026»); beskrivelsen
   // oppgir datakildeåret ærlig (SSB-tallene kan ligge ett år bak).
   const titleYear = Math.max(year, new Date().getFullYear());
-  const title = `Leiemarked ${city.label} ${titleYear}: leiepriser etter rom`;
+  // «leiepriser bergen» ga 31 visninger på posisjon 6,7 og NULL klikk i
+  // Search Console. Tittelen begynte med «Leiemarked», ikke med søkeordet, og
+  // lovet ingen konkret verdi. Nå ledes tittelen av «Leiepriser» + årstall.
+  const title = `Leiepriser i ${city.label} ${titleYear}: snittleie per rom`;
   const ogTitle = `${title} | DigiHome`;
   const desc = two
-    ? `En 2-roms i ${city.label} leies i snitt for ${Number(two).toLocaleString('nb-NO')} kr/mnd (${year}). Se snittleie per boligtype, prisutvikling og hvor etterspørselen er størst. Kilde: SSB + DigiHome.`
+    ? `Leiepriser i ${city.label} ${titleYear}: en 2-roms leies i snitt for ${Number(two).toLocaleString('nb-NO')} kr/mnd (${year}). Se snittleie per boligtype, prisutvikling og etterspørsel. Kilde: SSB + DigiHome.`.slice(0, 300)
     : `Leiepriser, prisutvikling og etterspørsel i ${city.label}, basert på SSBs leiemarkedsundersøkelse og DigiHomes egen etterspørselsindeks.`;
   return {
     title,

@@ -12,11 +12,15 @@ export function generateStaticParams() {
 
 export function generateMetadata({ params }) {
   const loc = getLocation(params.by);
-  if (!loc) return { title: 'Ikke funnet' };
+  if (!loc) return { title: 'Ikke funnet', robots: { index: false } };
   // Tittel uten merkevare – layout-templaten ('%s | DigiHome') legger den til én gang.
-  const title = `Leie ut bolig i ${loc.name} — pris og forvaltning`;
+  // Årstall + «leiepris» er lagt inn fordi bydelssidene hadde 722 visninger og
+  // bare 11 klikk (CTR 1,5 %) i Search Console: de rangerte, men ga ingen grunn
+  // til å klikke. Konkret nytte i tittelen er det billigste CTR-grepet vi har.
+  const year = new Date().getFullYear();
+  const title = `Leie ut bolig i ${loc.name} ${year}: leiepris og forvaltning`;
   const ogTitle = `Leie ut bolig i ${loc.name} | DigiHome`;
-  const desc = `For boligeiere i ${loc.name}: se leiepriser, lokal etterspørsel og alternativer for selvforvaltning eller full forvaltning. ${loc.intro}`.slice(0, 158);
+  const desc = `Skal du leie ut i ${loc.name}? Se leieprisnivå, lokal etterspørsel og hva selvforvaltning (5 %) eller full forvaltning koster. ${loc.intro}`.slice(0, 158);
   return {
     title,
     description: desc,
