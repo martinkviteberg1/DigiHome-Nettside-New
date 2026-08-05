@@ -157,7 +157,10 @@ export default function CampaignLanding({ cfg }) {
               <Reveal delay={360}>
                 <div className="lg:hidden mt-8">
                   <div className="relative h-[210px] sm:h-[260px] rounded-[20px] overflow-hidden shadow-[0_8px_30px_rgba(0,0,0,0.06)]">
-                    <img src={cfg.image} alt="Utleiebolig i Bergen" loading="lazy" decoding="async" className="absolute inset-0 w-full h-full object-cover" width={800} height={500} />
+                    {/* Mobilheroen er LCP-elementet på betalt trafikk — den kan
+                        ikke lazy-lastes. Samme src som desktop-varianten, så
+                        dette koster ingen ekstra nedlasting. */}
+                    <img src={cfg.image} alt="Utleiebolig i Bergen" fetchPriority="high" decoding="async" className="absolute inset-0 w-full h-full object-cover" width={800} height={500} />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
                     <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between gap-2">
                       <div className="bg-white/95 backdrop-blur-xl rounded-xl px-3.5 py-2.5 shadow-[0_4px_16px_rgba(0,0,0,0.1)]">
