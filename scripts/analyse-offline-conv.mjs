@@ -28,9 +28,16 @@ console.log(`Med fbclid (kan matches i Meta CAPI): ${withFbclid.length}`);
 
 const won = in90.filter((l) => l.status === 'won');
 console.log(`\nVunnet siste 90 dager: ${won.length}`);
+// RIKTIG feltnavn er googleAdsWon (ikke googleOfflineConversion — den finnes ikke).
+// Feil feltnavn her ga «INGEN SPOR» og fikk integrasjonen til å se ødelagt ut.
 for (const l of won) {
   const a = l.attribution || {};
-  console.log(`· ${String(l.createdAt).slice(0, 10)} · kilde ${a.source || l.source || '?'} · kampanje ${a.campaign || '-'} · gclid ${a.gclid ? 'JA' : 'nei'} · opplastet til Google: ${l.googleOfflineConversion ? JSON.stringify(l.googleOfflineConversion).slice(0, 120) : 'INGEN SPOR'}`);
+  const gw = l.googleAdsWon;
+  const status = !gw ? 'ingen oppføring'
+    : gw.ok ? `OK ${gw.at || ''}`
+      : gw.skipped ? `hoppet over: ${gw.reason}`
+        : `feilet: ${String(gw.error || '').slice(0, 60)}`;
+  console.log(`· ${String(l.createdAt).slice(0, 10)} · kilde ${a.source || l.source || '?'} · kampanje ${a.campaign || '-'} · gclid ${a.gclid ? 'JA' : 'nei'} · Google: ${status} · Meta won: ${l.metaCapiWon ? (l.metaCapiWon.ok ? 'OK' : (l.metaCapiWon.reason || 'feilet')) : 'ingen'}`);
 }
 
 console.log('\nCAPI-status på leads siste 90 dager (Meta server-side Lead):');

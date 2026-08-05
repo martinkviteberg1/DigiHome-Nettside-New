@@ -16,6 +16,7 @@ import { composioConfigured, createConnectLink, getConnectionStatus, runCampaign
 import { googleAdsNativeConfigured, listConversionActions, resolveOfflineConversionAction, uploadClickConversion, toConversionDateTime, listCampaignsDetailed, suggestGeoTargets, setCampaignStatus, updateCampaignBudget, createSearchCampaign, createCompetitorCampaign, getCampaignByName, runAdsWithMetrics, runSearchTerms, runKeywordMetrics, generateKeywordIdeas, gaqlSearch, setCampaignMaximizeClicks, listRsaAds, createRsaAd, setAdStatus, runAdDaily } from '@/lib/google-ads-native';
 import { runAdsWithMetricsViaComposio } from '@/lib/composio-google-ads';
 import { dataManagerConfigured, ingestOfflineConversion } from '@/lib/google-ads-datamanager';
+import { recordWonConversions } from '@/lib/closed-loop';
 import { IMPORTED_COLL, importRecords, parseCsv, summarizeImported, syncFromPlatform, listImported, updateImportedOverride, getLeadSyncMeta, maybeAutoSyncLeads } from '@/lib/imported-leads';
 import { queueLeadPushback, flushLeadPushbacks, pushbackStats } from '@/lib/lead-pushback';
 import { renderFinnBanners, FINN_THEMES } from '@/lib/finn-banners';
@@ -8250,59 +8251,19 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
         }
       } catch (e) { crmSync = { ok: false, error: e.message }; }
 
-      // Meta CAPI: admin markerer vunnet → server-side Purchase (samme event_id som
-      // webhook-veien → deduplikeres). Closed-loop også for manuelle utfall.
-      try {
-        if (status === 'won' && metaCapiConfigured() && marketingAllowed(existing.marketingConsent)) {
-          const att = existing.attribution || {};
-          const wonVal = update.wonValue || Number(process.env.GOOGLE_ADS_DEFAULT_LEAD_VALUE) || undefined;
-          const capi = await sendMetaCapiEvent({
-            eventName: 'Purchase',
-            eventId: `won-${id}`,
-            eventTime: update.wonAt || nowIso,
-            actionSource: 'system_generated',
-            email: existing.email, phone: existing.phone, fullName: existing.name,
-            fbp: att.fbp, fbc: att.fbc, fbclid: att.fbclid,
-            externalId: att.visitorId, zip: existing.postal_code, country: 'no',
-            value: wonVal, currency: update.wonCurrency || 'NOK',
-            customData: { content_name: existing.lead_type || 'lead', lead_event_id: id },
-          });
-          await db.collection(coll).updateOne({ id }, { $set: { metaCapiWon: { ok: capi.ok, at: nowIso, error: capi.ok ? null : (capi.error || null) } } });
-        }
-      } catch (e) { /* best-effort */ }
-
-      // Google Ads offline-konvertering (Data Manager API, lukket sløyfe): vunnet lead m/ gclid.
-      try {
-        const att = existing.attribution || {};
-        if (status === 'won' && dataManagerConfigured() && marketingAllowed(existing.marketingConsent) && (att.gclid || att.gbraid || att.wbraid)) {
-          const wonVal = update.wonValue || Number(process.env.GOOGLE_ADS_DEFAULT_LEAD_VALUE) || 0;
-          const up = await ingestOfflineConversion({
-            gclid: att.gclid, gbraid: att.gbraid, wbraid: att.wbraid,
-            value: wonVal, currency: update.wonCurrency || 'NOK', at: update.wonAt || nowIso, transactionId: id,
-          });
-          await db.collection(coll).updateOne({ id }, { $set: { googleAdsWon: { ok: up.ok, at: nowIso, requestId: up.requestId || null, error: null } } });
-        }
-      } catch (e) {
-        try { await db.collection(coll).updateOne({ id }, { $set: { googleAdsWon: { ok: false, at: nowIso, error: e.message } } }); } catch (_) {}
+      // Lukket sløyfe: Meta CAPI Purchase + Google Ads offline-konvertering + GA4.
+      // Én felles modul (lib/closed-loop.js) brukes både her og fra
+      // plattform-webhooken, slik at de to veiene ikke kan komme i utakt.
+      // Idempotent (event_id/transaction_id = lead-id) og logger alltid årsak
+      // når et signal hoppes over.
+      let conversions = null;
+      if (status === 'won') {
+        conversions = await recordWonConversions({
+          db, coll, lead: { ...existing, id }, update, nowIso, allowAdConversions: true,
+        });
       }
 
-      // GA4 Measurement Protocol (server-side purchase): lukket sløyfe i GA4-rapportering.
-      try {
-        const att = existing.attribution || {};
-        if (status === 'won' && ga4MpConfigured() && marketingAllowed(existing.marketingConsent)) {
-          const g = await sendGa4Purchase({
-            clientId: att.ga_client_id || att.visitorId || existing.marketing_visitor_id,
-            userId: existing.marketing_visitor_id || undefined,
-            value: update.wonValue || 0, currency: update.wonCurrency || 'NOK', transactionId: id,
-            params: { lead_source_type: existing.lead_source_type || undefined, campaign: att.campaign || undefined },
-          });
-          await db.collection(coll).updateOne({ id }, { $set: { ga4Won: { ok: g.ok, at: nowIso, status: g.status || null } } });
-        }
-      } catch (e) {
-        try { await db.collection(coll).updateOne({ id }, { $set: { ga4Won: { ok: false, at: nowIso, error: e.message } } }); } catch (_) {}
-      }
-
-      return cors(NextResponse.json({ ok: true, id, status, crmSync }));
+      return cors(NextResponse.json({ ok: true, id, status, crmSync, conversions }));
     }
 
     // --- Webhook: lead-status-sync FRA DigiHome-plattformen (to-veis closed-loop) ---
@@ -8748,70 +8709,19 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
       }
       await db.collection(coll).updateOne({ id: lead.id }, { $set: update });
 
-      // Meta CAPI: når et lead vinnes → server-side konvertering med ekte kontraktsverdi.
-      // Lar Meta optimalisere mot faktiske kunder (closed-loop). event_id = won-<id> for dedup.
-      let metaCapi = null;
-      let googleConv = null;
-      let ga4Conv = null;
-      const alreadyMetaWon = !!(lead.metaCapiWon && lead.metaCapiWon.ok);
-      try {
-        if (status === 'won' && !alreadyMetaWon && allowAdConversions && metaCapiConfigured() && marketingAllowed(lead.marketingConsent)) {
-          const att = lead.attribution || {};
-          const wonVal = update.wonValue || Number(process.env.GOOGLE_ADS_DEFAULT_LEAD_VALUE) || undefined;
-          const capi = await sendMetaCapiEvent({
-            eventName: 'Purchase',
-            eventId: `won-${lead.id}`,
-            eventTime: update.wonAt || nowIso,
-            actionSource: 'system_generated',
-            email: lead.email, phone: lead.phone, fullName: lead.name,
-            fbp: att.fbp, fbc: att.fbc, fbclid: att.fbclid,
-            externalId: att.visitorId, zip: lead.postal_code, country: 'no',
-            value: wonVal, currency: update.wonCurrency || 'NOK',
-            customData: { content_name: lead.lead_type || 'lead', lead_event_id: lead.id },
-          });
-          metaCapi = { ok: capi.ok, error: capi.ok ? undefined : capi.error };
-          await db.collection(coll).updateOne({ id: lead.id }, { $set: { metaCapiWon: { ok: capi.ok, at: nowIso, error: capi.ok ? null : (capi.error || null) } } });
-        }
-      } catch (e) { /* best-effort */ }
-
-      // Google Ads offline-konvertering (Data Manager API, lukket sløyfe): vunnet lead m/ gclid.
-      const alreadyGoogleWon = !!(lead.googleAdsWon && lead.googleAdsWon.ok);
-      try {
-        const att = lead.attribution || {};
-        if (status === 'won' && !alreadyGoogleWon && allowAdConversions && dataManagerConfigured() && marketingAllowed(lead.marketingConsent) && (att.gclid || att.gbraid || att.wbraid)) {
-          const wonVal = update.wonValue || Number(process.env.GOOGLE_ADS_DEFAULT_LEAD_VALUE) || 0;
-          const up = await ingestOfflineConversion({
-            gclid: att.gclid, gbraid: att.gbraid, wbraid: att.wbraid,
-            value: wonVal, currency: update.wonCurrency || 'NOK', at: update.wonAt || nowIso, transactionId: lead.id,
-          });
-          await db.collection(coll).updateOne({ id: lead.id }, { $set: { googleAdsWon: { ok: up.ok, at: nowIso, requestId: up.requestId || null, error: null } } });
-          googleConv = { ok: up.ok, requestId: up.requestId || null };
-        }
-      } catch (e) {
-        googleConv = { ok: false, error: e.message };
-        try { await db.collection(coll).updateOne({ id: lead.id }, { $set: { googleAdsWon: { ok: false, at: nowIso, error: e.message } } }); } catch (_) {}
+      // Lukket sløyfe: Meta CAPI Purchase + Google Ads offline-konvertering + GA4.
+      // Samme felles modul som admin-ruten (lib/closed-loop.js) — de to veiene
+      // kan ikke lenger komme i utakt. Idempotent, og logger alltid årsak når et
+      // signal hoppes over (mangler_gclid vs ikke_konfigurert krever ulike tiltak).
+      let conversions = null;
+      if (status === 'won') {
+        conversions = await recordWonConversions({
+          db, coll, lead, update, nowIso, allowAdConversions,
+        });
       }
-
-      // GA4 Measurement Protocol (server-side purchase) ved won — lukket sløyfe i GA4.
-      try {
-        const att = lead.attribution || {};
-        const alreadyGa4Won = lead.ga4Won && lead.ga4Won.ok;
-        if (status === 'won' && !alreadyGa4Won && ga4MpConfigured() && marketingAllowed(lead.marketingConsent)) {
-          const g = await sendGa4Purchase({
-            clientId: att.ga_client_id || att.visitorId || lead.marketing_visitor_id,
-            userId: lead.marketing_visitor_id || undefined,
-            value: update.wonValue || 0, currency: update.wonCurrency || 'NOK', transactionId: lead.id,
-            params: { lead_source_type: lead.lead_source_type || undefined, campaign: att.campaign || undefined },
-          });
-          await db.collection(coll).updateOne({ id: lead.id }, { $set: { ga4Won: { ok: g.ok, at: nowIso, status: g.status || null } } });
-          ga4Conv = { ok: g.ok, status: g.status || null, skipped: !!g.skipped };
-        } else if (status === 'won' && !ga4MpConfigured()) {
-          ga4Conv = { ok: false, skipped: true, reason: 'ga4_api_secret_mangler' };
-        }
-      } catch (e) {
-        ga4Conv = { ok: false, error: e.message };
-        try { await db.collection(coll).updateOne({ id: lead.id }, { $set: { ga4Won: { ok: false, at: nowIso, error: e.message } } }); } catch (_) {}
-      }
+      const metaCapi = conversions ? conversions.meta : null;
+      const googleConv = conversions ? conversions.google : null;
+      const ga4Conv = conversions ? conversions.ga4 : null;
 
       // Mid-funnel livssyklus-events til Meta (custom/standard) → bedre budoptimalisering
       // oppover i trakten. Idempotent pr. stadium, samtykke-gated. event_id = <stadium>-<id>.

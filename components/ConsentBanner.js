@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Cookie } from 'lucide-react';
 import { gaEnabled, getStoredConsent, applyConsent, restoreConsent } from '@/lib/gtag';
+import { track } from '@/lib/analytics';
 
 // Diskré GDPR-samtykkebanner (Consent Mode v2). Vises kun når GA4 er aktivert
 // og brukeren ikke har tatt et valg ennå. «Godta alle» / «Kun nødvendige».
@@ -34,6 +35,16 @@ export default function ConsentBanner() {
     }
   }, []);
 
+  // Samtykkeraten er et av de viktigste måletallene vi har: Meta-pixelen laster
+  // KUN ved «Godta alle». Ved ~38 % samtykke ser Meta bare en tredjedel av
+  // trafikken, og optimaliseringen blir tilsvarende dårligere. Vi logger derfor
+  // både visning og valg som førstepartshendelser (ingen kapsel, ingen samtykke
+  // nødvendig — vi måler vår egen økt).
+  useEffect(() => {
+    if (decided || !mounted || isAdmin || isRecord) return;
+    try { track('consent_view', {}); } catch (e) { /* måling skal aldri blokkere banneret */ }
+  }, [decided, mounted, isAdmin, isRecord]);
+
   // Eksponer bannerhøyde som CSS-variabel slik at klistrede CTA-er (skjemaer)
   // kan løfte seg over banneret i stedet for å bli skjult. Nullstilles ved valg.
   useEffect(() => {
@@ -57,6 +68,7 @@ export default function ConsentBanner() {
 
   const choose = (choice) => {
     applyConsent(choice);
+    try { track('consent_choice', { choice }); } catch (e) { /* måling skal aldri blokkere valget */ }
     try { document.documentElement.style.setProperty('--dh-consent-h', '0px'); } catch (e) { /* query/cookie-forbedring er valgfri */ }
     setDecided(true);
   };

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import ClosedLoopPanel from '@/components/admin/ClosedLoopPanel';
 import {
   X, Loader2, Mail, Phone, MapPin, Home, Ruler, BedDouble, Hash, Building2,
   Sparkles, Eye, Search, FileEdit, Send, MousePointerClick, ExternalLink,
@@ -445,6 +446,12 @@ export default function LeadDrawer({ apiKey, lead, type, onClose, onStatusChange
             {att.gclid && <p className="text-[11px] text-[#999] flex items-center gap-1.5"><Zap className="w-3 h-3 text-amber-500" /> gclid: <code className="text-[#666] break-all">{att.gclid}</code></p>}
             {!att.channel && !att.source && !att.gclid && !(d.pre_tracking && d.channel && d.channel !== 'unknown') && <p className="text-[13px] text-[#aaa]">{d.pre_tracking ? 'Kilde ukjent — kan settes manuelt i lead-oversikten eller Historikk-fanen.' : 'Ingen attribusjonsdata'}</p>}
           </div>
+
+          {/* Lukket sløyfe: fikk annonseplattformene beskjed om utfallet?
+              Uten dette lærer Google og Meta aldri hvilke leads som ble kunder.
+              Vi viser ÅRSAK når signalet ikke ble sendt — «mangler gclid» og
+              «ikke konfigurert» krever helt ulike tiltak. */}
+          <ClosedLoopPanel lead={d} />
 
           {/* Kundereise / tidslinje */}
           <div className="bg-white rounded-2xl p-4 shadow-[0_2px_12px_rgba(0,0,0,0.04)]">

@@ -4,6 +4,7 @@ import { Providers } from './providers';
 import { rightGrotesk, diatype } from './fonts';
 import { site } from '@/lib/site';
 import SiteAnalytics from '@/components/SiteAnalytics';
+import CallTracking from '@/components/CallTracking';
 import ConsentBanner from '@/components/ConsentBanner';
 import MetaPixel from '@/components/MetaPixel';
 
@@ -93,6 +94,7 @@ export default function RootLayout({ children }) {
       </head>
       <body className="font-body bg-canvas text-ink">
         <SiteAnalytics />
+        <CallTracking />
         <Providers>{children}</Providers>
         <ConsentBanner />
         <MetaPixel />
