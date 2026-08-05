@@ -538,7 +538,7 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
       : 'Vi har mottatt henvendelsen din. En rådgiver tar kontakt for en personlig, uforpliktende gjennomgang.';
   const successSteps = formData.tier === 'selvforvaltning'
     ? [
-        { t: 'Avtale registrert', s: '5 % per utleieforhold — ingen faste kostnader', done: true },
+        { t: 'Avtale registrert', s: '5 % av husleien — ingen faste kostnader', done: true },
         accountUrl
           ? { t: 'Kontoen din er klar', s: 'Gå rett inn — du får også en lenke på e-post', done: true }
           : { t: 'Vi setter opp kontoen din', s: 'Du får e-post med tilgang til plattformen' },
@@ -1302,7 +1302,7 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
                     <div className="mt-8 rounded-2xl border border-[#e8dcf7] bg-gradient-to-br from-[#faf7ff] to-[#f5eefc] p-5" data-testid="owner-account-terms">
                       <p className="text-[13.5px] font-bold text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>Avtale om selvforvaltning</p>
                       <div className="mt-2.5 space-y-1.5">
-                        {['5 % per utleieforhold — ingen faste kostnader', 'Ingen bindingstid — avslutt når du vil', 'Du godkjenner leietakere og priser selv'].map((b) => (
+                        {['5 % av husleien — ingen faste kostnader', 'Ingen bindingstid — avslutt når du vil', 'Du godkjenner leietakere og priser selv'].map((b) => (
                           <div key={b} className="flex items-center gap-2 text-[12.5px] text-[#666]">
                             <Check className="w-3.5 h-3.5 text-[#7e22ce] shrink-0" strokeWidth={3} /> {b}
                           </div>
@@ -1318,7 +1318,7 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
                           {termsAccepted && <Check className="w-3.5 h-3.5 text-[#14081f]" strokeWidth={3.5} />}
                         </span>
                         <span className="text-[13px] text-[#555] leading-relaxed">
-                          Jeg godtar <a href="/vilkar" target="_blank" rel="noopener noreferrer" onClick={(e: any) => e.stopPropagation()} className="text-[#7e22ce] font-semibold underline underline-offset-2">avtalen om selvforvaltning</a> (5 % per utleieforhold). Avtalen bekreftes digitalt — ingen papirer.
+                          Jeg godtar <a href="/vilkar" target="_blank" rel="noopener noreferrer" onClick={(e: any) => e.stopPropagation()} className="text-[#7e22ce] font-semibold underline underline-offset-2">avtalen om selvforvaltning</a> (5 % av husleien). Avtalen bekreftes digitalt — ingen papirer.
                         </span>
                       </button>
                       {errors.terms && <p className="text-[12px] text-red-500 mt-2" data-testid="owner-terms-error">{errors.terms}</p>}
@@ -1346,7 +1346,7 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
                       <div className="flex items-start justify-between gap-3 pt-3 border-t border-[#f0ece6]">
                         <div className="min-w-0">
                           <p className="text-[13.5px] font-semibold text-[#333]">
-                            {formData.tier === 'selvforvaltning' ? 'Selvforvaltning — 5 % per utleie' : formData.tier === 'full_forvaltning' ? 'Full forvaltning — skreddersydd tilbud' : 'Forvaltning ikke valgt'}
+                            {formData.tier === 'selvforvaltning' ? 'Selvforvaltning — 5 % av husleien' : formData.tier === 'full_forvaltning' ? 'Full forvaltning — skreddersydd tilbud' : 'Forvaltning ikke valgt'}
                           </p>
                           <p className="text-[12px] text-[#6b6b6b] mt-0.5">
                             {[formData.rental_model ? `Modell: ${formData.rental_model}` : null, formData.availability ? `Ledig ${new Date(formData.availability + 'T12:00:00').toLocaleDateString('nb-NO', { day: 'numeric', month: 'short' })}` : null].filter(Boolean).join(' · ') || (formData.tier === 'selvforvaltning' ? 'Ingen bindingstid — avslutt når du vil' : '—')}
@@ -1465,7 +1465,7 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
                         className="mt-5 rounded-2xl border border-[#e8dcf7] bg-gradient-to-br from-[#faf7ff] to-[#f5eefc] p-5" data-testid="owner-tier-terms">
                         <p className="text-[13.5px] font-bold text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>Avtale om selvforvaltning</p>
                         <div className="mt-2.5 space-y-1.5">
-                          {['5 % per utleieforhold — ingen faste kostnader', 'Ingen bindingstid — avslutt når du vil', 'Du godkjenner leietakere og priser selv'].map((b) => (
+                          {['5 % av husleien — ingen faste kostnader', 'Ingen bindingstid — avslutt når du vil', 'Du godkjenner leietakere og priser selv'].map((b) => (
                             <div key={b} className="flex items-center gap-2 text-[12.5px] text-[#666]">
                               <Check className="w-3.5 h-3.5 text-[#7e22ce] shrink-0" strokeWidth={3} /> {b}
                             </div>
@@ -1481,7 +1481,7 @@ export default function BliUtleierPage({ fullscreen = false }: any) {
                             {termsAccepted && <Check className="w-3.5 h-3.5 text-white" strokeWidth={3.5} />}
                           </span>
                           <span className="text-[13px] text-[#555] leading-relaxed">
-                            Jeg godtar <a href="/vilkar" target="_blank" rel="noopener noreferrer" onClick={(e: any) => e.stopPropagation()} className="text-[#7e22ce] font-semibold underline underline-offset-2">avtalen om selvforvaltning</a> (5 % per utleieforhold). Avtalen bekreftes digitalt — ingen papirer.
+                            Jeg godtar <a href="/vilkar" target="_blank" rel="noopener noreferrer" onClick={(e: any) => e.stopPropagation()} className="text-[#7e22ce] font-semibold underline underline-offset-2">avtalen om selvforvaltning</a> (5 % av husleien). Avtalen bekreftes digitalt — ingen papirer.
                           </span>
                         </button>
                         {errors.terms && <p className="text-[12px] text-red-500 mt-2" data-testid="owner-terms-error">{errors.terms}</p>}

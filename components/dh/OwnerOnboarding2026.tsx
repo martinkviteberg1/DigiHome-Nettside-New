@@ -60,7 +60,7 @@ const SERVICES = [
     title: 'Selvforvaltning',
     eyebrow: 'Tilgjengelig i hele Norge',
     description: 'For deg som vil gjøre jobben selv — med profesjonelle verktøy i ryggen.',
-    points: ['Opprett konto med én gang', 'Digital kontrakt og samlet oversikt', '5 % per utleieforhold · ingen bindingstid'],
+    points: ['Opprett konto med én gang', 'Digital kontrakt og samlet oversikt', '5 % av husleien · ingen bindingstid'],
     action: 'Opprett konto',
   },
   {
@@ -708,7 +708,7 @@ export default function OwnerOnboarding2026() {
 
               <div className="mt-6 flex items-end gap-2 border-y border-[#eee9e3] py-5">
                 <span className="text-[45px] font-bold leading-none tracking-[-0.05em] text-[#171513]">5 %</span>
-                <span className="pb-1 text-[12px] font-semibold leading-snug text-[#77716a]">per utleieforhold<br />ingen bindingstid</span>
+                <span className="pb-1 text-[12px] font-semibold leading-snug text-[#77716a]">av husleien<br />ingen bindingstid</span>
               </div>
               <div className="mt-5 space-y-3">
                 {self.points.map((point) => <p key={point} className="flex items-start gap-2.5 text-[13px] leading-snug text-[#403c37]"><span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#ece9e4]"><Check className="h-3 w-3 text-[#4e4944]" strokeWidth={3} /></span>{point}</p>)}
@@ -805,7 +805,7 @@ export default function OwnerOnboarding2026() {
               <button type="button" onClick={() => { setTermsAccepted((value) => !value); setErrors((current) => ({ ...current, terms: '' })); }} data-testid="owner-terms-checkbox" className="flex w-full items-start gap-3 text-left">
                 <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-2 ${termsAccepted ? 'border-[#24211e] bg-[#24211e]' : 'border-[#cfc9c2] bg-white'}`}>{termsAccepted ? <Check className="h-3.5 w-3.5 text-white" strokeWidth={3.5} /> : null}</span>
                 <span className="text-[13px] leading-relaxed text-[#504b46]">
-                  Jeg godtar <a href="/vilkar" target="_blank" rel="noopener noreferrer" onClick={(event) => event.stopPropagation()} className="font-bold text-[#403c37] underline underline-offset-2">avtalen om selvforvaltning</a> (5 % per utleieforhold, ingen bindingstid)
+                  Jeg godtar <a href="/vilkar" target="_blank" rel="noopener noreferrer" onClick={(event) => event.stopPropagation()} className="font-bold text-[#403c37] underline underline-offset-2">avtalen om selvforvaltning</a> (5 % av husleien, ingen bindingstid)
                   {/* Ved bedrift er det selskapet som blir avtalepart. Da må det
                       stå eksplisitt at personen signerer på selskapets vegne. */}
                   {form.ownerKind === 'business'

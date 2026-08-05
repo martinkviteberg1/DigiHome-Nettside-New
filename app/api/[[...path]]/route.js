@@ -43,7 +43,7 @@ import { enqueueInterest as deliverInterest, retryInterestWebhooks, webhookTarge
 import { notifyStatus, removeSuppression } from '@/lib/notify-status';
 import { searchBrreg, lookupOrgNo, isValidOrgNr, normalizeOrgNr, companyLine } from '@/lib/brreg';
 import { buildSelfServicePayload, resolveOwnerKind, ownerOrgNo, SS_UNIT_TYPE, RENTAL_LABELS } from '@/lib/self-service';
-import { WIZARD_CATALOG_DEFAULT } from '@/lib/catalog';
+import { WIZARD_CATALOG_DEFAULT, normalizeCatalog } from '@/lib/catalog';
 import { ga4MpConfigured, sendGa4Purchase } from '@/lib/ga4-mp';
 import { buildRecommendations } from '@/lib/ads-recommendations';
 import { generateRsaCopy, generateMetaCopy } from '@/lib/ads-ai';
@@ -6234,7 +6234,9 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
     // katalog-API når de bygger fakturering (v2).
     if (route === '/wizard/catalog' && method === 'GET') {
       const doc = await db.collection('settings').findOne({ key: 'wizard_catalog' });
-      const catalog = (doc && doc.value) || WIZARD_CATALOG_DEFAULT;
+      // normalizeCatalog nuller minsteprisen på selvforvaltning, også når en
+      // gammel overstyring i settings fortsatt har minMonthly: 500.
+      const catalog = normalizeCatalog((doc && doc.value) || WIZARD_CATALOG_DEFAULT);
       return cors(NextResponse.json({ ok: true, catalog, source: doc ? 'db' : 'default' }));
     }
     if (route === '/admin/wizard/catalog' && method === 'PUT') {

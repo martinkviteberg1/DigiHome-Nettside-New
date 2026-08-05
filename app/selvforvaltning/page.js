@@ -33,7 +33,7 @@ export const revalidate = 3600;
 
 export const metadata = {
   title: 'Selvforvaltning: leie ut boligen selv med kontrakt og innkreving',
-  description: 'Du holder visningene og velger leietaker selv. FINN-annonse, leiekontrakt med BankID, depositumskonto, husleieinnkreving og full oversikt ligger i DigiHome. Tilgjengelig i hele Norge, fra 5 % av leien.',
+  description: 'Du holder visningene og velger leietaker selv. FINN-annonse, leiekontrakt med BankID, depositumskonto, husleieinnkreving og full oversikt ligger i DigiHome. Tilgjengelig i hele Norge — 5 % av husleien, ingen minstepris og ingen bindingstid.',
   alternates: { canonical: '/selvforvaltning' },
   openGraph: {
     title: 'Selvforvaltning — leie ut boligen selv | DigiHome',
@@ -91,7 +91,7 @@ export default async function SelvforvaltningPage() {
   const visning = catalogAddon(catalog, 'visningshjelp');
   const threshold = minFeeThreshold(self);
   const examples = [10000, 15000, 20000, 25000].map((rent) => ({ rent, fee: monthlyFee(rent, self) }));
-  const priceLine = `${self.pct} % av leien${self.minMonthly ? ` · min. ${fmtNok(self.minMonthly)} kr/mnd` : ''}`;
+  const priceLine = `${self.pct} % av husleien${self.minMonthly ? ` · min. ${fmtNok(self.minMonthly)} kr/mnd` : ''}`;
   const diyGuides = DIY_GUIDE_SLUGS.map((s) => guides.find((g) => g.slug === s)).filter(Boolean);
 
   const steps = [
@@ -125,7 +125,7 @@ export default async function SelvforvaltningPage() {
     },
     {
       q: 'Hva koster selvforvaltning?',
-      a: `${self.pct} % av husleien, med en minstepris på ${fmtNok(self.minMonthly)} kr per måned. Leier du ut for ${fmtNok(15000)} kr i måneden koster det ${fmtNok(monthlyFee(15000, self))} kr. Minsteprisen slår inn under ${fmtNok(threshold)} kr i månedsleie. Det er ingen oppstartskostnad og ingen bindingstid.`,
+      a: `${self.pct} % av husleien. Leier du ut for ${fmtNok(15000)} kr i måneden koster det ${fmtNok(monthlyFee(15000, self))} kr. ${self.minMonthly ? `Minsteprisen er ${fmtNok(self.minMonthly)} kr per måned. ` : 'Det er ingen minstepris. '}Ingen oppstartskostnad og ingen bindingstid — honoraret følger leien.`,
     },
     {
       q: 'Hvem holder visningene?',
@@ -397,8 +397,10 @@ export default async function SelvforvaltningPage() {
                 Hva det koster
               </h2>
               <p className="mt-3.5 text-[15.5px] text-[#4a4a4a] leading-[1.75] max-w-[46ch]">
-                Honoraret følger leien: {self.pct} % av husleien{self.minMonthly ? `, med en minstepris på ${fmtNok(self.minMonthly)} kr per måned` : ''}.
-                Ingen oppstartskostnad og ingen bindingstid.
+                Honoraret følger leien: {self.pct} % av husleien
+                {self.minMonthly
+                  ? `, med en minstepris på ${fmtNok(self.minMonthly)} kr per måned. Ingen oppstartskostnad og ingen bindingstid.`
+                  : '. Ingen minstepris, ingen oppstartskostnad og ingen bindingstid.'}
               </p>
               {self.minMonthly ? (
                 <p className="mt-3 text-[13.5px] text-[#6b665f] leading-relaxed">

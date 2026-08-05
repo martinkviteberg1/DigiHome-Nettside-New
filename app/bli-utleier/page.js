@@ -25,7 +25,7 @@ export default function Page() {
       <JsonLd data={breadcrumbLd([{ name: 'Bli utleier', path: '/bli-utleier' }])} />
       <JsonLd data={serviceLd({
         name: 'Utleieforvaltning for boligeiere',
-        description: 'Full utleieforvaltning i Bergen: annonsering, visninger, leietakersjekk, kontrakt, husleie og vedlikehold — eller selvforvaltning med digitale verktøy (5 % per utleieforhold).',
+        description: 'Full utleieforvaltning i Bergen: annonsering, visninger, leietakersjekk, kontrakt, husleie og vedlikehold — eller selvforvaltning med digitale verktøy (5 % av husleien).',
         path: '/bli-utleier',
         serviceType: 'Eiendomsforvaltning',
       })} />

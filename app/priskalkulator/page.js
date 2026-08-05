@@ -51,7 +51,7 @@ export default function PriskalkulatorPage() {
           </div>
 
           <div className="mt-10 grid gap-5 sm:grid-cols-2">
-            <div className="rounded-2xl border border-[#e3ded7] bg-white p-6"><h3 className="text-[19px] font-bold">Selvforvaltning</h3><p className="mt-2 text-[13.5px] leading-[1.75] text-[#625d57]">Du beholder kontrollen og gjør mer av arbeidet selv, med digitale verktøy for blant annet avtale og oversikt. DigiHome oppgir 5 % per utleieforhold; kontroller beregningsgrunnlaget i gjeldende avtale.</p></div>
+            <div className="rounded-2xl border border-[#e3ded7] bg-white p-6"><h3 className="text-[19px] font-bold">Selvforvaltning</h3><p className="mt-2 text-[13.5px] leading-[1.75] text-[#625d57]">Du beholder kontrollen og gjør mer av arbeidet selv, med digitale verktøy for blant annet avtale og oversikt. DigiHome oppgir 5 % av husleien; kontroller beregningsgrunnlaget i gjeldende avtale.</p></div>
             <div className="rounded-2xl border border-[#e3ded7] bg-white p-6"><h3 className="text-[19px] font-bold">Full forvaltning</h3><p className="mt-2 text-[13.5px] leading-[1.75] text-[#625d57]">DigiHome kan håndtere annonsering, visninger, leietakervalg, kontrakt, depositum og oppfølging. Pris tilpasses boligen og det faktiske tjenesteomfanget.</p></div>
           </div>
 

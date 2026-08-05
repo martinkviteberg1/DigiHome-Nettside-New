@@ -45,7 +45,7 @@ const TASKS = [
 
 const COMPARE = [
   { row: 'Oppstartskostnad', trad: 'Etableringshonorar — ofte tilsvarende en halv til én månedsleie', dh: 'Ingen. Null oppstartskostnader', good: true },
-  { row: 'Løpende honorar', trad: 'Typisk 8–12 % av leien, uansett innsats', dh: 'Selvforvaltning 5 % per utleieforhold — eller full forvaltning etter uforpliktende tilbud', good: true },
+  { row: 'Løpende honorar', trad: 'Typisk 8–12 % av leien, uansett innsats', dh: 'Selvforvaltning 5 % av husleien — eller full forvaltning etter uforpliktende tilbud', good: true },
   { row: 'Bindingstid', trad: 'Ofte 6–12 måneder', dh: 'Ingen bindingstid — avslutt når du vil', good: true },
   { row: 'Prissetting', trad: 'Manuell vurdering ved innflytting', dh: 'AI-prising som følger markedet kontinuerlig', good: true },
   { row: 'Korttid + langtid', trad: 'Som regel kun langtidsutleie', dh: '10+2-modellen: langtid + korttid i høysesong — opptil 30 % høyere inntekt', good: true },
@@ -53,7 +53,7 @@ const COMPARE = [
 ];
 
 const FAQS = [
-  { q: 'Hva koster en utleiemegler i Bergen?', a: 'Tradisjonelle utleiemeglere tar vanligvis et etableringshonorar (ofte tilsvarende en halv til én månedsleie) pluss et løpende forvaltningshonorar på rundt 8–12 % av leien. Hos DigiHome koster selvforvaltning 5 % per utleieforhold uten faste kostnader, mens full forvaltning prises individuelt — du får et uforpliktende tilbud samme dag. Ingen oppstartskostnader, ingen bindingstid.' },
+  { q: 'Hva koster en utleiemegler i Bergen?', a: 'Tradisjonelle utleiemeglere tar vanligvis et etableringshonorar (ofte tilsvarende en halv til én månedsleie) pluss et løpende forvaltningshonorar på rundt 8–12 % av leien. Hos DigiHome koster selvforvaltning 5 % av husleien uten faste kostnader, mens full forvaltning prises individuelt — du får et uforpliktende tilbud samme dag. Ingen oppstartskostnader, ingen bindingstid.' },
   { q: 'Hva gjør en utleiemegler?', a: 'En utleiemegler håndterer utleien for deg: annonsering og visninger, screening og valg av leietaker, husleiekontrakt, depositum, innkreving av husleie og oppfølging gjennom leieforholdet. DigiHome gjør alt dette — i tillegg til AI-basert prissetting og mulighet for korttidsutleie i høysesong.' },
   { q: 'Utleiemegler eller leie ut selv — hva lønner seg?', a: 'Det avhenger av tiden din og boligen. Leier du ut selv sparer du honoraret, men bærer risikoen for feil leiepris, dårlig screening og alt det praktiske. Med DigiHome kan du velge begge deler: selvforvaltning (5 %) der du gjør jobben med våre digitale verktøy, eller full forvaltning der vi tar alt.' },
   { q: 'Er det bindingstid hos DigiHome?', a: 'Nei. Både selvforvaltning og full forvaltning er uten bindingstid — du kan avslutte når du vil.' },
@@ -87,7 +87,7 @@ export default function Page() {
         <p className="text-[#4a4a4a] text-[16px] leading-[1.8] max-w-[72ch]">
           En utleiemegler tar hele jobben med å leie ut boligen din: annonsering, visninger, screening av leietakere, kontrakt, depositum og husleie.
           I Bergen tar tradisjonelle utleiemeglere vanligvis et etableringshonorar pluss <strong>8–12 % av leien</strong> løpende.
-          DigiHome leverer det samme — og mer — for <strong>5 % per utleieforhold</strong> med selvforvaltning, eller full forvaltning etter et uforpliktende tilbud. Alltid uten oppstartskostnader og uten bindingstid.
+          DigiHome leverer det samme — og mer — for <strong>5 % av husleien</strong> med selvforvaltning, eller full forvaltning etter et uforpliktende tilbud. Alltid uten oppstartskostnader og uten bindingstid.
         </p>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-12">
           {TASKS.map((p) => (

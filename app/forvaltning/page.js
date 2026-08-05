@@ -29,7 +29,7 @@ export const metadata = {
 const FAQS = [
   { q: 'Hva koster full forvaltning hos DigiHome?', a: 'Prisen avtales individuelt ut fra boligen, beliggenheten og utleiemodellen. Du får et konkret, uforpliktende tilbud fra en lokal rådgiver — som regel samme dag. Det er ingen oppstartskostnader og ingen bindingstid.' },
   { q: 'Hva er inkludert i full forvaltning?', a: 'Alt: profesjonell annonsering med styling og foto, intelligent prising, visninger og screening av leietakere, digitale kontrakter med BankID-signering, automatisk husleieinnkreving, samt renhold og vedlikehold via vårt lokale partnernettverk i Bergen.' },
-  { q: 'Hva er forskjellen på selvforvaltning og full forvaltning?', a: 'Med selvforvaltning (5 % per utleieforhold) leier du ut selv med DigiHomes digitale verktøy — annonsering, kontrakter og betaling. Med full forvaltning håndterer vi hele utleien for deg, fra første annonse til siste utbetaling — du mottar bare inntekten.' },
+  { q: 'Hva er forskjellen på selvforvaltning og full forvaltning?', a: 'Med selvforvaltning (5 % av husleien) leier du ut selv med DigiHomes digitale verktøy — annonsering, kontrakter og betaling. Med full forvaltning håndterer vi hele utleien for deg, fra første annonse til siste utbetaling — du mottar bare inntekten.' },
   { q: 'Er det bindingstid?', a: 'Nei. Både selvforvaltning og full forvaltning er uten bindingstid — du kan avslutte når du vil.' },
   { q: 'Hvordan kommer jeg i gang?', a: 'Registrer boligen på digihome.no/bli-utleier — det tar under to minutter. Velg om du vil forvalte selv eller få et tilbud på full forvaltning, så tar en rådgiver kontakt samme dag.' },
 ];

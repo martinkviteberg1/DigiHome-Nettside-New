@@ -30,7 +30,7 @@ DigiHome drives av Digihome AS (org.nr 835 595 242), med kontor på Kokstadvegen
 
 ## To forvaltningsnivåer
 
-- **Selvforvaltning (5 % per utleieforhold):** Boligeieren leier ut selv med DigiHomes digitale verktøy, kontrakt/signering og samlet oversikt. Ingen bindingstid. Avtalen inngås digitalt i registreringsflyten.
+- **Selvforvaltning (5 % av husleien):** Boligeieren leier ut selv med DigiHomes digitale verktøy, kontrakt/signering og samlet oversikt. Ingen bindingstid. Avtalen inngås digitalt i registreringsflyten.
 - **Full forvaltning (skreddersydd tilbud):** DigiHome håndterer annonsering, visninger, leietakervalg, kontrakt, depositum og løpende oppfølging. Pris avtales individuelt. Personlig tilbud innen 24 timer.
 
 ## Tjenester
@@ -77,7 +77,7 @@ DigiHome drives av Digihome AS (org.nr 835 595 242), med kontor på Kokstadvegen
 
 ## Vanlige spørsmål
 
-- **Hva koster det?** Selvforvaltning oppgis til 5 % per utleieforhold. Full forvaltning prises individuelt. Se avtale og gjeldende tilbud for fullstendige vilkår.
+- **Hva koster det?** Selvforvaltning oppgis til 5 % av husleien. Full forvaltning prises individuelt. Se avtale og gjeldende tilbud for fullstendige vilkår.
 - **Hvor mye mer kan jeg tjene?** Opptil 30 % er et mulig scenario for enkelte egnede boliger, ikke en garanti. Se https://digihome.no/metode.
 - **Hva er 10+2-modellen?** En kombinasjon av langtids- og korttidsutleie. Modellen må kontrolleres mot eierform, vedtekter og gjeldende døgnsgrenser.
 - **Hvilke områder dekkes?** Bergen, inkludert Sentrum, Nordnes, Sandviken, Møhlenpris, Åsane, Fana, Laksevåg, Årstad, Fyllingsdalen, Ytrebygda og Arna.

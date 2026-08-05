@@ -33,7 +33,7 @@ const PHASES = [
     image: '/interior-living.webp',
     imageAlt: 'Lys stue i forvaltet utleiebolig',
     chips: [
-      { icon: Sparkles, value: '5 %', label: 'selvforvaltning per utleieforhold' },
+      { icon: Sparkles, value: '5 %', label: 'av husleien med selvforvaltning' },
       { icon: ShieldCheck, value: '0 kr', label: 'oppstart · ingen bindingstid' },
     ],
     testimonial: testimonials[1],
