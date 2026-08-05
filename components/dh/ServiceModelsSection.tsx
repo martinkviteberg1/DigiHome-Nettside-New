@@ -104,14 +104,10 @@ export default function ServiceModelsSection() {
         {/* Redaksjonelt seksjonshode: indeks, label, hårfin linje. Den sentrerte
             malen med lilla strek over tittelen er fjernet — den er selve
             signaturen på en generisk side. */}
-        <span className="e-chip">
-          <span className="e-chip-dot" aria-hidden="true" />
-          Filmen
-        </span>
-        <div className="mt-6 sm:mt-8 mb-10 sm:mb-14 grid lg:grid-cols-12 gap-x-10 gap-y-6 items-end">
+        <div className="mb-10 sm:mb-14 grid lg:grid-cols-12 gap-x-10 gap-y-6 items-end">
           <h2 className="e-h2 lg:col-span-7 max-w-[20ch]">Se hvordan utleien faktisk drives.</h2>
           <p className="e-lead lg:col-span-5 lg:pb-1.5 max-w-[44ch]">
-            Se hvordan vi gjør utleie smartere — fra første visning til siste leiebetaling.
+            To minutter fra første visning til siste leiebetaling.
             Trykk hvor som helst i bildet for lyd.
           </p>
         </div>
@@ -227,8 +223,7 @@ export default function ServiceModelsSection() {
             setning og hva modellen gir. Lenkene og testId-ene er uendret. */}
         <div className="h-16 sm:h-20 lg:h-24" aria-hidden />
 
-        <span className="e-label">Utleiemodeller</span>
-        <div className="e-rule e-hair mt-4">
+        <div className="e-rule e-hair">
           {models.map((m: any, i: number) => (
             <Link
               key={i}
@@ -238,11 +233,10 @@ export default function ServiceModelsSection() {
             >
               <div className="lg:col-span-4">
                 <h3 className="e-h3 text-[20px] sm:text-[24px] transition-colors duration-300 group-hover:text-[#7c3aed]">{m.title}</h3>
-                <p className="e-label mt-2">{m.subtitle}</p>
+                <p className="e-meta mt-2">{m.subtitle}</p>
               </div>
-              <p className="e-body lg:col-span-5 max-w-[52ch]">{m.desc}</p>
-              <div className="lg:col-span-3 flex items-center justify-between gap-4 lg:justify-end">
-                <span className="text-[13.5px] font-semibold text-[#0a0a0a]">{m.highlight}</span>
+              <p className="e-body lg:col-span-6 max-w-[54ch]">{m.desc}</p>
+              <div className="lg:col-span-2 flex items-center lg:justify-end">
                 <ArrowRight className="w-4 h-4 shrink-0 text-[#8d877d] transition-transform duration-300 group-hover:translate-x-1" strokeWidth={2} />
               </div>
             </Link>

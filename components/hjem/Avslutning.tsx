@@ -13,9 +13,9 @@ import { site } from '@/lib/site';
 // ---------------------------------------------------------------------------
 
 const snarveier = [
-  { label: 'Full forvaltning', tittel: 'Bergen og omegn', href: '/forvaltning' },
-  { label: 'Selvforvaltning', tittel: 'Hele Norge', href: '/selvforvaltning' },
-  { label: 'Leter du etter bolig?', tittel: 'Se ledige boliger', href: '/ledige-boliger' },
+  { tittel: 'Full forvaltning i Bergen og omegn', href: '/forvaltning' },
+  { tittel: 'Selvforvaltning i hele Norge', href: '/selvforvaltning' },
+  { tittel: 'Se ledige boliger', href: '/ledige-boliger' },
 ];
 
 export default function Avslutning() {
@@ -28,9 +28,7 @@ export default function Avslutning() {
       />
 
       <div className="e-shell relative py-20 sm:py-28 lg:py-32">
-        <p className="e-eyebrow e-eyebrow-dark e-reveal">Kom i gang</p>
-
-        <h2 className="e-display e-reveal !text-white mt-8 max-w-[17ch] text-[38px] leading-[1.02] sm:text-[56px] lg:text-[68px]">
+        <h2 className="e-display e-reveal !text-white max-w-[17ch] text-[38px] leading-[1.02] sm:text-[56px] lg:text-[68px]">
           Legg inn adressen. Vi tar det derfra.
         </h2>
 
@@ -57,10 +55,7 @@ export default function Avslutning() {
               href={s.href}
               className="group flex items-center justify-between gap-5 border-b border-white/[0.08] py-4 sm:border-b-0 sm:py-0"
             >
-              <span className="min-w-0">
-                <span className="block text-[10.5px] font-semibold uppercase tracking-[0.15em] text-white/40">{s.label}</span>
-                <span className="mt-1.5 block text-[16px] font-semibold text-white">{s.tittel}</span>
-              </span>
+              <span className="text-[15.5px] font-medium text-white/85 transition-colors duration-300 group-hover:text-white">{s.tittel}</span>
               <ArrowRight className="h-4 w-4 shrink-0 text-white/35 transition-all duration-300 group-hover:translate-x-1 group-hover:text-white" />
             </Link>
           ))}

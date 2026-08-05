@@ -37,13 +37,9 @@ export function Seksjon({ id, children, className = '', hvit = false, tone, test
 export function SeksjonHode({ label, tittel, ingress, lenke, lenkeTekst, children }: any) {
   return (
     <div className="relative">
-      {label ? (
-        <span className="e-chip e-reveal">
-          <span className="e-chip-dot" aria-hidden="true" />
-          {label}
-        </span>
-      ) : null}
-      <div className="e-reveal mt-6 grid items-start gap-x-10 gap-y-6 sm:mt-8 lg:grid-cols-12">
+      {/* Labelen er borte med vilje: en overskrift som må introduseres av en
+          småkapitel-etikett er ikke god nok. Tittelen bærer seksjonen. */}
+      <div className="e-reveal grid items-start gap-x-10 gap-y-6 lg:grid-cols-12">
         <h2 className="e-h2 max-w-[22ch] lg:col-span-7">{tittel}</h2>
         {(ingress || children || lenke) ? (
           <div className="lg:col-span-5 lg:pt-2.5">

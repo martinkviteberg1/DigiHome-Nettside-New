@@ -41,12 +41,7 @@ export default function DynamicRentalSection() {
   return (
     <section className="e-section" data-testid="dynamic-rental-section">
       <div className="e-shell">
-        <span className="e-chip">
-          <span className="e-chip-dot" aria-hidden="true" />
-          10+2-modellen
-        </span>
-
-        <div className="mt-6 sm:mt-9 grid lg:grid-cols-12 gap-x-16 gap-y-14 items-start">
+        <div className="grid lg:grid-cols-12 gap-x-16 gap-y-14 items-start">
 
           {/* ── Venstre: argumentet ── */}
           <div className="lg:col-span-6">
@@ -89,11 +84,11 @@ export default function DynamicRentalSection() {
             <div className="mt-12 e-rule pt-7">
               <div className="flex flex-wrap items-end gap-x-14 gap-y-6">
                 <div>
-                  <p className="e-label">Kun langtid</p>
+                  <p className="e-meta">Kun langtid</p>
                   <p className="e-display e-num text-[22px] mt-2 !text-[#6f6a60]">{'180 000 kr'}</p>
                 </div>
                 <div>
-                  <p className="e-label">Med 10+2</p>
+                  <p className="e-meta">Med 10+2</p>
                   <p className="e-display e-num text-[22px] mt-2">{'234 000 kr'}</p>
                 </div>
                 <div className="ml-auto text-right">

@@ -39,7 +39,7 @@ export default function HeroMedia() {
         </div>
       </div>
 
-      <p className="e-meta mt-4">Fra porteføljen i Bergen</p>
+      <p className="e-meta mt-4 hidden">Fra porteføljen i Bergen</p>
     </div>
   );
 }

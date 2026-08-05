@@ -39,14 +39,6 @@ export default function Boligene() {
         ))}
       </div>
 
-      <div className="mt-12 grid gap-x-12 gap-y-9 sm:grid-cols-3">
-        {qualities.map((q: string) => (
-          <div key={q} className="e-reveal">
-            <span className="block h-[1px] w-8 bg-[#c79bf0]" aria-hidden="true" />
-            <p className="mt-4 max-w-[24ch] text-[15.5px] font-medium leading-snug text-[#25221e]">{q}</p>
-          </div>
-        ))}
-      </div>
     </Seksjon>
   );
 }

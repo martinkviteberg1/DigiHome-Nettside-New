@@ -5,7 +5,6 @@ import ToVeier from '@/components/hjem/ToVeier';
 import SlikFungerer from '@/components/hjem/SlikFungerer';
 import Boligene from '@/components/hjem/Boligene';
 import Stemmer from '@/components/hjem/Stemmer';
-import Nettverk from '@/components/hjem/Nettverk';
 import Sporsmal from '@/components/hjem/Sporsmal';
 import Avslutning from '@/components/hjem/Avslutning';
 import ServiceModelsSection from '@/components/dh/ServiceModelsSection';
@@ -23,19 +22,15 @@ export const metadata = {
 };
 
 // ---------------------------------------------------------------------------
-// Forsiden, satt som en trykksak.
+// Forsiden.
 //
-// Seksjonene er nummererte 01–10 og bygger én argumentrekke: hva du kan velge →
-// hvordan det fungerer → se det → hva det kan gi → standarden → boligene →
-// eierne → fagfolkene → menneskene → spørsmålene. Fire seksjoner er beholdt fra
-// før fordi de har noe ekte i seg: filmen, FINN/Airbnb-kortene, de faktiske
-// annonsene fra API-et og portrettet av daglig leder.
+// Argumentrekken: hva du kan velge → hvordan det fungerer → se det → hva det
+// kan gi → standarden → boligene → eierne → menneskene → spørsmålene → handling.
 //
-// Fjernet: StatsSection (tallene ligger i heroen), PartnersBar-marqueen
-// (erstattet av ProofBand), ImageBreak og QualitySection (slått sammen til
-// Boligene), TestimonialsSection, NetworkSection, FaqSection og CTASection
-// (erstattet av redaksjonelle utgaver). Komponentfilene står igjen urørt fordi
-// andre sider importerer flere av dem.
+// Ryddet bort fordi det var duplisering, ikke innhold: seksjonsetikettene
+// (småkapitler over hver tittel), tallstripen i heroen, og fagfolk-seksjonen —
+// den sa det samme som partnerlinjen rett under heroen. Komponentfilene står
+// igjen urørt fordi andre sider importerer flere av dem.
 // ---------------------------------------------------------------------------
 export default function HomePage() {
   return (
@@ -51,7 +46,6 @@ export default function HomePage() {
       <Boligene />
       <ShowcaseSection />
       <Stemmer />
-      <Nettverk />
       <AboutCEOSection />
       <Sporsmal />
       <Avslutning />

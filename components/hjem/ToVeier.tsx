@@ -62,7 +62,7 @@ export default function ToVeier() {
           >
             <div className="flex items-baseline justify-between gap-4">
               <h3 className="e-h3 text-[24px] sm:text-[28px]">{v.navn}</h3>
-              <span className="e-label whitespace-nowrap">{v.sted}</span>
+              <span className="e-meta whitespace-nowrap">{v.sted}</span>
             </div>
             <p className="e-body mt-4 max-w-[44ch]">{v.beskrivelse}</p>
 

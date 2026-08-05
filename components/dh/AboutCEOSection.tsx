@@ -6,12 +6,7 @@ export default function AboutCEOSection() {
   return (
     <section className="e-section e-tone-paper" data-testid="about-ceo-section">
       <div className="e-shell">
-        <span className="e-chip">
-          <span className="e-chip-dot" aria-hidden="true" />
-          Om DigiHome
-        </span>
-
-        <div className="mt-7 sm:mt-10 grid lg:grid-cols-12 gap-x-16 gap-y-10 items-start">
+        <div className="grid lg:grid-cols-12 gap-x-16 gap-y-10 items-start">
 
           {/* Sitatet satt i display-snittet, uten kursiv. Lang kursiv brødtekst
               leser som en sjablong; store anførselstegn og luft leser som en

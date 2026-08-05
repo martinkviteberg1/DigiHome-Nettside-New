@@ -11,12 +11,7 @@ export default function Stemmer() {
   return (
     <section className="e-section" data-testid="testimonials-section">
       <div className="e-shell relative">
-        <span className="e-chip e-reveal">
-          <span className="e-chip-dot" aria-hidden="true" />
-          Eiere vi jobber for
-        </span>
-
-        <blockquote className="e-reveal pt-9 sm:pt-12">
+        <blockquote className="e-reveal">
           <p className="e-quote text-[26px] sm:text-[38px] lg:text-[46px] max-w-[24ch]">
             «{forste.quote}»
           </p>
