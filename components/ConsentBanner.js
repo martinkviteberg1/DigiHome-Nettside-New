@@ -86,7 +86,7 @@ export default function ConsentBanner() {
             <p className="font-heading font-bold tracking-[-0.01em] text-ink text-[14px] sm:text-[15px]">Personvern og informasjonskapsler</p>
             <p className="mt-1 text-quiet text-[12px] leading-relaxed sm:text-[12.5px]">
               Nødvendige kapsler får siden til å fungere. Med samtykke måler vi annonser og forbedrer tjenesten.{' '}
-              <Link href="/personvern" className="text-ink underline underline-offset-2 hover:text-lavender">Les mer</Link>.
+              <span className="whitespace-nowrap"><Link href="/personvern" className="text-ink underline underline-offset-2 hover:text-lavender">Les mer</Link>.</span>
             </p>
           </div>
           <div className="grid w-[128px] shrink-0 gap-1.5 sm:flex sm:w-auto sm:items-center">

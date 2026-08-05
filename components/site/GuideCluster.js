@@ -34,7 +34,7 @@ export default function GuideCluster({ cluster, currentSlug }) {
               className="group flex items-start justify-between gap-3 bg-white rounded-2xl px-5 py-4 border border-black/[0.05] hover:border-[#d9c9f5] transition-colors"
             >
               <span className="text-[14.5px] font-semibold leading-snug text-[#1f1f1f] group-hover:text-[#7c3aed] transition-colors" style={{ fontFamily: 'var(--font-heading)' }}>{g.title}</span>
-              <ArrowUpRight className="w-4 h-4 text-[#b8b0a6] group-hover:text-[#7c3aed] shrink-0 mt-0.5 transition-colors" />
+              <ArrowUpRight className="w-4 h-4 text-[#8a837a] group-hover:text-[#7c3aed] shrink-0 mt-0.5 transition-colors" />
             </Link>
           ))}
         </div>

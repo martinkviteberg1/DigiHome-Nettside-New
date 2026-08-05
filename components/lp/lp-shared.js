@@ -9,18 +9,45 @@ import { site } from '@/lib/site';
 
 /* ------------------------------- Reveal ------------------------------- */
 // Avslører innhold med en myk fade-up når det kommer i viewport.
+//
+// Tre robusthetskrav, fordi disse sidene tar imot BETALT trafikk og et skjult
+// hero betyr at vi betaler for et klikk til en tom side:
+//
+//  1. SIKKERHETSVENTIL. SSR-HTML-en inneholder opacity:0 for at animasjonen
+//     skal ha noe å animere fra. Hvis IntersectionObserver aldri trigger —
+//     feil i tredjepartsskript, uvanlig nettleser, aggressiv strømsparing —
+//     ville innholdet blitt usynlig for alltid. Etter 1200 ms vises det
+//     uansett.
+//  2. prefers-reduced-motion. Da hopper vi over bevegelsen helt og viser
+//     innholdet umiddelbart, uten transition.
+//  3. Elementer som allerede er i viewporten ved første måling vises med én
+//     gang, uten å vente på et scroll-event.
 export function Reveal({ children, delay = 0, className = '', as: Tag = 'div' }) {
   const ref = useRef(null);
   const [shown, setShown] = useState(false);
+  const [instant, setInstant] = useState(false);
+
   useEffect(() => {
+    const reduce = typeof window !== 'undefined'
+      && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    if (reduce) { setInstant(true); setShown(true); return undefined; }
+
     const el = ref.current;
-    if (!el || typeof IntersectionObserver === 'undefined') { setShown(true); return; }
+    if (!el || typeof IntersectionObserver === 'undefined') { setShown(true); return undefined; }
+
+    // Sikkerhetsventil — aldri la innhold bli permanent usynlig.
+    const safety = setTimeout(() => setShown(true), 1200);
+
     const io = new IntersectionObserver((entries) => {
-      entries.forEach((e) => { if (e.isIntersecting) { setShown(true); io.disconnect(); } });
-    }, { threshold: 0.12, rootMargin: '0px 0px -8% 0px' });
+      entries.forEach((e) => {
+        if (e.isIntersecting) { setShown(true); clearTimeout(safety); io.disconnect(); }
+      });
+    }, { threshold: 0.08, rootMargin: '0px 0px -6% 0px' });
     io.observe(el);
-    return () => io.disconnect();
+
+    return () => { clearTimeout(safety); io.disconnect(); };
   }, []);
+
   return (
     <Tag
       ref={ref}
@@ -28,7 +55,9 @@ export function Reveal({ children, delay = 0, className = '', as: Tag = 'div' })
       style={{
         opacity: shown ? 1 : 0,
         transform: shown ? 'none' : 'translateY(22px)',
-        transition: `opacity .7s cubic-bezier(.16,1,.3,1) ${delay}ms, transform .7s cubic-bezier(.16,1,.3,1) ${delay}ms`,
+        transition: instant
+          ? 'none'
+          : `opacity .7s cubic-bezier(.16,1,.3,1) ${delay}ms, transform .7s cubic-bezier(.16,1,.3,1) ${delay}ms`,
       }}
     >
       {children}
@@ -136,8 +165,12 @@ export function TrustLogos({ className = '' }) {
 
 /* --------------------------- Sticky mobil-CTA --------------------------- */
 // Skjules automatisk når skjemaet (#lp-form) er synlig, og etter innsending.
+// Starter SKJULT med vilje: på mobil ligger skjemaet over folden, så uten
+// dette blinket knappen inn i ~100 ms før IntersectionObserver rakk å måle.
+// Bunnpadding bruker safe-area, ellers havner knappen under hjemme-indikatoren
+// på iPhone.
 export function StickyMobileCta({ label = 'Få gratis vurdering', onClick }) {
-  const [hidden, setHidden] = useState(false);
+  const [hidden, setHidden] = useState(true);
   const [done, setDone] = useState(false);
   useEffect(() => {
     const form = document.getElementById('lp-form');
@@ -147,6 +180,8 @@ export function StickyMobileCta({ label = 'Få gratis vurdering', onClick }) {
         entries.forEach((e) => setHidden(e.isIntersecting));
       }, { threshold: 0.2 });
       io.observe(form);
+    } else {
+      setHidden(false);
     }
     const onDone = () => setDone(true);
     window.addEventListener('lp:done', onDone);
@@ -155,14 +190,24 @@ export function StickyMobileCta({ label = 'Få gratis vurdering', onClick }) {
   if (done) return null;
   return (
     <div
-      className="lg:hidden fixed inset-x-0 bottom-0 z-[90] p-3 bg-gradient-to-t from-white via-white/95 to-transparent transition-all duration-300"
-      style={{ transform: hidden ? 'translateY(110%)' : 'none', opacity: hidden ? 0 : 1, pointerEvents: hidden ? 'none' : 'auto' }}
+      aria-hidden={hidden}
+      className="lg:hidden fixed inset-x-0 bottom-0 z-[90] px-3 pt-3 bg-gradient-to-t from-white via-white/95 to-transparent transition-all duration-300"
+      style={{
+        transform: hidden ? 'translateY(110%)' : 'none',
+        opacity: hidden ? 0 : 1,
+        pointerEvents: hidden ? 'none' : 'auto',
+        paddingBottom: 'max(12px, env(safe-area-inset-bottom))',
+        // Løft CTA-en over samtykkebanneret. Uten dette lå hovedknappen bak
+        // banneret på førstegangsbesøk — altså nøyaktig det besøket vi betaler
+        // for i Google og Meta.
+        bottom: 'var(--dh-consent-h, 0px)',
+      }}
     >
       <div className="flex items-center gap-2.5">
-        <button onClick={onClick} className="flex-1 h-[52px] rounded-full bg-[#0a0a0a] text-white font-semibold text-[15px] flex items-center justify-center gap-2 shadow-[0_8px_24px_-8px_rgba(31,31,31,0.5)] active:scale-[0.98] transition-transform">
+        <button onClick={onClick} tabIndex={hidden ? -1 : 0} className="flex-1 h-[52px] rounded-full bg-[#0a0a0a] text-white font-semibold text-[15px] flex items-center justify-center gap-2 shadow-[0_8px_24px_-8px_rgba(31,31,31,0.5)] active:scale-[0.98] transition-transform">
           {label} <ArrowRight className="w-4 h-4" />
         </button>
-        <a href={`tel:${site.phoneHref}`} aria-label="Ring oss"
+        <a href={`tel:${site.phoneHref}`} aria-label={`Ring oss på ${site.phone}`} tabIndex={hidden ? -1 : 0}
           className="h-[52px] w-[52px] shrink-0 rounded-full bg-white border border-[#e5e5e5] shadow-[0_4px_16px_rgba(0,0,0,0.08)] flex items-center justify-center">
           <Phone className="w-5 h-5 text-[#0a0a0a]" />
         </a>
@@ -176,6 +221,7 @@ export function StickyMobileCta({ label = 'Få gratis vurdering', onClick }) {
 export function ExitIntent({ headline = 'Vent — vil du vite hva boligen din kan tjene?', body = 'Det tar under ett minutt. Gratis, uforpliktende — og du får svar innen 24 timer.', cta = 'Se hva boligen kan tjene', onCta }) {
   const [open, setOpen] = useState(false);
   const doneRef = useRef(false);
+  const ctaRef = useRef(null);
 
   useEffect(() => {
     const onDone = () => { doneRef.current = true; };
@@ -194,9 +240,26 @@ export function ExitIntent({ headline = 'Vent — vil du vite hva boligen din ka
     return () => { document.removeEventListener('mouseleave', onLeave); window.removeEventListener('lp:done', onDone); };
   }, []);
 
+  // Modal-hygiene: Escape lukker, bakgrunnen låses mot scroll, og fokus
+  // flyttes inn i dialogen. Uten dette kunne tastaturbrukere «scrolle»
+  // en side de ikke ser, og skjermlesere fikk aldri beskjed om dialogen.
+  useEffect(() => {
+    if (!open) return undefined;
+    const onKey = (e) => { if (e.key === 'Escape') setOpen(false); };
+    document.addEventListener('keydown', onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const t = setTimeout(() => { try { ctaRef.current?.focus(); } catch (e) { /* fokus er best-effort */ } }, 40);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prevOverflow;
+      clearTimeout(t);
+    };
+  }, [open]);
+
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-[120] flex items-center justify-center p-5" role="dialog" aria-modal="true">
+    <div className="fixed inset-0 z-[120] flex items-center justify-center p-5" role="dialog" aria-modal="true" aria-labelledby="lp-exit-title">
       <div className="absolute inset-0 bg-black/45 backdrop-blur-[2px]" onClick={() => setOpen(false)} />
       <div className="relative w-full max-w-[440px] rounded-[24px] bg-white shadow-[0_60px_140px_-40px_rgba(0,0,0,0.5)] p-8 text-center">
         <button onClick={() => setOpen(false)} aria-label="Lukk"
@@ -206,9 +269,10 @@ export function ExitIntent({ headline = 'Vent — vil du vite hva boligen din ka
         <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl" style={{ background: '#f3ebff' }}>
           <Clock className="w-5 h-5" style={{ color: '#AE68E4' }} />
         </span>
-        <p className="font-heading font-bold text-[24px] leading-tight text-[#0a0a0a] mt-4">{headline}</p>
-        <p className="text-[#888] text-[14.5px] mt-2.5 leading-relaxed">{body}</p>
+        <p id="lp-exit-title" className="font-heading font-bold text-[24px] leading-tight text-[#0a0a0a] mt-4">{headline}</p>
+        <p className="text-[#6b6b6b] text-[14.5px] mt-2.5 leading-relaxed">{body}</p>
         <button
+          ref={ctaRef}
           onClick={() => { setOpen(false); if (onCta) onCta(); }}
           className="group mt-6 w-full h-[52px] rounded-full bg-[#0a0a0a] text-white font-semibold text-[15px] flex items-center justify-center gap-2 transition-all duration-200 hover:shadow-[0_8px_24px_rgba(0,0,0,0.2)] active:scale-[0.98]"
         >
@@ -217,7 +281,7 @@ export function ExitIntent({ headline = 'Vent — vil du vite hva boligen din ka
         <a href={`tel:${site.phoneHref}`} className="mt-3 inline-flex items-center gap-2 text-[14px] font-medium text-[#0a0a0a] hover:text-[#a463e8] transition-colors">
           <Phone className="w-4 h-4" /> …eller ring oss: {site.phone}
         </a>
-        <p className="mt-4 text-[12px] text-[#999] inline-flex items-center gap-1.5 justify-center">
+        <p className="mt-4 text-[12px] text-[#6f6f6f] inline-flex items-center gap-1.5 justify-center">
           <ShieldCheck className="w-3.5 h-3.5 text-[#18794E]" /> Uforpliktende · 0 kr oppstart · Svar innen 24 t
         </p>
       </div>

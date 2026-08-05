@@ -86,8 +86,8 @@ export default function Footer({ org }: { org?: { company_name?: string; org_num
             <img src="/logo-light.svg" alt="DigiHome" className="h-[26px] w-auto" />
             <p className="text-[14px] text-white/55 leading-relaxed mt-4 max-w-[28ch]">Smartere utleieadministrasjon med en hybridløsning av korttids- og langtidsutleie.</p>
             <div className="mt-6 space-y-2">
-              <a href={`mailto:${email}`} className="block text-[13px] text-white/50 hover:text-white/60 transition-colors">{email}</a>
-              <a href={`tel:${phone.replace(/\s/g, '')}`} className="block text-[13px] text-white/50 hover:text-white/60 transition-colors">{phone}</a>
+              <a href={`mailto:${email}`} className="block py-0.5 text-[13px] text-white/50 hover:text-white/60 transition-colors">{email}</a>
+              <a href={`tel:${phone.replace(/\s/g, '')}`} className="block py-0.5 text-[13px] text-white/50 hover:text-white/60 transition-colors">{phone}</a>
               <p className="text-[12px] text-white/55 mt-3">{name} · Org.nr {orgNr}</p>
               <p className="text-[12px] text-white/55">{addr}</p>
             </div>
@@ -106,7 +106,7 @@ export default function Footer({ org }: { org?: { company_name?: string; org_num
           {cols.map((c: any) => (
             <div key={c.title}>
               <h2 className="text-[12px] font-semibold text-white/60 uppercase tracking-[0.15em] mb-5">{c.title}</h2>
-              <ul className="space-y-3">{c.links.map((l: any) => (<li key={l.l}><Link href={l.h} className="text-[14px] text-white/50 hover:text-white/70 transition-colors duration-200">{l.l}</Link></li>))}</ul>
+              <ul className="space-y-3">{c.links.map((l: any) => (<li key={l.l}><Link href={l.h} className="inline-block py-1 -my-1 text-[14px] text-white/50 hover:text-white/70 transition-colors duration-200">{l.l}</Link></li>))}</ul>
             </div>
           ))}
         </div>

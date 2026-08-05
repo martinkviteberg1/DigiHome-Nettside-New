@@ -54,7 +54,7 @@ export default function CampaignLanding({ cfg }) {
           <div className="h-[72px] flex items-center justify-between gap-8">
             <img src="/digihome-wordmark-ink.svg" alt="DigiHome" className="h-[26px] w-auto" width={130} height={26} />
             <div className="flex items-center gap-5">
-              <a href={`tel:${site.phoneHref}`} className="inline-flex items-center gap-2 text-[13.5px] font-medium text-[#1f1f1f]/75 hover:text-[#1f1f1f] transition-colors">
+              <a href={`tel:${site.phoneHref}`} className="inline-flex items-center gap-2 py-2.5 -my-2.5 text-[13.5px] font-medium text-[#1f1f1f]/75 hover:text-[#1f1f1f] transition-colors">
                 <Phone className="w-4 h-4" /> <span className="hidden sm:inline">{site.phone}</span>
               </a>
               <button
@@ -110,39 +110,48 @@ export default function CampaignLanding({ cfg }) {
                 </div>
               </Reveal>
 
-              {/* Tillitsrad — kun dokumenterbare partnere */}
+              {/* ── TILLITSSONE ────────────────────────────────────────────
+                  Var tidligere tre løse blokker stablet rett under skjemaet:
+                  et fet tekstpar med logoer, en flex-liste med grønne
+                  sjekkmerker, og en linje med grønn prikk for knapphet. Tre
+                  ulike visuelle språk på rad, med grønt tre ganger — det
+                  konkurrerte med skjemaet i stedet for å støtte det.
+                  Nå: én kortflate, fordelene øverst, avsender og partnere
+                  under en tynn skillelinje. */}
               <Reveal delay={230}>
-                <div className="mt-6 flex items-center justify-between gap-x-6 gap-y-3 flex-wrap">
-                  <div>
-                    <p className="text-[13px] font-semibold text-[#0a0a0a]">Lokalt team i Bergen</p>
-                    <p className="text-[12px] text-[#888] mt-0.5">Personlig oppfølging · svar innen 24 timer</p>
+                <div className="mt-6 rounded-2xl border border-black/[0.07] bg-white/70 backdrop-blur-sm px-5 py-4 sm:px-6 sm:py-5">
+                  <ul className="flex flex-wrap gap-x-5 gap-y-2.5">
+                    {cfg.bullets.map((b, i) => (
+                      <li key={i} className="flex items-center gap-2 text-[13.5px] text-[#4a4a4a]">
+                        <span className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-[#E8F4EE]">
+                          <Check className="h-2.5 w-2.5 text-[#18794E]" strokeWidth={3} />
+                        </span>
+                        {b}
+                      </li>
+                    ))}
+                  </ul>
+
+                  {/* Meta + logoer stables alltid. Forsøk på to kolonner her
+                      ga bare ~210 px til teksten i venstre hero-kolonne, og da
+                      brøt «Svar innen 24 timer» midt i setningen. */}
+                  <div className="mt-4 pt-4 border-t border-black/[0.06] flex flex-col gap-3">
+                    <div className="text-[12.5px] text-[#5f5a53] leading-relaxed">
+                      <p>
+                        <span className="font-semibold text-[#0a0a0a]">Lokalt team i Bergen</span>
+                        <span className="mx-2 text-[#c4bdb2]" aria-hidden>·</span>
+                        Svar innen 24 timer
+                      </p>
+                      {cfg.urgency ? (
+                        <p className="mt-1 flex items-start gap-1.5 text-[#18794E]">
+                          <ShieldCheck className="h-3.5 w-3.5 shrink-0 mt-[2px]" />
+                          <span>{cfg.urgency}</span>
+                        </p>
+                      ) : null}
+                    </div>
+                    <TrustLogos />
                   </div>
-                  <TrustLogos />
                 </div>
               </Reveal>
-
-              {/* Kompakte fordels-punkter */}
-              <Reveal delay={280}>
-                <ul className="mt-5 flex flex-wrap gap-x-5 gap-y-2.5">
-                  {cfg.bullets.map((b, i) => (
-                    <li key={i} className="flex items-center gap-2 text-[13.5px] text-[#555]">
-                      <span className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-[#E8F4EE]">
-                        <Check className="h-2.5 w-2.5 text-[#18794E]" />
-                      </span>
-                      {b}
-                    </li>
-                  ))}
-                </ul>
-              </Reveal>
-
-              {/* Etisk knapphet */}
-              {cfg.urgency ? (
-                <Reveal delay={330}>
-                  <p className="mt-4 inline-flex items-center gap-2 text-[13px] text-[#888]">
-                    <span className="h-1.5 w-1.5 rounded-full bg-[#18794E]" /> {cfg.urgency}
-                  </p>
-                </Reveal>
-              ) : null}
 
               {/* Mobil hero-bilde — samme uttrykk som forsiden */}
               <Reveal delay={360}>
@@ -152,15 +161,15 @@ export default function CampaignLanding({ cfg }) {
                     <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
                     <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between gap-2">
                       <div className="bg-white/95 backdrop-blur-xl rounded-xl px-3.5 py-2.5 shadow-[0_4px_16px_rgba(0,0,0,0.1)]">
-                        <p className="text-[9px] text-[#999] leading-tight">{heroStat.label}</p>
+                        <p className="text-[9px] text-[#6f6f6f] leading-tight">{heroStat.label}</p>
                         <p className="text-[15px] font-heading font-bold text-[#0a0a0a] mt-0.5">{heroStat.value}</p>
                       </div>
                       <div className="bg-white/95 backdrop-blur-xl rounded-xl px-3.5 py-2.5 shadow-[0_4px_16px_rgba(0,0,0,0.1)]">
                         <div className="flex items-center gap-1.5">
                           <div className="w-6 h-6 rounded-full bg-[#f5edfc] flex items-center justify-center">
-                            <svg className="w-3 h-3 text-[#cf97fc]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
+                            <ShieldCheck className="w-3.5 h-3.5 text-[#AE68E4]" strokeWidth={2} />
                           </div>
-                          <span className="text-[11px] font-semibold text-[#0a0a0a]">+30%</span>
+                          <span className="text-[11px] font-semibold text-[#0a0a0a]">0 kr oppstart</span>
                         </div>
                       </div>
                     </div>
@@ -175,10 +184,10 @@ export default function CampaignLanding({ cfg }) {
                 <Reveal delay={120} className="col-span-3">
                   <div className="relative h-full rounded-[20px] overflow-hidden shadow-[0_8px_30px_rgba(0,0,0,0.06)] group">
                     <img src={cfg.image} alt="Utleiebolig i Bergen" fetchPriority="high" className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-[1000ms] ease-out" width={900} height={1125} />
-                    <div className="absolute bottom-4 left-4 right-4 bg-white/95 backdrop-blur-xl rounded-2xl px-5 py-3.5 shadow-[0_4px_20px_rgba(0,0,0,0.1)]">
-                      <div className="flex items-center justify-between gap-3">
+                    <div className="absolute bottom-4 left-4 right-4 xl:right-auto bg-white/95 backdrop-blur-xl rounded-2xl px-5 py-3.5 shadow-[0_4px_20px_rgba(0,0,0,0.1)]">
+                      <div className="flex items-center justify-between gap-5">
                         <div className="min-w-0">
-                          <p className="text-[10px] text-[#999] leading-tight">{heroStat.label}</p>
+                          <p className="text-[10px] text-[#6f6f6f] leading-tight">{heroStat.label}</p>
                           <p className="text-[17px] font-heading font-bold text-[#0a0a0a] mt-1 whitespace-nowrap">{heroStat.value}</p>
                         </div>
                         <div className="w-9 h-9 rounded-full bg-[#f5edfc] flex items-center justify-center shrink-0">
@@ -214,7 +223,7 @@ export default function CampaignLanding({ cfg }) {
       {/* ------------------------ Kanal-stripe ------------------------ */}
       <section className="bg-white border-y border-[#eee]">
         <div className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16 py-7 flex flex-col sm:flex-row items-center justify-center gap-5 sm:gap-12">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#aaa]">Vi annonserer der leietakerne leter</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#6f6a64]">Vi annonserer der leietakerne leter</p>
           <div className="flex items-center gap-8 sm:gap-10">
             {COMMON_CHANNELS.map((c, i) => (
               <img key={i} src={c.src} alt={c.alt} style={{ height: c.h }} loading="lazy" className="w-auto object-contain opacity-55 grayscale hover:grayscale-0 hover:opacity-100 transition-all" />
@@ -225,12 +234,12 @@ export default function CampaignLanding({ cfg }) {
 
       {/* ------------------- Sammenligningstabell (kun m/ cfg.comparison) ------------------- */}
       {cfg.comparison ? (
-        <section className="py-20 sm:py-28" style={{ background: '#fdfcfb' }}>
+        <section className="py-14 sm:py-24" style={{ background: '#fdfcfb' }}>
           <div className="max-w-[1000px] mx-auto px-6 sm:px-10 w-full">
             <Reveal className="text-center max-w-[640px] mx-auto">
               <p className="text-[13px] font-semibold uppercase tracking-[0.15em]" style={{ color: '#9333EA' }}>{cfg.comparison.eyebrow || 'Se forskjellen'}</p>
               <h2 className="font-heading font-bold text-[30px] sm:text-[42px] tracking-[-0.03em] leading-[1.1] text-[#0a0a0a] mt-3">{cfg.comparison.title}</h2>
-              <p className="text-[16px] text-[#888] mt-4 leading-[1.75]">{cfg.comparison.intro}</p>
+              <p className="text-[16px] text-[#6b6b6b] mt-4 leading-[1.75]">{cfg.comparison.intro}</p>
             </Reveal>
             <Reveal delay={120}>
               <div className="mt-10 overflow-hidden rounded-2xl border border-[#eee] bg-white shadow-[0_8px_30px_rgba(0,0,0,0.05)]">
@@ -242,7 +251,7 @@ export default function CampaignLanding({ cfg }) {
                     <p className="text-[10.5px] sm:text-[11px] text-[#d298ff] mt-0.5 uppercase tracking-[0.12em] font-semibold">Anbefalt</p>
                   </div>
                   <div className="px-3 sm:px-6 py-4 text-center">
-                    <p className="font-heading font-semibold text-[14px] sm:text-[16px] text-[#888] leading-tight">{cfg.comparison.them}</p>
+                    <p className="font-heading font-semibold text-[14px] sm:text-[16px] text-[#6b6b6b] leading-tight">{cfg.comparison.them}</p>
                   </div>
                 </div>
                 {/* Rader */}
@@ -250,7 +259,7 @@ export default function CampaignLanding({ cfg }) {
                   const cell = (v, us) => {
                     if (v === true) return (
                       <span className={`inline-flex h-6 w-6 items-center justify-center rounded-full ${us ? 'bg-[#E8F4EE]' : 'bg-[#f5f3f0]'}`}>
-                        <Check className={`h-3.5 w-3.5 ${us ? 'text-[#18794E]' : 'text-[#999]'}`} />
+                        <Check className={`h-3.5 w-3.5 ${us ? 'text-[#18794E]' : 'text-[#6f6f6f]'}`} />
                       </span>
                     );
                     if (v === false) return (
@@ -259,28 +268,28 @@ export default function CampaignLanding({ cfg }) {
                       </span>
                     );
                     if (v === 'Varierer') return (
-                      <span className="inline-flex items-center gap-1 text-[13px] text-[#999]"><Minus className="h-3.5 w-3.5" /> Varierer</span>
+                      <span className="inline-flex items-center gap-1 text-[13px] text-[#6f6f6f]"><Minus className="h-3.5 w-3.5" /> Varierer</span>
                     );
-                    return <span className={`text-[13px] sm:text-[14.5px] leading-snug ${us ? 'font-bold text-[#0a0a0a]' : 'text-[#888]'}`}>{v}</span>;
+                    return <span className={`text-[12.5px] sm:text-[14.5px] leading-snug ${us ? 'font-bold text-[#0a0a0a]' : 'text-[#6b6b6b]'}`}>{v}</span>;
                   };
                   return (
                     <div key={i} className={`grid grid-cols-[1.15fr_1fr_1fr] sm:grid-cols-[1.4fr_1fr_1fr] items-center ${i % 2 ? 'bg-[#fafafa]' : ''} ${i < cfg.comparison.rows.length - 1 ? 'border-b border-[#f0f0f0]' : ''}`}>
-                      <div className="px-4 sm:px-6 py-3.5 text-[13px] sm:text-[14.5px] font-medium text-[#555] leading-snug">{r.label}</div>
-                      <div className="px-3 sm:px-6 py-3.5 text-center bg-[#faf7ff]">{cell(r.us, true)}</div>
-                      <div className="px-3 sm:px-6 py-3.5 text-center">{cell(r.them, false)}</div>
+                      <div className="px-3.5 sm:px-6 py-3 sm:py-3.5 text-[12.5px] sm:text-[14.5px] font-medium text-[#555] leading-snug">{r.label}</div>
+                      <div className="px-2.5 sm:px-6 py-3 sm:py-3.5 text-center bg-[#faf7ff]">{cell(r.us, true)}</div>
+                      <div className="px-2.5 sm:px-6 py-3 sm:py-3.5 text-center">{cell(r.them, false)}</div>
                     </div>
                   );
                 })}
               </div>
             </Reveal>
             {cfg.comparison.footnote ? (
-              <p className="mt-4 text-[12px] text-[#aaa] text-center max-w-[70ch] mx-auto leading-relaxed">{cfg.comparison.footnote} Se alltid leverandørens gjeldende prisliste og vilkår.</p>
+              <p className="mt-4 text-[12px] text-[#6f6a64] text-center max-w-[70ch] mx-auto leading-relaxed">{cfg.comparison.footnote} Se alltid leverandørens gjeldende prisliste og vilkår.</p>
             ) : null}
             <Reveal delay={220} className="text-center">
               <button onClick={scrollToForm} className="group mt-8 inline-flex items-center gap-2 h-[50px] rounded-full bg-[#0a0a0a] text-white px-8 font-semibold text-[14px] transition-all duration-200 hover:shadow-[0_8px_24px_rgba(0,0,0,0.18)] active:scale-[0.97]">
                 {cfg.cta || 'Se hva du sparer'} <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
               </button>
-              <p className="mt-3.5 text-[12.5px] text-[#999] inline-flex items-center gap-1.5 justify-center w-full">
+              <p className="mt-3.5 text-[12.5px] text-[#6f6f6f] inline-flex items-center gap-1.5 justify-center w-full">
                 <ShieldCheck className="w-3.5 h-3.5 text-[#18794E]" /> Uforpliktende · 0 kr oppstart · Svar innen 24 t
               </p>
             </Reveal>
@@ -288,14 +297,16 @@ export default function CampaignLanding({ cfg }) {
         </section>
       ) : null}
 
-      {/* --------------------------- Dokumenterte nøkkelpunkter --------------------------- */}
-      <section className="bg-white py-16 sm:py-20">
+      {/* --------------------------- Dokumenterte nøkkelpunkter ---------------------------
+          Mobil: tre kolonner i stedet for tre stablede rader. Stablet ga ~340 px
+          tom høyde brukeren måtte scrolle gjennom rett etter heroen. */}
+      <section className="bg-white py-12 sm:py-20">
         <div className="max-w-[1000px] mx-auto px-6 sm:px-10">
-          <div className="grid sm:grid-cols-3 gap-8 text-center">
-            {[['0 kr', 'oppstart'], ['24 t', 'maksimal første svartid'], ['Bergen', 'lokalt forvalterteam']].map(([value, label], i) => (
-              <Reveal key={value} delay={i * 80} className={i < 2 ? 'sm:border-r sm:border-[#eee]' : ''}>
-                <p className="font-heading font-bold text-[34px] sm:text-[42px] text-[#0a0a0a] leading-none tracking-[-0.04em]">{value}</p>
-                <p className="text-[13px] text-[#888] mt-2">{label}</p>
+          <div className="grid grid-cols-3 gap-3 sm:gap-8 text-center">
+            {[['0 kr', 'oppstart'], ['24 t', 'maks svartid'], ['Bergen', 'lokalt team']].map(([value, label], i) => (
+              <Reveal key={value} delay={i * 80} className={i < 2 ? 'border-r border-[#eee]' : ''}>
+                <p className="font-heading font-bold text-[23px] sm:text-[38px] lg:text-[42px] text-[#0a0a0a] leading-none tracking-[-0.04em]">{value}</p>
+                <p className="text-[11.5px] sm:text-[13px] text-[#6b6b6b] mt-1.5 sm:mt-2 leading-snug">{label}</p>
               </Reveal>
             ))}
           </div>
@@ -303,7 +314,7 @@ export default function CampaignLanding({ cfg }) {
       </section>
 
       {/* ----------------------- Inntekts-bevis + kalkulator ----------------------- */}
-      <section className="py-24 sm:py-32" style={{ background: '#fdfcfb' }}>
+      <section className="py-16 sm:py-24 lg:py-32" style={{ background: '#fdfcfb' }}>
         <div className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16 grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
           <Reveal>
             <div>
@@ -334,12 +345,12 @@ export default function CampaignLanding({ cfg }) {
       </section>
 
       {/* --------------------------- Slik fungerer det (root-DNA) --------------------------- */}
-      <section className="bg-white py-24 sm:py-32">
+      <section className="bg-white py-16 sm:py-24 lg:py-32">
         <div className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16">
           <Reveal className="text-center max-w-[640px] mx-auto mb-14">
             <p className="text-[13px] font-semibold uppercase tracking-[0.15em]" style={{ color: '#9333EA' }}>Slik fungerer det</p>
             <h2 className="font-heading font-bold text-[30px] sm:text-[42px] tracking-[-0.03em] leading-[1.1] text-[#0a0a0a] mt-3">Fra adresse til inntekt — i tre steg</h2>
-            <p className="text-[16px] text-[#888] mt-4 leading-relaxed max-w-[440px] mx-auto">Tre steg. Null stress. Vi håndterer alt — du nyter inntekten.</p>
+            <p className="text-[16px] text-[#6b6b6b] mt-4 leading-relaxed max-w-[440px] mx-auto">Tre steg. Null stress. Vi håndterer alt — du nyter inntekten.</p>
           </Reveal>
           <div className="grid md:grid-cols-3 gap-5">
             {COMMON_STEPS.map((s, i) => {
@@ -352,7 +363,7 @@ export default function CampaignLanding({ cfg }) {
                       <Icon className="w-5 h-5" style={{ color: '#AE68E4' }} strokeWidth={1.5} />
                     </div>
                     <h3 className="font-heading font-bold text-[17px] text-[#222] mb-2">{s.t}</h3>
-                    <p className="text-[14px] text-[#888] leading-[1.65]">{s.d}</p>
+                    <p className="text-[14px] text-[#6b6b6b] leading-[1.65]">{s.d}</p>
                   </div>
                 </Reveal>
               );
@@ -362,7 +373,7 @@ export default function CampaignLanding({ cfg }) {
       </section>
 
       {/* ----------------------------- Fordeler ----------------------------- */}
-      <section className="py-20 sm:py-28" style={{ background: '#fdfcfb' }}>
+      <section className="py-14 sm:py-24" style={{ background: '#fdfcfb' }}>
         <div className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16 grid sm:grid-cols-3 gap-5">
           {benefits.map((c, i) => (
             <Reveal key={i} delay={i * 100}>
@@ -371,7 +382,7 @@ export default function CampaignLanding({ cfg }) {
                   <c.icon className="w-5 h-5" style={{ color: '#AE68E4' }} strokeWidth={1.5} />
                 </span>
                 <h3 className="font-heading font-bold text-[17px] text-[#222] mt-5 mb-2">{c.t}</h3>
-                <p className="text-[14px] text-[#888] leading-[1.65]">{c.b}</p>
+                <p className="text-[14px] text-[#6b6b6b] leading-[1.65]">{c.b}</p>
               </div>
             </Reveal>
           ))}
@@ -379,7 +390,7 @@ export default function CampaignLanding({ cfg }) {
       </section>
 
       {/* --------------------------- Kundehistorier (root-DNA) --------------------------- */}
-      <section className="bg-white py-24 sm:py-32">
+      <section className="bg-white py-16 sm:py-24 lg:py-32">
         <div className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16">
           <Reveal>
             <h2 className="font-heading font-bold text-[30px] sm:text-[42px] tracking-[-0.03em] leading-[1.08] text-[#0a0a0a] mb-14">Hva utleiere i Bergen sier</h2>
@@ -394,7 +405,7 @@ export default function CampaignLanding({ cfg }) {
                     <InitialsAvatar name={t.name} index={i} size={40} />
                     <div>
                       <p className="text-[14px] font-semibold text-[#0a0a0a]">{t.name}</p>
-                      <p className="text-[12px] text-[#aaa]">Eiendomseier, {t.area}, Bergen</p>
+                      <p className="text-[12px] text-[#6f6a64]">Eiendomseier, {t.area}, Bergen</p>
                     </div>
                   </figcaption>
                 </figure>
@@ -408,7 +419,7 @@ export default function CampaignLanding({ cfg }) {
       <section className="bg-[#0a0a0a]">
         <div className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16">
           <Reveal>
-            <div className="py-24 sm:py-32 grid lg:grid-cols-2 gap-10 items-center">
+            <div className="py-16 sm:py-24 lg:py-32 grid lg:grid-cols-2 gap-10 items-center">
               <div>
                 <h2 className="font-heading font-bold text-[32px] sm:text-[44px] lg:text-[50px] tracking-[-0.03em] leading-[1.08] text-white">
                   Se hva boligen din kan tjene — gratis
@@ -426,7 +437,7 @@ export default function CampaignLanding({ cfg }) {
                     <Phone className="w-4 h-4" /> Ring oss
                   </a>
                 </div>
-                <div className="mt-8 flex items-center gap-5 text-[12.5px] text-white/40 flex-wrap lg:justify-end">
+                <div className="mt-8 flex items-center gap-5 text-[12.5px] text-white/60 flex-wrap lg:justify-end">
                   <span className="inline-flex items-center gap-1.5"><Home className="w-3.5 h-3.5" /> Lokalt team i Bergen</span>
                   <span className="inline-flex items-center gap-1.5"><ShieldCheck className="w-3.5 h-3.5" /> Trygt og uforpliktende</span>
                   <span className="inline-flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> Svar innen 24 t</span>
@@ -438,7 +449,7 @@ export default function CampaignLanding({ cfg }) {
       </section>
 
       {/* --------------------------------- FAQ (root-DNA) --------------------------------- */}
-      <section className="bg-white py-24 sm:py-32">
+      <section className="bg-white py-16 sm:py-24 lg:py-32">
         <div className="max-w-[820px] mx-auto px-6 sm:px-10 w-full">
           <Reveal className="text-center mb-12">
             <p className="text-[12px] font-semibold uppercase tracking-[0.14em] text-[#9b6cc4]">Ofte stilte spørsmål</p>
@@ -449,15 +460,20 @@ export default function CampaignLanding({ cfg }) {
               const open = openFaq === i;
               return (
                 <Reveal key={i} delay={i * 50} className="border-b border-[#eee]">
-                  <button onClick={() => setOpenFaq(open ? -1 : i)} className="w-full flex items-center justify-between gap-4 text-left py-5">
+                  <button
+                    onClick={() => setOpenFaq(open ? -1 : i)}
+                    aria-expanded={open}
+                    aria-controls={`lp-faq-panel-${i}`}
+                    className="w-full flex items-center justify-between gap-4 text-left py-5 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#AE68E4]/40"
+                  >
                     <h3 className="font-heading text-[16px] sm:text-[18px] font-semibold text-[#0a0a0a] leading-snug">{f.q}</h3>
                     <span className={`w-8 h-8 rounded-full bg-[#f5f0fb] flex items-center justify-center shrink-0 transition-transform duration-300 ${open ? 'rotate-180' : ''}`}>
                       <ChevronDown className="w-4 h-4 text-[#9b6cc4]" strokeWidth={2.4} />
                     </span>
                   </button>
-                  <div className="grid transition-all duration-300 ease-out" style={{ gridTemplateRows: open ? '1fr' : '0fr' }}>
+                  <div id={`lp-faq-panel-${i}`} role="region" className="grid transition-all duration-300 ease-out" style={{ gridTemplateRows: open ? '1fr' : '0fr' }}>
                     <div className="overflow-hidden">
-                      <p className="text-[15px] text-[#555] leading-[1.8] pb-6 pr-10">{f.a}</p>
+                      <p className="text-[15px] text-[#555] leading-[1.8] pb-6 sm:pr-10">{f.a}</p>
                     </div>
                   </div>
                 </Reveal>
@@ -465,7 +481,7 @@ export default function CampaignLanding({ cfg }) {
             })}
           </div>
           <div className="text-center mt-12">
-            <p className="text-[14px] text-[#888]">Har du flere spørsmål?</p>
+            <p className="text-[14px] text-[#6b6b6b]">Har du flere spørsmål?</p>
             <button onClick={scrollToForm} className="inline-flex items-center gap-2 mt-3 h-11 px-6 rounded-full bg-[#0a0a0a] text-white text-[14px] font-semibold active:scale-[0.98] transition-transform">
               Få gratis vurdering
             </button>
@@ -473,13 +489,32 @@ export default function CampaignLanding({ cfg }) {
         </div>
       </section>
 
-      {/* -------------------------------- Footer -------------------------------- */}
+      {/* -------------------------------- Footer --------------------------------
+          Tre endringer her:
+           • Kontrast: teksten var #aaa på hvitt = 2,3:1, altså under WCAG AA
+             (4,5:1). Nå #716b63 ≈ 4,6:1.
+           • Forbehold: flere av disse sidene har «Opptil 30 % høyere
+             leieinntekt» som H1. Vi er nøye med å kalle det et potensial og
+             ikke en garanti overalt ellers (guider, /metode, llms.txt) — da
+             skal det også stå der påstanden faktisk møter betalt trafikk.
+           • Personvernlenke, som annonseplattformene forventer på
+             landingssider som samler inn kontaktopplysninger. */}
       <footer className="mt-auto bg-white border-t border-[#eee]">
-        <div className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16 py-8 flex flex-col sm:flex-row items-center justify-between gap-3 text-[13px] text-[#aaa]">
-          <span>© {new Date().getFullYear()} {site.legalName} · Org.nr {site.orgNr}</span>
-          <div className="flex items-center gap-5">
-            <span className="inline-flex items-center gap-1.5"><ShieldCheck className="w-3.5 h-3.5 text-[#18794E]" /> Identitet sikret med BankID</span>
-            <a href={`tel:${site.phoneHref}`} className="text-[#1f1f1f] hover:text-[#a463e8] transition-colors font-medium">{site.phone}</a>
+        <div className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16 pt-8 pb-28 lg:pb-8">
+          <p className="text-[12.5px] text-[#6b665f] leading-relaxed max-w-[86ch]">
+            Inntektsanslag viser potensial for egnede boliger og er ikke en garanti. Faktisk resultat avhenger av bolig,
+            område, sesong, kostnader og hvilke utleiemodeller som er lovlige for din eierform.{' '}
+            <a href="/metode" className="text-[#7c3aed] underline decoration-[#d9c9f5] underline-offset-2 hover:decoration-[#7c3aed] transition-colors">
+              Se forutsetninger og metode
+            </a>.
+          </p>
+          <div className="mt-5 pt-5 border-t border-[#f0eeea] flex flex-col sm:flex-row items-center justify-between gap-x-6 gap-y-3 text-[13px] text-[#716b63]">
+            <span>© {new Date().getFullYear()} {site.legalName} · Org.nr {site.orgNr}</span>
+            <div className="flex items-center gap-x-5 gap-y-2 flex-wrap justify-center">
+              <span className="inline-flex items-center gap-1.5"><ShieldCheck className="w-3.5 h-3.5 text-[#18794E]" /> Identitet sikret med BankID</span>
+              <a href="/personvern" className="py-1.5 -my-1.5 hover:text-[#1f1f1f] transition-colors">Personvern</a>
+              <a href={`tel:${site.phoneHref}`} className="py-1.5 -my-1.5 text-[#1f1f1f] hover:text-[#a463e8] transition-colors font-medium">{site.phone}</a>
+            </div>
           </div>
         </div>
       </footer>

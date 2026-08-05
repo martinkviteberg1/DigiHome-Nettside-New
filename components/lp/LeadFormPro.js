@@ -15,7 +15,9 @@ import { useAddressAutocomplete } from '@/components/lp/lp-shared';
 const PHONE_RE = /^(?:\+47)?\s?(?:\d\s?){8}$/;
 const EMAIL_RE = /^\S+@\S+\.\S+$/;
 
-const inputBase = 'w-full h-12 px-4 rounded-xl border bg-white outline-none text-[15px] placeholder:text-[#737373] transition-all duration-300';
+// 16 px på mobil er ikke en smakssak: iOS Safari zoomer inn på et felt med
+// mindre fontstørrelse ved fokus, og da hopper hele landingssiden i skjemaet.
+const inputBase = 'w-full h-12 px-4 rounded-xl border bg-white outline-none text-[16px] sm:text-[15px] placeholder:text-[#737373] transition-all duration-300';
 const inputOk = 'border-[#e5e5e5] focus:border-[#cf97fc]/60 focus:shadow-[0_0_0_3px_rgba(207,151,252,0.16)]';
 const inputErr = 'border-rose-300 shadow-[0_0_0_3px_rgba(244,63,94,0.07)]';
 
@@ -210,13 +212,13 @@ export default function LeadFormPro({ cfg }) {
         onFocus={handleStart}
         className="relative rounded-2xl bg-white border border-[#eee] shadow-[0_12px_40px_rgba(0,0,0,0.07)] p-5 sm:p-6"
       >
-        <div className="flex items-center justify-between gap-3">
-          <p className="font-heading font-bold text-[19px] text-[#0a0a0a] leading-tight">{cfg.formTitle || 'Se hva boligen din kan tjene'}</p>
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+          <p className="basis-full sm:basis-auto font-heading font-bold text-[19px] sm:text-[20px] text-[#0a0a0a] leading-tight">{cfg.formTitle || 'Se hva boligen din kan tjene'}</p>
           <span className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-[#E8F4EE] text-[#18794E] text-[11px] font-semibold px-2.5 py-1">
             <span className="h-1.5 w-1.5 rounded-full bg-[#18794E] animate-pulse" /> Svar innen 24 t
           </span>
         </div>
-        <p className="text-[13.5px] text-[#888] mt-1">Gratis og uforpliktende — det tar under ett minutt.</p>
+        <p className="text-[13.5px] text-[#6b6b6b] mt-1.5">Gratis og uforpliktende — det tar under ett minutt.</p>
 
         <div className="relative mt-4">
           <div className="flex items-center rounded-2xl bg-white border pl-4 pr-1.5 py-1.5 transition-all duration-300 border-[#e5e5e5] shadow-[0_2px_12px_rgba(0,0,0,0.04)] focus-within:border-[#cf97fc]/60 focus-within:shadow-[0_0_0_3px_rgba(207,151,252,0.16),0_12px_40px_rgba(0,0,0,0.08)] hover:shadow-[0_6px_24px_rgba(0,0,0,0.07)]">
@@ -235,7 +237,7 @@ export default function LeadFormPro({ cfg }) {
               placeholder="Adressen til boligen din"
               autoComplete="off"
               enterKeyHint="go"
-              className="flex-1 min-w-0 h-12 px-3 bg-transparent outline-none text-[15px] placeholder:text-[#737373]"
+              className="flex-1 min-w-0 h-12 px-3 bg-transparent outline-none text-[16px] sm:text-[15px] placeholder:text-[#737373]"
             />
             <button
               type="button"
@@ -246,7 +248,7 @@ export default function LeadFormPro({ cfg }) {
               {addressResolving ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Bekrefter</> : <>{cfg.cta || 'Få gratis vurdering'} <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" /></>}
             </button>
           </div>
-          {addrHint && <p className={`text-[12px] mt-1.5 ${addrSel ? 'text-[#18794E]' : 'text-amber-700'}`} data-testid="lp-address-hint">{addrHint}</p>}
+          {addrHint && <p role="status" aria-live="polite" className={`text-[12px] mt-1.5 ${addrSel ? 'text-[#18794E]' : 'text-amber-700'}`} data-testid="lp-address-hint">{addrHint}</p>}
           {ac.open && ac.suggestions.length > 0 && (
             <ul className="absolute z-30 mt-1.5 w-full rounded-xl border border-[#eee] bg-white shadow-[0_12px_40px_rgba(0,0,0,0.10)] overflow-hidden">
               {ac.suggestions.map((s, i) => (
@@ -254,7 +256,7 @@ export default function LeadFormPro({ cfg }) {
                   <button type="button" onClick={() => chooseSuggestion(s)}
                     className="w-full text-left px-4 py-2.5 text-[14px] hover:bg-[#fafafa] transition-colors">
                     <span className="text-[#0a0a0a]">{s.text || s.label}</span>
-                    {s.sub ? <span className="text-[#999]"> · {s.sub}</span> : null}
+                    {s.sub ? <span className="text-[#6f6f6f]"> · {s.sub}</span> : null}
                   </button>
                 </li>
               ))}
@@ -271,9 +273,9 @@ export default function LeadFormPro({ cfg }) {
           {addressResolving ? <><Loader2 className="w-4 h-4 animate-spin" /> Bekrefter adressen</> : <>{cfg.cta || 'Få gratis vurdering'} <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" /></>}
         </button>
 
-        <div className="mt-3.5 flex items-center gap-4 text-[12px] text-[#999]">
+        <div className="mt-3.5 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[12px] text-[#6f6f6f]">
           <span className="inline-flex items-center gap-1.5"><ShieldCheck className="w-3.5 h-3.5 text-[#18794E]" /> Gratis og uforpliktende</span>
-          <span className="inline-flex items-center gap-1.5"><Wallet className="w-3.5 h-3.5 text-[#18794E]" /> Svar innen 24 t</span>
+          <span className="inline-flex items-center gap-1.5"><Wallet className="w-3.5 h-3.5 text-[#18794E]" /> 0 kr oppstart</span>
         </div>
       </div>
     );
@@ -289,7 +291,7 @@ export default function LeadFormPro({ cfg }) {
       <div>
         <div className="flex items-center justify-between gap-3">
           <p className="font-heading font-bold text-[19px] text-[#0a0a0a] leading-tight">Nesten ferdig — hvor når vi deg?</p>
-          <span className="shrink-0 text-[11px] font-semibold text-[#888]">Steg 2 av 2</span>
+          <span className="shrink-0 text-[11px] font-semibold text-[#6b6b6b]">Steg 2 av 2</span>
         </div>
         <div className="mt-2.5 h-1 rounded-full bg-[#f0f0f0] overflow-hidden">
           <div className="h-full w-[85%] rounded-full bg-gradient-to-r from-[#AE68E4] to-[#d298ff] transition-all" />
@@ -301,11 +303,11 @@ export default function LeadFormPro({ cfg }) {
           className="inline-flex max-w-full items-center gap-2 rounded-full bg-[#f5f3f0] px-3.5 py-1.5 text-[13px] text-[#555] hover:bg-[#edeae6] transition-colors">
           <MapPin className="w-3.5 h-3.5 text-[#AE68E4] shrink-0" />
           <span className="truncate">{ac.query.trim()}</span>
-          <span className="text-[#888] underline underline-offset-2 shrink-0">endre</span>
+          <span className="text-[#6b6b6b] underline underline-offset-2 shrink-0">endre</span>
         </button>
       ) : (
         <button type="button" onClick={() => setStep(1)}
-          className="inline-flex items-center gap-1.5 text-[13px] text-[#888] hover:text-[#0a0a0a] transition-colors">
+          className="inline-flex items-center gap-1.5 text-[13px] text-[#6b6b6b] hover:text-[#0a0a0a] transition-colors">
           <ArrowLeft className="w-3.5 h-3.5" /> Legg til adresse (valgfritt)
         </button>
       )}
@@ -335,10 +337,17 @@ export default function LeadFormPro({ cfg }) {
         className="group w-full h-[52px] rounded-full bg-[#0a0a0a] text-white font-semibold text-[15px] flex items-center justify-center gap-2 transition-all duration-200 hover:shadow-[0_8px_24px_rgba(0,0,0,0.2)] active:scale-[0.98] disabled:opacity-60">
         {status === 'sending' ? <Loader2 className="w-4 h-4 animate-spin" /> : <>Få gratis vurdering <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" /></>}
       </button>
-      <div className="flex items-center justify-center gap-4 text-[12px] text-[#999] pt-0.5 flex-wrap">
+      <div className="flex items-center justify-center gap-4 text-[12px] text-[#6f6f6f] pt-0.5 flex-wrap">
         <span className="inline-flex items-center gap-1.5"><Lock className="w-3.5 h-3.5 text-[#18794E]" /> Vi deler aldri opplysningene dine</span>
         <span className="inline-flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5 text-[#18794E]" /> Svar innen 24 t</span>
       </div>
+      {/* Samtykketekst — annonseplattformene krever et synlig personvernpunkt
+          på skjemaer som samler inn kontaktopplysninger. Lenken åpnes i ny fane
+          så brukeren ikke mister det hen har skrevet. */}
+      <p className="text-[11.5px] text-[#6f6f6f] text-center leading-relaxed">
+        Ved å sende inn samtykker du til at vi kontakter deg om utleie av boligen din. Les{' '}
+        <a href="/personvern" target="_blank" rel="noopener noreferrer" className="underline decoration-[#d9c9f5] underline-offset-2 hover:text-[#0a0a0a] transition-colors">personvernerklæringen</a>.
+      </p>
     </form>
   );
 }

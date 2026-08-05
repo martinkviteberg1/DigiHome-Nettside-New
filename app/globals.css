@@ -454,3 +454,181 @@ html { scroll-behavior: smooth; }
 @media (prefers-reduced-motion: reduce) {
   .dh-pop, .dh-fade, .dh-scale-in, .dh-tab-in { animation: none; opacity: 1; transform: none; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   REDAKSJONELL ARTIKKELTYPOGRAFI  (/nyheter/[slug])
+   Brødteksten kommer fra markdown via lib/markdown.js, så den kan ikke
+   stiles med Tailwind-klasser per element. Reglene under er derfor et
+   avgrenset, navnerommet typografisk system: alt ligger under .dh-prose.
+
+   Mål: 65–75 tegn per linje, tydelig vertikal rytme, og komponenter
+   (tabell, sitat, bilde) som ikke sprenger 390px mobil.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.dh-prose {
+  font-size: 17.5px;
+  line-height: 1.78;
+  color: #3a3a3a;
+  /* Optisk margjustering + hyphens gir jevnere høyrekant på smale skjermer */
+  text-wrap: pretty;
+}
+@media (max-width: 640px) {
+  .dh-prose { font-size: 16.75px; line-height: 1.75; }
+}
+
+.dh-prose > * + * { margin-top: 1.5rem; }
+
+.dh-prose h2 {
+  font-family: var(--font-heading), sans-serif;
+  font-size: clamp(1.4rem, 1.05rem + 1.3vw, 1.85rem);
+  font-weight: 700;
+  letter-spacing: -0.018em;
+  line-height: 1.2;
+  color: #1f1f1f;
+  margin-top: 3.25rem;
+  margin-bottom: 1rem;
+  scroll-margin-top: 6.5rem;
+  text-wrap: balance;
+}
+.dh-prose h3 {
+  font-family: var(--font-heading), sans-serif;
+  font-size: clamp(1.15rem, 1rem + 0.5vw, 1.3rem);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+  color: #1f1f1f;
+  margin-top: 2.25rem;
+  margin-bottom: 0.65rem;
+  scroll-margin-top: 6.5rem;
+}
+.dh-prose h2 + p, .dh-prose h3 + p { margin-top: 0; }
+
+/* Ingressavsnittet: litt større, som i redaksjonell trykksak */
+.dh-prose > p:first-of-type { font-size: 1.04em; color: #333; }
+
+.dh-prose strong { font-weight: 600; color: #1f1f1f; }
+.dh-prose em { font-style: italic; }
+
+.dh-prose a {
+  color: #7c3aed;
+  text-decoration: underline;
+  text-decoration-color: #d9c9f5;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  transition: text-decoration-color 0.15s ease;
+}
+.dh-prose a:hover { text-decoration-color: #7c3aed; }
+
+.dh-prose ul, .dh-prose ol { padding-left: 1.35rem; }
+.dh-prose ul { list-style: none; padding-left: 1.15rem; }
+.dh-prose ul > li { position: relative; padding-left: 0.95rem; }
+.dh-prose ul > li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.72em;
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: #7c3aed;
+}
+.dh-prose ol { list-style: decimal; }
+.dh-prose ol > li::marker { color: #6f6a64; font-variant-numeric: tabular-nums; }
+.dh-prose li + li { margin-top: 0.5rem; }
+.dh-prose li > ul, .dh-prose li > ol { margin-top: 0.5rem; }
+
+.dh-prose blockquote {
+  margin: 2.25rem 0;
+  padding: 0 0 0 1.4rem;
+  border-left: 3px solid #d298ff;
+  font-family: var(--font-heading), sans-serif;
+  font-size: 1.12em;
+  line-height: 1.55;
+  font-style: normal;
+  color: #2a2a2a;
+}
+.dh-prose blockquote p { margin: 0; }
+
+.dh-prose img {
+  width: 100%;
+  height: auto;
+  border-radius: 16px;
+  margin: 2.25rem 0;
+}
+
+.dh-prose hr {
+  border: 0;
+  height: 1px;
+  background: rgba(0, 0, 0, 0.08);
+  margin: 3rem 0;
+}
+
+.dh-prose code {
+  font-size: 0.9em;
+  background: #f4f2ef;
+  padding: 0.15em 0.4em;
+  border-radius: 5px;
+}
+.dh-prose pre {
+  background: #14121b;
+  color: #e9e4f2;
+  padding: 1.1rem 1.25rem;
+  border-radius: 14px;
+  overflow-x: auto;
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+.dh-prose pre code { background: none; padding: 0; }
+
+/* Tabeller: horisontal scroll i stedet for å sprenge layouten på mobil */
+.dh-table-wrap {
+  overflow-x: auto;
+  margin: 2rem 0;
+  border: 1px solid rgba(0, 0, 0, 0.07);
+  border-radius: 14px;
+  -webkit-overflow-scrolling: touch;
+}
+.dh-prose table { width: 100%; border-collapse: collapse; font-size: 15px; }
+.dh-prose thead th {
+  background: #f7f5f2;
+  text-align: left;
+  font-weight: 600;
+  color: #1f1f1f;
+  padding: 0.7rem 0.9rem;
+  white-space: nowrap;
+}
+.dh-prose tbody td { padding: 0.7rem 0.9rem; border-top: 1px solid rgba(0, 0, 0, 0.06); }
+
+/* Ankerhint ved hover på H2 — gir leseren en delbar seksjonslenke */
+@media (min-width: 1024px) {
+  .dh-prose h2.dh-anchor { position: relative; }
+  .dh-prose h2.dh-anchor::before {
+    content: '#';
+    position: absolute;
+    left: -1.35rem;
+    color: #d9c9f5;
+    font-weight: 600;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+  }
+  .dh-prose h2.dh-anchor:hover::before { opacity: 1; }
+}
+
+/* Lesefremdrift øverst på artikkelsider */
+.dh-read-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  z-index: 60;
+  pointer-events: none;
+  background: transparent;
+}
+.dh-read-bar > span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #7c3aed, #d298ff);
+  transform-origin: 0 50%;
+  will-change: transform;
+}

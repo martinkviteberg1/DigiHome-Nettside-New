@@ -53,19 +53,36 @@ export default function GuiderPage() {
         <h1 className="text-[36px] sm:text-[52px] font-bold tracking-[-0.025em] leading-[1.05] max-w-[22ch]" style={{ fontFamily: 'var(--font-heading)' }}>Guider: alt du må vite før du leier ut</h1>
         <p className="text-[#4a4a4a] text-[16px] sm:text-[18px] mt-5 max-w-[62ch] leading-relaxed">Pris og provisjon, depositum, skatt og fradrag, korttidsutleie og lovlig husleieøkning — grundig research, enkelt forklart. Skrevet av teamet som forvalter utleieboliger i Bergen hver dag.</p>
         <p className="text-[13.5px] text-[#716b63] mt-4">{guides.length} guider · oppdatert løpende · kilder oppgitt i hver artikkel</p>
+
+        {/* Hopp til tema — 12 guider fordelt på fire klynger blir en lang
+            mobilside uten en snarvei øverst. */}
+        {groups.length > 1 && (
+          <nav aria-label="Hopp til tema" className="flex flex-wrap gap-2 mt-7">
+            {groups.map((group) => (
+              <a
+                key={group.key}
+                href={`#${group.key}`}
+                className="inline-flex items-center gap-1.5 h-9 px-4 rounded-full bg-white border border-black/[0.09] text-[13.5px] font-medium text-[#55504a] hover:border-[#d9c9f5] hover:text-[#7c3aed] transition-colors"
+              >
+                {group.label}
+                <span className="text-[#7c7568] tabular-nums">{group.items.length}</span>
+              </a>
+            ))}
+          </nav>
+        )}
       </section>
 
       <section className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16 pb-16 lg:pb-24">
         <div className="space-y-14">
           {groups.map((group) => (
-            <div key={group.key}>
+            <div key={group.key} id={group.key} className="scroll-mt-28">
               <div className="mb-5">
                 <h2 className="text-[22px] sm:text-[28px] font-bold tracking-[-0.02em]" style={{ fontFamily: 'var(--font-heading)' }}>{group.label}</h2>
                 {group.intro ? <p className="text-[14.5px] text-[#666] mt-1.5 max-w-[64ch]">{group.intro}</p> : null}
               </div>
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {group.items.map((g) => (
-                  <Link key={g.slug} href={`/guider/${g.slug}`} className="group bg-white rounded-3xl overflow-hidden shadow-[0_8px_36px_-18px_rgba(0,0,0,0.12)] hover:shadow-[0_16px_48px_-20px_rgba(0,0,0,0.2)] transition-shadow flex flex-col">
+                  <Link key={g.slug} href={`/guider/${g.slug}`} className="group bg-white rounded-3xl overflow-hidden border border-black/[0.06] hover:border-[#d9c9f5] shadow-[0_8px_36px_-18px_rgba(0,0,0,0.12)] hover:shadow-[0_16px_48px_-20px_rgba(0,0,0,0.2)] transition-all duration-200 flex flex-col">
                     <div className="relative aspect-[16/9] overflow-hidden">
                       <img src={g.image} alt={g.imageAlt} width={640} height={360} loading="lazy" decoding="async" className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                     </div>

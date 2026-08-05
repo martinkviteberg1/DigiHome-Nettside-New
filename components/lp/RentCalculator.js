@@ -52,10 +52,10 @@ export default function RentCalculator({ onCta }) {
 
       {/* Område */}
       <div className="mt-5">
-        <p className="text-[13px] font-semibold text-[#222] mb-2 inline-flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-[#999]" /> Hvor ligger boligen?</p>
+        <p className="text-[13px] font-semibold text-[#222] mb-2 inline-flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-[#6f6f6f]" /> Hvor ligger boligen?</p>
         <div className="flex flex-wrap gap-2">
           {AREAS.map((a) => (
-            <button key={a.name} type="button" onClick={() => setArea(a.name)}
+            <button key={a.name} type="button" onClick={() => setArea(a.name)} aria-pressed={area === a.name}
               className={`h-9 px-3.5 rounded-full text-[13px] font-medium transition-all duration-200 active:scale-[0.97] ${area === a.name ? 'bg-[#0a0a0a] text-white shadow-[0_4px_12px_rgba(0,0,0,0.18)]' : 'bg-[#f5f3f0] text-[#555] hover:bg-[#edeae6]'}`}>
               {a.name}
             </button>
@@ -65,10 +65,10 @@ export default function RentCalculator({ onCta }) {
 
       {/* Soverom */}
       <div className="mt-5">
-        <p className="text-[13px] font-semibold text-[#222] mb-2 inline-flex items-center gap-1.5"><BedDouble className="w-3.5 h-3.5 text-[#999]" /> Antall soverom</p>
+        <p className="text-[13px] font-semibold text-[#222] mb-2 inline-flex items-center gap-1.5"><BedDouble className="w-3.5 h-3.5 text-[#6f6f6f]" /> Antall soverom</p>
         <div className="grid grid-cols-4 gap-2">
           {[1, 2, 3, 4].map((n) => (
-            <button key={n} type="button" onClick={() => setBedrooms(n)}
+            <button key={n} type="button" onClick={() => setBedrooms(n)} aria-pressed={bedrooms === n} aria-label={`${n === 4 ? '4 eller flere' : n} soverom`}
               className={`h-10 rounded-xl text-[14px] font-semibold transition-all duration-200 active:scale-[0.97] ${bedrooms === n ? 'bg-[#0a0a0a] text-white shadow-[0_4px_12px_rgba(0,0,0,0.18)]' : 'bg-[#f5f3f0] text-[#555] hover:bg-[#edeae6]'}`}>
               {n === 4 ? '4+' : n}
             </button>
@@ -78,15 +78,15 @@ export default function RentCalculator({ onCta }) {
 
       {/* Resultat */}
       <div className="mt-6 rounded-xl bg-[#fafafa] border border-[#eee] p-5">
-        <div className="flex items-center justify-between text-[13px] text-[#888]">
+        <div className="flex items-center justify-between text-[13px] text-[#6b6b6b]">
           <span>Vanlig utleie</span>
           <span className="font-semibold text-[#0a0a0a]">≈ {nok(est.traditional)} kr/mnd</span>
         </div>
         <div className="mt-3 pt-3 border-t border-[#eee] flex items-end justify-between gap-3">
           <div>
-            <p className="text-[11px] uppercase tracking-[0.12em] text-[#999] font-semibold">Med DigiHome</p>
+            <p className="text-[11px] uppercase tracking-[0.12em] text-[#6f6f6f] font-semibold">Med DigiHome</p>
             <p className="font-heading font-bold text-[26px] sm:text-[30px] text-[#0a0a0a] leading-none mt-1.5">
-              {nok(est.low)}–{nok(est.high)} <span className="text-[15px] font-semibold text-[#888]">kr/mnd</span>
+              {nok(est.low)}–{nok(est.high)} <span className="text-[15px] font-semibold text-[#6b6b6b]">kr/mnd</span>
             </p>
           </div>
           <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-[#E8F4EE] text-[#18794E] text-[12px] font-bold px-2.5 py-1">
@@ -99,7 +99,9 @@ export default function RentCalculator({ onCta }) {
         className="group mt-5 w-full h-[52px] rounded-full bg-[#0a0a0a] text-white font-semibold text-[15px] flex items-center justify-center gap-2 transition-all duration-200 hover:shadow-[0_8px_24px_rgba(0,0,0,0.2)] active:scale-[0.98]">
         Få nøyaktig vurdering — gratis <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
       </button>
-      <p className="mt-3 text-[12px] text-[#aaa] text-center leading-relaxed">Estimat basert på markedsdata for Bergen. Du får en konkret vurdering av nettopp din bolig — umiddelbart.</p>
+      <p className="mt-3 text-[12px] text-[#6f6a64] text-center leading-relaxed">
+        Estimat basert på markedsdata for Bergen — et potensial, ikke en garanti. Du får en konkret vurdering av nettopp din bolig innen 24 timer.
+      </p>
     </div>
   );
 }

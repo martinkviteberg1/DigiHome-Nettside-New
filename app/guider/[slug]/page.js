@@ -10,7 +10,8 @@ import { renderRich } from '@/components/site/RichText';
 import { breadcrumbLd, guideArticleLd, howToLd, anchorId, stripMarkup } from '@/lib/seo';
 import { site } from '@/lib/site';
 import { guides, getGuide, relatedGuides, guideCluster } from '@/lib/guides';
-import { Clock, ArrowUpRight, ArrowLeft, Sparkles, CalendarDays, CheckCircle2 } from 'lucide-react';
+import { Clock, ArrowUpRight, ArrowLeft, Sparkles, CalendarDays, CheckCircle2, ShieldCheck } from 'lucide-react';
+import { findAuthorByName, authors as authorRegistry } from '@/lib/authors';
 
 // ---------------------------------------------------------------------------
 // Artikkelmal for guidene.
@@ -58,6 +59,10 @@ export default function GuidePage({ params }) {
   const related = relatedGuides(g);
   const cluster = guideCluster(g);
   const path = `/guider/${g.slug}`;
+  // Byline-identitet hentes fra forfatterregisteret, slik at guider og
+  // nyhetsartikler viser samme person med samme initialer og farge.
+  const author = findAuthorByName(g.author?.name) || authorRegistry['sarah-sleeman'];
+  const updatedLabel = new Date(g.updated).toLocaleDateString('nb-NO', { day: 'numeric', month: 'long', year: 'numeric' });
 
   return (
     <div className="bg-[#fdfcfb] text-[#1f1f1f] min-h-screen">
@@ -66,19 +71,42 @@ export default function GuidePage({ params }) {
       <article className="max-w-[820px] mx-auto px-6 sm:px-10 pt-32 sm:pt-36 pb-16">
         <Link href="/guider" className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#7c3aed] hover:underline mb-6"><ArrowLeft className="w-3.5 h-3.5" /> Alle guider</Link>
 
-        <div className="flex flex-wrap items-center gap-3 mb-4 text-[12.5px] text-[#716b63]">
-          <span className="inline-flex px-2.5 py-1 rounded-full bg-[#f4f0fb] text-[#7c3aed] font-semibold">{g.category}</span>
-          <span className="inline-flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> {g.readMinutes} min lesetid</span>
-          <span className="inline-flex items-center gap-1"><CalendarDays className="w-3.5 h-3.5" /> Oppdatert {new Date(g.updated).toLocaleDateString('nb-NO', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
-
-        <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-[12.5px] text-[#625d57]">
-          <span><strong className="text-[#292621]">Skrevet av:</strong> {g.author?.name || 'Sarah Sleeman'} · {g.author?.role || 'Daglig leder og eiendomsmegler'}</span>
-          {g.reviewer ? <span><strong className="text-[#292621]">Faglig kontroll:</strong> {g.reviewer.name} · {g.reviewer.role}</span> : null}
+        {/* ── HEADER ────────────────────────────────────────────────────────
+            Rekkefølgen var tidligere kategori → lesetid → «Skrevet av» →
+            «Faglig kontroll» → H1, og byline-blokken lå inne i en flex-rad
+            den ikke hørte til. Leseren møtte altså fire linjer metadata før
+            tittelen. Nå: kategori → tittel → byline → kort svar, som på
+            nyhetsartiklene. */}
+        <div>
+          <span className="inline-flex px-3 py-1.5 rounded-full bg-[#f2ecfd] text-[#6d28d9] text-[11px] font-semibold uppercase tracking-[0.11em]">{g.category}</span>
         </div>
 
-        </div>
+        <h1 className="mt-5 text-[32px] sm:text-[44px] font-bold tracking-[-0.025em] leading-[1.08] text-balance" style={{ fontFamily: 'var(--font-heading)' }}>{g.title}</h1>
 
-        <h1 className="text-[32px] sm:text-[44px] font-bold tracking-[-0.025em] leading-[1.08]" style={{ fontFamily: 'var(--font-heading)' }}>{g.title}</h1>
+        <div className="mt-7 pt-6 border-t border-black/[0.07] flex flex-wrap items-center gap-x-5 gap-y-4">
+          <div className="flex items-center gap-3">
+            <div
+              className="w-11 h-11 rounded-full flex items-center justify-center text-white text-[14px] font-bold shrink-0"
+              style={{ background: author.accent, fontFamily: 'var(--font-heading)' }}
+            >
+              {author.initials}
+            </div>
+            <div className="leading-tight">
+              <p className="text-[14.5px] font-semibold text-[#1f1f1f]">{g.author?.name || author.name}</p>
+              <p className="text-[12.5px] text-[#6b665f] mt-0.5">{g.author?.role || author.role}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-x-4 gap-y-1.5 flex-wrap text-[13px] text-[#6b665f]">
+            <span className="inline-flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> {g.readMinutes} min lesetid</span>
+            <span className="inline-flex items-center gap-1.5"><CalendarDays className="w-3.5 h-3.5" /> Oppdatert {updatedLabel}</span>
+          </div>
+        </div>
+        {g.reviewer ? (
+          <p className="mt-3.5 flex items-start gap-1.5 text-[12.5px] text-[#6b665f] leading-relaxed">
+            <ShieldCheck className="w-3.5 h-3.5 text-[#18794E] mt-[2px] shrink-0" />
+            <span><span className="font-semibold text-[#292621]">Faglig kontroll:</span> {g.reviewer.name} · {g.reviewer.role}</span>
+          </p>
+        ) : null}
 
         {/* AEO: direkte, siterbart svar øverst — det AI-motorer (og lesere) vil ha.
             .dh-answer er pekt ut som speakable i Article-schemaet. */}
