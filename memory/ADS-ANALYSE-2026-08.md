@@ -182,3 +182,115 @@ underkreditert, og Google Ads får ikke tellet ring-konverteringer.
 **Regnestykke for B3:** 402 Meta-økter i vinduet. Ved Googles 4,9 % → 20 leads
 (CPL ~485 kr). Forsiktig anslag 3,5 % → 14 leads (CPL ~690 kr). Dagens: 9 leads,
 CPL 1 078 kr.
+
+---
+
+# DEL 2 — UTFØRT 05.08.2026
+
+## Korreksjoner til Del 1
+
+Tre av mine egne funn viste seg å være feil eller for svakt begrunnet. De står her
+fordi et funn som ikke tåller etterprøving er verre enn ingen funn.
+
+**1. «Tilbakemeldingssløyfen er død» — FEIL diagnose, riktig symptom.**
+Feltet heter `googleAdsWon`, ikke `googleOfflineConversion`. Proben min leste et
+felt som ikke finnes og rapporterte «INGEN SPOR». Verifisert med en syntetisk
+gclid: Data Manager-opplastingen returnerte `requestId` — **opplastingen
+fungerer**. 0 konverteringer på «Vunnet utleier» skyldes at ingen vunnet lead
+noensinne har hatt en gclid. Riktig tiltak er derfor klikk-ID-fangst og
+samtykkerate, ikke integrasjonsfeilsøking.
+
+**2. A3 (slå av Audience Network + Threads) — IKKE utført, med vilje.**
+103 kr av 9 705 kr (1,06 %) fordelt på 6 klikk. Å tvinge manuelle plasseringer
+setter en reell begrensning på en algoritme som allerede er læringsbegrenset, for
+å spare en avrundingsfeil på et datagrunnlag av 6 klikk. Dårlig byttehandel.
+
+**3. A5 (rett www-lenken) — IKKE utført alene.**
+Meta-kreativer er uforanderlige; å rette lenken krever en ny kreativ, som
+nullstiller læring og mister engasjementet på annonsen som bruker 7 796 kr.
+308-omdirigeringen koster 86 ms og bevarer alle UTM-parametere (verifisert).
+Rettes gratis når annonsen likevel skal peke på den nye landingssiden.
+
+**4. AG4 «Airbnb» — IKKE pauset.**
+Søkeordene der er faktisk eier-intensjon («airbnb vert», «drifte airbnb»), og hele
+forbruket er 169 kr på 4 klikk. Min opprinnelige anbefaling om å pause den var
+basert på for lite data.
+
+## Google Ads — utført og verifisert mot API
+
+| Endring | Fra | Til |
+|---|---|---|
+| Budstrategi, begge kampanjer | Maksimer klikk (TARGET_SPEND) | **Portefølje «DH – Maks konverteringer»** (MAXIMIZE_CONVERSIONS) |
+| Søkeord «korttidsutleie av bolig» | aktiv, 2 509 kr / 0 konv | **pauset** |
+| Søkeord «kombinere korttid og langtid» | pauset | **aktiv** (ren eier-intensjon) |
+| Delt negativliste | 30 negative, koblet til 1 kampanje | **41 negative, koblet til begge** |
+| Konverteringsverdi «Lead (skjema)» | 1 000 kr (plassholder) | **2 000 kr** (26 350 kr × 7,7 %) |
+| Ny handling «Ringeklikk (nettsted)» | fantes ikke | **opprettet, SEKUNDÆR** |
+
+Porteføljestrategi er valgt fordi 12 konv/30 d fordelt på 8 + 3 er for tynt for to
+separate strategier. Porteføljen lar kampanjene dele læringen.
+
+Ringekonverteringen er **sekundær** med vilje: et klikk på et telefonnummer er ikke
+en samtale, og den vil bli langt hyppigere enn skjemaleads. Ble den primær, ville
+budgivningen jaget billige klikk. Forfremmes når vi vet hva et ringeklikk er verdt.
+
+Nye negative: korttidsleie, korttids leie, dinbnb, oslo, overnatting, ebf,
+skattefritt, utleiemegler sør, søker bolig, søker leilighet, søker hybel.
+«korttidsleie» blokkerer ikke «korttidsutleie» — ulike ord, kontrollert.
+
+## Meta — utført og verifisert mot API
+
+| Endring | Fra | Til |
+|---|---|---|
+| Geografi | nabolaget **Bergenhus** | **Bergen by + 25 km** |
+| Est. månedlig rekkevidde | 53 800 – 63 300 | **394 900 – 464 500 (7,3×)** |
+
+Alder (18–65), optimaliseringsmål (LEAD), plasseringer, budsjett og kreativer er
+urørt. Alder ble vurdert og bevisst ikke endret: 18–24 ga faktisk 1 lead for
+763 kr — bedre CPL enn kontosnittet — og 55+ med 0 leads har 11 leads som
+datagrunnlag. Å snevre inn publikum mens vi kjemper mot for lite data gjør
+problemet verre.
+
+**Targeting-endring nullstiller læringsfasen. Forvent 7–14 dager med ustabile
+tall. Ikke gjør nye endringer i mellomtiden.**
+
+## Kode — implementert i preview, må deployes
+
+| # | Endring | Fil |
+|---|---|---|
+| 1 | **17 hendelsestyper ble stille omdøpt til `pageview`** — ALLOWED_TYPES hadde 9 av 26 typer som klienten fyrer | `lib/analytics-server.js` |
+| 2 | **Ringesporing** — én global lytter dekker alle `tel:`-lenker; førsteparts + GA4 + Google Ads + Meta Contact | `components/CallTracking.js`, `lib/gtag.js` |
+| 3 | **Samtykkemåling** — `consent_view` + `consent_choice` | `components/ConsentBanner.js` |
+| 4 | **Felles lukket sløyfe** — to kopier i route.js slått sammen til én modul | `lib/closed-loop.js` |
+| 5 | **Årsak ved avhopp** — logger alltid hvorfor et signal ikke ble sendt | `lib/closed-loop-reasons.js` |
+| 6 | **Testlead-vakt** — prober sender aldri konverteringer til live plattformer | `lib/closed-loop-reasons.js` |
+| 7 | **CPL betalt vs alle** — 835 kr vs 987 kr | `lib/marketing-metrics.js`, `lib/kpi-dashboard.js` |
+| 8 | **Ekte konverteringsverdi** — 2 000 kr i stedet for 0 | `lib/gtag.js` |
+| 9 | **Meta-landingsside** `/lp/gratis-vurdering` med message-match | `lib/landing.js` |
+| 10 | **Sløyfestatus i admin** med årsak | `components/admin/ClosedLoopPanel.js` |
+| 11 | **Ringeklikk i trakten** — calls, contacts, costPerContact, consentRate | `lib/analytics-server.js` |
+
+Verifisert: `node scripts/probe-ads-tracking.mjs` → **63 OK, 0 feil**.
+Backend-testagent: **alle scenarier bestått**, ingen problemer.
+Nettleserkontroll: førsteparts `call_click` (placement=footer), GA4 `call_click`,
+Google Ads-konvertering med riktig `send_to`, og Meta `fbq Contact` — alle fyrte.
+
+**Én forurensning skjedde og skal være dokumentert:** første probekjøring, før
+testlead-vakten fantes, sendte én ekte Purchase på 26 350 kr til Meta og én
+opplasting til Google Ads (syntetisk gclid, forkastes av Google som umatchet).
+Det er derfor vakten nå finnes.
+
+## Gjenstår
+
+**Krever deploy:**
+1. Deploy koden. Nye miljøvariabler: `NEXT_PUBLIC_GOOGLE_ADS_CALL_LABEL`, `NEXT_PUBLIC_LEAD_VALUE_NOK`.
+2. `node scripts/after-deploy-google-value.mjs --dry` deretter `--live` — **først etter** at koden er live, ellers bokfører Google 0 kr pr. konvertering.
+3. Pek Meta-annonsen til `https://digihome.no/lp/gratis-vurdering` (uten www) og A/B-test mot forsiden.
+
+**Krever manuell handling i Meta (kan ikke gjøres via API):**
+4. Hendelsesbehandler → Egendefinerte konverteringer → finn den med «leads» i navnet som er bygget på **ViewContent** (rapporterte 318 mot 11 ekte leads). Arkiver den eller gi den et navn som ikke inneholder «leads».
+
+**Krever beslutning:**
+5. **Meta optimaliserer mot LEAD med 2–3 leads/uke.** Selv med 7,3× publikum kommer den ikke i nærheten av 50/uke på 330 kr/dag. Alternativet er å optimalisere mot «skjema startet» (169/mnd ≈ 39/uke, nesten over terskelen) og fortsatt måle leads. Vurder etter at geo-utvidelsen har fått 14 dager.
+6. **Telefonnummeret finnes bare i bunnteksten på forsiden.** Kanalen som lukker 60 % av kundene er gjemt. Etter at ringesporingen har samlet to ukers data, vet vi hva det er verdt å gjøre det mer synlig.
+7. **CAPI sender Lead til Meta også når samtykkebanneret ikke er besvart.** Juridisk vurdering.
