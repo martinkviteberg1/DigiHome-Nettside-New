@@ -47,7 +47,7 @@ const veier = [
 
 export default function ToVeier() {
   return (
-    <Seksjon testId="to-veier-section" hvit>
+    <Seksjon testId="to-veier-section" tone="sand">
       <SeksjonHode
         indeks="01"
         label="Tjenestenivå"
@@ -55,11 +55,11 @@ export default function ToVeier() {
         ingress="Full forvaltning er en tjeneste med mennesker i Bergen. Selvforvaltning er den samme plattformen, uten forvalteren — tilgjengelig for utleiere i hele landet."
       />
 
-      <div className="mt-12 sm:mt-16 grid lg:grid-cols-2 gap-y-12 lg:gap-y-0">
+      <div className="mt-11 grid gap-6 sm:mt-14 lg:grid-cols-2 lg:gap-7">
         {veier.map((v, i) => (
           <div
             key={v.navn}
-            className={`${i === 1 ? 'lg:pl-14 lg:border-l lg:border-[#e6e1d9]' : 'lg:pr-14'} e-reveal flex flex-col`}
+            className="e-panel e-reveal flex flex-col p-6 sm:p-8 lg:p-9"
           >
             <div className="flex items-baseline justify-between gap-4">
               <h3 className="e-h3 text-[24px] sm:text-[28px]">{v.navn}</h3>
@@ -75,7 +75,7 @@ export default function ToVeier() {
 
             <p className="e-meta mt-5">{v.pris}</p>
 
-            <div className="mt-6">
+            <div className="mt-auto pt-7">
               <Link href={v.href} className={`e-btn ${i === 1 ? 'e-btn-ghost' : 'e-btn-dark'}`}>
                 {v.cta} <ArrowRight className="w-4 h-4" />
               </Link>

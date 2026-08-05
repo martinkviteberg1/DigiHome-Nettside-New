@@ -39,7 +39,7 @@ function NewsletterSignup() {
 
   return (
     <form onSubmit={submit} className="w-full max-w-[460px] lg:justify-self-end">
-      <div className="flex items-center rounded-[10px] bg-white/[0.06] border border-white/[0.1] focus-within:border-white/35 focus-within:bg-white/[0.08] focus-within:shadow-[0_0_0_4px_rgba(255,255,255,0.06)] transition-all duration-300 p-1.5 pl-5">
+      <div className="flex items-center rounded-full bg-white/[0.06] border border-white/[0.12] focus-within:border-white/35 focus-within:bg-white/[0.08] focus-within:shadow-[0_0_0_4px_rgba(255,255,255,0.06)] transition-all duration-300 p-1.5 pl-5">
         <Mail className="w-4 h-4 text-white/55 shrink-0" />
         <input
           type="email"
@@ -52,7 +52,7 @@ function NewsletterSignup() {
         <button
           type="submit"
           disabled={status === 'sending'}
-          className="h-[42px] px-5 rounded-[8px] bg-white text-[#0a0a0a] text-[13px] font-semibold hover:bg-[#d298ff] transition-colors disabled:opacity-60 inline-flex items-center gap-1.5 shrink-0"
+          className="h-[42px] px-6 rounded-full bg-white text-[#0a0a0a] text-[13px] font-semibold hover:bg-[#d298ff] transition-colors disabled:opacity-60 inline-flex items-center gap-1.5 shrink-0"
           data-testid="footer-newsletter-submit"
         >
           {status === 'sending' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <>Meld meg på <ArrowRight className="w-3.5 h-3.5" /></>}
@@ -79,8 +79,15 @@ export default function Footer({ org }: { org?: { company_name?: string; org_num
   const phone = org?.company_phone || '+47 909 58 313';
   const addr = org?.company_address || 'Kokstadvegen 46, 5257 Kokstad';
   return (
-    <footer className="bg-[#0a0a0a] text-white border-t border-white/[0.06]">
-      <div className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16">
+    <footer className="e-tone-sand">
+      <div className="relative overflow-hidden rounded-t-[30px] bg-[#0f0e0d] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.07)] sm:rounded-t-[44px]">
+        {/* Én rolig glød i toppen av flaten, i stedet for en hard svart kant. */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -top-52 left-1/2 h-[460px] w-[900px] -translate-x-1/2 rounded-full"
+          style={{ background: 'radial-gradient(circle, rgba(160,98,222,0.12) 0%, transparent 66%)' }}
+        />
+        <div className="relative mx-auto max-w-[1400px] px-6 sm:px-10 lg:px-16">
         <div className="py-16 grid gap-12 sm:grid-cols-2 lg:grid-cols-6">
           <div className="lg:col-span-2">
             <img src="/logo-light.svg" alt="DigiHome" className="h-[26px] w-auto" />
@@ -106,7 +113,7 @@ export default function Footer({ org }: { org?: { company_name?: string; org_num
           {cols.map((c: any) => (
             <div key={c.title}>
               <h2 className="text-[12px] font-semibold text-white/60 uppercase tracking-[0.15em] mb-5">{c.title}</h2>
-              <ul className="space-y-3">{c.links.map((l: any) => (<li key={l.l}><Link href={l.h} className="inline-block py-1 -my-1 text-[14px] text-white/50 hover:text-white/70 transition-colors duration-200">{l.l}</Link></li>))}</ul>
+              <ul className="space-y-3">{c.links.map((l: any) => (<li key={l.l}><Link href={l.h} className="inline-block py-1 -my-1 text-[14px] text-white/60 hover:text-white transition-colors duration-200">{l.l}</Link></li>))}</ul>
             </div>
           ))}
         </div>
@@ -118,13 +125,13 @@ export default function Footer({ org }: { org?: { company_name?: string; org_num
           </div>
           <NewsletterSignup />
         </div>
-        {/* Signatur-wordmark */}
-        <div aria-hidden className="select-none pointer-events-none overflow-hidden -mb-2 sm:-mb-3">
-          <p className="text-center font-bold leading-[0.78] tracking-[-0.05em] text-white/[0.05] text-[18.5vw] whitespace-nowrap" style={{ fontFamily: 'var(--font-heading)' }}>digihome</p>
+        <div className="flex flex-col items-center justify-between gap-4 border-t border-white/[0.08] py-7 sm:flex-row">
+          <p className="text-[12px] text-white/55">&copy; {new Date().getFullYear()} {name} · Org.nr {orgNr} · {addr}</p>
+          <div className="flex items-center gap-6">
+            <a href="/personvern" className="text-[12px] text-white/55 transition-colors hover:text-white">Personvern</a>
+            <a href="/personvern#vilkar" className="text-[12px] text-white/55 transition-colors hover:text-white">Vilkår</a>
+          </div>
         </div>
-        <div className="border-t border-white/[0.06] py-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-[12px] text-white/50">&copy; {new Date().getFullYear()} {name} · Org.nr {orgNr} · {addr}</p>
-          <div className="flex items-center gap-6"><a href="/personvern" className="text-[12px] text-white/50 hover:text-white/70 transition-colors">Personvern</a><a href="/personvern#vilkar" className="text-[12px] text-white/50 hover:text-white/70 transition-colors">Vilkår</a></div>
         </div>
       </div>
     </footer>

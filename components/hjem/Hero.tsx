@@ -79,6 +79,13 @@ export default function Hero() {
         className="pointer-events-none absolute -top-32 right-[-12%] h-[720px] w-[720px] rounded-full"
         style={{ background: 'radial-gradient(circle, rgba(155,91,214,0.06) 0%, transparent 62%)' }}
       />
+      {/* Nedre kant tones mot sand, slik at heroen glir over i båndet under i
+          stedet for å slutte i en hard hvit strek. */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-[240px]"
+        style={{ background: 'linear-gradient(to bottom, rgba(243,238,229,0) 0%, rgba(243,238,229,0.8) 100%)' }}
+      />
 
       <div className="e-shell relative pt-9 pb-14 sm:pt-12 sm:pb-20 lg:pt-16 lg:pb-24">
         {/* Rekkefølgen er bevisst forskjellig: på desktop står tekst og tall i

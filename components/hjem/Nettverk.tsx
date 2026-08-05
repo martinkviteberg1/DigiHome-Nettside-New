@@ -6,7 +6,7 @@ import { network } from '@/lib/site';
 // pastellbakgrunn sa ingenting mer enn navnet og setningen gjør her.
 export default function Nettverk() {
   return (
-    <Seksjon testId="network-section">
+    <Seksjon testId="network-section" tone="hvit">
       <SeksjonHode
         indeks="08"
         label="Partnernettverk"

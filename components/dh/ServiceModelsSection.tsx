@@ -98,17 +98,17 @@ export default function ServiceModelsSection() {
   }, [audioMode]);
 
   return (
-    <section className="e-section bg-white" data-testid="service-models-section">
+    <section className="e-section e-tone-paper" data-testid="service-models-section">
       <div className="e-shell">
 
         {/* Redaksjonelt seksjonshode: indeks, label, hårfin linje. Den sentrerte
             malen med lilla strek over tittelen er fjernet — den er selve
             signaturen på en generisk side. */}
-        <div className="relative flex items-baseline gap-4">
-          <span className="e-index xl:absolute xl:-left-[52px] xl:top-[2px]">03</span>
-          <span className="e-label">Filmen</span>
-        </div>
-        <div className="e-rule mt-4 pt-8 sm:pt-10 mb-10 sm:mb-14 grid lg:grid-cols-12 gap-x-10 gap-y-6 items-end">
+        <span className="e-chip">
+          <span className="e-chip-dot" aria-hidden="true" />
+          Filmen
+        </span>
+        <div className="mt-6 sm:mt-8 mb-10 sm:mb-14 grid lg:grid-cols-12 gap-x-10 gap-y-6 items-end">
           <h2 className="e-h2 lg:col-span-7 max-w-[20ch]">Slik jobber DigiHome for deg.</h2>
           <p className="e-lead lg:col-span-5 lg:pb-1.5 max-w-[44ch]">
             Se hvordan vi gjør utleie smartere — fra første visning til siste leiebetaling.

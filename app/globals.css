@@ -849,3 +849,67 @@ details[open] .e-faq-sign::after { transform: rotate(90deg); opacity: 0; }
 .e-soft    { box-shadow: 0 1px 2px rgba(28, 22, 14, 0.03), 0 18px 44px -26px rgba(28, 22, 14, 0.20); }
 .e-soft-sm { box-shadow: 0 1px 2px rgba(28, 22, 14, 0.04), 0 8px 22px -14px rgba(28, 22, 14, 0.16); }
 .e-card    { background: #fff; border: 1px solid var(--e-line); border-radius: 24px; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   TONER OG TEKSTUR — siden skal ikke være helhvit
+   ──────────────────────────────────────────────────────────────────────────
+   Elleve nesten hvite seksjoner på rad gir ingen rytme og ingen dybde. Her er
+   fire toner definert som klasser, slik at seksjonene kan veksle papir → hvit
+   → sand → papir. Sanden er varm og lav i metning (ikke beige-brun), og over
+   den ligger et nesten usynlig korn: det er det som gjør at store flater
+   kjennes trykte i stedet for digitalt tomme.
+   ══════════════════════════════════════════════════════════════════════════ */
+:root { --e-sand: #F3EEE5; }
+
+.e-tone-paper { background-color: var(--e-paper); }
+.e-tone-white { background-color: #ffffff; }
+.e-tone-mist  { background-color: var(--e-paper-2); }
+.e-tone-sand  { background-color: var(--e-sand); }
+
+.e-grain { position: relative; }
+.e-grain::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.5;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23g)' opacity='0.15'/%3E%3C/svg%3E");
+}
+
+/* Seksjonslabel som mykt glass-merke i stedet for kapittelnummer og hårlinje.
+   Samme språk som chipen i heroen, så siden snakker med én stemme. */
+.e-chip {
+  display: inline-flex; align-items: center; gap: 8px;
+  height: 31px; padding-inline: 13px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid var(--e-line);
+  backdrop-filter: blur(6px);
+  font-size: 11px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--e-ink-3);
+  box-shadow: 0 1px 2px rgba(28, 22, 14, 0.04);
+}
+.e-chip-dot { width: 5px; height: 5px; border-radius: 999px; background: #c79bf0; flex: none; }
+
+/* Myk hvit modulflate. Erstatter nakne hårfine spalter der to ting skal
+   sammenlignes — kortene bærer innholdet uten å bli kortsuppe. */
+.e-panel {
+  background: #fff;
+  border: 1px solid var(--e-line);
+  border-radius: 26px;
+  box-shadow: 0 1px 2px rgba(28, 22, 14, 0.03), 0 22px 50px -32px rgba(28, 22, 14, 0.24);
+}
+@media (min-width: 640px) { .e-panel { border-radius: 30px; } }
+
+/* Den mørke flaten er ikke lenger en fullbredde plate, men et avrundet panel
+   som ligger på sanden. Varm dybde i gradienten, hårfin lyskant innvendig. */
+.e-panel-dark {
+  position: relative;
+  overflow: hidden;
+  border-radius: 28px;
+  color: #fff;
+  background: radial-gradient(120% 130% at 10% 0%, #1c1814 0%, #0e0d0b 52%, #0a0a0a 100%);
+  box-shadow: 0 44px 96px -54px rgba(24, 18, 10, 0.78), inset 0 0 0 1px rgba(255, 255, 255, 0.07);
+}
+@media (min-width: 640px) { .e-panel-dark { border-radius: 40px; } }

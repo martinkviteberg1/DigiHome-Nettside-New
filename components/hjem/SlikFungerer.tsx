@@ -31,7 +31,7 @@ const steg = [
 
 export default function SlikFungerer() {
   return (
-    <Seksjon testId="how-it-works-section">
+    <Seksjon testId="how-it-works-section" tone="hvit">
       <SeksjonHode
         indeks="02"
         label="Slik fungerer det"

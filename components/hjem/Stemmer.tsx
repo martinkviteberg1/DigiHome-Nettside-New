@@ -9,15 +9,14 @@ export default function Stemmer() {
   if (!forste) return null;
 
   return (
-    <section className="e-section bg-white" data-testid="testimonials-section">
-      <div className="e-shell">
-        <div className="relative flex items-baseline gap-4">
-          <span className="e-index xl:absolute xl:-left-[52px] xl:top-[2px]">07</span>
-          <span className="e-label">Eiere vi jobber for</span>
-        </div>
+    <section className="e-section e-tone-sand e-grain" data-testid="testimonials-section">
+      <div className="e-shell relative">
+        <span className="e-chip e-reveal">
+          <span className="e-chip-dot" aria-hidden="true" />
+          Eiere vi jobber for
+        </span>
 
-        <div className="e-line e-line-in mt-4" />
-        <blockquote className="e-reveal pt-10 sm:pt-14">
+        <blockquote className="e-reveal pt-9 sm:pt-12">
           <p className="e-quote text-[26px] sm:text-[38px] lg:text-[46px] max-w-[24ch]">
             «{forste.quote}»
           </p>

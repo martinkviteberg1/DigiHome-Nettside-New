@@ -59,8 +59,8 @@ export default function Header() {
       <div
         className={`transition-all duration-500 border-b ${
           scrolled
-            ? 'bg-white/85 backdrop-blur-2xl border-[#0a0a0a]/[0.06]'
-            : 'bg-white/55 backdrop-blur-xl border-transparent'
+            ? 'bg-[#fdfcfb]/88 backdrop-blur-2xl border-[#0a0a0a]/[0.06] shadow-[0_10px_30px_-24px_rgba(28,22,14,0.35)]'
+            : 'bg-[#fdfcfb]/55 backdrop-blur-xl border-transparent'
         }`}
         style={{ transitionTimingFunction: ease }}
       >
@@ -93,7 +93,7 @@ export default function Header() {
                   key={l.href}
                   href={l.href}
                   data-testid={l.testId}
-                  className="relative px-3 py-2"
+                  className="relative rounded-full px-3.5 py-2 transition-colors duration-300 hover:bg-[#0a0a0a]/[0.045]"
                 >
                   {/* Aktiv side markeres med en hårfin strek under ordet, ikke med
                       en grå pille. Streken tilhører samme linjespråk som resten

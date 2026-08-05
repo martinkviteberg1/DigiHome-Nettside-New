@@ -39,14 +39,14 @@ export default function DynamicRentalSection() {
   };
 
   return (
-    <section className="e-section" style={{ backgroundColor: '#fdfcfb' }} data-testid="dynamic-rental-section">
+    <section className="e-section e-tone-sand e-grain" data-testid="dynamic-rental-section">
       <div className="e-shell">
-        <div className="relative flex items-baseline gap-4">
-          <span className="e-index xl:absolute xl:-left-[52px] xl:top-[2px]">04</span>
-          <span className="e-label">10+2-modellen</span>
-        </div>
+        <span className="e-chip">
+          <span className="e-chip-dot" aria-hidden="true" />
+          10+2-modellen
+        </span>
 
-        <div className="e-rule mt-4 pt-8 sm:pt-12 grid lg:grid-cols-12 gap-x-16 gap-y-14 items-start">
+        <div className="mt-6 sm:mt-9 grid lg:grid-cols-12 gap-x-16 gap-y-14 items-start">
 
           {/* ── Venstre: argumentet ── */}
           <div className="lg:col-span-6">

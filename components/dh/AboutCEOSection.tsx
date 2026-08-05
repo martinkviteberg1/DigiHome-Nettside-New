@@ -4,14 +4,14 @@ import Reveal from '@/components/dh/Reveal';
 
 export default function AboutCEOSection() {
   return (
-    <section className="e-section" style={{ backgroundColor: '#fdfcfb' }} data-testid="about-ceo-section">
+    <section className="e-section e-tone-paper" data-testid="about-ceo-section">
       <div className="e-shell">
-        <div className="relative flex items-baseline gap-4">
-          <span className="e-index xl:absolute xl:-left-[52px] xl:top-[2px]">09</span>
-          <span className="e-label">Om DigiHome</span>
-        </div>
+        <span className="e-chip">
+          <span className="e-chip-dot" aria-hidden="true" />
+          Om DigiHome
+        </span>
 
-        <div className="e-rule mt-4 pt-10 sm:pt-14 grid lg:grid-cols-12 gap-x-16 gap-y-10 items-start">
+        <div className="mt-7 sm:mt-10 grid lg:grid-cols-12 gap-x-16 gap-y-10 items-start">
 
           {/* Sitatet satt i display-snittet, uten kursiv. Lang kursiv brødtekst
               leser som en sjablong; store anførselstegn og luft leser som en

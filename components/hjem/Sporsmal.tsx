@@ -11,10 +11,10 @@ export default function Sporsmal() {
     <section id="faq" className="e-section bg-white" data-testid="faq-section">
       <div className="e-shell grid lg:grid-cols-12 gap-x-14 gap-y-10">
         <div className="lg:col-span-4">
-          <div className="relative flex items-baseline gap-4">
-            <span className="e-index xl:absolute xl:-left-[52px] xl:top-[2px]">10</span>
-            <span className="e-label">Spørsmål og svar</span>
-          </div>
+          <span className="e-chip">
+            <span className="e-chip-dot" aria-hidden="true" />
+            Spørsmål og svar
+          </span>
           <h2 className="e-h2 mt-6 max-w-[16ch]">Det folk pleier å lure på.</h2>
           <p className="e-meta mt-5 max-w-[34ch]">
             Finner du ikke svaret, ring eller skriv — vi svarer innen 24 timer.

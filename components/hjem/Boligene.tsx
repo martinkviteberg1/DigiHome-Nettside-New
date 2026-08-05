@@ -15,7 +15,7 @@ const oppsett = [
 
 export default function Boligene() {
   return (
-    <Seksjon testId="quality-section">
+    <Seksjon testId="quality-section" tone="hvit">
       <SeksjonHode
         indeks="05"
         label="Standarden"

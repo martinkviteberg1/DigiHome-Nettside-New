@@ -47,13 +47,13 @@ export default function ShowcaseSection() {
   }, []);
 
   return (
-    <section id="boliger" className="e-section bg-white" data-testid="showcase-section">
+    <section id="boliger" className="e-section e-tone-paper" data-testid="showcase-section">
       <div className="e-shell">
-        <div className="relative flex items-baseline gap-4">
-          <span className="e-index xl:absolute xl:-left-[52px] xl:top-[2px]">06</span>
-          <span className="e-label">Porteføljen</span>
-        </div>
-        <div className="e-rule mt-4 pt-8 sm:pt-10 grid lg:grid-cols-12 gap-x-10 gap-y-5 items-end">
+        <span className="e-chip">
+          <span className="e-chip-dot" aria-hidden="true" />
+          Porteføljen
+        </span>
+        <div className="mt-6 sm:mt-8 grid lg:grid-cols-12 gap-x-10 gap-y-5 items-end">
           <h2 className="e-h2 lg:col-span-7 max-w-[18ch]">Boliger vi drifter nå.</h2>
           <div className="lg:col-span-5 lg:pb-2">
             <Link href="/ledige-boliger" className="e-link text-[14.5px] font-semibold">Se alle ledige boliger</Link>
