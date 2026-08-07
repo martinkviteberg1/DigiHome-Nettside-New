@@ -1,10 +1,14 @@
 import React from 'react';
 import AdresseFelt from './AdresseFelt';
+import RoterendOrd from './RoterendOrd';
 
 // ---------------------------------------------------------------------------
 // Hero3 — som Hero2, men bildet strekker seg helt opp til toppen med samme
 // spacing som bunn og høyre. Toppen av navbaren er tom (bare logo), så bildet
 // får full høyde. Knappene glir inn i navbar først når man scroller.
+//
+// Under H1 er det én rolig linje som roterer mellom målgruppene:
+// huseiere → forvaltere → porteføljer. Meget dempet, aldri gimmicky.
 // ---------------------------------------------------------------------------
 
 export default function Hero3() {
@@ -36,12 +40,21 @@ export default function Hero3() {
               </span>
             </h1>
 
-            <p className="dh-fade-up e-lead mt-6 max-w-[42ch] sm:mt-7" style={{ animationDelay: '0.18s' }}>
+            {/* Roterende hvisken — signaliserer bredden i produktet uten å
+                bryte den rolige rytmen i H1. Dempet beige, subtil fade. */}
+            <div
+              className="dh-fade-up mt-3 text-[22px] font-medium leading-[1.15] tracking-[-0.022em] text-[#8a827a] sm:mt-4 sm:text-[28px] lg:text-[32px] xl:text-[36px]"
+              style={{ animationDelay: '0.14s', fontFamily: 'var(--font-heading), sans-serif' }}
+            >
+              For <RoterendOrd />
+            </div>
+
+            <p className="dh-fade-up e-lead mt-6 max-w-[42ch] sm:mt-7" style={{ animationDelay: '0.22s' }}>
               DigiHome automatiserer utleien — annonse, kontrakt, depositum og husleie,
               samlet på ett sted. Administrer selv, eller få hjelp med forvaltning.
             </p>
 
-            <div className="dh-fade-up mt-8 max-w-[520px] sm:mt-10" style={{ animationDelay: '0.26s' }}>
+            <div className="dh-fade-up mt-8 max-w-[520px] sm:mt-10" style={{ animationDelay: '0.3s' }}>
               <AdresseFelt source="nyest3_hero" testId="nyest3-hero-address" />
             </div>
           </div>
