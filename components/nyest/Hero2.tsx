@@ -49,10 +49,10 @@ export default function Hero2() {
           </div>
         </div>
 
-        {/* Høyre — innrammet bildepanel med luft rundt og rundede hjørner,
-            akkurat som login-siden. På mobil vises det under teksten. */}
-        <div className="dh-fade-up relative px-5 pb-8 sm:px-8 sm:pb-10 lg:h-auto lg:py-8 lg:pl-0 lg:pr-8 xl:py-10 xl:pr-10" style={{ animationDelay: '0.1s' }}>
-          <div className="relative h-[70vh] w-full overflow-hidden rounded-[20px] sm:h-[80vh] sm:rounded-[24px] lg:h-[calc(100dvh-64px)] lg:rounded-[28px] xl:h-[calc(100dvh-80px)]">
+        {/* Høyre — innrammet bildepanel som starter under navbar og har
+            strammere ramme rundt. Aldri overlapp med knappene i toppen. */}
+        <div className="dh-fade-up relative px-5 pt-4 pb-8 sm:px-8 sm:pt-6 sm:pb-10 lg:h-auto lg:pt-[92px] lg:pb-5 lg:pl-0 lg:pr-5 xl:pt-[100px] xl:pb-6 xl:pr-6" style={{ animationDelay: '0.1s' }}>
+          <div className="relative h-[70vh] w-full overflow-hidden rounded-[20px] sm:h-[80vh] sm:rounded-[24px] lg:h-[calc(100dvh-112px)] lg:rounded-[24px] xl:h-[calc(100dvh-124px)] xl:rounded-[28px]">
             <img
               src="/nyest-hero-portrett.webp"
               alt="Lys stue med beige sofa i en norsk utleiebolig"
