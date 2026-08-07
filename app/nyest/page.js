@@ -4,7 +4,9 @@ import Hero from '@/components/nyest/Hero';
 import Partnere from '@/components/nyest/Partnere';
 import Steg from '@/components/nyest/Steg';
 import Plattform from '@/components/nyest/Plattform';
+import Pause from '@/components/nyest/Pause';
 import Veier from '@/components/nyest/Veier';
+import Mobil from '@/components/nyest/Mobil';
 import Film from '@/components/nyest/Film';
 import Slutt from '@/components/nyest/Slutt';
 
@@ -32,7 +34,9 @@ export default function NyestPage() {
       <Partnere />
       <Steg />
       <Plattform />
+      <Pause />
       <Veier />
+      <Mobil />
       <Film />
       <Slutt />
       <Footer />
