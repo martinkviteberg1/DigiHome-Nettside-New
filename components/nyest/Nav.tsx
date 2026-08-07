@@ -50,10 +50,10 @@ export default function Nav() {
   return (
     <header className="fixed left-0 right-0 top-0 z-50" data-testid="nyest-nav">
       <div
-        className={`border-b transition-all duration-500 ${
+        className={`transition-all duration-500 ${
           scrolled
-            ? 'border-[#0a0a0a]/[0.06] bg-[#fdfcfb]/92 shadow-[0_10px_30px_-24px_rgba(28,22,14,0.35)] backdrop-blur-2xl'
-            : 'border-transparent bg-[#fdfcfb]/55 backdrop-blur-xl'
+            ? 'border-b border-[#0a0a0a]/[0.06] bg-[#fdfcfb]/92 shadow-[0_10px_30px_-24px_rgba(28,22,14,0.35)] backdrop-blur-2xl'
+            : 'border-b border-transparent bg-transparent'
         }`}
       >
         <div
