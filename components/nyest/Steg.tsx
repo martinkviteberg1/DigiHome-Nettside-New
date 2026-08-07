@@ -25,7 +25,7 @@ const STEG = [
 export default function Steg() {
   return (
     <section className="bg-[#fdfcfb]" data-testid="nyest-steg">
-      <div className="e-shell py-24 sm:py-32">
+      <div className="mx-auto w-full max-w-[1400px] px-6 py-24 sm:px-10 sm:py-32 lg:px-16">
         <h2 className="e-reveal e-h2 max-w-[16ch]">Slik fungerer det<span className="text-[#9B5BD6]">.</span></h2>
 
         <div className="mt-14 grid gap-12 sm:mt-16 sm:grid-cols-3 sm:gap-10 lg:gap-14">

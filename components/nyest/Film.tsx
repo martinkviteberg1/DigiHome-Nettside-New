@@ -13,7 +13,7 @@ export default function Film() {
 
   return (
     <section className="bg-[#fdfcfb]" data-testid="nyest-film">
-      <div className="e-shell pb-24 sm:pb-32">
+      <div className="mx-auto w-full max-w-[1400px] px-6 pb-24 sm:px-10 sm:pb-32 lg:px-16">
         <h2 className="e-reveal e-h2 max-w-[20ch]">Én plattform for hele utleien<span className="text-[#9B5BD6]">.</span></h2>
 
         <div className="e-reveal mt-12 overflow-hidden rounded-[20px] sm:mt-14">

@@ -24,7 +24,7 @@ const VEIER = [
 export default function Veier() {
   return (
     <section className="bg-[#fdfcfb]" data-testid="nyest-veier">
-      <div className="e-shell pb-24 sm:pb-32">
+      <div className="mx-auto w-full max-w-[1400px] px-6 pb-24 sm:px-10 sm:pb-32 lg:px-16">
         <h2 className="e-reveal e-h2 max-w-[18ch]">Gjør det selv, eller få hjelp<span className="text-[#9B5BD6]">.</span></h2>
 
         <div className="mt-14 grid gap-12 sm:mt-16 sm:grid-cols-2 sm:gap-10 lg:gap-14">

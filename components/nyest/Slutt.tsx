@@ -14,7 +14,7 @@ export default function Slutt() {
         className="pointer-events-none absolute inset-x-0 bottom-0 h-[420px]"
         style={{ background: 'radial-gradient(60% 80% at 50% 100%, #f6f2ea 0%, rgba(246,242,234,0) 65%)' }}
       />
-      <div className="e-shell relative flex flex-col items-center py-24 text-center sm:py-32">
+      <div className="relative mx-auto flex w-full max-w-[1400px] flex-col items-center px-6 py-24 text-center sm:px-10 sm:py-32 lg:px-16">
         <h2 className="e-reveal e-display max-w-[16ch] text-[36px] sm:text-[52px]">
           Klar? Start med adressen<span className="text-[#9B5BD6]">.</span>
         </h2>
