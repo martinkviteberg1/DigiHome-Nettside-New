@@ -13,10 +13,18 @@ export default function Mobil() {
         <div>
           <h2 className="e-reveal e-h2 max-w-[14ch]">Utleien i lomma<span className="text-[#9B5BD6]">.</span></h2>
           <p className="e-reveal e-lead mt-5 max-w-[46ch]">
-            Godkjenn annonsen, følg innbetalinger og svar leietakeren — rett fra mobilen.
-            Ingenting publiseres før du har sagt ja.
+            Ingenting publiseres før du har sagt ja — og alt som skjer etterpå, ser du samme sted.
           </p>
-          <p className="e-reveal e-meta mt-8">Illustrasjon av mobilopplevelsen.</p>
+          <div className="mt-10 max-w-[440px]">
+            {[
+              'Godkjenn annonsen før den publiseres',
+              'Se husleien komme inn — purringen går ut automatisk',
+              'Svar leietakeren i samme tråd som alt annet',
+            ].map((p) => (
+              <p key={p} className="e-reveal border-t border-[#e5dfd4] py-4 text-[15px] leading-[1.6] text-[#3d382f]">{p}</p>
+            ))}
+          </div>
+          <p className="e-reveal e-meta mt-6">Illustrasjon av mobilopplevelsen.</p>
         </div>
 
         <div className="e-reveal flex justify-center lg:justify-end lg:pr-10">

@@ -20,6 +20,7 @@ export default function Slutt() {
         </h2>
         <div className="e-reveal mt-10 w-full max-w-[520px]">
           <AdresseFelt source="nyest_slutt" testId="nyest-slutt-address" />
+          <p className="e-meta mt-4">Gratis og uforpliktende &middot; Svar innen 24 timer</p>
         </div>
       </div>
     </section>

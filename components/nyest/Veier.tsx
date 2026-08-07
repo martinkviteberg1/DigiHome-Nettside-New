@@ -10,12 +10,14 @@ const VEIER = [
   {
     tittel: 'Selvforvaltning',
     tekst: 'Du styrer utleien selv i plattformen — annonser, kontrakter, depositum og husleie. Tilgjengelig i hele Norge.',
+    tekst2: 'Du holder visningene og velger leietaker. Plattformen tar papirarbeidet og innkrevingen.',
     href: '/selvforvaltning',
     lenke: 'Se selvforvaltning',
   },
   {
     tittel: 'Forvaltning',
     tekst: 'Vi tar jobben for deg — visninger, valg av leietaker og oppfølging gjennom hele leieforholdet.',
+    tekst2: 'Du følger alt i samme plattform og har siste ord. Tilbys i Bergen og omegn.',
     href: '/forvaltning',
     lenke: 'Se forvaltning',
   },
@@ -33,6 +35,7 @@ export default function Veier() {
               <span aria-hidden="true" className="e-line-in block h-px w-full bg-[#e5dfd4]" />
               <h3 className="mt-7 text-[22px] font-semibold tracking-[-0.015em] text-[#0a0a0a]">{v.tittel}</h3>
               <p className="e-body mt-3 max-w-[44ch]">{v.tekst}</p>
+              <p className="e-body mt-3 max-w-[44ch]">{v.tekst2}</p>
               <Link
                 href={v.href}
                 className="group mt-5 inline-flex items-center gap-2 text-[14.5px] font-semibold text-[#0a0a0a] transition-colors hover:text-[#7c3aed]"

@@ -7,8 +7,10 @@ import Plattform from '@/components/nyest/Plattform';
 import Pause from '@/components/nyest/Pause';
 import Veier from '@/components/nyest/Veier';
 import Mobil from '@/components/nyest/Mobil';
+import Sitat from '@/components/nyest/Sitat';
 import Film from '@/components/nyest/Film';
 import Slutt from '@/components/nyest/Slutt';
+import StickyCTA from '@/components/nyest/StickyCTA';
 
 // ---------------------------------------------------------------------------
 // /nyest — utkast til ny forside. Ett konsept: skriv inn adressen, så går
@@ -37,9 +39,11 @@ export default function NyestPage() {
       <Pause />
       <Veier />
       <Mobil />
+      <Sitat />
       <Film />
       <Slutt />
       <Footer />
+      <StickyCTA />
     </div>
   );
 }

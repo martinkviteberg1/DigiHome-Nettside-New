@@ -16,6 +16,7 @@ export default function Hero() {
         <img
           src="/interior-openplan-hero.webp"
           alt="Lys, åpen stue i en norsk utleiebolig"
+          fetchPriority="high"
           className="animate-kenburns absolute inset-0 h-full w-full object-cover"
         />
       </div>
@@ -29,7 +30,7 @@ export default function Hero() {
 
       {/* Teksten ligger i samme container som navbar og footer — én optisk linje. */}
       <div className="relative mx-auto w-full max-w-[1400px] px-6 sm:px-10 lg:px-16">
-        <div className="flex flex-col justify-center pb-14 pt-[112px] sm:pb-20 sm:pt-[136px] lg:min-h-[100svh] lg:w-1/2 lg:py-[88px] lg:pr-14 xl:pr-24">
+        <div className="flex flex-col justify-center pb-14 pt-[112px] sm:pb-20 sm:pt-[136px] lg:min-h-[92svh] lg:w-1/2 lg:py-[88px] lg:pr-14 xl:pr-24">
           <h1 className="e-display text-[46px] sm:text-[64px] lg:text-[clamp(56px,4.8vw,88px)]">
             <span className="e-mask"><span>Utleie på</span></span>
             <span className="e-mask"><span>autopilot<span className="text-[#9B5BD6]">.</span></span></span>
