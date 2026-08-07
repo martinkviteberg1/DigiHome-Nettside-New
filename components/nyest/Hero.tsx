@@ -14,8 +14,8 @@ export default function Hero() {
       {/* Bildet eier høyre halvdel av skjermen — helt til toppen, under glassheaderen. */}
       <div className="absolute inset-y-0 right-0 hidden w-1/2 overflow-hidden lg:block">
         <img
-          src="/interior-openplan-hero.webp"
-          alt="Lys, åpen stue i en norsk utleiebolig"
+          src="/nyest-hero.webp"
+          alt="Lys stue med beige sofa i en norsk utleiebolig"
           fetchPriority="high"
           className="animate-kenburns absolute inset-0 h-full w-full object-cover"
         />
@@ -50,7 +50,7 @@ export default function Hero() {
       {/* Mobil: bildet som egen, rolig flate under innholdet. */}
       <div aria-hidden="true" className="relative min-h-[400px] overflow-hidden sm:min-h-[500px] lg:hidden">
         <img
-          src="/interior-openplan-hero.webp"
+          src="/nyest-hero.webp"
           alt=""
           className="animate-kenburns absolute inset-0 h-full w-full object-cover"
         />

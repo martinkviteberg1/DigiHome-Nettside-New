@@ -20,7 +20,15 @@ export default function Slutt() {
         </h2>
         <div className="e-reveal mt-10 w-full max-w-[520px]">
           <AdresseFelt source="nyest_slutt" testId="nyest-slutt-address" />
-          <p className="e-meta mt-4">Gratis og uforpliktende &middot; Svar innen 24 timer</p>
+          <div className="mt-5 flex items-center justify-center gap-3">
+            <img
+              src="/sarah-portrett.webp"
+              alt="Sarah i DigiHome"
+              loading="lazy"
+              className="h-10 w-10 rounded-full object-cover"
+            />
+            <p className="e-meta">Gratis og uforpliktende &middot; Sarah svarer deg innen 24 timer</p>
+          </div>
         </div>
       </div>
     </section>

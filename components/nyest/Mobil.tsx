@@ -46,7 +46,7 @@ export default function Mobil() {
 
                 <div className="relative mt-4 overflow-hidden rounded-[16px]">
                   <img
-                    src="/interior-living.webp"
+                    src="/nyest-interior-2.webp"
                     alt=""
                     loading="lazy"
                     className="aspect-[4/3] w-full object-cover"
