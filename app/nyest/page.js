@@ -1,5 +1,5 @@
-import Header from '@/components/dh/Header';
 import Footer from '@/components/dh/Footer';
+import Nav from '@/components/nyest/Nav';
 import Hero from '@/components/nyest/Hero';
 import Partnere from '@/components/nyest/Partnere';
 import Steg from '@/components/nyest/Steg';
@@ -31,7 +31,7 @@ export const metadata = {
 export default function NyestPage() {
   return (
     <div>
-      <Header />
+      <Nav />
       <Hero />
       <Partnere />
       <Steg />

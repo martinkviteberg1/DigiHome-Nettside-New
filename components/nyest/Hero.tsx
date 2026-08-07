@@ -11,27 +11,18 @@ import AdresseFelt from './AdresseFelt';
 export default function Hero() {
   return (
     <section className="relative bg-[#fdfcfb]" data-testid="nyest-hero">
-      {/* Bildet eier høyre halvdel av skjermen — helt til toppen, under glassheaderen. */}
-      <div className="absolute inset-y-0 right-0 hidden w-1/2 overflow-hidden lg:block">
-        <img
-          src="/nyest-hero.webp"
-          alt="Lys stue med beige sofa i en norsk utleiebolig"
-          fetchPriority="high"
-          className="animate-kenburns absolute inset-0 h-full w-full object-cover"
-        />
-      </div>
-
       {/* Ett svakt lys øverst til venstre — dybde, ikke flate. */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-y-0 left-0 w-full lg:w-1/2"
-        style={{ background: 'radial-gradient(90% 58% at 8% 0%, #f6f2ea 0%, rgba(246,242,234,0) 62%)' }}
+        className="pointer-events-none absolute inset-x-0 top-0 h-[520px]"
+        style={{ background: 'radial-gradient(70% 80% at 10% 0%, #f6f2ea 0%, rgba(246,242,234,0) 60%)' }}
       />
 
-      {/* Teksten ligger i samme container som navbar og footer — én optisk linje. */}
-      <div className="relative mx-auto w-full max-w-[1400px] px-6 sm:px-10 lg:px-16">
-        <div className="flex flex-col justify-center pb-14 pt-[112px] sm:pb-20 sm:pt-[136px] lg:min-h-[92svh] lg:w-1/2 lg:py-[88px] lg:pr-14 xl:pr-24">
-          <h1 className="e-display text-[46px] sm:text-[64px] lg:text-[clamp(56px,4.8vw,88px)]">
+      {/* Tekst og bilde i samme container som navbar og footer. Bildet er en
+          innrammet, hel flate — aldri klippet av skjermkanten. */}
+      <div className="relative mx-auto grid w-full max-w-[1400px] items-center gap-12 px-6 pb-16 pt-[116px] sm:px-10 sm:pb-20 sm:pt-[136px] lg:grid-cols-[1fr_1.08fr] lg:gap-16 lg:px-16 lg:pb-24 lg:pt-[168px]">
+        <div>
+          <h1 className="e-display text-[46px] sm:text-[62px] xl:text-[74px]">
             <span className="e-mask"><span>Utleie på</span></span>
             <span className="e-mask"><span>autopilot<span className="text-[#9B5BD6]">.</span></span></span>
           </h1>
@@ -45,15 +36,15 @@ export default function Hero() {
             <AdresseFelt source="nyest_hero" testId="nyest-hero-address" />
           </div>
         </div>
-      </div>
 
-      {/* Mobil: bildet som egen, rolig flate under innholdet. */}
-      <div aria-hidden="true" className="relative min-h-[400px] overflow-hidden sm:min-h-[500px] lg:hidden">
-        <img
-          src="/nyest-hero.webp"
-          alt=""
-          className="animate-kenburns absolute inset-0 h-full w-full object-cover"
-        />
+        <div className="dh-fade-up overflow-hidden rounded-[28px]" style={{ animationDelay: '0.1s' }}>
+          <img
+            src="/nyest-hero.webp"
+            alt="Lys stue med beige sofa i en norsk utleiebolig"
+            fetchPriority="high"
+            className="aspect-[3/2] w-full object-cover"
+          />
+        </div>
       </div>
     </section>
   );
