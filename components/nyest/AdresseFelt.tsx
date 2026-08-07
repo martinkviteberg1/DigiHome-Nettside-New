@@ -59,8 +59,8 @@ export default function AdresseFelt({ source, testId, buttonLabel = 'Kom i gang'
 
   return (
     <form onSubmit={handleSubmit} className="relative z-30 w-full" data-testid={`${testId}-form`}>
-      <div className="e-field relative flex-wrap gap-y-1.5 p-1.5 sm:h-[62px] sm:flex-nowrap sm:p-0 sm:pl-5 sm:pr-2">
-        <MapPin className="ml-2 mr-2.5 h-[17px] w-[17px] shrink-0 text-[#8d877d] sm:ml-0" strokeWidth={2} aria-hidden="true" />
+      <div className="e-field relative flex-nowrap gap-2 p-1.5 pl-4 pr-1.5 h-[54px] sm:h-[62px] sm:gap-0 sm:pl-5 sm:pr-2">
+        <MapPin className="mr-2.5 h-[17px] w-[17px] shrink-0 text-[#8d877d]" strokeWidth={2} aria-hidden="true" />
         <AddressAutocomplete
           value={address}
           onChange={setAddress}
@@ -68,16 +68,17 @@ export default function AdresseFelt({ source, testId, buttonLabel = 'Kom i gang'
           placeholder="Skriv inn adressen din"
           showIcon={false}
           dataTestId={`${testId}-input`}
-          inputClassName="flex-1 h-[46px] sm:h-[58px] px-0 text-[15.5px] bg-transparent border-0 outline-none focus:outline-none focus-visible:outline-none focus:ring-0 placeholder:text-[#8d877d] w-full"
-          className="flex-1 min-w-[130px] !static"
+          inputClassName="flex-1 h-[42px] sm:h-[58px] px-0 text-[15.5px] bg-transparent border-0 outline-none focus:outline-none focus-visible:outline-none focus:ring-0 placeholder:text-[#8d877d] w-full"
+          className="flex-1 min-w-[100px] !static"
         />
         <button
           type="submit"
           data-testid={`${testId}-submit`}
           aria-label={buttonLabel}
-          className="group e-btn e-btn-dark h-[48px] w-full shrink-0 px-6 text-[14.5px] sm:w-auto"
+          className="group e-btn e-btn-dark h-[42px] w-[42px] shrink-0 justify-center px-0 text-[14.5px] sm:h-[48px] sm:w-auto sm:px-6"
         >
-          {buttonLabel} <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
+          <span className="hidden sm:inline">{buttonLabel}</span>
+          <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
         </button>
       </div>
     </form>

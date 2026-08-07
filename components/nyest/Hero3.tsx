@@ -14,7 +14,7 @@ import RoterendOrd from './RoterendOrd';
 export default function Hero3() {
   return (
     <section className="relative overflow-hidden bg-[#fdfcfb]" data-testid="nyest3-hero">
-      <div className="grid min-h-[100dvh] w-full lg:grid-cols-2">
+      <div className="grid w-full lg:min-h-[100dvh] lg:grid-cols-2">
         {/* Venstre — tekst og adressefelt, vertikalt sentrert i sin halvdel. */}
         <div className="relative flex items-center px-5 pb-16 pt-[104px] sm:px-8 sm:pb-24 sm:pt-[128px] lg:px-16 lg:py-24 xl:px-24">
           <div
@@ -62,9 +62,10 @@ export default function Hero3() {
 
         {/* Høyre — innrammet bildepanel med samme luft topp/bunn/høyre (~24px).
             Bildet strekker seg helt opp til toppen fordi navbaren er tom før
-            scroll — kun logoen ligger igjen, og den bor i venstre halvpart. */}
+            scroll — kun logoen ligger igjen, og den bor i venstre halvpart.
+            På mobil kortere høyde så bildet ikke dominerer hele viewporten. */}
         <div className="dh-fade-up relative px-5 pt-4 pb-8 sm:px-8 sm:pt-6 sm:pb-10 lg:h-auto lg:p-5 lg:pl-0 xl:p-6 xl:pl-0" style={{ animationDelay: '0.1s' }}>
-          <div className="relative h-[70vh] w-full overflow-hidden rounded-[20px] sm:h-[80vh] sm:rounded-[24px] lg:h-[calc(100dvh-40px)] lg:rounded-[24px] xl:h-[calc(100dvh-48px)] xl:rounded-[28px]">
+          <div className="relative h-[52vh] max-h-[560px] min-h-[380px] w-full overflow-hidden rounded-[20px] sm:h-[60vh] sm:rounded-[24px] lg:h-[calc(100dvh-40px)] lg:max-h-none lg:min-h-0 lg:rounded-[24px] xl:h-[calc(100dvh-48px)] xl:rounded-[28px]">
             <img
               src="/nyest-hero-portrett.webp"
               alt="Lys stue med beige sofa i en norsk utleiebolig"
