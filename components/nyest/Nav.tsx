@@ -59,7 +59,13 @@ export default function Nav() {
             />
           </Link>
 
-          <div className="flex items-center gap-8">
+          {/* Claude-grepet: på toppen av siden finnes bare logoen. Resten av
+              navigasjonen glir inn først når man begynner å scrolle. */}
+          <div
+            className={`flex items-center gap-8 transition-all duration-500 ${
+              scrolled ? 'translate-y-0 opacity-100' : 'pointer-events-none -translate-y-1.5 opacity-0'
+            }`}
+          >
             <nav className="hidden items-center gap-7 lg:flex">
               {LENKER.map((l) => (
                 <Link
@@ -88,16 +94,17 @@ export default function Nav() {
               </button>
             </div>
 
-            <button
-              type="button"
-              onClick={() => setOpen(!open)}
-              aria-label={open ? 'Lukk meny' : 'Åpne meny'}
-              data-testid="nyest-nav-toggle"
-              className="flex h-10 w-10 items-center justify-center rounded-full text-[#0a0a0a] transition-colors hover:bg-[#0a0a0a]/[0.045] lg:hidden"
-            >
-              {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-            </button>
           </div>
+
+          <button
+            type="button"
+            onClick={() => setOpen(!open)}
+            aria-label={open ? 'Lukk meny' : 'Åpne meny'}
+            data-testid="nyest-nav-toggle"
+            className="flex h-10 w-10 items-center justify-center rounded-full text-[#0a0a0a] transition-colors hover:bg-[#0a0a0a]/[0.045] lg:hidden"
+          >
+            {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
         </div>
 
         {open && (

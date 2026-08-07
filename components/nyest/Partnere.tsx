@@ -39,8 +39,8 @@ function Rekke({ skjult = false }: { skjult?: boolean }) {
 
 export default function Partnere() {
   return (
-    <section className="border-y border-[#eee9e0] bg-[#fdfcfb]" data-testid="nyest-partners">
-      <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-7 px-6 py-10 sm:px-10 sm:py-12 lg:flex-row lg:items-center lg:gap-12 lg:px-16">
+    <section className="bg-[#fdfcfb]" data-testid="nyest-partners">
+      <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-7 px-6 py-14 sm:px-10 sm:py-20 lg:flex-row lg:items-center lg:gap-12 lg:px-16">
         <p className="e-meta shrink-0">I samarbeid med</p>
         <div
           className="min-w-0 flex-1 overflow-hidden"
