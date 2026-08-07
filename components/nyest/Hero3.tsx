@@ -2,20 +2,17 @@ import React from 'react';
 import AdresseFelt from './AdresseFelt';
 
 // ---------------------------------------------------------------------------
-// Hero2 — split-screen. Tekst venstre, bilde helt til viewport-kanten høyre.
-//
-// Ingen container-max på seksjonen; venstre halvpart har padding, høyre er
-// et fullbleed bildepanel som strekker seg fra topp til bunn — samme grep
-// som Airbnb/Anthropics login. Dot-grid ligger bare bak tekst-siden.
+// Hero3 — som Hero2, men bildet strekker seg helt opp til toppen med samme
+// spacing som bunn og høyre. Toppen av navbaren er tom (bare logo), så bildet
+// får full høyde. Knappene glir inn i navbar først når man scroller.
 // ---------------------------------------------------------------------------
 
-export default function Hero2() {
+export default function Hero3() {
   return (
-    <section className="relative overflow-hidden bg-[#fdfcfb]" data-testid="nyest2-hero">
+    <section className="relative overflow-hidden bg-[#fdfcfb]" data-testid="nyest3-hero">
       <div className="grid min-h-[100dvh] w-full lg:grid-cols-2">
         {/* Venstre — tekst og adressefelt, vertikalt sentrert i sin halvdel. */}
         <div className="relative flex items-center px-5 pb-16 pt-[104px] sm:px-8 sm:pb-24 sm:pt-[128px] lg:px-16 lg:py-24 xl:px-24">
-          {/* Subtil dot-grid — kun bak tekst-siden, myk fade mot bilde-siden. */}
           <div
             aria-hidden="true"
             className="pointer-events-none absolute inset-0 opacity-[0.32]"
@@ -45,16 +42,16 @@ export default function Hero2() {
             </p>
 
             <div className="dh-fade-up mt-8 max-w-[520px] sm:mt-10" style={{ animationDelay: '0.26s' }}>
-              <AdresseFelt source="nyest2_hero" testId="nyest2-hero-address" />
+              <AdresseFelt source="nyest3_hero" testId="nyest3-hero-address" />
             </div>
           </div>
         </div>
 
-        {/* Høyre — innrammet bildepanel som starter under navbar og har
-            strammere ramme rundt. Aldri overlapp med knappene i toppen.
-            Overlay nederst — tittel, sub og pill-chips, samme språk som login. */}
-        <div className="dh-fade-up relative px-5 pt-4 pb-8 sm:px-8 sm:pt-6 sm:pb-10 lg:h-auto lg:pt-[92px] lg:pb-5 lg:pl-0 lg:pr-5 xl:pt-[100px] xl:pb-6 xl:pr-6" style={{ animationDelay: '0.1s' }}>
-          <div className="relative h-[70vh] w-full overflow-hidden rounded-[20px] sm:h-[80vh] sm:rounded-[24px] lg:h-[calc(100dvh-112px)] lg:rounded-[24px] xl:h-[calc(100dvh-124px)] xl:rounded-[28px]">
+        {/* Høyre — innrammet bildepanel med samme luft topp/bunn/høyre (~24px).
+            Bildet strekker seg helt opp til toppen fordi navbaren er tom før
+            scroll — kun logoen ligger igjen, og den bor i venstre halvpart. */}
+        <div className="dh-fade-up relative px-5 pt-4 pb-8 sm:px-8 sm:pt-6 sm:pb-10 lg:h-auto lg:p-5 lg:pl-0 xl:p-6 xl:pl-0" style={{ animationDelay: '0.1s' }}>
+          <div className="relative h-[70vh] w-full overflow-hidden rounded-[20px] sm:h-[80vh] sm:rounded-[24px] lg:h-[calc(100dvh-40px)] lg:rounded-[24px] xl:h-[calc(100dvh-48px)] xl:rounded-[28px]">
             <img
               src="/nyest-hero-portrett.webp"
               alt="Lys stue med beige sofa i en norsk utleiebolig"
@@ -68,7 +65,7 @@ export default function Hero2() {
               style={{ background: 'linear-gradient(to top, rgba(10,10,10,0.62) 0%, rgba(10,10,10,0.28) 45%, rgba(10,10,10,0) 100%)' }}
             />
             {/* Overlay-innhold — nederst-venstre inne i bildeflaten. */}
-            <div className="absolute inset-x-0 bottom-0 p-6 text-white sm:p-8 lg:p-10 xl:p-12" data-testid="nyest2-hero-overlay">
+            <div className="absolute inset-x-0 bottom-0 p-6 text-white sm:p-8 lg:p-10 xl:p-12" data-testid="nyest3-hero-overlay">
               <h2 className="text-[26px] font-semibold leading-[1.08] tracking-[-0.028em] sm:text-[32px] lg:text-[36px] xl:text-[40px]" style={{ fontFamily: 'var(--font-heading), sans-serif' }}>
                 Én adresse.<br />
                 <span className="text-white/70">Hele utleien.</span>
