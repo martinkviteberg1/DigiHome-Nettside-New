@@ -49,14 +49,17 @@ export default function Hero2() {
           </div>
         </div>
 
-        {/* Høyre — fullbleed bilde-panel. På mobil vises det under teksten. */}
-        <div className="dh-fade-up relative h-[70vh] w-full sm:h-[80vh] lg:h-auto lg:min-h-[100dvh]" style={{ animationDelay: '0.1s' }}>
-          <img
-            src="/nyest-hero-portrett.webp"
-            alt="Lys stue med beige sofa i en norsk utleiebolig"
-            fetchPriority="high"
-            className="absolute inset-0 h-full w-full object-cover"
-          />
+        {/* Høyre — innrammet bildepanel med luft rundt og rundede hjørner,
+            akkurat som login-siden. På mobil vises det under teksten. */}
+        <div className="dh-fade-up relative px-5 pb-8 sm:px-8 sm:pb-10 lg:h-auto lg:py-8 lg:pl-0 lg:pr-8 xl:py-10 xl:pr-10" style={{ animationDelay: '0.1s' }}>
+          <div className="relative h-[70vh] w-full overflow-hidden rounded-[20px] sm:h-[80vh] sm:rounded-[24px] lg:h-[calc(100dvh-64px)] lg:rounded-[28px] xl:h-[calc(100dvh-80px)]">
+            <img
+              src="/nyest-hero-portrett.webp"
+              alt="Lys stue med beige sofa i en norsk utleiebolig"
+              fetchPriority="high"
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+          </div>
         </div>
       </div>
     </section>
