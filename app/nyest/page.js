@@ -30,7 +30,7 @@ export const metadata = {
 
 export default function NyestPage() {
   return (
-    <div>
+    <div className="overflow-x-clip">
       <Nav />
       <Hero />
       <Partnere />
