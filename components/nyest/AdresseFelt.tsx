@@ -59,7 +59,7 @@ export default function AdresseFelt({ source, testId, buttonLabel = 'Kom i gang'
 
   return (
     <form onSubmit={handleSubmit} className="relative z-30 w-full" data-testid={`${testId}-form`}>
-      <div className="e-field flex-wrap gap-y-1.5 p-1.5 sm:h-[62px] sm:flex-nowrap sm:p-0 sm:pl-5 sm:pr-2">
+      <div className="e-field relative flex-wrap gap-y-1.5 p-1.5 sm:h-[62px] sm:flex-nowrap sm:p-0 sm:pl-5 sm:pr-2">
         <MapPin className="ml-2 mr-2.5 h-[17px] w-[17px] shrink-0 text-[#8d877d] sm:ml-0" strokeWidth={2} aria-hidden="true" />
         <AddressAutocomplete
           value={address}
@@ -69,7 +69,7 @@ export default function AdresseFelt({ source, testId, buttonLabel = 'Kom i gang'
           showIcon={false}
           dataTestId={`${testId}-input`}
           inputClassName="flex-1 h-[46px] sm:h-[58px] px-0 text-[15.5px] bg-transparent border-0 outline-none focus:outline-none focus-visible:outline-none focus:ring-0 placeholder:text-[#8d877d] w-full"
-          className="flex-1 min-w-[130px]"
+          className="flex-1 min-w-[130px] !static"
         />
         <button
           type="submit"

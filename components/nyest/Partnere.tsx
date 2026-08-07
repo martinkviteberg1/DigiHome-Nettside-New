@@ -49,7 +49,7 @@ export default function Partnere() {
             WebkitMaskImage: 'linear-gradient(to right, transparent, black 7%, black 93%, transparent)',
           }}
         >
-          <div className="marquee-track flex w-max items-center">
+          <div className="marquee-track flex w-max items-center hover:[animation-play-state:paused]">
             <Rekke />
             <Rekke skjult />
           </div>
