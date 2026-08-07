@@ -3,6 +3,7 @@ import Footer from '@/components/dh/Footer';
 import Hero from '@/components/nyest/Hero';
 import Partnere from '@/components/nyest/Partnere';
 import Steg from '@/components/nyest/Steg';
+import Plattform from '@/components/nyest/Plattform';
 import Veier from '@/components/nyest/Veier';
 import Film from '@/components/nyest/Film';
 import Slutt from '@/components/nyest/Slutt';
@@ -30,6 +31,7 @@ export default function NyestPage() {
       <Hero />
       <Partnere />
       <Steg />
+      <Plattform />
       <Veier />
       <Film />
       <Slutt />
