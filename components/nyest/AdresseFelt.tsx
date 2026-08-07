@@ -75,9 +75,9 @@ export default function AdresseFelt({ source, testId, buttonLabel = 'Kom i gang'
           type="submit"
           data-testid={`${testId}-submit`}
           aria-label={buttonLabel}
-          className="e-btn e-btn-dark h-[48px] w-full shrink-0 px-6 text-[14.5px] sm:w-auto"
+          className="group e-btn e-btn-dark h-[48px] w-full shrink-0 px-6 text-[14.5px] sm:w-auto"
         >
-          {buttonLabel} <ArrowRight className="h-4 w-4" />
+          {buttonLabel} <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
         </button>
       </div>
     </form>

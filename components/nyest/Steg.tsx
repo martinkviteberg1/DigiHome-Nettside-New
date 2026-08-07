@@ -26,12 +26,13 @@ export default function Steg() {
   return (
     <section className="bg-[#fdfcfb]" data-testid="nyest-steg">
       <div className="e-shell py-24 sm:py-32">
-        <h2 className="e-display max-w-[16ch] text-[34px] sm:text-[46px]">Slik fungerer det</h2>
+        <h2 className="e-reveal e-h2 max-w-[16ch]">Slik fungerer det<span className="text-[#9B5BD6]">.</span></h2>
 
         <div className="mt-14 grid gap-12 sm:mt-16 sm:grid-cols-3 sm:gap-10 lg:gap-14">
           {STEG.map((s) => (
-            <div key={s.nr} className="border-t border-[#e5dfd4] pt-7">
-              <span className="text-[13.5px] font-semibold tracking-[0.08em] text-[#9B5BD6]">{s.nr}</span>
+            <div key={s.nr} className="e-reveal">
+              <span aria-hidden="true" className="e-line-in block h-px w-full bg-[#e5dfd4]" />
+              <span className="mt-7 block text-[13.5px] font-semibold tracking-[0.08em] text-[#9B5BD6]">{s.nr}</span>
               <h3 className="mt-4 text-[19px] font-semibold tracking-[-0.01em] text-[#0a0a0a]">{s.tittel}</h3>
               <p className="e-body mt-3 max-w-[38ch]">{s.tekst}</p>
             </div>

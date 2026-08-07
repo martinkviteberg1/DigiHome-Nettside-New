@@ -25,12 +25,13 @@ export default function Veier() {
   return (
     <section className="bg-[#fdfcfb]" data-testid="nyest-veier">
       <div className="e-shell pb-24 sm:pb-32">
-        <h2 className="e-display max-w-[18ch] text-[34px] sm:text-[46px]">Gjør det selv, eller få hjelp.</h2>
+        <h2 className="e-reveal e-h2 max-w-[18ch]">Gjør det selv, eller få hjelp<span className="text-[#9B5BD6]">.</span></h2>
 
         <div className="mt-14 grid gap-12 sm:mt-16 sm:grid-cols-2 sm:gap-10 lg:gap-14">
           {VEIER.map((v) => (
-            <div key={v.tittel} className="border-t border-[#e5dfd4] pt-7">
-              <h3 className="text-[22px] font-semibold tracking-[-0.015em] text-[#0a0a0a]">{v.tittel}</h3>
+            <div key={v.tittel} className="e-reveal">
+              <span aria-hidden="true" className="e-line-in block h-px w-full bg-[#e5dfd4]" />
+              <h3 className="mt-7 text-[22px] font-semibold tracking-[-0.015em] text-[#0a0a0a]">{v.tittel}</h3>
               <p className="e-body mt-3 max-w-[44ch]">{v.tekst}</p>
               <Link
                 href={v.href}

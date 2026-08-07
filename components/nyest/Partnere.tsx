@@ -25,7 +25,7 @@ export default function Partnere() {
               src={p.src}
               alt={p.name}
               loading="lazy"
-              className="h-[20px] w-auto object-contain opacity-60 grayscale sm:h-[22px]"
+              className="h-[20px] w-auto object-contain opacity-60 grayscale transition duration-300 hover:opacity-100 hover:grayscale-0 sm:h-[22px]"
             />
           ))}
         </div>
