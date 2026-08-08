@@ -7,29 +7,42 @@ import Parallax from './Parallax';
 // ---------------------------------------------------------------------------
 // KapittelIntegrasjoner — det rolige oversiktsøyeblikket: DigiHome i midten,
 // integrasjonene i ring rundt. Hver integrasjon lyser opp i reisens
-// rekkefølge (Kartverket → FINN → Creditsafe → BankID → Vipps → Fiken →
-// Airbnb → Booking) med én forklarende linje — før alt glir sammen:
-// ett system, alt koblet.
+// rekkefølge (Kartverket → FINN → Creditsafe → BankID → Keyhole → Vipps →
+// Regnskap → Airbnb → Booking) med én forklarende linje — før alt glir
+// sammen: ett system, alt koblet.
 // ---------------------------------------------------------------------------
 
 const LILLA = '#9B5BD6';
 
-const CHIPS = [
-  { navn: 'Kartverket', src: '/kartverket-logo.png', h: 18, vinkel: -90, tekst: 'Boligdata hentes fra Kartverket' },
-  { navn: 'FINN.no', src: '/finn-logo-full.png', h: 15, vinkel: -54, tekst: 'Annonsen publiseres rett på FINN' },
-  { navn: 'Creditsafe', src: '/creditsafe-logo.png', h: 13, vinkel: -18, tekst: 'Kredittsjekk av kandidatene' },
-  { navn: 'BankID', src: '/bankid-logo.png', h: 13, vinkel: 18, tekst: 'Signering og identitet med BankID' },
-  { navn: 'Vipps', src: '/vipps-logo.png', h: 16, vinkel: 54, tekst: 'Betaling med Vipps' },
-  { navn: 'Fiken', src: '/fiken-logo.png', h: 16, vinkel: 90, tekst: 'Oppgjøret rett i regnskapet — Fiken' },
-  { navn: 'PowerOffice', src: '/poweroffice-logo.png', h: 14, vinkel: 126, tekst: '— eller PowerOffice' },
-  { navn: 'Tripletex', src: '/tripletex-logo.png', h: 14, vinkel: 162, tekst: '— eller Tripletex' },
-  { navn: 'Airbnb', src: '/airbnb-logo.png', h: 17, vinkel: -162, tekst: 'Korttid synkroniseres med Airbnb' },
-  { navn: 'Booking.com', src: '/booking-logo.png', h: 13, vinkel: -126, tekst: '— og med Booking.com' },
+const CHIPS: {
+  navn: string;
+  vinkel: number;
+  tekst: string;
+  logoer: { src: string; h: number }[];
+}[] = [
+  { navn: 'Kartverket', vinkel: -90, tekst: 'Boligdata hentes fra Kartverket', logoer: [{ src: '/kartverket-logo.png', h: 18 }] },
+  { navn: 'FINN.no', vinkel: -50, tekst: 'Annonsen publiseres rett på FINN', logoer: [{ src: '/finn-logo-full.png', h: 15 }] },
+  { navn: 'Creditsafe', vinkel: -10, tekst: 'Kredittsjekk av kandidatene', logoer: [{ src: '/creditsafe-logo.png', h: 13 }] },
+  { navn: 'BankID', vinkel: 30, tekst: 'Signering og identitet med BankID', logoer: [{ src: '/bankid-logo.png', h: 13 }] },
+  { navn: 'Keyhole', vinkel: 70, tekst: 'Depositum opprettes og sikres med Keyhole', logoer: [{ src: '/keyhole-logo.png', h: 14 }] },
+  { navn: 'Vipps', vinkel: 110, tekst: 'Betaling med Vipps', logoer: [{ src: '/vipps-logo.png', h: 16 }] },
+  {
+    navn: 'Regnskap',
+    vinkel: 150,
+    tekst: 'Oppgjøret rett i regnskapet — Fiken, PowerOffice eller Tripletex',
+    logoer: [
+      { src: '/fiken-logo.png', h: 13 },
+      { src: '/poweroffice-logo.png', h: 12 },
+      { src: '/tripletex-logo.png', h: 11 },
+    ],
+  },
+  { navn: 'Airbnb', vinkel: -170, tekst: 'Korttid synkroniseres med Airbnb', logoer: [{ src: '/airbnb-logo.png', h: 17 }] },
+  { navn: 'Booking.com', vinkel: -130, tekst: '— og med Booking.com', logoer: [{ src: '/booking-logo.png', h: 13 }] },
 ];
 
 const TRINN: { navn: string; ms: number }[] = [
   { navn: 'start', ms: 1000 },
-  ...CHIPS.map((_, i) => ({ navn: `i${i}`, ms: 1400 })),
+  ...CHIPS.map((_, i) => ({ navn: `i${i}`, ms: 1500 })),
   { navn: 'alle', ms: 5500 },
 ];
 
@@ -148,7 +161,11 @@ export default function KapittelIntegrasjoner() {
                     transitionTimingFunction: 'cubic-bezier(0.34, 1.56, 0.64, 1)',
                   }}
                 >
-                  <img src={c.src} alt={c.navn} style={{ height: c.h }} className="w-auto max-w-[76px] object-contain sm:max-w-none" />
+                  <span className="flex items-center gap-2">
+                    {c.logoer.map((l) => (
+                      <img key={l.src} src={l.src} alt={c.navn} style={{ height: l.h }} className="w-auto max-w-[70px] object-contain" />
+                    ))}
+                  </span>
                 </div>
               );
             })}

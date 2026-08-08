@@ -7,14 +7,43 @@ import Parallax from './Parallax';
 
 // ---------------------------------------------------------------------------
 // HvaEr — definisjonssliden med produktet i sentrum: én presis setning, og
-// under den nøyaktige replikaer av huseierportalen (web) og mobilappen,
-// komponert som et klassisk produktbilde der telefonen overlapper portalen.
+// under den nøyaktige replikaer av huseierportalen (web) og mobilappen.
+// Portalen tegnes i fast designbredde og skaleres proporsjonalt (fonter og
+// alt) mot både tilgjengelig bredde og viewport-høyde — så den alltid er så
+// stor som mulig uten å klippes. Telefonen henger av portalens høyrekant.
 // På mobil vises kun telefonen — den er tross alt mobilopplevelsen.
 // ---------------------------------------------------------------------------
 
+const DESIGN_B = 880; // portalens designbredde — alt innhold er satt i px mot denne
+
 export default function HvaEr() {
   const ref = useRef<HTMLElement | null>(null);
+  const ytreRef = useRef<HTMLDivElement | null>(null);
+  const portalRef = useRef<HTMLDivElement | null>(null);
   const [synlig, setSynlig] = useState(false);
+  const [dim, setDim] = useState({ skala: 1, hoyde: 540 });
+
+  useEffect(() => {
+    const maal = () => {
+      const bredde = ytreRef.current?.clientWidth || 0;
+      const natH = portalRef.current?.offsetHeight || 540;
+      if (!bredde) return;
+      const vh = window.innerHeight || 900;
+      const skala = Math.min(bredde / DESIGN_B, Math.max(0.55, (vh - 330) / natH));
+      setDim({ skala, hoyde: natH });
+    };
+    maal();
+    window.addEventListener('resize', maal);
+    let ro: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined' && ytreRef.current) {
+      ro = new ResizeObserver(maal);
+      ro.observe(ytreRef.current);
+    }
+    return () => {
+      window.removeEventListener('resize', maal);
+      ro?.disconnect();
+    };
+  }, []);
 
   useEffect(() => {
     const el = ref.current;
@@ -71,29 +100,40 @@ export default function HvaEr() {
       </div>
 
       {/* Produktkomposisjonen — ankret helt i bunnkanten av sliden. */}
-      <div className="relative mx-auto mt-10 w-full max-w-[1080px] sm:mt-12 lg:mt-auto">
-        {/* Desktop/tablet: portalen sentrert, telefonen står helt nede i høyre kant */}
-        <div className="hidden w-full md:block">
-          <div className="relative mx-auto w-full">
-            <div
-              className={`mx-auto ${trinn(320).className}`}
-              style={{ ...trinn(320).style, width: 'min(86%, 920px, calc((100dvh - 330px) * 1.6))' }}
-            >
-              <Parallax faktor={0.07}>
-                <PortalMockup />
-              </Parallax>
-            </div>
-            <div
-              className="absolute bottom-0 right-0 z-10 xl:right-[1%]"
-              style={{ width: 'clamp(200px, calc((100dvh - 380px) * 0.52), 252px)' }}
-            >
-              <div className={trinn(520).className} style={trinn(520).style}>
-                <Parallax faktor={0.16}>
-                  <PhoneMockup />
-                </Parallax>
-              </div>
-            </div>
-          </div>
+      <div className="relative mx-auto mt-10 w-full max-w-[1100px] sm:mt-12 lg:mt-auto">
+        {/* Desktop/tablet: portalen skaleres proporsjonalt så stor som plassen
+            tillater, telefonen henger av portalens høyrekant nede. Alt ligger
+            i ETT parallakselag så web og mobil alltid er justert mot hverandre. */}
+        <div ref={ytreRef} className="hidden w-full md:block">
+          <Parallax faktor={0.08}>
+            {(() => {
+              const telefonB = Math.round(Math.min(268, Math.max(200, 258 * dim.skala)));
+              const overheng = Math.round(telefonB * 0.42);
+              return (
+                <div
+                  className={`relative mx-auto ${trinn(320).className}`}
+                  style={{
+                    ...trinn(320).style,
+                    width: Math.round(DESIGN_B * dim.skala),
+                    height: Math.round(dim.hoyde * dim.skala),
+                  }}
+                >
+                  <div
+                    ref={portalRef}
+                    className="origin-top-left"
+                    style={{ width: DESIGN_B, transform: `scale(${dim.skala})` }}
+                  >
+                    <PortalMockup />
+                  </div>
+                  <div className="absolute bottom-0 z-10" style={{ right: -overheng, width: telefonB }}>
+                    <div className={trinn(520).className} style={trinn(520).style}>
+                      <PhoneMockup />
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+          </Parallax>
         </div>
 
         {/* Mobil: kun telefonen */}

@@ -4,30 +4,36 @@ import { useEffect, useRef } from 'react';
 
 // ---------------------------------------------------------------------------
 // SlideKontroll — kontrollert slide-navigasjon for omvisningen (kun desktop).
-// Én scrollgest = én slide. Hjulet låses mens overgangen pågår, og treghet
-// etter sveip filtreres bort via akselerasjonsdeteksjon (etterslep har alltid
-// fallende fart). Piltaster/PageUp/Down/mellomrom er alltid bevisste — de
-// omgår hjullåsen helt og teller ved hvert trykk, også midt i en overgang.
-// CSS-snappen i globals.css står som sikkerhetsnett for scrollbar-dragging.
-// Mobil (<1024px) beholder fri, naturlig scroll.
+// Én scrollgest = én slide. Selve overgangen kjøres som en egen rAF-animasjon
+// med ease-out; CSS-snappen kobles ut mens den flyr (html.dh-tour-flyt), slik
+// at nettleserens snap aldri kjemper mot programmatisk scroll — det var
+// kilden til hakkingen med native scrollIntoView. Piltaster i alle retninger
+// (opp/ned/venstre/høyre), PageUp/Down og mellomrom er alltid bevisste: de
+// teller ved hvert trykk, også midt i en overgang, og animasjonen fortsetter
+// da sømløst fra nåværende posisjon mot det nye målet.
+// Treghet etter sveip filtreres bort via akselerasjonsdeteksjon (etterslep
+// har alltid fallende fart). Mobil (<1024px) beholder fri, naturlig scroll.
 // ---------------------------------------------------------------------------
 
-const LAAS_MS = 900; // hvor lenge hjulet er låst etter et slide-bytte
+const ANIM_MS = 680; // varigheten på slide-overgangen
+const ETTERLAAS_MS = 220; // hjulet holdes låst en anelse etter landing
 const NY_GEST_PAUSE_MS = 200; // en tydelig pause regnes alltid som ny gest
-const FLYTID_MS = 500; // så lenge regnes en programmatisk scroll som underveis
 
 export default function SlideKontroll() {
   const laastHjul = useRef(false);
   const sistHjul = useRef(0);
   const forrigeFart = useRef(0);
   const aktiv = useRef(0); // intendert slide — sannheten, også midt i en overgang
-  const sisteNav = useRef(0);
+  const flyr = useRef(false);
+  const rafId = useRef(0);
+  const opplaasTimer = useRef(0);
 
   useEffect(() => {
     document.documentElement.classList.add('dh-tour-snap');
 
     const slides = Array.from(document.querySelectorAll<HTMLElement>('[data-slide]'));
     const erDesktop = () => window.matchMedia('(min-width: 1024px)').matches;
+    const rolig = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     // Sliden nærmest viewport-toppen. Bruker getBoundingClientRect (viewport-
     // relativ) fordi offsetTop måles mot nærmeste posisjonerte forelder og gir
@@ -46,26 +52,49 @@ export default function SlideKontroll() {
     };
 
     // Synkroniser intendert slide med faktisk posisjon (etter scrollbar-drag,
-    // prikk-klikk osv.) — men aldri midt i en pågående programmatisk scroll,
-    // da ville vi lest en halvveis-posisjon og havnet én slide feil.
+    // prikk-klikk osv.) — men aldri mens vår egen animasjon flyr, da ville vi
+    // lest en halvveis-posisjon og havnet én slide feil.
     const synk = () => {
-      if (performance.now() - sisteNav.current > FLYTID_MS) {
-        aktiv.current = naermeste();
-      }
+      if (!flyr.current) aktiv.current = naermeste();
     };
 
     aktiv.current = naermeste();
+
+    const landet = () => {
+      flyr.current = false;
+      document.documentElement.classList.remove('dh-tour-flyt');
+      window.clearTimeout(opplaasTimer.current);
+      opplaasTimer.current = window.setTimeout(() => {
+        laastHjul.current = false;
+      }, ETTERLAAS_MS);
+    };
 
     const gaaTil = (indeks: number) => {
       const maal = Math.max(0, Math.min(slides.length - 1, indeks));
       if (maal === aktiv.current) return; // ved kantene: ingen lås, ingen dødtid
       aktiv.current = maal;
-      sisteNav.current = performance.now();
       laastHjul.current = true;
-      slides[maal].scrollIntoView({ behavior: 'smooth' });
-      window.setTimeout(() => {
-        laastHjul.current = false;
-      }, LAAS_MS);
+      flyr.current = true;
+      window.cancelAnimationFrame(rafId.current);
+      window.clearTimeout(opplaasTimer.current);
+      document.documentElement.classList.add('dh-tour-flyt'); // snap av under flyturen
+
+      const fra = window.scrollY;
+      const til = slides[maal].getBoundingClientRect().top + window.scrollY;
+      if (rolig()) {
+        window.scrollTo(0, til);
+        landet();
+        return;
+      }
+      const t0 = performance.now();
+      const steg = (naa: number) => {
+        const p = Math.min(1, (naa - t0) / ANIM_MS);
+        const e = 1 - Math.pow(1 - p, 4); // ease-out — responsiv start, myk landing
+        window.scrollTo(0, fra + (til - fra) * e);
+        if (p < 1) rafId.current = window.requestAnimationFrame(steg);
+        else landet();
+      };
+      rafId.current = window.requestAnimationFrame(steg);
     };
 
     const paaHjul = (e: WheelEvent) => {
@@ -94,8 +123,8 @@ export default function SlideKontroll() {
 
     const paaTast = (e: KeyboardEvent) => {
       if (!erDesktop()) return;
-      const ned = ['ArrowDown', 'PageDown', ' '];
-      const opp = ['ArrowUp', 'PageUp'];
+      const ned = ['ArrowDown', 'ArrowRight', 'PageDown', ' '];
+      const opp = ['ArrowUp', 'ArrowLeft', 'PageUp'];
       if (!ned.includes(e.key) && !opp.includes(e.key)) return;
       const t = e.target as HTMLElement | null;
       if (t && ['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName)) return;
@@ -104,7 +133,7 @@ export default function SlideKontroll() {
       if (e.repeat) return; // holdt tast skal ikke maskingevære gjennom omvisningen
 
       // Taster omgår hjullåsen: hvert trykk teller umiddelbart — også midt i
-      // en overgang, der trykket retter seg mot neste slide derfra.
+      // en overgang, der animasjonen glir videre mot neste slide derfra.
       synk();
       gaaTil(aktiv.current + (ned.includes(e.key) ? 1 : -1));
     };
@@ -113,8 +142,11 @@ export default function SlideKontroll() {
     window.addEventListener('keydown', paaTast);
     return () => {
       document.documentElement.classList.remove('dh-tour-snap');
+      document.documentElement.classList.remove('dh-tour-flyt');
       window.removeEventListener('wheel', paaHjul);
       window.removeEventListener('keydown', paaTast);
+      window.cancelAnimationFrame(rafId.current);
+      window.clearTimeout(opplaasTimer.current);
     };
   }, []);
 

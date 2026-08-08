@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutGrid, Building2, Wallet, MessageSquare, FileText, TrendingUp } from 'lucide-react';
+import { LayoutGrid, Building2, Wallet, MessageSquare, FileText, TrendingUp, FileSignature } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
 // PortalMockup — nøyaktig replika av huseierportalens OwnerDashboard (web):
@@ -27,6 +27,7 @@ const STATS: [string, string, string][] = [
 const AKTIVITET = [
   { farge: '#22c55e', tekst: 'Husleie mottatt — 18 500 kr', tid: 'i dag' },
   { farge: '#CF97FC', tekst: 'Ny melding fra leietaker', tid: 'man.' },
+  { farge: '#8B5CF6', tekst: 'Leiekontrakt signert med BankID', tid: 'aug.' },
 ];
 
 export default function PortalMockup() {
@@ -81,9 +82,10 @@ export default function PortalMockup() {
           Anna
         </h4>
 
-        {/* INK-hero — signaturflisen fra portalen */}
+        {/* INK-hero — inntekt + Din leietaker, side om side som i portalens SingleHero */}
+        <div className="mt-4 grid grid-cols-[1.4fr_1fr] gap-3">
         <div
-          className="relative mt-4 overflow-hidden rounded-[18px] p-5"
+          className="relative overflow-hidden rounded-[18px] p-5"
           style={{ background: 'linear-gradient(150deg,#2E2547 0%,#1A1612 58%,#171310 100%)' }}
         >
           <div
@@ -94,7 +96,7 @@ export default function PortalMockup() {
             className="pointer-events-none absolute inset-x-0 top-0 h-px"
             style={{ background: 'linear-gradient(90deg,transparent,#CF97FC55,transparent)' }}
           />
-          <div className="relative flex items-center justify-between gap-4 md:pr-[80px]">
+          <div className="relative flex items-center justify-between gap-4">
             <div className="min-w-0">
               <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-white/50">Månedlig leieinntekt</p>
               <p className="mt-2 text-[32px] font-bold leading-[0.9] tracking-[-0.04em] text-white tabular-nums" style={{ fontFamily: heading }}>
@@ -119,6 +121,50 @@ export default function PortalMockup() {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Din leietaker — mørk flis fra portalens SingleHero */}
+        <div
+          className="relative flex flex-col overflow-hidden rounded-[18px] p-4"
+          style={{ background: 'linear-gradient(150deg,#2E2547 0%,#1A1612 58%,#171310 100%)' }}
+        >
+          <div
+            className="pointer-events-none absolute -right-8 -top-10 h-36 w-36 rounded-full blur-3xl"
+            style={{ background: 'radial-gradient(circle,#CF97FC33,transparent 70%)' }}
+          />
+          <div
+            className="pointer-events-none absolute inset-x-0 top-0 h-px"
+            style={{ background: 'linear-gradient(90deg,transparent,#CF97FC55,transparent)' }}
+          />
+          <p className="relative text-[8px] font-bold uppercase tracking-[0.16em] text-white/50">Din leietaker</p>
+          <div className="relative mt-2.5 flex items-center gap-2.5">
+            <span className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full bg-[#CF97FC]/[0.18] text-[10px] font-bold text-[#E7D6FF]" style={{ fontFamily: heading }}>ES</span>
+            <div className="min-w-0">
+              <p className="truncate text-[12.5px] font-bold text-white" style={{ fontFamily: heading }}>Emma Strand</p>
+              <span className="mt-0.5 inline-flex items-center gap-1 text-[8.5px] text-[#CBA6F7]">
+                <span className="h-1 w-1 rounded-full bg-[#22c55e]" /> Aktiv leieavtale
+              </span>
+            </div>
+          </div>
+          <div className="relative mt-3 flex gap-4 border-t border-white/10 pt-2.5">
+            <div>
+              <p className="text-[7px] font-bold uppercase tracking-[0.1em] text-white/40">Utleid siden</p>
+              <p className="mt-0.5 text-[9.5px] font-semibold text-white">august 2026</p>
+            </div>
+            <div>
+              <p className="text-[7px] font-bold uppercase tracking-[0.1em] text-white/40">Leieperiode</p>
+              <p className="mt-0.5 text-[9.5px] font-semibold text-white">Løpende</p>
+            </div>
+          </div>
+          <div className="relative mt-auto flex gap-1.5 pt-3">
+            <span className="inline-flex h-[24px] flex-1 items-center justify-center gap-1 rounded-full bg-white text-[8.5px] font-semibold text-[#111827]">
+              <MessageSquare className="h-2.5 w-2.5" strokeWidth={1.8} /> Send melding
+            </span>
+            <span className="inline-flex h-[24px] flex-1 items-center justify-center gap-1 rounded-full bg-white/[0.08] text-[8.5px] font-semibold text-white ring-1 ring-white/15">
+              <FileSignature className="h-2.5 w-2.5" strokeWidth={1.8} /> Se kontrakt
+            </span>
+          </div>
+        </div>
         </div>
 
         {/* Statkort */}

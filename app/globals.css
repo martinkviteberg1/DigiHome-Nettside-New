@@ -908,5 +908,8 @@ details[open] .e-faq-sign::after { transform: rotate(90deg); opacity: 0; }
 
 /* /tour — fullskjerm scroll-snap på alle flater. Aktiveres av SlideKontroll
    kun mens omvisningen er montert. Seksjoner som er høyere enn skjermen kan
-   fortsatt scrolles fritt innvendig (CSS-spec for store snap-områder). */
+   fortsatt scrolles fritt innvendig (CSS-spec for store snap-områder).
+   Under en programmatisk slide-overgang (dh-tour-flyt) kobles snappen ut,
+   slik at nettleserens snap aldri kjemper mot animasjonen (kilden til hakk). */
 html.dh-tour-snap { scroll-snap-type: y mandatory; }
+html.dh-tour-snap.dh-tour-flyt { scroll-snap-type: none; }
