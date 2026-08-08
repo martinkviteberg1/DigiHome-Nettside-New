@@ -4,6 +4,7 @@ import KapittelOnboarding from '@/components/tour/KapittelOnboarding';
 import KapittelVeivalg from '@/components/tour/KapittelVeivalg';
 import KapittelLeietaker from '@/components/tour/KapittelLeietaker';
 import KapittelKontrakt from '@/components/tour/KapittelKontrakt';
+import KapittelOkonomi from '@/components/tour/KapittelOkonomi';
 import SlideKontroll from '@/components/tour/SlideKontroll';
 import Prikker from '@/components/tour/Prikker';
 
@@ -31,6 +32,7 @@ export default function TourPage() {
       <KapittelVeivalg />
       <KapittelLeietaker />
       <KapittelKontrakt />
+      <KapittelOkonomi />
 
       {/* Stille avslutning — speiler åpningen. Nye kapitler legges inn før denne. */}
       <section
