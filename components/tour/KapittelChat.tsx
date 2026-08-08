@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Avslor from './Avslor';
+import Parallax from './Parallax';
 import ChatDemo from './mockups/ChatDemo';
 
 // ---------------------------------------------------------------------------
@@ -39,7 +40,9 @@ export default function KapittelChat() {
 
         {/* Høyre — den selvspillende demoen */}
         <Avslor delay={200}>
-          <ChatDemo />
+          <Parallax faktor={0.12}>
+            <ChatDemo />
+          </Parallax>
         </Avslor>
       </div>
     </section>

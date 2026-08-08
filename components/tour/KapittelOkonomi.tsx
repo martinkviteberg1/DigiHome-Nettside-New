@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Avslor from './Avslor';
+import Parallax from './Parallax';
 import OkonomiDemo from './mockups/OkonomiDemo';
 
 // ---------------------------------------------------------------------------
@@ -39,7 +40,9 @@ export default function KapittelOkonomi() {
 
         {/* Høyre — den selvspillende demoen */}
         <Avslor delay={200}>
-          <OkonomiDemo />
+          <Parallax faktor={0.12}>
+            <OkonomiDemo />
+          </Parallax>
         </Avslor>
       </div>
     </section>

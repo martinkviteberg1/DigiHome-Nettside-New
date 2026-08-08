@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import PortalMockup from './mockups/PortalMockup';
 import PhoneMockup from './mockups/PhoneMockup';
+import Parallax from './Parallax';
 
 // ---------------------------------------------------------------------------
 // HvaEr — definisjonssliden med produktet i sentrum: én presis setning, og
@@ -74,17 +75,23 @@ export default function HvaEr() {
         {/* Desktop/tablet: portal + telefon overlappende */}
         <div className="hidden md:block">
           <div className={`absolute left-0 top-0 w-[70%] max-w-[760px] lg:left-[2%] ${trinn(320).className}`} style={trinn(320).style}>
-            <PortalMockup />
+            <Parallax faktor={0.07}>
+              <PortalMockup />
+            </Parallax>
           </div>
           <div className={`absolute left-[60%] top-10 z-10 w-[226px] ${trinn(520).className}`} style={trinn(520).style}>
-            <PhoneMockup />
+            <Parallax faktor={0.16}>
+              <PhoneMockup />
+            </Parallax>
           </div>
         </div>
 
         {/* Mobil: kun telefonen */}
         <div className="flex justify-center md:hidden">
           <div className={`w-[238px] ${trinn(320).className}`} style={trinn(320).style}>
-            <PhoneMockup />
+            <Parallax faktor={0.1}>
+              <PhoneMockup />
+            </Parallax>
           </div>
         </div>
       </div>

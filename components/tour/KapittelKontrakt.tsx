@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Avslor from './Avslor';
+import Parallax from './Parallax';
 import KontraktDemo from './mockups/KontraktDemo';
 
 // ---------------------------------------------------------------------------
@@ -39,7 +40,9 @@ export default function KapittelKontrakt() {
 
         {/* Høyre — den selvspillende demoen */}
         <Avslor delay={200}>
-          <KontraktDemo />
+          <Parallax faktor={0.12}>
+            <KontraktDemo />
+          </Parallax>
         </Avslor>
       </div>
     </section>

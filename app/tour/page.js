@@ -9,6 +9,7 @@ import KapittelOkonomi from '@/components/tour/KapittelOkonomi';
 import KapittelIntegrasjoner from '@/components/tour/KapittelIntegrasjoner';
 import SlideKontroll from '@/components/tour/SlideKontroll';
 import Prikker from '@/components/tour/Prikker';
+import Parallax from '@/components/tour/Parallax';
 
 // ---------------------------------------------------------------------------
 // /tour — interaktiv produktomvisning for investorer. Fullskjerm-slides med
@@ -43,17 +44,19 @@ export default function TourPage() {
         data-slide="Avslutning"
         className="relative flex min-h-[100dvh] snap-start flex-col items-center justify-center gap-4 overflow-hidden px-6 py-20 lg:h-[100dvh] lg:py-0"
       >
-        {/* Dotgrid + varmt lys — samme rolige raster som forsiden. */}
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 opacity-[0.28]"
-          style={{
-            backgroundImage: 'radial-gradient(circle, #c8c8c8 0.8px, transparent 0.8px)',
-            backgroundSize: '24px 24px',
-            maskImage: 'radial-gradient(85% 75% at 50% 50%, black 25%, transparent 80%)',
-            WebkitMaskImage: 'radial-gradient(85% 75% at 50% 50%, black 25%, transparent 80%)',
-          }}
-        />
+        {/* Dotgrid + varmt lys — samme rolige raster som forsiden. Dypest lag. */}
+        <Parallax faktor={0.2} className="pointer-events-none absolute inset-0">
+          <div
+            aria-hidden="true"
+            className="h-full w-full opacity-[0.28]"
+            style={{
+              backgroundImage: 'radial-gradient(circle, #c8c8c8 0.8px, transparent 0.8px)',
+              backgroundSize: '24px 24px',
+              maskImage: 'radial-gradient(85% 75% at 50% 50%, black 25%, transparent 80%)',
+              WebkitMaskImage: 'radial-gradient(85% 75% at 50% 50%, black 25%, transparent 80%)',
+            }}
+          />
+        </Parallax>
         <div
           aria-hidden="true"
           className="pointer-events-none absolute inset-x-0 bottom-0 h-[380px]"

@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Avslor from './Avslor';
+import Parallax from './Parallax';
 import OnboardingDemo from './mockups/OnboardingDemo';
 
 // ---------------------------------------------------------------------------
@@ -38,7 +39,9 @@ export default function KapittelOnboarding() {
 
         {/* Høyre — den selvspillende demoen */}
         <Avslor delay={200}>
-          <OnboardingDemo />
+          <Parallax faktor={0.12}>
+            <OnboardingDemo />
+          </Parallax>
         </Avslor>
       </div>
     </section>

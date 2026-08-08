@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import Avslor from './Avslor';
+import Parallax from './Parallax';
 
 // ---------------------------------------------------------------------------
 // KapittelIntegrasjoner — det rolige oversiktsøyeblikket: DigiHome i midten,
@@ -87,6 +88,7 @@ export default function KapittelIntegrasjoner() {
 
         <Avslor delay={200}>
           {/* Huben — DigiHome i midten, integrasjonene i ring. */}
+          <Parallax faktor={0.1}>
           <div ref={rot} className="relative mx-auto mt-6 aspect-square w-full max-w-[320px] sm:mt-8 sm:max-w-[430px]" data-testid="tour-integrasjon-hub">
             {/* Forbindelseslinjene */}
             <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100">
@@ -149,6 +151,7 @@ export default function KapittelIntegrasjoner() {
               );
             })}
           </div>
+          </Parallax>
 
           {/* Fortellerlinjen — én integrasjon om gangen. */}
           <div className="mx-auto mt-7 grid h-6 max-w-[420px]">

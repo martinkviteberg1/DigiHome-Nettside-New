@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import Avslor from './Avslor';
+import Parallax from './Parallax';
 import VeivalgDemo from './mockups/VeivalgDemo';
 import AnnonseDemo from './mockups/AnnonseDemo';
 
@@ -96,6 +97,7 @@ export default function KapittelVeivalg() {
 
         {/* Høyre — veivalget glir over i annonseflyten */}
         <Avslor delay={200}>
+          <Parallax faktor={0.12}>
           <div className="grid items-center">
             <div
               className={`[grid-area:1/1] ${skift} ${
@@ -121,6 +123,7 @@ export default function KapittelVeivalg() {
               />
             </div>
           </div>
+          </Parallax>
         </Avslor>
       </div>
     </section>

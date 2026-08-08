@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Avslor from './Avslor';
+import Parallax from './Parallax';
 import LeietakerDemo from './mockups/LeietakerDemo';
 
 // ---------------------------------------------------------------------------
@@ -39,7 +40,9 @@ export default function KapittelLeietaker() {
 
         {/* Høyre — den selvspillende demoen */}
         <Avslor delay={200}>
-          <LeietakerDemo />
+          <Parallax faktor={0.12}>
+            <LeietakerDemo />
+          </Parallax>
         </Avslor>
       </div>
     </section>
