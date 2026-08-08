@@ -32,7 +32,7 @@ export default function KapittelAnnonse() {
             <p className="e-lead mt-5 max-w-[46ch]">
               Bildene tas med mobilen. AI-en leser boligen ut av dem — skriver tittel
               og beskrivelse, og foreslår leiepris fra markedsdata. Ett klikk senere
-              er annonsen live på FINN.
+              er annonsen live på DigiHome, og på FINN gjennom integrasjonen.
             </p>
           </Avslor>
         </div>

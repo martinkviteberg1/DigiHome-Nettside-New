@@ -36,7 +36,8 @@ const TRINN: { navn: string; ms: number; tekst?: string; takt?: number }[] = [
   { navn: 'annonse', ms: 950 },
   { navn: 'knapp', ms: 1250 },
   { navn: 'trykk', ms: 420 },
-  { navn: 'publisert', ms: 4300 },
+  { navn: 'pub1', ms: 800 },
+  { navn: 'pub2', ms: 4300 },
 ];
 
 const IDX: Record<string, number> = {};
@@ -303,38 +304,58 @@ export default function AnnonseDemo() {
             </div>
           </div>
 
-          {/* FINN-knappen — våkner, trykkes, og blir kvittering. */}
+          {/* Publiser-knappen — våkner, trykkes, og blir kvittering. */}
           <div className="relative mt-6 w-full max-w-[350px]">
             <div
               className={`flex h-[54px] w-full items-center justify-center gap-2.5 rounded-full text-[14.5px] font-semibold transition-all duration-500 ${
-                er('publisert')
+                er('pub1')
                   ? 'bg-[#e8f6ee] text-[#166534]'
                   : er('knapp')
                     ? 'bg-[#1a1a1a] text-white shadow-[0_24px_60px_-24px_rgba(10,10,10,0.45)]'
                     : 'bg-[#f0ece5] text-[#b3aca2]'
               } ${TRINN[fase].navn === 'trykk' ? 'scale-[0.96]' : 'scale-100'}`}
             >
-              {er('publisert') ? (
+              {er('pub1') ? (
                 <>
                   <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#22c55e]">
                     <Check className="h-3.5 w-3.5 text-white" strokeWidth={2.75} />
                   </span>
-                  Publisert på FINN.no
+                  Annonsen er live
                 </>
               ) : (
-                <>
-                  Publiser på
-                  <img src="/finn-logo.png" alt="FINN.no" className="h-[17px] w-auto rounded-[4px]" />
-                </>
+                'Publiser annonsen'
               )}
             </div>
+
+            {/* Kanalene — publisert på DigiHome, så på FINN gjennom integrasjonen. */}
+            <div className="mt-5 flex items-center justify-center gap-2.5">
+              <span
+                className={`flex items-center gap-2 rounded-full border border-[#eee9e2] bg-white py-2 pl-3 pr-3.5 text-[12px] font-semibold transition-all duration-500 ${
+                  er('pub1') ? 'translate-y-0 opacity-100' : 'translate-y-2 opacity-0'
+                }`}
+                style={{ color: INK }}
+              >
+                <img src="/digihome-mark.svg" alt="" className="h-4 w-4 rounded-[4px]" />
+                DigiHome
+                <Check className="h-3.5 w-3.5" strokeWidth={2.5} style={{ color: '#22c55e' }} />
+              </span>
+              <span
+                className={`flex items-center gap-2 rounded-full border border-[#eee9e2] bg-white py-2 pl-3 pr-3.5 transition-all duration-500 ${
+                  er('pub2') ? 'translate-y-0 opacity-100' : 'translate-y-2 opacity-0'
+                }`}
+              >
+                <img src="/finn-logo.png" alt="FINN.no" className="h-[15px] w-auto rounded-[3px]" />
+                <Check className="h-3.5 w-3.5" strokeWidth={2.5} style={{ color: '#22c55e' }} />
+              </span>
+            </div>
+
             <p
-              className={`mt-4 flex items-center justify-center gap-1 text-[12px] transition-opacity delay-300 duration-700 ${
-                er('publisert') ? 'opacity-100' : 'opacity-0'
+              className={`mt-4 flex items-center justify-center gap-1 text-[12px] transition-opacity delay-500 duration-700 ${
+                er('pub2') ? 'opacity-100' : 'opacity-0'
               }`}
               style={{ color: MUTED }}
             >
-              Annonsen er live — søknadene lander i portalen
+              Én annonse, begge kanaler — søknadene lander i portalen
               <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={2} />
             </p>
           </div>
