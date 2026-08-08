@@ -133,7 +133,7 @@ export default function OnboardingDemo() {
   } as React.CSSProperties;
 
   return (
-    <div ref={rot} className="relative mx-auto w-full max-w-[520px]" data-testid="tour-onboarding-demo">
+    <div ref={rot} className="relative w-full max-w-[520px] lg:mx-auto" data-testid="tour-onboarding-demo">
       {/* Fast høyde så sliden står i ro gjennom hele sekvensen. */}
       <div className="relative h-[420px]">
         {/* --- Fase A: Adressen ------------------------------------------- */}
@@ -143,8 +143,9 @@ export default function OnboardingDemo() {
           }`}
         >
           <div
-            className="transition-transform duration-[800ms] ease-[cubic-bezier(0.16,1,0.3,1)]"
-            style={{ transform: `translateY(${er('data') ? 0 : 130}px)` }}
+            className={`transition-transform duration-[800ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
+              er('data') ? 'translate-y-0' : 'lg:translate-y-[130px]'
+            }`}
           >
             <p className="mb-6 text-[17px] font-bold tracking-[-0.02em]" style={tittelStil}>
               Hvor ligger boligen?

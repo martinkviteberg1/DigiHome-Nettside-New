@@ -85,7 +85,7 @@ export default function VeivalgDemo() {
   const trykker = TRINN[fase].navn === 'velg';
 
   return (
-    <div ref={rot} className="relative mx-auto w-full max-w-[520px]" data-testid="tour-veivalg-demo">
+    <div ref={rot} className="relative w-full max-w-[520px] lg:mx-auto" data-testid="tour-veivalg-demo">
       <p
         className="mb-6 text-[17px] font-bold tracking-[-0.02em]"
         style={{ color: INK, fontFamily: 'var(--font-heading), sans-serif' }}

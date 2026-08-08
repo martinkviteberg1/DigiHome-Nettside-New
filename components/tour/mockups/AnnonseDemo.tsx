@@ -122,7 +122,7 @@ export default function AnnonseDemo() {
   } as React.CSSProperties;
 
   return (
-    <div ref={rot} className="relative mx-auto w-full max-w-[520px]" data-testid="tour-annonse-demo">
+    <div ref={rot} className="relative w-full max-w-[520px] lg:mx-auto" data-testid="tour-annonse-demo">
       <div className="relative h-[440px]">
         {/* --- Skjerm A: Bilder + skanning --------------------------------- */}
         <div
