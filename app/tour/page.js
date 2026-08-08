@@ -2,6 +2,7 @@ import Aapning from '@/components/tour/Aapning';
 import HvaEr from '@/components/tour/HvaEr';
 import KapittelOnboarding from '@/components/tour/KapittelOnboarding';
 import KapittelVeivalg from '@/components/tour/KapittelVeivalg';
+import KapittelLeietaker from '@/components/tour/KapittelLeietaker';
 import SlideKontroll from '@/components/tour/SlideKontroll';
 import Prikker from '@/components/tour/Prikker';
 
@@ -27,6 +28,7 @@ export default function TourPage() {
       <HvaEr />
       <KapittelOnboarding />
       <KapittelVeivalg />
+      <KapittelLeietaker />
 
       {/* Stille avslutning — speiler åpningen. Nye kapitler legges inn før denne. */}
       <section
