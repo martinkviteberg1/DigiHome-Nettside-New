@@ -906,8 +906,7 @@ details[open] .e-faq-sign::after { transform: rotate(90deg); opacity: 0; }
 }
 @media (min-width: 640px) { .e-panel-dark { border-radius: 40px; } }
 
-/* /tour — fullskjerm scroll-snap. Aktiveres av SnapKontroll kun mens
-   omvisningen er montert, og kun på desktop — mobil beholder fri scroll. */
-@media (min-width: 1024px) {
-  html.dh-tour-snap { scroll-snap-type: y mandatory; }
-}
+/* /tour — fullskjerm scroll-snap på alle flater. Aktiveres av SlideKontroll
+   kun mens omvisningen er montert. Seksjoner som er høyere enn skjermen kan
+   fortsatt scrolles fritt innvendig (CSS-spec for store snap-områder). */
+html.dh-tour-snap { scroll-snap-type: y mandatory; }

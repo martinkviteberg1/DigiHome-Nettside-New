@@ -21,7 +21,7 @@ const TRINN = [
   { navn: 'fokus3', ms: 1300 },
   { navn: 'tilbake', ms: 950 },
   { navn: 'velg', ms: 420 },
-  { navn: 'valgt', ms: 3800 },
+  { navn: 'valgt', ms: 2000 },
 ];
 
 const IDX: Record<string, number> = {};
@@ -50,32 +50,27 @@ const VALG = [
   },
 ];
 
-export default function VeivalgDemo() {
-  const rot = useRef<HTMLDivElement | null>(null);
-  const [kjorer, setKjorer] = useState(false);
+export default function VeivalgDemo({ kjorer, onFerdig }: { kjorer: boolean; onFerdig?: () => void }) {
   const [fase, setFase] = useState(0);
+  const ferdigRef = useRef(onFerdig);
+  ferdigRef.current = onFerdig;
 
   useEffect(() => {
-    const el = rot.current;
-    if (!el || typeof IntersectionObserver === 'undefined') {
-      setKjorer(true);
-      return;
-    }
-    const obs = new IntersectionObserver(
-      ([entry]) => {
-        setKjorer(entry.isIntersecting);
-        if (!entry.isIntersecting) setFase(0);
-      },
-      { threshold: 0.35 }
-    );
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, []);
+    if (!kjorer) setFase(0);
+  }, [kjorer]);
 
   useEffect(() => {
     if (!kjorer) return;
     const t = window.setTimeout(() => {
-      setFase((f) => (f + 1) % TRINN.length);
+      const neste = fase + 1;
+      if (neste >= TRINN.length) {
+        // Sekvensen er ferdig: meld fra og frys i valgt-tilstand — forelderen
+        // krysstoner videre til annonseflyten.
+        if (ferdigRef.current) ferdigRef.current();
+        else setFase(0);
+        return;
+      }
+      setFase(neste);
     }, TRINN[fase].ms);
     return () => window.clearTimeout(t);
   }, [kjorer, fase]);
@@ -85,7 +80,7 @@ export default function VeivalgDemo() {
   const trykker = TRINN[fase].navn === 'velg';
 
   return (
-    <div ref={rot} className="relative w-full max-w-[520px] lg:mx-auto" data-testid="tour-veivalg-demo">
+    <div className="relative w-full max-w-[520px] lg:mx-auto" data-testid="tour-veivalg-demo">
       <p
         className="mb-6 text-[17px] font-bold tracking-[-0.02em]"
         style={{ color: INK, fontFamily: 'var(--font-heading), sans-serif' }}

@@ -12,7 +12,7 @@ export default function Aapning() {
     <section
       data-testid="tour-aapning"
       data-slide="Forside"
-      className="relative flex min-h-[100dvh] flex-col items-center justify-center overflow-hidden px-6 lg:h-[100dvh] lg:snap-start"
+      className="relative flex min-h-[100dvh] snap-start flex-col items-center justify-center overflow-hidden px-6 lg:h-[100dvh]"
     >
       {/* Dotgrid — samme rolige raster som /nyest3, maskert mot midten. */}
       <div

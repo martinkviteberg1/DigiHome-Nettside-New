@@ -58,37 +58,34 @@ const PILLER = [
   { n: 'Høyt', v: '19 800' },
 ];
 
-export default function AnnonseDemo() {
-  const rot = useRef<HTMLDivElement | null>(null);
-  const [kjorer, setKjorer] = useState(false);
+export default function AnnonseDemo({ kjorer, onFerdig }: { kjorer: boolean; onFerdig?: () => void }) {
   const [fase, setFase] = useState(0);
   const [tegn, setTegn] = useState(0);
+  const ferdigRef = useRef(onFerdig);
+  ferdigRef.current = onFerdig;
 
   useEffect(() => {
-    const el = rot.current;
-    if (!el || typeof IntersectionObserver === 'undefined') {
-      setKjorer(true);
-      return;
+    if (!kjorer) {
+      setFase(0);
+      setTegn(0);
     }
-    const obs = new IntersectionObserver(
-      ([entry]) => {
-        setKjorer(entry.isIntersecting);
-        if (!entry.isIntersecting) {
-          setFase(0);
-          setTegn(0);
-        }
-      },
-      { threshold: 0.35 }
-    );
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, []);
+  }, [kjorer]);
 
   useEffect(() => {
     if (!kjorer) return;
     const t = window.setTimeout(() => {
-      const neste = (fase + 1) % TRINN.length;
-      if (neste === 0) setTegn(0);
+      const neste = fase + 1;
+      if (neste >= TRINN.length) {
+        // Flyten er ferdig: meld fra og frys i publisert-tilstand — forelderen
+        // starter reisen på nytt.
+        if (ferdigRef.current) {
+          ferdigRef.current();
+        } else {
+          setTegn(0);
+          setFase(0);
+        }
+        return;
+      }
       setFase(neste);
     }, TRINN[fase].ms);
     return () => window.clearTimeout(t);
@@ -123,7 +120,7 @@ export default function AnnonseDemo() {
   } as React.CSSProperties;
 
   return (
-    <div ref={rot} className="relative w-full max-w-[520px] lg:mx-auto" data-testid="tour-annonse-demo">
+    <div className="relative w-full max-w-[520px] lg:mx-auto" data-testid="tour-annonse-demo">
       <div className="relative h-[440px]">
         {/* --- Skjerm A: Bilder + skanning --------------------------------- */}
         <div

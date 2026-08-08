@@ -47,7 +47,7 @@ export default function HvaEr() {
       ref={ref}
       data-testid="tour-hvaer"
       data-slide="Hva er DigiHome"
-      className="relative flex min-h-[100dvh] flex-col overflow-hidden px-5 pb-16 pt-24 sm:px-8 lg:h-[100dvh] lg:snap-start lg:pb-0 lg:pt-[8vh]"
+      className="relative flex min-h-[100dvh] snap-start flex-col overflow-hidden px-5 pb-16 pt-24 sm:px-8 lg:h-[100dvh] lg:pb-0 lg:pt-[8vh]"
     >
       {/* Teksten */}
       <div className="mx-auto w-full max-w-[900px] text-center">

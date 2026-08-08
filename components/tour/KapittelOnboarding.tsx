@@ -15,7 +15,7 @@ export default function KapittelOnboarding() {
     <section
       data-testid="tour-kap1"
       data-slide="Onboarding"
-      className="relative flex min-h-[100dvh] items-center px-5 py-20 sm:px-8 lg:h-[100dvh] lg:snap-start lg:py-0"
+      className="relative flex min-h-[100dvh] snap-start items-center px-5 py-20 sm:px-8 lg:h-[100dvh] lg:py-0"
     >
       <div className="mx-auto grid w-full max-w-[1200px] items-center gap-14 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.12fr)] lg:gap-16 xl:gap-24">
         {/* Venstre — kapittelteksten */}

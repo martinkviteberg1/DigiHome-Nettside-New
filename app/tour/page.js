@@ -2,15 +2,14 @@ import Aapning from '@/components/tour/Aapning';
 import HvaEr from '@/components/tour/HvaEr';
 import KapittelOnboarding from '@/components/tour/KapittelOnboarding';
 import KapittelVeivalg from '@/components/tour/KapittelVeivalg';
-import KapittelAnnonse from '@/components/tour/KapittelAnnonse';
 import SlideKontroll from '@/components/tour/SlideKontroll';
 import Prikker from '@/components/tour/Prikker';
 
 // ---------------------------------------------------------------------------
 // /tour — interaktiv produktomvisning for investorer. Fullskjerm-slides med
-// scroll-snap på desktop (fri scroll på mobil) og punktindikator i høyre kant.
-// Bygges kapittel for kapittel: åpning → hva er DigiHome → kapittel 01
-// (onboarding). Flere kapitler kommer etter godkjenning.
+// scroll-snap på alle flater og punktindikator i høyre kant på desktop.
+// Reisen: åpning → hva er DigiHome → onboarding → huseierportalen (veivalg
+// som glir over i annonseflyten) → avslutning.
 // ---------------------------------------------------------------------------
 
 export const metadata = {
@@ -28,12 +27,11 @@ export default function TourPage() {
       <HvaEr />
       <KapittelOnboarding />
       <KapittelVeivalg />
-      <KapittelAnnonse />
 
       {/* Stille avslutning — speiler åpningen. Nye kapitler legges inn før denne. */}
       <section
         data-slide="Avslutning"
-        className="relative flex min-h-[60vh] flex-col items-center justify-center gap-4 overflow-hidden px-6 py-20 lg:h-[100dvh] lg:snap-start lg:py-0"
+        className="relative flex min-h-[100dvh] snap-start flex-col items-center justify-center gap-4 overflow-hidden px-6 py-20 lg:h-[100dvh] lg:py-0"
       >
         {/* Dotgrid + varmt lys — samme rolige raster som forsiden. */}
         <div
