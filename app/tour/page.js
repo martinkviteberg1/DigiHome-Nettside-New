@@ -1,11 +1,14 @@
 import Aapning from '@/components/tour/Aapning';
 import HvaEr from '@/components/tour/HvaEr';
 import KapittelOnboarding from '@/components/tour/KapittelOnboarding';
+import SnapKontroll from '@/components/tour/SnapKontroll';
+import Prikker from '@/components/tour/Prikker';
 
 // ---------------------------------------------------------------------------
-// /tour — interaktiv produktomvisning for investorer. Bygges kapittel for
-// kapittel: åpning → hva er DigiHome → kapittel 01 (onboarding). Flere
-// kapitler kommer etter godkjenning.
+// /tour — interaktiv produktomvisning for investorer. Fullskjerm-slides med
+// scroll-snap på desktop (fri scroll på mobil) og punktindikator i høyre kant.
+// Bygges kapittel for kapittel: åpning → hva er DigiHome → kapittel 01
+// (onboarding). Flere kapitler kommer etter godkjenning.
 // ---------------------------------------------------------------------------
 
 export const metadata = {
@@ -17,15 +20,20 @@ export const metadata = {
 export default function TourPage() {
   return (
     <main className="bg-[#fdfcfb] text-[#0a0a0a]">
+      <SnapKontroll />
+      <Prikker />
       <Aapning />
       <HvaEr />
       <KapittelOnboarding />
 
-      {/* Stille avslutning — flere kapitler kommer her. */}
-      <footer className="flex flex-col items-center gap-4 pb-20 pt-[10vh]">
-        <img src="/digihome-mark.svg" alt="" className="h-6 w-6 rounded-[5px] opacity-90" />
-        <p className="text-[12.5px] tracking-[-0.005em] text-[#b3aca2]">digihome.no</p>
-      </footer>
+      {/* Stille avslutning — speiler åpningen. Nye kapitler legges inn før denne. */}
+      <section
+        data-slide="Avslutning"
+        className="flex min-h-[60vh] flex-col items-center justify-center gap-4 px-6 py-20 lg:h-[100dvh] lg:snap-start lg:py-0"
+      >
+        <img src="/digihome-mark.svg" alt="" className="h-8 w-8 rounded-[7px]" />
+        <p className="text-[13px] tracking-[-0.005em] text-[#b3aca2]">digihome.no</p>
+      </section>
     </main>
   );
 }

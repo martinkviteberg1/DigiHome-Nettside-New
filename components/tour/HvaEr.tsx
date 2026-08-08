@@ -8,7 +8,11 @@ import Avslor from './Avslor';
 
 export default function HvaEr() {
   return (
-    <section data-testid="tour-hvaer" className="px-5 py-[18vh] sm:px-8 sm:py-[24vh]">
+    <section
+      data-testid="tour-hvaer"
+      data-slide="Hva er DigiHome"
+      className="flex min-h-[100dvh] items-center justify-center px-5 py-20 sm:px-8 lg:h-[100dvh] lg:snap-start lg:py-0"
+    >
       <div className="mx-auto max-w-[880px] text-center">
         <Avslor>
           <p className="e-label">Hva er DigiHome</p>

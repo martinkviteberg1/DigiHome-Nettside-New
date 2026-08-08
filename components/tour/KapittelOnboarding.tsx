@@ -72,8 +72,12 @@ export default function KapittelOnboarding() {
 
   return (
     <section data-testid="tour-kap1" className="relative pb-[8vh]">
-      {/* Kapittel-header */}
-      <div className="mx-auto max-w-[820px] px-5 text-center sm:px-8">
+      {/* Kapittel-divider — egen fullskjerm-slide */}
+      <div
+        data-slide="Kapittel 01"
+        className="flex min-h-[72vh] flex-col items-center justify-center px-5 py-16 sm:px-8 lg:h-[100dvh] lg:snap-start lg:py-0"
+      >
+        <div className="mx-auto max-w-[820px] text-center">
         <Avslor>
           <p className="e-label">Kapittel 01 · Onboarding</p>
         </Avslor>
@@ -88,10 +92,11 @@ export default function KapittelOnboarding() {
             henter offentlige data, foreslår leiepris og gjør boligen klar for utleie.
           </p>
         </Avslor>
+        </div>
       </div>
 
       {/* Sticky-region */}
-      <div className="mx-auto mt-8 max-w-[1220px] px-5 sm:px-8 lg:mt-0">
+      <div className="mx-auto max-w-[1220px] px-5 sm:px-8">
         <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.12fr)] lg:gap-x-16 xl:gap-x-24">
           {/* Venstre — stegtekstene */}
           <div>
@@ -104,7 +109,8 @@ export default function KapittelOnboarding() {
                     refs.current[i] = el;
                   }}
                   data-steg={i}
-                  className="flex flex-col justify-center py-14 sm:py-16 lg:min-h-[92vh] lg:py-0"
+                  data-slide={s.tittel}
+                  className="flex flex-col justify-center py-14 sm:py-16 lg:h-[100dvh] lg:snap-start lg:py-0"
                 >
                   <Avslor>
                     <p className="e-index">{s.id}</p>

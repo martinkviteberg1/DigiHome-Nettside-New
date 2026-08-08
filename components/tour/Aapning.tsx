@@ -10,7 +10,8 @@ export default function Aapning() {
   return (
     <section
       data-testid="tour-aapning"
-      className="relative flex min-h-[100dvh] flex-col items-center justify-center px-6"
+      data-slide="Forside"
+      className="relative flex min-h-[100dvh] flex-col items-center justify-center px-6 lg:h-[100dvh] lg:snap-start"
     >
       <div
         className="dh-fade-up overflow-hidden rounded-[17px] shadow-[0_28px_70px_-24px_rgba(155,91,214,0.4)] sm:rounded-[19px]"
