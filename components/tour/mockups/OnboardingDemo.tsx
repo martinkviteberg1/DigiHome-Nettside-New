@@ -5,32 +5,35 @@ import { MapPin, Check, ShieldCheck, ArrowRight } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
 // OnboardingDemo — super-minimalistisk, selvspillende demo uten ramme.
-// Adressefeltet starter vertikalt sentrert; når boligdataene toner inn glir
-// feltet rolig opp for å gi plass. Deretter morpher det til et kontaktskjema
-// (første kontaktfelt ligger nøyaktig der adressefeltet sto). Starter når
-// demoen er synlig, nullstilles utenfor viewport, og looper rolig.
+// Sekvens: adressefeltet (vertikalt sentrert) fylles ut tegn for tegn →
+// boligdata toner inn og feltet glir opp → morpher til kontaktskjema der
+// hvert felt skrives med ekte typewriter og fokus-ring → BankID bekreftes →
+// knappen trykkes → suksess-skjerm med animert hake → og til slutt et nydelig
+// enhetskort av eiendommen, som et annonsekort med bilde. Looper rolig.
 // ---------------------------------------------------------------------------
 
 const INK = '#1a1612';
 const MUTED = '#7c7466';
 const LILLA = '#9B5BD6';
 
-const SKRIVETEKST = 'Storgata 12';
 const FULL_ADRESSE = 'Storgata 12, 0155 Oslo';
-const TASTETAKT_MS = 92;
 
-const TRINN = [
+// Trinn med `tekst` kjører typewriter i sitt eget tempo (`takt` ms per tegn).
+const TRINN: { navn: string; ms: number; tekst?: string; takt?: number }[] = [
   { navn: 'start', ms: 900 },
-  { navn: 'skriv', ms: SKRIVETEKST.length * TASTETAKT_MS + 420 },
+  { navn: 'skriv', ms: 1480, tekst: 'Storgata 12', takt: 92 },
   { navn: 'forslag', ms: 1150 },
   { navn: 'valgt', ms: 900 },
   { navn: 'data', ms: 3300 },
   { navn: 'konto', ms: 850 },
-  { navn: 'navn', ms: 620 },
-  { navn: 'epost', ms: 620 },
-  { navn: 'telefon', ms: 820 },
+  { navn: 'navn', ms: 1180, tekst: 'Anna Berg', takt: 82 },
+  { navn: 'epost', ms: 1440, tekst: 'anna.berg@gmail.com', takt: 52 },
+  { navn: 'telefon', ms: 1230, tekst: '982 40 315', takt: 78 },
   { navn: 'bankid', ms: 1250 },
-  { navn: 'ferdig', ms: 3800 },
+  { navn: 'ferdig', ms: 1400 },
+  { navn: 'trykk', ms: 420 },
+  { navn: 'suksess', ms: 2500 },
+  { navn: 'kort', ms: 5200 },
 ];
 
 const IDX: Record<string, number> = {};
@@ -48,12 +51,16 @@ const ADRESSEDATA = [
 const FORSLAG = ['Storgata 12, 0155 Oslo', 'Storgata 12B, 0155 Oslo', 'Storgata 121, 0277 Oslo'];
 
 const KONTAKTFELT = [
-  { navn: 'navn', etikett: 'Navn', verdi: 'Anna Berg' },
-  { navn: 'epost', etikett: 'E-post', verdi: 'anna.berg@gmail.com' },
-  { navn: 'telefon', etikett: 'Telefon', verdi: '982 40 315' },
+  { navn: 'navn', etikett: 'Navn' },
+  { navn: 'epost', etikett: 'E-post' },
+  { navn: 'telefon', etikett: 'Telefon' },
 ];
 
-export default function OnboardingDemo({ onKonto }: { onKonto?: (iKonto: boolean) => void }) {
+function Markoer() {
+  return <span className="ml-[2px] inline-block h-[15px] w-[1.5px] translate-y-[2.5px] animate-pulse bg-[#1a1612]" />;
+}
+
+export default function OnboardingDemo() {
   const rot = useRef<HTMLDivElement | null>(null);
   const [kjorer, setKjorer] = useState(false);
   const [fase, setFase] = useState(0);
@@ -91,22 +98,33 @@ export default function OnboardingDemo({ onKonto }: { onKonto?: (iKonto: boolean
     return () => window.clearTimeout(t);
   }, [kjorer, fase]);
 
-  // Skrivemaskinen — kjører kun i skriv-trinnet.
+  // Typewriter — kjører i alle trinn som har tekst, i sitt eget tempo.
   useEffect(() => {
-    if (!kjorer || TRINN[fase].navn !== 'skriv') return;
+    if (!kjorer) return;
+    const trinn = TRINN[fase];
+    if (!trinn.tekst) return;
+    setTegn(0);
     const iv = window.setInterval(() => {
-      setTegn((n) => (n < SKRIVETEKST.length ? n + 1 : n));
-    }, TASTETAKT_MS);
+      setTegn((n) => Math.min(n + 1, trinn.tekst!.length));
+    }, trinn.takt || 80);
     return () => window.clearInterval(iv);
   }, [kjorer, fase]);
 
   const er = (navn: string) => fase >= IDX[navn];
-  const iKonto = er('konto');
+  const iKonto = er('konto') && !er('suksess');
+  const iSuksess = er('suksess') && !er('kort');
+  const iKort = er('kort');
   const skriver = !er('valgt');
 
-  useEffect(() => {
-    onKonto?.(iKonto);
-  }, [iKonto, onKonto]);
+  // Hva som vises i et kontaktfelt: ferdig skrevet, under skriving, eller tomt.
+  const feltVerdi = (navn: string) => {
+    const i = IDX[navn];
+    const full = TRINN[i].tekst || '';
+    if (fase > i) return full;
+    if (fase === i) return full.slice(0, tegn);
+    return '';
+  };
+  const feltAktivt = (navn: string) => fase === IDX[navn];
 
   const fade = 'transition-all duration-[600ms] ease-[cubic-bezier(0.16,1,0.3,1)]';
   const tittelStil = {
@@ -116,13 +134,12 @@ export default function OnboardingDemo({ onKonto }: { onKonto?: (iKonto: boolean
 
   return (
     <div ref={rot} className="relative mx-auto w-full max-w-[520px]" data-testid="tour-onboarding-demo">
-      {/* Fast høyde så sliden står i ro. Feltet starter vertikalt sentrert og
-          glir opp når dataene kommer inn. */}
+      {/* Fast høyde så sliden står i ro gjennom hele sekvensen. */}
       <div className="relative h-[420px]">
         {/* --- Fase A: Adressen ------------------------------------------- */}
         <div
           className={`absolute inset-x-0 top-0 ${fade} ${
-            iKonto ? 'pointer-events-none scale-[0.985] opacity-0' : 'scale-100 opacity-100'
+            iKonto || iSuksess || iKort ? 'pointer-events-none scale-[0.985] opacity-0' : 'scale-100 opacity-100'
           }`}
         >
           <div
@@ -133,7 +150,6 @@ export default function OnboardingDemo({ onKonto }: { onKonto?: (iKonto: boolean
               Hvor ligger boligen?
             </p>
 
-            {/* Adressefeltet — nydelig avrundet, myk skygge, fokus-ring mens det skrives. */}
             <div className="relative">
               <div
                 className={`flex h-[58px] items-center gap-3.5 rounded-full border bg-white px-6 shadow-[0_24px_60px_-24px_rgba(10,10,10,0.18)] transition-all duration-500 ${
@@ -142,10 +158,8 @@ export default function OnboardingDemo({ onKonto }: { onKonto?: (iKonto: boolean
               >
                 <MapPin className="h-[17px] w-[17px] shrink-0" strokeWidth={1.75} style={{ color: skriver ? LILLA : MUTED }} />
                 <span className="flex-1 truncate text-[15px] font-medium" style={{ color: INK }}>
-                  {er('valgt') ? FULL_ADRESSE : SKRIVETEKST.slice(0, tegn)}
-                  {skriver && (
-                    <span className="ml-[2px] inline-block h-[16px] w-[1.5px] translate-y-[2.5px] animate-pulse bg-[#1a1612]" />
-                  )}
+                  {er('valgt') ? FULL_ADRESSE : fase === IDX.skriv ? (TRINN[IDX.skriv].tekst || '').slice(0, tegn) : ''}
+                  {skriver && <Markoer />}
                 </span>
                 <span
                   className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full transition-all duration-300 ${
@@ -212,7 +226,6 @@ export default function OnboardingDemo({ onKonto }: { onKonto?: (iKonto: boolean
         </div>
 
         {/* --- Fase B: Kontaktskjemaet ------------------------------------ */}
-        {/* Første felt ligger nøyaktig der adressefeltet sto — morph. */}
         <div
           className={`absolute inset-x-0 top-0 ${fade} ${
             iKonto ? 'scale-100 opacity-100' : 'pointer-events-none scale-[0.985] opacity-0'
@@ -226,18 +239,16 @@ export default function OnboardingDemo({ onKonto }: { onKonto?: (iKonto: boolean
             {KONTAKTFELT.map((felt) => (
               <div
                 key={felt.navn}
-                className="flex h-[58px] items-center gap-3.5 rounded-full border border-[#e5ded3] bg-white px-6 shadow-[0_24px_60px_-30px_rgba(10,10,10,0.14)]"
+                className={`flex h-[58px] items-center gap-3.5 rounded-full border bg-white px-6 shadow-[0_24px_60px_-30px_rgba(10,10,10,0.14)] transition-all duration-400 ${
+                  feltAktivt(felt.navn) ? 'border-[#c8ade5] ring-4 ring-[#9B5BD6]/[0.07]' : 'border-[#e5ded3] ring-0'
+                }`}
               >
                 <span className="w-[64px] shrink-0 text-[12.5px] font-semibold" style={{ color: MUTED }}>
                   {felt.etikett}
                 </span>
-                <span
-                  className={`truncate text-[15px] font-medium transition-all duration-500 ${
-                    er(felt.navn) ? 'translate-y-0 opacity-100' : 'translate-y-1 opacity-0'
-                  }`}
-                  style={{ color: INK }}
-                >
-                  {felt.verdi}
+                <span className="flex-1 truncate text-[15px] font-medium" style={{ color: INK }}>
+                  {feltVerdi(felt.navn)}
+                  {feltAktivt(felt.navn) && <Markoer />}
                 </span>
               </div>
             ))}
@@ -254,15 +265,88 @@ export default function OnboardingDemo({ onKonto }: { onKonto?: (iKonto: boolean
             <Check className="h-3.5 w-3.5" strokeWidth={2.5} style={{ color: LILLA }} />
           </p>
 
+          {/* Knappen — våkner, og «trykkes» før suksess. */}
           <div
-            className={`pointer-events-none mt-6 flex h-[58px] w-full items-center justify-center gap-2 rounded-full text-[15px] font-semibold transition-all duration-500 ${
+            className={`pointer-events-none mt-6 flex h-[58px] w-full items-center justify-center gap-2 rounded-full text-[15px] font-semibold transition-all duration-300 ${
               er('ferdig')
                 ? 'bg-[#1a1a1a] text-white shadow-[0_24px_60px_-24px_rgba(10,10,10,0.45)]'
                 : 'bg-[#f0ece5] text-[#b3aca2]'
-            }`}
+            } ${TRINN[fase].navn === 'trykk' ? 'scale-[0.96]' : 'scale-100'}`}
           >
             Fullfør registrering <ArrowRight className="h-4 w-4" strokeWidth={2} />
           </div>
+        </div>
+
+        {/* --- Fase C: Suksess --------------------------------------------- */}
+        <div
+          className={`absolute inset-0 flex flex-col items-center justify-center text-center ${fade} ${
+            iSuksess ? 'scale-100 opacity-100' : 'pointer-events-none scale-[0.97] opacity-0'
+          }`}
+        >
+          <span
+            className={`flex h-[68px] w-[68px] items-center justify-center rounded-full transition-all delay-150 duration-[600ms] ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
+              iSuksess ? 'scale-100 opacity-100' : 'scale-50 opacity-0'
+            }`}
+            style={{ background: 'rgba(155,91,214,0.12)' }}
+          >
+            <Check className="h-8 w-8" strokeWidth={2.25} style={{ color: LILLA }} />
+          </span>
+          <p className="mt-6 text-[22px] font-bold tracking-[-0.025em]" style={tittelStil}>
+            Kontoen er opprettet
+          </p>
+          <p className="mt-2 text-[14px]" style={{ color: MUTED }}>
+            Boligen er registrert — klar for utleie.
+          </p>
+        </div>
+
+        {/* --- Fase D: Enhetskortet ---------------------------------------- */}
+        <div
+          className={`absolute inset-0 flex flex-col items-center justify-center ${fade} ${
+            iKort ? 'scale-100 opacity-100' : 'pointer-events-none translate-y-3 scale-[0.97] opacity-0'
+          }`}
+        >
+          <div className="w-full max-w-[380px] overflow-hidden rounded-[26px] border border-[#eee9e2] bg-white shadow-[0_44px_100px_-32px_rgba(10,10,10,0.3)]">
+            <div className="relative aspect-[16/10] overflow-hidden">
+              <img
+                src="/nyest-hero-portrett.webp"
+                alt=""
+                className={`h-full w-full object-cover transition-transform duration-[5200ms] ease-linear ${
+                  iKort ? 'scale-[1.06]' : 'scale-100'
+                }`}
+              />
+              <span className="absolute left-4 top-4 inline-flex items-center gap-1.5 rounded-full bg-white/95 px-3 py-[5px] text-[11px] font-semibold backdrop-blur-sm" style={{ color: INK }}>
+                <span className="h-[6px] w-[6px] rounded-full" style={{ background: LILLA }} />
+                Klar for utleie
+              </span>
+            </div>
+            <div className="flex items-start justify-between gap-4 p-5">
+              <div className="min-w-0">
+                <p className="truncate text-[16.5px] font-bold tracking-[-0.02em]" style={tittelStil}>
+                  Storgata 12
+                </p>
+                <p className="mt-1 text-[12.5px]" style={{ color: MUTED }}>
+                  0155 Oslo · 2-roms · 64 m² · 3. etasje
+                </p>
+              </div>
+              <div className="shrink-0 text-right">
+                <p className="text-[15.5px] font-bold tabular-nums tracking-[-0.02em]" style={tittelStil}>
+                  18 500 kr
+                </p>
+                <p className="mt-[2px] text-[11px]" style={{ color: MUTED }}>
+                  per måned
+                </p>
+              </div>
+            </div>
+          </div>
+          <p
+            className={`mt-5 flex items-center gap-1.5 text-[12px] transition-opacity delay-500 duration-700 ${
+              iKort ? 'opacity-100' : 'opacity-0'
+            }`}
+            style={{ color: MUTED }}
+          >
+            <Check className="h-3 w-3" strokeWidth={2.5} style={{ color: LILLA }} />
+            Leiepris foreslått av AI
+          </p>
         </div>
       </div>
     </div>
