@@ -16,18 +16,20 @@ const LILLA = '#9B5BD6';
 
 const CHIPS = [
   { navn: 'Kartverket', src: '/kartverket-logo.png', h: 18, vinkel: -90, tekst: 'Boligdata hentes fra Kartverket' },
-  { navn: 'FINN.no', src: '/finn-logo-full.png', h: 15, vinkel: -45, tekst: 'Annonsen publiseres rett på FINN' },
-  { navn: 'Creditsafe', src: '/creditsafe-logo.png', h: 13, vinkel: 0, tekst: 'Kredittsjekk av kandidatene' },
-  { navn: 'BankID', src: '/bankid-logo.png', h: 13, vinkel: 45, tekst: 'Signering og identitet med BankID' },
-  { navn: 'Vipps', src: '/vipps-logo.png', h: 16, vinkel: 90, tekst: 'Betaling med Vipps' },
-  { navn: 'Fiken', src: '/fiken-logo.png', h: 16, vinkel: 135, tekst: 'Oppgjøret rett i regnskapet' },
-  { navn: 'Airbnb', src: '/airbnb-logo.png', h: 17, vinkel: 180, tekst: 'Korttid synkroniseres med Airbnb' },
-  { navn: 'Booking.com', src: '/booking-logo.png', h: 13, vinkel: -135, tekst: '— og med Booking.com' },
+  { navn: 'FINN.no', src: '/finn-logo-full.png', h: 15, vinkel: -54, tekst: 'Annonsen publiseres rett på FINN' },
+  { navn: 'Creditsafe', src: '/creditsafe-logo.png', h: 13, vinkel: -18, tekst: 'Kredittsjekk av kandidatene' },
+  { navn: 'BankID', src: '/bankid-logo.png', h: 13, vinkel: 18, tekst: 'Signering og identitet med BankID' },
+  { navn: 'Vipps', src: '/vipps-logo.png', h: 16, vinkel: 54, tekst: 'Betaling med Vipps' },
+  { navn: 'Fiken', src: '/fiken-logo.png', h: 16, vinkel: 90, tekst: 'Oppgjøret rett i regnskapet — Fiken' },
+  { navn: 'PowerOffice', src: '/poweroffice-logo.png', h: 14, vinkel: 126, tekst: '— eller PowerOffice' },
+  { navn: 'Tripletex', src: '/tripletex-logo.png', h: 14, vinkel: 162, tekst: '— eller Tripletex' },
+  { navn: 'Airbnb', src: '/airbnb-logo.png', h: 17, vinkel: -162, tekst: 'Korttid synkroniseres med Airbnb' },
+  { navn: 'Booking.com', src: '/booking-logo.png', h: 13, vinkel: -126, tekst: '— og med Booking.com' },
 ];
 
 const TRINN: { navn: string; ms: number }[] = [
   { navn: 'start', ms: 1000 },
-  ...CHIPS.map((_, i) => ({ navn: `i${i}`, ms: 1500 })),
+  ...CHIPS.map((_, i) => ({ navn: `i${i}`, ms: 1400 })),
   { navn: 'alle', ms: 5500 },
 ];
 

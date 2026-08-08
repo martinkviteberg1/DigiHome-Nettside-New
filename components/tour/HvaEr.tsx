@@ -70,19 +70,29 @@ export default function HvaEr() {
         </p>
       </div>
 
-      {/* Produktkomposisjonen */}
-      <div className="relative mx-auto mt-10 w-full max-w-[1060px] sm:mt-12 md:h-[540px] lg:h-auto lg:flex-1">
-        {/* Desktop/tablet: portal + telefon overlappende */}
-        <div className="hidden md:block">
-          <div className={`absolute left-0 top-0 w-[70%] max-w-[760px] lg:left-[2%] ${trinn(320).className}`} style={trinn(320).style}>
-            <Parallax faktor={0.07}>
-              <PortalMockup />
-            </Parallax>
-          </div>
-          <div className={`absolute left-[60%] top-10 z-10 w-[226px] ${trinn(520).className}`} style={trinn(520).style}>
-            <Parallax faktor={0.16}>
-              <PhoneMockup />
-            </Parallax>
+      {/* Produktkomposisjonen — ankret helt i bunnkanten av sliden. */}
+      <div className="relative mx-auto mt-10 w-full max-w-[1080px] sm:mt-12 lg:mt-auto">
+        {/* Desktop/tablet: portalen sentrert, telefonen står helt nede i høyre kant */}
+        <div className="hidden w-full md:block">
+          <div className="relative mx-auto w-full">
+            <div
+              className={`mx-auto ${trinn(320).className}`}
+              style={{ ...trinn(320).style, width: 'min(86%, 920px, calc((100dvh - 330px) * 1.6))' }}
+            >
+              <Parallax faktor={0.07}>
+                <PortalMockup />
+              </Parallax>
+            </div>
+            <div
+              className="absolute bottom-0 right-0 z-10 xl:right-[1%]"
+              style={{ width: 'clamp(200px, calc((100dvh - 380px) * 0.52), 252px)' }}
+            >
+              <div className={trinn(520).className} style={trinn(520).style}>
+                <Parallax faktor={0.16}>
+                  <PhoneMockup />
+                </Parallax>
+              </div>
+            </div>
           </div>
         </div>
 

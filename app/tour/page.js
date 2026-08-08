@@ -2,6 +2,7 @@ import Aapning from '@/components/tour/Aapning';
 import HvaEr from '@/components/tour/HvaEr';
 import KapittelOnboarding from '@/components/tour/KapittelOnboarding';
 import KapittelVeivalg from '@/components/tour/KapittelVeivalg';
+import KapittelVisning from '@/components/tour/KapittelVisning';
 import KapittelLeietaker from '@/components/tour/KapittelLeietaker';
 import KapittelKontrakt from '@/components/tour/KapittelKontrakt';
 import KapittelChat from '@/components/tour/KapittelChat';
@@ -33,6 +34,7 @@ export default function TourPage() {
       <HvaEr />
       <KapittelOnboarding />
       <KapittelVeivalg />
+      <KapittelVisning />
       <KapittelLeietaker />
       <KapittelKontrakt />
       <KapittelChat />
