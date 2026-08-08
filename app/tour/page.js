@@ -1,7 +1,7 @@
 import Aapning from '@/components/tour/Aapning';
 import HvaEr from '@/components/tour/HvaEr';
 import KapittelOnboarding from '@/components/tour/KapittelOnboarding';
-import SnapKontroll from '@/components/tour/SnapKontroll';
+import SlideKontroll from '@/components/tour/SlideKontroll';
 import Prikker from '@/components/tour/Prikker';
 
 // ---------------------------------------------------------------------------
@@ -20,7 +20,7 @@ export const metadata = {
 export default function TourPage() {
   return (
     <main className="bg-[#fdfcfb] text-[#0a0a0a]">
-      <SnapKontroll />
+      <SlideKontroll />
       <Prikker />
       <Aapning />
       <HvaEr />

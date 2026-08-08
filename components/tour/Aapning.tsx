@@ -2,8 +2,9 @@ import React from 'react';
 import { ChevronDown } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
-// Aapning — forsiden av omvisningen. Apple-nivå: kun ikonet, navnet og stillhet.
-// Ingen knapper, ingen badges, ingen støy. Et diskret scroll-hint nederst.
+// Aapning — forsiden av omvisningen. Apple-nivå: stort ikon, stor tittel og
+// én rolig tagline. Dotgriden fra /nyest3 ligger maskert bak midten og gir
+// flaten liv uten å lage støy. Diskret scroll-hint nederst.
 // ---------------------------------------------------------------------------
 
 export default function Aapning() {
@@ -11,31 +12,49 @@ export default function Aapning() {
     <section
       data-testid="tour-aapning"
       data-slide="Forside"
-      className="relative flex min-h-[100dvh] flex-col items-center justify-center px-6 lg:h-[100dvh] lg:snap-start"
+      className="relative flex min-h-[100dvh] flex-col items-center justify-center overflow-hidden px-6 lg:h-[100dvh] lg:snap-start"
     >
+      {/* Dotgrid — samme rolige raster som /nyest3, maskert mot midten. */}
       <div
-        className="dh-fade-up overflow-hidden rounded-[17px] shadow-[0_28px_70px_-24px_rgba(155,91,214,0.4)] sm:rounded-[19px]"
-      >
-        <img
-          src="/digihome-mark.svg"
-          alt="DigiHome-ikon"
-          className="h-[68px] w-[68px] sm:h-[78px] sm:w-[78px]"
-        />
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 opacity-[0.32]"
+        style={{
+          backgroundImage: 'radial-gradient(circle, #c8c8c8 0.8px, transparent 0.8px)',
+          backgroundSize: '24px 24px',
+          maskImage: 'radial-gradient(85% 75% at 50% 42%, black 28%, transparent 82%)',
+          WebkitMaskImage: 'radial-gradient(85% 75% at 50% 42%, black 28%, transparent 82%)',
+        }}
+      />
+      {/* Varmt lys øverst — også hentet fra /nyest3. */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 top-0 h-[460px]"
+        style={{ background: 'radial-gradient(60% 70% at 50% 0%, #f6f2ea 0%, rgba(246,242,234,0) 65%)' }}
+      />
+
+      <div className="relative flex flex-col items-center">
+        <div className="dh-fade-up overflow-hidden rounded-[22px] shadow-[0_40px_100px_-30px_rgba(155,91,214,0.5)] sm:rounded-[26px]">
+          <img
+            src="/digihome-mark.svg"
+            alt="DigiHome-ikon"
+            className="h-[92px] w-[92px] sm:h-[110px] sm:w-[110px]"
+          />
+        </div>
+
+        <h1
+          className="e-display dh-fade-up mt-10 text-[clamp(56px,9.5vw,110px)] sm:mt-12"
+          style={{ animationDelay: '0.14s' }}
+        >
+          DigiHome
+        </h1>
+
+        <p
+          className="dh-fade-up mt-4 text-[20px] font-medium leading-[1.15] tracking-[-0.022em] text-[#8a827a] sm:mt-5 sm:text-[26px]"
+          style={{ animationDelay: '0.28s', fontFamily: 'var(--font-heading), sans-serif' }}
+        >
+          Utleie på autopilot<span className="text-[#9B5BD6]">.</span>
+        </p>
       </div>
-
-      <h1
-        className="e-display dh-fade-up mt-9 text-[44px] sm:mt-10 sm:text-[58px]"
-        style={{ animationDelay: '0.14s' }}
-      >
-        DigiHome
-      </h1>
-
-      <p
-        className="dh-fade-up mt-4 text-[15px] tracking-[-0.005em] text-[#8a827a] sm:text-[16px]"
-        style={{ animationDelay: '0.26s' }}
-      >
-        En omvisning i produktet
-      </p>
 
       <div
         className="dh-fade-up absolute bottom-9 left-1/2 -translate-x-1/2"
