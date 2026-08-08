@@ -3,9 +3,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 
 // ---------------------------------------------------------------------------
-// HvaEr — mørk interlude-slide. Hele omvisningen er papirhvit; denne ene
-// sliden er nesten sort og bærer definisjonen av produktet i hvit typografi.
-// Kun én setning og én støttelinje — premium keynote-grep, ingen støy.
+// HvaEr — lys, presis definisjonsslide. Kun én setning i sort med «automatisk»
+// i lilla, og én rolig støttelinje. Ren typografi på papirbakgrunn — ingen
+// bokser, ingen støy.
 // ---------------------------------------------------------------------------
 
 export default function HvaEr() {
@@ -44,37 +44,23 @@ export default function HvaEr() {
       ref={ref}
       data-testid="tour-hvaer"
       data-slide="Hva er DigiHome"
-      data-moerk="true"
-      className="relative flex min-h-[100dvh] items-center justify-center overflow-hidden px-5 py-24 sm:px-8 lg:h-[100dvh] lg:py-0 lg:snap-start"
-      style={{ background: 'radial-gradient(120% 130% at 10% 0%, #1c1814 0%, #0e0d0b 52%, #0a0a0a 100%)' }}
+      className="flex min-h-[100dvh] items-center justify-center px-5 py-24 sm:px-8 lg:h-[100dvh] lg:py-0 lg:snap-start"
     >
-      {/* Svak lilla glød øverst — gir dybde uten å lage støy. */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 top-0 h-[440px]"
-        style={{ background: 'radial-gradient(55% 70% at 50% 0%, rgba(210,152,255,0.09) 0%, rgba(210,152,255,0) 70%)' }}
-      />
-
-      <div className="relative mx-auto w-full max-w-[980px] text-center">
-        <p
-          {...trinn(0)}
-          data-testid="tour-hvaer-label"
-        >
-          <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/40">
-            Hva er DigiHome
-          </span>
+      <div className="mx-auto w-full max-w-[980px] text-center">
+        <p {...trinn(0)}>
+          <span className="e-label">Hva er DigiHome</span>
         </p>
 
         <h2
-          className={`mx-auto mt-8 max-w-[22ch] text-[32px] font-bold leading-[1.13] tracking-[-0.032em] text-white sm:mt-10 sm:text-[44px] lg:text-[52px] ${trinn(140).className}`}
-          style={{ ...trinn(140).style, fontFamily: 'var(--font-heading), sans-serif', textWrap: 'balance' }}
+          className={`e-display mx-auto mt-8 max-w-[22ch] text-[32px] leading-[1.1] sm:mt-10 sm:text-[44px] lg:text-[52px] ${trinn(140).className}`}
+          style={{ ...trinn(140).style, textWrap: 'balance' }}
         >
           DigiHome er et AI-drevet system for boligforvaltning som håndterer hele
-          leieforholdet — <span className="text-[#D298FF]">automatisk</span>.
+          leieforholdet — <span className="text-[#9B5BD6]">automatisk</span>.
         </h2>
 
         <p
-          className={`mx-auto mt-8 max-w-[52ch] text-[15.5px] leading-[1.7] text-white/50 sm:mt-10 sm:text-[17px] ${trinn(320).className}`}
+          className={`e-lead mx-auto mt-8 max-w-[52ch] sm:mt-10 ${trinn(320).className}`}
           style={trinn(320).style}
         >
           Annonse, visning, kontrakt, depositum og husleie — uten forvalter, til en
