@@ -3,14 +3,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 
 // ---------------------------------------------------------------------------
-// HvaEr — elevator pitch med kinetisk typografi. Oppgavene en forvalter gjør
-// avsløres ord for ord i dempet beige, før punchlinen lander i sort:
-// «DigiHome gjør det automatisk.» Deretter én rolig, presis forklaring for
-// investorer. Ingen bokser, ingen kanter — bare rytme, kontrast og luft.
+// HvaEr — mørk interlude-slide. Hele omvisningen er papirhvit; denne ene
+// sliden er nesten sort og bærer definisjonen av produktet i hvit typografi.
+// Kun én setning og én støttelinje — premium keynote-grep, ingen støy.
 // ---------------------------------------------------------------------------
-
-const ORD = ['Annonse.', 'Visning.', 'Kontrakt.', 'Depositum.', 'Husleie.'];
-const TAKT_MS = 130; // avstand mellom hvert ord i avsløringen
 
 export default function HvaEr() {
   const ref = useRef<HTMLElement | null>(null);
@@ -36,59 +32,53 @@ export default function HvaEr() {
     return () => obs.disconnect();
   }, []);
 
-  const trinn = (delayMs: number) =>
-    `inline-block transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-      synlig ? 'translate-y-0 opacity-100' : 'translate-y-5 opacity-0'
-    }`;
-
-  const punchlineDelay = ORD.length * TAKT_MS + 300;
-  const leadDelay = punchlineDelay + 500;
+  const trinn = (delayMs: number) => ({
+    className: `transition-all duration-[900ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
+      synlig ? 'translate-y-0 opacity-100' : 'translate-y-6 opacity-0'
+    }`,
+    style: { transitionDelay: `${delayMs}ms` } as React.CSSProperties,
+  });
 
   return (
     <section
       ref={ref}
       data-testid="tour-hvaer"
       data-slide="Hva er DigiHome"
-      className="flex min-h-[100dvh] items-center justify-center px-5 py-24 sm:px-8 lg:h-[100dvh] lg:py-0 lg:snap-start"
+      data-moerk="true"
+      className="relative flex min-h-[100dvh] items-center justify-center overflow-hidden px-5 py-24 sm:px-8 lg:h-[100dvh] lg:py-0 lg:snap-start"
+      style={{ background: 'radial-gradient(120% 130% at 10% 0%, #1c1814 0%, #0e0d0b 52%, #0a0a0a 100%)' }}
     >
-      <div className="mx-auto w-full max-w-[1000px] text-center">
-        <p className={`e-label ${trinn(0)}`} style={{ transitionDelay: '0ms' }}>
-          Hva er DigiHome
+      {/* Svak lilla glød øverst — gir dybde uten å lage støy. */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 top-0 h-[440px]"
+        style={{ background: 'radial-gradient(55% 70% at 50% 0%, rgba(210,152,255,0.09) 0%, rgba(210,152,255,0) 70%)' }}
+      />
+
+      <div className="relative mx-auto w-full max-w-[980px] text-center">
+        <p
+          {...trinn(0)}
+          data-testid="tour-hvaer-label"
+        >
+          <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/40">
+            Hva er DigiHome
+          </span>
         </p>
 
-        {/* Oppgavelisten — det en forvalter bruker dagene på. */}
-        <div
-          className="e-display mt-9 flex flex-wrap justify-center gap-x-[0.32em] text-[38px] sm:mt-11 sm:text-[54px] lg:text-[62px]"
-          style={{ color: '#c8c0b3' }}
-          aria-label={ORD.join(' ')}
+        <h2
+          className={`mx-auto mt-8 max-w-[22ch] text-[32px] font-bold leading-[1.13] tracking-[-0.032em] text-white sm:mt-10 sm:text-[44px] lg:text-[52px] ${trinn(140).className}`}
+          style={{ ...trinn(140).style, fontFamily: 'var(--font-heading), sans-serif', textWrap: 'balance' }}
         >
-          {ORD.map((ord, i) => (
-            <span
-              key={ord}
-              className={trinn(0)}
-              style={{ transitionDelay: `${200 + i * TAKT_MS}ms` }}
-            >
-              {ord}
-            </span>
-          ))}
-        </div>
+          DigiHome er et AI-drevet system for boligforvaltning som håndterer hele
+          leieforholdet — <span className="text-[#D298FF]">automatisk</span>.
+        </h2>
 
-        {/* Punchline — lander etter at listen er komplett. */}
-        <div
-          className={`e-display mt-2 text-[38px] sm:mt-3 sm:text-[54px] lg:text-[62px] ${trinn(0)}`}
-          style={{ transitionDelay: `${punchlineDelay}ms` }}
-        >
-          DigiHome gjør det automatisk<span className="text-[#9B5BD6]">.</span>
-        </div>
-
-        {/* Én presis forklaring for investorer. */}
         <p
-          className={`e-lead mx-auto mt-9 max-w-[56ch] sm:mt-12 ${trinn(0)}`}
-          style={{ transitionDelay: `${leadDelay}ms` }}
+          className={`mx-auto mt-8 max-w-[52ch] text-[15.5px] leading-[1.7] text-white/50 sm:mt-10 sm:text-[17px] ${trinn(320).className}`}
+          style={trinn(320).style}
         >
-          En AI-drevet plattform for boligutleie. Utleier administrerer selv —
-          programvaren gjør jobben som før krevde en forvalter, til en brøkdel av
-          kostnaden. Fra én bolig til hele porteføljer.
+          Annonse, visning, kontrakt, depositum og husleie — uten forvalter, til en
+          brøkdel av kostnaden. Fra én bolig til hele porteføljer.
         </p>
       </div>
     </section>

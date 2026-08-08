@@ -37,6 +37,9 @@ export default function Prikker() {
 
   if (slides.length === 0) return null;
 
+  // På mørke slides (data-moerk) skifter prikkene til hvit palett.
+  const moerk = slides[aktiv]?.el?.dataset?.moerk === 'true';
+
   return (
     <nav
       aria-label="Fremdrift i omvisningen"
@@ -55,8 +58,12 @@ export default function Prikker() {
           <span
             className={`block w-[6px] rounded-full transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
               i === aktiv
-                ? 'h-[18px] bg-[#0a0a0a]'
-                : 'h-[6px] bg-[#0a0a0a]/[0.16] group-hover:bg-[#0a0a0a]/[0.38]'
+                ? `h-[18px] ${moerk ? 'bg-white' : 'bg-[#0a0a0a]'}`
+                : `h-[6px] ${
+                    moerk
+                      ? 'bg-white/25 group-hover:bg-white/50'
+                      : 'bg-[#0a0a0a]/[0.16] group-hover:bg-[#0a0a0a]/[0.38]'
+                  }`
             }`}
           />
         </button>
