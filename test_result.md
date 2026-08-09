@@ -4120,3 +4120,17 @@ agent_communication:
     -agent: "main"
     -message: "Frontend-endringer i /tour klare for eventuell UI-test (kun med brukers tillatelse): (1) HvaEr-sliden — portal-mockup skal være stor/høy (967x620 på 1920x950), telefon hengende 113px utenfor portalens høyrekant, bunnjustert, ingen horisontal overflow, mobil viser kun telefonen. (2) Slide-navigasjon på desktop: piltaster opp/ned/venstre/høyre skal flytte NØYAKTIG én slide per trykk med jevn 680ms-animasjon uten hakking; musehjul én gest = én slide; mobil har fri scroll med CSS-snap. (3) Integrasjonssliden: 9 chips inkl. Keyhole (depositum) og samlet regnskapschip (Fiken+PowerOffice+Tripletex). Ingen backend-endringer i denne runden — ren frontend."
 
+
+backend:
+  - task: "GOOGLE ADS API: v21 avviklet/blokkert av Google — oppgradert til v22 via GOOGLE_ADS_API_VERSION i .env + fallback-bump i lib/google-ads-native.js og fikset hardkodet v21 i scripts/gads_inspect.mjs"
+    implemented: true
+    working: true
+    file: "/app/.env, /app/lib/google-ads-native.js, /app/scripts/gads_inspect.mjs"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "main"
+        -comment: "FUNNET UNDER LESENDE BUDSJETTSJEKK (brukeren spurte hva annonsebudsjettet er): alle Google Ads-kall via lib/google-ads-native.js feilet med «Version v21 is deprecated. Requests to this version will be blocked» — dvs. offline-konverteringer og kostnadssynk mot Google har vært brutt i produksjon. FIKS (brukergodkjent): (1) GOOGLE_ADS_API_VERSION=v22 lagt i /app/.env (biblioteket leste allerede denne variabelen, med fallback v21). (2) Fallback i lib/google-ads-native.js linje 13 bumpet 'v21'→'v22' så en deploy uten env-varen ikke regrederer. (3) scripts/gads_inspect.mjs hadde v21 HARDKODET i URL-en — nå env-styrt med v22-fallback. v22 valgt (ikke v23/v24) fordi den er semantisk nærmest v21 for eksisterende GAQL; v22/v23/v24 ble alle verifisert fungerende mot kontoen. VERIFISERT ETTER RESTART: supervisorctl restart nextjs → /api/health 200; lesende GAQL-spørring mot kontoen henter kampanjer/budsjetter/kostnad uten feil via .env-versjonen. Budsjettstatus for referanse (per juni 2026): Google 2 aktive kampanjer 450 kr/dag (~13 680 kr/mnd, forbruk siste 30d 11 272 kr), Meta 1 aktivt adsett 330 kr/dag (~10 032 kr/mnd, forbruk siste 30d 9 708 kr). MERK for testing-agent: IKKE test dette ved å skrive mot Google/Meta — kontoene er LIVE; lesende verifisering er allerede gjort av main."
+

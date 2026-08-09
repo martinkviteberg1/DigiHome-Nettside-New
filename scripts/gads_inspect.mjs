@@ -2,7 +2,8 @@ import fs from 'fs';
 const env = fs.readFileSync('/app/.env','utf8'); const E={}; for (const l of env.split('\n')){const m=l.match(/^([A-Z0-9_]+)=(.*)$/); if(m)E[m[1]]=m[2];}
 const CUST=E.GOOGLE_ADS_CUSTOMER_ID.replace(/[^0-9]/g,''), MCC=E.GOOGLE_ADS_LOGIN_CUSTOMER_ID.replace(/[^0-9]/g,'');
 async function tok(){const b=new URLSearchParams({client_id:E.GOOGLE_ADS_CLIENT_ID,client_secret:E.GOOGLE_ADS_CLIENT_SECRET,refresh_token:E.GOOGLE_ADS_REFRESH_TOKEN,grant_type:'refresh_token'});const r=await fetch('https://oauth2.googleapis.com/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:b});return (await r.json()).access_token;}
-async function q(t,query){const r=await fetch(`https://googleads.googleapis.com/v21/customers/${CUST}/googleAds:search`,{method:'POST',headers:{Authorization:`Bearer ${t}`,'developer-token':E.GOOGLE_ADS_DEVELOPER_TOKEN,'login-customer-id':MCC,'Content-Type':'application/json'},body:JSON.stringify({query})});return r.json();}
+const VER = E.GOOGLE_ADS_API_VERSION || 'v22';
+async function q(t,query){const r=await fetch(`https://googleads.googleapis.com/${VER}/customers/${CUST}/googleAds:search`,{method:'POST',headers:{Authorization:`Bearer ${t}`,'developer-token':E.GOOGLE_ADS_DEVELOPER_TOKEN,'login-customer-id':MCC,'Content-Type':'application/json'},body:JSON.stringify({query})});return r.json();}
 (async()=>{
   const t=await tok();
   console.log('=== KAMPANJER ===');
