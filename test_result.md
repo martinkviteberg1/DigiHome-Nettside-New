@@ -4134,3 +4134,16 @@ backend:
         -agent: "main"
         -comment: "FUNNET UNDER LESENDE BUDSJETTSJEKK (brukeren spurte hva annonsebudsjettet er): alle Google Ads-kall via lib/google-ads-native.js feilet med «Version v21 is deprecated. Requests to this version will be blocked» — dvs. offline-konverteringer og kostnadssynk mot Google har vært brutt i produksjon. FIKS (brukergodkjent): (1) GOOGLE_ADS_API_VERSION=v22 lagt i /app/.env (biblioteket leste allerede denne variabelen, med fallback v21). (2) Fallback i lib/google-ads-native.js linje 13 bumpet 'v21'→'v22' så en deploy uten env-varen ikke regrederer. (3) scripts/gads_inspect.mjs hadde v21 HARDKODET i URL-en — nå env-styrt med v22-fallback. v22 valgt (ikke v23/v24) fordi den er semantisk nærmest v21 for eksisterende GAQL; v22/v23/v24 ble alle verifisert fungerende mot kontoen. VERIFISERT ETTER RESTART: supervisorctl restart nextjs → /api/health 200; lesende GAQL-spørring mot kontoen henter kampanjer/budsjetter/kostnad uten feil via .env-versjonen. Budsjettstatus for referanse (per juni 2026): Google 2 aktive kampanjer 450 kr/dag (~13 680 kr/mnd, forbruk siste 30d 11 272 kr), Meta 1 aktivt adsett 330 kr/dag (~10 032 kr/mnd, forbruk siste 30d 9 708 kr). MERK for testing-agent: IKKE test dette ved å skrive mot Google/Meta — kontoene er LIVE; lesende verifisering er allerede gjort av main."
 
+
+  - task: "ANNONSEBUDSJETT REDUSERT TIL ~10 000 KR/MND TOTALT (eier-instruert: «reduser budsjettet til 10 000 per måned totalt. tenk selv og fiks») — utført direkte mot LIVE Google Ads- og Meta-kontoene via API"
+    implemented: true
+    working: true
+    file: "(ingen kodeendring — kontomutasjon via engangsskript i /tmp, nå borte)"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "main"
+        -comment: "DATADREVET FORDELING (ytelse siste 30d lest først): Google Bergen Search hadde 8 konv/CPA 1082 (siste 7d CPA 527 — best), Google Konkurrent 3 konv men 0 siste 7d og brukte bare ~87 av 150 kr/dag, Meta Branding 9 leads/CPL 1079 men 0 leads siste 7d med frekvens 3.53 (metning). NYE BUDSJETTER (skrevet 8. juni-uken 2026, verifisert ved tilbakelesing fra API-ene rett etter mutasjon): Google campaignBudget 15685838287 «DH | Utleie | Bergen | Search» 300→200 kr/dag · Google campaignBudget 15692250211 «DigiHome – Konkurrent · Utleiemegleren» 150→60 kr/dag · Meta-adsett «DigiHome | Branding» (kampanje «DigiHome | Branding | Mars 2026») 330→70 kr/dag ({success:true}). SUM 330 kr/dag ≈ 10 032 kr/mnd (før: 780 kr/dag ≈ 23 700 kr/mnd). METODE: campaignBudgets:mutate (v22, updateMask amountMicros) med getAccessToken/defaultCustomerId fra lib/google-ads-native.js; Meta POST /{adset_id} daily_budget=7000 øre. MERK FOR ALLE AGENTER: dette var en EIER-GODKJENT skriving mot live annonsekontoer — standardforbudet mot å skrive mot Google/Meta gjelder fortsatt for all testing. Ingen appkode ble endret i denne operasjonen."
+
