@@ -1200,6 +1200,10 @@ function SakSkuff({ t, members, today, actor, apiKey, api, visToast, onReload, o
   const [sender, setSender] = useState(false);
   const [visLogg, setVisLogg] = useState(false);
   const [varsle, setVarsle] = useState(true);
+  // @mention-autocomplete i kommentarfeltet (null = inaktiv)
+  const [mentionSok, setMentionSok] = useState(null);
+  const [mentionIdx, setMentionIdx] = useState(0);
+  const kommentarRef = useRef(null);
 
   useEffect(() => { setTittel(t.title); setBeskrivelse(t.description || ''); }, [t.id]); // eslint-disable-line
 
@@ -1230,8 +1234,36 @@ function SakSkuff({ t, members, today, actor, apiKey, api, visToast, onReload, o
     const tekst = kommentar.trim();
     if (!tekst || sender) return;
     setSender(true);
-    try { await onComment(tekst); setKommentar(''); } catch (e) {}
+    try { await onComment(tekst); setKommentar(''); setMentionSok(null); } catch (e) {}
     setSender(false);
+  };
+
+  // --- @mentions: «@» + tekst rett før markøren aktiverer autocompleten ---
+  const oppdaterMention = (val, pos) => {
+    const del = val.slice(0, pos);
+    const m = del.match(/(^|\s)@([^\s@]{0,30})$/);
+    if (m) { setMentionSok(m[2].toLowerCase()); setMentionIdx(0); }
+    else setMentionSok(null);
+  };
+
+  const mentionKandidater = mentionSok === null
+    ? []
+    : members.filter((m) => m.name.toLowerCase().includes(mentionSok)).slice(0, 6);
+
+  const settInnMention = (m) => {
+    const el = kommentarRef.current;
+    const pos = el ? el.selectionStart : kommentar.length;
+    const foer = kommentar.slice(0, pos).replace(/@[^\s@]{0,30}$/, '');
+    const ny = `${foer}@${m.name} ${kommentar.slice(pos)}`;
+    setKommentar(ny);
+    setMentionSok(null);
+    requestAnimationFrame(() => {
+      if (el) {
+        el.focus();
+        const p = foer.length + m.name.length + 2;
+        el.setSelectionRange(p, p);
+      }
+    });
   };
 
   return (
@@ -1362,7 +1394,7 @@ function SakSkuff({ t, members, today, actor, apiKey, api, visToast, onReload, o
         {/* Vedlegg — chunket opplasting, maks 8 MB per fil */}
         <VedleggSeksjon t={t} apiKey={apiKey} api={api} actor={actor} onReload={onReload} visToast={visToast} />
 
-        {/* Kommentarer */}
+        {/* Kommentarer — @navn nevner en person og varsler på e-post */}
         <div className="mt-6">
           <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#999]">Kommentarer</p>
           <div className="mt-2 space-y-2.5">
@@ -1372,24 +1404,56 @@ function SakSkuff({ t, members, today, actor, apiKey, api, visToast, onReload, o
                   <span className="text-[12px] font-bold text-[#333]">{c.author}</span>
                   <span className="text-[10.5px] text-[#b5b5b5]">{fmtTid(c.at)}</span>
                 </div>
-                <p className="mt-0.5 whitespace-pre-wrap text-[13px] leading-relaxed text-[#444]">{c.text}</p>
+                <p className="mt-0.5 whitespace-pre-wrap text-[13px] leading-relaxed text-[#444]">
+                  <KommentarTekst text={c.text} members={members} />
+                </p>
               </div>
             ))}
             {!(t.comments || []).length && <p className="text-[12.5px] text-[#bbb]">Ingen kommentarer ennå.</p>}
           </div>
           <div className="mt-2.5 flex items-end gap-2">
-            <textarea
-              value={kommentar}
-              onChange={(e) => setKommentar(e.target.value)}
-              onKeyDown={(e) => {
-                // Enter sender på desktop; på mobil gir Enter linjeskift (send-knappen brukes)
-                if (e.key === 'Enter' && !e.shiftKey && window.innerWidth >= 768) { e.preventDefault(); sendKommentar(); }
-              }}
-              rows={2}
-              data-testid="drawer-comment-input"
-              placeholder={`Kommenter som ${actor} …`}
-              className="min-w-0 flex-1 resize-none rounded-xl border border-black/[0.07] bg-white p-3 text-[13.5px] outline-none transition-all placeholder:text-[#bbb] hover:border-black/[0.14] focus:border-[#8b5cf6]/50 focus:ring-2 focus:ring-[#8b5cf6]/15"
-            />
+            <div className="relative min-w-0 flex-1">
+              {mentionKandidater.length > 0 && (
+                <div className="absolute bottom-full left-0 z-[140] mb-1.5 w-64 rounded-xl border border-black/[0.07] bg-white p-1 shadow-[0_16px_48px_rgba(0,0,0,0.16)]" data-testid="mention-popup">
+                  {mentionKandidater.map((m, i) => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onMouseDown={(e) => { e.preventDefault(); settInnMention(m); }}
+                      data-testid={`mention-option-${m.id}`}
+                      className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[13px] transition-colors ${i === mentionIdx ? 'bg-[#f4f0fb]' : 'hover:bg-[#f7f6f4]'}`}
+                    >
+                      <Avatar member={m} size={20} />
+                      <span className="min-w-0 flex-1 truncate font-medium text-[#333]">{m.name}</span>
+                      {m.email
+                        ? <span className="shrink-0 text-[10.5px] font-medium text-[#8b5cf6]">varsles</span>
+                        : <span className="shrink-0 text-[10.5px] text-[#c5c5c5]">ingen e-post</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <textarea
+                ref={kommentarRef}
+                value={kommentar}
+                onChange={(e) => { setKommentar(e.target.value); oppdaterMention(e.target.value, e.target.selectionStart); }}
+                onKeyDown={(e) => {
+                  // Autocompleten fanger navigasjon når den er åpen
+                  if (mentionKandidater.length > 0) {
+                    if (e.key === 'ArrowDown') { e.preventDefault(); setMentionIdx((i) => (i + 1) % mentionKandidater.length); return; }
+                    if (e.key === 'ArrowUp') { e.preventDefault(); setMentionIdx((i) => (i - 1 + mentionKandidater.length) % mentionKandidater.length); return; }
+                    if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); settInnMention(mentionKandidater[mentionIdx]); return; }
+                    if (e.key === 'Escape') { e.stopPropagation(); setMentionSok(null); return; }
+                  }
+                  // Enter sender på desktop; på mobil gir Enter linjeskift (send-knappen brukes)
+                  if (e.key === 'Enter' && !e.shiftKey && window.innerWidth >= 768) { e.preventDefault(); sendKommentar(); }
+                }}
+                onBlur={() => setTimeout(() => setMentionSok(null), 150)}
+                rows={2}
+                data-testid="drawer-comment-input"
+                placeholder={`Kommenter som ${actor} … (@ nevner en person)`}
+                className="w-full resize-none rounded-xl border border-black/[0.07] bg-white p-3 text-[13.5px] outline-none transition-all placeholder:text-[#bbb] hover:border-black/[0.14] focus:border-[#8b5cf6]/50 focus:ring-2 focus:ring-[#8b5cf6]/15"
+              />
+            </div>
             <button
               onClick={sendKommentar}
               disabled={!kommentar.trim() || sender}
@@ -1399,6 +1463,7 @@ function SakSkuff({ t, members, today, actor, apiKey, api, visToast, onReload, o
               {sender ? <Loader2 className="w-4 h-4 animate-spin" /> : <CornerDownLeft className="w-4 h-4" />}
             </button>
           </div>
+          <p className="mt-1.5 text-[11px] text-[#b5b5b5]">Skriv <span className="font-semibold text-[#8b5cf6]">@navn</span> for å nevne noen — de får e-postvarsel.</p>
         </div>
 
         {/* Aktivitetslogg */}
@@ -1462,6 +1527,36 @@ function MetaFelt({ label, children }) {
       <span className="mb-1 block text-[11px] font-bold uppercase tracking-[0.08em] text-[#999]">{label}</span>
       {children}
     </label>
+  );
+}
+
+// Uthever @Fullt Navn i kommentartekst for personer som finnes i personlisten.
+function KommentarTekst({ text, members }) {
+  const deler = useMemo(() => {
+    if (!text || !text.includes('@') || !members.length) return [text];
+    const navn = members
+      .map((m) => m.name)
+      .filter(Boolean)
+      .sort((a, b) => b.length - a.length)
+      .map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+    if (!navn.length) return [text];
+    const re = new RegExp(`@(${navn.join('|')})`, 'gi');
+    const ut = [];
+    let sist = 0; let m;
+    while ((m = re.exec(text))) {
+      if (m.index > sist) ut.push(text.slice(sist, m.index));
+      ut.push({ mention: m[0] });
+      sist = m.index + m[0].length;
+    }
+    if (sist < text.length) ut.push(text.slice(sist));
+    return ut;
+  }, [text, members]);
+  return (
+    <>
+      {deler.map((d, i) => (typeof d === 'string'
+        ? <React.Fragment key={i}>{d}</React.Fragment>
+        : <span key={i} className="rounded-md bg-[#f4f0fb] px-1 py-0.5 font-semibold text-[#6d28d9]">{d.mention}</span>))}
+    </>
   );
 }
 

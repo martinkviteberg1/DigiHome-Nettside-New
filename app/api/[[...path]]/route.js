@@ -2274,11 +2274,35 @@ async function handleRoute(request, { params }) {
       let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
       const text = String(body.text || '').trim();
       if (!text) return cors(NextResponse.json({ ok: false, error: 'Kommentar kan ikke være tom' }, { status: 400 }));
+      const task = await db.collection('tasks').findOne({ id: path[2] }, { projection: { _id: 0 } });
+      if (!task) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
       const naa = new Date().toISOString();
-      const comment = { id: uuidv4(), author: String(body.author || 'Admin').slice(0, 80), text: text.slice(0, 2000), at: naa };
+      const author = String(body.author || 'Admin').slice(0, 80);
+      // @mentions: autocompleten setter inn «@Fullt Navn» — match mot personlisten.
+      const allePersoner = await db.collection('admin_users').find({}, { projection: { _id: 0, id: 1, name: 1, email: 1 } }).toArray();
+      const lavtekst = text.toLowerCase();
+      const nevnt = allePersoner.filter((m) => m.name && lavtekst.includes(`@${String(m.name).toLowerCase()}`));
+      const comment = {
+        id: uuidv4(), author, text: text.slice(0, 2000), at: naa,
+        mentions: nevnt.map((m) => m.id),
+      };
       const r = await db.collection('tasks').updateOne({ id: path[2] }, { $push: { comments: comment }, $set: { updatedAt: naa } });
       if (!r.matchedCount) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
-      return cors(NextResponse.json({ ok: true, comment }));
+      // E-postvarsel til nevnte med e-post (aldri forfatteren selv). notify:false skrur av.
+      const varslet = [];
+      if (nevnt.length && body.notify !== false) {
+        const utdrag = text.length > 180 ? `${text.slice(0, 180)} …` : text;
+        for (const m of nevnt) {
+          if (!m.email) continue;
+          if (String(m.name).toLowerCase() === author.toLowerCase()) continue;
+          const ok = await taskEpost({ member: m, task, heading: 'Du ble nevnt i en sak', intro: `${author} nevnte deg i en kommentar: «${utdrag}»` });
+          if (ok) varslet.push(m.name);
+        }
+        if (varslet.length) {
+          await db.collection('tasks').updateOne({ id: path[2] }, { $push: { activity: { at: naa, actor: 'System', text: `E-postvarsel sendt til ${varslet.join(', ')} (nevnt i kommentar)` } } });
+        }
+      }
+      return cors(NextResponse.json({ ok: true, comment, mentioned: varslet }));
     }
 
     if (path[0] === 'admin' && path[1] === 'tasks' && path.length === 4 && path[3] === 'remind' && method === 'POST') {
