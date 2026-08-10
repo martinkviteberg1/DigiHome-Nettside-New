@@ -304,11 +304,17 @@ export default function TasksTab({ apiKey, user, onStats }) {
     });
   }, []);
 
-  const visToast = useCallback((msg, type = 'ok') => {
-    setToast({ msg, type });
+  const visToast = useCallback((msg, type = 'ok', handling = null) => {
+    setToast({ msg, type, handling });
     window.clearTimeout(toastTimer.current);
-    toastTimer.current = window.setTimeout(() => setToast(null), 2600);
+    toastTimer.current = window.setTimeout(() => setToast(null), handling ? 6000 : 2600);
   }, []);
+
+  // Øyeblikksbilder for angre-sletting og bulk-operasjoner
+  const tasksRef = useRef([]);
+  const arkivRef = useRef([]);
+  useEffect(() => { tasksRef.current = tasks; }, [tasks]);
+  useEffect(() => { arkivRef.current = arkivTasks; }, [arkivTasks]);
 
   const api = useCallback((p, opts) => {
     const sep = p.includes('?') ? '&' : '?';
@@ -384,11 +390,14 @@ export default function TasksTab({ apiKey, user, onStats }) {
       const j = await r.json();
       if (!j.ok) throw new Error(j.error || 'Lagring feilet');
       setTasks((prev) => {
-        const neste = prev.map((t) => (t.id === id ? j.task : t)).filter((t) => !t.archived);
+        let neste = prev.map((t) => (t.id === id ? j.task : t)).filter((t) => !t.archived);
+        // Gjentakende sak fullført → neste forekomst dukker opp umiddelbart
+        if (j.nesteTask && !neste.some((t) => t.id === j.nesteTask.id)) neste = [j.nesteTask, ...neste];
         meldStats(neste, today);
         return neste;
       });
-      if (j.task && j.task.archived) visToast('Sak arkivert');
+      if (j.nesteTask) visToast('Fullført — neste forekomst opprettet');
+      else if (j.task && j.task.archived) visToast('Sak arkivert');
       else if (j.emailed && !stille) visToast('Lagret — e-postvarsel sendt', 'ok');
     } catch (e) {
       visToast(e.message || 'Lagring feilet', 'feil');
