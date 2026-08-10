@@ -251,6 +251,26 @@ export default function TasksTab({ apiKey, user, onStats }) {
   const actor = (user && (user.name || user.email)) || 'Admin';
   const erBrukerRolle = !!(user && user.role === 'bruker');
 
+  // «Mine saker»: koble innlogget konto til person-listen via e-post.
+  const minId = useMemo(() => {
+    const epost = ((user && user.email) || '').toLowerCase();
+    if (!epost) return null;
+    const m = members.find((x) => (x.email || '').toLowerCase() === epost);
+    return m ? m.id : null;
+  }, [members, user]);
+
+  const [mine, setMine] = useState(false);
+  useEffect(() => {
+    try { setMine(localStorage.getItem('dh_tasks_mine') === '1'); } catch (e) {}
+  }, []);
+  const toggleMine = useCallback(() => {
+    setMine((v) => {
+      const n = !v;
+      try { localStorage.setItem('dh_tasks_mine', n ? '1' : '0'); } catch (e) {}
+      return n;
+    });
+  }, []);
+
   const visToast = useCallback((msg, type = 'ok') => {
     setToast({ msg, type });
     window.clearTimeout(toastTimer.current);
@@ -300,20 +320,19 @@ export default function TasksTab({ apiKey, user, onStats }) {
 
   useEffect(() => { if (view === 'arkiv') lastArkiv(); }, [view, lastArkiv]);
 
-  // N = ny sak (når man ikke skriver i et felt og ingenting annet er åpent)
+  // N = ny sak, M = mine saker (når man ikke skriver i et felt og ingenting annet er åpent)
   useEffect(() => {
     const onKey = (e) => {
-      if (e.key !== 'n' && e.key !== 'N') return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       const t = e.target;
       if (t && ['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName)) return;
       if (nyOpen || valgtId || personerOpen) return;
-      e.preventDefault();
-      setNyOpen(true);
+      if (e.key === 'n' || e.key === 'N') { e.preventDefault(); setNyOpen(true); return; }
+      if ((e.key === 'm' || e.key === 'M') && minId) { e.preventDefault(); toggleMine(); }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [nyOpen, valgtId, personerOpen]);
+  }, [nyOpen, valgtId, personerOpen, minId, toggleMine]);
 
   const medlem = useCallback((id) => members.find((m) => m.id === id) || null, [members]);
 
@@ -427,12 +446,13 @@ export default function TasksTab({ apiKey, user, onStats }) {
   const filtrert = useMemo(() => {
     const s = sok.trim().toLowerCase();
     return tasks.filter((t) => {
+      if (mine && minId && t.assigneeId !== minId && !(t.followers || []).includes(minId)) return false;
       if (fAnsvarlig !== 'alle' && (t.assigneeId || '') !== fAnsvarlig) return false;
       if (fPri && t.priority !== fPri) return false;
       if (s && !`${t.title} ${t.description} ${(t.labels || []).join(' ')}`.toLowerCase().includes(s)) return false;
       return true;
     });
-  }, [tasks, fAnsvarlig, fPri, sok]);
+  }, [tasks, mine, minId, fAnsvarlig, fPri, sok]);
 
   const perStatus = useMemo(() => {
     const m = { inbox: [], doing: [], waiting: [], done: [] };
@@ -546,8 +566,8 @@ export default function TasksTab({ apiKey, user, onStats }) {
       {/* ═══ Toppstripe ═══ */}
       <div className="mb-4 md:mb-5">
         <div className="flex items-center gap-2">
-          {/* Sammendrag — sveipbart på mobil, statisk på desktop */}
-          <div className="no-scrollbar flex min-w-0 flex-1 items-center gap-2 overflow-x-auto pb-0.5 lg:flex-none lg:overflow-visible lg:pb-0">
+          {/* Sammendrag — sveipbart ved plassmangel, alle brekkpunkter */}
+          <div className="no-scrollbar flex min-w-0 flex-1 items-center gap-2 overflow-x-auto pb-0.5">
             <SummaryChip label="Åpne" value={stats.aapne} />
             <SummaryChip label="Forfalt" value={stats.forfalt} warn={stats.forfalt > 0} testid="tasks-overdue-chip" />
             <SummaryChip label="I dag" value={stats.iDag} />
@@ -555,21 +575,36 @@ export default function TasksTab({ apiKey, user, onStats }) {
           </div>
 
           {/* Desktop-verktøy — Linear-style: hairline-borders, popover-menyer */}
-          <div className="ml-auto hidden shrink-0 items-center gap-2 lg:flex">
+          <div className="ml-auto hidden shrink min-w-0 flex-wrap items-center justify-end gap-2 lg:flex">
+            {minId && (
+              <button
+                onClick={toggleMine}
+                data-testid="tasks-mine-btn"
+                title="Vis bare saker der du er ansvarlig eller følger — hurtigtast M"
+                className={`flex h-9 items-center gap-1.5 rounded-lg border px-3 text-[13px] font-medium transition-all active:scale-[0.97] ${
+                  mine
+                    ? 'border-[#8b5cf6]/40 bg-[#f4f0fb] text-[#6d28d9]'
+                    : 'border-black/[0.08] bg-white text-[#555] hover:border-black/[0.16] hover:text-[#0a0a0a]'
+                }`}
+              >
+                <User className="w-3.5 h-3.5" /> <span className="hidden xl:inline">Mine saker</span><span className="xl:hidden">Mine</span>
+                {mine && <X className="w-3 h-3" />}
+              </button>
+            )}
             <div className="relative">
               <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-[#b5b5b5]" />
               <input
                 value={sok} onChange={(e) => setSok(e.target.value)} placeholder="Søk i saker …"
                 data-testid="tasks-search"
-                className="h-9 w-44 rounded-lg border border-black/[0.08] bg-white pl-8 pr-3 text-[13px] outline-none transition-all placeholder:text-[#bbb] hover:border-black/[0.16] focus:border-[#8b5cf6]/50 focus:ring-2 focus:ring-[#8b5cf6]/15"
+                className="h-9 w-32 rounded-lg border border-black/[0.08] bg-white pl-8 pr-3 text-[13px] outline-none transition-all placeholder:text-[#bbb] hover:border-black/[0.16] focus:border-[#8b5cf6]/50 focus:ring-2 focus:ring-[#8b5cf6]/15 focus:w-48 xl:w-36"
               />
             </div>
             <Meny
-              value={fAnsvarlig} onChange={setFAnsvarlig} testid="tasks-filter-assignee" className="w-44"
+              value={fAnsvarlig} onChange={setFAnsvarlig} testid="tasks-filter-assignee" className="w-40"
               options={[{ v: 'alle', l: 'Alle ansvarlige', icon: Users }, ...members.map((m) => ({ v: m.id, l: m.name, avatar: m }))]}
             />
             <Meny
-              value={fPri} onChange={(v) => setFPri(Number(v))} className="w-40" testid="tasks-filter-priority"
+              value={fPri} onChange={(v) => setFPri(Number(v))} className="w-36" testid="tasks-filter-priority"
               options={[
                 { v: 0, l: 'Alle prioriteter', icon: ArrowUpDown },
                 { v: 1, l: 'P1 · Kritisk', dot: '#e11d48' },
@@ -587,7 +622,7 @@ export default function TasksTab({ apiKey, user, onStats }) {
               data-testid="tasks-members-btn"
               className="flex h-9 items-center gap-1.5 rounded-lg border border-black/[0.08] bg-white px-3 text-[13px] font-medium text-[#555] transition-all hover:border-black/[0.16] hover:text-[#0a0a0a]"
             >
-              <Users className="w-3.5 h-3.5" /> Personer
+              <Users className="w-3.5 h-3.5" /> <span className="hidden xl:inline">Personer</span>
             </button>
             <button
               onClick={() => setNyOpen(true)}
@@ -633,6 +668,17 @@ export default function TasksTab({ apiKey, user, onStats }) {
                 <ViewBtn key={v.k} active={view === v.k} onClick={() => setView(v.k)} icon={v.icon} label={v.l} />
               ))}
             </div>
+            {minId && (
+              <button
+                onClick={toggleMine}
+                data-testid="tasks-mine-btn-mobile"
+                className={`flex h-11 items-center gap-1.5 rounded-xl border px-3 text-[13px] font-medium transition-all ${
+                  mine ? 'border-[#8b5cf6]/40 bg-[#f4f0fb] text-[#6d28d9]' : 'border-black/[0.08] bg-white text-[#555]'
+                }`}
+              >
+                <User className="w-4 h-4" /> Mine
+              </button>
+            )}
             <button
               onClick={() => setPersonerOpen(true)}
               className="ml-auto flex h-11 items-center gap-1.5 rounded-xl border border-black/[0.08] bg-white px-4 text-[13.5px] font-medium text-[#555]"
@@ -935,6 +981,7 @@ export default function TasksTab({ apiKey, user, onStats }) {
           <span className="flex items-center gap-1.5"><Kbd>↑↓</Kbd> naviger</span>
           <span className="flex items-center gap-1.5"><Kbd>↵</Kbd> åpne sak</span>
           <span className="flex items-center gap-1.5"><Kbd>N</Kbd> ny sak</span>
+          <span className="flex items-center gap-1.5"><Kbd>M</Kbd> mine saker</span>
           <span className="flex items-center gap-1.5"><Kbd>1–4</Kbd> status i åpen sak</span>
           <span className="flex items-center gap-1.5"><Kbd>P</Kbd> prioritet i åpen sak</span>
           <span className="flex items-center gap-1.5"><Kbd>esc</Kbd> lukk</span>
@@ -1019,7 +1066,7 @@ function ViewBtn({ active, onClick, icon: Icon, label, testid }) {
         active ? 'bg-[#0a0a0a] text-white shadow-sm' : 'text-[#777] hover:bg-black/[0.04] hover:text-[#0a0a0a]'
       }`}
     >
-      <Icon className="w-3.5 h-3.5" /> <span className="hidden xl:inline">{label}</span>
+      <Icon className="w-3.5 h-3.5" /> <span className="hidden 2xl:inline">{label}</span>
     </button>
   );
 }

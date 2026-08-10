@@ -4224,3 +4224,16 @@ frontend:
         -working: "NA"
         -agent: "main"
         -comment: "LINEAR-LØFT: (1) Ny Meny-komponent (popover-dropdown m/ dot/avatar/ikon/sub-tekst, Escape/klikk-utenfor lukker, oppover-prop for popovers nær modalbunn pga overflow-hidden) erstatter ALLE native selects på desktop: filtre (ansvarlig/prioritet), skuffens meta (ansvarlig/prioritet/gjentakelse), ny sak-modalens kontroller (status/prioritet/ansvarlig/gjentakelse), personer-modalens rollevalg. Mobil beholder native selects for filtre (touch-pragmatikk). (2) Alle felter modernisert: hairline border-black/[0.08], hvit bakgrunn, hover-border, lilla focus-ring. (3) NYE VISNINGER (VISNINGER-array: tavle/liste/tabell/tidslinje/arkiv): TABELL = sorterbar (SortTh: pri/tittel/status/ansvarlig/frist/oppdatert, klikk snur retning) m/ StatusBadge (farget prikk), fremdriftsbar for underoppgaver, vedlegg/kommentar-tellere, radklikk åpner skuff, fokusring følger J/K-navigasjon. TIDSLINJE = vertikal tidslinje gruppert per fristdato (stigende), rød node+Forfalt-badge for passerte, amber for i dag, stiplet «Uten frist»-gruppe til slutt, kompakte rader m/ PriIkon+fremdrift+StatusBadge+avatar. (4) flatListe (tastaturrekkefølge) er nå visnings-avhengig (tabell-sortering/tidslinje-rekkefølge). (5) ViewBtn kompakt (ikon alltid, tekst kun xl+). MERK testid-endringer: tasks-view-board/list/archive → tasks-view-tavle/liste/tabell/tidslinje/arkiv; nye: tasks-table, table-row-*, table-sort-*, tasks-timeline, timeline-group-*, timeline-row-*, timeline-no-due, tasks-filter-priority, new-task-status. AGENT-VERIFISERT via Playwright på 1920px: 4 seedsaker (notify:false) → tavle/tabell/tidslinje rendret korrekt, Meny-popover åpnet med check-markering, opprydding 4/4. Ikke testet av frontend-agent, ikke brukerbekreftet."
+
+frontend:
+  - task: "SAKER: «Mine saker»-filter — toggle i verktøyrad (desktop+mobil), hurtigtast M, localStorage-persistens, matcher innlogget konto (ansvarlig ELLER følger) via e-post mot personlisten"
+    implemented: true
+    working: "NA"
+    file: "/app/components/admin/TasksTab.js"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "minId utledes ved å matche user.email mot members (case-insensitiv). Knappen vises kun når kontoen finnes i personlisten (testid tasks-mine-btn / tasks-mine-btn-mobile). Filter: assigneeId===minId || followers.includes(minId). Preferanse i localStorage dh_tasks_mine. Hurtigtast M (samme guards som N). AGENT-VERIFISERT: 2 seedsaker → filter ga 1 kort, M-tast tilbake til 2, opprydding 2/2. Fikset også toolbar-overflow: sammendrags-chips kan krympe/scrolle på alle brekkpunkter, verktøyrad har flex-wrap justify-end, søk/knappetekster komprimeres under xl — verifisert 0px horisontal overflow ved 1280/1366/1440/1536/1920."
