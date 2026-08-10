@@ -7,6 +7,7 @@ import {
   LayoutDashboard, Radio, Activity, GitBranch, Gauge, Megaphone, Database,
   Command, Search, CornerDownLeft, LayoutTemplate, Crosshair, TrendingUp, Wallet,
   Globe, ExternalLink, PenLine, Mail, Home, History, Landmark, Wand2, Layers, UserPlus,
+  ClipboardCheck,
 } from 'lucide-react';
 import InnsiktDashboard from '@/components/admin/InnsiktDashboard';
 import KpiDashboard from '@/components/admin/KpiDashboard';
@@ -20,6 +21,7 @@ import PropertiesTab from '@/components/admin/PropertiesTab';
 import HistoryTab from '@/components/admin/HistoryTab';
 import InvestorRoomTab from '@/components/admin/InvestorRoomTab';
 import SeoAeoTab from '@/components/admin/SeoAeoTab';
+import TasksTab from '@/components/admin/TasksTab';
 
 const SESSION_KEY = 'dh_admin_session';
 const LEGACY_KEY = 'dh_admin_key';
@@ -32,6 +34,7 @@ const NAV = [
     items: [
       { k: 'nokkeltall', l: 'Nøkkeltall', icon: TrendingUp, desc: 'Investorklare KPIer · CAC · LTV · konvertering' },
       { k: 'okonomi', l: 'Økonomi', icon: Wallet, desc: 'Resultat · likviditet · burn · runway' },
+      { k: 'saker', l: 'Saker', icon: ClipboardCheck, badge: 'tasks', desc: 'Internt sakssystem — oppfølging, frister og ansvar' },
       { k: 'investorrom', l: 'Investor-rom', icon: Landmark, desc: 'Levende DD-rom — tilgangslenker, dokumenter & Q&A' },
       { k: 'playbook', l: 'Playbook', icon: FileText, desc: 'Marketing-strategi · konkurrentanalyse · 90-dagersplan' },
     ],
@@ -107,6 +110,7 @@ const SECTION_TITLES = {
   playbook: { t: 'Playbook', s: 'Head of Marketing-strategi · Utleiemegleren-analyse · 90-dagersplan · budsjettmatematikk' },
   innsikt: { t: 'Innsikt', s: 'Førsteparts analyse · cookieless · GDPR-trygt' },
   okonomi: { t: 'Økonomi', s: 'Resultat & likviditet · honorar (prosent av leie) · burn rate & runway' },
+  saker: { t: 'Saker', s: 'Internt sakssystem — fang, fordel og følg opp saker til de er ferdige. N = ny sak' },
   kunder: { t: 'Kunder', s: 'Utleiere (betalende kunder) · kontrakter · eiendommer · MRR — synket fra plattformen' },
   abonnementer: { t: 'Abonnementer', s: 'Kommer snart — aktive avtaler & fakturering' },
   bro: { t: 'Agent-bro', s: 'Delt meldingstråd for koordinering med plattform-prosjektet' },
@@ -148,6 +152,7 @@ export default function AdminPage() {
   const [section, setSection] = useState('innsikt');
   const [insightTab, setInsightTab] = useState('oversikt');
   const [insightStats, setInsightStats] = useState({ pending: 0 });
+  const [taskStats, setTaskStats] = useState({ open: 0, overdue: 0 });
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   // Sammenleggbare menygrupper — false = manuelt lukket (persisteres).
@@ -161,6 +166,24 @@ export default function AdminPage() {
     try { localStorage.setItem(NAV_OPEN_KEY, JSON.stringify(next)); } catch (e) {}
     return next;
   });
+
+  // Saker-badge: antall forfalte saker i sidemenyen (oppdateres hvert 90. sek
+  // og umiddelbart via onStats når man jobber inne i Saker-fanen).
+  useEffect(() => {
+    if (!token) return;
+    let alive = true;
+    const load = async () => {
+      try {
+        const r = await fetch(`/api/admin/tasks/summary?key=${encodeURIComponent(token)}`);
+        const j = await r.json();
+        if (alive && j.ok) setTaskStats({ open: j.open || 0, overdue: j.overdue || 0 });
+      } catch (e) {}
+    };
+    load();
+    const iv = setInterval(load, 90000);
+    return () => { alive = false; clearInterval(iv); };
+  }, [token]);
+
 
   // Global ⌘K / Ctrl+K — åpne kommandopaletten
   useEffect(() => {
@@ -299,7 +322,7 @@ export default function AdminPage() {
             {grp.items.map((it) => {
               const Icon = it.icon;
               const active = it.insight ? (section === 'innsikt' && insightTab === it.insight) : section === it.k;
-              const pend = it.badge === 'pending' ? (insightStats.pending || 0) : 0;
+              const pend = it.badge === 'pending' ? (insightStats.pending || 0) : it.badge === 'tasks' ? (taskStats.overdue || 0) : 0;
               const common = 'relative w-full flex items-center gap-3 px-3 py-2 rounded-xl text-[13.5px] font-medium transition-all group';
               const content = (
                 <>
@@ -431,6 +454,7 @@ export default function AdminPage() {
           {section === 'historikk' && <HistoryTab apiKey={token} />}
           {section === 'seo' && <SeoAeoTab apiKey={token} />}
           {section === 'okonomi' && <FinanceDashboard apiKey={token} />}
+          {section === 'saker' && <TasksTab apiKey={token} user={user} onStats={setTaskStats} />}
           {section === 'innsikt' && <InnsiktDashboard apiKey={token} tab={insightTab} onTabChange={setInsightTab} onStats={setInsightStats} />}
           {section === 'kunder' && <CustomersDashboard apiKey={token} />}
           {section === 'abonnementer' && <ComingSoon icon={CreditCard} title="Abonnementer" body="Oversikt over aktive avtaler, fakturering og inntekt per kunde — hentet direkte fra app-prosjektet. Kommer i neste fase." />}

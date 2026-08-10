@@ -1308,6 +1308,49 @@ export async function OPTIONS() {
   return cors(new NextResponse(null, { status: 200 }));
 }
 
+// ═══════════════════════ SAKER — internt sakssystem (styre-/selskapsnivå) ═══════════════════════
+// Kolleksjoner: tasks (saker med innebygde kommentarer + aktivitetslogg) og task_members
+// (personer som kan stå som ansvarlig — administreres av teamet selv i admin-UI-et).
+// Bevisst IKKE koblet til leads/kunder: dette er intern selskapsoppfølging (styre osv.).
+const TASK_STATUSES = ['inbox', 'doing', 'waiting', 'done'];
+const TASK_STATUS_LABEL = { inbox: 'Innboks', doing: 'Pågår', waiting: 'Venter', done: 'Ferdig' };
+const TASK_PRI_LABEL = { 1: 'P1 · Kritisk', 2: 'P2 · Normal', 3: 'P3 · Lav' };
+const TASK_FARGER = ['#8B5CF6', '#0EA5E9', '#F59E0B', '#10B981', '#EF4444', '#EC4899', '#6366F1', '#14B8A6'];
+const osloIDag = () => new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Oslo' }).format(new Date());
+const taskEsc = (s) => String(s || '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+// E-postvarsel for saker (tildeling + påminnelse). Feiler stille — en sak skal
+// aldri gå tapt fordi SendGrid er nede. Returnerer true hvis sendt.
+async function taskEpost({ member, task, heading, intro }) {
+  if (!member || !member.email || !emailConfigured()) return false;
+  const base = (process.env.NEXT_PUBLIC_BASE_URL || 'https://digihome.no').replace(/\/$/, '');
+  const frist = task.dueDate
+    ? new Date(`${task.dueDate}T12:00:00`).toLocaleDateString('nb-NO', { day: 'numeric', month: 'long', year: 'numeric' })
+    : null;
+  const rad = (l, v) => `<tr><td style="padding:4px 14px 4px 0;color:#8a8a8a;font-size:13px;white-space:nowrap">${l}</td><td style="padding:4px 0;color:#111;font-size:13px;font-weight:600">${v}</td></tr>`;
+  const html = `
+  <div style="background:#f6f5f3;padding:32px 16px;font-family:-apple-system,'Segoe UI',Roboto,sans-serif">
+    <div style="max-width:520px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;border:1px solid #eee">
+      <div style="background:#0a0a0a;padding:18px 24px"><span style="color:#fff;font-size:15px;font-weight:700">DigiHome</span> <span style="color:rgba(255,255,255,0.45);font-size:12px;margin-left:6px">Saker · intern</span></div>
+      <div style="padding:26px 24px">
+        <p style="margin:0;color:#8b5cf6;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em">${taskEsc(heading)}</p>
+        <h2 style="margin:8px 0 4px;color:#0a0a0a;font-size:19px;line-height:1.3">${taskEsc(task.title)}</h2>
+        <p style="margin:0 0 16px;color:#666;font-size:13.5px;line-height:1.55">${taskEsc(intro)}</p>
+        ${task.description ? `<p style="margin:0 0 16px;color:#444;font-size:13.5px;line-height:1.55;white-space:pre-wrap">${taskEsc(String(task.description).slice(0, 600))}</p>` : ''}
+        <table style="border-collapse:collapse">${rad('Prioritet', TASK_PRI_LABEL[task.priority] || 'P2 · Normal')}${frist ? rad('Frist', taskEsc(frist)) : ''}${rad('Status', TASK_STATUS_LABEL[task.status] || taskEsc(task.status))}</table>
+        <a href="${base}/admin" style="display:inline-block;margin-top:20px;background:#0a0a0a;color:#fff;text-decoration:none;font-size:13.5px;font-weight:600;padding:11px 20px;border-radius:99px">Åpne Saker i admin →</a>
+      </div>
+    </div>
+  </div>`;
+  try {
+    await sendHtmlEmail({ to: member.email, subject: `${heading}: ${task.title}`, html, fromName: 'DigiHome Saker', individual: false, categories: ['intern-sak'] });
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+
 async function handleRoute(request, { params }) {
   const { path = [] } = params;
   let route = `/${path.join('/')}`;
@@ -1778,6 +1821,186 @@ async function handleRoute(request, { params }) {
       } catch (e) {
         return cors(NextResponse.json({ ok: false, error: (e && e.message) || 'SSB utilgjengelig' }, { status: 502 }));
       }
+    }
+
+    // ═══════════════ SAKER: internt sakssystem — CRUD + personer + varsling ═══════════════
+
+    // --- Personer (ansvarlige) — administreres av teamet selv ---
+    if (route === '/admin/task-members' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const members = await db.collection('task_members').find({}).project({ _id: 0 }).sort({ createdAt: 1 }).toArray();
+      return cors(NextResponse.json({ ok: true, members }));
+    }
+
+    if (route === '/admin/task-members' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      const name = String(body.name || '').trim();
+      if (!name) return cors(NextResponse.json({ ok: false, error: 'Navn er påkrevd' }, { status: 400 }));
+      const email = String(body.email || '').trim().toLowerCase();
+      const antall = await db.collection('task_members').countDocuments();
+      const member = {
+        id: uuidv4(), name, email,
+        color: /^#[0-9a-fA-F]{6}$/.test(String(body.color || '')) ? body.color : TASK_FARGER[antall % TASK_FARGER.length],
+        createdAt: new Date().toISOString(),
+      };
+      await db.collection('task_members').insertOne({ ...member });
+      return cors(NextResponse.json({ ok: true, member }));
+    }
+
+    if (path[0] === 'admin' && path[1] === 'task-members' && path.length === 3 && method === 'PUT') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      const set = {};
+      if (body.name !== undefined) { const n = String(body.name).trim(); if (n) set.name = n; }
+      if (body.email !== undefined) set.email = String(body.email).trim().toLowerCase();
+      if (body.color !== undefined && /^#[0-9a-fA-F]{6}$/.test(String(body.color))) set.color = body.color;
+      if (!Object.keys(set).length) return cors(NextResponse.json({ ok: false, error: 'Ingenting å endre' }, { status: 400 }));
+      const r = await db.collection('task_members').updateOne({ id: path[2] }, { $set: set });
+      if (!r.matchedCount) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
+      const member = await db.collection('task_members').findOne({ id: path[2] }, { projection: { _id: 0 } });
+      return cors(NextResponse.json({ ok: true, member }));
+    }
+
+    if (path[0] === 'admin' && path[1] === 'task-members' && path.length === 3 && method === 'DELETE') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const r = await db.collection('task_members').deleteOne({ id: path[2] });
+      if (!r.deletedCount) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
+      return cors(NextResponse.json({ ok: true }));
+    }
+
+    // --- Saker: badge-sammendrag (åpne/forfalte/i dag) — brukes i sidemenyen ---
+    if (route === '/admin/tasks/summary' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const iDag = osloIDag();
+      const alle = await db.collection('tasks').find({}).project({ _id: 0, status: 1, dueDate: 1 }).toArray();
+      const aapne = alle.filter((t) => t.status !== 'done');
+      return cors(NextResponse.json({
+        ok: true,
+        open: aapne.length,
+        overdue: aapne.filter((t) => t.dueDate && t.dueDate < iDag).length,
+        dueToday: aapne.filter((t) => t.dueDate === iDag).length,
+      }));
+    }
+
+    if (route === '/admin/tasks' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const [tasks, members] = await Promise.all([
+        db.collection('tasks').find({}).project({ _id: 0 }).sort({ updatedAt: -1 }).toArray(),
+        db.collection('task_members').find({}).project({ _id: 0 }).sort({ createdAt: 1 }).toArray(),
+      ]);
+      return cors(NextResponse.json({ ok: true, tasks, members, today: osloIDag() }));
+    }
+
+    if (route === '/admin/tasks' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      const title = String(body.title || '').trim();
+      if (!title) return cors(NextResponse.json({ ok: false, error: 'Tittel er påkrevd' }, { status: 400 }));
+      const naa = new Date().toISOString();
+      const actor = String(body.actor || '').trim() || 'Admin';
+      const task = {
+        id: uuidv4(),
+        title: title.slice(0, 300),
+        description: String(body.description || '').slice(0, 8000),
+        status: TASK_STATUSES.includes(body.status) ? body.status : 'inbox',
+        priority: [1, 2, 3].includes(Number(body.priority)) ? Number(body.priority) : 2,
+        assigneeId: body.assigneeId ? String(body.assigneeId) : null,
+        dueDate: /^\d{4}-\d{2}-\d{2}$/.test(String(body.dueDate || '')) ? body.dueDate : null,
+        labels: Array.isArray(body.labels) ? body.labels.map((s) => String(s).trim()).filter(Boolean).slice(0, 8) : [],
+        comments: [],
+        activity: [{ at: naa, actor, text: 'Opprettet saken' }],
+        createdAt: naa, updatedAt: naa, completedAt: null,
+      };
+      let emailed = false;
+      if (task.assigneeId && body.notify !== false) {
+        const member = await db.collection('task_members').findOne({ id: task.assigneeId });
+        emailed = await taskEpost({ member, task, heading: 'Ny sak tildelt deg', intro: `${actor} har tildelt deg en sak i det interne sakssystemet.` });
+        if (emailed) task.activity.push({ at: naa, actor: 'System', text: `E-postvarsel sendt til ${member.name}` });
+      }
+      await db.collection('tasks').insertOne({ ...task });
+      return cors(NextResponse.json({ ok: true, task, emailed }));
+    }
+
+    if (path[0] === 'admin' && path[1] === 'tasks' && path.length === 3 && method === 'PUT') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      const eksisterende = await db.collection('tasks').findOne({ id: path[2] }, { projection: { _id: 0 } });
+      if (!eksisterende) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
+      const naa = new Date().toISOString();
+      const actor = String(body.actor || '').trim() || 'Admin';
+      const set = { updatedAt: naa };
+      const logg = [];
+      if (body.title !== undefined) { const t = String(body.title).trim().slice(0, 300); if (t && t !== eksisterende.title) set.title = t; }
+      if (body.description !== undefined) set.description = String(body.description).slice(0, 8000);
+      if (body.status !== undefined && TASK_STATUSES.includes(body.status) && body.status !== eksisterende.status) {
+        set.status = body.status;
+        set.completedAt = body.status === 'done' ? naa : null;
+        logg.push(`Flyttet til ${TASK_STATUS_LABEL[body.status]}`);
+      }
+      if (body.priority !== undefined && [1, 2, 3].includes(Number(body.priority)) && Number(body.priority) !== eksisterende.priority) {
+        set.priority = Number(body.priority);
+        logg.push(`Prioritet: ${TASK_PRI_LABEL[set.priority]}`);
+      }
+      if (body.dueDate !== undefined) {
+        const d = /^\d{4}-\d{2}-\d{2}$/.test(String(body.dueDate || '')) ? body.dueDate : null;
+        if (d !== (eksisterende.dueDate || null)) { set.dueDate = d; logg.push(d ? `Frist satt til ${d}` : 'Frist fjernet'); }
+      }
+      if (body.labels !== undefined) set.labels = Array.isArray(body.labels) ? body.labels.map((s) => String(s).trim()).filter(Boolean).slice(0, 8) : [];
+      let emailed = false;
+      if (body.assigneeId !== undefined && (body.assigneeId || null) !== (eksisterende.assigneeId || null)) {
+        set.assigneeId = body.assigneeId ? String(body.assigneeId) : null;
+        if (set.assigneeId) {
+          const member = await db.collection('task_members').findOne({ id: set.assigneeId });
+          logg.push(`Ansvarlig: ${member ? member.name : 'ukjent'}`);
+          if (member && body.notify !== false) {
+            emailed = await taskEpost({ member, task: { ...eksisterende, ...set }, heading: 'Sak tildelt deg', intro: `${actor} har satt deg som ansvarlig for saken.` });
+            if (emailed) logg.push(`E-postvarsel sendt til ${member.name}`);
+          }
+        } else {
+          logg.push('Ansvarlig fjernet');
+        }
+      }
+      const update = { $set: set };
+      if (logg.length) update.$push = { activity: { $each: logg.map((text) => ({ at: naa, actor, text })) } };
+      await db.collection('tasks').updateOne({ id: path[2] }, update);
+      const task = await db.collection('tasks').findOne({ id: path[2] }, { projection: { _id: 0 } });
+      return cors(NextResponse.json({ ok: true, task, emailed }));
+    }
+
+    if (path[0] === 'admin' && path[1] === 'tasks' && path.length === 3 && method === 'DELETE') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const r = await db.collection('tasks').deleteOne({ id: path[2] });
+      if (!r.deletedCount) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
+      return cors(NextResponse.json({ ok: true }));
+    }
+
+    if (path[0] === 'admin' && path[1] === 'tasks' && path.length === 4 && path[3] === 'comments' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      const text = String(body.text || '').trim();
+      if (!text) return cors(NextResponse.json({ ok: false, error: 'Kommentar kan ikke være tom' }, { status: 400 }));
+      const naa = new Date().toISOString();
+      const comment = { id: uuidv4(), author: String(body.author || 'Admin').slice(0, 80), text: text.slice(0, 2000), at: naa };
+      const r = await db.collection('tasks').updateOne({ id: path[2] }, { $push: { comments: comment }, $set: { updatedAt: naa } });
+      if (!r.matchedCount) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
+      return cors(NextResponse.json({ ok: true, comment }));
+    }
+
+    if (path[0] === 'admin' && path[1] === 'tasks' && path.length === 4 && path[3] === 'remind' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      const task = await db.collection('tasks').findOne({ id: path[2] }, { projection: { _id: 0 } });
+      if (!task) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
+      if (!task.assigneeId) return cors(NextResponse.json({ ok: false, error: 'Saken har ingen ansvarlig' }, { status: 400 }));
+      const member = await db.collection('task_members').findOne({ id: task.assigneeId });
+      if (!member || !member.email) return cors(NextResponse.json({ ok: false, error: 'Ansvarlig mangler e-postadresse' }, { status: 400 }));
+      const actor = String(body.actor || '').trim() || 'En kollega';
+      const sendt = await taskEpost({ member, task, heading: 'Påminnelse', intro: `${actor} minner om denne saken.` });
+      if (!sendt) return cors(NextResponse.json({ ok: false, error: 'E-post kunne ikke sendes' }, { status: 502 }));
+      const naa = new Date().toISOString();
+      await db.collection('tasks').updateOne({ id: path[2] }, { $push: { activity: { at: naa, actor, text: `Påminnelse sendt til ${member.name}` } }, $set: { updatedAt: naa } });
+      return cors(NextResponse.json({ ok: true }));
     }
 
     // --- Analytics: førsteparts hendelses-inntak (offentlig, cookieless) ---
