@@ -451,8 +451,14 @@ html { scroll-behavior: smooth; }
    identitets-transform etter animasjonen, som gjør at position:fixed-modaler
    inne i fanen posisjoneres mot wrapperen i stedet for viewporten. */
 .dh-tab-in { animation: dhTabIn 0.32s cubic-bezier(0.16, 1, 0.3, 1) backwards; }
+/* Saker: panel-inntreden — bottom-sheet på mobil, myk glidning fra høyre på desktop.
+   backwards av samme Chromium-grunn som dh-tab-in. */
+@keyframes dhSheetIn { from { opacity: 0.5; transform: translateY(48px); } to { opacity: 1; transform: none; } }
+.dh-panel-in { animation: dhSheetIn 0.34s cubic-bezier(0.16, 1, 0.3, 1) backwards; }
+@keyframes dhSlideInRight { from { opacity: 0; transform: translateX(32px); } to { opacity: 1; transform: none; } }
+@media (min-width: 768px) { .dh-panel-in { animation: dhSlideInRight 0.26s cubic-bezier(0.16, 1, 0.3, 1) backwards; } }
 @media (prefers-reduced-motion: reduce) {
-  .dh-pop, .dh-fade, .dh-scale-in, .dh-tab-in { animation: none; opacity: 1; transform: none; }
+  .dh-pop, .dh-fade, .dh-scale-in, .dh-tab-in, .dh-panel-in { animation: none; opacity: 1; transform: none; }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
