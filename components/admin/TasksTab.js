@@ -19,8 +19,33 @@ import {
   Plus, X, Loader2, Search, Users, Trash2, Bell, Clock, MessageSquare,
   CheckCircle2, Inbox, PlayCircle, LayoutGrid, List, Calendar,
   ChevronDown, AlertTriangle, Pencil, Check, CornerDownLeft, History,
-  ClipboardCheck, UserPlus,
+  ClipboardCheck, UserPlus, Repeat, Paperclip, Archive, ArchiveRestore,
+  Download, KeyRound, Circle, Table2, CalendarRange, ArrowUpDown, User,
 } from 'lucide-react';
+
+const VISNINGER = [
+  { k: 'tavle', l: 'Tavle', icon: LayoutGrid },
+  { k: 'liste', l: 'Liste', icon: List },
+  { k: 'tabell', l: 'Tabell', icon: Table2 },
+  { k: 'tidslinje', l: 'Tidslinje', icon: CalendarRange },
+  { k: 'arkiv', l: 'Arkiv', icon: Archive },
+];
+
+const REC_VALG = [
+  { k: '', l: 'Gjentas ikke' },
+  { k: 'weekly', l: 'Ukentlig' },
+  { k: 'monthly', l: 'Månedlig' },
+  { k: 'quarterly', l: 'Kvartalsvis' },
+];
+
+const ROLLE_LABEL = { owner: 'Eier', admin: 'Admin', bruker: 'Bruker' };
+
+function fmtStr(bytes) {
+  if (!bytes && bytes !== 0) return '';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
 
 const STATUSER = [
   { k: 'inbox', l: 'Innboks', icon: Inbox, farge: '#8b8b8b' },
@@ -48,6 +73,13 @@ function fmtTid(iso) {
   try {
     return new Date(iso).toLocaleString('nb-NO', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
   } catch (e) { return ''; }
+}
+
+function fmtDatoLang(iso) {
+  try {
+    const s = new Date(`${iso}T12:00:00`).toLocaleDateString('nb-NO', { weekday: 'long', day: 'numeric', month: 'long' });
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  } catch (e) { return iso; }
 }
 
 // Lås bakgrunnsscroll mens en flate (skuff/modal) er åpen — kritisk på mobil,
@@ -91,6 +123,108 @@ function Avatar({ member, size = 24 }) {
   );
 }
 
+// Linear-inspirert prioritetsikon: signalbarer i stedet for tekst-chip.
+function PriIkon({ p, size = 13 }) {
+  const pri = PRI[p] || PRI[2];
+  const fylt = p === 1 ? 3 : p === 2 ? 2 : 1;
+  return (
+    <span title={`${pri.l} · ${pri.full}`} className="inline-flex shrink-0 items-end gap-[2px]" style={{ height: size }} aria-label={`Prioritet ${pri.full}`}>
+      {[1, 2, 3].map((i) => (
+        <span key={i} className="w-[3px] rounded-[1px] transition-colors" style={{ height: `${Math.round((i / 3) * size)}px`, background: i <= fylt ? pri.farge : '#e5e2dc' }} />
+      ))}
+    </span>
+  );
+}
+
+// Tastatur-kbd i hint-raden
+function Kbd({ children }) {
+  return <kbd className="rounded-md bg-white px-1.5 py-0.5 text-[10px] font-bold text-[#999] shadow-[0_1px_3px_rgba(0,0,0,0.08)]">{children}</kbd>;
+}
+
+// Statusbadge med farget prikk — Linear-signatur
+function StatusBadge({ status }) {
+  const st = STATUSER.find((s) => s.k === status) || STATUSER[0];
+  return (
+    <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-md border border-black/[0.06] bg-white px-2 py-0.5 text-[11.5px] font-semibold text-[#444]">
+      <span className="h-[7px] w-[7px] rounded-full" style={{ background: st.farge }} />
+      {st.l}
+    </span>
+  );
+}
+
+/* Meny — Linear-style popover-dropdown som erstatter native <select>.
+   options: [{ v, l, icon?, dot?, avatar?, sub? }] */
+function Meny({ value, options, onChange, placeholder, compact, testid, className = '', menyBredde = 220, oppover }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    const onKey = (e) => { if (e.key === 'Escape') { e.stopPropagation(); setOpen(false); } };
+    document.addEventListener('mousedown', onDoc);
+    window.addEventListener('keydown', onKey, true);
+    return () => { document.removeEventListener('mousedown', onDoc); window.removeEventListener('keydown', onKey, true); };
+  }, [open]);
+
+  const valgt = options.find((o) => String(o.v) === String(value ?? ''));
+  const Ikon = valgt && valgt.icon;
+
+  return (
+    <div ref={ref} className={`relative min-w-0 ${className}`}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        data-testid={testid}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        className={`flex w-full items-center gap-1.5 rounded-lg border bg-white text-left transition-all ${
+          open ? 'border-[#8b5cf6]/50 ring-2 ring-[#8b5cf6]/15' : 'border-black/[0.08] hover:border-black/[0.16]'
+        } ${compact ? 'h-8 px-2.5 text-[12.5px]' : 'h-9 px-3 text-[13px]'}`}
+      >
+        {valgt && valgt.dot && <span className="h-[7px] w-[7px] shrink-0 rounded-full" style={{ background: valgt.dot }} />}
+        {valgt && valgt.avatar && <Avatar member={valgt.avatar} size={18} />}
+        {Ikon && <Ikon className="h-3.5 w-3.5 shrink-0 text-[#888]" />}
+        <span className={`min-w-0 flex-1 truncate font-medium ${valgt ? 'text-[#333]' : 'text-[#aaa]'}`}>{valgt ? valgt.l : placeholder}</span>
+        <ChevronDown className={`h-3.5 w-3.5 shrink-0 text-[#b5b5b5] transition-transform duration-150 ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div
+          role="listbox"
+          className={`dh-fade absolute left-0 z-[130] max-h-[280px] overflow-y-auto rounded-xl border border-black/[0.07] bg-white p-1 shadow-[0_16px_48px_rgba(0,0,0,0.16)] ${oppover ? 'bottom-full mb-1' : 'top-full mt-1'}`}
+          style={{ minWidth: Math.max(menyBredde, 160) }}
+        >
+          {options.map((o) => {
+            const OIkon = o.icon;
+            const aktiv = String(o.v) === String(value ?? '');
+            return (
+              <button
+                key={String(o.v)}
+                type="button"
+                role="option"
+                aria-selected={aktiv}
+                onClick={() => { onChange(o.v); setOpen(false); }}
+                className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[13px] transition-colors ${
+                  aktiv ? 'bg-[#f4f0fb] text-[#1a1a1a]' : 'text-[#444] hover:bg-[#f7f6f4]'
+                }`}
+              >
+                {o.dot && <span className="h-[7px] w-[7px] shrink-0 rounded-full" style={{ background: o.dot }} />}
+                {o.avatar && <Avatar member={o.avatar} size={20} />}
+                {OIkon && <OIkon className="h-3.5 w-3.5 shrink-0 text-[#888]" />}
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-medium leading-tight">{o.l}</span>
+                  {o.sub && <span className="block truncate text-[11px] text-[#aaa]">{o.sub}</span>}
+                </span>
+                {aktiv && <Check className="h-3.5 w-3.5 shrink-0 text-[#8b5cf6]" />}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function TasksTab({ apiKey, user, onStats }) {
   const [tasks, setTasks] = useState([]);
   const [members, setMembers] = useState([]);
@@ -106,10 +240,16 @@ export default function TasksTab({ apiKey, user, onStats }) {
   const [personerOpen, setPersonerOpen] = useState(false);
   const [dragId, setDragId] = useState(null);
   const [hoverKol, setHoverKol] = useState(null);
+  const [fokusId, setFokusId] = useState(null);
+  const [sortKey, setSortKey] = useState('due');
+  const [sortDir, setSortDir] = useState(1);
   const [toast, setToast] = useState(null);
+  const [arkivTasks, setArkivTasks] = useState([]);
+  const [arkivLaster, setArkivLaster] = useState(false);
   const toastTimer = useRef(0);
 
   const actor = (user && (user.name || user.email)) || 'Admin';
+  const erBrukerRolle = !!(user && user.role === 'bruker');
 
   const visToast = useCallback((msg, type = 'ok') => {
     setToast({ msg, type });
@@ -147,6 +287,19 @@ export default function TasksTab({ apiKey, user, onStats }) {
 
   useEffect(() => { last(); }, [last]);
 
+  // Arkivet lastes når man åpner arkiv-visningen
+  const lastArkiv = useCallback(async () => {
+    setArkivLaster(true);
+    try {
+      const r = await api('tasks?arkiv=1');
+      const j = await r.json();
+      if (j.ok) setArkivTasks(j.tasks || []);
+    } catch (e) {}
+    setArkivLaster(false);
+  }, [api]);
+
+  useEffect(() => { if (view === 'arkiv') lastArkiv(); }, [view, lastArkiv]);
+
   // N = ny sak (når man ikke skriver i et felt og ingenting annet er åpent)
   useEffect(() => {
     const onKey = (e) => {
@@ -178,8 +331,13 @@ export default function TasksTab({ apiKey, user, onStats }) {
       });
       const j = await r.json();
       if (!j.ok) throw new Error(j.error || 'Lagring feilet');
-      setTasks((prev) => prev.map((t) => (t.id === id ? j.task : t)));
-      if (j.emailed && !stille) visToast('Lagret — e-postvarsel sendt', 'ok');
+      setTasks((prev) => {
+        const neste = prev.map((t) => (t.id === id ? j.task : t)).filter((t) => !t.archived);
+        meldStats(neste, today);
+        return neste;
+      });
+      if (j.task && j.task.archived) visToast('Sak arkivert');
+      else if (j.emailed && !stille) visToast('Lagret — e-postvarsel sendt', 'ok');
     } catch (e) {
       visToast(e.message || 'Lagring feilet', 'feil');
       last();
@@ -241,6 +399,30 @@ export default function TasksTab({ apiKey, user, onStats }) {
     }
   }, [api, actor, last, visToast]);
 
+  // --- Arkiv: gjenopprett / slett permanent ---
+  const gjenopprett = useCallback(async (id) => {
+    try {
+      const r = await api(`tasks/${id}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ archived: false, actor }),
+      });
+      const j = await r.json();
+      if (!j.ok) throw new Error(j.error || 'Kunne ikke gjenopprette');
+      setArkivTasks((prev) => prev.filter((t) => t.id !== id));
+      visToast('Sak gjenopprettet fra arkivet');
+      last();
+    } catch (e) { visToast(e.message, 'feil'); }
+  }, [api, actor, last, visToast]);
+
+  const slettFraArkiv = useCallback(async (id) => {
+    if (!window.confirm('Slette saken permanent? Dette kan ikke angres.')) return;
+    try {
+      await api(`tasks/${id}`, { method: 'DELETE' });
+      setArkivTasks((prev) => prev.filter((t) => t.id !== id));
+      visToast('Sak slettet permanent');
+    } catch (e) { visToast('Kunne ikke slette', 'feil'); }
+  }, [api, visToast]);
+
   // --- Filtrering ---
   const filtrert = useMemo(() => {
     const s = sok.trim().toLowerCase();
@@ -277,6 +459,77 @@ export default function TasksTab({ apiKey, user, onStats }) {
     };
   }, [tasks, today]);
 
+  // Linear-navigasjon: flat rekkefølge i samme rekkefølge som aktiv visning.
+  const tabellData = useMemo(() => {
+    const idxStatus = (t) => STATUSER.findIndex((s) => s.k === t.status);
+    const cmp = {
+      pri: (a, b) => a.priority - b.priority,
+      tittel: (a, b) => a.title.localeCompare(b.title, 'nb'),
+      status: (a, b) => idxStatus(a) - idxStatus(b),
+      ansvarlig: (a, b) => ((medlem(a.assigneeId) || {}).name || 'øøø').localeCompare((medlem(b.assigneeId) || {}).name || 'øøø', 'nb'),
+      due: (a, b) => (a.dueDate || '9999').localeCompare(b.dueDate || '9999'),
+      oppdatert: (a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''),
+    }[sortKey] || (() => 0);
+    return [...filtrert].sort((a, b) => cmp(a, b) * sortDir);
+  }, [filtrert, sortKey, sortDir, medlem]);
+
+  const sorterEtter = (k) => {
+    if (sortKey === k) setSortDir((d) => -d);
+    else { setSortKey(k); setSortDir(1); }
+  };
+
+  // Tidslinje: saker gruppert per frist-dato (stigende), uten frist til slutt.
+  const tidslinjeData = useMemo(() => {
+    const datoer = new Map();
+    const uten = [];
+    filtrert.forEach((t) => {
+      if (!t.dueDate) { uten.push(t); return; }
+      if (!datoer.has(t.dueDate)) datoer.set(t.dueDate, []);
+      datoer.get(t.dueDate).push(t);
+    });
+    const grupper = [...datoer.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+    grupper.forEach(([, arr]) => arr.sort((a, b) => a.priority - b.priority));
+    return { grupper, uten };
+  }, [filtrert]);
+
+  const flatListe = useMemo(() => {
+    if (view === 'tabell') return tabellData;
+    if (view === 'tidslinje') return [...tidslinjeData.grupper.flatMap(([, arr]) => arr), ...tidslinjeData.uten];
+    return STATUSER.flatMap((st) => perStatus[st.k]);
+  }, [view, tabellData, tidslinjeData, perStatus]);
+
+  useEffect(() => {
+    const onKey = (e) => {
+      if (nyOpen || valgtId || personerOpen || view === 'arkiv') return;
+      const mål = e.target;
+      if (mål && ['INPUT', 'TEXTAREA', 'SELECT'].includes(mål.tagName)) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (!['ArrowDown', 'ArrowUp', 'j', 'k', 'Enter', 'Escape'].includes(e.key)) return;
+      if (e.key === 'Escape') { setFokusId(null); return; }
+      if (!flatListe.length) return;
+      const idx = flatListe.findIndex((x) => x.id === fokusId);
+      if (e.key === 'Enter') {
+        if (idx >= 0) { e.preventDefault(); setValgtId(flatListe[idx].id); }
+        return;
+      }
+      e.preventDefault();
+      const frem = e.key === 'ArrowDown' || e.key === 'j';
+      const neste = frem
+        ? flatListe[Math.min(idx + 1, flatListe.length - 1)]
+        : flatListe[Math.max(idx - 1, 0)];
+      if (neste) setFokusId(neste.id);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [flatListe, fokusId, nyOpen, valgtId, personerOpen, view]);
+
+  // Hold det fokuserte kortet synlig
+  useEffect(() => {
+    if (!fokusId) return;
+    const el = document.querySelector(`[data-fokus-id="${fokusId}"]`);
+    if (el && el.scrollIntoView) el.scrollIntoView({ block: 'nearest' });
+  }, [fokusId]);
+
   const valgt = valgtId ? tasks.find((t) => t.id === valgtId) : null;
   const tomt = !laster && tasks.length === 0;
 
@@ -301,48 +554,45 @@ export default function TasksTab({ apiKey, user, onStats }) {
             <SummaryChip label="Ferdig siste 7 d" value={stats.ferdig7d} good />
           </div>
 
-          {/* Desktop-verktøy */}
+          {/* Desktop-verktøy — Linear-style: hairline-borders, popover-menyer */}
           <div className="ml-auto hidden shrink-0 items-center gap-2 lg:flex">
             <div className="relative">
-              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[#b5b5b5]" />
+              <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-[#b5b5b5]" />
               <input
                 value={sok} onChange={(e) => setSok(e.target.value)} placeholder="Søk i saker …"
                 data-testid="tasks-search"
-                className="h-9 w-44 rounded-full bg-white pl-8 pr-3 text-[13px] shadow-[0_2px_10px_rgba(0,0,0,0.04)] outline-none placeholder:text-[#bbb] focus:ring-2 focus:ring-[#cf97fc]/40"
+                className="h-9 w-44 rounded-lg border border-black/[0.08] bg-white pl-8 pr-3 text-[13px] outline-none transition-all placeholder:text-[#bbb] hover:border-black/[0.16] focus:border-[#8b5cf6]/50 focus:ring-2 focus:ring-[#8b5cf6]/15"
               />
             </div>
-            <select
-              value={fAnsvarlig} onChange={(e) => setFAnsvarlig(e.target.value)}
-              data-testid="tasks-filter-assignee"
-              className="h-9 rounded-full bg-white px-3 text-[13px] shadow-[0_2px_10px_rgba(0,0,0,0.04)] outline-none"
-            >
-              <option value="alle">Alle ansvarlige</option>
-              {members.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
-            </select>
-            <select
-              value={fPri} onChange={(e) => setFPri(Number(e.target.value))}
-              className="h-9 rounded-full bg-white px-3 text-[13px] shadow-[0_2px_10px_rgba(0,0,0,0.04)] outline-none"
-            >
-              <option value={0}>Alle prioriteter</option>
-              <option value={1}>P1 · Kritisk</option>
-              <option value={2}>P2 · Normal</option>
-              <option value={3}>P3 · Lav</option>
-            </select>
-            <div className="flex rounded-full bg-white p-0.5 shadow-[0_2px_10px_rgba(0,0,0,0.04)]">
-              <ViewBtn active={view === 'tavle'} onClick={() => setView('tavle')} icon={LayoutGrid} label="Tavle" testid="tasks-view-board" />
-              <ViewBtn active={view === 'liste'} onClick={() => setView('liste')} icon={List} label="Liste" testid="tasks-view-list" />
+            <Meny
+              value={fAnsvarlig} onChange={setFAnsvarlig} testid="tasks-filter-assignee" className="w-44"
+              options={[{ v: 'alle', l: 'Alle ansvarlige', icon: Users }, ...members.map((m) => ({ v: m.id, l: m.name, avatar: m }))]}
+            />
+            <Meny
+              value={fPri} onChange={(v) => setFPri(Number(v))} className="w-40" testid="tasks-filter-priority"
+              options={[
+                { v: 0, l: 'Alle prioriteter', icon: ArrowUpDown },
+                { v: 1, l: 'P1 · Kritisk', dot: '#e11d48' },
+                { v: 2, l: 'P2 · Normal', dot: '#b45309' },
+                { v: 3, l: 'P3 · Lav', dot: '#6b7280' },
+              ]}
+            />
+            <div className="flex rounded-lg border border-black/[0.08] bg-white p-0.5">
+              {VISNINGER.map((v) => (
+                <ViewBtn key={v.k} active={view === v.k} onClick={() => setView(v.k)} icon={v.icon} label={v.l} testid={`tasks-view-${v.k}`} />
+              ))}
             </div>
             <button
               onClick={() => setPersonerOpen(true)}
               data-testid="tasks-members-btn"
-              className="flex h-9 items-center gap-1.5 rounded-full bg-white px-3.5 text-[13px] font-medium text-[#555] shadow-[0_2px_10px_rgba(0,0,0,0.04)] transition-colors hover:text-[#0a0a0a]"
+              className="flex h-9 items-center gap-1.5 rounded-lg border border-black/[0.08] bg-white px-3 text-[13px] font-medium text-[#555] transition-all hover:border-black/[0.16] hover:text-[#0a0a0a]"
             >
               <Users className="w-3.5 h-3.5" /> Personer
             </button>
             <button
               onClick={() => setNyOpen(true)}
               data-testid="tasks-new-btn"
-              className="flex h-9 items-center gap-1.5 rounded-full bg-[#0a0a0a] px-4 text-[13px] font-semibold text-white transition-all hover:bg-black/85 active:scale-[0.97]"
+              className="flex h-9 items-center gap-1.5 rounded-lg bg-[#0a0a0a] px-3.5 text-[13px] font-semibold text-white transition-all hover:bg-black/85 active:scale-[0.97]"
             >
               <Plus className="w-4 h-4" /> Ny sak <kbd className="ml-1 rounded bg-white/15 px-1.5 py-0.5 text-[10px] font-bold">N</kbd>
             </button>
@@ -356,20 +606,20 @@ export default function TasksTab({ apiKey, user, onStats }) {
             <input
               value={sok} onChange={(e) => setSok(e.target.value)} placeholder="Søk i saker …"
               data-testid="tasks-search-mobile"
-              className="h-11 w-full rounded-2xl bg-white pl-10 pr-3 text-[15px] shadow-[0_2px_10px_rgba(0,0,0,0.04)] outline-none placeholder:text-[#bbb] focus:ring-2 focus:ring-[#cf97fc]/40"
+              className="h-11 w-full rounded-xl border border-black/[0.08] bg-white pl-10 pr-3 text-[15px] outline-none transition-all placeholder:text-[#bbb] focus:border-[#8b5cf6]/50 focus:ring-2 focus:ring-[#8b5cf6]/15"
             />
           </div>
           <div className="grid grid-cols-2 gap-2">
             <select
               value={fAnsvarlig} onChange={(e) => setFAnsvarlig(e.target.value)}
-              className="h-11 w-full rounded-2xl bg-white px-3 text-[13.5px] shadow-[0_2px_10px_rgba(0,0,0,0.04)] outline-none"
+              className="h-11 w-full rounded-xl border border-black/[0.08] bg-white px-3 text-[13.5px] outline-none"
             >
               <option value="alle">Alle ansvarlige</option>
               {members.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
             </select>
             <select
               value={fPri} onChange={(e) => setFPri(Number(e.target.value))}
-              className="h-11 w-full rounded-2xl bg-white px-3 text-[13.5px] shadow-[0_2px_10px_rgba(0,0,0,0.04)] outline-none"
+              className="h-11 w-full rounded-xl border border-black/[0.08] bg-white px-3 text-[13.5px] outline-none"
             >
               <option value={0}>Alle prioriteter</option>
               <option value={1}>P1 · Kritisk</option>
@@ -378,13 +628,14 @@ export default function TasksTab({ apiKey, user, onStats }) {
             </select>
           </div>
           <div className="flex items-center gap-2">
-            <div className="flex h-11 items-center rounded-2xl bg-white p-1 shadow-[0_2px_10px_rgba(0,0,0,0.04)]">
-              <ViewBtn active={view === 'tavle'} onClick={() => setView('tavle')} icon={LayoutGrid} label="Tavle" />
-              <ViewBtn active={view === 'liste'} onClick={() => setView('liste')} icon={List} label="Liste" />
+            <div className="flex h-11 items-center rounded-xl border border-black/[0.08] bg-white p-1">
+              {VISNINGER.map((v) => (
+                <ViewBtn key={v.k} active={view === v.k} onClick={() => setView(v.k)} icon={v.icon} label={v.l} />
+              ))}
             </div>
             <button
               onClick={() => setPersonerOpen(true)}
-              className="ml-auto flex h-11 items-center gap-1.5 rounded-2xl bg-white px-4 text-[13.5px] font-medium text-[#555] shadow-[0_2px_10px_rgba(0,0,0,0.04)]"
+              className="ml-auto flex h-11 items-center gap-1.5 rounded-xl border border-black/[0.08] bg-white px-4 text-[13.5px] font-medium text-[#555]"
             >
               <Users className="w-4 h-4" /> Personer
             </button>
@@ -399,7 +650,7 @@ export default function TasksTab({ apiKey, user, onStats }) {
       )}
 
       {/* ═══ Førstegangsopplevelse ═══ */}
-      {tomt && (
+      {tomt && view !== 'arkiv' && (
         <div className="rounded-3xl bg-white px-6 py-14 text-center shadow-[0_2px_16px_rgba(0,0,0,0.04)] sm:py-20" data-testid="tasks-empty">
           <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#f4f0fb]">
             <ClipboardCheck className="h-7 w-7 text-[#8b5cf6]" />
@@ -455,12 +706,20 @@ export default function TasksTab({ apiKey, user, onStats }) {
                   <Icon className="w-4 h-4" style={{ color: st.farge }} />
                   <span className="text-[12.5px] font-bold text-[#333]" style={heading}>{st.l}</span>
                   <span className="rounded-full bg-black/[0.05] px-1.5 py-0.5 text-[10.5px] font-bold text-[#888] tabular-nums">{liste.length}</span>
+                  <button
+                    onClick={() => setNyOpen(st.k)}
+                    title={`Ny sak i ${st.l}`}
+                    data-testid={`col-add-${st.k}`}
+                    className="ml-auto rounded-md p-1 text-[#b5b5b5] transition-colors hover:bg-black/[0.06] hover:text-[#333]"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                  </button>
                 </div>
                 <div className="space-y-2 min-h-[64px]">
                   {liste.map((t) => (
                     <SakKort
                       key={t.id} t={t} today={today} member={medlem(t.assigneeId)}
-                      dras={dragId === t.id}
+                      dras={dragId === t.id} fokus={fokusId === t.id}
                       onClick={() => setValgtId(t.id)}
                       onDragStart={() => setDragId(t.id)}
                       onDragEnd={() => setDragId(null)}
@@ -495,15 +754,15 @@ export default function TasksTab({ apiKey, user, onStats }) {
                 </div>
                 {liste.map((t) => {
                   const m = medlem(t.assigneeId);
-                  const p = PRI[t.priority] || PRI[2];
                   return (
                     <button
                       key={t.id}
                       onClick={() => setValgtId(t.id)}
-                      className="flex w-full items-center gap-2.5 border-b border-black/[0.04] px-4 py-3 text-left transition-colors hover:bg-[#faf8fd] active:bg-[#f6f2fc] sm:gap-3 sm:py-2.5"
+                      className={`flex w-full items-center gap-2.5 border-b border-black/[0.04] px-4 py-3 text-left transition-colors hover:bg-[#faf8fd] active:bg-[#f6f2fc] sm:gap-3 sm:py-2.5 ${fokusId === t.id ? 'bg-[#f4f0fb] ring-2 ring-inset ring-[#8b5cf6]/40' : ''}`}
                       data-testid={`task-row-${t.id}`}
+                      data-fokus-id={t.id}
                     >
-                      <span className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold" style={{ color: p.farge, background: p.bg }}>{p.l}</span>
+                      <PriIkon p={t.priority} />
                       <span className={`min-w-0 flex-1 truncate text-[13.5px] font-medium ${t.status === 'done' ? 'text-[#9a9a9a] line-through' : 'text-[#1a1a1a]'}`}>{t.title}</span>
                       {(t.labels || []).slice(0, 3).map((l) => (
                         <span key={l} className="hidden md:inline rounded-md bg-[#f4f0fb] px-1.5 py-0.5 text-[10.5px] font-medium text-[#8b5cf6]">{l}</span>
@@ -522,6 +781,166 @@ export default function TasksTab({ apiKey, user, onStats }) {
         </div>
       )}
 
+      {/* ═══ Tabell — sorterbar, tett oversikt ═══ */}
+      {!tomt && view === 'tabell' && (
+        <div className="overflow-x-auto rounded-2xl bg-white shadow-[0_2px_16px_rgba(0,0,0,0.04)]" data-testid="tasks-table">
+          <table className="w-full min-w-[880px] border-collapse text-left">
+            <thead>
+              <tr className="border-b border-black/[0.06] bg-[#fafaf8]">
+                <SortTh k="pri" label="Pri" sortKey={sortKey} sortDir={sortDir} onSort={sorterEtter} w="64px" />
+                <SortTh k="tittel" label="Sak" sortKey={sortKey} sortDir={sortDir} onSort={sorterEtter} />
+                <SortTh k="status" label="Status" sortKey={sortKey} sortDir={sortDir} onSort={sorterEtter} w="118px" />
+                <SortTh k="ansvarlig" label="Ansvarlig" sortKey={sortKey} sortDir={sortDir} onSort={sorterEtter} w="170px" />
+                <SortTh k="due" label="Frist" sortKey={sortKey} sortDir={sortDir} onSort={sorterEtter} w="136px" />
+                <th className="px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.06em] text-[#999]" style={{ width: '130px' }}>Fremdrift</th>
+                <SortTh k="oppdatert" label="Oppdatert" sortKey={sortKey} sortDir={sortDir} onSort={sorterEtter} w="128px" />
+              </tr>
+            </thead>
+            <tbody>
+              {tabellData.map((t) => {
+                const m = medlem(t.assigneeId);
+                const sub = t.subtasks || [];
+                const subFerdig = sub.filter((s) => s.done).length;
+                return (
+                  <tr
+                    key={t.id}
+                    onClick={() => setValgtId(t.id)}
+                    data-testid={`table-row-${t.id}`}
+                    data-fokus-id={t.id}
+                    className={`cursor-pointer border-b border-black/[0.04] transition-colors last:border-0 hover:bg-[#faf8fd] ${fokusId === t.id ? 'bg-[#f4f0fb]' : ''}`}
+                  >
+                    <td className="px-4 py-2.5"><PriIkon p={t.priority} /></td>
+                    <td className="max-w-0 px-4 py-2.5">
+                      <div className="flex items-center gap-2">
+                        <span className={`truncate text-[13.5px] font-medium ${t.status === 'done' ? 'text-[#9a9a9a] line-through' : 'text-[#1a1a1a]'}`}>{t.title}</span>
+                        {t.recurrence && <Repeat className="h-3 w-3 shrink-0 text-[#b5b5b5]" />}
+                        {(t.labels || []).slice(0, 2).map((l) => (
+                          <span key={l} className="hidden shrink-0 rounded-md bg-[#f4f0fb] px-1.5 py-0.5 text-[10.5px] font-medium text-[#8b5cf6] xl:inline">{l}</span>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="px-4 py-2.5"><StatusBadge status={t.status} /></td>
+                    <td className="px-4 py-2.5">
+                      {m ? (
+                        <span className="flex items-center gap-2 min-w-0"><Avatar member={m} size={22} /><span className="truncate text-[13px] text-[#444]">{m.name}</span></span>
+                      ) : <span className="text-[12.5px] text-[#c5c5c5]">—</span>}
+                    </td>
+                    <td className="px-4 py-2.5"><DueChip due={t.dueDate} today={today} done={t.status === 'done'} /></td>
+                    <td className="px-4 py-2.5">
+                      <span className="flex items-center gap-2.5 text-[11px] text-[#aaa]">
+                        {sub.length > 0 && (
+                          <span className="flex items-center gap-1.5">
+                            <span className="h-1 w-9 overflow-hidden rounded-full bg-[#eee]">
+                              <span className="block h-full rounded-full bg-emerald-500" style={{ width: `${(subFerdig / sub.length) * 100}%` }} />
+                            </span>
+                            <span className="tabular-nums">{subFerdig}/{sub.length}</span>
+                          </span>
+                        )}
+                        {(t.attachments || []).length > 0 && <span className="flex items-center gap-0.5"><Paperclip className="h-3 w-3" />{t.attachments.length}</span>}
+                        {(t.comments || []).length > 0 && <span className="flex items-center gap-0.5"><MessageSquare className="h-3 w-3" />{t.comments.length}</span>}
+                      </span>
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-2.5 text-[12px] text-[#999]">{fmtTid(t.updatedAt)}</td>
+                  </tr>
+                );
+              })}
+              {!tabellData.length && (
+                <tr><td colSpan={7} className="py-14 text-center text-[13.5px] text-[#aaa]">Ingen saker matcher filtrene.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* ═══ Tidslinje — saker langs fristene ═══ */}
+      {!tomt && view === 'tidslinje' && (
+        <div className="rounded-2xl bg-white p-5 shadow-[0_2px_16px_rgba(0,0,0,0.04)] sm:p-7" data-testid="tasks-timeline">
+          {!tidslinjeData.grupper.length && !tidslinjeData.uten.length && (
+            <p className="py-10 text-center text-[13.5px] text-[#aaa]">Ingen saker matcher filtrene.</p>
+          )}
+          <div>
+            {tidslinjeData.grupper.map(([dato, saker], gi) => {
+              const forfalt = dato < today && saker.some((t) => t.status !== 'done');
+              const iDag = dato === today;
+              return (
+                <div key={dato} className={`relative border-l-2 pl-6 ${gi === tidslinjeData.grupper.length - 1 && !tidslinjeData.uten.length ? 'pb-1' : 'pb-7'} ${forfalt ? 'border-rose-200' : 'border-[#eee]'}`} data-testid={`timeline-group-${dato}`}>
+                  <span className={`absolute -left-[7px] top-0.5 h-3 w-3 rounded-full ring-4 ring-white ${forfalt ? 'bg-rose-500' : iDag ? 'bg-amber-400' : 'bg-[#cf97fc]'}`} />
+                  <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                    <p className="text-[13.5px] font-bold text-[#0a0a0a]" style={heading}>{fmtDatoLang(dato)}</p>
+                    {forfalt && <span className="rounded-md bg-rose-50 px-1.5 py-0.5 text-[10.5px] font-bold text-rose-600">Forfalt</span>}
+                    {iDag && <span className="rounded-md bg-amber-50 px-1.5 py-0.5 text-[10.5px] font-bold text-amber-700">I dag</span>}
+                    <span className="text-[11px] text-[#b5b5b5]">{saker.length} {saker.length === 1 ? 'sak' : 'saker'}</span>
+                  </div>
+                  <div className="mt-2 space-y-1.5">
+                    {saker.map((t) => <TidslinjeRad key={t.id} t={t} member={medlem(t.assigneeId)} fokus={fokusId === t.id} onClick={() => setValgtId(t.id)} />)}
+                  </div>
+                </div>
+              );
+            })}
+            {tidslinjeData.uten.length > 0 && (
+              <div className="relative border-l-2 border-dashed border-[#e5e2dc] pl-6" data-testid="timeline-no-due">
+                <span className="absolute -left-[7px] top-0.5 h-3 w-3 rounded-full bg-[#d5d2cc] ring-4 ring-white" />
+                <div className="flex items-baseline gap-2">
+                  <p className="text-[13.5px] font-bold text-[#777]" style={heading}>Uten frist</p>
+                  <span className="text-[11px] text-[#b5b5b5]">{tidslinjeData.uten.length} {tidslinjeData.uten.length === 1 ? 'sak' : 'saker'}</span>
+                </div>
+                <div className="mt-2 space-y-1.5">
+                  {tidslinjeData.uten.map((t) => <TidslinjeRad key={t.id} t={t} member={medlem(t.assigneeId)} fokus={fokusId === t.id} onClick={() => setValgtId(t.id)} />)}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ═══ Arkiv — ferdige saker som er lagt bort ═══ */}
+      {view === 'arkiv' && (
+        <div className="overflow-hidden rounded-2xl bg-white shadow-[0_2px_16px_rgba(0,0,0,0.04)]" data-testid="tasks-archive">
+          {arkivLaster && (
+            <div className="flex items-center justify-center py-14"><Loader2 className="w-5 h-5 animate-spin text-[#cf97fc]" /></div>
+          )}
+          {!arkivLaster && !arkivTasks.length && (
+            <div className="py-14 text-center">
+              <Archive className="mx-auto h-8 w-8 text-[#d5d2cc]" />
+              <p className="mt-3 text-[13.5px] text-[#aaa]">Arkivet er tomt — ferdige saker kan arkiveres fra sak-skuffen.</p>
+            </div>
+          )}
+          {!arkivLaster && arkivTasks.map((t) => {
+            const m = medlem(t.assigneeId);
+            return (
+              <div key={t.id} className="flex items-center gap-3 border-b border-black/[0.04] px-4 py-3 last:border-0" data-testid={`archive-row-${t.id}`}>
+                <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-500" />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[13.5px] font-medium text-[#555]">{t.title}</p>
+                  <p className="text-[11.5px] text-[#b0aca6]">
+                    {t.completedAt ? `Ferdig ${fmtTid(t.completedAt)}` : `Oppdatert ${fmtTid(t.updatedAt)}`}
+                    {m ? ` · ${m.name}` : ''}
+                  </p>
+                </div>
+                <button onClick={() => gjenopprett(t.id)} title="Gjenopprett" data-testid={`archive-restore-${t.id}`} className="flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-[#f4f0fb] px-3.5 text-[12px] font-semibold text-[#8b5cf6] transition-colors hover:bg-[#ece4fa]">
+                  <ArchiveRestore className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Gjenopprett</span>
+                </button>
+                <button onClick={() => slettFraArkiv(t.id)} title="Slett permanent" className="shrink-0 rounded-lg p-2 text-[#ccc] transition-colors hover:bg-rose-50 hover:text-rose-600">
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ═══ Hurtigtast-hint — kun desktop, Linear-style ═══ */}
+      {!tomt && view !== 'arkiv' && (
+        <div className="mt-4 hidden select-none items-center gap-4 text-[11px] text-[#b0aca6] lg:flex" data-testid="tasks-shortcuts-hint">
+          <span className="flex items-center gap-1.5"><Kbd>↑↓</Kbd> naviger</span>
+          <span className="flex items-center gap-1.5"><Kbd>↵</Kbd> åpne sak</span>
+          <span className="flex items-center gap-1.5"><Kbd>N</Kbd> ny sak</span>
+          <span className="flex items-center gap-1.5"><Kbd>1–4</Kbd> status i åpen sak</span>
+          <span className="flex items-center gap-1.5"><Kbd>P</Kbd> prioritet i åpen sak</span>
+          <span className="flex items-center gap-1.5"><Kbd>esc</Kbd> lukk</span>
+        </div>
+      )}
+
       {/* ═══ FAB — mobil/nettbrett ═══ */}
       <button
         onClick={() => setNyOpen(true)}
@@ -537,11 +956,13 @@ export default function TasksTab({ apiKey, user, onStats }) {
       {valgt && (
         <SakSkuff
           t={valgt} members={members} today={today} actor={actor}
+          apiKey={apiKey} api={api} visToast={visToast} onReload={last}
           onClose={() => setValgtId(null)}
           onPatch={(patch) => oppdater(valgt.id, patch)}
           onComment={(text) => kommenter(valgt.id, text)}
           onRemind={() => purr(valgt.id)}
           onDelete={() => slett(valgt.id)}
+          onArchive={() => { setValgtId(null); oppdater(valgt.id, { archived: true }); }}
         />
       )}
 
@@ -549,6 +970,7 @@ export default function TasksTab({ apiKey, user, onStats }) {
       {nyOpen && (
         <NySakModal
           members={members}
+          defaultStatus={typeof nyOpen === 'string' ? nyOpen : 'inbox'}
           onClose={() => setNyOpen(false)}
           onCreate={async (payload) => { await opprett(payload); setNyOpen(false); }}
         />
@@ -557,7 +979,7 @@ export default function TasksTab({ apiKey, user, onStats }) {
       {/* ═══ Personer ═══ */}
       {personerOpen && (
         <PersonerModal
-          api={api} members={members} setMembers={setMembers}
+          api={api} members={members} setMembers={setMembers} erBruker={erBrukerRolle}
           onClose={() => setPersonerOpen(false)} visToast={visToast}
         />
       )}
@@ -592,18 +1014,63 @@ function SummaryChip({ label, value, warn, good, testid }) {
 function ViewBtn({ active, onClick, icon: Icon, label, testid }) {
   return (
     <button
-      onClick={onClick} data-testid={testid}
-      className={`flex h-8 items-center gap-1.5 rounded-full px-3 text-[12.5px] font-medium transition-all ${
-        active ? 'bg-[#0a0a0a] text-white' : 'text-[#777] hover:text-[#0a0a0a]'
+      onClick={onClick} data-testid={testid} title={label}
+      className={`flex h-[30px] items-center gap-1.5 rounded-md px-2.5 text-[12.5px] font-medium transition-all ${
+        active ? 'bg-[#0a0a0a] text-white shadow-sm' : 'text-[#777] hover:bg-black/[0.04] hover:text-[#0a0a0a]'
       }`}
     >
-      <Icon className="w-3.5 h-3.5" /> {label}
+      <Icon className="w-3.5 h-3.5" /> <span className="hidden xl:inline">{label}</span>
     </button>
   );
 }
 
-function SakKort({ t, today, member, dras, onClick, onDragStart, onDragEnd }) {
-  const p = PRI[t.priority] || PRI[2];
+function SortTh({ k, label, sortKey, sortDir, onSort, w }) {
+  const aktiv = sortKey === k;
+  return (
+    <th style={w ? { width: w } : undefined} className="px-4 py-2.5">
+      <button
+        onClick={() => onSort(k)}
+        data-testid={`table-sort-${k}`}
+        className={`flex items-center gap-1 text-[11px] font-bold uppercase tracking-[0.06em] transition-colors ${aktiv ? 'text-[#0a0a0a]' : 'text-[#999] hover:text-[#555]'}`}
+      >
+        {label}
+        <ArrowUpDown className={`h-3 w-3 transition-all ${aktiv ? 'text-[#8b5cf6]' : 'text-[#ccc]'} ${aktiv && sortDir < 0 ? 'rotate-180' : ''}`} />
+      </button>
+    </th>
+  );
+}
+
+function TidslinjeRad({ t, member, fokus, onClick }) {
+  const sub = t.subtasks || [];
+  const subFerdig = sub.filter((s) => s.done).length;
+  return (
+    <button
+      onClick={onClick}
+      data-testid={`timeline-row-${t.id}`}
+      data-fokus-id={t.id}
+      className={`flex w-full items-center gap-2.5 rounded-xl border bg-[#fdfdfc] px-3 py-2 text-left transition-all hover:bg-white ${
+        fokus ? 'border-[#8b5cf6]/50 ring-2 ring-[#8b5cf6]/15' : 'border-black/[0.05] hover:border-black/[0.14]'
+      }`}
+    >
+      <PriIkon p={t.priority} />
+      <span className={`min-w-0 flex-1 truncate text-[13px] font-medium ${t.status === 'done' ? 'text-[#9a9a9a] line-through' : 'text-[#1a1a1a]'}`}>{t.title}</span>
+      {sub.length > 0 && (
+        <span className="hidden items-center gap-1.5 sm:flex">
+          <span className="h-1 w-8 overflow-hidden rounded-full bg-[#eee]">
+            <span className="block h-full rounded-full bg-emerald-500" style={{ width: `${(subFerdig / sub.length) * 100}%` }} />
+          </span>
+          <span className="text-[10.5px] tabular-nums text-[#aaa]">{subFerdig}/{sub.length}</span>
+        </span>
+      )}
+      {(t.attachments || []).length > 0 && <Paperclip className="hidden h-3 w-3 text-[#b5b5b5] sm:block" />}
+      {t.recurrence && <Repeat className="hidden h-3 w-3 text-[#b5b5b5] sm:block" />}
+      <span className="hidden sm:block"><StatusBadge status={t.status} /></span>
+      {member && <Avatar member={member} size={22} />}
+    </button>
+  );
+}
+
+function SakKort({ t, today, member, dras, fokus, onClick, onDragStart, onDragEnd }) {
   return (
     <div
       draggable
@@ -612,10 +1079,11 @@ function SakKort({ t, today, member, dras, onClick, onDragStart, onDragEnd }) {
       onClick={onClick}
       role="button"
       data-testid={`task-card-${t.id}`}
-      className={`cursor-pointer select-none rounded-xl bg-white p-3 shadow-[0_2px_10px_rgba(0,0,0,0.05)] transition-all touch-manipulation hover:-translate-y-[1px] hover:shadow-[0_6px_18px_rgba(0,0,0,0.09)] active:scale-[0.98] ${dras ? 'opacity-50 ring-2 ring-[#cf97fc]' : ''}`}
+      data-fokus-id={t.id}
+      className={`cursor-pointer select-none rounded-xl bg-white p-3 shadow-[0_2px_10px_rgba(0,0,0,0.05)] transition-all touch-manipulation hover:-translate-y-[1px] hover:shadow-[0_6px_18px_rgba(0,0,0,0.09)] active:scale-[0.98] ${dras ? 'opacity-50 ring-2 ring-[#cf97fc]' : ''} ${fokus ? 'ring-2 ring-[#8b5cf6]/60 shadow-[0_6px_20px_rgba(139,92,246,0.18)]' : ''}`}
     >
       <div className="flex items-start gap-2">
-        <span className="mt-0.5 rounded px-1.5 py-0.5 text-[10px] font-bold leading-none" style={{ color: p.farge, background: p.bg }}>{p.l}</span>
+        <span className="mt-1"><PriIkon p={t.priority} /></span>
         <p className={`flex-1 text-[13px] font-semibold leading-snug ${t.status === 'done' ? 'text-[#9a9a9a] line-through' : 'text-[#1a1a1a]'}`}>{t.title}</p>
       </div>
       {(t.labels || []).length > 0 && (
@@ -627,6 +1095,15 @@ function SakKort({ t, today, member, dras, onClick, onDragStart, onDragEnd }) {
       )}
       <div className="mt-2.5 flex items-center gap-2">
         <DueChip due={t.dueDate} today={today} done={t.status === 'done'} />
+        {(t.subtasks || []).length > 0 && (
+          <span className={`flex items-center gap-1 text-[11px] ${t.subtasks.every((s) => s.done) ? 'text-emerald-600' : 'text-[#aaa]'}`}>
+            <CheckCircle2 className="w-3 h-3" />{t.subtasks.filter((s) => s.done).length}/{t.subtasks.length}
+          </span>
+        )}
+        {(t.attachments || []).length > 0 && (
+          <span className="flex items-center gap-1 text-[11px] text-[#aaa]"><Paperclip className="w-3 h-3" />{t.attachments.length}</span>
+        )}
+        {t.recurrence && <Repeat className="w-3 h-3 text-[#aaa]" title="Gjentakende sak" />}
         {(t.comments || []).length > 0 && (
           <span className="flex items-center gap-1 text-[11px] text-[#aaa]"><MessageSquare className="w-3 h-3" />{t.comments.length}</span>
         )}
@@ -669,7 +1146,7 @@ function Overlegg({ onClose, children, variant = 'sheet', testid }) {
 }
 
 /* ═══════════════ Skuff: full redigering av én sak ═══════════════ */
-function SakSkuff({ t, members, today, actor, onClose, onPatch, onComment, onRemind, onDelete }) {
+function SakSkuff({ t, members, today, actor, apiKey, api, visToast, onReload, onClose, onPatch, onComment, onRemind, onDelete, onArchive }) {
   const [tittel, setTittel] = useState(t.title);
   const [beskrivelse, setBeskrivelse] = useState(t.description || '');
   const [kommentar, setKommentar] = useState('');
@@ -678,6 +1155,27 @@ function SakSkuff({ t, members, today, actor, onClose, onPatch, onComment, onRem
   const [varsle, setVarsle] = useState(true);
 
   useEffect(() => { setTittel(t.title); setBeskrivelse(t.description || ''); }, [t.id]); // eslint-disable-line
+
+  // Linear-hurtigtaster i skuffen: 1–4 setter status, P sykler prioritet.
+  useEffect(() => {
+    const onKey = (e) => {
+      const mål = e.target;
+      if (mål && ['INPUT', 'TEXTAREA', 'SELECT'].includes(mål.tagName)) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const idx = ['1', '2', '3', '4'].indexOf(e.key);
+      if (idx >= 0) {
+        e.preventDefault();
+        if (STATUSER[idx].k !== t.status) onPatch({ status: STATUSER[idx].k });
+        return;
+      }
+      if (e.key === 'p' || e.key === 'P') {
+        e.preventDefault();
+        onPatch({ priority: (t.priority % 3) + 1 });
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [t.status, t.priority, onPatch]);
 
   const member = members.find((m) => m.id === t.assigneeId) || null;
 
@@ -694,11 +1192,12 @@ function SakSkuff({ t, members, today, actor, onClose, onPatch, onComment, onRem
       {/* Topp: status + lukk */}
       <div className="flex shrink-0 items-center gap-2 border-b border-black/[0.06] px-4 py-3 sm:px-5">
         <div className="no-scrollbar flex min-w-0 overflow-x-auto rounded-full bg-[#f3f2f0] p-0.5">
-          {STATUSER.map((st) => (
+          {STATUSER.map((st, i) => (
             <button
               key={st.k}
               onClick={() => onPatch({ status: st.k })}
               data-testid={`drawer-status-${st.k}`}
+              title={`${st.l} — hurtigtast ${i + 1}`}
               className={`shrink-0 whitespace-nowrap rounded-full px-2.5 py-1.5 text-[11.5px] font-semibold transition-all ${
                 t.status === st.k ? 'bg-white shadow-[0_1px_6px_rgba(0,0,0,0.1)]' : 'text-[#888] hover:text-[#333]'
               }`}
@@ -733,21 +1232,19 @@ function SakSkuff({ t, members, today, actor, onClose, onPatch, onComment, onRem
           rows={3}
           data-testid="drawer-description"
           placeholder="Beskrivelse — hva handler saken om, og hva er «ferdig»?"
-          className="mt-2 w-full resize-y rounded-xl bg-[#fafaf8] p-3 text-[13.5px] leading-relaxed text-[#333] outline-none placeholder:text-[#bbb] focus:ring-2 focus:ring-[#cf97fc]/30"
+          className="mt-2 w-full resize-y rounded-xl border border-black/[0.07] bg-white p-3 text-[13.5px] leading-relaxed text-[#333] outline-none transition-all placeholder:text-[#bbb] hover:border-black/[0.14] focus:border-[#8b5cf6]/50 focus:ring-2 focus:ring-[#8b5cf6]/15"
         />
 
         {/* Meta */}
         <div className="mt-4 grid grid-cols-1 gap-3 min-[420px]:grid-cols-2">
           <MetaFelt label="Ansvarlig">
-            <select
+            <Meny
               value={t.assigneeId || ''}
-              onChange={(e) => onPatch({ assigneeId: e.target.value || null, notify: varsle })}
-              data-testid="drawer-assignee"
-              className="h-11 w-full rounded-lg bg-[#fafaf8] px-2.5 text-[13.5px] outline-none sm:h-10 sm:text-[13px]"
-            >
-              <option value="">Ingen</option>
-              {members.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
-            </select>
+              onChange={(v) => onPatch({ assigneeId: v || null, notify: varsle })}
+              testid="drawer-assignee"
+              placeholder="Ingen"
+              options={[{ v: '', l: 'Ingen', icon: User }, ...members.map((m) => ({ v: m.id, l: m.name, avatar: m, sub: m.email || undefined }))]}
+            />
           </MetaFelt>
           <MetaFelt label="Frist">
             <input
@@ -755,20 +1252,28 @@ function SakSkuff({ t, members, today, actor, onClose, onPatch, onComment, onRem
               value={t.dueDate || ''}
               onChange={(e) => onPatch({ dueDate: e.target.value || null })}
               data-testid="drawer-due"
-              className="h-11 w-full rounded-lg bg-[#fafaf8] px-2.5 text-[13.5px] outline-none sm:h-10 sm:text-[13px]"
+              className="h-9 w-full rounded-lg border border-black/[0.08] bg-white px-2.5 text-[13px] outline-none transition-all hover:border-black/[0.16] focus:border-[#8b5cf6]/50 focus:ring-2 focus:ring-[#8b5cf6]/15"
             />
           </MetaFelt>
           <MetaFelt label="Prioritet">
-            <select
+            <Meny
               value={t.priority}
-              onChange={(e) => onPatch({ priority: Number(e.target.value) })}
-              data-testid="drawer-priority"
-              className="h-11 w-full rounded-lg bg-[#fafaf8] px-2.5 text-[13.5px] outline-none sm:h-10 sm:text-[13px]"
-            >
-              <option value={1}>P1 · Kritisk</option>
-              <option value={2}>P2 · Normal</option>
-              <option value={3}>P3 · Lav</option>
-            </select>
+              onChange={(v) => onPatch({ priority: Number(v) })}
+              testid="drawer-priority"
+              options={[
+                { v: 1, l: 'P1 · Kritisk', dot: '#e11d48' },
+                { v: 2, l: 'P2 · Normal', dot: '#b45309' },
+                { v: 3, l: 'P3 · Lav', dot: '#6b7280' },
+              ]}
+            />
+          </MetaFelt>
+          <MetaFelt label="Gjentakelse">
+            <Meny
+              value={t.recurrence || ''}
+              onChange={(v) => onPatch({ recurrence: v || null })}
+              testid="drawer-recurrence"
+              options={REC_VALG.map((r) => ({ v: r.k, l: r.l, icon: r.k ? Repeat : undefined }))}
+            />
           </MetaFelt>
           <MetaFelt label="Etiketter (komma)">
             <input
@@ -778,10 +1283,16 @@ function SakSkuff({ t, members, today, actor, onClose, onPatch, onComment, onRem
                 if (JSON.stringify(labels) !== JSON.stringify(t.labels || [])) onPatch({ labels });
               }}
               placeholder="styre, økonomi …"
-              className="h-11 w-full rounded-lg bg-[#fafaf8] px-2.5 text-[13.5px] outline-none placeholder:text-[#ccc] sm:h-10 sm:text-[13px]"
+              className="h-9 w-full rounded-lg border border-black/[0.08] bg-white px-2.5 text-[13px] outline-none transition-all placeholder:text-[#ccc] hover:border-black/[0.16] focus:border-[#8b5cf6]/50 focus:ring-2 focus:ring-[#8b5cf6]/15"
             />
           </MetaFelt>
         </div>
+
+        {t.recurrence && (
+          <p className="mt-2 flex items-center gap-1.5 text-[12px] text-[#8b5cf6]">
+            <Repeat className="w-3.5 h-3.5" /> Når saken fullføres, opprettes neste forekomst automatisk.
+          </p>
+        )}
 
         <label className="mt-3 flex items-center gap-2 text-[12px] text-[#888]">
           <input type="checkbox" checked={varsle} onChange={(e) => setVarsle(e.target.checked)} className="h-4 w-4 accent-[#8b5cf6]" />
@@ -794,6 +1305,15 @@ function SakSkuff({ t, members, today, actor, onClose, onPatch, onComment, onRem
             <AlertTriangle className="w-4 h-4 shrink-0" /> Fristen ({fmtDato(t.dueDate)}) er passert
           </div>
         )}
+
+        {/* Underoppgaver / sjekkliste */}
+        <Sjekkliste items={t.subtasks || []} onChange={(subtasks) => onPatch({ subtasks })} />
+
+        {/* Følgere — varsles når de legges til og ved purring */}
+        <FolgereFelt t={t} members={members} onPatch={onPatch} />
+
+        {/* Vedlegg — chunket opplasting, maks 8 MB per fil */}
+        <VedleggSeksjon t={t} apiKey={apiKey} api={api} actor={actor} onReload={onReload} visToast={visToast} />
 
         {/* Kommentarer */}
         <div className="mt-6">
@@ -821,7 +1341,7 @@ function SakSkuff({ t, members, today, actor, onClose, onPatch, onComment, onRem
               rows={2}
               data-testid="drawer-comment-input"
               placeholder={`Kommenter som ${actor} …`}
-              className="min-w-0 flex-1 resize-none rounded-xl bg-[#fafaf8] p-3 text-[13.5px] outline-none placeholder:text-[#bbb] focus:ring-2 focus:ring-[#cf97fc]/30"
+              className="min-w-0 flex-1 resize-none rounded-xl border border-black/[0.07] bg-white p-3 text-[13.5px] outline-none transition-all placeholder:text-[#bbb] hover:border-black/[0.14] focus:border-[#8b5cf6]/50 focus:ring-2 focus:ring-[#8b5cf6]/15"
             />
             <button
               onClick={sendKommentar}
@@ -867,6 +1387,16 @@ function SakSkuff({ t, members, today, actor, onClose, onPatch, onComment, onRem
         >
           <Bell className="w-3.5 h-3.5" /> Purr på e-post
         </button>
+        {t.status === 'done' && !t.archived && (
+          <button
+            onClick={onArchive}
+            data-testid="drawer-archive"
+            title="Legg saken i arkivet — kan gjenopprettes senere"
+            className="flex h-10 items-center gap-1.5 rounded-full bg-[#f3f2f0] px-4 text-[12.5px] font-semibold text-[#666] transition-all hover:bg-[#e9e7e3] active:scale-[0.97]"
+          >
+            <Archive className="w-3.5 h-3.5" /> Arkiver
+          </button>
+        )}
         <button
           onClick={onDelete}
           data-testid="drawer-delete"
@@ -888,20 +1418,246 @@ function MetaFelt({ label, children }) {
   );
 }
 
+/* ═══════════════ Underoppgaver / sjekkliste ═══════════════ */
+function Sjekkliste({ items, onChange }) {
+  const [nytt, setNytt] = useState('');
+  const ferdig = items.filter((s) => s.done).length;
+  const leggTil = () => {
+    const tekst = nytt.trim();
+    if (!tekst) return;
+    onChange([...items, { text: tekst, done: false }]);
+    setNytt('');
+  };
+  return (
+    <div className="mt-6" data-testid="drawer-subtasks">
+      <div className="flex items-center gap-2">
+        <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#999]">Underoppgaver</p>
+        {items.length > 0 && (
+          <span className={`text-[11px] font-bold tabular-nums ${ferdig === items.length ? 'text-emerald-600' : 'text-[#aaa]'}`}>{ferdig}/{items.length}</span>
+        )}
+      </div>
+      {items.length > 0 && (
+        <div className="mt-2 h-1 overflow-hidden rounded-full bg-[#eee]">
+          <div className="h-full rounded-full bg-emerald-500 transition-all duration-300" style={{ width: `${(ferdig / items.length) * 100}%` }} />
+        </div>
+      )}
+      <div className="mt-2 space-y-0.5">
+        {items.map((s, i) => (
+          <div key={s.id || `st-${i}`} className="group flex items-center gap-2.5 rounded-lg px-1 py-1.5 hover:bg-[#fafaf8]">
+            <button
+              onClick={() => onChange(items.map((x, xi) => (xi === i ? { ...x, done: !x.done } : x)))}
+              data-testid={`subtask-toggle-${i}`}
+              className="shrink-0"
+              aria-label={s.done ? 'Merk som ikke ferdig' : 'Merk som ferdig'}
+            >
+              {s.done
+                ? <CheckCircle2 className="w-[18px] h-[18px] text-emerald-500" />
+                : <Circle className="w-[18px] h-[18px] text-[#ccc] transition-colors hover:text-[#8b5cf6]" />}
+            </button>
+            <span className={`min-w-0 flex-1 text-[13.5px] ${s.done ? 'text-[#b0aca6] line-through' : 'text-[#333]'}`}>{s.text}</span>
+            <button
+              onClick={() => onChange(items.filter((_, xi) => xi !== i))}
+              className="shrink-0 rounded p-1 text-[#ddd] transition-colors hover:text-rose-500 md:opacity-0 md:group-hover:opacity-100"
+              aria-label="Fjern underoppgave"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        ))}
+      </div>
+      <div className="mt-1.5 flex items-center gap-2">
+        <Plus className="w-4 h-4 shrink-0 text-[#bbb]" />
+        <input
+          value={nytt}
+          onChange={(e) => setNytt(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); leggTil(); } }}
+          onBlur={() => { if (nytt.trim()) leggTil(); }}
+          data-testid="subtask-add-input"
+          placeholder="Legg til underoppgave …"
+          className="h-9 min-w-0 flex-1 rounded-lg border border-black/[0.08] bg-white px-2.5 text-[13px] outline-none transition-all placeholder:text-[#bbb] hover:border-black/[0.16] focus:border-[#8b5cf6]/50 focus:ring-2 focus:ring-[#8b5cf6]/15"
+        />
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════ Følgere ═══════════════ */
+function FolgereFelt({ t, members, onPatch }) {
+  const followers = t.followers || [];
+  const kandidater = members.filter((m) => !followers.includes(m.id) && m.id !== t.assigneeId);
+  return (
+    <div className="mt-6" data-testid="drawer-followers">
+      <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#999]">Følgere</p>
+      <p className="mt-0.5 text-[11.5px] text-[#b5b5b5]">Holdes orientert — varsles på e-post når de legges til og ved purring.</p>
+      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+        {followers.map((fid) => {
+          const m = members.find((x) => x.id === fid);
+          if (!m) return null;
+          return (
+            <span key={fid} className="flex items-center gap-1.5 rounded-full bg-[#f4f0fb] py-1 pl-1 pr-2 text-[12px] font-medium text-[#6d28d9]" data-testid={`follower-chip-${fid}`}>
+              <Avatar member={m} size={20} />
+              {m.name}
+              <button onClick={() => onPatch({ followers: followers.filter((x) => x !== fid) })} aria-label={`Fjern ${m.name} som følger`} className="text-[#b79ae0] transition-colors hover:text-rose-500">
+                <X className="w-3 h-3" />
+              </button>
+            </span>
+          );
+        })}
+        {kandidater.length > 0 && (
+          <select
+            value=""
+            onChange={(e) => { if (e.target.value) onPatch({ followers: [...followers, e.target.value] }); }}
+            data-testid="drawer-follower-add"
+            className="h-8 rounded-full bg-[#fafaf8] px-2.5 text-[12px] text-[#888] outline-none"
+          >
+            <option value="">+ Legg til følger</option>
+            {kandidater.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+          </select>
+        )}
+        {!followers.length && !kandidater.length && <span className="text-[12.5px] text-[#bbb]">Ingen flere personer å legge til.</span>}
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════ Vedlegg — chunket opplasting med fremdrift ═══════════════ */
+function VedleggSeksjon({ t, apiKey, api, actor, onReload, visToast }) {
+  const [lasterOpp, setLasterOpp] = useState(false);
+  const [prosent, setProsent] = useState(0);
+  const filRef = useRef(null);
+  const vedlegg = t.attachments || [];
+
+  const lastOpp = async (file) => {
+    if (!file) return;
+    if (file.size > 8 * 1024 * 1024) { visToast('Filen er for stor (maks 8 MB)', 'feil'); return; }
+    if (vedlegg.length >= 12) { visToast('Maks 12 vedlegg per sak', 'feil'); return; }
+    setLasterOpp(true); setProsent(0);
+    try {
+      const base64 = await new Promise((resolve, reject) => {
+        const fr = new FileReader();
+        fr.onload = () => resolve(String(fr.result).split(',')[1] || '');
+        fr.onerror = () => reject(new Error('Kunne ikke lese filen'));
+        fr.readAsDataURL(file);
+      });
+      const CHUNK = 900000; // ~900 KB base64 per bit — trygt under proxy-grenser
+      const total = Math.max(1, Math.ceil(base64.length / CHUNK));
+      const uploadId = (window.crypto && window.crypto.randomUUID)
+        ? window.crypto.randomUUID()
+        : `up-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      let siste = null;
+      for (let i = 0; i < total; i++) {
+        const r = await api('task-files/chunk', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            uploadId, taskId: t.id, index: i, total,
+            data: base64.slice(i * CHUNK, (i + 1) * CHUNK),
+            name: file.name, type: file.type || 'application/octet-stream', actor,
+          }),
+        });
+        const j = await r.json();
+        if (!j.ok) throw new Error(j.error || 'Opplasting feilet');
+        siste = j;
+        setProsent(Math.round(((i + 1) / total) * 100));
+      }
+      if (!siste || !siste.complete) throw new Error('Opplastingen ble ikke fullført');
+      visToast(`«${file.name}» lastet opp`);
+      if (onReload) onReload();
+    } catch (e) {
+      visToast(e.message || 'Opplasting feilet', 'feil');
+    }
+    setLasterOpp(false);
+    if (filRef.current) filRef.current.value = '';
+  };
+
+  const slettFil = async (a) => {
+    if (!window.confirm(`Slette vedlegget «${a.name}»?`)) return;
+    try {
+      const r = await api(`task-files/${a.id}`, { method: 'DELETE' });
+      const j = await r.json();
+      if (!j.ok) throw new Error(j.error || 'Kunne ikke slette');
+      visToast('Vedlegg slettet');
+      if (onReload) onReload();
+    } catch (e) { visToast(e.message, 'feil'); }
+  };
+
+  return (
+    <div className="mt-6" data-testid="drawer-attachments">
+      <div className="flex items-center gap-2">
+        <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#999]">Vedlegg</p>
+        {vedlegg.length > 0 && <span className="text-[11px] text-[#bbb] tabular-nums">{vedlegg.length}/12</span>}
+      </div>
+      <div className="mt-2 space-y-1.5">
+        {vedlegg.map((a) => (
+          <div key={a.id} className="group flex items-center gap-2.5 rounded-xl bg-[#fafaf8] px-3 py-2.5" data-testid={`attachment-${a.id}`}>
+            <Paperclip className="w-4 h-4 shrink-0 text-[#8b5cf6]" />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[13px] font-medium text-[#333]">{a.name}</p>
+              <p className="text-[11px] text-[#b0aca6]">{fmtStr(a.size)}</p>
+            </div>
+            <a
+              href={`/api/admin/task-files/${a.id}?key=${encodeURIComponent(apiKey)}`}
+              download={a.name}
+              title="Last ned"
+              className="shrink-0 rounded-lg p-2 text-[#bbb] transition-colors hover:bg-white hover:text-[#8b5cf6]"
+            >
+              <Download className="w-4 h-4" />
+            </a>
+            <button onClick={() => slettFil(a)} title="Slett vedlegg" className="shrink-0 rounded-lg p-2 text-[#ccc] transition-colors hover:bg-rose-50 hover:text-rose-600">
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+        ))}
+        {!vedlegg.length && !lasterOpp && <p className="text-[12.5px] text-[#bbb]">Ingen vedlegg ennå.</p>}
+      </div>
+      {lasterOpp ? (
+        <div className="mt-2.5" data-testid="attachment-progress">
+          <div className="flex items-center gap-2 text-[12.5px] font-medium text-[#8b5cf6]">
+            <Loader2 className="w-3.5 h-3.5 animate-spin" /> Laster opp … {prosent}%
+          </div>
+          <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-[#eee]">
+            <div className="h-full rounded-full bg-[#8b5cf6] transition-all" style={{ width: `${prosent}%` }} />
+          </div>
+        </div>
+      ) : (
+        <>
+          <input ref={filRef} type="file" className="hidden" onChange={(e) => lastOpp(e.target.files && e.target.files[0])} data-testid="attachment-file-input" />
+          <button
+            onClick={() => filRef.current && filRef.current.click()}
+            data-testid="attachment-upload-btn"
+            className="mt-2.5 flex h-9 items-center gap-1.5 rounded-full bg-[#f4f0fb] px-4 text-[12.5px] font-semibold text-[#8b5cf6] transition-colors hover:bg-[#ece4fa]"
+          >
+            <Paperclip className="w-3.5 h-3.5" /> Last opp fil <span className="font-normal text-[#b79ae0]">· maks 8 MB</span>
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+
 /* ═══════════════ Ny sak ═══════════════ */
-function NySakModal({ members, onClose, onCreate }) {
+function NySakModal({ members, defaultStatus, onClose, onCreate }) {
   const [tittel, setTittel] = useState('');
   const [beskrivelse, setBeskrivelse] = useState('');
-  const [status, setStatus] = useState('inbox');
+  const [status, setStatus] = useState(defaultStatus || 'inbox');
   const [prioritet, setPrioritet] = useState(2);
   const [ansvarlig, setAnsvarlig] = useState('');
   const [frist, setFrist] = useState('');
+  const [gjentakelse, setGjentakelse] = useState('');
+  const [sjekkliste, setSjekkliste] = useState([]);
+  const [nyttPunkt, setNyttPunkt] = useState('');
   const [varsle, setVarsle] = useState(true);
   const [lagrer, setLagrer] = useState(false);
   const [feil, setFeil] = useState('');
   const ref = useRef(null);
 
   useEffect(() => { setTimeout(() => ref.current && ref.current.focus(), 60); }, []);
+
+  const leggTilPunkt = () => {
+    const tekst = nyttPunkt.trim();
+    if (!tekst) return;
+    setSjekkliste((prev) => [...prev, { text: tekst, done: false }]);
+    setNyttPunkt('');
+  };
 
   const lagre = async () => {
     if (!tittel.trim() || lagrer) return;
@@ -910,6 +1666,8 @@ function NySakModal({ members, onClose, onCreate }) {
       await onCreate({
         title: tittel.trim(), description: beskrivelse.trim(), status,
         priority: prioritet, assigneeId: ansvarlig || null, dueDate: frist || null,
+        recurrence: gjentakelse || null,
+        subtasks: nyttPunkt.trim() ? [...sjekkliste, { text: nyttPunkt.trim(), done: false }] : sjekkliste,
         notify: varsle,
       });
     } catch (e) {
@@ -945,21 +1703,59 @@ function NySakModal({ members, onClose, onCreate }) {
           />
         </div>
 
-        {/* Kontroller: 2×2-grid på mobil, én rad på md+ */}
-        <div className="grid grid-cols-2 gap-2 px-5 pt-2 md:flex md:flex-wrap md:items-center">
-          <select value={status} onChange={(e) => setStatus(e.target.value)} className="h-10 rounded-xl bg-[#f4f3f1] px-2.5 text-[13px] outline-none md:h-8 md:rounded-lg md:text-[12.5px]">
-            {STATUSER.map((s) => <option key={s.k} value={s.k}>{s.l}</option>)}
-          </select>
-          <select value={prioritet} onChange={(e) => setPrioritet(Number(e.target.value))} className="h-10 rounded-xl bg-[#f4f3f1] px-2.5 text-[13px] outline-none md:h-8 md:rounded-lg md:text-[12.5px]" data-testid="new-task-priority">
-            <option value={1}>P1 · Kritisk</option>
-            <option value={2}>P2 · Normal</option>
-            <option value={3}>P3 · Lav</option>
-          </select>
-          <select value={ansvarlig} onChange={(e) => setAnsvarlig(e.target.value)} className="h-10 min-w-0 rounded-xl bg-[#f4f3f1] px-2.5 text-[13px] outline-none md:h-8 md:max-w-[170px] md:rounded-lg md:text-[12.5px]" data-testid="new-task-assignee">
-            <option value="">{members.length ? 'Ingen ansvarlig' : 'Legg til personer først'}</option>
-            {members.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
-          </select>
-          <input type="date" value={frist} onChange={(e) => setFrist(e.target.value)} className="h-10 min-w-0 rounded-xl bg-[#f4f3f1] px-2.5 text-[13px] outline-none md:h-8 md:rounded-lg md:text-[12.5px]" data-testid="new-task-due" />
+        {/* Kontroller: 2×2-grid på mobil, én rad på md+ — Linear-style popovers */}
+        <div className="grid grid-cols-2 gap-2 px-5 pt-3 md:flex md:flex-wrap md:items-center">
+          <Meny
+            compact value={status} onChange={setStatus} testid="new-task-status"
+            options={STATUSER.map((s) => ({ v: s.k, l: s.l, dot: s.farge }))} className="md:w-[120px]"
+          />
+          <Meny
+            compact value={prioritet} onChange={(v) => setPrioritet(Number(v))} testid="new-task-priority"
+            options={[
+              { v: 1, l: 'P1 · Kritisk', dot: '#e11d48' },
+              { v: 2, l: 'P2 · Normal', dot: '#b45309' },
+              { v: 3, l: 'P3 · Lav', dot: '#6b7280' },
+            ]} className="md:w-[136px]"
+          />
+          <Meny
+            compact value={ansvarlig} onChange={setAnsvarlig} testid="new-task-assignee"
+            placeholder={members.length ? 'Ingen ansvarlig' : 'Legg til personer først'}
+            options={[{ v: '', l: 'Ingen ansvarlig', icon: User }, ...members.map((m) => ({ v: m.id, l: m.name, avatar: m }))]}
+            className="md:w-[170px]"
+          />
+          <input
+            type="date" value={frist} onChange={(e) => setFrist(e.target.value)}
+            data-testid="new-task-due"
+            className="h-8 min-w-0 rounded-lg border border-black/[0.08] bg-white px-2.5 text-[12.5px] outline-none transition-all hover:border-black/[0.16] focus:border-[#8b5cf6]/50 focus:ring-2 focus:ring-[#8b5cf6]/15"
+          />
+          <Meny
+            compact value={gjentakelse} onChange={setGjentakelse} testid="new-task-recurrence"
+            options={REC_VALG.map((r) => ({ v: r.k, l: r.l, icon: r.k ? Repeat : undefined }))} className="md:w-[140px]"
+          />
+        </div>
+
+        {/* Sjekkliste — valgfrie underoppgaver rett fra opprettelsen */}
+        <div className="px-5 pt-3">
+          {sjekkliste.map((s, i) => (
+            <div key={i} className="group flex items-center gap-2 py-1">
+              <Circle className="w-4 h-4 shrink-0 text-[#ccc]" />
+              <span className="min-w-0 flex-1 truncate text-[13px] text-[#444]">{s.text}</span>
+              <button onClick={() => setSjekkliste((prev) => prev.filter((_, xi) => xi !== i))} className="shrink-0 rounded p-1 text-[#ccc] hover:text-rose-500" aria-label="Fjern">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ))}
+          <div className="flex items-center gap-2">
+            <Plus className="w-4 h-4 shrink-0 text-[#bbb]" />
+            <input
+              value={nyttPunkt}
+              onChange={(e) => setNyttPunkt(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); leggTilPunkt(); } }}
+              data-testid="new-task-subtask-input"
+              placeholder="Underoppgave (valgfritt) — Enter legger til"
+              className="h-9 min-w-0 flex-1 rounded-lg border border-black/[0.08] bg-white px-2.5 text-[13px] outline-none transition-all placeholder:text-[#bbb] hover:border-black/[0.16] focus:border-[#8b5cf6]/50 focus:ring-2 focus:ring-[#8b5cf6]/15"
+            />
+          </div>
         </div>
 
         {ansvarlig && (
@@ -990,64 +1786,78 @@ function NySakModal({ members, onClose, onCreate }) {
   );
 }
 
-/* ═══════════════ Personer (ansvarlige) ═══════════════ */
-function PersonerModal({ api, members, setMembers, onClose, visToast }) {
+/* ═══════════════ Personer & kontoer ═══════════════
+   Én kilde: en person kan stå som ansvarlig/følger, og kan (valgfritt) få
+   passord + rolle for innlogging på /admin. Rollen 'bruker' ser kun Saker.
+   Alle endringer er admin-only (serveren håndhever); 'bruker' ser listen. */
+function PersonerModal({ api, members, setMembers, erBruker, onClose, visToast }) {
   const [navn, setNavn] = useState('');
   const [epost, setEpost] = useState('');
+  const [rolle, setRolle] = useState('bruker');
+  const [passord, setPassord] = useState('');
   const [lagrer, setLagrer] = useState(false);
   const [redigerId, setRedigerId] = useState(null);
-  const [redNavn, setRedNavn] = useState('');
-  const [redEpost, setRedEpost] = useState('');
+  const [red, setRed] = useState({ name: '', email: '', role: 'bruker', password: '' });
 
   const leggTil = async () => {
     if (!navn.trim() || lagrer) return;
     setLagrer(true);
     try {
-      const r = await api('task-members', {
+      const r = await api('users', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: navn.trim(), email: epost.trim() }),
+        body: JSON.stringify({ name: navn.trim(), email: epost.trim(), role: rolle, password: passord }),
       });
       const j = await r.json();
       if (!j.ok) throw new Error(j.error || 'Kunne ikke legge til');
       setMembers((prev) => [...prev, j.member]);
-      setNavn(''); setEpost('');
-      visToast(`${j.member.name} lagt til`);
+      setNavn(''); setEpost(''); setPassord(''); setRolle('bruker');
+      visToast(j.member.harPassord ? `${j.member.name} lagt til — kan nå logge inn` : `${j.member.name} lagt til`);
     } catch (e) { visToast(e.message, 'feil'); }
     setLagrer(false);
   };
 
   const lagreEndring = async (id) => {
     try {
-      const r = await api(`task-members/${id}`, {
+      const payload = { name: red.name.trim(), email: red.email.trim(), role: red.role };
+      if (red.password) payload.password = red.password;
+      const r = await api(`users/${id}`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: redNavn.trim(), email: redEpost.trim() }),
+        body: JSON.stringify(payload),
       });
       const j = await r.json();
       if (!j.ok) throw new Error(j.error || 'Lagring feilet');
       setMembers((prev) => prev.map((m) => (m.id === id ? j.member : m)));
       setRedigerId(null);
+      visToast('Lagret');
     } catch (e) { visToast(e.message, 'feil'); }
   };
 
   const slettPerson = async (m) => {
-    if (!window.confirm(`Fjerne ${m.name}? Saker de er ansvarlig for beholdes uten ansvarlig.`)) return;
+    if (!window.confirm(`Fjerne ${m.name}? Kontoen slettes og saker de er ansvarlig for beholdes uten ansvarlig.`)) return;
     try {
-      await api(`task-members/${m.id}`, { method: 'DELETE' });
+      const r = await api(`users/${m.id}`, { method: 'DELETE' });
+      const j = await r.json();
+      if (!j.ok) throw new Error(j.error || 'Kunne ikke fjerne');
       setMembers((prev) => prev.filter((x) => x.id !== m.id));
       visToast(`${m.name} fjernet`);
-    } catch (e) { visToast('Kunne ikke fjerne', 'feil'); }
+    } catch (e) { visToast(e.message, 'feil'); }
   };
 
   return (
     <Overlegg onClose={onClose} variant="sheet" testid="task-members-modal">
       <div className="flex shrink-0 items-center gap-2 border-b border-black/[0.06] px-5 py-4">
         <Users className="w-[18px] h-[18px] shrink-0 text-[#8b5cf6]" />
-        <h3 className="text-[16px] font-bold text-[#0a0a0a]" style={heading}>Personer</h3>
-        <span className="hidden text-[12px] text-[#aaa] sm:inline">— kan stå som ansvarlig og få e-postvarsler</span>
+        <h3 className="text-[16px] font-bold text-[#0a0a0a]" style={heading}>Personer & kontoer</h3>
+        <span className="hidden text-[12px] text-[#aaa] sm:inline">— ansvarlige, følgere og innlogging</span>
         <button onClick={onClose} className="ml-auto rounded-lg p-2 text-[#999] hover:bg-[#f3f2f0]"><X className="w-4 h-4" /></button>
       </div>
 
       <div className="flex-1 overflow-y-auto overscroll-contain px-5 py-3">
+        {erBruker && (
+          <p className="mb-2 rounded-xl bg-[#f4f0fb] px-3.5 py-2.5 text-[12.5px] text-[#6d28d9]">
+            Kun administratorer kan legge til eller endre personer.
+          </p>
+        )}
         {!members.length && (
           <div className="py-8 text-center">
             <span className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-[#f4f0fb]">
@@ -1057,66 +1867,126 @@ function PersonerModal({ api, members, setMembers, onClose, visToast }) {
           </div>
         )}
         {members.map((m) => (
-          <div key={m.id} className="flex items-center gap-3 border-b border-black/[0.04] py-3 last:border-0" data-testid={`member-row-${m.id}`}>
-            <Avatar member={m} size={32} />
+          <div key={m.id} className="border-b border-black/[0.04] py-3 last:border-0" data-testid={`member-row-${m.id}`}>
             {redigerId === m.id ? (
-              <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center">
-                <input value={redNavn} onChange={(e) => setRedNavn(e.target.value)} className="min-w-0 flex-1 rounded-lg bg-[#f4f3f1] px-2.5 py-2 text-[13.5px] outline-none" />
-                <input value={redEpost} onChange={(e) => setRedEpost(e.target.value)} placeholder="e-post" className="min-w-0 flex-1 rounded-lg bg-[#f4f3f1] px-2.5 py-2 text-[13px] outline-none" />
-                <div className="flex gap-1.5">
-                  <button onClick={() => lagreEndring(m.id)} className="rounded-lg bg-[#0a0a0a] p-2 text-white"><Check className="w-4 h-4" /></button>
+              <div className="space-y-2">
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <input value={red.name} onChange={(e) => setRed((p) => ({ ...p, name: e.target.value }))} placeholder="Navn" className="h-10 min-w-0 rounded-lg border border-black/[0.08] bg-white px-2.5 text-[13.5px] outline-none transition-all hover:border-black/[0.16] focus:border-[#8b5cf6]/50 focus:ring-2 focus:ring-[#8b5cf6]/15" />
+                  <input value={red.email} onChange={(e) => setRed((p) => ({ ...p, email: e.target.value }))} placeholder="E-post" className="h-10 min-w-0 rounded-lg border border-black/[0.08] bg-white px-2.5 text-[13.5px] outline-none transition-all hover:border-black/[0.16] focus:border-[#8b5cf6]/50 focus:ring-2 focus:ring-[#8b5cf6]/15" />
+                  {m.role === 'owner' ? (
+                    <span className="flex h-10 items-center gap-2 rounded-lg border border-black/[0.06] bg-[#fafaf8] px-2.5 text-[13px] text-[#999]"><KeyRound className="h-3.5 w-3.5" /> Eier — rollen kan ikke endres</span>
+                  ) : (
+                    <Meny
+                      value={red.role}
+                      onChange={(v) => setRed((p) => ({ ...p, role: v }))}
+                      testid={`member-role-select-${m.id}`}
+                      options={[
+                        { v: 'admin', l: 'Admin', sub: 'Full tilgang til hele admin' },
+                        { v: 'bruker', l: 'Bruker', sub: 'Kun tilgang til Saker' },
+                      ]}
+                      className="h-10 [&>button]:h-10"
+                    />
+                  )}
+                  <input
+                    type="password" value={red.password}
+                    onChange={(e) => setRed((p) => ({ ...p, password: e.target.value }))}
+                    placeholder={m.harPassord ? 'Nytt passord (valgfritt)' : 'Sett passord — gir innlogging'}
+                    autoComplete="new-password"
+                    className="h-10 min-w-0 rounded-lg border border-black/[0.08] bg-white px-2.5 text-[13.5px] outline-none transition-all hover:border-black/[0.16] focus:border-[#8b5cf6]/50 focus:ring-2 focus:ring-[#8b5cf6]/15"
+                    data-testid={`member-password-input-${m.id}`}
+                  />
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <p className="mr-auto text-[11px] text-[#b5b5b5]">Passord krever e-post og minst 8 tegn.</p>
+                  <button onClick={() => lagreEndring(m.id)} data-testid={`member-save-${m.id}`} className="flex items-center gap-1.5 rounded-lg bg-[#0a0a0a] px-3 py-2 text-[12.5px] font-semibold text-white transition-all hover:bg-black/85 active:scale-[0.97]"><Check className="w-4 h-4" /> Lagre</button>
                   <button onClick={() => setRedigerId(null)} className="rounded-lg p-2 text-[#999] hover:bg-[#f3f2f0]"><X className="w-4 h-4" /></button>
                 </div>
               </div>
             ) : (
-              <>
+              <div className="flex items-center gap-3">
+                <Avatar member={m} size={32} />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-[14px] font-semibold text-[#1a1a1a]">{m.name}</p>
-                  <p className="truncate text-[12px] text-[#999]">{m.email || 'Ingen e-post — får ikke varsler'}</p>
+                  <div className="flex items-center gap-1.5">
+                    <p className="truncate text-[14px] font-semibold text-[#1a1a1a]">{m.name}</p>
+                    <span className={`shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
+                      m.role === 'owner' ? 'bg-[#0a0a0a] text-white' : m.role === 'admin' ? 'bg-[#f4f0fb] text-[#8b5cf6]' : 'bg-[#f3f2f0] text-[#888]'
+                    }`}>{ROLLE_LABEL[m.role] || m.role}</span>
+                    {m.harPassord && (
+                      <span title="Har passord — kan logge inn" className="shrink-0 text-emerald-500"><KeyRound className="w-3.5 h-3.5" /></span>
+                    )}
+                  </div>
+                  <p className="truncate text-[12px] text-[#999]">{m.email || 'Ingen e-post — får ikke varsler'}{m.harPassord ? ' · kan logge inn' : ''}</p>
                 </div>
-                <button
-                  onClick={() => { setRedigerId(m.id); setRedNavn(m.name); setRedEpost(m.email || ''); }}
-                  className="rounded-lg p-2 text-[#bbb] hover:bg-[#f3f2f0] hover:text-[#555]"
-                >
-                  <Pencil className="w-4 h-4" />
-                </button>
-                <button onClick={() => slettPerson(m)} className="rounded-lg p-2 text-[#bbb] hover:bg-rose-50 hover:text-rose-600">
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </>
+                {!erBruker && (
+                  <>
+                    <button
+                      onClick={() => { setRedigerId(m.id); setRed({ name: m.name, email: m.email || '', role: m.role || 'bruker', password: '' }); }}
+                      data-testid={`member-edit-${m.id}`}
+                      className="rounded-lg p-2 text-[#bbb] hover:bg-[#f3f2f0] hover:text-[#555]"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                    {m.role !== 'owner' && (
+                      <button onClick={() => slettPerson(m)} data-testid={`member-delete-${m.id}`} className="rounded-lg p-2 text-[#bbb] hover:bg-rose-50 hover:text-rose-600">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
             )}
           </div>
         ))}
       </div>
 
-      <div
-        className="shrink-0 border-t border-black/[0.06] px-5 py-4"
-        style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}
-      >
-        <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.08em] text-[#999]">Legg til person</p>
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_1fr_auto]">
-          <input
-            value={navn} onChange={(e) => setNavn(e.target.value)} placeholder="Navn"
-            data-testid="member-name-input"
-            className="min-w-0 rounded-xl bg-[#f4f3f1] px-3.5 py-3 text-[14px] outline-none placeholder:text-[#bbb] focus:ring-2 focus:ring-[#cf97fc]/40 sm:py-2.5 sm:text-[13.5px]"
-          />
-          <input
-            value={epost} onChange={(e) => setEpost(e.target.value)} placeholder="E-post (for varsler)"
-            onKeyDown={(e) => { if (e.key === 'Enter') leggTil(); }}
-            data-testid="member-email-input"
-            className="min-w-0 rounded-xl bg-[#f4f3f1] px-3.5 py-3 text-[14px] outline-none placeholder:text-[#bbb] focus:ring-2 focus:ring-[#cf97fc]/40 sm:py-2.5 sm:text-[13.5px]"
-          />
-          <button
-            onClick={leggTil}
-            disabled={!navn.trim() || lagrer}
-            data-testid="member-add-btn"
-            className="flex h-12 items-center justify-center gap-1.5 rounded-xl bg-[#0a0a0a] px-4 text-white transition-all hover:bg-black/85 active:scale-[0.97] disabled:opacity-40 sm:h-auto sm:w-[46px] sm:px-0"
-          >
-            {lagrer ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-[18px] h-[18px]" />}
-            <span className="text-[14px] font-semibold sm:hidden">Legg til</span>
-          </button>
+      {!erBruker && (
+        <div
+          className="shrink-0 border-t border-black/[0.06] px-5 py-4"
+          style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}
+        >
+          <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.08em] text-[#999]">Legg til person</p>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <input
+              value={navn} onChange={(e) => setNavn(e.target.value)} placeholder="Navn"
+              data-testid="member-name-input"
+              className="h-11 min-w-0 rounded-lg border border-black/[0.08] bg-white px-3 text-[14px] outline-none transition-all placeholder:text-[#bbb] hover:border-black/[0.16] focus:border-[#8b5cf6]/50 focus:ring-2 focus:ring-[#8b5cf6]/15 sm:h-10 sm:text-[13.5px]"
+            />
+            <input
+              value={epost} onChange={(e) => setEpost(e.target.value)} placeholder="E-post (varsler + innlogging)"
+              data-testid="member-email-input"
+              className="h-11 min-w-0 rounded-lg border border-black/[0.08] bg-white px-3 text-[14px] outline-none transition-all placeholder:text-[#bbb] hover:border-black/[0.16] focus:border-[#8b5cf6]/50 focus:ring-2 focus:ring-[#8b5cf6]/15 sm:h-10 sm:text-[13.5px]"
+            />
+            <Meny
+              value={rolle} onChange={setRolle} testid="member-role-input" oppover
+              options={[
+                { v: 'bruker', l: 'Bruker', sub: 'Kun tilgang til Saker' },
+                { v: 'admin', l: 'Admin', sub: 'Full tilgang til hele admin' },
+              ]}
+              className="[&>button]:h-11 sm:[&>button]:h-10"
+            />
+            <input
+              type="password" value={passord} onChange={(e) => setPassord(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') leggTil(); }}
+              placeholder="Passord (valgfritt — gir innlogging)"
+              autoComplete="new-password"
+              data-testid="member-password-input"
+              className="h-11 min-w-0 rounded-lg border border-black/[0.08] bg-white px-3 text-[14px] outline-none transition-all placeholder:text-[#bbb] hover:border-black/[0.16] focus:border-[#8b5cf6]/50 focus:ring-2 focus:ring-[#8b5cf6]/15 sm:h-10 sm:text-[13.5px]"
+            />
+          </div>
+          <div className="mt-2 flex items-center gap-2">
+            <p className="mr-auto text-[11px] text-[#b5b5b5]">Uten passord: kan stå som ansvarlig og få varsler, men ikke logge inn.</p>
+            <button
+              onClick={leggTil}
+              disabled={!navn.trim() || lagrer}
+              data-testid="member-add-btn"
+              className="flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-lg bg-[#0a0a0a] px-4 text-white transition-all hover:bg-black/85 active:scale-[0.97] disabled:opacity-40"
+            >
+              {lagrer ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-[18px] h-[18px]" />}
+              <span className="text-[13.5px] font-semibold">Legg til</span>
+            </button>
+          </div>
         </div>
-      </div>
+      )}
     </Overlegg>
   );
 }

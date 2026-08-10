@@ -217,6 +217,13 @@ export default function AdminPage() {
     })();
   }, []);
 
+  // Rollestyring (hooks MÅ ligge før tidlige returns): kontoer med rollen
+  // 'bruker' har kun tilgang til Saker — seksjonen tvinges hit.
+  const erBruker = !!(user && user.role === 'bruker');
+  useEffect(() => {
+    if (erBruker && section !== 'saker') setSection('saker');
+  }, [erBruker, section]);
+
   const doLogin = async (e) => {
     if (e) e.preventDefault();
     setErr(''); setLoggingIn(true);
@@ -301,9 +308,15 @@ export default function AdminPage() {
   const initials = (user && user.name ? user.name : (user && user.email || 'A')).slice(0, 1).toUpperCase();
   const sectionMeta = SECTION_TITLES[section] || { t: section, s: '' };
 
+  // Menyen filtreres for 'bruker'-rollen, og admin-widgets (puls, hurtig-
+  // handlinger) skjules. Serveren håndhever det samme på API-nivå.
+  const synligNav = erBruker
+    ? [{ group: 'Verktøy', items: NAV.flatMap((g) => g.items).filter((it) => it.k === 'saker') }]
+    : NAV;
+
   const NavList = () => (
     <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-4">
-      {NAV.map((grp) => {
+      {synligNav.map((grp) => {
         const containsActive = grp.items.some((it) => (it.insight ? (section === 'innsikt' && insightTab === it.insight) : section === it.k));
         const isOpen = navOpen[grp.group] !== false || containsActive;
         return (
@@ -389,7 +402,7 @@ export default function AdminPage() {
   const runInsight = (k) => { setSection('innsikt'); setInsightTab(k); setSidebarOpen(false); setPaletteOpen(false); };
   const paletteCommands = [
     // Hele menyen — automatisk fra NAV-strukturen (alltid i synk med sidemenyen)
-    ...NAV.flatMap((g) => g.items.filter((it) => !it.soon).map((it) => ({
+    ...synligNav.flatMap((g) => g.items.filter((it) => !it.soon).map((it) => ({
       id: `nav-${it.k}`, group: g.group, label: it.l, icon: it.icon,
       action: () => {
         setPaletteOpen(false);
@@ -398,13 +411,15 @@ export default function AdminPage() {
         runNavigate(it.k);
       },
     }))),
-    // Hurtighandlinger — 2026: gjør ting direkte fra paletten
+    // Hurtighandlinger — 2026: gjør ting direkte fra paletten (kun admin)
+    ...(erBruker ? [] : [
     { id: 'qa-site', group: 'Hurtighandlinger', label: 'Åpne nettsiden (ny fane)', icon: Globe, action: () => { setPaletteOpen(false); window.open('/', '_blank'); } },
     { id: 'qa-artikkel', group: 'Hurtighandlinger', label: 'Skriv ny artikkel', icon: PenLine, action: () => { setPaletteOpen(false); window.location.href = '/admin/artikler'; } },
     { id: 'qa-lp-inntekt', group: 'Hurtighandlinger', label: 'Åpne landingsside: Inntekt', icon: ExternalLink, action: () => { setPaletteOpen(false); window.open('/lp/inntekt', '_blank'); } },
     { id: 'qa-lp-forvaltning', group: 'Hurtighandlinger', label: 'Åpne landingsside: Forvaltning', icon: ExternalLink, action: () => { setPaletteOpen(false); window.open('/lp/forvaltning', '_blank'); } },
     { id: 'qa-lp-10pluss2', group: 'Hurtighandlinger', label: 'Åpne landingsside: 10+2', icon: ExternalLink, action: () => { setPaletteOpen(false); window.open('/lp/10pluss2', '_blank'); } },
     { id: 'qa-lp-leietaker', group: 'Hurtighandlinger', label: 'Åpne landingsside: Leietaker', icon: ExternalLink, action: () => { setPaletteOpen(false); window.open('/lp/leietaker', '_blank'); } },
+    ]),
     { id: 'logout', group: 'Konto', label: 'Logg ut', icon: LogOut, action: () => { setPaletteOpen(false); logout(); } },
   ];
 
@@ -434,7 +449,7 @@ export default function AdminPage() {
               <h1 className="text-[20px] sm:text-[22px] font-bold text-[#0a0a0a] tracking-[-0.02em] leading-none" style={{ fontFamily: 'var(--font-heading)' }}>{section === 'innsikt' ? activeInsight.l : sectionMeta.t}</h1>
               <p className="text-[12px] text-[#999] mt-1 truncate">{section === 'innsikt' ? (INSIGHT_SUBTITLES[insightTab] || 'Førsteparts analyse · cookieless · GDPR-trygt') : sectionMeta.s}</p>
             </div>
-            <PulseStrip token={token} onJump={(sec, tab) => { setSection(sec); if (tab) { setSection('innsikt'); setInsightTab(tab); } }} />
+            {!erBruker && <PulseStrip token={token} onJump={(sec, tab) => { setSection(sec); if (tab) { setSection('innsikt'); setInsightTab(tab); } }} />}
             <button onClick={() => setPaletteOpen(true)} title="Søk & hurtignavigasjon (⌘K)" className="ml-auto xl:ml-0 hidden sm:flex items-center gap-2 h-9 pl-3 pr-2 rounded-full bg-white shadow-[0_2px_10px_rgba(0,0,0,0.04)] text-[#9a9a9a] hover:text-[#0a0a0a] transition-colors">
               <Search className="w-4 h-4" />
               <span className="text-[12.5px] font-medium">Søk eller hopp til …</span>

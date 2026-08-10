@@ -1029,9 +1029,33 @@ function adminAuthed(request) {
     const url = new URL(request.url);
     const key = url.searchParams.get('key') || request.headers.get('x-admin-key') || '';
     if (!!ADMIN_KEY && key === ADMIN_KEY) return true;       // legacy nøkkel
-    if (key && verifySession(key)) return true;              // sesjonstoken
+    const payload = key ? verifySession(key) : null;
+    if (payload) {
+      // Kontoer med rollen 'bruker' har KUN tilgang til sakssystemet
+      // (sakerAuthed) — aldri resten av admin. Tokens utstedt før roller
+      // fantes mangler role-feltet og var per definisjon admin.
+      if (payload.role === 'bruker') return false;
+      return true;
+    }
     return false;
   } catch (e) { return false; }
+}
+
+// Sesjonsnyttelast fra request (eller null) — brukes der vi trenger å vite HVEM.
+function sessionFra(request) {
+  try {
+    const url = new URL(request.url);
+    const key = url.searchParams.get('key') || request.headers.get('x-admin-key') || '';
+    return key ? verifySession(key) : null;
+  } catch (e) { return null; }
+}
+
+// Saker-tilgang: admin/owner ELLER konto med rollen 'bruker'. Vanlige brukere
+// har inntil videre kun tilgang til det interne sakssystemet.
+function sakerAuthed(request) {
+  if (adminAuthed(request)) return true;
+  const payload = sessionFra(request);
+  return !!(payload && payload.role === 'bruker');
 }
 
 // BOLIGINTERESSE UT TIL PLATTFORMEN: kø (sikkerhetsnett) + webhook (sanntid).
@@ -1350,6 +1374,148 @@ async function taskEpost({ member, task, heading, intro }) {
   }
 }
 
+// Gjentakelse: neste frist regnet fra forrige frist (eller i dag om frist mangler).
+const TASK_REC = ['weekly', 'monthly', 'quarterly'];
+const TASK_REC_LABEL = { weekly: 'Ukentlig', monthly: 'Månedlig', quarterly: 'Kvartalsvis' };
+function nesteFrist(fraDato, freq) {
+  const base = /^\d{4}-\d{2}-\d{2}$/.test(String(fraDato || '')) ? fraDato : osloIDag();
+  const [y, m, d] = base.split('-').map(Number);
+  let dt;
+  if (freq === 'weekly') {
+    dt = new Date(Date.UTC(y, m - 1, d + 7));
+  } else {
+    const mnd = freq === 'quarterly' ? 3 : 1;
+    const maal = new Date(Date.UTC(y, m - 1 + mnd, 1));
+    const sisteDag = new Date(Date.UTC(maal.getUTCFullYear(), maal.getUTCMonth() + 1, 0)).getUTCDate();
+    dt = new Date(Date.UTC(maal.getUTCFullYear(), maal.getUTCMonth(), Math.min(d, sisteDag)));
+  }
+  return dt.toISOString().slice(0, 10);
+}
+
+function normaliserSubtasks(input) {
+  if (!Array.isArray(input)) return [];
+  return input.slice(0, 40).map((s) => ({
+    id: (s && s.id) ? String(s.id) : uuidv4(),
+    text: String((s && s.text) || '').slice(0, 300),
+    done: !!(s && s.done),
+  })).filter((s) => s.text);
+}
+
+// Følgere: personer som IKKE er hovedansvarlig, men vil holdes orientert.
+// De varsles når de legges til og når noen purrer på saken.
+function normaliserFolgere(input) {
+  if (!Array.isArray(input)) return [];
+  return [...new Set(input.map((s) => String(s || '')).filter(Boolean))].slice(0, 10);
+}
+
+// Engangs-migrering: task_members → admin_users. Én kilde for personer OG
+// kontoer: en person kan stå som ansvarlig, og kan (valgfritt) logge inn med
+// rolle 'admin' eller 'bruker'. Matcher på e-post for å unngå duplikater.
+let _migrertPersoner = false;
+async function ensurePersonMigration(db) {
+  if (_migrertPersoner) return;
+  try {
+    const meta = await db.collection('task_meta').findOne({ id: 'personer-migrert' });
+    if (meta) { _migrertPersoner = true; return; }
+    const gamle = await db.collection('task_members').find({}).toArray();
+    for (const m of gamle) {
+      const epost = String(m.email || '').trim().toLowerCase();
+      const eksisterende = epost ? await db.collection('admin_users').findOne({ email: epost }) : null;
+      if (eksisterende) {
+        if (eksisterende.id !== m.id) {
+          await db.collection('tasks').updateMany({ assigneeId: m.id }, { $set: { assigneeId: eksisterende.id } });
+        }
+        if (!eksisterende.color && m.color) {
+          await db.collection('admin_users').updateOne({ id: eksisterende.id }, { $set: { color: m.color } });
+        }
+      } else {
+        const finnesId = await db.collection('admin_users').findOne({ id: m.id });
+        if (!finnesId) {
+          await db.collection('admin_users').insertOne({
+            id: m.id, email: epost, name: m.name, color: m.color || TASK_FARGER[0],
+            role: 'bruker', createdAt: m.createdAt || new Date().toISOString(),
+          });
+        }
+      }
+    }
+    await db.collection('task_meta').updateOne({ id: 'personer-migrert' }, { $set: { at: new Date().toISOString() } }, { upsert: true });
+    _migrertPersoner = true;
+  } catch (e) { /* prøver igjen ved neste kall */ }
+}
+
+// Personliste uten hemmeligheter + harPassord-flagg (om kontoen kan logge inn).
+async function hentPersoner(db) {
+  await ensurePersonMigration(db);
+  const rader = await db.collection('admin_users').find({}).sort({ createdAt: 1 }).toArray();
+  return rader.map((u, i) => ({
+    id: u.id,
+    name: u.name || u.email || 'Ukjent',
+    email: u.email || '',
+    color: u.color || TASK_FARGER[i % TASK_FARGER.length],
+    role: u.role || 'admin',
+    harPassord: !!u.passwordHash,
+    createdAt: u.createdAt || '',
+  }));
+}
+
+// Daglig frist-digest (lazy-cron): første summary-kall etter kl. 07 Oslo
+// claimer dagen ATOMISK (unik indeks + betinget upsert) og sender én
+// samle-e-post per ansvarlig med forfalte + dagens saker. Ingen egen
+// scheduler trengs — badge-pollingen (90 s) driver den så lenge noen
+// har portalen åpen i løpet av dagen.
+async function kanskjeSendFristDigest(db) {
+  try {
+    if (!emailConfigured()) return;
+    const iDag = osloIDag();
+    const time = Number(new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Oslo', hour: '2-digit', hour12: false }).format(new Date()));
+    if (time < 7) return;
+    try { await db.collection('task_meta').createIndex({ id: 1 }, { unique: true }); } catch (e) {}
+    let claimet = false;
+    try {
+      const r = await db.collection('task_meta').updateOne(
+        { id: 'frist-digest', sist: { $ne: iDag } },
+        { $set: { sist: iDag } },
+        { upsert: true },
+      );
+      claimet = r.modifiedCount > 0 || !!r.upsertedId;
+    } catch (e) { claimet = false; /* duplikatnøkkel = en annen forespørsel vant */ }
+    if (!claimet) return;
+    const saker = await db.collection('tasks')
+      .find({ status: { $ne: 'done' }, archived: { $ne: true }, dueDate: { $lte: iDag, $ne: null }, assigneeId: { $ne: null } })
+      .project({ _id: 0 }).toArray();
+    if (!saker.length) return;
+    const perPerson = new Map();
+    for (const t of saker) {
+      if (!perPerson.has(t.assigneeId)) perPerson.set(t.assigneeId, []);
+      perPerson.get(t.assigneeId).push(t);
+    }
+    const base = (process.env.NEXT_PUBLIC_BASE_URL || 'https://digihome.no').replace(/\/$/, '');
+    for (const [pid, liste] of perPerson) {
+      const member = await db.collection('admin_users').findOne({ id: pid });
+      if (!member || !member.email) continue;
+      const rader = liste.map((t) => {
+        const forfalt = t.dueDate < iDag;
+        return `<tr><td style="padding:7px 10px 7px 0;color:${forfalt ? '#e11d48' : '#b45309'};font-size:12px;font-weight:700;white-space:nowrap">${forfalt ? 'Forfalt' : 'I dag'}</td><td style="padding:7px 0;color:#111;font-size:13.5px;font-weight:600">${taskEsc(t.title)}</td><td style="padding:7px 0 7px 12px;color:#999;font-size:12px;white-space:nowrap">${taskEsc(t.dueDate)}</td></tr>`;
+      }).join('');
+      const html = `
+      <div style="background:#f6f5f3;padding:32px 16px;font-family:-apple-system,'Segoe UI',Roboto,sans-serif">
+        <div style="max-width:560px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;border:1px solid #eee">
+          <div style="background:#0a0a0a;padding:18px 24px"><span style="color:#fff;font-size:15px;font-weight:700">DigiHome</span> <span style="color:rgba(255,255,255,0.45);font-size:12px;margin-left:6px">Saker · dagens frister</span></div>
+          <div style="padding:26px 24px">
+            <h2 style="margin:0 0 6px;color:#0a0a0a;font-size:18px">God morgen, ${taskEsc((member.name || '').split(' ')[0])}</h2>
+            <p style="margin:0 0 14px;color:#666;font-size:13.5px">Du har ${liste.length} ${liste.length === 1 ? 'sak' : 'saker'} med frist i dag eller tidligere:</p>
+            <table style="border-collapse:collapse;width:100%">${rader}</table>
+            <a href="${base}/admin" style="display:inline-block;margin-top:18px;background:#0a0a0a;color:#fff;text-decoration:none;font-size:13.5px;font-weight:600;padding:11px 20px;border-radius:99px">Åpne Saker →</a>
+          </div>
+        </div>
+      </div>`;
+      try {
+        await sendHtmlEmail({ to: member.email, subject: `Dagens saker (${liste.length}) — frister å følge opp`, html, fromName: 'DigiHome Saker', individual: false, categories: ['intern-sak-digest'] });
+      } catch (e) { /* neste person */ }
+    }
+  } catch (e) { /* digest skal aldri velte summary-kallet */ }
+}
+
 
 async function handleRoute(request, { params }) {
   const { path = [] } = params;
@@ -1527,7 +1693,7 @@ async function handleRoute(request, { params }) {
         return cors(NextResponse.json({ ok: false, error: 'Feil e-post eller passord' }, { status: 401 }));
       }
       const exp = Date.now() + SESSION_TTL_MS;
-      const token = signSession({ sub: user.id, email: user.email, exp });
+      const token = signSession({ sub: user.id, email: user.email, role: user.role || 'admin', exp });
       return cors(NextResponse.json({
         ok: true,
         token,
@@ -1825,56 +1991,103 @@ async function handleRoute(request, { params }) {
 
     // ═══════════════ SAKER: internt sakssystem — CRUD + personer + varsling ═══════════════
 
-    // --- Personer (ansvarlige) — administreres av teamet selv ---
-    if (route === '/admin/task-members' && method === 'GET') {
-      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
-      const members = await db.collection('task_members').find({}).project({ _id: 0 }).sort({ createdAt: 1 }).toArray();
+    // --- Personer & kontoer (/admin/users): navn, e-post, farge, ROLLE
+    //     ('admin' | 'bruker') og valgfritt passord (gir innlogging på /admin;
+    //     rollen 'bruker' har kun tilgang til Saker). Listen er åpen for alle
+    //     med saker-tilgang; alle endringer er admin-only. Eier-kontoen kan
+    //     bare endres av eieren selv (eller master-nøkkelen) og aldri slettes.
+    if (route === '/admin/users' && method === 'GET') {
+      if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const members = await hentPersoner(db);
       return cors(NextResponse.json({ ok: true, members }));
     }
 
-    if (route === '/admin/task-members' && method === 'POST') {
+    if (route === '/admin/users' && method === 'POST') {
       if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
       const name = String(body.name || '').trim();
       if (!name) return cors(NextResponse.json({ ok: false, error: 'Navn er påkrevd' }, { status: 400 }));
       const email = String(body.email || '').trim().toLowerCase();
-      const antall = await db.collection('task_members').countDocuments();
+      const role = body.role === 'admin' ? 'admin' : 'bruker';
+      const password = String(body.password || '');
+      if (password && password.length < 8) return cors(NextResponse.json({ ok: false, error: 'Passord må ha minst 8 tegn' }, { status: 400 }));
+      if (password && !email) return cors(NextResponse.json({ ok: false, error: 'Konto med passord krever e-post' }, { status: 400 }));
+      if (email) {
+        const finnes = await db.collection('admin_users').findOne({ email });
+        if (finnes) return cors(NextResponse.json({ ok: false, error: 'E-posten er allerede registrert' }, { status: 400 }));
+      }
+      await ensurePersonMigration(db);
+      const antall = await db.collection('admin_users').countDocuments();
       const member = {
-        id: uuidv4(), name, email,
+        id: uuidv4(), name, email, role,
         color: /^#[0-9a-fA-F]{6}$/.test(String(body.color || '')) ? body.color : TASK_FARGER[antall % TASK_FARGER.length],
         createdAt: new Date().toISOString(),
       };
-      await db.collection('task_members').insertOne({ ...member });
-      return cors(NextResponse.json({ ok: true, member }));
+      const doc = { ...member };
+      if (password) doc.passwordHash = hashPassword(password);
+      await db.collection('admin_users').insertOne(doc);
+      return cors(NextResponse.json({ ok: true, member: { ...member, harPassord: !!password } }));
     }
 
-    if (path[0] === 'admin' && path[1] === 'task-members' && path.length === 3 && method === 'PUT') {
+    if (path[0] === 'admin' && path[1] === 'users' && path.length === 3 && method === 'PUT') {
       if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      const target = await db.collection('admin_users').findOne({ id: path[2] });
+      if (!target) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
+      const sesjon = sessionFra(request);
+      const u2 = new URL(request.url);
+      const master = !!ADMIN_KEY && (u2.searchParams.get('key') || request.headers.get('x-admin-key') || '') === ADMIN_KEY;
+      const erOwner = target.role === 'owner';
+      if (erOwner && !master && (!sesjon || sesjon.sub !== target.id)) {
+        return cors(NextResponse.json({ ok: false, error: 'Bare eieren kan endre eier-kontoen' }, { status: 403 }));
+      }
       const set = {};
       if (body.name !== undefined) { const n = String(body.name).trim(); if (n) set.name = n; }
-      if (body.email !== undefined) set.email = String(body.email).trim().toLowerCase();
+      if (body.email !== undefined) {
+        const e = String(body.email).trim().toLowerCase();
+        if (e && e !== (target.email || '')) {
+          const opptatt = await db.collection('admin_users').findOne({ email: e, id: { $ne: target.id } });
+          if (opptatt) return cors(NextResponse.json({ ok: false, error: 'E-posten er allerede registrert' }, { status: 400 }));
+        }
+        set.email = e;
+      }
       if (body.color !== undefined && /^#[0-9a-fA-F]{6}$/.test(String(body.color))) set.color = body.color;
+      if (body.role !== undefined && !erOwner && ['admin', 'bruker'].includes(body.role)) set.role = body.role;
+      if (body.password !== undefined) {
+        const pw = String(body.password || '');
+        if (pw) {
+          if (pw.length < 8) return cors(NextResponse.json({ ok: false, error: 'Passord må ha minst 8 tegn' }, { status: 400 }));
+          const epostNy = set.email !== undefined ? set.email : (target.email || '');
+          if (!epostNy) return cors(NextResponse.json({ ok: false, error: 'Konto med passord krever e-post' }, { status: 400 }));
+          set.passwordHash = hashPassword(pw);
+        }
+      }
       if (!Object.keys(set).length) return cors(NextResponse.json({ ok: false, error: 'Ingenting å endre' }, { status: 400 }));
-      const r = await db.collection('task_members').updateOne({ id: path[2] }, { $set: set });
-      if (!r.matchedCount) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
-      const member = await db.collection('task_members').findOne({ id: path[2] }, { projection: { _id: 0 } });
+      await db.collection('admin_users').updateOne({ id: path[2] }, { $set: set });
+      const member = (await hentPersoner(db)).find((m) => m.id === path[2]) || null;
       return cors(NextResponse.json({ ok: true, member }));
     }
 
-    if (path[0] === 'admin' && path[1] === 'task-members' && path.length === 3 && method === 'DELETE') {
+    if (path[0] === 'admin' && path[1] === 'users' && path.length === 3 && method === 'DELETE') {
       if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
-      const r = await db.collection('task_members').deleteOne({ id: path[2] });
-      if (!r.deletedCount) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
+      const target = await db.collection('admin_users').findOne({ id: path[2] });
+      if (!target) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
+      if (target.role === 'owner') return cors(NextResponse.json({ ok: false, error: 'Eier-kontoen kan ikke slettes' }, { status: 403 }));
+      const sesjon = sessionFra(request);
+      if (sesjon && sesjon.sub === path[2]) return cors(NextResponse.json({ ok: false, error: 'Du kan ikke slette din egen konto' }, { status: 400 }));
+      await db.collection('admin_users').deleteOne({ id: path[2] });
       return cors(NextResponse.json({ ok: true }));
     }
 
-    // --- Saker: badge-sammendrag (åpne/forfalte/i dag) — brukes i sidemenyen ---
+    // --- Saker: badge-sammendrag (åpne/forfalte/i dag) — brukes i sidemenyen.
+    //     Trigget hyppig (90 s polling) og driver derfor også den daglige
+    //     frist-digesten (lazy-cron, se kanskjeSendFristDigest). ---
     if (route === '/admin/tasks/summary' && method === 'GET') {
-      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const iDag = osloIDag();
-      const alle = await db.collection('tasks').find({}).project({ _id: 0, status: 1, dueDate: 1 }).toArray();
+      const alle = await db.collection('tasks').find({ archived: { $ne: true } }).project({ _id: 0, status: 1, dueDate: 1 }).toArray();
       const aapne = alle.filter((t) => t.status !== 'done');
+      await kanskjeSendFristDigest(db);
       return cors(NextResponse.json({
         ok: true,
         open: aapne.length,
@@ -1884,16 +2097,18 @@ async function handleRoute(request, { params }) {
     }
 
     if (route === '/admin/tasks' && method === 'GET') {
-      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const uTasks = new URL(request.url);
+      const arkiv = uTasks.searchParams.get('arkiv') === '1';
       const [tasks, members] = await Promise.all([
-        db.collection('tasks').find({}).project({ _id: 0 }).sort({ updatedAt: -1 }).toArray(),
-        db.collection('task_members').find({}).project({ _id: 0 }).sort({ createdAt: 1 }).toArray(),
+        db.collection('tasks').find(arkiv ? { archived: true } : { archived: { $ne: true } }).project({ _id: 0 }).sort({ updatedAt: -1 }).toArray(),
+        hentPersoner(db),
       ]);
       return cors(NextResponse.json({ ok: true, tasks, members, today: osloIDag() }));
     }
 
     if (route === '/admin/tasks' && method === 'POST') {
-      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
       const title = String(body.title || '').trim();
       if (!title) return cors(NextResponse.json({ ok: false, error: 'Tittel er påkrevd' }, { status: 400 }));
@@ -1908,22 +2123,35 @@ async function handleRoute(request, { params }) {
         assigneeId: body.assigneeId ? String(body.assigneeId) : null,
         dueDate: /^\d{4}-\d{2}-\d{2}$/.test(String(body.dueDate || '')) ? body.dueDate : null,
         labels: Array.isArray(body.labels) ? body.labels.map((s) => String(s).trim()).filter(Boolean).slice(0, 8) : [],
+        subtasks: normaliserSubtasks(body.subtasks),
+        recurrence: TASK_REC.includes(body.recurrence) ? body.recurrence : null,
+        followers: normaliserFolgere(body.followers),
+        attachments: [],
+        archived: false,
         comments: [],
         activity: [{ at: naa, actor, text: 'Opprettet saken' }],
         createdAt: naa, updatedAt: naa, completedAt: null,
       };
       let emailed = false;
       if (task.assigneeId && body.notify !== false) {
-        const member = await db.collection('task_members').findOne({ id: task.assigneeId });
+        const member = await db.collection('admin_users').findOne({ id: task.assigneeId });
         emailed = await taskEpost({ member, task, heading: 'Ny sak tildelt deg', intro: `${actor} har tildelt deg en sak i det interne sakssystemet.` });
         if (emailed) task.activity.push({ at: naa, actor: 'System', text: `E-postvarsel sendt til ${member.name}` });
+      }
+      if (task.followers.length && body.notify !== false) {
+        const flg = await db.collection('admin_users').find({ id: { $in: task.followers } }).toArray();
+        for (const f of flg) {
+          if (f.id === task.assigneeId || !f.email) continue;
+          const ok = await taskEpost({ member: f, task, heading: 'Du følger nå en sak', intro: `${actor} har lagt deg til som følger av saken.` });
+          if (ok) task.activity.push({ at: naa, actor: 'System', text: `E-postvarsel sendt til følger ${f.name}` });
+        }
       }
       await db.collection('tasks').insertOne({ ...task });
       return cors(NextResponse.json({ ok: true, task, emailed }));
     }
 
     if (path[0] === 'admin' && path[1] === 'tasks' && path.length === 3 && method === 'PUT') {
-      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
       const eksisterende = await db.collection('tasks').findOne({ id: path[2] }, { projection: { _id: 0 } });
       if (!eksisterende) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
@@ -1947,11 +2175,47 @@ async function handleRoute(request, { params }) {
         if (d !== (eksisterende.dueDate || null)) { set.dueDate = d; logg.push(d ? `Frist satt til ${d}` : 'Frist fjernet'); }
       }
       if (body.labels !== undefined) set.labels = Array.isArray(body.labels) ? body.labels.map((s) => String(s).trim()).filter(Boolean).slice(0, 8) : [];
+      if (body.subtasks !== undefined) set.subtasks = normaliserSubtasks(body.subtasks);
+      if (body.followers !== undefined) {
+        const nyeF = normaliserFolgere(body.followers);
+        const gamleF = eksisterende.followers || [];
+        if (JSON.stringify(nyeF) !== JSON.stringify(gamleF)) {
+          set.followers = nyeF;
+          const lagtTil = nyeF.filter((fid) => !gamleF.includes(fid));
+          const fjernet = gamleF.filter((fid) => !nyeF.includes(fid));
+          if (lagtTil.length) {
+            const flg = await db.collection('admin_users').find({ id: { $in: lagtTil } }).toArray();
+            if (flg.length) logg.push(`Følger lagt til: ${flg.map((f) => f.name).join(', ')}`);
+            if (body.notify !== false) {
+              for (const f of flg) {
+                if (!f.email) continue;
+                const ok = await taskEpost({ member: f, task: { ...eksisterende, ...set }, heading: 'Du følger nå en sak', intro: `${actor} har lagt deg til som følger av saken.` });
+                if (ok) logg.push(`E-postvarsel sendt til følger ${f.name}`);
+              }
+            }
+          }
+          if (fjernet.length) logg.push(`${fjernet.length} følger${fjernet.length > 1 ? 'e' : ''} fjernet`);
+        }
+      }
+      if (body.recurrence !== undefined) {
+        const rec = TASK_REC.includes(body.recurrence) ? body.recurrence : null;
+        if (rec !== (eksisterende.recurrence || null)) {
+          set.recurrence = rec;
+          logg.push(rec ? `Gjentakelse: ${TASK_REC_LABEL[rec]}` : 'Gjentakelse skrudd av');
+        }
+      }
+      if (body.archived !== undefined) {
+        const ark = !!body.archived;
+        if (ark !== !!eksisterende.archived) {
+          set.archived = ark;
+          logg.push(ark ? 'Arkivert' : 'Gjenopprettet fra arkivet');
+        }
+      }
       let emailed = false;
       if (body.assigneeId !== undefined && (body.assigneeId || null) !== (eksisterende.assigneeId || null)) {
         set.assigneeId = body.assigneeId ? String(body.assigneeId) : null;
         if (set.assigneeId) {
-          const member = await db.collection('task_members').findOne({ id: set.assigneeId });
+          const member = await db.collection('admin_users').findOne({ id: set.assigneeId });
           logg.push(`Ansvarlig: ${member ? member.name : 'ukjent'}`);
           if (member && body.notify !== false) {
             emailed = await taskEpost({ member, task: { ...eksisterende, ...set }, heading: 'Sak tildelt deg', intro: `${actor} har satt deg som ansvarlig for saken.` });
@@ -1961,22 +2225,52 @@ async function handleRoute(request, { params }) {
           logg.push('Ansvarlig fjernet');
         }
       }
+
+      // Gjentakende sak fullføres → neste forekomst opprettes automatisk med
+      // frist regnet fra forrige frist. Underoppgaver nullstilles.
+      let nesteTask = null;
+      const blirFerdig = set.status === 'done' && eksisterende.status !== 'done';
+      const rec = set.recurrence !== undefined ? set.recurrence : (eksisterende.recurrence || null);
+      if (blirFerdig && rec) {
+        nesteTask = {
+          id: uuidv4(),
+          title: set.title || eksisterende.title,
+          description: set.description !== undefined ? set.description : (eksisterende.description || ''),
+          status: 'inbox',
+          priority: set.priority || eksisterende.priority || 2,
+          assigneeId: set.assigneeId !== undefined ? set.assigneeId : (eksisterende.assigneeId || null),
+          dueDate: nesteFrist(set.dueDate !== undefined ? set.dueDate : eksisterende.dueDate, rec),
+          labels: set.labels || eksisterende.labels || [],
+          subtasks: (set.subtasks || eksisterende.subtasks || []).map((s) => ({ ...s, id: uuidv4(), done: false })),
+          recurrence: rec,
+          followers: set.followers !== undefined ? set.followers : (eksisterende.followers || []),
+          attachments: [],
+          archived: false,
+          comments: [],
+          activity: [{ at: naa, actor: 'System', text: `Opprettet automatisk (${TASK_REC_LABEL[rec].toLowerCase()} gjentakelse)` }],
+          createdAt: naa, updatedAt: naa, completedAt: null,
+        };
+        await db.collection('tasks').insertOne({ ...nesteTask });
+        logg.push(`Neste forekomst opprettet med frist ${nesteTask.dueDate}`);
+      }
+
       const update = { $set: set };
       if (logg.length) update.$push = { activity: { $each: logg.map((text) => ({ at: naa, actor, text })) } };
       await db.collection('tasks').updateOne({ id: path[2] }, update);
       const task = await db.collection('tasks').findOne({ id: path[2] }, { projection: { _id: 0 } });
-      return cors(NextResponse.json({ ok: true, task, emailed }));
+      return cors(NextResponse.json({ ok: true, task, emailed, nesteTask }));
     }
 
     if (path[0] === 'admin' && path[1] === 'tasks' && path.length === 3 && method === 'DELETE') {
-      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const r = await db.collection('tasks').deleteOne({ id: path[2] });
       if (!r.deletedCount) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
+      await db.collection('task_files').deleteMany({ taskId: path[2] }).catch(() => {});
       return cors(NextResponse.json({ ok: true }));
     }
 
     if (path[0] === 'admin' && path[1] === 'tasks' && path.length === 4 && path[3] === 'comments' && method === 'POST') {
-      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
       const text = String(body.text || '').trim();
       if (!text) return cors(NextResponse.json({ ok: false, error: 'Kommentar kan ikke være tom' }, { status: 400 }));
@@ -1988,18 +2282,115 @@ async function handleRoute(request, { params }) {
     }
 
     if (path[0] === 'admin' && path[1] === 'tasks' && path.length === 4 && path[3] === 'remind' && method === 'POST') {
-      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
       const task = await db.collection('tasks').findOne({ id: path[2] }, { projection: { _id: 0 } });
       if (!task) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
       if (!task.assigneeId) return cors(NextResponse.json({ ok: false, error: 'Saken har ingen ansvarlig' }, { status: 400 }));
-      const member = await db.collection('task_members').findOne({ id: task.assigneeId });
+      const member = await db.collection('admin_users').findOne({ id: task.assigneeId });
       if (!member || !member.email) return cors(NextResponse.json({ ok: false, error: 'Ansvarlig mangler e-postadresse' }, { status: 400 }));
       const actor = String(body.actor || '').trim() || 'En kollega';
       const sendt = await taskEpost({ member, task, heading: 'Påminnelse', intro: `${actor} minner om denne saken.` });
       if (!sendt) return cors(NextResponse.json({ ok: false, error: 'E-post kunne ikke sendes' }, { status: 502 }));
+      // Følgere med e-post får samme påminnelse (uten å blokkere hvis noen feiler)
+      let ekstraVarslet = 0;
+      const folgereIds = (task.followers || []).filter((fid) => fid !== task.assigneeId);
+      if (folgereIds.length) {
+        const flg = await db.collection('admin_users').find({ id: { $in: folgereIds } }).toArray();
+        for (const f of flg) {
+          if (!f.email) continue;
+          const okF = await taskEpost({ member: f, task, heading: 'Påminnelse', intro: `${actor} minner om denne saken (du følger den).` });
+          if (okF) ekstraVarslet++;
+        }
+      }
       const naa = new Date().toISOString();
-      await db.collection('tasks').updateOne({ id: path[2] }, { $push: { activity: { at: naa, actor, text: `Påminnelse sendt til ${member.name}` } }, $set: { updatedAt: naa } });
+      await db.collection('tasks').updateOne({ id: path[2] }, { $push: { activity: { at: naa, actor, text: `Påminnelse sendt til ${member.name}${ekstraVarslet ? ` + ${ekstraVarslet} følger${ekstraVarslet > 1 ? 'e' : ''}` : ''}` } }, $set: { updatedAt: naa } });
+      return cors(NextResponse.json({ ok: true }));
+    }
+
+    // --- Vedlegg på saker: CHUNKET opplasting (base64-biter à ~900 KB) for å
+    //     omgå proxy-/ingress-grenser. Binærdata i task_files, metadata på
+    //     saken (task.attachments). Maks 8 MB per fil. ---
+    if (route === '/admin/task-files/chunk' && method === 'POST') {
+      if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      const uploadId = String(body.uploadId || '');
+      const taskId = String(body.taskId || '');
+      const index = Number(body.index);
+      const total = Number(body.total);
+      const data = String(body.data || '');
+      if (!uploadId || !taskId || !Number.isInteger(index) || !Number.isInteger(total) || index < 0 || index >= total) {
+        return cors(NextResponse.json({ ok: false, error: 'Ugyldig chunk' }, { status: 400 }));
+      }
+      if (total > 16 || data.length > 1200000) {
+        return cors(NextResponse.json({ ok: false, error: 'Filen er for stor (maks 8 MB)' }, { status: 400 }));
+      }
+      const task = await db.collection('tasks').findOne({ id: taskId }, { projection: { _id: 0, id: 1, attachments: 1 } });
+      if (!task) return cors(NextResponse.json({ ok: false, error: 'Saken finnes ikke' }, { status: 404 }));
+      if ((task.attachments || []).length >= 12) {
+        return cors(NextResponse.json({ ok: false, error: 'Maks 12 vedlegg per sak' }, { status: 400 }));
+      }
+      await db.collection('task_file_chunks').updateOne(
+        { uploadId, index },
+        { $set: { uploadId, taskId, index, data, at: new Date().toISOString() } },
+        { upsert: true },
+      );
+      const mottatt = await db.collection('task_file_chunks').countDocuments({ uploadId });
+      if (mottatt < total) return cors(NextResponse.json({ ok: true, complete: false, mottatt }));
+
+      // Alle biter mottatt → sett sammen, lagre og rydd opp
+      const biter = await db.collection('task_file_chunks').find({ uploadId }).sort({ index: 1 }).toArray();
+      const samlet = biter.map((b) => b.data).join('');
+      await db.collection('task_file_chunks').deleteMany({ uploadId });
+      const size = Math.round(samlet.length * 3 / 4);
+      if (size > 8 * 1024 * 1024) return cors(NextResponse.json({ ok: false, error: 'Filen er for stor (maks 8 MB)' }, { status: 400 }));
+      const naaFil = new Date().toISOString();
+      const fil = {
+        id: uuidv4(), taskId,
+        name: String(body.name || 'fil').slice(0, 200),
+        type: String(body.type || 'application/octet-stream').slice(0, 120),
+        size, data: samlet,
+        uploadedBy: String(body.actor || '').slice(0, 80),
+        at: naaFil,
+      };
+      await db.collection('task_files').insertOne({ ...fil });
+      const meta = { id: fil.id, name: fil.name, type: fil.type, size: fil.size, at: fil.at };
+      await db.collection('tasks').updateOne(
+        { id: taskId },
+        {
+          $push: { attachments: meta, activity: { at: naaFil, actor: fil.uploadedBy || 'Admin', text: `La ved «${fil.name}»` } },
+          $set: { updatedAt: naaFil },
+        },
+      );
+      return cors(NextResponse.json({ ok: true, complete: true, attachment: meta }));
+    }
+
+    if (path[0] === 'admin' && path[1] === 'task-files' && path.length === 3 && method === 'GET') {
+      if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const fil = await db.collection('task_files').findOne({ id: path[2] });
+      if (!fil) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
+      const buf = Buffer.from(fil.data || '', 'base64');
+      return new NextResponse(buf, {
+        status: 200,
+        headers: {
+          'Content-Type': fil.type || 'application/octet-stream',
+          'Content-Length': String(buf.length),
+          'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent(fil.name || 'fil')}`,
+          'Cache-Control': 'private, max-age=3600',
+        },
+      });
+    }
+
+    if (path[0] === 'admin' && path[1] === 'task-files' && path.length === 3 && method === 'DELETE') {
+      if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const fil = await db.collection('task_files').findOne({ id: path[2] });
+      if (!fil) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
+      await db.collection('task_files').deleteOne({ id: path[2] });
+      const naaSlett = new Date().toISOString();
+      await db.collection('tasks').updateOne(
+        { id: fil.taskId },
+        { $pull: { attachments: { id: path[2] } }, $set: { updatedAt: naaSlett } },
+      );
       return cors(NextResponse.json({ ok: true }));
     }
 
