@@ -21,6 +21,7 @@ import {
   ChevronDown, AlertTriangle, Pencil, Check, CornerDownLeft, History,
   ClipboardCheck, UserPlus, Repeat, Paperclip, Archive, ArchiveRestore,
   Download, KeyRound, Circle, Table2, CalendarRange, ArrowUpDown, User,
+  MoreHorizontal,
 } from 'lucide-react';
 
 const VISNINGER = [
@@ -136,17 +137,49 @@ function PriIkon({ p, size = 13 }) {
   );
 }
 
+// Kakestykke-path for delvis fylte statussirkler
+function piePath(cx, cy, r, pct) {
+  const ang = pct * Math.PI * 2 - Math.PI / 2;
+  const x = cx + r * Math.cos(ang);
+  const y = cy + r * Math.sin(ang);
+  const stor = pct > 0.5 ? 1 : 0;
+  return `M ${cx} ${cy} L ${cx} ${cy - r} A ${r} ${r} 0 ${stor} 1 ${x} ${y} Z`;
+}
+
+/* Linear-signaturen: status som progresjonssirkel.
+   Innboks = stiplet ring, Pågår = halvfylt, Venter = kvartfylt, Ferdig = fylt m/ hake. */
+function StatusIkon({ status, size = 14 }) {
+  const st = STATUSER.find((s) => s.k === status) || STATUSER[0];
+  const c = st.farge;
+  if (status === 'done') {
+    return (
+      <svg width={size} height={size} viewBox="0 0 14 14" className="shrink-0" aria-label={st.l}>
+        <circle cx="7" cy="7" r="6.2" fill={c} />
+        <path d="M4.3 7.2l1.9 1.9 3.5-4" stroke="#fff" strokeWidth="1.7" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
+  }
+  const fyll = status === 'doing' ? 0.5 : status === 'waiting' ? 0.25 : 0;
+  return (
+    <svg width={size} height={size} viewBox="0 0 14 14" className="shrink-0" aria-label={st.l}>
+      <circle cx="7" cy="7" r="5.4" fill="none" stroke={c} strokeWidth="1.7" strokeDasharray={status === 'inbox' ? '2.4 2.1' : undefined} strokeLinecap="round" />
+      {fyll > 0 && <path d={piePath(7, 7, 3.1, fyll)} fill={c} />}
+    </svg>
+  );
+}
+
+
 // Tastatur-kbd i hint-raden
 function Kbd({ children }) {
   return <kbd className="rounded-md bg-white px-1.5 py-0.5 text-[10px] font-bold text-[#999] shadow-[0_1px_3px_rgba(0,0,0,0.08)]">{children}</kbd>;
 }
 
-// Statusbadge med farget prikk — Linear-signatur
+// Statusbadge med Linear-progresjonssirkel
 function StatusBadge({ status }) {
   const st = STATUSER.find((s) => s.k === status) || STATUSER[0];
   return (
     <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-md border border-black/[0.06] bg-white px-2 py-0.5 text-[11.5px] font-semibold text-[#444]">
-      <span className="h-[7px] w-[7px] rounded-full" style={{ background: st.farge }} />
+      <StatusIkon status={status} size={11} />
       {st.l}
     </span>
   );
@@ -555,8 +588,25 @@ export default function TasksTab({ apiKey, user, onStats }) {
 
   if (laster) {
     return (
-      <div className="flex items-center justify-center py-24">
-        <Loader2 className="w-6 h-6 animate-spin text-[#cf97fc]" />
+      <div data-testid="tasks-skeleton">
+        <div className="mb-5 flex items-center gap-2">
+          {[72, 84, 64, 120].map((w, i) => (
+            <div key={i} className="h-8 animate-pulse rounded-full bg-black/[0.05]" style={{ width: w }} />
+          ))}
+          <div className="ml-auto hidden h-9 w-72 animate-pulse rounded-lg bg-black/[0.05] lg:block" />
+        </div>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+          {[0, 1, 2, 3].map((k) => (
+            <div key={k} className="rounded-2xl bg-[#f0efec] p-2">
+              <div className="mx-2 my-2.5 h-4 w-24 animate-pulse rounded bg-black/[0.06]" />
+              <div className="space-y-2">
+                {Array.from({ length: 3 - (k % 2) }).map((_, i) => (
+                  <div key={i} className="h-[78px] animate-pulse rounded-xl bg-white/80" style={{ animationDelay: `${(k * 2 + i) * 120}ms` }} />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
@@ -731,8 +781,8 @@ export default function TasksTab({ apiKey, user, onStats }) {
           data-testid="tasks-board"
         >
           {STATUSER.map((st) => {
-            const Icon = st.icon;
             const liste = perStatus[st.k];
+            const drarOver = hoverKol === st.k && dragId;
             return (
               <div
                 key={st.k}
@@ -743,13 +793,17 @@ export default function TasksTab({ apiKey, user, onStats }) {
                   setHoverKol(null);
                   if (dragId) { oppdater(dragId, { status: st.k }); setDragId(null); }
                 }}
-                className={`w-[82vw] shrink-0 snap-center rounded-2xl p-2 transition-colors sm:w-[320px] md:w-auto md:shrink md:snap-align-none ${
-                  hoverKol === st.k ? 'bg-[#efe9fb]' : 'bg-[#f0efec]'
+                className={`w-[82vw] shrink-0 snap-center rounded-2xl p-2 transition-all sm:w-[320px] md:w-auto md:shrink md:snap-align-none ${
+                  drarOver
+                    ? 'bg-[#efe9fb] ring-2 ring-inset ring-[#8b5cf6]/35'
+                    : dragId
+                      ? 'bg-[#f0efec] ring-1 ring-inset ring-[#8b5cf6]/15'
+                      : 'bg-[#f0efec]'
                 }`}
                 data-testid={`tasks-col-${st.k}`}
               >
                 <div className="flex items-center gap-2 px-2 py-2">
-                  <Icon className="w-4 h-4" style={{ color: st.farge }} />
+                  <StatusIkon status={st.k} size={15} />
                   <span className="text-[12.5px] font-bold text-[#333]" style={heading}>{st.l}</span>
                   <span className="rounded-full bg-black/[0.05] px-1.5 py-0.5 text-[10.5px] font-bold text-[#888] tabular-nums">{liste.length}</span>
                   <button
@@ -762,17 +816,28 @@ export default function TasksTab({ apiKey, user, onStats }) {
                   </button>
                 </div>
                 <div className="space-y-2 min-h-[64px]">
-                  {liste.map((t) => (
+                  {liste.map((t, i) => (
                     <SakKort
                       key={t.id} t={t} today={today} member={medlem(t.assigneeId)}
-                      dras={dragId === t.id} fokus={fokusId === t.id}
+                      dras={dragId === t.id} fokus={fokusId === t.id} index={i}
                       onClick={() => setValgtId(t.id)}
                       onDragStart={() => setDragId(t.id)}
                       onDragEnd={() => setDragId(null)}
+                      onHurtig={(patch) => oppdater(t.id, patch)}
+                      onSlett={() => slett(t.id)}
                     />
                   ))}
                   {!liste.length && (
-                    <p className="px-2 py-6 text-center text-[12px] text-[#b0aca6]">Ingen saker</p>
+                    <button
+                      onClick={() => setNyOpen(st.k)}
+                      className={`flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed px-2 py-6 text-[12px] font-medium transition-colors ${
+                        drarOver
+                          ? 'border-[#8b5cf6]/50 bg-white/60 text-[#8b5cf6]'
+                          : 'border-black/[0.08] text-[#b0aca6] hover:border-black/[0.18] hover:text-[#777]'
+                      }`}
+                    >
+                      {dragId ? 'Slipp her' : (<><Plus className="h-3.5 w-3.5" /> Ny sak</>)}
+                    </button>
                   )}
                 </div>
               </div>
@@ -790,11 +855,10 @@ export default function TasksTab({ apiKey, user, onStats }) {
           {STATUSER.map((st) => {
             const liste = perStatus[st.k];
             if (!liste.length) return null;
-            const Icon = st.icon;
             return (
               <div key={st.k}>
                 <div className="flex items-center gap-2 border-b border-black/[0.05] bg-[#fafaf8] px-4 py-2">
-                  <Icon className="w-3.5 h-3.5" style={{ color: st.farge }} />
+                  <StatusIkon status={st.k} size={13} />
                   <span className="text-[11.5px] font-bold uppercase tracking-[0.06em] text-[#666]">{st.l}</span>
                   <span className="text-[11px] text-[#aaa] tabular-nums">{liste.length}</span>
                 </div>
@@ -1035,8 +1099,11 @@ export default function TasksTab({ apiKey, user, onStats }) {
       {toast && (
         <div
           data-testid="tasks-toast"
-          className={`fixed bottom-24 left-1/2 z-[120] -translate-x-1/2 whitespace-nowrap rounded-full px-5 py-2.5 text-[13px] font-semibold text-white shadow-xl dh-fade lg:bottom-6 ${toast.type === 'feil' ? 'bg-rose-600' : 'bg-[#0a0a0a]'}`}
+          className={`fixed bottom-24 left-1/2 z-[120] flex -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-full py-2.5 pl-4 pr-5 text-[13px] font-semibold text-white shadow-xl dh-fade lg:bottom-6 ${toast.type === 'feil' ? 'bg-rose-600' : 'bg-[#0a0a0a]'}`}
         >
+          {toast.type === 'feil'
+            ? <AlertTriangle className="h-4 w-4 shrink-0" />
+            : <Check className="h-4 w-4 shrink-0 text-emerald-400" />}
           {toast.msg}
         </div>
       )}
@@ -1117,7 +1184,19 @@ function TidslinjeRad({ t, member, fokus, onClick }) {
   );
 }
 
-function SakKort({ t, today, member, dras, fokus, onClick, onDragStart, onDragEnd }) {
+function SakKort({ t, today, member, dras, fokus, index = 0, onClick, onDragStart, onDragEnd, onHurtig, onSlett }) {
+  const [meny, setMeny] = useState(false);
+  const menyRef = useRef(null);
+
+  useEffect(() => {
+    if (!meny) return;
+    const onDoc = (e) => { if (menyRef.current && !menyRef.current.contains(e.target)) setMeny(false); };
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, [meny]);
+
+  const ferdig = t.status === 'done';
+
   return (
     <div
       draggable
@@ -1127,11 +1206,75 @@ function SakKort({ t, today, member, dras, fokus, onClick, onDragStart, onDragEn
       role="button"
       data-testid={`task-card-${t.id}`}
       data-fokus-id={t.id}
-      className={`cursor-pointer select-none rounded-xl bg-white p-3 shadow-[0_2px_10px_rgba(0,0,0,0.05)] transition-all touch-manipulation hover:-translate-y-[1px] hover:shadow-[0_6px_18px_rgba(0,0,0,0.09)] active:scale-[0.98] ${dras ? 'opacity-50 ring-2 ring-[#cf97fc]' : ''} ${fokus ? 'ring-2 ring-[#8b5cf6]/60 shadow-[0_6px_20px_rgba(139,92,246,0.18)]' : ''}`}
+      style={{ animationDelay: `${Math.min(index * 28, 280)}ms` }}
+      className={`dh-kort-inn group relative cursor-pointer select-none rounded-xl bg-white p-3 shadow-[0_2px_10px_rgba(0,0,0,0.05)] transition-all touch-manipulation hover:-translate-y-[1px] hover:shadow-[0_6px_18px_rgba(0,0,0,0.09)] active:scale-[0.98] ${dras ? 'opacity-50 ring-2 ring-[#cf97fc]' : ''} ${fokus ? 'ring-2 ring-[#8b5cf6]/60 shadow-[0_6px_20px_rgba(139,92,246,0.18)]' : ''}`}
     >
+      {/* Hurtighandlinger — synlige ved hover (desktop) */}
+      {onHurtig && (
+        <div
+          ref={menyRef}
+          onClick={(e) => e.stopPropagation()}
+          className={`absolute right-1.5 top-1.5 z-20 hidden items-center gap-0.5 rounded-lg border border-black/[0.06] bg-white/95 p-0.5 shadow-[0_4px_14px_rgba(0,0,0,0.1)] backdrop-blur transition-opacity md:flex ${meny ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+        >
+          <button
+            onClick={() => { setMeny(false); onHurtig({ status: ferdig ? 'inbox' : 'done' }); }}
+            title={ferdig ? 'Gjenåpne saken' : 'Merk som ferdig'}
+            data-testid={`card-quick-done-${t.id}`}
+            className={`rounded-md p-1 transition-colors ${ferdig ? 'text-[#999] hover:bg-black/[0.05] hover:text-[#333]' : 'text-emerald-600 hover:bg-emerald-50'}`}
+          >
+            <Check className="h-3.5 w-3.5" />
+          </button>
+          <button
+            onClick={() => setMeny((v) => !v)}
+            title="Flere handlinger"
+            data-testid={`card-menu-${t.id}`}
+            className={`rounded-md p-1 transition-colors ${meny ? 'bg-black/[0.06] text-[#333]' : 'text-[#999] hover:bg-black/[0.05] hover:text-[#333]'}`}
+          >
+            <MoreHorizontal className="h-3.5 w-3.5" />
+          </button>
+          {meny && (
+            <div className="dh-fade absolute right-0 top-8 z-30 w-44 rounded-xl border border-black/[0.07] bg-white p-1 shadow-[0_16px_48px_rgba(0,0,0,0.16)]">
+              {STATUSER.filter((s) => s.k !== t.status).map((s) => (
+                <button
+                  key={s.k}
+                  onClick={() => { setMeny(false); onHurtig({ status: s.k }); }}
+                  className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[12.5px] font-medium text-[#444] transition-colors hover:bg-[#f7f6f4]"
+                >
+                  <StatusIkon status={s.k} size={12} /> Flytt til {s.l}
+                </button>
+              ))}
+              <div className="mx-2 my-1 h-px bg-black/[0.06]" />
+              <div className="flex items-center gap-1 px-2 py-1">
+                {[1, 2, 3].map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => { setMeny(false); onHurtig({ priority: p }); }}
+                    title={`Prioritet ${PRI[p].full}`}
+                    className={`flex flex-1 items-center justify-center gap-1 rounded-md py-1 text-[11px] font-bold transition-colors ${t.priority === p ? 'bg-[#f4f0fb] text-[#6d28d9]' : 'text-[#888] hover:bg-[#f7f6f4]'}`}
+                  >
+                    <PriIkon p={p} size={10} /> {PRI[p].l}
+                  </button>
+                ))}
+              </div>
+              {onSlett && (
+                <>
+                  <div className="mx-2 my-1 h-px bg-black/[0.06]" />
+                  <button
+                    onClick={() => { setMeny(false); onSlett(); }}
+                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[12.5px] font-medium text-rose-600 transition-colors hover:bg-rose-50"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" /> Slett saken
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="flex items-start gap-2">
         <span className="mt-1"><PriIkon p={t.priority} /></span>
-        <p className={`flex-1 text-[13px] font-semibold leading-snug ${t.status === 'done' ? 'text-[#9a9a9a] line-through' : 'text-[#1a1a1a]'}`}>{t.title}</p>
+        <p className={`flex-1 text-[13px] font-semibold leading-snug ${ferdig ? 'text-[#9a9a9a] line-through' : 'text-[#1a1a1a]'}`}>{t.title}</p>
       </div>
       {(t.labels || []).length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1">
@@ -1277,11 +1420,12 @@ function SakSkuff({ t, members, today, actor, apiKey, api, visToast, onReload, o
               onClick={() => onPatch({ status: st.k })}
               data-testid={`drawer-status-${st.k}`}
               title={`${st.l} — hurtigtast ${i + 1}`}
-              className={`shrink-0 whitespace-nowrap rounded-full px-2.5 py-1.5 text-[11.5px] font-semibold transition-all ${
+              className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1.5 text-[11.5px] font-semibold transition-all ${
                 t.status === st.k ? 'bg-white shadow-[0_1px_6px_rgba(0,0,0,0.1)]' : 'text-[#888] hover:text-[#333]'
               }`}
               style={t.status === st.k ? { color: st.farge } : undefined}
             >
+              <StatusIkon status={st.k} size={11} />
               {st.l}
             </button>
           ))}

@@ -457,8 +457,11 @@ html { scroll-behavior: smooth; }
 .dh-panel-in { animation: dhSheetIn 0.34s cubic-bezier(0.16, 1, 0.3, 1) backwards; }
 @keyframes dhSlideInRight { from { opacity: 0; transform: translateX(32px); } to { opacity: 1; transform: none; } }
 @media (min-width: 768px) { .dh-panel-in { animation: dhSlideInRight 0.26s cubic-bezier(0.16, 1, 0.3, 1) backwards; } }
+/* Saker: staggered kort-inntreden på tavlen — backwards av samme Chromium-grunn. */
+@keyframes dhKortInn { from { opacity: 0; transform: translateY(6px) scale(0.98); } to { opacity: 1; transform: none; } }
+.dh-kort-inn { animation: dhKortInn 0.35s cubic-bezier(0.16, 1, 0.3, 1) backwards; }
 @media (prefers-reduced-motion: reduce) {
-  .dh-pop, .dh-fade, .dh-scale-in, .dh-tab-in, .dh-panel-in { animation: none; opacity: 1; transform: none; }
+  .dh-pop, .dh-fade, .dh-scale-in, .dh-tab-in, .dh-panel-in, .dh-kort-inn { animation: none; opacity: 1; transform: none; }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
