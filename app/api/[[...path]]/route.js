@@ -1575,6 +1575,60 @@ async function taskEpost({ member, task, heading, intro }) {
   }
 }
 
+// E-postvarsel når noen får ansvar for deloppgaver — én e-post per person per
+// lagring (alle nye deloppgaver samles), med frist per deloppgave. Feiler stille.
+async function deloppgaveEpost({ member, task, deloppgaver, actor }) {
+  if (!member || !member.email || !emailConfigured() || !Array.isArray(deloppgaver) || !deloppgaver.length) return false;
+  const base = (process.env.NEXT_PUBLIC_BASE_URL || 'https://digihome.no').replace(/\/$/, '');
+  const fmtFrist = (d) => (d ? new Date(`${d}T12:00:00`).toLocaleDateString('nb-NO', { day: 'numeric', month: 'long', year: 'numeric' }) : null);
+  const idag = osloIDag();
+  const rader = deloppgaver.map((s) => {
+    const frist = fmtFrist(s.due);
+    const forfalt = s.due && s.due < idag;
+    return `<tr>
+      <td style="padding:7px 10px 7px 0;vertical-align:top"><span style="display:inline-block;width:13px;height:13px;border:2px solid #d9d4f7;border-radius:99px"></span></td>
+      <td style="padding:5px 0;color:#111;font-size:13.5px;font-weight:600;line-height:1.45">${taskEsc(s.text)}
+        <div style="color:${forfalt ? '#e11d48' : (frist ? '#b45309' : '#999')};font-size:12px;font-weight:${frist ? 600 : 400};margin-top:2px">${frist ? `Frist: ${taskEsc(frist)}${forfalt ? ' (forfalt)' : ''}` : 'Ingen frist'}</div>
+      </td></tr>`;
+  }).join('');
+  const flertall = deloppgaver.length > 1;
+  const html = `
+  <div style="background:#f6f5f3;padding:32px 16px;font-family:-apple-system,'Segoe UI',Roboto,sans-serif">
+    <div style="max-width:520px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;border:1px solid #eee">
+      <div style="background:#0a0a0a;padding:18px 24px"><span style="color:#fff;font-size:15px;font-weight:700">DigiHome</span> <span style="color:rgba(255,255,255,0.45);font-size:12px;margin-left:6px">Saker · intern</span></div>
+      <div style="padding:26px 24px">
+        <p style="margin:0;color:#8b5cf6;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em">${flertall ? 'Deloppgaver tildelt deg' : 'Deloppgave tildelt deg'}</p>
+        <h2 style="margin:8px 0 4px;color:#0a0a0a;font-size:19px;line-height:1.3">${taskEsc(task.title)}</h2>
+        <p style="margin:0 0 14px;color:#666;font-size:13.5px;line-height:1.55">${taskEsc(actor)} ga deg ansvar for ${flertall ? `${deloppgaver.length} deloppgaver` : 'en deloppgave'} i denne saken.</p>
+        <table style="border-collapse:collapse;width:100%">${rader}</table>
+        <a href="${base}/admin" style="display:inline-block;margin-top:20px;background:#0a0a0a;color:#fff;text-decoration:none;font-size:13.5px;font-weight:600;padding:11px 20px;border-radius:99px">Åpne Saker i admin →</a>
+      </div>
+    </div>
+  </div>`;
+  try {
+    await sendHtmlEmail({ to: member.email, subject: `${flertall ? 'Deloppgaver' : 'Deloppgave'} tildelt deg: ${task.title}`, html, fromName: 'DigiHome Saker', individual: false, categories: ['intern-sak'] });
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+// Finn deloppgaver som har fått NY ansvarlig sammenlignet med forrige versjon
+// (ny rad m/ ansvarlig, eller endret ansvarlig). Gruppert per person-id, slik
+// at done-toggles og uendrede lagringer ALDRI re-varsler.
+function nyeDeloppgaveTildelinger(nyeSub, gamleSub) {
+  const gamleById = new Map((Array.isArray(gamleSub) ? gamleSub : []).map((s) => [s.id, s]));
+  const perPerson = new Map();
+  for (const s of (Array.isArray(nyeSub) ? nyeSub : [])) {
+    if (!s.assigneeId) continue;
+    const gammel = gamleById.get(s.id);
+    if (gammel && gammel.assigneeId === s.assigneeId) continue; // uendret tildeling
+    if (!perPerson.has(s.assigneeId)) perPerson.set(s.assigneeId, []);
+    perPerson.get(s.assigneeId).push(s);
+  }
+  return perPerson;
+}
+
 // Gjentakelse: neste frist regnet fra forrige frist (eller i dag om frist mangler).
 const TASK_REC = ['weekly', 'monthly', 'quarterly'];
 const TASK_REC_LABEL = { weekly: 'Ukentlig', monthly: 'Månedlig', quarterly: 'Kvartalsvis' };
@@ -2718,6 +2772,22 @@ async function handleRoute(request, { params }) {
           if (ok) task.activity.push({ at: naa, actor: 'System', text: `E-postvarsel sendt til ${m.name} (nevnt i beskrivelsen)` });
         }
       }
+      // Deloppgave-tildelinger ved opprettelse: hver person med deloppgaver
+      // varsles med egen e-post (frist per deloppgave). Hopper over hoved-
+      // ansvarlig (har alt fått tildelings-e-post) og aktøren selv.
+      if (body.notify !== false && task.subtasks.some((s) => s.assigneeId)) {
+        const perPerson = nyeDeloppgaveTildelinger(task.subtasks, []);
+        if (task.assigneeId) perPerson.delete(task.assigneeId);
+        if (perPerson.size) {
+          const pers = await db.collection('admin_users').find({ id: { $in: [...perPerson.keys()] } }).toArray();
+          for (const p of pers) {
+            if (!p.email) continue;
+            if (String(p.name || '').toLowerCase() === actor.toLowerCase()) continue;
+            const ok = await deloppgaveEpost({ member: p, task, deloppgaver: perPerson.get(p.id), actor });
+            if (ok) task.activity.push({ at: naa, actor: 'System', text: `E-postvarsel sendt til ${p.name} (deloppgave tildelt)` });
+          }
+        }
+      }
       await db.collection('tasks').insertOne({ ...task });
       return cors(NextResponse.json({ ok: true, task, emailed }));
     }
@@ -2765,7 +2835,23 @@ async function handleRoute(request, { params }) {
         if (d !== (eksisterende.dueDate || null)) { set.dueDate = d; logg.push(d ? `Frist satt til ${d}` : 'Frist fjernet'); }
       }
       if (body.labels !== undefined) set.labels = Array.isArray(body.labels) ? body.labels.map((s) => String(s).trim()).filter(Boolean).slice(0, 8) : [];
-      if (body.subtasks !== undefined) set.subtasks = normaliserSubtasks(body.subtasks);
+      if (body.subtasks !== undefined) {
+        set.subtasks = normaliserSubtasks(body.subtasks);
+        // Varsle personer som har fått NY deloppgave-tildeling (diff mot forrige
+        // versjon per deloppgave-id) — done-toggles/uendrede lagringer varsler aldri.
+        if (body.notify !== false) {
+          const perPerson = nyeDeloppgaveTildelinger(set.subtasks, eksisterende.subtasks || []);
+          if (perPerson.size) {
+            const pers = await db.collection('admin_users').find({ id: { $in: [...perPerson.keys()] } }).toArray();
+            for (const p of pers) {
+              if (!p.email) continue;
+              if (String(p.name || '').toLowerCase() === actor.toLowerCase()) continue;
+              const ok = await deloppgaveEpost({ member: p, task: { ...eksisterende, ...set }, deloppgaver: perPerson.get(p.id), actor });
+              if (ok) logg.push(`E-postvarsel sendt til ${p.name} (deloppgave tildelt)`);
+            }
+          }
+        }
+      }
       if (body.followers !== undefined) {
         const nyeF = normaliserFolgere(body.followers);
         const gamleF = eksisterende.followers || [];
