@@ -447,7 +447,7 @@ export default function AdminPage() {
           {section === 'seo' && <SeoAeoTab apiKey={token} />}
           {section === 'okonomi' && <FinanceDashboard apiKey={token} />}
           {section === 'saker' && <TasksTab apiKey={token} user={user} onStats={setTaskStats} />}
-          {section === 'moter' && <MeetingsTab apiKey={token} user={user} />}
+          {section === 'moter' && <MeetingsTab apiKey={token} user={user} onOpenTask={(id, arkivert) => runSaker({ do: 'aapne', id, arkivert })} />}
           {section === 'innsikt' && <InnsiktDashboard apiKey={token} tab={insightTab} onTabChange={setInsightTab} onStats={setInsightStats} />}
           {section === 'kunder' && <CustomersDashboard apiKey={token} />}
           {section === 'abonnementer' && <ComingSoon icon={CreditCard} title="Abonnementer" body="Oversikt over aktive avtaler, fakturering og inntekt per kunde — hentet direkte fra app-prosjektet. Kommer i neste fase." />}

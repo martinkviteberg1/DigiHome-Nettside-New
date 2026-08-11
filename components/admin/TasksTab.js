@@ -384,6 +384,12 @@ export default function TasksTab({ apiKey, user, onStats }) {
       else if (d.do === 'mine' && minId) toggleMine();
       else if (d.do === 'personer') setPersonerOpen(true);
       else if (d.do === 'view' && d.view) setView(d.view);
+      else if (d.do === 'aapne' && d.id) {
+        // Åpne en spesifikk sak (f.eks. aksjonspunkt fra Møter). Arkiverte
+        // saker krever arkivvisningen — skuffen åpnes når listen er lastet.
+        if (d.arkivert) setView('arkiv');
+        setValgtId(String(d.id));
+      }
     };
     window.addEventListener('dh:saker', onCmd);
     return () => window.removeEventListener('dh:saker', onCmd);
@@ -693,7 +699,7 @@ export default function TasksTab({ apiKey, user, onStats }) {
     if (el && el.scrollIntoView) el.scrollIntoView({ block: 'nearest' });
   }, [fokusId]);
 
-  const valgt = valgtId ? tasks.find((t) => t.id === valgtId) : null;
+  const valgt = valgtId ? (tasks.find((t) => t.id === valgtId) || arkivTasks.find((t) => t.id === valgtId)) : null;
   const tomt = !laster && tasks.length === 0;
 
   if (laster) {

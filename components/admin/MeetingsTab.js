@@ -15,10 +15,18 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import {
   Plus, X, Loader2, Users, Trash2, CalendarDays, Clock, Check,
   ChevronDown, Repeat, CheckCircle2, Circle, Gavel, ClipboardCheck,
-  Mail, AlertTriangle, User, ArrowRight, FileText, RotateCcw,
+  Mail, AlertTriangle, User, ArrowRight, FileText, RotateCcw, ArrowUpRight, Archive,
 } from 'lucide-react';
 
 const heading = { fontFamily: 'var(--font-heading)' };
+
+// Sakstatus-metadata for koblede aksjonspunkter (speiler sakstavlens statuser)
+const SAK_STATUS = {
+  inbox: { l: 'Innboks', farge: '#6b7280', bg: '#f3f4f6' },
+  doing: { l: 'Pågår', farge: '#8b5cf6', bg: '#f4f0fb' },
+  waiting: { l: 'Venter', farge: '#b45309', bg: '#fef3c7' },
+  done: { l: 'Ferdig', farge: '#059669', bg: '#d1fae5' },
+};
 
 const MOTE_TYPER = [
   { k: 'styremote', l: 'Styremøte', farge: '#8b5cf6', bg: '#f4f0fb' },
@@ -160,7 +168,7 @@ function TypeBadge({ type }) {
 const feltKlasse = 'h-9 w-full rounded-lg border border-black/[0.08] bg-white px-2.5 text-[13px] outline-none transition-all placeholder:text-[#bbb] hover:border-black/[0.16] focus:border-[#8b5cf6]/50 focus:ring-2 focus:ring-[#8b5cf6]/15';
 
 /* ═══════════════ Hovedkomponent ═══════════════ */
-export default function MeetingsTab({ apiKey, user }) {
+export default function MeetingsTab({ apiKey, user, onOpenTask }) {
   const [meetings, setMeetings] = useState([]);
   const [members, setMembers] = useState([]);
   const [laster, setLaster] = useState(true);
@@ -401,6 +409,7 @@ export default function MeetingsTab({ apiKey, user }) {
           onPatch={(patch) => oppdater(valgt.id, patch)}
           onDelete={() => slettMote(valgt.id)}
           onReload={last}
+          onOpenTask={onOpenTask}
         />
       )}
 
@@ -578,7 +587,7 @@ function NyMoteModal({ members, onClose, onCreate }) {
 }
 
 /* ═══════════════ Møteskuff — agenda, referat, vedtak, aksjonspunkter ═══════════════ */
-function MoteSkuff({ m, members, actor, api, visToast, onClose, onPatch, onDelete, onReload }) {
+function MoteSkuff({ m, members, actor, api, visToast, onClose, onPatch, onDelete, onReload, onOpenTask }) {
   const [tittel, setTittel] = useState(m.title);
   const [referat, setReferat] = useState(m.referat || '');
   const [nyttAgenda, setNyttAgenda] = useState('');
@@ -592,14 +601,24 @@ function MoteSkuff({ m, members, actor, api, visToast, onClose, onPatch, onDelet
 
   useEffect(() => { setTittel(m.title); setReferat(m.referat || ''); }, [m.id]); // eslint-disable-line
 
-  // Hent koblede saker (aksjonspunkter) for dette møtet
+  // Hent koblede saker (aksjonspunkter) for dette møtet — både aktive og
+  // arkiverte, slik at koblingen aldri «mister» saker. today brukes til
+  // forfalt-markering (samme Oslo-dato som sakstavlen).
+  const [iDag, setIDag] = useState('');
   useEffect(() => {
     let aktiv = true;
     (async () => {
       try {
-        const r = await api('tasks');
-        const j = await r.json();
-        if (aktiv && j.ok) setAksjoner((j.tasks || []).filter((t) => t.meetingId === m.id));
+        const [rA, rB] = await Promise.all([api('tasks'), api('tasks?arkiv=1')]);
+        const jA = await rA.json();
+        let jB = { ok: false };
+        try { jB = await rB.json(); } catch (e) {}
+        if (aktiv && jA.ok) {
+          const aktive = (jA.tasks || []).filter((t) => t.meetingId === m.id);
+          const arkiverte = ((jB.ok && jB.tasks) || []).filter((t) => t.meetingId === m.id).map((t) => ({ ...t, archived: true }));
+          setAksjoner([...aktive, ...arkiverte]);
+          setIDag(jA.today || '');
+        }
       } catch (e) {}
     })();
     return () => { aktiv = false; };
@@ -854,20 +873,67 @@ function MoteSkuff({ m, members, actor, api, visToast, onClose, onPatch, onDelet
 
         {/* Aksjonspunkter → saker */}
         <div className="mt-6" data-testid="meeting-actions">
-          <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#999]">Aksjonspunkter</p>
-          <p className="mt-0.5 text-[11.5px] text-[#b5b5b5]">Blir saker på sakstavlen med ansvarlig og frist — koblet til møtet.</p>
+          <div className="flex items-center gap-2">
+            <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#999]">Aksjonspunkter</p>
+            {aksjoner.length > 0 && (() => {
+              const fullfort = aksjoner.filter((t) => t.status === 'done').length;
+              return (
+                <span className="ml-auto flex items-center gap-2" data-testid="meeting-actions-progress">
+                  <span className="h-1.5 w-16 overflow-hidden rounded-full bg-black/[0.07]">
+                    <span
+                      className="block h-full rounded-full bg-emerald-500 transition-all"
+                      style={{ width: `${Math.round((fullfort / aksjoner.length) * 100)}%` }}
+                    />
+                  </span>
+                  <span className={`text-[11px] font-bold tabular-nums ${fullfort === aksjoner.length ? 'text-emerald-600' : 'text-[#999]'}`}>
+                    {fullfort}/{aksjoner.length} fullført
+                  </span>
+                </span>
+              );
+            })()}
+          </div>
+          <p className="mt-0.5 text-[11.5px] text-[#b5b5b5]">Blir saker på sakstavlen med ansvarlig og frist — klikk en sak for å åpne den.</p>
           <div className="mt-2 space-y-1.5">
             {aksjoner.map((t) => {
               const p = medlem(t.assigneeId);
+              const st = SAK_STATUS[t.status] || SAK_STATUS.inbox;
+              const ferdig = t.status === 'done';
+              const forfalt = !ferdig && !t.archived && t.dueDate && iDag && t.dueDate < iDag;
+              const subs = t.subtasks || [];
               return (
-                <div key={t.id} className="flex items-center gap-2.5 rounded-xl bg-[#fafaf8] px-3 py-2.5" data-testid={`action-task-${t.id}`}>
-                  {t.status === 'done'
-                    ? <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" />
-                    : <ClipboardCheck className="h-4 w-4 shrink-0 text-[#8b5cf6]" />}
-                  <span className={`min-w-0 flex-1 truncate text-[13px] font-medium ${t.status === 'done' ? 'text-[#b0aca6] line-through' : 'text-[#333]'}`}>{t.title}</span>
-                  {t.dueDate && <span className="shrink-0 text-[11px] text-[#aaa]">{fmtKort(t.dueDate)}</span>}
+                <button
+                  key={t.id}
+                  onClick={() => onOpenTask && onOpenTask(t.id, !!t.archived)}
+                  title="Åpne saken på sakstavlen"
+                  data-testid={`action-task-${t.id}`}
+                  className="group flex w-full items-center gap-2.5 rounded-xl bg-[#fafaf8] px-3 py-2.5 text-left transition-all hover:bg-white hover:shadow-[0_2px_12px_rgba(0,0,0,0.07)] hover:ring-1 hover:ring-[#8b5cf6]/25 active:scale-[0.995]"
+                >
+                  <span
+                    className="flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide"
+                    style={{ color: st.farge, background: st.bg }}
+                  >
+                    {ferdig ? <CheckCircle2 className="h-3 w-3" /> : <Circle className="h-2.5 w-2.5" style={{ fill: 'currentColor', opacity: t.status === 'inbox' ? 0.35 : 1 }} />}
+                    {st.l}
+                  </span>
+                  <span className={`min-w-0 flex-1 truncate text-[13px] font-medium ${ferdig ? 'text-[#b0aca6] line-through' : 'text-[#333]'}`}>{t.title}</span>
+                  {subs.length > 0 && (
+                    <span className={`hidden shrink-0 items-center gap-1 text-[11px] sm:flex ${subs.every((s) => s.done) ? 'text-emerald-600' : 'text-[#aaa]'}`}>
+                      <CheckCircle2 className="h-3 w-3" />{subs.filter((s) => s.done).length}/{subs.length}
+                    </span>
+                  )}
+                  {t.archived && (
+                    <span className="flex shrink-0 items-center gap-1 rounded-md bg-[#f3f2f0] px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#999]">
+                      <Archive className="h-3 w-3" /> Arkivert
+                    </span>
+                  )}
+                  {t.dueDate && (
+                    <span className={`shrink-0 text-[11px] ${forfalt ? 'font-bold text-rose-600' : 'text-[#aaa]'}`}>
+                      {forfalt ? 'Forfalt · ' : ''}{fmtKort(t.dueDate)}
+                    </span>
+                  )}
                   {p && <Avatar member={p} size={20} />}
-                </div>
+                  <ArrowUpRight className="h-3.5 w-3.5 shrink-0 text-[#8b5cf6] opacity-0 transition-opacity group-hover:opacity-100" />
+                </button>
               );
             })}
             {!aksjoner.length && <p className="text-[12.5px] text-[#bbb]">Ingen aksjonspunkter ennå.</p>}

@@ -4357,3 +4357,16 @@ frontend:
 agent_communication:
     -agent: "main"
     -message: "Frontend-blocker fra forrige testrunde er løst: rotårsaken var stacking context fra filled dh-fade-animasjon på seksjonswrapperen (modaler under topbar), IKKE manglende lukkehåndtering i Ny sak-modalen (Esc/overlay/Avbryt/lagring lukker alle korrekt — verifisert). Fiks i globals.css (.dh-fade both→backwards). Hele Linear-pakken (angre, multi-select, bulk, ⌘K, M), ProfilModal, Møter-UI (inkl. aksjonspunkt→sak-backlink) og invitasjons-UI er e2e-verifisert med egen Playwright-kjøring; all testdata ryddet og DB-verifisert ren."
+
+frontend:
+  - task: "SAKSKOBLING I MØTET: rike aksjonspunkt-rader i møteskuffen (statuschip, forfalt-markering, deloppgave-teller, arkivert-badge, ansvarlig-avatar) + fremdriftsindikator (x/y fullført m/ bar) + klikk på rad navigerer til Saker og åpner sak-skuffen (arkiverte saker åpner arkivvisningen)"
+    implemented: true
+    working: true
+    file: "/app/components/admin/MeetingsTab.js (SAK_STATUS, rik radliste, onOpenTask-prop), /app/app/admin/page.js (onOpenTask→runSaker), /app/components/admin/TasksTab.js (dh:saker 'aapne'-kommando, valgt-oppslag inkl. arkivTasks)"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "main"
+        -comment: "Møteskuffen henter nå BÅDE aktive og arkiverte koblede saker (tasks + tasks?arkiv=1, filtrert på meetingId) + today for forfalt-logikk. Hver rad: statuschip (Innboks/Pågår/Venter/Ferdig m/ farge), tittel (gjennomstreket ved ferdig), deloppgave-teller, Arkivert-badge, frist (rød 'Forfalt' før i dag), avatar, ArrowUpRight ved hover. Header: fremdriftsbar + 'x/y fullført' (grønn ved alt ferdig). Klikk → onOpenTask(id, arkivert) → runSaker({do:'aapne',id,arkivert}) i page.js → TasksTab-lytteren setter valgtId (og view 'arkiv' for arkiverte); sak-skuffen rendrer via tasks.find||arkivTasks.find så riktig sak garanteres per konstruksjon. E2E-verifisert m/ egen Playwright-kjøring: statuschip synlig, fremdrift 0/1→1/1, klikk åpnet task-drawer i Saker, quick-done på kortet reflektertes som Ferdig-chip i møtet, all QA-data ryddet. (Skriptets 'NEI'-utslag var case-artefakter: CSS uppercase på chiptekst.)"
