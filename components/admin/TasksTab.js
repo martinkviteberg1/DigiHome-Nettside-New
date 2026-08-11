@@ -452,17 +452,26 @@ export default function TasksTab({ apiKey, user, onStats }) {
     return j.task;
   }, [api, actor, meldStats, today, visToast]);
 
-  // --- Sletting med Angre (Linear-style: ingen bekreftelsesdialog) ---
-  // Saken fjernes umiddelbart fra UI; selve DELETE utsettes 6 s slik at
-  // «Angre» i toasten kan hente den tilbake uten datatap.
+  // --- Sletting med passordbekreftelse + Angre ---
+  // Sikkerhet: å slette saker krever at brukeren bekrefter med eget passord
+  // (håndhevet server-side på DELETE). Etter bekreftelse fjernes saken
+  // umiddelbart fra UI, og selve DELETE utsettes 6 s slik at «Angre» i
+  // toasten kan hente den tilbake uten datatap.
   const pendingSlett = useRef(null);
+  const slettPassordRef = useRef(''); // bekreftet passord for ventende DELETE
+  const [bekreftSlett, setBekreftSlett] = useState(null); // { ids, bulk? }
 
   const utforPendingSlett = useCallback(() => {
     const p = pendingSlett.current;
     if (!p) return;
     window.clearTimeout(p.timer);
     pendingSlett.current = null;
-    p.tasks.forEach((t) => { api(`tasks/${t.id}`, { method: 'DELETE' }).catch(() => {}); });
+    p.tasks.forEach((t) => {
+      api(`tasks/${t.id}`, {
+        method: 'DELETE', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: slettPassordRef.current }),
+      }).catch(() => {});
+    });
   }, [api]);
 
   const angreSlett = useCallback(() => {
@@ -496,7 +505,7 @@ export default function TasksTab({ apiKey, user, onStats }) {
     );
   }, [angreSlett, meldStats, today, utforPendingSlett, visToast]);
 
-  const slett = useCallback((id) => slettMedAngre([id]), [slettMedAngre]);
+  const slett = useCallback((id) => setBekreftSlett({ ids: [id] }), []);
 
   // --- Multi-select: bulk-endring og markering ---
   const toggleValg = useCallback((id) => {
@@ -518,7 +527,13 @@ export default function TasksTab({ apiKey, user, onStats }) {
     window.clearTimeout(p.timer);
     pendingSlett.current = null;
     p.tasks.forEach((t) => {
-      try { fetch(`/api/admin/tasks/${t.id}?key=${encodeURIComponent(apiKey)}`, { method: 'DELETE', keepalive: true }); } catch (e) {}
+      try {
+        fetch(`/api/admin/tasks/${t.id}?key=${encodeURIComponent(apiKey)}`, {
+          method: 'DELETE', keepalive: true,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password: slettPassordRef.current }),
+        });
+      } catch (e) {}
     });
   }, [apiKey]);
 
@@ -562,7 +577,7 @@ export default function TasksTab({ apiKey, user, onStats }) {
     } catch (e) { visToast(e.message, 'feil'); }
   }, [api, actor, last, visToast]);
 
-  const slettFraArkiv = useCallback((id) => slettMedAngre([id]), [slettMedAngre]);
+  const slettFraArkiv = useCallback((id) => setBekreftSlett({ ids: [id] }), []);
 
   // --- Filtrering ---
   const filtrert = useMemo(() => {
@@ -1233,7 +1248,7 @@ export default function TasksTab({ apiKey, user, onStats }) {
             className="w-[104px]"
           />
           <button
-            onClick={() => { const ids = [...valgteIds]; setValgteIds([]); slettMedAngre(ids); }}
+            onClick={() => setBekreftSlett({ ids: [...valgteIds], bulk: true })}
             data-testid="bulk-delete"
             className="flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-[12.5px] font-semibold text-rose-600 transition-colors hover:bg-rose-50"
           >
@@ -1243,6 +1258,21 @@ export default function TasksTab({ apiKey, user, onStats }) {
             <X className="h-4 w-4" />
           </button>
         </div>
+      )}
+
+      {/* ═══ Passordbekreftelse før sletting ═══ */}
+      {bekreftSlett && (
+        <SlettBekreftModal
+          antall={bekreftSlett.ids.length}
+          api={api}
+          onClose={() => setBekreftSlett(null)}
+          onConfirm={(pw) => {
+            slettPassordRef.current = pw;
+            if (bekreftSlett.bulk) setValgteIds([]);
+            slettMedAngre(bekreftSlett.ids);
+            setBekreftSlett(null);
+          }}
+        />
       )}
 
       {/* Toast — over FAB-en på mobil */}
@@ -2291,6 +2321,95 @@ function NySakModal({ members, defaultStatus, onClose, onCreate }) {
           className="flex h-10 items-center gap-1.5 rounded-full bg-[#0a0a0a] px-5 text-[13.5px] font-semibold text-white transition-all hover:bg-black/85 active:scale-[0.97] disabled:opacity-40 md:h-9 md:text-[13px]"
         >
           {lagrer ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />} Opprett sak
+        </button>
+      </div>
+    </Overlegg>
+  );
+}
+
+/* ═══════════════ Passordbekreftelse før sletting ═══════════════
+   Sletting av saker er destruktivt — brukeren må bekrefte med sitt eget
+   passord (verifiseres server-side, og DELETE-kallet krever det også).
+   Angre-toasten fungerer fortsatt etter bekreftelse. */
+function SlettBekreftModal({ antall, api, onClose, onConfirm }) {
+  const [passord, setPassord] = useState('');
+  const [feil, setFeil] = useState('');
+  const [sjekker, setSjekker] = useState(false);
+  const ref = useRef(null);
+  useEffect(() => { const t = setTimeout(() => ref.current && ref.current.focus(), 80); return () => clearTimeout(t); }, []);
+
+  const bekreft = async () => {
+    if (!passord || sjekker) return;
+    setSjekker(true); setFeil('');
+    try {
+      const r = await api('auth/bekreft', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: passord }),
+      });
+      const j = await r.json();
+      if (!j.ok) throw new Error(j.error || 'Feil passord');
+      onConfirm(passord);
+    } catch (e) {
+      setFeil(e.message || 'Feil passord');
+      setSjekker(false);
+    }
+  };
+
+  return (
+    <Overlegg onClose={onClose} testid="delete-confirm-modal">
+      <div className="flex shrink-0 items-center gap-2.5 border-b border-black/[0.06] px-5 py-4">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-rose-50">
+          <Trash2 className="h-4 w-4 text-rose-600" />
+        </span>
+        <div className="min-w-0">
+          <h3 className="text-[15.5px] font-bold text-[#0a0a0a]" style={heading}>
+            Slette {antall === 1 ? 'saken' : `${antall} saker`}?
+          </h3>
+          <p className="text-[12px] text-[#999]">Bekreft med passordet ditt</p>
+        </div>
+        <button onClick={onClose} className="ml-auto rounded-lg p-2 text-[#999] hover:bg-[#f3f2f0]" data-testid="delete-confirm-close"><X className="w-4 h-4" /></button>
+      </div>
+
+      <div className="flex-1 overflow-y-auto overscroll-contain px-5 py-4">
+        <p className="text-[13px] leading-relaxed text-[#777]">
+          {antall === 1 ? 'Saken' : 'Sakene'} fjernes fra tavlen med en kort angrefrist — deretter slettes {antall === 1 ? 'den' : 'de'} permanent, inkludert vedlegg.
+        </p>
+        <label className="mt-4 block">
+          <span className="mb-1.5 block text-[11px] font-bold uppercase tracking-[0.08em] text-[#999]">Passord</span>
+          <input
+            ref={ref}
+            type="password"
+            value={passord}
+            onChange={(e) => { setPassord(e.target.value); if (feil) setFeil(''); }}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); bekreft(); } }}
+            autoComplete="current-password"
+            placeholder="Skriv inn passordet ditt"
+            data-testid="delete-confirm-password"
+            className={`h-11 w-full rounded-lg border bg-white px-3 text-[14px] outline-none transition-all placeholder:text-[#bbb] focus:ring-2 sm:h-10 sm:text-[13.5px] ${
+              feil ? 'border-rose-400 focus:border-rose-400 focus:ring-rose-100' : 'border-black/[0.08] hover:border-black/[0.16] focus:border-[#8b5cf6]/50 focus:ring-[#8b5cf6]/15'
+            }`}
+          />
+        </label>
+        {feil && (
+          <p className="mt-2 flex items-center gap-1.5 text-[12.5px] font-medium text-rose-600" data-testid="delete-confirm-error">
+            <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> {feil}
+          </p>
+        )}
+      </div>
+
+      <div
+        className="flex shrink-0 items-center justify-end gap-2 border-t border-black/[0.06] px-5 py-3.5"
+        style={{ paddingBottom: 'max(14px, env(safe-area-inset-bottom))' }}
+      >
+        <button onClick={onClose} className="rounded-lg px-3 py-2 text-[13px] font-medium text-[#888] hover:bg-[#f3f2f0]">Avbryt</button>
+        <button
+          onClick={bekreft}
+          disabled={!passord || sjekker}
+          data-testid="delete-confirm-submit"
+          className="flex h-10 items-center gap-1.5 rounded-lg bg-rose-600 px-4 text-[13.5px] font-semibold text-white transition-all hover:bg-rose-700 active:scale-[0.97] disabled:opacity-40"
+        >
+          {sjekker ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+          Slett {antall === 1 ? 'saken' : `${antall} saker`}
         </button>
       </div>
     </Overlegg>

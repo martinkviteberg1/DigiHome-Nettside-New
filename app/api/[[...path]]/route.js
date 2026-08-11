@@ -1971,6 +1971,28 @@ async function handleRoute(request, { params }) {
       }));
     }
 
+    // Bekreft eget passord — brukes som ekstra sikring foran destruktive
+    // handlinger (f.eks. sletting av saker). Masternøkkelen trenger ikke
+    // passord (den ER legitimasjonen); innloggede kontoer må oppgi sitt eget.
+    // Rate-limited slik at endepunktet ikke kan brukes til passordgjetting.
+    if (route === '/admin/auth/bekreft' && method === 'POST') {
+      if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!rateLimit(`auth-bekreft:${clientIp(request)}`, 10)) {
+        return cors(NextResponse.json({ ok: false, error: 'For mange forsøk — vent litt og prøv igjen' }, { status: 429 }));
+      }
+      const uB = new URL(request.url);
+      const masterB = !!ADMIN_KEY && ((uB.searchParams.get('key') || request.headers.get('x-admin-key') || '') === ADMIN_KEY);
+      if (masterB) return cors(NextResponse.json({ ok: true, master: true }));
+      let bodyB = {}; try { bodyB = await request.json(); } catch (e) {}
+      const sesjonB = sessionFra(request);
+      const megB = sesjonB && sesjonB.sub ? await db.collection('admin_users').findOne({ id: sesjonB.sub }) : null;
+      if (!megB || !megB.passwordHash) return cors(NextResponse.json({ ok: false, error: 'Kontoen mangler passord' }, { status: 403 }));
+      if (!verifyPassword(String(bodyB.password || ''), megB.passwordHash)) {
+        return cors(NextResponse.json({ ok: false, error: 'Feil passord' }, { status: 403 }));
+      }
+      return cors(NextResponse.json({ ok: true }));
+    }
+
     // ──────────────────────────────────────────────────────────────────────
     // Konto-flyt: glemt passord, magic link og aktivering av invitasjon.
     // Alle endepunkter er offentlige men rate-limitede; e-postendepunktene
@@ -2753,6 +2775,22 @@ async function handleRoute(request, { params }) {
 
     if (path[0] === 'admin' && path[1] === 'tasks' && path.length === 3 && method === 'DELETE') {
       if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      // Sletting krever passordbekreftelse fra innloggede kontoer — hindrer
+      // at saker forsvinner ved uhell eller fra en gjenglemt åpen sesjon.
+      // Masternøkkelen er unntatt (den er selv legitimasjonen, brukes av QA).
+      const uSlett = new URL(request.url);
+      const masterSlett = !!ADMIN_KEY && ((uSlett.searchParams.get('key') || request.headers.get('x-admin-key') || '') === ADMIN_KEY);
+      if (!masterSlett) {
+        if (!rateLimit(`task-delete:${clientIp(request)}`, 30)) {
+          return cors(NextResponse.json({ ok: false, error: 'For mange forsøk — vent litt og prøv igjen' }, { status: 429 }));
+        }
+        let bodySlett = {}; try { bodySlett = await request.json(); } catch (e) {}
+        const sesjonSlett = sessionFra(request);
+        const megSlett = sesjonSlett && sesjonSlett.sub ? await db.collection('admin_users').findOne({ id: sesjonSlett.sub }) : null;
+        if (!megSlett || !megSlett.passwordHash || !verifyPassword(String(bodySlett.password || ''), megSlett.passwordHash)) {
+          return cors(NextResponse.json({ ok: false, error: 'Sletting krever passordbekreftelse' }, { status: 403 }));
+        }
+      }
       const r = await db.collection('tasks').deleteOne({ id: path[2] });
       if (!r.deletedCount) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
       await db.collection('task_files').deleteMany({ taskId: path[2] }).catch(() => {});
