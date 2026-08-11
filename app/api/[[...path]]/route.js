@@ -50,7 +50,7 @@ import { generateRsaCopy, generateMetaCopy } from '@/lib/ads-ai';
 import { runOptimization, getOptimizeConfig, setOptimizeConfig, getLastRun, listRuns, applyRecommendation } from '@/lib/ads-optimize';
 import { sendWeeklyReport, buildReportData, renderReportHtml } from '@/lib/ads-report';
 import { buildMarketingMetrics } from '@/lib/marketing-metrics';
-import { emailConfigured, reportRecipients, sendHtmlEmail } from '@/lib/email';
+import { emailConfigured, reportRecipients, sendHtmlEmail, isUndeliverableTestAddress } from '@/lib/email';
 import { NEWSLETTER_COLL, OPTOUT_COLL, NL_EVENTS_COLL, renderNewsletterHtml, resolveAudience, audienceCounts, sanitizeBlocks, hasContent, buildUnsubUrl, verifyUnsubToken, verifyInterestToken, propertyInterestToken, verifyPropertyInterestToken, slugifyCampaign, normEmail as nlNormEmail, recipientId, TEMPLATES, templateBlocks, THEMES, TRACKING_GIF, applyMergeTags } from '@/lib/newsletter';
 import { syncPropertiesFromPlatform, maybeAutoSyncProperties, listAdminProperties, listPublicProperties, setPropertyVisibility, getPropertiesSyncMeta, backfillPropertyDistricts, refreshPropertyQuality, applyEnrichment, setPropertyEnrichment, setPropertyFinnSnapshot, setPropertyEditorialTitle, setPropertyEditorialFields, PROPERTIES_COLL } from '@/lib/properties-sync';
 import { EDITORIAL_FIELDS, stripHouseNumber } from '@/lib/property-editorial';
@@ -1024,6 +1024,168 @@ async function ensureAdminUsers(db) {
   } catch (e) { /* prøv igjen neste gang */ }
 }
 
+// --- Engangs-tokens: invitasjon (7 d), glemt passord (1 t), magic link (15 min) ---
+// Rå token finnes KUN i e-postlenken; databasen lagrer sha256-hashen. Alle
+// tokens er engangs (usedAt), typespesifikke, og nye tokens invaliderer gamle
+// av samme type. Når passordet endres, invalideres ALT utestående for brukeren.
+const AUTH_TOKEN_TTL = { invite: 7 * 24 * 3600 * 1000, reset: 3600 * 1000, magic: 15 * 60 * 1000 };
+function hashAuthToken(raw) { return crypto.createHash('sha256').update(String(raw)).digest('hex'); }
+
+async function lagAuthToken(db, { userId, email, type }) {
+  const raw = crypto.randomBytes(32).toString('hex');
+  const naa = Date.now();
+  await db.collection('auth_tokens').updateMany(
+    { userId, type, usedAt: null },
+    { $set: { usedAt: new Date(naa).toISOString(), invalidated: true } }
+  );
+  await db.collection('auth_tokens').insertOne({
+    id: uuidv4(), tokenHash: hashAuthToken(raw), userId, email: email || '', type,
+    createdAt: new Date(naa).toISOString(),
+    expiresAt: new Date(naa + (AUTH_TOKEN_TTL[type] || 3600000)).toISOString(),
+    usedAt: null,
+  });
+  return raw;
+}
+
+async function verifiserAuthToken(db, raw, type) {
+  if (!raw || String(raw).length < 32) return null;
+  const doc = await db.collection('auth_tokens').findOne({ tokenHash: hashAuthToken(raw), type });
+  if (!doc || doc.usedAt || new Date(doc.expiresAt).getTime() < Date.now()) return null;
+  const user = await db.collection('admin_users').findOne({ id: doc.userId });
+  if (!user) return null;
+  return { doc, user };
+}
+
+async function brukAuthToken(db, id) {
+  await db.collection('auth_tokens').updateOne({ id }, { $set: { usedAt: new Date().toISOString() } });
+}
+
+async function invaliderBrukerTokens(db, userId) {
+  await db.collection('auth_tokens').updateMany(
+    { userId, usedAt: null },
+    { $set: { usedAt: new Date().toISOString(), invalidated: true } }
+  );
+}
+
+// --- E-postramme for konto-e-poster (invitasjon / reset / magic link) ---
+// Verdensklasse, klientsikker HTML: inline-styles, skjult preheader, én tydelig
+// CTA, fallback-lenke i klartekst og sikkerhetsnotis. Matcher admin-designet.
+function authEpostHtml({ eyebrow, heading, intro, detaljerHtml = '', ctaLabel, ctaUrl, gyldighet, sikkerhet, mottakerEpost, preheader }) {
+  const esc = taskEsc;
+  return `
+  <div style="background:#f6f5f3;padding:40px 16px;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif">
+    <span style="display:none!important;visibility:hidden;opacity:0;color:transparent;height:0;width:0;overflow:hidden">${esc(preheader || intro)}</span>
+    <div style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:20px;overflow:hidden;border:1px solid #ececec">
+      <div style="background:#0a0a0a;padding:22px 30px">
+        <span style="display:inline-block;width:9px;height:9px;border-radius:99px;background:#cf97fc;vertical-align:middle;margin-right:9px"></span><span style="color:#ffffff;font-size:16px;font-weight:700;letter-spacing:-0.01em;vertical-align:middle">DigiHome</span>
+        <span style="float:right;color:rgba(255,255,255,0.4);font-size:11px;letter-spacing:0.08em;text-transform:uppercase;line-height:20px">Internt arbeidsområde</span>
+      </div>
+      <div style="padding:36px 30px 8px">
+        <p style="margin:0 0 10px;color:#8b5cf6;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em">${esc(eyebrow)}</p>
+        <h1 style="margin:0 0 12px;color:#0a0a0a;font-size:24px;line-height:1.25;letter-spacing:-0.02em">${esc(heading)}</h1>
+        <p style="margin:0;color:#555;font-size:14.5px;line-height:1.65">${intro}</p>
+        ${detaljerHtml}
+      </div>
+      <div style="padding:26px 30px 8px">
+        <a href="${ctaUrl}" style="display:block;background:#0a0a0a;color:#ffffff;text-decoration:none;font-size:15px;font-weight:600;padding:15px 24px;border-radius:14px;text-align:center">${esc(ctaLabel)} &rarr;</a>
+        <p style="margin:14px 0 0;color:#999;font-size:12px;line-height:1.6;text-align:center">${esc(gyldighet)}</p>
+      </div>
+      <div style="padding:22px 30px 30px">
+        <div style="border-top:1px solid #f0efed;padding-top:18px">
+          <p style="margin:0 0 6px;color:#aaa;font-size:11.5px;line-height:1.6">Fungerer ikke knappen? Kopier lenken inn i nettleseren:</p>
+          <p style="margin:0;word-break:break-all"><a href="${ctaUrl}" style="color:#8b5cf6;font-size:11.5px;text-decoration:underline">${esc(ctaUrl)}</a></p>
+        </div>
+      </div>
+      <div style="background:#fafaf8;border-top:1px solid #f0efed;padding:18px 30px">
+        <p style="margin:0;color:#8a8a8a;font-size:12px;line-height:1.6">${esc(sikkerhet)}</p>
+      </div>
+    </div>
+    <p style="max-width:560px;margin:18px auto 0;text-align:center;color:#b5b5b5;font-size:11px;line-height:1.6">DigiHome &middot; digihome.no${mottakerEpost ? ` &middot; Sendt til ${esc(mottakerEpost)}` : ''}</p>
+  </div>`;
+}
+
+// Velkomst-/invitasjons-e-post: personlig hilsen, hvem som inviterte, hva du
+// får tilgang til (rollestyrt), og aktiveringslenke der brukeren VELGER EGET
+// passord. Feiler stille (returnerer false) — kontoen finnes uansett.
+async function sendVelkomstEpost({ member, rawToken, invitertAv }) {
+  if (!member || !member.email || !emailConfigured()) return false;
+  const base = (process.env.NEXT_PUBLIC_BASE_URL || 'https://digihome.no').replace(/\/$/, '');
+  const url = `${base}/admin?invite=${rawToken}`;
+  const fornavn = String(member.name || '').trim().split(/\s+/)[0] || 'der';
+  const rolleTekst = member.role === 'admin' || member.role === 'owner'
+    ? 'Du får full tilgang til hele admin-portalen — innsikt, leads, økonomi, saker og møter.'
+    : 'Du får tilgang til <strong style="color:#0a0a0a">Saker</strong> — teamets interne system for oppfølging, frister og ansvar.';
+  const rad = (l, v) => `<tr><td style="padding:5px 16px 5px 0;color:#8a8a8a;font-size:13px;white-space:nowrap">${l}</td><td style="padding:5px 0;color:#111;font-size:13px;font-weight:600">${taskEsc(v)}</td></tr>`;
+  const detaljer = `
+        <div style="margin-top:20px;background:#fafaf8;border:1px solid #f0efed;border-radius:14px;padding:16px 20px">
+          <table style="border-collapse:collapse">
+            ${rad('E-post', member.email)}
+            ${rad('Rolle', member.role === 'admin' ? 'Administrator' : member.role === 'owner' ? 'Eier' : 'Bruker')}
+            ${invitertAv ? rad('Invitert av', invitertAv) : ''}
+          </table>
+        </div>`;
+  const html = authEpostHtml({
+    eyebrow: 'Velkommen til teamet',
+    heading: `Hei ${fornavn} — kontoen din er klar`,
+    intro: `${taskEsc(invitertAv || 'DigiHome')} har invitert deg til DigiHomes interne arbeidsområde. ${rolleTekst} Trykk på knappen under for å aktivere kontoen og velge ditt eget passord.`,
+    detaljerHtml: detaljer,
+    ctaLabel: 'Aktiver konto og velg passord',
+    ctaUrl: url,
+    gyldighet: 'Lenken er personlig og gyldig i 7 dager.',
+    sikkerhet: 'Var ikke dette deg? Da kan du trygt se bort fra denne e-posten — ingenting skjer uten at lenken brukes.',
+    mottakerEpost: member.email,
+    preheader: `Du er invitert til DigiHome. Aktiver kontoen og velg ditt eget passord.`,
+  });
+  try {
+    await sendHtmlEmail({ to: member.email, subject: `Velkommen til DigiHome, ${fornavn} — aktiver kontoen din`, html, fromName: 'DigiHome', individual: false, categories: ['konto-invitasjon'] });
+    return true;
+  } catch (e) { return false; }
+}
+
+async function sendResetEpost({ member, rawToken }) {
+  if (!member || !member.email || !emailConfigured()) return false;
+  const base = (process.env.NEXT_PUBLIC_BASE_URL || 'https://digihome.no').replace(/\/$/, '');
+  const url = `${base}/admin?reset=${rawToken}`;
+  const fornavn = String(member.name || '').trim().split(/\s+/)[0] || 'der';
+  const html = authEpostHtml({
+    eyebrow: 'Passord',
+    heading: 'Tilbakestill passordet ditt',
+    intro: `Hei ${taskEsc(fornavn)} — vi mottok en forespørsel om å tilbakestille passordet for kontoen din. Trykk på knappen under for å velge et nytt.`,
+    ctaLabel: 'Velg nytt passord',
+    ctaUrl: url,
+    gyldighet: 'Lenken er gyldig i 1 time og kan bare brukes én gang.',
+    sikkerhet: 'Ba du ikke om dette? Da kan du se bort fra e-posten — passordet ditt er uendret og kontoen er trygg.',
+    mottakerEpost: member.email,
+    preheader: 'Velg et nytt passord for DigiHome-kontoen din.',
+  });
+  try {
+    await sendHtmlEmail({ to: member.email, subject: 'Tilbakestill passordet ditt — DigiHome', html, fromName: 'DigiHome', individual: false, categories: ['konto-reset'] });
+    return true;
+  } catch (e) { return false; }
+}
+
+async function sendMagicEpost({ member, rawToken }) {
+  if (!member || !member.email || !emailConfigured()) return false;
+  const base = (process.env.NEXT_PUBLIC_BASE_URL || 'https://digihome.no').replace(/\/$/, '');
+  const url = `${base}/admin?magic=${rawToken}`;
+  const fornavn = String(member.name || '').trim().split(/\s+/)[0] || 'der';
+  const html = authEpostHtml({
+    eyebrow: 'Innlogging',
+    heading: 'Din innloggingslenke',
+    intro: `Hei ${taskEsc(fornavn)} — trykk på knappen under, så logges du rett inn i DigiHome admin. Helt uten passord.`,
+    ctaLabel: 'Logg meg inn',
+    ctaUrl: url,
+    gyldighet: 'Lenken er gyldig i 15 minutter og kan bare brukes én gang.',
+    sikkerhet: 'Ba du ikke om dette? Da kan du se bort fra e-posten. Ingen kommer inn på kontoen uten selve lenken.',
+    mottakerEpost: member.email,
+    preheader: 'Engangslenke som logger deg rett inn i DigiHome admin.',
+  });
+  try {
+    await sendHtmlEmail({ to: member.email, subject: 'Din innloggingslenke — DigiHome', html, fromName: 'DigiHome', individual: false, categories: ['konto-magic'] });
+    return true;
+  } catch (e) { return false; }
+}
+
 function adminAuthed(request) {
   try {
     const url = new URL(request.url);
@@ -1401,6 +1563,60 @@ function normaliserSubtasks(input) {
   })).filter((s) => s.text);
 }
 
+// ─── Møter: typer, normalisering og e-post ───
+const MOTE_TYPER = ['styremote', 'ledermote', 'annet'];
+const MOTE_TYPE_LABEL = { styremote: 'Styremøte', ledermote: 'Ledermøte', annet: 'Møte' };
+
+function normaliserAgenda(input) {
+  if (!Array.isArray(input)) return [];
+  return input.slice(0, 40).map((p) => ({
+    id: (p && p.id) ? String(p.id) : uuidv4(),
+    text: String((p && p.text) || '').slice(0, 400),
+    done: !!(p && p.done),
+  })).filter((p) => p.text);
+}
+
+function normaliserVedtak(input) {
+  if (!Array.isArray(input)) return [];
+  return input.slice(0, 40).map((v) => ({
+    id: (v && v.id) ? String(v.id) : uuidv4(),
+    text: String((v && v.text) || '').slice(0, 600),
+  })).filter((v) => v.text);
+}
+
+async function moteEpost({ member, meeting, heading, intro, ekstraHtml = '', skjulAgenda = false }) {
+  if (!member || !member.email || !emailConfigured()) return false;
+  const base = (process.env.NEXT_PUBLIC_BASE_URL || 'https://digihome.no').replace(/\/$/, '');
+  const naar = meeting.datetime
+    ? new Date(meeting.datetime).toLocaleString('nb-NO', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Oslo' })
+    : 'Ikke fastsatt';
+  const rad = (l, v) => `<tr><td style="padding:4px 14px 4px 0;color:#8a8a8a;font-size:13px;white-space:nowrap">${l}</td><td style="padding:4px 0;color:#111;font-size:13px;font-weight:600">${v}</td></tr>`;
+  const agendaHtml = !skjulAgenda && (meeting.agenda || []).length
+    ? `<p style="margin:18px 0 6px;color:#8b5cf6;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em">Agenda</p><ol style="margin:0;padding-left:18px;color:#444;font-size:13.5px;line-height:1.7">${meeting.agenda.map((p) => `<li>${taskEsc(p.text)}</li>`).join('')}</ol>`
+    : '';
+  const html = `
+  <div style="background:#f6f5f3;padding:32px 16px;font-family:-apple-system,'Segoe UI',Roboto,sans-serif">
+    <div style="max-width:520px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;border:1px solid #eee">
+      <div style="background:#0a0a0a;padding:18px 24px"><span style="color:#fff;font-size:15px;font-weight:700">DigiHome</span> <span style="color:rgba(255,255,255,0.45);font-size:12px;margin-left:6px">Møter · intern</span></div>
+      <div style="padding:26px 24px">
+        <p style="margin:0;color:#8b5cf6;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em">${taskEsc(heading)}</p>
+        <h2 style="margin:8px 0 4px;color:#0a0a0a;font-size:19px;line-height:1.3">${taskEsc(meeting.title)}</h2>
+        <p style="margin:0 0 16px;color:#666;font-size:13.5px;line-height:1.55">${taskEsc(intro)}</p>
+        <table style="border-collapse:collapse">${rad('Når', taskEsc(naar))}${rad('Type', MOTE_TYPE_LABEL[meeting.type] || 'Møte')}</table>
+        ${agendaHtml}
+        ${ekstraHtml}
+        <a href="${base}/admin" style="display:inline-block;margin-top:20px;background:#0a0a0a;color:#fff;text-decoration:none;font-size:13.5px;font-weight:600;padding:11px 20px;border-radius:99px">Åpne Møter i admin →</a>
+      </div>
+    </div>
+  </div>`;
+  try {
+    await sendHtmlEmail({ to: member.email, subject: `${heading}: ${meeting.title}`, html, fromName: 'DigiHome Møter', individual: false, categories: ['intern-mote'] });
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
 // Følgere: personer som IKKE er hovedansvarlig, men vil holdes orientert.
 // De varsles når de legges til og når noen purrer på saken.
 function normaliserFolgere(input) {
@@ -1454,6 +1670,7 @@ async function hentPersoner(db) {
     color: u.color || TASK_FARGER[i % TASK_FARGER.length],
     role: u.role || 'admin',
     harPassord: !!u.passwordHash,
+    invitedAt: u.invitedAt || '',
     createdAt: u.createdAt || '',
   }));
 }
@@ -1713,6 +1930,137 @@ async function handleRoute(request, { params }) {
       return cors(NextResponse.json({
         ok: true,
         user: { email: payload.email, name: (user && user.name) || '', role: (user && user.role) || 'admin' },
+      }));
+    }
+
+    // ──────────────────────────────────────────────────────────────────────
+    // Konto-flyt: glemt passord, magic link og aktivering av invitasjon.
+    // Alle endepunkter er offentlige men rate-limitede; e-postendepunktene
+    // svarer ALLTID ok:true for å ikke lekke hvilke kontoer som finnes.
+    // testToken returneres KUN for udeliverbare testadresser (QA) — de kan
+    // aldri motta ekte e-post, og kallende er uansett den som ba om lenken.
+    // ──────────────────────────────────────────────────────────────────────
+
+    // Glemt passord → reset-lenke (1 t). Ikke-aktivert konto får i stedet ny
+    // invitasjon (samme utfall for brukeren: velge passord).
+    if (route === '/admin/auth/glemt' && method === 'POST') {
+      if (!rateLimit(`auth-glemt:${clientIp(request)}`, 6)) {
+        return cors(NextResponse.json({ ok: false, error: 'For mange forsøk — vent litt og prøv igjen' }, { status: 429 }));
+      }
+      let body = {}; try { body = await request.json(); } catch (e) {}
+      const email = (body.email || '').toString().trim().toLowerCase();
+      if (!email) return cors(NextResponse.json({ ok: false, error: 'Fyll inn e-post' }, { status: 400 }));
+      await ensureAdminUsers(db);
+      const user = await db.collection('admin_users').findOne({ email });
+      let testToken = null;
+      if (user) {
+        if (user.passwordHash) {
+          const raw = await lagAuthToken(db, { userId: user.id, email, type: 'reset' });
+          await sendResetEpost({ member: user, rawToken: raw });
+          if (isUndeliverableTestAddress(email)) testToken = { type: 'reset', token: raw };
+        } else {
+          const raw = await lagAuthToken(db, { userId: user.id, email, type: 'invite' });
+          await db.collection('admin_users').updateOne({ id: user.id }, { $set: { invitedAt: new Date().toISOString() } });
+          await sendVelkomstEpost({ member: user, rawToken: raw, invitertAv: 'DigiHome' });
+          if (isUndeliverableTestAddress(email)) testToken = { type: 'invite', token: raw };
+        }
+      }
+      return cors(NextResponse.json({ ok: true, ...(testToken ? { testToken } : {}) }));
+    }
+
+    // Magic link → engangs innloggingslenke (15 min). Kun aktiverte kontoer;
+    // ikke-aktiverte med e-post får ny invitasjon i stedet.
+    if (route === '/admin/auth/magic' && method === 'POST') {
+      if (!rateLimit(`auth-magic:${clientIp(request)}`, 6)) {
+        return cors(NextResponse.json({ ok: false, error: 'For mange forsøk — vent litt og prøv igjen' }, { status: 429 }));
+      }
+      let body = {}; try { body = await request.json(); } catch (e) {}
+      const email = (body.email || '').toString().trim().toLowerCase();
+      if (!email) return cors(NextResponse.json({ ok: false, error: 'Fyll inn e-post' }, { status: 400 }));
+      await ensureAdminUsers(db);
+      const user = await db.collection('admin_users').findOne({ email });
+      let testToken = null;
+      if (user) {
+        if (user.passwordHash) {
+          const raw = await lagAuthToken(db, { userId: user.id, email, type: 'magic' });
+          await sendMagicEpost({ member: user, rawToken: raw });
+          if (isUndeliverableTestAddress(email)) testToken = { type: 'magic', token: raw };
+        } else {
+          const raw = await lagAuthToken(db, { userId: user.id, email, type: 'invite' });
+          await db.collection('admin_users').updateOne({ id: user.id }, { $set: { invitedAt: new Date().toISOString() } });
+          await sendVelkomstEpost({ member: user, rawToken: raw, invitertAv: 'DigiHome' });
+          if (isUndeliverableTestAddress(email)) testToken = { type: 'invite', token: raw };
+        }
+      }
+      return cors(NextResponse.json({ ok: true, ...(testToken ? { testToken } : {}) }));
+    }
+
+    // Magic link → sesjon (engangs; markeres brukt FØR token utstedes).
+    if (route === '/admin/auth/magic/verify' && method === 'POST') {
+      let body = {}; try { body = await request.json(); } catch (e) {}
+      const hit = await verifiserAuthToken(db, (body.token || '').toString(), 'magic');
+      if (!hit) return cors(NextResponse.json({ ok: false, error: 'Lenken er utløpt eller allerede brukt' }, { status: 401 }));
+      await brukAuthToken(db, hit.doc.id);
+      const exp = Date.now() + SESSION_TTL_MS;
+      const token = signSession({ sub: hit.user.id, email: hit.user.email, role: hit.user.role || 'admin', exp });
+      return cors(NextResponse.json({
+        ok: true, token, exp,
+        user: { email: hit.user.email, name: hit.user.name || '', role: hit.user.role || 'admin' },
+      }));
+    }
+
+    // Token-info (invite/reset): valider UTEN å konsumere — brukes av
+    // «Velg passord»-skjermen for å hilse med navn og fange utløpte lenker.
+    if (route === '/admin/auth/token-info' && method === 'GET') {
+      const u = new URL(request.url);
+      const type = u.searchParams.get('type') === 'reset' ? 'reset' : 'invite';
+      const hit = await verifiserAuthToken(db, (u.searchParams.get('token') || '').toString(), type);
+      if (!hit) return cors(NextResponse.json({ ok: false, error: 'Lenken er ugyldig, utløpt eller allerede brukt' }, { status: 410 }));
+      return cors(NextResponse.json({
+        ok: true, type,
+        name: hit.user.name || '', email: hit.user.email || '', role: hit.user.role || 'bruker',
+      }));
+    }
+
+    // Aktiver invitasjon → brukeren VELGER EGET passord → logges rett inn.
+    if (route === '/admin/auth/aktiver' && method === 'POST') {
+      let body = {}; try { body = await request.json(); } catch (e) {}
+      const pw = (body.password || '').toString();
+      if (pw.length < 8) return cors(NextResponse.json({ ok: false, error: 'Passord må ha minst 8 tegn' }, { status: 400 }));
+      const hit = await verifiserAuthToken(db, (body.token || '').toString(), 'invite');
+      if (!hit) return cors(NextResponse.json({ ok: false, error: 'Lenken er ugyldig, utløpt eller allerede brukt' }, { status: 410 }));
+      await brukAuthToken(db, hit.doc.id);
+      await invaliderBrukerTokens(db, hit.user.id);
+      await db.collection('admin_users').updateOne(
+        { id: hit.user.id },
+        { $set: { passwordHash: hashPassword(pw), activatedAt: new Date().toISOString() } }
+      );
+      const exp = Date.now() + SESSION_TTL_MS;
+      const token = signSession({ sub: hit.user.id, email: hit.user.email, role: hit.user.role || 'bruker', exp });
+      return cors(NextResponse.json({
+        ok: true, token, exp,
+        user: { email: hit.user.email, name: hit.user.name || '', role: hit.user.role || 'bruker' },
+      }));
+    }
+
+    // Nytt passord via reset-lenke → logges rett inn.
+    if (route === '/admin/auth/reset' && method === 'POST') {
+      let body = {}; try { body = await request.json(); } catch (e) {}
+      const pw = (body.password || '').toString();
+      if (pw.length < 8) return cors(NextResponse.json({ ok: false, error: 'Passord må ha minst 8 tegn' }, { status: 400 }));
+      const hit = await verifiserAuthToken(db, (body.token || '').toString(), 'reset');
+      if (!hit) return cors(NextResponse.json({ ok: false, error: 'Lenken er ugyldig, utløpt eller allerede brukt' }, { status: 410 }));
+      await brukAuthToken(db, hit.doc.id);
+      await invaliderBrukerTokens(db, hit.user.id);
+      await db.collection('admin_users').updateOne(
+        { id: hit.user.id },
+        { $set: { passwordHash: hashPassword(pw) } }
+      );
+      const exp = Date.now() + SESSION_TTL_MS;
+      const token = signSession({ sub: hit.user.id, email: hit.user.email, role: hit.user.role || 'admin', exp });
+      return cors(NextResponse.json({
+        ok: true, token, exp,
+        user: { email: hit.user.email, name: hit.user.name || '', role: hit.user.role || 'admin' },
       }));
     }
 
@@ -2010,6 +2358,9 @@ async function handleRoute(request, { params }) {
       const email = String(body.email || '').trim().toLowerCase();
       const role = body.role === 'admin' ? 'admin' : 'bruker';
       const password = String(body.password || '');
+      const invite = !!body.invite;
+      if (invite && !email) return cors(NextResponse.json({ ok: false, error: 'Invitasjon krever e-post' }, { status: 400 }));
+      if (invite && password) return cors(NextResponse.json({ ok: false, error: 'Velg enten passord eller e-postinvitasjon — ikke begge' }, { status: 400 }));
       if (password && password.length < 8) return cors(NextResponse.json({ ok: false, error: 'Passord må ha minst 8 tegn' }, { status: 400 }));
       if (password && !email) return cors(NextResponse.json({ ok: false, error: 'Konto med passord krever e-post' }, { status: 400 }));
       if (email) {
@@ -2025,8 +2376,56 @@ async function handleRoute(request, { params }) {
       };
       const doc = { ...member };
       if (password) doc.passwordHash = hashPassword(password);
+      if (invite) doc.invitedAt = new Date().toISOString();
       await db.collection('admin_users').insertOne(doc);
-      return cors(NextResponse.json({ ok: true, member: { ...member, harPassord: !!password } }));
+      // Invitasjon: engangs-token (7 d) + velkomst-e-post der brukeren velger
+      // eget passord. Hvem som inviterte hentes fra sesjonen (personlig hilsen).
+      let invitert = false;
+      let testToken = null;
+      if (invite) {
+        const raw = await lagAuthToken(db, { userId: member.id, email, type: 'invite' });
+        let invitertAv = 'DigiHome';
+        const sesjon = sessionFra(request);
+        if (sesjon && sesjon.sub) {
+          try {
+            const s = await db.collection('admin_users').findOne({ id: sesjon.sub });
+            if (s && s.name) invitertAv = s.name;
+          } catch (e) {}
+        }
+        invitert = await sendVelkomstEpost({ member: doc, rawToken: raw, invitertAv });
+        if (isUndeliverableTestAddress(email)) testToken = raw;
+      }
+      return cors(NextResponse.json({
+        ok: true,
+        member: { ...member, harPassord: !!password, invitedAt: doc.invitedAt || '' },
+        invitert,
+        ...(testToken ? { testInviteToken: testToken } : {}),
+      }));
+    }
+
+    // (Re)send invitasjon til eksisterende person med e-post men uten passord.
+    if (path[0] === 'admin' && path[1] === 'users' && path[3] === 'invite' && path.length === 4 && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const target = await db.collection('admin_users').findOne({ id: path[2] });
+      if (!target) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
+      if (!target.email) return cors(NextResponse.json({ ok: false, error: 'Personen mangler e-post' }, { status: 400 }));
+      if (target.passwordHash) return cors(NextResponse.json({ ok: false, error: 'Kontoen er allerede aktivert — bruk «Glemt passord» ved behov' }, { status: 400 }));
+      const raw = await lagAuthToken(db, { userId: target.id, email: target.email, type: 'invite' });
+      await db.collection('admin_users').updateOne({ id: target.id }, { $set: { invitedAt: new Date().toISOString() } });
+      let invitertAv = 'DigiHome';
+      const sesjon = sessionFra(request);
+      if (sesjon && sesjon.sub) {
+        try {
+          const s = await db.collection('admin_users').findOne({ id: sesjon.sub });
+          if (s && s.name) invitertAv = s.name;
+        } catch (e) {}
+      }
+      const invitert = await sendVelkomstEpost({ member: target, rawToken: raw, invitertAv });
+      const member = (await hentPersoner(db)).find((m) => m.id === target.id) || null;
+      return cors(NextResponse.json({
+        ok: true, invitert, member,
+        ...(isUndeliverableTestAddress(target.email) ? { testInviteToken: raw } : {}),
+      }));
     }
 
     if (path[0] === 'admin' && path[1] === 'users' && path.length === 3 && method === 'PUT') {
@@ -2064,6 +2463,11 @@ async function handleRoute(request, { params }) {
       }
       if (!Object.keys(set).length) return cors(NextResponse.json({ ok: false, error: 'Ingenting å endre' }, { status: 400 }));
       await db.collection('admin_users').updateOne({ id: path[2] }, { $set: set });
+      // Passord satt manuelt eller e-post endret → utestående invitasjons-/
+      // reset-/magic-lenker (sendt til gammel adresse) skal ikke lenger virke.
+      if (set.passwordHash || set.email !== undefined) {
+        try { await invaliderBrukerTokens(db, path[2]); } catch (e) {}
+      }
       const member = (await hentPersoner(db)).find((m) => m.id === path[2]) || null;
       return cors(NextResponse.json({ ok: true, member }));
     }
@@ -2076,6 +2480,7 @@ async function handleRoute(request, { params }) {
       const sesjon = sessionFra(request);
       if (sesjon && sesjon.sub === path[2]) return cors(NextResponse.json({ ok: false, error: 'Du kan ikke slette din egen konto' }, { status: 400 }));
       await db.collection('admin_users').deleteOne({ id: path[2] });
+      try { await invaliderBrukerTokens(db, path[2]); } catch (e) {}
       return cors(NextResponse.json({ ok: true }));
     }
 
@@ -2415,6 +2820,173 @@ async function handleRoute(request, { params }) {
         { id: fil.taskId },
         { $pull: { attachments: { id: path[2] } }, $set: { updatedAt: naaSlett } },
       );
+      return cors(NextResponse.json({ ok: true }));
+    }
+
+    // ═══════════════ MØTER — styremøter/ledermøter med agenda, referat,
+    // vedtak og aksjonspunkter som blir saker. Admin-only (bruker = kun saker).
+    if (path[0] === 'admin' && path[1] === 'meetings' && path.length === 2 && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const alleMoter = await db.collection('meetings').find({}, { projection: { _id: 0 } }).toArray();
+      // Planlagte først (nærmest frem i tid), deretter avholdte (nyeste øverst)
+      const planlagt = alleMoter.filter((m) => m.status !== 'avholdt').sort((a, b) => String(a.datetime || '9999').localeCompare(String(b.datetime || '9999')));
+      const avholdt = alleMoter.filter((m) => m.status === 'avholdt').sort((a, b) => String(b.datetime || '').localeCompare(String(a.datetime || '')));
+      return cors(NextResponse.json({ ok: true, meetings: [...planlagt, ...avholdt], members: await hentPersoner(db) }));
+    }
+
+    if (path[0] === 'admin' && path[1] === 'meetings' && path.length === 2 && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      const title = String(body.title || '').trim().slice(0, 200);
+      if (!title) return cors(NextResponse.json({ ok: false, error: 'Tittel er påkrevd' }, { status: 400 }));
+      const naa = new Date().toISOString();
+      const meeting = {
+        id: uuidv4(),
+        title,
+        type: MOTE_TYPER.includes(body.type) ? body.type : 'annet',
+        datetime: body.datetime ? String(body.datetime) : null,
+        attendees: normaliserFolgere(body.attendees).slice(0, 20),
+        agenda: normaliserAgenda(body.agenda),
+        referat: '',
+        vedtak: [],
+        taskIds: [],
+        recurrence: TASK_REC.includes(body.recurrence) ? body.recurrence : null,
+        status: 'planlagt',
+        createdAt: naa, updatedAt: naa,
+      };
+      await db.collection('meetings').insertOne({ ...meeting });
+      // Innkalling på e-post til deltakere (notify:false skrur av)
+      let innkalt = 0;
+      if (meeting.attendees.length && body.notify !== false) {
+        const folk = await db.collection('admin_users').find({ id: { $in: meeting.attendees } }).toArray();
+        for (const p of folk) {
+          const ok = await moteEpost({ member: p, meeting, heading: 'Møteinnkalling', intro: `Du er kalt inn til ${MOTE_TYPE_LABEL[meeting.type].toLowerCase()}. Agenda under.` });
+          if (ok) innkalt++;
+        }
+      }
+      return cors(NextResponse.json({ ok: true, meeting, innkalt }));
+    }
+
+    if (path[0] === 'admin' && path[1] === 'meetings' && path.length === 3 && method === 'PUT') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      const eksisterende = await db.collection('meetings').findOne({ id: path[2] }, { projection: { _id: 0 } });
+      if (!eksisterende) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
+      const naa = new Date().toISOString();
+      const set = { updatedAt: naa };
+      if (body.title !== undefined) {
+        const t = String(body.title).trim().slice(0, 200);
+        if (!t) return cors(NextResponse.json({ ok: false, error: 'Tittel kan ikke være tom' }, { status: 400 }));
+        set.title = t;
+      }
+      if (body.type !== undefined && MOTE_TYPER.includes(body.type)) set.type = body.type;
+      if (body.datetime !== undefined) set.datetime = body.datetime ? String(body.datetime) : null;
+      if (body.attendees !== undefined) set.attendees = normaliserFolgere(body.attendees).slice(0, 20);
+      if (body.agenda !== undefined) set.agenda = normaliserAgenda(body.agenda);
+      if (body.referat !== undefined) set.referat = String(body.referat).slice(0, 20000);
+      if (body.vedtak !== undefined) set.vedtak = normaliserVedtak(body.vedtak);
+      if (body.recurrence !== undefined) set.recurrence = TASK_REC.includes(body.recurrence) ? body.recurrence : null;
+      if (body.status !== undefined && ['planlagt', 'avholdt'].includes(body.status)) set.status = body.status;
+
+      // Gjentakelse: når møtet markeres avholdt, opprettes neste forekomst
+      let nesteMote = null;
+      const rec = set.recurrence !== undefined ? set.recurrence : eksisterende.recurrence;
+      if (set.status === 'avholdt' && eksisterende.status !== 'avholdt' && rec) {
+        const dtStr = set.datetime !== undefined ? set.datetime : eksisterende.datetime;
+        const datoDel = dtStr ? String(dtStr).slice(0, 10) : null;
+        const tidDel = dtStr && String(dtStr).length > 10 ? String(dtStr).slice(10) : 'T10:00';
+        const nyDato = nesteFrist(datoDel, rec);
+        nesteMote = {
+          id: uuidv4(),
+          title: set.title !== undefined ? set.title : eksisterende.title,
+          type: set.type !== undefined ? set.type : eksisterende.type,
+          datetime: `${nyDato}${tidDel}`,
+          attendees: set.attendees !== undefined ? set.attendees : (eksisterende.attendees || []),
+          agenda: (set.agenda !== undefined ? set.agenda : (eksisterende.agenda || [])).map((p) => ({ ...p, id: uuidv4(), done: false })),
+          referat: '', vedtak: [], taskIds: [],
+          recurrence: rec, status: 'planlagt',
+          createdAt: naa, updatedAt: naa,
+        };
+        await db.collection('meetings').insertOne({ ...nesteMote });
+      }
+
+      await db.collection('meetings').updateOne({ id: path[2] }, { $set: set });
+      const meeting = { ...eksisterende, ...set };
+      return cors(NextResponse.json({ ok: true, meeting, nesteMote }));
+    }
+
+    // Aksjonspunkt: oppretter en sak koblet til møtet (kilden til oppfølging)
+    if (path[0] === 'admin' && path[1] === 'meetings' && path.length === 4 && path[3] === 'aksjonspunkt' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      const meeting = await db.collection('meetings').findOne({ id: path[2] }, { projection: { _id: 0 } });
+      if (!meeting) return cors(NextResponse.json({ ok: false, error: 'Møtet finnes ikke' }, { status: 404 }));
+      const title = String(body.title || '').trim().slice(0, 200);
+      if (!title) return cors(NextResponse.json({ ok: false, error: 'Tittel er påkrevd' }, { status: 400 }));
+      const naa = new Date().toISOString();
+      const actor = String(body.actor || 'Admin').slice(0, 80);
+      const moteDato = meeting.datetime
+        ? new Date(meeting.datetime).toLocaleDateString('nb-NO', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Oslo' })
+        : '';
+      const task = {
+        id: uuidv4(),
+        title,
+        description: `Aksjonspunkt fra ${MOTE_TYPE_LABEL[meeting.type]} «${meeting.title}»${moteDato ? ` (${moteDato})` : ''}.`,
+        status: 'inbox',
+        priority: [1, 2, 3].includes(body.priority) ? body.priority : 2,
+        assigneeId: body.assigneeId ? String(body.assigneeId) : null,
+        dueDate: /^\d{4}-\d{2}-\d{2}$/.test(String(body.dueDate || '')) ? body.dueDate : null,
+        labels: ['møte'],
+        subtasks: [], followers: [], attachments: [], archived: false,
+        recurrence: null,
+        meetingId: meeting.id,
+        comments: [],
+        activity: [{ at: naa, actor, text: `Opprettet som aksjonspunkt fra møtet «${meeting.title}»` }],
+        createdAt: naa, updatedAt: naa, completedAt: null,
+      };
+      let emailed = false;
+      if (task.assigneeId && body.notify !== false) {
+        const member = await db.collection('admin_users').findOne({ id: task.assigneeId });
+        emailed = await taskEpost({ member, task, heading: 'Nytt aksjonspunkt fra møte', intro: `${actor} ga deg et aksjonspunkt fra møtet «${meeting.title}».` });
+        if (emailed) task.activity.push({ at: naa, actor: 'System', text: `E-postvarsel sendt` });
+      }
+      await db.collection('tasks').insertOne({ ...task });
+      await db.collection('meetings').updateOne({ id: meeting.id }, { $push: { taskIds: task.id }, $set: { updatedAt: naa } });
+      return cors(NextResponse.json({ ok: true, task, emailed }));
+    }
+
+    // Send referat + vedtak til alle deltakere med e-post
+    if (path[0] === 'admin' && path[1] === 'meetings' && path.length === 4 && path[3] === 'send-referat' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const meeting = await db.collection('meetings').findOne({ id: path[2] }, { projection: { _id: 0 } });
+      if (!meeting) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
+      if (!String(meeting.referat || '').trim() && !(meeting.vedtak || []).length) {
+        return cors(NextResponse.json({ ok: false, error: 'Skriv referat eller vedtak først' }, { status: 400 }));
+      }
+      const folk = await db.collection('admin_users').find({ id: { $in: meeting.attendees || [] } }).toArray();
+      const medEpost = folk.filter((p) => p.email);
+      if (!medEpost.length) return cors(NextResponse.json({ ok: false, error: 'Ingen deltakere med e-post' }, { status: 400 }));
+      const vedtakHtml = (meeting.vedtak || []).length
+        ? `<p style="margin:18px 0 6px;color:#8b5cf6;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em">Vedtak</p><ol style="margin:0;padding-left:18px;color:#111;font-size:13.5px;line-height:1.7;font-weight:600">${meeting.vedtak.map((v) => `<li>${taskEsc(v.text)}</li>`).join('')}</ol>`
+        : '';
+      const referatHtml = String(meeting.referat || '').trim()
+        ? `<p style="margin:18px 0 6px;color:#8b5cf6;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em">Referat</p><p style="margin:0;color:#444;font-size:13.5px;line-height:1.6;white-space:pre-wrap">${taskEsc(String(meeting.referat).slice(0, 8000))}</p>`
+        : '';
+      let sendt = 0;
+      for (const p of medEpost) {
+        const ok = await moteEpost({ member: p, meeting, heading: 'Møtereferat', intro: `Referat fra ${MOTE_TYPE_LABEL[meeting.type].toLowerCase()}.`, ekstraHtml: referatHtml + vedtakHtml, skjulAgenda: true });
+        if (ok) sendt++;
+      }
+      const naa = new Date().toISOString();
+      await db.collection('meetings').updateOne({ id: meeting.id }, { $set: { updatedAt: naa, referatSendtAt: naa } });
+      return cors(NextResponse.json({ ok: true, sendt }));
+    }
+
+    if (path[0] === 'admin' && path[1] === 'meetings' && path.length === 3 && method === 'DELETE') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const r = await db.collection('meetings').deleteOne({ id: path[2] });
+      if (!r.deletedCount) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
+      // Koblede saker beholdes — de lever sitt eget liv på sakstavlen
       return cors(NextResponse.json({ ok: true }));
     }
 

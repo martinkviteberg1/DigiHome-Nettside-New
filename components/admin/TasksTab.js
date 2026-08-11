@@ -21,7 +21,7 @@ import {
   ChevronDown, AlertTriangle, Pencil, Check, CornerDownLeft, History,
   ClipboardCheck, UserPlus, Repeat, Paperclip, Archive, ArchiveRestore,
   Download, KeyRound, Circle, Table2, CalendarRange, ArrowUpDown, User,
-  MoreHorizontal,
+  MoreHorizontal, Send,
 } from 'lucide-react';
 
 const VISNINGER = [
@@ -274,6 +274,7 @@ export default function TasksTab({ apiKey, user, onStats }) {
   const [dragId, setDragId] = useState(null);
   const [hoverKol, setHoverKol] = useState(null);
   const [fokusId, setFokusId] = useState(null);
+  const [valgteIds, setValgteIds] = useState([]);
   const [sortKey, setSortKey] = useState('due');
   const [sortDir, setSortDir] = useState(1);
   const [toast, setToast] = useState(null);
@@ -375,6 +376,30 @@ export default function TasksTab({ apiKey, user, onStats }) {
 
   const medlem = useCallback((id) => members.find((m) => m.id === id) || null, [members]);
 
+  // ⌘K-paletten fjernstyrer Saker via window-events (dispatches fra admin-siden)
+  useEffect(() => {
+    const onCmd = (e) => {
+      const d = (e && e.detail) || {};
+      if (d.do === 'ny') setNyOpen(true);
+      else if (d.do === 'mine' && minId) toggleMine();
+      else if (d.do === 'personer') setPersonerOpen(true);
+      else if (d.do === 'view' && d.view) setView(d.view);
+    };
+    window.addEventListener('dh:saker', onCmd);
+    return () => window.removeEventListener('dh:saker', onCmd);
+  }, [minId, toggleMine]);
+
+  // Stille synk: hold tavlen fersk når flere jobber samtidig.
+  // Hopper over midt i drag og mens en angre-sletting venter.
+  useEffect(() => {
+    const iv = window.setInterval(() => {
+      if (document.visibilityState !== 'visible') return;
+      if (dragId || pendingSlett.current) return;
+      last();
+    }, 30000);
+    return () => window.clearInterval(iv);
+  }, [last, dragId]);
+
   // --- CRUD (optimistisk der det er trygt) ---
   const oppdater = useCallback(async (id, patch, { stille = false } = {}) => {
     setTasks((prev) => {
@@ -421,19 +446,75 @@ export default function TasksTab({ apiKey, user, onStats }) {
     return j.task;
   }, [api, actor, meldStats, today, visToast]);
 
-  const slett = useCallback(async (id) => {
-    if (!window.confirm('Slette saken permanent?')) return;
+  // --- Sletting med Angre (Linear-style: ingen bekreftelsesdialog) ---
+  // Saken fjernes umiddelbart fra UI; selve DELETE utsettes 6 s slik at
+  // «Angre» i toasten kan hente den tilbake uten datatap.
+  const pendingSlett = useRef(null);
+
+  const utforPendingSlett = useCallback(() => {
+    const p = pendingSlett.current;
+    if (!p) return;
+    window.clearTimeout(p.timer);
+    pendingSlett.current = null;
+    p.tasks.forEach((t) => { api(`tasks/${t.id}`, { method: 'DELETE' }).catch(() => {}); });
+  }, [api]);
+
+  const angreSlett = useCallback(() => {
+    const p = pendingSlett.current;
+    if (!p) return;
+    window.clearTimeout(p.timer);
+    pendingSlett.current = null;
+    const aktive = p.tasks.filter((t) => !t.archived);
+    const arkiverte = p.tasks.filter((t) => t.archived);
+    if (aktive.length) setTasks((prev) => { const neste = [...aktive, ...prev]; meldStats(neste, today); return neste; });
+    if (arkiverte.length) setArkivTasks((prev) => [...arkiverte, ...prev]);
+    visToast(p.tasks.length === 1 ? 'Saken er gjenopprettet' : 'Sakene er gjenopprettet');
+  }, [meldStats, today, visToast]);
+
+  const slettMedAngre = useCallback((ids) => {
+    utforPendingSlett(); // maks én angre-buffer om gangen
+    const idSet = new Set(ids);
+    const alle = [
+      ...tasksRef.current.filter((t) => idSet.has(t.id)),
+      ...arkivRef.current.filter((t) => idSet.has(t.id)),
+    ];
+    if (!alle.length) return;
     setValgtId(null);
-    setTasks((prev) => {
-      const neste = prev.filter((t) => t.id !== id);
-      meldStats(neste, today);
-      return neste;
+    setTasks((prev) => { const neste = prev.filter((t) => !idSet.has(t.id)); meldStats(neste, today); return neste; });
+    setArkivTasks((prev) => prev.filter((t) => !idSet.has(t.id)));
+    pendingSlett.current = { tasks: alle, timer: window.setTimeout(utforPendingSlett, 6000) };
+    visToast(
+      alle.length === 1 ? 'Sak slettet' : `${alle.length} saker slettet`,
+      'ok',
+      { label: 'Angre', onClick: angreSlett },
+    );
+  }, [angreSlett, meldStats, today, utforPendingSlett, visToast]);
+
+  const slett = useCallback((id) => slettMedAngre([id]), [slettMedAngre]);
+
+  // --- Multi-select: bulk-endring og markering ---
+  const toggleValg = useCallback((id) => {
+    setValgteIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  }, []);
+
+  const bulkPatch = useCallback((patch) => {
+    const ids = [...valgteIds];
+    setValgteIds([]);
+    // notify:false — bulk-operasjoner skal ikke utløse e-postregn
+    ids.forEach((id) => oppdater(id, { ...patch, notify: false }, { stille: true }));
+    visToast(`${ids.length} ${ids.length === 1 ? 'sak' : 'saker'} oppdatert`);
+  }, [valgteIds, oppdater, visToast]);
+
+  // Utfør ventende sletting hvis komponenten demonteres midt i angrefristen
+  useEffect(() => () => {
+    const p = pendingSlett.current;
+    if (!p) return;
+    window.clearTimeout(p.timer);
+    pendingSlett.current = null;
+    p.tasks.forEach((t) => {
+      try { fetch(`/api/admin/tasks/${t.id}?key=${encodeURIComponent(apiKey)}`, { method: 'DELETE', keepalive: true }); } catch (e) {}
     });
-    try {
-      await api(`tasks/${id}`, { method: 'DELETE' });
-      visToast('Sak slettet');
-    } catch (e) { last(); }
-  }, [api, last, meldStats, today, visToast]);
+  }, [apiKey]);
 
   const kommenter = useCallback(async (id, text) => {
     const r = await api(`tasks/${id}/comments`, {
@@ -475,14 +556,7 @@ export default function TasksTab({ apiKey, user, onStats }) {
     } catch (e) { visToast(e.message, 'feil'); }
   }, [api, actor, last, visToast]);
 
-  const slettFraArkiv = useCallback(async (id) => {
-    if (!window.confirm('Slette saken permanent? Dette kan ikke angres.')) return;
-    try {
-      await api(`tasks/${id}`, { method: 'DELETE' });
-      setArkivTasks((prev) => prev.filter((t) => t.id !== id));
-      visToast('Sak slettet permanent');
-    } catch (e) { visToast('Kunne ikke slette', 'feil'); }
-  }, [api, visToast]);
+  const slettFraArkiv = useCallback((id) => slettMedAngre([id]), [slettMedAngre]);
 
   // --- Filtrering ---
   const filtrert = useMemo(() => {
@@ -566,20 +640,47 @@ export default function TasksTab({ apiKey, user, onStats }) {
       const mål = e.target;
       if (mål && ['INPUT', 'TEXTAREA', 'SELECT'].includes(mål.tagName)) return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
-      if (!['ArrowDown', 'ArrowUp', 'j', 'k', 'Enter', 'Escape'].includes(e.key)) return;
-      if (e.key === 'Escape') { setFokusId(null); return; }
+      const k = e.key.toLowerCase();
+      if (!['arrowdown', 'arrowup', 'j', 'k', 'enter', 'escape', 'x'].includes(k)) return;
+      if (k === 'escape') {
+        // Esc rydder markeringen først, deretter fokus
+        setValgteIds((prev) => {
+          if (prev.length) return [];
+          setFokusId(null);
+          return prev;
+        });
+        return;
+      }
+      if (k === 'x') {
+        if (fokusId) {
+          e.preventDefault();
+          setValgteIds((prev) => (prev.includes(fokusId) ? prev.filter((x) => x !== fokusId) : [...prev, fokusId]));
+        }
+        return;
+      }
       if (!flatListe.length) return;
       const idx = flatListe.findIndex((x) => x.id === fokusId);
-      if (e.key === 'Enter') {
+      if (k === 'enter') {
         if (idx >= 0) { e.preventDefault(); setValgtId(flatListe[idx].id); }
         return;
       }
       e.preventDefault();
-      const frem = e.key === 'ArrowDown' || e.key === 'j';
+      const frem = k === 'arrowdown' || k === 'j';
       const neste = frem
         ? flatListe[Math.min(idx + 1, flatListe.length - 1)]
         : flatListe[Math.max(idx - 1, 0)];
-      if (neste) setFokusId(neste.id);
+      if (neste) {
+        setFokusId(neste.id);
+        // Shift + navigasjon utvider markeringen (Linear-style)
+        if (e.shiftKey) {
+          setValgteIds((prev) => {
+            const s = new Set(prev);
+            if (fokusId) s.add(fokusId);
+            s.add(neste.id);
+            return [...s];
+          });
+        }
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -828,8 +929,8 @@ export default function TasksTab({ apiKey, user, onStats }) {
                   {liste.map((t, i) => (
                     <SakKort
                       key={t.id} t={t} today={today} member={medlem(t.assigneeId)}
-                      dras={dragId === t.id} fokus={fokusId === t.id} index={i}
-                      onClick={() => setValgtId(t.id)}
+                      dras={dragId === t.id} fokus={fokusId === t.id} valgt={valgteIds.includes(t.id)} index={i}
+                      onClick={(e) => { if (e && (e.metaKey || e.ctrlKey)) { toggleValg(t.id); } else { setValgtId(t.id); } }}
                       onDragStart={() => setDragId(t.id)}
                       onDragEnd={() => setDragId(null)}
                       onHurtig={(patch) => oppdater(t.id, patch)}
@@ -876,8 +977,8 @@ export default function TasksTab({ apiKey, user, onStats }) {
                   return (
                     <button
                       key={t.id}
-                      onClick={() => setValgtId(t.id)}
-                      className={`flex w-full items-center gap-2.5 border-b border-black/[0.04] px-4 py-3 text-left transition-colors hover:bg-[#faf8fd] active:bg-[#f6f2fc] sm:gap-3 sm:py-2.5 ${fokusId === t.id ? 'bg-[#f4f0fb] ring-2 ring-inset ring-[#8b5cf6]/40' : ''}`}
+                      onClick={(e) => { if (e.metaKey || e.ctrlKey) { toggleValg(t.id); } else { setValgtId(t.id); } }}
+                      className={`flex w-full items-center gap-2.5 border-b border-black/[0.04] px-4 py-3 text-left transition-colors hover:bg-[#faf8fd] active:bg-[#f6f2fc] sm:gap-3 sm:py-2.5 ${valgteIds.includes(t.id) || fokusId === t.id ? 'bg-[#f4f0fb] ring-2 ring-inset ring-[#8b5cf6]/40' : ''}`}
                       data-testid={`task-row-${t.id}`}
                       data-fokus-id={t.id}
                     >
@@ -923,10 +1024,10 @@ export default function TasksTab({ apiKey, user, onStats }) {
                 return (
                   <tr
                     key={t.id}
-                    onClick={() => setValgtId(t.id)}
+                    onClick={(e) => { if (e.metaKey || e.ctrlKey) { toggleValg(t.id); } else { setValgtId(t.id); } }}
                     data-testid={`table-row-${t.id}`}
                     data-fokus-id={t.id}
-                    className={`cursor-pointer border-b border-black/[0.04] transition-colors last:border-0 hover:bg-[#faf8fd] ${fokusId === t.id ? 'bg-[#f4f0fb]' : ''}`}
+                    className={`cursor-pointer border-b border-black/[0.04] transition-colors last:border-0 hover:bg-[#faf8fd] ${valgteIds.includes(t.id) ? 'bg-[#f4f0fb]' : fokusId === t.id ? 'bg-[#f4f0fb]' : ''}`}
                   >
                     <td className="px-4 py-2.5"><PriIkon p={t.priority} /></td>
                     <td className="max-w-0 px-4 py-2.5">
@@ -1055,6 +1156,8 @@ export default function TasksTab({ apiKey, user, onStats }) {
           <span className="flex items-center gap-1.5"><Kbd>↵</Kbd> åpne sak</span>
           <span className="flex items-center gap-1.5"><Kbd>N</Kbd> ny sak</span>
           <span className="flex items-center gap-1.5"><Kbd>M</Kbd> mine saker</span>
+          <span className="flex items-center gap-1.5"><Kbd>X</Kbd> marker</span>
+          <span className="flex items-center gap-1.5"><Kbd>⇧↑↓</Kbd> utvid markering</span>
           <span className="flex items-center gap-1.5"><Kbd>1–4</Kbd> status i åpen sak</span>
           <span className="flex items-center gap-1.5"><Kbd>P</Kbd> prioritet i åpen sak</span>
           <span className="flex items-center gap-1.5"><Kbd>esc</Kbd> lukk</span>
@@ -1104,6 +1207,38 @@ export default function TasksTab({ apiKey, user, onStats }) {
         />
       )}
 
+      {/* ═══ Bulk-handlinger — vises når saker er markert (X / Cmd-klikk / Shift+piler) ═══ */}
+      {valgteIds.length > 0 && (
+        <div
+          className="dh-pop fixed bottom-24 left-1/2 z-[118] flex -translate-x-1/2 items-center gap-2 rounded-2xl border border-black/[0.08] bg-white py-2 pl-2.5 pr-1.5 shadow-[0_16px_48px_rgba(0,0,0,0.2)] lg:bottom-6"
+          data-testid="bulk-bar"
+        >
+          <span className="rounded-lg bg-[#f4f0fb] px-2 py-1 text-[12px] font-bold tabular-nums text-[#6d28d9]">{valgteIds.length} valgt</span>
+          <Meny
+            compact oppover value="" placeholder="Sett status" menyBredde={170} testid="bulk-status"
+            options={STATUSER.map((s) => ({ v: s.k, l: s.l, dot: s.farge }))}
+            onChange={(v) => bulkPatch({ status: v })}
+            className="w-[126px]"
+          />
+          <Meny
+            compact oppover value="" placeholder="Tildel" menyBredde={190} testid="bulk-assignee"
+            options={[{ v: '__ingen', l: 'Ingen ansvarlig', icon: User }, ...members.map((m) => ({ v: m.id, l: m.name, avatar: m }))]}
+            onChange={(v) => bulkPatch({ assigneeId: v === '__ingen' ? null : v })}
+            className="w-[104px]"
+          />
+          <button
+            onClick={() => { const ids = [...valgteIds]; setValgteIds([]); slettMedAngre(ids); }}
+            data-testid="bulk-delete"
+            className="flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-[12.5px] font-semibold text-rose-600 transition-colors hover:bg-rose-50"
+          >
+            <Trash2 className="h-3.5 w-3.5" /> Slett
+          </button>
+          <button onClick={() => setValgteIds([])} title="Avbryt markering (Esc)" className="rounded-lg p-1.5 text-[#999] transition-colors hover:bg-[#f3f2f0]">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
       {/* Toast — over FAB-en på mobil */}
       {toast && (
         <div
@@ -1114,6 +1249,15 @@ export default function TasksTab({ apiKey, user, onStats }) {
             ? <AlertTriangle className="h-4 w-4 shrink-0" />
             : <Check className="h-4 w-4 shrink-0 text-emerald-400" />}
           {toast.msg}
+          {toast.handling && (
+            <button
+              onClick={toast.handling.onClick}
+              data-testid="toast-action"
+              className="ml-1 rounded-full bg-white/15 px-2.5 py-1 text-[12px] font-bold text-white transition-colors hover:bg-white/25"
+            >
+              {toast.handling.label}
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -1193,7 +1337,7 @@ function TidslinjeRad({ t, member, fokus, onClick }) {
   );
 }
 
-function SakKort({ t, today, member, dras, fokus, index = 0, onClick, onDragStart, onDragEnd, onHurtig, onSlett }) {
+function SakKort({ t, today, member, dras, fokus, valgt, index = 0, onClick, onDragStart, onDragEnd, onHurtig, onSlett }) {
   const [meny, setMeny] = useState(false);
   const menyRef = useRef(null);
 
@@ -1216,8 +1360,13 @@ function SakKort({ t, today, member, dras, fokus, index = 0, onClick, onDragStar
       data-testid={`task-card-${t.id}`}
       data-fokus-id={t.id}
       style={{ animationDelay: `${Math.min(index * 28, 280)}ms` }}
-      className={`dh-kort-inn group relative cursor-pointer select-none rounded-xl bg-white p-3 shadow-[0_2px_10px_rgba(0,0,0,0.05)] transition-all touch-manipulation hover:-translate-y-[1px] hover:shadow-[0_6px_18px_rgba(0,0,0,0.09)] active:scale-[0.98] ${dras ? 'opacity-50 ring-2 ring-[#cf97fc]' : ''} ${fokus ? 'ring-2 ring-[#8b5cf6]/60 shadow-[0_6px_20px_rgba(139,92,246,0.18)]' : ''}`}
+      className={`dh-kort-inn group relative cursor-pointer select-none rounded-xl bg-white p-3 shadow-[0_2px_10px_rgba(0,0,0,0.05)] transition-all touch-manipulation hover:-translate-y-[1px] hover:shadow-[0_6px_18px_rgba(0,0,0,0.09)] active:scale-[0.98] ${dras ? 'opacity-50 ring-2 ring-[#cf97fc]' : ''} ${valgt ? 'ring-2 ring-[#8b5cf6] bg-[#fbfaff]' : fokus ? 'ring-2 ring-[#8b5cf6]/60 shadow-[0_6px_20px_rgba(139,92,246,0.18)]' : ''}`}
     >
+      {valgt && (
+        <span className="absolute -left-1.5 -top-1.5 z-20 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-[#8b5cf6] text-white shadow-md" data-testid={`card-selected-${t.id}`}>
+          <Check className="h-3 w-3" strokeWidth={3} />
+        </span>
+      )}
       {/* Hurtighandlinger — synlige ved hover (desktop) */}
       {onHurtig && (
         <div
@@ -2090,6 +2239,8 @@ function PersonerModal({ api, members, setMembers, erBruker, onClose, visToast }
   const [epost, setEpost] = useState('');
   const [rolle, setRolle] = useState('bruker');
   const [passord, setPassord] = useState('');
+  const [inviter, setInviter] = useState(true); // velkomst-e-post — brukeren velger eget passord
+  const [inviterer, setInviterer] = useState(null); // person-id under (re)utsending
   const [lagrer, setLagrer] = useState(false);
   const [redigerId, setRedigerId] = useState(null);
   const [red, setRed] = useState({ name: '', email: '', role: 'bruker', password: '' });
@@ -2100,15 +2251,35 @@ function PersonerModal({ api, members, setMembers, erBruker, onClose, visToast }
     try {
       const r = await api('users', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: navn.trim(), email: epost.trim(), role: rolle, password: passord }),
+        body: JSON.stringify({
+          name: navn.trim(), email: epost.trim(), role: rolle, password: passord,
+          invite: inviter && !!epost.trim() && !passord,
+        }),
       });
       const j = await r.json();
       if (!j.ok) throw new Error(j.error || 'Kunne ikke legge til');
       setMembers((prev) => [...prev, j.member]);
       setNavn(''); setEpost(''); setPassord(''); setRolle('bruker');
-      visToast(j.member.harPassord ? `${j.member.name} lagt til — kan nå logge inn` : `${j.member.name} lagt til`);
+      visToast(j.invitert
+        ? `Invitasjon sendt til ${j.member.email} — de velger eget passord`
+        : j.member.harPassord ? `${j.member.name} lagt til — kan nå logge inn` : `${j.member.name} lagt til`);
     } catch (e) { visToast(e.message, 'feil'); }
     setLagrer(false);
+  };
+
+  // (Re)send velkomst-e-post til person med e-post men uten aktivert konto.
+  const sendInvitasjon = async (m) => {
+    if (inviterer) return;
+    setInviterer(m.id);
+    try {
+      const r = await api(`users/${m.id}/invite`, { method: 'POST' });
+      const j = await r.json();
+      if (!j.ok) throw new Error(j.error || 'Kunne ikke sende invitasjon');
+      if (j.member) setMembers((prev) => prev.map((x) => (x.id === m.id ? j.member : x)));
+      if (j.invitert) visToast(`Invitasjon sendt til ${m.email}`);
+      else visToast('Invitasjonen ble ikke sendt — e-post er ikke konfigurert', 'feil');
+    } catch (e) { visToast(e.message, 'feil'); }
+    setInviterer(null);
   };
 
   const lagreEndring = async (id) => {
@@ -2209,11 +2380,24 @@ function PersonerModal({ api, members, setMembers, erBruker, onClose, visToast }
                     {m.harPassord && (
                       <span title="Har passord — kan logge inn" className="shrink-0 text-emerald-500"><KeyRound className="w-3.5 h-3.5" /></span>
                     )}
+                    {!m.harPassord && m.invitedAt && (
+                      <span title="Invitasjon sendt — venter på at brukeren velger passord" className="shrink-0 rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-600">Invitert</span>
+                    )}
                   </div>
                   <p className="truncate text-[12px] text-[#999]">{m.email || 'Ingen e-post — får ikke varsler'}{m.harPassord ? ' · kan logge inn' : ''}</p>
                 </div>
                 {!erBruker && (
                   <>
+                    {m.email && !m.harPassord && (
+                      <button
+                        onClick={() => sendInvitasjon(m)}
+                        title={m.invitedAt ? 'Send invitasjonen på nytt' : 'Send invitasjon — brukeren velger eget passord'}
+                        data-testid={`member-invite-${m.id}`}
+                        className="rounded-lg p-2 text-[#bbb] hover:bg-[#f4f0fb] hover:text-[#8b5cf6]"
+                      >
+                        {inviterer === m.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                      </button>
+                    )}
                     <button
                       onClick={() => { setRedigerId(m.id); setRed({ name: m.name, email: m.email || '', role: m.role || 'bruker', password: '' }); }}
                       data-testid={`member-edit-${m.id}`}
@@ -2262,14 +2446,25 @@ function PersonerModal({ api, members, setMembers, erBruker, onClose, visToast }
             <input
               type="password" value={passord} onChange={(e) => setPassord(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') leggTil(); }}
-              placeholder="Passord (valgfritt — gir innlogging)"
+              placeholder="Passord (valgfritt — eller bruk invitasjon)"
               autoComplete="new-password"
               data-testid="member-password-input"
               className="h-11 min-w-0 rounded-lg border border-black/[0.08] bg-white px-3 text-[14px] outline-none transition-all placeholder:text-[#bbb] hover:border-black/[0.16] focus:border-[#8b5cf6]/50 focus:ring-2 focus:ring-[#8b5cf6]/15 sm:h-10 sm:text-[13.5px]"
             />
           </div>
+          <label className={`mt-2.5 flex items-center gap-2 select-none ${!epost.trim() || passord ? 'cursor-not-allowed opacity-45' : 'cursor-pointer'}`}>
+            <input
+              type="checkbox"
+              checked={inviter && !!epost.trim() && !passord}
+              disabled={!epost.trim() || !!passord}
+              onChange={(e) => setInviter(e.target.checked)}
+              className="h-3.5 w-3.5 accent-[#8b5cf6]"
+              data-testid="member-invite-toggle"
+            />
+            <span className="text-[12px] text-[#666]">Send velkomst-e-post — brukeren aktiverer kontoen og velger eget passord</span>
+          </label>
           <div className="mt-2 flex items-center gap-2">
-            <p className="mr-auto text-[11px] text-[#b5b5b5]">Uten passord: kan stå som ansvarlig og få varsler, men ikke logge inn.</p>
+            <p className="mr-auto text-[11px] text-[#b5b5b5]">{passord ? 'Du setter passordet manuelt — ingen invitasjon sendes.' : 'Uten passord eller invitasjon: kan stå som ansvarlig og få varsler, men ikke logge inn.'}</p>
             <button
               onClick={leggTil}
               disabled={!navn.trim() || lagrer}

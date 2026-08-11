@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Radio, Activity, GitBranch, Gauge, Megaphone, Database,
   Command, Search, CornerDownLeft, LayoutTemplate, Crosshair, TrendingUp, Wallet,
   Globe, ExternalLink, PenLine, Mail, Home, History, Landmark, Wand2, Layers, UserPlus,
-  ClipboardCheck,
+  ClipboardCheck, CalendarDays, ArrowLeft, KeyRound, Check,
 } from 'lucide-react';
 import InnsiktDashboard from '@/components/admin/InnsiktDashboard';
 import KpiDashboard from '@/components/admin/KpiDashboard';
@@ -22,6 +22,7 @@ import HistoryTab from '@/components/admin/HistoryTab';
 import InvestorRoomTab from '@/components/admin/InvestorRoomTab';
 import SeoAeoTab from '@/components/admin/SeoAeoTab';
 import TasksTab from '@/components/admin/TasksTab';
+import MeetingsTab from '@/components/admin/MeetingsTab';
 
 const SESSION_KEY = 'dh_admin_session';
 const LEGACY_KEY = 'dh_admin_key';
@@ -35,6 +36,7 @@ const NAV = [
       { k: 'nokkeltall', l: 'Nøkkeltall', icon: TrendingUp, desc: 'Investorklare KPIer · CAC · LTV · konvertering' },
       { k: 'okonomi', l: 'Økonomi', icon: Wallet, desc: 'Resultat · likviditet · burn · runway' },
       { k: 'saker', l: 'Saker', icon: ClipboardCheck, badge: 'tasks', desc: 'Internt sakssystem — oppfølging, frister og ansvar' },
+      { k: 'moter', l: 'Møter', icon: CalendarDays, desc: 'Styremøter & ledermøter — agenda, referat, vedtak og aksjonspunkter' },
       { k: 'investorrom', l: 'Investor-rom', icon: Landmark, desc: 'Levende DD-rom — tilgangslenker, dokumenter & Q&A' },
       { k: 'playbook', l: 'Playbook', icon: FileText, desc: 'Marketing-strategi · konkurrentanalyse · 90-dagersplan' },
     ],
@@ -145,10 +147,6 @@ export default function AdminPage() {
   const [token, setToken] = useState('');
   const [user, setUser] = useState(null);
   const [checking, setChecking] = useState(true);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [loggingIn, setLoggingIn] = useState(false);
-  const [err, setErr] = useState('');
   const [section, setSection] = useState('innsikt');
   const [insightTab, setInsightTab] = useState('oversikt');
   const [insightStats, setInsightStats] = useState({ pending: 0 });
@@ -224,25 +222,16 @@ export default function AdminPage() {
     if (erBruker && section !== 'saker') setSection('saker');
   }, [erBruker, section]);
 
-  const doLogin = async (e) => {
-    if (e) e.preventDefault();
-    setErr(''); setLoggingIn(true);
-    try {
-      const res = await fetch('/api/admin/auth/login', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim(), password }),
-      });
-      const j = await res.json();
-      if (!res.ok || !j.ok) { setErr(j.error || 'Innlogging feilet'); setLoggingIn(false); return; }
-      setToken(j.token); setUser(j.user);
-      try { localStorage.setItem(SESSION_KEY, j.token); localStorage.setItem(LEGACY_KEY, j.token); } catch (e) {}
-    } catch (e2) { setErr('Nettverksfeil — prøv igjen'); }
-    finally { setLoggingIn(false); }
+  // Innlogging skjer i AuthSkjerm (passord, magic link, invitasjon, reset) —
+  // alle veier ender her med et gyldig sesjonstoken + brukerobjekt.
+  const onLoggedIn = (t, u) => {
+    setToken(t); setUser(u);
+    try { localStorage.setItem(SESSION_KEY, t); localStorage.setItem(LEGACY_KEY, t); } catch (e) {}
   };
 
   const logout = () => {
     try { localStorage.removeItem(SESSION_KEY); localStorage.removeItem(LEGACY_KEY); } catch (e) {}
-    setToken(''); setUser(null); setEmail(''); setPassword(''); setSection('innsikt');
+    setToken(''); setUser(null); setSection('innsikt');
   };
 
   // --- Laster sesjon ---
@@ -254,54 +243,9 @@ export default function AdminPage() {
     );
   }
 
-  // --- Innlogging ---
+  // --- Innlogging / konto-flyt ---
   if (!token) {
-    return (
-      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center px-5 relative overflow-hidden">
-        <div aria-hidden className="pointer-events-none absolute -top-40 -right-24 h-[520px] w-[520px] rounded-full" style={{ background: 'radial-gradient(circle at center, rgba(207,151,252,0.20) 0%, rgba(207,151,252,0) 70%)' }} />
-        <div aria-hidden className="pointer-events-none absolute -bottom-40 -left-24 h-[420px] w-[420px] rounded-full" style={{ background: 'radial-gradient(circle at center, rgba(207,151,252,0.12) 0%, rgba(207,151,252,0) 70%)' }} />
-        <div className="relative w-full max-w-sm">
-          <div className="flex items-center gap-2.5 mb-8">
-            <span className="h-2.5 w-2.5 rounded-full bg-[#cf97fc]" />
-            <span className="text-white text-[20px] font-bold tracking-[-0.01em]" style={{ fontFamily: 'var(--font-heading)' }}>DigiHome</span>
-            <span className="text-white/40 text-[12px] font-medium border border-white/15 rounded-full px-2 py-0.5">Admin</span>
-          </div>
-          <h1 className="text-white text-[26px] font-bold tracking-[-0.02em] leading-tight" style={{ fontFamily: 'var(--font-heading)' }}>Logg inn</h1>
-          <p className="text-white/45 text-[14px] mt-1.5">Tilgang til innsikt, leads og forretning.</p>
-
-          <form onSubmit={doLogin} className="mt-7 space-y-3">
-            <div>
-              <label className="text-white/60 text-[12px] font-semibold uppercase tracking-[0.08em]">E-post</label>
-              <input
-                type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-                autoComplete="username" placeholder="navn@digihome.no"
-                className="mt-1.5 w-full h-12 px-4 rounded-xl bg-white/[0.04] border border-white/12 text-white placeholder:text-white/25 outline-none focus:border-[#cf97fc] focus:bg-white/[0.06] text-[15px] transition-colors"
-                data-testid="admin-email-input"
-              />
-            </div>
-            <div>
-              <label className="text-white/60 text-[12px] font-semibold uppercase tracking-[0.08em]">Passord</label>
-              <input
-                type="password" value={password} onChange={(e) => setPassword(e.target.value)}
-                autoComplete="current-password" placeholder="••••••••"
-                className="mt-1.5 w-full h-12 px-4 rounded-xl bg-white/[0.04] border border-white/12 text-white placeholder:text-white/25 outline-none focus:border-[#cf97fc] focus:bg-white/[0.06] text-[15px] transition-colors"
-                data-testid="admin-password-input"
-              />
-            </div>
-            {err && <p className="text-[13px] text-rose-400 flex items-center gap-1.5"><X className="w-3.5 h-3.5" /> {err}</p>}
-            <button
-              type="submit" disabled={loggingIn}
-              data-testid="admin-login-btn"
-              className="w-full h-12 rounded-xl bg-white text-[#0a0a0a] font-semibold text-[14px] flex items-center justify-center gap-2 hover:bg-white/90 active:scale-[0.98] transition-all disabled:opacity-60"
-            >
-              {loggingIn ? <Loader2 className="w-4 h-4 animate-spin" /> : <>Logg inn <ChevronRight className="w-4 h-4" /></>}
-            </button>
-          </form>
-
-          <p className="mt-6 text-white/30 text-[12px] flex items-center gap-1.5"><ShieldCheck className="w-3.5 h-3.5" /> Kryptert sesjon · noindex · kun for DigiHome-teamet</p>
-        </div>
-      </div>
-    );
+    return <AuthSkjerm onLoggedIn={onLoggedIn} />;
   }
 
   // --- Innlogget: sidebar-shell ---
@@ -400,6 +344,15 @@ export default function AdminPage() {
   const activeInsight = INSIGHT_TABS.find((t) => t.k === insightTab) || INSIGHT_TABS[0];
   const runNavigate = (sec) => { setSection(sec); setSidebarOpen(false); setPaletteOpen(false); };
   const runInsight = (k) => { setSection('innsikt'); setInsightTab(k); setSidebarOpen(false); setPaletteOpen(false); };
+  // Sakshandlinger: bytt til Saker-seksjonen og send kommandoen dit via window-event.
+  // Liten forsinkelse ved seksjonsbytte slik at TasksTab rekker å montere lytteren.
+  const runSaker = (detail) => {
+    setPaletteOpen(false);
+    setSidebarOpen(false);
+    const varDer = section === 'saker';
+    if (!varDer) setSection('saker');
+    window.setTimeout(() => window.dispatchEvent(new CustomEvent('dh:saker', { detail })), varDer ? 0 : 420);
+  };
   const paletteCommands = [
     // Hele menyen — automatisk fra NAV-strukturen (alltid i synk med sidemenyen)
     ...synligNav.flatMap((g) => g.items.filter((it) => !it.soon).map((it) => ({
@@ -411,6 +364,14 @@ export default function AdminPage() {
         runNavigate(it.k);
       },
     }))),
+    // Sakshandlinger — direkte fra paletten (Linear-style)
+    { id: 'sak-ny', group: 'Saker', label: 'Ny sak', icon: ClipboardCheck, action: () => runSaker({ do: 'ny' }) },
+    { id: 'sak-mine', group: 'Saker', label: 'Mine saker av/på', icon: UserPlus, action: () => runSaker({ do: 'mine' }) },
+    { id: 'sak-tidslinje', group: 'Saker', label: 'Saker: Tidslinje', icon: History, action: () => runSaker({ do: 'view', view: 'tidslinje' }) },
+    { id: 'sak-arkiv', group: 'Saker', label: 'Saker: Arkiv', icon: Layers, action: () => runSaker({ do: 'view', view: 'arkiv' }) },
+    ...(erBruker ? [] : [
+      { id: 'sak-personer', group: 'Saker', label: 'Personer & kontoer', icon: Users, action: () => runSaker({ do: 'personer' }) },
+    ]),
     // Hurtighandlinger — 2026: gjør ting direkte fra paletten (kun admin)
     ...(erBruker ? [] : [
     { id: 'qa-site', group: 'Hurtighandlinger', label: 'Åpne nettsiden (ny fane)', icon: Globe, action: () => { setPaletteOpen(false); window.open('/', '_blank'); } },
@@ -470,6 +431,7 @@ export default function AdminPage() {
           {section === 'seo' && <SeoAeoTab apiKey={token} />}
           {section === 'okonomi' && <FinanceDashboard apiKey={token} />}
           {section === 'saker' && <TasksTab apiKey={token} user={user} onStats={setTaskStats} />}
+          {section === 'moter' && <MeetingsTab apiKey={token} user={user} />}
           {section === 'innsikt' && <InnsiktDashboard apiKey={token} tab={insightTab} onTabChange={setInsightTab} onStats={setInsightStats} />}
           {section === 'kunder' && <CustomersDashboard apiKey={token} />}
           {section === 'abonnementer' && <ComingSoon icon={CreditCard} title="Abonnementer" body="Oversikt over aktive avtaler, fakturering og inntekt per kunde — hentet direkte fra app-prosjektet. Kommer i neste fase." />}
@@ -629,6 +591,329 @@ function PulseStrip({ token, onJump }) {
         );
       })}
       <span className="mx-1 h-5 w-px bg-black/[0.07]" />
+    </div>
+  );
+}
+
+/* ==========================================================================
+   AuthSkjerm — innlogging + hele konto-flyten på én mørk skjerm:
+   · Passordinnlogging (som før) med «Glemt passord?»
+   · Magic link: engangslenke på e-post som logger deg rett inn
+   · Aktivering av invitasjon (?invite=…): brukeren velger EGET passord
+   · Nytt passord via reset-lenke (?reset=…)
+   Token leses fra URL ved oppstart og fjernes umiddelbart fra adressefeltet.
+   ========================================================================== */
+function AuthSkjerm({ onLoggedIn }) {
+  const [view, setView] = useState('login'); // login|glemt|magic|sendt|aktiver|reset|magiclogin|ugyldig
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [pw1, setPw1] = useState('');
+  const [pw2, setPw2] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const [urlToken, setUrlToken] = useState('');
+  const [tokenInfo, setTokenInfo] = useState(null); // { name, email, role }
+  const [sendt, setSendt] = useState(null); // { type: 'glemt'|'magic', email }
+
+  // Les invitasjons-/reset-/magic-token fra URL — én gang, og rens adressefeltet.
+  useEffect(() => {
+    let sp;
+    try { sp = new URLSearchParams(window.location.search); } catch (e) { return; }
+    const inv = sp.get('invite'); const rst = sp.get('reset'); const mag = sp.get('magic');
+    if (!inv && !rst && !mag) return;
+    try { window.history.replaceState({}, '', '/admin'); } catch (e) {}
+    if (mag) {
+      setView('magiclogin');
+      (async () => {
+        try {
+          const r = await fetch('/api/admin/auth/magic/verify', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: mag }),
+          });
+          const j = await r.json();
+          if (r.ok && j.ok) { onLoggedIn(j.token, j.user); return; }
+          setErr(j.error || 'Lenken er utløpt eller allerede brukt'); setView('ugyldig');
+        } catch (e) { setErr('Nettverksfeil — prøv igjen'); setView('ugyldig'); }
+      })();
+      return;
+    }
+    const t = inv || rst;
+    const type = inv ? 'invite' : 'reset';
+    setUrlToken(t);
+    setView(inv ? 'aktiver' : 'reset');
+    (async () => {
+      try {
+        const r = await fetch(`/api/admin/auth/token-info?token=${encodeURIComponent(t)}&type=${type}`);
+        const j = await r.json();
+        if (r.ok && j.ok) setTokenInfo(j);
+        else { setErr(j.error || 'Lenken er ugyldig eller utløpt'); setView('ugyldig'); }
+      } catch (e) { setErr('Nettverksfeil — prøv igjen'); setView('ugyldig'); }
+    })();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const doLogin = async (e) => {
+    if (e) e.preventDefault();
+    setErr(''); setBusy(true);
+    try {
+      const res = await fetch('/api/admin/auth/login', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim(), password }),
+      });
+      const j = await res.json();
+      if (!res.ok || !j.ok) { setErr(j.error || 'Innlogging feilet'); setBusy(false); return; }
+      onLoggedIn(j.token, j.user);
+    } catch (e2) { setErr('Nettverksfeil — prøv igjen'); }
+    finally { setBusy(false); }
+  };
+
+  // Glemt passord / magic link — svarer alltid ok (lekker ikke kontoeksistens).
+  const sendLenke = async (type) => {
+    const adr = email.trim();
+    if (!adr) { setErr('Fyll inn e-post'); return; }
+    setErr(''); setBusy(true);
+    try {
+      const res = await fetch(`/api/admin/auth/${type === 'glemt' ? 'glemt' : 'magic'}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: adr }),
+      });
+      const j = await res.json();
+      if (!res.ok || !j.ok) { setErr(j.error || 'Noe gikk galt — prøv igjen'); setBusy(false); return; }
+      setSendt({ type, email: adr });
+      setView('sendt');
+    } catch (e) { setErr('Nettverksfeil — prøv igjen'); }
+    finally { setBusy(false); }
+  };
+
+  // Aktivering (invitasjon) og reset deler valider-og-send-logikk.
+  const settPassord = async (endepunkt) => {
+    if (pw1.length < 8) { setErr('Passordet må ha minst 8 tegn'); return; }
+    if (pw1 !== pw2) { setErr('Passordene er ikke like'); return; }
+    setErr(''); setBusy(true);
+    try {
+      const res = await fetch(`/api/admin/auth/${endepunkt}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: urlToken, password: pw1 }),
+      });
+      const j = await res.json();
+      if (!res.ok || !j.ok) { setErr(j.error || 'Noe gikk galt — prøv igjen'); setBusy(false); return; }
+      onLoggedIn(j.token, j.user);
+    } catch (e) { setErr('Nettverksfeil — prøv igjen'); }
+    finally { setBusy(false); }
+  };
+
+  const inputCls = 'mt-1.5 w-full h-12 px-4 rounded-xl bg-white/[0.04] border border-white/12 text-white placeholder:text-white/25 outline-none focus:border-[#cf97fc] focus:bg-white/[0.06] text-[15px] transition-colors';
+  const labelCls = 'text-white/60 text-[12px] font-semibold uppercase tracking-[0.08em]';
+  const primaryBtn = 'w-full h-12 rounded-xl bg-white text-[#0a0a0a] font-semibold text-[14px] flex items-center justify-center gap-2 hover:bg-white/90 active:scale-[0.98] transition-all disabled:opacity-60';
+  const tilbake = (mot = 'login') => (
+    <button
+      type="button" onClick={() => { setErr(''); setView(mot); }}
+      data-testid="auth-back-btn"
+      className="mt-5 flex items-center gap-1.5 text-white/40 hover:text-white/70 text-[13px] transition-colors"
+    >
+      <ArrowLeft className="w-3.5 h-3.5" /> Tilbake til innlogging
+    </button>
+  );
+  const feil = err ? <p className="text-[13px] text-rose-400 flex items-center gap-1.5"><X className="w-3.5 h-3.5 shrink-0" /> {err}</p> : null;
+
+  // Passordvelger (deles av aktivering + reset)
+  const PassordFelter = (
+    <>
+      <div>
+        <label className={labelCls}>Nytt passord</label>
+        <input
+          type="password" value={pw1} onChange={(e) => setPw1(e.target.value)}
+          autoComplete="new-password" placeholder="Minst 8 tegn"
+          className={inputCls} data-testid="auth-pw1-input"
+        />
+      </div>
+      <div>
+        <label className={labelCls}>Gjenta passord</label>
+        <input
+          type="password" value={pw2} onChange={(e) => setPw2(e.target.value)}
+          autoComplete="new-password" placeholder="Samme passord én gang til"
+          className={inputCls} data-testid="auth-pw2-input"
+        />
+      </div>
+      <div className="flex items-center gap-4 text-[12px]">
+        <span className={`flex items-center gap-1.5 ${pw1.length >= 8 ? 'text-emerald-400' : 'text-white/30'}`}>
+          <Check className="w-3.5 h-3.5" /> Minst 8 tegn
+        </span>
+        <span className={`flex items-center gap-1.5 ${pw1 && pw1 === pw2 ? 'text-emerald-400' : 'text-white/30'}`}>
+          <Check className="w-3.5 h-3.5" /> Passordene er like
+        </span>
+      </div>
+    </>
+  );
+
+  let innhold = null;
+
+  if (view === 'magiclogin') {
+    innhold = (
+      <div className="py-10 flex flex-col items-center text-center">
+        <Loader2 className="w-7 h-7 animate-spin text-[#cf97fc]" />
+        <p className="mt-4 text-white/70 text-[15px] font-medium">Logger deg inn …</p>
+        <p className="mt-1 text-white/35 text-[13px]">Verifiserer engangslenken din.</p>
+      </div>
+    );
+  } else if (view === 'ugyldig') {
+    innhold = (
+      <div>
+        <h1 className="text-white text-[26px] font-bold tracking-[-0.02em] leading-tight" style={{ fontFamily: 'var(--font-heading)' }}>Lenken virker ikke lenger</h1>
+        <p className="text-white/45 text-[14px] mt-1.5">{err || 'Lenken er ugyldig, utløpt eller allerede brukt.'}</p>
+        <div className="mt-7 space-y-3">
+          <button type="button" onClick={() => { setErr(''); setView('glemt'); }} className={primaryBtn} data-testid="auth-request-new-btn">
+            Be om ny lenke <ChevronRight className="w-4 h-4" />
+          </button>
+          {tilbake()}
+        </div>
+      </div>
+    );
+  } else if (view === 'sendt') {
+    innhold = (
+      <div data-testid="auth-sent-view">
+        <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#cf97fc]/15 border border-[#cf97fc]/25">
+          <Mail className="w-5 h-5 text-[#cf97fc]" />
+        </span>
+        <h1 className="mt-5 text-white text-[26px] font-bold tracking-[-0.02em] leading-tight" style={{ fontFamily: 'var(--font-heading)' }}>Sjekk innboksen din</h1>
+        <p className="text-white/45 text-[14px] mt-1.5 leading-relaxed">
+          Hvis <span className="text-white/80 font-medium">{sendt && sendt.email}</span> har en konto hos oss, har vi nå sendt {sendt && sendt.type === 'magic' ? 'en innloggingslenke' : 'en lenke for å velge nytt passord'}.
+        </p>
+        <p className="text-white/30 text-[12.5px] mt-3">{sendt && sendt.type === 'magic' ? 'Lenken er gyldig i 15 minutter og kan bare brukes én gang.' : 'Lenken er gyldig i 1 time. Sjekk også søppelpost.'}</p>
+        {tilbake()}
+      </div>
+    );
+  } else if (view === 'glemt' || view === 'magic') {
+    const erMagic = view === 'magic';
+    innhold = (
+      <div>
+        <h1 className="text-white text-[26px] font-bold tracking-[-0.02em] leading-tight" style={{ fontFamily: 'var(--font-heading)' }}>
+          {erMagic ? 'Logg inn med e-post' : 'Glemt passord?'}
+        </h1>
+        <p className="text-white/45 text-[14px] mt-1.5">
+          {erMagic
+            ? 'Vi sender deg en engangslenke som logger deg rett inn — helt uten passord.'
+            : 'Skriv inn e-posten din, så sender vi deg en lenke for å velge nytt passord.'}
+        </p>
+        <form onSubmit={(e) => { e.preventDefault(); sendLenke(erMagic ? 'magic' : 'glemt'); }} className="mt-7 space-y-3">
+          <div>
+            <label className={labelCls}>E-post</label>
+            <input
+              type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+              autoComplete="username" placeholder="navn@digihome.no" autoFocus
+              className={inputCls} data-testid={erMagic ? 'auth-magic-email-input' : 'auth-glemt-email-input'}
+            />
+          </div>
+          {feil}
+          <button type="submit" disabled={busy} className={primaryBtn} data-testid={erMagic ? 'auth-magic-send-btn' : 'auth-glemt-send-btn'}>
+            {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <>{erMagic ? 'Send innloggingslenke' : 'Send tilbakestillingslenke'} <ChevronRight className="w-4 h-4" /></>}
+          </button>
+        </form>
+        {tilbake()}
+      </div>
+    );
+  } else if (view === 'aktiver' || view === 'reset') {
+    const erAktiver = view === 'aktiver';
+    const fornavn = tokenInfo && tokenInfo.name ? tokenInfo.name.split(' ')[0] : '';
+    innhold = (
+      <div>
+        {erAktiver && (
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-[#cf97fc]/15 border border-[#cf97fc]/25 px-3 py-1 text-[12px] font-semibold text-[#cf97fc] mb-4">
+            <Sparkles className="w-3.5 h-3.5" /> Velkommen til teamet
+          </span>
+        )}
+        <h1 className="text-white text-[26px] font-bold tracking-[-0.02em] leading-tight" style={{ fontFamily: 'var(--font-heading)' }}>
+          {erAktiver ? (fornavn ? `Hei ${fornavn} 👋` : 'Aktiver kontoen din') : 'Velg nytt passord'}
+        </h1>
+        <p className="text-white/45 text-[14px] mt-1.5">
+          {erAktiver
+            ? <>Velg ditt eget passord for <span className="text-white/80 font-medium">{tokenInfo && tokenInfo.email}</span>, så er du i gang.</>
+            : <>Sett et nytt passord for <span className="text-white/80 font-medium">{tokenInfo && tokenInfo.email}</span>.</>}
+        </p>
+        <form onSubmit={(e) => { e.preventDefault(); settPassord(erAktiver ? 'aktiver' : 'reset'); }} className="mt-7 space-y-3">
+          {PassordFelter}
+          {feil}
+          <button
+            type="submit" disabled={busy || pw1.length < 8 || pw1 !== pw2}
+            className={primaryBtn} data-testid={erAktiver ? 'auth-aktiver-btn' : 'auth-reset-btn'}
+          >
+            {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <>{erAktiver ? 'Aktiver konto og logg inn' : 'Lagre passord og logg inn'} <ChevronRight className="w-4 h-4" /></>}
+          </button>
+        </form>
+      </div>
+    );
+  } else {
+    innhold = (
+      <div>
+        <h1 className="text-white text-[26px] font-bold tracking-[-0.02em] leading-tight" style={{ fontFamily: 'var(--font-heading)' }}>Logg inn</h1>
+        <p className="text-white/45 text-[14px] mt-1.5">Tilgang til innsikt, leads og forretning.</p>
+
+        <form onSubmit={doLogin} className="mt-7 space-y-3">
+          <div>
+            <label className={labelCls}>E-post</label>
+            <input
+              type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+              autoComplete="username" placeholder="navn@digihome.no"
+              className={inputCls}
+              data-testid="admin-email-input"
+            />
+          </div>
+          <div>
+            <div className="flex items-baseline justify-between">
+              <label className={labelCls}>Passord</label>
+              <button
+                type="button" onClick={() => { setErr(''); setView('glemt'); }}
+                className="text-[12px] text-white/35 hover:text-[#cf97fc] transition-colors"
+                data-testid="auth-forgot-link"
+              >
+                Glemt passord?
+              </button>
+            </div>
+            <input
+              type="password" value={password} onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password" placeholder="••••••••"
+              className={inputCls}
+              data-testid="admin-password-input"
+            />
+          </div>
+          {feil}
+          <button
+            type="submit" disabled={busy}
+            data-testid="admin-login-btn"
+            className={primaryBtn}
+          >
+            {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <>Logg inn <ChevronRight className="w-4 h-4" /></>}
+          </button>
+        </form>
+
+        <div className="mt-5 flex items-center gap-3">
+          <span className="h-px flex-1 bg-white/[0.08]" />
+          <span className="text-white/25 text-[11px] font-semibold uppercase tracking-[0.1em]">eller</span>
+          <span className="h-px flex-1 bg-white/[0.08]" />
+        </div>
+        <button
+          type="button" onClick={() => { setErr(''); setView('magic'); }}
+          data-testid="auth-magic-link"
+          className="mt-5 w-full h-12 rounded-xl border border-white/12 bg-white/[0.03] text-white/75 font-medium text-[14px] flex items-center justify-center gap-2 hover:bg-white/[0.07] hover:text-white active:scale-[0.98] transition-all"
+        >
+          <Wand2 className="w-4 h-4 text-[#cf97fc]" /> Få innloggingslenke på e-post
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center px-5 relative overflow-hidden">
+      <div aria-hidden className="pointer-events-none absolute -top-40 -right-24 h-[520px] w-[520px] rounded-full" style={{ background: 'radial-gradient(circle at center, rgba(207,151,252,0.20) 0%, rgba(207,151,252,0) 70%)' }} />
+      <div aria-hidden className="pointer-events-none absolute -bottom-40 -left-24 h-[420px] w-[420px] rounded-full" style={{ background: 'radial-gradient(circle at center, rgba(207,151,252,0.12) 0%, rgba(207,151,252,0) 70%)' }} />
+      <div className="relative w-full max-w-sm">
+        <div className="flex items-center gap-2.5 mb-8">
+          <span className="h-2.5 w-2.5 rounded-full bg-[#cf97fc]" />
+          <span className="text-white text-[20px] font-bold tracking-[-0.01em]" style={{ fontFamily: 'var(--font-heading)' }}>DigiHome</span>
+          <span className="text-white/40 text-[12px] font-medium border border-white/15 rounded-full px-2 py-0.5">Admin</span>
+        </div>
+        {innhold}
+        <p className="mt-6 text-white/30 text-[12px] flex items-center gap-1.5"><ShieldCheck className="w-3.5 h-3.5" /> Kryptert sesjon · noindex · kun for DigiHome-teamet</p>
+      </div>
     </div>
   );
 }
