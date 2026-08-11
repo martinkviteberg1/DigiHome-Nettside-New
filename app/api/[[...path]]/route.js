@@ -2973,6 +2973,9 @@ async function handleRoute(request, { params }) {
       const title = String(body.title || '').trim().slice(0, 200);
       if (!title) return cors(NextResponse.json({ ok: false, error: 'Tittel er påkrevd' }, { status: 400 }));
       const naa = new Date().toISOString();
+      // Møter kan registreres i etterkant (fant allerede sted): klienten
+      // sender status:'avholdt', og innkalling sendes naturligvis ikke.
+      const erAvholdt = body.status === 'avholdt';
       const meeting = {
         id: uuidv4(),
         title,
@@ -2984,13 +2987,14 @@ async function handleRoute(request, { params }) {
         vedtak: [],
         taskIds: [],
         recurrence: TASK_REC.includes(body.recurrence) ? body.recurrence : null,
-        status: 'planlagt',
+        status: erAvholdt ? 'avholdt' : 'planlagt',
         createdAt: naa, updatedAt: naa,
       };
       await db.collection('meetings').insertOne({ ...meeting });
-      // Innkalling på e-post til deltakere (notify:false skrur av)
+      // Innkalling på e-post til deltakere (notify:false skrur av; aldri for
+      // møter som registreres som allerede avholdt)
       let innkalt = 0;
-      if (meeting.attendees.length && body.notify !== false) {
+      if (meeting.attendees.length && body.notify !== false && !erAvholdt) {
         const folk = await db.collection('admin_users').find({ id: { $in: meeting.attendees } }).toArray();
         for (const p of folk) {
           const ok = await moteEpost({ member: p, meeting, heading: 'Møteinnkalling', intro: `Du er kalt inn til ${MOTE_TYPE_LABEL[meeting.type].toLowerCase()}. Agenda under.` });

@@ -244,7 +244,9 @@ export default function MeetingsTab({ apiKey, user, onOpenTask }) {
     const j = await r.json();
     if (!j.ok) throw new Error(j.error || 'Kunne ikke opprette');
     setMeetings((prev) => [j.meeting, ...prev]);
-    visToast(j.innkalt ? `Møte opprettet — innkalling sendt til ${j.innkalt}` : 'Møte opprettet');
+    visToast(j.meeting && j.meeting.status === 'avholdt'
+      ? 'Møtet er registrert som avholdt — åpne det for å føre referat og vedtak'
+      : j.innkalt ? `Møte opprettet — innkalling sendt til ${j.innkalt}` : 'Møte opprettet');
     last();
   }, [api, last, visToast]);
 
@@ -397,6 +399,11 @@ export default function MeetingsTab({ apiKey, user, onOpenTask }) {
                 </span>
                 <span className="min-w-0 flex-1">
                   <TypeBadge type={m.type} />
+                  {d && d < new Date() && (
+                    <span className="ml-1.5 inline-flex items-center rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-600" title="Møtedatoen har passert — åpne møtet og marker som avholdt" data-testid={`meeting-past-chip-${m.id}`}>
+                      Dato passert
+                    </span>
+                  )}
                   <p className="mt-1.5 truncate text-[14px] font-bold text-[#0a0a0a]" style={heading}>{m.title}</p>
                   <p className="mt-0.5 flex items-center gap-1.5 text-[12px] text-[#999]">
                     <Clock className="h-3 w-3" />
@@ -520,11 +527,16 @@ function NyMoteModal({ members, onClose, onCreate }) {
   const [nyttPunkt, setNyttPunkt] = useState('');
   const [gjentakelse, setGjentakelse] = useState('');
   const [varsle, setVarsle] = useState(true);
+  const [regAvholdt, setRegAvholdt] = useState(true); // fortidsmøte → registrer som avholdt
   const [lagrer, setLagrer] = useState(false);
   const [feil, setFeil] = useState('');
   const ref = useRef(null);
 
   useEffect(() => { setTimeout(() => ref.current && ref.current.focus(), 60); }, []);
+
+  // Møter kan registreres i etterkant: er dato/tid i fortiden, tilbys
+  // «Registrer som avholdt» (på som standard) og innkalling skrus av.
+  const erFortid = !!dato && new Date(`${dato}T${tid || '10:00'}`) < new Date();
 
   const toggleDeltaker = (id) => {
     setDeltakere((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
@@ -548,7 +560,9 @@ function NyMoteModal({ members, onClose, onCreate }) {
         attendees: deltakere,
         agenda: nyttPunkt.trim() ? [...agenda, { text: nyttPunkt.trim() }] : agenda,
         recurrence: gjentakelse || null,
-        notify: varsle,
+        // Fortidsmøte: registreres som avholdt (valgfritt) og uten innkalling
+        status: erFortid && regAvholdt ? 'avholdt' : undefined,
+        notify: erFortid ? false : varsle,
       });
     } catch (e) {
       setFeil(e.message || 'Kunne ikke opprette');
@@ -643,6 +657,27 @@ function NyMoteModal({ members, onClose, onCreate }) {
           </div>
         </div>
 
+        {/* Fortidsmøte — registrer i etterkant */}
+        {erFortid && (
+          <div className="mx-5 mt-4 rounded-xl bg-amber-50 px-3.5 py-3" data-testid="new-meeting-past-notice">
+            <label className="flex cursor-pointer items-start gap-2.5 select-none">
+              <input
+                type="checkbox"
+                checked={regAvholdt}
+                onChange={(e) => setRegAvholdt(e.target.checked)}
+                className="mt-0.5 h-4 w-4 shrink-0 accent-amber-600"
+                data-testid="new-meeting-past-avholdt"
+              />
+              <span className="min-w-0">
+                <span className="block text-[13px] font-semibold text-amber-800">Datoen er i fortiden — registrer som avholdt</span>
+                <span className="mt-0.5 block text-[12px] leading-relaxed text-amber-700/80">
+                  Møtet føres rett inn i arkivet med agenda og deltakere. Referat, vedtak og aksjonspunkter kan legges til etterpå — og protokollen kan sendes ut som vanlig.
+                </span>
+              </span>
+            </label>
+          </div>
+        )}
+
         {feil && <p className="px-5 pt-3 text-[12.5px] font-medium text-rose-600">{feil}</p>}
       </div>
 
@@ -650,10 +685,16 @@ function NyMoteModal({ members, onClose, onCreate }) {
         className="flex shrink-0 items-center gap-3 border-t border-black/[0.06] px-5 py-3.5"
         style={{ paddingBottom: 'max(14px, env(safe-area-inset-bottom))' }}
       >
+        {erFortid ? (
+          <span className="flex items-center gap-1.5 text-[12px] text-[#aaa]" data-testid="new-meeting-no-invite">
+            <Mail className="h-3.5 w-3.5" /> Innkalling sendes ikke for møter som har funnet sted
+          </span>
+        ) : (
         <label className="flex cursor-pointer items-center gap-2 text-[12.5px] text-[#777]">
           <input type="checkbox" checked={varsle} onChange={(e) => setVarsle(e.target.checked)} className="h-4 w-4 accent-[#8b5cf6]" data-testid="new-meeting-notify" />
           Send innkalling på e-post
         </label>
+        )}
         <button onClick={onClose} className="ml-auto rounded-lg px-3 py-2 text-[13px] font-medium text-[#888] hover:bg-[#f3f2f0]">Avbryt</button>
         <button
           onClick={lagre}
@@ -661,7 +702,7 @@ function NyMoteModal({ members, onClose, onCreate }) {
           data-testid="new-meeting-save"
           className="flex h-10 items-center gap-1.5 rounded-lg bg-[#0a0a0a] px-4 text-[13.5px] font-semibold text-white transition-all hover:bg-black/85 active:scale-[0.97] disabled:opacity-40"
         >
-          {lagrer && <Loader2 className="w-4 h-4 animate-spin" />} Opprett møte
+          {lagrer && <Loader2 className="w-4 h-4 animate-spin" />} {erFortid && regAvholdt ? 'Registrer møte' : 'Opprett møte'}
         </button>
       </div>
     </Overlegg>
