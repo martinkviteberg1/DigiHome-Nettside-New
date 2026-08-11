@@ -4685,3 +4685,16 @@ agent_communication:
     -message: "RIK TEKST I E-POST: Test GET /api/admin/tasks/email-preview (auth + rendering). KRITISK ADVARSEL: IKKE utløs ekte e-poster — IKKE endre assigneeId på saker, IKKE post kommentarer med @mentions, IKKE kall remind-endepunkt (går til ekte adresser). Kun email-preview + lese-endepunkter. Regresjon: GET /admin/tasks og GET /admin/tasks/insights."
     -agent: "testing"
     -message: "✅ MARKDOWN-TO-EMAIL-HTML RENDERING TESTING COMPLETE (8/8 tests, 100% success rate). Tested the NEW endpoint GET /api/admin/tasks/email-preview as requested in review_request. ALL TESTS PASSED WITH NO MAJOR ISSUES. Endpoint working PERFECTLY: auth working (401 without key), markdown rendering working (h2/strong/ul/li/links with inline styles, no raw markdown symbols), XSS security working (HTML escaped), images working (internal → placeholder, external → rendered), dangerous links neutralized (no javascript:), truncation working (>1200 chars → 'forkortet'), plain excerpt working (no markdown symbols, max ~183 chars), all regression tests passed. Created backend_test_email_preview.py for comprehensive testing. Response times: <100ms per endpoint. CRITICAL: No emails sent, no data modified, followed all safety rules."
+
+frontend:
+  - task: "STATUS-ETIKETT «Innboks» → «Ny»: Ren visningsendring — intern nøkkel 'inbox' beholdt (ingen datamigrering). Endret: TasksTab.js STATUSER, SakerInnsikt.js (statusrad, legend, tooltip), route.js TASK_STATUS_LABEL (e-poster) + STATUS_L (eksport) + fallbacks, lib/protokoll.js STATUS_LABEL + fallback. Varsel-innboks-tekster bevisst IKKE endret"
+    implemented: true
+    working: true
+    file: "/app/components/admin/TasksTab.js, /app/components/admin/SakerInnsikt.js, /app/app/api/[[...path]]/route.js, /app/lib/protokoll.js"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "main"
+        -comment: "Skjermbildeverifisert: tavlekolonnen viser «Ny» (teller 2), ingen «Innboks» igjen i sakssystemet. Kompilerer uten feil."

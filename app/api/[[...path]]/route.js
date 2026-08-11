@@ -1550,7 +1550,7 @@ export async function OPTIONS() {
 // (personer som kan stå som ansvarlig — administreres av teamet selv i admin-UI-et).
 // Bevisst IKKE koblet til leads/kunder: dette er intern selskapsoppfølging (styre osv.).
 const TASK_STATUSES = ['inbox', 'doing', 'waiting', 'done'];
-const TASK_STATUS_LABEL = { inbox: 'Innboks', doing: 'Pågår', waiting: 'Venter', done: 'Ferdig' };
+const TASK_STATUS_LABEL = { inbox: 'Ny', doing: 'Pågår', waiting: 'Venter', done: 'Ferdig' };
 const TASK_PRI_LABEL = { 1: 'P1 · Kritisk', 2: 'P2 · Normal', 3: 'P3 · Lav' };
 const TASK_FARGER = ['#8B5CF6', '#0EA5E9', '#F59E0B', '#10B981', '#EF4444', '#EC4899', '#6366F1', '#14B8A6'];
 const osloIDag = () => new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Oslo' }).format(new Date());
@@ -3831,13 +3831,13 @@ async function handleRoute(request, { params }) {
       const referatHtml = String(meeting.referat || '').trim()
         ? `<p style="margin:18px 0 6px;color:#8b5cf6;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em">Referat</p><p style="margin:0;color:#444;font-size:13.5px;line-height:1.6;white-space:pre-wrap">${taskEsc(String(meeting.referat).slice(0, 8000))}</p>`
         : '';
-      const STATUS_L = { inbox: 'Innboks', doing: 'Pågår', waiting: 'Venter', done: 'Ferdig' };
+      const STATUS_L = { inbox: 'Ny', doing: 'Pågår', waiting: 'Venter', done: 'Ferdig' };
       const aksjonerHtml = aksjoner.length
         ? `<p style="margin:18px 0 6px;color:#8b5cf6;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em">Aksjonspunkter</p><ol style="margin:0;padding-left:18px;color:#333;font-size:13.5px;line-height:1.55">${aksjoner.map((t) => {
             const detaljer = [
               `Ansvarlig: ${taskEsc(t.ansvarligNavn || 'Ikke satt')}`,
               `Frist: ${t.dueDate ? taskEsc(new Date(`${String(t.dueDate).slice(0, 10)}T12:00:00Z`).toLocaleDateString('nb-NO', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Europe/Oslo' })) : 'Ingen'}`,
-              `Status: ${STATUS_L[t.status] || 'Innboks'}`,
+              `Status: ${STATUS_L[t.status] || 'Ny'}`,
             ].join(' &middot; ');
             return `<li style="margin-bottom:7px"><span style="font-weight:600;${t.status === 'done' ? 'text-decoration:line-through;color:#999' : 'color:#111'}">${taskEsc(t.title)}</span><br/><span style="font-size:11.5px;color:#8a8a8a">${detaljer}</span></li>`;
           }).join('')}</ol>`

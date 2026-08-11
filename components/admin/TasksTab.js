@@ -54,7 +54,7 @@ function fmtStr(bytes) {
 }
 
 const STATUSER = [
-  { k: 'inbox', l: 'Innboks', icon: Inbox, farge: '#8b8b8b' },
+  { k: 'inbox', l: 'Ny', icon: Inbox, farge: '#8b8b8b' },
   { k: 'doing', l: 'Pågår', icon: PlayCircle, farge: '#8b5cf6' },
   { k: 'waiting', l: 'Venter', icon: Clock, farge: '#d97706' },
   { k: 'done', l: 'Ferdig', icon: CheckCircle2, farge: '#059669' },
@@ -152,7 +152,7 @@ function piePath(cx, cy, r, pct) {
 }
 
 /* Linear-signaturen: status som progresjonssirkel.
-   Innboks = stiplet ring, Pågår = halvfylt, Venter = kvartfylt, Ferdig = fylt m/ hake. */
+   Ny = stiplet ring, Pågår = halvfylt, Venter = kvartfylt, Ferdig = fylt m/ hake. */
 function StatusIkon({ status, size = 14 }) {
   const st = STATUSER.find((s) => s.k === status) || STATUSER[0];
   const c = st.farge;

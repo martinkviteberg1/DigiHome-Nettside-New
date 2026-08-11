@@ -180,7 +180,7 @@ export default function SakerInnsikt({ api, members = [], projects = [], onOpenT
           <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#999]">Åpne saker nå</p>
           <div className="mt-3.5 space-y-3">
             {[
-              { k: 'inbox', l: 'Innboks', ikon: Inbox, v: status.inbox },
+              { k: 'inbox', l: 'Ny', ikon: Inbox, v: status.inbox },
               { k: 'doing', l: 'Pågår', ikon: PlayCircle, v: status.doing },
               { k: 'waiting', l: 'Venter', ikon: Clock, v: status.waiting },
             ].map((r) => (
@@ -222,7 +222,7 @@ export default function SakerInnsikt({ api, members = [], projects = [], onOpenT
           <div className="hidden items-center gap-3 text-[11px] font-semibold text-[#999] sm:flex">
             <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ background: FARGER.doing }} /> Pågår</span>
             <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ background: FARGER.waiting }} /> Venter</span>
-            <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ background: '#d5d2cc' }} /> Innboks</span>
+            <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ background: '#d5d2cc' }} /> Ny</span>
           </div>
         </div>
         <div className="mt-3 space-y-1">
@@ -238,7 +238,7 @@ export default function SakerInnsikt({ api, members = [], projects = [], onOpenT
                   <>
                     {p.doing > 0 && <div className="h-full" style={{ width: `${(p.doing / maksAapne) * 100}%`, background: FARGER.doing }} title={`Pågår: ${p.doing}`} />}
                     {p.waiting > 0 && <div className="h-full" style={{ width: `${(p.waiting / maksAapne) * 100}%`, background: FARGER.waiting }} title={`Venter: ${p.waiting}`} />}
-                    {p.inbox > 0 && <div className="h-full" style={{ width: `${(p.inbox / maksAapne) * 100}%`, background: '#d5d2cc' }} title={`Innboks: ${p.inbox}`} />}
+                    {p.inbox > 0 && <div className="h-full" style={{ width: `${(p.inbox / maksAapne) * 100}%`, background: '#d5d2cc' }} title={`Ny: ${p.inbox}`} />}
                   </>
                 )}
               </div>
