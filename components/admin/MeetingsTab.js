@@ -19,8 +19,8 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
   Plus, X, Loader2, Users, Trash2, CalendarDays, Clock, Check,
-  ChevronDown, Repeat, CheckCircle2, Circle, Gavel, ClipboardCheck,
-  Mail, AlertTriangle, User, ArrowRight, FileText, RotateCcw, ArrowUpRight, Archive, Eye,
+  ChevronDown, ChevronLeft, ChevronRight, Repeat, CheckCircle2, Circle, Gavel, ClipboardCheck,
+  Mail, AlertTriangle, User, ArrowRight, FileText, RotateCcw, ArrowUpRight, Archive, Eye, Orbit,
 } from 'lucide-react';
 
 const heading = { fontFamily: 'var(--font-heading)' };
@@ -46,6 +46,29 @@ const REC_VALG = [
 ];
 
 const moteType = (k) => MOTE_TYPER.find((t) => t.k === k) || MOTE_TYPER[2];
+
+/* ═══════════════ Årshjul — standard norsk styreår ═══════════════
+   Mal med anbefalte møter gjennom året (måned, type, tittel, agenda) etter
+   vanlig praksis for norske selskaper: årsregnskap → generalforsamling →
+   strategi → halvårsstatus → budsjettprosess → budsjettvedtak. Justeres
+   fritt i modalen før alt opprettes i én operasjon (server-side dedupe). */
+const AARSHJUL_MAL = [
+  { mnd: 2, type: 'styremote', title: 'Styremøte: Årsregnskap og årsberetning', agenda: ['Godkjenning av årsregnskap', 'Styrets årsberetning', 'Revisors merknader', 'Disponering av årsresultat'] },
+  { mnd: 3, type: 'styremote', title: 'Styremøte: Generalforsamling og utbytte', agenda: ['Innkalling til generalforsamling', 'Saker til generalforsamlingen', 'Forslag til utbytte'] },
+  { mnd: 4, type: 'annet', title: 'Generalforsamling', agenda: ['Godkjenning av årsregnskap og årsberetning', 'Valg av styre', 'Fastsettelse av styrehonorar', 'Innkomne forslag'] },
+  { mnd: 5, type: 'styremote', title: 'Styremøte: Strategi og marked', agenda: ['Strategigjennomgang', 'Markeds- og konkurransebilde', 'Produkt- og veikartprioriteringer'] },
+  { mnd: 6, type: 'styremote', title: 'Styremøte: Halvårsstatus', agenda: ['Økonomistatus første halvår', 'Prognose for året', 'Risikovurdering', 'Organisasjon og HMS'] },
+  { mnd: 9, type: 'styremote', title: 'Styremøte: Budsjettprosess', agenda: ['Prognose og avviksanalyse', 'Budsjettforutsetninger neste år', 'Investeringsbehov'] },
+  { mnd: 11, type: 'styremote', title: 'Styremøte: Budsjettvedtak og møteplan', agenda: ['Vedtak av budsjett neste år', 'Møteplan og årshjul neste år', 'Styrets egenevaluering'] },
+  { mnd: 12, type: 'ledermote', title: 'Ledermøte: Årsavslutning og mål', agenda: ['Oppsummering av året', 'Mål og prioriteringer neste år', 'Team og organisasjon'] },
+];
+
+// Andre tirsdag i måneden — solid standarddato for styremøter (mnd 1–12)
+function andreTirsdag(aar, mnd) {
+  const dow = new Date(Date.UTC(aar, mnd - 1, 1)).getUTCDay();
+  const dag = 1 + ((9 - dow) % 7) + 7;
+  return `${aar}-${String(mnd).padStart(2, '0')}-${String(dag).padStart(2, '0')}`;
+}
 
 function fmtMoteDato(iso) {
   if (!iso) return 'Dato ikke satt';
@@ -181,6 +204,7 @@ export default function MeetingsTab({ apiKey, user, onOpenTask }) {
   const [members, setMembers] = useState([]);
   const [laster, setLaster] = useState(true);
   const [nyOpen, setNyOpen] = useState(false);
+  const [aarshjulOpen, setAarshjulOpen] = useState(false);
   const [valgtId, setValgtId] = useState(null);
   const [visAvholdte, setVisAvholdte] = useState(false);
   const [toast, setToast] = useState(null);
@@ -256,6 +280,18 @@ export default function MeetingsTab({ apiKey, user, onOpenTask }) {
     } catch (e) { last(); }
   }, [api, last, visToast]);
 
+  // Årshjul: oppretter hele styreåret i én operasjon (server dedupes)
+  const opprettAarshjul = useCallback(async (payload) => {
+    const r = await api('meetings/aarshjul', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error || 'Kunne ikke opprette årshjulet');
+    visToast(`Årshjul klart — ${j.opprettet} møte${j.opprettet === 1 ? '' : 'r'} planlagt${j.hoppetOver ? ` (${j.hoppetOver} fantes fra før)` : ''}${j.innkalt ? ` · ${j.innkalt} innkallinger sendt` : ''}`);
+    last();
+  }, [api, last, visToast]);
+
   const valgt = useMemo(() => meetings.find((m) => m.id === valgtId) || null, [meetings, valgtId]);
   const kommende = useMemo(() => meetings.filter((m) => m.status !== 'avholdt'), [meetings]);
   const avholdte = useMemo(() => meetings.filter((m) => m.status === 'avholdt'), [meetings]);
@@ -282,15 +318,28 @@ export default function MeetingsTab({ apiKey, user, onOpenTask }) {
           </p>
         </div>
         {kanRedigere && (
-        <button
-          onClick={() => setNyOpen(true)}
-          data-testid="meetings-new-btn"
-          className="ml-auto flex h-9 shrink-0 items-center gap-1.5 rounded-lg bg-[#0a0a0a] px-3.5 text-[13px] font-semibold text-white transition-all hover:bg-black/85 active:scale-[0.97]"
-        >
-          <Plus className="w-4 h-4" /> Nytt møte
-        </button>
+        <div className="ml-auto flex shrink-0 items-center gap-2">
+          <button
+            onClick={() => setAarshjulOpen(true)}
+            data-testid="meetings-aarshjul-btn"
+            title="Planlegg hele styreåret — årsregnskap, generalforsamling, strategi, budsjett"
+            className="flex h-9 items-center gap-1.5 rounded-lg border border-black/[0.08] bg-white px-3.5 text-[13px] font-semibold text-[#555] transition-all hover:border-black/[0.16] hover:text-[#0a0a0a] active:scale-[0.97]"
+          >
+            <Orbit className="w-4 h-4 text-[#8b5cf6]" /> Årshjul
+          </button>
+          <button
+            onClick={() => setNyOpen(true)}
+            data-testid="meetings-new-btn"
+            className="flex h-9 shrink-0 items-center gap-1.5 rounded-lg bg-[#0a0a0a] px-3.5 text-[13px] font-semibold text-white transition-all hover:bg-black/85 active:scale-[0.97]"
+          >
+            <Plus className="w-4 h-4" /> Nytt møte
+          </button>
+        </div>
         )}
       </div>
+
+      {/* Årsoversikt — 12 måneder med møtene plottet inn */}
+      {meetings.length > 0 && <Aarsoversikt meetings={meetings} onOpen={setValgtId} />}
 
       {/* Tom-tilstand */}
       {!meetings.length && (
@@ -305,13 +354,22 @@ export default function MeetingsTab({ apiKey, user, onOpenTask }) {
               : 'Her vises møter du er deltaker i, og møtetyper du har fått tilgang til. Ta kontakt med en administrator hvis noe mangler.'}
           </p>
           {kanRedigere && (
-          <button
-            onClick={() => setNyOpen(true)}
-            data-testid="meetings-empty-new"
-            className="mx-auto mt-5 flex h-10 items-center gap-1.5 rounded-lg bg-[#0a0a0a] px-4 text-[13.5px] font-semibold text-white transition-all hover:bg-black/85"
-          >
-            <Plus className="w-4 h-4" /> Nytt møte
-          </button>
+          <div className="mx-auto mt-5 flex flex-wrap items-center justify-center gap-2">
+            <button
+              onClick={() => setNyOpen(true)}
+              data-testid="meetings-empty-new"
+              className="flex h-10 items-center gap-1.5 rounded-lg bg-[#0a0a0a] px-4 text-[13.5px] font-semibold text-white transition-all hover:bg-black/85"
+            >
+              <Plus className="w-4 h-4" /> Nytt møte
+            </button>
+            <button
+              onClick={() => setAarshjulOpen(true)}
+              data-testid="meetings-empty-aarshjul"
+              className="flex h-10 items-center gap-1.5 rounded-lg border border-black/[0.08] bg-white px-4 text-[13.5px] font-semibold text-[#555] transition-all hover:border-black/[0.16] hover:text-[#0a0a0a]"
+            >
+              <Orbit className="w-4 h-4 text-[#8b5cf6]" /> Planlegg årshjul
+            </button>
+          </div>
           )}
         </div>
       )}
@@ -411,6 +469,15 @@ export default function MeetingsTab({ apiKey, user, onOpenTask }) {
           members={members}
           onClose={() => setNyOpen(false)}
           onCreate={async (payload) => { await opprett(payload); setNyOpen(false); }}
+        />
+      )}
+
+      {/* Årshjul-planlegger */}
+      {aarshjulOpen && (
+        <AarshjulModal
+          members={members}
+          onClose={() => setAarshjulOpen(false)}
+          onCreate={async (payload) => { await opprettAarshjul(payload); setAarshjulOpen(false); }}
         />
       )}
 
@@ -595,6 +662,227 @@ function NyMoteModal({ members, onClose, onCreate }) {
           className="flex h-10 items-center gap-1.5 rounded-lg bg-[#0a0a0a] px-4 text-[13.5px] font-semibold text-white transition-all hover:bg-black/85 active:scale-[0.97] disabled:opacity-40"
         >
           {lagrer && <Loader2 className="w-4 h-4 animate-spin" />} Opprett møte
+        </button>
+      </div>
+    </Overlegg>
+  );
+}
+
+/* ═══════════════ Årsoversikt — 12 måneder, møtene plottet inn ═══════════════ */
+function Aarsoversikt({ meetings, onOpen }) {
+  const naa = new Date();
+  const [aar, setAar] = useState(naa.getFullYear());
+  const MND = ['Jan', 'Feb', 'Mar', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Des'];
+  const perMnd = useMemo(() => {
+    const b = Array.from({ length: 12 }, () => []);
+    for (const m of meetings) {
+      if (!m.datetime) continue;
+      const d = new Date(m.datetime);
+      if (d.getFullYear() === aar) b[d.getMonth()].push(m);
+    }
+    b.forEach((liste) => liste.sort((x, y) => String(x.datetime).localeCompare(String(y.datetime))));
+    return b;
+  }, [meetings, aar]);
+  const antall = perMnd.reduce((s, x) => s + x.length, 0);
+  return (
+    <div className="mb-5 rounded-2xl bg-white p-4 shadow-[0_2px_16px_rgba(0,0,0,0.04)]" data-testid="meetings-aarshjul-strip">
+      <div className="flex items-center gap-2">
+        <Orbit className="h-4 w-4 text-[#8b5cf6]" />
+        <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#999]">Årshjul</p>
+        {antall > 0 && <span className="text-[11px] font-bold tabular-nums text-[#ccc]">{antall} møte{antall === 1 ? '' : 'r'}</span>}
+        <div className="ml-auto flex items-center gap-0.5">
+          <button onClick={() => setAar((a) => a - 1)} aria-label="Forrige år" data-testid="aarshjul-prev" className="rounded-lg p-1.5 text-[#999] transition-colors hover:bg-[#f3f2f0] hover:text-[#555]"><ChevronLeft className="h-4 w-4" /></button>
+          <span className="w-12 text-center text-[13.5px] font-bold tabular-nums text-[#0a0a0a]" style={heading} data-testid="aarshjul-year">{aar}</span>
+          <button onClick={() => setAar((a) => a + 1)} aria-label="Neste år" data-testid="aarshjul-next" className="rounded-lg p-1.5 text-[#999] transition-colors hover:bg-[#f3f2f0] hover:text-[#555]"><ChevronRight className="h-4 w-4" /></button>
+        </div>
+      </div>
+      {antall === 0 ? (
+        <p className="mt-3 text-[12.5px] text-[#bbb]">Ingen møter i {aar} — bytt år, eller planlegg året med Årshjul-knappen.</p>
+      ) : (
+        <div className="mt-3 grid grid-cols-3 gap-1.5 sm:grid-cols-6 xl:grid-cols-12">
+          {MND.map((navn, i) => {
+            const erNaa = aar === naa.getFullYear() && i === naa.getMonth();
+            return (
+              <div key={navn} className={`min-h-[64px] rounded-xl p-1.5 ${erNaa ? 'bg-[#f4f0fb] ring-1 ring-[#8b5cf6]/20' : 'bg-[#fafaf8]'}`}>
+                <p className={`px-1 text-[10px] font-bold uppercase tracking-wide ${erNaa ? 'text-[#8b5cf6]' : 'text-[#b5b5b5]'}`}>{navn}</p>
+                <div className="mt-1 space-y-1">
+                  {perMnd[i].map((m) => {
+                    const t = moteType(m.type);
+                    const dag = new Date(m.datetime).getDate();
+                    const kortTittel = m.title.replace(/^(Styremøte|Ledermøte|Møte):\s*/i, '');
+                    return (
+                      <button
+                        key={m.id}
+                        onClick={() => onOpen(m.id)}
+                        title={`${m.title} — ${fmtKort(m.datetime)}`}
+                        data-testid={`aarshjul-mote-${m.id}`}
+                        className="flex w-full items-center gap-1 rounded-md bg-white px-1.5 py-1 text-left ring-1 ring-black/[0.05] transition-all hover:shadow-sm hover:ring-[#8b5cf6]/35"
+                      >
+                        <span className="text-[10px] font-bold tabular-nums" style={{ color: t.farge }}>{dag}.</span>
+                        <span className={`truncate text-[10px] font-medium ${m.status === 'avholdt' ? 'text-[#b5b5b5] line-through' : 'text-[#555]'}`}>{kortTittel}</span>
+                        {m.status === 'avholdt' && <CheckCircle2 className="ml-auto h-2.5 w-2.5 shrink-0 text-emerald-500" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ═══════════════ Årshjul-planlegger — hele styreåret i én operasjon ═══════════════ */
+function AarshjulModal({ members, onClose, onCreate }) {
+  const naa = new Date();
+  // Fra oktober er det naturlig å planlegge neste år
+  const [aar, setAar] = useState(naa.getFullYear() + (naa.getMonth() >= 9 ? 1 : 0));
+  const [rader, setRader] = useState(() => AARSHJUL_MAL.map((r) => ({ ...r, valgt: true, dato: '', tid: '10:00' })));
+  const [deltakere, setDeltakere] = useState([]);
+  const [varsle, setVarsle] = useState(false);
+  const [lagrer, setLagrer] = useState(false);
+  const [feil, setFeil] = useState('');
+
+  // Datoene følger valgt år (andre tirsdag i måneden) — kan justeres per rad
+  useEffect(() => {
+    setRader((prev) => prev.map((r) => ({ ...r, dato: andreTirsdag(aar, r.mnd) })));
+  }, [aar]);
+
+  const toggleDeltaker = (id) => {
+    setDeltakere((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  };
+
+  const antallValgt = rader.filter((r) => r.valgt && r.title.trim() && r.dato).length;
+
+  const lagre = async () => {
+    if (!antallValgt || lagrer) return;
+    setLagrer(true); setFeil('');
+    try {
+      await onCreate({
+        meetings: rader
+          .filter((r) => r.valgt && r.title.trim() && r.dato)
+          .map((r) => ({
+            title: r.title.trim(),
+            type: r.type,
+            datetime: `${r.dato}T${r.tid || '10:00'}`,
+            agenda: r.agenda.map((text) => ({ text })),
+            attendees: deltakere,
+          })),
+        notify: varsle,
+      });
+    } catch (e) {
+      setFeil(e.message || 'Kunne ikke opprette årshjulet');
+      setLagrer(false);
+    }
+  };
+
+  return (
+    <Overlegg onClose={onClose} variant="panel" testid="aarshjul-modal">
+      <div className="flex shrink-0 items-center gap-2.5 border-b border-black/[0.06] px-5 py-3.5">
+        <Orbit className="h-[18px] w-[18px] shrink-0 text-[#8b5cf6]" />
+        <h3 className="text-[16px] font-bold text-[#0a0a0a]" style={heading}>Planlegg årshjulet</h3>
+        <div className="ml-auto flex items-center gap-0.5">
+          <button onClick={() => setAar((a) => a - 1)} aria-label="Forrige år" data-testid="aarshjul-modal-prev" className="rounded-lg p-1.5 text-[#999] transition-colors hover:bg-[#f3f2f0] hover:text-[#555]"><ChevronLeft className="h-4 w-4" /></button>
+          <span className="w-12 text-center text-[14px] font-bold tabular-nums text-[#0a0a0a]" style={heading} data-testid="aarshjul-modal-year">{aar}</span>
+          <button onClick={() => setAar((a) => a + 1)} aria-label="Neste år" data-testid="aarshjul-modal-next" className="rounded-lg p-1.5 text-[#999] transition-colors hover:bg-[#f3f2f0] hover:text-[#555]"><ChevronRight className="h-4 w-4" /></button>
+        </div>
+        <button onClick={onClose} className="rounded-lg p-2 text-[#999] hover:bg-[#f3f2f0]" data-testid="aarshjul-modal-close"><X className="w-4 h-4" /></button>
+      </div>
+
+      <div className="flex-1 overflow-y-auto overscroll-contain px-5 py-4">
+        <p className="text-[12.5px] leading-relaxed text-[#999]">
+          Standard styreår etter norsk praksis — årsregnskap, generalforsamling, strategi, halvårsstatus og budsjett.
+          Juster titler og datoer, velg bort det som ikke passer, og opprett alt i én operasjon. Møter som allerede finnes hoppes over.
+        </p>
+
+        <div className="mt-4 space-y-2">
+          {rader.map((r, i) => {
+            const t = moteType(r.type);
+            return (
+              <div
+                key={`${r.mnd}-${r.title}`}
+                data-testid={`aarshjul-rad-${i}`}
+                className={`rounded-xl border p-3 transition-all ${r.valgt ? 'border-black/[0.07] bg-white shadow-[0_1px_6px_rgba(0,0,0,0.03)]' : 'border-black/[0.05] bg-[#fafaf8] opacity-55'}`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <input
+                    type="checkbox"
+                    checked={r.valgt}
+                    onChange={(e) => setRader((prev) => prev.map((x, xi) => (xi === i ? { ...x, valgt: e.target.checked } : x)))}
+                    className="h-4 w-4 shrink-0 accent-[#8b5cf6]"
+                    data-testid={`aarshjul-valgt-${i}`}
+                  />
+                  <input
+                    value={r.title}
+                    onChange={(e) => setRader((prev) => prev.map((x, xi) => (xi === i ? { ...x, title: e.target.value } : x)))}
+                    disabled={!r.valgt}
+                    data-testid={`aarshjul-tittel-${i}`}
+                    className="min-w-0 flex-1 bg-transparent text-[13.5px] font-semibold text-[#0a0a0a] outline-none disabled:text-[#999]"
+                  />
+                  <span className="hidden shrink-0 sm:block"><TypeBadge type={r.type} /></span>
+                </div>
+                <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 pl-[26px]">
+                  <input
+                    type="date"
+                    value={r.dato}
+                    onChange={(e) => setRader((prev) => prev.map((x, xi) => (xi === i ? { ...x, dato: e.target.value } : x)))}
+                    disabled={!r.valgt}
+                    data-testid={`aarshjul-dato-${i}`}
+                    className="h-8 rounded-lg border border-black/[0.08] bg-white px-2 text-[12px] outline-none transition-all hover:border-black/[0.16] focus:border-[#8b5cf6]/50 focus:ring-2 focus:ring-[#8b5cf6]/15 disabled:opacity-50"
+                  />
+                  <span className="min-w-0 flex-1 truncate text-[11.5px] text-[#b5b5b5]" title={r.agenda.join(' · ')}>{r.agenda.join(' · ')}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Deltakere — legges til i alle valgte møter */}
+        <div className="mt-5">
+          <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#999]">Deltakere <span className="font-normal normal-case tracking-normal text-[#c0c0c0]">— legges til i alle møtene</span></p>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {members.map((p) => {
+              const med = deltakere.includes(p.id);
+              return (
+                <button
+                  key={p.id}
+                  onClick={() => toggleDeltaker(p.id)}
+                  data-testid={`aarshjul-deltaker-${p.id}`}
+                  className={`flex items-center gap-1.5 rounded-full border py-1 pl-1 pr-2.5 text-[12px] font-medium transition-all ${
+                    med ? 'border-[#8b5cf6]/40 bg-[#f4f0fb] text-[#6d28d9]' : 'border-black/[0.08] bg-white text-[#666] hover:border-black/[0.18]'
+                  }`}
+                >
+                  <Avatar member={p} size={20} />
+                  {p.name}{p.tittel ? <span className="font-normal text-[#b5a3dd]">· {p.tittel}</span> : null}
+                  {med && <Check className="h-3 w-3" />}
+                </button>
+              );
+            })}
+            {!members.length && <p className="text-[12.5px] text-[#bbb]">Legg til personer under Saker → Personer først.</p>}
+          </div>
+        </div>
+
+        {feil && <p className="pt-3 text-[12.5px] font-medium text-rose-600">{feil}</p>}
+      </div>
+
+      <div
+        className="flex shrink-0 flex-wrap items-center gap-3 border-t border-black/[0.06] px-5 py-3.5"
+        style={{ paddingBottom: 'max(14px, env(safe-area-inset-bottom))' }}
+      >
+        <label className="flex cursor-pointer items-center gap-2 text-[12.5px] text-[#777]">
+          <input type="checkbox" checked={varsle} onChange={(e) => setVarsle(e.target.checked)} className="h-4 w-4 accent-[#8b5cf6]" data-testid="aarshjul-notify" />
+          Send innkalling på e-post nå
+        </label>
+        <button onClick={onClose} className="ml-auto rounded-lg px-3 py-2 text-[13px] font-medium text-[#888] hover:bg-[#f3f2f0]">Avbryt</button>
+        <button
+          onClick={lagre}
+          disabled={!antallValgt || lagrer}
+          data-testid="aarshjul-save"
+          className="flex h-10 items-center gap-1.5 rounded-lg bg-[#0a0a0a] px-4 text-[13.5px] font-semibold text-white transition-all hover:bg-black/85 active:scale-[0.97] disabled:opacity-40"
+        >
+          {lagrer && <Loader2 className="w-4 h-4 animate-spin" />} Opprett {antallValgt} møte{antallValgt === 1 ? '' : 'r'}
         </button>
       </div>
     </Overlegg>

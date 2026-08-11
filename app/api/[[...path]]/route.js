@@ -3145,6 +3145,65 @@ async function handleRoute(request, { params }) {
       return cors(NextResponse.json({ ok: true }));
     }
 
+    // ═══════════════ ÅRSHJUL — planlegg hele styreåret i én operasjon ═══════
+    // Tar imot en liste møter (typisk fra årshjul-malen i UI-et: årsregnskap,
+    // generalforsamling, strategi, halvårsstatus, budsjett …) og oppretter
+    // alle som planlagte møter. Idempotent-vennlig: møter som allerede finnes
+    // med samme tittel og dato hoppes over (kan trygt kjøres på nytt).
+    // Innkalling sendes kun hvis notify:true (av som standard). Admin-only.
+    if (path[0] === 'admin' && path[1] === 'meetings' && path[2] === 'aarshjul' && path.length === 3 && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      const rader = Array.isArray(body.meetings) ? body.meetings.slice(0, 24) : [];
+      if (!rader.length) return cors(NextResponse.json({ ok: false, error: 'Ingen møter å opprette' }, { status: 400 }));
+      const naa = new Date().toISOString();
+      const eksisterende = await db.collection('meetings')
+        .find({}, { projection: { _id: 0, title: 1, datetime: 1 } }).toArray();
+      const finnesAllerede = new Set(eksisterende.map((m) => `${String(m.title || '').trim().toLowerCase()}|${String(m.datetime || '').slice(0, 10)}`));
+      const opprettede = [];
+      let hoppetOver = 0;
+      for (const rad of rader) {
+        const title = String(rad.title || '').trim().slice(0, 200);
+        const datetime = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(String(rad.datetime || '')) ? String(rad.datetime) : null;
+        if (!title || !datetime) { hoppetOver++; continue; }
+        const nokkel = `${title.toLowerCase()}|${datetime.slice(0, 10)}`;
+        if (finnesAllerede.has(nokkel)) { hoppetOver++; continue; }
+        finnesAllerede.add(nokkel);
+        const meeting = {
+          id: uuidv4(),
+          title,
+          type: MOTE_TYPER.includes(rad.type) ? rad.type : 'annet',
+          datetime,
+          attendees: normaliserFolgere(rad.attendees).slice(0, 20),
+          agenda: normaliserAgenda(rad.agenda),
+          referat: '', vedtak: [], taskIds: [],
+          recurrence: null, status: 'planlagt',
+          aarshjul: true, // markerer at møtet stammer fra årshjulet
+          createdAt: naa, updatedAt: naa,
+        };
+        await db.collection('meetings').insertOne({ ...meeting });
+        opprettede.push(meeting);
+      }
+      // Innkalling (valgfritt): én e-post per deltaker per opprettet møte
+      let innkalt = 0;
+      if (body.notify === true && opprettede.length) {
+        const alleIder = Array.from(new Set(opprettede.flatMap((m) => m.attendees)));
+        if (alleIder.length) {
+          const folk = await db.collection('admin_users').find({ id: { $in: alleIder } }).toArray();
+          const perId = new Map(folk.map((p) => [p.id, p]));
+          for (const m of opprettede) {
+            for (const aid of m.attendees) {
+              const p = perId.get(aid);
+              if (!p) continue;
+              const ok = await moteEpost({ member: p, meeting: m, heading: 'Møteinnkalling', intro: `Du er kalt inn til ${(MOTE_TYPE_LABEL[m.type] || 'møte').toLowerCase()} (planlagt i årshjulet). Agenda under.` });
+              if (ok) innkalt++;
+            }
+          }
+        }
+      }
+      return cors(NextResponse.json({ ok: true, opprettet: opprettede.length, hoppetOver, innkalt, meetings: opprettede }));
+    }
+
     // --- Analytics: førsteparts hendelses-inntak (offentlig, cookieless) ---
     // Bot-filtreres på user-agent. Feiler aldri hardt mot klienten.
     if (route === '/track' && method === 'POST') {
