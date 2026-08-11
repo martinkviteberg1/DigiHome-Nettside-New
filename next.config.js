@@ -44,7 +44,9 @@ const nextConfig = {
   },
   experimental: {
     // Remove if not using Server Components
-    serverComponentsExternalPackages: ['mongodb', 'sharp'],
+    serverComponentsExternalPackages: ['mongodb', 'sharp', '@sendgrid/mail'],
+    // Starter dagsplanleggeren for fristpåminnelser ved serveroppstart (instrumentation.js).
+    instrumentationHook: true,
     // Tre-shaker ikon-/util-biblioteker (kun brukte ikoner havner i bundelen).
     optimizePackageImports: ['lucide-react', 'date-fns'],
     // KRITISK for prod: output:'standalone' inkluderer ikke /public, men OG-bildene

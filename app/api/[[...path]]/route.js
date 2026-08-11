@@ -17,6 +17,7 @@ import { googleAdsNativeConfigured, listConversionActions, resolveOfflineConvers
 import { runAdsWithMetricsViaComposio } from '@/lib/composio-google-ads';
 import { dataManagerConfigured, ingestOfflineConversion } from '@/lib/google-ads-datamanager';
 import { recordWonConversions } from '@/lib/closed-loop';
+import { runDueReminders } from '@/lib/reminders';
 import { IMPORTED_COLL, importRecords, parseCsv, summarizeImported, syncFromPlatform, listImported, updateImportedOverride, getLeadSyncMeta, maybeAutoSyncLeads } from '@/lib/imported-leads';
 import { queueLeadPushback, flushLeadPushbacks, pushbackStats } from '@/lib/lead-pushback';
 import { renderFinnBanners, FINN_THEMES } from '@/lib/finn-banners';
@@ -2034,7 +2035,38 @@ async function handleRoute(request, { params }) {
     const db = await getDb();
 
     // ──────────────────────────────────────────────────────────────────────
-    // Admin-innlogging (e-post/passord → signert sesjonstoken)
+    // FRISTPÅMINNELSER — manuell/ekstern trigger. Kjøres normalt av den interne
+    // dagsplanleggeren (lib/reminder-scheduler.js), men kan trigges eksternt
+    // (f.eks. en cron-tjeneste) eller manuelt for testing. Idempotent per dag/sak.
+    // Auth: masternøkkel (adminAuthed) ELLER header x-cron-secret === CRON_SECRET.
+    // ?dryRun=1 → tell kandidater uten å sende eller låse noe.
+    if (route === '/cron/reminders' && (method === 'POST' || method === 'GET')) {
+      const cronSecret = (process.env.CRON_SECRET || '').trim();
+      const gittSecret = request.headers.get('x-cron-secret') || new URL(request.url).searchParams.get('cronSecret') || '';
+      const secretOk = cronSecret && gittSecret && gittSecret === cronSecret;
+      if (!secretOk && !adminAuthed(request)) {
+        return cors(NextResponse.json({ ok: false, error: 'Uautorisert' }, { status: 401 }));
+      }
+      const dryRun = ['1', 'true'].includes((new URL(request.url).searchParams.get('dryRun') || '').toLowerCase());
+      const daily = ['1', 'true'].includes((new URL(request.url).searchParams.get('daily') || '').toLowerCase());
+      // daily=1 (brukt av den interne planleggeren): kjør maks ÉN gang per
+      // kalenderdag via atomisk lås i cron_runs — trygt ved omstart/flere instanser.
+      if (daily && !dryRun) {
+        const idag = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Oslo' }).format(new Date());
+        const laasKey = `reminders:${idag}`;
+        const laas = await db.collection('cron_runs').updateOne(
+          { key: laasKey },
+          { $setOnInsert: { key: laasKey, at: new Date().toISOString() } },
+          { upsert: true },
+        );
+        if (laas.upsertedCount !== 1) {
+          return cors(NextResponse.json({ ok: true, ran: false, reason: 'already-ran-today', dato: idag }));
+        }
+      }
+      const summary = await runDueReminders(db, { dryRun });
+      return cors(NextResponse.json({ ok: true, ran: true, ...summary }));
+    }
+
     // ──────────────────────────────────────────────────────────────────────
     if (route === '/admin/auth/login' && method === 'POST') {
       // Rate-limit mot passord-brute-force: maks 10 forsøk/min per IP.
