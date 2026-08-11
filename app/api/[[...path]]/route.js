@@ -958,7 +958,15 @@ async function fetchFinnPreview(rawUrl) {
 // Innlogging utsteder et token som klienten sender som ?key= / x-admin-key →
 // adminAuthed godtar BÅDE legacy ADMIN_KEY OG et gyldig sesjonstoken, slik at
 // alle eksisterende admin-endepunkter fungerer uendret.
-const SESSION_SECRET = process.env.ADMIN_SESSION_SECRET || ADMIN_KEY || 'dh-admin-fallback-secret';
+// Dedikert sesjonshemmelighet. Prioriter ADMIN_SESSION_SECRET (bør settes i
+// prod-env); faller tilbake på ADMIN_KEY for bakoverkompatibilitet. Vi bruker
+// ALDRI en hardkodet fallback — mangler begge, deaktiveres token-signering
+// (fail closed) slik at ingen kan forfalske sesjoner med en kjent hemmelighet.
+const SESSION_SECRET = process.env.ADMIN_SESSION_SECRET || ADMIN_KEY || '';
+if (!SESSION_SECRET) {
+  // eslint-disable-next-line no-console
+  console.error('SIKKERHET: ADMIN_SESSION_SECRET/ADMIN_KEY mangler — sesjonssignering er deaktivert.');
+}
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 14; // 14 dager
 
 function hashPassword(password, salt) {
@@ -984,12 +992,14 @@ function b64urlDecode(input) {
   return Buffer.from(input.replace(/-/g, '+').replace(/_/g, '/') + pad, 'base64').toString('utf8');
 }
 function signSession(payload) {
+  if (!SESSION_SECRET) return '';
   const body = b64url(JSON.stringify(payload));
   const sig = crypto.createHmac('sha256', SESSION_SECRET).update(body).digest('hex');
   return `${body}.${sig}`;
 }
 function verifySession(token) {
   try {
+    if (!SESSION_SECRET) return null;
     const [body, sig] = String(token || '').split('.');
     if (!body || !sig) return null;
     const expected = crypto.createHmac('sha256', SESSION_SECRET).update(body).digest('hex');
@@ -2027,6 +2037,10 @@ async function handleRoute(request, { params }) {
     // Admin-innlogging (e-post/passord → signert sesjonstoken)
     // ──────────────────────────────────────────────────────────────────────
     if (route === '/admin/auth/login' && method === 'POST') {
+      // Rate-limit mot passord-brute-force: maks 10 forsøk/min per IP.
+      if (!rateLimit(`login:${clientIp(request)}`, 10)) {
+        return cors(NextResponse.json({ ok: false, error: 'For mange forsøk — vent litt og prøv igjen' }, { status: 429 }));
+      }
       let body = {};
       try { body = await request.json(); } catch (e) {}
       const email = (body.email || '').toString().trim().toLowerCase();
@@ -3451,7 +3465,7 @@ async function handleRoute(request, { params }) {
             await sendHtmlEmail({
               to,
               subject: `Sletteforespørsel (GDPR): ${email}`,
-              html: `<p><b>Ny forespørsel om kontosletting</b></p><p>E-post: ${email}</p><p>Melding: ${String(body.message || '').slice(0, 500) || '(ingen)'}</p><p>Mottatt: ${new Date().toLocaleString('nb-NO', { timeZone: 'Europe/Oslo' })}</p><p>Frist: bekreftelse innen 72 t · sletting innen 30 dager.</p>`,
+              html: `<p><b>Ny forespørsel om kontosletting</b></p><p>E-post: ${taskEsc(email)}</p><p>Melding: ${taskEsc(String(body.message || '').slice(0, 500)) || '(ingen)'}</p><p>Mottatt: ${new Date().toLocaleString('nb-NO', { timeZone: 'Europe/Oslo' })}</p><p>Frist: bekreftelse innen 72 t · sletting innen 30 dager.</p>`,
               fromName: 'DigiHome Personvern',
               replyTo: email,
             });
@@ -3544,8 +3558,17 @@ async function handleRoute(request, { params }) {
     }
 
     if (route === '/leads' && method === 'POST') {
+      // Offentlig skjema — beskytt mot spam/mailbombing: per-IP-tak + per-mottaker-tak.
+      if (!rateLimit(`leads:${clientIp(request)}`, 12, 60000)) {
+        return cors(NextResponse.json({ success: false, error: 'For mange forsøk — prøv igjen om litt' }, { status: 429 }));
+      }
       let body = {};
       try { body = await request.json(); } catch (e) { body = {}; }
+
+      const _epost = String(body.email || '').trim().toLowerCase();
+      if (_epost && !rateLimit(`leads-to:${_epost}`, 3, 3600000)) {
+        return cors(NextResponse.json({ success: false, error: 'For mange henvendelser fra denne e-postadressen' }, { status: 429 }));
+      }
 
       const hasSomething = body.name || body.email || body.phone || body.address;
       if (!hasSomething) {
@@ -3914,8 +3937,17 @@ async function handleRoute(request, { params }) {
 
     // --- Tenants (leietaker-skjema) ---
     if (route === '/tenants' && method === 'POST') {
+      // Offentlig skjema — beskytt mot spam/mailbombing: per-IP-tak + per-mottaker-tak.
+      if (!rateLimit(`tenants:${clientIp(request)}`, 12, 60000)) {
+        return cors(NextResponse.json({ success: false, error: 'For mange forsøk — prøv igjen om litt' }, { status: 429 }));
+      }
       let body = {};
       try { body = await request.json(); } catch (e) { body = {}; }
+
+      const _epost = String(body.email || '').trim().toLowerCase();
+      if (_epost && !rateLimit(`tenants-to:${_epost}`, 3, 3600000)) {
+        return cors(NextResponse.json({ success: false, error: 'For mange henvendelser fra denne e-postadressen' }, { status: 429 }));
+      }
 
       const hasSomething = body.name || body.email || body.phone;
       if (!hasSomething) {
@@ -4808,7 +4840,17 @@ async function handleRoute(request, { params }) {
     // --- Annonse-bilde-proxy (Meta/Instagram CDN). Domene-whitelistet (anti-SSRF). ---
     if (route === '/admin/ads/img' && method === 'GET') {
       const u = new URL(request.url).searchParams.get('u') || '';
-      if (!/^https:\/\/[a-z0-9.\-]*(fbcdn\.net|cdninstagram\.com|facebook\.com)\//i.test(u)) {
+      // SSRF-vern: kun https + verten MÅ være (subdomene av) et av Metas CDN-domener.
+      // Sjekker faktisk hostname med punktgrense, ikke bare delstreng (blokkerer
+      // f.eks. evilfbcdn.net / fbcdn.net.attacker.com).
+      let vertOk = false;
+      try {
+        const parsed = new URL(u);
+        const host = parsed.hostname.toLowerCase();
+        vertOk = parsed.protocol === 'https:'
+          && /(^|\.)(fbcdn\.net|cdninstagram\.com|facebook\.com)$/.test(host);
+      } catch (e) { vertOk = false; }
+      if (!vertOk) {
         return new NextResponse('Forbidden', { status: 403 });
       }
       try {
