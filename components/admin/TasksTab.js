@@ -16,6 +16,7 @@
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Marked } from 'marked';
+import SakerInnsikt from './SakerInnsikt';
 import {
   Plus, X, Loader2, Search, Users, Trash2, Bell, Clock, MessageSquare,
   CheckCircle2, Inbox, PlayCircle, LayoutGrid, List, Calendar,
@@ -24,7 +25,7 @@ import {
   Download, KeyRound, Circle, Table2, CalendarRange, ArrowUpDown, User,
   MoreHorizontal, Send, Maximize2, Minimize2, Settings, AtSign,
   Bold, Italic, Link2, Image as ImageIcon, Heading,
-  Folder, FolderPlus, Ban, GitBranch, Layers,
+  Folder, FolderPlus, Ban, GitBranch, Layers, BarChart3,
 } from 'lucide-react';
 
 const VISNINGER = [
@@ -32,6 +33,7 @@ const VISNINGER = [
   { k: 'liste', l: 'Liste', icon: List },
   { k: 'tabell', l: 'Tabell', icon: Table2 },
   { k: 'tidslinje', l: 'Tidslinje', icon: CalendarRange },
+  { k: 'innsikt', l: 'Innsikt', icon: BarChart3 },
   { k: 'arkiv', l: 'Arkiv', icon: Archive },
 ];
 
@@ -889,7 +891,7 @@ export default function TasksTab({ apiKey, user, onStats }) {
 
   useEffect(() => {
     const onKey = (e) => {
-      if (nyOpen || valgtId || personerOpen || view === 'arkiv') return;
+      if (nyOpen || valgtId || personerOpen || view === 'arkiv' || view === 'innsikt') return;
       const mål = e.target;
       if (mål && ['INPUT', 'TEXTAREA', 'SELECT'].includes(mål.tagName)) return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
@@ -1484,8 +1486,13 @@ export default function TasksTab({ apiKey, user, onStats }) {
         </div>
       )}
 
+      {/* ═══ Innsikt — KPI-er, gjennomstrømning, arbeidsmengde ═══ */}
+      {view === 'innsikt' && (
+        <SakerInnsikt api={api} members={members} projects={projects} onOpenTask={(id) => setValgtId(id)} />
+      )}
+
       {/* ═══ Hurtigtast-hint — kun desktop, Linear-style ═══ */}
-      {!tomt && view !== 'arkiv' && (
+      {!tomt && view !== 'arkiv' && view !== 'innsikt' && (
         <div className="mt-4 hidden select-none items-center gap-4 text-[11px] text-[#b0aca6] lg:flex" data-testid="tasks-shortcuts-hint">
           <span className="flex items-center gap-1.5"><Kbd>↑↓</Kbd> naviger</span>
           <span className="flex items-center gap-1.5"><Kbd>↵</Kbd> åpne sak</span>

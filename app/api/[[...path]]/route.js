@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 import crypto from 'crypto';
 import sharp from 'sharp';
+import { Marked } from 'marked';
 import { promises as fsp } from 'fs';
 import nodePath from 'path';
 import { getDb, clean } from '@/lib/mongodb';
@@ -1555,6 +1556,78 @@ const TASK_FARGER = ['#8B5CF6', '#0EA5E9', '#F59E0B', '#10B981', '#EF4444', '#EC
 const osloIDag = () => new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Oslo' }).format(new Date());
 const taskEsc = (s) => String(s || '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
+// ── Markdown i e-post ───────────────────────────────────────────────────────
+// Saksbeskrivelser/kommentarer skrives i Markdown (rik tekst-editoren i admin).
+// E-postklienter ignorerer stylesheets/klasser → alt må inline-styles.
+// Speiler frontendens renderRik: rå HTML nøytraliseres FØR parsing (XSS-trygt),
+// kun http/mailto-lenker slipper gjennom. Interne saksbilder krever innlogging
+// og kan ikke vises i e-post → kompakt «Bilde»-merke i stedet.
+const _mdEpost = new Marked({ gfm: true, breaks: true });
+const EPOST_MD_STIL = {
+  p: 'margin:0 0 10px;color:#444;font-size:13.5px;line-height:1.6',
+  h1: 'margin:14px 0 6px;color:#0a0a0a;font-size:16px;line-height:1.35;font-weight:700',
+  h2: 'margin:14px 0 6px;color:#0a0a0a;font-size:15px;line-height:1.35;font-weight:700',
+  h3: 'margin:12px 0 4px;color:#0a0a0a;font-size:14px;line-height:1.35;font-weight:700',
+  ul: 'margin:0 0 10px;padding:0 0 0 20px;color:#444;font-size:13.5px;line-height:1.6',
+  ol: 'margin:0 0 10px;padding:0 0 0 20px;color:#444;font-size:13.5px;line-height:1.6',
+  li: 'margin:3px 0',
+  strong: 'font-weight:700;color:#111',
+  em: 'font-style:italic',
+  code: "background:#f3f2f0;border-radius:5px;padding:1px 6px;font-size:12.5px;font-family:ui-monospace,'SF Mono',Menlo,monospace;color:#6d28d9",
+  pre: 'background:#f6f5f3;border-radius:10px;padding:12px 14px;overflow:auto;font-size:12.5px;line-height:1.5;margin:0 0 10px',
+  hr: 'border:none;border-top:1px solid #eee;margin:14px 0',
+  blockquote: 'margin:0 0 10px;padding:2px 0 2px 12px;border-left:3px solid #d9d4f5;color:#666',
+};
+function mdTilEpost(kilde, maks = 1200) {
+  let src = String(kilde || '').trim();
+  if (!src) return '';
+  const kuttet = src.length > maks;
+  if (kuttet) src = src.slice(0, maks);
+  // Nøytraliser rå HTML før parsing — brukerinnhold skal aldri bli markup.
+  src = src.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  let html = '';
+  try { html = _mdEpost.parse(src); } catch (e) {
+    return `<p style="${EPOST_MD_STIL.p};white-space:pre-wrap">${taskEsc(kilde).slice(0, maks)}</p>`;
+  }
+  const okUrl = (h) => /^(https?:|mailto:)/i.test(String(h || '').trim());
+  // Bilder: interne (/api/admin/…) krever innlogging → merke; eksterne https vises.
+  html = html.replace(/<img[^>]*?src="([^"]*)"[^>]*>/gi, (m, s) => (
+    /^https:\/\//i.test(s)
+      ? `<img src="${s}" alt="" style="max-width:100%;border-radius:10px;margin:6px 0" />`
+      : '<span style="display:inline-block;background:#f3f2f0;color:#777;font-size:12px;border-radius:8px;padding:3px 10px;margin:2px 0">🖼 Bilde — åpne saken i admin</span>'
+  ));
+  // Lenker: kun http/mailto, DigiHome-lilla og god klikkbarhet.
+  html = html.replace(/<a href="([^"]*)"[^>]*>/gi, (m, href) => (
+    okUrl(href) ? `<a href="${href}" target="_blank" style="color:#7c3aed;font-weight:600;text-decoration:underline">` : '<a>'
+  ));
+  // Inline-stiler per element (h4–h6 arver h3-stilen).
+  html = html.replace(/<(h[1-6]|p|ul|ol|li|strong|em|code|pre|hr|blockquote)(\s[^>]*)?\/?>/gi, (m, tag) => {
+    const t = tag.toLowerCase();
+    if (m.startsWith('</')) return m;
+    const stil = EPOST_MD_STIL[/^h[4-6]$/.test(t) ? 'h3' : t];
+    if (!stil) return m;
+    return t === 'hr' ? `<hr style="${stil}" />` : `<${t} style="${stil}">`;
+  });
+  return html + (kuttet ? '<p style="margin:0;color:#b0aca6;font-size:12px">… forkortet — se hele saken i admin</p>' : '');
+}
+// Markdown → ren tekst (for utdrag i løpende setninger, f.eks. kommentarvarsler).
+function mdTilRen(kilde, maks = 180) {
+  let s = String(kilde || '')
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, '(bilde)')       // bilder
+    .replace(/\[([^\]]*)\]\(([^)]*)\)/g, '$1')          // [tekst](url) → tekst
+    .replace(/^#{1,6}\s+/gm, '')                          // overskrifter
+    .replace(/(\*\*|__)(.*?)\1/g, '$2')                   // fet
+    .replace(/(\*|_)(.*?)\1/g, '$2')                      // kursiv
+    .replace(/`{1,3}([^`]*)`{1,3}/g, '$1')                // kode
+    .replace(/^\s*[-*+]\s+/gm, '· ')                      // punktlister
+    .replace(/^\s*\d+\.\s+/gm, '')                        // nummererte lister
+    .replace(/^\s*>\s?/gm, '')                             // sitat
+    .replace(/\n{2,}/g, ' — ').replace(/\n/g, ' ')        // linjeskift
+    .replace(/\s{2,}/g, ' ').trim();
+  if (s.length > maks) s = `${s.slice(0, maks).trim()} …`;
+  return s;
+}
+
 // E-postvarsel for saker (tildeling + påminnelse). Feiler stille — en sak skal
 // aldri gå tapt fordi SendGrid er nede. Returnerer true hvis sendt.
 async function taskEpost({ member, task, heading, intro, kategori }) {
@@ -1573,7 +1646,7 @@ async function taskEpost({ member, task, heading, intro, kategori }) {
         <p style="margin:0;color:#8b5cf6;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em">${taskEsc(heading)}</p>
         <h2 style="margin:8px 0 4px;color:#0a0a0a;font-size:19px;line-height:1.3">${taskEsc(task.title)}</h2>
         <p style="margin:0 0 16px;color:#666;font-size:13.5px;line-height:1.55">${taskEsc(intro)}</p>
-        ${task.description ? `<p style="margin:0 0 16px;color:#444;font-size:13.5px;line-height:1.55;white-space:pre-wrap">${taskEsc(String(task.description).slice(0, 600))}</p>` : ''}
+        ${task.description ? `<div style="background:#fafaf8;border:1px solid #f0eeea;border-radius:12px;padding:14px 16px 5px;margin:0 0 16px">${mdTilEpost(task.description, 1200)}</div>` : ''}
         <table style="border-collapse:collapse">${rad('Prioritet', TASK_PRI_LABEL[task.priority] || 'P2 · Normal')}${frist ? rad('Frist', taskEsc(frist)) : ''}${rad('Status', TASK_STATUS_LABEL[task.status] || taskEsc(task.status))}</table>
         <a href="${base}/admin" style="display:inline-block;margin-top:20px;background:#0a0a0a;color:#fff;text-decoration:none;font-size:13.5px;font-weight:600;padding:11px 20px;border-radius:99px">Åpne Saker i admin →</a>
       </div>
@@ -2977,6 +3050,127 @@ async function handleRoute(request, { params }) {
       }));
     }
 
+    // --- E-post-forhåndsvisning av Markdown (verifisering uten å sende e-post) ---
+    if (route === '/admin/tasks/email-preview' && method === 'GET') {
+      if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const uPrev = new URL(request.url);
+      const md = uPrev.searchParams.get('md') || '';
+      return cors(NextResponse.json({ ok: true, html: mdTilEpost(md, 1200), plain: mdTilRen(md, 180) }));
+    }
+
+    // --- Saksinnsikt: KPI-er, gjennomstrømning, arbeidsmengde, prosjekter ---
+    // Rent lese-endepunkt. Regner på ALLE saker (inkl. arkiverte) for historikk
+    // (gjennomstrømning/ledetid), men kun aktive for åpne/forfalt/arbeidsmengde.
+    if (route === '/admin/tasks/insights' && method === 'GET') {
+      if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const [alleSaker, personer, prosjekter] = await Promise.all([
+        db.collection('tasks').find({}).project({ _id: 0, id: 1, title: 1, status: 1, assigneeId: 1, dueDate: 1, createdAt: 1, completedAt: 1, priority: 1, projectId: 1, archived: 1 }).toArray(),
+        hentPersoner(db),
+        db.collection('projects').find({ archived: { $ne: true } }, { projection: { _id: 0, id: 1, name: 1, color: 1 } }).sort({ createdAt: 1 }).toArray(),
+      ]);
+      const iDag = osloIDag();
+      const naaMs = Date.now();
+      const osloDatoAv = (iso) => { try { return new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Oslo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(iso)); } catch (e) { return null; } };
+      const innen = (iso, dager) => !!iso && (naaMs - new Date(iso).getTime()) <= dager * 86400000;
+
+      const aktive = alleSaker.filter((t) => !t.archived);
+      const aapne = aktive.filter((t) => t.status !== 'done');
+      const forfalt = aapne.filter((t) => t.dueDate && t.dueDate < iDag);
+
+      // Median ledetid (opprettet → fullført) for saker fullført siste 90 dager.
+      const ledetider = alleSaker
+        .filter((t) => t.completedAt && t.createdAt && innen(t.completedAt, 90))
+        .map((t) => (new Date(t.completedAt) - new Date(t.createdAt)) / 86400000)
+        .filter((d) => d >= 0)
+        .sort((a, b) => a - b);
+      const n = ledetider.length;
+      const leadMedianDays = n ? Math.round((n % 2 ? ledetider[(n - 1) / 2] : (ledetider[n / 2 - 1] + ledetider[n / 2]) / 2) * 10) / 10 : null;
+
+      // Gjennomstrømning: siste 8 ISO-uker (man–søn, Oslo-tid), eldst først.
+      const iDagD = new Date(`${iDag}T00:00:00Z`);
+      const mandag = new Date(iDagD);
+      mandag.setUTCDate(mandag.getUTCDate() - ((mandag.getUTCDay() + 6) % 7));
+      const throughput = [];
+      for (let k = 7; k >= 0; k--) {
+        const start = new Date(mandag); start.setUTCDate(start.getUTCDate() - k * 7);
+        const slutt = new Date(start); slutt.setUTCDate(slutt.getUTCDate() + 6);
+        const s = start.toISOString().slice(0, 10);
+        const e = slutt.toISOString().slice(0, 10);
+        throughput.push({
+          label: `${String(start.getUTCDate()).padStart(2, '0')}.${String(start.getUTCMonth() + 1).padStart(2, '0')}`,
+          created: alleSaker.filter((t) => { const d = t.createdAt && osloDatoAv(t.createdAt); return d && d >= s && d <= e; }).length,
+          done: alleSaker.filter((t) => { const d = t.completedAt && osloDatoAv(t.completedAt); return d && d >= s && d <= e; }).length,
+        });
+      }
+
+      // Arbeidsmengde per person (alle teammedlemmer + «Ikke tildelt» ved behov).
+      const perPerson = [...personer.map((p) => ({ id: p.id, name: p.name, color: p.color || null })), { id: null, name: 'Ikke tildelt', color: null }]
+        .map((p) => {
+          const mine = aapne.filter((t) => (t.assigneeId || null) === p.id);
+          return {
+            ...p,
+            open: mine.length,
+            doing: mine.filter((t) => t.status === 'doing').length,
+            waiting: mine.filter((t) => t.status === 'waiting').length,
+            inbox: mine.filter((t) => t.status === 'inbox').length,
+            overdue: mine.filter((t) => t.dueDate && t.dueDate < iDag).length,
+            done30: alleSaker.filter((t) => (t.assigneeId || null) === p.id && innen(t.completedAt, 30)).length,
+          };
+        })
+        .filter((p) => p.id !== null || p.open > 0 || p.done30 > 0)
+        .sort((a, b) => b.open - a.open || b.done30 - a.done30);
+
+      // Prosjektfordeling («Uten prosjekt» tas kun med hvis den har saker).
+      const perProject = [...prosjekter.map((p) => ({ id: p.id, name: p.name, color: p.color || '#8b5cf6' })), { id: null, name: 'Uten prosjekt', color: '#b0aca6' }]
+        .map((p) => {
+          const i = aktive.filter((t) => (t.projectId || null) === p.id);
+          const o = i.filter((t) => t.status !== 'done');
+          return { ...p, total: i.length, open: o.length, overdue: o.filter((t) => t.dueDate && t.dueDate < iDag).length, done: i.length - o.length };
+        })
+        .filter((p) => p.id !== null || p.total > 0);
+
+      // Eldste åpne saker (kandidater for opprydding/eskalering).
+      const oldest = [...aapne]
+        .filter((t) => t.createdAt)
+        .sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)))
+        .slice(0, 6)
+        .map((t) => ({
+          id: t.id, title: t.title, status: t.status,
+          assigneeId: t.assigneeId || null, dueDate: t.dueDate || null,
+          ageDays: Math.max(0, Math.round((naaMs - new Date(t.createdAt).getTime()) / 86400000)),
+        }));
+
+      return cors(NextResponse.json({
+        ok: true,
+        today: iDag,
+        kpi: {
+          open: aapne.length,
+          overdue: forfalt.length,
+          overdueRatio: aapne.length ? Math.round((forfalt.length / aapne.length) * 100) : 0,
+          done7: alleSaker.filter((t) => innen(t.completedAt, 7)).length,
+          done30: alleSaker.filter((t) => innen(t.completedAt, 30)).length,
+          created7: alleSaker.filter((t) => innen(t.createdAt, 7)).length,
+          created30: alleSaker.filter((t) => innen(t.createdAt, 30)).length,
+          leadMedianDays,
+          leadCount: n,
+        },
+        status: {
+          inbox: aapne.filter((t) => t.status === 'inbox').length,
+          doing: aapne.filter((t) => t.status === 'doing').length,
+          waiting: aapne.filter((t) => t.status === 'waiting').length,
+        },
+        priority: {
+          p1: aapne.filter((t) => Number(t.priority) === 1).length,
+          p2: aapne.filter((t) => Number(t.priority) === 2).length,
+          p3: aapne.filter((t) => Number(t.priority) === 3).length,
+        },
+        throughput,
+        perPerson,
+        perProject,
+        oldest,
+      }));
+    }
+
     if (route === '/admin/tasks' && method === 'GET') {
       if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const uTasks = new URL(request.url);
@@ -3294,7 +3488,7 @@ async function handleRoute(request, { params }) {
       const varslet = [];
       const nevntIds = new Set(nevnt.map((m) => m.id));
       if (nevnt.length && body.notify !== false) {
-        const utdrag = text.length > 180 ? `${text.slice(0, 180)} …` : text;
+        const utdrag = mdTilRen(text, 180);
         for (const m of nevnt) {
           if (!m.email) continue;
           if (String(m.name).toLowerCase() === author.toLowerCase()) continue;
