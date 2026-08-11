@@ -8,14 +8,19 @@
  * saker på sakstavlen med ansvarlig og frist (koblet tilbake til møtet).
  *
  * Gjenbruker sakssystemets designspråk: Meny-popovers, hairline-felter,
- * samme skuff-/modalmønster. Admin-only (rollen «bruker» ser kun Saker).
+ * samme skuff-/modalmønster.
+ *
+ * Tilgang: admin ser og redigerer alt. Rollen «bruker» har LESETILGANG til
+ * møter de deltar i eller møtetyper de har fått tilgang til (moteTilgang,
+ * satt per person under Personer). Filtreres og håndheves server-side —
+ * her styrer kanRedigere kun hva som vises som redigerbart.
  */
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
   Plus, X, Loader2, Users, Trash2, CalendarDays, Clock, Check,
   ChevronDown, Repeat, CheckCircle2, Circle, Gavel, ClipboardCheck,
-  Mail, AlertTriangle, User, ArrowRight, FileText, RotateCcw, ArrowUpRight, Archive,
+  Mail, AlertTriangle, User, ArrowRight, FileText, RotateCcw, ArrowUpRight, Archive, Eye,
 } from 'lucide-react';
 
 const heading = { fontFamily: 'var(--font-heading)' };
@@ -169,6 +174,9 @@ const feltKlasse = 'h-9 w-full rounded-lg border border-black/[0.08] bg-white px
 
 /* ═══════════════ Hovedkomponent ═══════════════ */
 export default function MeetingsTab({ apiKey, user, onOpenTask }) {
+  // 'bruker' har lesetilgang (møter de deltar i / har typetilgang til, filtrert
+  // server-side). All redigering, utsendelse og sletting er forbeholdt admin.
+  const kanRedigere = !(user && user.role === 'bruker');
   const [meetings, setMeetings] = useState([]);
   const [members, setMembers] = useState([]);
   const [laster, setLaster] = useState(true);
@@ -270,9 +278,10 @@ export default function MeetingsTab({ apiKey, user, onOpenTask }) {
           <p className="text-[13px] text-[#888]">
             {kommende.length
               ? `${kommende.length} planlagt${kommende.length > 1 ? 'e' : ''} · ${avholdte.length} avholdt${avholdte.length === 1 ? '' : 'e'}`
-              : 'Agenda, referat, vedtak — og aksjonspunkter som blir saker.'}
+              : kanRedigere ? 'Agenda, referat, vedtak — og aksjonspunkter som blir saker.' : 'Møter du deltar i eller har tilgang til.'}
           </p>
         </div>
+        {kanRedigere && (
         <button
           onClick={() => setNyOpen(true)}
           data-testid="meetings-new-btn"
@@ -280,6 +289,7 @@ export default function MeetingsTab({ apiKey, user, onOpenTask }) {
         >
           <Plus className="w-4 h-4" /> Nytt møte
         </button>
+        )}
       </div>
 
       {/* Tom-tilstand */}
@@ -290,9 +300,11 @@ export default function MeetingsTab({ apiKey, user, onOpenTask }) {
           </span>
           <h3 className="mt-4 text-[17px] font-bold text-[#0a0a0a]" style={heading}>Ingen møter ennå</h3>
           <p className="mx-auto mt-1.5 max-w-sm text-[13.5px] leading-relaxed text-[#999]">
-            Opprett første styremøte med agenda — deltakerne får innkalling på e-post,
-            og aksjonspunktene blir saker med ansvarlig og frist.
+            {kanRedigere
+              ? 'Opprett første styremøte med agenda — deltakerne får innkalling på e-post, og aksjonspunktene blir saker med ansvarlig og frist.'
+              : 'Her vises møter du er deltaker i, og møtetyper du har fått tilgang til. Ta kontakt med en administrator hvis noe mangler.'}
           </p>
+          {kanRedigere && (
           <button
             onClick={() => setNyOpen(true)}
             data-testid="meetings-empty-new"
@@ -300,6 +312,7 @@ export default function MeetingsTab({ apiKey, user, onOpenTask }) {
           >
             <Plus className="w-4 h-4" /> Nytt møte
           </button>
+          )}
         </div>
       )}
 
@@ -405,6 +418,8 @@ export default function MeetingsTab({ apiKey, user, onOpenTask }) {
       {valgt && (
         <MoteSkuff
           m={valgt} members={members} actor={actor} api={api} visToast={visToast}
+          apiKey={apiKey}
+          kanRedigere={kanRedigere}
           onClose={() => setValgtId(null)}
           onPatch={(patch) => oppdater(valgt.id, patch)}
           onDelete={() => slettMote(valgt.id)}
@@ -587,7 +602,7 @@ function NyMoteModal({ members, onClose, onCreate }) {
 }
 
 /* ═══════════════ Møteskuff — agenda, referat, vedtak, aksjonspunkter ═══════════════ */
-function MoteSkuff({ m, members, actor, api, visToast, onClose, onPatch, onDelete, onReload, onOpenTask }) {
+function MoteSkuff({ m, members, actor, api, visToast, onClose, onPatch, onDelete, onReload, onOpenTask, apiKey, kanRedigere = true }) {
   const [tittel, setTittel] = useState(m.title);
   const [referat, setReferat] = useState(m.referat || '');
   const [nyttAgenda, setNyttAgenda] = useState('');
@@ -665,14 +680,31 @@ function MoteSkuff({ m, members, actor, api, visToast, onClose, onPatch, onDelet
     setAksLagrer(false);
   };
 
+  // Eksterne mottakere av referatet (f.eks. revisor) — chips, lagres på møtet
+  // ved utsendelse slik at de huskes til neste gang.
+  const [eksterne, setEksterne] = useState(() => (Array.isArray(m.eksterneEpost) ? m.eksterneEpost : []));
+  const [eksternInput, setEksternInput] = useState('');
+  const EPOST_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+  const leggTilEkstern = () => {
+    const e = eksternInput.trim().toLowerCase();
+    if (!e) return;
+    if (!EPOST_RE.test(e)) { visToast('Ugyldig e-postadresse', 'feil'); return; }
+    if (eksterne.includes(e)) { setEksternInput(''); return; }
+    setEksterne((prev) => [...prev, e].slice(0, 10));
+    setEksternInput('');
+  };
+
   const sendReferat = async () => {
     if (senderReferat) return;
     setSenderReferat(true);
     try {
-      const r = await api(`meetings/${m.id}/send-referat`, { method: 'POST' });
+      const r = await api(`meetings/${m.id}/send-referat`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ekstraEpost: eksterne }),
+      });
       const j = await r.json();
       if (!j.ok) throw new Error(j.error || 'Kunne ikke sende');
-      visToast(`Referat sendt til ${j.sendt} deltaker${j.sendt > 1 ? 'e' : ''}`);
+      visToast(`Referat + PDF-protokoll sendt til ${j.sendt} mottaker${j.sendt > 1 ? 'e' : ''}${j.eksterne ? ` (${j.eksterne} ekstern${j.eksterne > 1 ? 'e' : ''})` : ''}`);
       if (onReload) onReload();
     } catch (e) { visToast(e.message, 'feil'); }
     setSenderReferat(false);
@@ -695,13 +727,16 @@ function MoteSkuff({ m, members, actor, api, visToast, onClose, onPatch, onDelet
           value={tittel}
           onChange={(e) => setTittel(e.target.value)}
           onBlur={() => { const t = tittel.trim(); if (t && t !== m.title) onPatch({ title: t }); }}
+          readOnly={!kanRedigere}
           data-testid="meeting-title-input"
           className="w-full bg-transparent text-[19px] font-bold leading-snug text-[#0a0a0a] outline-none"
           style={heading}
         />
         <p className="mt-1 text-[12.5px] text-[#999]">{fmtMoteDato(m.datetime)}</p>
 
-        {/* Tid og gjentakelse */}
+        {/* Tid og gjentakelse — kun admin redigerer */}
+        {kanRedigere && (
+        <>
         <div className="mt-4 grid grid-cols-2 gap-3">
           <label className="block min-w-0">
             <span className="mb-1 block text-[11px] font-bold uppercase tracking-[0.08em] text-[#999]">Dato</span>
@@ -740,6 +775,8 @@ function MoteSkuff({ m, members, actor, api, visToast, onClose, onPatch, onDelet
             <Repeat className="w-3.5 h-3.5" /> Når møtet avholdes, planlegges neste automatisk med samme agenda.
           </p>
         )}
+        </>
+        )}
 
         {/* Deltakere */}
         <div className="mt-6">
@@ -751,14 +788,16 @@ function MoteSkuff({ m, members, actor, api, visToast, onClose, onPatch, onDelet
               return (
                 <span key={aid} className="flex items-center gap-1.5 rounded-full bg-[#f4f0fb] py-1 pl-1 pr-2 text-[12px] font-medium text-[#6d28d9]">
                   <Avatar member={p} size={20} />
-                  {p.name}
+                  {p.name}{p.tittel ? <span className="font-normal text-[#a78bda]">· {p.tittel}</span> : null}
+                  {kanRedigere && (
                   <button onClick={() => onPatch({ attendees: m.attendees.filter((x) => x !== aid) })} aria-label={`Fjern ${p.name}`} className="text-[#b79ae0] hover:text-rose-500">
                     <X className="w-3 h-3" />
                   </button>
+                  )}
                 </span>
               );
             })}
-            {members.filter((p) => !(m.attendees || []).includes(p.id)).length > 0 && (
+            {kanRedigere && members.filter((p) => !(m.attendees || []).includes(p.id)).length > 0 && (
               <select
                 value=""
                 onChange={(e) => { if (e.target.value) onPatch({ attendees: [...(m.attendees || []), e.target.value] }); }}
@@ -786,16 +825,18 @@ function MoteSkuff({ m, members, actor, api, visToast, onClose, onPatch, onDelet
             {agenda.map((p, i) => (
               <div key={p.id || i} className="group flex items-center gap-2.5 rounded-lg px-1 py-1.5 hover:bg-[#fafaf8]">
                 <button
-                  onClick={() => onPatch({ agenda: agenda.map((x, xi) => (xi === i ? { ...x, done: !x.done } : x)) })}
-                  className="shrink-0"
+                  onClick={() => { if (kanRedigere) onPatch({ agenda: agenda.map((x, xi) => (xi === i ? { ...x, done: !x.done } : x)) }); }}
+                  disabled={!kanRedigere}
+                  className="shrink-0 disabled:cursor-default"
                   data-testid={`agenda-toggle-${i}`}
                   aria-label={p.done ? 'Ikke behandlet' : 'Behandlet'}
                 >
                   {p.done
                     ? <CheckCircle2 className="w-[18px] h-[18px] text-emerald-500" />
-                    : <Circle className="w-[18px] h-[18px] text-[#ccc] hover:text-[#8b5cf6]" />}
+                    : <Circle className={`w-[18px] h-[18px] text-[#ccc] ${kanRedigere ? 'hover:text-[#8b5cf6]' : ''}`} />}
                 </button>
                 <span className={`min-w-0 flex-1 text-[13.5px] ${p.done ? 'text-[#b0aca6] line-through' : 'text-[#333]'}`}>{p.text}</span>
+                {kanRedigere && (
                 <button
                   onClick={() => onPatch({ agenda: agenda.filter((_, xi) => xi !== i) })}
                   className="shrink-0 rounded p-1 text-[#ddd] hover:text-rose-500 md:opacity-0 md:group-hover:opacity-100"
@@ -803,9 +844,12 @@ function MoteSkuff({ m, members, actor, api, visToast, onClose, onPatch, onDelet
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
+                )}
               </div>
             ))}
+            {!agenda.length && !kanRedigere && <p className="text-[12.5px] text-[#bbb]">Ingen agendapunkter.</p>}
           </div>
+          {kanRedigere && (
           <div className="mt-1.5 flex items-center gap-2">
             <Plus className="w-4 h-4 shrink-0 text-[#bbb]" />
             <input
@@ -818,6 +862,7 @@ function MoteSkuff({ m, members, actor, api, visToast, onClose, onPatch, onDelet
               className={feltKlasse}
             />
           </div>
+          )}
         </div>
 
         {/* Referat */}
@@ -828,6 +873,7 @@ function MoteSkuff({ m, members, actor, api, visToast, onClose, onPatch, onDelet
               <span className="flex items-center gap-1 text-[11px] font-medium text-emerald-600"><Mail className="h-3 w-3" /> Sendt {fmtKort(m.referatSendtAt)}</span>
             )}
           </div>
+          {kanRedigere ? (
           <textarea
             value={referat}
             onChange={(e) => setReferat(e.target.value)}
@@ -837,6 +883,11 @@ function MoteSkuff({ m, members, actor, api, visToast, onClose, onPatch, onDelet
             placeholder="Skriv referatet her — lagres automatisk. Send til deltakerne når det er klart."
             className="mt-2 w-full resize-y rounded-xl border border-black/[0.07] bg-white p-3 text-[13.5px] leading-relaxed text-[#333] outline-none transition-all placeholder:text-[#bbb] hover:border-black/[0.14] focus:border-[#8b5cf6]/50 focus:ring-2 focus:ring-[#8b5cf6]/15"
           />
+          ) : String(m.referat || '').trim() ? (
+            <p className="mt-2 whitespace-pre-wrap rounded-xl bg-[#fafaf8] p-3 text-[13.5px] leading-relaxed text-[#333]" data-testid="meeting-referat-read">{m.referat}</p>
+          ) : (
+            <p className="mt-2 text-[12.5px] text-[#bbb]">Ingen referat ennå.</p>
+          )}
         </div>
 
         {/* Vedtak */}
@@ -847,6 +898,7 @@ function MoteSkuff({ m, members, actor, api, visToast, onClose, onPatch, onDelet
               <div key={v.id || i} className="group flex items-start gap-2.5 rounded-xl bg-[#fafaf8] px-3 py-2.5">
                 <Gavel className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#8b5cf6]" />
                 <span className="min-w-0 flex-1 text-[13px] font-medium leading-relaxed text-[#333]">{v.text}</span>
+                {kanRedigere && (
                 <button
                   onClick={() => onPatch({ vedtak: vedtak.filter((_, xi) => xi !== i) })}
                   className="shrink-0 rounded p-1 text-[#ddd] hover:text-rose-500 md:opacity-0 md:group-hover:opacity-100"
@@ -854,10 +906,12 @@ function MoteSkuff({ m, members, actor, api, visToast, onClose, onPatch, onDelet
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
+                )}
               </div>
             ))}
             {!vedtak.length && <p className="text-[12.5px] text-[#bbb]">Ingen vedtak ført ennå.</p>}
           </div>
+          {kanRedigere && (
           <div className="mt-1.5 flex items-center gap-2">
             <Plus className="w-4 h-4 shrink-0 text-[#bbb]" />
             <input
@@ -869,6 +923,7 @@ function MoteSkuff({ m, members, actor, api, visToast, onClose, onPatch, onDelet
               className={feltKlasse}
             />
           </div>
+          )}
         </div>
 
         {/* Aksjonspunkter → saker */}
@@ -892,7 +947,7 @@ function MoteSkuff({ m, members, actor, api, visToast, onClose, onPatch, onDelet
               );
             })()}
           </div>
-          <p className="mt-0.5 text-[11.5px] text-[#b5b5b5]">Blir saker på sakstavlen med ansvarlig og frist — klikk en sak for å åpne den.</p>
+          <p className="mt-0.5 text-[11.5px] text-[#b5b5b5]">{kanRedigere ? 'Blir saker på sakstavlen med ansvarlig og frist — klikk en sak for å åpne den.' : 'Klikk en sak for å åpne den på sakstavlen.'}</p>
           <div className="mt-2 space-y-1.5">
             {aksjoner.map((t) => {
               const p = medlem(t.assigneeId);
@@ -938,6 +993,7 @@ function MoteSkuff({ m, members, actor, api, visToast, onClose, onPatch, onDelet
             })}
             {!aksjoner.length && <p className="text-[12.5px] text-[#bbb]">Ingen aksjonspunkter ennå.</p>}
           </div>
+          {kanRedigere && (
           <div className="mt-2 space-y-2 rounded-xl border border-dashed border-black/[0.1] p-3">
             <input
               value={aksTittel}
@@ -970,14 +1026,70 @@ function MoteSkuff({ m, members, actor, api, visToast, onClose, onPatch, onDelet
               </button>
             </div>
           </div>
+          )}
+        </div>
+
+        {/* ── Utsendelse: PDF-protokoll + eksterne mottakere ── */}
+        <div className="mt-6" data-testid="meeting-distribution">
+          <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#999]">Utsendelse</p>
+          <p className="mt-0.5 text-[11.5px] text-[#b5b5b5]">
+            {kanRedigere
+              ? '«Send referat» sender referat, vedtak og aksjonspunkter til alle deltakere med e-post — med full PDF-protokoll vedlagt.'
+              : 'Last ned den formelle møteprotokollen som PDF.'}
+          </p>
+          <div className="mt-2.5 flex items-center gap-2">
+            <a
+              href={`/api/admin/meetings/${m.id}/protokoll?key=${encodeURIComponent(apiKey || '')}`}
+              target="_blank" rel="noopener noreferrer"
+              data-testid="meeting-pdf-download"
+              className="flex h-9 items-center gap-1.5 rounded-lg border border-black/[0.08] bg-white px-3 text-[12.5px] font-semibold text-[#555] transition-all hover:border-black/[0.16] hover:text-[#0a0a0a] active:scale-[0.98]"
+            >
+              <FileText className="h-3.5 w-3.5 text-[#8b5cf6]" /> Last ned protokoll (PDF)
+            </a>
+          </div>
+          {kanRedigere && (
+          <div className="mt-3">
+            <p className="text-[11.5px] font-semibold text-[#888]">Eksterne mottakere <span className="font-normal text-[#b5b5b5]">— f.eks. revisor eller eksternt styremedlem</span></p>
+            {eksterne.length > 0 && (
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
+                {eksterne.map((e) => (
+                  <span key={e} className="flex items-center gap-1 rounded-full bg-[#f4f0fb] py-1 pl-2.5 pr-1.5 text-[11.5px] font-medium text-[#6d28d9]" data-testid={`extern-chip-${e}`}>
+                    {e}
+                    <button
+                      onClick={() => setEksterne((prev) => prev.filter((x) => x !== e))}
+                      className="rounded-full p-0.5 text-[#8b5cf6] hover:bg-[#e3d7f7]"
+                      title="Fjern"
+                      data-testid={`extern-remove-${e}`}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+            <input
+              value={eksternInput}
+              onChange={(e) => setEksternInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); leggTilEkstern(); } }}
+              onBlur={leggTilEkstern}
+              data-testid="extern-email-input"
+              placeholder="navn@firma.no — Enter for å legge til"
+              className={`mt-1.5 ${feltKlasse}`}
+            />
+          </div>
+          )}
         </div>
       </div>
-
-      {/* Bunnrad */}
       <div
         className="flex shrink-0 flex-wrap items-center gap-2 border-t border-black/[0.06] px-5 py-3"
         style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}
       >
+        {!kanRedigere ? (
+          <span className="flex items-center gap-1.5 text-[12px] font-medium text-[#aaa]" data-testid="meeting-readonly-badge">
+            <Eye className="h-3.5 w-3.5" /> Lesetilgang — kontakt en administrator for endringer
+          </span>
+        ) : (
+        <>
         {avholdt ? (
           <button
             onClick={() => onPatch({ status: 'planlagt' })}
@@ -1012,6 +1124,8 @@ function MoteSkuff({ m, members, actor, api, visToast, onClose, onPatch, onDelet
         >
           <Trash2 className="w-3.5 h-3.5" /> Slett
         </button>
+        </>
+        )}
       </div>
     </Overlegg>
   );

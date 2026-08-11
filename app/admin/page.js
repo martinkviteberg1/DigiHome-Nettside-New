@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Radio, Activity, GitBranch, Gauge, Megaphone, Database,
   Command, Search, CornerDownLeft, LayoutTemplate, Crosshair, TrendingUp, Wallet,
   Globe, ExternalLink, PenLine, Mail, Home, History, Landmark, Wand2, Layers, UserPlus,
-  ClipboardCheck, CalendarDays, ArrowLeft, KeyRound, Check, User,
+  ClipboardCheck, CalendarDays, ArrowLeft, KeyRound, Check, User, Eye, EyeOff,
 } from 'lucide-react';
 import InnsiktDashboard from '@/components/admin/InnsiktDashboard';
 import KpiDashboard from '@/components/admin/KpiDashboard';
@@ -217,10 +217,11 @@ export default function AdminPage() {
   }, []);
 
   // Rollestyring (hooks MÅ ligge før tidlige returns): kontoer med rollen
-  // 'bruker' har kun tilgang til Saker — seksjonen tvinges hit.
+  // 'bruker' har tilgang til Saker og Møter (møtelisten filtreres server-side
+  // til møter de deltar i eller har fått typetilgang til) — alt annet tvinges bort.
   const erBruker = !!(user && user.role === 'bruker');
   useEffect(() => {
-    if (erBruker && section !== 'saker') setSection('saker');
+    if (erBruker && section !== 'saker' && section !== 'moter') setSection('saker');
   }, [erBruker, section]);
 
   // Innlogging skjer i AuthSkjerm (passord, magic link, invitasjon, reset) —
@@ -256,7 +257,7 @@ export default function AdminPage() {
   // Menyen filtreres for 'bruker'-rollen, og admin-widgets (puls, hurtig-
   // handlinger) skjules. Serveren håndhever det samme på API-nivå.
   const synligNav = erBruker
-    ? [{ group: 'Verktøy', items: NAV.flatMap((g) => g.items).filter((it) => it.k === 'saker') }]
+    ? [{ group: 'Verktøy', items: NAV.flatMap((g) => g.items).filter((it) => it.k === 'saker' || it.k === 'moter') }]
     : NAV;
 
   const NavList = () => (
@@ -323,9 +324,8 @@ export default function AdminPage() {
   const SidebarInner = () => (
     <div className="flex flex-col h-full bg-[#0a0a0a]">
       <div className="px-5 h-16 flex items-center gap-2.5 border-b border-white/[0.07] shrink-0">
-        <span className="h-2.5 w-2.5 rounded-full bg-[#cf97fc]" />
-        <span className="text-white text-[17px] font-bold tracking-[-0.01em]" style={{ fontFamily: 'var(--font-heading)' }}>DigiHome</span>
-        <span className="text-white/40 text-[11px] font-medium border border-white/15 rounded-full px-2 py-0.5">Admin</span>
+        <img src="/digihome-logo-white.svg" alt="DigiHome" className="h-[22px] w-auto" />
+        <span className="text-white/40 text-[10px] font-bold uppercase tracking-[0.14em] border border-white/15 rounded-full px-2 py-0.5">Admin</span>
         <button onClick={() => setSidebarOpen(false)} className="lg:hidden ml-auto text-white/50 hover:text-white"><X className="w-5 h-5" /></button>
       </div>
       <NavList />
@@ -736,18 +736,18 @@ function AuthSkjerm({ onLoggedIn }) {
     <>
       <div>
         <label className={labelCls}>Nytt passord</label>
-        <input
-          type="password" value={pw1} onChange={(e) => setPw1(e.target.value)}
+        <PassordInput
+          value={pw1} onChange={(e) => setPw1(e.target.value)}
           autoComplete="new-password" placeholder="Minst 8 tegn"
-          className={inputCls} data-testid="auth-pw1-input"
+          className={inputCls} testid="auth-pw1-input"
         />
       </div>
       <div>
         <label className={labelCls}>Gjenta passord</label>
-        <input
-          type="password" value={pw2} onChange={(e) => setPw2(e.target.value)}
+        <PassordInput
+          value={pw2} onChange={(e) => setPw2(e.target.value)}
           autoComplete="new-password" placeholder="Samme passord én gang til"
-          className={inputCls} data-testid="auth-pw2-input"
+          className={inputCls} testid="auth-pw2-input"
         />
       </div>
       <div className="flex items-center gap-4 text-[12px]">
@@ -884,11 +884,11 @@ function AuthSkjerm({ onLoggedIn }) {
                 Glemt passord?
               </button>
             </div>
-            <input
-              type="password" value={password} onChange={(e) => setPassword(e.target.value)}
+            <PassordInput
+              value={password} onChange={(e) => setPassword(e.target.value)}
               autoComplete="current-password" placeholder="••••••••"
               className={inputCls}
-              data-testid="admin-password-input"
+              testid="admin-password-input"
             />
           </div>
           {feil}
@@ -918,18 +918,44 @@ function AuthSkjerm({ onLoggedIn }) {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center px-5 relative overflow-hidden">
-      <div aria-hidden className="pointer-events-none absolute -top-40 -right-24 h-[520px] w-[520px] rounded-full" style={{ background: 'radial-gradient(circle at center, rgba(207,151,252,0.20) 0%, rgba(207,151,252,0) 70%)' }} />
-      <div aria-hidden className="pointer-events-none absolute -bottom-40 -left-24 h-[420px] w-[420px] rounded-full" style={{ background: 'radial-gradient(circle at center, rgba(207,151,252,0.12) 0%, rgba(207,151,252,0) 70%)' }} />
-      <div className="relative w-full max-w-sm">
-        <div className="flex items-center gap-2.5 mb-8">
-          <span className="h-2.5 w-2.5 rounded-full bg-[#cf97fc]" />
-          <span className="text-white text-[20px] font-bold tracking-[-0.01em]" style={{ fontFamily: 'var(--font-heading)' }}>DigiHome</span>
-          <span className="text-white/40 text-[12px] font-medium border border-white/15 rounded-full px-2 py-0.5">Admin</span>
+    <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center px-5 py-10 relative overflow-hidden">
+      <div aria-hidden className="pointer-events-none absolute -top-40 -right-24 h-[560px] w-[560px] rounded-full" style={{ background: 'radial-gradient(circle at center, rgba(207,151,252,0.18) 0%, rgba(207,151,252,0) 70%)' }} />
+      <div aria-hidden className="pointer-events-none absolute -bottom-40 -left-24 h-[440px] w-[440px] rounded-full" style={{ background: 'radial-gradient(circle at center, rgba(207,151,252,0.10) 0%, rgba(207,151,252,0) 70%)' }} />
+      <div aria-hidden className="pointer-events-none absolute inset-0 opacity-[0.35]" style={{ backgroundImage: 'radial-gradient(rgba(255,255,255,0.045) 1px, transparent 1px)', backgroundSize: '28px 28px' }} />
+      <div className="relative w-full max-w-[420px]">
+        <div className="mb-7 flex items-center justify-center gap-3">
+          <img src="/digihome-logo-white.svg" alt="DigiHome" className="h-8 w-auto" />
+          <span className="rounded-full border border-white/15 px-2.5 py-1 text-[10.5px] font-bold uppercase tracking-[0.14em] text-white/45">Admin</span>
         </div>
-        {innhold}
-        <p className="mt-6 text-white/30 text-[12px] flex items-center gap-1.5"><ShieldCheck className="w-3.5 h-3.5" /> Kryptert sesjon · noindex · kun for DigiHome-teamet</p>
+        <div className="relative overflow-hidden rounded-3xl border border-white/[0.08] bg-white/[0.04] p-7 shadow-[0_24px_90px_rgba(0,0,0,0.55)] backdrop-blur-xl sm:p-8">
+          <div aria-hidden className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#cf97fc]/70 to-transparent" />
+          {innhold}
+        </div>
+        <p className="mt-5 flex items-center justify-center gap-1.5 text-[11.5px] text-white/25"><ShieldCheck className="w-3.5 h-3.5" /> Kryptert sesjon · noindex · kun for DigiHome-teamet</p>
       </div>
+    </div>
+  );
+}
+
+/* Passordfelt med vis/skjul-toggle (brukes på hele innloggingsflaten). */
+function PassordInput({ value, onChange, placeholder, autoComplete, testid, className }) {
+  const [vis, setVis] = useState(false);
+  return (
+    <div className="relative">
+      <input
+        type={vis ? 'text' : 'password'}
+        value={value} onChange={onChange}
+        autoComplete={autoComplete} placeholder={placeholder}
+        className={`${className} pr-11`}
+        data-testid={testid}
+      />
+      <button
+        type="button" tabIndex={-1} onClick={() => setVis((v) => !v)}
+        title={vis ? 'Skjul passord' : 'Vis passord'}
+        className="absolute right-3 top-1/2 -translate-y-1/2 mt-[3px] p-0.5 text-white/30 transition-colors hover:text-white/70"
+      >
+        {vis ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+      </button>
     </div>
   );
 }

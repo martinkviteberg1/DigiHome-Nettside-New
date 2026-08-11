@@ -21,7 +21,7 @@ import {
   ChevronDown, AlertTriangle, Pencil, Check, CornerDownLeft, History,
   ClipboardCheck, UserPlus, Repeat, Paperclip, Archive, ArchiveRestore,
   Download, KeyRound, Circle, Table2, CalendarRange, ArrowUpDown, User,
-  MoreHorizontal, Send,
+  MoreHorizontal, Send, Maximize2, Minimize2,
 } from 'lucide-react';
 
 const VISNINGER = [
@@ -1366,7 +1366,7 @@ function SakKort({ t, today, member, dras, fokus, valgt, index = 0, onClick, onD
       data-testid={`task-card-${t.id}`}
       data-fokus-id={t.id}
       style={{ animationDelay: `${Math.min(index * 28, 280)}ms` }}
-      className={`dh-kort-inn group relative cursor-pointer select-none rounded-xl bg-white p-3 shadow-[0_2px_10px_rgba(0,0,0,0.05)] transition-all touch-manipulation hover:-translate-y-[1px] hover:shadow-[0_6px_18px_rgba(0,0,0,0.09)] active:scale-[0.98] ${dras ? 'opacity-50 ring-2 ring-[#cf97fc]' : ''} ${valgt ? 'ring-2 ring-[#8b5cf6] bg-[#fbfaff]' : fokus ? 'ring-2 ring-[#8b5cf6]/60 shadow-[0_6px_20px_rgba(139,92,246,0.18)]' : ''}`}
+      className={`dh-kort-inn group relative cursor-pointer select-none rounded-xl border border-black/[0.045] bg-white p-3 shadow-[0_2px_10px_rgba(0,0,0,0.05)] transition-all touch-manipulation hover:-translate-y-[1px] hover:border-black/[0.08] hover:shadow-[0_6px_18px_rgba(0,0,0,0.09)] active:scale-[0.98] ${dras ? 'opacity-50 ring-2 ring-[#cf97fc]' : ''} ${valgt ? 'ring-2 ring-[#8b5cf6] bg-[#fbfaff]' : fokus ? 'ring-2 ring-[#8b5cf6]/60 shadow-[0_6px_20px_rgba(139,92,246,0.18)]' : ''}`}
     >
       {valgt && (
         <span className="absolute -left-1.5 -top-1.5 z-20 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-[#8b5cf6] text-white shadow-md" data-testid={`card-selected-${t.id}`}>
@@ -1477,12 +1477,17 @@ function Overlegg({ onClose, children, variant = 'sheet', testid }) {
   }, [onClose]);
 
   // variant 'panel' = sak-skuffen (full høyde til høyre på desktop)
+  // variant 'full'  = utvidet sakvisning (stort sentrert kort, Linear-style)
   // variant 'sheet' = modaler (sentrert kort på desktop)
   const ytre = variant === 'panel'
     ? 'fixed inset-0 z-[110] flex items-end justify-center md:items-stretch md:justify-end'
+    : variant === 'full'
+    ? 'fixed inset-0 z-[110] flex items-end justify-center md:items-center md:justify-center md:p-6'
     : 'fixed inset-0 z-[110] flex items-end justify-center md:items-start md:px-4 md:pt-[12vh]';
   const indre = variant === 'panel'
     ? 'relative flex h-[93dvh] w-full flex-col overflow-hidden rounded-t-[22px] bg-white shadow-[0_-12px_48px_rgba(0,0,0,0.18)] dh-panel-in md:h-full md:max-w-[480px] md:rounded-none md:shadow-[-16px_0_48px_rgba(0,0,0,0.14)]'
+    : variant === 'full'
+    ? 'relative flex h-[93dvh] w-full flex-col overflow-hidden rounded-t-[22px] bg-white shadow-[0_-12px_48px_rgba(0,0,0,0.18)] dh-panel-in md:h-full md:max-h-[880px] md:max-w-[1100px] md:rounded-2xl md:shadow-[0_40px_120px_rgba(0,0,0,0.38)]'
     : 'relative flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-[22px] bg-white shadow-[0_-12px_48px_rgba(0,0,0,0.18)] dh-panel-in md:max-h-[80vh] md:max-w-xl md:rounded-2xl md:shadow-[0_24px_80px_rgba(0,0,0,0.28)]';
 
   return (
@@ -1507,6 +1512,8 @@ function SakSkuff({ t, members, today, actor, apiKey, api, visToast, onReload, o
   const [sender, setSender] = useState(false);
   const [visLogg, setVisLogg] = useState(false);
   const [varsle, setVarsle] = useState(true);
+  // Utvidet visning: stort sentrert kort med to kolonner (Linear-style)
+  const [utvidet, setUtvidet] = useState(false);
   // @mention-autocomplete i kommentarfeltet (null = inaktiv)
   const [mentionSok, setMentionSok] = useState(null);
   const [mentionIdx, setMentionIdx] = useState(0);
@@ -1574,7 +1581,7 @@ function SakSkuff({ t, members, today, actor, apiKey, api, visToast, onReload, o
   };
 
   return (
-    <Overlegg onClose={onClose} variant="panel" testid="task-drawer">
+    <Overlegg onClose={onClose} variant={utvidet ? 'full' : 'panel'} testid="task-drawer">
       {/* Topp: status + lukk */}
       <div className="flex shrink-0 items-center gap-2 border-b border-black/[0.06] px-4 py-3 sm:px-5">
         <div className="no-scrollbar flex min-w-0 overflow-x-auto rounded-full bg-[#f3f2f0] p-0.5">
@@ -1594,116 +1601,129 @@ function SakSkuff({ t, members, today, actor, apiKey, api, visToast, onReload, o
             </button>
           ))}
         </div>
-        <button onClick={onClose} className="ml-auto shrink-0 rounded-lg p-2 text-[#999] hover:bg-[#f3f2f0] hover:text-[#333]" data-testid="drawer-close">
-          <X className="w-[18px] h-[18px]" />
-        </button>
+        <div className="ml-auto flex shrink-0 items-center gap-0.5">
+          <button
+            onClick={() => setUtvidet((v) => !v)}
+            title={utvidet ? 'Tilbake til sidepanel' : 'Utvid til full visning'}
+            data-testid="drawer-expand"
+            className="hidden rounded-lg p-2 text-[#999] hover:bg-[#f3f2f0] hover:text-[#333] md:block"
+          >
+            {utvidet ? <Minimize2 className="w-[17px] h-[17px]" /> : <Maximize2 className="w-[17px] h-[17px]" />}
+          </button>
+          <button onClick={onClose} className="rounded-lg p-2 text-[#999] hover:bg-[#f3f2f0] hover:text-[#333]" data-testid="drawer-close">
+            <X className="w-[18px] h-[18px]" />
+          </button>
+        </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-5">
-        {/* Tittel */}
-        <input
-          value={tittel}
-          onChange={(e) => setTittel(e.target.value)}
-          onBlur={() => { const v = tittel.trim(); if (v && v !== t.title) onPatch({ title: v }); }}
-          data-testid="drawer-title"
-          className="w-full bg-transparent text-[18px] font-bold leading-snug text-[#0a0a0a] outline-none placeholder:text-[#ccc] sm:text-[19px]"
-          style={heading}
-          placeholder="Sakens tittel"
-        />
+      <div className={`flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-5 ${utvidet ? 'md:px-8 md:py-6' : ''}`}>
+        {(() => {
+        /* Seksjonene defineres én gang og komponeres ulikt:
+           · Sidepanel: én kolonne i klassisk rekkefølge
+           · Utvidet:   Linear-style — innhold til venstre, detaljer i høyre kolonne */
+        const sekTittel = (
+          <input
+            value={tittel}
+            onChange={(e) => setTittel(e.target.value)}
+            onBlur={() => { const v = tittel.trim(); if (v && v !== t.title) onPatch({ title: v }); }}
+            data-testid="drawer-title"
+            className={`w-full bg-transparent font-bold leading-snug text-[#0a0a0a] outline-none placeholder:text-[#ccc] ${utvidet ? 'text-[20px] sm:text-[23px]' : 'text-[18px] sm:text-[19px]'}`}
+            style={heading}
+            placeholder="Sakens tittel"
+          />
+        );
 
-        {/* Beskrivelse */}
-        <textarea
-          value={beskrivelse}
-          onChange={(e) => setBeskrivelse(e.target.value)}
-          onBlur={() => { if (beskrivelse !== (t.description || '')) onPatch({ description: beskrivelse }); }}
-          rows={3}
-          data-testid="drawer-description"
-          placeholder="Beskrivelse — hva handler saken om, og hva er «ferdig»?"
-          className="mt-2 w-full resize-y rounded-xl border border-black/[0.07] bg-white p-3 text-[13.5px] leading-relaxed text-[#333] outline-none transition-all placeholder:text-[#bbb] hover:border-black/[0.14] focus:border-[#8b5cf6]/50 focus:ring-2 focus:ring-[#8b5cf6]/15"
-        />
+        const sekBeskrivelse = (
+          <textarea
+            value={beskrivelse}
+            onChange={(e) => setBeskrivelse(e.target.value)}
+            onBlur={() => { if (beskrivelse !== (t.description || '')) onPatch({ description: beskrivelse }); }}
+            rows={utvidet ? 5 : 3}
+            data-testid="drawer-description"
+            placeholder="Beskrivelse — hva handler saken om, og hva er «ferdig»?"
+            className="mt-2 w-full resize-y rounded-xl border border-black/[0.07] bg-white p-3 text-[13.5px] leading-relaxed text-[#333] outline-none transition-all placeholder:text-[#bbb] hover:border-black/[0.14] focus:border-[#8b5cf6]/50 focus:ring-2 focus:ring-[#8b5cf6]/15"
+          />
+        );
 
-        {/* Meta */}
-        <div className="mt-4 grid grid-cols-1 gap-3 min-[420px]:grid-cols-2">
-          <MetaFelt label="Ansvarlig">
-            <Meny
-              value={t.assigneeId || ''}
-              onChange={(v) => onPatch({ assigneeId: v || null, notify: varsle })}
-              testid="drawer-assignee"
-              placeholder="Ingen"
-              options={[{ v: '', l: 'Ingen', icon: User }, ...members.map((m) => ({ v: m.id, l: m.name, avatar: m, sub: m.email || undefined }))]}
-            />
-          </MetaFelt>
-          <MetaFelt label="Frist">
-            <input
-              type="date"
-              value={t.dueDate || ''}
-              onChange={(e) => onPatch({ dueDate: e.target.value || null })}
-              data-testid="drawer-due"
-              className="h-9 w-full rounded-lg border border-black/[0.08] bg-white px-2.5 text-[13px] outline-none transition-all hover:border-black/[0.16] focus:border-[#8b5cf6]/50 focus:ring-2 focus:ring-[#8b5cf6]/15"
-            />
-          </MetaFelt>
-          <MetaFelt label="Prioritet">
-            <Meny
-              value={t.priority}
-              onChange={(v) => onPatch({ priority: Number(v) })}
-              testid="drawer-priority"
-              options={[
-                { v: 1, l: 'P1 · Kritisk', dot: '#e11d48' },
-                { v: 2, l: 'P2 · Normal', dot: '#b45309' },
-                { v: 3, l: 'P3 · Lav', dot: '#6b7280' },
-              ]}
-            />
-          </MetaFelt>
-          <MetaFelt label="Gjentakelse">
-            <Meny
-              value={t.recurrence || ''}
-              onChange={(v) => onPatch({ recurrence: v || null })}
-              testid="drawer-recurrence"
-              options={REC_VALG.map((r) => ({ v: r.k, l: r.l, icon: r.k ? Repeat : undefined }))}
-            />
-          </MetaFelt>
-          <MetaFelt label="Etiketter (komma)">
-            <input
-              defaultValue={(t.labels || []).join(', ')}
-              onBlur={(e) => {
-                const labels = e.target.value.split(',').map((s) => s.trim()).filter(Boolean);
-                if (JSON.stringify(labels) !== JSON.stringify(t.labels || [])) onPatch({ labels });
-              }}
-              placeholder="styre, økonomi …"
-              className="h-9 w-full rounded-lg border border-black/[0.08] bg-white px-2.5 text-[13px] outline-none transition-all placeholder:text-[#ccc] hover:border-black/[0.16] focus:border-[#8b5cf6]/50 focus:ring-2 focus:ring-[#8b5cf6]/15"
-            />
-          </MetaFelt>
-        </div>
+        const sekMeta = (
+          <div className={`mt-4 grid grid-cols-1 gap-3 ${utvidet ? '' : 'min-[420px]:grid-cols-2'}`}>
+            <MetaFelt label="Ansvarlig">
+              <Meny
+                value={t.assigneeId || ''}
+                onChange={(v) => onPatch({ assigneeId: v || null, notify: varsle })}
+                testid="drawer-assignee"
+                placeholder="Ingen"
+                options={[{ v: '', l: 'Ingen', icon: User }, ...members.map((m) => ({ v: m.id, l: m.name, avatar: m, sub: m.email || undefined }))]}
+              />
+            </MetaFelt>
+            <MetaFelt label="Frist">
+              <input
+                type="date"
+                value={t.dueDate || ''}
+                onChange={(e) => onPatch({ dueDate: e.target.value || null })}
+                data-testid="drawer-due"
+                className="h-9 w-full rounded-lg border border-black/[0.08] bg-white px-2.5 text-[13px] outline-none transition-all hover:border-black/[0.16] focus:border-[#8b5cf6]/50 focus:ring-2 focus:ring-[#8b5cf6]/15"
+              />
+            </MetaFelt>
+            <MetaFelt label="Prioritet">
+              <Meny
+                value={t.priority}
+                onChange={(v) => onPatch({ priority: Number(v) })}
+                testid="drawer-priority"
+                options={[
+                  { v: 1, l: 'P1 · Kritisk', dot: '#e11d48' },
+                  { v: 2, l: 'P2 · Normal', dot: '#b45309' },
+                  { v: 3, l: 'P3 · Lav', dot: '#6b7280' },
+                ]}
+              />
+            </MetaFelt>
+            <MetaFelt label="Gjentakelse">
+              <Meny
+                value={t.recurrence || ''}
+                onChange={(v) => onPatch({ recurrence: v || null })}
+                testid="drawer-recurrence"
+                options={REC_VALG.map((r) => ({ v: r.k, l: r.l, icon: r.k ? Repeat : undefined }))}
+              />
+            </MetaFelt>
+            <MetaFelt label="Etiketter (komma)">
+              <input
+                defaultValue={(t.labels || []).join(', ')}
+                onBlur={(e) => {
+                  const labels = e.target.value.split(',').map((s) => s.trim()).filter(Boolean);
+                  if (JSON.stringify(labels) !== JSON.stringify(t.labels || [])) onPatch({ labels });
+                }}
+                placeholder="styre, økonomi …"
+                className="h-9 w-full rounded-lg border border-black/[0.08] bg-white px-2.5 text-[13px] outline-none transition-all placeholder:text-[#ccc] hover:border-black/[0.16] focus:border-[#8b5cf6]/50 focus:ring-2 focus:ring-[#8b5cf6]/15"
+              />
+            </MetaFelt>
+          </div>
+        );
 
-        {t.recurrence && (
+        const sekRec = t.recurrence ? (
           <p className="mt-2 flex items-center gap-1.5 text-[12px] text-[#8b5cf6]">
             <Repeat className="w-3.5 h-3.5" /> Når saken fullføres, opprettes neste forekomst automatisk.
           </p>
-        )}
+        ) : null;
 
-        <label className="mt-3 flex items-center gap-2 text-[12px] text-[#888]">
-          <input type="checkbox" checked={varsle} onChange={(e) => setVarsle(e.target.checked)} className="h-4 w-4 accent-[#8b5cf6]" />
-          Send e-postvarsel ved ny tildeling
-        </label>
+        const sekVarsle = (
+          <label className="mt-3 flex items-center gap-2 text-[12px] text-[#888]">
+            <input type="checkbox" checked={varsle} onChange={(e) => setVarsle(e.target.checked)} className="h-4 w-4 accent-[#8b5cf6]" />
+            Send e-postvarsel ved ny tildeling
+          </label>
+        );
 
-        {/* Frist-status */}
-        {t.dueDate && t.status !== 'done' && t.dueDate < today && (
+        const sekFrist = (t.dueDate && t.status !== 'done' && t.dueDate < today) ? (
           <div className="mt-3 flex items-center gap-2 rounded-xl bg-rose-50 px-3.5 py-2.5 text-[12.5px] font-medium text-rose-700">
             <AlertTriangle className="w-4 h-4 shrink-0" /> Fristen ({fmtDato(t.dueDate)}) er passert
           </div>
-        )}
+        ) : null;
 
-        {/* Underoppgaver / sjekkliste */}
-        <Sjekkliste items={t.subtasks || []} onChange={(subtasks) => onPatch({ subtasks })} />
+        const sekSjekkliste = <Sjekkliste items={t.subtasks || []} onChange={(subtasks) => onPatch({ subtasks })} />;
+        const sekFolgere = <FolgereFelt t={t} members={members} onPatch={onPatch} />;
+        const sekVedlegg = <VedleggSeksjon t={t} apiKey={apiKey} api={api} actor={actor} onReload={onReload} visToast={visToast} />;
 
-        {/* Følgere — varsles når de legges til og ved purring */}
-        <FolgereFelt t={t} members={members} onPatch={onPatch} />
-
-        {/* Vedlegg — chunket opplasting, maks 8 MB per fil */}
-        <VedleggSeksjon t={t} apiKey={apiKey} api={api} actor={actor} onReload={onReload} visToast={visToast} />
-
-        {/* Kommentarer — @navn nevner en person og varsler på e-post */}
-        <div className="mt-6">
+        const sekKommentarer = (
+          <div className="mt-6">
           <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#999]">Kommentarer</p>
           <div className="mt-2 space-y-2.5">
             {(t.comments || []).map((c) => (
@@ -1772,10 +1792,11 @@ function SakSkuff({ t, members, today, actor, apiKey, api, visToast, onReload, o
             </button>
           </div>
           <p className="mt-1.5 text-[11px] text-[#b5b5b5]">Skriv <span className="font-semibold text-[#8b5cf6]">@navn</span> for å nevne noen — de får e-postvarsel.</p>
-        </div>
+          </div>
+        );
 
-        {/* Aktivitetslogg */}
-        <div className="mt-6 pb-2">
+        const sekAktivitet = (
+          <div className="mt-6 pb-2">
           <button onClick={() => setVisLogg((v) => !v)} className="flex items-center gap-1.5 py-1 text-[11px] font-bold uppercase tracking-[0.1em] text-[#999] hover:text-[#555]">
             <History className="w-3.5 h-3.5" /> Aktivitet ({(t.activity || []).length})
             <ChevronDown className={`w-3.5 h-3.5 transition-transform ${visLogg ? 'rotate-180' : ''}`} />
@@ -1790,7 +1811,47 @@ function SakSkuff({ t, members, today, actor, apiKey, api, visToast, onReload, o
               ))}
             </div>
           )}
-        </div>
+          </div>
+        );
+
+        if (utvidet) {
+          return (
+            <div className="md:grid md:grid-cols-[minmax(0,1fr)_320px] md:items-start md:gap-x-10">
+              <div className="min-w-0">
+                {sekTittel}
+                {sekBeskrivelse}
+                {sekFrist}
+                {sekSjekkliste}
+                {sekVedlegg}
+                {sekKommentarer}
+                {sekAktivitet}
+              </div>
+              <aside className="mt-6 md:mt-1 md:rounded-2xl md:border md:border-black/[0.05] md:bg-[#fafaf8] md:p-5">
+                <p className="hidden text-[11px] font-bold uppercase tracking-[0.1em] text-[#999] md:block">Detaljer</p>
+                {sekMeta}
+                {sekRec}
+                {sekVarsle}
+                {sekFolgere}
+              </aside>
+            </div>
+          );
+        }
+        return (
+          <>
+            {sekTittel}
+            {sekBeskrivelse}
+            {sekMeta}
+            {sekRec}
+            {sekVarsle}
+            {sekFrist}
+            {sekSjekkliste}
+            {sekFolgere}
+            {sekVedlegg}
+            {sekKommentarer}
+            {sekAktivitet}
+          </>
+        );
+        })()}
       </div>
 
       {/* Bunnhandlinger — med safe-area på mobil */}
@@ -2238,18 +2299,69 @@ function NySakModal({ members, defaultStatus, onClose, onCreate }) {
 
 /* ═══════════════ Personer & kontoer ═══════════════
    Én kilde: en person kan stå som ansvarlig/følger, og kan (valgfritt) få
-   passord + rolle for innlogging på /admin. Rollen 'bruker' ser kun Saker.
+   passord + rolle for innlogging på /admin. Rollen 'bruker' har tilgang til
+   Saker + møter de deltar i eller har fått typetilgang til (moteTilgang).
+   Verv (tittel) vises i møter og protokoller — f.eks. Styreleder.
    Alle endringer er admin-only (serveren håndhever); 'bruker' ser listen. */
+const VERV_FORSLAG = ['Styreleder', 'Nestleder', 'Styremedlem', 'Varamedlem', 'Daglig leder', 'Økonomiansvarlig', 'Driftsansvarlig'];
+const MOTE_TILGANG_VALG = [
+  { k: 'styremote', l: 'Styremøter' },
+  { k: 'ledermote', l: 'Ledermøter' },
+  { k: 'annet', l: 'Andre møter' },
+];
+const MOTE_TILGANG_LABEL = { styremote: 'Styremøter', ledermote: 'Ledermøter', annet: 'Andre møter' };
+
+// Verdensklasse-detalj: vervet foreslår fornuftig møtetilgang automatisk
+// (styreverv → styremøter, daglig leder → begge). Kun et forslag — admin
+// kan alltid overstyre med chipsene.
+function foreslaMoteTilgang(verv) {
+  const v = String(verv || '').toLowerCase();
+  if (!v) return null;
+  if (/daglig leder|adm\.? ?dir|ceo/.test(v)) return ['styremote', 'ledermote'];
+  if (/styre/.test(v)) return ['styremote'];
+  if (/leder|sjef|direkt/.test(v)) return ['ledermote'];
+  return null;
+}
+
+// Chips for møtetilgang per møtetype. Admin ser alle møter uansett —
+// chipsene er derfor deaktivert (med forklaring) når rollen er admin.
+function MoteTilgangVelger({ value, onChange, disabled, testid }) {
+  const valgt = Array.isArray(value) ? value : [];
+  return (
+    <div className="flex min-w-0 flex-wrap items-center gap-1.5" data-testid={testid}>
+      {MOTE_TILGANG_VALG.map((o) => {
+        const aktiv = valgt.includes(o.k);
+        return (
+          <button
+            key={o.k}
+            type="button"
+            disabled={disabled}
+            onClick={() => onChange(aktiv ? valgt.filter((x) => x !== o.k) : [...valgt, o.k])}
+            data-testid={`${testid}-${o.k}`}
+            className={`flex h-8 items-center gap-1 rounded-full px-2.5 text-[11.5px] font-semibold transition-all active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-40 ${
+              aktiv ? 'bg-[#f4f0fb] text-[#6d28d9] ring-1 ring-[#8b5cf6]/30' : 'bg-[#f3f2f0] text-[#999] hover:text-[#555]'
+            }`}
+          >
+            {aktiv && <Check className="h-3 w-3" />}{o.l}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 function PersonerModal({ api, members, setMembers, erBruker, onClose, visToast }) {
   const [navn, setNavn] = useState('');
   const [epost, setEpost] = useState('');
   const [rolle, setRolle] = useState('bruker');
   const [passord, setPassord] = useState('');
+  const [tittel, setTittel] = useState(''); // verv, f.eks. Styreleder
+  const [moteTilgang, setMoteTilgang] = useState([]);
   const [inviter, setInviter] = useState(true); // velkomst-e-post — brukeren velger eget passord
   const [inviterer, setInviterer] = useState(null); // person-id under (re)utsending
   const [lagrer, setLagrer] = useState(false);
   const [redigerId, setRedigerId] = useState(null);
-  const [red, setRed] = useState({ name: '', email: '', role: 'bruker', password: '' });
+  const [red, setRed] = useState({ name: '', email: '', role: 'bruker', password: '', tittel: '', moteTilgang: [] });
 
   const leggTil = async () => {
     if (!navn.trim() || lagrer) return;
@@ -2259,13 +2371,14 @@ function PersonerModal({ api, members, setMembers, erBruker, onClose, visToast }
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: navn.trim(), email: epost.trim(), role: rolle, password: passord,
+          tittel: tittel.trim(), moteTilgang,
           invite: inviter && !!epost.trim() && !passord,
         }),
       });
       const j = await r.json();
       if (!j.ok) throw new Error(j.error || 'Kunne ikke legge til');
       setMembers((prev) => [...prev, j.member]);
-      setNavn(''); setEpost(''); setPassord(''); setRolle('bruker');
+      setNavn(''); setEpost(''); setPassord(''); setRolle('bruker'); setTittel(''); setMoteTilgang([]);
       visToast(j.invitert
         ? `Invitasjon sendt til ${j.member.email} — de velger eget passord`
         : j.member.harPassord ? `${j.member.name} lagt til — kan nå logge inn` : `${j.member.name} lagt til`);
@@ -2290,7 +2403,7 @@ function PersonerModal({ api, members, setMembers, erBruker, onClose, visToast }
 
   const lagreEndring = async (id) => {
     try {
-      const payload = { name: red.name.trim(), email: red.email.trim(), role: red.role };
+      const payload = { name: red.name.trim(), email: red.email.trim(), role: red.role, tittel: red.tittel.trim(), moteTilgang: red.moteTilgang };
       if (red.password) payload.password = red.password;
       const r = await api(`users/${id}`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
@@ -2354,7 +2467,7 @@ function PersonerModal({ api, members, setMembers, erBruker, onClose, visToast }
                       testid={`member-role-select-${m.id}`}
                       options={[
                         { v: 'admin', l: 'Admin', sub: 'Full tilgang til hele admin' },
-                        { v: 'bruker', l: 'Bruker', sub: 'Kun tilgang til Saker' },
+                        { v: 'bruker', l: 'Bruker', sub: 'Saker + møter de har tilgang til' },
                       ]}
                       className="h-10 [&>button]:h-10"
                     />
@@ -2367,9 +2480,31 @@ function PersonerModal({ api, members, setMembers, erBruker, onClose, visToast }
                     className="h-10 min-w-0 rounded-lg border border-black/[0.08] bg-white px-2.5 text-[13.5px] outline-none transition-all hover:border-black/[0.16] focus:border-[#8b5cf6]/50 focus:ring-2 focus:ring-[#8b5cf6]/15"
                     data-testid={`member-password-input-${m.id}`}
                   />
+                  <input
+                    value={red.tittel}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setRed((p) => {
+                        const forslag = !p.moteTilgang.length ? foreslaMoteTilgang(v) : null;
+                        return { ...p, tittel: v, ...(forslag ? { moteTilgang: forslag } : {}) };
+                      });
+                    }}
+                    list="verv-forslag"
+                    placeholder="Verv — f.eks. Styreleder (valgfritt)"
+                    data-testid={`member-tittel-input-${m.id}`}
+                    className="h-10 min-w-0 rounded-lg border border-black/[0.08] bg-white px-2.5 text-[13.5px] outline-none transition-all hover:border-black/[0.16] focus:border-[#8b5cf6]/50 focus:ring-2 focus:ring-[#8b5cf6]/15"
+                  />
+                  <div className="flex min-w-0 items-center">
+                    <MoteTilgangVelger
+                      value={red.moteTilgang}
+                      onChange={(v) => setRed((p) => ({ ...p, moteTilgang: v }))}
+                      disabled={red.role === 'admin' || m.role === 'owner'}
+                      testid={`member-motetilgang-${m.id}`}
+                    />
+                  </div>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <p className="mr-auto text-[11px] text-[#b5b5b5]">Passord krever e-post og minst 8 tegn.</p>
+                  <p className="mr-auto text-[11px] text-[#b5b5b5]">{(red.role === 'admin' || m.role === 'owner') ? 'Admin ser alle møter — møtetilgang gjelder kun rollen Bruker.' : 'Møtetilgang: hvilke møtetyper personen kan se. Passord krever e-post og minst 8 tegn.'}</p>
                   <button onClick={() => lagreEndring(m.id)} data-testid={`member-save-${m.id}`} className="flex items-center gap-1.5 rounded-lg bg-[#0a0a0a] px-3 py-2 text-[12.5px] font-semibold text-white transition-all hover:bg-black/85 active:scale-[0.97]"><Check className="w-4 h-4" /> Lagre</button>
                   <button onClick={() => setRedigerId(null)} className="rounded-lg p-2 text-[#999] hover:bg-[#f3f2f0]"><X className="w-4 h-4" /></button>
                 </div>
@@ -2383,6 +2518,9 @@ function PersonerModal({ api, members, setMembers, erBruker, onClose, visToast }
                     <span className={`shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
                       m.role === 'owner' ? 'bg-[#0a0a0a] text-white' : m.role === 'admin' ? 'bg-[#f4f0fb] text-[#8b5cf6]' : 'bg-[#f3f2f0] text-[#888]'
                     }`}>{ROLLE_LABEL[m.role] || m.role}</span>
+                    {m.tittel && (
+                      <span title="Verv" className="shrink-0 rounded-md bg-white px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#777] ring-1 ring-black/[0.08]" data-testid={`member-verv-${m.id}`}>{m.tittel}</span>
+                    )}
                     {m.harPassord && (
                       <span title="Har passord — kan logge inn" className="shrink-0 text-emerald-500"><KeyRound className="w-3.5 h-3.5" /></span>
                     )}
@@ -2390,7 +2528,7 @@ function PersonerModal({ api, members, setMembers, erBruker, onClose, visToast }
                       <span title="Invitasjon sendt — venter på at brukeren velger passord" className="shrink-0 rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-600">Invitert</span>
                     )}
                   </div>
-                  <p className="truncate text-[12px] text-[#999]">{m.email || 'Ingen e-post — får ikke varsler'}{m.harPassord ? ' · kan logge inn' : ''}</p>
+                  <p className="truncate text-[12px] text-[#999]">{m.email || 'Ingen e-post — får ikke varsler'}{m.harPassord ? ' · kan logge inn' : ''}{m.role === 'bruker' && (m.moteTilgang || []).length > 0 ? ` · ser ${m.moteTilgang.map((k) => (MOTE_TILGANG_LABEL[k] || k).toLowerCase()).join(', ')}` : ''}</p>
                 </div>
                 {!erBruker && (
                   <>
@@ -2405,7 +2543,7 @@ function PersonerModal({ api, members, setMembers, erBruker, onClose, visToast }
                       </button>
                     )}
                     <button
-                      onClick={() => { setRedigerId(m.id); setRed({ name: m.name, email: m.email || '', role: m.role || 'bruker', password: '' }); }}
+                      onClick={() => { setRedigerId(m.id); setRed({ name: m.name, email: m.email || '', role: m.role || 'bruker', password: '', tittel: m.tittel || '', moteTilgang: Array.isArray(m.moteTilgang) ? m.moteTilgang : [] }); }}
                       data-testid={`member-edit-${m.id}`}
                       className="rounded-lg p-2 text-[#bbb] hover:bg-[#f3f2f0] hover:text-[#555]"
                     >
@@ -2444,7 +2582,7 @@ function PersonerModal({ api, members, setMembers, erBruker, onClose, visToast }
             <Meny
               value={rolle} onChange={setRolle} testid="member-role-input" oppover
               options={[
-                { v: 'bruker', l: 'Bruker', sub: 'Kun tilgang til Saker' },
+                { v: 'bruker', l: 'Bruker', sub: 'Saker + møter de har tilgang til' },
                 { v: 'admin', l: 'Admin', sub: 'Full tilgang til hele admin' },
               ]}
               className="[&>button]:h-11 sm:[&>button]:h-10"
@@ -2457,7 +2595,29 @@ function PersonerModal({ api, members, setMembers, erBruker, onClose, visToast }
               data-testid="member-password-input"
               className="h-11 min-w-0 rounded-lg border border-black/[0.08] bg-white px-3 text-[14px] outline-none transition-all placeholder:text-[#bbb] hover:border-black/[0.16] focus:border-[#8b5cf6]/50 focus:ring-2 focus:ring-[#8b5cf6]/15 sm:h-10 sm:text-[13.5px]"
             />
+            <input
+              value={tittel}
+              onChange={(e) => {
+                const v = e.target.value;
+                setTittel(v);
+                if (!moteTilgang.length) {
+                  const forslag = foreslaMoteTilgang(v);
+                  if (forslag) setMoteTilgang(forslag);
+                }
+              }}
+              list="verv-forslag"
+              placeholder="Verv — f.eks. Styreleder (valgfritt)"
+              data-testid="member-tittel-input"
+              className="h-11 min-w-0 rounded-lg border border-black/[0.08] bg-white px-3 text-[14px] outline-none transition-all placeholder:text-[#bbb] hover:border-black/[0.16] focus:border-[#8b5cf6]/50 focus:ring-2 focus:ring-[#8b5cf6]/15 sm:h-10 sm:text-[13.5px]"
+            />
+            <div className="flex min-w-0 items-center gap-2">
+              <span className="shrink-0 text-[11px] font-bold uppercase tracking-[0.06em] text-[#b5b5b5]">Ser</span>
+              <MoteTilgangVelger value={moteTilgang} onChange={setMoteTilgang} disabled={rolle === 'admin'} testid="member-motetilgang" />
+            </div>
           </div>
+          <datalist id="verv-forslag">
+            {VERV_FORSLAG.map((v) => <option key={v} value={v} />)}
+          </datalist>
           <label className={`mt-2.5 flex items-center gap-2 select-none ${!epost.trim() || passord ? 'cursor-not-allowed opacity-45' : 'cursor-pointer'}`}>
             <input
               type="checkbox"

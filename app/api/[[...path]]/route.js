@@ -51,6 +51,7 @@ import { runOptimization, getOptimizeConfig, setOptimizeConfig, getLastRun, list
 import { sendWeeklyReport, buildReportData, renderReportHtml } from '@/lib/ads-report';
 import { buildMarketingMetrics } from '@/lib/marketing-metrics';
 import { emailConfigured, reportRecipients, sendHtmlEmail, isUndeliverableTestAddress } from '@/lib/email';
+import { byggMoteProtokoll, protokollFilnavn } from '@/lib/protokoll';
 import { NEWSLETTER_COLL, OPTOUT_COLL, NL_EVENTS_COLL, renderNewsletterHtml, resolveAudience, audienceCounts, sanitizeBlocks, hasContent, buildUnsubUrl, verifyUnsubToken, verifyInterestToken, propertyInterestToken, verifyPropertyInterestToken, slugifyCampaign, normEmail as nlNormEmail, recipientId, TEMPLATES, templateBlocks, THEMES, TRACKING_GIF, applyMergeTags } from '@/lib/newsletter';
 import { syncPropertiesFromPlatform, maybeAutoSyncProperties, listAdminProperties, listPublicProperties, setPropertyVisibility, getPropertiesSyncMeta, backfillPropertyDistricts, refreshPropertyQuality, applyEnrichment, setPropertyEnrichment, setPropertyFinnSnapshot, setPropertyEditorialTitle, setPropertyEditorialFields, PROPERTIES_COLL } from '@/lib/properties-sync';
 import { EDITORIAL_FIELDS, stripHouseNumber } from '@/lib/property-editorial';
@@ -1070,37 +1071,42 @@ async function invaliderBrukerTokens(db, userId) {
 // --- E-postramme for konto-e-poster (invitasjon / reset / magic link) ---
 // Verdensklasse, klientsikker HTML: inline-styles, skjult preheader, én tydelig
 // CTA, fallback-lenke i klartekst og sikkerhetsnotis. Matcher admin-designet.
-function authEpostHtml({ eyebrow, heading, intro, detaljerHtml = '', ctaLabel, ctaUrl, gyldighet, sikkerhet, mottakerEpost, preheader, headerLabel = 'Internt arbeidsområde' }) {
+function authEpostHtml({ eyebrow, heading, intro, detaljerHtml = '', ctaLabel, ctaUrl, gyldighet, sikkerhet, mottakerEpost, preheader, headerLabel = 'Admin' }) {
   const esc = taskEsc;
+  const base = (process.env.NEXT_PUBLIC_BASE_URL || 'https://digihome.no').replace(/\/$/, '');
+  const logoUrl = `${base}/api/media/email-logo.png`;
   return `
-  <div style="background:#f6f5f3;padding:40px 16px;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif">
-    <span style="display:none!important;visibility:hidden;opacity:0;color:transparent;height:0;width:0;overflow:hidden">${esc(preheader || intro)}</span>
-    <div style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:20px;overflow:hidden;border:1px solid #ececec">
-      <div style="background:#0a0a0a;padding:22px 30px">
-        <span style="display:inline-block;width:9px;height:9px;border-radius:99px;background:#cf97fc;vertical-align:middle;margin-right:9px"></span><span style="color:#ffffff;font-size:16px;font-weight:700;letter-spacing:-0.01em;vertical-align:middle">DigiHome</span>
-        <span style="float:right;color:rgba(255,255,255,0.4);font-size:11px;letter-spacing:0.08em;text-transform:uppercase;line-height:20px">${esc(headerLabel)}</span>
+  <div style="background:#f4f3f1;padding:44px 16px;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif">
+    <span style="display:none!important;visibility:hidden;opacity:0;color:transparent;height:0;width:0;overflow:hidden">${esc(preheader || intro)}&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;</span>
+    <div style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:20px;overflow:hidden;border:1px solid #eceae7;box-shadow:0 1px 3px rgba(20,15,35,0.04)">
+      <div style="height:4px;background:linear-gradient(90deg,#8b5cf6 0%,#cf97fc 60%,#e9d5ff 100%)"></div>
+      <div style="padding:24px 32px 0">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+          <td style="vertical-align:middle"><img src="${logoUrl}" alt="DigiHome" height="26" style="display:block;height:26px;width:auto;border:0" /></td>
+          <td style="vertical-align:middle;text-align:right"><span style="display:inline-block;border:1px solid #e7e4ef;border-radius:99px;padding:4px 12px;color:#8b5cf6;font-size:10.5px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase">${esc(headerLabel)}</span></td>
+        </tr></table>
       </div>
-      <div style="padding:36px 30px 8px">
+      <div style="padding:30px 32px 8px">
         <p style="margin:0 0 10px;color:#8b5cf6;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em">${esc(eyebrow)}</p>
-        <h1 style="margin:0 0 12px;color:#0a0a0a;font-size:24px;line-height:1.25;letter-spacing:-0.02em">${esc(heading)}</h1>
-        <p style="margin:0;color:#555;font-size:14.5px;line-height:1.65">${intro}</p>
+        <h1 style="margin:0 0 12px;color:#0f0f0f;font-size:25px;line-height:1.22;letter-spacing:-0.02em">${esc(heading)}</h1>
+        <p style="margin:0;color:#565656;font-size:14.5px;line-height:1.68">${intro}</p>
         ${detaljerHtml}
       </div>
-      <div style="padding:26px 30px 8px">
-        <a href="${ctaUrl}" style="display:block;background:#0a0a0a;color:#ffffff;text-decoration:none;font-size:15px;font-weight:600;padding:15px 24px;border-radius:14px;text-align:center">${esc(ctaLabel)} &rarr;</a>
-        ${gyldighet ? `<p style="margin:14px 0 0;color:#999;font-size:12px;line-height:1.6;text-align:center">${esc(gyldighet)}</p>` : ''}
+      <div style="padding:28px 32px 6px">
+        <a href="${ctaUrl}" style="display:block;background:#0f0f0f;color:#ffffff;text-decoration:none;font-size:15px;font-weight:600;padding:16px 24px;border-radius:13px;text-align:center;letter-spacing:-0.01em">${esc(ctaLabel)} &rarr;</a>
+        ${gyldighet ? `<p style="margin:14px 0 0;color:#9b9b9b;font-size:12px;line-height:1.6;text-align:center">${esc(gyldighet)}</p>` : ''}
       </div>
-      <div style="padding:22px 30px 30px">
-        <div style="border-top:1px solid #f0efed;padding-top:18px">
-          <p style="margin:0 0 6px;color:#aaa;font-size:11.5px;line-height:1.6">Fungerer ikke knappen? Kopier lenken inn i nettleseren:</p>
-          <p style="margin:0;word-break:break-all"><a href="${ctaUrl}" style="color:#8b5cf6;font-size:11.5px;text-decoration:underline">${esc(ctaUrl)}</a></p>
+      <div style="padding:24px 32px 28px">
+        <div style="border-top:1px solid #f0eeeb;padding-top:16px">
+          <p style="margin:0 0 5px;color:#adadad;font-size:11.5px;line-height:1.6">Fungerer ikke knappen? Kopier lenken inn i nettleseren:</p>
+          <p style="margin:0;word-break:break-all"><a href="${ctaUrl}" style="color:#8b5cf6;font-size:11px;text-decoration:underline">${esc(ctaUrl)}</a></p>
         </div>
       </div>
-      ${sikkerhet ? `<div style="background:#fafaf8;border-top:1px solid #f0efed;padding:18px 30px">
-        <p style="margin:0;color:#8a8a8a;font-size:12px;line-height:1.6">${esc(sikkerhet)}</p>
+      ${sikkerhet ? `<div style="background:#faf9f7;border-top:1px solid #f0eeeb;padding:18px 32px">
+        <p style="margin:0;color:#8a8a8a;font-size:12px;line-height:1.65">${esc(sikkerhet)}</p>
       </div>` : ''}
     </div>
-    <p style="max-width:560px;margin:18px auto 0;text-align:center;color:#b5b5b5;font-size:11px;line-height:1.6">DigiHome &middot; digihome.no${mottakerEpost ? ` &middot; Sendt til ${esc(mottakerEpost)}` : ''}</p>
+    <p style="max-width:560px;margin:20px auto 0;text-align:center;color:#b5b2ad;font-size:11px;line-height:1.7">DigiHome Admin &middot; vårt interne arbeidsverktøy &middot; digihome.no${mottakerEpost ? `<br/>Sendt til ${esc(mottakerEpost)}` : ''}</p>
   </div>`;
 }
 
@@ -1113,11 +1119,11 @@ async function sendVelkomstEpost({ member, rawToken, invitertAv }) {
   const url = `${base}/admin?invite=${rawToken}`;
   const fornavn = String(member.name || '').trim().split(/\s+/)[0] || 'der';
   const rolleTekst = member.role === 'admin' || member.role === 'owner'
-    ? 'Du får full tilgang til hele admin-portalen — innsikt, leads, økonomi, saker og møter.'
-    : 'Du får tilgang til <strong style="color:#0a0a0a">Saker</strong> — teamets interne system for oppfølging, frister og ansvar.';
+    ? 'Du får full tilgang til hele DigiHome Admin — innsikt, leads, økonomi, saker og møter.'
+    : 'Du får tilgang til <strong style="color:#0f0f0f">Saker</strong> — teamets system for oppfølging, frister og ansvar.';
   const rad = (l, v) => `<tr><td style="padding:5px 16px 5px 0;color:#8a8a8a;font-size:13px;white-space:nowrap">${l}</td><td style="padding:5px 0;color:#111;font-size:13px;font-weight:600">${taskEsc(v)}</td></tr>`;
   const detaljer = `
-        <div style="margin-top:20px;background:#fafaf8;border:1px solid #f0efed;border-radius:14px;padding:16px 20px">
+        <div style="margin-top:20px;background:#faf9f7;border:1px solid #f0eeeb;border-radius:14px;padding:16px 20px">
           <table style="border-collapse:collapse">
             ${rad('E-post', member.email)}
             ${rad('Rolle', member.role === 'admin' ? 'Administrator' : member.role === 'owner' ? 'Eier' : 'Bruker')}
@@ -1127,17 +1133,17 @@ async function sendVelkomstEpost({ member, rawToken, invitertAv }) {
   const html = authEpostHtml({
     eyebrow: 'Velkommen til teamet',
     heading: `Hei ${fornavn} — kontoen din er klar`,
-    intro: `${taskEsc(invitertAv || 'DigiHome')} har invitert deg til DigiHomes interne arbeidsområde. ${rolleTekst} Trykk på knappen under for å aktivere kontoen og velge ditt eget passord.`,
+    intro: `${taskEsc(invitertAv || 'DigiHome')} har invitert deg til <strong style="color:#0f0f0f">DigiHome Admin</strong> — vårt interne arbeidsverktøy. ${rolleTekst} Trykk på knappen under for å aktivere kontoen og velge ditt eget passord.`,
     detaljerHtml: detaljer,
     ctaLabel: 'Aktiver konto og velg passord',
     ctaUrl: url,
     gyldighet: 'Lenken er personlig og gyldig i 7 dager.',
     sikkerhet: 'Var ikke dette deg? Da kan du trygt se bort fra denne e-posten — ingenting skjer uten at lenken brukes.',
     mottakerEpost: member.email,
-    preheader: `Du er invitert til DigiHome. Aktiver kontoen og velg ditt eget passord.`,
+    preheader: `Du er invitert til DigiHome Admin. Aktiver kontoen og velg ditt eget passord.`,
   });
   try {
-    await sendHtmlEmail({ to: member.email, subject: `Velkommen til DigiHome, ${fornavn} — aktiver kontoen din`, html, fromName: 'DigiHome', individual: false, categories: ['konto-invitasjon'] });
+    await sendHtmlEmail({ to: member.email, subject: `Velkommen til DigiHome Admin, ${fornavn}`, html, fromName: 'DigiHome Admin', individual: false, categories: ['konto-invitasjon'] });
     return true;
   } catch (e) { return false; }
 }
@@ -1159,7 +1165,7 @@ async function sendResetEpost({ member, rawToken }) {
     preheader: 'Velg et nytt passord for DigiHome-kontoen din.',
   });
   try {
-    await sendHtmlEmail({ to: member.email, subject: 'Tilbakestill passordet ditt — DigiHome', html, fromName: 'DigiHome', individual: false, categories: ['konto-reset'] });
+    await sendHtmlEmail({ to: member.email, subject: 'Tilbakestill passordet ditt — DigiHome Admin', html, fromName: 'DigiHome Admin', individual: false, categories: ['konto-reset'] });
     return true;
   } catch (e) { return false; }
 }
@@ -1172,16 +1178,16 @@ async function sendMagicEpost({ member, rawToken }) {
   const html = authEpostHtml({
     eyebrow: 'Innlogging',
     heading: 'Din innloggingslenke',
-    intro: `Hei ${taskEsc(fornavn)} — trykk på knappen under, så logges du rett inn i DigiHome admin. Helt uten passord.`,
+    intro: `Hei ${taskEsc(fornavn)} — trykk på knappen under, så logges du rett inn i DigiHome Admin. Helt uten passord.`,
     ctaLabel: 'Logg meg inn',
     ctaUrl: url,
     gyldighet: 'Lenken er gyldig i 15 minutter og kan bare brukes én gang.',
     sikkerhet: 'Ba du ikke om dette? Da kan du se bort fra e-posten. Ingen kommer inn på kontoen uten selve lenken.',
     mottakerEpost: member.email,
-    preheader: 'Engangslenke som logger deg rett inn i DigiHome admin.',
+    preheader: 'Engangslenke som logger deg rett inn i DigiHome Admin.',
   });
   try {
-    await sendHtmlEmail({ to: member.email, subject: 'Din innloggingslenke — DigiHome', html, fromName: 'DigiHome', individual: false, categories: ['konto-magic'] });
+    await sendHtmlEmail({ to: member.email, subject: 'Din innloggingslenke — DigiHome Admin', html, fromName: 'DigiHome Admin', individual: false, categories: ['konto-magic'] });
     return true;
   } catch (e) { return false; }
 }
@@ -1586,7 +1592,7 @@ function normaliserVedtak(input) {
 
 // Møte-e-post (innkalling + referat) — bruker samme premium-ramme som
 // konto-e-postene (authEpostHtml) slik at ALT teamet mottar ser likt ut.
-async function moteEpost({ member, meeting, heading, intro, ekstraHtml = '', skjulAgenda = false }) {
+async function moteEpost({ member, meeting, heading, intro, ekstraHtml = '', skjulAgenda = false, attachments }) {
   if (!member || !member.email || !emailConfigured()) return false;
   const base = (process.env.NEXT_PUBLIC_BASE_URL || 'https://digihome.no').replace(/\/$/, '');
   const fornavn = String(member.name || '').trim().split(/\s+/)[0] || 'der';
@@ -1614,17 +1620,37 @@ async function moteEpost({ member, meeting, heading, intro, ekstraHtml = '', skj
     ctaLabel: 'Åpne Møter i admin',
     ctaUrl: `${base}/admin`,
     gyldighet: '',
-    sikkerhet: 'Du mottar denne e-posten fordi du står som deltaker i møtet i DigiHomes interne arbeidsområde.',
+    sikkerhet: 'Du mottar denne e-posten fordi du står som deltaker i møtet i DigiHome Admin.',
     mottakerEpost: member.email,
     preheader: `${heading}: ${meeting.title} — ${naar}`,
     headerLabel: 'Møter · intern',
   });
   try {
-    await sendHtmlEmail({ to: member.email, subject: `${heading}: ${meeting.title}`, html, fromName: 'DigiHome Møter', individual: false, categories: ['intern-mote'] });
+    await sendHtmlEmail({ to: member.email, subject: `${heading}: ${meeting.title}`, html, fromName: 'DigiHome Møter', individual: false, categories: ['intern-mote'], attachments });
     return true;
   } catch (e) {
     return false;
   }
+}
+
+// Samler alt en protokoll trenger: deltakere + aksjonspunkter (aktive OG
+// arkiverte, med ansvarlig-navn) for et møte. Brukes av PDF-nedlasting og
+// referat-utsendelsen slik at MOM-en alltid er komplett.
+async function hentProtokollData(db, meeting) {
+  const [deltakere, alleTasks] = await Promise.all([
+    db.collection('admin_users').find({ id: { $in: meeting.attendees || [] } }).project({ _id: 0, id: 1, name: 1, email: 1, tittel: 1 }).toArray(),
+    db.collection('tasks').find({ meetingId: meeting.id }).project({ _id: 0, id: 1, title: 1, status: 1, dueDate: 1, assigneeId: 1, assigneeIds: 1, archived: 1 }).toArray(),
+  ]);
+  const navnPaa = new Map((await db.collection('admin_users').find({}).project({ _id: 0, id: 1, name: 1 }).toArray()).map((p) => [p.id, p.name]));
+  const aksjoner = alleTasks.map((t) => {
+    const ids = Array.isArray(t.assigneeIds) && t.assigneeIds.length ? t.assigneeIds : (t.assigneeId ? [t.assigneeId] : []);
+    return {
+      ...t,
+      archived: !!t.archived,
+      ansvarligNavn: ids.map((id) => navnPaa.get(id)).filter(Boolean).join(', ') || '',
+    };
+  });
+  return { deltakere, aksjoner };
 }
 
 // Følgere: personer som IKKE er hovedansvarlig, men vil holdes orientert.
@@ -1679,6 +1705,8 @@ async function hentPersoner(db) {
     email: u.email || '',
     color: u.color || TASK_FARGER[i % TASK_FARGER.length],
     role: u.role || 'admin',
+    tittel: u.tittel || '',
+    moteTilgang: Array.isArray(u.moteTilgang) ? u.moteTilgang : [],
     harPassord: !!u.passwordHash,
     invitedAt: u.invitedAt || '',
     createdAt: u.createdAt || '',
@@ -2419,6 +2447,8 @@ async function handleRoute(request, { params }) {
       const antall = await db.collection('admin_users').countDocuments();
       const member = {
         id: uuidv4(), name, email, role,
+        tittel: String(body.tittel || '').trim().slice(0, 60),
+        moteTilgang: Array.isArray(body.moteTilgang) ? body.moteTilgang.filter((t) => Object.keys(MOTE_TYPE_LABEL).includes(t)) : [],
         color: /^#[0-9a-fA-F]{6}$/.test(String(body.color || '')) ? body.color : TASK_FARGER[antall % TASK_FARGER.length],
         createdAt: new Date().toISOString(),
       };
@@ -2500,6 +2530,13 @@ async function handleRoute(request, { params }) {
       }
       if (body.color !== undefined && /^#[0-9a-fA-F]{6}$/.test(String(body.color))) set.color = body.color;
       if (body.role !== undefined && !erOwner && ['admin', 'bruker'].includes(body.role)) set.role = body.role;
+      // Verv/tittel (Styreleder, Daglig leder …) og møtetilgang per møtetype
+      if (body.tittel !== undefined) set.tittel = String(body.tittel || '').trim().slice(0, 60);
+      if (body.moteTilgang !== undefined) {
+        set.moteTilgang = Array.isArray(body.moteTilgang)
+          ? body.moteTilgang.filter((t) => Object.keys(MOTE_TYPE_LABEL).includes(t))
+          : [];
+      }
       if (body.password !== undefined) {
         const pw = String(body.password || '');
         if (pw) {
@@ -2873,9 +2910,19 @@ async function handleRoute(request, { params }) {
 
     // ═══════════════ MØTER — styremøter/ledermøter med agenda, referat,
     // vedtak og aksjonspunkter som blir saker. Admin-only (bruker = kun saker).
+    // Møteoversikt: admin ser alt; 'bruker' ser møter de deltar i ELLER
+    // møtetyper de har fått tilgang til (moteTilgang per person, admin-styrt).
+    // Håndheves her — ikke bare i menyen.
     if (path[0] === 'admin' && path[1] === 'meetings' && path.length === 2 && method === 'GET') {
-      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
-      const alleMoter = await db.collection('meetings').find({}, { projection: { _id: 0 } }).toArray();
+      if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let alleMoter = await db.collection('meetings').find({}, { projection: { _id: 0 } }).toArray();
+      if (!adminAuthed(request)) {
+        const sesjon = sessionFra(request);
+        const meg = sesjon && sesjon.sub ? await db.collection('admin_users').findOne({ id: sesjon.sub }) : null;
+        if (!meg) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+        const tilgang = Array.isArray(meg.moteTilgang) ? meg.moteTilgang : [];
+        alleMoter = alleMoter.filter((m) => (m.attendees || []).includes(meg.id) || tilgang.includes(m.type));
+      }
       // Planlagte først (nærmest frem i tid), deretter avholdte (nyeste øverst)
       const planlagt = alleMoter.filter((m) => m.status !== 'avholdt').sort((a, b) => String(a.datetime || '9999').localeCompare(String(b.datetime || '9999')));
       const avholdt = alleMoter.filter((m) => m.status === 'avholdt').sort((a, b) => String(b.datetime || '').localeCompare(String(a.datetime || '')));
@@ -3004,6 +3051,36 @@ async function handleRoute(request, { params }) {
     }
 
     // Send referat + vedtak til alle deltakere med e-post
+    // Last ned møteprotokoll (MOM) som PDF — formell, arkiverbar protokoll
+    // med agenda, referat, vedtak, aksjonspunkter og signaturfelt (styremøte).
+    // Brukere med lesetilgang til møtet (deltaker/møtetype) kan også laste ned.
+    if (path[0] === 'admin' && path[1] === 'meetings' && path.length === 4 && path[3] === 'protokoll' && method === 'GET') {
+      if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const meeting = await db.collection('meetings').findOne({ id: path[2] }, { projection: { _id: 0 } });
+      if (!meeting) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
+      if (!adminAuthed(request)) {
+        const sesjon = sessionFra(request);
+        const meg = sesjon && sesjon.sub ? await db.collection('admin_users').findOne({ id: sesjon.sub }) : null;
+        const tilgang = meg && (Array.isArray(meg.moteTilgang) ? meg.moteTilgang : []);
+        const kanSe = meg && ((meeting.attendees || []).includes(meg.id) || tilgang.includes(meeting.type));
+        if (!kanSe) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      }
+      const { deltakere, aksjoner } = await hentProtokollData(db, meeting);
+      const pdf = byggMoteProtokoll({ meeting, deltakere, aksjoner, typeLabel: MOTE_TYPE_LABEL[meeting.type] || 'Møte' });
+      return new NextResponse(pdf, {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': `attachment; filename="${protokollFilnavn(meeting)}"`,
+          'Cache-Control': 'no-store',
+        },
+      });
+    }
+
+    // Send referat (MOM) til deltakere + valgfrie eksterne mottakere.
+    // E-posten inneholder referat, vedtak OG aksjonspunkter (m/ ansvarlig,
+    // frist, status), og PDF-protokollen legges ved. Eksterne adresser
+    // (f.eks. revisor) valideres, dedupliseres og lagres på møtet for gjenbruk.
     if (path[0] === 'admin' && path[1] === 'meetings' && path.length === 4 && path[3] === 'send-referat' && method === 'POST') {
       if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const meeting = await db.collection('meetings').findOne({ id: path[2] }, { projection: { _id: 0 } });
@@ -3011,23 +3088,53 @@ async function handleRoute(request, { params }) {
       if (!String(meeting.referat || '').trim() && !(meeting.vedtak || []).length) {
         return cors(NextResponse.json({ ok: false, error: 'Skriv referat eller vedtak først' }, { status: 400 }));
       }
-      const folk = await db.collection('admin_users').find({ id: { $in: meeting.attendees || [] } }).toArray();
-      const medEpost = folk.filter((p) => p.email);
-      if (!medEpost.length) return cors(NextResponse.json({ ok: false, error: 'Ingen deltakere med e-post' }, { status: 400 }));
+      let body = {}; try { body = await request.json(); } catch (e) {}
+      const EPOST_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+      const eksterne = Array.from(new Set(
+        (Array.isArray(body.ekstraEpost) ? body.ekstraEpost : [])
+          .map((e) => String(e || '').trim().toLowerCase())
+          .filter((e) => EPOST_RE.test(e))
+      )).slice(0, 10);
+      const { deltakere, aksjoner } = await hentProtokollData(db, meeting);
+      const interne = deltakere.filter((p) => p.email);
+      const interneEposter = new Set(interne.map((p) => p.email.toLowerCase()));
+      const eksterneMottakere = eksterne
+        .filter((e) => !interneEposter.has(e))
+        .map((e) => ({ name: e.split('@')[0], email: e }));
+      const alleMottakere = [...interne, ...eksterneMottakere];
+      if (!alleMottakere.length) return cors(NextResponse.json({ ok: false, error: 'Ingen mottakere — legg til deltakere med e-post eller eksterne adresser' }, { status: 400 }));
+      // E-postinnhold: referat + vedtak + aksjonspunkter
       const vedtakHtml = (meeting.vedtak || []).length
         ? `<p style="margin:18px 0 6px;color:#8b5cf6;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em">Vedtak</p><ol style="margin:0;padding-left:18px;color:#111;font-size:13.5px;line-height:1.7;font-weight:600">${meeting.vedtak.map((v) => `<li>${taskEsc(v.text)}</li>`).join('')}</ol>`
         : '';
       const referatHtml = String(meeting.referat || '').trim()
         ? `<p style="margin:18px 0 6px;color:#8b5cf6;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em">Referat</p><p style="margin:0;color:#444;font-size:13.5px;line-height:1.6;white-space:pre-wrap">${taskEsc(String(meeting.referat).slice(0, 8000))}</p>`
         : '';
+      const STATUS_L = { inbox: 'Innboks', doing: 'Pågår', waiting: 'Venter', done: 'Ferdig' };
+      const aksjonerHtml = aksjoner.length
+        ? `<p style="margin:18px 0 6px;color:#8b5cf6;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em">Aksjonspunkter</p><ol style="margin:0;padding-left:18px;color:#333;font-size:13.5px;line-height:1.55">${aksjoner.map((t) => {
+            const detaljer = [
+              `Ansvarlig: ${taskEsc(t.ansvarligNavn || 'Ikke satt')}`,
+              `Frist: ${t.dueDate ? taskEsc(new Date(`${String(t.dueDate).slice(0, 10)}T12:00:00Z`).toLocaleDateString('nb-NO', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Europe/Oslo' })) : 'Ingen'}`,
+              `Status: ${STATUS_L[t.status] || 'Innboks'}`,
+            ].join(' &middot; ');
+            return `<li style="margin-bottom:7px"><span style="font-weight:600;${t.status === 'done' ? 'text-decoration:line-through;color:#999' : 'color:#111'}">${taskEsc(t.title)}</span><br/><span style="font-size:11.5px;color:#8a8a8a">${detaljer}</span></li>`;
+          }).join('')}</ol>`
+        : '';
+      // PDF-protokoll som vedlegg
+      let attachments;
+      try {
+        const pdf = byggMoteProtokoll({ meeting, deltakere, aksjoner, typeLabel: MOTE_TYPE_LABEL[meeting.type] || 'Møte' });
+        attachments = [{ content: pdf.toString('base64'), filename: protokollFilnavn(meeting), type: 'application/pdf' }];
+      } catch (e) { attachments = undefined; /* e-posten går ut uansett */ }
       let sendt = 0;
-      for (const p of medEpost) {
-        const ok = await moteEpost({ member: p, meeting, heading: 'Møtereferat', intro: `Referat fra ${MOTE_TYPE_LABEL[meeting.type].toLowerCase()}.`, ekstraHtml: referatHtml + vedtakHtml, skjulAgenda: true });
+      for (const p of alleMottakere) {
+        const ok = await moteEpost({ member: p, meeting, heading: 'Møtereferat', intro: `her er referatet fra ${(MOTE_TYPE_LABEL[meeting.type] || 'møtet').toLowerCase()}. Full protokoll ligger vedlagt som PDF.`, ekstraHtml: referatHtml + vedtakHtml + aksjonerHtml, skjulAgenda: true, attachments });
         if (ok) sendt++;
       }
       const naa = new Date().toISOString();
-      await db.collection('meetings').updateOne({ id: meeting.id }, { $set: { updatedAt: naa, referatSendtAt: naa } });
-      return cors(NextResponse.json({ ok: true, sendt }));
+      await db.collection('meetings').updateOne({ id: meeting.id }, { $set: { updatedAt: naa, referatSendtAt: naa, eksterneEpost: eksterne } });
+      return cors(NextResponse.json({ ok: true, sendt, eksterne: eksterneMottakere.length }));
     }
 
     if (path[0] === 'admin' && path[1] === 'meetings' && path.length === 3 && method === 'DELETE') {
