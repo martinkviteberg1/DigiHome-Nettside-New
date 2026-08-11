@@ -106,6 +106,10 @@ const INSIGHT_TABS = [
   { k: 'ai', l: 'AI-assistent', icon: Sparkles },
 ];
 
+// Visningsnavn for roller (portaltilgang). 'owner' = systemeier (full),
+// 'eier' = investor/aksjonær med lesetilgang til nøkkeltall og økonomi.
+const ROLLE_NAVN = { owner: 'Systemeier', admin: 'Admin', bruker: 'Bruker', partner: 'Partner', eier: 'Eier' };
+
 const SECTION_TITLES = {
   nokkeltall: { t: 'Nøkkeltall', s: 'Investorklare KPIer · CAC · LTV · tid til kunde · konvertering' },
   investorrom: { t: 'Investor-rom', s: 'Levende DD-rom — del tilgangslenker, administrer dokumenthvelv og svar på investorspørsmål. All aktivitet logges' },
@@ -217,13 +221,26 @@ export default function AdminPage() {
     })();
   }, []);
 
-  // Rollestyring (hooks MÅ ligge før tidlige returns): kontoer med rollen
-  // 'bruker' har tilgang til Saker og Møter (møtelisten filtreres server-side
-  // til møter de deltar i eller har fått typetilgang til) — alt annet tvinges bort.
-  const erBruker = !!(user && user.role === 'bruker');
+  // Rollestyring (hooks MÅ ligge før tidlige returns). Begrensede roller ser
+  // kun sine seksjoner — serveren håndhever det samme på API-nivå:
+  //   bruker/partner → Saker + Møter (møtelisten filtreres server-side)
+  //   eier (investor) → Nøkkeltall + Økonomi (les) + Møter
+  const ROLLE_SEKSJONER = {
+    bruker: ['saker', 'moter'],
+    partner: ['saker', 'moter'],
+    eier: ['nokkeltall', 'okonomi', 'moter'],
+  };
+  // Modultilgang: begrensede kontoer kan i tillegg få enkeltmoduler
+  // (settes per person under Personer — håndheves også i API-et)
+  const base = (user && ROLLE_SEKSJONER[user.role]) || null;
+  const begrensning = base
+    ? [...base, ...(((user && user.moduler) || []).filter((k) => NAV.some((g) => g.items.some((it) => it.k === k)) && !base.includes(k)))]
+    : null;
+  const erBegrenset = !!begrensning;
+  const erBruker = erBegrenset; // beholdt navn — brukes for å skjule admin-widgets
   useEffect(() => {
-    if (erBruker && section !== 'saker' && section !== 'moter') setSection('saker');
-  }, [erBruker, section]);
+    if (begrensning && !begrensning.includes(section)) setSection(begrensning[0]);
+  }, [erBegrenset, section]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Innlogging skjer i AuthSkjerm (passord, magic link, invitasjon, reset) —
   // alle veier ender her med et gyldig sesjonstoken + brukerobjekt.
@@ -255,10 +272,10 @@ export default function AdminPage() {
   const initials = (user && user.name ? user.name : (user && user.email || 'A')).slice(0, 1).toUpperCase();
   const sectionMeta = SECTION_TITLES[section] || { t: section, s: '' };
 
-  // Menyen filtreres for 'bruker'-rollen, og admin-widgets (puls, hurtig-
-  // handlinger) skjules. Serveren håndhever det samme på API-nivå.
-  const synligNav = erBruker
-    ? [{ group: 'Verktøy', items: NAV.flatMap((g) => g.items).filter((it) => it.k === 'saker' || it.k === 'moter') }]
+  // Menyen filtreres per rolle, og admin-widgets (puls, hurtig-handlinger)
+  // skjules for begrensede roller. Serveren håndhever det samme på API-nivå.
+  const synligNav = begrensning
+    ? [{ group: 'Verktøy', items: NAV.flatMap((g) => g.items).filter((it) => begrensning.includes(it.k)) }]
     : NAV;
 
   const NavList = () => (
@@ -341,7 +358,7 @@ export default function AdminPage() {
             <div className="h-9 w-9 rounded-full bg-[#cf97fc] text-[#0a0a0a] flex items-center justify-center text-[14px] font-bold shrink-0">{initials}</div>
             <div className="min-w-0 flex-1">
               <p className="text-white text-[13px] font-semibold truncate">{(user && user.name) || (user && user.email)}</p>
-              <p className="text-white/35 text-[11px] capitalize">{(user && user.role) || 'admin'} · Min profil</p>
+              <p className="text-white/35 text-[11px]">{ROLLE_NAVN[(user && user.role) || 'admin'] || 'Admin'} · Min profil</p>
             </div>
           </button>
           <button onClick={logout} title="Logg ut" className="text-white/40 hover:text-rose-400 transition-colors p-1.5"><LogOut className="w-4 h-4" /></button>
@@ -1054,7 +1071,7 @@ function ProfilModal({ token, user, onClose, onUpdated }) {
             <div className="h-12 w-12 rounded-full text-white flex items-center justify-center text-[18px] font-bold shrink-0" style={{ background: color || '#cf97fc' }}>{initialer}</div>
             <div className="min-w-0">
               <p className="text-[14px] font-semibold text-[#1a1a1a] truncate">{user && user.email}</p>
-              <p className="text-[12px] text-[#999] capitalize">{(user && user.role) || 'admin'} — e-post og rolle endres av administrator</p>
+              <p className="text-[12px] text-[#999]">{ROLLE_NAVN[(user && user.role) || 'admin'] || 'Admin'} — e-post og rolle endres av administrator</p>
             </div>
           </div>
 

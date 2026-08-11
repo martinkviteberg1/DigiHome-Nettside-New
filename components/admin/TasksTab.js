@@ -39,7 +39,7 @@ const REC_VALG = [
   { k: 'quarterly', l: 'Kvartalsvis' },
 ];
 
-const ROLLE_LABEL = { owner: 'Eier', admin: 'Admin', bruker: 'Bruker' };
+const ROLLE_LABEL = { owner: 'Systemeier', admin: 'Admin', bruker: 'Bruker', partner: 'Partner', eier: 'Eier' };
 
 function fmtStr(bytes) {
   if (!bytes && bytes !== 0) return '';
@@ -275,6 +275,9 @@ export default function TasksTab({ apiKey, user, onStats }) {
   const [hoverKol, setHoverKol] = useState(null);
   const [fokusId, setFokusId] = useState(null);
   const [valgteIds, setValgteIds] = useState([]);
+  // Ekspanderte deloppgave-paneler i liste-/tabellvisning (per sak-id)
+  const [utvidde, setUtvidde] = useState([]);
+  const toggleUtvid = (id) => setUtvidde((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   const [sortKey, setSortKey] = useState('due');
   const [sortDir, setSortDir] = useState(1);
   const [toast, setToast] = useState(null);
@@ -949,7 +952,7 @@ export default function TasksTab({ apiKey, user, onStats }) {
                 <div className="space-y-2 min-h-[64px]">
                   {liste.map((t, i) => (
                     <SakKort
-                      key={t.id} t={t} today={today} member={medlem(t.assigneeId)}
+                      key={t.id} t={t} today={today} member={medlem(t.assigneeId)} members={members}
                       dras={dragId === t.id} fokus={fokusId === t.id} valgt={valgteIds.includes(t.id)} index={i}
                       onClick={(e) => { if (e && (e.metaKey || e.ctrlKey)) { toggleValg(t.id); } else { setValgtId(t.id); } }}
                       onDragStart={() => setDragId(t.id)}
@@ -995,9 +998,11 @@ export default function TasksTab({ apiKey, user, onStats }) {
                 </div>
                 {liste.map((t) => {
                   const m = medlem(t.assigneeId);
+                  const subL = t.subtasks || [];
+                  const utvidet = utvidde.includes(t.id);
                   return (
+                    <React.Fragment key={t.id}>
                     <button
-                      key={t.id}
                       onClick={(e) => { if (e.metaKey || e.ctrlKey) { toggleValg(t.id); } else { setValgtId(t.id); } }}
                       className={`flex w-full items-center gap-2.5 border-b border-black/[0.04] px-4 py-3 text-left transition-colors hover:bg-[#faf8fd] active:bg-[#f6f2fc] sm:gap-3 sm:py-2.5 ${valgteIds.includes(t.id) || fokusId === t.id ? 'bg-[#f4f0fb] ring-2 ring-inset ring-[#8b5cf6]/40' : ''}`}
                       data-testid={`task-row-${t.id}`}
@@ -1008,12 +1013,29 @@ export default function TasksTab({ apiKey, user, onStats }) {
                       {(t.labels || []).slice(0, 3).map((l) => (
                         <span key={l} className="hidden md:inline rounded-md bg-[#f4f0fb] px-1.5 py-0.5 text-[10.5px] font-medium text-[#8b5cf6]">{l}</span>
                       ))}
+                      {subL.length > 0 && (
+                        <span
+                          onClick={(e) => { e.stopPropagation(); toggleUtvid(t.id); }}
+                          title={utvidet ? 'Skjul deloppgaver' : 'Vis deloppgaver'}
+                          data-testid={`list-subtasks-toggle-${t.id}`}
+                          className={`flex cursor-pointer items-center gap-1 rounded-md px-1 py-0.5 text-[11px] transition-colors hover:bg-black/[0.05] ${subL.every((s) => s.done) ? 'text-emerald-600' : 'text-[#aaa]'}`}
+                        >
+                          <CheckCircle2 className="w-3 h-3" />{subL.filter((s) => s.done).length}/{subL.length}
+                          <ChevronDown className={`h-3 w-3 transition-transform ${utvidet ? 'rotate-180' : ''}`} />
+                        </span>
+                      )}
                       {(t.comments || []).length > 0 && (
                         <span className="hidden sm:flex items-center gap-1 text-[11px] text-[#aaa]"><MessageSquare className="w-3 h-3" />{t.comments.length}</span>
                       )}
                       <DueChip due={t.dueDate} today={today} done={t.status === 'done'} />
                       {m ? <Avatar member={m} size={24} /> : <span className="hidden w-6 sm:block" />}
                     </button>
+                    {utvidet && subL.length > 0 && (
+                      <div className="border-b border-black/[0.04] bg-[#fbfaf9] py-2 pl-12 pr-4">
+                        <SubtaskMiniListe t={t} members={members} onPatch={(p) => oppdater(t.id, p)} />
+                      </div>
+                    )}
+                    </React.Fragment>
                   );
                 })}
               </div>
@@ -1042,9 +1064,10 @@ export default function TasksTab({ apiKey, user, onStats }) {
                 const m = medlem(t.assigneeId);
                 const sub = t.subtasks || [];
                 const subFerdig = sub.filter((s) => s.done).length;
+                const utvidet = utvidde.includes(t.id);
                 return (
+                  <React.Fragment key={t.id}>
                   <tr
-                    key={t.id}
                     onClick={(e) => { if (e.metaKey || e.ctrlKey) { toggleValg(t.id); } else { setValgtId(t.id); } }}
                     data-testid={`table-row-${t.id}`}
                     data-fokus-id={t.id}
@@ -1070,11 +1093,17 @@ export default function TasksTab({ apiKey, user, onStats }) {
                     <td className="px-4 py-2.5">
                       <span className="flex items-center gap-2.5 text-[11px] text-[#aaa]">
                         {sub.length > 0 && (
-                          <span className="flex items-center gap-1.5">
+                          <span
+                            onClick={(e) => { e.stopPropagation(); toggleUtvid(t.id); }}
+                            title={utvidet ? 'Skjul deloppgaver' : 'Vis deloppgaver'}
+                            data-testid={`table-subtasks-toggle-${t.id}`}
+                            className="flex cursor-pointer items-center gap-1.5 rounded-md px-1 py-0.5 transition-colors hover:bg-black/[0.05]"
+                          >
                             <span className="h-1 w-9 overflow-hidden rounded-full bg-[#eee]">
                               <span className="block h-full rounded-full bg-emerald-500" style={{ width: `${(subFerdig / sub.length) * 100}%` }} />
                             </span>
                             <span className="tabular-nums">{subFerdig}/{sub.length}</span>
+                            <ChevronDown className={`h-3 w-3 transition-transform ${utvidet ? 'rotate-180' : ''}`} />
                           </span>
                         )}
                         {(t.attachments || []).length > 0 && <span className="flex items-center gap-0.5"><Paperclip className="h-3 w-3" />{t.attachments.length}</span>}
@@ -1083,6 +1112,14 @@ export default function TasksTab({ apiKey, user, onStats }) {
                     </td>
                     <td className="whitespace-nowrap px-4 py-2.5 text-[12px] text-[#999]">{fmtTid(t.updatedAt)}</td>
                   </tr>
+                  {utvidet && sub.length > 0 && (
+                    <tr className="border-b border-black/[0.04] bg-[#fbfaf9]">
+                      <td colSpan={7} className="py-2 pl-16 pr-4">
+                        <SubtaskMiniListe t={t} members={members} onPatch={(p) => oppdater(t.id, p)} />
+                      </td>
+                    </tr>
+                  )}
+                  </React.Fragment>
                 );
               })}
               {!tabellData.length && (
@@ -1373,8 +1410,9 @@ function TidslinjeRad({ t, member, fokus, onClick }) {
   );
 }
 
-function SakKort({ t, today, member, dras, fokus, valgt, index = 0, onClick, onDragStart, onDragEnd, onHurtig, onSlett }) {
+function SakKort({ t, today, member, members = [], dras, fokus, valgt, index = 0, onClick, onDragStart, onDragEnd, onHurtig, onSlett }) {
   const [meny, setMeny] = useState(false);
+  const [visSub, setVisSub] = useState(false); // ekspander deloppgavene på kortet
   const menyRef = useRef(null);
 
   useEffect(() => {
@@ -1480,9 +1518,15 @@ function SakKort({ t, today, member, dras, fokus, valgt, index = 0, onClick, onD
       <div className="mt-2.5 flex items-center gap-2">
         <DueChip due={t.dueDate} today={today} done={t.status === 'done'} />
         {(t.subtasks || []).length > 0 && (
-          <span className={`flex items-center gap-1 text-[11px] ${t.subtasks.every((s) => s.done) ? 'text-emerald-600' : 'text-[#aaa]'}`}>
+          <button
+            onClick={(e) => { e.stopPropagation(); setVisSub((v) => !v); }}
+            title={visSub ? 'Skjul deloppgaver' : 'Vis deloppgaver'}
+            data-testid={`card-subtasks-toggle-${t.id}`}
+            className={`flex items-center gap-1 rounded-md px-1 py-0.5 text-[11px] transition-colors hover:bg-black/[0.05] ${t.subtasks.every((s) => s.done) ? 'text-emerald-600' : 'text-[#aaa]'}`}
+          >
             <CheckCircle2 className="w-3 h-3" />{t.subtasks.filter((s) => s.done).length}/{t.subtasks.length}
-          </span>
+            <ChevronDown className={`h-3 w-3 transition-transform ${visSub ? 'rotate-180' : ''}`} />
+          </button>
         )}
         {(t.attachments || []).length > 0 && (
           <span className="flex items-center gap-1 text-[11px] text-[#aaa]"><Paperclip className="w-3 h-3" />{t.attachments.length}</span>
@@ -1493,6 +1537,11 @@ function SakKort({ t, today, member, dras, fokus, valgt, index = 0, onClick, onD
         )}
         <span className="ml-auto">{member && <Avatar member={member} size={22} />}</span>
       </div>
+      {visSub && (t.subtasks || []).length > 0 && (
+        <div className="mt-2 border-t border-black/[0.05] pt-2" onClick={(e) => e.stopPropagation()}>
+          <SubtaskMiniListe t={t} members={members} onPatch={onHurtig} />
+        </div>
+      )}
     </div>
   );
 }
@@ -1509,15 +1558,20 @@ function Overlegg({ onClose, children, variant = 'sheet', testid }) {
   // variant 'panel' = sak-skuffen (full høyde til høyre på desktop)
   // variant 'full'  = utvidet sakvisning (stort sentrert kort, Linear-style)
   // variant 'sheet' = modaler (sentrert kort på desktop)
+  // variant 'stor'  = store modaler (Ny sak) — bredere og høyere
   const ytre = variant === 'panel'
     ? 'fixed inset-0 z-[110] flex items-end justify-center md:items-stretch md:justify-end'
     : variant === 'full'
     ? 'fixed inset-0 z-[110] flex items-end justify-center md:items-center md:justify-center md:p-6'
+    : variant === 'stor'
+    ? 'fixed inset-0 z-[110] flex items-end justify-center md:items-start md:px-4 md:pt-[6vh]'
     : 'fixed inset-0 z-[110] flex items-end justify-center md:items-start md:px-4 md:pt-[12vh]';
   const indre = variant === 'panel'
     ? 'relative flex h-[93dvh] w-full flex-col overflow-hidden rounded-t-[22px] bg-white shadow-[0_-12px_48px_rgba(0,0,0,0.18)] dh-panel-in md:h-full md:max-w-[480px] md:rounded-none md:shadow-[-16px_0_48px_rgba(0,0,0,0.14)]'
     : variant === 'full'
     ? 'relative flex h-[93dvh] w-full flex-col overflow-hidden rounded-t-[22px] bg-white shadow-[0_-12px_48px_rgba(0,0,0,0.18)] dh-panel-in md:h-full md:max-h-[880px] md:max-w-[1100px] md:rounded-2xl md:shadow-[0_40px_120px_rgba(0,0,0,0.38)]'
+    : variant === 'stor'
+    ? 'relative flex max-h-[94dvh] w-full flex-col overflow-hidden rounded-t-[22px] bg-white shadow-[0_-12px_48px_rgba(0,0,0,0.18)] dh-panel-in md:max-h-[88vh] md:max-w-2xl md:rounded-2xl md:shadow-[0_24px_80px_rgba(0,0,0,0.28)]'
     : 'relative flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-[22px] bg-white shadow-[0_-12px_48px_rgba(0,0,0,0.18)] dh-panel-in md:max-h-[80vh] md:max-w-xl md:rounded-2xl md:shadow-[0_24px_80px_rgba(0,0,0,0.28)]';
 
   return (
@@ -1544,10 +1598,6 @@ function SakSkuff({ t, members, today, actor, apiKey, api, visToast, onReload, o
   const [varsle, setVarsle] = useState(true);
   // Utvidet visning: stort sentrert kort med to kolonner (Linear-style)
   const [utvidet, setUtvidet] = useState(false);
-  // @mention-autocomplete i kommentarfeltet (null = inaktiv)
-  const [mentionSok, setMentionSok] = useState(null);
-  const [mentionIdx, setMentionIdx] = useState(0);
-  const kommentarRef = useRef(null);
 
   useEffect(() => { setTittel(t.title); setBeskrivelse(t.description || ''); }, [t.id]); // eslint-disable-line
 
@@ -1578,36 +1628,8 @@ function SakSkuff({ t, members, today, actor, apiKey, api, visToast, onReload, o
     const tekst = kommentar.trim();
     if (!tekst || sender) return;
     setSender(true);
-    try { await onComment(tekst); setKommentar(''); setMentionSok(null); } catch (e) {}
+    try { await onComment(tekst); setKommentar(''); } catch (e) {}
     setSender(false);
-  };
-
-  // --- @mentions: «@» + tekst rett før markøren aktiverer autocompleten ---
-  const oppdaterMention = (val, pos) => {
-    const del = val.slice(0, pos);
-    const m = del.match(/(^|\s)@([^\s@]{0,30})$/);
-    if (m) { setMentionSok(m[2].toLowerCase()); setMentionIdx(0); }
-    else setMentionSok(null);
-  };
-
-  const mentionKandidater = mentionSok === null
-    ? []
-    : members.filter((m) => m.name.toLowerCase().includes(mentionSok)).slice(0, 6);
-
-  const settInnMention = (m) => {
-    const el = kommentarRef.current;
-    const pos = el ? el.selectionStart : kommentar.length;
-    const foer = kommentar.slice(0, pos).replace(/@[^\s@]{0,30}$/, '');
-    const ny = `${foer}@${m.name} ${kommentar.slice(pos)}`;
-    setKommentar(ny);
-    setMentionSok(null);
-    requestAnimationFrame(() => {
-      if (el) {
-        el.focus();
-        const p = foer.length + m.name.length + 2;
-        el.setSelectionRange(p, p);
-      }
-    });
   };
 
   return (
@@ -1664,14 +1686,16 @@ function SakSkuff({ t, members, today, actor, apiKey, api, visToast, onReload, o
         );
 
         const sekBeskrivelse = (
-          <textarea
+          <MentionTekstfelt
             value={beskrivelse}
-            onChange={(e) => setBeskrivelse(e.target.value)}
-            onBlur={() => { if (beskrivelse !== (t.description || '')) onPatch({ description: beskrivelse }); }}
+            onChange={setBeskrivelse}
+            members={members}
             rows={utvidet ? 5 : 3}
-            data-testid="drawer-description"
-            placeholder="Beskrivelse — hva handler saken om, og hva er «ferdig»?"
-            className="mt-2 w-full resize-y rounded-xl border border-black/[0.07] bg-white p-3 text-[13.5px] leading-relaxed text-[#333] outline-none transition-all placeholder:text-[#bbb] hover:border-black/[0.14] focus:border-[#8b5cf6]/50 focus:ring-2 focus:ring-[#8b5cf6]/15"
+            testid="drawer-description"
+            placeholder="Beskrivelse — hva handler saken om, og hva er «ferdig»? (@ nevner en person)"
+            className="mt-2"
+            popover="under"
+            onBlurValue={() => { if (beskrivelse !== (t.description || '')) onPatch({ description: beskrivelse }); }}
           />
         );
 
@@ -1748,7 +1772,7 @@ function SakSkuff({ t, members, today, actor, apiKey, api, visToast, onReload, o
           </div>
         ) : null;
 
-        const sekSjekkliste = <Sjekkliste items={t.subtasks || []} onChange={(subtasks) => onPatch({ subtasks })} />;
+        const sekSjekkliste = <Sjekkliste items={t.subtasks || []} members={members} onChange={(subtasks) => onPatch({ subtasks })} />;
         const sekFolgere = <FolgereFelt t={t} members={members} onPatch={onPatch} />;
         const sekVedlegg = <VedleggSeksjon t={t} apiKey={apiKey} api={api} actor={actor} onReload={onReload} visToast={visToast} />;
 
@@ -1770,48 +1794,17 @@ function SakSkuff({ t, members, today, actor, apiKey, api, visToast, onReload, o
             {!(t.comments || []).length && <p className="text-[12.5px] text-[#bbb]">Ingen kommentarer ennå.</p>}
           </div>
           <div className="mt-2.5 flex items-end gap-2">
-            <div className="relative min-w-0 flex-1">
-              {mentionKandidater.length > 0 && (
-                <div className="absolute bottom-full left-0 z-[140] mb-1.5 w-64 rounded-xl border border-black/[0.07] bg-white p-1 shadow-[0_16px_48px_rgba(0,0,0,0.16)]" data-testid="mention-popup">
-                  {mentionKandidater.map((m, i) => (
-                    <button
-                      key={m.id}
-                      type="button"
-                      onMouseDown={(e) => { e.preventDefault(); settInnMention(m); }}
-                      data-testid={`mention-option-${m.id}`}
-                      className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[13px] transition-colors ${i === mentionIdx ? 'bg-[#f4f0fb]' : 'hover:bg-[#f7f6f4]'}`}
-                    >
-                      <Avatar member={m} size={20} />
-                      <span className="min-w-0 flex-1 truncate font-medium text-[#333]">{m.name}</span>
-                      {m.email
-                        ? <span className="shrink-0 text-[10.5px] font-medium text-[#8b5cf6]">varsles</span>
-                        : <span className="shrink-0 text-[10.5px] text-[#c5c5c5]">ingen e-post</span>}
-                    </button>
-                  ))}
-                </div>
-              )}
-              <textarea
-                ref={kommentarRef}
-                value={kommentar}
-                onChange={(e) => { setKommentar(e.target.value); oppdaterMention(e.target.value, e.target.selectionStart); }}
-                onKeyDown={(e) => {
-                  // Autocompleten fanger navigasjon når den er åpen
-                  if (mentionKandidater.length > 0) {
-                    if (e.key === 'ArrowDown') { e.preventDefault(); setMentionIdx((i) => (i + 1) % mentionKandidater.length); return; }
-                    if (e.key === 'ArrowUp') { e.preventDefault(); setMentionIdx((i) => (i - 1 + mentionKandidater.length) % mentionKandidater.length); return; }
-                    if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); settInnMention(mentionKandidater[mentionIdx]); return; }
-                    if (e.key === 'Escape') { e.stopPropagation(); setMentionSok(null); return; }
-                  }
-                  // Enter sender på desktop; på mobil gir Enter linjeskift (send-knappen brukes)
-                  if (e.key === 'Enter' && !e.shiftKey && window.innerWidth >= 768) { e.preventDefault(); sendKommentar(); }
-                }}
-                onBlur={() => setTimeout(() => setMentionSok(null), 150)}
-                rows={2}
-                data-testid="drawer-comment-input"
-                placeholder={`Kommenter som ${actor} … (@ nevner en person)`}
-                className="w-full resize-none rounded-xl border border-black/[0.07] bg-white p-3 text-[13.5px] outline-none transition-all placeholder:text-[#bbb] hover:border-black/[0.14] focus:border-[#8b5cf6]/50 focus:ring-2 focus:ring-[#8b5cf6]/15"
-              />
-            </div>
+            <MentionTekstfelt
+              value={kommentar}
+              onChange={setKommentar}
+              members={members}
+              rows={2}
+              testid="drawer-comment-input"
+              placeholder={`Kommenter som ${actor} … (@ nevner en person)`}
+              className="flex-1"
+              popover="over"
+              onEnterSend={sendKommentar}
+            />
             <button
               onClick={sendKommentar}
               disabled={!kommentar.trim() || sender}
@@ -1929,6 +1922,114 @@ function MetaFelt({ label, children }) {
   );
 }
 
+/* ═══════════════ MentionTekstfelt — tekstfelt med @-mentions ═══════════════
+   Best practice: mens du skriver vises @Navn som badge (pikselsynkront
+   bakteppe bak et transparent tekstfelt), og «@» åpner autocomplete med
+   personlisten (piltaster + Enter/Tab, mus). Gjenbrukes i beskrivelse,
+   kommentarer og Ny sak-modalen. */
+function MentionTekstfelt({
+  value, onChange, members = [], placeholder, rows = 2, testid,
+  className = '', popover = 'under', onEnterSend = null, onBlurValue = null,
+}) {
+  const [sok, setSok] = useState(null);
+  const [idx, setIdx] = useState(0);
+  const taRef = useRef(null);
+  const bakRef = useRef(null);
+
+  const oppdaterSok = (val, pos) => {
+    const m = val.slice(0, pos).match(/(^|\s)@([^\s@]{0,30})$/);
+    if (m) { setSok(m[2].toLowerCase()); setIdx(0); } else setSok(null);
+  };
+  const kandidater = sok === null ? [] : members.filter((m) => m.name.toLowerCase().includes(sok)).slice(0, 6);
+  const settInn = (m) => {
+    const ta = taRef.current;
+    const pos = ta ? ta.selectionStart : value.length;
+    const foer = value.slice(0, pos).replace(/@[^\s@]{0,30}$/, '');
+    const ny = `${foer}@${m.name} ${value.slice(pos)}`;
+    onChange(ny);
+    setSok(null);
+    requestAnimationFrame(() => {
+      if (ta) { ta.focus(); const p = foer.length + m.name.length + 2; ta.setSelectionRange(p, p); }
+    });
+  };
+
+  // Badge-bakteppet: identisk typografi som feltet — @Navn utheves live
+  const deler = useMemo(() => {
+    if (!value || !value.includes('@') || !members.length) return [value];
+    const navn = members.map((m) => m.name).filter(Boolean)
+      .sort((a, b) => b.length - a.length)
+      .map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+    if (!navn.length) return [value];
+    const re = new RegExp(`@(${navn.join('|')})`, 'gi');
+    const ut = []; let sist = 0; let m;
+    while ((m = re.exec(value))) {
+      if (m.index > sist) ut.push(value.slice(sist, m.index));
+      ut.push({ mention: m[0] });
+      sist = m.index + m[0].length;
+    }
+    if (sist < value.length) ut.push(value.slice(sist));
+    return ut;
+  }, [value, members]);
+
+  const typo = 'p-3 text-[13.5px] leading-relaxed';
+  return (
+    <div className={`relative min-w-0 ${className}`}>
+      {kandidater.length > 0 && (
+        <div
+          className={`absolute left-0 z-[140] w-64 rounded-xl border border-black/[0.07] bg-white p-1 shadow-[0_16px_48px_rgba(0,0,0,0.16)] ${popover === 'over' ? 'bottom-full mb-1.5' : 'top-full mt-1.5'}`}
+          data-testid="mention-popup"
+        >
+          {kandidater.map((m, i) => (
+            <button
+              key={m.id}
+              type="button"
+              onMouseDown={(e) => { e.preventDefault(); settInn(m); }}
+              data-testid={`mention-option-${m.id}`}
+              className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[13px] transition-colors ${i === idx ? 'bg-[#f4f0fb]' : 'hover:bg-[#f7f6f4]'}`}
+            >
+              <Avatar member={m} size={20} />
+              <span className="min-w-0 flex-1 truncate font-medium text-[#333]">{m.name}</span>
+              {m.email
+                ? <span className="shrink-0 text-[10.5px] font-medium text-[#8b5cf6]">varsles</span>
+                : <span className="shrink-0 text-[10.5px] text-[#c5c5c5]">ingen e-post</span>}
+            </button>
+          ))}
+        </div>
+      )}
+      <div
+        aria-hidden
+        ref={bakRef}
+        className={`pointer-events-none absolute inset-0 overflow-hidden whitespace-pre-wrap break-words rounded-xl border border-transparent bg-white text-[#333] ${typo}`}
+      >
+        {deler.map((d, i) => (typeof d === 'string'
+          ? <React.Fragment key={i}>{d}</React.Fragment>
+          : <span key={i} className="rounded-[5px] bg-[#ede9fe] font-semibold text-[#6d28d9] [box-decoration-break:clone]">{d.mention}</span>))}
+        {'\u200b'}
+      </div>
+      <textarea
+        ref={taRef}
+        value={value}
+        onChange={(e) => { onChange(e.target.value); oppdaterSok(e.target.value, e.target.selectionStart); }}
+        onScroll={() => { if (bakRef.current && taRef.current) bakRef.current.scrollTop = taRef.current.scrollTop; }}
+        onKeyDown={(e) => {
+          if (kandidater.length > 0) {
+            if (e.key === 'ArrowDown') { e.preventDefault(); setIdx((i) => (i + 1) % kandidater.length); return; }
+            if (e.key === 'ArrowUp') { e.preventDefault(); setIdx((i) => (i - 1 + kandidater.length) % kandidater.length); return; }
+            if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); settInn(kandidater[idx]); return; }
+            if (e.key === 'Escape') { e.stopPropagation(); setSok(null); return; }
+          }
+          if (onEnterSend && e.key === 'Enter' && !e.shiftKey && window.innerWidth >= 768) { e.preventDefault(); onEnterSend(); }
+        }}
+        onBlur={() => { setTimeout(() => setSok(null), 150); if (onBlurValue) onBlurValue(); }}
+        rows={rows}
+        data-testid={testid}
+        placeholder={placeholder}
+        className={`relative w-full resize-none rounded-xl border border-black/[0.07] bg-transparent text-transparent caret-[#0a0a0a] outline-none transition-all placeholder:text-[#bbb] selection:bg-[#8b5cf6]/25 hover:border-black/[0.14] focus:border-[#8b5cf6]/50 focus:ring-2 focus:ring-[#8b5cf6]/15 ${typo}`}
+      />
+    </div>
+  );
+}
+
 // Uthever @Fullt Navn i kommentartekst for personer som finnes i personlisten.
 function KommentarTekst({ text, members }) {
   const deler = useMemo(() => {
@@ -1954,25 +2055,107 @@ function KommentarTekst({ text, members }) {
     <>
       {deler.map((d, i) => (typeof d === 'string'
         ? <React.Fragment key={i}>{d}</React.Fragment>
-        : <span key={i} className="rounded-md bg-[#f4f0fb] px-1 py-0.5 font-semibold text-[#6d28d9]">{d.mention}</span>))}
+        : <span key={i} className="rounded-[5px] bg-[#ede9fe] px-1 py-0.5 font-semibold text-[#6d28d9] [box-decoration-break:clone]">{d.mention}</span>))}
     </>
   );
 }
 
-/* ═══════════════ Underoppgaver / sjekkliste ═══════════════ */
-function Sjekkliste({ items, onChange }) {
+/* ═══════════════ Underoppgaver / deloppgaver (Linear-nivå) ═══════════════
+   Hver deloppgave kan ha egen ansvarlig (avatar-velger) og egen frist
+   (dato-chip m/ forfalt-markering). Vises også i tavle/liste/tabell. */
+const fmtSubDato = (d) => {
+  try { return new Date(`${d}T00:00`).toLocaleDateString('nb-NO', { day: 'numeric', month: 'short' }); } catch (e) { return d; }
+};
+
+// Kompakt ansvarlig-velger per deloppgave — avatar som åpner en liten popover
+function SubAnsvarlig({ value, members, onChange, testid }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  useEffect(() => {
+    if (!open) return;
+    const h = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, [open]);
+  const m = members.find((x) => x.id === value);
+  return (
+    <div className="relative shrink-0" ref={ref}>
+      <button
+        onClick={(e) => { e.stopPropagation(); setOpen((o) => !o); }}
+        title={m ? `Ansvarlig: ${m.name}` : 'Sett ansvarlig for deloppgaven'}
+        data-testid={testid}
+        className="flex h-6 w-6 items-center justify-center rounded-full transition-all hover:ring-2 hover:ring-[#8b5cf6]/25"
+      >
+        {m ? <Avatar member={m} size={20} /> : <span className="flex h-5 w-5 items-center justify-center rounded-full border border-dashed border-[#ccc] text-[#ccc] transition-colors hover:border-[#8b5cf6] hover:text-[#8b5cf6]"><User className="h-3 w-3" /></span>}
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full z-30 mt-1 max-h-56 w-52 overflow-y-auto rounded-xl border border-black/[0.06] bg-white p-1 shadow-[0_10px_36px_rgba(0,0,0,0.14)]">
+          <button
+            onClick={() => { onChange(null); setOpen(false); }}
+            className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[12.5px] text-[#999] hover:bg-[#f6f5f3]"
+          >
+            <span className="flex h-5 w-5 items-center justify-center rounded-full border border-dashed border-[#ccc]"><X className="h-3 w-3 text-[#ccc]" /></span>
+            Ingen ansvarlig
+          </button>
+          {members.map((p) => (
+            <button
+              key={p.id}
+              onClick={() => { onChange(p.id); setOpen(false); }}
+              data-testid={`${testid}-valg-${p.id}`}
+              className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[12.5px] text-[#333] hover:bg-[#f6f5f3]"
+            >
+              <Avatar member={p} size={20} />
+              <span className="min-w-0 flex-1 truncate">{p.name}</span>
+              {p.id === value && <Check className="h-3.5 w-3.5 shrink-0 text-[#8b5cf6]" />}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Frist-chip per deloppgave — usynlig dato-input over chippen (native picker)
+function SubFrist({ value, done, today, onChange, testid }) {
+  const forfalt = value && !done && value < today;
+  return (
+    <span
+      title={value ? `Frist ${fmtSubDato(value)} — klikk for å endre` : 'Sett frist for deloppgaven'}
+      className={`relative flex h-6 shrink-0 cursor-pointer items-center gap-1 rounded-md px-1.5 text-[11px] font-semibold tabular-nums transition-colors ${
+        value
+          ? forfalt ? 'bg-rose-50 text-rose-600' : done ? 'bg-[#f3f2f0] text-[#b5b5b5]' : 'bg-[#f3f2f0] text-[#777]'
+          : 'text-[#ccc] hover:text-[#8b5cf6]'
+      }`}
+    >
+      <Calendar className="h-3 w-3" />
+      {value ? fmtSubDato(value) : ''}
+      <input
+        type="date"
+        value={value || ''}
+        onChange={(e) => onChange(e.target.value || null)}
+        onClick={(e) => e.stopPropagation()}
+        data-testid={testid}
+        className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+      />
+    </span>
+  );
+}
+
+function Sjekkliste({ items, onChange, members = [] }) {
   const [nytt, setNytt] = useState('');
+  const today = new Date().toISOString().slice(0, 10);
   const ferdig = items.filter((s) => s.done).length;
   const leggTil = () => {
     const tekst = nytt.trim();
     if (!tekst) return;
-    onChange([...items, { text: tekst, done: false }]);
+    onChange([...items, { text: tekst, done: false, assigneeId: null, due: null }]);
     setNytt('');
   };
+  const endreRad = (i, patch) => onChange(items.map((x, xi) => (xi === i ? { ...x, ...patch } : x)));
   return (
     <div className="mt-6" data-testid="drawer-subtasks">
       <div className="flex items-center gap-2">
-        <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#999]">Underoppgaver</p>
+        <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#999]">Deloppgaver</p>
         {items.length > 0 && (
           <span className={`text-[11px] font-bold tabular-nums ${ferdig === items.length ? 'text-emerald-600' : 'text-[#aaa]'}`}>{ferdig}/{items.length}</span>
         )}
@@ -1986,7 +2169,7 @@ function Sjekkliste({ items, onChange }) {
         {items.map((s, i) => (
           <div key={s.id || `st-${i}`} className="group flex items-center gap-2.5 rounded-lg px-1 py-1.5 hover:bg-[#fafaf8]">
             <button
-              onClick={() => onChange(items.map((x, xi) => (xi === i ? { ...x, done: !x.done } : x)))}
+              onClick={() => endreRad(i, { done: !s.done })}
               data-testid={`subtask-toggle-${i}`}
               className="shrink-0"
               aria-label={s.done ? 'Merk som ikke ferdig' : 'Merk som ferdig'}
@@ -1996,10 +2179,12 @@ function Sjekkliste({ items, onChange }) {
                 : <Circle className="w-[18px] h-[18px] text-[#ccc] transition-colors hover:text-[#8b5cf6]" />}
             </button>
             <span className={`min-w-0 flex-1 text-[13.5px] ${s.done ? 'text-[#b0aca6] line-through' : 'text-[#333]'}`}>{s.text}</span>
+            <SubFrist value={s.due || null} done={s.done} today={today} onChange={(due) => endreRad(i, { due })} testid={`subtask-due-${i}`} />
+            <SubAnsvarlig value={s.assigneeId || null} members={members} onChange={(assigneeId) => endreRad(i, { assigneeId })} testid={`subtask-assignee-${i}`} />
             <button
               onClick={() => onChange(items.filter((_, xi) => xi !== i))}
               className="shrink-0 rounded p-1 text-[#ddd] transition-colors hover:text-rose-500 md:opacity-0 md:group-hover:opacity-100"
-              aria-label="Fjern underoppgave"
+              aria-label="Fjern deloppgave"
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -2014,10 +2199,44 @@ function Sjekkliste({ items, onChange }) {
           onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); leggTil(); } }}
           onBlur={() => { if (nytt.trim()) leggTil(); }}
           data-testid="subtask-add-input"
-          placeholder="Legg til underoppgave …"
+          placeholder="Legg til deloppgave …"
           className="h-9 min-w-0 flex-1 rounded-lg border border-black/[0.08] bg-white px-2.5 text-[13px] outline-none transition-all placeholder:text-[#bbb] hover:border-black/[0.16] focus:border-[#8b5cf6]/50 focus:ring-2 focus:ring-[#8b5cf6]/15"
         />
       </div>
+    </div>
+  );
+}
+
+/* Kompakte deloppgave-rader for visningene (tavle/liste/tabell) — toggle,
+   frist og ansvarlig-avatar rett fra oversikten. */
+function SubtaskMiniListe({ t, members, onPatch }) {
+  const sub = t.subtasks || [];
+  const today = new Date().toISOString().slice(0, 10);
+  return (
+    <div className="space-y-0.5" data-testid={`subtask-mini-${t.id}`}>
+      {sub.map((s, i) => {
+        const m = members.find((x) => x.id === s.assigneeId);
+        const forfalt = s.due && !s.done && s.due < today;
+        return (
+          <div key={s.id || i} className="flex items-center gap-2 rounded-md px-0.5 py-[3px]">
+            <button
+              onClick={(e) => { e.stopPropagation(); onPatch({ subtasks: sub.map((x, xi) => (xi === i ? { ...x, done: !x.done } : x)) }); }}
+              data-testid={`subtask-mini-toggle-${t.id}-${i}`}
+              className="shrink-0"
+              aria-label={s.done ? 'Merk som ikke ferdig' : 'Merk som ferdig'}
+            >
+              {s.done
+                ? <CheckCircle2 className="h-[15px] w-[15px] text-emerald-500" />
+                : <Circle className="h-[15px] w-[15px] text-[#ccc] transition-colors hover:text-[#8b5cf6]" />}
+            </button>
+            <span className={`min-w-0 flex-1 truncate text-[12px] ${s.done ? 'text-[#b0aca6] line-through' : 'text-[#444]'}`}>{s.text}</span>
+            {s.due && (
+              <span className={`shrink-0 text-[10.5px] font-semibold tabular-nums ${forfalt ? 'text-rose-600' : 'text-[#aaa]'}`}>{fmtSubDato(s.due)}</span>
+            )}
+            {m && <Avatar member={m} size={16} />}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -2184,21 +2403,25 @@ function NySakModal({ members, defaultStatus, onClose, onCreate }) {
   const [ansvarlig, setAnsvarlig] = useState('');
   const [frist, setFrist] = useState('');
   const [gjentakelse, setGjentakelse] = useState('');
-  const [sjekkliste, setSjekkliste] = useState([]);
+  const [sjekkliste, setSjekkliste] = useState([]); // {text, done, assigneeId, due}
   const [nyttPunkt, setNyttPunkt] = useState('');
   const [varsle, setVarsle] = useState(true);
   const [lagrer, setLagrer] = useState(false);
   const [feil, setFeil] = useState('');
   const ref = useRef(null);
+  const punktRef = useRef(null);
+  const idag = new Date().toISOString().slice(0, 10);
 
   useEffect(() => { setTimeout(() => ref.current && ref.current.focus(), 60); }, []);
 
-  const leggTilPunkt = () => {
+  const leggTilPunkt = (behold) => {
     const tekst = nyttPunkt.trim();
     if (!tekst) return;
-    setSjekkliste((prev) => [...prev, { text: tekst, done: false }]);
+    setSjekkliste((prev) => [...prev, { text: tekst, done: false, assigneeId: null, due: null }]);
     setNyttPunkt('');
+    if (behold && punktRef.current) punktRef.current.focus();
   };
+  const endrePunkt = (i, patch) => setSjekkliste((prev) => prev.map((x, xi) => (xi === i ? { ...x, ...patch } : x)));
 
   const lagre = async () => {
     if (!tittel.trim() || lagrer) return;
@@ -2208,7 +2431,7 @@ function NySakModal({ members, defaultStatus, onClose, onCreate }) {
         title: tittel.trim(), description: beskrivelse.trim(), status,
         priority: prioritet, assigneeId: ansvarlig || null, dueDate: frist || null,
         recurrence: gjentakelse || null,
-        subtasks: nyttPunkt.trim() ? [...sjekkliste, { text: nyttPunkt.trim(), done: false }] : sjekkliste,
+        subtasks: nyttPunkt.trim() ? [...sjekkliste, { text: nyttPunkt.trim(), done: false, assigneeId: null, due: null }] : sjekkliste,
         notify: varsle,
       });
     } catch (e) {
@@ -2218,12 +2441,21 @@ function NySakModal({ members, defaultStatus, onClose, onCreate }) {
   };
 
   return (
-    <Overlegg onClose={onClose} variant="sheet" testid="task-new-modal">
+    <Overlegg onClose={onClose} variant="stor" testid="task-new-modal">
+      {/* Topplinje */}
+      <div className="flex shrink-0 items-center gap-2 border-b border-black/[0.05] px-5 py-3 md:px-6">
+        <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-[#f4f0fb]"><Plus className="h-3.5 w-3.5 text-[#8b5cf6]" /></span>
+        <p className="text-[12px] font-bold uppercase tracking-[0.08em] text-[#999]">Ny sak</p>
+        <button onClick={onClose} className="ml-auto rounded-lg p-2 text-[#999] transition-colors hover:bg-[#f3f2f0] hover:text-[#555]" aria-label="Lukk" data-testid="new-task-close">
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+
       <div
         className="flex-1 overflow-y-auto overscroll-contain"
         onKeyDown={(e) => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') lagre(); }}
       >
-        <div className="px-5 pt-4 md:pt-5">
+        <div className="px-5 pt-4 md:px-6 md:pt-5">
           <input
             ref={ref}
             value={tittel}
@@ -2231,21 +2463,23 @@ function NySakModal({ members, defaultStatus, onClose, onCreate }) {
             onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); lagre(); } }}
             data-testid="new-task-title"
             placeholder="Hva må gjøres?"
-            className="w-full bg-transparent text-[18px] font-bold text-[#0a0a0a] outline-none placeholder:text-[#ccc] sm:text-[19px]"
+            className="w-full bg-transparent text-[19px] font-bold text-[#0a0a0a] outline-none placeholder:text-[#ccc] sm:text-[21px]"
             style={heading}
           />
-          <textarea
+          <MentionTekstfelt
             value={beskrivelse}
-            onChange={(e) => setBeskrivelse(e.target.value)}
-            rows={2}
-            data-testid="new-task-description"
-            placeholder="Beskrivelse (valgfritt)"
-            className="mt-2 w-full resize-none bg-transparent text-[13.5px] text-[#444] outline-none placeholder:text-[#c5c5c5]"
+            onChange={setBeskrivelse}
+            members={members}
+            rows={3}
+            testid="new-task-description"
+            placeholder="Beskrivelse (valgfritt) — @ nevner en person, de får e-postvarsel"
+            className="mt-3"
+            popover="under"
           />
         </div>
 
-        {/* Kontroller: 2×2-grid på mobil, én rad på md+ — Linear-style popovers */}
-        <div className="grid grid-cols-2 gap-2 px-5 pt-3 md:flex md:flex-wrap md:items-center">
+        {/* Egenskaper: 2-kolonner på mobil, én rad på md+ — Linear-style */}
+        <div className="grid grid-cols-2 gap-2 px-5 pt-3 md:flex md:flex-wrap md:items-center md:px-6">
           <Meny
             compact value={status} onChange={setStatus} testid="new-task-status"
             options={STATUSER.map((s) => ({ v: s.k, l: s.l, dot: s.farge }))} className="md:w-[120px]"
@@ -2275,41 +2509,53 @@ function NySakModal({ members, defaultStatus, onClose, onCreate }) {
           />
         </div>
 
-        {/* Sjekkliste — valgfrie underoppgaver rett fra opprettelsen */}
-        <div className="px-5 pt-3">
-          {sjekkliste.map((s, i) => (
-            <div key={i} className="group flex items-center gap-2 py-1">
-              <Circle className="w-4 h-4 shrink-0 text-[#ccc]" />
-              <span className="min-w-0 flex-1 truncate text-[13px] text-[#444]">{s.text}</span>
-              <button onClick={() => setSjekkliste((prev) => prev.filter((_, xi) => xi !== i))} className="shrink-0 rounded p-1 text-[#ccc] hover:text-rose-500" aria-label="Fjern">
-                <X className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          ))}
+        {/* Deloppgaver — full kontroll allerede ved opprettelse: tekst,
+            ansvarlig og frist per rad. Enter legger til og beholder fokus. */}
+        <div className="px-5 pt-4 md:px-6">
           <div className="flex items-center gap-2">
+            <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#999]">Deloppgaver</p>
+            {sjekkliste.length > 0 && <span className="text-[11px] font-bold tabular-nums text-[#ccc]">{sjekkliste.length}</span>}
+          </div>
+          <div className="mt-1.5 space-y-0.5">
+            {sjekkliste.map((s, i) => (
+              <div key={i} className="group flex items-center gap-2.5 rounded-lg px-1 py-1.5 hover:bg-[#fafaf8]" data-testid={`new-task-subtask-row-${i}`}>
+                <Circle className="w-[18px] h-[18px] shrink-0 text-[#ccc]" />
+                <span className="min-w-0 flex-1 truncate text-[13.5px] text-[#333]">{s.text}</span>
+                <SubFrist value={s.due || null} done={false} today={idag} onChange={(due) => endrePunkt(i, { due })} testid={`new-task-subtask-due-${i}`} />
+                <SubAnsvarlig value={s.assigneeId || null} members={members} onChange={(assigneeId) => endrePunkt(i, { assigneeId })} testid={`new-task-subtask-assignee-${i}`} />
+                <button onClick={() => setSjekkliste((prev) => prev.filter((_, xi) => xi !== i))} className="shrink-0 rounded p-1 text-[#ddd] transition-colors hover:text-rose-500" aria-label="Fjern deloppgave">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+          <div className="mt-1 flex items-center gap-2">
             <Plus className="w-4 h-4 shrink-0 text-[#bbb]" />
             <input
+              ref={punktRef}
               value={nyttPunkt}
               onChange={(e) => setNyttPunkt(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); leggTilPunkt(); } }}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); leggTilPunkt(true); } }}
+              onBlur={() => { if (nyttPunkt.trim()) leggTilPunkt(false); }}
               data-testid="new-task-subtask-input"
-              placeholder="Underoppgave (valgfritt) — Enter legger til"
+              placeholder="Legg til deloppgave — Enter legger til flere"
               className="h-9 min-w-0 flex-1 rounded-lg border border-black/[0.08] bg-white px-2.5 text-[13px] outline-none transition-all placeholder:text-[#bbb] hover:border-black/[0.16] focus:border-[#8b5cf6]/50 focus:ring-2 focus:ring-[#8b5cf6]/15"
             />
           </div>
         </div>
 
         {ansvarlig && (
-          <label className="flex items-center gap-2 px-5 pt-3 text-[12px] text-[#888]">
+          <label className="flex items-center gap-2 px-5 pt-3 text-[12px] text-[#888] md:px-6">
             <input type="checkbox" checked={varsle} onChange={(e) => setVarsle(e.target.checked)} className="h-4 w-4 accent-[#8b5cf6]" />
             Send e-postvarsel til ansvarlig
           </label>
         )}
-        {feil && <p className="px-5 pt-2 text-[12.5px] text-rose-600">{feil}</p>}
+        {feil && <p className="px-5 pt-2 text-[12.5px] text-rose-600 md:px-6">{feil}</p>}
+        <div className="h-4" />
       </div>
 
       <div
-        className="flex shrink-0 items-center gap-3 border-t border-black/[0.06] px-5 py-3"
+        className="flex shrink-0 items-center gap-3 border-t border-black/[0.06] px-5 py-3 md:px-6"
         style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}
       >
         <span className="hidden text-[11px] text-[#b5b5b5] md:inline">⌘/Ctrl + Enter for å lagre</span>
@@ -2422,13 +2668,25 @@ function SlettBekreftModal({ antall, api, onClose, onConfirm }) {
    Saker + møter de deltar i eller har fått typetilgang til (moteTilgang).
    Verv (tittel) vises i møter og protokoller — f.eks. Styreleder.
    Alle endringer er admin-only (serveren håndhever); 'bruker' ser listen. */
-const VERV_FORSLAG = ['Styreleder', 'Nestleder', 'Styremedlem', 'Varamedlem', 'Daglig leder', 'Økonomiansvarlig', 'Driftsansvarlig'];
+const VERV_FORSLAG = ['Styreleder', 'Nestleder', 'Styremedlem', 'Varamedlem', 'Daglig leder', 'Økonomiansvarlig', 'Driftsansvarlig', 'Partner', 'Investor', 'Aksjonær'];
 const MOTE_TILGANG_VALG = [
   { k: 'styremote', l: 'Styremøter' },
   { k: 'ledermote', l: 'Ledermøter' },
   { k: 'annet', l: 'Andre møter' },
 ];
 const MOTE_TILGANG_LABEL = { styremote: 'Styremøter', ledermote: 'Ledermøter', annet: 'Andre møter' };
+
+// Moduler som kan tildeles begrensede kontoer (matcher menyen og håndheves
+// i API-et: nokkeltall→/admin/kpi, okonomi+kunder→/admin/finance (les),
+// i-leads→/admin/leads*, historikk→/admin/imported-leads*)
+const MODUL_VALG = [
+  { k: 'nokkeltall', l: 'Nøkkeltall' },
+  { k: 'okonomi', l: 'Økonomi' },
+  { k: 'kunder', l: 'Kunder' },
+  { k: 'i-leads', l: 'Leads' },
+  { k: 'historikk', l: 'Historikk' },
+];
+const MODUL_LABEL = Object.fromEntries(MODUL_VALG.map((m) => [m.k, m.l]));
 
 // Verdensklasse-detalj: vervet foreslår fornuftig møtetilgang automatisk
 // (styreverv → styremøter, daglig leder → begge). Kun et forslag — admin
@@ -2437,18 +2695,18 @@ function foreslaMoteTilgang(verv) {
   const v = String(verv || '').toLowerCase();
   if (!v) return null;
   if (/daglig leder|adm\.? ?dir|ceo/.test(v)) return ['styremote', 'ledermote'];
-  if (/styre/.test(v)) return ['styremote'];
+  if (/styre|investor|aksjon/.test(v)) return ['styremote'];
   if (/leder|sjef|direkt/.test(v)) return ['ledermote'];
   return null;
 }
 
-// Chips for møtetilgang per møtetype. Admin ser alle møter uansett —
-// chipsene er derfor deaktivert (med forklaring) når rollen er admin.
-function MoteTilgangVelger({ value, onChange, disabled, testid }) {
+// Chips for møtetilgang per møtetype (eller andre nøkkel/label-valg via
+// `valg`-prop). Admin ser alt uansett — chipsene deaktiveres da.
+function MoteTilgangVelger({ value, onChange, disabled, testid, valg = MOTE_TILGANG_VALG }) {
   const valgt = Array.isArray(value) ? value : [];
   return (
     <div className="flex min-w-0 flex-wrap items-center gap-1.5" data-testid={testid}>
-      {MOTE_TILGANG_VALG.map((o) => {
+      {valg.map((o) => {
         const aktiv = valgt.includes(o.k);
         return (
           <button
@@ -2476,11 +2734,12 @@ function PersonerModal({ api, members, setMembers, erBruker, onClose, visToast }
   const [passord, setPassord] = useState('');
   const [tittel, setTittel] = useState(''); // verv, f.eks. Styreleder
   const [moteTilgang, setMoteTilgang] = useState([]);
+  const [moduler, setModuler] = useState([]); // ekstra modultilgang
   const [inviter, setInviter] = useState(true); // velkomst-e-post — brukeren velger eget passord
   const [inviterer, setInviterer] = useState(null); // person-id under (re)utsending
   const [lagrer, setLagrer] = useState(false);
   const [redigerId, setRedigerId] = useState(null);
-  const [red, setRed] = useState({ name: '', email: '', role: 'bruker', password: '', tittel: '', moteTilgang: [] });
+  const [red, setRed] = useState({ name: '', email: '', role: 'bruker', password: '', tittel: '', moteTilgang: [], moduler: [] });
 
   const leggTil = async () => {
     if (!navn.trim() || lagrer) return;
@@ -2490,14 +2749,14 @@ function PersonerModal({ api, members, setMembers, erBruker, onClose, visToast }
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: navn.trim(), email: epost.trim(), role: rolle, password: passord,
-          tittel: tittel.trim(), moteTilgang,
+          tittel: tittel.trim(), moteTilgang, moduler,
           invite: inviter && !!epost.trim() && !passord,
         }),
       });
       const j = await r.json();
       if (!j.ok) throw new Error(j.error || 'Kunne ikke legge til');
       setMembers((prev) => [...prev, j.member]);
-      setNavn(''); setEpost(''); setPassord(''); setRolle('bruker'); setTittel(''); setMoteTilgang([]);
+      setNavn(''); setEpost(''); setPassord(''); setRolle('bruker'); setTittel(''); setMoteTilgang([]); setModuler([]);
       visToast(j.invitert
         ? `Invitasjon sendt til ${j.member.email} — de velger eget passord`
         : j.member.harPassord ? `${j.member.name} lagt til — kan nå logge inn` : `${j.member.name} lagt til`);
@@ -2522,7 +2781,7 @@ function PersonerModal({ api, members, setMembers, erBruker, onClose, visToast }
 
   const lagreEndring = async (id) => {
     try {
-      const payload = { name: red.name.trim(), email: red.email.trim(), role: red.role, tittel: red.tittel.trim(), moteTilgang: red.moteTilgang };
+      const payload = { name: red.name.trim(), email: red.email.trim(), role: red.role, tittel: red.tittel.trim(), moteTilgang: red.moteTilgang, moduler: red.moduler };
       if (red.password) payload.password = red.password;
       const r = await api(`users/${id}`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
@@ -2587,6 +2846,8 @@ function PersonerModal({ api, members, setMembers, erBruker, onClose, visToast }
                       options={[
                         { v: 'admin', l: 'Admin', sub: 'Full tilgang til hele admin' },
                         { v: 'bruker', l: 'Bruker', sub: 'Saker + møter de har tilgang til' },
+                        { v: 'partner', l: 'Partner', sub: 'Saker + møter de har tilgang til' },
+                        { v: 'eier', l: 'Eier', sub: 'Nøkkeltall + Økonomi (les) + møter' },
                       ]}
                       className="h-10 [&>button]:h-10"
                     />
@@ -2621,6 +2882,16 @@ function PersonerModal({ api, members, setMembers, erBruker, onClose, visToast }
                       testid={`member-motetilgang-${m.id}`}
                     />
                   </div>
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span className="shrink-0 text-[11px] font-bold uppercase tracking-[0.06em] text-[#b5b5b5]">Moduler</span>
+                    <MoteTilgangVelger
+                      value={red.moduler}
+                      onChange={(v) => setRed((p) => ({ ...p, moduler: v }))}
+                      disabled={red.role === 'admin' || m.role === 'owner'}
+                      testid={`member-moduler-${m.id}`}
+                      valg={MODUL_VALG}
+                    />
+                  </div>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <p className="mr-auto text-[11px] text-[#b5b5b5]">{(red.role === 'admin' || m.role === 'owner') ? 'Admin ser alle møter — møtetilgang gjelder kun rollen Bruker.' : 'Møtetilgang: hvilke møtetyper personen kan se. Passord krever e-post og minst 8 tegn.'}</p>
@@ -2635,7 +2906,7 @@ function PersonerModal({ api, members, setMembers, erBruker, onClose, visToast }
                   <div className="flex items-center gap-1.5">
                     <p className="truncate text-[14px] font-semibold text-[#1a1a1a]">{m.name}</p>
                     <span className={`shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
-                      m.role === 'owner' ? 'bg-[#0a0a0a] text-white' : m.role === 'admin' ? 'bg-[#f4f0fb] text-[#8b5cf6]' : 'bg-[#f3f2f0] text-[#888]'
+                      m.role === 'owner' ? 'bg-[#0a0a0a] text-white' : m.role === 'admin' ? 'bg-[#f4f0fb] text-[#8b5cf6]' : m.role === 'eier' ? 'bg-[#eff6ff] text-[#2563eb]' : m.role === 'partner' ? 'bg-[#f0fdfa] text-[#0d9488]' : 'bg-[#f3f2f0] text-[#888]'
                     }`}>{ROLLE_LABEL[m.role] || m.role}</span>
                     {m.tittel && (
                       <span title="Verv" className="shrink-0 rounded-md bg-white px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#777] ring-1 ring-black/[0.08]" data-testid={`member-verv-${m.id}`}>{m.tittel}</span>
@@ -2647,7 +2918,7 @@ function PersonerModal({ api, members, setMembers, erBruker, onClose, visToast }
                       <span title="Invitasjon sendt — venter på at brukeren velger passord" className="shrink-0 rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-600">Invitert</span>
                     )}
                   </div>
-                  <p className="truncate text-[12px] text-[#999]">{m.email || 'Ingen e-post — får ikke varsler'}{m.harPassord ? ' · kan logge inn' : ''}{m.role === 'bruker' && (m.moteTilgang || []).length > 0 ? ` · ser ${m.moteTilgang.map((k) => (MOTE_TILGANG_LABEL[k] || k).toLowerCase()).join(', ')}` : ''}</p>
+                  <p className="truncate text-[12px] text-[#999]">{m.email || 'Ingen e-post — får ikke varsler'}{m.harPassord ? ' · kan logge inn' : ''}{['bruker', 'partner', 'eier'].includes(m.role) && (m.moteTilgang || []).length > 0 ? ` · ser ${m.moteTilgang.map((k) => (MOTE_TILGANG_LABEL[k] || k).toLowerCase()).join(', ')}` : ''}{['bruker', 'partner', 'eier'].includes(m.role) && (m.moduler || []).length > 0 ? ` · moduler: ${m.moduler.map((k) => MODUL_LABEL[k] || k).join(', ')}` : ''}</p>
                 </div>
                 {!erBruker && (
                   <>
@@ -2662,7 +2933,7 @@ function PersonerModal({ api, members, setMembers, erBruker, onClose, visToast }
                       </button>
                     )}
                     <button
-                      onClick={() => { setRedigerId(m.id); setRed({ name: m.name, email: m.email || '', role: m.role || 'bruker', password: '', tittel: m.tittel || '', moteTilgang: Array.isArray(m.moteTilgang) ? m.moteTilgang : [] }); }}
+                      onClick={() => { setRedigerId(m.id); setRed({ name: m.name, email: m.email || '', role: m.role || 'bruker', password: '', tittel: m.tittel || '', moteTilgang: Array.isArray(m.moteTilgang) ? m.moteTilgang : [], moduler: Array.isArray(m.moduler) ? m.moduler : [] }); }}
                       data-testid={`member-edit-${m.id}`}
                       className="rounded-lg p-2 text-[#bbb] hover:bg-[#f3f2f0] hover:text-[#555]"
                     >
@@ -2702,6 +2973,8 @@ function PersonerModal({ api, members, setMembers, erBruker, onClose, visToast }
               value={rolle} onChange={setRolle} testid="member-role-input" oppover
               options={[
                 { v: 'bruker', l: 'Bruker', sub: 'Saker + møter de har tilgang til' },
+                { v: 'partner', l: 'Partner', sub: 'Saker + møter de har tilgang til' },
+                { v: 'eier', l: 'Eier', sub: 'Nøkkeltall + Økonomi (les) + møter' },
                 { v: 'admin', l: 'Admin', sub: 'Full tilgang til hele admin' },
               ]}
               className="[&>button]:h-11 sm:[&>button]:h-10"
@@ -2732,6 +3005,10 @@ function PersonerModal({ api, members, setMembers, erBruker, onClose, visToast }
             <div className="flex min-w-0 items-center gap-2">
               <span className="shrink-0 text-[11px] font-bold uppercase tracking-[0.06em] text-[#b5b5b5]">Ser</span>
               <MoteTilgangVelger value={moteTilgang} onChange={setMoteTilgang} disabled={rolle === 'admin'} testid="member-motetilgang" />
+            </div>
+            <div className="flex min-w-0 items-center gap-2">
+              <span className="shrink-0 text-[11px] font-bold uppercase tracking-[0.06em] text-[#b5b5b5]">Moduler</span>
+              <MoteTilgangVelger value={moduler} onChange={setModuler} disabled={rolle === 'admin'} testid="member-moduler" valg={MODUL_VALG} />
             </div>
           </div>
           <datalist id="verv-forslag">

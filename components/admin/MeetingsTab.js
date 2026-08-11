@@ -199,7 +199,9 @@ const feltKlasse = 'h-9 w-full rounded-lg border border-black/[0.08] bg-white px
 export default function MeetingsTab({ apiKey, user, onOpenTask }) {
   // 'bruker' har lesetilgang (møter de deltar i / har typetilgang til, filtrert
   // server-side). All redigering, utsendelse og sletting er forbeholdt admin.
-  const kanRedigere = !(user && user.role === 'bruker');
+  // Begrensede roller (bruker/partner/eier) har lesetilgang (møter de deltar
+  // i / har typetilgang til, filtrert server-side). Admin/systemeier redigerer.
+  const kanRedigere = !(user && ['bruker', 'partner', 'eier'].includes(user.role));
   const [meetings, setMeetings] = useState([]);
   const [members, setMembers] = useState([]);
   const [laster, setLaster] = useState(true);

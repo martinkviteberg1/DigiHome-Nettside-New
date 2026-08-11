@@ -1199,10 +1199,11 @@ function adminAuthed(request) {
     if (!!ADMIN_KEY && key === ADMIN_KEY) return true;       // legacy nøkkel
     const payload = key ? verifySession(key) : null;
     if (payload) {
-      // Kontoer med rollen 'bruker' har KUN tilgang til sakssystemet
-      // (sakerAuthed) — aldri resten av admin. Tokens utstedt før roller
-      // fantes mangler role-feltet og var per definisjon admin.
-      if (payload.role === 'bruker') return false;
+      // Kontoer med begrensede roller (bruker/partner/eier) har ALDRI
+      // admin-tilgang — de går via sakerAuthed/innloggetAuthed/innsynAuthed.
+      // Tokens utstedt før roller fantes mangler role-feltet og var per
+      // definisjon admin.
+      if (['bruker', 'partner', 'eier'].includes(payload.role)) return false;
       return true;
     }
     return false;
@@ -1218,12 +1219,44 @@ function sessionFra(request) {
   } catch (e) { return null; }
 }
 
-// Saker-tilgang: admin/owner ELLER konto med rollen 'bruker'. Vanlige brukere
-// har inntil videre kun tilgang til det interne sakssystemet.
+// Saker-tilgang: admin/owner ELLER kontoer med rollene 'bruker'/'partner'.
+// Rollen 'eier' (investor) har IKKE tilgang til sakssystemet.
 function sakerAuthed(request) {
   if (adminAuthed(request)) return true;
   const payload = sessionFra(request);
-  return !!(payload && payload.role === 'bruker');
+  return !!(payload && ['bruker', 'partner'].includes(payload.role));
+}
+
+// Innlogget-tilgang: ALLE gyldige kontoer (bruker/partner/eier) — brukes for
+// møter, personliste, egen profil og passordbekreftelse. Innholdet filtreres
+// videre per rolle (f.eks. møtelisten) der det trengs.
+function innloggetAuthed(request) {
+  if (adminAuthed(request)) return true;
+  const payload = sessionFra(request);
+  return !!(payload && ['bruker', 'partner', 'eier'].includes(payload.role));
+}
+
+// Innsyn-tilgang: rollen 'eier' (investor/aksjonær) får LESE nøkkeltall og
+// økonomi — aldri skrive. Admin/owner har naturligvis alt.
+function innsynAuthed(request) {
+  if (adminAuthed(request)) return true;
+  const payload = sessionFra(request);
+  return !!(payload && payload.role === 'eier');
+}
+
+// ═══ MODULTILGANG per bruker ═══
+// Begrensede kontoer (bruker/partner/eier) kan gis eksplisitt tilgang til
+// utvalgte moduler (settes per person under Personer). Nøklene matcher
+// menypunktene i admin slik at navigasjon og API håndheves likt.
+const MODUL_NOKLER = ['nokkeltall', 'okonomi', 'kunder', 'i-leads', 'historikk'];
+async function modulAuthed(request, db, modul) {
+  if (adminAuthed(request)) return true;
+  const payload = sessionFra(request);
+  if (!payload || !payload.sub) return false;
+  try {
+    const u = await db.collection('admin_users').findOne({ id: payload.sub }, { projection: { moduler: 1 } });
+    return !!(u && Array.isArray(u.moduler) && u.moduler.includes(modul));
+  } catch (e) { return false; }
 }
 
 // BOLIGINTERESSE UT TIL PLATTFORMEN: kø (sikkerhetsnett) + webhook (sanntid).
@@ -1560,12 +1593,16 @@ function nesteFrist(fraDato, freq) {
   return dt.toISOString().slice(0, 10);
 }
 
+// Deloppgaver (Linear-nivå): egen ansvarlig og frist per deloppgave.
+// due = 'YYYY-MM-DD' eller null; assigneeId = person-id eller null.
 function normaliserSubtasks(input) {
   if (!Array.isArray(input)) return [];
   return input.slice(0, 40).map((s) => ({
     id: (s && s.id) ? String(s.id) : uuidv4(),
     text: String((s && s.text) || '').slice(0, 300),
     done: !!(s && s.done),
+    assigneeId: (s && s.assigneeId) ? String(s.assigneeId) : null,
+    due: (s && /^\d{4}-\d{2}-\d{2}$/.test(String(s.due || ''))) ? String(s.due) : null,
   })).filter((s) => s.text);
 }
 
@@ -1707,6 +1744,7 @@ async function hentPersoner(db) {
     role: u.role || 'admin',
     tittel: u.tittel || '',
     moteTilgang: Array.isArray(u.moteTilgang) ? u.moteTilgang : [],
+    moduler: Array.isArray(u.moduler) ? u.moduler : [],
     harPassord: !!u.passwordHash,
     invitedAt: u.invitedAt || '',
     createdAt: u.createdAt || '',
@@ -1953,7 +1991,7 @@ async function handleRoute(request, { params }) {
         ok: true,
         token,
         exp,
-        user: { email: user.email, name: user.name || '', role: user.role || 'admin' },
+        user: { email: user.email, name: user.name || '', role: user.role || 'admin', moduler: Array.isArray(user.moduler) ? user.moduler : [] },
       }));
     }
 
@@ -1967,7 +2005,7 @@ async function handleRoute(request, { params }) {
       try { user = await db.collection('admin_users').findOne({ id: payload.sub }); } catch (e) {}
       return cors(NextResponse.json({
         ok: true,
-        user: { email: payload.email, name: (user && user.name) || '', role: (user && user.role) || 'admin' },
+        user: { email: payload.email, name: (user && user.name) || '', role: (user && user.role) || 'admin', moduler: (user && Array.isArray(user.moduler)) ? user.moduler : [] },
       }));
     }
 
@@ -1976,7 +2014,7 @@ async function handleRoute(request, { params }) {
     // passord (den ER legitimasjonen); innloggede kontoer må oppgi sitt eget.
     // Rate-limited slik at endepunktet ikke kan brukes til passordgjetting.
     if (route === '/admin/auth/bekreft' && method === 'POST') {
-      if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!innloggetAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       if (!rateLimit(`auth-bekreft:${clientIp(request)}`, 10)) {
         return cors(NextResponse.json({ ok: false, error: 'For mange forsøk — vent litt og prøv igjen' }, { status: 429 }));
       }
@@ -2065,7 +2103,7 @@ async function handleRoute(request, { params }) {
       const token = signSession({ sub: hit.user.id, email: hit.user.email, role: hit.user.role || 'admin', exp });
       return cors(NextResponse.json({
         ok: true, token, exp,
-        user: { email: hit.user.email, name: hit.user.name || '', role: hit.user.role || 'admin' },
+        user: { email: hit.user.email, name: hit.user.name || '', role: hit.user.role || 'admin', moduler: Array.isArray(hit.user.moduler) ? hit.user.moduler : [] },
       }));
     }
 
@@ -2120,7 +2158,7 @@ async function handleRoute(request, { params }) {
       const token = signSession({ sub: hit.user.id, email: hit.user.email, role: hit.user.role || 'admin', exp });
       return cors(NextResponse.json({
         ok: true, token, exp,
-        user: { email: hit.user.email, name: hit.user.name || '', role: hit.user.role || 'admin' },
+        user: { email: hit.user.email, name: hit.user.name || '', role: hit.user.role || 'admin', moduler: Array.isArray(hit.user.moduler) ? hit.user.moduler : [] },
       }));
     }
 
@@ -2129,7 +2167,7 @@ async function handleRoute(request, { params }) {
     // har ingen identitet), og passordbytte krever gjeldende passord.
     // E-post og rolle endres kun av admin via /admin/users.
     if (route === '/admin/auth/profile' && method === 'PUT') {
-      if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!innloggetAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const sesjon = sessionFra(request);
       if (!sesjon || !sesjon.sub) return cors(NextResponse.json({ ok: false, error: 'Krever personlig innlogging (ikke masternøkkel)' }, { status: 400 }));
       const meg = await db.collection('admin_users').findOne({ id: sesjon.sub });
@@ -2443,7 +2481,7 @@ async function handleRoute(request, { params }) {
     //     med saker-tilgang; alle endringer er admin-only. Eier-kontoen kan
     //     bare endres av eieren selv (eller master-nøkkelen) og aldri slettes.
     if (route === '/admin/users' && method === 'GET') {
-      if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!innloggetAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const members = await hentPersoner(db);
       return cors(NextResponse.json({ ok: true, members }));
     }
@@ -2454,7 +2492,7 @@ async function handleRoute(request, { params }) {
       const name = String(body.name || '').trim();
       if (!name) return cors(NextResponse.json({ ok: false, error: 'Navn er påkrevd' }, { status: 400 }));
       const email = String(body.email || '').trim().toLowerCase();
-      const role = body.role === 'admin' ? 'admin' : 'bruker';
+      const role = ['admin', 'bruker', 'partner', 'eier'].includes(body.role) ? body.role : 'bruker';
       const password = String(body.password || '');
       const invite = !!body.invite;
       if (invite && !email) return cors(NextResponse.json({ ok: false, error: 'Invitasjon krever e-post' }, { status: 400 }));
@@ -2471,6 +2509,7 @@ async function handleRoute(request, { params }) {
         id: uuidv4(), name, email, role,
         tittel: String(body.tittel || '').trim().slice(0, 60),
         moteTilgang: Array.isArray(body.moteTilgang) ? body.moteTilgang.filter((t) => Object.keys(MOTE_TYPE_LABEL).includes(t)) : [],
+        moduler: Array.isArray(body.moduler) ? body.moduler.filter((t) => MODUL_NOKLER.includes(t)) : [],
         color: /^#[0-9a-fA-F]{6}$/.test(String(body.color || '')) ? body.color : TASK_FARGER[antall % TASK_FARGER.length],
         createdAt: new Date().toISOString(),
       };
@@ -2551,12 +2590,18 @@ async function handleRoute(request, { params }) {
         set.email = e;
       }
       if (body.color !== undefined && /^#[0-9a-fA-F]{6}$/.test(String(body.color))) set.color = body.color;
-      if (body.role !== undefined && !erOwner && ['admin', 'bruker'].includes(body.role)) set.role = body.role;
+      if (body.role !== undefined && !erOwner && ['admin', 'bruker', 'partner', 'eier'].includes(body.role)) set.role = body.role;
       // Verv/tittel (Styreleder, Daglig leder …) og møtetilgang per møtetype
       if (body.tittel !== undefined) set.tittel = String(body.tittel || '').trim().slice(0, 60);
       if (body.moteTilgang !== undefined) {
         set.moteTilgang = Array.isArray(body.moteTilgang)
           ? body.moteTilgang.filter((t) => Object.keys(MOTE_TYPE_LABEL).includes(t))
+          : [];
+      }
+      // Modultilgang: eksplisitte moduler for begrensede kontoer
+      if (body.moduler !== undefined) {
+        set.moduler = Array.isArray(body.moduler)
+          ? body.moduler.filter((t) => MODUL_NOKLER.includes(t))
           : [];
       }
       if (body.password !== undefined) {
@@ -2658,6 +2703,21 @@ async function handleRoute(request, { params }) {
           if (ok) task.activity.push({ at: naa, actor: 'System', text: `E-postvarsel sendt til følger ${f.name}` });
         }
       }
+      // @mentions i beskrivelsen ved opprettelse: varsle nevnte personer
+      // (hopp over ansvarlig/følgere som allerede er varslet, og aktøren selv).
+      if (task.description && task.description.includes('@') && body.notify !== false) {
+        const beskLav = task.description.toLowerCase();
+        const allePers = await db.collection('admin_users').find({}, { projection: { _id: 0, id: 1, name: 1, email: 1 } }).toArray();
+        const nevnt = allePers.filter((m) => m.name && m.email
+          && beskLav.includes(`@${String(m.name).toLowerCase()}`)
+          && m.id !== task.assigneeId
+          && !task.followers.includes(m.id)
+          && String(m.name).toLowerCase() !== actor.toLowerCase());
+        for (const m of nevnt) {
+          const ok = await taskEpost({ member: m, task, heading: 'Du ble nevnt i en sak', intro: `${actor} nevnte deg i beskrivelsen av en ny sak.` });
+          if (ok) task.activity.push({ at: naa, actor: 'System', text: `E-postvarsel sendt til ${m.name} (nevnt i beskrivelsen)` });
+        }
+      }
       await db.collection('tasks').insertOne({ ...task });
       return cors(NextResponse.json({ ok: true, task, emailed }));
     }
@@ -2672,7 +2732,25 @@ async function handleRoute(request, { params }) {
       const set = { updatedAt: naa };
       const logg = [];
       if (body.title !== undefined) { const t = String(body.title).trim().slice(0, 300); if (t && t !== eksisterende.title) set.title = t; }
-      if (body.description !== undefined) set.description = String(body.description).slice(0, 8000);
+      if (body.description !== undefined) {
+        set.description = String(body.description).slice(0, 8000);
+        // @mentions i beskrivelsen: varsle personer som er NYE i teksten
+        // (nevnt nå, men ikke i forrige versjon) — aldri aktøren selv.
+        if (set.description && set.description.includes('@') && body.notify !== false) {
+          const gammelLav = String(eksisterende.description || '').toLowerCase();
+          const nyLav = set.description.toLowerCase();
+          const allePers = await db.collection('admin_users').find({}, { projection: { _id: 0, id: 1, name: 1, email: 1 } }).toArray();
+          const nyNevnt = allePers.filter((m) => m.name
+            && nyLav.includes(`@${String(m.name).toLowerCase()}`)
+            && !gammelLav.includes(`@${String(m.name).toLowerCase()}`));
+          for (const m of nyNevnt) {
+            if (!m.email) continue;
+            if (String(m.name).toLowerCase() === actor.toLowerCase()) continue;
+            const ok = await taskEpost({ member: m, task: { ...eksisterende, ...set }, heading: 'Du ble nevnt i en sak', intro: `${actor} nevnte deg i beskrivelsen av saken.` });
+            if (ok) logg.push(`E-postvarsel sendt til ${m.name} (nevnt i beskrivelsen)`);
+          }
+        }
+      }
       if (body.status !== undefined && TASK_STATUSES.includes(body.status) && body.status !== eksisterende.status) {
         set.status = body.status;
         set.completedAt = body.status === 'done' ? naa : null;
@@ -2753,7 +2831,7 @@ async function handleRoute(request, { params }) {
           assigneeId: set.assigneeId !== undefined ? set.assigneeId : (eksisterende.assigneeId || null),
           dueDate: nesteFrist(set.dueDate !== undefined ? set.dueDate : eksisterende.dueDate, rec),
           labels: set.labels || eksisterende.labels || [],
-          subtasks: (set.subtasks || eksisterende.subtasks || []).map((s) => ({ ...s, id: uuidv4(), done: false })),
+          subtasks: (set.subtasks || eksisterende.subtasks || []).map((s) => ({ ...s, id: uuidv4(), done: false, due: null })),
           recurrence: rec,
           followers: set.followers !== undefined ? set.followers : (eksisterende.followers || []),
           attachments: [],
@@ -2952,7 +3030,7 @@ async function handleRoute(request, { params }) {
     // møtetyper de har fått tilgang til (moteTilgang per person, admin-styrt).
     // Håndheves her — ikke bare i menyen.
     if (path[0] === 'admin' && path[1] === 'meetings' && path.length === 2 && method === 'GET') {
-      if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!innloggetAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       let alleMoter = await db.collection('meetings').find({}, { projection: { _id: 0 } }).toArray();
       if (!adminAuthed(request)) {
         const sesjon = sessionFra(request);
@@ -3097,7 +3175,7 @@ async function handleRoute(request, { params }) {
     // med agenda, referat, vedtak, aksjonspunkter og signaturfelt (styremøte).
     // Brukere med lesetilgang til møtet (deltaker/møtetype) kan også laste ned.
     if (path[0] === 'admin' && path[1] === 'meetings' && path.length === 4 && path[3] === 'protokoll' && method === 'GET') {
-      if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!innloggetAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const meeting = await db.collection('meetings').findOne({ id: path[2] }, { projection: { _id: 0 } });
       if (!meeting) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
       if (!adminAuthed(request)) {
@@ -3371,7 +3449,7 @@ async function handleRoute(request, { params }) {
 
     // Admin: delvise leads (ikke konverterte) — for manuell oppfølging.
     if (route === '/admin/leads/partial' && method === 'GET') {
-      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!(await modulAuthed(request, db, 'i-leads'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const rows = await db.collection('partial_leads')
         .find({ status: 'partial' }, { projection: { _id: 0 } })
         .sort({ updatedAt: -1 }).limit(100).toArray();
@@ -4258,7 +4336,7 @@ async function handleRoute(request, { params }) {
     // pre_tracking:true — de vises/håndteres som vanlige leads i UI-et, men
     // holdes UTENFOR betalt ROAS/CAC (egen kolleksjon → aldri med i beregningene).
     if (route === '/admin/leads' && method === 'GET') {
-      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!(await modulAuthed(request, db, 'i-leads'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       maybeReforward(db); // selvhelbredende catch-up ved admin-last (throttlet)
       // Automatisk CRM-synk: henter nye plattform-leads (eiere, leietakere,
       // kontakter) uten at noen må trykke på en knapp. Throttlet til hvert
@@ -4350,7 +4428,7 @@ async function handleRoute(request, { params }) {
     // (forwarded=true, bevarer platform_id), fletter inn rikeste info fra
     // duplikatene og sletter resten. Støtter ?dryRun for trygg forhåndsvisning.
     if (route === '/admin/leads/dedup-tenants' && method === 'POST') {
-      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!(await modulAuthed(request, db, 'i-leads'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const body = await request.json().catch(() => ({}));
       const dryRun = body.dryRun === true || new URL(request.url).searchParams.get('dryRun') === 'true';
       const tms = (x) => { const t = new Date(x || 0).getTime(); return isFinite(t) ? t : 0; };
@@ -5142,7 +5220,7 @@ async function handleRoute(request, { params }) {
     // men holdt UTENFOR betalt ROAS/CAC. Ingen retroaktive konverteringer sendes.
     // ===================================================================
     if (route === '/admin/imported-leads' && method === 'GET') {
-      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!(await modulAuthed(request, db, 'historikk'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const sp = new URL(request.url).searchParams;
       const summary = await summarizeImported(db);
       let pushback = null; try { pushback = await pushbackStats(db); } catch (e) { pushback = null; }
@@ -5177,7 +5255,7 @@ async function handleRoute(request, { params }) {
     // Oppdater historisk annonseforbruk (Meta/Google/annet) — grunnlag for
     // blandet CPL/CAC i «Historisk analyse». Kun tall ≥ 0 godtas.
     if (route === '/admin/imported-leads/spend' && method === 'PUT') {
-      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!(await modulAuthed(request, db, 'historikk'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
       const set = {};
       for (const k of ['meta', 'google', 'other']) {
@@ -5203,7 +5281,7 @@ async function handleRoute(request, { params }) {
     // notat, markedsførings-OK. Lagres som override → overlever ny synk.
     // TOVEIS: status/verdi/kilde legges i utboks og skrives tilbake til CRM-et.
     if (route === '/admin/imported-leads' && method === 'PUT') {
-      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!(await modulAuthed(request, db, 'historikk'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
       const patch = body.patch || {};
       const result = await updateImportedOverride(db, { id: body.id, ids: body.ids, patch });
@@ -5232,7 +5310,7 @@ async function handleRoute(request, { params }) {
     }
 
     if (route === '/admin/imported-leads/import' && method === 'POST') {
-      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!(await modulAuthed(request, db, 'historikk'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
       let rows = [];
       if (typeof body.csv === 'string' && body.csv.trim()) {
@@ -5254,7 +5332,7 @@ async function handleRoute(request, { params }) {
     }
 
     if (route === '/admin/imported-leads/sync' && method === 'POST') {
-      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!(await modulAuthed(request, db, 'historikk'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
       const spSync = new URL(request.url).searchParams;
       const dryRun = ['1', 'true'].includes(String(spSync.get('dryRun') ?? body.dryRun ?? '').toLowerCase());
@@ -5286,7 +5364,7 @@ async function handleRoute(request, { params }) {
     }
 
     if (route === '/admin/imported-leads' && method === 'DELETE') {
-      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!(await modulAuthed(request, db, 'historikk'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const sp = new URL(request.url).searchParams;
       const batch = (sp.get('batch') || '').trim();
       const all = ['1', 'true'].includes(String(sp.get('all')));
@@ -8210,7 +8288,7 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
     // Admin: forhåndsvis lead-e-poster i nettleser (uten å sende noe).
     // ?type=receipt|notify — valgfritt ?id=<lead-id> for ekte data, ellers eksempel.
     if (route === '/admin/leads/email-preview' && method === 'GET') {
-      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!(await modulAuthed(request, db, 'i-leads'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const sp = new URL(request.url).searchParams;
       const type = (sp.get('type') || 'receipt').toLowerCase();
       // Forhåndsvis boliginteresse-varselet uten å sende noe. Bruker en ekte
@@ -8253,7 +8331,8 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
     // KPI-dashbord ("Nøkkeltall / Ledelse") — investorklare nøkkeltall.
     // ===================================================================
     if (route === '/admin/kpi/settings' && (method === 'GET')) {
-      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      // Lesetilgang for rollen 'eier' og kontoer med modulen 'nokkeltall'
+      if (!innsynAuthed(request) && !(await modulAuthed(request, db, 'nokkeltall'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const settings = await getKpiSettings(db);
       return cors(NextResponse.json({ ok: true, settings }));
     }
@@ -8285,7 +8364,8 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
     }
 
     if (route === '/admin/kpi' && method === 'GET') {
-      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      // Nøkkeltall: LESES av 'eier' (innsyn) og kontoer med modulen 'nokkeltall'
+      if (!innsynAuthed(request) && !(await modulAuthed(request, db, 'nokkeltall'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const sp = new URL(request.url).searchParams;
       const from = (sp.get('from') || '').trim();
       const to = (sp.get('to') || '').trim();
@@ -8454,7 +8534,15 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
     // Auth: admin (?key=). Alle beløp NOK eks. mva.
     // ═══════════════════════════════════════════════════════════════════
     if (route.startsWith('/admin/finance')) {
-      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      // Økonomi: rollen 'eier' (investor) og modulene 'okonomi'/'kunder' har
+      // LESEtilgang (GET); alle skriveoperasjoner (POST/DELETE, inkl. synk)
+      // krever admin. Kunder-fanen leser samme datakilde (finance).
+      if (!innsynAuthed(request)
+        && !(await modulAuthed(request, db, 'okonomi'))
+        && !(await modulAuthed(request, db, 'kunder'))) {
+        return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      }
+      if (method !== 'GET' && !adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const sub = route.slice('/admin/finance'.length); // '' | '/resultat' | '/likviditet' | ...
       let fbody = {};
       if (method === 'POST' || method === 'DELETE') { try { fbody = await request.json(); } catch (_) { fbody = {}; } }
@@ -9263,7 +9351,7 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
 
     // --- Admin: hent Meta Lead Ads-leads inn i systemet (leads_retrieval) --
     if (route === '/admin/leads/meta-sync' && method === 'POST') {
-      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!(await modulAuthed(request, db, 'i-leads'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       if (!metaLeadAdsConfigured()) return cors(NextResponse.json({ ok: false, error: 'Meta er ikke konfigurert' }, { status: 400 }));
       try {
         const pages = await fetchPages();
@@ -9521,7 +9609,7 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
     // dryRun=true (standard) viser kun planen. purgeTest=true sletter foreldre-
     // løse tvillinger med åpenbare test-e-poster (example.com/test-mønstre).
     if (route === '/admin/leads/dedupe-crm' && method === 'POST') {
-      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!(await modulAuthed(request, db, 'i-leads'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       let body = {};
       try { body = await request.json(); } catch (e) { body = {}; }
       const apply = body.dryRun === false;
@@ -10275,7 +10363,7 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
     // --- Admin: eksporter leads til CSV (BOM for æøå i Excel) ---
     // --- Admin: liste arkiverte leads + gjenopprettingsgrunnlag ---
     if (route === '/admin/leads/archived' && method === 'GET') {
-      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!(await modulAuthed(request, db, 'i-leads'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const projection = { _id: 0, id: 1, name: 1, email: 1, phone: 1, deletedAt: 1, deleteReason: 1, platform_id: 1, lead_type: 1 };
       const [leadRows, tenantRows, importedRows] = await Promise.all([
         db.collection('leads').find({ deleted: true }, { projection }).sort({ deletedAt: -1 }).limit(500).toArray(),
@@ -10320,7 +10408,7 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
     // Best practice: raden består med deleted-flagg (spor/attribusjon beholdes),
     // skjules fra pipeline, eksport, analytics og abonnent-kandidater.
     if (route === '/admin/leads/archive' && method === 'POST') {
-      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!(await modulAuthed(request, db, 'i-leads'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
       const id = (body.id || '').toString();
       const collName = body.type === 'tenant' ? 'tenant_leads' : (body.type === 'imported' ? 'imported_leads' : 'leads');
@@ -10356,7 +10444,7 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
 
     // --- Admin: slett lead PERMANENT (kun testdata/GDPR — krever confirm:'SLETT') ---
     if (route === '/admin/leads/delete' && method === 'POST') {
-      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!(await modulAuthed(request, db, 'i-leads'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
       const id = (body.id || '').toString();
       const collName = body.type === 'tenant' ? 'tenant_leads' : (body.type === 'imported' ? 'imported_leads' : 'leads');
@@ -10384,7 +10472,7 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
     // men mistet hos motparten). Nullstiller forward-felter og trigger den
     // durable re-forward-mekanismen synkront — svarer med faktisk utfall. ---
     if (route === '/admin/leads/resend' && method === 'POST') {
-      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!(await modulAuthed(request, db, 'i-leads'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
       const id = (body.id || '').toString();
       const collName = body.type === 'tenant' ? 'tenant_leads' : 'leads';
@@ -10417,7 +10505,7 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
     // GET = alle leads av typen. POST = kun oppgitte ids (pipeline-eksport som
     // respekterer aktive filtre — frontend sender de synlige kortenes ids).
     if (route === '/admin/leads/export' && (method === 'GET' || method === 'POST')) {
-      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!(await modulAuthed(request, db, 'i-leads'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const { searchParams } = new URL(request.url);
       let exportType = searchParams.get('type') || 'lead';
       let isTenant = exportType === 'tenant';
