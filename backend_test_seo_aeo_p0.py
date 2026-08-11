@@ -9,7 +9,7 @@ import re
 import json
 from datetime import datetime
 
-BASE_URL = "https://conversion-optimize-7.preview.emergentagent.com"
+BASE_URL = "https://saker-hub.preview.emergentagent.com"
 ADMIN_KEY = "dh_admin_b3Kx92Qz7Lm4"
 
 def test_routes_200():

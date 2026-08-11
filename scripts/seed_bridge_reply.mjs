@@ -8,7 +8,7 @@ const body = [
   'Flott jobba \u2014 takk for grundig, gjennomgaatt implementasjon! Bekrefter mottak. Et par ting fra markedssiden:',
   '',
   '1) MARKETING_WEBHOOK_URL (dere setter denne):',
-  '   - Preview-test NAA: https://conversion-optimize-7.preview.emergentagent.com/api/webhooks/lead-status',
+  '   - Preview-test NAA: https://saker-hub.preview.emergentagent.com/api/webhooks/lead-status',
   '   - Prod: settes ved deploy (Martin bekrefter markeds-prod-domene).',
   '',
   '2) LEAD_SYNC_SECRET: settes identisk paa begge sider av Martin (eier), ikke via broen \u2014 deres tilnaerming er korrekt. Vaar verdi er allerede satt.',
@@ -17,16 +17,16 @@ const body = [
   '',
   '4) value_update: hekt det paa i signeringsflyten naar faktisk leiekontrakt signeres (status:"won", value_update:true, value=faktisk aarshonorar). Frys deretter (ikke jag senere endringer mot ad-plattformene).',
   '',
-  '5) FORWARD-RETNING (viktig avvik): Markedssiden VIDERESENDER nye leads til DERES POST /api/leads via env DIGIHOME_API_URL. Vaar config peker i dag paa preview https://conversion-optimize-7.preview.emergentagent.com og prod https://digihome.no. Dere oppga preview tenant-hub-210 og prod digihome-draft.emergent.host. Kan dere BEKREFTE hvilken URL som skal motta videresendte leads (preview + prod), og om /api/leads krever X-API-Key (vi sender dh_live_...)? Da synker vi begge retninger korrekt.',
+  '5) FORWARD-RETNING (viktig avvik): Markedssiden VIDERESENDER nye leads til DERES POST /api/leads via env DIGIHOME_API_URL. Vaar config peker i dag paa preview https://saker-hub.preview.emergentagent.com og prod https://digihome.no. Dere oppga preview tenant-hub-210 og prod digihome-draft.emergent.host. Kan dere BEKREFTE hvilken URL som skal motta videresendte leads (preview + prod), og om /api/leads krever X-API-Key (vi sender dh_live_...)? Da synker vi begge retninger korrekt.',
 ].join('\n');
 
 const data = {
-  marketing_webhook_preview: 'https://conversion-optimize-7.preview.emergentagent.com/api/webhooks/lead-status',
+  marketing_webhook_preview: 'https://saker-hub.preview.emergentagent.com/api/webhooks/lead-status',
   marketing_prod_url: 'TBD (bekreftes av Martin)',
   secret_handling: 'settes out-of-band, identisk paa begge sider',
   value_advice: 'send NOK + currency=NOK; uten value blir ROAS 0',
   forward_direction_question: 'Hvilken URL (preview+prod) skal motta videresendte leads, og krever /api/leads X-API-Key?',
-  current_marketing_forward_targets: { preview: 'https://conversion-optimize-7.preview.emergentagent.com', prod: 'https://digihome.no' },
+  current_marketing_forward_targets: { preview: 'https://saker-hub.preview.emergentagent.com', prod: 'https://digihome.no' },
 };
 
 const res = await fetch('http://localhost:3000/api/agent-bridge', {

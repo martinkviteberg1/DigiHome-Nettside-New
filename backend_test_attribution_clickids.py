@@ -3,7 +3,7 @@
 Backend test for lead attribution with raw click IDs (gclid, gbraid, wbraid, fbclid, msclkid).
 Tests the sanitizeAttribution() extension in app/api/[[...path]]/route.js.
 
-Base URL: https://conversion-optimize-7.preview.emergentagent.com/api
+Base URL: https://saker-hub.preview.emergentagent.com/api
 """
 
 import asyncio
@@ -11,7 +11,7 @@ import aiohttp
 import json
 from datetime import datetime
 
-BASE_URL = "https://conversion-optimize-7.preview.emergentagent.com/api"
+BASE_URL = "https://saker-hub.preview.emergentagent.com/api"
 ADMIN_KEY = "dh_admin_b3Kx92Qz7Lm4"
 
 async def test_attribution_with_click_ids():

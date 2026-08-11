@@ -15,13 +15,16 @@
    ========================================================================== */
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { Marked } from 'marked';
 import {
   Plus, X, Loader2, Search, Users, Trash2, Bell, Clock, MessageSquare,
   CheckCircle2, Inbox, PlayCircle, LayoutGrid, List, Calendar,
   ChevronDown, AlertTriangle, Pencil, Check, CornerDownLeft, History,
   ClipboardCheck, UserPlus, Repeat, Paperclip, Archive, ArchiveRestore,
   Download, KeyRound, Circle, Table2, CalendarRange, ArrowUpDown, User,
-  MoreHorizontal, Send, Maximize2, Minimize2,
+  MoreHorizontal, Send, Maximize2, Minimize2, Settings, AtSign,
+  Bold, Italic, Link2, Image as ImageIcon, Heading,
+  Folder, FolderPlus, Ban, GitBranch, Layers,
 } from 'lucide-react';
 
 const VISNINGER = [
@@ -258,9 +261,108 @@ function Meny({ value, options, onChange, placeholder, compact, testid, classNam
   );
 }
 
+const VARSEL_IKON = { tildelt: UserPlus, nevnt: AtSign, kommentar: MessageSquare, deloppgave: ClipboardCheck, status: Repeat, frist: Clock, folger: Bell, paaminnelse: Bell };
+const VARSEL_FARGE = { tildelt: '#6d28d9', nevnt: '#8b5cf6', kommentar: '#0ea5e9', deloppgave: '#7c3aed', status: '#b45309', frist: '#e11d48', folger: '#059669', paaminnelse: '#e11d48' };
+function tidSiden(iso) {
+  const d = new Date(iso); const s = Math.floor((Date.now() - d.getTime()) / 1000);
+  if (s < 60) return 'nå'; if (s < 3600) return `${Math.floor(s / 60)} min`; if (s < 86400) return `${Math.floor(s / 3600)} t`;
+  const dg = Math.floor(s / 86400); if (dg < 7) return `${dg} d`;
+  return d.toLocaleDateString('nb-NO', { day: 'numeric', month: 'short' });
+}
+
+// Varsel-innboks: fast panel øverst til høyre. Viser enten listen eller
+// e-postpreferansene (tannhjul). Klikk på et varsel åpner saken.
+function VarselDropdown({ innerRef, varsler, ulest, onOpen, onMerkAlle, prefsOpen, setPrefsOpen, prefs, katalog, onTogglePref }) {
+  const kategorier = Object.keys(katalog || {});
+  return (
+    <div
+      ref={innerRef}
+      data-testid="varsel-panel"
+      className="dh-panel-in fixed right-3 top-14 z-[60] flex max-h-[min(560px,calc(100vh-80px))] w-[min(384px,calc(100vw-24px))] flex-col overflow-hidden rounded-2xl border border-black/10 bg-white shadow-2xl"
+    >
+      <div className="flex items-center justify-between border-b border-black/[0.06] px-4 py-3">
+        <div className="flex items-center gap-2">
+          <Bell className="h-4 w-4 text-[#0a0a0a]" />
+          <span className="text-[14px] font-semibold text-[#0a0a0a]">{prefsOpen ? 'Varselinnstillinger' : 'Varsler'}</span>
+          {!prefsOpen && ulest > 0 && <span className="rounded-full bg-[#f4f0fb] px-1.5 py-0.5 text-[11px] font-bold text-[#6d28d9]">{ulest}</span>}
+        </div>
+        <div className="flex items-center gap-1">
+          {!prefsOpen && ulest > 0 && (
+            <button onClick={onMerkAlle} data-testid="varsel-merk-alle" title="Merk alle som lest" className="rounded-md px-2 py-1 text-[12px] font-medium text-[#6d28d9] hover:bg-[#f4f0fb]">Merk alle lest</button>
+          )}
+          <button
+            onClick={() => setPrefsOpen((v) => !v)} data-testid="varsel-prefs-toggle"
+            title="Varselinnstillinger"
+            className={`rounded-md p-1.5 transition-colors ${prefsOpen ? 'bg-[#f4f0fb] text-[#6d28d9]' : 'text-[#999] hover:bg-black/[0.04] hover:text-[#0a0a0a]'}`}
+          >
+            <Settings className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+
+      {prefsOpen ? (
+        <div className="overflow-y-auto p-3">
+          <p className="mb-2 px-1 text-[12px] leading-relaxed text-[#888]">Innboksen viser alltid alt. Her styrer du kun hvilke typer du vil ha på <b>e-post</b>.</p>
+          {!prefs ? (
+            <div className="flex items-center gap-2 p-4 text-[13px] text-[#999]"><Loader2 className="h-4 w-4 animate-spin" /> Laster …</div>
+          ) : kategorier.map((k) => {
+            const Ikon = VARSEL_IKON[k] || Bell;
+            const on = prefs[k] !== false;
+            return (
+              <div key={k} className="flex items-center justify-between rounded-lg px-2 py-2 hover:bg-black/[0.02]">
+                <span className="flex items-center gap-2.5 text-[13px] text-[#333]">
+                  <Ikon className="h-4 w-4" style={{ color: VARSEL_FARGE[k] || '#666' }} />
+                  {katalog[k]}
+                </span>
+                <button
+                  onClick={() => onTogglePref(k)} data-testid={`varsel-pref-${k}`} role="switch" aria-checked={on}
+                  className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${on ? 'bg-[#8b5cf6]' : 'bg-black/[0.15]'}`}
+                >
+                  <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${on ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="overflow-y-auto">
+          {(!varsler || !varsler.length) ? (
+            <div className="flex flex-col items-center gap-2 px-6 py-12 text-center">
+              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#f6f5f3]"><Bell className="h-5 w-5 text-[#c8c8c8]" /></div>
+              <p className="text-[13px] font-medium text-[#555]">Ingen varsler ennå</p>
+              <p className="text-[12px] text-[#aaa]">Tildelinger, @omtaler og kommentarer dukker opp her.</p>
+            </div>
+          ) : varsler.map((n) => {
+            const Ikon = VARSEL_IKON[n.type] || Bell;
+            return (
+              <button
+                key={n.id} onClick={() => onOpen(n)} data-testid="varsel-rad"
+                className={`flex w-full items-start gap-3 border-b border-black/[0.04] px-4 py-3 text-left transition-colors hover:bg-black/[0.02] ${n.read ? '' : 'bg-[#faf8ff]'}`}
+              >
+                <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full" style={{ background: `${VARSEL_FARGE[n.type] || '#666'}18` }}>
+                  <Ikon className="h-3.5 w-3.5" style={{ color: VARSEL_FARGE[n.type] || '#666' }} />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[13px] font-semibold text-[#0a0a0a]">{n.taskTitle || 'Sak'}</span>
+                  <span className="block text-[12.5px] leading-snug text-[#666]">{n.text}</span>
+                  <span className="mt-0.5 block text-[11px] text-[#aaa]">{tidSiden(n.createdAt)}</span>
+                </span>
+                {!n.read && <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-[#8b5cf6]" />}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function TasksTab({ apiKey, user, onStats }) {
   const [tasks, setTasks] = useState([]);
   const [members, setMembers] = useState([]);
+  const [projects, setProjects] = useState([]);
+  const [fProsjekt, setFProsjekt] = useState('alle');
+  const [gruppe, setGruppe] = useState('ingen');
   const [today, setToday] = useState(new Date().toISOString().slice(0, 10));
   const [laster, setLaster] = useState(true);
   const [feil, setFeil] = useState('');
@@ -325,6 +427,94 @@ export default function TasksTab({ apiKey, user, onStats }) {
     return fetch(`/api/admin/${p}${sep}key=${encodeURIComponent(apiKey)}`, opts);
   }, [apiKey]);
 
+  // Rot-nivå bilde-opplasting (brukes av Ny sak-modalen).
+  const uploadBildeRoot = useCallback(async (dataUrl) => {
+    try {
+      const r = await api('tasks/image', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dataUrl }) });
+      const j = await r.json();
+      return j.ok ? j.url : null;
+    } catch (e) { return null; }
+  }, [api]);
+
+  // ═══ Prosjekter (Fase 4) ═══
+  const [prosjektModal, setProsjektModal] = useState(false);
+  const hentProsjekter = useCallback(async () => {
+    try { const r = await api('projects'); const j = await r.json(); if (j.ok) setProjects(j.projects || []); } catch (e) {}
+  }, [api]);
+  const lagProsjekt = useCallback(async (navn, farge) => {
+    try {
+      const r = await api('projects', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: navn, color: farge }) });
+      const j = await r.json();
+      if (j.ok) { await hentProsjekter(); return j.project; }
+    } catch (e) {}
+    return null;
+  }, [api, hentProsjekter]);
+
+  // ═══ Varsler (in-app innboks) ═══
+  const [varsler, setVarsler] = useState([]);
+  const [varselUlest, setVarselUlest] = useState(0);
+  const [varselOpen, setVarselOpen] = useState(false);
+  const [prefsOpen, setPrefsOpen] = useState(false);
+  const [prefs, setPrefs] = useState(null);
+  const [prefsKatalog, setPrefsKatalog] = useState({});
+  const varselRef = useRef(null);
+
+  const hentVarsler = useCallback(async () => {
+    try {
+      const r = await api('notifications');
+      if (!r.ok) return;
+      const j = await r.json();
+      if (j.ok) { setVarsler(j.notifications || []); setVarselUlest(j.unread || 0); }
+    } catch (e) {}
+  }, [api]);
+
+  const merkLest = useCallback(async (ids) => {
+    setVarsler((prev) => prev.map((n) => (ids.includes(n.id) ? { ...n, read: true } : n)));
+    setVarselUlest((u) => Math.max(0, u - ids.length));
+    try { await api('notifications/read', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids }) }); } catch (e) {}
+  }, [api]);
+
+  const merkAlleLest = useCallback(async () => {
+    setVarsler((prev) => prev.map((n) => ({ ...n, read: true })));
+    setVarselUlest(0);
+    try { await api('notifications/read', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ all: true }) }); } catch (e) {}
+  }, [api]);
+
+  const apneVarsel = useCallback((n) => {
+    if (!n.read) merkLest([n.id]);
+    if (n.taskId) { setValgtId(n.taskId); setVarselOpen(false); }
+  }, [merkLest]);
+
+  const lastPrefs = useCallback(async () => {
+    try {
+      const r = await api('notifications/prefs');
+      const j = await r.json();
+      if (j.ok) { setPrefs(j.prefs.email || {}); setPrefsKatalog(j.katalog || {}); }
+    } catch (e) {}
+  }, [api]);
+
+  const lagrePrefs = useCallback(async (neste) => {
+    setPrefs(neste);
+    try { await api('notifications/prefs', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: neste }) }); } catch (e) {}
+  }, [api]);
+
+  // Poll for varsler (30 s) + ved fanebytte-fokus.
+  useEffect(() => {
+    hentVarsler();
+    const iv = window.setInterval(hentVarsler, 30000);
+    const onFocus = () => hentVarsler();
+    window.addEventListener('focus', onFocus);
+    return () => { window.clearInterval(iv); window.removeEventListener('focus', onFocus); };
+  }, [hentVarsler]);
+
+  // Lukk varselpanel ved klikk utenfor.
+  useEffect(() => {
+    if (!varselOpen) return undefined;
+    const onDoc = (e) => { if (varselRef.current && !varselRef.current.contains(e.target)) { setVarselOpen(false); setPrefsOpen(false); } };
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, [varselOpen]);
+
   const meldStats = useCallback((liste, dag) => {
     if (!onStats) return;
     const aapne = liste.filter((t) => t.status !== 'done');
@@ -338,8 +528,10 @@ export default function TasksTab({ apiKey, user, onStats }) {
       if (!j.ok) throw new Error(j.error || 'Kunne ikke laste saker');
       setTasks(j.tasks || []);
       setMembers(j.members || []);
+      setProjects(j.projects || []);
       setToday(j.today || today);
       meldStats(j.tasks || [], j.today || today);
+      sisteSyncRef.current = new Date().toISOString();
       setFeil('');
     } catch (e) {
       setFeil(e.message || 'Nettverksfeil');
@@ -349,6 +541,42 @@ export default function TasksTab({ apiKey, user, onStats }) {
   }, [api, meldStats]); // eslint-disable-line
 
   useEffect(() => { last(); }, [last]);
+
+  // ═══ Sanntid (Fase 2): diff-poll hvert 10 s → tavla oppdateres live uten
+  // refresh når andre endrer saker. Hopper over mens man drar (drag) eller har
+  // en meny/skuff-interaksjon som ikke tåler at lista bytter under føttene. ═══
+  const sisteSyncRef = useRef(new Date().toISOString());
+  const [liveSync, setLiveSync] = useState(false);
+  useEffect(() => {
+    let stoppet = false;
+    const poll = async () => {
+      if (dragId) return; // ikke forstyrr pågående drag
+      try {
+        const r = await api(`tasks/since?ts=${encodeURIComponent(sisteSyncRef.current)}`);
+        if (!r.ok) return;
+        const j = await r.json();
+        if (!j.ok || stoppet) return;
+        sisteSyncRef.current = j.now || sisteSyncRef.current;
+        const endret = j.changed || [];
+        const fjern = new Set(j.removedIds || []);
+        if (!endret.length && !fjern.size) return;
+        setTasks((prev) => {
+          const byId = new Map(prev.map((t) => [t.id, t]));
+          for (const t of endret) byId.set(t.id, t);
+          for (const id of fjern) byId.delete(id);
+          const neste = [...byId.values()].sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
+          meldStats(neste, today);
+          return neste;
+        });
+        setLiveSync(true);
+        window.setTimeout(() => setLiveSync(false), 1200);
+      } catch (e) {}
+    };
+    const iv = window.setInterval(poll, 10000);
+    const onFocus = () => poll();
+    window.addEventListener('focus', onFocus);
+    return () => { stoppet = true; window.clearInterval(iv); window.removeEventListener('focus', onFocus); };
+  }, [api, dragId, today, meldStats]);
 
   // Arkivet lastes når man åpner arkiv-visningen
   const lastArkiv = useCallback(async () => {
@@ -589,10 +817,11 @@ export default function TasksTab({ apiKey, user, onStats }) {
       if (mine && minId && t.assigneeId !== minId && !(t.followers || []).includes(minId)) return false;
       if (fAnsvarlig !== 'alle' && (t.assigneeId || '') !== fAnsvarlig) return false;
       if (fPri && t.priority !== fPri) return false;
+      if (fProsjekt !== 'alle' && (t.projectId || '') !== (fProsjekt === 'ingen' ? '' : fProsjekt)) return false;
       if (s && !`${t.title} ${t.description} ${(t.labels || []).join(' ')}`.toLowerCase().includes(s)) return false;
       return true;
     });
-  }, [tasks, mine, minId, fAnsvarlig, fPri, sok]);
+  }, [tasks, mine, minId, fAnsvarlig, fPri, fProsjekt, sok]);
 
   const perStatus = useMemo(() => {
     const m = { inbox: [], doing: [], waiting: [], done: [] };
@@ -796,11 +1025,32 @@ export default function TasksTab({ apiKey, user, onStats }) {
                 { v: 3, l: 'P3 · Lav', dot: '#6b7280' },
               ]}
             />
+            <Meny
+              value={fProsjekt} onChange={(v) => { if (v === '__nytt__') { setProsjektModal(true); return; } setFProsjekt(v); }}
+              className="w-40" testid="tasks-filter-project"
+              options={[
+                { v: 'alle', l: 'Alle prosjekter', icon: Folder },
+                { v: 'ingen', l: 'Uten prosjekt' },
+                ...projects.map((p) => ({ v: p.id, l: p.name, dot: p.color })),
+                { v: '__nytt__', l: 'Nytt prosjekt …', icon: FolderPlus },
+              ]}
+            />
             <div className="flex rounded-lg border border-black/[0.08] bg-white p-0.5">
               {VISNINGER.map((v) => (
                 <ViewBtn key={v.k} active={view === v.k} onClick={() => setView(v.k)} icon={v.icon} label={v.l} testid={`tasks-view-${v.k}`} />
               ))}
             </div>
+            <button
+              onClick={() => { setVarselOpen((v) => !v); setPrefsOpen(false); }}
+              data-testid="tasks-bell-btn"
+              title="Varsler"
+              className="relative flex h-9 w-9 items-center justify-center rounded-lg border border-black/[0.08] bg-white text-[#555] transition-all hover:border-black/[0.16] hover:text-[#0a0a0a]"
+            >
+              <Bell className="h-4 w-4" />
+              {varselUlest > 0 && (
+                <span data-testid="tasks-bell-badge" className="absolute -right-1 -top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-[#e11d48] px-1 text-[10px] font-bold text-white">{varselUlest > 9 ? '9+' : varselUlest}</span>
+              )}
+            </button>
             <button
               onClick={() => setPersonerOpen(true)}
               data-testid="tasks-members-btn"
@@ -864,14 +1114,41 @@ export default function TasksTab({ apiKey, user, onStats }) {
               </button>
             )}
             <button
+              onClick={() => { setVarselOpen((v) => !v); setPrefsOpen(false); }}
+              data-testid="tasks-bell-btn-mobile"
+              title="Varsler"
+              className="relative ml-auto flex h-11 w-11 items-center justify-center rounded-xl border border-black/[0.08] bg-white text-[#555]"
+            >
+              <Bell className="h-5 w-5" />
+              {varselUlest > 0 && (
+                <span className="absolute -right-1 -top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-[#e11d48] px-1 text-[10px] font-bold text-white">{varselUlest > 9 ? '9+' : varselUlest}</span>
+              )}
+            </button>
+            <button
               onClick={() => setPersonerOpen(true)}
-              className="ml-auto flex h-11 items-center gap-1.5 rounded-xl border border-black/[0.08] bg-white px-4 text-[13.5px] font-medium text-[#555]"
+              className="flex h-11 items-center gap-1.5 rounded-xl border border-black/[0.08] bg-white px-4 text-[13.5px] font-medium text-[#555]"
             >
               <Users className="w-4 h-4" /> Personer
             </button>
           </div>
         </div>
       </div>
+
+      {/* ═══ Varsel-innboks (fast panel øverst til høyre) ═══ */}
+      {varselOpen && (
+        <VarselDropdown
+          innerRef={varselRef}
+          varsler={varsler}
+          ulest={varselUlest}
+          onOpen={apneVarsel}
+          onMerkAlle={merkAlleLest}
+          prefsOpen={prefsOpen}
+          setPrefsOpen={(fn) => setPrefsOpen((v) => { const nv = typeof fn === 'function' ? fn(v) : fn; if (nv && !prefs) lastPrefs(); return nv; })}
+          prefs={prefs}
+          katalog={prefsKatalog}
+          onTogglePref={(k) => lagrePrefs({ ...(prefs || {}), [k]: !(prefs && prefs[k] === false) ? false : true })}
+        />
+      )}
 
       {feil && (
         <div className="mb-4 flex items-center gap-2 rounded-xl bg-rose-50 px-4 py-3 text-[13px] text-rose-700">
@@ -1237,6 +1514,8 @@ export default function TasksTab({ apiKey, user, onStats }) {
       {valgt && (
         <SakSkuff
           t={valgt} members={members} today={today} actor={actor}
+          projects={projects} alleSaker={tasks} onOpenTask={(id) => setValgtId(id)}
+          onNyProsjekt={() => setProsjektModal(true)}
           apiKey={apiKey} api={api} visToast={visToast} onReload={last}
           onClose={() => setValgtId(null)}
           onPatch={(patch) => oppdater(valgt.id, patch)}
@@ -1251,9 +1530,23 @@ export default function TasksTab({ apiKey, user, onStats }) {
       {nyOpen && (
         <NySakModal
           members={members}
+          projects={projects}
           defaultStatus={typeof nyOpen === 'string' ? nyOpen : 'inbox'}
+          uploadBilde={uploadBildeRoot}
           onClose={() => setNyOpen(false)}
           onCreate={async (payload) => { await opprett(payload); setNyOpen(false); }}
+        />
+      )}
+
+      {/* ═══ Nytt prosjekt ═══ */}
+      {prosjektModal && (
+        <ProsjektModal
+          onClose={() => setProsjektModal(false)}
+          onCreate={async (navn, farge) => {
+            const p = await lagProsjekt(navn, farge);
+            if (p) { setFProsjekt(p.id); visToast(`Prosjektet «${p.name}» opprettet`); }
+            setProsjektModal(false);
+          }}
         />
       )}
 
@@ -1589,9 +1882,20 @@ function Overlegg({ onClose, children, variant = 'sheet', testid }) {
 }
 
 /* ═══════════════ Skuff: full redigering av én sak ═══════════════ */
-function SakSkuff({ t, members, today, actor, apiKey, api, visToast, onReload, onClose, onPatch, onComment, onRemind, onDelete, onArchive }) {
+function SakSkuff({ t, members, today, actor, apiKey, api, projects = [], alleSaker = [], onOpenTask, onNyProsjekt, visToast, onReload, onClose, onPatch, onComment, onRemind, onDelete, onArchive }) {
   const [tittel, setTittel] = useState(t.title);
   const [beskrivelse, setBeskrivelse] = useState(t.description || '');
+  const [beskRediger, setBeskRediger] = useState(false);
+  // Last opp innlimt/sluppet bilde → intern URL (brukes av rik-tekst-editoren).
+  const uploadBilde = useCallback(async (dataUrl) => {
+    try {
+      const r = await api('tasks/image', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dataUrl }) });
+      const j = await r.json();
+      if (j.ok) return j.url;
+      visToast && visToast(j.error || 'Kunne ikke laste opp bildet');
+    } catch (e) { visToast && visToast('Kunne ikke laste opp bildet'); }
+    return null;
+  }, [api, visToast]);
   const [kommentar, setKommentar] = useState('');
   const [sender, setSender] = useState(false);
   const [visLogg, setVisLogg] = useState(false);
@@ -1685,18 +1989,31 @@ function SakSkuff({ t, members, today, actor, apiKey, api, visToast, onReload, o
           />
         );
 
-        const sekBeskrivelse = (
+        const sekBeskrivelse = (beskRediger || !(t.description || '').trim()) ? (
           <MentionTekstfelt
             value={beskrivelse}
             onChange={setBeskrivelse}
             members={members}
-            rows={utvidet ? 5 : 3}
+            rows={utvidet ? 6 : 4}
             testid="drawer-description"
-            placeholder="Beskrivelse — hva handler saken om, og hva er «ferdig»? (@ nevner en person)"
+            placeholder="Beskrivelse — hva handler saken om, og hva er «ferdig»? (@ nevner, ** ** = fet, lim inn bilde)"
             className="mt-2"
             popover="under"
-            onBlurValue={() => { if (beskrivelse !== (t.description || '')) onPatch({ description: beskrivelse }); }}
+            rik
+            uploadBilde={uploadBilde}
+            autoFocus={beskRediger}
+            onBlurValue={() => { if (beskrivelse !== (t.description || '')) onPatch({ description: beskrivelse }); setBeskRediger(false); }}
           />
+        ) : (
+          <div
+            className="dh-rik-wrap group/desc relative mt-2 cursor-text rounded-lg px-1 py-1 transition-colors hover:bg-black/[0.02]"
+            onClick={() => setBeskRediger(true)}
+            data-testid="drawer-description-preview"
+            title="Klikk for å redigere"
+          >
+            <RikTekst text={t.description || ''} members={members} apiKey={apiKey} />
+            <span className="pointer-events-none absolute right-1 top-1 rounded-md bg-white/90 px-1.5 py-0.5 text-[10px] font-medium text-[#999] opacity-0 shadow-sm transition-opacity group-hover/desc:opacity-100">Rediger</span>
+          </div>
         );
 
         const sekMeta = (
@@ -1775,6 +2092,26 @@ function SakSkuff({ t, members, today, actor, apiKey, api, visToast, onReload, o
         const sekSjekkliste = <Sjekkliste items={t.subtasks || []} members={members} onChange={(subtasks) => onPatch({ subtasks })} />;
         const sekFolgere = <FolgereFelt t={t} members={members} onPatch={onPatch} />;
         const sekVedlegg = <VedleggSeksjon t={t} apiKey={apiKey} api={api} actor={actor} onReload={onReload} visToast={visToast} />;
+        const sekProsjekt = (
+          <div className="mt-3">
+            <p className="mb-1 text-[11px] font-bold uppercase tracking-wider text-[#999]">Prosjekt</p>
+            <Meny
+              compact value={t.projectId || ''} testid="drawer-project"
+              onChange={(v) => { if (v === '__nytt__') { onNyProsjekt && onNyProsjekt(); return; } onPatch({ projectId: v || null }); }}
+              options={[
+                { v: '', l: 'Uten prosjekt', icon: Folder },
+                ...projects.map((p) => ({ v: p.id, l: p.name, dot: p.color })),
+                { v: '__nytt__', l: 'Nytt prosjekt …', icon: FolderPlus },
+              ]}
+            />
+          </div>
+        );
+        const sekRelasjoner = (
+          <RelasjonSeksjon t={t} alleSaker={alleSaker} onPatch={onPatch} onOpenTask={onOpenTask} />
+        );
+        const sekUndersaker = (
+          <UndersakSeksjon t={t} alleSaker={alleSaker} api={api} actor={actor} onReload={onReload} onOpenTask={onOpenTask} visToast={visToast} />
+        );
 
         const sekKommentarer = (
           <div className="mt-6">
@@ -1786,9 +2123,9 @@ function SakSkuff({ t, members, today, actor, apiKey, api, visToast, onReload, o
                   <span className="text-[12px] font-bold text-[#333]">{c.author}</span>
                   <span className="text-[10.5px] text-[#b5b5b5]">{fmtTid(c.at)}</span>
                 </div>
-                <p className="mt-0.5 whitespace-pre-wrap text-[13px] leading-relaxed text-[#444]">
-                  <KommentarTekst text={c.text} members={members} />
-                </p>
+                <div className="mt-0.5 text-[13px] leading-relaxed text-[#444]">
+                  <KommentarTekst text={c.text} members={members} apiKey={apiKey} />
+                </div>
               </div>
             ))}
             {!(t.comments || []).length && <p className="text-[12.5px] text-[#bbb]">Ingen kommentarer ennå.</p>}
@@ -1800,9 +2137,11 @@ function SakSkuff({ t, members, today, actor, apiKey, api, visToast, onReload, o
               members={members}
               rows={2}
               testid="drawer-comment-input"
-              placeholder={`Kommenter som ${actor} … (@ nevner en person)`}
+              placeholder={`Kommenter som ${actor} … (@ nevner, lim inn bilde)`}
               className="flex-1"
               popover="over"
+              rik
+              uploadBilde={uploadBilde}
               onEnterSend={sendKommentar}
             />
             <button
@@ -1845,6 +2184,8 @@ function SakSkuff({ t, members, today, actor, apiKey, api, visToast, onReload, o
                 {sekBeskrivelse}
                 {sekFrist}
                 {sekSjekkliste}
+                {sekUndersaker}
+                {sekRelasjoner}
                 {sekVedlegg}
                 {sekKommentarer}
                 {sekAktivitet}
@@ -1852,6 +2193,7 @@ function SakSkuff({ t, members, today, actor, apiKey, api, visToast, onReload, o
               <aside className="mt-6 md:mt-1 md:rounded-2xl md:border md:border-black/[0.05] md:bg-[#fafaf8] md:p-5">
                 <p className="hidden text-[11px] font-bold uppercase tracking-[0.1em] text-[#999] md:block">Detaljer</p>
                 {sekMeta}
+                {sekProsjekt}
                 {sekRec}
                 {sekVarsle}
                 {sekFolgere}
@@ -1864,10 +2206,13 @@ function SakSkuff({ t, members, today, actor, apiKey, api, visToast, onReload, o
             {sekTittel}
             {sekBeskrivelse}
             {sekMeta}
+            {sekProsjekt}
             {sekRec}
             {sekVarsle}
             {sekFrist}
             {sekSjekkliste}
+            {sekUndersaker}
+            {sekRelasjoner}
             {sekFolgere}
             {sekVedlegg}
             {sekKommentarer}
@@ -1930,11 +2275,50 @@ function MetaFelt({ label, children }) {
 function MentionTekstfelt({
   value, onChange, members = [], placeholder, rows = 2, testid,
   className = '', popover = 'under', onEnterSend = null, onBlurValue = null,
+  rik = false, uploadBilde = null, autoFocus = false,
 }) {
   const [sok, setSok] = useState(null);
   const [idx, setIdx] = useState(0);
+  const [lasterBilde, setLasterBilde] = useState(false);
   const taRef = useRef(null);
   const bakRef = useRef(null);
+  const filRef = useRef(null);
+
+  useEffect(() => { if (autoFocus && taRef.current) { const ta = taRef.current; ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); } }, [autoFocus]);
+
+  // ─ Markdown-verktøy: opererer på markeringen i tekstfeltet ─
+  const medTa = (fn) => { const ta = taRef.current; if (!ta) return; fn(ta, ta.selectionStart, ta.selectionEnd); };
+  const omslutt = (pre, post, ph) => medTa((ta, s, e) => {
+    const sel = value.slice(s, e) || ph || '';
+    onChange(value.slice(0, s) + pre + sel + post + value.slice(e));
+    requestAnimationFrame(() => { ta.focus(); ta.setSelectionRange(s + pre.length, s + pre.length + sel.length); });
+  });
+  const linjePre = (pre) => medTa((ta, s) => {
+    const ls = value.lastIndexOf('\n', s - 1) + 1;
+    onChange(value.slice(0, ls) + pre + value.slice(ls));
+    requestAnimationFrame(() => { ta.focus(); const p = s + pre.length; ta.setSelectionRange(p, p); });
+  });
+  const settInnRaw = (str) => medTa((ta, s, e) => {
+    onChange(value.slice(0, s) + str + value.slice(e));
+    requestAnimationFrame(() => { ta.focus(); const p = s + str.length; ta.setSelectionRange(p, p); });
+  });
+  const settInnLenke = () => medTa((ta, s, e) => {
+    const sel = value.slice(s, e) || 'tekst';
+    const str = `[${sel}](https://)`;
+    onChange(value.slice(0, s) + str + value.slice(e));
+    requestAnimationFrame(() => { ta.focus(); const start = s + sel.length + 3; ta.setSelectionRange(start, start + 8); });
+  });
+  const behandleFiler = useCallback(async (files) => {
+    const bilde = [...(files || [])].find((f) => f.type && f.type.startsWith('image/'));
+    if (!bilde || !uploadBilde) return false;
+    setLasterBilde(true);
+    try {
+      const dataUrl = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(bilde); });
+      const url = await uploadBilde(dataUrl);
+      if (url) settInnRaw(`\n![bilde](${url})\n`);
+    } catch (e) {} finally { setLasterBilde(false); }
+    return true;
+  }, [uploadBilde, value]); // eslint-disable-line
 
   const oppdaterSok = (val, pos) => {
     const m = val.slice(0, pos).match(/(^|\s)@([^\s@]{0,30})$/);
@@ -1972,8 +2356,27 @@ function MentionTekstfelt({
   }, [value, members]);
 
   const typo = 'p-3 text-[13.5px] leading-relaxed';
+  const VerktoyKnapp = ({ onClick, title, children }) => (
+    <button type="button" title={title} onMouseDown={(e) => { e.preventDefault(); onClick(); }} className="flex h-7 w-7 items-center justify-center rounded-md text-[#777] transition-colors hover:bg-black/[0.06] hover:text-[#0a0a0a]">{children}</button>
+  );
   return (
     <div className={`relative min-w-0 ${className}`}>
+      {rik && (
+        <div className="mb-1.5 flex items-center gap-0.5 rounded-lg border border-black/[0.06] bg-[#faf9f7] px-1 py-0.5" data-testid={`${testid}-toolbar`}>
+          <VerktoyKnapp title="Fet (**tekst**)" onClick={() => omslutt('**', '**', 'fet tekst')}><Bold className="h-3.5 w-3.5" /></VerktoyKnapp>
+          <VerktoyKnapp title="Kursiv (*tekst*)" onClick={() => omslutt('*', '*', 'kursiv')}><Italic className="h-3.5 w-3.5" /></VerktoyKnapp>
+          <VerktoyKnapp title="Overskrift" onClick={() => linjePre('## ')}><Heading className="h-3.5 w-3.5" /></VerktoyKnapp>
+          <VerktoyKnapp title="Punktliste" onClick={() => linjePre('- ')}><List className="h-3.5 w-3.5" /></VerktoyKnapp>
+          <VerktoyKnapp title="Lenke" onClick={settInnLenke}><Link2 className="h-3.5 w-3.5" /></VerktoyKnapp>
+          {uploadBilde && (
+            <VerktoyKnapp title="Sett inn bilde (eller lim inn / dra hit)" onClick={() => filRef.current && filRef.current.click()}>
+              {lasterBilde ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImageIcon className="h-3.5 w-3.5" />}
+            </VerktoyKnapp>
+          )}
+          <span className="ml-auto pr-1 text-[10px] text-[#c0bbb0]">Markdown</span>
+          {uploadBilde && <input ref={filRef} type="file" accept="image/*" className="hidden" onChange={(e) => { behandleFiler(e.target.files); e.target.value = ''; }} />}
+        </div>
+      )}
       {kandidater.length > 0 && (
         <div
           className={`absolute left-0 z-[140] w-64 rounded-xl border border-black/[0.07] bg-white p-1 shadow-[0_16px_48px_rgba(0,0,0,0.16)] ${popover === 'over' ? 'bottom-full mb-1.5' : 'top-full mt-1.5'}`}
@@ -1996,6 +2399,7 @@ function MentionTekstfelt({
           ))}
         </div>
       )}
+      <div className="relative">
       <div
         aria-hidden
         ref={bakRef}
@@ -2011,6 +2415,8 @@ function MentionTekstfelt({
         value={value}
         onChange={(e) => { onChange(e.target.value); oppdaterSok(e.target.value, e.target.selectionStart); }}
         onScroll={() => { if (bakRef.current && taRef.current) bakRef.current.scrollTop = taRef.current.scrollTop; }}
+        onPaste={(e) => { if (uploadBilde && e.clipboardData && e.clipboardData.files && e.clipboardData.files.length && [...e.clipboardData.files].some((f) => f.type.startsWith('image/'))) { e.preventDefault(); behandleFiler(e.clipboardData.files); } }}
+        onDrop={(e) => { if (uploadBilde && e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) { e.preventDefault(); behandleFiler(e.dataTransfer.files); } }}
         onKeyDown={(e) => {
           if (kandidater.length > 0) {
             if (e.key === 'ArrowDown') { e.preventDefault(); setIdx((i) => (i + 1) % kandidater.length); return; }
@@ -2026,39 +2432,345 @@ function MentionTekstfelt({
         placeholder={placeholder}
         className={`relative w-full resize-none rounded-xl border border-black/[0.07] bg-transparent text-transparent caret-[#0a0a0a] outline-none transition-all placeholder:text-[#bbb] selection:bg-[#8b5cf6]/25 hover:border-black/[0.14] focus:border-[#8b5cf6]/50 focus:ring-2 focus:ring-[#8b5cf6]/15 ${typo}`}
       />
+      </div>
     </div>
   );
 }
 
 // Uthever @Fullt Navn i kommentartekst for personer som finnes i personlisten.
-function KommentarTekst({ text, members }) {
-  const deler = useMemo(() => {
-    if (!text || !text.includes('@') || !members.length) return [text];
-    const navn = members
-      .map((m) => m.name)
-      .filter(Boolean)
-      .sort((a, b) => b.length - a.length)
-      .map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
-    if (!navn.length) return [text];
+// ═══════════════ Rik tekst (Fase 3): markdown → trygg HTML + @mentions + bilder ═══════════════
+// Sikkerhet: vi nøytraliserer rå HTML ved å escape < og > FØR marked, så de
+// eneste taggene i resultatet er de marked selv genererer (overskrift, liste,
+// lenke, bilde, kode osv.). Deretter saneres href/src (kun http(s)/mailto,
+// interne bilde-URL-er får ?key). @mentions bevares via placeholder-tokens som
+// overlever markdown og byttes til badges til slutt.
+const _md = new Marked({ gfm: true, breaks: true });
+const _okUrl = (h) => /^(https?:|mailto:)/i.test(String(h || '').trim());
+function renderRik(text, members = [], apiKey = '') {
+  if (!text) return '';
+  let src = String(text);
+  // 1) @mentions → tokens (lengste navn først for korrekt match)
+  const mentions = [];
+  const navn = members.map((m) => m.name).filter(Boolean).sort((a, b) => b.length - a.length)
+    .map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  if (navn.length) {
     const re = new RegExp(`@(${navn.join('|')})`, 'gi');
-    const ut = [];
-    let sist = 0; let m;
-    while ((m = re.exec(text))) {
-      if (m.index > sist) ut.push(text.slice(sist, m.index));
-      ut.push({ mention: m[0] });
-      sist = m.index + m[0].length;
-    }
-    if (sist < text.length) ut.push(text.slice(sist));
-    return ut;
-  }, [text, members]);
+    src = src.replace(re, (hel) => { const i = mentions.push(hel) - 1; return `%%MENTION${i}%%`; });
+  }
+  // 2) nøytraliser rå HTML
+  src = src.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  // 3) markdown → HTML
+  let html = '';
+  try { html = _md.parse(src); } catch (e) { html = src; }
+  // 4) saner lenker (åpne i ny fane) og bilder (kun trygge; interne får key)
+  html = html.replace(/<a href="([^"]*)"([^>]*)>/gi, (m, href, rest) => (_okUrl(href) ? `<a href="${href}" target="_blank" rel="noopener noreferrer"${rest}>` : '<a>'));
+  html = html.replace(/<img([^>]*?)src="([^"]*)"([^>]*)>/gi, (m, pre, src2, post) => {
+    let s = src2;
+    if (/^\/api\/admin\/tasks\/image\//.test(s)) s = `${s}${s.includes('?') ? '&' : '?'}key=${encodeURIComponent(apiKey)}`;
+    else if (!_okUrl(s)) return '';
+    return `<img${pre}src="${s}"${post} loading="lazy">`;
+  });
+  // 5) tokens → badges
+  html = html.replace(/%%MENTION(\d+)%%/g, (m, i) => {
+    const navnTxt = mentions[Number(i)] || '';
+    return `<span class="dh-mention">${navnTxt.replace(/</g, '&lt;')}</span>`;
+  });
+  return html;
+}
+
+// Viser rik tekst (markdown m/ @mentions + bilder). Tom tekst → ingenting.
+function RikTekst({ text, members, apiKey, className = '' }) {
+  const html = useMemo(() => renderRik(text, members, apiKey), [text, members, apiKey]);
+  if (!html) return null;
+  return <div className={`dh-rik ${className}`} dangerouslySetInnerHTML={{ __html: html }} />;
+}
+
+// Bakoverkompatibel alias (kommentarer): rik tekst uten egen wrapper-margin.
+function KommentarTekst({ text, members, apiKey }) {
+  return <RikTekst text={text} members={members} apiKey={apiKey} />;
+}
+
+/* ═══════════════ Sak-relasjoner (Fase 4) — Linear-nivå ═══════════════
+   blocks / blocked_by / related / duplicate. Endringer sendes som hel
+   relations-liste via onPatch; backend speiler motparten (synkRelasjoner). */
+const REL_UI = [
+  { k: 'blocks', l: 'Blokkerer', icon: Ban, farge: '#e11d48' },
+  { k: 'blocked_by', l: 'Blokkert av', icon: AlertTriangle, farge: '#b45309' },
+  { k: 'related', l: 'Relatert til', icon: GitBranch, farge: '#8b5cf6' },
+  { k: 'duplicate', l: 'Duplikat av', icon: Layers, farge: '#6b7280' },
+];
+
+function RelasjonSeksjon({ t, alleSaker = [], onPatch, onOpenTask }) {
+  const [apen, setApen] = useState(false); // «legg til»-panelet
+  const [type, setType] = useState('blocks');
+  const [sok, setSok] = useState('');
+  const [idx, setIdx] = useState(0);
+  const sokRef = useRef(null);
+  const relations = t.relations || [];
+
+  useEffect(() => { if (apen && sokRef.current) sokRef.current.focus(); }, [apen]);
+  useEffect(() => { setIdx(0); }, [sok]);
+  useEffect(() => { setApen(false); setSok(''); }, [t.id]);
+
+  const kandidater = useMemo(() => {
+    if (!apen) return [];
+    const brukt = new Set(relations.map((r) => r.taskId));
+    const q = sok.trim().toLowerCase();
+    return alleSaker
+      .filter((s) => s.id !== t.id && !s.archived && !brukt.has(s.id))
+      .filter((s) => !q || (s.title || '').toLowerCase().includes(q))
+      .slice(0, 6);
+  }, [apen, sok, alleSaker, relations, t.id]);
+
+  const leggTil = (taskId) => {
+    onPatch({ relations: [...relations, { type, taskId }] });
+    setSok(''); setApen(false);
+  };
+  const fjern = (r) => onPatch({ relations: relations.filter((x) => !(x.type === r.type && x.taskId === r.taskId)) });
+
+  if (!relations.length && !apen) {
+    return (
+      <div className="mt-4">
+        <button
+          onClick={() => setApen(true)}
+          data-testid="relations-add-btn"
+          className="flex items-center gap-1.5 rounded-lg px-1 py-1 text-[12px] font-semibold text-[#aaa] transition-colors hover:text-[#8b5cf6]"
+        >
+          <GitBranch className="h-3.5 w-3.5" /> Legg til relasjon
+        </button>
+      </div>
+    );
+  }
+
   return (
-    <>
-      {deler.map((d, i) => (typeof d === 'string'
-        ? <React.Fragment key={i}>{d}</React.Fragment>
-        : <span key={i} className="rounded-[5px] bg-[#ede9fe] px-1 py-0.5 font-semibold text-[#6d28d9] [box-decoration-break:clone]">{d.mention}</span>))}
-    </>
+    <div className="mt-6" data-testid="drawer-relations">
+      <div className="flex items-center gap-2">
+        <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#999]">Relasjoner</p>
+        {relations.length > 0 && <span className="text-[11px] font-bold tabular-nums text-[#ccc]">{relations.length}</span>}
+        <button
+          onClick={() => setApen((v) => !v)}
+          data-testid="relations-add-btn"
+          aria-label="Legg til relasjon"
+          className="ml-auto flex h-6 w-6 items-center justify-center rounded-md text-[#bbb] transition-colors hover:bg-black/[0.05] hover:text-[#8b5cf6]"
+        >
+          <Plus className="h-3.5 w-3.5" />
+        </button>
+      </div>
+      <div className="mt-2 space-y-0.5">
+        {relations.map((r) => {
+          const sak = alleSaker.find((s) => s.id === r.taskId);
+          const ui = REL_UI.find((u) => u.k === r.type) || REL_UI[2];
+          const Ikon = ui.icon;
+          return (
+            <div key={`${r.type}-${r.taskId}`} className="group flex items-center gap-2 rounded-lg px-1 py-1.5 hover:bg-[#fafaf8]" data-testid={`relation-row-${r.type}-${r.taskId}`}>
+              <span className="flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide" style={{ color: ui.farge, background: `${ui.farge}14` }}>
+                <Ikon className="h-3 w-3" /> {ui.l}
+              </span>
+              {sak ? (
+                <button onClick={() => onOpenTask && onOpenTask(sak.id)} className="flex min-w-0 flex-1 items-center gap-1.5 text-left" data-testid={`relation-open-${sak.id}`}>
+                  <StatusIkon status={sak.status} size={12} />
+                  <span className={`min-w-0 flex-1 truncate text-[13px] font-medium transition-colors ${sak.status === 'done' ? 'text-[#b0aca6] line-through' : 'text-[#333] hover:text-[#8b5cf6]'}`}>{sak.title}</span>
+                </button>
+              ) : (
+                <span className="min-w-0 flex-1 truncate text-[13px] italic text-[#bbb]">Slettet sak</span>
+              )}
+              <button
+                onClick={() => fjern(r)}
+                data-testid={`relation-remove-${r.type}-${r.taskId}`}
+                aria-label="Fjern relasjon"
+                className="shrink-0 rounded p-1 text-[#ddd] transition-colors hover:text-rose-500 md:opacity-0 md:group-hover:opacity-100"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          );
+        })}
+      </div>
+      {apen && (
+        <div className="mt-2 rounded-xl border border-black/[0.07] bg-[#fafaf8] p-2">
+          <div className="no-scrollbar flex gap-1 overflow-x-auto pb-1.5">
+            {REL_UI.map((u) => {
+              const Ikon = u.icon;
+              return (
+                <button
+                  key={u.k}
+                  onClick={() => setType(u.k)}
+                  data-testid={`relation-type-${u.k}`}
+                  className={`flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold transition-all ${type === u.k ? 'bg-white shadow-[0_1px_5px_rgba(0,0,0,0.12)]' : 'text-[#999] hover:text-[#555]'}`}
+                  style={type === u.k ? { color: u.farge } : undefined}
+                >
+                  <Ikon className="h-3 w-3" /> {u.l}
+                </button>
+              );
+            })}
+          </div>
+          <input
+            ref={sokRef}
+            value={sok}
+            onChange={(e) => setSok(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'ArrowDown') { e.preventDefault(); setIdx((i) => Math.min(i + 1, Math.max(kandidater.length - 1, 0))); }
+              else if (e.key === 'ArrowUp') { e.preventDefault(); setIdx((i) => Math.max(i - 1, 0)); }
+              else if (e.key === 'Enter' && kandidater[idx]) { e.preventDefault(); leggTil(kandidater[idx].id); }
+              else if (e.key === 'Escape') { e.stopPropagation(); setApen(false); setSok(''); }
+            }}
+            data-testid="relation-search"
+            placeholder="Søk etter sak å koble …"
+            className="h-9 w-full rounded-lg border border-black/[0.08] bg-white px-2.5 text-[13px] outline-none transition-all placeholder:text-[#bbb] focus:border-[#8b5cf6]/50 focus:ring-2 focus:ring-[#8b5cf6]/15"
+          />
+          <div className="mt-1 max-h-44 overflow-y-auto">
+            {kandidater.map((s, i) => (
+              <button
+                key={s.id}
+                onClick={() => leggTil(s.id)}
+                data-testid={`relation-pick-${s.id}`}
+                className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left transition-colors ${i === idx ? 'bg-[#f4f0fb]' : 'hover:bg-white'}`}
+              >
+                <StatusIkon status={s.status} size={12} />
+                <span className="min-w-0 flex-1 truncate text-[13px] text-[#333]">{s.title}</span>
+              </button>
+            ))}
+            {!kandidater.length && <p className="px-2 py-2 text-[12px] text-[#bbb]">{sok ? 'Ingen treff' : 'Ingen flere saker å koble'}</p>}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
+
+/* ═══════════════ Undersaker (Fase 4) — ekte saker med parentId ═══════════════
+   Viser forelder-lenke («Del av»), barnas status med fremdriftslinje, og lar
+   deg opprette nye undersaker som arver prosjekt fra forelderen. */
+function UndersakSeksjon({ t, alleSaker = [], api, actor, onReload, onOpenTask, visToast }) {
+  const [nytt, setNytt] = useState('');
+  const [visInput, setVisInput] = useState(false);
+  const [oppretter, setOppretter] = useState(false);
+  const inpRef = useRef(null);
+  const barn = alleSaker.filter((s) => s.parentId === t.id && !s.archived);
+  const forelder = t.parentId ? alleSaker.find((s) => s.id === t.parentId) : null;
+  const ferdig = barn.filter((s) => s.status === 'done').length;
+
+  useEffect(() => { if (visInput && inpRef.current) inpRef.current.focus(); }, [visInput]);
+  useEffect(() => { setVisInput(false); setNytt(''); }, [t.id]);
+
+  const opprettUndersak = async () => {
+    const tittel = nytt.trim();
+    if (!tittel || oppretter) return;
+    setOppretter(true);
+    try {
+      const r = await api('tasks', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: tittel, status: 'inbox', priority: 2, parentId: t.id, projectId: t.projectId || null, notify: false, actor }),
+      });
+      const j = await r.json();
+      if (!j.ok) throw new Error(j.error || 'Kunne ikke opprette undersak');
+      setNytt('');
+      await onReload();
+    } catch (e) { visToast && visToast(e.message || 'Kunne ikke opprette undersak', 'feil'); }
+    setOppretter(false);
+  };
+
+  const koblFra = async (id) => {
+    try {
+      await api(`tasks/${id}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ parentId: null, actor }),
+      });
+      await onReload();
+    } catch (e) {}
+  };
+
+  if (!barn.length && !forelder && !visInput) {
+    return (
+      <div className="mt-1.5">
+        <button
+          onClick={() => setVisInput(true)}
+          data-testid="subissue-add-btn"
+          className="flex items-center gap-1.5 rounded-lg px-1 py-1 text-[12px] font-semibold text-[#aaa] transition-colors hover:text-[#8b5cf6]"
+        >
+          <Layers className="h-3.5 w-3.5" /> Legg til undersak
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-6" data-testid="drawer-subissues">
+      {forelder && (
+        <button
+          onClick={() => onOpenTask && onOpenTask(forelder.id)}
+          data-testid="parent-task-link"
+          className="mb-2.5 flex max-w-full items-center gap-1.5 rounded-full bg-[#f3f2f0] py-1 pl-2.5 pr-3 text-[11.5px] font-semibold text-[#666] transition-colors hover:bg-[#ece4fa] hover:text-[#8b5cf6]"
+        >
+          <Layers className="h-3 w-3 shrink-0" />
+          <span className="shrink-0 text-[#999]">Del av:</span>
+          <span className="min-w-0 truncate">{forelder.title}</span>
+        </button>
+      )}
+      {(barn.length > 0 || visInput) && (
+        <>
+          <div className="flex items-center gap-2">
+            <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#999]">Undersaker</p>
+            {barn.length > 0 && (
+              <span className={`text-[11px] font-bold tabular-nums ${ferdig === barn.length ? 'text-emerald-600' : 'text-[#aaa]'}`}>{ferdig}/{barn.length}</span>
+            )}
+            <button
+              onClick={() => setVisInput((v) => !v)}
+              data-testid="subissue-add-btn"
+              aria-label="Ny undersak"
+              className="ml-auto flex h-6 w-6 items-center justify-center rounded-md text-[#bbb] transition-colors hover:bg-black/[0.05] hover:text-[#8b5cf6]"
+            >
+              <Plus className="h-3.5 w-3.5" />
+            </button>
+          </div>
+          {barn.length > 0 && (
+            <div className="mt-2 h-1 overflow-hidden rounded-full bg-[#eee]">
+              <div className="h-full rounded-full bg-[#8b5cf6] transition-all duration-300" style={{ width: `${(ferdig / barn.length) * 100}%` }} />
+            </div>
+          )}
+          <div className="mt-2 space-y-0.5">
+            {barn.map((s) => (
+              <div key={s.id} className="group flex items-center gap-2.5 rounded-lg px-1 py-1.5 hover:bg-[#fafaf8]" data-testid={`subissue-row-${s.id}`}>
+                <StatusIkon status={s.status} size={14} />
+                <button onClick={() => onOpenTask && onOpenTask(s.id)} className="min-w-0 flex-1 text-left" data-testid={`subissue-open-${s.id}`}>
+                  <span className={`block truncate text-[13.5px] font-medium transition-colors ${s.status === 'done' ? 'text-[#b0aca6] line-through' : 'text-[#333] hover:text-[#8b5cf6]'}`}>{s.title}</span>
+                </button>
+                {s.dueDate && <span className="shrink-0 text-[10.5px] font-semibold tabular-nums text-[#aaa]">{fmtSubDato(s.dueDate)}</span>}
+                <button
+                  onClick={() => koblFra(s.id)}
+                  data-testid={`subissue-detach-${s.id}`}
+                  title="Koble fra (saken beholdes)"
+                  aria-label="Koble fra undersak"
+                  className="shrink-0 rounded p-1 text-[#ddd] transition-colors hover:text-rose-500 md:opacity-0 md:group-hover:opacity-100"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+          {visInput && (
+            <div className="mt-1.5 flex items-center gap-2">
+              {oppretter ? <Loader2 className="h-4 w-4 shrink-0 animate-spin text-[#8b5cf6]" /> : <Plus className="h-4 w-4 shrink-0 text-[#bbb]" />}
+              <input
+                ref={inpRef}
+                value={nytt}
+                onChange={(e) => setNytt(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') { e.preventDefault(); opprettUndersak(); }
+                  else if (e.key === 'Escape') { e.stopPropagation(); setVisInput(false); setNytt(''); }
+                }}
+                data-testid="subissue-add-input"
+                placeholder="Ny undersak — Enter oppretter …"
+                className="h-9 min-w-0 flex-1 rounded-lg border border-black/[0.08] bg-white px-2.5 text-[13px] outline-none transition-all placeholder:text-[#bbb] hover:border-black/[0.16] focus:border-[#8b5cf6]/50 focus:ring-2 focus:ring-[#8b5cf6]/15"
+              />
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
 
 /* ═══════════════ Underoppgaver / deloppgaver (Linear-nivå) ═══════════════
    Hver deloppgave kan ha egen ansvarlig (avatar-velger) og egen frist
@@ -2394,10 +3106,55 @@ function VedleggSeksjon({ t, apiKey, api, actor, onReload, visToast }) {
   );
 }
 
+/* ═══════════════ Nytt prosjekt ═══════════════ */
+const PROSJEKT_FARGER = ['#8b5cf6', '#0ea5e9', '#10b981', '#f59e0b', '#e11d48', '#6366f1', '#ec4899', '#14b8a6'];
+function ProsjektModal({ onClose, onCreate }) {
+  const [navn, setNavn] = useState('');
+  const [farge, setFarge] = useState(PROSJEKT_FARGER[0]);
+  const [lagrer, setLagrer] = useState(false);
+  const ref = useRef(null);
+  useEffect(() => { setTimeout(() => ref.current && ref.current.focus(), 60); }, []);
+  const lagre = async () => { if (!navn.trim() || lagrer) return; setLagrer(true); await onCreate(navn.trim(), farge); setLagrer(false); };
+  return (
+    <Overlegg onClose={onClose} testid="project-modal">
+      <div className="p-5">
+        <h3 className="text-[16px] font-semibold text-[#0a0a0a]">Nytt prosjekt</h3>
+        <p className="mt-1 text-[13px] text-[#888]">Samle relaterte saker under et initiativ.</p>
+        <input
+          ref={ref} value={navn} onChange={(e) => setNavn(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') lagre(); }}
+          placeholder="Prosjektnavn, f.eks. «Oppussing Storgata 4»"
+          data-testid="project-name"
+          className="mt-4 w-full rounded-xl border border-black/[0.1] bg-white px-3.5 py-2.5 text-[14px] outline-none transition-all placeholder:text-[#bbb] focus:border-[#8b5cf6]/50 focus:ring-2 focus:ring-[#8b5cf6]/15"
+        />
+        <div className="mt-4 flex items-center gap-2">
+          <span className="text-[12.5px] font-medium text-[#666]">Farge</span>
+          <div className="flex gap-1.5">
+            {PROSJEKT_FARGER.map((c) => (
+              <button key={c} type="button" onClick={() => setFarge(c)} data-testid={`project-color-${c}`}
+                className={`h-6 w-6 rounded-full transition-transform ${farge === c ? 'scale-110 ring-2 ring-offset-2 ring-black/20' : 'hover:scale-105'}`}
+                style={{ background: c }}
+              />
+            ))}
+          </div>
+        </div>
+        <div className="mt-6 flex justify-end gap-2">
+          <button onClick={onClose} className="rounded-lg px-4 py-2 text-[13.5px] font-medium text-[#666] hover:bg-black/[0.04]">Avbryt</button>
+          <button onClick={lagre} disabled={!navn.trim() || lagrer} data-testid="project-save"
+            className="flex items-center gap-1.5 rounded-lg bg-[#0a0a0a] px-4 py-2 text-[13.5px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-40">
+            {lagrer ? <Loader2 className="h-4 w-4 animate-spin" /> : <FolderPlus className="h-4 w-4" />} Opprett prosjekt
+          </button>
+        </div>
+      </div>
+    </Overlegg>
+  );
+}
+
 /* ═══════════════ Ny sak ═══════════════ */
-function NySakModal({ members, defaultStatus, onClose, onCreate }) {
+function NySakModal({ members, projects = [], defaultStatus, uploadBilde = null, onClose, onCreate }) {
   const [tittel, setTittel] = useState('');
   const [beskrivelse, setBeskrivelse] = useState('');
+  const [prosjekt, setProsjekt] = useState('');
   const [status, setStatus] = useState(defaultStatus || 'inbox');
   const [prioritet, setPrioritet] = useState(2);
   const [ansvarlig, setAnsvarlig] = useState('');
@@ -2430,7 +3187,7 @@ function NySakModal({ members, defaultStatus, onClose, onCreate }) {
       await onCreate({
         title: tittel.trim(), description: beskrivelse.trim(), status,
         priority: prioritet, assigneeId: ansvarlig || null, dueDate: frist || null,
-        recurrence: gjentakelse || null,
+        recurrence: gjentakelse || null, projectId: prosjekt || null,
         subtasks: nyttPunkt.trim() ? [...sjekkliste, { text: nyttPunkt.trim(), done: false, assigneeId: null, due: null }] : sjekkliste,
         notify: varsle,
       });
@@ -2472,9 +3229,11 @@ function NySakModal({ members, defaultStatus, onClose, onCreate }) {
             members={members}
             rows={3}
             testid="new-task-description"
-            placeholder="Beskrivelse (valgfritt) — @ nevner en person, de får e-postvarsel"
+            placeholder="Beskrivelse (valgfritt) — @ nevner, ** ** = fet, lim inn bilde"
             className="mt-3"
             popover="under"
+            rik
+            uploadBilde={uploadBilde}
           />
         </div>
 
@@ -2507,6 +3266,14 @@ function NySakModal({ members, defaultStatus, onClose, onCreate }) {
             compact value={gjentakelse} onChange={setGjentakelse} testid="new-task-recurrence"
             options={REC_VALG.map((r) => ({ v: r.k, l: r.l, icon: r.k ? Repeat : undefined }))} className="md:w-[140px]"
           />
+          {projects.length > 0 && (
+            <Meny
+              compact value={prosjekt} onChange={setProsjekt} testid="new-task-project"
+              placeholder="Uten prosjekt"
+              options={[{ v: '', l: 'Uten prosjekt', icon: Folder }, ...projects.map((p) => ({ v: p.id, l: p.name, dot: p.color }))]}
+              className="md:w-[150px]"
+            />
+          )}
         </div>
 
         {/* Deloppgaver — full kontroll allerede ved opprettelse: tekst,

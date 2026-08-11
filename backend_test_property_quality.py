@@ -9,7 +9,7 @@ Test scenarios:
 4. Property interest happy path - GET/POST /api/newsletter/property-interest/*
 5. Regression tests
 
-Base URL: https://conversion-optimize-7.preview.emergentagent.com/api
+Base URL: https://saker-hub.preview.emergentagent.com/api
 Admin key: dh_admin_b3Kx92Qz7Lm4
 """
 
@@ -18,7 +18,7 @@ import json
 import sys
 from typing import Dict, Any, List
 
-BASE_URL = "https://conversion-optimize-7.preview.emergentagent.com/api"
+BASE_URL = "https://saker-hub.preview.emergentagent.com/api"
 ADMIN_KEY = "dh_admin_b3Kx92Qz7Lm4"
 
 def test_scenario_1_quality_flags():
@@ -774,7 +774,7 @@ def test_scenario_5_regression():
     """
     Scenario 5: Regression tests
     
-    - GET /api/admin/newsletter/campaign?key=...&id=6783d667-c93e-45ca-a458-341f9d79acf5
+    - GET /api/admin/newsletter/campaign?key=...&id=saker-hub
       → 200, all 12 property cards have non-empty district, at least 3 unique groups
     - GET /api/public/properties?limit=6
       → 200, no area with 'finn.no', no city='Norge'
@@ -795,7 +795,7 @@ def test_scenario_5_regression():
         # Test 1: Newsletter campaign
         print("\n--- Test 1: Newsletter campaign ---")
         
-        campaign_url = f"{BASE_URL}/admin/newsletter/campaign?key={ADMIN_KEY}&id=6783d667-c93e-45ca-a458-341f9d79acf5"
+        campaign_url = f"{BASE_URL}/admin/newsletter/campaign?key={ADMIN_KEY}&id=saker-hub"
         print(f"GET {campaign_url}")
         
         campaign_response = requests.get(campaign_url, timeout=30)

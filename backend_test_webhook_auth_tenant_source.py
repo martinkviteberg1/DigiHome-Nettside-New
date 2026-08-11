@@ -9,7 +9,7 @@ import requests
 import sys
 import time
 
-BASE_URL = "https://conversion-optimize-7.preview.emergentagent.com/api"
+BASE_URL = "https://saker-hub.preview.emergentagent.com/api"
 WEBHOOK_SECRET = "dhsync_dc0dc1750aff067a4baef7adafc7991f7340eacc44f27036"
 ADMIN_KEY = "dh_admin_b3Kx92Qz7Lm4"
 

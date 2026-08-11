@@ -22,7 +22,7 @@ import time
 from pymongo import MongoClient
 
 # Configuration from /app/.env and /app/memory/test_credentials.md
-BASE_URL = "https://conversion-optimize-7.preview.emergentagent.com/api"
+BASE_URL = "https://saker-hub.preview.emergentagent.com/api"
 ADMIN_KEY = "dh_admin_b3Kx92Qz7Lm4"
 MONGO_URL = "mongodb://localhost:27017"
 DB_NAME = "your_database_name"

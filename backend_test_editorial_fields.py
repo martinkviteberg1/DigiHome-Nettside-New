@@ -3,7 +3,7 @@
 BACKEND TEST: Rediger boligdata — redaksjonelle overstyringer
 
 Tests the NEW editorial fields feature for property data overrides.
-Base URL: https://conversion-optimize-7.preview.emergentagent.com
+Base URL: https://saker-hub.preview.emergentagent.com
 Admin key: dh_admin_b3Kx92Qz7Lm4
 
 CRITICAL SAFETY RULES:
@@ -22,7 +22,7 @@ import json
 import sys
 from pymongo import MongoClient
 
-BASE_URL = "https://conversion-optimize-7.preview.emergentagent.com"
+BASE_URL = "https://saker-hub.preview.emergentagent.com"
 ADMIN_KEY = "dh_admin_b3Kx92Qz7Lm4"
 MONGO_URL = "mongodb://localhost:27017"
 DB_NAME = "your_database_name"

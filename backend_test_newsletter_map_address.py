@@ -9,7 +9,7 @@ import json
 import sys
 from typing import Dict, Any, List, Optional
 
-BASE_URL = "https://conversion-optimize-7.preview.emergentagent.com"
+BASE_URL = "https://saker-hub.preview.emergentagent.com"
 ADMIN_KEY = "dh_admin_b3Kx92Qz7Lm4"
 
 # Track created drafts for cleanup

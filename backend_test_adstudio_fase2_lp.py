@@ -11,7 +11,7 @@ import re
 from playwright.async_api import async_playwright
 
 # Base URL from environment
-BASE_URL = os.getenv('NEXT_PUBLIC_BASE_URL', 'https://conversion-optimize-7.preview.emergentagent.com')
+BASE_URL = os.getenv('NEXT_PUBLIC_BASE_URL', 'https://saker-hub.preview.emergentagent.com')
 API_BASE = f"{BASE_URL}/api"
 ADMIN_KEY = "dh_admin_b3Kx92Qz7Lm4"
 

@@ -9,7 +9,7 @@ import sys
 import re
 from typing import List, Dict, Any
 
-BASE_URL = "https://conversion-optimize-7.preview.emergentagent.com/api"
+BASE_URL = "https://saker-hub.preview.emergentagent.com/api"
 ADMIN_KEY = "dh_admin_b3Kx92Qz7Lm4"
 
 def test_get_properties():
@@ -626,7 +626,7 @@ def test_regression(campaign_id_to_restore: str = None):
     
     # Test district hydration on existing campaign
     print("\nTesting district hydration on campaign 6783d667-c93e-45ca-a458-341f9d79acf5...")
-    url_campaign = f"{BASE_URL}/admin/newsletter/campaign?id=6783d667-c93e-45ca-a458-341f9d79acf5&key={ADMIN_KEY}"
+    url_campaign = f"{BASE_URL}/admin/newsletter/campaign?id=saker-hub&key={ADMIN_KEY}"
     resp_campaign = requests.get(url_campaign, timeout=30)
     
     if resp_campaign.status_code != 200:

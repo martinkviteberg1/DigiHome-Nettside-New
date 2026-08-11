@@ -6,7 +6,7 @@ Test deploy-safe media URL /api/media/owner-onboarding-living-room.webp
 import requests
 import sys
 
-BASE_URL = "https://conversion-optimize-7.preview.emergentagent.com"
+BASE_URL = "https://saker-hub.preview.emergentagent.com"
 ADMIN_KEY = "dh_admin_b3Kx92Qz7Lm4"
 
 def test_media_living_room_base():

@@ -11,7 +11,7 @@ import time
 from datetime import datetime, timedelta
 
 # Configuration
-BASE_URL = "https://conversion-optimize-7.preview.emergentagent.com/api"
+BASE_URL = "https://saker-hub.preview.emergentagent.com/api"
 OWNER_EMAIL = "martin@kviteberg.no"
 OWNER_PASSWORD = "Pyramiden2025##"
 MASTER_KEY = "dh_admin_b3Kx92Qz7Lm4"

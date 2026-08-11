@@ -4,7 +4,7 @@ FINN-berikelse + strammere duplikatregel — Backend Testing
 ===========================================================
 Tests the FINN enrichment feature for properties with 10 comprehensive scenarios.
 
-Base URL: https://conversion-optimize-7.preview.emergentagent.com/api
+Base URL: https://saker-hub.preview.emergentagent.com/api
 Admin key: dh_admin_b3Kx92Qz7Lm4
 FINN URL (verified live, 12 images): https://www.finn.no/realestate/lettings/ad.html?finnkode=464252860
 
@@ -22,7 +22,7 @@ import json
 import sys
 from typing import Dict, Any, List, Optional
 
-BASE_URL = "https://conversion-optimize-7.preview.emergentagent.com/api"
+BASE_URL = "https://saker-hub.preview.emergentagent.com/api"
 ADMIN_KEY = "dh_admin_b3Kx92Qz7Lm4"
 FINN_URL = "https://www.finn.no/realestate/lettings/ad.html?finnkode=464252860"
 TIMEOUT = 60  # seconds

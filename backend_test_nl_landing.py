@@ -20,7 +20,7 @@ import requests
 import re
 from pymongo import MongoClient
 
-BASE_URL = "https://conversion-optimize-7.preview.emergentagent.com"
+BASE_URL = "https://saker-hub.preview.emergentagent.com"
 ADMIN_KEY = "dh_admin_b3Kx92Qz7Lm4"
 MONGO_URL = "mongodb://localhost:27017"
 DB_NAME = "your_database_name"

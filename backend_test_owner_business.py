@@ -3,7 +3,7 @@
 BACKEND TEST: HUSEIER SOM BEDRIFT (Homeowner as Business)
 Tests Enhetsregisteret lookup, org.nr validation, server verification, and customer type provisioning.
 
-Base: https://conversion-optimize-7.preview.emergentagent.com
+Base: https://saker-hub.preview.emergentagent.com
 Admin key: dh_admin_b3Kx92Qz7Lm4
 MongoDB: mongodb://localhost:27017, DB: your_database_name
 
@@ -22,7 +22,7 @@ import json
 import time
 from typing import Dict, Any, List
 
-BASE_URL = "https://conversion-optimize-7.preview.emergentagent.com/api"
+BASE_URL = "https://saker-hub.preview.emergentagent.com/api"
 ADMIN_KEY = "dh_admin_b3Kx92Qz7Lm4"
 DNB_ORGNR = "984851006"
 DIGIHOME_ORGNR = "835595242"

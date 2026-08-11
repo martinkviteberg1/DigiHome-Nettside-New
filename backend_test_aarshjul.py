@@ -26,7 +26,7 @@ def load_env():
     return env
 
 env = load_env()
-BASE_URL = env.get('NEXT_PUBLIC_BASE_URL', 'https://conversion-optimize-7.preview.emergentagent.com')
+BASE_URL = env.get('NEXT_PUBLIC_BASE_URL', 'https://saker-hub.preview.emergentagent.com')
 API_URL = f"{BASE_URL}/api"
 ADMIN_KEY = env.get('ADMIN_KEY', 'dh_admin_b3Kx92Qz7Lm4')
 MONGO_URL = env.get('MONGO_URL', 'mongodb://localhost:27017')

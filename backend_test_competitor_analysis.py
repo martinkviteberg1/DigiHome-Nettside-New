@@ -11,7 +11,7 @@ import os
 from datetime import datetime
 
 # Base URL from .env: NEXT_PUBLIC_BASE_URL + /api
-BASE_URL = "https://conversion-optimize-7.preview.emergentagent.com/api"
+BASE_URL = "https://saker-hub.preview.emergentagent.com/api"
 ADMIN_KEY = "dh_admin_b3Kx92Qz7Lm4"
 TIMEOUT = 60  # First call may take ~2s (live Google API)
 

@@ -10,7 +10,7 @@ const env = Object.fromEntries(
     .map((l) => [l.slice(0, l.indexOf('=')).trim(), l.slice(l.indexOf('=') + 1).trim()]),
 );
 const TOKEN = env.AGENT_BRIDGE_SECRET;
-const PREVIEW = 'https://conversion-optimize-7.preview.emergentagent.com';
+const PREVIEW = 'https://saker-hub.preview.emergentagent.com';
 const THREAD = 'property-interest-dialog';
 
 const subject = 'Boliginteresse: enhetskoblet melding + svar til interessent — kontrakt klar hos oss';

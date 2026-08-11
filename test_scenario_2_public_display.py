@@ -7,7 +7,7 @@ This test ensures the property is fully publishable before testing public displa
 import requests
 import json
 
-BASE_URL = "https://conversion-optimize-7.preview.emergentagent.com"
+BASE_URL = "https://saker-hub.preview.emergentagent.com"
 ADMIN_KEY = "dh_admin_b3Kx92Qz7Lm4"
 
 def main():

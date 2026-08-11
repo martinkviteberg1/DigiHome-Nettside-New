@@ -349,7 +349,7 @@ function digiHomeTarget() {
     url: normalizeCrmUrl(
       process.env.DIGIHOME_API_URL_TEST ||
       process.env.DIGIHOME_API_URL ||
-      'https://conversion-optimize-7.preview.emergentagent.com'
+      'https://saker-hub.preview.emergentagent.com'
     ),
     key: process.env.DIGIHOME_API_KEY_TEST || process.env.DIGIHOME_API_KEY || '',
     env: 'test',
@@ -1557,8 +1557,9 @@ const taskEsc = (s) => String(s || '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;'
 
 // E-postvarsel for saker (tildeling + påminnelse). Feiler stille — en sak skal
 // aldri gå tapt fordi SendGrid er nede. Returnerer true hvis sendt.
-async function taskEpost({ member, task, heading, intro }) {
+async function taskEpost({ member, task, heading, intro, kategori }) {
   if (!member || !member.email || !emailConfigured()) return false;
+  if (notifEmailAv(member, kategori)) return false; // bruker har skrudd av e-post for denne typen
   const base = (process.env.NEXT_PUBLIC_BASE_URL || 'https://digihome.no').replace(/\/$/, '');
   const frist = task.dueDate
     ? new Date(`${task.dueDate}T12:00:00`).toLocaleDateString('nb-NO', { day: 'numeric', month: 'long', year: 'numeric' })
@@ -1590,6 +1591,7 @@ async function taskEpost({ member, task, heading, intro }) {
 // lagring (alle nye deloppgaver samles), med frist per deloppgave. Feiler stille.
 async function deloppgaveEpost({ member, task, deloppgaver, actor }) {
   if (!member || !member.email || !emailConfigured() || !Array.isArray(deloppgaver) || !deloppgaver.length) return false;
+  if (notifEmailAv(member, 'deloppgave')) return false;
   const base = (process.env.NEXT_PUBLIC_BASE_URL || 'https://digihome.no').replace(/\/$/, '');
   const fmtFrist = (d) => (d ? new Date(`${d}T12:00:00`).toLocaleDateString('nb-NO', { day: 'numeric', month: 'long', year: 'numeric' }) : null);
   const idag = osloIDag();
@@ -1622,6 +1624,37 @@ async function deloppgaveEpost({ member, task, deloppgaver, actor }) {
   } catch (e) {
     return false;
   }
+}
+
+// ═══════════════════════ VARSLER (in-app innboks + e-postpreferanser) ═══════════════════════
+// Kategorier for varsler. Innboksen i appen får ALLTID alle hendelser (billig,
+// og brukeren styrer lesing selv). E-post kan derimot skrus av per kategori i
+// den enkeltes varselinnstillinger (admin_users.notifPrefs.email.<kategori> === false).
+const VARSEL_KATEGORIER = ['tildelt', 'nevnt', 'kommentar', 'deloppgave', 'status', 'frist', 'folger', 'paaminnelse'];
+const VARSEL_LABEL = {
+  tildelt: 'Sak tildelt deg', nevnt: 'Du blir nevnt (@)', kommentar: 'Ny kommentar på dine saker',
+  deloppgave: 'Deloppgave tildelt deg', status: 'Statusendring på dine saker', frist: 'Fristpåminnelser',
+  folger: 'Lagt til som følger', paaminnelse: 'Manuelle påminnelser (purring)',
+};
+
+// Har brukeren eksplisitt skrudd AV e-post for kategorien? (fail-open: mangler
+// prefs eller kategori → e-post sendes som før).
+function notifEmailAv(member, kategori) {
+  return !!(kategori && member && member.notifPrefs && member.notifPrefs.email && member.notifPrefs.email[kategori] === false);
+}
+
+// Opprett in-app-varsel. Hopper over hvis mottaker mangler eller er aktøren
+// selv (du varsles aldri om dine egne handlinger). Feiler stille — et varsel
+// skal aldri velte selve operasjonen.
+async function varsle(db, userId, actorId, { type, taskId, taskTitle, actor, text }) {
+  if (!userId || (actorId && userId === actorId)) return;
+  try {
+    await db.collection('notifications').insertOne({
+      id: uuidv4(), userId, type: type || 'info', taskId: taskId || null,
+      taskTitle: String(taskTitle || '').slice(0, 200), actor: String(actor || '').slice(0, 80),
+      text: String(text || '').slice(0, 300), read: false, createdAt: new Date().toISOString(),
+    });
+  } catch (e) { /* stille */ }
 }
 
 // Finn deloppgaver som har fått NY ansvarlig sammenlignet med forrige versjon
@@ -1760,6 +1793,43 @@ async function hentProtokollData(db, meeting) {
 function normaliserFolgere(input) {
   if (!Array.isArray(input)) return [];
   return [...new Set(input.map((s) => String(s || '')).filter(Boolean))].slice(0, 10);
+}
+
+// Sak-relasjoner (Linear-nivå): blocks / blocked_by / related / duplicate.
+const REL_TYPER = ['blocks', 'blocked_by', 'related', 'duplicate'];
+const REL_INVERS = { blocks: 'blocked_by', blocked_by: 'blocks', related: 'related', duplicate: 'duplicate' };
+function normaliserRelasjoner(input) {
+  if (!Array.isArray(input)) return [];
+  const ut = [];
+  const sett = new Set();
+  for (const r of input.slice(0, 40)) {
+    if (!r || !REL_TYPER.includes(r.type) || !r.taskId) continue;
+    const n = `${r.type}:${r.taskId}`;
+    if (sett.has(n)) continue;
+    sett.add(n);
+    ut.push({ type: r.type, taskId: String(r.taskId) });
+  }
+  return ut;
+}
+// Speil relasjonene på motparten slik at «A blocks B» også vises som
+// «B blocked_by A». Kalles ved endring av en saks relasjoner.
+async function synkRelasjoner(db, taskId, gamle, nye) {
+  const nokkel = (r) => `${r.type}:${r.taskId}`;
+  const gS = new Set((gamle || []).map(nokkel));
+  const nS = new Set((nye || []).map(nokkel));
+  const lagtTil = (nye || []).filter((r) => !gS.has(nokkel(r)));
+  const fjernet = (gamle || []).filter((r) => !nS.has(nokkel(r)));
+  for (const r of lagtTil) {
+    const inv = { type: REL_INVERS[r.type], taskId };
+    await db.collection('tasks').updateOne({ id: r.taskId, 'relations.type': { $ne: inv.type }, 'relations.taskId': { $ne: taskId } }, { $push: { relations: inv } }).catch(() => {});
+    // Robust variant (dekker mangel på $ne-kombinasjon): fjern evt. duplikat først.
+    await db.collection('tasks').updateOne({ id: r.taskId }, { $pull: { relations: { type: inv.type, taskId } } }).catch(() => {});
+    await db.collection('tasks').updateOne({ id: r.taskId }, { $push: { relations: inv } }).catch(() => {});
+  }
+  for (const r of fjernet) {
+    const inv = { type: REL_INVERS[r.type], taskId };
+    await db.collection('tasks').updateOne({ id: r.taskId }, { $pull: { relations: { type: inv.type, taskId } } }).catch(() => {});
+  }
 }
 
 // Engangs-migrering: task_members → admin_users. Én kilde for personer OG
@@ -2736,6 +2806,160 @@ async function handleRoute(request, { params }) {
       return cors(NextResponse.json({ ok: true }));
     }
 
+    // ══════════════════════ SANNTID: diff siden tidsstempel ══════════════════════
+    // Klienten poller dette hvert ~10 s for å holde tavla live uten refresh.
+    // Returnerer saker endret etter ts (ikke arkiverte), samt id-er som skal
+    // FJERNES fra tavla (slettet ELLER arkivert etter ts).
+    if (route === '/admin/tasks/since' && method === 'GET') {
+      if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const ts = new URL(request.url).searchParams.get('ts') || '1970-01-01T00:00:00.000Z';
+      const now = new Date().toISOString();
+      const [endret, arkivert, tombstones] = await Promise.all([
+        db.collection('tasks').find({ updatedAt: { $gt: ts }, archived: { $ne: true } }, { projection: { _id: 0 } }).toArray(),
+        db.collection('tasks').find({ updatedAt: { $gt: ts }, archived: true }, { projection: { _id: 0, id: 1 } }).toArray(),
+        db.collection('task_tombstones').find({ deletedAt: { $gt: ts } }, { projection: { _id: 0, id: 1 } }).toArray(),
+      ]);
+      const removedIds = [...new Set([...arkivert.map((t) => t.id), ...tombstones.map((t) => t.id)])];
+      return cors(NextResponse.json({ ok: true, now, changed: endret, removedIds }));
+    }
+
+    // ══════════════════════ RIK TEKST: innliming/opplasting av bilder ══════════════════════
+    // Tar imot en data-URL (base64) fra lim-inn/slipp i beskrivelse/kommentar,
+    // lagrer binært i task_images og gir tilbake en intern URL. Maks ~5 MB.
+    if (route === '/admin/tasks/image' && method === 'POST') {
+      if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) {}
+      const dataUrl = String(body.dataUrl || '');
+      const m = dataUrl.match(/^data:(image\/(png|jpeg|jpg|gif|webp));base64,([A-Za-z0-9+/=]+)$/);
+      if (!m) return cors(NextResponse.json({ ok: false, error: 'Ugyldig bilde' }, { status: 400 }));
+      const buf = Buffer.from(m[3], 'base64');
+      if (buf.length > 5 * 1024 * 1024) return cors(NextResponse.json({ ok: false, error: 'Bildet er for stort (maks 5 MB)' }, { status: 413 }));
+      const id = uuidv4();
+      await db.collection('task_images').insertOne({ id, contentType: m[1], data: buf, size: buf.length, createdAt: new Date().toISOString() });
+      return cors(NextResponse.json({ ok: true, url: `/api/admin/tasks/image/${id}`, id }));
+    }
+    if (path[0] === 'admin' && path[1] === 'tasks' && path[2] === 'image' && path.length === 4 && method === 'GET') {
+      if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const bilde = await db.collection('task_images').findOne({ id: path[3] });
+      if (!bilde) return new NextResponse('Not found', { status: 404 });
+      const buf = bilde.data && bilde.data.buffer ? Buffer.from(bilde.data.buffer) : Buffer.from(bilde.data);
+      return new NextResponse(buf, { status: 200, headers: { 'Content-Type': bilde.contentType || 'image/png', 'Cache-Control': 'private, max-age=86400' } });
+    }
+
+    // ══════════════════════ PROSJEKTER / INITIATIVER ══════════════════════
+    if (route === '/admin/projects' && method === 'GET') {
+      if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const projects = await db.collection('projects').find({}, { projection: { _id: 0 } }).sort({ createdAt: 1 }).toArray();
+      return cors(NextResponse.json({ ok: true, projects }));
+    }
+    if (route === '/admin/projects' && method === 'POST') {
+      if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) {}
+      const name = String(body.name || '').trim();
+      if (!name) return cors(NextResponse.json({ ok: false, error: 'Navn er påkrevd' }, { status: 400 }));
+      const project = {
+        id: uuidv4(), name: name.slice(0, 120),
+        color: /^#[0-9a-fA-F]{6}$/.test(String(body.color)) ? body.color : '#8b5cf6',
+        description: String(body.description || '').slice(0, 500),
+        archived: false, createdAt: new Date().toISOString(),
+      };
+      await db.collection('projects').insertOne({ ...project });
+      return cors(NextResponse.json({ ok: true, project }));
+    }
+    if (path[0] === 'admin' && path[1] === 'projects' && path.length === 3 && method === 'PUT') {
+      if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) {}
+      const set = {};
+      if (body.name !== undefined) { const n = String(body.name).trim(); if (n) set.name = n.slice(0, 120); }
+      if (body.color !== undefined && /^#[0-9a-fA-F]{6}$/.test(String(body.color))) set.color = body.color;
+      if (body.description !== undefined) set.description = String(body.description).slice(0, 500);
+      if (body.archived !== undefined) set.archived = !!body.archived;
+      if (!Object.keys(set).length) return cors(NextResponse.json({ ok: false, error: 'Ingenting å endre' }, { status: 400 }));
+      await db.collection('projects').updateOne({ id: path[2] }, { $set: set });
+      const project = await db.collection('projects').findOne({ id: path[2] }, { projection: { _id: 0 } });
+      return cors(NextResponse.json({ ok: true, project }));
+    }
+    if (path[0] === 'admin' && path[1] === 'projects' && path.length === 3 && method === 'DELETE') {
+      if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      await db.collection('projects').deleteOne({ id: path[2] });
+      // Løsne sakene fra prosjektet (ikke slett sakene).
+      await db.collection('tasks').updateMany({ projectId: path[2] }, { $set: { projectId: null } });
+      return cors(NextResponse.json({ ok: true }));
+    }
+
+    // ══════════════════════ LAGREDE VISNINGER (per bruker) ══════════════════════
+    if (route === '/admin/tasks/views' && method === 'GET') {
+      if (!innloggetAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const sub = (sessionFra(request) || {}).sub || null;
+      const views = sub ? await db.collection('saved_views').find({ userId: sub }, { projection: { _id: 0 } }).sort({ createdAt: 1 }).toArray() : [];
+      return cors(NextResponse.json({ ok: true, views }));
+    }
+    if (route === '/admin/tasks/views' && method === 'POST') {
+      if (!innloggetAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const sub = (sessionFra(request) || {}).sub || null;
+      if (!sub) return cors(NextResponse.json({ ok: false, error: 'Krever innlogget bruker' }, { status: 400 }));
+      let body = {}; try { body = await request.json(); } catch (e) {}
+      const name = String(body.name || '').trim();
+      if (!name) return cors(NextResponse.json({ ok: false, error: 'Navn er påkrevd' }, { status: 400 }));
+      const view = { id: uuidv4(), userId: sub, name: name.slice(0, 80), config: (body.config && typeof body.config === 'object') ? body.config : {}, createdAt: new Date().toISOString() };
+      await db.collection('saved_views').insertOne({ ...view });
+      return cors(NextResponse.json({ ok: true, view }));
+    }
+    if (path[0] === 'admin' && path[1] === 'tasks' && path[2] === 'views' && path.length === 4 && method === 'DELETE') {
+      if (!innloggetAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const sub = (sessionFra(request) || {}).sub || null;
+      await db.collection('saved_views').deleteOne({ id: path[3], userId: sub });
+      return cors(NextResponse.json({ ok: true }));
+    }
+
+    // ══════════════════════ VARSLER: in-app innboks + preferanser ══════════════════════
+    // Alle endepunkter er per innlogget bruker (sesjonstoken → sub). Masternøkkel
+    // uten sesjon har ingen bruker → tom innboks (brukes av QA/automasjon).
+    if (route === '/admin/notifications' && method === 'GET') {
+      if (!innloggetAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const sub = (sessionFra(request) || {}).sub || null;
+      if (!sub) return cors(NextResponse.json({ ok: true, notifications: [], unread: 0 }));
+      const notifications = await db.collection('notifications')
+        .find({ userId: sub }, { projection: { _id: 0 } })
+        .sort({ createdAt: -1 }).limit(50).toArray();
+      const unread = await db.collection('notifications').countDocuments({ userId: sub, read: false });
+      return cors(NextResponse.json({ ok: true, notifications, unread }));
+    }
+
+    if (route === '/admin/notifications/read' && method === 'POST') {
+      if (!innloggetAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const sub = (sessionFra(request) || {}).sub || null;
+      if (!sub) return cors(NextResponse.json({ ok: true, unread: 0 }));
+      let body = {}; try { body = await request.json(); } catch (e) {}
+      const filter = { userId: sub, read: false };
+      if (!body.all) {
+        const ids = Array.isArray(body.ids) ? body.ids.map(String) : [];
+        if (!ids.length) return cors(NextResponse.json({ ok: false, error: 'Ingen varsler angitt' }, { status: 400 }));
+        filter.id = { $in: ids };
+      }
+      await db.collection('notifications').updateMany(filter, { $set: { read: true } });
+      const unread = await db.collection('notifications').countDocuments({ userId: sub, read: false });
+      return cors(NextResponse.json({ ok: true, unread }));
+    }
+
+    if (route === '/admin/notifications/prefs' && (method === 'GET' || method === 'PUT')) {
+      if (!innloggetAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const sub = (sessionFra(request) || {}).sub || null;
+      if (!sub) return cors(NextResponse.json({ ok: false, error: 'Krever innlogget bruker' }, { status: 400 }));
+      const standard = () => VARSEL_KATEGORIER.reduce((o, k) => { o[k] = true; return o; }, {});
+      if (method === 'PUT') {
+        let body = {}; try { body = await request.json(); } catch (e) {}
+        const inn = (body.email && typeof body.email === 'object') ? body.email : {};
+        const email = {};
+        for (const k of VARSEL_KATEGORIER) email[k] = inn[k] !== false; // default på
+        await db.collection('admin_users').updateOne({ id: sub }, { $set: { notifPrefs: { email } } });
+        return cors(NextResponse.json({ ok: true, prefs: { email }, katalog: VARSEL_LABEL }));
+      }
+      const u = await db.collection('admin_users').findOne({ id: sub }, { projection: { _id: 0, notifPrefs: 1 } });
+      const email = (u && u.notifPrefs && u.notifPrefs.email) ? { ...standard(), ...u.notifPrefs.email } : standard();
+      return cors(NextResponse.json({ ok: true, prefs: { email }, katalog: VARSEL_LABEL }));
+    }
+
     // --- Saker: badge-sammendrag (åpne/forfalte/i dag) — brukes i sidemenyen.
     //     Trigget hyppig (90 s polling) og driver derfor også den daglige
     //     frist-digesten (lazy-cron, se kanskjeSendFristDigest). ---
@@ -2757,11 +2981,12 @@ async function handleRoute(request, { params }) {
       if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const uTasks = new URL(request.url);
       const arkiv = uTasks.searchParams.get('arkiv') === '1';
-      const [tasks, members] = await Promise.all([
+      const [tasks, members, projects] = await Promise.all([
         db.collection('tasks').find(arkiv ? { archived: true } : { archived: { $ne: true } }).project({ _id: 0 }).sort({ updatedAt: -1 }).toArray(),
         hentPersoner(db),
+        db.collection('projects').find({ archived: { $ne: true } }, { projection: { _id: 0 } }).sort({ createdAt: 1 }).toArray(),
       ]);
-      return cors(NextResponse.json({ ok: true, tasks, members, today: osloIDag() }));
+      return cors(NextResponse.json({ ok: true, tasks, members, projects, today: osloIDag() }));
     }
 
     if (route === '/admin/tasks' && method === 'POST') {
@@ -2771,6 +2996,7 @@ async function handleRoute(request, { params }) {
       if (!title) return cors(NextResponse.json({ ok: false, error: 'Tittel er påkrevd' }, { status: 400 }));
       const naa = new Date().toISOString();
       const actor = String(body.actor || '').trim() || 'Admin';
+      const actorId = (sessionFra(request) || {}).sub || null;
       const task = {
         id: uuidv4(),
         title: title.slice(0, 300),
@@ -2783,6 +3009,9 @@ async function handleRoute(request, { params }) {
         subtasks: normaliserSubtasks(body.subtasks),
         recurrence: TASK_REC.includes(body.recurrence) ? body.recurrence : null,
         followers: normaliserFolgere(body.followers),
+        projectId: body.projectId ? String(body.projectId) : null,
+        parentId: body.parentId ? String(body.parentId) : null,
+        relations: normaliserRelasjoner(body.relations),
         attachments: [],
         archived: false,
         comments: [],
@@ -2792,30 +3021,33 @@ async function handleRoute(request, { params }) {
       let emailed = false;
       if (task.assigneeId && body.notify !== false) {
         const member = await db.collection('admin_users').findOne({ id: task.assigneeId });
-        emailed = await taskEpost({ member, task, heading: 'Ny sak tildelt deg', intro: `${actor} har tildelt deg en sak i det interne sakssystemet.` });
+        emailed = await taskEpost({ member, task, heading: 'Ny sak tildelt deg', intro: `${actor} har tildelt deg en sak i det interne sakssystemet.`, kategori: 'tildelt' });
         if (emailed) task.activity.push({ at: naa, actor: 'System', text: `E-postvarsel sendt til ${member.name}` });
+        await varsle(db, task.assigneeId, actorId, { type: 'tildelt', taskId: task.id, taskTitle: task.title, actor, text: `${actor} tildelte deg saken` });
       }
       if (task.followers.length && body.notify !== false) {
         const flg = await db.collection('admin_users').find({ id: { $in: task.followers } }).toArray();
         for (const f of flg) {
           if (f.id === task.assigneeId || !f.email) continue;
-          const ok = await taskEpost({ member: f, task, heading: 'Du følger nå en sak', intro: `${actor} har lagt deg til som følger av saken.` });
+          const ok = await taskEpost({ member: f, task, heading: 'Du følger nå en sak', intro: `${actor} har lagt deg til som følger av saken.`, kategori: 'folger' });
           if (ok) task.activity.push({ at: naa, actor: 'System', text: `E-postvarsel sendt til følger ${f.name}` });
+          await varsle(db, f.id, actorId, { type: 'folger', taskId: task.id, taskTitle: task.title, actor, text: `${actor} la deg til som følger` });
         }
       }
       // @mentions i beskrivelsen ved opprettelse: varsle nevnte personer
       // (hopp over ansvarlig/følgere som allerede er varslet, og aktøren selv).
       if (task.description && task.description.includes('@') && body.notify !== false) {
         const beskLav = task.description.toLowerCase();
-        const allePers = await db.collection('admin_users').find({}, { projection: { _id: 0, id: 1, name: 1, email: 1 } }).toArray();
+        const allePers = await db.collection('admin_users').find({}, { projection: { _id: 0, id: 1, name: 1, email: 1, notifPrefs: 1 } }).toArray();
         const nevnt = allePers.filter((m) => m.name && m.email
           && beskLav.includes(`@${String(m.name).toLowerCase()}`)
           && m.id !== task.assigneeId
           && !task.followers.includes(m.id)
           && String(m.name).toLowerCase() !== actor.toLowerCase());
         for (const m of nevnt) {
-          const ok = await taskEpost({ member: m, task, heading: 'Du ble nevnt i en sak', intro: `${actor} nevnte deg i beskrivelsen av en ny sak.` });
+          const ok = await taskEpost({ member: m, task, heading: 'Du ble nevnt i en sak', intro: `${actor} nevnte deg i beskrivelsen av en ny sak.`, kategori: 'nevnt' });
           if (ok) task.activity.push({ at: naa, actor: 'System', text: `E-postvarsel sendt til ${m.name} (nevnt i beskrivelsen)` });
+          await varsle(db, m.id, actorId, { type: 'nevnt', taskId: task.id, taskTitle: task.title, actor, text: `${actor} nevnte deg i beskrivelsen` });
         }
       }
       // Deloppgave-tildelinger ved opprettelse: hver person med deloppgaver
@@ -2831,10 +3063,12 @@ async function handleRoute(request, { params }) {
             if (String(p.name || '').toLowerCase() === actor.toLowerCase()) continue;
             const ok = await deloppgaveEpost({ member: p, task, deloppgaver: perPerson.get(p.id), actor });
             if (ok) task.activity.push({ at: naa, actor: 'System', text: `E-postvarsel sendt til ${p.name} (deloppgave tildelt)` });
+            await varsle(db, p.id, actorId, { type: 'deloppgave', taskId: task.id, taskTitle: task.title, actor, text: `${actor} ga deg ${perPerson.get(p.id).length > 1 ? `${perPerson.get(p.id).length} deloppgaver` : 'en deloppgave'}` });
           }
         }
       }
       await db.collection('tasks').insertOne({ ...task });
+      if (task.relations.length) await synkRelasjoner(db, task.id, [], task.relations);
       return cors(NextResponse.json({ ok: true, task, emailed }));
     }
 
@@ -2845,8 +3079,10 @@ async function handleRoute(request, { params }) {
       if (!eksisterende) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
       const naa = new Date().toISOString();
       const actor = String(body.actor || '').trim() || 'Admin';
+      const actorId = (sessionFra(request) || {}).sub || null;
       const set = { updatedAt: naa };
       const logg = [];
+      const varselKo = []; // in-app-varsler samles og sendes etter vellykket lagring
       if (body.title !== undefined) { const t = String(body.title).trim().slice(0, 300); if (t && t !== eksisterende.title) set.title = t; }
       if (body.description !== undefined) {
         set.description = String(body.description).slice(0, 8000);
@@ -2855,15 +3091,16 @@ async function handleRoute(request, { params }) {
         if (set.description && set.description.includes('@') && body.notify !== false) {
           const gammelLav = String(eksisterende.description || '').toLowerCase();
           const nyLav = set.description.toLowerCase();
-          const allePers = await db.collection('admin_users').find({}, { projection: { _id: 0, id: 1, name: 1, email: 1 } }).toArray();
+          const allePers = await db.collection('admin_users').find({}, { projection: { _id: 0, id: 1, name: 1, email: 1, notifPrefs: 1 } }).toArray();
           const nyNevnt = allePers.filter((m) => m.name
             && nyLav.includes(`@${String(m.name).toLowerCase()}`)
             && !gammelLav.includes(`@${String(m.name).toLowerCase()}`));
           for (const m of nyNevnt) {
             if (!m.email) continue;
             if (String(m.name).toLowerCase() === actor.toLowerCase()) continue;
-            const ok = await taskEpost({ member: m, task: { ...eksisterende, ...set }, heading: 'Du ble nevnt i en sak', intro: `${actor} nevnte deg i beskrivelsen av saken.` });
+            const ok = await taskEpost({ member: m, task: { ...eksisterende, ...set }, heading: 'Du ble nevnt i en sak', intro: `${actor} nevnte deg i beskrivelsen av saken.`, kategori: 'nevnt' });
             if (ok) logg.push(`E-postvarsel sendt til ${m.name} (nevnt i beskrivelsen)`);
+            varselKo.push({ userId: m.id, type: 'nevnt', text: `${actor} nevnte deg i beskrivelsen` });
           }
         }
       }
@@ -2871,6 +3108,9 @@ async function handleRoute(request, { params }) {
         set.status = body.status;
         set.completedAt = body.status === 'done' ? naa : null;
         logg.push(`Flyttet til ${TASK_STATUS_LABEL[body.status]}`);
+        // Varsle ansvarlig + følgere om statusendringen (in-app).
+        const berort = new Set([eksisterende.assigneeId, ...(eksisterende.followers || [])].filter(Boolean));
+        for (const uid of berort) varselKo.push({ userId: uid, type: 'status', text: `${actor} flyttet saken til ${TASK_STATUS_LABEL[body.status]}` });
       }
       if (body.priority !== undefined && [1, 2, 3].includes(Number(body.priority)) && Number(body.priority) !== eksisterende.priority) {
         set.priority = Number(body.priority);
@@ -2881,6 +3121,17 @@ async function handleRoute(request, { params }) {
         if (d !== (eksisterende.dueDate || null)) { set.dueDate = d; logg.push(d ? `Frist satt til ${d}` : 'Frist fjernet'); }
       }
       if (body.labels !== undefined) set.labels = Array.isArray(body.labels) ? body.labels.map((s) => String(s).trim()).filter(Boolean).slice(0, 8) : [];
+      if (body.projectId !== undefined) {
+        set.projectId = body.projectId ? String(body.projectId) : null;
+        logg.push(set.projectId ? 'Knyttet til prosjekt' : 'Fjernet fra prosjekt');
+      }
+      if (body.parentId !== undefined) set.parentId = body.parentId ? String(body.parentId) : null;
+      if (body.relations !== undefined) {
+        const nyeRel = normaliserRelasjoner(body.relations);
+        set.relations = nyeRel;
+        await synkRelasjoner(db, path[2], eksisterende.relations || [], nyeRel);
+        logg.push('Relasjoner oppdatert');
+      }
       if (body.subtasks !== undefined) {
         set.subtasks = normaliserSubtasks(body.subtasks);
         // Varsle personer som har fått NY deloppgave-tildeling (diff mot forrige
@@ -2894,6 +3145,7 @@ async function handleRoute(request, { params }) {
               if (String(p.name || '').toLowerCase() === actor.toLowerCase()) continue;
               const ok = await deloppgaveEpost({ member: p, task: { ...eksisterende, ...set }, deloppgaver: perPerson.get(p.id), actor });
               if (ok) logg.push(`E-postvarsel sendt til ${p.name} (deloppgave tildelt)`);
+              varselKo.push({ userId: p.id, type: 'deloppgave', text: `${actor} ga deg ${perPerson.get(p.id).length > 1 ? `${perPerson.get(p.id).length} deloppgaver` : 'en deloppgave'}` });
             }
           }
         }
@@ -2911,8 +3163,9 @@ async function handleRoute(request, { params }) {
             if (body.notify !== false) {
               for (const f of flg) {
                 if (!f.email) continue;
-                const ok = await taskEpost({ member: f, task: { ...eksisterende, ...set }, heading: 'Du følger nå en sak', intro: `${actor} har lagt deg til som følger av saken.` });
+                const ok = await taskEpost({ member: f, task: { ...eksisterende, ...set }, heading: 'Du følger nå en sak', intro: `${actor} har lagt deg til som følger av saken.`, kategori: 'folger' });
                 if (ok) logg.push(`E-postvarsel sendt til følger ${f.name}`);
+                varselKo.push({ userId: f.id, type: 'folger', text: `${actor} la deg til som følger` });
               }
             }
           }
@@ -2940,9 +3193,10 @@ async function handleRoute(request, { params }) {
           const member = await db.collection('admin_users').findOne({ id: set.assigneeId });
           logg.push(`Ansvarlig: ${member ? member.name : 'ukjent'}`);
           if (member && body.notify !== false) {
-            emailed = await taskEpost({ member, task: { ...eksisterende, ...set }, heading: 'Sak tildelt deg', intro: `${actor} har satt deg som ansvarlig for saken.` });
+            emailed = await taskEpost({ member, task: { ...eksisterende, ...set }, heading: 'Sak tildelt deg', intro: `${actor} har satt deg som ansvarlig for saken.`, kategori: 'tildelt' });
             if (emailed) logg.push(`E-postvarsel sendt til ${member.name}`);
           }
+          varselKo.push({ userId: set.assigneeId, type: 'tildelt', text: `${actor} satte deg som ansvarlig` });
         } else {
           logg.push('Ansvarlig fjernet');
         }
@@ -2979,6 +3233,13 @@ async function handleRoute(request, { params }) {
       const update = { $set: set };
       if (logg.length) update.$push = { activity: { $each: logg.map((text) => ({ at: naa, actor, text })) } };
       await db.collection('tasks').updateOne({ id: path[2] }, update);
+      // Flush in-app-varsler (dedup per mottaker, hopp over aktøren selv).
+      const sett = new Set();
+      for (const v of varselKo) {
+        if (!v.userId || sett.has(`${v.userId}:${v.type}`)) continue;
+        sett.add(`${v.userId}:${v.type}`);
+        await varsle(db, v.userId, actorId, { type: v.type, taskId: path[2], taskTitle: set.title || eksisterende.title, actor, text: v.text });
+      }
       const task = await db.collection('tasks').findOne({ id: path[2] }, { projection: { _id: 0 } });
       return cors(NextResponse.json({ ok: true, task, emailed, nesteTask }));
     }
@@ -3004,6 +3265,8 @@ async function handleRoute(request, { params }) {
       const r = await db.collection('tasks').deleteOne({ id: path[2] });
       if (!r.deletedCount) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
       await db.collection('task_files').deleteMany({ taskId: path[2] }).catch(() => {});
+      // Gravsten for sanntids-diff (klienter fjerner saken ved neste /since-kall).
+      await db.collection('task_tombstones').updateOne({ id: path[2] }, { $set: { id: path[2], deletedAt: new Date().toISOString() } }, { upsert: true }).catch(() => {});
       return cors(NextResponse.json({ ok: true }));
     }
 
@@ -3016,8 +3279,9 @@ async function handleRoute(request, { params }) {
       if (!task) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
       const naa = new Date().toISOString();
       const author = String(body.author || 'Admin').slice(0, 80);
+      const actorId = (sessionFra(request) || {}).sub || null;
       // @mentions: autocompleten setter inn «@Fullt Navn» — match mot personlisten.
-      const allePersoner = await db.collection('admin_users').find({}, { projection: { _id: 0, id: 1, name: 1, email: 1 } }).toArray();
+      const allePersoner = await db.collection('admin_users').find({}, { projection: { _id: 0, id: 1, name: 1, email: 1, notifPrefs: 1 } }).toArray();
       const lavtekst = text.toLowerCase();
       const nevnt = allePersoner.filter((m) => m.name && lavtekst.includes(`@${String(m.name).toLowerCase()}`));
       const comment = {
@@ -3028,17 +3292,28 @@ async function handleRoute(request, { params }) {
       if (!r.matchedCount) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
       // E-postvarsel til nevnte med e-post (aldri forfatteren selv). notify:false skrur av.
       const varslet = [];
+      const nevntIds = new Set(nevnt.map((m) => m.id));
       if (nevnt.length && body.notify !== false) {
         const utdrag = text.length > 180 ? `${text.slice(0, 180)} …` : text;
         for (const m of nevnt) {
           if (!m.email) continue;
           if (String(m.name).toLowerCase() === author.toLowerCase()) continue;
-          const ok = await taskEpost({ member: m, task, heading: 'Du ble nevnt i en sak', intro: `${author} nevnte deg i en kommentar: «${utdrag}»` });
+          const ok = await taskEpost({ member: m, task, heading: 'Du ble nevnt i en sak', intro: `${author} nevnte deg i en kommentar: «${utdrag}»`, kategori: 'nevnt' });
           if (ok) varslet.push(m.name);
         }
         if (varslet.length) {
           await db.collection('tasks').updateOne({ id: path[2] }, { $push: { activity: { at: naa, actor: 'System', text: `E-postvarsel sendt til ${varslet.join(', ')} (nevnt i kommentar)` } } });
         }
+      }
+      // In-app-varsler: nevnte får 'nevnt'; ansvarlig + følgere (som ikke alt er
+      // nevnt, og ikke forfatteren) får 'kommentar'. Hopper alltid over aktøren.
+      for (const m of nevnt) {
+        await varsle(db, m.id, actorId, { type: 'nevnt', taskId: task.id, taskTitle: task.title, actor: author, text: `${author} nevnte deg i en kommentar` });
+      }
+      const komMottakere = new Set([task.assigneeId, ...(task.followers || [])].filter(Boolean));
+      for (const uid of komMottakere) {
+        if (nevntIds.has(uid)) continue; // fikk allerede 'nevnt'
+        await varsle(db, uid, actorId, { type: 'kommentar', taskId: task.id, taskTitle: task.title, actor: author, text: `${author} kommenterte saken` });
       }
       return cors(NextResponse.json({ ok: true, comment, mentioned: varslet }));
     }

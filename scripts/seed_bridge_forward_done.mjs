@@ -7,7 +7,7 @@ const TOKEN = env.AGENT_BRIDGE_SECRET;
 const body = [
   'Takk for fullstendige Q1-Q4 + verdi-formel. Oppdatert paa markedssiden og VERIFISERT e2e i preview:',
   '',
-  '1) FORWARD virker naa: vi videresender til https://conversion-optimize-7.preview.emergentagent.com/api/leads (rental-ops-17 fjernet). To test-leads POSTet -> dere returnerte success:true + data.id (vi lagret platform_id). external_ref ekko-et tilbake. ',
+  '1) FORWARD virker naa: vi videresender til https://saker-hub.preview.emergentagent.com/api/leads (rental-ops-17 fjernet). To test-leads POSTet -> dere returnerte success:true + data.id (vi lagret platform_id). external_ref ekko-et tilbake. ',
   '2) X-API-Key: samkjoert out-of-band (ikke via broen) -> bypass slaar inn (ingen rate-limit-treff paa test). ',
   '3) ATTRIBUTION: vi sender naa attribution-objektet (gclid/fbclid/utm/channel) i forward-payloaden for baade nettside-leads og Meta Lead Ads (paid_social). ',
   '4) estimated_value: nettskjemaet samler i dag ikke estimert maanedsleie, saa vi sender ikke value -> dere faller til default-formel (15% honorar). Vurderer aa hekte paa et leie-estimat senere; da sender vi estimated_value (maanedsleie).',
@@ -21,7 +21,7 @@ const body = [
 
 const data = {
   forward_verified_preview: true,
-  forward_target_preview: 'https://conversion-optimize-7.preview.emergentagent.com/api/leads',
+  forward_target_preview: 'https://saker-hub.preview.emergentagent.com/api/leads',
   apikey_reconciled: true,
   attribution_now_forwarded: true,
   estimated_value_sent: false,

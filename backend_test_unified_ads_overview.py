@@ -4,7 +4,7 @@ Comprehensive backend test for unified GET /api/admin/ads/overview endpoint
 Tests BOTH Google Ads (via Composio) AND Meta (Marketing API) LIVE in parallel
 with period filters + 10-min cache per channel.
 
-Base URL: https://conversion-optimize-7.preview.emergentagent.com/api
+Base URL: https://saker-hub.preview.emergentagent.com/api
 Admin key: dh_admin_b3Kx92Qz7Lm4
 Timeout: 45s (REAL external API calls)
 """
@@ -13,7 +13,7 @@ import requests
 import time
 from datetime import datetime
 
-BASE_URL = "https://conversion-optimize-7.preview.emergentagent.com/api"
+BASE_URL = "https://saker-hub.preview.emergentagent.com/api"
 ADMIN_KEY = "dh_admin_b3Kx92Qz7Lm4"
 TIMEOUT = 50  # 50s timeout for real API calls (some can take up to ~15s)
 

@@ -9,7 +9,7 @@ import json
 import sys
 from typing import Dict, Any, List
 
-BASE_URL = "https://conversion-optimize-7.preview.emergentagent.com/api"
+BASE_URL = "https://saker-hub.preview.emergentagent.com/api"
 ADMIN_KEY = "dh_admin_b3Kx92Qz7Lm4"
 
 def test_scenario_1_new_kpi_fields():
@@ -1030,7 +1030,7 @@ def test_scenario_11_regression():
         endpoints = [
             ('/admin/properties', 'GET'),
             ('/', 'GET'),
-            ('/admin/newsletter/campaign?id=6783d667-c93e-45ca-a458-341f9d79acf5', 'GET'),
+            ('/admin/newsletter/campaign?id=saker-hub', 'GET'),
             ('/admin/kpi?days=30', 'GET'),
         ]
         

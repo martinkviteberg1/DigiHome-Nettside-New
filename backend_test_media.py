@@ -8,7 +8,7 @@ import requests
 import sys
 
 # Base URL from .env NEXT_PUBLIC_BASE_URL
-BASE_URL = "https://conversion-optimize-7.preview.emergentagent.com/api"
+BASE_URL = "https://saker-hub.preview.emergentagent.com/api"
 
 def test_media_svg():
     """Test 1: GET /api/media/digihome-logo-white.svg"""

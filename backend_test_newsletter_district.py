@@ -9,7 +9,7 @@ import time
 import json
 from collections import Counter
 
-BASE_URL = "https://conversion-optimize-7.preview.emergentagent.com/api"
+BASE_URL = "https://saker-hub.preview.emergentagent.com/api"
 ADMIN_KEY = "dh_admin_b3Kx92Qz7Lm4"
 
 # Test data from review_request
@@ -206,7 +206,7 @@ def test_scenario_2_idempotent_sync():
 def test_scenario_3_old_drafts_self_heal():
     """
     SCENARIO 3: GAMLE UTKAST SELVHELES
-    GET /api/admin/newsletter/campaign?key=...&id=6783d667-c93e-45ca-a458-341f9d79acf5
+    GET /api/admin/newsletter/campaign?key=...&id=saker-hub
     - 200, campaign.blocks[0].type === 'properties', 12 items
     - CRITICAL: AFTER hydration, NO item has district === ''
     - Grouping items by district should yield AT LEAST 3 unique groups
@@ -408,7 +408,7 @@ def test_scenario_4_email_html_grouping():
 def test_scenario_5_property_interest_preview():
     """
     SCENARIO 5: BOLIGINTERESSE — PREVIEW MODE
-    GET /api/newsletter/property-interest/lookup?property=348c1174-6422-49f9-a016-5f84496654d4
+    GET /api/newsletter/property-interest/lookup?property=saker-hub
     - 200, ok:true, preview:true, available:true, property exists with district
     - CRITICAL: NO email, phone, name, tenantId in response. firstName should be empty string.
     GET /api/newsletter/property-interest/lookup?property=finnes-ikke-123 → 404 with ok:false

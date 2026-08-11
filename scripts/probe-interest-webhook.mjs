@@ -218,11 +218,11 @@ console.log('\n══ 10. VERN MOT FEIL MÅL ══');
   setEnv({ DIGIHOME_INTEREST_WEBHOOK_URL: `${ENV_KEEP.NEXT_PUBLIC_BASE_URL}/api/public/property-interest/incoming` });
   t('nekter å pushe til oss selv', webhookTarget().reason === 'webhook peker på oss selv', JSON.stringify(webhookTarget()));
 
-  setEnv({ DIGIHOME_INTEREST_WEBHOOK_URL: 'https://forvalter-redesign.preview.emergentagent.com/api/public/property-interest/incoming', NEXT_PUBLIC_BASE_URL: 'https://digihome.no' });
+  setEnv({ DIGIHOME_INTEREST_WEBHOOK_URL: 'https://saker-hub.preview.emergentagent.com/api/public/property-interest/incoming', NEXT_PUBLIC_BASE_URL: 'https://digihome.no' });
   t('produksjon pusher ikke til et preview', webhookTarget().reason === 'preview-endepunkt blokkert fra produksjon', JSON.stringify(webhookTarget()));
 
   setEnv({
-    DIGIHOME_INTEREST_WEBHOOK_URL: 'https://forvalter-redesign.preview.emergentagent.com/api/public/property-interest/incoming',
+    DIGIHOME_INTEREST_WEBHOOK_URL: 'https://saker-hub.preview.emergentagent.com/api/public/property-interest/incoming',
     DIGIHOME_INTEREST_WEBHOOK_URL_PROD: 'https://app.digihome.no/api/public/property-interest/incoming',
     NEXT_PUBLIC_BASE_URL: 'https://digihome.no',
   });
@@ -236,9 +236,9 @@ console.log('\n══ 10. VERN MOT FEIL MÅL ══');
 console.log('\n══ 11. LENKER TIL SAMTALEN ══');
 setEnv({});
 {
-  t('deep-link til én samtale', platformThreadUrl('rl-abc') === 'https://forvalter-redesign.preview.emergentagent.com/portal/meldinger/rl-abc', String(platformThreadUrl('rl-abc')));
-  t('innboks-lenke', platformInboxUrl() === 'https://forvalter-redesign.preview.emergentagent.com/portal/meldinger');
-  t('per-bolig-lenke', platformUnitUrl('u-1') === 'https://forvalter-redesign.preview.emergentagent.com/utleie/u-1');
+  t('deep-link til én samtale', platformThreadUrl('rl-abc') === 'https://saker-hub.preview.emergentagent.com/portal/meldinger/rl-abc', String(platformThreadUrl('rl-abc')));
+  t('innboks-lenke', platformInboxUrl() === 'https://saker-hub.preview.emergentagent.com/portal/meldinger');
+  t('per-bolig-lenke', platformUnitUrl('u-1') === 'https://saker-hub.preview.emergentagent.com/utleie/u-1');
   t('uten referanse: ingen deep-link', platformThreadUrl(null) === null);
   setEnv({ DIGIHOME_APP_URL: null });
   t('faller tilbake på plattformens prod-vert, aldri vår egen', platformAppBase() === 'https://app.digihome.no', String(platformAppBase()));

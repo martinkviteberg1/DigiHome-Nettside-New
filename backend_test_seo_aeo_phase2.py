@@ -9,7 +9,7 @@ import re
 import json
 from urllib.parse import urljoin
 
-BASE_URL = "https://conversion-optimize-7.preview.emergentagent.com"
+BASE_URL = "https://saker-hub.preview.emergentagent.com"
 ADMIN_KEY = "dh_admin_b3Kx92Qz7Lm4"
 
 def test_new_guide_utleiemegler_vs_selvforvaltning():

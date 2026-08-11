@@ -8,7 +8,7 @@ import json
 import sys
 from playwright.async_api import async_playwright
 
-BASE_URL = "https://conversion-optimize-7.preview.emergentagent.com/api"
+BASE_URL = "https://saker-hub.preview.emergentagent.com/api"
 ADMIN_KEY = "dh_admin_b3Kx92Qz7Lm4"
 
 async def run_tests():

@@ -3,7 +3,7 @@
 Backend test for FEATURE: kanonisk enhetseksport koblet på (speiling av «Enheter»-visningen) 
 + plattformens finnUrl + publicUrl på boliginteresse
 
-Base URL: https://conversion-optimize-7.preview.emergentagent.com/api
+Base URL: https://saker-hub.preview.emergentagent.com/api
 Admin key: dh_admin_b3Kx92Qz7Lm4
 
 Test scenarios:
@@ -28,7 +28,7 @@ import requests
 import json
 import sys
 
-BASE_URL = "https://conversion-optimize-7.preview.emergentagent.com/api"
+BASE_URL = "https://saker-hub.preview.emergentagent.com/api"
 ADMIN_KEY = "dh_admin_b3Kx92Qz7Lm4"
 
 # PII fields that MUST NOT appear in public/lookup endpoints
@@ -266,7 +266,7 @@ def test_scenario_2_admin_fields():
 def test_scenario_3_pii_stripping():
     """
     Scenario 3: ⚠️ MOST IMPORTANT — PII-STRIPPING
-    GET /newsletter/property-interest/lookup?property=6189812a-ae20-4d07-98f6-7764845291bb
+    GET /newsletter/property-interest/lookup?property=saker-hub
     Should return images (12), publicUrl and finnUrl, but NONE of the PII fields
     Test at least 3 properties, including one rented
     """
@@ -875,7 +875,7 @@ def test_scenario_8_regression():
     Verify existing endpoints still work:
     - GET /admin/kpi?days=30
     - GET /api/
-    - GET /admin/newsletter/campaign?id=6783d667-c93e-45ca-a458-341f9d79acf5 (with district intact)
+    - GET /admin/newsletter/campaign?id=saker-hub (with district intact)
     """
     print("\n" + "="*80)
     print("SCENARIO 8: REGRESSION TESTS")
@@ -907,8 +907,8 @@ def test_scenario_8_regression():
         print(f"✅ GET /api/ returns 200")
         
         # Test 3: GET /admin/newsletter/campaign with specific ID
-        print("\n[8.3] GET /admin/newsletter/campaign?id=6783d667-c93e-45ca-a458-341f9d79acf5")
-        campaign_url = f"{BASE_URL}/admin/newsletter/campaign?id=6783d667-c93e-45ca-a458-341f9d79acf5&key={ADMIN_KEY}"
+        print("\n[8.3] GET /admin/newsletter/campaign?id=saker-hub")
+        campaign_url = f"{BASE_URL}/admin/newsletter/campaign?id=saker-hub&key={ADMIN_KEY}"
         campaign_response = requests.get(campaign_url, timeout=30)
         print(f"Status: {campaign_response.status_code}")
         

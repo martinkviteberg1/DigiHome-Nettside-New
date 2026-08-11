@@ -2,7 +2,7 @@
 """
 Backend API Testing - Environment-based Lead Routing
 Tests the NEW environment-based lead routing logic + regression tests
-Base URL: https://conversion-optimize-7.preview.emergentagent.com/api
+Base URL: https://saker-hub.preview.emergentagent.com/api
 """
 
 import requests
@@ -10,7 +10,7 @@ import json
 import sys
 from datetime import datetime
 
-BASE_URL = "https://conversion-optimize-7.preview.emergentagent.com/api"
+BASE_URL = "https://saker-hub.preview.emergentagent.com/api"
 ADMIN_KEY = "dh_admin_b3Kx92Qz7Lm4"
 
 def log(msg):

@@ -6,7 +6,7 @@ Tests all newsletter endpoints according to the test sequence.
 CRITICAL WARNING: POST /api/admin/newsletter/send sends REAL emails via SendGrid.
 We ONLY test validation errors (400) on the send endpoint, NEVER actually send emails.
 
-Base URL: https://conversion-optimize-7.preview.emergentagent.com/api
+Base URL: https://saker-hub.preview.emergentagent.com/api
 Admin key: ?key=dh_admin_b3Kx92Qz7Lm4
 """
 
@@ -15,7 +15,7 @@ import json
 import sys
 from urllib.parse import urlencode
 
-BASE_URL = "https://conversion-optimize-7.preview.emergentagent.com/api"
+BASE_URL = "https://saker-hub.preview.emergentagent.com/api"
 ADMIN_KEY = "dh_admin_b3Kx92Qz7Lm4"
 TIMEOUT = 60
 

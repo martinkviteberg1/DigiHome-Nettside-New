@@ -10,7 +10,7 @@ const env = Object.fromEntries(
     .map((l) => [l.slice(0, l.indexOf('=')).trim(), l.slice(l.indexOf('=') + 1).trim()]),
 );
 const TOKEN = env.AGENT_BRIDGE_SECRET;
-const PREVIEW = 'https://conversion-optimize-7.preview.emergentagent.com';
+const PREVIEW = 'https://saker-hub.preview.emergentagent.com';
 
 const messages = [
   {
@@ -40,7 +40,7 @@ TO SPØRSMÅL I TILLEGG
     data: {
       checked_at: new Date().toISOString(),
       platform_preview: {
-        base: 'https://forvalter-redesign.preview.emergentagent.com',
+        base: 'https://saker-hub.preview.emergentagent.com',
         units_export: 200, units: 31, with_images: 0, with_ad_title: 0, ready_to_market: 0,
       },
       platform_prod: {

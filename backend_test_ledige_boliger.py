@@ -10,7 +10,7 @@ import re
 import sys
 
 # Configuration
-BASE_URL = "https://conversion-optimize-7.preview.emergentagent.com"
+BASE_URL = "https://saker-hub.preview.emergentagent.com"
 API_BASE = f"{BASE_URL}/api"
 ADMIN_KEY = "dh_admin_b3Kx92Qz7Lm4"
 TIMEOUT = 30
@@ -658,7 +658,7 @@ except Exception as e:
 # Test GET /api/newsletter/property-interest/lookup
 try:
     response = requests.get(
-        f"{API_BASE}/newsletter/property-interest/lookup?property=6189812a-ae20-4d07-98f6-7764845291bb",
+        f"{API_BASE}/newsletter/property-interest/lookup?property=saker-hub",
         timeout=TIMEOUT
     )
     
