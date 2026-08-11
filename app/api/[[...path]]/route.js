@@ -1070,7 +1070,7 @@ async function invaliderBrukerTokens(db, userId) {
 // --- E-postramme for konto-e-poster (invitasjon / reset / magic link) ---
 // Verdensklasse, klientsikker HTML: inline-styles, skjult preheader, én tydelig
 // CTA, fallback-lenke i klartekst og sikkerhetsnotis. Matcher admin-designet.
-function authEpostHtml({ eyebrow, heading, intro, detaljerHtml = '', ctaLabel, ctaUrl, gyldighet, sikkerhet, mottakerEpost, preheader }) {
+function authEpostHtml({ eyebrow, heading, intro, detaljerHtml = '', ctaLabel, ctaUrl, gyldighet, sikkerhet, mottakerEpost, preheader, headerLabel = 'Internt arbeidsområde' }) {
   const esc = taskEsc;
   return `
   <div style="background:#f6f5f3;padding:40px 16px;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif">
@@ -1078,7 +1078,7 @@ function authEpostHtml({ eyebrow, heading, intro, detaljerHtml = '', ctaLabel, c
     <div style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:20px;overflow:hidden;border:1px solid #ececec">
       <div style="background:#0a0a0a;padding:22px 30px">
         <span style="display:inline-block;width:9px;height:9px;border-radius:99px;background:#cf97fc;vertical-align:middle;margin-right:9px"></span><span style="color:#ffffff;font-size:16px;font-weight:700;letter-spacing:-0.01em;vertical-align:middle">DigiHome</span>
-        <span style="float:right;color:rgba(255,255,255,0.4);font-size:11px;letter-spacing:0.08em;text-transform:uppercase;line-height:20px">Internt arbeidsområde</span>
+        <span style="float:right;color:rgba(255,255,255,0.4);font-size:11px;letter-spacing:0.08em;text-transform:uppercase;line-height:20px">${esc(headerLabel)}</span>
       </div>
       <div style="padding:36px 30px 8px">
         <p style="margin:0 0 10px;color:#8b5cf6;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em">${esc(eyebrow)}</p>
@@ -1088,7 +1088,7 @@ function authEpostHtml({ eyebrow, heading, intro, detaljerHtml = '', ctaLabel, c
       </div>
       <div style="padding:26px 30px 8px">
         <a href="${ctaUrl}" style="display:block;background:#0a0a0a;color:#ffffff;text-decoration:none;font-size:15px;font-weight:600;padding:15px 24px;border-radius:14px;text-align:center">${esc(ctaLabel)} &rarr;</a>
-        <p style="margin:14px 0 0;color:#999;font-size:12px;line-height:1.6;text-align:center">${esc(gyldighet)}</p>
+        ${gyldighet ? `<p style="margin:14px 0 0;color:#999;font-size:12px;line-height:1.6;text-align:center">${esc(gyldighet)}</p>` : ''}
       </div>
       <div style="padding:22px 30px 30px">
         <div style="border-top:1px solid #f0efed;padding-top:18px">
@@ -1096,9 +1096,9 @@ function authEpostHtml({ eyebrow, heading, intro, detaljerHtml = '', ctaLabel, c
           <p style="margin:0;word-break:break-all"><a href="${ctaUrl}" style="color:#8b5cf6;font-size:11.5px;text-decoration:underline">${esc(ctaUrl)}</a></p>
         </div>
       </div>
-      <div style="background:#fafaf8;border-top:1px solid #f0efed;padding:18px 30px">
+      ${sikkerhet ? `<div style="background:#fafaf8;border-top:1px solid #f0efed;padding:18px 30px">
         <p style="margin:0;color:#8a8a8a;font-size:12px;line-height:1.6">${esc(sikkerhet)}</p>
-      </div>
+      </div>` : ''}
     </div>
     <p style="max-width:560px;margin:18px auto 0;text-align:center;color:#b5b5b5;font-size:11px;line-height:1.6">DigiHome &middot; digihome.no${mottakerEpost ? ` &middot; Sendt til ${esc(mottakerEpost)}` : ''}</p>
   </div>`;
@@ -1584,31 +1584,41 @@ function normaliserVedtak(input) {
   })).filter((v) => v.text);
 }
 
+// Møte-e-post (innkalling + referat) — bruker samme premium-ramme som
+// konto-e-postene (authEpostHtml) slik at ALT teamet mottar ser likt ut.
 async function moteEpost({ member, meeting, heading, intro, ekstraHtml = '', skjulAgenda = false }) {
   if (!member || !member.email || !emailConfigured()) return false;
   const base = (process.env.NEXT_PUBLIC_BASE_URL || 'https://digihome.no').replace(/\/$/, '');
+  const fornavn = String(member.name || '').trim().split(/\s+/)[0] || 'der';
   const naar = meeting.datetime
     ? new Date(meeting.datetime).toLocaleString('nb-NO', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Oslo' })
     : 'Ikke fastsatt';
-  const rad = (l, v) => `<tr><td style="padding:4px 14px 4px 0;color:#8a8a8a;font-size:13px;white-space:nowrap">${l}</td><td style="padding:4px 0;color:#111;font-size:13px;font-weight:600">${v}</td></tr>`;
+  const rad = (l, v) => `<tr><td style="padding:5px 16px 5px 0;color:#8a8a8a;font-size:13px;white-space:nowrap">${l}</td><td style="padding:5px 0;color:#111;font-size:13px;font-weight:600">${v}</td></tr>`;
   const agendaHtml = !skjulAgenda && (meeting.agenda || []).length
-    ? `<p style="margin:18px 0 6px;color:#8b5cf6;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em">Agenda</p><ol style="margin:0;padding-left:18px;color:#444;font-size:13.5px;line-height:1.7">${meeting.agenda.map((p) => `<li>${taskEsc(p.text)}</li>`).join('')}</ol>`
+    ? `<p style="margin:18px 0 6px;color:#8b5cf6;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em">Agenda</p><ol style="margin:0;padding-left:18px;color:#444;font-size:13.5px;line-height:1.7">${meeting.agenda.map((p) => `<li>${taskEsc(p.text)}</li>`).join('')}</ol>`
     : '';
-  const html = `
-  <div style="background:#f6f5f3;padding:32px 16px;font-family:-apple-system,'Segoe UI',Roboto,sans-serif">
-    <div style="max-width:520px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;border:1px solid #eee">
-      <div style="background:#0a0a0a;padding:18px 24px"><span style="color:#fff;font-size:15px;font-weight:700">DigiHome</span> <span style="color:rgba(255,255,255,0.45);font-size:12px;margin-left:6px">Møter · intern</span></div>
-      <div style="padding:26px 24px">
-        <p style="margin:0;color:#8b5cf6;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em">${taskEsc(heading)}</p>
-        <h2 style="margin:8px 0 4px;color:#0a0a0a;font-size:19px;line-height:1.3">${taskEsc(meeting.title)}</h2>
-        <p style="margin:0 0 16px;color:#666;font-size:13.5px;line-height:1.55">${taskEsc(intro)}</p>
-        <table style="border-collapse:collapse">${rad('Når', taskEsc(naar))}${rad('Type', MOTE_TYPE_LABEL[meeting.type] || 'Møte')}</table>
+  const detaljer = `
+        <div style="margin-top:20px;background:#fafaf8;border:1px solid #f0efed;border-radius:14px;padding:16px 20px">
+          <table style="border-collapse:collapse">
+            ${rad('Når', taskEsc(naar))}
+            ${rad('Type', MOTE_TYPE_LABEL[meeting.type] || 'Møte')}
+          </table>
+        </div>
         ${agendaHtml}
-        ${ekstraHtml}
-        <a href="${base}/admin" style="display:inline-block;margin-top:20px;background:#0a0a0a;color:#fff;text-decoration:none;font-size:13.5px;font-weight:600;padding:11px 20px;border-radius:99px">Åpne Møter i admin →</a>
-      </div>
-    </div>
-  </div>`;
+        ${ekstraHtml}`;
+  const html = authEpostHtml({
+    eyebrow: heading,
+    heading: meeting.title,
+    intro: `Hei ${taskEsc(fornavn)} — ${intro}`,
+    detaljerHtml: detaljer,
+    ctaLabel: 'Åpne Møter i admin',
+    ctaUrl: `${base}/admin`,
+    gyldighet: '',
+    sikkerhet: 'Du mottar denne e-posten fordi du står som deltaker i møtet i DigiHomes interne arbeidsområde.',
+    mottakerEpost: member.email,
+    preheader: `${heading}: ${meeting.title} — ${naar}`,
+    headerLabel: 'Møter · intern',
+  });
   try {
     await sendHtmlEmail({ to: member.email, subject: `${heading}: ${meeting.title}`, html, fromName: 'DigiHome Møter', individual: false, categories: ['intern-mote'] });
     return true;
@@ -2061,6 +2071,44 @@ async function handleRoute(request, { params }) {
       return cors(NextResponse.json({
         ok: true, token, exp,
         user: { email: hit.user.email, name: hit.user.name || '', role: hit.user.role || 'admin' },
+      }));
+    }
+
+    // Min profil: alle innloggede kontoer (admin OG bruker) kan endre eget
+    // navn, egen farge og eget passord. Krever PERSONLIG sesjon (masternøkkel
+    // har ingen identitet), og passordbytte krever gjeldende passord.
+    // E-post og rolle endres kun av admin via /admin/users.
+    if (route === '/admin/auth/profile' && method === 'PUT') {
+      if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const sesjon = sessionFra(request);
+      if (!sesjon || !sesjon.sub) return cors(NextResponse.json({ ok: false, error: 'Krever personlig innlogging (ikke masternøkkel)' }, { status: 400 }));
+      const meg = await db.collection('admin_users').findOne({ id: sesjon.sub });
+      if (!meg) return cors(NextResponse.json({ ok: false, error: 'Kontoen finnes ikke lenger' }, { status: 404 }));
+      let body = {}; try { body = await request.json(); } catch (e) {}
+      const set = {};
+      if (body.name !== undefined) {
+        const n = String(body.name).trim().slice(0, 80);
+        if (!n) return cors(NextResponse.json({ ok: false, error: 'Navn kan ikke være tomt' }, { status: 400 }));
+        set.name = n;
+      }
+      if (body.color !== undefined && /^#[0-9a-fA-F]{6}$/.test(String(body.color))) set.color = body.color;
+      if (body.password !== undefined && body.password) {
+        const pw = String(body.password);
+        if (pw.length < 8) return cors(NextResponse.json({ ok: false, error: 'Passord må ha minst 8 tegn' }, { status: 400 }));
+        if (meg.passwordHash && !verifyPassword(String(body.currentPassword || ''), meg.passwordHash)) {
+          return cors(NextResponse.json({ ok: false, error: 'Feil nåværende passord' }, { status: 401 }));
+        }
+        set.passwordHash = hashPassword(pw);
+      }
+      if (!Object.keys(set).length) return cors(NextResponse.json({ ok: false, error: 'Ingenting å endre' }, { status: 400 }));
+      await db.collection('admin_users').updateOne({ id: meg.id }, { $set: set });
+      if (set.passwordHash) {
+        try { await invaliderBrukerTokens(db, meg.id); } catch (e) {}
+      }
+      const member = (await hentPersoner(db)).find((m) => m.id === meg.id) || null;
+      return cors(NextResponse.json({
+        ok: true, member,
+        user: { email: meg.email || '', name: set.name || meg.name || '', role: meg.role || 'admin' },
       }));
     }
 

@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Radio, Activity, GitBranch, Gauge, Megaphone, Database,
   Command, Search, CornerDownLeft, LayoutTemplate, Crosshair, TrendingUp, Wallet,
   Globe, ExternalLink, PenLine, Mail, Home, History, Landmark, Wand2, Layers, UserPlus,
-  ClipboardCheck, CalendarDays, ArrowLeft, KeyRound, Check,
+  ClipboardCheck, CalendarDays, ArrowLeft, KeyRound, Check, User,
 } from 'lucide-react';
 import InnsiktDashboard from '@/components/admin/InnsiktDashboard';
 import KpiDashboard from '@/components/admin/KpiDashboard';
@@ -152,6 +152,7 @@ export default function AdminPage() {
   const [insightStats, setInsightStats] = useState({ pending: 0 });
   const [taskStats, setTaskStats] = useState({ open: 0, overdue: 0 });
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   // Sammenleggbare menygrupper — false = manuelt lukket (persisteres).
   // Gruppen med aktivt element tvinges alltid åpen, så man aldri «mister» seg selv.
@@ -329,12 +330,19 @@ export default function AdminPage() {
       </div>
       <NavList />
       <div className="px-3 py-3 border-t border-white/[0.07] shrink-0">
-        <div className="flex items-center gap-3 px-2 py-2">
-          <div className="h-9 w-9 rounded-full bg-[#cf97fc] text-[#0a0a0a] flex items-center justify-center text-[14px] font-bold shrink-0">{initials}</div>
-          <div className="min-w-0 flex-1">
-            <p className="text-white text-[13px] font-semibold truncate">{user && user.email}</p>
-            <p className="text-white/35 text-[11px] capitalize">{(user && user.role) || 'admin'}</p>
-          </div>
+        <div className="flex items-center gap-1 px-2 py-2">
+          <button
+            onClick={() => { setProfileOpen(true); setSidebarOpen(false); }}
+            title="Min profil — navn, farge og passord"
+            data-testid="profile-open-btn"
+            className="flex items-center gap-3 flex-1 min-w-0 rounded-lg -mx-1 px-1 py-1 text-left hover:bg-white/[0.06] transition-colors"
+          >
+            <div className="h-9 w-9 rounded-full bg-[#cf97fc] text-[#0a0a0a] flex items-center justify-center text-[14px] font-bold shrink-0">{initials}</div>
+            <div className="min-w-0 flex-1">
+              <p className="text-white text-[13px] font-semibold truncate">{(user && user.name) || (user && user.email)}</p>
+              <p className="text-white/35 text-[11px] capitalize">{(user && user.role) || 'admin'} · Min profil</p>
+            </div>
+          </button>
           <button onClick={logout} title="Logg ut" className="text-white/40 hover:text-rose-400 transition-colors p-1.5"><LogOut className="w-4 h-4" /></button>
         </div>
       </div>
@@ -381,12 +389,20 @@ export default function AdminPage() {
     { id: 'qa-lp-10pluss2', group: 'Hurtighandlinger', label: 'Åpne landingsside: 10+2', icon: ExternalLink, action: () => { setPaletteOpen(false); window.open('/lp/10pluss2', '_blank'); } },
     { id: 'qa-lp-leietaker', group: 'Hurtighandlinger', label: 'Åpne landingsside: Leietaker', icon: ExternalLink, action: () => { setPaletteOpen(false); window.open('/lp/leietaker', '_blank'); } },
     ]),
+    { id: 'profil', group: 'Konto', label: 'Min profil — navn, farge og passord', icon: User, action: () => { setPaletteOpen(false); setProfileOpen(true); } },
     { id: 'logout', group: 'Konto', label: 'Logg ut', icon: LogOut, action: () => { setPaletteOpen(false); logout(); } },
   ];
 
   return (
     <div className="min-h-screen bg-[#f7f6f4] flex">
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} commands={paletteCommands} />
+      {profileOpen && (
+        <ProfilModal
+          token={token} user={user}
+          onClose={() => setProfileOpen(false)}
+          onUpdated={(u) => setUser((prev) => ({ ...prev, ...u }))}
+        />
+      )}
       {/* Sidebar — desktop */}
       <aside className="hidden lg:flex w-64 shrink-0 sticky top-0 h-screen">
         <SidebarInner />
@@ -913,6 +929,187 @@ function AuthSkjerm({ onLoggedIn }) {
         </div>
         {innhold}
         <p className="mt-6 text-white/30 text-[12px] flex items-center gap-1.5"><ShieldCheck className="w-3.5 h-3.5" /> Kryptert sesjon · noindex · kun for DigiHome-teamet</p>
+      </div>
+    </div>
+  );
+}
+
+/* ==========================================================================
+   ProfilModal — «Min profil»: alle innloggede kontoer (admin OG bruker) kan
+   endre eget navn, egen avatarfarge og eget passord. Passordbytte krever
+   gjeldende passord (verifiseres server-side i PUT /api/admin/auth/profile);
+   e-post og rolle endres kun av admin via Personer & kontoer.
+   ========================================================================== */
+const PROFIL_FARGER = ['#8B5CF6', '#0EA5E9', '#F59E0B', '#10B981', '#EF4444', '#EC4899', '#6366F1', '#14B8A6'];
+
+function ProfilModal({ token, user, onClose, onUpdated }) {
+  const [name, setName] = useState((user && user.name) || '');
+  const [color, setColor] = useState('');
+  const [curPw, setCurPw] = useState('');
+  const [pw1, setPw1] = useState('');
+  const [pw2, setPw2] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const [okMsg, setOkMsg] = useState('');
+
+  // Hent egen farge (og navn hvis tomt) fra personlisten — matcher på e-post.
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const r = await fetch(`/api/admin/users?key=${encodeURIComponent(token)}`);
+        const j = await r.json();
+        if (alive && j.ok) {
+          const epost = ((user && user.email) || '').toLowerCase();
+          const meg = (j.members || []).find((m) => (m.email || '').toLowerCase() === epost);
+          if (meg) {
+            setColor(meg.color || '');
+            setName((prev) => prev || meg.name || '');
+          }
+        }
+      } catch (e) {}
+    })();
+    return () => { alive = false; };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Esc lukker
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  const bytterPassord = !!(pw1 || pw2 || curPw);
+
+  const lagre = async () => {
+    setErr(''); setOkMsg('');
+    if (!name.trim()) { setErr('Navn kan ikke være tomt'); return; }
+    if (pw1 || pw2) {
+      if (pw1.length < 8) { setErr('Nytt passord må ha minst 8 tegn'); return; }
+      if (pw1 !== pw2) { setErr('Passordene er ikke like'); return; }
+    }
+    setBusy(true);
+    try {
+      const body = { name: name.trim() };
+      if (color) body.color = color;
+      if (pw1) { body.password = pw1; body.currentPassword = curPw; }
+      const r = await fetch(`/api/admin/auth/profile?key=${encodeURIComponent(token)}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const j = await r.json();
+      if (!r.ok || !j.ok) { setErr(j.error || 'Lagring feilet'); setBusy(false); return; }
+      onUpdated(j.user);
+      setOkMsg(pw1 ? 'Profil og passord oppdatert' : 'Profil oppdatert');
+      setCurPw(''); setPw1(''); setPw2('');
+      window.setTimeout(onClose, 900);
+    } catch (e) { setErr('Nettverksfeil — prøv igjen'); }
+    setBusy(false);
+  };
+
+  const felt = 'mt-1.5 w-full h-11 rounded-lg border border-black/[0.08] bg-white px-3 text-[14px] outline-none transition-all placeholder:text-[#bbb] hover:border-black/[0.16] focus:border-[#8b5cf6]/50 focus:ring-2 focus:ring-[#8b5cf6]/15';
+  const label = 'text-[11px] font-bold uppercase tracking-[0.08em] text-[#999]';
+  const initialer = (name || (user && user.email) || 'A').slice(0, 1).toUpperCase();
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center" data-testid="profile-modal">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" onClick={onClose} />
+      <div className="relative w-full sm:max-w-md bg-white sm:rounded-2xl rounded-t-2xl shadow-2xl overflow-hidden max-h-[92vh] flex flex-col">
+        <div className="flex shrink-0 items-center gap-2 border-b border-black/[0.06] px-5 py-4">
+          <User className="w-[18px] h-[18px] shrink-0 text-[#8b5cf6]" />
+          <h3 className="text-[16px] font-bold text-[#0a0a0a]" style={{ fontFamily: 'var(--font-heading)' }}>Min profil</h3>
+          <button onClick={onClose} className="ml-auto rounded-lg p-2 text-[#999] hover:bg-[#f3f2f0]" data-testid="profile-close-btn"><X className="w-4 h-4" /></button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-5 py-4">
+          {/* Identitet */}
+          <div className="flex items-center gap-3">
+            <div className="h-12 w-12 rounded-full text-white flex items-center justify-center text-[18px] font-bold shrink-0" style={{ background: color || '#cf97fc' }}>{initialer}</div>
+            <div className="min-w-0">
+              <p className="text-[14px] font-semibold text-[#1a1a1a] truncate">{user && user.email}</p>
+              <p className="text-[12px] text-[#999] capitalize">{(user && user.role) || 'admin'} — e-post og rolle endres av administrator</p>
+            </div>
+          </div>
+
+          <div className="mt-5">
+            <label className={label}>Navn</label>
+            <input
+              value={name} onChange={(e) => setName(e.target.value)}
+              placeholder="Ditt navn" className={felt}
+              data-testid="profile-name-input"
+            />
+          </div>
+
+          <div className="mt-4">
+            <label className={label}>Avatarfarge</label>
+            <div className="mt-2 flex items-center gap-2 flex-wrap">
+              {PROFIL_FARGER.map((f) => (
+                <button
+                  key={f} onClick={() => setColor(f)} title={f}
+                  data-testid={`profile-color-${f.replace('#', '')}`}
+                  className={`h-8 w-8 rounded-full transition-all active:scale-[0.9] ${color === f ? 'ring-2 ring-offset-2 ring-[#0a0a0a]' : 'hover:scale-110'}`}
+                  style={{ background: f }}
+                >
+                  {color === f && <Check className="w-4 h-4 text-white mx-auto" />}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Passordbytte */}
+          <div className="mt-6 rounded-xl border border-black/[0.06] bg-[#fafaf8] p-4">
+            <p className="flex items-center gap-1.5 text-[12px] font-bold uppercase tracking-[0.08em] text-[#999]"><KeyRound className="w-3.5 h-3.5" /> Bytt passord</p>
+            <div className="mt-3 space-y-3">
+              <div>
+                <label className={label}>Nåværende passord</label>
+                <input
+                  type="password" value={curPw} onChange={(e) => setCurPw(e.target.value)}
+                  autoComplete="current-password" placeholder="••••••••" className={felt}
+                  data-testid="profile-current-pw"
+                />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className={label}>Nytt passord</label>
+                  <input
+                    type="password" value={pw1} onChange={(e) => setPw1(e.target.value)}
+                    autoComplete="new-password" placeholder="Minst 8 tegn" className={felt}
+                    data-testid="profile-new-pw1"
+                  />
+                </div>
+                <div>
+                  <label className={label}>Gjenta</label>
+                  <input
+                    type="password" value={pw2} onChange={(e) => setPw2(e.target.value)}
+                    autoComplete="new-password" placeholder="Én gang til" className={felt}
+                    data-testid="profile-new-pw2"
+                  />
+                </div>
+              </div>
+              {bytterPassord && (
+                <div className="flex items-center gap-4 text-[12px]">
+                  <span className={`flex items-center gap-1 ${pw1.length >= 8 ? 'text-emerald-600' : 'text-[#bbb]'}`}><Check className="w-3.5 h-3.5" /> Minst 8 tegn</span>
+                  <span className={`flex items-center gap-1 ${pw1 && pw1 === pw2 ? 'text-emerald-600' : 'text-[#bbb]'}`}><Check className="w-3.5 h-3.5" /> Like</span>
+                </div>
+              )}
+              <p className="text-[11px] text-[#b5b5b5]">La feltene stå tomme hvis du ikke vil bytte passord. Alle utestående e-postlenker invalideres ved bytte.</p>
+            </div>
+          </div>
+
+          {err && <p className="mt-3 text-[13px] text-rose-600 flex items-center gap-1.5"><X className="w-3.5 h-3.5 shrink-0" /> {err}</p>}
+          {okMsg && <p className="mt-3 text-[13px] text-emerald-600 flex items-center gap-1.5" data-testid="profile-ok-msg"><Check className="w-3.5 h-3.5 shrink-0" /> {okMsg}</p>}
+        </div>
+
+        <div className="shrink-0 border-t border-black/[0.06] px-5 py-4 flex items-center gap-2" style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}>
+          <button onClick={onClose} className="rounded-lg px-3 py-2.5 text-[13px] font-medium text-[#888] hover:bg-[#f3f2f0]">Avbryt</button>
+          <button
+            onClick={lagre} disabled={busy || !name.trim()}
+            data-testid="profile-save-btn"
+            className="ml-auto flex items-center gap-1.5 rounded-lg bg-[#0a0a0a] px-4 py-2.5 text-[13.5px] font-semibold text-white transition-all hover:bg-black/85 active:scale-[0.97] disabled:opacity-40"
+          >
+            {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />} Lagre profil
+          </button>
+        </div>
       </div>
     </div>
   );

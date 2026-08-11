@@ -1,395 +1,772 @@
 #!/usr/bin/env python3
 """
-Backend test for @mentions in POST /api/admin/tasks/:id/comments
-CRITICAL: Uses notify:false to prevent real emails via SendGrid (LIVE)
+Backend test for MØTER (meetings) module + MIN PROFIL (profile) endpoint.
+Tests all meetings CRUD operations, aksjonspunkt, send-referat, recurrence, delete,
+and the new profile endpoint for name/color/password changes.
+
+CRITICAL EMAIL SAFETY:
+- SendGrid is LIVE
+- All QA persons use @example.com addresses (blocked by isUndeliverableTestAddress)
+- Use notify:false on POST /admin/meetings and aksjonspunkt
+- send-referat has NO notify flag - only call on QA meetings with @example.com attendees
+- NEVER add owner account (martin@kviteberg.no) as attendee
+- NEVER test profile route on owner account
 """
-import requests
+
+import asyncio
+import aiohttp
 import json
-import sys
+import os
+from datetime import datetime, timedelta
 from pymongo import MongoClient
 
-# Configuration from .env
+# Configuration
 BASE_URL = "https://conversion-optimize-7.preview.emergentagent.com/api"
 ADMIN_KEY = "dh_admin_b3Kx92Qz7Lm4"
+OWNER_EMAIL = "martin@kviteberg.no"
+OWNER_PASSWORD = "Pyramiden2025##"
 MONGO_URL = "mongodb://localhost:27017"
 DB_NAME = "your_database_name"
 
-def print_test(msg):
-    print(f"  → {msg}")
+# Test data
+QA_PERSON_EMAIL = "qa-mote@example.com"
+QA_BRUKER_EMAIL = "qa-mote-bruker@example.com"
+QA_BRUKER_PASSWORD = "QaBruker123!"
+QA_BRUKER_NEW_PASSWORD = "NyttQaPass123!"
 
-def print_success(msg):
-    print(f"  ✅ {msg}")
-
-def print_fail(msg):
-    print(f"  ❌ {msg}")
-
-def main():
-    print("\n" + "="*80)
-    print("BACKEND TEST: @mentions i POST /api/admin/tasks/:id/comments")
-    print("="*80)
+async def main():
+    print("=" * 80)
+    print("MØTER + MIN PROFIL BACKEND TEST")
+    print("=" * 80)
+    print(f"Base URL: {BASE_URL}")
+    print(f"Admin key: {ADMIN_KEY}")
+    print(f"MongoDB: {MONGO_URL}, DB: {DB_NAME}")
+    print()
     
-    # Connect to MongoDB
-    try:
-        client = MongoClient(MONGO_URL)
-        db = client[DB_NAME]
-        print_success(f"Connected to MongoDB: {MONGO_URL}/{DB_NAME}")
-    except Exception as e:
-        print_fail(f"MongoDB connection failed: {e}")
-        return 1
+    # MongoDB connection
+    mongo_client = MongoClient(MONGO_URL)
+    db = mongo_client[DB_NAME]
     
     # Track test data for cleanup
-    test_user_ids = []
-    test_task_id = None
+    test_data = {
+        "meetings": [],
+        "tasks": [],
+        "users": [],
+        "persons": [],
+        "auth_tokens": []
+    }
     
-    try:
-        # ===================================================================
-        # STEP 1: Create test person WITHOUT email (no real email can be sent)
-        # ===================================================================
-        print("\n[1] CREATE TEST PERSON WITHOUT EMAIL")
-        person_payload = {
-            "name": "QA Mention Person",
-            "role": "bruker"
-            # NO email field - this is critical to prevent real emails
-        }
-        r = requests.post(f"{BASE_URL}/admin/users?key={ADMIN_KEY}", json=person_payload)
-        if r.status_code not in [200, 201]:
-            print_fail(f"Failed to create test person: {r.status_code} {r.text}")
-            return 1
-        person_data = r.json()
-        person_id = person_data.get("member", {}).get("id") or person_data.get("user", {}).get("id")
-        if not person_id:
-            print_fail(f"No person ID returned: {person_data}")
-            return 1
-        test_user_ids.append(person_id)
-        print_success(f"Created test person WITHOUT email: id={person_id}, name='QA Mention Person'")
-        
-        # ===================================================================
-        # STEP 2: Create test task (notify:false, no assignee, no dueDate)
-        # ===================================================================
-        print("\n[2] CREATE TEST TASK")
-        task_payload = {
-            "title": "QA mention-sak",
-            "notify": False  # CRITICAL: no notifications
-            # NO assigneeId, NO dueDate
-        }
-        r = requests.post(f"{BASE_URL}/admin/tasks?key={ADMIN_KEY}", json=task_payload)
-        if r.status_code not in [200, 201]:
-            print_fail(f"Failed to create test task: {r.status_code} {r.text}")
-            return 1
-        task_data = r.json()
-        test_task_id = task_data.get("task", {}).get("id")
-        if not test_task_id:
-            print_fail(f"No task ID returned: {task_data}")
-            return 1
-        print_success(f"Created test task: id={test_task_id}, title='QA mention-sak'")
-        
-        # ===================================================================
-        # STEP 3: POST comment with @mention (notify:false)
-        # ===================================================================
-        print("\n[3] POST COMMENT WITH @MENTION (exact case)")
-        comment_payload = {
-            "text": "Hei @QA Mention Person kan du sjekke?",
-            "author": "QA Tester",
-            "notify": False  # CRITICAL: no emails
-        }
-        r = requests.post(f"{BASE_URL}/admin/tasks/{test_task_id}/comments?key={ADMIN_KEY}", json=comment_payload)
-        if r.status_code != 200:
-            print_fail(f"Failed to post comment: {r.status_code} {r.text}")
-            return 1
-        comment_data = r.json()
-        if not comment_data.get("ok"):
-            print_fail(f"Comment not ok: {comment_data}")
-            return 1
-        comment = comment_data.get("comment", {})
-        mentions = comment.get("mentions", [])
-        mentioned = comment_data.get("mentioned", [])
-        
-        # Verify mentions array contains person_id
-        if person_id not in mentions:
-            print_fail(f"Person ID {person_id} not in mentions: {mentions}")
-            return 1
-        print_success(f"comment.mentions contains person_id: {mentions}")
-        
-        # Verify mentioned array is empty (person has no email)
-        if len(mentioned) != 0:
-            print_fail(f"mentioned should be empty (no email), got: {mentioned}")
-            return 1
-        print_success(f"mentioned=[] (person has no email, no notification sent)")
-        
-        # ===================================================================
-        # STEP 4: Case-insensitive matching
-        # ===================================================================
-        print("\n[4] CASE-INSENSITIVE MATCHING")
-        comment_payload = {
-            "text": "ping @qa mention person",  # lowercase
-            "author": "QA Tester",
-            "notify": False
-        }
-        r = requests.post(f"{BASE_URL}/admin/tasks/{test_task_id}/comments?key={ADMIN_KEY}", json=comment_payload)
-        if r.status_code != 200:
-            print_fail(f"Failed to post comment: {r.status_code} {r.text}")
-            return 1
-        comment_data = r.json()
-        comment = comment_data.get("comment", {})
-        mentions = comment.get("mentions", [])
-        
-        if person_id not in mentions:
-            print_fail(f"Case-insensitive match failed: {mentions}")
-            return 1
-        print_success(f"Case-insensitive match works: '@qa mention person' matched person_id")
-        
-        # ===================================================================
-        # STEP 5: No mention (plain comment)
-        # ===================================================================
-        print("\n[5] NO MENTION (plain comment)")
-        comment_payload = {
-            "text": "vanlig kommentar uten mentions",
-            "notify": False
-        }
-        r = requests.post(f"{BASE_URL}/admin/tasks/{test_task_id}/comments?key={ADMIN_KEY}", json=comment_payload)
-        if r.status_code != 200:
-            print_fail(f"Failed to post comment: {r.status_code} {r.text}")
-            return 1
-        comment_data = r.json()
-        comment = comment_data.get("comment", {})
-        mentions = comment.get("mentions", [])
-        
-        if len(mentions) != 0:
-            print_fail(f"mentions should be empty, got: {mentions}")
-            return 1
-        print_success(f"mentions=[] for plain comment without @mentions")
-        
-        # ===================================================================
-        # STEP 6: Self-mention exclusion from notification
-        # ===================================================================
-        print("\n[6] SELF-MENTION EXCLUSION")
-        comment_payload = {
-            "text": "@QA Mention Person",
-            "author": "QA Mention Person",  # Same as mentioned person
-            "notify": False
-        }
-        r = requests.post(f"{BASE_URL}/admin/tasks/{test_task_id}/comments?key={ADMIN_KEY}", json=comment_payload)
-        if r.status_code != 200:
-            print_fail(f"Failed to post comment: {r.status_code} {r.text}")
-            return 1
-        comment_data = r.json()
-        comment = comment_data.get("comment", {})
-        mentions = comment.get("mentions", [])
-        mentioned = comment_data.get("mentioned", [])
-        
-        # mentions should contain person_id
-        if person_id not in mentions:
-            print_fail(f"mentions should contain person_id: {mentions}")
-            return 1
-        print_success(f"mentions contains person_id (self-mention detected)")
-        
-        # mentioned should be empty (self-mention excluded from notification)
-        if len(mentioned) != 0:
-            print_fail(f"mentioned should be empty (self-mention), got: {mentioned}")
-            return 1
-        print_success(f"mentioned=[] (self-mention excluded from notification)")
-        
-        # ===================================================================
-        # STEP 7: Error cases
-        # ===================================================================
-        print("\n[7] ERROR CASES")
-        
-        # 7a: Empty text
-        print_test("7a: Empty text → 400")
-        r = requests.post(f"{BASE_URL}/admin/tasks/{test_task_id}/comments?key={ADMIN_KEY}", json={"text": "", "notify": False})
-        if r.status_code != 400:
-            print_fail(f"Expected 400 for empty text, got {r.status_code}")
-            return 1
-        print_success("Empty text returns 400")
-        
-        # 7b: Unknown task ID
-        print_test("7b: Unknown task ID → 404")
-        r = requests.post(f"{BASE_URL}/admin/tasks/ukjent-task-id-xyz/comments?key={ADMIN_KEY}", json={"text": "test", "notify": False})
-        if r.status_code != 404:
-            print_fail(f"Expected 404 for unknown task, got {r.status_code}")
-            return 1
-        print_success("Unknown task ID returns 404")
-        
-        # 7c: No auth
-        print_test("7c: No auth → 401")
-        r = requests.post(f"{BASE_URL}/admin/tasks/{test_task_id}/comments", json={"text": "test", "notify": False})
-        if r.status_code != 401:
-            print_fail(f"Expected 401 without key, got {r.status_code}")
-            return 1
-        print_success("No auth returns 401")
-        
-        # ===================================================================
-        # STEP 8: Role check (bruker role can access)
-        # ===================================================================
-        print("\n[8] ROLE CHECK (bruker role)")
-        
-        # Create QA user with password and bruker role
-        print_test("Create QA user with bruker role and password")
-        qa_user_payload = {
-            "name": "QA Kommentar Bruker",
-            "email": "qa-komm-test@example.com",
-            "role": "bruker",
-            "password": "QaTest1234!"
-        }
-        r = requests.post(f"{BASE_URL}/admin/users?key={ADMIN_KEY}", json=qa_user_payload)
-        if r.status_code not in [200, 201]:
-            print_fail(f"Failed to create QA user: {r.status_code} {r.text}")
-            return 1
-        qa_user_data = r.json()
-        qa_user_id = qa_user_data.get("member", {}).get("id") or qa_user_data.get("user", {}).get("id")
-        test_user_ids.append(qa_user_id)
-        print_success(f"Created QA user: id={qa_user_id}, role=bruker")
-        
-        # Login as QA user
-        print_test("Login as QA user")
-        login_payload = {
-            "email": "qa-komm-test@example.com",
-            "password": "QaTest1234!"
-        }
-        r = requests.post(f"{BASE_URL}/admin/auth/login", json=login_payload)
-        if r.status_code != 200:
-            print_fail(f"Failed to login: {r.status_code} {r.text}")
-            return 1
-        login_data = r.json()
-        qa_token = login_data.get("token")
-        if not qa_token:
-            print_fail(f"No token returned: {login_data}")
-            return 1
-        print_success(f"Logged in as QA user, got token")
-        
-        # Post comment with bruker token (notify:false, no mentions)
-        print_test("Post comment with bruker token")
-        comment_payload = {
-            "text": "kommentar fra bruker-rolle",
-            "notify": False
-        }
-        r = requests.post(f"{BASE_URL}/admin/tasks/{test_task_id}/comments?key={qa_token}", json=comment_payload)
-        if r.status_code != 200:
-            print_fail(f"bruker role should have access: {r.status_code} {r.text}")
-            return 1
-        print_success("bruker role can post comments (sakerAuthed)")
-        
-        # ===================================================================
-        # STEP 9: Regression checks
-        # ===================================================================
-        print("\n[9] REGRESSION CHECKS")
-        
-        # 9a: GET /api/admin/tasks
-        print_test("9a: GET /api/admin/tasks")
-        r = requests.get(f"{BASE_URL}/admin/tasks?key={ADMIN_KEY}")
-        if r.status_code != 200:
-            print_fail(f"GET /admin/tasks failed: {r.status_code}")
-            return 1
-        tasks_data = r.json()
-        tasks = tasks_data.get("tasks", [])
-        # Find our test task
-        test_task = next((t for t in tasks if t.get("id") == test_task_id), None)
-        if not test_task:
-            print_fail(f"Test task not found in tasks list")
-            return 1
-        # Verify comments are present
-        comments = test_task.get("comments", [])
-        if len(comments) < 5:  # We posted 5 comments
-            print_fail(f"Expected at least 5 comments, got {len(comments)}")
-            return 1
-        print_success(f"GET /admin/tasks returns task with {len(comments)} comments")
-        
-        # 9b: PUT /api/admin/tasks/:id (update task, notify:false)
-        print_test("9b: PUT /api/admin/tasks/:id")
-        update_payload = {
-            "status": "doing",
-            "notify": False
-        }
-        r = requests.put(f"{BASE_URL}/admin/tasks/{test_task_id}?key={ADMIN_KEY}", json=update_payload)
-        if r.status_code != 200:
-            print_fail(f"PUT /admin/tasks failed: {r.status_code} {r.text}")
-            return 1
-        print_success("PUT /admin/tasks works (route file not broken)")
-        
-        # ===================================================================
-        # STEP 10: CLEANUP
-        # ===================================================================
-        print("\n[10] CLEANUP")
-        
-        # Delete test task
-        print_test("Delete test task")
-        r = requests.delete(f"{BASE_URL}/admin/tasks/{test_task_id}?key={ADMIN_KEY}")
-        if r.status_code != 200:
-            print_fail(f"Failed to delete task: {r.status_code} {r.text}")
-            # Continue cleanup anyway
-        else:
-            print_success(f"Deleted test task: {test_task_id}")
-        
-        # Delete test users
-        for user_id in test_user_ids:
-            print_test(f"Delete test user: {user_id}")
-            r = requests.delete(f"{BASE_URL}/admin/users/{user_id}?key={ADMIN_KEY}")
-            if r.status_code != 200:
-                print_fail(f"Failed to delete user {user_id}: {r.status_code} {r.text}")
-                # Continue cleanup anyway
-            else:
-                print_success(f"Deleted test user: {user_id}")
-        
-        # Verify no QA data remains
-        print_test("Verify no QA data remains")
-        r = requests.get(f"{BASE_URL}/admin/tasks?key={ADMIN_KEY}")
-        if r.status_code == 200:
-            tasks_data = r.json()
-            tasks = tasks_data.get("tasks", [])
-            qa_tasks = [t for t in tasks if t.get("title", "").startswith("QA ")]
-            if len(qa_tasks) > 0:
-                print_fail(f"Found {len(qa_tasks)} QA tasks remaining")
-            else:
-                print_success("No QA tasks remain")
-        
-        r = requests.get(f"{BASE_URL}/admin/users?key={ADMIN_KEY}")
-        if r.status_code == 200:
-            users_data = r.json()
-            users = users_data.get("users", [])
-            qa_users = [u for u in users if u.get("name", "").startswith("QA ")]
-            if len(qa_users) > 0:
-                print_fail(f"Found {len(qa_users)} QA users remaining")
-            else:
-                print_success("No QA users remain")
-        
-        print("\n" + "="*80)
-        print("✅ ALL TESTS PASSED")
-        print("="*80)
-        print("\nSUMMARY:")
-        print("  • @mentions detection works (case-insensitive)")
-        print("  • comment.mentions[] populated correctly")
-        print("  • mentioned=[] when person has no email (no notification)")
-        print("  • Self-mention excluded from notification")
-        print("  • notify:false prevents all email sending")
-        print("  • Error cases handled (400/404/401)")
-        print("  • bruker role can access (sakerAuthed)")
-        print("  • Regression tests passed")
-        print("  • Cleanup completed")
-        print("\nCRITICAL SAFETY:")
-        print("  ✓ Used notify:false on ALL comment/task operations")
-        print("  ✓ Used test person WITHOUT email (no real emails possible)")
-        print("  ✓ All test data cleaned up")
-        print("  ✓ SendGrid LIVE but no emails sent")
-        
-        return 0
-        
-    except Exception as e:
-        print_fail(f"Test failed with exception: {e}")
-        import traceback
-        traceback.print_exc()
-        return 1
-    finally:
-        # Emergency cleanup in case of failure
-        if test_task_id:
+    async with aiohttp.ClientSession() as session:
+        try:
+            # ================================================================
+            # PRE-CLEANUP: Delete any existing QA data from previous runs
+            # ================================================================
+            print("\n" + "=" * 80)
+            print("PRE-CLEANUP: Removing any existing QA data")
+            print("=" * 80)
+            
+            # Delete QA users
+            qa_users_deleted = db.admin_users.delete_many({"email": {"$regex": "^qa-mote"}})
+            print(f"  ✓ Deleted {qa_users_deleted.deleted_count} existing QA users")
+            
+            # Delete QA meetings
+            qa_meetings_deleted = db.meetings.delete_many({"title": {"$regex": "^QA "}})
+            print(f"  ✓ Deleted {qa_meetings_deleted.deleted_count} existing QA meetings")
+            
+            # Delete QA tasks
+            qa_tasks_deleted = db.tasks.delete_many({"title": {"$regex": "^QA "}})
+            print(f"  ✓ Deleted {qa_tasks_deleted.deleted_count} existing QA tasks")
+            
+            # ================================================================
+            # (A) AUTH ENFORCEMENT
+            # ================================================================
+            print("\n" + "=" * 80)
+            print("(A) AUTH ENFORCEMENT")
+            print("=" * 80)
+            
+            # Test 1: All meetings endpoints without key should return 401
+            print("\n[A1] Testing meetings endpoints without key → 401")
+            endpoints_to_test = [
+                ("GET", f"{BASE_URL}/admin/meetings"),
+                ("POST", f"{BASE_URL}/admin/meetings"),
+                ("PUT", f"{BASE_URL}/admin/meetings/test-id"),
+                ("POST", f"{BASE_URL}/admin/meetings/test-id/aksjonspunkt"),
+                ("POST", f"{BASE_URL}/admin/meetings/test-id/send-referat"),
+                ("DELETE", f"{BASE_URL}/admin/meetings/test-id"),
+            ]
+            
+            for method, url in endpoints_to_test:
+                if method == "GET":
+                    async with session.get(url) as resp:
+                        assert resp.status == 401, f"{method} {url} should return 401, got {resp.status}"
+                        print(f"  ✓ {method} {url} → 401")
+                elif method == "POST":
+                    async with session.post(url, json={}) as resp:
+                        assert resp.status == 401, f"{method} {url} should return 401, got {resp.status}"
+                        print(f"  ✓ {method} {url} → 401")
+                elif method == "PUT":
+                    async with session.put(url, json={}) as resp:
+                        assert resp.status == 401, f"{method} {url} should return 401, got {resp.status}"
+                        print(f"  ✓ {method} {url} → 401")
+                elif method == "DELETE":
+                    async with session.delete(url) as resp:
+                        assert resp.status == 401, f"{method} {url} should return 401, got {resp.status}"
+                        print(f"  ✓ {method} {url} → 401")
+            
+            # Test 2: Create QA bruker with 'bruker' role
+            print("\n[A2] Creating QA bruker with 'bruker' role")
+            async with session.post(
+                f"{BASE_URL}/admin/users?key={ADMIN_KEY}",
+                json={
+                    "email": QA_BRUKER_EMAIL,
+                    "name": "QA Møte Bruker",
+                    "role": "bruker",
+                    "password": QA_BRUKER_PASSWORD,
+                    "invite": False
+                }
+            ) as resp:
+                assert resp.status in [200, 201], f"Failed to create QA bruker: {resp.status}"
+                data = await resp.json()
+                qa_bruker_id = data["member"]["id"]
+                test_data["users"].append(qa_bruker_id)
+                print(f"  ✓ Created QA bruker: {qa_bruker_id}")
+            
+            # Test 3: Login as QA bruker
+            print("\n[A3] Login as QA bruker")
+            async with session.post(
+                f"{BASE_URL}/admin/auth/login",
+                json={"email": QA_BRUKER_EMAIL, "password": QA_BRUKER_PASSWORD}
+            ) as resp:
+                assert resp.status == 200, f"Failed to login as QA bruker: {resp.status}"
+                data = await resp.json()
+                qa_bruker_token = data["token"]
+                print(f"  ✓ Logged in as QA bruker, got token")
+            
+            # Test 4: All meetings endpoints with bruker token should return 401 (admin-only)
+            print("\n[A4] Testing meetings endpoints with bruker token → 401 (admin-only)")
+            for method, url in endpoints_to_test:
+                if method == "GET":
+                    async with session.get(f"{url}?key={qa_bruker_token}") as resp:
+                        assert resp.status == 401, f"{method} {url} with bruker token should return 401, got {resp.status}"
+                        print(f"  ✓ {method} {url} with bruker token → 401")
+                elif method == "POST":
+                    async with session.post(f"{url}?key={qa_bruker_token}", json={}) as resp:
+                        assert resp.status == 401, f"{method} {url} with bruker token should return 401, got {resp.status}"
+                        print(f"  ✓ {method} {url} with bruker token → 401")
+                elif method == "PUT":
+                    async with session.put(f"{url}?key={qa_bruker_token}", json={}) as resp:
+                        assert resp.status == 401, f"{method} {url} with bruker token should return 401, got {resp.status}"
+                        print(f"  ✓ {method} {url} with bruker token → 401")
+                elif method == "DELETE":
+                    async with session.delete(f"{url}?key={qa_bruker_token}") as resp:
+                        assert resp.status == 401, f"{method} {url} with bruker token should return 401, got {resp.status}"
+                        print(f"  ✓ {method} {url} with bruker token → 401")
+            
+            # ================================================================
+            # (B) CRUD OPERATIONS
+            # ================================================================
+            print("\n" + "=" * 80)
+            print("(B) CRUD OPERATIONS")
+            print("=" * 80)
+            
+            # Test 1: Create QA person (without password, invite:false)
+            print("\n[B1] Creating QA person (no password, invite:false)")
+            async with session.post(
+                f"{BASE_URL}/admin/users?key={ADMIN_KEY}",
+                json={
+                    "email": QA_PERSON_EMAIL,
+                    "name": "QA Møte Person",
+                    "role": "admin",
+                    "invite": False
+                }
+            ) as resp:
+                assert resp.status in [200, 201], f"Failed to create QA person: {resp.status}"
+                data = await resp.json()
+                qa_person_id = data["member"]["id"]
+                test_data["persons"].append(qa_person_id)
+                print(f"  ✓ Created QA person: {qa_person_id}")
+            
+            # Test 2: Create meeting with notify:false
+            print("\n[B2] Creating meeting with notify:false")
+            meeting_datetime = (datetime.now() + timedelta(days=30)).strftime("%Y-%m-%dT10:00")
+            async with session.post(
+                f"{BASE_URL}/admin/meetings?key={ADMIN_KEY}",
+                json={
+                    "title": "QA Styremøte",
+                    "type": "styremote",
+                    "datetime": meeting_datetime,
+                    "agenda": [
+                        {"text": "Punkt 1: Godkjenning av innkalling"},
+                        {"text": "Punkt 2: Økonomi"}
+                    ],
+                    "attendees": [qa_person_id],
+                    "notify": False
+                }
+            ) as resp:
+                assert resp.status == 200, f"Failed to create meeting: {resp.status}"
+                data = await resp.json()
+                assert data["ok"] == True
+                assert data["meeting"]["status"] == "planlagt"
+                assert data["innkalt"] == 0, f"Expected innkalt=0 (notify:false), got {data['innkalt']}"
+                meeting_id = data["meeting"]["id"]
+                test_data["meetings"].append(meeting_id)
+                print(f"  ✓ Created meeting: {meeting_id}")
+                print(f"  ✓ Status: {data['meeting']['status']}")
+                print(f"  ✓ Innkalt: {data['innkalt']} (notify:false)")
+            
+            # Test 3: POST without title should return 400
+            print("\n[B3] POST without title → 400")
+            async with session.post(
+                f"{BASE_URL}/admin/meetings?key={ADMIN_KEY}",
+                json={"type": "styremote"}
+            ) as resp:
+                assert resp.status == 400, f"Expected 400, got {resp.status}"
+                print(f"  ✓ POST without title → 400")
+            
+            # Test 4: GET meetings - verify meeting exists with members
+            print("\n[B4] GET meetings - verify meeting exists")
+            async with session.get(f"{BASE_URL}/admin/meetings?key={ADMIN_KEY}") as resp:
+                assert resp.status == 200, f"Failed to get meetings: {resp.status}"
+                data = await resp.json()
+                assert data["ok"] == True
+                assert "meetings" in data
+                assert "members" in data
+                found = False
+                for m in data["meetings"]:
+                    if m["id"] == meeting_id:
+                        found = True
+                        assert m["title"] == "QA Styremøte"
+                        assert m["type"] == "styremote"
+                        assert len(m["agenda"]) == 2
+                        break
+                assert found, f"Meeting {meeting_id} not found in GET response"
+                print(f"  ✓ Meeting found in GET response")
+                print(f"  ✓ Members array present: {len(data['members'])} members")
+            
+            # Test 5: PUT - update referat and vedtak
+            print("\n[B5] PUT - update referat and vedtak")
+            async with session.put(
+                f"{BASE_URL}/admin/meetings/{meeting_id}?key={ADMIN_KEY}",
+                json={
+                    "referat": "QA-referat: Møtet ble gjennomført som planlagt.",
+                    "vedtak": [
+                        {"text": "QA-vedtak 1: Godkjent"},
+                        {"text": "QA-vedtak 2: Utsatt til neste møte"}
+                    ]
+                }
+            ) as resp:
+                assert resp.status == 200, f"Failed to update meeting: {resp.status}"
+                data = await resp.json()
+                assert data["ok"] == True
+                assert data["meeting"]["referat"] == "QA-referat: Møtet ble gjennomført som planlagt."
+                assert len(data["meeting"]["vedtak"]) == 2
+                print(f"  ✓ Updated referat and vedtak")
+            
+            # Test 6: PUT with empty title should return 400
+            print("\n[B6] PUT with empty title → 400")
+            async with session.put(
+                f"{BASE_URL}/admin/meetings/{meeting_id}?key={ADMIN_KEY}",
+                json={"title": ""}
+            ) as resp:
+                assert resp.status == 400, f"Expected 400, got {resp.status}"
+                print(f"  ✓ PUT with empty title → 400")
+            
+            # ================================================================
+            # (C) AKSJONSPUNKT (task with meetingId backlink)
+            # ================================================================
+            print("\n" + "=" * 80)
+            print("(C) AKSJONSPUNKT")
+            print("=" * 80)
+            
+            # Test 1: Create aksjonspunkt with notify:false
+            print("\n[C1] Creating aksjonspunkt with notify:false")
+            async with session.post(
+                f"{BASE_URL}/admin/meetings/{meeting_id}/aksjonspunkt?key={ADMIN_KEY}",
+                json={
+                    "title": "QA Aksjonspunkt",
+                    "notify": False
+                }
+            ) as resp:
+                assert resp.status == 200, f"Failed to create aksjonspunkt: {resp.status}"
+                data = await resp.json()
+                assert data["ok"] == True
+                task_id = data["task"]["id"]
+                test_data["tasks"].append(task_id)
+                assert data["task"]["meetingId"] == meeting_id, f"Expected meetingId={meeting_id}, got {data['task']['meetingId']}"
+                assert "møte" in data["task"]["labels"], f"Expected 'møte' in labels, got {data['task']['labels']}"
+                print(f"  ✓ Created aksjonspunkt: {task_id}")
+                print(f"  ✓ meetingId: {data['task']['meetingId']}")
+                print(f"  ✓ labels: {data['task']['labels']}")
+            
+            # Test 2: GET meetings - verify taskIds contains task.id
+            print("\n[C2] GET meetings - verify taskIds contains task.id")
+            async with session.get(f"{BASE_URL}/admin/meetings?key={ADMIN_KEY}") as resp:
+                assert resp.status == 200, f"Failed to get meetings: {resp.status}"
+                data = await resp.json()
+                found = False
+                for m in data["meetings"]:
+                    if m["id"] == meeting_id:
+                        assert task_id in m["taskIds"], f"Expected task {task_id} in taskIds, got {m['taskIds']}"
+                        found = True
+                        break
+                assert found, f"Meeting {meeting_id} not found"
+                print(f"  ✓ taskIds contains {task_id}")
+            
+            # Test 3: GET /admin/tasks - verify task exists
+            print("\n[C3] GET /admin/tasks - verify task exists")
+            async with session.get(f"{BASE_URL}/admin/tasks?key={ADMIN_KEY}") as resp:
+                assert resp.status == 200, f"Failed to get tasks: {resp.status}"
+                data = await resp.json()
+                found = False
+                for t in data["tasks"]:
+                    if t["id"] == task_id:
+                        assert t["meetingId"] == meeting_id
+                        assert "møte" in t["labels"]
+                        found = True
+                        break
+                assert found, f"Task {task_id} not found in GET /admin/tasks"
+                print(f"  ✓ Task found in GET /admin/tasks")
+            
+            # ================================================================
+            # (D) SEND-REFERAT
+            # ================================================================
+            print("\n" + "=" * 80)
+            print("(D) SEND-REFERAT")
+            print("=" * 80)
+            
+            # Test 1: Create new meeting WITHOUT referat/vedtak
+            print("\n[D1] Creating new meeting without referat/vedtak")
+            meeting2_datetime = (datetime.now() + timedelta(days=31)).strftime("%Y-%m-%dT14:00")
+            async with session.post(
+                f"{BASE_URL}/admin/meetings?key={ADMIN_KEY}",
+                json={
+                    "title": "QA Ledermøte",
+                    "type": "ledermote",
+                    "datetime": meeting2_datetime,
+                    "attendees": [qa_person_id],
+                    "notify": False
+                }
+            ) as resp:
+                assert resp.status == 200, f"Failed to create meeting2: {resp.status}"
+                data = await resp.json()
+                meeting2_id = data["meeting"]["id"]
+                test_data["meetings"].append(meeting2_id)
+                print(f"  ✓ Created meeting2: {meeting2_id}")
+            
+            # Test 2: POST send-referat without referat/vedtak → 400
+            print("\n[D2] POST send-referat without referat/vedtak → 400")
+            async with session.post(
+                f"{BASE_URL}/admin/meetings/{meeting2_id}/send-referat?key={ADMIN_KEY}"
+            ) as resp:
+                assert resp.status == 400, f"Expected 400, got {resp.status}"
+                data = await resp.json()
+                assert "referat" in data["error"].lower() or "vedtak" in data["error"].lower()
+                print(f"  ✓ POST send-referat without referat/vedtak → 400")
+            
+            # Test 3: Create person WITHOUT email
+            print("\n[D3] Creating person without email")
+            async with session.post(
+                f"{BASE_URL}/admin/users?key={ADMIN_KEY}",
+                json={
+                    "name": "QA Person Uten Epost",
+                    "role": "admin",
+                    "invite": False
+                }
+            ) as resp:
+                assert resp.status in [200, 201], f"Failed to create person without email: {resp.status}"
+                data = await resp.json()
+                person_no_email_id = data["member"]["id"]
+                test_data["persons"].append(person_no_email_id)
+                print(f"  ✓ Created person without email: {person_no_email_id}")
+            
+            # Test 4: Update meeting2 with referat but attendee WITHOUT email → 400
+            print("\n[D4] Update meeting2 with referat, attendee without email")
+            async with session.put(
+                f"{BASE_URL}/admin/meetings/{meeting2_id}?key={ADMIN_KEY}",
+                json={
+                    "referat": "QA-referat for ledermøte",
+                    "attendees": [person_no_email_id]
+                }
+            ) as resp:
+                assert resp.status == 200, f"Failed to update meeting2: {resp.status}"
+                print(f"  ✓ Updated meeting2 with referat and attendee without email")
+            
+            # Test 5: POST send-referat with attendee without email → 400
+            print("\n[D5] POST send-referat with attendee without email → 400")
+            async with session.post(
+                f"{BASE_URL}/admin/meetings/{meeting2_id}/send-referat?key={ADMIN_KEY}"
+            ) as resp:
+                assert resp.status == 400, f"Expected 400, got {resp.status}"
+                data = await resp.json()
+                assert "e-post" in data["error"].lower()
+                print(f"  ✓ POST send-referat with attendee without email → 400")
+            
+            # Test 6: Update meeting2 with attendee with @example.com email
+            print("\n[D6] Update meeting2 with attendee with @example.com email")
+            async with session.put(
+                f"{BASE_URL}/admin/meetings/{meeting2_id}?key={ADMIN_KEY}",
+                json={"attendees": [qa_person_id]}
+            ) as resp:
+                assert resp.status == 200, f"Failed to update meeting2: {resp.status}"
+                print(f"  ✓ Updated meeting2 with attendee {qa_person_id} ({QA_PERSON_EMAIL})")
+            
+            # Test 7: POST send-referat with @example.com attendee → 200
+            print("\n[D7] POST send-referat with @example.com attendee → 200")
+            async with session.post(
+                f"{BASE_URL}/admin/meetings/{meeting2_id}/send-referat?key={ADMIN_KEY}"
+            ) as resp:
+                assert resp.status == 200, f"Failed to send referat: {resp.status}"
+                data = await resp.json()
+                assert data["ok"] == True
+                assert data["sendt"] >= 1, f"Expected sendt>=1, got {data['sendt']}"
+                print(f"  ✓ POST send-referat → 200, sendt={data['sendt']}")
+            
+            # Test 8: Verify meeting2 has referatSendtAt
+            print("\n[D8] Verify meeting2 has referatSendtAt")
+            async with session.get(f"{BASE_URL}/admin/meetings?key={ADMIN_KEY}") as resp:
+                assert resp.status == 200, f"Failed to get meetings: {resp.status}"
+                data = await resp.json()
+                found = False
+                for m in data["meetings"]:
+                    if m["id"] == meeting2_id:
+                        assert "referatSendtAt" in m, f"Expected referatSendtAt in meeting2"
+                        assert m["referatSendtAt"] is not None
+                        found = True
+                        break
+                assert found, f"Meeting2 {meeting2_id} not found"
+                print(f"  ✓ meeting2 has referatSendtAt: {m['referatSendtAt']}")
+            
+            # ================================================================
+            # (E) RECURRENCE (gjentakelse)
+            # ================================================================
+            print("\n" + "=" * 80)
+            print("(E) RECURRENCE")
+            print("=" * 80)
+            
+            # Test 1: Create meeting with recurrence
+            print("\n[E1] Creating meeting with recurrence:monthly")
+            meeting3_datetime = (datetime.now() + timedelta(days=32)).strftime("%Y-%m-%dT09:00")
+            async with session.post(
+                f"{BASE_URL}/admin/meetings?key={ADMIN_KEY}",
+                json={
+                    "title": "QA Månedlig Møte",
+                    "type": "annet",
+                    "datetime": meeting3_datetime,
+                    "recurrence": "monthly",
+                    "attendees": [qa_person_id],
+                    "agenda": [{"text": "Månedlig gjennomgang"}],
+                    "notify": False
+                }
+            ) as resp:
+                assert resp.status == 200, f"Failed to create meeting3: {resp.status}"
+                data = await resp.json()
+                meeting3_id = data["meeting"]["id"]
+                test_data["meetings"].append(meeting3_id)
+                print(f"  ✓ Created meeting3: {meeting3_id}")
+            
+            # Test 2: PUT status:avholdt with recurrence → nesteMote created
+            print("\n[E2] PUT status:avholdt with recurrence → nesteMote created")
+            async with session.put(
+                f"{BASE_URL}/admin/meetings/{meeting3_id}?key={ADMIN_KEY}",
+                json={"status": "avholdt"}
+            ) as resp:
+                assert resp.status == 200, f"Failed to update meeting3: {resp.status}"
+                data = await resp.json()
+                assert data["ok"] == True
+                assert "nesteMote" in data, f"Expected nesteMote in response"
+                assert data["nesteMote"] is not None, f"Expected nesteMote to be created"
+                neste_mote_id = data["nesteMote"]["id"]
+                test_data["meetings"].append(neste_mote_id)
+                assert data["nesteMote"]["status"] == "planlagt"
+                # Verify datetime is +1 month
+                original_date = datetime.fromisoformat(meeting3_datetime.replace("Z", ""))
+                neste_date = datetime.fromisoformat(data["nesteMote"]["datetime"].replace("Z", ""))
+                # Allow some flexibility in month calculation (28-31 days)
+                days_diff = (neste_date - original_date).days
+                assert 28 <= days_diff <= 31, f"Expected ~30 days difference, got {days_diff}"
+                # Verify agenda is reset (done:false)
+                assert len(data["nesteMote"]["agenda"]) == 1
+                assert data["nesteMote"]["agenda"][0]["done"] == False
+                print(f"  ✓ nesteMote created: {neste_mote_id}")
+                print(f"  ✓ nesteMote status: {data['nesteMote']['status']}")
+                print(f"  ✓ nesteMote datetime: {data['nesteMote']['datetime']} (+{days_diff} days)")
+                print(f"  ✓ agenda reset with done:false")
+            
+            # ================================================================
+            # (F) DELETE
+            # ================================================================
+            print("\n" + "=" * 80)
+            print("(F) DELETE")
+            print("=" * 80)
+            
+            # Test 1: DELETE meeting
+            print("\n[F1] DELETE meeting")
+            async with session.delete(f"{BASE_URL}/admin/meetings/{meeting_id}?key={ADMIN_KEY}") as resp:
+                assert resp.status == 200, f"Failed to delete meeting: {resp.status}"
+                data = await resp.json()
+                assert data["ok"] == True
+                print(f"  ✓ Deleted meeting: {meeting_id}")
+            
+            # Test 2: Verify meeting is gone from GET
+            print("\n[F2] Verify meeting is gone from GET")
+            async with session.get(f"{BASE_URL}/admin/meetings?key={ADMIN_KEY}") as resp:
+                assert resp.status == 200, f"Failed to get meetings: {resp.status}"
+                data = await resp.json()
+                found = False
+                for m in data["meetings"]:
+                    if m["id"] == meeting_id:
+                        found = True
+                        break
+                assert not found, f"Meeting {meeting_id} should be deleted"
+                print(f"  ✓ Meeting {meeting_id} not found in GET (deleted)")
+            
+            # Test 3: Verify task still exists (tasks preserved)
+            print("\n[F3] Verify task still exists (tasks preserved)")
+            async with session.get(f"{BASE_URL}/admin/tasks?key={ADMIN_KEY}") as resp:
+                assert resp.status == 200, f"Failed to get tasks: {resp.status}"
+                data = await resp.json()
+                found = False
+                for t in data["tasks"]:
+                    if t["id"] == task_id:
+                        found = True
+                        break
+                assert found, f"Task {task_id} should still exist after meeting deletion"
+                print(f"  ✓ Task {task_id} still exists (preserved)")
+            
+            # ================================================================
+            # (G) PROFILE (MIN PROFIL)
+            # ================================================================
+            print("\n" + "=" * 80)
+            print("(G) PROFILE (MIN PROFIL)")
+            print("=" * 80)
+            
+            # Test 1: PUT profile with name and color as QA bruker
+            print("\n[G1] PUT profile with name and color as QA bruker")
+            async with session.put(
+                f"{BASE_URL}/admin/auth/profile?key={qa_bruker_token}",
+                json={
+                    "name": "QA Endret Navn",
+                    "color": "#0EA5E9"
+                }
+            ) as resp:
+                assert resp.status == 200, f"Failed to update profile: {resp.status}"
+                data = await resp.json()
+                assert data["ok"] == True
+                assert data["member"]["name"] == "QA Endret Navn"
+                assert data["member"]["color"] == "#0EA5E9"
+                print(f"  ✓ Updated name: {data['member']['name']}")
+                print(f"  ✓ Updated color: {data['member']['color']}")
+            
+            # Test 2: PUT profile with password change
+            print("\n[G2] PUT profile with password change")
+            async with session.put(
+                f"{BASE_URL}/admin/auth/profile?key={qa_bruker_token}",
+                json={
+                    "password": QA_BRUKER_NEW_PASSWORD,
+                    "currentPassword": QA_BRUKER_PASSWORD
+                }
+            ) as resp:
+                assert resp.status == 200, f"Failed to change password: {resp.status}"
+                data = await resp.json()
+                assert data["ok"] == True
+                print(f"  ✓ Password changed successfully")
+            
+            # Test 3: Login with new password → 200
+            print("\n[G3] Login with new password → 200")
+            async with session.post(
+                f"{BASE_URL}/admin/auth/login",
+                json={"email": QA_BRUKER_EMAIL, "password": QA_BRUKER_NEW_PASSWORD}
+            ) as resp:
+                assert resp.status == 200, f"Failed to login with new password: {resp.status}"
+                data = await resp.json()
+                new_token = data["token"]
+                print(f"  ✓ Login with new password successful")
+            
+            # Test 4: Login with old password → 401
+            print("\n[G4] Login with old password → 401")
+            async with session.post(
+                f"{BASE_URL}/admin/auth/login",
+                json={"email": QA_BRUKER_EMAIL, "password": QA_BRUKER_PASSWORD}
+            ) as resp:
+                assert resp.status == 401, f"Expected 401 with old password, got {resp.status}"
+                print(f"  ✓ Login with old password → 401")
+            
+            # Test 5: PUT profile with wrong currentPassword → 401
+            print("\n[G5] PUT profile with wrong currentPassword → 401")
+            async with session.put(
+                f"{BASE_URL}/admin/auth/profile?key={new_token}",
+                json={
+                    "password": "AnotherPassword123!",
+                    "currentPassword": "WrongPassword123!"
+                }
+            ) as resp:
+                assert resp.status == 401, f"Expected 401 with wrong currentPassword, got {resp.status}"
+                print(f"  ✓ PUT profile with wrong currentPassword → 401")
+            
+            # Test 6: PUT profile with password <8 chars → 400
+            print("\n[G6] PUT profile with password <8 chars → 400")
+            async with session.put(
+                f"{BASE_URL}/admin/auth/profile?key={new_token}",
+                json={
+                    "password": "Short1!",
+                    "currentPassword": QA_BRUKER_NEW_PASSWORD
+                }
+            ) as resp:
+                assert resp.status == 400, f"Expected 400 with short password, got {resp.status}"
+                print(f"  ✓ PUT profile with password <8 chars → 400")
+            
+            # Test 7: PUT profile with empty body → 400
+            print("\n[G7] PUT profile with empty body → 400")
+            async with session.put(
+                f"{BASE_URL}/admin/auth/profile?key={new_token}",
+                json={}
+            ) as resp:
+                assert resp.status == 400, f"Expected 400 with empty body, got {resp.status}"
+                print(f"  ✓ PUT profile with empty body → 400")
+            
+            # Test 8: PUT profile with master key (not session) → 400
+            print("\n[G8] PUT profile with master key (not session) → 400")
+            async with session.put(
+                f"{BASE_URL}/admin/auth/profile?key={ADMIN_KEY}",
+                json={"name": "Should Fail"}
+            ) as resp:
+                assert resp.status == 400, f"Expected 400 with master key, got {resp.status}"
+                data = await resp.json()
+                assert "masternøkkel" in data["error"].lower() or "personlig" in data["error"].lower()
+                print(f"  ✓ PUT profile with master key → 400")
+            
+            # Test 9: PUT profile without auth → 401
+            print("\n[G9] PUT profile without auth → 401")
+            async with session.put(
+                f"{BASE_URL}/admin/auth/profile",
+                json={"name": "Should Fail"}
+            ) as resp:
+                assert resp.status == 401, f"Expected 401 without auth, got {resp.status}"
+                print(f"  ✓ PUT profile without auth → 401")
+            
+            # ================================================================
+            # (H) MANDATORY CLEANUP
+            # ================================================================
+            print("\n" + "=" * 80)
+            print("(H) MANDATORY CLEANUP")
+            print("=" * 80)
+            
+            # Delete all QA meetings
+            print("\n[H1] Deleting all QA meetings")
+            for meeting_id in test_data["meetings"]:
+                try:
+                    result = db.meetings.delete_one({"id": meeting_id})
+                    if result.deleted_count > 0:
+                        print(f"  ✓ Deleted meeting: {meeting_id}")
+                except Exception as e:
+                    print(f"  ⚠ Failed to delete meeting {meeting_id}: {e}")
+            
+            # Delete all QA tasks
+            print("\n[H2] Deleting all QA tasks")
+            for task_id in test_data["tasks"]:
+                try:
+                    result = db.tasks.delete_one({"id": task_id})
+                    if result.deleted_count > 0:
+                        print(f"  ✓ Deleted task: {task_id}")
+                except Exception as e:
+                    print(f"  ⚠ Failed to delete task {task_id}: {e}")
+            
+            # Delete all QA users/persons
+            print("\n[H3] Deleting all QA users/persons")
+            all_qa_users = test_data["users"] + test_data["persons"]
+            for user_id in all_qa_users:
+                try:
+                    result = db.admin_users.delete_one({"id": user_id})
+                    if result.deleted_count > 0:
+                        print(f"  ✓ Deleted user: {user_id}")
+                except Exception as e:
+                    print(f"  ⚠ Failed to delete user {user_id}: {e}")
+            
+            # Delete auth_tokens for QA users
+            print("\n[H4] Deleting auth_tokens for QA users")
             try:
-                requests.delete(f"{BASE_URL}/admin/tasks/{test_task_id}?key={ADMIN_KEY}")
-            except:
-                pass
-        for user_id in test_user_ids:
-            try:
-                requests.delete(f"{BASE_URL}/admin/users/{user_id}?key={ADMIN_KEY}")
-            except:
-                pass
+                result = db.auth_tokens.delete_many({"userId": {"$in": all_qa_users}})
+                print(f"  ✓ Deleted {result.deleted_count} auth_tokens")
+            except Exception as e:
+                print(f"  ⚠ Failed to delete auth_tokens: {e}")
+            
+            # Verify 0 QA data
+            print("\n[H5] Verifying 0 QA data remains")
+            
+            # Check meetings
+            qa_meetings = list(db.meetings.find({"title": {"$regex": "^QA "}}))
+            assert len(qa_meetings) == 0, f"Found {len(qa_meetings)} QA meetings remaining"
+            print(f"  ✓ 0 QA meetings in database")
+            
+            # Check tasks with meetingId or title starting with QA
+            qa_tasks = list(db.tasks.find({"$or": [
+                {"title": {"$regex": "^QA "}},
+                {"meetingId": {"$exists": True, "$ne": None}}
+            ]}))
+            # Filter to only QA tasks (meetingId might exist for non-QA tasks)
+            qa_tasks = [t for t in qa_tasks if t.get("title", "").startswith("QA ")]
+            assert len(qa_tasks) == 0, f"Found {len(qa_tasks)} QA tasks remaining"
+            print(f"  ✓ 0 QA tasks in database")
+            
+            # Check users
+            qa_users = list(db.admin_users.find({"email": {"$regex": "^qa-mote"}}))
+            assert len(qa_users) == 0, f"Found {len(qa_users)} QA users remaining"
+            print(f"  ✓ 0 QA users in database")
+            
+            # Check auth_tokens
+            qa_tokens = list(db.auth_tokens.find({"userId": {"$in": all_qa_users}}))
+            assert len(qa_tokens) == 0, f"Found {len(qa_tokens)} QA auth_tokens remaining"
+            print(f"  ✓ 0 QA auth_tokens in database")
+            
+            # ================================================================
+            # (I) REGRESSION
+            # ================================================================
+            print("\n" + "=" * 80)
+            print("(I) REGRESSION")
+            print("=" * 80)
+            
+            # Test 1: Owner login → 200
+            print("\n[I1] Owner login → 200")
+            async with session.post(
+                f"{BASE_URL}/admin/auth/login",
+                json={"email": OWNER_EMAIL, "password": OWNER_PASSWORD}
+            ) as resp:
+                assert resp.status == 200, f"Failed to login as owner: {resp.status}"
+                data = await resp.json()
+                assert "token" in data
+                print(f"  ✓ Owner login successful")
+            
+            # Test 2: GET /admin/tasks → 200
+            print("\n[I2] GET /admin/tasks → 200")
+            async with session.get(f"{BASE_URL}/admin/tasks?key={ADMIN_KEY}") as resp:
+                assert resp.status == 200, f"Failed to get tasks: {resp.status}"
+                data = await resp.json()
+                assert "tasks" in data
+                print(f"  ✓ GET /admin/tasks → 200, {len(data['tasks'])} tasks")
+            
+            # Test 3: POST /admin/auth/glemt with unknown QA email → 200 ok:true
+            print("\n[I3] POST /admin/auth/glemt with unknown QA email → 200 ok:true")
+            async with session.post(
+                f"{BASE_URL}/admin/auth/glemt",
+                json={"email": "ukjent-qa@example.com"}
+            ) as resp:
+                assert resp.status == 200, f"Failed to call glemt: {resp.status}"
+                data = await resp.json()
+                assert data["ok"] == True, f"Expected ok:true, got {data}"
+                print(f"  ✓ POST /admin/auth/glemt with unknown QA email → 200 ok:true")
+            
+            print("\n" + "=" * 80)
+            print("ALL TESTS PASSED ✓")
+            print("=" * 80)
+            
+        except AssertionError as e:
+            print(f"\n❌ TEST FAILED: {e}")
+            raise
+        except Exception as e:
+            print(f"\n❌ UNEXPECTED ERROR: {e}")
+            raise
+        finally:
+            mongo_client.close()
 
 if __name__ == "__main__":
-    sys.exit(main())
+    asyncio.run(main())

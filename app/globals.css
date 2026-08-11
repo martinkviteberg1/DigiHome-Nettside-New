@@ -443,7 +443,11 @@ html { scroll-behavior: smooth; }
 @keyframes dhPop { from { opacity: 0; transform: translateY(-6px) scale(0.98); } to { opacity: 1; transform: none; } }
 .dh-pop { animation: dhPop 0.15s cubic-bezier(0.16, 1, 0.3, 1) both; }
 @keyframes dhFadeIn { from { opacity: 0; } to { opacity: 1; } }
-.dh-fade { animation: dhFadeIn 0.28s ease both; }
+/* NB: fill-mode backwards (ikke both) — en filled opacity-animasjon beholder en
+   stacking context i Chromium. Seksjonswrapperen i admin bruker dh-fade, og med
+   both malte ALLE modaler/skuffer (z-110) inne i innholdet UNDER den sticky
+   topbaren (z-30): klikk i topp-området traff topbaren i stedet for skuffen. */
+.dh-fade { animation: dhFadeIn 0.28s ease backwards; }
 @keyframes dhScaleIn { from { opacity: 0; transform: scale(0.97) translateY(8px); } to { opacity: 1; transform: none; } }
 .dh-scale-in { animation: dhScaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) both; }
 @keyframes dhTabIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
