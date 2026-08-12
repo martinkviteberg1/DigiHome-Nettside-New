@@ -147,13 +147,54 @@ const INSIGHT_SUBTITLES = {
 
 const NAV_OPEN_KEY = 'dh_admin_nav_open';
 
+// ── URL-slugs: hver seksjon har sin egen adresse under /admin/<slug>, slik at
+// refresh, bokmerker og deling lander på riktig side. Innsikt-modulene har
+// egne, lesbare slugs (f.eks. /admin/leads → Innsikt-motorens Leads-fane).
+const SLUG_TIL_SEKSJON = {
+  nokkeltall: { section: 'nokkeltall' },
+  okonomi: { section: 'okonomi' },
+  saker: { section: 'saker' },
+  moter: { section: 'moter' },
+  investorrom: { section: 'investorrom' },
+  playbook: { section: 'playbook' },
+  kunder: { section: 'kunder' },
+  historikk: { section: 'historikk' },
+  abonnementer: { section: 'abonnementer' },
+  nyhetsbrev: { section: 'nyhetsbrev' },
+  landingssider: { section: 'landingssider' },
+  boliger: { section: 'boliger' },
+  seo: { section: 'seo' },
+  bro: { section: 'bro' },
+  oversikt: { section: 'innsikt', tab: 'oversikt' },
+  leads: { section: 'innsikt', tab: 'leads' },
+  sanntid: { section: 'innsikt', tab: 'live' },
+  trafikk: { section: 'innsikt', tab: 'trafikk' },
+  trakt: { section: 'innsikt', tab: 'trakt' },
+  annonser: { section: 'innsikt', tab: 'annonser' },
+  annonsestudio: { section: 'innsikt', tab: 'annonsestudio' },
+  finnstudio: { section: 'innsikt', tab: 'finnstudio' },
+  konkurrentanalyse: { section: 'innsikt', tab: 'konkurrent' },
+  'lead-innsikt': { section: 'innsikt', tab: 'innsikt' },
+  leiemarked: { section: 'innsikt', tab: 'leiemarked' },
+  ytelse: { section: 'innsikt', tab: 'ytelse' },
+  ai: { section: 'innsikt', tab: 'ai' },
+};
+const INNSIKT_TAB_SLUG = {
+  oversikt: 'oversikt', leads: 'leads', live: 'sanntid', trafikk: 'trafikk', trakt: 'trakt',
+  annonser: 'annonser', annonsestudio: 'annonsestudio', finnstudio: 'finnstudio',
+  konkurrent: 'konkurrentanalyse', innsikt: 'lead-innsikt', leiemarked: 'leiemarked', ytelse: 'ytelse', ai: 'ai',
+};
+const seksjonTilSlug = (section, tab) => (section === 'innsikt' ? (INNSIKT_TAB_SLUG[tab] || 'oversikt') : section);
 
-export default function AdminPage() {
+
+export default function AdminPage({ params }) {
   const [token, setToken] = useState('');
   const [user, setUser] = useState(null);
   const [checking, setChecking] = useState(true);
-  const [section, setSection] = useState('innsikt');
-  const [insightTab, setInsightTab] = useState('oversikt');
+  // Startseksjon fra URL-en (/admin/<slug>) — refresh lander på samme side.
+  const startMaal = SLUG_TIL_SEKSJON[String((params && params.slug && params.slug[0]) || '').toLowerCase()] || null;
+  const [section, setSection] = useState(startMaal ? startMaal.section : 'innsikt');
+  const [insightTab, setInsightTab] = useState((startMaal && startMaal.tab) || 'oversikt');
   const [insightStats, setInsightStats] = useState({ pending: 0 });
   const [taskStats, setTaskStats] = useState({ open: 0, overdue: 0 });
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -241,6 +282,35 @@ export default function AdminPage() {
   useEffect(() => {
     if (begrensning && !begrensning.includes(section)) setSection(begrensning[0]);
   }, [erBegrenset, section]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── URL-synk: adressen følger alltid aktiv seksjon (/admin/<slug>), slik at
+  // refresh/bokmerker fungerer og tilbakeknappen navigerer mellom seksjoner.
+  // Første synk bruker replaceState (normaliserer ukjente slugs uten ekstra
+  // historikk). Skrives ALDRI mens login-skjermen vises (user == null).
+  const urlSynket = useRef(false);
+  useEffect(() => {
+    if (!user) return;
+    const maal = `/admin/${seksjonTilSlug(section, insightTab)}`;
+    if (window.location.pathname !== maal) {
+      if (urlSynket.current) window.history.pushState({ dh: true }, '', maal + window.location.search);
+      else window.history.replaceState({ dh: true }, '', maal + window.location.search);
+    }
+    urlSynket.current = true;
+    const tittel = section === 'innsikt'
+      ? ((INSIGHT_TABS.find((t) => t.k === insightTab) || {}).l || 'Innsikt')
+      : ((SECTION_TITLES[section] || {}).t || 'Admin');
+    document.title = `${tittel} — DigiHome Admin`;
+  }, [user, section, insightTab]);
+  useEffect(() => {
+    const onPop = () => {
+      const slug = decodeURIComponent(String(window.location.pathname.split('/')[2] || '').toLowerCase());
+      const maal = SLUG_TIL_SEKSJON[slug];
+      if (maal) { setSection(maal.section); setInsightTab(maal.tab || 'oversikt'); }
+      else if (!slug) { setSection('innsikt'); setInsightTab('oversikt'); }
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
 
   // Innlogging skjer i AuthSkjerm (passord, magic link, invitasjon, reset) —
   // alle veier ender her med et gyldig sesjonstoken + brukerobjekt.
