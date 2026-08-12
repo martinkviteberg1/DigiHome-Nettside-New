@@ -15,13 +15,16 @@ import { useEffect, useRef } from 'react';
 // har alltid fallende fart). Mobil (<1024px) beholder fri, naturlig scroll.
 // ---------------------------------------------------------------------------
 
-const ANIM_MS = 680; // varigheten på slide-overgangen
-const ETTERLAAS_MS = 220; // hjulet holdes låst en anelse etter landing
+const ANIM_MS_HJUL = 600; // varigheten på slide-overgangen ved scrollhjul
+const ANIM_MS_TAST = 400; // piltaster skal føles superresponsive — kortere flyt
+const ETTERLAAS_MS = 180; // hjulet holdes låst en anelse etter landing
 const NY_GEST_PAUSE_MS = 200; // en tydelig pause regnes alltid som ny gest
+const TAST_REPEAT_MS = 280; // holdt piltast stepper i kontrollert, rask takt
 
 export default function SlideKontroll() {
   const laastHjul = useRef(false);
   const sistHjul = useRef(0);
+  const sistTast = useRef(0);
   const forrigeFart = useRef(0);
   const aktiv = useRef(0); // intendert slide — sannheten, også midt i en overgang
   const flyr = useRef(false);
@@ -69,7 +72,7 @@ export default function SlideKontroll() {
       }, ETTERLAAS_MS);
     };
 
-    const gaaTil = (indeks: number) => {
+    const gaaTil = (indeks: number, varighet: number = ANIM_MS_HJUL) => {
       const maal = Math.max(0, Math.min(slides.length - 1, indeks));
       if (maal === aktiv.current) return; // ved kantene: ingen lås, ingen dødtid
       aktiv.current = maal;
@@ -88,7 +91,7 @@ export default function SlideKontroll() {
       }
       const t0 = performance.now();
       const steg = (naa: number) => {
-        const p = Math.min(1, (naa - t0) / ANIM_MS);
+        const p = Math.min(1, (naa - t0) / varighet);
         const e = 1 - Math.pow(1 - p, 4); // ease-out — responsiv start, myk landing
         window.scrollTo(0, fra + (til - fra) * e);
         if (p < 1) rafId.current = window.requestAnimationFrame(steg);
@@ -118,7 +121,7 @@ export default function SlideKontroll() {
       if (!nyGest) return;
 
       synk();
-      gaaTil(aktiv.current + (e.deltaY > 0 ? 1 : -1));
+      gaaTil(aktiv.current + (e.deltaY > 0 ? 1 : -1), ANIM_MS_HJUL);
     };
 
     const paaTast = (e: KeyboardEvent) => {
@@ -130,12 +133,16 @@ export default function SlideKontroll() {
       if (t && ['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName)) return;
       if (e.key === ' ' && t && t.tagName === 'BUTTON') return; // mellomrom skal fortsatt klikke knapper
       e.preventDefault();
-      if (e.repeat) return; // holdt tast skal ikke maskingevære gjennom omvisningen
 
-      // Taster omgår hjullåsen: hvert trykk teller umiddelbart — også midt i
-      // en overgang, der animasjonen glir videre mot neste slide derfra.
+      // Superresponsivt: hvert trykk teller umiddelbart — også midt i en
+      // overgang, der animasjonen glir videre mot neste slide derfra. Holdt
+      // tast stepper i kontrollert, rask takt i stedet for å maskingevære.
+      const naaTast = performance.now();
+      if (e.repeat && naaTast - sistTast.current < TAST_REPEAT_MS) return;
+      sistTast.current = naaTast;
+
       synk();
-      gaaTil(aktiv.current + (ned.includes(e.key) ? 1 : -1));
+      gaaTil(aktiv.current + (ned.includes(e.key) ? 1 : -1), ANIM_MS_TAST);
     };
 
     window.addEventListener('wheel', paaHjul, { passive: false });

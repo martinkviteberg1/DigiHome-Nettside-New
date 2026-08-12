@@ -1,5 +1,6 @@
 import Aapning from '@/components/tour/Aapning';
 import HvaEr from '@/components/tour/HvaEr';
+import VelgTour from '@/components/tour/VelgTour';
 import KapittelOnboarding from '@/components/tour/KapittelOnboarding';
 import KapittelVeivalg from '@/components/tour/KapittelVeivalg';
 import KapittelVisning from '@/components/tour/KapittelVisning';
@@ -32,6 +33,7 @@ export default function TourPage() {
       <Prikker />
       <Aapning />
       <HvaEr />
+      <VelgTour />
       <KapittelOnboarding />
       <KapittelVeivalg />
       <KapittelVisning />
