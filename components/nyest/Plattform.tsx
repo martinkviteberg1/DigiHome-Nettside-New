@@ -181,7 +181,7 @@ function Telefon() {
       {/* Titanramme */}
       <div className="rounded-[52px] bg-gradient-to-b from-[#4a4a4d] via-[#2c2c2f] to-[#1b1b1e] p-[2.5px] shadow-[0_70px_140px_-50px_rgba(28,22,14,0.6)]">
         <div className="rounded-[50px] bg-[#0a0a0a] p-[7px]">
-          <div className="relative aspect-[9/19.2] overflow-hidden rounded-[43px] bg-[#faf8f5]">
+          <div className="relative overflow-hidden rounded-[43px] bg-[#faf8f5] lg:aspect-[9/19.2]">
             {/* Dynamic island */}
             <span aria-hidden="true" className="absolute left-1/2 top-[11px] z-[2] h-[25px] w-[88px] -translate-x-1/2 rounded-full bg-[#0a0a0a]" />
 
@@ -230,7 +230,7 @@ function Telefon() {
                     </span>
                   </div>
                   <div className="relative mt-1.5 flex items-end justify-between gap-3">
-                    <p className="text-[25px] font-bold tracking-[-0.02em] text-white">16 500 kr</p>
+                    <p className="whitespace-nowrap text-[22px] font-bold tracking-[-0.02em] text-white sm:text-[25px]">16 500 kr</p>
                     <svg viewBox="0 0 92 30" className="mb-1 h-[26px] w-[80px]" fill="none" aria-hidden="true">
                       <path d="M2 24C12 22 16 25 24 20s12-9 20-8 12 7 20 3 14-9 24-11" stroke="#7fe0b2" strokeWidth="2" strokeLinecap="round" />
                       <circle cx="88" cy="8" r="2.6" fill="#7fe0b2" />
@@ -290,7 +290,7 @@ function Telefon() {
                 </div>
 
                 {/* Tab-linje */}
-                <div className="mt-auto shrink-0 border-t border-[#eee9e0] pt-2.5">
+                <div className="mt-4 shrink-0 border-t border-[#eee9e0] pt-2.5 lg:mt-auto">
                   <div className="flex items-start justify-between px-2">
                     {TABS.map((t, i) => (
                       <span key={t.navn} className={`flex flex-col items-center gap-1 ${i === 0 ? 'text-[#0a0a0a]' : 'text-[#c2bab0]'}`}>

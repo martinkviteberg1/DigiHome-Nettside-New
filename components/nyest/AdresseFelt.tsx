@@ -59,7 +59,7 @@ export default function AdresseFelt({ source, testId, buttonLabel = 'Kom i gang'
 
   return (
     <form onSubmit={handleSubmit} className="relative z-30 w-full" data-testid={`${testId}-form`}>
-      <div className="e-field relative flex-nowrap gap-2 p-1.5 pl-4 pr-1.5 h-[54px] sm:h-[62px] sm:gap-0 sm:pl-5 sm:pr-2">
+      <div className="e-field relative h-[58px] flex-nowrap gap-2 p-[7px] pl-4 sm:h-[62px] sm:gap-0 sm:p-1.5 sm:pl-5 sm:pr-2">
         <MapPin className="mr-2.5 h-[17px] w-[17px] shrink-0 text-[#8d877d]" strokeWidth={2} aria-hidden="true" />
         <AddressAutocomplete
           value={address}
@@ -68,14 +68,16 @@ export default function AdresseFelt({ source, testId, buttonLabel = 'Kom i gang'
           placeholder="Skriv inn adressen din"
           showIcon={false}
           dataTestId={`${testId}-input`}
-          inputClassName="flex-1 h-[42px] sm:h-[58px] px-0 text-[15.5px] bg-transparent border-0 outline-none focus:outline-none focus-visible:outline-none focus:ring-0 placeholder:text-[#8d877d] w-full"
+          inputClassName="flex-1 h-[42px] sm:h-[58px] px-0 text-[16px] bg-transparent border-0 outline-none focus:outline-none focus-visible:outline-none focus:ring-0 placeholder:text-[#8d877d] w-full"
           className="flex-1 min-w-[100px] !static"
         />
+        {/* Bevisst IKKE .e-btn her: den globale klassen setter fast høyde/padding
+            som overstyrte mobilstørrelsen og fikk knappen til å flyte over feltet. */}
         <button
           type="submit"
           data-testid={`${testId}-submit`}
           aria-label={buttonLabel}
-          className="group e-btn e-btn-dark h-[42px] w-[42px] shrink-0 justify-center px-0 text-[14.5px] sm:h-[48px] sm:w-auto sm:px-6"
+          className="group inline-flex h-[44px] w-[44px] shrink-0 items-center justify-center gap-2 rounded-[8px] bg-[#0a0a0a] px-0 text-[14.5px] font-semibold text-white transition-all duration-200 hover:bg-[#232323] active:scale-[0.985] sm:h-[48px] sm:w-auto sm:px-6"
         >
           <span className="hidden sm:inline">{buttonLabel}</span>
           <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />

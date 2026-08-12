@@ -54,7 +54,9 @@ export default function Hero3() {
               samlet på ett sted. Administrer selv, eller få hjelp med forvaltning.
             </p>
 
-            <div className="dh-fade-up mt-8 max-w-[520px] sm:mt-10" style={{ animationDelay: '0.3s' }}>
+            {/* z-40: dh-fade-up gir egen stacking context — uten løftet her ville
+                bildepanelet (senere i DOM) lagt seg OVER adresseforslagene. */}
+            <div className="dh-fade-up relative z-40 mt-8 max-w-[520px] sm:mt-10" style={{ animationDelay: '0.3s' }}>
               <AdresseFelt source="nyest3_hero" testId="nyest3-hero-address" />
             </div>
           </div>
