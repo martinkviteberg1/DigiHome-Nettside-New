@@ -26,7 +26,10 @@ const STATUS_STIL = {
 };
 const GRUPPE_LABEL = { leased: 'Utleid', future: 'Fremtidig', signing: 'Under signering', vacant: 'Ledig' };
 
-const kr = (v) => `${Math.round(v || 0).toLocaleString('nb-NO')} kr`;
+// Tusenskiller: nb-NO gir hardt mellomrom (U+00A0) som ser for bredt ut i
+// display-fonter — smalt no-break space (U+202F) gir tettere, riktigere tall.
+const medTynnSkiller = (s) => String(s).replace(/[\s\u00A0]/g, '\u202F');
+const kr = (v) => `${medTynnSkiller(Math.round(v || 0).toLocaleString('nb-NO'))}\u202Fkr`;
 const dato = (s) => (s ? new Date(`${s}T12:00:00`).toLocaleDateString('nb-NO', { day: 'numeric', month: 'short', year: 'numeric' }) : '—');
 
 const SORTERINGER = [
@@ -269,7 +272,11 @@ export default function Leieforhold({ apiKey }) {
       {/* Tabell */}
       <div className="mt-3 overflow-hidden rounded-2xl bg-white shadow-[0_2px_16px_rgba(0,0,0,0.04)]">
         {laster && (
-          <div className="flex items-center justify-center py-16"><Loader2 className="h-5 w-5 animate-spin text-[#cf97fc]" /></div>
+          <div className="space-y-1.5 p-4" data-testid="leieforhold-skeleton">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="h-9 animate-pulse rounded-lg bg-[#f3f2f0]" style={{ opacity: Math.max(0.25, 1 - i * 0.11), animationDelay: `${i * 70}ms` }} />
+            ))}
+          </div>
         )}
         {!laster && !filtrert.length && (
           <div className="py-14 text-center">

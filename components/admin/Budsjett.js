@@ -15,13 +15,18 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Target, Loader2, Save, Sparkles, ChevronLeft, ChevronRight, ChevronsRight,
   AlertTriangle, X, TrendingUp, Wallet, Flag, Check, BarChart3, Plus, Trash2,
+  FileSpreadsheet, CopyPlus, StickyNote,
 } from 'lucide-react';
 import { ComposedChart, Bar, XAxis, YAxis, Tooltip, ReferenceLine, ResponsiveContainer, Cell } from 'recharts';
 
 const heading = { fontFamily: 'var(--font-heading)' };
 const MND = ['Jan', 'Feb', 'Mar', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Des'];
-const kr = (v) => `${Math.round(v || 0).toLocaleString('nb-NO')} kr`;
-const tall = (v) => Math.round(v || 0).toLocaleString('nb-NO');
+// Tusenskiller: nb-NO gir hardt mellomrom (U+00A0) som ser for bredt ut i
+// display-fonter — vi bytter til smalt no-break space (U+202F), slik
+// finansverktøy i verdensklasse gjør.
+const medTynnSkiller = (s) => String(s).replace(/[\s\u00A0]/g, '\u202F');
+const kr = (v) => `${medTynnSkiller(Math.round(v || 0).toLocaleString('nb-NO'))}\u202Fkr`;
+const tall = (v) => medTynnSkiller(Math.round(v || 0).toLocaleString('nb-NO'));
 const sum12 = (arr) => (arr || []).reduce((s, x) => s + (Number(x) || 0), 0);
 
 function sumPerMnd(serier) {
@@ -73,6 +78,8 @@ export default function Budsjett({ apiKey, readOnly = false }) {
   const [fokusCelle, setFokusCelle] = useState(''); // 'inn|kat|m' — viser råtall kun der
   const [mobilMnd, setMobilMnd] = useState(iAar === year ? naaMnd : 0); // mobil: én måned om gangen
   const [egnePoster, setEgnePoster] = useState([]); // brukerdefinerte budsjettlinjer
+  const [notat, setNotat] = useState(''); // styrekommentar — lagres per år
+  const [kopierer, setKopierer] = useState(false);
   // «+ Ny post»-modal: navn, beløp og frekvens genererer 12-månedersserien
   const [nyPost, setNyPost] = useState(null); // null | {type,navn,belop,frekvens,fra,til,mapTil}
 
@@ -94,6 +101,7 @@ export default function Budsjett({ apiKey, readOnly = false }) {
       setInntekter(j.inntekter || {});
       setKostnader(j.kostnader || {});
       setEgnePoster(Array.isArray(j.egnePoster) ? j.egnePoster : []);
+      setNotat(j.notat || '');
       setDirty(false);
     } catch (e) { setFeil(e.message); setData(null); }
     setLaster(false);
@@ -135,7 +143,7 @@ export default function Budsjett({ apiKey, readOnly = false }) {
     try {
       const r = await fetch(`/api/admin/budsjett?key=${encodeURIComponent(apiKey)}`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ year, inntekter, kostnader, egnePoster }),
+        body: JSON.stringify({ year, inntekter, kostnader, egnePoster, notat }),
       });
       const j = await r.json();
       if (!r.ok || !j.ok) throw new Error(j.error || 'Kunne ikke lagre');
@@ -144,7 +152,7 @@ export default function Budsjett({ apiKey, readOnly = false }) {
       setLagretNaa(true); setTimeout(() => setLagretNaa(false), 2500);
     } catch (e) { setFeil(e.message); }
     setLagrer(false);
-  }, [apiKey, year, inntekter, kostnader, egnePoster]);
+  }, [apiKey, year, inntekter, kostnader, egnePoster, notat]);
 
   // ⌘S / Ctrl+S lagrer — som i verktøyene folk er vant til.
   useEffect(() => {
@@ -299,6 +307,23 @@ export default function Budsjett({ apiKey, readOnly = false }) {
     setEgnePoster((prev) => [...prev, post]);
     setDirty(true);
     setNyPost(null);
+  };
+
+  // Kopier et annet års budsjett inn som utgangspunkt (egne poster får nye id-er).
+  const kopierFraAar = async (fraAar) => {
+    setKopierer(true); setFeil('');
+    try {
+      const r = await fetch(`/api/admin/budsjett?key=${encodeURIComponent(apiKey)}&year=${fraAar}`);
+      const j = await r.json();
+      if (!r.ok || !j.ok) throw new Error(j.error || `Kunne ikke hente ${fraAar}`);
+      if (!j.finnes) throw new Error(`Det finnes ikke noe lagret budsjett for ${fraAar}`);
+      setInntekter(j.inntekter || {});
+      setKostnader(j.kostnader || {});
+      setEgnePoster((j.egnePoster || []).map((p) => ({ ...p, id: `ep-${Date.now()}-${Math.random().toString(36).slice(2, 8)}` })));
+      setNotat(j.notat || '');
+      setDirty(true);
+    } catch (e) { setFeil(e.message); }
+    setKopierer(false);
   };
 
   const tastNav = (e, r, c) => {
@@ -627,28 +652,62 @@ export default function Budsjett({ apiKey, readOnly = false }) {
             Sist lagret {new Date(data.updatedAt).toLocaleString('nb-NO', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}{data.updatedBy ? ` av ${data.updatedBy}` : ''}
           </span>
         )}
-        {!readOnly && (
-          <div className="ml-auto flex items-center gap-1.5">
-            <button onClick={aapneSeed} data-testid="budsjett-forslag-knapp" className="flex h-9 items-center gap-1.5 rounded-full bg-white px-3.5 text-[12.5px] font-semibold text-[#6d28d9] shadow-[0_2px_10px_rgba(0,0,0,0.04)] transition-all hover:bg-[#f4f0fb] active:scale-[0.97]">
-              <Sparkles className="h-4 w-4" /> <span className="hidden sm:inline">Foreslå fra porteføljen</span><span className="sm:hidden">Forslag</span>
-            </button>
-            <button
-              onClick={lagre}
-              disabled={!dirty || lagrer}
-              data-testid="budsjett-lagre"
-              title="⌘S / Ctrl+S"
-              className={`flex h-9 items-center gap-1.5 rounded-full px-4 text-[12.5px] font-semibold transition-all active:scale-[0.97] ${dirty ? 'bg-[#0a0a0a] text-white hover:bg-black/85' : lagretNaa ? 'bg-emerald-50 text-emerald-600' : 'bg-white text-[#c2beb8] shadow-[0_2px_10px_rgba(0,0,0,0.04)]'}`}
-            >
-              {lagrer ? <Loader2 className="h-4 w-4 animate-spin" /> : lagretNaa ? <Check className="h-4 w-4" /> : <Save className="h-4 w-4" />}
-              {lagretNaa ? 'Lagret' : 'Lagre'}
-            </button>
-          </div>
-        )}
+        <div className="ml-auto flex items-center gap-1.5">
+          <a
+            href={`/api/admin/budsjett/xlsx?key=${encodeURIComponent(apiKey)}&year=${year}`}
+            data-testid="budsjett-xlsx"
+            title="Last ned styremøteklar Excel (budsjett + mot faktisk, levende formler)"
+            className="flex h-9 items-center gap-1.5 rounded-full bg-white px-3.5 text-[12.5px] font-semibold text-[#555] shadow-[0_2px_10px_rgba(0,0,0,0.04)] transition-all hover:text-[#111] active:scale-[0.97]"
+          >
+            <FileSpreadsheet className="h-4 w-4" /> <span className="hidden sm:inline">Excel</span>
+          </a>
+          {!readOnly && (
+            <>
+              <button onClick={aapneSeed} data-testid="budsjett-forslag-knapp" className="flex h-9 items-center gap-1.5 rounded-full bg-white px-3.5 text-[12.5px] font-semibold text-[#6d28d9] shadow-[0_2px_10px_rgba(0,0,0,0.04)] transition-all hover:bg-[#f4f0fb] active:scale-[0.97]">
+                <Sparkles className="h-4 w-4" /> <span className="hidden sm:inline">Foreslå fra porteføljen</span><span className="sm:hidden">Forslag</span>
+              </button>
+              <button
+                onClick={lagre}
+                disabled={!dirty || lagrer}
+                data-testid="budsjett-lagre"
+                title="⌘S / Ctrl+S"
+                className={`flex h-9 items-center gap-1.5 rounded-full px-4 text-[12.5px] font-semibold transition-all active:scale-[0.97] ${dirty ? 'bg-[#0a0a0a] text-white hover:bg-black/85' : lagretNaa ? 'bg-emerald-50 text-emerald-600' : 'bg-white text-[#c2beb8] shadow-[0_2px_10px_rgba(0,0,0,0.04)]'}`}
+              >
+                {lagrer ? <Loader2 className="h-4 w-4 animate-spin" /> : lagretNaa ? <Check className="h-4 w-4" /> : <Save className="h-4 w-4" />}
+                {lagretNaa ? 'Lagret' : 'Lagre'}
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       {feil && (
         <div className="mt-4 flex items-center gap-2 rounded-2xl bg-rose-50 px-4 py-3 text-[13px] text-rose-700">
           <AlertTriangle className="h-4 w-4 shrink-0" /> {feil}
+        </div>
+      )}
+
+      {/* Tomt år: tilby å kopiere fjoråret eller foreslå fra porteføljen */}
+      {!laster && !readOnly && data && !data.finnes && !dirty && (
+        <div className="mt-4 flex flex-wrap items-center gap-3 rounded-2xl bg-white p-4 shadow-[0_2px_16px_rgba(0,0,0,0.04)]" data-testid="budsjett-tomt-aar">
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#e8eefc]"><CopyPlus className="h-4 w-4 text-[#3757c4]" /></span>
+          <div className="min-w-0 flex-1">
+            <p className="text-[13.5px] font-semibold text-[#0a0a0a]">Budsjettet for {year} er tomt</p>
+            <p className="text-[12px] text-[#999]">Start med fjorårets tall eller la porteføljen foreslå inntektssiden.</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <button
+              onClick={() => kopierFraAar(year - 1)}
+              disabled={kopierer}
+              data-testid="budsjett-kopier-fjor"
+              className="flex h-9 items-center gap-1.5 rounded-full bg-[#0a0a0a] px-4 text-[12.5px] font-semibold text-white transition-all hover:bg-black/85 active:scale-[0.97]"
+            >
+              {kopierer ? <Loader2 className="h-4 w-4 animate-spin" /> : <CopyPlus className="h-4 w-4" />} Kopier {year - 1}
+            </button>
+            <button onClick={aapneSeed} className="flex h-9 items-center gap-1.5 rounded-full bg-[#f4f0fb] px-4 text-[12.5px] font-semibold text-[#6d28d9] transition-all hover:bg-[#ece4fa] active:scale-[0.97]">
+              <Sparkles className="h-4 w-4" /> Foreslå fra porteføljen
+            </button>
+          </div>
         </div>
       )}
 
@@ -728,7 +787,11 @@ export default function Budsjett({ apiKey, readOnly = false }) {
       {/* Rutenettet — desktop: hele året · mobil: én måned om gangen */}
       <div className="mt-3 overflow-hidden rounded-2xl bg-white shadow-[0_2px_16px_rgba(0,0,0,0.04)]">
         {laster ? (
-          <div className="flex items-center justify-center py-16"><Loader2 className="h-5 w-5 animate-spin text-[#cf97fc]" /></div>
+          <div className="space-y-1.5 p-4" data-testid="budsjett-skeleton">
+            {Array.from({ length: 9 }).map((_, i) => (
+              <div key={i} className="h-8 animate-pulse rounded-lg bg-[#f3f2f0]" style={{ opacity: Math.max(0.25, 1 - i * 0.1), animationDelay: `${i * 70}ms` }} />
+            ))}
+          </div>
         ) : (
           <>
             {/* Desktop-rutenett */}
@@ -815,6 +878,25 @@ export default function Budsjett({ apiKey, readOnly = false }) {
           </>
         )}
       </div>
+
+      {/* Notat: styrekommentar per år — følger med i Excel-eksporten */}
+      {!laster && (!readOnly || !!notat) && (
+        <div className="mt-3 rounded-2xl bg-white p-4 shadow-[0_2px_16px_rgba(0,0,0,0.04)]">
+          <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.07em] text-[#a3a3a3]"><StickyNote className="h-3.5 w-3.5" /> Notat</p>
+          {readOnly ? (
+            <p className="mt-2 whitespace-pre-wrap text-[13px] leading-relaxed text-[#555]">{notat}</p>
+          ) : (
+            <textarea
+              value={notat}
+              onChange={(e) => { setNotat(e.target.value.slice(0, 2000)); setDirty(true); }}
+              rows={2}
+              placeholder="Kommentar til budsjettet (forutsetninger, styrenotat …) — følger med i Excel-eksporten"
+              data-testid="budsjett-notat"
+              className="mt-2 w-full resize-y rounded-lg border border-black/[0.06] bg-[#fafaf8] px-3 py-2 text-[13px] leading-relaxed outline-none transition-all placeholder:text-[#c9c5bf] focus:border-[#8b5cf6]/40 focus:bg-white focus:ring-2 focus:ring-[#8b5cf6]/10"
+            />
+          )}
+        </div>
+      )}
 
       <p className="mt-4 text-[11.5px] text-[#b5b5b5]">
         Alle tall i kr eks. mva. {!readOnly && 'Piltaster/Enter flytter mellom celler · ⌘S lagrer. '}«Mot faktisk» henter tallene automatisk fra Økonomi: honorar fra signerte leiekontrakter og løpende kostnader per kategori. Faktiske inntekter føres mot «{katInn[0] || 'Honorar (forvaltning)'}» — oppstartshonorar og annen inntekt følges foreløpig ikke automatisk.

@@ -26,6 +26,7 @@ import { runDueReminders } from '@/lib/reminders';
 import { hentLeieforhold } from '@/lib/leieforhold';
 import { lagLeieforholdExcel, lagLeieforholdCsv } from '@/lib/leieforhold-excel';
 import { hentBudsjett, lagreBudsjett, beregnFaktisk, lagForslag, gyldigBudsjettAar, INNTEKT_KATEGORIER, KOSTNAD_KATEGORIER } from '@/lib/budsjett';
+import { lagBudsjettExcel } from '@/lib/budsjett-excel';
 import { IMPORTED_COLL, importRecords, parseCsv, summarizeImported, syncFromPlatform, listImported, updateImportedOverride, getLeadSyncMeta, maybeAutoSyncLeads } from '@/lib/imported-leads';
 import { queueLeadPushback, flushLeadPushbacks, pushbackStats } from '@/lib/lead-pushback';
 import { renderFinnBanners, FINN_THEMES } from '@/lib/finn-banners';
@@ -3329,6 +3330,22 @@ async function handleRoute(request, { params }) {
         ok: true, ...bud, faktisk,
         kategorier: { inntekter: INNTEKT_KATEGORIER, kostnader: KOSTNAD_KATEGORIER },
       }));
+    }
+    // Excel-eksport av budsjettet (styremøteklar, levende formler) — lesing:
+    // samme modul-tilgang som GET, slik at investorer kan laste ned fra datarommet.
+    if (route === '/admin/budsjett/xlsx' && method === 'GET') {
+      if (!(await modulAuthed(request, db, 'budsjett'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const uX = new URL(request.url);
+      const yearX = gyldigBudsjettAar(uX.searchParams.get('year')) || new Date().getFullYear();
+      const [budX, faktiskX] = await Promise.all([hentBudsjett(db, yearX), beregnFaktisk(db, yearX)]);
+      const bufX = await lagBudsjettExcel({ budsjett: budX, faktisk: faktiskX, year: yearX });
+      return new NextResponse(bufX, {
+        headers: {
+          'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          'Content-Disposition': `attachment; filename="digihome-budsjett-${yearX}.xlsx"`,
+          'Cache-Control': 'no-store',
+        },
+      });
     }
     if (route === '/admin/budsjett' && method === 'PUT') {
       if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
