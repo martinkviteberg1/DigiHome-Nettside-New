@@ -29,7 +29,7 @@ import {
   Bold, Italic, Link2, Image as ImageIcon, Heading,
   Folder, FolderPlus, Ban, GitBranch, Layers, BarChart3,
   Home, Landmark, Briefcase, Wrench, Lock, Globe,
-  Bug, Sparkles, Rocket, Hammer, Boxes, ListFilter, Keyboard,
+  Bug, Sparkles, Rocket, Hammer, Boxes, ListFilter, Keyboard, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 
 const VISNINGER = [
@@ -221,7 +221,7 @@ function StatusBadge({ status }) {
 
 /* Meny — Linear-style popover-dropdown som erstatter native <select>.
    options: [{ v, l, icon?, dot?, avatar?, sub? }] */
-function Meny({ value, options, onChange, placeholder, compact, testid, className = '', menyBredde = 220, oppover }) {
+function Meny({ value, options, onChange, placeholder, compact, naken, testid, className = '', menyBredde = 220, oppover }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
@@ -245,7 +245,9 @@ function Meny({ value, options, onChange, placeholder, compact, testid, classNam
         data-testid={testid}
         aria-haspopup="listbox"
         aria-expanded={open}
-        className={`flex w-full items-center gap-1.5 rounded-lg border bg-white text-left transition-all ${
+        className={naken
+          ? `flex h-7 w-full items-center gap-1.5 rounded-md px-1.5 text-left text-[12.5px] transition-colors ${open ? 'bg-black/[0.06]' : 'hover:bg-black/[0.04]'}`
+          : `flex w-full items-center gap-1.5 rounded-lg border bg-white text-left transition-all ${
           open ? 'border-[#8b5cf6]/50 ring-2 ring-[#8b5cf6]/15' : 'border-black/[0.08] hover:border-black/[0.16]'
         } ${compact ? 'h-8 px-2.5 text-[12.5px]' : 'h-9 px-3 text-[13px]'}`}
       >
@@ -253,7 +255,7 @@ function Meny({ value, options, onChange, placeholder, compact, testid, classNam
         {valgt && valgt.avatar && <Avatar member={valgt.avatar} size={18} />}
         {Ikon && <Ikon className="h-3.5 w-3.5 shrink-0 text-[#888]" />}
         <span className={`min-w-0 flex-1 truncate font-medium ${valgt ? 'text-[#333]' : 'text-[#aaa]'}`}>{valgt ? valgt.l : placeholder}</span>
-        <ChevronDown className={`h-3.5 w-3.5 shrink-0 text-[#b5b5b5] transition-transform duration-150 ${open ? 'rotate-180' : ''}`} />
+        <ChevronDown className={`h-3.5 w-3.5 shrink-0 transition-transform duration-150 ${naken ? 'text-[#d5d2cc]' : 'text-[#b5b5b5]'} ${open ? 'rotate-180' : ''}`} />
       </button>
       {open && (
         <div
@@ -2177,6 +2179,147 @@ function Overlegg({ onClose, children, variant = 'sheet', testid }) {
   );
 }
 
+/* ═══ DatoVelger — moderne dato-popover (Linear-style, norsk, uke fra mandag).
+   Hurtigvalg (I dag / I morgen / Neste uke) + kalendergrid + «Fjern frist».
+   Erstatter de gammeldagse native <input type="date">-feltene. ═══ */
+const DV_DAGER = ['ma', 'ti', 'on', 'to', 'fr', 'lø', 'sø'];
+const DV_MND = ['januar', 'februar', 'mars', 'april', 'mai', 'juni', 'juli', 'august', 'september', 'oktober', 'november', 'desember'];
+const dvIso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+function DatoVelger({ value, onChange, placeholder = 'Ingen frist', testid, forfalt = false, naken = true, oppover = false, className = '' }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    const onKey = (e) => { if (e.key === 'Escape') { e.stopPropagation(); setOpen(false); } };
+    document.addEventListener('mousedown', onDoc);
+    window.addEventListener('keydown', onKey, true);
+    return () => { document.removeEventListener('mousedown', onDoc); window.removeEventListener('keydown', onKey, true); };
+  }, [open]);
+
+  const velg = (iso) => { onChange(iso); setOpen(false); };
+
+  return (
+    <div ref={ref} className={`relative min-w-0 ${className}`}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        data-testid={testid}
+        aria-expanded={open}
+        className={naken
+          ? `flex h-7 w-full items-center gap-1.5 rounded-md px-1.5 text-left text-[12.5px] transition-colors ${open ? 'bg-black/[0.06]' : 'hover:bg-black/[0.04]'}`
+          : `flex h-8 w-full items-center gap-1.5 rounded-lg border bg-white px-2.5 text-left text-[12.5px] transition-all ${open ? 'border-[#8b5cf6]/50 ring-2 ring-[#8b5cf6]/15' : 'border-black/[0.08] hover:border-black/[0.16]'}`}
+      >
+        <Calendar className={`h-3.5 w-3.5 shrink-0 ${forfalt ? 'text-rose-500' : 'text-[#999]'}`} />
+        <span className={`min-w-0 flex-1 truncate font-medium ${value ? (forfalt ? 'text-rose-600' : 'text-[#333]') : 'text-[#aaa]'}`}>
+          {value ? `${fmtDato(value)}${forfalt ? ' · forfalt' : ''}` : placeholder}
+        </span>
+        {value && (
+          <span
+            role="button" tabIndex={-1}
+            onClick={(e) => { e.stopPropagation(); onChange(null); setOpen(false); }}
+            title="Fjern frist"
+            className="rounded p-0.5 text-[#ccc] transition-colors hover:bg-black/[0.06] hover:text-[#777]"
+          >
+            <X className="h-3 w-3" />
+          </span>
+        )}
+      </button>
+      {open && <DatoPanel value={value || ''} onVelg={velg} oppover={oppover} testid={testid ? `${testid}-panel` : undefined} />}
+    </div>
+  );
+}
+
+/* Selve kalenderpanelet — deles av DatoVelger og sjekklistens frist-chip. */
+function DatoPanel({ value, onVelg, oppover = false, hoyre = false, testid }) {
+  const [mnd, setMnd] = useState(() => {
+    const d = value ? new Date(`${value}T12:00:00`) : new Date();
+    return new Date(d.getFullYear(), d.getMonth(), 1);
+  });
+
+  const idagIso = dvIso(new Date());
+  const hurtig = (() => {
+    const n = new Date();
+    const imorgen = new Date(n); imorgen.setDate(n.getDate() + 1);
+    const nesteUke = new Date(n); nesteUke.setDate(n.getDate() + (((8 - n.getDay()) % 7) || 7)); // neste mandag
+    return [
+      { l: 'I dag', iso: dvIso(n) },
+      { l: 'I morgen', iso: dvIso(imorgen) },
+      { l: 'Neste uke', iso: dvIso(nesteUke) },
+    ];
+  })();
+  // 42 celler: man–søn, med nabomånedenes dager nedtonet.
+  const celler = (() => {
+    const start = new Date(mnd);
+    start.setDate(1 - ((mnd.getDay() + 6) % 7));
+    return Array.from({ length: 42 }, (_, i) => {
+      const d = new Date(start); d.setDate(start.getDate() + i);
+      return { d, iso: dvIso(d), iMnd: d.getMonth() === mnd.getMonth() };
+    });
+  })();
+
+  return (
+    <div className={`dh-fade absolute z-[130] w-[252px] rounded-xl border border-black/[0.07] bg-white p-2.5 shadow-[0_16px_48px_rgba(0,0,0,0.16)] ${hoyre ? 'right-0' : 'left-0'} ${oppover ? 'bottom-full mb-1' : 'top-full mt-1'}`} data-testid={testid}>
+      <div className="flex gap-1">
+        {hurtig.map((h) => (
+          <button
+            key={h.l} type="button" onClick={() => onVelg(h.iso)}
+            className={`flex-1 rounded-lg border py-1 text-[11.5px] font-semibold transition-all ${value === h.iso ? 'border-[#8b5cf6]/40 bg-[#f4f0fb] text-[#6d28d9]' : 'border-black/[0.07] text-[#666] hover:border-black/[0.16] hover:text-[#0a0a0a]'}`}
+          >
+            {h.l}
+          </button>
+        ))}
+      </div>
+      <div className="mt-2.5 flex items-center justify-between px-0.5">
+        <button type="button" onClick={() => setMnd(new Date(mnd.getFullYear(), mnd.getMonth() - 1, 1))} className="rounded-md p-1 text-[#999] hover:bg-black/[0.05] hover:text-[#333]" aria-label="Forrige måned">
+          <ChevronLeft className="h-3.5 w-3.5" />
+        </button>
+        <p className="text-[12px] font-bold capitalize text-[#333]">{DV_MND[mnd.getMonth()]} {mnd.getFullYear()}</p>
+        <button type="button" onClick={() => setMnd(new Date(mnd.getFullYear(), mnd.getMonth() + 1, 1))} className="rounded-md p-1 text-[#999] hover:bg-black/[0.05] hover:text-[#333]" aria-label="Neste måned">
+          <ChevronRight className="h-3.5 w-3.5" />
+        </button>
+      </div>
+      <div className="mt-1 grid grid-cols-7">
+        {DV_DAGER.map((d) => (
+          <span key={d} className="py-1 text-center text-[10px] font-bold uppercase text-[#c2beb8]">{d}</span>
+        ))}
+        {celler.map((c) => {
+          const valgt = value === c.iso;
+          const iDag = c.iso === idagIso;
+          return (
+            <button
+              key={c.iso} type="button" onClick={() => onVelg(c.iso)}
+              className={`mx-auto flex h-[30px] w-[30px] items-center justify-center rounded-lg text-[12px] tabular-nums transition-colors ${
+                valgt ? 'bg-[#0a0a0a] font-bold text-white' : iDag ? 'font-bold text-[#8b5cf6] hover:bg-[#f4f0fb]' : c.iMnd ? 'text-[#444] hover:bg-black/[0.05]' : 'text-[#d0cdc7] hover:bg-black/[0.04]'
+              }`}
+            >
+              {c.d.getDate()}
+            </button>
+          );
+        })}
+      </div>
+      {value && (
+        <button
+          type="button" onClick={() => onVelg(null)}
+          className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg border border-black/[0.07] py-1.5 text-[12px] font-semibold text-[#888] transition-all hover:border-black/[0.16] hover:text-rose-600"
+        >
+          <X className="h-3 w-3" /> Fjern frist
+        </button>
+      )}
+    </div>
+  );
+}
+
+/* Kompakt egenskapsrad i saksskuffen — etikett venstre, verdi høyre. */
+function PropRad({ label, children, testid }) {
+  return (
+    <div className="flex min-h-[32px] items-center gap-2 py-px" data-testid={testid}>
+      <span className="w-[92px] shrink-0 text-[12px] font-medium text-[#999]">{label}</span>
+      <div className="min-w-0 flex-1">{children}</div>
+    </div>
+  );
+}
+
 /* ═══════════════ Skuff: full redigering av én sak ═══════════════ */
 function SakSkuff({ t, members, today, actor, apiKey, api, projects = [], alleSaker = [], omrader = ['drift'], devProducts = [], onManageProducts = null, onOpenTask, onNyProsjekt, visToast, onReload, onClose, onPatch, onComment, onRemind, onDelete, onArchive }) {
   const [tittel, setTittel] = useState(t.title);
@@ -2312,28 +2455,32 @@ function SakSkuff({ t, members, today, actor, apiKey, api, projects = [], alleSa
           </div>
         );
 
-        const sekMeta = (
-          <div className={`mt-4 grid grid-cols-1 gap-3 ${utvidet ? '' : 'min-[420px]:grid-cols-2'}`}>
-            <MetaFelt label="Ansvarlig">
+        // ── Egenskaper — kompakte rader (Linear-style): etikett venstre, verdi
+        // høyre, hårlinje over/under blokken. Erstatter de gamle seksjonene.
+        const aktivProd = t.productId ? devProducts.find((p) => p.id === t.productId) : null;
+        const sekEgenskaper = (
+          <div className="mt-4 border-y border-black/[0.05] py-1.5" data-testid="drawer-props">
+            <PropRad label="Ansvarlig">
               <Meny
+                naken
                 value={t.assigneeId || ''}
                 onChange={(v) => onPatch({ assigneeId: v || null, notify: varsle })}
                 testid="drawer-assignee"
                 placeholder="Ingen"
                 options={[{ v: '', l: 'Ingen', icon: User }, ...members.map((m) => ({ v: m.id, l: m.name, avatar: m, sub: m.email || undefined }))]}
               />
-            </MetaFelt>
-            <MetaFelt label="Frist">
-              <input
-                type="date"
+            </PropRad>
+            <PropRad label="Frist">
+              <DatoVelger
                 value={t.dueDate || ''}
-                onChange={(e) => onPatch({ dueDate: e.target.value || null })}
-                data-testid="drawer-due"
-                className="h-9 w-full rounded-lg border border-black/[0.08] bg-white px-2.5 text-[13px] outline-none transition-all hover:border-black/[0.16] focus:border-[#8b5cf6]/50 focus:ring-2 focus:ring-[#8b5cf6]/15"
+                onChange={(v) => onPatch({ dueDate: v })}
+                testid="drawer-due"
+                forfalt={!!(t.dueDate && t.status !== 'done' && t.dueDate < today)}
               />
-            </MetaFelt>
-            <MetaFelt label="Prioritet">
+            </PropRad>
+            <PropRad label="Prioritet">
               <Meny
+                naken
                 value={t.priority}
                 onChange={(v) => onPatch({ priority: Number(v) })}
                 testid="drawer-priority"
@@ -2343,40 +2490,106 @@ function SakSkuff({ t, members, today, actor, apiKey, api, projects = [], alleSa
                   { v: 3, l: 'P3 · Lav', dot: '#6b7280' },
                 ]}
               />
-            </MetaFelt>
-            <MetaFelt label="Gjentakelse">
-              <Meny
-                value={t.recurrence || ''}
-                onChange={(v) => onPatch({ recurrence: v || null })}
-                testid="drawer-recurrence"
-                options={REC_VALG.map((r) => ({ v: r.k, l: r.l, icon: r.k ? Repeat : undefined }))}
-              />
-            </MetaFelt>
-            <MetaFelt label="Etiketter (komma)">
+            </PropRad>
+            <PropRad label="Etiketter">
               <input
+                key={`${t.id}:${(t.labels || []).join(',')}`}
                 defaultValue={(t.labels || []).join(', ')}
                 onBlur={(e) => {
                   const labels = e.target.value.split(',').map((s) => s.trim()).filter(Boolean);
                   if (JSON.stringify(labels) !== JSON.stringify(t.labels || [])) onPatch({ labels });
                 }}
                 placeholder="styre, økonomi …"
-                className="h-9 w-full rounded-lg border border-black/[0.08] bg-white px-2.5 text-[13px] outline-none transition-all placeholder:text-[#ccc] hover:border-black/[0.16] focus:border-[#8b5cf6]/50 focus:ring-2 focus:ring-[#8b5cf6]/15"
+                data-testid="drawer-labels"
+                className="h-7 w-full rounded-md bg-transparent px-1.5 text-[12.5px] font-medium outline-none transition-colors placeholder:text-[#ccc] hover:bg-black/[0.04] focus:bg-white focus:ring-2 focus:ring-[#8b5cf6]/15"
               />
-            </MetaFelt>
+            </PropRad>
+            <PropRad label="Prosjekt">
+              <Meny
+                naken value={t.projectId || ''} testid="drawer-project"
+                onChange={(v) => { if (v === '__nytt__') { onNyProsjekt && onNyProsjekt(); return; } onPatch({ projectId: v || null }); }}
+                options={[
+                  { v: '', l: 'Uten prosjekt', icon: Folder },
+                  ...projects.map((p) => ({ v: p.id, l: p.name, dot: p.color })),
+                  { v: '__nytt__', l: 'Nytt prosjekt …', icon: FolderPlus },
+                ]}
+              />
+            </PropRad>
+            {omrader.length > 1 && (
+              <PropRad label="Område">
+                <Meny
+                  naken value={OMRADER_UI.some((o) => o.k === t.space) ? t.space : 'drift'} testid="drawer-space"
+                  onChange={(v) => onPatch({ space: v })}
+                  options={OMRADER_UI.filter((o) => omrader.includes(o.k)).map((o) => ({ v: o.k, l: o.l, icon: o.icon }))}
+                />
+              </PropRad>
+            )}
+            {t.space === 'utvikling' && (
+              <>
+                <PropRad label="Sakstype" testid="drawer-dev">
+                  <div className="flex flex-wrap gap-1 py-0.5">
+                    {SAKSTYPE_UI.map((ty) => {
+                      const TIkon = ty.icon; const aktivTy = t.taskType === ty.k;
+                      return (
+                        <button
+                          key={ty.k}
+                          onClick={() => onPatch({ taskType: aktivTy ? null : ty.k })}
+                          data-testid={`drawer-type-${ty.k}`}
+                          className={`flex items-center gap-1 rounded-full px-2 py-[3px] text-[11px] font-semibold transition-all ${aktivTy ? 'shadow-[0_1px_4px_rgba(0,0,0,0.10)]' : 'border border-black/[0.07] text-[#999] hover:text-[#555]'}`}
+                          style={aktivTy ? { color: ty.farge, background: `${ty.farge}14` } : undefined}
+                        >
+                          <TIkon className="h-3 w-3" /> {ty.l}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </PropRad>
+                <PropRad label="Produkt">
+                  <Meny
+                    naken value={t.productId || ''} testid="drawer-product" placeholder="Uten produkt"
+                    onChange={(v) => { if (v === '__adm__') { onManageProducts && onManageProducts(); return; } onPatch({ productId: v || null, componentId: null }); }}
+                    options={[
+                      { v: '', l: 'Uten produkt', icon: Boxes },
+                      ...devProducts.map((p) => ({ v: p.id, l: p.name, dot: p.color })),
+                      { v: '__adm__', l: 'Administrer produkter …', icon: Settings },
+                    ]}
+                  />
+                </PropRad>
+                {aktivProd && (aktivProd.components || []).length > 0 && (
+                  <PropRad label="Komponent">
+                    <Meny
+                      naken value={t.componentId || ''} testid="drawer-component" placeholder="Uten komponent"
+                      onChange={(v) => onPatch({ componentId: v || null })}
+                      options={[{ v: '', l: 'Uten komponent' }, ...aktivProd.components.map((c) => ({ v: c.id, l: c.name }))]}
+                    />
+                  </PropRad>
+                )}
+              </>
+            )}
+            <PropRad label="Gjentakelse">
+              <Meny
+                naken value={t.recurrence || ''} onChange={(v) => onPatch({ recurrence: v || null })} testid="drawer-recurrence"
+                options={REC_VALG.map((r) => ({ v: r.k, l: r.l, icon: r.k ? Repeat : undefined }))}
+              />
+            </PropRad>
+            <PropRad label="E-postvarsel">
+              <button
+                onClick={() => setVarsle((v) => !v)}
+                data-testid="drawer-notify-toggle"
+                className="flex h-7 items-center gap-2 rounded-md px-1.5 text-[12.5px] font-medium text-[#555] transition-colors hover:bg-black/[0.04]"
+              >
+                <span className={`flex h-[16px] w-7 items-center rounded-full p-[2px] transition-colors ${varsle ? 'bg-[#8b5cf6]' : 'bg-black/[0.12]'}`}>
+                  <span className={`h-3 w-3 rounded-full bg-white shadow transition-transform ${varsle ? 'translate-x-[12px]' : ''}`} />
+                </span>
+                {varsle ? 'På ved ny tildeling' : 'Av'}
+              </button>
+            </PropRad>
+            {t.recurrence && (
+              <p className="flex items-center gap-1.5 px-1.5 pb-1 pt-0.5 text-[11.5px] text-[#8b5cf6]">
+                <Repeat className="h-3 w-3" /> Neste forekomst opprettes automatisk når saken fullføres.
+              </p>
+            )}
           </div>
-        );
-
-        const sekRec = t.recurrence ? (
-          <p className="mt-2 flex items-center gap-1.5 text-[12px] text-[#8b5cf6]">
-            <Repeat className="w-3.5 h-3.5" /> Når saken fullføres, opprettes neste forekomst automatisk.
-          </p>
-        ) : null;
-
-        const sekVarsle = (
-          <label className="mt-3 flex items-center gap-2 text-[12px] text-[#888]">
-            <input type="checkbox" checked={varsle} onChange={(e) => setVarsle(e.target.checked)} className="h-4 w-4 accent-[#8b5cf6]" />
-            Send e-postvarsel ved ny tildeling
-          </label>
         );
 
         const sekFrist = (t.dueDate && t.status !== 'done' && t.dueDate < today) ? (
@@ -2403,82 +2616,12 @@ function SakSkuff({ t, members, today, actor, apiKey, api, projects = [], alleSa
         const sekSjekkliste = <Sjekkliste items={t.subtasks || []} members={members} onChange={(subtasks) => onPatch({ subtasks })} onPromote={promoterSjekkpunkt} />;
         const sekFolgere = <FolgereFelt t={t} members={members} onPatch={onPatch} />;
         const sekVedlegg = <VedleggSeksjon t={t} apiKey={apiKey} api={api} actor={actor} onReload={onReload} visToast={visToast} />;
-        const sekProsjekt = (
-          <div className="mt-3">
-            <p className="mb-1 text-[11px] font-bold uppercase tracking-wider text-[#999]">Prosjekt</p>
-            <Meny
-              compact value={t.projectId || ''} testid="drawer-project"
-              onChange={(v) => { if (v === '__nytt__') { onNyProsjekt && onNyProsjekt(); return; } onPatch({ projectId: v || null }); }}
-              options={[
-                { v: '', l: 'Uten prosjekt', icon: Folder },
-                ...projects.map((p) => ({ v: p.id, l: p.name, dot: p.color })),
-                { v: '__nytt__', l: 'Nytt prosjekt …', icon: FolderPlus },
-              ]}
-            />
-          </div>
-        );
         const sekRelasjoner = (
           <RelasjonSeksjon t={t} alleSaker={alleSaker} onPatch={onPatch} onOpenTask={onOpenTask} />
         );
-        // Område (hvor saken «bor») — kun synlig når brukeren har flere områder.
-        const sekOmrade = omrader.length > 1 ? (
-          <div className="mt-3">
-            <p className="mb-1 text-[11px] font-bold uppercase tracking-wider text-[#999]">Område</p>
-            <Meny
-              compact value={OMRADER_UI.some((o) => o.k === t.space) ? t.space : 'drift'} testid="drawer-space"
-              onChange={(v) => onPatch({ space: v })}
-              options={OMRADER_UI.filter((o) => omrader.includes(o.k)).map((o) => ({ v: o.k, l: o.l, icon: o.icon }))}
-            />
-          </div>
-        ) : null;
         const sekSynlighet = (
           <SynlighetSeksjon t={t} members={members} onPatch={onPatch} />
         );
-        // Utviklingsfelter: sakstype + Produkt → Komponent (kun Utvikling-området).
-        const aktivProd = t.productId ? devProducts.find((p) => p.id === t.productId) : null;
-        const sekUtvikling = t.space === 'utvikling' ? (
-          <div className="mt-3" data-testid="drawer-dev">
-            <p className="mb-1 text-[11px] font-bold uppercase tracking-wider text-[#999]">Sakstype</p>
-            <div className="flex flex-wrap gap-1">
-              {SAKSTYPE_UI.map((ty) => {
-                const TIkon = ty.icon; const aktivTy = t.taskType === ty.k;
-                return (
-                  <button
-                    key={ty.k}
-                    onClick={() => onPatch({ taskType: aktivTy ? null : ty.k })}
-                    data-testid={`drawer-type-${ty.k}`}
-                    className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-[11.5px] font-semibold transition-all ${aktivTy ? 'shadow-[0_1px_4px_rgba(0,0,0,0.10)]' : 'border border-black/[0.07] text-[#999] hover:text-[#555]'}`}
-                    style={aktivTy ? { color: ty.farge, background: `${ty.farge}14` } : undefined}
-                  >
-                    <TIkon className="h-3 w-3" /> {ty.l}
-                  </button>
-                );
-              })}
-            </div>
-            <p className="mb-1 mt-3 text-[11px] font-bold uppercase tracking-wider text-[#999]">Produkt</p>
-            <Meny
-              compact value={t.productId || ''} testid="drawer-product"
-              onChange={(v) => { if (v === '__adm__') { onManageProducts && onManageProducts(); return; } onPatch({ productId: v || null, componentId: null }); }}
-              placeholder="Uten produkt"
-              options={[
-                { v: '', l: 'Uten produkt', icon: Boxes },
-                ...devProducts.map((p) => ({ v: p.id, l: p.name, dot: p.color })),
-                { v: '__adm__', l: 'Administrer produkter …', icon: Settings },
-              ]}
-            />
-            {aktivProd && (aktivProd.components || []).length > 0 && (
-              <>
-                <p className="mb-1 mt-3 text-[11px] font-bold uppercase tracking-wider text-[#999]">Komponent</p>
-                <Meny
-                  compact value={t.componentId || ''} testid="drawer-component"
-                  onChange={(v) => onPatch({ componentId: v || null })}
-                  placeholder="Uten komponent"
-                  options={[{ v: '', l: 'Uten komponent' }, ...aktivProd.components.map((c) => ({ v: c.id, l: c.name }))]}
-                />
-              </>
-            )}
-          </div>
-        ) : null;
         const sekUndersaker = (
           <UndersakSeksjon t={t} alleSaker={alleSaker} api={api} actor={actor} onReload={onReload} onOpenTask={onOpenTask} visToast={visToast} />
         );
@@ -2560,14 +2703,9 @@ function SakSkuff({ t, members, today, actor, apiKey, api, projects = [], alleSa
                 {sekKommentarer}
                 {sekAktivitet}
               </div>
-              <aside className="mt-6 md:mt-1 md:rounded-2xl md:border md:border-black/[0.05] md:bg-[#fafaf8] md:p-5">
+              <aside className="mt-6 md:mt-1 md:rounded-2xl md:border md:border-black/[0.05] md:bg-[#fafaf8] md:px-4 md:py-3">
                 <p className="hidden text-[11px] font-bold uppercase tracking-[0.1em] text-[#999] md:block">Detaljer</p>
-                {sekMeta}
-                {sekProsjekt}
-                {sekOmrade}
-                {sekUtvikling}
-                {sekRec}
-                {sekVarsle}
+                {sekEgenskaper}
                 {sekFolgere}
                 {sekSynlighet}
               </aside>
@@ -2578,12 +2716,7 @@ function SakSkuff({ t, members, today, actor, apiKey, api, projects = [], alleSa
           <>
             {sekTittel}
             {sekBeskrivelse}
-            {sekMeta}
-            {sekProsjekt}
-            {sekOmrade}
-            {sekUtvikling}
-            {sekRec}
-            {sekVarsle}
+            {sekEgenskaper}
             {sekFrist}
             {sekSjekkliste}
             {sekUndersaker}
@@ -3206,28 +3339,40 @@ function SubAnsvarlig({ value, members, onChange, testid }) {
   );
 }
 
-// Frist-chip per deloppgave — usynlig dato-input over chippen (native picker)
+// Frist-chip per deloppgave — åpner den moderne dato-popoveren (DatoPanel).
 function SubFrist({ value, done, today, onChange, testid }) {
   const forfalt = value && !done && value < today;
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    const onKey = (e) => { if (e.key === 'Escape') { e.stopPropagation(); setOpen(false); } };
+    document.addEventListener('mousedown', onDoc);
+    window.addEventListener('keydown', onKey, true);
+    return () => { document.removeEventListener('mousedown', onDoc); window.removeEventListener('keydown', onKey, true); };
+  }, [open]);
   return (
-    <span
-      title={value ? `Frist ${fmtSubDato(value)} — klikk for å endre` : 'Sett frist for punktet'}
-      className={`relative flex h-6 shrink-0 cursor-pointer items-center gap-1 rounded-md px-1.5 text-[11px] font-semibold tabular-nums transition-colors ${
-        value
-          ? forfalt ? 'bg-rose-50 text-rose-600' : done ? 'bg-[#f3f2f0] text-[#b5b5b5]' : 'bg-[#f3f2f0] text-[#777]'
-          : 'text-[#ccc] hover:text-[#8b5cf6]'
-      }`}
-    >
-      <Calendar className="h-3 w-3" />
-      {value ? fmtSubDato(value) : ''}
-      <input
-        type="date"
-        value={value || ''}
-        onChange={(e) => onChange(e.target.value || null)}
-        onClick={(e) => e.stopPropagation()}
+    <span ref={ref} className="relative shrink-0">
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); setOpen((o) => !o); }}
         data-testid={testid}
-        className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-      />
+        title={value ? `Frist ${fmtSubDato(value)} — klikk for å endre` : 'Sett frist for punktet'}
+        className={`flex h-6 items-center gap-1 rounded-md px-1.5 text-[11px] font-semibold tabular-nums transition-colors ${
+          value
+            ? forfalt ? 'bg-rose-50 text-rose-600' : done ? 'bg-[#f3f2f0] text-[#b5b5b5]' : 'bg-[#f3f2f0] text-[#777]'
+            : 'text-[#ccc] hover:text-[#8b5cf6]'
+        }`}
+      >
+        <Calendar className="h-3 w-3" />
+        {value ? fmtSubDato(value) : ''}
+      </button>
+      {open && (
+        <span onClick={(e) => e.stopPropagation()}>
+          <DatoPanel hoyre value={value || ''} onVelg={(iso) => { onChange(iso); setOpen(false); }} />
+        </span>
+      )}
     </span>
   );
 }
@@ -3771,10 +3916,10 @@ function NySakModal({ members, projects = [], omrader = ['drift'], defaultSpace 
             options={[{ v: '', l: 'Ingen ansvarlig', icon: User }, ...members.map((m) => ({ v: m.id, l: m.name, avatar: m }))]}
             className="md:w-[170px]"
           />
-          <input
-            type="date" value={frist} onChange={(e) => setFrist(e.target.value)}
-            data-testid="new-task-due"
-            className="h-8 min-w-0 rounded-lg border border-black/[0.08] bg-white px-2.5 text-[12.5px] outline-none transition-all hover:border-black/[0.16] focus:border-[#8b5cf6]/50 focus:ring-2 focus:ring-[#8b5cf6]/15"
+          <DatoVelger
+            naken={false} value={frist} onChange={(v) => setFrist(v || '')}
+            testid="new-task-due" placeholder="Ingen frist"
+            className="md:w-[150px]"
           />
           <Meny
             compact value={gjentakelse} onChange={setGjentakelse} testid="new-task-recurrence"
