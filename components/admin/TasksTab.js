@@ -27,6 +27,7 @@ import {
   MoreHorizontal, Send, Maximize2, Minimize2, Settings, AtSign,
   Bold, Italic, Link2, Image as ImageIcon, Heading,
   Folder, FolderPlus, Ban, GitBranch, Layers, BarChart3,
+  Home, Landmark, Briefcase, Wrench, Lock, Globe,
 } from 'lucide-react';
 
 const VISNINGER = [
@@ -36,6 +37,21 @@ const VISNINGER = [
   { k: 'tidslinje', l: 'Tidslinje', icon: CalendarRange },
   { k: 'innsikt', l: 'Innsikt', icon: BarChart3 },
   { k: 'arkiv', l: 'Arkiv', icon: Archive },
+];
+
+/* Områder (spaces) — saken «bor» et sted, og stedet avgjør hvem som ser den.
+   Tilgang styres av grupper på personene (Styret/Ledelsen/Utvikling); admin
+   ser alltid alt. Selve håndhevingen skjer på serveren (lib/sak-tilgang.js). */
+const OMRADER_UI = [
+  { k: 'drift', l: 'Drift', icon: Home },
+  { k: 'styret', l: 'Styret', icon: Landmark },
+  { k: 'ledelse', l: 'Ledelse', icon: Briefcase },
+  { k: 'utvikling', l: 'Utvikling', icon: Wrench },
+];
+const GRUPPER_UI = [
+  { k: 'styret', l: 'Styret' },
+  { k: 'ledelsen', l: 'Ledelsen' },
+  { k: 'utvikling', l: 'Utvikling' },
 ];
 
 const REC_VALG = [
@@ -374,6 +390,8 @@ export default function TasksTab({ apiKey, user, onStats }) {
   const [fPri, setFPri] = useState(0);
   const [sok, setSok] = useState('');
   const [valgtId, setValgtId] = useState(null);
+  const [omrader, setOmrader] = useState(['drift']); // områder jeg har tilgang til (fra serveren)
+  const [aktivtOmrade, setAktivtOmrade] = useState('drift');
   const [nyOpen, setNyOpen] = useState(false);
   const [personerOpen, setPersonerOpen] = useState(false);
   const [dragId, setDragId] = useState(null);
@@ -532,6 +550,7 @@ export default function TasksTab({ apiKey, user, onStats }) {
       setTasks(j.tasks || []);
       setMembers(j.members || []);
       setProjects(j.projects || []);
+      setOmrader(Array.isArray(j.spaces) && j.spaces.length ? j.spaces : ['drift']);
       setToday(j.today || today);
       meldStats(j.tasks || [], j.today || today);
       sisteSyncRef.current = new Date().toISOString();
@@ -817,6 +836,7 @@ export default function TasksTab({ apiKey, user, onStats }) {
   const filtrert = useMemo(() => {
     const s = sok.trim().toLowerCase();
     return tasks.filter((t) => {
+      if ((t.space || 'drift') !== aktivtOmrade) return false;
       if (mine && minId && t.assigneeId !== minId && !(t.followers || []).includes(minId)) return false;
       if (fAnsvarlig !== 'alle' && (t.assigneeId || '') !== fAnsvarlig) return false;
       if (fPri && t.priority !== fPri) return false;
@@ -824,7 +844,7 @@ export default function TasksTab({ apiKey, user, onStats }) {
       if (s && !`${t.title} ${t.description} ${(t.labels || []).join(' ')}`.toLowerCase().includes(s)) return false;
       return true;
     });
-  }, [tasks, mine, minId, fAnsvarlig, fPri, fProsjekt, sok]);
+  }, [tasks, mine, minId, fAnsvarlig, fPri, fProsjekt, sok, aktivtOmrade]);
 
   const perStatus = useMemo(() => {
     const m = { inbox: [], doing: [], waiting: [], done: [] };
@@ -841,15 +861,16 @@ export default function TasksTab({ apiKey, user, onStats }) {
   }, [filtrert]);
 
   const stats = useMemo(() => {
-    const aapne = tasks.filter((t) => t.status !== 'done');
+    const iOmrade = tasks.filter((t) => (t.space || 'drift') === aktivtOmrade);
+    const aapne = iOmrade.filter((t) => t.status !== 'done');
     const uke = new Date(Date.now() - 7 * 864e5).toISOString();
     return {
       aapne: aapne.length,
       forfalt: aapne.filter((t) => t.dueDate && t.dueDate < today).length,
       iDag: aapne.filter((t) => t.dueDate === today).length,
-      ferdig7d: tasks.filter((t) => t.status === 'done' && (t.completedAt || '') >= uke).length,
+      ferdig7d: iOmrade.filter((t) => t.status === 'done' && (t.completedAt || '') >= uke).length,
     };
-  }, [tasks, today]);
+  }, [tasks, today, aktivtOmrade]);
 
   // Linear-navigasjon: flat rekkefølge i samme rekkefølge som aktiv visning.
   const tabellData = useMemo(() => {
@@ -979,6 +1000,32 @@ export default function TasksTab({ apiKey, user, onStats }) {
 
   return (
     <div data-testid="tasks-tab">
+      {/* ═══ Områdevelger — saken «bor» et sted, og stedet avgjør hvem som ser
+          den. Vises kun når brukeren har tilgang til mer enn Drift. ═══ */}
+      {omrader.length > 1 && (
+        <div className="no-scrollbar mb-3 flex items-center gap-1.5 overflow-x-auto pb-0.5" data-testid="space-switcher">
+          {OMRADER_UI.filter((o) => omrader.includes(o.k)).map((o) => {
+            const antall = tasks.filter((t) => (t.space || 'drift') === o.k && t.status !== 'done' && !t.archived).length;
+            const aktiv = aktivtOmrade === o.k;
+            const OIkon = o.icon;
+            return (
+              <button
+                key={o.k}
+                onClick={() => setAktivtOmrade(o.k)}
+                data-testid={`space-${o.k}`}
+                className={`flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-[7px] text-[12.5px] font-semibold transition-all active:scale-[0.97] ${
+                  aktiv ? 'bg-[#0a0a0a] text-white shadow-[0_2px_10px_rgba(0,0,0,0.18)]' : 'border border-black/[0.07] bg-white text-[#777] hover:border-black/[0.16] hover:text-[#0a0a0a]'
+                }`}
+              >
+                <OIkon className="h-3.5 w-3.5" />
+                {o.l}
+                {antall > 0 && <span className={`text-[11px] font-bold tabular-nums ${aktiv ? 'text-white/60' : 'text-[#bbb]'}`}>{antall}</span>}
+                {o.k !== 'drift' && <Lock className={`h-3 w-3 ${aktiv ? 'text-white/50' : 'text-[#d5d2cc]'}`} />}
+              </button>
+            );
+          })}
+        </div>
+      )}
       {/* ═══ Toppstripe ═══ */}
       <div className="mb-4 md:mb-5">
         <div className="flex items-center gap-2">
@@ -1524,6 +1571,7 @@ export default function TasksTab({ apiKey, user, onStats }) {
           t={valgt} members={members} today={today} actor={actor}
           projects={projects} alleSaker={tasks} onOpenTask={(id) => setValgtId(id)}
           onNyProsjekt={() => setProsjektModal(true)}
+          omrader={omrader}
           apiKey={apiKey} api={api} visToast={visToast} onReload={last}
           onClose={() => setValgtId(null)}
           onPatch={(patch) => oppdater(valgt.id, patch)}
@@ -1539,6 +1587,8 @@ export default function TasksTab({ apiKey, user, onStats }) {
         <NySakModal
           members={members}
           projects={projects}
+          omrader={omrader}
+          defaultSpace={aktivtOmrade}
           defaultStatus={typeof nyOpen === 'string' ? nyOpen : 'inbox'}
           uploadBilde={uploadBildeRoot}
           onClose={() => setNyOpen(false)}
@@ -1833,6 +1883,9 @@ function SakKort({ t, today, member, members = [], dras, fokus, valgt, index = 0
           <span className="flex items-center gap-1 text-[11px] text-[#aaa]"><Paperclip className="w-3 h-3" />{t.attachments.length}</span>
         )}
         {t.recurrence && <Repeat className="w-3 h-3 text-[#aaa]" title="Gjentakende sak" />}
+        {Array.isArray(t.restrictedTo) && t.restrictedTo.length > 0 && (
+          <Lock className="h-3 w-3 text-[#d97706]" title={`Begrenset synlighet — kun ${t.restrictedTo.length} personer + admin`} data-testid={`card-lock-${t.id}`} />
+        )}
         {(t.comments || []).length > 0 && (
           <span className="flex items-center gap-1 text-[11px] text-[#aaa]"><MessageSquare className="w-3 h-3" />{t.comments.length}</span>
         )}
@@ -1890,7 +1943,7 @@ function Overlegg({ onClose, children, variant = 'sheet', testid }) {
 }
 
 /* ═══════════════ Skuff: full redigering av én sak ═══════════════ */
-function SakSkuff({ t, members, today, actor, apiKey, api, projects = [], alleSaker = [], onOpenTask, onNyProsjekt, visToast, onReload, onClose, onPatch, onComment, onRemind, onDelete, onArchive }) {
+function SakSkuff({ t, members, today, actor, apiKey, api, projects = [], alleSaker = [], omrader = ['drift'], onOpenTask, onNyProsjekt, visToast, onReload, onClose, onPatch, onComment, onRemind, onDelete, onArchive }) {
   const [tittel, setTittel] = useState(t.title);
   const [beskrivelse, setBeskrivelse] = useState(t.description || '');
   const [beskRediger, setBeskRediger] = useState(false);
@@ -2132,6 +2185,20 @@ function SakSkuff({ t, members, today, actor, apiKey, api, projects = [], alleSa
         const sekRelasjoner = (
           <RelasjonSeksjon t={t} alleSaker={alleSaker} onPatch={onPatch} onOpenTask={onOpenTask} />
         );
+        // Område (hvor saken «bor») — kun synlig når brukeren har flere områder.
+        const sekOmrade = omrader.length > 1 ? (
+          <div className="mt-3">
+            <p className="mb-1 text-[11px] font-bold uppercase tracking-wider text-[#999]">Område</p>
+            <Meny
+              compact value={OMRADER_UI.some((o) => o.k === t.space) ? t.space : 'drift'} testid="drawer-space"
+              onChange={(v) => onPatch({ space: v })}
+              options={OMRADER_UI.filter((o) => omrader.includes(o.k)).map((o) => ({ v: o.k, l: o.l, icon: o.icon }))}
+            />
+          </div>
+        ) : null;
+        const sekSynlighet = (
+          <SynlighetSeksjon t={t} members={members} onPatch={onPatch} />
+        );
         const sekUndersaker = (
           <UndersakSeksjon t={t} alleSaker={alleSaker} api={api} actor={actor} onReload={onReload} onOpenTask={onOpenTask} visToast={visToast} />
         );
@@ -2217,9 +2284,11 @@ function SakSkuff({ t, members, today, actor, apiKey, api, projects = [], alleSa
                 <p className="hidden text-[11px] font-bold uppercase tracking-[0.1em] text-[#999] md:block">Detaljer</p>
                 {sekMeta}
                 {sekProsjekt}
+                {sekOmrade}
                 {sekRec}
                 {sekVarsle}
                 {sekFolgere}
+                {sekSynlighet}
               </aside>
             </div>
           );
@@ -2230,6 +2299,7 @@ function SakSkuff({ t, members, today, actor, apiKey, api, projects = [], alleSa
             {sekBeskrivelse}
             {sekMeta}
             {sekProsjekt}
+            {sekOmrade}
             {sekRec}
             {sekVarsle}
             {sekFrist}
@@ -2237,6 +2307,7 @@ function SakSkuff({ t, members, today, actor, apiKey, api, projects = [], alleSa
             {sekUndersaker}
             {sekRelasjoner}
             {sekFolgere}
+            {sekSynlighet}
             {sekVedlegg}
             {sekKommentarer}
             {sekAktivitet}
@@ -3180,6 +3251,86 @@ function VedleggSeksjon({ t, apiKey, api, actor, onReload, visToast }) {
 }
 
 /* ═══════════════ Nytt prosjekt ═══════════════ */
+
+/* ═══════════════ Synlighet per sak (unntaksventil) ═══════════════
+   «Alle i området» (standard) eller «Begrenset» til utvalgte personer.
+   Håndheves på SERVEREN (liste, søk, varsler, e-post, påminnelser) — dette er
+   bare kontrollflaten. Ansvarlig/følgere/aktør inkluderes alltid av backend,
+   og administratorer ser alltid alt. */
+function SynlighetSeksjon({ t, members = [], onPatch }) {
+  const begrenset = Array.isArray(t.restrictedTo) && t.restrictedTo.length > 0;
+  const valgte = new Set(t.restrictedTo || []);
+  // Kun bruker-/partnerkontoer kan begrenses — admin ser alltid alt.
+  const kandidater = members.filter((m) => ['bruker', 'partner'].includes(m.role));
+
+  const settAlle = () => onPatch({ restrictedTo: [] });
+  const settBegrenset = () => {
+    // Fornuftig start: ansvarlig + følgere (backend unioner uansett).
+    const start = new Set([t.assigneeId, ...(t.followers || [])].filter(Boolean));
+    onPatch({ restrictedTo: start.size ? [...start] : [(kandidater[0] || {}).id].filter(Boolean) });
+  };
+  const veksle = (id) => {
+    const s = new Set(valgte);
+    if (s.has(id)) s.delete(id); else s.add(id);
+    onPatch({ restrictedTo: [...s] });
+  };
+
+  return (
+    <div className="mt-5" data-testid="drawer-visibility">
+      <p className="mb-1 text-[11px] font-bold uppercase tracking-wider text-[#999]">Synlighet</p>
+      <div className="flex gap-1 rounded-xl bg-[#ecebe8] p-1">
+        <button
+          onClick={settAlle}
+          data-testid="visibility-all"
+          className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-1.5 text-[12px] font-semibold transition-all ${!begrenset ? 'bg-white text-[#0a0a0a] shadow-[0_1px_5px_rgba(0,0,0,0.10)]' : 'text-[#999] hover:text-[#555]'}`}
+        >
+          <Globe className="h-3.5 w-3.5" /> Alle i området
+        </button>
+        <button
+          onClick={settBegrenset}
+          data-testid="visibility-restricted"
+          className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-1.5 text-[12px] font-semibold transition-all ${begrenset ? 'bg-white text-[#b45309] shadow-[0_1px_5px_rgba(0,0,0,0.10)]' : 'text-[#999] hover:text-[#555]'}`}
+        >
+          <Lock className="h-3.5 w-3.5" /> Begrenset
+        </button>
+      </div>
+      {begrenset && (
+        <div className="mt-2 rounded-xl border border-[#f0c98a]/50 bg-[#fffbeb]/60 p-2.5" data-testid="visibility-picker">
+          <p className="text-[11.5px] font-semibold text-[#b45309]">Kun disse ser saken:</p>
+          <div className="mt-1.5 space-y-0.5">
+            {kandidater.map((m) => {
+              const pa = m.id === t.assigneeId;
+              const flg = (t.followers || []).includes(m.id);
+              const laast = pa || flg; // inkluderes alltid av backend
+              const med = valgte.has(m.id) || laast;
+              return (
+                <label
+                  key={m.id}
+                  data-testid={`visibility-person-${m.id}`}
+                  className={`flex items-center gap-2.5 rounded-lg px-1.5 py-1.5 ${laast ? 'opacity-80' : 'cursor-pointer hover:bg-white/70'}`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={med}
+                    disabled={laast}
+                    onChange={() => veksle(m.id)}
+                    className="h-4 w-4 accent-[#b45309]"
+                  />
+                  <Avatar member={m} size={22} />
+                  <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-[#333]">{m.name}</span>
+                  {laast && <span className="shrink-0 text-[10.5px] font-semibold text-[#c2a36b]">{pa ? 'ansvarlig' : 'følger'}</span>}
+                </label>
+              );
+            })}
+            {!kandidater.length && <p className="px-1.5 py-2 text-[12px] text-[#b0aca6]">Ingen brukerkontoer å begrense til.</p>}
+          </div>
+          <p className="mt-1.5 text-[10.5px] leading-snug text-[#c2a36b]">Administratorer ser alltid alle saker. Skjulte saker vises aldri i lister, søk, varsler eller e-post for andre.</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 const PROSJEKT_FARGER = ['#8b5cf6', '#0ea5e9', '#10b981', '#f59e0b', '#e11d48', '#6366f1', '#ec4899', '#14b8a6'];
 function ProsjektModal({ onClose, onCreate }) {
   const [navn, setNavn] = useState('');
@@ -3224,10 +3375,11 @@ function ProsjektModal({ onClose, onCreate }) {
 }
 
 /* ═══════════════ Ny sak ═══════════════ */
-function NySakModal({ members, projects = [], defaultStatus, uploadBilde = null, onClose, onCreate }) {
+function NySakModal({ members, projects = [], omrader = ['drift'], defaultSpace = 'drift', defaultStatus, uploadBilde = null, onClose, onCreate }) {
   const [tittel, setTittel] = useState('');
   const [beskrivelse, setBeskrivelse] = useState('');
   const [prosjekt, setProsjekt] = useState('');
+  const [omrade, setOmrade] = useState(omrader.includes(defaultSpace) ? defaultSpace : 'drift');
   const [status, setStatus] = useState(defaultStatus || 'inbox');
   const [prioritet, setPrioritet] = useState(2);
   const [ansvarlig, setAnsvarlig] = useState('');
@@ -3261,6 +3413,7 @@ function NySakModal({ members, projects = [], defaultStatus, uploadBilde = null,
         title: tittel.trim(), description: beskrivelse.trim(), status,
         priority: prioritet, assigneeId: ansvarlig || null, dueDate: frist || null,
         recurrence: gjentakelse || null, projectId: prosjekt || null,
+        space: omrade,
         subtasks: nyttPunkt.trim() ? [...sjekkliste, { text: nyttPunkt.trim(), done: false, assigneeId: null, due: null }] : sjekkliste,
         notify: varsle,
       });
@@ -3345,6 +3498,13 @@ function NySakModal({ members, projects = [], defaultStatus, uploadBilde = null,
               placeholder="Uten prosjekt"
               options={[{ v: '', l: 'Uten prosjekt', icon: Folder }, ...projects.map((p) => ({ v: p.id, l: p.name, dot: p.color }))]}
               className="md:w-[150px]"
+            />
+          )}
+          {omrader.length > 1 && (
+            <Meny
+              compact value={omrade} onChange={setOmrade} testid="new-task-space"
+              options={OMRADER_UI.filter((o) => omrader.includes(o.k)).map((o) => ({ v: o.k, l: o.l, icon: o.icon }))}
+              className="md:w-[140px]"
             />
           )}
         </div>
@@ -3576,11 +3736,12 @@ function PersonerModal({ api, members, setMembers, erBruker, onClose, visToast }
   const [tittel, setTittel] = useState(''); // verv, f.eks. Styreleder
   const [moteTilgang, setMoteTilgang] = useState([]);
   const [moduler, setModuler] = useState([]); // ekstra modultilgang
+  const [grupper, setGrupper] = useState([]); // Styret/Ledelsen/Utvikling → saksområder
   const [inviter, setInviter] = useState(true); // velkomst-e-post — brukeren velger eget passord
   const [inviterer, setInviterer] = useState(null); // person-id under (re)utsending
   const [lagrer, setLagrer] = useState(false);
   const [redigerId, setRedigerId] = useState(null);
-  const [red, setRed] = useState({ name: '', email: '', role: 'bruker', password: '', tittel: '', moteTilgang: [], moduler: [] });
+  const [red, setRed] = useState({ name: '', email: '', role: 'bruker', password: '', tittel: '', moteTilgang: [], moduler: [], groups: [] });
 
   const leggTil = async () => {
     if (!navn.trim() || lagrer) return;
@@ -3622,7 +3783,7 @@ function PersonerModal({ api, members, setMembers, erBruker, onClose, visToast }
 
   const lagreEndring = async (id) => {
     try {
-      const payload = { name: red.name.trim(), email: red.email.trim(), role: red.role, tittel: red.tittel.trim(), moteTilgang: red.moteTilgang, moduler: red.moduler };
+      const payload = { name: red.name.trim(), email: red.email.trim(), role: red.role, tittel: red.tittel.trim(), moteTilgang: red.moteTilgang, moduler: red.moduler, groups: red.groups };
       if (red.password) payload.password = red.password;
       const r = await api(`users/${id}`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
@@ -3733,6 +3894,17 @@ function PersonerModal({ api, members, setMembers, erBruker, onClose, visToast }
                       valg={MODUL_VALG}
                     />
                   </div>
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span className="shrink-0 text-[11px] font-bold uppercase tracking-[0.06em] text-[#b5b5b5]">Grupper</span>
+                    <MoteTilgangVelger
+                      value={red.groups}
+                      onChange={(v) => setRed((p) => ({ ...p, groups: v }))}
+                      disabled={red.role === 'admin' || m.role === 'owner'}
+                      testid={`member-groups-${m.id}`}
+                      valg={GRUPPER_UI}
+                    />
+                    <span className="hidden text-[10.5px] text-[#c2beb8] xl:inline">— styrer saksområdene Styret/Ledelse/Utvikling</span>
+                  </div>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <p className="mr-auto text-[11px] text-[#b5b5b5]">{(red.role === 'admin' || m.role === 'owner') ? 'Admin ser alle møter — møtetilgang gjelder kun rollen Bruker.' : 'Møtetilgang: hvilke møtetyper personen kan se. Passord krever e-post og minst 8 tegn.'}</p>
@@ -3759,7 +3931,7 @@ function PersonerModal({ api, members, setMembers, erBruker, onClose, visToast }
                       <span title="Invitasjon sendt — venter på at brukeren velger passord" className="shrink-0 rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-600">Invitert</span>
                     )}
                   </div>
-                  <p className="truncate text-[12px] text-[#999]">{m.email || 'Ingen e-post — får ikke varsler'}{m.harPassord ? ' · kan logge inn' : ''}{['bruker', 'partner', 'eier'].includes(m.role) && (m.moteTilgang || []).length > 0 ? ` · ser ${m.moteTilgang.map((k) => (MOTE_TILGANG_LABEL[k] || k).toLowerCase()).join(', ')}` : ''}{['bruker', 'partner', 'eier'].includes(m.role) && (m.moduler || []).length > 0 ? ` · moduler: ${m.moduler.map((k) => MODUL_LABEL[k] || k).join(', ')}` : ''}</p>
+                  <p className="truncate text-[12px] text-[#999]">{m.email || 'Ingen e-post — får ikke varsler'}{m.harPassord ? ' · kan logge inn' : ''}{['bruker', 'partner', 'eier'].includes(m.role) && (m.moteTilgang || []).length > 0 ? ` · ser ${m.moteTilgang.map((k) => (MOTE_TILGANG_LABEL[k] || k).toLowerCase()).join(', ')}` : ''}{['bruker', 'partner', 'eier'].includes(m.role) && (m.moduler || []).length > 0 ? ` · moduler: ${m.moduler.map((k) => MODUL_LABEL[k] || k).join(', ')}` : ''}{['bruker', 'partner'].includes(m.role) && (m.groups || []).length > 0 ? ` · grupper: ${m.groups.map((k) => (GRUPPER_UI.find((g) => g.k === k) || { l: k }).l).join(', ')}` : ''}</p>
                 </div>
                 {!erBruker && (
                   <>
@@ -3774,7 +3946,7 @@ function PersonerModal({ api, members, setMembers, erBruker, onClose, visToast }
                       </button>
                     )}
                     <button
-                      onClick={() => { setRedigerId(m.id); setRed({ name: m.name, email: m.email || '', role: m.role || 'bruker', password: '', tittel: m.tittel || '', moteTilgang: Array.isArray(m.moteTilgang) ? m.moteTilgang : [], moduler: Array.isArray(m.moduler) ? m.moduler : [] }); }}
+                      onClick={() => { setRedigerId(m.id); setRed({ name: m.name, email: m.email || '', role: m.role || 'bruker', password: '', tittel: m.tittel || '', moteTilgang: Array.isArray(m.moteTilgang) ? m.moteTilgang : [], moduler: Array.isArray(m.moduler) ? m.moduler : [], groups: Array.isArray(m.groups) ? m.groups : [] }); }}
                       data-testid={`member-edit-${m.id}`}
                       className="rounded-lg p-2 text-[#bbb] hover:bg-[#f3f2f0] hover:text-[#555]"
                     >
@@ -3850,6 +4022,10 @@ function PersonerModal({ api, members, setMembers, erBruker, onClose, visToast }
             <div className="flex min-w-0 items-center gap-2">
               <span className="shrink-0 text-[11px] font-bold uppercase tracking-[0.06em] text-[#b5b5b5]">Moduler</span>
               <MoteTilgangVelger value={moduler} onChange={setModuler} disabled={rolle === 'admin'} testid="member-moduler" valg={MODUL_VALG} />
+            </div>
+            <div className="flex min-w-0 items-center gap-2">
+              <span className="shrink-0 text-[11px] font-bold uppercase tracking-[0.06em] text-[#b5b5b5]">Grupper</span>
+              <MoteTilgangVelger value={grupper} onChange={setGrupper} disabled={rolle === 'admin'} testid="member-groups" valg={GRUPPER_UI} />
             </div>
           </div>
           <datalist id="verv-forslag">

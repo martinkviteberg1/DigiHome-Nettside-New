@@ -3,6 +3,10 @@ import { v4 as uuidv4 } from 'uuid';
 import crypto from 'crypto';
 import sharp from 'sharp';
 import { Marked } from 'marked';
+import {
+  SAK_GRUPPER, SAK_OMRAADER, SAK_OMRAADE_LABEL,
+  sakSynlig, sakSynligForMedlem, omraaderForViewer, viewerFraMedlem,
+} from '@/lib/sak-tilgang';
 import { promises as fsp } from 'fs';
 import nodePath from 'path';
 import { getDb, clean } from '@/lib/mongodb';
@@ -1239,6 +1243,26 @@ function sakerAuthed(request) {
   return !!(payload && ['bruker', 'partner'].includes(payload.role));
 }
 
+// Viewer for tilgangsstyring av saker: master-nøkkel/admin-sesjon ser alt;
+// bruker/partner slås opp i admin_users for gruppemedlemskap (Styret/Ledelsen/
+// Utvikling). Se lib/sak-tilgang.js for selve reglene.
+async function sakViewer(db, request) {
+  const payload = sessionFra(request);
+  if (adminAuthed(request)) return { admin: true, id: (payload && payload.sub) || null, groups: SAK_GRUPPER };
+  if (!payload || !payload.sub) return { admin: false, id: null, groups: [] };
+  const u = await db.collection('admin_users').findOne({ id: payload.sub }, { projection: { _id: 0, id: 1, role: 1, groups: 1 } });
+  return viewerFraMedlem(u);
+}
+
+// Hent en sak KUN hvis vieweren kan se den — skjulte saker svarer 404 slik at
+// selve eksistensen aldri lekker (brukes av alle skrive-/underendepunkter).
+async function hentSynligSak(db, request, taskId) {
+  const task = await db.collection('tasks').findOne({ id: taskId }, { projection: { _id: 0 } });
+  if (!task) return { task: null, viewer: null };
+  const viewer = await sakViewer(db, request);
+  return { task: sakSynlig(viewer, task) ? task : null, viewer };
+}
+
 // Innlogget-tilgang: ALLE gyldige kontoer (bruker/partner/eier) — brukes for
 // møter, personliste, egen profil og passordbekreftelse. Innholdet filtreres
 // videre per rolle (f.eks. møtelisten) der det trengs.
@@ -1633,6 +1657,9 @@ function mdTilRen(kilde, maks = 180) {
 async function taskEpost({ member, task, heading, intro, kategori }) {
   if (!member || !member.email || !emailConfigured()) return false;
   if (notifEmailAv(member, kategori)) return false; // bruker har skrudd av e-post for denne typen
+  // Sentral synlighetsvakt: aldri e-post om saker mottakeren ikke kan se
+  // (område/gruppe + per-sak-begrensning). Krever role+groups på member.
+  if (!sakSynligForMedlem(member, task)) return false;
   const base = (process.env.NEXT_PUBLIC_BASE_URL || 'https://digihome.no').replace(/\/$/, '');
   const frist = task.dueDate
     ? new Date(`${task.dueDate}T12:00:00`).toLocaleDateString('nb-NO', { day: 'numeric', month: 'long', year: 'numeric' })
@@ -1665,6 +1692,7 @@ async function taskEpost({ member, task, heading, intro, kategori }) {
 async function deloppgaveEpost({ member, task, deloppgaver, actor }) {
   if (!member || !member.email || !emailConfigured() || !Array.isArray(deloppgaver) || !deloppgaver.length) return false;
   if (notifEmailAv(member, 'deloppgave')) return false;
+  if (!sakSynligForMedlem(member, task)) return false; // ser ikke saken → ingen e-post
   const base = (process.env.NEXT_PUBLIC_BASE_URL || 'https://digihome.no').replace(/\/$/, '');
   const fmtFrist = (d) => (d ? new Date(`${d}T12:00:00`).toLocaleDateString('nb-NO', { day: 'numeric', month: 'long', year: 'numeric' }) : null);
   const idag = osloIDag();
@@ -1951,6 +1979,7 @@ async function hentPersoner(db) {
     color: u.color || TASK_FARGER[i % TASK_FARGER.length],
     role: u.role || 'admin',
     tittel: u.tittel || '',
+    groups: Array.isArray(u.groups) ? u.groups.filter((g) => SAK_GRUPPER.includes(g)) : [],
     moteTilgang: Array.isArray(u.moteTilgang) ? u.moteTilgang : [],
     moduler: Array.isArray(u.moduler) ? u.moduler : [],
     harPassord: !!u.passwordHash,
@@ -2751,6 +2780,7 @@ async function handleRoute(request, { params }) {
       const member = {
         id: uuidv4(), name, email, role,
         tittel: String(body.tittel || '').trim().slice(0, 60),
+        groups: Array.isArray(body.groups) ? body.groups.filter((g) => SAK_GRUPPER.includes(g)) : [],
         moteTilgang: Array.isArray(body.moteTilgang) ? body.moteTilgang.filter((t) => Object.keys(MOTE_TYPE_LABEL).includes(t)) : [],
         moduler: Array.isArray(body.moduler) ? body.moduler.filter((t) => MODUL_NOKLER.includes(t)) : [],
         color: /^#[0-9a-fA-F]{6}$/.test(String(body.color || '')) ? body.color : TASK_FARGER[antall % TASK_FARGER.length],
@@ -2836,6 +2866,10 @@ async function handleRoute(request, { params }) {
       if (body.role !== undefined && !erOwner && ['admin', 'bruker', 'partner', 'eier'].includes(body.role)) set.role = body.role;
       // Verv/tittel (Styreleder, Daglig leder …) og møtetilgang per møtetype
       if (body.tittel !== undefined) set.tittel = String(body.tittel || '').trim().slice(0, 60);
+      // Grupper (Styret/Ledelsen/Utvikling) — styrer hvilke saksområder brukeren ser.
+      if (body.groups !== undefined) {
+        set.groups = Array.isArray(body.groups) ? body.groups.filter((g) => SAK_GRUPPER.includes(g)) : [];
+      }
       if (body.moteTilgang !== undefined) {
         set.moteTilgang = Array.isArray(body.moteTilgang)
           ? body.moteTilgang.filter((t) => Object.keys(MOTE_TYPE_LABEL).includes(t))
@@ -2887,13 +2921,19 @@ async function handleRoute(request, { params }) {
       if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const ts = new URL(request.url).searchParams.get('ts') || '1970-01-01T00:00:00.000Z';
       const now = new Date().toISOString();
-      const [endret, arkivert, tombstones] = await Promise.all([
+      const [endret, arkivert, tombstones, viewerDiff] = await Promise.all([
         db.collection('tasks').find({ updatedAt: { $gt: ts }, archived: { $ne: true } }, { projection: { _id: 0 } }).toArray(),
         db.collection('tasks').find({ updatedAt: { $gt: ts }, archived: true }, { projection: { _id: 0, id: 1 } }).toArray(),
         db.collection('task_tombstones').find({ deletedAt: { $gt: ts } }, { projection: { _id: 0, id: 1 } }).toArray(),
+        sakViewer(db, request),
       ]);
-      const removedIds = [...new Set([...arkivert.map((t) => t.id), ...tombstones.map((t) => t.id)])];
-      return cors(NextResponse.json({ ok: true, now, changed: endret, removedIds }));
+      // Synlighet: skjulte endringer sendes aldri — og en sak som er FLYTTET
+      // inn i et skjult område/begrenset, meldes som fjernet slik at klienten
+      // rydder den bort umiddelbart.
+      const skjulte = endret.filter((t) => !sakSynlig(viewerDiff, t)).map((t) => t.id);
+      const changed = endret.filter((t) => sakSynlig(viewerDiff, t));
+      const removedIds = [...new Set([...arkivert.map((t) => t.id), ...tombstones.map((t) => t.id), ...skjulte])];
+      return cors(NextResponse.json({ ok: true, now, changed, removedIds }));
     }
 
     // ══════════════════════ RIK TEKST: innliming/opplasting av bilder ══════════════════════
@@ -3063,11 +3103,14 @@ async function handleRoute(request, { params }) {
     // (gjennomstrømning/ledetid), men kun aktive for åpne/forfalt/arbeidsmengde.
     if (route === '/admin/tasks/insights' && method === 'GET') {
       if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
-      const [alleSaker, personer, prosjekter] = await Promise.all([
-        db.collection('tasks').find({}).project({ _id: 0, id: 1, title: 1, status: 1, assigneeId: 1, dueDate: 1, createdAt: 1, completedAt: 1, priority: 1, projectId: 1, archived: 1 }).toArray(),
+      const [alleSakerRaa, personer, prosjekter, viewerIns] = await Promise.all([
+        db.collection('tasks').find({}).project({ _id: 0, id: 1, title: 1, status: 1, assigneeId: 1, dueDate: 1, createdAt: 1, completedAt: 1, priority: 1, projectId: 1, archived: 1, space: 1, restrictedTo: 1 }).toArray(),
         hentPersoner(db),
         db.collection('projects').find({ archived: { $ne: true } }, { projection: { _id: 0, id: 1, name: 1, color: 1 } }).sort({ createdAt: 1 }).toArray(),
+        sakViewer(db, request),
       ]);
+      // Innsikten regner kun på saker vieweren faktisk kan se.
+      const alleSaker = alleSakerRaa.filter((t) => sakSynlig(viewerIns, t));
       const iDag = osloIDag();
       const naaMs = Date.now();
       const osloDatoAv = (iso) => { try { return new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Oslo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(iso)); } catch (e) { return null; } };
@@ -3175,12 +3218,19 @@ async function handleRoute(request, { params }) {
       if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const uTasks = new URL(request.url);
       const arkiv = uTasks.searchParams.get('arkiv') === '1';
-      const [tasks, members, projects] = await Promise.all([
+      const [alleTasks, members, projects, viewer] = await Promise.all([
         db.collection('tasks').find(arkiv ? { archived: true } : { archived: { $ne: true } }).project({ _id: 0 }).sort({ updatedAt: -1 }).toArray(),
         hentPersoner(db),
         db.collection('projects').find({ archived: { $ne: true } }, { projection: { _id: 0 } }).sort({ createdAt: 1 }).toArray(),
+        sakViewer(db, request),
       ]);
-      return cors(NextResponse.json({ ok: true, tasks, members, projects, today: osloIDag() }));
+      // Serverhåndhevet synlighet: område (gruppe) + per-sak-begrensning.
+      const tasks = alleTasks.filter((t) => sakSynlig(viewer, t));
+      return cors(NextResponse.json({
+        ok: true, tasks, members, projects, today: osloIDag(),
+        spaces: omraaderForViewer(viewer),
+        viewer: { id: viewer.id, admin: viewer.admin, groups: viewer.groups },
+      }));
     }
 
     if (route === '/admin/tasks' && method === 'POST') {
@@ -3191,6 +3241,22 @@ async function handleRoute(request, { params }) {
       const naa = new Date().toISOString();
       const actor = String(body.actor || '').trim() || 'Admin';
       const actorId = (sessionFra(request) || {}).sub || null;
+      // Område: valideres mot viewerens tilganger — man kan aldri opprette en
+      // sak i et område man ikke selv ser (minste privilegium).
+      const viewerNy = await sakViewer(db, request);
+      const space = SAK_OMRAADER.includes(body.space) ? body.space : 'drift';
+      if (!omraaderForViewer(viewerNy).includes(space)) {
+        return cors(NextResponse.json({ ok: false, error: 'Du har ikke tilgang til dette området' }, { status: 403 }));
+      }
+      // Per-sak-begrensning: ansvarlig + oppretter inkluderes alltid, slik at
+      // saken aldri blir usynlig for dem som jobber med den.
+      let restrictedTo = null;
+      if (Array.isArray(body.restrictedTo) && body.restrictedTo.length) {
+        const s = new Set(body.restrictedTo.map((x) => String(x)).filter(Boolean).slice(0, 30));
+        if (body.assigneeId) s.add(String(body.assigneeId));
+        if (actorId) s.add(actorId);
+        restrictedTo = [...s];
+      }
       const task = {
         id: uuidv4(),
         title: title.slice(0, 300),
@@ -3206,6 +3272,8 @@ async function handleRoute(request, { params }) {
         projectId: body.projectId ? String(body.projectId) : null,
         parentId: body.parentId ? String(body.parentId) : null,
         relations: normaliserRelasjoner(body.relations),
+        space,
+        restrictedTo,
         attachments: [],
         archived: false,
         comments: [],
@@ -3232,7 +3300,7 @@ async function handleRoute(request, { params }) {
       // (hopp over ansvarlig/følgere som allerede er varslet, og aktøren selv).
       if (task.description && task.description.includes('@') && body.notify !== false) {
         const beskLav = task.description.toLowerCase();
-        const allePers = await db.collection('admin_users').find({}, { projection: { _id: 0, id: 1, name: 1, email: 1, notifPrefs: 1 } }).toArray();
+        const allePers = await db.collection('admin_users').find({}, { projection: { _id: 0, id: 1, name: 1, email: 1, notifPrefs: 1, role: 1, groups: 1 } }).toArray();
         const nevnt = allePers.filter((m) => m.name && m.email
           && beskLav.includes(`@${String(m.name).toLowerCase()}`)
           && m.id !== task.assigneeId
@@ -3269,7 +3337,8 @@ async function handleRoute(request, { params }) {
     if (path[0] === 'admin' && path[1] === 'tasks' && path.length === 3 && method === 'PUT') {
       if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
-      const eksisterende = await db.collection('tasks').findOne({ id: path[2] }, { projection: { _id: 0 } });
+      // Synlighetsvakt: skjulte saker svarer 404 — eksistensen lekker aldri.
+      const { task: eksisterende, viewer: viewerPut } = await hentSynligSak(db, request, path[2]);
       if (!eksisterende) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
       const naa = new Date().toISOString();
       const actor = String(body.actor || '').trim() || 'Admin';
@@ -3285,7 +3354,7 @@ async function handleRoute(request, { params }) {
         if (set.description && set.description.includes('@') && body.notify !== false) {
           const gammelLav = String(eksisterende.description || '').toLowerCase();
           const nyLav = set.description.toLowerCase();
-          const allePers = await db.collection('admin_users').find({}, { projection: { _id: 0, id: 1, name: 1, email: 1, notifPrefs: 1 } }).toArray();
+          const allePers = await db.collection('admin_users').find({}, { projection: { _id: 0, id: 1, name: 1, email: 1, notifPrefs: 1, role: 1, groups: 1 } }).toArray();
           const nyNevnt = allePers.filter((m) => m.name
             && nyLav.includes(`@${String(m.name).toLowerCase()}`)
             && !gammelLav.includes(`@${String(m.name).toLowerCase()}`));
@@ -3308,7 +3377,7 @@ async function handleRoute(request, { params }) {
         // E-post til de samme (kategori 'status' — kan skrus av per bruker i
         // varselinnstillingene). Aldri til aktøren selv. notify:false skrur av.
         if (berort.size && body.notify !== false) {
-          const persStatus = await db.collection('admin_users').find({ id: { $in: [...berort] } }, { projection: { _id: 0, id: 1, name: 1, email: 1, notifPrefs: 1 } }).toArray();
+          const persStatus = await db.collection('admin_users').find({ id: { $in: [...berort] } }, { projection: { _id: 0, id: 1, name: 1, email: 1, notifPrefs: 1, role: 1, groups: 1 } }).toArray();
           for (const m of persStatus) {
             if (!m.email) continue;
             if (actorId && m.id === actorId) continue;
@@ -3336,6 +3405,25 @@ async function handleRoute(request, { params }) {
       if (body.projectId !== undefined) {
         set.projectId = body.projectId ? String(body.projectId) : null;
         logg.push(set.projectId ? 'Knyttet til prosjekt' : 'Fjernet fra prosjekt');
+      }
+      // Områdebytte: kun til områder vieweren selv har tilgang til.
+      if (body.space !== undefined && SAK_OMRAADER.includes(body.space) && body.space !== (eksisterende.space || 'drift')) {
+        if (!omraaderForViewer(viewerPut).includes(body.space)) {
+          return cors(NextResponse.json({ ok: false, error: 'Du har ikke tilgang til dette området' }, { status: 403 }));
+        }
+        set.space = body.space;
+        logg.push(`Flyttet til området ${SAK_OMRAADE_LABEL[body.space]}`);
+      }
+      // Per-sak-begrensning: null/tom = alle i området. Ansvarlig, følgere og
+      // den som endrer inkluderes alltid (saken skal aldri bli usynlig for dem).
+      if (body.restrictedTo !== undefined) {
+        if (Array.isArray(body.restrictedTo) && body.restrictedTo.length) {
+          set.restrictedTo = [...new Set(body.restrictedTo.map((x) => String(x)).filter(Boolean).slice(0, 30))];
+          logg.push('Synlighet begrenset');
+        } else {
+          set.restrictedTo = null;
+          logg.push('Synlighet: alle i området');
+        }
       }
       if (body.parentId !== undefined) set.parentId = body.parentId ? String(body.parentId) : null;
       if (body.relations !== undefined) {
@@ -3432,6 +3520,10 @@ async function handleRoute(request, { params }) {
           subtasks: (set.subtasks || eksisterende.subtasks || []).map((s) => ({ ...s, id: uuidv4(), done: false, due: null })),
           recurrence: rec,
           followers: set.followers !== undefined ? set.followers : (eksisterende.followers || []),
+          projectId: set.projectId !== undefined ? set.projectId : (eksisterende.projectId || null),
+          // Gjentakelser arver synligheten fra forrige forekomst.
+          space: set.space !== undefined ? set.space : (SAK_OMRAADER.includes(eksisterende.space) ? eksisterende.space : 'drift'),
+          restrictedTo: set.restrictedTo !== undefined ? set.restrictedTo : (eksisterende.restrictedTo || null),
           attachments: [],
           archived: false,
           comments: [],
@@ -3442,13 +3534,33 @@ async function handleRoute(request, { params }) {
         logg.push(`Neste forekomst opprettet med frist ${nesteTask.dueDate}`);
       }
 
+      // Begrenset sak: ansvarlig, følgere og aktøren har ALLTID tilgang — union
+      // beregnes på sluttilstanden slik at ingen mister saken de jobber med.
+      const endeligRestrict = set.restrictedTo !== undefined ? set.restrictedTo : (eksisterende.restrictedTo || null);
+      if (Array.isArray(endeligRestrict) && endeligRestrict.length) {
+        const union = new Set(endeligRestrict.map(String));
+        const endeligAnsvarlig = set.assigneeId !== undefined ? set.assigneeId : eksisterende.assigneeId;
+        if (endeligAnsvarlig) union.add(String(endeligAnsvarlig));
+        const endeligFolgere = set.followers !== undefined ? set.followers : (eksisterende.followers || []);
+        for (const f of endeligFolgere) if (f) union.add(String(f));
+        if (viewerPut && viewerPut.id) union.add(viewerPut.id);
+        set.restrictedTo = [...union];
+      }
+
       const update = { $set: set };
       if (logg.length) update.$push = { activity: { $each: logg.map((text) => ({ at: naa, actor, text })) } };
       await db.collection('tasks').updateOne({ id: path[2] }, update);
       // Flush in-app-varsler (dedup per mottaker, hopp over aktøren selv).
+      // Synlighet håndheves også her: kun de som kan SE saken etter endringen.
+      const endeligTilstand = { ...eksisterende, ...set };
+      const involverte = [...new Set(varselKo.map((v) => v.userId).filter(Boolean))];
+      const involvertePers = involverte.length
+        ? await db.collection('admin_users').find({ id: { $in: involverte } }, { projection: { _id: 0, id: 1, role: 1, groups: 1 } }).toArray()
+        : [];
+      const kanSeSaken = new Set(involvertePers.filter((p) => sakSynligForMedlem(p, endeligTilstand)).map((p) => p.id));
       const sett = new Set();
       for (const v of varselKo) {
-        if (!v.userId || sett.has(`${v.userId}:${v.type}`)) continue;
+        if (!v.userId || !kanSeSaken.has(v.userId) || sett.has(`${v.userId}:${v.type}`)) continue;
         sett.add(`${v.userId}:${v.type}`);
         await varsle(db, v.userId, actorId, { type: v.type, taskId: path[2], taskTitle: set.title || eksisterende.title, actor, text: v.text });
       }
@@ -3474,6 +3586,8 @@ async function handleRoute(request, { params }) {
           return cors(NextResponse.json({ ok: false, error: 'Sletting krever passordbekreftelse' }, { status: 403 }));
         }
       }
+      const synligSlett = await hentSynligSak(db, request, path[2]);
+      if (!synligSlett.task) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
       const r = await db.collection('tasks').deleteOne({ id: path[2] });
       if (!r.deletedCount) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
       await db.collection('task_files').deleteMany({ taskId: path[2] }).catch(() => {});
@@ -3487,13 +3601,13 @@ async function handleRoute(request, { params }) {
       let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
       const text = String(body.text || '').trim();
       if (!text) return cors(NextResponse.json({ ok: false, error: 'Kommentar kan ikke være tom' }, { status: 400 }));
-      const task = await db.collection('tasks').findOne({ id: path[2] }, { projection: { _id: 0 } });
+      const { task } = await hentSynligSak(db, request, path[2]);
       if (!task) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
       const naa = new Date().toISOString();
       const author = String(body.author || 'Admin').slice(0, 80);
       const actorId = (sessionFra(request) || {}).sub || null;
       // @mentions: autocompleten setter inn «@Fullt Navn» — match mot personlisten.
-      const allePersoner = await db.collection('admin_users').find({}, { projection: { _id: 0, id: 1, name: 1, email: 1, notifPrefs: 1 } }).toArray();
+      const allePersoner = await db.collection('admin_users').find({}, { projection: { _id: 0, id: 1, name: 1, email: 1, notifPrefs: 1, role: 1, groups: 1 } }).toArray();
       const lavtekst = text.toLowerCase();
       const nevnt = allePersoner.filter((m) => m.name && lavtekst.includes(`@${String(m.name).toLowerCase()}`));
       const comment = {
@@ -3533,11 +3647,15 @@ async function handleRoute(request, { params }) {
       }
       // In-app-varsler: nevnte får 'nevnt'; ansvarlig + følgere (som ikke alt er
       // nevnt, og ikke forfatteren) får 'kommentar'. Hopper alltid over aktøren.
+      // Synlighet håndheves: kun mottakere som faktisk kan se saken.
       for (const m of nevnt) {
+        if (!sakSynligForMedlem(m, task)) continue;
         await varsle(db, m.id, actorId, { type: 'nevnt', taskId: task.id, taskTitle: task.title, actor: author, text: `${author} nevnte deg i en kommentar` });
       }
       for (const uid of komMottakere) {
         if (nevntIds.has(uid)) continue; // fikk allerede 'nevnt'
+        const pers = allePersoner.find((p) => p.id === uid);
+        if (!pers || !sakSynligForMedlem(pers, task)) continue;
         await varsle(db, uid, actorId, { type: 'kommentar', taskId: task.id, taskTitle: task.title, actor: author, text: `${author} kommenterte saken` });
       }
       return cors(NextResponse.json({ ok: true, comment, mentioned: varslet }));
@@ -3551,7 +3669,7 @@ async function handleRoute(request, { params }) {
     if (path[0] === 'admin' && path[1] === 'tasks' && path.length === 4 && path[3] === 'promote-subtask' && method === 'POST') {
       if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
-      const parent = await db.collection('tasks').findOne({ id: path[2] }, { projection: { _id: 0 } });
+      const { task: parent } = await hentSynligSak(db, request, path[2]);
       if (!parent) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
       const subs = Array.isArray(parent.subtasks) ? parent.subtasks : [];
       const tekst = String(body.text || '').trim();
@@ -3580,6 +3698,11 @@ async function handleRoute(request, { params }) {
         followers: [],
         projectId: parent.projectId || null,
         parentId: parent.id,
+        // Arver forelderens synlighet (område + ev. begrensning m/ ansvarlig inkludert).
+        space: SAK_OMRAADER.includes(parent.space) ? parent.space : 'drift',
+        restrictedTo: (Array.isArray(parent.restrictedTo) && parent.restrictedTo.length)
+          ? [...new Set([...parent.restrictedTo.map(String), ...(sub.assigneeId ? [String(sub.assigneeId)] : []), ...(actorId ? [actorId] : [])])]
+          : null,
         relations: [],
         attachments: [],
         archived: false,
@@ -3605,7 +3728,7 @@ async function handleRoute(request, { params }) {
     if (path[0] === 'admin' && path[1] === 'tasks' && path.length === 4 && path[3] === 'remind' && method === 'POST') {
       if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
-      const task = await db.collection('tasks').findOne({ id: path[2] }, { projection: { _id: 0 } });
+      const { task } = await hentSynligSak(db, request, path[2]);
       if (!task) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
       if (!task.assigneeId) return cors(NextResponse.json({ ok: false, error: 'Saken har ingen ansvarlig' }, { status: 400 }));
       const member = await db.collection('admin_users').findOne({ id: task.assigneeId });
@@ -3646,8 +3769,10 @@ async function handleRoute(request, { params }) {
       if (total > 16 || data.length > 1200000) {
         return cors(NextResponse.json({ ok: false, error: 'Filen er for stor (maks 8 MB)' }, { status: 400 }));
       }
-      const task = await db.collection('tasks').findOne({ id: taskId }, { projection: { _id: 0, id: 1, attachments: 1 } });
+      const task = await db.collection('tasks').findOne({ id: taskId }, { projection: { _id: 0, id: 1, attachments: 1, space: 1, restrictedTo: 1 } });
       if (!task) return cors(NextResponse.json({ ok: false, error: 'Saken finnes ikke' }, { status: 404 }));
+      // Synlighetsvakt: kan ikke laste opp til saker man ikke ser.
+      if (!sakSynlig(await sakViewer(db, request), task)) return cors(NextResponse.json({ ok: false, error: 'Saken finnes ikke' }, { status: 404 }));
       if ((task.attachments || []).length >= 12) {
         return cors(NextResponse.json({ ok: false, error: 'Maks 12 vedlegg per sak' }, { status: 400 }));
       }
@@ -3690,6 +3815,9 @@ async function handleRoute(request, { params }) {
       if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const fil = await db.collection('task_files').findOne({ id: path[2] });
       if (!fil) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
+      // Synlighetsvakt: filer arver sakens synlighet.
+      const eierSakFil = await hentSynligSak(db, request, fil.taskId);
+      if (!eierSakFil.task) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
       const buf = Buffer.from(fil.data || '', 'base64');
       // ?inline=1 → vis i nettleser (PDF-viser, bilder, video). KUN for trygge
       // typer — HTML/SVG kan inneholde script og skal aldri serveres inline
@@ -3713,6 +3841,8 @@ async function handleRoute(request, { params }) {
       if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const fil = await db.collection('task_files').findOne({ id: path[2] });
       if (!fil) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
+      const eierSakSlett = await hentSynligSak(db, request, fil.taskId);
+      if (!eierSakSlett.task) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
       await db.collection('task_files').deleteOne({ id: path[2] });
       const naaSlett = new Date().toISOString();
       await db.collection('tasks').updateOne(
