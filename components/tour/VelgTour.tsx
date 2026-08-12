@@ -1,14 +1,15 @@
 'use client';
 
-import React, { useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Avslor from './Avslor';
 import Parallax from './Parallax';
 
 // ---------------------------------------------------------------------------
 // VelgTour — enkelt veivalg etter definisjonen: hvilken omvisning vil du se?
-// Bevisst avskallet: ingen salgspunkter, bare to rene valg. Huseier-kortet
-// fortsetter reisen via samme motor som piltastene (syntetisk ArrowDown til
-// SlideKontroll); forvalter-omvisningen er varslet som «kommer snart».
+// Bevisst avskallet: ingen salgspunkter, bare to rene valg. Sliden er en GATE
+// (data-gate): hjul og piltaster kommer ikke videre — man må velge. Valget
+// fortsetter via dh-tour-neste (samme motor som piltastene i SlideKontroll),
+// og forsøk på å scrolle forbi gir en liten puls på huseier-kortet.
 // ---------------------------------------------------------------------------
 
 const HUS_IKON = ['M3 10.5L12 3l9 7.5', 'M5.5 9.5V20h13V9.5', 'M10 20v-5.5h4V20'];
@@ -26,12 +27,29 @@ function Ikon({ paths, farge }: { paths: string[]; farge: string }) {
 
 export default function VelgTour() {
   const rot = useRef<HTMLElement | null>(null);
+  const [puls, setPuls] = useState(false);
+  const pulsTimer = useRef(0);
+
+  // Gaten sier fra når noen prøver å scrolle forbi: puls huseier-kortet
+  // så det er tydelig at man må velge her.
+  useEffect(() => {
+    const paaGate = () => {
+      setPuls(true);
+      window.clearTimeout(pulsTimer.current);
+      pulsTimer.current = window.setTimeout(() => setPuls(false), 650);
+    };
+    window.addEventListener('dh-tour-gate', paaGate);
+    return () => {
+      window.removeEventListener('dh-tour-gate', paaGate);
+      window.clearTimeout(pulsTimer.current);
+    };
+  }, []);
 
   // Fortsett til neste slide — via SlideKontroll-motoren på desktop (samme
-  // animasjon som piltastene), naturlig smooth-scroll på mobil.
+  // animasjon som piltastene, og låser opp gaten), smooth-scroll på mobil.
   const startHuseier = () => {
     if (window.matchMedia('(min-width: 1024px)').matches) {
-      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
+      window.dispatchEvent(new CustomEvent('dh-tour-neste'));
       return;
     }
     const slides = Array.from(document.querySelectorAll<HTMLElement>('[data-slide]'));
@@ -44,6 +62,7 @@ export default function VelgTour() {
       ref={rot}
       data-testid="tour-velg"
       data-slide="Velg omvisning"
+      data-gate="true"
       className="relative flex min-h-[100dvh] snap-start flex-col items-center justify-center overflow-hidden px-5 py-20 sm:px-8 lg:h-[100dvh] lg:py-0"
     >
       {/* Dotgrid — samme rolige raster som resten av omvisningen. */}
@@ -79,7 +98,9 @@ export default function VelgTour() {
               type="button"
               onClick={startHuseier}
               data-testid="tour-velg-huseier"
-              className="group flex h-full w-full flex-col items-center rounded-[24px] border border-[#e9e3d9] bg-white px-8 py-10 transition-all duration-300 hover:-translate-y-1 hover:border-[#d3bcf0] hover:shadow-[0_36px_80px_-42px_rgba(155,91,214,0.4)] sm:py-12"
+              className={`group flex h-full w-full flex-col items-center rounded-[24px] border bg-white px-8 py-10 transition-all duration-300 hover:-translate-y-1 hover:border-[#d3bcf0] hover:shadow-[0_36px_80px_-42px_rgba(155,91,214,0.4)] sm:py-12 ${
+                puls ? 'scale-[1.015] border-[#c9aeee] shadow-[0_36px_80px_-42px_rgba(155,91,214,0.5)] ring-4 ring-[#9B5BD6]/15' : 'border-[#e9e3d9]'
+              }`}
             >
               <span className="flex h-[52px] w-[52px] items-center justify-center rounded-full bg-[#f6f1fb] transition-colors duration-300 group-hover:bg-[#efe7fa]">
                 <Ikon paths={HUS_IKON} farge="#9B5BD6" />
