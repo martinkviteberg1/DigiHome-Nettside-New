@@ -10,11 +10,20 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recha
 import {
   Loader2, Inbox, CheckCircle2, AlertTriangle, Timer, RefreshCw,
   PlayCircle, Clock, Folder, History, TrendingUp,
+  Bug, Sparkles, Rocket, Hammer,
 } from 'lucide-react';
 
 const heading = { fontFamily: 'var(--font-heading)' };
 const FARGER = { inbox: '#8b8b8b', doing: '#8b5cf6', waiting: '#d97706', done: '#059669', overdue: '#e11d48' };
 const nb = (x) => (x === null || x === undefined ? '–' : String(x).replace('.', ','));
+
+/* Sakstyper for Utvikling-blokken — speiler SAKSTYPE_UI i TasksTab.js. */
+const SAKSTYPER = [
+  { k: 'feil', l: 'Feil', icon: Bug, farge: '#e11d48', bg: '#fff1f2' },
+  { k: 'forbedring', l: 'Forbedring', icon: Sparkles, farge: '#2563eb', bg: '#eff6ff' },
+  { k: 'funksjon', l: 'Funksjon', icon: Rocket, farge: '#059669', bg: '#ecfdf5' },
+  { k: 'vedlikehold', l: 'Vedlikehold', icon: Hammer, farge: '#71717a', bg: '#f4f4f5' },
+];
 
 function Initialer({ navn, farge, size = 26 }) {
   const init = (navn || '?')
@@ -109,7 +118,7 @@ export default function SakerInnsikt({ api, members = [], projects = [], onOpenT
   }
   if (!data) return null;
 
-  const { kpi, status, priority, throughput, perPerson, perProject, oldest } = data;
+  const { kpi, status, priority, throughput, perPerson, perProject, oldest, dev } = data;
   const maksAapne = Math.max(1, ...perPerson.map((p) => p.open));
   const nettoTrend = kpi.done30 - kpi.created30;
   const helttomt = kpi.open === 0 && kpi.done30 === 0 && kpi.created30 === 0;
@@ -214,6 +223,52 @@ export default function SakerInnsikt({ api, members = [], projects = [], onOpenT
           </div>
         </div>
       </div>
+
+      {/* Utvikling: sakstyper + per produkt — vises kun når det finnes åpne utviklingssaker */}
+      {dev && (
+        <div className="grid gap-4 xl:grid-cols-2" data-testid="insight-dev">
+          <div className="rounded-2xl bg-white p-4 shadow-[0_2px_16px_rgba(0,0,0,0.04)] sm:p-5" data-testid="insight-dev-types">
+            <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#999]">Utvikling · sakstyper</p>
+            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {SAKSTYPER.map((t) => (
+                <div key={t.k} className="rounded-xl px-2 py-2.5 text-center" style={{ background: t.bg }} data-testid={`insight-dev-type-${t.k}`}>
+                  <t.icon className="mx-auto h-3.5 w-3.5" style={{ color: t.farge }} />
+                  <p className="mt-1.5 text-[18px] font-bold leading-none tabular-nums" style={{ ...heading, color: t.farge }}>{(dev.typer && dev.typer[t.k]) || 0}</p>
+                  <p className="mt-1 text-[10px] font-bold uppercase tracking-wide" style={{ color: t.farge, opacity: 0.75 }}>{t.l}</p>
+                </div>
+              ))}
+            </div>
+            {dev.typer && dev.typer.uten > 0 && (
+              <p className="mt-2.5 text-[11.5px] font-medium text-[#b0aca6]">{dev.typer.uten} åpne uten sakstype</p>
+            )}
+          </div>
+          <div className="rounded-2xl bg-white p-4 shadow-[0_2px_16px_rgba(0,0,0,0.04)] sm:p-5" data-testid="insight-dev-products">
+            <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#999]">Utvikling · per produkt</p>
+            <div className="mt-3 space-y-2.5">
+              {(dev.perProduct || []).map((p) => {
+                const maks = Math.max(1, ...(dev.perProduct || []).map((x) => x.open));
+                return (
+                  <div key={p.id || 'ingen'} data-testid={`insight-dev-product-${p.id || 'ingen'}`}>
+                    <div className="flex items-center justify-between text-[12.5px]">
+                      <span className="flex min-w-0 items-center gap-2 font-semibold text-[#444]">
+                        <span className="h-2.5 w-2.5 shrink-0 rounded-[4px]" style={{ background: p.color }} />
+                        <span className="truncate">{p.name}</span>
+                      </span>
+                      <span className="ml-2 shrink-0 font-medium text-[#999]">
+                        {p.open} åpne{p.feil > 0 && <span className="font-bold text-[#e11d48]"> · {p.feil} feil</span>}
+                      </span>
+                    </div>
+                    <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-[#f1efec]">
+                      <div className="h-full rounded-full transition-all duration-500" style={{ width: `${(p.open / maks) * 100}%`, background: p.color }} />
+                    </div>
+                  </div>
+                );
+              })}
+              {!(dev.perProduct || []).length && <p className="py-4 text-[12.5px] text-[#aaa]">Ingen åpne utviklingssaker med produkt.</p>}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Arbeidsmengde per person */}
       <div className="rounded-2xl bg-white p-4 shadow-[0_2px_16px_rgba(0,0,0,0.04)] sm:p-5" data-testid="insight-workload">

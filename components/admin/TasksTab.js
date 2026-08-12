@@ -18,6 +18,7 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { Marked } from 'marked';
 import SakerInnsikt from './SakerInnsikt';
 import FilViser, { filIkonInfo } from './FilViser';
+import ProduktAdmin from './ProduktAdmin';
 import {
   Plus, X, Loader2, Search, Users, Trash2, Bell, Clock, MessageSquare,
   CheckCircle2, Inbox, PlayCircle, LayoutGrid, List, Calendar,
@@ -28,6 +29,7 @@ import {
   Bold, Italic, Link2, Image as ImageIcon, Heading,
   Folder, FolderPlus, Ban, GitBranch, Layers, BarChart3,
   Home, Landmark, Briefcase, Wrench, Lock, Globe,
+  Bug, Sparkles, Rocket, Hammer, Boxes,
 } from 'lucide-react';
 
 const VISNINGER = [
@@ -53,6 +55,16 @@ const GRUPPER_UI = [
   { k: 'ledelsen', l: 'Ledelsen' },
   { k: 'utvikling', l: 'Utvikling' },
 ];
+
+/* Sakstyper — kun for Utvikling-området. Én type per sak, fargekodet merke
+   på kortet og i skuffen. Labels beholdes for frie/tverrgående temaer. */
+const SAKSTYPE_UI = [
+  { k: 'feil', l: 'Feil', icon: Bug, farge: '#e11d48' },
+  { k: 'forbedring', l: 'Forbedring', icon: Sparkles, farge: '#2563eb' },
+  { k: 'funksjon', l: 'Funksjon', icon: Rocket, farge: '#059669' },
+  { k: 'vedlikehold', l: 'Vedlikehold', icon: Hammer, farge: '#71717a' },
+];
+const sakstypeInfo = (k) => SAKSTYPE_UI.find((t) => t.k === k) || null;
 
 const REC_VALG = [
   { k: '', l: 'Gjentas ikke' },
@@ -381,6 +393,8 @@ export default function TasksTab({ apiKey, user, onStats }) {
   const [members, setMembers] = useState([]);
   const [projects, setProjects] = useState([]);
   const [fProsjekt, setFProsjekt] = useState('alle');
+  const [fType, setFType] = useState('alle'); // sakstype-filter (kun Utvikling)
+  const [fProdukt, setFProdukt] = useState('alle'); // produktfilter (kun Utvikling)
   const [gruppe, setGruppe] = useState('ingen');
   const [today, setToday] = useState(new Date().toISOString().slice(0, 10));
   const [laster, setLaster] = useState(true);
@@ -470,6 +484,13 @@ export default function TasksTab({ apiKey, user, onStats }) {
     } catch (e) {}
     return null;
   }, [api, hentProsjekter]);
+
+  // ═══ Utviklingsprodukter (Produkt → Komponenter) ═══
+  const [devProducts, setDevProducts] = useState([]);
+  const [produktAdminOpen, setProduktAdminOpen] = useState(false);
+  const hentDevProdukter = useCallback(async () => {
+    try { const r = await api('dev-products'); const j = await r.json(); if (j.ok) setDevProducts(j.products || []); } catch (e) {}
+  }, [api]);
 
   // ═══ Varsler (in-app innboks) ═══
   const [varsler, setVarsler] = useState([]);
@@ -563,6 +584,7 @@ export default function TasksTab({ apiKey, user, onStats }) {
   }, [api, meldStats]); // eslint-disable-line
 
   useEffect(() => { last(); }, [last]);
+  useEffect(() => { hentDevProdukter(); }, [hentDevProdukter]);
 
   // ═══ Sanntid (Fase 2): diff-poll hvert 10 s → tavla oppdateres live uten
   // refresh når andre endrer saker. Hopper over mens man drar (drag) eller har
@@ -837,6 +859,10 @@ export default function TasksTab({ apiKey, user, onStats }) {
     const s = sok.trim().toLowerCase();
     return tasks.filter((t) => {
       if ((t.space || 'drift') !== aktivtOmrade) return false;
+      if (aktivtOmrade === 'utvikling') {
+        if (fType !== 'alle' && (t.taskType || 'uten') !== fType) return false;
+        if (fProdukt !== 'alle' && (t.productId || '') !== (fProdukt === 'ingen' ? '' : fProdukt)) return false;
+      }
       if (mine && minId && t.assigneeId !== minId && !(t.followers || []).includes(minId)) return false;
       if (fAnsvarlig !== 'alle' && (t.assigneeId || '') !== fAnsvarlig) return false;
       if (fPri && t.priority !== fPri) return false;
@@ -844,7 +870,7 @@ export default function TasksTab({ apiKey, user, onStats }) {
       if (s && !`${t.title} ${t.description} ${(t.labels || []).join(' ')}`.toLowerCase().includes(s)) return false;
       return true;
     });
-  }, [tasks, mine, minId, fAnsvarlig, fPri, fProsjekt, sok, aktivtOmrade]);
+  }, [tasks, mine, minId, fAnsvarlig, fPri, fProsjekt, sok, aktivtOmrade, fType, fProdukt]);
 
   const perStatus = useMemo(() => {
     const m = { inbox: [], doing: [], waiting: [], done: [] };
@@ -1085,6 +1111,26 @@ export default function TasksTab({ apiKey, user, onStats }) {
                 { v: '__nytt__', l: 'Nytt prosjekt …', icon: FolderPlus },
               ]}
             />
+            {aktivtOmrade === 'utvikling' && (
+              <>
+                <Meny
+                  value={fType} onChange={setFType} className="w-40" testid="tasks-filter-type"
+                  options={[
+                    { v: 'alle', l: 'Alle typer' },
+                    ...SAKSTYPE_UI.map((t) => ({ v: t.k, l: t.l, dot: t.farge })),
+                    { v: 'uten', l: 'Uten type' },
+                  ]}
+                />
+                <Meny
+                  value={fProdukt} onChange={setFProdukt} className="w-44" testid="tasks-filter-product"
+                  options={[
+                    { v: 'alle', l: 'Alle produkter', icon: Boxes },
+                    ...devProducts.map((p) => ({ v: p.id, l: p.name, dot: p.color })),
+                    { v: 'ingen', l: 'Uten produkt' },
+                  ]}
+                />
+              </>
+            )}
             <div className="flex rounded-lg border border-black/[0.08] bg-white p-0.5">
               {VISNINGER.map((v) => (
                 <ViewBtn key={v.k} active={view === v.k} onClick={() => setView(v.k)} icon={v.icon} label={v.l} testid={`tasks-view-${v.k}`} />
@@ -1279,7 +1325,7 @@ export default function TasksTab({ apiKey, user, onStats }) {
                 <div className="space-y-2 min-h-[64px]">
                   {liste.map((t, i) => (
                     <SakKort
-                      key={t.id} t={t} today={today} member={medlem(t.assigneeId)} members={members}
+                      key={t.id} t={t} today={today} member={medlem(t.assigneeId)} members={members} devProducts={devProducts}
                       dras={dragId === t.id} fokus={fokusId === t.id} valgt={valgteIds.includes(t.id)} index={i}
                       onClick={(e) => { if (e && (e.metaKey || e.ctrlKey)) { toggleValg(t.id); } else { setValgtId(t.id); } }}
                       onDragStart={() => setDragId(t.id)}
@@ -1572,6 +1618,8 @@ export default function TasksTab({ apiKey, user, onStats }) {
           projects={projects} alleSaker={tasks} onOpenTask={(id) => setValgtId(id)}
           onNyProsjekt={() => setProsjektModal(true)}
           omrader={omrader}
+          devProducts={devProducts}
+          onManageProducts={() => setProduktAdminOpen(true)}
           apiKey={apiKey} api={api} visToast={visToast} onReload={last}
           onClose={() => setValgtId(null)}
           onPatch={(patch) => oppdater(valgt.id, patch)}
@@ -1588,6 +1636,7 @@ export default function TasksTab({ apiKey, user, onStats }) {
           members={members}
           projects={projects}
           omrader={omrader}
+          devProducts={devProducts}
           defaultSpace={aktivtOmrade}
           defaultStatus={typeof nyOpen === 'string' ? nyOpen : 'inbox'}
           uploadBilde={uploadBildeRoot}
@@ -1605,6 +1654,17 @@ export default function TasksTab({ apiKey, user, onStats }) {
             if (p) { setFProsjekt(p.id); visToast(`Prosjektet «${p.name}» opprettet`); }
             setProsjektModal(false);
           }}
+        />
+      )}
+
+      {/* ═══ Produkter og komponenter (Utvikling) ═══ */}
+      {produktAdminOpen && (
+        <ProduktAdmin
+          api={api}
+          products={devProducts}
+          onChanged={hentDevProdukter}
+          visToast={visToast}
+          onClose={() => setProduktAdminOpen(false)}
         />
       )}
 
@@ -1761,7 +1821,7 @@ function TidslinjeRad({ t, member, fokus, onClick }) {
   );
 }
 
-function SakKort({ t, today, member, members = [], dras, fokus, valgt, index = 0, onClick, onDragStart, onDragEnd, onHurtig, onSlett }) {
+function SakKort({ t, today, member, members = [], devProducts = [], dras, fokus, valgt, index = 0, onClick, onDragStart, onDragEnd, onHurtig, onSlett }) {
   const [meny, setMeny] = useState(false);
   const [visSub, setVisSub] = useState(false); // ekspander deloppgavene på kortet
   const menyRef = useRef(null);
@@ -1857,8 +1917,27 @@ function SakKort({ t, today, member, members = [], dras, fokus, valgt, index = 0
 
       <div className="flex items-start gap-2">
         <span className="mt-1"><PriIkon p={t.priority} /></span>
+        {t.space === 'utvikling' && sakstypeInfo(t.taskType) && (() => {
+          const ti = sakstypeInfo(t.taskType); const TIkon = ti.icon;
+          return <span className="mt-1" title={ti.l} data-testid={`card-type-${t.id}`}><TIkon className="h-3.5 w-3.5" style={{ color: ti.farge }} /></span>;
+        })()}
         <p className={`flex-1 text-[13px] font-semibold leading-snug ${ferdig ? 'text-[#9a9a9a] line-through' : 'text-[#1a1a1a]'}`}>{t.title}</p>
       </div>
+      {(() => {
+        // Produkt → Komponent-merke (kun utviklingssaker med produkt).
+        if (t.space !== 'utvikling' || !t.productId) return null;
+        const prod = devProducts.find((p) => p.id === t.productId);
+        if (!prod) return null;
+        const komp = t.componentId ? (prod.components || []).find((c) => c.id === t.componentId) : null;
+        return (
+          <div className="mt-1.5">
+            <span className="inline-flex max-w-full items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold" style={{ color: prod.color, background: `${prod.color}14` }} data-testid={`card-product-${t.id}`}>
+              <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: prod.color }} />
+              <span className="truncate">{prod.name.replace(' (digihome.no)', '')}{komp ? ` → ${komp.name}` : ''}</span>
+            </span>
+          </div>
+        );
+      })()}
       {(t.labels || []).length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1">
           {t.labels.slice(0, 3).map((l) => (
@@ -1943,7 +2022,7 @@ function Overlegg({ onClose, children, variant = 'sheet', testid }) {
 }
 
 /* ═══════════════ Skuff: full redigering av én sak ═══════════════ */
-function SakSkuff({ t, members, today, actor, apiKey, api, projects = [], alleSaker = [], omrader = ['drift'], onOpenTask, onNyProsjekt, visToast, onReload, onClose, onPatch, onComment, onRemind, onDelete, onArchive }) {
+function SakSkuff({ t, members, today, actor, apiKey, api, projects = [], alleSaker = [], omrader = ['drift'], devProducts = [], onManageProducts = null, onOpenTask, onNyProsjekt, visToast, onReload, onClose, onPatch, onComment, onRemind, onDelete, onArchive }) {
   const [tittel, setTittel] = useState(t.title);
   const [beskrivelse, setBeskrivelse] = useState(t.description || '');
   const [beskRediger, setBeskRediger] = useState(false);
@@ -2199,6 +2278,51 @@ function SakSkuff({ t, members, today, actor, apiKey, api, projects = [], alleSa
         const sekSynlighet = (
           <SynlighetSeksjon t={t} members={members} onPatch={onPatch} />
         );
+        // Utviklingsfelter: sakstype + Produkt → Komponent (kun Utvikling-området).
+        const aktivProd = t.productId ? devProducts.find((p) => p.id === t.productId) : null;
+        const sekUtvikling = t.space === 'utvikling' ? (
+          <div className="mt-3" data-testid="drawer-dev">
+            <p className="mb-1 text-[11px] font-bold uppercase tracking-wider text-[#999]">Sakstype</p>
+            <div className="flex flex-wrap gap-1">
+              {SAKSTYPE_UI.map((ty) => {
+                const TIkon = ty.icon; const aktivTy = t.taskType === ty.k;
+                return (
+                  <button
+                    key={ty.k}
+                    onClick={() => onPatch({ taskType: aktivTy ? null : ty.k })}
+                    data-testid={`drawer-type-${ty.k}`}
+                    className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-[11.5px] font-semibold transition-all ${aktivTy ? 'shadow-[0_1px_4px_rgba(0,0,0,0.10)]' : 'border border-black/[0.07] text-[#999] hover:text-[#555]'}`}
+                    style={aktivTy ? { color: ty.farge, background: `${ty.farge}14` } : undefined}
+                  >
+                    <TIkon className="h-3 w-3" /> {ty.l}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="mb-1 mt-3 text-[11px] font-bold uppercase tracking-wider text-[#999]">Produkt</p>
+            <Meny
+              compact value={t.productId || ''} testid="drawer-product"
+              onChange={(v) => { if (v === '__adm__') { onManageProducts && onManageProducts(); return; } onPatch({ productId: v || null, componentId: null }); }}
+              placeholder="Uten produkt"
+              options={[
+                { v: '', l: 'Uten produkt', icon: Boxes },
+                ...devProducts.map((p) => ({ v: p.id, l: p.name, dot: p.color })),
+                { v: '__adm__', l: 'Administrer produkter …', icon: Settings },
+              ]}
+            />
+            {aktivProd && (aktivProd.components || []).length > 0 && (
+              <>
+                <p className="mb-1 mt-3 text-[11px] font-bold uppercase tracking-wider text-[#999]">Komponent</p>
+                <Meny
+                  compact value={t.componentId || ''} testid="drawer-component"
+                  onChange={(v) => onPatch({ componentId: v || null })}
+                  placeholder="Uten komponent"
+                  options={[{ v: '', l: 'Uten komponent' }, ...aktivProd.components.map((c) => ({ v: c.id, l: c.name }))]}
+                />
+              </>
+            )}
+          </div>
+        ) : null;
         const sekUndersaker = (
           <UndersakSeksjon t={t} alleSaker={alleSaker} api={api} actor={actor} onReload={onReload} onOpenTask={onOpenTask} visToast={visToast} />
         );
@@ -2285,6 +2409,7 @@ function SakSkuff({ t, members, today, actor, apiKey, api, projects = [], alleSa
                 {sekMeta}
                 {sekProsjekt}
                 {sekOmrade}
+                {sekUtvikling}
                 {sekRec}
                 {sekVarsle}
                 {sekFolgere}
@@ -2300,6 +2425,7 @@ function SakSkuff({ t, members, today, actor, apiKey, api, projects = [], alleSa
             {sekMeta}
             {sekProsjekt}
             {sekOmrade}
+            {sekUtvikling}
             {sekRec}
             {sekVarsle}
             {sekFrist}
@@ -3375,11 +3501,14 @@ function ProsjektModal({ onClose, onCreate }) {
 }
 
 /* ═══════════════ Ny sak ═══════════════ */
-function NySakModal({ members, projects = [], omrader = ['drift'], defaultSpace = 'drift', defaultStatus, uploadBilde = null, onClose, onCreate }) {
+function NySakModal({ members, projects = [], omrader = ['drift'], defaultSpace = 'drift', defaultStatus, uploadBilde = null, devProducts = [], onClose, onCreate }) {
   const [tittel, setTittel] = useState('');
   const [beskrivelse, setBeskrivelse] = useState('');
   const [prosjekt, setProsjekt] = useState('');
   const [omrade, setOmrade] = useState(omrader.includes(defaultSpace) ? defaultSpace : 'drift');
+  const [sakstype, setSakstype] = useState(''); // kun Utvikling
+  const [produktId, setProduktId] = useState(''); // kun Utvikling
+  const [komponentId, setKomponentId] = useState(''); // kun Utvikling
   const [status, setStatus] = useState(defaultStatus || 'inbox');
   const [prioritet, setPrioritet] = useState(2);
   const [ansvarlig, setAnsvarlig] = useState('');
@@ -3414,6 +3543,9 @@ function NySakModal({ members, projects = [], omrader = ['drift'], defaultSpace 
         priority: prioritet, assigneeId: ansvarlig || null, dueDate: frist || null,
         recurrence: gjentakelse || null, projectId: prosjekt || null,
         space: omrade,
+        taskType: omrade === 'utvikling' ? (sakstype || null) : null,
+        productId: omrade === 'utvikling' ? (produktId || null) : null,
+        componentId: omrade === 'utvikling' ? (komponentId || null) : null,
         subtasks: nyttPunkt.trim() ? [...sjekkliste, { text: nyttPunkt.trim(), done: false, assigneeId: null, due: null }] : sjekkliste,
         notify: varsle,
       });
@@ -3506,6 +3638,36 @@ function NySakModal({ members, projects = [], omrader = ['drift'], defaultSpace 
               options={OMRADER_UI.filter((o) => omrader.includes(o.k)).map((o) => ({ v: o.k, l: o.l, icon: o.icon }))}
               className="md:w-[140px]"
             />
+          )}
+          {omrade === 'utvikling' && (
+            <>
+              <Meny
+                compact value={sakstype} onChange={setSakstype} testid="new-task-type"
+                placeholder="Sakstype"
+                options={[{ v: '', l: 'Uten type' }, ...SAKSTYPE_UI.map((t) => ({ v: t.k, l: t.l, dot: t.farge }))]}
+                className="md:w-[140px]"
+              />
+              {devProducts.length > 0 && (
+                <Meny
+                  compact value={produktId} onChange={(v) => { setProduktId(v); setKomponentId(''); }} testid="new-task-product"
+                  placeholder="Uten produkt"
+                  options={[{ v: '', l: 'Uten produkt', icon: Boxes }, ...devProducts.map((p) => ({ v: p.id, l: p.name, dot: p.color }))]}
+                  className="md:w-[160px]"
+                />
+              )}
+              {(() => {
+                const prod = devProducts.find((p) => p.id === produktId);
+                if (!prod || !(prod.components || []).length) return null;
+                return (
+                  <Meny
+                    compact value={komponentId} onChange={setKomponentId} testid="new-task-component"
+                    placeholder="Uten komponent"
+                    options={[{ v: '', l: 'Uten komponent' }, ...prod.components.map((c) => ({ v: c.id, l: c.name }))]}
+                    className="md:w-[160px]"
+                  />
+                );
+              })()}
+            </>
           )}
         </div>
 

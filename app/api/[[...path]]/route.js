@@ -1254,6 +1254,23 @@ async function sakViewer(db, request) {
   return viewerFraMedlem(u);
 }
 
+// ═══ Utviklingssaker: sakstyper + produkter/komponenter (kun Utvikling-området) ═══
+const DEV_SAKSTYPER = ['feil', 'forbedring', 'funksjon', 'vedlikehold'];
+
+// Idempotent seed av DigiHomes produktstruktur (Produkt → Komponenter).
+// «Komponent» (ikke «modul») for å unngå kollisjon med brukermoduler.
+async function seedDevProducts(db) {
+  const antall = await db.collection('dev_products').countDocuments();
+  if (antall > 0) return;
+  const naa = new Date().toISOString();
+  const k = (n) => ({ id: uuidv4(), name: n });
+  await db.collection('dev_products').insertMany([
+    { id: uuidv4(), name: 'Nettside (digihome.no)', color: '#0ea5e9', components: ['Forside/Landingssider', 'Artikler/SEO', 'Utleiekalkulator', 'Skjemaer/Leads', 'Ytelse/Bilder'].map(k), createdAt: naa },
+    { id: uuidv4(), name: 'Admin-portalen', color: '#8b5cf6', components: ['Saker', 'Møter', 'Leads/Kunder', 'Økonomi/Nøkkeltall', 'Varsler/E-post', 'Tilgang/Personer'].map(k), createdAt: naa },
+    { id: uuidv4(), name: 'Mobil app', color: '#10b981', components: [], createdAt: naa },
+  ]);
+}
+
 // Hent en sak KUN hvis vieweren kan se den — skjulte saker svarer 404 slik at
 // selve eksistensen aldri lekker (brukes av alle skrive-/underendepunkter).
 async function hentSynligSak(db, request, taskId) {
@@ -3090,6 +3107,211 @@ async function handleRoute(request, { params }) {
       }));
     }
 
+    // ═══ Utviklingsprodukter: Produkt → Komponenter (krever Utvikling-tilgang) ═══
+    if (route === '/admin/dev-products' && method === 'GET') {
+      if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const viewerDp = await sakViewer(db, request);
+      if (!omraaderForViewer(viewerDp).includes('utvikling')) return cors(NextResponse.json({ ok: true, products: [] }));
+      await seedDevProducts(db);
+      const products = await db.collection('dev_products').find({}, { projection: { _id: 0 } }).sort({ createdAt: 1 }).toArray();
+      return cors(NextResponse.json({ ok: true, products }));
+    }
+    if (route === '/admin/dev-products' && method === 'POST') {
+      if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const viewerDp = await sakViewer(db, request);
+      if (!omraaderForViewer(viewerDp).includes('utvikling')) return cors(NextResponse.json({ ok: false, error: 'Krever Utvikling-tilgang' }, { status: 403 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      const navn = String(body.name || '').trim().slice(0, 80);
+      if (!navn) return cors(NextResponse.json({ ok: false, error: 'Navn er påkrevd' }, { status: 400 }));
+      const produkt = {
+        id: uuidv4(), name: navn,
+        color: /^#[0-9a-fA-F]{6}$/.test(String(body.color || '')) ? body.color : '#8b5cf6',
+        components: [],
+        createdAt: new Date().toISOString(),
+      };
+      await db.collection('dev_products').insertOne({ ...produkt });
+      delete produkt._id;
+      return cors(NextResponse.json({ ok: true, product: produkt }));
+    }
+    if (path[0] === 'admin' && path[1] === 'dev-products' && path.length === 3 && method === 'PUT') {
+      if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const viewerDp = await sakViewer(db, request);
+      if (!omraaderForViewer(viewerDp).includes('utvikling')) return cors(NextResponse.json({ ok: false, error: 'Krever Utvikling-tilgang' }, { status: 403 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      const set = {};
+      if (body.name !== undefined) {
+        const navn = String(body.name || '').trim().slice(0, 80);
+        if (!navn) return cors(NextResponse.json({ ok: false, error: 'Navn er påkrevd' }, { status: 400 }));
+        set.name = navn;
+      }
+      if (body.color !== undefined && /^#[0-9a-fA-F]{6}$/.test(String(body.color || ''))) set.color = body.color;
+      if (body.components !== undefined) {
+        // Komponenter: [{id?, name}] — nye rader får id, tomme fjernes, maks 30.
+        set.components = (Array.isArray(body.components) ? body.components : [])
+          .map((c) => ({ id: (c && c.id) ? String(c.id) : uuidv4(), name: String((c && c.name) || '').trim().slice(0, 60) }))
+          .filter((c) => c.name)
+          .slice(0, 30);
+      }
+      if (!Object.keys(set).length) return cors(NextResponse.json({ ok: false, error: 'Ingen endringer' }, { status: 400 }));
+      const r = await db.collection('dev_products').updateOne({ id: path[2] }, { $set: set });
+      if (!r.matchedCount) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
+      const produkt = await db.collection('dev_products').findOne({ id: path[2] }, { projection: { _id: 0 } });
+      return cors(NextResponse.json({ ok: true, product: produkt }));
+    }
+    if (path[0] === 'admin' && path[1] === 'dev-products' && path.length === 3 && method === 'DELETE') {
+      if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const viewerDp = await sakViewer(db, request);
+      if (!omraaderForViewer(viewerDp).includes('utvikling')) return cors(NextResponse.json({ ok: false, error: 'Krever Utvikling-tilgang' }, { status: 403 }));
+      const iBruk = await db.collection('tasks').countDocuments({ productId: path[2] });
+      if (iBruk > 0) return cors(NextResponse.json({ ok: false, error: `Produktet brukes av ${iBruk} sak${iBruk === 1 ? '' : 'er'} — fjern koblingene først` }, { status: 409 }));
+      const r = await db.collection('dev_products').deleteOne({ id: path[2] });
+      if (!r.deletedCount) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
+      return cors(NextResponse.json({ ok: true }));
+    }
+
+    // ═══ Innmeldte utviklingssaker fra Forvalter-plattformen ═══════════════
+    // POST /api/bridge/dev-issue — plattform-appen (forvalter/Sara) melder inn
+    // feil/endringsforslag/funksjonsønsker som blir en sak i Utvikling-området.
+    // Auth: delt AGENT_BRIDGE_SECRET (x-bridge-secret | x-bridge-token |
+    // Authorization: Bearer | ?token=). Idempotent på event_id. Skjermbilder
+    // (dataUrl png/jpeg/webp, maks 3 à ~1,5 MB) lagres som vanlige sak-vedlegg.
+    if ((route === '/bridge/dev-issue' || route === '/bridge/dev-issues') && method === 'POST') {
+      const uDi = new URL(request.url);
+      const tokenDi = (request.headers.get('x-bridge-secret') || request.headers.get('x-bridge-token')
+        || String(request.headers.get('authorization') || '').replace(/^Bearer\s+/i, '')
+        || uDi.searchParams.get('token') || '').trim();
+      const secretDi = (process.env.AGENT_BRIDGE_SECRET || '').trim();
+      if (!secretDi || tokenDi !== secretDi) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+
+      const eventId = String(body.event_id || body.eventId || '').trim().slice(0, 120);
+      const tittelDi = String(body.title || '').trim().slice(0, 300);
+      if (!tittelDi) return cors(NextResponse.json({ ok: false, error: 'title er påkrevd' }, { status: 400 }));
+
+      // Idempotens: samme event_id → returner eksisterende sak, aldri duplikat.
+      if (eventId) {
+        const dupDi = await db.collection('tasks').findOne({ 'inbound.eventId': eventId }, { projection: { _id: 0, id: 1 } });
+        if (dupDi) return cors(NextResponse.json({ ok: true, task_id: dupDi.id, duplicate: true }));
+      }
+
+      // Sakstype + prioritet — tolerante aliaser (norsk/engelsk).
+      const typeMapDi = { feil: 'feil', bug: 'feil', error: 'feil', forbedring: 'forbedring', improvement: 'forbedring', endringsforslag: 'forbedring', change: 'forbedring', funksjon: 'funksjon', feature: 'funksjon', ide: 'funksjon', vedlikehold: 'vedlikehold', maintenance: 'vedlikehold' };
+      const taskTypeDi = typeMapDi[String(body.type || '').toLowerCase().trim()] || 'feil';
+      const sevMapDi = { kritisk: 1, critical: 1, hoy: 1, 'høy': 1, high: 1, blocker: 1, normal: 2, medium: 2, lav: 3, low: 3, minor: 3 };
+      const priDi = sevMapDi[String(body.severity || '').toLowerCase().trim()] || 2;
+
+      // Produkt «Forvalter-plattformen» — opprettes automatisk første gang.
+      await seedDevProducts(db);
+      let prodDi = await db.collection('dev_products').findOne({ name: /forvalter/i }, { projection: { _id: 0 } });
+      if (!prodDi) {
+        prodDi = { id: uuidv4(), name: 'Forvalter-plattformen', color: '#f59e0b', components: [], createdAt: new Date().toISOString() };
+        await db.collection('dev_products').insertOne({ ...prodDi });
+        delete prodDi._id;
+      }
+      // Komponent = modulen brukeren sto i. Ukjente moduler opprettes
+      // automatisk (den kuraterte listen vokser med plattformens moduler).
+      const ctxDi = (body.context && typeof body.context === 'object') ? body.context : {};
+      const modulDi = String(ctxDi.module || '').trim().slice(0, 60);
+      let kompIdDi = null;
+      if (modulDi) {
+        const eksKompDi = (prodDi.components || []).find((c) => String(c.name).toLowerCase() === modulDi.toLowerCase());
+        if (eksKompDi) kompIdDi = eksKompDi.id;
+        else if ((prodDi.components || []).length < 30) {
+          const nyKompDi = { id: uuidv4(), name: modulDi };
+          await db.collection('dev_products').updateOne({ id: prodDi.id }, { $push: { components: nyKompDi } });
+          kompIdDi = nyKompDi.id;
+        }
+      }
+
+      // Beskrivelse: innmelders tekst + strukturert kontekstblokk (markdown).
+      const repDi = (body.reporter && typeof body.reporter === 'object') ? body.reporter : {};
+      const repNavnDi = String(repDi.name || '').trim().slice(0, 80) || 'Forvalter';
+      const linjerDi = [String(body.description || '').trim().slice(0, 6000)];
+      linjerDi.push('', '---', '**Meldt inn fra Forvalter-plattformen**', '');
+      linjerDi.push(`- **Av:** ${repNavnDi}${repDi.email ? ` (${String(repDi.email).slice(0, 120)})` : ''}${repDi.role ? ` · ${String(repDi.role).slice(0, 40)}` : ''}`);
+      if (modulDi) linjerDi.push(`- **Modul:** ${modulDi}`);
+      if (ctxDi.route) linjerDi.push(`- **Side:** ${String(ctxDi.route).slice(0, 300)}`);
+      if (ctxDi.url) linjerDi.push(`- **URL:** ${String(ctxDi.url).slice(0, 500)}`);
+      if (ctxDi.userAgent) linjerDi.push(`- **Nettleser:** ${String(ctxDi.userAgent).slice(0, 200)}`);
+      if (ctxDi.viewport) linjerDi.push(`- **Skjerm:** ${String(ctxDi.viewport).slice(0, 40)}`);
+      if (ctxDi.build) linjerDi.push(`- **Versjon:** ${String(ctxDi.build).slice(0, 80)}`);
+
+      const naaDi = new Date().toISOString();
+      const taskDi = {
+        id: uuidv4(),
+        title: tittelDi,
+        description: linjerDi.join('\n').slice(0, 8000),
+        status: 'inbox',
+        priority: priDi,
+        assigneeId: null,
+        dueDate: null,
+        labels: ['innmeldt'],
+        subtasks: [], recurrence: null, followers: [],
+        projectId: null, parentId: null, relations: [],
+        space: 'utvikling',
+        restrictedTo: null,
+        taskType: taskTypeDi, productId: prodDi.id, componentId: kompIdDi,
+        attachments: [], archived: false, comments: [],
+        inbound: { source: 'forvalter-plattformen', eventId: eventId || null, reporter: { name: repNavnDi, email: repDi.email ? String(repDi.email).slice(0, 120) : null }, at: naaDi },
+        activity: [{ at: naaDi, actor: repNavnDi, text: 'Meldte inn saken fra Forvalter-plattformen' }],
+        createdAt: naaDi, updatedAt: naaDi, completedAt: null,
+      };
+
+      // Skjermbilder → task_files (samme lager som vanlige vedlegg).
+      const bilderDi = (Array.isArray(body.screenshots) ? body.screenshots : []).slice(0, 3);
+      let bildeNrDi = 0;
+      for (const b of bilderDi) {
+        const mDi = /^data:(image\/(?:png|jpe?g|webp));base64,([A-Za-z0-9+/=]+)$/.exec(String((b && b.dataUrl) || ''));
+        if (!mDi) continue;
+        if (mDi[2].length > 2 * 1024 * 1024) continue; // ~1,5 MB binært per bilde
+        bildeNrDi += 1;
+        const filDi = {
+          id: uuidv4(), taskId: taskDi.id,
+          name: String((b && b.name) || '').trim().slice(0, 200) || `skjermbilde-${bildeNrDi}.${mDi[1] === 'image/png' ? 'png' : (mDi[1] === 'image/webp' ? 'webp' : 'jpg')}`,
+          type: mDi[1], size: Math.round(mDi[2].length * 3 / 4), data: mDi[2],
+          uploadedBy: repNavnDi, at: naaDi,
+        };
+        await db.collection('task_files').insertOne({ ...filDi });
+        taskDi.attachments.push({ id: filDi.id, name: filDi.name, type: filDi.type, size: filDi.size, at: filDi.at });
+      }
+
+      await db.collection('tasks').insertOne({ ...taskDi });
+
+      // In-app-varsel til admin + utviklingsgruppen (de ser Utvikling-området).
+      try {
+        const varslesDi = await db.collection('admin_users').find(
+          { $or: [{ role: { $in: ['owner', 'admin'] } }, { groups: 'utvikling' }] },
+          { projection: { _id: 0, id: 1 } },
+        ).toArray();
+        for (const u of varslesDi) {
+          await varsle(db, u.id, null, { type: 'innmeldt', taskId: taskDi.id, taskTitle: taskDi.title, actor: repNavnDi, text: `${repNavnDi} meldte inn en ${taskTypeDi === 'feil' ? 'feil' : 'sak'} fra Forvalter-plattformen` });
+        }
+      } catch (e) { /* stille */ }
+
+      return cors(NextResponse.json({
+        ok: true,
+        task_id: taskDi.id,
+        type: taskTypeDi,
+        priority: priDi,
+        component: kompIdDi ? modulDi : null,
+        attachments: taskDi.attachments.length,
+      }, { status: 201 }));
+    }
+    // Helse-/discovery-endepunkt for innmelding (åpent, ingen hemmeligheter).
+    if ((route === '/bridge/dev-issue' || route === '/bridge/dev-issues') && method === 'GET') {
+      return cors(NextResponse.json({
+        ok: true,
+        service: 'digihome-marketing dev-issue intake',
+        method: 'POST /api/bridge/dev-issue',
+        auth: 'x-bridge-secret | x-bridge-token | Authorization: Bearer | ?token= (AGENT_BRIDGE_SECRET)',
+        idempotency: 'event_id',
+        fields: {
+          required: ['title'],
+          optional: ['event_id', 'description (markdown)', 'type: feil|bug|forbedring|improvement|funksjon|feature|vedlikehold', 'severity: kritisk|normal|lav', 'reporter: {name,email,role}', 'context: {module,route,url,userAgent,viewport,build}', 'screenshots: [{dataUrl,name}] (maks 3 × ~1,5 MB, png/jpeg/webp)'],
+        },
+      }));
+    }
+
     // --- E-post-forhåndsvisning av Markdown (verifisering uten å sende e-post) ---
     if (route === '/admin/tasks/email-preview' && method === 'GET') {
       if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
@@ -3104,7 +3326,7 @@ async function handleRoute(request, { params }) {
     if (route === '/admin/tasks/insights' && method === 'GET') {
       if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const [alleSakerRaa, personer, prosjekter, viewerIns] = await Promise.all([
-        db.collection('tasks').find({}).project({ _id: 0, id: 1, title: 1, status: 1, assigneeId: 1, dueDate: 1, createdAt: 1, completedAt: 1, priority: 1, projectId: 1, archived: 1, space: 1, restrictedTo: 1 }).toArray(),
+        db.collection('tasks').find({}).project({ _id: 0, id: 1, title: 1, status: 1, assigneeId: 1, dueDate: 1, createdAt: 1, completedAt: 1, priority: 1, projectId: 1, archived: 1, space: 1, restrictedTo: 1, taskType: 1, productId: 1 }).toArray(),
         hentPersoner(db),
         db.collection('projects').find({ archived: { $ne: true } }, { projection: { _id: 0, id: 1, name: 1, color: 1 } }).sort({ createdAt: 1 }).toArray(),
         sakViewer(db, request),
@@ -3183,9 +3405,29 @@ async function handleRoute(request, { params }) {
           ageDays: Math.max(0, Math.round((naaMs - new Date(t.createdAt).getTime()) / 86400000)),
         }));
 
+      // Utviklingsblokk: type- og produktfordeling for åpne utviklingssaker
+      // (kun når vieweren ser Utvikling-området og det finnes saker der).
+      let dev = null;
+      const utvAapne = aapne.filter((t) => t.space === 'utvikling');
+      if (utvAapne.length) {
+        const typer = {};
+        for (const kType of DEV_SAKSTYPER) typer[kType] = utvAapne.filter((t) => t.taskType === kType).length;
+        typer.uten = utvAapne.filter((t) => !t.taskType).length;
+        const devProds = await db.collection('dev_products').find({}, { projection: { _id: 0, id: 1, name: 1, color: 1 } }).sort({ createdAt: 1 }).toArray();
+        const perProduct = [...devProds.map((p) => ({ id: p.id, name: p.name, color: p.color })), { id: null, name: 'Uten produkt', color: '#b0aca6' }]
+          .map((p) => ({
+            ...p,
+            open: utvAapne.filter((t) => (t.productId || null) === p.id).length,
+            feil: utvAapne.filter((t) => (t.productId || null) === p.id && t.taskType === 'feil').length,
+          }))
+          .filter((p) => p.open > 0);
+        dev = { typer, perProduct };
+      }
+
       return cors(NextResponse.json({
         ok: true,
         today: iDag,
+        dev,
         kpi: {
           open: aapne.length,
           overdue: forfalt.length,
@@ -3274,6 +3516,9 @@ async function handleRoute(request, { params }) {
         relations: normaliserRelasjoner(body.relations),
         space,
         restrictedTo,
+        taskType: DEV_SAKSTYPER.includes(body.taskType) ? body.taskType : null,
+        productId: body.productId ? String(body.productId) : null,
+        componentId: body.componentId ? String(body.componentId) : null,
         attachments: [],
         archived: false,
         comments: [],
@@ -3406,6 +3651,46 @@ async function handleRoute(request, { params }) {
         set.projectId = body.projectId ? String(body.projectId) : null;
         logg.push(set.projectId ? 'Knyttet til prosjekt' : 'Fjernet fra prosjekt');
       }
+      // Utviklingsfelter: sakstype + Produkt → Komponent. Valideres mot kjente
+      // typer/produkter; komponent nullstilles ved produktbytte hvis ugyldig.
+      if (body.taskType !== undefined) {
+        const ny = DEV_SAKSTYPER.includes(body.taskType) ? body.taskType : null;
+        if (ny !== (eksisterende.taskType || null)) {
+          set.taskType = ny;
+          logg.push(ny ? `Sakstype: ${ny}` : 'Sakstype fjernet');
+        }
+      }
+      if (body.productId !== undefined) {
+        const nyProd = body.productId ? String(body.productId) : null;
+        if (nyProd !== (eksisterende.productId || null)) {
+          if (nyProd) {
+            const prodDok = await db.collection('dev_products').findOne({ id: nyProd }, { projection: { _id: 0, name: 1 } });
+            if (!prodDok) return cors(NextResponse.json({ ok: false, error: 'Ukjent produkt' }, { status: 400 }));
+            set.productId = nyProd;
+            logg.push(`Produkt: ${prodDok.name}`);
+          } else {
+            set.productId = null;
+            logg.push('Produkt fjernet');
+          }
+          // Produktbytte → komponenten hører til forrige produkt og nullstilles
+          // (med mindre en ny komponent settes i samme kall, håndteres under).
+          set.componentId = null;
+        }
+      }
+      if (body.componentId !== undefined) {
+        const nyKomp = body.componentId ? String(body.componentId) : null;
+        if (nyKomp) {
+          const prodId = set.productId !== undefined ? set.productId : (eksisterende.productId || null);
+          const prodDok = prodId ? await db.collection('dev_products').findOne({ id: prodId }, { projection: { _id: 0, components: 1 } }) : null;
+          const komp = prodDok ? (prodDok.components || []).find((c) => c.id === nyKomp) : null;
+          if (!komp) return cors(NextResponse.json({ ok: false, error: 'Komponenten finnes ikke på valgt produkt' }, { status: 400 }));
+          set.componentId = nyKomp;
+          logg.push(`Komponent: ${komp.name}`);
+        } else if ((eksisterende.componentId || null) !== null && set.componentId === undefined) {
+          set.componentId = null;
+          logg.push('Komponent fjernet');
+        }
+      }
       // Områdebytte: kun til områder vieweren selv har tilgang til.
       if (body.space !== undefined && SAK_OMRAADER.includes(body.space) && body.space !== (eksisterende.space || 'drift')) {
         if (!omraaderForViewer(viewerPut).includes(body.space)) {
@@ -3524,6 +3809,10 @@ async function handleRoute(request, { params }) {
           // Gjentakelser arver synligheten fra forrige forekomst.
           space: set.space !== undefined ? set.space : (SAK_OMRAADER.includes(eksisterende.space) ? eksisterende.space : 'drift'),
           restrictedTo: set.restrictedTo !== undefined ? set.restrictedTo : (eksisterende.restrictedTo || null),
+          // …og utviklingsfeltene (sakstype/produkt/komponent).
+          taskType: set.taskType !== undefined ? set.taskType : (eksisterende.taskType || null),
+          productId: set.productId !== undefined ? set.productId : (eksisterende.productId || null),
+          componentId: set.componentId !== undefined ? set.componentId : (eksisterende.componentId || null),
           attachments: [],
           archived: false,
           comments: [],
