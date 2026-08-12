@@ -486,3 +486,10 @@ Google Ads-styring via native REST API).
 - GJENSTÅR FOR BRUKER: publisere prod (alt innhold/fikser er kun i preview),
   Google Business Profile (anbefalt sterkt), Google-anmeldelser, bro-svar
   (self-service «A» + slettesynk-ACK) venter fortsatt på bruker-OK.
+
+## Oppdatering (feb 2026): Brukermodul, impersonering, sidebar-kollaps, saksmottak-mottakere
+- **Brukermodul** `/admin/brukere` (`components/admin/Brukere.js`): egen modul i sidemenyen (Ledelse-gruppen) — statistikk, søk, legg til/inviter/rediger/slett personer. Erstatter PersonerModal-inngangene i Saker (knappene navigerer nå hit).
+- **«Logg inn som bruker»**: `POST /api/admin/impersonate` (kun ekte admin; aldri owner-target, selv-imp eller kjeding). Kort sesjon (1 t) med målbrukerens identitet + `imp`-metadata; `auth/me` returnerer `impersonatedBy`. Audit i `impersonation_log`. UI: «Se som»-knapp per bruker, banner nederst («Du ser portalen som X» + «Tilbake til admin»), auto-fallback til admin-token ved utløp. Admin-token parkeres i localStorage `dh_admin_imp_original`.
+- **Sidebar-kollaps** (desktop): PanelLeft-knapp i sidebar-headeren, smal ikonlist (68px) m/ tooltips, persistert i localStorage `dh_admin_sidebar_collapsed`. Mobil-drawer uendret.
+- **Saksmottak-mottakere**: `GET/PUT /api/admin/dev-issue-innstillinger` (settings-doc `dev_issue_intake`: recipientIds/notifyEmail/addAsFollowers). `POST /api/bridge/dev-issue` varsler valgte mottakere in-app + ev. e-post (taskEpost, kategori 'innmeldt') og setter dem som followers; tom liste = standard (admin + utviklingsgruppen, kun in-app). UI: «Saksmottak — hvem varsles?» i ProduktAdmin-modalen (Utvikling → Produkter & komponenter), auto-lagring.
+- Backend-testagent: 26/26 pass (impersonering, innstillinger, bridge m/ mottakere, regresjon).

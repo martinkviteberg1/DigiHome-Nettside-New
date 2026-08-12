@@ -392,7 +392,7 @@ function VarselDropdown({ innerRef, varsler, ulest, onOpen, onMerkAlle, prefsOpe
   );
 }
 
-export default function TasksTab({ apiKey, user, onStats }) {
+export default function TasksTab({ apiKey, user, onStats, onOpenBrukere }) {
   const [tasks, setTasks] = useState([]);
   const [members, setMembers] = useState([]);
   const [projects, setProjects] = useState([]);
@@ -666,7 +666,7 @@ export default function TasksTab({ apiKey, user, onStats }) {
       const d = (e && e.detail) || {};
       if (d.do === 'ny') setNyOpen(true);
       else if (d.do === 'mine' && minId) toggleMine();
-      else if (d.do === 'personer') setPersonerOpen(true);
+      else if (d.do === 'personer') { if (onOpenBrukere) onOpenBrukere(); else setPersonerOpen(true); }
       else if (d.do === 'view' && d.view) setView(d.view);
       else if (d.do === 'aapne' && d.id) {
         // Åpne en spesifikk sak (f.eks. aksjonspunkt fra Møter). Arkiverte
@@ -1168,7 +1168,7 @@ export default function TasksTab({ apiKey, user, onStats }) {
             )}
           </button>
           <button
-            onClick={() => setPersonerOpen(true)}
+            onClick={() => (onOpenBrukere ? onOpenBrukere() : setPersonerOpen(true))}
             data-testid="tasks-members-btn"
             title="Personer og tilgang"
             className="flex h-8 w-8 items-center justify-center rounded-lg border border-black/[0.08] bg-white text-[#555] transition-all hover:border-black/[0.16] hover:text-[#0a0a0a]"
@@ -1252,7 +1252,7 @@ export default function TasksTab({ apiKey, user, onStats }) {
               )}
             </button>
             <button
-              onClick={() => setPersonerOpen(true)}
+              onClick={() => (onOpenBrukere ? onOpenBrukere() : setPersonerOpen(true))}
               className="flex h-11 items-center gap-1.5 rounded-xl border border-black/[0.08] bg-white px-4 text-[13.5px] font-medium text-[#555]"
             >
               <Users className="w-4 h-4" /> Personer
@@ -1303,7 +1303,7 @@ export default function TasksTab({ apiKey, user, onStats }) {
               <Plus className="w-4 h-4" /> Ny sak
             </button>
             <button
-              onClick={() => setPersonerOpen(true)}
+              onClick={() => (onOpenBrukere ? onOpenBrukere() : setPersonerOpen(true))}
               className="flex h-11 w-full max-w-[240px] items-center justify-center gap-1.5 rounded-full bg-[#f4f0fb] px-5 text-[13.5px] font-semibold text-[#8b5cf6] transition-all hover:bg-[#ece4fa] sm:w-auto"
             >
               <UserPlus className="w-4 h-4" /> Legg til personer
@@ -1697,6 +1697,7 @@ export default function TasksTab({ apiKey, user, onStats }) {
         <ProduktAdmin
           api={api}
           products={devProducts}
+          members={members}
           onChanged={hentDevProdukter}
           visToast={visToast}
           onClose={() => setProduktAdminOpen(false)}

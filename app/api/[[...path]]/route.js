@@ -2297,7 +2297,61 @@ async function handleRoute(request, { params }) {
       try { user = await db.collection('admin_users').findOne({ id: payload.sub }); } catch (e) {}
       return cors(NextResponse.json({
         ok: true,
-        user: { email: payload.email, name: (user && user.name) || '', role: (user && user.role) || 'admin', moduler: (user && Array.isArray(user.moduler)) ? user.moduler : [] },
+        user: {
+          email: payload.email, name: (user && user.name) || '', role: (user && user.role) || 'admin',
+          moduler: (user && Array.isArray(user.moduler)) ? user.moduler : [],
+          // «Se som»-økt: klienten viser banner + «Tilbake til admin» når satt.
+          ...(payload.imp ? { impersonatedBy: { name: (payload.imp.name || 'Admin'), email: (payload.imp.email || '') } } : {}),
+        },
+      }));
+    }
+
+    // ── «Logg inn som bruker» (impersonering): admin/owner kan midlertidig se
+    // portalen som en annen konto for å verifisere tilgang og innhold. Utsteder
+    // en KORT sesjon (1 t) med MÅL-brukerens identitet + imp-metadata om hvem
+    // som imiterer — all server-side tilgangsstyring følger dermed mål-brukeren
+    // automatisk. Sikring: kun ekte admin (aldri fra en pågående «se som»-økt),
+    // aldri seg selv, aldri owner-kontoen. Hver oppstart audit-logges.
+    if (route === '/admin/impersonate' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const sesjonImp = sessionFra(request);
+      if (sesjonImp && sesjonImp.imp) {
+        return cors(NextResponse.json({ ok: false, error: 'Du er allerede i en «se som»-økt — gå tilbake til admin først' }, { status: 400 }));
+      }
+      let bodyImp = {}; try { bodyImp = await request.json(); } catch (e) {}
+      const targetImp = await db.collection('admin_users').findOne({ id: String(bodyImp.userId || '') });
+      if (!targetImp) return cors(NextResponse.json({ ok: false, error: 'Fant ikke brukeren' }, { status: 404 }));
+      if (sesjonImp && sesjonImp.sub === targetImp.id) {
+        return cors(NextResponse.json({ ok: false, error: 'Du kan ikke se portalen som deg selv' }, { status: 400 }));
+      }
+      if (targetImp.role === 'owner') {
+        return cors(NextResponse.json({ ok: false, error: 'Eier-kontoen kan ikke imiteres' }, { status: 403 }));
+      }
+      // Hvem imiterer? Masternøkkelen har ingen sesjon — logges som det.
+      let impAv = { sub: null, name: 'Masternøkkel', email: '' };
+      if (sesjonImp && sesjonImp.sub) {
+        try {
+          const megImp = await db.collection('admin_users').findOne({ id: sesjonImp.sub }, { projection: { _id: 0, name: 1, email: 1 } });
+          impAv = { sub: sesjonImp.sub, name: (megImp && megImp.name) || sesjonImp.email || 'Admin', email: (megImp && megImp.email) || sesjonImp.email || '' };
+        } catch (e) { impAv = { sub: sesjonImp.sub, name: sesjonImp.email || 'Admin', email: sesjonImp.email || '' }; }
+      }
+      const expImp = Date.now() + 60 * 60 * 1000; // 1 time — kort og trygt
+      const tokenImp = signSession({ sub: targetImp.id, email: targetImp.email || '', role: targetImp.role || 'bruker', exp: expImp, imp: impAv });
+      if (!tokenImp) return cors(NextResponse.json({ ok: false, error: 'Sesjonssignering er ikke konfigurert' }, { status: 500 }));
+      try {
+        await db.collection('impersonation_log').insertOne({
+          id: uuidv4(), adminId: impAv.sub, adminEmail: impAv.email || 'masternøkkel', adminName: impAv.name,
+          targetId: targetImp.id, targetEmail: targetImp.email || '', targetName: targetImp.name || '',
+          targetRole: targetImp.role || 'bruker', at: new Date().toISOString(),
+        });
+      } catch (e) { /* stille — audit skal ikke velte selve handlingen */ }
+      return cors(NextResponse.json({
+        ok: true, token: tokenImp, exp: expImp,
+        user: {
+          email: targetImp.email || '', name: targetImp.name || '', role: targetImp.role || 'bruker',
+          moduler: Array.isArray(targetImp.moduler) ? targetImp.moduler : [],
+          impersonatedBy: { name: impAv.name, email: impAv.email },
+        },
       }));
     }
 
@@ -3222,6 +3276,37 @@ async function handleRoute(request, { params }) {
     }
 
     // ═══ Innmeldte utviklingssaker fra Forvalter-plattformen ═══════════════
+    // ── Saksmottak-innstillinger: hvem varsles (og følger saken automatisk)
+    // når en ny sak meldes inn fra Forvalter-plattformen. Tom mottakerliste =
+    // standard (in-app-varsel til alle admin + utviklingsgruppen, ingen e-post).
+    if (route === '/admin/dev-issue-innstillinger' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const sDs = await db.collection('settings').findOne({ key: 'dev_issue_intake' }, { projection: { _id: 0 } });
+      return cors(NextResponse.json({
+        ok: true,
+        recipientIds: (sDs && Array.isArray(sDs.recipientIds)) ? sDs.recipientIds : [],
+        notifyEmail: sDs ? sDs.notifyEmail !== false : true,
+        addAsFollowers: sDs ? sDs.addAsFollowers !== false : true,
+      }));
+    }
+    if (route === '/admin/dev-issue-innstillinger' && method === 'PUT') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let bodyDs = {}; try { bodyDs = await request.json(); } catch (e) {}
+      // Kun eksisterende personer kan stå som mottakere (maks 30).
+      const alleIdsDs = new Set((await db.collection('admin_users').find({}, { projection: { id: 1 } }).toArray()).map((u) => u.id));
+      const recipientIdsDs = (Array.isArray(bodyDs.recipientIds) ? bodyDs.recipientIds : [])
+        .filter((id) => typeof id === 'string' && alleIdsDs.has(id)).slice(0, 30);
+      const docDs = {
+        key: 'dev_issue_intake',
+        recipientIds: recipientIdsDs,
+        notifyEmail: bodyDs.notifyEmail !== false,
+        addAsFollowers: bodyDs.addAsFollowers !== false,
+        updatedAt: new Date().toISOString(),
+      };
+      await db.collection('settings').updateOne({ key: 'dev_issue_intake' }, { $set: docDs }, { upsert: true });
+      return cors(NextResponse.json({ ok: true, recipientIds: docDs.recipientIds, notifyEmail: docDs.notifyEmail, addAsFollowers: docDs.addAsFollowers }));
+    }
+
     // POST /api/bridge/dev-issue — plattform-appen (forvalter/Sara) melder inn
     // feil/endringsforslag/funksjonsønsker som blir en sak i Utvikling-området.
     // Auth: delt AGENT_BRIDGE_SECRET (x-bridge-secret | x-bridge-token |
@@ -3337,16 +3422,46 @@ async function handleRoute(request, { params }) {
         taskDi.attachments.push({ id: filDi.id, name: filDi.name, type: filDi.type, size: filDi.size, at: filDi.at });
       }
 
+      // Spesifiserte mottakere (admin-innstilling): de varsles in-app (+ ev.
+      // e-post) og legges automatisk til som følgere — men ALDRI hvis de ikke
+      // kan se utviklingssaker (admin/owner eller utviklingsgruppen).
+      let intakeDi = null;
+      try { intakeDi = await db.collection('settings').findOne({ key: 'dev_issue_intake' }, { projection: { _id: 0 } }); } catch (e) {}
+      const mottakerIdsDi = (intakeDi && Array.isArray(intakeDi.recipientIds)) ? intakeDi.recipientIds : [];
+      let mottakereDi = [];
+      if (mottakerIdsDi.length) {
+        try {
+          const allePersDi = await hentPersoner(db);
+          mottakereDi = allePersDi.filter((p) => mottakerIdsDi.includes(p.id) && sakSynligForMedlem(p, taskDi));
+          if (intakeDi.addAsFollowers !== false) taskDi.followers = mottakereDi.map((p) => p.id);
+        } catch (e) { mottakereDi = []; }
+      }
+
       await db.collection('tasks').insertOne({ ...taskDi });
 
-      // In-app-varsel til admin + utviklingsgruppen (de ser Utvikling-området).
+      // Varsling: spesifiserte mottakere (in-app + ev. e-post med direkte
+      // saklenke) — ellers standard: in-app til admin + utviklingsgruppen.
       try {
-        const varslesDi = await db.collection('admin_users').find(
-          { $or: [{ role: { $in: ['owner', 'admin'] } }, { groups: 'utvikling' }] },
-          { projection: { _id: 0, id: 1 } },
-        ).toArray();
-        for (const u of varslesDi) {
-          await varsle(db, u.id, null, { type: 'innmeldt', taskId: taskDi.id, taskTitle: taskDi.title, actor: repNavnDi, text: `${repNavnDi} meldte inn en ${taskTypeDi === 'feil' ? 'feil' : 'sak'} fra Forvalter-plattformen` });
+        const varselTekstDi = `${repNavnDi} meldte inn en ${taskTypeDi === 'feil' ? 'feil' : 'sak'} fra Forvalter-plattformen`;
+        if (mottakereDi.length) {
+          for (const p of mottakereDi) {
+            await varsle(db, p.id, null, { type: 'innmeldt', taskId: taskDi.id, taskTitle: taskDi.title, actor: repNavnDi, text: varselTekstDi });
+            if (intakeDi.notifyEmail !== false) {
+              await taskEpost({
+                member: p, task: taskDi, heading: 'Ny innmeldt sak',
+                intro: `${varselTekstDi}${modulDi ? ` (modul: ${modulDi})` : ''}. Du står som mottaker for innmeldte utviklingssaker.`,
+                kategori: 'innmeldt',
+              });
+            }
+          }
+        } else {
+          const varslesDi = await db.collection('admin_users').find(
+            { $or: [{ role: { $in: ['owner', 'admin'] } }, { groups: 'utvikling' }] },
+            { projection: { _id: 0, id: 1 } },
+          ).toArray();
+          for (const u of varslesDi) {
+            await varsle(db, u.id, null, { type: 'innmeldt', taskId: taskDi.id, taskTitle: taskDi.title, actor: repNavnDi, text: varselTekstDi });
+          }
         }
       } catch (e) { /* stille */ }
 
@@ -3357,6 +3472,7 @@ async function handleRoute(request, { params }) {
         priority: priDi,
         component: kompIdDi ? modulDi : null,
         attachments: taskDi.attachments.length,
+        recipients: mottakereDi.length,
       }, { status: 201 }));
     }
     // Helse-/discovery-endepunkt for innmelding (åpent, ingen hemmeligheter).

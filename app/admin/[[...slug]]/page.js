@@ -8,7 +8,9 @@ import {
   Command, Search, CornerDownLeft, LayoutTemplate, Crosshair, TrendingUp, Wallet,
   Globe, ExternalLink, PenLine, Mail, Home, History, Landmark, Wand2, Layers, UserPlus,
   ClipboardCheck, CalendarDays, ArrowLeft, KeyRound, Check, User, Eye, EyeOff,
+  PanelLeftClose, PanelLeftOpen,
 } from 'lucide-react';
+import Brukere from '@/components/admin/Brukere';
 import InnsiktDashboard from '@/components/admin/InnsiktDashboard';
 import KpiDashboard from '@/components/admin/KpiDashboard';
 import FinanceDashboard from '@/components/admin/FinanceDashboard';
@@ -37,6 +39,7 @@ const NAV = [
       { k: 'okonomi', l: 'Økonomi', icon: Wallet, desc: 'Resultat · likviditet · burn · runway' },
       { k: 'saker', l: 'Saker', icon: ClipboardCheck, badge: 'tasks', desc: 'Internt sakssystem — oppfølging, frister og ansvar' },
       { k: 'moter', l: 'Møter', icon: CalendarDays, desc: 'Styremøter & ledermøter — agenda, referat, vedtak og aksjonspunkter' },
+      { k: 'brukere', l: 'Brukere', icon: Users, desc: 'Personer, roller og tilgang — inviter, endre og se portalen som andre' },
       { k: 'investorrom', l: 'Investor-rom', icon: Landmark, desc: 'Levende DD-rom — tilgangslenker, dokumenter & Q&A' },
       { k: 'playbook', l: 'Playbook', icon: FileText, desc: 'Marketing-strategi · konkurrentanalyse · 90-dagersplan' },
     ],
@@ -118,6 +121,7 @@ const SECTION_TITLES = {
   okonomi: { t: 'Økonomi', s: 'Resultat & likviditet · honorar (prosent av leie) · burn rate & runway' },
   saker: { t: 'Saker', s: 'Internt sakssystem — fang, fordel og følg opp saker til de er ferdige. N = ny sak' },
   moter: { t: 'Møter', s: 'Styremøter & ledermøter — agenda, referat, vedtak og aksjonspunkter som blir saker' },
+  brukere: { t: 'Brukere', s: 'Personer, roller og tilgang — inviter nye, endre kontoer og se portalen som en annen bruker' },
   kunder: { t: 'Kunder', s: 'Utleiere (betalende kunder) · kontrakter · eiendommer · MRR — synket fra plattformen' },
   abonnementer: { t: 'Abonnementer', s: 'Kommer snart — aktive avtaler & fakturering' },
   bro: { t: 'Agent-bro', s: 'Delt meldingstråd for koordinering med plattform-prosjektet' },
@@ -146,6 +150,8 @@ const INSIGHT_SUBTITLES = {
 };
 
 const NAV_OPEN_KEY = 'dh_admin_nav_open';
+const SIDEBAR_KEY = 'dh_admin_sidebar_collapsed'; // desktop-sidebar: sammenlagt eller ikke
+const IMP_ORIG_KEY = 'dh_admin_imp_original';     // admin-token under en «se som»-økt
 
 // ── URL-slugs: hver seksjon har sin egen adresse under /admin/<slug>, slik at
 // refresh, bokmerker og deling lander på riktig side. Innsikt-modulene har
@@ -154,7 +160,9 @@ const SLUG_TIL_SEKSJON = {
   nokkeltall: { section: 'nokkeltall' },
   okonomi: { section: 'okonomi' },
   saker: { section: 'saker' },
+  prosjekter: { section: 'saker' }, // Prosjekter-visningen i saksflaten — egen delbar adresse
   moter: { section: 'moter' },
+  brukere: { section: 'brukere' },
   investorrom: { section: 'investorrom' },
   playbook: { section: 'playbook' },
   kunder: { section: 'kunder' },
@@ -200,6 +208,16 @@ export default function AdminPage({ params }) {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  // Desktop-sidebar kan slås sammen til en smal ikonlist (persisteres).
+  const [collapsed, setCollapsed] = useState(false);
+  useEffect(() => {
+    try { setCollapsed(localStorage.getItem(SIDEBAR_KEY) === '1'); } catch (e) {}
+  }, []);
+  const toggleCollapsed = () => setCollapsed((c) => {
+    const next = !c;
+    try { localStorage.setItem(SIDEBAR_KEY, next ? '1' : '0'); } catch (e) {}
+    return next;
+  });
   // Sammenleggbare menygrupper — false = manuelt lukket (persisteres).
   // Gruppen med aktivt element tvinges alltid åpen, så man aldri «mister» seg selv.
   const [navOpen, setNavOpen] = useState({});
@@ -255,7 +273,25 @@ export default function AdminPage({ params }) {
           setToken(t); setUser(j.user);
           try { localStorage.setItem(LEGACY_KEY, t); } catch (e) {}
         } else {
-          try { localStorage.removeItem(SESSION_KEY); localStorage.removeItem(LEGACY_KEY); } catch (e) {}
+          // En «se som»-økt kan være utløpt (1 t) — fall automatisk og sømløst
+          // tilbake til admin-sesjonen som ble lagret da økten startet.
+          let orig = '';
+          try { orig = localStorage.getItem(IMP_ORIG_KEY) || ''; } catch (e) {}
+          let gjenopprettet = false;
+          if (orig) {
+            try {
+              const r2 = await fetch(`/api/admin/auth/me?key=${encodeURIComponent(orig)}`);
+              if (r2.ok) {
+                const j2 = await r2.json();
+                setToken(orig); setUser(j2.user);
+                try { localStorage.setItem(SESSION_KEY, orig); localStorage.setItem(LEGACY_KEY, orig); localStorage.removeItem(IMP_ORIG_KEY); } catch (e) {}
+                gjenopprettet = true;
+              }
+            } catch (e) {}
+          }
+          if (!gjenopprettet) {
+            try { localStorage.removeItem(SESSION_KEY); localStorage.removeItem(LEGACY_KEY); localStorage.removeItem(IMP_ORIG_KEY); } catch (e) {}
+          }
         }
       } catch (e) {}
       finally { setChecking(false); }
@@ -322,8 +358,44 @@ export default function AdminPage({ params }) {
   };
 
   const logout = () => {
-    try { localStorage.removeItem(SESSION_KEY); localStorage.removeItem(LEGACY_KEY); } catch (e) {}
+    try { localStorage.removeItem(SESSION_KEY); localStorage.removeItem(LEGACY_KEY); localStorage.removeItem(IMP_ORIG_KEY); } catch (e) {}
     setToken(''); setUser(null); setSection('innsikt');
+  };
+
+  // ── «Logg inn som bruker»: admin starter en trygg, midlertidig økt (1 t)
+  // med mål-brukerens identitet. Eget admin-token parkeres i localStorage og
+  // gjenopprettes med «Tilbake til admin» (eller automatisk ved utløp).
+  const startImpersonation = async (member) => {
+    if (!member || !member.id || !token) return;
+    if (user && user.impersonatedBy) return; // aldri kjede «se som»-økter
+    if (!window.confirm(`Se portalen som ${member.name}? Du kan når som helst gå tilbake til din egen konto.`)) return;
+    try {
+      const r = await fetch(`/api/admin/impersonate?key=${encodeURIComponent(token)}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: member.id }),
+      });
+      const j = await r.json();
+      if (!r.ok || !j.ok) { window.alert(j.error || 'Kunne ikke starte «se som»-økten'); return; }
+      try {
+        localStorage.setItem(IMP_ORIG_KEY, token);
+        localStorage.setItem(SESSION_KEY, j.token);
+        localStorage.setItem(LEGACY_KEY, j.token);
+      } catch (e) {}
+      // Full reload: alle moduler starter rent med den nye identiteten.
+      window.location.href = '/admin';
+    } catch (e) { window.alert('Nettverksfeil — prøv igjen'); }
+  };
+
+  const stopImpersonation = () => {
+    let orig = '';
+    try { orig = localStorage.getItem(IMP_ORIG_KEY) || ''; } catch (e) {}
+    try { localStorage.removeItem(IMP_ORIG_KEY); } catch (e) {}
+    if (orig) {
+      try { localStorage.setItem(SESSION_KEY, orig); localStorage.setItem(LEGACY_KEY, orig); } catch (e) {}
+      window.location.href = '/admin/brukere';
+    } else {
+      logout();
+    }
   };
 
   // --- Laster sesjon ---
@@ -350,13 +422,16 @@ export default function AdminPage({ params }) {
     ? [{ group: 'Verktøy', items: NAV.flatMap((g) => g.items).filter((it) => begrensning.includes(it.k)) }]
     : NAV;
 
-  const NavList = () => (
-    <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-4">
-      {synligNav.map((grp) => {
+  const NavList = ({ compact = false }) => (
+    <nav className={`flex-1 overflow-y-auto ${compact ? 'px-2.5' : 'px-3'} py-4 ${compact ? 'space-y-3' : 'space-y-4'}`}>
+      {synligNav.map((grp, gi) => {
         const containsActive = grp.items.some((it) => (it.insight ? (section === 'innsikt' && insightTab === it.insight) : section === it.k));
-        const isOpen = navOpen[grp.group] !== false || containsActive;
+        const isOpen = compact ? true : (navOpen[grp.group] !== false || containsActive);
         return (
         <div key={grp.group}>
+          {compact ? (
+            gi > 0 && <div className="mx-2 mb-3 h-px bg-white/[0.07]" />
+          ) : (
           <button
             onClick={() => toggleGroup(grp.group)}
             className="w-full px-3 mb-1.5 flex items-center justify-between group/hdr"
@@ -366,14 +441,23 @@ export default function AdminPage({ params }) {
             <span className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-white/30 group-hover/hdr:text-white/55 transition-colors">{grp.group}</span>
             <ChevronDown className={`w-3 h-3 text-white/20 group-hover/hdr:text-white/55 transition-transform duration-200 ${isOpen ? '' : '-rotate-90'}`} />
           </button>
+          )}
           {isOpen && (
           <div className="space-y-0.5 dh-fade">
             {grp.items.map((it) => {
               const Icon = it.icon;
               const active = it.insight ? (section === 'innsikt' && insightTab === it.insight) : section === it.k;
               const pend = it.badge === 'pending' ? (insightStats.pending || 0) : it.badge === 'tasks' ? (taskStats.overdue || 0) : 0;
-              const common = 'relative w-full flex items-center gap-3 px-3 py-2 rounded-xl text-[13.5px] font-medium transition-all group';
-              const content = (
+              const common = compact
+                ? 'relative w-full flex items-center justify-center h-10 rounded-xl transition-all group'
+                : 'relative w-full flex items-center gap-3 px-3 py-2 rounded-xl text-[13.5px] font-medium transition-all group';
+              const content = compact ? (
+                <>
+                  {active && <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-full bg-[#cf97fc] shadow-[0_0_12px_rgba(207,151,252,0.8)]" />}
+                  <Icon className={`w-[17px] h-[17px] shrink-0 transition-colors ${active ? 'text-[#cf97fc]' : 'text-white/50 group-hover:text-white/80'}`} />
+                  {pend > 0 && <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-amber-400" />}
+                </>
+              ) : (
                 <>
                   {active && <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-full bg-[#cf97fc] shadow-[0_0_12px_rgba(207,151,252,0.8)]" />}
                   <Icon className={`w-[17px] h-[17px] shrink-0 transition-colors ${active ? 'text-[#cf97fc]' : 'text-white/50 group-hover:text-white/80'}`} />
@@ -385,7 +469,7 @@ export default function AdminPage({ params }) {
               );
               if (it.href) {
                 return (
-                  <a key={it.k} href={it.href} className={`${common} text-white/70 hover:bg-white/[0.06] hover:text-white`}>{content}</a>
+                  <a key={it.k} href={it.href} title={compact ? it.l : undefined} className={`${common} text-white/70 hover:bg-white/[0.06] hover:text-white`}>{content}</a>
                 );
               }
               return (
@@ -396,6 +480,7 @@ export default function AdminPage({ params }) {
                     else setSection(it.k);
                     setSidebarOpen(false);
                   }}
+                  title={compact ? it.l : undefined}
                   data-testid={`nav-item-${it.k}`}
                   className={`${common} ${active ? 'bg-white/[0.08] text-white' : 'text-white/70 hover:bg-white/[0.05] hover:text-white'}`}
                 >
@@ -411,15 +496,49 @@ export default function AdminPage({ params }) {
     </nav>
   );
 
-  const SidebarInner = () => (
-    <div className="flex flex-col h-full bg-[#0a0a0a]">
-      <div className="px-5 h-16 flex items-center gap-2.5 border-b border-white/[0.07] shrink-0">
-        <img src="/digihome-logo-white.svg" alt="DigiHome" className="h-[22px] w-auto" />
-        <span className="text-white/40 text-[10px] font-bold uppercase tracking-[0.14em] border border-white/15 rounded-full px-2 py-0.5">Admin</span>
-        <button onClick={() => setSidebarOpen(false)} className="lg:hidden ml-auto text-white/50 hover:text-white"><X className="w-5 h-5" /></button>
+  const SidebarInner = ({ compact = false }) => (
+    <div className="flex flex-col h-full w-full bg-[#0a0a0a]">
+      <div className={`${compact ? 'px-0 justify-center' : 'px-5'} h-16 flex items-center gap-2.5 border-b border-white/[0.07] shrink-0`}>
+        {compact ? (
+          <button
+            onClick={toggleCollapsed}
+            title="Utvid menyen"
+            data-testid="sidebar-expand-btn"
+            className="flex h-9 w-9 items-center justify-center rounded-lg text-white/45 hover:bg-white/[0.06] hover:text-white transition-colors"
+          >
+            <PanelLeftOpen className="w-[18px] h-[18px]" />
+          </button>
+        ) : (
+          <>
+            <img src="/digihome-logo-white.svg" alt="DigiHome" className="h-[22px] w-auto" />
+            <span className="text-white/40 text-[10px] font-bold uppercase tracking-[0.14em] border border-white/15 rounded-full px-2 py-0.5">Admin</span>
+            <button onClick={() => setSidebarOpen(false)} className="lg:hidden ml-auto text-white/50 hover:text-white"><X className="w-5 h-5" /></button>
+            <button
+              onClick={toggleCollapsed}
+              title="Slå sammen menyen"
+              data-testid="sidebar-collapse-btn"
+              className="hidden lg:flex ml-auto h-8 w-8 items-center justify-center rounded-lg text-white/35 hover:bg-white/[0.06] hover:text-white transition-colors"
+            >
+              <PanelLeftClose className="w-[17px] h-[17px]" />
+            </button>
+          </>
+        )}
       </div>
-      <NavList />
-      <div className="px-3 py-3 border-t border-white/[0.07] shrink-0">
+      <NavList compact={compact} />
+      <div className={`${compact ? 'px-2' : 'px-3'} py-3 border-t border-white/[0.07] shrink-0`}>
+        {compact ? (
+          <div className="flex flex-col items-center gap-1.5 py-1">
+            <button
+              onClick={() => { setProfileOpen(true); setSidebarOpen(false); }}
+              title="Min profil — navn, farge og passord"
+              data-testid="profile-open-btn"
+              className="h-9 w-9 rounded-full bg-[#cf97fc] text-[#0a0a0a] flex items-center justify-center text-[14px] font-bold hover:opacity-90 transition-opacity"
+            >
+              {initials}
+            </button>
+            <button onClick={logout} title="Logg ut" className="text-white/40 hover:text-rose-400 transition-colors p-1.5"><LogOut className="w-4 h-4" /></button>
+          </div>
+        ) : (
         <div className="flex items-center gap-1 px-2 py-2">
           <button
             onClick={() => { setProfileOpen(true); setSidebarOpen(false); }}
@@ -435,6 +554,7 @@ export default function AdminPage({ params }) {
           </button>
           <button onClick={logout} title="Logg ut" className="text-white/40 hover:text-rose-400 transition-colors p-1.5"><LogOut className="w-4 h-4" /></button>
         </div>
+        )}
       </div>
     </div>
   );
@@ -467,9 +587,6 @@ export default function AdminPage({ params }) {
     { id: 'sak-mine', group: 'Saker', label: 'Mine saker av/på', icon: UserPlus, action: () => runSaker({ do: 'mine' }) },
     { id: 'sak-tidslinje', group: 'Saker', label: 'Saker: Tidslinje', icon: History, action: () => runSaker({ do: 'view', view: 'tidslinje' }) },
     { id: 'sak-arkiv', group: 'Saker', label: 'Saker: Arkiv', icon: Layers, action: () => runSaker({ do: 'view', view: 'arkiv' }) },
-    ...(erBruker ? [] : [
-      { id: 'sak-personer', group: 'Saker', label: 'Personer & kontoer', icon: Users, action: () => runSaker({ do: 'personer' }) },
-    ]),
     // Hurtighandlinger — 2026: gjør ting direkte fra paletten (kun admin)
     ...(erBruker ? [] : [
     { id: 'qa-site', group: 'Hurtighandlinger', label: 'Åpne nettsiden (ny fane)', icon: Globe, action: () => { setPaletteOpen(false); window.open('/', '_blank'); } },
@@ -493,16 +610,40 @@ export default function AdminPage({ params }) {
           onUpdated={(u) => setUser((prev) => ({ ...prev, ...u }))}
         />
       )}
-      {/* Sidebar — desktop */}
-      <aside className="hidden lg:flex w-64 shrink-0 sticky top-0 h-screen">
-        <SidebarInner />
+      {/* Sidebar — desktop (kan slås sammen til smal ikonlist) */}
+      <aside className={`hidden lg:flex ${collapsed ? 'w-[68px]' : 'w-64'} shrink-0 sticky top-0 h-screen transition-[width] duration-200`}>
+        <SidebarInner compact={collapsed} />
       </aside>
 
-      {/* Sidebar — mobil drawer */}
+      {/* Sidebar — mobil drawer (alltid full bredde) */}
       {sidebarOpen && (
         <div className="lg:hidden fixed inset-0 z-50 flex">
           <div className="absolute inset-0 bg-black/50" onClick={() => setSidebarOpen(false)} />
           <div className="relative w-64 h-full"><SidebarInner /></div>
+        </div>
+      )}
+
+      {/* «Se som»-banner — alltid synlig når admin ser portalen som en annen */}
+      {user && user.impersonatedBy && (
+        <div
+          className="fixed bottom-4 left-1/2 z-[200] flex -translate-x-1/2 items-center gap-3 rounded-full bg-[#0a0a0a] py-1.5 pl-4 pr-1.5 text-white shadow-[0_16px_48px_rgba(0,0,0,0.4)] ring-1 ring-white/15"
+          data-testid="impersonation-banner"
+        >
+          <span className="relative flex h-2 w-2 shrink-0">
+            <span className="absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-60 animate-ping" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-amber-400" />
+          </span>
+          <span className="whitespace-nowrap text-[13px]">
+            Du ser portalen som <strong>{(user.name || user.email)}</strong>
+            <span className="text-white/45"> · {ROLLE_NAVN[user.role] || user.role}</span>
+          </span>
+          <button
+            onClick={stopImpersonation}
+            data-testid="impersonation-stop"
+            className="flex shrink-0 items-center gap-1.5 rounded-full bg-white px-3.5 py-1.5 text-[12.5px] font-semibold text-[#0a0a0a] transition-all hover:bg-white/90 active:scale-[0.97]"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" /> Tilbake til admin
+          </button>
         </div>
       )}
 
@@ -536,7 +677,8 @@ export default function AdminPage({ params }) {
           {section === 'historikk' && <HistoryTab apiKey={token} />}
           {section === 'seo' && <SeoAeoTab apiKey={token} />}
           {section === 'okonomi' && <FinanceDashboard apiKey={token} />}
-          {section === 'saker' && <TasksTab apiKey={token} user={user} onStats={setTaskStats} />}
+          {section === 'saker' && <TasksTab apiKey={token} user={user} onStats={setTaskStats} onOpenBrukere={() => setSection('brukere')} />}
+          {section === 'brukere' && <Brukere apiKey={token} user={user} onImpersonate={startImpersonation} />}
           {section === 'moter' && <MeetingsTab apiKey={token} user={user} onOpenTask={(id, arkivert) => runSaker({ do: 'aapne', id, arkivert })} />}
           {section === 'innsikt' && <InnsiktDashboard apiKey={token} tab={insightTab} onTabChange={setInsightTab} onStats={setInsightStats} />}
           {section === 'kunder' && <CustomersDashboard apiKey={token} />}
@@ -1230,3 +1372,4 @@ function ProfilModal({ token, user, onClose, onUpdated }) {
     </div>
   );
 }
+

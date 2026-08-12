@@ -3,15 +3,18 @@
 /* ═══════════════ ProduktAdmin — administrer Produkt → Komponenter ═══════════════
    Modal for Utvikling-området: opprett/endre/slett produkter og kuraterte
    komponenter per produkt. Egen fil for å holde TasksTab.js-monolitten nede.
-   API: GET/POST /api/admin/dev-products, PUT/DELETE /api/admin/dev-products/:id */
+   Inneholder også SAKSMOTTAK-innstillinger: hvem varsles (og følger saken)
+   når en ny sak meldes inn fra Forvalter-plattformen.
+   API: GET/POST /api/admin/dev-products, PUT/DELETE /api/admin/dev-products/:id,
+        GET/PUT /api/admin/dev-issue-innstillinger */
 
 import { useState, useEffect } from 'react';
-import { Boxes, X, Plus, Trash2, Loader2, Pencil, Check, CornerDownLeft } from 'lucide-react';
+import { Boxes, X, Plus, Trash2, Loader2, Pencil, Check, CornerDownLeft, Inbox, Mail, Eye } from 'lucide-react';
 
 const PALETT = ['#8b5cf6', '#0ea5e9', '#10b981', '#f59e0b', '#e11d48', '#6366f1', '#14b8a6', '#71717a'];
 const heading = { fontFamily: 'var(--font-heading)' };
 
-export default function ProduktAdmin({ api, products = [], onChanged, onClose, visToast }) {
+export default function ProduktAdmin({ api, products = [], members = [], onChanged, onClose, visToast }) {
   const [nyttNavn, setNyttNavn] = useState('');
   const [nyFarge, setNyFarge] = useState(PALETT[0]);
   const [lagrer, setLagrer] = useState(false);
@@ -19,6 +22,40 @@ export default function ProduktAdmin({ api, products = [], onChanged, onClose, v
   const [redigerNavn, setRedigerNavn] = useState('');
   const [kompTekst, setKompTekst] = useState({}); // {produktId: 'ny komponent…'}
   const [jobber, setJobber] = useState(''); // produkt-id med pågående kall
+
+  // Saksmottak-innstillinger: hvem varsles når en ny sak meldes inn fra
+  // Forvalter-plattformen. null = laster fortsatt.
+  const [intake, setIntake] = useState(null);
+  const [intakeLagrer, setIntakeLagrer] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const r = await api('dev-issue-innstillinger');
+        const j = await r.json();
+        if (alive && j.ok) setIntake({ recipientIds: j.recipientIds || [], notifyEmail: j.notifyEmail !== false, addAsFollowers: j.addAsFollowers !== false });
+      } catch (e) { if (alive) setIntake({ recipientIds: [], notifyEmail: true, addAsFollowers: true }); }
+    })();
+    return () => { alive = false; };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const lagreIntake = async (next) => {
+    setIntake(next); // optimistisk — UI svarer umiddelbart
+    setIntakeLagrer(true);
+    try {
+      const r = await api('dev-issue-innstillinger', {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(next),
+      });
+      const j = await r.json();
+      if (!j.ok) throw new Error(j.error || 'Lagring feilet');
+      setIntake({ recipientIds: j.recipientIds || [], notifyEmail: j.notifyEmail !== false, addAsFollowers: j.addAsFollowers !== false });
+    } catch (e) { visToast && visToast('Kunne ikke lagre mottakerne — prøv igjen'); }
+    setIntakeLagrer(false);
+  };
+
+  // Kun personer som faktisk kan SE utviklingssaker kan stå som mottakere.
+  const kanSeUtvikling = (m) => ['owner', 'admin'].includes(m.role) || (Array.isArray(m.groups) && m.groups.includes('utvikling'));
 
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') onClose(); };
@@ -214,6 +251,77 @@ export default function ProduktAdmin({ api, products = [], onChanged, onClose, v
                 <Boxes className="mx-auto h-6 w-6 text-[#d5d2cc]" />
                 <p className="mt-2 text-[13px] text-[#aaa]">Ingen produkter ennå — legg til det første under.</p>
               </div>
+            )}
+          </div>
+
+          {/* ═══ Saksmottak fra Forvalter-plattformen — mottakere ═══ */}
+          <div className="mt-6 rounded-2xl border border-black/[0.06] bg-[#fdfdfc] p-4" data-testid="intake-settings">
+            <div className="flex items-center gap-2">
+              <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-[#fff7ed]"><Inbox className="h-3.5 w-3.5 text-[#d97706]" /></span>
+              <p className="text-[12px] font-bold uppercase tracking-[0.08em] text-[#999]">Saksmottak — hvem varsles?</p>
+              {intakeLagrer && <Loader2 className="h-3.5 w-3.5 animate-spin text-[#cf97fc]" />}
+            </div>
+            <p className="mt-2 text-[12.5px] leading-relaxed text-[#999]">
+              Når en ny sak meldes inn fra <span className="font-semibold text-[#666]">Forvalter-plattformen</span>, varsles mottakerne under
+              (in-app{intake && intake.notifyEmail ? ' + e-post' : ''}){intake && intake.addAsFollowers ? ' og de legges automatisk til som følgere' : ''}.
+            </p>
+            {!intake ? (
+              <div className="flex justify-center py-4"><Loader2 className="h-4 w-4 animate-spin text-[#cf97fc]" /></div>
+            ) : (
+              <>
+                <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                  {members.filter(kanSeUtvikling).map((m) => {
+                    const aktiv = intake.recipientIds.includes(m.id);
+                    return (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => lagreIntake({ ...intake, recipientIds: aktiv ? intake.recipientIds.filter((x) => x !== m.id) : [...intake.recipientIds, m.id] })}
+                        data-testid={`intake-recipient-${m.id}`}
+                        className={`flex h-8 items-center gap-1.5 rounded-full px-2.5 text-[12px] font-semibold transition-all active:scale-[0.97] ${
+                          aktiv ? 'bg-[#f4f0fb] text-[#6d28d9] ring-1 ring-[#8b5cf6]/30' : 'bg-[#f3f2f0] text-[#999] hover:text-[#555]'
+                        }`}
+                      >
+                        <span className="flex h-[18px] w-[18px] items-center justify-center rounded-full text-[9px] font-bold text-white" style={{ background: m.color || '#8b5cf6' }}>
+                          {String(m.name || '?').slice(0, 1).toUpperCase()}
+                        </span>
+                        {m.name}
+                        {aktiv && <Check className="h-3 w-3" />}
+                      </button>
+                    );
+                  })}
+                  {!members.filter(kanSeUtvikling).length && (
+                    <p className="text-[12px] text-[#bbb]">Ingen personer med tilgang til Utvikling ennå — gi noen utviklingsgruppen under Brukere.</p>
+                  )}
+                </div>
+                {!intake.recipientIds.length && (
+                  <p className="mt-2 text-[11.5px] text-[#b5b5b5]">Ingen valgt — da varsles alle administratorer + utviklingsgruppen in-app (standard, uten e-post).</p>
+                )}
+                <div className="mt-3 flex flex-wrap items-center gap-4 border-t border-black/[0.05] pt-3">
+                  <label className={`flex items-center gap-2 select-none ${intake.recipientIds.length ? 'cursor-pointer' : 'cursor-not-allowed opacity-45'}`}>
+                    <input
+                      type="checkbox"
+                      checked={intake.notifyEmail}
+                      disabled={!intake.recipientIds.length}
+                      onChange={(e) => lagreIntake({ ...intake, notifyEmail: e.target.checked })}
+                      className="h-3.5 w-3.5 accent-[#8b5cf6]"
+                      data-testid="intake-email-toggle"
+                    />
+                    <span className="flex items-center gap-1 text-[12px] text-[#666]"><Mail className="h-3.5 w-3.5 text-[#999]" /> Send e-post til mottakerne</span>
+                  </label>
+                  <label className={`flex items-center gap-2 select-none ${intake.recipientIds.length ? 'cursor-pointer' : 'cursor-not-allowed opacity-45'}`}>
+                    <input
+                      type="checkbox"
+                      checked={intake.addAsFollowers}
+                      disabled={!intake.recipientIds.length}
+                      onChange={(e) => lagreIntake({ ...intake, addAsFollowers: e.target.checked })}
+                      className="h-3.5 w-3.5 accent-[#8b5cf6]"
+                      data-testid="intake-followers-toggle"
+                    />
+                    <span className="flex items-center gap-1 text-[12px] text-[#666]"><Eye className="h-3.5 w-3.5 text-[#999]" /> Legg til som følgere på saken</span>
+                  </label>
+                </div>
+              </>
             )}
           </div>
         </div>
