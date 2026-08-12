@@ -30,6 +30,144 @@ const TABS = [
   { navn: 'Meny', d: 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z' },
 ];
 
+/* Kodet huseier-dashbord — én bolig, leieinntekt, kontrakt, depositum.
+   Bevisst huseierens perspektiv (ikke forvalterens): ingen leads, honorar
+   eller portefølje — bare det som gjelder DIN utleie. */
+function Dashbord() {
+  const NAV = ['Oversikt', 'Min bolig', 'Betalinger', 'Meldinger', 'Dokumenter', 'Saker'];
+  const STATS = [
+    { l: 'Leieinntekt · mars', v: '16 500 kr', sub: 'Betalt 1. mars', grønn: true },
+    { l: 'Neste husleie', v: '1. april', sub: 'Trekkes automatisk' },
+    { l: 'Leiekontrakt', v: 'Signert', sub: 'BankID · 12 mnd' },
+    { l: 'Depositum', v: '49 500 kr', sub: 'Sikret på egen konto' },
+  ];
+  const BETALINGER = [
+    { mnd: 'Mars', dato: '1. mars' },
+    { mnd: 'Februar', dato: '1. februar' },
+    { mnd: 'Januar', dato: '2. januar' },
+  ];
+  return (
+    <div className="flex bg-[#faf8f5] text-left">
+      {/* Sidemeny — huseierens moduler */}
+      <aside className="hidden w-[172px] shrink-0 flex-col bg-[#0a0a0a] px-3.5 pb-4 pt-5 sm:flex">
+        <img src="/digihome-logo-white.svg" alt="" loading="lazy" className="ml-1 h-[15px] w-auto self-start" />
+        <nav className="mt-6 space-y-0.5">
+          {NAV.map((n, i) => (
+            <span
+              key={n}
+              className={`flex items-center justify-between rounded-lg px-2.5 py-[7px] text-[11.5px] ${
+                i === 0 ? 'bg-white/10 font-semibold text-white' : 'text-white/50'
+              }`}
+            >
+              {n}
+              {n === 'Meldinger' && <span className="rounded-full bg-[#cf97fc] px-1.5 py-[1px] text-[9px] font-bold text-[#0a0a0a]">1</span>}
+            </span>
+          ))}
+        </nav>
+        <div className="mt-auto flex items-center gap-2 border-t border-white/10 pt-3.5">
+          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#cf97fc] text-[10px] font-bold text-[#0a0a0a]">M</span>
+          <span className="truncate text-[10.5px] text-white/65">Martin Kviteberg</span>
+        </div>
+      </aside>
+
+      {/* Hovedflate */}
+      <div className="min-w-0 flex-1 p-4 sm:p-5 lg:p-6">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-[16px] font-bold tracking-[-0.02em] text-[#0a0a0a] sm:text-[18px]">God morgen, Martin</p>
+            <p className="mt-0.5 text-[11px] text-[#8d877d]">Tirsdag 3. mars 2026 · Parkveien 12B</p>
+          </div>
+          <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[#e8f6ef] px-3 py-[5px] text-[10.5px] font-bold text-[#0f9d6e]">
+            <span className="h-[5px] w-[5px] rounded-full bg-[#0f9d6e]" /> Alt i rute
+          </span>
+        </div>
+
+        {/* Nøkkeltall for utleien */}
+        <div className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
+          {STATS.map((s) => (
+            <div key={s.l} className="rounded-[14px] border border-[#eee9e0] bg-white px-3.5 py-3">
+              <p className="truncate text-[9.5px] font-semibold uppercase tracking-[0.1em] text-[#b3aa9e]">{s.l}</p>
+              <p className="mt-1 text-[16px] font-bold tracking-[-0.01em] text-[#0a0a0a] lg:text-[17px]">{s.v}</p>
+              <p className={`mt-0.5 flex items-center gap-1 truncate text-[10px] ${s.grønn ? 'font-semibold text-[#0f9d6e]' : 'text-[#8d877d]'}`}>
+                {s.grønn && <Sjekk className="h-2.5 w-2.5 shrink-0" />}
+                {s.sub}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        {/* Betalinger + Din bolig */}
+        <div className="mt-2.5 grid gap-2.5 lg:grid-cols-[1.25fr,1fr]">
+          <div className="rounded-[14px] border border-[#eee9e0] bg-white p-4">
+            <div className="flex items-center justify-between">
+              <p className="text-[12px] font-bold text-[#0a0a0a]">Husleie — siste betalinger</p>
+              <span className="text-[10px] text-[#b3aa9e]">Se alle</span>
+            </div>
+            <div className="mt-2.5 space-y-1">
+              {BETALINGER.map((b) => (
+                <div key={b.mnd} className="flex items-center gap-2.5 border-t border-[#f5f1ea] py-2 first:border-t-0">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#e8f6ef] text-[#0f9d6e]"><Sjekk className="h-2.5 w-2.5" /></span>
+                  <span className="text-[11.5px] font-semibold text-[#0a0a0a]">{b.mnd}</span>
+                  <span className="ml-auto text-[11.5px] font-semibold text-[#0a0a0a]">16 500 kr</span>
+                  <span className="w-[64px] text-right text-[10px] text-[#b3aa9e]">{b.dato}</span>
+                </div>
+              ))}
+            </div>
+            <p className="mt-2.5 border-t border-[#f5f1ea] pt-2.5 text-[10px] text-[#8d877d]">
+              Forsinket betaling? Purringen går ut automatisk — du trenger ikke gjøre noe.
+            </p>
+          </div>
+
+          <div className="rounded-[14px] border border-[#eee9e0] bg-white p-4">
+            <div className="flex items-center justify-between">
+              <p className="text-[12px] font-bold text-[#0a0a0a]">Din bolig</p>
+              <span className="inline-flex items-center gap-1 rounded-full bg-[#e8f6ef] px-2 py-[3px] text-[9px] font-bold uppercase tracking-[0.06em] text-[#0f9d6e]">
+                <span className="h-[4px] w-[4px] rounded-full bg-[#0f9d6e]" /> Utleid
+              </span>
+            </div>
+            <div className="mt-2.5 flex items-center gap-3">
+              <img src="/nyest-interior-2.webp" alt="" loading="lazy" className="h-12 w-16 shrink-0 rounded-[10px] object-cover" />
+              <span className="min-w-0">
+                <span className="block truncate text-[12.5px] font-semibold text-[#0a0a0a]">Parkveien 12B</span>
+                <span className="block truncate text-[10.5px] text-[#8d877d]">2-roms · 58 m² · 16 500 kr/mnd</span>
+              </span>
+            </div>
+            <div className="mt-3 flex items-center gap-2.5 border-t border-[#f5f1ea] pt-3">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#e9f4fb] text-[10.5px] font-bold text-[#0f87d1]">T</span>
+              <span className="min-w-0">
+                <span className="block truncate text-[11.5px] font-semibold text-[#0a0a0a]">Thea Nilsen</span>
+                <span className="block truncate text-[10px] text-[#8d877d]">Leietaker siden 1. januar</span>
+              </span>
+              <span className="ml-auto shrink-0 rounded-full border border-[#eee9e0] px-2.5 py-[4px] text-[10px] font-semibold text-[#3d382f]">Send melding</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Siste aktivitet */}
+        <div className="mt-2.5 rounded-[14px] border border-[#eee9e0] bg-white p-4">
+          <p className="text-[12px] font-bold text-[#0a0a0a]">Siste aktivitet</p>
+          <div className="mt-2 space-y-1">
+            {[
+              { t: 'Kontrakt signert med BankID', s: 'Thea Nilsen · leiekontrakt 12 mnd', n: 'Nå', c: '#9B5BD6', bg: '#f3ecfb' },
+              { t: 'Husleie mottatt', s: '16 500 kr · mars', n: '1. mars', c: '#0f9d6e', bg: '#e8f6ef' },
+              { t: 'Depositumskonto opprettet', s: '49 500 kr sikret', n: '28. des', c: '#0f87d1', bg: '#e9f4fb' },
+            ].map((a) => (
+              <div key={a.t} className="flex items-center gap-2.5 border-t border-[#f5f1ea] py-2 first:border-t-0">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full" style={{ background: a.bg, color: a.c }}><Sjekk className="h-2.5 w-2.5" /></span>
+                <span className="min-w-0">
+                  <span className="block truncate text-[11.5px] font-semibold text-[#0a0a0a]">{a.t}</span>
+                  <span className="block truncate text-[10px] text-[#8d877d]">{a.s}</span>
+                </span>
+                <span className="ml-auto shrink-0 text-[10px] text-[#b3aa9e]">{a.n}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* Stor, slank iPhone-mockup — hjemskjermen i DigiHome-appen. */
 function Telefon() {
   return (
@@ -213,16 +351,11 @@ export default function Plattform() {
                 app.digihome.no
               </span>
             </div>
-            <img
-              src="/deck-desktop.webp"
-              alt="Utleiedashbordet i DigiHome-plattformen"
-              loading="lazy"
-              className="w-full"
-            />
+            <Dashbord />
           </div>
 
           {/* Flytende hendelseskort — venstre */}
-          <div className="animate-floaty absolute -left-4 top-16 z-[2] hidden items-center gap-3 rounded-[18px] border border-[#eee9e0] bg-white px-4 py-3 shadow-[0_28px_60px_-28px_rgba(28,22,14,0.4)] lg:flex xl:-left-8">
+          <div className="animate-floaty absolute -left-4 top-32 z-[2] hidden items-center gap-3 rounded-[18px] border border-[#eee9e0] bg-white px-4 py-3 shadow-[0_28px_60px_-28px_rgba(28,22,14,0.4)] lg:flex xl:-left-8">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#e8f6ef] text-[#0f9d6e]"><Sjekk className="h-4 w-4" /></span>
             <span>
               <span className="block text-[13px] font-semibold text-[#0a0a0a]">Husleie mottatt</span>

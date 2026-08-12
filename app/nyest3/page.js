@@ -5,6 +5,7 @@ import Partnere from '@/components/nyest/Partnere';
 import Steg from '@/components/nyest/Steg';
 import Plattform from '@/components/nyest/Plattform';
 import Pause from '@/components/nyest/Pause';
+import Fordeler from '@/components/nyest/Fordeler';
 import Veier from '@/components/nyest/Veier';
 import Mobil from '@/components/nyest/Mobil';
 import Sitat from '@/components/nyest/Sitat';
@@ -34,6 +35,7 @@ export default function Nyest3Page() {
       <Steg />
       <Plattform />
       <Pause />
+      <Fordeler />
       <Veier />
       <Mobil />
       <Sitat />
