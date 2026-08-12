@@ -8,9 +8,11 @@ import {
   Command, Search, CornerDownLeft, LayoutTemplate, Crosshair, TrendingUp, Wallet,
   Globe, ExternalLink, PenLine, Mail, Home, History, Landmark, Wand2, Layers, UserPlus,
   ClipboardCheck, CalendarDays, ArrowLeft, KeyRound, Check, User, Eye, EyeOff,
-  PanelLeftClose, PanelLeftOpen,
+  PanelLeftClose, PanelLeftOpen, Target,
 } from 'lucide-react';
 import Brukere from '@/components/admin/Brukere';
+import Leieforhold from '@/components/admin/Leieforhold';
+import Budsjett from '@/components/admin/Budsjett';
 import InnsiktDashboard from '@/components/admin/InnsiktDashboard';
 import KpiDashboard from '@/components/admin/KpiDashboard';
 import FinanceDashboard from '@/components/admin/FinanceDashboard';
@@ -37,6 +39,8 @@ const NAV = [
     items: [
       { k: 'nokkeltall', l: 'Nøkkeltall', icon: TrendingUp, desc: 'Investorklare KPIer · CAC · LTV · konvertering' },
       { k: 'okonomi', l: 'Økonomi', icon: Wallet, desc: 'Resultat · likviditet · burn · runway' },
+      { k: 'leieforhold', l: 'Leieforhold', icon: KeyRound, desc: 'Leieforhold & inntekter — porteføljen med Excel-eksport (1:1 med plattformen)' },
+      { k: 'budsjett', l: 'Budsjett', icon: Target, desc: 'Årsbudsjett per kategori — budsjett vs. faktisk, med forslag fra porteføljen' },
       { k: 'saker', l: 'Saker', icon: ClipboardCheck, badge: 'tasks', desc: 'Internt sakssystem — oppfølging, frister og ansvar' },
       { k: 'moter', l: 'Møter', icon: CalendarDays, desc: 'Styremøter & ledermøter — agenda, referat, vedtak og aksjonspunkter' },
       { k: 'brukere', l: 'Brukere', icon: Users, desc: 'Personer, roller og tilgang — inviter, endre og se portalen som andre' },
@@ -111,7 +115,7 @@ const INSIGHT_TABS = [
 
 // Visningsnavn for roller (portaltilgang). 'owner' = systemeier (full),
 // 'eier' = investor/aksjonær med lesetilgang til nøkkeltall og økonomi.
-const ROLLE_NAVN = { owner: 'Systemeier', admin: 'Admin', bruker: 'Bruker', partner: 'Partner', eier: 'Eier' };
+const ROLLE_NAVN = { owner: 'Systemeier', admin: 'Admin', bruker: 'Bruker', partner: 'Partner', eier: 'Eier', investor: 'Investor' };
 
 const SECTION_TITLES = {
   nokkeltall: { t: 'Nøkkeltall', s: 'Investorklare KPIer · CAC · LTV · tid til kunde · konvertering' },
@@ -119,6 +123,8 @@ const SECTION_TITLES = {
   playbook: { t: 'Playbook', s: 'Head of Marketing-strategi · Utleiemegleren-analyse · 90-dagersplan · budsjettmatematikk' },
   innsikt: { t: 'Innsikt', s: 'Førsteparts analyse · cookieless · GDPR-trygt' },
   okonomi: { t: 'Økonomi', s: 'Resultat & likviditet · honorar (prosent av leie) · burn rate & runway' },
+  leieforhold: { t: 'Leieforhold & inntekter', s: 'Hele porteføljen — faktisk, forventet og estimert leie · honorar & netto · Excel-eksport' },
+  budsjett: { t: 'Budsjett', s: 'Årsbudsjett per kategori/måned — automatisk mot faktisk fra Økonomi · forslag fra porteføljen' },
   saker: { t: 'Saker', s: 'Internt sakssystem — fang, fordel og følg opp saker til de er ferdige. N = ny sak' },
   moter: { t: 'Møter', s: 'Styremøter & ledermøter — agenda, referat, vedtak og aksjonspunkter som blir saker' },
   brukere: { t: 'Brukere', s: 'Personer, roller og tilgang — inviter nye, endre kontoer og se portalen som en annen bruker' },
@@ -159,6 +165,8 @@ const IMP_ORIG_KEY = 'dh_admin_imp_original';     // admin-token under en «se s
 const SLUG_TIL_SEKSJON = {
   nokkeltall: { section: 'nokkeltall' },
   okonomi: { section: 'okonomi' },
+  leieforhold: { section: 'leieforhold' },
+  budsjett: { section: 'budsjett' },
   saker: { section: 'saker' },
   prosjekter: { section: 'saker' }, // Prosjekter-visningen i saksflaten — egen delbar adresse
   moter: { section: 'moter' },
@@ -302,21 +310,25 @@ export default function AdminPage({ params }) {
   // kun sine seksjoner — serveren håndhever det samme på API-nivå:
   //   bruker/partner → Saker + Møter (møtelisten filtreres server-side)
   //   eier (investor) → Nøkkeltall + Økonomi (les) + Møter
+  //   investor → DATAROM: ingenting som standard — kun tildelte moduler
+  //              (+ Møter dersom møtetilgang er gitt)
   const ROLLE_SEKSJONER = {
     bruker: ['saker', 'moter'],
     partner: ['saker', 'moter'],
     eier: ['nokkeltall', 'okonomi', 'moter'],
+    investor: [],
   };
   // Modultilgang: begrensede kontoer kan i tillegg få enkeltmoduler
-  // (settes per person under Personer — håndheves også i API-et)
-  const base = (user && ROLLE_SEKSJONER[user.role]) || null;
+  // (settes per person under Brukere — håndheves også i API-et)
+  let base = (user && ROLLE_SEKSJONER[user.role]) || null;
+  if (base && user.role === 'investor' && (user.moteTilgang || []).length > 0) base = [...base, 'moter'];
   const begrensning = base
     ? [...base, ...(((user && user.moduler) || []).filter((k) => NAV.some((g) => g.items.some((it) => it.k === k)) && !base.includes(k)))]
     : null;
   const erBegrenset = !!begrensning;
   const erBruker = erBegrenset; // beholdt navn — brukes for å skjule admin-widgets
   useEffect(() => {
-    if (begrensning && !begrensning.includes(section)) setSection(begrensning[0]);
+    if (begrensning && begrensning.length > 0 && !begrensning.includes(section)) setSection(begrensning[0]);
   }, [erBegrenset, section]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── URL-synk: adressen følger alltid aktiv seksjon (/admin/<slug>), slik at
@@ -418,8 +430,9 @@ export default function AdminPage({ params }) {
 
   // Menyen filtreres per rolle, og admin-widgets (puls, hurtig-handlinger)
   // skjules for begrensede roller. Serveren håndhever det samme på API-nivå.
+  // Investorer får «Datarom»-branding — det er et kuratert innsynsrom, ikke verktøy.
   const synligNav = begrensning
-    ? [{ group: 'Verktøy', items: NAV.flatMap((g) => g.items).filter((it) => begrensning.includes(it.k)) }]
+    ? [{ group: user?.role === 'investor' ? 'Datarom' : 'Verktøy', items: NAV.flatMap((g) => g.items).filter((it) => begrensning.includes(it.k)) }]
     : NAV;
 
   const NavList = ({ compact = false }) => (
@@ -658,6 +671,11 @@ export default function AdminPage({ params }) {
               <p className="text-[12px] text-[#999] mt-1 truncate">{section === 'innsikt' ? (INSIGHT_SUBTITLES[insightTab] || 'Førsteparts analyse · cookieless · GDPR-trygt') : sectionMeta.s}</p>
             </div>
             {!erBruker && <PulseStrip token={token} onJump={(sec, tab) => { setSection(sec); if (tab) { setSection('innsikt'); setInsightTab(tab); } }} />}
+            {user?.role === 'investor' && (
+              <span className="hidden md:inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full bg-[#fdf3e0] px-2.5 text-[10.5px] font-bold uppercase tracking-[0.06em] text-[#9a6b1c]" title="Du ser et kuratert datarom med lesetilgang — ingenting kan endres herfra">
+                <Lock className="h-3 w-3" /> Datarom · lesetilgang
+              </span>
+            )}
             <button onClick={() => setPaletteOpen(true)} title="Søk & hurtignavigasjon (⌘K)" className="ml-auto xl:ml-0 hidden sm:flex items-center gap-2 h-9 pl-3 pr-2 rounded-full bg-white shadow-[0_2px_10px_rgba(0,0,0,0.04)] text-[#9a9a9a] hover:text-[#0a0a0a] transition-colors">
               <Search className="w-4 h-4" />
               <span className="text-[12.5px] font-medium">Søk eller hopp til …</span>
@@ -677,6 +695,11 @@ export default function AdminPage({ params }) {
           {section === 'historikk' && <HistoryTab apiKey={token} />}
           {section === 'seo' && <SeoAeoTab apiKey={token} />}
           {section === 'okonomi' && <FinanceDashboard apiKey={token} />}
+          {erBegrenset && begrensning.length === 0 && (
+            <ComingSoon icon={Lock} title="Ingen moduler tildelt ennå" body="Kontoen din er opprettet, men ingen moduler er delt med deg riktig ennå. Be administratoren om å tildele modulene du skal se — de dukker opp her automatisk." />
+          )}
+          {section === 'leieforhold' && <Leieforhold apiKey={token} />}
+          {section === 'budsjett' && <Budsjett apiKey={token} readOnly={erBruker} />}
           {section === 'saker' && <TasksTab apiKey={token} user={user} onStats={setTaskStats} onOpenBrukere={() => setSection('brukere')} />}
           {section === 'brukere' && <Brukere apiKey={token} user={user} onImpersonate={startImpersonation} />}
           {section === 'moter' && <MeetingsTab apiKey={token} user={user} onOpenTask={(id, arkivert) => runSaker({ do: 'aapne', id, arkivert })} />}

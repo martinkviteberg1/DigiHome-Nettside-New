@@ -18,11 +18,12 @@ import {
 
 const heading = { fontFamily: 'var(--font-heading)' };
 
-const ROLLE_LABEL = { owner: 'Systemeier', admin: 'Admin', bruker: 'Bruker', partner: 'Partner', eier: 'Eier' };
+const ROLLE_LABEL = { owner: 'Systemeier', admin: 'Admin', bruker: 'Bruker', partner: 'Partner', eier: 'Eier', investor: 'Investor' };
 const ROLLE_VALG = [
   { v: 'bruker', l: 'Bruker', sub: 'Saker + møter de har tilgang til' },
   { v: 'partner', l: 'Partner', sub: 'Saker + møter de har tilgang til' },
   { v: 'eier', l: 'Eier', sub: 'Nøkkeltall + Økonomi (les) + møter' },
+  { v: 'investor', l: 'Investor', sub: 'Datarom — ser KUN modulene du velger (les)' },
   { v: 'admin', l: 'Admin', sub: 'Full tilgang til hele admin' },
 ];
 const GRUPPER_UI = [
@@ -39,6 +40,8 @@ const MOTE_TILGANG_LABEL = { styremote: 'Styremøter', ledermote: 'Ledermøter',
 const MODUL_VALG = [
   { k: 'nokkeltall', l: 'Nøkkeltall' },
   { k: 'okonomi', l: 'Økonomi' },
+  { k: 'leieforhold', l: 'Leieforhold' },
+  { k: 'budsjett', l: 'Budsjett' },
   { k: 'kunder', l: 'Kunder' },
   { k: 'i-leads', l: 'Leads' },
   { k: 'historikk', l: 'Historikk' },
@@ -493,7 +496,7 @@ export default function Brukere({ apiKey, user, onImpersonate }) {
                   <div className="flex items-center gap-1.5">
                     <p className="truncate text-[14px] font-semibold text-[#1a1a1a]">{m.name}</p>
                     <span className={`shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
-                      m.role === 'owner' ? 'bg-[#0a0a0a] text-white' : m.role === 'admin' ? 'bg-[#f4f0fb] text-[#8b5cf6]' : m.role === 'eier' ? 'bg-[#eff6ff] text-[#2563eb]' : m.role === 'partner' ? 'bg-[#f0fdfa] text-[#0d9488]' : 'bg-[#f3f2f0] text-[#888]'
+                      m.role === 'owner' ? 'bg-[#0a0a0a] text-white' : m.role === 'admin' ? 'bg-[#f4f0fb] text-[#8b5cf6]' : m.role === 'eier' ? 'bg-[#eff6ff] text-[#2563eb]' : m.role === 'investor' ? 'bg-[#fdf3e0] text-[#9a6b1c]' : m.role === 'partner' ? 'bg-[#f0fdfa] text-[#0d9488]' : 'bg-[#f3f2f0] text-[#888]'
                     }`}>{ROLLE_LABEL[m.role] || m.role}</span>
                     {m.tittel && (
                       <span title="Verv" className="shrink-0 rounded-md bg-white px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#777] ring-1 ring-black/[0.08]" data-testid={`member-verv-${m.id}`}>{m.tittel}</span>
@@ -505,7 +508,7 @@ export default function Brukere({ apiKey, user, onImpersonate }) {
                       <span title="Invitasjon sendt — venter på at brukeren velger passord" className="shrink-0 rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-600">Invitert</span>
                     )}
                   </div>
-                  <p className="truncate text-[12px] text-[#999]">{m.email || 'Ingen e-post — får ikke varsler'}{m.harPassord ? ' · kan logge inn' : ''}{['bruker', 'partner', 'eier'].includes(m.role) && (m.moteTilgang || []).length > 0 ? ` · ser ${m.moteTilgang.map((k) => (MOTE_TILGANG_LABEL[k] || k).toLowerCase()).join(', ')}` : ''}{['bruker', 'partner', 'eier'].includes(m.role) && (m.moduler || []).length > 0 ? ` · moduler: ${m.moduler.map((k) => MODUL_LABEL[k] || k).join(', ')}` : ''}{['bruker', 'partner'].includes(m.role) && (m.groups || []).length > 0 ? ` · grupper: ${m.groups.map((k) => (GRUPPER_UI.find((g) => g.k === k) || { l: k }).l).join(', ')}` : ''}</p>
+                  <p className="truncate text-[12px] text-[#999]">{m.email || 'Ingen e-post — får ikke varsler'}{m.harPassord ? ' · kan logge inn' : ''}{['bruker', 'partner', 'eier', 'investor'].includes(m.role) && (m.moteTilgang || []).length > 0 ? ` · ser ${m.moteTilgang.map((k) => (MOTE_TILGANG_LABEL[k] || k).toLowerCase()).join(', ')}` : ''}{['bruker', 'partner', 'eier', 'investor'].includes(m.role) && (m.moduler || []).length > 0 ? ` · moduler: ${m.moduler.map((k) => MODUL_LABEL[k] || k).join(', ')}` : ''}{['bruker', 'partner'].includes(m.role) && (m.groups || []).length > 0 ? ` · grupper: ${m.groups.map((k) => (GRUPPER_UI.find((g) => g.k === k) || { l: k }).l).join(', ')}` : ''}</p>
                 </div>
                 {/* «Se som» — kun for andre kontoer, aldri owner, aldri i pågående økt */}
                 {m.role !== 'owner' && (m.email || '').toLowerCase() !== minEpost && !erImpAkt && (

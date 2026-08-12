@@ -23,6 +23,9 @@ import { runAdsWithMetricsViaComposio } from '@/lib/composio-google-ads';
 import { dataManagerConfigured, ingestOfflineConversion } from '@/lib/google-ads-datamanager';
 import { recordWonConversions } from '@/lib/closed-loop';
 import { runDueReminders } from '@/lib/reminders';
+import { hentLeieforhold } from '@/lib/leieforhold';
+import { lagLeieforholdExcel, lagLeieforholdCsv } from '@/lib/leieforhold-excel';
+import { hentBudsjett, lagreBudsjett, beregnFaktisk, lagForslag, gyldigBudsjettAar, INNTEKT_KATEGORIER, KOSTNAD_KATEGORIER } from '@/lib/budsjett';
 import { IMPORTED_COLL, importRecords, parseCsv, summarizeImported, syncFromPlatform, listImported, updateImportedOverride, getLeadSyncMeta, maybeAutoSyncLeads } from '@/lib/imported-leads';
 import { queueLeadPushback, flushLeadPushbacks, pushbackStats } from '@/lib/lead-pushback';
 import { renderFinnBanners, FINN_THEMES } from '@/lib/finn-banners';
@@ -1215,11 +1218,11 @@ function adminAuthed(request) {
     if (!!ADMIN_KEY && key === ADMIN_KEY) return true;       // legacy nøkkel
     const payload = key ? verifySession(key) : null;
     if (payload) {
-      // Kontoer med begrensede roller (bruker/partner/eier) har ALDRI
+      // Kontoer med begrensede roller (bruker/partner/eier/investor) har ALDRI
       // admin-tilgang — de går via sakerAuthed/innloggetAuthed/innsynAuthed.
       // Tokens utstedt før roller fantes mangler role-feltet og var per
       // definisjon admin.
-      if (['bruker', 'partner', 'eier'].includes(payload.role)) return false;
+      if (['bruker', 'partner', 'eier', 'investor'].includes(payload.role)) return false;
       return true;
     }
     return false;
@@ -1283,13 +1286,13 @@ async function hentSynligSak(db, request, taskId) {
   return { task: sakSynlig(viewer, task) ? task : null, viewer };
 }
 
-// Innlogget-tilgang: ALLE gyldige kontoer (bruker/partner/eier) — brukes for
-// møter, personliste, egen profil og passordbekreftelse. Innholdet filtreres
-// videre per rolle (f.eks. møtelisten) der det trengs.
+// Innlogget-tilgang: ALLE gyldige kontoer (bruker/partner/eier/investor) —
+// brukes for møter, personliste, egen profil og passordbekreftelse. Innholdet
+// filtreres videre per rolle (f.eks. møtelisten) der det trengs.
 function innloggetAuthed(request) {
   if (adminAuthed(request)) return true;
   const payload = sessionFra(request);
-  return !!(payload && ['bruker', 'partner', 'eier'].includes(payload.role));
+  return !!(payload && ['bruker', 'partner', 'eier', 'investor'].includes(payload.role));
 }
 
 // Innsyn-tilgang: rollen 'eier' (investor/aksjonær) får LESE nøkkeltall og
@@ -1304,7 +1307,7 @@ function innsynAuthed(request) {
 // Begrensede kontoer (bruker/partner/eier) kan gis eksplisitt tilgang til
 // utvalgte moduler (settes per person under Personer). Nøklene matcher
 // menypunktene i admin slik at navigasjon og API håndheves likt.
-const MODUL_NOKLER = ['nokkeltall', 'okonomi', 'kunder', 'i-leads', 'historikk'];
+const MODUL_NOKLER = ['nokkeltall', 'okonomi', 'leieforhold', 'budsjett', 'kunder', 'i-leads', 'historikk'];
 async function modulAuthed(request, db, modul) {
   if (adminAuthed(request)) return true;
   const payload = sessionFra(request);
@@ -2300,6 +2303,7 @@ async function handleRoute(request, { params }) {
         user: {
           email: payload.email, name: (user && user.name) || '', role: (user && user.role) || 'admin',
           moduler: (user && Array.isArray(user.moduler)) ? user.moduler : [],
+          moteTilgang: (user && Array.isArray(user.moteTilgang)) ? user.moteTilgang : [],
           // «Se som»-økt: klienten viser banner + «Tilbake til admin» når satt.
           ...(payload.imp ? { impersonatedBy: { name: (payload.imp.name || 'Admin'), email: (payload.imp.email || '') } } : {}),
         },
@@ -2838,7 +2842,7 @@ async function handleRoute(request, { params }) {
       const name = String(body.name || '').trim();
       if (!name) return cors(NextResponse.json({ ok: false, error: 'Navn er påkrevd' }, { status: 400 }));
       const email = String(body.email || '').trim().toLowerCase();
-      const role = ['admin', 'bruker', 'partner', 'eier'].includes(body.role) ? body.role : 'bruker';
+      const role = ['admin', 'bruker', 'partner', 'eier', 'investor'].includes(body.role) ? body.role : 'bruker';
       const password = String(body.password || '');
       const invite = !!body.invite;
       if (invite && !email) return cors(NextResponse.json({ ok: false, error: 'Invitasjon krever e-post' }, { status: 400 }));
@@ -2937,7 +2941,7 @@ async function handleRoute(request, { params }) {
         set.email = e;
       }
       if (body.color !== undefined && /^#[0-9a-fA-F]{6}$/.test(String(body.color))) set.color = body.color;
-      if (body.role !== undefined && !erOwner && ['admin', 'bruker', 'partner', 'eier'].includes(body.role)) set.role = body.role;
+      if (body.role !== undefined && !erOwner && ['admin', 'bruker', 'partner', 'eier', 'investor'].includes(body.role)) set.role = body.role;
       // Verv/tittel (Styreleder, Daglig leder …) og møtetilgang per møtetype
       if (body.tittel !== undefined) set.tittel = String(body.tittel || '').trim().slice(0, 60);
       // Grupper (Styret/Ledelsen/Utvikling) — styrer hvilke saksområder brukeren ser.
@@ -3276,6 +3280,92 @@ async function handleRoute(request, { params }) {
     }
 
     // ═══ Innmeldte utviklingssaker fra Forvalter-plattformen ═══════════════
+    // ── Leieforhold & inntekter — 1:1-speil av plattformens visning (spec via
+    // agentbroen, tråd «leieforhold-view»). Kilde: plattformens
+    // /api/lease-income/export når den er live, ellers avledet fra
+    // /api/contracts/export. ?env=prod|test velger plattformmiljø (som økonomi).
+    if (route === '/admin/leieforhold' && method === 'GET') {
+      if (!(await modulAuthed(request, db, 'leieforhold'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const freshLf = (() => { try { return new URL(request.url).searchParams.get('fresh') === '1'; } catch (e) { return false; } })();
+      const dataLf = await hentLeieforhold(financeSyncTarget(request), { db, fresh: freshLf });
+      return cors(NextResponse.json(dataLf));
+    }
+    if (route === '/admin/leieforhold/xlsx' && method === 'GET') {
+      if (!(await modulAuthed(request, db, 'leieforhold'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const dataLf = await hentLeieforhold(financeSyncTarget(request), { db });
+      if (!dataLf.ok) return cors(NextResponse.json({ error: dataLf.error || 'Kunne ikke hente data' }, { status: 502 }));
+      const bufLf = await lagLeieforholdExcel(dataLf);
+      return new NextResponse(bufLf, {
+        headers: {
+          'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          'Content-Disposition': 'attachment; filename="digihome-leieforhold-inntekter.xlsx"',
+          'Cache-Control': 'no-store',
+        },
+      });
+    }
+    if (route === '/admin/leieforhold/csv' && method === 'GET') {
+      if (!(await modulAuthed(request, db, 'leieforhold'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const dataLf = await hentLeieforhold(financeSyncTarget(request), { db });
+      if (!dataLf.ok) return cors(NextResponse.json({ error: dataLf.error || 'Kunne ikke hente data' }, { status: 502 }));
+      return new NextResponse(lagLeieforholdCsv(dataLf), {
+        headers: {
+          'Content-Type': 'text/csv; charset=utf-8',
+          'Content-Disposition': 'attachment; filename="digihome-leieforhold-inntekter.csv"',
+          'Cache-Control': 'no-store',
+        },
+      });
+    }
+
+    // ── Budsjett — årsbudsjett per kategori/måned med budsjett-vs-faktisk.
+    // Lesing: modulen 'budsjett' (admin alltid; investor/øvrige kun tildelt).
+    // Skriving + forslag: kun admin. Faktiske tall rekonstrueres fra Økonomi-
+    // motoren (signerte leiekontrakter + manuelle kostnader) — se lib/budsjett.js.
+    if (route === '/admin/budsjett' && method === 'GET') {
+      if (!(await modulAuthed(request, db, 'budsjett'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const uB = new URL(request.url);
+      const yearB = gyldigBudsjettAar(uB.searchParams.get('year')) || new Date().getFullYear();
+      const [bud, faktisk] = await Promise.all([hentBudsjett(db, yearB), beregnFaktisk(db, yearB)]);
+      return cors(NextResponse.json({
+        ok: true, ...bud, faktisk,
+        kategorier: { inntekter: INNTEKT_KATEGORIER, kostnader: KOSTNAD_KATEGORIER },
+      }));
+    }
+    if (route === '/admin/budsjett' && method === 'PUT') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let bodyB = {}; try { bodyB = await request.json(); } catch (e) { bodyB = {}; }
+      const yearB = gyldigBudsjettAar(bodyB.year);
+      if (!yearB) return cors(NextResponse.json({ ok: false, error: 'Ugyldig år' }, { status: 400 }));
+      let navnB = '';
+      const sesjonB = sessionFra(request);
+      if (sesjonB && sesjonB.sub) {
+        try { const uDoc = await db.collection('admin_users').findOne({ id: sesjonB.sub }, { projection: { name: 1 } }); navnB = (uDoc && uDoc.name) || sesjonB.email || ''; } catch (e) {}
+      }
+      const lagret = await lagreBudsjett(db, { year: yearB, inntekter: bodyB.inntekter, kostnader: bodyB.kostnader, notat: bodyB.notat, updatedBy: navnB });
+      return cors(NextResponse.json({ ok: true, ...lagret }));
+    }
+    // Forslag fra porteføljen: leieforhold-radene (cache-vennlig) + dagens
+    // løpende kostnader → driver-basert budsjettforslag. ?nye=&fyll=&snittleie=
+    // &honorarpct=&oppstart= overstyrer driverne; ?env= velger plattformmiljø.
+    if (route === '/admin/budsjett/forslag' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const uF = new URL(request.url);
+      const yearF = gyldigBudsjettAar(uF.searchParams.get('year')) || new Date().getFullYear();
+      const lf = await hentLeieforhold(financeSyncTarget(request), { db });
+      if (!lf.ok) return cors(NextResponse.json({ ok: false, error: lf.error || 'Kunne ikke hente porteføljen' }, { status: 502 }));
+      const costsF = await listCosts(db);
+      const forslag = lagForslag({
+        rows: lf.rows, costs: costsF, year: yearF,
+        drivere: {
+          nyeEnheterPerMnd: uF.searchParams.get('nye'),
+          fyllLedigPerMnd: uF.searchParams.get('fyll'),
+          snittLeie: uF.searchParams.get('snittleie'),
+          honorarPct: uF.searchParams.get('honorarpct'),
+          oppstartPerEnhet: uF.searchParams.get('oppstart'),
+        },
+      });
+      return cors(NextResponse.json({ ok: true, year: yearF, kilde: { source: lf.source, env: lf.env, antallRader: lf.rows.length }, ...forslag }));
+    }
+
     // ── Saksmottak-innstillinger: hvem varsles (og følger saken automatisk)
     // når en ny sak meldes inn fra Forvalter-plattformen. Tom mottakerliste =
     // standard (in-app-varsel til alle admin + utviklingsgruppen, ingen e-post).
