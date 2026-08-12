@@ -66,9 +66,15 @@ export default function VelgTour() {
             Velg din omvisning<span className="text-[#9B5BD6]">.</span>
           </h2>
         </Avslor>
+        <Avslor delay={90}>
+          <p className="mx-auto mt-4 max-w-[54ch] text-[14.5px] leading-[1.65] text-[#8a827a] sm:text-[16px]">
+            DigiHome er laget for både deg som eier én bolig — og for forvaltere
+            som drifter mange. Velg reisen som ligner mest på din.
+          </p>
+        </Avslor>
 
         <div className="mt-10 grid gap-3.5 sm:mt-12 sm:grid-cols-2 sm:gap-4">
-          <Avslor delay={140}>
+          <Avslor delay={180}>
             <button
               type="button"
               onClick={startHuseier}
@@ -91,7 +97,7 @@ export default function VelgTour() {
             </button>
           </Avslor>
 
-          <Avslor delay={220}>
+          <Avslor delay={260}>
             <div className="flex h-full w-full flex-col items-center rounded-[24px] border border-[#eee9e0] bg-white/60 px-8 py-10 sm:py-12">
               <span className="flex h-[52px] w-[52px] items-center justify-center rounded-full bg-[#f3f0ea]">
                 <Ikon paths={BYGG_IKON} farge="#a89f93" />
