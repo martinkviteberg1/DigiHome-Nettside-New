@@ -19,6 +19,7 @@ import { Marked } from 'marked';
 import SakerInnsikt from './SakerInnsikt';
 import FilViser, { filIkonInfo } from './FilViser';
 import ProduktAdmin from './ProduktAdmin';
+import ProsjekterVisning from './Prosjekter';
 import {
   Plus, X, Loader2, Search, Users, Trash2, Bell, Clock, MessageSquare,
   CheckCircle2, Inbox, PlayCircle, LayoutGrid, List, Calendar,
@@ -37,6 +38,7 @@ const VISNINGER = [
   { k: 'liste', l: 'Liste', icon: List },
   { k: 'tabell', l: 'Tabell', icon: Table2 },
   { k: 'tidslinje', l: 'Tidslinje', icon: CalendarRange },
+  { k: 'prosjekter', l: 'Prosjekter', icon: Folder },
   { k: 'innsikt', l: 'Innsikt', icon: BarChart3 },
   { k: 'arkiv', l: 'Arkiv', icon: Archive },
 ];
@@ -405,7 +407,12 @@ export default function TasksTab({ apiKey, user, onStats }) {
   const [fAnsvarlig, setFAnsvarlig] = useState('alle');
   const [fPri, setFPri] = useState(0);
   const [sok, setSok] = useState('');
-  const [valgtId, setValgtId] = useState(null);
+  // Dyplenke: /admin/saker/<sak-id> åpner saken direkte (delbar URL).
+  const [valgtId, setValgtId] = useState(() => {
+    if (typeof window === 'undefined') return null;
+    const deler = window.location.pathname.split('/');
+    return deler[2] === 'saker' && deler[3] ? decodeURIComponent(deler[3]) : null;
+  });
   const [omrader, setOmrader] = useState(['drift']); // områder jeg har tilgang til (fra serveren)
   const [aktivtOmrade, setAktivtOmrade] = useState('drift');
   const [nyOpen, setNyOpen] = useState(false);
@@ -1001,6 +1008,26 @@ export default function TasksTab({ apiKey, user, onStats }) {
   const valgt = valgtId ? (tasks.find((t) => t.id === valgtId) || arkivTasks.find((t) => t.id === valgtId)) : null;
   const tomt = !laster && tasks.length === 0;
 
+  // ── Delbar saks-URL: adressen følger åpen sak (/admin/saker/<id>).
+  // replaceState (ikke push) — tilbakeknappen navigerer seksjoner, ikke skuffer.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const deler = window.location.pathname.split('/');
+    if (deler[2] !== 'saker') return; // annen seksjon aktiv — ikke rør adressen
+    const maal = valgtId ? `/admin/saker/${encodeURIComponent(valgtId)}` : '/admin/saker';
+    if (window.location.pathname !== maal) window.history.replaceState({ dh: true }, '', maal + window.location.search);
+  }, [valgtId]);
+  // Dyplenke som ikke finnes (slettet/utenfor tilgang) → rydd + gi beskjed.
+  const deepSjekket = useRef(false);
+  useEffect(() => {
+    if (laster || deepSjekket.current) return;
+    deepSjekket.current = true;
+    if (valgtId && !tasks.some((t) => t.id === valgtId) && !arkivTasks.some((t) => t.id === valgtId)) {
+      setValgtId(null);
+      visToast('Fant ikke saken — den kan være slettet eller utenfor din tilgang', 'feil');
+    }
+  }, [laster, valgtId, tasks, arkivTasks, visToast]);
+
   if (laster) {
     return (
       <div data-testid="tasks-skeleton">
@@ -1587,6 +1614,23 @@ export default function TasksTab({ apiKey, user, onStats }) {
       {/* ═══ Innsikt — KPI-er, gjennomstrømning, arbeidsmengde ═══ */}
       {view === 'innsikt' && (
         <SakerInnsikt api={api} members={members} projects={projects} onOpenTask={(id) => setValgtId(id)} />
+      )}
+
+      {/* ═══ Prosjekter — Linear-modellen: brief, status, milepæler, fremdrift ═══ */}
+      {view === 'prosjekter' && (
+        <ProsjekterVisning
+          api={api}
+          projects={projects}
+          tasks={tasks}
+          members={members}
+          today={today}
+          visToast={visToast}
+          onChanged={hentProsjekter}
+          onReloadTasks={last}
+          onOpenTask={(id) => setValgtId(id)}
+          onNyttProsjekt={() => setProsjektModal(true)}
+          ui={{ Meny, DatoVelger, Avatar, RikTekst, MentionTekstfelt, StatusIkon }}
+        />
       )}
 
       {/* Hurtigtast-hint flyttet til «?»-knappen på kontrollinjen (HurtigtastKnapp). */}
@@ -2398,6 +2442,18 @@ function SakSkuff({ t, members, today, actor, apiKey, api, projects = [], alleSa
         </div>
         <div className="ml-auto flex shrink-0 items-center gap-0.5">
           <button
+            onClick={async () => {
+              const url = `${window.location.origin}/admin/saker/${encodeURIComponent(t.id)}`;
+              try { await navigator.clipboard.writeText(url); visToast && visToast('Lenke til saken kopiert'); }
+              catch (e) { window.prompt('Kopier lenken:', url); }
+            }}
+            title="Kopier lenke til saken"
+            data-testid="drawer-share"
+            className="rounded-lg p-2 text-[#999] hover:bg-[#f3f2f0] hover:text-[#333]"
+          >
+            <Link2 className="w-[17px] h-[17px]" />
+          </button>
+          <button
             onClick={() => setUtvidet((v) => !v)}
             title={utvidet ? 'Tilbake til sidepanel' : 'Utvid til full visning'}
             data-testid="drawer-expand"
@@ -2515,6 +2571,22 @@ function SakSkuff({ t, members, today, actor, apiKey, api, projects = [], alleSa
                 ]}
               />
             </PropRad>
+            {(() => {
+              const projMs = t.projectId ? projects.find((p) => p.id === t.projectId) : null;
+              if (!projMs || !(projMs.milestones || []).length) return null;
+              return (
+                <PropRad label="Milepæl">
+                  <Meny
+                    naken value={t.milestoneId || ''} testid="drawer-milestone" placeholder="Uten milepæl"
+                    onChange={(v) => onPatch({ milestoneId: v || null })}
+                    options={[
+                      { v: '', l: 'Uten milepæl' },
+                      ...projMs.milestones.map((m) => ({ v: m.id, l: m.name, dot: m.done ? '#059669' : '#8b5cf6' })),
+                    ]}
+                  />
+                </PropRad>
+              );
+            })()}
             {omrader.length > 1 && (
               <PropRad label="Område">
                 <Meny

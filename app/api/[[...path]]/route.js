@@ -1257,6 +1257,9 @@ async function sakViewer(db, request) {
 // ═══ Utviklingssaker: sakstyper + produkter/komponenter (kun Utvikling-området) ═══
 const DEV_SAKSTYPER = ['feil', 'forbedring', 'funksjon', 'vedlikehold'];
 
+// ═══ Prosjektstatuser (Linear-modell): kartlegging = «utforskes» + brief ═══
+const PROSJEKT_STATUSER = ['utforskes', 'planlagt', 'pagar', 'ferdig', 'skrinlagt'];
+
 // Idempotent seed av DigiHomes produktstruktur (Produkt → Komponenter).
 // «Komponent» (ikke «modul») for å unngå kollisjon med brukermoduler.
 async function seedDevProducts(db) {
@@ -1692,7 +1695,7 @@ async function taskEpost({ member, task, heading, intro, kategori }) {
         <p style="margin:0 0 16px;color:#666;font-size:13.5px;line-height:1.55">${taskEsc(intro)}</p>
         ${task.description ? `<div style="background:#fafaf8;border:1px solid #f0eeea;border-radius:12px;padding:14px 16px 5px;margin:0 0 16px">${mdTilEpost(task.description, 1200)}</div>` : ''}
         <table style="border-collapse:collapse">${rad('Prioritet', TASK_PRI_LABEL[task.priority] || 'P2 · Normal')}${frist ? rad('Frist', taskEsc(frist)) : ''}${rad('Status', TASK_STATUS_LABEL[task.status] || taskEsc(task.status))}</table>
-        <a href="${base}/admin" style="display:inline-block;margin-top:20px;background:#0a0a0a;color:#fff;text-decoration:none;font-size:13.5px;font-weight:600;padding:11px 20px;border-radius:99px">Åpne Saker i admin →</a>
+        <a href="${base}/admin/saker/${encodeURIComponent(task.id)}" style="display:inline-block;margin-top:20px;background:#0a0a0a;color:#fff;text-decoration:none;font-size:13.5px;font-weight:600;padding:11px 20px;border-radius:99px">Åpne saken →</a>
       </div>
     </div>
   </div>`;
@@ -1732,7 +1735,7 @@ async function deloppgaveEpost({ member, task, deloppgaver, actor }) {
         <h2 style="margin:8px 0 4px;color:#0a0a0a;font-size:19px;line-height:1.3">${taskEsc(task.title)}</h2>
         <p style="margin:0 0 14px;color:#666;font-size:13.5px;line-height:1.55">${taskEsc(actor)} ga deg ansvar for ${flertall ? `${deloppgaver.length} sjekklistepunkter` : 'et sjekklistepunkt'} i denne saken.</p>
         <table style="border-collapse:collapse;width:100%">${rader}</table>
-        <a href="${base}/admin" style="display:inline-block;margin-top:20px;background:#0a0a0a;color:#fff;text-decoration:none;font-size:13.5px;font-weight:600;padding:11px 20px;border-radius:99px">Åpne Saker i admin →</a>
+        <a href="${base}/admin/saker/${encodeURIComponent(task.id)}" style="display:inline-block;margin-top:20px;background:#0a0a0a;color:#fff;text-decoration:none;font-size:13.5px;font-weight:600;padding:11px 20px;border-radius:99px">Åpne saken →</a>
       </div>
     </div>
   </div>`;
@@ -2042,7 +2045,7 @@ async function kanskjeSendFristDigest(db) {
       if (!member || !member.email) continue;
       const rader = liste.map((t) => {
         const forfalt = t.dueDate < iDag;
-        return `<tr><td style="padding:7px 10px 7px 0;color:${forfalt ? '#e11d48' : '#b45309'};font-size:12px;font-weight:700;white-space:nowrap">${forfalt ? 'Forfalt' : 'I dag'}</td><td style="padding:7px 0;color:#111;font-size:13.5px;font-weight:600">${taskEsc(t.title)}</td><td style="padding:7px 0 7px 12px;color:#999;font-size:12px;white-space:nowrap">${taskEsc(t.dueDate)}</td></tr>`;
+        return `<tr><td style="padding:7px 10px 7px 0;color:${forfalt ? '#e11d48' : '#b45309'};font-size:12px;font-weight:700;white-space:nowrap">${forfalt ? 'Forfalt' : 'I dag'}</td><td style="padding:7px 0;font-size:13.5px;font-weight:600"><a href="${base}/admin/saker/${encodeURIComponent(t.id)}" style="color:#111;text-decoration:none">${taskEsc(t.title)}</a></td><td style="padding:7px 0 7px 12px;color:#999;font-size:12px;white-space:nowrap">${taskEsc(t.dueDate)}</td></tr>`;
       }).join('');
       const html = `
       <div style="background:#f6f5f3;padding:32px 16px;font-family:-apple-system,'Segoe UI',Roboto,sans-serif">
@@ -2052,7 +2055,7 @@ async function kanskjeSendFristDigest(db) {
             <h2 style="margin:0 0 6px;color:#0a0a0a;font-size:18px">God morgen, ${taskEsc((member.name || '').split(' ')[0])}</h2>
             <p style="margin:0 0 14px;color:#666;font-size:13.5px">Du har ${liste.length} ${liste.length === 1 ? 'sak' : 'saker'} med frist i dag eller tidligere:</p>
             <table style="border-collapse:collapse;width:100%">${rader}</table>
-            <a href="${base}/admin" style="display:inline-block;margin-top:18px;background:#0a0a0a;color:#fff;text-decoration:none;font-size:13.5px;font-weight:600;padding:11px 20px;border-radius:99px">Åpne Saker →</a>
+            <a href="${base}/admin/saker" style="display:inline-block;margin-top:18px;background:#0a0a0a;color:#fff;text-decoration:none;font-size:13.5px;font-weight:600;padding:11px 20px;border-radius:99px">Åpne Saker →</a>
           </div>
         </div>
       </div>`;
@@ -2977,9 +2980,26 @@ async function handleRoute(request, { params }) {
     }
 
     // ══════════════════════ PROSJEKTER / INITIATIVER ══════════════════════
+    // Linear-modell: et prosjekt er en konkret leveranse med brief (kartleggings-
+    // dokument i markdown), status (utforskes→planlagt→pagar→ferdig→skrinlagt),
+    // lead, måldato og milepæler. Saker knyttes via projectId (+ milestoneId).
     if (route === '/admin/projects' && method === 'GET') {
       if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const projects = await db.collection('projects').find({}, { projection: { _id: 0 } }).sort({ createdAt: 1 }).toArray();
+      // Fremdrift per prosjekt/milepæl — beregnes fra sakene i én lesing.
+      const sakStat = await db.collection('tasks').find(
+        { projectId: { $ne: null }, archived: { $ne: true } },
+        { projection: { _id: 0, projectId: 1, status: 1, milestoneId: 1 } },
+      ).toArray();
+      for (const p of projects) {
+        const mine = sakStat.filter((t) => t.projectId === p.id);
+        p.progress = { total: mine.length, done: mine.filter((t) => t.status === 'done').length };
+        for (const m of (p.milestones || [])) {
+          const ms = mine.filter((t) => t.milestoneId === m.id);
+          m.progress = { total: ms.length, done: ms.filter((t) => t.status === 'done').length };
+        }
+        if (!p.status) p.status = 'pagar'; // eldre prosjekter uten status er i arbeid
+      }
       return cors(NextResponse.json({ ok: true, projects }));
     }
     if (route === '/admin/projects' && method === 'POST') {
@@ -2990,30 +3010,62 @@ async function handleRoute(request, { params }) {
       const project = {
         id: uuidv4(), name: name.slice(0, 120),
         color: /^#[0-9a-fA-F]{6}$/.test(String(body.color)) ? body.color : '#8b5cf6',
-        description: String(body.description || '').slice(0, 500),
-        archived: false, createdAt: new Date().toISOString(),
+        description: String(body.description || '').slice(0, 20000),
+        status: PROSJEKT_STATUSER.includes(body.status) ? body.status : 'utforskes',
+        leadId: body.leadId ? String(body.leadId) : null,
+        targetDate: /^\d{4}-\d{2}-\d{2}$/.test(String(body.targetDate)) ? body.targetDate : null,
+        milestones: [],
+        archived: false, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
       };
       await db.collection('projects').insertOne({ ...project });
+      delete project._id;
       return cors(NextResponse.json({ ok: true, project }));
     }
     if (path[0] === 'admin' && path[1] === 'projects' && path.length === 3 && method === 'PUT') {
       if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       let body = {}; try { body = await request.json(); } catch (e) {}
-      const set = {};
+      const set = { updatedAt: new Date().toISOString() };
       if (body.name !== undefined) { const n = String(body.name).trim(); if (n) set.name = n.slice(0, 120); }
       if (body.color !== undefined && /^#[0-9a-fA-F]{6}$/.test(String(body.color))) set.color = body.color;
-      if (body.description !== undefined) set.description = String(body.description).slice(0, 500);
+      if (body.description !== undefined) set.description = String(body.description).slice(0, 20000);
       if (body.archived !== undefined) set.archived = !!body.archived;
-      if (!Object.keys(set).length) return cors(NextResponse.json({ ok: false, error: 'Ingenting å endre' }, { status: 400 }));
+      if (body.status !== undefined) {
+        if (!PROSJEKT_STATUSER.includes(body.status)) return cors(NextResponse.json({ ok: false, error: 'Ugyldig prosjektstatus' }, { status: 400 }));
+        set.status = body.status;
+      }
+      if (body.leadId !== undefined) set.leadId = body.leadId ? String(body.leadId) : null;
+      if (body.targetDate !== undefined) set.targetDate = /^\d{4}-\d{2}-\d{2}$/.test(String(body.targetDate)) ? body.targetDate : null;
+      if (body.milestones !== undefined && Array.isArray(body.milestones)) {
+        // Milepæler: [{id?, name, due?, done?}] — nye rader får id, tomme
+        // fjernes, maks 20. Saker som peker på slettede milepæler løsnes under.
+        set.milestones = body.milestones
+          .map((m) => ({
+            id: m.id ? String(m.id) : uuidv4(),
+            name: String(m.name || '').trim().slice(0, 120),
+            due: /^\d{4}-\d{2}-\d{2}$/.test(String(m.due)) ? m.due : null,
+            done: !!m.done,
+          }))
+          .filter((m) => m.name)
+          .slice(0, 20);
+      }
+      if (Object.keys(set).length <= 1) return cors(NextResponse.json({ ok: false, error: 'Ingenting å endre' }, { status: 400 }));
       await db.collection('projects').updateOne({ id: path[2] }, { $set: set });
       const project = await db.collection('projects').findOne({ id: path[2] }, { projection: { _id: 0 } });
+      if (!project) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
+      if (set.milestones) {
+        const gyldige = set.milestones.map((m) => m.id);
+        await db.collection('tasks').updateMany(
+          { projectId: path[2], milestoneId: { $nin: [...gyldige, null] } },
+          { $set: { milestoneId: null } },
+        );
+      }
       return cors(NextResponse.json({ ok: true, project }));
     }
     if (path[0] === 'admin' && path[1] === 'projects' && path.length === 3 && method === 'DELETE') {
       if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       await db.collection('projects').deleteOne({ id: path[2] });
       // Løsne sakene fra prosjektet (ikke slett sakene).
-      await db.collection('tasks').updateMany({ projectId: path[2] }, { $set: { projectId: null } });
+      await db.collection('tasks').updateMany({ projectId: path[2] }, { $set: { projectId: null, milestoneId: null } });
       return cors(NextResponse.json({ ok: true }));
     }
 
@@ -3522,6 +3574,7 @@ async function handleRoute(request, { params }) {
         recurrence: TASK_REC.includes(body.recurrence) ? body.recurrence : null,
         followers: normaliserFolgere(body.followers),
         projectId: body.projectId ? String(body.projectId) : null,
+        milestoneId: body.projectId && body.milestoneId ? String(body.milestoneId) : null,
         parentId: body.parentId ? String(body.parentId) : null,
         relations: normaliserRelasjoner(body.relations),
         space,
@@ -3686,6 +3739,22 @@ async function handleRoute(request, { params }) {
       if (body.projectId !== undefined) {
         set.projectId = body.projectId ? String(body.projectId) : null;
         logg.push(set.projectId ? 'Knyttet til prosjekt' : 'Fjernet fra prosjekt');
+        // Milepælen hører til forrige prosjekt — løsnes ved prosjektbytte.
+        if (set.projectId !== (eksisterende.projectId || null)) set.milestoneId = null;
+      }
+      if (body.milestoneId !== undefined) {
+        const nyMs = body.milestoneId ? String(body.milestoneId) : null;
+        if (nyMs) {
+          const prosjektId = set.projectId !== undefined ? set.projectId : (eksisterende.projectId || null);
+          const prosjektDok = prosjektId ? await db.collection('projects').findOne({ id: prosjektId }, { projection: { _id: 0, milestones: 1 } }) : null;
+          const ms = prosjektDok ? (prosjektDok.milestones || []).find((m) => m.id === nyMs) : null;
+          if (!ms) return cors(NextResponse.json({ ok: false, error: 'Milepælen finnes ikke på sakens prosjekt' }, { status: 400 }));
+          set.milestoneId = nyMs;
+          logg.push(`Milepæl: ${ms.name}`);
+        } else if ((eksisterende.milestoneId || null) !== null && set.milestoneId === undefined) {
+          set.milestoneId = null;
+          logg.push('Milepæl fjernet');
+        }
       }
       // Utviklingsfelter: sakstype + Produkt → Komponent. Valideres mot kjente
       // typer/produkter; komponent nullstilles ved produktbytte hvis ugyldig.

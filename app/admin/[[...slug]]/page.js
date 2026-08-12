@@ -291,7 +291,9 @@ export default function AdminPage({ params }) {
   useEffect(() => {
     if (!user) return;
     const maal = `/admin/${seksjonTilSlug(section, insightTab)}`;
-    if (window.location.pathname !== maal) {
+    // Dypere stier under seksjonen (f.eks. /admin/saker/<sak-id>) eies av
+    // seksjonens egen komponent — de skal ikke skrives om her.
+    if (window.location.pathname !== maal && !window.location.pathname.startsWith(`${maal}/`)) {
       if (urlSynket.current) window.history.pushState({ dh: true }, '', maal + window.location.search);
       else window.history.replaceState({ dh: true }, '', maal + window.location.search);
     }
