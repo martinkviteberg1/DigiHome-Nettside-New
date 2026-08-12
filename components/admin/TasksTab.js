@@ -29,7 +29,7 @@ import {
   Bold, Italic, Link2, Image as ImageIcon, Heading,
   Folder, FolderPlus, Ban, GitBranch, Layers, BarChart3,
   Home, Landmark, Briefcase, Wrench, Lock, Globe,
-  Bug, Sparkles, Rocket, Hammer, Boxes,
+  Bug, Sparkles, Rocket, Hammer, Boxes, ListFilter, Keyboard,
 } from 'lucide-react';
 
 const VISNINGER = [
@@ -1024,6 +1024,28 @@ export default function TasksTab({ apiKey, user, onStats }) {
     );
   }
 
+  // Aktive filtre → fjernbare chips på kontrollinjen (Linear-style).
+  const aktiveFiltre = [];
+  if (mine) aktiveFiltre.push({ k: 'mine', l: 'Mine saker', clear: toggleMine });
+  if (fAnsvarlig !== 'alle') aktiveFiltre.push({ k: 'ansvarlig', l: (members.find((m) => m.id === fAnsvarlig) || {}).name || 'Ansvarlig', clear: () => setFAnsvarlig('alle') });
+  if (fPri !== 0) aktiveFiltre.push({ k: 'pri', l: fPri === 1 ? 'P1 · Kritisk' : fPri === 2 ? 'P2 · Normal' : 'P3 · Lav', dot: fPri === 1 ? '#e11d48' : fPri === 2 ? '#b45309' : '#6b7280', clear: () => setFPri(0) });
+  if (fProsjekt !== 'alle') {
+    const prF = projects.find((p) => p.id === fProsjekt);
+    aktiveFiltre.push({ k: 'prosjekt', l: prF ? prF.name : 'Uten prosjekt', dot: prF && prF.color, clear: () => setFProsjekt('alle') });
+  }
+  if (aktivtOmrade === 'utvikling' && fType !== 'alle') {
+    const tiF = sakstypeInfo(fType);
+    aktiveFiltre.push({ k: 'type', l: tiF ? tiF.l : 'Uten type', dot: tiF && tiF.farge, clear: () => setFType('alle') });
+  }
+  if (aktivtOmrade === 'utvikling' && fProdukt !== 'alle') {
+    const pdF = devProducts.find((p) => p.id === fProdukt);
+    aktiveFiltre.push({ k: 'produkt', l: pdF ? pdF.name : 'Uten produkt', dot: pdF && pdF.color, clear: () => setFProdukt('alle') });
+  }
+  const nullstillFiltre = () => {
+    if (mine) toggleMine();
+    setFAnsvarlig('alle'); setFPri(0); setFProsjekt('alle'); setFType('alle'); setFProdukt('alle');
+  };
+
   return (
     <div data-testid="tasks-tab">
       {/* ═══ Områdevelger — saken «bor» et sted, og stedet avgjør hvem som ser
@@ -1063,79 +1085,8 @@ export default function TasksTab({ apiKey, user, onStats }) {
             <SummaryChip label="Ferdig siste 7 d" value={stats.ferdig7d} good />
           </div>
 
-          {/* Desktop-verktøy — Linear-style: hairline-borders, popover-menyer */}
-          <div className="ml-auto hidden shrink min-w-0 flex-wrap items-center justify-end gap-2 lg:flex">
-            {minId && (
-              <button
-                onClick={toggleMine}
-                data-testid="tasks-mine-btn"
-                title="Vis bare saker der du er ansvarlig eller følger — hurtigtast M"
-                className={`flex h-9 items-center gap-1.5 rounded-lg border px-3 text-[13px] font-medium transition-all active:scale-[0.97] ${
-                  mine
-                    ? 'border-[#8b5cf6]/40 bg-[#f4f0fb] text-[#6d28d9]'
-                    : 'border-black/[0.08] bg-white text-[#555] hover:border-black/[0.16] hover:text-[#0a0a0a]'
-                }`}
-              >
-                <User className="w-3.5 h-3.5" /> <span className="hidden xl:inline">Mine saker</span><span className="xl:hidden">Mine</span>
-                {mine && <X className="w-3 h-3" />}
-              </button>
-            )}
-            <div className="relative">
-              <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-[#b5b5b5]" />
-              <input
-                value={sok} onChange={(e) => setSok(e.target.value)} placeholder="Søk i saker …"
-                data-testid="tasks-search"
-                className="h-9 w-32 rounded-lg border border-black/[0.08] bg-white pl-8 pr-3 text-[13px] outline-none transition-all placeholder:text-[#bbb] hover:border-black/[0.16] focus:border-[#8b5cf6]/50 focus:ring-2 focus:ring-[#8b5cf6]/15 focus:w-48 xl:w-36"
-              />
-            </div>
-            <Meny
-              value={fAnsvarlig} onChange={setFAnsvarlig} testid="tasks-filter-assignee" className="w-40"
-              options={[{ v: 'alle', l: 'Alle ansvarlige', icon: Users }, ...members.map((m) => ({ v: m.id, l: m.name, avatar: m }))]}
-            />
-            <Meny
-              value={fPri} onChange={(v) => setFPri(Number(v))} className="w-36" testid="tasks-filter-priority"
-              options={[
-                { v: 0, l: 'Alle prioriteter', icon: ArrowUpDown },
-                { v: 1, l: 'P1 · Kritisk', dot: '#e11d48' },
-                { v: 2, l: 'P2 · Normal', dot: '#b45309' },
-                { v: 3, l: 'P3 · Lav', dot: '#6b7280' },
-              ]}
-            />
-            <Meny
-              value={fProsjekt} onChange={(v) => { if (v === '__nytt__') { setProsjektModal(true); return; } setFProsjekt(v); }}
-              className="w-40" testid="tasks-filter-project"
-              options={[
-                { v: 'alle', l: 'Alle prosjekter', icon: Folder },
-                { v: 'ingen', l: 'Uten prosjekt' },
-                ...projects.map((p) => ({ v: p.id, l: p.name, dot: p.color })),
-                { v: '__nytt__', l: 'Nytt prosjekt …', icon: FolderPlus },
-              ]}
-            />
-            {aktivtOmrade === 'utvikling' && (
-              <>
-                <Meny
-                  value={fType} onChange={setFType} className="w-40" testid="tasks-filter-type"
-                  options={[
-                    { v: 'alle', l: 'Alle typer' },
-                    ...SAKSTYPE_UI.map((t) => ({ v: t.k, l: t.l, dot: t.farge })),
-                    { v: 'uten', l: 'Uten type' },
-                  ]}
-                />
-                <Meny
-                  value={fProdukt} onChange={setFProdukt} className="w-44" testid="tasks-filter-product"
-                  options={[
-                    { v: 'alle', l: 'Alle produkter', icon: Boxes },
-                    ...devProducts.map((p) => ({ v: p.id, l: p.name, dot: p.color })),
-                    { v: 'ingen', l: 'Uten produkt' },
-                  ]}
-                />
-              </>
-            )}
-            <div className="flex rounded-lg border border-black/[0.08] bg-white p-0.5">
-              {VISNINGER.map((v) => (
-                <ViewBtn key={v.k} active={view === v.k} onClick={() => setView(v.k)} icon={v.icon} label={v.l} testid={`tasks-view-${v.k}`} />
-              ))}
-            </div>
+          {/* Primærhandlinger — varsler, personer, ny sak */}
+          <div className="ml-auto hidden shrink-0 items-center gap-2 lg:flex">
             <button
               onClick={() => { setVarselOpen((v) => !v); setPrefsOpen(false); }}
               data-testid="tasks-bell-btn"
@@ -1150,9 +1101,10 @@ export default function TasksTab({ apiKey, user, onStats }) {
             <button
               onClick={() => setPersonerOpen(true)}
               data-testid="tasks-members-btn"
-              className="flex h-9 items-center gap-1.5 rounded-lg border border-black/[0.08] bg-white px-3 text-[13px] font-medium text-[#555] transition-all hover:border-black/[0.16] hover:text-[#0a0a0a]"
+              title="Personer og tilgang"
+              className="flex h-9 w-9 items-center justify-center rounded-lg border border-black/[0.08] bg-white text-[#555] transition-all hover:border-black/[0.16] hover:text-[#0a0a0a]"
             >
-              <Users className="w-3.5 h-3.5" /> <span className="hidden xl:inline">Personer</span>
+              <Users className="h-4 w-4" />
             </button>
             <button
               onClick={() => setNyOpen(true)}
@@ -1161,6 +1113,47 @@ export default function TasksTab({ apiKey, user, onStats }) {
             >
               <Plus className="w-4 h-4" /> Ny sak <kbd className="ml-1 rounded bg-white/15 px-1.5 py-0.5 text-[10px] font-bold">N</kbd>
             </button>
+          </div>
+        </div>
+
+        {/* Kontrollinje — søk + filter til venstre, visninger + hjelp til høyre.
+            Alle filtre bor i ÉN popover; aktive filtre vises som fjernbare chips. */}
+        <div className="mt-2.5 hidden items-center gap-2 lg:flex">
+          <div className="relative shrink-0">
+            <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-[#b5b5b5]" />
+            <input
+              value={sok} onChange={(e) => setSok(e.target.value)} placeholder="Søk i saker …"
+              data-testid="tasks-search"
+              className="h-8 w-36 rounded-lg border border-black/[0.08] bg-white pl-8 pr-3 text-[12.5px] outline-none transition-all placeholder:text-[#bbb] hover:border-black/[0.16] focus:border-[#8b5cf6]/50 focus:ring-2 focus:ring-[#8b5cf6]/15 focus:w-56"
+            />
+          </div>
+          <FilterKnapp
+            antall={aktiveFiltre.length}
+            minId={minId} mine={mine} toggleMine={toggleMine}
+            fAnsvarlig={fAnsvarlig} setFAnsvarlig={setFAnsvarlig}
+            fPri={fPri} setFPri={setFPri}
+            fProsjekt={fProsjekt} setFProsjekt={setFProsjekt}
+            fType={fType} setFType={setFType}
+            fProdukt={fProdukt} setFProdukt={setFProdukt}
+            members={members} projects={projects} devProducts={devProducts}
+            utvikling={aktivtOmrade === 'utvikling'}
+            onNyttProsjekt={() => setProsjektModal(true)}
+            onNullstill={nullstillFiltre}
+          />
+          {aktiveFiltre.length > 0 && (
+            <div className="no-scrollbar flex min-w-0 items-center gap-1.5 overflow-x-auto">
+              {aktiveFiltre.map((f) => (
+                <FilterChip key={f.k} label={f.l} dot={f.dot} onClear={f.clear} testid={`filter-chip-${f.k}`} />
+              ))}
+            </div>
+          )}
+          <div className="ml-auto flex shrink-0 items-center gap-1.5">
+            <div className="flex rounded-lg border border-black/[0.08] bg-white p-0.5">
+              {VISNINGER.map((v) => (
+                <ViewBtn key={v.k} active={view === v.k} onClick={() => setView(v.k)} icon={v.icon} label={v.l} testid={`tasks-view-${v.k}`} />
+              ))}
+            </div>
+            <HurtigtastKnapp />
           </div>
         </div>
 
@@ -1585,20 +1578,7 @@ export default function TasksTab({ apiKey, user, onStats }) {
         <SakerInnsikt api={api} members={members} projects={projects} onOpenTask={(id) => setValgtId(id)} />
       )}
 
-      {/* ═══ Hurtigtast-hint — kun desktop, Linear-style ═══ */}
-      {!tomt && view !== 'arkiv' && view !== 'innsikt' && (
-        <div className="mt-4 hidden select-none items-center gap-4 text-[11px] text-[#b0aca6] lg:flex" data-testid="tasks-shortcuts-hint">
-          <span className="flex items-center gap-1.5"><Kbd>↑↓</Kbd> naviger</span>
-          <span className="flex items-center gap-1.5"><Kbd>↵</Kbd> åpne sak</span>
-          <span className="flex items-center gap-1.5"><Kbd>N</Kbd> ny sak</span>
-          <span className="flex items-center gap-1.5"><Kbd>M</Kbd> mine saker</span>
-          <span className="flex items-center gap-1.5"><Kbd>X</Kbd> marker</span>
-          <span className="flex items-center gap-1.5"><Kbd>⇧↑↓</Kbd> utvid markering</span>
-          <span className="flex items-center gap-1.5"><Kbd>1–4</Kbd> status i åpen sak</span>
-          <span className="flex items-center gap-1.5"><Kbd>P</Kbd> prioritet i åpen sak</span>
-          <span className="flex items-center gap-1.5"><Kbd>esc</Kbd> lukk</span>
-        </div>
-      )}
+      {/* Hurtigtast-hint flyttet til «?»-knappen på kontrollinjen (HurtigtastKnapp). */}
 
       {/* ═══ FAB — mobil/nettbrett ═══ */}
       <button
@@ -1770,8 +1750,175 @@ function ViewBtn({ active, onClick, icon: Icon, label, testid }) {
         active ? 'bg-[#0a0a0a] text-white shadow-sm' : 'text-[#777] hover:bg-black/[0.04] hover:text-[#0a0a0a]'
       }`}
     >
-      <Icon className="w-3.5 h-3.5" /> <span className="hidden 2xl:inline">{label}</span>
+      <Icon className="w-3.5 h-3.5" /> <span className={active ? 'inline' : 'hidden'}>{label}</span>
     </button>
+  );
+}
+
+/* ═══ FilterKnapp — samler ALLE filtre i én popover (Linear-style).
+   Aktive filtre vises som fjernbare chips ved siden av knappen i stedet
+   for en vegg av permanente dropdown-knapper. ═══ */
+function FilterKnapp({ antall, minId, mine, toggleMine, fAnsvarlig, setFAnsvarlig, fPri, setFPri, fProsjekt, setFProsjekt, fType, setFType, fProdukt, setFProdukt, members, projects, devProducts, utvikling, onNyttProsjekt, onNullstill }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    const onKey = (e) => { if (e.key === 'Escape') { e.stopPropagation(); setOpen(false); } };
+    document.addEventListener('mousedown', onDoc);
+    window.addEventListener('keydown', onKey, true);
+    return () => { document.removeEventListener('mousedown', onDoc); window.removeEventListener('keydown', onKey, true); };
+  }, [open]);
+  const etikett = 'mb-1 mt-3 text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#b0aca6]';
+  return (
+    <div ref={ref} className="relative shrink-0">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        data-testid="tasks-filter-btn"
+        aria-expanded={open}
+        className={`flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-[12.5px] font-medium transition-all active:scale-[0.97] ${
+          open || antall > 0
+            ? 'border-[#8b5cf6]/40 bg-[#f4f0fb] text-[#6d28d9]'
+            : 'border-black/[0.08] bg-white text-[#555] hover:border-black/[0.16] hover:text-[#0a0a0a]'
+        }`}
+      >
+        <ListFilter className="h-3.5 w-3.5" /> Filter
+        {antall > 0 && <span className="flex h-4 min-w-[16px] items-center justify-center rounded-full bg-[#8b5cf6] px-1 text-[10px] font-bold text-white tabular-nums">{antall}</span>}
+      </button>
+      {open && (
+        <div className="dh-fade absolute left-0 top-full z-[120] mt-1 w-[262px] rounded-xl border border-black/[0.07] bg-white p-3 shadow-[0_16px_48px_rgba(0,0,0,0.16)]" data-testid="tasks-filter-panel">
+          {minId && (
+            <button
+              onClick={toggleMine}
+              data-testid="tasks-mine-btn"
+              className="flex w-full items-center gap-2 rounded-lg px-1 py-1 text-left text-[13px] font-medium text-[#333] transition-colors hover:bg-[#f7f6f4]"
+            >
+              <User className="h-3.5 w-3.5 text-[#888]" />
+              <span className="flex-1">Mine saker</span>
+              <span className={`flex h-[18px] w-8 items-center rounded-full p-[2px] transition-colors ${mine ? 'bg-[#8b5cf6]' : 'bg-black/[0.12]'}`}>
+                <span className={`h-[14px] w-[14px] rounded-full bg-white shadow transition-transform ${mine ? 'translate-x-[14px]' : ''}`} />
+              </span>
+            </button>
+          )}
+          <p className={etikett}>Ansvarlig</p>
+          <Meny
+            value={fAnsvarlig} onChange={setFAnsvarlig} compact className="w-full" menyBredde={234} testid="tasks-filter-assignee"
+            options={[{ v: 'alle', l: 'Alle ansvarlige', icon: Users }, ...members.map((m) => ({ v: m.id, l: m.name, avatar: m }))]}
+          />
+          <p className={etikett}>Prioritet</p>
+          <Meny
+            value={fPri} onChange={(v) => setFPri(Number(v))} compact className="w-full" menyBredde={234} testid="tasks-filter-priority"
+            options={[
+              { v: 0, l: 'Alle prioriteter', icon: ArrowUpDown },
+              { v: 1, l: 'P1 · Kritisk', dot: '#e11d48' },
+              { v: 2, l: 'P2 · Normal', dot: '#b45309' },
+              { v: 3, l: 'P3 · Lav', dot: '#6b7280' },
+            ]}
+          />
+          <p className={etikett}>Prosjekt</p>
+          <Meny
+            value={fProsjekt} onChange={(v) => { if (v === '__nytt__') { onNyttProsjekt(); setOpen(false); return; } setFProsjekt(v); }}
+            compact className="w-full" menyBredde={234} testid="tasks-filter-project"
+            options={[
+              { v: 'alle', l: 'Alle prosjekter', icon: Folder },
+              { v: 'ingen', l: 'Uten prosjekt' },
+              ...projects.map((p) => ({ v: p.id, l: p.name, dot: p.color })),
+              { v: '__nytt__', l: 'Nytt prosjekt …', icon: FolderPlus },
+            ]}
+          />
+          {utvikling && (
+            <>
+              <p className={etikett}>Sakstype</p>
+              <Meny
+                value={fType} onChange={setFType} compact className="w-full" menyBredde={234} testid="tasks-filter-type"
+                options={[
+                  { v: 'alle', l: 'Alle typer' },
+                  ...SAKSTYPE_UI.map((t) => ({ v: t.k, l: t.l, dot: t.farge })),
+                  { v: 'uten', l: 'Uten type' },
+                ]}
+              />
+              <p className={etikett}>Produkt</p>
+              <Meny
+                value={fProdukt} onChange={setFProdukt} compact className="w-full" menyBredde={234} testid="tasks-filter-product"
+                options={[
+                  { v: 'alle', l: 'Alle produkter', icon: Boxes },
+                  ...devProducts.map((p) => ({ v: p.id, l: p.name, dot: p.color })),
+                  { v: 'ingen', l: 'Uten produkt' },
+                ]}
+              />
+            </>
+          )}
+          {antall > 0 && (
+            <button
+              onClick={() => { onNullstill(); setOpen(false); }}
+              data-testid="tasks-filter-reset"
+              className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg border border-black/[0.08] py-1.5 text-[12.5px] font-semibold text-[#666] transition-all hover:border-black/[0.16] hover:text-[#0a0a0a]"
+            >
+              <X className="h-3.5 w-3.5" /> Nullstill filtre
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* Fjernbar chip for et aktivt filter — vises ved siden av Filter-knappen. */
+function FilterChip({ label, dot, onClear, testid }) {
+  return (
+    <span className="flex h-8 shrink-0 items-center gap-1.5 rounded-lg bg-[#f4f0fb] pl-2.5 pr-1 text-[12.5px] font-medium text-[#6d28d9]" data-testid={testid}>
+      {dot && <span className="h-[7px] w-[7px] rounded-full" style={{ background: dot }} />}
+      <span className="max-w-[140px] truncate">{label}</span>
+      <button onClick={onClear} className="rounded-md p-1 text-[#a78bda] transition-colors hover:bg-[#e8def8] hover:text-[#6d28d9]" aria-label={`Fjern filter ${label}`}>
+        <X className="h-3 w-3" />
+      </button>
+    </span>
+  );
+}
+
+/* ═══ Hurtigtast-hjelp — liten «?»-knapp med popover i stedet for en
+   permanent hint-rad under tavlen. ═══ */
+function HurtigtastKnapp() {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    const onKey = (e) => { if (e.key === 'Escape') { e.stopPropagation(); setOpen(false); } };
+    document.addEventListener('mousedown', onDoc);
+    window.addEventListener('keydown', onKey, true);
+    return () => { document.removeEventListener('mousedown', onDoc); window.removeEventListener('keydown', onKey, true); };
+  }, [open]);
+  const rader = [
+    ['↑↓', 'Naviger mellom saker'], ['↵', 'Åpne valgt sak'], ['N', 'Ny sak'], ['M', 'Mine saker'],
+    ['X', 'Marker sak'], ['⇧↑↓', 'Utvid markering'], ['1–4', 'Sett status i åpen sak'], ['P', 'Prioritet i åpen sak'], ['esc', 'Lukk'],
+  ];
+  return (
+    <div ref={ref} className="relative shrink-0">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        title="Hurtigtaster"
+        data-testid="tasks-shortcuts-btn"
+        className={`flex h-8 w-8 items-center justify-center rounded-lg border transition-all ${
+          open ? 'border-[#8b5cf6]/40 bg-[#f4f0fb] text-[#6d28d9]' : 'border-black/[0.08] bg-white text-[#999] hover:border-black/[0.16] hover:text-[#555]'
+        }`}
+      >
+        <Keyboard className="h-3.5 w-3.5" />
+      </button>
+      {open && (
+        <div className="dh-fade absolute right-0 top-full z-[120] mt-1 w-[240px] rounded-xl border border-black/[0.07] bg-white p-3 shadow-[0_16px_48px_rgba(0,0,0,0.16)]" data-testid="tasks-shortcuts-hint">
+          <p className="mb-2 text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#b0aca6]">Hurtigtaster</p>
+          <div className="space-y-1.5">
+            {rader.map(([k, l]) => (
+              <div key={k} className="flex items-center justify-between text-[12px] text-[#666]">
+                <span>{l}</span><Kbd>{k}</Kbd>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 

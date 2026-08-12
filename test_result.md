@@ -113,6 +113,9 @@ backend:
     priority: "high"
     needs_retesting: false
     status_history:
+        -working: true
+        -agent: "main"
+        -comment: "OPPFØLGING ETTER BRO-AVTALE MED PLATTFORMEN (12.08): (1) Komponent-tak hevet 30→50 (PUT dev-products + dev-issue auto-create). (2) dev-issue-mottaket seeder nå KANONISK modulliste (31 moduler + 'Forvalterportal'-fallback) når «Forvalter-plattformen» auto-opprettes — deterministisk i prod. Preview-basen seedet manuelt til 33 komponenter. (3) NY: Fullførings-e-post til innmelder — PUT /admin/tasks/:id ved overgang til status 'done' på sak med inbound.reporter.email sender 'Saken din er løst'-e-post via sendHtmlEmail (kun ved overgang til done, aldri gjenåpning; notify:false skrur av; @example.com blokkeres i e-postlaget). Røyk-testet: dev-issue → PUT done → 200, completedAt satt, ingen feil. (4) ENV-FIKS (godkjent av eier): DIGIHOME_API_URL(_TEST) pekte på oss selv (fork-artefakt) — rettet til https://forvalter-redesign.preview.emergentagent.com, server restartet, re-verifisert med POST /admin/properties/sync → synced:34, upserted:3, updated:31, unitsMatched:34/34. (5) Plattformens 2 QA-saker slettet på deres forespørsel."
         -working: "NA"
         -agent: "main"
         -comment: "Manuelt curl-verifisert: POST /api/bridge/dev-issue med bug/kritisk/Interessenter-modul + 1px PNG → 201 {ok, task_id, type:'feil', priority:1, component:'Interessenter', attachments:1}; sak i DB hadde space=utvikling, produkt «Forvalter-plattformen» auto-opprettet (#f59e0b) m/ komponent «Interessenter», vedlegg i task_files, 1 varsel; samme event_id → duplicate:true samme task_id; feil secret → 401. QA-sak/fil/varsel ryddet (produkt+komponent beholdt — legitim katalog). PUT-utviklingsfelter og insights-dev-blokk IKKE manuelt verifisert ennå."
