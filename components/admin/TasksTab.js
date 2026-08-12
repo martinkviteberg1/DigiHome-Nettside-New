@@ -17,6 +17,7 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Marked } from 'marked';
 import SakerInnsikt from './SakerInnsikt';
+import FilViser, { filIkonInfo } from './FilViser';
 import {
   Plus, X, Loader2, Search, Users, Trash2, Bell, Clock, MessageSquare,
   CheckCircle2, Inbox, PlayCircle, LayoutGrid, List, Calendar,
@@ -3006,7 +3007,7 @@ function FolgereFelt({ t, members, onPatch }) {
   return (
     <div className="mt-6" data-testid="drawer-followers">
       <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#999]">Følgere</p>
-      <p className="mt-0.5 text-[11.5px] text-[#b5b5b5]">Holdes orientert — varsles på e-post når de legges til og ved purring.</p>
+      <p className="mt-0.5 text-[11.5px] text-[#b5b5b5]">Holdes orientert — får varsel og e-post ved kommentarer, statusendringer og purringer.</p>
       <div className="mt-2 flex flex-wrap items-center gap-1.5">
         {followers.map((fid) => {
           const m = members.find((x) => x.id === fid);
@@ -3042,6 +3043,7 @@ function FolgereFelt({ t, members, onPatch }) {
 function VedleggSeksjon({ t, apiKey, api, actor, onReload, visToast }) {
   const [lasterOpp, setLasterOpp] = useState(false);
   const [prosent, setProsent] = useState(0);
+  const [viserIdx, setViserIdx] = useState(null); // åpent vedlegg i FilViser
   const filRef = useRef(null);
   const vedlegg = t.attachments || [];
 
@@ -3105,28 +3107,53 @@ function VedleggSeksjon({ t, apiKey, api, actor, onReload, visToast }) {
         {vedlegg.length > 0 && <span className="text-[11px] text-[#bbb] tabular-nums">{vedlegg.length}/12</span>}
       </div>
       <div className="mt-2 space-y-1.5">
-        {vedlegg.map((a) => (
-          <div key={a.id} className="group flex items-center gap-2.5 rounded-xl bg-[#fafaf8] px-3 py-2.5" data-testid={`attachment-${a.id}`}>
-            <Paperclip className="w-4 h-4 shrink-0 text-[#8b5cf6]" />
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-[13px] font-medium text-[#333]">{a.name}</p>
-              <p className="text-[11px] text-[#b0aca6]">{fmtStr(a.size)}</p>
+        {vedlegg.map((a, i) => {
+          const { Ikon, farge } = filIkonInfo(a.type, a.name);
+          const erBilde = String(a.type || '').startsWith('image/');
+          return (
+            <div key={a.id} className="group flex items-center gap-2.5 rounded-xl bg-[#fafaf8] px-3 py-2.5 transition-colors hover:bg-[#f4f0fb]/60" data-testid={`attachment-${a.id}`}>
+              <button
+                onClick={() => setViserIdx(i)}
+                data-testid={`attachment-open-${a.id}`}
+                title="Forhåndsvis"
+                className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
+              >
+                {erBilde ? (
+                  <img
+                    src={`/api/admin/task-files/${a.id}?key=${encodeURIComponent(apiKey)}&inline=1`}
+                    alt=""
+                    loading="lazy"
+                    className="h-9 w-9 shrink-0 rounded-lg object-cover shadow-sm"
+                  />
+                ) : (
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg" style={{ background: `${farge}14` }}>
+                    <Ikon className="h-[18px] w-[18px]" style={{ color: farge }} />
+                  </span>
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[13px] font-medium text-[#333] transition-colors group-hover:text-[#8b5cf6]">{a.name}</p>
+                  <p className="text-[11px] text-[#b0aca6]">{fmtStr(a.size)} · klikk for å vise</p>
+                </div>
+              </button>
+              <a
+                href={`/api/admin/task-files/${a.id}?key=${encodeURIComponent(apiKey)}`}
+                download={a.name}
+                title="Last ned"
+                className="shrink-0 rounded-lg p-2 text-[#bbb] transition-colors hover:bg-white hover:text-[#8b5cf6]"
+              >
+                <Download className="w-4 h-4" />
+              </a>
+              <button onClick={() => slettFil(a)} title="Slett vedlegg" className="shrink-0 rounded-lg p-2 text-[#ccc] transition-colors hover:bg-rose-50 hover:text-rose-600">
+                <Trash2 className="w-4 h-4" />
+              </button>
             </div>
-            <a
-              href={`/api/admin/task-files/${a.id}?key=${encodeURIComponent(apiKey)}`}
-              download={a.name}
-              title="Last ned"
-              className="shrink-0 rounded-lg p-2 text-[#bbb] transition-colors hover:bg-white hover:text-[#8b5cf6]"
-            >
-              <Download className="w-4 h-4" />
-            </a>
-            <button onClick={() => slettFil(a)} title="Slett vedlegg" className="shrink-0 rounded-lg p-2 text-[#ccc] transition-colors hover:bg-rose-50 hover:text-rose-600">
-              <Trash2 className="w-4 h-4" />
-            </button>
-          </div>
-        ))}
+          );
+        })}
         {!vedlegg.length && !lasterOpp && <p className="text-[12.5px] text-[#bbb]">Ingen vedlegg ennå.</p>}
       </div>
+      {viserIdx !== null && (
+        <FilViser filer={vedlegg} index={viserIdx} apiKey={apiKey} onClose={() => setViserIdx(null)} onIndex={setViserIdx} />
+      )}
       {lasterOpp ? (
         <div className="mt-2.5" data-testid="attachment-progress">
           <div className="flex items-center gap-2 text-[12.5px] font-medium text-[#8b5cf6]">

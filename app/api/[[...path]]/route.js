@@ -3305,6 +3305,24 @@ async function handleRoute(request, { params }) {
         // Varsle ansvarlig + følgere om statusendringen (in-app).
         const berort = new Set([eksisterende.assigneeId, ...(eksisterende.followers || [])].filter(Boolean));
         for (const uid of berort) varselKo.push({ userId: uid, type: 'status', text: `${actor} flyttet saken til ${TASK_STATUS_LABEL[body.status]}` });
+        // E-post til de samme (kategori 'status' — kan skrus av per bruker i
+        // varselinnstillingene). Aldri til aktøren selv. notify:false skrur av.
+        if (berort.size && body.notify !== false) {
+          const persStatus = await db.collection('admin_users').find({ id: { $in: [...berort] } }, { projection: { _id: 0, id: 1, name: 1, email: 1, notifPrefs: 1 } }).toArray();
+          for (const m of persStatus) {
+            if (!m.email) continue;
+            if (actorId && m.id === actorId) continue;
+            if (String(m.name || '').toLowerCase() === actor.toLowerCase()) continue;
+            const ok = await taskEpost({
+              member: m,
+              task: { ...eksisterende, ...set },
+              heading: 'Statusendring',
+              intro: `${actor} flyttet saken fra ${TASK_STATUS_LABEL[eksisterende.status] || 'Ny'} til ${TASK_STATUS_LABEL[body.status]}.`,
+              kategori: 'status',
+            });
+            if (ok) logg.push(`E-postvarsel sendt til ${m.name} (statusendring)`);
+          }
+        }
       }
       if (body.priority !== undefined && [1, 2, 3].includes(Number(body.priority)) && Number(body.priority) !== eksisterende.priority) {
         set.priority = Number(body.priority);
@@ -3487,6 +3505,7 @@ async function handleRoute(request, { params }) {
       // E-postvarsel til nevnte med e-post (aldri forfatteren selv). notify:false skrur av.
       const varslet = [];
       const nevntIds = new Set(nevnt.map((m) => m.id));
+      const komMottakere = new Set([task.assigneeId, ...(task.followers || [])].filter(Boolean));
       if (nevnt.length && body.notify !== false) {
         const utdrag = mdTilRen(text, 180);
         for (const m of nevnt) {
@@ -3495,16 +3514,28 @@ async function handleRoute(request, { params }) {
           const ok = await taskEpost({ member: m, task, heading: 'Du ble nevnt i en sak', intro: `${author} nevnte deg i en kommentar: «${utdrag}»`, kategori: 'nevnt' });
           if (ok) varslet.push(m.name);
         }
-        if (varslet.length) {
-          await db.collection('tasks').updateOne({ id: path[2] }, { $push: { activity: { at: naa, actor: 'System', text: `E-postvarsel sendt til ${varslet.join(', ')} (nevnt i kommentar)` } } });
+      }
+      // E-post til ansvarlig + følgere ved ny kommentar (kategori 'kommentar' —
+      // kan skrus av per bruker i varselinnstillingene). Nevnte fikk allerede
+      // «nevnt»-e-post; forfatteren varsles aldri om egne kommentarer.
+      if (komMottakere.size && body.notify !== false) {
+        const utdragKom = mdTilRen(text, 180);
+        for (const m of allePersoner) {
+          if (!komMottakere.has(m.id) || nevntIds.has(m.id) || !m.email) continue;
+          if (actorId && m.id === actorId) continue;
+          if (String(m.name || '').toLowerCase() === author.toLowerCase()) continue;
+          const ok = await taskEpost({ member: m, task, heading: 'Ny kommentar', intro: `${author} kommenterte: «${utdragKom}»`, kategori: 'kommentar' });
+          if (ok) varslet.push(m.name);
         }
+      }
+      if (varslet.length) {
+        await db.collection('tasks').updateOne({ id: path[2] }, { $push: { activity: { at: naa, actor: 'System', text: `E-postvarsel sendt til ${varslet.join(', ')} (kommentar)` } } });
       }
       // In-app-varsler: nevnte får 'nevnt'; ansvarlig + følgere (som ikke alt er
       // nevnt, og ikke forfatteren) får 'kommentar'. Hopper alltid over aktøren.
       for (const m of nevnt) {
         await varsle(db, m.id, actorId, { type: 'nevnt', taskId: task.id, taskTitle: task.title, actor: author, text: `${author} nevnte deg i en kommentar` });
       }
-      const komMottakere = new Set([task.assigneeId, ...(task.followers || [])].filter(Boolean));
       for (const uid of komMottakere) {
         if (nevntIds.has(uid)) continue; // fikk allerede 'nevnt'
         await varsle(db, uid, actorId, { type: 'kommentar', taskId: task.id, taskTitle: task.title, actor: author, text: `${author} kommenterte saken` });
@@ -3660,12 +3691,19 @@ async function handleRoute(request, { params }) {
       const fil = await db.collection('task_files').findOne({ id: path[2] });
       if (!fil) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
       const buf = Buffer.from(fil.data || '', 'base64');
+      // ?inline=1 → vis i nettleser (PDF-viser, bilder, video). KUN for trygge
+      // typer — HTML/SVG kan inneholde script og skal aldri serveres inline
+      // under vårt domene (XSS). Alt annet forblir nedlasting.
+      const INLINE_TRYGG = /^(application\/pdf|image\/(png|jpe?g|gif|webp|avif|heic|heif)|video\/(mp4|webm|quicktime)|audio\/(mpeg|mp3|wav|ogg|aac|mp4|x-m4a|flac)|text\/plain)$/i;
+      const uFil = new URL(request.url);
+      const inline = uFil.searchParams.get('inline') === '1' && INLINE_TRYGG.test(String(fil.type || ''));
       return new NextResponse(buf, {
         status: 200,
         headers: {
           'Content-Type': fil.type || 'application/octet-stream',
           'Content-Length': String(buf.length),
-          'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent(fil.name || 'fil')}`,
+          'Content-Disposition': `${inline ? 'inline' : 'attachment'}; filename*=UTF-8''${encodeURIComponent(fil.name || 'fil')}`,
+          'X-Content-Type-Options': 'nosniff',
           'Cache-Control': 'private, max-age=3600',
         },
       });
