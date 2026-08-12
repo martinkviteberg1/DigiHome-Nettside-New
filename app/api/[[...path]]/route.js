@@ -3340,7 +3340,7 @@ async function handleRoute(request, { params }) {
       if (sesjonB && sesjonB.sub) {
         try { const uDoc = await db.collection('admin_users').findOne({ id: sesjonB.sub }, { projection: { name: 1 } }); navnB = (uDoc && uDoc.name) || sesjonB.email || ''; } catch (e) {}
       }
-      const lagret = await lagreBudsjett(db, { year: yearB, inntekter: bodyB.inntekter, kostnader: bodyB.kostnader, notat: bodyB.notat, updatedBy: navnB });
+      const lagret = await lagreBudsjett(db, { year: yearB, inntekter: bodyB.inntekter, kostnader: bodyB.kostnader, egnePoster: bodyB.egnePoster, notat: bodyB.notat, updatedBy: navnB });
       return cors(NextResponse.json({ ok: true, ...lagret }));
     }
     // Forslag fra porteføljen: leieforhold-radene (cache-vennlig) + dagens

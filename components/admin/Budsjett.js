@@ -14,7 +14,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Target, Loader2, Save, Sparkles, ChevronLeft, ChevronRight, ChevronsRight,
-  AlertTriangle, X, TrendingUp, Wallet, Flag, Check, BarChart3,
+  AlertTriangle, X, TrendingUp, Wallet, Flag, Check, BarChart3, Plus, Trash2,
 } from 'lucide-react';
 import { ComposedChart, Bar, XAxis, YAxis, Tooltip, ReferenceLine, ResponsiveContainer, Cell } from 'recharts';
 
@@ -72,6 +72,9 @@ export default function Budsjett({ apiKey, readOnly = false }) {
   const [lagretNaa, setLagretNaa] = useState(false);
   const [fokusCelle, setFokusCelle] = useState(''); // 'inn|kat|m' — viser råtall kun der
   const [mobilMnd, setMobilMnd] = useState(iAar === year ? naaMnd : 0); // mobil: én måned om gangen
+  const [egnePoster, setEgnePoster] = useState([]); // brukerdefinerte budsjettlinjer
+  // «+ Ny post»-modal: navn, beløp og frekvens genererer 12-månedersserien
+  const [nyPost, setNyPost] = useState(null); // null | {type,navn,belop,frekvens,fra,til,mapTil}
 
   // «Foreslå fra porteføljen»
   const [seedOpen, setSeedOpen] = useState(false);
@@ -90,6 +93,7 @@ export default function Budsjett({ apiKey, readOnly = false }) {
       setData(j);
       setInntekter(j.inntekter || {});
       setKostnader(j.kostnader || {});
+      setEgnePoster(Array.isArray(j.egnePoster) ? j.egnePoster : []);
       setDirty(false);
     } catch (e) { setFeil(e.message); setData(null); }
     setLaster(false);
@@ -131,7 +135,7 @@ export default function Budsjett({ apiKey, readOnly = false }) {
     try {
       const r = await fetch(`/api/admin/budsjett?key=${encodeURIComponent(apiKey)}`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ year, inntekter, kostnader }),
+        body: JSON.stringify({ year, inntekter, kostnader, egnePoster }),
       });
       const j = await r.json();
       if (!r.ok || !j.ok) throw new Error(j.error || 'Kunne ikke lagre');
@@ -140,7 +144,7 @@ export default function Budsjett({ apiKey, readOnly = false }) {
       setLagretNaa(true); setTimeout(() => setLagretNaa(false), 2500);
     } catch (e) { setFeil(e.message); }
     setLagrer(false);
-  }, [apiKey, year, inntekter, kostnader]);
+  }, [apiKey, year, inntekter, kostnader, egnePoster]);
 
   // ⌘S / Ctrl+S lagrer — som i verktøyene folk er vant til.
   useEffect(() => {
@@ -187,9 +191,23 @@ export default function Budsjett({ apiKey, readOnly = false }) {
   const katInn = data?.kategorier?.inntekter || Object.keys(inntekter);
   const katKost = data?.kategorier?.kostnader || Object.keys(kostnader);
   const faktisk = data?.faktisk || { honorar: [], kostnaderPerKategori: {}, kostnaderSum: [] };
+  const egneInn = egnePoster.filter((p) => p.type === 'inn');
+  const egneKost = egnePoster.filter((p) => p.type === 'kost');
 
-  const budInn = useMemo(() => sumPerMnd(inntekter), [inntekter]);
-  const budKost = useMemo(() => sumPerMnd(kostnader), [kostnader]);
+  const budInn = useMemo(() => {
+    const ut = sumPerMnd(inntekter);
+    for (const p of egneInn) for (let m = 0; m < 12; m++) ut[m] += Number(p.verdier?.[m]) || 0;
+    return ut;
+  }, [inntekter, egnePoster]); // eslint-disable-line react-hooks/exhaustive-deps
+  const budKost = useMemo(() => {
+    const ut = sumPerMnd(kostnader);
+    for (const p of egneKost) for (let m = 0; m < 12; m++) ut[m] += Number(p.verdier?.[m]) || 0;
+    return ut;
+  }, [kostnader, egnePoster]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Egne poster koblet mot en Økonomi-kategori: budsjettet deres telles med i
+  // avviket for den kategoriraden (ellers vises de kun i sum-radene).
+  const mapTillegg = (type, kat, m) => egnePoster.reduce((s, p) => s + (p.type === type && p.mapTil === kat ? (Number(p.verdier?.[m]) || 0) : 0), 0);
   const budRes12 = MND.map((_, m) => budInn[m] - budKost[m]);
   const fakRes12 = MND.map((_, m) => (faktisk.honorar?.[m] != null ? faktisk.honorar[m] - (faktisk.kostnaderSum?.[m] || 0) : null));
 
@@ -215,14 +233,73 @@ export default function Budsjett({ apiKey, readOnly = false }) {
   const harGrafTall = budRes12.some((x) => x !== 0) || fakRes12.some((x) => x != null && x !== 0);
   const erNaa = (m) => year === iAar && m === naaMnd;
 
-  // Radindeks for piltast-navigasjon (alle redigerbare rader i rekkefølge).
+  // Radindeks for piltast-navigasjon (alle redigerbare rader i visningsrekkefølge).
   const radIndeks = useMemo(() => {
     const map = {};
     let i = 0;
     for (const k of katInn) map[`inn|${k}`] = i++;
+    for (const p of egnePoster.filter((x) => x.type === 'inn')) map[`egen|${p.id}`] = i++;
     for (const k of katKost) map[`kost|${k}`] = i++;
+    for (const p of egnePoster.filter((x) => x.type === 'kost')) map[`egen|${p.id}`] = i++;
     return map;
-  }, [katInn, katKost]);
+  }, [katInn, katKost, egnePoster]);
+
+  /* ── Egne poster: opprett/endre/slett ── */
+
+  const settEgenCelle = (id, m, verdi) => {
+    if (readOnly) return;
+    const n = parseInt(String(verdi).replace(/[^\d]/g, ''), 10);
+    setEgnePoster((prev) => prev.map((p) => {
+      if (p.id !== id) return p;
+      const verdier = [...(p.verdier || Array(12).fill(0))];
+      verdier[m] = Number.isFinite(n) ? n : 0;
+      return { ...p, verdier };
+    }));
+    setDirty(true);
+  };
+
+  const omdopEgen = (id, navn) => {
+    setEgnePoster((prev) => prev.map((p) => (p.id === id ? { ...p, navn: navn.slice(0, 60) } : p)));
+    setDirty(true);
+  };
+
+  const slettEgen = (id) => {
+    setEgnePoster((prev) => prev.filter((p) => p.id !== id));
+    setDirty(true);
+  };
+
+  // Frekvens → 12-månedersserie. «Årlig» = ett beløp i valgt måned (samme som
+  // engangs innenfor ett år, men beholdes som metadata for neste års budsjett).
+  const byggVerdier = ({ belop, frekvens, fra, til }) => {
+    const v = Array(12).fill(0);
+    const b = Math.round(Number(String(belop).replace(/[^\d]/g, '')) || 0);
+    const f = Math.min(11, Math.max(0, fra));
+    const t = Math.min(11, Math.max(f, til));
+    if (frekvens === 'engangs' || frekvens === 'arlig') v[f] = b;
+    else if (frekvens === 'manedlig') { for (let m = f; m <= t; m++) v[m] = b; }
+    else if (frekvens === 'kvartalsvis') { for (let m = f; m <= t; m += 3) v[m] = b; }
+    return v;
+  };
+
+  const aapneNyPost = (type) => setNyPost({
+    type, navn: '', belop: '', frekvens: 'manedlig',
+    fra: year === iAar ? naaMnd : 0, til: 11, mapTil: '',
+  });
+
+  const leggTilPost = () => {
+    if (!nyPost || !nyPost.navn.trim()) return;
+    const post = {
+      id: `ep-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      type: nyPost.type,
+      navn: nyPost.navn.trim().slice(0, 60),
+      frekvens: nyPost.frekvens,
+      mapTil: nyPost.mapTil || null,
+      verdier: byggVerdier(nyPost),
+    };
+    setEgnePoster((prev) => [...prev, post]);
+    setDirty(true);
+    setNyPost(null);
+  };
 
   const tastNav = (e, r, c) => {
     const gaa = (nr, nc) => {
@@ -246,10 +323,11 @@ export default function Budsjett({ apiKey, readOnly = false }) {
       const f = type === 'inn'
         ? (kat === katInn[0] ? faktisk.honorar?.[m] : null)
         : faktisk.kostnaderPerKategori?.[kat]?.[m];
+      const budMedMap = v + mapTillegg(type, kat, m); // koblede egne poster teller med
       return (
         <td key={m} className={`px-1 py-1.5 text-right ${naaBg}`}>
           <div className="text-[12px] tabular-nums text-[#333]">{f != null ? tall(f) : <span className="text-[#d8d4ce]">{v ? tall(v) : '—'}</span>}</div>
-          <div className="h-[13px] leading-[13px]"><Avvik faktisk={f} budsjett={v} inverter={type === 'kost'} /></div>
+          <div className="h-[13px] leading-[13px]"><Avvik faktisk={f} budsjett={budMedMap} inverter={type === 'kost'} /></div>
         </td>
       );
     }
@@ -302,6 +380,94 @@ export default function Budsjett({ apiKey, readOnly = false }) {
       </tr>
     );
   };
+
+  /* Egen post-rad: inline-omdøping, frekvens-/koblings-chip og sletting. */
+  const rEgenRad = (p) => {
+    const s = sum12(p.verdier);
+    const r = radIndeks[`egen|${p.id}`];
+    const frekvensLabel = { engangs: 'engangs', manedlig: 'mnd', kvartalsvis: 'kvartal', arlig: 'årlig' }[p.frekvens] || '';
+    return (
+      <tr key={p.id} className="group border-b border-black/[0.03] last:border-b-0 hover:bg-[#fbfaf8]" data-testid={`budsjett-egen-rad-${p.id}`}>
+        <td className="sticky left-0 z-10 bg-white px-3 py-1.5 group-hover:bg-[#fbfaf8]">
+          <div className="flex items-center gap-1.5">
+            <span className="h-[5px] w-[5px] shrink-0 rounded-full bg-[#8b5cf6]/50" title="Egen post" />
+            {readOnly ? (
+              <span className="truncate text-[12.5px] text-[#444]">{p.navn}</span>
+            ) : (
+              <input
+                value={p.navn}
+                onChange={(e) => omdopEgen(p.id, e.target.value)}
+                className="w-full min-w-0 bg-transparent text-[12.5px] text-[#444] outline-none placeholder:text-[#d8d4ce] focus:text-[#111]"
+                placeholder="Navn på post"
+              />
+            )}
+            <span className="shrink-0 rounded bg-[#f3f2f0] px-1 py-px text-[9px] font-bold uppercase tracking-wide text-[#a3a3a3]">{frekvensLabel}</span>
+            {p.mapTil && <span className="hidden shrink-0 rounded bg-[#f4f0fb] px-1 py-px text-[9px] font-bold text-[#8b5cf6] xl:inline" title={`Avviket telles mot ${p.mapTil}`}>→ {p.mapTil}</span>}
+            {!readOnly && mode === 'budsjett' && (
+              <button
+                onClick={() => { if (window.confirm(`Slette posten «${p.navn}»?`)) slettEgen(p.id); }}
+                title="Slett posten"
+                data-testid={`budsjett-egen-slett-${p.id}`}
+                className="shrink-0 rounded p-0.5 text-[#d0ccc5] opacity-0 transition-all hover:bg-rose-50 hover:text-rose-500 group-hover:opacity-100"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+        </td>
+        {MND.map((_, m) => {
+          const v = Number(p.verdier?.[m]) || 0;
+          const naaBg = erNaa(m) ? 'bg-[#f8f5ff]' : '';
+          if (mode === 'avvik') {
+            return (
+              <td key={m} className={`px-1 py-1.5 text-right ${naaBg}`}>
+                <div className="text-[12px] tabular-nums text-[#b5b0a8]">{v ? tall(v) : '—'}</div>
+                <div className="h-[13px] leading-[13px] text-[10px] text-[#d8d4ce]" title={p.mapTil ? `Inngår i avviket for ${p.mapTil}` : 'Ingen automatiske faktiske tall — telles i sum-radene'}>{v ? (p.mapTil ? '↦' : '·') : ''}</div>
+              </td>
+            );
+          }
+          if (readOnly) {
+            return <td key={m} className={`px-2 py-2 text-right text-[12px] tabular-nums text-[#333] ${naaBg}`}>{v ? tall(v) : <span className="text-[#d8d4ce]">·</span>}</td>;
+          }
+          const id = `egen|${p.id}|${m}`;
+          const iFokus = fokusCelle === id;
+          return (
+            <td key={m} className={`p-0.5 ${naaBg}`}>
+              <input
+                value={iFokus ? (v ? String(v) : '') : (v ? tall(v) : '')}
+                onChange={(e) => settEgenCelle(p.id, m, e.target.value)}
+                onFocus={(e) => { setFokusCelle(id); try { e.target.select(); } catch (_) {} }}
+                onBlur={() => setFokusCelle('')}
+                onKeyDown={(e) => tastNav(e, r, m)}
+                placeholder="0"
+                inputMode="numeric"
+                data-r={r}
+                data-c={m}
+                data-testid={`budsjett-egen-celle-${p.id}-${m}`}
+                className="h-8 w-full min-w-[64px] rounded-md border border-transparent bg-transparent px-1.5 text-right text-[12px] tabular-nums text-[#1a1a1a] outline-none transition-all placeholder:text-[#e0dcd6] hover:border-black/[0.07] hover:bg-white focus:border-[#8b5cf6]/45 focus:bg-white focus:shadow-[0_2px_12px_rgba(139,92,246,0.10)] focus:ring-2 focus:ring-[#8b5cf6]/12"
+              />
+            </td>
+          );
+        })}
+        <td className="px-3 py-1.5 text-right text-[12px] font-semibold tabular-nums text-[#1a1a1a]">{s ? tall(s) : <span className="text-[#d8d4ce]">·</span>}</td>
+      </tr>
+    );
+  };
+
+  /* «+ Ny post»-rad nederst i hver seksjon (kun admin i budsjett-modus). */
+  const rNyPostRad = (type) => (
+    <tr key={`ny-${type}`} className="border-b border-black/[0.03]">
+      <td colSpan={14} className="px-3 py-1">
+        <button
+          onClick={() => aapneNyPost(type)}
+          data-testid={`budsjett-ny-post-${type}`}
+          className="flex items-center gap-1.5 rounded-md px-1.5 py-1 text-[11.5px] font-semibold text-[#c2beb8] transition-all hover:bg-[#f4f0fb] hover:text-[#8b5cf6]"
+        >
+          <Plus className="h-3.5 w-3.5" /> Ny post
+        </button>
+      </td>
+    </tr>
+  );
 
   const rSumRad = (label, serie, faktiskSerie, { negativRod = false, inverter = false } = {}) => (
     <tr key={`sum-${label}`} className="border-b border-black/[0.06] bg-[#fafaf8]">
@@ -375,6 +541,51 @@ export default function Budsjett({ apiKey, readOnly = false }) {
           placeholder="0"
           inputMode="numeric"
           data-testid={`budsjett-mobil-${type}-${kat.replace(/[^a-zA-Z]/g, '')}`}
+          className="h-9 w-[118px] shrink-0 rounded-lg border border-black/[0.07] bg-white px-2.5 text-right text-[15px] tabular-nums text-[#1a1a1a] outline-none transition-all placeholder:text-[#e0dcd6] focus:border-[#8b5cf6]/45 focus:ring-2 focus:ring-[#8b5cf6]/12"
+        />
+      </div>
+    );
+  };
+
+  /* Egen post på mobil: verdi for valgt måned + slett. */
+  const rEgenMobilRad = (p) => {
+    const v = Number(p.verdier?.[mobilMnd]) || 0;
+    if (mode === 'avvik' || readOnly) {
+      return (
+        <div key={p.id} className="flex items-center justify-between gap-3 px-4 py-2.5">
+          <span className="flex min-w-0 items-center gap-1.5">
+            <span className="h-[5px] w-[5px] shrink-0 rounded-full bg-[#8b5cf6]/50" />
+            <span className="truncate text-[13px] text-[#444]">{p.navn}</span>
+          </span>
+          <span className="flex items-baseline gap-2">
+            <span className={`text-[13px] font-semibold tabular-nums ${mode === 'avvik' ? 'text-[#b5b0a8]' : 'text-[#1a1a1a]'}`}>{v ? tall(v) : mode === 'avvik' ? '—' : <span className="text-[#d8d4ce]">·</span>}</span>
+            {mode === 'avvik' && <span className="w-[54px] text-right text-[10px] text-[#d8d4ce]">{v && p.mapTil ? '↦' : ''}</span>}
+          </span>
+        </div>
+      );
+    }
+    const id = `egen|${p.id}|mobil`;
+    const iFokus = fokusCelle === id;
+    return (
+      <div key={p.id} className="flex items-center justify-between gap-3 px-4 py-2">
+        <span className="flex min-w-0 items-center gap-1.5">
+          <span className="h-[5px] w-[5px] shrink-0 rounded-full bg-[#8b5cf6]/50" />
+          <span className="truncate text-[13px] text-[#444]">{p.navn}</span>
+          <button
+            onClick={() => { if (window.confirm(`Slette posten «${p.navn}»?`)) slettEgen(p.id); }}
+            className="shrink-0 rounded p-0.5 text-[#d8d4ce] active:text-rose-500"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+        </span>
+        <input
+          value={iFokus ? (v ? String(v) : '') : (v ? tall(v) : '')}
+          onChange={(e) => settEgenCelle(p.id, mobilMnd, e.target.value)}
+          onFocus={(e) => { setFokusCelle(id); try { e.target.select(); } catch (_) {} }}
+          onBlur={() => setFokusCelle('')}
+          placeholder="0"
+          inputMode="numeric"
+          data-testid={`budsjett-egen-mobil-${p.id}`}
           className="h-9 w-[118px] shrink-0 rounded-lg border border-black/[0.07] bg-white px-2.5 text-right text-[15px] tabular-nums text-[#1a1a1a] outline-none transition-all placeholder:text-[#e0dcd6] focus:border-[#8b5cf6]/45 focus:ring-2 focus:ring-[#8b5cf6]/12"
         />
       </div>
@@ -537,9 +748,13 @@ export default function Budsjett({ apiKey, readOnly = false }) {
                 <tbody>
                   {rSeksjon('Inntekter', '#1f7a45', '#f4f9f5', sum12(budInn))}
                   {katInn.map((kat) => rRad('inn', kat))}
+                  {egneInn.map((p) => rEgenRad(p))}
+                  {!readOnly && mode === 'budsjett' && rNyPostRad('inn')}
                   {rSumRad('Sum inntekter', budInn, faktisk.honorar)}
                   {rSeksjon('Kostnader', '#9a6b1c', '#fdf6ec', sum12(budKost))}
                   {katKost.map((kat) => rRad('kost', kat))}
+                  {egneKost.map((p) => rEgenRad(p))}
+                  {!readOnly && mode === 'budsjett' && rNyPostRad('kost')}
                   {rSumRad('Sum kostnader', budKost, faktisk.kostnaderSum, { inverter: true })}
                   {rSumRad('Resultat', budRes12, fakRes12, { negativRod: true })}
                 </tbody>
@@ -569,7 +784,13 @@ export default function Budsjett({ apiKey, readOnly = false }) {
               </div>
               <div className="divide-y divide-black/[0.03]">
                 {katInn.map((kat) => rMobilRad('inn', kat))}
+                {egneInn.map((p) => rEgenMobilRad(p))}
               </div>
+              {!readOnly && mode === 'budsjett' && (
+                <button onClick={() => aapneNyPost('inn')} className="flex w-full items-center gap-1.5 px-4 py-2 text-[12px] font-semibold text-[#c2beb8] active:text-[#8b5cf6]">
+                  <Plus className="h-3.5 w-3.5" /> Ny post
+                </button>
+              )}
               {rMobilSum('Sum inntekter', budInn, faktisk.honorar)}
               <div className="bg-[#fdf6ec] px-4 py-1.5">
                 <div className="flex items-baseline justify-between">
@@ -579,7 +800,13 @@ export default function Budsjett({ apiKey, readOnly = false }) {
               </div>
               <div className="divide-y divide-black/[0.03]">
                 {katKost.map((kat) => rMobilRad('kost', kat))}
+                {egneKost.map((p) => rEgenMobilRad(p))}
               </div>
+              {!readOnly && mode === 'budsjett' && (
+                <button onClick={() => aapneNyPost('kost')} className="flex w-full items-center gap-1.5 px-4 py-2 text-[12px] font-semibold text-[#c2beb8] active:text-[#8b5cf6]">
+                  <Plus className="h-3.5 w-3.5" /> Ny post
+                </button>
+              )}
               {rMobilSum('Sum kostnader', budKost, faktisk.kostnaderSum, { inverter: true })}
               <div className="border-t border-black/[0.06]">
                 {rMobilSum(`Resultat · ${MND[mobilMnd]}`, budRes12, fakRes12, { negativRod: true })}
@@ -592,6 +819,131 @@ export default function Budsjett({ apiKey, readOnly = false }) {
       <p className="mt-4 text-[11.5px] text-[#b5b5b5]">
         Alle tall i kr eks. mva. {!readOnly && 'Piltaster/Enter flytter mellom celler · ⌘S lagrer. '}«Mot faktisk» henter tallene automatisk fra Økonomi: honorar fra signerte leiekontrakter og løpende kostnader per kategori. Faktiske inntekter føres mot «{katInn[0] || 'Honorar (forvaltning)'}» — oppstartshonorar og annen inntekt følges foreløpig ikke automatisk.
       </p>
+
+      {/* ── «Ny post»-modal: frekvens genererer 12-månedersserien ── */}
+      {nyPost && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4 backdrop-blur-[2px]" onClick={() => setNyPost(null)}>
+          <div className="w-full max-w-[440px] rounded-2xl bg-white p-5 shadow-[0_24px_80px_rgba(0,0,0,0.25)]" onClick={(e) => e.stopPropagation()} data-testid="budsjett-ny-post-modal">
+            <div className="flex items-center gap-2">
+              <span className={`flex h-9 w-9 items-center justify-center rounded-xl ${nyPost.type === 'inn' ? 'bg-[#e7f4ec]' : 'bg-[#fdf3e0]'}`}>
+                <Plus className={`h-4 w-4 ${nyPost.type === 'inn' ? 'text-[#1f7a45]' : 'text-[#9a6b1c]'}`} />
+              </span>
+              <div className="min-w-0">
+                <h3 className="text-[16px] font-bold text-[#0a0a0a]" style={heading}>Ny {nyPost.type === 'inn' ? 'inntektspost' : 'kostnadspost'}</h3>
+                <p className="text-[11.5px] text-[#999]">Frekvensen fyller ut månedene — du kan justere hver celle etterpå</p>
+              </div>
+              <button onClick={() => setNyPost(null)} className="ml-auto rounded-lg p-1.5 text-[#bbb] hover:bg-[#f3f2f0] hover:text-[#555]"><X className="h-4 w-4" /></button>
+            </div>
+
+            <div className="mt-4 space-y-3">
+              <label className="block">
+                <span className="mb-1 block text-[10.5px] font-bold uppercase tracking-[0.06em] text-[#a3a3a3]">Navn</span>
+                <input
+                  value={nyPost.navn}
+                  onChange={(e) => setNyPost((p) => ({ ...p, navn: e.target.value }))}
+                  onKeyDown={(e) => { if (e.key === 'Enter') leggTilPost(); }}
+                  placeholder={nyPost.type === 'inn' ? 'F.eks. Sponsorinntekt' : 'F.eks. Julebord, konsulentbistand …'}
+                  autoFocus
+                  data-testid="budsjett-ny-post-navn"
+                  className="h-10 w-full rounded-lg border border-black/[0.08] bg-white px-3 text-[13.5px] outline-none transition-all focus:border-[#8b5cf6]/45 focus:ring-2 focus:ring-[#8b5cf6]/12"
+                />
+              </label>
+
+              <div className="grid grid-cols-2 gap-2.5">
+                <label className="block">
+                  <span className="mb-1 block text-[10.5px] font-bold uppercase tracking-[0.06em] text-[#a3a3a3]">Beløp</span>
+                  <input
+                    value={nyPost.belop}
+                    onChange={(e) => setNyPost((p) => ({ ...p, belop: e.target.value.replace(/[^\d]/g, '') }))}
+                    placeholder="0"
+                    inputMode="numeric"
+                    data-testid="budsjett-ny-post-belop"
+                    className="h-10 w-full rounded-lg border border-black/[0.08] bg-white px-3 text-[13.5px] tabular-nums outline-none transition-all focus:border-[#8b5cf6]/45 focus:ring-2 focus:ring-[#8b5cf6]/12"
+                  />
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-[10.5px] font-bold uppercase tracking-[0.06em] text-[#a3a3a3]">Kobles mot avvik <span className="normal-case text-[#c2beb8]">(valgfritt)</span></span>
+                  <select
+                    value={nyPost.mapTil}
+                    onChange={(e) => setNyPost((p) => ({ ...p, mapTil: e.target.value }))}
+                    data-testid="budsjett-ny-post-map"
+                    className="h-10 w-full rounded-lg border border-black/[0.08] bg-white px-2.5 text-[13px] outline-none transition-all focus:border-[#8b5cf6]/45"
+                  >
+                    <option value="">Ingen kobling</option>
+                    {(nyPost.type === 'inn' ? katInn : katKost).map((k) => <option key={k} value={k}>{k}</option>)}
+                  </select>
+                </label>
+              </div>
+
+              <div>
+                <span className="mb-1 block text-[10.5px] font-bold uppercase tracking-[0.06em] text-[#a3a3a3]">Frekvens</span>
+                <div className="flex flex-wrap gap-1">
+                  {[['manedlig', 'Månedlig'], ['kvartalsvis', 'Kvartalsvis'], ['engangs', 'Engangs'], ['arlig', 'Årlig']].map(([k, l]) => (
+                    <button
+                      key={k}
+                      onClick={() => setNyPost((p) => ({ ...p, frekvens: k }))}
+                      data-testid={`budsjett-ny-post-frekvens-${k}`}
+                      className={`h-8 rounded-full px-3 text-[12px] font-semibold transition-all ${nyPost.frekvens === k ? 'bg-[#0a0a0a] text-white' : 'bg-[#f3f2f0] text-[#999] hover:text-[#555]'}`}
+                    >
+                      {l}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2.5">
+                <label className="block">
+                  <span className="mb-1 block text-[10.5px] font-bold uppercase tracking-[0.06em] text-[#a3a3a3]">{['engangs', 'arlig'].includes(nyPost.frekvens) ? 'Måned' : 'Fra måned'}</span>
+                  <select
+                    value={nyPost.fra}
+                    onChange={(e) => setNyPost((p) => ({ ...p, fra: parseInt(e.target.value, 10) }))}
+                    data-testid="budsjett-ny-post-fra"
+                    className="h-10 w-full rounded-lg border border-black/[0.08] bg-white px-2.5 text-[13px] outline-none transition-all focus:border-[#8b5cf6]/45"
+                  >
+                    {MND.map((m, i) => <option key={m} value={i}>{m} {year}</option>)}
+                  </select>
+                </label>
+                {['manedlig', 'kvartalsvis'].includes(nyPost.frekvens) && (
+                  <label className="block">
+                    <span className="mb-1 block text-[10.5px] font-bold uppercase tracking-[0.06em] text-[#a3a3a3]">Til måned</span>
+                    <select
+                      value={nyPost.til}
+                      onChange={(e) => setNyPost((p) => ({ ...p, til: parseInt(e.target.value, 10) }))}
+                      data-testid="budsjett-ny-post-til"
+                      className="h-10 w-full rounded-lg border border-black/[0.08] bg-white px-2.5 text-[13px] outline-none transition-all focus:border-[#8b5cf6]/45"
+                    >
+                      {MND.map((m, i) => <option key={m} value={i} disabled={i < nyPost.fra}>{m} {year}</option>)}
+                    </select>
+                  </label>
+                )}
+              </div>
+
+              {/* Forhåndsvisning av serien */}
+              {Number(nyPost.belop) > 0 && (
+                <div className="rounded-xl bg-[#fafaf8] px-3.5 py-2.5 text-[12px] text-[#777]">
+                  {(() => {
+                    const v = byggVerdier(nyPost);
+                    const antall = v.filter((x) => x > 0).length;
+                    return <>Fyller <b className="text-[#0a0a0a]">{antall} måned{antall === 1 ? '' : 'er'}</b> · sum <b className="tabular-nums text-[#0a0a0a]">{kr(sum12(v))}</b>/år{nyPost.mapTil ? <> · avvik telles mot <b className="text-[#8b5cf6]">{nyPost.mapTil}</b></> : ''}</>;
+                  })()}
+                </div>
+              )}
+            </div>
+
+            <div className="mt-4 flex items-center justify-end gap-2">
+              <button onClick={() => setNyPost(null)} className="h-9 rounded-full px-4 text-[12.5px] font-semibold text-[#999] hover:text-[#555]">Avbryt</button>
+              <button
+                onClick={leggTilPost}
+                disabled={!nyPost.navn.trim()}
+                data-testid="budsjett-ny-post-lagre"
+                className={`flex h-9 items-center gap-1.5 rounded-full px-4 text-[12.5px] font-semibold transition-all active:scale-[0.97] ${nyPost.navn.trim() ? 'bg-[#0a0a0a] text-white hover:bg-black/85' : 'bg-[#f3f2f0] text-[#c2beb8]'}`}
+              >
+                <Plus className="h-4 w-4" /> Legg til post
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── «Foreslå fra porteføljen»-modal ── */}
       {seedOpen && (
