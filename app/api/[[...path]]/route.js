@@ -3146,11 +3146,11 @@ async function handleRoute(request, { params }) {
       }
       if (body.color !== undefined && /^#[0-9a-fA-F]{6}$/.test(String(body.color || ''))) set.color = body.color;
       if (body.components !== undefined) {
-        // Komponenter: [{id?, name}] — nye rader får id, tomme fjernes, maks 30.
+        // Komponenter: [{id?, name}] — nye rader får id, tomme fjernes, maks 50.
         set.components = (Array.isArray(body.components) ? body.components : [])
           .map((c) => ({ id: (c && c.id) ? String(c.id) : uuidv4(), name: String((c && c.name) || '').trim().slice(0, 60) }))
           .filter((c) => c.name)
-          .slice(0, 30);
+          .slice(0, 50);
       }
       if (!Object.keys(set).length) return cors(NextResponse.json({ ok: false, error: 'Ingen endringer' }, { status: 400 }));
       const r = await db.collection('dev_products').updateOne({ id: path[2] }, { $set: set });
@@ -3200,11 +3200,21 @@ async function handleRoute(request, { params }) {
       const sevMapDi = { kritisk: 1, critical: 1, hoy: 1, 'høy': 1, high: 1, blocker: 1, normal: 2, medium: 2, lav: 3, low: 3, minor: 3 };
       const priDi = sevMapDi[String(body.severity || '').toLowerCase().trim()] || 2;
 
-      // Produkt «Forvalter-plattformen» — opprettes automatisk første gang.
+      // Produkt «Forvalter-plattformen» — opprettes automatisk første gang,
+      // ferdig seedet med plattformens KANONISKE modulliste (bro-avtalt 12.08)
+      // slik at komponentene er stabile fra dag én også i prod.
       await seedDevProducts(db);
       let prodDi = await db.collection('dev_products').findOne({ name: /forvalter/i }, { projection: { _id: 0 } });
       if (!prodDi) {
-        prodDi = { id: uuidv4(), name: 'Forvalter-plattformen', color: '#f59e0b', components: [], createdAt: new Date().toISOString() };
+        const kanoniskeModuler = [
+          'Oversikt', 'Operasjonssentral', 'Innboks', 'Reservasjoner', 'Kalender', 'Kanaler',
+          'Oppgaver', 'AI-assistent', 'Mine boliger', 'Inntekt', 'Eiendommer', 'Utleieprosesser',
+          'Leads', 'Innflytting', 'Leiekontrakter', 'Dokumenter', 'Saker', 'Oppdrag', 'Brukere',
+          'Leverandører', 'Driftshåndbok', 'Bildestudio', 'Analyse', 'Forvaltningsavtaler', 'Salg',
+          'Økonomi', 'Organisasjon', 'Superadmin', 'Profil', 'Mine annonser', 'DigiHome Pro',
+          'Forvalterportal',
+        ];
+        prodDi = { id: uuidv4(), name: 'Forvalter-plattformen', color: '#f59e0b', components: kanoniskeModuler.map((n) => ({ id: uuidv4(), name: n })), createdAt: new Date().toISOString() };
         await db.collection('dev_products').insertOne({ ...prodDi });
         delete prodDi._id;
       }
@@ -3216,7 +3226,7 @@ async function handleRoute(request, { params }) {
       if (modulDi) {
         const eksKompDi = (prodDi.components || []).find((c) => String(c.name).toLowerCase() === modulDi.toLowerCase());
         if (eksKompDi) kompIdDi = eksKompDi.id;
-        else if ((prodDi.components || []).length < 30) {
+        else if ((prodDi.components || []).length < 50) {
           const nyKompDi = { id: uuidv4(), name: modulDi };
           await db.collection('dev_products').updateOne({ id: prodDi.id }, { $push: { components: nyKompDi } });
           kompIdDi = nyKompDi.id;
@@ -3636,6 +3646,32 @@ async function handleRoute(request, { params }) {
             });
             if (ok) logg.push(`E-postvarsel sendt til ${m.name} (statusendring)`);
           }
+        }
+        // Innmeldte saker (fra Forvalter-plattformen): innmelderen får e-post
+        // når saken FULLFØRES — bro-avtalt v1-tilbakemelding (12.08). Sendes
+        // kun ved overgang til 'done', aldri ved gjenåpning/andre statuser.
+        if (body.status === 'done' && eksisterende.inbound && eksisterende.inbound.reporter && eksisterende.inbound.reporter.email && body.notify !== false) {
+          try {
+            const repEp = eksisterende.inbound.reporter;
+            const meldtDato = eksisterende.inbound.at ? new Date(eksisterende.inbound.at).toLocaleDateString('nb-NO', { day: 'numeric', month: 'long', year: 'numeric' }) : null;
+            const okRep = await sendHtmlEmail({
+              to: repEp.email,
+              subject: `Saken din er løst: ${eksisterende.title}`,
+              html: `<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:0 auto;color:#1a1a1a;">
+                <p style="font-size:15px;">Hei ${repEp.name || ''},</p>
+                <p style="font-size:15px;line-height:1.6;">Saken du meldte inn fra Forvalter-plattformen er nå <strong>løst</strong>:</p>
+                <div style="background:#f8f7f5;border-radius:12px;padding:16px 20px;margin:16px 0;">
+                  <p style="font-size:16px;font-weight:bold;margin:0;">${eksisterende.title}</p>
+                  ${meldtDato ? `<p style="font-size:13px;color:#888;margin:6px 0 0;">Meldt inn ${meldtDato}</p>` : ''}
+                </div>
+                <p style="font-size:15px;line-height:1.6;">Takk for at du sa fra — det hjelper oss å gjøre plattformen bedre. Opplever du fortsatt problemet, er det bare å melde inn på nytt.</p>
+                <p style="font-size:13px;color:#999;margin-top:24px;">Hilsen DigiHome-teamet</p>
+              </div>`,
+              text: `Hei ${repEp.name || ''}, saken du meldte inn («${eksisterende.title}») er nå løst. Takk for at du sa fra! Hilsen DigiHome-teamet`,
+              categories: ['sak-innmeldt-lost'],
+            });
+            if (okRep && okRep.ok) logg.push(`Innmelder ${repEp.name || repEp.email} varslet på e-post om at saken er løst`);
+          } catch (eRep) { /* e-postfeil skal aldri velte statusendringen */ }
         }
       }
       if (body.priority !== undefined && [1, 2, 3].includes(Number(body.priority)) && Number(body.priority) !== eksisterende.priority) {
