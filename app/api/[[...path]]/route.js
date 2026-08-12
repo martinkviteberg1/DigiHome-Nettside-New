@@ -1683,16 +1683,16 @@ async function deloppgaveEpost({ member, task, deloppgaver, actor }) {
     <div style="max-width:520px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;border:1px solid #eee">
       <div style="background:#0a0a0a;padding:18px 24px"><span style="color:#fff;font-size:15px;font-weight:700">DigiHome</span> <span style="color:rgba(255,255,255,0.45);font-size:12px;margin-left:6px">Saker · intern</span></div>
       <div style="padding:26px 24px">
-        <p style="margin:0;color:#8b5cf6;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em">${flertall ? 'Deloppgaver tildelt deg' : 'Deloppgave tildelt deg'}</p>
+        <p style="margin:0;color:#8b5cf6;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em">${flertall ? 'Sjekklistepunkter tildelt deg' : 'Sjekklistepunkt tildelt deg'}</p>
         <h2 style="margin:8px 0 4px;color:#0a0a0a;font-size:19px;line-height:1.3">${taskEsc(task.title)}</h2>
-        <p style="margin:0 0 14px;color:#666;font-size:13.5px;line-height:1.55">${taskEsc(actor)} ga deg ansvar for ${flertall ? `${deloppgaver.length} deloppgaver` : 'en deloppgave'} i denne saken.</p>
+        <p style="margin:0 0 14px;color:#666;font-size:13.5px;line-height:1.55">${taskEsc(actor)} ga deg ansvar for ${flertall ? `${deloppgaver.length} sjekklistepunkter` : 'et sjekklistepunkt'} i denne saken.</p>
         <table style="border-collapse:collapse;width:100%">${rader}</table>
         <a href="${base}/admin" style="display:inline-block;margin-top:20px;background:#0a0a0a;color:#fff;text-decoration:none;font-size:13.5px;font-weight:600;padding:11px 20px;border-radius:99px">Åpne Saker i admin →</a>
       </div>
     </div>
   </div>`;
   try {
-    await sendHtmlEmail({ to: member.email, subject: `${flertall ? 'Deloppgaver' : 'Deloppgave'} tildelt deg: ${task.title}`, html, fromName: 'DigiHome Saker', individual: false, categories: ['intern-sak'] });
+    await sendHtmlEmail({ to: member.email, subject: `${flertall ? 'Sjekklistepunkter' : 'Sjekklistepunkt'} tildelt deg: ${task.title}`, html, fromName: 'DigiHome Saker', individual: false, categories: ['intern-sak'] });
     return true;
   } catch (e) {
     return false;
@@ -1706,7 +1706,7 @@ async function deloppgaveEpost({ member, task, deloppgaver, actor }) {
 const VARSEL_KATEGORIER = ['tildelt', 'nevnt', 'kommentar', 'deloppgave', 'status', 'frist', 'folger', 'paaminnelse'];
 const VARSEL_LABEL = {
   tildelt: 'Sak tildelt deg', nevnt: 'Du blir nevnt (@)', kommentar: 'Ny kommentar på dine saker',
-  deloppgave: 'Deloppgave tildelt deg', status: 'Statusendring på dine saker', frist: 'Fristpåminnelser',
+  deloppgave: 'Sjekklistepunkt tildelt deg', status: 'Statusendring på dine saker', frist: 'Fristpåminnelser',
   folger: 'Lagt til som følger', paaminnelse: 'Manuelle påminnelser (purring)',
 };
 
@@ -3257,7 +3257,7 @@ async function handleRoute(request, { params }) {
             if (String(p.name || '').toLowerCase() === actor.toLowerCase()) continue;
             const ok = await deloppgaveEpost({ member: p, task, deloppgaver: perPerson.get(p.id), actor });
             if (ok) task.activity.push({ at: naa, actor: 'System', text: `E-postvarsel sendt til ${p.name} (deloppgave tildelt)` });
-            await varsle(db, p.id, actorId, { type: 'deloppgave', taskId: task.id, taskTitle: task.title, actor, text: `${actor} ga deg ${perPerson.get(p.id).length > 1 ? `${perPerson.get(p.id).length} deloppgaver` : 'en deloppgave'}` });
+            await varsle(db, p.id, actorId, { type: 'deloppgave', taskId: task.id, taskTitle: task.title, actor, text: `${actor} ga deg ${perPerson.get(p.id).length > 1 ? `${perPerson.get(p.id).length} sjekklistepunkter` : 'et sjekklistepunkt'}` });
           }
         }
       }
@@ -3339,7 +3339,7 @@ async function handleRoute(request, { params }) {
               if (String(p.name || '').toLowerCase() === actor.toLowerCase()) continue;
               const ok = await deloppgaveEpost({ member: p, task: { ...eksisterende, ...set }, deloppgaver: perPerson.get(p.id), actor });
               if (ok) logg.push(`E-postvarsel sendt til ${p.name} (deloppgave tildelt)`);
-              varselKo.push({ userId: p.id, type: 'deloppgave', text: `${actor} ga deg ${perPerson.get(p.id).length > 1 ? `${perPerson.get(p.id).length} deloppgaver` : 'en deloppgave'}` });
+              varselKo.push({ userId: p.id, type: 'deloppgave', text: `${actor} ga deg ${perPerson.get(p.id).length > 1 ? `${perPerson.get(p.id).length} sjekklistepunkter` : 'et sjekklistepunkt'}` });
             }
           }
         }
@@ -3510,6 +3510,65 @@ async function handleRoute(request, { params }) {
         await varsle(db, uid, actorId, { type: 'kommentar', taskId: task.id, taskTitle: task.title, actor: author, text: `${author} kommenterte saken` });
       }
       return cors(NextResponse.json({ ok: true, comment, mentioned: varslet }));
+    }
+
+    // --- Sjekklistepunkt → undersak (promotering) ---
+    // Gjør et lett sjekklistepunkt om til en FULLVERDIG sak koblet til
+    // forelderen (parentId): tekst → tittel, frist/ansvarlig/prosjekt følger
+    // med, punktet fjernes fra sjekklisten. Stille (ingen e-post) — ansvarlig
+    // får kun in-app-varsel.
+    if (path[0] === 'admin' && path[1] === 'tasks' && path.length === 4 && path[3] === 'promote-subtask' && method === 'POST') {
+      if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+      const parent = await db.collection('tasks').findOne({ id: path[2] }, { projection: { _id: 0 } });
+      if (!parent) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
+      const subs = Array.isArray(parent.subtasks) ? parent.subtasks : [];
+      const tekst = String(body.text || '').trim();
+      if (!tekst) return cors(NextResponse.json({ ok: false, error: 'Tekst er påkrevd' }, { status: 400 }));
+      // Indeks valideres mot teksten (robust mot samtidige endringer); tekstsøk som fallback.
+      let idx = Number.isInteger(body.index) ? body.index : -1;
+      if (!(idx >= 0 && idx < subs.length && String(subs[idx].text || '').trim() === tekst)) {
+        idx = subs.findIndex((s) => String(s.text || '').trim() === tekst);
+      }
+      if (idx < 0) return cors(NextResponse.json({ ok: false, error: 'Fant ikke sjekklistepunktet — last inn på nytt' }, { status: 409 }));
+      const sub = subs[idx];
+      const naa = new Date().toISOString();
+      const actor = String(body.actor || '').trim() || 'Admin';
+      const actorId = (sessionFra(request) || {}).sub || null;
+      const nySak = {
+        id: uuidv4(),
+        title: tekst.slice(0, 300),
+        description: '',
+        status: sub.done ? 'done' : 'inbox',
+        priority: [1, 2, 3].includes(Number(parent.priority)) ? Number(parent.priority) : 2,
+        assigneeId: sub.assigneeId ? String(sub.assigneeId) : null,
+        dueDate: /^\d{4}-\d{2}-\d{2}$/.test(String(sub.due || '')) ? sub.due : null,
+        labels: [],
+        subtasks: [],
+        recurrence: null,
+        followers: [],
+        projectId: parent.projectId || null,
+        parentId: parent.id,
+        relations: [],
+        attachments: [],
+        archived: false,
+        comments: [],
+        activity: [{ at: naa, actor, text: `Opprettet fra sjekklistepunkt i «${String(parent.title || '').slice(0, 120)}»` }],
+        createdAt: naa, updatedAt: naa, completedAt: sub.done ? naa : null,
+      };
+      await db.collection('tasks').insertOne({ ...nySak });
+      await db.collection('tasks').updateOne(
+        { id: parent.id },
+        {
+          $set: { subtasks: subs.filter((_, i) => i !== idx), updatedAt: naa },
+          $push: { activity: { at: naa, actor, text: `Gjorde sjekklistepunktet «${tekst.slice(0, 80)}» om til undersak` } },
+        },
+      );
+      if (nySak.assigneeId && nySak.assigneeId !== actorId) {
+        await varsle(db, nySak.assigneeId, actorId, { type: 'tildelt', taskId: nySak.id, taskTitle: nySak.title, actor, text: `${actor} gjorde et sjekklistepunkt om til undersak med deg som ansvarlig` });
+      }
+      delete nySak._id;
+      return cors(NextResponse.json({ ok: true, task: nySak }));
     }
 
     if (path[0] === 'admin' && path[1] === 'tasks' && path.length === 4 && path[3] === 'remind' && method === 'POST') {

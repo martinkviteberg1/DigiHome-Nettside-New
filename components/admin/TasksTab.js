@@ -1295,7 +1295,7 @@ export default function TasksTab({ apiKey, user, onStats }) {
                       {subL.length > 0 && (
                         <span
                           onClick={(e) => { e.stopPropagation(); toggleUtvid(t.id); }}
-                          title={utvidet ? 'Skjul deloppgaver' : 'Vis deloppgaver'}
+                          title={utvidet ? 'Skjul sjekkliste' : 'Vis sjekkliste'}
                           data-testid={`list-subtasks-toggle-${t.id}`}
                           className={`flex cursor-pointer items-center gap-1 rounded-md px-1 py-0.5 text-[11px] transition-colors hover:bg-black/[0.05] ${subL.every((s) => s.done) ? 'text-emerald-600' : 'text-[#aaa]'}`}
                         >
@@ -1374,7 +1374,7 @@ export default function TasksTab({ apiKey, user, onStats }) {
                         {sub.length > 0 && (
                           <span
                             onClick={(e) => { e.stopPropagation(); toggleUtvid(t.id); }}
-                            title={utvidet ? 'Skjul deloppgaver' : 'Vis deloppgaver'}
+                            title={utvidet ? 'Skjul sjekkliste' : 'Vis sjekkliste'}
                             data-testid={`table-subtasks-toggle-${t.id}`}
                             className="flex cursor-pointer items-center gap-1.5 rounded-md px-1 py-0.5 transition-colors hover:bg-black/[0.05]"
                           >
@@ -1820,7 +1820,7 @@ function SakKort({ t, today, member, members = [], dras, fokus, valgt, index = 0
         {(t.subtasks || []).length > 0 && (
           <button
             onClick={(e) => { e.stopPropagation(); setVisSub((v) => !v); }}
-            title={visSub ? 'Skjul deloppgaver' : 'Vis deloppgaver'}
+            title={visSub ? 'Skjul sjekkliste' : 'Vis sjekkliste'}
             data-testid={`card-subtasks-toggle-${t.id}`}
             className={`flex items-center gap-1 rounded-md px-1 py-0.5 text-[11px] transition-colors hover:bg-black/[0.05] ${t.subtasks.every((s) => s.done) ? 'text-emerald-600' : 'text-[#aaa]'}`}
           >
@@ -2096,7 +2096,22 @@ function SakSkuff({ t, members, today, actor, apiKey, api, projects = [], alleSa
           </div>
         ) : null;
 
-        const sekSjekkliste = <Sjekkliste items={t.subtasks || []} members={members} onChange={(subtasks) => onPatch({ subtasks })} />;
+        // Sjekklistepunkt → fullverdig undersak (tekst/frist/ansvarlig følger med).
+        const promoterSjekkpunkt = async (index, s) => {
+          try {
+            const r = await api(`tasks/${t.id}/promote-subtask`, {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ index, text: s.text, actor }),
+            });
+            const j = await r.json();
+            if (!j.ok) throw new Error(j.error || 'Kunne ikke gjøre om til undersak');
+            await onReload();
+            visToast && visToast(`«${String(s.text).slice(0, 40)}${String(s.text).length > 40 ? '…' : ''}» er nå en undersak`);
+          } catch (e) {
+            visToast && visToast(e.message || 'Kunne ikke gjøre om til undersak', 'feil');
+          }
+        };
+        const sekSjekkliste = <Sjekkliste items={t.subtasks || []} members={members} onChange={(subtasks) => onPatch({ subtasks })} onPromote={promoterSjekkpunkt} />;
         const sekFolgere = <FolgereFelt t={t} members={members} onPatch={onPatch} />;
         const sekVedlegg = <VedleggSeksjon t={t} apiKey={apiKey} api={api} actor={actor} onReload={onReload} visToast={visToast} />;
         const sekProsjekt = (
@@ -2693,9 +2708,10 @@ function UndersakSeksjon({ t, alleSaker = [], api, actor, onReload, onOpenTask, 
         <button
           onClick={() => setVisInput(true)}
           data-testid="subissue-add-btn"
+          title="Undersaker er egne saker med notater, kommentarer og vedlegg"
           className="flex items-center gap-1.5 rounded-lg px-1 py-1 text-[12px] font-semibold text-[#aaa] transition-colors hover:text-[#8b5cf6]"
         >
-          <Layers className="h-3.5 w-3.5" /> Legg til undersak
+          <Layers className="h-3.5 w-3.5" /> Legg til undersak <span className="hidden font-normal text-[#c2beb8] sm:inline">— egen sak med notater og kommentarer</span>
         </button>
       </div>
     );
@@ -2717,6 +2733,7 @@ function UndersakSeksjon({ t, alleSaker = [], api, actor, onReload, onOpenTask, 
       {(barn.length > 0 || visInput) && (
         <>
           <div className="flex items-center gap-2">
+            <Layers className="h-3.5 w-3.5 text-[#a78bda]" />
             <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#999]">Undersaker</p>
             {barn.length > 0 && (
               <span className={`text-[11px] font-bold tabular-nums ${ferdig === barn.length ? 'text-emerald-600' : 'text-[#aaa]'}`}>{ferdig}/{barn.length}</span>
@@ -2730,6 +2747,7 @@ function UndersakSeksjon({ t, alleSaker = [], api, actor, onReload, onOpenTask, 
               <Plus className="h-3.5 w-3.5" />
             </button>
           </div>
+          <p className="mt-0.5 text-[11.5px] leading-snug text-[#c2beb8]">Egne saker med notater, kommentarer og vedlegg — klikk for å åpne</p>
           {barn.length > 0 && (
             <div className="mt-2 h-1 overflow-hidden rounded-full bg-[#eee]">
               <div className="h-full rounded-full bg-[#8b5cf6] transition-all duration-300" style={{ width: `${(ferdig / barn.length) * 100}%` }} />
@@ -2801,7 +2819,7 @@ function SubAnsvarlig({ value, members, onChange, testid }) {
     <div className="relative shrink-0" ref={ref}>
       <button
         onClick={(e) => { e.stopPropagation(); setOpen((o) => !o); }}
-        title={m ? `Ansvarlig: ${m.name}` : 'Sett ansvarlig for deloppgaven'}
+        title={m ? `Ansvarlig: ${m.name}` : 'Sett ansvarlig for punktet'}
         data-testid={testid}
         className="flex h-6 w-6 items-center justify-center rounded-full transition-all hover:ring-2 hover:ring-[#8b5cf6]/25"
       >
@@ -2839,7 +2857,7 @@ function SubFrist({ value, done, today, onChange, testid }) {
   const forfalt = value && !done && value < today;
   return (
     <span
-      title={value ? `Frist ${fmtSubDato(value)} — klikk for å endre` : 'Sett frist for deloppgaven'}
+      title={value ? `Frist ${fmtSubDato(value)} — klikk for å endre` : 'Sett frist for punktet'}
       className={`relative flex h-6 shrink-0 cursor-pointer items-center gap-1 rounded-md px-1.5 text-[11px] font-semibold tabular-nums transition-colors ${
         value
           ? forfalt ? 'bg-rose-50 text-rose-600' : done ? 'bg-[#f3f2f0] text-[#b5b5b5]' : 'bg-[#f3f2f0] text-[#777]'
@@ -2860,8 +2878,9 @@ function SubFrist({ value, done, today, onChange, testid }) {
   );
 }
 
-function Sjekkliste({ items, onChange, members = [] }) {
+function Sjekkliste({ items, onChange, members = [], onPromote = null }) {
   const [nytt, setNytt] = useState('');
+  const [promoterer, setPromoterer] = useState(null); // index under konvertering
   const today = new Date().toISOString().slice(0, 10);
   const ferdig = items.filter((s) => s.done).length;
   const leggTil = () => {
@@ -2871,14 +2890,22 @@ function Sjekkliste({ items, onChange, members = [] }) {
     setNytt('');
   };
   const endreRad = (i, patch) => onChange(items.map((x, xi) => (xi === i ? { ...x, ...patch } : x)));
+  const promoter = async (i, s) => {
+    if (!onPromote || promoterer !== null) return;
+    setPromoterer(i);
+    await onPromote(i, s);
+    setPromoterer(null);
+  };
   return (
     <div className="mt-6" data-testid="drawer-subtasks">
       <div className="flex items-center gap-2">
-        <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#999]">Deloppgaver</p>
+        <ClipboardCheck className="h-3.5 w-3.5 text-[#b5b5b5]" />
+        <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#999]">Sjekkliste</p>
         {items.length > 0 && (
           <span className={`text-[11px] font-bold tabular-nums ${ferdig === items.length ? 'text-emerald-600' : 'text-[#aaa]'}`}>{ferdig}/{items.length}</span>
         )}
       </div>
+      <p className="mt-0.5 text-[11.5px] leading-snug text-[#c2beb8]">Raske avkrysningspunkter — uten egne notater</p>
       {items.length > 0 && (
         <div className="mt-2 h-1 overflow-hidden rounded-full bg-[#eee]">
           <div className="h-full rounded-full bg-emerald-500 transition-all duration-300" style={{ width: `${(ferdig / items.length) * 100}%` }} />
@@ -2900,10 +2927,22 @@ function Sjekkliste({ items, onChange, members = [] }) {
             <span className={`min-w-0 flex-1 text-[13.5px] ${s.done ? 'text-[#b0aca6] line-through' : 'text-[#333]'}`}>{s.text}</span>
             <SubFrist value={s.due || null} done={s.done} today={today} onChange={(due) => endreRad(i, { due })} testid={`subtask-due-${i}`} />
             <SubAnsvarlig value={s.assigneeId || null} members={members} onChange={(assigneeId) => endreRad(i, { assigneeId })} testid={`subtask-assignee-${i}`} />
+            {onPromote && (
+              <button
+                onClick={() => promoter(i, s)}
+                disabled={promoterer !== null}
+                data-testid={`subtask-promote-${i}`}
+                title="Gjør om til undersak — egen sak med notater, kommentarer og vedlegg"
+                aria-label="Gjør om til undersak"
+                className="shrink-0 rounded p-1 text-[#ddd] transition-colors hover:bg-[#f4f0fb] hover:text-[#8b5cf6] disabled:opacity-40 md:opacity-0 md:group-hover:opacity-100"
+              >
+                {promoterer === i ? <Loader2 className="w-3.5 h-3.5 animate-spin text-[#8b5cf6]" /> : <Maximize2 className="w-3.5 h-3.5" />}
+              </button>
+            )}
             <button
               onClick={() => onChange(items.filter((_, xi) => xi !== i))}
               className="shrink-0 rounded p-1 text-[#ddd] transition-colors hover:text-rose-500 md:opacity-0 md:group-hover:opacity-100"
-              aria-label="Fjern deloppgave"
+              aria-label="Fjern punkt"
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -2918,7 +2957,7 @@ function Sjekkliste({ items, onChange, members = [] }) {
           onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); leggTil(); } }}
           onBlur={() => { if (nytt.trim()) leggTil(); }}
           data-testid="subtask-add-input"
-          placeholder="Legg til deloppgave …"
+          placeholder="Legg til punkt i sjekklisten …"
           className="h-9 min-w-0 flex-1 rounded-lg border border-black/[0.08] bg-white px-2.5 text-[13px] outline-none transition-all placeholder:text-[#bbb] hover:border-black/[0.16] focus:border-[#8b5cf6]/50 focus:ring-2 focus:ring-[#8b5cf6]/15"
         />
       </div>
@@ -3283,11 +3322,12 @@ function NySakModal({ members, projects = [], defaultStatus, uploadBilde = null,
           )}
         </div>
 
-        {/* Deloppgaver — full kontroll allerede ved opprettelse: tekst,
+        {/* Sjekkliste — full kontroll allerede ved opprettelse: tekst,
             ansvarlig og frist per rad. Enter legger til og beholder fokus. */}
         <div className="px-5 pt-4 md:px-6">
           <div className="flex items-center gap-2">
-            <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#999]">Deloppgaver</p>
+            <ClipboardCheck className="h-3.5 w-3.5 text-[#b5b5b5]" />
+            <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#999]">Sjekkliste</p>
             {sjekkliste.length > 0 && <span className="text-[11px] font-bold tabular-nums text-[#ccc]">{sjekkliste.length}</span>}
           </div>
           <div className="mt-1.5 space-y-0.5">
@@ -3312,7 +3352,7 @@ function NySakModal({ members, projects = [], defaultStatus, uploadBilde = null,
               onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); leggTilPunkt(true); } }}
               onBlur={() => { if (nyttPunkt.trim()) leggTilPunkt(false); }}
               data-testid="new-task-subtask-input"
-              placeholder="Legg til deloppgave — Enter legger til flere"
+              placeholder="Legg til punkt i sjekklisten — Enter legger til flere"
               className="h-9 min-w-0 flex-1 rounded-lg border border-black/[0.08] bg-white px-2.5 text-[13px] outline-none transition-all placeholder:text-[#bbb] hover:border-black/[0.16] focus:border-[#8b5cf6]/50 focus:ring-2 focus:ring-[#8b5cf6]/15"
             />
           </div>
