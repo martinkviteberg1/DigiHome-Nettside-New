@@ -1050,75 +1050,77 @@ export default function TasksTab({ apiKey, user, onStats }) {
     <div data-testid="tasks-tab">
       {/* ═══ Områdevelger — saken «bor» et sted, og stedet avgjør hvem som ser
           den. Vises kun når brukeren har tilgang til mer enn Drift. ═══ */}
-      {omrader.length > 1 && (
-        <div className="no-scrollbar mb-3 flex items-center gap-1.5 overflow-x-auto pb-0.5" data-testid="space-switcher">
-          {OMRADER_UI.filter((o) => omrader.includes(o.k)).map((o) => {
-            const antall = tasks.filter((t) => (t.space || 'drift') === o.k && t.status !== 'done' && !t.archived).length;
-            const aktiv = aktivtOmrade === o.k;
-            const OIkon = o.icon;
-            return (
-              <button
-                key={o.k}
-                onClick={() => setAktivtOmrade(o.k)}
-                data-testid={`space-${o.k}`}
-                className={`flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-[7px] text-[12.5px] font-semibold transition-all active:scale-[0.97] ${
-                  aktiv ? 'bg-[#0a0a0a] text-white shadow-[0_2px_10px_rgba(0,0,0,0.18)]' : 'border border-black/[0.07] bg-white text-[#777] hover:border-black/[0.16] hover:text-[#0a0a0a]'
-                }`}
-              >
-                <OIkon className="h-3.5 w-3.5" />
-                {o.l}
-                {antall > 0 && <span className={`text-[11px] font-bold tabular-nums ${aktiv ? 'text-white/60' : 'text-[#bbb]'}`}>{antall}</span>}
-                {o.k !== 'drift' && <Lock className={`h-3 w-3 ${aktiv ? 'text-white/50' : 'text-[#d5d2cc]'}`} />}
-              </button>
-            );
-          })}
+      {/* ═══ Rad 1 — områder til venstre, primærhandlinger til høyre (Linear-style) ═══ */}
+      <div className="mb-2.5 flex items-center gap-2">
+        {omrader.length > 1 ? (
+          <div className="no-scrollbar flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto pb-0.5" data-testid="space-switcher">
+            {OMRADER_UI.filter((o) => omrader.includes(o.k)).map((o) => {
+              const antall = tasks.filter((t) => (t.space || 'drift') === o.k && t.status !== 'done' && !t.archived).length;
+              const aktiv = aktivtOmrade === o.k;
+              const OIkon = o.icon;
+              return (
+                <button
+                  key={o.k}
+                  onClick={() => setAktivtOmrade(o.k)}
+                  data-testid={`space-${o.k}`}
+                  className={`flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-[7px] text-[12.5px] font-semibold transition-all active:scale-[0.97] ${
+                    aktiv ? 'bg-[#0a0a0a] text-white shadow-[0_2px_10px_rgba(0,0,0,0.18)]' : 'border border-black/[0.07] bg-white text-[#777] hover:border-black/[0.16] hover:text-[#0a0a0a]'
+                  }`}
+                >
+                  <OIkon className="h-3.5 w-3.5" />
+                  {o.l}
+                  {antall > 0 && <span className={`text-[11px] font-bold tabular-nums ${aktiv ? 'text-white/60' : 'text-[#bbb]'}`}>{antall}</span>}
+                  {o.k !== 'drift' && <Lock className={`h-3 w-3 ${aktiv ? 'text-white/50' : 'text-[#d5d2cc]'}`} />}
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="min-w-0 flex-1" />
+        )}
+        <div className="ml-auto hidden shrink-0 items-center gap-2 lg:flex">
+          <button
+            onClick={() => { setVarselOpen((v) => !v); setPrefsOpen(false); }}
+            data-testid="tasks-bell-btn"
+            title="Varsler"
+            className="relative flex h-9 w-9 items-center justify-center rounded-lg border border-black/[0.08] bg-white text-[#555] transition-all hover:border-black/[0.16] hover:text-[#0a0a0a]"
+          >
+            <Bell className="h-4 w-4" />
+            {varselUlest > 0 && (
+              <span data-testid="tasks-bell-badge" className="absolute -right-1 -top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-[#e11d48] px-1 text-[10px] font-bold text-white">{varselUlest > 9 ? '9+' : varselUlest}</span>
+            )}
+          </button>
+          <button
+            onClick={() => setPersonerOpen(true)}
+            data-testid="tasks-members-btn"
+            title="Personer og tilgang"
+            className="flex h-9 w-9 items-center justify-center rounded-lg border border-black/[0.08] bg-white text-[#555] transition-all hover:border-black/[0.16] hover:text-[#0a0a0a]"
+          >
+            <Users className="h-4 w-4" />
+          </button>
+          <button
+            onClick={() => setNyOpen(true)}
+            data-testid="tasks-new-btn"
+            className="flex h-9 items-center gap-1.5 rounded-lg bg-[#0a0a0a] px-3.5 text-[13px] font-semibold text-white transition-all hover:bg-black/85 active:scale-[0.97]"
+          >
+            <Plus className="w-4 h-4" /> Ny sak <kbd className="ml-1 rounded bg-white/15 px-1.5 py-0.5 text-[10px] font-bold">N</kbd>
+          </button>
         </div>
-      )}
-      {/* ═══ Toppstripe ═══ */}
+      </div>
+      {/* ═══ Rad 2 — verktøylinje (desktop) + mobilverktøy ═══ */}
       <div className="mb-4 md:mb-5">
-        <div className="flex items-center gap-2">
-          {/* Sammendrag — sveipbart ved plassmangel, alle brekkpunkter */}
-          <div className="no-scrollbar flex min-w-0 flex-1 items-center gap-2 overflow-x-auto pb-0.5">
-            <SummaryChip label="Åpne" value={stats.aapne} />
-            <SummaryChip label="Forfalt" value={stats.forfalt} warn={stats.forfalt > 0} testid="tasks-overdue-chip" />
-            <SummaryChip label="I dag" value={stats.iDag} />
-            <SummaryChip label="Ferdig siste 7 d" value={stats.ferdig7d} good />
-          </div>
-
-          {/* Primærhandlinger — varsler, personer, ny sak */}
-          <div className="ml-auto hidden shrink-0 items-center gap-2 lg:flex">
-            <button
-              onClick={() => { setVarselOpen((v) => !v); setPrefsOpen(false); }}
-              data-testid="tasks-bell-btn"
-              title="Varsler"
-              className="relative flex h-9 w-9 items-center justify-center rounded-lg border border-black/[0.08] bg-white text-[#555] transition-all hover:border-black/[0.16] hover:text-[#0a0a0a]"
-            >
-              <Bell className="h-4 w-4" />
-              {varselUlest > 0 && (
-                <span data-testid="tasks-bell-badge" className="absolute -right-1 -top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-[#e11d48] px-1 text-[10px] font-bold text-white">{varselUlest > 9 ? '9+' : varselUlest}</span>
-              )}
-            </button>
-            <button
-              onClick={() => setPersonerOpen(true)}
-              data-testid="tasks-members-btn"
-              title="Personer og tilgang"
-              className="flex h-9 w-9 items-center justify-center rounded-lg border border-black/[0.08] bg-white text-[#555] transition-all hover:border-black/[0.16] hover:text-[#0a0a0a]"
-            >
-              <Users className="h-4 w-4" />
-            </button>
-            <button
-              onClick={() => setNyOpen(true)}
-              data-testid="tasks-new-btn"
-              className="flex h-9 items-center gap-1.5 rounded-lg bg-[#0a0a0a] px-3.5 text-[13px] font-semibold text-white transition-all hover:bg-black/85 active:scale-[0.97]"
-            >
-              <Plus className="w-4 h-4" /> Ny sak <kbd className="ml-1 rounded bg-white/15 px-1.5 py-0.5 text-[10px] font-bold">N</kbd>
-            </button>
-          </div>
+        {/* Puls-chips — kun mobil/nettbrett; på desktop bor pulsen i Innsikt
+            og som stille tall på kontrollinjen. */}
+        <div className="no-scrollbar flex items-center gap-2 overflow-x-auto pb-0.5 lg:hidden">
+          <SummaryChip label="Åpne" value={stats.aapne} />
+          <SummaryChip label="Forfalt" value={stats.forfalt} warn={stats.forfalt > 0} testid="tasks-overdue-chip" />
+          <SummaryChip label="I dag" value={stats.iDag} />
+          <SummaryChip label="Ferdig siste 7 d" value={stats.ferdig7d} good />
         </div>
 
-        {/* Kontrollinje — søk + filter til venstre, visninger + hjelp til høyre.
+        {/* Kontrollinje — søk + filter til venstre, puls + visninger + hjelp til høyre.
             Alle filtre bor i ÉN popover; aktive filtre vises som fjernbare chips. */}
-        <div className="mt-2.5 hidden items-center gap-2 lg:flex">
+        <div className="hidden items-center gap-2 lg:flex">
           <div className="relative shrink-0">
             <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-[#b5b5b5]" />
             <input
@@ -1148,6 +1150,12 @@ export default function TasksTab({ apiKey, user, onStats }) {
             </div>
           )}
           <div className="ml-auto flex shrink-0 items-center gap-1.5">
+            {/* Stille puls — tall uten støy; rødt kun når noe faktisk haster */}
+            <span className="mr-1.5 hidden items-center gap-2.5 text-[11.5px] font-medium text-[#b0aca6] xl:flex" data-testid="tasks-quiet-stats">
+              <span><span className="font-bold text-[#777] tabular-nums">{stats.aapne}</span> åpne</span>
+              {stats.forfalt > 0 && <span className="font-bold text-rose-600 tabular-nums">{stats.forfalt} forfalt</span>}
+              {stats.iDag > 0 && <span><span className="font-bold text-[#777] tabular-nums">{stats.iDag}</span> i dag</span>}
+            </span>
             <div className="flex rounded-lg border border-black/[0.08] bg-white p-0.5">
               {VISNINGER.map((v) => (
                 <ViewBtn key={v.k} active={view === v.k} onClick={() => setView(v.k)} icon={v.icon} label={v.l} testid={`tasks-view-${v.k}`} />
