@@ -5395,3 +5395,16 @@ backend:
         -working: true
         -agent: "main"
         -comment: "Verifisert i nettleser: Knøsesmauet 12 viser ~9,4 % / ~2 813 kr (før: — / —), KORT1 «+ Signert» = +~20 064 kr (= ~32 862 kr sikret, med ~), sum-raden viser fortsatt kun realisert honorar (12 798) — riktig semantikk. API: inntektsmodell 2028 sikret des 24002→29534 (estimatene inkludert). «I dag»-KPI er bevisst uendret (kun faktisk betalende honorar)."
+
+backend:
+  - task: "Avtalt sats fra ventende forvaltningsavtale som estimatkilde: berikMedReferanser i lib/leieforhold.js setter pending_fee_percent/pending_fee_fixed fra contracts/export (fee_model/fee_percent, brøk 0.1→10 håndtert defensivt) når lease-income mangler honorar. Estimatrekkefølge overalt: fee_amount → avtalt pending-sats → porteføljesnitt. Oppdatert i beregnHonorarTrapp (lib/leieforhold-filter.js), beregnSikretSerie (lib/budsjett.js) og Leieforhold-UI (estimatFor/satsTittel-hjelpere, tabell + skuff m/ «avtalt — venter signering»-merking)."
+    implemented: true
+    working: true
+    file: "/app/lib/leieforhold.js, /app/lib/leieforhold-filter.js, /app/lib/budsjett.js, /app/components/admin/Leieforhold.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "main"
+        -comment: "API fresh=1: Knøsesmauet pending_fee_percent=10 (fra kontraktens 0.1). Nettleser-verifisert: raden viser ~10 % / ~3 000 kr (før: ~9,4 % porteføljesnitt), KPI-trappen +Signert inkluderer avtalt-sats-estimatet. MVA-avklaring dokumentert: plattformen behandlet avtalen som 10 % EKS mva da den var aktiv (3000 honorar + 750 mva → netto 26250); vises som inkl. mva-avtale i plattformen vil kolonnen auto-omregne til 8 %."
