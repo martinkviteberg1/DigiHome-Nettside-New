@@ -106,6 +106,8 @@ function AdresseCelle({ r }) {
   const erRom = r.unit_type === 'Rom i bofellesskap';
   const [gate, ...resten] = String(r.address || '').split(',');
   const omraade = resten.join(',').replace(/,?\s*Norge\s*$/i, '').trim();
+  // Type bor i underlinjen (modig reduksjon: egen Type-kolonne er fjernet)
+  const sub = [omraade, r.bolig_type || (erRom ? 'Rom' : '')].filter(Boolean).join(' · ');
   return (
     <>
       <p className="max-w-[240px] truncate text-[12.5px] font-medium text-[#1c1917]" title={r.address}>
@@ -114,7 +116,7 @@ function AdresseCelle({ r }) {
           <span className="ml-1.5 rounded-[4px] bg-[#f4f0fb] px-1 py-[1px] text-[9px] font-bold uppercase tracking-wide text-[#8b5cf6]">{r.enhet_detalj || 'Rom'}</span>
         )}
       </p>
-      {omraade && <p className="mt-[1px] max-w-[240px] truncate text-[10.5px] text-[#a8a29a]">{omraade}</p>}
+      {sub && <p className="mt-[1px] max-w-[240px] truncate text-[10.5px] text-[#a8a29a]">{sub}</p>}
     </>
   );
 }
@@ -680,7 +682,7 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
           <div className="relative flex flex-wrap items-center gap-x-5 gap-y-2 overflow-hidden rounded-xl border border-black/[0.05] bg-white px-4 py-3.5 shadow-[0_1px_3px_rgba(28,25,23,0.04)] transition-all duration-200 hover:-translate-y-[1px] hover:shadow-[0_4px_16px_rgba(28,25,23,0.08)]" data-testid="leieforhold-honorar-trapp">
             <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(460px_150px_at_0%_0%,rgba(124,58,237,0.07),transparent_62%)]" />
             <div className="relative min-w-0">
-              <span className="inline-flex items-center rounded-full bg-[#f3edfe] px-2 py-[3px] text-[9.5px] font-bold uppercase tracking-[0.07em] text-[#6d28d9]">Honorar / mnd · eks. mva</span>
+              <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#b5b5b5]">Honorar / mnd · eks. mva</p>
               <p className="mt-1.5 text-[27px] font-semibold leading-none tabular-nums tracking-[-0.02em] text-[#1c1917]" style={heading} data-testid="leieforhold-honorar">
                 {laster ? '…' : <TallOpp verdi={honorarTrapp.iDag} />}
               </p>
@@ -714,7 +716,7 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
               <div key={s.id} className="relative min-w-0" data-testid={`leieforhold-kpi-${s.id}`}>
                 {i === 0 ? (
                   <>
-                    <span className="inline-flex items-center rounded-full bg-[#e8f6ee] px-2 py-[3px] text-[9.5px] font-bold uppercase tracking-[0.07em] text-[#15803d]">{s.l} / mnd</span>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#b5b5b5]">{s.l} / mnd</p>
                     <p className="mt-1.5 text-[21px] font-semibold leading-none tabular-nums tracking-[-0.01em] text-[#1c1917]" style={heading}>
                       {laster ? '…' : <TallOpp verdi={s.v} />}
                     </p>
@@ -737,7 +739,7 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
           <div className="relative flex items-center overflow-hidden rounded-xl border border-black/[0.05] bg-white px-4 py-3.5 shadow-[0_1px_3px_rgba(28,25,23,0.04)] transition-all duration-200 hover:-translate-y-[1px] hover:shadow-[0_4px_16px_rgba(28,25,23,0.08)]" data-testid="leieforhold-kpi-utleigrad">
             <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(300px_140px_at_0%_0%,rgba(14,116,144,0.07),transparent_65%)]" />
             <div className="relative min-w-0">
-              <span className="inline-flex items-center rounded-full bg-[#e7f4f9] px-2 py-[3px] text-[9.5px] font-bold uppercase tracking-[0.07em] text-[#0e7490]">Utleigrad</span>
+              <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#b5b5b5]">Utleiegrad</p>
               <div className="mt-1.5 flex items-center gap-2.5">
                 <Ring pct={visTotals.occupancy_pct || 0} size={34} />
                 <div className="min-w-0">
@@ -815,8 +817,8 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
                 <table className="w-full min-w-[1120px] text-left" data-testid="leieforhold-tabell">
                 <thead>
                   <tr>
-                    {['Adresse', 'Type', 'Huseier', 'Leietaker', 'Status', 'Innflytting', 'Utflytting', 'Beløp / mnd', 'Sats (eks. mva)', 'Honorar', 'Netto', 'Depositum'].map((h, i) => (
-                      <th key={h} style={i === 0 ? { left: 0, zIndex: 30 } : undefined} className={`${HODE_CELLE} px-3 py-2.5 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[#9c968c] ${i >= 7 ? 'text-right' : ''}`}>{h}</th>
+                    {['Adresse', 'Huseier', 'Leietaker', 'Status', 'Innflytting', 'Utflytting', 'Beløp / mnd', 'Sats (eks. mva)', 'Honorar', 'Netto'].map((h, i) => (
+                      <th key={h} style={i === 0 ? { left: 0, zIndex: 30 } : undefined} className={`${HODE_CELLE} px-3 py-2.5 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[#9c968c] ${i >= 6 ? 'text-right' : ''}`}>{h}</th>
                     ))}
                     <th className={`${HODE_CELLE} w-8`} />
                   </tr>
@@ -825,7 +827,7 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
                   {(() => { let idx = -1; return seksjoner.map((sek) => (
                     <React.Fragment key={sek.key || 'alle'}>
                       {sek.key && (
-                        <SeksjonsRad nokkel={sek.key} rader={sek.rader} colSpan={13} aggregat={`${kr(sek.rader.reduce((s, r) => s + (r.monthly_rent || 0), 0))}/mnd`} />
+                        <SeksjonsRad nokkel={sek.key} rader={sek.rader} colSpan={11} aggregat={`${kr(sek.rader.reduce((s, r) => s + (r.monthly_rent || 0), 0))}/mnd`} />
                       )}
                       {sek.rader.map((r) => {
                     idx += 1; const i = idx;
@@ -833,7 +835,6 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
                     return (
                     <tr key={`${radNokkel(r)}-${i}`} onClick={() => setValgtRad(r)} className="group dh-rad-inn cursor-pointer border-b border-black/[0.03] transition-colors last:border-b-0 hover:bg-[#f1eee9] [&>td]:py-3 [&>td:first-child]:rounded-l-[8px] [&>td:last-child]:rounded-r-[8px]" style={{ animationDelay: `${Math.min(i, 16) * 16}ms` }} data-testid={`leieforhold-rad-${i}`}>
                       <td className="sticky left-0 z-[5] bg-white px-3 py-2 transition-colors group-hover:bg-[#f1eee9]"><AdresseCelle r={r} /></td>
-                      <td className="whitespace-nowrap px-3 py-2 text-[12px] text-[#57534e]">{r.bolig_type || (erRom ? 'Rom' : '—')}</td>
                       <td className="max-w-[170px] px-3 py-2" title={r.owner_name}>
                         <span className="flex items-center gap-1.5">
                           <Initialer navn={r.owner_name} />
@@ -874,7 +875,6 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
                       <td className="whitespace-nowrap px-3 py-2 text-right text-[12px] tabular-nums" style={{ color: r.group === 'leased' ? '#57534e' : '#c2beb8' }}>
                         {r.net_to_owner ? kr(r.net_to_owner) : '—'}
                       </td>
-                      <td className="whitespace-nowrap px-3 py-2 text-right text-[12px] tabular-nums text-[#78716c]">{r.deposit != null ? kr(r.deposit) : '—'}</td>
                       <td className="w-8 pr-3"><ChevronRight className="h-3.5 w-3.5 text-[#c9c3ba] opacity-0 transition-opacity group-hover:opacity-100" /></td>
                     </tr>
                     );
@@ -885,12 +885,12 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
                 <tfoot>
                   <tr>
                     <td className={`${SUM_CELLE} px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#a8a29a]`}>Sum ({filtrert.length})</td>
-                    <td colSpan={6} className={SUM_CELLE} />
+                    <td colSpan={5} className={SUM_CELLE} />
                     <td className={`${SUM_CELLE} px-3 py-2 text-right text-[12.5px] font-semibold tabular-nums text-[#1c1917]`}>{kr(filtrert.reduce((s, r) => s + (r.monthly_rent || 0), 0))}</td>
                     <td className={SUM_CELLE} />
                     <td className={`${SUM_CELLE} px-3 py-2 text-right text-[12px] font-semibold tabular-nums`} style={{ color: '#7c3aed' }} title="Realisert honorar (kun utleide)">{kr(filtrert.filter((r) => r.group === 'leased').reduce((s, r) => s + (r.fee_amount || 0), 0))}</td>
                     <td className={`${SUM_CELLE} px-3 py-2 text-right text-[12px] font-semibold tabular-nums text-[#57534e]`}>{kr(filtrert.filter((r) => r.group === 'leased').reduce((s, r) => s + (r.net_to_owner || 0), 0))}</td>
-                    <td colSpan={2} className={SUM_CELLE} />
+                    <td className={SUM_CELLE} />
                   </tr>
                 </tfoot>
               </table>

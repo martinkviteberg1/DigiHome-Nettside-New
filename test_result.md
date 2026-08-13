@@ -5353,3 +5353,16 @@ test_plan:
 agent_communication:
     -agent: "main"
     -message: "Stor frontend-runde fullført og screenshot-verifisert (ingen backend-endringer — route.js urørt): Datarom-Oversikt redesignet (hero m/ count-up + kumulativ veksttrapp + scenario-kontroll i kortet), én topprad (PulseStrip kun på analyse-sider), Leieforhold presisjonspolish (6 review-punkter), klient-cache m/ SWR + prefetch (fanebytter <300ms), Regnskap-rename, investor-Budsjett kommer-snart, autovekst på kommentarfeltet i Saker. Eventuell fremtidig frontend-regresjonstest bør dekke: scenario-flyt på /admin/datarom, fanebytte-hastighet (cache), Leieforhold statusfilter/eksport-meny, investor-nav (Budsjett m/ Snart-badge → kommer snart-side), kommentarfelt-autovekst i sak-skuff."
+
+frontend:
+  - task: "MODIG REDUKSJON Leieforhold (designreview-runde 2): KPI-pills → rolige etiketter, Type+Depositum-kolonner fjernet (Type inn i adresse-underlinje, Depositum finnes i skuffen), sum-rad/seksjonsrad colSpan justert (13→11), right-align fra i>=6"
+    implemented: true
+    working: true
+    file: "/app/components/admin/Leieforhold.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "main"
+        -comment: "Screenshot-verifisert: kolonner = [Adresse, Huseier, Leietaker, Status, Innflytting, Utflytting, Beløp/mnd, Sats, Honorar, Netto], adresse-underlinje viser '5011 Bergen · Leilighet', pulse-chips = 0 på leieforhold (kun innsikt/nokkeltall), sum-raden justert riktig (Beløp/Honorar/Netto på riktige kolonner). KPI-sonen har nå stille uppercase-etiketter i stedet for 3 fargede pills."
