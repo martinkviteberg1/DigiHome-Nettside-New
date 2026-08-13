@@ -976,31 +976,3 @@ html.dh-tour-snap.dh-tour-flyt { scroll-snap-type: none; }
   background-size: 200% 100%;
   animation: dh-shimmer 1.4s ease infinite;
 }
-
-/* ── Leieforhold KPI-kort: premium mikrodetaljer ──────────────────────────
-   Aurora: en stille, drivende glød i honorar-kortets hjørne.
-   Bord: gradient-hairline (lilla → teal) som glir umerkelig. */
-.dh-kpi-aurora {
-  background: radial-gradient(closest-side, rgba(139, 92, 246, 0.18), rgba(42, 163, 191, 0.09) 58%, transparent 76%);
-  filter: blur(2px);
-  animation: dh-kpi-aurora 9s ease-in-out infinite;
-}
-@keyframes dh-kpi-aurora {
-  0%, 100% { transform: translate3d(0, 0, 0) scale(1); opacity: 0.75; }
-  50% { transform: translate3d(-16px, 12px, 0) scale(1.22); opacity: 1; }
-}
-.dh-kpi-bord {
-  background: linear-gradient(100deg,
-    rgba(139, 92, 246, 0.28), rgba(42, 163, 191, 0.16) 35%,
-    rgba(139, 92, 246, 0.10) 55%, rgba(42, 163, 191, 0.20) 78%,
-    rgba(139, 92, 246, 0.28));
-  background-size: 220% 100%;
-  animation: dh-kpi-bord 9s linear infinite;
-}
-@keyframes dh-kpi-bord {
-  0% { background-position: 0% 50%; }
-  100% { background-position: 220% 50%; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .dh-kpi-aurora, .dh-kpi-bord { animation: none; }
-}
