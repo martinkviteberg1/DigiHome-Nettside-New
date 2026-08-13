@@ -86,14 +86,15 @@ function StatusChip({ row }) {
   const vg = visGruppe(row);
   const s = STATUS_STIL[vg] || STATUS_STIL.vacant;
   const label = vg === 'advertised' ? 'Annonsert' : row.status_label;
+  // Moderne status: farget dot med myk halo + ren tekst — ingen pille-bakgrunn.
   return (
-    <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2 py-[3px] text-[10.5px] font-semibold" style={{ background: s.bg, color: s.tekst }}>
-      <span className="h-[5px] w-[5px] rounded-full" style={{ background: s.tekst }} />
+    <span className="inline-flex items-center gap-2 whitespace-nowrap text-[11.5px] font-medium" style={{ color: s.tekst }}>
+      <span className="h-[6px] w-[6px] shrink-0 rounded-full" style={{ background: s.tekst, boxShadow: `0 0 0 3px ${s.bg}` }} />
       {label}
-      {row.advertised && <Megaphone className="h-3 w-3 opacity-70" />}
+      {row.advertised && <Megaphone className="h-3 w-3 opacity-60" />}
       {row._scenario && (
         <span title={row._scenario === 'inn' ? 'Scenario: innflyttet innen valgt dato' : 'Scenario: flyttet ut innen valgt dato'}>
-          <CalendarClock className="h-3 w-3 opacity-70" />
+          <CalendarClock className="h-3 w-3 opacity-60" />
         </span>
       )}
     </span>
@@ -486,14 +487,16 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
             />
             <kbd className="pointer-events-none absolute right-2 top-1/2 hidden -translate-y-1/2 rounded-[4px] border border-black/[0.08] bg-white px-[5px] py-[1px] text-[9.5px] font-semibold text-[#b3ada3] sm:block">/</kbd>
           </div>
-          <div className="order-last flex w-full items-center gap-1 overflow-x-auto no-scrollbar lg:order-none lg:w-auto">
+          {/* Segmentert statusvelger (Linear/iOS-stil): én samlet kontroll,
+              aktive segmenter løftes på hvit flate. Fortsatt flervalg. */}
+          <div className="order-last flex w-full items-center overflow-x-auto no-scrollbar rounded-[9px] border border-black/[0.05] bg-[#f1efeb] p-[3px] lg:order-none lg:w-auto">
             <button
               onClick={() => setFiltre((f) => ({ ...f, status: [] }))}
               data-testid="leieforhold-filter-alle"
-              className={`flex h-7 shrink-0 items-center gap-1.5 rounded-[7px] px-2.5 text-[12px] transition-all ${!filtre.status.length ? 'bg-[#1c1917] font-medium text-white' : 'border border-black/[0.08] bg-white font-medium text-[#78716c] hover:bg-[#f7f6f3]'}`}
+              className={`flex h-6 shrink-0 items-center gap-1.5 rounded-[6px] px-2.5 text-[11.5px] font-medium transition-all ${!filtre.status.length ? 'bg-white text-[#1c1917] shadow-[0_1px_3px_rgba(28,25,23,0.10)]' : 'text-[#8a8278] hover:text-[#1c1917]'}`}
             >
               Alle
-              <span className={`tabular-nums text-[10px] ${!filtre.status.length ? 'text-white/50' : 'text-[#c2beb8]'}`}>{grupper.alle ?? 0}</span>
+              <span className={`tabular-nums text-[10px] ${!filtre.status.length ? 'text-[#b3ada3]' : 'text-[#c2beb8]'}`}>{grupper.alle ?? 0}</span>
             </button>
             {[['leased', GRUPPE_LABEL.leased], ['future', GRUPPE_LABEL.future], ['signing', GRUPPE_LABEL.signing], ['advertised', GRUPPE_LABEL.advertised], ['vacant', GRUPPE_LABEL.vacant]].map(([k, l]) => (
               <button
@@ -501,11 +504,11 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
                 onClick={() => toggleFilter('status', k)}
                 data-testid={`leieforhold-filter-${k}`}
                 title="Flervalg — klikk for å slå av/på"
-                className={`flex h-7 shrink-0 items-center gap-1.5 rounded-[7px] px-2.5 text-[12px] transition-all ${filtre.status.includes(k) ? 'bg-[#1c1917] font-medium text-white' : 'border border-black/[0.08] bg-white font-medium text-[#78716c] hover:bg-[#f7f6f3]'}`}
+                className={`flex h-6 shrink-0 items-center gap-1.5 rounded-[6px] px-2.5 text-[11.5px] font-medium transition-all ${filtre.status.includes(k) ? 'bg-white text-[#1c1917] shadow-[0_1px_3px_rgba(28,25,23,0.10)]' : 'text-[#8a8278] hover:text-[#1c1917]'}`}
               >
-                <span className="h-[5px] w-[5px] rounded-full" style={{ background: filtre.status.includes(k) ? '#fff' : STATUS_STIL[k].tekst, opacity: filtre.status.includes(k) ? 0.7 : 1 }} />
+                <span className="h-[5px] w-[5px] rounded-full" style={{ background: STATUS_STIL[k].tekst }} />
                 {l}
-                <span className={`tabular-nums text-[10px] ${filtre.status.includes(k) ? 'text-white/50' : 'text-[#c2beb8]'}`}>{grupper[k] ?? 0}</span>
+                <span className={`tabular-nums text-[10px] ${filtre.status.includes(k) ? 'text-[#b3ada3]' : 'text-[#c2beb8]'}`}>{grupper[k] ?? 0}</span>
               </button>
             ))}
           </div>
@@ -678,7 +681,7 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
             «+ individuelt beløp» med «= løpende sum» under. ── */}
         <div className="grid grid-cols-1 gap-2.5 border-y border-black/[0.05] bg-[#f7f6f3] px-3 py-3 sm:px-4 xl:grid-cols-[minmax(0,43fr)_minmax(0,43fr)_minmax(0,14fr)]">
           {/* KORT 1 — Honorar (DigiHome) · lilla chip */}
-          <div className="relative flex flex-wrap items-center gap-x-5 gap-y-2 overflow-hidden rounded-xl border border-black/[0.05] bg-white px-4 py-2.5 shadow-[0_1px_3px_rgba(28,25,23,0.04)]" data-testid="leieforhold-honorar-trapp">
+          <div className="relative flex flex-wrap items-center gap-x-5 gap-y-2 overflow-hidden rounded-xl border border-black/[0.05] bg-white px-4 py-2.5 shadow-[0_1px_3px_rgba(28,25,23,0.04)] transition-all duration-200 hover:-translate-y-[1px] hover:shadow-[0_4px_16px_rgba(28,25,23,0.08)]" data-testid="leieforhold-honorar-trapp">
             <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(460px_150px_at_0%_0%,rgba(124,58,237,0.07),transparent_62%)]" />
             <div className="relative min-w-0">
               <span className="inline-flex items-center rounded-full bg-[#f3edfe] px-2 py-[3px] text-[9.5px] font-bold uppercase tracking-[0.07em] text-[#6d28d9]">Honorar / mnd · eks. mva</span>
@@ -686,6 +689,10 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
                 {laster ? '…' : <TallOpp verdi={honorarTrapp.iDag} />}
               </p>
               <p className="mt-1 truncate text-[10.5px] text-[#a8a29a]" data-testid="leieforhold-honorar-arr">≈ {kr(honorarTrapp.iDag * 12)}/år run-rate</p>
+              {/* Mikrolinje: hvor langt honoraret i dag er kommet mot full utleie */}
+              <div className="mt-1.5 h-[3px] w-[120px] overflow-hidden rounded-full bg-[#efeafb]" title={`I dag utgjør ${honorarTrapp.potensial > 0 ? Math.round((honorarTrapp.iDag / honorarTrapp.potensial) * 100) : 0} % av full utleie`}>
+                <div className="h-full rounded-full bg-gradient-to-r from-[#7c3aed] to-[#a78bfa] transition-all duration-700" style={{ width: `${honorarTrapp.potensial > 0 ? Math.min(100, Math.round((honorarTrapp.iDag / honorarTrapp.potensial) * 100)) : 0}%` }} />
+              </div>
             </div>
             <div className="hidden h-9 w-px shrink-0 bg-black/[0.06] sm:block" />
             {/* Trappen — individuelt beløp (+) og løpende sum (=) */}
@@ -705,7 +712,7 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
           </div>
 
           {/* KORT 2 — Leie (huseiernes grunnlag) · grønn chip */}
-          <div className="relative flex flex-wrap items-center gap-x-5 gap-y-2 overflow-hidden rounded-xl border border-black/[0.05] bg-white px-4 py-2.5 shadow-[0_1px_3px_rgba(28,25,23,0.04)] xl:justify-between" data-testid="leieforhold-sone-leie">
+          <div className="relative flex flex-wrap items-center gap-x-5 gap-y-2 overflow-hidden rounded-xl border border-black/[0.05] bg-white px-4 py-2.5 shadow-[0_1px_3px_rgba(28,25,23,0.04)] transition-all duration-200 hover:-translate-y-[1px] hover:shadow-[0_4px_16px_rgba(28,25,23,0.08)] xl:justify-between" data-testid="leieforhold-sone-leie">
             <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(460px_150px_at_0%_0%,rgba(21,128,61,0.06),transparent_62%)]" />
             {leieTrapp.map((s, i) => (
               <div key={s.id} className="relative min-w-0" data-testid={`leieforhold-kpi-${s.id}`}>
@@ -731,7 +738,7 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
           </div>
 
           {/* KORT 3 — Utleigrad · blå chip */}
-          <div className="relative flex items-center overflow-hidden rounded-xl border border-black/[0.05] bg-white px-4 py-2.5 shadow-[0_1px_3px_rgba(28,25,23,0.04)]" data-testid="leieforhold-kpi-utleigrad">
+          <div className="relative flex items-center overflow-hidden rounded-xl border border-black/[0.05] bg-white px-4 py-2.5 shadow-[0_1px_3px_rgba(28,25,23,0.04)] transition-all duration-200 hover:-translate-y-[1px] hover:shadow-[0_4px_16px_rgba(28,25,23,0.08)]" data-testid="leieforhold-kpi-utleigrad">
             <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(300px_140px_at_0%_0%,rgba(14,116,144,0.07),transparent_65%)]" />
             <div className="relative min-w-0">
               <span className="inline-flex items-center rounded-full bg-[#e7f4f9] px-2 py-[3px] text-[9.5px] font-bold uppercase tracking-[0.07em] text-[#0e7490]">Utleigrad</span>
@@ -813,7 +820,7 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
                 <thead>
                   <tr>
                     {['Adresse', 'Type', 'Huseier', 'Leietaker', 'Status', 'Innflytting', 'Utflytting', 'Beløp / mnd', 'Sats (eks. mva)', 'Honorar', 'Netto', 'Depositum'].map((h, i) => (
-                      <th key={h} className={`${HODE_CELLE} px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#aaa49b] ${i >= 7 ? 'text-right' : ''}`}>{h}</th>
+                      <th key={h} className={`${HODE_CELLE} px-3 py-2 text-[9.5px] font-semibold uppercase tracking-[0.1em] text-[#b3ada3] ${i >= 7 ? 'text-right' : ''}`}>{h}</th>
                     ))}
                     <th className={`${HODE_CELLE} w-8`} />
                   </tr>
@@ -828,7 +835,7 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
                     idx += 1; const i = idx;
                     const erRom = r.unit_type === 'Rom i bofellesskap';
                     return (
-                    <tr key={`${radNokkel(r)}-${i}`} onClick={() => setValgtRad(r)} className="group dh-rad-inn cursor-pointer border-b border-black/[0.03] transition-colors last:border-b-0 hover:bg-[#f6f4f1]" style={{ animationDelay: `${Math.min(i, 16) * 16}ms` }} data-testid={`leieforhold-rad-${i}`}>
+                    <tr key={`${radNokkel(r)}-${i}`} onClick={() => setValgtRad(r)} className="group dh-rad-inn cursor-pointer border-b border-black/[0.03] transition-colors last:border-b-0 hover:bg-[#f6f4f1] [&>td]:py-2.5" style={{ animationDelay: `${Math.min(i, 16) * 16}ms` }} data-testid={`leieforhold-rad-${i}`}>
                       <td className="px-3 py-2"><AdresseCelle r={r} /></td>
                       <td className="whitespace-nowrap px-3 py-2 text-[12px] text-[#57534e]">{r.bolig_type || (erRom ? 'Rom' : '—')}</td>
                       <td className="max-w-[170px] px-3 py-2" title={r.owner_name}>
