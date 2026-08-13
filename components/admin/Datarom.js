@@ -11,12 +11,12 @@
    Admin ser og redigerer alt; investor får read-only av sine tildelte sider.
    ──────────────────────────────────────────────────────────────────────────── */
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   Landmark, TrendingUp, Wallet, Home, KeyRound, FileSpreadsheet, Loader2, Plus,
   Trash2, X, Check, RefreshCw, FileText, Download, ShieldCheck, ArrowRight,
   BarChart3, AlertTriangle, Pencil, CircleDollarSign, Building2, Users, Settings2,
-  CalendarClock, ArrowUpRight, ArrowDownRight,
+  CalendarClock, ArrowUpRight, ArrowDownRight, HelpCircle,
 } from 'lucide-react';
 import {
   ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, CartesianGrid,
@@ -24,6 +24,7 @@ import {
 import KostnadsSkuff from '@/components/admin/KostnadsSkuff';
 import { aktiveKostnader, beregnHonorarTrapp, visGruppe, anvendScenario } from '@/lib/leieforhold-filter';
 import { cacheLes, cacheHent, cacheSlett } from '@/lib/klient-cache';
+import Omvisning from '@/components/admin/Omvisning';
 
 const heading = { fontFamily: 'var(--font-heading)' };
 const tallFmt = new Intl.NumberFormat('nb-NO', { maximumFractionDigits: 0 });
@@ -106,7 +107,7 @@ const TomtFelt = ({ icon: Icon, tittel, tekst }) => (
   </div>
 );
 
-export default function Datarom({ apiKey, tab = 'oversikt', erAdmin = false, onGaaTil, onAapneBudsjett }) {
+export default function Datarom({ apiKey, tab = 'oversikt', erAdmin = false, onGaaTil, onAapneBudsjett, autoTour = false }) {
   const api = useCallback(async (sti, opts = {}) => {
     const skille = sti.includes('?') ? '&' : '?';
     const r = await fetch(`/api/admin/datarom/${sti}${skille}key=${encodeURIComponent(apiKey)}`, {
@@ -123,7 +124,7 @@ export default function Datarom({ apiKey, tab = 'oversikt', erAdmin = false, onG
 
   return (
     <div data-testid="datarom-modul">
-      {tab === 'oversikt' && <Oversikt api={api} apiKey={apiKey} xlsxHref={xlsxHref} erAdmin={erAdmin} onGaaTil={onGaaTil} onAapneBudsjett={onAapneBudsjett} />}
+      {tab === 'oversikt' && <Oversikt api={api} apiKey={apiKey} xlsxHref={xlsxHref} erAdmin={erAdmin} onGaaTil={onGaaTil} onAapneBudsjett={onAapneBudsjett} autoTour={autoTour} />}
       {tab === 'resultat' && (
         <Kort data-testid="datarom-resultat-kommer-snart">
           <TomtFelt
@@ -142,7 +143,7 @@ export default function Datarom({ apiKey, tab = 'oversikt', erAdmin = false, onG
 
 /* ── Oversikt ─────────────────────────────────────────────────────────────── */
 
-function Oversikt({ api, apiKey, xlsxHref, erAdmin, onGaaTil, onAapneBudsjett }) {
+function Oversikt({ api, apiKey, xlsxHref, erAdmin, onGaaTil, onAapneBudsjett, autoTour = false }) {
   // Klient-cache (stale-while-revalidate): rendrer momentant fra sist kjente
   // data ved fanebytte, og revaliderer stille i bakgrunnen. Første besøk viser
   // skeleton som før — alle senere besøk er øyeblikkelige.
@@ -151,6 +152,35 @@ function Oversikt({ api, apiKey, xlsxHref, erAdmin, onGaaTil, onAapneBudsjett })
   const [laster, setLaster] = useState(() => !cacheLes('dr:oversikt'));
   const [kostSkuff, setKostSkuff] = useState(false);
   const [scenario, setScenario] = useState(''); // fremtidsbilde: ISO-dato eller ''
+
+  // Omvisning: auto-start første gang for investorer, «?» for alle.
+  // (Hooks må ligge FØR skeleton-/feil-returene under.)
+  const [tourAktiv, setTourAktiv] = useState(false);
+  const tourStartetRef = useRef(false);  // maks én auto-start per økt
+  const tourScenarioRef = useRef(false); // touren har satt fremtidsbilde → nullstill
+
+  const tourFerdig = useCallback(() => {
+    setTourAktiv(false);
+    if (tourScenarioRef.current) { setScenario(''); tourScenarioRef.current = false; }
+    try { localStorage.setItem('dh-omvisning-datarom', '1'); } catch (e) {}
+    // Persistér «sett» på kontoen (best effort) — gjelder da alle enheter.
+    fetch(`/api/admin/auth/profile?key=${encodeURIComponent(apiKey)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tourSett: 'datarom' }),
+    }).catch(() => {});
+  }, [apiKey]);
+
+  useEffect(() => {
+    if (!autoTour || tourStartetRef.current || laster) return undefined;
+    if (!(lf?.rows || []).length) return undefined; // vent på livstall (trapp/scenario trenger dem)
+    if (typeof window === 'undefined' || window.innerWidth < 1024) return undefined;
+    try { if (localStorage.getItem('dh-omvisning-datarom')) return undefined; } catch (e) {}
+    tourStartetRef.current = true;
+    const t = setTimeout(() => setTourAktiv(true), 900);
+    return () => clearTimeout(t);
+  }, [autoTour, laster, lf]);
+
   const hent = useCallback(async (force = false) => {
     try {
       const j = await cacheHent('dr:oversikt', () => api('oversikt'), { force });
@@ -223,6 +253,43 @@ function Oversikt({ api, apiKey, xlsxHref, erAdmin, onGaaTil, onAapneBudsjett })
   const plussMnd = (n) => { const d = new Date(); d.setMonth(d.getMonth() + n); return d.toISOString().slice(0, 10); };
   const imorgen = new Date(Date.now() + 864e5).toISOString().slice(0, 10);
 
+  /* ── Omvisning: 5 steg med levende fremtidsbilde-demo — steg 3 aktiverer
+     faktisk «+3 mnd» slik at investoren SER hele oversikten regnes om.
+     Nullstilles garantert i tourFerdig. ── */
+  const tourSteg = [
+    {
+      id: 'selskapspuls',
+      tittel: 'Selskapspulsen',
+      tekst: 'DigiHomes månedlige honorar akkurat nå — og veksttrappen som viser veien fra i dag, via signert og annonsert, til full utleie.',
+      maal: () => document.querySelector('[data-testid="dr-hero"]'),
+    },
+    {
+      id: 'fremtidsbilde-kontroll',
+      tittel: 'Fremtidsbildet',
+      tekst: 'Denne kontrollen flytter hele oversikten frem i tid — velg «+1 mnd», «+3 mnd» eller en hvilken som helst dato. La oss prøve …',
+      maal: () => document.querySelector('[data-testid="dr-scenario"]'),
+    },
+    {
+      id: 'fremtidsbilde-aktiv',
+      tittel: 'Porteføljen om tre måneder',
+      tekst: 'Signerte kontrakter er faset inn — honorar, margin, utleiegrad og neste 30 dager er regnet om til valgt dato. Nullstilles når omvisningen er ferdig.',
+      foer: async () => { tourScenarioRef.current = true; setScenario(plussMnd(3)); },
+      maal: () => document.querySelector('[data-testid="dr-hero"]'),
+    },
+    {
+      id: 'statstripe',
+      tittel: 'Nøkkeltallene',
+      tekst: 'Margin, pipeline, ARR-potensial og utleiegrad — alle følger valgt dato. Margin er honorar minus faste kostnader.',
+      maal: () => document.querySelector('[data-testid="dr-statstripe"]'),
+    },
+    {
+      id: 'investorpakke',
+      tittel: 'Investorpakken',
+      tekst: 'Hele datarommet — nøkkeltall, enheter og økonomi — som ferdig formatert Excel, alltid med ferske tall.',
+      maal: () => document.querySelector('[data-testid="datarom-xlsx"]'),
+    },
+  ];
+
   return (
     <div className="space-y-3">
       {/* ── HERO: honoraret — ett dominant tall; kontrollene bor i kortet (én topprad) ── */}
@@ -284,6 +351,15 @@ function Oversikt({ api, apiKey, xlsxHref, erAdmin, onGaaTil, onAapneBudsjett })
               >
                 <FileSpreadsheet className="h-3.5 w-3.5" /> Investorpakke
               </a>
+              <button
+                onClick={() => setTourAktiv(true)}
+                data-testid="datarom-omvisning-knapp"
+                title="Omvisning — se hva oversikten kan"
+                aria-label="Start omvisning"
+                className="flex h-8 w-8 items-center justify-center rounded-full border border-black/[0.06] bg-white text-[#b5b5b5] transition-all hover:bg-[#fafaf8] hover:text-[#0a0a0a]"
+              >
+                <HelpCircle className="h-3.5 w-3.5" />
+              </button>
             </div>
           </div>
 
@@ -535,6 +611,9 @@ function Oversikt({ api, apiKey, xlsxHref, erAdmin, onGaaTil, onAapneBudsjett })
           onLukk={() => setKostSkuff(false)}
         />
       )}
+
+      {/* Guidet omvisning — spotlight-motor med levende fremtidsbilde-demo */}
+      <Omvisning steg={tourSteg} aktiv={tourAktiv} onFerdig={tourFerdig} />
     </div>
   );
 }

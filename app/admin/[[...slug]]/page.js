@@ -789,7 +789,16 @@ export default function AdminPage({ params }) {
           {section === 'budsjett' && (
             <Budsjett apiKey={token} readOnly={erBruker || user?.role === 'investor'} investor={user?.role === 'investor'} />
           )}
-          {section === 'datarom' && <Datarom apiKey={token} tab={dataromTab} erAdmin={!erBruker} onGaaTil={(t) => setDataromTab(t)} onAapneBudsjett={() => setSection('budsjett')} />}
+          {section === 'datarom' && (
+            <Datarom
+              apiKey={token}
+              tab={dataromTab}
+              erAdmin={!erBruker}
+              onGaaTil={(t) => setDataromTab(t)}
+              onAapneBudsjett={() => setSection('budsjett')}
+              autoTour={user?.role === 'investor' && !user?.impersonatedBy && !(user?.tourSett || []).includes('datarom')}
+            />
+          )}
           {section === 'saker' && <TasksTab apiKey={token} user={user} onStats={setTaskStats} onOpenBrukere={() => setSection('brukere')} />}
           {section === 'brukere' && <Brukere apiKey={token} user={user} onImpersonate={startImpersonation} />}
           {section === 'moter' && <MeetingsTab apiKey={token} user={user} onOpenTask={(id, arkivert) => runSaker({ do: 'aapne', id, arkivert })} />}
