@@ -269,11 +269,11 @@ export default function Leieforhold({ apiKey }) {
           <>
             {/* Desktop-tabell */}
             <div className="hidden overflow-x-auto md:block">
-              <table className="w-full min-w-[1150px] text-left" data-testid="leieforhold-tabell">
+              <table className="w-full min-w-[1050px] text-left" data-testid="leieforhold-tabell">
               <thead>
                 <tr className="border-b border-black/[0.05]">
-                  {['Enhet', 'Adresse', 'Type', 'Huseier', 'Leietaker', 'Status', 'Innflytting', 'Beløp / mnd', 'Sats', 'Honorar', 'Netto', 'Depositum'].map((h, i) => (
-                    <th key={h} className={`px-3.5 py-2.5 text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#b5b5b5] ${i >= 7 ? 'text-right' : ''}`}>{h}</th>
+                  {['Adresse', 'Type', 'Huseier', 'Leietaker', 'Status', 'Innflytting', 'Beløp / mnd', 'Sats', 'Honorar', 'Netto', 'Depositum'].map((h, i) => (
+                    <th key={h} className={`px-3.5 py-2.5 text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#b5b5b5] ${i >= 6 ? 'text-right' : ''}`}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -284,17 +284,14 @@ export default function Leieforhold({ apiKey }) {
                   const omraade = resten.join(',').replace(/,?\s*Norge\s*$/i, '').trim();
                   return (
                   <tr key={`${r.address}-${r.unit_room}-${i}`} className="border-b border-black/[0.035] transition-colors last:border-b-0 hover:bg-[#fafaf8]" data-testid={`leieforhold-rad-${i}`}>
-                    <td className="whitespace-nowrap px-3.5 py-2.5">
-                      <span className="text-[13px] font-semibold leading-tight text-[#1a1a1a]">
-                        {r.enhet_detalj || (erRom ? r.unit_room : 'Hel enhet')}
-                      </span>
-                      {erRom && (
-                        <span className="ml-1.5 rounded-md bg-[#f4f0fb] px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wide text-[#8b5cf6]">Rom</span>
-                      )}
-                    </td>
                     <td className="px-3.5 py-2.5">
-                      <p className="max-w-[220px] truncate text-[12.5px] font-medium text-[#333]" title={r.address}>{(gate || '').trim() || '—'}</p>
-                      {omraade && <p className="mt-0.5 max-w-[220px] truncate text-[11px] text-[#a3a3a3]">{omraade}</p>}
+                      <p className="max-w-[240px] truncate text-[13px] font-semibold text-[#1a1a1a]" title={r.address}>
+                        {(gate || '').trim() || '—'}
+                        {erRom && (
+                          <span className="ml-1.5 rounded-md bg-[#f4f0fb] px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wide text-[#8b5cf6]">{r.enhet_detalj || 'Rom'}</span>
+                        )}
+                      </p>
+                      {omraade && <p className="mt-0.5 max-w-[240px] truncate text-[11px] text-[#a3a3a3]">{omraade}</p>}
                     </td>
                     <td className="whitespace-nowrap px-3.5 py-2.5 text-[12.5px] text-[#555]">{r.bolig_type || (erRom ? 'Rom' : '—')}</td>
                     <td className="max-w-[150px] truncate px-3.5 py-2.5 text-[12.5px] text-[#555]" title={r.owner_name}>{r.owner_name || '—'}</td>
@@ -321,7 +318,7 @@ export default function Leieforhold({ apiKey }) {
               <tfoot>
                 <tr className="border-t border-black/[0.06] bg-[#fafaf8]">
                   <td className="px-3.5 py-2.5 text-[11px] font-bold uppercase tracking-[0.08em] text-[#999]">Sum ({filtrert.length})</td>
-                  <td colSpan={6} />
+                  <td colSpan={5} />
                   <td className="px-3.5 py-2.5 text-right text-[13px] font-bold tabular-nums text-[#0a0a0a]">{kr(filtrert.reduce((s, r) => s + (r.monthly_rent || 0), 0))}</td>
                   <td />
                   <td className="px-3.5 py-2.5 text-right text-[12.5px] font-bold tabular-nums" style={{ color: '#7c3aed' }} title="Realisert honorar (kun utleide)">{kr(filtrert.filter((r) => r.group === 'leased').reduce((s, r) => s + (r.fee_amount || 0), 0))}</td>
