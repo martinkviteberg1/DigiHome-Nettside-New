@@ -3323,11 +3323,78 @@ async function handleRoute(request, { params }) {
       const dataLf = await hentLeieforhold(leieforholdTarget(), { db, fresh: freshLf });
       return cors(NextResponse.json(dataLf));
     }
+
+    // ═══ ENHETSØKONOMI (Økonomi-modus i Leieforhold) ════════════════════════
+    // DigiHome er asset-light: huseier bærer alle boligkostnader. Våre kostnader:
+    //   · felleskostnader (løpende/mnd, f.eks. lønn) — fordeles per enhet etter
+    //     valgt nøkkel: 'alle' (likt per enhet), 'utleide' (kun utleide) eller
+    //     'honorar' (prorata etter honorar)
+    //   · CAC per enhet (engangs anskaffelseskostnad) → payback-metrikk
+    // Lesing: alle med leieforhold-modul (investor read-only). Skriving: kun
+    // admin/owner (adminAuthed avviser begrensede roller automatisk).
+    if (route === '/admin/leieforhold/okonomi' && method === 'GET') {
+      if (!(await modulAuthed(request, db, 'leieforhold'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const dokEo = await db.collection('enhetsokonomi').find({}, { projection: { _id: 0 } }).toArray();
+      const fellesEo = dokEo.filter((d) => d.type === 'felles').sort((a, b) => (b.belop || 0) - (a.belop || 0));
+      const enheterEo = {};
+      for (const d of dokEo) { if (d.type === 'enhet' && d.enhetId) enheterEo[d.enhetId] = { cac: d.cac || 0, notat: d.notat || '' }; }
+      return cors(NextResponse.json({ ok: true, felles: fellesEo, enheter: enheterEo }));
+    }
+    if (route === '/admin/leieforhold/okonomi/felles' && method === 'PUT') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const bEo = await request.json().catch(() => ({}));
+      const navnEo = String(bEo.navn || '').trim().slice(0, 80);
+      const belopEo = Math.max(0, Math.round(Number(bEo.belop) || 0));
+      const fordelingEo = ['alle', 'utleide', 'honorar'].includes(bEo.fordeling) ? bEo.fordeling : 'alle';
+      const kategoriEo = ['lonn', 'markedsforing', 'programvare', 'annet'].includes(bEo.kategori) ? bEo.kategori : 'annet';
+      if (!navnEo || !belopEo) return cors(NextResponse.json({ ok: false, error: 'Navn og beløp kreves' }, { status: 400 }));
+      const idEo = String(bEo.id || '').trim() || uuidv4();
+      await db.collection('enhetsokonomi').updateOne(
+        { id: idEo, type: 'felles' },
+        { $set: { id: idEo, type: 'felles', navn: navnEo, belop: belopEo, fordeling: fordelingEo, kategori: kategoriEo, updatedAt: new Date().toISOString() } },
+        { upsert: true },
+      );
+      return cors(NextResponse.json({ ok: true, id: idEo }));
+    }
+    if (route === '/admin/leieforhold/okonomi/felles' && method === 'DELETE') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const idEoD = (() => { try { return new URL(request.url).searchParams.get('id') || ''; } catch (e) { return ''; } })();
+      const rEoD = await db.collection('enhetsokonomi').deleteOne({ id: idEoD, type: 'felles' });
+      if (!rEoD.deletedCount) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
+      return cors(NextResponse.json({ ok: true }));
+    }
+    if (route === '/admin/leieforhold/okonomi/enhet' && method === 'PUT') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const bEn = await request.json().catch(() => ({}));
+      const enhetIdEn = String(bEn.enhetId || '').trim().slice(0, 120);
+      if (!enhetIdEn) return cors(NextResponse.json({ ok: false, error: 'enhetId kreves' }, { status: 400 }));
+      const cacEn = Math.max(0, Math.round(Number(bEn.cac) || 0));
+      const notatEn = String(bEn.notat || '').trim().slice(0, 300);
+      if (!cacEn && !notatEn) {
+        await db.collection('enhetsokonomi').deleteOne({ type: 'enhet', enhetId: enhetIdEn });
+        return cors(NextResponse.json({ ok: true, slettet: true }));
+      }
+      await db.collection('enhetsokonomi').updateOne(
+        { type: 'enhet', enhetId: enhetIdEn },
+        { $set: { type: 'enhet', enhetId: enhetIdEn, cac: cacEn, notat: notatEn, updatedAt: new Date().toISOString() }, $setOnInsert: { id: uuidv4() } },
+        { upsert: true },
+      );
+      return cors(NextResponse.json({ ok: true }));
+    }
+
     if (route === '/admin/leieforhold/xlsx' && method === 'GET') {
       if (!(await modulAuthed(request, db, 'leieforhold'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const dataLf = await hentLeieforhold(leieforholdTarget(), { db });
       if (!dataLf.ok) return cors(NextResponse.json({ error: dataLf.error || 'Kunne ikke hente data' }, { status: 502 }));
-      const bufLf = await lagLeieforholdExcel(dataLf);
+      // Enhetsøkonomi (felleskostnader + CAC) → eget «Enhetsøkonomi»-ark
+      let okonomiLf = null;
+      try {
+        const dokLf = await db.collection('enhetsokonomi').find({}, { projection: { _id: 0 } }).toArray();
+        const enhLf = {};
+        for (const d of dokLf) { if (d.type === 'enhet' && d.enhetId) enhLf[d.enhetId] = { cac: d.cac || 0, notat: d.notat || '' }; }
+        okonomiLf = { felles: dokLf.filter((d) => d.type === 'felles'), enheter: enhLf };
+      } catch (e) { /* arket utelates uten data */ }
+      const bufLf = await lagLeieforholdExcel(dataLf, okonomiLf);
       return new NextResponse(bufLf, {
         headers: {
           'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',

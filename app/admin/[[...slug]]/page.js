@@ -54,7 +54,8 @@ const NAV = [
     items: [
       { k: 'dr-oversikt', datarom: 'oversikt', l: 'Oversikt', icon: Landmark, desc: 'Investorrommets forside — nøkkeltall, drift, pipeline og investorpakke' },
       { k: 'dr-resultat', datarom: 'resultat', l: 'Resultatregnskap', icon: BarChart3, desc: 'Månedlig resultat fra oppstart — inntekter, kostnader og akkumulert' },
-      { k: 'dr-enheter', datarom: 'enheter', l: 'Enhetsøkonomi', icon: Home, desc: 'Hva DigiHome tjener per leilighet og rom — honorar, kostnader og margin' },
+      // Enhetsøkonomi er slått sammen med Leieforhold (Økonomi-modus) — dr-enheter
+      // er derfor fjernet fra menyen. Ruter/data består for bakoverkompatibilitet.
       { k: 'dr-pipeline', datarom: 'pipeline', l: 'Pipeline', icon: TrendingUp, desc: 'Enheter på vei inn — signert kontra forventet' },
       { k: 'dr-selskap', datarom: 'selskap', l: 'Selskap', icon: ShieldCheck, desc: 'Ansatte, faste kostnader, gjeld og aksjonærlån' },
       { k: 'dr-dokumenter', datarom: 'dokumenter', l: 'Dokumenter', icon: FileText, desc: 'Delte rapporter og avtaler fra dokumenthvelvet' },
@@ -748,7 +749,7 @@ export default function AdminPage({ params }) {
           {erBegrenset && begrensning.length === 0 && (
             <ComingSoon icon={Lock} title="Ingen moduler tildelt ennå" body="Kontoen din er opprettet, men ingen moduler er delt med deg riktig ennå. Be administratoren om å tildele modulene du skal se — de dukker opp her automatisk." />
           )}
-          {section === 'leieforhold' && <Leieforhold apiKey={token} />}
+          {section === 'leieforhold' && <Leieforhold apiKey={token} readOnly={erBruker} erInvestor={user?.role === 'investor'} />}
           {section === 'budsjett' && <Budsjett apiKey={token} readOnly={erBruker} />}
           {section === 'datarom' && <Datarom apiKey={token} tab={dataromTab} erAdmin={!erBruker} onGaaTil={(t) => setDataromTab(t)} onAapneBudsjett={() => setSection('budsjett')} />}
           {section === 'saker' && <TasksTab apiKey={token} user={user} onStats={setTaskStats} onOpenBrukere={() => setSection('brukere')} />}

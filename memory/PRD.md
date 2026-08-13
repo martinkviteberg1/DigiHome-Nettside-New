@@ -512,3 +512,10 @@ Google Ads-styring via native REST API).
 - Fjernet ødelagt wordmark-white.svg-overlay (hadde mørk tekst + egen boks) fra scenen.
 - Ny struktur: ren kinoscene m/ maskot som smelter inn i mørk footer (#141022) via gradient, hvit digihome-logo-white.svg + tagline + hvit CTA, lenkekolonner (Utforsk/Selskap/Juridisk — kun ekte ruter), bunnlinje m/ «Til toppen», og gigantisk fade-«digihome»-typografi klippet i bunnkanten.
 - Verifisert desktop + mobil (0 px overflow).
+
+## Enhetsøkonomi i Leieforhold (aug. 2026)
+- Leieforhold har to modus: «Utleie» (plattform-speil 1:1) og «Økonomi» (honorar − fordelte felleskostnader = margin per enhet, CAC/payback, break-even).
+- Datarommets «Enhetsøkonomi»-side er fjernet fra menyen (slått sammen hit); Pipeline består. dr-enheter-nøkkelen finnes fortsatt i backend for bakoverkompatibilitet.
+- Kostnadsmodell (asset-light — huseier bærer boligkostnadene): felleskostnader (lønn m.m., fordeling: likt/kun utleide/etter honorar) + CAC per enhet (engangs). Kolleksjon: enhetsokonomi. Ruter: GET/PUT/DELETE /api/admin/leieforhold/okonomi[/felles|/enhet].
+- Investor: Økonomi-modus som default, read-only (adminAuthed blokkerer skriving). Excel-eksporten har eget «Enhetsøkonomi»-ark.
+- Plattformens GET /api/lease-income/export er levert i deres preview og treffer prod ved neste publish → visningen blir da automatisk 100 % 1:1 (motoren prøver den først). Kjent restavvik til da: honorar 18 100 vs 15 100 (intern avtale→enhet-kobling, se bro-tråd «leieforhold-view»).
