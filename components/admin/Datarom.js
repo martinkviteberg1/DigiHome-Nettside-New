@@ -305,7 +305,7 @@ function Oversikt({ api, apiKey, xlsxHref, erAdmin, onGaaTil, onAapneBudsjett })
               <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-3 sm:grid-cols-4">
                 {[
                   ['#0a0a0a', scenario ? `Ved ${dtoNo(scenario)}` : 'I dag', kr(trapp.iDag), `${utleide} enheter betaler`],
-                  ['#8b5cf6', '+ Signert', kr(trapp.sikret), `+${kr(trapp.sikret - trapp.iDag)} avtalt — flytter inn`],
+                  ['#8b5cf6', '+ Signert', `${trapp.estSikret ? '~' : ''}${kr(trapp.sikret)}`, `+${trapp.estSikret ? '~' : ''}${kr(trapp.sikret - trapp.iDag)} signerte leiekontrakter`],
                   ['#d8ccf6', '+ Annonsert', `${trapp.estAnnonsert ? '~' : ''}${kr(trapp.medAnnonsert)}`, `+${trapp.estAnnonsert ? '~' : ''}${kr(trapp.medAnnonsert - trapp.sikret)} ute i markedet`],
                   ['#d5d0c8', 'Full utleie', `${trapp.estFull ? '~' : ''}${kr(trapp.potensial)}`, `≈ ${trapp.estFull ? '~' : ''}${kr(trapp.potensial * 12)}/år`],
                 ].map(([farge, l, v, sub], i) => (

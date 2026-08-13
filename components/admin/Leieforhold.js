@@ -359,6 +359,16 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
      som Datarom-oversikten): i dag → sikret (avtalt) → m/annonsert (est ~) →
      full utleie. ── */
   const honorarTrapp = useMemo(() => beregnHonorarTrapp(filtrert), [filtrert]);
+  // Porteføljens snittsats (eks. mva) — brukes til å ESTIMERE honorar for
+  // enheter med signert leiekontrakt der forvaltningsavtalen ennå ikke er
+  // registrert med sats (vises med ~ i tabell og skuff).
+  const snittSatsEks = useMemo(() => {
+    const medFee = (data?.rows || []).filter((r) => r.group === 'leased' && r.fee_amount > 0 && r.monthly_rent > 0);
+    const leie = medFee.reduce((s, r) => s + r.monthly_rent, 0);
+    return leie > 0 ? medFee.reduce((s, r) => s + r.fee_amount, 0) / leie : 0;
+  }, [data]);
+  const feeEstimert = (r) => !(r.fee_amount > 0) && !(r.fee_percent > 0) && (r.monthly_rent > 0)
+    && ['leased', 'future', 'signing'].includes(r.group) && snittSatsEks > 0;
 
   /* ── Enhetsøkonomi (kun til enhetsskuffen: andel faste kostnader + CAC per
      enhet). Selskaps-KPI-ene (margin, break-even, CAC totalt) bor i
@@ -695,7 +705,7 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
             <div className="hidden h-9 w-px shrink-0 bg-black/[0.06] sm:block" />
             {/* Trappen — individuelt beløp (+) og løpende sum (=) */}
             {[
-              ['+ Signert', honorarTrapp.sikret - honorarTrapp.iDag, honorarTrapp.sikret, 'sikret', false, 'leieforhold-hon-sikret'],
+              ['+ Signert', honorarTrapp.sikret - honorarTrapp.iDag, honorarTrapp.sikret, 'sikret', honorarTrapp.estSikret, 'leieforhold-hon-sikret'],
               ['+ Annonsert nå', honorarTrapp.medAnnonsert - honorarTrapp.sikret, honorarTrapp.medAnnonsert, '', honorarTrapp.estAnnonsert, 'leieforhold-hon-annonsert'],
               ['+ Ledig rest', honorarTrapp.potensial - honorarTrapp.medAnnonsert, honorarTrapp.potensial, 'full utleie', honorarTrapp.estFull, 'leieforhold-hon-full'],
             ].map(([l, v, sum, sumL, est, tid]) => (
@@ -865,12 +875,17 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
                         className="whitespace-nowrap px-3 py-2 text-right text-[12px] tabular-nums text-[#78716c]"
                         title={r.fee_percent ? (r.vat_inclusive
                           ? `Avtalt ${r.fee_percent.toLocaleString('nb-NO')} % inkl. mva — vist omregnet til eks. mva`
-                          : `Avtalt ${r.fee_percent.toLocaleString('nb-NO')} % eks. mva`) : undefined}
+                          : `Avtalt ${r.fee_percent.toLocaleString('nb-NO')} % eks. mva`)
+                          : feeEstimert(r) ? 'Estimert med porteføljens snittsats — forvaltningsavtale ikke registrert med sats ennå' : undefined}
                       >
-                        {r.fee_percent ? `${satsFmt(eksSats(r))} %` : '—'}
+                        {r.fee_percent
+                          ? `${satsFmt(eksSats(r))} %`
+                          : feeEstimert(r) ? <span className="text-[#b3ada3]">~{satsFmt(snittSatsEks * 100)} %</span> : '—'}
                       </td>
-                      <td className={`whitespace-nowrap px-3 py-2 text-right text-[12px] tabular-nums ${r.group === 'leased' ? 'font-semibold' : ''}`} style={{ color: r.group === 'leased' ? '#7c3aed' : '#c2beb8' }} title={r.group === 'leased' ? 'Realisert honorar' : 'Potensielt honorar — ikke realisert ennå'}>
-                        {r.fee_amount ? kr(r.fee_amount) : '—'}
+                      <td className={`whitespace-nowrap px-3 py-2 text-right text-[12px] tabular-nums ${r.group === 'leased' ? 'font-semibold' : ''}`} style={{ color: r.group === 'leased' ? '#7c3aed' : '#c2beb8' }} title={feeEstimert(r) ? 'Estimert honorar (porteføljens snittsats) — signert leiekontrakt, men forvaltningsavtalen mangler sats' : r.group === 'leased' ? 'Realisert honorar' : 'Potensielt honorar — ikke realisert ennå'}>
+                        {r.fee_amount
+                          ? kr(r.fee_amount)
+                          : feeEstimert(r) ? <span style={{ color: '#a78bfa' }}>~{kr(Math.round(r.monthly_rent * snittSatsEks))}</span> : '—'}
                       </td>
                       <td className="whitespace-nowrap px-3 py-2 text-right text-[12px] tabular-nums" style={{ color: r.group === 'leased' ? '#57534e' : '#c2beb8' }}>
                         {r.net_to_owner ? kr(r.net_to_owner) : '—'}
@@ -1008,8 +1023,8 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
                 </Seksjon>
 
                 <Seksjon t="Økonomi (DigiHome)">
-                  <Rad l="Sats · eks. mva" v={r.fee_percent ? `${satsFmt(eksSats(r))} %${r.vat_inclusive ? ` (avtalt ${r.fee_percent.toLocaleString('nb-NO')} % inkl. mva)` : ''}` : '—'} />
-                  <Rad l="Honorar / mnd" v={r.fee_amount ? kr(r.fee_amount) : '—'} farge="#7c3aed" />
+                  <Rad l="Sats · eks. mva" v={r.fee_percent ? `${satsFmt(eksSats(r))} %${r.vat_inclusive ? ` (avtalt ${r.fee_percent.toLocaleString('nb-NO')} % inkl. mva)` : ''}` : feeEstimert(r) ? `~${satsFmt(snittSatsEks * 100)} % (estimert — avtale ikke registrert)` : '—'} />
+                  <Rad l="Honorar / mnd" v={r.fee_amount ? kr(r.fee_amount) : feeEstimert(r) ? `~${kr(Math.round(r.monthly_rent * snittSatsEks))} (estimert)` : '—'} farge={feeEstimert(r) && !r.fee_amount ? '#a78bfa' : '#7c3aed'} />
                   <Rad l="Netto til huseier" v={r.net_to_owner ? kr(r.net_to_owner) : '—'} />
                   {fellesTotal > 0 && <Rad l="Andel faste kostnader" v={andel ? `−${kr(andel)}` : '—'} farge="#9a6b1c" />}
                   <Rad l={fellesTotal > 0 ? 'Margin / mnd' : 'Dekningsbidrag / mnd'} v={kr(margin)} farge={margin >= 0 ? '#1f7a45' : '#e11d48'} />
