@@ -198,7 +198,6 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
   const [sok, setSok] = useState('');
   const [sortering, setSortering] = useState('standard');
   const [visOpen, setVisOpen] = useState(false); // «Vis»-meny: sortering + scenario-dato
-  const [modus, setModus] = useState(erInvestor ? 'okonomi' : 'utleie');
   const sokRef = useRef(null);
 
   // Fase 1: flervalgs-filter (status/type/inntekt/huseier)
@@ -212,13 +211,19 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
 
   // Enhetsøkonomi-data (faste kostnader + CAC per enhet)
   const [okonomi, setOkonomi] = useState({ felles: [], enheter: {} });
-  const [inklFelles, setInklFelles] = useState(true);
   const [kostSkuff, setKostSkuff] = useState(false); // Fase 3: admin-skuff for faste kostnader
   const [fellesSkjema, setFellesSkjema] = useState(null); // {id?, navn, belop, fordeling, kategori, startDato, sluttDato, aktiv}
   const [cacSkjema, setCacSkjema] = useState(null); // {enhetId, adresse, cac, notat}
   const [lagrer, setLagrer] = useState(false);
   const [valgtRad, setValgtRad] = useState(null); // enhets-skuff (side drawer)
   const [pdfVisning, setPdfVisning] = useState(null); // {id, tittel} → PDF-modal
+
+  // Tabellen skal fylle skjermen helt ned (ingen blank plass nederst):
+  // vi måler hvor tabellboksen starter og gir den nøyaktig resthøyde,
+  // med plass til bunnteksten under kortet.
+  const tabellBoksRef = useRef(null);
+  const bunnTekstRef = useRef(null);
+  const [tabellMaxH, setTabellMaxH] = useState(null);
 
   // Esc lukker øverste lag: PDF → CAC → filter → kostnadsskjema → kostnadsskuff → enhetsskuff
   useEffect(() => {
@@ -350,7 +355,9 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
   const cacFor = (r) => okonomi.enheter[radNokkel(r)]?.cac || 0;
   const cacTotal = useMemo(() => filtrert.reduce((s, r) => s + cacFor(r), 0), [filtrert, okonomi.enheter]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const kostIMargin = inklFelles ? ((aktivFiltrering || scenario) ? fordeltFiltrert : fellesTotal) : 0;
+  // Margin = honorar i dag − fordelte faste kostnader (alltid inkludert —
+  // dekningsbidraget er honorar-KPI-en, så egen toggle trengs ikke).
+  const kostIMargin = (aktivFiltrering || scenario) ? fordeltFiltrert : fellesTotal;
   const marginMnd = (visTotals.fee || 0) - kostIMargin;
   const dekningPct = fellesTotal > 0 ? Math.round(((visTotals.fee || 0) / fellesTotal) * 100) : null;
   const snittHonorar = visTotals.leased ? (visTotals.fee || 0) / visTotals.leased : 0;
@@ -360,6 +367,23 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
 
   const scenarioInn = useMemo(() => scenarioRows.filter((r) => r._scenario === 'inn').length, [scenarioRows]);
   const scenarioUt = useMemo(() => scenarioRows.filter((r) => r._scenario === 'ut').length, [scenarioRows]);
+
+  // Mål tilgjengelig høyde for tabellens scrolleområde: fra tabellboksens topp
+  // ned til bunnen av vinduet, minus bunntekst + litt luft. Re-måles ved
+  // resize og når laget over endrer seg (filter-/scenariobannere, KPI-wrap).
+  useEffect(() => {
+    const maal = () => {
+      const boks = tabellBoksRef.current;
+      if (!boks) return;
+      const topp = boks.getBoundingClientRect().top + window.scrollY;
+      const bunn = (bunnTekstRef.current?.offsetHeight || 34) + 24; // bunntekst + margin/luft
+      setTabellMaxH(Math.max(320, Math.round(window.innerHeight - topp - bunn)));
+    };
+    maal();
+    const t = setTimeout(maal, 60); // etter fonter/animasjoner har satt seg
+    window.addEventListener('resize', maal);
+    return () => { clearTimeout(t); window.removeEventListener('resize', maal); };
+  }, [laster, filtrert.length, scenario, aktivFiltrering, fordelingSegmenter.length]);
 
   /* ── Filtervalg-lister (typer/eiere med antall, fra scenario-radene) ─────── */
   const typeValg = useMemo(() => {
@@ -478,21 +502,8 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
       {/* ═══════════ ÉN SAMLET ARBEIDSFLATE ═══════════ */}
       <div className="rounded-xl border border-black/[0.07] bg-white shadow-[0_1px_2px_rgba(28,25,23,0.04),0_12px_32px_-16px_rgba(28,25,23,0.10)]">
 
-        {/* ── ÉN verktøylinje (Linear-stil): kontekst → søk/hurtigfiltre → visning/eksport ── */}
+        {/* ── ÉN verktøylinje (Linear-stil): søk/hurtigfiltre → visning/eksport ── */}
         <div className="flex flex-wrap items-center gap-1.5 px-3 py-2 sm:px-4">
-          <div className="flex h-8 items-center rounded-[9px] bg-[#f1efeb] p-[3px]">
-            {[['utleie', 'Utleie'], ['okonomi', 'Økonomi']].map(([k, l]) => (
-              <button
-                key={k}
-                onClick={() => setModus(k)}
-                data-testid={`leieforhold-modus-${k}`}
-                className={`flex h-full items-center gap-1.5 rounded-[6px] px-3 text-[12px] transition-all ${modus === k ? 'bg-white font-semibold text-[#1c1917] shadow-[0_1px_3px_rgba(28,25,23,0.1)]' : 'font-medium text-[#8a857c] hover:text-[#57534e]'}`}
-              >
-                {k === 'okonomi' && <Coins className="h-3.5 w-3.5" />}{l}
-              </button>
-            ))}
-          </div>
-          <span className="mx-0.5 hidden h-4 w-px bg-black/[0.07] sm:block" />
           <div className="relative order-last w-full sm:order-none sm:w-auto">
             <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#b3ada3]" />
             <input
@@ -689,145 +700,103 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
           </div>
         )}
 
-        {/* ── KPI-stripe ── */}
-        {modus === 'utleie' ? (
-          <div className="grid grid-cols-2 border-t border-black/[0.05] sm:grid-cols-3 xl:grid-cols-6 xl:divide-x xl:divide-black/[0.05]">
-            {KPI.map((s) => (
-              <KpiCelle key={s.id} testid={`leieforhold-kpi-${s.id}`}>
-                <div className="flex items-center gap-1.5">
-                  <span className="h-[6px] w-[6px] rounded-full" style={{ background: s.farge }} />
-                  <p className={`truncate ${ETIKETT}`}>{s.l}</p>
-                </div>
-                <p className="mt-1 text-[17px] font-semibold tabular-nums tracking-[-0.01em] text-[#1c1917]" style={heading}>
-                  {laster ? '…' : <TallOpp verdi={s.v} />}
-                </p>
-                <p className="mt-[1px] truncate text-[10.5px] text-[#b8b2a9]">{s.sub}</p>
-              </KpiCelle>
-            ))}
-            <KpiCelle testid="leieforhold-kpi-honorar">
+        {/* ── KPI-rad 1: Inntektstrappen ── */}
+        <div className="grid grid-cols-2 border-t border-black/[0.05] sm:grid-cols-3 xl:grid-cols-6 xl:divide-x xl:divide-black/[0.05]">
+          {KPI.map((s) => (
+            <KpiCelle key={s.id} testid={`leieforhold-kpi-${s.id}`}>
               <div className="flex items-center gap-1.5">
-                <span className="h-[6px] w-[6px] rounded-full bg-[#7c3aed]" />
-                <p className={`truncate ${ETIKETT}`}>Honorar / mnd · eks. mva</p>
+                <span className="h-[6px] w-[6px] rounded-full" style={{ background: s.farge }} />
+                <p className={`truncate ${ETIKETT}`}>{s.l}</p>
               </div>
-              <p className="mt-1 text-[17px] font-semibold tabular-nums tracking-[-0.01em]" style={{ ...heading, color: '#7c3aed' }} data-testid="leieforhold-honorar">
-                {laster ? '…' : <TallOpp verdi={visTotals.fee} />}
+              <p className="mt-1 text-[17px] font-semibold tabular-nums tracking-[-0.01em] text-[#1c1917]" style={heading}>
+                {laster ? '…' : <TallOpp verdi={s.v} />}
               </p>
-              <p className="mt-[1px] truncate text-[10.5px] text-[#b8b2a9]">
-                sikret {kr(visTotals.fee_garantert ?? visTotals.fee)} · potensial {kr(visTotals.fee_total ?? visTotals.fee)}
-              </p>
+              <p className="mt-[1px] truncate text-[10.5px] text-[#b8b2a9]">{s.sub}</p>
             </KpiCelle>
-            <div className="flex items-center gap-3 px-4 py-2.5">
-              <Ring pct={visTotals.occupancy_pct || 0} />
-              <div className="min-w-0">
-                <p className={`truncate ${ETIKETT}`}>Utleigrad</p>
-                <p className="mt-[1px] text-[15px] font-semibold tabular-nums tracking-[-0.01em] text-[#1c1917]" style={heading}>{visTotals.occupancy_pct ?? 0} %</p>
-                <p className="truncate text-[10.5px] text-[#b8b2a9]">
-                  {visTotals.leased ?? 0} av {visTotals.count ?? 0} utleid · netto eiere {kr(visTotals.net)}
-                </p>
-              </div>
+          ))}
+          <KpiCelle testid="leieforhold-kpi-honorar">
+            <div className="flex items-center gap-1.5">
+              <span className="h-[6px] w-[6px] rounded-full bg-[#7c3aed]" />
+              <p className={`truncate ${ETIKETT}`}>Honorar / mnd · eks. mva</p>
+            </div>
+            <p className="mt-1 text-[17px] font-semibold tabular-nums tracking-[-0.01em]" style={{ ...heading, color: '#7c3aed' }} data-testid="leieforhold-honorar">
+              {laster ? '…' : <TallOpp verdi={visTotals.fee} />}
+            </p>
+            <p className="mt-[1px] truncate text-[10.5px] text-[#b8b2a9]">
+              sikret {kr(visTotals.fee_garantert ?? visTotals.fee)} · potensial {kr(visTotals.fee_total ?? visTotals.fee)}
+            </p>
+          </KpiCelle>
+          <div className="flex items-center gap-3 px-4 py-2.5">
+            <Ring pct={visTotals.occupancy_pct || 0} />
+            <div className="min-w-0">
+              <p className={`truncate ${ETIKETT}`}>Utleigrad</p>
+              <p className="mt-[1px] text-[15px] font-semibold tabular-nums tracking-[-0.01em] text-[#1c1917]" style={heading}>{visTotals.occupancy_pct ?? 0} %</p>
+              <p className="truncate text-[10.5px] text-[#b8b2a9]">
+                {visTotals.leased ?? 0} av {visTotals.count ?? 0} utleid · netto eiere {kr(visTotals.net)}
+              </p>
             </div>
           </div>
-        ) : (
-          <div className="grid grid-cols-2 border-t border-black/[0.05] sm:grid-cols-3 xl:grid-cols-6 xl:divide-x xl:divide-black/[0.05]">
-            <KpiCelle testid="leieforhold-kpi-honorar-ok">
-              <div className="flex items-center gap-1.5">
-                <span className="h-[6px] w-[6px] rounded-full bg-[#7c3aed]" />
-                <p className={`truncate ${ETIKETT}`}>Honorar / mnd</p>
-              </div>
-              <p className="mt-1 text-[17px] font-semibold tabular-nums tracking-[-0.01em]" style={{ ...heading, color: '#7c3aed' }}>{laster ? '…' : <TallOpp verdi={visTotals.fee} />}</p>
-              <p className="mt-[1px] truncate text-[10.5px] text-[#b8b2a9]">i dag · sikret {kr(visTotals.fee_garantert ?? visTotals.fee)}</p>
-            </KpiCelle>
-            <KpiCelle testid="leieforhold-kpi-felles">
-              <div className="flex items-center gap-1.5">
-                <span className="h-[6px] w-[6px] rounded-full bg-[#c98a1b]" />
-                <p className={`truncate ${ETIKETT}`}>Faste kostnader / mnd</p>
-              </div>
-              <p className="mt-1 text-[17px] font-semibold tabular-nums tracking-[-0.01em] text-[#1c1917]" style={heading}><TallOpp verdi={fellesTotal} /></p>
-              <p className="mt-[1px] truncate text-[10.5px] text-[#b8b2a9]">{fellesAktive.length} {fellesAktive.length === 1 ? 'aktiv post' : 'aktive poster'} · huseier tar boligkostnadene</p>
-            </KpiCelle>
-            <KpiCelle testid="leieforhold-kpi-margin">
-              <div className="flex items-center gap-1.5">
-                <span className={`h-[6px] w-[6px] rounded-full ${marginMnd >= 0 ? 'bg-[#1f9a53]' : 'bg-rose-500'}`} />
-                <p className={`truncate ${ETIKETT}`}>{inklFelles ? 'Margin / mnd' : 'Dekningsbidrag / mnd'}</p>
-              </div>
-              <p className="mt-1 text-[17px] font-semibold tabular-nums tracking-[-0.01em]" style={{ ...heading, color: marginMnd >= 0 ? '#1f7a45' : '#e11d48' }}>
-                {laster ? '…' : <TallOpp verdi={marginMnd} />}
-              </p>
-              <p className="mt-[1px] truncate text-[10.5px] text-[#b8b2a9]">
-                {inklFelles ? 'etter fordelte faste kostnader' : '≈ 100 % av honoraret — før faste kostnader'}
-              </p>
-            </KpiCelle>
-            <KpiCelle testid="leieforhold-kpi-cac">
-              <p className={`truncate ${ETIKETT}`}>CAC totalt · engangs</p>
-              <p className="mt-1 text-[17px] font-semibold tabular-nums tracking-[-0.01em] text-[#1c1917]" style={heading}><TallOpp verdi={cacTotal} /></p>
-              <p className="mt-[1px] truncate text-[10.5px] text-[#b8b2a9]">
-                {paybackSnitt ? `payback ~${paybackSnitt.toLocaleString('nb-NO', { maximumFractionDigits: 1 })} mnd samlet` : 'anskaffelseskost per enhet'}
-              </p>
-            </KpiCelle>
-            <KpiCelle testid="leieforhold-kpi-breakeven">
-              <div className="flex items-baseline justify-between gap-2">
-                <p className={`truncate ${ETIKETT}`}>Break-even</p>
-                {dekningPct != null && <p className="text-[14px] font-semibold tabular-nums text-[#1c1917]" style={heading}>{Math.min(dekningPct, 999)} %</p>}
-              </div>
-              {dekningPct != null ? (
-                <>
-                  <div className="mt-2 h-[5px] overflow-hidden rounded-full bg-[#f1ece4]">
-                    <div className={`h-full rounded-full transition-all duration-700 ${dekningPct >= 100 ? 'bg-[#1f9a53]' : 'bg-[#8b5cf6]'}`} style={{ width: `${Math.min(dekningPct, 100)}%` }} />
-                  </div>
-                  <p className="mt-1.5 truncate text-[10.5px] text-[#b8b2a9]">
-                    {dekningPct >= 100 ? 'nådd — hver ny enhet er ~ren margin' : `honoraret dekker ${dekningPct} % · ~${enheterTilBreakEven} enheter igjen`}
-                  </p>
-                </>
-              ) : (
-                <p className="mt-1.5 text-[10.5px] text-[#b8b2a9]">Legg inn faste kostnader for å se dekningsgrad</p>
-              )}
-            </KpiCelle>
-            <div className="flex items-center gap-3 px-4 py-2.5">
-              <Ring pct={visTotals.occupancy_pct || 0} />
-              <div className="min-w-0">
-                <p className={`truncate ${ETIKETT}`}>Utleigrad</p>
-                <p className="mt-[1px] text-[15px] font-semibold tabular-nums tracking-[-0.01em] text-[#1c1917]" style={heading}>{visTotals.occupancy_pct ?? 0} %</p>
-                <p className="truncate text-[10.5px] text-[#b8b2a9]">{visTotals.leased ?? 0} av {visTotals.count ?? 0} utleid · snitt honorar {kr(snittHonorar)}</p>
-              </div>
-            </div>
-          </div>
-        )}
+        </div>
 
-        {/* ── Faste kostnader — kompakt lesestripe (Økonomi-modus) ── */}
-        {modus === 'okonomi' && (
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-black/[0.05] bg-[#fdfcfa] px-3 py-2 sm:px-4" data-testid="leieforhold-faste-strip">
-            <span className="flex items-center gap-1.5 text-[12px] font-semibold text-[#1c1917]" style={heading}>
-              <Coins className="h-3.5 w-3.5 text-[#c98a1b]" /> Faste kostnader {kr(fellesTotal)}<span className="font-medium text-[#b8b2a9]">/mnd</span>
-            </span>
-            {fellesAktive.length > 0 ? (
-              <span className="truncate text-[11px] text-[#a8a29a]">
-                {fellesAktive.map((p) => `${p.navn} (${FORDELING_LABEL[p.fordeling] || 'likt per enhet'})`).join(' · ')}
-              </span>
-            ) : (
-              <span className="truncate text-[11px] text-[#a8a29a]">
-                Ingen aktive faste kostnader{kanRedigere ? ' — legg inn f.eks. lønn via «Administrer»' : ''}
-              </span>
-            )}
-            <div className="ml-auto flex items-center gap-1.5">
-              <button
-                onClick={() => setInklFelles((v) => !v)}
-                data-testid="leieforhold-felles-toggle"
-                className="flex h-7 items-center gap-2 rounded-[7px] px-2 text-[11.5px] font-medium text-[#78716c] transition-colors hover:bg-black/[0.04]"
-                title="Slå av for å se rent dekningsbidrag (før faste kostnader)"
-              >
-                <span className={`relative h-[14px] w-[24px] rounded-full transition-colors ${inklFelles ? 'bg-[#1f9a53]' : 'bg-[#d8d4cd]'}`}>
-                  <span className={`absolute top-[2px] h-[10px] w-[10px] rounded-full bg-white shadow-sm transition-all ${inklFelles ? 'left-[12px]' : 'left-[2px]'}`} />
-                </span>
-                Inkluder i margin
-              </button>
+        {/* ── KPI-rad 2: DigiHome-økonomi (asset-light) — hele økonomibildet som
+            dashbord, uten egen tabell/modus: få kostnadspunkter (faste kostnader
+            + CAC) gjør at dette dekker behovet. Per enhet: se enhetsskuffen. ── */}
+        <div className="grid grid-cols-2 border-t border-black/[0.05] bg-[#fdfcfa] sm:grid-cols-4 sm:divide-x sm:divide-black/[0.05]">
+          <div className="border-b border-black/[0.05] px-4 py-2.5 sm:border-b-0" data-testid="leieforhold-kpi-felles">
+            <div className="flex items-center gap-1.5">
+              <span className="h-[6px] w-[6px] shrink-0 rounded-full bg-[#c98a1b]" />
+              <p className={`truncate ${ETIKETT}`}>Faste kostnader / mnd</p>
               {kanRedigere && (
-                <button onClick={() => setKostSkuff(true)} data-testid="leieforhold-faste-adm" className={KNAPP_GHOST}>
-                  <Settings2 className="h-3.5 w-3.5" /> Administrer
+                <button
+                  onClick={() => setKostSkuff(true)}
+                  data-testid="leieforhold-faste-adm"
+                  className="ml-auto flex h-[20px] shrink-0 items-center gap-1 rounded-[5px] px-1.5 text-[10px] font-semibold text-[#8b5cf6] transition-colors hover:bg-[#f5f1fd]"
+                >
+                  <Settings2 className="h-3 w-3" /> Administrer
                 </button>
               )}
             </div>
+            <p className="mt-1 text-[15px] font-semibold tabular-nums tracking-[-0.01em] text-[#1c1917]" style={heading}><TallOpp verdi={fellesTotal} /></p>
+            <p className="mt-[1px] truncate text-[10.5px] text-[#b8b2a9]">
+              {fellesAktive.length ? fellesAktive.map((p) => p.navn).join(' · ') : kanRedigere ? 'ingen aktive — legg inn f.eks. lønn' : 'ingen aktive poster'}
+            </p>
           </div>
-        )}
+          <div className="border-b border-black/[0.05] px-4 py-2.5 sm:border-b-0" data-testid="leieforhold-kpi-margin">
+            <div className="flex items-center gap-1.5">
+              <span className={`h-[6px] w-[6px] rounded-full ${marginMnd >= 0 ? 'bg-[#1f9a53]' : 'bg-rose-500'}`} />
+              <p className={`truncate ${ETIKETT}`}>Margin / mnd</p>
+            </div>
+            <p className="mt-1 text-[15px] font-semibold tabular-nums tracking-[-0.01em]" style={{ ...heading, color: marginMnd >= 0 ? '#1f7a45' : '#e11d48' }}>
+              {laster ? '…' : <TallOpp verdi={marginMnd} />}
+            </p>
+            <p className="mt-[1px] truncate text-[10.5px] text-[#b8b2a9]">honorar i dag − fordelte faste kostnader</p>
+          </div>
+          <div className="px-4 py-2.5" data-testid="leieforhold-kpi-breakeven">
+            <div className="flex items-baseline justify-between gap-2">
+              <p className={`truncate ${ETIKETT}`}>Break-even</p>
+              {dekningPct != null && <p className="text-[13px] font-semibold tabular-nums text-[#1c1917]" style={heading}>{Math.min(dekningPct, 999)} %</p>}
+            </div>
+            {dekningPct != null ? (
+              <>
+                <div className="mt-2 h-[5px] overflow-hidden rounded-full bg-[#f1ece4]">
+                  <div className={`h-full rounded-full transition-all duration-700 ${dekningPct >= 100 ? 'bg-[#1f9a53]' : 'bg-[#8b5cf6]'}`} style={{ width: `${Math.min(dekningPct, 100)}%` }} />
+                </div>
+                <p className="mt-1.5 truncate text-[10.5px] text-[#b8b2a9]">
+                  {dekningPct >= 100 ? 'nådd — hver ny enhet er ~ren margin' : `honoraret dekker ${dekningPct} % · ~${enheterTilBreakEven} enheter igjen`}
+                </p>
+              </>
+            ) : (
+              <p className="mt-1.5 text-[10.5px] text-[#b8b2a9]">Legg inn faste kostnader for å se dekningsgrad</p>
+            )}
+          </div>
+          <div className="px-4 py-2.5" data-testid="leieforhold-kpi-cac">
+            <p className={`truncate ${ETIKETT}`}>CAC totalt · engangs</p>
+            <p className="mt-1 text-[15px] font-semibold tabular-nums tracking-[-0.01em] text-[#1c1917]" style={heading}><TallOpp verdi={cacTotal} /></p>
+            <p className="mt-[1px] truncate text-[10.5px] text-[#b8b2a9]">
+              {paybackSnitt ? `payback ~${paybackSnitt.toLocaleString('nb-NO', { maximumFractionDigits: 1 })} mnd` : 'settes per enhet i enhetsskuffen'}
+            </p>
+          </div>
+        </div>
 
         {/* ── Kontekstlinjer: filtrert visning + scenario ── */}
         {(aktivFiltrering || scenario) && (
@@ -882,12 +851,16 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
             </div>
           )}
 
-          {/* ── UTLEIE-modus ── */}
-          {!laster && filtrert.length > 0 && modus === 'utleie' && (
+          {/* ── Leieforholdstabellen ── */}
+          {!laster && filtrert.length > 0 && (
             <>
               {/* Eget scrolleområde: kolonnehodet fester seg øverst og sum-raden
-                  nederst — summene er alltid synlige uten å scrolle til bunns. */}
-              <div className="hidden max-h-[calc(100vh-330px)] min-h-[340px] overflow-auto md:block">
+                  nederst — tabellen fyller resten av skjermen (målt høyde). */}
+              <div
+                ref={tabellBoksRef}
+                className="hidden min-h-[340px] overflow-auto md:block"
+                style={{ maxHeight: tabellMaxH ? `${tabellMaxH}px` : 'calc(100vh - 330px)' }}
+              >
                 <table className="w-full min-w-[1120px] text-left" data-testid="leieforhold-tabell">
                 <thead>
                   <tr>
@@ -1024,135 +997,6 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
             </>
           )}
 
-          {/* ── ØKONOMI-modus ── */}
-          {!laster && filtrert.length > 0 && modus === 'okonomi' && (
-            <>
-              <div className="hidden max-h-[calc(100vh-380px)] min-h-[340px] overflow-auto md:block">
-                <table className="w-full min-w-[1050px] text-left" data-testid="leieforhold-okonomi-tabell">
-                <thead>
-                  <tr>
-                    {[...['Adresse', 'Type', 'Status', 'Honorar / mnd', 'Andel faste', 'Margin / mnd', 'Margin', 'CAC · engangs', 'Payback'], ...(kanRedigere ? [''] : [])].map((h, i) => (
-                      <th key={`${h}-${i}`} className={`${HODE_CELLE} px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#aaa49b] ${i >= 3 && i <= 8 ? 'text-right' : ''}`}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {(() => { let idx = -1; return seksjoner.map((sek) => (
-                    <React.Fragment key={sek.key || 'alle'}>
-                      {sek.key && (
-                        <SeksjonsRad nokkel={sek.key} rader={sek.rader} colSpan={kanRedigere ? 10 : 9} aggregat={`honorar ${kr(sek.rader.reduce((s, r) => s + (r.fee_amount || 0), 0))}/mnd`} />
-                      )}
-                      {sek.rader.map((r) => {
-                    idx += 1; const i = idx;
-                    const erRom = r.unit_type === 'Rom i bofellesskap';
-                    const andel = inklFelles ? (andelKart.get(radNokkel(r)) || 0) : 0;
-                    const margin = (r.fee_amount || 0) - andel;
-                    const marginPct = r.fee_amount ? Math.round((margin / r.fee_amount) * 100) : null;
-                    const cac = cacFor(r);
-                    const payback = cac > 0 && r.fee_amount > 0 ? cac / r.fee_amount : null;
-                    const notat = okonomi.enheter[radNokkel(r)]?.notat || '';
-                    return (
-                    <tr key={`${radNokkel(r)}-${i}`} onClick={() => setValgtRad(r)} className="group dh-rad-inn cursor-pointer border-b border-black/[0.03] transition-colors last:border-b-0 hover:bg-[#faf9f7]" style={{ animationDelay: `${Math.min(i, 16) * 16}ms` }} data-testid={`leieforhold-okonomi-rad-${i}`}>
-                      <td className="px-3 py-2"><AdresseCelle r={r} /></td>
-                      <td className="whitespace-nowrap px-3 py-2 text-[12px] text-[#57534e]">{r.bolig_type || (erRom ? 'Rom' : '—')}</td>
-                      <td className="px-3 py-2"><StatusChip row={r} /></td>
-                      <td className={`whitespace-nowrap px-3 py-2 text-right text-[12px] tabular-nums ${r.group === 'leased' ? 'font-semibold' : ''}`} style={{ color: r.group === 'leased' ? '#7c3aed' : '#c2beb8' }} title={r.group === 'leased' ? 'Realisert honorar' : 'Potensielt honorar — ikke realisert ennå'}>
-                        {r.fee_amount ? kr(r.fee_amount) : '—'}
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-2 text-right text-[12px] tabular-nums text-[#9a6b1c]">{andel ? `−${kr(andel)}` : '—'}</td>
-                      <td className="whitespace-nowrap px-3 py-2 text-right text-[12.5px] font-semibold tabular-nums" style={{ color: r.group !== 'leased' ? '#c2beb8' : margin >= 0 ? '#1f7a45' : '#e11d48' }}>
-                        {r.fee_amount || andel ? kr(margin) : '—'}
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-2 text-right text-[11.5px] tabular-nums text-[#a8a29a]">{marginPct != null ? `${marginPct} %` : '—'}</td>
-                      <td className="whitespace-nowrap px-3 py-2 text-right text-[12px] tabular-nums text-[#57534e]" title={notat}>
-                        {cac ? kr(cac) : '—'}{notat && <span className="ml-1 text-[10px] text-[#c2beb8]">✎</span>}
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-2 text-right text-[12px] tabular-nums text-[#78716c]">
-                        {payback ? `${payback.toLocaleString('nb-NO', { maximumFractionDigits: 1 })} mnd` : '—'}
-                      </td>
-                      {kanRedigere && (
-                        <td className="w-9 px-2 py-2 text-right">
-                          <button
-                            onClick={(e) => { e.stopPropagation(); setCacSkjema({ enhetId: radNokkel(r), adresse: r.address, cac: cac || '', notat }); }}
-                            data-testid={`leieforhold-cac-rediger-${i}`}
-                            className="flex h-6 w-6 items-center justify-center rounded-[6px] text-[#c9c3ba] opacity-0 transition-all hover:bg-[#f5f1fd] hover:text-[#8b5cf6] group-hover:opacity-100"
-                            title="Rediger CAC / notat"
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                          </button>
-                        </td>
-                      )}
-                    </tr>
-                    );
-                  })}
-                    </React.Fragment>
-                  )); })()}
-                </tbody>
-                <tfoot>
-                  <tr>
-                    <td className={`${SUM_CELLE} px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#a8a29a]`}>Sum ({filtrert.length})</td>
-                    <td colSpan={2} className={SUM_CELLE} />
-                    <td className={`${SUM_CELLE} px-3 py-2 text-right text-[12px] font-semibold tabular-nums`} style={{ color: '#7c3aed' }} title="Realisert honorar (kun utleide)">{kr(filtrert.filter((r) => r.group === 'leased').reduce((s, r) => s + (r.fee_amount || 0), 0))}</td>
-                    <td className={`${SUM_CELLE} px-3 py-2 text-right text-[12px] font-semibold tabular-nums text-[#9a6b1c]`}>{inklFelles && fellesTotal ? `−${kr(fordeltFiltrert)}` : '—'}</td>
-                    <td className={`${SUM_CELLE} px-3 py-2 text-right text-[12.5px] font-semibold tabular-nums`} style={{ color: marginMnd >= 0 ? '#1f7a45' : '#e11d48' }}>
-                      {kr(filtrert.filter((r) => r.group === 'leased').reduce((s, r) => s + (r.fee_amount || 0), 0) - (inklFelles ? fordeltFiltrert : 0))}
-                    </td>
-                    <td className={SUM_CELLE} />
-                    <td className={`${SUM_CELLE} px-3 py-2 text-right text-[12px] font-semibold tabular-nums text-[#57534e]`}>{kr(cacTotal)}</td>
-                    <td colSpan={kanRedigere ? 2 : 1} className={SUM_CELLE} />
-                  </tr>
-                </tfoot>
-              </table>
-              </div>
-
-              {/* Mobil kortliste — økonomi */}
-              <div className="divide-y divide-black/[0.04] md:hidden" data-testid="leieforhold-okonomi-kortliste">
-                {(() => { let oIdx = -1; return seksjoner.map((sek) => (
-                  <React.Fragment key={`o-${sek.key || 'alle'}`}>
-                    {sek.key && (
-                      <div className="flex items-center gap-2 bg-[#faf9f7] px-4 py-[5px]">
-                        <span className="h-[6px] w-[6px] rounded-full" style={{ background: STATUS_STIL[sek.key].tekst }} />
-                        <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#8a8278]">{SEKSJON_LABEL[sek.key] || sek.key}</span>
-                        <span className="text-[10px] tabular-nums text-[#c2beb8]">{sek.rader.length}</span>
-                        <span className="ml-auto text-[10px] font-medium tabular-nums text-[#a8a29a]">honorar {kr(sek.rader.reduce((s, r) => s + (r.fee_amount || 0), 0))}/mnd</span>
-                      </div>
-                    )}
-                    {sek.rader.map((r) => {
-                  oIdx += 1; const i = oIdx;
-                  const andel = inklFelles ? (andelKart.get(radNokkel(r)) || 0) : 0;
-                  const margin = (r.fee_amount || 0) - andel;
-                  const cac = cacFor(r);
-                  return (
-                  <div key={`${radNokkel(r)}-${i}`} className="dh-rad-inn px-4 py-3 transition-colors active:bg-[#faf9f7]" style={{ animationDelay: `${Math.min(i, 14) * 18}ms` }} onClick={() => setValgtRad(r)}>
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="truncate text-[13px] font-medium leading-tight text-[#1c1917]">{String(r.address || '').split(',')[0]}</p>
-                        <p className="mt-0.5 truncate text-[11px] text-[#a8a29a]">{r.bolig_type || r.unit_room}{r.unit_type === 'Rom i bofellesskap' ? ` · ${r.enhet_detalj}` : ''}</p>
-                      </div>
-                      <span className="shrink-0"><StatusChip row={r} /></span>
-                    </div>
-                    <div className="mt-2 flex items-end justify-between gap-3">
-                      <div className="space-y-0.5 text-[11px] text-[#8a8278]">
-                        <p>Honorar {r.fee_amount ? kr(r.fee_amount) : '—'}{andel ? ` · faste −${kr(andel)}` : ''}</p>
-                        {cac > 0 && <p>CAC {kr(cac)}{r.fee_amount ? ` · payback ${(cac / r.fee_amount).toLocaleString('nb-NO', { maximumFractionDigits: 1 })} mnd` : ''}</p>}
-                      </div>
-                      <p className="shrink-0 text-[14.5px] font-semibold tabular-nums" style={{ color: r.group !== 'leased' ? '#c2beb8' : margin >= 0 ? '#1f7a45' : '#e11d48' }}>{kr(margin)}</p>
-                    </div>
-                  </div>
-                  );
-                })}
-                  </React.Fragment>
-                )); })()}
-                <div className="sticky bottom-0 z-10 flex items-center justify-between rounded-b-[11px] border-t border-black/[0.06] bg-[#fbfaf9] px-4 py-2.5">
-                  <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#a8a29a]">Sum ({filtrert.length})</span>
-                  <div className="text-right">
-                    <p className="text-[13.5px] font-semibold tabular-nums" style={{ color: marginMnd >= 0 ? '#1f7a45' : '#e11d48' }}>margin {kr(filtrert.filter((r) => r.group === 'leased').reduce((s, r) => s + (r.fee_amount || 0), 0) - (inklFelles ? fordeltFiltrert : 0))}</p>
-                    <p className="text-[10.5px] font-medium tabular-nums" style={{ color: '#7c3aed' }}>honorar {kr(filtrert.filter((r) => r.group === 'leased').reduce((s, r) => s + (r.fee_amount || 0), 0))}</p>
-                  </div>
-                </div>
-              </div>
-            </>
-          )}
         </div>
       </div>
 
@@ -1162,7 +1006,7 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
         const andel = andelKart.get(radNokkel(r)) || 0;
         const cac = cacFor(r);
         const notat = okonomi.enheter[radNokkel(r)]?.notat || '';
-        const margin = (r.fee_amount || 0) - (inklFelles ? andel : 0);
+        const margin = (r.fee_amount || 0) - andel;
         const [gate, ...resten] = String(r.address || '').split(',');
         const omraade = resten.join(',').replace(/,?\s*Norge\s*$/i, '').trim();
         const Rad = ({ l, v, farge }) => (
@@ -1210,7 +1054,7 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
                   <Rad l="Honorar / mnd" v={r.fee_amount ? kr(r.fee_amount) : '—'} farge="#7c3aed" />
                   <Rad l="Netto til huseier" v={r.net_to_owner ? kr(r.net_to_owner) : '—'} />
                   {fellesTotal > 0 && <Rad l="Andel faste kostnader" v={andel ? `−${kr(andel)}` : '—'} farge="#9a6b1c" />}
-                  <Rad l={inklFelles && fellesTotal > 0 ? 'Margin / mnd' : 'Dekningsbidrag / mnd'} v={kr(margin)} farge={margin >= 0 ? '#1f7a45' : '#e11d48'} />
+                  <Rad l={fellesTotal > 0 ? 'Margin / mnd' : 'Dekningsbidrag / mnd'} v={kr(margin)} farge={margin >= 0 ? '#1f7a45' : '#e11d48'} />
                   <Rad l="CAC · engangs" v={cac ? `${kr(cac)}${r.fee_amount ? ` · payback ${(cac / r.fee_amount).toLocaleString('nb-NO', { maximumFractionDigits: 1 })} mnd` : ''}` : '—'} />
                   {notat && <Rad l="Notat" v={notat} />}
                 </Seksjon>
@@ -1584,10 +1428,8 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
         </div>
       )}
 
-      <p className="mt-2.5 px-1 text-[11px] leading-relaxed text-[#b3ada3]">
-        {modus === 'utleie'
-          ? 'Inntektstrappen: Leie i dag (løpende kontrakter) → Kommende (signert, ikke startet — sammen utgjør de «sikret») → Pipeline (under signering + annonsert, uten signatur) → Ledig uten annonse (estimat). Honorar vises eks. mva (leie × sats); grå honorartall er potensial. Excel-eksporten følger samme trapp og respekterer aktiv filtrering og scenario.'
-          : 'DigiHome er asset-light: huseier bærer alle boligkostnader. Margin = honorar − fordelte faste kostnader. CAC er engangs anskaffelseskost og blandes ikke inn i månedsmarginen — payback viser hvor raskt honoraret tilbakebetaler den. Grå tall er potensial (ikke-utleide enheter).'}
+      <p ref={bunnTekstRef} className="mt-2.5 px-1 text-[11px] leading-relaxed text-[#b3ada3]">
+        Inntektstrappen: Leie i dag (løpende kontrakter) → Kommende (signert, ikke startet — sammen utgjør de «sikret») → Pipeline (under signering + annonsert, uten signatur) → Ledig uten annonse (estimat). Honorar vises eks. mva (leie × sats); grå honorartall er potensial. Margin = honorar − fordelte faste kostnader; CAC er engangs anskaffelseskost (payback i økonomiraden). Excel-eksporten følger samme trapp og respekterer aktiv filtrering og scenario.
       </p>
     </div>
   );

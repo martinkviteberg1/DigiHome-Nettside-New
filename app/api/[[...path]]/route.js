@@ -1342,8 +1342,12 @@ async function modulAuthed(request, db, modul) {
   const payload = sessionFra(request);
   if (!payload || !payload.sub) return false;
   try {
-    const u = await db.collection('admin_users').findOne({ id: payload.sub }, { projection: { moduler: 1 } });
-    return !!(u && Array.isArray(u.moduler) && u.moduler.includes(modul));
+    const u = await db.collection('admin_users').findOne({ id: payload.sub }, { projection: { moduler: 1, role: 1 } });
+    if (!u) return false;
+    // Investorer har alltid lesetilgang til Leieforhold (full transparens) —
+    // skriveruter krever fortsatt adminAuthed, så dette er kun lesing.
+    if (u.role === 'investor' && modul === 'leieforhold') return true;
+    return !!(Array.isArray(u.moduler) && u.moduler.includes(modul));
   } catch (e) { return false; }
 }
 

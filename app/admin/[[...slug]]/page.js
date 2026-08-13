@@ -348,13 +348,13 @@ export default function AdminPage({ params }) {
   // kun sine seksjoner — serveren håndhever det samme på API-nivå:
   //   bruker/partner → Saker + Møter (møtelisten filtreres server-side)
   //   eier (investor) → Nøkkeltall + Økonomi (les) + Møter
-  //   investor → DATAROM: ingenting som standard — kun tildelte moduler
-  //              (+ Møter dersom møtetilgang er gitt)
+  //   investor → DATAROM: Leieforhold alltid med (lese-only, full transparens)
+  //              + eventuelle tildelte moduler (+ Møter dersom møtetilgang)
   const ROLLE_SEKSJONER = {
     bruker: ['saker', 'moter'],
     partner: ['saker', 'moter'],
     eier: ['nokkeltall', 'okonomi', 'moter'],
-    investor: [],
+    investor: ['leieforhold'],
   };
   // Modultilgang: begrensede kontoer kan i tillegg få enkeltmoduler
   // (settes per person under Brukere — håndheves også i API-et)
@@ -373,7 +373,8 @@ export default function AdminPage({ params }) {
       const forsteDr = begrensning.find((k) => k.startsWith('dr-'));
       if (forsteDr) { setDataromTab(forsteDr.slice(3)); return; }
     } else if (begrensning.includes(section)) return;
-    const forste = begrensning[0];
+    // Investorer med datarom-sider lander fortsatt på datarommet som «forside».
+    const forste = (user?.role === 'investor' && begrensning.find((k) => k.startsWith('dr-'))) || begrensning[0];
     if (forste.startsWith('dr-')) { setSection('datarom'); setDataromTab(forste.slice(3)); }
     else setSection(forste);
   }, [erBegrenset, section, dataromTab]); // eslint-disable-line react-hooks/exhaustive-deps
