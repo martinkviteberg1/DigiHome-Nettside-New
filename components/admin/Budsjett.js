@@ -107,19 +107,19 @@ export default function Budsjett({ apiKey, readOnly = false }) {
   // «Neste 12 mnd»: rullerende vindu over årsgrensen (visningslag — ingen
   // endring i datamodellen). neste = året etter inneværende, hentet ved behov.
   const [visning, setVisning] = useState('aar'); // 'aar' | 'rullerende'
-  const [neste, setNeste] = useState({ lastet: false, finnes: false, inntekter: {}, kostnader: {}, egnePoster: [], kommentarer: {}, faktisk: null });
+  const [neste, setNeste] = useState({ lastet: false, finnes: false, inntekter: {}, kostnader: {}, egnePoster: [], kommentarer: {}, faktisk: null, honorarLaas: null });
   const [dirtyNeste, setDirtyNeste] = useState(false);
   const [kommentarModal, setKommentarModal] = useState(null); // {i, y, m, tekst} | null
   const [grafAkk, setGrafAkk] = useState(false); // graf: per måned ↔ akkumulert
   // «+ Ny post»-modal: navn, beløp og frekvens genererer 12-månedersserien
   const [nyPost, setNyPost] = useState(null); // null | {type,navn,belop,frekvens,fra,til,mapTil}
 
-  // «Foreslå fra porteføljen»
+  // «Inntektsmodell» — sikret (auto) + antakelser (modell B)
   const [seedOpen, setSeedOpen] = useState(false);
   const [seedLaster, setSeedLaster] = useState(false);
   const [seedFeil, setSeedFeil] = useState('');
   const [forslag, setForslag] = useState(null);
-  const [drivere, setDrivere] = useState({ nye: '', fyll: '', snittleie: '', honorarpct: '', oppstart: '' });
+  const [drivere, setDrivere] = useState({ nye: '', churn: '', fyll: '', snittleie: '', honorarpct: '', oppstart: '' });
   const [seedKostnader, setSeedKostnader] = useState(true);
 
   const hent = useCallback(async (y) => {
@@ -147,7 +147,7 @@ export default function Budsjett({ apiKey, readOnly = false }) {
       const r = await fetch(`/api/admin/budsjett?key=${encodeURIComponent(apiKey)}&year=${iAar + 1}`);
       const j = await r.json();
       if (!r.ok || !j.ok) throw new Error(j.error || 'Kunne ikke hente neste år');
-      setNeste({ lastet: true, finnes: !!j.finnes, inntekter: j.inntekter || {}, kostnader: j.kostnader || {}, egnePoster: j.egnePoster || [], kommentarer: j.kommentarer || {}, faktisk: j.faktisk || null });
+      setNeste({ lastet: true, finnes: !!j.finnes, inntekter: j.inntekter || {}, kostnader: j.kostnader || {}, egnePoster: j.egnePoster || [], kommentarer: j.kommentarer || {}, faktisk: j.faktisk || null, honorarLaas: j.honorarLaas || null });
       setDirtyNeste(false);
     } catch (e) { setFeil(e.message); }
   }, [apiKey, iAar]);
@@ -335,31 +335,77 @@ export default function Budsjett({ apiKey, readOnly = false }) {
   const hentForslag = useCallback(async (d) => {
     setSeedLaster(true); setSeedFeil('');
     try {
-      const qs = new URLSearchParams({ key: apiKey, year: String(year), env: 'prod' });
+      const qs = new URLSearchParams({ key: apiKey, year: String(year) });
       if (d.nye !== '') qs.set('nye', d.nye);
+      if (d.churn !== '') qs.set('churn', d.churn);
       if (d.fyll !== '') qs.set('fyll', d.fyll);
       if (d.snittleie !== '') qs.set('snittleie', d.snittleie);
       if (d.honorarpct !== '') qs.set('honorarpct', d.honorarpct);
       if (d.oppstart !== '') qs.set('oppstart', d.oppstart);
-      const r = await fetch(`/api/admin/budsjett/forslag?${qs}`);
+      const r = await fetch(`/api/admin/budsjett/inntektsmodell?${qs}`);
       const j = await r.json();
-      if (!r.ok || !j.ok) throw new Error(j.error || 'Kunne ikke lage forslag');
+      if (!r.ok || !j.ok) throw new Error(j.error || 'Kunne ikke beregne inntektsmodellen');
       setForslag(j);
       setDrivere({
-        nye: String(j.drivere.nyeEnheterPerMnd), fyll: String(j.drivere.fyllLedigPerMnd),
-        snittleie: String(j.drivere.snittLeie), honorarpct: String(j.drivere.honorarPct),
-        oppstart: String(j.drivere.oppstartPerEnhet),
+        nye: String(j.drivereBrukt.nyeEnheterPerMnd), churn: String(j.drivereBrukt.churnPctAar),
+        fyll: String(j.drivereBrukt.fyllLedigPerMnd), snittleie: String(j.drivereBrukt.snittLeie),
+        honorarpct: String(j.drivereBrukt.honorarPct), oppstart: String(j.drivereBrukt.oppstartPerEnhet),
       });
     } catch (e) { setSeedFeil(e.message); }
     setSeedLaster(false);
   }, [apiKey, year]);
 
-  const aapneSeed = () => { setSeedOpen(true); setForslag(null); hentForslag({ nye: '', fyll: '', snittleie: '', honorarpct: '', oppstart: '' }); };
-  const brukForslag = () => {
-    if (!forslag) return;
-    setInntekter(forslag.inntekter);
-    if (seedKostnader) setKostnader(forslag.kostnader);
-    setDirty(true); setSeedOpen(false);
+  // Åpner modalen med årets lagrede antakelser som utgangspunkt.
+  const aapneSeed = () => {
+    setSeedOpen(true); setForslag(null);
+    const a = data?.antakelser || {};
+    hentForslag({
+      nye: a.nyeEnheterPerMnd ? String(a.nyeEnheterPerMnd) : '',
+      churn: a.churnPctAar ? String(a.churnPctAar) : '',
+      fyll: a.fyllLedigPerMnd ? String(a.fyllLedigPerMnd) : '',
+      snittleie: a.snittLeie != null ? String(a.snittLeie) : '',
+      honorarpct: a.honorarPct != null ? String(a.honorarPct) : '',
+      oppstart: a.oppstartPerEnhet ? String(a.oppstartPerEnhet) : '',
+    });
+  };
+
+  // «Lås inntektsbudsjett»: fryser sikret + vekst inn i årsdokumentet og
+  // speiler totalene inn i inntektsradene. Lagrer hele budsjettet samtidig.
+  const laasInntekt = async () => {
+    if (!forslag || seedLaster) return;
+    setSeedLaster(true); setSeedFeil('');
+    try {
+      const r = await fetch(`/api/admin/budsjett?key=${encodeURIComponent(apiKey)}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          year, inntekter, kostnader: seedKostnader ? forslag.kostnader : kostnader,
+          egnePoster, kommentarer, notat,
+          antakelser: { nyeEnheterPerMnd: drivere.nye, churnPctAar: drivere.churn, fyllLedigPerMnd: drivere.fyll, snittLeie: drivere.snittleie, honorarPct: drivere.honorarpct, oppstartPerEnhet: drivere.oppstart },
+          laasInntekt: true,
+        }),
+      });
+      const j = await r.json();
+      if (!r.ok || !j.ok) throw new Error(j.error || 'Kunne ikke låse inntektsbudsjettet');
+      setSeedOpen(false);
+      await hent(year);
+    } catch (e) { setSeedFeil(e.message); }
+    setSeedLaster(false);
+  };
+
+  const laasOppInntekt = async () => {
+    if (!window.confirm('Låse opp inntektsbudsjettet? Tallene blir stående, men kan redigeres manuelt igjen.')) return;
+    setSeedLaster(true); setSeedFeil('');
+    try {
+      const r = await fetch(`/api/admin/budsjett?key=${encodeURIComponent(apiKey)}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ year, inntekter, kostnader, egnePoster, kommentarer, notat, laasOpp: true }),
+      });
+      const j = await r.json();
+      if (!r.ok || !j.ok) throw new Error(j.error || 'Kunne ikke låse opp');
+      setSeedOpen(false);
+      await hent(year);
+    } catch (e) { setSeedFeil(e.message); }
+    setSeedLaster(false);
   };
 
   const katInn = data?.kategorier?.inntekter || Object.keys(inntekter);
@@ -367,6 +413,12 @@ export default function Budsjett({ apiKey, readOnly = false }) {
   const faktisk = data?.faktisk || { honorar: [], kostnaderPerKategori: {}, kostnaderSum: [], snapshotMnd: [] };
   const egneInn = egnePoster.filter((p) => p.type === 'inn');
   const egneKost = egnePoster.filter((p) => p.type === 'kost');
+
+  // Inntektsmodellen (modell B): når året er låst styres honorar- og
+  // oppstartsradene av modellen — cellene rendres skrivebeskyttet.
+  const MODELL_RADER = ['Honorar (forvaltning)', 'Oppstartshonorar'];
+  const laasFor = (y) => (y === year ? (data?.honorarLaas || null) : (neste.honorarLaas || null));
+  const erLaastCelle = (type, kat, i) => type === 'inn' && MODELL_RADER.includes(kat) && !!laasFor(vindu[i].y);
 
   // Alle serier under er VINDU-baserte (12 kolonner): i kalenderår identisk
   // med månedene jan–des; i rullerende sydd sammen over årsgrensen.
@@ -544,6 +596,13 @@ export default function Budsjett({ apiKey, readOnly = false }) {
         </td>
       );
     }
+    if (erLaastCelle(type, kat, m)) {
+      return (
+        <td key={m} className={`px-2 py-2 text-right text-[12px] tabular-nums text-[#6d28d9] ${naaBg}`} title="Styrt av inntektsmodellen (sikret + antakelser) — endre antakelsene og lås på nytt">
+          {v ? tall(v) : <span className="text-[#d8d4ce]">·</span>}
+        </td>
+      );
+    }
     if (readOnly) {
       return <td key={m} className={`px-2 py-2 text-right text-[12px] tabular-nums text-[#333] ${naaBg}`}>{v ? tall(v) : <span className="text-[#d8d4ce]">·</span>}</td>;
     }
@@ -573,12 +632,14 @@ export default function Budsjett({ apiKey, readOnly = false }) {
   const rRad = (type, kat) => {
     const s = vindu.reduce((acc, _, i) => acc + lesFast(type, kat, i), 0);
     const radIFokus = fokusCelle.startsWith(`${type}|${kat}|`);
+    const radLaast = type === 'inn' && MODELL_RADER.includes(kat) && !!(laasFor(year) || (erRull && laasFor(iAar + 1)));
     return (
       <tr key={`${type}-${kat}`} className="group border-b border-black/[0.03] last:border-b-0 hover:bg-[#fbfaf8]">
         <td className="sticky left-0 z-10 bg-white px-3 py-1.5 group-hover:bg-[#fbfaf8]">
           <div className="flex items-center gap-1.5">
             <span className={`truncate text-[12.5px] transition-colors ${radIFokus ? 'font-medium text-[#6d28d9]' : 'text-[#444]'}`}>{kat}</span>
-            {!readOnly && mode === 'budsjett' && !erRull && (
+            {radLaast && <Lock className="h-3 w-3 shrink-0 text-[#8b5cf6]/70" title="Låst av inntektsmodellen — endre antakelsene og lås på nytt" />}
+            {!readOnly && mode === 'budsjett' && !erRull && !radLaast && (
               <button
                 onClick={() => fyllRad(type, kat)}
                 title="Fyll hele raden med første utfylte månedsverdi"
@@ -594,6 +655,28 @@ export default function Budsjett({ apiKey, readOnly = false }) {
       </tr>
     );
   };
+
+  /* Dekomponering av låst honorar-rad: herav sikret (plattform) + vekst (antakelser). */
+  const rLaasDelt = () => ['sikret', 'vekst'].map((slag) => {
+    const serie = data?.honorarLaas?.[slag] || [];
+    const s = serie.reduce((a, x) => a + (Number(x) || 0), 0);
+    return (
+      <tr key={`laas-${slag}`} className="border-b border-black/[0.03] bg-[#fcfbfe]" data-testid={`budsjett-laas-${slag}`}>
+        <td className="sticky left-0 z-10 bg-[#fcfbfe] px-3 py-1">
+          <span className="flex items-center gap-1.5 pl-3.5 text-[11px] text-[#a49eb2]">
+            <span className={`h-[5px] w-[5px] shrink-0 rounded-full ${slag === 'sikret' ? 'bg-[#0a0a0a]/70' : 'bg-[#8b5cf6]/60'}`} />
+            {slag === 'sikret' ? 'herav sikret — kontraktsfestet fra plattformen' : 'herav vekst — antakelser (nye · utfylling · churn)'}
+          </span>
+        </td>
+        {MND.map((_, m) => (
+          <td key={m} className={`px-2 py-1 text-right text-[11px] tabular-nums ${(Number(serie[m]) || 0) < 0 ? 'text-rose-400' : 'text-[#a49eb2]'} ${erNaa(m) ? 'bg-[#f8f5ff]' : ''}`}>
+            {serie[m] ? tall(serie[m]) : <span className="text-[#e4e1db]">·</span>}
+          </td>
+        ))}
+        <td className="px-3 py-1 text-right text-[11px] font-medium tabular-nums text-[#a49eb2]">{s ? tall(s) : '·'}</td>
+      </tr>
+    );
+  });
 
   /* Egen post-rad: inline-omdøping, frekvens-/koblings-chip og sletting. */
   const rEgenRad = (p) => {
@@ -755,6 +838,14 @@ export default function Budsjett({ apiKey, readOnly = false }) {
         </div>
       );
     }
+    if (erLaastCelle(type, kat, mobilMnd)) {
+      return (
+        <div key={kat} className="flex items-center justify-between gap-3 px-4 py-2.5">
+          <span className="flex min-w-0 items-center gap-1.5 truncate text-[13px] text-[#444]">{kat} <Lock className="h-3 w-3 shrink-0 text-[#8b5cf6]/70" /></span>
+          <span className="text-[13px] font-semibold tabular-nums text-[#6d28d9]">{v ? tall(v) : <span className="text-[#d8d4ce]">·</span>}</span>
+        </div>
+      );
+    }
     if (readOnly) {
       return (
         <div key={kat} className="flex items-center justify-between gap-3 px-4 py-2.5">
@@ -899,7 +990,8 @@ export default function Budsjett({ apiKey, readOnly = false }) {
           {!readOnly && (
             <>
               <button onClick={aapneSeed} data-testid="budsjett-forslag-knapp" className="flex h-9 items-center gap-1.5 rounded-full bg-white px-3.5 text-[12.5px] font-semibold text-[#6d28d9] shadow-[0_2px_10px_rgba(0,0,0,0.04)] transition-all hover:bg-[#f4f0fb] active:scale-[0.97]">
-                <Sparkles className="h-4 w-4" /> <span className="hidden sm:inline">Foreslå fra porteføljen</span><span className="sm:hidden">Forslag</span>
+                {data?.honorarLaas ? <Lock className="h-4 w-4" /> : <Sparkles className="h-4 w-4" />} <span className="hidden sm:inline">Inntektsmodell</span><span className="sm:hidden">Modell</span>
+                {data?.honorarLaas && <span className="rounded-full bg-[#f4f0fb] px-1.5 py-[1px] text-[9.5px] font-bold uppercase tracking-wide text-[#8b5cf6]">Låst</span>}
               </button>
               <button
                 onClick={lagre}
@@ -946,7 +1038,7 @@ export default function Budsjett({ apiKey, readOnly = false }) {
               {kopierer ? <Loader2 className="h-4 w-4 animate-spin" /> : <CopyPlus className="h-4 w-4" />} Kopier {year - 1}
             </button>
             <button onClick={aapneSeed} className="flex h-9 items-center gap-1.5 rounded-full bg-[#f4f0fb] px-4 text-[12.5px] font-semibold text-[#6d28d9] transition-all hover:bg-[#ece4fa] active:scale-[0.97]">
-              <Sparkles className="h-4 w-4" /> Foreslå fra porteføljen
+              <Sparkles className="h-4 w-4" /> Bygg med inntektsmodellen
             </button>
           </div>
         </div>
@@ -1077,7 +1169,12 @@ export default function Budsjett({ apiKey, readOnly = false }) {
                 </thead>
                 <tbody>
                   {rSeksjon('Inntekter', '#1f7a45', '#f4f9f5', sum12(budInn))}
-                  {katInn.map((kat) => rRad('inn', kat))}
+                  {katInn.map((kat, ki) => (
+                    <React.Fragment key={`innrad-${kat}`}>
+                      {rRad('inn', kat)}
+                      {ki === 0 && !erRull && mode === 'budsjett' && data?.honorarLaas && rLaasDelt()}
+                    </React.Fragment>
+                  ))}
                   {erRull ? rEgenAggRad('inn') : egneInn.map((p) => rEgenRad(p))}
                   {!readOnly && mode === 'budsjett' && !erRull && rNyPostRad('inn')}
                   {rSumRad('Sum inntekter', budInn, fakInnV)}
@@ -1424,15 +1521,15 @@ export default function Budsjett({ apiKey, readOnly = false }) {
         </div>
       )}
 
-      {/* ── «Foreslå fra porteføljen»-modal ── */}
+      {/* ── «Inntektsmodell»-modal: sikret (auto) + antakelser → lås ── */}
       {seedOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4 backdrop-blur-[2px]" onClick={() => setSeedOpen(false)}>
           <div className="max-h-[86vh] w-full max-w-[560px] overflow-y-auto rounded-2xl bg-white p-5 shadow-[0_24px_80px_rgba(0,0,0,0.25)]" onClick={(e) => e.stopPropagation()} data-testid="budsjett-forslag-modal">
             <div className="flex items-center gap-2">
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#f4f0fb]"><Sparkles className="h-4 w-4 text-[#8b5cf6]" /></span>
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#f4f0fb]"><Lock className="h-4 w-4 text-[#8b5cf6]" /></span>
               <div className="min-w-0">
-                <h3 className="text-[16px] font-bold text-[#0a0a0a]" style={heading}>Foreslå fra porteføljen</h3>
-                <p className="text-[11.5px] text-[#999]">Bygger inntektsbudsjettet {year} fra dagens leieforhold + antakelsene under</p>
+                <h3 className="text-[16px] font-bold text-[#0a0a0a]" style={heading}>Inntektsmodell {year}</h3>
+                <p className="text-[11.5px] text-[#999]">Sikret (kontraktsfestet fra plattformen) + antakelsene dine = inntektsbudsjettet</p>
               </div>
               <button onClick={() => setSeedOpen(false)} className="ml-auto rounded-lg p-1.5 text-[#bbb] hover:bg-[#f3f2f0] hover:text-[#555]"><X className="h-4 w-4" /></button>
             </div>
@@ -1455,9 +1552,11 @@ export default function Budsjett({ apiKey, readOnly = false }) {
                   <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-bold uppercase text-[#999] ring-1 ring-black/[0.07]">{forslag.kilde?.env || ''}</span>
                 </div>
 
+                {/* Antakelsene — det eneste du styrer; sikret-laget kommer av seg selv */}
                 <div className="mt-4 grid grid-cols-2 gap-2.5 sm:grid-cols-3">
                   {[
                     { k: 'nye', l: 'Nye enheter / mnd', hint: 'vekst utover porteføljen' },
+                    { k: 'churn', l: 'Churn % / år', hint: 'ukjent frafall av porteføljen' },
                     { k: 'fyll', l: 'Ledige fylles / mnd', hint: `av ${forslag.grunnlag.ledige} ledige` },
                     { k: 'snittleie', l: 'Snittleie ny enhet', hint: 'kr / mnd' },
                     { k: 'honorarpct', l: 'Honorar-%', hint: 'sats inkl. mva' },
@@ -1475,39 +1574,79 @@ export default function Budsjett({ apiKey, readOnly = false }) {
                       <span className="mt-0.5 block text-[10px] text-[#c2beb8]">{f.hint}</span>
                     </label>
                   ))}
-                  <div className="flex items-end pb-4">
-                    <button onClick={() => hentForslag(drivere)} disabled={seedLaster} className="flex h-9 w-full items-center justify-center gap-1.5 rounded-lg bg-[#f4f0fb] px-3 text-[12px] font-semibold text-[#6d28d9] transition-all hover:bg-[#ece4fa]">
-                      {seedLaster ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />} Oppdater forslag
-                    </button>
-                  </div>
                 </div>
+                <button onClick={() => hentForslag(drivere)} disabled={seedLaster} className="mt-1 flex h-9 w-full items-center justify-center gap-1.5 rounded-lg bg-[#f4f0fb] px-3 text-[12px] font-semibold text-[#6d28d9] transition-all hover:bg-[#ece4fa]" data-testid="budsjett-modell-oppdater">
+                  {seedLaster ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />} Oppdater beregningen
+                </button>
 
+                {/* Dekomponert forhåndsvisning: sikret (mørk) + vekst (lilla) */}
                 <div className="mt-3 rounded-xl bg-[#fafaf8] p-3.5">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.06em] text-[#a3a3a3]">Honorar-forslag (jan → des)</p>
-                  <p className="mt-1 text-[15px] font-bold tabular-nums text-[#0a0a0a]" style={heading} data-testid="budsjett-forslag-honorar">
-                    {kr(forslag.inntekter['Honorar (forvaltning)'][0])} → {kr(forslag.inntekter['Honorar (forvaltning)'][11])}
-                    <span className="ml-2 text-[12px] font-semibold text-[#1f7a45]">sum {kr(sum12(forslag.inntekter['Honorar (forvaltning)']))}/år</span>
-                  </p>
-                  {/* Mini-forhåndsvisning av forslagsserien */}
-                  <div className="mt-2 flex h-[36px] items-end gap-[3px]">
-                    {forslag.inntekter['Honorar (forvaltning)'].map((v, i) => {
-                      const maks = Math.max(...forslag.inntekter['Honorar (forvaltning)'], 1);
-                      return <span key={i} className="flex-1 rounded-t-[2px] bg-[#8b5cf6]/70 transition-all" style={{ height: `${Math.max(4, (v / maks) * 100)}%` }} title={`${MND[i]}: ${kr(v)}`} />;
+                  <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.06em] text-[#a3a3a3]">Inntektsbudsjett {year}</p>
+                    <p className="ml-auto text-[12px] tabular-nums text-[#555]" data-testid="budsjett-modell-sum">
+                      <b className="text-[#0a0a0a]">{kr(sum12(forslag.sikret))}</b> sikret
+                      <span className="mx-1 text-[#d5d0c8]">·</span>
+                      <b className={sum12(forslag.vekst) < 0 ? 'text-rose-500' : 'text-[#8b5cf6]'}>{sum12(forslag.vekst) >= 0 ? '+' : ''}{kr(sum12(forslag.vekst))}</b> vekst
+                      <span className="mx-1 text-[#d5d0c8]">·</span>
+                      <b className="text-[#0a0a0a]">{kr(sum12(forslag.total))}</b>/år
+                    </p>
+                  </div>
+                  <div className="mt-2.5 flex h-[46px] items-end gap-[3px]" data-testid="budsjett-modell-graf">
+                    {forslag.total.map((t, i) => {
+                      const maks = Math.max(...forslag.total, 1);
+                      const sik = Math.max(0, Math.min(forslag.sikret[i], t));
+                      const vek = Math.max(0, t - sik);
+                      return (
+                        <span key={i} className="flex flex-1 flex-col justify-end gap-[1px]" title={`${MND[i]}: ${kr(t)} — sikret ${kr(forslag.sikret[i])}`}>
+                          {vek > 0 && <span className="rounded-t-[2px] bg-[#8b5cf6]/60" style={{ height: `${(vek / maks) * 46}px` }} />}
+                          <span className={vek > 0 ? 'bg-[#1c1917]/80' : 'rounded-t-[2px] bg-[#1c1917]/80'} style={{ height: `${Math.max(2, (sik / maks) * 46)}px` }} />
+                        </span>
+                      );
                     })}
                   </div>
+                  <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10.5px] text-[#a8a29a]">
+                    <span className="flex items-center gap-1"><span className="h-[6px] w-[6px] rounded-full bg-[#1c1917]/80" /> sikret — kontraktsfestet (inn-/utflytting på ekte datoer)</span>
+                    <span className="flex items-center gap-1"><span className="h-[6px] w-[6px] rounded-full bg-[#8b5cf6]/60" /> vekst — antakelsene over</span>
+                  </p>
                   <label className="mt-2.5 flex cursor-pointer items-center gap-2 text-[12.5px] text-[#555]">
                     <input type="checkbox" checked={seedKostnader} onChange={(e) => setSeedKostnader(e.target.checked)} className="h-4 w-4 rounded accent-[#8b5cf6]" data-testid="budsjett-seed-kostnader" />
                     Fyll også kostnadene fra Økonomi ({kr(sum12(sumPerMnd(forslag.kostnader)))}/år)
                   </label>
                 </div>
 
-                <div className="mt-4 flex items-center justify-end gap-2">
-                  <button onClick={() => setSeedOpen(false)} className="h-9 rounded-full px-4 text-[12.5px] font-semibold text-[#999] hover:text-[#555]">Avbryt</button>
-                  <button onClick={brukForslag} data-testid="budsjett-bruk-forslag" className="flex h-9 items-center gap-1.5 rounded-full bg-[#0a0a0a] px-4 text-[12.5px] font-semibold text-white transition-all hover:bg-black/85 active:scale-[0.97]">
-                    <Check className="h-4 w-4" /> Bruk forslaget
-                  </button>
+                {/* Drift: budsjettets frosne sikret-lag vs. sikret nå (live) */}
+                {data?.honorarLaas && Array.isArray(data?.sikretNaa) && (() => {
+                  const budSik = sum12(data.honorarLaas.sikret);
+                  const naaSik = sum12(data.sikretNaa);
+                  const drift = naaSik - budSik;
+                  return (
+                    <div className="mt-3 flex items-start gap-2 rounded-xl bg-[#eef4fc] px-3.5 py-2.5 text-[12px] leading-relaxed text-[#3757c4]" data-testid="budsjett-sikret-naa">
+                      <TrendingUp className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                      <span>
+                        Sikret nå (live): <b className="tabular-nums">{kr(naaSik)}</b>/år · budsjettets sikret-lag: <b className="tabular-nums">{kr(budSik)}</b>
+                        {drift !== 0 && <> · drift <b className={`tabular-nums ${drift > 0 ? 'text-[#1f7a45]' : 'text-rose-600'}`}>{drift > 0 ? '+' : ''}{kr(drift)}</b></>}
+                        {data.honorarLaas.laastAt ? <> · låst {new Date(data.honorarLaas.laastAt).toLocaleDateString('nb-NO', { day: 'numeric', month: 'short' })}{data.honorarLaas.laastAv ? ` av ${data.honorarLaas.laastAv}` : ''}</> : null}
+                      </span>
+                    </div>
+                  );
+                })()}
+
+                <div className="mt-4 flex items-center gap-2">
+                  {data?.honorarLaas && (
+                    <button onClick={laasOppInntekt} data-testid="budsjett-laas-opp" className="flex h-9 items-center gap-1.5 rounded-full px-3 text-[12.5px] font-semibold text-rose-500 transition-colors hover:bg-rose-50">
+                      <X className="h-3.5 w-3.5" /> Lås opp
+                    </button>
+                  )}
+                  <div className="ml-auto flex items-center gap-2">
+                    <button onClick={() => setSeedOpen(false)} className="h-9 rounded-full px-4 text-[12.5px] font-semibold text-[#999] hover:text-[#555]">Avbryt</button>
+                    <button onClick={laasInntekt} disabled={seedLaster} data-testid="budsjett-laas-inntekt" className="flex h-9 items-center gap-1.5 rounded-full bg-[#0a0a0a] px-4 text-[12.5px] font-semibold text-white transition-all hover:bg-black/85 active:scale-[0.97]">
+                      {seedLaster ? <Loader2 className="h-4 w-4 animate-spin" /> : <Lock className="h-4 w-4" />} {data?.honorarLaas ? 'Oppdater og lås på nytt' : 'Lås inntektsbudsjett'}
+                    </button>
+                  </div>
                 </div>
-                <p className="mt-2 text-[10.5px] text-[#c2beb8]">Forslaget overskriver inntektsradene{seedKostnader ? ' og kostnadsradene' : ''} i rutenettet — ingenting lagres før du trykker «Lagre».</p>
+                <p className="mt-2 text-[10.5px] leading-relaxed text-[#c2beb8]">
+                  Låsingen lagrer budsjettet og overtar radene «Honorar (forvaltning)» og «Oppstartshonorar» — «Annen inntekt» og egne poster er fortsatt dine. Kjente utflyttinger ligger allerede i sikret-laget; churn dekker kun det ukjente.
+                </p>
               </>
             )}
           </div>

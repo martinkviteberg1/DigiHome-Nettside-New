@@ -29,7 +29,7 @@ import {
   anvendScenario as lfScenario, filtrerRader as lfFiltrer, parseFilterParams as lfParseFilter,
   filterBeskrivelse as lfBeskrivelse, beregnTotals as lfTotals, harFilter as lfHarFilter,
 } from '@/lib/leieforhold-filter';
-import { hentBudsjett, lagreBudsjett, beregnFaktisk, lagForslag, gyldigBudsjettAar, fangFaktiskEtterslep, INNTEKT_KATEGORIER, KOSTNAD_KATEGORIER } from '@/lib/budsjett';
+import { hentBudsjett, lagreBudsjett, beregnFaktisk, lagForslag, gyldigBudsjettAar, fangFaktiskEtterslep, beregnInntektsmodell, beregnSikretSerie, INNTEKT_KATEGORIER, KOSTNAD_KATEGORIER } from '@/lib/budsjett';
 import { lagBudsjettExcel, lagBudsjettExcelRullerende } from '@/lib/budsjett-excel';
 import {
   beregnOversikt as drBeregnOversikt, listEnheter as drListEnheter, lagreEnhet as drLagreEnhet,
@@ -3492,8 +3492,15 @@ async function handleRoute(request, { params }) {
       const uB = new URL(request.url);
       const yearB = gyldigBudsjettAar(uB.searchParams.get('year')) || new Date().getFullYear();
       const [bud, faktisk] = await Promise.all([hentBudsjett(db, yearB), beregnFaktisk(db, yearB)]);
+      // «Sikret nå» — live kontraktsfestet honorar for året (referanselinje mot
+      // budsjettets frosne sikret-lag). Best effort: null hvis plattformen feiler.
+      let sikretNaa = null;
+      try {
+        const lfS = await hentLeieforhold(leieforholdTarget(), { db });
+        if (lfS.ok) sikretNaa = beregnSikretSerie(lfS.rows, yearB);
+      } catch (e) { sikretNaa = null; }
       return cors(NextResponse.json({
-        ok: true, ...bud, faktisk,
+        ok: true, ...bud, faktisk, sikretNaa,
         kategorier: { inntekter: INNTEKT_KATEGORIER, kostnader: KOSTNAD_KATEGORIER },
       }));
     }
@@ -3537,8 +3544,53 @@ async function handleRoute(request, { params }) {
       if (sesjonB && sesjonB.sub) {
         try { const uDoc = await db.collection('admin_users').findOne({ id: sesjonB.sub }, { projection: { name: 1 } }); navnB = (uDoc && uDoc.name) || sesjonB.email || ''; } catch (e) {}
       }
-      const lagret = await lagreBudsjett(db, { year: yearB, inntekter: bodyB.inntekter, kostnader: bodyB.kostnader, egnePoster: bodyB.egnePoster, kommentarer: bodyB.kommentarer, notat: bodyB.notat, updatedBy: navnB });
+      // Inntektsmodellen (modell B): «Lås inntektsbudsjett» beregner sikret +
+      // vekst fra live portefølje + antakelser, fryser seriene i honorarLaas og
+      // speiler totalene inn i de klassiske inntektsradene (avvik/Excel/KPI-er
+      // fungerer uendret). «Lås opp» fjerner låsen — tallene blir stående.
+      let inntekterB = bodyB.inntekter;
+      let honorarLaasB; // undefined = ikke rør eksisterende lås
+      if (bodyB.laasInntekt === true) {
+        const lfL = await hentLeieforhold(leieforholdTarget(), { db });
+        if (!lfL.ok) return cors(NextResponse.json({ ok: false, error: lfL.error || 'Kunne ikke hente porteføljen — låsing avbrutt' }, { status: 502 }));
+        const modellL = beregnInntektsmodell({ rows: lfL.rows, year: yearB, antakelser: bodyB.antakelser || {} });
+        honorarLaasB = { sikret: modellL.sikret, vekst: modellL.vekst, oppstart: modellL.oppstart, laastAt: new Date().toISOString(), laastAv: navnB };
+        inntekterB = { ...(bodyB.inntekter || {}), 'Honorar (forvaltning)': modellL.total, 'Oppstartshonorar': modellL.oppstart };
+      } else if (bodyB.laasOpp === true) {
+        honorarLaasB = null;
+      }
+      const lagret = await lagreBudsjett(db, { year: yearB, inntekter: inntekterB, kostnader: bodyB.kostnader, egnePoster: bodyB.egnePoster, kommentarer: bodyB.kommentarer, notat: bodyB.notat, updatedBy: navnB, antakelser: bodyB.antakelser, honorarLaas: honorarLaasB });
       return cors(NextResponse.json({ ok: true, ...lagret }));
+    }
+    // Inntektsmodell (modell B) — forhåndsvisning: sikret (live fra plattformen)
+    // + antakelser (?nye=&churn=&fyll=&snittleie=&honorarpct=&oppstart=).
+    // Returnerer dekomponert serie + kostnadsseed (til «fyll kostnader»-valget).
+    if (route === '/admin/budsjett/inntektsmodell' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const uM = new URL(request.url);
+      const yearM = gyldigBudsjettAar(uM.searchParams.get('year')) || new Date().getFullYear();
+      const lfM = await hentLeieforhold(leieforholdTarget(), { db });
+      if (!lfM.ok) return cors(NextResponse.json({ ok: false, error: lfM.error || 'Kunne ikke hente porteføljen' }, { status: 502 }));
+      const modellM = beregnInntektsmodell({
+        rows: lfM.rows, year: yearM,
+        antakelser: {
+          nyeEnheterPerMnd: uM.searchParams.get('nye'),
+          churnPctAar: uM.searchParams.get('churn'),
+          fyllLedigPerMnd: uM.searchParams.get('fyll'),
+          snittLeie: uM.searchParams.get('snittleie'),
+          honorarPct: uM.searchParams.get('honorarpct'),
+          oppstartPerEnhet: uM.searchParams.get('oppstart'),
+        },
+      });
+      // Kostnadsseed + grunnlag gjenbrukes fra forslagsmotoren (kostnadssiden
+      // er ikke kontraktsfestet i plattformen — seeding gir fortsatt mening der).
+      const costsM = await listCosts(db);
+      const seedM = lagForslag({ rows: lfM.rows, costs: costsM, year: yearM, drivere: {} });
+      return cors(NextResponse.json({
+        ok: true, year: yearM, ...modellM,
+        grunnlag: seedM.grunnlag, kostnader: seedM.kostnader,
+        kilde: { source: lfM.source, env: lfM.env, antallRader: lfM.rows.length },
+      }));
     }
     // Forslag fra porteføljen: leieforhold-radene (cache-vennlig) + dagens
     // løpende kostnader → driver-basert budsjettforslag. ?nye=&fyll=&snittleie=
