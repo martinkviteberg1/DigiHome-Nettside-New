@@ -87,7 +87,7 @@ export default function Leieforhold({ apiKey }) {
     let ut = rows;
     if (gruppe !== 'alle') ut = ut.filter((r) => r.group === gruppe);
     const s = sok.trim().toLowerCase();
-    if (s) ut = ut.filter((r) => `${r.unit_room} ${r.address} ${r.owner_name} ${r.tenant_name}`.toLowerCase().includes(s));
+    if (s) ut = ut.filter((r) => `${r.unit_room} ${r.address} ${r.owner_name} ${r.tenant_name} ${r.bolig_type || ''}`.toLowerCase().includes(s));
     if (sortering === 'belop') ut = [...ut].sort((a, b) => (b.monthly_rent || 0) - (a.monthly_rent || 0));
     else if (sortering === 'honorar') ut = [...ut].sort((a, b) => (b.fee_amount || 0) - (a.fee_amount || 0));
     else if (sortering === 'adresse') ut = [...ut].sort((a, b) => (a.address || '').localeCompare(b.address || '', 'nb'));
@@ -269,54 +269,63 @@ export default function Leieforhold({ apiKey }) {
           <>
             {/* Desktop-tabell */}
             <div className="hidden overflow-x-auto md:block">
-              <table className="w-full min-w-[980px] text-left" data-testid="leieforhold-tabell">
+              <table className="w-full min-w-[1150px] text-left" data-testid="leieforhold-tabell">
               <thead>
                 <tr className="border-b border-black/[0.05]">
-                  {['Bolig / enhet', 'Huseier', 'Leietaker', 'Status', 'Innflytting', 'Beløp / mnd', 'Sats', 'Honorar', 'Netto', 'Depositum'].map((h, i) => (
-                    <th key={h} className={`px-4 py-2.5 text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#b5b5b5] ${i >= 5 ? 'text-right' : ''}`}>{h}</th>
+                  {['Enhet', 'Adresse', 'Type', 'Huseier', 'Leietaker', 'Status', 'Innflytting', 'Beløp / mnd', 'Sats', 'Honorar', 'Netto', 'Depositum'].map((h, i) => (
+                    <th key={h} className={`px-3.5 py-2.5 text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#b5b5b5] ${i >= 7 ? 'text-right' : ''}`}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {filtrert.map((r, i) => (
+                {filtrert.map((r, i) => {
+                  const erRom = r.unit_type === 'Rom i bofellesskap';
+                  const [gate, ...resten] = String(r.address || '').split(',');
+                  const omraade = resten.join(',').replace(/,?\s*Norge\s*$/i, '').trim();
+                  return (
                   <tr key={`${r.address}-${r.unit_room}-${i}`} className="border-b border-black/[0.035] transition-colors last:border-b-0 hover:bg-[#fafaf8]" data-testid={`leieforhold-rad-${i}`}>
-                    <td className="px-4 py-2.5">
-                      <p className="text-[13px] font-semibold leading-tight text-[#1a1a1a]">
-                        {r.unit_room}
-                        {r.unit_type === 'Rom i bofellesskap' && (
-                          <span className="ml-1.5 rounded-md bg-[#f4f0fb] px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wide text-[#8b5cf6]">Rom</span>
-                        )}
-                      </p>
-                      <p className="mt-0.5 max-w-[280px] truncate text-[11.5px] text-[#a3a3a3]">{r.address}</p>
+                    <td className="whitespace-nowrap px-3.5 py-2.5">
+                      <span className="text-[13px] font-semibold leading-tight text-[#1a1a1a]">
+                        {r.enhet_detalj || (erRom ? r.unit_room : 'Hel enhet')}
+                      </span>
+                      {erRom && (
+                        <span className="ml-1.5 rounded-md bg-[#f4f0fb] px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wide text-[#8b5cf6]">Rom</span>
+                      )}
                     </td>
-                    <td className="max-w-[170px] truncate px-4 py-2.5 text-[12.5px] text-[#555]">{r.owner_name || '—'}</td>
-                    <td className="max-w-[170px] truncate px-4 py-2.5 text-[12.5px] text-[#555]">{r.tenant_name || '—'}</td>
-                    <td className="px-4 py-2.5"><StatusChip row={r} /></td>
-                    <td className="whitespace-nowrap px-4 py-2.5 text-[12.5px] text-[#777]">{(r.group === 'future' || r.group === 'signing') ? dato(r.move_in_date) : '—'}</td>
-                    <td className="whitespace-nowrap px-4 py-2.5 text-right text-[13px] font-semibold tabular-nums text-[#0a0a0a]">
+                    <td className="px-3.5 py-2.5">
+                      <p className="max-w-[220px] truncate text-[12.5px] font-medium text-[#333]" title={r.address}>{(gate || '').trim() || '—'}</p>
+                      {omraade && <p className="mt-0.5 max-w-[220px] truncate text-[11px] text-[#a3a3a3]">{omraade}</p>}
+                    </td>
+                    <td className="whitespace-nowrap px-3.5 py-2.5 text-[12.5px] text-[#555]">{r.bolig_type || (erRom ? 'Rom' : '—')}</td>
+                    <td className="max-w-[150px] truncate px-3.5 py-2.5 text-[12.5px] text-[#555]" title={r.owner_name}>{r.owner_name || '—'}</td>
+                    <td className="max-w-[150px] truncate px-3.5 py-2.5 text-[12.5px] text-[#555]" title={r.tenant_name}>{r.tenant_name || '—'}</td>
+                    <td className="px-3.5 py-2.5"><StatusChip row={r} /></td>
+                    <td className="whitespace-nowrap px-3.5 py-2.5 text-[12.5px] text-[#777]">{r.move_in_date ? dato(r.move_in_date) : '—'}</td>
+                    <td className="whitespace-nowrap px-3.5 py-2.5 text-right text-[13px] font-semibold tabular-nums text-[#0a0a0a]">
                       {r.group === 'vacant' && !r.monthly_rent
                         ? <span className="rounded-md bg-amber-50 px-1.5 py-0.5 text-[11px] font-bold text-amber-600">Ikke satt</span>
                         : kr(r.monthly_rent)}
                     </td>
-                    <td className="whitespace-nowrap px-4 py-2.5 text-right text-[12.5px] tabular-nums text-[#777]">{r.fee_percent ? `${r.fee_percent.toLocaleString('nb-NO')} %` : '—'}</td>
-                    <td className={`whitespace-nowrap px-4 py-2.5 text-right text-[12.5px] tabular-nums ${r.group === 'leased' ? 'font-semibold' : ''}`} style={{ color: r.group === 'leased' ? '#7c3aed' : '#c2beb8' }} title={r.group === 'leased' ? 'Realisert honorar' : 'Potensielt honorar — ikke realisert ennå'}>
+                    <td className="whitespace-nowrap px-3.5 py-2.5 text-right text-[12.5px] tabular-nums text-[#777]">{r.fee_percent ? `${r.fee_percent.toLocaleString('nb-NO')} %` : '—'}</td>
+                    <td className={`whitespace-nowrap px-3.5 py-2.5 text-right text-[12.5px] tabular-nums ${r.group === 'leased' ? 'font-semibold' : ''}`} style={{ color: r.group === 'leased' ? '#7c3aed' : '#c2beb8' }} title={r.group === 'leased' ? 'Realisert honorar' : 'Potensielt honorar — ikke realisert ennå'}>
                       {r.fee_amount ? kr(r.fee_amount) : '—'}
                     </td>
-                    <td className="whitespace-nowrap px-4 py-2.5 text-right text-[12.5px] tabular-nums" style={{ color: r.group === 'leased' ? '#555' : '#c2beb8' }}>
+                    <td className="whitespace-nowrap px-3.5 py-2.5 text-right text-[12.5px] tabular-nums" style={{ color: r.group === 'leased' ? '#555' : '#c2beb8' }}>
                       {r.net_to_owner ? kr(r.net_to_owner) : '—'}
                     </td>
-                    <td className="whitespace-nowrap px-4 py-2.5 text-right text-[12.5px] tabular-nums text-[#777]">{r.deposit != null ? kr(r.deposit) : '—'}</td>
+                    <td className="whitespace-nowrap px-3.5 py-2.5 text-right text-[12.5px] tabular-nums text-[#777]">{r.deposit != null ? kr(r.deposit) : '—'}</td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
               <tfoot>
                 <tr className="border-t border-black/[0.06] bg-[#fafaf8]">
-                  <td className="px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.08em] text-[#999]">Sum ({filtrert.length})</td>
-                  <td colSpan={4} />
-                  <td className="px-4 py-2.5 text-right text-[13px] font-bold tabular-nums text-[#0a0a0a]">{kr(filtrert.reduce((s, r) => s + (r.monthly_rent || 0), 0))}</td>
+                  <td className="px-3.5 py-2.5 text-[11px] font-bold uppercase tracking-[0.08em] text-[#999]">Sum ({filtrert.length})</td>
+                  <td colSpan={6} />
+                  <td className="px-3.5 py-2.5 text-right text-[13px] font-bold tabular-nums text-[#0a0a0a]">{kr(filtrert.reduce((s, r) => s + (r.monthly_rent || 0), 0))}</td>
                   <td />
-                  <td className="px-4 py-2.5 text-right text-[12.5px] font-bold tabular-nums" style={{ color: '#7c3aed' }} title="Realisert honorar (kun utleide)">{kr(filtrert.filter((r) => r.group === 'leased').reduce((s, r) => s + (r.fee_amount || 0), 0))}</td>
-                  <td className="px-4 py-2.5 text-right text-[12.5px] font-bold tabular-nums text-[#555]">{kr(filtrert.filter((r) => r.group === 'leased').reduce((s, r) => s + (r.net_to_owner || 0), 0))}</td>
+                  <td className="px-3.5 py-2.5 text-right text-[12.5px] font-bold tabular-nums" style={{ color: '#7c3aed' }} title="Realisert honorar (kun utleide)">{kr(filtrert.filter((r) => r.group === 'leased').reduce((s, r) => s + (r.fee_amount || 0), 0))}</td>
+                  <td className="px-3.5 py-2.5 text-right text-[12.5px] font-bold tabular-nums text-[#555]">{kr(filtrert.filter((r) => r.group === 'leased').reduce((s, r) => s + (r.net_to_owner || 0), 0))}</td>
                   <td />
                 </tr>
               </tfoot>
@@ -341,9 +350,10 @@ export default function Leieforhold({ apiKey }) {
                   </div>
                   <div className="mt-2 flex items-end justify-between gap-3">
                     <div className="min-w-0 space-y-0.5 text-[11.5px] text-[#8a8278]">
+                      {r.bolig_type && <p className="truncate">Type · {r.bolig_type}</p>}
                       {r.owner_name && <p className="truncate">Eier · {r.owner_name}</p>}
                       {r.tenant_name && <p className="truncate">Leietaker · {r.tenant_name}</p>}
-                      {(r.group === 'future' || r.group === 'signing') && r.move_in_date && <p>Innflytting {dato(r.move_in_date)}</p>}
+                      {r.move_in_date && <p>{r.group === 'leased' ? 'Innflyttet' : 'Innflytting'} {dato(r.move_in_date)}</p>}
                     </div>
                     <div className="shrink-0 text-right">
                       <p className="text-[15px] font-bold tabular-nums text-[#0a0a0a]">
