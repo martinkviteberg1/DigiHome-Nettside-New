@@ -380,9 +380,10 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
   };
   const satsTittel = (r) => {
     if (r.fee_percent) {
-      return r.vat_inclusive
+      const basis = r.vat_inclusive
         ? `Avtalt ${r.fee_percent.toLocaleString('nb-NO')} % inkl. mva — vist omregnet til eks. mva`
         : `Avtalt ${r.fee_percent.toLocaleString('nb-NO')} % eks. mva`;
+      return r.fee_from_agreement ? `${basis} · fra forvaltningsavtalen (venter aktivering på plattformen)` : basis;
     }
     const e = estimatFor(r);
     if (!e) return undefined;

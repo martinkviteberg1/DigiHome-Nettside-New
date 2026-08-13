@@ -519,3 +519,8 @@ Google Ads-styring via native REST API).
 - Kostnadsmodell (asset-light — huseier bærer boligkostnadene): felleskostnader (lønn m.m., fordeling: likt/kun utleide/etter honorar) + CAC per enhet (engangs). Kolleksjon: enhetsokonomi. Ruter: GET/PUT/DELETE /api/admin/leieforhold/okonomi[/felles|/enhet].
 - Investor: Økonomi-modus som default, read-only (adminAuthed blokkerer skriving). Excel-eksporten har eget «Enhetsøkonomi»-ark.
 - Plattformens GET /api/lease-income/export er levert i deres preview og treffer prod ved neste publish → visningen blir da automatisk 100 % 1:1 (motoren prøver den først). Kjent restavvik til da: honorar 18 100 vs 15 100 (intern avtale→enhet-kobling, se bro-tråd «leieforhold-view»).
+
+## Feb 2026 — Knøsesmauet-konsistens + forvaltningsavtale-PDF (levert av plattformen)
+- Honorar-totals følger nå alltid de berikede radene (totals.fee = radsum = 15 198; Knøsesmauet 10 % inkl. mva → 8 % eks. / 2 400 kr, reelt uten ~). Kildevern: transient lease-income-svikt serverer siste vellykkede henting i stedet for degradert fallback.
+- Plattformen har deployet kontrakt-PDF for forvaltningsavtaler i prod (komposit-id gjenkjennes 30/30), men ingen avtaler har lagret signert fil ennå → proxy viser presis melding «Ingen signert PDF lagret ennå». Bridge-svar sendt: bestilt signed_agreement_url-kobling + server-generert fallback-PDF.
+- Backendtest: 6/6 bestått (leieforhold-konsistens, Knøsesmauet-rad, PDF-proxy begge veier, auth/validering, budsjett/xlsx-regresjon).

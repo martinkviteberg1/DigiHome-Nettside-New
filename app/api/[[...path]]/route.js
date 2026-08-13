@@ -3347,11 +3347,39 @@ async function handleRoute(request, { params }) {
         { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8' } },
       );
       try {
-        const rPdf = await fetch(`${mTarget.url}/api/contracts/${encodeURIComponent(idPdf)}/pdf`, {
-          headers: { 'X-API-Key': mTarget.key }, signal: AbortSignal.timeout(20000),
-        });
-        if (!rPdf.ok) {
-          return ventSide('PDF-en er ikke tilgjengelig ennå', 'Plattformen har ikke levert kontrakt-PDF-endepunktet — det er bestilt og kobles på automatisk så snart det finnes. Prøv igjen senere.');
+        // Prøv id-en som den er; komposit-id (kontraktId:enhetId) fra
+        // contracts/export prøves også med ren uuid-del som fallback, slik at
+        // vi virker uansett hvilken variant plattformen implementerer.
+        const kandidater = [idPdf];
+        if (idPdf.includes(':')) kandidater.push(idPdf.split(':')[0]);
+        let rPdf = null; let sisteDetalj = '';
+        for (const kand of kandidater) {
+          rPdf = await fetch(`${mTarget.url}/api/contracts/${encodeURIComponent(kand)}/pdf`, {
+            headers: { 'X-API-Key': mTarget.key }, signal: AbortSignal.timeout(20000),
+          });
+          if (rPdf.ok) break;
+          try { sisteDetalj = String((await rPdf.clone().json())?.detail || ''); } catch (e) { sisteDetalj = ''; }
+          // «ikke tilgjengelig» betyr at kontrakten BLE funnet men mangler
+          // lagret PDF — da er det meningsløst å prøve flere id-varianter
+          // (som bare ville gitt «Kontrakt ikke funnet» og skjult detaljen).
+          if (/ikke tilgjengelig/i.test(sisteDetalj)) break;
+        }
+        if (!rPdf || !rPdf.ok) {
+          // Plattformens PDF-endepunkt er LEVERT for både leiekontrakt og
+          // forvaltningsavtale (komposit-id). Forvaltningsavtale krever at en
+          // signert PDF-fil er lagret på plattformen (signed_agreement_url) —
+          // ellers svarer den 404 «Signert forvaltningsavtale-PDF ikke
+          // tilgjengelig». Server-generert fallback er bestilt via broen.
+          if (/ikke tilgjengelig/i.test(sisteDetalj)) {
+            return ventSide(
+              'Ingen signert PDF lagret ennå',
+              'Plattformen har ikke en signert PDF-fil registrert for denne forvaltningsavtalen. Så snart den signerte filen er lagret på plattformen, åpnes den her automatisk.',
+            );
+          }
+          return ventSide(
+            'PDF-en er ikke tilgjengelig ennå',
+            'Plattformen fant ikke PDF for denne kontrakten. Prøv igjen senere — den kobles på automatisk når den finnes.',
+          );
         }
         const bufPdf = Buffer.from(await rPdf.arrayBuffer());
         return new NextResponse(bufPdf, {
