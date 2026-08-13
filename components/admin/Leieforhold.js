@@ -68,6 +68,10 @@ const kr = (v) => `${medTynnSkiller(Math.round(v || 0).toLocaleString('nb-NO'))}
 const dato = (s) => (s ? new Date(`${s}T12:00:00`).toLocaleDateString('nb-NO', { day: 'numeric', month: 'short', year: 'numeric' }) : '—');
 
 const tilIso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+// Sats vises ALLTID eks. mva — avtaler inkl. mva (vat_inclusive) omregnes
+// (15 % inkl → 12 % eks), så kolonnen er konsistent med honorar-kolonnen.
+const eksSats = (r) => (r.fee_percent ? (r.vat_inclusive ? r.fee_percent / 1.25 : r.fee_percent) : 0);
+const satsFmt = (v) => Number(v.toFixed(1)).toLocaleString('nb-NO');
 const plussMnd = (m) => { const d = new Date(); d.setMonth(d.getMonth() + m); return tilIso(d); };
 const imorgen = () => { const d = new Date(); d.setDate(d.getDate() + 1); return tilIso(d); };
 
@@ -215,10 +219,8 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
   const [pdfVisning, setPdfVisning] = useState(null); // {id, tittel} → PDF-modal
 
   // Tabellen skal fylle skjermen helt ned (ingen blank plass nederst):
-  // vi måler hvor tabellboksen starter og gir den nøyaktig resthøyde,
-  // med plass til bunnteksten under kortet.
+  // vi måler hvor tabellboksen starter og gir den nøyaktig resthøyde.
   const tabellBoksRef = useRef(null);
-  const bunnTekstRef = useRef(null);
   const [tabellMaxH, setTabellMaxH] = useState(null);
 
   // Esc lukker øverste lag: PDF → CAC → filter → enhetsskuff
@@ -385,7 +387,7 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
       const boks = tabellBoksRef.current;
       if (!boks) return;
       const topp = boks.getBoundingClientRect().top + window.scrollY;
-      const bunn = (bunnTekstRef.current?.offsetHeight || 34) + 24; // bunntekst + margin/luft
+      const bunn = 14; // litt luft under kortet
       setTabellMaxH(Math.max(320, Math.round(window.innerHeight - topp - bunn)));
     };
     maal();
@@ -443,18 +445,15 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
     : data?.source === 'units-contracts' ? 'Live fra plattformen'
     : 'Avledet fra kontrakter';
 
-  // Inntektstrappen i KPI-stripen: I dag → Kommende (= sikret) → Pipeline → Ledig
-  const KPI = [
-    { id: 'faktisk', l: 'Leie i dag', v: visTotals.actual_rent, farge: '#1f7a45', sub: `${visTotals.leased ?? 0} ${visTotals.leased === 1 ? 'enhet betaler' : 'enheter betaler'} nå` },
-    { id: 'forventet', l: 'Kommende · signert', v: visTotals.expected_rent, farge: '#3757c4', sub: `${visTotals.future ?? 0} sign. → sikret ${kr(sikretLeie)}` },
-    { id: 'under', l: 'Pipeline', v: pipelineLeie, farge: '#0e7490', sub: `${visTotals.signing ?? 0} under signering · ${annonsert.antall} annonsert` },
-    { id: 'ledig', l: 'Ledig · uten annonse', v: ledigLeie, farge: '#8a8278', sub: `${ledigAntall} ${ledigAntall === 1 ? 'enhet' : 'enheter'} · estimert nivå` },
+  // Leie-trappen i KPI-kortet: I dag → +Kommende (= sikret) → +Pipeline →
+  // +Ledig (= full utleie). Hver kolonne viser sitt individuelle beløp («+»)
+  // og løpende sum («=») — samme leselogikk som honorar-trappen.
+  const leieTrapp = [
+    { id: 'faktisk', l: 'Leie i dag', v: visTotals.actual_rent || 0, sum: null, sub: `${visTotals.leased ?? 0} ${visTotals.leased === 1 ? 'enhet betaler' : 'enheter betaler'} nå` },
+    { id: 'forventet', l: '+ Kommende · signert', v: visTotals.expected_rent || 0, sum: sikretLeie, sumL: 'sikret' },
+    { id: 'under', l: '+ Pipeline', v: pipelineLeie, sum: sikretLeie + pipelineLeie, sumL: '' },
+    { id: 'ledig', l: '+ Ledig · uten annonse', v: ledigLeie, sum: sikretLeie + pipelineLeie + ledigLeie, sumL: 'full utleie' },
   ];
-
-  // KPI-celle — rolig, tett, tabulære tall
-  const KpiCelle = ({ children, testid }) => (
-    <div className="border-b border-black/[0.05] px-4 py-2.5 sm:border-b-0" data-testid={testid}>{children}</div>
-  );
 
   return (
     <div className="w-full" data-testid="leieforhold-modul">
@@ -671,75 +670,69 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
           </div>
         )}
 
-        {/* ── KPI-bånd: to tydelig adskilte soner ─────────────────────────────
-            SONE A «Leiegrunnlag» — huseiernes leie (inntektstrappen + utleigrad)
-            SONE B «DigiHome honorar» — vårt honorar som egen trapp: i dag →
-            m/signert (sikret) → m/annonsert → full utleie. Trinn uten avtalt
-            sats estimeres med porteføljens snittsats og merkes ~.
-            Selskapets økonomi (faste kostnader, margin, break-even, CAC) bor
-            i Datarom → Oversikt — én kilde, ett hjem. ── */}
-        <div className="grid grid-cols-1 border-t border-black/[0.05] xl:grid-cols-[minmax(0,1fr)_minmax(320px,360px)]">
-          {/* SONE A — Leiegrunnlag (huseiernes penger) */}
-          <div className="min-w-0 pb-1" data-testid="leieforhold-sone-leie">
-            <p className={`px-4 pt-2 ${ETIKETT}`}>Leiegrunnlag / mnd <span className="font-medium normal-case tracking-normal text-[#c2beb8]">— huseiernes leie</span></p>
-            <div className="grid grid-cols-2 sm:grid-cols-5 sm:divide-x sm:divide-black/[0.05]">
-              {KPI.map((s) => (
-                <KpiCelle key={s.id} testid={`leieforhold-kpi-${s.id}`}>
-                  <div className="flex items-center gap-1.5">
-                    <span className="h-[6px] w-[6px] rounded-full" style={{ background: s.farge }} />
-                    <p className={`truncate ${ETIKETT}`}>{s.l}</p>
-                  </div>
-                  <p className="mt-1 text-[16px] font-semibold tabular-nums tracking-[-0.01em] text-[#1c1917]" style={heading}>
-                    {laster ? '…' : <TallOpp verdi={s.v} />}
-                  </p>
-                  <p className="mt-[1px] truncate text-[10.5px] text-[#b8b2a9]">{s.sub}</p>
-                </KpiCelle>
-              ))}
-              <div className="flex items-center gap-2.5 px-4 py-2" data-testid="leieforhold-kpi-utleigrad">
-                <Ring pct={visTotals.occupancy_pct || 0} />
-                <div className="min-w-0">
-                  <p className={`truncate ${ETIKETT}`}>Utleigrad</p>
-                  <p className="mt-[1px] text-[14px] font-semibold tabular-nums tracking-[-0.01em] text-[#1c1917]" style={heading}>{visTotals.occupancy_pct ?? 0} %</p>
-                  <p className="truncate text-[10.5px] text-[#b8b2a9]">{visTotals.leased ?? 0} av {visTotals.count ?? 0} utleid</p>
-                </div>
+        {/* ── KPI-seksjon: TO KORT i ett rolig bånd (bruker bredden, ikke høyden)
+            Begge kort leser likt: stort tall = i dag, deretter «+ individuelt
+            beløp» (grønt) med «= løpende sum» under — trappen plusses opp mot
+            full utleie. Honorar-kortet har en stille aurora-glød og gradient-
+            hairline (premium). Selskapets økonomi bor i Datarom → Oversikt. ── */}
+        <div className="grid grid-cols-1 gap-2.5 border-t border-black/[0.05] px-3 py-2.5 sm:px-4 xl:grid-cols-[minmax(0,46fr)_minmax(0,54fr)]">
+          {/* KORT 1 — Honorar (DigiHome) */}
+          <div className="dh-kpi-bord rounded-[11px] p-[1px]" data-testid="leieforhold-honorar-trapp">
+            <div className="relative flex h-full flex-wrap items-center gap-x-5 gap-y-2 overflow-hidden rounded-[10px] bg-gradient-to-br from-[#fbf9ff] to-white px-4 py-2.5 transition-shadow duration-300 hover:shadow-[0_6px_24px_rgba(139,92,246,0.10)]">
+              <div aria-hidden className="dh-kpi-aurora pointer-events-none absolute -right-8 -top-14 h-36 w-36 rounded-full" />
+              <div className="relative min-w-0">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#8b5cf6]">Honorar / mnd <span className="font-medium normal-case tracking-normal text-[#c4b8e4]">· eks. mva</span></p>
+                <p className="mt-1 text-[23px] font-semibold leading-none tabular-nums tracking-[-0.02em] text-[#1c1917]" style={heading} data-testid="leieforhold-honorar">
+                  {laster ? '…' : <TallOpp verdi={honorarTrapp.iDag} />}
+                </p>
+                <p className="mt-1 truncate text-[10.5px] text-[#a8a29a]" data-testid="leieforhold-honorar-arr">≈ {kr(honorarTrapp.iDag * 12)}/år run-rate</p>
               </div>
+              <div className="hidden h-9 w-px shrink-0 bg-black/[0.05] sm:block" />
+              {/* Trappen — individuelt beløp (+) og løpende sum (=) */}
+              {[
+                ['+ Signert', honorarTrapp.sikret - honorarTrapp.iDag, honorarTrapp.sikret, 'sikret', honorarTrapp.estSikret, 'leieforhold-hon-sikret'],
+                ['+ Annonsert nå', honorarTrapp.medAnnonsert - honorarTrapp.sikret, honorarTrapp.medAnnonsert, '', honorarTrapp.estAnnonsert, 'leieforhold-hon-annonsert'],
+                ['+ Ledig rest', honorarTrapp.potensial - honorarTrapp.medAnnonsert, honorarTrapp.potensial, 'full utleie', honorarTrapp.estFull, 'leieforhold-hon-full'],
+              ].map(([l, v, sum, sumL, est, tid]) => (
+                <div key={l} className="relative min-w-0" data-testid={tid} title={est ? 'Inneholder estimat (porteføljens snittsats der sats ikke er avtalt)' : undefined}>
+                  <p className={`truncate ${ETIKETT}`}>{l}</p>
+                  <p className="mt-1 text-[15px] font-semibold leading-none tabular-nums tracking-[-0.01em] text-[#1f9a53]" style={heading}>
+                    +{est ? '~' : ''}{kr(v)}
+                  </p>
+                  <p className="mt-1 truncate text-[10.5px] tabular-nums text-[#a8a29a]">= {est ? '~' : ''}{kr(sum)}{sumL ? ` ${sumL}` : ''}</p>
+                </div>
+              ))}
             </div>
           </div>
 
-          {/* SONE B — DigiHome honorar-trapp (våre penger, lilla sone) */}
-          <div className="border-t border-black/[0.05] bg-gradient-to-br from-[#faf7ff] via-[#faf8ff] to-white px-4 pb-2.5 pt-2 xl:border-l xl:border-t-0" data-testid="leieforhold-honorar-trapp">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#8b5cf6]">DigiHome honorar / mnd <span className="font-medium normal-case tracking-normal text-[#b5a8d6]">· eks. mva</span></p>
-            <div className="mt-1 flex items-baseline gap-2">
-              <p className="text-[17px] font-semibold tabular-nums tracking-[-0.01em]" style={{ ...heading, color: '#7c3aed' }} data-testid="leieforhold-honorar">
-                {laster ? '…' : <TallOpp verdi={honorarTrapp.iDag} />}
-              </p>
-              <p className="truncate text-[10.5px] text-[#b8b2a9]">i dag · {visTotals.leased ?? 0} {visTotals.leased === 1 ? 'enhet betaler' : 'enheter betaler'} · netto eiere {kr(visTotals.net)}</p>
-            </div>
-            {/* Trappebar — kumulativ mot full utleie */}
-            <div className="mt-2 flex h-[5px] w-full overflow-hidden rounded-full bg-[#ece5f9]">
-              {honorarTrapp.potensial > 0 && (
-                <>
-                  <div className="h-full bg-[#7c3aed] transition-all duration-700" style={{ width: `${(honorarTrapp.iDag / honorarTrapp.potensial) * 100}%` }} />
-                  <div className="h-full bg-[#a78bfa] transition-all duration-700" style={{ width: `${((honorarTrapp.sikret - honorarTrapp.iDag) / honorarTrapp.potensial) * 100}%` }} />
-                  <div className="h-full bg-[#2aa3bf] transition-all duration-700" style={{ width: `${((honorarTrapp.medAnnonsert - honorarTrapp.sikret) / honorarTrapp.potensial) * 100}%` }} />
-                </>
-              )}
-            </div>
-            <div className="mt-1.5 grid grid-cols-2 gap-x-4 gap-y-[3px]">
-              {[
-                ['#7c3aed', 'I dag', honorarTrapp.iDag, false, 'leieforhold-hon-idag'],
-                ['#a78bfa', 'Sikret · m/signert', honorarTrapp.sikret, honorarTrapp.estSikret, 'leieforhold-hon-sikret'],
-                ['#2aa3bf', '+ Annonsert nå', honorarTrapp.medAnnonsert, honorarTrapp.estAnnonsert, 'leieforhold-hon-annonsert'],
-                ['#c9c3ba', 'Full utleie', honorarTrapp.potensial, honorarTrapp.estFull, 'leieforhold-hon-full'],
-              ].map(([farge, l, v, est, tid]) => (
-                <div key={l} className="flex items-baseline justify-between gap-2" data-testid={tid}>
-                  <span className="flex min-w-0 items-center gap-1.5">
-                    <span className="h-[5px] w-[5px] shrink-0 rounded-full" style={{ background: farge }} />
-                    <span className="truncate text-[10.5px] text-[#8a8278]">{l}</span>
-                  </span>
-                  <span className="shrink-0 text-[11px] font-semibold tabular-nums text-[#57534e]">{est ? '~' : ''}{kr(v)}</span>
-                </div>
-              ))}
+          {/* KORT 2 — Leie (huseiernes grunnlag, samme pluss-logikk) */}
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 rounded-[10px] border border-black/[0.06] bg-white px-4 py-2.5 transition-shadow duration-300 hover:shadow-[0_6px_24px_rgba(28,25,23,0.06)] xl:justify-between" data-testid="leieforhold-sone-leie">
+            {leieTrapp.map((s, i) => (
+              <div key={s.id} className="min-w-0" data-testid={`leieforhold-kpi-${s.id}`}>
+                <p className={`truncate ${ETIKETT}`}>{s.l}</p>
+                {i === 0 ? (
+                  <>
+                    <p className="mt-1 text-[16px] font-semibold leading-none tabular-nums tracking-[-0.01em] text-[#1c1917]" style={heading}>
+                      {laster ? '…' : <TallOpp verdi={s.v} />}
+                    </p>
+                    <p className="mt-1 truncate text-[10.5px] text-[#b8b2a9]">{s.sub}</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="mt-1 text-[15px] font-semibold leading-none tabular-nums tracking-[-0.01em] text-[#1f9a53]" style={heading}>
+                      +{kr(s.v)}
+                    </p>
+                    <p className="mt-1 truncate text-[10.5px] tabular-nums text-[#a8a29a]">= {kr(s.sum)}{s.sumL ? ` ${s.sumL}` : ''}</p>
+                  </>
+                )}
+              </div>
+            ))}
+            <div className="flex min-w-0 items-center gap-2" data-testid="leieforhold-kpi-utleigrad">
+              <Ring pct={visTotals.occupancy_pct || 0} size={30} />
+              <div className="min-w-0">
+                <p className={`truncate ${ETIKETT}`}>Utleigrad</p>
+                <p className="mt-0.5 text-[14px] font-semibold leading-none tabular-nums text-[#1c1917]" style={heading}>{visTotals.occupancy_pct ?? 0} %</p>
+              </div>
             </div>
           </div>
         </div>
@@ -855,7 +848,14 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
                           ? <span className="rounded-[4px] bg-amber-50 px-1.5 py-[2px] text-[10.5px] font-semibold text-amber-600">Ikke satt</span>
                           : kr(r.monthly_rent)}
                       </td>
-                      <td className="whitespace-nowrap px-3 py-2 text-right text-[12px] tabular-nums text-[#78716c]">{r.fee_percent ? `${r.fee_percent.toLocaleString('nb-NO')} %` : '—'}</td>
+                      <td
+                        className="whitespace-nowrap px-3 py-2 text-right text-[12px] tabular-nums text-[#78716c]"
+                        title={r.fee_percent ? (r.vat_inclusive
+                          ? `Avtalt ${r.fee_percent.toLocaleString('nb-NO')} % inkl. mva — vist omregnet til eks. mva`
+                          : `Avtalt ${r.fee_percent.toLocaleString('nb-NO')} % eks. mva`) : undefined}
+                      >
+                        {r.fee_percent ? `${satsFmt(eksSats(r))} %` : '—'}
+                      </td>
                       <td className={`whitespace-nowrap px-3 py-2 text-right text-[12px] tabular-nums ${r.group === 'leased' ? 'font-semibold' : ''}`} style={{ color: r.group === 'leased' ? '#7c3aed' : '#c2beb8' }} title={r.group === 'leased' ? 'Realisert honorar' : 'Potensielt honorar — ikke realisert ennå'}>
                         {r.fee_amount ? kr(r.fee_amount) : '—'}
                       </td>
@@ -996,7 +996,7 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
                 </Seksjon>
 
                 <Seksjon t="Økonomi (DigiHome)">
-                  <Rad l="Sats" v={r.fee_percent ? `${r.fee_percent.toLocaleString('nb-NO')} % eks. mva` : '—'} />
+                  <Rad l="Sats · eks. mva" v={r.fee_percent ? `${satsFmt(eksSats(r))} %${r.vat_inclusive ? ` (avtalt ${r.fee_percent.toLocaleString('nb-NO')} % inkl. mva)` : ''}` : '—'} />
                   <Rad l="Honorar / mnd" v={r.fee_amount ? kr(r.fee_amount) : '—'} farge="#7c3aed" />
                   <Rad l="Netto til huseier" v={r.net_to_owner ? kr(r.net_to_owner) : '—'} />
                   {fellesTotal > 0 && <Rad l="Andel faste kostnader" v={andel ? `−${kr(andel)}` : '—'} farge="#9a6b1c" />}
@@ -1244,10 +1244,6 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
           </div>
         </div>
       )}
-
-      <p ref={bunnTekstRef} className="mt-2.5 px-1 text-[11px] leading-relaxed text-[#b3ada3]">
-        Leiegrunnlaget er huseiernes penger: Leie i dag (løpende) → Kommende (signert, ikke startet) → Pipeline (under signering + annonsert) → Ledig uten annonse (estimat). Honorar-trappen er DigiHomes inntekt eks. mva: i dag → sikret (m/signert) → m/annonsert → full utleie — trinn med ~ estimeres med porteføljens snittsats der sats ikke er avtalt. Selskapsøkonomien (faste kostnader, margin, break-even, CAC) ligger i Datarom → Oversikt. Excel-eksporten følger samme trapper og respekterer aktiv filtrering og scenario.
-      </p>
     </div>
   );
 }
