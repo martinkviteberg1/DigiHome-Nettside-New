@@ -3522,13 +3522,24 @@ async function handleRoute(request, { params }) {
       const [bud, faktisk] = await Promise.all([hentBudsjett(db, yearB), beregnFaktisk(db, yearB)]);
       // «Sikret nå» — live kontraktsfestet honorar for året (referanselinje mot
       // budsjettets frosne sikret-lag). Best effort: null hvis plattformen feiler.
+      // «modell24» (kun inneværende år) — 24-måneders inntektsmodell (sikret +
+      // årets lagrede antakelser, kontinuerlig over årsskiftet). Brukes av
+      // «Neste 12 mnd»-visningen til å fylle månedene etter nyttår når neste
+      // års budsjett ikke er lagt: uten antakelser = ren kontraktsfestet serie.
       let sikretNaa = null;
+      let modell24 = null;
       try {
         const lfS = await hentLeieforhold(leieforholdTarget(), { db });
-        if (lfS.ok) sikretNaa = beregnSikretSerie(lfS.rows, yearB);
-      } catch (e) { sikretNaa = null; }
+        if (lfS.ok) {
+          sikretNaa = beregnSikretSerie(lfS.rows, yearB);
+          if (yearB === new Date().getFullYear()) {
+            const m24 = beregnInntektsmodell({ rows: lfS.rows, year: yearB, antakelser: bud.antakelser || {}, antallMnd: 24 });
+            modell24 = { sikret: m24.sikret, vekst: m24.vekst, oppstart: m24.oppstart, total: m24.total };
+          }
+        }
+      } catch (e) { sikretNaa = null; modell24 = null; }
       return cors(NextResponse.json({
-        ok: true, ...bud, faktisk, sikretNaa,
+        ok: true, ...bud, faktisk, sikretNaa, modell24,
         kategorier: { inntekter: INNTEKT_KATEGORIER, kostnader: KOSTNAD_KATEGORIER },
       }));
     }
@@ -3538,11 +3549,34 @@ async function handleRoute(request, { params }) {
       if (!(await modulAuthed(request, db, 'budsjett'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const uX = new URL(request.url);
       // Rullerende 12 mnd (?vindu=rullerende): investorvisning over årsgrensen.
+      // ?modell=1: er neste års budsjett ikke lagt, fylles halen med inntekts-
+      // modellen (kontraktsfestet + årets antakelser) og videreførte faste
+      // kostnader — samme tall som «Neste 12 mnd»-skjermen viser investorer.
       if (uX.searchParams.get('vindu') === 'rullerende') {
         const naaX = new Date();
         const fraAarX = naaX.getUTCFullYear(), fraMndX = naaX.getUTCMonth();
-        const [budA, budB] = await Promise.all([hentBudsjett(db, fraAarX), hentBudsjett(db, fraAarX + 1)]);
-        const bufR = await lagBudsjettExcelRullerende({ budsjettA: budA, budsjettB: budB, fraAar: fraAarX, fraMnd: fraMndX });
+        const [budA, budB0] = await Promise.all([hentBudsjett(db, fraAarX), hentBudsjett(db, fraAarX + 1)]);
+        let budB = budB0;
+        let merknadX = '';
+        if (uX.searchParams.get('modell') === '1' && !budB0?.finnes) {
+          try {
+            const lfX = await hentLeieforhold(leieforholdTarget(), { db });
+            if (lfX.ok) {
+              const m24x = beregnInntektsmodell({ rows: lfX.rows, year: fraAarX, antakelser: budA?.antakelser || {}, antallMnd: 24 });
+              budB = {
+                ...budB0,
+                inntekter: {
+                  [INNTEKT_KATEGORIER[0]]: m24x.total.slice(12),
+                  [INNTEKT_KATEGORIER[1]]: m24x.oppstart.slice(12),
+                },
+                kostnader: Object.fromEntries(KOSTNAD_KATEGORIER.map((k) => [k, Array(12).fill(Number(budA?.kostnader?.[k]?.[11]) || 0)])),
+                egnePoster: [],
+              };
+              merknadX = `månedene i ${fraAarX + 1} er modell (kontraktsfestet inntekt + antakelser, videreførte faste kostnader) — budsjettet for ${fraAarX + 1} er ikke vedtatt ennå`;
+            }
+          } catch (e) { /* halen forblir 0 — ærlig fallback */ }
+        }
+        const bufR = await lagBudsjettExcelRullerende({ budsjettA: budA, budsjettB: budB, fraAar: fraAarX, fraMnd: fraMndX, merknad: merknadX });
         return new NextResponse(bufR, {
           headers: {
             'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',

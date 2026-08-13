@@ -84,7 +84,7 @@ function GrafTooltip({ active, payload, label }) {
   );
 }
 
-export default function Budsjett({ apiKey, readOnly = false }) {
+export default function Budsjett({ apiKey, readOnly = false, investor = false }) {
   const iAar = new Date().getFullYear();
   const naaMnd = new Date().getMonth();
   const [year, setYear] = useState(iAar);
@@ -99,14 +99,16 @@ export default function Budsjett({ apiKey, readOnly = false }) {
   const [lagretNaa, setLagretNaa] = useState(false);
   const [fokusCelle, setFokusCelle] = useState(''); // 'inn|kat|m' — viser råtall kun der
   const [visSnarveier, setVisSnarveier] = useState(false); // «?»-oversikten
-  const [mobilMnd, setMobilMnd] = useState(iAar === year ? naaMnd : 0); // mobil: én måned om gangen
+  const [mobilMnd, setMobilMnd] = useState(investor ? 0 : (iAar === year ? naaMnd : 0)); // mobil: én måned om gangen
   const [egnePoster, setEgnePoster] = useState([]); // brukerdefinerte budsjettlinjer
   const [notat, setNotat] = useState(''); // styrekommentar — lagres per år
   const [kommentarer, setKommentarer] = useState({}); // {'0'..'11': tekst} — månedskommentarer
   const [kopierer, setKopierer] = useState(false);
   // «Neste 12 mnd»: rullerende vindu over årsgrensen (visningslag — ingen
   // endring i datamodellen). neste = året etter inneværende, hentet ved behov.
-  const [visning, setVisning] = useState('aar'); // 'aar' | 'rullerende'
+  // Investorer lander rett i det rullerende vinduet: fremoverskuende NTM er
+  // presentasjonsformatet deres — kalenderår beholdes som sekundærvalg.
+  const [visning, setVisning] = useState(investor ? 'rullerende' : 'aar'); // 'aar' | 'rullerende'
   const [neste, setNeste] = useState({ lastet: false, finnes: false, inntekter: {}, kostnader: {}, egnePoster: [], kommentarer: {}, faktisk: null, honorarLaas: null });
   const [dirtyNeste, setDirtyNeste] = useState(false);
   const [kommentarModal, setKommentarModal] = useState(null); // {i, y, m, tekst} | null
@@ -152,6 +154,9 @@ export default function Budsjett({ apiKey, readOnly = false }) {
     } catch (e) { setFeil(e.message); }
   }, [apiKey, iAar]);
 
+  // Investor starter i rullerende visning → neste år må hentes ved mount.
+  useEffect(() => { if (investor) hentNeste(); }, [investor, hentNeste]);
+
   const byttVisning = (v) => {
     if (v === visning) return;
     if ((dirty || dirtyNeste) && !window.confirm('Du har ulagrede endringer — forkast dem?')) return;
@@ -184,7 +189,26 @@ export default function Budsjett({ apiKey, readOnly = false }) {
   const kolLabel = (i) => (erRull ? `${MND[vindu[i].m]} ${String(vindu[i].y).slice(2)}` : MND[i]);
 
   // Leser/skriver mot riktig årstilstand for kolonne i.
+  // MODELLHALE (kun investor-visning): månedene etter nyttår uten lagret
+  // budsjett fylles fra inntektsmodellen (modell24 fra API-et: kontraktsfestet
+  // sikret-serie + årets lagrede antakelser — uten antakelser er halen ren
+  // kontraktsfestet inntekt) og videreførte faste kostnader (desembernivået).
+  // Admin ser fortsatt 0-kolonner med oppfordring om å legge neste års budsjett
+  // — å injisere modelltall der ville risikert utilsiktet lagring.
+  const modell24 = data?.modell24 || null;
+  const HONORAR_RAD = 'Honorar (forvaltning)';
+  const OPPSTART_RAD = 'Oppstartshonorar';
+  const erModellKol = (i) => investor && erRull && !!modell24 && vindu[i].y === iAar + 1 && neste.lastet && !neste.finnes;
   const lesFast = (type, kat, i) => {
+    if (erModellKol(i)) {
+      const idx = 12 + vindu[i].m;
+      if (type === 'inn') {
+        if (kat === HONORAR_RAD) return Number(modell24.total?.[idx]) || 0;
+        if (kat === OPPSTART_RAD) return Number(modell24.oppstart?.[idx]) || 0;
+        return 0;
+      }
+      return Number(kostnader?.[kat]?.[11]) || 0; // videreført fra desember
+    }
     const { y, m } = vindu[i];
     const kilde = y === year ? (type === 'inn' ? inntekter : kostnader) : (type === 'inn' ? neste.inntekter : neste.kostnader);
     return Number(kilde?.[kat]?.[m]) || 0;
@@ -465,6 +489,20 @@ export default function Budsjett({ apiKey, readOnly = false }) {
     const budRes = sum12(budInn) - sum12(budKost);
     return { fInn, fKost, bInnYtd, bKostYtd, budInnAar: sum12(budInn), budKostAar: sum12(budKost), budRes, aarsslutt, kjenteMnd, harFaktisk: kjenteMnd > 0 };
   }, [budInn, budKost, fakInnV, fakKostV]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Investor-NTM: hvor mye av vinduets inntekt som allerede er kontraktsfestet
+  // (sikret-serien = signerte leiekontrakter, faset inn/ut på faktiske datoer),
+  // og exit run-rate (inntektsnivået i siste vindusmåned × 12 — nivået
+  // selskapet forlater perioden på). modell24-indeks: vinduskolonne i = naaMnd+i.
+  const sikretVindu = useMemo(() => {
+    if (!erRull || !modell24) return null;
+    let s = 0;
+    for (let i = 0; i < 12; i++) s += Number(modell24.sikret?.[naaMnd + i]) || 0;
+    return s;
+  }, [erRull, modell24, naaMnd]);
+  const kontraktsfestetPct = (sikretVindu != null && kpi.budInnAar > 0)
+    ? Math.min(100, Math.round((sikretVindu / kpi.budInnAar) * 100)) : null;
+  const exitRunRate = (Number(budInn[11]) || 0) * 12;
 
   // Graf: per måned eller akkumulert (løpende sum — viser trend mot planen).
   const grafData = useMemo(() => {
@@ -980,7 +1018,7 @@ export default function Budsjett({ apiKey, readOnly = false }) {
         )}
         <div className="ml-auto flex items-center gap-1.5">
           <a
-            href={`/api/admin/budsjett/xlsx?key=${encodeURIComponent(apiKey)}&${erRull ? 'vindu=rullerende' : `year=${year}`}`}
+            href={`/api/admin/budsjett/xlsx?key=${encodeURIComponent(apiKey)}&${erRull ? `vindu=rullerende${investor ? '&modell=1' : ''}` : `year=${year}`}`}
             data-testid="budsjett-xlsx"
             title={erRull ? 'Last ned investorklar Excel for de neste 12 månedene' : 'Last ned styremøteklar Excel (budsjett + mot faktisk, levende formler)'}
             className="flex h-9 items-center gap-1.5 rounded-full bg-white px-3.5 text-[12.5px] font-semibold text-[#555] shadow-[0_2px_10px_rgba(0,0,0,0.04)] transition-all hover:text-[#111] active:scale-[0.97]"
@@ -1044,15 +1082,27 @@ export default function Budsjett({ apiKey, readOnly = false }) {
         </div>
       )}
 
-      {/* Rullerende: neste års budsjett finnes ikke ennå — forklar 0-kolonnene */}
+      {/* Rullerende: neste års budsjett finnes ikke ennå — forklar halen.
+          Investor med modell24: kolonnene fylles av modellen (rolig forklaring).
+          Ellers: 0-kolonner med oppfordring om å legge neste års budsjett. */}
       {!laster && erRull && neste.lastet && !neste.finnes && !dirtyNeste && vindu.some(({ y }) => y === iAar + 1) && (
-        <div className="mt-4 flex flex-wrap items-center gap-3 rounded-2xl bg-white p-4 shadow-[0_2px_16px_rgba(0,0,0,0.04)]" data-testid="budsjett-neste-tomt">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#fdf3e0]"><AlertTriangle className="h-4 w-4 text-[#9a6b1c]" /></span>
-          <div className="min-w-0 flex-1">
-            <p className="text-[13.5px] font-semibold text-[#0a0a0a]">Budsjettet for {iAar + 1} er ikke opprettet ennå</p>
-            <p className="text-[12px] text-[#999]">Kolonnene etter nyttår starter på 0. {readOnly ? 'Be en administrator fylle dem.' : `Fyll dem direkte her — de lagres automatisk i ${iAar + 1}-budsjettet.`}</p>
+        (investor && modell24) ? (
+          <div className="mt-4 flex flex-wrap items-center gap-3 rounded-2xl bg-white p-4 shadow-[0_2px_16px_rgba(0,0,0,0.04)]" data-testid="budsjett-modellhale-info">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#f4f0fb]"><Sparkles className="h-4 w-4 text-[#6d28d9]" /></span>
+            <div className="min-w-0 flex-1">
+              <p className="text-[13.5px] font-semibold text-[#0a0a0a]">Månedene i {iAar + 1} er modell</p>
+              <p className="text-[12px] text-[#999]">Budsjettet for {iAar + 1} er ikke vedtatt ennå. Kolonnene merket «modell» viser kontraktsfestet honorar fra signerte avtaler{data?.antakelser && Object.values(data.antakelser).some((v) => Number(v) > 0) ? ' pluss årets vedtatte vekstantakelser' : ''}, med faste kostnader videreført fra desember.</p>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="mt-4 flex flex-wrap items-center gap-3 rounded-2xl bg-white p-4 shadow-[0_2px_16px_rgba(0,0,0,0.04)]" data-testid="budsjett-neste-tomt">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#fdf3e0]"><AlertTriangle className="h-4 w-4 text-[#9a6b1c]" /></span>
+            <div className="min-w-0 flex-1">
+              <p className="text-[13.5px] font-semibold text-[#0a0a0a]">Budsjettet for {iAar + 1} er ikke opprettet ennå</p>
+              <p className="text-[12px] text-[#999]">Kolonnene etter nyttår starter på 0. {readOnly ? 'Be en administrator fylle dem.' : `Fyll dem direkte her — de lagres automatisk i ${iAar + 1}-budsjettet.`}</p>
+            </div>
+          </div>
+        )
       )}
 
       {/* KPI-kort med delta-chips */}
@@ -1061,7 +1111,9 @@ export default function Budsjett({ apiKey, readOnly = false }) {
           {
             l: erRull ? 'Inntekter · neste 12 mnd' : `Inntekter ${year}`, v: kpi.budInnAar, icon: TrendingUp, farge: '#1f7a45', bg: '#e7f4ec',
             chip: kpi.harFaktisk ? { diff: kpi.fInn - kpi.bInnYtd, bra: kpi.fInn >= kpi.bInnYtd } : null,
-            sub: kpi.harFaktisk ? `Faktisk hittil ${kr(kpi.fInn)} · budsjett ${kr(kpi.bInnYtd)}` : 'Ingen faktiske tall ennå',
+            sub: (investor && erRull && kontraktsfestetPct != null)
+              ? `${kontraktsfestetPct} % kontraktsfestet — ${kr(sikretVindu)} i signerte avtaler`
+              : kpi.harFaktisk ? `Faktisk hittil ${kr(kpi.fInn)} · budsjett ${kr(kpi.bInnYtd)}` : 'Ingen faktiske tall ennå',
           },
           {
             l: erRull ? 'Kostnader · neste 12 mnd' : `Kostnader ${year}`, v: kpi.budKostAar, icon: Wallet, farge: '#9a6b1c', bg: '#fdf3e0',
@@ -1072,7 +1124,10 @@ export default function Budsjett({ apiKey, readOnly = false }) {
             l: erRull ? 'Resultat · budsjett' : `Resultat ${year} · budsjett`, v: kpi.budRes, icon: Target, farge: kpi.budRes >= 0 ? '#1f7a45' : '#be123c', bg: kpi.budRes >= 0 ? '#e7f4ec' : '#fde8ec',
             chip: null, sub: 'Sum inntekter − sum kostnader',
           },
-          {
+          (investor && erRull) ? {
+            l: 'Exit run-rate', v: exitRunRate, icon: Flag, farge: '#3757c4', bg: '#e8eefc',
+            chip: null, sub: `Inntektsnivået i ${kolLabel(11)} × 12 — årsraten perioden avsluttes på`,
+          } : {
             l: erRull ? 'Forventet · 12 mnd' : 'Forventet årsslutt', v: kpi.aarsslutt, icon: Flag, farge: '#3757c4', bg: '#e8eefc',
             chip: kpi.harFaktisk ? { diff: kpi.aarsslutt - kpi.budRes, bra: kpi.aarsslutt >= kpi.budRes } : null,
             sub: `Faktisk hittil + budsjett for resten av ${erRull ? 'vinduet' : 'året'}`,
@@ -1153,7 +1208,7 @@ export default function Budsjett({ apiKey, readOnly = false }) {
                       <th key={i} className={`px-1 py-2.5 text-right transition-colors ${erNaa(i) ? 'bg-[#f8f5ff]' : fokusKol === i ? 'bg-[#faf8ff]' : ''}`}>
                         <button
                           onClick={() => aapneKommentar(i)}
-                          title={`${kolLabel(i)}${erSnapshot(i) ? ' · faktisk låst (snapshot)' : ''}${lesKommentar(i) ? `\n«${lesKommentar(i)}»` : '\nKlikk for månedskommentar'}`}
+                          title={`${kolLabel(i)}${erSnapshot(i) ? ' · faktisk låst (snapshot)' : ''}${erModellKol(i) ? ' · modell: kontraktsfestet inntekt + videreførte kostnader' : ''}${lesKommentar(i) ? `\n«${lesKommentar(i)}»` : '\nKlikk for månedskommentar'}`}
                           data-testid={`budsjett-mndhode-${i}`}
                           className={`group/mh ml-auto flex items-center gap-1 rounded px-1 text-[10.5px] font-bold uppercase tracking-[0.08em] transition-colors ${erNaa(i) || fokusKol === i ? 'text-[#8b5cf6]' : 'text-[#b5b5b5] hover:text-[#8b5cf6]'}`}
                         >
@@ -1162,6 +1217,7 @@ export default function Budsjett({ apiKey, readOnly = false }) {
                           <span className={`h-[5px] w-[5px] shrink-0 rounded-full ${lesKommentar(i) ? 'bg-amber-400' : 'bg-transparent group-hover/mh:bg-[#e4dcf6]'}`} />
                         </button>
                         {erNaa(i) && <span className="ml-auto mt-0.5 block h-[3px] w-4 rounded-full bg-[#8b5cf6]/60" />}
+                        {erModellKol(i) && <span className="ml-auto mt-0.5 block text-right text-[8.5px] font-bold uppercase tracking-[0.08em] text-[#c4b5e8]" data-testid={`budsjett-modell-kol-${i}`}>modell</span>}
                       </th>
                     ))}
                     <th className="px-3 py-2.5 text-right text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#888]">Sum</th>

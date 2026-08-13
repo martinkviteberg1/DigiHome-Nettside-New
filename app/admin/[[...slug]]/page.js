@@ -361,8 +361,8 @@ export default function AdminPage({ params }) {
   // (settes per person under Brukere — håndheves også i API-et)
   let base = (user && ROLLE_SEKSJONER[user.role]) || null;
   if (base && user.role === 'investor' && (user.moteTilgang || []).length > 0) base = [...base, 'moter'];
-  // Investorportalen viser alltid Budsjett i menyen — innholdet er «kommer
-  // snart» for investorer inntil budsjettet åpnes for innsyn.
+  // Investorportalen viser alltid Budsjett i menyen — investorer får en
+  // lesevisning som lander i «Neste 12 mnd» (fremoverskuende NTM-format).
   if (base && user.role === 'investor' && !base.includes('budsjett')) base = [...base, 'budsjett'];
   const begrensning = base
     ? [...base, ...(((user && user.moduler) || []).filter((k) => NAV.some((g) => g.items.some((it) => it.k === k)) && !base.includes(k)))]
@@ -501,9 +501,7 @@ export default function AdminPage({ params }) {
         group: user?.role === 'investor' ? 'Datarom' : 'Verktøy',
         items: (() => {
           const items = NAV.flatMap((g) => g.items)
-            .filter((it) => begrensning.includes(it.k))
-            // Budsjett er «kommer snart» for investorer — vis det i menyen
-            .map((it) => (user?.role === 'investor' && it.k === 'budsjett' ? { ...it, soon: true } : it));
+            .filter((it) => begrensning.includes(it.k));
           // Investor: Oversikt (datarommets forside) skal alltid ligge øverst —
           // resten beholder NAV-rekkefølgen (stabil sort).
           if (user?.role === 'investor') items.sort((a, b) => (a.k === 'dr-oversikt' ? -1 : 0) - (b.k === 'dr-oversikt' ? -1 : 0));
@@ -781,9 +779,9 @@ export default function AdminPage({ params }) {
             <ComingSoon icon={Lock} title="Ingen moduler tildelt ennå" body="Kontoen din er opprettet, men ingen moduler er delt med deg riktig ennå. Be administratoren om å tildele modulene du skal se — de dukker opp her automatisk." />
           )}
           {section === 'leieforhold' && <Leieforhold apiKey={token} readOnly={erBruker} erInvestor={user?.role === 'investor'} />}
-          {section === 'budsjett' && (user?.role === 'investor'
-            ? <ComingSoon icon={Target} title="Budsjett" body="Budsjettet for investorer lanseres her — årsbudsjett mot faktiske tall, oppdatert løpende fra plattformen." />
-            : <Budsjett apiKey={token} readOnly={erBruker} />)}
+          {section === 'budsjett' && (
+            <Budsjett apiKey={token} readOnly={erBruker || user?.role === 'investor'} investor={user?.role === 'investor'} />
+          )}
           {section === 'datarom' && <Datarom apiKey={token} tab={dataromTab} erAdmin={!erBruker} onGaaTil={(t) => setDataromTab(t)} onAapneBudsjett={() => setSection('budsjett')} />}
           {section === 'saker' && <TasksTab apiKey={token} user={user} onStats={setTaskStats} onOpenBrukere={() => setSection('brukere')} />}
           {section === 'brukere' && <Brukere apiKey={token} user={user} onImpersonate={startImpersonation} />}
