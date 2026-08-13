@@ -507,3 +507,8 @@ Google Ads-styring via native REST API).
 - 12 AI-genererte maskotbilder (lilla tak): vink/nokkel/titter/hjerte + lupe/foto/kontrakt/mynt (steg-klistremerker) + duo (CTA-hjørne) + sovende maskot-scene («Du kan faktisk slappe av»-bånd) + hero/footer-scener. Alle frilagt med rembg (*-fri.png).
 - Nye seksjoner: marquee-tillitsstripe, partnerlogo-bånd, stats-bånd (2 min/1. hver mnd/100 % digital), portal-utstilling i nettleserramme, FAQ-accordion (5 sp), pust-ut-scene.
 - Verifisert: desktop-screenshots alle seksjoner, mobil 0 px overflow, FAQ/marquee/hover fungerer. Skript: scripts/generer-landing-bilder-lilla*.py.
+
+## Footer-redesign /ny-forside (feb 2026)
+- Fjernet ødelagt wordmark-white.svg-overlay (hadde mørk tekst + egen boks) fra scenen.
+- Ny struktur: ren kinoscene m/ maskot som smelter inn i mørk footer (#141022) via gradient, hvit digihome-logo-white.svg + tagline + hvit CTA, lenkekolonner (Utforsk/Selskap/Juridisk — kun ekte ruter), bunnlinje m/ «Til toppen», og gigantisk fade-«digihome»-typografi klippet i bunnkanten.
+- Verifisert desktop + mobil (0 px overflow).

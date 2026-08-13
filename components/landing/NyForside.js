@@ -747,30 +747,81 @@ export default function NyForside() {
         </motion.div>
       </section>
 
-      {/* ── Footer-scene med stor wordmark ── */}
-      <footer className="relative">
-        <div className="relative h-[400px] overflow-hidden sm:h-[560px]">
-          <img src="/landing/footer-scene-lilla.png" alt="" aria-hidden className="absolute inset-0 h-full w-full select-none object-cover" style={{ objectPosition: 'center 68%' }} />
-          <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-[#faf9fe] to-transparent" />
-          <div className="relative flex h-full flex-col items-center justify-start pt-14 sm:pt-20">
-            <motion.img
-              {...opp}
-              src="/digihome-wordmark-white.svg"
-              alt="DigiHome"
-              className="w-[76vw] max-w-[760px] select-none drop-shadow-[0_14px_44px_rgba(60,30,140,0.5)]"
-            />
-            <p className="mt-4 rounded-full bg-white/75 px-4 py-1.5 text-[12.5px] font-semibold text-[#4c3f78] backdrop-blur-sm sm:text-[13.5px]">
-              Utleie uten stress — fra annonse til utbetaling.
-            </p>
-          </div>
+      {/* ── Footer: kinoscene som smelter inn i mørk, strukturert footer ── */}
+      <footer className="relative" data-testid="footer">
+        {/* Drømmescenen — ren, uten tekst, glir sømløst over i footermørket */}
+        <div className="relative h-[300px] overflow-hidden sm:h-[440px]">
+          <img
+            src="/landing/footer-scene-lilla.png"
+            alt=""
+            aria-hidden
+            className="absolute inset-0 h-full w-full select-none object-cover"
+            style={{ objectPosition: 'center 62%' }}
+          />
+          <div className="absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-[#faf9fe] to-transparent" />
+          <div className="absolute inset-x-0 bottom-0 h-36 bg-gradient-to-t from-[#141022] via-[#141022]/55 to-transparent" />
         </div>
-        <div className="bg-[#1d1730] text-[#a99fc4]">
-          <div className="mx-auto flex max-w-[1180px] flex-wrap items-center gap-x-6 gap-y-2 px-5 py-5 text-[12.5px]">
-            <span>© 2026 DigiHome AS</span>
-            <a href="/personvern" className="transition-colors hover:text-white">Personvern</a>
-            <a href="/vilkar" className="transition-colors hover:text-white">Vilkår</a>
-            <a href="/kontakt" className="transition-colors hover:text-white">Kontakt</a>
-            <span className="ml-auto flex items-center gap-1.5"><KeyRound className="h-3.5 w-3.5" /> Laget i Bergen</span>
+
+        {/* Mørk footer */}
+        <div className="relative bg-[#141022] text-[#a99fc4]">
+          <div className="mx-auto max-w-[1180px] px-5">
+            {/* Topp: logo + lenkekolonner */}
+            <div className="grid gap-10 pb-12 pt-4 sm:pt-8 lg:grid-cols-[1.3fr_2fr]">
+              <div>
+                <img src="/digihome-logo-white.svg" alt="DigiHome" className="h-7 w-auto" />
+                <p className="mt-4 max-w-[280px] text-[13.5px] leading-relaxed text-[#8f86ad]">
+                  Utleie uten stress — vi tar hele jobben fra annonse til utbetaling, så du kan slappe av.
+                </p>
+                <button
+                  onClick={tilKontakt}
+                  data-testid="footer-cta"
+                  className="mt-6 flex h-10 items-center gap-2 rounded-full bg-white px-5 text-[13px] font-semibold text-[#1d1730] transition-all hover:bg-[#ece7fb] active:scale-[0.97]"
+                >
+                  Få gratis leievurdering <ArrowRight className="h-3.5 w-3.5" />
+                </button>
+              </div>
+              <div className="grid grid-cols-2 gap-8 sm:grid-cols-3">
+                {[
+                  ['Utforsk', [['#slik', 'Slik fungerer det'], ['#alt', 'Det vi tar oss av'], ['#portal', 'Portalen'], ['#faq', 'Spørsmål og svar']]],
+                  ['Selskap', [['/kontakt', 'Kontakt oss'], ['/utleie', 'Utleie'], ['/utleiemegler-bergen', 'Utleiemegler i Bergen']]],
+                  ['Juridisk', [['/personvern', 'Personvern'], ['/vilkar', 'Vilkår']]],
+                ].map(([tittel, lenker]) => (
+                  <div key={tittel}>
+                    <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#6e6590]">{tittel}</p>
+                    <ul className="mt-4 space-y-2.5">
+                      {lenker.map(([href, tekst]) => (
+                        <li key={tekst}>
+                          <a href={href} className="text-[13.5px] text-[#a99fc4] transition-colors hover:text-white">{tekst}</a>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Bunnlinje */}
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-3 border-t border-white/[0.07] py-5 text-[12px] text-[#6e6590]">
+              <span>© 2026 DigiHome AS</span>
+              <span className="hidden items-center gap-1.5 sm:flex"><KeyRound className="h-3.5 w-3.5" /> Laget i Bergen</span>
+              <button
+                onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                className="ml-auto flex h-8 items-center gap-1.5 rounded-full px-3 text-[12px] font-semibold text-[#8f86ad] transition-colors hover:bg-white/[0.06] hover:text-white"
+                data-testid="til-toppen"
+              >
+                Til toppen <ArrowDown className="h-3.5 w-3.5 rotate-180" />
+              </button>
+            </div>
+          </div>
+
+          {/* Gigant-typografi klippet i bunnkanten — signaturavslutning */}
+          <div className="pointer-events-none select-none overflow-hidden" aria-hidden>
+            <p
+              className="-mb-[0.24em] bg-gradient-to-b from-white/[0.1] to-white/[0.01] bg-clip-text text-center text-[24vw] font-bold leading-none tracking-tight text-transparent sm:text-[15rem]"
+              style={heading}
+            >
+              digihome
+            </p>
           </div>
         </div>
       </footer>
