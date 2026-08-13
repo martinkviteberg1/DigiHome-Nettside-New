@@ -28,6 +28,7 @@ import SeoAeoTab from '@/components/admin/SeoAeoTab';
 import TasksTab from '@/components/admin/TasksTab';
 import MeetingsTab from '@/components/admin/MeetingsTab';
 import Datarom from '@/components/admin/Datarom';
+import { cacheHent } from '@/lib/klient-cache';
 
 const SESSION_KEY = 'dh_admin_session';
 const LEGACY_KEY = 'dh_admin_key';
@@ -52,7 +53,7 @@ const NAV = [
     group: 'Datarom',
     items: [
       { k: 'dr-oversikt', datarom: 'oversikt', l: 'Oversikt', icon: Landmark, desc: 'Investorrommets forside — nøkkeltall, drift, pipeline og investorpakke' },
-      { k: 'dr-resultat', datarom: 'resultat', l: 'Resultatregnskap', icon: BarChart3, desc: 'Månedlig resultat fra oppstart — inntekter, kostnader og akkumulert' },
+      { k: 'dr-resultat', datarom: 'resultat', l: 'Regnskap', icon: BarChart3, desc: 'Månedlig resultat fra oppstart — inntekter, kostnader og akkumulert' },
       { k: 'budsjett', l: 'Budsjett', icon: Target, desc: 'Årsbudsjett per kategori — budsjett vs. faktisk, med forslag fra porteføljen' },
       // Enhetsøkonomi er slått sammen med Leieforhold (Økonomi-modus) — dr-enheter
       // er derfor fjernet fra menyen. Ruter/data består for bakoverkompatibilitet.
@@ -171,7 +172,7 @@ const INSIGHT_SUBTITLES = {
 // Titler/undertitler i toppbaren når Datarom-sidene er aktive
 const DATAROM_TITLER = {
   oversikt: { t: 'Oversikt', s: 'Investorrommets forside — drift, pipeline og nøkkeltall · last ned investorpakken (Excel)' },
-  resultat: { t: 'Resultatregnskap', s: 'Månedlig resultat fra oppstart til i dag — inntekter, kostnader og akkumulert' },
+  resultat: { t: 'Regnskap', s: 'Månedlig resultat fra oppstart til i dag — inntekter, kostnader og akkumulert' },
   enheter: { t: 'Enhetsøkonomi', s: 'Hva DigiHome tjener per leilighet og rom — honorar, direkte kostnader og margin' },
   pipeline: { t: 'Pipeline', s: 'Enheter på vei inn — signert kontra forventet, med estimert oppstart' },
   selskap: { t: 'Selskap', s: 'Ansatte, faste kostnader, gjeld og aksjonærlån — vedlikeholdt av DigiHome' },
@@ -360,11 +361,25 @@ export default function AdminPage({ params }) {
   // (settes per person under Brukere — håndheves også i API-et)
   let base = (user && ROLLE_SEKSJONER[user.role]) || null;
   if (base && user.role === 'investor' && (user.moteTilgang || []).length > 0) base = [...base, 'moter'];
+  // Investorportalen viser alltid Budsjett i menyen — innholdet er «kommer
+  // snart» for investorer inntil budsjettet åpnes for innsyn.
+  if (base && user.role === 'investor' && !base.includes('budsjett')) base = [...base, 'budsjett'];
   const begrensning = base
     ? [...base, ...(((user && user.moduler) || []).filter((k) => NAV.some((g) => g.items.some((it) => it.k === k)) && !base.includes(k)))]
     : null;
   const erBegrenset = !!begrensning;
   const erBruker = erBegrenset; // beholdt navn — brukes for å skjule admin-widgets
+
+  // Forvarm de tunge investorflatene i bakgrunnen rett etter innlogging —
+  // første klikk på Leieforhold/Datarom rendres da momentant fra klient-cachen
+  // (stale-while-revalidate). Feil ignoreres stille; cachen tar kun 2xx-svar.
+  useEffect(() => {
+    if (!user || !token) return;
+    const kan = (k) => !begrensning || begrensning.includes(k);
+    if (kan('leieforhold')) cacheHent('lf:data', `/api/admin/leieforhold?key=${encodeURIComponent(token)}`).catch(() => {});
+    if (kan('dr-oversikt')) cacheHent('dr:oversikt', `/api/admin/datarom/oversikt?key=${encodeURIComponent(token)}`).catch(() => {});
+  }, [user, token]); // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     if (!begrensning || begrensning.length === 0) return;
     // Datarom-sidene har nøkler `dr-<side>` — seksjonen heter 'datarom'.
@@ -482,7 +497,19 @@ export default function AdminPage({ params }) {
   // skjules for begrensede roller. Serveren håndhever det samme på API-nivå.
   // Investorer får «Datarom»-branding — det er et kuratert innsynsrom, ikke verktøy.
   const synligNav = begrensning
-    ? [{ group: user?.role === 'investor' ? 'Datarom' : 'Verktøy', items: NAV.flatMap((g) => g.items).filter((it) => begrensning.includes(it.k)) }]
+    ? [{
+        group: user?.role === 'investor' ? 'Datarom' : 'Verktøy',
+        items: (() => {
+          const items = NAV.flatMap((g) => g.items)
+            .filter((it) => begrensning.includes(it.k))
+            // Budsjett er «kommer snart» for investorer — vis det i menyen
+            .map((it) => (user?.role === 'investor' && it.k === 'budsjett' ? { ...it, soon: true } : it));
+          // Investor: Oversikt (datarommets forside) skal alltid ligge øverst —
+          // resten beholder NAV-rekkefølgen (stabil sort).
+          if (user?.role === 'investor') items.sort((a, b) => (a.k === 'dr-oversikt' ? -1 : 0) - (b.k === 'dr-oversikt' ? -1 : 0));
+          return items;
+        })(),
+      }]
     : NAV;
 
   const NavList = ({ compact = false }) => (
@@ -722,7 +749,10 @@ export default function AdminPage({ params }) {
               <h1 className="text-[20px] sm:text-[22px] font-bold text-[#0a0a0a] tracking-[-0.02em] leading-none" style={{ fontFamily: 'var(--font-heading)' }}>{section === 'innsikt' ? activeInsight.l : section === 'datarom' ? (DATAROM_TITLER[dataromTab] || {}).t : sectionMeta.t}</h1>
               <p className="text-[12px] text-[#999] mt-1 truncate">{section === 'innsikt' ? (INSIGHT_SUBTITLES[insightTab] || 'Førsteparts analyse · cookieless · GDPR-trygt') : section === 'datarom' ? (DATAROM_TITLER[dataromTab] || {}).s : sectionMeta.s}</p>
             </div>
-            {!erBruker && <PulseStrip token={token} onJump={(sec, tab) => { setSection(sec); if (tab) { setSection('innsikt'); setInsightTab(tab); } }} />}
+            {/* Pulsstripen (LIVE · økter · leads · MRR) hører hjemme på analyse-
+                sidene — på arbeidsflater som Datarom/Leieforhold holder vi
+                toppraden ren (én rad, Linear-stil). */}
+            {!erBruker && (section === 'innsikt' || section === 'nokkeltall') && <PulseStrip token={token} onJump={(sec, tab) => { setSection(sec); if (tab) { setSection('innsikt'); setInsightTab(tab); } }} />}
             {user?.role === 'investor' && (
               <span className="hidden md:inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full bg-[#fdf3e0] px-2.5 text-[10.5px] font-bold uppercase tracking-[0.06em] text-[#9a6b1c]" title="Du ser et kuratert datarom med lesetilgang — ingenting kan endres herfra">
                 <Lock className="h-3 w-3" /> Datarom · lesetilgang
@@ -737,7 +767,7 @@ export default function AdminPage({ params }) {
           </div>
         </div>
 
-        <div key={section} className={`dh-fade ${section === 'leieforhold' ? 'max-w-none px-4 py-4 sm:px-6' : 'max-w-[1440px] px-4 py-6 sm:px-8'}`}>
+        <div key={section} className={`dh-fade ${section === 'leieforhold' || section === 'datarom' ? 'max-w-none px-4 py-4 sm:px-6' : 'max-w-[1440px] px-4 py-6 sm:px-8'}`}>
           {section === 'nokkeltall' && <KpiDashboard apiKey={token} />}
           {section === 'investorrom' && <InvestorRoomTab apiKey={token} />}
           {section === 'playbook' && <PlaybookTab apiKey={token} />}
@@ -751,7 +781,9 @@ export default function AdminPage({ params }) {
             <ComingSoon icon={Lock} title="Ingen moduler tildelt ennå" body="Kontoen din er opprettet, men ingen moduler er delt med deg riktig ennå. Be administratoren om å tildele modulene du skal se — de dukker opp her automatisk." />
           )}
           {section === 'leieforhold' && <Leieforhold apiKey={token} readOnly={erBruker} erInvestor={user?.role === 'investor'} />}
-          {section === 'budsjett' && <Budsjett apiKey={token} readOnly={erBruker} />}
+          {section === 'budsjett' && (user?.role === 'investor'
+            ? <ComingSoon icon={Target} title="Budsjett" body="Budsjettet for investorer lanseres her — årsbudsjett mot faktiske tall, oppdatert løpende fra plattformen." />
+            : <Budsjett apiKey={token} readOnly={erBruker} />)}
           {section === 'datarom' && <Datarom apiKey={token} tab={dataromTab} erAdmin={!erBruker} onGaaTil={(t) => setDataromTab(t)} onAapneBudsjett={() => setSection('budsjett')} />}
           {section === 'saker' && <TasksTab apiKey={token} user={user} onStats={setTaskStats} onOpenBrukere={() => setSection('brukere')} />}
           {section === 'brukere' && <Brukere apiKey={token} user={user} onImpersonate={startImpersonation} />}

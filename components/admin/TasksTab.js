@@ -2865,8 +2865,23 @@ function MentionTekstfelt({
   const taRef = useRef(null);
   const bakRef = useRef(null);
   const filRef = useRef(null);
+  const minHRef = useRef(0);
 
   useEffect(() => { if (autoFocus && taRef.current) { const ta = taRef.current; ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); } }, [autoFocus]);
+
+  // Autovekst: feltet vokser med innholdet (Linear-stil) — minst `rows` høyt,
+  // maks ~320px, deretter indre scroll. Bakteppet (badge-laget) er absolutt
+  // posisjonert og følger høyden automatisk.
+  useEffect(() => {
+    const ta = taRef.current;
+    if (!ta) return;
+    if (!minHRef.current) minHRef.current = ta.offsetHeight; // høyden rows gir
+    const MAKS = 320;
+    ta.style.height = 'auto';
+    const maal = Math.min(Math.max(ta.scrollHeight + 2, minHRef.current), MAKS);
+    ta.style.height = `${maal}px`;
+    ta.style.overflowY = ta.scrollHeight + 2 > MAKS ? 'auto' : 'hidden';
+  }, [value]);
 
   // ─ Markdown-verktøy: opererer på markeringen i tekstfeltet ─
   const medTa = (fn) => { const ta = taRef.current; if (!ta) return; fn(ta, ta.selectionStart, ta.selectionEnd); };

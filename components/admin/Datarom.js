@@ -16,12 +16,14 @@ import {
   Landmark, TrendingUp, Wallet, Home, KeyRound, FileSpreadsheet, Loader2, Plus,
   Trash2, X, Check, RefreshCw, FileText, Download, ShieldCheck, ArrowRight,
   BarChart3, AlertTriangle, Pencil, CircleDollarSign, Building2, Users, Settings2,
+  CalendarClock, ArrowUpRight, ArrowDownRight,
 } from 'lucide-react';
 import {
   ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, CartesianGrid,
 } from 'recharts';
 import KostnadsSkuff from '@/components/admin/KostnadsSkuff';
-import { aktiveKostnader } from '@/lib/leieforhold-filter';
+import { aktiveKostnader, beregnHonorarTrapp, visGruppe, anvendScenario } from '@/lib/leieforhold-filter';
+import { cacheLes, cacheHent, cacheSlett } from '@/lib/klient-cache';
 
 const heading = { fontFamily: 'var(--font-heading)' };
 const tallFmt = new Intl.NumberFormat('nb-NO', { maximumFractionDigits: 0 });
@@ -41,9 +43,59 @@ const Kort = ({ className = '', children, ...rest }) => (
   <div className={`rounded-2xl bg-white p-5 shadow-[0_2px_16px_rgba(0,0,0,0.04)] ${className}`} {...rest}>{children}</div>
 );
 
+/* ── Dashboard-byggeklosser (moderne kortspråk — samme som Leieforhold) ── */
+const Chip = ({ bg, fg, children }) => (
+  <span className="inline-flex items-center rounded-full px-2 py-[3px] text-[9.5px] font-bold uppercase tracking-[0.07em]" style={{ background: bg, color: fg }}>{children}</span>
+);
+
+function RingLite({ pct = 0, size = 34, farge = '#0e7490' }) {
+  const r = (size - 6) / 2;
+  const c = 2 * Math.PI * r;
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="shrink-0 -rotate-90">
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#eceae6" strokeWidth="5" />
+      <circle
+        cx={size / 2} cy={size / 2} r={r} fill="none" stroke={farge} strokeWidth="5" strokeLinecap="round"
+        strokeDasharray={c} strokeDashoffset={c * (1 - Math.min(100, Math.max(0, pct)) / 100)}
+        style={{ transition: 'stroke-dashoffset 0.7s ease' }}
+      />
+    </svg>
+  );
+}
+
 const StatusBadge = ({ status }) => {
   const m = STATUS_META[status] || STATUS_META.ledig;
   return <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-bold" style={{ color: m.farge, background: m.bg }}>{m.l}</span>;
+};
+
+/* Tellende tall — myk easeOut-animasjon når verdien endres (f.eks. ved
+   fremtidsbilde). Respekterer prefers-reduced-motion. */
+function useCountUp(verdi, dur = 650) {
+  const [vist, setVist] = useState(verdi);
+  const forrige = React.useRef(verdi);
+  useEffect(() => {
+    const fra = forrige.current;
+    const til = verdi;
+    forrige.current = til;
+    if (fra === til) return undefined;
+    if (typeof window === 'undefined' || window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches) { setVist(til); return undefined; }
+    let raf;
+    const t0 = performance.now();
+    const tick = (t) => {
+      const p = Math.min(1, (t - t0) / dur);
+      const e = 1 - Math.pow(1 - p, 3);
+      setVist(fra + (til - fra) * e);
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [verdi, dur]);
+  return vist;
+}
+
+const AnimertTall = ({ verdi, prefix = '', suffix = '\u202Fkr', className = '', style }) => {
+  const vist = useCountUp(verdi);
+  return <span className={className} style={style}>{prefix}{tall(vist)}{suffix}</span>;
 };
 
 const TomtFelt = ({ icon: Icon, tittel, tekst }) => (
@@ -77,7 +129,7 @@ export default function Datarom({ apiKey, tab = 'oversikt', erAdmin = false, onG
           <TomtFelt
             icon={BarChart3}
             tittel="Kommer snart"
-            tekst="Resultatregnskapet lanseres her — månedlig resultat fra oppstart med inntekter, kostnader og akkumulert utvikling."
+            tekst="Regnskapet lanseres her — månedlig resultat fra oppstart med inntekter, kostnader og akkumulert utvikling."
           />
         </Kort>
       )}
@@ -91,64 +143,303 @@ export default function Datarom({ apiKey, tab = 'oversikt', erAdmin = false, onG
 /* ── Oversikt ─────────────────────────────────────────────────────────────── */
 
 function Oversikt({ api, apiKey, xlsxHref, erAdmin, onGaaTil, onAapneBudsjett }) {
-  const [data, setData] = useState(null);
-  const [laster, setLaster] = useState(true);
+  // Klient-cache (stale-while-revalidate): rendrer momentant fra sist kjente
+  // data ved fanebytte, og revaliderer stille i bakgrunnen. Første besøk viser
+  // skeleton som før — alle senere besøk er øyeblikkelige.
+  const [data, setData] = useState(() => (cacheLes('dr:oversikt') || {}).oversikt || null);
+  const [lf, setLf] = useState(() => cacheLes('lf:data') || null); // live leieforhold-rader fra plattformen
+  const [laster, setLaster] = useState(() => !cacheLes('dr:oversikt'));
   const [kostSkuff, setKostSkuff] = useState(false);
-  const hent = useCallback(async () => {
-    try { setData((await api('oversikt')).oversikt); } catch (e) {}
+  const [scenario, setScenario] = useState(''); // fremtidsbilde: ISO-dato eller ''
+  const hent = useCallback(async (force = false) => {
+    try {
+      const j = await cacheHent('dr:oversikt', () => api('oversikt'), { force });
+      if (j?.oversikt) setData(j.oversikt);
+    } catch (e) {}
     setLaster(false);
   }, [api]);
   useEffect(() => { hent(); }, [hent]);
+  // Livstall fra plattformen — honorar-trapp, portefølje og bevegelser regnes
+  // av samme motor som Leieforhold-flaten (lib/leieforhold-filter). Deler
+  // cache-nøkkel med Leieforhold → bytte mellom flatene er momentant.
+  useEffect(() => {
+    cacheHent('lf:data', `/api/admin/leieforhold?key=${encodeURIComponent(apiKey)}`)
+      .then((j) => { if (j?.ok) setLf(j); })
+      .catch(() => { /* dashboardet fungerer også uten livstall */ });
+  }, [apiKey]);
 
   if (laster) return <Skeleton />;
   if (!data) return <Kort><TomtFelt icon={AlertTriangle} tittel="Kunne ikke laste oversikten" tekst="Prøv å laste siden på nytt." /></Kort>;
 
-  const kpier = [
-    { l: 'Honorar per måned', v: kr(data.drift.honorarMnd), sub: `${kr(data.drift.arr)} i årlig run-rate`, icon: TrendingUp, farge: '#1f7a45', bg: '#e7f4ec' },
-    { l: 'Enheter i drift', v: `${data.drift.antall}`, sub: `${data.drift.utleide} utleid · ${data.drift.ledige} ledig`, icon: Home, farge: '#8b5cf6', bg: '#f4f0fb' },
-    { l: 'Margin per måned', v: kr(data.drift.marginMnd), sub: `Etter ${kr(data.drift.kostnaderMnd)} i direkte kostnader`, icon: Wallet, farge: data.drift.marginMnd >= 0 ? '#1f7a45' : '#be123c', bg: data.drift.marginMnd >= 0 ? '#e7f4ec' : '#fde8ec' },
-    { l: 'Pipeline', v: `${data.pipeline.antall} enheter`, sub: `${kr(data.pipeline.signert.honorarMnd)} signert · ${kr(data.pipeline.forventet.honorarMnd)} forventet`, icon: KeyRound, farge: '#3757c4', bg: '#e8eefc' },
+  /* ── Selskapspulsen: alle nøkkeltall regnet live ──
+     Med scenario-dato («fremtidsbilde») flyttes porteføljen fram i tid med
+     samme motor som Leieforhold: signerte innflyttinger t.o.m. datoen telles
+     som utleid, utflyttinger før datoen som ledig. ── */
+  const rows = lf?.rows || [];
+  const visRows = scenario ? anvendScenario(rows, scenario) : rows;
+  const trapp = visRows.length ? beregnHonorarTrapp(visRows) : null;
+  const trappIdag = scenario && rows.length ? beregnHonorarTrapp(rows) : trapp;
+  const mrr = trapp ? trapp.iDag : (data.drift.honorarMnd || 0);
+  const mrrDelta = scenario && trapp && trappIdag ? trapp.iDag - trappIdag.iDag : 0;
+  const ok = data.okonomi || {};
+  // Faste kostnader regnes på scenario-datoen (poster med start/slutt respekteres)
+  const fellesVis = scenario
+    ? aktiveKostnader(ok.felles || [], scenario).reduce((s, p) => s + (p.belop || 0), 0)
+    : (ok.fellesMnd || 0);
+  const margin = mrr - fellesVis;
+  const bePct = fellesVis > 0 ? Math.round((mrr / fellesVis) * 100) : null;
+
+  const GRUPPER = [
+    ['leased', 'Utleid', '#1f9a53'],
+    ['future', 'Fremtidig', '#3757c4'],
+    ['signing', 'Signering', '#0e7490'],
+    ['advertised', 'Annonsert', '#d97706'],
+    ['vacant', 'Ledig', '#a8a29a'],
   ];
+  const fordeling = GRUPPER.map(([k, l, farge]) => {
+    const g = visRows.filter((r) => visGruppe(r) === k);
+    return { k, l, farge, antall: g.length, leie: g.reduce((s, r) => s + (r.monthly_rent || 0), 0) };
+  });
+  const antallEnheter = visRows.length;
+  const utleide = fordeling[0]?.antall || 0;
+  const utleidLeie = fordeling[0]?.leie || 0;
+  const utleiegrad = antallEnheter ? Math.round((utleide / antallEnheter) * 100) : 0;
+  const paaVei = fordeling.slice(1, 4).reduce((s, f) => s + f.antall, 0);
+  const enheterIgjen = margin < 0 && utleide > 0 && mrr > 0 ? Math.ceil(-margin / (mrr / utleide)) : 0;
+
+  // Neste 30 dager — inn- og utflyttinger fra kontraktenes datoer.
+  // Med fremtidsbilde: vinduet starter på scenario-datoen.
+  const iDagIso = new Date().toISOString().slice(0, 10);
+  const baseIso = scenario || iDagIso;
+  const om30 = new Date(new Date(`${baseIso}T12:00:00`).getTime() + 30 * 864e5).toISOString().slice(0, 10);
+  const bevegelser = [
+    ...rows.filter((r) => r.move_in_date && r.move_in_date > baseIso && r.move_in_date <= om30).map((r) => ({ type: 'inn', dato: r.move_in_date, r })),
+    ...rows.filter((r) => r.move_out_date && r.move_out_date > baseIso && r.move_out_date <= om30).map((r) => ({ type: 'ut', dato: r.move_out_date, r })),
+  ].sort((a, b) => a.dato.localeCompare(b.dato));
+  const innLeie = bevegelser.filter((b) => b.type === 'inn').reduce((s, b) => s + (b.r.monthly_rent || 0), 0);
+  const utLeie = bevegelser.filter((b) => b.type === 'ut').reduce((s, b) => s + (b.r.monthly_rent || 0), 0);
+  const nettoEndring = innLeie - utLeie;
+  const dtoNo = (iso) => new Date(`${iso}T12:00:00`).toLocaleDateString('nb-NO', { day: 'numeric', month: 'short' });
+  const plussMnd = (n) => { const d = new Date(); d.setMonth(d.getMonth() + n); return d.toISOString().slice(0, 10); };
+  const imorgen = new Date(Date.now() + 864e5).toISOString().slice(0, 10);
 
   return (
-    <div className="space-y-4">
-      {/* Topplinje: investorpakke */}
-      <div className="flex flex-wrap items-center gap-2">
-        <p className="text-[13px] text-[#999]">Hele datarommet — alltid oppdatert, alltid nedlastbart.</p>
-        <a
-          href={xlsxHref}
-          data-testid="datarom-xlsx"
-          className="ml-auto flex h-9 items-center gap-1.5 rounded-full bg-[#0a0a0a] px-4 text-[12.5px] font-semibold text-white transition-all hover:bg-black/85 active:scale-[0.97]"
-        >
-          <FileSpreadsheet className="h-4 w-4" /> Last ned investorpakke (Excel)
-        </a>
-      </div>
-
-      {/* KPI-kort */}
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {kpier.map((s) => (
-          <Kort key={s.l}>
-            <div className="flex items-center gap-2">
-              <span className="flex h-8 w-8 items-center justify-center rounded-lg" style={{ background: s.bg }}><s.icon className="h-4 w-4" style={{ color: s.farge }} /></span>
-              <p className="text-[11px] font-bold uppercase tracking-[0.07em] text-[#a3a3a3]">{s.l}</p>
+    <div className="space-y-3">
+      {/* ── HERO: honoraret — ett dominant tall; kontrollene bor i kortet (én topprad) ── */}
+      <div className="relative overflow-hidden rounded-2xl bg-white p-5 shadow-[0_2px_16px_rgba(0,0,0,0.04)]" data-testid="dr-hero">
+        <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(640px_240px_at_100%_0%,rgba(124,58,237,0.045),transparent_65%)]" />
+        <div className="relative">
+          <div className="flex flex-wrap items-start gap-x-6 gap-y-3">
+            <div className="min-w-0" data-testid="dr-kpi-mrr">
+              <p className="text-[11px] font-bold uppercase tracking-[0.09em] text-[#a3a3a3]">{scenario ? `Honorar per måned · ved ${dtoNo(scenario)}` : 'Honorar per måned'}</p>
+              <div className="mt-2 flex flex-wrap items-baseline gap-2.5">
+                <AnimertTall verdi={mrr} className="text-[32px] font-bold leading-none tabular-nums tracking-[-0.03em] text-[#0a0a0a] sm:text-[36px]" style={heading} />
+                {scenario && mrrDelta !== 0 && (
+                  <span className={`rounded-full px-2 py-[3px] text-[11.5px] font-bold tabular-nums ${mrrDelta > 0 ? 'bg-[#e8f6ee] text-[#15803d]' : 'bg-[#fdeef1] text-[#be123c]'}`} data-testid="dr-mrr-delta">
+                    {mrrDelta > 0 ? '+' : ''}{kr(mrrDelta)} vs. i dag
+                  </span>
+                )}
+              </div>
+              <p className="mt-1.5 text-[12px] text-[#a8a29a]">≈ {kr(mrr * 12)}/år run-rate · eks. mva · DigiHomes inntekt — ikke leie</p>
             </div>
-            <p className="mt-3 text-[22px] font-bold tabular-nums tracking-tight text-[#0a0a0a]" style={heading}>{s.v}</p>
-            <p className="mt-1 text-[11.5px] text-[#999]">{s.sub}</p>
-          </Kort>
-        ))}
+            {/* Kontroller i kortet — én topprad totalt: fremtidsbilde + investorpakke */}
+            <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+              <div className="flex items-center gap-0.5 rounded-full border border-black/[0.06] bg-[#fafaf8] p-[3px]" data-testid="dr-scenario">
+                <CalendarClock className="ml-1.5 h-3.5 w-3.5 shrink-0 text-[#b5b5b5]" />
+                {[['', 'I dag'], [plussMnd(1), '+1 mnd'], [plussMnd(3), '+3 mnd']].map(([v, l]) => (
+                  <button
+                    key={l}
+                    onClick={() => setScenario(v)}
+                    data-testid={`dr-scenario-${l === 'I dag' ? 'idag' : l.replace(/\W/g, '')}`}
+                    className={`h-6 rounded-full px-2.5 text-[11px] font-semibold transition-all ${scenario === v ? 'bg-[#0a0a0a] text-white' : 'text-[#8a8278] hover:text-[#0a0a0a]'}`}
+                  >
+                    {l}
+                  </button>
+                ))}
+                <input
+                  type="date"
+                  value={scenario}
+                  min={imorgen}
+                  onChange={(e) => setScenario(e.target.value && e.target.value >= imorgen ? e.target.value : '')}
+                  data-testid="dr-scenario-dato"
+                  className="h-6 w-[118px] rounded-full bg-transparent px-1.5 text-[11px] text-[#78716c] outline-none"
+                  title="Velg en dato og se hvordan porteføljen ser ut da"
+                />
+              </div>
+              {scenario && (
+                <button
+                  onClick={() => setScenario('')}
+                  data-testid="dr-scenario-badge"
+                  title="Tilbake til i dag"
+                  className="flex items-center gap-1.5 rounded-full bg-[#fdf3e0] px-2.5 py-[5px] text-[11px] font-semibold text-[#9a6b1c] transition-colors hover:bg-[#f5e6c8]"
+                >
+                  Fremtidsbilde {dtoNo(scenario)} <X className="h-3 w-3" />
+                </button>
+              )}
+              <a
+                href={xlsxHref}
+                data-testid="datarom-xlsx"
+                title="Last ned investorpakke (Excel)"
+                className="flex h-8 items-center gap-1.5 rounded-full bg-[#0a0a0a] px-3.5 text-[12px] font-semibold text-white transition-all hover:bg-black/85 active:scale-[0.97]"
+              >
+                <FileSpreadsheet className="h-3.5 w-3.5" /> Investorpakke
+              </a>
+            </div>
+          </div>
+
+          {trapp && (
+            <div className="mt-4" data-testid="dr-honorar-trapp">
+              <div className="mb-2 flex items-baseline justify-between gap-3">
+                <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#b5b5b5]">Veksttrappen — kumulativt fra i dag til full utleie</p>
+                <p className="hidden text-[10px] text-[#c2beb8] sm:block">live fra plattformen · ~ = estimert med snittsats</p>
+              </div>
+              <div className="flex h-[9px] w-full overflow-hidden rounded-full bg-[#f0eee9]">
+                {trapp.potensial > 0 && (
+                  <>
+                    <div className="h-full bg-[#0a0a0a] transition-all duration-700" style={{ width: `${(trapp.iDag / trapp.potensial) * 100}%` }} />
+                    <div className="h-full bg-[#8b5cf6] transition-all duration-700" style={{ width: `${((trapp.sikret - trapp.iDag) / trapp.potensial) * 100}%` }} />
+                    <div className="h-full bg-[#d8ccf6] transition-all duration-700" style={{ width: `${((trapp.medAnnonsert - trapp.sikret) / trapp.potensial) * 100}%` }} />
+                  </>
+                )}
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-3 sm:grid-cols-4">
+                {[
+                  ['#0a0a0a', scenario ? `Ved ${dtoNo(scenario)}` : 'I dag', kr(trapp.iDag), `${utleide} enheter betaler`],
+                  ['#8b5cf6', '+ Signert', kr(trapp.sikret), `+${kr(trapp.sikret - trapp.iDag)} avtalt — flytter inn`],
+                  ['#d8ccf6', '+ Annonsert', `${trapp.estAnnonsert ? '~' : ''}${kr(trapp.medAnnonsert)}`, `+${trapp.estAnnonsert ? '~' : ''}${kr(trapp.medAnnonsert - trapp.sikret)} ute i markedet`],
+                  ['#d5d0c8', 'Full utleie', `${trapp.estFull ? '~' : ''}${kr(trapp.potensial)}`, `≈ ${trapp.estFull ? '~' : ''}${kr(trapp.potensial * 12)}/år`],
+                ].map(([farge, l, v, sub], i) => (
+                  <div key={l} className="min-w-0">
+                    <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.07em] text-[#b5b5b5]"><span className="h-[6px] w-[6px] rounded-full" style={{ background: farge }} />{l}</p>
+                    <p className="mt-1 flex items-center gap-1.5 text-[16px] font-bold leading-none tabular-nums tracking-[-0.01em] text-[#0a0a0a]" style={heading}>
+                      {i > 0 && <span aria-hidden className="text-[13px] font-semibold leading-none text-[#c9c4bc]">→</span>}
+                      {v}
+                    </p>
+                    <p className="mt-1 truncate text-[10.5px] text-[#a8a29a]">{sub}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* DigiHome-økonomi — asset-light: økonomiens ene hjem (faste kostnader,
-          break-even, CAC). Admin administrerer postene her; investor leser. */}
+      {/* ── Stat-stripen: fem nøkkeltall — margin først (handlingssignalet) ── */}
+      <div className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl bg-black/[0.05] shadow-[0_2px_16px_rgba(0,0,0,0.04)] xl:grid-cols-5" data-testid="dr-statstripe">
+        <div className="bg-white px-4 py-3.5 sm:px-5" data-testid="dr-kpi-margin">
+          <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#b5b5b5]">Margin / mnd</p>
+          <AnimertTall verdi={margin} className="mt-1.5 block text-[21px] font-bold leading-none tabular-nums tracking-[-0.02em]" style={{ ...heading, color: margin >= 0 ? '#15803d' : '#be123c' }} />
+          <p className="mt-1.5 truncate text-[10.5px] font-medium text-[#78716c]">{bePct != null ? (bePct >= 100 ? 'over break-even — ny enhet er ~ren margin' : `dekker ${bePct} % · ~${enheterIgjen} enheter til break-even`) : 'honorar − aktive faste kostnader'}</p>
+        </div>
+        <div className="bg-white px-4 py-3.5 sm:px-5" data-testid="dr-kpi-pipeline">
+          <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#b5b5b5]">Pipeline honorar</p>
+          <p className="mt-1.5 text-[19px] font-bold leading-none tabular-nums tracking-[-0.02em] text-[#0a0a0a]" style={heading}>{trapp ? `+${trapp.estAnnonsert ? '~' : ''}${kr(trapp.medAnnonsert - trapp.iDag)}` : '—'}</p>
+          <p className="mt-1.5 truncate text-[10.5px] text-[#a8a29a]">{paaVei} enheter på vei · signert + annonsert</p>
+        </div>
+        <div className="bg-white px-4 py-3.5 sm:px-5" data-testid="dr-kpi-arr">
+          <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#b5b5b5]">ARR-potensial</p>
+          <p className="mt-1.5 text-[19px] font-bold leading-none tabular-nums tracking-[-0.02em] text-[#0a0a0a]" style={heading}>{trapp ? `${trapp.estFull ? '~' : ''}${kr(trapp.potensial * 12)}` : '—'}</p>
+          <p className="mt-1.5 truncate text-[10.5px] text-[#a8a29a]">{trapp ? `ved full utleie · ${trapp.estFull ? '~' : ''}${kr(trapp.potensial)}/mnd` : 'henter livstall …'}</p>
+        </div>
+        <div className="bg-white px-4 py-3.5 sm:px-5" data-testid="dr-kpi-utleiegrad">
+          <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#b5b5b5]">Utleiegrad</p>
+          <div className="mt-1.5 flex items-center gap-2">
+            <RingLite pct={utleiegrad} size={26} farge="#0a0a0a" />
+            <p className="text-[19px] font-bold leading-none tabular-nums tracking-[-0.02em] text-[#0a0a0a]" style={heading}>{utleiegrad} %</p>
+          </div>
+          <p className="mt-1.5 truncate text-[10.5px] text-[#a8a29a]">{utleide} av {antallEnheter || '—'} enheter utleid</p>
+        </div>
+        <div className="col-span-2 bg-white px-4 py-3.5 sm:px-5 xl:col-span-1" data-testid="dr-kpi-leie">
+          <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#b5b5b5]">Leie under forvaltning</p>
+          <p className="mt-1.5 text-[19px] font-bold leading-none tabular-nums tracking-[-0.02em] text-[#0a0a0a]" style={heading}>{utleidLeie > 0 ? kr(utleidLeie) : '—'}</p>
+          <p className="mt-1.5 truncate text-[10.5px] text-[#a8a29a]">huseiernes leiegrunnlag — ikke DigiHomes inntekt</p>
+        </div>
+      </div>
+
+      {/* ── Neste 30 dager + porteføljefordeling ── */}
+      <div className="grid gap-3 xl:grid-cols-[3fr_2fr]">
+        <Kort data-testid="dr-bevegelser">
+          <div className="flex flex-wrap items-center gap-3">
+            <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.07em] text-[#a3a3a3]"><CalendarClock className="h-3.5 w-3.5" /> Neste 30 dager{scenario ? ` · fra ${dtoNo(baseIso)}` : ''}</p>
+            {bevegelser.length > 0 && (
+              <span className={`ml-auto rounded-full px-2 py-[3px] text-[10px] font-bold tabular-nums ${nettoEndring >= 0 ? 'bg-[#e8f6ee] text-[#15803d]' : 'bg-[#fdeef1] text-[#be123c]'}`}>
+                {nettoEndring >= 0 ? '+' : ''}{kr(nettoEndring)} leie/mnd netto
+              </span>
+            )}
+          </div>
+          {bevegelser.length === 0 ? (
+            <p className="mt-3 rounded-xl bg-[#fafaf8] px-3.5 py-3 text-[12px] text-[#999]">Ingen planlagte inn- eller utflyttinger de neste 30 dagene — porteføljen ligger stabilt.</p>
+          ) : (
+            <div className="mt-2.5 space-y-0.5">
+              {bevegelser.slice(0, 6).map((b, i) => (
+                <div key={`${b.dato}-${i}`} className="flex items-center gap-3 rounded-xl px-2.5 py-2 transition-colors hover:bg-[#fafaf8]">
+                  <span className={`flex h-6 w-[42px] shrink-0 items-center justify-center rounded-full text-[9.5px] font-bold uppercase tracking-[0.06em] ${b.type === 'inn' ? 'bg-[#e8f6ee] text-[#15803d]' : 'bg-[#fdf3e0] text-[#b45309]'}`}>
+                    {b.type === 'inn' ? 'Inn' : 'Ut'}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[12.5px] font-semibold text-[#0a0a0a]">{b.r.unit_room || b.r.address}</span>
+                    <span className="block truncate text-[11px] text-[#999]">{b.type === 'inn' ? 'Innflytting' : 'Utflytting'} · {dtoNo(b.dato)}{b.r.tenant_name ? ` · ${b.r.tenant_name}` : ''}</span>
+                  </span>
+                  <span className="shrink-0 text-right">
+                    <span className={`block text-[12.5px] font-bold tabular-nums ${b.type === 'inn' ? 'text-[#15803d]' : 'text-[#b45309]'}`}>{b.type === 'inn' ? '+' : '−'}{kr(b.r.monthly_rent || 0)}</span>
+                    {b.type === 'inn' && b.r.fee_amount > 0 && <span className="block text-[10px] tabular-nums text-[#a8a29a]">+{kr(b.r.fee_amount)} honorar</span>}
+                  </span>
+                </div>
+              ))}
+              {bevegelser.length > 6 && (
+                <p className="px-2.5 pt-1 text-[11px] text-[#b5b5b5]">+ {bevegelser.length - 6} flere — se Leieforhold for full liste</p>
+              )}
+            </div>
+          )}
+        </Kort>
+
+        <Kort data-testid="dr-portefolje">
+          <div className="flex items-center gap-3">
+            <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.07em] text-[#a3a3a3]"><Home className="h-3.5 w-3.5" /> Porteføljen</p>
+            <p className="ml-auto text-[11px] tabular-nums text-[#b5b5b5]">{antallEnheter || '—'} enheter</p>
+          </div>
+          {antallEnheter > 0 && (
+            <>
+              <div className="mt-3 flex h-[8px] w-full overflow-hidden rounded-full bg-[#f0eee9]">
+                {fordeling.filter((f) => f.antall > 0).map((f) => (
+                  <div key={f.k} className="h-full transition-all duration-700" style={{ width: `${(f.antall / antallEnheter) * 100}%`, background: f.farge }} title={`${f.l}: ${f.antall}`} />
+                ))}
+              </div>
+              <div className="mt-3 space-y-1">
+                {fordeling.map((f) => (
+                  <div key={f.k} className="flex items-center gap-2 rounded-lg px-1.5 py-[5px] transition-colors hover:bg-[#fafaf8]">
+                    <span className="h-[7px] w-[7px] shrink-0 rounded-full" style={{ background: f.farge }} />
+                    <span className="text-[12px] font-medium text-[#57534e]">{f.l}</span>
+                    <span className="text-[11px] tabular-nums text-[#b5b5b5]">{f.antall}{antallEnheter > 0 && f.antall > 0 ? ` · ${Math.round((f.antall / antallEnheter) * 100)} %` : ''}</span>
+                    <span className="ml-auto text-[11.5px] font-semibold tabular-nums text-[#78716c]">{f.leie > 0 ? `${kr(f.leie)}/mnd` : '—'}</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+          {antallEnheter === 0 && <p className="mt-3 rounded-xl bg-[#fafaf8] px-3.5 py-3 text-[12px] text-[#999]">Henter porteføljen fra plattformen …</p>}
+        </Kort>
+      </div>
+
+      {/* Selskapsøkonomi — asset-light: kostnader, break-even, CAC og selskapet
+          samlet i én rolig flate. Admin administrerer postene; investor leser. */}
       {(() => {
-        const ok = data.okonomi || {};
-        const aktive = aktiveKostnader(ok.felles || [], '');
+        const ok2 = data.okonomi || {};
+        const aktive = aktiveKostnader(ok2.felles || [], '');
         const aktivNavn = aktive.map((p) => p.navn).join(' · ');
-        const pct = ok.breakEvenPct;
+        const pct = ok2.breakEvenPct;
+        const s = data.selskap;
+        const minis = [
+          ['Faste kostnader / mnd', kr(ok2.fellesMnd || 0), aktivNavn || (erAdmin ? 'ingen aktive — legg inn f.eks. lønn' : 'ingen aktive poster'), 'datarom-okonomi-faste'],
+          ['Break-even', pct != null ? `${Math.min(pct, 999)} %` : '—', pct != null ? (pct >= 100 ? 'nådd — ny enhet er ~ren margin' : `~${ok2.enheterIgjen} enheter igjen`) : 'legg inn faste kostnader', 'datarom-okonomi-breakeven'],
+          ['CAC totalt · engangs', kr(ok2.cacTotal || 0), ok2.paybackMnd ? `payback ~${ok2.paybackMnd.toLocaleString('nb-NO', { maximumFractionDigits: 1 })} mnd` : 'settes per enhet i Leieforhold', 'datarom-okonomi-cac'],
+          ['Lønn per måned', kr(s.ansatteKostnadMnd), `${s.antallAnsatte} ${s.antallAnsatte === 1 ? 'rolle' : 'roller'} i selskapet`, 'datarom-okonomi-lonn'],
+          ['Gjeld + aksjonærlån', kr(s.gjeldTotal + s.laanTotal), 'detaljer under Selskap', 'datarom-okonomi-gjeld'],
+        ];
         return (
           <Kort data-testid="datarom-okonomi">
             <div className="flex flex-wrap items-center gap-3">
-              <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.07em] text-[#a3a3a3]"><Wallet className="h-3.5 w-3.5" /> DigiHome-økonomi — asset-light</p>
+              <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.07em] text-[#a3a3a3]"><Wallet className="h-3.5 w-3.5" /> Selskapsøkonomi — asset-light</p>
               {erAdmin && (
                 <button
                   onClick={() => setKostSkuff(true)}
@@ -159,35 +450,19 @@ function Oversikt({ api, apiKey, xlsxHref, erAdmin, onGaaTil, onAapneBudsjett })
                 </button>
               )}
             </div>
-            <div className="mt-3 grid gap-2.5 sm:grid-cols-3">
-              <div className="rounded-xl bg-[#fafaf8] px-3.5 py-3" data-testid="datarom-okonomi-faste">
-                <p className="text-[10px] font-bold uppercase tracking-wide text-[#b5b5b5]">Faste kostnader / mnd</p>
-                <p className="mt-1 text-[17px] font-bold tabular-nums text-[#0a0a0a]" style={heading}>{kr(ok.fellesMnd || 0)}</p>
-                <p className="mt-0.5 truncate text-[11px] text-[#999]">{aktivNavn || (erAdmin ? 'ingen aktive — legg inn f.eks. lønn' : 'ingen aktive poster')}</p>
-              </div>
-              <div className="rounded-xl bg-[#fafaf8] px-3.5 py-3" data-testid="datarom-okonomi-breakeven">
-                <div className="flex items-baseline justify-between gap-2">
-                  <p className="text-[10px] font-bold uppercase tracking-wide text-[#b5b5b5]">Break-even</p>
-                  {pct != null && <p className="text-[13px] font-bold tabular-nums text-[#0a0a0a]" style={heading}>{Math.min(pct, 999)} %</p>}
-                </div>
-                {pct != null ? (
-                  <>
-                    <div className="mt-2 h-[5px] overflow-hidden rounded-full bg-[#ecebe8]">
+            <div className="mt-3 grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-5">
+              {minis.map(([l, v, sub, tid]) => (
+                <div key={tid} className="rounded-xl bg-[#fafaf8] px-3.5 py-3" data-testid={tid}>
+                  <p className="truncate text-[10px] font-bold uppercase tracking-wide text-[#b5b5b5]">{l}</p>
+                  <p className="mt-1 text-[16px] font-bold tabular-nums text-[#0a0a0a]" style={heading}>{v}</p>
+                  {tid === 'datarom-okonomi-breakeven' && pct != null ? (
+                    <div className="mt-1.5 h-[4px] overflow-hidden rounded-full bg-[#ecebe8]">
                       <div className={`h-full rounded-full transition-all duration-700 ${pct >= 100 ? 'bg-[#1f9a53]' : 'bg-[#8b5cf6]'}`} style={{ width: `${Math.min(pct, 100)}%` }} />
                     </div>
-                    <p className="mt-1.5 truncate text-[11px] text-[#999]">
-                      {pct >= 100 ? 'nådd — hver ny enhet er ~ren margin' : `honoraret dekker ${pct} % · ~${ok.enheterIgjen} enheter igjen`}
-                    </p>
-                  </>
-                ) : (
-                  <p className="mt-1.5 text-[11px] text-[#999]">Legg inn faste kostnader for å se dekningsgrad</p>
-                )}
-              </div>
-              <div className="rounded-xl bg-[#fafaf8] px-3.5 py-3" data-testid="datarom-okonomi-cac">
-                <p className="text-[10px] font-bold uppercase tracking-wide text-[#b5b5b5]">CAC totalt · engangs</p>
-                <p className="mt-1 text-[17px] font-bold tabular-nums text-[#0a0a0a]" style={heading}>{kr(ok.cacTotal || 0)}</p>
-                <p className="mt-0.5 truncate text-[11px] text-[#999]">{ok.paybackMnd ? `payback ~${ok.paybackMnd.toLocaleString('nb-NO', { maximumFractionDigits: 1 })} mnd` : 'settes per enhet i Leieforhold-skuffen'}</p>
-              </div>
+                  ) : null}
+                  <p className="mt-1 truncate text-[10.5px] text-[#999]">{sub}</p>
+                </div>
+              ))}
             </div>
             <p className="mt-2.5 text-[11px] leading-relaxed text-[#b5b5b5]">
               DigiHome er asset-light: huseier bærer alle boligkostnader. Margin = honorar − aktive faste kostnader. CAC er engangs anskaffelseskost — payback viser hvor raskt honoraret tilbakebetaler den.
@@ -227,49 +502,28 @@ function Oversikt({ api, apiKey, xlsxHref, erAdmin, onGaaTil, onAapneBudsjett })
         )}
       </Kort>
 
-      {/* Selskap-stripe + snarveier */}
-      <div className="grid gap-3 lg:grid-cols-2">
-        <Kort>
-          <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.07em] text-[#a3a3a3]"><ShieldCheck className="h-3.5 w-3.5" /> Selskapet i korte trekk</p>
-          <div className="mt-3 grid grid-cols-2 gap-2.5">
-            {[
-              ['Ansatte (roller)', `${data.selskap.antallAnsatte}`],
-              ['Lønn per måned', kr(data.selskap.ansatteKostnadMnd)],
-              ['Faste kostnader/mnd', kr(data.selskap.fasteKostnaderMnd)],
-              ['Gjeld + aksjonærlån', kr(data.selskap.gjeldTotal + data.selskap.laanTotal)],
-            ].map(([l, v]) => (
-              <div key={l} className="rounded-xl bg-[#fafaf8] px-3 py-2.5">
-                <p className="text-[10px] font-bold uppercase tracking-wide text-[#b5b5b5]">{l}</p>
-                <p className="mt-0.5 text-[15px] font-bold tabular-nums text-[#0a0a0a]" style={heading}>{v}</p>
-              </div>
-            ))}
-          </div>
-        </Kort>
-        <Kort>
-          <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.07em] text-[#a3a3a3]"><Landmark className="h-3.5 w-3.5" /> Utforsk datarommet</p>
-          <div className="mt-3 space-y-1.5">
-            {[
-              ['enheter', Home, 'Enhetsøkonomi', 'Honorar og margin per leilighet og rom'],
-              ['pipeline', TrendingUp, 'Pipeline', 'Enheter på vei inn — signert og forventet'],
-              ['resultat', BarChart3, 'Resultatregnskap', 'Månedlig P&L fra oppstart'],
-              ['budsjett', CircleDollarSign, 'Budsjett neste 12 mnd', 'Rullerende budsjett fra budsjettmodulen'],
-            ].map(([k, Ikon, t, sub]) => (
-              <button
-                key={k}
-                onClick={() => (k === 'budsjett' ? onAapneBudsjett?.() : onGaaTil?.(k))}
-                data-testid={`datarom-snarvei-${k}`}
-                className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-[#fafaf8]"
-              >
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#f4f0fb]"><Ikon className="h-4 w-4 text-[#8b5cf6]" /></span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-[13px] font-semibold text-[#0a0a0a]">{t}</span>
-                  <span className="block truncate text-[11.5px] text-[#999]">{sub}</span>
-                </span>
-                <ArrowRight className="h-3.5 w-3.5 shrink-0 text-[#d5d0c8]" />
-              </button>
-            ))}
-          </div>
-        </Kort>
+      {/* Snarveier videre inn i datarommet */}
+      <div className="grid grid-cols-2 gap-2.5 xl:grid-cols-4" data-testid="dr-snarveier">
+        {[
+          ['enheter', Home, 'Enhetsøkonomi', 'Honorar og margin per enhet'],
+          ['pipeline', TrendingUp, 'Pipeline', 'Enheter på vei inn'],
+          ['resultat', BarChart3, 'Regnskap', 'Månedlig resultat fra oppstart'],
+          ['selskap', ShieldCheck, 'Selskap', 'Ansatte, kostnader, gjeld og lån'],
+        ].map(([k, Ikon, t, sub]) => (
+          <button
+            key={k}
+            onClick={() => (k === 'budsjett' ? onAapneBudsjett?.() : onGaaTil?.(k))}
+            data-testid={`datarom-snarvei-${k}`}
+            className="group flex items-center gap-3 rounded-2xl bg-white px-4 py-3.5 text-left shadow-[0_2px_16px_rgba(0,0,0,0.04)] transition-all duration-200 hover:-translate-y-[1px] hover:shadow-[0_6px_20px_rgba(28,25,23,0.08)] active:scale-[0.99]"
+          >
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#f4f0fb] transition-colors group-hover:bg-[#ece4fb]"><Ikon className="h-[17px] w-[17px] text-[#8b5cf6]" /></span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-[13px] font-semibold text-[#0a0a0a]">{t}</span>
+              <span className="block truncate text-[11px] text-[#999]">{sub}</span>
+            </span>
+            <ArrowRight className="h-3.5 w-3.5 shrink-0 text-[#d5d0c8] transition-transform group-hover:translate-x-0.5" />
+          </button>
+        ))}
       </div>
 
       {/* Kostnadsskuff (admin) — CRUD mot /api/admin/leieforhold/okonomi/felles */}
@@ -277,7 +531,7 @@ function Oversikt({ api, apiKey, xlsxHref, erAdmin, onGaaTil, onAapneBudsjett })
         <KostnadsSkuff
           apiKey={apiKey}
           felles={data.okonomi?.felles || []}
-          onOppdatert={hent}
+          onOppdatert={() => hent(true)}
           onLukk={() => setKostSkuff(false)}
         />
       )}
@@ -288,14 +542,14 @@ function Oversikt({ api, apiKey, xlsxHref, erAdmin, onGaaTil, onAapneBudsjett })
 /* ── Resultatregnskap ─────────────────────────────────────────────────────── */
 
 function Resultat({ api, erAdmin }) {
-  const [rader, setRader] = useState([]);
-  const [laster, setLaster] = useState(true);
+  const [rader, setRader] = useState(() => (cacheLes('dr:pnl') || {}).rader || []);
+  const [laster, setLaster] = useState(() => !cacheLes('dr:pnl'));
   const [ny, setNy] = useState({ ym: '', inntekter: '', kostnader: '', notat: '' });
   const [lagrer, setLagrer] = useState(false);
   const [feil, setFeil] = useState('');
 
-  const last = useCallback(async () => {
-    try { setRader((await api('pnl')).rader || []); } catch (e) {}
+  const last = useCallback(async (force = false) => {
+    try { setRader((await cacheHent('dr:pnl', () => api('pnl'), { force })).rader || []); } catch (e) {}
     setLaster(false);
   }, [api]);
   useEffect(() => { last(); }, [last]);
@@ -306,13 +560,13 @@ function Resultat({ api, erAdmin }) {
     try {
       await api('pnl', { method: 'PUT', body: ny });
       setNy({ ym: '', inntekter: '', kostnader: '', notat: '' });
-      await last();
+      await last(true);
     } catch (e) { setFeil(e.message); }
     setLagrer(false);
   };
   const slett = async (ym) => {
     if (!window.confirm(`Slette ${ymLabel(ym)}?`)) return;
-    try { await api(`pnl?ym=${ym}`, { method: 'DELETE' }); await last(); } catch (e) {}
+    try { await api(`pnl?ym=${ym}`, { method: 'DELETE' }); await last(true); } catch (e) {}
   };
 
   let akk = 0;
@@ -391,17 +645,21 @@ function Resultat({ api, erAdmin }) {
 /* ── Enheter (drift) og Pipeline — deler tabell + redigeringsmodal ────────── */
 
 function Enheter({ api, erAdmin, fase }) {
-  const [data, setData] = useState({ drift: [], pipeline: [] });
-  const [laster, setLaster] = useState(true);
+  const [data, setData] = useState(() => { const c = cacheLes(`dr:enheter:${fase}`); return c ? { drift: c.drift || [], pipeline: c.pipeline || [] } : { drift: [], pipeline: [] }; });
+  const [laster, setLaster] = useState(() => !cacheLes(`dr:enheter:${fase}`));
   const [importerer, setImporterer] = useState(false);
   const [importMelding, setImportMelding] = useState('');
   const [modal, setModal] = useState(null); // enhet under redigering (eller {} for ny)
 
-  const last = useCallback(async () => {
-    try { const j = await api(`enheter?fase=${fase}`); setData({ drift: j.drift || [], pipeline: j.pipeline || [] }); } catch (e) {}
+  const last = useCallback(async (force = false) => {
+    try { const j = await cacheHent(`dr:enheter:${fase}`, () => api(`enheter?fase=${fase}`), { force }); setData({ drift: j.drift || [], pipeline: j.pipeline || [] }); } catch (e) {}
     setLaster(false);
   }, [api, fase]);
-  useEffect(() => { setLaster(true); last(); }, [last]);
+  useEffect(() => {
+    const c = cacheLes(`dr:enheter:${fase}`);
+    if (c) { setData({ drift: c.drift || [], pipeline: c.pipeline || [] }); setLaster(false); } else setLaster(true);
+    last();
+  }, [last, fase]);
 
   const rader = fase === 'pipeline' ? data.pipeline : data.drift;
   const sum = (f) => rader.reduce((a, e) => a + (Number(e[f]) || 0), 0);
@@ -411,7 +669,7 @@ function Enheter({ api, erAdmin, fase }) {
     try {
       const j = await api('enheter/import', { method: 'POST' });
       setImportMelding(`Hentet fra porteføljen: ${j.opprettet} nye · ${j.oppdatert} oppdatert`);
-      await last();
+      await last(true);
     } catch (e) { setImportMelding(e.message); }
     setImporterer(false);
   };
@@ -516,7 +774,7 @@ function Enheter({ api, erAdmin, fase }) {
         )}
       </Kort>
 
-      {modal && <EnhetModal enhet={modal} api={api} onLukk={() => setModal(null)} onLagret={() => { setModal(null); last(); }} />}
+      {modal && <EnhetModal enhet={modal} api={api} onLukk={() => setModal(null)} onLagret={() => { setModal(null); last(true); }} />}
     </div>
   );
 }
@@ -616,14 +874,14 @@ function EnhetModal({ enhet, api, onLukk, onLagret }) {
 /* ── Selskap ──────────────────────────────────────────────────────────────── */
 
 function Selskap({ api, erAdmin }) {
-  const [f, setF] = useState(null);
-  const [laster, setLaster] = useState(true);
+  const [f, setF] = useState(() => (cacheLes('dr:selskap') || {}).selskap || null);
+  const [laster, setLaster] = useState(() => !cacheLes('dr:selskap'));
   const [lagrer, setLagrer] = useState(false);
   const [lagret, setLagret] = useState(false);
 
   useEffect(() => {
     (async () => {
-      try { setF((await api('selskap')).selskap); } catch (e) {}
+      try { const j = await cacheHent('dr:selskap', () => api('selskap')); if (j?.selskap) setF(j.selskap); } catch (e) {}
       setLaster(false);
     })();
   }, [api]);
@@ -632,6 +890,7 @@ function Selskap({ api, erAdmin }) {
     setLagrer(true);
     try {
       const j = await api('selskap', { method: 'PUT', body: f });
+      cacheSlett('dr:selskap'); // skjemaet er sannheten nå — ikke server stale cache
       setF(j.selskap);
       setLagret(true); setTimeout(() => setLagret(false), 2500);
     } catch (e) {}
@@ -744,14 +1003,14 @@ function Selskap({ api, erAdmin }) {
 /* ── Dokumenter (lesetilgang til DD-hvelvet) ──────────────────────────────── */
 
 function Dokumenter({ api, apiKey, erAdmin }) {
-  const [docs, setDocs] = useState([]);
-  const [kategorier, setKategorier] = useState([]);
-  const [laster, setLaster] = useState(true);
+  const [docs, setDocs] = useState(() => (cacheLes('dr:dokumenter') || {}).documents || []);
+  const [kategorier, setKategorier] = useState(() => (cacheLes('dr:dokumenter') || {}).categories || []);
+  const [laster, setLaster] = useState(() => !cacheLes('dr:dokumenter'));
 
   useEffect(() => {
     (async () => {
       try {
-        const j = await api('dokumenter');
+        const j = await cacheHent('dr:dokumenter', () => api('dokumenter'));
         setDocs(j.documents || []);
         setKategorier(j.categories || []);
       } catch (e) {}

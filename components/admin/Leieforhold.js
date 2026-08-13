@@ -30,8 +30,9 @@ import {
 import {
   TOM_FILTER, anvendScenario, filtrerRader, antallAktiveFiltre, harFilter,
   tilQuery, beregnTotals, aktiveKostnader, fordelKostnader, radNokkel,
-  visGruppe, annonsertSplitt,
+  visGruppe, annonsertSplitt, beregnHonorarTrapp,
 } from '@/lib/leieforhold-filter';
+import { cacheLes, cacheHent } from '@/lib/klient-cache';
 
 const heading = { fontFamily: 'var(--font-heading)' };
 
@@ -198,8 +199,10 @@ function SeksjonsRad({ nokkel, rader, colSpan, aggregat }) {
 }
 
 export default function Leieforhold({ apiKey, readOnly = false, erInvestor = false }) {
-  const [data, setData] = useState(null);
-  const [laster, setLaster] = useState(true);
+  // Klient-cache (stale-while-revalidate): flaten rendres momentant fra sist
+  // kjente data ved fanebytte, og revaliderer stille i bakgrunnen.
+  const [data, setData] = useState(() => cacheLes('lf:data') || null);
+  const [laster, setLaster] = useState(() => !cacheLes('lf:data'));
   const [feil, setFeil] = useState('');
   const [sok, setSok] = useState('');
   const [sortering, setSortering] = useState('standard');
@@ -217,7 +220,10 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
 
   // Enhetsøkonomi-data (andel faste kostnader + CAC per enhet — vises i
   // enhetsskuffen; selskaps-KPI-ene bor i Datarom → Oversikt)
-  const [okonomi, setOkonomi] = useState({ felles: [], enheter: {} });
+  const [okonomi, setOkonomi] = useState(() => {
+    const c = cacheLes('lf:okonomi');
+    return c ? { felles: c.felles || [], enheter: c.enheter || {} } : { felles: [], enheter: {} };
+  });
   const [cacSkjema, setCacSkjema] = useState(null); // {enhetId, adresse, cac, notat}
   const [lagrer, setLagrer] = useState(false);
   const [valgtRad, setValgtRad] = useState(null); // enhets-skuff (side drawer)
@@ -256,21 +262,27 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
   const kanRedigere = !readOnly;
 
   const hent = useCallback(async (fresh = false) => {
-    setLaster(true); setFeil('');
+    if (!cacheLes('lf:data')) setLaster(true);
+    setFeil('');
     try {
-      const r = await fetch(`/api/admin/leieforhold?key=${encodeURIComponent(apiKey)}${fresh ? '&fresh=1' : ''}`);
-      const j = await r.json();
-      if (!r.ok || !j.ok) throw new Error(j.error || 'Kunne ikke hente leieforhold');
+      const j = await cacheHent(
+        'lf:data',
+        `/api/admin/leieforhold?key=${encodeURIComponent(apiKey)}${fresh ? '&fresh=1' : ''}`,
+        { force: fresh },
+      );
+      if (!j.ok) throw new Error(j.error || 'Kunne ikke hente leieforhold');
       setData(j);
-    } catch (e) { setFeil(e.message); setData(null); }
+    } catch (e) {
+      setFeil(e.message);
+      if (!cacheLes('lf:data')) setData(null); // behold sist kjente tall fremfor tom flate
+    }
     setLaster(false);
   }, [apiKey]);
 
-  const hentOkonomi = useCallback(async () => {
+  const hentOkonomi = useCallback(async (force = false) => {
     try {
-      const r = await fetch(`/api/admin/leieforhold/okonomi?key=${encodeURIComponent(apiKey)}`);
-      const j = await r.json();
-      if (r.ok && j.ok) setOkonomi({ felles: j.felles || [], enheter: j.enheter || {} });
+      const j = await cacheHent('lf:okonomi', `/api/admin/leieforhold/okonomi?key=${encodeURIComponent(apiKey)}`, { force });
+      if (j.ok) setOkonomi({ felles: j.felles || [], enheter: j.enheter || {} });
     } catch (e) { /* økonomidata er valgfritt tillegg */ }
   }, [apiKey]);
 
@@ -341,34 +353,10 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
   const ledigLeie = Math.max(0, (visTotals.estimate_rent || 0) - annonsert.leie);
   const ledigAntall = Math.max(0, (visTotals.vacant || 0) - annonsert.antall);
 
-  /* ── Honorar-trappen: DigiHomes inntekt trinn for trinn ───────────────────
-     I dag (utleide) → Sikret (m/signerte som ikke har startet) → m/Annonsert
-     (aktive annonser + under signering) → Full utleie. Rader uten avtalt sats
-     (typisk annonserte/ledige uten kontrakt) estimeres med porteføljens
-     snittsats — trinnet merkes da med ~. */
-  const honorarTrapp = useMemo(() => {
-    const g = { leased: [], future: [], signing: [], advertised: [], vacant: [] };
-    filtrert.forEach((r) => { (g[visGruppe(r)] || g.vacant).push(r); });
-    const iDag = g.leased.reduce((s, r) => s + (r.fee_amount || 0), 0);
-    const leieIDag = g.leased.reduce((s, r) => s + (r.monthly_rent || 0), 0);
-    const snittSats = leieIDag > 0 ? iDag / leieIDag : 0;
-    const est = { future: false, signing: false, advertised: false, vacant: false };
-    const fee = (r, n3) => {
-      if (r.fee_amount > 0) return r.fee_amount;
-      const e = Math.round((r.monthly_rent || 0) * snittSats);
-      if (e > 0) est[n3] = true;
-      return e;
-    };
-    // Signert = avtalt honorar, aldri estimat: mangler en signert kontrakt
-    // sats i plattformen teller den 0 til den er fylt ut (datakvalitet > gjetting).
-    const sumG = (n2) => g[n2].reduce((s, r) => s + fee(r, n2), 0);
-    const sikret = iDag + g.future.reduce((s, r) => s + (r.fee_amount || 0), 0);
-    const medAnnonsert = sikret + sumG('signing') + sumG('advertised');
-    const potensial = medAnnonsert + sumG('vacant');
-    const estAnnonsert = est.signing || est.advertised;
-    const estFull = estAnnonsert || est.vacant;
-    return { iDag, sikret, medAnnonsert, potensial, estSikret: false, estAnnonsert, estFull };
-  }, [filtrert]);
+  /* ── Honorar-trappen (delt logikk i lib/leieforhold-filter — samme motor
+     som Datarom-oversikten): i dag → sikret (avtalt) → m/annonsert (est ~) →
+     full utleie. ── */
+  const honorarTrapp = useMemo(() => beregnHonorarTrapp(filtrert), [filtrert]);
 
   /* ── Enhetsøkonomi (kun til enhetsskuffen: andel faste kostnader + CAC per
      enhet). Selskaps-KPI-ene (margin, break-even, CAC totalt) bor i
@@ -440,7 +428,7 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ enhetId: cacSkjema.enhetId, cac: Number(cacSkjema.cac) || 0, notat: cacSkjema.notat || '' }),
       });
-      if (r.ok) { setCacSkjema(null); await hentOkonomi(); }
+      if (r.ok) { setCacSkjema(null); await hentOkonomi(true); }
     } catch (e) { /* behold skjema åpent */ }
     setLagrer(false);
   };
@@ -479,8 +467,11 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
           svever som egne kort på et rolig, varmgrått lerret ═══════════ */}
       <div className="overflow-hidden rounded-2xl border border-black/[0.06] bg-[#f6f5f1] shadow-[0_1px_2px_rgba(28,25,23,0.04),0_12px_32px_-16px_rgba(28,25,23,0.10)]">
 
-        {/* ── Verktøylinje-øy: søk/hurtigfiltre → visning/eksport ── */}
-        <div className="mx-3 mt-3 flex flex-wrap items-center gap-1.5 rounded-[12px] border border-black/[0.05] bg-white/85 px-2.5 py-1.5 shadow-[0_1px_3px_rgba(28,25,23,0.05)] backdrop-blur-md sm:mx-4">
+        {/* ── Verktøylinje-øy: søk/hurtigfiltre → visning/eksport ──
+            relative z-30: backdrop-blur lager egen stacking-context, så øya
+            må løftes over KPI-kortene for at menyene (Vis/Eksport) skal ligge
+            øverst når de er åpne. ── */}
+        <div className="relative z-30 mx-3 mt-3 flex flex-wrap items-center gap-1.5 rounded-[12px] border border-black/[0.05] bg-white/85 px-2.5 py-2 shadow-[0_1px_3px_rgba(28,25,23,0.05)] backdrop-blur-md sm:mx-4">
           <div className="relative order-last w-full sm:order-none sm:w-auto">
             <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#b3ada3]" />
             <input
@@ -498,10 +489,10 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
             <button
               onClick={() => setFiltre((f) => ({ ...f, status: [] }))}
               data-testid="leieforhold-filter-alle"
-              className={`flex h-6 shrink-0 items-center gap-1.5 rounded-[6px] px-2.5 text-[11.5px] font-medium transition-all ${!filtre.status.length ? 'bg-white text-[#1c1917] shadow-[0_1px_3px_rgba(28,25,23,0.10)]' : 'text-[#8a8278] hover:text-[#1c1917]'}`}
+              className={`flex h-[26px] shrink-0 items-center gap-1.5 rounded-[6px] px-2.5 text-[12px] font-medium transition-all ${!filtre.status.length ? 'bg-[#1c1917] text-white shadow-[0_1px_3px_rgba(28,25,23,0.25)]' : 'text-[#6f6a61] hover:text-[#1c1917]'}`}
             >
               Alle
-              <span className={`tabular-nums text-[10px] ${!filtre.status.length ? 'text-[#b3ada3]' : 'text-[#c2beb8]'}`}>{grupper.alle ?? 0}</span>
+              <span className={`tabular-nums text-[10.5px] ${!filtre.status.length ? 'text-white/55' : 'text-[#b3ada3]'}`}>{grupper.alle ?? 0}</span>
             </button>
             {[['leased', GRUPPE_LABEL.leased], ['future', GRUPPE_LABEL.future], ['signing', GRUPPE_LABEL.signing], ['advertised', GRUPPE_LABEL.advertised], ['vacant', GRUPPE_LABEL.vacant]].map(([k, l]) => (
               <button
@@ -509,11 +500,11 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
                 onClick={() => toggleFilter('status', k)}
                 data-testid={`leieforhold-filter-${k}`}
                 title="Flervalg — klikk for å slå av/på"
-                className={`flex h-6 shrink-0 items-center gap-1.5 rounded-[6px] px-2.5 text-[11.5px] font-medium transition-all ${filtre.status.includes(k) ? 'bg-white text-[#1c1917] shadow-[0_1px_3px_rgba(28,25,23,0.10)]' : 'text-[#8a8278] hover:text-[#1c1917]'}`}
+                className={`flex h-[26px] shrink-0 items-center gap-1.5 rounded-[6px] px-2.5 text-[12px] font-medium transition-all ${filtre.status.includes(k) ? 'bg-[#1c1917] text-white shadow-[0_1px_3px_rgba(28,25,23,0.25)]' : 'text-[#6f6a61] hover:text-[#1c1917]'}`}
               >
                 <span className="h-[5px] w-[5px] rounded-full" style={{ background: STATUS_STIL[k].tekst }} />
                 {l}
-                <span className={`tabular-nums text-[10px] ${filtre.status.includes(k) ? 'text-[#b3ada3]' : 'text-[#c2beb8]'}`}>{grupper[k] ?? 0}</span>
+                <span className={`tabular-nums text-[10.5px] ${filtre.status.includes(k) ? 'text-white/55' : 'text-[#b3ada3]'}`}>{grupper[k] ?? 0}</span>
               </button>
             ))}
           </div>
@@ -609,7 +600,7 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
               <button
                 onClick={(e) => { e.stopPropagation(); setEksportOpen((o) => !o); setVisOpen(false); }}
                 data-testid="leieforhold-xlsx"
-                className={KNAPP_PRIMAER}
+                className="flex h-7 items-center gap-1.5 rounded-[7px] border border-black/[0.10] bg-white px-2.5 text-[12px] font-semibold text-[#1c1917] shadow-[0_1px_2px_rgba(28,25,23,0.05)] transition-colors hover:bg-[#f7f6f3]"
               >
                 <FileSpreadsheet className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Eksport</span>
                 <ChevronDown className={`h-3 w-3 opacity-60 transition-transform ${eksportOpen ? 'rotate-180' : ''}`} />
@@ -684,16 +675,16 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
             glød i hjørnet. Fargen sitter i chipen, ikke i flaten — rolig og
             premium. Tallene leser likt: stort tall = i dag, deretter
             «+ individuelt beløp» med «= løpende sum» under. ── */}
-        <div className="grid grid-cols-1 gap-2.5 px-3 pt-2.5 sm:px-4 xl:grid-cols-[minmax(0,43fr)_minmax(0,43fr)_minmax(0,14fr)]">
+        <div className="grid grid-cols-1 gap-3 px-3 pt-3.5 sm:px-4 xl:grid-cols-[minmax(0,43fr)_minmax(0,43fr)_minmax(0,14fr)]">
           {/* KORT 1 — Honorar (DigiHome) · lilla chip */}
-          <div className="relative flex flex-wrap items-center gap-x-5 gap-y-2 overflow-hidden rounded-xl border border-black/[0.05] bg-white px-4 py-2.5 shadow-[0_1px_3px_rgba(28,25,23,0.04)] transition-all duration-200 hover:-translate-y-[1px] hover:shadow-[0_4px_16px_rgba(28,25,23,0.08)]" data-testid="leieforhold-honorar-trapp">
+          <div className="relative flex flex-wrap items-center gap-x-5 gap-y-2 overflow-hidden rounded-xl border border-black/[0.05] bg-white px-4 py-3.5 shadow-[0_1px_3px_rgba(28,25,23,0.04)] transition-all duration-200 hover:-translate-y-[1px] hover:shadow-[0_4px_16px_rgba(28,25,23,0.08)]" data-testid="leieforhold-honorar-trapp">
             <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(460px_150px_at_0%_0%,rgba(124,58,237,0.07),transparent_62%)]" />
             <div className="relative min-w-0">
               <span className="inline-flex items-center rounded-full bg-[#f3edfe] px-2 py-[3px] text-[9.5px] font-bold uppercase tracking-[0.07em] text-[#6d28d9]">Honorar / mnd · eks. mva</span>
-              <p className="mt-1.5 text-[23px] font-semibold leading-none tabular-nums tracking-[-0.02em] text-[#1c1917]" style={heading} data-testid="leieforhold-honorar">
+              <p className="mt-1.5 text-[27px] font-semibold leading-none tabular-nums tracking-[-0.02em] text-[#1c1917]" style={heading} data-testid="leieforhold-honorar">
                 {laster ? '…' : <TallOpp verdi={honorarTrapp.iDag} />}
               </p>
-              <p className="mt-1 truncate text-[10.5px] text-[#a8a29a]" data-testid="leieforhold-honorar-arr">≈ {kr(honorarTrapp.iDag * 12)}/år run-rate</p>
+              <p className="mt-1 truncate text-[11px] text-[#a8a29a]" data-testid="leieforhold-honorar-arr">≈ {kr(honorarTrapp.iDag * 12)}/år run-rate</p>
               {/* Mikrolinje: hvor langt honoraret i dag er kommet mot full utleie */}
               <div className="mt-1.5 h-[3px] w-[120px] overflow-hidden rounded-full bg-[#efeafb]" title={`I dag utgjør ${honorarTrapp.potensial > 0 ? Math.round((honorarTrapp.iDag / honorarTrapp.potensial) * 100) : 0} % av full utleie`}>
                 <div className="h-full rounded-full bg-gradient-to-r from-[#7c3aed] to-[#a78bfa] transition-all duration-700" style={{ width: `${honorarTrapp.potensial > 0 ? Math.min(100, Math.round((honorarTrapp.iDag / honorarTrapp.potensial) * 100)) : 0}%` }} />
@@ -708,34 +699,34 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
             ].map(([l, v, sum, sumL, est, tid]) => (
               <div key={l} className="relative min-w-0" data-testid={tid} title={est ? 'Inneholder estimat (porteføljens snittsats der sats ikke er avtalt)' : undefined}>
                 <p className={`truncate ${ETIKETT}`}>{l}</p>
-                <p className="mt-1 text-[15px] font-semibold leading-none tabular-nums tracking-[-0.01em] text-[#1c1917]" style={heading}>
+                <p className="mt-1 text-[13.5px] font-medium leading-none tabular-nums tracking-[-0.01em] text-[#57534e]" style={heading}>
                   +{est ? '~' : ''}{kr(v)}
                 </p>
-                <p className="mt-1 truncate text-[10.5px] tabular-nums text-[#a8a29a]">= {est ? '~' : ''}{kr(sum)}{sumL ? ` ${sumL}` : ''}</p>
+                <p className="mt-1 truncate text-[10.5px] tabular-nums text-[#b3ada3]">= {est ? '~' : ''}{kr(sum)}{sumL ? ` ${sumL}` : ''}</p>
               </div>
             ))}
           </div>
 
           {/* KORT 2 — Leie (huseiernes grunnlag) · grønn chip */}
-          <div className="relative flex flex-wrap items-center gap-x-5 gap-y-2 overflow-hidden rounded-xl border border-black/[0.05] bg-white px-4 py-2.5 shadow-[0_1px_3px_rgba(28,25,23,0.04)] transition-all duration-200 hover:-translate-y-[1px] hover:shadow-[0_4px_16px_rgba(28,25,23,0.08)] xl:justify-between" data-testid="leieforhold-sone-leie">
+          <div className="relative flex flex-wrap items-center gap-x-5 gap-y-2 overflow-hidden rounded-xl border border-black/[0.05] bg-white px-4 py-3.5 shadow-[0_1px_3px_rgba(28,25,23,0.04)] transition-all duration-200 hover:-translate-y-[1px] hover:shadow-[0_4px_16px_rgba(28,25,23,0.08)] xl:justify-between" data-testid="leieforhold-sone-leie">
             <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(460px_150px_at_0%_0%,rgba(21,128,61,0.06),transparent_62%)]" />
             {leieTrapp.map((s, i) => (
               <div key={s.id} className="relative min-w-0" data-testid={`leieforhold-kpi-${s.id}`}>
                 {i === 0 ? (
                   <>
                     <span className="inline-flex items-center rounded-full bg-[#e8f6ee] px-2 py-[3px] text-[9.5px] font-bold uppercase tracking-[0.07em] text-[#15803d]">{s.l} / mnd</span>
-                    <p className="mt-1.5 text-[16px] font-semibold leading-none tabular-nums tracking-[-0.01em] text-[#1c1917]" style={heading}>
+                    <p className="mt-1.5 text-[21px] font-semibold leading-none tabular-nums tracking-[-0.01em] text-[#1c1917]" style={heading}>
                       {laster ? '…' : <TallOpp verdi={s.v} />}
                     </p>
-                    <p className="mt-1 truncate text-[10.5px] text-[#a8a29a]">{s.sub}</p>
+                    <p className="mt-1 truncate text-[11px] text-[#a8a29a]">{s.sub}</p>
                   </>
                 ) : (
                   <>
                     <p className={`truncate ${ETIKETT}`}>{s.l}</p>
-                    <p className="mt-1 text-[15px] font-semibold leading-none tabular-nums tracking-[-0.01em] text-[#1c1917]" style={heading}>
+                    <p className="mt-1 text-[13.5px] font-medium leading-none tabular-nums tracking-[-0.01em] text-[#57534e]" style={heading}>
                       +{kr(s.v)}
                     </p>
-                    <p className="mt-1 truncate text-[10.5px] tabular-nums text-[#a8a29a]">= {kr(s.sum)}{s.sumL ? ` ${s.sumL}` : ''}</p>
+                    <p className="mt-1 truncate text-[10.5px] tabular-nums text-[#b3ada3]">= {kr(s.sum)}{s.sumL ? ` ${s.sumL}` : ''}</p>
                   </>
                 )}
               </div>
@@ -743,15 +734,15 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
           </div>
 
           {/* KORT 3 — Utleigrad · blå chip */}
-          <div className="relative flex items-center overflow-hidden rounded-xl border border-black/[0.05] bg-white px-4 py-2.5 shadow-[0_1px_3px_rgba(28,25,23,0.04)] transition-all duration-200 hover:-translate-y-[1px] hover:shadow-[0_4px_16px_rgba(28,25,23,0.08)]" data-testid="leieforhold-kpi-utleigrad">
+          <div className="relative flex items-center overflow-hidden rounded-xl border border-black/[0.05] bg-white px-4 py-3.5 shadow-[0_1px_3px_rgba(28,25,23,0.04)] transition-all duration-200 hover:-translate-y-[1px] hover:shadow-[0_4px_16px_rgba(28,25,23,0.08)]" data-testid="leieforhold-kpi-utleigrad">
             <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(300px_140px_at_0%_0%,rgba(14,116,144,0.07),transparent_65%)]" />
             <div className="relative min-w-0">
               <span className="inline-flex items-center rounded-full bg-[#e7f4f9] px-2 py-[3px] text-[9.5px] font-bold uppercase tracking-[0.07em] text-[#0e7490]">Utleigrad</span>
               <div className="mt-1.5 flex items-center gap-2.5">
-                <Ring pct={visTotals.occupancy_pct || 0} size={30} />
+                <Ring pct={visTotals.occupancy_pct || 0} size={34} />
                 <div className="min-w-0">
-                  <p className="text-[16px] font-semibold leading-none tabular-nums tracking-[-0.01em] text-[#1c1917]" style={heading}>{visTotals.occupancy_pct ?? 0} %</p>
-                  <p className="mt-1 truncate text-[10.5px] text-[#a8a29a]">{visTotals.leased ?? 0} av {visTotals.count ?? 0} utleid</p>
+                  <p className="text-[21px] font-semibold leading-none tabular-nums tracking-[-0.01em] text-[#1c1917]" style={heading}>{visTotals.occupancy_pct ?? 0} %</p>
+                  <p className="mt-1 truncate text-[11px] text-[#a8a29a]">{visTotals.leased ?? 0} av {visTotals.count ?? 0} utleid</p>
                 </div>
               </div>
             </div>
@@ -788,7 +779,7 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
         )}
 
         {/* ── Tabellkort: svever på lerretet ── */}
-        <div className="mx-3 mb-3 mt-2.5 overflow-hidden rounded-[12px] border border-black/[0.05] bg-white shadow-[0_1px_3px_rgba(28,25,23,0.05)] sm:mx-4">
+        <div className="mx-3 mb-3.5 mt-3 overflow-hidden rounded-[12px] border border-black/[0.05] bg-white shadow-[0_1px_3px_rgba(28,25,23,0.05)] sm:mx-4">
           {laster && (
             <div className="space-y-1.5 p-4" data-testid="leieforhold-skeleton">
               {Array.from({ length: 8 }).map((_, i) => (
@@ -825,7 +816,7 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
                 <thead>
                   <tr>
                     {['Adresse', 'Type', 'Huseier', 'Leietaker', 'Status', 'Innflytting', 'Utflytting', 'Beløp / mnd', 'Sats (eks. mva)', 'Honorar', 'Netto', 'Depositum'].map((h, i) => (
-                      <th key={h} className={`${HODE_CELLE} px-3 py-2 text-[9.5px] font-semibold uppercase tracking-[0.1em] text-[#b3ada3] ${i >= 7 ? 'text-right' : ''}`}>{h}</th>
+                      <th key={h} style={i === 0 ? { left: 0, zIndex: 30 } : undefined} className={`${HODE_CELLE} px-3 py-2.5 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[#9c968c] ${i >= 7 ? 'text-right' : ''}`}>{h}</th>
                     ))}
                     <th className={`${HODE_CELLE} w-8`} />
                   </tr>
@@ -840,8 +831,8 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
                     idx += 1; const i = idx;
                     const erRom = r.unit_type === 'Rom i bofellesskap';
                     return (
-                    <tr key={`${radNokkel(r)}-${i}`} onClick={() => setValgtRad(r)} className="group dh-rad-inn cursor-pointer border-b border-black/[0.03] transition-colors last:border-b-0 hover:bg-[#f6f4f1] [&>td]:py-2.5 [&>td:first-child]:rounded-l-[8px] [&>td:last-child]:rounded-r-[8px]" style={{ animationDelay: `${Math.min(i, 16) * 16}ms` }} data-testid={`leieforhold-rad-${i}`}>
-                      <td className="px-3 py-2"><AdresseCelle r={r} /></td>
+                    <tr key={`${radNokkel(r)}-${i}`} onClick={() => setValgtRad(r)} className="group dh-rad-inn cursor-pointer border-b border-black/[0.03] transition-colors last:border-b-0 hover:bg-[#f1eee9] [&>td]:py-3 [&>td:first-child]:rounded-l-[8px] [&>td:last-child]:rounded-r-[8px]" style={{ animationDelay: `${Math.min(i, 16) * 16}ms` }} data-testid={`leieforhold-rad-${i}`}>
+                      <td className="sticky left-0 z-[5] bg-white px-3 py-2 transition-colors group-hover:bg-[#f1eee9]"><AdresseCelle r={r} /></td>
                       <td className="whitespace-nowrap px-3 py-2 text-[12px] text-[#57534e]">{r.bolig_type || (erRom ? 'Rom' : '—')}</td>
                       <td className="max-w-[170px] px-3 py-2" title={r.owner_name}>
                         <span className="flex items-center gap-1.5">
