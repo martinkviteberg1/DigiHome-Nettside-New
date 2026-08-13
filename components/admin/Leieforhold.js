@@ -139,6 +139,14 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
     return t;
   }, [rows]);
 
+  // Linear-stil: grupper radene i statusseksjoner når standardsortering + «Alle».
+  const seksjoner = useMemo(() => {
+    if (gruppe !== 'alle' || sortering !== 'standard' || sok.trim()) return [{ key: null, rader: filtrert }];
+    return ['leased', 'future', 'signing', 'vacant']
+      .map((g) => ({ key: g, rader: filtrert.filter((r) => r.group === g) }))
+      .filter((s) => s.rader.length);
+  }, [filtrert, gruppe, sortering, sok]);
+
   /* ── Enhetsøkonomi-beregninger ────────────────────────────────────────── */
   const fellesTotal = useMemo(() => okonomi.felles.reduce((s, p) => s + (p.belop || 0), 0), [okonomi.felles]);
 
@@ -202,7 +210,8 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
   };
 
   const kildeLive = data?.source === 'lease-income' || data?.source === 'units-contracts';
-  const kildeTekst = data?.source === 'lease-income' ? 'Plattform-data (1:1)'
+  const kildeTekst = !data && laster ? 'Henter fra plattformen …'
+    : data?.source === 'lease-income' ? 'Plattform-data (1:1)'
     : data?.source === 'units-contracts' ? 'Live fra plattformen'
     : 'Avledet fra kontrakter';
 
@@ -229,8 +238,8 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
             </button>
           ))}
         </div>
-        <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold ${kildeLive ? 'bg-[#e7f4ec] text-[#1f7a45]' : 'bg-amber-50 text-amber-700'}`} data-testid="leieforhold-kilde">
-          <span className={`h-[5px] w-[5px] shrink-0 rounded-full ${kildeLive ? 'bg-[#1f7a45]' : 'bg-amber-500'}`} />
+        <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold ${!data && laster ? 'bg-[#f1efec] text-[#8a8278]' : kildeLive ? 'bg-[#e7f4ec] text-[#1f7a45]' : 'bg-amber-50 text-amber-700'}`} data-testid="leieforhold-kilde">
+          <span className={`h-[5px] w-[5px] shrink-0 rounded-full ${!data && laster ? 'animate-pulse bg-[#8a8278]' : kildeLive ? 'bg-[#1f7a45]' : 'bg-amber-500'}`} />
           {kildeTekst}
         </span>
         {data?.fetchedAt && (
@@ -242,13 +251,15 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
           <button onClick={() => hent(true)} title="Hent ferske tall fra plattformen" data-testid="leieforhold-oppdater" className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-[#999] shadow-[0_2px_10px_rgba(0,0,0,0.04)] transition-all hover:text-[#555]">
             <RefreshCw className={`h-4 w-4 ${laster ? 'animate-spin' : ''}`} />
           </button>
-          <a
-            href={`/api/admin/leieforhold/csv?key=${encodeURIComponent(apiKey)}`}
-            data-testid="leieforhold-csv"
-            className="flex h-9 items-center gap-1.5 rounded-full bg-white px-3.5 text-[12.5px] font-semibold text-[#555] shadow-[0_2px_10px_rgba(0,0,0,0.04)] transition-all hover:text-[#111]"
-          >
-            <Download className="h-3.5 w-3.5" /> CSV
-          </a>
+          {!readOnly && (
+            <a
+              href={`/api/admin/leieforhold/csv?key=${encodeURIComponent(apiKey)}`}
+              data-testid="leieforhold-csv"
+              className="flex h-9 items-center gap-1.5 rounded-full bg-white px-3.5 text-[12.5px] font-semibold text-[#555] shadow-[0_2px_10px_rgba(0,0,0,0.04)] transition-all hover:text-[#111]"
+            >
+              <Download className="h-3.5 w-3.5" /> CSV
+            </a>
+          )}
           <a
             href={`/api/admin/leieforhold/xlsx?key=${encodeURIComponent(apiKey)}`}
             data-testid="leieforhold-xlsx"
@@ -383,8 +394,31 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
         </div>
       )}
 
-      {/* ═══ Felleskostnad-panel (kun Økonomi-modus) ═══ */}
-      {modus === 'okonomi' && (
+      {/* ═══ Felleskostnader — kompakt lesestripe for investor, panel for admin ═══ */}
+      {modus === 'okonomi' && !kanRedigere && (
+        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-2xl bg-white px-4 py-2.5 shadow-[0_2px_16px_rgba(0,0,0,0.04)]" data-testid="leieforhold-felles-strip">
+          <span className="flex items-center gap-1.5 text-[12.5px] font-bold text-[#1a1a1a]" style={heading}>
+            <Coins className="h-3.5 w-3.5 text-[#9a6b1c]" /> Felleskostnader {kr(fellesTotal)}<span className="font-medium text-[#b5b5b5]">/mnd</span>
+          </span>
+          {okonomi.felles.length > 0 && (
+            <span className="truncate text-[11.5px] text-[#a3a3a3]">
+              {okonomi.felles.map((p) => `${p.navn} (${FORDELING_LABEL[p.fordeling] || 'likt per enhet'})`).join(' · ')}
+            </span>
+          )}
+          <button
+            onClick={() => setInklFelles((v) => !v)}
+            data-testid="leieforhold-felles-toggle"
+            className="ml-auto flex items-center gap-2 rounded-full bg-[#f8f7f5] px-3 py-1.5 text-[11.5px] font-semibold text-[#555] transition-colors hover:bg-[#f1efec]"
+            title="Slå av for å se rent dekningsbidrag (før felleskostnader)"
+          >
+            <span className={`relative h-4 w-7 rounded-full transition-colors ${inklFelles ? 'bg-[#1f7a45]' : 'bg-[#d8d4cd]'}`}>
+              <span className={`absolute top-[2px] h-3 w-3 rounded-full bg-white transition-all ${inklFelles ? 'left-[14px]' : 'left-[2px]'}`} />
+            </span>
+            Inkluder i margin
+          </button>
+        </div>
+      )}
+      {modus === 'okonomi' && kanRedigere && (
         <div className="mt-3 rounded-2xl bg-white p-4 shadow-[0_2px_16px_rgba(0,0,0,0.04)]" data-testid="leieforhold-felles-panel">
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-[12.5px] font-bold text-[#1a1a1a]" style={heading}>Felleskostnader</p>
@@ -552,7 +586,22 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
                 </tr>
               </thead>
               <tbody>
-                {filtrert.map((r, i) => {
+                {(() => { let idx = -1; return seksjoner.map((sek) => (
+                  <React.Fragment key={sek.key || 'alle'}>
+                    {sek.key && (
+                      <tr className="bg-[#fbfaf9]">
+                        <td colSpan={11} className="border-y border-black/[0.04] px-3.5 py-1.5">
+                          <div className="flex items-center gap-2">
+                            <span className="h-[6px] w-[6px] rounded-full" style={{ background: STATUS_STIL[sek.key].tekst }} />
+                            <span className="text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#8a8278]">{sek.key === 'vacant' ? 'Ledig' : sek.rader[0].status_label.replace(' (Annonsert)', '')}</span>
+                            <span className="text-[10.5px] tabular-nums text-[#c2beb8]">{sek.rader.length}</span>
+                            <span className="ml-auto text-[10.5px] font-semibold tabular-nums text-[#a3a3a3]">{kr(sek.rader.reduce((s, r) => s + (r.monthly_rent || 0), 0))}/mnd</span>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                    {sek.rader.map((r) => {
+                  idx += 1; const i = idx;
                   const erRom = r.unit_type === 'Rom i bofellesskap';
                   return (
                   <tr key={`${radNokkel(r)}-${i}`} className="border-b border-black/[0.035] transition-colors last:border-b-0 hover:bg-[#fafaf8]" data-testid={`leieforhold-rad-${i}`}>
@@ -578,6 +627,8 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
                   </tr>
                   );
                 })}
+                  </React.Fragment>
+                )); })()}
               </tbody>
               <tfoot>
                 <tr className="border-t border-black/[0.06] bg-[#fafaf8]">
@@ -595,7 +646,17 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
 
             {/* Mobil kortliste — utleie */}
             <div className="divide-y divide-black/[0.04] md:hidden" data-testid="leieforhold-kortliste">
-              {filtrert.map((r, i) => (
+              {(() => { let mIdx = -1; return seksjoner.map((sek) => (
+                <React.Fragment key={`m-${sek.key || 'alle'}`}>
+                  {sek.key && (
+                    <div className="flex items-center gap-2 bg-[#fbfaf9] px-4 py-1.5">
+                      <span className="h-[6px] w-[6px] rounded-full" style={{ background: STATUS_STIL[sek.key].tekst }} />
+                      <span className="text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#8a8278]">{sek.key === 'vacant' ? 'Ledig' : sek.rader[0].status_label.replace(' (Annonsert)', '')}</span>
+                      <span className="text-[10.5px] tabular-nums text-[#c2beb8]">{sek.rader.length}</span>
+                      <span className="ml-auto text-[10.5px] font-semibold tabular-nums text-[#a3a3a3]">{kr(sek.rader.reduce((s, r) => s + (r.monthly_rent || 0), 0))}/mnd</span>
+                    </div>
+                  )}
+                  {sek.rader.map((r) => { mIdx += 1; const i = mIdx; return (
                 <div key={`${radNokkel(r)}-${i}`} className="px-4 py-3.5 transition-colors active:bg-[#fafaf8]" data-testid={`leieforhold-kort-${i}`}>
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
@@ -628,7 +689,9 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
                     </div>
                   </div>
                 </div>
-              ))}
+                  ); })}
+                </React.Fragment>
+              )); })()}
               <div className="flex items-center justify-between bg-[#fafaf8] px-4 py-3">
                 <span className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#999]">Sum ({filtrert.length})</span>
                 <div className="text-right">
@@ -647,13 +710,28 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
               <table className="w-full min-w-[1050px] text-left" data-testid="leieforhold-okonomi-tabell">
               <thead>
                 <tr className="border-b border-black/[0.05]">
-                  {['Adresse', 'Type', 'Status', 'Honorar / mnd', 'Andel felles', 'Margin / mnd', 'Margin', 'CAC · engangs', 'Payback', ''].map((h, i) => (
+                  {[...['Adresse', 'Type', 'Status', 'Honorar / mnd', 'Andel felles', 'Margin / mnd', 'Margin', 'CAC · engangs', 'Payback'], ...(kanRedigere ? [''] : [])].map((h, i) => (
                     <th key={`${h}-${i}`} className={`px-3.5 py-2.5 text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#b5b5b5] ${i >= 3 && i <= 8 ? 'text-right' : ''}`}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {filtrert.map((r, i) => {
+                {(() => { let idx = -1; return seksjoner.map((sek) => (
+                  <React.Fragment key={sek.key || 'alle'}>
+                    {sek.key && (
+                      <tr className="bg-[#fbfaf9]">
+                        <td colSpan={kanRedigere ? 10 : 9} className="border-y border-black/[0.04] px-3.5 py-1.5">
+                          <div className="flex items-center gap-2">
+                            <span className="h-[6px] w-[6px] rounded-full" style={{ background: STATUS_STIL[sek.key].tekst }} />
+                            <span className="text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#8a8278]">{sek.key === 'vacant' ? 'Ledig' : sek.rader[0].status_label.replace(' (Annonsert)', '')}</span>
+                            <span className="text-[10.5px] tabular-nums text-[#c2beb8]">{sek.rader.length}</span>
+                            <span className="ml-auto text-[10.5px] font-semibold tabular-nums text-[#a3a3a3]">honorar {kr(sek.rader.reduce((s, r) => s + (r.fee_amount || 0), 0))}/mnd</span>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                    {sek.rader.map((r) => {
+                  idx += 1; const i = idx;
                   const erRom = r.unit_type === 'Rom i bofellesskap';
                   const andel = inklFelles ? (andelKart.get(radNokkel(r)) || 0) : 0;
                   const margin = (r.fee_amount || 0) - andel;
@@ -680,8 +758,8 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
                     <td className="whitespace-nowrap px-3.5 py-2.5 text-right text-[12.5px] tabular-nums text-[#777]">
                       {payback ? `${payback.toLocaleString('nb-NO', { maximumFractionDigits: 1 })} mnd` : '—'}
                     </td>
-                    <td className="w-10 px-2 py-2.5 text-right">
-                      {kanRedigere && (
+                    {kanRedigere && (
+                      <td className="w-10 px-2 py-2.5 text-right">
                         <button
                           onClick={() => setCacSkjema({ enhetId: radNokkel(r), adresse: r.address, cac: cac || '', notat })}
                           data-testid={`leieforhold-cac-rediger-${i}`}
@@ -690,11 +768,13 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
                         >
                           <Pencil className="h-3.5 w-3.5" />
                         </button>
-                      )}
-                    </td>
+                      </td>
+                    )}
                   </tr>
                   );
                 })}
+                  </React.Fragment>
+                )); })()}
               </tbody>
               <tfoot>
                 <tr className="border-t border-black/[0.06] bg-[#fafaf8]">
@@ -707,7 +787,7 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
                   </td>
                   <td />
                   <td className="px-3.5 py-2.5 text-right text-[12.5px] font-bold tabular-nums text-[#555]">{kr(filtrert.reduce((s, r) => s + cacFor(r), 0))}</td>
-                  <td colSpan={2} />
+                  <td colSpan={kanRedigere ? 2 : 1} />
                 </tr>
               </tfoot>
             </table>
@@ -715,7 +795,18 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
 
             {/* Mobil kortliste — økonomi */}
             <div className="divide-y divide-black/[0.04] md:hidden" data-testid="leieforhold-okonomi-kortliste">
-              {filtrert.map((r, i) => {
+              {(() => { let oIdx = -1; return seksjoner.map((sek) => (
+                <React.Fragment key={`o-${sek.key || 'alle'}`}>
+                  {sek.key && (
+                    <div className="flex items-center gap-2 bg-[#fbfaf9] px-4 py-1.5">
+                      <span className="h-[6px] w-[6px] rounded-full" style={{ background: STATUS_STIL[sek.key].tekst }} />
+                      <span className="text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#8a8278]">{sek.key === 'vacant' ? 'Ledig' : sek.rader[0].status_label.replace(' (Annonsert)', '')}</span>
+                      <span className="text-[10.5px] tabular-nums text-[#c2beb8]">{sek.rader.length}</span>
+                      <span className="ml-auto text-[10.5px] font-semibold tabular-nums text-[#a3a3a3]">honorar {kr(sek.rader.reduce((s, r) => s + (r.fee_amount || 0), 0))}/mnd</span>
+                    </div>
+                  )}
+                  {sek.rader.map((r) => {
+                oIdx += 1; const i = oIdx;
                 const andel = inklFelles ? (andelKart.get(radNokkel(r)) || 0) : 0;
                 const margin = (r.fee_amount || 0) - andel;
                 const cac = cacFor(r);
@@ -738,6 +829,8 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
                 </div>
                 );
               })}
+                </React.Fragment>
+              )); })()}
             </div>
           </>
         )}
