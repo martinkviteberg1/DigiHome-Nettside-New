@@ -11,9 +11,9 @@
 import React, { useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import {
-  ArrowRight, ArrowDown, Check, Sparkles, Home, Search, FileSignature, Banknote,
+  ArrowRight, ArrowDown, Check, Sparkles, Search, FileSignature, Banknote,
   ShieldCheck, Camera, Users, KeyRound, Wallet, MessageCircle, Phone, Loader2,
-  BadgeCheck, CalendarCheck, Star, Wrench, Plus, TrendingUp, Zap, Clock,
+  BadgeCheck, CalendarCheck, Star, Wrench, Plus, Zap, Clock,
 } from 'lucide-react';
 
 const heading = { fontFamily: 'var(--font-heading)' };
@@ -274,6 +274,19 @@ export default function NyForside() {
   const [sendt, setSendt] = useState(false);
   const [feil, setFeil] = useState('');
   const [åpenFaq, setÅpenFaq] = useState(0);
+  const [skrolt, setSkrolt] = useState(false);
+
+  /* Nav: transparent over heroen, glass først ved scroll. Myk ankerscroll. */
+  React.useEffect(() => {
+    const h = () => setSkrolt(window.scrollY > 24);
+    h();
+    window.addEventListener('scroll', h, { passive: true });
+    document.documentElement.style.scrollBehavior = 'smooth';
+    return () => {
+      window.removeEventListener('scroll', h);
+      document.documentElement.style.scrollBehavior = '';
+    };
+  }, []);
 
   const send = async (e) => {
     e.preventDefault();
@@ -303,8 +316,15 @@ export default function NyForside() {
   return (
     <main className="min-h-screen bg-[#faf9fe] antialiased" style={{ ...INKs, fontFamily: 'var(--font-body)' }} data-testid="ny-forside">
 
-      {/* ── Nav ── */}
-      <header className="fixed inset-x-0 top-0 z-50 border-b border-[#8b5cf6]/[0.07] bg-[#faf9fe]/85 backdrop-blur-xl">
+      {/* ── Nav: usynlig over heroen, glass ved scroll ── */}
+      <header
+        className={`fixed inset-x-0 top-0 z-50 transition-all duration-300 ${
+          skrolt
+            ? 'border-b border-[#8b5cf6]/[0.07] bg-[#faf9fe]/85 shadow-[0_10px_34px_-20px_rgba(90,60,180,0.35)] backdrop-blur-xl'
+            : 'border-b border-transparent bg-transparent'
+        }`}
+        data-testid="nav"
+      >
         <div className="mx-auto flex h-16 max-w-[1180px] items-center gap-8 px-5">
           <a href="/ny-forside" aria-label="DigiHome" className="flex items-center">
             <img src="/digihome-wordmark-ink.svg" alt="DigiHome" className="h-[24px] w-auto" />
@@ -354,14 +374,14 @@ export default function NyForside() {
               <button
                 onClick={tilKontakt}
                 data-testid="hero-cta"
-                className="flex h-12 items-center gap-2 rounded-full px-6 text-[15px] font-semibold text-white shadow-[0_16px_38px_-10px_rgba(109,40,217,0.6)] transition-all hover:brightness-110 active:scale-[0.97]"
+                className="flex h-12 items-center gap-2 rounded-full px-6 text-[15px] font-semibold text-white shadow-[0_16px_38px_-10px_rgba(109,40,217,0.6)] transition-all hover:-translate-y-0.5 hover:brightness-110 active:scale-[0.97]"
                 style={{ background: `linear-gradient(135deg, ${VIOLET_DYP}, ${VIOLET})` }}
               >
                 Få gratis leievurdering <ArrowRight className="h-4 w-4" />
               </button>
               <a
                 href="#slik"
-                className="flex h-12 items-center gap-2 rounded-full bg-white/90 px-6 text-[15px] font-semibold shadow-[0_2px_14px_rgba(90,60,180,0.12)] ring-1 ring-[#8b5cf6]/[0.1] transition-all hover:bg-white active:scale-[0.97]"
+                className="flex h-12 items-center gap-2 rounded-full bg-white/90 px-6 text-[15px] font-semibold shadow-[0_2px_14px_rgba(90,60,180,0.12)] ring-1 ring-[#8b5cf6]/[0.1] transition-all hover:-translate-y-0.5 hover:bg-white active:scale-[0.97]"
                 style={INKs}
               >
                 Slik fungerer det <ArrowDown className="h-4 w-4" style={{ color: MUTED }} />
@@ -658,7 +678,7 @@ export default function NyForside() {
           {FAQ.map(([sp, sv], i) => {
             const åpen = åpenFaq === i;
             return (
-              <div key={sp} className={`overflow-hidden rounded-2xl bg-white ring-1 transition-shadow ${åpen ? 'ring-[#8b5cf6]/[0.18] shadow-[0_20px_50px_-24px_rgba(90,60,180,0.35)]' : 'ring-[#8b5cf6]/[0.06] shadow-[0_10px_30px_-20px_rgba(90,60,180,0.2)]'}`}>
+              <div key={sp} className={`overflow-hidden rounded-2xl bg-white ring-1 transition-all ${åpen ? 'ring-[#8b5cf6]/[0.18] shadow-[0_20px_50px_-24px_rgba(90,60,180,0.35)]' : 'ring-[#8b5cf6]/[0.06] shadow-[0_10px_30px_-20px_rgba(90,60,180,0.2)] hover:ring-[#8b5cf6]/[0.14]'}`}>
                 <button
                   onClick={() => setÅpenFaq(åpen ? -1 : i)}
                   data-testid={`faq-${i}`}
@@ -687,7 +707,7 @@ export default function NyForside() {
       <section id="kontakt" className="mx-auto max-w-[1180px] scroll-mt-20 px-5 pb-20 sm:pb-24">
         <motion.div
           {...opp}
-          className="relative overflow-hidden rounded-[32px] px-6 py-12 text-center sm:px-12 sm:py-16"
+          className="relative overflow-hidden rounded-[32px] px-6 py-12 text-center ring-1 ring-white/[0.16] sm:px-12 sm:py-16"
           style={{ background: `linear-gradient(135deg, #5b21b6 0%, ${VIOLET_DYP} 40%, ${VIOLET} 75%, #a78bfa 100%)` }}
         >
           <div className="pointer-events-none absolute -left-20 -top-24 h-72 w-72 rounded-full bg-white/10 blur-2xl" />
