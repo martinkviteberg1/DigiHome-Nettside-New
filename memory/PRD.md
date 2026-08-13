@@ -500,3 +500,10 @@ Google Ads-styring via native REST API).
 - Seksjoner: hero m/ svevende kodebygde produktkort + maskot, tillitsstripe, 4-stegs «Slik fungerer det», bento (portal + leietaker-chat + 4 kort), trygghet m/ hjertemaskot, CTA-gradient m/ lead-skjema (POST /api/leads, source: 'ny-forside'), footer-scene m/ gigantmaskot + stor wordmark.
 - Filer: /app/app/ny-forside/page.js (metadata, noindex inntil promotering), /app/components/landing/NyForside.js, /app/scripts/generer-landing-bilder.py.
 - Status: skjermbildeverifisert desktop + mobil (0 px overflow), lead-skjema E2E-testet (QA-lead ryddet). Sitatkortet «Endelig helt stressfritt» er en plassholder til ekte kundesitat foreligger.
+
+## Landingsside v2 — lilla univers (feb 2026)
+- /ny-forside flyttet til DigiHome-lilla (Unloopa-nivå): lavendel-scener, violet-gradient CTA (#6d28d9→#8b5cf6), ekte logoer.
+- Ekte assets: /digihome-wordmark-ink.svg (nav), /digihome-wordmark-white.svg (gigant-footer), partnerlogoer FINN/BankID/Airbnb/Booking/Creditsafe (grayscale-bånd «I godt selskap»).
+- 12 AI-genererte maskotbilder (lilla tak): vink/nokkel/titter/hjerte + lupe/foto/kontrakt/mynt (steg-klistremerker) + duo (CTA-hjørne) + sovende maskot-scene («Du kan faktisk slappe av»-bånd) + hero/footer-scener. Alle frilagt med rembg (*-fri.png).
+- Nye seksjoner: marquee-tillitsstripe, partnerlogo-bånd, stats-bånd (2 min/1. hver mnd/100 % digital), portal-utstilling i nettleserramme, FAQ-accordion (5 sp), pust-ut-scene.
+- Verifisert: desktop-screenshots alle seksjoner, mobil 0 px overflow, FAQ/marquee/hover fungerer. Skript: scripts/generer-landing-bilder-lilla*.py.
