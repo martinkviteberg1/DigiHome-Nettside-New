@@ -136,7 +136,7 @@ const SECTION_TITLES = {
   playbook: { t: 'Playbook', s: 'Head of Marketing-strategi · Utleiemegleren-analyse · 90-dagersplan · budsjettmatematikk' },
   innsikt: { t: 'Innsikt', s: 'Førsteparts analyse · cookieless · GDPR-trygt' },
   okonomi: { t: 'Økonomi', s: 'Resultat & likviditet · honorar (prosent av leie) · burn rate & runway' },
-  leieforhold: { t: 'Leieforhold & inntekter', s: 'Hele porteføljen — faktisk, forventet og estimert leie · honorar & netto · Excel-eksport' },
+  leieforhold: { t: 'Leieforhold & inntekter', s: 'Inntektstrappen — leie i dag, sikret, pipeline og ledig · honorar & netto · Excel-eksport' },
   budsjett: { t: 'Budsjett', s: 'Årsbudsjett per kategori/måned — automatisk mot faktisk fra Økonomi · forslag fra porteføljen' },
   saker: { t: 'Saker', s: 'Internt sakssystem — fang, fordel og følg opp saker til de er ferdige. N = ny sak' },
   moter: { t: 'Møter', s: 'Styremøter & ledermøter — agenda, referat, vedtak og aksjonspunkter som blir saker' },

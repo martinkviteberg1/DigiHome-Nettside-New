@@ -25,12 +25,13 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import {
   KeyRound, Search, Download, FileSpreadsheet, RefreshCw, ChevronDown, ChevronRight,
   Check, AlertTriangle, Megaphone, Coins, Plus, Pencil, Trash2, X,
-  FileText, ExternalLink, SlidersHorizontal, CalendarClock, Settings2,
+  FileText, ExternalLink, SlidersHorizontal, CalendarClock, Settings2, Eye,
   Pause, Play,
 } from 'lucide-react';
 import {
   TOM_FILTER, anvendScenario, filtrerRader, antallAktiveFiltre, harFilter,
   tilQuery, beregnTotals, aktiveKostnader, fordelKostnader, radNokkel,
+  visGruppe, annonsertSplitt,
 } from '@/lib/leieforhold-filter';
 
 const heading = { fontFamily: 'var(--font-heading)' };
@@ -47,14 +48,16 @@ const ETIKETT = 'text-[10px] font-semibold uppercase tracking-[0.08em] text-[#a8
 const HODE_CELLE = 'sticky top-0 z-10 bg-white/85 backdrop-blur-md shadow-[inset_0_-1px_0_rgba(0,0,0,0.06)]';
 const SUM_CELLE = 'sticky bottom-0 z-10 bg-[#fbfaf9]/85 backdrop-blur-md shadow-[inset_0_1px_0_rgba(0,0,0,0.08)]';
 
-// Statuschip-farger — eksakt fra plattformens spec.
+// Statuschip-farger — inntektstrappens nivåer (annonsert = pipeline, teal).
 const STATUS_STIL = {
   leased: { bg: '#e7f4ec', tekst: '#1f7a45' },
   future: { bg: '#e8eefc', tekst: '#3757c4' },
   signing: { bg: '#fdf3e0', tekst: '#9a6b1c' },
+  advertised: { bg: '#e4f2f4', tekst: '#0e7490' },
   vacant: { bg: '#f1ece4', tekst: '#8a8278' },
 };
-const GRUPPE_LABEL = { leased: 'Utleid', future: 'Fremtidig', signing: 'Under signering', vacant: 'Ledig' };
+const GRUPPE_LABEL = { leased: 'Utleid', future: 'Fremtidig', signing: 'Under signering', advertised: 'Annonsert', vacant: 'Ledig' };
+const SEKSJON_LABEL = { leased: 'Utleid', future: 'Fremtidig innflytting', signing: 'Under signering', advertised: 'Annonsert — pipeline', vacant: 'Ledig · uten annonse' };
 const FORDELING_LABEL = { alle: 'likt per enhet', utleide: 'kun utleide', honorar: 'etter honorar' };
 const KATEGORI_LABEL = { lonn: 'Lønn', markedsforing: 'Markedsføring', programvare: 'Programvare', annet: 'Annet' };
 const INNTEKT_VALG = [
@@ -79,11 +82,13 @@ const SORTERINGER = [
 ];
 
 function StatusChip({ row }) {
-  const s = STATUS_STIL[row.group] || STATUS_STIL.vacant;
+  const vg = visGruppe(row);
+  const s = STATUS_STIL[vg] || STATUS_STIL.vacant;
+  const label = vg === 'advertised' ? 'Annonsert' : row.status_label;
   return (
     <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2 py-[3px] text-[10.5px] font-semibold" style={{ background: s.bg, color: s.tekst }}>
       <span className="h-[5px] w-[5px] rounded-full" style={{ background: s.tekst }} />
-      {row.status_label}
+      {label}
       {row.advertised && <Megaphone className="h-3 w-3 opacity-70" />}
       {row._scenario && (
         <span title={row._scenario === 'inn' ? 'Scenario: innflyttet innen valgt dato' : 'Scenario: flyttet ut innen valgt dato'}>
@@ -177,7 +182,7 @@ function SeksjonsRad({ nokkel, rader, colSpan, aggregat }) {
       <td colSpan={colSpan} className="border-y border-black/[0.04] px-3 py-[5px]">
         <div className="flex items-center gap-2">
           <span className="h-[6px] w-[6px] rounded-full" style={{ background: STATUS_STIL[nokkel].tekst }} />
-          <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#8a8278]">{nokkel === 'vacant' ? 'Ledig' : rader[0].status_label.replace(' (Annonsert)', '')}</span>
+          <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#8a8278]">{SEKSJON_LABEL[nokkel] || nokkel}</span>
           <span className="text-[10px] tabular-nums text-[#c2beb8]">{rader.length}</span>
           <span className="ml-auto text-[10px] font-medium tabular-nums text-[#a8a29a]">{aggregat}</span>
         </div>
@@ -192,7 +197,7 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
   const [feil, setFeil] = useState('');
   const [sok, setSok] = useState('');
   const [sortering, setSortering] = useState('standard');
-  const [sortOpen, setSortOpen] = useState(false);
+  const [visOpen, setVisOpen] = useState(false); // «Vis»-meny: sortering + scenario-dato
   const [modus, setModus] = useState(erInvestor ? 'okonomi' : 'utleie');
   const sokRef = useRef(null);
 
@@ -203,7 +208,6 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
   const [eksportOpen, setEksportOpen] = useState(false);
   // Fase 4: scenario-dato («hvordan ser det ut om 1 måned?»)
   const [scenario, setScenario] = useState('');
-  const [scenarioOpen, setScenarioOpen] = useState(false);
   const [egenDato, setEgenDato] = useState('');
 
   // Enhetsøkonomi-data (faste kostnader + CAC per enhet)
@@ -267,11 +271,11 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
   useEffect(() => { hent(); hentOkonomi(); }, [hent, hentOkonomi]);
 
   useEffect(() => {
-    if (!sortOpen && !scenarioOpen && !eksportOpen) return;
-    const lukk = () => { setSortOpen(false); setScenarioOpen(false); setEksportOpen(false); };
+    if (!visOpen && !eksportOpen) return;
+    const lukk = () => { setVisOpen(false); setEksportOpen(false); };
     window.addEventListener('click', lukk);
     return () => window.removeEventListener('click', lukk);
-  }, [sortOpen, scenarioOpen, eksportOpen]);
+  }, [visOpen, eksportOpen]);
 
   const rows = data?.rows || [];
   const totals = data?.totals || {};
@@ -288,17 +292,17 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
   }, [scenarioRows, filtre, sok, sortering]);
 
   const grupper = useMemo(() => {
-    const t = { alle: scenarioRows.length, leased: 0, future: 0, signing: 0, vacant: 0 };
-    scenarioRows.forEach((r) => { t[r.group] = (t[r.group] || 0) + 1; });
+    const t = { alle: scenarioRows.length, leased: 0, future: 0, signing: 0, advertised: 0, vacant: 0 };
+    scenarioRows.forEach((r) => { const g = visGruppe(r); t[g] = (t[g] || 0) + 1; });
     return t;
   }, [scenarioRows]);
 
   // Porteføljefordeling (etter leiebeløp) — tynn segmentbar i toppen av flaten
   const fordelingSegmenter = useMemo(() => {
-    const sum = { leased: 0, future: 0, signing: 0, vacant: 0 };
-    scenarioRows.forEach((r) => { sum[r.group] = (sum[r.group] || 0) + (r.monthly_rent || 0); });
+    const sum = { leased: 0, future: 0, signing: 0, advertised: 0, vacant: 0 };
+    scenarioRows.forEach((r) => { const g = visGruppe(r); sum[g] = (sum[g] || 0) + (r.monthly_rent || 0); });
     const tot = Object.values(sum).reduce((s, v) => s + v, 0) || 1;
-    return ['leased', 'future', 'signing', 'vacant']
+    return ['leased', 'future', 'signing', 'advertised', 'vacant']
       .filter((k) => sum[k] > 0)
       .map((k) => ({ k, pct: (sum[k] / tot) * 100, v: sum[k] }));
   }, [scenarioRows]);
@@ -316,10 +320,20 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
   // Linear-stil: grupper radene i statusseksjoner ved standardsortering.
   const seksjoner = useMemo(() => {
     if (sortering !== 'standard' || sok.trim()) return [{ key: null, rader: filtrert }];
-    return ['leased', 'future', 'signing', 'vacant']
-      .map((g) => ({ key: g, rader: filtrert.filter((r) => r.group === g) }))
+    return ['leased', 'future', 'signing', 'advertised', 'vacant']
+      .map((g) => ({ key: g, rader: filtrert.filter((r) => visGruppe(r) === g) }))
       .filter((s) => s.rader.length);
   }, [filtrert, sortering, sok]);
+
+  /* ── Inntektstrappen: annonsert-splitt, pipeline og sikret leie ──────────
+     Annonserte ledige enheter er PIPELINE (forventet, usignert) — de teller
+     aldri i «sikret», men skilles fra passiv ledighet. */
+  const annonsert = useMemo(() => annonsertSplitt(filtrert), [filtrert]);
+  const sikretLeie = (visTotals.actual_rent || 0) + (visTotals.expected_rent || 0);
+  const pipelineLeie = (visTotals.pending_rent || 0) + annonsert.leie;
+  const pipelineAntall = (visTotals.signing || 0) + annonsert.antall;
+  const ledigLeie = Math.max(0, (visTotals.estimate_rent || 0) - annonsert.leie);
+  const ledigAntall = Math.max(0, (visTotals.vacant || 0) - annonsert.antall);
 
   /* ── Enhetsøkonomi-beregninger (faste kostnader aktive på scenario-datoen) ── */
   const fellesAktive = useMemo(() => aktiveKostnader(okonomi.felles, scenario), [okonomi.felles, scenario]);
@@ -434,11 +448,12 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
     : data?.source === 'units-contracts' ? 'Live fra plattformen'
     : 'Avledet fra kontrakter';
 
+  // Inntektstrappen i KPI-stripen: I dag → Kommende (= sikret) → Pipeline → Ledig
   const KPI = [
-    { id: 'faktisk', l: 'Faktisk leie / mnd', v: visTotals.actual_rent, antall: visTotals.leased, farge: '#1f7a45' },
-    { id: 'forventet', l: 'Forventet · signert', v: visTotals.expected_rent, antall: visTotals.future, farge: '#3757c4' },
-    { id: 'under', l: 'Under signering', v: visTotals.pending_rent, antall: visTotals.signing, farge: '#9a6b1c' },
-    { id: 'ledig', l: 'Ledig · estimat', v: visTotals.estimate_rent, antall: visTotals.vacant, farge: '#8a8278' },
+    { id: 'faktisk', l: 'Leie i dag', v: visTotals.actual_rent, farge: '#1f7a45', sub: `${visTotals.leased ?? 0} ${visTotals.leased === 1 ? 'enhet betaler' : 'enheter betaler'} nå` },
+    { id: 'forventet', l: 'Kommende · signert', v: visTotals.expected_rent, farge: '#3757c4', sub: `${visTotals.future ?? 0} sign. → sikret ${kr(sikretLeie)}` },
+    { id: 'under', l: 'Pipeline', v: pipelineLeie, farge: '#0e7490', sub: `${visTotals.signing ?? 0} under signering · ${annonsert.antall} annonsert` },
+    { id: 'ledig', l: 'Ledig · uten annonse', v: ledigLeie, farge: '#8a8278', sub: `${ledigAntall} ${ledigAntall === 1 ? 'enhet' : 'enheter'} · estimert nivå` },
   ];
 
   // KPI-celle — rolig, tett, tabulære tall
@@ -463,8 +478,8 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
       {/* ═══════════ ÉN SAMLET ARBEIDSFLATE ═══════════ */}
       <div className="rounded-xl border border-black/[0.07] bg-white shadow-[0_1px_2px_rgba(28,25,23,0.04),0_12px_32px_-16px_rgba(28,25,23,0.10)]">
 
-        {/* ── Topplinje: modus · kilde · oppdatert · handlinger ── */}
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2.5 sm:px-4">
+        {/* ── ÉN verktøylinje (Linear-stil): kontekst → søk/hurtigfiltre → visning/eksport ── */}
+        <div className="flex flex-wrap items-center gap-1.5 px-3 py-2 sm:px-4">
           <div className="flex h-8 items-center rounded-[9px] bg-[#f1efeb] p-[3px]">
             {[['utleie', 'Utleie'], ['okonomi', 'Økonomi']].map(([k, l]) => (
               <button
@@ -477,45 +492,141 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
               </button>
             ))}
           </div>
-          <span className="hidden h-4 w-px bg-black/[0.07] sm:block" />
-          <span className="flex items-center gap-1.5 text-[11px] font-medium text-[#78716c]" data-testid="leieforhold-kilde">
-            <span className="relative flex h-[6px] w-[6px] shrink-0">
-              {kildeLive && <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#1f9a53] opacity-40" style={{ animationDuration: '2.4s' }} />}
-              <span className={`relative inline-flex h-[6px] w-[6px] rounded-full ${!data && laster ? 'animate-pulse bg-[#a8a29a]' : kildeLive ? 'bg-[#1f9a53]' : 'bg-amber-500'}`} />
-            </span>
-            {kildeTekst}
-          </span>
-          {data?.fetchedAt && (
-            <span className="text-[11px] text-[#b3ada3]" title={data.cached ? 'Hurtiglagret svar — trykk oppdater for ferske tall' : 'Hentet direkte fra plattformen'}>
-              Oppdatert {new Date(data.fetchedAt).toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit' })}
-            </span>
-          )}
-          <div className="ml-auto flex items-center gap-1.5">
-            <button onClick={() => hent(true)} title="Hent ferske tall fra plattformen" data-testid="leieforhold-oppdater" className="flex h-7 w-7 items-center justify-center rounded-[7px] border border-black/[0.08] bg-white text-[#8a857c] transition-colors hover:bg-[#f7f6f3] hover:text-[#1c1917]">
-              <RefreshCw className={`h-3.5 w-3.5 ${laster ? 'animate-spin' : ''}`} />
+          <span className="mx-0.5 hidden h-4 w-px bg-black/[0.07] sm:block" />
+          <div className="relative order-last w-full sm:order-none sm:w-auto">
+            <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#b3ada3]" />
+            <input
+              ref={sokRef}
+              value={sok} onChange={(e) => setSok(e.target.value)}
+              placeholder="Søk adresse, eier, leietaker …"
+              data-testid="leieforhold-sok"
+              className="h-7 w-full rounded-[7px] border border-black/[0.08] bg-[#faf9f7] pl-8 pr-7 text-[12.5px] outline-none transition-all placeholder:text-[#b3ada3] focus:border-[#8b5cf6]/40 focus:bg-white focus:ring-2 focus:ring-[#8b5cf6]/10 sm:w-[210px]"
+            />
+            <kbd className="pointer-events-none absolute right-2 top-1/2 hidden -translate-y-1/2 rounded-[4px] border border-black/[0.08] bg-white px-[5px] py-[1px] text-[9.5px] font-semibold text-[#b3ada3] sm:block">/</kbd>
+          </div>
+          <div className="order-last flex w-full items-center gap-1 overflow-x-auto no-scrollbar lg:order-none lg:w-auto">
+            <button
+              onClick={() => setFiltre((f) => ({ ...f, status: [] }))}
+              data-testid="leieforhold-filter-alle"
+              className={`flex h-7 shrink-0 items-center gap-1.5 rounded-[7px] px-2.5 text-[12px] transition-all ${!filtre.status.length ? 'bg-[#1c1917] font-medium text-white' : 'border border-black/[0.08] bg-white font-medium text-[#78716c] hover:bg-[#f7f6f3]'}`}
+            >
+              Alle
+              <span className={`tabular-nums text-[10px] ${!filtre.status.length ? 'text-white/50' : 'text-[#c2beb8]'}`}>{grupper.alle ?? 0}</span>
             </button>
-            {!readOnly && (
-              <a
-                href={eksportUrl('csv', true)}
-                data-testid="leieforhold-csv"
-                title={aktivFiltrering || scenario ? `Eksporterer gjeldende visning (${filtrert.length} enheter)` : 'Eksporterer hele porteføljen'}
-                className={KNAPP_GHOST}
+            {[['leased', GRUPPE_LABEL.leased], ['future', GRUPPE_LABEL.future], ['signing', GRUPPE_LABEL.signing], ['advertised', GRUPPE_LABEL.advertised], ['vacant', GRUPPE_LABEL.vacant]].map(([k, l]) => (
+              <button
+                key={k}
+                onClick={() => toggleFilter('status', k)}
+                data-testid={`leieforhold-filter-${k}`}
+                title="Flervalg — klikk for å slå av/på"
+                className={`flex h-7 shrink-0 items-center gap-1.5 rounded-[7px] px-2.5 text-[12px] transition-all ${filtre.status.includes(k) ? 'bg-[#1c1917] font-medium text-white' : 'border border-black/[0.08] bg-white font-medium text-[#78716c] hover:bg-[#f7f6f3]'}`}
               >
-                <Download className="h-3.5 w-3.5" /> CSV
-              </a>
-            )}
-            {(aktivFiltrering || scenario) ? (
-              <div className="relative">
-                <button
-                  onClick={(e) => { e.stopPropagation(); setEksportOpen((o) => !o); }}
-                  data-testid="leieforhold-xlsx"
-                  className={KNAPP_PRIMAER}
-                >
-                  <FileSpreadsheet className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Excel</span>
-                  <ChevronDown className={`h-3 w-3 opacity-60 transition-transform ${eksportOpen ? 'rotate-180' : ''}`} />
-                </button>
-                {eksportOpen && (
-                  <div className={`absolute right-0 top-full z-30 mt-1 w-[276px] ${MENY}`} data-testid="leieforhold-eksport-meny" onClick={(e) => e.stopPropagation()}>
+                <span className="h-[5px] w-[5px] rounded-full" style={{ background: filtre.status.includes(k) ? '#fff' : STATUS_STIL[k].tekst, opacity: filtre.status.includes(k) ? 0.7 : 1 }} />
+                {l}
+                <span className={`tabular-nums text-[10px] ${filtre.status.includes(k) ? 'text-white/50' : 'text-[#c2beb8]'}`}>{grupper[k] ?? 0}</span>
+              </button>
+            ))}
+          </div>
+          <div className="ml-auto flex items-center gap-1.5">
+            {/* Synk-status + oppdater i ETT: dot (live/ping) + tid — klikk henter ferskt */}
+            <button
+              onClick={() => hent(true)}
+              data-testid="leieforhold-oppdater"
+              title={`${kildeTekst}${data?.fetchedAt ? ` · oppdatert ${new Date(data.fetchedAt).toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit' })}` : ''} — klikk for å hente ferske tall`}
+              className="group flex h-7 items-center gap-1.5 rounded-[7px] border border-black/[0.08] bg-white px-2 text-[11px] font-medium text-[#8a857c] shadow-[0_1px_2px_rgba(28,25,23,0.04)] transition-colors hover:bg-[#f7f6f3] hover:text-[#1c1917]"
+            >
+              <span className="relative flex h-[6px] w-[6px] shrink-0" data-testid="leieforhold-kilde">
+                {kildeLive && <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#1f9a53] opacity-40" style={{ animationDuration: '2.4s' }} />}
+                <span className={`relative inline-flex h-[6px] w-[6px] rounded-full ${!data && laster ? 'animate-pulse bg-[#a8a29a]' : kildeLive ? 'bg-[#1f9a53]' : 'bg-amber-500'}`} />
+              </span>
+              {data?.fetchedAt && (
+                <span className="hidden tabular-nums xl:inline">{new Date(data.fetchedAt).toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit' })}</span>
+              )}
+              <RefreshCw className={`h-3 w-3 opacity-50 transition-opacity group-hover:opacity-100 ${laster ? 'animate-spin' : ''}`} />
+            </button>
+            <button
+              onClick={() => setFilterOpen(true)}
+              data-testid="leieforhold-filter-knapp"
+              className={`flex h-7 items-center gap-1.5 rounded-[7px] border px-2.5 text-[12px] font-medium transition-all ${antallFiltre ? 'border-[#8b5cf6]/25 bg-[#f5f1fd] text-[#6d28d9]' : 'border-black/[0.08] bg-white text-[#78716c] shadow-[0_1px_2px_rgba(28,25,23,0.04)] hover:bg-[#f7f6f3] hover:text-[#1c1917]'}`}
+            >
+              <SlidersHorizontal className="h-3.5 w-3.5" /> Filter
+              {antallFiltre > 0 && (
+                <span className="flex h-[15px] min-w-[15px] items-center justify-center rounded-full bg-[#6d28d9] px-1 text-[9.5px] font-bold text-white">{antallFiltre}</span>
+              )}
+            </button>
+            {/* «Vis»-meny (Linear Display): sortering + per dato-scenario samlet */}
+            <div className="relative">
+              <button
+                onClick={(e) => { e.stopPropagation(); setVisOpen((o) => !o); setEksportOpen(false); }}
+                data-testid="leieforhold-vis-knapp"
+                title="Sortering og «per dato»-scenario"
+                className={`flex h-7 items-center gap-1.5 rounded-[7px] border px-2.5 text-[12px] font-medium transition-all ${scenario ? 'border-amber-300/50 bg-amber-50 text-amber-700' : 'border-black/[0.08] bg-white text-[#78716c] shadow-[0_1px_2px_rgba(28,25,23,0.04)] hover:bg-[#f7f6f3] hover:text-[#1c1917]'}`}
+              >
+                <Eye className="h-3.5 w-3.5" /> Vis
+                {(scenario || sortering !== 'standard') && (
+                  <span className={`h-[5px] w-[5px] rounded-full ${scenario ? 'bg-amber-500' : 'bg-[#8b5cf6]'}`} />
+                )}
+                <ChevronDown className={`h-3 w-3 opacity-50 transition-transform ${visOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {visOpen && (
+                <div className={`absolute right-0 top-full z-30 mt-1 w-[256px] ${MENY}`} data-testid="leieforhold-vis-meny" onClick={(e) => e.stopPropagation()}>
+                  <p className={`px-2.5 pb-1 pt-1.5 ${ETIKETT}`}>Sortering</p>
+                  {SORTERINGER.map((s) => (
+                    <button
+                      key={s.k}
+                      onClick={() => { setSortering(s.k); setVisOpen(false); }}
+                      className={`${MENY_PUNKT} ${s.k === sortering ? 'bg-[#f5f1fd] font-medium text-[#6d28d9]' : 'text-[#57534e] hover:bg-[#f7f6f3]'}`}
+                    >
+                      {s.l}
+                      {s.k === sortering && <Check className="h-3.5 w-3.5" />}
+                    </button>
+                  ))}
+                  <div className="mt-1 border-t border-black/[0.05] pt-1.5">
+                    <p className={`px-2.5 pb-1 ${ETIKETT}`}>Per dato — scenario</p>
+                    {[['', 'I dag'], [plussMnd(1), 'Om 1 måned'], [plussMnd(3), 'Om 3 måneder']].map(([v, l]) => (
+                      <button
+                        key={l}
+                        onClick={() => { setScenario(v); setVisOpen(false); }}
+                        className={`${MENY_PUNKT} ${scenario === v ? 'bg-amber-50 font-medium text-amber-700' : 'text-[#57534e] hover:bg-[#f7f6f3]'}`}
+                      >
+                        {l}{v ? <span className="text-[10.5px] text-[#b8b2a9]">{dato(v)}</span> : scenario === '' ? <Check className="h-3.5 w-3.5" /> : null}
+                      </button>
+                    ))}
+                    <div className="px-2.5 pb-1.5 pt-1">
+                      <div className="flex items-center gap-1.5">
+                        <input
+                          type="date" min={imorgen()} value={egenDato}
+                          onChange={(e) => setEgenDato(e.target.value)}
+                          data-testid="leieforhold-scenario-dato"
+                          className="h-7 flex-1 rounded-[6px] border border-black/[0.08] bg-white px-2 text-[12px] outline-none focus:border-amber-400/60"
+                        />
+                        <button
+                          onClick={() => { if (egenDato && egenDato > tilIso(new Date())) { setScenario(egenDato); setVisOpen(false); } }}
+                          disabled={!egenDato || egenDato <= tilIso(new Date())}
+                          data-testid="leieforhold-scenario-bruk"
+                          className="flex h-7 items-center rounded-[6px] bg-[#141311] px-2.5 text-[11.5px] font-medium text-white transition-all hover:bg-black disabled:opacity-40"
+                        >
+                          Bruk
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+            {/* Eksport-meny: Excel (filtrert/alt) + CSV i én knapp */}
+            <div className="relative">
+              <button
+                onClick={(e) => { e.stopPropagation(); setEksportOpen((o) => !o); setVisOpen(false); }}
+                data-testid="leieforhold-xlsx"
+                className={KNAPP_PRIMAER}
+              >
+                <FileSpreadsheet className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Eksport</span>
+                <ChevronDown className={`h-3 w-3 opacity-60 transition-transform ${eksportOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {eksportOpen && (
+                <div className={`absolute right-0 top-full z-30 mt-1 w-[280px] ${MENY}`} data-testid="leieforhold-eksport-meny" onClick={(e) => e.stopPropagation()}>
+                  {(aktivFiltrering || scenario) && (
                     <a
                       href={eksportUrl('xlsx', true)}
                       onClick={() => setEksportOpen(false)}
@@ -524,30 +635,43 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
                     >
                       <SlidersHorizontal className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#8b5cf6]" />
                       <span className="min-w-0">
-                        <span className="block text-[12.5px] font-medium text-[#1c1917]">Gjeldende visning</span>
+                        <span className="block text-[12.5px] font-medium text-[#1c1917]">Excel — gjeldende visning</span>
                         <span className="block text-[10.5px] text-[#a8a29a]">{filtrert.length} enheter · filter{scenario ? ' + scenario' : ''} følger med</span>
                       </span>
                     </a>
-                    <a
-                      href={eksportUrl('xlsx', false)}
-                      onClick={() => setEksportOpen(false)}
-                      className="flex w-full items-start gap-2.5 rounded-[6px] px-2.5 py-2 text-left transition-colors hover:bg-[#f7f6f3]"
-                      data-testid="leieforhold-eksport-alt"
-                    >
-                      <FileSpreadsheet className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#a8a29a]" />
-                      <span className="min-w-0">
-                        <span className="block text-[12.5px] font-medium text-[#1c1917]">Hele porteføljen</span>
-                        <span className="block text-[10.5px] text-[#a8a29a]">{rows.length} enheter · uten filter og scenario</span>
-                      </span>
-                    </a>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <a href={eksportUrl('xlsx', false)} data-testid="leieforhold-xlsx" className={KNAPP_PRIMAER}>
-                <FileSpreadsheet className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Excel</span>
-              </a>
-            )}
+                  )}
+                  <a
+                    href={eksportUrl('xlsx', false)}
+                    onClick={() => setEksportOpen(false)}
+                    className="flex w-full items-start gap-2.5 rounded-[6px] px-2.5 py-2 text-left transition-colors hover:bg-[#f7f6f3]"
+                    data-testid="leieforhold-eksport-alt"
+                  >
+                    <FileSpreadsheet className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#1f9a53]" />
+                    <span className="min-w-0">
+                      <span className="block text-[12.5px] font-medium text-[#1c1917]">Excel — hele porteføljen</span>
+                      <span className="block text-[10.5px] text-[#a8a29a]">{rows.length} enheter · Oversikt-ark + levende formler</span>
+                    </span>
+                  </a>
+                  {!readOnly && (
+                    <>
+                      <div className="my-1 border-t border-black/[0.05]" />
+                      <a
+                        href={eksportUrl('csv', true)}
+                        onClick={() => setEksportOpen(false)}
+                        className="flex w-full items-start gap-2.5 rounded-[6px] px-2.5 py-2 text-left transition-colors hover:bg-[#f7f6f3]"
+                        data-testid="leieforhold-csv"
+                      >
+                        <Download className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#a8a29a]" />
+                        <span className="min-w-0">
+                          <span className="block text-[12.5px] font-medium text-[#1c1917]">CSV — gjeldende visning</span>
+                          <span className="block text-[10.5px] text-[#a8a29a]">{aktivFiltrering || scenario ? `${filtrert.length} enheter · rådata` : 'hele porteføljen · rådata'}</span>
+                        </span>
+                      </a>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -559,7 +683,7 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
                 key={s.k}
                 title={`${GRUPPE_LABEL[s.k]} · ${kr(s.v)}/mnd (${Math.round(s.pct)} %)`}
                 className="rounded-full transition-all duration-700"
-                style={{ width: `${s.pct}%`, background: STATUS_STIL[s.k].tekst, opacity: s.k === 'vacant' ? 0.45 : 0.9 }}
+                style={{ width: `${s.pct}%`, background: STATUS_STIL[s.k].tekst, opacity: s.k === 'vacant' ? 0.4 : s.k === 'advertised' ? 0.8 : 0.9 }}
               />
             ))}
           </div>
@@ -577,7 +701,7 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
                 <p className="mt-1 text-[17px] font-semibold tabular-nums tracking-[-0.01em] text-[#1c1917]" style={heading}>
                   {laster ? '…' : <TallOpp verdi={s.v} />}
                 </p>
-                <p className="mt-[1px] text-[10.5px] text-[#b8b2a9]">{s.antall ?? 0} {s.antall === 1 ? 'enhet' : 'enheter'}</p>
+                <p className="mt-[1px] truncate text-[10.5px] text-[#b8b2a9]">{s.sub}</p>
               </KpiCelle>
             ))}
             <KpiCelle testid="leieforhold-kpi-honorar">
@@ -589,7 +713,7 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
                 {laster ? '…' : <TallOpp verdi={visTotals.fee} />}
               </p>
               <p className="mt-[1px] truncate text-[10.5px] text-[#b8b2a9]">
-                garantert {kr(visTotals.fee_garantert ?? visTotals.fee)} · estimert {kr(visTotals.fee_estimert ?? 0)}
+                sikret {kr(visTotals.fee_garantert ?? visTotals.fee)} · potensial {kr(visTotals.fee_total ?? visTotals.fee)}
               </p>
             </KpiCelle>
             <div className="flex items-center gap-3 px-4 py-2.5">
@@ -611,7 +735,7 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
                 <p className={`truncate ${ETIKETT}`}>Honorar / mnd</p>
               </div>
               <p className="mt-1 text-[17px] font-semibold tabular-nums tracking-[-0.01em]" style={{ ...heading, color: '#7c3aed' }}>{laster ? '…' : <TallOpp verdi={visTotals.fee} />}</p>
-              <p className="mt-[1px] truncate text-[10.5px] text-[#b8b2a9]">realisert · garantert {kr(visTotals.fee_garantert ?? visTotals.fee)}</p>
+              <p className="mt-[1px] truncate text-[10.5px] text-[#b8b2a9]">i dag · sikret {kr(visTotals.fee_garantert ?? visTotals.fee)}</p>
             </KpiCelle>
             <KpiCelle testid="leieforhold-kpi-felles">
               <div className="flex items-center gap-1.5">
@@ -704,124 +828,6 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
             </div>
           </div>
         )}
-
-        {/* ── Verktøylinje: søk «/» · statusfiltre · filter · scenario · sortering ── */}
-        <div className="flex flex-wrap items-center gap-1.5 border-t border-black/[0.05] px-3 py-2 sm:px-4">
-          <div className="relative w-full sm:w-auto">
-            <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#b3ada3]" />
-            <input
-              ref={sokRef}
-              value={sok} onChange={(e) => setSok(e.target.value)}
-              placeholder="Søk adresse, eier, leietaker …"
-              data-testid="leieforhold-sok"
-              className="h-7 w-full rounded-[7px] border border-black/[0.08] bg-[#faf9f7] pl-8 pr-7 text-[12.5px] outline-none transition-all placeholder:text-[#b3ada3] focus:border-[#8b5cf6]/40 focus:bg-white focus:ring-2 focus:ring-[#8b5cf6]/10 sm:w-[230px]"
-            />
-            <kbd className="pointer-events-none absolute right-2 top-1/2 hidden -translate-y-1/2 rounded-[4px] border border-black/[0.08] bg-white px-[5px] py-[1px] text-[9.5px] font-semibold text-[#b3ada3] sm:block">/</kbd>
-          </div>
-          <span className="mx-1 hidden h-4 w-px bg-black/[0.07] sm:block" />
-          <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
-            <button
-              onClick={() => setFiltre((f) => ({ ...f, status: [] }))}
-              data-testid="leieforhold-filter-alle"
-              className={`flex h-7 shrink-0 items-center gap-1.5 rounded-[7px] px-2.5 text-[12px] transition-all ${!filtre.status.length ? 'bg-[#1c1917] font-medium text-white' : 'border border-black/[0.08] bg-white font-medium text-[#78716c] hover:bg-[#f7f6f3]'}`}
-            >
-              Alle
-              <span className={`tabular-nums text-[10px] ${!filtre.status.length ? 'text-white/50' : 'text-[#c2beb8]'}`}>{grupper.alle ?? 0}</span>
-            </button>
-            {[['leased', GRUPPE_LABEL.leased], ['future', GRUPPE_LABEL.future], ['signing', GRUPPE_LABEL.signing], ['vacant', GRUPPE_LABEL.vacant]].map(([k, l]) => (
-              <button
-                key={k}
-                onClick={() => toggleFilter('status', k)}
-                data-testid={`leieforhold-filter-${k}`}
-                title="Flervalg — klikk for å slå av/på"
-                className={`flex h-7 shrink-0 items-center gap-1.5 rounded-[7px] px-2.5 text-[12px] transition-all ${filtre.status.includes(k) ? 'bg-[#1c1917] font-medium text-white' : 'border border-black/[0.08] bg-white font-medium text-[#78716c] hover:bg-[#f7f6f3]'}`}
-              >
-                <span className="h-[5px] w-[5px] rounded-full" style={{ background: filtre.status.includes(k) ? '#fff' : STATUS_STIL[k].tekst, opacity: filtre.status.includes(k) ? 0.7 : 1 }} />
-                {l}
-                <span className={`tabular-nums text-[10px] ${filtre.status.includes(k) ? 'text-white/50' : 'text-[#c2beb8]'}`}>{grupper[k] ?? 0}</span>
-              </button>
-            ))}
-          </div>
-          <div className="ml-auto flex items-center gap-1.5">
-            <button
-              onClick={() => setFilterOpen(true)}
-              data-testid="leieforhold-filter-knapp"
-              className={`flex h-7 items-center gap-1.5 rounded-[7px] border px-2.5 text-[12px] font-medium transition-all ${antallFiltre ? 'border-[#8b5cf6]/25 bg-[#f5f1fd] text-[#6d28d9]' : 'border-black/[0.08] bg-white text-[#78716c] hover:bg-[#f7f6f3] hover:text-[#1c1917]'}`}
-            >
-              <SlidersHorizontal className="h-3.5 w-3.5" /> Filter
-              {antallFiltre > 0 && (
-                <span className="flex h-[15px] min-w-[15px] items-center justify-center rounded-full bg-[#6d28d9] px-1 text-[9.5px] font-bold text-white">{antallFiltre}</span>
-              )}
-            </button>
-            <div className="relative">
-              <button
-                onClick={(e) => { e.stopPropagation(); setScenarioOpen((o) => !o); setSortOpen(false); setEksportOpen(false); }}
-                data-testid="leieforhold-scenario-knapp"
-                title="Se porteføljen slik den forventes på en fremtidig dato"
-                className={`flex h-7 items-center gap-1.5 rounded-[7px] border px-2.5 text-[12px] font-medium transition-all ${scenario ? 'border-amber-300/50 bg-amber-50 text-amber-700' : 'border-black/[0.08] bg-white text-[#78716c] hover:bg-[#f7f6f3] hover:text-[#1c1917]'}`}
-              >
-                <CalendarClock className="h-3.5 w-3.5" />
-                {scenario ? dato(scenario) : 'I dag'}
-                <ChevronDown className={`h-3 w-3 text-current opacity-50 transition-transform ${scenarioOpen ? 'rotate-180' : ''}`} />
-              </button>
-              {scenarioOpen && (
-                <div className={`absolute right-0 top-full z-30 mt-1 w-[248px] ${MENY}`} data-testid="leieforhold-scenario-meny" onClick={(e) => e.stopPropagation()}>
-                  {[['', 'I dag'], [plussMnd(1), 'Om 1 måned'], [plussMnd(3), 'Om 3 måneder']].map(([v, l]) => (
-                    <button
-                      key={l}
-                      onClick={() => { setScenario(v); setScenarioOpen(false); }}
-                      className={`${MENY_PUNKT} ${scenario === v ? 'bg-amber-50 font-medium text-amber-700' : 'text-[#57534e] hover:bg-[#f7f6f3]'}`}
-                    >
-                      {l}{v ? <span className="text-[10.5px] text-[#b8b2a9]">{dato(v)}</span> : scenario === '' ? <Check className="h-3.5 w-3.5" /> : null}
-                    </button>
-                  ))}
-                  <div className="mt-1 border-t border-black/[0.05] px-2.5 pb-1.5 pt-2">
-                    <p className={`mb-1 ${ETIKETT}`}>Egendefinert dato</p>
-                    <div className="flex items-center gap-1.5">
-                      <input
-                        type="date" min={imorgen()} value={egenDato}
-                        onChange={(e) => setEgenDato(e.target.value)}
-                        data-testid="leieforhold-scenario-dato"
-                        className="h-7 flex-1 rounded-[6px] border border-black/[0.08] bg-white px-2 text-[12px] outline-none focus:border-amber-400/60"
-                      />
-                      <button
-                        onClick={() => { if (egenDato && egenDato > tilIso(new Date())) { setScenario(egenDato); setScenarioOpen(false); } }}
-                        disabled={!egenDato || egenDato <= tilIso(new Date())}
-                        data-testid="leieforhold-scenario-bruk"
-                        className="flex h-7 items-center rounded-[6px] bg-[#141311] px-2.5 text-[11.5px] font-medium text-white transition-all hover:bg-black disabled:opacity-40"
-                      >
-                        Bruk
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-            <div className="relative">
-              <button
-                onClick={(e) => { e.stopPropagation(); setSortOpen((o) => !o); setScenarioOpen(false); setEksportOpen(false); }}
-                className={KNAPP_GHOST}
-              >
-                {SORTERINGER.find((s) => s.k === sortering)?.l.split(' (')[0].split(' —')[0]}
-                <ChevronDown className={`h-3 w-3 text-[#b3ada3] transition-transform ${sortOpen ? 'rotate-180' : ''}`} />
-              </button>
-              {sortOpen && (
-                <div className={`absolute right-0 top-full z-30 mt-1 w-[236px] ${MENY}`}>
-                  {SORTERINGER.map((s) => (
-                    <button
-                      key={s.k}
-                      onClick={() => { setSortering(s.k); setSortOpen(false); }}
-                      className={`${MENY_PUNKT} ${s.k === sortering ? 'bg-[#f5f1fd] font-medium text-[#6d28d9]' : 'text-[#57534e] hover:bg-[#f7f6f3]'}`}
-                    >
-                      {s.l}
-                      {s.k === sortering && <Check className="h-3.5 w-3.5" />}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
 
         {/* ── Kontekstlinjer: filtrert visning + scenario ── */}
         {(aktivFiltrering || scenario) && (
@@ -966,7 +972,7 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
                     {sek.key && (
                       <div className="flex items-center gap-2 bg-[#faf9f7] px-4 py-[5px]">
                         <span className="h-[6px] w-[6px] rounded-full" style={{ background: STATUS_STIL[sek.key].tekst }} />
-                        <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#8a8278]">{sek.key === 'vacant' ? 'Ledig' : sek.rader[0].status_label.replace(' (Annonsert)', '')}</span>
+                        <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#8a8278]">{SEKSJON_LABEL[sek.key] || sek.key}</span>
                         <span className="text-[10px] tabular-nums text-[#c2beb8]">{sek.rader.length}</span>
                         <span className="ml-auto text-[10px] font-medium tabular-nums text-[#a8a29a]">{kr(sek.rader.reduce((s, r) => s + (r.monthly_rent || 0), 0))}/mnd</span>
                       </div>
@@ -1106,7 +1112,7 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
                     {sek.key && (
                       <div className="flex items-center gap-2 bg-[#faf9f7] px-4 py-[5px]">
                         <span className="h-[6px] w-[6px] rounded-full" style={{ background: STATUS_STIL[sek.key].tekst }} />
-                        <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#8a8278]">{sek.key === 'vacant' ? 'Ledig' : sek.rader[0].status_label.replace(' (Annonsert)', '')}</span>
+                        <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#8a8278]">{SEKSJON_LABEL[sek.key] || sek.key}</span>
                         <span className="text-[10px] tabular-nums text-[#c2beb8]">{sek.rader.length}</span>
                         <span className="ml-auto text-[10px] font-medium tabular-nums text-[#a8a29a]">honorar {kr(sek.rader.reduce((s, r) => s + (r.fee_amount || 0), 0))}/mnd</span>
                       </div>
@@ -1343,7 +1349,7 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
               {/* Status */}
               <p className={ETIKETT}>Status</p>
               <div className="mt-1.5 flex flex-wrap gap-1.5">
-                {[['leased', GRUPPE_LABEL.leased], ['future', GRUPPE_LABEL.future], ['signing', GRUPPE_LABEL.signing], ['vacant', GRUPPE_LABEL.vacant]].map(([k, l]) => {
+                {[['leased', GRUPPE_LABEL.leased], ['future', GRUPPE_LABEL.future], ['signing', GRUPPE_LABEL.signing], ['advertised', GRUPPE_LABEL.advertised], ['vacant', GRUPPE_LABEL.vacant]].map(([k, l]) => {
                   const aktiv = filtre.status.includes(k);
                   return (
                     <button
@@ -1580,7 +1586,7 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
 
       <p className="mt-2.5 px-1 text-[11px] leading-relaxed text-[#b3ada3]">
         {modus === 'utleie'
-          ? 'Honorar vises eks. mva (leie × sats). Netto = leie − honorar inkl. mva. Grå honorartall er potensial (signert/estimat) — kun utleide telles som realisert. Excel-eksporten har eget Oversikt-ark, levende formler og respekterer aktiv filtrering og scenario.'
+          ? 'Inntektstrappen: Leie i dag (løpende kontrakter) → Kommende (signert, ikke startet — sammen utgjør de «sikret») → Pipeline (under signering + annonsert, uten signatur) → Ledig uten annonse (estimat). Honorar vises eks. mva (leie × sats); grå honorartall er potensial. Excel-eksporten følger samme trapp og respekterer aktiv filtrering og scenario.'
           : 'DigiHome er asset-light: huseier bærer alle boligkostnader. Margin = honorar − fordelte faste kostnader. CAC er engangs anskaffelseskost og blandes ikke inn i månedsmarginen — payback viser hvor raskt honoraret tilbakebetaler den. Grå tall er potensial (ikke-utleide enheter).'}
       </p>
     </div>
