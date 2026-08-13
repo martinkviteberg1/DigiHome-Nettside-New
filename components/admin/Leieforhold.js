@@ -36,15 +36,16 @@ import {
 const heading = { fontFamily: 'var(--font-heading)' };
 
 // ── Linear-inspirert kontrollspråk: 28 px høyde, hairline-kant, 7 px radius ──
-const KNAPP_GHOST = 'flex h-7 items-center gap-1.5 rounded-[7px] border border-black/[0.08] bg-white px-2.5 text-[12px] font-medium text-[#57534e] transition-colors hover:bg-[#f7f6f3] hover:text-[#1c1917]';
-const KNAPP_PRIMAER = 'flex h-7 items-center gap-1.5 rounded-[7px] bg-[#141311] px-3 text-[12px] font-medium text-white transition-all hover:bg-black active:scale-[0.98]';
-const MENY = 'rounded-[10px] border border-black/[0.07] bg-white p-1 shadow-[0_12px_40px_rgba(28,25,23,0.14)]';
+const KNAPP_GHOST = 'flex h-7 items-center gap-1.5 rounded-[7px] border border-black/[0.08] bg-white px-2.5 text-[12px] font-medium text-[#57534e] shadow-[0_1px_2px_rgba(28,25,23,0.04)] transition-colors hover:bg-[#f7f6f3] hover:text-[#1c1917]';
+const KNAPP_PRIMAER = 'flex h-7 items-center gap-1.5 rounded-[7px] bg-gradient-to-b from-[#2b2825] to-[#131110] px-3 text-[12px] font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.09),0_1px_2px_rgba(28,25,23,0.2)] transition-all hover:from-[#211f1c] hover:to-[#0a0908] active:scale-[0.98]';
+const MENY = 'rounded-[10px] border border-black/[0.07] bg-white/95 p-1 shadow-[0_12px_40px_rgba(28,25,23,0.14)] backdrop-blur-md dh-meny-inn';
 const MENY_PUNKT = 'flex w-full items-center justify-between rounded-[6px] px-2.5 py-1.5 text-left text-[12.5px] transition-colors';
 const ETIKETT = 'text-[10px] font-semibold uppercase tracking-[0.08em] text-[#a8a29a]';
-// Sticky tabellhode/sum-rad: inset-skygge i stedet for border (border-collapse
-// + sticky mister kantlinjer i enkelte nettlesere; inset-skygge følger cellen).
-const HODE_CELLE = 'sticky top-0 z-10 bg-white shadow-[inset_0_-1px_0_rgba(0,0,0,0.06)]';
-const SUM_CELLE = 'sticky bottom-0 z-10 bg-[#fbfaf9] shadow-[inset_0_1px_0_rgba(0,0,0,0.08)]';
+// Sticky tabellhode/sum-rad: frostet glass (translucent bg + backdrop-blur) og
+// inset-skygge i stedet for border (border-collapse + sticky mister kantlinjer
+// i enkelte nettlesere; inset-skygge følger cellen).
+const HODE_CELLE = 'sticky top-0 z-10 bg-white/85 backdrop-blur-md shadow-[inset_0_-1px_0_rgba(0,0,0,0.06)]';
+const SUM_CELLE = 'sticky bottom-0 z-10 bg-[#fbfaf9]/85 backdrop-blur-md shadow-[inset_0_1px_0_rgba(0,0,0,0.08)]';
 
 // Statuschip-farger — eksakt fra plattformens spec.
 const STATUS_STIL = {
@@ -107,6 +108,65 @@ function AdresseCelle({ r }) {
       </p>
       {omraade && <p className="mt-[1px] max-w-[240px] truncate text-[10.5px] text-[#a8a29a]">{omraade}</p>}
     </>
+  );
+}
+
+/* ── Animerte tall: KPI-ene ruller mykt til ny verdi ved filtrering/scenario ── */
+function useTellOpp(verdi, ms = 480) {
+  const [vist, setVist] = useState(Number(verdi) || 0);
+  const fraRef = useRef(Number(verdi) || 0);
+  useEffect(() => {
+    const fra = fraRef.current; const til = Number(verdi) || 0;
+    if (fra === til) { setVist(til); return undefined; }
+    let raf; const start = performance.now();
+    const tick = (t) => {
+      const p = Math.min(1, (t - start) / ms);
+      const e = 1 - Math.pow(1 - p, 3); // easeOutCubic
+      setVist(fra + (til - fra) * e);
+      if (p < 1) raf = requestAnimationFrame(tick);
+      else fraRef.current = til;
+    };
+    raf = requestAnimationFrame(tick);
+    return () => { cancelAnimationFrame(raf); fraRef.current = til; };
+  }, [verdi, ms]);
+  return vist;
+}
+const TallOpp = ({ verdi }) => <>{kr(useTellOpp(verdi))}</>;
+
+/* ── Donut-ring for utleiegrad ── */
+function Ring({ pct, farge = '#1f9a53', size = 34 }) {
+  const r = (size - 5) / 2;
+  const c = 2 * Math.PI * r;
+  const fylt = (c * Math.max(0, Math.min(100, pct || 0))) / 100;
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="shrink-0 -rotate-90">
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#f1ece4" strokeWidth="4" />
+      <circle
+        cx={size / 2} cy={size / 2} r={r} fill="none" stroke={farge} strokeWidth="4" strokeLinecap="round"
+        strokeDasharray={`${fylt} ${c}`}
+        style={{ transition: 'stroke-dasharray 700ms cubic-bezier(0.22,1,0.36,1)' }}
+      />
+    </svg>
+  );
+}
+
+/* ── Initial-avatarer (hash-basert, rolig palett) ── */
+const AVATAR_FARGER = [
+  ['#eef2fd', '#3757c4'], ['#e7f4ec', '#1f7a45'], ['#fdf3e0', '#9a6b1c'],
+  ['#f5f1fd', '#6d28d9'], ['#fdeef0', '#be123c'], ['#e8f4f4', '#0e7490'],
+];
+function Initialer({ navn }) {
+  const s = String(navn || '').trim();
+  if (!s || s === '—') return null;
+  const deler = s.split(/\s+/);
+  const init = ((deler[0]?.[0] || '') + (deler.length > 1 ? deler[deler.length - 1][0] || '' : '')).toUpperCase();
+  let h = 0;
+  for (let i = 0; i < s.length; i += 1) h = ((h * 31) + s.charCodeAt(i)) >>> 0;
+  const [bg, fg] = AVATAR_FARGER[h % AVATAR_FARGER.length];
+  return (
+    <span className="flex h-[20px] w-[20px] shrink-0 items-center justify-center rounded-full text-[8.5px] font-bold" style={{ background: bg, color: fg }}>
+      {init}
+    </span>
   );
 }
 
@@ -231,6 +291,16 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
     const t = { alle: scenarioRows.length, leased: 0, future: 0, signing: 0, vacant: 0 };
     scenarioRows.forEach((r) => { t[r.group] = (t[r.group] || 0) + 1; });
     return t;
+  }, [scenarioRows]);
+
+  // Porteføljefordeling (etter leiebeløp) — tynn segmentbar i toppen av flaten
+  const fordelingSegmenter = useMemo(() => {
+    const sum = { leased: 0, future: 0, signing: 0, vacant: 0 };
+    scenarioRows.forEach((r) => { sum[r.group] = (sum[r.group] || 0) + (r.monthly_rent || 0); });
+    const tot = Object.values(sum).reduce((s, v) => s + v, 0) || 1;
+    return ['leased', 'future', 'signing', 'vacant']
+      .filter((k) => sum[k] > 0)
+      .map((k) => ({ k, pct: (sum[k] / tot) * 100, v: sum[k] }));
   }, [scenarioRows]);
 
   const aktivFiltrering = harFilter(filtre, sok);
@@ -391,7 +461,7 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
       )}
 
       {/* ═══════════ ÉN SAMLET ARBEIDSFLATE ═══════════ */}
-      <div className="rounded-xl border border-black/[0.07] bg-white shadow-[0_1px_2px_rgba(28,25,23,0.04)]">
+      <div className="rounded-xl border border-black/[0.07] bg-white shadow-[0_1px_2px_rgba(28,25,23,0.04),0_12px_32px_-16px_rgba(28,25,23,0.10)]">
 
         {/* ── Topplinje: modus · kilde · oppdatert · handlinger ── */}
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2.5 sm:px-4">
@@ -409,7 +479,10 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
           </div>
           <span className="hidden h-4 w-px bg-black/[0.07] sm:block" />
           <span className="flex items-center gap-1.5 text-[11px] font-medium text-[#78716c]" data-testid="leieforhold-kilde">
-            <span className={`h-[6px] w-[6px] shrink-0 rounded-full ${!data && laster ? 'animate-pulse bg-[#a8a29a]' : kildeLive ? 'bg-[#1f9a53]' : 'bg-amber-500'}`} />
+            <span className="relative flex h-[6px] w-[6px] shrink-0">
+              {kildeLive && <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#1f9a53] opacity-40" style={{ animationDuration: '2.4s' }} />}
+              <span className={`relative inline-flex h-[6px] w-[6px] rounded-full ${!data && laster ? 'animate-pulse bg-[#a8a29a]' : kildeLive ? 'bg-[#1f9a53]' : 'bg-amber-500'}`} />
+            </span>
             {kildeTekst}
           </span>
           {data?.fetchedAt && (
@@ -478,6 +551,20 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
           </div>
         </div>
 
+        {/* ── Porteføljefordeling: tynn segmentbar (leiebeløp per status) ── */}
+        {fordelingSegmenter.length > 0 && (
+          <div className="flex h-[4px] gap-[3px] px-3 pb-2.5 sm:px-4" data-testid="leieforhold-fordelingsbar">
+            {fordelingSegmenter.map((s) => (
+              <div
+                key={s.k}
+                title={`${GRUPPE_LABEL[s.k]} · ${kr(s.v)}/mnd (${Math.round(s.pct)} %)`}
+                className="rounded-full transition-all duration-700"
+                style={{ width: `${s.pct}%`, background: STATUS_STIL[s.k].tekst, opacity: s.k === 'vacant' ? 0.45 : 0.9 }}
+              />
+            ))}
+          </div>
+        )}
+
         {/* ── KPI-stripe ── */}
         {modus === 'utleie' ? (
           <div className="grid grid-cols-2 border-t border-black/[0.05] sm:grid-cols-3 xl:grid-cols-6 xl:divide-x xl:divide-black/[0.05]">
@@ -488,7 +575,7 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
                   <p className={`truncate ${ETIKETT}`}>{s.l}</p>
                 </div>
                 <p className="mt-1 text-[17px] font-semibold tabular-nums tracking-[-0.01em] text-[#1c1917]" style={heading}>
-                  {laster ? '…' : kr(s.v)}
+                  {laster ? '…' : <TallOpp verdi={s.v} />}
                 </p>
                 <p className="mt-[1px] text-[10.5px] text-[#b8b2a9]">{s.antall ?? 0} {s.antall === 1 ? 'enhet' : 'enheter'}</p>
               </KpiCelle>
@@ -499,23 +586,21 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
                 <p className={`truncate ${ETIKETT}`}>Honorar / mnd · eks. mva</p>
               </div>
               <p className="mt-1 text-[17px] font-semibold tabular-nums tracking-[-0.01em]" style={{ ...heading, color: '#7c3aed' }} data-testid="leieforhold-honorar">
-                {laster ? '…' : kr(visTotals.fee)}
+                {laster ? '…' : <TallOpp verdi={visTotals.fee} />}
               </p>
               <p className="mt-[1px] truncate text-[10.5px] text-[#b8b2a9]">
                 garantert {kr(visTotals.fee_garantert ?? visTotals.fee)} · estimert {kr(visTotals.fee_estimert ?? 0)}
               </p>
             </KpiCelle>
-            <div className="px-4 py-2.5">
-              <div className="flex items-baseline justify-between gap-2">
+            <div className="flex items-center gap-3 px-4 py-2.5">
+              <Ring pct={visTotals.occupancy_pct || 0} />
+              <div className="min-w-0">
                 <p className={`truncate ${ETIKETT}`}>Utleigrad</p>
-                <p className="text-[14px] font-semibold tabular-nums text-[#1c1917]" style={heading}>{visTotals.occupancy_pct ?? 0} %</p>
+                <p className="mt-[1px] text-[15px] font-semibold tabular-nums tracking-[-0.01em] text-[#1c1917]" style={heading}>{visTotals.occupancy_pct ?? 0} %</p>
+                <p className="truncate text-[10.5px] text-[#b8b2a9]">
+                  {visTotals.leased ?? 0} av {visTotals.count ?? 0} utleid · netto eiere {kr(visTotals.net)}
+                </p>
               </div>
-              <div className="mt-2 h-[5px] overflow-hidden rounded-full bg-[#f1ece4]">
-                <div className="h-full rounded-full bg-[#1f9a53] transition-all duration-700" style={{ width: `${visTotals.occupancy_pct || 0}%` }} />
-              </div>
-              <p className="mt-1.5 truncate text-[10.5px] text-[#b8b2a9]">
-                {visTotals.leased ?? 0} av {visTotals.count ?? 0} utleid · netto eiere {kr(visTotals.net)}
-              </p>
             </div>
           </div>
         ) : (
@@ -525,7 +610,7 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
                 <span className="h-[6px] w-[6px] rounded-full bg-[#7c3aed]" />
                 <p className={`truncate ${ETIKETT}`}>Honorar / mnd</p>
               </div>
-              <p className="mt-1 text-[17px] font-semibold tabular-nums tracking-[-0.01em]" style={{ ...heading, color: '#7c3aed' }}>{laster ? '…' : kr(visTotals.fee)}</p>
+              <p className="mt-1 text-[17px] font-semibold tabular-nums tracking-[-0.01em]" style={{ ...heading, color: '#7c3aed' }}>{laster ? '…' : <TallOpp verdi={visTotals.fee} />}</p>
               <p className="mt-[1px] truncate text-[10.5px] text-[#b8b2a9]">realisert · garantert {kr(visTotals.fee_garantert ?? visTotals.fee)}</p>
             </KpiCelle>
             <KpiCelle testid="leieforhold-kpi-felles">
@@ -533,7 +618,7 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
                 <span className="h-[6px] w-[6px] rounded-full bg-[#c98a1b]" />
                 <p className={`truncate ${ETIKETT}`}>Faste kostnader / mnd</p>
               </div>
-              <p className="mt-1 text-[17px] font-semibold tabular-nums tracking-[-0.01em] text-[#1c1917]" style={heading}>{kr(fellesTotal)}</p>
+              <p className="mt-1 text-[17px] font-semibold tabular-nums tracking-[-0.01em] text-[#1c1917]" style={heading}><TallOpp verdi={fellesTotal} /></p>
               <p className="mt-[1px] truncate text-[10.5px] text-[#b8b2a9]">{fellesAktive.length} {fellesAktive.length === 1 ? 'aktiv post' : 'aktive poster'} · huseier tar boligkostnadene</p>
             </KpiCelle>
             <KpiCelle testid="leieforhold-kpi-margin">
@@ -542,7 +627,7 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
                 <p className={`truncate ${ETIKETT}`}>{inklFelles ? 'Margin / mnd' : 'Dekningsbidrag / mnd'}</p>
               </div>
               <p className="mt-1 text-[17px] font-semibold tabular-nums tracking-[-0.01em]" style={{ ...heading, color: marginMnd >= 0 ? '#1f7a45' : '#e11d48' }}>
-                {laster ? '…' : kr(marginMnd)}
+                {laster ? '…' : <TallOpp verdi={marginMnd} />}
               </p>
               <p className="mt-[1px] truncate text-[10.5px] text-[#b8b2a9]">
                 {inklFelles ? 'etter fordelte faste kostnader' : '≈ 100 % av honoraret — før faste kostnader'}
@@ -550,7 +635,7 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
             </KpiCelle>
             <KpiCelle testid="leieforhold-kpi-cac">
               <p className={`truncate ${ETIKETT}`}>CAC totalt · engangs</p>
-              <p className="mt-1 text-[17px] font-semibold tabular-nums tracking-[-0.01em] text-[#1c1917]" style={heading}>{kr(cacTotal)}</p>
+              <p className="mt-1 text-[17px] font-semibold tabular-nums tracking-[-0.01em] text-[#1c1917]" style={heading}><TallOpp verdi={cacTotal} /></p>
               <p className="mt-[1px] truncate text-[10.5px] text-[#b8b2a9]">
                 {paybackSnitt ? `payback ~${paybackSnitt.toLocaleString('nb-NO', { maximumFractionDigits: 1 })} mnd samlet` : 'anskaffelseskost per enhet'}
               </p>
@@ -573,15 +658,13 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
                 <p className="mt-1.5 text-[10.5px] text-[#b8b2a9]">Legg inn faste kostnader for å se dekningsgrad</p>
               )}
             </KpiCelle>
-            <div className="px-4 py-2.5">
-              <div className="flex items-baseline justify-between gap-2">
+            <div className="flex items-center gap-3 px-4 py-2.5">
+              <Ring pct={visTotals.occupancy_pct || 0} />
+              <div className="min-w-0">
                 <p className={`truncate ${ETIKETT}`}>Utleigrad</p>
-                <p className="text-[14px] font-semibold tabular-nums text-[#1c1917]" style={heading}>{visTotals.occupancy_pct ?? 0} %</p>
+                <p className="mt-[1px] text-[15px] font-semibold tabular-nums tracking-[-0.01em] text-[#1c1917]" style={heading}>{visTotals.occupancy_pct ?? 0} %</p>
+                <p className="truncate text-[10.5px] text-[#b8b2a9]">{visTotals.leased ?? 0} av {visTotals.count ?? 0} utleid · snitt honorar {kr(snittHonorar)}</p>
               </div>
-              <div className="mt-2 h-[5px] overflow-hidden rounded-full bg-[#f1ece4]">
-                <div className="h-full rounded-full bg-[#1f9a53] transition-all duration-700" style={{ width: `${visTotals.occupancy_pct || 0}%` }} />
-              </div>
-              <p className="mt-1.5 truncate text-[10.5px] text-[#b8b2a9]">{visTotals.leased ?? 0} av {visTotals.count ?? 0} utleid · snitt honorar {kr(snittHonorar)}</p>
             </div>
           </div>
         )}
@@ -742,7 +825,7 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
 
         {/* ── Kontekstlinjer: filtrert visning + scenario ── */}
         {(aktivFiltrering || scenario) && (
-          <div className="flex items-center gap-2 border-t border-black/[0.05] bg-[#faf8ff] px-3 py-1.5 sm:px-4" data-testid="leieforhold-kpi-filtrert">
+          <div className="flex items-center gap-2 border-t border-black/[0.05] bg-gradient-to-r from-[#f7f3ff] to-white px-3 py-1.5 sm:px-4" data-testid="leieforhold-kpi-filtrert">
             <SlidersHorizontal className="h-3 w-3 shrink-0 text-[#8b5cf6]" />
             <span className="truncate text-[11px] font-medium text-[#6d28d9]">
               KPI-ene viser {filtrert.length} av {scenarioRows.length} enheter{scenario ? ` · scenario ${dato(scenario)}` : ''}
@@ -755,7 +838,7 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
           </div>
         )}
         {scenario && (
-          <div className="flex flex-wrap items-center gap-2 border-t border-black/[0.05] bg-[#fffbf0] px-3 py-1.5 sm:px-4" data-testid="leieforhold-scenario-banner">
+          <div className="flex flex-wrap items-center gap-2 border-t border-black/[0.05] bg-gradient-to-r from-[#fff6e2] to-white px-3 py-1.5 sm:px-4" data-testid="leieforhold-scenario-banner">
             <CalendarClock className="h-3 w-3 shrink-0 text-amber-600" />
             <span className="text-[11px] font-medium text-amber-800">Scenario: slik ser porteføljen ut {dato(scenario)}</span>
             <span className="text-[10.5px] text-amber-700/70">{scenarioInn} flytter inn · {scenarioUt} flytter ut innen datoen</span>
@@ -774,7 +857,7 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
           {laster && (
             <div className="space-y-1.5 p-4" data-testid="leieforhold-skeleton">
               {Array.from({ length: 8 }).map((_, i) => (
-                <div key={i} className="h-8 animate-pulse rounded-[7px] bg-[#f3f2f0]" style={{ opacity: Math.max(0.25, 1 - i * 0.11), animationDelay: `${i * 70}ms` }} />
+                <div key={i} className="dh-skjelett h-8 rounded-[7px]" style={{ opacity: Math.max(0.25, 1 - i * 0.11) }} />
               ))}
             </div>
           )}
@@ -818,11 +901,21 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
                     idx += 1; const i = idx;
                     const erRom = r.unit_type === 'Rom i bofellesskap';
                     return (
-                    <tr key={`${radNokkel(r)}-${i}`} onClick={() => setValgtRad(r)} className="group cursor-pointer border-b border-black/[0.03] transition-colors last:border-b-0 hover:bg-[#faf9f7]" data-testid={`leieforhold-rad-${i}`}>
+                    <tr key={`${radNokkel(r)}-${i}`} onClick={() => setValgtRad(r)} className="group dh-rad-inn cursor-pointer border-b border-black/[0.03] transition-colors last:border-b-0 hover:bg-[#faf9f7]" style={{ animationDelay: `${Math.min(i, 16) * 16}ms` }} data-testid={`leieforhold-rad-${i}`}>
                       <td className="px-3 py-2"><AdresseCelle r={r} /></td>
                       <td className="whitespace-nowrap px-3 py-2 text-[12px] text-[#57534e]">{r.bolig_type || (erRom ? 'Rom' : '—')}</td>
-                      <td className="max-w-[150px] truncate px-3 py-2 text-[12px] text-[#57534e]" title={r.owner_name}>{r.owner_name || '—'}</td>
-                      <td className="max-w-[150px] truncate px-3 py-2 text-[12px] text-[#57534e]" title={r.tenant_name}>{r.tenant_name || '—'}</td>
+                      <td className="max-w-[170px] px-3 py-2" title={r.owner_name}>
+                        <span className="flex items-center gap-1.5">
+                          <Initialer navn={r.owner_name} />
+                          <span className="truncate text-[12px] text-[#57534e]">{r.owner_name || '—'}</span>
+                        </span>
+                      </td>
+                      <td className="max-w-[170px] px-3 py-2" title={r.tenant_name}>
+                        <span className="flex items-center gap-1.5">
+                          <Initialer navn={r.tenant_name} />
+                          <span className="truncate text-[12px] text-[#57534e]">{r.tenant_name || '—'}</span>
+                        </span>
+                      </td>
                       <td className="px-3 py-2"><StatusChip row={r} /></td>
                       <td className="whitespace-nowrap px-3 py-2 text-[12px] text-[#78716c]">{r.move_in_date ? dato(r.move_in_date) : '—'}</td>
                       <td className="whitespace-nowrap px-3 py-2 text-[12px]">
@@ -879,7 +972,7 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
                       </div>
                     )}
                     {sek.rader.map((r) => { mIdx += 1; const i = mIdx; return (
-                  <div key={`${radNokkel(r)}-${i}`} className="px-4 py-3 transition-colors active:bg-[#faf9f7]" onClick={() => setValgtRad(r)} data-testid={`leieforhold-kort-${i}`}>
+                  <div key={`${radNokkel(r)}-${i}`} className="dh-rad-inn px-4 py-3 transition-colors active:bg-[#faf9f7]" style={{ animationDelay: `${Math.min(i, 14) * 18}ms` }} onClick={() => setValgtRad(r)} data-testid={`leieforhold-kort-${i}`}>
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
                         <p className="text-[13px] font-medium leading-tight text-[#1c1917]">
@@ -953,7 +1046,7 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
                     const payback = cac > 0 && r.fee_amount > 0 ? cac / r.fee_amount : null;
                     const notat = okonomi.enheter[radNokkel(r)]?.notat || '';
                     return (
-                    <tr key={`${radNokkel(r)}-${i}`} onClick={() => setValgtRad(r)} className="group cursor-pointer border-b border-black/[0.03] transition-colors last:border-b-0 hover:bg-[#faf9f7]" data-testid={`leieforhold-okonomi-rad-${i}`}>
+                    <tr key={`${radNokkel(r)}-${i}`} onClick={() => setValgtRad(r)} className="group dh-rad-inn cursor-pointer border-b border-black/[0.03] transition-colors last:border-b-0 hover:bg-[#faf9f7]" style={{ animationDelay: `${Math.min(i, 16) * 16}ms` }} data-testid={`leieforhold-okonomi-rad-${i}`}>
                       <td className="px-3 py-2"><AdresseCelle r={r} /></td>
                       <td className="whitespace-nowrap px-3 py-2 text-[12px] text-[#57534e]">{r.bolig_type || (erRom ? 'Rom' : '—')}</td>
                       <td className="px-3 py-2"><StatusChip row={r} /></td>
@@ -1024,7 +1117,7 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
                   const margin = (r.fee_amount || 0) - andel;
                   const cac = cacFor(r);
                   return (
-                  <div key={`${radNokkel(r)}-${i}`} className="px-4 py-3 transition-colors active:bg-[#faf9f7]" onClick={() => setValgtRad(r)}>
+                  <div key={`${radNokkel(r)}-${i}`} className="dh-rad-inn px-4 py-3 transition-colors active:bg-[#faf9f7]" style={{ animationDelay: `${Math.min(i, 14) * 18}ms` }} onClick={() => setValgtRad(r)}>
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
                         <p className="truncate text-[13px] font-medium leading-tight text-[#1c1917]">{String(r.address || '').split(',')[0]}</p>
@@ -1176,7 +1269,7 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
       {/* ═══ PDF-visning ═══ */}
       {pdfVisning && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-3 backdrop-blur-[2px] sm:p-6" onClick={() => setPdfVisning(null)}>
-          <div className="flex h-[90vh] w-full max-w-[920px] flex-col overflow-hidden rounded-[14px] border border-black/[0.07] bg-white shadow-[0_32px_120px_rgba(0,0,0,0.35)]" onClick={(e) => e.stopPropagation()} data-testid="leieforhold-pdf-modal">
+          <div className="dh-pop-inn flex h-[90vh] w-full max-w-[920px] flex-col overflow-hidden rounded-[14px] border border-black/[0.07] bg-white shadow-[0_32px_120px_rgba(0,0,0,0.35)]" onClick={(e) => e.stopPropagation()} data-testid="leieforhold-pdf-modal">
             <div className="flex items-center gap-2 border-b border-black/[0.06] px-4 py-2.5">
               <FileText className="h-4 w-4 shrink-0 text-[#8b5cf6]" />
               <p className="min-w-0 truncate text-[13px] font-semibold text-[#1c1917]" style={heading}>{pdfVisning.tittel}</p>
@@ -1201,7 +1294,7 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
       {/* ═══ CAC-editor (admin) ═══ */}
       {kanRedigere && cacSkjema && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/25 p-4 backdrop-blur-[2px] sm:items-center" onClick={() => setCacSkjema(null)}>
-          <div className="w-full max-w-[420px] rounded-[14px] border border-black/[0.07] bg-white p-5 shadow-[0_24px_80px_rgba(28,25,23,0.22)]" onClick={(e) => e.stopPropagation()} data-testid="leieforhold-cac-modal">
+          <div className="dh-pop-inn w-full max-w-[420px] rounded-[14px] border border-black/[0.07] bg-white p-5 shadow-[0_24px_80px_rgba(28,25,23,0.22)]" onClick={(e) => e.stopPropagation()} data-testid="leieforhold-cac-modal">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[14px] font-semibold text-[#1c1917]" style={heading}>Anskaffelseskostnad (CAC)</p>
@@ -1236,7 +1329,7 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
       {/* ═══ Filter-modal (flervalg — KPI-ene følger utvalget live) ═══ */}
       {filterOpen && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/25 p-0 backdrop-blur-[2px] sm:items-center sm:p-4" onClick={() => setFilterOpen(false)}>
-          <div className="flex max-h-[88vh] w-full max-w-[540px] flex-col overflow-hidden rounded-t-[14px] border border-black/[0.07] bg-white shadow-[0_24px_80px_rgba(28,25,23,0.22)] sm:rounded-[14px]" onClick={(e) => e.stopPropagation()} data-testid="leieforhold-filter-modal">
+          <div className="dh-pop-inn flex max-h-[88vh] w-full max-w-[540px] flex-col overflow-hidden rounded-t-[14px] border border-black/[0.07] bg-white shadow-[0_24px_80px_rgba(28,25,23,0.22)] sm:rounded-[14px]" onClick={(e) => e.stopPropagation()} data-testid="leieforhold-filter-modal">
             <div className="flex items-center gap-2.5 border-b border-black/[0.05] px-5 py-3.5">
               <span className="flex h-8 w-8 items-center justify-center rounded-[8px] border border-[#8b5cf6]/15 bg-[#f5f1fd]"><SlidersHorizontal className="h-4 w-4 text-[#8b5cf6]" /></span>
               <div>

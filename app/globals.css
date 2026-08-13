@@ -952,3 +952,27 @@ html.dh-tour-snap.dh-tour-flyt { scroll-snap-type: none; }
 .dh-rik img { max-width: 100%; height: auto; border-radius: 10px; margin: 0.4em 0; border: 1px solid rgba(0,0,0,0.06); display: block; }
 .dh-rik hr { border: none; border-top: 1px solid rgba(0,0,0,0.08); margin: 0.8em 0; }
 .dh-rik .dh-mention { border-radius: 5px; background: #ede9fe; padding: 0.05em 0.35em; font-weight: 600; color: #6d28d9; }
+
+/* === Leieforhold — moderne mikrointeraksjoner (2026) === */
+
+/* Rad-inntreden: rolig, rask, med stagger via animation-delay per rad */
+@keyframes dhRadInn { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
+.dh-rad-inn { animation: dhRadInn 0.28s cubic-bezier(0.22, 1, 0.36, 1) both; }
+@media (prefers-reduced-motion: reduce) { .dh-rad-inn { animation: none; opacity: 1; transform: none; } }
+
+/* Meny/dropdown-inntreden */
+@keyframes dhMenyInn { from { opacity: 0; transform: translateY(-3px) scale(0.99); } to { opacity: 1; transform: none; } }
+.dh-meny-inn { animation: dhMenyInn 0.13s cubic-bezier(0.22, 1, 0.36, 1) both; transform-origin: top right; }
+@media (prefers-reduced-motion: reduce) { .dh-meny-inn { animation: none; } }
+
+/* Modal-inntreden */
+@keyframes dhPopInn { from { opacity: 0; transform: translateY(6px) scale(0.985); } to { opacity: 1; transform: none; } }
+.dh-pop-inn { animation: dhPopInn 0.22s cubic-bezier(0.22, 1, 0.36, 1) both; }
+@media (prefers-reduced-motion: reduce) { .dh-pop-inn { animation: none; } }
+
+/* Skeleton med shimmer-glans (gjenbruker dh-shimmer-keyframen) */
+.dh-skjelett {
+  background: linear-gradient(100deg, #f3f2f0 40%, #faf9f7 50%, #f3f2f0 60%);
+  background-size: 200% 100%;
+  animation: dh-shimmer 1.4s ease infinite;
+}
