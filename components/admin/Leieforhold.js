@@ -157,11 +157,7 @@ function Ring({ pct, farge = '#1f9a53', size = 34 }) {
   );
 }
 
-/* ── Initial-avatarer (hash-basert, rolig palett) ── */
-const AVATAR_FARGER = [
-  ['#eef2fd', '#3757c4'], ['#e7f4ec', '#1f7a45'], ['#fdf3e0', '#9a6b1c'],
-  ['#f5f1fd', '#6d28d9'], ['#fdeef0', '#be123c'], ['#e8f4f4', '#0e7490'],
-];
+/* ── Initial-avatarer (hash-basert duo-tone-gradient) ── */
 function Initialer({ navn }) {
   const s = String(navn || '').trim();
   if (!s || s === '—') return null;
@@ -169,9 +165,17 @@ function Initialer({ navn }) {
   const init = ((deler[0]?.[0] || '') + (deler.length > 1 ? deler[deler.length - 1][0] || '' : '')).toUpperCase();
   let h = 0;
   for (let i = 0; i < s.length; i += 1) h = ((h * 31) + s.charCodeAt(i)) >>> 0;
-  const [bg, fg] = AVATAR_FARGER[h % AVATAR_FARGER.length];
+  // Moderne avatar: myk, deterministisk duo-tone-gradient per navn
+  const h1 = h % 360;
+  const h2 = (h1 + 42) % 360;
   return (
-    <span className="flex h-[20px] w-[20px] shrink-0 items-center justify-center rounded-full text-[8.5px] font-bold" style={{ background: bg, color: fg }}>
+    <span
+      className="flex h-[20px] w-[20px] shrink-0 items-center justify-center rounded-full text-[8.5px] font-bold shadow-[inset_0_0_0_1px_rgba(0,0,0,0.04)]"
+      style={{
+        background: `linear-gradient(135deg, hsl(${h1}, 72%, 88%), hsl(${h2}, 64%, 78%))`,
+        color: `hsl(${h1}, 45%, 30%)`,
+      }}
+    >
       {init}
     </span>
   );
@@ -389,7 +393,7 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
       const boks = tabellBoksRef.current;
       if (!boks) return;
       const topp = boks.getBoundingClientRect().top + window.scrollY;
-      const bunn = 14; // litt luft under kortet
+      const bunn = 28; // tabellkortets marg + lerretets kant + litt luft
       setTabellMaxH(Math.max(320, Math.round(window.innerHeight - topp - bunn)));
     };
     maal();
@@ -471,11 +475,12 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
         </div>
       )}
 
-      {/* ═══════════ ÉN SAMLET ARBEIDSFLATE ═══════════ */}
-      <div className="rounded-xl border border-black/[0.07] bg-white shadow-[0_1px_2px_rgba(28,25,23,0.04),0_12px_32px_-16px_rgba(28,25,23,0.10)]">
+      {/* ═══════════ ARBEIDSFLATE SOM LERRET: verktøylinje, KPI-kort og tabell
+          svever som egne kort på et rolig, varmgrått lerret ═══════════ */}
+      <div className="overflow-hidden rounded-2xl border border-black/[0.06] bg-[#f6f5f1] shadow-[0_1px_2px_rgba(28,25,23,0.04),0_12px_32px_-16px_rgba(28,25,23,0.10)]">
 
-        {/* ── ÉN verktøylinje (Linear-stil): søk/hurtigfiltre → visning/eksport ── */}
-        <div className="flex flex-wrap items-center gap-1.5 px-3 py-2 sm:px-4">
+        {/* ── Verktøylinje-øy: søk/hurtigfiltre → visning/eksport ── */}
+        <div className="mx-3 mt-3 flex flex-wrap items-center gap-1.5 rounded-[12px] border border-black/[0.05] bg-white/85 px-2.5 py-1.5 shadow-[0_1px_3px_rgba(28,25,23,0.05)] backdrop-blur-md sm:mx-4">
           <div className="relative order-last w-full sm:order-none sm:w-auto">
             <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#b3ada3]" />
             <input
@@ -679,7 +684,7 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
             glød i hjørnet. Fargen sitter i chipen, ikke i flaten — rolig og
             premium. Tallene leser likt: stort tall = i dag, deretter
             «+ individuelt beløp» med «= løpende sum» under. ── */}
-        <div className="grid grid-cols-1 gap-2.5 border-y border-black/[0.05] bg-[#f7f6f3] px-3 py-3 sm:px-4 xl:grid-cols-[minmax(0,43fr)_minmax(0,43fr)_minmax(0,14fr)]">
+        <div className="grid grid-cols-1 gap-2.5 px-3 pt-2.5 sm:px-4 xl:grid-cols-[minmax(0,43fr)_minmax(0,43fr)_minmax(0,14fr)]">
           {/* KORT 1 — Honorar (DigiHome) · lilla chip */}
           <div className="relative flex flex-wrap items-center gap-x-5 gap-y-2 overflow-hidden rounded-xl border border-black/[0.05] bg-white px-4 py-2.5 shadow-[0_1px_3px_rgba(28,25,23,0.04)] transition-all duration-200 hover:-translate-y-[1px] hover:shadow-[0_4px_16px_rgba(28,25,23,0.08)]" data-testid="leieforhold-honorar-trapp">
             <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(460px_150px_at_0%_0%,rgba(124,58,237,0.07),transparent_62%)]" />
@@ -755,7 +760,7 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
 
         {/* ── Kontekstlinjer: filtrert visning + scenario ── */}
         {(aktivFiltrering || scenario) && (
-          <div className="flex items-center gap-2 border-t border-black/[0.05] bg-gradient-to-r from-[#f7f3ff] to-white px-3 py-1.5 sm:px-4" data-testid="leieforhold-kpi-filtrert">
+          <div className="mx-3 mt-2.5 flex items-center gap-2 rounded-[10px] border border-[#8b5cf6]/15 bg-[#f7f3ff] px-3 py-1.5 sm:mx-4" data-testid="leieforhold-kpi-filtrert">
             <SlidersHorizontal className="h-3 w-3 shrink-0 text-[#8b5cf6]" />
             <span className="truncate text-[11px] font-medium text-[#6d28d9]">
               KPI-ene viser {filtrert.length} av {scenarioRows.length} enheter{scenario ? ` · scenario ${dato(scenario)}` : ''}
@@ -768,7 +773,7 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
           </div>
         )}
         {scenario && (
-          <div className="flex flex-wrap items-center gap-2 border-t border-black/[0.05] bg-gradient-to-r from-[#fff6e2] to-white px-3 py-1.5 sm:px-4" data-testid="leieforhold-scenario-banner">
+          <div className="mx-3 mt-2.5 flex flex-wrap items-center gap-2 rounded-[10px] border border-amber-200/60 bg-[#fff6e2] px-3 py-1.5 sm:mx-4" data-testid="leieforhold-scenario-banner">
             <CalendarClock className="h-3 w-3 shrink-0 text-amber-600" />
             <span className="text-[11px] font-medium text-amber-800">Scenario: slik ser porteføljen ut {dato(scenario)}</span>
             <span className="text-[10.5px] text-amber-700/70">{scenarioInn} flytter inn · {scenarioUt} flytter ut innen datoen</span>
@@ -782,8 +787,8 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
           </div>
         )}
 
-        {/* ── Tabell ── */}
-        <div className="border-t border-black/[0.05]">
+        {/* ── Tabellkort: svever på lerretet ── */}
+        <div className="mx-3 mb-3 mt-2.5 overflow-hidden rounded-[12px] border border-black/[0.05] bg-white shadow-[0_1px_3px_rgba(28,25,23,0.05)] sm:mx-4">
           {laster && (
             <div className="space-y-1.5 p-4" data-testid="leieforhold-skeleton">
               {Array.from({ length: 8 }).map((_, i) => (
@@ -835,7 +840,7 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
                     idx += 1; const i = idx;
                     const erRom = r.unit_type === 'Rom i bofellesskap';
                     return (
-                    <tr key={`${radNokkel(r)}-${i}`} onClick={() => setValgtRad(r)} className="group dh-rad-inn cursor-pointer border-b border-black/[0.03] transition-colors last:border-b-0 hover:bg-[#f6f4f1] [&>td]:py-2.5" style={{ animationDelay: `${Math.min(i, 16) * 16}ms` }} data-testid={`leieforhold-rad-${i}`}>
+                    <tr key={`${radNokkel(r)}-${i}`} onClick={() => setValgtRad(r)} className="group dh-rad-inn cursor-pointer border-b border-black/[0.03] transition-colors last:border-b-0 hover:bg-[#f6f4f1] [&>td]:py-2.5 [&>td:first-child]:rounded-l-[8px] [&>td:last-child]:rounded-r-[8px]" style={{ animationDelay: `${Math.min(i, 16) * 16}ms` }} data-testid={`leieforhold-rad-${i}`}>
                       <td className="px-3 py-2"><AdresseCelle r={r} /></td>
                       <td className="whitespace-nowrap px-3 py-2 text-[12px] text-[#57534e]">{r.bolig_type || (erRom ? 'Rom' : '—')}</td>
                       <td className="max-w-[170px] px-3 py-2" title={r.owner_name}>
