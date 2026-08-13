@@ -2,17 +2,17 @@
 
 /* ═══════════════ Leieforhold & inntekter — 1:1-speil av plattformen ═══════════════
    LINEAR-INSPIRERT FLATE: én samlet arbeidsflate (surface) med hårfine skille-
-   linjer — topplinje (modus/kilde/handlinger) → KPI-stripe → verktøylinje
-   (søk «/», statusfiltre, filtermodal, scenario, sortering) → kontekstlinjer →
-   tabell. Kompakte kontroller (28 px), hairline-kanter, rolig typografi.
-   TO MODUS (én side, én sannhet — Enhetsøkonomi-siden i datarommet er slått sammen hit):
-   · «Utleie»  — porteføljen slik plattformen viser den: leie, status, innflytting,
-     sats, honorar, netto, depositum
-   · «Økonomi» — DigiHomes enhetsøkonomi: honorar − fordelte FASTE KOSTNADER = margin
-     per enhet, CAC/payback, break-even. DigiHome er asset-light (huseier bærer alle
-     boligkostnader), så kostnadsbildet er kun faste kostnader (lønn m.m.) + CAC.
-   · Investor: Økonomi-modus som default, alt read-only (full åpenhet)
-   · Admin: administrerer faste kostnader i egen skuff, CAC per enhet i enhetsskuffen
+   linjer — verktøylinje (søk «/», statusfiltre, filtermodal, scenario, sortering)
+   → KPI-bånd i TO SONER → kontekstlinjer → tabell som fyller skjermen.
+   KPI-BÅNDET skiller tydelig mellom to pengestrømmer:
+   · SONE A «Leiegrunnlag» — huseiernes leie: inntektstrappen (i dag → kommende →
+     pipeline → ledig) + utleigrad
+   · SONE B «DigiHome honorar» — vårt honorar som egen trapp: i dag → sikret
+     (m/signert) → m/annonsert → full utleie (usikre trinn estimeres m/snittsats, ~)
+   SELSKAPSØKONOMIEN (faste kostnader, margin, break-even, CAC totalt) bor i
+   Datarom → Oversikt — én kilde, ett hjem. Her ligger kun andel/CAC per enhet
+   i enhetsskuffen (admin redigerer CAC der).
+   · Investor: alt read-only (full åpenhet)
    FASE 1–4:
    · Flervalgs-filter (status/type/inntekt/huseier) i modal — KPI-ene regnes LIVE
      av de filtrerte radene (lib/leieforhold-filter, delt med eksport-rutene)
@@ -24,9 +24,8 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   KeyRound, Search, Download, FileSpreadsheet, RefreshCw, ChevronDown, ChevronRight,
-  Check, AlertTriangle, Megaphone, Coins, Plus, Pencil, Trash2, X,
-  FileText, ExternalLink, SlidersHorizontal, CalendarClock, Settings2, Eye,
-  Pause, Play,
+  Check, AlertTriangle, Megaphone, Pencil, X,
+  FileText, ExternalLink, SlidersHorizontal, CalendarClock, Eye,
 } from 'lucide-react';
 import {
   TOM_FILTER, anvendScenario, filtrerRader, antallAktiveFiltre, harFilter,
@@ -58,8 +57,6 @@ const STATUS_STIL = {
 };
 const GRUPPE_LABEL = { leased: 'Utleid', future: 'Fremtidig', signing: 'Under signering', advertised: 'Annonsert', vacant: 'Ledig' };
 const SEKSJON_LABEL = { leased: 'Utleid', future: 'Fremtidig innflytting', signing: 'Under signering', advertised: 'Annonsert — pipeline', vacant: 'Ledig · uten annonse' };
-const FORDELING_LABEL = { alle: 'likt per enhet', utleide: 'kun utleide', honorar: 'etter honorar' };
-const KATEGORI_LABEL = { lonn: 'Lønn', markedsforing: 'Markedsføring', programvare: 'Programvare', annet: 'Annet' };
 const INNTEKT_VALG = [
   ['actual', 'Faktisk leie'], ['expected_signed', 'Forventet (signert)'],
   ['pending_signing', 'Under signering'], ['estimate', 'Estimat'],
@@ -209,10 +206,9 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
   const [scenario, setScenario] = useState('');
   const [egenDato, setEgenDato] = useState('');
 
-  // Enhetsøkonomi-data (faste kostnader + CAC per enhet)
+  // Enhetsøkonomi-data (andel faste kostnader + CAC per enhet — vises i
+  // enhetsskuffen; selskaps-KPI-ene bor i Datarom → Oversikt)
   const [okonomi, setOkonomi] = useState({ felles: [], enheter: {} });
-  const [kostSkuff, setKostSkuff] = useState(false); // Fase 3: admin-skuff for faste kostnader
-  const [fellesSkjema, setFellesSkjema] = useState(null); // {id?, navn, belop, fordeling, kategori, startDato, sluttDato, aktiv}
   const [cacSkjema, setCacSkjema] = useState(null); // {enhetId, adresse, cac, notat}
   const [lagrer, setLagrer] = useState(false);
   const [valgtRad, setValgtRad] = useState(null); // enhets-skuff (side drawer)
@@ -225,20 +221,18 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
   const bunnTekstRef = useRef(null);
   const [tabellMaxH, setTabellMaxH] = useState(null);
 
-  // Esc lukker øverste lag: PDF → CAC → filter → kostnadsskjema → kostnadsskuff → enhetsskuff
+  // Esc lukker øverste lag: PDF → CAC → filter → enhetsskuff
   useEffect(() => {
     const paaTast = (e) => {
       if (e.key !== 'Escape') return;
       if (pdfVisning) setPdfVisning(null);
       else if (cacSkjema) setCacSkjema(null);
       else if (filterOpen) setFilterOpen(false);
-      else if (fellesSkjema) setFellesSkjema(null);
-      else if (kostSkuff) setKostSkuff(false);
       else if (valgtRad) setValgtRad(null);
     };
     window.addEventListener('keydown', paaTast);
     return () => window.removeEventListener('keydown', paaTast);
-  }, [pdfVisning, cacSkjema, filterOpen, fellesSkjema, kostSkuff, valgtRad]);
+  }, [pdfVisning, cacSkjema, filterOpen, valgtRad]);
 
   // «/» fokuserer søket (Linear-hurtigtast)
   useEffect(() => {
@@ -340,30 +334,45 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
   const ledigLeie = Math.max(0, (visTotals.estimate_rent || 0) - annonsert.leie);
   const ledigAntall = Math.max(0, (visTotals.vacant || 0) - annonsert.antall);
 
-  /* ── Enhetsøkonomi-beregninger (faste kostnader aktive på scenario-datoen) ── */
+  /* ── Honorar-trappen: DigiHomes inntekt trinn for trinn ───────────────────
+     I dag (utleide) → Sikret (m/signerte som ikke har startet) → m/Annonsert
+     (aktive annonser + under signering) → Full utleie. Rader uten avtalt sats
+     (typisk annonserte/ledige uten kontrakt) estimeres med porteføljens
+     snittsats — trinnet merkes da med ~. */
+  const honorarTrapp = useMemo(() => {
+    const g = { leased: [], future: [], signing: [], advertised: [], vacant: [] };
+    filtrert.forEach((r) => { (g[visGruppe(r)] || g.vacant).push(r); });
+    const iDag = g.leased.reduce((s, r) => s + (r.fee_amount || 0), 0);
+    const leieIDag = g.leased.reduce((s, r) => s + (r.monthly_rent || 0), 0);
+    const snittSats = leieIDag > 0 ? iDag / leieIDag : 0;
+    const est = { future: false, signing: false, advertised: false, vacant: false };
+    const fee = (r, n3) => {
+      if (r.fee_amount > 0) return r.fee_amount;
+      const e = Math.round((r.monthly_rent || 0) * snittSats);
+      if (e > 0) est[n3] = true;
+      return e;
+    };
+    const sumG = (n2) => g[n2].reduce((s, r) => s + fee(r, n2), 0);
+    const sikret = iDag + sumG('future');
+    const medAnnonsert = sikret + sumG('signing') + sumG('advertised');
+    const potensial = medAnnonsert + sumG('vacant');
+    const estSikret = est.future;
+    const estAnnonsert = estSikret || est.signing || est.advertised;
+    const estFull = estAnnonsert || est.vacant;
+    return { iDag, sikret, medAnnonsert, potensial, estSikret, estAnnonsert, estFull };
+  }, [filtrert]);
+
+  /* ── Enhetsøkonomi (kun til enhetsskuffen: andel faste kostnader + CAC per
+     enhet). Selskaps-KPI-ene (margin, break-even, CAC totalt) bor i
+     Datarom → Oversikt. ── */
   const fellesAktive = useMemo(() => aktiveKostnader(okonomi.felles, scenario), [okonomi.felles, scenario]);
   const fellesTotal = useMemo(() => fellesAktive.reduce((s, p) => s + (p.belop || 0), 0), [fellesAktive]);
 
   // Fordeling per enhet — grunnlaget er HELE porteføljen (filtrering endrer
   // aldri den enkelte enhets andel), scenario-tilstanden påvirker «utleide».
   const andelKart = useMemo(() => fordelKostnader(scenarioRows, fellesAktive), [scenarioRows, fellesAktive]);
-  const fordeltFiltrert = useMemo(
-    () => filtrert.reduce((s, r) => s + (andelKart.get(radNokkel(r)) || 0), 0),
-    [filtrert, andelKart],
-  );
 
   const cacFor = (r) => okonomi.enheter[radNokkel(r)]?.cac || 0;
-  const cacTotal = useMemo(() => filtrert.reduce((s, r) => s + cacFor(r), 0), [filtrert, okonomi.enheter]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Margin = honorar i dag − fordelte faste kostnader (alltid inkludert —
-  // dekningsbidraget er honorar-KPI-en, så egen toggle trengs ikke).
-  const kostIMargin = (aktivFiltrering || scenario) ? fordeltFiltrert : fellesTotal;
-  const marginMnd = (visTotals.fee || 0) - kostIMargin;
-  const dekningPct = fellesTotal > 0 ? Math.round(((visTotals.fee || 0) / fellesTotal) * 100) : null;
-  const snittHonorar = visTotals.leased ? (visTotals.fee || 0) / visTotals.leased : 0;
-  const enheterTilBreakEven = fellesTotal > (visTotals.fee || 0) && snittHonorar > 0
-    ? Math.ceil((fellesTotal - (visTotals.fee || 0)) / snittHonorar) : 0;
-  const paybackSnitt = cacTotal > 0 && (visTotals.fee || 0) > 0 ? cacTotal / visTotals.fee : null;
 
   const scenarioInn = useMemo(() => scenarioRows.filter((r) => r._scenario === 'inn').length, [scenarioRows]);
   const scenarioUt = useMemo(() => scenarioRows.filter((r) => r._scenario === 'ut').length, [scenarioRows]);
@@ -413,37 +422,8 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
     return `/api/admin/leieforhold/${type}?key=${encodeURIComponent(apiKey)}${q ? `&${q}` : ''}`;
   };
 
-  /* ── Lagring (admin) ──────────────────────────────────────────────────── */
-  const lagreFelles = async () => {
-    if (!fellesSkjema?.navn?.trim() || !Number(fellesSkjema?.belop)) return;
-    setLagrer(true);
-    try {
-      const r = await fetch(`/api/admin/leieforhold/okonomi/felles?key=${encodeURIComponent(apiKey)}`, {
-        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(fellesSkjema),
-      });
-      if (r.ok) { setFellesSkjema(null); await hentOkonomi(); }
-    } catch (e) { /* behold skjema åpent */ }
-    setLagrer(false);
-  };
-  const slettFelles = async (id) => {
-    setLagrer(true);
-    try {
-      await fetch(`/api/admin/leieforhold/okonomi/felles?key=${encodeURIComponent(apiKey)}&id=${encodeURIComponent(id)}`, { method: 'DELETE' });
-      await hentOkonomi();
-    } catch (e) { /* ignorer */ }
-    setLagrer(false);
-  };
-  const togglePostAktiv = async (p) => {
-    setLagrer(true);
-    try {
-      await fetch(`/api/admin/leieforhold/okonomi/felles?key=${encodeURIComponent(apiKey)}`, {
-        method: 'PUT', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...p, aktiv: p.aktiv === false }),
-      });
-      await hentOkonomi();
-    } catch (e) { /* ignorer */ }
-    setLagrer(false);
-  };
+  /* ── Lagring (admin): CAC per enhet — faste kostnader administreres i
+     Datarom → Oversikt (KostnadsSkuff) ─────────────────────────────────── */
   const lagreCac = async () => {
     if (!cacSkjema) return;
     setLagrer(true);
@@ -455,15 +435,6 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
       if (r.ok) { setCacSkjema(null); await hentOkonomi(); }
     } catch (e) { /* behold skjema åpent */ }
     setLagrer(false);
-  };
-
-  // Status for en kostnadspost relativt til (scenario-)datoen
-  const postStatus = (p) => {
-    if (p.aktiv === false) return { t: 'Pauset', c: '#8a8278', bg: '#f1ece4' };
-    const d = scenario || tilIso(new Date());
-    if (p.startDato && p.startDato > d) return { t: `Starter ${dato(p.startDato)}`, c: '#3757c4', bg: '#e8eefc' };
-    if (p.sluttDato && p.sluttDato < d) return { t: 'Utløpt', c: '#8a8278', bg: '#f1ece4' };
-    return { t: 'Aktiv', c: '#1f7a45', bg: '#e7f4ec' };
   };
 
   const kildeLive = data?.source === 'lease-income' || data?.source === 'units-contracts';
@@ -700,101 +671,76 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
           </div>
         )}
 
-        {/* ── KPI-rad 1: Inntektstrappen ── */}
-        <div className="grid grid-cols-2 border-t border-black/[0.05] sm:grid-cols-3 xl:grid-cols-6 xl:divide-x xl:divide-black/[0.05]">
-          {KPI.map((s) => (
-            <KpiCelle key={s.id} testid={`leieforhold-kpi-${s.id}`}>
-              <div className="flex items-center gap-1.5">
-                <span className="h-[6px] w-[6px] rounded-full" style={{ background: s.farge }} />
-                <p className={`truncate ${ETIKETT}`}>{s.l}</p>
+        {/* ── KPI-bånd: to tydelig adskilte soner ─────────────────────────────
+            SONE A «Leiegrunnlag» — huseiernes leie (inntektstrappen + utleigrad)
+            SONE B «DigiHome honorar» — vårt honorar som egen trapp: i dag →
+            m/signert (sikret) → m/annonsert → full utleie. Trinn uten avtalt
+            sats estimeres med porteføljens snittsats og merkes ~.
+            Selskapets økonomi (faste kostnader, margin, break-even, CAC) bor
+            i Datarom → Oversikt — én kilde, ett hjem. ── */}
+        <div className="grid grid-cols-1 border-t border-black/[0.05] xl:grid-cols-[minmax(0,1fr)_minmax(320px,360px)]">
+          {/* SONE A — Leiegrunnlag (huseiernes penger) */}
+          <div className="min-w-0 pb-1" data-testid="leieforhold-sone-leie">
+            <p className={`px-4 pt-2 ${ETIKETT}`}>Leiegrunnlag / mnd <span className="font-medium normal-case tracking-normal text-[#c2beb8]">— huseiernes leie</span></p>
+            <div className="grid grid-cols-2 sm:grid-cols-5 sm:divide-x sm:divide-black/[0.05]">
+              {KPI.map((s) => (
+                <KpiCelle key={s.id} testid={`leieforhold-kpi-${s.id}`}>
+                  <div className="flex items-center gap-1.5">
+                    <span className="h-[6px] w-[6px] rounded-full" style={{ background: s.farge }} />
+                    <p className={`truncate ${ETIKETT}`}>{s.l}</p>
+                  </div>
+                  <p className="mt-1 text-[16px] font-semibold tabular-nums tracking-[-0.01em] text-[#1c1917]" style={heading}>
+                    {laster ? '…' : <TallOpp verdi={s.v} />}
+                  </p>
+                  <p className="mt-[1px] truncate text-[10.5px] text-[#b8b2a9]">{s.sub}</p>
+                </KpiCelle>
+              ))}
+              <div className="flex items-center gap-2.5 px-4 py-2" data-testid="leieforhold-kpi-utleigrad">
+                <Ring pct={visTotals.occupancy_pct || 0} />
+                <div className="min-w-0">
+                  <p className={`truncate ${ETIKETT}`}>Utleigrad</p>
+                  <p className="mt-[1px] text-[14px] font-semibold tabular-nums tracking-[-0.01em] text-[#1c1917]" style={heading}>{visTotals.occupancy_pct ?? 0} %</p>
+                  <p className="truncate text-[10.5px] text-[#b8b2a9]">{visTotals.leased ?? 0} av {visTotals.count ?? 0} utleid</p>
+                </div>
               </div>
-              <p className="mt-1 text-[17px] font-semibold tabular-nums tracking-[-0.01em] text-[#1c1917]" style={heading}>
-                {laster ? '…' : <TallOpp verdi={s.v} />}
-              </p>
-              <p className="mt-[1px] truncate text-[10.5px] text-[#b8b2a9]">{s.sub}</p>
-            </KpiCelle>
-          ))}
-          <KpiCelle testid="leieforhold-kpi-honorar">
-            <div className="flex items-center gap-1.5">
-              <span className="h-[6px] w-[6px] rounded-full bg-[#7c3aed]" />
-              <p className={`truncate ${ETIKETT}`}>Honorar / mnd · eks. mva</p>
-            </div>
-            <p className="mt-1 text-[17px] font-semibold tabular-nums tracking-[-0.01em]" style={{ ...heading, color: '#7c3aed' }} data-testid="leieforhold-honorar">
-              {laster ? '…' : <TallOpp verdi={visTotals.fee} />}
-            </p>
-            <p className="mt-[1px] truncate text-[10.5px] text-[#b8b2a9]">
-              sikret {kr(visTotals.fee_garantert ?? visTotals.fee)} · potensial {kr(visTotals.fee_total ?? visTotals.fee)}
-            </p>
-          </KpiCelle>
-          <div className="flex items-center gap-3 px-4 py-2.5">
-            <Ring pct={visTotals.occupancy_pct || 0} />
-            <div className="min-w-0">
-              <p className={`truncate ${ETIKETT}`}>Utleigrad</p>
-              <p className="mt-[1px] text-[15px] font-semibold tabular-nums tracking-[-0.01em] text-[#1c1917]" style={heading}>{visTotals.occupancy_pct ?? 0} %</p>
-              <p className="truncate text-[10.5px] text-[#b8b2a9]">
-                {visTotals.leased ?? 0} av {visTotals.count ?? 0} utleid · netto eiere {kr(visTotals.net)}
-              </p>
             </div>
           </div>
-        </div>
 
-        {/* ── KPI-rad 2: DigiHome-økonomi (asset-light) — hele økonomibildet som
-            dashbord, uten egen tabell/modus: få kostnadspunkter (faste kostnader
-            + CAC) gjør at dette dekker behovet. Per enhet: se enhetsskuffen. ── */}
-        <div className="grid grid-cols-2 border-t border-black/[0.05] bg-[#fdfcfa] sm:grid-cols-4 sm:divide-x sm:divide-black/[0.05]">
-          <div className="border-b border-black/[0.05] px-4 py-2.5 sm:border-b-0" data-testid="leieforhold-kpi-felles">
-            <div className="flex items-center gap-1.5">
-              <span className="h-[6px] w-[6px] shrink-0 rounded-full bg-[#c98a1b]" />
-              <p className={`truncate ${ETIKETT}`}>Faste kostnader / mnd</p>
-              {kanRedigere && (
-                <button
-                  onClick={() => setKostSkuff(true)}
-                  data-testid="leieforhold-faste-adm"
-                  className="ml-auto flex h-[20px] shrink-0 items-center gap-1 rounded-[5px] px-1.5 text-[10px] font-semibold text-[#8b5cf6] transition-colors hover:bg-[#f5f1fd]"
-                >
-                  <Settings2 className="h-3 w-3" /> Administrer
-                </button>
+          {/* SONE B — DigiHome honorar-trapp (våre penger, lilla sone) */}
+          <div className="border-t border-black/[0.05] bg-gradient-to-br from-[#faf7ff] via-[#faf8ff] to-white px-4 pb-2.5 pt-2 xl:border-l xl:border-t-0" data-testid="leieforhold-honorar-trapp">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#8b5cf6]">DigiHome honorar / mnd <span className="font-medium normal-case tracking-normal text-[#b5a8d6]">· eks. mva</span></p>
+            <div className="mt-1 flex items-baseline gap-2">
+              <p className="text-[17px] font-semibold tabular-nums tracking-[-0.01em]" style={{ ...heading, color: '#7c3aed' }} data-testid="leieforhold-honorar">
+                {laster ? '…' : <TallOpp verdi={honorarTrapp.iDag} />}
+              </p>
+              <p className="truncate text-[10.5px] text-[#b8b2a9]">i dag · {visTotals.leased ?? 0} {visTotals.leased === 1 ? 'enhet betaler' : 'enheter betaler'} · netto eiere {kr(visTotals.net)}</p>
+            </div>
+            {/* Trappebar — kumulativ mot full utleie */}
+            <div className="mt-2 flex h-[5px] w-full overflow-hidden rounded-full bg-[#ece5f9]">
+              {honorarTrapp.potensial > 0 && (
+                <>
+                  <div className="h-full bg-[#7c3aed] transition-all duration-700" style={{ width: `${(honorarTrapp.iDag / honorarTrapp.potensial) * 100}%` }} />
+                  <div className="h-full bg-[#a78bfa] transition-all duration-700" style={{ width: `${((honorarTrapp.sikret - honorarTrapp.iDag) / honorarTrapp.potensial) * 100}%` }} />
+                  <div className="h-full bg-[#2aa3bf] transition-all duration-700" style={{ width: `${((honorarTrapp.medAnnonsert - honorarTrapp.sikret) / honorarTrapp.potensial) * 100}%` }} />
+                </>
               )}
             </div>
-            <p className="mt-1 text-[15px] font-semibold tabular-nums tracking-[-0.01em] text-[#1c1917]" style={heading}><TallOpp verdi={fellesTotal} /></p>
-            <p className="mt-[1px] truncate text-[10.5px] text-[#b8b2a9]">
-              {fellesAktive.length ? fellesAktive.map((p) => p.navn).join(' · ') : kanRedigere ? 'ingen aktive — legg inn f.eks. lønn' : 'ingen aktive poster'}
-            </p>
-          </div>
-          <div className="border-b border-black/[0.05] px-4 py-2.5 sm:border-b-0" data-testid="leieforhold-kpi-margin">
-            <div className="flex items-center gap-1.5">
-              <span className={`h-[6px] w-[6px] rounded-full ${marginMnd >= 0 ? 'bg-[#1f9a53]' : 'bg-rose-500'}`} />
-              <p className={`truncate ${ETIKETT}`}>Margin / mnd</p>
-            </div>
-            <p className="mt-1 text-[15px] font-semibold tabular-nums tracking-[-0.01em]" style={{ ...heading, color: marginMnd >= 0 ? '#1f7a45' : '#e11d48' }}>
-              {laster ? '…' : <TallOpp verdi={marginMnd} />}
-            </p>
-            <p className="mt-[1px] truncate text-[10.5px] text-[#b8b2a9]">honorar i dag − fordelte faste kostnader</p>
-          </div>
-          <div className="px-4 py-2.5" data-testid="leieforhold-kpi-breakeven">
-            <div className="flex items-baseline justify-between gap-2">
-              <p className={`truncate ${ETIKETT}`}>Break-even</p>
-              {dekningPct != null && <p className="text-[13px] font-semibold tabular-nums text-[#1c1917]" style={heading}>{Math.min(dekningPct, 999)} %</p>}
-            </div>
-            {dekningPct != null ? (
-              <>
-                <div className="mt-2 h-[5px] overflow-hidden rounded-full bg-[#f1ece4]">
-                  <div className={`h-full rounded-full transition-all duration-700 ${dekningPct >= 100 ? 'bg-[#1f9a53]' : 'bg-[#8b5cf6]'}`} style={{ width: `${Math.min(dekningPct, 100)}%` }} />
+            <div className="mt-1.5 grid grid-cols-2 gap-x-4 gap-y-[3px]">
+              {[
+                ['#7c3aed', 'I dag', honorarTrapp.iDag, false, 'leieforhold-hon-idag'],
+                ['#a78bfa', 'Sikret · m/signert', honorarTrapp.sikret, honorarTrapp.estSikret, 'leieforhold-hon-sikret'],
+                ['#2aa3bf', '+ Annonsert nå', honorarTrapp.medAnnonsert, honorarTrapp.estAnnonsert, 'leieforhold-hon-annonsert'],
+                ['#c9c3ba', 'Full utleie', honorarTrapp.potensial, honorarTrapp.estFull, 'leieforhold-hon-full'],
+              ].map(([farge, l, v, est, tid]) => (
+                <div key={l} className="flex items-baseline justify-between gap-2" data-testid={tid}>
+                  <span className="flex min-w-0 items-center gap-1.5">
+                    <span className="h-[5px] w-[5px] shrink-0 rounded-full" style={{ background: farge }} />
+                    <span className="truncate text-[10.5px] text-[#8a8278]">{l}</span>
+                  </span>
+                  <span className="shrink-0 text-[11px] font-semibold tabular-nums text-[#57534e]">{est ? '~' : ''}{kr(v)}</span>
                 </div>
-                <p className="mt-1.5 truncate text-[10.5px] text-[#b8b2a9]">
-                  {dekningPct >= 100 ? 'nådd — hver ny enhet er ~ren margin' : `honoraret dekker ${dekningPct} % · ~${enheterTilBreakEven} enheter igjen`}
-                </p>
-              </>
-            ) : (
-              <p className="mt-1.5 text-[10.5px] text-[#b8b2a9]">Legg inn faste kostnader for å se dekningsgrad</p>
-            )}
-          </div>
-          <div className="px-4 py-2.5" data-testid="leieforhold-kpi-cac">
-            <p className={`truncate ${ETIKETT}`}>CAC totalt · engangs</p>
-            <p className="mt-1 text-[15px] font-semibold tabular-nums tracking-[-0.01em] text-[#1c1917]" style={heading}><TallOpp verdi={cacTotal} /></p>
-            <p className="mt-[1px] truncate text-[10.5px] text-[#b8b2a9]">
-              {paybackSnitt ? `payback ~${paybackSnitt.toLocaleString('nb-NO', { maximumFractionDigits: 1 })} mnd` : 'settes per enhet i enhetsskuffen'}
-            </p>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -1299,137 +1245,8 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
         </div>
       )}
 
-      {/* ═══ Faste kostnader — administrasjonsskuff (admin) ═══ */}
-      {kanRedigere && kostSkuff && (
-        <div className="fixed inset-0 z-[45] flex justify-end bg-black/20 backdrop-blur-[2px]" onClick={() => { setKostSkuff(false); setFellesSkjema(null); }}>
-          <div className="flex h-full w-full max-w-[460px] flex-col border-l border-black/[0.07] bg-white shadow-[-16px_0_60px_rgba(28,25,23,0.14)] dh-drawer-inn" onClick={(e) => e.stopPropagation()} data-testid="leieforhold-kostskuff">
-            <div className="border-b border-black/[0.05] px-5 py-4">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-[15px] font-semibold text-[#1c1917]" style={heading}>Faste kostnader</p>
-                  <p className="mt-0.5 text-[11.5px] text-[#a8a29a]">Løpende kostnader (lønn m.m.) — fordeles automatisk per enhet. CAC settes per enhet i enhetsskuffen.</p>
-                </div>
-                <button onClick={() => { setKostSkuff(false); setFellesSkjema(null); }} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px] text-[#b3ada3] transition-colors hover:bg-[#f7f6f3] hover:text-[#57534e]" data-testid="leieforhold-kostskuff-lukk"><X className="h-4 w-4" /></button>
-              </div>
-            </div>
-
-            <div className="flex-1 overflow-y-auto px-5 py-4">
-              {!fellesSkjema && (
-                <button
-                  onClick={() => setFellesSkjema({ navn: '', belop: '', fordeling: 'alle', kategori: 'lonn', startDato: '', sluttDato: '', aktiv: true })}
-                  data-testid="leieforhold-felles-ny"
-                  className="flex h-8 w-full items-center justify-center gap-1.5 rounded-[8px] border border-dashed border-[#d8d4cd] text-[12px] font-medium text-[#8a8278] transition-colors hover:border-[#8b5cf6]/40 hover:bg-[#faf8ff] hover:text-[#6d28d9]"
-                >
-                  <Plus className="h-3.5 w-3.5" /> Legg til fast kostnad
-                </button>
-              )}
-
-              {fellesSkjema && (
-                <div className="rounded-[10px] border border-[#8b5cf6]/20 bg-[#faf8ff] p-3.5" data-testid="leieforhold-felles-skjema">
-                  <p className="text-[12px] font-semibold text-[#6d28d9]" style={heading}>{fellesSkjema.id ? 'Rediger post' : 'Ny fast kostnad'}</p>
-                  <label className="mt-2.5 block">
-                    <span className={`mb-1 block ${ETIKETT}`}>Navn</span>
-                    <input value={fellesSkjema.navn} onChange={(e) => setFellesSkjema((f) => ({ ...f, navn: e.target.value }))} placeholder="F.eks. Lønn — 1 ansatt" autoFocus className="h-8 w-full rounded-[7px] border border-black/[0.08] bg-white px-2.5 text-[12.5px] outline-none transition-all focus:border-[#8b5cf6]/40 focus:ring-2 focus:ring-[#8b5cf6]/10" />
-                  </label>
-                  <div className="mt-2.5 grid grid-cols-2 gap-2">
-                    <label>
-                      <span className={`mb-1 block ${ETIKETT}`}>Kr / mnd</span>
-                      <input type="number" min="0" value={fellesSkjema.belop} onChange={(e) => setFellesSkjema((f) => ({ ...f, belop: e.target.value }))} placeholder="60000" className="h-8 w-full rounded-[7px] border border-black/[0.08] bg-white px-2.5 text-[12.5px] tabular-nums outline-none transition-all focus:border-[#8b5cf6]/40 focus:ring-2 focus:ring-[#8b5cf6]/10" />
-                    </label>
-                    <label>
-                      <span className={`mb-1 block ${ETIKETT}`}>Kategori</span>
-                      <select value={fellesSkjema.kategori} onChange={(e) => setFellesSkjema((f) => ({ ...f, kategori: e.target.value }))} className="h-8 w-full rounded-[7px] border border-black/[0.08] bg-white px-2 text-[12px] outline-none focus:border-[#8b5cf6]/40">
-                        <option value="lonn">Lønn</option>
-                        <option value="markedsforing">Markedsføring</option>
-                        <option value="programvare">Programvare</option>
-                        <option value="annet">Annet</option>
-                      </select>
-                    </label>
-                  </div>
-                  <label className="mt-2.5 block">
-                    <span className={`mb-1 block ${ETIKETT}`}>Fordeling</span>
-                    <select value={fellesSkjema.fordeling} onChange={(e) => setFellesSkjema((f) => ({ ...f, fordeling: e.target.value }))} className="h-8 w-full rounded-[7px] border border-black/[0.08] bg-white px-2 text-[12px] outline-none focus:border-[#8b5cf6]/40">
-                      <option value="alle">Likt per enhet</option>
-                      <option value="utleide">Kun utleide</option>
-                      <option value="honorar">Etter honorar</option>
-                    </select>
-                  </label>
-                  <div className="mt-2.5 grid grid-cols-2 gap-2">
-                    <label>
-                      <span className={`mb-1 block ${ETIKETT}`}>Fra dato (valgfritt)</span>
-                      <input type="date" value={fellesSkjema.startDato || ''} onChange={(e) => setFellesSkjema((f) => ({ ...f, startDato: e.target.value }))} className="h-8 w-full rounded-[7px] border border-black/[0.08] bg-white px-2 text-[11.5px] outline-none focus:border-[#8b5cf6]/40" data-testid="leieforhold-felles-startdato" />
-                    </label>
-                    <label>
-                      <span className={`mb-1 block ${ETIKETT}`}>Til dato (valgfritt)</span>
-                      <input type="date" value={fellesSkjema.sluttDato || ''} min={fellesSkjema.startDato || undefined} onChange={(e) => setFellesSkjema((f) => ({ ...f, sluttDato: e.target.value }))} className="h-8 w-full rounded-[7px] border border-black/[0.08] bg-white px-2 text-[11.5px] outline-none focus:border-[#8b5cf6]/40" data-testid="leieforhold-felles-sluttdato" />
-                    </label>
-                  </div>
-                  <p className="mt-1.5 text-[10.5px] text-[#a8a29a]">Uten datoer løper posten fast. Med datoer telles den kun i perioden — nyttig sammen med scenario-datoen.</p>
-                  <div className="mt-3 flex items-center justify-end gap-1.5">
-                    <button onClick={() => setFellesSkjema(null)} className="h-7 rounded-[7px] px-2.5 text-[12px] font-medium text-[#a8a29a] transition-colors hover:text-[#57534e]">Avbryt</button>
-                    <button onClick={lagreFelles} disabled={lagrer || !fellesSkjema.navn?.trim() || !Number(fellesSkjema.belop)} data-testid="leieforhold-felles-lagre" className={`${KNAPP_PRIMAER} disabled:opacity-40`}>
-                      <Check className="h-3.5 w-3.5" /> Lagre
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {okonomi.felles.length === 0 && !fellesSkjema && (
-                <p className="mt-4 text-[12px] text-[#a8a29a]">Ingen faste kostnader registrert — legg inn f.eks. «Lønn — 1 ansatt · 60 000/mnd», så fordeles den automatisk per enhet.</p>
-              )}
-
-              {okonomi.felles.length > 0 && (
-                <div className="mt-4 space-y-1.5">
-                  {okonomi.felles.map((p) => {
-                    const st = postStatus(p);
-                    const teller = fellesAktive.some((a) => a.id === p.id);
-                    const periode = p.startDato || p.sluttDato
-                      ? `${p.startDato ? `fra ${dato(p.startDato)}` : ''}${p.startDato && p.sluttDato ? ' ' : ''}${p.sluttDato ? `til ${dato(p.sluttDato)}` : ''}`
-                      : 'løpende';
-                    return (
-                      <div key={p.id} className={`rounded-[10px] border border-black/[0.05] bg-[#fbfaf8] px-3 py-2.5 transition-opacity ${teller ? '' : 'opacity-55'}`} data-testid={`leieforhold-kostpost-${p.id}`}>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="rounded-[4px] bg-[#f4f0fb] px-1.5 py-[2px] text-[9px] font-bold uppercase tracking-wide text-[#8b5cf6]">{KATEGORI_LABEL[p.kategori] || 'Annet'}</span>
-                          <span className="text-[12.5px] font-medium text-[#1c1917]">{p.navn}</span>
-                          <span className="rounded-full px-1.5 py-[2px] text-[9.5px] font-semibold" style={{ background: st.bg, color: st.c }}>{st.t}</span>
-                          <span className="ml-auto text-[12.5px] font-semibold tabular-nums text-[#1c1917]">{kr(p.belop)}<span className="text-[10px] font-medium text-[#b8b2a9]">/mnd</span></span>
-                        </div>
-                        <div className="mt-1.5 flex items-center gap-2">
-                          <span className="text-[10.5px] text-[#a8a29a]">{FORDELING_LABEL[p.fordeling] || 'likt per enhet'} · {periode}</span>
-                          <span className="ml-auto flex items-center gap-0.5">
-                            <button
-                              onClick={() => togglePostAktiv(p)}
-                              disabled={lagrer}
-                              className="flex h-6 w-6 items-center justify-center rounded-[6px] text-[#b3ada3] transition-colors hover:bg-white hover:text-[#57534e]"
-                              title={p.aktiv === false ? 'Aktiver posten' : 'Sett på pause'}
-                              data-testid={`leieforhold-kostpost-toggle-${p.id}`}
-                            >
-                              {p.aktiv === false ? <Play className="h-3.5 w-3.5" /> : <Pause className="h-3.5 w-3.5" />}
-                            </button>
-                            <button onClick={() => setFellesSkjema({ ...p, startDato: p.startDato || '', sluttDato: p.sluttDato || '' })} className="flex h-6 w-6 items-center justify-center rounded-[6px] text-[#b3ada3] transition-colors hover:bg-white hover:text-[#57534e]" title="Rediger"><Pencil className="h-3.5 w-3.5" /></button>
-                            <button onClick={() => slettFelles(p.id)} disabled={lagrer} className="flex h-6 w-6 items-center justify-center rounded-[6px] text-[#b3ada3] transition-colors hover:bg-rose-50 hover:text-rose-500" title="Slett"><Trash2 className="h-3.5 w-3.5" /></button>
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            <div className="border-t border-black/[0.05] bg-[#fbfaf8] px-5 py-3">
-              <div className="flex items-baseline justify-between">
-                <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#a8a29a]">Aktive nå{scenario ? ` (${dato(scenario)})` : ''}</span>
-                <span className="text-[14.5px] font-semibold tabular-nums text-[#1c1917]" style={heading} data-testid="leieforhold-kostskuff-sum">{kr(fellesTotal)}<span className="text-[10.5px] font-medium text-[#b8b2a9]">/mnd</span></span>
-              </div>
-              <p className="mt-0.5 text-[10.5px] text-[#c2beb8]">{fellesAktive.length} av {okonomi.felles.length} {okonomi.felles.length === 1 ? 'post' : 'poster'} teller i marginen</p>
-            </div>
-          </div>
-        </div>
-      )}
-
       <p ref={bunnTekstRef} className="mt-2.5 px-1 text-[11px] leading-relaxed text-[#b3ada3]">
-        Inntektstrappen: Leie i dag (løpende kontrakter) → Kommende (signert, ikke startet — sammen utgjør de «sikret») → Pipeline (under signering + annonsert, uten signatur) → Ledig uten annonse (estimat). Honorar vises eks. mva (leie × sats); grå honorartall er potensial. Margin = honorar − fordelte faste kostnader; CAC er engangs anskaffelseskost (payback i økonomiraden). Excel-eksporten følger samme trapp og respekterer aktiv filtrering og scenario.
+        Leiegrunnlaget er huseiernes penger: Leie i dag (løpende) → Kommende (signert, ikke startet) → Pipeline (under signering + annonsert) → Ledig uten annonse (estimat). Honorar-trappen er DigiHomes inntekt eks. mva: i dag → sikret (m/signert) → m/annonsert → full utleie — trinn med ~ estimeres med porteføljens snittsats der sats ikke er avtalt. Selskapsøkonomien (faste kostnader, margin, break-even, CAC) ligger i Datarom → Oversikt. Excel-eksporten følger samme trapper og respekterer aktiv filtrering og scenario.
       </p>
     </div>
   );

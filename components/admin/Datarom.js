@@ -15,11 +15,13 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Landmark, TrendingUp, Wallet, Home, KeyRound, FileSpreadsheet, Loader2, Plus,
   Trash2, X, Check, RefreshCw, FileText, Download, ShieldCheck, ArrowRight,
-  BarChart3, AlertTriangle, Pencil, CircleDollarSign, Building2, Users,
+  BarChart3, AlertTriangle, Pencil, CircleDollarSign, Building2, Users, Settings2,
 } from 'lucide-react';
 import {
   ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, CartesianGrid,
 } from 'recharts';
+import KostnadsSkuff from '@/components/admin/KostnadsSkuff';
+import { aktiveKostnader } from '@/lib/leieforhold-filter';
 
 const heading = { fontFamily: 'var(--font-heading)' };
 const tallFmt = new Intl.NumberFormat('nb-NO', { maximumFractionDigits: 0 });
@@ -35,8 +37,8 @@ const STATUS_META = {
   forventet: { l: 'Forventet', farge: '#9a6b1c', bg: '#fdf3e0' },
 };
 
-const Kort = ({ className = '', children }) => (
-  <div className={`rounded-2xl bg-white p-5 shadow-[0_2px_16px_rgba(0,0,0,0.04)] ${className}`}>{children}</div>
+const Kort = ({ className = '', children, ...rest }) => (
+  <div className={`rounded-2xl bg-white p-5 shadow-[0_2px_16px_rgba(0,0,0,0.04)] ${className}`} {...rest}>{children}</div>
 );
 
 const StatusBadge = ({ status }) => {
@@ -69,8 +71,16 @@ export default function Datarom({ apiKey, tab = 'oversikt', erAdmin = false, onG
 
   return (
     <div data-testid="datarom-modul">
-      {tab === 'oversikt' && <Oversikt api={api} xlsxHref={xlsxHref} erAdmin={erAdmin} onGaaTil={onGaaTil} onAapneBudsjett={onAapneBudsjett} />}
-      {tab === 'resultat' && <Resultat api={api} erAdmin={erAdmin} />}
+      {tab === 'oversikt' && <Oversikt api={api} apiKey={apiKey} xlsxHref={xlsxHref} erAdmin={erAdmin} onGaaTil={onGaaTil} onAapneBudsjett={onAapneBudsjett} />}
+      {tab === 'resultat' && (
+        <Kort data-testid="datarom-resultat-kommer-snart">
+          <TomtFelt
+            icon={BarChart3}
+            tittel="Kommer snart"
+            tekst="Resultatregnskapet lanseres her — månedlig resultat fra oppstart med inntekter, kostnader og akkumulert utvikling."
+          />
+        </Kort>
+      )}
       {(tab === 'enheter' || tab === 'pipeline') && <Enheter api={api} erAdmin={erAdmin} fase={tab === 'pipeline' ? 'pipeline' : 'drift'} />}
       {tab === 'selskap' && <Selskap api={api} erAdmin={erAdmin} />}
       {tab === 'dokumenter' && <Dokumenter api={api} apiKey={apiKey} erAdmin={erAdmin} />}
@@ -80,15 +90,15 @@ export default function Datarom({ apiKey, tab = 'oversikt', erAdmin = false, onG
 
 /* ── Oversikt ─────────────────────────────────────────────────────────────── */
 
-function Oversikt({ api, xlsxHref, erAdmin, onGaaTil, onAapneBudsjett }) {
+function Oversikt({ api, apiKey, xlsxHref, erAdmin, onGaaTil, onAapneBudsjett }) {
   const [data, setData] = useState(null);
   const [laster, setLaster] = useState(true);
-  useEffect(() => {
-    (async () => {
-      try { setData((await api('oversikt')).oversikt); } catch (e) {}
-      setLaster(false);
-    })();
+  const [kostSkuff, setKostSkuff] = useState(false);
+  const hent = useCallback(async () => {
+    try { setData((await api('oversikt')).oversikt); } catch (e) {}
+    setLaster(false);
   }, [api]);
+  useEffect(() => { hent(); }, [hent]);
 
   if (laster) return <Skeleton />;
   if (!data) return <Kort><TomtFelt icon={AlertTriangle} tittel="Kunne ikke laste oversikten" tekst="Prøv å laste siden på nytt." /></Kort>;
@@ -127,6 +137,64 @@ function Oversikt({ api, xlsxHref, erAdmin, onGaaTil, onAapneBudsjett }) {
           </Kort>
         ))}
       </div>
+
+      {/* DigiHome-økonomi — asset-light: økonomiens ene hjem (faste kostnader,
+          break-even, CAC). Admin administrerer postene her; investor leser. */}
+      {(() => {
+        const ok = data.okonomi || {};
+        const aktive = aktiveKostnader(ok.felles || [], '');
+        const aktivNavn = aktive.map((p) => p.navn).join(' · ');
+        const pct = ok.breakEvenPct;
+        return (
+          <Kort data-testid="datarom-okonomi">
+            <div className="flex flex-wrap items-center gap-3">
+              <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.07em] text-[#a3a3a3]"><Wallet className="h-3.5 w-3.5" /> DigiHome-økonomi — asset-light</p>
+              {erAdmin && (
+                <button
+                  onClick={() => setKostSkuff(true)}
+                  data-testid="datarom-okonomi-adm"
+                  className="ml-auto flex h-8 items-center gap-1.5 rounded-full border border-black/[0.08] px-3 text-[12px] font-semibold text-[#6d28d9] transition-all hover:bg-[#f4f0fb] active:scale-[0.97]"
+                >
+                  <Settings2 className="h-3.5 w-3.5" /> Administrer faste kostnader
+                </button>
+              )}
+            </div>
+            <div className="mt-3 grid gap-2.5 sm:grid-cols-3">
+              <div className="rounded-xl bg-[#fafaf8] px-3.5 py-3" data-testid="datarom-okonomi-faste">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-[#b5b5b5]">Faste kostnader / mnd</p>
+                <p className="mt-1 text-[17px] font-bold tabular-nums text-[#0a0a0a]" style={heading}>{kr(ok.fellesMnd || 0)}</p>
+                <p className="mt-0.5 truncate text-[11px] text-[#999]">{aktivNavn || (erAdmin ? 'ingen aktive — legg inn f.eks. lønn' : 'ingen aktive poster')}</p>
+              </div>
+              <div className="rounded-xl bg-[#fafaf8] px-3.5 py-3" data-testid="datarom-okonomi-breakeven">
+                <div className="flex items-baseline justify-between gap-2">
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-[#b5b5b5]">Break-even</p>
+                  {pct != null && <p className="text-[13px] font-bold tabular-nums text-[#0a0a0a]" style={heading}>{Math.min(pct, 999)} %</p>}
+                </div>
+                {pct != null ? (
+                  <>
+                    <div className="mt-2 h-[5px] overflow-hidden rounded-full bg-[#ecebe8]">
+                      <div className={`h-full rounded-full transition-all duration-700 ${pct >= 100 ? 'bg-[#1f9a53]' : 'bg-[#8b5cf6]'}`} style={{ width: `${Math.min(pct, 100)}%` }} />
+                    </div>
+                    <p className="mt-1.5 truncate text-[11px] text-[#999]">
+                      {pct >= 100 ? 'nådd — hver ny enhet er ~ren margin' : `honoraret dekker ${pct} % · ~${ok.enheterIgjen} enheter igjen`}
+                    </p>
+                  </>
+                ) : (
+                  <p className="mt-1.5 text-[11px] text-[#999]">Legg inn faste kostnader for å se dekningsgrad</p>
+                )}
+              </div>
+              <div className="rounded-xl bg-[#fafaf8] px-3.5 py-3" data-testid="datarom-okonomi-cac">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-[#b5b5b5]">CAC totalt · engangs</p>
+                <p className="mt-1 text-[17px] font-bold tabular-nums text-[#0a0a0a]" style={heading}>{kr(ok.cacTotal || 0)}</p>
+                <p className="mt-0.5 truncate text-[11px] text-[#999]">{ok.paybackMnd ? `payback ~${ok.paybackMnd.toLocaleString('nb-NO', { maximumFractionDigits: 1 })} mnd` : 'settes per enhet i Leieforhold-skuffen'}</p>
+              </div>
+            </div>
+            <p className="mt-2.5 text-[11px] leading-relaxed text-[#b5b5b5]">
+              DigiHome er asset-light: huseier bærer alle boligkostnader. Margin = honorar − aktive faste kostnader. CAC er engangs anskaffelseskost — payback viser hvor raskt honoraret tilbakebetaler den.
+            </p>
+          </Kort>
+        );
+      })()}
 
       {/* Resultatgraf fra oppstart */}
       <Kort>
@@ -203,6 +271,16 @@ function Oversikt({ api, xlsxHref, erAdmin, onGaaTil, onAapneBudsjett }) {
           </div>
         </Kort>
       </div>
+
+      {/* Kostnadsskuff (admin) — CRUD mot /api/admin/leieforhold/okonomi/felles */}
+      {erAdmin && kostSkuff && (
+        <KostnadsSkuff
+          apiKey={apiKey}
+          felles={data.okonomi?.felles || []}
+          onOppdatert={hent}
+          onLukk={() => setKostSkuff(false)}
+        />
+      )}
     </div>
   );
 }

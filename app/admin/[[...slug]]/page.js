@@ -41,7 +41,6 @@ const NAV = [
       { k: 'nokkeltall', l: 'Nøkkeltall', icon: TrendingUp, desc: 'Investorklare KPIer · CAC · LTV · konvertering' },
       { k: 'okonomi', l: 'Økonomi', icon: Wallet, desc: 'Resultat · likviditet · burn · runway' },
       { k: 'leieforhold', l: 'Leieforhold', icon: KeyRound, desc: 'Leieforhold & inntekter — porteføljen med Excel-eksport (1:1 med plattformen)' },
-      { k: 'budsjett', l: 'Budsjett', icon: Target, desc: 'Årsbudsjett per kategori — budsjett vs. faktisk, med forslag fra porteføljen' },
       { k: 'saker', l: 'Saker', icon: ClipboardCheck, badge: 'tasks', desc: 'Internt sakssystem — oppfølging, frister og ansvar' },
       { k: 'moter', l: 'Møter', icon: CalendarDays, desc: 'Styremøter & ledermøter — agenda, referat, vedtak og aksjonspunkter' },
       { k: 'brukere', l: 'Brukere', icon: Users, desc: 'Personer, roller og tilgang — inviter, endre og se portalen som andre' },
@@ -54,6 +53,7 @@ const NAV = [
     items: [
       { k: 'dr-oversikt', datarom: 'oversikt', l: 'Oversikt', icon: Landmark, desc: 'Investorrommets forside — nøkkeltall, drift, pipeline og investorpakke' },
       { k: 'dr-resultat', datarom: 'resultat', l: 'Resultatregnskap', icon: BarChart3, desc: 'Månedlig resultat fra oppstart — inntekter, kostnader og akkumulert' },
+      { k: 'budsjett', l: 'Budsjett', icon: Target, desc: 'Årsbudsjett per kategori — budsjett vs. faktisk, med forslag fra porteføljen' },
       // Enhetsøkonomi er slått sammen med Leieforhold (Økonomi-modus) — dr-enheter
       // er derfor fjernet fra menyen. Ruter/data består for bakoverkompatibilitet.
       { k: 'dr-pipeline', datarom: 'pipeline', l: 'Pipeline', icon: TrendingUp, desc: 'Enheter på vei inn — signert kontra forventet' },
