@@ -45,6 +45,12 @@ const MODUL_VALG = [
   { k: 'kunder', l: 'Kunder' },
   { k: 'i-leads', l: 'Leads' },
   { k: 'historikk', l: 'Historikk' },
+  { k: 'dr-oversikt', l: 'Datarom · Oversikt' },
+  { k: 'dr-resultat', l: 'Datarom · Resultat' },
+  { k: 'dr-enheter', l: 'Datarom · Enheter' },
+  { k: 'dr-pipeline', l: 'Datarom · Pipeline' },
+  { k: 'dr-selskap', l: 'Datarom · Selskap' },
+  { k: 'dr-dokumenter', l: 'Datarom · Dokumenter' },
 ];
 const MODUL_LABEL = Object.fromEntries(MODUL_VALG.map((m) => [m.k, m.l]));
 const VERV_FORSLAG = ['Styreleder', 'Nestleder', 'Styremedlem', 'Varamedlem', 'Daglig leder', 'Økonomiansvarlig', 'Driftsansvarlig', 'Partner', 'Investor', 'Aksjonær'];

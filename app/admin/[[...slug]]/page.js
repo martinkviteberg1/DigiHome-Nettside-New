@@ -27,6 +27,7 @@ import InvestorRoomTab from '@/components/admin/InvestorRoomTab';
 import SeoAeoTab from '@/components/admin/SeoAeoTab';
 import TasksTab from '@/components/admin/TasksTab';
 import MeetingsTab from '@/components/admin/MeetingsTab';
+import Datarom from '@/components/admin/Datarom';
 
 const SESSION_KEY = 'dh_admin_session';
 const LEGACY_KEY = 'dh_admin_key';
@@ -46,6 +47,17 @@ const NAV = [
       { k: 'brukere', l: 'Brukere', icon: Users, desc: 'Personer, roller og tilgang — inviter, endre og se portalen som andre' },
       { k: 'investorrom', l: 'Investor-rom', icon: Landmark, desc: 'Levende DD-rom — tilgangslenker, dokumenter & Q&A' },
       { k: 'playbook', l: 'Playbook', icon: FileText, desc: 'Marketing-strategi · konkurrentanalyse · 90-dagersplan' },
+    ],
+  },
+  {
+    group: 'Datarom',
+    items: [
+      { k: 'dr-oversikt', datarom: 'oversikt', l: 'Oversikt', icon: Landmark, desc: 'Investorrommets forside — nøkkeltall, drift, pipeline og investorpakke' },
+      { k: 'dr-resultat', datarom: 'resultat', l: 'Resultatregnskap', icon: BarChart3, desc: 'Månedlig resultat fra oppstart — inntekter, kostnader og akkumulert' },
+      { k: 'dr-enheter', datarom: 'enheter', l: 'Enhetsøkonomi', icon: Home, desc: 'Hva DigiHome tjener per leilighet og rom — honorar, kostnader og margin' },
+      { k: 'dr-pipeline', datarom: 'pipeline', l: 'Pipeline', icon: TrendingUp, desc: 'Enheter på vei inn — signert kontra forventet' },
+      { k: 'dr-selskap', datarom: 'selskap', l: 'Selskap', icon: ShieldCheck, desc: 'Ansatte, faste kostnader, gjeld og aksjonærlån' },
+      { k: 'dr-dokumenter', datarom: 'dokumenter', l: 'Dokumenter', icon: FileText, desc: 'Delte rapporter og avtaler fra dokumenthvelvet' },
     ],
   },
   {
@@ -155,6 +167,16 @@ const INSIGHT_SUBTITLES = {
   ai: 'Spør AI om dataene dine — trafikk, leads og annonser',
 };
 
+// Titler/undertitler i toppbaren når Datarom-sidene er aktive
+const DATAROM_TITLER = {
+  oversikt: { t: 'Oversikt', s: 'Investorrommets forside — drift, pipeline og nøkkeltall · last ned investorpakken (Excel)' },
+  resultat: { t: 'Resultatregnskap', s: 'Månedlig resultat fra oppstart til i dag — inntekter, kostnader og akkumulert' },
+  enheter: { t: 'Enhetsøkonomi', s: 'Hva DigiHome tjener per leilighet og rom — honorar, direkte kostnader og margin' },
+  pipeline: { t: 'Pipeline', s: 'Enheter på vei inn — signert kontra forventet, med estimert oppstart' },
+  selskap: { t: 'Selskap', s: 'Ansatte, faste kostnader, gjeld og aksjonærlån — vedlikeholdt av DigiHome' },
+  dokumenter: { t: 'Dokumenter', s: 'Delte rapporter og avtaler — fra dokumenthvelvet i Investor-rommet' },
+};
+
 const NAV_OPEN_KEY = 'dh_admin_nav_open';
 const SIDEBAR_KEY = 'dh_admin_sidebar_collapsed'; // desktop-sidebar: sammenlagt eller ikke
 const IMP_ORIG_KEY = 'dh_admin_imp_original';     // admin-token under en «se som»-økt
@@ -194,13 +216,27 @@ const SLUG_TIL_SEKSJON = {
   leiemarked: { section: 'innsikt', tab: 'leiemarked' },
   ytelse: { section: 'innsikt', tab: 'ytelse' },
   ai: { section: 'innsikt', tab: 'ai' },
+  datarom: { section: 'datarom', dtab: 'oversikt' },
+  'datarom-resultat': { section: 'datarom', dtab: 'resultat' },
+  'datarom-enheter': { section: 'datarom', dtab: 'enheter' },
+  'datarom-pipeline': { section: 'datarom', dtab: 'pipeline' },
+  'datarom-selskap': { section: 'datarom', dtab: 'selskap' },
+  'datarom-dokumenter': { section: 'datarom', dtab: 'dokumenter' },
 };
 const INNSIKT_TAB_SLUG = {
   oversikt: 'oversikt', leads: 'leads', live: 'sanntid', trafikk: 'trafikk', trakt: 'trakt',
   annonser: 'annonser', annonsestudio: 'annonsestudio', finnstudio: 'finnstudio',
   konkurrent: 'konkurrentanalyse', innsikt: 'lead-innsikt', leiemarked: 'leiemarked', ytelse: 'ytelse', ai: 'ai',
 };
-const seksjonTilSlug = (section, tab) => (section === 'innsikt' ? (INNSIKT_TAB_SLUG[tab] || 'oversikt') : section);
+const DATAROM_TAB_SLUG = {
+  oversikt: 'datarom', resultat: 'datarom-resultat', enheter: 'datarom-enheter',
+  pipeline: 'datarom-pipeline', selskap: 'datarom-selskap', dokumenter: 'datarom-dokumenter',
+};
+const seksjonTilSlug = (section, tab, dtab) => (
+  section === 'innsikt' ? (INNSIKT_TAB_SLUG[tab] || 'oversikt')
+    : section === 'datarom' ? (DATAROM_TAB_SLUG[dtab] || 'datarom')
+      : section
+);
 
 
 export default function AdminPage({ params }) {
@@ -211,6 +247,7 @@ export default function AdminPage({ params }) {
   const startMaal = SLUG_TIL_SEKSJON[String((params && params.slug && params.slug[0]) || '').toLowerCase()] || null;
   const [section, setSection] = useState(startMaal ? startMaal.section : 'innsikt');
   const [insightTab, setInsightTab] = useState((startMaal && startMaal.tab) || 'oversikt');
+  const [dataromTab, setDataromTab] = useState((startMaal && startMaal.dtab) || 'oversikt');
   const [insightStats, setInsightStats] = useState({ pending: 0 });
   const [taskStats, setTaskStats] = useState({ open: 0, overdue: 0 });
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -328,8 +365,17 @@ export default function AdminPage({ params }) {
   const erBegrenset = !!begrensning;
   const erBruker = erBegrenset; // beholdt navn — brukes for å skjule admin-widgets
   useEffect(() => {
-    if (begrensning && begrensning.length > 0 && !begrensning.includes(section)) setSection(begrensning[0]);
-  }, [erBegrenset, section]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!begrensning || begrensning.length === 0) return;
+    // Datarom-sidene har nøkler `dr-<side>` — seksjonen heter 'datarom'.
+    if (section === 'datarom') {
+      if (begrensning.includes(`dr-${dataromTab}`)) return;
+      const forsteDr = begrensning.find((k) => k.startsWith('dr-'));
+      if (forsteDr) { setDataromTab(forsteDr.slice(3)); return; }
+    } else if (begrensning.includes(section)) return;
+    const forste = begrensning[0];
+    if (forste.startsWith('dr-')) { setSection('datarom'); setDataromTab(forste.slice(3)); }
+    else setSection(forste);
+  }, [erBegrenset, section, dataromTab]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── URL-synk: adressen følger alltid aktiv seksjon (/admin/<slug>), slik at
   // refresh/bokmerker fungerer og tilbakeknappen navigerer mellom seksjoner.
@@ -338,7 +384,7 @@ export default function AdminPage({ params }) {
   const urlSynket = useRef(false);
   useEffect(() => {
     if (!user) return;
-    const maal = `/admin/${seksjonTilSlug(section, insightTab)}`;
+    const maal = `/admin/${seksjonTilSlug(section, insightTab, dataromTab)}`;
     // Dypere stier under seksjonen (f.eks. /admin/saker/<sak-id>) eies av
     // seksjonens egen komponent — de skal ikke skrives om her.
     if (window.location.pathname !== maal && !window.location.pathname.startsWith(`${maal}/`)) {
@@ -348,14 +394,16 @@ export default function AdminPage({ params }) {
     urlSynket.current = true;
     const tittel = section === 'innsikt'
       ? ((INSIGHT_TABS.find((t) => t.k === insightTab) || {}).l || 'Innsikt')
-      : ((SECTION_TITLES[section] || {}).t || 'Admin');
+      : section === 'datarom'
+        ? `Datarom · ${(DATAROM_TITLER[dataromTab] || {}).t || 'Oversikt'}`
+        : ((SECTION_TITLES[section] || {}).t || 'Admin');
     document.title = `${tittel} — DigiHome Admin`;
-  }, [user, section, insightTab]);
+  }, [user, section, insightTab, dataromTab]);
   useEffect(() => {
     const onPop = () => {
       const slug = decodeURIComponent(String(window.location.pathname.split('/')[2] || '').toLowerCase());
       const maal = SLUG_TIL_SEKSJON[slug];
-      if (maal) { setSection(maal.section); setInsightTab(maal.tab || 'oversikt'); }
+      if (maal) { setSection(maal.section); setInsightTab(maal.tab || 'oversikt'); setDataromTab(maal.dtab || 'oversikt'); }
       else if (!slug) { setSection('innsikt'); setInsightTab('oversikt'); }
     };
     window.addEventListener('popstate', onPop);
@@ -438,7 +486,7 @@ export default function AdminPage({ params }) {
   const NavList = ({ compact = false }) => (
     <nav className={`flex-1 overflow-y-auto ${compact ? 'px-2.5' : 'px-3'} py-4 ${compact ? 'space-y-3' : 'space-y-4'}`}>
       {synligNav.map((grp, gi) => {
-        const containsActive = grp.items.some((it) => (it.insight ? (section === 'innsikt' && insightTab === it.insight) : section === it.k));
+        const containsActive = grp.items.some((it) => (it.datarom ? (section === 'datarom' && dataromTab === it.datarom) : it.insight ? (section === 'innsikt' && insightTab === it.insight) : section === it.k));
         const isOpen = compact ? true : (navOpen[grp.group] !== false || containsActive);
         return (
         <div key={grp.group}>
@@ -459,7 +507,7 @@ export default function AdminPage({ params }) {
           <div className="space-y-0.5 dh-fade">
             {grp.items.map((it) => {
               const Icon = it.icon;
-              const active = it.insight ? (section === 'innsikt' && insightTab === it.insight) : section === it.k;
+              const active = it.datarom ? (section === 'datarom' && dataromTab === it.datarom) : it.insight ? (section === 'innsikt' && insightTab === it.insight) : section === it.k;
               const pend = it.badge === 'pending' ? (insightStats.pending || 0) : it.badge === 'tasks' ? (taskStats.overdue || 0) : 0;
               const common = compact
                 ? 'relative w-full flex items-center justify-center h-10 rounded-xl transition-all group'
@@ -489,7 +537,8 @@ export default function AdminPage({ params }) {
                 <button
                   key={it.k}
                   onClick={() => {
-                    if (it.insight) { setSection('innsikt'); setInsightTab(it.insight); }
+                    if (it.datarom) { setSection('datarom'); setDataromTab(it.datarom); }
+                    else if (it.insight) { setSection('innsikt'); setInsightTab(it.insight); }
                     else setSection(it.k);
                     setSidebarOpen(false);
                   }}
@@ -591,6 +640,7 @@ export default function AdminPage({ params }) {
       action: () => {
         setPaletteOpen(false);
         if (it.href) { window.location.href = it.href; return; }
+        if (it.datarom) { setSection('datarom'); setDataromTab(it.datarom); setSidebarOpen(false); return; }
         if (it.insight) { runInsight(it.insight); return; }
         runNavigate(it.k);
       },
@@ -667,8 +717,8 @@ export default function AdminPage({ params }) {
           <div className="h-16 px-4 sm:px-8 flex items-center gap-3">
             <button onClick={() => setSidebarOpen(true)} aria-label="Åpne meny" data-testid="admin-menu-open" className="lg:hidden h-9 w-9 rounded-lg bg-white shadow-[0_2px_10px_rgba(0,0,0,0.05)] flex items-center justify-center text-[#444]"><Menu className="w-5 h-5" /></button>
             <div className="min-w-0">
-              <h1 className="text-[20px] sm:text-[22px] font-bold text-[#0a0a0a] tracking-[-0.02em] leading-none" style={{ fontFamily: 'var(--font-heading)' }}>{section === 'innsikt' ? activeInsight.l : sectionMeta.t}</h1>
-              <p className="text-[12px] text-[#999] mt-1 truncate">{section === 'innsikt' ? (INSIGHT_SUBTITLES[insightTab] || 'Førsteparts analyse · cookieless · GDPR-trygt') : sectionMeta.s}</p>
+              <h1 className="text-[20px] sm:text-[22px] font-bold text-[#0a0a0a] tracking-[-0.02em] leading-none" style={{ fontFamily: 'var(--font-heading)' }}>{section === 'innsikt' ? activeInsight.l : section === 'datarom' ? (DATAROM_TITLER[dataromTab] || {}).t : sectionMeta.t}</h1>
+              <p className="text-[12px] text-[#999] mt-1 truncate">{section === 'innsikt' ? (INSIGHT_SUBTITLES[insightTab] || 'Førsteparts analyse · cookieless · GDPR-trygt') : section === 'datarom' ? (DATAROM_TITLER[dataromTab] || {}).s : sectionMeta.s}</p>
             </div>
             {!erBruker && <PulseStrip token={token} onJump={(sec, tab) => { setSection(sec); if (tab) { setSection('innsikt'); setInsightTab(tab); } }} />}
             {user?.role === 'investor' && (
@@ -685,7 +735,7 @@ export default function AdminPage({ params }) {
           </div>
         </div>
 
-        <div key={section} className="px-4 sm:px-8 py-6 max-w-[1440px] dh-fade">
+        <div key={section} className={`dh-fade ${section === 'leieforhold' ? 'max-w-none px-4 py-4 sm:px-6' : 'max-w-[1440px] px-4 py-6 sm:px-8'}`}>
           {section === 'nokkeltall' && <KpiDashboard apiKey={token} />}
           {section === 'investorrom' && <InvestorRoomTab apiKey={token} />}
           {section === 'playbook' && <PlaybookTab apiKey={token} />}
@@ -700,6 +750,7 @@ export default function AdminPage({ params }) {
           )}
           {section === 'leieforhold' && <Leieforhold apiKey={token} />}
           {section === 'budsjett' && <Budsjett apiKey={token} readOnly={erBruker} />}
+          {section === 'datarom' && <Datarom apiKey={token} tab={dataromTab} erAdmin={!erBruker} onGaaTil={(t) => setDataromTab(t)} onAapneBudsjett={() => setSection('budsjett')} />}
           {section === 'saker' && <TasksTab apiKey={token} user={user} onStats={setTaskStats} onOpenBrukere={() => setSection('brukere')} />}
           {section === 'brukere' && <Brukere apiKey={token} user={user} onImpersonate={startImpersonation} />}
           {section === 'moter' && <MeetingsTab apiKey={token} user={user} onOpenTask={(id, arkivert) => runSaker({ do: 'aapne', id, arkivert })} />}

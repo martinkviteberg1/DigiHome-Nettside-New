@@ -1,18 +1,19 @@
 'use client';
 
 /* ═══════════════ Leieforhold & inntekter — 1:1-speil av plattformen ═══════════════
-   Spec fra plattform-agenten (agentbro-tråd «leieforhold-view»):
-   · 4 KPI-kort: Faktisk leie · Forventet (signert) · Under signering · Ledig (estimat)
-   · Porteføljestripe: Utleigrad · Honorar/mnd · Netto til huseiere/mnd
-   · Tabell m/ statuschips i plattformens eksakte farger, sortert gruppe → beløp
+   · Kompakt KPI-stripe (én rad): faktisk · forventet · signering · ledig ·
+     honorar (garantert/estimert) · utleigrad — samme inndeling som plattformens
+     investoroversikt
+   · Fullbredde arbeidsflate: verktøylinje (søk/filter/sortering) → tabell
+   · Statuschips i plattformens eksakte farger, «Annonsert» vises på ledige
    · Excel-eksport (.xlsx, levende formler, 2 ark) + CSV — generert server-side
-   · Miljøvelger (prod/test) — samme mønster som Økonomi (financeSyncTarget)
-   Datakilde: /api/admin/leieforhold (lease-income/export 1:1, ellers kontrakt-avledet) */
+   · Leser ALLTID produksjonsplattformen (ingen miljøvelger — fjernet med vilje)
+   Datakilde: /api/admin/leieforhold (lease-income 1:1 → units+contracts flettet) */
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
-  KeyRound, Search, Download, FileSpreadsheet, Loader2, RefreshCw, ChevronDown,
-  Check, Wallet, TrendingUp, Clock, CircleDashed, AlertTriangle,
+  KeyRound, Search, Download, FileSpreadsheet, RefreshCw, ChevronDown,
+  Check, AlertTriangle, Megaphone,
 } from 'lucide-react';
 
 const heading = { fontFamily: 'var(--font-heading)' };
@@ -45,6 +46,7 @@ function StatusChip({ row }) {
     <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-bold" style={{ background: s.bg, color: s.tekst }}>
       <span className="h-[5px] w-[5px] rounded-full" style={{ background: s.tekst }} />
       {row.status_label}
+      {row.advertised && <Megaphone className="h-3 w-3 opacity-70" />}
     </span>
   );
 }
@@ -53,17 +55,15 @@ export default function Leieforhold({ apiKey }) {
   const [data, setData] = useState(null);
   const [laster, setLaster] = useState(true);
   const [feil, setFeil] = useState('');
-  const [env, setEnv] = useState(''); // '' = miljøets standard, ellers 'prod'/'test'
   const [sok, setSok] = useState('');
   const [gruppe, setGruppe] = useState('alle');
   const [sortering, setSortering] = useState('standard');
   const [sortOpen, setSortOpen] = useState(false);
 
-  const hent = useCallback(async (valgtEnv, fresh = false) => {
+  const hent = useCallback(async (fresh = false) => {
     setLaster(true); setFeil('');
     try {
-      const q = `${valgtEnv ? `&env=${valgtEnv}` : ''}${fresh ? '&fresh=1' : ''}`;
-      const r = await fetch(`/api/admin/leieforhold?key=${encodeURIComponent(apiKey)}${q}`);
+      const r = await fetch(`/api/admin/leieforhold?key=${encodeURIComponent(apiKey)}${fresh ? '&fresh=1' : ''}`);
       const j = await r.json();
       if (!r.ok || !j.ok) throw new Error(j.error || 'Kunne ikke hente leieforhold');
       setData(j);
@@ -71,7 +71,7 @@ export default function Leieforhold({ apiKey }) {
     setLaster(false);
   }, [apiKey]);
 
-  useEffect(() => { hent(env); }, [hent, env]);
+  useEffect(() => { hent(); }, [hent]);
 
   useEffect(() => {
     if (!sortOpen) return;
@@ -100,57 +100,45 @@ export default function Leieforhold({ apiKey }) {
     return t;
   }, [rows]);
 
-  const exportQs = `key=${encodeURIComponent(apiKey)}${env ? `&env=${env}` : ''}`;
+  const kildeLive = data?.source === 'lease-income' || data?.source === 'units-contracts';
+  const kildeTekst = data?.source === 'lease-income' ? 'Plattform-data (1:1)'
+    : data?.source === 'units-contracts' ? 'Live fra plattformen'
+    : 'Avledet fra kontrakter';
 
+  // Kompakt KPI-stripe — samme fire grupper som plattformen + honorar & utleigrad.
   const KPI = [
-    { l: 'Faktisk leie / mnd', v: totals.actual_rent, antall: totals.leased, icon: Wallet, farge: '#1f7a45', bg: '#e7f4ec' },
-    { l: 'Forventet · signert / mnd', v: totals.expected_rent, antall: totals.future, icon: TrendingUp, farge: '#3757c4', bg: '#e8eefc' },
-    { l: 'Under signering / mnd', v: totals.pending_rent, antall: totals.signing, icon: Clock, farge: '#9a6b1c', bg: '#fdf3e0' },
-    { l: 'Ledig · estimat / mnd', v: totals.estimate_rent, antall: totals.vacant, icon: CircleDashed, farge: '#8a8278', bg: '#f1ece4' },
+    { id: 'faktisk', l: 'Faktisk leie / mnd', v: totals.actual_rent, antall: totals.leased, farge: '#1f7a45' },
+    { id: 'forventet', l: 'Forventet · signert', v: totals.expected_rent, antall: totals.future, farge: '#3757c4' },
+    { id: 'under', l: 'Under signering', v: totals.pending_rent, antall: totals.signing, farge: '#9a6b1c' },
+    { id: 'ledig', l: 'Ledig · estimat', v: totals.estimate_rent, antall: totals.vacant, farge: '#8a8278' },
   ];
 
   return (
-    <div className="mx-auto max-w-[1180px]" data-testid="leieforhold-modul">
-      {/* Topplinje: kilde + miljø + eksport */}
+    <div className="w-full" data-testid="leieforhold-modul">
+      {/* Verktøylinje øverst: kilde + oppdatert · handlinger */}
       <div className="flex flex-wrap items-center gap-2">
-        <div className="flex min-w-0 items-center gap-2 text-[12px] text-[#999]">
-          <span className={`inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold ${data?.source === 'lease-income' ? 'bg-[#e7f4ec] text-[#1f7a45]' : 'bg-amber-50 text-amber-700'}`} data-testid="leieforhold-kilde">
-            <span className={`h-[5px] w-[5px] shrink-0 rounded-full ${data?.source === 'lease-income' ? 'bg-[#1f7a45]' : 'bg-amber-500'}`} />
-            <span className="truncate">{data?.source === 'lease-income' ? 'Plattform-data (1:1)' : 'Avledet fra kontrakter — venter på plattform-endepunkt'}</span>
+        <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold ${kildeLive ? 'bg-[#e7f4ec] text-[#1f7a45]' : 'bg-amber-50 text-amber-700'}`} data-testid="leieforhold-kilde">
+          <span className={`h-[5px] w-[5px] shrink-0 rounded-full ${kildeLive ? 'bg-[#1f7a45]' : 'bg-amber-500'}`} />
+          {kildeTekst}
+        </span>
+        {data?.fetchedAt && (
+          <span className="text-[11px] text-[#b5b5b5]" title={data.cached ? 'Hurtiglagret svar — trykk oppdater for ferske tall' : 'Hentet direkte fra plattformen'}>
+            Oppdatert {new Date(data.fetchedAt).toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit' })}
           </span>
-          {data?.env && <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-[#999] ring-1 ring-black/[0.07]">{data.env}</span>}
-          {data?.fetchedAt && (
-            <span className="hidden sm:inline text-[11px] text-[#b5b5b5]" title={data.cached ? 'Hurtiglagret svar — trykk oppdater for ferske tall' : 'Hentet direkte fra plattformen'}>
-              Oppdatert {new Date(data.fetchedAt).toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit' })}
-            </span>
-          )}
-        </div>
-        <div className="ml-auto flex flex-wrap items-center justify-end gap-1.5">
-          {/* Miljøvelger — samme logikk som Økonomi */}
-          <div className="flex h-9 items-center rounded-full bg-white p-1 shadow-[0_2px_10px_rgba(0,0,0,0.04)]">
-            {[{ k: '', l: 'Auto' }, { k: 'prod', l: 'Prod' }, { k: 'test', l: 'Test' }].map((o) => (
-              <button
-                key={o.k || 'auto'}
-                onClick={() => setEnv(o.k)}
-                data-testid={`leieforhold-env-${o.k || 'auto'}`}
-                className={`h-7 rounded-full px-3 text-[12px] font-semibold transition-all ${env === o.k ? 'bg-[#0a0a0a] text-white' : 'text-[#999] hover:text-[#555]'}`}
-              >
-                {o.l}
-              </button>
-            ))}
-          </div>
-          <button onClick={() => hent(env, true)} title="Hent ferske tall fra plattformen" className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-[#999] shadow-[0_2px_10px_rgba(0,0,0,0.04)] transition-all hover:text-[#555]">
+        )}
+        <div className="ml-auto flex items-center gap-1.5">
+          <button onClick={() => hent(true)} title="Hent ferske tall fra plattformen" data-testid="leieforhold-oppdater" className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-[#999] shadow-[0_2px_10px_rgba(0,0,0,0.04)] transition-all hover:text-[#555]">
             <RefreshCw className={`h-4 w-4 ${laster ? 'animate-spin' : ''}`} />
           </button>
           <a
-            href={`/api/admin/leieforhold/csv?${exportQs}`}
+            href={`/api/admin/leieforhold/csv?key=${encodeURIComponent(apiKey)}`}
             data-testid="leieforhold-csv"
             className="flex h-9 items-center gap-1.5 rounded-full bg-white px-3.5 text-[12.5px] font-semibold text-[#555] shadow-[0_2px_10px_rgba(0,0,0,0.04)] transition-all hover:text-[#111]"
           >
             <Download className="h-3.5 w-3.5" /> CSV
           </a>
           <a
-            href={`/api/admin/leieforhold/xlsx?${exportQs}`}
+            href={`/api/admin/leieforhold/xlsx?key=${encodeURIComponent(apiKey)}`}
             data-testid="leieforhold-xlsx"
             className="flex h-9 items-center gap-1.5 rounded-full bg-[#0a0a0a] px-4 text-[12.5px] font-semibold text-white transition-all hover:bg-black/85 active:scale-[0.97]"
           >
@@ -160,69 +148,62 @@ export default function Leieforhold({ apiKey }) {
       </div>
 
       {feil && (
-        <div className="mt-4 flex items-center gap-2 rounded-2xl bg-rose-50 px-4 py-3 text-[13px] text-rose-700">
+        <div className="mt-3 flex items-center gap-2 rounded-2xl bg-rose-50 px-4 py-3 text-[13px] text-rose-700">
           <AlertTriangle className="h-4 w-4 shrink-0" /> {feil}
         </div>
       )}
       {data?.stale && (
-        <div className="mt-4 flex items-center gap-2 rounded-2xl bg-amber-50 px-4 py-3 text-[13px] text-amber-700" data-testid="leieforhold-stale">
+        <div className="mt-3 flex items-center gap-2 rounded-2xl bg-amber-50 px-4 py-3 text-[13px] text-amber-700" data-testid="leieforhold-stale">
           <AlertTriangle className="h-4 w-4 shrink-0" />
           Viser sist lagrede tall ({new Date(data.fetchedAt).toLocaleString('nb-NO', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}) — {data.warning || 'plattformen svarte ikke.'}
         </div>
       )}
 
-      {/* KPI-kort */}
-      <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {KPI.map((s) => {
-          const Icon = s.icon;
-          return (
-            <div key={s.l} className="rounded-2xl bg-white p-4 shadow-[0_2px_16px_rgba(0,0,0,0.04)]" data-testid={`leieforhold-kpi-${s.l.split(' ')[0].toLowerCase()}`}>
-              <div className="flex items-center justify-between">
-                <span className="flex h-8 w-8 items-center justify-center rounded-lg" style={{ background: s.bg }}>
-                  <Icon className="h-4 w-4" style={{ color: s.farge }} />
-                </span>
-                <span className="text-[11px] font-bold text-[#b5b5b5]">{s.antall ?? 0} stk</span>
+      {/* Kompakt KPI-stripe — én rad, delelinjer i stedet for separate kort */}
+      <div className="mt-3 overflow-hidden rounded-2xl bg-white shadow-[0_2px_16px_rgba(0,0,0,0.04)]">
+        <div className="grid grid-cols-2 divide-black/[0.05] sm:grid-cols-3 xl:grid-cols-6 xl:divide-x [&>div]:border-black/[0.05]">
+          {KPI.map((s) => (
+            <div key={s.id} className="border-b px-4 py-3 xl:border-b-0" data-testid={`leieforhold-kpi-${s.id}`}>
+              <div className="flex items-center gap-1.5">
+                <span className="h-[6px] w-[6px] rounded-full" style={{ background: s.farge }} />
+                <p className="truncate text-[10.5px] font-semibold uppercase tracking-[0.06em] text-[#a3a3a3]">{s.l}</p>
               </div>
-              <p className="mt-3 text-[20px] font-bold tabular-nums tracking-tight text-[#0a0a0a] sm:text-[22px]" style={heading}>
+              <p className="mt-1.5 text-[18px] font-bold tabular-nums tracking-tight text-[#0a0a0a]" style={heading}>
                 {laster ? '…' : kr(s.v)}
               </p>
-              <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-[#a3a3a3]">{s.l}</p>
+              <p className="mt-0.5 text-[10.5px] text-[#c2beb8]">{s.antall ?? 0} {s.antall === 1 ? 'enhet' : 'enheter'}</p>
             </div>
-          );
-        })}
-      </div>
-
-      {/* Porteføljestripe */}
-      <div className="mt-3 grid gap-3 sm:grid-cols-3">
-        <div className="rounded-2xl bg-white p-4 shadow-[0_2px_16px_rgba(0,0,0,0.04)]">
-          <div className="flex items-baseline justify-between">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[#a3a3a3]">Utleigrad</p>
-            <p className="text-[18px] font-bold tabular-nums text-[#0a0a0a]" style={heading}>{totals.occupancy_pct ?? 0} %</p>
+          ))}
+          <div className="border-b px-4 py-3 sm:border-b-0" data-testid="leieforhold-kpi-honorar">
+            <div className="flex items-center gap-1.5">
+              <span className="h-[6px] w-[6px] rounded-full bg-[#7c3aed]" />
+              <p className="truncate text-[10.5px] font-semibold uppercase tracking-[0.06em] text-[#a3a3a3]">Honorar / mnd · eks. mva</p>
+            </div>
+            <p className="mt-1.5 text-[18px] font-bold tabular-nums tracking-tight" style={{ ...heading, color: '#7c3aed' }} data-testid="leieforhold-honorar">
+              {laster ? '…' : kr(totals.fee)}
+            </p>
+            <p className="mt-0.5 truncate text-[10.5px] text-[#c2beb8]">
+              garantert {kr(totals.fee_garantert ?? totals.fee)} · estimert {kr(totals.fee_estimert ?? 0)}
+            </p>
           </div>
-          <div className="mt-2.5 h-[8px] overflow-hidden rounded-full bg-[#f1ece4]">
-            <div className="h-full rounded-full bg-[#1f7a45] transition-all duration-700" style={{ width: `${totals.occupancy_pct || 0}%` }} />
+          <div className="px-4 py-3">
+            <div className="flex items-baseline justify-between gap-2">
+              <p className="truncate text-[10.5px] font-semibold uppercase tracking-[0.06em] text-[#a3a3a3]">Utleigrad</p>
+              <p className="text-[15px] font-bold tabular-nums text-[#0a0a0a]" style={heading}>{totals.occupancy_pct ?? 0} %</p>
+            </div>
+            <div className="mt-2 h-[7px] overflow-hidden rounded-full bg-[#f1ece4]">
+              <div className="h-full rounded-full bg-[#1f7a45] transition-all duration-700" style={{ width: `${totals.occupancy_pct || 0}%` }} />
+            </div>
+            <p className="mt-1.5 truncate text-[10.5px] text-[#c2beb8]">
+              {totals.leased ?? 0} av {totals.count ?? 0} utleid · netto eiere {kr(totals.net)}
+            </p>
           </div>
-          <p className="mt-2 text-[11px] text-[#b5b5b5]">{totals.leased ?? 0} av {totals.count ?? 0} enheter utleid</p>
-        </div>
-        <div className="rounded-2xl bg-white p-4 shadow-[0_2px_16px_rgba(0,0,0,0.04)]">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[#a3a3a3]">Honorar / mnd</p>
-          <p className="mt-2 text-[20px] font-bold tabular-nums" style={{ ...heading, color: '#7c3aed' }} data-testid="leieforhold-honorar">
-            {laster ? '…' : kr(totals.fee)}
-          </p>
-          <p className="mt-1 text-[11px] text-[#b5b5b5]">eks. mva · kun realisert leie</p>
-        </div>
-        <div className="rounded-2xl bg-white p-4 shadow-[0_2px_16px_rgba(0,0,0,0.04)]">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[#a3a3a3]">Netto til huseiere / mnd</p>
-          <p className="mt-2 text-[20px] font-bold tabular-nums text-[#0a0a0a]" style={heading}>
-            {laster ? '…' : kr(totals.net)}
-          </p>
-          <p className="mt-1 text-[11px] text-[#b5b5b5]">etter honorar inkl. mva</p>
         </div>
       </div>
 
       {/* Verktøylinje: søk + statusfilter + sortering */}
-      <div className="mt-5 flex flex-wrap items-center gap-2">
-        <div className="relative w-full sm:w-[280px]">
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <div className="relative w-full sm:w-[260px]">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#bbb]" />
           <input
             value={sok} onChange={(e) => setSok(e.target.value)}
@@ -269,7 +250,7 @@ export default function Leieforhold({ apiKey }) {
         </div>
       </div>
 
-      {/* Tabell */}
+      {/* Tabell — fullbredde arbeidsflate */}
       <div className="mt-3 overflow-hidden rounded-2xl bg-white shadow-[0_2px_16px_rgba(0,0,0,0.04)]">
         {laster && (
           <div className="space-y-1.5 p-4" data-testid="leieforhold-skeleton">
@@ -292,55 +273,57 @@ export default function Leieforhold({ apiKey }) {
               <thead>
                 <tr className="border-b border-black/[0.05]">
                   {['Bolig / enhet', 'Huseier', 'Leietaker', 'Status', 'Innflytting', 'Beløp / mnd', 'Sats', 'Honorar', 'Netto', 'Depositum'].map((h, i) => (
-                    <th key={h} className={`px-4 py-3 text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#b5b5b5] ${i >= 5 ? 'text-right' : ''}`}>{h}</th>
+                    <th key={h} className={`px-4 py-2.5 text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#b5b5b5] ${i >= 5 ? 'text-right' : ''}`}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {filtrert.map((r, i) => (
                   <tr key={`${r.address}-${r.unit_room}-${i}`} className="border-b border-black/[0.035] transition-colors last:border-b-0 hover:bg-[#fafaf8]" data-testid={`leieforhold-rad-${i}`}>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-2.5">
                       <p className="text-[13px] font-semibold leading-tight text-[#1a1a1a]">
                         {r.unit_room}
                         {r.unit_type === 'Rom i bofellesskap' && (
                           <span className="ml-1.5 rounded-md bg-[#f4f0fb] px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wide text-[#8b5cf6]">Rom</span>
                         )}
                       </p>
-                      <p className="mt-0.5 max-w-[240px] truncate text-[11.5px] text-[#a3a3a3]">{r.address}</p>
+                      <p className="mt-0.5 max-w-[280px] truncate text-[11.5px] text-[#a3a3a3]">{r.address}</p>
                     </td>
-                    <td className="max-w-[160px] truncate px-4 py-3 text-[12.5px] text-[#555]">{r.owner_name || '—'}</td>
-                    <td className="max-w-[160px] truncate px-4 py-3 text-[12.5px] text-[#555]">{r.tenant_name || '—'}</td>
-                    <td className="px-4 py-3"><StatusChip row={r} /></td>
-                    <td className="whitespace-nowrap px-4 py-3 text-[12.5px] text-[#777]">{(r.group === 'future' || r.group === 'signing') ? dato(r.move_in_date) : '—'}</td>
-                    <td className="whitespace-nowrap px-4 py-3 text-right text-[13px] font-semibold tabular-nums text-[#0a0a0a]">
+                    <td className="max-w-[170px] truncate px-4 py-2.5 text-[12.5px] text-[#555]">{r.owner_name || '—'}</td>
+                    <td className="max-w-[170px] truncate px-4 py-2.5 text-[12.5px] text-[#555]">{r.tenant_name || '—'}</td>
+                    <td className="px-4 py-2.5"><StatusChip row={r} /></td>
+                    <td className="whitespace-nowrap px-4 py-2.5 text-[12.5px] text-[#777]">{(r.group === 'future' || r.group === 'signing') ? dato(r.move_in_date) : '—'}</td>
+                    <td className="whitespace-nowrap px-4 py-2.5 text-right text-[13px] font-semibold tabular-nums text-[#0a0a0a]">
                       {r.group === 'vacant' && !r.monthly_rent
                         ? <span className="rounded-md bg-amber-50 px-1.5 py-0.5 text-[11px] font-bold text-amber-600">Ikke satt</span>
                         : kr(r.monthly_rent)}
                     </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-right text-[12.5px] tabular-nums text-[#777]">{r.fee_percent ? `${r.fee_percent.toLocaleString('nb-NO')} %` : '—'}</td>
-                    <td className="whitespace-nowrap px-4 py-3 text-right text-[12.5px] font-semibold tabular-nums" style={{ color: r.group === 'leased' ? '#7c3aed' : '#c2beb8' }}>
-                      {r.group === 'leased' ? kr(r.fee_amount) : '—'}
+                    <td className="whitespace-nowrap px-4 py-2.5 text-right text-[12.5px] tabular-nums text-[#777]">{r.fee_percent ? `${r.fee_percent.toLocaleString('nb-NO')} %` : '—'}</td>
+                    <td className={`whitespace-nowrap px-4 py-2.5 text-right text-[12.5px] tabular-nums ${r.group === 'leased' ? 'font-semibold' : ''}`} style={{ color: r.group === 'leased' ? '#7c3aed' : '#c2beb8' }} title={r.group === 'leased' ? 'Realisert honorar' : 'Potensielt honorar — ikke realisert ennå'}>
+                      {r.fee_amount ? kr(r.fee_amount) : '—'}
                     </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-right text-[12.5px] tabular-nums text-[#555]">{r.group === 'leased' ? kr(r.net_to_owner) : '—'}</td>
-                    <td className="whitespace-nowrap px-4 py-3 text-right text-[12.5px] tabular-nums text-[#777]">{r.deposit != null ? kr(r.deposit) : '—'}</td>
+                    <td className="whitespace-nowrap px-4 py-2.5 text-right text-[12.5px] tabular-nums" style={{ color: r.group === 'leased' ? '#555' : '#c2beb8' }}>
+                      {r.net_to_owner ? kr(r.net_to_owner) : '—'}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-2.5 text-right text-[12.5px] tabular-nums text-[#777]">{r.deposit != null ? kr(r.deposit) : '—'}</td>
                   </tr>
                 ))}
               </tbody>
               <tfoot>
                 <tr className="border-t border-black/[0.06] bg-[#fafaf8]">
-                  <td className="px-4 py-3 text-[11px] font-bold uppercase tracking-[0.08em] text-[#999]">Sum ({filtrert.length})</td>
+                  <td className="px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.08em] text-[#999]">Sum ({filtrert.length})</td>
                   <td colSpan={4} />
-                  <td className="px-4 py-3 text-right text-[13px] font-bold tabular-nums text-[#0a0a0a]">{kr(filtrert.reduce((s, r) => s + (r.monthly_rent || 0), 0))}</td>
+                  <td className="px-4 py-2.5 text-right text-[13px] font-bold tabular-nums text-[#0a0a0a]">{kr(filtrert.reduce((s, r) => s + (r.monthly_rent || 0), 0))}</td>
                   <td />
-                  <td className="px-4 py-3 text-right text-[12.5px] font-bold tabular-nums" style={{ color: '#7c3aed' }}>{kr(filtrert.filter((r) => r.group === 'leased').reduce((s, r) => s + (r.fee_amount || 0), 0))}</td>
-                  <td className="px-4 py-3 text-right text-[12.5px] font-bold tabular-nums text-[#555]">{kr(filtrert.filter((r) => r.group === 'leased').reduce((s, r) => s + (r.net_to_owner || 0), 0))}</td>
+                  <td className="px-4 py-2.5 text-right text-[12.5px] font-bold tabular-nums" style={{ color: '#7c3aed' }} title="Realisert honorar (kun utleide)">{kr(filtrert.filter((r) => r.group === 'leased').reduce((s, r) => s + (r.fee_amount || 0), 0))}</td>
+                  <td className="px-4 py-2.5 text-right text-[12.5px] font-bold tabular-nums text-[#555]">{kr(filtrert.filter((r) => r.group === 'leased').reduce((s, r) => s + (r.net_to_owner || 0), 0))}</td>
                   <td />
                 </tr>
               </tfoot>
             </table>
             </div>
 
-            {/* Mobil kortliste — Linear-følelse på små skjermer */}
+            {/* Mobil kortliste */}
             <div className="divide-y divide-black/[0.04] md:hidden" data-testid="leieforhold-kortliste">
               {filtrert.map((r, i) => (
                 <div key={`${r.address}-${r.unit_room}-${i}`} className="px-4 py-3.5 transition-colors active:bg-[#fafaf8]" data-testid={`leieforhold-kort-${i}`}>
@@ -387,8 +370,8 @@ export default function Leieforhold({ apiKey }) {
         )}
       </div>
 
-      <p className="mt-4 text-[11.5px] text-[#b5b5b5]">
-        Honorar vises eks. mva (privat: sats inkl. mva ÷ 1,25 · næring: sats eks. mva). Netto = leie − honorar inkl. mva. Excel-eksporten har levende formler, nedtrekk og eget «Per huseier»-ark.
+      <p className="mt-3 text-[11.5px] text-[#b5b5b5]">
+        Honorar vises eks. mva (privat: sats inkl. mva ÷ 1,25 · næring: sats eks. mva). Netto = leie − honorar inkl. mva. Grå honorartall er potensial (signert/estimat) — kun utleide telles som realisert. Excel-eksporten har levende formler, nedtrekk og eget «Per huseier»-ark.
       </p>
     </div>
   );

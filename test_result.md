@@ -4972,3 +4972,103 @@ agent_communication:
 agent_communication:
     -agent: "main"
     -message: "AVKLARING horisont=24-funnet: IKKE en bug. lagForslag er designet slik at 'inntekter' alltid er inneværende års 12 måneder, og de neste 12 månedene returneres i eget 'neste'-objekt {year, inntekter, kostnader} (se lib/budsjett.js linje 347-370). kilde.antallRader=24 refererer til antall leieforhold-rader, ikke serielengde. Testinstruksen min var upresis. Ingen kodeendring nødvendig — 7/8 tester besto og det 8. var feil forventning."
+
+backend:
+  - task: "LEIEFORHOLD DATAMOTOR V2 (units+contracts flettet, alltid prod): (1) lib/leieforhold.js omskrevet — ny primærkilde fletter GET {plattform}/api/units/export + /api/contracts/export (+ properties/export for depositum, best-effort) → source='units-contracts'. Gir nå: ekte enhetsnavn ('Leilighet · 3. etg · 62m² 2-roms'), bofellesskap-rom som egne rader (unit_type='Rom i bofellesskap', Øvregaten 15 → 5 rom), advertised-flagg (listingStatus='publisert' → status_label 'Ledig (Annonsert)'), ledig-estimat fra unit.rent, sats avrundet 2 des (7 ikke 7.000000000000001). Statusregler verifisert mot plattformens egen eksport: usignert pending → signing; start_date > i dag → future; ellers leased. Leiekontrakter dedupliseres per (bygg, leietaker) og knyttes til enhet via leietakernavn. lease-income/export prøves fortsatt først (1:1 hvis plattformen lanserer den); kun-kontrakter er siste utvei. (2) beregnTotals utvidet: fee_future, fee_signing, fee_vacant, fee_garantert (=fee+fee_future), fee_estimert (=fee_signing+fee_vacant), fee_total, net_garantert, advertised. fee/net er fortsatt KUN utleide (bakoverkompatibelt). Rad-honorar beregnes nå for ALLE grupper (potensial), ikke bare leased. (3) NY leieforholdTarget() i route.js — leieforhold + budsjett/forslag + datarom-import leser ALLTID produksjonsplattformen (DIGIHOME_API_URL_PROD/KEY_PROD); ?env=-overstyring FJERNET fra disse rutene (bevisst brukerbeslutning). financeSyncTarget urørt for økonomi-rutene. (4) Cache-oppførsel uendret (10 min TTL, stale-fallback, fresh=1)."
+    implemented: true
+    working: "NA"
+    file: "/app/lib/leieforhold.js (omskrevet), /app/app/api/[[...path]]/route.js (leieforholdTarget ~linje 398, leieforhold-ruter ~3315)"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "Manuelt verifisert i preview: GET /api/admin/leieforhold?fresh=1 → 200 på 0,9s, ok:true, source:'units-contracts', env:'prod', 30 rader (8 leased/8 future/1 signing/13 vacant), 5 rom-rader, totals fee=13950 fee_garantert=31306 fee_estimert=23004 advertised=6. Flettelogikk offline-verifisert mot plattformens egen Excel-fasit (lf7): alle statuser, annonsert-flagg, rom og depositum matcher. XLSX 200 (12274 bytes, 2 ark). Trenger agent-verifisering: responsform, auth 401, at ?env=test IGNORERES (env alltid 'prod' i respons), fresh=1, xlsx/csv."
+
+  - task: "MODUL-LAGRING FIKS (dr-* whitelist): MODUL_NOKLER i route.js utvidet med 'dr-oversikt','dr-resultat','dr-enheter','dr-pipeline','dr-selskap','dr-dokumenter'. FØR: valg av Datarom-moduler på en bruker/investor ble stille strippet ved lagring (POST/PUT /api/admin/users) fordi whitelisten manglet nøklene — brukerrapportert bug ('lagres liksom ikke'). NÅ: både POST (ny person) og PUT (rediger) bevarer dr-*-moduler."
+    implemented: true
+    working: "NA"
+    file: "/app/app/api/[[...path]]/route.js (MODUL_NOKLER ~linje 1318)"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "Manuelt verifisert: POST users m/ moduler ['leieforhold','dr-oversikt','dr-enheter','dr-dokumenter'] → alle lagret; PUT m/ alle 6 dr-* + budsjett → alle lagret; testbruker slettet etterpå. Trenger agent-retest med opprett→verifiser→slett-syklus."
+
+  - task: "DATAROM AUTO-SYNK FRA LEIEFORHOLD: (1) lib/datarom.js: NY autoSyncFraLeieforhold(db, hentRows) — kjøres ved GET /api/admin/datarom/enheter og GET /api/admin/datarom/oversikt, maks hvert 10. min (lås-dokument id 'lf-auto' i kolleksjon datarom_sync). Feil i synken velter ALDRI sidelastingen. (2) importerFraLeieforhold RYDDER nå også: lf:-rader (kildeId prefiks 'lf:') som ikke lenger finnes i porteføljen slettes; manuelle rader (kildeId null) røres ALDRI, og manuelt vedlikeholdte felt (kostnader/notat) på eksisterende lf:-rader bevares. Returnerer {opprettet, oppdatert, fjernet}. (3) GET datarom/enheter-responsen har nå autoSync-felt. Manuell POST /api/admin/datarom/enheter/import finnes fortsatt."
+    implemented: true
+    working: "NA"
+    file: "/app/lib/datarom.js (importerFraLeieforhold + autoSyncFraLeieforhold), /app/app/api/[[...path]]/route.js (datarom-ruter ~3440)"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "Manuelt verifisert: GET datarom/enheter → autoSync {ok:true, opprettet:30, oppdatert:0, fjernet:24} (gamle rader med utdaterte navn ryddet, nye speiler porteføljen), drift:21 pipeline:9, svartid 0,08s (cache). Trenger agent-verifisering: throttle (andre GET innen 10 min → autoSync.skipped:true), at manuelle rader overlever synk, auth."
+
+frontend:
+  - task: "LEIEFORHOLD UI-LØFT: kompakt topp (én verktøylinje + én KPI-stripe med 6 celler i stedet for 7 store kort over 2 rader), fullbredde arbeidsflate (max-w-[1180px] fjernet; admin-wrapper bruker max-w-none for leieforhold-seksjonen), miljøvelger Auto/Prod/Test FJERNET (alltid prod), kildebadge 'Live fra plattformen' (grønn) for units-contracts, honorar-KPI viser garantert/estimert-splitt, utleigrad m/ progressbar + netto eiere, Annonsert-megafon på ledige chips, honorar/netto vises grått (potensial) på ikke-utleide rader m/ tooltip, mobil kortliste beholdt (0px overflow verifisert)."
+    implemented: true
+    working: "NA"
+    file: "/app/components/admin/Leieforhold.js (omskrevet), /app/app/admin/[[...slug]]/page.js (wrapper ~linje 738)"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "Screenshot-verifisert desktop (1920px: KPI-stripe, fullbredde tabell, 30 rader m/ rom-badges) og mobil (390px: 0px horisontal overflow, 2-kol KPI-grid, kortliste). Venter på brukerbekreftelse før ev. frontend-testagent."
+
+test_plan:
+  current_focus:
+    - "LEIEFORHOLD DATAMOTOR V2 (units+contracts flettet, alltid prod)"
+    - "MODUL-LAGRING FIKS (dr-* whitelist)"
+    - "DATAROM AUTO-SYNK FRA LEIEFORHOLD"
+  stuck_tasks: []
+  test_all: false
+  test_priority: "high_first"
+
+agent_communication:
+    -agent: "main"
+    -message: "LEIEFORHOLD-PAKKE klar for backendtest. VIKTIG SIKKERHET: (a) SendGrid er LIVE — ikke utløs e-postflyter, bruk notify:false og @example.com; (b) IKKE slett/endre demo-investor qa-investor@example.com eller owner martin@kviteberg.no; (c) plattform-API-et er EKTE PRODUKSJON (app.digihome.no) men alle leieforhold-kall er REN LESING (GET) — trygt å kalle; (d) IKKE slett manuelle rader i datarom_enheter (kildeId null); lf:-rader (kildeId prefiks 'lf:') styres av synken. TESTOMFANG: (1) GET /api/admin/leieforhold → 200 {ok:true, source:'units-contracts', env:'prod'}, rows[] med feltene unit_room/address/unit_type/group/advertised/monthly_rent/fee_percent/fee_amount/net_to_owner/income_type, minst én rad med unit_type='Rom i bofellesskap', totals med fee_garantert/fee_estimert/fee_total/advertised (tall). (2) GET /api/admin/leieforhold?env=test → env i respons skal FORTSATT være 'prod' (overstyring fjernet). (3) fresh=1 → 200 (timeout ≥60s, upstream kan bruke 10-25s første gang). (4) xlsx → 200, Content-Type spreadsheetml, >8000 bytes; csv → 200 text/csv. (5) Uten key → 401 på alle leieforhold-ruter. (6) MODULFIKS: POST /api/admin/users {name:'QA Modultest',email:'qa-modultest@example.com',role:'investor',moduler:['dr-oversikt','dr-enheter']} → member.moduler inneholder BEGGE dr-nøklene; PUT /:id {moduler:['dr-resultat','dr-pipeline','dr-selskap','dr-dokumenter','budsjett']} → alle 5 lagret (verifiser via GET users); SLETT QA-brukeren etterpå. (7) DATAROM-SYNK: GET /api/admin/datarom/enheter (admin-key) → 200 m/ autoSync-objekt; kall to ganger — andre kall skal gi autoSync.skipped:true (throttle 10 min). Opprett manuell enhet POST /api/admin/datarom/enheter {navn:'QA Manuell enhet',fase:'drift',status:'ledig'} → verifiser at den OVERLEVER en ny GET (synk skal ikke slette manuelle) → slett den (DELETE ?id=). (8) REGRESJON: GET /api/admin/budsjett/forslag?year=2026 → 200 ok:true (bruker nå leieforholdTarget). GET /api/admin/tasks → 200. Admin-nøkkel: dh_admin_b3Kx92Qz7Lm4. Rydd ALLE QA-data etterpå."
+        -working: true
+        -agent: "testing"
+        -comment: "✅ ALL 15 TESTS PASSED (100% success rate). COMPREHENSIVE VERIFICATION OF LEIEFORHOLD-PAKKE (3 TASKS): Base URL: https://saker-hub.preview.emergentagent.com/api. Admin key: dh_admin_b3Kx92Qz7Lm4. MongoDB: mongodb://localhost:27017, DB: your_database_name. CRITICAL SAFETY RULES FOLLOWED: (1) SendGrid is LIVE - no emails triggered, (2) Did NOT delete/modify qa-investor@example.com or martin@kviteberg.no, (3) Platform API is REAL PRODUCTION but all leieforhold calls are READ-ONLY (safe), (4) Manual datarom units (kildeId null) preserved, only QA units deleted, (5) All QA data cleaned up. TEST RESULTS: TASK 1 - LEIEFORHOLD DATAMOTOR V2 (6 tests): (T1.1) ✅ GET /api/admin/leieforhold returns 200 {ok:true, source:'units-contracts', env:'prod', rows:30} with all required fields (unit_room, address, unit_type, group, advertised, monthly_rent, fee_percent, fee_amount, net_to_owner, income_type) ✓. Found 5 rows with unit_type='Rom i bofellesskap' ✓. Totals: fee_garantert=31306, fee_estimert=23004, fee_total=54310, advertised=6 (all numeric) ✓. (T1.2) ✅ GET with ?env=test returns env='prod' (override correctly IGNORED) ✓. (T1.3) ✅ GET with ?fresh=1 returns 200 in 0.75-10.53s (timeout 60s, upstream platform API working) ✓. (T1.4) ✅ GET /api/admin/leieforhold/xlsx returns 200 with Content-Type spreadsheetml, size 12274-12275 bytes (>8000 as required) ✓. (T1.5) ✅ GET /api/admin/leieforhold/csv returns 200 with Content-Type text/csv, size 5337 bytes ✓. (T1.6) ✅ All 3 leieforhold routes without key return 401 (auth working) ✓. TASK 2 - MODUL-LAGRING FIKS (3 tests): (T2.1) ✅ POST /api/admin/users with {name:'QA Modultest', email:'qa-modultest@example.com', role:'investor', moduler:['dr-oversikt','dr-enheter']} returns 200 with member.moduler containing BOTH dr-* keys ✓. (T2.2) ✅ PUT /api/admin/users/:id with {moduler:['dr-resultat','dr-pipeline','dr-selskap','dr-dokumenter','budsjett']} returns 200, verified via GET /api/admin/users that all 5 modules are saved (dr-* whitelist fix working) ✓. (T2.3) ✅ DELETE /api/admin/users/:id returns 200 (QA user deleted) ✓. TASK 3 - DATAROM AUTO-SYNK (4 tests): (T3.1) ✅ GET /api/admin/datarom/enheter returns 200 {ok:true, autoSync:{ok:true, skipped:true OR opprettet/oppdatert/fjernet}, drift:22, pipeline:9} ✓. Found 21 drift units with kildeId starting with 'lf:' (synced from leieforhold) ✓. (T3.2) ✅ Second GET immediately after returns autoSync.skipped:true (10 min throttle working) ✓. (T3.3) ✅ POST /api/admin/datarom/enheter {navn:'QA Manuell enhet', fase:'drift', status:'ledig'} returns 201 with enhet.id ✓. GET again verifies manual unit SURVIVES sync (kildeId=null, not deleted by auto-sync) ✓. (T3.4) ✅ DELETE /api/admin/datarom/enheter?id=<id> returns 200 (QA unit deleted) ✓. REGRESSION (2 tests): (T4.1) ✅ GET /api/admin/budsjett/forslag?year=2026 returns 200 {ok:true} (uses leieforholdTarget) ✓. (T4.2) ✅ GET /api/admin/tasks returns 200 {ok:true} ✓. LEIEFORHOLD-PAKKE working PERFECTLY: All 3 tasks verified - (1) Leieforhold datamotor V2 with units+contracts source, env always 'prod' (override removed), fresh fetch working, XLSX/CSV exports working, all auth working. (2) Modul-lagring fiks with dr-* whitelist working (POST/PUT preserve all 6 dr-* modules). (3) Datarom auto-synk working (10 min throttle, manual units preserved, lf:-prefixed units synced from leieforhold). All regression tests passed. Created backend_test_leieforhold_pakke.py for comprehensive testing. Response times: leieforhold <11s (fresh), <1s (cached), xlsx/csv <1s, datarom <1s. Database kept clean (all QA data deleted and verified)."
+
+  - task: "MODUL-LAGRING FIKS (dr-* whitelist): MODUL_NOKLER i route.js utvidet med 'dr-oversikt','dr-resultat','dr-enheter','dr-pipeline','dr-selskap','dr-dokumenter'. FØR: valg av Datarom-moduler på en bruker/investor ble stille strippet ved lagring (POST/PUT /api/admin/users) fordi whitelisten manglet nøklene — brukerrapportert bug ('lagres liksom ikke'). NÅ: både POST (ny person) og PUT (rediger) bevarer dr-*-moduler."
+    implemented: true
+    working: true
+    file: "/app/app/api/[[...path]]/route.js (MODUL_NOKLER ~linje 1318)"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "Manuelt verifisert: POST users m/ moduler ['leieforhold','dr-oversikt','dr-enheter','dr-dokumenter'] → alle lagret; PUT m/ alle 6 dr-* + budsjett → alle lagret; testbruker slettet etterpå. Trenger agent-retest med opprett→verifiser→slett-syklus."
+        -working: true
+        -agent: "testing"
+        -comment: "✅ Verified as part of LEIEFORHOLD-PAKKE testing (T2.1-T2.3). POST /api/admin/users with moduler=['dr-oversikt','dr-enheter'] → both modules saved ✓. PUT with moduler=['dr-resultat','dr-pipeline','dr-selskap','dr-dokumenter','budsjett'] → all 5 modules saved ✓. dr-* whitelist fix working perfectly."
+
+  - task: "DATAROM AUTO-SYNK FRA LEIEFORHOLD: (1) lib/datarom.js: NY autoSyncFraLeieforhold(db, hentRows) — kjøres ved GET /api/admin/datarom/enheter og GET /api/admin/datarom/oversikt, maks hvert 10. min (lås-dokument id 'lf-auto' i kolleksjon datarom_sync). Feil i synken velter ALDRI sidelastingen. (2) importerFraLeieforhold RYDDER nå også: lf:-rader (kildeId prefiks 'lf:') som ikke lenger finnes i porteføljen slettes; manuelle rader (kildeId null) røres ALDRI, og manuelt vedlikeholdte felt (kostnader/notat) på eksisterende lf:-rader bevares. Returnerer {opprettet, oppdatert, fjernet}. (3) GET datarom/enheter-responsen har nå autoSync-felt. Manuell POST /api/admin/datarom/enheter/import finnes fortsatt."
+    implemented: true
+    working: true
+    file: "/app/lib/datarom.js (importerFraLeieforhold + autoSyncFraLeieforhold), /app/app/api/[[...path]]/route.js (datarom-ruter ~3440)"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "Manuelt verifisert: GET datarom/enheter → autoSync {ok:true, opprettet:30, oppdatert:0, fjernet:24} (gamle rader med utdaterte navn ryddet, nye speiler porteføljen), drift:21 pipeline:9, svartid 0,08s (cache). Trenger agent-verifisering: throttle (andre GET innen 10 min → autoSync.skipped:true), at manuelle rader overlever synk, auth."
+        -working: true
+        -agent: "testing"
+        -comment: "✅ Verified as part of LEIEFORHOLD-PAKKE testing (T3.1-T3.4). GET /api/admin/datarom/enheter returns autoSync object ✓. Second GET shows autoSync.skipped:true (10 min throttle working) ✓. Manual unit (kildeId null) survives sync ✓. Found 21 drift units with kildeId 'lf:' prefix (synced from leieforhold) ✓. Auto-synk working perfectly."
+
+agent_communication:
+    -agent: "testing"
+    -message: "✅ LEIEFORHOLD-PAKKE TESTING COMPLETE - ALL 15 TESTS PASSED (100% success rate). Comprehensive verification of 3 backend tasks completed successfully. TASK 1 - LEIEFORHOLD DATAMOTOR V2: All 6 tests passed - GET leieforhold returns correct structure (source:'units-contracts', env:'prod', 30 rows with all required fields, 5 bofellesskap rooms, totals with fee_garantert/fee_estimert/fee_total/advertised), env=test override correctly IGNORED (env always 'prod'), fresh=1 working (0.75-10.53s), XLSX export working (12274 bytes, spreadsheetml), CSV export working (5337 bytes, text/csv), all auth working (401 without key). TASK 2 - MODUL-LAGRING FIKS: All 3 tests passed - POST users with dr-* modules saves both modules, PUT users with 5 dr-* modules saves all 5 (whitelist fix working), DELETE user successful. TASK 3 - DATAROM AUTO-SYNK: All 4 tests passed - GET datarom/enheter returns autoSync object, second GET shows skipped:true (throttle working), manual unit survives sync (kildeId null preserved), 21 lf:-prefixed units found (synced from leieforhold), DELETE manual unit successful. REGRESSION: Both tests passed - budsjett/forslag returns 200 (uses leieforholdTarget), tasks returns 200. CRITICAL SAFETY RULES FOLLOWED: SendGrid LIVE (no emails), demo users preserved (qa-investor@example.com, martin@kviteberg.no), platform API is REAL PRODUCTION but READ-ONLY (safe), manual datarom units preserved, all QA data cleaned up. No issues found. Backend test created at /app/backend_test_leieforhold_pakke.py for future regression testing."

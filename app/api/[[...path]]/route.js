@@ -27,6 +27,14 @@ import { hentLeieforhold } from '@/lib/leieforhold';
 import { lagLeieforholdExcel, lagLeieforholdCsv } from '@/lib/leieforhold-excel';
 import { hentBudsjett, lagreBudsjett, beregnFaktisk, lagForslag, gyldigBudsjettAar, fangFaktiskEtterslep, INNTEKT_KATEGORIER, KOSTNAD_KATEGORIER } from '@/lib/budsjett';
 import { lagBudsjettExcel, lagBudsjettExcelRullerende } from '@/lib/budsjett-excel';
+import {
+  beregnOversikt as drBeregnOversikt, listEnheter as drListEnheter, lagreEnhet as drLagreEnhet,
+  slettEnhet as drSlettEnhet, importerFraLeieforhold as drImporterFraLeieforhold,
+  autoSyncFraLeieforhold as drAutoSync,
+  listPnl as drListPnl, lagrePnlRad as drLagrePnlRad, slettPnlRad as drSlettPnlRad,
+  hentSelskap as drHentSelskap, lagreSelskap as drLagreSelskap,
+} from '@/lib/datarom';
+import { byggInvestorpakke } from '@/lib/datarom-excel';
 import { IMPORTED_COLL, importRecords, parseCsv, summarizeImported, syncFromPlatform, listImported, updateImportedOverride, getLeadSyncMeta, maybeAutoSyncLeads } from '@/lib/imported-leads';
 import { queueLeadPushback, flushLeadPushbacks, pushbackStats } from '@/lib/lead-pushback';
 import { renderFinnBanners, FINN_THEMES } from '@/lib/finn-banners';
@@ -387,6 +395,18 @@ function financeSyncTarget(request) {
     };
   }
   return digiHomeTarget();
+}
+
+// Leieforhold & inntekter (og alt som avledes av porteføljen: budsjettforslag,
+// datarom-enhetsøkonomi) leser ALLTID fra produksjonsplattformen — dette er
+// ekte forretningsdata, og testmiljøets dummy-data skal aldri blandes inn.
+// Ingen ?env=-overstyring her (fjernet etter brukerbeslutning aug. 2026).
+function leieforholdTarget() {
+  return {
+    url: normalizeCrmUrl(process.env.DIGIHOME_API_URL_PROD || 'https://app.digihome.no'),
+    key: process.env.DIGIHOME_API_KEY_PROD || process.env.DIGIHOME_API_KEY || '',
+    env: 'prod',
+  };
 }
 
 // Videresend lead til DigiHome-plattformen (offentlige endepunkter, X-API-Key som id-kort).
@@ -1308,7 +1328,11 @@ function innsynAuthed(request) {
 // Begrensede kontoer (bruker/partner/eier) kan gis eksplisitt tilgang til
 // utvalgte moduler (settes per person under Personer). Nøklene matcher
 // menypunktene i admin slik at navigasjon og API håndheves likt.
-const MODUL_NOKLER = ['nokkeltall', 'okonomi', 'leieforhold', 'budsjett', 'kunder', 'i-leads', 'historikk'];
+const MODUL_NOKLER = [
+  'nokkeltall', 'okonomi', 'leieforhold', 'budsjett', 'kunder', 'i-leads', 'historikk',
+  // Datarom-sidene (investorrommet) — må speile MODUL_VALG i components/admin/Brukere.js
+  'dr-oversikt', 'dr-resultat', 'dr-enheter', 'dr-pipeline', 'dr-selskap', 'dr-dokumenter',
+];
 async function modulAuthed(request, db, modul) {
   if (adminAuthed(request)) return true;
   const payload = sessionFra(request);
@@ -3288,19 +3312,20 @@ async function handleRoute(request, { params }) {
     }
 
     // ═══ Innmeldte utviklingssaker fra Forvalter-plattformen ═══════════════
-    // ── Leieforhold & inntekter — 1:1-speil av plattformens visning (spec via
-    // agentbroen, tråd «leieforhold-view»). Kilde: plattformens
-    // /api/lease-income/export når den er live, ellers avledet fra
-    // /api/contracts/export. ?env=prod|test velger plattformmiljø (som økonomi).
+    // ── Leieforhold & inntekter — 1:1-speil av plattformens visning. Kilde:
+    // plattformens /api/lease-income/export når den er live, ellers FLETTET
+    // units/export + contracts/export (rom, annonsert, estimat — se
+    // lib/leieforhold.js). Leser ALLTID produksjonsplattformen
+    // (leieforholdTarget) — miljøvelgeren er fjernet med vilje.
     if (route === '/admin/leieforhold' && method === 'GET') {
       if (!(await modulAuthed(request, db, 'leieforhold'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const freshLf = (() => { try { return new URL(request.url).searchParams.get('fresh') === '1'; } catch (e) { return false; } })();
-      const dataLf = await hentLeieforhold(financeSyncTarget(request), { db, fresh: freshLf });
+      const dataLf = await hentLeieforhold(leieforholdTarget(), { db, fresh: freshLf });
       return cors(NextResponse.json(dataLf));
     }
     if (route === '/admin/leieforhold/xlsx' && method === 'GET') {
       if (!(await modulAuthed(request, db, 'leieforhold'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
-      const dataLf = await hentLeieforhold(financeSyncTarget(request), { db });
+      const dataLf = await hentLeieforhold(leieforholdTarget(), { db });
       if (!dataLf.ok) return cors(NextResponse.json({ error: dataLf.error || 'Kunne ikke hente data' }, { status: 502 }));
       const bufLf = await lagLeieforholdExcel(dataLf);
       return new NextResponse(bufLf, {
@@ -3313,7 +3338,7 @@ async function handleRoute(request, { params }) {
     }
     if (route === '/admin/leieforhold/csv' && method === 'GET') {
       if (!(await modulAuthed(request, db, 'leieforhold'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
-      const dataLf = await hentLeieforhold(financeSyncTarget(request), { db });
+      const dataLf = await hentLeieforhold(leieforholdTarget(), { db });
       if (!dataLf.ok) return cors(NextResponse.json({ error: dataLf.error || 'Kunne ikke hente data' }, { status: 502 }));
       return new NextResponse(lagLeieforholdCsv(dataLf), {
         headers: {
@@ -3388,7 +3413,7 @@ async function handleRoute(request, { params }) {
       if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const uF = new URL(request.url);
       const yearF = gyldigBudsjettAar(uF.searchParams.get('year')) || new Date().getFullYear();
-      const lf = await hentLeieforhold(financeSyncTarget(request), { db });
+      const lf = await hentLeieforhold(leieforholdTarget(), { db });
       if (!lf.ok) return cors(NextResponse.json({ ok: false, error: lf.error || 'Kunne ikke hente porteføljen' }, { status: 502 }));
       const costsF = await listCosts(db);
       const forslag = lagForslag({
@@ -3410,6 +3435,114 @@ async function handleRoute(request, { params }) {
       if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const resS = await fangFaktiskEtterslep(db);
       return cors(NextResponse.json({ ok: true, ...resS }));
+    }
+
+    // ═══ DATAROM — investorrommet (per-side modultilgang: dr-*) ═════════════
+    // Lesing: modulAuthed per side (admin alltid; investor kun tildelte sider).
+    // All skriving er admin-only. Se lib/datarom.js for datalogikken.
+    if (route === '/admin/datarom/oversikt' && method === 'GET') {
+      if (!(await modulAuthed(request, db, 'dr-oversikt'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      await drAutoSync(db, async () => (await hentLeieforhold(leieforholdTarget(), { db })).rows || []);
+      return cors(NextResponse.json({ ok: true, oversikt: await drBeregnOversikt(db) }));
+    }
+    if (route === '/admin/datarom/enheter' && method === 'GET') {
+      const sp = new URL(request.url).searchParams;
+      const modulDr = sp.get('fase') === 'pipeline' ? 'dr-pipeline' : 'dr-enheter';
+      if (!(await modulAuthed(request, db, modulDr))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      // Auto-synk: enhetsøkonomien speiler alltid Leieforhold-porteføljen
+      // (maks hvert 10. min; manuelle felt som kostnader/notat røres aldri).
+      const syncDr = await drAutoSync(db, async () => (await hentLeieforhold(leieforholdTarget(), { db })).rows || []);
+      const beggeDr = await drListEnheter(db);
+      return cors(NextResponse.json({ ok: true, ...beggeDr, autoSync: syncDr }));
+    }
+    if (route === '/admin/datarom/enheter' && (method === 'POST' || method === 'PUT')) {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let bodyDr = {}; try { bodyDr = await request.json(); } catch (e) {}
+      const resDr = await drLagreEnhet(db, bodyDr);
+      return cors(NextResponse.json(resDr, { status: resDr.ok ? (method === 'POST' ? 201 : 200) : 400 }));
+    }
+    if (route === '/admin/datarom/enheter' && method === 'DELETE') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const idDr = new URL(request.url).searchParams.get('id') || '';
+      const resDr = await drSlettEnhet(db, idDr);
+      return cors(NextResponse.json(resDr, { status: resDr.ok ? 200 : 404 }));
+    }
+    // Import fra Leieforhold-porteføljen (idempotent på kildeId; manuelt
+    // vedlikeholdte felt som direkte kostnader/notat overskrives ALDRI).
+    if (route === '/admin/datarom/enheter/import' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const lfDr = await hentLeieforhold(leieforholdTarget(), { db });
+      if (!lfDr.ok) return cors(NextResponse.json({ ok: false, error: lfDr.error || 'Kunne ikke hente porteføljen' }, { status: 502 }));
+      const resDr = await drImporterFraLeieforhold(db, lfDr.rows || []);
+      return cors(NextResponse.json({ ...resDr, kilde: { source: lfDr.source, env: lfDr.env, antallRader: (lfDr.rows || []).length } }));
+    }
+    if (route === '/admin/datarom/pnl' && method === 'GET') {
+      if (!(await modulAuthed(request, db, 'dr-resultat'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      return cors(NextResponse.json({ ok: true, rader: await drListPnl(db) }));
+    }
+    if (route === '/admin/datarom/pnl' && method === 'PUT') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let bodyDr = {}; try { bodyDr = await request.json(); } catch (e) {}
+      const resDr = await drLagrePnlRad(db, bodyDr);
+      return cors(NextResponse.json(resDr, { status: resDr.ok ? 200 : 400 }));
+    }
+    if (route === '/admin/datarom/pnl' && method === 'DELETE') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const ymDr = new URL(request.url).searchParams.get('ym') || '';
+      const resDr = await drSlettPnlRad(db, ymDr);
+      return cors(NextResponse.json(resDr, { status: resDr.ok ? 200 : 404 }));
+    }
+    if (route === '/admin/datarom/selskap' && method === 'GET') {
+      if (!(await modulAuthed(request, db, 'dr-selskap'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      return cors(NextResponse.json({ ok: true, selskap: await drHentSelskap(db) }));
+    }
+    if (route === '/admin/datarom/selskap' && method === 'PUT') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let bodyDr = {}; try { bodyDr = await request.json(); } catch (e) {}
+      const resDr = await drLagreSelskap(db, bodyDr);
+      return cors(NextResponse.json(resDr));
+    }
+    // Dokumenter: gjenbruker DD-hvelvet fra Investor-rommet (dd_documents) i
+    // lesemodus — admin administrerer filene i Investor-rom-modulen.
+    if (route === '/admin/datarom/dokumenter' && method === 'GET') {
+      if (!(await modulAuthed(request, db, 'dr-dokumenter'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const docsDr = await ddListDocuments(db, { includeArchived: false });
+      return cors(NextResponse.json({ ok: true, documents: docsDr, categories: DD_CATEGORIES }));
+    }
+    if (route === '/admin/datarom/fil' && method === 'GET') {
+      if (!(await modulAuthed(request, db, 'dr-dokumenter'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const spDr = new URL(request.url).searchParams;
+      const docDr = await ddGetDocument(db, (spDr.get('docId') || '').trim());
+      if (!docDr || docDr.archived) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
+      const verDr = (docDr.versions || []).find((v) => v.version === docDr.currentVersion) || (docDr.versions || [])[docDr.versions.length - 1];
+      const objDr = verDr ? await getObject(verDr.objectPath) : null;
+      if (!objDr) return cors(NextResponse.json({ ok: false, error: 'Filen finnes ikke i lagringen' }, { status: 404 }));
+      const resFil = new NextResponse(objDr.buffer, { status: 200 });
+      resFil.headers.set('Content-Type', verDr.mime || objDr.contentType || 'application/octet-stream');
+      resFil.headers.set('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(verDr.filename)}`);
+      resFil.headers.set('Cache-Control', 'no-store');
+      return cors(resFil);
+    }
+    // Investorpakke (XLSX): inkluderer KUN seksjonene brukeren har tilgang til.
+    if (route === '/admin/datarom/xlsx' && method === 'GET') {
+      let tilgangDr = null; // null = admin (alle ark)
+      let navnDr = '';
+      if (!adminAuthed(request)) {
+        const payloadDr = sessionFra(request);
+        if (!payloadDr?.sub) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+        const uDr = await db.collection('admin_users').findOne({ id: payloadDr.sub }, { projection: { moduler: 1, name: 1, email: 1 } });
+        tilgangDr = (uDr?.moduler || []).filter((k) => k.startsWith('dr-') || k === 'budsjett');
+        if (!tilgangDr.length) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+        navnDr = uDr?.name || uDr?.email || '';
+      }
+      const bufDr = await byggInvestorpakke(db, { navn: navnDr, tilgang: tilgangDr });
+      return new NextResponse(bufDr, {
+        headers: {
+          'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          'Content-Disposition': 'attachment; filename="digihome-investorpakke.xlsx"',
+          'Cache-Control': 'no-store',
+        },
+      });
     }
 
     // ── Saksmottak-innstillinger: hvem varsles (og følger saken automatisk)
