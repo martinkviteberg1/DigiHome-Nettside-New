@@ -25,6 +25,10 @@ import { recordWonConversions } from '@/lib/closed-loop';
 import { runDueReminders } from '@/lib/reminders';
 import { hentLeieforhold } from '@/lib/leieforhold';
 import { lagLeieforholdExcel, lagLeieforholdCsv } from '@/lib/leieforhold-excel';
+import {
+  anvendScenario as lfScenario, filtrerRader as lfFiltrer, parseFilterParams as lfParseFilter,
+  filterBeskrivelse as lfBeskrivelse, beregnTotals as lfTotals, harFilter as lfHarFilter,
+} from '@/lib/leieforhold-filter';
 import { hentBudsjett, lagreBudsjett, beregnFaktisk, lagForslag, gyldigBudsjettAar, fangFaktiskEtterslep, INNTEKT_KATEGORIER, KOSTNAD_KATEGORIER } from '@/lib/budsjett';
 import { lagBudsjettExcel, lagBudsjettExcelRullerende } from '@/lib/budsjett-excel';
 import {
@@ -3324,6 +3328,41 @@ async function handleRoute(request, { params }) {
       return cors(NextResponse.json(dataLf));
     }
 
+    // ═══ Kontrakt-PDF (proxy mot plattformen — nøkkelen forblir server-side) ═══
+    // Åpner signert leiekontrakt/forvaltningsavtale i skuffens PDF-visning.
+    // Plattform-endepunktet GET /api/contracts/{id}/pdf er BESTILT via broen
+    // (tråd leieforhold-view) — til det er levert returneres en vennlig
+    // HTML-side i stedet for rå JSON-feil (vises pent inne i iframen).
+    if (route === '/admin/leieforhold/kontrakt-pdf' && method === 'GET') {
+      if (!(await modulAuthed(request, db, 'leieforhold'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const idPdf = (() => { try { return new URL(request.url).searchParams.get('id') || ''; } catch (e) { return ''; } })();
+      if (!/^[0-9a-f:-]{16,90}$/i.test(idPdf)) return cors(NextResponse.json({ ok: false, error: 'Ugyldig kontrakt-id' }, { status: 400 }));
+      const mTarget = leieforholdTarget();
+      const ventSide = (tittel, melding) => new NextResponse(
+        `<!doctype html><html lang="nb"><head><meta charset="utf-8"><style>body{font-family:-apple-system,system-ui,sans-serif;display:flex;align-items:center;justify-content:center;min-height:92vh;margin:0;background:#faf9f7;color:#555}div{max-width:420px;text-align:center;padding:24px}h2{font-size:17px;color:#111;margin:0 0 8px}p{font-size:13.5px;line-height:1.5;margin:0;color:#8a8278}</style></head><body><div><h2>${tittel}</h2><p>${melding}</p></div></body></html>`,
+        { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8' } },
+      );
+      try {
+        const rPdf = await fetch(`${mTarget.url}/api/contracts/${encodeURIComponent(idPdf)}/pdf`, {
+          headers: { 'X-API-Key': mTarget.key }, signal: AbortSignal.timeout(20000),
+        });
+        if (!rPdf.ok) {
+          return ventSide('PDF-en er ikke tilgjengelig ennå', 'Plattformen har ikke levert kontrakt-PDF-endepunktet — det er bestilt og kobles på automatisk så snart det finnes. Prøv igjen senere.');
+        }
+        const bufPdf = Buffer.from(await rPdf.arrayBuffer());
+        return new NextResponse(bufPdf, {
+          status: 200,
+          headers: {
+            'Content-Type': rPdf.headers.get('content-type') || 'application/pdf',
+            'Content-Disposition': `inline; filename="digihome-kontrakt-${idPdf.slice(0, 8)}.pdf"`,
+            'Cache-Control': 'private, max-age=300',
+          },
+        });
+      } catch (e) {
+        return ventSide('Fikk ikke kontakt med plattformen', 'Prøv å lukke og åpne PDF-en igjen om et øyeblikk.');
+      }
+    }
+
     // ═══ ENHETSØKONOMI (Økonomi-modus i Leieforhold) ════════════════════════
     // DigiHome er asset-light: huseier bærer alle boligkostnader. Våre kostnader:
     //   · felleskostnader (løpende/mnd, f.eks. lønn) — fordeles per enhet etter
@@ -3348,10 +3387,16 @@ async function handleRoute(request, { params }) {
       const fordelingEo = ['alle', 'utleide', 'honorar'].includes(bEo.fordeling) ? bEo.fordeling : 'alle';
       const kategoriEo = ['lonn', 'markedsforing', 'programvare', 'annet'].includes(bEo.kategori) ? bEo.kategori : 'annet';
       if (!navnEo || !belopEo) return cors(NextResponse.json({ ok: false, error: 'Navn og beløp kreves' }, { status: 400 }));
+      // Periode + aktiv-status (Fase 3/4: «faste kostnader» med dato-scenario)
+      const gyldigDatoEo = (v) => (/^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) ? String(v) : '');
+      const startEo = gyldigDatoEo(bEo.startDato);
+      const sluttEo = gyldigDatoEo(bEo.sluttDato);
+      if (startEo && sluttEo && sluttEo < startEo) return cors(NextResponse.json({ ok: false, error: 'Sluttdato kan ikke være før startdato' }, { status: 400 }));
+      const aktivEo = bEo.aktiv !== false;
       const idEo = String(bEo.id || '').trim() || uuidv4();
       await db.collection('enhetsokonomi').updateOne(
         { id: idEo, type: 'felles' },
-        { $set: { id: idEo, type: 'felles', navn: navnEo, belop: belopEo, fordeling: fordelingEo, kategori: kategoriEo, updatedAt: new Date().toISOString() } },
+        { $set: { id: idEo, type: 'felles', navn: navnEo, belop: belopEo, fordeling: fordelingEo, kategori: kategoriEo, startDato: startEo, sluttDato: sluttEo, aktiv: aktivEo, updatedAt: new Date().toISOString() } },
         { upsert: true },
       );
       return cors(NextResponse.json({ ok: true, id: idEo }));
@@ -3386,7 +3431,15 @@ async function handleRoute(request, { params }) {
       if (!(await modulAuthed(request, db, 'leieforhold'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const dataLf = await hentLeieforhold(leieforholdTarget(), { db });
       if (!dataLf.ok) return cors(NextResponse.json({ error: dataLf.error || 'Kunne ikke hente data' }, { status: 502 }));
-      // Enhetsøkonomi (felleskostnader + CAC) → eget «Enhetsøkonomi»-ark
+      // Filter + scenario fra query — NØYAKTIG samme logikk som skjermen
+      // (lib/leieforhold-filter) slik at eksporten matcher visningen 1:1.
+      const spLf = (() => { try { return new URL(request.url).searchParams; } catch (e) { return new URLSearchParams(); } })();
+      const fpLf = lfParseFilter(spLf);
+      const scenarioRaderLf = lfScenario(dataLf.rows || [], fpLf.scenario);
+      const raderLf = lfFiltrer(scenarioRaderLf, fpLf.filtre, fpLf.sok);
+      const filtrertLf = lfHarFilter(fpLf.filtre, fpLf.sok) || Boolean(fpLf.scenario);
+      const eksportLf = { ...dataLf, rows: raderLf, totals: filtrertLf ? lfTotals(raderLf) : dataLf.totals };
+      // Enhetsøkonomi (faste kostnader + CAC) → «Oversikt»- og «Økonomi»-arkene
       let okonomiLf = null;
       try {
         const dokLf = await db.collection('enhetsokonomi').find({}, { projection: { _id: 0 } }).toArray();
@@ -3394,11 +3447,17 @@ async function handleRoute(request, { params }) {
         for (const d of dokLf) { if (d.type === 'enhet' && d.enhetId) enhLf[d.enhetId] = { cac: d.cac || 0, notat: d.notat || '' }; }
         okonomiLf = { felles: dokLf.filter((d) => d.type === 'felles'), enheter: enhLf };
       } catch (e) { /* arket utelates uten data */ }
-      const bufLf = await lagLeieforholdExcel(dataLf, okonomiLf);
+      const metaLf = {
+        filterTekst: lfBeskrivelse(fpLf.filtre, fpLf.sok, ''),
+        scenario: fpLf.scenario,
+        totaltAntall: (dataLf.rows || []).length,
+        alleRader: scenarioRaderLf, // fordelingsgrunnlag = hele porteføljen
+      };
+      const bufLf = await lagLeieforholdExcel(eksportLf, okonomiLf, metaLf);
       return new NextResponse(bufLf, {
         headers: {
           'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-          'Content-Disposition': 'attachment; filename="digihome-leieforhold-inntekter.xlsx"',
+          'Content-Disposition': `attachment; filename="digihome-leieforhold-inntekter${filtrertLf ? '-filtrert' : ''}.xlsx"`,
           'Cache-Control': 'no-store',
         },
       });
@@ -3407,10 +3466,14 @@ async function handleRoute(request, { params }) {
       if (!(await modulAuthed(request, db, 'leieforhold'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const dataLf = await hentLeieforhold(leieforholdTarget(), { db });
       if (!dataLf.ok) return cors(NextResponse.json({ error: dataLf.error || 'Kunne ikke hente data' }, { status: 502 }));
-      return new NextResponse(lagLeieforholdCsv(dataLf), {
+      const spLfC = (() => { try { return new URL(request.url).searchParams; } catch (e) { return new URLSearchParams(); } })();
+      const fpLfC = lfParseFilter(spLfC);
+      const raderLfC = lfFiltrer(lfScenario(dataLf.rows || [], fpLfC.scenario), fpLfC.filtre, fpLfC.sok);
+      const filtrertLfC = lfHarFilter(fpLfC.filtre, fpLfC.sok) || Boolean(fpLfC.scenario);
+      return new NextResponse(lagLeieforholdCsv({ rows: raderLfC }), {
         headers: {
           'Content-Type': 'text/csv; charset=utf-8',
-          'Content-Disposition': 'attachment; filename="digihome-leieforhold-inntekter.csv"',
+          'Content-Disposition': `attachment; filename="digihome-leieforhold-inntekter${filtrertLfC ? '-filtrert' : ''}.csv"`,
           'Cache-Control': 'no-store',
         },
       });
