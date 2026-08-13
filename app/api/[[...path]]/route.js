@@ -25,8 +25,8 @@ import { recordWonConversions } from '@/lib/closed-loop';
 import { runDueReminders } from '@/lib/reminders';
 import { hentLeieforhold } from '@/lib/leieforhold';
 import { lagLeieforholdExcel, lagLeieforholdCsv } from '@/lib/leieforhold-excel';
-import { hentBudsjett, lagreBudsjett, beregnFaktisk, lagForslag, gyldigBudsjettAar, INNTEKT_KATEGORIER, KOSTNAD_KATEGORIER } from '@/lib/budsjett';
-import { lagBudsjettExcel } from '@/lib/budsjett-excel';
+import { hentBudsjett, lagreBudsjett, beregnFaktisk, lagForslag, gyldigBudsjettAar, fangFaktiskEtterslep, INNTEKT_KATEGORIER, KOSTNAD_KATEGORIER } from '@/lib/budsjett';
+import { lagBudsjettExcel, lagBudsjettExcelRullerende } from '@/lib/budsjett-excel';
 import { IMPORTED_COLL, importRecords, parseCsv, summarizeImported, syncFromPlatform, listImported, updateImportedOverride, getLeadSyncMeta, maybeAutoSyncLeads } from '@/lib/imported-leads';
 import { queueLeadPushback, flushLeadPushbacks, pushbackStats } from '@/lib/lead-pushback';
 import { renderFinnBanners, FINN_THEMES } from '@/lib/finn-banners';
@@ -2260,7 +2260,14 @@ async function handleRoute(request, { params }) {
         }
       }
       const summary = await runDueReminders(db, { dryRun });
-      return cors(NextResponse.json({ ok: true, ran: true, ...summary }));
+      // Budsjett: frys forrige måneds faktiske tall (idempotent — fanger kun
+      // avsluttede måneder som mangler snapshot, inkl. auto-kostnader for den
+      // sist avsluttede). Feil her skal aldri velte påminnelses-kjøringen.
+      let snapshots = null;
+      if (!dryRun) {
+        try { snapshots = await fangFaktiskEtterslep(db); } catch (e) { snapshots = { error: e.message }; }
+      }
+      return cors(NextResponse.json({ ok: true, ran: true, ...summary, budsjettSnapshots: snapshots }));
     }
 
     // ──────────────────────────────────────────────────────────────────────
@@ -3336,6 +3343,20 @@ async function handleRoute(request, { params }) {
     if (route === '/admin/budsjett/xlsx' && method === 'GET') {
       if (!(await modulAuthed(request, db, 'budsjett'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const uX = new URL(request.url);
+      // Rullerende 12 mnd (?vindu=rullerende): investorvisning over årsgrensen.
+      if (uX.searchParams.get('vindu') === 'rullerende') {
+        const naaX = new Date();
+        const fraAarX = naaX.getUTCFullYear(), fraMndX = naaX.getUTCMonth();
+        const [budA, budB] = await Promise.all([hentBudsjett(db, fraAarX), hentBudsjett(db, fraAarX + 1)]);
+        const bufR = await lagBudsjettExcelRullerende({ budsjettA: budA, budsjettB: budB, fraAar: fraAarX, fraMnd: fraMndX });
+        return new NextResponse(bufR, {
+          headers: {
+            'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Disposition': 'attachment; filename="digihome-budsjett-neste-12-mnd.xlsx"',
+            'Cache-Control': 'no-store',
+          },
+        });
+      }
       const yearX = gyldigBudsjettAar(uX.searchParams.get('year')) || new Date().getFullYear();
       const [budX, faktiskX] = await Promise.all([hentBudsjett(db, yearX), beregnFaktisk(db, yearX)]);
       const bufX = await lagBudsjettExcel({ budsjett: budX, faktisk: faktiskX, year: yearX });
@@ -3357,7 +3378,7 @@ async function handleRoute(request, { params }) {
       if (sesjonB && sesjonB.sub) {
         try { const uDoc = await db.collection('admin_users').findOne({ id: sesjonB.sub }, { projection: { name: 1 } }); navnB = (uDoc && uDoc.name) || sesjonB.email || ''; } catch (e) {}
       }
-      const lagret = await lagreBudsjett(db, { year: yearB, inntekter: bodyB.inntekter, kostnader: bodyB.kostnader, egnePoster: bodyB.egnePoster, notat: bodyB.notat, updatedBy: navnB });
+      const lagret = await lagreBudsjett(db, { year: yearB, inntekter: bodyB.inntekter, kostnader: bodyB.kostnader, egnePoster: bodyB.egnePoster, kommentarer: bodyB.kommentarer, notat: bodyB.notat, updatedBy: navnB });
       return cors(NextResponse.json({ ok: true, ...lagret }));
     }
     // Forslag fra porteføljen: leieforhold-radene (cache-vennlig) + dagens
@@ -3372,6 +3393,7 @@ async function handleRoute(request, { params }) {
       const costsF = await listCosts(db);
       const forslag = lagForslag({
         rows: lf.rows, costs: costsF, year: yearF,
+        antallMnd: uF.searchParams.get('horisont') === '24' ? 24 : 12,
         drivere: {
           nyeEnheterPerMnd: uF.searchParams.get('nye'),
           fyllLedigPerMnd: uF.searchParams.get('fyll'),
@@ -3381,6 +3403,13 @@ async function handleRoute(request, { params }) {
         },
       });
       return cors(NextResponse.json({ ok: true, year: yearF, kilde: { source: lf.source, env: lf.env, antallRader: lf.rows.length }, ...forslag }));
+    }
+    // Frys faktiske månedstall (snapshots) manuelt — kjøres ellers av dagscronen.
+    // Idempotent: fanger kun avsluttede måneder som mangler snapshot.
+    if (route === '/admin/budsjett/snapshot' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const resS = await fangFaktiskEtterslep(db);
+      return cors(NextResponse.json({ ok: true, ...resS }));
     }
 
     // ── Saksmottak-innstillinger: hvem varsles (og følger saken automatisk)
