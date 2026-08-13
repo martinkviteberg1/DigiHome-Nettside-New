@@ -778,7 +778,14 @@ export default function AdminPage({ params }) {
           {erBegrenset && begrensning.length === 0 && (
             <ComingSoon icon={Lock} title="Ingen moduler tildelt ennå" body="Kontoen din er opprettet, men ingen moduler er delt med deg riktig ennå. Be administratoren om å tildele modulene du skal se — de dukker opp her automatisk." />
           )}
-          {section === 'leieforhold' && <Leieforhold apiKey={token} readOnly={erBruker} erInvestor={user?.role === 'investor'} />}
+          {section === 'leieforhold' && (
+            <Leieforhold
+              apiKey={token}
+              readOnly={erBruker}
+              erInvestor={user?.role === 'investor'}
+              autoTour={user?.role === 'investor' && !user?.impersonatedBy && !(user?.tourSett || []).includes('leieforhold')}
+            />
+          )}
           {section === 'budsjett' && (
             <Budsjett apiKey={token} readOnly={erBruker || user?.role === 'investor'} investor={user?.role === 'investor'} />
           )}

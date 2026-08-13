@@ -2344,6 +2344,8 @@ async function handleRoute(request, { params }) {
           email: payload.email, name: (user && user.name) || '', role: (user && user.role) || 'admin',
           moduler: (user && Array.isArray(user.moduler)) ? user.moduler : [],
           moteTilgang: (user && Array.isArray(user.moteTilgang)) ? user.moteTilgang : [],
+          // Omvisninger brukeren har sett (f.eks. 'leieforhold') — styrer auto-start.
+          tourSett: (user && Array.isArray(user.tourSett)) ? user.tourSett : [],
           // «Se som»-økt: klienten viser banner + «Tilbake til admin» når satt.
           ...(payload.imp ? { impersonatedBy: { name: (payload.imp.name || 'Admin'), email: (payload.imp.email || '') } } : {}),
         },
@@ -2568,6 +2570,17 @@ async function handleRoute(request, { params }) {
         const n = String(body.name).trim().slice(0, 80);
         if (!n) return cors(NextResponse.json({ ok: false, error: 'Navn kan ikke være tomt' }, { status: 400 }));
         set.name = n;
+      }
+      // «Omvisning sett»-kvittering: ufarlig egen-preferanse — alle innloggede
+      // roller (også lese-only investor) kan markere en tour som sett på SIN konto.
+      if (body.tourSett !== undefined) {
+        const tourKey = String(body.tourSett).trim().toLowerCase().slice(0, 40);
+        if (/^[a-z0-9-]{2,40}$/.test(tourKey)) {
+          await db.collection('admin_users').updateOne({ id: meg.id }, { $addToSet: { tourSett: tourKey } });
+          if (body.name === undefined && body.password === undefined && body.color === undefined) {
+            return cors(NextResponse.json({ ok: true }));
+          }
+        }
       }
       if (body.color !== undefined && /^#[0-9a-fA-F]{6}$/.test(String(body.color))) set.color = body.color;
       if (body.password !== undefined && body.password) {

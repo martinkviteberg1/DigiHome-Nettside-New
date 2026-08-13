@@ -25,7 +25,7 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import {
   KeyRound, Search, Download, FileSpreadsheet, RefreshCw, ChevronDown, ChevronRight,
   Check, AlertTriangle, Megaphone, Pencil, X,
-  FileText, ExternalLink, SlidersHorizontal, CalendarClock, Eye,
+  FileText, ExternalLink, SlidersHorizontal, CalendarClock, Eye, HelpCircle,
 } from 'lucide-react';
 import {
   TOM_FILTER, anvendScenario, filtrerRader, antallAktiveFiltre, harFilter,
@@ -33,6 +33,7 @@ import {
   visGruppe, annonsertSplitt, beregnHonorarTrapp,
 } from '@/lib/leieforhold-filter';
 import { cacheLes, cacheHent } from '@/lib/klient-cache';
+import Omvisning from '@/components/admin/Omvisning';
 
 const heading = { fontFamily: 'var(--font-heading)' };
 
@@ -200,7 +201,7 @@ function SeksjonsRad({ nokkel, rader, colSpan, aggregat }) {
   );
 }
 
-export default function Leieforhold({ apiKey, readOnly = false, erInvestor = false }) {
+export default function Leieforhold({ apiKey, readOnly = false, erInvestor = false, autoTour = false }) {
   // Klient-cache (stale-while-revalidate): flaten rendres momentant fra sist
   // kjente data ved fanebytte, og revaliderer stille i bakgrunnen.
   const [data, setData] = useState(() => cacheLes('lf:data') || null);
@@ -210,6 +211,12 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
   const [sortering, setSortering] = useState('standard');
   const [visOpen, setVisOpen] = useState(false); // «Vis»-meny: sortering + scenario-dato
   const sokRef = useRef(null);
+
+  // Omvisning (guidet tour): auto-start første gang for investorer, «?» for
+  // alle. Scenario touren aktiverer ryddes alltid opp ved avslutning.
+  const [tourAktiv, setTourAktiv] = useState(false);
+  const tourStartetRef = useRef(false);  // maks én auto-start per økt
+  const tourScenarioRef = useRef(false); // touren har satt scenario → nullstill
 
   // Fase 1: flervalgs-filter (status/type/inntekt/huseier)
   const [filtre, setFiltre] = useState(() => ({ status: [], typer: [], inntekt: [], eiere: [] }));
@@ -299,6 +306,70 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
 
   const rows = data?.rows || [];
   const totals = data?.totals || {};
+
+  /* ── Omvisning: 5 steg med levende scenario-demo ──────────────────────────
+     Steg 3 aktiverer faktisk «Om 3 måneder» slik at investoren SER tallene
+     endre seg — nullstilles garantert i tourFerdig. Steg uten mål (skjulte
+     elementer) hoppes stille over av motoren. */
+  const tourSteg = [
+    {
+      id: 'inntektstrapp',
+      tittel: 'Inntektstrappen',
+      tekst: 'Leie i dag → sikret → pipeline → full utleie. Honoraret (eks. mva) er DigiHomes inntekt — leien er huseiers.',
+      maal: () => document.querySelector('[data-testid="leieforhold-honorar-trapp"]') || document.querySelector('[data-testid="leieforhold-sone-leie"]'),
+    },
+    {
+      id: 'tidsmaskin',
+      tittel: 'Tidsmaskinen',
+      tekst: 'Under «Per dato» kan du se porteføljen på en hvilken som helst fremtidig dato. La oss prøve den sammen …',
+      foer: async () => { setEksportOpen(false); setVisOpen(true); },
+      maal: () => document.querySelector('[data-testid="leieforhold-vis-meny"]'),
+    },
+    {
+      id: 'fremtidsbilde',
+      tittel: 'Porteføljen om tre måneder',
+      tekst: 'Signerte kontrakter er faset inn og alle tall er regnet om til valgt dato. Datoen nullstilles når omvisningen er ferdig.',
+      foer: async () => { tourScenarioRef.current = true; setScenario(plussMnd(3)); setVisOpen(false); },
+      maal: () => document.querySelector('[data-testid="leieforhold-honorar-trapp"]') || document.querySelector('[data-testid="leieforhold-sone-leie"]'),
+    },
+    {
+      id: 'skuff',
+      tittel: 'Alt om hver enhet',
+      tekst: 'Klikk en rad når som helst — der finner du kontraktsdetaljer, depositum og den signerte leiekontrakten som PDF.',
+      maal: () => document.querySelector('[data-testid="leieforhold-tabell"] tbody tr'),
+    },
+    {
+      id: 'eksport',
+      tittel: 'Ta tallene med deg',
+      tekst: 'Hele visningen — inkludert filter og valgt dato — kan lastes ned som ferdig formatert Excel.',
+      maal: () => document.querySelector('[data-testid="leieforhold-xlsx"]'),
+    },
+  ];
+
+  const tourFerdig = useCallback((fullfort) => {
+    setTourAktiv(false);
+    setVisOpen(false);
+    if (tourScenarioRef.current) { setScenario(''); tourScenarioRef.current = false; }
+    try { localStorage.setItem('dh-omvisning-leieforhold', '1'); } catch (e) {}
+    // Persistér «sett» på kontoen (best effort) — gjelder da alle enheter.
+    fetch(`/api/admin/auth/profile?key=${encodeURIComponent(apiKey)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tourSett: 'leieforhold' }),
+    }).catch(() => {});
+  }, [apiKey]);
+
+  // Auto-start: første besøk for investorer (aldri under «Se som»-økter —
+  // page.js holder autoTour false da), kun på romslige skjermer, én gang per
+  // økt, og først når dataene faktisk er på plass.
+  useEffect(() => {
+    if (!autoTour || tourStartetRef.current || laster || !rows.length) return undefined;
+    if (typeof window === 'undefined' || window.innerWidth < 1024) return undefined;
+    try { if (localStorage.getItem('dh-omvisning-leieforhold')) return undefined; } catch (e) {}
+    tourStartetRef.current = true;
+    const t = setTimeout(() => setTourAktiv(true), 900);
+    return () => clearTimeout(t);
+  }, [autoTour, laster, rows.length]);
 
   /* ── Scenario + filter + sortering (delt logikk: lib/leieforhold-filter) ── */
   const scenarioRows = useMemo(() => anvendScenario(rows, scenario), [rows, scenario]);
@@ -687,6 +758,17 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
                 </div>
               )}
             </div>
+            {/* Omvisning: guidet tur gjennom sidens kraftfunksjoner (auto første
+                gang for investorer — «?» spiller den igjen for alle) */}
+            <button
+              onClick={(e) => { e.stopPropagation(); setVisOpen(false); setEksportOpen(false); setTourAktiv(true); }}
+              data-testid="leieforhold-omvisning-knapp"
+              title="Omvisning — se hva siden kan"
+              aria-label="Start omvisning"
+              className="flex h-7 w-7 items-center justify-center rounded-[7px] border border-black/[0.08] bg-white text-[#a8a29a] shadow-[0_1px_2px_rgba(28,25,23,0.04)] transition-all hover:bg-[#f7f6f3] hover:text-[#1c1917]"
+            >
+              <HelpCircle className="h-3.5 w-3.5" />
+            </button>
           </div>
         </div>
 
@@ -1294,6 +1376,9 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
           </div>
         </div>
       )}
+
+      {/* Guidet omvisning — spotlight-motor med levende scenario-demo */}
+      <Omvisning steg={tourSteg} aktiv={tourAktiv} onFerdig={tourFerdig} />
     </div>
   );
 }
