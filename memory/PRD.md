@@ -493,3 +493,10 @@ Google Ads-styring via native REST API).
 - **Sidebar-kollaps** (desktop): PanelLeft-knapp i sidebar-headeren, smal ikonlist (68px) m/ tooltips, persistert i localStorage `dh_admin_sidebar_collapsed`. Mobil-drawer uendret.
 - **Saksmottak-mottakere**: `GET/PUT /api/admin/dev-issue-innstillinger` (settings-doc `dev_issue_intake`: recipientIds/notifyEmail/addAsFollowers). `POST /api/bridge/dev-issue` varsler valgte mottakere in-app + ev. e-post (taskEpost, kategori 'innmeldt') og setter dem som followers; tom liste = standard (admin + utviklingsgruppen, kun in-app). UI: «Saksmottak — hvem varsles?» i ProduktAdmin-modalen (Utvikling → Produkter & komponenter), auto-lagring.
 - Backend-testagent: 26/26 pass (impersonering, innstillinger, bridge m/ mottakere, regresjon).
+
+## Ny landingsside (/ny-forside) — feb 2026
+- Unloopa-inspirert «drømmende» premium-landingsside for huseiere: varm krem/fersken-himmel, salviegrønn eng, terracotta-CTA.
+- AI-generert hus-maskot (Nano Banana via Emergent-nøkkel), bakgrunnsfjernet med rembg: /public/landing/*.png (+ *-fri.png).
+- Seksjoner: hero m/ svevende kodebygde produktkort + maskot, tillitsstripe, 4-stegs «Slik fungerer det», bento (portal + leietaker-chat + 4 kort), trygghet m/ hjertemaskot, CTA-gradient m/ lead-skjema (POST /api/leads, source: 'ny-forside'), footer-scene m/ gigantmaskot + stor wordmark.
+- Filer: /app/app/ny-forside/page.js (metadata, noindex inntil promotering), /app/components/landing/NyForside.js, /app/scripts/generer-landing-bilder.py.
+- Status: skjermbildeverifisert desktop + mobil (0 px overflow), lead-skjema E2E-testet (QA-lead ryddet). Sitatkortet «Endelig helt stressfritt» er en plassholder til ekte kundesitat foreligger.
