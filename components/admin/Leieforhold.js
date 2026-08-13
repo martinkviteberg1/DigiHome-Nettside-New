@@ -176,16 +176,16 @@ function Initialer({ navn }) {
   );
 }
 
-// Seksjonshode i tabellen — Linear-stil gruppelinje
+// Seksjonshode i tabellen — Linear-stil gruppelinje (dempet bånd som deler tabellen)
 function SeksjonsRad({ nokkel, rader, colSpan, aggregat }) {
   return (
-    <tr className="bg-[#faf9f7]">
-      <td colSpan={colSpan} className="border-y border-black/[0.04] px-3 py-[5px]">
+    <tr className="bg-[#f7f6f3]">
+      <td colSpan={colSpan} className="border-y border-black/[0.05] px-3 py-[6px]">
         <div className="flex items-center gap-2">
           <span className="h-[6px] w-[6px] rounded-full" style={{ background: STATUS_STIL[nokkel].tekst }} />
-          <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#8a8278]">{SEKSJON_LABEL[nokkel] || nokkel}</span>
-          <span className="text-[10px] tabular-nums text-[#c2beb8]">{rader.length}</span>
-          <span className="ml-auto text-[10px] font-medium tabular-nums text-[#a8a29a]">{aggregat}</span>
+          <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#6f6a61]">{SEKSJON_LABEL[nokkel] || nokkel}</span>
+          <span className="text-[10px] tabular-nums text-[#b3ada3]">{rader.length}</span>
+          <span className="ml-auto text-[10px] font-medium tabular-nums text-[#8a8278]">{aggregat}</span>
         </div>
       </td>
     </tr>
@@ -671,71 +671,75 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
           </div>
         )}
 
-        {/* ── KPI-seksjon: TRE PASTELLKORT på et rolig bånd — tydelig skilt fra
-            tabellen under. Hvert kort har sin egen duse tone: lavendel for
-            honorar (DigiHome), salvie for leie (huseierne), dus blå for
-            utleigrad. Tallene leser likt: stort tall = i dag, deretter
+        {/* ── KPI-seksjon: TRE KORT, moderne 2026 — hvite flater med hårlinje,
+            én fargechip per kort (lilla/grønn/blå) og en knapt synlig radial
+            glød i hjørnet. Fargen sitter i chipen, ikke i flaten — rolig og
+            premium. Tallene leser likt: stort tall = i dag, deretter
             «+ individuelt beløp» med «= løpende sum» under. ── */}
-        <div className="grid grid-cols-1 gap-2.5 border-y border-black/[0.05] bg-[#faf9f7] px-3 py-3 sm:px-4 xl:grid-cols-[minmax(0,43fr)_minmax(0,43fr)_minmax(0,14fr)]">
-          {/* KORT 1 — Honorar (DigiHome) · lavendel */}
-          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 rounded-[10px] border border-[#8b5cf6]/15 bg-[#f5f1fd] px-4 py-2.5" data-testid="leieforhold-honorar-trapp">
-            <div className="min-w-0">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#7a5cd0]">Honorar / mnd <span className="font-medium normal-case tracking-normal text-[#b3a4dd]">· eks. mva</span></p>
-              <p className="mt-1 text-[23px] font-semibold leading-none tabular-nums tracking-[-0.02em] text-[#1c1917]" style={heading} data-testid="leieforhold-honorar">
+        <div className="grid grid-cols-1 gap-2.5 border-y border-black/[0.05] bg-[#f7f6f3] px-3 py-3 sm:px-4 xl:grid-cols-[minmax(0,43fr)_minmax(0,43fr)_minmax(0,14fr)]">
+          {/* KORT 1 — Honorar (DigiHome) · lilla chip */}
+          <div className="relative flex flex-wrap items-center gap-x-5 gap-y-2 overflow-hidden rounded-xl border border-black/[0.05] bg-white px-4 py-2.5 shadow-[0_1px_3px_rgba(28,25,23,0.04)]" data-testid="leieforhold-honorar-trapp">
+            <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(460px_150px_at_0%_0%,rgba(124,58,237,0.07),transparent_62%)]" />
+            <div className="relative min-w-0">
+              <span className="inline-flex items-center rounded-full bg-[#f3edfe] px-2 py-[3px] text-[9.5px] font-bold uppercase tracking-[0.07em] text-[#6d28d9]">Honorar / mnd · eks. mva</span>
+              <p className="mt-1.5 text-[23px] font-semibold leading-none tabular-nums tracking-[-0.02em] text-[#1c1917]" style={heading} data-testid="leieforhold-honorar">
                 {laster ? '…' : <TallOpp verdi={honorarTrapp.iDag} />}
               </p>
-              <p className="mt-1 truncate text-[10.5px] text-[#9d8fc4]" data-testid="leieforhold-honorar-arr">≈ {kr(honorarTrapp.iDag * 12)}/år run-rate</p>
+              <p className="mt-1 truncate text-[10.5px] text-[#a8a29a]" data-testid="leieforhold-honorar-arr">≈ {kr(honorarTrapp.iDag * 12)}/år run-rate</p>
             </div>
-            <div className="hidden h-9 w-px shrink-0 bg-[#8b5cf6]/10 sm:block" />
+            <div className="hidden h-9 w-px shrink-0 bg-black/[0.06] sm:block" />
             {/* Trappen — individuelt beløp (+) og løpende sum (=) */}
             {[
               ['+ Signert', honorarTrapp.sikret - honorarTrapp.iDag, honorarTrapp.sikret, 'sikret', false, 'leieforhold-hon-sikret'],
               ['+ Annonsert nå', honorarTrapp.medAnnonsert - honorarTrapp.sikret, honorarTrapp.medAnnonsert, '', honorarTrapp.estAnnonsert, 'leieforhold-hon-annonsert'],
               ['+ Ledig rest', honorarTrapp.potensial - honorarTrapp.medAnnonsert, honorarTrapp.potensial, 'full utleie', honorarTrapp.estFull, 'leieforhold-hon-full'],
             ].map(([l, v, sum, sumL, est, tid]) => (
-              <div key={l} className="min-w-0" data-testid={tid} title={est ? 'Inneholder estimat (porteføljens snittsats der sats ikke er avtalt)' : undefined}>
-                <p className="truncate text-[10px] font-semibold uppercase tracking-[0.08em] text-[#7a5cd0]/70">{l}</p>
+              <div key={l} className="relative min-w-0" data-testid={tid} title={est ? 'Inneholder estimat (porteføljens snittsats der sats ikke er avtalt)' : undefined}>
+                <p className={`truncate ${ETIKETT}`}>{l}</p>
                 <p className="mt-1 text-[15px] font-semibold leading-none tabular-nums tracking-[-0.01em] text-[#1c1917]" style={heading}>
                   +{est ? '~' : ''}{kr(v)}
                 </p>
-                <p className="mt-1 truncate text-[10.5px] tabular-nums text-[#9d8fc4]">= {est ? '~' : ''}{kr(sum)}{sumL ? ` ${sumL}` : ''}</p>
+                <p className="mt-1 truncate text-[10.5px] tabular-nums text-[#a8a29a]">= {est ? '~' : ''}{kr(sum)}{sumL ? ` ${sumL}` : ''}</p>
               </div>
             ))}
           </div>
 
-          {/* KORT 2 — Leie (huseiernes grunnlag) · salvie */}
-          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 rounded-[10px] border border-[#2e7d4f]/12 bg-[#eef6ee] px-4 py-2.5 xl:justify-between" data-testid="leieforhold-sone-leie">
+          {/* KORT 2 — Leie (huseiernes grunnlag) · grønn chip */}
+          <div className="relative flex flex-wrap items-center gap-x-5 gap-y-2 overflow-hidden rounded-xl border border-black/[0.05] bg-white px-4 py-2.5 shadow-[0_1px_3px_rgba(28,25,23,0.04)] xl:justify-between" data-testid="leieforhold-sone-leie">
+            <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(460px_150px_at_0%_0%,rgba(21,128,61,0.06),transparent_62%)]" />
             {leieTrapp.map((s, i) => (
-              <div key={s.id} className="min-w-0" data-testid={`leieforhold-kpi-${s.id}`}>
-                <p className={`truncate text-[10px] font-semibold uppercase tracking-[0.08em] ${i === 0 ? 'text-[#3d7d55]' : 'text-[#3d7d55]/70'}`}>{s.l}</p>
+              <div key={s.id} className="relative min-w-0" data-testid={`leieforhold-kpi-${s.id}`}>
                 {i === 0 ? (
                   <>
-                    <p className="mt-1 text-[16px] font-semibold leading-none tabular-nums tracking-[-0.01em] text-[#1c1917]" style={heading}>
+                    <span className="inline-flex items-center rounded-full bg-[#e8f6ee] px-2 py-[3px] text-[9.5px] font-bold uppercase tracking-[0.07em] text-[#15803d]">{s.l} / mnd</span>
+                    <p className="mt-1.5 text-[16px] font-semibold leading-none tabular-nums tracking-[-0.01em] text-[#1c1917]" style={heading}>
                       {laster ? '…' : <TallOpp verdi={s.v} />}
                     </p>
-                    <p className="mt-1 truncate text-[10.5px] text-[#87a58f]">{s.sub}</p>
+                    <p className="mt-1 truncate text-[10.5px] text-[#a8a29a]">{s.sub}</p>
                   </>
                 ) : (
                   <>
+                    <p className={`truncate ${ETIKETT}`}>{s.l}</p>
                     <p className="mt-1 text-[15px] font-semibold leading-none tabular-nums tracking-[-0.01em] text-[#1c1917]" style={heading}>
                       +{kr(s.v)}
                     </p>
-                    <p className="mt-1 truncate text-[10.5px] tabular-nums text-[#87a58f]">= {kr(s.sum)}{s.sumL ? ` ${s.sumL}` : ''}</p>
+                    <p className="mt-1 truncate text-[10.5px] tabular-nums text-[#a8a29a]">= {kr(s.sum)}{s.sumL ? ` ${s.sumL}` : ''}</p>
                   </>
                 )}
               </div>
             ))}
           </div>
 
-          {/* KORT 3 — Utleigrad · dus blå */}
-          <div className="flex items-center rounded-[10px] border border-[#1c7a96]/12 bg-[#eaf4f8] px-4 py-2.5" data-testid="leieforhold-kpi-utleigrad">
-            <div className="min-w-0">
-              <p className="truncate text-[10px] font-semibold uppercase tracking-[0.08em] text-[#22758d]">Utleigrad</p>
-              <div className="mt-1 flex items-center gap-2.5">
+          {/* KORT 3 — Utleigrad · blå chip */}
+          <div className="relative flex items-center overflow-hidden rounded-xl border border-black/[0.05] bg-white px-4 py-2.5 shadow-[0_1px_3px_rgba(28,25,23,0.04)]" data-testid="leieforhold-kpi-utleigrad">
+            <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(300px_140px_at_0%_0%,rgba(14,116,144,0.07),transparent_65%)]" />
+            <div className="relative min-w-0">
+              <span className="inline-flex items-center rounded-full bg-[#e7f4f9] px-2 py-[3px] text-[9.5px] font-bold uppercase tracking-[0.07em] text-[#0e7490]">Utleigrad</span>
+              <div className="mt-1.5 flex items-center gap-2.5">
                 <Ring pct={visTotals.occupancy_pct || 0} size={30} />
                 <div className="min-w-0">
                   <p className="text-[16px] font-semibold leading-none tabular-nums tracking-[-0.01em] text-[#1c1917]" style={heading}>{visTotals.occupancy_pct ?? 0} %</p>
-                  <p className="mt-1 truncate text-[10.5px] text-[#82a3ae]">{visTotals.leased ?? 0} av {visTotals.count ?? 0} utleid</p>
+                  <p className="mt-1 truncate text-[10.5px] text-[#a8a29a]">{visTotals.leased ?? 0} av {visTotals.count ?? 0} utleid</p>
                 </div>
               </div>
             </div>
@@ -824,7 +828,7 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
                     idx += 1; const i = idx;
                     const erRom = r.unit_type === 'Rom i bofellesskap';
                     return (
-                    <tr key={`${radNokkel(r)}-${i}`} onClick={() => setValgtRad(r)} className="group dh-rad-inn cursor-pointer border-b border-black/[0.03] transition-colors last:border-b-0 hover:bg-[#faf9f7]" style={{ animationDelay: `${Math.min(i, 16) * 16}ms` }} data-testid={`leieforhold-rad-${i}`}>
+                    <tr key={`${radNokkel(r)}-${i}`} onClick={() => setValgtRad(r)} className="group dh-rad-inn cursor-pointer border-b border-black/[0.03] transition-colors last:border-b-0 hover:bg-[#f6f4f1]" style={{ animationDelay: `${Math.min(i, 16) * 16}ms` }} data-testid={`leieforhold-rad-${i}`}>
                       <td className="px-3 py-2"><AdresseCelle r={r} /></td>
                       <td className="whitespace-nowrap px-3 py-2 text-[12px] text-[#57534e]">{r.bolig_type || (erRom ? 'Rom' : '—')}</td>
                       <td className="max-w-[170px] px-3 py-2" title={r.owner_name}>
