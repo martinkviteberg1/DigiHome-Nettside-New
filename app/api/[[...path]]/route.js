@@ -62,7 +62,7 @@ import { computeLlmUsageDashboard, getModelOverrides, setModelOverride, logImage
 import { logExtUsage, summarizeExtUsage, getPlatformUsage } from '@/lib/ext-usage';
 import { getFinanceSettings, setFinanceSettings, listCosts, listActiveCosts, upsertCost, deleteCost, listContracts, upsertContract, deleteContract, listEvents, upsertEvent, deleteEvent, computeResultat, computeLikviditet, computeFinanceOverview, computeTrends, captureSnapshot, computeInvestorMetrics, computeForecast, computeBoardPack, computeCustomers, computePlatformCustomers } from '@/lib/finance';
 import { listFellesKostnader, upsertFellesKostnad, slettFellesKostnad, migrerFellesKostnader } from '@/lib/kostnader';
-import { finnKodeFraUrl, hentFinnHtml, parseFinnAnnonse, beregnAnalyse, opprettLead, listLeads as radarListLeads, oppdaterLead as radarOppdaterLead, slettLead as radarSlettLead, stilBilde, lagreStyletBilde, hentStyletBilde, hentTilbud, registrerTilbudKontakt, tilbudsRegnestykke, STILER as RADAR_STILER } from '@/lib/salgsradar';
+import { finnKodeFraUrl, hentFinnHtml, parseFinnAnnonse, beregnAnalyse, opprettLead, validerIngestAnnonse, listLeads as radarListLeads, oppdaterLead as radarOppdaterLead, slettLead as radarSlettLead, stilBilde, lagreStyletBilde, hentStyletBilde, hentTilbud, registrerTilbudKontakt, tilbudsRegnestykke, STILER as RADAR_STILER } from '@/lib/salgsradar';
 import { syncContractsFromPlatform, syncCustomersFromPlatform, maybeAutoSyncFinance, getFinanceSyncMeta } from '@/lib/contracts-sync';
 import { enqueueInterest as deliverInterest, retryInterestWebhooks, webhookTarget as interestWebhookTarget, platformInboxUrl, platformThreadUrl, platformUnitUrl, deliveryView, OUTBOX_COLL as INTEREST_OUTBOX } from '@/lib/interest-webhook';
 import { notifyStatus, removeSuppression } from '@/lib/notify-status';
@@ -3819,6 +3819,61 @@ async function handleRoute(request, { params }) {
       } catch (e) {
         return cors(NextResponse.json({ ok: false, error: e.message || 'AI-styling feilet' }, { status: 502 }));
       }
+    }
+
+    // ── Maskin-ingest: ekstern overvåkningsagent mater inn nye FINN-annonser ──
+    // Full payload (alternativ B): agenten scraper selv og sender ferdige
+    // felter. Egen smal Bearer-nøkkel (SALGSRADAR_INGEST_KEY) — IKKE admin-
+    // nøkkelen — så den kan roteres uavhengig og kun kan mate inn annonser.
+    // Idempotent: kjent finnkode oppfrisker annonsedata uten å røre pipeline.
+    if (route === '/salgsradar/ingest' && method === 'POST') {
+      if (!rateLimit(`radar-ingest:${clientIp(request)}`, 30)) return cors(NextResponse.json({ error: 'For mange forespørsler' }, { status: 429 }));
+      const ingestKey = process.env.SALGSRADAR_INGEST_KEY || '';
+      if (!ingestKey) return cors(NextResponse.json({ ok: false, error: 'Ingest er ikke konfigurert' }, { status: 503 }));
+      const authHode = request.headers.get('authorization') || '';
+      const innsendt = authHode.startsWith('Bearer ') ? authHode.slice(7).trim() : '';
+      const nokkelOk = (() => {
+        try {
+          const a = Buffer.from(innsendt); const b = Buffer.from(ingestKey);
+          return a.length === b.length && crypto.timingSafeEqual(a, b);
+        } catch (e) { return false; }
+      })();
+      if (!nokkelOk) return cors(NextResponse.json({ ok: false, error: 'Uautorisert' }, { status: 401 }));
+      let bIn = {}; try { bIn = await request.json(); } catch (e) {}
+      // Enkelt objekt eller batch: { annonser: [...] } (maks 10 per kall)
+      const erBatch = Array.isArray(bIn.annonser);
+      const partier = erBatch ? bIn.annonser.slice(0, 10) : [bIn];
+      if (!partier.length) return cors(NextResponse.json({ ok: false, error: 'Tom forsendelse' }, { status: 400 }));
+      if (erBatch && bIn.annonser.length > 10) return cors(NextResponse.json({ ok: false, error: 'Maks 10 annonser per kall' }, { status: 400 }));
+      // Porteføljedata hentes ÉN gang for hele forsendelsen
+      let rowsIn = [];
+      try { const lfIn = await hentLeieforhold(leieforholdTarget(), { db }); rowsIn = lfIn.rows || []; } catch (e) { /* analyse uten portefølje */ }
+      const resultater = [];
+      const nyeLeads = [];
+      for (const p of partier) {
+        const val = validerIngestAnnonse(p);
+        if (!val.ok) { resultater.push({ ok: false, finnkode: String(p?.finnkode || ''), error: val.error }); continue; }
+        const analyseIn = beregnAnalyse(val.annonse, rowsIn);
+        const resIn = await opprettLead(db, val.annonse, analyseIn, val.kildeUrl, { kilde: 'agent' });
+        resultater.push({ ok: true, finnkode: val.annonse.finnkode, leadId: resIn.lead.id, tilbudSlug: resIn.lead.tilbudSlug, ny: !resIn.fantesFraFor });
+        if (!resIn.fantesFraFor) nyeLeads.push(resIn.lead);
+      }
+      // In-app varsel til owner/admin per NY lead (oppdateringer varsler ikke)
+      if (nyeLeads.length) {
+        try {
+          const adminsIn = await db.collection('admin_users').find({ role: { $in: ['owner', 'admin'] } }, { projection: { id: 1 } }).toArray();
+          for (const nl of nyeLeads) {
+            const prisTekst = nl.pris ? ` (${new Intl.NumberFormat('nb-NO').format(nl.pris)} kr/mnd)` : '';
+            for (const aIn of adminsIn) {
+              await varsle(db, aIn.id, null, { type: 'salgsradar', text: `Salgsradar: agenten fanget ny annonse — ${nl.adresse}${prisTekst}` });
+            }
+          }
+        } catch (e) { /* varsling er best effort */ }
+      }
+      const alleFeilet = resultater.every((x) => !x.ok);
+      if (erBatch) return cors(NextResponse.json({ ok: !alleFeilet, resultater }, { status: alleFeilet ? 400 : 200 }));
+      const ene = resultater[0];
+      return cors(NextResponse.json(ene, { status: ene.ok ? (ene.ny ? 201 : 200) : 400 }));
     }
 
     // ── Offentlige tilbudsruter (uhindret av auth — slug er ugjettbar) ──

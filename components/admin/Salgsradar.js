@@ -196,7 +196,12 @@ export default function Salgsradar({ apiKey }) {
                   ? <img src={l.bilder[0]} alt="" className="h-11 w-16 shrink-0 rounded-lg object-cover" />
                   : <span className="flex h-11 w-16 shrink-0 items-center justify-center rounded-lg bg-[#f4f2ee]"><Home className="h-4 w-4 text-[#c9c4bd]" /></span>}
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[13px] font-semibold text-[#1c1917]">{l.adresse || l.tittel}</span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="truncate text-[13px] font-semibold text-[#1c1917]">{l.adresse || l.tittel}</span>
+                    {l.kilde === 'agent' && (
+                      <span className="shrink-0 rounded bg-[#f1ebfc] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[#6d28d9]" title="Matet inn av overvåkningsagenten">Agent</span>
+                    )}
+                  </span>
                   <span className="mt-0.5 block truncate text-[11px] tabular-nums text-[#a8a29a]">
                     {kr(l.pris)}/mnd{l.m2 ? ` · ${l.m2} m²` : ''}{l.soverom ? ` · ${l.soverom} sov` : ''} · honorar {kr(rs.honorar)}/mnd
                   </span>
