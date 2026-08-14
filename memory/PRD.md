@@ -532,3 +532,8 @@ Google Ads-styring via native REST API).
 
 ## Feb 2026 — Datarom-Omvisning
 - Samme guidede spotlight-tour på Datarom → Oversikt: 5 steg med levende fremtidsbilde-demo (aktiverer «+3 mnd» så investoren ser hero/margin/utleiegrad regnes om, nullstilles garantert). Auto-start første gang for investor (tourSett 'datarom'), «?»-knapp ved Investorpakke. Gjenbruker Omvisning-motoren — ingen backend-endringer.
+
+## Feb 2026 — Superresponsiv investorportal
+- Mobil: fikset horisontal overflow på Datarom Oversikt (grid min-content-fellen: grid-cols-1 + minmax(0,fr) + min-w-0); alle investorsider verifisert uten overflow på 390px og 768px.
+- Fart: Budsjett på klientcachen (SWR med dirty-vern og invalidering ved lagring) + forvarming ved innlogging; sessionStorage-lag i klientcachen gjør at også refresh/direktelenker rendres momentant. Fanebytter måler 17–109 ms.
+- Sikkerhet: klientcachen tømmes ved logout, innlogging og «Se som» start/stopp — ingen datalekkasje mellom identiteter på delt maskin.

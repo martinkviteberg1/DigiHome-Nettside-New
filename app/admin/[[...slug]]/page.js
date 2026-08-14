@@ -28,7 +28,7 @@ import SeoAeoTab from '@/components/admin/SeoAeoTab';
 import TasksTab from '@/components/admin/TasksTab';
 import MeetingsTab from '@/components/admin/MeetingsTab';
 import Datarom from '@/components/admin/Datarom';
-import { cacheHent } from '@/lib/klient-cache';
+import { cacheHent, cacheSlett } from '@/lib/klient-cache';
 
 const SESSION_KEY = 'dh_admin_session';
 const LEGACY_KEY = 'dh_admin_key';
@@ -378,6 +378,12 @@ export default function AdminPage({ params }) {
     const kan = (k) => !begrensning || begrensning.includes(k);
     if (kan('leieforhold')) cacheHent('lf:data', `/api/admin/leieforhold?key=${encodeURIComponent(token)}`).catch(() => {});
     if (kan('dr-oversikt')) cacheHent('dr:oversikt', `/api/admin/datarom/oversikt?key=${encodeURIComponent(token)}`).catch(() => {});
+    if (kan('budsjett')) {
+      const aar = new Date().getFullYear();
+      cacheHent(`bud:${aar}`, `/api/admin/budsjett?key=${encodeURIComponent(token)}&year=${aar}`).catch(() => {});
+      // Neste år også: «Neste 12 mnd»-vinduet (investor-default) trenger begge.
+      cacheHent(`bud:${aar + 1}`, `/api/admin/budsjett?key=${encodeURIComponent(token)}&year=${aar + 1}`).catch(() => {});
+    }
   }, [user, token]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -430,12 +436,14 @@ export default function AdminPage({ params }) {
   // Innlogging skjer i AuthSkjerm (passord, magic link, invitasjon, reset) —
   // alle veier ender her med et gyldig sesjonstoken + brukerobjekt.
   const onLoggedIn = (t, u) => {
+    cacheSlett(''); // ny identitet = ren cache (utløpt økt kan hoppe rett hit uten logout)
     setToken(t); setUser(u);
     try { localStorage.setItem(SESSION_KEY, t); localStorage.setItem(LEGACY_KEY, t); } catch (e) {}
   };
 
   const logout = () => {
     try { localStorage.removeItem(SESSION_KEY); localStorage.removeItem(LEGACY_KEY); localStorage.removeItem(IMP_ORIG_KEY); } catch (e) {}
+    cacheSlett(''); // tøm hele klientcachen (minne + sessionStorage) — delt maskin skal ikke lekke porteføljedata
     setToken(''); setUser(null); setSection('innsikt');
   };
 
@@ -459,6 +467,7 @@ export default function AdminPage({ params }) {
         localStorage.setItem(LEGACY_KEY, j.token);
       } catch (e) {}
       // Full reload: alle moduler starter rent med den nye identiteten.
+      cacheSlett(''); // klientcache (minne + sessionStorage) skal aldri blø mellom identiteter
       window.location.href = '/admin';
     } catch (e) { window.alert('Nettverksfeil — prøv igjen'); }
   };
@@ -467,6 +476,7 @@ export default function AdminPage({ params }) {
     let orig = '';
     try { orig = localStorage.getItem(IMP_ORIG_KEY) || ''; } catch (e) {}
     try { localStorage.removeItem(IMP_ORIG_KEY); } catch (e) {}
+    cacheSlett(''); // samme identitetsvern tilbake til admin
     if (orig) {
       try { localStorage.setItem(SESSION_KEY, orig); localStorage.setItem(LEGACY_KEY, orig); } catch (e) {}
       window.location.href = '/admin/brukere';

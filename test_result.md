@@ -5478,3 +5478,16 @@ frontend:
         -working: true
         -agent: "main"
         -comment: "Playwright-verifisert som investor: autostart på /admin/oversikt, alle 5 steg i rekkefølge, steg 3 aktiverer fremtidsbildet live (hero viser 'ved 13. nov' 30 802 kr + '+15 604 kr vs. i dag'-chip + badge), tour lukkes, fremtidsbilde nullstilles, «?»-knapp finnes. DB: tourSett=['leieforhold','datarom'] persistert via eksisterende PUT auth/profile."
+
+frontend:
+  - task: "Superresponsiv investorportal (mobil + fart): (1) FIKSET ekte mobil-bug: Datarom Oversikt hadde +69px horisontal overflow på 390px — grid uten grid-cols-1/minmax(0,fr) ga grid-barna min-width:auto (dr-bevegelser/dr-portefolje 443px). Fikset med grid-cols-1 + minmax(0,3fr/2fr) + min-w-0, samme defensive fiks på økonomi- og snarvei-gridene. (2) Budsjett koblet på klientcachen (SWR: cacheLes momentant + cacheHent force i bakgrunn, dirtyRef-vern mot å klobre redigering, cache-invalidering ved lagring) + forvarmes ved innlogging (bud:iAar + bud:iAar+1 for Neste 12 mnd). (3) sessionStorage-lag i lib/klient-cache.js: refresh/direktelenker rendres momentant fra sist kjente data (try/catch overalt, per fane). (4) Identitetsvern: cacheSlett('') ved logout, innlogging og impersonering start/stopp."
+    implemented: true
+    working: true
+    file: "/app/components/admin/Datarom.js, /app/components/admin/Budsjett.js, /app/lib/klient-cache.js, /app/app/admin/[[...slug]]/page.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "main"
+        -comment: "Playwright-verifisert som investor: 390px overflow OK på alle sider (oversikt kald+varm, leieforhold, budsjett; pipeline/selskap/dokumenter OK — tabeller scroller i egen container). SPA-fanebytter 17–109 ms (768px). Full reload budsjett: innhold på 1,1 s (sessionStorage). Logout → 0 cache-nøkler igjen. Selskap-endepunkt 104 ms serverside (7,9s-målingen var testartefakt — sjekktekst fantes ikke). Ingen backend-endringer."

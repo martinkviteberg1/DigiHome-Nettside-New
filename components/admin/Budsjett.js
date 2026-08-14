@@ -18,6 +18,7 @@ import {
   FileSpreadsheet, CopyPlus, StickyNote, MessageSquare, Lock,
 } from 'lucide-react';
 import { ComposedChart, Bar, XAxis, YAxis, Tooltip, ReferenceLine, ResponsiveContainer, Cell } from 'recharts';
+import { cacheLes, cacheHent, cacheSlett } from '@/lib/klient-cache';
 
 const heading = { fontFamily: 'var(--font-heading)' };
 const MND = ['Jan', 'Feb', 'Mar', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Des'];
@@ -124,12 +125,15 @@ export default function Budsjett({ apiKey, readOnly = false, investor = false })
   const [drivere, setDrivere] = useState({ nye: '', churn: '', fyll: '', snittleie: '', honorarpct: '', oppstart: '' });
   const [seedKostnader, setSeedKostnader] = useState(true);
 
+  // Klient-cache (stale-while-revalidate): fanebytter rendres momentant fra
+  // sist kjente data mens ferske tall hentes stille. dirtyRef vokter mot at
+  // bakgrunnssvar klobrer pågående redigering.
+  const dirtyRef = useRef(false);
+  useEffect(() => { dirtyRef.current = dirty || dirtyNeste; }, [dirty, dirtyNeste]);
+
   const hent = useCallback(async (y) => {
-    setLaster(true); setFeil('');
-    try {
-      const r = await fetch(`/api/admin/budsjett?key=${encodeURIComponent(apiKey)}&year=${y}`);
-      const j = await r.json();
-      if (!r.ok || !j.ok) throw new Error(j.error || 'Kunne ikke hente budsjettet');
+    const key = `bud:${y}`;
+    const anvend = (j) => {
       setData(j);
       setInntekter(j.inntekter || {});
       setKostnader(j.kostnader || {});
@@ -137,21 +141,35 @@ export default function Budsjett({ apiKey, readOnly = false, investor = false })
       setNotat(j.notat || '');
       setKommentarer(j.kommentarer || {});
       setDirty(false);
-    } catch (e) { setFeil(e.message); setData(null); }
+    };
+    setFeil('');
+    const cachet = cacheLes(key);
+    if (cachet) { anvend(cachet); setLaster(false); } else setLaster(true);
+    try {
+      const j = await cacheHent(key, `/api/admin/budsjett?key=${encodeURIComponent(apiKey)}&year=${y}`, { force: true });
+      if (!dirtyRef.current) anvend(j);
+    } catch (e) {
+      // Har vi cache å vise, feiler vi stille — ellers vis feilen som før.
+      if (!cachet) { setFeil(e.message); setData(null); }
+    }
     setLaster(false);
   }, [apiKey]);
 
   useEffect(() => { hent(year); }, [hent, year]);
 
-  // Neste år (kun rullerende visning) — hentes lat og caches i state.
+  // Neste år (kun rullerende visning) — samme cache-mønster.
   const hentNeste = useCallback(async () => {
-    try {
-      const r = await fetch(`/api/admin/budsjett?key=${encodeURIComponent(apiKey)}&year=${iAar + 1}`);
-      const j = await r.json();
-      if (!r.ok || !j.ok) throw new Error(j.error || 'Kunne ikke hente neste år');
+    const key = `bud:${iAar + 1}`;
+    const anvend = (j) => {
       setNeste({ lastet: true, finnes: !!j.finnes, inntekter: j.inntekter || {}, kostnader: j.kostnader || {}, egnePoster: j.egnePoster || [], kommentarer: j.kommentarer || {}, faktisk: j.faktisk || null, honorarLaas: j.honorarLaas || null });
       setDirtyNeste(false);
-    } catch (e) { setFeil(e.message); }
+    };
+    const cachet = cacheLes(key);
+    if (cachet) anvend(cachet);
+    try {
+      const j = await cacheHent(key, `/api/admin/budsjett?key=${encodeURIComponent(apiKey)}&year=${iAar + 1}`, { force: true });
+      if (!dirtyRef.current) anvend(j);
+    } catch (e) { if (!cachet) setFeil(e.message); }
   }, [apiKey, iAar]);
 
   // Investor starter i rullerende visning → neste år må hentes ved mount.
@@ -330,6 +348,11 @@ export default function Budsjett({ apiKey, readOnly = false, investor = false })
         setNeste((prev) => ({ ...prev, finnes: true }));
       }
       setDirty(false); setDirtyNeste(false);
+      // Cache-invalidering: tøm og re-fyll stille slik at neste fanebesøk
+      // rendrer momentant MED de nylagrede tallene (inkl. oppdatert modell24).
+      cacheSlett('bud:');
+      cacheHent(`bud:${year}`, `/api/admin/budsjett?key=${encodeURIComponent(apiKey)}&year=${year}`).catch(() => {});
+      if (erRull) cacheHent(`bud:${iAar + 1}`, `/api/admin/budsjett?key=${encodeURIComponent(apiKey)}&year=${iAar + 1}`).catch(() => {});
       setLagretNaa(true); setTimeout(() => setLagretNaa(false), 2500);
     } catch (e) { setFeil(e.message); }
     setLagrer(false);

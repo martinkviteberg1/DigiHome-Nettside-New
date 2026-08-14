@@ -432,9 +432,11 @@ function Oversikt({ api, apiKey, xlsxHref, erAdmin, onGaaTil, onAapneBudsjett, a
         </div>
       </div>
 
-      {/* ── Neste 30 dager + porteføljefordeling ── */}
-      <div className="grid gap-3 xl:grid-cols-[3fr_2fr]">
-        <Kort data-testid="dr-bevegelser">
+      {/* ── Neste 30 dager + porteføljefordeling ──
+          grid-cols-1 + minmax(0,…): uten dette får grid-barna min-width:auto
+          og nekter å krympe under innholdsbredden på mobil (horisontal scroll). */}
+      <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+        <Kort className="min-w-0" data-testid="dr-bevegelser">
           <div className="flex flex-wrap items-center gap-3">
             <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.07em] text-[#a3a3a3]"><CalendarClock className="h-3.5 w-3.5" /> Neste 30 dager{scenario ? ` · fra ${dtoNo(baseIso)}` : ''}</p>
             {bevegelser.length > 0 && (
@@ -469,7 +471,7 @@ function Oversikt({ api, apiKey, xlsxHref, erAdmin, onGaaTil, onAapneBudsjett, a
           )}
         </Kort>
 
-        <Kort data-testid="dr-portefolje">
+        <Kort className="min-w-0" data-testid="dr-portefolje">
           <div className="flex items-center gap-3">
             <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.07em] text-[#a3a3a3]"><Home className="h-3.5 w-3.5" /> Porteføljen</p>
             <p className="ml-auto text-[11px] tabular-nums text-[#b5b5b5]">{antallEnheter || '—'} enheter</p>
@@ -1030,7 +1032,7 @@ function Selskap({ api, erAdmin }) {
 
   return (
     <div className="space-y-4" data-testid="datarom-selskap">
-      <div className="grid gap-3 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
         {blokk('Ansatte', 'ansatte', [
           { f: 'rolle', ph: 'Rolle — f.eks. «Daglig leder»' },
           { f: 'prosent', ph: '100', tall: true },
@@ -1152,7 +1154,7 @@ function Dokumenter({ api, apiKey, erAdmin }) {
 function Skeleton() {
   return (
     <div className="space-y-4">
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {[0, 1, 2, 3].map((i) => <div key={i} className="h-[108px] animate-pulse rounded-2xl bg-white shadow-[0_2px_16px_rgba(0,0,0,0.04)]" />)}
       </div>
       <div className="h-[300px] animate-pulse rounded-2xl bg-white shadow-[0_2px_16px_rgba(0,0,0,0.04)]" />
