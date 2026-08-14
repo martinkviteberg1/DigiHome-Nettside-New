@@ -84,6 +84,68 @@ const SORTERINGER = [
   { k: 'adresse', l: 'Adresse A–Å' },
 ];
 
+/* ── TrappKort: KPI-kort med LESBAR inntektstrapp ──────────────────────────
+   Stort tall = i dag. Under: stablet fremdriftslinje mot full utleie, og én
+   rad per trinn med rette tallkolonner — «+ /mnd» (trinnets bidrag) og
+   «Totalt» (løpende sum). Rader med estimat markeres med ~ og forklaring.
+   Responsiv by design: radene stables, etiketter trunkeres, tall høyrestilles. */
+function TrappKort({ tittel, iDag, stor, iDagSub, steg, potensial, estFull, farger, glod, testid, storTestid, subTestid }) {
+  const pctAv = (v) => (potensial > 0 ? Math.max(0, Math.min(100, (v / potensial) * 100)) : 0);
+  return (
+    <div
+      className="relative flex min-w-0 flex-col overflow-hidden rounded-xl border border-black/[0.05] bg-white px-4 py-3.5 shadow-[0_1px_3px_rgba(28,25,23,0.04)] transition-all duration-200 hover:-translate-y-[1px] hover:shadow-[0_4px_16px_rgba(28,25,23,0.08)]"
+      data-testid={testid}
+    >
+      <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: glod }} />
+      {/* Topp: etikett + mål (full utleie) */}
+      <div className="relative flex items-baseline justify-between gap-2">
+        <p className="min-w-0 truncate text-[10px] font-bold uppercase tracking-[0.08em] text-[#b5b5b5]">{tittel}</p>
+        <p className="hidden shrink-0 text-[10px] font-semibold uppercase tracking-[0.06em] tabular-nums text-[#c9c4bd] sm:block">
+          Full utleie {estFull ? '≈' : ''}{kr(potensial)}
+        </p>
+      </div>
+      {/* Stort tall (i dag) */}
+      <p className="relative mt-1.5 text-[26px] font-semibold leading-none tabular-nums tracking-[-0.02em] text-[#1c1917]" style={heading} data-testid={storTestid}>
+        {stor}
+      </p>
+      <p className="relative mt-1 truncate text-[11px] text-[#a8a29a]" data-testid={subTestid}>{iDagSub}</p>
+      {/* Stablet fremdriftslinje: i dag + hvert trinn mot full utleie */}
+      <div className="relative mt-2.5 flex h-[5px] w-full gap-[2px] overflow-hidden rounded-full bg-[#f4f2ee]">
+        <span className="rounded-full transition-all duration-700" style={{ width: `${pctAv(iDag)}%`, background: farger[0] }} title={`I dag · ${kr(iDag)} (${Math.round(pctAv(iDag))} %)`} />
+        {steg.map((s, i) => (s.v > 0
+          ? <span key={s.tid} className="rounded-full transition-all duration-700" style={{ width: `${pctAv(s.v)}%`, background: farger[i + 1] }} title={`${s.l} · ${kr(s.v)} (${Math.round(pctAv(s.v))} %)`} />
+          : null))}
+      </div>
+      {/* Trappen som rader: label · «+ /mnd» · «Totalt» */}
+      <div className="relative mt-2 min-w-0">
+        <div className="flex items-baseline gap-2 pb-1 text-[9px] font-bold uppercase tracking-[0.08em] text-[#c9c4bd]">
+          <span className="min-w-0 flex-1" />
+          <span className="shrink-0">+ /mnd</span>
+          <span className="w-[86px] shrink-0 text-right sm:w-[104px]">Totalt</span>
+        </div>
+        {steg.map((s, i) => (
+          <div
+            key={s.tid}
+            data-testid={s.tid}
+            title={s.est ? 'Inneholder estimat — porteføljens snittsats brukes der sats ikke er avtalt' : undefined}
+            className="flex items-baseline gap-2 border-t border-black/[0.04] py-[5.5px]"
+          >
+            <span className="h-[6px] w-[6px] shrink-0 self-center rounded-full" style={{ background: farger[i + 1] }} />
+            <span className="min-w-0 flex-1 truncate text-[11.5px] font-medium text-[#78716c]" title={s.l}>{s.l}</span>
+            <span className="shrink-0 text-[12.5px] font-semibold leading-none tabular-nums text-[#44403c]" style={heading}>
+              +{s.est ? '≈' : ''}{kr(s.v)}
+            </span>
+            <span className={`w-[86px] shrink-0 text-right text-[11.5px] tabular-nums sm:w-[104px] ${i === steg.length - 1 ? 'font-semibold text-[#57534e]' : 'text-[#b3ada3]'}`}>
+              {s.est ? '≈' : ''}{kr(s.sum)}
+              {s.sumL ? <span className="block text-[8.5px] font-semibold uppercase tracking-[0.05em] text-[#c9c4bd]">{s.sumL}</span> : null}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function StatusChip({ row }) {
   const vg = visGruppe(row);
   const s = STATUS_STIL[vg] || STATUS_STIL.vacant;
@@ -786,79 +848,73 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
           </div>
         )}
 
-        {/* ── KPI-seksjon: TRE KORT, moderne 2026 — hvite flater med hårlinje,
-            én fargechip per kort (lilla/grønn/blå) og en knapt synlig radial
-            glød i hjørnet. Fargen sitter i chipen, ikke i flaten — rolig og
-            premium. Tallene leser likt: stort tall = i dag, deretter
-            «+ individuelt beløp» med «= løpende sum» under. ── */}
-        <div className="grid grid-cols-1 gap-3 px-3 pt-3.5 sm:px-4 xl:grid-cols-[minmax(0,43fr)_minmax(0,43fr)_minmax(0,14fr)]">
-          {/* KORT 1 — Honorar (DigiHome) · lilla chip */}
-          <div className="relative flex flex-wrap items-center gap-x-5 gap-y-2 overflow-hidden rounded-xl border border-black/[0.05] bg-white px-4 py-3.5 shadow-[0_1px_3px_rgba(28,25,23,0.04)] transition-all duration-200 hover:-translate-y-[1px] hover:shadow-[0_4px_16px_rgba(28,25,23,0.08)]" data-testid="leieforhold-honorar-trapp">
-            <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(460px_150px_at_0%_0%,rgba(124,58,237,0.07),transparent_62%)]" />
-            <div className="relative min-w-0">
-              <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#b5b5b5]">Honorar / mnd · eks. mva</p>
-              <p className="mt-1.5 text-[27px] font-semibold leading-none tabular-nums tracking-[-0.02em] text-[#1c1917]" style={heading} data-testid="leieforhold-honorar">
-                {laster ? '…' : <TallOpp verdi={honorarTrapp.iDag} />}
-              </p>
-              <p className="mt-1 truncate text-[11px] text-[#a8a29a]" data-testid="leieforhold-honorar-arr">≈ {kr(honorarTrapp.iDag * 12)}/år run-rate</p>
-              {/* Mikrolinje: hvor langt honoraret i dag er kommet mot full utleie */}
-              <div className="mt-1.5 h-[3px] w-[120px] overflow-hidden rounded-full bg-[#efeafb]" title={`I dag utgjør ${honorarTrapp.potensial > 0 ? Math.round((honorarTrapp.iDag / honorarTrapp.potensial) * 100) : 0} % av full utleie`}>
-                <div className="h-full rounded-full bg-gradient-to-r from-[#7c3aed] to-[#a78bfa] transition-all duration-700" style={{ width: `${honorarTrapp.potensial > 0 ? Math.min(100, Math.round((honorarTrapp.iDag / honorarTrapp.potensial) * 100)) : 0}%` }} />
-              </div>
-            </div>
-            <div className="hidden h-9 w-px shrink-0 bg-black/[0.06] sm:block" />
-            {/* Trappen — individuelt beløp (+) og løpende sum (=) */}
-            {[
-              ['+ Signert', honorarTrapp.sikret - honorarTrapp.iDag, honorarTrapp.sikret, 'sikret', honorarTrapp.estSikret, 'leieforhold-hon-sikret'],
-              ['+ Annonsert nå', honorarTrapp.medAnnonsert - honorarTrapp.sikret, honorarTrapp.medAnnonsert, '', honorarTrapp.estAnnonsert, 'leieforhold-hon-annonsert'],
-              ['+ Ledig rest', honorarTrapp.potensial - honorarTrapp.medAnnonsert, honorarTrapp.potensial, 'full utleie', honorarTrapp.estFull, 'leieforhold-hon-full'],
-            ].map(([l, v, sum, sumL, est, tid]) => (
-              <div key={l} className="relative min-w-0" data-testid={tid} title={est ? 'Inneholder estimat (porteføljens snittsats der sats ikke er avtalt)' : undefined}>
-                <p className={`truncate ${ETIKETT}`}>{l}</p>
-                <p className="mt-1 text-[13.5px] font-medium leading-none tabular-nums tracking-[-0.01em] text-[#57534e]" style={heading}>
-                  +{est ? '~' : ''}{kr(v)}
-                </p>
-                <p className="mt-1 truncate text-[10.5px] tabular-nums text-[#b3ada3]">= {est ? '~' : ''}{kr(sum)}{sumL ? ` ${sumL}` : ''}</p>
-              </div>
-            ))}
-          </div>
+        {/* ── KPI-seksjon: tre kort med LESBARE inntektstrapper — stort tall
+            (i dag), stablet fremdriftslinje mot full utleie, og trinnene som
+            rader med rette tallkolonner («+ /mnd» og «Totalt»). Responsivt:
+            1 kolonne på mobil, 2 på md, 3 på xl. ── */}
+        <div className="grid grid-cols-1 gap-3 px-3 pt-3.5 sm:px-4 md:grid-cols-2 xl:grid-cols-[minmax(0,40fr)_minmax(0,40fr)_minmax(0,20fr)]">
+          {/* KORT 1 — Honorar (DigiHomes inntekt) · lilla */}
+          <TrappKort
+            testid="leieforhold-honorar-trapp"
+            tittel="Honorar / mnd · eks. mva"
+            glod="radial-gradient(460px 150px at 0% 0%, rgba(124,58,237,0.07), transparent 62%)"
+            iDag={honorarTrapp.iDag}
+            stor={laster ? '…' : <TallOpp verdi={honorarTrapp.iDag} />}
+            storTestid="leieforhold-honorar"
+            iDagSub={`≈ ${kr(honorarTrapp.iDag * 12)}/år run-rate`}
+            subTestid="leieforhold-honorar-arr"
+            potensial={honorarTrapp.potensial}
+            estFull={honorarTrapp.estFull}
+            farger={['#7c3aed', '#a78bfa', '#c4b5fd', '#e5dcfa']}
+            steg={[
+              { l: 'Signert — venter innflytting', v: honorarTrapp.sikret - honorarTrapp.iDag, sum: honorarTrapp.sikret, sumL: 'sikret', est: honorarTrapp.estSikret, tid: 'leieforhold-hon-sikret' },
+              { l: 'Annonsert nå', v: honorarTrapp.medAnnonsert - honorarTrapp.sikret, sum: honorarTrapp.medAnnonsert, sumL: '', est: honorarTrapp.estAnnonsert, tid: 'leieforhold-hon-annonsert' },
+              { l: 'Ledig rest', v: honorarTrapp.potensial - honorarTrapp.medAnnonsert, sum: honorarTrapp.potensial, sumL: 'full utleie', est: honorarTrapp.estFull, tid: 'leieforhold-hon-full' },
+            ]}
+          />
 
-          {/* KORT 2 — Leie (huseiernes grunnlag) · grønn chip */}
-          <div className="relative flex flex-wrap items-center gap-x-5 gap-y-2 overflow-hidden rounded-xl border border-black/[0.05] bg-white px-4 py-3.5 shadow-[0_1px_3px_rgba(28,25,23,0.04)] transition-all duration-200 hover:-translate-y-[1px] hover:shadow-[0_4px_16px_rgba(28,25,23,0.08)] xl:justify-between" data-testid="leieforhold-sone-leie">
-            <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(460px_150px_at_0%_0%,rgba(21,128,61,0.06),transparent_62%)]" />
-            {leieTrapp.map((s, i) => (
-              <div key={s.id} className="relative min-w-0" data-testid={`leieforhold-kpi-${s.id}`}>
-                {i === 0 ? (
-                  <>
-                    <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#b5b5b5]">{s.l} / mnd</p>
-                    <p className="mt-1.5 text-[21px] font-semibold leading-none tabular-nums tracking-[-0.01em] text-[#1c1917]" style={heading}>
-                      {laster ? '…' : <TallOpp verdi={s.v} />}
-                    </p>
-                    <p className="mt-1 truncate text-[11px] text-[#a8a29a]">{s.sub}</p>
-                  </>
-                ) : (
-                  <>
-                    <p className={`truncate ${ETIKETT}`}>{s.l}</p>
-                    <p className="mt-1 text-[13.5px] font-medium leading-none tabular-nums tracking-[-0.01em] text-[#57534e]" style={heading}>
-                      +{kr(s.v)}
-                    </p>
-                    <p className="mt-1 truncate text-[10.5px] tabular-nums text-[#b3ada3]">= {kr(s.sum)}{s.sumL ? ` ${s.sumL}` : ''}</p>
-                  </>
-                )}
-              </div>
-            ))}
-          </div>
+          {/* KORT 2 — Leie (huseiernes grunnlag) · grønn */}
+          <TrappKort
+            testid="leieforhold-sone-leie"
+            tittel={`Leie i dag / mnd`}
+            glod="radial-gradient(460px 150px at 0% 0%, rgba(21,128,61,0.06), transparent 62%)"
+            iDag={leieTrapp[0].v}
+            stor={laster ? '…' : <TallOpp verdi={leieTrapp[0].v} />}
+            storTestid="leieforhold-kpi-faktisk"
+            iDagSub={leieTrapp[0].sub}
+            subTestid="leieforhold-kpi-faktisk-sub"
+            potensial={leieTrapp[3].sum}
+            estFull={false}
+            farger={['#15803d', '#4ade80', '#86efac', '#d3f3de']}
+            steg={leieTrapp.slice(1).map((s) => ({ l: s.l.replace(/^\+\s*/, ''), v: s.v, sum: s.sum, sumL: s.sumL || '', est: false, tid: `leieforhold-kpi-${s.id}` }))}
+          />
 
-          {/* KORT 3 — Utleigrad · blå chip */}
-          <div className="relative flex items-center overflow-hidden rounded-xl border border-black/[0.05] bg-white px-4 py-3.5 shadow-[0_1px_3px_rgba(28,25,23,0.04)] transition-all duration-200 hover:-translate-y-[1px] hover:shadow-[0_4px_16px_rgba(28,25,23,0.08)]" data-testid="leieforhold-kpi-utleigrad">
+          {/* KORT 3 — Utleiegrad · blå */}
+          <div className="relative flex min-w-0 items-center overflow-hidden rounded-xl border border-black/[0.05] bg-white px-4 py-3.5 shadow-[0_1px_3px_rgba(28,25,23,0.04)] transition-all duration-200 hover:-translate-y-[1px] hover:shadow-[0_4px_16px_rgba(28,25,23,0.08)] md:col-span-2 xl:col-span-1" data-testid="leieforhold-kpi-utleigrad">
             <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(300px_140px_at_0%_0%,rgba(14,116,144,0.07),transparent_65%)]" />
-            <div className="relative min-w-0">
-              <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#b5b5b5]">Utleiegrad</p>
-              <div className="mt-1.5 flex items-center gap-2.5">
-                <Ring pct={visTotals.occupancy_pct || 0} size={34} />
-                <div className="min-w-0">
-                  <p className="text-[21px] font-semibold leading-none tabular-nums tracking-[-0.01em] text-[#1c1917]" style={heading}>{visTotals.occupancy_pct ?? 0} %</p>
-                  <p className="mt-1 truncate text-[11px] text-[#a8a29a]">{visTotals.leased ?? 0} av {visTotals.count ?? 0} utleid</p>
+            <div className="relative flex min-w-0 flex-1 flex-wrap items-center gap-x-6 gap-y-3">
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#b5b5b5]">Utleiegrad</p>
+                <div className="mt-1.5 flex items-center gap-3">
+                  <Ring pct={visTotals.occupancy_pct || 0} size={40} />
+                  <div className="min-w-0">
+                    <p className="text-[26px] font-semibold leading-none tabular-nums tracking-[-0.02em] text-[#1c1917]" style={heading}>{visTotals.occupancy_pct ?? 0}&nbsp;%</p>
+                    <p className="mt-1 truncate text-[11px] text-[#a8a29a]">{visTotals.leased ?? 0} av {visTotals.count ?? 0} utleid</p>
+                  </div>
+                </div>
+              </div>
+              {/* Status-miks — synlig når kortet får plass (md-stripen / xl høyt kort) */}
+              <div className="hidden min-w-0 flex-1 md:block xl:hidden 2xl:block">
+                <div className="flex flex-col gap-1">
+                  {[['leased', grupper.leased], ['future', grupper.future], ['signing', grupper.signing], ['advertised', grupper.advertised], ['vacant', grupper.vacant]]
+                    .filter(([, ant]) => (ant || 0) > 0)
+                    .map(([k, ant]) => (
+                      <div key={k} className="flex items-center gap-1.5 text-[10.5px]">
+                        <span className="h-[5px] w-[5px] shrink-0 rounded-full" style={{ background: STATUS_STIL[k].tekst }} />
+                        <span className="min-w-0 truncate font-medium text-[#8a857c]">{GRUPPE_LABEL[k]}</span>
+                        <span className="ml-auto shrink-0 tabular-nums text-[#b3ada3]">{ant}</span>
+                      </div>
+                    ))}
                 </div>
               </div>
             </div>
