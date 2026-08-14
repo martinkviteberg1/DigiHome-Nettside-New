@@ -8,7 +8,7 @@ import {
   Command, Search, CornerDownLeft, LayoutTemplate, Crosshair, TrendingUp, Wallet,
   Globe, ExternalLink, PenLine, Mail, Home, History, Landmark, Wand2, Layers, UserPlus,
   ClipboardCheck, CalendarDays, ArrowLeft, KeyRound, Check, User, Eye, EyeOff,
-  PanelLeftClose, PanelLeftOpen, Target,
+  PanelLeftClose, PanelLeftOpen, Target, Scale,
 } from 'lucide-react';
 import Brukere from '@/components/admin/Brukere';
 import Leieforhold from '@/components/admin/Leieforhold';
@@ -54,9 +54,10 @@ const NAV = [
     items: [
       { k: 'dr-oversikt', datarom: 'oversikt', l: 'Oversikt', icon: Landmark, desc: 'Investorrommets forside — nøkkeltall, drift, pipeline og investorpakke' },
       { k: 'dr-resultat', datarom: 'resultat', l: 'Regnskap', icon: BarChart3, desc: 'Månedlig resultat fra oppstart — inntekter, kostnader og akkumulert' },
+      { k: 'dr-enheter', datarom: 'enheter', l: 'Enhetsøkonomi', icon: Scale, desc: 'Honorar, kostnad og margin per enhet — skalering og manpower-modell' },
       { k: 'budsjett', l: 'Budsjett', icon: Target, desc: 'Årsbudsjett per kategori — budsjett vs. faktisk, med forslag fra porteføljen' },
-      // Enhetsøkonomi er slått sammen med Leieforhold (Økonomi-modus) — dr-enheter
-      // er derfor fjernet fra menyen. Ruter/data består for bakoverkompatibilitet.
+      // Enhetsøkonomi er egen investorside (dr-enheter) — aggregert unit
+      // economics med skaleringsgraf. Per-enhet-detaljer bor i Leieforhold.
       { k: 'dr-pipeline', datarom: 'pipeline', l: 'Pipeline', icon: TrendingUp, desc: 'Enheter på vei inn — signert kontra forventet' },
       { k: 'dr-selskap', datarom: 'selskap', l: 'Selskap', icon: ShieldCheck, desc: 'Ansatte, faste kostnader, gjeld og aksjonærlån' },
       { k: 'dr-dokumenter', datarom: 'dokumenter', l: 'Dokumenter', icon: FileText, desc: 'Delte rapporter og avtaler fra dokumenthvelvet' },
@@ -349,21 +350,19 @@ export default function AdminPage({ params }) {
   // kun sine seksjoner — serveren håndhever det samme på API-nivå:
   //   bruker/partner → Saker + Møter (møtelisten filtreres server-side)
   //   eier (investor) → Nøkkeltall + Økonomi (les) + Møter
-  //   investor → DATAROM: Leieforhold alltid med (lese-only, full transparens)
-  //              + eventuelle tildelte moduler (+ Møter dersom møtetilgang)
+  //   investor → ser NØYAKTIG modulene som er huket av under Brukere
+  //              (+ Møter dersom møtetilgang) — ingen tvungne ekstra moduler,
+  //              slik at tilgangsstyringen er 1:1 med det investoren faktisk ser.
   const ROLLE_SEKSJONER = {
     bruker: ['saker', 'moter'],
     partner: ['saker', 'moter'],
     eier: ['nokkeltall', 'okonomi', 'moter'],
-    investor: ['leieforhold'],
+    investor: [],
   };
   // Modultilgang: begrensede kontoer kan i tillegg få enkeltmoduler
   // (settes per person under Brukere — håndheves også i API-et)
   let base = (user && ROLLE_SEKSJONER[user.role]) || null;
   if (base && user.role === 'investor' && (user.moteTilgang || []).length > 0) base = [...base, 'moter'];
-  // Investorportalen viser alltid Budsjett i menyen — investorer får en
-  // lesevisning som lander i «Neste 12 mnd» (fremoverskuende NTM-format).
-  if (base && user.role === 'investor' && !base.includes('budsjett')) base = [...base, 'budsjett'];
   const begrensning = base
     ? [...base, ...(((user && user.moduler) || []).filter((k) => NAV.some((g) => g.items.some((it) => it.k === k)) && !base.includes(k)))]
     : null;
@@ -435,6 +434,32 @@ export default function AdminPage({ params }) {
 
   // Innlogging skjer i AuthSkjerm (passord, magic link, invitasjon, reset) —
   // alle veier ender her med et gyldig sesjonstoken + brukerobjekt.
+  // Tilgangsendringer skal synes uten manuell refresh: når fanen får fokus
+  // igjen (eller blir synlig), re-hentes brukerprofilen stille — får en
+  // investor nye moduler mens økten står åpen, dukker de opp i menyen.
+  useEffect(() => {
+    if (!token) return undefined;
+    let travel = false;
+    const oppdater = async () => {
+      if (travel || document.visibilityState === 'hidden') return;
+      travel = true;
+      try {
+        const res = await fetch(`/api/admin/auth/me?key=${encodeURIComponent(token)}`);
+        if (res.ok) {
+          const j = await res.json();
+          setUser((prev) => (JSON.stringify(prev) === JSON.stringify(j.user) ? prev : j.user));
+        }
+      } catch (e) { /* stille — neste fokus prøver igjen */ }
+      travel = false;
+    };
+    window.addEventListener('focus', oppdater);
+    document.addEventListener('visibilitychange', oppdater);
+    return () => {
+      window.removeEventListener('focus', oppdater);
+      document.removeEventListener('visibilitychange', oppdater);
+    };
+  }, [token]);
+
   const onLoggedIn = (t, u) => {
     cacheSlett(''); // ny identitet = ren cache (utløpt økt kan hoppe rett hit uten logout)
     setToken(t); setUser(u);

@@ -29,7 +29,7 @@ import {
   anvendScenario as lfScenario, filtrerRader as lfFiltrer, parseFilterParams as lfParseFilter,
   filterBeskrivelse as lfBeskrivelse, beregnTotals as lfTotals, harFilter as lfHarFilter,
 } from '@/lib/leieforhold-filter';
-import { hentBudsjett, lagreBudsjett, beregnFaktisk, lagForslag, gyldigBudsjettAar, fangFaktiskEtterslep, beregnInntektsmodell, beregnSikretSerie, INNTEKT_KATEGORIER, KOSTNAD_KATEGORIER } from '@/lib/budsjett';
+import { hentBudsjett, lagreBudsjett, beregnFaktisk, lagForslag, gyldigBudsjettAar, fangFaktiskEtterslep, beregnInntektsmodell, beregnSikretSerie, listBudsjettAar, INNTEKT_KATEGORIER, KOSTNAD_KATEGORIER, listPlaner, hentPlan, lagrePlan, slettPlan, beregnFaktiskPeriode, lagForslagForPeriode, gyldigYm } from '@/lib/budsjett';
 import { lagBudsjettExcel, lagBudsjettExcelRullerende } from '@/lib/budsjett-excel';
 import {
   beregnOversikt as drBeregnOversikt, listEnheter as drListEnheter, lagreEnhet as drLagreEnhet,
@@ -37,6 +37,7 @@ import {
   autoSyncFraLeieforhold as drAutoSync,
   listPnl as drListPnl, lagrePnlRad as drLagrePnlRad, slettPnlRad as drSlettPnlRad,
   hentSelskap as drHentSelskap, lagreSelskap as drLagreSelskap,
+  beregnEnhetsokonomi as drBeregnEnhetsokonomi, lagreEnhetsokonomiAntakelser as drLagreEoAntakelser,
 } from '@/lib/datarom';
 import { byggInvestorpakke } from '@/lib/datarom-excel';
 import { IMPORTED_COLL, importRecords, parseCsv, summarizeImported, syncFromPlatform, listImported, updateImportedOverride, getLeadSyncMeta, maybeAutoSyncLeads } from '@/lib/imported-leads';
@@ -59,7 +60,8 @@ import { computeRevenueModel, buildLeadFeeIndex, attachFeeTruth } from '@/lib/re
 import { reconcileRevenue } from '@/lib/revenue-reconcile';
 import { computeLlmUsageDashboard, getModelOverrides, setModelOverride, logImageUsage, AVAILABLE_MODELS, PLATFORM_MODELS, DEFAULT_MODEL, USD_TO_NOK } from '@/lib/llm-usage';
 import { logExtUsage, summarizeExtUsage, getPlatformUsage } from '@/lib/ext-usage';
-import { getFinanceSettings, setFinanceSettings, listCosts, upsertCost, deleteCost, listContracts, upsertContract, deleteContract, listEvents, upsertEvent, deleteEvent, computeResultat, computeLikviditet, computeFinanceOverview, computeTrends, captureSnapshot, computeInvestorMetrics, computeForecast, computeBoardPack, computeCustomers, computePlatformCustomers } from '@/lib/finance';
+import { getFinanceSettings, setFinanceSettings, listCosts, listActiveCosts, upsertCost, deleteCost, listContracts, upsertContract, deleteContract, listEvents, upsertEvent, deleteEvent, computeResultat, computeLikviditet, computeFinanceOverview, computeTrends, captureSnapshot, computeInvestorMetrics, computeForecast, computeBoardPack, computeCustomers, computePlatformCustomers } from '@/lib/finance';
+import { listFellesKostnader, upsertFellesKostnad, slettFellesKostnad, migrerFellesKostnader } from '@/lib/kostnader';
 import { syncContractsFromPlatform, syncCustomersFromPlatform, maybeAutoSyncFinance, getFinanceSyncMeta } from '@/lib/contracts-sync';
 import { enqueueInterest as deliverInterest, retryInterestWebhooks, webhookTarget as interestWebhookTarget, platformInboxUrl, platformThreadUrl, platformUnitUrl, deliveryView, OUTBOX_COLL as INTEREST_OUTBOX } from '@/lib/interest-webhook';
 import { notifyStatus, removeSuppression } from '@/lib/notify-status';
@@ -411,6 +413,14 @@ function leieforholdTarget() {
     key: process.env.DIGIHOME_API_KEY_PROD || process.env.DIGIHOME_API_KEY || '',
     env: 'prod',
   };
+}
+
+// Kostnadskilde for budsjettforslag/-veiviser: ÉN KILDE — finance_costs
+// (Økonomi → Kostnader). Gamle enhetsokonomi-felles-poster migreres inn
+// idempotent før lesing, og pausede poster teller ikke.
+async function hentBudsjettKostnader(db) {
+  await migrerFellesKostnader(db).catch(() => {});
+  return listActiveCosts(db).catch(() => []);
 }
 
 // Videresend lead til DigiHome-plattformen (offentlige endepunkter, X-API-Key som id-kort).
@@ -1344,9 +1354,9 @@ async function modulAuthed(request, db, modul) {
   try {
     const u = await db.collection('admin_users').findOne({ id: payload.sub }, { projection: { moduler: 1, role: 1 } });
     if (!u) return false;
-    // Investorer har alltid lesetilgang til Leieforhold (full transparens) —
-    // skriveruter krever fortsatt adminAuthed, så dette er kun lesing.
-    if (u.role === 'investor' && modul === 'leieforhold') return true;
+    // Tilgangen er 1:1 med det som er huket av under Brukere — også for
+    // investorer. (Tidligere fikk investorer alltid Leieforhold; nå styres
+    // alt eksplisitt slik at tilgangsstyringen aldri lyver.)
     return !!(Array.isArray(u.moduler) && u.moduler.includes(modul));
   } catch (e) { return false; }
 }
@@ -3418,39 +3428,26 @@ async function handleRoute(request, { params }) {
     // admin/owner (adminAuthed avviser begrensede roller automatisk).
     if (route === '/admin/leieforhold/okonomi' && method === 'GET') {
       if (!(await modulAuthed(request, db, 'leieforhold'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
-      const dokEo = await db.collection('enhetsokonomi').find({}, { projection: { _id: 0 } }).toArray();
-      const fellesEo = dokEo.filter((d) => d.type === 'felles').sort((a, b) => (b.belop || 0) - (a.belop || 0));
+      // ÉN KOSTNADSKILDE: felles leses fra finance_costs via fasaden (migrerer
+      // ev. gamle enhetsokonomi-poster). CAC per enhet bor fortsatt i enhetsokonomi.
+      const fellesEo = await listFellesKostnader(db);
+      const dokEo = await db.collection('enhetsokonomi').find({ type: 'enhet' }, { projection: { _id: 0 } }).toArray();
       const enheterEo = {};
-      for (const d of dokEo) { if (d.type === 'enhet' && d.enhetId) enheterEo[d.enhetId] = { cac: d.cac || 0, notat: d.notat || '' }; }
+      for (const d of dokEo) { if (d.enhetId) enheterEo[d.enhetId] = { cac: d.cac || 0, notat: d.notat || '' }; }
       return cors(NextResponse.json({ ok: true, felles: fellesEo, enheter: enheterEo }));
     }
     if (route === '/admin/leieforhold/okonomi/felles' && method === 'PUT') {
       if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const bEo = await request.json().catch(() => ({}));
-      const navnEo = String(bEo.navn || '').trim().slice(0, 80);
-      const belopEo = Math.max(0, Math.round(Number(bEo.belop) || 0));
-      const fordelingEo = ['alle', 'utleide', 'honorar'].includes(bEo.fordeling) ? bEo.fordeling : 'alle';
-      const kategoriEo = ['lonn', 'markedsforing', 'programvare', 'annet'].includes(bEo.kategori) ? bEo.kategori : 'annet';
-      if (!navnEo || !belopEo) return cors(NextResponse.json({ ok: false, error: 'Navn og beløp kreves' }, { status: 400 }));
-      // Periode + aktiv-status (Fase 3/4: «faste kostnader» med dato-scenario)
-      const gyldigDatoEo = (v) => (/^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) ? String(v) : '');
-      const startEo = gyldigDatoEo(bEo.startDato);
-      const sluttEo = gyldigDatoEo(bEo.sluttDato);
-      if (startEo && sluttEo && sluttEo < startEo) return cors(NextResponse.json({ ok: false, error: 'Sluttdato kan ikke være før startdato' }, { status: 400 }));
-      const aktivEo = bEo.aktiv !== false;
-      const idEo = String(bEo.id || '').trim() || uuidv4();
-      await db.collection('enhetsokonomi').updateOne(
-        { id: idEo, type: 'felles' },
-        { $set: { id: idEo, type: 'felles', navn: navnEo, belop: belopEo, fordeling: fordelingEo, kategori: kategoriEo, startDato: startEo, sluttDato: sluttEo, aktiv: aktivEo, updatedAt: new Date().toISOString() } },
-        { upsert: true },
-      );
-      return cors(NextResponse.json({ ok: true, id: idEo }));
+      const rEo = await upsertFellesKostnad(db, bEo);
+      if (!rEo.ok) return cors(NextResponse.json({ ok: false, error: rEo.error }, { status: rEo.status || 400 }));
+      return cors(NextResponse.json({ ok: true, id: rEo.id }));
     }
     if (route === '/admin/leieforhold/okonomi/felles' && method === 'DELETE') {
       if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const idEoD = (() => { try { return new URL(request.url).searchParams.get('id') || ''; } catch (e) { return ''; } })();
-      const rEoD = await db.collection('enhetsokonomi').deleteOne({ id: idEoD, type: 'felles' });
-      if (!rEoD.deletedCount) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
+      const rEoD = await slettFellesKostnad(db, idEoD);
+      if (!rEoD.ok) return cors(NextResponse.json({ ok: false, error: rEoD.error }, { status: rEoD.status || 404 }));
       return cors(NextResponse.json({ ok: true }));
     }
     if (route === '/admin/leieforhold/okonomi/enhet' && method === 'PUT') {
@@ -3487,10 +3484,11 @@ async function handleRoute(request, { params }) {
       // Enhetsøkonomi (faste kostnader + CAC) → «Oversikt»- og «Økonomi»-arkene
       let okonomiLf = null;
       try {
-        const dokLf = await db.collection('enhetsokonomi').find({}, { projection: { _id: 0 } }).toArray();
+        const fellesLf = await listFellesKostnader(db);
+        const dokLf = await db.collection('enhetsokonomi').find({ type: 'enhet' }, { projection: { _id: 0 } }).toArray();
         const enhLf = {};
-        for (const d of dokLf) { if (d.type === 'enhet' && d.enhetId) enhLf[d.enhetId] = { cac: d.cac || 0, notat: d.notat || '' }; }
-        okonomiLf = { felles: dokLf.filter((d) => d.type === 'felles'), enheter: enhLf };
+        for (const d of dokLf) { if (d.enhetId) enhLf[d.enhetId] = { cac: d.cac || 0, notat: d.notat || '' }; }
+        okonomiLf = { felles: fellesLf, enheter: enhLf };
       } catch (e) { /* arket utelates uten data */ }
       const metaLf = {
         filterTekst: lfBeskrivelse(fpLf.filtre, fpLf.sok, ''),
@@ -3609,6 +3607,12 @@ async function handleRoute(request, { params }) {
         },
       });
     }
+    // Årsoversikt: alle budsjettår med status/nøkkelsummer (årsvelger + wizard).
+    // Lesing med budsjett-modulen — investorer ser også listen.
+    if (route === '/admin/budsjett/aar' && method === 'GET') {
+      if (!(await modulAuthed(request, db, 'budsjett'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      return cors(NextResponse.json({ ok: true, aar: await listBudsjettAar(db) }));
+    }
     if (route === '/admin/budsjett' && method === 'PUT') {
       if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       let bodyB = {}; try { bodyB = await request.json(); } catch (e) { bodyB = {}; }
@@ -3637,6 +3641,64 @@ async function handleRoute(request, { params }) {
       const lagret = await lagreBudsjett(db, { year: yearB, inntekter: inntekterB, kostnader: bodyB.kostnader, egnePoster: bodyB.egnePoster, kommentarer: bodyB.kommentarer, notat: bodyB.notat, updatedBy: navnB, antakelser: bodyB.antakelser, honorarLaas: honorarLaasB });
       return cors(NextResponse.json({ ok: true, ...lagret }));
     }
+    // ── Frittstående budsjetter («planer»): navn + fri periode + status ──────
+    // Lesing krever budsjett-modulen; skriving/sletting krever admin.
+    if (route === '/admin/budsjett/planer' && method === 'GET') {
+      if (!(await modulAuthed(request, db, 'budsjett'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      return cors(NextResponse.json({ ok: true, planer: await listPlaner(db) }));
+    }
+    if (route === '/admin/budsjett/plan' && method === 'GET') {
+      if (!(await modulAuthed(request, db, 'budsjett'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const idP = (() => { try { return new URL(request.url).searchParams.get('id') || ''; } catch (e) { return ''; } })();
+      const planP = await hentPlan(db, idP);
+      if (!planP) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
+      const faktiskP = await beregnFaktiskPeriode(db, planP.startYm, planP.antallMnd);
+      return cors(NextResponse.json({ ok: true, plan: planP, faktisk: faktiskP }));
+    }
+    if (route === '/admin/budsjett/plan' && method === 'PUT') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let bodyP = {}; try { bodyP = await request.json(); } catch (e) {}
+      let navnP = '';
+      const sesjonP = sessionFra(request);
+      if (sesjonP && sesjonP.sub) {
+        try { const uDocP = await db.collection('admin_users').findOne({ id: sesjonP.sub }, { projection: { name: 1 } }); navnP = (uDocP && uDocP.name) || sesjonP.email || ''; } catch (e) {}
+      }
+      const resP = await lagrePlan(db, { ...bodyP, updatedBy: navnP || 'Admin' });
+      if (!resP.ok) return cors(NextResponse.json({ ok: false, error: resP.error }, { status: resP.status || 400 }));
+      return cors(NextResponse.json({ ok: true, id: resP.id }));
+    }
+    if (route === '/admin/budsjett/plan' && method === 'DELETE') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const idPd = (() => { try { return new URL(request.url).searchParams.get('id') || ''; } catch (e) { return ''; } })();
+      const resPd = await slettPlan(db, idPd);
+      if (!resPd.ok) return cors(NextResponse.json({ ok: false, error: resPd.error }, { status: resPd.status || 404 }));
+      return cors(NextResponse.json({ ok: true }));
+    }
+    // Porteføljeforslag for en fri periode (?startYm=ÅÅÅÅ-MM&antallMnd=12
+    // [+ nye/churn/fyll/snittleie/honorarpct/oppstart]) — modell B skåret til vinduet.
+    if (route === '/admin/budsjett/plan/forslag' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const uPf = new URL(request.url);
+      const startYmPf = gyldigYm(uPf.searchParams.get('startYm'));
+      const antallPf = Math.round(Number(uPf.searchParams.get('antallMnd'))) || 12;
+      if (!startYmPf) return cors(NextResponse.json({ ok: false, error: 'startYm må være ÅÅÅÅ-MM' }, { status: 400 }));
+      if (!(antallPf >= 3 && antallPf <= 24)) return cors(NextResponse.json({ ok: false, error: 'antallMnd må være 3–24' }, { status: 400 }));
+      const lfPf = await hentLeieforhold(leieforholdTarget(), { db });
+      if (!lfPf.ok) return cors(NextResponse.json({ ok: false, error: lfPf.error || 'Kunne ikke hente porteføljen' }, { status: 502 }));
+      const costsPf = await hentBudsjettKostnader(db);
+      const forslagPf = lagForslagForPeriode({
+        rows: lfPf.rows, costs: costsPf, startYm: startYmPf, antallMnd: antallPf,
+        antakelser: {
+          nyeEnheterPerMnd: uPf.searchParams.get('nye'),
+          churnPctAar: uPf.searchParams.get('churn'),
+          fyllLedigPerMnd: uPf.searchParams.get('fyll'),
+          snittLeie: uPf.searchParams.get('snittleie'),
+          honorarPct: uPf.searchParams.get('honorarpct'),
+          oppstartPerEnhet: uPf.searchParams.get('oppstart'),
+        },
+      });
+      return cors(NextResponse.json({ ok: true, startYm: startYmPf, antallMnd: antallPf, ...forslagPf }));
+    }
     // Inntektsmodell (modell B) — forhåndsvisning: sikret (live fra plattformen)
     // + antakelser (?nye=&churn=&fyll=&snittleie=&honorarpct=&oppstart=).
     // Returnerer dekomponert serie + kostnadsseed (til «fyll kostnader»-valget).
@@ -3659,7 +3721,7 @@ async function handleRoute(request, { params }) {
       });
       // Kostnadsseed + grunnlag gjenbrukes fra forslagsmotoren (kostnadssiden
       // er ikke kontraktsfestet i plattformen — seeding gir fortsatt mening der).
-      const costsM = await listCosts(db);
+      const costsM = await hentBudsjettKostnader(db);
       const seedM = lagForslag({ rows: lfM.rows, costs: costsM, year: yearM, drivere: {} });
       return cors(NextResponse.json({
         ok: true, year: yearM, ...modellM,
@@ -3676,7 +3738,7 @@ async function handleRoute(request, { params }) {
       const yearF = gyldigBudsjettAar(uF.searchParams.get('year')) || new Date().getFullYear();
       const lf = await hentLeieforhold(leieforholdTarget(), { db });
       if (!lf.ok) return cors(NextResponse.json({ ok: false, error: lf.error || 'Kunne ikke hente porteføljen' }, { status: 502 }));
-      const costsF = await listCosts(db);
+      const costsF = await hentBudsjettKostnader(db);
       const forslag = lagForslag({
         rows: lf.rows, costs: costsF, year: yearF,
         antallMnd: uF.searchParams.get('horisont') === '24' ? 24 : 12,
@@ -3705,6 +3767,19 @@ async function handleRoute(request, { params }) {
       if (!(await modulAuthed(request, db, 'dr-oversikt'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       await drAutoSync(db, async () => (await hentLeieforhold(leieforholdTarget(), { db })).rows || []);
       return cors(NextResponse.json({ ok: true, oversikt: await drBeregnOversikt(db) }));
+    }
+    if (route === '/admin/datarom/enhetsokonomi' && method === 'GET') {
+      if (!(await modulAuthed(request, db, 'dr-enheter'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      // Auto-synk: enhetslisten speiler Leieforhold-porteføljen (maks hvert 10. min).
+      await drAutoSync(db, async () => (await hentLeieforhold(leieforholdTarget(), { db })).rows || []);
+      return cors(NextResponse.json({ ok: true, ...(await drBeregnEnhetsokonomi(db)) }));
+    }
+    if (route === '/admin/datarom/enhetsokonomi/antakelser' && method === 'PUT') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let bodyEoA = {}; try { bodyEoA = await request.json(); } catch (e) {}
+      const resEoA = await drLagreEoAntakelser(db, bodyEoA);
+      if (!resEoA.ok) return cors(NextResponse.json({ ok: false, error: resEoA.error }, { status: resEoA.status || 400 }));
+      return cors(NextResponse.json(resEoA));
     }
     if (route === '/admin/datarom/enheter' && method === 'GET') {
       const sp = new URL(request.url).searchParams;
@@ -10495,7 +10570,7 @@ Svar KUN med gyldig JSON: {"forslag":[{"emne":"...","forhandstekst":"..."},{...}
         if (sub === '/settings' && method === 'GET') return cors(NextResponse.json({ ok: true, settings: await getFinanceSettings(db) }));
         if (sub === '/settings' && method === 'POST') return cors(NextResponse.json({ ok: true, settings: await setFinanceSettings(db, fbody) }));
 
-        if (sub === '/costs' && method === 'GET') return cors(NextResponse.json({ ok: true, costs: await listCosts(db) }));
+        if (sub === '/costs' && method === 'GET') { await migrerFellesKostnader(db).catch(() => {}); return cors(NextResponse.json({ ok: true, costs: await listCosts(db) })); }
         if (sub === '/costs' && method === 'POST') return cors(NextResponse.json({ ok: true, cost: await upsertCost(db, fbody) }));
         if (sub === '/costs' && method === 'DELETE') { await deleteCost(db, fbody.id); return cors(NextResponse.json({ ok: true })); }
 

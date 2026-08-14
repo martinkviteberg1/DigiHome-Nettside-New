@@ -22,6 +22,7 @@ import {
   ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, CartesianGrid,
 } from 'recharts';
 import KostnadsSkuff from '@/components/admin/KostnadsSkuff';
+import Enhetsokonomi from '@/components/admin/Enhetsokonomi';
 import { aktiveKostnader, beregnHonorarTrapp, visGruppe, anvendScenario } from '@/lib/leieforhold-filter';
 import { cacheLes, cacheHent, cacheSlett } from '@/lib/klient-cache';
 import Omvisning from '@/components/admin/Omvisning';
@@ -134,7 +135,8 @@ export default function Datarom({ apiKey, tab = 'oversikt', erAdmin = false, onG
           />
         </Kort>
       )}
-      {(tab === 'enheter' || tab === 'pipeline') && <Enheter api={api} erAdmin={erAdmin} fase={tab === 'pipeline' ? 'pipeline' : 'drift'} />}
+      {tab === 'enheter' && <Enhetsokonomi api={api} erAdmin={erAdmin} />}
+      {tab === 'pipeline' && <Enheter api={api} erAdmin={erAdmin} fase="pipeline" />}
       {tab === 'selskap' && <Selskap api={api} erAdmin={erAdmin} />}
       {tab === 'dokumenter' && <Dokumenter api={api} apiKey={apiKey} erAdmin={erAdmin} />}
     </div>

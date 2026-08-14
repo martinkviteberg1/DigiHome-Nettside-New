@@ -537,3 +537,10 @@ Google Ads-styring via native REST API).
 - Mobil: fikset horisontal overflow på Datarom Oversikt (grid min-content-fellen: grid-cols-1 + minmax(0,fr) + min-w-0); alle investorsider verifisert uten overflow på 390px og 768px.
 - Fart: Budsjett på klientcachen (SWR med dirty-vern og invalidering ved lagring) + forvarming ved innlogging; sessionStorage-lag i klientcachen gjør at også refresh/direktelenker rendres momentant. Fanebytter måler 17–109 ms.
 - Sikkerhet: klientcachen tømmes ved logout, innlogging og «Se som» start/stopp — ingen datalekkasje mellom identiteter på delt maskin.
+
+## Oppdatering (14. feb 2026-økten, fork)
+- Bugfikser (backend-testet 26/26): ny redigeringsmodal i Brukere (bunn-ark på mobil), tilgangsstyring 1:1 (investor ser NØYAKTIG avhukede moduler — modulAuthed uten investor-unntak), Datarom-Leieforhold styrbar, Safari-font (ekte 600/700-snitt + font-synthesis:none).
+- ÉN KOSTNADSKILDE: finance_costs er eneste register; enhetsokonomi-felles migrert idempotent; Datarom-skuffen er fasade mot samme data; fordeling/paused-felter; alle motorer (resultat/likviditet/budsjett/datarom/marginer) leser samme kilde. Backend-testet 8/8.
+- ENHETSØKONOMI (ny Datarom-side, modul dr-enheter): KPI-er (honorar/kostnad/margin per enhet, CAC/payback, break-even), skaleringsgraf (enheter + kostnad/enhet historisk), manpower-modell med BRØKSTILLINGER (min 30 %, trinn 10 %, justerbart) + margintrapp. Backend-testet.
+- FRITTSTÅENDE BUDSJETTER: planer med navn + fri periode (3–24 mnd) + status utkast/vedtatt (én vedtatt per periode), porteføljeforslag (modell B skåret til vinduet), Mot faktisk for fri periode, egen editor + valg i budsjettmenyen. Kalenderår/investor-NTM urørt. Backend-testet 13/13.
+- Eksempelplan «Neste 12 mnd (rullerende)» (sep 26–aug 27) ligger klar i Budsjett-menyen.

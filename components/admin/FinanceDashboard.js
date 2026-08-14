@@ -28,6 +28,7 @@ const TABS = [
 
 const COST_CATEGORIES = ['Lønn', 'Husleie', 'Programvare/SaaS', 'Regnskap', 'API/LLM', 'Markedsføring', 'Annet'];
 const FREQ_LABEL = { monthly: 'Månedlig', quarterly: 'Kvartalsvis', yearly: 'Årlig' };
+const FORDELING_LABEL = { alle: 'Likt per enhet', utleide: 'Kun utleide', honorar: 'Etter honorar' };
 
 const inputCls = 'w-full h-10 px-3 rounded-lg border border-[#e5e5ea] bg-white text-[14px] text-[#111] focus:outline-none focus:ring-2 focus:ring-[#cf97fc]/50 focus:border-[#cf97fc]';
 const labelCls = 'block text-[12px] font-semibold text-[#666] mb-1.5';
@@ -468,6 +469,7 @@ function KostnaderTab({ items, auto, onSave, onDelete, saving }) {
         <button className={btnDark} onClick={() => { setEdit(null); setShow(true); }} data-testid="fin-add-cost"><Plus className="w-4 h-4" /> Ny kostnad</button>
       </div>
       <div className="flex flex-wrap gap-x-6 gap-y-1 text-[12px] text-[#888] rounded-xl bg-[#f7f7f8] px-4 py-3">
+        <span className="inline-flex items-center gap-1.5 basis-full text-[#555]"><Check className="w-3.5 h-3.5 text-emerald-600" /> <strong>Ett register:</strong> kostnadene her er samme kilde som Datarom-skuffen — de teller i resultat, enhetsmarginer (Leieforhold) og budsjettforslag.</span>
         <span className="inline-flex items-center gap-1.5"><Megaphone className="w-3.5 h-3.5" /> Annonseforbruk hentes automatisk: <strong className="text-[#555]">{kr(auto?.adSpendMonthly || 0)}/mnd</strong></span>
         <span className="inline-flex items-center gap-1.5"><Zap className="w-3.5 h-3.5" /> LLM-kostnad hentes automatisk: <strong className="text-[#555]">{kr(auto?.llmMonthly || 0)}/mnd</strong></span>
         <span className="inline-flex items-center gap-1.5"><Zap className="w-3.5 h-3.5" /> API-tjenester (SendGrid/SerpAPI/Maps): <strong className="text-[#555]">{kr(auto?.extMonthly || 0)}/mnd</strong></span>
@@ -483,16 +485,18 @@ function KostnaderTab({ items, auto, onSave, onDelete, saving }) {
                 <th className="text-left font-semibold px-4 py-3">Navn</th>
                 <th className="text-left font-semibold px-4 py-3">Kategori</th>
                 <th className="text-left font-semibold px-4 py-3">Frekvens</th>
+                <th className="text-left font-semibold px-4 py-3">Fordeling</th>
                 <th className="text-right font-semibold px-4 py-3">Beløp</th>
                 <th className="px-4 py-3"></th>
               </tr>
             </thead>
             <tbody>
               {items.map((c) => (
-                <tr key={c.id} className="border-t border-[#f2f2f2]">
-                  <td className="px-4 py-3 font-medium text-[#222]">{c.name || '—'}{c.vendor ? <span className="text-[11px] text-[#aaa] ml-2">{c.vendor}</span> : null}</td>
+                <tr key={c.id} className={`border-t border-[#f2f2f2] ${c.paused ? 'opacity-50' : ''}`}>
+                  <td className="px-4 py-3 font-medium text-[#222]">{c.name || '—'}{c.vendor ? <span className="text-[11px] text-[#aaa] ml-2">{c.vendor}</span> : null}{c.paused ? <span className="ml-2 rounded bg-[#f1ece4] px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#8a8278]">Pauset</span> : null}</td>
                   <td className="px-4 py-3 text-[#666]">{c.category}</td>
                   <td className="px-4 py-3 text-[#999]">{FREQ_LABEL[c.frequency] || c.frequency}</td>
+                  <td className="px-4 py-3 text-[#999]">{FORDELING_LABEL[c.fordeling] || 'Likt per enhet'}</td>
                   <td className="px-4 py-3 text-right font-semibold text-[#111]">{kr(c.amount)}</td>
                   <td className="px-4 py-3 text-right whitespace-nowrap">
                     <button onClick={() => { setEdit(c); setShow(true); }} className="p-1.5 text-[#999] hover:text-[#333]"><Pencil className="w-3.5 h-3.5" /></button>
@@ -617,6 +621,7 @@ function CostModal({ item, onClose, onSave, saving }) {
   const [f, setF] = useState({
     id: item?.id || null, name: item?.name || '', category: item?.category || 'Lønn', amount: item?.amount ?? '',
     frequency: item?.frequency || 'monthly', vendor: item?.vendor || '', startDate: item?.startDate || '', endDate: item?.endDate || '', note: item?.note || '',
+    fordeling: item?.fordeling || 'alle', paused: item?.paused === true,
   });
   const set = (k, v) => setF((p) => ({ ...p, [k]: v }));
   return (
@@ -643,6 +648,17 @@ function CostModal({ item, onClose, onSave, saving }) {
           <div><label className={labelCls}>Startdato (valgfri)</label><input type="date" value={f.startDate} onChange={(e) => set('startDate', e.target.value)} className={inputCls} /></div>
           <div><label className={labelCls}>Sluttdato (valgfri)</label><input type="date" value={f.endDate} onChange={(e) => set('endDate', e.target.value)} className={inputCls} /></div>
         </div>
+        <div><label className={labelCls}>Fordeling per enhet (brukes i Leieforhold-marginer)</label>
+          <select value={f.fordeling} onChange={(e) => set('fordeling', e.target.value)} className={inputCls} data-testid="fin-cost-fordeling">
+            <option value="alle">Likt per enhet (alle)</option>
+            <option value="utleide">Kun utleide enheter</option>
+            <option value="honorar">Prorata etter honorar</option>
+          </select>
+        </div>
+        <label className="flex cursor-pointer items-center gap-2 select-none">
+          <input type="checkbox" checked={f.paused} onChange={(e) => set('paused', e.target.checked)} className="h-3.5 w-3.5 accent-[#111]" data-testid="fin-cost-paused" />
+          <span className="text-[12.5px] text-[#666]">Pauset — teller ikke i resultat, margin eller budsjett før den aktiveres igjen</span>
+        </label>
         <div className="flex justify-end gap-3 pt-2">
           <button className={btnGhost} onClick={onClose}>Avbryt</button>
           <button className={btnDark} onClick={() => onSave(f)} disabled={saving} data-testid="fin-cost-save">{saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />} Lagre</button>

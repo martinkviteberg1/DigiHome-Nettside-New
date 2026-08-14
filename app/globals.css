@@ -9,6 +9,9 @@ body {
         "Helvetica Neue", sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    /* Aldri syntetiser fetning/kursiv: Safari lager tykk, smurt «faux bold»
+       for vekter fonten ikke leveres i. Ekte snitt er registrert i fonts.js. */
+    font-synthesis: none;
 }
 
 code {

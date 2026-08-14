@@ -37,21 +37,40 @@ const MOTE_TILGANG_VALG = [
   { k: 'annet', l: 'Andre møter' },
 ];
 const MOTE_TILGANG_LABEL = { styremote: 'Styremøter', ledermote: 'Ledermøter', annet: 'Andre møter' };
-const MODUL_VALG = [
-  { k: 'nokkeltall', l: 'Nøkkeltall' },
-  { k: 'okonomi', l: 'Økonomi' },
-  { k: 'leieforhold', l: 'Leieforhold & enhetsøkonomi' },
-  { k: 'budsjett', l: 'Budsjett' },
-  { k: 'kunder', l: 'Kunder' },
-  { k: 'i-leads', l: 'Leads' },
-  { k: 'historikk', l: 'Historikk' },
-  { k: 'dr-oversikt', l: 'Datarom · Oversikt' },
-  { k: 'dr-resultat', l: 'Datarom · Resultat' },
-  // 'dr-enheter' er slått sammen med Leieforhold (Økonomi-modus) og tilbys ikke lenger.
-  { k: 'dr-pipeline', l: 'Datarom · Pipeline' },
-  { k: 'dr-selskap', l: 'Datarom · Selskap' },
-  { k: 'dr-dokumenter', l: 'Datarom · Dokumenter' },
+// Moduler gruppert etter hvor de bor: Datarom-seksjonen er investorens
+// portal (lesetilgang), Ledelsesverktøy er interne driftsmoduler.
+// «leieforhold» og «budsjett» styrer BÅDE datarom-visningen for investorer
+// og de tilsvarende admin-modulene for bruker-/partnerroller.
+const MODUL_GRUPPER = [
+  {
+    id: 'datarom',
+    tittel: 'Datarom — investorportalen',
+    sub: 'Lesetilgang. En investor ser kun modulene du huker av her.',
+    valg: [
+      { k: 'dr-oversikt', l: 'Oversikt', sub: 'Nøkkeltall, veksttrapp og fremtidsbilde' },
+      { k: 'leieforhold', l: 'Leieforhold', sub: 'Porteføljen live — leie, honorar og kontrakter' },
+      { k: 'dr-resultat', l: 'Regnskap', sub: 'Resultat per måned' },
+      { k: 'dr-enheter', l: 'Enhetsøkonomi', sub: 'Margin per enhet, skalering og manpower-modell' },
+      { k: 'budsjett', l: 'Budsjett', sub: 'Neste 12 mnd + kalenderår' },
+      { k: 'dr-pipeline', l: 'Pipeline', sub: 'Enheter på vei inn' },
+      { k: 'dr-selskap', l: 'Selskap', sub: 'Ansatte, gjeld og faste kostnader' },
+      { k: 'dr-dokumenter', l: 'Dokumenter', sub: 'Delte filer og rapporter' },
+    ],
+  },
+  {
+    id: 'ledelse',
+    tittel: 'Ledelsesverktøy',
+    sub: 'Interne moduler for drift og ledelse.',
+    valg: [
+      { k: 'nokkeltall', l: 'Nøkkeltall', sub: 'Trafikk og konvertering' },
+      { k: 'okonomi', l: 'Økonomi', sub: 'Inntekter og marginer' },
+      { k: 'kunder', l: 'Kunder', sub: 'Kundeoversikt' },
+      { k: 'i-leads', l: 'Leads', sub: 'Innkommende henvendelser' },
+      { k: 'historikk', l: 'Historikk', sub: 'Endringslogg' },
+    ],
+  },
 ];
+const MODUL_VALG = MODUL_GRUPPER.flatMap((g) => g.valg);
 const MODUL_LABEL = Object.fromEntries(MODUL_VALG.map((m) => [m.k, m.l]));
 const VERV_FORSLAG = ['Styreleder', 'Nestleder', 'Styremedlem', 'Varamedlem', 'Daglig leder', 'Økonomiansvarlig', 'Driftsansvarlig', 'Partner', 'Investor', 'Aksjonær'];
 
@@ -77,7 +96,7 @@ function Avatar({ member, size = 32 }) {
   );
 }
 
-/* Chips-velger (grupper / moduler / møtetilgang) — samme mønster som i Saker. */
+/* Chips-velger (grupper / møtetilgang) — samme mønster som i Saker. */
 function ChipVelger({ value, onChange, disabled, testid, valg }) {
   const valgt = Array.isArray(value) ? value : [];
   return (
@@ -99,6 +118,102 @@ function ChipVelger({ value, onChange, disabled, testid, valg }) {
           </button>
         );
       })}
+    </div>
+  );
+}
+
+/* ── Modulvelger: grupperte seksjoner (Datarom / Ledelsesverktøy) med
+   beskrivelse per modul, «Velg alle»-snarvei og responsivt to-kolonners
+   grid. Beholder testid-mønsteret `${testid}-${modulnøkkel}`. ── */
+function ModulVelger({ value, onChange, disabled, testid, rolle }) {
+  const valgt = Array.isArray(value) ? value : [];
+  return (
+    <div className="space-y-3" data-testid={testid}>
+      {MODUL_GRUPPER.map((g) => {
+        const alleValgt = g.valg.every((o) => valgt.includes(o.k));
+        const antall = g.valg.filter((o) => valgt.includes(o.k)).length;
+        return (
+          <div key={g.id} className={`rounded-xl border p-3 transition-colors ${g.id === 'datarom' && rolle === 'investor' ? 'border-[#8b5cf6]/25 bg-[#f4f0fb]/30' : 'border-black/[0.06]'}`} data-testid={`${testid}-gruppe-${g.id}`}>
+            <div className="flex items-start gap-2">
+              <div className="min-w-0 flex-1">
+                <p className="text-[11px] font-bold uppercase tracking-[0.07em] text-[#78716c]">
+                  {g.tittel}
+                  {antall > 0 && <span className="ml-1.5 rounded-full bg-[#f4f0fb] px-1.5 py-[1px] text-[9.5px] text-[#6d28d9]">{antall}</span>}
+                </p>
+                <p className="mt-0.5 text-[11px] text-[#b3ada3]">{g.sub}</p>
+              </div>
+              <button
+                type="button"
+                disabled={disabled}
+                onClick={() => onChange(alleValgt
+                  ? valgt.filter((k) => !g.valg.some((o) => o.k === k))
+                  : Array.from(new Set([...valgt, ...g.valg.map((o) => o.k)])))}
+                data-testid={`${testid}-alle-${g.id}`}
+                className="shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold text-[#8b5cf6] transition-colors hover:bg-[#f4f0fb] disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {alleValgt ? 'Fjern alle' : 'Velg alle'}
+              </button>
+            </div>
+            <div className="mt-2 grid grid-cols-1 gap-1 sm:grid-cols-2">
+              {g.valg.map((o) => {
+                const aktiv = valgt.includes(o.k);
+                return (
+                  <button
+                    key={o.k}
+                    type="button"
+                    disabled={disabled}
+                    onClick={() => onChange(aktiv ? valgt.filter((x) => x !== o.k) : [...valgt, o.k])}
+                    data-testid={`${testid}-${o.k}`}
+                    className={`flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition-all disabled:cursor-not-allowed disabled:opacity-40 ${aktiv ? 'bg-[#f4f0fb]' : 'hover:bg-[#fafaf8]'}`}
+                  >
+                    <span className={`flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[5px] border transition-colors ${aktiv ? 'border-[#8b5cf6] bg-[#8b5cf6]' : 'border-black/[0.16] bg-white'}`}>
+                      {aktiv && <Check className="h-3 w-3 text-white" />}
+                    </span>
+                    <span className="min-w-0">
+                      <span className={`block text-[12.5px] font-semibold leading-tight ${aktiv ? 'text-[#0a0a0a]' : 'text-[#57534e]'}`}>{o.l}</span>
+                      <span className="block truncate text-[10.5px] leading-tight text-[#b3ada3]">{o.sub}</span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ── Modalskall: bunn-ark på mobil, sentrert kort på desktop. Esc lukker,
+   klikk på bakteppet lukker, body-scroll låses mens modalen er åpen. ── */
+function ModalSkall({ tittel, undertittel, topp, onLukk, children, footer, testid }) {
+  useEffect(() => {
+    const paaTast = (e) => { if (e.key === 'Escape') onLukk(); };
+    window.addEventListener('keydown', paaTast);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { window.removeEventListener('keydown', paaTast); document.body.style.overflow = prev; };
+  }, [onLukk]);
+  return (
+    <div className="fixed inset-0 z-[125] flex items-end justify-center sm:items-center sm:p-4" data-testid={testid}>
+      <div className="absolute inset-0 bg-[#0a0a0a]/45 backdrop-blur-[2px]" onClick={onLukk} data-testid={`${testid}-bakteppe`} />
+      <div className="dh-pop relative flex max-h-[94dvh] w-full flex-col overflow-hidden rounded-t-2xl bg-white shadow-[0_32px_80px_rgba(0,0,0,0.28)] sm:max-h-[88dvh] sm:w-[660px] sm:rounded-2xl">
+        <div className="flex items-center gap-3 border-b border-black/[0.05] px-4 py-3.5 sm:px-6 sm:py-4">
+          {topp}
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[15px] font-bold text-[#0a0a0a]" style={heading}>{tittel}</p>
+            {undertittel && <p className="mt-0.5 truncate text-[12px] text-[#a3a3a3]">{undertittel}</p>}
+          </div>
+          <button
+            type="button" onClick={onLukk} data-testid={`${testid}-lukk`}
+            className="shrink-0 rounded-lg p-2 text-[#bbb] transition-colors hover:bg-[#f3f2f0] hover:text-[#555]"
+          >
+            <X className="h-4.5 w-4.5" style={{ width: 18, height: 18 }} />
+          </button>
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">{children}</div>
+        <div className="border-t border-black/[0.05] bg-[#fcfcfb] px-4 py-3 sm:px-6 sm:py-3.5">{footer}</div>
+      </div>
     </div>
   );
 }
@@ -169,6 +284,7 @@ export default function Brukere({ apiKey, user, onImpersonate }) {
   // Redigering
   const [redigerId, setRedigerId] = useState(null);
   const [red, setRed] = useState({ name: '', email: '', role: 'bruker', password: '', tittel: '', moteTilgang: [], moduler: [], groups: [] });
+  const [lagrerEndring, setLagrerEndring] = useState(false);
   const [inviterer, setInviterer] = useState(null);
   const [imiterer, setImiterer] = useState(null); // person-id under oppstart av «se som»
 
@@ -250,6 +366,8 @@ export default function Brukere({ apiKey, user, onImpersonate }) {
   };
 
   const lagreEndring = async (id) => {
+    if (lagrerEndring) return;
+    setLagrerEndring(true);
     try {
       const payload = { name: red.name.trim(), email: red.email.trim(), role: red.role, tittel: red.tittel.trim(), moteTilgang: red.moteTilgang, moduler: red.moduler, groups: red.groups };
       if (red.password) payload.password = red.password;
@@ -263,6 +381,7 @@ export default function Brukere({ apiKey, user, onImpersonate }) {
       setRedigerId(null);
       visToast('Lagret');
     } catch (e) { visToast(e.message, 'feil'); }
+    setLagrerEndring(false);
   };
 
   const slettPerson = async (m) => {
@@ -284,7 +403,6 @@ export default function Brukere({ apiKey, user, onImpersonate }) {
   };
 
   const felt = 'h-10 min-w-0 rounded-lg border border-black/[0.08] bg-white px-2.5 text-[13.5px] outline-none transition-all placeholder:text-[#bbb] hover:border-black/[0.16] focus:border-[#8b5cf6]/50 focus:ring-2 focus:ring-[#8b5cf6]/15';
-  const chipEtikett = 'shrink-0 text-[11px] font-bold uppercase tracking-[0.06em] text-[#b5b5b5]';
 
   const statKort = [
     { l: 'Personer', v: stats.totalt, icon: Users, farge: '#8b5cf6' },
@@ -341,20 +459,41 @@ export default function Brukere({ apiKey, user, onImpersonate }) {
         </button>
       </div>
 
-      {/* Legg til person */}
+      {/* Legg til person — modal */}
       {nyOpen && (
-        <div className="dh-fade mt-3 rounded-2xl bg-white p-5 shadow-[0_2px_16px_rgba(0,0,0,0.04)]" data-testid="brukere-ny-panel">
-          <p className="mb-3 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.08em] text-[#999]"><UserPlus className="h-3.5 w-3.5" /> Legg til person</p>
+        <ModalSkall
+          testid="brukere-ny-panel"
+          tittel="Legg til person"
+          undertittel="Inviter via e-post — eller sett passord manuelt"
+          topp={<span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#f4f0fb]"><UserPlus className="h-4 w-4 text-[#8b5cf6]" /></span>}
+          onLukk={() => setNyOpen(false)}
+          footer={(
+            <div className="flex items-center gap-2">
+              <p className="mr-auto hidden min-w-0 truncate text-[11px] text-[#b5b5b5] sm:block">
+                {passord ? 'Du setter passordet manuelt — ingen invitasjon sendes.' : 'Uten passord eller invitasjon: kan stå som ansvarlig og få varsler, men ikke logge inn.'}
+              </p>
+              <button
+                type="button" onClick={() => setNyOpen(false)}
+                className="flex h-10 shrink-0 items-center rounded-lg px-3.5 text-[13.5px] font-semibold text-[#777] transition-colors hover:bg-[#f3f2f0] hover:text-[#333]"
+              >
+                Avbryt
+              </button>
+              <button
+                onClick={leggTil}
+                disabled={!navn.trim() || lagrer}
+                data-testid="member-add-btn"
+                className="flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-lg bg-[#0a0a0a] px-4 text-white transition-all hover:bg-black/85 active:scale-[0.97] disabled:opacity-40"
+              >
+                {lagrer ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-[18px] w-[18px]" />}
+                <span className="text-[13.5px] font-semibold">Legg til</span>
+              </button>
+            </div>
+          )}
+        >
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             <input value={navn} onChange={(e) => setNavn(e.target.value)} placeholder="Navn" data-testid="member-name-input" className={felt} />
             <input value={epost} onChange={(e) => setEpost(e.target.value)} placeholder="E-post (varsler + innlogging)" data-testid="member-email-input" className={felt} />
             <RolleMeny value={rolle} onChange={setRolle} testid="member-role-input" />
-            <input
-              type="password" value={passord} onChange={(e) => setPassord(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') leggTil(); }}
-              placeholder="Passord (valgfritt — eller bruk invitasjon)"
-              autoComplete="new-password" data-testid="member-password-input" className={felt}
-            />
             <input
               value={tittel}
               onChange={(e) => {
@@ -368,47 +507,51 @@ export default function Brukere({ apiKey, user, onImpersonate }) {
               list="verv-forslag" placeholder="Verv — f.eks. Styreleder (valgfritt)"
               data-testid="member-tittel-input" className={felt}
             />
-            <div className="flex min-w-0 items-center gap-2">
-              <span className={chipEtikett}>Ser</span>
+          </div>
+
+          <div className="mt-4 rounded-xl border border-black/[0.06] p-3.5">
+            <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.08em] text-[#999]"><KeyRound className="h-3.5 w-3.5" /> Innlogging</p>
+            <input
+              type="password" value={passord} onChange={(e) => setPassord(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') leggTil(); }}
+              placeholder="Passord (valgfritt — eller bruk invitasjon)"
+              autoComplete="new-password" data-testid="member-password-input" className={`${felt} mt-2 w-full`}
+            />
+            <label className={`mt-2.5 flex items-center gap-2 select-none ${!epost.trim() || passord ? 'cursor-not-allowed opacity-45' : 'cursor-pointer'}`}>
+              <input
+                type="checkbox"
+                checked={inviter && !!epost.trim() && !passord}
+                disabled={!epost.trim() || !!passord}
+                onChange={(e) => setInviter(e.target.checked)}
+                className="h-3.5 w-3.5 accent-[#8b5cf6]"
+                data-testid="member-invite-toggle"
+              />
+              <span className="text-[12px] text-[#666]">Send velkomst-e-post — brukeren aktiverer kontoen og velger eget passord</span>
+            </label>
+          </div>
+
+          <div className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+            <div className="min-w-0">
+              <p className="mb-1.5 text-[11px] font-bold uppercase tracking-[0.08em] text-[#999]">Ser møter</p>
               <ChipVelger value={moteTilgang} onChange={setMoteTilgang} disabled={rolle === 'admin'} testid="member-motetilgang" valg={MOTE_TILGANG_VALG} />
             </div>
-            <div className="flex min-w-0 items-center gap-2">
-              <span className={chipEtikett}>Moduler</span>
-              <ChipVelger value={moduler} onChange={setModuler} disabled={rolle === 'admin'} testid="member-moduler" valg={MODUL_VALG} />
-            </div>
-            <div className="flex min-w-0 items-center gap-2">
-              <span className={chipEtikett}>Grupper</span>
+            <div className="min-w-0">
+              <p className="mb-1.5 text-[11px] font-bold uppercase tracking-[0.08em] text-[#999]">Grupper</p>
               <ChipVelger value={grupper} onChange={setGrupper} disabled={rolle === 'admin'} testid="member-groups" valg={GRUPPER_UI} />
             </div>
           </div>
-          <datalist id="verv-forslag">
-            {VERV_FORSLAG.map((v) => <option key={v} value={v} />)}
-          </datalist>
-          <label className={`mt-3 flex items-center gap-2 select-none ${!epost.trim() || passord ? 'cursor-not-allowed opacity-45' : 'cursor-pointer'}`}>
-            <input
-              type="checkbox"
-              checked={inviter && !!epost.trim() && !passord}
-              disabled={!epost.trim() || !!passord}
-              onChange={(e) => setInviter(e.target.checked)}
-              className="h-3.5 w-3.5 accent-[#8b5cf6]"
-              data-testid="member-invite-toggle"
-            />
-            <span className="text-[12px] text-[#666]">Send velkomst-e-post — brukeren aktiverer kontoen og velger eget passord</span>
-          </label>
-          <div className="mt-2.5 flex items-center gap-2">
-            <p className="mr-auto text-[11px] text-[#b5b5b5]">{passord ? 'Du setter passordet manuelt — ingen invitasjon sendes.' : 'Uten passord eller invitasjon: kan stå som ansvarlig og få varsler, men ikke logge inn.'}</p>
-            <button
-              onClick={leggTil}
-              disabled={!navn.trim() || lagrer}
-              data-testid="member-add-btn"
-              className="flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-lg bg-[#0a0a0a] px-4 text-white transition-all hover:bg-black/85 active:scale-[0.97] disabled:opacity-40"
-            >
-              {lagrer ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-[18px] w-[18px]" />}
-              <span className="text-[13.5px] font-semibold">Legg til</span>
-            </button>
+
+          <div className="mt-4">
+            <p className="mb-2 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.08em] text-[#999]"><ShieldCheck className="h-3.5 w-3.5" /> Modultilgang</p>
+            {rolle === 'admin'
+              ? <p className="rounded-xl bg-[#fafaf8] px-3.5 py-2.5 text-[12px] text-[#999]">Admin har full tilgang til alt — modulvalg trengs ikke.</p>
+              : <ModulVelger value={moduler} onChange={setModuler} testid="member-moduler" rolle={rolle} />}
           </div>
-        </div>
+        </ModalSkall>
       )}
+      <datalist id="verv-forslag">
+        {VERV_FORSLAG.map((v) => <option key={v} value={v} />)}
+      </datalist>
 
       {/* Personliste */}
       <div className="mt-4 rounded-2xl bg-white shadow-[0_2px_16px_rgba(0,0,0,0.04)]">
@@ -425,77 +568,7 @@ export default function Brukere({ apiKey, user, onImpersonate }) {
         )}
         {!laster && filtrert.map((m, idx) => (
           <div key={m.id} className={`px-5 py-3.5 ${idx > 0 ? 'border-t border-black/[0.04]' : ''}`} data-testid={`member-row-${m.id}`}>
-            {redigerId === m.id ? (
-              <div className="space-y-2">
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  <input value={red.name} onChange={(e) => setRed((p) => ({ ...p, name: e.target.value }))} placeholder="Navn" className={felt} />
-                  <input value={red.email} onChange={(e) => setRed((p) => ({ ...p, email: e.target.value }))} placeholder="E-post" className={felt} />
-                  {m.role === 'owner' ? (
-                    <span className="flex h-10 items-center gap-2 rounded-lg border border-black/[0.06] bg-[#fafaf8] px-2.5 text-[13px] text-[#999]"><KeyRound className="h-3.5 w-3.5" /> Eier — rollen kan ikke endres</span>
-                  ) : (
-                    <RolleMeny value={red.role} onChange={(v) => setRed((p) => ({ ...p, role: v }))} testid={`member-role-select-${m.id}`} />
-                  )}
-                  <input
-                    type="password" value={red.password}
-                    onChange={(e) => setRed((p) => ({ ...p, password: e.target.value }))}
-                    placeholder={m.harPassord ? 'Nytt passord (valgfritt)' : 'Sett passord — gir innlogging'}
-                    autoComplete="new-password"
-                    className={felt}
-                    data-testid={`member-password-input-${m.id}`}
-                  />
-                  <input
-                    value={red.tittel}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      setRed((p) => {
-                        const forslag = !p.moteTilgang.length ? foreslaMoteTilgang(v) : null;
-                        return { ...p, tittel: v, ...(forslag ? { moteTilgang: forslag } : {}) };
-                      });
-                    }}
-                    list="verv-forslag"
-                    placeholder="Verv — f.eks. Styreleder (valgfritt)"
-                    data-testid={`member-tittel-input-${m.id}`}
-                    className={felt}
-                  />
-                  <div className="flex min-w-0 items-center gap-2">
-                    <span className={chipEtikett}>Ser</span>
-                    <ChipVelger
-                      value={red.moteTilgang}
-                      onChange={(v) => setRed((p) => ({ ...p, moteTilgang: v }))}
-                      disabled={red.role === 'admin' || m.role === 'owner'}
-                      testid={`member-motetilgang-${m.id}`}
-                      valg={MOTE_TILGANG_VALG}
-                    />
-                  </div>
-                  <div className="flex min-w-0 items-center gap-2">
-                    <span className={chipEtikett}>Moduler</span>
-                    <ChipVelger
-                      value={red.moduler}
-                      onChange={(v) => setRed((p) => ({ ...p, moduler: v }))}
-                      disabled={red.role === 'admin' || m.role === 'owner'}
-                      testid={`member-moduler-${m.id}`}
-                      valg={MODUL_VALG}
-                    />
-                  </div>
-                  <div className="flex min-w-0 items-center gap-2">
-                    <span className={chipEtikett}>Grupper</span>
-                    <ChipVelger
-                      value={red.groups}
-                      onChange={(v) => setRed((p) => ({ ...p, groups: v }))}
-                      disabled={red.role === 'admin' || m.role === 'owner'}
-                      testid={`member-groups-${m.id}`}
-                      valg={GRUPPER_UI}
-                    />
-                    <span className="hidden text-[10.5px] text-[#c2beb8] xl:inline">— styrer saksområdene Styret/Ledelse/Utvikling</span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <p className="mr-auto text-[11px] text-[#b5b5b5]">{(red.role === 'admin' || m.role === 'owner') ? 'Admin ser alle møter — møtetilgang gjelder kun rollen Bruker.' : 'Møtetilgang: hvilke møtetyper personen kan se. Passord krever e-post og minst 8 tegn.'}</p>
-                  <button onClick={() => lagreEndring(m.id)} data-testid={`member-save-${m.id}`} className="flex items-center gap-1.5 rounded-lg bg-[#0a0a0a] px-3 py-2 text-[12.5px] font-semibold text-white transition-all hover:bg-black/85 active:scale-[0.97]"><Check className="h-4 w-4" /> Lagre</button>
-                  <button onClick={() => setRedigerId(null)} className="rounded-lg p-2 text-[#999] hover:bg-[#f3f2f0]"><X className="h-4 w-4" /></button>
-                </div>
-              </div>
-            ) : (
+            {(
               <div className="flex items-center gap-3">
                 <Avatar member={m} size={34} />
                 <div className="min-w-0 flex-1">
@@ -555,6 +628,97 @@ export default function Brukere({ apiKey, user, onImpersonate }) {
           </div>
         ))}
       </div>
+
+      {/* Rediger person — modal */}
+      {redigerId && (() => {
+        const m = members.find((x) => x.id === redigerId);
+        if (!m) return null;
+        const erOwner = m.role === 'owner';
+        return (
+          <ModalSkall
+            testid="brukere-rediger-modal"
+            tittel={m.name || m.email || 'Rediger person'}
+            undertittel={`${ROLLE_LABEL[m.role] || m.role}${m.email ? ` · ${m.email}` : ''}${m.harPassord ? ' · kan logge inn' : m.invitedAt ? ' · invitert, venter' : ''}`}
+            topp={<Avatar member={m} size={36} />}
+            onLukk={() => setRedigerId(null)}
+            footer={(
+              <div className="flex items-center gap-2">
+                {!erOwner && (m.email || '').toLowerCase() !== minEpost && !erImpAkt && (
+                  <button
+                    type="button"
+                    onClick={() => { setRedigerId(null); seSom(m); }}
+                    data-testid="red-sesom-btn"
+                    className="mr-auto flex h-10 items-center gap-1.5 rounded-lg px-3 text-[12.5px] font-semibold text-[#6d28d9] transition-colors hover:bg-[#f4f0fb]"
+                  >
+                    <Eye className="h-3.5 w-3.5" /> Se som
+                  </button>
+                )}
+                <button
+                  type="button" onClick={() => setRedigerId(null)} data-testid="red-avbryt-btn"
+                  className="ml-auto flex h-10 shrink-0 items-center rounded-lg px-3.5 text-[13.5px] font-semibold text-[#777] transition-colors hover:bg-[#f3f2f0] hover:text-[#333]"
+                >
+                  Avbryt
+                </button>
+                <button
+                  onClick={() => lagreEndring(m.id)}
+                  disabled={!red.name.trim() || lagrerEndring}
+                  data-testid="red-lagre-btn"
+                  className="flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-lg bg-[#0a0a0a] px-4 text-white transition-all hover:bg-black/85 active:scale-[0.97] disabled:opacity-40"
+                >
+                  {lagrerEndring ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                  <span className="text-[13.5px] font-semibold">Lagre</span>
+                </button>
+              </div>
+            )}
+          >
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <input value={red.name} onChange={(e) => setRed((p) => ({ ...p, name: e.target.value }))} placeholder="Navn" data-testid="red-name-input" className={felt} />
+              <input value={red.email} onChange={(e) => setRed((p) => ({ ...p, email: e.target.value }))} placeholder="E-post" data-testid="red-email-input" className={felt} />
+              {erOwner ? (
+                <div className="flex h-10 items-center rounded-lg bg-[#fafaf8] px-2.5 text-[13px] font-medium text-[#999]">Systemeier — rollen kan ikke endres</div>
+              ) : (
+                <RolleMeny value={red.role} onChange={(v) => setRed((p) => ({ ...p, role: v }))} testid="red-role-input" />
+              )}
+              <input
+                value={red.tittel}
+                onChange={(e) => setRed((p) => ({ ...p, tittel: e.target.value }))}
+                list="verv-forslag" placeholder="Verv — f.eks. Styreleder (valgfritt)"
+                data-testid="red-tittel-input" className={felt}
+              />
+            </div>
+
+            <div className="mt-4 rounded-xl border border-black/[0.06] p-3.5">
+              <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.08em] text-[#999]"><KeyRound className="h-3.5 w-3.5" /> Innlogging</p>
+              <input
+                type="password" value={red.password} onChange={(e) => setRed((p) => ({ ...p, password: e.target.value }))}
+                placeholder={m.harPassord ? 'Nytt passord — la stå tom for å beholde' : 'Sett passord (valgfritt)'}
+                autoComplete="new-password" data-testid="red-password-input" className={`${felt} mt-2 w-full`}
+              />
+              {m.email && !m.harPassord && (
+                <p className="mt-2 text-[11.5px] text-[#a3a3a3]">{m.invitedAt ? 'Invitasjon er sendt — brukeren har ikke valgt passord ennå.' : 'Tips: send invitasjon fra personlisten, så velger brukeren eget passord.'}</p>
+              )}
+            </div>
+
+            <div className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+              <div className="min-w-0">
+                <p className="mb-1.5 text-[11px] font-bold uppercase tracking-[0.08em] text-[#999]">Ser møter</p>
+                <ChipVelger value={red.moteTilgang} onChange={(v) => setRed((p) => ({ ...p, moteTilgang: v }))} disabled={red.role === 'admin'} testid="red-motetilgang" valg={MOTE_TILGANG_VALG} />
+              </div>
+              <div className="min-w-0">
+                <p className="mb-1.5 text-[11px] font-bold uppercase tracking-[0.08em] text-[#999]">Grupper</p>
+                <ChipVelger value={red.groups} onChange={(v) => setRed((p) => ({ ...p, groups: v }))} disabled={red.role === 'admin'} testid="red-groups" valg={GRUPPER_UI} />
+              </div>
+            </div>
+
+            <div className="mt-4">
+              <p className="mb-2 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.08em] text-[#999]"><ShieldCheck className="h-3.5 w-3.5" /> Modultilgang</p>
+              {['owner', 'admin'].includes(red.role) || erOwner
+                ? <p className="rounded-xl bg-[#fafaf8] px-3.5 py-2.5 text-[12px] text-[#999]">{erOwner ? 'Systemeier' : 'Admin'} har full tilgang til alt — modulvalg trengs ikke.</p>
+                : <ModulVelger value={red.moduler} onChange={(v) => setRed((p) => ({ ...p, moduler: v }))} testid="red-moduler" rolle={red.role} />}
+            </div>
+          </ModalSkall>
+        );
+      })()}
 
       <p className="mt-4 flex items-center gap-1.5 text-[11.5px] text-[#b5b5b5]">
         <ShieldCheck className="h-3.5 w-3.5" /> «Se som» gir en midlertidig økt (1 time) med den valgte kontoens tilgang — alle oppstarter logges.

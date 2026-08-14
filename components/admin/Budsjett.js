@@ -15,10 +15,12 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import {
   Target, Loader2, Save, Sparkles, ChevronLeft, ChevronRight, ChevronsRight,
   AlertTriangle, X, TrendingUp, Wallet, Flag, Check, BarChart3, Plus, Trash2,
-  FileSpreadsheet, CopyPlus, StickyNote, MessageSquare, Lock,
+  FileSpreadsheet, CopyPlus, StickyNote, MessageSquare, Lock, ChevronDown,
 } from 'lucide-react';
 import { ComposedChart, Bar, XAxis, YAxis, Tooltip, ReferenceLine, ResponsiveContainer, Cell } from 'recharts';
 import { cacheLes, cacheHent, cacheSlett } from '@/lib/klient-cache';
+import BudsjettWizard from '@/components/admin/BudsjettWizard';
+import BudsjettPlan from '@/components/admin/BudsjettPlan';
 
 const heading = { fontFamily: 'var(--font-heading)' };
 const MND = ['Jan', 'Feb', 'Mar', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Des'];
@@ -28,6 +30,10 @@ const MND = ['Jan', 'Feb', 'Mar', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt
 const medTynnSkiller = (s) => String(s).replace(/[\s\u00A0]/g, '\u202F');
 const kr = (v) => `${medTynnSkiller(Math.round(v || 0).toLocaleString('nb-NO'))}\u202Fkr`;
 const tall = (v) => medTynnSkiller(Math.round(v || 0).toLocaleString('nb-NO'));
+const planYmLabel = (ym) => {
+  const [y, m] = String(ym || '').split('-').map(Number);
+  return y && m ? `${MND[m - 1].toLowerCase()} ${String(y).slice(2)}` : ym;
+};
 const sum12 = (arr) => (arr || []).reduce((s, x) => s + (Number(x) || 0), 0);
 
 function sumPerMnd(serier) {
@@ -124,6 +130,41 @@ export default function Budsjett({ apiKey, readOnly = false, investor = false })
   const [forslag, setForslag] = useState(null);
   const [drivere, setDrivere] = useState({ nye: '', churn: '', fyll: '', snittleie: '', honorarpct: '', oppstart: '' });
   const [seedKostnader, setSeedKostnader] = useState(true);
+
+  // Budsjettveiviser + årsoversikt (intuitiv årsvelger med status per år)
+  const [wizardOpen, setWizardOpen] = useState(false);
+  const [wizardAar, setWizardAar] = useState(null);
+  const [aarListe, setAarListe] = useState([]);
+  const [aarMenyOpen, setAarMenyOpen] = useState(false);
+  const hentAarListe = useCallback(async () => {
+    try {
+      const r = await fetch(`/api/admin/budsjett/aar?key=${encodeURIComponent(apiKey)}`);
+      const j = await r.json();
+      if (r.ok && j.ok) setAarListe(j.aar || []);
+    } catch (e) { /* stille — årsvelgeren viser da bare pilnavigasjon */ }
+  }, [apiKey]);
+  useEffect(() => { hentAarListe(); }, [hentAarListe]);
+  useEffect(() => {
+    if (!aarMenyOpen) return undefined;
+    const lukk = () => setAarMenyOpen(false);
+    window.addEventListener('click', lukk);
+    return () => window.removeEventListener('click', lukk);
+  }, [aarMenyOpen]);
+  const aapneWizard = (aar) => { setWizardAar(aar || null); setAarMenyOpen(false); setWizardOpen(true); };
+
+  // Frittstående budsjetter («planer»): fri periode + status — egen editor.
+  // valgtPlan: null (årsvisning) | 'ny' (opprettelse) | plan-id (editor).
+  const [planListe, setPlanListe] = useState([]);
+  const [valgtPlan, setValgtPlan] = useState(null);
+  const hentPlanListe = useCallback(async () => {
+    if (readOnly) return;
+    try {
+      const r = await fetch(`/api/admin/budsjett/planer?key=${encodeURIComponent(apiKey)}`);
+      const j = await r.json();
+      if (r.ok && j.ok) setPlanListe(j.planer || []);
+    } catch (e) { /* stille */ }
+  }, [apiKey, readOnly]);
+  useEffect(() => { hentPlanListe(); }, [hentPlanListe]);
 
   // Klient-cache (stale-while-revalidate): fanebytter rendres momentant fra
   // sist kjente data mens ferske tall hentes stille. dirtyRef vokter mot at
@@ -353,6 +394,7 @@ export default function Budsjett({ apiKey, readOnly = false, investor = false })
       cacheSlett('bud:');
       cacheHent(`bud:${year}`, `/api/admin/budsjett?key=${encodeURIComponent(apiKey)}&year=${year}`).catch(() => {});
       if (erRull) cacheHent(`bud:${iAar + 1}`, `/api/admin/budsjett?key=${encodeURIComponent(apiKey)}&year=${iAar + 1}`).catch(() => {});
+      hentAarListe(); // årsvelgerens statuser (sum/låst) skal speile lagringen
       setLagretNaa(true); setTimeout(() => setLagretNaa(false), 2500);
     } catch (e) { setFeil(e.message); }
     setLagrer(false);
@@ -1009,6 +1051,20 @@ export default function Budsjett({ apiKey, readOnly = false, investor = false })
     );
   };
 
+  // Frittstående budsjett valgt → egen fokusert editor (alle hooks er kjørt over).
+  if (valgtPlan !== null) {
+    return (
+      <div className="mx-auto max-w-[1280px]" data-testid="budsjett-modul">
+        <BudsjettPlan
+          apiKey={apiKey}
+          planId={valgtPlan === 'ny' ? null : valgtPlan}
+          onLukk={(id) => setValgtPlan(id ?? null)}
+          onEndret={hentPlanListe}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto max-w-[1280px]" data-testid="budsjett-modul">
       {/* Topplinje: år + visning + handlinger */}
@@ -1020,7 +1076,74 @@ export default function Budsjett({ apiKey, readOnly = false, investor = false })
         ) : (
           <div className="flex h-9 items-center rounded-full bg-white p-1 shadow-[0_2px_10px_rgba(0,0,0,0.04)]">
             <button onClick={() => byttAar(year - 1)} data-testid="budsjett-aar-forrige" className="flex h-7 w-7 items-center justify-center rounded-full text-[#999] transition-colors hover:bg-[#f4f0fb] hover:text-[#6d28d9]"><ChevronLeft className="h-4 w-4" /></button>
-            <span className="px-2 text-[13.5px] font-bold tabular-nums text-[#0a0a0a]" style={heading} data-testid="budsjett-aar">{year}</span>
+            <div className="relative">
+              <button
+                onClick={(e) => { e.stopPropagation(); setAarMenyOpen((o) => !o); }}
+                data-testid="budsjett-aar"
+                className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[13.5px] font-bold tabular-nums text-[#0a0a0a] transition-colors hover:bg-[#f4f0fb]"
+                style={heading}
+                title="Se alle budsjettår"
+              >
+                {year} <ChevronDown className={`h-3 w-3 text-[#b5b5b5] transition-transform ${aarMenyOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {aarMenyOpen && (
+                <div className="absolute left-1/2 top-full z-40 mt-2 w-[248px] -translate-x-1/2 rounded-xl border border-black/[0.06] bg-white p-1.5 shadow-[0_14px_44px_rgba(0,0,0,0.14)]" data-testid="budsjett-aar-meny" onClick={(e) => e.stopPropagation()}>
+                  {Array.from(new Set([...aarListe.map((a) => a.year), iAar, iAar + 1])).sort().map((y) => {
+                    const eks = aarListe.find((a) => a.year === y);
+                    return (
+                      <button
+                        key={y}
+                        onClick={() => { setAarMenyOpen(false); byttAar(y); }}
+                        data-testid={`budsjett-aar-valg-${y}`}
+                        className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left transition-colors ${y === year ? 'bg-[#f4f0fb]' : 'hover:bg-[#fafaf8]'}`}
+                      >
+                        <span className="text-[13px] font-bold tabular-nums text-[#0a0a0a]" style={heading}>{y}</span>
+                        {eks?.laast && <Lock className="h-3 w-3 shrink-0 text-[#8b5cf6]" />}
+                        <span className="ml-auto text-[11px] tabular-nums text-[#999]">
+                          {eks ? `${eks.resultat >= 0 ? '+' : '−'}${tall(Math.abs(eks.resultat))} kr` : 'Ikke opprettet'}
+                        </span>
+                        {y === year && <Check className="h-3.5 w-3.5 shrink-0 text-[#6d28d9]" />}
+                      </button>
+                    );
+                  })}
+                  {!readOnly && (
+                    <>
+                      <div className="mx-1 my-1 h-px bg-black/[0.05]" />
+                      <button
+                        onClick={() => aapneWizard(null)}
+                        data-testid="budsjett-aar-nytt"
+                        className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[12.5px] font-semibold text-[#6d28d9] transition-colors hover:bg-[#f4f0fb]"
+                      >
+                        <Sparkles className="h-3.5 w-3.5" /> Nytt budsjett — veiviser
+                      </button>
+                      <div className="mx-1 my-1 h-px bg-black/[0.05]" />
+                      <p className="px-2.5 pb-1 pt-1.5 text-[9.5px] font-bold uppercase tracking-[0.09em] text-[#c9c4bd]">Frittstående budsjetter</p>
+                      {planListe.map((p) => (
+                        <button
+                          key={p.id}
+                          onClick={() => { setAarMenyOpen(false); setValgtPlan(p.id); }}
+                          data-testid={`budsjett-plan-valg-${p.id}`}
+                          className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-[#fafaf8]"
+                        >
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-[12.5px] font-semibold text-[#333]">{p.navn}</span>
+                            <span className="block text-[10.5px] tabular-nums text-[#b5b5b5]">{planYmLabel(p.startYm)} → {planYmLabel(p.sluttYm)} · {p.antallMnd} mnd</span>
+                          </span>
+                          {p.status === 'vedtatt' && <span className="shrink-0 rounded bg-[#eef6f0] px-1.5 py-0.5 text-[9px] font-bold uppercase text-[#1f7a45]">Vedtatt</span>}
+                        </button>
+                      ))}
+                      <button
+                        onClick={() => { setAarMenyOpen(false); setValgtPlan('ny'); }}
+                        data-testid="budsjett-plan-ny-knapp"
+                        className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[12.5px] font-semibold text-[#6d28d9] transition-colors hover:bg-[#f4f0fb]"
+                      >
+                        <Plus className="h-3.5 w-3.5" /> Frittstående budsjett — fri periode
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
             <button onClick={() => byttAar(year + 1)} data-testid="budsjett-aar-neste" className="flex h-7 w-7 items-center justify-center rounded-full text-[#999] transition-colors hover:bg-[#f4f0fb] hover:text-[#6d28d9]"><ChevronRight className="h-4 w-4" /></button>
           </div>
         )}
@@ -1084,22 +1207,26 @@ export default function Budsjett({ apiKey, readOnly = false, investor = false })
       {/* Tomt år: tilby å kopiere fjoråret eller foreslå fra porteføljen */}
       {!laster && !readOnly && !erRull && data && !data.finnes && !dirty && (
         <div className="mt-4 flex flex-wrap items-center gap-3 rounded-2xl bg-white p-4 shadow-[0_2px_16px_rgba(0,0,0,0.04)]" data-testid="budsjett-tomt-aar">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#e8eefc]"><CopyPlus className="h-4 w-4 text-[#3757c4]" /></span>
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#f4f0fb]"><Sparkles className="h-4 w-4 text-[#8b5cf6]" /></span>
           <div className="min-w-0 flex-1">
-            <p className="text-[13.5px] font-semibold text-[#0a0a0a]">Budsjettet for {year} er tomt</p>
-            <p className="text-[12px] text-[#999]">Start med fjorårets tall eller la porteføljen foreslå inntektssiden.</p>
+            <p className="text-[13.5px] font-semibold text-[#0a0a0a]">Budsjettet for {year} er ikke opprettet ennå</p>
+            <p className="text-[12px] text-[#999]">Veiviseren henter inntekter og kostnader automatisk — du bestemmer bare tilvekst og churn.</p>
           </div>
           <div className="flex flex-wrap items-center gap-1.5">
+            <button
+              onClick={() => aapneWizard(year)}
+              data-testid="budsjett-wizard-knapp"
+              className="flex h-9 items-center gap-1.5 rounded-full bg-[#0a0a0a] px-4 text-[12.5px] font-semibold text-white transition-all hover:bg-black/85 active:scale-[0.97]"
+            >
+              <Sparkles className="h-4 w-4" /> Lag budsjettet på 2 minutter
+            </button>
             <button
               onClick={() => kopierFraAar(year - 1)}
               disabled={kopierer}
               data-testid="budsjett-kopier-fjor"
-              className="flex h-9 items-center gap-1.5 rounded-full bg-[#0a0a0a] px-4 text-[12.5px] font-semibold text-white transition-all hover:bg-black/85 active:scale-[0.97]"
+              className="flex h-9 items-center gap-1.5 rounded-full bg-[#f4f2ee] px-4 text-[12.5px] font-semibold text-[#57534e] transition-all hover:bg-[#ece9e3] active:scale-[0.97]"
             >
               {kopierer ? <Loader2 className="h-4 w-4 animate-spin" /> : <CopyPlus className="h-4 w-4" />} Kopier {year - 1}
-            </button>
-            <button onClick={aapneSeed} className="flex h-9 items-center gap-1.5 rounded-full bg-[#f4f0fb] px-4 text-[12.5px] font-semibold text-[#6d28d9] transition-all hover:bg-[#ece4fa] active:scale-[0.97]">
-              <Sparkles className="h-4 w-4" /> Bygg med inntektsmodellen
             </button>
           </div>
         </div>
@@ -1730,6 +1857,24 @@ export default function Budsjett({ apiKey, readOnly = false, investor = false })
             )}
           </div>
         </div>
+      )}
+
+      {/* Budsjettveiviser: fra tomt til låst budsjett i fire steg */}
+      {!readOnly && (
+        <BudsjettWizard
+          apiKey={apiKey}
+          aapen={wizardOpen}
+          startAar={wizardAar}
+          aarListe={aarListe}
+          onLukk={() => setWizardOpen(false)}
+          onFerdig={(y) => {
+            setWizardOpen(false);
+            cacheSlett('bud:');
+            hentAarListe();
+            if (y !== year && !erRull) setYear(y); else hent(erRull ? iAar : y);
+            if (erRull) hentNeste();
+          }}
+        />
       )}
     </div>
   );

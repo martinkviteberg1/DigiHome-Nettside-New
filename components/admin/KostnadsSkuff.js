@@ -19,7 +19,7 @@ const heading = { fontFamily: 'var(--font-heading)' };
 const ETIKETT = 'text-[10px] font-semibold uppercase tracking-[0.08em] text-[#a8a29a]';
 const KNAPP_PRIMAER = 'flex h-7 items-center gap-1.5 rounded-[7px] bg-gradient-to-b from-[#2b2825] to-[#131110] px-3 text-[12px] font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.09),0_1px_2px_rgba(28,25,23,0.2)] transition-all hover:from-[#211f1c] hover:to-[#0a0908] active:scale-[0.98]';
 
-const KATEGORI_LABEL = { lonn: 'Lønn', markedsforing: 'Markedsføring', programvare: 'Programvare', annet: 'Annet' };
+const KATEGORI_LABEL = { lonn: 'Lønn', husleie: 'Husleie', programvare: 'Programvare', regnskap: 'Regnskap', apillm: 'API/LLM', markedsforing: 'Markedsføring', annet: 'Annet' };
 const FORDELING_LABEL = { alle: 'likt per enhet', utleide: 'kun utleide', honorar: 'etter honorar' };
 
 const tallFmt = new Intl.NumberFormat('nb-NO', { maximumFractionDigits: 0 });
@@ -84,7 +84,7 @@ export default function KostnadsSkuff({ apiKey, felles = [], onOppdatert, onLukk
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-[15px] font-semibold text-[#1c1917]" style={heading}>Faste kostnader</p>
-              <p className="mt-0.5 text-[11.5px] text-[#a8a29a]">Løpende kostnader (lønn m.m.) — teller i marginen. CAC settes per enhet i Leieforhold-skuffen.</p>
+              <p className="mt-0.5 text-[11.5px] text-[#a8a29a]">Ett register: samme kostnader som Økonomi → Kostnader — teller i margin, resultat og budsjett. CAC settes per enhet i Leieforhold-skuffen.</p>
             </div>
             <button onClick={() => onLukk?.()} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px] text-[#b3ada3] transition-colors hover:bg-[#f7f6f3] hover:text-[#57534e]" data-testid="kostnadsskuff-lukk"><X className="h-4 w-4" /></button>
           </div>
@@ -117,8 +117,11 @@ export default function KostnadsSkuff({ apiKey, felles = [], onOppdatert, onLukk
                   <span className={`mb-1 block ${ETIKETT}`}>Kategori</span>
                   <select value={skjema.kategori} onChange={(e) => setSkjema((f) => ({ ...f, kategori: e.target.value }))} className="h-8 w-full rounded-[7px] border border-black/[0.08] bg-white px-2 text-[12px] outline-none focus:border-[#8b5cf6]/40">
                     <option value="lonn">Lønn</option>
+                    <option value="husleie">Husleie</option>
                     <option value="markedsforing">Markedsføring</option>
                     <option value="programvare">Programvare</option>
+                    <option value="regnskap">Regnskap</option>
+                    <option value="apillm">API/LLM</option>
                     <option value="annet">Annet</option>
                   </select>
                 </label>
