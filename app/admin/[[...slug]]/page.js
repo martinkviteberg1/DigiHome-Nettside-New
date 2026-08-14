@@ -8,9 +8,10 @@ import {
   Command, Search, CornerDownLeft, LayoutTemplate, Crosshair, TrendingUp, Wallet,
   Globe, ExternalLink, PenLine, Mail, Home, History, Landmark, Wand2, Layers, UserPlus,
   ClipboardCheck, CalendarDays, ArrowLeft, KeyRound, Check, User, Eye, EyeOff,
-  PanelLeftClose, PanelLeftOpen, Target, Scale,
+  PanelLeftClose, PanelLeftOpen, Target, Scale, Radar,
 } from 'lucide-react';
 import Brukere from '@/components/admin/Brukere';
+import Salgsradar from '@/components/admin/Salgsradar';
 import Leieforhold from '@/components/admin/Leieforhold';
 import Budsjett from '@/components/admin/Budsjett';
 import InnsiktDashboard from '@/components/admin/InnsiktDashboard';
@@ -67,6 +68,7 @@ const NAV = [
     group: 'Salg',
     items: [
       { k: 'i-leads', insight: 'leads', l: 'Leads', icon: UserPlus, badge: 'pending', desc: 'Innkommende leads — status, kilde og CRM-synk' },
+      { k: 'salgsradar', l: 'Salgsradar', icon: Radar, desc: 'FINN-annonser → prisanalyse, AI-styling og tilbud til huseier' },
       { k: 'kunder', l: 'Kunder', icon: Users, desc: 'Utleiere · kontrakter · MRR fra plattformen' },
       { k: 'historikk', l: 'Historikk', icon: History, desc: 'Leads fra før sporingen — sett kilde & verdi manuelt' },
       { k: 'abonnementer', l: 'Abonnementer', icon: CreditCard, soon: true, desc: 'Aktive avtaler & fakturering' },
@@ -144,6 +146,7 @@ const SECTION_TITLES = {
   moter: { t: 'Møter', s: 'Styremøter & ledermøter — agenda, referat, vedtak og aksjonspunkter som blir saker' },
   brukere: { t: 'Brukere', s: 'Personer, roller og tilgang — inviter nye, endre kontoer og se portalen som en annen bruker' },
   kunder: { t: 'Kunder', s: 'Utleiere (betalende kunder) · kontrakter · eiendommer · MRR — synket fra plattformen' },
+  salgsradar: { t: 'Salgsradar', s: 'FINN-annonser → prisanalyse mot porteføljen, AI-styling og tilbudsside til huseier' },
   abonnementer: { t: 'Abonnementer', s: 'Kommer snart — aktive avtaler & fakturering' },
   bro: { t: 'Agent-bro', s: 'Delt meldingstråd for koordinering med plattform-prosjektet' },
   nyhetsbrev: { t: 'Nyhetsbrev', s: 'Komponer, forhåndsvis og send e-post til leads og kunder — med samtykke-merking og avmelding' },
@@ -199,6 +202,7 @@ const SLUG_TIL_SEKSJON = {
   investorrom: { section: 'investorrom' },
   playbook: { section: 'playbook' },
   kunder: { section: 'kunder' },
+  salgsradar: { section: 'salgsradar' },
   historikk: { section: 'historikk' },
   abonnementer: { section: 'abonnementer' },
   nyhetsbrev: { section: 'nyhetsbrev' },
@@ -839,6 +843,7 @@ export default function AdminPage({ params }) {
           {section === 'moter' && <MeetingsTab apiKey={token} user={user} onOpenTask={(id, arkivert) => runSaker({ do: 'aapne', id, arkivert })} />}
           {section === 'innsikt' && <InnsiktDashboard apiKey={token} tab={insightTab} onTabChange={setInsightTab} onStats={setInsightStats} />}
           {section === 'kunder' && <CustomersDashboard apiKey={token} />}
+          {section === 'salgsradar' && <Salgsradar apiKey={token} />}
           {section === 'abonnementer' && <ComingSoon icon={CreditCard} title="Abonnementer" body="Oversikt over aktive avtaler, fakturering og inntekt per kunde — hentet direkte fra app-prosjektet. Kommer i neste fase." />}
           {section === 'bro' && <AgentBridge apiKey={token} />}
         </div>
@@ -1529,4 +1534,5 @@ function ProfilModal({ token, user, onClose, onUpdated }) {
     </div>
   );
 }
+
 

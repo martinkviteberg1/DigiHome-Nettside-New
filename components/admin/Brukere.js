@@ -66,6 +66,7 @@ const MODUL_GRUPPER = [
       { k: 'okonomi', l: 'Økonomi', sub: 'Inntekter og marginer' },
       { k: 'kunder', l: 'Kunder', sub: 'Kundeoversikt' },
       { k: 'i-leads', l: 'Leads', sub: 'Innkommende henvendelser' },
+      { k: 'salgsradar', l: 'Salgsradar', sub: 'FINN-annonser → analyse og tilbud til huseiere' },
       { k: 'historikk', l: 'Historikk', sub: 'Endringslogg' },
     ],
   },

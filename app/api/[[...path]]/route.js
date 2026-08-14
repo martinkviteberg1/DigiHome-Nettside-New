@@ -62,6 +62,7 @@ import { computeLlmUsageDashboard, getModelOverrides, setModelOverride, logImage
 import { logExtUsage, summarizeExtUsage, getPlatformUsage } from '@/lib/ext-usage';
 import { getFinanceSettings, setFinanceSettings, listCosts, listActiveCosts, upsertCost, deleteCost, listContracts, upsertContract, deleteContract, listEvents, upsertEvent, deleteEvent, computeResultat, computeLikviditet, computeFinanceOverview, computeTrends, captureSnapshot, computeInvestorMetrics, computeForecast, computeBoardPack, computeCustomers, computePlatformCustomers } from '@/lib/finance';
 import { listFellesKostnader, upsertFellesKostnad, slettFellesKostnad, migrerFellesKostnader } from '@/lib/kostnader';
+import { finnKodeFraUrl, hentFinnHtml, parseFinnAnnonse, beregnAnalyse, opprettLead, listLeads as radarListLeads, oppdaterLead as radarOppdaterLead, slettLead as radarSlettLead, stilBilde, lagreStyletBilde, hentStyletBilde, hentTilbud, registrerTilbudKontakt, tilbudsRegnestykke, STILER as RADAR_STILER } from '@/lib/salgsradar';
 import { syncContractsFromPlatform, syncCustomersFromPlatform, maybeAutoSyncFinance, getFinanceSyncMeta } from '@/lib/contracts-sync';
 import { enqueueInterest as deliverInterest, retryInterestWebhooks, webhookTarget as interestWebhookTarget, platformInboxUrl, platformThreadUrl, platformUnitUrl, deliveryView, OUTBOX_COLL as INTEREST_OUTBOX } from '@/lib/interest-webhook';
 import { notifyStatus, removeSuppression } from '@/lib/notify-status';
@@ -1343,7 +1344,7 @@ function innsynAuthed(request) {
 // utvalgte moduler (settes per person under Personer). Nøklene matcher
 // menypunktene i admin slik at navigasjon og API håndheves likt.
 const MODUL_NOKLER = [
-  'nokkeltall', 'okonomi', 'leieforhold', 'budsjett', 'kunder', 'i-leads', 'historikk',
+  'nokkeltall', 'okonomi', 'leieforhold', 'budsjett', 'kunder', 'i-leads', 'historikk', 'salgsradar',
   // Datarom-sidene (investorrommet) — må speile MODUL_VALG i components/admin/Brukere.js
   'dr-oversikt', 'dr-resultat', 'dr-enheter', 'dr-pipeline', 'dr-selskap', 'dr-dokumenter',
 ];
@@ -3768,6 +3769,93 @@ async function handleRoute(request, { params }) {
       await drAutoSync(db, async () => (await hentLeieforhold(leieforholdTarget(), { db })).rows || []);
       return cors(NextResponse.json({ ok: true, oversikt: await drBeregnOversikt(db) }));
     }
+    // ═══ SALGSRADAR — FINN-annonse → analyse → AI-styling → tilbudsside ═══
+    if (route === '/admin/salgsradar/hent' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let bSr = {}; try { bSr = await request.json(); } catch (e) {}
+      const kodeSr = finnKodeFraUrl(bSr.url);
+      if (!kodeSr) return cors(NextResponse.json({ ok: false, error: 'Lim inn en gyldig FINN-annonse-URL (www.finn.no, med finnkode)' }, { status: 400 }));
+      let htmlSr;
+      try { htmlSr = await hentFinnHtml(kodeSr); } catch (e) { return cors(NextResponse.json({ ok: false, error: e.message || 'Kunne ikke hente annonsen' }, { status: 502 })); }
+      const annonseSr = parseFinnAnnonse(htmlSr, kodeSr);
+      if (!annonseSr.pris) return cors(NextResponse.json({ ok: false, error: 'Fant ikke månedsleie i annonsen — er dette en leieannonse?' }, { status: 422 }));
+      let rowsSr = [];
+      try { const lfSr = await hentLeieforhold(leieforholdTarget(), { db }); rowsSr = lfSr.rows || []; } catch (e) { /* analyse uten portefølje */ }
+      const analyseSr = beregnAnalyse(annonseSr, rowsSr);
+      const resSr = await opprettLead(db, annonseSr, analyseSr, `https://www.finn.no/realestate/lettings/ad.html?finnkode=${kodeSr}`);
+      return cors(NextResponse.json({ ok: true, ...resSr }));
+    }
+    if (route === '/admin/salgsradar/leads' && method === 'GET') {
+      if (!(await modulAuthed(request, db, 'salgsradar'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      return cors(NextResponse.json({ ok: true, leads: await radarListLeads(db) }));
+    }
+    if (route === '/admin/salgsradar/lead' && method === 'PUT') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let bSrO = {}; try { bSrO = await request.json(); } catch (e) {}
+      const rSrO = await radarOppdaterLead(db, bSrO);
+      if (!rSrO.ok) return cors(NextResponse.json({ ok: false, error: rSrO.error }, { status: rSrO.status || 400 }));
+      return cors(NextResponse.json(rSrO));
+    }
+    if (route === '/admin/salgsradar/lead' && method === 'DELETE') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const idSrD = (() => { try { return new URL(request.url).searchParams.get('id') || ''; } catch (e) { return ''; } })();
+      const rSrD = await radarSlettLead(db, idSrD);
+      if (!rSrD.ok) return cors(NextResponse.json({ ok: false, error: rSrD.error }, { status: rSrD.status || 404 }));
+      return cors(NextResponse.json({ ok: true }));
+    }
+    // AI-styling av ett annonsebilde (Nano Banana) — kan ta 20–60 sek.
+    if (route === '/admin/salgsradar/stil' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let bSt = {}; try { bSt = await request.json(); } catch (e) {}
+      const leadSt = await db.collection('salgsradar_leads').findOne({ id: String(bSt.leadId || '') });
+      if (!leadSt) return cors(NextResponse.json({ ok: false, error: 'Lead ikke funnet' }, { status: 404 }));
+      if (!(leadSt.bilder || []).includes(bSt.bildeUrl)) return cors(NextResponse.json({ ok: false, error: 'Bildet tilhører ikke denne annonsen' }, { status: 400 }));
+      if ((leadSt.stylet || []).length >= 6) return cors(NextResponse.json({ ok: false, error: 'Maks 6 stylede bilder per lead' }, { status: 400 }));
+      const stilSt = RADAR_STILER[bSt.stil] ? bSt.stil : 'nordisk';
+      try {
+        const dataUrlSt = await stilBilde(bSt.bildeUrl, stilSt);
+        const bildeIdSt = await lagreStyletBilde(db, leadSt.id, bSt.bildeUrl, stilSt, dataUrlSt);
+        return cors(NextResponse.json({ ok: true, bildeId: bildeIdSt, stil: stilSt }));
+      } catch (e) {
+        return cors(NextResponse.json({ ok: false, error: e.message || 'AI-styling feilet' }, { status: 502 }));
+      }
+    }
+
+    // ── Offentlige tilbudsruter (uhindret av auth — slug er ugjettbar) ──
+    if (route === '/tilbud' && method === 'GET') {
+      if (!rateLimit(`tilbud:${clientIp(request)}`, 60)) return cors(NextResponse.json({ error: 'For mange forespørsler' }, { status: 429 }));
+      const uTb = new URL(request.url);
+      const tb = await hentTilbud(db, uTb.searchParams.get('slug'), { sporAapning: uTb.searchParams.get('spor') === '1' });
+      if (!tb) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
+      return cors(NextResponse.json({ ok: true, tilbud: tb }));
+    }
+    if (route === '/tilbud/kontakt' && method === 'POST') {
+      if (!rateLimit(`tilbud-kontakt:${clientIp(request)}`, 8)) return cors(NextResponse.json({ error: 'For mange forespørsler' }, { status: 429 }));
+      let bTk = {}; try { bTk = await request.json(); } catch (e) {}
+      const rTk = await registrerTilbudKontakt(db, bTk.slug, bTk);
+      if (!rTk.ok) return cors(NextResponse.json({ ok: false, error: rTk.error }, { status: rTk.status || 400 }));
+      // In-app varsel til alle owner/admin: huseier har svart på tilbudet
+      try {
+        const adminsTk = await db.collection('admin_users').find({ role: { $in: ['owner', 'admin'] } }, { projection: { id: 1 } }).toArray();
+        for (const aTk of adminsTk) {
+          await varsle(db, aTk.id, null, { type: 'salgsradar', text: `Salgsradar: huseier svarte på tilbudet for ${rTk.adresse}` });
+        }
+      } catch (e) { /* varsling er best effort */ }
+      return cors(NextResponse.json({ ok: true }));
+    }
+    // Stylede bilder (binært) — brukes av både admin-skuffen og tilbudssiden
+    if (route === '/tilbud/bilde' && method === 'GET') {
+      if (!rateLimit(`tilbud-bilde:${clientIp(request)}`, 120)) return cors(NextResponse.json({ error: 'For mange forespørsler' }, { status: 429 }));
+      const idTb = (() => { try { return new URL(request.url).searchParams.get('id') || ''; } catch (e) { return ''; } })();
+      const bildeTb = await hentStyletBilde(db, idTb);
+      if (!bildeTb || !bildeTb.dataUrl) return cors(NextResponse.json({ error: 'Ikke funnet' }, { status: 404 }));
+      const [hodeTb, b64Tb] = String(bildeTb.dataUrl).split(',');
+      const mimeTb = (hodeTb.match(/^data:([^;]+);/) || [])[1] || 'image/png';
+      return new NextResponse(Buffer.from(b64Tb, 'base64'), {
+        headers: { 'Content-Type': mimeTb, 'Cache-Control': 'public, max-age=604800, immutable' },
+      });
+    }
+
     if (route === '/admin/datarom/enhetsokonomi' && method === 'GET') {
       if (!(await modulAuthed(request, db, 'dr-enheter'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       // Auto-synk: enhetslisten speiler Leieforhold-porteføljen (maks hvert 10. min).
