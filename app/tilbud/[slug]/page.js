@@ -2,10 +2,12 @@
 
 /* ═══════════ OFFENTLIG TILBUDSSIDE — /tilbud/[slug] ═══════════
    Den personlige siden en huseier får tilsendt (via FINN-melding/telefon).
-   Verdensklasse 2026-design: mørk DigiHome-hero, interaktiv før/etter-slider,
-   dokumentstil-regnestykke (mnd/år), prosesstidslinje og nøktern typografi.
+   Verdensklasse 2026-design, editorielt dokumentspråk:
+   · mørk DigiHome-hero med teller-animerte nøkkeltall
+   · bildekort som overlapper hero-sømmen («forside»-følelse)
+   · interaktiv før/etter-slider med auto-hint (respekterer reduced motion)
+   · nummererte seksjoner (01…), scroll-reveal, sticky bunn-CTA på mobil
    · ærlig regnestykke: anbefalt leie, honorar (eks. mva), netto til eier
-   · AI-stylede bilder er alltid tydelig merket som illustrasjoner
    Åpninger spores (spor=1) og vises i Salgsradar-pipelinen. */
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
@@ -13,14 +15,97 @@ import { useParams } from 'next/navigation';
 
 const heading = { fontFamily: 'var(--font-heading)' };
 const tall = (v) => new Intl.NumberFormat('nb-NO', { maximumFractionDigits: 0 }).format(Math.round(Number(v) || 0)).replace(/\u00A0/g, '\u202F');
+const reduserMotion = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
 
-/* ── Interaktiv før/etter-slider (pointer events, mus + touch) ── */
+/* ── Scroll-reveal (én gang, respekterer reduced motion) ── */
+function useReveal() {
+  const ref = useRef(null);
+  const [vist, setVist] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (typeof IntersectionObserver === 'undefined' || reduserMotion()) { setVist(true); return; }
+    const io = new IntersectionObserver(([e]) => { if (e.isIntersecting) { setVist(true); io.disconnect(); } }, { threshold: 0.1 });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+  return [ref, vist];
+}
+
+function Avsnitt({ id, className = '', children }) {
+  const [ref, vist] = useReveal();
+  return (
+    <section id={id} ref={ref} className={`${className} transition-all duration-700 ease-out ${vist ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`}>
+      {children}
+    </section>
+  );
+}
+
+/* ── Editorielt seksjonsmerke: 02 · ØKONOMIEN ─────── */
+const Merke = ({ nr, tekst }) => (
+  <div className="flex items-center gap-3">
+    <span className="text-[11px] font-bold tabular-nums text-[#8b5cf6]" style={heading}>{nr}</span>
+    <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#a8a29e]">{tekst}</span>
+    <span className="h-px flex-1 bg-black/[0.07]" />
+  </div>
+);
+
+/* ── Teller-animasjon for nøkkeltall ── */
+function TellOpp({ verdi, ms = 1000 }) {
+  const m = Number(verdi) || 0;
+  const [vis, setVis] = useState(0);
+  const ref = useRef(null);
+  const kjort = useRef(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const start = () => {
+      if (kjort.current) return;
+      kjort.current = true;
+      const t0 = performance.now();
+      const steg = (t) => {
+        const p = Math.min(1, (t - t0) / ms);
+        const e = 1 - Math.pow(1 - p, 3);
+        setVis(Math.round(m * e));
+        if (p < 1) requestAnimationFrame(steg);
+      };
+      requestAnimationFrame(steg);
+    };
+    if (typeof IntersectionObserver === 'undefined' || reduserMotion()) { setVis(m); kjort.current = true; return; }
+    const io = new IntersectionObserver(([e]) => { if (e.isIntersecting) { start(); io.disconnect(); } }, { threshold: 0.35 });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [m, ms]);
+  return <span ref={ref}>{tall(vis)}</span>;
+}
+
+/* ── Interaktiv før/etter-slider (pointer events, mus + touch, auto-hint) ── */
 function ForEtter({ forUrl, etterUrl, nokkel }) {
   const [pos, setPos] = useState(58);
   const boks = useRef(null);
   const drar = useRef(false);
+  const brukerHarDratt = useRef(false);
 
-  useEffect(() => { setPos(58); }, [nokkel]);
+  // Auto-hint: delelinjen glir 72 → 58 en gang, så brukeren ser at den kan dras
+  useEffect(() => {
+    brukerHarDratt.current = false;
+    if (reduserMotion()) { setPos(58); return; }
+    let raf;
+    const t0 = performance.now();
+    const fra = 74, til = 58, varighet = 1300, forsink = 450;
+    setPos(fra);
+    const steg = (t) => {
+      if (brukerHarDratt.current) return;
+      const dt = t - t0 - forsink;
+      if (dt < 0) { raf = requestAnimationFrame(steg); return; }
+      const p = Math.min(1, dt / varighet);
+      const e = 1 - Math.pow(1 - p, 3);
+      setPos(fra + (til - fra) * e);
+      if (p < 1) raf = requestAnimationFrame(steg);
+    };
+    raf = requestAnimationFrame(steg);
+    return () => cancelAnimationFrame(raf);
+  }, [nokkel]);
 
   const flytt = (clientX) => {
     const el = boks.current;
@@ -33,9 +118,9 @@ function ForEtter({ forUrl, etterUrl, nokkel }) {
   return (
     <div
       ref={boks}
-      className="relative cursor-ew-resize select-none overflow-hidden rounded-2xl bg-[#e8e6e1]"
+      className="relative cursor-ew-resize select-none overflow-hidden rounded-2xl bg-[#26232a]"
       style={{ touchAction: 'none', minHeight: 220 }}
-      onPointerDown={(e) => { drar.current = true; try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) {} flytt(e.clientX); }}
+      onPointerDown={(e) => { drar.current = true; brukerHarDratt.current = true; try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) {} flytt(e.clientX); }}
       onPointerMove={(e) => { if (drar.current) flytt(e.clientX); }}
       onPointerUp={() => { drar.current = false; }}
       onPointerCancel={() => { drar.current = false; }}
@@ -57,7 +142,7 @@ function ForEtter({ forUrl, etterUrl, nokkel }) {
           type="button"
           data-testid="tilbud-for-etter"
           aria-label="Dra for å sammenligne før og etter"
-          className="absolute top-1/2 flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white shadow-[0_3px_16px_rgba(0,0,0,0.3)]"
+          className="absolute top-1/2 flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white shadow-[0_3px_16px_rgba(0,0,0,0.3)] transition-transform active:scale-95"
         >
           <svg width="18" height="12" viewBox="0 0 18 12" fill="none" aria-hidden="true">
             <path d="M5.5 1 1 6l4.5 5M12.5 1 17 6l-4.5 5" stroke="#1c1917" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
@@ -76,6 +161,33 @@ function ForEtter({ forUrl, etterUrl, nokkel }) {
   );
 }
 
+/* ── Sammenligningsbarer: annonsert i dag vs. netto med DigiHome ── */
+function Sammenligning({ r }) {
+  const [ref, vist] = useReveal();
+  const maks = Math.max(Number(r.dagensPris) || 0, Number(r.nettoTilEier) || 0, 1);
+  return (
+    <div ref={ref} className="mt-4 rounded-2xl border border-black/[0.06] bg-white px-5 py-5 sm:px-7">
+      {[
+        ['Annonsert pris i dag', r.dagensPris, '#d6d3ce', '#78716c'],
+        ['Netto til deg med DigiHome', r.nettoTilEier, '#1f7a45', '#1c1917'],
+      ].map(([l, v, farge, tekst]) => (
+        <div key={l} className="py-2">
+          <div className="flex items-baseline justify-between gap-4">
+            <span className="text-[12px] font-medium" style={{ color: tekst }}>{l}</span>
+            <span className="shrink-0 text-[13px] font-bold tabular-nums" style={{ ...heading, color: tekst }}>{tall(v)} kr/mnd</span>
+          </div>
+          <div className="mt-1.5 h-[6px] overflow-hidden rounded-full bg-[#f1efeb]">
+            <div className="h-full rounded-full transition-all duration-1000 ease-out" style={{ width: vist ? `${Math.max(4, (Number(v) / maks) * 100)}%` : '4%', background: farge }} />
+          </div>
+        </div>
+      ))}
+      <p className="mt-2 text-[11px] leading-relaxed text-[#a8a29e]">
+        «Netto til deg» er etter vårt honorar — annonsering, visninger, kontrakt og oppfølging er inkludert.
+      </p>
+    </div>
+  );
+}
+
 export default function TilbudSide() {
   const params = useParams();
   const slug = String(params?.slug || '');
@@ -86,6 +198,7 @@ export default function TilbudSide() {
   const [sender, setSender] = useState(false);
   const [sendt, setSendt] = useState(false);
   const [aktivStylet, setAktivStylet] = useState(0);
+  const [visBunn, setVisBunn] = useState(false);
 
   useEffect(() => {
     if (!slug) return;
@@ -99,6 +212,18 @@ export default function TilbudSide() {
       setLaster(false);
     })();
   }, [slug]);
+
+  // Sticky bunn-CTA på mobil: vises etter hero, skjules når kontaktseksjonen er synlig
+  useEffect(() => {
+    const sjekk = () => {
+      const kontakt = document.getElementById('kontakt');
+      const kontaktSynlig = kontakt ? kontakt.getBoundingClientRect().top < window.innerHeight - 80 : false;
+      setVisBunn(window.scrollY > 560 && !kontaktSynlig);
+    };
+    window.addEventListener('scroll', sjekk, { passive: true });
+    sjekk();
+    return () => window.removeEventListener('scroll', sjekk);
+  }, []);
 
   const send = async () => {
     if (sender || !skjema.navn.trim() || !skjema.telefon.trim()) return;
@@ -124,12 +249,14 @@ export default function TilbudSide() {
   const stylet = tilbud?.stylet || [];
   const valgtStylet = stylet[aktivStylet] || null;
   const originalBilde = (tilbud?.bilder || [])[0] || null;
+  const harBilde = Boolean(valgtStylet || originalBilde);
 
   const fakta = useMemo(() => [
     tilbud?.boligtype, tilbud?.m2 ? `${tilbud.m2} m²` : null, tilbud?.soverom ? `${tilbud.soverom} soverom` : null,
   ].filter(Boolean), [tilbud]);
 
-  const maksBar = Math.max(Number(r.dagensPris) || 0, Number(r.nettoTilEier) || 0, 1);
+  // Seksjonsnumre forskyves om bildeseksjonen (01) mangler
+  const nr = (i) => String(i + (harBilde ? 1 : 0)).padStart(2, '0');
 
   if (laster) {
     return (
@@ -170,9 +297,9 @@ export default function TilbudSide() {
 
       {/* ── Mørk hero ── */}
       <section className="bg-[#131114] text-white">
-        <div className="mx-auto max-w-[920px] px-5 pb-12 pt-12 sm:px-8 sm:pb-16 sm:pt-16">
+        <div className={`mx-auto max-w-[920px] px-5 pt-12 sm:px-8 sm:pt-16 ${harBilde ? 'pb-24 sm:pb-28' : 'pb-12 sm:pb-16'}`}>
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#c9a5f5]">Vi så boligen din på FINN</p>
-          <h1 className="mt-4 max-w-[640px] text-[30px] font-bold leading-[1.08] tracking-[-0.02em] sm:text-[42px]" style={heading}>
+          <h1 className="mt-4 max-w-[680px] text-[32px] font-bold leading-[1.06] tracking-[-0.02em] sm:text-[46px]" style={heading}>
             {tilbud.adresse}
             <span className="block text-white/45">— her er hva vi kan gjøre for den.</span>
           </h1>
@@ -181,16 +308,18 @@ export default function TilbudSide() {
             {fakta.length ? <span className="text-white/30"> · {fakta.join(' · ')}</span> : null}
           </p>
 
-          {/* Nøkkeltall */}
+          {/* Nøkkeltall med teller-animasjon */}
           <div className="mt-10 grid grid-cols-1 gap-px overflow-hidden rounded-xl border border-white/[0.08] bg-white/[0.08] sm:grid-cols-3">
             {[
-              ['Leie vi anbefaler', `${tall(r.anbefaltLeie)} kr`, 'per måned', false],
-              [`Vårt honorar · ${r.honorarPct} % eks. mva`, `${tall(r.honorarMnd)} kr`, 'per måned', false],
-              ['Netto til deg', `${tall(r.nettoTilEier)} kr`, 'per måned — uten å løfte en finger', true],
+              ['Leie vi anbefaler', r.anbefaltLeie, 'per måned', false],
+              [`Vårt honorar · ${r.honorarPct} % eks. mva`, r.honorarMnd, 'per måned', false],
+              ['Netto til deg', r.nettoTilEier, 'per måned — uten å løfte en finger', true],
             ].map(([l, v, u, sterk]) => (
               <div key={l} className="bg-[#131114] px-5 py-5">
                 <p className="text-[11px] font-medium uppercase tracking-[0.1em] text-white/40">{l}</p>
-                <p className={`mt-2 text-[26px] font-bold tabular-nums tracking-[-0.01em] ${sterk ? 'text-[#7fd4a1]' : 'text-white'}`} style={heading}>{v}</p>
+                <p className={`mt-2 tabular-nums tracking-[-0.01em] ${sterk ? 'text-[28px] font-bold text-[#7fd4a1]' : 'text-[26px] font-bold text-white'}`} style={heading}>
+                  <TellOpp verdi={v} />{'\u00A0'}kr
+                </p>
                 <p className="mt-1 text-[11.5px] text-white/35">{u}</p>
               </div>
             ))}
@@ -201,50 +330,64 @@ export default function TilbudSide() {
               Det er <span className="font-semibold text-[#7fd4a1]">{tall(gevinst)} kr mer i måneden</span> enn annonsert pris i dag — {tall(r.gevinstAar)} kr i året.
             </p>
           )}
+
+          {/* Seksjonsheading for bildet — inne i heroen, bildet overlapper sømmen under */}
+          {harBilde && (
+            <div className="mt-12 flex items-end justify-between gap-4 sm:mt-16">
+              <div>
+                <div className="flex items-center gap-3">
+                  <span className="text-[11px] font-bold tabular-nums text-[#c9a5f5]" style={heading}>01</span>
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/40">Presentasjonen</span>
+                </div>
+                <h2 className="mt-2 text-[20px] font-bold tracking-[-0.01em] sm:text-[24px]" style={heading}>Slik kan annonsen din se ut</h2>
+              </div>
+              {valgtStylet && <p className="hidden shrink-0 pb-1 text-[11.5px] text-white/35 sm:block">Dra i linjen for å sammenligne →</p>}
+            </div>
+          )}
         </div>
       </section>
 
       <main className="mx-auto max-w-[920px] px-5 sm:px-8">
 
-        {/* ── Bilder: interaktiv før/etter ── */}
+        {/* ── 01 · Bildekort — overlapper hero-sømmen ── */}
         {valgtStylet ? (
-          <section className="mt-10 sm:mt-14">
-            <div className="mb-4 flex items-end justify-between gap-4">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#a8a29e]">Presentasjonen</p>
-                <h2 className="mt-1.5 text-[20px] font-bold tracking-[-0.01em] sm:text-[24px]" style={heading}>Slik kan annonsen din se ut</h2>
-              </div>
-              <p className="hidden shrink-0 text-[11.5px] text-[#a8a29e] sm:block">Dra i linjen for å sammenligne →</p>
+          <section className="-mt-14 sm:-mt-16">
+            <div className="overflow-hidden rounded-2xl shadow-[0_24px_80px_rgba(0,0,0,0.25)] ring-1 ring-black/10">
+              <ForEtter
+                forUrl={valgtStylet.kildeUrl || originalBilde}
+                etterUrl={`/api/tilbud/bilde?id=${valgtStylet.id}`}
+                nokkel={valgtStylet.id}
+              />
             </div>
-            <ForEtter
-              forUrl={valgtStylet.kildeUrl || originalBilde}
-              etterUrl={`/api/tilbud/bilde?id=${valgtStylet.id}`}
-              nokkel={valgtStylet.id}
-            />
             <p className="mt-2.5 text-center text-[11px] text-[#a8a29e] sm:hidden">← Dra i linjen for å sammenligne før og etter →</p>
             {stylet.length > 1 && (
               <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
                 {stylet.map((s, i) => (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img key={s.id} src={`/api/tilbud/bilde?id=${s.id}`} alt="" onClick={() => setAktivStylet(i)}
-                    className={`h-16 w-24 shrink-0 cursor-pointer rounded-lg object-cover transition-all ${i === aktivStylet ? 'ring-2 ring-[#8b5cf6] ring-offset-2 ring-offset-[#faf9f7]' : 'opacity-55 hover:opacity-100'}`} />
+                  <button key={s.id} type="button" onClick={() => setAktivStylet(i)} className="relative shrink-0">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={`/api/tilbud/bilde?id=${s.id}`} alt={s.stil ? `Stil: ${s.stil}` : ''}
+                      className={`h-16 w-24 rounded-lg object-cover transition-all ${i === aktivStylet ? 'ring-2 ring-[#8b5cf6] ring-offset-2 ring-offset-[#faf9f7]' : 'opacity-55 hover:opacity-100'}`} />
+                    {s.stil && (
+                      <span className="pointer-events-none absolute bottom-1 left-1 rounded bg-black/55 px-1.5 py-0.5 text-[8.5px] font-semibold capitalize text-white">{s.stil}</span>
+                    )}
+                  </button>
                 ))}
               </div>
             )}
           </section>
         ) : originalBilde ? (
-          <section className="mt-10 sm:mt-14">
-            <div className="overflow-hidden rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.10)]">
+          <section className="-mt-14 sm:-mt-16">
+            <div className="overflow-hidden rounded-2xl shadow-[0_24px_80px_rgba(0,0,0,0.25)] ring-1 ring-black/10">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={originalBilde} alt="Boligen fra annonsen" className="block h-auto w-full" data-testid="tilbud-hovedbilde" />
+              <img src={originalBilde} alt="Boligen fra annonsen" className="block h-auto max-h-[620px] w-full object-cover" data-testid="tilbud-hovedbilde" />
             </div>
           </section>
         ) : null}
 
-        {/* ── Regnestykket ── */}
-        <section className="mt-12 sm:mt-16">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#a8a29e]">Økonomien</p>
-          <h2 className="mt-1.5 text-[20px] font-bold tracking-[-0.01em] sm:text-[24px]" style={heading}>Regnestykket — helt konkret</h2>
+        {/* ── 02 · Regnestykket ── */}
+        <Avsnitt className="mt-14 sm:mt-20">
+          <Merke nr={nr(1)} tekst="Økonomien" />
+          <h2 className="mt-2.5 text-[20px] font-bold tracking-[-0.01em] sm:text-[24px]" style={heading}>Regnestykket — helt konkret</h2>
 
           <div className="mt-5 overflow-hidden rounded-2xl border border-black/[0.06] bg-white" data-testid="tilbud-regnestykke">
             <div className="grid grid-cols-[1fr_auto_auto] items-baseline gap-x-4 border-b border-black/[0.06] px-5 py-3 sm:gap-x-8 sm:px-7">
@@ -276,34 +419,13 @@ export default function TilbudSide() {
             )}
           </div>
 
-          {/* Sammenligning: i dag vs. med DigiHome */}
-          {Number(r.dagensPris) > 0 && Number(r.nettoTilEier) > 0 && (
-            <div className="mt-4 rounded-2xl border border-black/[0.06] bg-white px-5 py-5 sm:px-7">
-              {[
-                ['Annonsert pris i dag', r.dagensPris, '#d6d3ce', '#78716c'],
-                ['Netto til deg med DigiHome', r.nettoTilEier, '#1f7a45', '#1c1917'],
-              ].map(([l, v, farge, tekst]) => (
-                <div key={l} className="py-2">
-                  <div className="flex items-baseline justify-between gap-4">
-                    <span className="text-[12px] font-medium" style={{ color: tekst }}>{l}</span>
-                    <span className="shrink-0 text-[13px] font-bold tabular-nums" style={{ ...heading, color: tekst }}>{tall(v)} kr/mnd</span>
-                  </div>
-                  <div className="mt-1.5 h-[6px] overflow-hidden rounded-full bg-[#f1efeb]">
-                    <div className="h-full rounded-full transition-all duration-700" style={{ width: `${Math.max(4, (Number(v) / maksBar) * 100)}%`, background: farge }} />
-                  </div>
-                </div>
-              ))}
-              <p className="mt-2 text-[11px] leading-relaxed text-[#a8a29e]">
-                «Netto til deg» er etter vårt honorar — annonsering, visninger, kontrakt og oppfølging er inkludert.
-              </p>
-            </div>
-          )}
-        </section>
+          {Number(r.dagensPris) > 0 && Number(r.nettoTilEier) > 0 && <Sammenligning r={r} />}
+        </Avsnitt>
 
-        {/* ── Slik jobber vi ── */}
-        <section className="mt-12 sm:mt-16">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#a8a29e]">Prosessen</p>
-          <h2 className="mt-1.5 text-[20px] font-bold tracking-[-0.01em] sm:text-[24px]" style={heading}>Fra prat til utleid — slik jobber vi</h2>
+        {/* ── 03 · Slik jobber vi ── */}
+        <Avsnitt className="mt-14 sm:mt-20">
+          <Merke nr={nr(2)} tekst="Prosessen" />
+          <h2 className="mt-2.5 text-[20px] font-bold tracking-[-0.01em] sm:text-[24px]" style={heading}>Fra prat til utleid — slik jobber vi</h2>
           <div className="mt-6">
             {[
               ['Uforpliktende prat', 'Vi ringer deg, går gjennom tallene og svarer på alt du lurer på.'],
@@ -326,12 +448,12 @@ export default function TilbudSide() {
               </div>
             ))}
           </div>
-        </section>
+        </Avsnitt>
 
-        {/* ── Dette er inkludert ── */}
-        <section className="mt-12 sm:mt-16">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#a8a29e]">Alt inkludert i honoraret</p>
-          <h2 className="mt-1.5 text-[20px] font-bold tracking-[-0.01em] sm:text-[24px]" style={heading}>Dette tar vi oss av</h2>
+        {/* ── 04 · Dette er inkludert ── */}
+        <Avsnitt className="mt-14 sm:mt-20">
+          <Merke nr={nr(3)} tekst="Alt inkludert i honoraret" />
+          <h2 className="mt-2.5 text-[20px] font-bold tracking-[-0.01em] sm:text-[24px]" style={heading}>Dette tar vi oss av</h2>
           <div className="mt-5 grid grid-cols-1 overflow-hidden rounded-2xl border border-black/[0.06] bg-white sm:grid-cols-2">
             {[
               ['Annonsering som treffer', 'Profesjonell annonse med styling — og prisen markedet faktisk betaler.'],
@@ -351,12 +473,12 @@ export default function TilbudSide() {
               </div>
             ))}
           </div>
-        </section>
+        </Avsnitt>
 
-        {/* ── Spørsmål og svar ── */}
-        <section className="mt-12 sm:mt-16">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#a8a29e]">Godt å vite</p>
-          <h2 className="mt-1.5 text-[20px] font-bold tracking-[-0.01em] sm:text-[24px]" style={heading}>Spørsmål og svar</h2>
+        {/* ── 05 · Spørsmål og svar ── */}
+        <Avsnitt className="mt-14 sm:mt-20">
+          <Merke nr={nr(4)} tekst="Godt å vite" />
+          <h2 className="mt-2.5 text-[20px] font-bold tracking-[-0.01em] sm:text-[24px]" style={heading}>Spørsmål og svar</h2>
           <div className="mt-5 divide-y divide-black/[0.05] rounded-2xl border border-black/[0.06] bg-white">
             {[
               ['Er dette bindende?', 'Nei. Dette er et uforpliktende tilbud basert på annonsen din. Du bestemmer alt — vi tar bare en prat først.'],
@@ -369,10 +491,10 @@ export default function TilbudSide() {
               </div>
             ))}
           </div>
-        </section>
+        </Avsnitt>
 
         {/* ── Kontakt ── */}
-        <section id="kontakt" className="mt-12 scroll-mt-20 sm:mt-16">
+        <Avsnitt id="kontakt" className="mt-14 scroll-mt-20 sm:mt-20">
           <div className="overflow-hidden rounded-2xl bg-[#131114] text-white shadow-[0_12px_48px_rgba(0,0,0,0.18)]" data-testid="tilbud-kontakt">
             <div className="px-6 py-8 sm:px-10 sm:py-10">
               {sendt ? (
@@ -410,20 +532,39 @@ export default function TilbudSide() {
               )}
             </div>
           </div>
-        </section>
+        </Avsnitt>
 
-        {/* ── Footer ── */}
-        <footer className="mb-10 mt-12 border-t border-black/[0.07] pt-7 sm:mt-16">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/digihome-wordmark-ink.svg" alt="DigiHome" className="h-[26px] w-auto opacity-90" />
-            <p className="max-w-[520px] text-[10.5px] leading-relaxed text-[#b8b2a9] sm:text-right">
+        {/* ── Kolofon ── */}
+        <footer className="mb-24 mt-14 border-t border-black/[0.07] pt-8 sm:mb-12 sm:mt-20">
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/digihome-wordmark-ink.svg" alt="DigiHome" className="h-[24px] w-auto opacity-90" />
+              <p className="mt-2.5 text-[11px] text-[#a8a29e]">Personlig tilbud utarbeidet for {tilbud.adresse} · Bergen</p>
+            </div>
+            <p className="max-w-[460px] text-[10.5px] leading-relaxed text-[#b8b2a9] sm:text-right">
               Stylede bilder er AI-genererte illustrasjoner basert på annonsens egne foto — møblering og dekor er veiledende.
               Honorar oppgis eks. mva. DigiHome AS · digihome.no
             </p>
           </div>
         </footer>
       </main>
+
+      {/* ── Sticky bunn-CTA (kun mobil) ── */}
+      {!sendt && (
+        <div className={`fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#131114] px-4 py-3 transition-transform duration-300 sm:hidden ${visBunn ? 'translate-y-0' : 'translate-y-full'}`}>
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-white/40">Netto til deg</p>
+              <p className="text-[16px] font-bold tabular-nums text-[#7fd4a1]" style={heading}>{tall(r.nettoTilEier)} kr/mnd</p>
+            </div>
+            <button onClick={tilKontakt} data-testid="tilbud-bunn-cta"
+              className="h-11 shrink-0 rounded-full bg-white px-6 text-[13px] font-bold text-[#131114] transition-transform active:scale-[0.98]">
+              Ring meg opp
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

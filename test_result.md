@@ -5653,3 +5653,20 @@ frontend:
 agent_communication:
     -agent: "main"
     -message: "Tilbudsside-redesign ferdig implementert og screenshot-verifisert (desktop + mobil, 0px overflow). Kun frontend-endring — ingen backendtest nødvendig. Venter på brukerens vurdering før ev. frontend-testagent kjøres."
+
+frontend:
+  - task: "Tilbudsside neste-nivå designløft (/tilbud/[slug]): (1) editorielt nummererte seksjoner (01 Presentasjonen i hero, 02 Økonomien, 03 Prosessen, 04 Inkludert, 05 Godt å vite) med lilla nummer + hairline-merke, (2) teller-animasjon (TellOpp) på hero-nøkkeltall via IntersectionObserver + rAF ease-out, (3) bildekort overlapper hero-sømmen (-mt-14/-16, ring + stor myk skygge) for dokumentforside-følelse — seksjonsheading for bildet flyttet inn i mørk hero, (4) auto-hint på før/etter-slider (delelinje glir 74→58 én gang, avbrytes ved brukerdrag, respekterer prefers-reduced-motion), (5) scroll-reveal på seksjoner (Avsnitt-komponent, fade + 16px rise, én gang), (6) sammenligningsbarer animerer bredde ved reveal, (7) sticky bunn-CTA på mobil (vises etter 560px scroll, skjules når kontakt er synlig eller etter innsending, testid tilbud-bunn-cta), (8) stil-etikett på thumbnails, (9) kolofon-footer med ink-logo + 'Personlig tilbud utarbeidet for [adresse]'. Ingen backend-/API-endringer, alle eksisterende testids beholdt."
+    implemented: true
+    working: "NA"
+    file: "/app/app/tilbud/[slug]/page.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "Screenshot-verifisert desktop 1920px (hero m/ ferdig telleranimasjon, 01-heading i hero, bildekort-overlapp med skygge, 02/03-merker med hairline, animerte barer) og mobil 390px (stacked stats, sticky bunn-CTA synlig midt på siden og skjult ved kontakt, kolofon). 0px overflow begge. Kompilerer uten feil. Brukerverifisering gjenstår."
+
+agent_communication:
+    -agent: "main"
+    -message: "Neste-nivå designløft på tilbudssiden ferdig: nummererte seksjoner, telleranimasjon, hero-overlapp, slider-hint, scroll-reveal, mobil bunn-CTA. Kun frontend — ingen backendtest nødvendig. Venter på brukerens vurdering."
