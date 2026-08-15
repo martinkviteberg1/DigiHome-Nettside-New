@@ -119,11 +119,36 @@ function ForEtter({ forUrl, etterUrl, nokkel, etterEtikett = 'AI-stylet \u00b7 i
     <div
       ref={boks}
       className="relative aspect-[16/10] cursor-ew-resize select-none overflow-hidden rounded-2xl bg-[#26232a]"
-      style={{ touchAction: 'none' }}
-      onPointerDown={(e) => { drar.current = true; brukerHarDratt.current = true; try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) {} flytt(e.clientX); }}
-      onPointerMove={(e) => { if (drar.current) flytt(e.clientX); }}
-      onPointerUp={() => { drar.current = false; }}
-      onPointerCancel={() => { drar.current = false; }}
+      style={{ touchAction: 'pan-y' }}
+      onPointerDown={(e) => { drar.current = { x0: e.clientX, y0: e.clientY, laast: null }; }}
+      onPointerMove={(e) => {
+        const d = drar.current;
+        if (!d) return;
+        if (!d.laast) {
+          const dx = Math.abs(e.clientX - d.x0);
+          const dy = Math.abs(e.clientY - d.y0);
+          if (dx > 7 && dx > dy * 1.2) {
+            d.laast = 'slider';
+            brukerHarDratt.current = true;
+            try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) {}
+            flytt(e.clientX);
+          } else if (dy > 10 && dy > dx) {
+            d.laast = 'scroll'; // vertikal scroll får gå i fred
+          }
+          return;
+        }
+        if (d.laast === 'slider') flytt(e.clientX);
+      }}
+      onPointerUp={(e) => {
+        const d = drar.current;
+        drar.current = null;
+        // Trykk uten bevegelse → flytt linjen dit
+        if (d && !d.laast && Math.abs(e.clientX - d.x0) < 6 && Math.abs(e.clientY - d.y0) < 6) {
+          brukerHarDratt.current = true;
+          flytt(e.clientX);
+        }
+      }}
+      onPointerCancel={() => { drar.current = null; }}
     >
       {/* Fast ramme (aspect 16/10) — BEGGE bilder croppes identisk med
           object-cover/center, slik at før og etter alltid ligger i register

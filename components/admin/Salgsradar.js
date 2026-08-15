@@ -204,11 +204,15 @@ function Lightbox({ liste, idx, setIdx, onClose }) {
 }
 
 /* ── SammenlignModal: før/etter-slider for AI-stylede bilder (Airbnb-nivå).
-   Dra i midthåndtaket for å avdekke original vs AI — piltaster bytter bilde. ── */
+   Dra eller trykk i bildet for å flytte linjen — piltaster bytter bilde.
+   Boksen låses til originalbildets aspektforhold slik at original og AI
+   alltid ligger i register (ingen letterbox-hopp). ── */
 function SammenlignModal({ par, idx, setIdx, onClose }) {
   const [pos, setPos] = useState(55);
   const [drar, setDrar] = useState(false);
+  const [ar, setAr] = useState(1.5); // originalbildets bredde/høyde
   const boksRef = useRef(null);
+  const nedPkt = useRef(null);
   useEffect(() => { setPos(55); }, [idx]);
   useEffect(() => {
     const tast = (e) => {
@@ -224,8 +228,9 @@ function SammenlignModal({ par, idx, setIdx, onClose }) {
   const dra = (clientX) => {
     const r = boksRef.current?.getBoundingClientRect();
     if (!r) return;
-    setPos(Math.max(3, Math.min(97, ((clientX - r.left) / r.width) * 100)));
+    setPos(Math.max(2, Math.min(98, ((clientX - r.left) / r.width) * 100)));
   };
+  const myk = drar ? 'none' : 'clip-path .22s ease, left .22s ease';
   return (
     <div className="fixed inset-0 z-[210] flex flex-col bg-[#131110]/95" data-testid="radar-sammenlign" onClick={onClose}>
       <div className="flex items-center justify-between px-4 py-3 sm:px-6" onClick={(e) => e.stopPropagation()}>
@@ -244,21 +249,31 @@ function SammenlignModal({ par, idx, setIdx, onClose }) {
           </button>
         )}
         <div ref={boksRef}
-          className="relative max-h-[74vh] w-full max-w-[1060px] cursor-ew-resize touch-none select-none overflow-hidden rounded-xl shadow-2xl"
-          onPointerDown={(e) => { setDrar(true); e.currentTarget.setPointerCapture(e.pointerId); dra(e.clientX); }}
-          onPointerMove={(e) => { if (drar) dra(e.clientX); }}
-          onPointerUp={(e) => { setDrar(false); try { e.currentTarget.releasePointerCapture(e.pointerId); } catch (e2) { /* ok */ } }}>
+          className="relative w-full cursor-ew-resize touch-none select-none overflow-hidden rounded-xl shadow-2xl"
+          style={{ aspectRatio: String(ar), maxWidth: `min(1060px, calc((100dvh - 210px) * ${ar}))` }}
+          onPointerDown={(e) => { nedPkt.current = { x: e.clientX, y: e.clientY }; setDrar(true); try { e.currentTarget.setPointerCapture(e.pointerId); } catch (e2) { /* ok */ } }}
+          onPointerMove={(e) => { if (drar && nedPkt.current && (Math.abs(e.clientX - nedPkt.current.x) > 4 || nedPkt.current.flyttet)) { nedPkt.current.flyttet = true; dra(e.clientX); } }}
+          onPointerUp={(e) => {
+            setDrar(false);
+            try { e.currentTarget.releasePointerCapture(e.pointerId); } catch (e2) { /* ok */ }
+            // Trykk uten drag → flytt linjen dit med animasjon
+            if (nedPkt.current && !nedPkt.current.flyttet) dra(e.clientX);
+            nedPkt.current = null;
+          }}
+          onPointerCancel={() => { setDrar(false); nedPkt.current = null; }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={p.original} alt="Original" draggable={false} className="block max-h-[74vh] w-full object-contain" />
-          <span className="pointer-events-none absolute inset-0" style={{ clipPath: `inset(0 ${100 - pos}% 0 0)` }}>
+          <img src={p.original} alt="Original" draggable={false}
+            onLoad={(e) => { const w = e.target.naturalWidth; const h = e.target.naturalHeight; if (w && h) setAr(Math.max(0.6, Math.min(2.4, w / h))); }}
+            className="absolute inset-0 h-full w-full object-cover object-center" />
+          <span className="pointer-events-none absolute inset-0" style={{ clipPath: `inset(0 ${100 - pos}% 0 0)`, transition: myk }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={p.ai} alt="AI-forbedret" draggable={false} className="block h-full w-full object-contain" />
+            <img src={p.ai} alt="AI-forbedret" draggable={false} className="absolute inset-0 h-full w-full object-cover object-center" />
           </span>
-          {/* Håndtak */}
-          <span className="pointer-events-none absolute inset-y-0" style={{ left: `${pos}%` }}>
-            <span className="absolute inset-y-0 -ml-px w-[2px] bg-white/90 shadow-[0_0_8px_rgba(0,0,0,0.5)]" />
-            <span className="absolute top-1/2 -ml-[17px] -mt-[17px] flex h-[34px] w-[34px] items-center justify-center rounded-full bg-white shadow-[0_2px_12px_rgba(0,0,0,0.35)]">
-              <ChevronLeft className="-mr-0.5 h-3.5 w-3.5 text-[#1c1917]" /><ChevronRight className="-ml-0.5 h-3.5 w-3.5 text-[#1c1917]" />
+          {/* Håndtak — stor, tydelig treffindikasjon */}
+          <span className="pointer-events-none absolute inset-y-0" style={{ left: `${pos}%`, transition: myk }}>
+            <span className="absolute inset-y-0 -ml-px w-[2px] bg-white/95 shadow-[0_0_10px_rgba(0,0,0,0.55)]" />
+            <span className="absolute top-1/2 -ml-[21px] -mt-[21px] flex h-[42px] w-[42px] items-center justify-center rounded-full bg-white shadow-[0_3px_14px_rgba(0,0,0,0.4)]">
+              <ChevronLeft className="-mr-1 h-4 w-4 text-[#1c1917]" /><ChevronRight className="-ml-1 h-4 w-4 text-[#1c1917]" />
             </span>
           </span>
           <span className="pointer-events-none absolute left-3 top-3 rounded-[5px] bg-[#8b5cf6]/90 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white" style={{ opacity: pos > 12 ? 1 : 0, transition: 'opacity .2s' }}>AI-forbedret</span>
@@ -271,14 +286,18 @@ function SammenlignModal({ par, idx, setIdx, onClose }) {
           </button>
         )}
       </div>
-      <p className="px-4 pb-2 text-center text-[10.5px] text-white/40 sm:text-[11.5px]">Dra i håndtaket for å sammenligne — piltastene bytter bilde</p>
+      <p className="px-4 pb-2 text-center text-[10.5px] text-white/40 sm:text-[11.5px]">
+        Dra eller trykk i bildet for å sammenligne<span className="hidden sm:inline"> — piltastene bytter bilde</span>
+      </p>
       {par.length > 1 && (
-        <div className="flex justify-center gap-1.5 overflow-x-auto px-4 pb-4" onClick={(e) => e.stopPropagation()}>
-          {par.map((t, i) => (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img key={i} src={t.ai} alt="" onClick={() => setIdx(i)}
-              className={`h-12 w-[68px] shrink-0 cursor-pointer rounded-md object-cover transition-all ${i === idx ? 'ring-2 ring-white' : 'opacity-40 hover:opacity-80'}`} />
-          ))}
+        <div className="flex gap-1.5 overflow-x-auto px-4 pb-4" onClick={(e) => e.stopPropagation()}>
+          <div className="mx-auto flex w-max gap-1.5">
+            {par.map((t, i) => (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img key={i} src={t.ai} alt="" onClick={() => setIdx(i)}
+                className={`h-14 w-[78px] shrink-0 cursor-pointer rounded-md object-cover transition-all sm:h-12 sm:w-[68px] ${i === idx ? 'ring-2 ring-white' : 'opacity-40 hover:opacity-80'}`} />
+            ))}
+          </div>
         </div>
       )}
     </div>
@@ -325,7 +344,8 @@ export default function Salgsradar({ apiKey }) {
   const [retryStarter, setRetryStarter] = useState(false);
   const [heroIdx, setHeroIdx] = useState(0);
   const [heroPos, setHeroPos] = useState(55); // skillelinje for inline før/etter på hero
-  const heroDrag = useRef(false);
+  const heroDrag = useRef(null); // {x0, y0, laast: 'slider'|'scroll'|null, flyttet}
+  const [heroDrar, setHeroDrar] = useState(false); // styrer om linjen animerer
   const [sammenlign, setSammenlign] = useState(null); // {idx} — fullskjerm før/etter-modal
   const swipeX = useRef(null); // touch-swipe i hero-galleriet
   const [lagret, setLagret] = useState(false);
@@ -580,14 +600,39 @@ export default function Salgsradar({ apiKey }) {
             )}
           </>
         )} />
-        {/* Hero — AI-bilder viser før/etter-slider DIREKTE på bildet; originaler
-            har swipe/klikk som før */}
+        {/* Hero — AI-bilder viser før/etter-slider DIREKTE på bildet.
+            Mobil: retningslås — vertikal bevegelse scroller siden som normalt,
+            tydelig horisontal bevegelse drar slideren, og et trykk flytter
+            linjen dit med animasjon. Originaler har swipe/klikk som før. */}
         <div className={`group relative mt-3 overflow-hidden rounded-[12px] bg-[#f4f2ee] ${heroSml ? 'cursor-ew-resize' : ''}`} data-testid="radar-galleri-hero"
           style={heroSml ? { touchAction: 'pan-y' } : undefined}
-          onPointerDown={heroSml ? (e) => { heroDrag.current = true; try { e.currentTarget.setPointerCapture(e.pointerId); } catch (e2) { /* ok */ } settHeroPos(e); } : undefined}
-          onPointerMove={heroSml ? (e) => { if (heroDrag.current) settHeroPos(e); } : undefined}
-          onPointerUp={heroSml ? () => { heroDrag.current = false; } : undefined}
-          onPointerCancel={heroSml ? () => { heroDrag.current = false; } : undefined}
+          onPointerDown={heroSml ? (e) => { heroDrag.current = { x0: e.clientX, y0: e.clientY, laast: null, flyttet: false }; } : undefined}
+          onPointerMove={heroSml ? (e) => {
+            const d = heroDrag.current;
+            if (!d) return;
+            if (!d.laast) {
+              const dx = Math.abs(e.clientX - d.x0);
+              const dy = Math.abs(e.clientY - d.y0);
+              if (dx > 7 && dx > dy * 1.2) {
+                d.laast = 'slider';
+                try { e.currentTarget.setPointerCapture(e.pointerId); } catch (e2) { /* ok */ }
+                setHeroDrar(true);
+                settHeroPos(e);
+              } else if (dy > 10 && dy > dx) {
+                d.laast = 'scroll'; // la siden scrolle i fred
+              }
+              return;
+            }
+            if (d.laast === 'slider') settHeroPos(e);
+          } : undefined}
+          onPointerUp={heroSml ? (e) => {
+            const d = heroDrag.current;
+            heroDrag.current = null;
+            setHeroDrar(false);
+            // Trykk uten bevegelse → flytt linjen dit (transition er aktiv når vi ikke drar)
+            if (d && !d.laast && Math.abs(e.clientX - d.x0) < 6 && Math.abs(e.clientY - d.y0) < 6) settHeroPos(e);
+          } : undefined}
+          onPointerCancel={heroSml ? () => { heroDrag.current = null; setHeroDrar(false); } : undefined}
           onTouchStart={!heroSml ? (e) => { swipeX.current = e.touches[0].clientX; } : undefined}
           onTouchEnd={!heroSml ? (e) => {
             if (swipeX.current == null || nB < 2) return;
@@ -602,13 +647,13 @@ export default function Salgsradar({ apiKey }) {
               <img src={hero.kilde} alt="Original" draggable={false} data-testid="radar-galleri-bilde"
                 onError={() => merkDodBilde(hero.kilde)}
                 className="h-[220px] w-full select-none object-cover min-[440px]:h-[260px] sm:h-[340px]" />
-              <span className="pointer-events-none absolute inset-0" style={{ clipPath: `inset(0 ${100 - heroPos}% 0 0)` }}>
+              <span className="pointer-events-none absolute inset-0" style={{ clipPath: `inset(0 ${100 - heroPos}% 0 0)`, transition: heroDrar ? 'none' : 'clip-path .22s ease' }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={hero.url} alt="AI-forbedret" draggable={false} className="h-full w-full select-none object-cover" />
               </span>
-              <span className="pointer-events-none absolute inset-y-0 z-10" style={{ left: `${heroPos}%` }} data-testid="radar-hero-slider">
+              <span className="pointer-events-none absolute inset-y-0 z-10" style={{ left: `${heroPos}%`, transition: heroDrar ? 'none' : 'left .22s ease' }} data-testid="radar-hero-slider">
                 <span className="absolute inset-y-0 -ml-px w-[2px] bg-white/95 shadow-[0_0_8px_rgba(0,0,0,0.45)]" />
-                <span className="absolute top-1/2 -ml-[15px] -mt-[15px] flex h-[30px] w-[30px] items-center justify-center rounded-full bg-white shadow-[0_2px_10px_rgba(0,0,0,0.3)]">
+                <span className="absolute top-1/2 -ml-[17px] -mt-[17px] flex h-[34px] w-[34px] items-center justify-center rounded-full bg-white shadow-[0_2px_10px_rgba(0,0,0,0.3)] sm:-ml-[15px] sm:-mt-[15px] sm:h-[30px] sm:w-[30px]">
                   <ChevronLeft className="-mr-0.5 h-3 w-3 text-[#1c1917]" /><ChevronRight className="-ml-0.5 h-3 w-3 text-[#1c1917]" />
                 </span>
               </span>
