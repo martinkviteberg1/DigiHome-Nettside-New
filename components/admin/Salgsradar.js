@@ -22,6 +22,13 @@ const heading = { fontFamily: 'var(--font-heading)' };
 const tall = (v) => new Intl.NumberFormat('nb-NO', { maximumFractionDigits: 0 }).format(Math.round(Number(v) || 0)).replace(/\u00A0/g, '\u202F');
 const kr = (v) => `${tall(v)}\u202Fkr`;
 
+/* ── DigiHome-designspråk (samme tokens som Leieforhold/Datarom) ─────────────
+   Varm blekk #1c1917, gradient-primærknapp, ghost-knapp med hårfin ramme,
+   små radier (6-12px), status-prikker i stedet for fargede piller. */
+const KNAPP_GHOST = 'flex h-8 items-center gap-1.5 rounded-[7px] border border-black/[0.08] bg-white px-2.5 text-[12px] font-medium text-[#57534e] shadow-[0_1px_2px_rgba(28,25,23,0.04)] transition-colors hover:bg-[#f7f6f3] hover:text-[#1c1917] disabled:opacity-50';
+const KNAPP_PRIMAER = 'flex h-8 items-center gap-1.5 rounded-[7px] bg-gradient-to-b from-[#2b2825] to-[#131110] px-3.5 text-[12.5px] font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.09),0_1px_2px_rgba(28,25,23,0.2)] transition-all hover:from-[#211f1c] hover:to-[#0a0908] active:scale-[0.98] disabled:opacity-40';
+const KORT = 'rounded-2xl border border-black/[0.06] bg-white shadow-[0_1px_2px_rgba(28,25,23,0.04),0_12px_32px_-16px_rgba(28,25,23,0.10)]';
+
 const STATUSER = [
   { k: 'ny', l: 'Ny', farge: '#78716c', bg: '#f4f2ee' },
   { k: 'analysert', l: 'Analysert', farge: '#6d28d9', bg: '#f4f0fb' },
@@ -57,26 +64,59 @@ const statusStil = (s) => STATUSER.find((x) => x.k === s) || STATUSER[0];
 const scoreFarge = (s) => (s >= 70 ? { c: '#1f7a45', bg: '#eef6f0' } : s >= 40 ? { c: '#9a6b1c', bg: '#fdf3e0' } : { c: '#78716c', bg: '#f4f2ee' });
 const delFarge = (v) => (v == null ? '#c9c4bd' : v >= 7 ? '#1f7a45' : v >= 4 ? '#57534e' : '#c2413b');
 
-function PotensialBadge({ p, id, stor = false }) {
-  if (!p) return null;
-  const f = scoreFarge(p.score);
+/* ── ScoreRing: sirkulær 0-100-indikator (Airbnb-aktig ring med tall i midten).
+   Brukes for potensial/kvalitet i liste, tabell og detaljpanel. ───────────── */
+function ScoreRing({ verdi, maks = 100, forelopig = false, storrelse = 40, strek = 3.5, farge, id, tittel }) {
+  const v = Math.max(0, Math.min(maks, Number(verdi) || 0));
+  const pct = maks > 0 ? v / maks : 0;
+  const r = (storrelse - strek) / 2;
+  const omkrets = 2 * Math.PI * r;
+  const c = farge || scoreFarge(pct * 100).c;
+  const fontPx = storrelse >= 56 ? 17 : storrelse >= 40 ? 12.5 : 10.5;
   return (
-    <span
-      data-testid={id ? `radar-potensial-${id}` : undefined}
-      title={p.forelopig ? `Foreløpig potensial ${p.score}/100 — kjør AI-analyse for full score` : `Potensial ${p.score}/100 · annonsekvalitet ${p.annonseScore}/100`}
-      className={`flex shrink-0 items-center justify-center rounded-lg font-bold tabular-nums ${stor ? 'h-10 w-16 text-[16px]' : 'h-8 w-12 text-[13px]'}`}
-      style={{ color: f.c, background: f.bg, ...heading }}
-    >
-      {p.forelopig ? `~${p.score}` : p.score}
+    <span data-testid={id} title={tittel}
+      className="relative inline-flex shrink-0 items-center justify-center"
+      style={{ width: storrelse, height: storrelse }}>
+      <svg width={storrelse} height={storrelse} viewBox={`0 0 ${storrelse} ${storrelse}`} className="-rotate-90">
+        <circle cx={storrelse / 2} cy={storrelse / 2} r={r} fill="none" stroke="#eeece7" strokeWidth={strek} />
+        <circle cx={storrelse / 2} cy={storrelse / 2} r={r} fill="none" stroke={c} strokeWidth={strek} strokeLinecap="round"
+          strokeDasharray={omkrets} strokeDashoffset={omkrets * (1 - pct)}
+          style={{ transition: 'stroke-dashoffset 0.7s cubic-bezier(0.4,0,0.2,1)' }} />
+      </svg>
+      <span className="absolute font-bold tabular-nums leading-none" style={{ ...heading, fontSize: fontPx, color: forelopig ? '#a8a29a' : '#1c1917' }}>
+        {forelopig ? `~${v}` : v}
+      </span>
     </span>
   );
 }
 
-/* Flat Linear-seksjonshode */
+function PotensialBadge({ p, id, stor = false }) {
+  if (!p) return null;
+  return (
+    <ScoreRing
+      verdi={p.score}
+      forelopig={p.forelopig}
+      storrelse={stor ? 56 : 40}
+      strek={stor ? 4.5 : 3.5}
+      id={id ? `radar-potensial-${id}` : undefined}
+      tittel={p.forelopig ? `Foreløpig potensial ${p.score}/100 — kjør AI-analyse for full score` : `Potensial ${p.score}/100 · annonsekvalitet ${p.annonseScore}/100`}
+    />
+  );
+}
+
+/* Statusprikk — DigiHome-språket bruker prikker, ikke fargede piller */
+const StatusPrikk = ({ s, tekst = true }) => (
+  <span className="flex items-center gap-1.5 text-[11px] font-medium text-[#6f6a61]">
+    <span className="h-[6px] w-[6px] shrink-0 rounded-full" style={{ background: s.farge, boxShadow: `0 0 0 3px ${s.bg}` }} />
+    {tekst && s.l}
+  </span>
+);
+
+/* Flatt DigiHome-seksjonshode: liten stille etikett, ikke ikon-chips */
 const SekHode = ({ ikon: Ikon, tittel, hoyre }) => (
   <div className="flex flex-wrap items-center gap-2">
-    {Ikon && <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#f4f0fb]"><Ikon className="h-[15px] w-[15px] text-[#8b5cf6]" /></span>}
-    <h3 className="text-[14px] font-bold tracking-[-0.01em] text-[#1c1917]" style={heading}>{tittel}</h3>
+    {Ikon && <Ikon className="h-[14px] w-[14px] text-[#a8a29a]" />}
+    <h3 className="text-[13px] font-bold tracking-[-0.01em] text-[#1c1917]" style={heading}>{tittel}</h3>
     <span className="ml-auto flex items-center gap-2">{hoyre}</span>
   </div>
 );
@@ -127,6 +167,88 @@ function Lightbox({ liste, idx, setIdx, onClose }) {
   );
 }
 
+/* ── SammenlignModal: før/etter-slider for AI-stylede bilder (Airbnb-nivå).
+   Dra i midthåndtaket for å avdekke original vs AI — piltaster bytter bilde. ── */
+function SammenlignModal({ par, idx, setIdx, onClose }) {
+  const [pos, setPos] = useState(55);
+  const [drar, setDrar] = useState(false);
+  const boksRef = useRef(null);
+  useEffect(() => { setPos(55); }, [idx]);
+  useEffect(() => {
+    const tast = (e) => {
+      if (e.key === 'Escape') onClose();
+      if (e.key === 'ArrowRight') setIdx((i) => (i + 1) % par.length);
+      if (e.key === 'ArrowLeft') setIdx((i) => (i - 1 + par.length) % par.length);
+    };
+    window.addEventListener('keydown', tast);
+    return () => window.removeEventListener('keydown', tast);
+  }, [par.length, setIdx, onClose]);
+  const p = par[idx];
+  if (!p) return null;
+  const dra = (clientX) => {
+    const r = boksRef.current?.getBoundingClientRect();
+    if (!r) return;
+    setPos(Math.max(3, Math.min(97, ((clientX - r.left) / r.width) * 100)));
+  };
+  return (
+    <div className="fixed inset-0 z-[210] flex flex-col bg-[#131110]/95" data-testid="radar-sammenlign" onClick={onClose}>
+      <div className="flex items-center justify-between px-4 py-3 sm:px-6" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-2.5">
+          <span className="text-[13px] font-bold text-white" style={heading}>Original vs AI</span>
+          <span className="rounded-[5px] bg-white/10 px-2 py-0.5 text-[10.5px] font-medium text-white/70">{STIL_VALG.find((s) => s.k === p.stil)?.l || p.stil}</span>
+          {par.length > 1 && <span className="text-[11.5px] tabular-nums text-white/40">{idx + 1} / {par.length}</span>}
+        </div>
+        <button onClick={onClose} data-testid="radar-sammenlign-lukk" className="rounded-lg p-2 text-white/60 transition-colors hover:bg-white/10 hover:text-white"><X style={{ width: 20, height: 20 }} /></button>
+      </div>
+      <div className="relative flex min-h-0 flex-1 items-center justify-center px-10 pb-2 sm:px-16" onClick={(e) => e.stopPropagation()}>
+        {par.length > 1 && (
+          <button onClick={() => setIdx((i) => (i - 1 + par.length) % par.length)} data-testid="radar-sammenlign-forrige" aria-label="Forrige"
+            className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-white/10 p-2.5 text-white transition-all hover:bg-white/20 sm:left-4">
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+        )}
+        <div ref={boksRef}
+          className="relative max-h-[74vh] w-full max-w-[1060px] cursor-ew-resize touch-none select-none overflow-hidden rounded-xl shadow-2xl"
+          onPointerDown={(e) => { setDrar(true); e.currentTarget.setPointerCapture(e.pointerId); dra(e.clientX); }}
+          onPointerMove={(e) => { if (drar) dra(e.clientX); }}
+          onPointerUp={(e) => { setDrar(false); try { e.currentTarget.releasePointerCapture(e.pointerId); } catch (e2) { /* ok */ } }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={p.original} alt="Original" draggable={false} className="block max-h-[74vh] w-full object-contain" />
+          <span className="pointer-events-none absolute inset-0" style={{ clipPath: `inset(0 ${100 - pos}% 0 0)` }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={p.ai} alt="AI-forbedret" draggable={false} className="block h-full w-full object-contain" />
+          </span>
+          {/* Håndtak */}
+          <span className="pointer-events-none absolute inset-y-0" style={{ left: `${pos}%` }}>
+            <span className="absolute inset-y-0 -ml-px w-[2px] bg-white/90 shadow-[0_0_8px_rgba(0,0,0,0.5)]" />
+            <span className="absolute top-1/2 -ml-[17px] -mt-[17px] flex h-[34px] w-[34px] items-center justify-center rounded-full bg-white shadow-[0_2px_12px_rgba(0,0,0,0.35)]">
+              <ChevronLeft className="-mr-0.5 h-3.5 w-3.5 text-[#1c1917]" /><ChevronRight className="-ml-0.5 h-3.5 w-3.5 text-[#1c1917]" />
+            </span>
+          </span>
+          <span className="pointer-events-none absolute left-3 top-3 rounded-[5px] bg-[#8b5cf6]/90 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white" style={{ opacity: pos > 12 ? 1 : 0, transition: 'opacity .2s' }}>AI-forbedret</span>
+          <span className="pointer-events-none absolute right-3 top-3 rounded-[5px] bg-black/55 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white" style={{ opacity: pos < 88 ? 1 : 0, transition: 'opacity .2s' }}>Original</span>
+        </div>
+        {par.length > 1 && (
+          <button onClick={() => setIdx((i) => (i + 1) % par.length)} data-testid="radar-sammenlign-neste" aria-label="Neste"
+            className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-white/10 p-2.5 text-white transition-all hover:bg-white/20 sm:right-4">
+            <ChevronRight className="h-5 w-5" />
+          </button>
+        )}
+      </div>
+      <p className="pb-2 text-center text-[11.5px] text-white/40">Dra i håndtaket for å sammenligne — piltastene bytter bilde</p>
+      {par.length > 1 && (
+        <div className="flex justify-center gap-1.5 overflow-x-auto px-4 pb-4" onClick={(e) => e.stopPropagation()}>
+          {par.map((t, i) => (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img key={i} src={t.ai} alt="" onClick={() => setIdx(i)}
+              className={`h-12 w-[68px] shrink-0 cursor-pointer rounded-md object-cover transition-all ${i === idx ? 'ring-2 ring-white' : 'opacity-40 hover:opacity-80'}`} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Salgsradar({ apiKey }) {
   const api = useCallback(async (path, opts = {}) => {
     const url = `/api/admin/salgsradar/${path}${path.includes('?') ? '&' : '?'}key=${encodeURIComponent(apiKey)}`;
@@ -165,6 +287,9 @@ export default function Salgsradar({ apiKey }) {
   const [lightbox, setLightbox] = useState(null);
   const [visNy, setVisNy] = useState(false);
   const [retryStarter, setRetryStarter] = useState(false);
+  const [heroIdx, setHeroIdx] = useState(0);
+  const [sammenlign, setSammenlign] = useState(null); // {idx} — før/etter-modal for AI-bilder
+  useEffect(() => { setHeroIdx(0); setSammenlign(null); }, [valgtId]);
 
   useEffect(() => {
     const m = window.matchMedia('(min-width: 1024px)');
@@ -338,10 +463,12 @@ export default function Salgsradar({ apiKey }) {
   const galleri = useMemo(() => {
     if (!valgt) return [];
     return [
-      ...(valgt.stylet || []).map((s) => ({ url: `/api/tilbud/bilde?id=${s.id}`, etikett: `AI · ${STIL_VALG.find((x) => x.k === s.stil)?.l || s.stil}`, ai: true })),
+      ...(valgt.stylet || []).map((s) => ({ url: `/api/tilbud/bilde?id=${s.id}`, etikett: `AI · ${STIL_VALG.find((x) => x.k === s.stil)?.l || s.stil}`, ai: true, kilde: s.kildeUrl, stil: s.stil })),
       ...(valgt.bilder || []).slice(0, 14).map((b) => ({ url: b, etikett: 'Original', ai: false, kilde: b })),
     ];
   }, [valgt]);
+  // AI-par til før/etter-sammenligning: AI-bilde + originalen det bygger på
+  const aiPar = useMemo(() => galleri.filter((g) => g.ai && g.kilde).map((g) => ({ ai: g.url, original: g.kilde, stil: g.stil })), [galleri]);
 
   const splitt = Boolean(valgt) && bred && visning === 'liste' && !utvidet;
   const sorter = (key) => setSort((p) => (p.key === key ? { key, dir: p.dir === 'desc' ? 'asc' : 'desc' } : { key, dir: 'desc' }));
@@ -351,141 +478,147 @@ export default function Salgsradar({ apiKey }) {
   const panel = valgt && (() => {
     const rs = regnestykke(valgt);
     const ai = valgt.ai || null;
-    const pf = scoreFarge(valgt.potensial?.score || 0);
     // Tokolonne: alltid i utvidet visning, og automatisk i splittvisning på
     // ultrabrede skjermer (>=1680px) — ekstra plass gir flere kolonner,
     // aldri bredere elementer.
     const toKol = utvidet || (splitt && ultra);
     const nB = galleri.length;
-    const heroH = toKol ? 340 : 310;
+    const autoAktiv = Boolean(valgt.auto && ['analyserer', 'styler'].includes(valgt.auto.status));
+
+    const BENTO = 'rounded-[14px] border border-black/[0.06] bg-white shadow-[0_1px_2px_rgba(28,25,23,0.04)]';
+    const hIdx = Math.min(heroIdx, Math.max(0, nB - 1));
+    const hero = galleri[hIdx];
 
     const sekBilder = nB > 0 && (
-      <section className="py-6">
+      <section className={`${BENTO} p-4 sm:p-5`}>
         <SekHode ikon={Images} tittel={`Bilder (${nB})`} hoyre={(
           <>
-            <select value={stil} onChange={(e) => setStil(e.target.value)} data-testid="radar-stil-velger" className="h-8 rounded-lg border border-black/[0.08] bg-white px-2 text-[12px] outline-none focus:border-[#8b5cf6]/40">
+            <select value={stil} onChange={(e) => setStil(e.target.value)} data-testid="radar-stil-velger" className="h-7 rounded-[7px] border border-black/[0.08] bg-white px-2 text-[11.5px] outline-none focus:border-[#1c1917]/25">
               {STIL_VALG.map((s) => <option key={s.k} value={s.k}>{s.l}</option>)}
             </select>
             {(valgt.bilder || [])[0] && (
-              <button onClick={() => stylBilde(valgt, valgt.bilder[0])} disabled={!!styler} data-testid="radar-styl-bilde" title="Styl hovedbildet med AI (~30-60 sek)"
-                className="flex h-8 items-center gap-1.5 rounded-lg bg-[#f4f0fb] px-3 text-[12px] font-bold text-[#6d28d9] transition-colors hover:bg-[#ece4f9] disabled:opacity-50">
+              <button onClick={() => stylBilde(valgt, hero?.ai ? valgt.bilder[0] : (hero?.kilde || valgt.bilder[0]))} disabled={!!styler} data-testid="radar-styl-bilde" title="Styl dette bildet med AI (~30-60 sek)"
+                className="flex h-7 items-center gap-1.5 rounded-[7px] border border-black/[0.08] bg-white px-2.5 text-[11.5px] font-medium text-[#6d28d9] shadow-[0_1px_2px_rgba(28,25,23,0.04)] transition-colors hover:bg-[#f7f5fc] disabled:opacity-50">
                 {styler ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5" />} Styl
               </button>
             )}
           </>
         )} />
-        {/* Adaptivt hero-galleri: ingen tomme celler ved få bilder */}
-        <div className="mt-3 max-w-[980px]">
-          {nB === 1 ? (
-            <div className="group relative cursor-pointer overflow-hidden rounded-xl" onClick={() => setLightbox({ idx: 0 })} data-testid="radar-galleri-bilde" role="button" tabIndex={0}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={galleri[0].url} alt="" className="w-full object-cover transition-transform group-hover:scale-[1.02]" style={{ maxHeight: heroH }} />
-              {galleri[0].ai && <span className="absolute left-2 top-2 rounded bg-[#8b5cf6]/90 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white">AI-stylet</span>}
-            </div>
-          ) : (
-            <div className={`grid grid-rows-2 gap-1.5 overflow-hidden rounded-xl ${nB >= 5 ? 'grid-cols-4' : 'grid-cols-3'}`} style={{ height: heroH }}>
-              <div className={`group relative row-span-2 cursor-pointer ${nB >= 5 ? 'col-span-4 sm:col-span-2' : 'col-span-3 sm:col-span-2'}`} onClick={() => setLightbox({ idx: 0 })} data-testid="radar-galleri-bilde" role="button" tabIndex={0}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={galleri[0].url} alt="" className="h-full w-full object-cover transition-transform group-hover:scale-[1.02]" />
-                {galleri[0].ai && <span className="absolute left-2 top-2 rounded bg-[#8b5cf6]/90 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white">AI-stylet</span>}
-              </div>
-              {(nB >= 5 ? galleri.slice(1, 5) : galleri.slice(1, 3)).map((b, i, arr) => {
-                const sisteMedFlere = i === arr.length - 1 && nB > arr.length + 1;
-                return (
-                  <div key={b.url} className={`group relative hidden cursor-pointer sm:block ${nB === 2 ? 'row-span-2' : ''}`} onClick={() => setLightbox({ idx: i + 1 })} data-testid="radar-galleri-bilde" role="button" tabIndex={0}>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={b.url} alt="" className="h-full w-full object-cover transition-transform group-hover:scale-[1.03]" />
-                    {b.ai && <span className="absolute left-1.5 top-1.5 rounded bg-[#8b5cf6]/90 px-1 py-0.5 text-[8px] font-bold uppercase text-white">AI</span>}
-                    {sisteMedFlere && (
-                      <span className="absolute inset-0 flex items-center justify-center bg-black/45 text-[14px] font-bold text-white" style={heading}>+{nB - arr.length - 1}</span>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+        {/* Hero med slider — Airbnb-stil: store hvite pilknapper, teller, før/etter */}
+        <div className="group relative mt-3 overflow-hidden rounded-[12px] bg-[#f4f2ee]" data-testid="radar-galleri-hero">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={hero.url} alt="" draggable={false}
+            onClick={() => (hero.ai && aiPar.length ? setSammenlign({ idx: Math.min(hIdx, aiPar.length - 1) }) : setLightbox({ idx: hIdx }))}
+            data-testid="radar-galleri-bilde" role="button" tabIndex={0}
+            className="h-[280px] w-full cursor-pointer object-cover transition-transform duration-500 sm:h-[340px]" />
+          {nB > 1 && (
+            <>
+              <button onClick={(e) => { e.stopPropagation(); setHeroIdx((hIdx - 1 + nB) % nB); }} aria-label="Forrige bilde" data-testid="radar-hero-forrige"
+                className="absolute left-3 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/95 text-[#1c1917] opacity-0 shadow-[0_2px_8px_rgba(0,0,0,0.18)] transition-all hover:scale-105 group-hover:opacity-100">
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <button onClick={(e) => { e.stopPropagation(); setHeroIdx((hIdx + 1) % nB); }} aria-label="Neste bilde" data-testid="radar-hero-neste"
+                className="absolute right-3 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/95 text-[#1c1917] opacity-0 shadow-[0_2px_8px_rgba(0,0,0,0.18)] transition-all hover:scale-105 group-hover:opacity-100">
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </>
           )}
+          {hero.ai ? (
+            <span className="absolute left-3 top-3 rounded-[5px] bg-[#8b5cf6]/90 px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-wide text-white">AI-forbedret</span>
+          ) : (
+            <span className="absolute left-3 top-3 rounded-[5px] bg-black/45 px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-wide text-white">Original</span>
+          )}
+          {hero.ai && (
+            <button onClick={(e) => { e.stopPropagation(); setSammenlign({ idx: Math.min(hIdx, aiPar.length - 1) }); }} data-testid="radar-se-foretter"
+              className="absolute bottom-3 left-3 flex items-center gap-1.5 rounded-[7px] bg-white/95 px-2.5 py-1.5 text-[11.5px] font-medium text-[#1c1917] shadow-[0_2px_8px_rgba(0,0,0,0.18)] transition-all hover:bg-white">
+              <Sparkles className="h-3.5 w-3.5 text-[#8b5cf6]" /> Se før/etter
+            </button>
+          )}
+          <span className="absolute bottom-3 right-3 rounded-[5px] bg-black/55 px-2 py-0.5 text-[10.5px] font-medium tabular-nums text-white">{hIdx + 1} / {nB}</span>
         </div>
-        {/* Thumb-stripe med AI-styling på hover */}
+        {/* Thumbnails — aktivt bilde markeres, AI-bilder åpner før/etter */}
         <div className="mt-2 flex gap-1.5 overflow-x-auto pb-1">
           {galleri.map((b, i) => (
-            <div key={b.url} className="group relative shrink-0 cursor-pointer" onClick={() => setLightbox({ idx: i })} role="button" tabIndex={0}>
+            <div key={b.url} className="group/t relative shrink-0 cursor-pointer" onClick={() => setHeroIdx(i)} role="button" tabIndex={0} data-testid={`radar-thumb-${i}`}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={b.url} alt="" className="h-14 w-20 rounded-lg object-cover transition-opacity group-hover:opacity-90" />
+              <img src={b.url} alt="" draggable={false}
+                className={`h-[52px] w-[74px] rounded-[8px] object-cover transition-all ${i === hIdx ? 'ring-2 ring-[#1c1917] ring-offset-1' : 'opacity-80 hover:opacity-100'}`} />
               {b.ai ? (
-                <span className="absolute left-1 top-1 rounded bg-[#8b5cf6]/90 px-1 py-px text-[7.5px] font-bold uppercase text-white">AI</span>
+                <span className="absolute left-1 top-1 rounded-[3px] bg-[#8b5cf6]/90 px-1 py-px text-[7.5px] font-bold uppercase text-white">AI</span>
               ) : (
                 <button onClick={(e) => { e.stopPropagation(); stylBilde(valgt, b.kilde); }} disabled={!!styler} data-testid="radar-styl-bilde" title="Styl dette bildet med AI"
-                  className="absolute bottom-1 right-1 rounded bg-black/55 p-1 text-white opacity-0 transition-opacity hover:bg-[#8b5cf6] group-hover:opacity-100 disabled:opacity-40">
+                  className="absolute bottom-1 right-1 rounded-[5px] bg-black/55 p-1 text-white opacity-0 transition-opacity hover:bg-[#8b5cf6] group-hover/t:opacity-100 disabled:opacity-40">
                   {styler === b.kilde ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wand2 className="h-3 w-3" />}
                 </button>
               )}
-              {styler === b.kilde && <span className="absolute inset-0 flex items-center justify-center rounded-lg bg-black/40"><Loader2 className="h-4 w-4 animate-spin text-white" /></span>}
+              {styler === b.kilde && <span className="absolute inset-0 flex items-center justify-center rounded-[8px] bg-black/40"><Loader2 className="h-4 w-4 animate-spin text-white" /></span>}
             </div>
           ))}
         </div>
-        <p className="mt-1.5 text-[11px] text-[#b8b2a9]">Klikk for fullskjerm · tryllestaven AI-styler originalbilder (~30–60 sek, maks 6).</p>
+        <p className="mt-1.5 text-[11px] text-[#a8a29a]">Pilene blar · AI-merkede bilder åpner før/etter-sammenligning · tryllestaven AI-styler originalbilder (~30–60 sek).</p>
       </section>
     );
 
     const sekAnalyse = (
-      <section className="py-6">
+      <section className={`${BENTO} p-4 sm:p-5`}>
         <SekHode ikon={Sparkles} tittel="AI-analyse" hoyre={ai ? (
           <>
-            <span className="text-[11px] text-[#c9c4bd]">{naarSist(ai.at)}</span>
+            <span className="text-[11px] text-[#c2beb8]">{naarSist(ai.at)}</span>
             <button onClick={() => analyser(valgt.id)} disabled={analyserer} data-testid="radar-analyser-btn" title="Kjør analysen på nytt"
-              className="flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-[12px] font-semibold text-[#a8a29a] transition-colors hover:bg-[#f4f0fb] hover:text-[#6d28d9] disabled:opacity-50">
+              className="flex h-7 items-center gap-1.5 rounded-[7px] px-2 text-[11.5px] font-medium text-[#a8a29a] transition-colors hover:bg-[#f7f6f3] hover:text-[#1c1917] disabled:opacity-50">
               {analyserer ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />} På nytt
             </button>
           </>
         ) : null} />
         {!ai ? (
           analyserer ? (
-            <div className="mt-4 flex max-w-[760px] items-center gap-3 rounded-xl bg-[#f4f0fb] px-4 py-4 text-[13px] text-[#6d28d9]">
-              <Loader2 className="h-4 w-4 shrink-0 animate-spin" /> Analyserer bilder, piksler og tekst — tar 15–40 sekunder…
+            <div className="mt-4 flex items-center gap-3 rounded-[10px] bg-[#f7f6f3] px-4 py-4 text-[12.5px] text-[#57534e]">
+              <Loader2 className="h-4 w-4 shrink-0 animate-spin text-[#8b5cf6]" /> Analyserer bilder, piksler og tekst — tar 15–40 sekunder…
             </div>
           ) : (
-            <div className="mt-4 max-w-[760px] rounded-xl border border-dashed border-[#8b5cf6]/30 bg-[#faf8fd] px-5 py-5">
-              <p className="text-[13px] leading-relaxed text-[#78716c]">AI vurderer lys, skarphet, ryddighet og styling — koden måler piksler, bildeformat og datahygiene. Du får score, funn, salgsvinkel, FINN-melding og personlig tilbudstekst.</p>
-              <button onClick={() => analyser(valgt.id)} data-testid="radar-analyser-btn"
-                className="mt-4 flex h-10 items-center gap-2 rounded-lg bg-[#8b5cf6] px-5 text-[13px] font-bold text-white transition-all hover:bg-[#7c4ce6] active:scale-[0.98]">
-                <Sparkles className="h-4 w-4" /> Kjør AI-analyse
+            <div className="mt-4 rounded-[10px] border border-dashed border-black/[0.10] bg-[#fbfaf9] px-4 py-4">
+              <p className="text-[12.5px] leading-relaxed text-[#78716c]">AI vurderer lys, skarphet, ryddighet og styling — koden måler piksler, bildeformat og datahygiene. Du får score, funn, salgsvinkel, FINN-melding og personlig tilbudstekst.</p>
+              <button onClick={() => analyser(valgt.id)} data-testid="radar-analyser-btn" className={`${KNAPP_PRIMAER} mt-3.5`}>
+                <Sparkles className="h-3.5 w-3.5" /> Kjør AI-analyse
               </button>
             </div>
           )
         ) : (
           <div className="mt-4" data-testid="radar-analyse-resultat">
-            <div className="grid max-w-[680px] grid-cols-2 gap-2.5">
-              <div className="rounded-xl px-4 py-4" style={{ background: pf.bg }}>
-                <p className="text-[11px] font-bold uppercase tracking-[0.08em]" style={{ color: pf.c }}>Potensial</p>
-                <p className="mt-1 text-[30px] font-bold leading-none tabular-nums" style={{ ...heading, color: pf.c }}>{ai.potensialScore}<span className="text-[14px] font-semibold opacity-60">/100</span></p>
-              </div>
-              <div className="rounded-xl bg-[#fafaf8] px-4 py-4">
-                <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#a8a29a]">Annonsekvalitet i dag</p>
-                <p className="mt-1 text-[30px] font-bold leading-none tabular-nums text-[#44403c]" style={heading}>{ai.annonseScore}<span className="text-[14px] font-semibold text-[#b8b2a9]">/100</span></p>
-              </div>
+            {/* To store ringer — potensial + kvalitet (0-100) */}
+            <div className="grid grid-cols-2 gap-2.5">
+              {[['Potensial', ai.potensialScore, 'Hvor vinnbar leaden er for oss'], ['Kvalitet i dag', ai.annonseScore, 'Hvor god annonsen er nå']].map(([l, v, hint]) => (
+                <div key={l} className="flex items-center gap-3.5 rounded-[10px] bg-[#fbfaf9] px-4 py-3.5" title={hint}>
+                  <ScoreRing verdi={v} storrelse={58} strek={5} />
+                  <span className="min-w-0">
+                    <span className="block text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#a8a29a]">{l}</span>
+                    <span className="block text-[11.5px] leading-snug text-[#8a857c]">{hint}</span>
+                  </span>
+                </div>
+              ))}
             </div>
-            <div className="mt-4 grid max-w-[820px] grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3">
+            <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3">
               {DEL_ETIKETTER.map(([k, etikett]) => (
                 <div key={k}>
                   <div className="flex items-baseline justify-between">
                     <span className="text-[11.5px] font-medium text-[#78716c]">{etikett}</span>
                     <span className="text-[12px] font-bold tabular-nums" style={{ ...heading, color: delFarge(ai.deler?.[k]) }}>{ai.deler?.[k] ?? '–'}</span>
                   </div>
-                  <div className="mt-1.5 h-[5px] overflow-hidden rounded-full bg-[#f1efeb]">
-                    <div className="h-full rounded-full bg-[#8b5cf6]" style={{ width: `${Math.min(100, (ai.deler?.[k] || 0) * 10)}%` }} />
+                  <div className="mt-1.5 h-[4px] overflow-hidden rounded-full bg-[#f1efeb]">
+                    <div className="h-full rounded-full transition-all duration-500" style={{ width: `${Math.min(100, (ai.deler?.[k] || 0) * 10)}%`, background: delFarge(ai.deler?.[k]) }} />
                   </div>
                 </div>
               ))}
             </div>
             {ai.teknisk && (
-              <p className="mt-3 text-[11.5px] tabular-nums text-[#a8a29a]">
+              <p className="mt-3 text-[11px] tabular-nums text-[#a8a29a]">
                 {ai.teknisk.maltBilder} av {ai.teknisk.antallBilder} bilder målt
                 {ai.teknisk.snittMp != null ? ` · snitt ${ai.teknisk.snittMp} MP` : ''}
                 {ai.teknisk.andelPortrett != null ? ` · ${Math.round(ai.teknisk.andelPortrett * 100)} % portrett${ai.teknisk.andelPortrett >= 0.8 ? ' (tyder på mobilbilder)' : ''}` : ''}
               </p>
             )}
             {(ai.funn || []).length > 0 && (
-              <ul className="mt-4 max-w-[760px] space-y-1.5">
+              <ul className="mt-4 space-y-1.5">
                 {ai.funn.map((f, i) => (
                   <li key={i} className="flex items-start gap-2 text-[12.5px] leading-relaxed text-[#57534e]">
                     <span className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-[#8b5cf6]" />{f}
@@ -494,9 +627,9 @@ export default function Salgsradar({ apiKey }) {
               </ul>
             )}
             {ai.salgsvinkel && (
-              <div className="mt-4 max-w-[760px] rounded-xl bg-[#f4f0fb] px-4 py-3.5">
-                <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#8b5cf6]">Anbefalt salgsvinkel · stylingpotensial {ai.stylingPotensial}</p>
-                <p className="mt-1.5 text-[13px] leading-relaxed text-[#44403c]">{ai.salgsvinkel}</p>
+              <div className="mt-4 rounded-[10px] border border-black/[0.05] bg-[#fbfaf9] px-4 py-3.5">
+                <p className="text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#8b5cf6]">Anbefalt salgsvinkel · stylingpotensial {ai.stylingPotensial}</p>
+                <p className="mt-1.5 text-[12.5px] leading-relaxed text-[#44403c]">{ai.salgsvinkel}</p>
               </div>
             )}
           </div>
@@ -505,35 +638,35 @@ export default function Salgsradar({ apiKey }) {
     );
 
     const sekOkonomi = (
-      <section className="py-6">
+      <section className={`${BENTO} p-4 sm:p-5`}>
         <SekHode ikon={Banknote} tittel="Økonomi og tilbud" />
         {valgt.analyse?.grunnlag?.snittLeie ? (
-          <p className="mt-2 text-[12px] text-[#a8a29a]">
+          <p className="mt-2 text-[11.5px] text-[#a8a29a]">
             Porteføljen vår: snittleie {kr(valgt.analyse.grunnlag.snittLeie)} ({valgt.analyse.grunnlag.antallILeide} utleide)
             {valgt.analyse.grunnlag.snittSone ? ` · sone ${valgt.analyse.grunnlag.sone}: ${kr(valgt.analyse.grunnlag.snittSone)}` : ''}
           </p>
         ) : null}
-        <div className="mt-3 grid max-w-[680px] grid-cols-2 gap-3">
+        <div className="mt-3 grid grid-cols-2 gap-3">
           <label className="block">
             <span className="mb-1.5 block text-[11.5px] font-medium text-[#78716c]">Anbefalt leie (kr/mnd)</span>
             <input type="number" value={valgt.analyse?.anbefaltLeie ?? ''} data-testid="radar-anbefalt-input"
               onChange={(e) => settLead(valgt.id, (x) => ({ ...x, analyse: { ...x.analyse, anbefaltLeie: Number(e.target.value) } }))}
               onBlur={(e) => oppdater(valgt.id, { analyse: { anbefaltLeie: Number(e.target.value), honorarPct: valgt.analyse?.honorarPct } })}
-              className="h-10 w-full rounded-lg border border-black/[0.08] px-3 text-[13.5px] tabular-nums outline-none transition-colors focus:border-[#8b5cf6]/50" />
+              className="h-9 w-full rounded-[8px] border border-black/[0.08] px-3 text-[13px] tabular-nums outline-none transition-colors focus:border-[#1c1917]/30" />
           </label>
           <label className="block">
             <span className="mb-1.5 block text-[11.5px] font-medium text-[#78716c]">Honorar (% eks. mva)</span>
             <input type="number" min="4" max="15" step="0.5" value={valgt.analyse?.honorarPct ?? 8} data-testid="radar-honorar-input"
               onChange={(e) => settLead(valgt.id, (x) => ({ ...x, analyse: { ...x.analyse, honorarPct: Number(e.target.value) } }))}
               onBlur={(e) => oppdater(valgt.id, { analyse: { anbefaltLeie: valgt.analyse?.anbefaltLeie, honorarPct: Number(e.target.value) } })}
-              className="h-10 w-full rounded-lg border border-black/[0.08] px-3 text-[13.5px] tabular-nums outline-none transition-colors focus:border-[#8b5cf6]/50" />
+              className="h-9 w-full rounded-[8px] border border-black/[0.08] px-3 text-[13px] tabular-nums outline-none transition-colors focus:border-[#1c1917]/30" />
           </label>
         </div>
-        <div className="mt-3 grid max-w-[680px] grid-cols-3 gap-px overflow-hidden rounded-xl border border-black/[0.06] bg-black/[0.06]">
+        <div className="mt-3 grid grid-cols-3 gap-px overflow-hidden rounded-[10px] border border-black/[0.06] bg-black/[0.06]">
           {[['Vårt honorar', kr(rs.honorar), '#6d28d9'], ['Netto til eier', kr(rs.netto), '#1f7a45'],
             ['vs. i dag', rs.gevinst == null ? '–' : `${rs.gevinst >= 0 ? '+' : '−'}${kr(Math.abs(rs.gevinst))}`, rs.gevinst != null && rs.gevinst < 0 ? '#c2413b' : '#1f7a45']].map(([l, v, c]) => (
-            <div key={l} className="bg-white px-3.5 py-3">
-              <p className="text-[10.5px] font-medium uppercase tracking-[0.06em] text-[#a8a29a]">{l}</p>
+            <div key={l} className="bg-[#fbfaf9] px-3.5 py-3">
+              <p className="text-[10px] font-medium uppercase tracking-[0.06em] text-[#a8a29a]">{l}</p>
               <p className="mt-0.5 text-[15px] font-bold tabular-nums" style={{ ...heading, color: c }}>{v}<span className="text-[10.5px] font-medium text-[#b8b2a9]">/mnd</span></p>
             </div>
           ))}
@@ -542,58 +675,57 @@ export default function Salgsradar({ apiKey }) {
     );
 
     const sekMelding = ai && (
-      <section className="py-6">
+      <section className={`${BENTO} p-4 sm:p-5`}>
         <SekHode ikon={MessageSquare} tittel="FINN-melding" hoyre={(
-          <button onClick={() => kopierMelding(valgt)} data-testid="radar-kopier-melding"
-            className="flex h-8 items-center gap-1.5 rounded-lg bg-[#f4f0fb] px-3 text-[12px] font-bold text-[#6d28d9] transition-colors hover:bg-[#ece4f9]">
-            {meldingKopiert ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />} {meldingKopiert ? 'Kopiert!' : 'Kopier med lenke'}
+          <button onClick={() => kopierMelding(valgt)} data-testid="radar-kopier-melding" className={`${KNAPP_GHOST} h-7 text-[11.5px]`}>
+            {meldingKopiert ? <Check className="h-3.5 w-3.5 text-[#1f7a45]" /> : <Copy className="h-3.5 w-3.5" />} {meldingKopiert ? 'Kopiert!' : 'Kopier med lenke'}
           </button>
         )} />
         <textarea value={ai.finnMelding || ''} rows={4} data-testid="radar-finnmelding"
           onChange={(e) => settLead(valgt.id, (x) => ({ ...x, ai: { ...x.ai, finnMelding: e.target.value } }))}
           onBlur={(e) => oppdater(valgt.id, { finnMelding: e.target.value }, true)}
-          className="mt-3 w-full max-w-[760px] resize-none rounded-xl border border-black/[0.08] px-3.5 py-3 text-[13px] leading-relaxed outline-none transition-colors focus:border-[#8b5cf6]/50" />
-        <p className="mt-1.5 text-[11px] text-[#b8b2a9]">{'{LENKE}'} byttes automatisk med tilbudslenken når du kopierer. Redigeres fritt — lagres når du klikker ut.</p>
+          className="mt-3 w-full resize-none rounded-[10px] border border-black/[0.08] bg-[#fbfaf9] px-3.5 py-3 text-[12.5px] leading-relaxed outline-none transition-colors focus:border-[#1c1917]/30 focus:bg-white" />
+        <p className="mt-1.5 text-[11px] text-[#a8a29a]">{'{LENKE}'} byttes automatisk med tilbudslenken når du kopierer. Redigeres fritt — lagres når du klikker ut.</p>
       </section>
     );
 
     const sekTilbud = (
-      <section className="py-6">
+      <section className={`${BENTO} p-4 sm:p-5`}>
         <SekHode ikon={Globe} tittel="Tilbudsside til huseier" hoyre={(valgt.aapninger || 0) > 0 ? (
-          <span className="flex items-center gap-1 text-[12px] tabular-nums text-[#0e7490]"><Eye className="h-3.5 w-3.5" /> Åpnet {valgt.aapninger}×{valgt.sistAapnet ? ` · ${naarSist(valgt.sistAapnet)}` : ''}</span>
+          <span className="flex items-center gap-1 text-[11.5px] tabular-nums text-[#0e7490]"><Eye className="h-3.5 w-3.5" /> Åpnet {valgt.aapninger}×{valgt.sistAapnet ? ` · ${naarSist(valgt.sistAapnet)}` : ''}</span>
         ) : null} />
-        <div className="mt-3 flex max-w-[560px] gap-2">
-          <button onClick={() => kopierLenke(valgt)} data-testid="radar-kopier-lenke" className="flex h-10 flex-1 items-center justify-center gap-2 rounded-lg bg-[#0a0a0a] px-4 text-[13px] font-semibold text-white transition-all hover:bg-black/85 active:scale-[0.98]">
-            {kopiert ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />} {kopiert ? 'Kopiert!' : 'Kopier tilbudslenke'}
+        <div className="mt-3 flex gap-2">
+          <button onClick={() => kopierLenke(valgt)} data-testid="radar-kopier-lenke" className={`${KNAPP_PRIMAER} h-9 flex-1 justify-center`}>
+            {kopiert ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />} {kopiert ? 'Kopiert!' : 'Kopier tilbudslenke'}
           </button>
-          <a href={`/tilbud/${valgt.tilbudSlug}`} target="_blank" rel="noreferrer" data-testid="radar-aapne-tilbud" className="flex h-10 items-center gap-1.5 rounded-lg bg-[#f4f0fb] px-4 text-[13px] font-semibold text-[#6d28d9] transition-all hover:bg-[#ece4f9]">
+          <a href={`/tilbud/${valgt.tilbudSlug}`} target="_blank" rel="noreferrer" data-testid="radar-aapne-tilbud" className={`${KNAPP_GHOST} h-9`}>
             Åpne <ExternalLink className="h-3.5 w-3.5" />
           </a>
         </div>
         {ai && (
-          <div className="mt-4 max-w-[760px] space-y-3">
+          <div className="mt-4 space-y-3">
             <label className="block">
               <span className="mb-1.5 block text-[11.5px] font-medium text-[#78716c]">Personlig intro — vises øverst på tilbudet</span>
               <textarea value={ai.tilbudTekst?.heroIntro || ''} rows={2} data-testid="radar-hero-intro"
                 onChange={(e) => settLead(valgt.id, (x) => ({ ...x, ai: { ...x.ai, tilbudTekst: { ...x.ai.tilbudTekst, heroIntro: e.target.value } } }))}
                 onBlur={(e) => oppdater(valgt.id, { tilbudTekst: { heroIntro: e.target.value } }, true)}
-                className="w-full resize-none rounded-xl border border-black/[0.08] px-3.5 py-3 text-[13px] leading-relaxed outline-none transition-colors focus:border-[#8b5cf6]/50" />
+                className="w-full resize-none rounded-[10px] border border-black/[0.08] bg-[#fbfaf9] px-3.5 py-3 text-[12.5px] leading-relaxed outline-none transition-colors focus:border-[#1c1917]/30 focus:bg-white" />
             </label>
             <label className="block">
               <span className="mb-1.5 block text-[11.5px] font-medium text-[#78716c]">«Potensialet vi ser» — vises før regnestykket</span>
               <textarea value={ai.tilbudTekst?.potensialTekst || ''} rows={3} data-testid="radar-potensial-tekst"
                 onChange={(e) => settLead(valgt.id, (x) => ({ ...x, ai: { ...x.ai, tilbudTekst: { ...x.ai.tilbudTekst, potensialTekst: e.target.value } } }))}
                 onBlur={(e) => oppdater(valgt.id, { tilbudTekst: { potensialTekst: e.target.value } }, true)}
-                className="w-full resize-none rounded-xl border border-black/[0.08] px-3.5 py-3 text-[13px] leading-relaxed outline-none transition-colors focus:border-[#8b5cf6]/50" />
+                className="w-full resize-none rounded-[10px] border border-black/[0.08] bg-[#fbfaf9] px-3.5 py-3 text-[12.5px] leading-relaxed outline-none transition-colors focus:border-[#1c1917]/30 focus:bg-white" />
             </label>
-            <p className="text-[11px] text-[#b8b2a9]">Tomme felter → tilbudssiden bruker standardteksten.</p>
+            <p className="text-[11px] text-[#a8a29a]">Tomme felter → tilbudssiden bruker standardteksten.</p>
           </div>
         )}
-        <p className="mt-2 text-[11px] text-[#b8b2a9]">Send lenken via FINN-meldingen på annonsen{valgt.kontaktTlf ? ` — eller ring ${valgt.kontaktTlf}` : ''}. Ikke uanmodet e-post/SMS (mfl. §15).</p>
+        <p className="mt-2 text-[11px] text-[#a8a29a]">Send lenken via FINN-meldingen på annonsen{valgt.kontaktTlf ? ` — eller ring ${valgt.kontaktTlf}` : ''}. Ikke uanmodet e-post/SMS (mfl. §15).</p>
         {(valgt.kontaktLogg || []).length > 0 && (
           <div className="mt-3 space-y-2">
             {valgt.kontaktLogg.map((kx, i) => (
-              <p key={i} className="flex items-start gap-2 rounded-xl bg-[#e9f6f9] px-3.5 py-2.5 text-[12.5px] text-[#0e7490]">
+              <p key={i} className="flex items-start gap-2 rounded-[10px] bg-[#e9f6f9] px-3.5 py-2.5 text-[12px] text-[#0e7490]">
                 <MessageSquare className="mt-[2px] h-3.5 w-3.5 shrink-0" />
                 <span><b>{kx.navn}</b> ({kx.telefon}) — {kx.melding || 'ba om å bli ringt'} · {naarSist(kx.at)}</span>
               </p>
@@ -604,13 +736,13 @@ export default function Salgsradar({ apiKey }) {
     );
 
     const sekNotat = (
-      <section className="py-6">
+      <section className={`${BENTO} p-4 sm:p-5`}>
         <SekHode ikon={StickyNote} tittel="Notat" />
         <textarea value={valgt.notat || ''} rows={2} data-testid="radar-notat"
           onChange={(e) => settLead(valgt.id, (x) => ({ ...x, notat: e.target.value }))}
           onBlur={(e) => oppdater(valgt.id, { notat: e.target.value })}
           placeholder="Ringt 14/2, svarte ikke — prøver igjen torsdag…"
-          className="mt-3 w-full max-w-[760px] resize-none rounded-xl border border-black/[0.08] px-3.5 py-3 text-[13px] outline-none transition-colors placeholder:text-[#ccc] focus:border-[#8b5cf6]/50" />
+          className="mt-3 w-full resize-none rounded-[10px] border border-black/[0.08] bg-[#fbfaf9] px-3.5 py-3 text-[12.5px] outline-none transition-colors placeholder:text-[#c2beb8] focus:border-[#1c1917]/30 focus:bg-white" />
       </section>
     );
 
@@ -645,36 +777,18 @@ export default function Salgsradar({ apiKey }) {
               <PotensialBadge p={valgt.potensial} stor />
             </div>
           </div>
-          <div className="mt-3.5 flex flex-wrap gap-1.5">
+          <div className="mt-3.5 inline-flex flex-wrap items-center gap-0.5 rounded-[9px] border border-black/[0.06] bg-[#f7f6f3] p-0.5">
             {STATUSER.map((s) => (
-              <button key={s.k} onClick={() => oppdater(valgt.id, { status: s.k })} data-testid={`radar-status-${s.k}`}
-                className="rounded-full px-3 py-1.5 text-[11.5px] font-bold transition-all"
-                style={valgt.status === s.k ? { color: '#fff', background: s.farge } : { color: s.farge, background: s.bg }}>
+              <button key={s.k} onClick={() => oppdater(valgt.id, { status: s.k })} disabled={autoAktiv} data-testid={`radar-status-${s.k}`}
+                className={`flex h-[26px] items-center gap-1.5 rounded-[7px] px-2.5 text-[11.5px] font-medium transition-all disabled:opacity-45 ${valgt.status === s.k ? 'bg-white text-[#1c1917] shadow-[0_1px_3px_rgba(28,25,23,0.10),inset_0_0_0_1px_rgba(0,0,0,0.04)]' : 'text-[#8a857c] hover:text-[#1c1917]'}`}>
+                <span className="h-[6px] w-[6px] rounded-full" style={{ background: s.farge, opacity: valgt.status === s.k ? 1 : 0.45 }} />
                 {s.l}
               </button>
             ))}
           </div>
         </div>
 
-        {/* Automatikk-status: analyse + bildeforbedring kjører i bakgrunnen */}
-        {valgt.auto && ['analyserer', 'styler'].includes(valgt.auto.status) && (
-          <div className="border-b border-black/[0.05] bg-[#faf8fd] px-5 py-3 sm:px-7" data-testid="radar-auto-banner">
-            <div className="flex flex-wrap items-center gap-2.5">
-              <Loader2 className="h-4 w-4 shrink-0 animate-spin text-[#8b5cf6]" />
-              <p className="text-[12.5px] font-semibold text-[#6d28d9]">
-                {valgt.auto.status === 'analyserer'
-                  ? 'Automatikk: analyserer annonse og bilder…'
-                  : `Automatikk: forbedrer bilder — ${valgt.auto.bilderFerdig || 0} av ${valgt.auto.bilderTotalt || 0}${valgt.auto.bilderFeilet ? ` · ${valgt.auto.bilderFeilet} feilet` : ''}`}
-              </p>
-              {valgt.auto.status === 'styler' && valgt.auto.modus && (
-                <span className="rounded-md bg-[#ece4f9] px-2 py-0.5 text-[10.5px] font-bold text-[#6d28d9]">{STIL_VALG.find((s) => s.k === valgt.auto.modus)?.l || valgt.auto.modus}</span>
-              )}
-            </div>
-            <div className="mt-2 h-[4px] overflow-hidden rounded-full bg-[#ece4f9]">
-              <div className="h-full rounded-full bg-[#8b5cf6] transition-all duration-700" style={{ width: valgt.auto.status === 'analyserer' ? '14%' : `${14 + 86 * ((valgt.auto.bilderFerdig || 0) / Math.max(1, valgt.auto.bilderTotalt || 1))}%` }} />
-            </div>
-          </div>
-        )}
+        {/* Automatikk-progresjonen vises i låse-overlayet under — her kun avvik */}
         {valgt.auto?.status === 'feilet' && (
           <div className="border-b border-black/[0.05] bg-[#fdf0ef] px-5 py-2.5 text-[12px] font-medium text-[#c2413b] sm:px-7" data-testid="radar-auto-feil">
             Automatikken stoppet: {valgt.auto.feil || 'ukjent feil'} — du kan kjøre AI-analysen manuelt under.
@@ -697,33 +811,57 @@ export default function Salgsradar({ apiKey }) {
           </div>
         )}
 
-        {/* Panelinnhold — tokolonne når utvidet */}
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          {toKol ? (
-            <div className="grid grid-cols-1 gap-x-12 px-5 sm:px-7 lg:grid-cols-2">
-              <div className="divide-y divide-black/[0.05]">{sekBilder}{sekAnalyse}</div>
-              <div className="divide-y divide-black/[0.05]">{sekOkonomi}{sekMelding}{sekTilbud}{sekNotat}</div>
+        {/* Panelinnhold — galleri øverst, bento-grid under (Airbnb-stil) */}
+        <div className="relative flex min-h-0 flex-1 flex-col">
+          <div className={`min-h-0 flex-1 overflow-y-auto bg-[#f7f6f3] ${autoAktiv ? 'pointer-events-none select-none' : ''}`}>
+            <div className="px-3.5 py-3.5 sm:px-5">
+              {sekBilder}
+              {toKol ? (
+                <div className="mt-3 grid grid-cols-2 items-start gap-3">
+                  <div className="grid gap-3">{sekAnalyse}{sekMelding}{sekNotat}</div>
+                  <div className="grid gap-3">{sekOkonomi}{sekTilbud}</div>
+                </div>
+              ) : (
+                <div className="mt-3 grid gap-3">{sekAnalyse}{sekOkonomi}{sekMelding}{sekTilbud}{sekNotat}</div>
+              )}
             </div>
-          ) : (
-            <div className="divide-y divide-black/[0.05] px-5 sm:px-7">
-              {sekBilder}{sekAnalyse}{sekOkonomi}{sekMelding}{sekTilbud}{sekNotat}
-            </div>
-          )}
-        </div>
+          </div>
 
-        {/* Panelfot */}
-        <div className="flex items-center gap-2 border-t border-black/[0.05] bg-[#fcfcfb] px-5 py-3 sm:px-7">
-          {!sletteBekreft ? (
-            <button onClick={() => setSletteBekreft(true)} data-testid="radar-slett" className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-[12.5px] font-semibold text-[#c9c4bd] transition-colors hover:bg-[#fdf0ef] hover:text-[#c2413b]">
-              <Trash2 className="h-4 w-4" /> Slett lead
-            </button>
-          ) : (
-            <span className="flex items-center gap-1.5">
-              <button onClick={() => slett(valgt.id)} data-testid="radar-slett-bekreft" className="rounded-lg bg-[#fdf0ef] px-3.5 py-2 text-[12.5px] font-bold text-[#c2413b]">Ja, slett</button>
-              <button onClick={() => setSletteBekreft(false)} className="rounded-lg px-2.5 py-2 text-[12.5px] font-semibold text-[#999]">Avbryt</button>
-            </span>
+          {/* Panelfot */}
+          <div className="flex items-center gap-2 border-t border-black/[0.05] bg-white px-5 py-2.5 sm:px-7">
+            {!sletteBekreft ? (
+              <button onClick={() => setSletteBekreft(true)} data-testid="radar-slett" className="flex items-center gap-1.5 rounded-[7px] px-2.5 py-1.5 text-[12px] font-medium text-[#c2beb8] transition-colors hover:bg-[#fdf0ef] hover:text-[#c2413b]">
+                <Trash2 className="h-3.5 w-3.5" /> Slett lead
+              </button>
+            ) : (
+              <span className="flex items-center gap-1.5">
+                <button onClick={() => slett(valgt.id)} data-testid="radar-slett-bekreft" className="rounded-[7px] bg-[#fdf0ef] px-3 py-1.5 text-[12px] font-bold text-[#c2413b]">Ja, slett</button>
+                <button onClick={() => setSletteBekreft(false)} className="rounded-[7px] px-2.5 py-1.5 text-[12px] font-medium text-[#a8a29a]">Avbryt</button>
+              </span>
+            )}
+            <p className="ml-auto text-[11px] text-[#b8b2a9]">Hentet {naarSist(valgt.createdAt)}</p>
+          </div>
+
+          {/* Låst mens automatikken jobber — elegant overlay med live fremdrift */}
+          {autoAktiv && (
+            <div className="absolute inset-0 z-20 flex items-center justify-center bg-[#f7f6f3]/60 backdrop-blur-[3px]" data-testid="radar-auto-laas">
+              <div className="dh-scale-in mx-4 w-full max-w-[420px] rounded-2xl border border-black/[0.06] bg-white p-6 text-center shadow-[0_20px_60px_rgba(28,25,23,0.18)]">
+                <span className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-[#f4f0fb]"><Loader2 className="h-5 w-5 animate-spin text-[#8b5cf6]" /></span>
+                <p className="mt-3 text-[15px] font-bold tracking-[-0.01em] text-[#1c1917]" style={heading}>
+                  {valgt.auto.status === 'analyserer' ? 'AI-en analyserer annonsen' : 'AI-en forbedrer bildene'}
+                </p>
+                <p className="mt-1 text-[12.5px] text-[#78716c]" data-testid="radar-auto-banner">
+                  {valgt.auto.status === 'analyserer'
+                    ? 'Vurderer bilder, tekst og prisgrunnlag — tar 15–40 sekunder.'
+                    : `${valgt.auto.bilderFerdig || 0} av ${valgt.auto.bilderTotalt || 0} bilder ferdig${valgt.auto.bilderFeilet ? ` · ${valgt.auto.bilderFeilet} feilet` : ''}${valgt.auto.modus ? ` · ${STIL_VALG.find((s) => s.k === valgt.auto.modus)?.l || valgt.auto.modus}` : ''}`}
+                </p>
+                <div className="mx-auto mt-3.5 h-[5px] max-w-[280px] overflow-hidden rounded-full bg-[#f1efeb]">
+                  <div className="h-full rounded-full bg-[#8b5cf6] transition-all duration-700" style={{ width: valgt.auto.status === 'analyserer' ? '14%' : `${14 + 86 * ((valgt.auto.bilderFerdig || 0) / Math.max(1, valgt.auto.bilderTotalt || 1))}%` }} />
+                </div>
+                <p className="mt-3 text-[11px] text-[#a8a29a]">Annonsen er låst mens automatikken jobber — du kan trygt lukke og komme tilbake.</p>
+              </div>
+            </div>
           )}
-          <p className="ml-auto text-[11px] text-[#b8b2a9]">Hentet {naarSist(valgt.createdAt)}</p>
         </div>
       </div>
     );
@@ -734,28 +872,28 @@ export default function Salgsradar({ apiKey }) {
     <div className="mx-auto w-full max-w-[1840px]" data-testid="salgsradar-modul">
       {/* Innliming — skjult til man trykker «Ny annonse» (plussknappen) */}
       {visNy && (
-        <div className="mb-4 rounded-2xl bg-white p-4 shadow-[0_2px_16px_rgba(0,0,0,0.04)]" data-testid="radar-ny-panel">
+        <div className={`${KORT} mb-4 p-4`} data-testid="radar-ny-panel">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <div className="flex min-w-0 flex-1 items-center gap-2.5">
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#f4f0fb]"><Radar className="h-[18px] w-[18px] text-[#8b5cf6]" /></span>
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] border border-black/[0.06] bg-[#f7f6f3]"><Radar className="h-4 w-4 text-[#57534e]" /></span>
               <input value={url} onChange={(e) => setUrl(e.target.value)} autoFocus
                 onKeyDown={(e) => { if (e.key === 'Enter') hentAnnonse(); if (e.key === 'Escape') { setVisNy(false); setUrl(''); } }}
                 placeholder="Lim inn FINN-leieannonse — f.eks. https://www.finn.no/realestate/lettings/ad.html?finnkode=…"
                 data-testid="radar-url-input"
-                className="h-10 min-w-0 flex-1 rounded-lg border border-black/[0.08] bg-white px-3.5 text-[13.5px] outline-none transition-all placeholder:text-[#c9c4bd] focus:border-[#8b5cf6]/50 focus:ring-2 focus:ring-[#8b5cf6]/15" />
+                className="h-9 min-w-0 flex-1 rounded-[8px] border border-black/[0.08] bg-white px-3 text-[13px] outline-none transition-all placeholder:text-[#c2beb8] focus:border-[#1c1917]/30 focus:ring-2 focus:ring-[#1c1917]/[0.06]" />
             </div>
             <div className="flex shrink-0 items-center gap-1.5">
               <button onClick={hentAnnonse} disabled={henter || !url.trim()} data-testid="radar-hent-btn"
-                className="flex h-10 items-center justify-center gap-2 rounded-lg bg-[#0a0a0a] px-5 text-[13px] font-semibold text-white transition-all hover:bg-black/85 active:scale-[0.97] disabled:opacity-40">
-                {henter ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} Hent og analyser
+                className={`${KNAPP_PRIMAER} h-9`}>
+                {henter ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />} Hent og analyser
               </button>
               <button onClick={() => { setVisNy(false); setUrl(''); }} data-testid="radar-ny-lukk" title="Lukk"
-                className="flex h-10 w-10 items-center justify-center rounded-lg text-[#a8a29a] transition-colors hover:bg-black/[0.04] hover:text-[#333]">
+                className="flex h-9 w-9 items-center justify-center rounded-[8px] text-[#a8a29a] transition-colors hover:bg-black/[0.04] hover:text-[#1c1917]">
                 <X className="h-4 w-4" />
               </button>
             </div>
           </div>
-          <p className="mt-2 pl-[50px] text-[11.5px] text-[#b8b2a9]">Analyse og AI-bildeforbedring starter automatisk når annonsen er hentet.</p>
+          <p className="mt-2 pl-[46px] text-[11.5px] text-[#a8a29a]">Analyse og AI-bildeforbedring starter automatisk når annonsen er hentet.</p>
         </div>
       )}
 
@@ -763,63 +901,65 @@ export default function Salgsradar({ apiKey }) {
 
       {/* Verktøylinje / bulk-linje */}
       {utvalg.size === 0 ? (
-        <div className="flex flex-wrap items-center gap-1.5">
+        <div className="flex flex-wrap items-center gap-1.5 rounded-[12px] border border-black/[0.05] bg-white/85 px-2.5 py-2 shadow-[0_1px_3px_rgba(28,25,23,0.05)] backdrop-blur-md">
           <span className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#c9c4bd]" />
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#c2beb8]" />
             <input value={sok} onChange={(e) => setSok(e.target.value)} placeholder="Søk adresse…" data-testid="radar-sok"
-              className="h-9 w-[160px] rounded-full border border-black/[0.06] bg-white pl-9 pr-3 text-[12.5px] outline-none transition-all placeholder:text-[#c9c4bd] focus:w-[210px] focus:border-[#8b5cf6]/40 sm:w-[180px]" />
+              className="h-[28px] w-[150px] rounded-[7px] border border-black/[0.07] bg-white pl-8 pr-2.5 text-[12px] outline-none transition-all placeholder:text-[#c2beb8] focus:w-[200px] focus:border-[#1c1917]/25 sm:w-[170px]" />
           </span>
+          <span className="mx-1 hidden h-4 w-px bg-black/[0.07] sm:block" />
           {[{ k: 'alle', l: 'Alle' }, ...STATUSER].map((s) => (
             <button key={s.k} onClick={() => setFilter(s.k)} data-testid={`radar-filter-${s.k}`}
-              className={`flex h-9 items-center gap-1.5 rounded-full px-3.5 text-[12.5px] font-semibold transition-all ${filter === s.k ? 'bg-[#0a0a0a] text-white' : 'bg-white text-[#78716c] shadow-[0_1px_6px_rgba(0,0,0,0.04)] hover:text-[#333]'}`}>
-              {s.l} <span className={`tabular-nums ${filter === s.k ? 'text-white/60' : 'text-[#c9c4bd]'}`}>{antall[s.k] || 0}</span>
+              className={`flex h-[26px] shrink-0 items-center gap-1.5 rounded-[6px] px-2.5 text-[12px] font-medium transition-all ${filter === s.k ? 'bg-[#1c1917] text-white shadow-[0_1px_3px_rgba(28,25,23,0.25)]' : 'text-[#6f6a61] hover:text-[#1c1917]'}`}>
+              {s.farge && <span className="h-[5px] w-[5px] rounded-full" style={{ background: filter === s.k ? '#fff' : s.farge }} />}
+              {s.l} <span className={`tabular-nums ${filter === s.k ? 'text-white/50' : 'text-[#c2beb8]'}`}>{antall[s.k] || 0}</span>
             </button>
           ))}
           <span className="ml-auto flex items-center gap-1.5">
-            <span className="flex overflow-hidden rounded-lg border border-black/[0.07] bg-white">
+            <span className="flex overflow-hidden rounded-[7px] border border-black/[0.08] bg-white shadow-[0_1px_2px_rgba(28,25,23,0.04)]">
               <button onClick={() => setVisning('liste')} data-testid="radar-visning-liste" title="Listevisning"
-                className={`flex h-9 w-10 items-center justify-center transition-colors ${visning === 'liste' ? 'bg-[#0a0a0a] text-white' : 'text-[#a8a29a] hover:text-[#333]'}`}>
-                <List className="h-4 w-4" />
+                className={`flex h-[28px] w-9 items-center justify-center transition-colors ${visning === 'liste' ? 'bg-[#1c1917] text-white' : 'text-[#a8a29a] hover:text-[#1c1917]'}`}>
+                <List className="h-[15px] w-[15px]" />
               </button>
               <button onClick={() => setVisning('tabell')} data-testid="radar-visning-tabell" title="Tabellvisning — alle AI-delscorer"
-                className={`flex h-9 w-10 items-center justify-center transition-colors ${visning === 'tabell' ? 'bg-[#0a0a0a] text-white' : 'text-[#a8a29a] hover:text-[#333]'}`}>
-                <Table2 className="h-4 w-4" />
+                className={`flex h-[28px] w-9 items-center justify-center transition-colors ${visning === 'tabell' ? 'bg-[#1c1917] text-white' : 'text-[#a8a29a] hover:text-[#1c1917]'}`}>
+                <Table2 className="h-[15px] w-[15px]" />
               </button>
             </span>
             <select value={sort.key} onChange={(e) => setSort({ key: e.target.value, dir: 'desc' })} data-testid="radar-sort"
-              className="h-9 rounded-lg border border-black/[0.08] bg-white px-2.5 text-[12.5px] font-semibold text-[#57534e] outline-none focus:border-[#8b5cf6]/40">
+              className="h-[28px] rounded-[7px] border border-black/[0.08] bg-white px-2 text-[12px] font-medium text-[#57534e] shadow-[0_1px_2px_rgba(28,25,23,0.04)] outline-none focus:border-[#1c1917]/25">
               <option value="potensial">Høyest potensial</option>
               <option value="kvalitet">Annonsekvalitet</option>
               <option value="nyeste">Nyeste først</option>
               <option value="pris">Høyest leie</option>
             </select>
             <button onClick={() => setVisNy((v) => !v)} data-testid="radar-ny-btn" title="Legg til ny FINN-annonse"
-              className="flex h-9 items-center gap-1.5 rounded-lg bg-[#0a0a0a] pl-3 pr-4 text-[12.5px] font-semibold text-white transition-all hover:bg-black/85 active:scale-[0.97]">
-              <Plus className="h-4 w-4" /> Ny annonse
+              className="flex h-[28px] items-center gap-1 rounded-[7px] bg-gradient-to-b from-[#2b2825] to-[#131110] pl-2 pr-3 text-[12px] font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.09),0_1px_2px_rgba(28,25,23,0.2)] transition-all hover:from-[#211f1c] hover:to-[#0a0908] active:scale-[0.98]">
+              <Plus className="h-[14px] w-[14px]" /> Ny annonse
             </button>
           </span>
         </div>
       ) : (
-        <div className="flex flex-wrap items-center gap-2 rounded-xl bg-[#0a0a0a] px-4 py-3 text-white">
+        <div className="flex flex-wrap items-center gap-2 rounded-[12px] bg-[#1c1917] px-4 py-2.5 text-white shadow-[0_1px_3px_rgba(28,25,23,0.25)]">
           <span className="text-[13px] font-bold tabular-nums" style={heading}>{utvalg.size} valgt</span>
           <button onClick={() => setUtvalg(new Set(sortert.map((l) => l.id)))} data-testid="radar-velg-alle"
-            className="rounded-lg px-3 py-1.5 text-[12.5px] font-semibold text-white/60 transition-colors hover:bg-white/10 hover:text-white">
+            className="rounded-[7px] px-2.5 py-1.5 text-[12px] font-medium text-white/60 transition-colors hover:bg-white/10 hover:text-white">
             Velg alle ({sortert.length})
           </button>
           <span className="ml-auto flex items-center gap-1.5">
             {!bulkBekreft ? (
               <button onClick={() => setBulkBekreft(true)} data-testid="radar-bulk-slett"
-                className="flex items-center gap-1.5 rounded-lg bg-white/10 px-3.5 py-2 text-[12.5px] font-bold text-[#ff9d95] transition-colors hover:bg-white/15">
-                <Trash2 className="h-4 w-4" /> Slett valgte
+                className="flex items-center gap-1.5 rounded-[7px] bg-white/10 px-3 py-1.5 text-[12px] font-medium text-[#ff9d95] transition-colors hover:bg-white/15">
+                <Trash2 className="h-3.5 w-3.5" /> Slett valgte
               </button>
             ) : (
               <button onClick={bulkSlett} disabled={bulkSletter} data-testid="radar-bulk-slett-bekreft"
-                className="flex items-center gap-1.5 rounded-lg bg-[#c2413b] px-3.5 py-2 text-[12.5px] font-bold text-white transition-all hover:bg-[#a93833] disabled:opacity-60">
-                {bulkSletter ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />} Ja, slett {utvalg.size} leads
+                className="flex items-center gap-1.5 rounded-[7px] bg-[#c2413b] px-3 py-1.5 text-[12px] font-medium text-white transition-all hover:bg-[#a93833] disabled:opacity-60">
+                {bulkSletter ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />} Ja, slett {utvalg.size} leads
               </button>
             )}
             <button onClick={() => { setUtvalg(new Set()); setBulkBekreft(false); }} data-testid="radar-velg-avbryt"
-              className="rounded-lg px-3 py-2 text-[12.5px] font-semibold text-white/60 transition-colors hover:bg-white/10 hover:text-white">
+              className="rounded-[7px] px-2.5 py-1.5 text-[12px] font-medium text-white/60 transition-colors hover:bg-white/10 hover:text-white">
               Avbryt
             </button>
           </span>
@@ -828,19 +968,18 @@ export default function Salgsradar({ apiKey }) {
 
       {/* Innhold */}
       {laster ? (
-        <div className="flex items-center justify-center py-20"><Loader2 className="h-5 w-5 animate-spin text-[#cf97fc]" /></div>
+        <div className="flex items-center justify-center py-20"><Loader2 className="h-5 w-5 animate-spin text-[#8b5cf6]" /></div>
       ) : sortert.length === 0 ? (
-        <div className="mt-6 rounded-2xl bg-white px-5 py-12 text-center shadow-[0_2px_16px_rgba(0,0,0,0.04)]">
+        <div className={`${KORT} mt-4 px-5 py-12 text-center`}>
           {leads.length === 0 ? (
             <>
-              <p className="text-[13.5px] text-[#b3ada3]">Ingen annonser ennå — legg inn din første FINN-leieannonse.</p>
-              <button onClick={() => setVisNy(true)} data-testid="radar-tom-ny-btn"
-                className="mx-auto mt-4 flex h-10 items-center gap-2 rounded-lg bg-[#0a0a0a] pl-3.5 pr-5 text-[13px] font-semibold text-white transition-all hover:bg-black/85 active:scale-[0.97]">
+              <p className="text-[13px] text-[#a8a29a]">Ingen annonser ennå — legg inn din første FINN-leieannonse.</p>
+              <button onClick={() => setVisNy(true)} data-testid="radar-tom-ny-btn" className={`${KNAPP_PRIMAER} mx-auto mt-4 h-9`}>
                 <Plus className="h-4 w-4" /> Ny annonse
               </button>
             </>
           ) : (
-            <p className="text-[13.5px] text-[#b3ada3]">Ingen leads matcher søket/filteret.</p>
+            <p className="text-[13px] text-[#a8a29a]">Ingen leads matcher søket/filteret.</p>
           )}
         </div>
       ) : (
@@ -848,7 +987,7 @@ export default function Salgsradar({ apiKey }) {
           {/* Venstre: liste eller tabell */}
           <div className={`min-w-0 ${splitt ? 'w-[330px] shrink-0 xl:w-[380px]' : 'flex-1'}`}>
             {visning === 'liste' ? (
-              <div className="overflow-hidden rounded-2xl bg-white shadow-[0_2px_16px_rgba(0,0,0,0.04)]">
+              <div className={`${KORT} overflow-hidden`}>
                 {sortert.map((l) => {
                   const rs = regnestykke(l);
                   const st = statusStil(l.status);
@@ -859,41 +998,41 @@ export default function Salgsradar({ apiKey }) {
                       onClick={() => { setValgtId(l.id); setSletteBekreft(false); }}
                       onKeyDown={(e) => { if (e.key === 'Enter') { setValgtId(l.id); setSletteBekreft(false); } }}
                       data-testid={`radar-lead-${l.id}`}
-                      className={`relative flex w-full cursor-pointer items-center gap-3 border-b border-black/[0.04] px-3.5 py-3.5 text-left transition-colors last:border-0 sm:px-5 ${aktiv ? 'bg-[#f4f0fb]/70' : erValgt ? 'bg-[#f4f0fb]/40' : 'hover:bg-[#fcfcfb]'}`}>
-                      {aktiv && <span className="absolute inset-y-0 left-0 w-[3px] bg-[#8b5cf6]" />}
+                      className={`relative flex w-full cursor-pointer items-center gap-3 border-b border-black/[0.04] px-3.5 py-3 text-left transition-colors last:border-0 sm:px-5 ${aktiv ? 'bg-[#f7f6f3]' : erValgt ? 'bg-[#faf9f7]' : 'hover:bg-[#fbfaf9]'}`}>
+                      {aktiv && <span className="absolute inset-y-0 left-0 w-[3px] bg-[#1c1917]" />}
                       <button onClick={(e) => { e.stopPropagation(); veksleValg(l.id); }} data-testid={`radar-velg-${l.id}`} aria-label={erValgt ? 'Fjern markering' : 'Marker lead'}
-                        className={`shrink-0 rounded-md p-1 transition-colors ${erValgt ? 'text-[#8b5cf6]' : 'text-[#ddd8d0] hover:text-[#a8a29a]'}`}>
-                        {erValgt ? <CheckSquare className="h-[18px] w-[18px]" /> : <Square className="h-[18px] w-[18px]" />}
+                        className={`shrink-0 rounded-md p-1 transition-colors ${erValgt ? 'text-[#1c1917]' : 'text-[#ddd8d0] hover:text-[#a8a29a]'}`}>
+                        {erValgt ? <CheckSquare className="h-[17px] w-[17px]" /> : <Square className="h-[17px] w-[17px]" />}
                       </button>
                       {(l.bilder || [])[0]
                         // eslint-disable-next-line @next/next/no-img-element
-                        ? <img src={l.bilder[0]} alt="" className={`shrink-0 rounded-xl object-cover ${splitt ? 'h-11 w-16' : 'h-14 w-20'}`} />
-                        : <span className={`flex shrink-0 items-center justify-center rounded-xl bg-[#f4f2ee] ${splitt ? 'h-11 w-16' : 'h-14 w-20'}`}><Home className="h-4 w-4 text-[#c9c4bd]" /></span>}
+                        ? <img src={l.bilder[0]} alt="" className={`shrink-0 rounded-[10px] object-cover shadow-[inset_0_0_0_1px_rgba(0,0,0,0.04)] ${splitt ? 'h-11 w-16' : 'h-14 w-20'}`} />
+                        : <span className={`flex shrink-0 items-center justify-center rounded-[10px] bg-[#f4f2ee] ${splitt ? 'h-11 w-16' : 'h-14 w-20'}`}><Home className="h-4 w-4 text-[#c9c4bd]" /></span>}
                       <span className="min-w-0 flex-1">
                         <span className="flex items-center gap-2">
-                          <span className="truncate text-[14px] font-bold text-[#1c1917]" style={heading}>{l.adresse || l.tittel}</span>
+                          <span className="truncate text-[13.5px] font-bold tracking-[-0.01em] text-[#1c1917]" style={heading}>{l.adresse || l.tittel}</span>
                           {l.kilde === 'agent' && !splitt && (
-                            <span className="shrink-0 rounded-md bg-[#f1ebfc] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[#6d28d9]" title="Matet inn av overvåkningsagenten">Agent</span>
+                            <span className="shrink-0 rounded-[4px] border border-black/[0.07] bg-[#f7f6f3] px-1.5 py-px text-[8.5px] font-bold uppercase tracking-wide text-[#8a857c]" title="Matet inn av overvåkningsagenten">Agent</span>
                           )}
                         </span>
-                        <span className="mt-1 block truncate text-[12px] tabular-nums text-[#78716c]">
+                        <span className="mt-0.5 block truncate text-[12px] tabular-nums text-[#78716c]">
                           <b className="font-semibold text-[#44403c]">{kr(l.pris)}/mnd</b>
                           {!splitt && l.m2 ? <span className="text-[#a8a29a]"> · {l.m2} m²</span> : null}
                           {!splitt && l.soverom ? <span className="text-[#a8a29a]"> · {l.soverom} sov</span> : null}
                           {!splitt ? <span className="text-[#a8a29a]"> · honorar {kr(rs.honorar)}/mnd</span> : null}
                         </span>
-                        <span className="mt-1.5 flex items-center gap-2">
+                        <span className="mt-1.5 flex items-center gap-2.5">
                           {l.auto && ['analyserer', 'styler'].includes(l.auto.status) ? (
-                            <span className="flex items-center gap-1.5 rounded-full bg-[#f4f0fb] px-2 py-0.5 text-[10px] font-bold text-[#6d28d9]" data-testid={`radar-auto-status-${l.id}`}>
-                              <Loader2 className="h-3 w-3 animate-spin" />
+                            <span className="flex items-center gap-1.5 text-[11px] font-medium text-[#6f6a61]" data-testid={`radar-auto-status-${l.id}`}>
+                              <Loader2 className="h-3 w-3 animate-spin text-[#8b5cf6]" />
                               {l.auto.status === 'analyserer' ? 'Analyserer…' : `Bilder ${l.auto.bilderFerdig || 0}/${l.auto.bilderTotalt || 0}`}
                             </span>
                           ) : (
-                            <span className="flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-bold" style={{ color: st.farge, background: st.bg }}>{st.l}</span>
+                            <StatusPrikk s={st} />
                           )}
                           {(l.stylet || []).length > 0 && <Wand2 className="h-3.5 w-3.5 text-[#8b5cf6]" title={`${l.stylet.length} AI-stylede bilder`} />}
                           {(l.aapninger || 0) > 0 && <span className="flex items-center gap-0.5 text-[10.5px] tabular-nums text-[#0e7490]" title={`Tilbudssiden åpnet ${l.aapninger} ganger`}><Eye className="h-3.5 w-3.5" />{l.aapninger}</span>}
-                          {l.kilde === 'agent' && splitt && <span className="rounded bg-[#f1ebfc] px-1 py-0.5 text-[8px] font-bold uppercase text-[#6d28d9]">Agent</span>}
+                          {l.kilde === 'agent' && splitt && <span className="rounded-[4px] border border-black/[0.07] bg-[#f7f6f3] px-1 py-px text-[8px] font-bold uppercase text-[#8a857c]">Agent</span>}
                         </span>
                       </span>
                       <PotensialBadge p={l.potensial} id={l.id} />
@@ -902,27 +1041,27 @@ export default function Salgsradar({ apiKey }) {
                 })}
               </div>
             ) : (
-              <div className="overflow-x-auto rounded-2xl bg-white shadow-[0_2px_16px_rgba(0,0,0,0.04)]" data-testid="radar-tabell">
+              <div className={`${KORT} overflow-x-auto`} data-testid="radar-tabell">
                 <table className="w-full min-w-[1080px] border-collapse text-left">
                   <thead>
-                    <tr className="border-b border-black/[0.06]">
-                      <th className="w-10 px-3.5 py-3" />
-                      <th className="px-2 py-3 text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#a8a29a]">Bolig</th>
-                      <th className="px-2 py-3 text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#a8a29a]">Status</th>
-                      <th className="cursor-pointer px-2 py-3 text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#57534e]" onClick={() => sorter('potensial')} data-testid="radar-tabell-sort-potensial">
-                        <span className="flex items-center gap-0.5">Potensial <SortPil k="potensial" /></span>
+                    <tr>
+                      <th className="sticky top-0 z-10 w-10 bg-white/90 px-3.5 py-3 shadow-[inset_0_-1px_0_rgba(0,0,0,0.06)] backdrop-blur-md" />
+                      <th className="sticky top-0 z-10 bg-white/90 px-2 py-3 text-[10px] font-bold uppercase tracking-[0.09em] text-[#a8a29a] shadow-[inset_0_-1px_0_rgba(0,0,0,0.06)] backdrop-blur-md">Bolig</th>
+                      <th className="sticky top-0 z-10 bg-white/90 px-2 py-3 text-[10px] font-bold uppercase tracking-[0.09em] text-[#a8a29a] shadow-[inset_0_-1px_0_rgba(0,0,0,0.06)] backdrop-blur-md">Status</th>
+                      <th className="sticky top-0 z-10 cursor-pointer bg-white/90 px-2 py-3 text-center text-[10px] font-bold uppercase tracking-[0.09em] text-[#57534e] shadow-[inset_0_-1px_0_rgba(0,0,0,0.06)] backdrop-blur-md" onClick={() => sorter('potensial')} data-testid="radar-tabell-sort-potensial">
+                        <span className="flex items-center justify-center gap-0.5">Potensial <SortPil k="potensial" /></span>
                       </th>
-                      <th className="cursor-pointer px-2 py-3 text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#57534e]" onClick={() => sorter('kvalitet')}>
-                        <span className="flex items-center gap-0.5">Kvalitet <SortPil k="kvalitet" /></span>
+                      <th className="sticky top-0 z-10 cursor-pointer bg-white/90 px-2 py-3 text-center text-[10px] font-bold uppercase tracking-[0.09em] text-[#57534e] shadow-[inset_0_-1px_0_rgba(0,0,0,0.06)] backdrop-blur-md" onClick={() => sorter('kvalitet')}>
+                        <span className="flex items-center justify-center gap-0.5">Kvalitet <SortPil k="kvalitet" /></span>
                       </th>
                       {DEL_ETIKETTER.map(([k, lang, kort]) => (
-                        <th key={k} className="px-2 py-3 text-center text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#a8a29a]" title={lang}>{kort}</th>
+                        <th key={k} className="sticky top-0 z-10 bg-white/90 px-1.5 py-3 text-center text-[10px] font-bold uppercase tracking-[0.09em] text-[#a8a29a] shadow-[inset_0_-1px_0_rgba(0,0,0,0.06)] backdrop-blur-md" title={lang}>{kort}</th>
                       ))}
-                      <th className="cursor-pointer px-2 py-3 text-right text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#57534e]" onClick={() => sorter('pris')}>
+                      <th className="sticky top-0 z-10 cursor-pointer bg-white/90 px-2 py-3 text-right text-[10px] font-bold uppercase tracking-[0.09em] text-[#57534e] shadow-[inset_0_-1px_0_rgba(0,0,0,0.06)] backdrop-blur-md" onClick={() => sorter('pris')}>
                         <span className="flex items-center justify-end gap-0.5">Leie <SortPil k="pris" /></span>
                       </th>
-                      <th className="px-2 py-3 text-right text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#a8a29a]">Anbefalt</th>
-                      <th className="cursor-pointer px-3.5 py-3 text-right text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#57534e]" onClick={() => sorter('aapnet')}>
+                      <th className="sticky top-0 z-10 bg-white/90 px-2 py-3 text-right text-[10px] font-bold uppercase tracking-[0.09em] text-[#a8a29a] shadow-[inset_0_-1px_0_rgba(0,0,0,0.06)] backdrop-blur-md">Anbefalt</th>
+                      <th className="sticky top-0 z-10 cursor-pointer bg-white/90 px-3.5 py-3 text-right text-[10px] font-bold uppercase tracking-[0.09em] text-[#57534e] shadow-[inset_0_-1px_0_rgba(0,0,0,0.06)] backdrop-blur-md" onClick={() => sorter('aapnet')}>
                         <span className="flex items-center justify-end gap-0.5">Åpnet <SortPil k="aapnet" /></span>
                       </th>
                     </tr>
@@ -934,50 +1073,56 @@ export default function Salgsradar({ apiKey }) {
                       const d = l.ai?.deler || null;
                       return (
                         <tr key={l.id} onClick={() => { setValgtId(l.id); setSletteBekreft(false); }} data-testid={`radar-lead-${l.id}`}
-                          className={`cursor-pointer border-b border-black/[0.04] transition-colors last:border-0 ${erValgt ? 'bg-[#f4f0fb]/40' : 'hover:bg-[#fcfcfb]'}`}>
-                          <td className="px-3.5 py-2.5">
+                          className={`cursor-pointer border-b border-black/[0.04] transition-colors last:border-0 ${erValgt ? 'bg-[#faf9f7]' : 'hover:bg-[#fbfaf9]'}`}>
+                          <td className="px-3.5 py-2">
                             <button onClick={(e) => { e.stopPropagation(); veksleValg(l.id); }} data-testid={`radar-velg-${l.id}`} aria-label="Marker"
-                              className={`rounded-md p-0.5 transition-colors ${erValgt ? 'text-[#8b5cf6]' : 'text-[#ddd8d0] hover:text-[#a8a29a]'}`}>
-                              {erValgt ? <CheckSquare className="h-[17px] w-[17px]" /> : <Square className="h-[17px] w-[17px]" />}
+                              className={`rounded-md p-0.5 transition-colors ${erValgt ? 'text-[#1c1917]' : 'text-[#ddd8d0] hover:text-[#a8a29a]'}`}>
+                              {erValgt ? <CheckSquare className="h-[16px] w-[16px]" /> : <Square className="h-[16px] w-[16px]" />}
                             </button>
                           </td>
-                          <td className="px-2 py-2.5">
+                          <td className="px-2 py-2">
                             <span className="flex items-center gap-2.5">
                               {(l.bilder || [])[0]
                                 // eslint-disable-next-line @next/next/no-img-element
-                                ? <img src={l.bilder[0]} alt="" className="h-9 w-13 shrink-0 rounded-lg object-cover" style={{ width: 52 }} />
-                                : <span className="flex h-9 shrink-0 items-center justify-center rounded-lg bg-[#f4f2ee]" style={{ width: 52 }}><Home className="h-3.5 w-3.5 text-[#c9c4bd]" /></span>}
+                                ? <img src={l.bilder[0]} alt="" className="h-9 shrink-0 rounded-[8px] object-cover shadow-[inset_0_0_0_1px_rgba(0,0,0,0.04)]" style={{ width: 52 }} />
+                                : <span className="flex h-9 shrink-0 items-center justify-center rounded-[8px] bg-[#f4f2ee]" style={{ width: 52 }}><Home className="h-3.5 w-3.5 text-[#c9c4bd]" /></span>}
                               <span className="min-w-0">
-                                <span className="block max-w-[210px] truncate text-[13px] font-bold text-[#1c1917]" style={heading}>{l.adresse || l.tittel}</span>
-                                <span className="flex items-center gap-1.5 text-[10.5px] text-[#b8b2a9]">
+                                <span className="block max-w-[210px] truncate text-[13px] font-bold tracking-[-0.01em] text-[#1c1917]" style={heading}>{l.adresse || l.tittel}</span>
+                                <span className="flex items-center gap-1.5 text-[10.5px] text-[#a8a29a]">
                                   {l.m2 ? `${l.m2} m²` : ''}{l.soverom ? ` · ${l.soverom} sov` : ''}
-                                  {l.kilde === 'agent' && <span className="rounded bg-[#f1ebfc] px-1 py-px text-[8px] font-bold uppercase text-[#6d28d9]">Agent</span>}
+                                  {l.kilde === 'agent' && <span className="rounded-[3px] border border-black/[0.07] bg-[#f7f6f3] px-1 py-px text-[7.5px] font-bold uppercase text-[#8a857c]">Agent</span>}
                                 </span>
                               </span>
                             </span>
                           </td>
-                          <td className="px-2 py-2.5">
+                          <td className="px-2 py-2">
                             {l.auto && ['analyserer', 'styler'].includes(l.auto.status) ? (
-                              <span className="flex items-center gap-1.5 rounded-full bg-[#f4f0fb] px-2 py-1 text-[10px] font-bold text-[#6d28d9]">
-                                <Loader2 className="h-3 w-3 animate-spin" />
+                              <span className="flex items-center gap-1.5 text-[11px] font-medium text-[#6f6a61]">
+                                <Loader2 className="h-3 w-3 animate-spin text-[#8b5cf6]" />
                                 {l.auto.status === 'analyserer' ? 'Analyserer' : `${l.auto.bilderFerdig || 0}/${l.auto.bilderTotalt || 0}`}
                               </span>
                             ) : (
-                              <span className="rounded-full px-2.5 py-1 text-[10.5px] font-bold" style={{ color: st.farge, background: st.bg }}>{st.l}</span>
+                              <StatusPrikk s={st} />
                             )}
                           </td>
-                          <td className="px-2 py-2.5"><PotensialBadge p={l.potensial} id={l.id} /></td>
-                          <td className="px-2 py-2.5 text-[13px] font-bold tabular-nums" style={{ ...heading, color: l.potensial?.forelopig ? '#b8b2a9' : '#44403c' }}>
-                            {l.potensial?.forelopig ? `~${l.potensial.annonseScore}` : l.potensial?.annonseScore}
+                          <td className="px-2 py-2 text-center"><span className="inline-flex justify-center"><PotensialBadge p={l.potensial} id={l.id} /></span></td>
+                          <td className="px-2 py-2 text-center">
+                            {l.potensial?.annonseScore != null ? (
+                              <ScoreRing verdi={l.potensial.annonseScore} forelopig={l.potensial.forelopig} storrelse={40} strek={3.5}
+                                tittel={`Annonsekvalitet ${l.potensial.annonseScore}/100`} />
+                            ) : <span className="text-[12px] text-[#c9c4bd]">–</span>}
                           </td>
-                          {DEL_ETIKETTER.map(([k]) => (
-                            <td key={k} className="px-2 py-2.5 text-center text-[12px] font-semibold tabular-nums" style={{ ...heading, color: delFarge(d?.[k]) }}>
-                              {d?.[k] ?? '–'}
+                          {DEL_ETIKETTER.map(([k, lang]) => (
+                            <td key={k} className="px-1.5 py-2 text-center">
+                              {d?.[k] != null ? (
+                                <ScoreRing verdi={Math.round(d[k] * 10)} storrelse={32} strek={3} farge={delFarge(d[k])}
+                                  tittel={`${lang}: ${d[k]}/10`} />
+                              ) : <span className="text-[12px] text-[#ddd8d0]">–</span>}
                             </td>
                           ))}
-                          <td className="px-2 py-2.5 text-right text-[12.5px] font-semibold tabular-nums text-[#44403c]" style={heading}>{tall(l.pris)}</td>
-                          <td className="px-2 py-2.5 text-right text-[12.5px] tabular-nums text-[#78716c]" style={heading}>{l.analyse?.anbefaltLeie ? tall(l.analyse.anbefaltLeie) : '–'}</td>
-                          <td className="px-3.5 py-2.5 text-right text-[12.5px] tabular-nums text-[#0e7490]">{l.aapninger || 0}</td>
+                          <td className="px-2 py-2 text-right text-[12.5px] font-semibold tabular-nums text-[#44403c]" style={heading}>{tall(l.pris)}</td>
+                          <td className="px-2 py-2 text-right text-[12.5px] tabular-nums text-[#78716c]" style={heading}>{l.analyse?.anbefaltLeie ? tall(l.analyse.anbefaltLeie) : '–'}</td>
+                          <td className="px-3.5 py-2 text-right text-[12.5px] tabular-nums text-[#0e7490]">{l.aapninger || 0}</td>
                         </tr>
                       );
                     })}
@@ -989,7 +1134,7 @@ export default function Salgsradar({ apiKey }) {
 
           {/* Høyre: detaljpanel i splittvisning */}
           {splitt && (
-            <div className="sticky top-4 min-w-0 flex-1 overflow-hidden rounded-2xl bg-white shadow-[0_2px_20px_rgba(0,0,0,0.06)]" style={{ height: 'calc(100vh - 120px)', minHeight: 520 }}>
+            <div className="sticky top-4 min-w-0 flex-1 overflow-hidden rounded-2xl border border-black/[0.06] bg-white shadow-[0_1px_2px_rgba(28,25,23,0.04),0_16px_48px_-20px_rgba(28,25,23,0.14)]" style={{ height: 'calc(100vh - 120px)', minHeight: 520 }}>
               {panel}
             </div>
           )}
@@ -1023,6 +1168,16 @@ export default function Salgsradar({ apiKey }) {
           idx={Math.min(lightbox.idx, galleri.length - 1)}
           setIdx={(fn) => setLightbox((prev) => ({ idx: typeof fn === 'function' ? fn(prev?.idx || 0) : fn }))}
           onClose={() => setLightbox(null)}
+        />
+      )}
+
+      {/* Før/etter-sammenligning av AI-stylede bilder */}
+      {valgt && sammenlign && aiPar.length > 0 && (
+        <SammenlignModal
+          par={aiPar}
+          idx={Math.min(sammenlign.idx, aiPar.length - 1)}
+          setIdx={(fn) => setSammenlign((prev) => ({ idx: typeof fn === 'function' ? fn(prev?.idx || 0) : fn }))}
+          onClose={() => setSammenlign(null)}
         />
       )}
     </div>
