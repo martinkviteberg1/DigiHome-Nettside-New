@@ -112,6 +112,20 @@ const StatusPrikk = ({ s, tekst = true }) => (
   </span>
 );
 
+/* Neste steg-veiviser — Airbnb-prinsipp: vis alltid brukeren hva som er den
+   naturlige neste handlingen, med ett-klikks CTA-er i detaljpanelet. */
+const nesteSteg = (l) => {
+  if (l.auto && ['analyserer', 'styler'].includes(l.auto.status)) return null;
+  if (['analysert', 'kontaktet', 'dialog'].includes(l.status) && (l.aapninger || 0) > 0 && l.status !== 'dialog') {
+    return { t: `Huseier har åpnet tilbudet${(l.aapninger || 0) > 1 ? ` ${l.aapninger}×` : ''} — følg opp nå`, c: '#0e7490', varm: true };
+  }
+  if (l.status === 'ny') return { t: 'Kjør AI-analyse for score og tilbudstekst', c: '#6d28d9' };
+  if (l.status === 'analysert') return { t: 'Klar til kontakt — send FINN-melding', c: '#6d28d9' };
+  if (l.status === 'kontaktet') return { t: 'Venter på svar fra huseier', c: '#8a857c' };
+  if (l.status === 'dialog') return { t: 'I dialog — avklar detaljene og vinn avtalen', c: '#1f7a45' };
+  return null;
+};
+
 /* Flatt DigiHome-seksjonshode: liten stille etikett, ikke ikon-chips */
 const SekHode = ({ ikon: Ikon, tittel, hoyre }) => (
   <div className="flex flex-wrap items-center gap-2">
@@ -288,9 +302,20 @@ export default function Salgsradar({ apiKey }) {
   const [visNy, setVisNy] = useState(false);
   const [retryStarter, setRetryStarter] = useState(false);
   const [heroIdx, setHeroIdx] = useState(0);
-  const [sammenlign, setSammenlign] = useState(null); // {idx} — før/etter-modal for AI-bilder
+  const [heroPos, setHeroPos] = useState(55); // skillelinje for inline før/etter på hero
+  const heroDrag = useRef(false);
+  const [sammenlign, setSammenlign] = useState(null); // {idx} — fullskjerm før/etter-modal
   const swipeX = useRef(null); // touch-swipe i hero-galleriet
+  const [lagret, setLagret] = useState(false);
+  const lagretTimer = useRef(null);
+  useEffect(() => () => clearTimeout(lagretTimer.current), []);
   useEffect(() => { setHeroIdx(0); setSammenlign(null); }, [valgtId]);
+  useEffect(() => { setHeroPos(55); }, [heroIdx, valgtId]);
+  const settHeroPos = (e) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    if (!r.width) return;
+    setHeroPos(Math.max(3, Math.min(97, ((e.clientX - r.left) / r.width) * 100)));
+  };
 
   useEffect(() => {
     const m = window.matchMedia('(min-width: 1024px)');
@@ -368,6 +393,10 @@ export default function Salgsradar({ apiKey }) {
     try {
       await api('lead', { method: 'PUT', body: { id, ...patch } });
       if (!behold) setLeads((prev) => prev.map((l) => (l.id === id ? { ...l, ...patch, analyse: patch.analyse ? { ...l.analyse, ...patch.analyse } : l.analyse } : l)));
+      // Diskret «Lagret»-kvittering (Airbnb-prinsipp: bekreft alltid handlingen)
+      setLagret(true);
+      clearTimeout(lagretTimer.current);
+      lagretTimer.current = setTimeout(() => setLagret(false), 1400);
     } catch (e) { setFeil(e.message); }
   };
 
@@ -454,6 +483,17 @@ export default function Salgsradar({ apiKey }) {
     return { anbefalt, pct, honorar, netto, gevinst: l.pris ? netto - l.pris : null };
   };
 
+  // Innsiktslinje — gjør modulen målrettet: hva er i spill, hvem venter på deg
+  const innsikt = useMemo(() => {
+    const pipeline = leads.filter((l) => ['analysert', 'kontaktet', 'dialog'].includes(l.status));
+    const honorarPipeline = pipeline.reduce((s, l) => s + (regnestykke(l).honorar || 0), 0);
+    const aKontakte = leads.filter((l) => l.status === 'analysert').length;
+    const harApnet = leads.filter((l) => (l.aapninger || 0) > 0 && !['vunnet', 'tapt'].includes(l.status)).length;
+    const vunnetLeads = leads.filter((l) => l.status === 'vunnet');
+    const honorarVunnet = vunnetLeads.reduce((s, l) => s + (regnestykke(l).honorar || 0), 0);
+    return { honorarPipeline, pipeline: pipeline.length, aKontakte, harApnet, vunnet: vunnetLeads.length, honorarVunnet };
+  }, [leads]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const tilbudLenke = (l) => `${typeof window !== 'undefined' ? window.location.origin : ''}/tilbud/${l.tilbudSlug}`;
   const kopierLenke = (l) => navigator.clipboard?.writeText(tilbudLenke(l)).then(() => { setKopiert(true); setTimeout(() => setKopiert(false), 1600); });
   const kopierMelding = (l) => {
@@ -485,6 +525,7 @@ export default function Salgsradar({ apiKey }) {
     const toKol = utvidet || (splitt && ultra);
     const nB = galleri.length;
     const autoAktiv = Boolean(valgt.auto && ['analyserer', 'styler'].includes(valgt.auto.status));
+    const steg = autoAktiv ? null : nesteSteg(valgt);
 
     const BENTO = 'rounded-[14px] border border-black/[0.06] bg-white shadow-[0_1px_2px_rgba(28,25,23,0.04)]';
     const hIdx = Math.min(heroIdx, Math.max(0, nB - 1));
@@ -505,45 +546,67 @@ export default function Salgsradar({ apiKey }) {
             )}
           </>
         )} />
-        {/* Hero med slider — Airbnb-stil: swipe på mobil, pilknapper, teller, før/etter */}
-        <div className="group relative mt-3 overflow-hidden rounded-[12px] bg-[#f4f2ee]" data-testid="radar-galleri-hero"
-          onTouchStart={(e) => { swipeX.current = e.touches[0].clientX; }}
-          onTouchEnd={(e) => {
+        {/* Hero — AI-bilder viser før/etter-slider DIREKTE på bildet; originaler
+            har swipe/klikk som før */}
+        <div className={`group relative mt-3 overflow-hidden rounded-[12px] bg-[#f4f2ee] ${hero.ai && hero.kilde ? 'cursor-ew-resize' : ''}`} data-testid="radar-galleri-hero"
+          style={hero.ai && hero.kilde ? { touchAction: 'pan-y' } : undefined}
+          onPointerDown={hero.ai && hero.kilde ? (e) => { heroDrag.current = true; try { e.currentTarget.setPointerCapture(e.pointerId); } catch (e2) { /* ok */ } settHeroPos(e); } : undefined}
+          onPointerMove={hero.ai && hero.kilde ? (e) => { if (heroDrag.current) settHeroPos(e); } : undefined}
+          onPointerUp={hero.ai && hero.kilde ? () => { heroDrag.current = false; } : undefined}
+          onPointerCancel={hero.ai && hero.kilde ? () => { heroDrag.current = false; } : undefined}
+          onTouchStart={!hero.ai ? (e) => { swipeX.current = e.touches[0].clientX; } : undefined}
+          onTouchEnd={!hero.ai ? (e) => {
             if (swipeX.current == null || nB < 2) return;
             const dx = e.changedTouches[0].clientX - swipeX.current;
             swipeX.current = null;
             if (dx > 45) setHeroIdx((hIdx - 1 + nB) % nB);
             else if (dx < -45) setHeroIdx((hIdx + 1) % nB);
-          }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={hero.url} alt="" draggable={false}
-            onClick={() => (hero.ai && aiPar.length ? setSammenlign({ idx: Math.min(hIdx, aiPar.length - 1) }) : setLightbox({ idx: hIdx }))}
-            data-testid="radar-galleri-bilde" role="button" tabIndex={0}
-            className="h-[220px] w-full cursor-pointer object-cover transition-transform duration-500 min-[440px]:h-[260px] sm:h-[340px]" />
+          } : undefined}>
+          {hero.ai && hero.kilde ? (
+            <>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={hero.kilde} alt="Original" draggable={false} data-testid="radar-galleri-bilde"
+                className="h-[220px] w-full select-none object-cover min-[440px]:h-[260px] sm:h-[340px]" />
+              <span className="pointer-events-none absolute inset-0" style={{ clipPath: `inset(0 ${100 - heroPos}% 0 0)` }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={hero.url} alt="AI-forbedret" draggable={false} className="h-full w-full select-none object-cover" />
+              </span>
+              <span className="pointer-events-none absolute inset-y-0 z-10" style={{ left: `${heroPos}%` }} data-testid="radar-hero-slider">
+                <span className="absolute inset-y-0 -ml-px w-[2px] bg-white/95 shadow-[0_0_8px_rgba(0,0,0,0.45)]" />
+                <span className="absolute top-1/2 -ml-[15px] -mt-[15px] flex h-[30px] w-[30px] items-center justify-center rounded-full bg-white shadow-[0_2px_10px_rgba(0,0,0,0.3)]">
+                  <ChevronLeft className="-mr-0.5 h-3 w-3 text-[#1c1917]" /><ChevronRight className="-ml-0.5 h-3 w-3 text-[#1c1917]" />
+                </span>
+              </span>
+              <span className="pointer-events-none absolute left-3 top-3 rounded-[5px] bg-[#8b5cf6]/90 px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-wide text-white" style={{ opacity: heroPos > 14 ? 1 : 0, transition: 'opacity .2s' }}>AI-forbedret</span>
+              <span className="pointer-events-none absolute right-3 top-3 rounded-[5px] bg-black/45 px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-wide text-white" style={{ opacity: heroPos < 86 ? 1 : 0, transition: 'opacity .2s' }}>Original</span>
+              <button onClick={(e) => { e.stopPropagation(); setSammenlign({ idx: Math.min(hIdx, Math.max(0, aiPar.length - 1)) }); }} onPointerDown={(e) => e.stopPropagation()} data-testid="radar-se-foretter" title="Åpne før/etter i fullskjerm"
+                className="absolute bottom-3 left-3 z-10 flex items-center gap-1.5 rounded-[7px] bg-white/95 px-2.5 py-1.5 text-[11.5px] font-medium text-[#1c1917] shadow-[0_2px_8px_rgba(0,0,0,0.18)] transition-all hover:bg-white">
+                <Maximize2 className="h-3 w-3" /> Fullskjerm
+              </button>
+            </>
+          ) : (
+            <>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={hero.url} alt="" draggable={false}
+                onClick={() => setLightbox({ idx: hIdx })}
+                data-testid="radar-galleri-bilde" role="button" tabIndex={0}
+                className="h-[220px] w-full cursor-pointer object-cover transition-transform duration-500 min-[440px]:h-[260px] sm:h-[340px]" />
+              <span className="pointer-events-none absolute left-3 top-3 rounded-[5px] bg-black/45 px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-wide text-white">Original</span>
+            </>
+          )}
           {nB > 1 && (
             <>
-              <button onClick={(e) => { e.stopPropagation(); setHeroIdx((hIdx - 1 + nB) % nB); }} aria-label="Forrige bilde" data-testid="radar-hero-forrige"
-                className="absolute left-2.5 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/95 text-[#1c1917] shadow-[0_2px_8px_rgba(0,0,0,0.18)] transition-all hover:scale-105 sm:left-3 lg:opacity-0 lg:group-hover:opacity-100">
+              <button onClick={(e) => { e.stopPropagation(); setHeroIdx((hIdx - 1 + nB) % nB); }} onPointerDown={(e) => e.stopPropagation()} aria-label="Forrige bilde" data-testid="radar-hero-forrige"
+                className="absolute left-2.5 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/95 text-[#1c1917] shadow-[0_2px_8px_rgba(0,0,0,0.18)] transition-all hover:scale-105 sm:left-3 lg:opacity-0 lg:group-hover:opacity-100">
                 <ChevronLeft className="h-4 w-4" />
               </button>
-              <button onClick={(e) => { e.stopPropagation(); setHeroIdx((hIdx + 1) % nB); }} aria-label="Neste bilde" data-testid="radar-hero-neste"
-                className="absolute right-2.5 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/95 text-[#1c1917] shadow-[0_2px_8px_rgba(0,0,0,0.18)] transition-all hover:scale-105 sm:right-3 lg:opacity-0 lg:group-hover:opacity-100">
+              <button onClick={(e) => { e.stopPropagation(); setHeroIdx((hIdx + 1) % nB); }} onPointerDown={(e) => e.stopPropagation()} aria-label="Neste bilde" data-testid="radar-hero-neste"
+                className="absolute right-2.5 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/95 text-[#1c1917] shadow-[0_2px_8px_rgba(0,0,0,0.18)] transition-all hover:scale-105 sm:right-3 lg:opacity-0 lg:group-hover:opacity-100">
                 <ChevronRight className="h-4 w-4" />
               </button>
             </>
           )}
-          {hero.ai ? (
-            <span className="absolute left-3 top-3 rounded-[5px] bg-[#8b5cf6]/90 px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-wide text-white">AI-forbedret</span>
-          ) : (
-            <span className="absolute left-3 top-3 rounded-[5px] bg-black/45 px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-wide text-white">Original</span>
-          )}
-          {hero.ai && (
-            <button onClick={(e) => { e.stopPropagation(); setSammenlign({ idx: Math.min(hIdx, aiPar.length - 1) }); }} data-testid="radar-se-foretter"
-              className="absolute bottom-3 left-3 flex items-center gap-1.5 rounded-[7px] bg-white/95 px-2.5 py-1.5 text-[11.5px] font-medium text-[#1c1917] shadow-[0_2px_8px_rgba(0,0,0,0.18)] transition-all hover:bg-white">
-              <Sparkles className="h-3.5 w-3.5 text-[#8b5cf6]" /> Se før/etter
-            </button>
-          )}
-          <span className="absolute bottom-3 right-3 rounded-[5px] bg-black/55 px-2 py-0.5 text-[10.5px] font-medium tabular-nums text-white">{hIdx + 1} / {nB}</span>
+          <span className="pointer-events-none absolute bottom-3 right-3 rounded-[5px] bg-black/55 px-2 py-0.5 text-[10.5px] font-medium tabular-nums text-white">{hIdx + 1} / {nB}</span>
         </div>
         {/* Thumbnails — aktivt bilde markeres, AI-bilder åpner før/etter */}
         <div className="mt-2 flex gap-1.5 overflow-x-auto pb-1">
@@ -564,7 +627,7 @@ export default function Salgsradar({ apiKey }) {
             </div>
           ))}
         </div>
-        <p className="mt-1.5 text-[11px] text-[#a8a29a]">Pilene blar · AI-merkede bilder åpner før/etter-sammenligning · tryllestaven AI-styler originalbilder (~30–60 sek).</p>
+        <p className="mt-1.5 text-[11px] text-[#a8a29a]">AI-bilder viser før/etter direkte — dra i skillelinjen · pilene blar · tryllestaven AI-styler originalbilder (~30–60 sek).</p>
       </section>
     );
 
@@ -744,6 +807,21 @@ export default function Salgsradar({ apiKey }) {
       </section>
     );
 
+    const sekBeskrivelse = Boolean(valgt.beskrivelse) && (
+      <section className={`${BENTO} p-4 sm:p-5`}>
+        <SekHode ikon={MessageSquare} tittel="Annonsetekst fra FINN" hoyre={<span className="text-[11px] tabular-nums text-[#c2beb8]">{valgt.beskrivelse.length} tegn</span>} />
+        <details className="group/besk mt-3">
+          <summary className="cursor-pointer list-none">
+            <span className="block whitespace-pre-line text-[12.5px] leading-relaxed text-[#57534e] [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:5] group-open/besk:[display:block]">
+              {valgt.beskrivelse}
+            </span>
+            <span className="mt-2 inline-block text-[11.5px] font-semibold text-[#6d28d9] group-open/besk:hidden">Vis hele teksten</span>
+            <span className="mt-2 hidden text-[11.5px] font-semibold text-[#6d28d9] group-open/besk:inline-block">Vis mindre</span>
+          </summary>
+        </details>
+      </section>
+    );
+
     const sekNotat = (
       <section className={`${BENTO} p-4 sm:p-5`}>
         <SekHode ikon={StickyNote} tittel="Notat" />
@@ -797,6 +875,53 @@ export default function Salgsradar({ apiKey }) {
           </div>
         </div>
 
+        {/* Neste steg-linje — kontekstuelle ett-klikks handlinger per status */}
+        {steg && (
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-black/[0.05] bg-[#fbfaf9] px-4 py-2.5 sm:px-7" data-testid="radar-neste-steg">
+            <p className="flex min-w-0 items-center gap-2 text-[12px] font-medium text-[#57534e]">
+              <span className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full" style={{ background: `${steg.c}14` }}>
+                <span className="h-[6px] w-[6px] rounded-full" style={{ background: steg.c }} />
+              </span>
+              <span className="shrink-0 text-[#a8a29a]">Neste steg:</span>
+              <span className="min-w-0">{steg.t}</span>
+            </p>
+            <span className="ml-auto flex flex-wrap items-center gap-1.5">
+              {valgt.status === 'ny' && (
+                <button onClick={() => analyser(valgt.id)} disabled={analyserer} data-testid="radar-steg-analyser" className={`${KNAPP_PRIMAER} h-7 px-2.5 text-[11.5px]`}>
+                  {analyserer ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />} Kjør AI-analyse
+                </button>
+              )}
+              {valgt.status === 'analysert' && (
+                <>
+                  <button onClick={() => kopierMelding(valgt)} data-testid="radar-steg-kopier" className={`${KNAPP_PRIMAER} h-7 px-2.5 text-[11.5px]`}>
+                    {meldingKopiert ? <Check className="h-3 w-3 text-[#7ee2a8]" /> : <Copy className="h-3 w-3" />} {meldingKopiert ? 'Kopiert!' : 'Kopier FINN-melding'}
+                  </button>
+                  <button onClick={() => oppdater(valgt.id, { status: 'kontaktet' })} data-testid="radar-steg-kontaktet" className={`${KNAPP_GHOST} h-7 px-2.5 text-[11.5px]`}>
+                    Merk som kontaktet
+                  </button>
+                </>
+              )}
+              {valgt.status === 'kontaktet' && (
+                <button onClick={() => oppdater(valgt.id, { status: 'dialog' })} data-testid="radar-steg-dialog" className={`${KNAPP_GHOST} h-7 px-2.5 text-[11.5px]`}>
+                  Huseier svarte — merk som dialog
+                </button>
+              )}
+              {valgt.status === 'dialog' && (
+                <button onClick={() => oppdater(valgt.id, { status: 'vunnet' })} data-testid="radar-steg-vunnet"
+                  className="flex h-7 items-center gap-1.5 rounded-[7px] bg-[#1f7a45] px-2.5 text-[11.5px] font-medium text-white transition-all hover:bg-[#196a3b] active:scale-[0.98]">
+                  <Check className="h-3 w-3" /> Marker som vunnet
+                </button>
+              )}
+            </span>
+          </div>
+        )}
+        {valgt.status === 'vunnet' && !autoAktiv && (
+          <div className="flex flex-wrap items-center gap-2 border-b border-black/[0.05] bg-[#eef6f0] px-4 py-2.5 sm:px-7" data-testid="radar-vunnet-linje">
+            <Check className="h-4 w-4 shrink-0 text-[#1f7a45]" />
+            <p className="text-[12px] font-medium text-[#1f7a45]">Vunnet — ca. {kr(rs.honorar)}/mnd i honorar. Neste: opprett forvaltningsavtale i DigiHome-plattformen.</p>
+          </div>
+        )}
+
         {/* Automatikk-progresjonen vises i låse-overlayet under — her kun avvik */}
         {valgt.auto?.status === 'feilet' && (
           <div className="border-b border-black/[0.05] bg-[#fdf0ef] px-5 py-2.5 text-[12px] font-medium text-[#c2413b] sm:px-7" data-testid="radar-auto-feil">
@@ -828,10 +953,10 @@ export default function Salgsradar({ apiKey }) {
               {toKol ? (
                 <div className="mt-3 grid grid-cols-2 items-start gap-3">
                   <div className="grid gap-3">{sekAnalyse}{sekMelding}{sekNotat}</div>
-                  <div className="grid gap-3">{sekOkonomi}{sekTilbud}</div>
+                  <div className="grid gap-3">{sekOkonomi}{sekTilbud}{sekBeskrivelse}</div>
                 </div>
               ) : (
-                <div className="mt-3 grid gap-3">{sekAnalyse}{sekOkonomi}{sekMelding}{sekTilbud}{sekNotat}</div>
+                <div className="mt-3 grid gap-3">{sekAnalyse}{sekOkonomi}{sekMelding}{sekTilbud}{sekBeskrivelse}{sekNotat}</div>
               )}
             </div>
           </div>
@@ -907,6 +1032,32 @@ export default function Salgsradar({ apiKey }) {
       )}
 
       {feil && <p className="mb-3 rounded-lg bg-[#fdf0ef] px-4 py-3 text-[13px] text-[#c2413b]" data-testid="radar-feil">{feil}</p>}
+
+      {/* Innsiktslinje — hva er i spill og hvem venter på deg. Klikk filtrerer. */}
+      {!laster && leads.length > 0 && (
+        <div className="mb-3 grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-black/[0.06] bg-black/[0.05] shadow-[0_1px_2px_rgba(28,25,23,0.04)] sm:grid-cols-4" data-testid="radar-innsikt">
+          <button onClick={() => setFilter('alle')} className="bg-white px-4 py-3 text-left transition-colors hover:bg-[#fbfaf9]" data-testid="radar-innsikt-pipeline">
+            <p className="text-[9.5px] font-bold uppercase tracking-[0.08em] text-[#a8a29a]">Honorar i spill</p>
+            <p className="mt-0.5 text-[16px] font-bold tabular-nums text-[#1c1917] sm:text-[17px]" style={heading}>{kr(innsikt.honorarPipeline)}<span className="text-[10.5px] font-medium text-[#b8b2a9]">/mnd</span></p>
+            <p className="mt-0.5 text-[11px] text-[#a8a29a]">{innsikt.pipeline} aktive leads</p>
+          </button>
+          <button onClick={() => setFilter('analysert')} className="bg-white px-4 py-3 text-left transition-colors hover:bg-[#fbfaf9]" data-testid="radar-innsikt-kontakte">
+            <p className="text-[9.5px] font-bold uppercase tracking-[0.08em] text-[#a8a29a]">Å kontakte</p>
+            <p className="mt-0.5 text-[16px] font-bold tabular-nums text-[#6d28d9] sm:text-[17px]" style={heading}>{innsikt.aKontakte}</p>
+            <p className="mt-0.5 text-[11px] text-[#a8a29a]">analysert og klare</p>
+          </button>
+          <button onClick={() => { setFilter('alle'); setSort({ key: 'aapnet', dir: 'desc' }); }} className="bg-white px-4 py-3 text-left transition-colors hover:bg-[#fbfaf9]" data-testid="radar-innsikt-apnet">
+            <p className="text-[9.5px] font-bold uppercase tracking-[0.08em] text-[#a8a29a]">Har åpnet tilbudet</p>
+            <p className="mt-0.5 text-[16px] font-bold tabular-nums text-[#0e7490] sm:text-[17px]" style={heading}>{innsikt.harApnet}</p>
+            <p className="mt-0.5 text-[11px] text-[#a8a29a]">varme — følg opp</p>
+          </button>
+          <button onClick={() => setFilter('vunnet')} className="bg-white px-4 py-3 text-left transition-colors hover:bg-[#fbfaf9]" data-testid="radar-innsikt-vunnet">
+            <p className="text-[9.5px] font-bold uppercase tracking-[0.08em] text-[#a8a29a]">Vunnet</p>
+            <p className="mt-0.5 text-[16px] font-bold tabular-nums text-[#1f7a45] sm:text-[17px]" style={heading}>{innsikt.vunnet}</p>
+            <p className="mt-0.5 text-[11px] text-[#a8a29a]">{innsikt.vunnet > 0 ? `${kr(innsikt.honorarVunnet)}/mnd sikret` : 'ingen ennå'}</p>
+          </button>
+        </div>
+      )}
 
       {/* Verktøylinje / bulk-linje — mobil: søk+kontroller øverst, filtre som scrollerad */}
       {utvalg.size === 0 ? (
@@ -986,7 +1137,19 @@ export default function Salgsradar({ apiKey }) {
 
       {/* Innhold */}
       {laster ? (
-        <div className="flex items-center justify-center py-20"><Loader2 className="h-5 w-5 animate-spin text-[#8b5cf6]" /></div>
+        <div className={`${KORT} mt-3 overflow-hidden`} data-testid="radar-skeleton">
+          {[0, 1, 2, 3, 4].map((i) => (
+            <div key={i} className="flex animate-pulse items-center gap-3 border-b border-black/[0.04] px-3.5 py-3 last:border-0 sm:px-5" style={{ animationDelay: `${i * 120}ms` }}>
+              <span className="h-[17px] w-[17px] shrink-0 rounded-md bg-[#f1efeb]" />
+              <span className="h-14 w-20 shrink-0 rounded-[10px] bg-[#f1efeb]" />
+              <span className="min-w-0 flex-1 space-y-2">
+                <span className="block h-3.5 w-[38%] rounded bg-[#f1efeb]" />
+                <span className="block h-3 w-[55%] rounded bg-[#f4f2ee]" />
+              </span>
+              <span className="h-10 w-10 shrink-0 rounded-full bg-[#f1efeb]" />
+            </div>
+          ))}
+        </div>
       ) : sortert.length === 0 ? (
         <div className={`${KORT} mt-4 px-5 py-12 text-center`}>
           {leads.length === 0 ? (
@@ -1051,6 +1214,14 @@ export default function Salgsradar({ apiKey }) {
                           {(l.stylet || []).length > 0 && <Wand2 className="h-3.5 w-3.5 text-[#8b5cf6]" title={`${l.stylet.length} AI-stylede bilder`} />}
                           {(l.aapninger || 0) > 0 && <span className="flex items-center gap-0.5 text-[10.5px] tabular-nums text-[#0e7490]" title={`Tilbudssiden åpnet ${l.aapninger} ganger`}><Eye className="h-3.5 w-3.5" />{l.aapninger}</span>}
                           {l.kilde === 'agent' && splitt && <span className="rounded-[4px] border border-black/[0.07] bg-[#f7f6f3] px-1 py-px text-[8px] font-bold uppercase text-[#8a857c]">Agent</span>}
+                          {!splitt && (() => {
+                            const stg = nesteSteg(l);
+                            return stg ? (
+                              <span className="hidden items-center gap-1 text-[11px] font-medium sm:flex" style={{ color: stg.c }} data-testid={`radar-steg-${l.id}`}>
+                                <ChevronRight className="h-3 w-3" />{stg.t}
+                              </span>
+                            ) : null;
+                          })()}
                         </span>
                       </span>
                       <PotensialBadge p={l.potensial} id={l.id} />
@@ -1197,6 +1368,13 @@ export default function Salgsradar({ apiKey }) {
           setIdx={(fn) => setSammenlign((prev) => ({ idx: typeof fn === 'function' ? fn(prev?.idx || 0) : fn }))}
           onClose={() => setSammenlign(null)}
         />
+      )}
+
+      {/* Diskret lagret-kvittering */}
+      {lagret && (
+        <div className="dh-scale-in pointer-events-none fixed bottom-5 left-1/2 z-[230] flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-[#1c1917] px-3.5 py-2 text-[12px] font-medium text-white shadow-[0_8px_24px_rgba(28,25,23,0.35)]" data-testid="radar-lagret">
+          <Check className="h-3.5 w-3.5 text-[#7ee2a8]" /> Lagret
+        </div>
       )}
     </div>
   );
