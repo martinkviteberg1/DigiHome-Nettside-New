@@ -804,7 +804,7 @@ export default function AdminPage({ params }) {
           </div>
         </div>
 
-        <div key={section} className={`dh-fade ${section === 'leieforhold' || section === 'datarom' ? 'max-w-none px-4 py-4 sm:px-6' : 'max-w-[1440px] px-4 py-6 sm:px-8'}`}>
+        <div key={section} className={`dh-fade ${section === 'leieforhold' || section === 'datarom' || section === 'salgsradar' ? 'max-w-none px-4 py-4 sm:px-6' : 'max-w-[1440px] px-4 py-6 sm:px-8'}`}>
           {section === 'nokkeltall' && <KpiDashboard apiKey={token} />}
           {section === 'investorrom' && <InvestorRoomTab apiKey={token} />}
           {section === 'playbook' && <PlaybookTab apiKey={token} />}

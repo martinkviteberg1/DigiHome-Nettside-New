@@ -5735,3 +5735,20 @@ frontend:
 agent_communication:
     -agent: "main"
     -message: "Salgsradar-UI totalskrevet til Linear-stil master-detail + tabellvisning. Kun frontend — ingen backendtest nødvendig. Venter på brukerens vurdering før ev. frontend-testagent."
+
+frontend:
+  - task: "Salgsradar UI-runde 2 (Linear-flat + expand): (1) Full bredde — admin-skallet (page.js linje ~807) gir nå salgsradar max-w-none som leieforhold/datarom; modul-rot w-full. (2) EXPAND-knapp (radar-utvid, Maximize2/Minimize2) i panelhodet: åpner detaljpanelet som stor sentrert modal (max-w 1320px, dh-scale-in) med TOKOLONNE-layout (venstre: Bilder + AI-analyse, høyre: Økonomi + FINN-melding + Tilbudsside + Notat) — fungerer fra splitt-, tabell- og mobilmodus. (3) Panelet totalskrevet i flat Linear-stil: seksjoner med hårfine skiller (divide-y) i stedet for boks-i-boks, SekHode med ikon-chip + 14px fet tittel, større typografi (13-13.5px brødtekst, 21-23px adresse, 30px scoretall), h-10 inputs, rundere textareas, 3-stat økonomistrip (honorar/netto/vs. i dag), galleri-hero + thumb-stripe med wand-hover samlet i én Bilder-seksjon. (4) Oversikt modernisert: større thumbs (h-14 w-20 rounded-xl), fet adresse i heading-font, tydelig prislinje, status-pill + indikatorer på egen rad, større potensial-badge (h-8 w-12). (5) Alle testids beholdt + radar-utvid."
+    implemented: true
+    working: "NA"
+    file: "/app/components/admin/Salgsradar.js, /app/app/admin/[[...slug]]/page.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "Screenshot-verifisert 1920px (full bredde liste, splittvisning med flatt panel, utvidet tokolonnemodal) og mobil 390px (fullskjerm-detalj). 0px overflow alle steder. Kun frontend. Brukerverifisering gjenstår."
+
+agent_communication:
+    -agent: "main"
+    -message: "Salgsradar UI-runde 2: expand-knapp med stor tokolonnevisning, flat Linear-typografi i panelet, full bredde i admin-skallet, modernisert liste. Kun frontend — venter på brukerens vurdering."
