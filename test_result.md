@@ -5752,3 +5752,20 @@ frontend:
 agent_communication:
     -agent: "main"
     -message: "Salgsradar UI-runde 2: expand-knapp med stor tokolonnevisning, flat Linear-typografi i panelet, full bredde i admin-skallet, modernisert liste. Kun frontend — venter på brukerens vurdering."
+
+frontend:
+  - task: "Salgsradar ultrabred-responsivitet (best practice: innhold har makbredde, flater har det ikke): (1) ultra-breakpoint (matchMedia >=1680px) — splittvisningens detaljpanel går AUTOMATISK i tokolonnelayout (toKol = utvidet || (splitt && ultra)). (2) Adaptivt hero-galleri uten tomme celler: 1 bilde = enkel, 2 = hoved + full-høyde side, 3-4 = 3-kol grid (hoved 2x2 + 2 stablet + evt. +N-overlay), >=5 = 4-kol (hoved + 4 + +N); fast høyde 310/340px; maks 980px bred. (3) Makbredder overalt: økonomi-inputs og 3-stat strip 680px, score-kort 680px, delscore-grid 820px, textareas/funn/salgsvinkel/CTA-bokser 760px, tilbudslenke-knapper 560px. (4) Modul-rot mx-auto max-w-[1840px] — sentreres på ultrabrede skjermer i stedet for å strekkes."
+    implemented: true
+    working: "NA"
+    file: "/app/components/admin/Salgsradar.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "Screenshot-verifisert på 2560x1100 (brukerens skjermstørrelse): splitt gir tokolonne med lesbare kolonnebredder, galleri 3 bilder uten tomme celler, alle felt/knapper cappet, 0px overflow. Kun frontend. Brukerverifisering gjenstår."
+
+agent_communication:
+    -agent: "main"
+    -message: "Ultrabred-responsivitet fikset: auto-tokolonne i splitt >=1680px, adaptivt galleri, makbredder på alt innhold, modul cappet 1840px. Kun frontend."

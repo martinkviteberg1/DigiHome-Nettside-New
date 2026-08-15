@@ -150,6 +150,7 @@ export default function Salgsradar({ apiKey }) {
   const [valgtId, setValgtId] = useState(null);
   const [utvidet, setUtvidet] = useState(false);
   const [bred, setBred] = useState(true);
+  const [ultra, setUltra] = useState(false);
   const [styler, setStyler] = useState(null);
   const [stil, setStil] = useState('nordisk');
   const [kopiert, setKopiert] = useState(false);
@@ -163,10 +164,12 @@ export default function Salgsradar({ apiKey }) {
 
   useEffect(() => {
     const m = window.matchMedia('(min-width: 1024px)');
-    const oppd = () => setBred(m.matches);
+    const u = window.matchMedia('(min-width: 1680px)');
+    const oppd = () => { setBred(m.matches); setUltra(u.matches); };
     oppd();
     m.addEventListener('change', oppd);
-    return () => m.removeEventListener('change', oppd);
+    u.addEventListener('change', oppd);
+    return () => { m.removeEventListener('change', oppd); u.removeEventListener('change', oppd); };
   }, []);
 
   const hentLeads = useCallback(async () => {
@@ -301,10 +304,16 @@ export default function Salgsradar({ apiKey }) {
     const rs = regnestykke(valgt);
     const ai = valgt.ai || null;
     const pf = scoreFarge(valgt.potensial?.score || 0);
+    // Tokolonne: alltid i utvidet visning, og automatisk i splittvisning på
+    // ultrabrede skjermer (>=1680px) — ekstra plass gir flere kolonner,
+    // aldri bredere elementer.
+    const toKol = utvidet || (splitt && ultra);
+    const nB = galleri.length;
+    const heroH = toKol ? 340 : 310;
 
-    const sekBilder = galleri.length > 0 && (
+    const sekBilder = nB > 0 && (
       <section className="py-6">
-        <SekHode ikon={Images} tittel={`Bilder (${galleri.length})`} hoyre={(
+        <SekHode ikon={Images} tittel={`Bilder (${nB})`} hoyre={(
           <>
             <select value={stil} onChange={(e) => setStil(e.target.value)} data-testid="radar-stil-velger" className="h-8 rounded-lg border border-black/[0.08] bg-white px-2 text-[12px] outline-none focus:border-[#8b5cf6]/40">
               {STIL_VALG.map((s) => <option key={s.k} value={s.k}>{s.l}</option>)}
@@ -317,22 +326,36 @@ export default function Salgsradar({ apiKey }) {
             )}
           </>
         )} />
-        <div className="mt-3 grid grid-cols-4 grid-rows-2 gap-1.5 overflow-hidden rounded-xl" style={{ maxHeight: utvidet ? 360 : 300 }}>
-          <div className="group relative col-span-4 row-span-2 cursor-pointer sm:col-span-2" onClick={() => setLightbox({ idx: 0 })} data-testid="radar-galleri-bilde" role="button" tabIndex={0}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={galleri[0].url} alt="" className="h-full w-full object-cover transition-transform group-hover:scale-[1.02]" style={{ maxHeight: utvidet ? 360 : 300 }} />
-            {galleri[0].ai && <span className="absolute left-2 top-2 rounded bg-[#8b5cf6]/90 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white">AI-stylet</span>}
-          </div>
-          {galleri.slice(1, 5).map((b, i) => (
-            <div key={b.url} className="group relative hidden cursor-pointer sm:block" onClick={() => setLightbox({ idx: i + 1 })} data-testid="radar-galleri-bilde" role="button" tabIndex={0}>
+        {/* Adaptivt hero-galleri: ingen tomme celler ved få bilder */}
+        <div className="mt-3 max-w-[980px]">
+          {nB === 1 ? (
+            <div className="group relative cursor-pointer overflow-hidden rounded-xl" onClick={() => setLightbox({ idx: 0 })} data-testid="radar-galleri-bilde" role="button" tabIndex={0}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={b.url} alt="" className="h-full w-full object-cover transition-transform group-hover:scale-[1.03]" style={{ minHeight: 70 }} />
-              {b.ai && <span className="absolute left-1.5 top-1.5 rounded bg-[#8b5cf6]/90 px-1 py-0.5 text-[8px] font-bold uppercase text-white">AI</span>}
-              {i === 3 && galleri.length > 5 && (
-                <span className="absolute inset-0 flex items-center justify-center bg-black/45 text-[14px] font-bold text-white" style={heading}>+{galleri.length - 5}</span>
-              )}
+              <img src={galleri[0].url} alt="" className="w-full object-cover transition-transform group-hover:scale-[1.02]" style={{ maxHeight: heroH }} />
+              {galleri[0].ai && <span className="absolute left-2 top-2 rounded bg-[#8b5cf6]/90 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white">AI-stylet</span>}
             </div>
-          ))}
+          ) : (
+            <div className={`grid grid-rows-2 gap-1.5 overflow-hidden rounded-xl ${nB >= 5 ? 'grid-cols-4' : 'grid-cols-3'}`} style={{ height: heroH }}>
+              <div className={`group relative row-span-2 cursor-pointer ${nB >= 5 ? 'col-span-4 sm:col-span-2' : 'col-span-3 sm:col-span-2'}`} onClick={() => setLightbox({ idx: 0 })} data-testid="radar-galleri-bilde" role="button" tabIndex={0}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={galleri[0].url} alt="" className="h-full w-full object-cover transition-transform group-hover:scale-[1.02]" />
+                {galleri[0].ai && <span className="absolute left-2 top-2 rounded bg-[#8b5cf6]/90 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white">AI-stylet</span>}
+              </div>
+              {(nB >= 5 ? galleri.slice(1, 5) : galleri.slice(1, 3)).map((b, i, arr) => {
+                const sisteMedFlere = i === arr.length - 1 && nB > arr.length + 1;
+                return (
+                  <div key={b.url} className={`group relative hidden cursor-pointer sm:block ${nB === 2 ? 'row-span-2' : ''}`} onClick={() => setLightbox({ idx: i + 1 })} data-testid="radar-galleri-bilde" role="button" tabIndex={0}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={b.url} alt="" className="h-full w-full object-cover transition-transform group-hover:scale-[1.03]" />
+                    {b.ai && <span className="absolute left-1.5 top-1.5 rounded bg-[#8b5cf6]/90 px-1 py-0.5 text-[8px] font-bold uppercase text-white">AI</span>}
+                    {sisteMedFlere && (
+                      <span className="absolute inset-0 flex items-center justify-center bg-black/45 text-[14px] font-bold text-white" style={heading}>+{nB - arr.length - 1}</span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
         {/* Thumb-stripe med AI-styling på hover */}
         <div className="mt-2 flex gap-1.5 overflow-x-auto pb-1">
@@ -369,11 +392,11 @@ export default function Salgsradar({ apiKey }) {
         ) : null} />
         {!ai ? (
           analyserer ? (
-            <div className="mt-4 flex items-center gap-3 rounded-xl bg-[#f4f0fb] px-4 py-4 text-[13px] text-[#6d28d9]">
+            <div className="mt-4 flex max-w-[760px] items-center gap-3 rounded-xl bg-[#f4f0fb] px-4 py-4 text-[13px] text-[#6d28d9]">
               <Loader2 className="h-4 w-4 shrink-0 animate-spin" /> Analyserer bilder, piksler og tekst — tar 15–40 sekunder…
             </div>
           ) : (
-            <div className="mt-4 rounded-xl border border-dashed border-[#8b5cf6]/30 bg-[#faf8fd] px-5 py-5">
+            <div className="mt-4 max-w-[760px] rounded-xl border border-dashed border-[#8b5cf6]/30 bg-[#faf8fd] px-5 py-5">
               <p className="text-[13px] leading-relaxed text-[#78716c]">AI vurderer lys, skarphet, ryddighet og styling — koden måler piksler, bildeformat og datahygiene. Du får score, funn, salgsvinkel, FINN-melding og personlig tilbudstekst.</p>
               <button onClick={() => analyser(valgt.id)} data-testid="radar-analyser-btn"
                 className="mt-4 flex h-10 items-center gap-2 rounded-lg bg-[#8b5cf6] px-5 text-[13px] font-bold text-white transition-all hover:bg-[#7c4ce6] active:scale-[0.98]">
@@ -383,7 +406,7 @@ export default function Salgsradar({ apiKey }) {
           )
         ) : (
           <div className="mt-4" data-testid="radar-analyse-resultat">
-            <div className="grid grid-cols-2 gap-2.5">
+            <div className="grid max-w-[680px] grid-cols-2 gap-2.5">
               <div className="rounded-xl px-4 py-4" style={{ background: pf.bg }}>
                 <p className="text-[11px] font-bold uppercase tracking-[0.08em]" style={{ color: pf.c }}>Potensial</p>
                 <p className="mt-1 text-[30px] font-bold leading-none tabular-nums" style={{ ...heading, color: pf.c }}>{ai.potensialScore}<span className="text-[14px] font-semibold opacity-60">/100</span></p>
@@ -393,7 +416,7 @@ export default function Salgsradar({ apiKey }) {
                 <p className="mt-1 text-[30px] font-bold leading-none tabular-nums text-[#44403c]" style={heading}>{ai.annonseScore}<span className="text-[14px] font-semibold text-[#b8b2a9]">/100</span></p>
               </div>
             </div>
-            <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3">
+            <div className="mt-4 grid max-w-[820px] grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3">
               {DEL_ETIKETTER.map(([k, etikett]) => (
                 <div key={k}>
                   <div className="flex items-baseline justify-between">
@@ -414,7 +437,7 @@ export default function Salgsradar({ apiKey }) {
               </p>
             )}
             {(ai.funn || []).length > 0 && (
-              <ul className="mt-4 space-y-1.5">
+              <ul className="mt-4 max-w-[760px] space-y-1.5">
                 {ai.funn.map((f, i) => (
                   <li key={i} className="flex items-start gap-2 text-[12.5px] leading-relaxed text-[#57534e]">
                     <span className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-[#8b5cf6]" />{f}
@@ -423,7 +446,7 @@ export default function Salgsradar({ apiKey }) {
               </ul>
             )}
             {ai.salgsvinkel && (
-              <div className="mt-4 rounded-xl bg-[#f4f0fb] px-4 py-3.5">
+              <div className="mt-4 max-w-[760px] rounded-xl bg-[#f4f0fb] px-4 py-3.5">
                 <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#8b5cf6]">Anbefalt salgsvinkel · stylingpotensial {ai.stylingPotensial}</p>
                 <p className="mt-1.5 text-[13px] leading-relaxed text-[#44403c]">{ai.salgsvinkel}</p>
               </div>
@@ -442,7 +465,7 @@ export default function Salgsradar({ apiKey }) {
             {valgt.analyse.grunnlag.snittSone ? ` · sone ${valgt.analyse.grunnlag.sone}: ${kr(valgt.analyse.grunnlag.snittSone)}` : ''}
           </p>
         ) : null}
-        <div className="mt-3 grid grid-cols-2 gap-3">
+        <div className="mt-3 grid max-w-[680px] grid-cols-2 gap-3">
           <label className="block">
             <span className="mb-1.5 block text-[11.5px] font-medium text-[#78716c]">Anbefalt leie (kr/mnd)</span>
             <input type="number" value={valgt.analyse?.anbefaltLeie ?? ''} data-testid="radar-anbefalt-input"
@@ -458,7 +481,7 @@ export default function Salgsradar({ apiKey }) {
               className="h-10 w-full rounded-lg border border-black/[0.08] px-3 text-[13.5px] tabular-nums outline-none transition-colors focus:border-[#8b5cf6]/50" />
           </label>
         </div>
-        <div className="mt-3 grid grid-cols-3 gap-px overflow-hidden rounded-xl border border-black/[0.06] bg-black/[0.06]">
+        <div className="mt-3 grid max-w-[680px] grid-cols-3 gap-px overflow-hidden rounded-xl border border-black/[0.06] bg-black/[0.06]">
           {[['Vårt honorar', kr(rs.honorar), '#6d28d9'], ['Netto til eier', kr(rs.netto), '#1f7a45'],
             ['vs. i dag', rs.gevinst == null ? '–' : `${rs.gevinst >= 0 ? '+' : '−'}${kr(Math.abs(rs.gevinst))}`, rs.gevinst != null && rs.gevinst < 0 ? '#c2413b' : '#1f7a45']].map(([l, v, c]) => (
             <div key={l} className="bg-white px-3.5 py-3">
@@ -481,7 +504,7 @@ export default function Salgsradar({ apiKey }) {
         <textarea value={ai.finnMelding || ''} rows={4} data-testid="radar-finnmelding"
           onChange={(e) => settLead(valgt.id, (x) => ({ ...x, ai: { ...x.ai, finnMelding: e.target.value } }))}
           onBlur={(e) => oppdater(valgt.id, { finnMelding: e.target.value }, true)}
-          className="mt-3 w-full resize-none rounded-xl border border-black/[0.08] px-3.5 py-3 text-[13px] leading-relaxed outline-none transition-colors focus:border-[#8b5cf6]/50" />
+          className="mt-3 w-full max-w-[760px] resize-none rounded-xl border border-black/[0.08] px-3.5 py-3 text-[13px] leading-relaxed outline-none transition-colors focus:border-[#8b5cf6]/50" />
         <p className="mt-1.5 text-[11px] text-[#b8b2a9]">{'{LENKE}'} byttes automatisk med tilbudslenken når du kopierer. Redigeres fritt — lagres når du klikker ut.</p>
       </section>
     );
@@ -491,7 +514,7 @@ export default function Salgsradar({ apiKey }) {
         <SekHode ikon={Globe} tittel="Tilbudsside til huseier" hoyre={(valgt.aapninger || 0) > 0 ? (
           <span className="flex items-center gap-1 text-[12px] tabular-nums text-[#0e7490]"><Eye className="h-3.5 w-3.5" /> Åpnet {valgt.aapninger}×{valgt.sistAapnet ? ` · ${naarSist(valgt.sistAapnet)}` : ''}</span>
         ) : null} />
-        <div className="mt-3 flex gap-2">
+        <div className="mt-3 flex max-w-[560px] gap-2">
           <button onClick={() => kopierLenke(valgt)} data-testid="radar-kopier-lenke" className="flex h-10 flex-1 items-center justify-center gap-2 rounded-lg bg-[#0a0a0a] px-4 text-[13px] font-semibold text-white transition-all hover:bg-black/85 active:scale-[0.98]">
             {kopiert ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />} {kopiert ? 'Kopiert!' : 'Kopier tilbudslenke'}
           </button>
@@ -500,7 +523,7 @@ export default function Salgsradar({ apiKey }) {
           </a>
         </div>
         {ai && (
-          <div className="mt-4 space-y-3">
+          <div className="mt-4 max-w-[760px] space-y-3">
             <label className="block">
               <span className="mb-1.5 block text-[11.5px] font-medium text-[#78716c]">Personlig intro — vises øverst på tilbudet</span>
               <textarea value={ai.tilbudTekst?.heroIntro || ''} rows={2} data-testid="radar-hero-intro"
@@ -539,7 +562,7 @@ export default function Salgsradar({ apiKey }) {
           onChange={(e) => settLead(valgt.id, (x) => ({ ...x, notat: e.target.value }))}
           onBlur={(e) => oppdater(valgt.id, { notat: e.target.value })}
           placeholder="Ringt 14/2, svarte ikke — prøver igjen torsdag…"
-          className="mt-3 w-full resize-none rounded-xl border border-black/[0.08] px-3.5 py-3 text-[13px] outline-none transition-colors placeholder:text-[#ccc] focus:border-[#8b5cf6]/50" />
+          className="mt-3 w-full max-w-[760px] resize-none rounded-xl border border-black/[0.08] px-3.5 py-3 text-[13px] outline-none transition-colors placeholder:text-[#ccc] focus:border-[#8b5cf6]/50" />
       </section>
     );
 
@@ -587,7 +610,7 @@ export default function Salgsradar({ apiKey }) {
 
         {/* Panelinnhold — tokolonne når utvidet */}
         <div className="min-h-0 flex-1 overflow-y-auto">
-          {utvidet ? (
+          {toKol ? (
             <div className="grid grid-cols-1 gap-x-12 px-5 sm:px-7 lg:grid-cols-2">
               <div className="divide-y divide-black/[0.05]">{sekBilder}{sekAnalyse}</div>
               <div className="divide-y divide-black/[0.05]">{sekOkonomi}{sekMelding}{sekTilbud}{sekNotat}</div>
@@ -619,7 +642,7 @@ export default function Salgsradar({ apiKey }) {
 
   /* ────────── Render ────────── */
   return (
-    <div className="w-full" data-testid="salgsradar-modul">
+    <div className="mx-auto w-full max-w-[1840px]" data-testid="salgsradar-modul">
       {/* Innliming */}
       <div className="rounded-2xl bg-white p-4 shadow-[0_2px_16px_rgba(0,0,0,0.04)]">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
