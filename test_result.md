@@ -5923,3 +5923,54 @@ frontend:
 agent_communication:
     -agent: "main"
     -message: "Vannmerke + inline før/etter levert. Viktig kontekst: brukeren har selv slettet alle tidligere leads; eneste lead nå er Welhavens gate 39 (agent-ingest, 4/5 auto-stylet med vannmerke, 1 feilet → retry-knapp finnes). Probe bekreftet at gemini/gemini-3-pro-image-preview (Nano Banana Pro) er tilgjengelig på Emergent-nøkkelen — ikke tatt i bruk, venter på brukerbeslutning."
+
+backend:
+  - task: "Salgskraft-metrikk + bilde-for-bilde-vurdering i AI-analysen (lib/salgsradar.js): analyserAnnonse ber nå Gemini om salgskraft{forsteinntrykk,appell,dekning,tekstSalg} (0-10) + bildeVurdering[] (ett objekt per vedlagt bilde: rom/score/funn, matches mot kilde-URL via nr). aiDoc får salgskraft:{score 0-100 (veid: førsteinntrykk 35/appell 25/dekning 20/tekstSalg 20), deler} + bildeVurdering. potensialFra() blander salgskraft inn i effektiv kvalitet (annonseScore*0.55 + salgskraft*0.45) når den finnes."
+    implemented: true
+    working: true
+    file: "/app/lib/salgsradar.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "Manuelt verifisert med scripts/test-salgskraft.mjs på ekte lead (Nyhavn 7): salgskraft.deler={forsteinntrykk:5,appell:7,dekning:4,tekstSalg:5}, 5 bildeVurdering-objekter med rom/score/funn/url. UI screenshot-verifisert. Testagent: verifiser via API at re-analyse gir ai.salgskraft + ai.bildeVurdering, og at potensialScore beregnes."
+        -working: true
+        -agent: "testing"
+        -comment: "✅ SALGSKRAFT AI ANALYSIS WORKING PERFECTLY. Base URL: https://saker-hub.preview.emergentagent.com/api. Ingest key: SALGSRADAR_INGEST_KEY from .env. Admin: martin@kviteberg.no. TEST RESULTS: Created test lead via ingest (finnkode 99900002, bilder:[], description with text), auto-analysis completed in 10-15 seconds (1 LLM call as expected), verified AI analysis results: (1) ✅ salgskraft.score is valid number 0-100 (got 7-15 in different runs), (2) ✅ salgskraft.deler has all required fields (forsteinntrykk/appell/dekning/tekstSalg) with valid scores 0-10, (3) ✅ bildeVurdering is array (empty as expected since no images), (4) ✅ potensialScore is valid number 0-100 (got 58-60), (5) ✅ annonseScore is valid number 0-100 (got 23-28). All test leads deleted after testing. Real leads 'Nyhavn 7' and 'Ytre Markeveien 12' untouched. Created backend_test_salgsradar.py for comprehensive testing."
+  - task: "Utleier-kontaktdata i Salgsradar (lib/salgsradar.js): validerIngestAnnonse godtar nå telefon-aliaser (kontaktTlf/telefon/tlf/mobil/mobile/phone/kontakttelefon/utleierTlf/utleierTelefon/contactPhone) og NYTT felt kontaktNavn med aliaser (kontaktNavn/utleier/utleierNavn/navn/kontaktperson/contactName/annonsor/name). opprettLead overskriver ALDRI eksisterende kontaktTlf/kontaktNavn med tom verdi ved re-ingest. parseFinnAnnonse henter også kontaktNavn fra FINN-HTML (contactName/contactPerson/name nær mobile)."
+    implemented: true
+    working: true
+    file: "/app/lib/salgsradar.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "Testagent: POST /api/salgsradar/ingest med syntetisk finnkode, TOM bilder-array, telefon under alias (f.eks. 'telefon':'912 34 567') og navn under alias (f.eks. 'utleier':'Test Utleiersen') → lead skal ha kontaktTlf='91234567' og kontaktNavn='Test Utleiersen'. Re-ingest samme finnkode UTEN telefon/navn-felter → verdiene skal BESTÅ (ikke viskes ut). Slett testleads etterpå."
+        -working: true
+        -agent: "testing"
+        -comment: "✅ UTLEIER-KONTAKTDATA WORKING PERFECTLY (FIXED BUG). Base URL: https://saker-hub.preview.emergentagent.com/api. TEST RESULTS: (1) ✅ POST ingest with finnkode 99900001, telefon:'912 34 567' (alias), utleier:'Test Utleiersen' (alias) → lead has kontaktTlf='91234567' (spaces removed) and kontaktNavn='Test Utleiersen', (2) ✅ Re-ingest same finnkode WITHOUT phone/name fields → both kontaktTlf and kontaktNavn PERSISTED (not wiped), (3) ✅ Update with different aliases (mobil:'987 65 432', kontaktperson:'Ny Person') → values updated correctly to kontaktTlf='98765432' and kontaktNavn='Ny Person'. BUG FIXED: kontaktNavn was NOT being preserved on re-ingest (only kontaktTlf was). Added line 720 in /app/lib/salgsradar.js: 'if (!annonse.kontaktNavn && eksisterende.kontaktNavn) delete oppdatering.$set.kontaktNavn;' to match kontaktTlf preservation logic. All test leads deleted after testing."
+  - task: "Prisendring/tombstone/deaktivering i Salgsradar-ingest (lib/salgsradar.js + route.js): re-ingest med ny pris gir prisHistorikk-innslag + prisEndring i respons; deaktivert-payload setter annonseAktiv=false; slettet lead (tombstone) gjenoppstår ikke ved agent-ingest. MANGLET dokumentert backendtest fra forrige økt."
+    implemented: true
+    working: true
+    file: "/app/lib/salgsradar.js"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "Implementert i forrige økt, aldri backendtestet. Testagent: dekk prisendring (re-ingest med annen pris), deaktivering (les ruteimplementasjonen i route.js rundt linje 3890 for payload-format) og tombstone (slett testlead via admin-API, re-ingest samme finnkode → skal hoppes over)."
+        -working: true
+        -agent: "testing"
+        -comment: "✅ PRISENDRING/TOMBSTONE/DEAKTIVERING WORKING PERFECTLY. Base URL: https://saker-hub.preview.emergentagent.com/api. TEST RESULTS: (1) PRISENDRING: ✅ Re-ingest with new price (15000→14000) returns prisEndring {fra:15000, til:14000, at:<timestamp>} in response, ✅ lead has prisHistorikk array with correct entry. (2) DEAKTIVERING: ✅ POST ingest with {finnkode, deaktivert:true} returns {ok:true, deaktivert:true}, ✅ lead has annonseAktiv=false, ✅ Re-ingest with full ad reactivates lead (annonseAktiv=true). (3) TOMBSTONE: ✅ DELETE lead via admin endpoint successful, ✅ Re-ingest same finnkode returns {ok:true, hoppet:'slettet-i-admin'}, ✅ Lead does NOT exist in database (tombstone working). (4) REGRESSION: ✅ Ingest without valid key returns 401, ✅ Ingest with invalid finnkode returns 400, ✅ Admin leads listing works, ✅ Real leads 'Nyhavn 7' and 'Ytre Markeveien 12' untouched. All test leads deleted after testing. Created backend_test_salgsradar.py for comprehensive testing."
+
+agent_communication:
+    -agent: "main"
+    -message: "Ny funksjonalitet: (1) Salgskraft-metrikk 0-100 + per-bilde-vurdering i AI-analysen, (2) kontaktTlf-aliaser + kontaktNavn i ingest med vern mot tom-overskriving, (3) prisendring/tombstone/deaktivering trenger første backendtest. VIKTIG: bruk SALGSRADAR_INGEST_KEY fra /app/.env på POST /api/salgsradar/ingest (sjekk header-navn i route.js). Send ALLTID tom bilder-array i testpayloads (unngår AI-stylingkost). Nye ingest-leads trigger auto-analyse i bakgrunnen (1 LLM-kall, ok). IKKE rør ekte leads (Nyhavn 7, Ytre Markeveien 12). Slett alle testleads etter kjøring. Admin-innlogging: se /app/memory/test_credentials.md."
+    -agent: "testing"
+    -message: "✅ SALGSRADAR BACKEND TESTING COMPLETE - ALL 6 TESTS PASSED (100% success rate). Comprehensive verification of three new backend tasks: (1) Utleier-kontaktdata: ✅ Phone/name aliases working (telefon/utleier/mobil/kontaktperson), ✅ Spaces removed from phone (91234567), ✅ Contact data persists on re-ingest without fields, ✅ BUG FIXED: kontaktNavn now preserved (added line 720 in salgsradar.js). (2) Prisendring/prishistorikk: ✅ Price change tracked in prisHistorikk, ✅ Response contains prisEndring object. (3) Deaktivering: ✅ Deactivation sets annonseAktiv=false, ✅ Reactivation works. (4) Tombstone: ✅ Deleted leads don't resurrect (hoppet:'slettet-i-admin'). (5) Salgskraft AI: ✅ Auto-analysis completed in 10-15 seconds, ✅ salgskraft.score 0-100, ✅ salgskraft.deler (forsteinntrykk/appell/dekning/tekstSalg) 0-10, ✅ bildeVurdering array, ✅ potensialScore 0-100. (6) Regression: ✅ Auth working (401 without key), ✅ Validation working (400 for invalid finnkode), ✅ Real leads untouched. CRITICAL: SendGrid is LIVE but no emails sent (only in-app notifications). All test leads deleted and verified (0 QA docs remain). Created backend_test_salgsradar.py for future regression testing. Response times: ingest <1s, AI analysis 10-15s. Database kept clean."
+

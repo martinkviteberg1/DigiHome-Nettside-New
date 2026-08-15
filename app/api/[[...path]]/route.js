@@ -62,7 +62,7 @@ import { computeLlmUsageDashboard, getModelOverrides, setModelOverride, logImage
 import { logExtUsage, summarizeExtUsage, getPlatformUsage } from '@/lib/ext-usage';
 import { getFinanceSettings, setFinanceSettings, listCosts, listActiveCosts, upsertCost, deleteCost, listContracts, upsertContract, deleteContract, listEvents, upsertEvent, deleteEvent, computeResultat, computeLikviditet, computeFinanceOverview, computeTrends, captureSnapshot, computeInvestorMetrics, computeForecast, computeBoardPack, computeCustomers, computePlatformCustomers } from '@/lib/finance';
 import { listFellesKostnader, upsertFellesKostnad, slettFellesKostnad, migrerFellesKostnader } from '@/lib/kostnader';
-import { finnKodeFraUrl, hentFinnHtml, parseFinnAnnonse, beregnAnalyse, opprettLead, validerIngestAnnonse, analyserAnnonse, kjorAutoPipeline, kjorAutoRetry, retryKandidater, slettLeads as radarSlettLeads, listLeads as radarListLeads, oppdaterLead as radarOppdaterLead, slettLead as radarSlettLead, stilBilde, lagreStyletBilde, hentStyletBilde, hentTilbud, registrerTilbudKontakt, tilbudsRegnestykke, STILER as RADAR_STILER } from '@/lib/salgsradar';
+import { finnKodeFraUrl, hentFinnHtml, parseFinnAnnonse, beregnAnalyse, opprettLead, validerIngestAnnonse, analyserAnnonse, kjorAutoPipeline, kjorAutoRetry, retryKandidater, filtrerLevendeBilder, slettLeads as radarSlettLeads, listLeads as radarListLeads, oppdaterLead as radarOppdaterLead, slettLead as radarSlettLead, stilBilde, lagreStyletBilde, hentStyletBilde, hentTilbud, registrerTilbudKontakt, tilbudsRegnestykke, STILER as RADAR_STILER } from '@/lib/salgsradar';
 import { syncContractsFromPlatform, syncCustomersFromPlatform, maybeAutoSyncFinance, getFinanceSyncMeta } from '@/lib/contracts-sync';
 import { enqueueInterest as deliverInterest, retryInterestWebhooks, webhookTarget as interestWebhookTarget, platformInboxUrl, platformThreadUrl, platformUnitUrl, deliveryView, OUTBOX_COLL as INTEREST_OUTBOX } from '@/lib/interest-webhook';
 import { notifyStatus, removeSuppression } from '@/lib/notify-status';
@@ -3883,30 +3883,65 @@ async function handleRoute(request, { params }) {
       try { const lfIn = await hentLeieforhold(leieforholdTarget(), { db }); rowsIn = lfIn.rows || []; } catch (e) { /* analyse uten portefølje */ }
       const resultater = [];
       const nyeLeads = [];
+      const prisEndringer = [];
+      const deaktiverte = [];
       for (const p of partier) {
+        const fkRaa = String(p?.finnkode || '').trim();
+        // Tombstone: brukeren har bevisst slettet denne — ikke gjenoppliv
+        if (/^\d{8,10}$/.test(fkRaa)) {
+          const tomb = await db.collection('salgsradar_tombstones').findOne({ finnkode: fkRaa });
+          if (tomb) { resultater.push({ ok: true, finnkode: fkRaa, hoppet: 'slettet-i-admin' }); continue; }
+        }
+        // Deaktivering: agenten melder at annonsen er tatt av FINN.
+        // Payload: { finnkode, deaktivert: true } (også aktiv:false / status:'deaktivert')
+        if (p && (p.deaktivert === true || p.aktiv === false || String(p.status || '').toLowerCase() === 'deaktivert')) {
+          if (!/^\d{8,10}$/.test(fkRaa)) { resultater.push({ ok: false, finnkode: fkRaa, error: 'finnkode må være 8-10 siffer' }); continue; }
+          const leadDe = await db.collection('salgsradar_leads').findOne({ finnkode: fkRaa });
+          if (!leadDe) { resultater.push({ ok: true, finnkode: fkRaa, hoppet: 'ukjent-finnkode' }); continue; }
+          if (leadDe.annonseAktiv !== false) {
+            await db.collection('salgsradar_leads').updateOne(
+              { id: leadDe.id },
+              { $set: { annonseAktiv: false, deaktivertAt: new Date().toISOString(), updatedAt: new Date().toISOString() } },
+            );
+            deaktiverte.push(leadDe);
+          }
+          resultater.push({ ok: true, finnkode: fkRaa, leadId: leadDe.id, deaktivert: true });
+          continue;
+        }
         const val = validerIngestAnnonse(p);
         if (!val.ok) { resultater.push({ ok: false, finnkode: String(p?.finnkode || ''), error: val.error }); continue; }
+        // Dropp døde finncdn-lenker (agenten sender av og til utdaterte URL-er → 404)
+        if (Array.isArray(val.annonse.bilder) && val.annonse.bilder.length) {
+          val.annonse.bilder = await filtrerLevendeBilder(val.annonse.bilder);
+        }
         const analyseIn = beregnAnalyse(val.annonse, rowsIn);
         const resIn = await opprettLead(db, val.annonse, analyseIn, val.kildeUrl, { kilde: 'agent' });
-        resultater.push({ ok: true, finnkode: val.annonse.finnkode, leadId: resIn.lead.id, tilbudSlug: resIn.lead.tilbudSlug, ny: !resIn.fantesFraFor });
+        resultater.push({ ok: true, finnkode: val.annonse.finnkode, leadId: resIn.lead.id, tilbudSlug: resIn.lead.tilbudSlug, ny: !resIn.fantesFraFor, ...(resIn.prisEndring ? { prisEndring: resIn.prisEndring } : {}) });
+        if (resIn.prisEndring) prisEndringer.push({ lead: resIn.lead, endring: resIn.prisEndring });
         if (!resIn.fantesFraFor) {
           nyeLeads.push(resIn.lead);
-          // Auto-pipeline i bakgrunnen: analyse + bildeforbedring (5 første)
+          // Auto-pipeline i bakgrunnen: analyse + bildeforbedring (5 første).
+          // Kjøres KUN for nye leads — oppdateringer/prisendringer re-styler ikke.
           kjorAutoPipeline(db, resIn.lead.id).catch(() => {});
         }
       }
-      // In-app varsel til owner/admin per NY lead (oppdateringer varsler ikke)
-      if (nyeLeads.length) {
-        try {
-          const adminsIn = await db.collection('admin_users').find({ role: { $in: ['owner', 'admin'] } }, { projection: { id: 1 } }).toArray();
-          for (const nl of nyeLeads) {
-            const prisTekst = nl.pris ? ` (${new Intl.NumberFormat('nb-NO').format(nl.pris)} kr/mnd)` : '';
-            for (const aIn of adminsIn) {
-              await varsle(db, aIn.id, null, { type: 'salgsradar', text: `Salgsradar: agenten fanget ny annonse — ${nl.adresse}${prisTekst}` });
-            }
-          }
-        } catch (e) { /* varsling er best effort */ }
-      }
+      // In-app varsler til owner/admin: nye leads, prisendringer og deaktiveringer
+      try {
+        const adminsIn = await db.collection('admin_users').find({ role: { $in: ['owner', 'admin'] } }, { projection: { id: 1 } }).toArray();
+        const nb = (v) => new Intl.NumberFormat('nb-NO').format(v);
+        for (const nl of nyeLeads) {
+          const prisTekst = nl.pris ? ` (${nb(nl.pris)} kr/mnd)` : '';
+          for (const aIn of adminsIn) await varsle(db, aIn.id, null, { type: 'salgsradar', text: `Salgsradar: agenten fanget ny annonse — ${nl.adresse}${prisTekst}` });
+        }
+        for (const pe of prisEndringer) {
+          const pct = pe.endring.fra ? Math.round((Math.abs(pe.endring.til - pe.endring.fra) / pe.endring.fra) * 100) : 0;
+          const retning = pe.endring.til < pe.endring.fra ? `Priskutt −${pct} %` : `Prisøkning +${pct} %`;
+          for (const aIn of adminsIn) await varsle(db, aIn.id, null, { type: 'salgsradar', text: `Salgsradar: ${retning} på ${pe.lead.adresse} — ${nb(pe.endring.fra)} → ${nb(pe.endring.til)} kr/mnd` });
+        }
+        for (const de of deaktiverte) {
+          for (const aIn of adminsIn) await varsle(db, aIn.id, null, { type: 'salgsradar', text: `Salgsradar: annonsen for ${de.adresse} er tatt av FINN — trolig utleid eller trukket` });
+        }
+      } catch (e) { /* varsling er best effort */ }
       const alleFeilet = resultater.every((x) => !x.ok);
       if (erBatch) return cors(NextResponse.json({ ok: !alleFeilet, resultater }, { status: alleFeilet ? 400 : 200 }));
       const ene = resultater[0];

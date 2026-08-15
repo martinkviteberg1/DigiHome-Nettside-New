@@ -53,6 +53,14 @@ const DEL_ETIKETTER = [
   ['hygiene', 'Datahygiene', 'Data'],
 ];
 
+// Norsk telefonformat: 8 siffer → «XXX XX XXX», ellers uendret
+const fmtTlf = (t) => {
+  const s = String(t || '').replace(/\s/g, '');
+  const n = s.replace(/^\+47/, '');
+  if (/^\d{8}$/.test(n)) return `${n.slice(0, 3)} ${n.slice(3, 5)} ${n.slice(5)}`;
+  return s;
+};
+
 const naarSist = (iso) => {
   if (!iso) return '';
   const d = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
@@ -112,12 +120,26 @@ const StatusPrikk = ({ s, tekst = true }) => (
   </span>
 );
 
+/* Siste priskutt på leaden (agenten re-sender ved prisendring) */
+const sisteKutt = (l) => {
+  const k = (l.prisHistorikk || []).filter((h) => Number(h.til) < Number(h.fra)).slice(-1)[0];
+  if (!k) return null;
+  return { ...k, pct: Math.round(((k.fra - k.til) / k.fra) * 100), fersk: Date.now() - new Date(k.at).getTime() < 14 * 86400000 };
+};
+
 /* Neste steg-veiviser — Airbnb-prinsipp: vis alltid brukeren hva som er den
    naturlige neste handlingen, med ett-klikks CTA-er i detaljpanelet. */
 const nesteSteg = (l) => {
   if (l.auto && ['analyserer', 'styler'].includes(l.auto.status)) return null;
+  if (l.annonseAktiv === false && !['vunnet', 'tapt'].includes(l.status)) {
+    return { t: 'Annonsen er tatt av FINN — utleid eller trukket? Avklar og lukk leaden', c: '#8a857c' };
+  }
   if (['analysert', 'kontaktet', 'dialog'].includes(l.status) && (l.aapninger || 0) > 0 && l.status !== 'dialog') {
     return { t: `Huseier har åpnet tilbudet${(l.aapninger || 0) > 1 ? ` ${l.aapninger}×` : ''} — følg opp nå`, c: '#0e7490', varm: true };
+  }
+  const kutt = sisteKutt(l);
+  if (kutt?.fersk && ['ny', 'analysert', 'kontaktet'].includes(l.status)) {
+    return { t: `Priskutt −${kutt.pct} % — motivert utleier, ta kontakt nå`, c: '#0e7490', varm: true };
   }
   if (l.status === 'ny') return { t: 'Kjør AI-analyse for score og tilbudstekst', c: '#6d28d9' };
   if (l.status === 'analysert') return { t: 'Klar til kontakt — send FINN-melding', c: '#6d28d9' };
@@ -308,6 +330,15 @@ export default function Salgsradar({ apiKey }) {
   const swipeX = useRef(null); // touch-swipe i hero-galleriet
   const [lagret, setLagret] = useState(false);
   const lagretTimer = useRef(null);
+  // Døde bilde-URL-er (404 fra finncdn) fanges via onError og filtreres bort
+  const [dodeBilder, setDodeBilder] = useState(() => new Set());
+  const merkDodBilde = useCallback((u) => {
+    if (!u || String(u).startsWith('data:')) return;
+    setDodeBilder((prev) => {
+      if (prev.has(u)) return prev;
+      const n = new Set(prev); n.add(u); return n;
+    });
+  }, []);
   useEffect(() => () => clearTimeout(lagretTimer.current), []);
   useEffect(() => { setHeroIdx(0); setSammenlign(null); }, [valgtId]);
   useEffect(() => { setHeroPos(55); }, [heroIdx, valgtId]);
@@ -462,6 +493,7 @@ export default function Salgsradar({ apiKey }) {
     const v = (l) => {
       if (sort.key === 'potensial') return l.potensial?.score || 0;
       if (sort.key === 'kvalitet') return l.potensial?.annonseScore || 0;
+      if (sort.key === 'salgskraft') return l.ai?.salgskraft?.score || 0;
       if (sort.key === 'pris') return l.pris || 0;
       if (sort.key === 'aapnet') return l.aapninger || 0;
       return new Date(l.createdAt || 0).getTime();
@@ -505,9 +537,9 @@ export default function Salgsradar({ apiKey }) {
     if (!valgt) return [];
     return [
       ...(valgt.stylet || []).map((s) => ({ url: `/api/tilbud/bilde?id=${s.id}`, etikett: `AI · ${STIL_VALG.find((x) => x.k === s.stil)?.l || s.stil}`, ai: true, kilde: s.kildeUrl, stil: s.stil })),
-      ...(valgt.bilder || []).slice(0, 14).map((b) => ({ url: b, etikett: 'Original', ai: false, kilde: b })),
+      ...(valgt.bilder || []).filter((b) => !dodeBilder.has(b)).slice(0, 14).map((b) => ({ url: b, etikett: 'Original', ai: false, kilde: b })),
     ];
-  }, [valgt]);
+  }, [valgt, dodeBilder]);
   // AI-par til før/etter-sammenligning: AI-bilde + originalen det bygger på
   const aiPar = useMemo(() => galleri.filter((g) => g.ai && g.kilde).map((g) => ({ ai: g.url, original: g.kilde, stil: g.stil })), [galleri]);
 
@@ -530,6 +562,8 @@ export default function Salgsradar({ apiKey }) {
     const BENTO = 'rounded-[14px] border border-black/[0.06] bg-white shadow-[0_1px_2px_rgba(28,25,23,0.04)]';
     const hIdx = Math.min(heroIdx, Math.max(0, nB - 1));
     const hero = galleri[hIdx];
+    // Inline før/etter krever at originalen (kilde) fortsatt finnes på finncdn
+    const heroSml = Boolean(hero && hero.ai && hero.kilde && !dodeBilder.has(hero.kilde));
 
     const sekBilder = nB > 0 && (
       <section className={`${BENTO} p-4 sm:p-5`}>
@@ -548,24 +582,25 @@ export default function Salgsradar({ apiKey }) {
         )} />
         {/* Hero — AI-bilder viser før/etter-slider DIREKTE på bildet; originaler
             har swipe/klikk som før */}
-        <div className={`group relative mt-3 overflow-hidden rounded-[12px] bg-[#f4f2ee] ${hero.ai && hero.kilde ? 'cursor-ew-resize' : ''}`} data-testid="radar-galleri-hero"
-          style={hero.ai && hero.kilde ? { touchAction: 'pan-y' } : undefined}
-          onPointerDown={hero.ai && hero.kilde ? (e) => { heroDrag.current = true; try { e.currentTarget.setPointerCapture(e.pointerId); } catch (e2) { /* ok */ } settHeroPos(e); } : undefined}
-          onPointerMove={hero.ai && hero.kilde ? (e) => { if (heroDrag.current) settHeroPos(e); } : undefined}
-          onPointerUp={hero.ai && hero.kilde ? () => { heroDrag.current = false; } : undefined}
-          onPointerCancel={hero.ai && hero.kilde ? () => { heroDrag.current = false; } : undefined}
-          onTouchStart={!hero.ai ? (e) => { swipeX.current = e.touches[0].clientX; } : undefined}
-          onTouchEnd={!hero.ai ? (e) => {
+        <div className={`group relative mt-3 overflow-hidden rounded-[12px] bg-[#f4f2ee] ${heroSml ? 'cursor-ew-resize' : ''}`} data-testid="radar-galleri-hero"
+          style={heroSml ? { touchAction: 'pan-y' } : undefined}
+          onPointerDown={heroSml ? (e) => { heroDrag.current = true; try { e.currentTarget.setPointerCapture(e.pointerId); } catch (e2) { /* ok */ } settHeroPos(e); } : undefined}
+          onPointerMove={heroSml ? (e) => { if (heroDrag.current) settHeroPos(e); } : undefined}
+          onPointerUp={heroSml ? () => { heroDrag.current = false; } : undefined}
+          onPointerCancel={heroSml ? () => { heroDrag.current = false; } : undefined}
+          onTouchStart={!heroSml ? (e) => { swipeX.current = e.touches[0].clientX; } : undefined}
+          onTouchEnd={!heroSml ? (e) => {
             if (swipeX.current == null || nB < 2) return;
             const dx = e.changedTouches[0].clientX - swipeX.current;
             swipeX.current = null;
             if (dx > 45) setHeroIdx((hIdx - 1 + nB) % nB);
             else if (dx < -45) setHeroIdx((hIdx + 1) % nB);
           } : undefined}>
-          {hero.ai && hero.kilde ? (
+          {heroSml ? (
             <>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={hero.kilde} alt="Original" draggable={false} data-testid="radar-galleri-bilde"
+                onError={() => merkDodBilde(hero.kilde)}
                 className="h-[220px] w-full select-none object-cover min-[440px]:h-[260px] sm:h-[340px]" />
               <span className="pointer-events-none absolute inset-0" style={{ clipPath: `inset(0 ${100 - heroPos}% 0 0)` }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -589,6 +624,7 @@ export default function Salgsradar({ apiKey }) {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={hero.url} alt="" draggable={false}
                 onClick={() => setLightbox({ idx: hIdx })}
+                onError={hero.ai ? undefined : () => merkDodBilde(hero.url)}
                 data-testid="radar-galleri-bilde" role="button" tabIndex={0}
                 className="h-[220px] w-full cursor-pointer object-cover transition-transform duration-500 min-[440px]:h-[260px] sm:h-[340px]" />
               <span className="pointer-events-none absolute left-3 top-3 rounded-[5px] bg-black/45 px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-wide text-white">Original</span>
@@ -614,6 +650,7 @@ export default function Salgsradar({ apiKey }) {
             <div key={b.url} className="group/t relative shrink-0 cursor-pointer" onClick={() => setHeroIdx(i)} role="button" tabIndex={0} data-testid={`radar-thumb-${i}`}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={b.url} alt="" draggable={false}
+                onError={b.ai ? undefined : () => merkDodBilde(b.url)}
                 className={`h-[52px] w-[74px] rounded-[8px] object-cover transition-all ${i === hIdx ? 'ring-2 ring-[#1c1917] ring-offset-1' : 'opacity-80 hover:opacity-100'}`} />
               {b.ai ? (
                 <span className="absolute left-1 top-1 rounded-[3px] bg-[#8b5cf6]/90 px-1 py-px text-[7.5px] font-bold uppercase text-white">AI</span>
@@ -649,7 +686,7 @@ export default function Salgsradar({ apiKey }) {
             </div>
           ) : (
             <div className="mt-4 rounded-[10px] border border-dashed border-black/[0.10] bg-[#fbfaf9] px-4 py-4">
-              <p className="text-[12.5px] leading-relaxed text-[#78716c]">AI vurderer lys, skarphet, ryddighet og styling — koden måler piksler, bildeformat og datahygiene. Du får score, funn, salgsvinkel, FINN-melding og personlig tilbudstekst.</p>
+              <p className="text-[12.5px] leading-relaxed text-[#78716c]">AI-en ser på selve bildene: vurderer hvert enkelt bilde (rom, funn, score), hvor selgende annonsen er som helhet, pluss lys, skarphet, ryddighet og tekst — koden måler piksler, bildeformat og datahygiene. Du får salgskraft-score, funn, salgsvinkel, FINN-melding og personlig tilbudstekst.</p>
               <button onClick={() => analyser(valgt.id)} data-testid="radar-analyser-btn" className={`${KNAPP_PRIMAER} mt-3.5`}>
                 <Sparkles className="h-3.5 w-3.5" /> Kjør AI-analyse
               </button>
@@ -657,14 +694,18 @@ export default function Salgsradar({ apiKey }) {
           )
         ) : (
           <div className="mt-4" data-testid="radar-analyse-resultat">
-            {/* To store ringer — potensial + kvalitet (0-100) */}
-            <div className="grid grid-cols-2 gap-2.5">
-              {[['Potensial', ai.potensialScore, 'Hvor vinnbar leaden er for oss'], ['Kvalitet i dag', ai.annonseScore, 'Hvor god annonsen er nå']].map(([l, v, hint]) => (
-                <div key={l} className="flex items-center gap-3.5 rounded-[10px] bg-[#fbfaf9] px-4 py-3.5" title={hint}>
-                  <ScoreRing verdi={v} storrelse={58} strek={5} />
+            {/* Store ringer — potensial + salgskraft + kvalitet (0-100) */}
+            <div className={`grid gap-2.5 ${ai.salgskraft ? 'grid-cols-1 min-[420px]:grid-cols-3' : 'grid-cols-2'}`}>
+              {[
+                ['Potensial', ai.potensialScore, 'Hvor vinnbar leaden er for oss'],
+                ...(ai.salgskraft ? [['Salgskraft', ai.salgskraft.score, 'Hvor selgende annonsen er']] : []),
+                ['Kvalitet i dag', ai.annonseScore, 'Hvor god annonsen er nå'],
+              ].map(([l, v, hint]) => (
+                <div key={l} className="flex items-center gap-3 rounded-[10px] bg-[#fbfaf9] px-3.5 py-3.5" title={hint}>
+                  <ScoreRing verdi={v} storrelse={52} strek={4.5} />
                   <span className="min-w-0">
-                    <span className="block text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#a8a29a]">{l}</span>
-                    <span className="block text-[11.5px] leading-snug text-[#8a857c]">{hint}</span>
+                    <span className="block text-[10px] font-bold uppercase tracking-[0.08em] text-[#a8a29a]">{l}</span>
+                    <span className="block text-[11px] leading-snug text-[#8a857c]">{hint}</span>
                   </span>
                 </div>
               ))}
@@ -688,6 +729,45 @@ export default function Salgsradar({ apiKey }) {
                 {ai.teknisk.snittMp != null ? ` · snitt ${ai.teknisk.snittMp} MP` : ''}
                 {ai.teknisk.andelPortrett != null ? ` · ${Math.round(ai.teknisk.andelPortrett * 100)} % portrett${ai.teknisk.andelPortrett >= 0.8 ? ' (tyder på mobilbilder)' : ''}` : ''}
               </p>
+            )}
+            {ai.salgskraft?.deler && (
+              <div className="mt-4 rounded-[10px] border border-black/[0.05] bg-[#fbfaf9] px-4 py-3.5" data-testid="radar-salgskraft-deler">
+                <p className="text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#a8a29a]">Salgskraft — hva trekker opp og ned</p>
+                <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-3">
+                  {[
+                    ['forsteinntrykk', 'Førsteinntrykk (hovedbilde)'],
+                    ['appell', 'Appell — lyst til å bo her'],
+                    ['dekning', 'Dekker viktigste rom'],
+                    ['tekstSalg', 'Tekst som selger'],
+                  ].map(([k, etikett]) => (
+                    <div key={k}>
+                      <div className="flex items-baseline justify-between">
+                        <span className="text-[11.5px] font-medium text-[#78716c]">{etikett}</span>
+                        <span className="text-[12px] font-bold tabular-nums" style={{ ...heading, color: delFarge(ai.salgskraft.deler?.[k]) }}>{ai.salgskraft.deler?.[k] ?? '–'}</span>
+                      </div>
+                      <div className="mt-1.5 h-[4px] overflow-hidden rounded-full bg-[#f1efeb]">
+                        <div className="h-full rounded-full transition-all duration-500" style={{ width: `${Math.min(100, (ai.salgskraft.deler?.[k] || 0) * 10)}%`, background: delFarge(ai.salgskraft.deler?.[k]) }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {(ai.bildeVurdering || []).length > 0 && (
+              <div className="mt-4" data-testid="radar-bildevurdering">
+                <p className="text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#a8a29a]">Bilde for bilde</p>
+                <div className="mt-2.5 space-y-1.5">
+                  {ai.bildeVurdering.map((bv, i) => (
+                    <div key={i} className="flex items-center gap-2.5 rounded-[9px] border border-black/[0.04] bg-white px-2.5 py-2">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={bv.url} alt="" className="h-9 w-12 shrink-0 rounded-[6px] object-cover shadow-[inset_0_0_0_1px_rgba(0,0,0,0.04)]" />
+                      <span className="w-[74px] shrink-0 text-[11px] font-bold capitalize text-[#57534e]" style={heading}>{bv.rom}</span>
+                      <span className="min-w-0 flex-1 truncate text-[11.5px] text-[#78716c]" title={bv.funn}>{bv.funn || '—'}</span>
+                      <span className="shrink-0 rounded-[5px] px-1.5 py-0.5 text-[11px] font-bold tabular-nums" style={{ ...heading, color: delFarge(bv.score), background: `${delFarge(bv.score)}14` }}>{bv.score}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
             {(ai.funn || []).length > 0 && (
               <ul className="mt-4 space-y-1.5">
@@ -743,6 +823,22 @@ export default function Salgsradar({ apiKey }) {
             </div>
           ))}
         </div>
+        {(valgt.prisHistorikk || []).length > 0 && (
+          <div className="mt-3.5" data-testid="radar-prishistorikk">
+            <p className="text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#a8a29a]">Prishistorikk (FINN)</p>
+            <ul className="mt-1.5 space-y-1">
+              {[...valgt.prisHistorikk].reverse().slice(0, 5).map((h, i) => (
+                <li key={i} className="flex items-center gap-1.5 text-[12px] tabular-nums text-[#57534e]">
+                  <span className={Number(h.til) < Number(h.fra) ? 'font-bold text-[#0e7490]' : 'font-bold text-[#c2413b]'}>{Number(h.til) < Number(h.fra) ? '↓' : '↑'}</span>
+                  <span className="text-[#a8a29a] line-through">{tall(h.fra)}</span>
+                  <span className="text-[#c2beb8]">→</span>
+                  <b className="text-[#1c1917]">{kr(h.til)}</b>
+                  <span className="ml-auto text-[11px] text-[#a8a29a]">{naarSist(h.at)}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </section>
     );
 
@@ -848,11 +944,31 @@ export default function Salgsradar({ apiKey }) {
                 {valgt.kilde === 'agent' && <span className="rounded-md bg-[#f1ebfc] px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wide text-[#6d28d9]" title="Matet inn av overvåkningsagenten">Agent</span>}
               </div>
               <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12.5px] text-[#a8a29a] sm:gap-x-3.5 sm:text-[13px]">
-                <span className="font-bold tabular-nums text-[#1c1917]" style={heading}>{kr(valgt.pris)}<span className="font-medium text-[#a8a29a]">/mnd</span></span>
+                <span className="flex items-center gap-1.5">
+                  <span className="font-bold tabular-nums text-[#1c1917]" style={heading}>{kr(valgt.pris)}<span className="font-medium text-[#a8a29a]">/mnd</span></span>
+                  {(() => {
+                    const kutt = sisteKutt(valgt);
+                    return kutt ? (
+                      <span className="flex items-center gap-1 rounded-[4px] bg-[#e9f6f9] px-1.5 py-px text-[10px] font-bold text-[#0e7490]" title={naarSist(kutt.at)} data-testid="radar-panel-kutt">
+                        <span className="tabular-nums line-through opacity-60">{tall(kutt.fra)}</span> ↓ −{kutt.pct} %
+                      </span>
+                    ) : null;
+                  })()}
+                </span>
                 {valgt.m2 ? <span className="flex items-center gap-1"><Ruler className="h-3.5 w-3.5" />{valgt.m2} m²</span> : null}
                 {valgt.soverom ? <span className="flex items-center gap-1"><BedDouble className="h-3.5 w-3.5" />{valgt.soverom} sov</span> : null}
                 {valgt.boligtype ? <span className="hidden sm:inline">{valgt.boligtype}</span> : null}
-                {valgt.kontaktTlf ? <span className="flex items-center gap-1"><Phone className="h-3.5 w-3.5" />{valgt.kontaktTlf}</span> : null}
+                {(valgt.kontaktNavn || valgt.kontaktTlf) ? (
+                  <span className="flex items-center gap-1" data-testid="radar-panel-kontakt">
+                    <Phone className="h-3.5 w-3.5" />
+                    {valgt.kontaktNavn ? <span className="font-medium text-[#57534e]">{valgt.kontaktNavn}</span> : null}
+                    {valgt.kontaktTlf ? (
+                      <a href={`tel:${valgt.kontaktTlf}`} className="tabular-nums text-[#57534e] hover:text-[#1c1917] hover:underline" onClick={(e) => e.stopPropagation()}>
+                        {fmtTlf(valgt.kontaktTlf)}
+                      </a>
+                    ) : null}
+                  </span>
+                ) : null}
                 <a href={valgt.kildeUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1 font-semibold text-[#6d28d9] hover:underline">FINN <ExternalLink className="h-3.5 w-3.5" /></a>
               </p>
             </div>
@@ -875,6 +991,19 @@ export default function Salgsradar({ apiKey }) {
           </div>
         </div>
 
+        {/* Annonsen fjernet fra FINN — agenten meldte deaktivering */}
+        {valgt.annonseAktiv === false && !autoAktiv && (
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-black/[0.05] bg-[#f4f2ee] px-4 py-2.5 sm:px-7" data-testid="radar-deaktivert">
+            <p className="text-[12px] font-medium text-[#57534e]">
+              Annonsen er tatt av FINN{valgt.deaktivertAt ? ` ${naarSist(valgt.deaktivertAt)}` : ''} — trolig utleid eller trukket.
+            </p>
+            {!['vunnet', 'tapt'].includes(valgt.status) && (
+              <button onClick={() => oppdater(valgt.id, { status: 'tapt' })} data-testid="radar-deaktivert-tapt" className={`${KNAPP_GHOST} ml-auto h-7 px-2.5 text-[11.5px]`}>
+                Merk som tapt
+              </button>
+            )}
+          </div>
+        )}
         {/* Neste steg-linje — kontekstuelle ett-klikks handlinger per status */}
         {steg && (
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-black/[0.05] bg-[#fbfaf9] px-4 py-2.5 sm:px-7" data-testid="radar-neste-steg">
@@ -1185,23 +1314,46 @@ export default function Salgsradar({ apiKey }) {
                         className={`shrink-0 rounded-md p-1 transition-colors ${erValgt ? 'text-[#1c1917]' : 'text-[#ddd8d0] hover:text-[#a8a29a]'}`}>
                         {erValgt ? <CheckSquare className="h-[17px] w-[17px]" /> : <Square className="h-[17px] w-[17px]" />}
                       </button>
-                      {(l.bilder || [])[0]
-                        // eslint-disable-next-line @next/next/no-img-element
-                        ? <img src={l.bilder[0]} alt="" className={`shrink-0 rounded-[10px] object-cover shadow-[inset_0_0_0_1px_rgba(0,0,0,0.04)] ${splitt ? 'h-11 w-16' : 'h-14 w-20'}`} />
-                        : <span className={`flex shrink-0 items-center justify-center rounded-[10px] bg-[#f4f2ee] ${splitt ? 'h-11 w-16' : 'h-14 w-20'}`}><Home className="h-4 w-4 text-[#c9c4bd]" /></span>}
+                      {(() => {
+                        const thumbL = (l.bilder || []).find((b) => !dodeBilder.has(b));
+                        return thumbL
+                          // eslint-disable-next-line @next/next/no-img-element
+                          ? <img src={thumbL} alt="" onError={() => merkDodBilde(thumbL)} className={`shrink-0 rounded-[10px] object-cover shadow-[inset_0_0_0_1px_rgba(0,0,0,0.04)] ${splitt ? 'h-11 w-16' : 'h-14 w-20'}`} />
+                          : <span className={`flex shrink-0 items-center justify-center rounded-[10px] bg-[#f4f2ee] ${splitt ? 'h-11 w-16' : 'h-14 w-20'}`}><Home className="h-4 w-4 text-[#c9c4bd]" /></span>;
+                      })()}
                       <span className="min-w-0 flex-1">
                         <span className="flex items-center gap-2">
-                          <span className="truncate text-[13.5px] font-bold tracking-[-0.01em] text-[#1c1917]" style={heading}>{l.adresse || l.tittel}</span>
+                          <span className={`truncate text-[13.5px] font-bold tracking-[-0.01em] ${l.annonseAktiv === false ? 'text-[#a8a29a] line-through decoration-[#d6d2cb]' : 'text-[#1c1917]'}`} style={heading}>{l.adresse || l.tittel}</span>
+                          {l.annonseAktiv === false && (
+                            <span className="shrink-0 rounded-[4px] bg-[#f4f2ee] px-1.5 py-px text-[8.5px] font-bold uppercase tracking-wide text-[#8a857c]" title="Agenten meldte at annonsen er fjernet fra FINN">Tatt av FINN</span>
+                          )}
                           {l.kilde === 'agent' && !splitt && (
                             <span className="shrink-0 rounded-[4px] border border-black/[0.07] bg-[#f7f6f3] px-1.5 py-px text-[8.5px] font-bold uppercase tracking-wide text-[#8a857c]" title="Matet inn av overvåkningsagenten">Agent</span>
                           )}
                         </span>
-                        <span className="mt-0.5 block truncate text-[12px] tabular-nums text-[#78716c]">
+                        <span className="mt-0.5 flex items-center gap-1.5 truncate text-[12px] tabular-nums text-[#78716c]">
                           <b className="font-semibold text-[#44403c]">{kr(l.pris)}/mnd</b>
-                          {!splitt && l.m2 ? <span className="text-[#a8a29a]"> · {l.m2} m²</span> : null}
-                          {!splitt && l.soverom ? <span className="text-[#a8a29a]"> · {l.soverom} sov</span> : null}
-                          {!splitt ? <span className="text-[#a8a29a]"> · honorar {kr(rs.honorar)}/mnd</span> : null}
+                          {(() => {
+                            const kutt = sisteKutt(l);
+                            return kutt ? (
+                              <span className="shrink-0 rounded-[4px] bg-[#e9f6f9] px-1 py-px text-[9.5px] font-bold text-[#0e7490]" title={`Priskutt: ${kr(kutt.fra)} → ${kr(kutt.til)} (${naarSist(kutt.at)})`} data-testid={`radar-kutt-${l.id}`}>↓ −{kutt.pct} %</span>
+                            ) : null;
+                          })()}
+                          {!splitt && l.m2 ? <span className="text-[#a8a29a]">· {l.m2} m²</span> : null}
+                          {!splitt && l.soverom ? <span className="text-[#a8a29a]">· {l.soverom} sov</span> : null}
+                          {!splitt ? <span className="truncate text-[#a8a29a]">· honorar {kr(rs.honorar)}/mnd</span> : null}
                         </span>
+                        {(l.kontaktNavn || l.kontaktTlf) ? (
+                          <span className="mt-0.5 flex items-center gap-1 truncate text-[11px] text-[#8a857c]" data-testid={`radar-kontakt-${l.id}`}>
+                            <Phone className="h-3 w-3 shrink-0 text-[#a8a29a]" />
+                            {l.kontaktNavn ? <span className="truncate font-medium">{l.kontaktNavn}</span> : null}
+                            {l.kontaktTlf ? (
+                              <a href={`tel:${l.kontaktTlf}`} onClick={(e) => e.stopPropagation()} className="shrink-0 tabular-nums hover:text-[#1c1917] hover:underline">
+                                {l.kontaktNavn ? '· ' : ''}{fmtTlf(l.kontaktTlf)}
+                              </a>
+                            ) : null}
+                          </span>
+                        ) : null}
                         <span className="mt-1.5 flex items-center gap-2.5">
                           {l.auto && ['analyserer', 'styler'].includes(l.auto.status) ? (
                             <span className="flex items-center gap-1.5 text-[11px] font-medium text-[#6f6a61]" data-testid={`radar-auto-status-${l.id}`}>
@@ -1231,14 +1383,18 @@ export default function Salgsradar({ apiKey }) {
               </div>
             ) : (
               <div className={`${KORT} overflow-x-auto`} data-testid="radar-tabell">
-                <table className="w-full min-w-[1080px] border-collapse text-left">
+                <table className="w-full min-w-[1280px] border-collapse text-left">
                   <thead>
                     <tr>
                       <th className="sticky top-0 z-10 w-10 bg-white/90 px-3.5 py-3 shadow-[inset_0_-1px_0_rgba(0,0,0,0.06)] backdrop-blur-md" />
                       <th className="sticky top-0 z-10 bg-white/90 px-2 py-3 text-[10px] font-bold uppercase tracking-[0.09em] text-[#a8a29a] shadow-[inset_0_-1px_0_rgba(0,0,0,0.06)] backdrop-blur-md">Bolig</th>
+                      <th className="sticky top-0 z-10 bg-white/90 px-2 py-3 text-[10px] font-bold uppercase tracking-[0.09em] text-[#a8a29a] shadow-[inset_0_-1px_0_rgba(0,0,0,0.06)] backdrop-blur-md">Utleier</th>
                       <th className="sticky top-0 z-10 bg-white/90 px-2 py-3 text-[10px] font-bold uppercase tracking-[0.09em] text-[#a8a29a] shadow-[inset_0_-1px_0_rgba(0,0,0,0.06)] backdrop-blur-md">Status</th>
                       <th className="sticky top-0 z-10 cursor-pointer bg-white/90 px-2 py-3 text-center text-[10px] font-bold uppercase tracking-[0.09em] text-[#57534e] shadow-[inset_0_-1px_0_rgba(0,0,0,0.06)] backdrop-blur-md" onClick={() => sorter('potensial')} data-testid="radar-tabell-sort-potensial">
                         <span className="flex items-center justify-center gap-0.5">Potensial <SortPil k="potensial" /></span>
+                      </th>
+                      <th className="sticky top-0 z-10 cursor-pointer bg-white/90 px-2 py-3 text-center text-[10px] font-bold uppercase tracking-[0.09em] text-[#57534e] shadow-[inset_0_-1px_0_rgba(0,0,0,0.06)] backdrop-blur-md" onClick={() => sorter('salgskraft')} data-testid="radar-tabell-sort-salgskraft" title="Hvor selgende annonsen er, sett med leietakers øyne">
+                        <span className="flex items-center justify-center gap-0.5">Salgskraft <SortPil k="salgskraft" /></span>
                       </th>
                       <th className="sticky top-0 z-10 cursor-pointer bg-white/90 px-2 py-3 text-center text-[10px] font-bold uppercase tracking-[0.09em] text-[#57534e] shadow-[inset_0_-1px_0_rgba(0,0,0,0.06)] backdrop-blur-md" onClick={() => sorter('kvalitet')}>
                         <span className="flex items-center justify-center gap-0.5">Kvalitet <SortPil k="kvalitet" /></span>
@@ -1271,9 +1427,9 @@ export default function Salgsradar({ apiKey }) {
                           </td>
                           <td className="px-2 py-2">
                             <span className="flex items-center gap-2.5">
-                              {(l.bilder || [])[0]
+                              {(l.bilder || []).find((b) => !dodeBilder.has(b))
                                 // eslint-disable-next-line @next/next/no-img-element
-                                ? <img src={l.bilder[0]} alt="" className="h-9 shrink-0 rounded-[8px] object-cover shadow-[inset_0_0_0_1px_rgba(0,0,0,0.04)]" style={{ width: 52 }} />
+                                ? <img src={(l.bilder || []).find((b) => !dodeBilder.has(b))} alt="" onError={() => merkDodBilde((l.bilder || []).find((b) => !dodeBilder.has(b)))} className="h-9 shrink-0 rounded-[8px] object-cover shadow-[inset_0_0_0_1px_rgba(0,0,0,0.04)]" style={{ width: 52 }} />
                                 : <span className="flex h-9 shrink-0 items-center justify-center rounded-[8px] bg-[#f4f2ee]" style={{ width: 52 }}><Home className="h-3.5 w-3.5 text-[#c9c4bd]" /></span>}
                               <span className="min-w-0">
                                 <span className="block max-w-[210px] truncate text-[13px] font-bold tracking-[-0.01em] text-[#1c1917]" style={heading}>{l.adresse || l.tittel}</span>
@@ -1285,16 +1441,36 @@ export default function Salgsradar({ apiKey }) {
                             </span>
                           </td>
                           <td className="px-2 py-2">
+                            {(l.kontaktNavn || l.kontaktTlf) ? (
+                              <span className="block min-w-0" data-testid={`radar-tabell-kontakt-${l.id}`}>
+                                {l.kontaktNavn ? <span className="block max-w-[150px] truncate text-[12px] font-medium text-[#44403c]">{l.kontaktNavn}</span> : null}
+                                {l.kontaktTlf ? (
+                                  <a href={`tel:${l.kontaktTlf}`} onClick={(e) => e.stopPropagation()} className="block text-[11.5px] tabular-nums text-[#78716c] hover:text-[#1c1917] hover:underline">
+                                    {fmtTlf(l.kontaktTlf)}
+                                  </a>
+                                ) : null}
+                              </span>
+                            ) : <span className="text-[12px] text-[#ddd8d0]">–</span>}
+                          </td>
+                          <td className="px-2 py-2">
                             {l.auto && ['analyserer', 'styler'].includes(l.auto.status) ? (
                               <span className="flex items-center gap-1.5 text-[11px] font-medium text-[#6f6a61]">
                                 <Loader2 className="h-3 w-3 animate-spin text-[#8b5cf6]" />
                                 {l.auto.status === 'analyserer' ? 'Analyserer' : `${l.auto.bilderFerdig || 0}/${l.auto.bilderTotalt || 0}`}
                               </span>
+                            ) : l.annonseAktiv === false ? (
+                              <span className="text-[10.5px] font-bold uppercase tracking-wide text-[#a8a29a]">Tatt av FINN</span>
                             ) : (
                               <StatusPrikk s={st} />
                             )}
                           </td>
                           <td className="px-2 py-2 text-center"><span className="inline-flex justify-center"><PotensialBadge p={l.potensial} id={l.id} /></span></td>
+                          <td className="px-2 py-2 text-center">
+                            {l.ai?.salgskraft?.score != null ? (
+                              <ScoreRing verdi={l.ai.salgskraft.score} storrelse={40} strek={3.5}
+                                tittel={`Salgskraft ${l.ai.salgskraft.score}/100 — hvor selgende annonsen er`} />
+                            ) : <span className="text-[12px] text-[#c9c4bd]">–</span>}
+                          </td>
                           <td className="px-2 py-2 text-center">
                             {l.potensial?.annonseScore != null ? (
                               <ScoreRing verdi={l.potensial.annonseScore} forelopig={l.potensial.forelopig} storrelse={40} strek={3.5}

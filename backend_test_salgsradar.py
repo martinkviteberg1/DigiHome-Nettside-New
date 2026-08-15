@@ -1,568 +1,990 @@
 #!/usr/bin/env python3
 """
-SALGSRADAR Backend Test
-Tests the new sales system (Fase 1): FINN ad → analysis → AI styling → public offer page
+Backend test for Salgsradar (DigiHome Next.js App Router)
+Tests three new backend tasks:
+1. Utleier-kontaktdata (contact phone/name with alias support and persistence)
+2. Prisendring/prishistorikk (price change tracking)
+3. Deaktivering (deactivation and reactivation)
+4. Tombstone (deleted leads don't resurrect)
+5. Salgskraft in AI analysis (sales power metrics)
+6. Regression tests
 """
 
 import requests
+import time
 import json
 import os
 from pymongo import MongoClient
 
-# Configuration
-BASE_URL = "https://saker-hub.preview.emergentagent.com/api"
-ADMIN_KEY = "dh_admin_b3Kx92Qz7Lm4"
-MONGO_URL = "mongodb://localhost:27017"
-DB_NAME = "your_database_name"
+# Load environment variables
+def load_env():
+    env = {}
+    with open('/app/.env', 'r') as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith('#') and '=' in line:
+                key, value = line.split('=', 1)
+                # Remove quotes if present
+                value = value.strip('"').strip("'")
+                env[key] = value
+    return env
 
-# Test credentials (investor WITHOUT salgsradar module)
-INVESTOR_EMAIL = "qa-investor@example.com"
-INVESTOR_PASSWORD = "QaInvest12345!"
+env = load_env()
+BASE_URL = env.get('NEXT_PUBLIC_BASE_URL', 'https://saker-hub.preview.emergentagent.com')
+API_URL = f"{BASE_URL}/api"
+INGEST_KEY = env.get('SALGSRADAR_INGEST_KEY', '')
+MONGO_URL = env.get('MONGO_URL', 'mongodb://localhost:27017')
+DB_NAME = env.get('DB_NAME', 'your_database_name')
+ADMIN_EMAIL = env.get('ADMIN_SEED_EMAIL', 'martin@kviteberg.no')
+ADMIN_PASSWORD = env.get('ADMIN_SEED_PASSWORD', 'Pyramiden2025##')
 
-# Expected example lead
-EXAMPLE_LEAD_ADDRESS = "Nordnesveien 25"
-EXAMPLE_FINNKODE = "473281470"
+print(f"Base URL: {BASE_URL}")
+print(f"API URL: {API_URL}")
+print(f"Ingest key: {INGEST_KEY[:20]}...")
+print(f"MongoDB: {MONGO_URL}, DB: {DB_NAME}")
+print(f"Admin: {ADMIN_EMAIL}")
+print()
 
-def test_salgsradar():
-    """Main test function"""
-    print("\n" + "="*80)
-    print("SALGSRADAR BACKEND TEST")
-    print("="*80)
-    
-    # Connect to MongoDB
-    client = MongoClient(MONGO_URL)
-    db = client[DB_NAME]
+# MongoDB connection
+mongo_client = MongoClient(MONGO_URL)
+db = mongo_client[DB_NAME]
+
+# Test state
+admin_token = None
+test_leads = []  # Track test leads for cleanup
+
+def login_admin():
+    """Login as admin and get session token"""
+    global admin_token
+    try:
+        print("=" * 80)
+        print("TEST: Admin Login")
+        print("=" * 80)
+        
+        response = requests.post(
+            f"{API_URL}/admin/auth/login",
+            json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD},
+            timeout=10
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            admin_token = data.get('token')
+            print(f"✅ Login successful, token: {admin_token[:30]}...")
+            return True
+        else:
+            print(f"❌ Login failed: {response.status_code} - {response.text}")
+            return False
+    except Exception as e:
+        print(f"❌ Login exception: {e}")
+        return False
+
+def test_utleier_kontaktdata():
+    """Test 1: Utleier contact data with alias support and persistence"""
+    global test_leads
     
     try:
-        # ============================================================
-        # TEST 1: GET /api/admin/salgsradar/leads with admin key
-        # ============================================================
-        print("\n[TEST 1] GET /api/admin/salgsradar/leads with admin key")
-        try:
-            r = requests.get(f"{BASE_URL}/admin/salgsradar/leads", params={"key": ADMIN_KEY}, timeout=10)
-            print(f"Status: {r.status_code}")
-            assert r.status_code == 200, f"Expected 200, got {r.status_code}"
-            
-            data = r.json()
-            assert data.get("ok") == True, "Expected ok:true"
-            assert "leads" in data, "Expected leads array"
-            
-            leads = data["leads"]
-            print(f"Found {len(leads)} leads")
-            
-            # Find the example lead
-            example_lead = None
-            for lead in leads:
-                if lead.get("adresse") == EXAMPLE_LEAD_ADDRESS:
-                    example_lead = lead
-                    break
-            
-            assert example_lead is not None, f"Expected to find lead with address '{EXAMPLE_LEAD_ADDRESS}'"
-            print(f"✅ Found example lead: {example_lead.get('adresse')}")
-            
-            # Verify structure
-            required_fields = ["id", "adresse", "pris", "m2", "soverom", "bilder", "tilbudSlug", "stylet", "analyse", "status"]
-            for field in required_fields:
-                assert field in example_lead, f"Expected field '{field}' in lead"
-            
-            # Verify specific values
-            assert example_lead.get("pris") == 25000, f"Expected pris 25000, got {example_lead.get('pris')}"
-            assert example_lead.get("m2") == 62, f"Expected m2 62, got {example_lead.get('m2')}"
-            assert example_lead.get("soverom") == 2, f"Expected soverom 2, got {example_lead.get('soverom')}"
-            assert isinstance(example_lead.get("bilder"), list), "Expected bilder to be a list"
-            assert len(example_lead.get("bilder", [])) > 0, "Expected at least one bilde"
-            assert isinstance(example_lead.get("tilbudSlug"), str), "Expected tilbudSlug to be a string"
-            assert len(example_lead.get("tilbudSlug", "")) > 10, "Expected tilbudSlug to be non-trivial"
-            
-            # Verify stylet array
-            stylet = example_lead.get("stylet", [])
-            assert isinstance(stylet, list), "Expected stylet to be a list"
-            assert len(stylet) == 1, f"Expected 1 styled image, got {len(stylet)}"
-            stylet_img = stylet[0]
-            assert "id" in stylet_img, "Expected id in styled image"
-            assert "kildeUrl" in stylet_img, "Expected kildeUrl in styled image"
-            assert "stil" in stylet_img, "Expected stil in styled image"
-            
-            # Verify analyse
-            analyse = example_lead.get("analyse", {})
-            assert "anbefaltLeie" in analyse, "Expected anbefaltLeie in analyse"
-            assert "honorarPct" in analyse, "Expected honorarPct in analyse"
-            assert "grunnlag" in analyse, "Expected grunnlag in analyse"
-            
-            # Store for later tests
-            lead_id = example_lead["id"]
-            tilbud_slug = example_lead["tilbudSlug"]
-            stylet_bilde_id = stylet_img["id"]
-            
-            print(f"✅ Lead structure verified: id={lead_id}, slug={tilbud_slug}, stylet_id={stylet_bilde_id}")
-            print("✅ TEST 1 PASSED")
-            
-        except Exception as e:
-            print(f"❌ TEST 1 FAILED: {e}")
-            raise
+        print("\n" + "=" * 80)
+        print("TEST 1: UTLEIER-KONTAKTDATA (Contact Phone/Name with Aliases)")
+        print("=" * 80)
         
-        # ============================================================
-        # TEST 2: Auth tests
-        # ============================================================
-        print("\n[TEST 2] Auth tests")
-        try:
-            # 2a: GET leads without key → 401
-            print("  [2a] GET leads without key → 401")
-            r = requests.get(f"{BASE_URL}/admin/salgsradar/leads", timeout=10)
-            assert r.status_code == 401, f"Expected 401, got {r.status_code}"
-            print("  ✅ 401 without key")
-            
-            # 2b: Login as investor (without salgsradar module)
-            print("  [2b] Login as investor without salgsradar module")
-            r = requests.post(f"{BASE_URL}/admin/auth/login", json={
-                "email": INVESTOR_EMAIL,
-                "password": INVESTOR_PASSWORD
-            }, timeout=10)
-            assert r.status_code == 200, f"Login failed: {r.status_code}"
-            investor_token = r.json().get("token")
-            assert investor_token, "Expected token from login"
-            
-            # Verify user does NOT have salgsradar module
-            user_data = r.json().get("user", {})
-            moduler = user_data.get("moduler", [])
-            assert "salgsradar" not in moduler, f"Expected investor to NOT have salgsradar module, but has: {moduler}"
-            print(f"  ✅ Investor logged in, moduler: {moduler} (no salgsradar)")
-            
-            # 2c: GET leads with investor token → 401
-            print("  [2c] GET leads with investor token → 401")
-            r = requests.get(f"{BASE_URL}/admin/salgsradar/leads", params={"key": investor_token}, timeout=10)
-            assert r.status_code == 401, f"Expected 401, got {r.status_code}"
-            print("  ✅ 401 with investor token (missing module)")
-            
-            # 2d: POST hent with investor token → 401
-            print("  [2d] POST hent with investor token → 401")
-            r = requests.post(f"{BASE_URL}/admin/salgsradar/hent", 
-                            params={"key": investor_token},
-                            json={"url": "https://www.finn.no/realestate/lettings/ad.html?finnkode=123456789"},
-                            timeout=10)
-            assert r.status_code == 401, f"Expected 401, got {r.status_code}"
-            print("  ✅ 401 POST hent with investor token")
-            
-            # 2e: PUT lead with investor token → 401
-            print("  [2e] PUT lead with investor token → 401")
-            r = requests.put(f"{BASE_URL}/admin/salgsradar/lead",
-                           params={"key": investor_token},
-                           json={"id": lead_id, "notat": "test"},
-                           timeout=10)
-            assert r.status_code == 401, f"Expected 401, got {r.status_code}"
-            print("  ✅ 401 PUT lead with investor token")
-            
-            # 2f: DELETE lead with investor token → 401
-            print("  [2f] DELETE lead with investor token → 401")
-            r = requests.delete(f"{BASE_URL}/admin/salgsradar/lead",
-                              params={"key": investor_token, "id": lead_id},
-                              timeout=10)
-            assert r.status_code == 401, f"Expected 401, got {r.status_code}"
-            print("  ✅ 401 DELETE lead with investor token")
-            
-            print("✅ TEST 2 PASSED")
-            
-        except Exception as e:
-            print(f"❌ TEST 2 FAILED: {e}")
-            raise
+        # Generate synthetic finnkode (8-10 digits)
+        finnkode = "99900001"
         
-        # ============================================================
-        # TEST 3: POST /api/admin/salgsradar/hent validations
-        # ============================================================
-        print("\n[TEST 3] POST /api/admin/salgsradar/hent validations")
-        try:
-            # 3a: Non-finn.no URL → 400
-            print("  [3a] Non-finn.no URL → 400")
-            r = requests.post(f"{BASE_URL}/admin/salgsradar/hent",
-                            params={"key": ADMIN_KEY},
-                            json={"url": "https://www.hybel.no/annonse/123"},
-                            timeout=10)
-            assert r.status_code == 400, f"Expected 400, got {r.status_code}"
-            print("  ✅ 400 for non-finn.no URL")
-            
-            # 3b: Invalid URL → 400
-            print("  [3b] Invalid URL → 400")
-            r = requests.post(f"{BASE_URL}/admin/salgsradar/hent",
-                            params={"key": ADMIN_KEY},
-                            json={"url": "ikke-en-url"},
-                            timeout=10)
-            assert r.status_code == 400, f"Expected 400, got {r.status_code}"
-            print("  ✅ 400 for invalid URL")
-            
-            # 3c: finn.no URL without finnkode → 400
-            print("  [3c] finn.no URL without finnkode → 400")
-            r = requests.post(f"{BASE_URL}/admin/salgsradar/hent",
-                            params={"key": ADMIN_KEY},
-                            json={"url": "https://www.finn.no/realestate/lettings/ad.html"},
-                            timeout=10)
-            assert r.status_code == 400, f"Expected 400, got {r.status_code}"
-            print("  ✅ 400 for finn.no URL without finnkode")
-            
-            print("✅ TEST 3 PASSED (DO NOT test with valid finnkode - unnecessary external traffic)")
-            
-        except Exception as e:
-            print(f"❌ TEST 3 FAILED: {e}")
-            raise
+        # Test 1a: POST ingest with phone under alias 'telefon' and name under alias 'utleier'
+        print("\n--- Test 1a: POST ingest with contact data under aliases ---")
+        payload = {
+            "finnkode": finnkode,
+            "pris": 15000,
+            "adresse": "Testveien 123",
+            "postnr": "5007",
+            "tittel": "QA Test Leilighet",
+            "bilder": [],  # Empty to avoid AI styling costs
+            "telefon": "912 34 567",  # Alias for kontaktTlf
+            "utleier": "Test Utleiersen",  # Alias for kontaktNavn
+            "beskrivelse": "Dette er en testleilighet for QA-formål."
+        }
         
-        # ============================================================
-        # TEST 4: PUT /api/admin/salgsradar/lead
-        # ============================================================
-        print("\n[TEST 4] PUT /api/admin/salgsradar/lead")
-        try:
-            # 4a: Non-existent lead → 404
-            print("  [4a] Non-existent lead → 404")
-            r = requests.put(f"{BASE_URL}/admin/salgsradar/lead",
-                           params={"key": ADMIN_KEY},
-                           json={"id": "finnes-ikke-123", "notat": "test"},
-                           timeout=10)
-            assert r.status_code == 404, f"Expected 404, got {r.status_code}"
-            print("  ✅ 404 for non-existent lead")
-            
-            # 4b: Invalid status → 400
-            print("  [4b] Invalid status → 400")
-            r = requests.put(f"{BASE_URL}/admin/salgsradar/lead",
-                           params={"key": ADMIN_KEY},
-                           json={"id": lead_id, "status": "tullball"},
-                           timeout=10)
-            assert r.status_code == 400, f"Expected 400, got {r.status_code}"
-            print("  ✅ 400 for invalid status")
-            
-            # 4c: Valid status change → 200
-            print("  [4c] Valid status change to 'kontaktet' → 200")
-            r = requests.put(f"{BASE_URL}/admin/salgsradar/lead",
-                           params={"key": ADMIN_KEY},
-                           json={"id": lead_id, "status": "kontaktet"},
-                           timeout=10)
-            assert r.status_code == 200, f"Expected 200, got {r.status_code}"
-            data = r.json()
-            assert data.get("ok") == True, "Expected ok:true"
-            print("  ✅ Status changed to 'kontaktet'")
-            
-            # Verify in GET
-            r = requests.get(f"{BASE_URL}/admin/salgsradar/leads", params={"key": ADMIN_KEY}, timeout=10)
-            leads = r.json().get("leads", [])
-            updated_lead = next((l for l in leads if l["id"] == lead_id), None)
-            assert updated_lead is not None, "Lead not found after update"
-            assert updated_lead.get("status") == "kontaktet", f"Expected status 'kontaktet', got {updated_lead.get('status')}"
-            print("  ✅ Status verified in GET")
-            
-            # 4d: Update notat → 200
-            print("  [4d] Update notat → 200")
-            r = requests.put(f"{BASE_URL}/admin/salgsradar/lead",
-                           params={"key": ADMIN_KEY},
-                           json={"id": lead_id, "notat": "QA-notat"},
-                           timeout=10)
-            assert r.status_code == 200, f"Expected 200, got {r.status_code}"
-            print("  ✅ Notat updated")
-            
-            # 4e: Update analyse with honorarPct clamping → 200
-            print("  [4e] Update analyse (honorarPct should be clamped to 15 max) → 200")
-            r = requests.put(f"{BASE_URL}/admin/salgsradar/lead",
-                           params={"key": ADMIN_KEY},
-                           json={"id": lead_id, "analyse": {"anbefaltLeie": 27500, "honorarPct": 20}},
-                           timeout=10)
-            assert r.status_code == 200, f"Expected 200, got {r.status_code}"
-            print("  ✅ Analyse updated")
-            
-            # Verify clamping
-            r = requests.get(f"{BASE_URL}/admin/salgsradar/leads", params={"key": ADMIN_KEY}, timeout=10)
-            leads = r.json().get("leads", [])
-            updated_lead = next((l for l in leads if l["id"] == lead_id), None)
-            assert updated_lead is not None, "Lead not found after analyse update"
-            analyse = updated_lead.get("analyse", {})
-            assert analyse.get("anbefaltLeie") == 27500, f"Expected anbefaltLeie 27500, got {analyse.get('anbefaltLeie')}"
-            assert analyse.get("honorarPct") == 15, f"Expected honorarPct clamped to 15, got {analyse.get('honorarPct')}"
-            print(f"  ✅ Analyse verified: anbefaltLeie={analyse.get('anbefaltLeie')}, honorarPct={analyse.get('honorarPct')} (clamped from 20 to 15)")
-            
-            print("✅ TEST 4 PASSED")
-            
-        except Exception as e:
-            print(f"❌ TEST 4 FAILED: {e}")
-            raise
+        response = requests.post(
+            f"{API_URL}/salgsradar/ingest",
+            headers={"Authorization": f"Bearer {INGEST_KEY}"},
+            json=payload,
+            timeout=30
+        )
         
-        # ============================================================
-        # TEST 5: POST /api/admin/salgsradar/stil validations
-        # ============================================================
-        print("\n[TEST 5] POST /api/admin/salgsradar/stil validations (NO REAL AI CALLS)")
-        try:
-            # 5a: Non-existent lead → 404
-            print("  [5a] Non-existent lead → 404")
-            r = requests.post(f"{BASE_URL}/admin/salgsradar/stil",
-                            params={"key": ADMIN_KEY},
-                            json={"leadId": "finnes-ikke-123", "bildeUrl": "https://example.com/bilde.jpg", "stil": "nordisk"},
-                            timeout=10)
-            assert r.status_code == 404, f"Expected 404, got {r.status_code}"
-            print("  ✅ 404 for non-existent lead")
-            
-            # 5b: Image URL not from ad → 400
-            print("  [5b] Image URL not from ad → 400")
-            r = requests.post(f"{BASE_URL}/admin/salgsradar/stil",
-                            params={"key": ADMIN_KEY},
-                            json={"leadId": lead_id, "bildeUrl": "https://eksempel.no/bilde.jpg", "stil": "nordisk"},
-                            timeout=10)
-            assert r.status_code == 400, f"Expected 400, got {r.status_code}"
-            print("  ✅ 400 for image URL not from ad")
-            
-            print("✅ TEST 5 PASSED (DO NOT test with valid leadId+bildeUrl - paid AI call)")
-            
-        except Exception as e:
-            print(f"❌ TEST 5 FAILED: {e}")
-            raise
+        print(f"Response status: {response.status_code}")
+        print(f"Response body: {response.text[:500]}")
         
-        # ============================================================
-        # TEST 6: Public offer page GET /api/tilbud
-        # ============================================================
-        print("\n[TEST 6] Public offer page GET /api/tilbud")
-        try:
-            # 6a: GET without spor → 200 with public data
-            print("  [6a] GET /api/tilbud?slug=<slug> without spor → 200")
-            r = requests.get(f"{BASE_URL}/tilbud", params={"slug": tilbud_slug}, timeout=10)
-            assert r.status_code == 200, f"Expected 200, got {r.status_code}"
-            
-            data = r.json()
-            assert data.get("ok") == True, "Expected ok:true"
-            assert "tilbud" in data, "Expected tilbud object"
-            
-            tilbud = data["tilbud"]
-            # Verify public fields
-            required_public_fields = ["tittel", "adresse", "regnestykke", "stylet", "bilder"]
-            for field in required_public_fields:
-                assert field in tilbud, f"Expected field '{field}' in tilbud"
-            
-            # Verify regnestykke
-            regnestykke = tilbud.get("regnestykke", {})
-            required_regnestykke_fields = ["anbefaltLeie", "honorarMnd", "nettoTilEier", "gevinstMnd"]
-            for field in required_regnestykke_fields:
-                assert field in regnestykke, f"Expected field '{field}' in regnestykke"
-            
-            # Verify NO sensitive fields
-            sensitive_fields = ["notat", "kontaktLogg", "kontaktTlf", "grunnlag"]
-            for field in sensitive_fields:
-                assert field not in tilbud, f"Sensitive field '{field}' should NOT be in public tilbud"
-                # Also check nested in analyse
-                if "analyse" in tilbud:
-                    assert "grunnlag" not in tilbud["analyse"], "Sensitive field 'grunnlag' should NOT be in analyse"
-            
-            print(f"  ✅ Public tilbud verified: {tilbud.get('tittel')}, {tilbud.get('adresse')}")
-            print(f"  ✅ Regnestykke: anbefaltLeie={regnestykke.get('anbefaltLeie')}, honorarMnd={regnestykke.get('honorarMnd')}")
-            print(f"  ✅ No sensitive fields exposed")
-            
-            # 6b: GET with spor=1 → 200 and aapninger incremented
-            print("  [6b] GET /api/tilbud?slug=<slug>&spor=1 → 200 and aapninger incremented")
-            
-            # Get current aapninger from DB
-            lead_doc = db.salgsradar_leads.find_one({"id": lead_id})
-            current_aapninger = lead_doc.get("aapninger", 0) if lead_doc else 0
-            print(f"  Current aapninger: {current_aapninger}")
-            
-            r = requests.get(f"{BASE_URL}/tilbud", params={"slug": tilbud_slug, "spor": "1"}, timeout=10)
-            assert r.status_code == 200, f"Expected 200, got {r.status_code}"
-            
-            # Verify aapninger incremented in DB
-            lead_doc = db.salgsradar_leads.find_one({"id": lead_id})
-            new_aapninger = lead_doc.get("aapninger", 0) if lead_doc else 0
-            assert new_aapninger == current_aapninger + 1, f"Expected aapninger to increment from {current_aapninger} to {current_aapninger + 1}, got {new_aapninger}"
-            print(f"  ✅ Aapninger incremented to {new_aapninger}")
-            
-            # 6c: GET with non-existent slug → 404
-            print("  [6c] GET /api/tilbud?slug=finnes-ikke → 404")
-            r = requests.get(f"{BASE_URL}/tilbud", params={"slug": "finnes-ikke-123"}, timeout=10)
-            assert r.status_code == 404, f"Expected 404, got {r.status_code}"
-            print("  ✅ 404 for non-existent slug")
-            
-            print("✅ TEST 6 PASSED")
-            
-        except Exception as e:
-            print(f"❌ TEST 6 FAILED: {e}")
-            raise
+        if response.status_code in [200, 201]:
+            data = response.json()
+            if data.get('ok'):
+                lead_id = data.get('leadId')
+                test_leads.append({'id': lead_id, 'finnkode': finnkode})
+                print(f"✅ Ingest successful, leadId: {lead_id}")
+            else:
+                print(f"❌ Ingest failed: {data}")
+                return False
+        else:
+            print(f"❌ Ingest failed with status {response.status_code}")
+            return False
         
-        # ============================================================
-        # TEST 7: GET /api/tilbud/bilde
-        # ============================================================
-        print("\n[TEST 7] GET /api/tilbud/bilde")
-        try:
-            # 7a: GET with valid stylet bilde id → 200 with binary image
-            print("  [7a] GET /api/tilbud/bilde?id=<stylet_bilde_id> → 200")
-            r = requests.get(f"{BASE_URL}/tilbud/bilde", params={"id": stylet_bilde_id}, timeout=10)
-            assert r.status_code == 200, f"Expected 200, got {r.status_code}"
-            
-            # Verify Content-Type is image/*
-            content_type = r.headers.get("Content-Type", "")
-            assert content_type.startswith("image/"), f"Expected Content-Type image/*, got {content_type}"
-            print(f"  ✅ Content-Type: {content_type}")
-            
-            # Verify binary body > 10000 bytes
-            body_length = len(r.content)
-            assert body_length > 10000, f"Expected body > 10000 bytes, got {body_length}"
-            print(f"  ✅ Binary body size: {body_length} bytes")
-            
-            # 7b: GET with non-existent id → 404
-            print("  [7b] GET /api/tilbud/bilde?id=finnes-ikke → 404")
-            r = requests.get(f"{BASE_URL}/tilbud/bilde", params={"id": "finnes-ikke-123"}, timeout=10)
-            assert r.status_code == 404, f"Expected 404, got {r.status_code}"
-            print("  ✅ 404 for non-existent id")
-            
-            print("✅ TEST 7 PASSED")
-            
-        except Exception as e:
-            print(f"❌ TEST 7 FAILED: {e}")
-            raise
+        # Test 1b: Verify kontaktTlf and kontaktNavn in database
+        print("\n--- Test 1b: Verify contact data in lead ---")
+        time.sleep(1)  # Brief wait for DB write
         
-        # ============================================================
-        # TEST 8: POST /api/tilbud/kontakt
-        # ============================================================
-        print("\n[TEST 8] POST /api/tilbud/kontakt")
-        try:
-            # 8a: Valid contact form → 200
-            print("  [8a] POST /api/tilbud/kontakt with valid data → 200")
-            r = requests.post(f"{BASE_URL}/tilbud/kontakt",
-                            json={
-                                "slug": tilbud_slug,
-                                "navn": "QA Test",
-                                "telefon": "99887766",
-                                "melding": "test"
-                            },
-                            timeout=10)
-            assert r.status_code == 200, f"Expected 200, got {r.status_code}"
-            data = r.json()
-            assert data.get("ok") == True, "Expected ok:true"
-            print("  ✅ Contact form submitted")
-            
-            # Verify in DB: kontaktLogg has 1 entry and status is 'dialog'
-            lead_doc = db.salgsradar_leads.find_one({"id": lead_id})
-            assert lead_doc is not None, "Lead not found in DB"
-            kontakt_logg = lead_doc.get("kontaktLogg", [])
-            assert len(kontakt_logg) >= 1, f"Expected at least 1 kontaktLogg entry, got {len(kontakt_logg)}"
-            latest_kontakt = kontakt_logg[-1]
-            assert latest_kontakt.get("navn") == "QA Test", f"Expected navn 'QA Test', got {latest_kontakt.get('navn')}"
-            assert latest_kontakt.get("telefon") == "99887766", f"Expected telefon '99887766', got {latest_kontakt.get('telefon')}"
-            print(f"  ✅ kontaktLogg verified: {len(kontakt_logg)} entries")
-            
-            status = lead_doc.get("status")
-            assert status == "dialog", f"Expected status 'dialog', got {status}"
-            print(f"  ✅ Status changed to 'dialog'")
-            
-            # Verify notifications with type 'salgsradar' exist
-            notifications = list(db.notifications.find({"type": "salgsradar"}))
-            assert len(notifications) > 0, "Expected at least one 'salgsradar' notification"
-            print(f"  ✅ Found {len(notifications)} 'salgsradar' notifications")
-            
-            # 8b: Missing navn → 400
-            print("  [8b] POST /api/tilbud/kontakt without navn → 400")
-            r = requests.post(f"{BASE_URL}/tilbud/kontakt",
-                            json={
-                                "slug": tilbud_slug,
-                                "navn": "",
-                                "telefon": "99887766",
-                                "melding": "test"
-                            },
-                            timeout=10)
-            assert r.status_code == 400, f"Expected 400, got {r.status_code}"
-            print("  ✅ 400 for missing navn")
-            
-            # 8c: Non-existent slug → 404
-            print("  [8c] POST /api/tilbud/kontakt with non-existent slug → 404")
-            r = requests.post(f"{BASE_URL}/tilbud/kontakt",
-                            json={
-                                "slug": "finnes-ikke-123",
-                                "navn": "X",
-                                "telefon": "1",
-                                "melding": "test"
-                            },
-                            timeout=10)
-            assert r.status_code == 404, f"Expected 404, got {r.status_code}"
-            print("  ✅ 404 for non-existent slug")
-            
-            print("✅ TEST 8 PASSED")
-            
-        except Exception as e:
-            print(f"❌ TEST 8 FAILED: {e}")
-            raise
+        response = requests.get(
+            f"{API_URL}/admin/salgsradar/leads?key={admin_token}",
+            timeout=10
+        )
         
-        # ============================================================
-        # TEST 9: Regression tests
-        # ============================================================
-        print("\n[TEST 9] Regression tests")
-        try:
-            # 9a: GET /api/admin/budsjett/planer
-            print("  [9a] GET /api/admin/budsjett/planer → 200")
-            r = requests.get(f"{BASE_URL}/admin/budsjett/planer", params={"key": ADMIN_KEY}, timeout=10)
-            assert r.status_code == 200, f"Expected 200, got {r.status_code}"
-            print("  ✅ budsjett/planer working")
+        if response.status_code == 200:
+            data = response.json()
+            leads = data.get('leads', [])
+            test_lead = next((l for l in leads if l.get('finnkode') == finnkode), None)
             
-            # 9b: GET /api/admin/datarom/enhetsokonomi
-            print("  [9b] GET /api/admin/datarom/enhetsokonomi → 200")
-            r = requests.get(f"{BASE_URL}/admin/datarom/enhetsokonomi", params={"key": ADMIN_KEY}, timeout=10)
-            assert r.status_code == 200, f"Expected 200, got {r.status_code}"
-            print("  ✅ datarom/enhetsokonomi working")
-            
-            # 9c: GET /api/admin/leieforhold/okonomi
-            print("  [9c] GET /api/admin/leieforhold/okonomi → 200")
-            r = requests.get(f"{BASE_URL}/admin/leieforhold/okonomi", params={"key": ADMIN_KEY}, timeout=10)
-            assert r.status_code == 200, f"Expected 200, got {r.status_code}"
-            print("  ✅ leieforhold/okonomi working")
-            
-            print("✅ TEST 9 PASSED")
-            
-        except Exception as e:
-            print(f"❌ TEST 9 FAILED: {e}")
-            raise
+            if test_lead:
+                kontakt_tlf = test_lead.get('kontaktTlf', '')
+                kontakt_navn = test_lead.get('kontaktNavn', '')
+                
+                print(f"Lead kontaktTlf: '{kontakt_tlf}'")
+                print(f"Lead kontaktNavn: '{kontakt_navn}'")
+                
+                # Verify spaces removed from phone
+                if kontakt_tlf == '91234567':
+                    print("✅ kontaktTlf correct (spaces removed): '91234567'")
+                else:
+                    print(f"❌ kontaktTlf incorrect, expected '91234567', got '{kontakt_tlf}'")
+                    return False
+                
+                # Verify name
+                if kontakt_navn == 'Test Utleiersen':
+                    print("✅ kontaktNavn correct: 'Test Utleiersen'")
+                else:
+                    print(f"❌ kontaktNavn incorrect, expected 'Test Utleiersen', got '{kontakt_navn}'")
+                    return False
+            else:
+                print(f"❌ Test lead with finnkode {finnkode} not found")
+                return False
+        else:
+            print(f"❌ Failed to get leads: {response.status_code}")
+            return False
         
-        # ============================================================
-        # TEST 10: CLEANUP (MANDATORY)
-        # ============================================================
-        print("\n[TEST 10] CLEANUP (MANDATORY)")
-        try:
-            print("  Resetting example lead to original state...")
-            
-            # Reset lead in MongoDB
-            result = db.salgsradar_leads.update_one(
-                {"id": lead_id},
-                {
-                    "$set": {
-                        "status": "analysert",
-                        "aapninger": 0,
-                        "sistAapnet": None,
-                        "kontaktLogg": [],
-                        "notat": "",
-                        "analyse.anbefaltLeie": 25000,
-                        "analyse.honorarPct": 8
-                    }
-                }
-            )
-            assert result.modified_count == 1, f"Expected to modify 1 lead, modified {result.modified_count}"
-            print(f"  ✅ Lead reset: status='analysert', aapninger=0, kontaktLogg=[], notat='', analyse.anbefaltLeie=25000, analyse.honorarPct=8")
-            
-            # Delete 'salgsradar' notifications
-            result = db.notifications.delete_many({"type": "salgsradar"})
-            print(f"  ✅ Deleted {result.deleted_count} 'salgsradar' notifications")
-            
-            # Verify lead still exists
-            lead_doc = db.salgsradar_leads.find_one({"id": lead_id})
-            assert lead_doc is not None, "Lead should still exist after cleanup"
-            assert lead_doc.get("adresse") == EXAMPLE_LEAD_ADDRESS, "Lead address should be unchanged"
-            print(f"  ✅ Lead still exists: {lead_doc.get('adresse')}")
-            
-            # Verify styled image still exists
-            stylet_doc = db.salgsradar_bilder.find_one({"id": stylet_bilde_id})
-            assert stylet_doc is not None, "Styled image should still exist after cleanup"
-            print(f"  ✅ Styled image still exists: {stylet_bilde_id}")
-            
-            print("✅ TEST 10 PASSED (CLEANUP COMPLETE)")
-            
-        except Exception as e:
-            print(f"❌ TEST 10 FAILED: {e}")
-            raise
+        # Test 1c: Re-ingest SAME finnkode WITHOUT phone/name fields
+        print("\n--- Test 1c: Re-ingest without contact fields (should persist) ---")
+        payload_no_contact = {
+            "finnkode": finnkode,
+            "pris": 15000,
+            "adresse": "Testveien 123",
+            "postnr": "5007",
+            "tittel": "QA Test Leilighet (oppdatert)",
+            "bilder": [],
+            "beskrivelse": "Oppdatert beskrivelse uten kontaktinfo."
+        }
         
-        print("\n" + "="*80)
-        print("ALL TESTS PASSED ✅")
-        print("="*80)
+        response = requests.post(
+            f"{API_URL}/salgsradar/ingest",
+            headers={"Authorization": f"Bearer {INGEST_KEY}"},
+            json=payload_no_contact,
+            timeout=30
+        )
+        
+        if response.status_code == 200:
+            print("✅ Re-ingest successful")
+        else:
+            print(f"❌ Re-ingest failed: {response.status_code}")
+            return False
+        
+        # Verify contact data still exists
+        time.sleep(1)
+        response = requests.get(
+            f"{API_URL}/admin/salgsradar/leads?key={admin_token}",
+            timeout=10
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            leads = data.get('leads', [])
+            test_lead = next((l for l in leads if l.get('finnkode') == finnkode), None)
+            
+            if test_lead:
+                kontakt_tlf = test_lead.get('kontaktTlf', '')
+                kontakt_navn = test_lead.get('kontaktNavn', '')
+                
+                print(f"After re-ingest - kontaktTlf: '{kontakt_tlf}'")
+                print(f"After re-ingest - kontaktNavn: '{kontakt_navn}'")
+                
+                if kontakt_tlf == '91234567' and kontakt_navn == 'Test Utleiersen':
+                    print("✅ Contact data persisted (not wiped out)")
+                else:
+                    print(f"❌ Contact data was wiped: tlf='{kontakt_tlf}', navn='{kontakt_navn}'")
+                    return False
+            else:
+                print(f"❌ Test lead not found after re-ingest")
+                return False
+        
+        # Test 1d: Test another alias pair in an update
+        print("\n--- Test 1d: Update with different aliases (mobil, kontaktperson) ---")
+        payload_new_aliases = {
+            "finnkode": finnkode,
+            "pris": 15000,
+            "adresse": "Testveien 123",
+            "postnr": "5007",
+            "tittel": "QA Test Leilighet",
+            "bilder": [],
+            "mobil": "987 65 432",  # Different alias for phone
+            "kontaktperson": "Ny Person",  # Different alias for name
+            "beskrivelse": "Oppdatert med nye aliaser."
+        }
+        
+        response = requests.post(
+            f"{API_URL}/salgsradar/ingest",
+            headers={"Authorization": f"Bearer {INGEST_KEY}"},
+            json=payload_new_aliases,
+            timeout=30
+        )
+        
+        if response.status_code == 200:
+            print("✅ Update with new aliases successful")
+        else:
+            print(f"❌ Update failed: {response.status_code}")
+            return False
+        
+        # Verify updated values
+        time.sleep(1)
+        response = requests.get(
+            f"{API_URL}/admin/salgsradar/leads?key={admin_token}",
+            timeout=10
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            leads = data.get('leads', [])
+            test_lead = next((l for l in leads if l.get('finnkode') == finnkode), None)
+            
+            if test_lead:
+                kontakt_tlf = test_lead.get('kontaktTlf', '')
+                kontakt_navn = test_lead.get('kontaktNavn', '')
+                
+                print(f"After alias update - kontaktTlf: '{kontakt_tlf}'")
+                print(f"After alias update - kontaktNavn: '{kontakt_navn}'")
+                
+                if kontakt_tlf == '98765432' and kontakt_navn == 'Ny Person':
+                    print("✅ Contact data updated with new aliases")
+                else:
+                    print(f"❌ Contact data not updated correctly: tlf='{kontakt_tlf}', navn='{kontakt_navn}'")
+                    return False
+        
+        print("\n✅ TEST 1 PASSED: Utleier-kontaktdata working correctly")
+        return True
         
     except Exception as e:
-        print(f"\n❌ TEST SUITE FAILED: {e}")
-        raise
-    finally:
-        client.close()
+        print(f"❌ TEST 1 EXCEPTION: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+def test_prisendring():
+    """Test 2: Price change tracking"""
+    global test_leads
+    
+    try:
+        print("\n" + "=" * 80)
+        print("TEST 2: PRISENDRING/PRISHISTORIKK (Price Change Tracking)")
+        print("=" * 80)
+        
+        # Use the same lead from test 1
+        finnkode = "99900001"
+        
+        # Re-ingest with new price
+        print("\n--- Test 2a: Re-ingest with new price ---")
+        payload = {
+            "finnkode": finnkode,
+            "pris": 14000,  # Changed from 15000 to 14000
+            "adresse": "Testveien 123",
+            "postnr": "5007",
+            "tittel": "QA Test Leilighet",
+            "bilder": [],
+            "beskrivelse": "Prisreduksjon!"
+        }
+        
+        response = requests.post(
+            f"{API_URL}/salgsradar/ingest",
+            headers={"Authorization": f"Bearer {INGEST_KEY}"},
+            json=payload,
+            timeout=30
+        )
+        
+        print(f"Response status: {response.status_code}")
+        print(f"Response body: {response.text[:500]}")
+        
+        if response.status_code == 200:
+            data = response.json()
+            if data.get('ok'):
+                # Check for prisEndring in response
+                pris_endring = data.get('prisEndring')
+                if pris_endring:
+                    print(f"✅ Response contains prisEndring: {pris_endring}")
+                    if pris_endring.get('fra') == 15000 and pris_endring.get('til') == 14000:
+                        print("✅ prisEndring values correct (fra: 15000, til: 14000)")
+                    else:
+                        print(f"❌ prisEndring values incorrect: {pris_endring}")
+                        return False
+                else:
+                    print("❌ Response missing prisEndring field")
+                    return False
+            else:
+                print(f"❌ Ingest failed: {data}")
+                return False
+        else:
+            print(f"❌ Ingest failed with status {response.status_code}")
+            return False
+        
+        # Verify prisHistorikk in lead
+        print("\n--- Test 2b: Verify prisHistorikk in lead ---")
+        time.sleep(1)
+        
+        response = requests.get(
+            f"{API_URL}/admin/salgsradar/leads?key={admin_token}",
+            timeout=10
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            leads = data.get('leads', [])
+            test_lead = next((l for l in leads if l.get('finnkode') == finnkode), None)
+            
+            if test_lead:
+                pris_historikk = test_lead.get('prisHistorikk', [])
+                print(f"prisHistorikk: {pris_historikk}")
+                
+                if len(pris_historikk) > 0:
+                    latest = pris_historikk[-1]
+                    if latest.get('fra') == 15000 and latest.get('til') == 14000:
+                        print("✅ prisHistorikk contains correct entry")
+                    else:
+                        print(f"❌ prisHistorikk entry incorrect: {latest}")
+                        return False
+                else:
+                    print("❌ prisHistorikk is empty")
+                    return False
+            else:
+                print(f"❌ Test lead not found")
+                return False
+        
+        print("\n✅ TEST 2 PASSED: Prisendring/prishistorikk working correctly")
+        return True
+        
+    except Exception as e:
+        print(f"❌ TEST 2 EXCEPTION: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+def test_deaktivering():
+    """Test 3: Deactivation and reactivation"""
+    global test_leads
+    
+    try:
+        print("\n" + "=" * 80)
+        print("TEST 3: DEAKTIVERING (Deactivation and Reactivation)")
+        print("=" * 80)
+        
+        finnkode = "99900001"
+        
+        # Test 3a: Send deactivation payload
+        print("\n--- Test 3a: Send deactivation payload ---")
+        # Based on route.js line 3897: deaktivert: true OR aktiv: false OR status: 'deaktivert'
+        payload = {
+            "finnkode": finnkode,
+            "deaktivert": True
+        }
+        
+        response = requests.post(
+            f"{API_URL}/salgsradar/ingest",
+            headers={"Authorization": f"Bearer {INGEST_KEY}"},
+            json=payload,
+            timeout=30
+        )
+        
+        print(f"Response status: {response.status_code}")
+        print(f"Response body: {response.text[:500]}")
+        
+        if response.status_code == 200:
+            data = response.json()
+            if data.get('ok') and data.get('deaktivert'):
+                print("✅ Deactivation successful")
+            else:
+                print(f"❌ Deactivation response unexpected: {data}")
+                return False
+        else:
+            print(f"❌ Deactivation failed with status {response.status_code}")
+            return False
+        
+        # Verify annonseAktiv = false
+        print("\n--- Test 3b: Verify annonseAktiv = false ---")
+        time.sleep(1)
+        
+        response = requests.get(
+            f"{API_URL}/admin/salgsradar/leads?key={admin_token}",
+            timeout=10
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            leads = data.get('leads', [])
+            test_lead = next((l for l in leads if l.get('finnkode') == finnkode), None)
+            
+            if test_lead:
+                annonse_aktiv = test_lead.get('annonseAktiv')
+                print(f"annonseAktiv: {annonse_aktiv}")
+                
+                if annonse_aktiv == False:
+                    print("✅ annonseAktiv is False (deactivated)")
+                else:
+                    print(f"❌ annonseAktiv should be False, got: {annonse_aktiv}")
+                    return False
+            else:
+                print(f"❌ Test lead not found")
+                return False
+        
+        # Test 3c: Reactivate by sending full ad
+        print("\n--- Test 3c: Reactivate by sending full ad ---")
+        payload = {
+            "finnkode": finnkode,
+            "pris": 14000,
+            "adresse": "Testveien 123",
+            "postnr": "5007",
+            "tittel": "QA Test Leilighet (reaktivert)",
+            "bilder": [],
+            "beskrivelse": "Annonsen er aktiv igjen!"
+        }
+        
+        response = requests.post(
+            f"{API_URL}/salgsradar/ingest",
+            headers={"Authorization": f"Bearer {INGEST_KEY}"},
+            json=payload,
+            timeout=30
+        )
+        
+        if response.status_code == 200:
+            print("✅ Reactivation ingest successful")
+        else:
+            print(f"❌ Reactivation failed: {response.status_code}")
+            return False
+        
+        # Verify annonseAktiv = true
+        time.sleep(1)
+        response = requests.get(
+            f"{API_URL}/admin/salgsradar/leads?key={admin_token}",
+            timeout=10
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            leads = data.get('leads', [])
+            test_lead = next((l for l in leads if l.get('finnkode') == finnkode), None)
+            
+            if test_lead:
+                annonse_aktiv = test_lead.get('annonseAktiv')
+                print(f"annonseAktiv after reactivation: {annonse_aktiv}")
+                
+                if annonse_aktiv == True:
+                    print("✅ annonseAktiv is True (reactivated)")
+                else:
+                    print(f"❌ annonseAktiv should be True, got: {annonse_aktiv}")
+                    return False
+        
+        print("\n✅ TEST 3 PASSED: Deaktivering working correctly")
+        return True
+        
+    except Exception as e:
+        print(f"❌ TEST 3 EXCEPTION: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+def test_tombstone():
+    """Test 4: Tombstone (deleted leads don't resurrect)"""
+    global test_leads
+    
+    try:
+        print("\n" + "=" * 80)
+        print("TEST 4: TOMBSTONE (Deleted Leads Don't Resurrect)")
+        print("=" * 80)
+        
+        finnkode = "99900001"
+        
+        # Test 4a: Delete test lead via admin endpoint
+        print("\n--- Test 4a: Delete test lead via admin endpoint ---")
+        
+        # First, get the lead ID
+        response = requests.get(
+            f"{API_URL}/admin/salgsradar/leads?key={admin_token}",
+            timeout=10
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            leads = data.get('leads', [])
+            test_lead = next((l for l in leads if l.get('finnkode') == finnkode), None)
+            
+            if test_lead:
+                lead_id = test_lead.get('id')
+                print(f"Found test lead with id: {lead_id}")
+                
+                # Delete the lead
+                response = requests.delete(
+                    f"{API_URL}/admin/salgsradar/lead?id={lead_id}&key={admin_token}",
+                    timeout=10
+                )
+                
+                if response.status_code == 200:
+                    print("✅ Lead deleted successfully")
+                    # Remove from test_leads tracking
+                    test_leads = [l for l in test_leads if l.get('finnkode') != finnkode]
+                else:
+                    print(f"❌ Delete failed: {response.status_code}")
+                    return False
+            else:
+                print(f"❌ Test lead not found for deletion")
+                return False
+        
+        # Test 4b: Try to re-ingest same finnkode (should be skipped due to tombstone)
+        print("\n--- Test 4b: Re-ingest deleted finnkode (should be skipped) ---")
+        time.sleep(1)
+        
+        payload = {
+            "finnkode": finnkode,
+            "pris": 16000,
+            "adresse": "Testveien 123",
+            "postnr": "5007",
+            "tittel": "QA Test Leilighet (forsøk på gjenopplivelse)",
+            "bilder": [],
+            "beskrivelse": "Dette skal ikke fungere!"
+        }
+        
+        response = requests.post(
+            f"{API_URL}/salgsradar/ingest",
+            headers={"Authorization": f"Bearer {INGEST_KEY}"},
+            json=payload,
+            timeout=30
+        )
+        
+        print(f"Response status: {response.status_code}")
+        print(f"Response body: {response.text[:500]}")
+        
+        if response.status_code == 200:
+            data = response.json()
+            if data.get('ok') and data.get('hoppet') == 'slettet-i-admin':
+                print("✅ Ingest correctly skipped tombstoned lead")
+            else:
+                print(f"❌ Unexpected response: {data}")
+                return False
+        else:
+            print(f"❌ Unexpected status code: {response.status_code}")
+            return False
+        
+        # Verify lead does NOT exist in database
+        print("\n--- Test 4c: Verify lead does NOT exist in database ---")
+        time.sleep(1)
+        
+        response = requests.get(
+            f"{API_URL}/admin/salgsradar/leads?key={admin_token}",
+            timeout=10
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            leads = data.get('leads', [])
+            test_lead = next((l for l in leads if l.get('finnkode') == finnkode), None)
+            
+            if test_lead is None:
+                print("✅ Lead does NOT exist (tombstone working)")
+            else:
+                print(f"❌ Lead still exists (tombstone failed): {test_lead.get('id')}")
+                return False
+        
+        print("\n✅ TEST 4 PASSED: Tombstone working correctly")
+        return True
+        
+    except Exception as e:
+        print(f"❌ TEST 4 EXCEPTION: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+def test_salgskraft_ai():
+    """Test 5: Salgskraft in AI analysis"""
+    global test_leads
+    
+    try:
+        print("\n" + "=" * 80)
+        print("TEST 5: SALGSKRAFT I AI-ANALYSEN (Sales Power Metrics)")
+        print("=" * 80)
+        print("⚠️  This test will trigger 1 LLM call (takes 15-60 seconds)")
+        
+        # Create a new test lead with a different finnkode
+        finnkode = "99900002"
+        
+        print("\n--- Test 5a: Create test lead via ingest ---")
+        payload = {
+            "finnkode": finnkode,
+            "pris": 18000,
+            "adresse": "Salgskraftveien 456",
+            "postnr": "5007",
+            "tittel": "QA Salgskraft Test",
+            "bilder": [],  # Empty to avoid image styling costs
+            "beskrivelse": "Dette er en testleilighet for å verifisere salgskraft-metrikken. Leiligheten har god beliggenhet, moderne standard og flott utsikt. Perfekt for studenter eller unge profesjonelle. Sentralt beliggende med kort vei til sentrum og kollektivtransport."
+        }
+        
+        response = requests.post(
+            f"{API_URL}/salgsradar/ingest",
+            headers={"Authorization": f"Bearer {INGEST_KEY}"},
+            json=payload,
+            timeout=30
+        )
+        
+        if response.status_code in [200, 201]:
+            data = response.json()
+            if data.get('ok'):
+                lead_id = data.get('leadId')
+                test_leads.append({'id': lead_id, 'finnkode': finnkode})
+                print(f"✅ Test lead created, leadId: {lead_id}")
+            else:
+                print(f"❌ Ingest failed: {data}")
+                return False
+        else:
+            print(f"❌ Ingest failed with status {response.status_code}")
+            return False
+        
+        # Test 5b: Poll for auto-analysis or call manual analysis endpoint
+        print("\n--- Test 5b: Wait for auto-analysis or trigger manual analysis ---")
+        print("Auto-analysis runs in background. Polling for up to 90 seconds...")
+        
+        ai_found = False
+        max_polls = 18  # 18 * 5 seconds = 90 seconds
+        
+        for i in range(max_polls):
+            time.sleep(5)
+            print(f"Poll {i+1}/{max_polls}...")
+            
+            response = requests.get(
+                f"{API_URL}/admin/salgsradar/leads?key={admin_token}",
+                timeout=10
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                leads = data.get('leads', [])
+                test_lead = next((l for l in leads if l.get('finnkode') == finnkode), None)
+                
+                if test_lead and test_lead.get('ai'):
+                    print(f"✅ Auto-analysis completed after {(i+1)*5} seconds")
+                    ai_found = True
+                    break
+        
+        # If auto-analysis didn't complete, call manual analysis endpoint
+        if not ai_found:
+            print("\n⚠️  Auto-analysis not completed, calling manual analysis endpoint...")
+            
+            response = requests.post(
+                f"{API_URL}/admin/salgsradar/analyser",
+                headers={"Content-Type": "application/json"},
+                json={"leadId": lead_id},
+                params={"key": admin_token},
+                timeout=120  # Analysis can take up to 60 seconds
+            )
+            
+            print(f"Analysis response status: {response.status_code}")
+            
+            if response.status_code == 200:
+                data = response.json()
+                if data.get('ok'):
+                    print("✅ Manual analysis completed")
+                else:
+                    print(f"❌ Manual analysis failed: {data}")
+                    return False
+            else:
+                print(f"❌ Manual analysis failed with status {response.status_code}")
+                print(f"Response: {response.text[:500]}")
+                return False
+        
+        # Test 5c: Verify AI analysis results
+        print("\n--- Test 5c: Verify AI analysis results ---")
+        time.sleep(2)
+        
+        response = requests.get(
+            f"{API_URL}/admin/salgsradar/leads?key={admin_token}",
+            timeout=10
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            leads = data.get('leads', [])
+            test_lead = next((l for l in leads if l.get('finnkode') == finnkode), None)
+            
+            if test_lead:
+                ai = test_lead.get('ai', {})
+                print(f"AI analysis result: {json.dumps(ai, indent=2)[:1000]}")
+                
+                # Verify salgskraft
+                salgskraft = ai.get('salgskraft', {})
+                if salgskraft:
+                    score = salgskraft.get('score')
+                    deler = salgskraft.get('deler', {})
+                    
+                    print(f"\nSalgskraft score: {score}")
+                    print(f"Salgskraft deler: {deler}")
+                    
+                    # Verify score is number 0-100
+                    if isinstance(score, (int, float)) and 0 <= score <= 100:
+                        print("✅ salgskraft.score is valid (0-100)")
+                    else:
+                        print(f"❌ salgskraft.score invalid: {score}")
+                        return False
+                    
+                    # Verify deler has required fields (0-10)
+                    required_deler = ['forsteinntrykk', 'appell', 'dekning', 'tekstSalg']
+                    for del_name in required_deler:
+                        del_score = deler.get(del_name)
+                        if isinstance(del_score, (int, float)) and 0 <= del_score <= 10:
+                            print(f"✅ salgskraft.deler.{del_name} valid: {del_score}")
+                        else:
+                            print(f"❌ salgskraft.deler.{del_name} invalid: {del_score}")
+                            return False
+                else:
+                    print("❌ salgskraft missing in AI analysis")
+                    return False
+                
+                # Verify bildeVurdering (array, can be empty since no images)
+                bilde_vurdering = ai.get('bildeVurdering', [])
+                if isinstance(bilde_vurdering, list):
+                    print(f"✅ bildeVurdering is array (length: {len(bilde_vurdering)})")
+                else:
+                    print(f"❌ bildeVurdering is not array: {type(bilde_vurdering)}")
+                    return False
+                
+                # Verify potensialScore
+                potensial_score = ai.get('potensialScore')
+                if isinstance(potensial_score, (int, float)) and 0 <= potensial_score <= 100:
+                    print(f"✅ potensialScore valid: {potensial_score}")
+                else:
+                    print(f"❌ potensialScore invalid: {potensial_score}")
+                    return False
+                
+                # Verify annonseScore
+                annonse_score = ai.get('annonseScore')
+                if isinstance(annonse_score, (int, float)) and 0 <= annonse_score <= 100:
+                    print(f"✅ annonseScore valid: {annonse_score}")
+                else:
+                    print(f"❌ annonseScore invalid: {annonse_score}")
+                    return False
+            else:
+                print(f"❌ Test lead not found")
+                return False
+        
+        print("\n✅ TEST 5 PASSED: Salgskraft AI analysis working correctly")
+        return True
+        
+    except Exception as e:
+        print(f"❌ TEST 5 EXCEPTION: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+def test_regression():
+    """Test 6: Regression tests"""
+    try:
+        print("\n" + "=" * 80)
+        print("TEST 6: REGRESSION TESTS")
+        print("=" * 80)
+        
+        # Test 6a: Ingest without valid key (should return 401)
+        print("\n--- Test 6a: Ingest without valid key ---")
+        payload = {
+            "finnkode": "99900099",
+            "pris": 10000,
+            "adresse": "Test",
+            "bilder": []
+        }
+        
+        response = requests.post(
+            f"{API_URL}/salgsradar/ingest",
+            headers={"Authorization": "Bearer invalid_key"},
+            json=payload,
+            timeout=10
+        )
+        
+        if response.status_code == 401:
+            print("✅ Ingest correctly rejected invalid key (401)")
+        else:
+            print(f"❌ Expected 401, got {response.status_code}")
+            return False
+        
+        # Test 6b: Ingest with invalid finnkode (should return 400)
+        print("\n--- Test 6b: Ingest with invalid finnkode ---")
+        payload = {
+            "finnkode": "abc123",  # Invalid (not 8-10 digits)
+            "pris": 10000,
+            "adresse": "Test",
+            "bilder": []
+        }
+        
+        response = requests.post(
+            f"{API_URL}/salgsradar/ingest",
+            headers={"Authorization": f"Bearer {INGEST_KEY}"},
+            json=payload,
+            timeout=10
+        )
+        
+        if response.status_code == 400:
+            print("✅ Ingest correctly rejected invalid finnkode (400)")
+        else:
+            print(f"❌ Expected 400, got {response.status_code}")
+            return False
+        
+        # Test 6c: Admin leads listing works
+        print("\n--- Test 6c: Admin leads listing works ---")
+        response = requests.get(
+            f"{API_URL}/admin/salgsradar/leads?key={admin_token}",
+            timeout=10
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            if data.get('ok') and isinstance(data.get('leads'), list):
+                leads = data.get('leads', [])
+                print(f"✅ Admin leads listing works ({len(leads)} leads)")
+                
+                # Verify real leads are untouched
+                real_leads = ['Nyhavn 7', 'Ytre Markeveien 12']
+                for real_lead_name in real_leads:
+                    found = any(real_lead_name in l.get('adresse', '') for l in leads)
+                    if found:
+                        print(f"✅ Real lead '{real_lead_name}' is present and untouched")
+                    else:
+                        print(f"⚠️  Real lead '{real_lead_name}' not found (may have been deleted by user)")
+            else:
+                print(f"❌ Unexpected response: {data}")
+                return False
+        else:
+            print(f"❌ Admin leads listing failed: {response.status_code}")
+            return False
+        
+        print("\n✅ TEST 6 PASSED: Regression tests passed")
+        return True
+        
+    except Exception as e:
+        print(f"❌ TEST 6 EXCEPTION: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+def cleanup_test_leads():
+    """Delete all test leads created during testing"""
+    global test_leads
+    
+    try:
+        print("\n" + "=" * 80)
+        print("CLEANUP: Deleting Test Leads")
+        print("=" * 80)
+        
+        if not test_leads:
+            print("No test leads to clean up")
+            return True
+        
+        for test_lead in test_leads:
+            lead_id = test_lead.get('id')
+            finnkode = test_lead.get('finnkode')
+            
+            print(f"\nDeleting lead {lead_id} (finnkode: {finnkode})...")
+            
+            response = requests.delete(
+                f"{API_URL}/admin/salgsradar/lead?id={lead_id}&key={admin_token}",
+                timeout=10
+            )
+            
+            if response.status_code == 200:
+                print(f"✅ Lead {lead_id} deleted")
+            else:
+                print(f"⚠️  Failed to delete lead {lead_id}: {response.status_code}")
+        
+        # Also clean up tombstones from MongoDB
+        print("\nCleaning up tombstones from MongoDB...")
+        tombstone_coll = db['salgsradar_tombstones']
+        test_finnkoder = [l.get('finnkode') for l in test_leads]
+        result = tombstone_coll.delete_many({'finnkode': {'$in': test_finnkoder}})
+        print(f"✅ Deleted {result.deleted_count} tombstones")
+        
+        # Verify cleanup
+        print("\nVerifying cleanup...")
+        response = requests.get(
+            f"{API_URL}/admin/salgsradar/leads?key={admin_token}",
+            timeout=10
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            leads = data.get('leads', [])
+            remaining_test_leads = [l for l in leads if l.get('finnkode', '').startswith('999000')]
+            
+            if len(remaining_test_leads) == 0:
+                print("✅ All test leads cleaned up successfully")
+            else:
+                print(f"⚠️  {len(remaining_test_leads)} test leads still remain")
+        
+        test_leads = []
+        return True
+        
+    except Exception as e:
+        print(f"❌ CLEANUP EXCEPTION: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+def main():
+    """Run all tests"""
+    print("=" * 80)
+    print("SALGSRADAR BACKEND TESTING")
+    print("=" * 80)
+    print()
+    
+    # Login first
+    if not login_admin():
+        print("\n❌ FATAL: Admin login failed, cannot continue")
+        return
+    
+    # Run tests
+    results = {
+        "Test 1: Utleier-kontaktdata": test_utleier_kontaktdata(),
+        "Test 2: Prisendring": test_prisendring(),
+        "Test 3: Deaktivering": test_deaktivering(),
+        "Test 4: Tombstone": test_tombstone(),
+        "Test 5: Salgskraft AI": test_salgskraft_ai(),
+        "Test 6: Regression": test_regression(),
+    }
+    
+    # Cleanup
+    cleanup_test_leads()
+    
+    # Summary
+    print("\n" + "=" * 80)
+    print("TEST SUMMARY")
+    print("=" * 80)
+    
+    passed = sum(1 for v in results.values() if v)
+    total = len(results)
+    
+    for test_name, result in results.items():
+        status = "✅ PASSED" if result else "❌ FAILED"
+        print(f"{status}: {test_name}")
+    
+    print(f"\nTotal: {passed}/{total} tests passed")
+    
+    if passed == total:
+        print("\n🎉 ALL TESTS PASSED!")
+    else:
+        print(f"\n⚠️  {total - passed} test(s) failed")
 
 if __name__ == "__main__":
-    test_salgsradar()
+    main()
