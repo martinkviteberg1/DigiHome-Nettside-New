@@ -5974,3 +5974,16 @@ agent_communication:
     -agent: "testing"
     -message: "✅ SALGSRADAR BACKEND TESTING COMPLETE - ALL 6 TESTS PASSED (100% success rate). Comprehensive verification of three new backend tasks: (1) Utleier-kontaktdata: ✅ Phone/name aliases working (telefon/utleier/mobil/kontaktperson), ✅ Spaces removed from phone (91234567), ✅ Contact data persists on re-ingest without fields, ✅ BUG FIXED: kontaktNavn now preserved (added line 720 in salgsradar.js). (2) Prisendring/prishistorikk: ✅ Price change tracked in prisHistorikk, ✅ Response contains prisEndring object. (3) Deaktivering: ✅ Deactivation sets annonseAktiv=false, ✅ Reactivation works. (4) Tombstone: ✅ Deleted leads don't resurrect (hoppet:'slettet-i-admin'). (5) Salgskraft AI: ✅ Auto-analysis completed in 10-15 seconds, ✅ salgskraft.score 0-100, ✅ salgskraft.deler (forsteinntrykk/appell/dekning/tekstSalg) 0-10, ✅ bildeVurdering array, ✅ potensialScore 0-100. (6) Regression: ✅ Auth working (401 without key), ✅ Validation working (400 for invalid finnkode), ✅ Real leads untouched. CRITICAL: SendGrid is LIVE but no emails sent (only in-app notifications). All test leads deleted and verified (0 QA docs remain). Created backend_test_salgsradar.py for future regression testing. Response times: ingest <1s, AI analysis 10-15s. Database kept clean."
 
+
+backend:
+  - task: "Stylist-prompt v3 for bilderedigering (lib/salgsradar.js STILER.optimal): utvidet fra «rydd og rett opp» til aktiv stylist-styling — BYTTE av gammelt sengetøy til hotellstil (hvit/dus dyne, stramme laken, pynteputer, løper), sofa-styling (2-4 puter + drapert pledd), duk/løper + blomstervase på spisebord, friske håndklær på bad, grønne planter der naturlig. Møbler/arkitektur/vinkel fortsatt hellige (ærlighetsregelen: alt kan gjøres fysisk med stylingbag)."
+    implemented: true
+    working: true
+    file: "/app/lib/salgsradar.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "main"
+        -comment: "Manuelt runtime-verifisert med scripts/test-prompt-v3.mjs på 3 ekte Nyhavn 7-bilder (19-20 s/bilde, Nano Banana Pro): (1) stue → pynteputer+pledd+stylet bord m/blomster, (2) spiseplass → frokostrot fjernet, duk+løper+vase+lysestaker, (3) soverom → gammelt paisley-sengetøy BYTTET til hvit hotellstil m/pynteputer+løper. Alle rom gjenkjennbare, møbler/kunst/perspektiv bevart. Før/etter inspisert visuelt. Ingen API-endring — kun prompttekst."
