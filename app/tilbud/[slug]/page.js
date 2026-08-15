@@ -80,7 +80,7 @@ function TellOpp({ verdi, ms = 1000 }) {
 }
 
 /* ── Interaktiv før/etter-slider (pointer events, mus + touch, auto-hint) ── */
-function ForEtter({ forUrl, etterUrl, nokkel }) {
+function ForEtter({ forUrl, etterUrl, nokkel, etterEtikett = 'AI-stylet \u00b7 illustrasjon' }) {
   const [pos, setPos] = useState(58);
   const boks = useRef(null);
   const drar = useRef(false);
@@ -155,7 +155,7 @@ function ForEtter({ forUrl, etterUrl, nokkel }) {
         Annonsen i dag
       </span>
       <span className={`pointer-events-none absolute right-3 top-3 rounded-md bg-black/60 px-2.5 py-1 text-[10.5px] font-semibold tracking-wide text-white transition-opacity duration-200 ${pos < 84 ? 'opacity-100' : 'opacity-0'}`}>
-        AI-stylet · illustrasjon
+        {etterEtikett}
       </span>
     </div>
   );
@@ -364,6 +364,7 @@ export default function TilbudSide() {
                 forUrl={valgtStylet.kildeUrl || originalBilde}
                 etterUrl={`/api/tilbud/bilde?id=${valgtStylet.id}`}
                 nokkel={valgtStylet.id}
+                etterEtikett={['optimal', 'lysloft'].includes(valgtStylet.stil) ? 'AI-forbedret foto' : 'AI-møblert · illustrasjon'}
               />
             </div>
             <p className="mt-2.5 text-center text-[11px] text-[#a8a29e] sm:hidden">← Dra i linjen for å sammenligne før og etter →</p>
@@ -562,7 +563,7 @@ export default function TilbudSide() {
               <p className="mt-2.5 text-[11px] text-[#a8a29e]">Personlig tilbud utarbeidet for {tilbud.adresse} · Bergen</p>
             </div>
             <p className="max-w-[460px] text-[10.5px] leading-relaxed text-[#b8b2a9] sm:text-right">
-              Stylede bilder er AI-genererte illustrasjoner basert på annonsens egne foto — møblering og dekor er veiledende.
+              Forbedrede og møblerte bilder er AI-genererte, basert på annonsens egne foto — møblering og dekor er veiledende.
               Honorar oppgis eks. mva. DigiHome AS · digihome.no
             </p>
           </div>

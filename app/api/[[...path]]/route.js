@@ -62,7 +62,7 @@ import { computeLlmUsageDashboard, getModelOverrides, setModelOverride, logImage
 import { logExtUsage, summarizeExtUsage, getPlatformUsage } from '@/lib/ext-usage';
 import { getFinanceSettings, setFinanceSettings, listCosts, listActiveCosts, upsertCost, deleteCost, listContracts, upsertContract, deleteContract, listEvents, upsertEvent, deleteEvent, computeResultat, computeLikviditet, computeFinanceOverview, computeTrends, captureSnapshot, computeInvestorMetrics, computeForecast, computeBoardPack, computeCustomers, computePlatformCustomers } from '@/lib/finance';
 import { listFellesKostnader, upsertFellesKostnad, slettFellesKostnad, migrerFellesKostnader } from '@/lib/kostnader';
-import { finnKodeFraUrl, hentFinnHtml, parseFinnAnnonse, beregnAnalyse, opprettLead, validerIngestAnnonse, analyserAnnonse, slettLeads as radarSlettLeads, listLeads as radarListLeads, oppdaterLead as radarOppdaterLead, slettLead as radarSlettLead, stilBilde, lagreStyletBilde, hentStyletBilde, hentTilbud, registrerTilbudKontakt, tilbudsRegnestykke, STILER as RADAR_STILER } from '@/lib/salgsradar';
+import { finnKodeFraUrl, hentFinnHtml, parseFinnAnnonse, beregnAnalyse, opprettLead, validerIngestAnnonse, analyserAnnonse, kjorAutoPipeline, kjorAutoRetry, retryKandidater, slettLeads as radarSlettLeads, listLeads as radarListLeads, oppdaterLead as radarOppdaterLead, slettLead as radarSlettLead, stilBilde, lagreStyletBilde, hentStyletBilde, hentTilbud, registrerTilbudKontakt, tilbudsRegnestykke, STILER as RADAR_STILER } from '@/lib/salgsradar';
 import { syncContractsFromPlatform, syncCustomersFromPlatform, maybeAutoSyncFinance, getFinanceSyncMeta } from '@/lib/contracts-sync';
 import { enqueueInterest as deliverInterest, retryInterestWebhooks, webhookTarget as interestWebhookTarget, platformInboxUrl, platformThreadUrl, platformUnitUrl, deliveryView, OUTBOX_COLL as INTEREST_OUTBOX } from '@/lib/interest-webhook';
 import { notifyStatus, removeSuppression } from '@/lib/notify-status';
@@ -3783,6 +3783,8 @@ async function handleRoute(request, { params }) {
       try { const lfSr = await hentLeieforhold(leieforholdTarget(), { db }); rowsSr = lfSr.rows || []; } catch (e) { /* analyse uten portefølje */ }
       const analyseSr = beregnAnalyse(annonseSr, rowsSr);
       const resSr = await opprettLead(db, annonseSr, analyseSr, `https://www.finn.no/realestate/lettings/ad.html?finnkode=${kodeSr}`);
+      // Auto-pipeline i bakgrunnen for NYE leads: analyse + bildeforbedring (5 første)
+      if (!resSr.fantesFraFor) kjorAutoPipeline(db, resSr.lead.id).catch(() => {});
       return cors(NextResponse.json({ ok: true, ...resSr }));
     }
     if (route === '/admin/salgsradar/leads' && method === 'GET') {
@@ -3829,7 +3831,7 @@ async function handleRoute(request, { params }) {
       if (!leadSt) return cors(NextResponse.json({ ok: false, error: 'Lead ikke funnet' }, { status: 404 }));
       if (!(leadSt.bilder || []).includes(bSt.bildeUrl)) return cors(NextResponse.json({ ok: false, error: 'Bildet tilhører ikke denne annonsen' }, { status: 400 }));
       if ((leadSt.stylet || []).length >= 6) return cors(NextResponse.json({ ok: false, error: 'Maks 6 stylede bilder per lead' }, { status: 400 }));
-      const stilSt = RADAR_STILER[bSt.stil] ? bSt.stil : 'nordisk';
+      const stilSt = RADAR_STILER[bSt.stil] ? bSt.stil : 'optimal';
       try {
         const dataUrlSt = await stilBilde(bSt.bildeUrl, stilSt);
         const bildeIdSt = await lagreStyletBilde(db, leadSt.id, bSt.bildeUrl, stilSt, dataUrlSt);
@@ -3837,6 +3839,19 @@ async function handleRoute(request, { params }) {
       } catch (e) {
         return cors(NextResponse.json({ ok: false, error: e.message || 'AI-styling feilet' }, { status: 502 }));
       }
+    }
+    // Manuell retry av bilder som feilet i auto-pipelinen. Kjører i bakgrunnen
+    // (fire-and-forget) — UI-et følger fremdriften via polling på lead.auto.
+    if (route === '/admin/salgsradar/auto-retry' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!rateLimit(`radar-retry:${clientIp(request)}`, 10)) return cors(NextResponse.json({ error: 'For mange forsøk — vent litt' }, { status: 429 }));
+      let bRt = {}; try { bRt = await request.json(); } catch (e) {}
+      const leadRt = await db.collection('salgsradar_leads').findOne({ id: String(bRt.leadId || '') });
+      if (!leadRt) return cors(NextResponse.json({ ok: false, error: 'Lead ikke funnet' }, { status: 404 }));
+      if (['analyserer', 'styler'].includes(leadRt.auto?.status)) return cors(NextResponse.json({ ok: false, error: 'Automatikken kjører allerede' }, { status: 409 }));
+      if (!retryKandidater(leadRt).length) return cors(NextResponse.json({ ok: false, error: 'Ingen feilede bilder å prøve på nytt' }, { status: 400 }));
+      kjorAutoRetry(db, leadRt.id).catch(() => {});
+      return cors(NextResponse.json({ ok: true, startet: true }));
     }
 
     // ── Maskin-ingest: ekstern overvåkningsagent mater inn nye FINN-annonser ──
@@ -3874,7 +3889,11 @@ async function handleRoute(request, { params }) {
         const analyseIn = beregnAnalyse(val.annonse, rowsIn);
         const resIn = await opprettLead(db, val.annonse, analyseIn, val.kildeUrl, { kilde: 'agent' });
         resultater.push({ ok: true, finnkode: val.annonse.finnkode, leadId: resIn.lead.id, tilbudSlug: resIn.lead.tilbudSlug, ny: !resIn.fantesFraFor });
-        if (!resIn.fantesFraFor) nyeLeads.push(resIn.lead);
+        if (!resIn.fantesFraFor) {
+          nyeLeads.push(resIn.lead);
+          // Auto-pipeline i bakgrunnen: analyse + bildeforbedring (5 første)
+          kjorAutoPipeline(db, resIn.lead.id).catch(() => {});
+        }
       }
       // In-app varsel til owner/admin per NY lead (oppdateringer varsler ikke)
       if (nyeLeads.length) {
