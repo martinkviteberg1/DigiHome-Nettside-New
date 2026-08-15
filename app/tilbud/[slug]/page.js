@@ -163,33 +163,6 @@ function ForEtter({ forUrl, etterUrl, nokkel, etterEtikett = 'AI-stylet \u00b7 i
   );
 }
 
-/* ── Sammenligningsbarer: annonsert i dag vs. netto med DigiHome ── */
-function Sammenligning({ r }) {
-  const [ref, vist] = useReveal();
-  const maks = Math.max(Number(r.dagensPris) || 0, Number(r.nettoTilEier) || 0, 1);
-  return (
-    <div ref={ref} className="mt-4 rounded-2xl border border-black/[0.06] bg-white px-5 py-5 sm:px-7">
-      {[
-        ['Annonsert pris i dag', r.dagensPris, '#d6d3ce', '#78716c'],
-        ['Netto til deg med DigiHome', r.nettoTilEier, '#1f7a45', '#1c1917'],
-      ].map(([l, v, farge, tekst]) => (
-        <div key={l} className="py-2">
-          <div className="flex items-baseline justify-between gap-4">
-            <span className="text-[12px] font-medium" style={{ color: tekst }}>{l}</span>
-            <span className="shrink-0 text-[13px] font-bold tabular-nums" style={{ ...heading, color: tekst }}>{tall(v)} kr/mnd</span>
-          </div>
-          <div className="mt-1.5 h-[6px] overflow-hidden rounded-full bg-[#f1efeb]">
-            <div className="h-full rounded-full transition-all duration-1000 ease-out" style={{ width: vist ? `${Math.max(4, (Number(v) / maks) * 100)}%` : '4%', background: farge }} />
-          </div>
-        </div>
-      ))}
-      <p className="mt-2 text-[11px] leading-relaxed text-[#a8a29e]">
-        «Netto til deg» er etter vårt honorar — annonsering, visninger, kontrakt og oppfølging er inkludert.
-      </p>
-    </div>
-  );
-}
-
 /* ── Annonse-preview: den ferdigproduserte annonsen i nøytral markedsplass-stil.
    Ser ut som en ekte boligannonse (galleri, pris, nøkkelinfo, fasiliteter,
    beskrivelse) — uten tredjeparts logo. Stylede AI-bilder først, merket. ── */
@@ -229,7 +202,7 @@ function AnnonsePreview({ tilbud, r }) {
         {akt && (
           <div className="relative bg-[#1c1917]">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={akt.url} alt="Bilde fra annonsen" className="block aspect-[16/10] w-full object-cover" draggable={false}
+            <img src={akt.url} alt="Bilde fra annonsen" className="block aspect-[2/1] w-full object-cover" draggable={false}
               data-testid="tilbud-annonse-bilde"
               onError={() => setDode((d) => (d.includes(akt.url) ? d : [...d, akt.url]))} />
             {akt.ai && (
@@ -250,19 +223,6 @@ function AnnonsePreview({ tilbud, r }) {
             )}
           </div>
         )}
-        {bilder.length > 1 && (
-          <div className="flex gap-1.5 overflow-x-auto border-b border-black/[0.05] bg-[#fbfaf8] px-3 py-2.5 sm:px-4">
-            {bilder.map((b, i) => (
-              <button key={b.url} type="button" onClick={() => setIdx(i)} className="relative shrink-0">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={b.url} alt="" loading="lazy"
-                  onError={() => setDode((d) => (d.includes(b.url) ? d : [...d, b.url]))}
-                  className={`h-12 w-[72px] rounded-md object-cover transition-all ${i === Math.min(idx, bilder.length - 1) ? 'ring-2 ring-[#1c1917]' : 'opacity-55 hover:opacity-100'}`} />
-              </button>
-            ))}
-          </div>
-        )}
-
         {/* Tittel, adresse, pris */}
         <div className="px-4 pb-2 pt-5 sm:px-6">
           <h3 className="text-[19px] font-bold leading-snug tracking-[-0.01em] sm:text-[22px]" style={heading} data-testid="tilbud-annonse-tittel">{a.tittel}</h3>
@@ -364,6 +324,7 @@ export default function TilbudSide() {
   const [aktivStylet, setAktivStylet] = useState(0);
   const [visBunn, setVisBunn] = useState(false);
   const [prog, setProg] = useState(0);
+  const [visSlider, setVisSlider] = useState(false);
 
   useEffect(() => {
     if (!slug) return;
@@ -423,8 +384,8 @@ export default function TilbudSide() {
     tilbud?.boligtype, tilbud?.m2 ? `${tilbud.m2} m²` : null, tilbud?.soverom ? `${tilbud.soverom} soverom` : null,
   ].filter(Boolean), [tilbud]);
 
-  // Seksjonsnumre forskyves om bildeseksjonen (01) eller annonse-previewen mangler
-  const nr = (i) => String(i + (harBilde ? 1 : 0) + (harAnnonse ? 1 : 0)).padStart(2, '0');
+  // Seksjonsnumre: Annonsen er 01 når den finnes — resten forskyves
+  const nr = (i) => String(i + (harAnnonse ? 1 : 0)).padStart(2, '0');
 
   if (laster) {
     return (
@@ -464,102 +425,69 @@ export default function TilbudSide() {
         <div className="absolute bottom-0 left-0 h-[2px] bg-[#8b5cf6] transition-[width] duration-150 ease-out" style={{ width: `${prog * 100}%` }} aria-hidden="true" />
       </header>
 
-      {/* ── Mørk hero ── */}
+      {/* ── Mørk hero — kort og elegant: bildet tar over rett under ── */}
       <section className="bg-[#131114] text-white">
         <div className={`mx-auto max-w-[920px] px-5 pt-12 sm:px-8 sm:pt-16 ${harBilde ? 'pb-24 sm:pb-28' : 'pb-12 sm:pb-16'}`}>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#c9a5f5]">Vi så boligen din på FINN</p>
-          <h1 className="mt-4 max-w-[680px] text-[32px] font-bold leading-[1.06] tracking-[-0.02em] sm:text-[46px]" style={heading}>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#c9a5f5]">Personlig tilbud · Vi så boligen din på FINN</p>
+          <h1 className="mt-4 max-w-[680px] text-[36px] font-bold leading-[1.04] tracking-[-0.02em] sm:text-[52px]" style={heading}>
             {tilbud.adresse}
-            <span className="block text-white/45">— her er hva vi kan gjøre for den.</span>
           </h1>
-          <p className="mt-4 text-[13.5px] text-white/50">
+          <p className="mt-3 text-[13.5px] text-white/50">
             {tilbud.postnr ? `${tilbud.postnr} Bergen` : 'Bergen'}
             {fakta.length ? <span className="text-white/30"> · {fakta.join(' · ')}</span> : null}
           </p>
 
-          {/* Personlig AI-intro (redigert i admin) — vises kun når den finnes */}
-          {tilbud.tekst?.heroIntro && (
-            <p className="mt-5 max-w-[600px] border-l-2 border-[#8b5cf6]/60 pl-4 text-[14px] leading-relaxed text-white/65" data-testid="tilbud-hero-intro">
-              {tilbud.tekst.heroIntro}
-            </p>
-          )}
-
-          {/* Verdiløftet — kort og umulig å misforstå */}
-          <div className="mt-7 flex flex-wrap gap-x-6 gap-y-2.5" data-testid="tilbud-hero-pilarer">
-            {['Du leverer nøklene — vi gjør resten', 'Eiendomsmeglere med utleie som fag', 'Én fast kontakt hele veien'].map((t) => (
-              <span key={t} className="flex items-center gap-2 text-[12.5px] font-medium text-white/60">
-                <svg width="14" height="14" viewBox="0 0 18 18" fill="none" className="shrink-0" aria-hidden="true">
-                  <circle cx="9" cy="9" r="8.25" stroke="#7fd4a1" strokeWidth="1.2" opacity="0.7" />
-                  <path d="m5.6 9.2 2.2 2.2 4.6-4.8" stroke="#7fd4a1" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-                {t}
-              </span>
-            ))}
-          </div>
-
-          {/* Nøkkeltall med teller-animasjon */}
-          <div className="mt-10 grid grid-cols-1 gap-px overflow-hidden rounded-xl border border-white/[0.08] bg-white/[0.08] sm:grid-cols-3">
-            {[
-              ['Leie vi anbefaler', r.anbefaltLeie, 'per måned', false],
-              [`Vårt honorar · ${r.honorarPct} % eks. mva`, r.honorarMnd, 'per måned', false],
-              ['Netto til deg', r.nettoTilEier, 'per måned — uten å løfte en finger', true],
-            ].map(([l, v, u, sterk]) => (
-              <div key={l} className="bg-[#131114] px-5 py-5">
-                <p className="text-[11px] font-medium uppercase tracking-[0.1em] text-white/40">{l}</p>
-                <p className={`mt-2 tabular-nums tracking-[-0.01em] ${sterk ? 'text-[28px] font-bold text-[#7fd4a1]' : 'text-[26px] font-bold text-white'}`} style={heading}>
-                  <TellOpp verdi={v} />{'\u00A0'}kr
-                </p>
-                <p className="mt-1 text-[11.5px] text-white/35">{u}</p>
-              </div>
-            ))}
-          </div>
-
-          {gevinst != null && gevinst > 0 && (
-            <p className="mt-4 text-[12.5px] text-white/45">
-              Det er <span className="font-semibold text-[#7fd4a1]">{tall(gevinst)} kr mer i måneden</span> enn annonsert pris i dag — {tall(r.gevinstAar)} kr i året.
-            </p>
-          )}
-
-          {/* Seksjonsheading for bildet — inne i heroen, bildet overlapper sømmen under */}
-          {harBilde && (
-            <div className="mt-12 flex items-end justify-between gap-4 sm:mt-16">
-              <div>
-                <div className="flex items-center gap-3">
-                  <span className="text-[11px] font-bold tabular-nums text-[#c9a5f5]" style={heading}>01</span>
-                  <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/40">Presentasjonen</span>
-                </div>
-                <h2 className="mt-2 text-[20px] font-bold tracking-[-0.01em] sm:text-[24px]" style={heading}>Slik kan annonsen din se ut</h2>
-              </div>
-              {valgtStylet && <p className="hidden shrink-0 pb-1 text-[11.5px] text-white/35 sm:block">Dra i linjen for å sammenligne →</p>}
-            </div>
-          )}
+          {/* Personlig intro — elegant, uten dekor */}
+          <p className="mt-6 max-w-[560px] text-[15px] leading-relaxed text-white/65 sm:text-[16px]" data-testid="tilbud-hero-intro">
+            {tilbud.tekst?.heroIntro || 'Her er hva vi kan gjøre for den — helt konkret, uten at du trenger å løfte en finger.'}
+          </p>
         </div>
       </section>
 
       <main className="mx-auto max-w-[920px] px-5 sm:px-8">
 
-        {/* ── 01 · Bildekort — overlapper hero-sømmen ── */}
+        {/* ── Hero-bildet — stylet resultat først, før/etter som valgfri toggle ── */}
         {valgtStylet ? (
           <section className="-mt-14 sm:-mt-16">
-            <div className="overflow-hidden rounded-2xl shadow-[0_24px_80px_rgba(0,0,0,0.25)] ring-1 ring-black/10">
-              <ForEtter
-                forUrl={valgtStylet.kildeUrl || originalBilde}
-                etterUrl={`/api/tilbud/bilde?id=${valgtStylet.id}`}
-                nokkel={valgtStylet.id}
-                etterEtikett={['optimal', 'lysloft'].includes(valgtStylet.stil) ? 'AI-forbedret foto' : 'AI-møblert · illustrasjon'}
-              />
+            <div className="relative overflow-hidden rounded-2xl shadow-[0_24px_80px_rgba(0,0,0,0.25)] ring-1 ring-black/10">
+              {visSlider ? (
+                <ForEtter
+                  forUrl={valgtStylet.kildeUrl || originalBilde}
+                  etterUrl={`/api/tilbud/bilde?id=${valgtStylet.id}`}
+                  nokkel={valgtStylet.id}
+                  etterEtikett={['optimal', 'lysloft'].includes(valgtStylet.stil) ? 'AI-forbedret foto' : 'AI-møblert · illustrasjon'}
+                />
+              ) : (
+                <div className="relative aspect-[16/10] bg-[#26232a]">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={`/api/tilbud/bilde?id=${valgtStylet.id}`} alt="Slik kan boligen din presenteres" className="absolute inset-0 h-full w-full object-cover object-center" data-testid="tilbud-hovedbilde" />
+                  <span className="pointer-events-none absolute left-3.5 top-3.5 rounded-md bg-black/55 px-2 py-1 text-[10.5px] font-semibold text-white backdrop-blur-sm">
+                    {['optimal', 'lysloft'].includes(valgtStylet.stil) ? 'AI-forbedret foto' : 'AI-møblert · illustrasjon'}
+                  </span>
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={() => setVisSlider((v) => !v)}
+                data-testid="tilbud-foretter-toggle"
+                className="absolute bottom-3.5 left-3.5 z-10 flex h-9 items-center gap-2 rounded-full bg-black/55 px-4 text-[12px] font-semibold text-white backdrop-blur-sm transition-colors hover:bg-black/75"
+              >
+                {visSlider ? 'Vis ferdig resultat' : 'Sammenlign før / etter'}
+              </button>
             </div>
-            <p className="mt-2.5 text-center text-[11px] text-[#a8a29e] sm:hidden">← Dra i linjen for å sammenligne før og etter →</p>
+            <div className="mt-3 flex items-center justify-between gap-3">
+              <p className="text-[12px] text-[#a8a29e]">
+                {visSlider ? 'Dra i linjen for å sammenligne originalen med vår versjon.' : 'Slik kan annonsen din se ut — klargjort av oss.'}
+              </p>
+              {stylet.length > 1 && <p className="hidden shrink-0 text-[11px] text-[#c9c4bd] sm:block">{aktivStylet + 1} av {stylet.length}</p>}
+            </div>
             {stylet.length > 1 && (
-              <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+              <div className="mt-2.5 flex gap-2 overflow-x-auto pb-1">
                 {stylet.map((s, i) => (
                   <button key={s.id} type="button" onClick={() => setAktivStylet(i)} className="relative shrink-0">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={`/api/tilbud/bilde?id=${s.id}`} alt={s.stil ? `Stil: ${s.stil}` : ''}
                       className={`h-16 w-24 rounded-lg object-cover transition-all ${i === aktivStylet ? 'ring-2 ring-[#8b5cf6] ring-offset-2 ring-offset-[#faf9f7]' : 'opacity-55 hover:opacity-100'}`} />
-                    {s.stil && (
-                      <span className="pointer-events-none absolute bottom-1 left-1 rounded bg-black/55 px-1.5 py-0.5 text-[8.5px] font-semibold capitalize text-white">{s.stil}</span>
-                    )}
                   </button>
                 ))}
               </div>
@@ -573,6 +501,30 @@ export default function TilbudSide() {
             </div>
           </section>
         ) : null}
+
+        {/* ── Nøkkeltallene — rett under bildet, lyst og rolig ── */}
+        <Avsnitt className="mt-8 sm:mt-10">
+          <div className="grid grid-cols-1 gap-px overflow-hidden rounded-2xl border border-black/[0.06] bg-black/[0.05] sm:grid-cols-3" data-testid="tilbud-kpi">
+            {[
+              ['Leie vi anbefaler', r.anbefaltLeie, 'per måned', false],
+              [`Vårt honorar · ${r.honorarPct} % eks. mva`, r.honorarMnd, 'per måned', false],
+              ['Netto til deg', r.nettoTilEier, 'per måned — uten å løfte en finger', true],
+            ].map(([l, v, u, sterk]) => (
+              <div key={l} className="bg-white px-5 py-5 sm:px-6">
+                <p className="text-[11px] font-medium uppercase tracking-[0.1em] text-[#a8a29e]">{l}</p>
+                <p className={`mt-2 tabular-nums tracking-[-0.01em] ${sterk ? 'text-[28px] font-bold text-[#1f7a45]' : 'text-[26px] font-bold text-[#1c1917]'}`} style={heading}>
+                  <TellOpp verdi={v} />{'\u00A0'}kr
+                </p>
+                <p className="mt-1 text-[11.5px] text-[#a8a29e]">{u}</p>
+              </div>
+            ))}
+          </div>
+          {gevinst != null && gevinst > 0 && (
+            <p className="mt-3 text-[12.5px] text-[#78716c]">
+              Det er <span className="font-semibold text-[#1f7a45]">{tall(gevinst)} kr mer i måneden</span> enn annonsert pris i dag — {tall(r.gevinstAar)} kr i året.
+            </p>
+          )}
+        </Avsnitt>
 
         {/* ── Potensialet vi ser (personlig AI-tekst, positivt innrammet) ── */}
         {tilbud.tekst?.potensialTekst && (
@@ -588,11 +540,12 @@ export default function TilbudSide() {
 
         {/* ── Annonsen — ferdig produsert, klar til publisering ── */}
         {harAnnonse && (
-          <Avsnitt className="mt-14 sm:mt-20">
-            <Merke nr={String(1 + (harBilde ? 1 : 0)).padStart(2, '0')} tekst="Annonsen" />
+          <Avsnitt className="mt-16 sm:mt-24">
+            <Merke nr="01" tekst="Annonsen" />
             <h2 className="mt-2.5 text-[20px] font-bold tracking-[-0.01em] sm:text-[24px]" style={heading}>Annonsen din er allerede ferdig produsert</h2>
             <p className="mt-2 max-w-[620px] text-[13px] leading-relaxed text-[#78716c]">
-              Vi har skrevet annonsen og klargjort bildene — slik den kan se ut publisert. Sier du ja, trykker vi publiser.
+              Leietakere blar gjennom hundrevis av annonser — vi har skrevet og klargjort din slik at den vinner det halve
+              sekundet. Sier du ja, trykker vi publiser.
             </p>
             <div className="mt-6">
               <AnnonsePreview tilbud={tilbud} r={r} />
@@ -601,7 +554,7 @@ export default function TilbudSide() {
         )}
 
         {/* ── Megler-manifestet: hvorfor DigiHome — editoriell statement ── */}
-        <Avsnitt className="mt-14 sm:mt-20">
+        <Avsnitt className="mt-16 sm:mt-24">
           <div className="rounded-2xl border border-black/[0.06] bg-white px-6 py-8 sm:px-10 sm:py-11" data-testid="tilbud-manifest">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#8b5cf6]">Hvorfor DigiHome</p>
             <h2 className="mt-3 max-w-[640px] text-[24px] font-bold leading-[1.15] tracking-[-0.015em] sm:text-[32px]" style={heading}>
@@ -628,7 +581,7 @@ export default function TilbudSide() {
         </Avsnitt>
 
         {/* ── 02 · Regnestykket ── */}
-        <Avsnitt className="mt-14 sm:mt-20">
+        <Avsnitt className="mt-16 sm:mt-24">
           <Merke nr={nr(1)} tekst="Økonomien" />
           <h2 className="mt-2.5 text-[20px] font-bold tracking-[-0.01em] sm:text-[24px]" style={heading}>Regnestykket — helt konkret</h2>
 
@@ -662,11 +615,10 @@ export default function TilbudSide() {
             )}
           </div>
 
-          {Number(r.dagensPris) > 0 && Number(r.nettoTilEier) > 0 && <Sammenligning r={r} />}
         </Avsnitt>
 
         {/* ── 03 · Slik jobber vi ── */}
-        <Avsnitt className="mt-14 sm:mt-20">
+        <Avsnitt className="mt-16 sm:mt-24">
           <Merke nr={nr(2)} tekst="Prosessen" />
           <h2 className="mt-2.5 text-[20px] font-bold tracking-[-0.01em] sm:text-[24px]" style={heading}>Fra prat til utleid — slik jobber vi</h2>
           <div className="mt-6">
@@ -695,7 +647,7 @@ export default function TilbudSide() {
         </Avsnitt>
 
         {/* ── 04 · Dette er inkludert ── */}
-        <Avsnitt className="mt-14 sm:mt-20">
+        <Avsnitt className="mt-16 sm:mt-24">
           <Merke nr={nr(3)} tekst="Alt inkludert i honoraret" />
           <h2 className="mt-2.5 text-[20px] font-bold tracking-[-0.01em] sm:text-[24px]" style={heading}>Dette tar vi oss av</h2>
           <div className="mt-5 grid grid-cols-1 gap-px overflow-hidden rounded-2xl border border-black/[0.06] bg-black/[0.05] sm:grid-cols-2">
@@ -722,7 +674,7 @@ export default function TilbudSide() {
         </Avsnitt>
 
         {/* ── 05 · Spørsmål og svar ── */}
-        <Avsnitt className="mt-14 sm:mt-20">
+        <Avsnitt className="mt-16 sm:mt-24">
           <Merke nr={nr(4)} tekst="Godt å vite" />
           <h2 className="mt-2.5 text-[20px] font-bold tracking-[-0.01em] sm:text-[24px]" style={heading}>Spørsmål og svar</h2>
           <div className="mt-5 divide-y divide-black/[0.05] rounded-2xl border border-black/[0.06] bg-white">

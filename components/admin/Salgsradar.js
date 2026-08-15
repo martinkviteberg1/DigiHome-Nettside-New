@@ -143,7 +143,7 @@ const nesteSteg = (l) => {
   }
   if (l.status === 'ny') return { t: 'Kjør AI-analyse for score og tilbudstekst', c: '#6d28d9' };
   if (l.status === 'analysert') return { t: 'Klar til kontakt — send FINN-melding', c: '#6d28d9' };
-  if (l.status === 'kontaktet') return { t: 'Venter på svar fra huseier', c: '#8a857c' };
+  if (l.status === 'kontaktet') return { t: 'Kontaktet — send tilbudet, eller merk som ikke aktuelt', c: '#8a857c' };
   if (l.status === 'dialog') return { t: 'I dialog — avklar detaljene og vinn avtalen', c: '#1f7a45' };
   return null;
 };
@@ -887,6 +887,43 @@ export default function Salgsradar({ apiKey }) {
                 className="w-full resize-none rounded-[10px] border border-black/[0.08] bg-[#fbfaf9] px-3.5 py-3 text-[12.5px] leading-relaxed outline-none transition-colors focus:border-[#1c1917]/30 focus:bg-white" />
             </label>
             <p className="text-[11px] text-[#a8a29a]">Tomme felter → tilbudssiden bruker standardteksten.</p>
+            {ai.annonseUtkast ? (
+              <div className="space-y-3 border-t border-black/[0.05] pt-3" data-testid="radar-annonseutkast">
+                <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#a8a29a]">Annonseutkast — vises i annonse-previewen{ai.annonseUtkast.redigert ? ' · redigert' : ''}</p>
+                <label className="block">
+                  <span className="mb-1.5 block text-[11.5px] font-medium text-[#78716c]">Annonsetittel</span>
+                  <input value={ai.annonseUtkast.tittel || ''} maxLength={80} data-testid="radar-annonse-tittel"
+                    onChange={(e) => settLead(valgt.id, (x) => ({ ...x, ai: { ...x.ai, annonseUtkast: { ...x.ai.annonseUtkast, tittel: e.target.value } } }))}
+                    onBlur={(e) => oppdater(valgt.id, { annonseUtkast: { tittel: e.target.value } }, true)}
+                    className="h-9 w-full rounded-[10px] border border-black/[0.08] bg-[#fbfaf9] px-3.5 text-[12.5px] outline-none transition-colors focus:border-[#1c1917]/30 focus:bg-white" />
+                </label>
+                <label className="block">
+                  <span className="mb-1.5 block text-[11.5px] font-medium text-[#78716c]">Annonsetekst (avsnitt skilles med blank linje)</span>
+                  <textarea value={ai.annonseUtkast.beskrivelse || ''} rows={5} data-testid="radar-annonse-beskrivelse"
+                    onChange={(e) => settLead(valgt.id, (x) => ({ ...x, ai: { ...x.ai, annonseUtkast: { ...x.ai.annonseUtkast, beskrivelse: e.target.value } } }))}
+                    onBlur={(e) => oppdater(valgt.id, { annonseUtkast: { beskrivelse: e.target.value } }, true)}
+                    className="w-full resize-none rounded-[10px] border border-black/[0.08] bg-[#fbfaf9] px-3.5 py-3 text-[12.5px] leading-relaxed outline-none transition-colors focus:border-[#1c1917]/30 focus:bg-white" />
+                </label>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <label className="block">
+                    <span className="mb-1.5 block text-[11.5px] font-medium text-[#78716c]">Høydepunkter (én per linje)</span>
+                    <textarea value={(ai.annonseUtkast.hoydepunkter || []).join('\n')} rows={4} data-testid="radar-annonse-hoydepunkter"
+                      onChange={(e) => settLead(valgt.id, (x) => ({ ...x, ai: { ...x.ai, annonseUtkast: { ...x.ai.annonseUtkast, hoydepunkter: e.target.value.split('\n') } } }))}
+                      onBlur={(e) => oppdater(valgt.id, { annonseUtkast: { hoydepunkter: e.target.value.split('\n').map((s) => s.trim()).filter(Boolean) } }, true)}
+                      className="w-full resize-none rounded-[10px] border border-black/[0.08] bg-[#fbfaf9] px-3.5 py-3 text-[12.5px] leading-relaxed outline-none transition-colors focus:border-[#1c1917]/30 focus:bg-white" />
+                  </label>
+                  <label className="block">
+                    <span className="mb-1.5 block text-[11.5px] font-medium text-[#78716c]">Fasiliteter (komma mellom)</span>
+                    <textarea value={(ai.annonseUtkast.fasiliteter || []).join(', ')} rows={4} data-testid="radar-annonse-fasiliteter"
+                      onChange={(e) => settLead(valgt.id, (x) => ({ ...x, ai: { ...x.ai, annonseUtkast: { ...x.ai.annonseUtkast, fasiliteter: e.target.value.split(',') } } }))}
+                      onBlur={(e) => oppdater(valgt.id, { annonseUtkast: { fasiliteter: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) } }, true)}
+                      className="w-full resize-none rounded-[10px] border border-black/[0.08] bg-[#fbfaf9] px-3.5 py-3 text-[12.5px] leading-relaxed outline-none transition-colors focus:border-[#1c1917]/30 focus:bg-white" />
+                  </label>
+                </div>
+              </div>
+            ) : (
+              <p className="border-t border-black/[0.05] pt-3 text-[11px] text-[#a8a29a]">Annonseutkast mangler — kjør AI-analysen på nytt for å generere annonse-previewen.</p>
+            )}
           </div>
         )}
         <p className="mt-2 text-[11px] text-[#a8a29a]">Send lenken via FINN-meldingen på annonsen{valgt.kontaktTlf ? ` — eller ring ${valgt.kontaktTlf}` : ''}. Ikke uanmodet e-post/SMS (mfl. §15).</p>
@@ -943,6 +980,9 @@ export default function Salgsradar({ apiKey }) {
                 <h2 className="text-[19px] font-bold leading-tight tracking-[-0.015em] sm:text-[23px]" style={heading}>{valgt.adresse || valgt.tittel}</h2>
                 {valgt.kilde === 'agent' && <span className="rounded-md bg-[#f1ebfc] px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wide text-[#6d28d9]" title="Matet inn av overvåkningsagenten">Agent</span>}
               </div>
+              {valgt.tittel && valgt.tittel.trim() !== (valgt.adresse || '').trim() ? (
+                <p className="mt-0.5 truncate text-[12.5px] text-[#8a857c]" data-testid="radar-panel-tittel">{valgt.tittel}</p>
+              ) : null}
               <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12.5px] text-[#a8a29a] sm:gap-x-3.5 sm:text-[13px]">
                 <span className="flex items-center gap-1.5">
                   <span className="font-bold tabular-nums text-[#1c1917]" style={heading}>{kr(valgt.pris)}<span className="font-medium text-[#a8a29a]">/mnd</span></span>
@@ -1022,6 +1062,11 @@ export default function Salgsradar({ apiKey }) {
               )}
               {valgt.status === 'analysert' && (
                 <>
+                  {valgt.kontaktTlf && (
+                    <a href={`tel:${valgt.kontaktTlf}`} data-testid="radar-steg-ring" className={`${KNAPP_GHOST} h-7 px-2.5 text-[11.5px]`}>
+                      <Phone className="h-3 w-3" /> Ring {fmtTlf(valgt.kontaktTlf)}
+                    </a>
+                  )}
                   <button onClick={() => kopierMelding(valgt)} data-testid="radar-steg-kopier" className={`${KNAPP_PRIMAER} h-7 px-2.5 text-[11.5px]`}>
                     {meldingKopiert ? <Check className="h-3 w-3 text-[#7ee2a8]" /> : <Copy className="h-3 w-3" />} {meldingKopiert ? 'Kopiert!' : 'Kopier FINN-melding'}
                   </button>
@@ -1031,15 +1076,30 @@ export default function Salgsradar({ apiKey }) {
                 </>
               )}
               {valgt.status === 'kontaktet' && (
-                <button onClick={() => oppdater(valgt.id, { status: 'dialog' })} data-testid="radar-steg-dialog" className={`${KNAPP_GHOST} h-7 px-2.5 text-[11.5px]`}>
-                  Huseier svarte — merk som dialog
-                </button>
+                <>
+                  <button onClick={() => { kopierLenke(valgt); oppdater(valgt.id, { status: 'dialog' }); }} data-testid="radar-steg-send-tilbud" className={`${KNAPP_PRIMAER} h-7 px-2.5 text-[11.5px]`}>
+                    {kopiert ? <Check className="h-3 w-3 text-[#7ee2a8]" /> : <Copy className="h-3 w-3" />} Send tilbud — kopier lenken
+                  </button>
+                  <button onClick={() => oppdater(valgt.id, { status: 'dialog' })} data-testid="radar-steg-dialog" className={`${KNAPP_GHOST} h-7 px-2.5 text-[11.5px]`}>
+                    Huseier svarte
+                  </button>
+                  <button onClick={() => oppdater(valgt.id, { status: 'tapt' })} data-testid="radar-steg-ikke-aktuelt"
+                    className="flex h-7 items-center gap-1 rounded-[7px] px-2.5 text-[11.5px] font-medium text-[#b3261e] transition-colors hover:bg-[#fdf0ef]">
+                    Ikke aktuelt
+                  </button>
+                </>
               )}
               {valgt.status === 'dialog' && (
-                <button onClick={() => oppdater(valgt.id, { status: 'vunnet' })} data-testid="radar-steg-vunnet"
-                  className="flex h-7 items-center gap-1.5 rounded-[7px] bg-[#1f7a45] px-2.5 text-[11.5px] font-medium text-white transition-all hover:bg-[#196a3b] active:scale-[0.98]">
-                  <Check className="h-3 w-3" /> Marker som vunnet
-                </button>
+                <>
+                  <button onClick={() => oppdater(valgt.id, { status: 'vunnet' })} data-testid="radar-steg-vunnet"
+                    className="flex h-7 items-center gap-1.5 rounded-[7px] bg-[#1f7a45] px-2.5 text-[11.5px] font-medium text-white transition-all hover:bg-[#196a3b] active:scale-[0.98]">
+                    <Check className="h-3 w-3" /> Marker som vunnet
+                  </button>
+                  <button onClick={() => oppdater(valgt.id, { status: 'tapt' })} data-testid="radar-steg-ikke-aktuelt-dialog"
+                    className="flex h-7 items-center gap-1 rounded-[7px] px-2.5 text-[11.5px] font-medium text-[#b3261e] transition-colors hover:bg-[#fdf0ef]">
+                    Ikke aktuelt
+                  </button>
+                </>
               )}
             </span>
           </div>
@@ -1331,6 +1391,9 @@ export default function Salgsradar({ apiKey }) {
                             <span className="shrink-0 rounded-[4px] border border-black/[0.07] bg-[#f7f6f3] px-1.5 py-px text-[8.5px] font-bold uppercase tracking-wide text-[#8a857c]" title="Matet inn av overvåkningsagenten">Agent</span>
                           )}
                         </span>
+                        {l.tittel && l.tittel.trim() !== (l.adresse || '').trim() ? (
+                          <span className="mt-0.5 block truncate text-[11.5px] text-[#8a857c]" data-testid={`radar-tittel-${l.id}`}>{l.tittel}</span>
+                        ) : null}
                         <span className="mt-0.5 flex items-center gap-1.5 truncate text-[12px] tabular-nums text-[#78716c]">
                           <b className="font-semibold text-[#44403c]">{kr(l.pris)}/mnd</b>
                           {(() => {
@@ -1433,6 +1496,9 @@ export default function Salgsradar({ apiKey }) {
                                 : <span className="flex h-9 shrink-0 items-center justify-center rounded-[8px] bg-[#f4f2ee]" style={{ width: 52 }}><Home className="h-3.5 w-3.5 text-[#c9c4bd]" /></span>}
                               <span className="min-w-0">
                                 <span className="block max-w-[210px] truncate text-[13px] font-bold tracking-[-0.01em] text-[#1c1917]" style={heading}>{l.adresse || l.tittel}</span>
+                                {l.tittel && l.tittel.trim() !== (l.adresse || '').trim() ? (
+                                  <span className="block max-w-[210px] truncate text-[10.5px] text-[#8a857c]" title={l.tittel}>{l.tittel}</span>
+                                ) : null}
                                 <span className="flex items-center gap-1.5 text-[10.5px] text-[#a8a29a]">
                                   {l.m2 ? `${l.m2} m²` : ''}{l.soverom ? ` · ${l.soverom} sov` : ''}
                                   {l.kilde === 'agent' && <span className="rounded-[3px] border border-black/[0.07] bg-[#f7f6f3] px-1 py-px text-[7.5px] font-bold uppercase text-[#8a857c]">Agent</span>}
