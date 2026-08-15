@@ -315,22 +315,19 @@ function AnnonsePreview({ tilbud, r }) {
         </div>
       </div>
 
-      {/* Klar til publisering — status */}
-      <div className="mt-4 flex flex-col gap-2 rounded-2xl border border-[#1f7a45]/20 bg-[#eef6f0] px-5 py-4 sm:flex-row sm:items-center sm:justify-between" data-testid="tilbud-annonse-status">
-        <div className="flex flex-wrap gap-x-5 gap-y-1.5">
-          {['Bilder ferdig stylet', 'Annonsetekst skrevet', 'Pris kvalitetssikret'].map((t) => (
-            <span key={t} className="flex items-center gap-1.5 text-[12px] font-semibold text-[#1f7a45]">
-              <svg width="13" height="13" viewBox="0 0 18 18" fill="none" aria-hidden="true">
-                <circle cx="9" cy="9" r="8" stroke="#1f7a45" strokeWidth="1.4" />
-                <path d="m5.6 9.2 2.2 2.2 4.6-4.8" stroke="#1f7a45" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-              {t}
-            </span>
-          ))}
-        </div>
-        <p className="text-[12px] font-bold text-[#14532d]">Kan være live innen 24 timer etter avtale</p>
+      {/* Klar til publisering — diskret statuslinje */}
+      <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-black/[0.07] pt-4" data-testid="tilbud-annonse-status">
+        {['Bilder ferdig stylet', 'Annonsetekst skrevet', 'Pris kvalitetssikret'].map((t) => (
+          <span key={t} className="flex items-center gap-1.5 text-[12.5px] font-medium text-[#57534e]">
+            <svg width="13" height="13" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+              <path d="m3.6 9.4 3.4 3.4 7.4-7.6" stroke="#1f7a45" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            {t}
+          </span>
+        ))}
+        <span className="text-[12.5px] font-semibold text-[#1f7a45] sm:ml-auto">Kan være live innen 24 timer etter avtale</span>
       </div>
-      <p className="mt-2.5 text-[11px] leading-relaxed text-[#a8a29e]">
+      <p className="mt-2.5 text-[11.5px] leading-relaxed text-[#a8a29e]">
         Forhåndsvisning — endelig annonse tilpasses sammen med deg før publisering. AI-forbedrede bilder er basert på annonsens egne foto.
       </p>
     </div>
@@ -349,7 +346,6 @@ export default function TilbudSide() {
   const [aktivStylet, setAktivStylet] = useState(0);
   const [visBunn, setVisBunn] = useState(false);
   const [prog, setProg] = useState(0);
-  const [visSlider, setVisSlider] = useState(false);
 
   useEffect(() => {
     if (!slug) return;
@@ -454,16 +450,16 @@ export default function TilbudSide() {
       <section className="bg-[#131114] text-white">
         <div className={`mx-auto max-w-[920px] px-5 pt-12 sm:px-8 sm:pt-16 ${harBilde ? 'pb-24 sm:pb-28' : 'pb-12 sm:pb-16'}`}>
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#c9a5f5]">Personlig tilbud · Vi så boligen din på FINN</p>
-          <h1 className="mt-4 max-w-[680px] text-[36px] font-bold leading-[1.04] tracking-[-0.02em] sm:text-[52px]" style={heading}>
+          <h1 className="mt-5 max-w-[720px] text-[40px] font-bold leading-[1.02] tracking-[-0.025em] sm:text-[60px]" style={heading}>
             {tilbud.adresse}
           </h1>
-          <p className="mt-3 text-[13.5px] text-white/50">
+          <p className="mt-4 text-[14px] text-white/50">
             {tilbud.postnr ? `${tilbud.postnr} Bergen` : 'Bergen'}
             {fakta.length ? <span className="text-white/30"> · {fakta.join(' · ')}</span> : null}
           </p>
 
           {/* Personlig intro — elegant, uten dekor */}
-          <p className="mt-6 max-w-[560px] text-[15px] leading-relaxed text-white/65 sm:text-[16px]" data-testid="tilbud-hero-intro">
+          <p className="mt-7 max-w-[580px] text-[16px] leading-relaxed text-white/65 sm:text-[17px]" data-testid="tilbud-hero-intro">
             {tilbud.tekst?.heroIntro || 'Her er hva vi kan gjøre for den — helt konkret, uten at du trenger å løfte en finger.'}
           </p>
         </div>
@@ -471,104 +467,83 @@ export default function TilbudSide() {
 
       <main className="mx-auto max-w-[920px] px-5 sm:px-8">
 
-        {/* ── Hero-bildet — stylet resultat først, før/etter som valgfri toggle ── */}
+        {/* ── Hero-bildet — nydelig før/etter-slider direkte, bryter gridet:
+            kant-til-kant på mobil, bredere enn tekstspalten på store skjermer ── */}
         {valgtStylet ? (
-          <section className="-mt-14 sm:-mt-16">
-            <div className="relative overflow-hidden rounded-2xl shadow-[0_24px_80px_rgba(0,0,0,0.25)] ring-1 ring-black/10">
-              {visSlider ? (
-                <ForEtter
-                  forUrl={valgtStylet.kildeUrl || originalBilde}
-                  etterUrl={`/api/tilbud/bilde?id=${valgtStylet.id}`}
-                  nokkel={valgtStylet.id}
-                  etterEtikett={['optimal', 'lysloft'].includes(valgtStylet.stil) ? 'AI-forbedret foto' : 'AI-møblert · illustrasjon'}
-                />
-              ) : (
-                <div className="relative aspect-[16/10] bg-[#26232a]">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={`/api/tilbud/bilde?id=${valgtStylet.id}`} alt="Slik kan boligen din presenteres" className="absolute inset-0 h-full w-full object-cover object-center" data-testid="tilbud-hovedbilde" />
-                  <span className="pointer-events-none absolute left-3.5 top-3.5 rounded-md bg-black/55 px-2 py-1 text-[10.5px] font-semibold text-white backdrop-blur-sm">
-                    {['optimal', 'lysloft'].includes(valgtStylet.stil) ? 'AI-forbedret foto' : 'AI-møblert · illustrasjon'}
-                  </span>
-                </div>
-              )}
-              <button
-                type="button"
-                onClick={() => setVisSlider((v) => !v)}
-                data-testid="tilbud-foretter-toggle"
-                className="absolute bottom-3.5 left-3.5 z-10 flex h-9 items-center gap-2 rounded-full bg-black/55 px-4 text-[12px] font-semibold text-white backdrop-blur-sm transition-colors hover:bg-black/75"
-              >
-                {visSlider ? 'Vis ferdig resultat' : 'Sammenlign før / etter'}
-              </button>
+          <section className="-mx-5 -mt-14 sm:-mx-8 sm:-mt-16 xl:-mx-[80px]">
+            <div className="relative overflow-hidden shadow-[0_24px_80px_rgba(0,0,0,0.25)] ring-1 ring-black/10 sm:rounded-2xl">
+              <ForEtter
+                forUrl={valgtStylet.kildeUrl || originalBilde}
+                etterUrl={`/api/tilbud/bilde?id=${valgtStylet.id}`}
+                nokkel={valgtStylet.id}
+                etterEtikett={['optimal', 'lysloft'].includes(valgtStylet.stil) ? 'AI-forbedret foto' : 'AI-møblert · illustrasjon'}
+              />
             </div>
-            <div className="mt-3 flex items-center justify-between gap-3">
-              <p className="text-[12px] text-[#a8a29e]">
-                {visSlider ? 'Dra i linjen for å sammenligne originalen med vår versjon.' : 'Slik kan annonsen din se ut — klargjort av oss.'}
-              </p>
-              {stylet.length > 1 && <p className="hidden shrink-0 text-[11px] text-[#c9c4bd] sm:block">{aktivStylet + 1} av {stylet.length}</p>}
+            <div className="mt-3.5 flex items-center justify-between gap-3 px-5 sm:px-0 xl:px-[80px]">
+              <p className="text-[12.5px] text-[#a8a29e]">Dra i linjen — original til venstre, vår versjon til høyre.</p>
+              {stylet.length > 1 && <p className="hidden shrink-0 text-[11.5px] text-[#c9c4bd] sm:block">{aktivStylet + 1} av {stylet.length}</p>}
             </div>
             {stylet.length > 1 && (
-              <div className="mt-2.5 flex gap-2 overflow-x-auto pb-1">
+              <div className="mt-3 flex gap-2 overflow-x-auto px-5 pb-1 sm:px-0 xl:px-[80px]">
                 {stylet.map((s, i) => (
                   <button key={s.id} type="button" onClick={() => setAktivStylet(i)} className="relative shrink-0">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={`/api/tilbud/bilde?id=${s.id}`} alt={s.stil ? `Stil: ${s.stil}` : ''}
-                      className={`h-16 w-24 rounded-lg object-cover transition-all ${i === aktivStylet ? 'ring-2 ring-[#8b5cf6] ring-offset-2 ring-offset-[#faf9f7]' : 'opacity-55 hover:opacity-100'}`} />
+                      className={`h-16 w-24 rounded-lg object-cover transition-all ${i === aktivStylet ? 'ring-2 ring-[#1c1917] ring-offset-2 ring-offset-[#faf9f7]' : 'opacity-55 hover:opacity-100'}`} />
                   </button>
                 ))}
               </div>
             )}
           </section>
         ) : originalBilde ? (
-          <section className="-mt-14 sm:-mt-16">
-            <div className="overflow-hidden rounded-2xl shadow-[0_24px_80px_rgba(0,0,0,0.25)] ring-1 ring-black/10">
+          <section className="-mx-5 -mt-14 sm:-mx-8 sm:-mt-16 xl:-mx-[80px]">
+            <div className="overflow-hidden shadow-[0_24px_80px_rgba(0,0,0,0.25)] ring-1 ring-black/10 sm:rounded-2xl">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={originalBilde} alt="Boligen fra annonsen" className="block h-auto max-h-[620px] w-full object-cover" data-testid="tilbud-hovedbilde" />
             </div>
           </section>
         ) : null}
 
-        {/* ── Nøkkeltallene — rett under bildet, lyst og rolig ── */}
-        <Avsnitt className="mt-8 sm:mt-10">
-          <div className="grid grid-cols-1 gap-px overflow-hidden rounded-2xl border border-black/[0.06] bg-black/[0.05] sm:grid-cols-3" data-testid="tilbud-kpi">
+        {/* ── Nøkkeltallene — typografisk på flaten, hårfine delere ── */}
+        <Avsnitt className="mt-10 sm:mt-14">
+          <div className="grid grid-cols-1 divide-y divide-black/[0.07] sm:grid-cols-3 sm:divide-x sm:divide-y-0" data-testid="tilbud-kpi">
             {[
               ['Leie vi anbefaler', r.anbefaltLeie, 'per måned', false],
               [`Vårt honorar · ${r.honorarPct} % eks. mva`, r.honorarMnd, 'per måned', false],
-              ['Netto til deg', r.nettoTilEier, 'per måned — uten å løfte en finger', true],
-            ].map(([l, v, u, sterk]) => (
-              <div key={l} className="bg-white px-5 py-5 sm:px-6">
-                <p className="text-[11px] font-medium uppercase tracking-[0.1em] text-[#a8a29e]">{l}</p>
-                <p className={`mt-2 tabular-nums tracking-[-0.01em] ${sterk ? 'text-[28px] font-bold text-[#1f7a45]' : 'text-[26px] font-bold text-[#1c1917]'}`} style={heading}>
+              ['Netto til deg', r.nettoTilEier, 'uten å løfte en finger', true],
+            ].map(([l, v, u, sterk], i) => (
+              <div key={l} className={`py-5 sm:py-1 ${i > 0 ? 'sm:pl-8' : ''} ${i < 2 ? 'sm:pr-8' : ''}`}>
+                <p className="text-[11.5px] font-medium uppercase tracking-[0.1em] text-[#a8a29e]">{l}</p>
+                <p className={`mt-2.5 tabular-nums tracking-[-0.02em] ${sterk ? 'text-[32px] font-bold text-[#1f7a45] sm:text-[36px]' : 'text-[30px] font-bold text-[#1c1917] sm:text-[34px]'}`} style={heading}>
                   <TellOpp verdi={v} />{'\u00A0'}kr
                 </p>
-                <p className="mt-1 text-[11.5px] text-[#a8a29e]">{u}</p>
+                <p className="mt-1.5 text-[12.5px] text-[#a8a29e]">{u}</p>
               </div>
             ))}
           </div>
           {gevinst != null && gevinst > 0 && (
-            <p className="mt-3 text-[12.5px] text-[#78716c]">
+            <p className="mt-5 border-t border-black/[0.07] pt-4 text-[13.5px] text-[#57534e]">
               Det er <span className="font-semibold text-[#1f7a45]">{tall(gevinst)} kr mer i måneden</span> enn annonsert pris i dag — {tall(r.gevinstAar)} kr i året.
             </p>
           )}
         </Avsnitt>
 
-        {/* ── Potensialet vi ser (personlig AI-tekst, positivt innrammet) ── */}
+        {/* ── Potensialet vi ser — stort typografisk sitat, ingen boks ── */}
         {tilbud.tekst?.potensialTekst && (
-          <Avsnitt className="mt-12 sm:mt-16">
-            <div className="rounded-2xl border border-black/[0.06] bg-white px-6 py-6 sm:px-8 sm:py-7" data-testid="tilbud-potensial">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#8b5cf6]">Potensialet vi ser</p>
-              <p className="mt-3 max-w-[680px] text-[15px] leading-relaxed text-[#44403c] sm:text-[16px]" style={heading}>
-                «{tilbud.tekst.potensialTekst}»
-              </p>
-            </div>
+          <Avsnitt className="mt-20 sm:mt-32">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#8b5cf6]" data-testid="tilbud-potensial">Potensialet vi ser</p>
+            <p className="mt-4 max-w-[720px] text-[19px] font-medium leading-[1.45] tracking-[-0.01em] text-[#1c1917] sm:text-[23px]" style={heading}>
+              «{tilbud.tekst.potensialTekst}»
+            </p>
           </Avsnitt>
         )}
 
         {/* ── Annonsen — ferdig produsert, klar til publisering ── */}
         {harAnnonse && (
-          <Avsnitt className="mt-16 sm:mt-24">
+          <Avsnitt className="mt-20 sm:mt-32">
             <Merke nr="01" tekst="Annonsen" />
-            <h2 className="mt-2.5 text-[20px] font-bold tracking-[-0.01em] sm:text-[24px]" style={heading}>Annonsen din er allerede ferdig produsert</h2>
-            <p className="mt-2 max-w-[620px] text-[13px] leading-relaxed text-[#78716c]">
+            <h2 className="mt-3 text-[24px] font-bold tracking-[-0.015em] sm:text-[30px]" style={heading}>Annonsen din er allerede ferdig produsert</h2>
+            <p className="mt-3 max-w-[620px] text-[14px] leading-relaxed text-[#78716c] sm:text-[15px]">
               Leietakere blar gjennom hundrevis av annonser — vi har skrevet og klargjort din slik at den vinner det halve
               sekundet. Sier du ja, trykker vi publiser.
             </p>
@@ -578,27 +553,27 @@ export default function TilbudSide() {
           </Avsnitt>
         )}
 
-        {/* ── Megler-manifestet: hvorfor DigiHome — editoriell statement ── */}
-        <Avsnitt className="mt-16 sm:mt-24">
-          <div className="rounded-2xl border border-black/[0.06] bg-white px-6 py-8 sm:px-10 sm:py-11" data-testid="tilbud-manifest">
+        {/* ── Megler-manifestet: hvorfor DigiHome — typografi på flaten ── */}
+        <Avsnitt className="mt-20 sm:mt-32">
+          <div data-testid="tilbud-manifest">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#8b5cf6]">Hvorfor DigiHome</p>
-            <h2 className="mt-3 max-w-[640px] text-[24px] font-bold leading-[1.15] tracking-[-0.015em] sm:text-[32px]" style={heading}>
+            <h2 className="mt-3 max-w-[680px] text-[26px] font-bold leading-[1.12] tracking-[-0.02em] sm:text-[36px]" style={heading}>
               Å selge inn en bolig er et fag.<span className="text-[#a8a29e]"> Det er faget vårt.</span>
             </h2>
-            <p className="mt-4 max-w-[620px] text-[14px] leading-relaxed text-[#57534e] sm:text-[15px]">
+            <p className="mt-5 max-w-[640px] text-[15px] leading-relaxed text-[#57534e] sm:text-[16px]">
               Vi er eiendomsmeglere med utleie som spesialfelt. Presentasjon, prissetting og utvelgelse av riktig leietaker
               er jobben vår hver eneste dag — og det er derfor boligene våre leies ut raskt, til riktig pris, til folk som
               betaler i tide. Du trenger ikke løfte en finger: <span className="font-semibold text-[#1c1917]">du leverer nøklene, vi håndterer alt det praktiske.</span>
             </p>
-            <div className="mt-8 grid grid-cols-1 gap-px overflow-hidden rounded-xl border border-black/[0.06] bg-black/[0.06] sm:grid-cols-3">
+            <div className="mt-10 grid grid-cols-1 gap-8 sm:grid-cols-3 sm:gap-10">
               {[
                 ['Meglerkompetanse', 'Annonse, foto, pris og forhandling — håndtert av folk som selger boliger til daglig.'],
                 ['Egen portefølje i Bergen', 'Vi priser mot faktiske leieinntekter i vår egen portefølje — ikke synsing.'],
                 ['Ett kontaktpunkt', 'Én fast person for deg og leietaker, fra første visning til siste rapport.'],
               ].map(([t, d]) => (
-                <div key={t} className="bg-[#fbfaf8] px-5 py-5">
-                  <p className="text-[13.5px] font-bold" style={heading}>{t}</p>
-                  <p className="mt-1.5 text-[12px] leading-relaxed text-[#78716c]">{d}</p>
+                <div key={t} className="border-t border-black/[0.1] pt-4">
+                  <p className="text-[14.5px] font-bold" style={heading}>{t}</p>
+                  <p className="mt-2 text-[13px] leading-relaxed text-[#78716c]">{d}</p>
                 </div>
               ))}
             </div>
@@ -606,47 +581,47 @@ export default function TilbudSide() {
         </Avsnitt>
 
         {/* ── 02 · Regnestykket ── */}
-        <Avsnitt className="mt-16 sm:mt-24">
+        <Avsnitt className="mt-20 sm:mt-32">
           <Merke nr={nr(1)} tekst="Økonomien" />
-          <h2 className="mt-2.5 text-[20px] font-bold tracking-[-0.01em] sm:text-[24px]" style={heading}>Regnestykket — helt konkret</h2>
+          <h2 className="mt-3 text-[24px] font-bold tracking-[-0.015em] sm:text-[30px]" style={heading}>Regnestykket — helt konkret</h2>
 
-          <div className="mt-5 overflow-hidden rounded-2xl border border-black/[0.06] bg-white" data-testid="tilbud-regnestykke">
-            <div className="grid grid-cols-[1fr_auto_auto] items-baseline gap-x-4 border-b border-black/[0.06] px-5 py-3 sm:gap-x-8 sm:px-7">
+          <div className="mt-7 max-w-[720px]" data-testid="tilbud-regnestykke">
+            <div className="grid grid-cols-[1fr_auto_auto] items-baseline gap-x-4 border-b border-black/[0.12] pb-2.5 sm:gap-x-10">
               <span />
-              <span className="w-[86px] text-right text-[10.5px] font-semibold uppercase tracking-[0.1em] text-[#a8a29e] sm:w-[110px]">Per måned</span>
-              <span className="w-[86px] text-right text-[10.5px] font-semibold uppercase tracking-[0.1em] text-[#a8a29e] sm:w-[110px]">Per år</span>
+              <span className="w-[92px] text-right text-[11px] font-semibold uppercase tracking-[0.1em] text-[#a8a29e] sm:w-[120px]">Per måned</span>
+              <span className="w-[92px] text-right text-[11px] font-semibold uppercase tracking-[0.1em] text-[#a8a29e] sm:w-[120px]">Per år</span>
             </div>
             {[
               ['Leie vi anbefaler å legge oss på', r.anbefaltLeie, false, false],
               [`Vårt honorar (${r.honorarPct} % eks. mva)`, r.honorarMnd, true, false],
-              ['Netto til deg — uten å løfte en finger', r.nettoTilEier, false, true],
-            ].map(([l, v, minus, sterk]) => (
-              <div key={l} className={`grid grid-cols-[1fr_auto_auto] items-baseline gap-x-4 px-5 py-3.5 sm:gap-x-8 sm:px-7 ${sterk ? 'bg-[#fbfaf8]' : 'border-b border-black/[0.05]'}`}>
-                <span className={`text-[13px] leading-snug ${sterk ? 'font-bold text-[#1c1917]' : 'text-[#57534e]'}`}>{l}</span>
-                <span className={`w-[86px] text-right tabular-nums sm:w-[110px] ${sterk ? 'text-[16px] font-bold text-[#1f7a45]' : 'text-[13.5px] font-semibold text-[#44403c]'}`} style={heading}>
-                  {minus ? '−\u2009' : ''}{tall(v)}
-                </span>
-                <span className={`w-[86px] text-right tabular-nums sm:w-[110px] ${sterk ? 'text-[16px] font-bold text-[#1f7a45]' : 'text-[13.5px] font-semibold text-[#78716c]'}`} style={heading}>
-                  {minus ? '−\u2009' : ''}{tall(v * 12)}
-                </span>
+            ].map(([l, v, minus]) => (
+              <div key={l} className="grid grid-cols-[1fr_auto_auto] items-baseline gap-x-4 border-b border-black/[0.06] py-4 sm:gap-x-10">
+                <span className="text-[14px] leading-snug text-[#57534e]">{l}</span>
+                <span className="w-[92px] text-right text-[14.5px] font-semibold tabular-nums text-[#44403c] sm:w-[120px]" style={heading}>{minus ? '−\u2009' : ''}{tall(v)}</span>
+                <span className="w-[92px] text-right text-[14.5px] font-semibold tabular-nums text-[#78716c] sm:w-[120px]" style={heading}>{minus ? '−\u2009' : ''}{tall(v * 12)}</span>
               </div>
             ))}
+            <div className="grid grid-cols-[1fr_auto_auto] items-baseline gap-x-4 py-5 sm:gap-x-10">
+              <span className="text-[15px] font-bold text-[#1c1917]" style={heading}>Netto til deg — uten å løfte en finger</span>
+              <span className="w-[92px] text-right text-[19px] font-bold tabular-nums text-[#1f7a45] sm:w-[120px]" style={heading}>{tall(r.nettoTilEier)}</span>
+              <span className="w-[92px] text-right text-[19px] font-bold tabular-nums text-[#1f7a45] sm:w-[120px]" style={heading}>{tall(r.nettoTilEier * 12)}</span>
+            </div>
             {gevinst != null && (
-              <div className={`border-t border-black/[0.05] px-5 py-3.5 text-[12.5px] font-medium sm:px-7 ${gevinst > 0 ? 'bg-[#eef6f0] text-[#1f7a45]' : 'bg-[#fafaf8] text-[#78716c]'}`}>
+              <p className={`border-t border-black/[0.07] pt-4 text-[13.5px] ${gevinst > 0 ? 'text-[#1f7a45]' : 'text-[#78716c]'}`}>
                 {gevinst > 0
                   ? <>Det er <b>{tall(gevinst)} kr mer i måneden</b> ({tall(r.gevinstAar)} kr/år) enn annonsert pris i dag — og vi tar hele jobben.</>
                   : <>Annonsert pris i dag er {tall(r.dagensPris)} kr/mnd. Med oss slipper du annonsering, visninger, kontrakter og oppfølging — og boligen presenteres som bildene over.</>}
-              </div>
+              </p>
             )}
           </div>
 
         </Avsnitt>
 
         {/* ── 03 · Slik jobber vi ── */}
-        <Avsnitt className="mt-16 sm:mt-24">
+        <Avsnitt className="mt-20 sm:mt-32">
           <Merke nr={nr(2)} tekst="Prosessen" />
-          <h2 className="mt-2.5 text-[20px] font-bold tracking-[-0.01em] sm:text-[24px]" style={heading}>Fra prat til utleid — slik jobber vi</h2>
-          <div className="mt-6">
+          <h2 className="mt-3 text-[24px] font-bold tracking-[-0.015em] sm:text-[30px]" style={heading}>Fra prat til utleid — slik jobber vi</h2>
+          <div className="mt-8">
             {[
               ['I dag', 'Uforpliktende prat', 'Vi ringer deg, går gjennom tallene og svarer på alt du lurer på.'],
               ['Dag 1–2', 'Befaring og nøkler', 'Vi ser boligen, bekrefter leien vi anbefaler — og du leverer nøklene. Så er din del av jobben gjort.'],
@@ -654,17 +629,17 @@ export default function TilbudSide() {
               ['Uke 1–2', 'Visninger og utvelgelse', 'Vi møter interessentene, sjekker referanser og kredittverdighet, og finner riktig leietaker.'],
               ['Innflytting', 'Kontrakt og løpende forvaltning', 'Trygg leiekontrakt, depositumskonto og overtakelsesprotokoll — så følger vi opp leieforholdet mens du får rapporten.'],
             ].map(([tid, t, d], i, arr) => (
-              <div key={t} className="relative flex gap-4 sm:gap-6">
+              <div key={t} className="relative flex gap-5 sm:gap-7">
                 <div className="flex flex-col items-center">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-black/[0.1] bg-white text-[11.5px] font-bold text-[#1c1917]" style={heading}>
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-black/[0.1] bg-white text-[12.5px] font-bold text-[#1c1917]" style={heading}>
                     {i + 1}
                   </div>
                   {i < arr.length - 1 && <div className="w-px flex-1 bg-black/[0.08]" />}
                 </div>
-                <div className={i < arr.length - 1 ? 'pb-6' : ''}>
-                  <p className="pt-1 text-[10.5px] font-bold uppercase tracking-[0.1em] text-[#8b5cf6]">{tid}</p>
-                  <p className="mt-0.5 text-[14px] font-bold" style={heading}>{t}</p>
-                  <p className="mt-1 max-w-[560px] text-[12.5px] leading-relaxed text-[#78716c]">{d}</p>
+                <div className={i < arr.length - 1 ? 'pb-8' : ''}>
+                  <p className="pt-1 text-[11px] font-bold uppercase tracking-[0.1em] text-[#8b5cf6]">{tid}</p>
+                  <p className="mt-1 text-[15.5px] font-bold" style={heading}>{t}</p>
+                  <p className="mt-1.5 max-w-[560px] text-[13.5px] leading-relaxed text-[#78716c]">{d}</p>
                 </div>
               </div>
             ))}
@@ -672,10 +647,10 @@ export default function TilbudSide() {
         </Avsnitt>
 
         {/* ── 04 · Dette er inkludert ── */}
-        <Avsnitt className="mt-16 sm:mt-24">
+        <Avsnitt className="mt-20 sm:mt-32">
           <Merke nr={nr(3)} tekst="Alt inkludert i honoraret" />
-          <h2 className="mt-2.5 text-[20px] font-bold tracking-[-0.01em] sm:text-[24px]" style={heading}>Dette tar vi oss av</h2>
-          <div className="mt-5 grid grid-cols-1 gap-px overflow-hidden rounded-2xl border border-black/[0.06] bg-black/[0.05] sm:grid-cols-2">
+          <h2 className="mt-3 text-[24px] font-bold tracking-[-0.015em] sm:text-[30px]" style={heading}>Dette tar vi oss av</h2>
+          <div className="mt-7 grid grid-cols-1 gap-x-14 sm:grid-cols-2">
             {[
               ['Foto og styling', 'Boligen presenteres som i et boligmagasin — slik bildene over viser.'],
               ['Annonsering som treffer', 'Selgende annonse, riktig pris og markedsføring der leietakerne faktisk leter.'],
@@ -684,14 +659,13 @@ export default function TilbudSide() {
               ['Kontrakt, depositum og innflytting', 'Trygg leiekontrakt, depositumskonto og overtakelsesprotokoll — alt dokumentert.'],
               ['Oppfølging hele leieforholdet', 'Én kontakt for leietaker, purringer og småting — du får bare rapporten.'],
             ].map(([t, d]) => (
-              <div key={t} className="flex gap-3.5 bg-white px-5 py-5 sm:px-6">
+              <div key={t} className="flex gap-3.5 border-t border-black/[0.07] py-5">
                 <svg width="18" height="18" viewBox="0 0 18 18" fill="none" className="mt-0.5 shrink-0" aria-hidden="true">
-                  <circle cx="9" cy="9" r="8.25" stroke="#1f7a45" strokeWidth="1.2" />
-                  <path d="m5.6 9.2 2.2 2.2 4.6-4.8" stroke="#1f7a45" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="m3.6 9.4 3.4 3.4 7.4-7.6" stroke="#1f7a45" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
                 <div>
-                  <p className="text-[13.5px] font-bold" style={heading}>{t}</p>
-                  <p className="mt-1 text-[12px] leading-relaxed text-[#78716c]">{d}</p>
+                  <p className="text-[14.5px] font-bold" style={heading}>{t}</p>
+                  <p className="mt-1.5 text-[13px] leading-relaxed text-[#78716c]">{d}</p>
                 </div>
               </div>
             ))}
@@ -699,10 +673,10 @@ export default function TilbudSide() {
         </Avsnitt>
 
         {/* ── 05 · Spørsmål og svar ── */}
-        <Avsnitt className="mt-16 sm:mt-24">
+        <Avsnitt className="mt-20 sm:mt-32">
           <Merke nr={nr(4)} tekst="Godt å vite" />
-          <h2 className="mt-2.5 text-[20px] font-bold tracking-[-0.01em] sm:text-[24px]" style={heading}>Spørsmål og svar</h2>
-          <div className="mt-5 divide-y divide-black/[0.05] rounded-2xl border border-black/[0.06] bg-white">
+          <h2 className="mt-3 text-[24px] font-bold tracking-[-0.015em] sm:text-[30px]" style={heading}>Spørsmål og svar</h2>
+          <div className="mt-6">
             {[
               ['Er dette bindende?', 'Nei. Dette er et uforpliktende tilbud basert på annonsen din. Du bestemmer alt — vi tar bare en prat først.'],
               ['Hva må jeg gjøre selv?', 'I praksis ingenting. Du leverer nøklene — vi håndterer foto, annonse, visninger, kontrakt, innflytting og oppfølging. Du holdes orientert hele veien.'],
@@ -710,18 +684,18 @@ export default function TilbudSide() {
               ['Hva koster det?', `Honoraret er ${r.honorarPct} % av månedsleien, eks. mva. Regnestykket over viser nøyaktig hva du sitter igjen med — ingen skjulte kostnader.`],
               ['Hvordan kommer vi i gang?', 'Legg igjen navn og nummer under, så ringer vi deg for en kort prat og avtaler befaring om du vil gå videre.'],
             ].map(([q, a]) => (
-              <div key={q} className="px-5 py-4 sm:px-7 sm:py-5">
-                <p className="text-[13.5px] font-bold" style={heading}>{q}</p>
-                <p className="mt-1.5 max-w-[620px] text-[12.5px] leading-relaxed text-[#78716c]">{a}</p>
+              <div key={q} className="border-t border-black/[0.07] py-5">
+                <p className="text-[15px] font-bold" style={heading}>{q}</p>
+                <p className="mt-2 max-w-[640px] text-[13.5px] leading-relaxed text-[#78716c]">{a}</p>
               </div>
             ))}
           </div>
         </Avsnitt>
 
-        {/* ── Kontakt ── */}
-        <Avsnitt id="kontakt" className="mt-14 scroll-mt-20 sm:mt-20">
-          <div className="overflow-hidden rounded-2xl bg-[#131114] text-white shadow-[0_12px_48px_rgba(0,0,0,0.18)]" data-testid="tilbud-kontakt">
-            <div className="px-6 py-8 sm:px-10 sm:py-10">
+        {/* ── Kontakt — full-bleed mørk avslutning ── */}
+        <Avsnitt id="kontakt" className="-mx-5 mt-16 scroll-mt-20 sm:-mx-8 sm:mt-24 xl:-mx-[80px]">
+          <div className="bg-[#131114] px-6 py-12 text-white sm:rounded-2xl sm:px-12 sm:py-14" data-testid="tilbud-kontakt">
+            <div>
               {sendt ? (
                 <div className="py-6 text-center">
                   <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#1f7a45]/20">
@@ -729,24 +703,24 @@ export default function TilbudSide() {
                       <path d="m6 11.5 3.2 3.2L16.5 7.5" stroke="#7fd4a1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
                   </div>
-                  <p className="mt-4 text-[19px] font-bold" style={heading}>Takk! Vi ringer deg i dag eller i morgen.</p>
-                  <p className="mt-2 text-[13px] text-white/55">Helt uforpliktende — vi tar en kort prat om boligen og hva vi kan få til.</p>
+                  <p className="mt-4 text-[20px] font-bold" style={heading}>Takk! Vi ringer deg i dag eller i morgen.</p>
+                  <p className="mt-2 text-[13.5px] text-white/55">Helt uforpliktende — vi tar en kort prat om boligen og hva vi kan få til.</p>
                 </div>
               ) : (
                 <>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#c9a5f5]">Neste steg</p>
-                  <h2 className="mt-2 text-[22px] font-bold tracking-[-0.01em] sm:text-[26px]" style={heading}>Nysgjerrig? Ta en uforpliktende prat</h2>
-                  <p className="mt-2 max-w-[480px] text-[13px] leading-relaxed text-white/50">
+                  <h2 className="mt-3 text-[26px] font-bold tracking-[-0.015em] sm:text-[32px]" style={heading}>Nysgjerrig? Ta en uforpliktende prat</h2>
+                  <p className="mt-3 max-w-[480px] text-[14px] leading-relaxed text-white/50">
                     Legg igjen navn og nummer, så ringer vi deg — ingen bindinger, ingen mas.
                   </p>
-                  <div className="mt-6 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                  <div className="mt-7 grid max-w-[640px] grid-cols-1 gap-2.5 sm:grid-cols-2">
                     <input value={skjema.navn} onChange={(e) => setSkjema((s) => ({ ...s, navn: e.target.value }))} placeholder="Navn" data-testid="tilbud-navn"
                       className="h-12 rounded-xl border border-white/10 bg-white/[0.06] px-4 text-[14px] text-white outline-none transition-colors placeholder:text-white/30 focus:border-white/35" />
                     <input value={skjema.telefon} onChange={(e) => setSkjema((s) => ({ ...s, telefon: e.target.value }))} placeholder="Telefon" inputMode="tel" data-testid="tilbud-telefon"
                       className="h-12 rounded-xl border border-white/10 bg-white/[0.06] px-4 text-[14px] text-white outline-none transition-colors placeholder:text-white/30 focus:border-white/35" />
                   </div>
                   <textarea value={skjema.melding} onChange={(e) => setSkjema((s) => ({ ...s, melding: e.target.value }))} placeholder="Melding (valgfritt)" rows={2}
-                    className="mt-2.5 w-full resize-none rounded-xl border border-white/10 bg-white/[0.06] px-4 py-3 text-[14px] text-white outline-none transition-colors placeholder:text-white/30 focus:border-white/35" />
+                    className="mt-2.5 w-full max-w-[640px] resize-none rounded-xl border border-white/10 bg-white/[0.06] px-4 py-3 text-[14px] text-white outline-none transition-colors placeholder:text-white/30 focus:border-white/35" />
                   {feil && <p className="mt-2 text-[12px] text-rose-300">{feil}</p>}
                   <button onClick={send} disabled={sender || !skjema.navn.trim() || !skjema.telefon.trim()} data-testid="tilbud-send"
                     className="mt-4 h-12 w-full rounded-xl bg-white text-[14px] font-bold text-[#131114] transition-all hover:bg-white/90 active:scale-[0.99] disabled:opacity-35 sm:w-auto sm:px-10">

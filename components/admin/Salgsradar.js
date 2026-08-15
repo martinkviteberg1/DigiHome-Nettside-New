@@ -151,8 +151,8 @@ const nesteSteg = (l) => {
 /* Flatt DigiHome-seksjonshode: liten stille etikett, ikke ikon-chips */
 const SekHode = ({ ikon: Ikon, tittel, hoyre }) => (
   <div className="flex flex-wrap items-center gap-2">
-    {Ikon && <Ikon className="h-[14px] w-[14px] text-[#a8a29a]" />}
-    <h3 className="text-[13px] font-bold tracking-[-0.01em] text-[#1c1917]" style={heading}>{tittel}</h3>
+    {Ikon && <Ikon className="h-[15px] w-[15px] text-[#a8a29a]" />}
+    <h3 className="text-[14px] font-bold tracking-[-0.01em] text-[#1c1917]" style={heading}>{tittel}</h3>
     <span className="ml-auto flex items-center gap-2">{hoyre}</span>
   </div>
 );
@@ -346,6 +346,10 @@ export default function Salgsradar({ apiKey }) {
   const [heroPos, setHeroPos] = useState(55); // skillelinje for inline før/etter på hero
   const heroDrag = useRef(null); // {x0, y0, laast: 'slider'|'scroll'|null, flyttet}
   const [heroDrar, setHeroDrar] = useState(false); // styrer om linjen animerer
+  // Airbnb-håndtering av portrettbilder: mål aspektforholdet ved innlasting —
+  // portrett vises med object-contain over en uskarp cover-bakgrunn i stedet
+  // for å croppes brutalt inn i den horisontale rammen.
+  const [heroAr, setHeroAr] = useState(null);
   const [sammenlign, setSammenlign] = useState(null); // {idx} — fullskjerm før/etter-modal
   const swipeX = useRef(null); // touch-swipe i hero-galleriet
   const [lagret, setLagret] = useState(false);
@@ -361,7 +365,7 @@ export default function Salgsradar({ apiKey }) {
   }, []);
   useEffect(() => () => clearTimeout(lagretTimer.current), []);
   useEffect(() => { setHeroIdx(0); setSammenlign(null); }, [valgtId]);
-  useEffect(() => { setHeroPos(55); }, [heroIdx, valgtId]);
+  useEffect(() => { setHeroPos(55); setHeroAr(null); }, [heroIdx, valgtId]);
   const settHeroPos = (e) => {
     const r = e.currentTarget.getBoundingClientRect();
     if (!r.width) return;
@@ -579,11 +583,20 @@ export default function Salgsradar({ apiKey }) {
     const autoAktiv = Boolean(valgt.auto && ['analyserer', 'styler'].includes(valgt.auto.status));
     const steg = autoAktiv ? null : nesteSteg(valgt);
 
-    const BENTO = 'rounded-[14px] border border-black/[0.06] bg-white shadow-[0_1px_2px_rgba(28,25,23,0.04)]';
+    const BENTO = 'rounded-[16px] border border-black/[0.05] bg-white shadow-[0_1px_3px_rgba(28,25,23,0.04),0_10px_28px_-16px_rgba(28,25,23,0.1)]';
     const hIdx = Math.min(heroIdx, Math.max(0, nB - 1));
     const hero = galleri[hIdx];
     // Inline før/etter krever at originalen (kilde) fortsatt finnes på finncdn
     const heroSml = Boolean(hero && hero.ai && hero.kilde && !dodeBilder.has(hero.kilde));
+    const erPortrett = heroAr != null && heroAr < 0.85;
+    const heroFit = erPortrett ? 'object-contain' : 'object-cover';
+    const heroH = 'h-[260px] min-[440px]:h-[320px] sm:h-[430px]';
+    const settAr = (e) => { const w = e.target.naturalWidth; const h = e.target.naturalHeight; if (w && h) setHeroAr(w / h); };
+    const blurBak = erPortrett && hero ? (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img src={hero.ai ? hero.url : hero.url} alt="" aria-hidden="true" draggable={false}
+        className="absolute inset-0 h-full w-full scale-110 object-cover opacity-50 blur-2xl saturate-[1.1]" />
+    ) : null;
 
     const sekBilder = nB > 0 && (
       <section className={`${BENTO} p-4 sm:p-5`}>
@@ -643,13 +656,14 @@ export default function Salgsradar({ apiKey }) {
           } : undefined}>
           {heroSml ? (
             <>
+              {blurBak}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={hero.kilde} alt="Original" draggable={false} data-testid="radar-galleri-bilde"
-                onError={() => merkDodBilde(hero.kilde)}
-                className="h-[220px] w-full select-none object-cover min-[440px]:h-[260px] sm:h-[340px]" />
+                onError={() => merkDodBilde(hero.kilde)} onLoad={settAr}
+                className={`relative w-full select-none ${heroFit} ${heroH}`} />
               <span className="pointer-events-none absolute inset-0" style={{ clipPath: `inset(0 ${100 - heroPos}% 0 0)`, transition: heroDrar ? 'none' : 'clip-path .22s ease' }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={hero.url} alt="AI-forbedret" draggable={false} className="h-full w-full select-none object-cover" />
+                <img src={hero.url} alt="AI-forbedret" draggable={false} className={`h-full w-full select-none ${heroFit}`} />
               </span>
               <span className="pointer-events-none absolute inset-y-0 z-10" style={{ left: `${heroPos}%`, transition: heroDrar ? 'none' : 'left .22s ease' }} data-testid="radar-hero-slider">
                 <span className="absolute inset-y-0 -ml-px w-[2px] bg-white/95 shadow-[0_0_8px_rgba(0,0,0,0.45)]" />
@@ -666,12 +680,14 @@ export default function Salgsradar({ apiKey }) {
             </>
           ) : (
             <>
+              {blurBak}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={hero.url} alt="" draggable={false}
                 onClick={() => setLightbox({ idx: hIdx })}
                 onError={hero.ai ? undefined : () => merkDodBilde(hero.url)}
+                onLoad={settAr}
                 data-testid="radar-galleri-bilde" role="button" tabIndex={0}
-                className="h-[220px] w-full cursor-pointer object-cover transition-transform duration-500 min-[440px]:h-[260px] sm:h-[340px]" />
+                className={`relative w-full cursor-pointer transition-transform duration-500 ${heroFit} ${heroH}`} />
               <span className="pointer-events-none absolute left-3 top-3 rounded-[5px] bg-black/45 px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-wide text-white">Original</span>
             </>
           )}
@@ -1022,13 +1038,13 @@ export default function Salgsradar({ apiKey }) {
             </button>
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
-                <h2 className="text-[19px] font-bold leading-tight tracking-[-0.015em] sm:text-[23px]" style={heading}>{valgt.adresse || valgt.tittel}</h2>
+                <h2 className="text-[21px] font-bold leading-tight tracking-[-0.015em] sm:text-[26px]" style={heading}>{valgt.adresse || valgt.tittel}</h2>
                 {valgt.kilde === 'agent' && <span className="rounded-md bg-[#f1ebfc] px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wide text-[#6d28d9]" title="Matet inn av overvåkningsagenten">Agent</span>}
               </div>
               {valgt.tittel && valgt.tittel.trim() !== (valgt.adresse || '').trim() ? (
                 <p className="mt-0.5 truncate text-[12.5px] text-[#8a857c]" data-testid="radar-panel-tittel">{valgt.tittel}</p>
               ) : null}
-              <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12.5px] text-[#a8a29a] sm:gap-x-3.5 sm:text-[13px]">
+              <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] text-[#a8a29a] sm:gap-x-4 sm:text-[13.5px]">
                 <span className="flex items-center gap-1.5">
                   <span className="font-bold tabular-nums text-[#1c1917]" style={heading}>{kr(valgt.pris)}<span className="font-medium text-[#a8a29a]">/mnd</span></span>
                   {(() => {
@@ -1185,12 +1201,12 @@ export default function Salgsradar({ apiKey }) {
             <div className="px-3.5 py-3.5 sm:px-5">
               {sekBilder}
               {toKol ? (
-                <div className="mt-3 grid grid-cols-2 items-start gap-3">
-                  <div className="grid gap-3">{sekAnalyse}{sekMelding}{sekNotat}</div>
-                  <div className="grid gap-3">{sekOkonomi}{sekTilbud}{sekBeskrivelse}</div>
+                <div className="mt-4 grid grid-cols-2 items-start gap-4">
+                  <div className="grid gap-4">{sekAnalyse}{sekMelding}{sekNotat}</div>
+                  <div className="grid gap-4">{sekOkonomi}{sekTilbud}{sekBeskrivelse}</div>
                 </div>
               ) : (
-                <div className="mt-3 grid gap-3">{sekAnalyse}{sekOkonomi}{sekMelding}{sekTilbud}{sekBeskrivelse}{sekNotat}</div>
+                <div className="mt-4 grid gap-4">{sekAnalyse}{sekOkonomi}{sekMelding}{sekTilbud}{sekBeskrivelse}{sekNotat}</div>
               )}
             </div>
           </div>
