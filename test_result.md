@@ -5821,3 +5821,16 @@ frontend:
 agent_communication:
     -agent: "main"
     -message: "Fullt DigiHome-redesign av Salgsradar: score-ringer (0-100) i tabell/liste/panel, Airbnb-galleri med hero-slider + før/etter-sammenligningsmodal for AI-bilder, bento-grid, og blokkerings-overlay mens automatikken kjører. Kun frontend. NB for testagenter: aiPar/galleri-rekkefølge = AI-bilder først; radar-galleri-bilde ligger nå på hero-img."
+
+frontend:
+  - task: "Salgsradar mobiloptimalisering (390px): (1) Verktøylinje: mobil = søk(flex-1)+visningstoggle+ikon-only Ny-knapp på rad 1, filterchips + kompakt sortering (radar-sort-mobil) som horisontal scrollerad (no-scrollbar); desktop uendret én rad via flex-order. (2) Hero-galleri: pilknapper alltid synlige på touch (skjult bak hover kun lg+), touch-swipe (>45px dx) via swipeX-ref, hero-høyde 220/260/340px responsivt. (3) Thumb-tryllestav alltid synlig på mobil. (4) Statusvelger i panelhodet som scrollbar énrader på mobil (sm: inline-flex wrap). (5) Panelhode: px-4, mindre h2, boligtype skjult på xs, utvid-knapp skjult under lg (mobil er allerede fullskjerm). (6) Økonomi-KPI: 3 kolonner beholdt med mindre tekst på mobil. (7) SammenlignModal: px-2 på mobil, piler med mørk bakgrunn innenfor bildet, mindre hint-tekst. (8) Ny-panel: Hent-knapp full bredde på mobil."
+    implemented: true
+    working: "NA"
+    file: "/app/components/admin/Salgsradar.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "Screenshot-verifisert 390px: oversikt 0px horisontal overflow, hero-piler synlige uten hover, bento én kolonne, økonomi-KPI-er får plass, før/etter-modal fungerer på mobil. Desktop 1920px re-verifisert: verktøylinje fortsatt én rad. NB: scrollWidth-måling inne i radar-skuff gir store tall pga bevisst scrollbare rader (thumbs/status) — ikke reell overflow. Brukerverifisering gjenstår."

@@ -200,10 +200,10 @@ function SammenlignModal({ par, idx, setIdx, onClose }) {
         </div>
         <button onClick={onClose} data-testid="radar-sammenlign-lukk" className="rounded-lg p-2 text-white/60 transition-colors hover:bg-white/10 hover:text-white"><X style={{ width: 20, height: 20 }} /></button>
       </div>
-      <div className="relative flex min-h-0 flex-1 items-center justify-center px-10 pb-2 sm:px-16" onClick={(e) => e.stopPropagation()}>
+      <div className="relative flex min-h-0 flex-1 items-center justify-center px-2 pb-2 sm:px-16" onClick={(e) => e.stopPropagation()}>
         {par.length > 1 && (
           <button onClick={() => setIdx((i) => (i - 1 + par.length) % par.length)} data-testid="radar-sammenlign-forrige" aria-label="Forrige"
-            className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-white/10 p-2.5 text-white transition-all hover:bg-white/20 sm:left-4">
+            className="absolute left-2 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/40 p-2 text-white transition-all hover:bg-white/20 sm:left-4 sm:bg-white/10 sm:p-2.5">
             <ChevronLeft className="h-5 w-5" />
           </button>
         )}
@@ -230,12 +230,12 @@ function SammenlignModal({ par, idx, setIdx, onClose }) {
         </div>
         {par.length > 1 && (
           <button onClick={() => setIdx((i) => (i + 1) % par.length)} data-testid="radar-sammenlign-neste" aria-label="Neste"
-            className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-white/10 p-2.5 text-white transition-all hover:bg-white/20 sm:right-4">
+            className="absolute right-2 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/40 p-2 text-white transition-all hover:bg-white/20 sm:right-4 sm:bg-white/10 sm:p-2.5">
             <ChevronRight className="h-5 w-5" />
           </button>
         )}
       </div>
-      <p className="pb-2 text-center text-[11.5px] text-white/40">Dra i håndtaket for å sammenligne — piltastene bytter bilde</p>
+      <p className="px-4 pb-2 text-center text-[10.5px] text-white/40 sm:text-[11.5px]">Dra i håndtaket for å sammenligne — piltastene bytter bilde</p>
       {par.length > 1 && (
         <div className="flex justify-center gap-1.5 overflow-x-auto px-4 pb-4" onClick={(e) => e.stopPropagation()}>
           {par.map((t, i) => (
@@ -289,6 +289,7 @@ export default function Salgsradar({ apiKey }) {
   const [retryStarter, setRetryStarter] = useState(false);
   const [heroIdx, setHeroIdx] = useState(0);
   const [sammenlign, setSammenlign] = useState(null); // {idx} — før/etter-modal for AI-bilder
+  const swipeX = useRef(null); // touch-swipe i hero-galleriet
   useEffect(() => { setHeroIdx(0); setSammenlign(null); }, [valgtId]);
 
   useEffect(() => {
@@ -504,21 +505,29 @@ export default function Salgsradar({ apiKey }) {
             )}
           </>
         )} />
-        {/* Hero med slider — Airbnb-stil: store hvite pilknapper, teller, før/etter */}
-        <div className="group relative mt-3 overflow-hidden rounded-[12px] bg-[#f4f2ee]" data-testid="radar-galleri-hero">
+        {/* Hero med slider — Airbnb-stil: swipe på mobil, pilknapper, teller, før/etter */}
+        <div className="group relative mt-3 overflow-hidden rounded-[12px] bg-[#f4f2ee]" data-testid="radar-galleri-hero"
+          onTouchStart={(e) => { swipeX.current = e.touches[0].clientX; }}
+          onTouchEnd={(e) => {
+            if (swipeX.current == null || nB < 2) return;
+            const dx = e.changedTouches[0].clientX - swipeX.current;
+            swipeX.current = null;
+            if (dx > 45) setHeroIdx((hIdx - 1 + nB) % nB);
+            else if (dx < -45) setHeroIdx((hIdx + 1) % nB);
+          }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={hero.url} alt="" draggable={false}
             onClick={() => (hero.ai && aiPar.length ? setSammenlign({ idx: Math.min(hIdx, aiPar.length - 1) }) : setLightbox({ idx: hIdx }))}
             data-testid="radar-galleri-bilde" role="button" tabIndex={0}
-            className="h-[280px] w-full cursor-pointer object-cover transition-transform duration-500 sm:h-[340px]" />
+            className="h-[220px] w-full cursor-pointer object-cover transition-transform duration-500 min-[440px]:h-[260px] sm:h-[340px]" />
           {nB > 1 && (
             <>
               <button onClick={(e) => { e.stopPropagation(); setHeroIdx((hIdx - 1 + nB) % nB); }} aria-label="Forrige bilde" data-testid="radar-hero-forrige"
-                className="absolute left-3 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/95 text-[#1c1917] opacity-0 shadow-[0_2px_8px_rgba(0,0,0,0.18)] transition-all hover:scale-105 group-hover:opacity-100">
+                className="absolute left-2.5 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/95 text-[#1c1917] shadow-[0_2px_8px_rgba(0,0,0,0.18)] transition-all hover:scale-105 sm:left-3 lg:opacity-0 lg:group-hover:opacity-100">
                 <ChevronLeft className="h-4 w-4" />
               </button>
               <button onClick={(e) => { e.stopPropagation(); setHeroIdx((hIdx + 1) % nB); }} aria-label="Neste bilde" data-testid="radar-hero-neste"
-                className="absolute right-3 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/95 text-[#1c1917] opacity-0 shadow-[0_2px_8px_rgba(0,0,0,0.18)] transition-all hover:scale-105 group-hover:opacity-100">
+                className="absolute right-2.5 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/95 text-[#1c1917] shadow-[0_2px_8px_rgba(0,0,0,0.18)] transition-all hover:scale-105 sm:right-3 lg:opacity-0 lg:group-hover:opacity-100">
                 <ChevronRight className="h-4 w-4" />
               </button>
             </>
@@ -547,7 +556,7 @@ export default function Salgsradar({ apiKey }) {
                 <span className="absolute left-1 top-1 rounded-[3px] bg-[#8b5cf6]/90 px-1 py-px text-[7.5px] font-bold uppercase text-white">AI</span>
               ) : (
                 <button onClick={(e) => { e.stopPropagation(); stylBilde(valgt, b.kilde); }} disabled={!!styler} data-testid="radar-styl-bilde" title="Styl dette bildet med AI"
-                  className="absolute bottom-1 right-1 rounded-[5px] bg-black/55 p-1 text-white opacity-0 transition-opacity hover:bg-[#8b5cf6] group-hover/t:opacity-100 disabled:opacity-40">
+                  className="absolute bottom-1 right-1 rounded-[5px] bg-black/55 p-1 text-white transition-opacity hover:bg-[#8b5cf6] disabled:opacity-40 lg:opacity-0 lg:group-hover/t:opacity-100">
                   {styler === b.kilde ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wand2 className="h-3 w-3" />}
                 </button>
               )}
@@ -665,9 +674,9 @@ export default function Salgsradar({ apiKey }) {
         <div className="mt-3 grid grid-cols-3 gap-px overflow-hidden rounded-[10px] border border-black/[0.06] bg-black/[0.06]">
           {[['Vårt honorar', kr(rs.honorar), '#6d28d9'], ['Netto til eier', kr(rs.netto), '#1f7a45'],
             ['vs. i dag', rs.gevinst == null ? '–' : `${rs.gevinst >= 0 ? '+' : '−'}${kr(Math.abs(rs.gevinst))}`, rs.gevinst != null && rs.gevinst < 0 ? '#c2413b' : '#1f7a45']].map(([l, v, c]) => (
-            <div key={l} className="bg-[#fbfaf9] px-3.5 py-3">
-              <p className="text-[10px] font-medium uppercase tracking-[0.06em] text-[#a8a29a]">{l}</p>
-              <p className="mt-0.5 text-[15px] font-bold tabular-nums" style={{ ...heading, color: c }}>{v}<span className="text-[10.5px] font-medium text-[#b8b2a9]">/mnd</span></p>
+            <div key={l} className="bg-[#fbfaf9] px-2.5 py-3 sm:px-3.5">
+              <p className="text-[9.5px] font-medium uppercase tracking-[0.05em] text-[#a8a29a] sm:text-[10px] sm:tracking-[0.06em]">{l}</p>
+              <p className="mt-0.5 text-[13px] font-bold tabular-nums min-[420px]:text-[14px] sm:text-[15px]" style={{ ...heading, color: c }}>{v}<span className="text-[10px] font-medium text-[#b8b2a9] sm:text-[10.5px]">/mnd</span></p>
             </div>
           ))}
         </div>
@@ -749,38 +758,38 @@ export default function Salgsradar({ apiKey }) {
     return (
       <div className="flex h-full min-h-0 flex-col bg-white" data-testid="radar-skuff">
         {/* Panelhode */}
-        <div className="border-b border-black/[0.05] px-5 pb-4 pt-4 sm:px-7">
-          <div className="flex items-start gap-3">
+        <div className="border-b border-black/[0.05] px-4 pb-3.5 pt-3.5 sm:px-7 sm:pb-4 sm:pt-4">
+          <div className="flex items-start gap-2.5 sm:gap-3">
             <button onClick={() => { setValgtId(null); setUtvidet(false); }} data-testid="radar-skuff-lukk" aria-label="Lukk"
               className="mt-1 shrink-0 rounded-lg p-1.5 text-[#a8a29a] transition-colors hover:bg-[#f3f2f0] hover:text-[#333]">
               {splitt || utvidet ? <X className="h-[19px] w-[19px]" /> : <ArrowLeft className="h-[19px] w-[19px]" />}
             </button>
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
-                <h2 className="text-[21px] font-bold leading-tight tracking-[-0.015em] sm:text-[23px]" style={heading}>{valgt.adresse || valgt.tittel}</h2>
+                <h2 className="text-[19px] font-bold leading-tight tracking-[-0.015em] sm:text-[23px]" style={heading}>{valgt.adresse || valgt.tittel}</h2>
                 {valgt.kilde === 'agent' && <span className="rounded-md bg-[#f1ebfc] px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wide text-[#6d28d9]" title="Matet inn av overvåkningsagenten">Agent</span>}
               </div>
-              <p className="mt-1.5 flex flex-wrap items-center gap-x-3.5 gap-y-1 text-[13px] text-[#a8a29a]">
+              <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12.5px] text-[#a8a29a] sm:gap-x-3.5 sm:text-[13px]">
                 <span className="font-bold tabular-nums text-[#1c1917]" style={heading}>{kr(valgt.pris)}<span className="font-medium text-[#a8a29a]">/mnd</span></span>
                 {valgt.m2 ? <span className="flex items-center gap-1"><Ruler className="h-3.5 w-3.5" />{valgt.m2} m²</span> : null}
                 {valgt.soverom ? <span className="flex items-center gap-1"><BedDouble className="h-3.5 w-3.5" />{valgt.soverom} sov</span> : null}
-                {valgt.boligtype ? <span>{valgt.boligtype}</span> : null}
+                {valgt.boligtype ? <span className="hidden sm:inline">{valgt.boligtype}</span> : null}
                 {valgt.kontaktTlf ? <span className="flex items-center gap-1"><Phone className="h-3.5 w-3.5" />{valgt.kontaktTlf}</span> : null}
                 <a href={valgt.kildeUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1 font-semibold text-[#6d28d9] hover:underline">FINN <ExternalLink className="h-3.5 w-3.5" /></a>
               </p>
             </div>
-            <div className="flex shrink-0 items-center gap-2">
+            <div className="flex shrink-0 items-center gap-1 sm:gap-2">
               <button onClick={() => setUtvidet((u) => !u)} data-testid="radar-utvid" title={utvidet ? 'Minimer visningen' : 'Utvid til stor visning'}
-                className="rounded-lg p-2 text-[#a8a29a] transition-colors hover:bg-[#f4f0fb] hover:text-[#6d28d9]">
+                className="hidden rounded-lg p-2 text-[#a8a29a] transition-colors hover:bg-[#f4f0fb] hover:text-[#6d28d9] lg:block">
                 {utvidet ? <Minimize2 className="h-[17px] w-[17px]" /> : <Maximize2 className="h-[17px] w-[17px]" />}
               </button>
               <PotensialBadge p={valgt.potensial} stor />
             </div>
           </div>
-          <div className="mt-3.5 inline-flex flex-wrap items-center gap-0.5 rounded-[9px] border border-black/[0.06] bg-[#f7f6f3] p-0.5">
+          <div className="no-scrollbar mt-3 flex w-full items-center gap-0.5 overflow-x-auto rounded-[9px] border border-black/[0.06] bg-[#f7f6f3] p-0.5 sm:mt-3.5 sm:inline-flex sm:w-auto sm:flex-wrap sm:overflow-visible">
             {STATUSER.map((s) => (
               <button key={s.k} onClick={() => oppdater(valgt.id, { status: s.k })} disabled={autoAktiv} data-testid={`radar-status-${s.k}`}
-                className={`flex h-[26px] items-center gap-1.5 rounded-[7px] px-2.5 text-[11.5px] font-medium transition-all disabled:opacity-45 ${valgt.status === s.k ? 'bg-white text-[#1c1917] shadow-[0_1px_3px_rgba(28,25,23,0.10),inset_0_0_0_1px_rgba(0,0,0,0.04)]' : 'text-[#8a857c] hover:text-[#1c1917]'}`}>
+                className={`flex h-[26px] shrink-0 items-center gap-1.5 whitespace-nowrap rounded-[7px] px-2.5 text-[11.5px] font-medium transition-all disabled:opacity-45 ${valgt.status === s.k ? 'bg-white text-[#1c1917] shadow-[0_1px_3px_rgba(28,25,23,0.10),inset_0_0_0_1px_rgba(0,0,0,0.04)]' : 'text-[#8a857c] hover:text-[#1c1917]'}`}>
                 <span className="h-[6px] w-[6px] rounded-full" style={{ background: s.farge, opacity: valgt.status === s.k ? 1 : 0.45 }} />
                 {s.l}
               </button>
@@ -828,7 +837,7 @@ export default function Salgsradar({ apiKey }) {
           </div>
 
           {/* Panelfot */}
-          <div className="flex items-center gap-2 border-t border-black/[0.05] bg-white px-5 py-2.5 sm:px-7">
+          <div className="flex items-center gap-2 border-t border-black/[0.05] bg-white px-4 py-2.5 sm:px-7">
             {!sletteBekreft ? (
               <button onClick={() => setSletteBekreft(true)} data-testid="radar-slett" className="flex items-center gap-1.5 rounded-[7px] px-2.5 py-1.5 text-[12px] font-medium text-[#c2beb8] transition-colors hover:bg-[#fdf0ef] hover:text-[#c2413b]">
                 <Trash2 className="h-3.5 w-3.5" /> Slett lead
@@ -884,7 +893,7 @@ export default function Salgsradar({ apiKey }) {
             </div>
             <div className="flex shrink-0 items-center gap-1.5">
               <button onClick={hentAnnonse} disabled={henter || !url.trim()} data-testid="radar-hent-btn"
-                className={`${KNAPP_PRIMAER} h-9`}>
+                className={`${KNAPP_PRIMAER} h-9 flex-1 justify-center sm:flex-initial`}>
                 {henter ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />} Hent og analyser
               </button>
               <button onClick={() => { setVisNy(false); setUrl(''); }} data-testid="radar-ny-lukk" title="Lukk"
@@ -893,29 +902,38 @@ export default function Salgsradar({ apiKey }) {
               </button>
             </div>
           </div>
-          <p className="mt-2 pl-[46px] text-[11.5px] text-[#a8a29a]">Analyse og AI-bildeforbedring starter automatisk når annonsen er hentet.</p>
+          <p className="mt-2 text-[11.5px] text-[#a8a29a] sm:pl-[46px]">Analyse og AI-bildeforbedring starter automatisk når annonsen er hentet.</p>
         </div>
       )}
 
       {feil && <p className="mb-3 rounded-lg bg-[#fdf0ef] px-4 py-3 text-[13px] text-[#c2413b]" data-testid="radar-feil">{feil}</p>}
 
-      {/* Verktøylinje / bulk-linje */}
+      {/* Verktøylinje / bulk-linje — mobil: søk+kontroller øverst, filtre som scrollerad */}
       {utvalg.size === 0 ? (
         <div className="flex flex-wrap items-center gap-1.5 rounded-[12px] border border-black/[0.05] bg-white/85 px-2.5 py-2 shadow-[0_1px_3px_rgba(28,25,23,0.05)] backdrop-blur-md">
-          <span className="relative">
+          <span className="relative order-1 min-w-0 flex-1 lg:flex-none">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#c2beb8]" />
             <input value={sok} onChange={(e) => setSok(e.target.value)} placeholder="Søk adresse…" data-testid="radar-sok"
-              className="h-[28px] w-[150px] rounded-[7px] border border-black/[0.07] bg-white pl-8 pr-2.5 text-[12px] outline-none transition-all placeholder:text-[#c2beb8] focus:w-[200px] focus:border-[#1c1917]/25 sm:w-[170px]" />
+              className="h-[28px] w-full rounded-[7px] border border-black/[0.07] bg-white pl-8 pr-2.5 text-[12px] outline-none transition-all placeholder:text-[#c2beb8] focus:border-[#1c1917]/25 lg:w-[170px] lg:focus:w-[200px]" />
           </span>
-          <span className="mx-1 hidden h-4 w-px bg-black/[0.07] sm:block" />
-          {[{ k: 'alle', l: 'Alle' }, ...STATUSER].map((s) => (
-            <button key={s.k} onClick={() => setFilter(s.k)} data-testid={`radar-filter-${s.k}`}
-              className={`flex h-[26px] shrink-0 items-center gap-1.5 rounded-[6px] px-2.5 text-[12px] font-medium transition-all ${filter === s.k ? 'bg-[#1c1917] text-white shadow-[0_1px_3px_rgba(28,25,23,0.25)]' : 'text-[#6f6a61] hover:text-[#1c1917]'}`}>
-              {s.farge && <span className="h-[5px] w-[5px] rounded-full" style={{ background: filter === s.k ? '#fff' : s.farge }} />}
-              {s.l} <span className={`tabular-nums ${filter === s.k ? 'text-white/50' : 'text-[#c2beb8]'}`}>{antall[s.k] || 0}</span>
-            </button>
-          ))}
-          <span className="ml-auto flex items-center gap-1.5">
+          <span className="order-3 mx-1 hidden h-4 w-px bg-black/[0.07] lg:block" />
+          <div className="no-scrollbar order-4 -mx-1 flex w-full items-center gap-1 overflow-x-auto px-1 lg:mx-0 lg:w-auto lg:flex-wrap lg:overflow-visible lg:px-0">
+            {[{ k: 'alle', l: 'Alle' }, ...STATUSER].map((s) => (
+              <button key={s.k} onClick={() => setFilter(s.k)} data-testid={`radar-filter-${s.k}`}
+                className={`flex h-[26px] shrink-0 items-center gap-1.5 whitespace-nowrap rounded-[6px] px-2.5 text-[12px] font-medium transition-all ${filter === s.k ? 'bg-[#1c1917] text-white shadow-[0_1px_3px_rgba(28,25,23,0.25)]' : 'text-[#6f6a61] hover:text-[#1c1917]'}`}>
+                {s.farge && <span className="h-[5px] w-[5px] rounded-full" style={{ background: filter === s.k ? '#fff' : s.farge }} />}
+                {s.l} <span className={`tabular-nums ${filter === s.k ? 'text-white/50' : 'text-[#c2beb8]'}`}>{antall[s.k] || 0}</span>
+              </button>
+            ))}
+            <select value={sort.key} onChange={(e) => setSort({ key: e.target.value, dir: 'desc' })} data-testid="radar-sort-mobil" aria-label="Sortering"
+              className="ml-auto h-[26px] shrink-0 rounded-[7px] border border-black/[0.08] bg-white px-1.5 text-[11.5px] font-medium text-[#57534e] outline-none lg:hidden">
+              <option value="potensial">Potensial</option>
+              <option value="kvalitet">Kvalitet</option>
+              <option value="nyeste">Nyeste</option>
+              <option value="pris">Leie</option>
+            </select>
+          </div>
+          <span className="order-2 flex shrink-0 items-center gap-1.5 lg:order-5 lg:ml-auto">
             <span className="flex overflow-hidden rounded-[7px] border border-black/[0.08] bg-white shadow-[0_1px_2px_rgba(28,25,23,0.04)]">
               <button onClick={() => setVisning('liste')} data-testid="radar-visning-liste" title="Listevisning"
                 className={`flex h-[28px] w-9 items-center justify-center transition-colors ${visning === 'liste' ? 'bg-[#1c1917] text-white' : 'text-[#a8a29a] hover:text-[#1c1917]'}`}>
@@ -926,16 +944,16 @@ export default function Salgsradar({ apiKey }) {
                 <Table2 className="h-[15px] w-[15px]" />
               </button>
             </span>
-            <select value={sort.key} onChange={(e) => setSort({ key: e.target.value, dir: 'desc' })} data-testid="radar-sort"
-              className="h-[28px] rounded-[7px] border border-black/[0.08] bg-white px-2 text-[12px] font-medium text-[#57534e] shadow-[0_1px_2px_rgba(28,25,23,0.04)] outline-none focus:border-[#1c1917]/25">
+            <select value={sort.key} onChange={(e) => setSort({ key: e.target.value, dir: 'desc' })} data-testid="radar-sort" aria-label="Sortering"
+              className="hidden h-[28px] rounded-[7px] border border-black/[0.08] bg-white px-2 text-[12px] font-medium text-[#57534e] shadow-[0_1px_2px_rgba(28,25,23,0.04)] outline-none focus:border-[#1c1917]/25 lg:block">
               <option value="potensial">Høyest potensial</option>
               <option value="kvalitet">Annonsekvalitet</option>
               <option value="nyeste">Nyeste først</option>
               <option value="pris">Høyest leie</option>
             </select>
             <button onClick={() => setVisNy((v) => !v)} data-testid="radar-ny-btn" title="Legg til ny FINN-annonse"
-              className="flex h-[28px] items-center gap-1 rounded-[7px] bg-gradient-to-b from-[#2b2825] to-[#131110] pl-2 pr-3 text-[12px] font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.09),0_1px_2px_rgba(28,25,23,0.2)] transition-all hover:from-[#211f1c] hover:to-[#0a0908] active:scale-[0.98]">
-              <Plus className="h-[14px] w-[14px]" /> Ny annonse
+              className="flex h-[28px] items-center gap-1 rounded-[7px] bg-gradient-to-b from-[#2b2825] to-[#131110] px-2 text-[12px] font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.09),0_1px_2px_rgba(28,25,23,0.2)] transition-all hover:from-[#211f1c] hover:to-[#0a0908] active:scale-[0.98] sm:pr-3">
+              <Plus className="h-[14px] w-[14px]" /> <span className="hidden sm:inline">Ny annonse</span>
             </button>
           </span>
         </div>
