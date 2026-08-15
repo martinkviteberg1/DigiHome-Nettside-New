@@ -118,21 +118,23 @@ function ForEtter({ forUrl, etterUrl, nokkel, etterEtikett = 'AI-stylet \u00b7 i
   return (
     <div
       ref={boks}
-      className="relative cursor-ew-resize select-none overflow-hidden rounded-2xl bg-[#26232a]"
-      style={{ touchAction: 'none', minHeight: 220 }}
+      className="relative aspect-[16/10] cursor-ew-resize select-none overflow-hidden rounded-2xl bg-[#26232a]"
+      style={{ touchAction: 'none' }}
       onPointerDown={(e) => { drar.current = true; brukerHarDratt.current = true; try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) {} flytt(e.clientX); }}
       onPointerMove={(e) => { if (drar.current) flytt(e.clientX); }}
       onPointerUp={() => { drar.current = false; }}
       onPointerCancel={() => { drar.current = false; }}
     >
-      {/* Etter (AI-stylet) — basen som gir høyden */}
+      {/* Fast ramme (aspect 16/10) — BEGGE bilder croppes identisk med
+          object-cover/center, slik at før og etter alltid ligger i register
+          selv om AI-bildet har et annet aspektforhold enn originalen. */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={etterUrl} alt="AI-stylet illustrasjon av boligen" className="block h-auto max-h-[620px] w-full object-cover" draggable={false} data-testid="tilbud-hovedbilde" />
+      <img src={etterUrl} alt="AI-stylet illustrasjon av boligen" className="absolute inset-0 h-full w-full object-cover object-center" draggable={false} data-testid="tilbud-hovedbilde" />
 
       {/* Før (original) — klippes til venstre for delelinjen */}
       <div className="absolute inset-0" style={{ clipPath: `inset(0 ${100 - pos}% 0 0)` }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={forUrl} alt="Original fra annonsen" className="absolute inset-0 h-full w-full object-cover" draggable={false} />
+        <img src={forUrl} alt="Original fra annonsen" className="absolute inset-0 h-full w-full object-cover object-center" draggable={false} />
       </div>
 
       {/* Delelinje + håndtak */}
@@ -361,6 +363,7 @@ export default function TilbudSide() {
   const [sendt, setSendt] = useState(false);
   const [aktivStylet, setAktivStylet] = useState(0);
   const [visBunn, setVisBunn] = useState(false);
+  const [prog, setProg] = useState(0);
 
   useEffect(() => {
     if (!slug) return;
@@ -375,12 +378,14 @@ export default function TilbudSide() {
     })();
   }, [slug]);
 
-  // Sticky bunn-CTA på mobil: vises etter hero, skjules når kontaktseksjonen er synlig
+  // Sticky bunn-CTA på mobil + scroll-fremdrift i toppbaren
   useEffect(() => {
     const sjekk = () => {
       const kontakt = document.getElementById('kontakt');
       const kontaktSynlig = kontakt ? kontakt.getBoundingClientRect().top < window.innerHeight - 80 : false;
       setVisBunn(window.scrollY > 560 && !kontaktSynlig);
+      const total = document.documentElement.scrollHeight - window.innerHeight;
+      setProg(total > 0 ? Math.min(1, window.scrollY / total) : 0);
     };
     window.addEventListener('scroll', sjekk, { passive: true });
     sjekk();
@@ -443,7 +448,7 @@ export default function TilbudSide() {
   return (
     <div className="min-h-screen bg-[#faf9f7] text-[#1c1917]" data-testid="tilbud-side">
 
-      {/* ── Sticky toppbar ── */}
+      {/* ── Sticky toppbar med scroll-fremdrift ── */}
       <header className="sticky top-0 z-40 border-b border-white/[0.07] bg-[#131114]">
         <div className="mx-auto flex h-14 max-w-[920px] items-center justify-between px-5 sm:px-8">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -456,6 +461,7 @@ export default function TilbudSide() {
             </button>
           </div>
         </div>
+        <div className="absolute bottom-0 left-0 h-[2px] bg-[#8b5cf6] transition-[width] duration-150 ease-out" style={{ width: `${prog * 100}%` }} aria-hidden="true" />
       </header>
 
       {/* ── Mørk hero ── */}
@@ -477,6 +483,19 @@ export default function TilbudSide() {
               {tilbud.tekst.heroIntro}
             </p>
           )}
+
+          {/* Verdiløftet — kort og umulig å misforstå */}
+          <div className="mt-7 flex flex-wrap gap-x-6 gap-y-2.5" data-testid="tilbud-hero-pilarer">
+            {['Du leverer nøklene — vi gjør resten', 'Eiendomsmeglere med utleie som fag', 'Én fast kontakt hele veien'].map((t) => (
+              <span key={t} className="flex items-center gap-2 text-[12.5px] font-medium text-white/60">
+                <svg width="14" height="14" viewBox="0 0 18 18" fill="none" className="shrink-0" aria-hidden="true">
+                  <circle cx="9" cy="9" r="8.25" stroke="#7fd4a1" strokeWidth="1.2" opacity="0.7" />
+                  <path d="m5.6 9.2 2.2 2.2 4.6-4.8" stroke="#7fd4a1" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                {t}
+              </span>
+            ))}
+          </div>
 
           {/* Nøkkeltall med teller-animasjon */}
           <div className="mt-10 grid grid-cols-1 gap-px overflow-hidden rounded-xl border border-white/[0.08] bg-white/[0.08] sm:grid-cols-3">
@@ -581,6 +600,33 @@ export default function TilbudSide() {
           </Avsnitt>
         )}
 
+        {/* ── Megler-manifestet: hvorfor DigiHome — editoriell statement ── */}
+        <Avsnitt className="mt-14 sm:mt-20">
+          <div className="rounded-2xl border border-black/[0.06] bg-white px-6 py-8 sm:px-10 sm:py-11" data-testid="tilbud-manifest">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#8b5cf6]">Hvorfor DigiHome</p>
+            <h2 className="mt-3 max-w-[640px] text-[24px] font-bold leading-[1.15] tracking-[-0.015em] sm:text-[32px]" style={heading}>
+              Å selge inn en bolig er et fag.<span className="text-[#a8a29e]"> Det er faget vårt.</span>
+            </h2>
+            <p className="mt-4 max-w-[620px] text-[14px] leading-relaxed text-[#57534e] sm:text-[15px]">
+              Vi er eiendomsmeglere med utleie som spesialfelt. Presentasjon, prissetting og utvelgelse av riktig leietaker
+              er jobben vår hver eneste dag — og det er derfor boligene våre leies ut raskt, til riktig pris, til folk som
+              betaler i tide. Du trenger ikke løfte en finger: <span className="font-semibold text-[#1c1917]">du leverer nøklene, vi håndterer alt det praktiske.</span>
+            </p>
+            <div className="mt-8 grid grid-cols-1 gap-px overflow-hidden rounded-xl border border-black/[0.06] bg-black/[0.06] sm:grid-cols-3">
+              {[
+                ['Meglerkompetanse', 'Annonse, foto, pris og forhandling — håndtert av folk som selger boliger til daglig.'],
+                ['Egen portefølje i Bergen', 'Vi priser mot faktiske leieinntekter i vår egen portefølje — ikke synsing.'],
+                ['Ett kontaktpunkt', 'Én fast person for deg og leietaker, fra første visning til siste rapport.'],
+              ].map(([t, d]) => (
+                <div key={t} className="bg-[#fbfaf8] px-5 py-5">
+                  <p className="text-[13.5px] font-bold" style={heading}>{t}</p>
+                  <p className="mt-1.5 text-[12px] leading-relaxed text-[#78716c]">{d}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </Avsnitt>
+
         {/* ── 02 · Regnestykket ── */}
         <Avsnitt className="mt-14 sm:mt-20">
           <Merke nr={nr(1)} tekst="Økonomien" />
@@ -625,12 +671,12 @@ export default function TilbudSide() {
           <h2 className="mt-2.5 text-[20px] font-bold tracking-[-0.01em] sm:text-[24px]" style={heading}>Fra prat til utleid — slik jobber vi</h2>
           <div className="mt-6">
             {[
-              ['Uforpliktende prat', 'Vi ringer deg, går gjennom tallene og svarer på alt du lurer på.'],
-              ['Befaring og prisvurdering', 'Vi ser boligen og bekrefter leien vi anbefaler — basert på porteføljen vår i Bergen.'],
-              ['Annonse, foto og styling', 'Boligen presenteres profesjonelt — slik bildene over viser.'],
-              ['Visninger og utvelgelse', 'Vi møter interessentene, sjekker referanser og finner riktig leietaker.'],
-              ['Kontrakt og løpende forvaltning', 'Trygg leiekontrakt, depositumskonto og én fast kontakt gjennom hele leieforholdet.'],
-            ].map(([t, d], i, arr) => (
+              ['I dag', 'Uforpliktende prat', 'Vi ringer deg, går gjennom tallene og svarer på alt du lurer på.'],
+              ['Dag 1–2', 'Befaring og nøkler', 'Vi ser boligen, bekrefter leien vi anbefaler — og du leverer nøklene. Så er din del av jobben gjort.'],
+              ['Innen 24 timer', 'Annonsen publiseres', 'Den er allerede ferdig produsert — profesjonelle bilder, selgende tekst og riktig pris. Vi trykker publiser.'],
+              ['Uke 1–2', 'Visninger og utvelgelse', 'Vi møter interessentene, sjekker referanser og kredittverdighet, og finner riktig leietaker.'],
+              ['Innflytting', 'Kontrakt og løpende forvaltning', 'Trygg leiekontrakt, depositumskonto og overtakelsesprotokoll — så følger vi opp leieforholdet mens du får rapporten.'],
+            ].map(([tid, t, d], i, arr) => (
               <div key={t} className="relative flex gap-4 sm:gap-6">
                 <div className="flex flex-col items-center">
                   <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-black/[0.1] bg-white text-[11.5px] font-bold text-[#1c1917]" style={heading}>
@@ -639,7 +685,8 @@ export default function TilbudSide() {
                   {i < arr.length - 1 && <div className="w-px flex-1 bg-black/[0.08]" />}
                 </div>
                 <div className={i < arr.length - 1 ? 'pb-6' : ''}>
-                  <p className="pt-1 text-[14px] font-bold" style={heading}>{t}</p>
+                  <p className="pt-1 text-[10.5px] font-bold uppercase tracking-[0.1em] text-[#8b5cf6]">{tid}</p>
+                  <p className="mt-0.5 text-[14px] font-bold" style={heading}>{t}</p>
                   <p className="mt-1 max-w-[560px] text-[12.5px] leading-relaxed text-[#78716c]">{d}</p>
                 </div>
               </div>
@@ -651,14 +698,16 @@ export default function TilbudSide() {
         <Avsnitt className="mt-14 sm:mt-20">
           <Merke nr={nr(3)} tekst="Alt inkludert i honoraret" />
           <h2 className="mt-2.5 text-[20px] font-bold tracking-[-0.01em] sm:text-[24px]" style={heading}>Dette tar vi oss av</h2>
-          <div className="mt-5 grid grid-cols-1 overflow-hidden rounded-2xl border border-black/[0.06] bg-white sm:grid-cols-2">
+          <div className="mt-5 grid grid-cols-1 gap-px overflow-hidden rounded-2xl border border-black/[0.06] bg-black/[0.05] sm:grid-cols-2">
             {[
-              ['Annonsering som treffer', 'Profesjonell annonse med styling — og prisen markedet faktisk betaler.'],
-              ['Visninger og utvelgelse', 'Vi møter interessentene, sjekker referanser og finner riktig leietaker.'],
-              ['Kontrakt og depositum', 'Trygg leiekontrakt, depositumskonto og innflytting — alt dokumentert.'],
+              ['Foto og styling', 'Boligen presenteres som i et boligmagasin — slik bildene over viser.'],
+              ['Annonsering som treffer', 'Selgende annonse, riktig pris og markedsføring der leietakerne faktisk leter.'],
+              ['Visninger', 'Vi møter alle interessentene og viser boligen frem på sitt beste.'],
+              ['Screening av leietaker', 'Referanser og kredittsjekk — vi velger folk som betaler i tide og tar vare på boligen.'],
+              ['Kontrakt, depositum og innflytting', 'Trygg leiekontrakt, depositumskonto og overtakelsesprotokoll — alt dokumentert.'],
               ['Oppfølging hele leieforholdet', 'Én kontakt for leietaker, purringer og småting — du får bare rapporten.'],
-            ].map(([t, d], i) => (
-              <div key={t} className={`flex gap-3.5 px-5 py-5 sm:px-6 ${i < 2 ? 'border-b border-black/[0.05]' : ''} ${i % 2 === 0 ? 'sm:border-r sm:border-black/[0.05]' : ''} ${i === 2 ? 'border-b border-black/[0.05] sm:border-b-0' : ''}`}>
+            ].map(([t, d]) => (
+              <div key={t} className="flex gap-3.5 bg-white px-5 py-5 sm:px-6">
                 <svg width="18" height="18" viewBox="0 0 18 18" fill="none" className="mt-0.5 shrink-0" aria-hidden="true">
                   <circle cx="9" cy="9" r="8.25" stroke="#1f7a45" strokeWidth="1.2" />
                   <path d="m5.6 9.2 2.2 2.2 4.6-4.8" stroke="#1f7a45" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -679,6 +728,8 @@ export default function TilbudSide() {
           <div className="mt-5 divide-y divide-black/[0.05] rounded-2xl border border-black/[0.06] bg-white">
             {[
               ['Er dette bindende?', 'Nei. Dette er et uforpliktende tilbud basert på annonsen din. Du bestemmer alt — vi tar bare en prat først.'],
+              ['Hva må jeg gjøre selv?', 'I praksis ingenting. Du leverer nøklene — vi håndterer foto, annonse, visninger, kontrakt, innflytting og oppfølging. Du holdes orientert hele veien.'],
+              ['Hvor raskt kan boligen leies ut?', 'Annonsen er allerede ferdig produsert og kan være live innen 24 timer etter avtale. Visninger starter gjerne samme uke.'],
               ['Hva koster det?', `Honoraret er ${r.honorarPct} % av månedsleien, eks. mva. Regnestykket over viser nøyaktig hva du sitter igjen med — ingen skjulte kostnader.`],
               ['Hvordan kommer vi i gang?', 'Legg igjen navn og nummer under, så ringer vi deg for en kort prat og avtaler befaring om du vil gå videre.'],
             ].map(([q, a]) => (

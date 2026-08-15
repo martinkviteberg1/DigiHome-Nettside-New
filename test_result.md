@@ -6009,3 +6009,16 @@ agent_communication:
     -message: "Ny funksjon: annonse-preview. Fokusert test: (1) GET /api/tilbud?slug= for Nyhavn 7-leaden (finn slug via admin leads-API, felt tilbudSlug) skal ha annonse:{tittel,beskrivelse,hoydepunkter[],fasiliteter[],etasje,mobler}. (2) Sikkerhet: tilbud-responsen skal ALDRI inneholde interne analysefelt (salgskraft, deler, potensialScore, funn, finnMelding, notat, kontaktLogg, kontaktTlf, kontaktNavn). (3) Lead uten ai.annonseUtkast → annonse: null. Opprett evt. én testlead via ingest (tom bilder-array) uten å vente på analyse for null-testen, slett etterpå. IKKE rør ekte leads."
     -agent: "testing"
     -message: "✅ ANNONSE-PREVIEW TESTING COMPLETE - ALL 4 TESTS PASSED (100% success rate). Comprehensive verification of new ad preview functionality: (T1) Annonse object in tilbud API - Nyhavn 7 lead has complete annonse with tittel (55 chars), beskrivelse (483 chars with \\n\\n), hoydepunkter (5 items), fasiliteter (6 items), etasje and mobler fields ✓. (T2) Security - NO internal fields leaked (checked: salgskraft, deler, potensialScore, annonseScore, bildeVurdering, funn, finnMelding, salgsvinkel, notat, kontaktLogg, kontaktTlf, kontaktNavn, prisHistorikk) ✓. (T3) Annonse null without AI draft - created test lead without 'ai' field, verified annonse=null in response ✓. (T4) Regression - invalid slug returns 404, Nyhavn 7 has regnestykke/stylet/bilder/tekst working ✓. CRITICAL: Production lead 'Nyhavn 7' was only READ (not modified). Test lead created directly in MongoDB (bypassing auto-pipeline) and deleted after testing. All safety rules followed. No issues found. Backend test created at /app/backend_test_annonse_preview.py for future regression testing."
+
+frontend:
+  - task: "Verdensklasse-løft av tilbudssiden (/app/app/tilbud/[slug]/page.js): (1) ForEtter-FIKS — fast aspect-[16/10]-ramme der begge bilder rendres absolute+object-cover/center slik at før/etter alltid ligger i register selv med ulikt aspektforhold (dette var den rapporterte «rare» før/etter-feilen). (2) Hero-verdiløfte: tre pilarer «Du leverer nøklene — vi gjør resten» osv. (3) Ny megler-manifest-seksjon «Å selge inn en bolig er et fag» med tre verdi-kort. (4) Prosess med tidsetiketter (I dag/Dag 1-2/Innen 24 timer/Uke 1-2/Innflytting). (5) «Dette tar vi oss av» utvidet 4→6 leveranser med gap-px hairline-grid. (6) FAQ +2 spørsmål (Hva må jeg gjøre selv / Hvor raskt). (7) Scroll-fremdriftslinje i toppbaren."
+    implemented: true
+    working: "NA"
+    file: "/app/app/tilbud/[slug]/page.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "Screenshot-verifisert desktop (1920px) og mobil (390px): før/etter i perfekt register, manifest, tidslinje, 6-punkts grid, sticky bunn-CTA og fremdriftslinje fungerer. KUN frontend-endringer — ingen backendtest nødvendig. Frontend-testagent IKKE kjørt (krever brukergodkjenning)."
