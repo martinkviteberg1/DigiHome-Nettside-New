@@ -308,6 +308,13 @@ export default function TilbudSide() {
             {fakta.length ? <span className="text-white/30"> · {fakta.join(' · ')}</span> : null}
           </p>
 
+          {/* Personlig AI-intro (redigert i admin) — vises kun når den finnes */}
+          {tilbud.tekst?.heroIntro && (
+            <p className="mt-5 max-w-[600px] border-l-2 border-[#8b5cf6]/60 pl-4 text-[14px] leading-relaxed text-white/65" data-testid="tilbud-hero-intro">
+              {tilbud.tekst.heroIntro}
+            </p>
+          )}
+
           {/* Nøkkeltall med teller-animasjon */}
           <div className="mt-10 grid grid-cols-1 gap-px overflow-hidden rounded-xl border border-white/[0.08] bg-white/[0.08] sm:grid-cols-3">
             {[
@@ -383,6 +390,18 @@ export default function TilbudSide() {
             </div>
           </section>
         ) : null}
+
+        {/* ── Potensialet vi ser (personlig AI-tekst, positivt innrammet) ── */}
+        {tilbud.tekst?.potensialTekst && (
+          <Avsnitt className="mt-12 sm:mt-16">
+            <div className="rounded-2xl border border-black/[0.06] bg-white px-6 py-6 sm:px-8 sm:py-7" data-testid="tilbud-potensial">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#8b5cf6]">Potensialet vi ser</p>
+              <p className="mt-3 max-w-[680px] text-[15px] leading-relaxed text-[#44403c] sm:text-[16px]" style={heading}>
+                «{tilbud.tekst.potensialTekst}»
+              </p>
+            </div>
+          </Avsnitt>
+        )}
 
         {/* ── 02 · Regnestykket ── */}
         <Avsnitt className="mt-14 sm:mt-20">

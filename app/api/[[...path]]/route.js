@@ -62,7 +62,7 @@ import { computeLlmUsageDashboard, getModelOverrides, setModelOverride, logImage
 import { logExtUsage, summarizeExtUsage, getPlatformUsage } from '@/lib/ext-usage';
 import { getFinanceSettings, setFinanceSettings, listCosts, listActiveCosts, upsertCost, deleteCost, listContracts, upsertContract, deleteContract, listEvents, upsertEvent, deleteEvent, computeResultat, computeLikviditet, computeFinanceOverview, computeTrends, captureSnapshot, computeInvestorMetrics, computeForecast, computeBoardPack, computeCustomers, computePlatformCustomers } from '@/lib/finance';
 import { listFellesKostnader, upsertFellesKostnad, slettFellesKostnad, migrerFellesKostnader } from '@/lib/kostnader';
-import { finnKodeFraUrl, hentFinnHtml, parseFinnAnnonse, beregnAnalyse, opprettLead, validerIngestAnnonse, listLeads as radarListLeads, oppdaterLead as radarOppdaterLead, slettLead as radarSlettLead, stilBilde, lagreStyletBilde, hentStyletBilde, hentTilbud, registrerTilbudKontakt, tilbudsRegnestykke, STILER as RADAR_STILER } from '@/lib/salgsradar';
+import { finnKodeFraUrl, hentFinnHtml, parseFinnAnnonse, beregnAnalyse, opprettLead, validerIngestAnnonse, analyserAnnonse, slettLeads as radarSlettLeads, listLeads as radarListLeads, oppdaterLead as radarOppdaterLead, slettLead as radarSlettLead, stilBilde, lagreStyletBilde, hentStyletBilde, hentTilbud, registrerTilbudKontakt, tilbudsRegnestykke, STILER as RADAR_STILER } from '@/lib/salgsradar';
 import { syncContractsFromPlatform, syncCustomersFromPlatform, maybeAutoSyncFinance, getFinanceSyncMeta } from '@/lib/contracts-sync';
 import { enqueueInterest as deliverInterest, retryInterestWebhooks, webhookTarget as interestWebhookTarget, platformInboxUrl, platformThreadUrl, platformUnitUrl, deliveryView, OUTBOX_COLL as INTEREST_OUTBOX } from '@/lib/interest-webhook';
 import { notifyStatus, removeSuppression } from '@/lib/notify-status';
@@ -3802,6 +3802,24 @@ async function handleRoute(request, { params }) {
       const rSrD = await radarSlettLead(db, idSrD);
       if (!rSrD.ok) return cors(NextResponse.json({ ok: false, error: rSrD.error }, { status: rSrD.status || 404 }));
       return cors(NextResponse.json({ ok: true }));
+    }
+    // Bulk-sletting: {ids: [...]} — multivalg i admin (maks 100)
+    if (route === '/admin/salgsradar/slett-mange' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let bSrM = {}; try { bSrM = await request.json(); } catch (e) {}
+      const rSrM = await radarSlettLeads(db, bSrM.ids);
+      if (!rSrM.ok) return cors(NextResponse.json({ ok: false, error: rSrM.error }, { status: rSrM.status || 400 }));
+      return cors(NextResponse.json({ ok: true, slettet: rSrM.slettet }));
+    }
+    // Full AI-analyse av annonsen (Gemini, ett kall — caches på leaden).
+    // Kan ta 15-40 sek: laster ned bilder, måler piksler og lar AI vurdere.
+    if (route === '/admin/salgsradar/analyser' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!rateLimit(`radar-analyse:${clientIp(request)}`, 10)) return cors(NextResponse.json({ error: 'For mange analyser — vent litt' }, { status: 429 }));
+      let bAn = {}; try { bAn = await request.json(); } catch (e) {}
+      const rAn = await analyserAnnonse(db, bAn.leadId);
+      if (!rAn.ok) return cors(NextResponse.json({ ok: false, error: rAn.error }, { status: rAn.status || 502 }));
+      return cors(NextResponse.json({ ok: true, lead: rAn.lead }));
     }
     // AI-styling av ett annonsebilde (Nano Banana) — kan ta 20–60 sek.
     if (route === '/admin/salgsradar/stil' && method === 'POST') {
