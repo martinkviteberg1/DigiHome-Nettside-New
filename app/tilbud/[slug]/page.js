@@ -188,6 +188,168 @@ function Sammenligning({ r }) {
   );
 }
 
+/* ── Annonse-preview: den ferdigproduserte annonsen i nøytral markedsplass-stil.
+   Ser ut som en ekte boligannonse (galleri, pris, nøkkelinfo, fasiliteter,
+   beskrivelse) — uten tredjeparts logo. Stylede AI-bilder først, merket. ── */
+function AnnonsePreview({ tilbud, r }) {
+  const a = tilbud.annonse;
+  const [idx, setIdx] = useState(0);
+  const [dode, setDode] = useState([]);
+  const bilder = useMemo(() => {
+    const stylet = tilbud.stylet || [];
+    const kilder = new Set(stylet.map((s) => s.kildeUrl).filter(Boolean));
+    const ut = stylet.map((s) => ({ url: `/api/tilbud/bilde?id=${s.id}`, ai: true }));
+    for (const b of (tilbud.bilder || [])) if (!kilder.has(b)) ut.push({ url: b, ai: false });
+    return ut.filter((b) => !dode.includes(b.url));
+  }, [tilbud, dode]);
+  const akt = bilder.length ? bilder[Math.min(idx, bilder.length - 1)] : null;
+  const bytt = (retn) => setIdx((i) => (i + retn + bilder.length) % bilder.length);
+  const fakta = [
+    ['Boligtype', tilbud.boligtype],
+    ['Soverom', tilbud.soverom],
+    ['Areal', tilbud.m2 ? `${tilbud.m2} m\u00B2` : null],
+    ['Etasje', a.etasje ? `${a.etasje}.` : null],
+    ['Møblering', a.mobler],
+  ].filter(([, v]) => v);
+  const leie = Number(r.anbefaltLeie) || 0;
+
+  return (
+    <div data-testid="tilbud-annonse-preview">
+      {/* Selve annonse-mockupen */}
+      <div className="overflow-hidden rounded-2xl bg-white shadow-[0_16px_60px_rgba(0,0,0,0.1)] ring-1 ring-black/[0.08]">
+        {/* «Markedsplass»-topplinje */}
+        <div className="flex items-center justify-between border-b border-black/[0.06] bg-[#fbfaf8] px-4 py-2.5 sm:px-6">
+          <span className="rounded-md bg-[#1c1917] px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.08em] text-white">Til leie</span>
+          <span className="text-[10.5px] font-semibold uppercase tracking-[0.1em] text-[#a8a29e]">Forhåndsvisning av annonsen din</span>
+        </div>
+
+        {/* Galleri */}
+        {akt && (
+          <div className="relative bg-[#1c1917]">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={akt.url} alt="Bilde fra annonsen" className="block aspect-[16/10] w-full object-cover" draggable={false}
+              data-testid="tilbud-annonse-bilde"
+              onError={() => setDode((d) => (d.includes(akt.url) ? d : [...d, akt.url]))} />
+            {akt.ai && (
+              <span className="pointer-events-none absolute left-3 top-3 rounded-md bg-black/60 px-2 py-0.5 text-[10px] font-semibold text-white">AI-forbedret foto</span>
+            )}
+            {bilder.length > 1 && (
+              <>
+                {[['\u2039', -1, 'left-2', 'Forrige bilde'], ['\u203A', 1, 'right-2', 'Neste bilde']].map(([tegn, retn, pos, label]) => (
+                  <button key={label} type="button" aria-label={label} onClick={() => bytt(retn)}
+                    className={`absolute ${pos} top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-black/45 text-[20px] leading-none text-white backdrop-blur-sm transition-colors hover:bg-black/65`}>
+                    {tegn}
+                  </button>
+                ))}
+                <span className="pointer-events-none absolute bottom-3 right-3 rounded-md bg-black/55 px-2 py-0.5 text-[10.5px] font-semibold tabular-nums text-white">
+                  {Math.min(idx, bilder.length - 1) + 1} / {bilder.length}
+                </span>
+              </>
+            )}
+          </div>
+        )}
+        {bilder.length > 1 && (
+          <div className="flex gap-1.5 overflow-x-auto border-b border-black/[0.05] bg-[#fbfaf8] px-3 py-2.5 sm:px-4">
+            {bilder.map((b, i) => (
+              <button key={b.url} type="button" onClick={() => setIdx(i)} className="relative shrink-0">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={b.url} alt="" loading="lazy"
+                  onError={() => setDode((d) => (d.includes(b.url) ? d : [...d, b.url]))}
+                  className={`h-12 w-[72px] rounded-md object-cover transition-all ${i === Math.min(idx, bilder.length - 1) ? 'ring-2 ring-[#1c1917]' : 'opacity-55 hover:opacity-100'}`} />
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Tittel, adresse, pris */}
+        <div className="px-4 pb-2 pt-5 sm:px-6">
+          <h3 className="text-[19px] font-bold leading-snug tracking-[-0.01em] sm:text-[22px]" style={heading} data-testid="tilbud-annonse-tittel">{a.tittel}</h3>
+          <p className="mt-1 text-[12.5px] text-[#78716c]">{tilbud.adresse}{tilbud.postnr ? `, ${tilbud.postnr} Bergen` : ', Bergen'}</p>
+          {leie > 0 && (
+            <div className="mt-3 flex flex-wrap items-baseline gap-x-4 gap-y-1">
+              <span className="text-[24px] font-bold tabular-nums tracking-[-0.01em]" style={heading}>{tall(leie)} kr <span className="text-[14px] font-semibold text-[#78716c]">/mnd</span></span>
+              <span className="text-[12px] text-[#a8a29e]">Depositum: {tall(leie * 3)} kr</span>
+            </div>
+          )}
+        </div>
+
+        {/* Nøkkelinfo */}
+        {fakta.length > 0 && (
+          <div className={`mx-4 mt-3 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-black/[0.06] bg-black/[0.06] sm:mx-6 ${fakta.length >= 5 ? 'sm:grid-cols-5' : fakta.length === 4 ? 'sm:grid-cols-4' : fakta.length === 3 ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
+            {fakta.map(([l, v]) => (
+              <div key={l} className="bg-[#fbfaf8] px-3.5 py-2.5">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#a8a29e]">{l}</p>
+                <p className="mt-0.5 text-[13px] font-bold capitalize" style={heading}>{v}</p>
+              </div>
+            ))}
+            {/* Filler så gridet aldri viser et «hull» på mobil ved odde antall */}
+            {fakta.length % 2 === 1 && <div className="bg-[#fbfaf8] sm:hidden" />}
+          </div>
+        )}
+
+        {/* Høydepunkter + fasiliteter */}
+        <div className="px-4 pt-4 sm:px-6">
+          {(a.hoydepunkter || []).length > 0 && (
+            <ul className="grid grid-cols-1 gap-x-6 gap-y-1.5 sm:grid-cols-2">
+              {a.hoydepunkter.map((h) => (
+                <li key={h} className="flex items-start gap-2 text-[13px] font-medium text-[#44403c]">
+                  <svg width="14" height="14" viewBox="0 0 18 18" fill="none" className="mt-[3px] shrink-0" aria-hidden="true">
+                    <path d="m3.6 9.4 3.4 3.4 7.4-7.6" stroke="#1f7a45" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  {h}
+                </li>
+              ))}
+            </ul>
+          )}
+          {(a.fasiliteter || []).length > 0 && (
+            <div className="mt-4 flex flex-wrap gap-1.5" data-testid="tilbud-annonse-fasiliteter">
+              {a.fasiliteter.map((f) => (
+                <span key={f} className="rounded-full border border-black/[0.08] bg-[#fbfaf8] px-2.5 py-1 text-[11.5px] font-medium text-[#57534e]">{f}</span>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Beskrivelse */}
+        <div className="px-4 pb-5 pt-4 sm:px-6">
+          <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#a8a29e]">Om boligen</p>
+          <div className="mt-2 max-w-[640px] space-y-3">
+            {String(a.beskrivelse).split(/\n{2,}/).map((avsn, i) => (
+              <p key={i} className="text-[13.5px] leading-relaxed text-[#44403c]">{avsn}</p>
+            ))}
+          </div>
+        </div>
+
+        {/* Utleier-linje */}
+        <div className="flex items-center gap-3 border-t border-black/[0.06] bg-[#fbfaf8] px-4 py-3.5 sm:px-6">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/digihome-wordmark-ink.svg" alt="DigiHome" className="h-[16px] w-auto" />
+          <span className="text-[11.5px] text-[#78716c]">Utleiemegler · håndterer visninger, kontrakt og oppfølging</span>
+        </div>
+      </div>
+
+      {/* Klar til publisering — status */}
+      <div className="mt-4 flex flex-col gap-2 rounded-2xl border border-[#1f7a45]/20 bg-[#eef6f0] px-5 py-4 sm:flex-row sm:items-center sm:justify-between" data-testid="tilbud-annonse-status">
+        <div className="flex flex-wrap gap-x-5 gap-y-1.5">
+          {['Bilder ferdig stylet', 'Annonsetekst skrevet', 'Pris kvalitetssikret'].map((t) => (
+            <span key={t} className="flex items-center gap-1.5 text-[12px] font-semibold text-[#1f7a45]">
+              <svg width="13" height="13" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+                <circle cx="9" cy="9" r="8" stroke="#1f7a45" strokeWidth="1.4" />
+                <path d="m5.6 9.2 2.2 2.2 4.6-4.8" stroke="#1f7a45" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              {t}
+            </span>
+          ))}
+        </div>
+        <p className="text-[12px] font-bold text-[#14532d]">Kan være live innen 24 timer etter avtale</p>
+      </div>
+      <p className="mt-2.5 text-[11px] leading-relaxed text-[#a8a29e]">
+        Forhåndsvisning — endelig annonse tilpasses sammen med deg før publisering. AI-forbedrede bilder er basert på annonsens egne foto.
+      </p>
+    </div>
+  );
+}
+
 export default function TilbudSide() {
   const params = useParams();
   const slug = String(params?.slug || '');
@@ -250,13 +412,14 @@ export default function TilbudSide() {
   const valgtStylet = stylet[aktivStylet] || null;
   const originalBilde = (tilbud?.bilder || [])[0] || null;
   const harBilde = Boolean(valgtStylet || originalBilde);
+  const harAnnonse = Boolean(tilbud?.annonse);
 
   const fakta = useMemo(() => [
     tilbud?.boligtype, tilbud?.m2 ? `${tilbud.m2} m²` : null, tilbud?.soverom ? `${tilbud.soverom} soverom` : null,
   ].filter(Boolean), [tilbud]);
 
-  // Seksjonsnumre forskyves om bildeseksjonen (01) mangler
-  const nr = (i) => String(i + (harBilde ? 1 : 0)).padStart(2, '0');
+  // Seksjonsnumre forskyves om bildeseksjonen (01) eller annonse-previewen mangler
+  const nr = (i) => String(i + (harBilde ? 1 : 0) + (harAnnonse ? 1 : 0)).padStart(2, '0');
 
   if (laster) {
     return (
@@ -400,6 +563,20 @@ export default function TilbudSide() {
               <p className="mt-3 max-w-[680px] text-[15px] leading-relaxed text-[#44403c] sm:text-[16px]" style={heading}>
                 «{tilbud.tekst.potensialTekst}»
               </p>
+            </div>
+          </Avsnitt>
+        )}
+
+        {/* ── Annonsen — ferdig produsert, klar til publisering ── */}
+        {harAnnonse && (
+          <Avsnitt className="mt-14 sm:mt-20">
+            <Merke nr={String(1 + (harBilde ? 1 : 0)).padStart(2, '0')} tekst="Annonsen" />
+            <h2 className="mt-2.5 text-[20px] font-bold tracking-[-0.01em] sm:text-[24px]" style={heading}>Annonsen din er allerede ferdig produsert</h2>
+            <p className="mt-2 max-w-[620px] text-[13px] leading-relaxed text-[#78716c]">
+              Vi har skrevet annonsen og klargjort bildene — slik den kan se ut publisert. Sier du ja, trykker vi publiser.
+            </p>
+            <div className="mt-6">
+              <AnnonsePreview tilbud={tilbud} r={r} />
             </div>
           </Avsnitt>
         )}
