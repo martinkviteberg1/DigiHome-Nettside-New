@@ -1318,11 +1318,11 @@ async function seedDevProducts(db) {
 // Hent en sak KUN hvis vieweren kan se den — skjulte saker svarer 404 slik at
 // selve eksistensen aldri lekker (brukes av alle skrive-/underendepunkter).
 async function hentSynligSak(db, request, taskId) {
-  // Sentinel: frittstående dokumenter fra Signering-modulen (uten sak).
-  // Disse tilhører ingen sak og er KUN for administratorer — vanlige
-  // saksbrukere skal aldri kunne nå dem via task-files-endepunktene.
+  // Sentinel: frittstående dokumenter fra Dokumenter-hubben (uten sak).
+  // Tilgjengelig for admin ELLER kontoer med modulen «dokumenter» tildelt
+  // under Brukere — vanlige saksbrukere uten modulen når dem aldri.
   if (taskId === 'DOKUMENTER') {
-    if (!adminAuthed(request)) return { task: null, viewer: null };
+    if (!(await modulAuthed(request, db, 'dokumenter'))) return { task: null, viewer: null };
     return { task: { id: 'DOKUMENTER', title: 'Dokumenter', frittstaende: true }, viewer: null };
   }
   const task = await db.collection('tasks').findOne({ id: taskId }, { projection: { _id: 0 } });
@@ -1354,6 +1354,8 @@ function innsynAuthed(request) {
 // menypunktene i admin slik at navigasjon og API håndheves likt.
 const MODUL_NOKLER = [
   'nokkeltall', 'okonomi', 'leieforhold', 'budsjett', 'kunder', 'i-leads', 'historikk', 'salgsradar',
+  // Dokumenter-hubben (frittstående dokumenter, arkiv og BankID-signering)
+  'dokumenter',
   // Datarom-sidene (investorrommet) — må speile MODUL_VALG i components/admin/Brukere.js
   'dr-oversikt', 'dr-resultat', 'dr-enheter', 'dr-pipeline', 'dr-selskap', 'dr-dokumenter',
 ];
@@ -5130,7 +5132,7 @@ async function handleRoute(request, { params }) {
     //     omgå proxy-/ingress-grenser. Binærdata i task_files, metadata på
     //     saken (task.attachments). Maks 8 MB per fil. ---
     if (route === '/admin/task-files/chunk' && method === 'POST') {
-      if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!sakerAuthed(request) && !(await modulAuthed(request, db, 'dokumenter'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
       const uploadId = String(body.uploadId || '');
       const taskId = String(body.taskId || '');
@@ -5144,11 +5146,13 @@ async function handleRoute(request, { params }) {
         return cors(NextResponse.json({ ok: false, error: 'Filen er for stor (maks 8 MB)' }, { status: 400 }));
       }
       const task = taskId === 'DOKUMENTER'
-        // Sentinel: frittstående dokumenter i Signering-modulen (kun admin)
-        ? (adminAuthed(request) ? { id: 'DOKUMENTER', attachments: [] } : null)
+        // Sentinel: frittstående dokumenter i Dokumenter-hubben (admin eller Dokumenter-modul)
+        ? ((await modulAuthed(request, db, 'dokumenter')) ? { id: 'DOKUMENTER', attachments: [] } : null)
         : await db.collection('tasks').findOne({ id: taskId }, { projection: { _id: 0, id: 1, attachments: 1, space: 1, restrictedTo: 1 } });
       if (!task) return cors(NextResponse.json({ ok: false, error: 'Saken finnes ikke' }, { status: 404 }));
-      // Synlighetsvakt: kan ikke laste opp til saker man ikke ser.
+      // Synlighetsvakt: kan ikke laste opp til saker man ikke ser. Modulbrukere
+      // uten sakstilgang når KUN frittstående dokumenter (aldri saksfiler).
+      if (taskId !== 'DOKUMENTER' && !sakerAuthed(request)) return cors(NextResponse.json({ ok: false, error: 'Saken finnes ikke' }, { status: 404 }));
       if (taskId !== 'DOKUMENTER' && !sakSynlig(await sakViewer(db, request), task)) return cors(NextResponse.json({ ok: false, error: 'Saken finnes ikke' }, { status: 404 }));
       if (!body.versjonAv && (task.attachments || []).length >= 12) {
         return cors(NextResponse.json({ ok: false, error: 'Maks 12 vedlegg per sak' }, { status: 400 }));
@@ -5202,9 +5206,11 @@ async function handleRoute(request, { params }) {
     }
 
     if (path[0] === 'admin' && path[1] === 'task-files' && path.length === 3 && method === 'GET') {
-      if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!sakerAuthed(request) && !(await modulAuthed(request, db, 'dokumenter'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const fil = await db.collection('task_files').findOne({ id: path[2] });
       if (!fil) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
+      // Modulbrukere uten sakstilgang når KUN frittstående dokumenter.
+      if (fil.taskId !== 'DOKUMENTER' && !sakerAuthed(request)) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
       // Synlighetsvakt: filer arver sakens synlighet.
       const eierSakFil = await hentSynligSak(db, request, fil.taskId);
       if (!eierSakFil.task) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
@@ -5228,9 +5234,10 @@ async function handleRoute(request, { params }) {
     }
 
     if (path[0] === 'admin' && path[1] === 'task-files' && path.length === 3 && method === 'DELETE') {
-      if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!sakerAuthed(request) && !(await modulAuthed(request, db, 'dokumenter'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const fil = await db.collection('task_files').findOne({ id: path[2] });
       if (!fil) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
+      if (fil.taskId !== 'DOKUMENTER' && !sakerAuthed(request)) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
       const eierSakSlett = await hentSynligSak(db, request, fil.taskId);
       if (!eierSakSlett.task) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
       // Signerte dokumenter er LÅST — kun admin kan slette, og da bevisst.
@@ -5251,21 +5258,25 @@ async function handleRoute(request, { params }) {
     // Samlet detaljvisning for dokumentpanelet (metadata, versjoner, delinger,
     // logg og signeringsjobber — aldri binærdata).
     if (path[0] === 'admin' && path[1] === 'task-files' && path.length === 4 && path[3] === 'detaljer' && method === 'GET') {
-      if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!sakerAuthed(request) && !(await modulAuthed(request, db, 'dokumenter'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const filD = await db.collection('task_files').findOne({ id: path[2] }, { projection: { id: 1, taskId: 1 } });
       if (!filD) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
+      if (filD.taskId !== 'DOKUMENTER' && !sakerAuthed(request)) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
       const sakD = await hentSynligSak(db, request, filD.taskId);
       if (!sakD.task) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
       return cors(NextResponse.json({ ok: true, detaljer: await filDetaljer(db, path[2]) }));
     }
     // DOCX → PDF: lokal WASM-konvertering, lagres som NY VERSJON av samme
-    // dokument (Word-originalen beholdes i versjonshistorikken). Admin-only,
-    // og nektes på låste dokumenter / aktive signeringsrunder.
+    // dokument (Word-originalen beholdes i versjonshistorikken). Admin — eller
+    // Dokumenter-modul for frittstående dokumenter. Nektes på låste
+    // dokumenter / aktive signeringsrunder.
     if (path[0] === 'admin' && path[1] === 'task-files' && path.length === 4 && path[3] === 'konverter-pdf' && method === 'POST') {
-      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!(await modulAuthed(request, db, 'dokumenter'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       let bK = {}; try { bK = await request.json(); } catch (e) {}
       const filK = await db.collection('task_files').findOne({ id: path[2] });
       if (!filK) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
+      // Saksfiler konverteres fortsatt kun av admin — modulen gjelder frittstående dokumenter.
+      if (filK.taskId !== 'DOKUMENTER' && !adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const sakK = await hentSynligSak(db, request, filK.taskId);
       if (!sakK.task) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
       if (filK.laast) return cors(NextResponse.json({ ok: false, error: 'Dokumentet er signert og låst' }, { status: 400 }));
@@ -5289,9 +5300,10 @@ async function handleRoute(request, { params }) {
     }
     // Dokumentarkiv: marker/fjern + synlighet (styret/investorer/alle) + kategori
     if (path[0] === 'admin' && path[1] === 'task-files' && path.length === 4 && path[3] === 'arkiv' && method === 'PUT') {
-      if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!sakerAuthed(request) && !(await modulAuthed(request, db, 'dokumenter'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const filA = await db.collection('task_files').findOne({ id: path[2] }, { projection: { id: 1, taskId: 1 } });
       if (!filA) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
+      if (filA.taskId !== 'DOKUMENTER' && !sakerAuthed(request)) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
       const sakA = await hentSynligSak(db, request, filA.taskId);
       if (!sakA.task) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
       let bA = {}; try { bA = await request.json(); } catch (e) {}
@@ -5301,9 +5313,10 @@ async function handleRoute(request, { params }) {
     }
     // Last ned en tidligere versjon
     if (path[0] === 'admin' && path[1] === 'task-files' && path.length === 5 && path[3] === 'versjon' && method === 'GET') {
-      if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!sakerAuthed(request) && !(await modulAuthed(request, db, 'dokumenter'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const vFil = await db.collection('task_files').findOne({ id: path[2] }, { projection: { id: 1, taskId: 1 } });
       if (!vFil) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
+      if (vFil.taskId !== 'DOKUMENTER' && !sakerAuthed(request)) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
       const vSak = await hentSynligSak(db, request, vFil.taskId);
       if (!vSak.task) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
       const vDok = await hentVersjon(db, path[2], path[4]);
@@ -5321,9 +5334,10 @@ async function handleRoute(request, { params }) {
     }
     // Gjenopprett en tidligere versjon som ny gjeldende versjon
     if (path[0] === 'admin' && path[1] === 'task-files' && path.length === 4 && path[3] === 'gjenopprett' && method === 'POST') {
-      if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!sakerAuthed(request) && !(await modulAuthed(request, db, 'dokumenter'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const gFil = await db.collection('task_files').findOne({ id: path[2] }, { projection: { id: 1, taskId: 1 } });
       if (!gFil) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
+      if (gFil.taskId !== 'DOKUMENTER' && !sakerAuthed(request)) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
       const gSak = await hentSynligSak(db, request, gFil.taskId);
       if (!gSak.task) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
       let bG = {}; try { bG = await request.json(); } catch (e) {}
@@ -5333,9 +5347,10 @@ async function handleRoute(request, { params }) {
     }
     // Delingslenker for eksterne: opprett + trekk tilbake
     if (path[0] === 'admin' && path[1] === 'task-files' && path.length === 4 && path[3] === 'deling' && method === 'POST') {
-      if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!sakerAuthed(request) && !(await modulAuthed(request, db, 'dokumenter'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const dFil = await db.collection('task_files').findOne({ id: path[2] }, { projection: { id: 1, taskId: 1 } });
       if (!dFil) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
+      if (dFil.taskId !== 'DOKUMENTER' && !sakerAuthed(request)) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
       const dSak = await hentSynligSak(db, request, dFil.taskId);
       if (!dSak.task) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
       let bD = {}; try { bD = await request.json(); } catch (e) {}
@@ -5344,18 +5359,24 @@ async function handleRoute(request, { params }) {
       return cors(NextResponse.json(rD));
     }
     if (path[0] === 'admin' && path[1] === 'task-files' && path.length === 5 && path[3] === 'deling' && method === 'DELETE') {
-      if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!sakerAuthed(request) && !(await modulAuthed(request, db, 'dokumenter'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const tFil = await db.collection('task_files').findOne({ id: path[2] }, { projection: { id: 1, taskId: 1 } });
       if (!tFil) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
+      if (tFil.taskId !== 'DOKUMENTER' && !sakerAuthed(request)) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
       const tSak = await hentSynligSak(db, request, tFil.taskId);
       if (!tSak.task) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
       const rT = await trekkDeling(db, path[2], path[4], '');
       if (!rT.ok) return cors(NextResponse.json({ ok: false, error: rT.error }, { status: rT.status || 400 }));
       return cors(NextResponse.json(rT));
     }
-    // Send dokument til BankID-signering via Posten signering (admin-handling)
+    // Send dokument til BankID-signering via Posten signering (admin — eller
+    // Dokumenter-modul for frittstående dokumenter)
     if (path[0] === 'admin' && path[1] === 'task-files' && path.length === 4 && path[3] === 'signering' && method === 'POST') {
-      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!(await modulAuthed(request, db, 'dokumenter'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const filSigGate = await db.collection('task_files').findOne({ id: path[2] }, { projection: { taskId: 1 } });
+      if (!filSigGate) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
+      // Saksdokumenter sendes fortsatt kun av admin — modulen gjelder frittstående dokumenter.
+      if (filSigGate.taskId !== 'DOKUMENTER' && !adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       if (!rateLimit(`signering:${clientIp(request)}`, 10)) return cors(NextResponse.json({ error: 'For mange forespørsler — vent litt' }, { status: 429 }));
       let bS = {}; try { bS = await request.json(); } catch (e) {}
       try {
@@ -5375,7 +5396,8 @@ async function handleRoute(request, { params }) {
     }
     // Signering: oppsett (virksomhetssertifikat), kansellering, manuell poll
     if (route === '/admin/signering/oppsett' && method === 'GET') {
-      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      // Status (konfigurert/utløpsdato — aldri hemmeligheter): også for Dokumenter-modul
+      if (!(await modulAuthed(request, db, 'dokumenter'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const cfgS = await signHentOppsett(db);
       return cors(NextResponse.json({ ok: true, oppsett: cfgS || { konfigurert: false } }));
     }
@@ -5391,7 +5413,11 @@ async function handleRoute(request, { params }) {
       return cors(NextResponse.json(await signSlettOppsett(db)));
     }
     if (path[0] === 'admin' && path[1] === 'signering' && path.length === 4 && path[3] === 'kanseller' && method === 'POST') {
-      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!(await modulAuthed(request, db, 'dokumenter'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      // Signeringsrunder på SAKSdokumenter kanselleres fortsatt kun av admin.
+      const jbGateK = await db.collection(SIGN_JOBB_COLL).findOne({ id: path[2] }, { projection: { taskId: 1 } });
+      if (!jbGateK) return cors(NextResponse.json({ ok: false, error: 'Jobb ikke funnet' }, { status: 404 }));
+      if (jbGateK.taskId !== 'DOKUMENTER' && !adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       try {
         const rK = await kansellerSignering(db, path[2], '');
         if (!rK.ok) return cors(NextResponse.json({ ok: false, error: rK.error }, { status: rK.status || 400 }));
@@ -5407,10 +5433,12 @@ async function handleRoute(request, { params }) {
     }
     // Send påminnelse/ny e-post til signatarer som venter (purring / resend)
     if (path[0] === 'admin' && path[1] === 'signering' && path.length === 4 && path[3] === 'purring' && method === 'POST') {
-      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!(await modulAuthed(request, db, 'dokumenter'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       if (!rateLimit(`signpurr:${clientIp(request)}`, 10)) return cors(NextResponse.json({ error: 'Vent litt før neste purring' }, { status: 429 }));
       const jP = await db.collection(SIGN_JOBB_COLL).findOne({ id: path[2] });
       if (!jP) return cors(NextResponse.json({ ok: false, error: 'Jobb ikke funnet' }, { status: 404 }));
+      // Purring på SAKSdokumenters runder er fortsatt kun for admin.
+      if (jP.taskId !== 'DOKUMENTER' && !adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       if (jP.status !== 'I_GANG') return cors(NextResponse.json({ ok: false, error: 'Signeringsrunden er ikke aktiv' }, { status: 400 }));
       const { sendSignaturEpost, signatarerPaaTur } = await import('@/lib/signering');
       let sendtP = 0;
@@ -5428,7 +5456,7 @@ async function handleRoute(request, { params }) {
     }
     // Oversikt: ALLE signeringsjobber (beriket med sak/fil-info) — for modulen
     if (route === '/admin/signering/jobber' && method === 'GET') {
-      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!(await modulAuthed(request, db, 'dokumenter'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const alleJb = await db.collection(SIGN_JOBB_COLL)
         .find({}, { projection: { _id: 0 } })
         .sort({ opprettet: -1 })
@@ -5453,7 +5481,7 @@ async function handleRoute(request, { params }) {
     }
     // Adressebok: unike signatarer fra tidligere runder (for hurtigvalg)
     if (route === '/admin/signering/adressebok' && method === 'GET') {
-      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!(await modulAuthed(request, db, 'dokumenter'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const abJobber = await db.collection(SIGN_JOBB_COLL)
         .find({}, { projection: { _id: 0, 'signatarer.navn': 1, 'signatarer.epost': 1, opprettet: 1 } })
         .sort({ opprettet: -1 })
@@ -5467,9 +5495,9 @@ async function handleRoute(request, { params }) {
       }
       return cors(NextResponse.json({ ok: true, kontakter: [...abSett.values()].slice(0, 30) }));
     }
-    // Frittstående dokumenter (Signering-modulen, uten sak)
+    // Frittstående dokumenter (Dokumenter-hubben, uten sak)
     if (route === '/admin/dokumenter' && method === 'GET') {
-      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!(await modulAuthed(request, db, 'dokumenter'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const friFiler = await db.collection('task_files')
         .find({ taskId: 'DOKUMENTER' }, { projection: { _id: 0, data: 0, logg: 0, delinger: 0 } })
         .sort({ at: -1 })
@@ -5478,7 +5506,7 @@ async function handleRoute(request, { params }) {
       return cors(NextResponse.json({ ok: true, filer: friFiler }));
     }
     if (route === '/admin/signering/poll' && method === 'POST') {
-      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!(await modulAuthed(request, db, 'dokumenter'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       try {
         // Manuell oppdatering: poll hvis Posten tillater det NÅ — ellers
         // planlegg en presis poll når vinduet åpner (aldri nullstill
