@@ -1814,7 +1814,7 @@ export default function Salgsradar({ apiKey }) {
     <div className="mx-auto w-full max-w-[1840px]" data-testid="salgsradar-modul">
       {/* Innliming — skjult til man trykker «Ny annonse» (plussknappen) */}
       {visNy && (
-        <div className={`${KORT} mb-4 p-4`} data-testid="radar-ny-panel">
+        <div className={`${KORT} mb-4 p-4 ${!splitt && visning === 'liste' ? 'mx-auto w-full max-w-[1040px]' : ''}`} data-testid="radar-ny-panel">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <div className="flex min-w-0 flex-1 items-center gap-2.5">
               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] border border-black/[0.06] bg-[#f7f6f3]"><Radar className="h-4 w-4 text-[#57534e]" /></span>
@@ -1845,7 +1845,7 @@ export default function Salgsradar({ apiKey }) {
 
       {/* Verktøylinje / bulk-linje — mobil: søk+kontroller øverst, filtre som scrollerad */}
       {utvalg.size === 0 ? (
-        <div className="flex flex-wrap items-center gap-1.5 py-1">
+        <div className={`flex flex-wrap items-center gap-1.5 py-1 ${!splitt && visning === 'liste' ? 'mx-auto w-full max-w-[1040px]' : ''}`}>
           <span className="relative order-1 min-w-0 flex-1 lg:flex-none">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#c2beb8]" />
             <input value={sok} onChange={(e) => setSok(e.target.value)} placeholder="Søk adresse…" data-testid="radar-sok"
@@ -1903,7 +1903,7 @@ export default function Salgsradar({ apiKey }) {
           </span>
         </div>
       ) : (
-        <div className="flex flex-wrap items-center gap-2 rounded-[10px] bg-[#1c1917] px-4 py-2.5 text-white">
+        <div className={`flex flex-wrap items-center gap-2 rounded-[10px] bg-[#1c1917] px-4 py-2.5 text-white ${!splitt && visning === 'liste' ? 'mx-auto w-full max-w-[1040px]' : ''}`}>
           <span className="text-[13px] font-bold tabular-nums" style={heading}>{utvalg.size} valgt</span>
           <button onClick={() => setUtvalg(new Set(sortert.map((l) => l.id)))} data-testid="radar-velg-alle"
             className="rounded-[7px] px-2.5 py-1.5 text-[12px] font-medium text-white/60 transition-colors hover:bg-white/10 hover:text-white">
@@ -1959,8 +1959,9 @@ export default function Salgsradar({ apiKey }) {
         </div>
       ) : (
         <div className="mt-3 flex items-start gap-4">
-          {/* Venstre: liste eller tabell */}
-          <div className={`min-w-0 ${splitt ? 'w-[330px] shrink-0 xl:w-[380px]' : 'flex-1'}`}>
+          {/* Venstre: liste eller tabell — i full visning sentreres arbeidskøen
+              (Linear-stil) med større typografi; i splitt er den kompakt rail */}
+          <div className={`min-w-0 ${splitt ? 'w-[330px] shrink-0 xl:w-[380px]' : visning === 'liste' ? 'mx-auto w-full max-w-[1040px]' : 'flex-1'}`}>
             {visning === 'liste' ? (
               <div className="border-t border-black/[0.06]" data-testid="radar-leadliste">
                 {sortert.map((l) => {
@@ -1973,7 +1974,7 @@ export default function Salgsradar({ apiKey }) {
                       onClick={() => { setValgtId(l.id); setSletteBekreft(false); }}
                       onKeyDown={(e) => { if (e.key === 'Enter') { setValgtId(l.id); setSletteBekreft(false); } }}
                       data-testid={`radar-lead-${l.id}`}
-                      className={`group relative flex w-full cursor-pointer items-center gap-2.5 border-b border-black/[0.05] py-2.5 pl-2 pr-3 text-left transition-colors ${aktiv ? 'bg-[#f4f3f0]' : erValgt ? 'bg-[#faf9f7]' : 'hover:bg-[#fafaf8]'}`}>
+                      className={`group relative flex w-full cursor-pointer items-center border-b border-black/[0.05] pl-2 pr-3 text-left transition-colors ${splitt ? 'gap-2.5 py-2.5' : 'gap-3.5 py-3.5'} ${aktiv ? 'bg-[#f4f3f0]' : erValgt ? 'bg-[#faf9f7]' : 'hover:bg-[#fafaf8]'}`}>
                       {aktiv && <span className="absolute inset-y-0 left-0 w-[2px] bg-[#141414]" />}
                       <button onClick={(e) => { e.stopPropagation(); veksleValg(l.id); }} data-testid={`radar-velg-${l.id}`} aria-label={erValgt ? 'Fjern markering' : 'Marker lead'}
                         className={`shrink-0 rounded-md p-0.5 transition-all ${erValgt ? 'text-[#1c1917]' : 'text-[#d6d2cb] hover:text-[#a8a29a]'} ${erValgt || utvalg.size > 0 ? '' : 'lg:opacity-0 lg:group-hover:opacity-100 lg:focus:opacity-100'}`}>
@@ -1983,28 +1984,28 @@ export default function Salgsradar({ apiKey }) {
                         const thumbL = (l.bilder || []).find((b) => !dodeBilder.has(b));
                         return thumbL
                           // eslint-disable-next-line @next/next/no-img-element
-                          ? <img src={thumbL} alt="" onError={() => merkDodBilde(thumbL)} className={`shrink-0 rounded-[8px] object-cover ${splitt ? 'h-10 w-14' : 'h-12 w-[68px]'}`} />
-                          : <span className={`flex shrink-0 items-center justify-center rounded-[8px] bg-[#f4f2ee] ${splitt ? 'h-10 w-14' : 'h-12 w-[68px]'}`}><Home className="h-4 w-4 text-[#c9c4bd]" /></span>;
+                          ? <img src={thumbL} alt="" onError={() => merkDodBilde(thumbL)} className={`shrink-0 rounded-[8px] object-cover ${splitt ? 'h-10 w-14' : 'h-16 w-24'}`} />
+                          : <span className={`flex shrink-0 items-center justify-center rounded-[8px] bg-[#f4f2ee] ${splitt ? 'h-10 w-14' : 'h-16 w-24'}`}><Home className="h-4 w-4 text-[#c9c4bd]" /></span>;
                       })()}
                       <span className="min-w-0 flex-1">
                         <span className="flex items-center gap-2">
-                          <span className={`truncate text-[13px] font-semibold tracking-[-0.01em] ${l.annonseAktiv === false ? 'text-[#a8a29a] line-through decoration-[#d6d2cb]' : 'text-[#1c1917]'}`} style={heading}>{pent(l.adresse || l.tittel)}</span>
+                          <span className={`truncate font-semibold tracking-[-0.01em] ${splitt ? 'text-[13px]' : 'text-[15px]'} ${l.annonseAktiv === false ? 'text-[#a8a29a] line-through decoration-[#d6d2cb]' : 'text-[#1c1917]'}`} style={heading}>{pent(l.adresse || l.tittel)}</span>
                           {l.annonseAktiv === false && (
                             <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-[#a8a29a]" title="Agenten meldte at annonsen er fjernet fra FINN">Tatt av FINN</span>
                           )}
                         </span>
                         {/* Intent først: hva bør gjøres med denne leaden nå */}
                         {l.auto && ['analyserer', 'styler'].includes(l.auto.status) ? (
-                          <span className="mt-0.5 flex items-center gap-1.5 truncate text-[12px] font-medium text-[#6f6a61]" data-testid={`radar-auto-status-${l.id}`}>
+                          <span className={`flex items-center gap-1.5 truncate font-medium text-[#6f6a61] ${splitt ? 'mt-0.5 text-[12px]' : 'mt-1 text-[13px]'}`} data-testid={`radar-auto-status-${l.id}`}>
                             <Loader2 className="h-3 w-3 shrink-0 animate-spin text-[#8b5cf6]" />
                             {l.auto.status === 'analyserer' ? 'Analyserer…' : `Forbedrer bilder ${l.auto.bilderFerdig || 0}/${l.auto.bilderTotalt || 0}`}
                           </span>
                         ) : stg ? (
-                          <span className="mt-0.5 block truncate text-[12px] font-medium" style={{ color: stg.c }} data-testid={`radar-steg-${l.id}`}>{stg.t}</span>
+                          <span className={`block truncate font-medium ${splitt ? 'mt-0.5 text-[12px]' : 'mt-1 text-[13px]'}`} style={{ color: stg.c }} data-testid={`radar-steg-${l.id}`}>{stg.t}</span>
                         ) : (
-                          <span className="mt-0.5 block truncate text-[12px] text-[#a8a29a]">{st.l}</span>
+                          <span className={`block truncate text-[#a8a29a] ${splitt ? 'mt-0.5 text-[12px]' : 'mt-1 text-[13px]'}`}>{st.l}</span>
                         )}
-                        <span className="mt-0.5 flex items-center gap-1.5 truncate text-[11.5px] tabular-nums text-[#8a857c]">
+                        <span className={`flex items-center gap-1.5 truncate tabular-nums text-[#8a857c] ${splitt ? 'mt-0.5 text-[11.5px]' : 'mt-1 text-[12.5px]'}`}>
                           {kr(l.pris)}/mnd
                           {(() => {
                             const kutt = sisteKutt(l);
@@ -2018,9 +2019,9 @@ export default function Salgsradar({ apiKey }) {
                       </span>
                       <span className="flex shrink-0 flex-col items-end gap-1">
                         {(l.aapninger || 0) > 0 ? (
-                          <span className="flex items-center gap-1 text-[11.5px] font-semibold tabular-nums text-[#0e7490]" title={`Tilbudssiden åpnet ${l.aapninger} ganger`}><Eye className="h-3.5 w-3.5" />{l.aapninger}</span>
+                          <span className={`flex items-center gap-1 font-semibold tabular-nums text-[#0e7490] ${splitt ? 'text-[11.5px]' : 'text-[13px]'}`} title={`Tilbudssiden åpnet ${l.aapninger} ganger`}><Eye className={splitt ? 'h-3.5 w-3.5' : 'h-4 w-4'} />{l.aapninger}</span>
                         ) : l.potensial?.score != null ? (
-                          <span className="text-[12px] font-semibold tabular-nums text-[#b5b0a8]" title={l.potensial.forelopig ? 'Foreløpig potensial — kjør AI-analyse' : 'AI-potensial'} data-testid={`radar-score-${l.id}`}>{l.potensial.forelopig ? '~' : ''}{l.potensial.score}</span>
+                          <span className={`font-semibold tabular-nums text-[#b5b0a8] ${splitt ? 'text-[12px]' : 'text-[13.5px]'}`} title={l.potensial.forelopig ? 'Foreløpig potensial — kjør AI-analyse' : 'AI-potensial'} data-testid={`radar-score-${l.id}`}>{l.potensial.forelopig ? '~' : ''}{l.potensial.score}</span>
                         ) : null}
                       </span>
                     </div>
