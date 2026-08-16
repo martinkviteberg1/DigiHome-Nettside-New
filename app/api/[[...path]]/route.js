@@ -63,7 +63,7 @@ import { logExtUsage, summarizeExtUsage, getPlatformUsage } from '@/lib/ext-usag
 import { getFinanceSettings, setFinanceSettings, listCosts, listActiveCosts, upsertCost, deleteCost, listContracts, upsertContract, deleteContract, listEvents, upsertEvent, deleteEvent, computeResultat, computeLikviditet, computeFinanceOverview, computeTrends, captureSnapshot, computeInvestorMetrics, computeForecast, computeBoardPack, computeCustomers, computePlatformCustomers } from '@/lib/finance';
 import { listFellesKostnader, upsertFellesKostnad, slettFellesKostnad, migrerFellesKostnader } from '@/lib/kostnader';
 import { finnKodeFraUrl, hentFinnHtml, parseFinnAnnonse, beregnAnalyse, opprettLead, validerIngestAnnonse, analyserAnnonse, kjorAutoPipeline, kjorAutoRetry, retryKandidater, filtrerLevendeBilder, slettLeads as radarSlettLeads, listLeads as radarListLeads, oppdaterLead as radarOppdaterLead, slettLead as radarSlettLead, stilBilde, lagreStyletBilde, hentStyletBilde, hentTilbud, registrerTilbudKontakt, tilbudsRegnestykke, STILER as RADAR_STILER, opprettStylingJobber, kjorStylingJobber, listStylingJobber, reviewStylingJobb, fjernStyletBilde } from '@/lib/salgsradar';
-import { settArkiv, listArkiv, nyVersjon, listVersjoner, hentVersjon, gjenopprettVersjon, opprettDeling, trekkDeling, hentDelt, filDetaljer, filLogg, VERSJON_COLL } from '@/lib/dokumenter';
+import { settArkiv, listArkiv, nyVersjon, listVersjoner, hentVersjon, gjenopprettVersjon, opprettDeling, trekkDeling, hentDelt, filDetaljer, filLogg, VERSJON_COLL, konverterDocxTilPdf } from '@/lib/dokumenter';
 import { lagreOppsett as signLagreOppsett, hentOppsett as signHentOppsett, slettOppsett as signSlettOppsett, opprettSigneringsjobb, kansellerSignering, pollSignering, listSigneringsjobber, hentSignerRedirect, hentSignerVisning, hentSignerDokument, SIGN_JOBB_COLL } from '@/lib/signering';
 import { syncContractsFromPlatform, syncCustomersFromPlatform, maybeAutoSyncFinance, getFinanceSyncMeta } from '@/lib/contracts-sync';
 import { enqueueInterest as deliverInterest, retryInterestWebhooks, webhookTarget as interestWebhookTarget, platformInboxUrl, platformThreadUrl, platformUnitUrl, deliveryView, OUTBOX_COLL as INTEREST_OUTBOX } from '@/lib/interest-webhook';
@@ -5257,6 +5257,35 @@ async function handleRoute(request, { params }) {
       const sakD = await hentSynligSak(db, request, filD.taskId);
       if (!sakD.task) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
       return cors(NextResponse.json({ ok: true, detaljer: await filDetaljer(db, path[2]) }));
+    }
+    // DOCX → PDF: lokal WASM-konvertering, lagres som NY VERSJON av samme
+    // dokument (Word-originalen beholdes i versjonshistorikken). Admin-only,
+    // og nektes på låste dokumenter / aktive signeringsrunder.
+    if (path[0] === 'admin' && path[1] === 'task-files' && path.length === 4 && path[3] === 'konverter-pdf' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let bK = {}; try { bK = await request.json(); } catch (e) {}
+      const filK = await db.collection('task_files').findOne({ id: path[2] });
+      if (!filK) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
+      const sakK = await hentSynligSak(db, request, filK.taskId);
+      if (!sakK.task) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
+      if (filK.laast) return cors(NextResponse.json({ ok: false, error: 'Dokumentet er signert og låst' }, { status: 400 }));
+      if (filK.signering && filK.signering.status === 'I_GANG') return cors(NextResponse.json({ ok: false, error: 'En signeringsrunde pågår — kanseller den først' }, { status: 400 }));
+      const erDocx = /wordprocessingml/i.test(String(filK.type || '')) || /\.docx$/i.test(String(filK.name || ''));
+      if (!erDocx) return cors(NextResponse.json({ ok: false, error: 'Kun moderne Word-filer (.docx) kan konverteres automatisk' }, { status: 400 }));
+      try {
+        const pdfBuf = await konverterDocxTilPdf(Buffer.from(filK.data || '', 'base64'));
+        if (!pdfBuf || pdfBuf.length < 100 || pdfBuf.subarray(0, 5).toString('latin1') !== '%PDF-') {
+          return cors(NextResponse.json({ ok: false, error: 'Konverteringen ga ikke en gyldig PDF — bruk «Lagre som PDF» i Word i stedet' }, { status: 422 }));
+        }
+        const nyttNavn = String(filK.name || 'dokument').replace(/\.docx$/i, '') + '.pdf';
+        const rKon = await nyVersjon(db, filK.id, {
+          name: nyttNavn, type: 'application/pdf', data: pdfBuf.toString('base64'),
+        }, String(bK.actor || '').slice(0, 80), { loggTekst: 'Konvertert fra Word til PDF (automatisk)' });
+        if (!rKon.ok) return cors(NextResponse.json({ ok: false, error: rKon.error }, { status: rKon.status || 400 }));
+        return cors(NextResponse.json({ ok: true, versjon: rKon.versjon, name: nyttNavn, size: pdfBuf.length }));
+      } catch (e) {
+        return cors(NextResponse.json({ ok: false, error: 'Konverteringen feilet — bruk «Lagre som PDF» i Word i stedet' }, { status: 422 }));
+      }
     }
     // Dokumentarkiv: marker/fjern + synlighet (styret/investorer/alle) + kategori
     if (path[0] === 'admin' && path[1] === 'task-files' && path.length === 4 && path[3] === 'arkiv' && method === 'PUT') {

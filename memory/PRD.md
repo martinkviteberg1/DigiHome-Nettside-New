@@ -584,3 +584,4 @@ Google Ads-styring via native REST API).
 - Backendtestet 49/53 (alle kritiske OK): ingen sid/signerUrl-lekkasje i lister, purring/kanseller-feilstier, regresjon på saksvedlegg.
 - Salgsradar: standardsortering endret til «Nyeste først» (createdAt desc) etter brukerønske.
 - Opprydding (samme dag): «Signering» er nå UNDERMODUL (fane) i ny «Dokumenter»-hub (DokumenterModul.js). Dokumenter-fanen viser frittstående dokumenter + dokumentarkivet; Signering-fanen viser rundene. SigneringOversikt.js er slettet. DokumentModal skjuler signeringsseksjonen for bilder/medier (kun PDF/Word), og Word får hint om PDF-som-ny-versjon-flyten.
+- Automatisk Word→PDF: nytt endepunkt POST /api/admin/task-files/:id/konverter-pdf (admin) med docx-to-pdf-wasm (lokal WASM, ingen tredjepart). PDF blir ny versjon, Word-original bevares. Knapp «Konverter til PDF for signering» i DokumentModal for .docx. Backendtestet 19/19. Gamle binære .doc støttes IKKE (kun .docx).

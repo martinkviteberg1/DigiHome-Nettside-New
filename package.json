@@ -48,6 +48,7 @@
         "date-fns": "4.1.0",
         "dayjs": "1.11.13",
         "docx-preview": "^0.4.0",
+        "docx-to-pdf-wasm": "^0.1.0",
         "embla-carousel-react": "8.6.0",
         "exceljs": "^4.4.0",
         "fast-xml-parser": "^5.9.3",

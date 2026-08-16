@@ -11,7 +11,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   X, PenLine, Archive, Link2, History, Clock, Loader2, Check, Copy,
   Download, Plus, Trash2, ChevronUp, ChevronDown, ShieldCheck, Lock,
-  RotateCcw, Upload, AlertCircle, RefreshCw, Ban, Send,
+  RotateCcw, Upload, AlertCircle, RefreshCw, Ban, Send, FileText,
 } from 'lucide-react';
 import { filIkonInfo } from './FilViser';
 
@@ -163,6 +163,7 @@ function SigneringSeksjon({ det, api, actor, erAdmin, oppsett, setOppsett, membe
   const [nyEpost, setNyEpost] = useState('');
 
   const erPdf = /pdf$/i.test(String(det.type || '')) || /\.pdf$/i.test(String(det.name || ''));
+  const erDocx = /wordprocessingml/i.test(String(det.type || '')) || /\.docx$/i.test(String(det.name || ''));
   const jobber = det.signering || [];
   const aktiv = jobber.find((j) => j.status === 'I_GANG');
   const siste = jobber[0];
@@ -216,6 +217,23 @@ function SigneringSeksjon({ det, api, actor, erAdmin, oppsett, setOppsett, membe
   const pollNaa = async () => {
     setBusy('poll');
     try { await api('signering/poll', { method: 'POST' }); await onOppdatert(); } catch (e) { /* stille */ }
+    setBusy('');
+  };
+
+  // DOCX → PDF: lokal konvertering server-side. PDF-en blir ny versjon av samme
+  // dokument (Word-originalen beholdes i historikken), og signering kan startes.
+  const konverter = async () => {
+    setBusy('konverter');
+    try {
+      const r = await api(`task-files/${det.id}/konverter-pdf`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ actor }),
+      });
+      const j = await r.json();
+      if (!j.ok) throw new Error(j.error || 'Konverteringen feilet');
+      visToast(`Konvertert til PDF (v${j.versjon}) — kontroller dokumentet før du sender til signering`);
+      await onOppdatert();
+    } catch (e) { visToast(e.message, 'feil'); }
     setBusy('');
   };
 
@@ -351,7 +369,15 @@ function SigneringSeksjon({ det, api, actor, erAdmin, oppsett, setOppsett, membe
           </div>
         )
       )}
-      {!aktiv && !erPdf && (
+      {!aktiv && !erPdf && erDocx && erAdmin && !det.laast && (
+        <div className="mt-2.5">
+          <button onClick={konverter} disabled={!!busy} data-testid="dok-konverter-pdf" className={KNAPP}>
+            {busy === 'konverter' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5" />} Konverter til PDF for signering
+          </button>
+          <p className="mt-2 text-[11px] leading-relaxed text-[#b0aca6]">Konverteres lokalt på serveren — dokumentet forlater aldri DigiHome. PDF-en blir ny versjon her (Word-originalen beholdes i historikken). <strong className="font-semibold text-[#78716c]">Kontroller alltid PDF-en visuelt</strong> før du sender til signering — spesialfonter og avansert layout kan avvike litt fra Word.</p>
+        </div>
+      )}
+      {!aktiv && !erPdf && (!erDocx || !erAdmin || det.laast) && (
         <p className="mt-2 flex items-start gap-1.5 text-[12px] leading-relaxed text-[#b0aca6]">
           <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
           <span>BankID-signering krever PDF. Bruk «Lagre som PDF» i Word og last den opp som <strong className="font-semibold text-[#78716c]">ny versjon</strong> under — da kan runden startes herfra, og Word-originalen beholdes i versjonshistorikken.</span>
