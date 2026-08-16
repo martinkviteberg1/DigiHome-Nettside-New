@@ -129,9 +129,12 @@ function ChipVelger({ value, onChange, disabled, testid, valg }) {
    grid. Beholder testid-mønsteret `${testid}-${modulnøkkel}`. ── */
 function ModulVelger({ value, onChange, disabled, testid, rolle }) {
   const valgt = Array.isArray(value) ? value : [];
+  // Rekkefølge etter relevans: investorer ser Datarom først — alle andre
+  // roller ser Ledelsesverktøy (interne moduler) øverst.
+  const grupper = rolle === 'investor' ? MODUL_GRUPPER : [...MODUL_GRUPPER].slice().sort((a, b) => (a.id === 'ledelse' ? -1 : 1) - (b.id === 'ledelse' ? -1 : 1));
   return (
     <div className="space-y-3" data-testid={testid}>
-      {MODUL_GRUPPER.map((g) => {
+      {grupper.map((g) => {
         const alleValgt = g.valg.every((o) => valgt.includes(o.k));
         const antall = g.valg.filter((o) => valgt.includes(o.k)).length;
         return (
