@@ -781,33 +781,36 @@ export default function AdminPage({ params }) {
 
       {/* Hovedinnhold */}
       <main className="flex-1 min-w-0">
-        {/* Topbar */}
+        {/* Topbar — supermoderne: én lav rad (48px), tittel uten undertittel, undertittelen ligger som tooltip */}
         <div className="sticky top-0 z-30 bg-[#f7f6f4]/85 backdrop-blur-md border-b border-black/[0.05]">
-          <div className="h-16 px-4 sm:px-8 flex items-center gap-3">
-            <button onClick={() => setSidebarOpen(true)} aria-label="Åpne meny" data-testid="admin-menu-open" className="lg:hidden h-9 w-9 rounded-lg bg-white shadow-[0_2px_10px_rgba(0,0,0,0.05)] flex items-center justify-center text-[#444]"><Menu className="w-5 h-5" /></button>
-            <div className="min-w-0">
-              <h1 className="text-[20px] sm:text-[22px] font-bold text-[#0a0a0a] tracking-[-0.02em] leading-none" style={{ fontFamily: 'var(--font-heading)' }}>{section === 'innsikt' ? activeInsight.l : section === 'datarom' ? (DATAROM_TITLER[dataromTab] || {}).t : sectionMeta.t}</h1>
-              <p className="text-[12px] text-[#999] mt-1 truncate">{section === 'innsikt' ? (INSIGHT_SUBTITLES[insightTab] || 'Førsteparts analyse · cookieless · GDPR-trygt') : section === 'datarom' ? (DATAROM_TITLER[dataromTab] || {}).s : sectionMeta.s}</p>
-            </div>
+          <div className="h-12 px-4 sm:px-6 flex items-center gap-3">
+            <button onClick={() => setSidebarOpen(true)} aria-label="Åpne meny" data-testid="admin-menu-open" className="lg:hidden h-8 w-8 rounded-lg bg-white shadow-[0_2px_10px_rgba(0,0,0,0.05)] flex items-center justify-center text-[#444]"><Menu className="w-4 h-4" /></button>
+            <h1
+              className="min-w-0 truncate text-[15px] font-semibold text-[#0a0a0a] tracking-[-0.01em]"
+              style={{ fontFamily: 'var(--font-heading)' }}
+              title={section === 'innsikt' ? (INSIGHT_SUBTITLES[insightTab] || '') : section === 'datarom' ? (DATAROM_TITLER[dataromTab] || {}).s : sectionMeta.s}
+            >
+              {section === 'innsikt' ? activeInsight.l : section === 'datarom' ? (DATAROM_TITLER[dataromTab] || {}).t : sectionMeta.t}
+            </h1>
             {/* Pulsstripen (LIVE · økter · leads · MRR) hører hjemme på analyse-
                 sidene — på arbeidsflater som Datarom/Leieforhold holder vi
                 toppraden ren (én rad, Linear-stil). */}
             {!erBruker && (section === 'innsikt' || section === 'nokkeltall') && <PulseStrip token={token} onJump={(sec, tab) => { setSection(sec); if (tab) { setSection('innsikt'); setInsightTab(tab); } }} />}
             {user?.role === 'investor' && (
-              <span className="hidden md:inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full bg-[#fdf3e0] px-2.5 text-[10.5px] font-bold uppercase tracking-[0.06em] text-[#9a6b1c]" title="Du ser et kuratert datarom med lesetilgang — ingenting kan endres herfra">
+              <span className="hidden md:inline-flex h-6 shrink-0 items-center gap-1.5 rounded-full bg-[#fdf3e0] px-2.5 text-[10px] font-bold uppercase tracking-[0.06em] text-[#9a6b1c]" title="Du ser et kuratert datarom med lesetilgang — ingenting kan endres herfra">
                 <Lock className="h-3 w-3" /> Datarom · lesetilgang
               </span>
             )}
-            <button onClick={() => setPaletteOpen(true)} title="Søk & hurtignavigasjon (⌘K)" className="ml-auto xl:ml-0 hidden sm:flex items-center gap-2 h-9 pl-3 pr-2 rounded-full bg-white shadow-[0_2px_10px_rgba(0,0,0,0.04)] text-[#9a9a9a] hover:text-[#0a0a0a] transition-colors">
-              <Search className="w-4 h-4" />
-              <span className="text-[12.5px] font-medium">Søk eller hopp til …</span>
-              <span className="ml-1 flex items-center gap-0.5 text-[10.5px] font-semibold text-[#aaa] bg-[#f1f0ee] rounded-md px-1.5 py-1 leading-none"><Command className="w-3 h-3" />K</span>
+            <button onClick={() => setPaletteOpen(true)} title="Søk & hurtignavigasjon (⌘K)" className="ml-auto xl:ml-0 hidden sm:flex items-center gap-2 h-8 pl-3 pr-1.5 rounded-full bg-white shadow-[0_1px_6px_rgba(0,0,0,0.04)] text-[#9a9a9a] hover:text-[#0a0a0a] transition-colors">
+              <Search className="w-3.5 h-3.5" />
+              <span className="text-[12px] font-medium">Søk eller hopp til …</span>
+              <span className="ml-1 flex items-center gap-0.5 text-[10px] font-semibold text-[#aaa] bg-[#f1f0ee] rounded-md px-1.5 py-[3px] leading-none"><Command className="w-3 h-3" />K</span>
             </button>
-            <button onClick={() => setPaletteOpen(true)} aria-label="Søk" className="sm:hidden ml-auto h-9 w-9 rounded-full bg-white shadow-[0_2px_10px_rgba(0,0,0,0.04)] flex items-center justify-center text-[#9a9a9a]"><Search className="w-4 h-4" /></button>
+            <button onClick={() => setPaletteOpen(true)} aria-label="Søk" className="sm:hidden ml-auto h-8 w-8 rounded-full bg-white shadow-[0_1px_6px_rgba(0,0,0,0.04)] flex items-center justify-center text-[#9a9a9a]"><Search className="w-4 h-4" /></button>
           </div>
         </div>
 
-        <div key={section} className={`dh-fade ${section === 'leieforhold' || section === 'datarom' || section === 'salgsradar' ? 'max-w-none px-4 py-4 sm:px-6' : 'max-w-[1440px] px-4 py-6 sm:px-8'}`}>
+        <div key={section} className={`dh-fade ${section === 'leieforhold' || section === 'datarom' || section === 'salgsradar' ? 'max-w-none px-4 py-3 sm:px-6' : 'max-w-[1440px] px-4 py-6 sm:px-8'}`}>
           {section === 'nokkeltall' && <KpiDashboard apiKey={token} />}
           {section === 'investorrom' && <InvestorRoomTab apiKey={token} />}
           {section === 'playbook' && <PlaybookTab apiKey={token} />}

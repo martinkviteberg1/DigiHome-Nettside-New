@@ -1841,26 +1841,7 @@ export default function Salgsradar({ apiKey }) {
 
       {feil && <p className="mb-3 rounded-lg bg-[#fdf0ef] px-4 py-3 text-[13px] text-[#c2413b]" data-testid="radar-feil">{feil}</p>}
 
-      {/* Innsiktslinje — flat, klikkbar: metrics ER navigasjon, ikke pynt */}
-      {!laster && leads.length > 0 && (
-        <div className="-mx-2.5 mb-1 flex flex-wrap items-center gap-x-1 gap-y-1" data-testid="radar-innsikt">
-          {[
-            ['radar-innsikt-pipeline', () => setFilter('alle'), 'Honorar i spill', `${kr(innsikt.honorarPipeline)}/mnd`, '#171717'],
-            ['radar-innsikt-kontakte', () => setFilter('analysert'), 'Å kontakte', innsikt.aKontakte, '#171717'],
-            ['radar-innsikt-apnet', () => { setFilter('alle'); setSort({ key: 'aapnet', dir: 'desc' }); }, 'Åpnet tilbudet', innsikt.harApnet, '#171717'],
-            ['radar-innsikt-vunnet', () => setFilter('vunnet'), 'Vunnet', innsikt.vunnet, innsikt.vunnet > 0 ? '#1f7a45' : '#171717'],
-          ].map(([tid, klikk, l, v, farge], i) => (
-            <React.Fragment key={tid}>
-              {i > 0 && <span className="hidden h-4 w-px bg-black/[0.06] sm:block" />}
-              <button onClick={klikk} data-testid={tid}
-                className="flex items-baseline gap-1.5 rounded-[7px] px-2.5 py-1.5 text-left transition-colors hover:bg-[#f7f6f3]">
-                <span className="text-[11.5px] font-medium text-[#737373]">{l}</span>
-                <span className="text-[13.5px] font-bold tabular-nums" style={{ ...heading, color: farge }}>{v}</span>
-              </button>
-            </React.Fragment>
-          ))}
-        </div>
-      )}
+      {/* Innsikten bor nå i verktøylinjen («I spill») — egen KPI-rad er fjernet for en lav, supermoderne topp */}
 
       {/* Verktøylinje / bulk-linje — mobil: søk+kontroller øverst, filtre som scrollerad */}
       {utvalg.size === 0 ? (
@@ -1884,10 +1865,19 @@ export default function Salgsradar({ apiKey }) {
               <option value="potensial">Potensial</option>
               <option value="kvalitet">Kvalitet</option>
               <option value="nyeste">Nyeste</option>
+              <option value="aapnet">Åpninger</option>
               <option value="pris">Leie</option>
             </select>
           </div>
           <span className="order-2 flex shrink-0 items-center gap-1.5 lg:order-5 lg:ml-auto">
+            {innsikt.honorarPipeline > 0 && (
+              <button onClick={() => setFilter('alle')} data-testid="radar-innsikt-pipeline"
+                title="Samlet månedshonorar hvis alle aktive leads vinnes (analysert + kontaktet + dialog)"
+                className="mr-1 hidden items-baseline gap-1.5 whitespace-nowrap rounded-[7px] px-2 py-1 transition-colors hover:bg-[#f7f6f3] xl:flex">
+                <span className="text-[11.5px] text-[#8a857c]">I spill</span>
+                <span className="text-[12.5px] font-bold tabular-nums text-[#171717]" style={heading}>{kr(innsikt.honorarPipeline)}<span className="font-medium text-[#a8a29a]">/mnd</span></span>
+              </button>
+            )}
             <span className="flex overflow-hidden rounded-[7px] border border-black/[0.08] bg-white shadow-[0_1px_2px_rgba(28,25,23,0.04)]">
               <button onClick={() => setVisning('liste')} data-testid="radar-visning-liste" title="Listevisning"
                 className={`flex h-[28px] w-9 items-center justify-center transition-colors ${visning === 'liste' ? 'bg-[#1c1917] text-white' : 'text-[#a8a29a] hover:text-[#1c1917]'}`}>
@@ -1903,6 +1893,7 @@ export default function Salgsradar({ apiKey }) {
               <option value="potensial">Høyest potensial</option>
               <option value="kvalitet">Annonsekvalitet</option>
               <option value="nyeste">Nyeste først</option>
+              <option value="aapnet">Flest åpninger</option>
               <option value="pris">Høyest leie</option>
             </select>
             <button onClick={() => setVisNy((v) => !v)} data-testid="radar-ny-btn" title="Legg til ny FINN-annonse"
@@ -2157,7 +2148,7 @@ export default function Salgsradar({ apiKey }) {
 
           {/* Høyre: detaljpanel i splittvisning */}
           {splitt && (
-            <div className="sticky top-4 min-w-0 flex-1 overflow-hidden rounded-[10px] border border-black/[0.07] bg-white" style={{ height: 'calc(100vh - 120px)', minHeight: 520 }}>
+            <div className="sticky top-3 min-w-0 flex-1 overflow-hidden rounded-[10px] border border-black/[0.07] bg-white" style={{ height: 'calc(100vh - 104px)', minHeight: 520 }}>
               {panel}
             </div>
           )}
