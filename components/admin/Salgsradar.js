@@ -1074,7 +1074,7 @@ export default function Salgsradar({ apiKey }) {
             {/* Vurderingen — det AI-en faktisk mener */}
             {ai.salgsvinkel && (
               <div className="mt-6 border-t border-black/[0.07] pt-5">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.07em] text-[#8a857c]">Vurdering · stylingpotensial {ai.stylingPotensial}</p>
+                <p className="text-[12.5px] font-medium text-[#8f8a82]">Vurdering · stylingpotensial {ai.stylingPotensial}</p>
                 <p className="mt-2 max-w-[640px] text-[14px] leading-relaxed text-[#292524]">{ai.salgsvinkel}</p>
               </div>
             )}
@@ -1082,7 +1082,7 @@ export default function Salgsradar({ apiKey }) {
             {/* Anbefalinger — konkrete, hver knyttet til en handling */}
             {anbefalinger.length > 0 && (
               <div className="mt-6 border-t border-black/[0.07] pt-5" data-testid="radar-anbefalinger">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.07em] text-[#8a857c]">Anbefalinger</p>
+                <p className="text-[12.5px] font-medium text-[#8f8a82]">Anbefalinger</p>
                 <div className="mt-3 space-y-3">
                   {anbefalinger.map((a, i) => (
                     <div key={i} className="flex items-start gap-3">
@@ -1102,7 +1102,7 @@ export default function Salgsradar({ apiKey }) {
             {/* Funn — filtrert for utsagn som motsier recorden (f.eks. «ingen bilder» når bilder finnes) */}
             {funnListe.length > 0 && (
               <div className="mt-6 border-t border-black/[0.07] pt-5">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.07em] text-[#8a857c]">Funn fra annonsen</p>
+                <p className="text-[12.5px] font-medium text-[#8f8a82]">Funn fra annonsen</p>
                 <ul className="mt-3 space-y-1.5">
                   {funnListe.map((f, i) => (
                     <li key={i} className="flex items-start gap-2 text-[13px] leading-relaxed text-[#404040]">
@@ -1115,7 +1115,7 @@ export default function Salgsradar({ apiKey }) {
 
             {/* Delscorer — kompakt tekstgrid uten progressbarer */}
             <div className="mt-6 border-t border-black/[0.07] pt-5">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.07em] text-[#8a857c]">Delscorer</p>
+              <p className="text-[12.5px] font-medium text-[#8f8a82]">Delscorer</p>
               <div className="mt-3 grid grid-cols-2 gap-x-8 gap-y-2 sm:grid-cols-3">
                 {DEL_ETIKETTER.map(([k, etikett]) => (
                   <div key={k} className="flex items-baseline justify-between gap-2">
@@ -1150,7 +1150,7 @@ export default function Salgsradar({ apiKey }) {
             {/* Bilde for bilde — kun når faktiske vurderinger finnes */}
             {(ai.bildeVurdering || []).length > 0 && (
               <div className="mt-6 border-t border-black/[0.07] pt-5" data-testid="radar-bildevurdering">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.07em] text-[#8a857c]">Bilde for bilde</p>
+                <p className="text-[12.5px] font-medium text-[#8f8a82]">Bilde for bilde</p>
                 <div className="mt-3 space-y-1">
                   {ai.bildeVurdering.map((bv, i) => (
                     <div key={i} className="flex items-center gap-2.5 border-b border-black/[0.04] py-1.5 last:border-0">
@@ -1361,7 +1361,7 @@ export default function Salgsradar({ apiKey }) {
 
         {/* Festet notat — alltid synlig, vises også i Oversikt */}
         <div className="mt-6 border-t border-black/[0.07] pt-5">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.07em] text-[#8a857c]">Festet notat</p>
+          <p className="text-[12.5px] font-medium text-[#8f8a82]">Festet notat</p>
           <textarea value={valgt.notat || ''} rows={2} data-testid="radar-notat"
             onChange={(e) => settLead(valgt.id, (x) => ({ ...x, notat: e.target.value }))}
             onBlur={(e) => oppdater(valgt.id, { notat: e.target.value })}
@@ -1371,7 +1371,7 @@ export default function Salgsradar({ apiKey }) {
 
         {/* Tidslinje — kun ekte hendelser, tilbudsåpninger gruppert til én rad */}
         <div className="mt-6 border-t border-black/[0.07] pt-5" data-testid="radar-tidslinje">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.07em] text-[#8a857c]">Tidslinje</p>
+          <p className="text-[12.5px] font-medium text-[#8f8a82]">Tidslinje</p>
           {hendelser.length === 0 ? (
             <p className="mt-3 text-[13px] text-[#a3a3a3]">Ingen aktivitet ennå.</p>
           ) : (
@@ -1403,8 +1403,10 @@ export default function Salgsradar({ apiKey }) {
       </div>
     );
 
-    /* ── Oversikt-fanen: verdensklasse arbeidsflate — handling + regnestykke +
-       aktivitet i hovedkolonnen, Attio-aktig detalj-rail til høyre når det er plass ── */
+    /* ── Oversikt-fanen: moderne 2026 — rolige, myke flater (ingen borders eller
+       skygger), normal-case etiketter, jevn typoskala 12.5–14.5px og tall i
+       UI-fonten. Hovedkolonne: pipeline → neste handling → regnestykke →
+       aktivitet. Rail: foto + fakta + tilbudshandlinger. ── */
     const stegKontekst = !steg ? null
       : steg.varm && (valgt.aapninger || 0) > 0 && valgt.sistAapnet ? `Sist åpnet ${naarSist(valgt.sistAapnet)}. Huseiere som nettopp har lest tilbudet er mest mottakelige.`
       : valgt.status === 'ny' ? 'Analysen gir score, funn, ferdig FINN-melding og personlig tilbudstekst — på under ett minutt.'
@@ -1412,46 +1414,55 @@ export default function Salgsradar({ apiKey }) {
       : valgt.status === 'kontaktet' ? 'Tilbudssiden er personlig og klar til å sendes når huseier svarer.'
       : valgt.status === 'dialog' ? 'Alt materiale ligger klart i Tilbud-fanen om huseier trenger en ny gjennomgang.'
       : null;
+    const StegIkon = !steg ? null
+      : valgt.status === 'ny' ? Sparkles
+      : valgt.status === 'analysert' ? (valgt.kontaktTlf ? Phone : MessageSquare)
+      : valgt.status === 'kontaktet' ? Copy
+      : Check;
 
     const forsteBilde = (valgt.bilder || []).find((b) => !dodeBilder.has(b));
 
+    // Delt formspråk for Oversikt: myk flate + rolig etikett
+    const FLATE = 'rounded-[12px] bg-[#f7f6f4] p-4 sm:p-5';
+    const ETIKETT = 'text-[12.5px] font-medium text-[#8f8a82]';
+
     const railDetaljer = (
-      <aside className={toKol ? 'min-w-0 border-l border-black/[0.07] pl-8' : 'mt-7 border-t border-black/[0.07] pt-5'} data-testid="radar-oversikt-detaljer">
+      <aside className={toKol ? 'min-w-0' : `mt-3 ${FLATE}`} data-testid="radar-oversikt-detaljer">
         {toKol && (
           forsteBilde ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={forsteBilde} alt="" role="button" tabIndex={0} onClick={() => setFane('bilder')} onError={() => merkDodBilde(forsteBilde)}
-              className="mb-4 h-[132px] w-full cursor-pointer rounded-[10px] object-cover transition-opacity hover:opacity-95" title="Åpne Bilder" />
+              className="mb-5 h-[150px] w-full cursor-pointer rounded-[12px] object-cover transition-opacity hover:opacity-95" title="Åpne Bilder" />
           ) : (
-            <span className="mb-4 flex h-[132px] w-full items-center justify-center rounded-[10px] bg-[#f4f2ee]"><Home className="h-5 w-5 text-[#c9c4bd]" /></span>
+            <span className="mb-5 flex h-[150px] w-full items-center justify-center rounded-[12px] bg-[#f4f2ee]"><Home className="h-5 w-5 text-[#c9c4bd]" /></span>
           )
         )}
-        <p className="text-[11px] font-semibold uppercase tracking-[0.07em] text-[#8a857c]">Detaljer</p>
-        <dl className={toKol ? 'mt-3 space-y-3' : 'mt-3 grid grid-cols-2 gap-x-8 gap-y-3 sm:grid-cols-3'}>
+        <p className={ETIKETT}>Detaljer</p>
+        <dl className={toKol ? 'mt-3.5 space-y-3.5' : 'mt-3.5 grid grid-cols-2 gap-x-8 gap-y-3.5 sm:grid-cols-3'}>
           {[
-            ['Potensial', valgt.potensial?.score != null ? `${valgt.potensial.forelopig ? '~' : ''}${valgt.potensial.score}/100` : null],
+            ['Potensial', valgt.potensial?.score != null ? `${valgt.potensial.forelopig ? '~' : ''}${valgt.potensial.score} av 100` : null],
             ['Utleier', valgt.kontaktNavn || null],
             ['Telefon', valgt.kontaktTlf ? <a key="tlf" href={`tel:${valgt.kontaktTlf}`} className="tabular-nums hover:underline">{fmtTlf(valgt.kontaktTlf)}</a> : null],
             ['Boligtype', valgt.boligtype || null],
             ['Størrelse', valgt.m2 || valgt.soverom ? `${valgt.m2 ? `${valgt.m2} m²` : ''}${valgt.m2 && valgt.soverom ? ' · ' : ''}${valgt.soverom ? `${valgt.soverom} soverom` : ''}` : null],
             ['Dagens leie', `${kr(valgt.pris)}/mnd`],
-            ['Kilde', <a key="kilde" href={valgt.kildeUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1 font-semibold text-[#6d28d9] hover:underline">FINN-annonse <ExternalLink className="h-3 w-3" /></a>],
+            ['Kilde', <a key="kilde" href={valgt.kildeUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1 font-medium text-[#6d28d9] hover:underline">FINN-annonse <ExternalLink className="h-3 w-3" /></a>],
             ['Hentet', `${naarSist(valgt.createdAt)}${valgt.kilde === 'agent' ? ' · av agenten' : ''}`],
             ['Tilbudet', (valgt.aapninger || 0) > 0
               ? <button key="tb" type="button" onClick={() => setFane('aktivitet')} className="text-left tabular-nums decoration-black/20 underline-offset-2 hover:underline" title="Se hele tidslinjen i Aktivitet">{`Åpnet ${valgt.aapninger}×${valgt.sistAapnet ? ` · sist ${naarSist(valgt.sistAapnet)}` : ''}`}</button>
               : 'Ikke åpnet ennå'],
           ].filter(([, v]) => v != null && v !== '').map(([l, v]) => (
             <div key={l} className="min-w-0">
-              <dt className="text-[11.5px] text-[#a3a3a3]">{l}</dt>
-              <dd className="mt-0.5 truncate text-[13px] tabular-nums text-[#292524]">{v}</dd>
+              <dt className="text-[11.5px] text-[#a6a19a]">{l}</dt>
+              <dd className="mt-0.5 truncate text-[13.5px] tabular-nums text-[#26241f]">{v}</dd>
             </div>
           ))}
         </dl>
-        <div className={`flex gap-2 ${toKol ? 'mt-5 flex-col' : 'mt-5 flex-wrap'}`}>
-          <button onClick={() => kopierLenke(valgt)} data-testid="radar-detaljer-kopier-lenke" className={`${KNAPP_GHOST} justify-center`}>
+        <div className={`flex gap-2 ${toKol ? 'mt-6 flex-col' : 'mt-5 flex-wrap'}`}>
+          <button onClick={() => kopierLenke(valgt)} data-testid="radar-detaljer-kopier-lenke" className={`${KNAPP_GHOST} justify-center bg-white`}>
             {kopiert ? <Check className="h-3.5 w-3.5 text-[#1f7a45]" /> : <Copy className="h-3.5 w-3.5" />} {kopiert ? 'Kopiert!' : 'Kopier tilbudslenke'}
           </button>
-          <a href={`/tilbud/${valgt.tilbudSlug}`} target="_blank" rel="noreferrer" data-testid="radar-detaljer-aapne-tilbud" className={`${KNAPP_GHOST} justify-center`}>
+          <a href={`/tilbud/${valgt.tilbudSlug}`} target="_blank" rel="noreferrer" data-testid="radar-detaljer-aapne-tilbud" className={`${KNAPP_GHOST} justify-center bg-white`}>
             Se tilbudssiden <ExternalLink className="h-3.5 w-3.5" />
           </a>
         </div>
@@ -1459,143 +1470,147 @@ export default function Salgsradar({ apiKey }) {
     );
 
     const sekOversikt = (
-      <div data-testid="radar-oversikt" className={toKol ? 'mx-auto grid w-full max-w-[1160px] grid-cols-[minmax(0,1fr)_300px] items-start gap-8' : 'mx-auto max-w-[860px]'}>
+      <div data-testid="radar-oversikt" className={toKol ? 'mx-auto grid w-full max-w-[1160px] grid-cols-[minmax(0,1fr)_300px] items-start gap-10' : 'mx-auto max-w-[860px]'}>
         <div className="min-w-0">
           {/* Pipeline — hvor i løpet leaden er; klikk på et steg for å flytte den */}
           {valgt.status === 'tapt' ? (
-            <div className="mb-7 flex items-center gap-3" data-testid="radar-pipeline">
-              <span className="text-[12.5px] font-semibold text-[#b3261e]">Markert som tapt</span>
-              <button onClick={() => oppdater(valgt.id, { status: 'ny' })} disabled={autoAktiv} data-testid="radar-pipeline-gjenaapne" className="text-[12px] font-semibold text-[#6d28d9] hover:underline disabled:opacity-40">Gjenåpne</button>
+            <div className="mb-5 flex items-center gap-3" data-testid="radar-pipeline">
+              <span className="text-[13px] font-semibold text-[#b3261e]">Markert som tapt</span>
+              <button onClick={() => oppdater(valgt.id, { status: 'ny' })} disabled={autoAktiv} data-testid="radar-pipeline-gjenaapne" className="text-[12.5px] font-semibold text-[#6d28d9] hover:underline disabled:opacity-40">Gjenåpne</button>
             </div>
           ) : (
-            <div className="mb-7 flex gap-1.5" data-testid="radar-pipeline">
+            <div className="mb-5 flex gap-1.5" data-testid="radar-pipeline">
               {STATUSER.filter((s) => s.k !== 'tapt').map((s, i, arr) => {
                 const aktIdx = arr.findIndex((x) => x.k === valgt.status);
                 return (
                   <button key={s.k} onClick={() => oppdater(valgt.id, { status: s.k })} disabled={autoAktiv} title={`Sett status: ${s.l}`} data-testid={`radar-pipeline-${s.k}`}
                     className="group/st min-w-0 flex-1 disabled:cursor-not-allowed">
-                    <span className={`block h-[3px] rounded-full transition-colors ${i <= aktIdx ? (valgt.status === 'vunnet' ? 'bg-[#1f7a45]' : 'bg-[#141414]') : 'bg-black/[0.08] group-hover/st:bg-black/[0.22]'}`} />
-                    <span className={`mt-1.5 block truncate text-left text-[11px] transition-colors ${i === aktIdx ? 'font-semibold text-[#141414]' : 'text-[#a8a29a] group-hover/st:text-[#57534e]'}`}>{s.l}</span>
+                    <span className={`block h-[4px] rounded-full transition-colors ${i <= aktIdx ? (valgt.status === 'vunnet' ? 'bg-[#1f7a45]' : 'bg-[#1c1917]') : 'bg-black/[0.07] group-hover/st:bg-black/[0.18]'}`} />
+                    <span className={`mt-2 block truncate text-left text-[12px] transition-colors ${i === aktIdx ? 'font-semibold text-[#1c1917]' : 'text-[#a6a19a] group-hover/st:text-[#57534e]'}`}>{s.l}</span>
                   </button>
                 );
               })}
             </div>
           )}
-          {steg ? (
-            <section data-testid="radar-neste-steg">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.07em] text-[#8a857c]">Neste handling</p>
-              <p className="mt-2 max-w-[640px] text-[19px] font-bold leading-snug tracking-[-0.012em] sm:text-[21px]" style={heading}>{steg.t}</p>
-              {stegKontekst && <p className="mt-1.5 max-w-[560px] text-[13px] leading-relaxed text-[#78716c]">{stegKontekst}</p>}
-              <div className="mt-4 flex flex-wrap items-center gap-2">
-                {valgt.status === 'ny' && (
-                  <button onClick={() => analyser(valgt.id)} disabled={analyserer} data-testid="radar-steg-analyser" className={KNAPP_PRIMAER}>
-                    {analyserer ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />} Kjør AI-analyse
-                  </button>
-                )}
-                {valgt.status === 'analysert' && (
-                  <>
-                    {valgt.kontaktTlf ? (
-                      <a href={`tel:${valgt.kontaktTlf}`} data-testid="radar-steg-ring" className={KNAPP_PRIMAER}>
-                        <Phone className="h-3.5 w-3.5" /> Kontakt huseier
-                      </a>
-                    ) : (
-                      <button onClick={() => kopierMelding(valgt)} data-testid="radar-steg-kopier" className={KNAPP_PRIMAER}>
-                        {meldingKopiert ? <Check className="h-3.5 w-3.5 text-[#7ee2a8]" /> : <Copy className="h-3.5 w-3.5" />} {meldingKopiert ? 'Kopiert!' : 'Kopier FINN-melding'}
+
+          <div className="space-y-3">
+            {/* Neste handling — kompakt handlingsblokk, ikke editorial */}
+            {steg ? (
+              <section className={FLATE} data-testid="radar-neste-steg">
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+                  {StegIkon && (
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-[#1c1917] shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+                      <StegIkon className="h-[17px] w-[17px]" />
+                    </span>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[14.5px] font-semibold leading-snug text-[#1c1917]">{steg.t}</p>
+                    {stegKontekst && <p className="mt-1 max-w-[520px] text-[12.5px] leading-relaxed text-[#8f8a82]">{stegKontekst}</p>}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {valgt.status === 'ny' && (
+                      <button onClick={() => analyser(valgt.id)} disabled={analyserer} data-testid="radar-steg-analyser" className={KNAPP_PRIMAER}>
+                        {analyserer ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />} Kjør AI-analyse
                       </button>
                     )}
-                    {valgt.kontaktTlf ? (
-                      <button onClick={() => kopierMelding(valgt)} data-testid="radar-steg-kopier" className={KNAPP_GHOST}>
-                        {meldingKopiert ? <Check className="h-3.5 w-3.5 text-[#1f7a45]" /> : <Copy className="h-3.5 w-3.5" />} {meldingKopiert ? 'Kopiert!' : 'Kopier melding'}
-                      </button>
-                    ) : null}
-                    <button onClick={() => oppdater(valgt.id, { status: 'kontaktet' })} data-testid="radar-steg-kontaktet" className={KNAPP_GHOST}>
-                      Merk som kontaktet
-                    </button>
-                  </>
+                    {valgt.status === 'analysert' && (
+                      <>
+                        {valgt.kontaktTlf ? (
+                          <a href={`tel:${valgt.kontaktTlf}`} data-testid="radar-steg-ring" className={KNAPP_PRIMAER}>
+                            <Phone className="h-3.5 w-3.5" /> Kontakt huseier
+                          </a>
+                        ) : (
+                          <button onClick={() => kopierMelding(valgt)} data-testid="radar-steg-kopier" className={KNAPP_PRIMAER}>
+                            {meldingKopiert ? <Check className="h-3.5 w-3.5 text-[#7ee2a8]" /> : <Copy className="h-3.5 w-3.5" />} {meldingKopiert ? 'Kopiert!' : 'Kopier FINN-melding'}
+                          </button>
+                        )}
+                        <button onClick={() => oppdater(valgt.id, { status: 'kontaktet' })} data-testid="radar-steg-kontaktet" className={`${KNAPP_GHOST} bg-white`}>
+                          Merk som kontaktet
+                        </button>
+                      </>
+                    )}
+                    {valgt.status === 'kontaktet' && (
+                      <>
+                        <button onClick={() => { kopierLenke(valgt); oppdater(valgt.id, { status: 'dialog' }); }} data-testid="radar-steg-send-tilbud" className={KNAPP_PRIMAER}>
+                          {kopiert ? <Check className="h-3.5 w-3.5 text-[#7ee2a8]" /> : <Copy className="h-3.5 w-3.5" />} Send tilbud
+                        </button>
+                        <button onClick={() => oppdater(valgt.id, { status: 'dialog' })} data-testid="radar-steg-dialog" className={`${KNAPP_GHOST} bg-white`}>
+                          Huseier svarte
+                        </button>
+                        <button onClick={() => oppdater(valgt.id, { status: 'tapt' })} data-testid="radar-steg-ikke-aktuelt"
+                          className="flex h-8 items-center gap-1 rounded-[8px] px-2.5 text-[12.5px] font-medium text-[#b3261e] transition-colors hover:bg-[#fdf0ef]">
+                          Ikke aktuelt
+                        </button>
+                      </>
+                    )}
+                    {valgt.status === 'dialog' && (
+                      <>
+                        <button onClick={() => oppdater(valgt.id, { status: 'vunnet' })} data-testid="radar-steg-vunnet"
+                          className="flex h-8 items-center gap-1.5 rounded-[8px] bg-[#1f7a45] px-3.5 text-[12.5px] font-medium text-white transition-all hover:bg-[#196a3b] active:scale-[0.98]">
+                          <Check className="h-3.5 w-3.5" /> Marker som vunnet
+                        </button>
+                        <button onClick={() => oppdater(valgt.id, { status: 'tapt' })} data-testid="radar-steg-ikke-aktuelt-dialog"
+                          className="flex h-8 items-center gap-1 rounded-[8px] px-2.5 text-[12.5px] font-medium text-[#b3261e] transition-colors hover:bg-[#fdf0ef]">
+                          Ikke aktuelt
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </section>
+            ) : null}
+
+            {/* Regnestykket — kjernen i tilbudet */}
+            <section className={FLATE} data-testid="radar-oversikt-regnestykke">
+              <div className="flex items-baseline justify-between">
+                <p className={ETIKETT}>Regnestykket for huseier</p>
+                <button onClick={() => setFane('tilbud')} data-testid="radar-juster-tilbud" className="text-[12.5px] font-medium text-[#6d28d9] hover:underline">Juster i Tilbud</button>
+              </div>
+              <dl className="mt-3.5 max-w-[480px] space-y-2.5" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                <div className="flex items-baseline justify-between gap-4">
+                  <dt className="text-[13.5px] text-[#6f6a63]">Anbefalt leie</dt>
+                  <dd className="text-[13.5px] font-semibold text-[#1c1917]">{kr(rs.anbefalt)}<span className="font-normal text-[#a6a19a]">/mnd</span></dd>
+                </div>
+                <div className="flex items-baseline justify-between gap-4">
+                  <dt className="text-[13.5px] text-[#6f6a63]">DigiHome-honorar ({rs.pct} % eks. mva)</dt>
+                  <dd className="text-[13.5px] text-[#6f6a63]">−{kr(rs.honorar)}</dd>
+                </div>
+                <div className="flex items-baseline justify-between gap-4 border-t border-black/[0.06] pt-2.5">
+                  <dt className="text-[13.5px] font-medium text-[#1c1917]">Til huseier</dt>
+                  <dd className="text-[14.5px] font-bold text-[#1c1917]">{kr(rs.netto)}<span className="text-[12px] font-medium text-[#a6a19a]">/mnd</span></dd>
+                </div>
+                {rs.gevinst != null && (
+                  <div className="flex items-baseline justify-between gap-4">
+                    <dt className="text-[12.5px] text-[#a6a19a]">vs. dagens annonse ({kr(valgt.pris)})</dt>
+                    <dd className={`text-[12.5px] font-semibold ${rs.gevinst >= 0 ? 'text-[#1f7a45]' : 'text-[#c2413b]'}`}>{rs.gevinst >= 0 ? '+' : '−'}{kr(Math.abs(rs.gevinst))}</dd>
+                  </div>
                 )}
-                {valgt.status === 'kontaktet' && (
-                  <>
-                    <button onClick={() => { kopierLenke(valgt); oppdater(valgt.id, { status: 'dialog' }); }} data-testid="radar-steg-send-tilbud" className={KNAPP_PRIMAER}>
-                      {kopiert ? <Check className="h-3.5 w-3.5 text-[#7ee2a8]" /> : <Copy className="h-3.5 w-3.5" />} Send tilbud — kopier lenken
-                    </button>
-                    <button onClick={() => oppdater(valgt.id, { status: 'dialog' })} data-testid="radar-steg-dialog" className={KNAPP_GHOST}>
-                      Huseier svarte
-                    </button>
-                    <button onClick={() => oppdater(valgt.id, { status: 'tapt' })} data-testid="radar-steg-ikke-aktuelt"
-                      className="flex h-8 items-center gap-1 rounded-[7px] px-2.5 text-[12px] font-medium text-[#b3261e] transition-colors hover:bg-[#fdf0ef]">
-                      Ikke aktuelt
-                    </button>
-                  </>
-                )}
-                {valgt.status === 'dialog' && (
-                  <>
-                    <button onClick={() => oppdater(valgt.id, { status: 'vunnet' })} data-testid="radar-steg-vunnet"
-                      className="flex h-8 items-center gap-1.5 rounded-[8px] bg-[#1f7a45] px-3.5 text-[12.5px] font-medium text-white transition-all hover:bg-[#196a3b] active:scale-[0.98]">
-                      <Check className="h-3.5 w-3.5" /> Marker som vunnet
-                    </button>
-                    <button onClick={() => oppdater(valgt.id, { status: 'tapt' })} data-testid="radar-steg-ikke-aktuelt-dialog"
-                      className="flex h-8 items-center gap-1 rounded-[7px] px-2.5 text-[12px] font-medium text-[#b3261e] transition-colors hover:bg-[#fdf0ef]">
-                      Ikke aktuelt
-                    </button>
-                  </>
-                )}
+              </dl>
+            </section>
+
+            {/* Siste aktivitet — ekte hendelser, gruppert */}
+            <section className={FLATE} data-testid="radar-oversikt-aktivitet">
+              <div className="flex items-baseline justify-between">
+                <p className={ETIKETT}>Siste aktivitet</p>
+                <button onClick={() => setFane('aktivitet')} data-testid="radar-se-aktivitet" className="text-[12.5px] font-medium text-[#6d28d9] hover:underline">Se alt</button>
+              </div>
+              <div className="mt-3.5 space-y-3">
+                {hendelser.slice(0, 4).map((h, i) => {
+                  const Ik = HENDELSE_IKON[h.type] || StickyNote;
+                  return (
+                    <p key={h.id || `${h.type}-${i}`} className="flex items-start gap-2.5 text-[13.5px] text-[#3f3b35]">
+                      <Ik className="mt-[3px] h-3.5 w-3.5 shrink-0 text-[#aca79f]" />
+                      <span className="min-w-0 flex-1 truncate">{h.tekst}</span>
+                      <span className="shrink-0 text-[12px] tabular-nums text-[#aca79f]">{naarSist(h.at)}</span>
+                    </p>
+                  );
+                })}
+                {hendelser.length === 0 && <p className="text-[13.5px] text-[#aca79f]">Ingen aktivitet ennå.</p>}
+                {valgt.notat ? (
+                  <p className="flex items-start gap-2.5 text-[13.5px] text-[#3f3b35]" title="Festet notat"><StickyNote className="mt-[3px] h-3.5 w-3.5 shrink-0 text-[#aca79f]" /><span className="line-clamp-2">{valgt.notat}</span></p>
+                ) : null}
               </div>
             </section>
-          ) : null}
-
-          {/* (Metrikk-raden er fjernet — tallene bor i regnestykket, detalj-railen
-              og fanene, så samme tall aldri vises tre steder) */}
-
-          {/* Regnestykket — kjernen i tilbudet, alltid synlig */}
-          <div className="mt-7 border-t border-black/[0.07] pt-5" data-testid="radar-oversikt-regnestykke">
-            <div className="flex items-baseline justify-between">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.07em] text-[#8a857c]">Regnestykket for huseier</p>
-              <button onClick={() => setFane('tilbud')} data-testid="radar-juster-tilbud" className="text-[12px] font-semibold text-[#6d28d9] hover:underline">Juster i Tilbud</button>
-            </div>
-            <dl className="mt-3 max-w-[460px] space-y-2" style={{ fontVariantNumeric: 'tabular-nums' }}>
-              <div className="flex items-baseline justify-between gap-4">
-                <dt className="text-[13px] text-[#78716c]">Anbefalt leie</dt>
-                <dd className="text-[13px] font-semibold text-[#171717]">{kr(rs.anbefalt)}<span className="font-normal text-[#a3a3a3]">/mnd</span></dd>
-              </div>
-              <div className="flex items-baseline justify-between gap-4">
-                <dt className="text-[13px] text-[#78716c]">DigiHome-honorar ({rs.pct} % eks. mva)</dt>
-                <dd className="text-[13px] text-[#78716c]">−{kr(rs.honorar)}</dd>
-              </div>
-              <div className="flex items-baseline justify-between gap-4 border-t border-black/[0.07] pt-2">
-                <dt className="text-[13px] font-medium text-[#171717]">Til huseier</dt>
-                <dd className="text-[14px] font-bold text-[#171717]" style={heading}>{kr(rs.netto)}<span className="text-[11px] font-medium text-[#a3a3a3]">/mnd</span></dd>
-              </div>
-              {rs.gevinst != null && (
-                <div className="flex items-baseline justify-between gap-4">
-                  <dt className="text-[12.5px] text-[#a3a3a3]">vs. dagens annonse ({kr(valgt.pris)})</dt>
-                  <dd className={`text-[12.5px] font-semibold ${rs.gevinst >= 0 ? 'text-[#1f7a45]' : 'text-[#c2413b]'}`}>{rs.gevinst >= 0 ? '+' : '−'}{kr(Math.abs(rs.gevinst))}</dd>
-                </div>
-              )}
-            </dl>
-          </div>
-
-          {/* Siste aktivitet — ekte hendelser, gruppert */}
-          <div className="mt-7 border-t border-black/[0.07] pt-5" data-testid="radar-oversikt-aktivitet">
-            <div className="flex items-baseline justify-between">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.07em] text-[#8a857c]">Siste aktivitet</p>
-              <button onClick={() => setFane('aktivitet')} data-testid="radar-se-aktivitet" className="text-[12px] font-semibold text-[#6d28d9] hover:underline">Se alt</button>
-            </div>
-            <div className="mt-3 space-y-2.5">
-              {hendelser.slice(0, 4).map((h, i) => {
-                const Ik = HENDELSE_IKON[h.type] || StickyNote;
-                return (
-                  <p key={h.id || `${h.type}-${i}`} className="flex items-start gap-2 text-[13px] text-[#404040]">
-                    <Ik className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#a3a3a3]" />
-                    <span className="min-w-0 flex-1 truncate">{h.tekst}</span>
-                    <span className="shrink-0 text-[11.5px] tabular-nums text-[#a3a3a3]">{naarSist(h.at)}</span>
-                  </p>
-                );
-              })}
-              {hendelser.length === 0 && <p className="text-[13px] text-[#a3a3a3]">Ingen aktivitet ennå.</p>}
-              {valgt.notat ? (
-                <p className="flex items-start gap-2 text-[13px] text-[#404040]" title="Festet notat"><StickyNote className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#a3a3a3]" /><span className="line-clamp-2">{valgt.notat}</span></p>
-              ) : null}
-            </div>
           </div>
 
           {!toKol && railDetaljer}
@@ -1609,7 +1624,7 @@ export default function Salgsradar({ apiKey }) {
     const sekPreview = (
       <div className="sticky top-0" data-testid="radar-tilbud-preview">
         <div className="flex items-baseline justify-between pb-2">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.07em] text-[#8a857c]">Slik ser huseier det</p>
+          <p className="text-[12.5px] font-medium text-[#8f8a82]">Slik ser huseier det</p>
           <span className="flex items-center gap-3">
             <button onClick={() => setPreviewNokkel((k) => k + 1)} data-testid="radar-preview-oppdater" className="flex items-center gap-1 text-[11.5px] font-medium text-[#78716c] transition-colors hover:text-[#1c1917]">
               <RefreshCw className="h-3 w-3" /> Oppdater
