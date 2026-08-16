@@ -1429,6 +1429,7 @@ export default function Salgsradar({ apiKey }) {
         <p className="text-[11px] font-semibold uppercase tracking-[0.07em] text-[#8a857c]">Detaljer</p>
         <dl className={toKol ? 'mt-3 space-y-3' : 'mt-3 grid grid-cols-2 gap-x-8 gap-y-3 sm:grid-cols-3'}>
           {[
+            ['Potensial', valgt.potensial?.score != null ? `${valgt.potensial.forelopig ? '~' : ''}${valgt.potensial.score}/100` : null],
             ['Utleier', valgt.kontaktNavn || null],
             ['Telefon', valgt.kontaktTlf ? <a key="tlf" href={`tel:${valgt.kontaktTlf}`} className="tabular-nums hover:underline">{fmtTlf(valgt.kontaktTlf)}</a> : null],
             ['Boligtype', valgt.boligtype || null],
@@ -1436,7 +1437,9 @@ export default function Salgsradar({ apiKey }) {
             ['Dagens leie', `${kr(valgt.pris)}/mnd`],
             ['Kilde', <a key="kilde" href={valgt.kildeUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1 font-semibold text-[#6d28d9] hover:underline">FINN-annonse <ExternalLink className="h-3 w-3" /></a>],
             ['Hentet', `${naarSist(valgt.createdAt)}${valgt.kilde === 'agent' ? ' · av agenten' : ''}`],
-            ['Tilbudet', (valgt.aapninger || 0) > 0 ? `Åpnet ${valgt.aapninger}×${valgt.sistAapnet ? ` · sist ${naarSist(valgt.sistAapnet)}` : ''}` : 'Ikke åpnet ennå'],
+            ['Tilbudet', (valgt.aapninger || 0) > 0
+              ? <button key="tb" type="button" onClick={() => setFane('aktivitet')} className="text-left tabular-nums decoration-black/20 underline-offset-2 hover:underline" title="Se hele tidslinjen i Aktivitet">{`Åpnet ${valgt.aapninger}×${valgt.sistAapnet ? ` · sist ${naarSist(valgt.sistAapnet)}` : ''}`}</button>
+              : 'Ikke åpnet ennå'],
           ].filter(([, v]) => v != null && v !== '').map(([l, v]) => (
             <div key={l} className="min-w-0">
               <dt className="text-[11.5px] text-[#a3a3a3]">{l}</dt>
@@ -1458,6 +1461,26 @@ export default function Salgsradar({ apiKey }) {
     const sekOversikt = (
       <div data-testid="radar-oversikt" className={toKol ? 'mx-auto grid w-full max-w-[1160px] grid-cols-[minmax(0,1fr)_300px] items-start gap-8' : 'mx-auto max-w-[860px]'}>
         <div className="min-w-0">
+          {/* Pipeline — hvor i løpet leaden er; klikk på et steg for å flytte den */}
+          {valgt.status === 'tapt' ? (
+            <div className="mb-7 flex items-center gap-3" data-testid="radar-pipeline">
+              <span className="text-[12.5px] font-semibold text-[#b3261e]">Markert som tapt</span>
+              <button onClick={() => oppdater(valgt.id, { status: 'ny' })} disabled={autoAktiv} data-testid="radar-pipeline-gjenaapne" className="text-[12px] font-semibold text-[#6d28d9] hover:underline disabled:opacity-40">Gjenåpne</button>
+            </div>
+          ) : (
+            <div className="mb-7 flex gap-1.5" data-testid="radar-pipeline">
+              {STATUSER.filter((s) => s.k !== 'tapt').map((s, i, arr) => {
+                const aktIdx = arr.findIndex((x) => x.k === valgt.status);
+                return (
+                  <button key={s.k} onClick={() => oppdater(valgt.id, { status: s.k })} disabled={autoAktiv} title={`Sett status: ${s.l}`} data-testid={`radar-pipeline-${s.k}`}
+                    className="group/st min-w-0 flex-1 disabled:cursor-not-allowed">
+                    <span className={`block h-[3px] rounded-full transition-colors ${i <= aktIdx ? (valgt.status === 'vunnet' ? 'bg-[#1f7a45]' : 'bg-[#141414]') : 'bg-black/[0.08] group-hover/st:bg-black/[0.22]'}`} />
+                    <span className={`mt-1.5 block truncate text-left text-[11px] transition-colors ${i === aktIdx ? 'font-semibold text-[#141414]' : 'text-[#a8a29a] group-hover/st:text-[#57534e]'}`}>{s.l}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
           {steg ? (
             <section data-testid="radar-neste-steg">
               <p className="text-[11px] font-semibold uppercase tracking-[0.07em] text-[#8a857c]">Neste handling</p>
@@ -1520,20 +1543,8 @@ export default function Salgsradar({ apiKey }) {
             </section>
           ) : null}
 
-          {/* Nøkkelrad — lav, jevn baseline */}
-          <div className={`flex flex-wrap items-baseline gap-x-8 gap-y-3 ${steg ? 'mt-7 border-t border-black/[0.07] pt-5' : ''}`} style={{ fontVariantNumeric: 'tabular-nums' }}>
-            {[
-              [kr(rs.netto), 'til huseier/mnd'],
-              [valgt.potensial?.score != null ? `${valgt.potensial.forelopig ? '~' : ''}${valgt.potensial.score}` : '–', 'potensial'],
-              [`${nB}`, `bilder${(valgt.stylet || []).length ? ` · ${(valgt.stylet || []).length} AI` : ''}`],
-              [(valgt.aapninger || 0) > 0 ? `${valgt.aapninger}×` : '–', 'tilbud åpnet'],
-            ].map(([v, l]) => (
-              <span key={l} className="flex items-baseline gap-1.5">
-                <span className="text-[17px] font-bold text-[#171717]" style={heading}>{v}</span>
-                <span className="text-[12px] text-[#737373]">{l}</span>
-              </span>
-            ))}
-          </div>
+          {/* (Metrikk-raden er fjernet — tallene bor i regnestykket, detalj-railen
+              og fanene, så samme tall aldri vises tre steder) */}
 
           {/* Regnestykket — kjernen i tilbudet, alltid synlig */}
           <div className="mt-7 border-t border-black/[0.07] pt-5" data-testid="radar-oversikt-regnestykke">
