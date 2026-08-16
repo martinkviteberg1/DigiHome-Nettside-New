@@ -27,8 +27,8 @@ const pent = (x) => String(x || '').toLowerCase().replace(/(^|[\s\-\/])([a-zæø
 /* ── DigiHome-designspråk (samme tokens som Leieforhold/Datarom) ─────────────
    Varm blekk #1c1917, gradient-primærknapp, ghost-knapp med hårfin ramme,
    små radier (6-12px), status-prikker i stedet for fargede piller. */
-const KNAPP_GHOST = 'flex h-8 items-center gap-1.5 rounded-[7px] border border-black/[0.08] bg-white px-2.5 text-[12px] font-medium text-[#57534e] shadow-[0_1px_2px_rgba(28,25,23,0.04)] transition-colors hover:bg-[#f7f6f3] hover:text-[#1c1917] disabled:opacity-50';
-const KNAPP_PRIMAER = 'flex h-8 items-center gap-1.5 rounded-[8px] bg-[#141414] px-3.5 text-[12.5px] font-medium text-white transition-colors hover:bg-black/80 active:scale-[0.98] disabled:opacity-40';
+const KNAPP_GHOST = 'flex h-9 items-center gap-1.5 rounded-[9px] border border-black/[0.08] bg-white px-3 text-[13px] font-medium text-[#57534e] shadow-[0_1px_2px_rgba(28,25,23,0.04)] transition-colors hover:bg-[#f7f6f3] hover:text-[#1c1917] disabled:opacity-50';
+const KNAPP_PRIMAER = 'flex h-9 items-center gap-1.5 rounded-[9px] bg-[#141414] px-4 text-[13px] font-medium text-white transition-colors hover:bg-black/80 active:scale-[0.98] disabled:opacity-40';
 const KORT = 'rounded-[12px] border border-[#e7e7e4] bg-white shadow-[0_1px_2px_rgba(28,25,23,0.03)]';
 
 const STATUSER = [
@@ -102,7 +102,7 @@ function ScoreRing({ verdi, maks = 100, forelopig = false, storrelse = 40, strek
           strokeDasharray={omkrets} strokeDashoffset={omkrets * (1 - pct)}
           style={{ transition: 'stroke-dashoffset 0.7s cubic-bezier(0.4,0,0.2,1)' }} />
       </svg>
-      <span className="absolute font-bold tabular-nums leading-none" style={{ ...heading, fontSize: fontPx, color: forelopig ? '#a8a29a' : '#1c1917' }}>
+      <span className="absolute font-bold leading-none" style={{ ...heading, fontSize: fontPx, color: forelopig ? '#a8a29a' : '#1c1917' }}>
         {forelopig ? `~${v}` : v}
       </span>
     </span>
@@ -183,7 +183,7 @@ function Lightbox({ liste, idx, setIdx, onClose }) {
   return (
     <div className="fixed inset-0 z-[200] flex flex-col bg-[#0a0a0a]/95" data-testid="radar-lightbox" onClick={onClose}>
       <div className="flex items-center justify-between px-4 py-3 sm:px-6" onClick={(e) => e.stopPropagation()}>
-        <span className="text-[12px] font-semibold tabular-nums text-white/60" style={heading}>{idx + 1} / {liste.length}</span>
+        <span className="text-[12px] font-semibold text-white/60" style={heading}>{idx + 1} / {liste.length}</span>
         <span className={`rounded-md px-2.5 py-1 text-[10.5px] font-bold uppercase tracking-wide ${b.ai ? 'bg-[#8b5cf6]/25 text-[#cfb3f7]' : 'bg-white/10 text-white/60'}`}>{b.etikett}</span>
         <button onClick={onClose} data-testid="radar-lightbox-lukk" className="rounded-lg p-2 text-white/60 transition-colors hover:bg-white/10 hover:text-white"><X style={{ width: 20, height: 20 }} /></button>
       </div>
@@ -248,7 +248,7 @@ function SammenlignModal({ par, idx, setIdx, onClose }) {
         <div className="flex items-center gap-2.5">
           <span className="text-[13px] font-bold text-white" style={heading}>Original vs AI</span>
           <span className="rounded-[5px] bg-white/10 px-2 py-0.5 text-[10.5px] font-medium text-white/70">{STIL_VALG.find((s) => s.k === p.stil)?.l || p.stil}</span>
-          {par.length > 1 && <span className="text-[11.5px] tabular-nums text-white/40">{idx + 1} / {par.length}</span>}
+          {par.length > 1 && <span className="text-[11.5px] text-white/40">{idx + 1} / {par.length}</span>}
         </div>
         <button onClick={onClose} data-testid="radar-sammenlign-lukk" className="rounded-lg p-2 text-white/60 transition-colors hover:bg-white/10 hover:text-white"><X style={{ width: 20, height: 20 }} /></button>
       </div>
@@ -978,7 +978,7 @@ export default function Salgsradar({ apiKey }) {
               </button>
             </>
           )}
-          <span className="pointer-events-none absolute bottom-3 right-3 rounded-[5px] bg-black/55 px-2 py-0.5 text-[10.5px] font-medium tabular-nums text-white">{hIdx + 1} / {nB}</span>
+          <span className="pointer-events-none absolute bottom-3 right-3 rounded-[5px] bg-black/55 px-2 py-0.5 text-[10.5px] font-medium text-white">{hIdx + 1} / {nB}</span>
         </div>
         {/* Thumbnails — aktivt bilde markeres, AI-bilder åpner før/etter */}
         <div className="mt-2 flex gap-1.5 overflow-x-auto pb-1">
@@ -1043,7 +1043,7 @@ export default function Salgsradar({ apiKey }) {
         ) : (
           <div data-testid="radar-analyse-resultat">
             {/* Scorelinje — tall som tekst, ikke ringer */}
-            <div className="flex flex-wrap items-baseline gap-x-8 gap-y-2" style={{ fontVariantNumeric: 'tabular-nums' }}>
+            <div className="flex flex-wrap items-baseline gap-x-8 gap-y-2">
               {[
                 ['Potensial', ai.potensialScore, 'Hvor vinnbar leaden er for oss'],
                 ...(ai.salgskraft ? [['Salgskraft', bildeanalyseMangler && !ai.salgskraft.score ? null : ai.salgskraft.score, 'Hvor selgende annonsen er']] : []),
@@ -1120,7 +1120,7 @@ export default function Salgsradar({ apiKey }) {
                 {DEL_ETIKETTER.map(([k, etikett]) => (
                   <div key={k} className="flex items-baseline justify-between gap-2">
                     <span className="truncate text-[12.5px] text-[#78716c]">{etikett}</span>
-                    <span className="shrink-0 text-[12.5px] font-bold tabular-nums" style={{ ...heading, color: delFarge(ai.deler?.[k]) }}>{ai.deler?.[k] ?? '–'}</span>
+                    <span className="shrink-0 text-[12.5px] font-bold" style={{ ...heading, color: delFarge(ai.deler?.[k]) }}>{ai.deler?.[k] ?? '–'}</span>
                   </div>
                 ))}
                 {ai.salgskraft?.deler && [
@@ -1131,13 +1131,13 @@ export default function Salgsradar({ apiKey }) {
                 ].map(([k, etikett]) => (
                   <div key={k} className="flex items-baseline justify-between gap-2">
                     <span className="truncate text-[12.5px] text-[#78716c]">{etikett}</span>
-                    <span className="shrink-0 text-[12.5px] font-bold tabular-nums" style={{ ...heading, color: delFarge(ai.salgskraft.deler?.[k]) }}>{ai.salgskraft.deler?.[k] ?? '–'}</span>
+                    <span className="shrink-0 text-[12.5px] font-bold" style={{ ...heading, color: delFarge(ai.salgskraft.deler?.[k]) }}>{ai.salgskraft.deler?.[k] ?? '–'}</span>
                   </div>
                 ))}
               </div>
               {/* Tillit: aldri «0 av 0» — mangler målingen, si det ærlig */}
               {ai.teknisk && (ai.teknisk.maltBilder || 0) > 0 ? (
-                <p className="mt-3 text-[11px] tabular-nums text-[#a8a29a]">
+                <p className="mt-3 text-[11px] text-[#a8a29a]">
                   {ai.teknisk.maltBilder} av {ai.teknisk.antallBilder} bilder målt
                   {ai.teknisk.snittMp != null ? ` · snitt ${ai.teknisk.snittMp} MP` : ''}
                   {ai.teknisk.andelPortrett != null ? ` · ${Math.round(ai.teknisk.andelPortrett * 100)} % portrett${ai.teknisk.andelPortrett >= 0.8 ? ' (tyder på mobilbilder)' : ''}` : ''}
@@ -1158,7 +1158,7 @@ export default function Salgsradar({ apiKey }) {
                       <img src={bv.url} alt="" className="h-9 w-12 shrink-0 rounded-[6px] object-cover" />
                       <span className="w-[74px] shrink-0 text-[12px] font-semibold capitalize text-[#57534e]" style={heading}>{bv.rom}</span>
                       <span className="min-w-0 flex-1 truncate text-[12.5px] text-[#78716c]" title={bv.funn}>{bv.funn || '—'}</span>
-                      <span className="shrink-0 text-[12.5px] font-bold tabular-nums" style={{ ...heading, color: delFarge(bv.score) }}>{bv.score}</span>
+                      <span className="shrink-0 text-[12.5px] font-bold" style={{ ...heading, color: delFarge(bv.score) }}>{bv.score}</span>
                     </div>
                   ))}
                 </div>
@@ -1184,14 +1184,14 @@ export default function Salgsradar({ apiKey }) {
             <input type="number" value={valgt.analyse?.anbefaltLeie ?? ''} data-testid="radar-anbefalt-input"
               onChange={(e) => settLead(valgt.id, (x) => ({ ...x, analyse: { ...x.analyse, anbefaltLeie: Number(e.target.value) } }))}
               onBlur={(e) => oppdater(valgt.id, { analyse: { anbefaltLeie: Number(e.target.value), honorarPct: valgt.analyse?.honorarPct } })}
-              className="h-9 w-full rounded-[8px] border border-black/[0.08] px-3 text-[13px] tabular-nums outline-none transition-colors focus:border-[#1c1917]/30" />
+              className="h-9 w-full rounded-[8px] border border-black/[0.08] px-3 text-[13px] outline-none transition-colors focus:border-[#1c1917]/30" />
           </label>
           <label className="block">
             <span className="mb-1.5 block text-[11.5px] font-medium text-[#78716c]">Honorar (% eks. mva)</span>
             <input type="number" min="4" max="15" step="0.5" value={valgt.analyse?.honorarPct ?? 8} data-testid="radar-honorar-input"
               onChange={(e) => settLead(valgt.id, (x) => ({ ...x, analyse: { ...x.analyse, honorarPct: Number(e.target.value) } }))}
               onBlur={(e) => oppdater(valgt.id, { analyse: { anbefaltLeie: valgt.analyse?.anbefaltLeie, honorarPct: Number(e.target.value) } })}
-              className="h-9 w-full rounded-[8px] border border-black/[0.08] px-3 text-[13px] tabular-nums outline-none transition-colors focus:border-[#1c1917]/30" />
+              className="h-9 w-full rounded-[8px] border border-black/[0.08] px-3 text-[13px] outline-none transition-colors focus:border-[#1c1917]/30" />
           </label>
         </div>
         <div className="mt-3 grid grid-cols-3 gap-px overflow-hidden rounded-[10px] border border-black/[0.06] bg-black/[0.06]">
@@ -1199,7 +1199,7 @@ export default function Salgsradar({ apiKey }) {
             ['vs. i dag', rs.gevinst == null ? '–' : `${rs.gevinst >= 0 ? '+' : '−'}${kr(Math.abs(rs.gevinst))}`, rs.gevinst != null && rs.gevinst < 0 ? '#c2413b' : '#1f7a45']].map(([l, v, c]) => (
             <div key={l} className="bg-[#fbfaf9] px-2.5 py-3 sm:px-3.5">
               <p className="text-[9.5px] font-medium uppercase tracking-[0.05em] text-[#a8a29a] sm:text-[10px] sm:tracking-[0.06em]">{l}</p>
-              <p className="mt-0.5 text-[13px] font-bold tabular-nums min-[420px]:text-[14px] sm:text-[15px]" style={{ ...heading, color: c }}>{v}<span className="text-[10px] font-medium text-[#b8b2a9] sm:text-[10.5px]">/mnd</span></p>
+              <p className="mt-0.5 text-[13px] font-bold min-[420px]:text-[14px] sm:text-[15px]" style={{ ...heading, color: c }}>{v}<span className="text-[10px] font-medium text-[#b8b2a9] sm:text-[10.5px]">/mnd</span></p>
             </div>
           ))}
         </div>
@@ -1208,7 +1208,7 @@ export default function Salgsradar({ apiKey }) {
             <p className="text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#a8a29a]">Prishistorikk (FINN)</p>
             <ul className="mt-1.5 space-y-1">
               {[...valgt.prisHistorikk].reverse().slice(0, 5).map((h, i) => (
-                <li key={i} className="flex items-center gap-1.5 text-[12px] tabular-nums text-[#57534e]">
+                <li key={i} className="flex items-center gap-1.5 text-[12px] text-[#57534e]">
                   <span className={Number(h.til) < Number(h.fra) ? 'font-bold text-[#0e7490]' : 'font-bold text-[#c2413b]'}>{Number(h.til) < Number(h.fra) ? '↓' : '↑'}</span>
                   <span className="text-[#a8a29a] line-through">{tall(h.fra)}</span>
                   <span className="text-[#c2beb8]">→</span>
@@ -1240,7 +1240,7 @@ export default function Salgsradar({ apiKey }) {
     const sekTilbud = (
       <section className={FLAT}>
         <SekHode ikon={Globe} tittel="Tilbudsside til huseier" hoyre={(valgt.aapninger || 0) > 0 ? (
-          <span className="flex items-center gap-1 text-[11.5px] tabular-nums text-[#0e7490]"><Eye className="h-3.5 w-3.5" /> Åpnet {valgt.aapninger}×{valgt.sistAapnet ? ` · ${naarSist(valgt.sistAapnet)}` : ''}</span>
+          <span className="flex items-center gap-1 text-[11.5px] text-[#0e7490]"><Eye className="h-3.5 w-3.5" /> Åpnet {valgt.aapninger}×{valgt.sistAapnet ? ` · ${naarSist(valgt.sistAapnet)}` : ''}</span>
         ) : null} />
         <div className="mt-3 flex gap-2">
           <button onClick={() => kopierLenke(valgt)} data-testid="radar-kopier-lenke" className={`${KNAPP_PRIMAER} h-9 flex-1 justify-center`}>
@@ -1322,7 +1322,7 @@ export default function Salgsradar({ apiKey }) {
 
     const sekBeskrivelse = Boolean(valgt.beskrivelse) && (
       <section className={FLAT}>
-        <SekHode ikon={MessageSquare} tittel="Annonsetekst fra FINN" hoyre={<span className="text-[11px] tabular-nums text-[#c2beb8]">{valgt.beskrivelse.length} tegn</span>} />
+        <SekHode ikon={MessageSquare} tittel="Annonsetekst fra FINN" hoyre={<span className="text-[11px] text-[#c2beb8]">{valgt.beskrivelse.length} tegn</span>} />
         <details className="group/besk mt-3">
           <summary className="cursor-pointer list-none">
             <span className="block whitespace-pre-line text-[12.5px] leading-relaxed text-[#57534e] [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:5] group-open/besk:[display:block]">
@@ -1393,7 +1393,7 @@ export default function Salgsradar({ apiKey }) {
                       </span>
                     )}
                     <span className={`min-w-0 flex-1 pt-0.5 text-[13px] leading-relaxed ${h.gjort ? 'text-[#a8a29a] line-through decoration-[#d6d2cb]' : 'text-[#404040]'}`}>{h.tekst}</span>
-                    <span className="shrink-0 pt-1 text-[11.5px] tabular-nums text-[#a3a3a3]">{naarSist(h.at)}</span>
+                    <span className="shrink-0 pt-1 text-[11.5px] text-[#a3a3a3]">{naarSist(h.at)}</span>
                   </li>
                 );
               })}
@@ -1424,7 +1424,7 @@ export default function Salgsradar({ apiKey }) {
 
     // Delt formspråk for Oversikt: myk flate + rolig etikett
     const FLATE = 'rounded-[12px] bg-[#f7f6f4] p-4 sm:p-5';
-    const ETIKETT = 'text-[12.5px] font-medium text-[#8f8a82]';
+    const ETIKETT = 'text-[13px] font-medium text-[#8f8a82]';
 
     const railDetaljer = (
       <aside className={toKol ? 'min-w-0' : `mt-3 ${FLATE}`} data-testid="radar-oversikt-detaljer">
@@ -1442,19 +1442,19 @@ export default function Salgsradar({ apiKey }) {
           {[
             ['Potensial', valgt.potensial?.score != null ? `${valgt.potensial.forelopig ? '~' : ''}${valgt.potensial.score} av 100` : null],
             ['Utleier', valgt.kontaktNavn || null],
-            ['Telefon', valgt.kontaktTlf ? <a key="tlf" href={`tel:${valgt.kontaktTlf}`} className="tabular-nums hover:underline">{fmtTlf(valgt.kontaktTlf)}</a> : null],
+            ['Telefon', valgt.kontaktTlf ? <a key="tlf" href={`tel:${valgt.kontaktTlf}`} className="hover:underline">{fmtTlf(valgt.kontaktTlf)}</a> : null],
             ['Boligtype', valgt.boligtype || null],
             ['Størrelse', valgt.m2 || valgt.soverom ? `${valgt.m2 ? `${valgt.m2} m²` : ''}${valgt.m2 && valgt.soverom ? ' · ' : ''}${valgt.soverom ? `${valgt.soverom} soverom` : ''}` : null],
             ['Dagens leie', `${kr(valgt.pris)}/mnd`],
             ['Kilde', <a key="kilde" href={valgt.kildeUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1 font-medium text-[#6d28d9] hover:underline">FINN-annonse <ExternalLink className="h-3 w-3" /></a>],
             ['Hentet', `${naarSist(valgt.createdAt)}${valgt.kilde === 'agent' ? ' · av agenten' : ''}`],
             ['Tilbudet', (valgt.aapninger || 0) > 0
-              ? <button key="tb" type="button" onClick={() => setFane('aktivitet')} className="text-left tabular-nums decoration-black/20 underline-offset-2 hover:underline" title="Se hele tidslinjen i Aktivitet">{`Åpnet ${valgt.aapninger}×${valgt.sistAapnet ? ` · sist ${naarSist(valgt.sistAapnet)}` : ''}`}</button>
+              ? <button key="tb" type="button" onClick={() => setFane('aktivitet')} className="text-left decoration-black/20 underline-offset-2 hover:underline" title="Se hele tidslinjen i Aktivitet">{`Åpnet ${valgt.aapninger}×${valgt.sistAapnet ? ` · sist ${naarSist(valgt.sistAapnet)}` : ''}`}</button>
               : 'Ikke åpnet ennå'],
           ].filter(([, v]) => v != null && v !== '').map(([l, v]) => (
             <div key={l} className="min-w-0">
-              <dt className="text-[11.5px] text-[#a6a19a]">{l}</dt>
-              <dd className="mt-0.5 truncate text-[13.5px] tabular-nums text-[#26241f]">{v}</dd>
+              <dt className="text-[12px] text-[#a6a19a]">{l}</dt>
+              <dd className="mt-0.5 truncate text-[14px] text-[#26241f]">{v}</dd>
             </div>
           ))}
         </dl>
@@ -1486,7 +1486,7 @@ export default function Salgsradar({ apiKey }) {
                   <button key={s.k} onClick={() => oppdater(valgt.id, { status: s.k })} disabled={autoAktiv} title={`Sett status: ${s.l}`} data-testid={`radar-pipeline-${s.k}`}
                     className="group/st min-w-0 flex-1 disabled:cursor-not-allowed">
                     <span className={`block h-[4px] rounded-full transition-colors ${i <= aktIdx ? (valgt.status === 'vunnet' ? 'bg-[#1f7a45]' : 'bg-[#1c1917]') : 'bg-black/[0.07] group-hover/st:bg-black/[0.18]'}`} />
-                    <span className={`mt-2 block truncate text-left text-[12px] transition-colors ${i === aktIdx ? 'font-semibold text-[#1c1917]' : 'text-[#a6a19a] group-hover/st:text-[#57534e]'}`}>{s.l}</span>
+                    <span className={`mt-2 block truncate text-left text-[12.5px] transition-colors ${i === aktIdx ? 'font-semibold text-[#1c1917]' : 'text-[#a6a19a] group-hover/st:text-[#57534e]'}`}>{s.l}</span>
                   </button>
                 );
               })}
@@ -1499,13 +1499,13 @@ export default function Salgsradar({ apiKey }) {
               <section className={FLATE} data-testid="radar-neste-steg">
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
                   {StegIkon && (
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-[#1c1917] shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
-                      <StegIkon className="h-[17px] w-[17px]" />
+                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white text-[#1c1917] shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+                      <StegIkon className="h-[18px] w-[18px]" />
                     </span>
                   )}
                   <div className="min-w-0 flex-1">
-                    <p className="text-[14.5px] font-semibold leading-snug text-[#1c1917]">{steg.t}</p>
-                    {stegKontekst && <p className="mt-1 max-w-[520px] text-[12.5px] leading-relaxed text-[#8f8a82]">{stegKontekst}</p>}
+                    <p className="text-[16px] font-semibold leading-snug text-[#1c1917]">{steg.t}</p>
+                    {stegKontekst && <p className="mt-1 max-w-[520px] text-[13px] leading-relaxed text-[#8f8a82]">{stegKontekst}</p>}
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     {valgt.status === 'ny' && (
@@ -1560,13 +1560,16 @@ export default function Salgsradar({ apiKey }) {
               </section>
             ) : null}
 
-            {/* Regnestykket — kjernen i tilbudet */}
+            {/* Regnestykket — svaret først, stort; breakdown under */}
             <section className={FLATE} data-testid="radar-oversikt-regnestykke">
               <div className="flex items-baseline justify-between">
                 <p className={ETIKETT}>Regnestykket for huseier</p>
-                <button onClick={() => setFane('tilbud')} data-testid="radar-juster-tilbud" className="text-[12.5px] font-medium text-[#6d28d9] hover:underline">Juster i Tilbud</button>
+                <button onClick={() => setFane('tilbud')} data-testid="radar-juster-tilbud" className="text-[13px] font-medium text-[#6d28d9] hover:underline">Juster i Tilbud</button>
               </div>
-              <dl className="mt-3.5 max-w-[480px] space-y-2.5" style={{ fontVariantNumeric: 'tabular-nums' }}>
+              <p className="mt-3 text-[27px] font-bold leading-none tracking-[-0.01em] text-[#1c1917]" style={heading}>
+                {kr(rs.netto)}<span className="ml-1.5 text-[14px] font-medium tracking-normal text-[#a6a19a]" style={{ fontFamily: 'var(--font-body)' }}>/mnd til huseier</span>
+              </p>
+              <dl className="mt-4 max-w-[480px] space-y-2 border-t border-black/[0.06] pt-3.5">
                 <div className="flex items-baseline justify-between gap-4">
                   <dt className="text-[13.5px] text-[#6f6a63]">Anbefalt leie</dt>
                   <dd className="text-[13.5px] font-semibold text-[#1c1917]">{kr(rs.anbefalt)}<span className="font-normal text-[#a6a19a]">/mnd</span></dd>
@@ -1575,14 +1578,10 @@ export default function Salgsradar({ apiKey }) {
                   <dt className="text-[13.5px] text-[#6f6a63]">DigiHome-honorar ({rs.pct} % eks. mva)</dt>
                   <dd className="text-[13.5px] text-[#6f6a63]">−{kr(rs.honorar)}</dd>
                 </div>
-                <div className="flex items-baseline justify-between gap-4 border-t border-black/[0.06] pt-2.5">
-                  <dt className="text-[13.5px] font-medium text-[#1c1917]">Til huseier</dt>
-                  <dd className="text-[14.5px] font-bold text-[#1c1917]">{kr(rs.netto)}<span className="text-[12px] font-medium text-[#a6a19a]">/mnd</span></dd>
-                </div>
                 {rs.gevinst != null && (
                   <div className="flex items-baseline justify-between gap-4">
-                    <dt className="text-[12.5px] text-[#a6a19a]">vs. dagens annonse ({kr(valgt.pris)})</dt>
-                    <dd className={`text-[12.5px] font-semibold ${rs.gevinst >= 0 ? 'text-[#1f7a45]' : 'text-[#c2413b]'}`}>{rs.gevinst >= 0 ? '+' : '−'}{kr(Math.abs(rs.gevinst))}</dd>
+                    <dt className="text-[13px] text-[#a6a19a]">vs. dagens annonse ({kr(valgt.pris)})</dt>
+                    <dd className={`text-[13px] font-semibold ${rs.gevinst >= 0 ? 'text-[#1f7a45]' : 'text-[#c2413b]'}`}>{rs.gevinst >= 0 ? '+' : '−'}{kr(Math.abs(rs.gevinst))}</dd>
                   </div>
                 )}
               </dl>
@@ -1592,22 +1591,22 @@ export default function Salgsradar({ apiKey }) {
             <section className={FLATE} data-testid="radar-oversikt-aktivitet">
               <div className="flex items-baseline justify-between">
                 <p className={ETIKETT}>Siste aktivitet</p>
-                <button onClick={() => setFane('aktivitet')} data-testid="radar-se-aktivitet" className="text-[12.5px] font-medium text-[#6d28d9] hover:underline">Se alt</button>
+                <button onClick={() => setFane('aktivitet')} data-testid="radar-se-aktivitet" className="text-[13px] font-medium text-[#6d28d9] hover:underline">Se alt</button>
               </div>
               <div className="mt-3.5 space-y-3">
                 {hendelser.slice(0, 4).map((h, i) => {
                   const Ik = HENDELSE_IKON[h.type] || StickyNote;
                   return (
-                    <p key={h.id || `${h.type}-${i}`} className="flex items-start gap-2.5 text-[13.5px] text-[#3f3b35]">
+                    <p key={h.id || `${h.type}-${i}`} className="flex items-start gap-2.5 text-[14px] text-[#3f3b35]">
                       <Ik className="mt-[3px] h-3.5 w-3.5 shrink-0 text-[#aca79f]" />
                       <span className="min-w-0 flex-1 truncate">{h.tekst}</span>
-                      <span className="shrink-0 text-[12px] tabular-nums text-[#aca79f]">{naarSist(h.at)}</span>
+                      <span className="shrink-0 text-[12px] text-[#aca79f]">{naarSist(h.at)}</span>
                     </p>
                   );
                 })}
-                {hendelser.length === 0 && <p className="text-[13.5px] text-[#aca79f]">Ingen aktivitet ennå.</p>}
+                {hendelser.length === 0 && <p className="text-[14px] text-[#aca79f]">Ingen aktivitet ennå.</p>}
                 {valgt.notat ? (
-                  <p className="flex items-start gap-2.5 text-[13.5px] text-[#3f3b35]" title="Festet notat"><StickyNote className="mt-[3px] h-3.5 w-3.5 shrink-0 text-[#aca79f]" /><span className="line-clamp-2">{valgt.notat}</span></p>
+                  <p className="flex items-start gap-2.5 text-[14px] text-[#3f3b35]" title="Festet notat"><StickyNote className="mt-[3px] h-3.5 w-3.5 shrink-0 text-[#aca79f]" /><span className="line-clamp-2">{valgt.notat}</span></p>
                 ) : null}
               </div>
             </section>
@@ -1651,23 +1650,23 @@ export default function Salgsradar({ apiKey }) {
             </button>
             <div className="min-w-0 flex-1">
               <h2 className="truncate text-[20px] font-bold leading-tight tracking-[-0.015em] sm:text-[23px]" style={heading}>{pent(valgt.adresse || valgt.tittel)}</h2>
-              <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[12px] text-[#8a857c]">
+              <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[13px] text-[#8a857c]">
                 <span className="flex items-center gap-1.5">
-                  <span className="font-semibold tabular-nums text-[#1c1917]">{kr(valgt.pris)}/mnd</span>
+                  <span className="font-semibold text-[#1c1917]">{kr(valgt.pris)}/mnd</span>
                   {(() => {
                     const kutt = sisteKutt(valgt);
                     return kutt ? (
-                      <span className="font-semibold tabular-nums text-[#0e7490]" title={`${tall(kutt.fra)} → ${tall(kutt.til)} · ${naarSist(kutt.at)}`} data-testid="radar-panel-kutt">↓ −{kutt.pct} %</span>
+                      <span className="font-semibold text-[#0e7490]" title={`${tall(kutt.fra)} → ${tall(kutt.til)} · ${naarSist(kutt.at)}`} data-testid="radar-panel-kutt">↓ −{kutt.pct} %</span>
                     ) : null;
                   })()}
                 </span>
-                {valgt.m2 ? <span className="tabular-nums">{valgt.m2} m²</span> : null}
-                {valgt.soverom ? <span className="tabular-nums">{valgt.soverom} sov</span> : null}
+                {valgt.m2 ? <span>{valgt.m2} m²</span> : null}
+                {valgt.soverom ? <span>{valgt.soverom} sov</span> : null}
                 {(valgt.kontaktNavn || valgt.kontaktTlf) ? (
                   <span className="flex items-center gap-1" data-testid="radar-panel-kontakt">
                     {valgt.kontaktNavn ? <span className="text-[#57534e]">{valgt.kontaktNavn}</span> : null}
                     {valgt.kontaktTlf ? (
-                      <a href={`tel:${valgt.kontaktTlf}`} className="tabular-nums text-[#57534e] hover:text-[#1c1917] hover:underline" onClick={(e) => e.stopPropagation()}>{fmtTlf(valgt.kontaktTlf)}</a>
+                      <a href={`tel:${valgt.kontaktTlf}`} className="text-[#57534e] hover:text-[#1c1917] hover:underline" onClick={(e) => e.stopPropagation()}>{fmtTlf(valgt.kontaktTlf)}</a>
                     ) : null}
                   </span>
                 ) : null}
@@ -1719,7 +1718,7 @@ export default function Salgsradar({ apiKey }) {
           <div className="mt-2.5 flex items-center gap-4 overflow-x-auto" data-testid="radar-faner">
             {[['oversikt', 'Oversikt'], ['bilder', `Bilder${nB ? ` ${nB}` : ''}`], ['ai', 'AI'], ['tilbud', 'Tilbud'], ['aktivitet', 'Aktivitet']].map(([k, l]) => (
               <button key={k} onClick={() => setFane(k)} data-testid={`radar-fane-${k}`}
-                className={`shrink-0 whitespace-nowrap border-b-2 pb-2 text-[12.5px] font-semibold transition-colors ${fane === k ? 'border-[#141414] text-[#141414]' : 'border-transparent text-[#8a857c] hover:text-[#404040]'}`}>
+                className={`shrink-0 whitespace-nowrap border-b-2 pb-2 text-[13.5px] font-semibold transition-colors ${fane === k ? 'border-[#141414] text-[#141414]' : 'border-transparent text-[#8a857c] hover:text-[#404040]'}`}>
                 {l}
               </button>
             ))}
@@ -1883,7 +1882,7 @@ export default function Salgsradar({ apiKey }) {
               <button key={s.k} onClick={() => setFilter(s.k)} data-testid={`radar-filter-${s.k}`}
                 className={`flex h-[26px] shrink-0 items-center gap-1.5 whitespace-nowrap rounded-[6px] px-2.5 text-[12px] font-medium transition-all ${filter === s.k ? 'bg-[#1c1917] text-white shadow-[0_1px_3px_rgba(28,25,23,0.25)]' : 'text-[#6f6a61] hover:text-[#1c1917]'}`}>
                 {s.farge && <span className="h-[5px] w-[5px] rounded-full" style={{ background: filter === s.k ? '#fff' : s.farge }} />}
-                {s.l} <span className={`tabular-nums ${filter === s.k ? 'text-white/50' : 'text-[#c2beb8]'}`}>{antall[s.k] || 0}</span>
+                {s.l} <span className={` ${filter === s.k ? 'text-white/50' : 'text-[#c2beb8]'}`}>{antall[s.k] || 0}</span>
               </button>
             ))}
             <select value={sort.key} onChange={(e) => setSort({ key: e.target.value, dir: 'desc' })} data-testid="radar-sort-mobil" aria-label="Sortering"
@@ -1901,7 +1900,7 @@ export default function Salgsradar({ apiKey }) {
                 title="Samlet månedshonorar hvis alle aktive leads vinnes (analysert + kontaktet + dialog)"
                 className="mr-1 hidden items-baseline gap-1.5 whitespace-nowrap rounded-[7px] px-2 py-1 transition-colors hover:bg-[#f7f6f3] xl:flex">
                 <span className="text-[11.5px] text-[#8a857c]">I spill</span>
-                <span className="text-[12.5px] font-bold tabular-nums text-[#171717]" style={heading}>{kr(innsikt.honorarPipeline)}<span className="font-medium text-[#a8a29a]">/mnd</span></span>
+                <span className="text-[12.5px] font-bold text-[#171717]" style={heading}>{kr(innsikt.honorarPipeline)}<span className="font-medium text-[#a8a29a]">/mnd</span></span>
               </button>
             )}
             <span className="flex overflow-hidden rounded-[7px] border border-black/[0.08] bg-white shadow-[0_1px_2px_rgba(28,25,23,0.04)]">
@@ -1930,7 +1929,7 @@ export default function Salgsradar({ apiKey }) {
         </div>
       ) : (
         <div className={`flex flex-wrap items-center gap-2 rounded-[10px] bg-[#1c1917] px-4 py-2.5 text-white ${!splitt && visning === 'liste' ? 'mx-auto w-full max-w-[1040px]' : ''}`}>
-          <span className="text-[13px] font-bold tabular-nums" style={heading}>{utvalg.size} valgt</span>
+          <span className="text-[13px] font-bold" style={heading}>{utvalg.size} valgt</span>
           <button onClick={() => setUtvalg(new Set(sortert.map((l) => l.id)))} data-testid="radar-velg-alle"
             className="rounded-[7px] px-2.5 py-1.5 text-[12px] font-medium text-white/60 transition-colors hover:bg-white/10 hover:text-white">
             Velg alle ({sortert.length})
@@ -2031,7 +2030,7 @@ export default function Salgsradar({ apiKey }) {
                         ) : (
                           <span className={`block truncate text-[#a8a29a] ${splitt ? 'mt-0.5 text-[12px]' : 'mt-1 text-[13px]'}`}>{st.l}</span>
                         )}
-                        <span className={`flex items-center gap-1.5 truncate tabular-nums text-[#8a857c] ${splitt ? 'mt-0.5 text-[11.5px]' : 'mt-1 text-[12.5px]'}`}>
+                        <span className={`flex items-center gap-1.5 truncate text-[#8a857c] ${splitt ? 'mt-0.5 text-[11.5px]' : 'mt-1 text-[12.5px]'}`}>
                           {kr(l.pris)}/mnd
                           {(() => {
                             const kutt = sisteKutt(l);
@@ -2045,9 +2044,9 @@ export default function Salgsradar({ apiKey }) {
                       </span>
                       <span className="flex shrink-0 flex-col items-end gap-1">
                         {(l.aapninger || 0) > 0 ? (
-                          <span className={`flex items-center gap-1 font-semibold tabular-nums text-[#0e7490] ${splitt ? 'text-[11.5px]' : 'text-[13px]'}`} title={`Tilbudssiden åpnet ${l.aapninger} ganger`}><Eye className={splitt ? 'h-3.5 w-3.5' : 'h-4 w-4'} />{l.aapninger}</span>
+                          <span className={`flex items-center gap-1 font-semibold text-[#0e7490] ${splitt ? 'text-[11.5px]' : 'text-[13px]'}`} title={`Tilbudssiden åpnet ${l.aapninger} ganger`}><Eye className={splitt ? 'h-3.5 w-3.5' : 'h-4 w-4'} />{l.aapninger}</span>
                         ) : l.potensial?.score != null ? (
-                          <span className={`font-semibold tabular-nums text-[#b5b0a8] ${splitt ? 'text-[12px]' : 'text-[13.5px]'}`} title={l.potensial.forelopig ? 'Foreløpig potensial — kjør AI-analyse' : 'AI-potensial'} data-testid={`radar-score-${l.id}`}>{l.potensial.forelopig ? '~' : ''}{l.potensial.score}</span>
+                          <span className={`font-semibold text-[#b5b0a8] ${splitt ? 'text-[12px]' : 'text-[13.5px]'}`} title={l.potensial.forelopig ? 'Foreløpig potensial — kjør AI-analyse' : 'AI-potensial'} data-testid={`radar-score-${l.id}`}>{l.potensial.forelopig ? '~' : ''}{l.potensial.score}</span>
                         ) : null}
                       </span>
                     </div>
@@ -2121,7 +2120,7 @@ export default function Salgsradar({ apiKey }) {
                               <span className="block min-w-0" data-testid={`radar-tabell-kontakt-${l.id}`}>
                                 {l.kontaktNavn ? <span className="block max-w-[150px] truncate text-[12px] font-medium text-[#44403c]">{l.kontaktNavn}</span> : null}
                                 {l.kontaktTlf ? (
-                                  <a href={`tel:${l.kontaktTlf}`} onClick={(e) => e.stopPropagation()} className="block text-[11.5px] tabular-nums text-[#78716c] hover:text-[#1c1917] hover:underline">
+                                  <a href={`tel:${l.kontaktTlf}`} onClick={(e) => e.stopPropagation()} className="block text-[11.5px] text-[#78716c] hover:text-[#1c1917] hover:underline">
                                     {fmtTlf(l.kontaktTlf)}
                                   </a>
                                 ) : null}
@@ -2161,9 +2160,9 @@ export default function Salgsradar({ apiKey }) {
                               ) : <span className="text-[12px] text-[#ddd8d0]">–</span>}
                             </td>
                           ))}
-                          <td className="px-2 py-2 text-right text-[12.5px] font-semibold tabular-nums text-[#44403c]" style={heading}>{tall(l.pris)}</td>
-                          <td className="px-2 py-2 text-right text-[12.5px] tabular-nums text-[#78716c]" style={heading}>{l.analyse?.anbefaltLeie ? tall(l.analyse.anbefaltLeie) : '–'}</td>
-                          <td className="px-3.5 py-2 text-right text-[12.5px] tabular-nums text-[#0e7490]">{l.aapninger || 0}</td>
+                          <td className="px-2 py-2 text-right text-[12.5px] font-semibold text-[#44403c]" style={heading}>{tall(l.pris)}</td>
+                          <td className="px-2 py-2 text-right text-[12.5px] text-[#78716c]" style={heading}>{l.analyse?.anbefaltLeie ? tall(l.analyse.anbefaltLeie) : '–'}</td>
+                          <td className="px-3.5 py-2 text-right text-[12.5px] text-[#0e7490]">{l.aapninger || 0}</td>
                         </tr>
                       );
                     })}
