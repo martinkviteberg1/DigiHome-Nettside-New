@@ -11,7 +11,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   X, PenLine, Archive, Link2, History, Clock, Loader2, Check, Copy,
   Download, Plus, Trash2, ChevronUp, ChevronDown, ShieldCheck, Lock,
-  RotateCcw, Upload, AlertCircle, RefreshCw, Ban,
+  RotateCcw, Upload, AlertCircle, RefreshCw, Ban, Send,
 } from 'lucide-react';
 import { filIkonInfo } from './FilViser';
 
@@ -210,6 +210,19 @@ function SigneringSeksjon({ det, api, actor, erAdmin, oppsett, setOppsett, membe
     setBusy('');
   };
 
+  const purr = async () => {
+    if (!aktiv) return;
+    setBusy('purr');
+    try {
+      const r = await api(`signering/${aktiv.id}/purring`, { method: 'POST' });
+      const j = await r.json();
+      if (!j.ok) throw new Error(j.error || 'Purring feilet');
+      visToast(`Påminnelse sendt til ${j.sendt} signatar${j.sendt === 1 ? '' : 'er'}`);
+      await onOppdatert();
+    } catch (e) { visToast(e.message, 'feil'); }
+    setBusy('');
+  };
+
   return (
     <section data-testid="dok-signering">
       <p className={SEK_TITTEL}><PenLine className="h-3.5 w-3.5" /> BankID-signering</p>
@@ -224,6 +237,9 @@ function SigneringSeksjon({ det, api, actor, erAdmin, oppsett, setOppsett, membe
             <span className="ml-auto flex items-center gap-1.5">
               {aktiv && erAdmin && (
                 <>
+                  <button onClick={purr} disabled={!!busy} title="Send påminnelse på e-post til dem som ikke har signert" className="flex h-7 items-center gap-1 rounded-full px-2 text-[11.5px] font-medium text-[#999] hover:bg-white hover:text-[#8b5cf6]" data-testid="dok-signering-purr">
+                    <Send className="h-3 w-3" /> {busy === 'purr' ? 'Sender…' : 'Purr'}
+                  </button>
                   <button onClick={pollNaa} disabled={!!busy} title="Hent status fra Posten nå" className="flex h-7 items-center gap-1 rounded-full px-2 text-[11.5px] font-medium text-[#999] hover:bg-white hover:text-[#8b5cf6]">
                     <RefreshCw className={`h-3 w-3 ${busy === 'poll' ? 'animate-spin' : ''}`} /> Oppdater
                   </button>

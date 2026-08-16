@@ -64,7 +64,7 @@ import { getFinanceSettings, setFinanceSettings, listCosts, listActiveCosts, ups
 import { listFellesKostnader, upsertFellesKostnad, slettFellesKostnad, migrerFellesKostnader } from '@/lib/kostnader';
 import { finnKodeFraUrl, hentFinnHtml, parseFinnAnnonse, beregnAnalyse, opprettLead, validerIngestAnnonse, analyserAnnonse, kjorAutoPipeline, kjorAutoRetry, retryKandidater, filtrerLevendeBilder, slettLeads as radarSlettLeads, listLeads as radarListLeads, oppdaterLead as radarOppdaterLead, slettLead as radarSlettLead, stilBilde, lagreStyletBilde, hentStyletBilde, hentTilbud, registrerTilbudKontakt, tilbudsRegnestykke, STILER as RADAR_STILER, opprettStylingJobber, kjorStylingJobber, listStylingJobber, reviewStylingJobb, fjernStyletBilde } from '@/lib/salgsradar';
 import { settArkiv, listArkiv, nyVersjon, listVersjoner, hentVersjon, gjenopprettVersjon, opprettDeling, trekkDeling, hentDelt, filDetaljer, filLogg, VERSJON_COLL } from '@/lib/dokumenter';
-import { lagreOppsett as signLagreOppsett, hentOppsett as signHentOppsett, slettOppsett as signSlettOppsett, opprettSigneringsjobb, kansellerSignering, pollSignering, listSigneringsjobber, hentSignerRedirect, SIGN_JOBB_COLL } from '@/lib/signering';
+import { lagreOppsett as signLagreOppsett, hentOppsett as signHentOppsett, slettOppsett as signSlettOppsett, opprettSigneringsjobb, kansellerSignering, pollSignering, listSigneringsjobber, hentSignerRedirect, hentSignerVisning, hentSignerDokument, SIGN_JOBB_COLL } from '@/lib/signering';
 import { syncContractsFromPlatform, syncCustomersFromPlatform, maybeAutoSyncFinance, getFinanceSyncMeta } from '@/lib/contracts-sync';
 import { enqueueInterest as deliverInterest, retryInterestWebhooks, webhookTarget as interestWebhookTarget, platformInboxUrl, platformThreadUrl, platformUnitUrl, deliveryView, OUTBOX_COLL as INTEREST_OUTBOX } from '@/lib/interest-webhook';
 import { notifyStatus, removeSuppression } from '@/lib/notify-status';
@@ -5364,6 +5364,27 @@ async function handleRoute(request, { params }) {
         return cors(NextResponse.json({ ok: false, error: String(e && e.message || 'Kansellering feilet') }, { status: 502 }));
       }
     }
+    // Send påminnelse/ny e-post til signatarer som venter (purring / resend)
+    if (path[0] === 'admin' && path[1] === 'signering' && path.length === 4 && path[3] === 'purring' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!rateLimit(`signpurr:${clientIp(request)}`, 10)) return cors(NextResponse.json({ error: 'Vent litt før neste purring' }, { status: 429 }));
+      const jP = await db.collection(SIGN_JOBB_COLL).findOne({ id: path[2] });
+      if (!jP) return cors(NextResponse.json({ ok: false, error: 'Jobb ikke funnet' }, { status: 404 }));
+      if (jP.status !== 'I_GANG') return cors(NextResponse.json({ ok: false, error: 'Signeringsrunden er ikke aktiv' }, { status: 400 }));
+      const { sendSignaturEpost, signatarerPaaTur } = await import('@/lib/signering');
+      let sendtP = 0;
+      for (const sP of signatarerPaaTur(jP)) {
+        if (await sendSignaturEpost(jP, sP)) {
+          sendtP += 1;
+          await db.collection(SIGN_JOBB_COLL).updateOne(
+            { id: jP.id, 'signatarer.sid': sP.sid },
+            { $set: { 'signatarer.$.epostSendtAt': new Date().toISOString(), 'signatarer.$.purretAt': new Date().toISOString() } },
+          );
+        }
+      }
+      await filLogg(db, jP.filId, `Påminnelse sendt til ${sendtP} signatar${sendtP === 1 ? '' : 'er'}`, '');
+      return cors(NextResponse.json({ ok: true, sendt: sendtP }));
+    }
     if (route === '/admin/signering/poll' && method === 'POST') {
       if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       try {
@@ -5430,6 +5451,31 @@ async function handleRoute(request, { params }) {
       } catch (e) {
         return cors(NextResponse.json({ ok: false, error: String(e && e.message || 'Polling feilet') }, { status: 500 }));
       }
+    }
+    // OFFENTLIG: visningsdata for signeringssiden (forhåndsvisning før BankID)
+    if (path[0] === 'signer-info' && path.length === 3 && method === 'GET') {
+      if (!rateLimit(`signerinfo:${clientIp(request)}`, 60)) return cors(NextResponse.json({ error: 'For mange forsøk' }, { status: 429 }));
+      const rSi = await hentSignerVisning(db, path[1], path[2]);
+      if (!rSi.ok) return cors(NextResponse.json({ ok: false, error: rSi.error }, { status: rSi.status || 404 }));
+      return cors(NextResponse.json(rSi));
+    }
+    // OFFENTLIG: dokumentet som skal signeres (inline PDF for forhåndsvisning)
+    if (path[0] === 'signer-dokument' && path.length === 3 && method === 'GET') {
+      if (!rateLimit(`signerdok:${clientIp(request)}`, 30)) return cors(NextResponse.json({ error: 'For mange forsøk' }, { status: 429 }));
+      const dokSi = await hentSignerDokument(db, path[1], path[2]);
+      if (!dokSi) return cors(NextResponse.json({ error: 'Ikke funnet' }, { status: 404 }));
+      const bufSi = Buffer.from(dokSi.data || '', 'base64');
+      return new NextResponse(bufSi, {
+        status: 200,
+        headers: {
+          'Content-Type': dokSi.type || 'application/pdf',
+          'Content-Length': String(bufSi.length),
+          'Content-Disposition': `inline; filename*=UTF-8''${encodeURIComponent(dokSi.name || 'dokument.pdf')}`,
+          'X-Content-Type-Options': 'nosniff',
+          'X-Robots-Tag': 'noindex, nofollow',
+          'Cache-Control': 'private, no-store',
+        },
+      });
     }
     // OFFENTLIG: signeringsknappen i DigiHome-e-posten → henter fersk
     // engangs-URL fra Posten og sender signataren rett inn i BankID-flyten.

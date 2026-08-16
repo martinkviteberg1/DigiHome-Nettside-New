@@ -6111,3 +6111,16 @@ backend:
         -working: true
         -agent: "main"
         -comment: "Live-verifisert hele kjeden: e-post sendt → /api/signer → fersk engangs-URL → 302 til Postens signeringsside. Venter på brukerens faktiske BankID-signering for å verifisere PAdES-nedlasting + låsing (poller kjører hvert 2. min)."
+
+backend:
+  - task: "Signeringsside med forhåndsvisning + purring: hentSignerVisning/hentSignerDokument i lib/signering.js; offentlige GET /api/signer-info/:jobbId/:sid og /api/signer-dokument/:jobbId/:sid (rate-limited); POST /api/admin/signering/:jobbId/purring (resend e-post til signatarer på tur); e-postknapp peker nå til /signering/dokument/[jobbId]/[sid] (pdf.js-forhåndsvisning + sticky BankID-knapp)."
+    implemented: true
+    working: true
+    file: "/app/lib/signering.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "main"
+        -comment: "Live-verifisert med aktiv jobb a89a6179: info-API ok, PDF rendret (desktop+mobil screenshot), BankID-knapp → 302 til Posten, purring sendte e-post (sendt:1). IKKE kanseller jobben."

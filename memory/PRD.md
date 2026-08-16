@@ -570,3 +570,9 @@ Google Ads-styring via native REST API).
 - Sekvensiell rekkefølge styres av oss (e-post til nestemann ved signering). Signatar-identitet mot Posten = intern uuid (sid) — ingen fnr sendes på forhånd.
 - Exit-sider: /signering/ferdig|avvist|feil. Kansellering av direktejobber skjer lokalt (lenkesperring).
 - Ekte testjobb 18714586 aktiv — venter på Martins BankID-signering (dokument: «Testdokument for signering.pdf» på sak «BankID-signering — testdokument»).
+
+### Signeringsside med dokumentforhåndsvisning (aug 2026)
+- E-postknappen går nå til offentlig side /signering/dokument/[jobbId]/[sid]: DigiHome-brandet, viser tittel/melding/avsender/frist/hvem som signerer + HELE dokumentet rendret side for side (pdfjs-dist@4, worker i /public/pdf.worker.min.mjs) + sticky «Signer med BankID»-knapp → /api/signer-redirect.
+- Tilstander: allerede signert / ikke din tur (sekvensiell) / avsluttet / kansellert. Offentlige API-er: GET /api/signer-info/:jobbId/:sid og GET /api/signer-dokument/:jobbId/:sid (rate-limited, krever begge uuid-ene).
+- Purring: POST /api/admin/signering/:jobbId/purring sender e-post på nytt til dem som har tur; «Purr»-knapp i DokumentModal.
+- ConsentBanner skjules på /signering/* og /tilbud/*.

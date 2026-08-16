@@ -16,7 +16,7 @@ export default function ConsentBanner() {
   const cardRef = useRef(null);
   const pathname = usePathname();
   // Skjules også i investor-rommet (/investor) — konfidensielt, ingen marketing-sporing der.
-  const isAdmin = (pathname || '').startsWith('/admin') || (pathname || '').startsWith('/investor');
+  const isAdmin = (pathname || '').startsWith('/admin') || (pathname || '').startsWith('/investor') || (pathname || '').startsWith('/signering') || (pathname || '').startsWith('/tilbud');
   // Skjul banneret under offline film-render (?record=1) slik at MP4-rammene blir rene.
   const [isRecord, setIsRecord] = useState(false);
   useEffect(() => {
