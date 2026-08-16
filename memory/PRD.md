@@ -576,3 +576,10 @@ Google Ads-styring via native REST API).
 - Tilstander: allerede signert / ikke din tur (sekvensiell) / avsluttet / kansellert. Offentlige API-er: GET /api/signer-info/:jobbId/:sid og GET /api/signer-dokument/:jobbId/:sid (rate-limited, krever begge uuid-ene).
 - Purring: POST /api/admin/signering/:jobbId/purring sender e-post på nytt til dem som har tur; «Purr»-knapp i DokumentModal.
 - ConsentBanner skjules på /signering/* og /tilbud/*.
+
+## Signering-modul (feb 2026) — LEVERT
+- Ny adminmodul «Signering» (Ledelse-gruppen): oversikt over ALLE BankID-signeringsrunder (pågår/fullført/avvist/kansellert) med filter, søk og signatarfremdrift.
+- Frittstående dokumenter kan lastes opp direkte i modulen (chunk-opplasting, sentinel-taskId 'DOKUMENTer' = 'DOKUMENTER') og sendes til signering via samme DokumentModal som i Saker.
+- Sikkerhetsherding: frittstående dokumenter er admin-only på alle task-files-endepunkter (hentSynligSak-sentinel krever adminAuthed).
+- Backendtestet 49/53 (alle kritiske OK): ingen sid/signerUrl-lekkasje i lister, purring/kanseller-feilstier, regresjon på saksvedlegg.
+- Salgsradar: standardsortering endret til «Nyeste først» (createdAt desc) etter brukerønske.

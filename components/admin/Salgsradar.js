@@ -561,7 +561,8 @@ export default function Salgsradar({ apiKey }) {
   const [feil, setFeil] = useState('');
   const [filter, setFilter] = useState('alle');
   const [sok, setSok] = useState('');
-  const [sort, setSort] = useState({ key: 'potensial', dir: 'desc' });
+  // Standard: nyest lagt til øverst — nye annonser skal alltid være synlige med én gang
+  const [sort, setSort] = useState({ key: 'nyeste', dir: 'desc' });
   const [visning, setVisning] = useState('liste');
   const [valgtId, setValgtId] = useState(null);
   const [utvidet, setUtvidet] = useState(false);

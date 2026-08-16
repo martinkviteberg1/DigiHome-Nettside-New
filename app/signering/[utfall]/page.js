@@ -2,35 +2,31 @@
 
 /* ═══════════════ Offentlig exit-side for BankID-signering ═══════════════
    Posten sender signataren hit etter signering (ferdig), avbrudd (avvist)
-   eller teknisk feil (feil). Rolig, premium DigiHome-flate. Ferdig-siden
-   pinger /api/signering-puls slik at statusen oppdateres i portalen med
-   én gang. */
+   eller teknisk feil (feil). Samme rolige DigiHome-designspråk som
+   signeringssiden. Ferdig-siden pinger /api/signering-puls slik at status
+   oppdateres i portalen umiddelbart. */
 
-import { useEffect, useState } from 'react';
-import { use } from 'react';
+import { useEffect, useState, use } from 'react';
 
 const INNHOLD = {
   ferdig: {
-    ikon: (
-      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
-    ),
-    ring: '#d1fae5',
-    tittel: 'Takk — dokumentet er signert',
+    ring: 'bg-emerald-50',
+    farge: 'text-emerald-600',
+    ikon: <path d="M20 6 9 17l-5-5" />,
+    tittel: 'Dokumentet er signert',
     tekst: 'Signaturen din er registrert hos Posten signering. Avsenderen får beskjed automatisk, og det signerte dokumentet arkiveres trygt hos DigiHome. Du kan nå lukke dette vinduet.',
   },
   avvist: {
-    ikon: (
-      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#b45309" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
-    ),
-    ring: '#fef3c7',
+    ring: 'bg-amber-50',
+    farge: 'text-amber-600',
+    ikon: <path d="M18 6 6 18M6 6l12 12" />,
     tittel: 'Signeringen ble avbrutt',
     tekst: 'Du valgte å ikke signere dokumentet nå. Ingen signatur er registrert. Ombestemmer du deg, kan du bruke lenken i e-posten på nytt — den virker helt til fristen går ut.',
   },
   feil: {
-    ikon: (
-      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M12 8v5M12 16.5v.5" /><circle cx="12" cy="12" r="9.2" /></svg>
-    ),
-    ring: '#fee2e2',
+    ring: 'bg-rose-50',
+    farge: 'text-rose-500',
+    ikon: <><path d="M12 8v5M12 16.5v.5" /><circle cx="12" cy="12" r="9.2" /></>,
     tittel: 'Noe gikk galt',
     tekst: 'Signeringen kunne ikke gjennomføres akkurat nå. Prøv lenken i e-posten på nytt om noen minutter. Vedvarer problemet, ta kontakt med avsenderen hos DigiHome.',
   },
@@ -55,18 +51,31 @@ export default function SigneringUtfall({ params, searchParams }) {
   }, [utfall]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <main style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f6f5f2', padding: '24px 16px', fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" }}>
-      <div style={{ width: '100%', maxWidth: 440, background: '#fff', borderRadius: 20, border: '1px solid rgba(0,0,0,0.06)', boxShadow: '0 10px 40px -18px rgba(28,25,23,0.18)', padding: '36px 32px', textAlign: 'center' }}>
-        <p style={{ margin: 0, fontSize: 14, fontWeight: 700, letterSpacing: '-0.01em', color: '#0a0a0a' }}>DigiHome</p>
-        <div style={{ width: 56, height: 56, borderRadius: '50%', background: c.ring, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '26px auto 0' }}>
-          {c.ikon}
+    <main className="flex min-h-dvh flex-col bg-[#f5f4f1] font-body">
+      {/* Toppbar — samme som signeringssiden */}
+      <header className="border-b border-black/[0.05]">
+        <div className="mx-auto flex h-14 max-w-[1200px] items-center justify-between px-5">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/digihome-wordmark-ink.svg" alt="DigiHome" className="h-[16px] w-auto" />
+          <p className="flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-[0.12em] text-[#a8a29a]">
+            <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="11" width="16" height="10" rx="2.5" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg>
+            Sikker signering
+          </p>
         </div>
-        <h1 style={{ margin: '18px 0 0', fontSize: 20, lineHeight: 1.35, letterSpacing: '-0.01em', color: '#0a0a0a' }}>{c.tittel}</h1>
-        <p style={{ margin: '10px 0 0', fontSize: 13.5, lineHeight: 1.65, color: '#78716c' }}>{c.tekst}</p>
-        {grunn && utfall === 'feil' && (
-          <p style={{ margin: '14px 0 0', fontSize: 12, color: '#a8a29a', background: '#faf9f7', borderRadius: 10, padding: '10px 14px' }}>{grunn}</p>
-        )}
-        <p style={{ margin: '26px 0 0', fontSize: 11, color: '#c2beb8' }}>Elektronisk signering levert av Posten signering · BankID</p>
+      </header>
+
+      <div className="flex flex-1 items-center justify-center px-4 py-10">
+        <div className="w-full max-w-[440px] rounded-2xl border border-black/[0.07] bg-white p-9 text-center shadow-[0_1px_2px_rgba(28,25,23,0.04),0_18px_50px_-26px_rgba(28,25,23,0.22)]">
+          <div className={`mx-auto flex h-[58px] w-[58px] items-center justify-center rounded-full ${c.ring}`}>
+            <svg className={`h-[26px] w-[26px] ${c.farge}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">{c.ikon}</svg>
+          </div>
+          <h1 className="mt-5 font-heading text-[21px] font-bold leading-snug tracking-tight text-[#0a0a0a]">{c.tittel}</h1>
+          <p className="mt-3 text-[13.5px] leading-relaxed text-[#78716c]">{c.tekst}</p>
+          {grunn && utfall === 'feil' && (
+            <p className="mt-4 rounded-xl bg-[#faf9f7] px-4 py-2.5 text-[12px] text-[#a8a29a]">{grunn}</p>
+          )}
+          <p className="mt-7 border-t border-black/[0.05] pt-4 text-[11px] text-[#c2beb8]">Elektronisk signering levert av Posten signering · BankID</p>
+        </div>
       </div>
     </main>
   );

@@ -1,14 +1,22 @@
 'use client';
 
 /* ═══════════════ Offentlig signeringsside — forhåndsvisning før BankID ═══════
-   Signataren lander her fra DigiHome-e-posten: ser HELE dokumentet (rendret
-   side for side med pdf.js), tittel, melding, frist og hvem som signerer —
-   før de klikker «Signer med BankID» og sendes til Posten. Rolig, premium
-   DigiHome-flate. Tilgang krever gyldig jobbId+sid (to uuid-er fra e-posten). */
+   Verdensklasse, rolig DigiHome-flate: brand-typografi (Right Grotesk +
+   Diatype), dokumentet rendret side for side (pdf.js), responsivt oppsett —
+   desktop: dokument + sticky sidepanel · mobil: stablet med sticky
+   BankID-linje nederst. Tilgang krever gyldig jobbId+sid fra e-posten. */
 
 import { useEffect, useRef, useState, use } from 'react';
 
 const fmtDatoNb = (iso) => new Date(iso).toLocaleDateString('nb-NO', { day: 'numeric', month: 'long', year: 'numeric' });
+const fmtKort = (iso) => new Date(iso).toLocaleDateString('nb-NO', { day: 'numeric', month: 'short' });
+
+const STATUS_PRIKK = {
+  SIGNERT: 'bg-emerald-500',
+  VENTER: 'bg-[#d6d3cd]',
+  AVVIST: 'bg-rose-500',
+  UTLOPT: 'bg-amber-500',
+};
 
 export default function SignerDokumentSide({ params }) {
   const p = typeof params?.then === 'function' ? use(params) : params;
@@ -22,7 +30,7 @@ export default function SignerDokumentSide({ params }) {
   const [pdfFeil, setPdfFeil] = useState(false);
   const beholderRef = useRef(null);
 
-  // 1) Hent visningsdata
+  // 1) Visningsdata
   useEffect(() => {
     (async () => {
       try {
@@ -34,7 +42,7 @@ export default function SignerDokumentSide({ params }) {
     })();
   }, [jobbId, sid]);
 
-  // 2) Render PDF-en side for side (pdf.js — fungerer likt på mobil og desktop)
+  // 2) Render PDF side for side (pdf.js — likt på mobil og desktop)
   useEffect(() => {
     if (!info) return undefined;
     let avbrutt = false;
@@ -51,7 +59,7 @@ export default function SignerDokumentSide({ params }) {
         const beholder = beholderRef.current;
         if (!beholder) return;
         beholder.innerHTML = '';
-        const bredde = Math.min(beholder.clientWidth || 680, 760);
+        const bredde = Math.min(beholder.clientWidth || 680, 820);
         const dpr = Math.min(window.devicePixelRatio || 1, 2);
         for (let n = 1; n <= doc.numPages; n += 1) {
           if (avbrutt) return;
@@ -59,18 +67,18 @@ export default function SignerDokumentSide({ params }) {
           const vp0 = side.getViewport({ scale: 1 });
           const skala = bredde / vp0.width;
           const vp = side.getViewport({ scale: skala * dpr });
+          const ramme = document.createElement('div');
+          ramme.style.cssText = 'margin:0 auto 22px;max-width:100%;';
           const canvas = document.createElement('canvas');
           canvas.width = vp.width;
           canvas.height = vp.height;
-          canvas.style.width = `${Math.floor(vp.width / dpr)}px`;
-          canvas.style.height = `${Math.floor(vp.height / dpr)}px`;
-          canvas.style.display = 'block';
-          canvas.style.background = '#fff';
-          canvas.style.borderRadius = '10px';
-          canvas.style.boxShadow = '0 2px 18px -6px rgba(28,25,23,0.22)';
-          canvas.style.margin = '0 auto 14px';
-          canvas.style.maxWidth = '100%';
-          beholder.appendChild(canvas);
+          canvas.style.cssText = `width:${Math.floor(vp.width / dpr)}px;height:${Math.floor(vp.height / dpr)}px;display:block;background:#fff;border-radius:6px;box-shadow:0 1px 2px rgba(28,25,23,0.06),0 14px 40px -18px rgba(28,25,23,0.25);border:1px solid rgba(0,0,0,0.05);max-width:100%;margin:0 auto;`;
+          const tall = document.createElement('p');
+          tall.textContent = `Side ${n} av ${doc.numPages}`;
+          tall.style.cssText = 'margin:9px 0 0;text-align:center;font-size:10.5px;letter-spacing:0.06em;color:#b8b4ad;font-variant-numeric:tabular-nums;';
+          ramme.appendChild(canvas);
+          ramme.appendChild(tall);
+          beholder.appendChild(ramme);
           await side.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
           setRendret(n);
         }
@@ -81,34 +89,26 @@ export default function SignerDokumentSide({ params }) {
     return () => { avbrutt = true; };
   }, [info, jobbId, sid]);
 
-  const S = {
-    side: { minHeight: '100dvh', background: '#f6f5f2', fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif", paddingBottom: 110 },
-    topp: { maxWidth: 800, margin: '0 auto', padding: '22px 18px 0' },
-    kort: { maxWidth: 800, margin: '14px auto 0', background: '#fff', border: '1px solid rgba(0,0,0,0.06)', borderRadius: 18, padding: '24px 24px 20px' },
-    etikett: { margin: 0, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.09em', color: '#8b5cf6' },
-    tittel: { margin: '6px 0 0', fontSize: 22, lineHeight: 1.3, letterSpacing: '-0.015em', color: '#0a0a0a', fontWeight: 700 },
-    meta: { margin: '10px 0 0', fontSize: 13, lineHeight: 1.6, color: '#78716c' },
-    dokOmr: { maxWidth: 800, margin: '18px auto 0', padding: '0 18px' },
-    bunn: { position: 'fixed', left: 0, right: 0, bottom: 0, background: 'rgba(255,255,255,0.94)', backdropFilter: 'blur(10px)', borderTop: '1px solid rgba(0,0,0,0.07)', padding: '12px 18px calc(12px + env(safe-area-inset-bottom))' },
-    bunnInn: { maxWidth: 800, margin: '0 auto', display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' },
-    knapp: { display: 'inline-flex', alignItems: 'center', gap: 8, background: '#0a0a0a', color: '#fff', textDecoration: 'none', fontSize: 15, fontWeight: 600, padding: '14px 28px', borderRadius: 999, border: 'none', cursor: 'pointer' },
-  };
-
+  /* ── Feiltilstand / lasting ─────────────────────────────────────────────── */
   if (feil) {
     return (
-      <main style={{ ...S.side, display: 'flex', alignItems: 'center', justifyContent: 'center', paddingBottom: 0 }}>
-        <div style={{ ...S.kort, maxWidth: 440, textAlign: 'center' }}>
-          <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#0a0a0a' }}>DigiHome</p>
-          <h1 style={{ margin: '16px 0 0', fontSize: 19, color: '#0a0a0a' }}>Lenken virker ikke</h1>
-          <p style={{ margin: '8px 0 0', fontSize: 13.5, lineHeight: 1.6, color: '#78716c' }}>{feil}</p>
+      <main className="flex min-h-dvh items-center justify-center bg-[#f5f4f1] px-4 font-body">
+        <div className="w-full max-w-[420px] rounded-2xl border border-black/[0.07] bg-white p-8 text-center shadow-[0_14px_40px_-20px_rgba(28,25,23,0.2)]">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/digihome-wordmark-ink.svg" alt="DigiHome" className="mx-auto h-[17px] w-auto" />
+          <h1 className="mt-7 font-heading text-[19px] font-bold tracking-tight text-[#0a0a0a]">Lenken virker ikke</h1>
+          <p className="mt-2.5 text-[13.5px] leading-relaxed text-[#78716c]">{feil}</p>
         </div>
       </main>
     );
   }
   if (!info) {
     return (
-      <main style={{ ...S.side, display: 'flex', alignItems: 'center', justifyContent: 'center', paddingBottom: 0 }}>
-        <p style={{ fontSize: 13, color: '#a8a29a' }}>Laster signeringsoppdraget …</p>
+      <main className="flex min-h-dvh items-center justify-center bg-[#f5f4f1] font-body">
+        <div className="flex items-center gap-2.5 text-[13px] text-[#a8a29a]">
+          <span className="h-3.5 w-3.5 animate-spin rounded-full border-[1.5px] border-[#d6d3cd] border-t-[#57534e]" />
+          Laster signeringsoppdraget …
+        </div>
       </main>
     );
   }
@@ -116,77 +116,156 @@ export default function SignerDokumentSide({ params }) {
   const alleredeSignert = info.signatar?.status === 'SIGNERT';
   const avsluttet = info.jobbStatus !== 'I_GANG';
   const kanSignere = info.paaTur && !alleredeSignert && !avsluttet;
+  const flere = (info.signatarer || []).length > 1;
+
+  const StatusMelding = () => {
+    if (alleredeSignert) return (
+      <div className="mt-4 flex items-start gap-2.5 rounded-xl bg-emerald-50 px-3.5 py-3 text-[13px] font-medium leading-relaxed text-emerald-800">
+        <svg className="mt-0.5 h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+        Du har allerede signert dette dokumentet. Takk!
+      </div>
+    );
+    if (avsluttet) return (
+      <div className="mt-4 rounded-xl bg-[#f5f4f1] px-3.5 py-3 text-[13px] font-medium leading-relaxed text-[#78716c]">
+        {info.jobbStatus === 'FULLFORT' ? 'Signeringsrunden er fullført — alle har signert.' : info.jobbStatus === 'KANSELLERT' ? 'Signeringsrunden er kansellert av avsenderen.' : 'Signeringsrunden er avsluttet.'}
+      </div>
+    );
+    if (!info.paaTur) return (
+      <div className="mt-4 rounded-xl bg-[#fdf6e7] px-3.5 py-3 text-[13px] font-medium leading-relaxed text-[#9a6b1c]">
+        Det er ikke din tur ennå — du får e-post når forrige signatar er ferdig.
+      </div>
+    );
+    return null;
+  };
+
+  const SignerKnapp = ({ bred = false }) => kanSignere ? (
+    <a
+      href={`/api/signer/${jobbId}/${sid}`}
+      data-testid="signer-bankid-knapp"
+      className={`group inline-flex items-center justify-center gap-2 rounded-full bg-[#0a0a0a] px-7 py-[15px] text-[15px] font-semibold text-white shadow-[0_10px_26px_-12px_rgba(10,10,10,0.5)] transition-all hover:bg-black hover:shadow-[0_14px_30px_-12px_rgba(10,10,10,0.55)] active:scale-[0.99] ${bred ? 'w-full' : ''}`}
+    >
+      Signer med BankID
+      <span aria-hidden className="translate-x-0 text-[17px] leading-none transition-transform group-hover:translate-x-0.5">→</span>
+    </a>
+  ) : (
+    <span className={`inline-flex items-center justify-center rounded-full bg-[#eceae5] px-7 py-[15px] text-[14.5px] font-semibold text-[#a8a29a] ${bred ? 'w-full' : ''}`}>
+      {alleredeSignert ? 'Allerede signert' : avsluttet ? 'Avsluttet' : 'Venter på din tur'}
+    </span>
+  );
+
+  const InfoPanel = ({ medKnapp }) => (
+    <div className="rounded-2xl border border-black/[0.07] bg-white p-6 shadow-[0_1px_2px_rgba(28,25,23,0.04),0_16px_44px_-24px_rgba(28,25,23,0.16)] sm:p-7">
+      <p className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-[#7c3aed]">Til signering</p>
+      <h1 className="mt-2.5 font-heading text-[23px] font-bold leading-[1.2] tracking-tight text-[#0a0a0a] sm:text-[26px]">{info.tittel}</h1>
+      {info.melding && <p className="mt-3.5 text-[14px] leading-relaxed text-[#57534e]">{info.melding}</p>}
+
+      {/* Meta — hårfine delelinjer */}
+      <dl className="mt-5 border-t border-black/[0.06]">
+        <div className="flex items-baseline justify-between gap-4 border-b border-black/[0.05] py-2.5">
+          <dt className="text-[12px] text-[#a8a29a]">Avsender</dt>
+          <dd className="text-right text-[12.5px] font-semibold text-[#1c1917]">{info.avsender}</dd>
+        </div>
+        <div className="flex items-baseline justify-between gap-4 border-b border-black/[0.05] py-2.5">
+          <dt className="text-[12px] text-[#a8a29a]">Frist</dt>
+          <dd className="text-right text-[12.5px] font-semibold tabular-nums text-[#1c1917]">{fmtDatoNb(info.frist)}</dd>
+        </div>
+        <div className="flex items-baseline justify-between gap-4 border-b border-black/[0.05] py-2.5">
+          <dt className="text-[12px] text-[#a8a29a]">Dokument</dt>
+          <dd className="min-w-0 truncate text-right text-[12.5px] font-semibold text-[#1c1917]">{info.filNavn}{sider ? <span className="font-normal text-[#a8a29a]"> · {sider} s.</span> : ''}</dd>
+        </div>
+      </dl>
+
+      {/* Signatarer m/status */}
+      {flere && (
+        <div className="mt-4">
+          <p className="text-[10.5px] font-bold uppercase tracking-[0.1em] text-[#b8b4ad]">Signatarer</p>
+          <ul className="mt-2 space-y-1.5">
+            {info.signatarer.map((s, i) => (
+              <li key={i} className="flex items-center gap-2.5 text-[13px]">
+                <span className={`h-[7px] w-[7px] shrink-0 rounded-full ${STATUS_PRIKK[s.status] || STATUS_PRIKK.VENTER}`} />
+                <span className={`min-w-0 flex-1 truncate ${s.deg ? 'font-semibold text-[#0a0a0a]' : 'text-[#57534e]'}`}>{s.navn}{s.deg ? ' (deg)' : ''}</span>
+                <span className="shrink-0 text-[11px] tabular-nums text-[#b8b4ad]">
+                  {s.status === 'SIGNERT' ? `Signert${s.signertAt ? ` ${fmtKort(s.signertAt)}` : ''}` : s.status === 'AVVIST' ? 'Avvist' : 'Venter'}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <StatusMelding />
+
+      {medKnapp && (
+        <div className="mt-6">
+          <SignerKnapp bred />
+          <p className="mt-3 text-center text-[11.5px] leading-relaxed text-[#a8a29a]">
+            Juridisk bindende signering hos <span className="font-semibold text-[#78716c]">Posten signering</span> med <span className="font-semibold text-[#78716c]">BankID</span>
+          </p>
+        </div>
+      )}
+    </div>
+  );
 
   return (
-    <main style={S.side}>
-      {/* Topp */}
-      <div style={S.topp}>
-        <p style={{ margin: 0, fontSize: 15, fontWeight: 700, letterSpacing: '-0.01em', color: '#0a0a0a' }}>DigiHome</p>
-      </div>
-
-      {/* Oppdragskort */}
-      <div style={S.kort}>
-        <p style={S.etikett}>Til signering</p>
-        <h1 style={S.tittel}>{info.tittel}</h1>
-        {info.melding && <p style={{ margin: '12px 0 0', fontSize: 14, lineHeight: 1.65, color: '#555' }}>{info.melding}</p>}
-        <p style={S.meta}>
-          Fra <strong style={{ color: '#44403c' }}>{info.avsender}</strong>
-          {info.signatar?.navn ? <> · Du signerer som <strong style={{ color: '#44403c' }}>{info.signatar.navn}</strong></> : null}
-          {' '}· Frist <strong style={{ color: '#44403c' }}>{fmtDatoNb(info.frist)}</strong>
-          {info.antall > 1 ? <> · {info.signert} av {info.antall} har signert</> : null}
-        </p>
-        {alleredeSignert && (
-          <p style={{ margin: '14px 0 0', fontSize: 13, fontWeight: 600, color: '#059669', background: '#ecfdf5', borderRadius: 10, padding: '10px 14px' }}>Du har allerede signert dette dokumentet. Takk!</p>
-        )}
-        {!alleredeSignert && avsluttet && (
-          <p style={{ margin: '14px 0 0', fontSize: 13, fontWeight: 600, color: '#78716c', background: '#faf9f7', borderRadius: 10, padding: '10px 14px' }}>
-            {info.jobbStatus === 'FULLFORT' ? 'Signeringsrunden er fullført.' : info.jobbStatus === 'KANSELLERT' ? 'Signeringsrunden er kansellert av avsenderen.' : 'Signeringsrunden er avsluttet.'}
+    <main className="min-h-dvh bg-[#f5f4f1] pb-28 font-body lg:pb-16">
+      {/* Toppbar */}
+      <header className="sticky top-0 z-40 border-b border-black/[0.05] bg-[#f5f4f1]/90 backdrop-blur-md">
+        <div className="mx-auto flex h-14 max-w-[1200px] items-center justify-between px-5">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/digihome-wordmark-ink.svg" alt="DigiHome" className="h-[16px] w-auto" />
+          <p className="flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-[0.12em] text-[#a8a29a]">
+            <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="11" width="16" height="10" rx="2.5" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg>
+            Sikker signering
           </p>
-        )}
-        {!alleredeSignert && !avsluttet && !info.paaTur && (
-          <p style={{ margin: '14px 0 0', fontSize: 13, fontWeight: 600, color: '#9a6b1c', background: '#fdf6e7', borderRadius: 10, padding: '10px 14px' }}>Det er ikke din tur ennå — du får e-post når forrige signatar er ferdig.</p>
-        )}
+        </div>
+      </header>
+
+      <div className="mx-auto max-w-[1200px] px-4 sm:px-5">
+        {/* Desktop: dokument venstre + sticky panel høyre · Mobil: panel øverst */}
+        <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start lg:gap-8">
+
+          {/* Infopanel — mobil (øverst) */}
+          <div className="mt-5 lg:hidden">
+            <InfoPanel medKnapp={false} />
+          </div>
+
+          {/* Dokument */}
+          <section className="mt-6 lg:order-1 lg:mt-8" data-testid="signer-dokument-visning">
+            {pdfFeil ? (
+              <div className="rounded-2xl border border-black/[0.07] bg-white px-6 py-10 text-center">
+                <p className="text-[13.5px] text-[#78716c]">Forhåndsvisningen kunne ikke lastes.</p>
+                <a href={`/api/signer-dokument/${jobbId}/${sid}`} target="_blank" rel="noreferrer" className="mt-2.5 inline-block text-[13.5px] font-semibold text-[#7c3aed] hover:underline">Åpne dokumentet (PDF) →</a>
+              </div>
+            ) : (
+              <>
+                {rendret === 0 && (
+                  <div className="mx-auto max-w-[820px] space-y-4">
+                    <div className="aspect-[1/1.35] w-full animate-pulse rounded-md border border-black/[0.05] bg-white shadow-[0_14px_40px_-18px_rgba(28,25,23,0.18)]" />
+                    <p className="text-center text-[11px] tracking-wide text-[#b8b4ad]">Laster dokumentet …</p>
+                  </div>
+                )}
+                <div ref={beholderRef} />
+                {rendret > 0 && (
+                  <p className="mt-1 pb-2 text-center">
+                    <a href={`/api/signer-dokument/${jobbId}/${sid}`} target="_blank" rel="noreferrer" className="text-[11.5px] text-[#a8a29a] underline decoration-[#d6d3cd] underline-offset-2 hover:text-[#78716c]">Last ned PDF</a>
+                  </p>
+                )}
+              </>
+            )}
+          </section>
+
+          {/* Infopanel — desktop (sticky høyre) */}
+          <aside className="hidden lg:order-2 lg:mt-8 lg:block lg:sticky lg:top-[76px]">
+            <InfoPanel medKnapp />
+          </aside>
+        </div>
       </div>
 
-      {/* Dokumentforhåndsvisning */}
-      <div style={S.dokOmr} data-testid="signer-dokument-visning">
-        <p style={{ margin: '0 0 10px', fontSize: 11.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#a8a29a', textAlign: 'center' }}>
-          Dokumentet{sider ? ` · ${sider} side${sider === 1 ? '' : 'r'}` : ''}
-        </p>
-        {pdfFeil ? (
-          <div style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.06)', borderRadius: 14, padding: '26px 20px', textAlign: 'center' }}>
-            <p style={{ margin: 0, fontSize: 13.5, color: '#78716c' }}>Forhåndsvisningen kunne ikke lastes.</p>
-            <a href={`/api/signer-dokument/${jobbId}/${sid}`} target="_blank" rel="noreferrer" style={{ display: 'inline-block', marginTop: 10, fontSize: 13.5, fontWeight: 600, color: '#8b5cf6' }}>Åpne dokumentet (PDF) →</a>
-          </div>
-        ) : (
-          <>
-            {rendret === 0 && <p style={{ textAlign: 'center', fontSize: 12.5, color: '#b0aca6', padding: '18px 0' }}>Laster dokumentet …</p>}
-            <div ref={beholderRef} />
-          </>
-        )}
-        <p style={{ margin: '4px 0 0', textAlign: 'center' }}>
-          <a href={`/api/signer-dokument/${jobbId}/${sid}`} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: '#a8a29a', textDecoration: 'underline' }}>Last ned PDF</a>
-        </p>
-      </div>
-
-      {/* Signeringslinje */}
-      <div style={S.bunn}>
-        <div style={S.bunnInn}>
-          <div style={{ flex: '1 1 auto', minWidth: 180 }}>
-            <p style={{ margin: 0, fontSize: 12, lineHeight: 1.5, color: '#a8a29a' }}>
-              Signeringen utføres trygt hos <strong style={{ color: '#78716c' }}>Posten signering</strong> med <strong style={{ color: '#78716c' }}>BankID</strong>
-            </p>
-          </div>
-          {kanSignere ? (
-            <a href={`/api/signer/${jobbId}/${sid}`} style={S.knapp} data-testid="signer-bankid-knapp">
-              Signer med BankID
-              <span aria-hidden style={{ fontSize: 17, lineHeight: 1 }}>→</span>
-            </a>
-          ) : (
-            <span style={{ ...S.knapp, background: '#e7e5e0', color: '#a8a29a', cursor: 'default' }}>
-              {alleredeSignert ? 'Allerede signert' : avsluttet ? 'Avsluttet' : 'Venter på din tur'}
-            </span>
-          )}
+      {/* Sticky signeringslinje — kun mobil/nettbrett */}
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-black/[0.07] bg-white/95 px-4 pb-[calc(12px+env(safe-area-inset-bottom))] pt-3 backdrop-blur-md lg:hidden">
+        <div className="mx-auto max-w-[560px]">
+          <SignerKnapp bred />
+          <p className="mt-1.5 text-center text-[10.5px] text-[#b8b4ad]">Posten signering · BankID · Juridisk bindende</p>
         </div>
       </div>
     </main>

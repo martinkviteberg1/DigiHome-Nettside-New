@@ -1318,6 +1318,13 @@ async function seedDevProducts(db) {
 // Hent en sak KUN hvis vieweren kan se den — skjulte saker svarer 404 slik at
 // selve eksistensen aldri lekker (brukes av alle skrive-/underendepunkter).
 async function hentSynligSak(db, request, taskId) {
+  // Sentinel: frittstående dokumenter fra Signering-modulen (uten sak).
+  // Disse tilhører ingen sak og er KUN for administratorer — vanlige
+  // saksbrukere skal aldri kunne nå dem via task-files-endepunktene.
+  if (taskId === 'DOKUMENTER') {
+    if (!adminAuthed(request)) return { task: null, viewer: null };
+    return { task: { id: 'DOKUMENTER', title: 'Dokumenter', frittstaende: true }, viewer: null };
+  }
   const task = await db.collection('tasks').findOne({ id: taskId }, { projection: { _id: 0 } });
   if (!task) return { task: null, viewer: null };
   const viewer = await sakViewer(db, request);
@@ -5136,10 +5143,13 @@ async function handleRoute(request, { params }) {
       if (total > 16 || data.length > 1200000) {
         return cors(NextResponse.json({ ok: false, error: 'Filen er for stor (maks 8 MB)' }, { status: 400 }));
       }
-      const task = await db.collection('tasks').findOne({ id: taskId }, { projection: { _id: 0, id: 1, attachments: 1, space: 1, restrictedTo: 1 } });
+      const task = taskId === 'DOKUMENTER'
+        // Sentinel: frittstående dokumenter i Signering-modulen (kun admin)
+        ? (adminAuthed(request) ? { id: 'DOKUMENTER', attachments: [] } : null)
+        : await db.collection('tasks').findOne({ id: taskId }, { projection: { _id: 0, id: 1, attachments: 1, space: 1, restrictedTo: 1 } });
       if (!task) return cors(NextResponse.json({ ok: false, error: 'Saken finnes ikke' }, { status: 404 }));
       // Synlighetsvakt: kan ikke laste opp til saker man ikke ser.
-      if (!sakSynlig(await sakViewer(db, request), task)) return cors(NextResponse.json({ ok: false, error: 'Saken finnes ikke' }, { status: 404 }));
+      if (taskId !== 'DOKUMENTER' && !sakSynlig(await sakViewer(db, request), task)) return cors(NextResponse.json({ ok: false, error: 'Saken finnes ikke' }, { status: 404 }));
       if (!body.versjonAv && (task.attachments || []).length >= 12) {
         return cors(NextResponse.json({ ok: false, error: 'Maks 12 vedlegg per sak' }, { status: 400 }));
       }
@@ -5384,6 +5394,41 @@ async function handleRoute(request, { params }) {
       }
       await filLogg(db, jP.filId, `Påminnelse sendt til ${sendtP} signatar${sendtP === 1 ? '' : 'er'}`, '');
       return cors(NextResponse.json({ ok: true, sendt: sendtP }));
+    }
+    // Oversikt: ALLE signeringsjobber (beriket med sak/fil-info) — for modulen
+    if (route === '/admin/signering/jobber' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const alleJb = await db.collection(SIGN_JOBB_COLL)
+        .find({}, { projection: { _id: 0 } })
+        .sort({ opprettet: -1 })
+        .limit(100)
+        .toArray();
+      const jbTaskIds = [...new Set(alleJb.map((j) => j.taskId).filter((t) => t && t !== 'DOKUMENTER'))];
+      const jbTasks = await db.collection('tasks').find({ id: { $in: jbTaskIds } }, { projection: { _id: 0, id: 1, title: 1 } }).toArray();
+      const jbTittel = Object.fromEntries(jbTasks.map((t) => [t.id, t.title]));
+      const jbFilIds = [...new Set(alleJb.map((j) => j.filId))];
+      const jbFiler = await db.collection('task_files').find({ id: { $in: jbFilIds } }, { projection: { _id: 0, id: 1, name: 1, type: 1, size: 1, versjon: 1, laast: 1 } }).toArray();
+      const jbFil = Object.fromEntries(jbFiler.map((f) => [f.id, f]));
+      return cors(NextResponse.json({
+        ok: true,
+        jobber: alleJb.map((j) => ({
+          ...j,
+          // aldri signer-URL-er/sid-hemmeligheter ut i lister
+          signatarer: (j.signatarer || []).map(({ signerUrl, sid, ...rest }) => rest),
+          sakTittel: j.taskId === 'DOKUMENTER' ? null : (jbTittel[j.taskId] || null),
+          fil: jbFil[j.filId] || null,
+        })),
+      }));
+    }
+    // Frittstående dokumenter (Signering-modulen, uten sak)
+    if (route === '/admin/dokumenter' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const friFiler = await db.collection('task_files')
+        .find({ taskId: 'DOKUMENTER' }, { projection: { _id: 0, data: 0, logg: 0, delinger: 0 } })
+        .sort({ at: -1 })
+        .limit(100)
+        .toArray();
+      return cors(NextResponse.json({ ok: true, filer: friFiler }));
     }
     if (route === '/admin/signering/poll' && method === 'POST') {
       if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
