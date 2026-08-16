@@ -64,7 +64,7 @@ import { getFinanceSettings, setFinanceSettings, listCosts, listActiveCosts, ups
 import { listFellesKostnader, upsertFellesKostnad, slettFellesKostnad, migrerFellesKostnader } from '@/lib/kostnader';
 import { finnKodeFraUrl, hentFinnHtml, parseFinnAnnonse, beregnAnalyse, opprettLead, validerIngestAnnonse, analyserAnnonse, kjorAutoPipeline, kjorAutoRetry, retryKandidater, filtrerLevendeBilder, slettLeads as radarSlettLeads, listLeads as radarListLeads, oppdaterLead as radarOppdaterLead, slettLead as radarSlettLead, stilBilde, lagreStyletBilde, hentStyletBilde, hentTilbud, registrerTilbudKontakt, tilbudsRegnestykke, STILER as RADAR_STILER, opprettStylingJobber, kjorStylingJobber, listStylingJobber, reviewStylingJobb, fjernStyletBilde } from '@/lib/salgsradar';
 import { settArkiv, listArkiv, nyVersjon, listVersjoner, hentVersjon, gjenopprettVersjon, opprettDeling, trekkDeling, hentDelt, filDetaljer, filLogg, VERSJON_COLL, konverterDocxTilPdf } from '@/lib/dokumenter';
-import { lagreOppsett as signLagreOppsett, hentOppsett as signHentOppsett, slettOppsett as signSlettOppsett, opprettSigneringsjobb, kansellerSignering, pollSignering, listSigneringsjobber, hentSignerRedirect, hentSignerVisning, hentSignerDokument, SIGN_JOBB_COLL } from '@/lib/signering';
+import { lagreOppsett as signLagreOppsett, hentOppsett as signHentOppsett, slettOppsett as signSlettOppsett, opprettSigneringsjobb, kansellerSignering, pollSignering, pollSnarest, listSigneringsjobber, hentSignerRedirect, hentSignerVisning, hentSignerDokument, SIGN_JOBB_COLL } from '@/lib/signering';
 import { syncContractsFromPlatform, syncCustomersFromPlatform, maybeAutoSyncFinance, getFinanceSyncMeta } from '@/lib/contracts-sync';
 import { enqueueInterest as deliverInterest, retryInterestWebhooks, webhookTarget as interestWebhookTarget, platformInboxUrl, platformThreadUrl, platformUnitUrl, deliveryView, OUTBOX_COLL as INTEREST_OUTBOX } from '@/lib/interest-webhook';
 import { notifyStatus, removeSuppression } from '@/lib/notify-status';
@@ -5362,6 +5362,8 @@ async function handleRoute(request, { params }) {
         const rS = await opprettSigneringsjobb(db, {
           filId: path[2], tittel: bS.tittel, melding: bS.melding,
           signatarer: bS.signatarer, dagerFrist: bS.dagerFrist, av: String(bS.actor || '').slice(0, 80),
+          avId: (sessionFra(request) || {}).sub || null,
+          autoArkiv: bS.autoArkiv && bS.autoArkiv.aktiv ? { aktiv: true, synlighet: String(bS.autoArkiv.synlighet || 'styret').slice(0, 30) } : null,
         });
         if (!rS.ok) return cors(NextResponse.json({ ok: false, error: rS.error }, { status: rS.status || 400 }));
         await filLogg(db, path[2], `Sendt til BankID-signering (${(bS.signatarer || []).length} signatar${(bS.signatarer || []).length === 1 ? '' : 'er'})`, String(bS.actor || '').slice(0, 80));
@@ -5449,6 +5451,22 @@ async function handleRoute(request, { params }) {
         })),
       }));
     }
+    // Adressebok: unike signatarer fra tidligere runder (for hurtigvalg)
+    if (route === '/admin/signering/adressebok' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const abJobber = await db.collection(SIGN_JOBB_COLL)
+        .find({}, { projection: { _id: 0, 'signatarer.navn': 1, 'signatarer.epost': 1, opprettet: 1 } })
+        .sort({ opprettet: -1 })
+        .limit(60)
+        .toArray();
+      const abSett = new Map(); // epost → {navn, epost} (nyeste navn vinner)
+      for (const abJb of abJobber) {
+        for (const abS of (abJb.signatarer || [])) {
+          if (abS.epost && !abSett.has(abS.epost)) abSett.set(abS.epost, { navn: abS.navn || '', epost: abS.epost });
+        }
+      }
+      return cors(NextResponse.json({ ok: true, kontakter: [...abSett.values()].slice(0, 30) }));
+    }
     // Frittstående dokumenter (Signering-modulen, uten sak)
     if (route === '/admin/dokumenter' && method === 'GET') {
       if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
@@ -5462,9 +5480,15 @@ async function handleRoute(request, { params }) {
     if (route === '/admin/signering/poll' && method === 'POST') {
       if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       try {
-        // Manuell oppdatering: nullstill ventetiden og poll umiddelbart
-        await db.collection('signering_config').updateOne({ id: 'posten' }, { $set: { nestePoll: new Date().toISOString() } });
-        return cors(NextResponse.json(await pollSignering(db)));
+        // Manuell oppdatering: poll hvis Posten tillater det NÅ — ellers
+        // planlegg en presis poll når vinduet åpner (aldri nullstill
+        // ventetiden: Posten straffer for tidlig polling med lengre 429-vinduer).
+        const rM = await pollSignering(db);
+        if (rM.venter) {
+          const rPlan = await pollSnarest(db);
+          return cors(NextResponse.json({ ...rM, planlagt: !!rPlan.planlagt }));
+        }
+        return cors(NextResponse.json(rM));
       } catch (e) {
         return cors(NextResponse.json({ ok: false, error: String(e && e.message || 'Polling feilet') }, { status: 502 }));
       }
@@ -5521,7 +5545,14 @@ async function handleRoute(request, { params }) {
         return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       }
       try {
-        return cors(NextResponse.json(await pollSignering(db)));
+        const rCronSig = await pollSignering(db);
+        // Automatisk purring når frist nærmer seg (én gang per runde)
+        try {
+          const { autoPurring } = await import('@/lib/signering');
+          const rAp = await autoPurring(db);
+          if (rAp.sendt) rCronSig.autoPurret = rAp.sendt;
+        } catch (e) { /* stille */ }
+        return cors(NextResponse.json(rCronSig));
       } catch (e) {
         return cors(NextResponse.json({ ok: false, error: String(e && e.message || 'Polling feilet') }, { status: 500 }));
       }
@@ -5564,12 +5595,13 @@ async function handleRoute(request, { params }) {
         return NextResponse.redirect(`${baseSg}/signering/feil?grunn=${encodeURIComponent('Teknisk feil — prøv igjen om litt')}`, 302);
       }
     }
-    // OFFENTLIG: puls fra exit-sidene — fremskynder statuspolling etter signering
+    // OFFENTLIG: puls fra exit-sidene — planlegger poll i det Postens vindu åpner
     if (route === '/signering-puls' && method === 'POST') {
       if (!rateLimit(`signpuls:${clientIp(request)}`, 10)) return cors(NextResponse.json({ ok: true }));
-      await db.collection('signering_config').updateOne({ id: 'posten' }, { $set: { nestePoll: new Date().toISOString() } }, { upsert: true });
-      pollSignering(db).catch(() => {});
-      return cors(NextResponse.json({ ok: true }));
+      // ALDRI nullstill nestePoll (Posten straffer for tidlig polling med
+      // eskalerende 429-vinduer) — planlegg presist i stedet.
+      const rPuls = await pollSnarest(db);
+      return cors(NextResponse.json({ ok: true, planlagt: !!rPuls.planlagt }));
     }
     // OFFENTLIG: tidsbegrenset delingslenke — /api/delt/<token>
     if (path[0] === 'delt' && path.length === 2 && method === 'GET') {

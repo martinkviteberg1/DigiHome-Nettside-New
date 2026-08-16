@@ -40,10 +40,9 @@ export default function SigneringUtfall({ params, searchParams }) {
   const c = INNHOLD[utfall];
 
   useEffect(() => {
-    if (utfall === 'ferdig') {
-      // Fremskynd statushenting så portalen oppdateres umiddelbart
-      fetch('/api/signering-puls', { method: 'POST' }).catch(() => {});
-    }
+    // Fremskynd statushenting — både signert og avvist gir en statushendelse
+    // hos Posten. Endepunktet planlegger poll presist når Postens vindu åpner.
+    fetch('/api/signering-puls', { method: 'POST' }).catch(() => {});
     try {
       const g = sp?.grunn || new URLSearchParams(window.location.search).get('grunn');
       if (g) setGrunn(String(g).slice(0, 160));

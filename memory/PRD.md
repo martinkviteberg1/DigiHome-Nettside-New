@@ -585,3 +585,9 @@ Google Ads-styring via native REST API).
 - Salgsradar: standardsortering endret til «Nyeste først» (createdAt desc) etter brukerønske.
 - Opprydding (samme dag): «Signering» er nå UNDERMODUL (fane) i ny «Dokumenter»-hub (DokumenterModul.js). Dokumenter-fanen viser frittstående dokumenter + dokumentarkivet; Signering-fanen viser rundene. SigneringOversikt.js er slettet. DokumentModal skjuler signeringsseksjonen for bilder/medier (kun PDF/Word), og Word får hint om PDF-som-ny-versjon-flyten.
 - Automatisk Word→PDF: nytt endepunkt POST /api/admin/task-files/:id/konverter-pdf (admin) med docx-to-pdf-wasm (lokal WASM, ingen tredjepart). PDF blir ny versjon, Word-original bevares. Knapp «Konverter til PDF for signering» i DokumentModal for .docx. Backendtestet 19/19. Gamle binære .doc støttes IKKE (kun .docx).
+
+## DEAD-END (16. aug 2026): ALDRI poll Postens signeringskø manuelt/out-of-band (debug-skript o.l.) mens appen kjører — GET 'konsumerer' leveringen i ~10 min uten bekreftelse, og appens egen poll får 204. La cron/pollSnarest gjøre jobben. Posten straffer også for tidlig polling med eskalerende 429-vinduer — aldri nullstill nestePoll blindt.
+
+## Designløft (16. aug 2026, kveld) — LEVERT
+- Tilbudssiden (/tilbud/[slug]) BYGGET PÅ NYTT etter GPT-brief: lys varm flate (#f8f8f6), tallet som H1 («14 904 kr til deg. Hver måned.»), Sarah Sleeman (CEO) som liten kontaktperson-detalj m/portrett (/brand/sarah-sleeman-360.webp), boligbildet som hero-objekt, regnestykke-ligning, annonseutkast bak «Se hele annonseutkastet», sentence case, ingen gradients, pent() kapitaliserer FINN-adresser. IKKE gå tilbake til mørk hero med stort portrett.
+- Salgsradar admin: record-FANER (Oversikt/Bilder/AI/Tilbud/Aktivitet), «Neste handling» dominant i Oversikt, kompakt klikkbar KPI-stripe, forenklede lead-rader (score som diskret tall, ikke donut), rolige statusfarger (kun vunnet/tapt farget), flate knapper (ingen gradient), radius 8-12px.

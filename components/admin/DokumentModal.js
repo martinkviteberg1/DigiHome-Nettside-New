@@ -216,7 +216,17 @@ function SigneringSeksjon({ det, api, actor, erAdmin, oppsett, setOppsett, membe
 
   const pollNaa = async () => {
     setBusy('poll');
-    try { await api('signering/poll', { method: 'POST' }); await onOppdatert(); } catch (e) { /* stille */ }
+    try {
+      const r = await api('signering/poll', { method: 'POST' });
+      const j = await r.json().catch(() => ({}));
+      if (j.venter && j.nestePoll) {
+        const kl = new Date(j.nestePoll).toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit' });
+        visToast(`Posten tillater neste statussjekk kl. ${kl} — sjekken kjøres automatisk da`);
+      } else if (j.hendelser) {
+        visToast(`${j.hendelser} statusendring${j.hendelser === 1 ? '' : 'er'} hentet fra Posten`);
+      }
+      await onOppdatert();
+    } catch (e) { /* stille */ }
     setBusy('');
   };
 
