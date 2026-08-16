@@ -6147,3 +6147,16 @@ backend:
 agent_communication:
     -agent: "testing"
     -message: "✅ SIGNERING-OVERSIKTSMODUL TESTING COMPLETE (49/53 tests passed, 92.5% success rate). ALL CRITICAL TESTS PASSED WITH NO MAJOR ISSUES. Tested the NEW signering overview module backend endpoints as requested in review_request. COMPREHENSIVE VERIFICATION: (A) GET /api/admin/signering/jobber - returns all signing jobs with correct structure (sakTittel, fil object, signatarer array), CRITICAL SECURITY VERIFIED: signatarer does NOT contain sid/signerUrl, fil does NOT contain data field ✓. (B) GET /api/admin/dokumenter - returns frittstående documents without data/logg/delinger fields ✓. (C) Frittstående opplasting - chunk with taskId='DOKUMENTER' works for admin, file appears in dokumenter list, detaljer and download working ✓. (D) SIKKERHETSHERDING - non-admin users get 404 on ALL frittstående document operations (chunk/GET/detaljer/DELETE/deling), GET jobber/dokumenter return 401 for non-admin ✓. (E) Purring/kanseller - ONLY error paths tested (401 without key, 404 with unknown jobbId), did NOT call on real active job a89a6179 as instructed ✓. (F) Regression - vanlig saksvedlegg still works (upload to task, detaljer, cascade delete) ✓. (G) Mandatory cleanup - all QA data deleted (0 QA docs with taskId='DOKUMENTER', QA user deleted), existing jobs preserved (1 I_GANG, 1 KANSELLERT) ✓. CRITICAL SAFETY RULES FOLLOWED: Did NOT call purring/kanseller on real jobs, did NOT create new signing jobs, did NOT touch existing data, used only @example.com emails, all test data deleted. MINOR ISSUES (not blockers): detaljer response structure differs slightly from expected (versjon field location), task.attachments not returned in chunk response (but works in GET tasks). Backend test created at /app/backend_test_signering_oversikt.py for future regression testing. NO FURTHER TESTING NEEDED FOR SIGNERING-OVERSIKTSMODUL."
+
+frontend:
+  - task: "Opprydding: Dokumenter-hub med Signering som undermodul (components/admin/DokumenterModul.js erstatter SigneringOversikt.js): Fane «Dokumenter» = opplasting + frittstående dokumenter + dokumentarkiv (arkiverte saksdokumenter m/synlighetschip og sakstittel via GET /admin/dokumentarkiv). Fane «Signering» = sertifikatstatus, BankID-dropzone, alle signeringsrunder m/filter+søk. Sidebar: «Signering» fjernet, «Dokumenter» lagt i Ledelse-gruppen (seksjonsnøkkel 'dokumenter'). I tillegg: DokumentModal viser signeringsseksjonen KUN for dokumenttyper (PDF/Word) — aldri bilder/video/lyd; Word-filer får hint om «Lagre som PDF → last opp som ny versjon»."
+    implemented: true
+    working: true
+    file: "/app/components/admin/DokumenterModul.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "main"
+        -comment: "Kun frontend (gjenbruker allerede backendtestede endepunkter). Screenshot-verifisert: begge faner rendrer, arkivet viser Låneavtale-test.pdf m/Styret-chip og sakstittel, signeringsfanen viser 2 runder + pågår-badge. PNG-vedlegg viser ikke lenger signeringsseksjon (verifisert 0 på PNG, 1 på PDF)."

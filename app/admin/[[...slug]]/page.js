@@ -29,7 +29,7 @@ import SeoAeoTab from '@/components/admin/SeoAeoTab';
 import TasksTab from '@/components/admin/TasksTab';
 import MeetingsTab from '@/components/admin/MeetingsTab';
 import Datarom from '@/components/admin/Datarom';
-import SigneringOversikt from '@/components/admin/SigneringOversikt';
+import DokumenterModul from '@/components/admin/DokumenterModul';
 import { cacheHent, cacheSlett } from '@/lib/klient-cache';
 
 const SESSION_KEY = 'dh_admin_session';
@@ -46,7 +46,7 @@ const NAV = [
       { k: 'leieforhold', l: 'Leieforhold', icon: KeyRound, desc: 'Leieforhold & inntekter — porteføljen med Excel-eksport (1:1 med plattformen)' },
       { k: 'saker', l: 'Saker', icon: ClipboardCheck, badge: 'tasks', desc: 'Internt sakssystem — oppfølging, frister og ansvar' },
       { k: 'moter', l: 'Møter', icon: CalendarDays, desc: 'Styremøter & ledermøter — agenda, referat, vedtak og aksjonspunkter' },
-      { k: 'signering', l: 'Signering', icon: PenLine, desc: 'BankID-signering — alle signeringsoppdrag, status og nye dokumenter' },
+      { k: 'dokumenter', l: 'Dokumenter', icon: FileText, desc: 'Dokumenthub — frittstående dokumenter, arkiv og BankID-signering' },
       { k: 'brukere', l: 'Brukere', icon: Users, desc: 'Personer, roller og tilgang — inviter, endre og se portalen som andre' },
       { k: 'investorrom', l: 'Investor-rom', icon: Landmark, desc: 'Levende DD-rom — tilgangslenker, dokumenter & Q&A' },
       { k: 'playbook', l: 'Playbook', icon: FileText, desc: 'Marketing-strategi · konkurrentanalyse · 90-dagersplan' },
@@ -146,7 +146,7 @@ const SECTION_TITLES = {
   budsjett: { t: 'Budsjett', s: 'Årsbudsjett per kategori/måned — automatisk mot faktisk fra Økonomi · forslag fra porteføljen' },
   saker: { t: 'Saker', s: 'Internt sakssystem — fang, fordel og følg opp saker til de er ferdige. N = ny sak' },
   moter: { t: 'Møter', s: 'Styremøter & ledermøter — agenda, referat, vedtak og aksjonspunkter som blir saker' },
-  signering: { t: 'Signering', s: 'BankID-signering via Posten — alle oppdrag, status per signatar, purring og nye dokumenter' },
+  dokumenter: { t: 'Dokumenter', s: 'Alle dokumenter på ett sted — opplasting, arkiv med synlighet og BankID-signering via Posten' },
   brukere: { t: 'Brukere', s: 'Personer, roller og tilgang — inviter nye, endre kontoer og se portalen som en annen bruker' },
   kunder: { t: 'Kunder', s: 'Utleiere (betalende kunder) · kontrakter · eiendommer · MRR — synket fra plattformen' },
   salgsradar: { t: 'Salgsradar', s: 'FINN-annonser → prisanalyse mot porteføljen, AI-styling og tilbudsside til huseier' },
@@ -844,7 +844,7 @@ export default function AdminPage({ params }) {
           {section === 'saker' && <TasksTab apiKey={token} user={user} onStats={setTaskStats} onOpenBrukere={() => setSection('brukere')} />}
           {section === 'brukere' && <Brukere apiKey={token} user={user} onImpersonate={startImpersonation} />}
           {section === 'moter' && <MeetingsTab apiKey={token} user={user} onOpenTask={(id, arkivert) => runSaker({ do: 'aapne', id, arkivert })} />}
-          {section === 'signering' && <SigneringOversikt apiKey={token} user={user} />}
+          {section === 'dokumenter' && <DokumenterModul apiKey={token} user={user} />}
           {section === 'innsikt' && <InnsiktDashboard apiKey={token} tab={insightTab} onTabChange={setInsightTab} onStats={setInsightStats} />}
           {section === 'kunder' && <CustomersDashboard apiKey={token} />}
           {section === 'salgsradar' && <Salgsradar apiKey={token} />}

@@ -102,6 +102,15 @@ export default function DokumentModal({ fil, taskId, apiKey, api, actor, onClose
   const { Ikon, farge } = filIkonInfo(fil.type, fil.name);
   const oppdater = async () => { await hentAlt(); if (onReload) onReload(); };
 
+  // Signering gjelder kun DOKUMENTER (PDF nå, Word med konverteringshint) —
+  // bilder, video og lyd skal aldri vise signeringsseksjonen. Historiske
+  // signeringsrunder vises uansett (kan finnes fra før typen ble byttet).
+  const typeStr = String(det?.type || fil.type || '');
+  const navnStr = String(det?.name || fil.name || '');
+  const erDokumentType = /pdf$/i.test(typeStr) || /\.pdf$/i.test(navnStr)
+    || /(msword|wordprocessingml|opendocument\.text)/i.test(typeStr) || /\.(docx?|odt)$/i.test(navnStr);
+  const visSignering = erDokumentType || (det?.signering || []).length > 0;
+
   return (
     <div className="dh-fade fixed inset-0 z-[150] flex items-end justify-center bg-black/45 backdrop-blur-[2px] sm:items-center sm:p-6" onClick={onClose} role="dialog" aria-label={`Dokument: ${fil.name}`} data-testid="dokument-modal">
       <div className="flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-2xl bg-white shadow-2xl sm:max-w-2xl sm:rounded-2xl" onClick={(e) => e.stopPropagation()}>
@@ -129,7 +138,7 @@ export default function DokumentModal({ fil, taskId, apiKey, api, actor, onClose
           {laster && <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin text-[#bbb]" /></div>}
           {!laster && det && (
             <div className="space-y-6">
-              <SigneringSeksjon det={det} api={api} actor={actor} erAdmin={erAdmin} oppsett={oppsett} setOppsett={setOppsett} members={members} visToast={visToast} onOppdatert={oppdater} busy={busy} setBusy={setBusy} />
+              {visSignering && <SigneringSeksjon det={det} api={api} actor={actor} erAdmin={erAdmin} oppsett={oppsett} setOppsett={setOppsett} members={members} visToast={visToast} onOppdatert={oppdater} busy={busy} setBusy={setBusy} />}
               <ArkivSeksjon det={det} api={api} actor={actor} visToast={visToast} onOppdatert={oppdater} busy={busy} setBusy={setBusy} />
               <DelingSeksjon det={det} api={api} actor={actor} visToast={visToast} onOppdatert={oppdater} busy={busy} setBusy={setBusy} />
               <VersjonSeksjon det={det} api={api} apiKey={apiKey} actor={actor} taskId={taskId} visToast={visToast} onOppdatert={oppdater} busy={busy} setBusy={setBusy} />
@@ -342,7 +351,12 @@ function SigneringSeksjon({ det, api, actor, erAdmin, oppsett, setOppsett, membe
           </div>
         )
       )}
-      {!aktiv && !erPdf && <p className="mt-2 flex items-center gap-1.5 text-[12px] text-[#b0aca6]"><AlertCircle className="h-3.5 w-3.5" /> Kun PDF kan sendes til BankID-signering — konverter dokumentet til PDF først.</p>}
+      {!aktiv && !erPdf && (
+        <p className="mt-2 flex items-start gap-1.5 text-[12px] leading-relaxed text-[#b0aca6]">
+          <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          <span>BankID-signering krever PDF. Bruk «Lagre som PDF» i Word og last den opp som <strong className="font-semibold text-[#78716c]">ny versjon</strong> under — da kan runden startes herfra, og Word-originalen beholdes i versjonshistorikken.</span>
+        </p>
+      )}
       {!aktiv && erPdf && det.laast && <p className="mt-2 flex items-center gap-1.5 text-[12px] text-emerald-700"><Lock className="h-3.5 w-3.5" /> Dokumentet er signert og låst. Last opp en ny versjon for å starte en ny runde.</p>}
       {!aktiv && erAdmin && oppsett && !oppsett.konfigurert && erPdf && !det.laast && (
         <SigneringOppsett api={api} setOppsett={setOppsett} visToast={visToast} />

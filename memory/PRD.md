@@ -583,3 +583,4 @@ Google Ads-styring via native REST API).
 - Sikkerhetsherding: frittstående dokumenter er admin-only på alle task-files-endepunkter (hentSynligSak-sentinel krever adminAuthed).
 - Backendtestet 49/53 (alle kritiske OK): ingen sid/signerUrl-lekkasje i lister, purring/kanseller-feilstier, regresjon på saksvedlegg.
 - Salgsradar: standardsortering endret til «Nyeste først» (createdAt desc) etter brukerønske.
+- Opprydding (samme dag): «Signering» er nå UNDERMODUL (fane) i ny «Dokumenter»-hub (DokumenterModul.js). Dokumenter-fanen viser frittstående dokumenter + dokumentarkivet; Signering-fanen viser rundene. SigneringOversikt.js er slettet. DokumentModal skjuler signeringsseksjonen for bilder/medier (kun PDF/Word), og Word får hint om PDF-som-ny-versjon-flyten.
