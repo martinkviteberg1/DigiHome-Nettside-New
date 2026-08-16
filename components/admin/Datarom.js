@@ -1113,6 +1113,7 @@ function Dokumenter({ api, apiKey, erAdmin }) {
 
   return (
     <div className="space-y-4" data-testid="datarom-dokumenter">
+      <SakArkiv apiKey={apiKey} erAdmin={erAdmin} />
       {erAdmin && (
         <p className="text-[12px] text-[#999]">Dokumentene administreres i <span className="font-semibold text-[#555]">Investor-rom</span>-modulen (opplasting, versjoner og arkivering) — datarommet viser hvelvet i lesemodus.</p>
       )}
@@ -1148,6 +1149,68 @@ function Dokumenter({ api, apiKey, erAdmin }) {
         ))
       )}
     </div>
+  );
+}
+
+/* ── Dokumentarkiv fra sakene (rollestyrt synlighet: styret/investorer/alle) ── */
+function SakArkiv({ apiKey, erAdmin }) {
+  const [filer, setFiler] = useState([]);
+  const [lastet, setLastet] = useState(false);
+  useEffect(() => {
+    (async () => {
+      try {
+        const r = await fetch(`/api/admin/dokumentarkiv?key=${encodeURIComponent(apiKey)}`);
+        const j = await r.json();
+        setFiler(j.filer || []);
+      } catch (e) {}
+      setLastet(true);
+    })();
+  }, [apiKey]);
+  if (!lastet || !filer.length) return null;
+
+  const strlA = (b) => (b > 1024 * 1024 ? `${(b / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(b / 1024))} kB`);
+  const SYN_ETIKETT = { styret: 'Styret', investorer: 'Investorer', alle: 'Alle' };
+  const perKat = {};
+  for (const f of filer) {
+    const k = (f.arkiv && f.arkiv.kategori) || 'Annet';
+    perKat[k] = perKat[k] || [];
+    perKat[k].push(f);
+  }
+
+  return (
+    <Kort className="p-0" data-testid="datarom-sakarkiv">
+      <div className="flex items-center gap-2 border-b border-black/[0.04] px-5 py-3">
+        <p className="text-[11px] font-bold uppercase tracking-[0.07em] text-[#a3a3a3]">Dokumentarkiv fra sakene</p>
+        <span className="text-[11px] text-[#c5c0b8]">· {filer.length} dokument{filer.length === 1 ? '' : 'er'}</span>
+      </div>
+      {Object.entries(perKat).map(([kat, fs]) => (
+        <div key={kat}>
+          <p className="bg-[#fbfaf8] px-5 py-1.5 text-[10.5px] font-bold uppercase tracking-[0.06em] text-[#c5c0b8]">{kat}</p>
+          <div className="divide-y divide-black/[0.03]">
+            {fs.map((f) => (
+              <a
+                key={f.id}
+                href={`/api/admin/dokumentarkiv/${f.id}?key=${encodeURIComponent(apiKey)}`}
+                data-testid={`sakarkiv-${f.id}`}
+                className="group flex items-center gap-3 px-5 py-3 transition-colors hover:bg-[#fbfaf8]"
+              >
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#f4f0fb]"><FileText className="h-4 w-4 text-[#8b5cf6]" /></span>
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-center gap-1.5">
+                    <span className="truncate text-[13.5px] font-semibold text-[#0a0a0a]">{f.name}</span>
+                    {f.laast && <span className="shrink-0 rounded-[4px] bg-emerald-50 px-1.5 py-px text-[9.5px] font-bold text-emerald-700">Signert</span>}
+                  </span>
+                  <span className="block truncate text-[11.5px] text-[#999]">
+                    {f.sakTittel ? `${f.sakTittel} · ` : ''}{strlA(f.size)} · v{f.versjon || 1}{erAdmin && f.arkiv ? ` · ${SYN_ETIKETT[f.arkiv.synlighet] || 'Styret'}` : ''}
+                  </span>
+                </span>
+                <Download className="h-4 w-4 shrink-0 text-[#d5d0c8] transition-colors group-hover:text-[#8b5cf6]" />
+              </a>
+            ))}
+          </div>
+        </div>
+      ))}
+    </Kort>
   );
 }
 

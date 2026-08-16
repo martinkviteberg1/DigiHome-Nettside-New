@@ -62,7 +62,9 @@ import { computeLlmUsageDashboard, getModelOverrides, setModelOverride, logImage
 import { logExtUsage, summarizeExtUsage, getPlatformUsage } from '@/lib/ext-usage';
 import { getFinanceSettings, setFinanceSettings, listCosts, listActiveCosts, upsertCost, deleteCost, listContracts, upsertContract, deleteContract, listEvents, upsertEvent, deleteEvent, computeResultat, computeLikviditet, computeFinanceOverview, computeTrends, captureSnapshot, computeInvestorMetrics, computeForecast, computeBoardPack, computeCustomers, computePlatformCustomers } from '@/lib/finance';
 import { listFellesKostnader, upsertFellesKostnad, slettFellesKostnad, migrerFellesKostnader } from '@/lib/kostnader';
-import { finnKodeFraUrl, hentFinnHtml, parseFinnAnnonse, beregnAnalyse, opprettLead, validerIngestAnnonse, analyserAnnonse, kjorAutoPipeline, kjorAutoRetry, retryKandidater, filtrerLevendeBilder, slettLeads as radarSlettLeads, listLeads as radarListLeads, oppdaterLead as radarOppdaterLead, slettLead as radarSlettLead, stilBilde, lagreStyletBilde, hentStyletBilde, hentTilbud, registrerTilbudKontakt, tilbudsRegnestykke, STILER as RADAR_STILER } from '@/lib/salgsradar';
+import { finnKodeFraUrl, hentFinnHtml, parseFinnAnnonse, beregnAnalyse, opprettLead, validerIngestAnnonse, analyserAnnonse, kjorAutoPipeline, kjorAutoRetry, retryKandidater, filtrerLevendeBilder, slettLeads as radarSlettLeads, listLeads as radarListLeads, oppdaterLead as radarOppdaterLead, slettLead as radarSlettLead, stilBilde, lagreStyletBilde, hentStyletBilde, hentTilbud, registrerTilbudKontakt, tilbudsRegnestykke, STILER as RADAR_STILER, opprettStylingJobber, kjorStylingJobber, listStylingJobber, reviewStylingJobb, fjernStyletBilde } from '@/lib/salgsradar';
+import { settArkiv, listArkiv, nyVersjon, listVersjoner, hentVersjon, gjenopprettVersjon, opprettDeling, trekkDeling, hentDelt, filDetaljer, filLogg, VERSJON_COLL } from '@/lib/dokumenter';
+import { lagreOppsett as signLagreOppsett, hentOppsett as signHentOppsett, slettOppsett as signSlettOppsett, opprettSigneringsjobb, kansellerSignering, pollSignering, listSigneringsjobber, hentSignerRedirect, SIGN_JOBB_COLL } from '@/lib/signering';
 import { syncContractsFromPlatform, syncCustomersFromPlatform, maybeAutoSyncFinance, getFinanceSyncMeta } from '@/lib/contracts-sync';
 import { enqueueInterest as deliverInterest, retryInterestWebhooks, webhookTarget as interestWebhookTarget, platformInboxUrl, platformThreadUrl, platformUnitUrl, deliveryView, OUTBOX_COLL as INTEREST_OUTBOX } from '@/lib/interest-webhook';
 import { notifyStatus, removeSuppression } from '@/lib/notify-status';
@@ -3840,6 +3842,40 @@ async function handleRoute(request, { params }) {
         return cors(NextResponse.json({ ok: false, error: e.message || 'AI-styling feilet' }, { status: 502 }));
       }
     }
+    // ── Manuell stylingflyt: jobber + review (kuratert, aldri automatisk) ──
+    // Opprett stylingjobber for valgte bilder — kjøres i bakgrunnen, UI poller.
+    if (route === '/admin/salgsradar/styling-jobber' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!rateLimit(`radar-styling:${clientIp(request)}`, 20)) return cors(NextResponse.json({ error: 'For mange forespørsler — vent litt' }, { status: 429 }));
+      let bJb = {}; try { bJb = await request.json(); } catch (e) {}
+      const rJb = await opprettStylingJobber(db, bJb.leadId, bJb.bilder);
+      if (!rJb.ok) return cors(NextResponse.json({ ok: false, error: rJb.error }, { status: rJb.status || 400 }));
+      kjorStylingJobber(db, bJb.leadId).catch(() => {});
+      return cors(NextResponse.json({ ok: true, jobber: rJb.jobber, hoppet: rJb.hoppet }));
+    }
+    if (route === '/admin/salgsradar/styling-jobber' && method === 'GET') {
+      if (!(await modulAuthed(request, db, 'salgsradar'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const lidJb = (() => { try { return new URL(request.url).searchParams.get('leadId') || ''; } catch (e) { return ''; } })();
+      if (!lidJb) return cors(NextResponse.json({ ok: false, error: 'leadId mangler' }, { status: 400 }));
+      return cors(NextResponse.json({ ok: true, jobber: await listStylingJobber(db, lidJb) }));
+    }
+    // Review: godkjenn / forkast / provIgjen (med ev. justerte parametere)
+    if (route === '/admin/salgsradar/styling-review' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let bRv = {}; try { bRv = await request.json(); } catch (e) {}
+      const rRv = await reviewStylingJobb(db, bRv);
+      if (!rRv.ok) return cors(NextResponse.json({ ok: false, error: rRv.error }, { status: rRv.status || 400 }));
+      if (rRv.startKjorer && rRv.nyJobb) kjorStylingJobber(db, rRv.nyJobb.leadId).catch(() => {});
+      return cors(NextResponse.json(rRv));
+    }
+    // Fjern et godkjent stylet bilde fra leadens galleri (kuratering)
+    if (route === '/admin/salgsradar/stylet-bilde' && method === 'DELETE') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const spFj = (() => { try { return new URL(request.url).searchParams; } catch (e) { return new URLSearchParams(); } })();
+      const rFj = await fjernStyletBilde(db, spFj.get('leadId'), spFj.get('bildeId'));
+      if (!rFj.ok) return cors(NextResponse.json({ ok: false, error: rFj.error }, { status: rFj.status || 400 }));
+      return cors(NextResponse.json({ ok: true }));
+    }
     // Manuell retry av bilder som feilet i auto-pipelinen. Kjører i bakgrunnen
     // (fire-and-forget) — UI-et følger fremdriften via polling på lead.auto.
     if (route === '/admin/salgsradar/auto-retry' && method === 'POST') {
@@ -4921,6 +4957,7 @@ async function handleRoute(request, { params }) {
       const r = await db.collection('tasks').deleteOne({ id: path[2] });
       if (!r.deletedCount) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
       await db.collection('task_files').deleteMany({ taskId: path[2] }).catch(() => {});
+      await db.collection(VERSJON_COLL).deleteMany({ taskId: path[2] }).catch(() => {});
       // Gravsten for sanntids-diff (klienter fjerner saken ved neste /since-kall).
       await db.collection('task_tombstones').updateOne({ id: path[2] }, { $set: { id: path[2], deletedAt: new Date().toISOString() } }, { upsert: true }).catch(() => {});
       return cors(NextResponse.json({ ok: true }));
@@ -5103,7 +5140,7 @@ async function handleRoute(request, { params }) {
       if (!task) return cors(NextResponse.json({ ok: false, error: 'Saken finnes ikke' }, { status: 404 }));
       // Synlighetsvakt: kan ikke laste opp til saker man ikke ser.
       if (!sakSynlig(await sakViewer(db, request), task)) return cors(NextResponse.json({ ok: false, error: 'Saken finnes ikke' }, { status: 404 }));
-      if ((task.attachments || []).length >= 12) {
+      if (!body.versjonAv && (task.attachments || []).length >= 12) {
         return cors(NextResponse.json({ ok: false, error: 'Maks 12 vedlegg per sak' }, { status: 400 }));
       }
       await db.collection('task_file_chunks').updateOne(
@@ -5120,6 +5157,19 @@ async function handleRoute(request, { params }) {
       await db.collection('task_file_chunks').deleteMany({ uploadId });
       const size = Math.round(samlet.length * 3 / 4);
       if (size > 8 * 1024 * 1024) return cors(NextResponse.json({ ok: false, error: 'Filen er for stor (maks 8 MB)' }, { status: 400 }));
+      // Ny VERSJON av eksisterende dokument? (versjonAv = fil-id). Gjenbruker
+      // chunk-mekanikken; gammel binær arkiveres i task_file_versjoner.
+      if (body.versjonAv) {
+        const eksFil = await db.collection('task_files').findOne({ id: String(body.versjonAv) }, { projection: { id: 1, taskId: 1, laast: 1 } });
+        if (!eksFil || eksFil.taskId !== taskId) return cors(NextResponse.json({ ok: false, error: 'Dokumentet finnes ikke på denne saken' }, { status: 404 }));
+        const rVer = await nyVersjon(db, eksFil.id, {
+          name: String(body.name || 'fil').slice(0, 200),
+          type: String(body.type || 'application/octet-stream').slice(0, 120),
+          data: samlet,
+        }, String(body.actor || '').slice(0, 80));
+        if (!rVer.ok) return cors(NextResponse.json({ ok: false, error: rVer.error }, { status: rVer.status || 400 }));
+        return cors(NextResponse.json({ ok: true, complete: true, versjon: rVer.versjon, filId: eksFil.id }));
+      }
       const naaFil = new Date().toISOString();
       const fil = {
         id: uuidv4(), taskId,
@@ -5173,13 +5223,252 @@ async function handleRoute(request, { params }) {
       if (!fil) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
       const eierSakSlett = await hentSynligSak(db, request, fil.taskId);
       if (!eierSakSlett.task) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
+      // Signerte dokumenter er LÅST — kun admin kan slette, og da bevisst.
+      if (fil.laast && !adminAuthed(request)) {
+        return cors(NextResponse.json({ ok: false, error: 'Dokumentet er låst (signert) og kan kun slettes av admin' }, { status: 403 }));
+      }
       await db.collection('task_files').deleteOne({ id: path[2] });
+      await db.collection(VERSJON_COLL).deleteMany({ filId: path[2] }).catch(() => {});
       const naaSlett = new Date().toISOString();
       await db.collection('tasks').updateOne(
         { id: fil.taskId },
         { $pull: { attachments: { id: path[2] } }, $set: { updatedAt: naaSlett } },
       );
       return cors(NextResponse.json({ ok: true }));
+    }
+
+    // ═══════════════ DOKUMENTMOTOR — arkiv, versjoner, deling, signering ═══════
+    // Samlet detaljvisning for dokumentpanelet (metadata, versjoner, delinger,
+    // logg og signeringsjobber — aldri binærdata).
+    if (path[0] === 'admin' && path[1] === 'task-files' && path.length === 4 && path[3] === 'detaljer' && method === 'GET') {
+      if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const filD = await db.collection('task_files').findOne({ id: path[2] }, { projection: { id: 1, taskId: 1 } });
+      if (!filD) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
+      const sakD = await hentSynligSak(db, request, filD.taskId);
+      if (!sakD.task) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
+      return cors(NextResponse.json({ ok: true, detaljer: await filDetaljer(db, path[2]) }));
+    }
+    // Dokumentarkiv: marker/fjern + synlighet (styret/investorer/alle) + kategori
+    if (path[0] === 'admin' && path[1] === 'task-files' && path.length === 4 && path[3] === 'arkiv' && method === 'PUT') {
+      if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const filA = await db.collection('task_files').findOne({ id: path[2] }, { projection: { id: 1, taskId: 1 } });
+      if (!filA) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
+      const sakA = await hentSynligSak(db, request, filA.taskId);
+      if (!sakA.task) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
+      let bA = {}; try { bA = await request.json(); } catch (e) {}
+      const rA = await settArkiv(db, path[2], { aktiv: !!bA.aktiv, synlighet: bA.synlighet, kategori: bA.kategori }, String(bA.actor || '').slice(0, 80));
+      if (!rA.ok) return cors(NextResponse.json({ ok: false, error: rA.error }, { status: rA.status || 400 }));
+      return cors(NextResponse.json(rA));
+    }
+    // Last ned en tidligere versjon
+    if (path[0] === 'admin' && path[1] === 'task-files' && path.length === 5 && path[3] === 'versjon' && method === 'GET') {
+      if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const vFil = await db.collection('task_files').findOne({ id: path[2] }, { projection: { id: 1, taskId: 1 } });
+      if (!vFil) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
+      const vSak = await hentSynligSak(db, request, vFil.taskId);
+      if (!vSak.task) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
+      const vDok = await hentVersjon(db, path[2], path[4]);
+      if (!vDok) return cors(NextResponse.json({ ok: false, error: 'Versjonen finnes ikke' }, { status: 404 }));
+      const vBuf = Buffer.from(vDok.data || '', 'base64');
+      return new NextResponse(vBuf, {
+        status: 200,
+        headers: {
+          'Content-Type': vDok.type || 'application/octet-stream',
+          'Content-Length': String(vBuf.length),
+          'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent(`v${vDok.versjon} ${vDok.name || 'fil'}`)}`,
+          'X-Content-Type-Options': 'nosniff',
+        },
+      });
+    }
+    // Gjenopprett en tidligere versjon som ny gjeldende versjon
+    if (path[0] === 'admin' && path[1] === 'task-files' && path.length === 4 && path[3] === 'gjenopprett' && method === 'POST') {
+      if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const gFil = await db.collection('task_files').findOne({ id: path[2] }, { projection: { id: 1, taskId: 1 } });
+      if (!gFil) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
+      const gSak = await hentSynligSak(db, request, gFil.taskId);
+      if (!gSak.task) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
+      let bG = {}; try { bG = await request.json(); } catch (e) {}
+      const rG = await gjenopprettVersjon(db, path[2], bG.versjonId, String(bG.actor || '').slice(0, 80));
+      if (!rG.ok) return cors(NextResponse.json({ ok: false, error: rG.error }, { status: rG.status || 400 }));
+      return cors(NextResponse.json(rG));
+    }
+    // Delingslenker for eksterne: opprett + trekk tilbake
+    if (path[0] === 'admin' && path[1] === 'task-files' && path.length === 4 && path[3] === 'deling' && method === 'POST') {
+      if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const dFil = await db.collection('task_files').findOne({ id: path[2] }, { projection: { id: 1, taskId: 1 } });
+      if (!dFil) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
+      const dSak = await hentSynligSak(db, request, dFil.taskId);
+      if (!dSak.task) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
+      let bD = {}; try { bD = await request.json(); } catch (e) {}
+      const rD = await opprettDeling(db, path[2], { dager: bD.dager }, String(bD.actor || '').slice(0, 80));
+      if (!rD.ok) return cors(NextResponse.json({ ok: false, error: rD.error }, { status: rD.status || 400 }));
+      return cors(NextResponse.json(rD));
+    }
+    if (path[0] === 'admin' && path[1] === 'task-files' && path.length === 5 && path[3] === 'deling' && method === 'DELETE') {
+      if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const tFil = await db.collection('task_files').findOne({ id: path[2] }, { projection: { id: 1, taskId: 1 } });
+      if (!tFil) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
+      const tSak = await hentSynligSak(db, request, tFil.taskId);
+      if (!tSak.task) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
+      const rT = await trekkDeling(db, path[2], path[4], '');
+      if (!rT.ok) return cors(NextResponse.json({ ok: false, error: rT.error }, { status: rT.status || 400 }));
+      return cors(NextResponse.json(rT));
+    }
+    // Send dokument til BankID-signering via Posten signering (admin-handling)
+    if (path[0] === 'admin' && path[1] === 'task-files' && path.length === 4 && path[3] === 'signering' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!rateLimit(`signering:${clientIp(request)}`, 10)) return cors(NextResponse.json({ error: 'For mange forespørsler — vent litt' }, { status: 429 }));
+      let bS = {}; try { bS = await request.json(); } catch (e) {}
+      try {
+        const rS = await opprettSigneringsjobb(db, {
+          filId: path[2], tittel: bS.tittel, melding: bS.melding,
+          signatarer: bS.signatarer, dagerFrist: bS.dagerFrist, av: String(bS.actor || '').slice(0, 80),
+        });
+        if (!rS.ok) return cors(NextResponse.json({ ok: false, error: rS.error }, { status: rS.status || 400 }));
+        await filLogg(db, path[2], `Sendt til BankID-signering (${(bS.signatarer || []).length} signatar${(bS.signatarer || []).length === 1 ? '' : 'er'})`, String(bS.actor || '').slice(0, 80));
+        await db.collection('task_files').updateOne({ id: path[2] }, { $set: { signering: { jobbId: rS.jobb.id, status: 'I_GANG', oppdatert: new Date().toISOString() } } });
+        return cors(NextResponse.json({ ok: true, jobb: rS.jobb }));
+      } catch (e) {
+        return cors(NextResponse.json({ ok: false, error: String(e && e.message || 'Signering feilet') }, { status: 502 }));
+      }
+    }
+    // Signering: oppsett (virksomhetssertifikat), kansellering, manuell poll
+    if (route === '/admin/signering/oppsett' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const cfgS = await signHentOppsett(db);
+      return cors(NextResponse.json({ ok: true, oppsett: cfgS || { konfigurert: false } }));
+    }
+    if (route === '/admin/signering/oppsett' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let bO = {}; try { bO = await request.json(); } catch (e) {}
+      const rO = await signLagreOppsett(db, { p12Base64: bO.p12Base64, passord: bO.passord });
+      if (!rO.ok) return cors(NextResponse.json({ ok: false, error: rO.error }, { status: rO.status || 400 }));
+      return cors(NextResponse.json(rO));
+    }
+    if (route === '/admin/signering/oppsett' && method === 'DELETE') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      return cors(NextResponse.json(await signSlettOppsett(db)));
+    }
+    if (path[0] === 'admin' && path[1] === 'signering' && path.length === 4 && path[3] === 'kanseller' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      try {
+        const rK = await kansellerSignering(db, path[2], '');
+        if (!rK.ok) return cors(NextResponse.json({ ok: false, error: rK.error }, { status: rK.status || 400 }));
+        const jK = await db.collection(SIGN_JOBB_COLL).findOne({ id: path[2] }, { projection: { filId: 1 } });
+        if (jK) {
+          await db.collection('task_files').updateOne({ id: jK.filId }, { $set: { 'signering.status': 'KANSELLERT', 'signering.oppdatert': new Date().toISOString() } });
+          await filLogg(db, jK.filId, 'Signeringsrunden ble kansellert', '');
+        }
+        return cors(NextResponse.json(rK));
+      } catch (e) {
+        return cors(NextResponse.json({ ok: false, error: String(e && e.message || 'Kansellering feilet') }, { status: 502 }));
+      }
+    }
+    if (route === '/admin/signering/poll' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      try {
+        // Manuell oppdatering: nullstill ventetiden og poll umiddelbart
+        await db.collection('signering_config').updateOne({ id: 'posten' }, { $set: { nestePoll: new Date().toISOString() } });
+        return cors(NextResponse.json(await pollSignering(db)));
+      } catch (e) {
+        return cors(NextResponse.json({ ok: false, error: String(e && e.message || 'Polling feilet') }, { status: 502 }));
+      }
+    }
+    // Dokumentarkiv: rollefiltrert liste (owner/admin alt · eier investorer+alle · ellers alle)
+    if (route === '/admin/dokumentarkiv' && method === 'GET') {
+      if (!innloggetAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let rolleArk = 'bruker';
+      if (adminAuthed(request)) rolleArk = 'admin';
+      else {
+        const sesArk = sessionFra(request);
+        const megArk = sesArk && sesArk.sub ? await db.collection('admin_users').findOne({ id: sesArk.sub }, { projection: { role: 1 } }) : null;
+        rolleArk = (megArk && megArk.role) || 'bruker';
+      }
+      return cors(NextResponse.json({ ok: true, filer: await listArkiv(db, rolleArk), rolle: rolleArk }));
+    }
+    // Nedlasting fra dokumentarkivet: arkivering = bevisst publisering, så
+    // tilgangen styres av arkiv-synligheten (ikke sakens synlighet).
+    if (path[0] === 'admin' && path[1] === 'dokumentarkiv' && path.length === 3 && method === 'GET') {
+      if (!innloggetAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const arkFil = await db.collection('task_files').findOne({ id: path[2], 'arkiv.aktiv': true });
+      if (!arkFil) return cors(NextResponse.json({ error: 'Ikke funnet' }, { status: 404 }));
+      let rolleNed = 'bruker';
+      if (adminAuthed(request)) rolleNed = 'admin';
+      else {
+        const sesNed = sessionFra(request);
+        const megNed = sesNed && sesNed.sub ? await db.collection('admin_users').findOne({ id: sesNed.sub }, { projection: { role: 1 } }) : null;
+        rolleNed = (megNed && megNed.role) || 'bruker';
+      }
+      const synNed = (arkFil.arkiv && arkFil.arkiv.synlighet) || 'styret';
+      const lov = rolleNed === 'admin' || rolleNed === 'owner'
+        || (rolleNed === 'eier' && ['investorer', 'alle'].includes(synNed))
+        || synNed === 'alle';
+      if (!lov) return cors(NextResponse.json({ error: 'Ikke funnet' }, { status: 404 }));
+      const arkBuf = Buffer.from(arkFil.data || '', 'base64');
+      const ARK_INLINE = /^(application\/pdf|image\/(png|jpe?g|gif|webp|avif)|text\/plain)$/i;
+      const arkInline = new URL(request.url).searchParams.get('inline') === '1' && ARK_INLINE.test(String(arkFil.type || ''));
+      return new NextResponse(arkBuf, {
+        status: 200,
+        headers: {
+          'Content-Type': arkFil.type || 'application/octet-stream',
+          'Content-Length': String(arkBuf.length),
+          'Content-Disposition': `${arkInline ? 'inline' : 'attachment'}; filename*=UTF-8''${encodeURIComponent(arkFil.name || 'dokument')}`,
+          'X-Content-Type-Options': 'nosniff',
+          'Cache-Control': 'private, max-age=600',
+        },
+      });
+    }
+    // Cron: signeringspolling (kalles av bakgrunnsplanleggeren)
+    if (route === '/cron/signering' && method === 'POST') {
+      const cronSecretSig = (process.env.CRON_SECRET || '').trim();
+      const gittSig = request.headers.get('x-cron-secret') || '';
+      if (!(cronSecretSig && gittSig === cronSecretSig) && !adminAuthed(request)) {
+        return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      }
+      try {
+        return cors(NextResponse.json(await pollSignering(db)));
+      } catch (e) {
+        return cors(NextResponse.json({ ok: false, error: String(e && e.message || 'Polling feilet') }, { status: 500 }));
+      }
+    }
+    // OFFENTLIG: signeringsknappen i DigiHome-e-posten → henter fersk
+    // engangs-URL fra Posten og sender signataren rett inn i BankID-flyten.
+    if (path[0] === 'signer' && path.length === 3 && method === 'GET') {
+      if (!rateLimit(`signer:${clientIp(request)}`, 30)) return cors(NextResponse.json({ error: 'For mange forsøk — vent litt' }, { status: 429 }));
+      const baseSg = (process.env.NEXT_PUBLIC_BASE_URL || '').replace(/\/$/, '');
+      try {
+        const rSg = await hentSignerRedirect(db, path[1], path[2]);
+        if (rSg.ok) return NextResponse.redirect(rSg.redirectUrl, 302);
+        return NextResponse.redirect(`${baseSg}/signering/feil?grunn=${encodeURIComponent(rSg.error || 'Ukjent feil')}`, 302);
+      } catch (e) {
+        return NextResponse.redirect(`${baseSg}/signering/feil?grunn=${encodeURIComponent('Teknisk feil — prøv igjen om litt')}`, 302);
+      }
+    }
+    // OFFENTLIG: puls fra exit-sidene — fremskynder statuspolling etter signering
+    if (route === '/signering-puls' && method === 'POST') {
+      if (!rateLimit(`signpuls:${clientIp(request)}`, 10)) return cors(NextResponse.json({ ok: true }));
+      await db.collection('signering_config').updateOne({ id: 'posten' }, { $set: { nestePoll: new Date().toISOString() } }, { upsert: true });
+      pollSignering(db).catch(() => {});
+      return cors(NextResponse.json({ ok: true }));
+    }
+    // OFFENTLIG: tidsbegrenset delingslenke — /api/delt/<token>
+    if (path[0] === 'delt' && path.length === 2 && method === 'GET') {
+      const deltFil = await hentDelt(db, path[1]);
+      if (!deltFil) return cors(NextResponse.json({ error: 'Lenken er utløpt eller trukket tilbake' }, { status: 404 }));
+      const deltBuf = Buffer.from(deltFil.data || '', 'base64');
+      const DELT_INLINE = /^(application\/pdf|image\/(png|jpe?g|gif|webp|avif)|text\/plain)$/i;
+      const deltInline = DELT_INLINE.test(String(deltFil.type || ''));
+      return new NextResponse(deltBuf, {
+        status: 200,
+        headers: {
+          'Content-Type': deltFil.type || 'application/octet-stream',
+          'Content-Length': String(deltBuf.length),
+          'Content-Disposition': `${deltInline ? 'inline' : 'attachment'}; filename*=UTF-8''${encodeURIComponent(deltFil.name || 'dokument')}`,
+          'X-Content-Type-Options': 'nosniff',
+          'X-Robots-Tag': 'noindex, nofollow',
+          'Cache-Control': 'private, no-store',
+        },
+      });
     }
 
     // ═══════════════ MØTER — styremøter/ledermøter med agenda, referat,

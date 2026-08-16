@@ -544,3 +544,29 @@ Google Ads-styring via native REST API).
 - ENHETSØKONOMI (ny Datarom-side, modul dr-enheter): KPI-er (honorar/kostnad/margin per enhet, CAC/payback, break-even), skaleringsgraf (enheter + kostnad/enhet historisk), manpower-modell med BRØKSTILLINGER (min 30 %, trinn 10 %, justerbart) + margintrapp. Backend-testet.
 - FRITTSTÅENDE BUDSJETTER: planer med navn + fri periode (3–24 mnd) + status utkast/vedtatt (én vedtatt per periode), porteføljeforslag (modell B skåret til vinduet), Mot faktisk for fri periode, egen editor + valg i budsjettmenyen. Kalenderår/investor-NTM urørt. Backend-testet 13/13.
 - Eksempelplan «Neste 12 mnd (rullerende)» (sep 26–aug 27) ligger klar i Budsjett-menyen.
+
+## Manuell, kuratert AI-bildestyling (feb 2026)
+- Auto-pipeline styler ALDRI bilder automatisk lenger — kun AI-analyse av nye leads. Styling er en bevisst, manuell handling per lead.
+- Nytt StylingPanel i Salgsradar-admin: 1) velg originalbilder i galleri, 2) velg modus (FINN-optimalisering / Lysløft / Møblering nordisk-moderne-varm) + intensitet (Varsom/Full) + valgfri fritekstinstruks, 3) Generer → reviewkø med før/etter → Bruk bildet / Prøv igjen / Forkast.
+- Kandidater lagres med godkjent:false og havner ALDRI i lead.stylet (eller offentlig tilbud) før eksplisitt godkjenning.
+- Ærlig merking: optimal/lysloft = «AI-forbedret foto», møblering = «AI-møblert · illustrasjon». Nødbrems i prompt: tomme rom får aldri møbler, kun lysløft.
+- Parringsfiks: erstatt-semantikk per kildeUrl (maks én aktiv stylet versjon per original), jobb-basert kildeUrl-parring, duplikat i Johannes Bruns gate 1 reparert.
+- API: POST/GET /api/admin/salgsradar/styling-jobber, POST /api/admin/salgsradar/styling-review, DELETE /api/admin/salgsradar/stylet-bilde. Collection: salgsradar_stylingjobber. Backendtestet 100 %.
+
+## Dokumentmotor + BankID-signering (aug 2026)
+- Saksvedlegg har nå DokumentModal (PenLine-knapp per vedlegg): BankID-signering, dokumentarkiv, delingslenker, versjoner, historikk.
+- Posten signering (portalflyt) LIVE i produksjon: Commfides Auth-sertifikat i .env (POSTEN_P12_B64 + POSTEN_P12_PASSORD, org 835674622, kø digihome-saker, utløper 2029-06). mTLS via PEM (OpenSSL3 støtter ikke legacy-p12). ASiC-E/XAdES bygges i lib/signering.js — validert og akseptert av Posten (jobb 18714523).
+- Flere signatarer (maks 10), valgfri rekkefølge (order 0-9), frist 1-90 dager, varsling e-post/SMS via Posten. Signert PAdES lastes automatisk ned og lagres som ny LÅST versjon; låste filer kan ikke slettes av ikke-admin.
+- identifier-in-signed-documents: NAME er IKKE aktivert for org-en (FEATURE_NOT_AVAILABLE) — standard = fødselsnr+navn i signert PDF. Kan be Posten (Rune Svendsen) aktivere NAME.
+- Statuspolling: scheduler hvert 2. min → POST /api/cron/signering (x-admin-key fallback); respekterer X-Next-permitted-poll-time; bekrefter (confirmation-url) FØRST etter trygg lagring.
+- Dokumentarkiv: PUT arkiv {synlighet: styret/investorer/alle, kategori} → vises i Datarom → Dokumenter («Dokumentarkiv fra sakene»), rollefiltrert; nedlasting styrt av arkiv-synlighet.
+- Delingslenker: /api/delt/<token>, 1-90 dager, åpningsteller, kan trekkes tilbake.
+- Versjoner: chunk-upload med versjonAv, task_file_versjoner, gjenoppretting, nedlasting av gamle versjoner.
+- Word-preview: .docx rendres med docx-preview i FilViser (klient-side, ingen tredjepart). Gamle .doc = kun nedlasting.
+- Backendtestet 46/46 (dokumentmotor) + live Posten-verifikasjon.
+
+### Signeringsflyt v2: direkteflyt med DigiHome-epost (aug 2026)
+- Byttet fra portalflyt (Posten-epost med sikkerhetskode) til DIREKTEFLYT: DigiHome sender egen branded e-post med knapp → /api/signer/:jobbId/:sid → fersk engangs-URL fra Posten → BankID. Ingen kode å taste.
+- Sekvensiell rekkefølge styres av oss (e-post til nestemann ved signering). Signatar-identitet mot Posten = intern uuid (sid) — ingen fnr sendes på forhånd.
+- Exit-sider: /signering/ferdig|avvist|feil. Kansellering av direktejobber skjer lokalt (lenkesperring).
+- Ekte testjobb 18714586 aktiv — venter på Martins BankID-signering (dokument: «Testdokument for signering.pdf» på sak «BankID-signering — testdokument»).

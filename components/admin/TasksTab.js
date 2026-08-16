@@ -18,6 +18,7 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { Marked } from 'marked';
 import SakerInnsikt from './SakerInnsikt';
 import FilViser, { filIkonInfo } from './FilViser';
+import DokumentModal from './DokumentModal';
 import ProduktAdmin from './ProduktAdmin';
 import ProsjekterVisning from './Prosjekter';
 import {
@@ -26,7 +27,7 @@ import {
   ChevronDown, AlertTriangle, Pencil, Check, CornerDownLeft, History,
   ClipboardCheck, UserPlus, Repeat, Paperclip, Archive, ArchiveRestore,
   Download, KeyRound, Circle, Table2, CalendarRange, ArrowUpDown, User,
-  MoreHorizontal, Send, Maximize2, Minimize2, Settings, AtSign,
+  MoreHorizontal, Send, Maximize2, Minimize2, Settings, AtSign, PenLine,
   Bold, Italic, Link2, Image as ImageIcon, Heading,
   Folder, FolderPlus, Ban, GitBranch, Layers, BarChart3,
   Home, Landmark, Briefcase, Wrench, Lock, Globe,
@@ -3630,6 +3631,7 @@ function VedleggSeksjon({ t, apiKey, api, actor, onReload, visToast }) {
   const [lasterOpp, setLasterOpp] = useState(false);
   const [prosent, setProsent] = useState(0);
   const [viserIdx, setViserIdx] = useState(null); // åpent vedlegg i FilViser
+  const [dokFil, setDokFil] = useState(null); // åpen fil i DokumentModal
   const filRef = useRef(null);
   const vedlegg = t.attachments || [];
 
@@ -3718,8 +3720,23 @@ function VedleggSeksjon({ t, apiKey, api, actor, onReload, visToast }) {
                 )}
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[13px] font-medium text-[#333] transition-colors group-hover:text-[#8b5cf6]">{a.name}</p>
-                  <p className="text-[11px] text-[#b0aca6]">{fmtStr(a.size)} · klikk for å vise</p>
+                  <p className="flex flex-wrap items-center gap-1 text-[11px] text-[#b0aca6]">
+                    {fmtStr(a.size)}
+                    {(a.versjon || 1) > 1 && <span className="rounded-[4px] bg-[#f4f4f2] px-1 py-px text-[9.5px] font-bold text-[#888]">v{a.versjon}</span>}
+                    {a.laast && <span className="flex items-center gap-0.5 rounded-[4px] bg-emerald-50 px-1 py-px text-[9.5px] font-bold text-emerald-700"><Lock className="h-2.5 w-2.5" /> Signert</span>}
+                    {!a.laast && a.signeringStatus === 'I_GANG' && <span className="rounded-[4px] bg-[#f4f0fb] px-1 py-px text-[9.5px] font-bold text-[#8b5cf6]">Til signering</span>}
+                    {a.arkiv && <span className="rounded-[4px] bg-[#f4f4f2] px-1 py-px text-[9.5px] font-bold text-[#888]">Arkiv</span>}
+                    <span>· klikk for å vise</span>
+                  </p>
                 </div>
+              </button>
+              <button
+                onClick={() => setDokFil(a)}
+                data-testid={`attachment-dok-${a.id}`}
+                title="Dokumenthandlinger — signering, arkiv, versjoner, deling"
+                className="shrink-0 rounded-lg p-2 text-[#bbb] transition-colors hover:bg-white hover:text-[#8b5cf6]"
+              >
+                <PenLine className="w-4 h-4" />
               </button>
               <a
                 href={`/api/admin/task-files/${a.id}?key=${encodeURIComponent(apiKey)}`}
@@ -3739,6 +3756,9 @@ function VedleggSeksjon({ t, apiKey, api, actor, onReload, visToast }) {
       </div>
       {viserIdx !== null && (
         <FilViser filer={vedlegg} index={viserIdx} apiKey={apiKey} onClose={() => setViserIdx(null)} onIndex={setViserIdx} />
+      )}
+      {dokFil && (
+        <DokumentModal fil={dokFil} taskId={t.id} apiKey={apiKey} api={api} actor={actor} onClose={() => setDokFil(null)} onReload={onReload} visToast={visToast} />
       )}
       {lasterOpp ? (
         <div className="mt-2.5" data-testid="attachment-progress">

@@ -44,6 +44,14 @@ const STIL_VALG = [
   { k: 'moderne', l: 'Møblering — moderne' },
   { k: 'varm', l: 'Møblering — varm' },
 ];
+// Ærlig merking + beskrivelse per modus (styling er en bevisst, manuell handling)
+const MODUS_INFO = {
+  optimal: { l: 'FINN-optimalisering', d: 'Fotoløft + varsom styling av møblerte rom: sengetøy, puter, pledd, rydding. Tomme rom får kun lysløft — aldri møbler.', merk: 'AI-forbedret foto' },
+  lysloft: { l: 'Lysløft', d: 'Kun fototeknisk løft — lys, eksponering, hvitbalanse. Ingenting tilføres. Riktig for tomme/umøblerte rom.', merk: 'AI-forbedret foto' },
+  nordisk: { l: 'Møblering — nordisk', d: 'Virtuelt møbleringsforslag (lyst, eik, planter). Kun for bevisst bruk — merkes tydelig som illustrasjon.', merk: 'AI-møblert · illustrasjon' },
+  moderne: { l: 'Møblering — moderne', d: 'Virtuelt møbleringsforslag (rene linjer, designmøbler). Kun for bevisst bruk — merkes tydelig som illustrasjon.', merk: 'AI-møblert · illustrasjon' },
+  varm: { l: 'Møblering — varm', d: 'Virtuelt møbleringsforslag (naturmaterialer, jordtoner). Kun for bevisst bruk — merkes tydelig som illustrasjon.', merk: 'AI-møblert · illustrasjon' },
+};
 const DEL_ETIKETTER = [
   ['visuell', 'Visuelt inntrykk', 'Visuell'],
   ['opplosning', 'Oppløsning', 'Oppl.'],
@@ -304,6 +312,235 @@ function SammenlignModal({ par, idx, setIdx, onClose }) {
   );
 }
 
+/* ── StylingPanel: manuell, kuratert AI-styling med review ───────────────────
+   Ingenting styles automatisk. Flyt: velg originalbilder → sett modus/
+   intensitet (+ valgfri instruks) → Generer → reviewkø med før/etter →
+   Bruk / Prøv igjen / Forkast. Kun godkjente bilder havner i galleriet og
+   på tilbudssiden — ærlig merket. Parring original↔AI garanteres av
+   kildeUrl på jobben. ───────────────────────────────────────────────────── */
+function StylingPanel({ lead, api, onEndret, dodeBilder, merkDodBilde, bento }) {
+  const [valgte, setValgte] = useState(() => new Set());
+  const [modus, setModus] = useState('optimal'); // 'optimal' | 'lysloft' | 'mobler'
+  const [variant, setVariant] = useState('nordisk');
+  const [intensitet, setIntensitet] = useState('full');
+  const [instruks, setInstruks] = useState('');
+  const [jobber, setJobber] = useState([]);
+  const [starter, setStarter] = useState(false);
+  const [busy, setBusy] = useState(null);
+  const [feil, setFeil] = useState('');
+  const [sml, setSml] = useState(null); // {ai, original, stil} → fullskjerm før/etter
+
+  const hentJobber = useCallback(async () => {
+    try { const j = await api(`styling-jobber?leadId=${lead.id}`); setJobber(j.jobber || []); } catch (e) { /* stille — prøver igjen */ }
+  }, [api, lead.id]);
+
+  useEffect(() => {
+    setValgte(new Set()); setInstruks(''); setFeil(''); setSml(null); setJobber([]);
+    setModus(lead.foreslattStil === 'lysloft' ? 'lysloft' : 'optimal');
+    hentJobber();
+  }, [lead.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const aktive = useMemo(() => jobber.filter((j) => ['venter', 'kjorer'].includes(j.status)), [jobber]);
+  const reviewKo = useMemo(() => jobber.filter((j) => j.status === 'ferdig' && j.review === 'venter'), [jobber]);
+  const feilede = useMemo(() => jobber.filter((j) => j.status === 'feilet' && j.review !== 'forkastet'), [jobber]);
+  const aktiveKilder = useMemo(() => new Set(aktive.map((j) => j.kildeUrl)), [aktive]);
+
+  // Poll hvert 4. sekund så lenge jobber kjører
+  useEffect(() => {
+    if (!aktive.length) return undefined;
+    const t = setInterval(hentJobber, 4000);
+    return () => clearInterval(t);
+  }, [aktive.length, hentJobber]);
+
+  const styletKilder = useMemo(() => new Set((lead.stylet || []).map((s) => s.kildeUrl)), [lead.stylet]);
+  const originaler = useMemo(() => (lead.bilder || []).filter((b) => !dodeBilder.has(b)).slice(0, 14), [lead.bilder, dodeBilder]);
+
+  const veksle = (u) => {
+    if (aktiveKilder.has(u)) return;
+    setValgte((prev) => { const n = new Set(prev); if (n.has(u)) n.delete(u); else n.add(u); return n; });
+  };
+
+  const generer = async () => {
+    if (starter || !valgte.size) return;
+    setStarter(true); setFeil('');
+    const stil = modus === 'mobler' ? variant : modus;
+    try {
+      await api('styling-jobber', {
+        method: 'POST',
+        body: { leadId: lead.id, bilder: Array.from(valgte).map((kildeUrl) => ({ kildeUrl, stil, intensitet, instruks })) },
+      });
+      setValgte(new Set());
+      await hentJobber();
+    } catch (e) { setFeil(e.message); }
+    setStarter(false);
+  };
+
+  const review = async (jobbId, handling) => {
+    if (busy) return;
+    setBusy(jobbId); setFeil('');
+    try {
+      await api('styling-review', { method: 'POST', body: { jobbId, handling } });
+      await hentJobber();
+      if (handling === 'godkjenn') await onEndret();
+    } catch (e) { setFeil(e.message); }
+    setBusy(null);
+  };
+
+  const info = MODUS_INFO[modus === 'mobler' ? variant : modus];
+  const erStaging = modus === 'mobler';
+  const SEG_AKTIV = 'bg-[#1c1917] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]';
+  const SEG_INAKTIV = 'text-[#78716c] hover:text-[#1c1917]';
+
+  return (
+    <section className={`${bento} mt-4 p-4 sm:p-5`} data-testid="radar-styling-panel">
+      <SekHode ikon={Wand2} tittel="Bildestyling" hoyre={aktive.length > 0 ? (
+        <span className="flex items-center gap-1.5 text-[11px] font-medium text-[#6d28d9]"><Loader2 className="h-3 w-3 animate-spin" /> {aktive.length} i arbeid</span>
+      ) : null} />
+      <p className="mt-1.5 text-[11.5px] leading-relaxed text-[#a8a29a]">Ingenting styles automatisk. Velg bildene du vil forbedre, sett modus — og se over resultatet før det brukes i tilbud og annonse.</p>
+
+      {feil && <p className="mt-2 rounded-[8px] bg-[#fdf0ef] px-3 py-2 text-[12px] font-medium text-[#c2413b]" data-testid="radar-styling-feil">{feil}</p>}
+
+      {/* 1 · Velg bilder */}
+      <div className="mt-3.5">
+        <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#a8a29a]">1 · Velg bilder{valgte.size > 0 ? ` — ${valgte.size} valgt` : ''}</p>
+        <div className="mt-2 grid grid-cols-3 gap-1.5 min-[480px]:grid-cols-4 sm:grid-cols-5 md:grid-cols-6">
+          {originaler.map((b, i) => {
+            const valgtB = valgte.has(b);
+            const kjorerB = aktiveKilder.has(b);
+            return (
+              <div key={b} role="button" tabIndex={0} data-testid={`radar-styling-velg-${i}`}
+                onClick={() => veksle(b)}
+                className={`group relative cursor-pointer overflow-hidden rounded-[9px] bg-[#f4f2ee] transition-all ${valgtB ? 'ring-2 ring-[#1c1917] ring-offset-1' : 'hover:opacity-95'} ${kjorerB ? 'cursor-default' : ''}`}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={b} alt="" draggable={false} onError={() => merkDodBilde(b)}
+                  className={`h-[68px] w-full object-cover transition-opacity sm:h-[76px] ${valgtB ? '' : 'opacity-90 group-hover:opacity-100'}`} />
+                {valgtB && (
+                  <span className="absolute right-1 top-1 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-[#1c1917] text-white shadow-[0_1px_4px_rgba(0,0,0,0.3)]"><Check className="h-3 w-3" /></span>
+                )}
+                {!valgtB && !kjorerB && (
+                  <span className="absolute right-1 top-1 h-[18px] w-[18px] rounded-full border-[1.5px] border-white/90 bg-black/20 opacity-0 shadow-[0_1px_3px_rgba(0,0,0,0.25)] transition-opacity group-hover:opacity-100" />
+                )}
+                {styletKilder.has(b) && (
+                  <span className="absolute bottom-1 left-1 rounded-[3px] bg-[#8b5cf6]/90 px-1 py-px text-[7.5px] font-bold uppercase text-white">Stylet</span>
+                )}
+                {kjorerB && (
+                  <span className="absolute inset-0 flex items-center justify-center bg-black/35"><Loader2 className="h-4 w-4 animate-spin text-white" /></span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 2 · Modus + intensitet + instruks */}
+      <div className="mt-4">
+        <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#a8a29a]">2 · Velg styling</p>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <div className="flex rounded-[8px] border border-black/[0.08] bg-[#f7f6f3] p-0.5">
+            {[['optimal', 'FINN-optimalisering'], ['lysloft', 'Lysløft'], ['mobler', 'Møblering']].map(([k, l]) => (
+              <button key={k} onClick={() => setModus(k)} data-testid={`radar-modus-${k}`}
+                className={`rounded-[6.5px] px-2.5 py-1.5 text-[11.5px] font-medium transition-all ${modus === k ? SEG_AKTIV : SEG_INAKTIV}`}>
+                {l}
+              </button>
+            ))}
+          </div>
+          {erStaging && (
+            <select value={variant} onChange={(e) => setVariant(e.target.value)} data-testid="radar-staging-variant"
+              className="h-8 rounded-[7px] border border-black/[0.08] bg-white px-2 text-[11.5px] outline-none focus:border-[#1c1917]/25">
+              <option value="nordisk">Nordisk</option>
+              <option value="moderne">Moderne</option>
+              <option value="varm">Varm</option>
+            </select>
+          )}
+          <div className="flex rounded-[8px] border border-black/[0.08] bg-[#f7f6f3] p-0.5">
+            {[['varsom', 'Varsom'], ['full', 'Full']].map(([k, l]) => (
+              <button key={k} onClick={() => setIntensitet(k)} data-testid={`radar-intensitet-${k}`}
+                className={`rounded-[6.5px] px-2.5 py-1.5 text-[11.5px] font-medium transition-all ${intensitet === k ? SEG_AKTIV : SEG_INAKTIV}`}>
+                {l}
+              </button>
+            ))}
+          </div>
+        </div>
+        <p className="mt-2 text-[11.5px] leading-relaxed text-[#78716c]">
+          {info.d} <span className={`ml-1 rounded-[4px] px-1.5 py-px text-[10px] font-bold ${erStaging ? 'bg-[#fdf3e0] text-[#9a6b1c]' : 'bg-[#f4f0fb] text-[#6d28d9]'}`}>{info.merk}</span>
+        </p>
+        <input value={instruks} onChange={(e) => setInstruks(e.target.value)} maxLength={500} data-testid="radar-styling-instruks"
+          placeholder="Egen instruks til stylisten (valgfritt) — f.eks. «behold de grønne putene»"
+          className="mt-2.5 h-9 w-full rounded-[8px] border border-black/[0.08] bg-white px-3 text-[12.5px] outline-none placeholder:text-[#c2beb8] focus:border-[#1c1917]/25" />
+        <div className="mt-3 flex items-center gap-3">
+          <button onClick={generer} disabled={starter || valgte.size === 0} data-testid="radar-styling-generer" className={KNAPP_PRIMAER}>
+            {starter ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5" />}
+            {valgte.size > 0 ? `Forbedre ${valgte.size} ${valgte.size === 1 ? 'bilde' : 'bilder'}` : 'Velg bilder først'}
+          </button>
+          {valgte.size > 0 && <span className="text-[11px] text-[#a8a29a]">~30–60 sek per bilde — du kan lukke og komme tilbake</span>}
+        </div>
+      </div>
+
+      {/* 3 · Reviewkø: før/etter → Bruk / Prøv igjen / Forkast */}
+      {(reviewKo.length > 0 || feilede.length > 0) && (
+        <div className="mt-5 border-t border-black/[0.05] pt-4">
+          <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#a8a29a]">3 · Se over{reviewKo.length > 0 ? ` — ${reviewKo.length} venter på deg` : ''}</p>
+          <div className="mt-2.5 grid gap-3">
+            {reviewKo.map((j) => {
+              const kandidatUrl = `/api/tilbud/bilde?id=${j.resultatBildeId}`;
+              const mi = MODUS_INFO[j.stil] || MODUS_INFO.optimal;
+              return (
+                <div key={j.id} className="overflow-hidden rounded-[12px] border border-black/[0.06] bg-[#fbfaf9]" data-testid="radar-review-kort">
+                  <div className="grid grid-cols-2 gap-px bg-black/[0.05]">
+                    <div className="relative cursor-pointer bg-[#f4f2ee]" role="button" tabIndex={0} onClick={() => setSml({ ai: kandidatUrl, original: j.kildeUrl, stil: j.stil })}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={j.kildeUrl} alt="Original" draggable={false} className="h-[150px] w-full object-cover sm:h-[190px]" />
+                      <span className="pointer-events-none absolute left-2 top-2 rounded-[4px] bg-black/50 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white">Original</span>
+                    </div>
+                    <div className="relative cursor-pointer bg-[#f4f2ee]" role="button" tabIndex={0} onClick={() => setSml({ ai: kandidatUrl, original: j.kildeUrl, stil: j.stil })}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={kandidatUrl} alt="AI-forslag" draggable={false} className="h-[150px] w-full object-cover sm:h-[190px]" />
+                      <span className="pointer-events-none absolute left-2 top-2 rounded-[4px] bg-[#8b5cf6]/90 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white">{mi.merk}</span>
+                      <span className="pointer-events-none absolute bottom-2 right-2 flex items-center gap-1 rounded-[5px] bg-white/90 px-1.5 py-0.5 text-[10px] font-medium text-[#1c1917]"><Maximize2 className="h-2.5 w-2.5" /> Sammenlign</span>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 px-3 py-2.5">
+                    <span className="mr-auto text-[11px] text-[#78716c]">
+                      {mi.l} · {j.intensitet === 'varsom' ? 'varsom' : 'full'}{j.instruks ? <span className="text-[#a8a29a]"> · «{j.instruks.slice(0, 60)}{j.instruks.length > 60 ? '…' : ''}»</span> : ''}
+                    </span>
+                    <button onClick={() => review(j.id, 'forkast')} disabled={!!busy} data-testid="radar-review-forkast"
+                      className="flex h-8 items-center gap-1.5 rounded-[7px] px-2.5 text-[12px] font-medium text-[#a8a29a] transition-colors hover:bg-[#fdf0ef] hover:text-[#c2413b] disabled:opacity-50">
+                      <X className="h-3.5 w-3.5" /> Forkast
+                    </button>
+                    <button onClick={() => review(j.id, 'provIgjen')} disabled={!!busy} data-testid="radar-review-provigjen" className={KNAPP_GHOST}>
+                      <RefreshCw className={`h-3.5 w-3.5 ${busy === j.id ? 'animate-spin' : ''}`} /> Prøv igjen
+                    </button>
+                    <button onClick={() => review(j.id, 'godkjenn')} disabled={!!busy} data-testid="radar-review-godkjenn" className={KNAPP_PRIMAER}>
+                      {busy === j.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />} Bruk bildet
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+            {feilede.map((j) => (
+              <div key={j.id} className="flex flex-wrap items-center gap-2.5 rounded-[10px] border border-[#f3d9d7] bg-[#fdf0ef] px-3 py-2.5" data-testid="radar-styling-feilet">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={j.kildeUrl} alt="" className="h-9 w-12 rounded-[6px] object-cover" />
+                <span className="mr-auto min-w-0 text-[12px] font-medium text-[#c2413b]">Styling feilet: {j.feil || 'ukjent feil'}</span>
+                <button onClick={() => review(j.id, 'provIgjen')} disabled={!!busy}
+                  className="flex items-center gap-1.5 rounded-[7px] border border-[#eec3c0] bg-white px-2.5 py-1.5 text-[11.5px] font-bold text-[#c2413b] transition-colors hover:bg-[#fdf6f5] disabled:opacity-50">
+                  <RefreshCw className={`h-3 w-3 ${busy === j.id ? 'animate-spin' : ''}`} /> Prøv igjen
+                </button>
+                <button onClick={() => review(j.id, 'forkast')} disabled={!!busy} className="rounded-[7px] px-2 py-1.5 text-[11.5px] font-medium text-[#c2413b]/70 hover:text-[#c2413b]">Fjern</button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Fullskjerm før/etter for kandidat */}
+      {sml && (
+        <SammenlignModal par={[sml]} idx={0} setIdx={() => {}} onClose={() => setSml(null)} />
+      )}
+    </section>
+  );
+}
+
 export default function Salgsradar({ apiKey }) {
   const api = useCallback(async (path, opts = {}) => {
     const url = `/api/admin/salgsradar/${path}${path.includes('?') ? '&' : '?'}key=${encodeURIComponent(apiKey)}`;
@@ -330,8 +567,6 @@ export default function Salgsradar({ apiKey }) {
   const [utvidet, setUtvidet] = useState(false);
   const [bred, setBred] = useState(true);
   const [ultra, setUltra] = useState(false);
-  const [styler, setStyler] = useState(null);
-  const [stil, setStil] = useState('optimal');
   const [kopiert, setKopiert] = useState(false);
   const [meldingKopiert, setMeldingKopiert] = useState(false);
   const [sletteBekreft, setSletteBekreft] = useState(false);
@@ -488,16 +723,6 @@ export default function Salgsradar({ apiKey }) {
     setAnalyserer(false);
   };
 
-  const stylBilde = async (lead, bildeUrl) => {
-    if (styler) return;
-    setStyler(bildeUrl); setFeil('');
-    try {
-      await api('stil', { method: 'POST', body: { leadId: lead.id, bildeUrl, stil } });
-      await hentLeads();
-    } catch (e) { setFeil(e.message); }
-    setStyler(null);
-  };
-
   const veksleValg = (id) => setUtvalg((prev) => {
     const n = new Set(prev);
     if (n.has(id)) n.delete(id); else n.add(id);
@@ -560,7 +785,7 @@ export default function Salgsradar({ apiKey }) {
   const galleri = useMemo(() => {
     if (!valgt) return [];
     return [
-      ...(valgt.stylet || []).map((s) => ({ url: `/api/tilbud/bilde?id=${s.id}`, etikett: `AI · ${STIL_VALG.find((x) => x.k === s.stil)?.l || s.stil}`, ai: true, kilde: s.kildeUrl, stil: s.stil })),
+      ...(valgt.stylet || []).map((s) => ({ url: `/api/tilbud/bilde?id=${s.id}`, etikett: MODUS_INFO[s.stil]?.merk || 'AI-forbedret foto', ai: true, kilde: s.kildeUrl, stil: s.stil })),
       ...(valgt.bilder || []).filter((b) => !dodeBilder.has(b)).slice(0, 14).map((b) => ({ url: b, etikett: 'Original', ai: false, kilde: b })),
     ];
   }, [valgt, dodeBilder]);
@@ -600,19 +825,9 @@ export default function Salgsradar({ apiKey }) {
 
     const sekBilder = nB > 0 && (
       <section className={`${BENTO} p-4 sm:p-5`}>
-        <SekHode ikon={Images} tittel={`Bilder (${nB})`} hoyre={(
-          <>
-            <select value={stil} onChange={(e) => setStil(e.target.value)} data-testid="radar-stil-velger" className="h-7 rounded-[7px] border border-black/[0.08] bg-white px-2 text-[11.5px] outline-none focus:border-[#1c1917]/25">
-              {STIL_VALG.map((s) => <option key={s.k} value={s.k}>{s.l}</option>)}
-            </select>
-            {(valgt.bilder || [])[0] && (
-              <button onClick={() => stylBilde(valgt, hero?.ai ? valgt.bilder[0] : (hero?.kilde || valgt.bilder[0]))} disabled={!!styler} data-testid="radar-styl-bilde" title="Styl dette bildet med AI (~30-60 sek)"
-                className="flex h-7 items-center gap-1.5 rounded-[7px] border border-black/[0.08] bg-white px-2.5 text-[11.5px] font-medium text-[#6d28d9] shadow-[0_1px_2px_rgba(28,25,23,0.04)] transition-colors hover:bg-[#f7f5fc] disabled:opacity-50">
-                {styler ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5" />} Styl
-              </button>
-            )}
-          </>
-        )} />
+        <SekHode ikon={Images} tittel={`Bilder (${nB})`} hoyre={(valgt.stylet || []).length > 0 ? (
+          <span className="flex items-center gap-1.5 text-[11px] font-medium text-[#6d28d9]"><Sparkles className="h-3 w-3" /> {(valgt.stylet || []).length} AI-godkjent</span>
+        ) : null} />
         {/* Hero — AI-bilder viser før/etter-slider DIREKTE på bildet.
             Mobil: retningslås — vertikal bevegelse scroller siden som normalt,
             tydelig horisontal bevegelse drar slideren, og et trykk flytter
@@ -671,7 +886,7 @@ export default function Salgsradar({ apiKey }) {
                   <ChevronLeft className="-mr-0.5 h-3 w-3 text-[#1c1917]" /><ChevronRight className="-ml-0.5 h-3 w-3 text-[#1c1917]" />
                 </span>
               </span>
-              <span className="pointer-events-none absolute left-3 top-3 rounded-[5px] bg-[#8b5cf6]/90 px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-wide text-white" style={{ opacity: heroPos > 14 ? 1 : 0, transition: 'opacity .2s' }}>AI-forbedret</span>
+              <span className="pointer-events-none absolute left-3 top-3 rounded-[5px] bg-[#8b5cf6]/90 px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-wide text-white" style={{ opacity: heroPos > 14 ? 1 : 0, transition: 'opacity .2s' }}>{hero.etikett}</span>
               <span className="pointer-events-none absolute right-3 top-3 rounded-[5px] bg-black/45 px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-wide text-white" style={{ opacity: heroPos < 86 ? 1 : 0, transition: 'opacity .2s' }}>Original</span>
               <button onClick={(e) => { e.stopPropagation(); setSammenlign({ idx: Math.min(hIdx, Math.max(0, aiPar.length - 1)) }); }} onPointerDown={(e) => e.stopPropagation()} data-testid="radar-se-foretter" title="Åpne før/etter i fullskjerm"
                 className="absolute bottom-3 left-3 z-10 flex items-center gap-1.5 rounded-[7px] bg-white/95 px-2.5 py-1.5 text-[11.5px] font-medium text-[#1c1917] shadow-[0_2px_8px_rgba(0,0,0,0.18)] transition-all hover:bg-white">
@@ -713,19 +928,13 @@ export default function Salgsradar({ apiKey }) {
               <img src={b.url} alt="" draggable={false}
                 onError={b.ai ? undefined : () => merkDodBilde(b.url)}
                 className={`h-[52px] w-[74px] rounded-[8px] object-cover transition-all ${i === hIdx ? 'ring-2 ring-[#1c1917] ring-offset-1' : 'opacity-80 hover:opacity-100'}`} />
-              {b.ai ? (
+              {b.ai && (
                 <span className="absolute left-1 top-1 rounded-[3px] bg-[#8b5cf6]/90 px-1 py-px text-[7.5px] font-bold uppercase text-white">AI</span>
-              ) : (
-                <button onClick={(e) => { e.stopPropagation(); stylBilde(valgt, b.kilde); }} disabled={!!styler} data-testid="radar-styl-bilde" title="Styl dette bildet med AI"
-                  className="absolute bottom-1 right-1 rounded-[5px] bg-black/55 p-1 text-white transition-opacity hover:bg-[#8b5cf6] disabled:opacity-40 lg:opacity-0 lg:group-hover/t:opacity-100">
-                  {styler === b.kilde ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wand2 className="h-3 w-3" />}
-                </button>
               )}
-              {styler === b.kilde && <span className="absolute inset-0 flex items-center justify-center rounded-[8px] bg-black/40"><Loader2 className="h-4 w-4 animate-spin text-white" /></span>}
             </div>
           ))}
         </div>
-        <p className="mt-1.5 text-[11px] text-[#a8a29a]">AI-bilder viser før/etter direkte — dra i skillelinjen · pilene blar · tryllestaven AI-styler originalbilder (~30–60 sek).</p>
+        <p className="mt-1.5 text-[11px] text-[#a8a29a]">AI-bilder viser før/etter direkte — dra i skillelinjen · pilene blar. Nye AI-bilder lages i Bildestyling-seksjonen under.</p>
       </section>
     );
 
@@ -1200,6 +1409,9 @@ export default function Salgsradar({ apiKey }) {
           <div className={`min-h-0 flex-1 overflow-y-auto bg-[#f7f6f3] ${autoAktiv ? 'pointer-events-none select-none' : ''}`}>
             <div className="px-3.5 py-3.5 sm:px-5">
               {sekBilder}
+              {(valgt.bilder || []).length > 0 && (
+                <StylingPanel lead={valgt} api={api} onEndret={hentLeads} dodeBilder={dodeBilder} merkDodBilde={merkDodBilde} bento={BENTO} />
+              )}
               {toKol ? (
                 <div className="mt-4 grid grid-cols-2 items-start gap-4">
                   <div className="grid gap-4">{sekAnalyse}{sekMelding}{sekNotat}</div>

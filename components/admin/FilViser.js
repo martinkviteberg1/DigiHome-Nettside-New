@@ -6,7 +6,7 @@
    kort. Piltaster blar mellom vedlegg, Esc lukker (uten å lukke saksskuffen).
    Filene serveres auth-beskyttet via /api/admin/task-files/<id>?inline=1. */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   X, Download, ChevronLeft, ChevronRight, FileText, File as FilIkon,
   FileSpreadsheet, FileImage, FileVideo, FileAudio, Loader2, Presentation,
@@ -30,7 +30,37 @@ export function filSlag(type, navn) {
   if (/^video\//.test(t) || ['mp4', 'webm', 'mov'].includes(e)) return 'video';
   if (/^audio\//.test(t) || ['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac'].includes(e)) return 'lyd';
   if (t === 'text/plain' || e === 'txt') return 'tekst';
+  if (t === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || e === 'docx') return 'docx';
   return null;
+}
+
+/* Word-forhåndsvisning (.docx) — rendres i nettleseren med docx-preview.
+   Dokumentet forlater aldri serveren vår (ingen tredjeparts-visere). Gamle
+   .doc-filer støttes ikke og får nedlastingskortet. */
+export function DocxVisning({ url, onFerdig }) {
+  const [feil, setFeil] = useState('');
+  const beholderRef = useRef(null);
+  useEffect(() => {
+    let avbrutt = false;
+    (async () => {
+      try {
+        const [{ renderAsync }, res] = await Promise.all([import('docx-preview'), fetch(url)]);
+        if (!res.ok) throw new Error('Kunne ikke hente dokumentet');
+        const blob = await res.blob();
+        if (avbrutt || !beholderRef.current) return;
+        beholderRef.current.innerHTML = '';
+        await renderAsync(blob, beholderRef.current, undefined, {
+          inWrapper: true, ignoreLastRenderedPageBreak: false, experimental: true,
+        });
+        if (!avbrutt && onFerdig) onFerdig();
+      } catch (e) {
+        if (!avbrutt) { setFeil('Forhåndsvisningen feilet — last ned dokumentet i stedet'); if (onFerdig) onFerdig(); }
+      }
+    })();
+    return () => { avbrutt = true; };
+  }, [url]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (feil) return <p className="p-6 text-center text-[13px] text-[#999]">{feil}</p>;
+  return <div ref={beholderRef} className="dh-docx h-full w-full overflow-auto" />;
 }
 
 // Ikon + aksentfarge per filtype (for rader og fallback-kortet).
@@ -155,6 +185,11 @@ export default function FilViser({ filer = [], index = 0, apiKey, onClose, onInd
               {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
               <audio src={inlineUrl} controls autoPlay className="mt-4 w-full" data-testid="viewer-audio" />
             </div>
+          </div>
+        )}
+        {slag === 'docx' && (
+          <div className="h-full w-full overflow-hidden rounded-xl bg-[#ebe9e4] shadow-2xl" onClick={(e) => e.stopPropagation()} data-testid="viewer-docx">
+            <DocxVisning url={url} onFerdig={ferdig} />
           </div>
         )}
         {slag === 'tekst' && (
