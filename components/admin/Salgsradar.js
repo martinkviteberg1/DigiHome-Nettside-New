@@ -1055,7 +1055,7 @@ export default function Salgsradar({ apiKey }) {
                 </span>
               ))}
               <span className="ml-auto flex items-center gap-2 text-[11px] text-[#b5b0a8]">
-                {naarSist(ai.at)}
+                {ai.tekstModell ? <span title={`Bildeanalyse: Gemini · Tekster skrevet av ${ai.tekstModell}`}>tekster: {ai.tekstModell} · </span> : null}{naarSist(ai.at)}
                 <button onClick={() => analyser(valgt.id)} disabled={analyserer} data-testid="radar-analyser-btn" title="Kjør analysen på nytt"
                   className="flex h-7 items-center gap-1.5 rounded-[7px] px-2 text-[11.5px] font-medium text-[#a8a29a] transition-colors hover:bg-[#f7f6f3] hover:text-[#1c1917] disabled:opacity-50">
                   {analyserer ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />} På nytt
