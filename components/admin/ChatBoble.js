@@ -176,6 +176,10 @@ export default function ChatBoble({ token, user }) {
   const [traadLaster, setTraadLaster] = useState(false);
   const [nyttSidenSist, setNyttSidenSist] = useState(null); // ISO — plassering av «Nytt siden sist»-linjen
   const [pendingTraad, setPendingTraad] = useState(null); // trådid fra dyplenke (?traad=)
+  const [pendingMelding, setPendingMelding] = useState(null); // meldingsid fra dyplenke (?melding=)
+  const [fremhevet, setFremhevet] = useState(null); // melding som pulserer etter dyplenke-hopp
+  const pendingMeldingRef = useRef(null);
+  pendingMeldingRef.current = pendingMelding;
   const [fane, setFane] = useState('chat'); // 'chat' | 'traader'
   const [traader, setTraader] = useState([]); // trådoversikten
   const [traadSok, setTraadSok] = useState('');
@@ -228,8 +232,10 @@ export default function ChatBoble({ token, user }) {
       if (p.has('chat')) {
         setAapen(true);
         if (p.get('traad')) setPendingTraad(p.get('traad'));
+        if (p.get('melding')) setPendingMelding(p.get('melding'));
         p.delete('chat');
         p.delete('traad');
+        p.delete('melding');
         const q = p.toString();
         window.history.replaceState({}, '', window.location.pathname + (q ? `?${q}` : '') + window.location.hash);
       }
@@ -331,13 +337,15 @@ export default function ChatBoble({ token, user }) {
           && (j.meldinger || []).some((m) => m.createdAt > lest.forrigeLestAt && m.userId !== user?.id);
         if (harNytt) {
           setNyttSidenSist(lest.forrigeLestAt);
-          // Scroll slik at markøren er synlig — du fortsetter der du slapp
+          // Scroll slik at markøren er synlig — du fortsetter der du slapp.
+          // (Dyplenke til konkret melding vinner over markør-scrollen.)
           setTimeout(() => {
+            if (pendingMeldingRef.current) return;
             const el = listeRef.current?.querySelector('[data-nytt-siden-sist]');
             if (el) el.scrollIntoView({ block: 'center' });
             else scrollNed();
           }, 90);
-        } else {
+        } else if (!pendingMeldingRef.current) {
           scrollNed();
         }
       } catch (e) { if (alive) setFeil(e.message); }
@@ -611,6 +619,38 @@ export default function ChatBoble({ token, user }) {
     aapneTraad(id);
   }, [aapen, token, pendingTraad, aapneTraad]);
 
+  /* Dyplenke ?melding=<id>: scroll til og fremhev nøyaktig meldingen taggen
+     står i — en varm puls i 2,5 sek så øyet lander riktig med en gang. */
+  const hoppTilMelding = useCallback((id) => {
+    requestAnimationFrame(() => {
+      const el = document.querySelector(`[data-melding-id="${id}"]`);
+      if (!el) return;
+      el.scrollIntoView({ block: 'center' });
+      setFremhevet(id);
+      setTimeout(() => setFremhevet(null), 2600);
+    });
+  }, []);
+
+  /* Hovedstrømmen: hopp når meldingene er lastet (trådsvar ventes på under) */
+  useEffect(() => {
+    if (!aapen || laster || !pendingMelding || traad) return;
+    const id = pendingMelding;
+    if (meldinger.some((m) => m.id === id)) {
+      setPendingMelding(null);
+      setTimeout(() => hoppTilMelding(id), 140);
+    } else if (!pendingTraad) {
+      setPendingMelding(null); // finnes ikke (slettet/utenfor grensen) — normal visning
+    }
+  }, [aapen, laster, pendingMelding, meldinger, traad, pendingTraad, hoppTilMelding]);
+
+  /* Trådvisningen: hopp til det konkrete svaret når tråden er ferdig lastet */
+  useEffect(() => {
+    if (!traad || traad.laster || traadLaster || !pendingMelding) return;
+    const id = pendingMelding;
+    setPendingMelding(null);
+    setTimeout(() => hoppTilMelding(id), 160);
+  }, [traad, traadLaster, pendingMelding, hoppTilMelding]);
+
   /* @-tagging: finn aktiv «@query» rett før markøren */
   const oppdaterTekst = (e) => {
     const v = e.target.value;
@@ -762,9 +802,12 @@ export default function ChatBoble({ token, user }) {
 
   /* Én meldingsrad — gjenbrukes i hovedstrømmen og trådvisningen */
   const radJSX = (rad, iTraad = false) => (
-    <div key={rad.id} data-testid={iTraad ? 'chat-traad-melding' : 'chat-melding'}
-      className={`group relative flex items-start gap-2.5 rounded-[12px] px-2 py-1 transition-colors hover:bg-white/80 ${rad.fortsettelse ? 'mt-0' : 'mt-2'}`}
-      style={{ animation: 'dhChatMeldingInn 200ms ease-out both' }}>
+    <div key={rad.id} data-testid={iTraad ? 'chat-traad-melding' : 'chat-melding'} data-melding-id={rad.id}
+      className={`group relative flex items-start gap-2.5 rounded-[12px] px-2 py-1 transition-all duration-500 hover:bg-white/80 ${rad.fortsettelse ? 'mt-0' : 'mt-2'}`}
+      style={{
+        animation: 'dhChatMeldingInn 200ms ease-out both',
+        ...(fremhevet === rad.id ? { background: 'linear-gradient(90deg, rgba(124,58,237,0.13), rgba(124,58,237,0.04))', boxShadow: 'inset 0 0 0 1.5px rgba(124,58,237,0.35)' } : {}),
+      }}>
       {rad.fortsettelse ? (
         <span className="w-7 shrink-0 pt-[3px] text-right text-[9px] font-medium text-[#c2beb8] opacity-0 transition-opacity group-hover:opacity-100">{klokke(rad.createdAt)}</span>
       ) : (

@@ -3279,46 +3279,55 @@ async function handleRoute(request, { params }) {
       if (emailConfigured()) {
         const baseCh = process.env.NEXT_PUBLIC_BASE_URL || '';
         // Dyplenke som åpner portalen MED chatten åpen (ChatBoble leser ?chat=1)
-        // — trådsvar lenker rett inn i tråden (?traad=<rotId>).
+        // — trådsvar lenker rett inn i tråden (?traad=<rotId>), og ?melding=<id>
+        // scroller til og fremhever nøyaktig meldingen der taggen står.
         const traadCh = resCh.melding.threadId ? `&traad=${resCh.melding.threadId}` : '';
-        const chatUrl = baseCh ? `${baseCh}/admin?chat=1${traadCh}` : '';
+        const chatUrl = baseCh ? `${baseCh}/admin?chat=1${traadCh}&melding=${resCh.melding.id}` : '';
         // Eksplisitt selv-tagging gir også e-post (bevisst handling fra avsenderen).
         const epost = resCh.mottakere.filter((mt) => mt.email && !isUndeliverableTestAddress(mt.email));
         const emneCh = resCh.melding.threadId
           ? `${avsenderNavn} nevnte deg i tråden${resCh.traad?.navn ? ` «${resCh.traad.navn}»` : ''}`
           : `${avsenderNavn} nevnte deg i teamchatten`;
-        // BILDER I E-POSTEN: bildevedlegg skaleres ned (sharp, maks 960px, jpeg)
-        // og bygges inn som CID-inline — vises direkte i Outlook/Gmail uten
-        // offentlig URL og uten «last ned bilder»-sperre. Maks 3; resten + andre
-        // filtyper vises som chips.
+        // BILDEGALLERI I E-POSTEN: bildevedlegg beskjæres server-side (sharp)
+        // til gallerilayouten — 1 bilde: full bredde · oddetall: hero (976×520)
+        // + par-fliser (478×340) · partall: kun fliser. «attention»-crop sikter
+        // mot det interessante i bildet. Maks 5 vises; resten telles («+N til»).
+        // CID-inline = vises direkte i Outlook/Gmail uten offentlig URL.
+        const bildeVedleggCh = (resCh.melding.vedlegg || []).filter((v) => /^image\//i.test(v.type || ''));
+        const andreVedleggCh = (resCh.melding.vedlegg || []).filter((v) => !/^image\//i.test(v.type || ''));
+        const visBilderCh = bildeVedleggCh.slice(0, 5);
         const bilderCh = [];
         const epostVedleggCh = [];
-        const chipsCh = [];
-        for (const vCh of (resCh.melding.vedlegg || [])) {
-          if (bilderCh.length < 3 && /^image\//i.test(vCh.type || '')) {
-            try {
-              const fdocCh = await chatHentFil(db, { id: vCh.id });
-              if (!fdocCh?.data) throw new Error('mangler data');
-              const sharpMod = (await import('sharp')).default;
-              const bufCh2 = await sharpMod(Buffer.from(fdocCh.data, 'base64'))
-                .rotate()
-                .resize({ width: 960, withoutEnlargement: true })
-                .jpeg({ quality: 78 })
-                .toBuffer();
-              const cidCh = `chatbilde${bilderCh.length}`;
-              bilderCh.push({ cid: cidCh, name: vCh.name });
-              epostVedleggCh.push({ content: bufCh2.toString('base64'), filename: `${String(vCh.name || 'bilde').replace(/\.[a-z0-9]+$/i, '')}.jpg`, type: 'image/jpeg', disposition: 'inline', contentId: cidCh });
-            } catch (e) { chipsCh.push(vCh); }
-          } else {
-            chipsCh.push(vCh);
-          }
+        const chipsCh = [...andreVedleggCh];
+        const harHeroCh = visBilderCh.length > 1 && visBilderCh.length % 2 === 1;
+        for (let biCh = 0; biCh < visBilderCh.length; biCh += 1) {
+          const vCh = visBilderCh[biCh];
+          try {
+            const fdocCh = await chatHentFil(db, { id: vCh.id });
+            if (!fdocCh?.data) throw new Error('mangler data');
+            const sharpMod = (await import('sharp')).default;
+            let kjede = sharpMod(Buffer.from(fdocCh.data, 'base64')).rotate();
+            if (visBilderCh.length === 1) {
+              kjede = kjede.resize({ width: 976, withoutEnlargement: true });
+            } else if (harHeroCh && biCh === 0) {
+              kjede = kjede.resize({ width: 976, height: 520, fit: 'cover', position: 'attention' });
+            } else {
+              kjede = kjede.resize({ width: 478, height: 340, fit: 'cover', position: 'attention' });
+            }
+            const bufCh2 = await kjede.jpeg({ quality: 78 }).toBuffer();
+            const cidCh = `chatbilde${bilderCh.length}`;
+            bilderCh.push({ cid: cidCh, name: vCh.name, hero: harHeroCh && biCh === 0 });
+            epostVedleggCh.push({ content: bufCh2.toString('base64'), filename: `${String(vCh.name || 'bilde').replace(/\.[a-z0-9]+$/i, '')}.jpg`, type: 'image/jpeg', disposition: 'inline', contentId: cidCh });
+          } catch (e) { chipsCh.push(vCh); }
         }
+        const flereBilderCh = Math.max(0, bildeVedleggCh.length - visBilderCh.length);
         const { html: htmlCh, text: textCh } = byggChatEpost({
           avsenderNavn,
           tekst: resCh.melding.text.slice(0, 1200),
           mentions: resCh.melding.mentions,
           vedlegg: chipsCh,
           bilder: bilderCh,
+          flereBilder: flereBilderCh,
           erTraad: !!resCh.melding.threadId,
           traadNavn: resCh.traad?.navn || null,
           rotTekst: resCh.traad?.rotTekst || null,
