@@ -39,7 +39,7 @@ import {
   hentSelskap as drHentSelskap, lagreSelskap as drLagreSelskap,
 } from '@/lib/datarom';
 import { hentEnhetsokonomi as eoHent, lagreEnhetsokonomiDrivere as eoLagre } from '@/lib/enhetsokonomi';
-import { listMeldinger as chatList, nyMelding as chatNy, slettMelding as chatSlett, merkLest as chatLest, hentStatus as chatStatus } from '@/lib/chat';
+import { listMeldinger as chatList, nyMelding as chatNy, slettMelding as chatSlett, merkLest as chatLest, hentStatus as chatStatus, oppdaterTraad as chatTraadOppdater, listTraader as chatTraader } from '@/lib/chat';
 import { byggInvestorpakke } from '@/lib/datarom-excel';
 import { IMPORTED_COLL, importRecords, parseCsv, summarizeImported, syncFromPlatform, listImported, updateImportedOverride, getLeadSyncMeta, maybeAutoSyncLeads } from '@/lib/imported-leads';
 import { queueLeadPushback, flushLeadPushbacks, pushbackStats } from '@/lib/lead-pushback';
@@ -3234,7 +3234,7 @@ async function handleRoute(request, { params }) {
     if (route === '/admin/chat/meldinger' && method === 'GET') {
       if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const spCh = new URL(request.url).searchParams;
-      const meldinger = await chatList(db, { kanal: spCh.get('kanal'), etter: spCh.get('etter') || null });
+      const meldinger = await chatList(db, { kanal: spCh.get('kanal'), etter: spCh.get('etter') || null, threadId: spCh.get('traad') || null });
       return cors(NextResponse.json({ ok: true, meldinger }));
     }
     if (route === '/admin/chat/meldinger' && method === 'POST') {
@@ -3248,7 +3248,7 @@ async function handleRoute(request, { params }) {
         const uCh = await db.collection('admin_users').findOne({ id: sesCh.sub }, { projection: { _id: 0, name: 1 } });
         avsenderNavn = String(uCh?.name || sesCh.email || 'Ukjent').slice(0, 80);
       }
-      const resCh = await chatNy(db, { kanal: bCh.kanal, userId: avsenderId, userName: avsenderNavn, text: bCh.text, mentions: bCh.mentions });
+      const resCh = await chatNy(db, { kanal: bCh.kanal, userId: avsenderId, userName: avsenderNavn, text: bCh.text, mentions: bCh.mentions, threadId: bCh.threadId || null });
       if (!resCh.ok) return cors(NextResponse.json({ ok: false, error: resCh.error }, { status: resCh.status || 400 }));
       // Varsling til @taggede: in-app (klokken) + e-post. Aldri til avsenderen selv.
       const kortCh = resCh.melding.text.length > 140 ? `${resCh.melding.text.slice(0, 140)}…` : resCh.melding.text;
@@ -3256,10 +3256,29 @@ async function handleRoute(request, { params }) {
         if (mt.id === avsenderId) continue;
         await varsle(db, mt.id, avsenderId, { type: 'chat', actor: avsenderNavn, text: `${avsenderNavn} nevnte deg i teamchatten: «${kortCh}»` });
       }
+      // TRÅDFØLGING: alle som har deltatt i tråden får in-app-varsel om nye svar
+      // — aldri e-post (den er forbeholdt @tagging), aldri avsenderen selv, og
+      // aldri dobbelt for de som allerede fikk mention-varsel over.
+      if (resCh.traad && Array.isArray(resCh.traad.deltakerIds) && resCh.traad.deltakerIds.length) {
+        const alleredeVarslet = new Set([avsenderId, ...resCh.mottakere.map((m) => m.id)]);
+        const kandidater = resCh.traad.deltakerIds.filter((did) => !alleredeVarslet.has(did));
+        if (kandidater.length) {
+          const gyldigeDelt = await db.collection('admin_users')
+            .find({ id: { $in: kandidater } }, { projection: { _id: 0, id: 1 } })
+            .toArray();
+          const tittelCh = resCh.traad.navn || (resCh.traad.rotTekst ? `${resCh.traad.rotTekst.slice(0, 40)}…` : 'tråden');
+          for (const d of gyldigeDelt) {
+            await varsle(db, d.id, avsenderId, { type: 'chat', actor: avsenderNavn, text: `${avsenderNavn} svarte i tråden «${tittelCh}»: «${kortCh}»` });
+          }
+        }
+      }
       if (emailConfigured()) {
         const baseCh = process.env.NEXT_PUBLIC_BASE_URL || '';
         // Dyplenke som åpner portalen MED chatten åpen (ChatBoble leser ?chat=1)
-        const chatUrl = baseCh ? `${baseCh}/admin?chat=1` : '';
+        // — trådsvar lenker rett inn i tråden (?traad=<rotId>).
+        const traadCh = resCh.melding.threadId ? `&traad=${resCh.melding.threadId}` : '';
+        const chatUrl = baseCh ? `${baseCh}/admin?chat=1${traadCh}` : '';
+        const iTraadCh = resCh.melding.threadId ? ' i en tråd' : '';
         const epost = resCh.mottakere.filter((mt) => mt.id !== avsenderId && mt.email && !isUndeliverableTestAddress(mt.email));
         await Promise.allSettled(epost.map((mt) => sendHtmlEmail({
           to: mt.email,
@@ -3271,12 +3290,12 @@ async function handleRoute(request, { params }) {
           replyTo: sesCh.email || undefined,
           personlig: true,
           html: `<div style="font-family:Inter,Helvetica,Arial,sans-serif;max-width:520px;margin:0 auto;padding:8px 0;color:#1c1917">
-            <p style="font-size:15px;margin:0 0 6px"><b>${avsenderNavn}</b> nevnte deg i DigiHome-teamchatten:</p>
+            <p style="font-size:15px;margin:0 0 6px"><b>${avsenderNavn}</b> nevnte deg i DigiHome-teamchatten${iTraadCh}:</p>
             <div style="background:#f5f4f1;border-radius:12px;padding:14px 16px;font-size:14px;line-height:1.5;white-space:pre-wrap">${resCh.melding.text.slice(0, 1000).replace(/</g, '&lt;')}</div>
-            ${chatUrl ? `<p style="margin:16px 0 0"><a href="${chatUrl}" style="display:inline-block;background:#141414;color:#fff;text-decoration:none;font-size:13.5px;font-weight:600;padding:10px 18px;border-radius:9px">Åpne chatten</a></p>` : ''}
+            ${chatUrl ? `<p style="margin:16px 0 0"><a href="${chatUrl}" style="display:inline-block;background:#141414;color:#fff;text-decoration:none;font-size:13.5px;font-weight:600;padding:10px 18px;border-radius:9px">${resCh.melding.threadId ? 'Åpne tråden' : 'Åpne chatten'}</a></p>` : ''}
             <p style="margin:14px 0 0;font-size:12px;color:#a6a19a">Du får denne e-posten fordi du ble @tagget. Andre meldinger varsles kun i portalen. Svar på e-posten går direkte til ${avsenderNavn}.</p>
           </div>`,
-          text: `${avsenderNavn} nevnte deg i teamchatten: ${resCh.melding.text.slice(0, 500)}${chatUrl ? ` — Åpne chatten: ${chatUrl}` : ''}`,
+          text: `${avsenderNavn} nevnte deg i teamchatten${iTraadCh}: ${resCh.melding.text.slice(0, 500)}${chatUrl ? ` — Åpne: ${chatUrl}` : ''}`,
           categories: ['chat-mention'],
         }).catch(() => {})));
       }
@@ -3290,6 +3309,20 @@ async function handleRoute(request, { params }) {
       if (!resChD.ok) return cors(NextResponse.json({ ok: false, error: resChD.error }, { status: resChD.status || 400 }));
       return cors(NextResponse.json({ ok: true }));
     }
+    if (route === '/admin/chat/traader' && method === 'GET') {
+      if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const spChT = new URL(request.url).searchParams;
+      const sesChT = sessionFra(request) || {};
+      const traader = await chatTraader(db, { kanal: spChT.get('kanal'), userId: sesChT.sub || 'master', sakId: spChT.get('sakId') || null });
+      return cors(NextResponse.json({ ok: true, traader }));
+    }
+    if (route === '/admin/chat/traad' && method === 'PUT') {
+      if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let bChT = {}; try { bChT = await request.json(); } catch (e) {}
+      const resChT = await chatTraadOppdater(db, { id: bChT.id, navn: bChT.navn, sakId: bChT.sakId });
+      if (!resChT.ok) return cors(NextResponse.json({ ok: false, error: resChT.error }, { status: resChT.status || 400 }));
+      return cors(NextResponse.json({ ok: true, traadNavn: resChT.traadNavn !== undefined ? resChT.traadNavn : null, sak: resChT.sak || null }));
+    }
     if (route === '/admin/chat/status' && method === 'GET') {
       if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const spChS = new URL(request.url).searchParams;
@@ -3301,8 +3334,10 @@ async function handleRoute(request, { params }) {
       if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       let bChL = {}; try { bChL = await request.json(); } catch (e) {}
       const sesChL = sessionFra(request) || {};
-      await chatLest(db, { kanal: bChL.kanal, userId: sesChL.sub || 'master' });
-      return cors(NextResponse.json({ ok: true }));
+      // forrigeLestAt = tidspunktet brukeren VAR à jour til — klienten bruker
+      // dette til «Nytt siden sist»-linjen uten ekstra rundtur.
+      const resChL = await chatLest(db, { kanal: bChL.kanal, userId: sesChL.sub || 'master' });
+      return cors(NextResponse.json({ ok: true, forrigeLestAt: resChL.forrigeLestAt || null }));
     }
 
     // ══════════════════════ VARSLER: in-app innboks + preferanser ══════════════════════

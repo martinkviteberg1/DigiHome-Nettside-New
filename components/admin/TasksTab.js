@@ -2699,6 +2699,7 @@ function SakSkuff({ t, members, today, actor, apiKey, api, projects = [], alleSa
         const sekUndersaker = (
           <UndersakSeksjon t={t} alleSaker={alleSaker} api={api} actor={actor} onReload={onReload} onOpenTask={onOpenTask} visToast={visToast} />
         );
+        const sekTraader = <ChatTraadSeksjon sakId={t.id} apiKey={apiKey} />;
 
         const sekKommentarer = (
           <div className="mt-6">
@@ -2773,6 +2774,7 @@ function SakSkuff({ t, members, today, actor, apiKey, api, projects = [], alleSa
                 {sekSjekkliste}
                 {sekUndersaker}
                 {sekRelasjoner}
+                {sekTraader}
                 {sekVedlegg}
                 {sekKommentarer}
                 {sekAktivitet}
@@ -2795,6 +2797,7 @@ function SakSkuff({ t, members, today, actor, apiKey, api, projects = [], alleSa
             {sekSjekkliste}
             {sekUndersaker}
             {sekRelasjoner}
+            {sekTraader}
             {sekFolgere}
             {sekSynlighet}
             {sekVedlegg}
@@ -3622,6 +3625,45 @@ function FolgereFelt({ t, members, onPatch }) {
         )}
         {!followers.length && !kandidater.length && <span className="text-[12.5px] text-[#bbb]">Ingen flere personer å legge til.</span>}
       </div>
+    </div>
+  );
+}
+
+/* ═══════════ Tråder fra teamchatten koblet til saken ═══════════
+   Leser /api/admin/chat/traader?sakId= og åpner tråden i chat-boblen via
+   window-eventet «dh-aapne-traad» (ChatBoble lytter). Rendrer ingenting
+   når saken ikke har koblede tråder — null støy i skuffen. */
+function ChatTraadSeksjon({ sakId, apiKey }) {
+  const [traader, setTraader] = useState(null);
+  useEffect(() => {
+    if (!sakId || !apiKey) return undefined;
+    let alive = true;
+    fetch(`/api/admin/chat/traader?sakId=${encodeURIComponent(sakId)}&key=${encodeURIComponent(apiKey)}`)
+      .then((r) => r.json())
+      .then((j) => { if (alive) setTraader(Array.isArray(j.traader) ? j.traader : []); })
+      .catch(() => { if (alive) setTraader([]); });
+    return () => { alive = false; };
+  }, [sakId, apiKey]);
+  if (!traader || !traader.length) return null;
+  return (
+    <div className="mt-6">
+      <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#999]">Tråder fra teamchatten</p>
+      <div className="mt-2 space-y-1.5">
+        {traader.map((tr) => (
+          <button
+            key={tr.id}
+            type="button"
+            onClick={() => window.dispatchEvent(new CustomEvent('dh-aapne-traad', { detail: { traadId: tr.id } }))}
+            data-testid={`sak-chat-traad-${tr.id}`}
+            className="flex w-full items-center gap-2 rounded-xl bg-[#faf8fd] px-3 py-2 text-left transition-colors hover:bg-[#f3eefb]"
+          >
+            <MessageSquare className="h-3.5 w-3.5 shrink-0 text-[#8b5cf6]" />
+            <span className="min-w-0 flex-1 truncate text-[12.5px] font-semibold text-[#333]">{tr.navn || tr.tekst}</span>
+            <span className="shrink-0 text-[11px] font-bold text-[#8b5cf6]">{tr.antallSvar === 1 ? '1 svar' : `${tr.antallSvar} svar`}</span>
+          </button>
+        ))}
+      </div>
+      <p className="mt-1.5 text-[11px] text-[#b5b5b5]">Åpner tråden i teamchatten nede til høyre.</p>
     </div>
   );
 }
