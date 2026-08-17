@@ -3287,11 +3287,38 @@ async function handleRoute(request, { params }) {
         const emneCh = resCh.melding.threadId
           ? `${avsenderNavn} nevnte deg i tråden${resCh.traad?.navn ? ` «${resCh.traad.navn}»` : ''}`
           : `${avsenderNavn} nevnte deg i teamchatten`;
+        // BILDER I E-POSTEN: bildevedlegg skaleres ned (sharp, maks 960px, jpeg)
+        // og bygges inn som CID-inline — vises direkte i Outlook/Gmail uten
+        // offentlig URL og uten «last ned bilder»-sperre. Maks 3; resten + andre
+        // filtyper vises som chips.
+        const bilderCh = [];
+        const epostVedleggCh = [];
+        const chipsCh = [];
+        for (const vCh of (resCh.melding.vedlegg || [])) {
+          if (bilderCh.length < 3 && /^image\//i.test(vCh.type || '')) {
+            try {
+              const fdocCh = await chatHentFil(db, { id: vCh.id });
+              if (!fdocCh?.data) throw new Error('mangler data');
+              const sharpMod = (await import('sharp')).default;
+              const bufCh2 = await sharpMod(Buffer.from(fdocCh.data, 'base64'))
+                .rotate()
+                .resize({ width: 960, withoutEnlargement: true })
+                .jpeg({ quality: 78 })
+                .toBuffer();
+              const cidCh = `chatbilde${bilderCh.length}`;
+              bilderCh.push({ cid: cidCh, name: vCh.name });
+              epostVedleggCh.push({ content: bufCh2.toString('base64'), filename: `${String(vCh.name || 'bilde').replace(/\.[a-z0-9]+$/i, '')}.jpg`, type: 'image/jpeg', disposition: 'inline', contentId: cidCh });
+            } catch (e) { chipsCh.push(vCh); }
+          } else {
+            chipsCh.push(vCh);
+          }
+        }
         const { html: htmlCh, text: textCh } = byggChatEpost({
           avsenderNavn,
           tekst: resCh.melding.text.slice(0, 1200),
           mentions: resCh.melding.mentions,
-          vedlegg: resCh.melding.vedlegg,
+          vedlegg: chipsCh,
+          bilder: bilderCh,
           erTraad: !!resCh.melding.threadId,
           traadNavn: resCh.traad?.navn || null,
           rotTekst: resCh.traad?.rotTekst || null,
@@ -3309,6 +3336,7 @@ async function handleRoute(request, { params }) {
           personlig: true,
           html: htmlCh,
           text: textCh,
+          attachments: epostVedleggCh.length ? epostVedleggCh : undefined,
           categories: ['chat-mention'],
         }).catch(() => {})));
       }

@@ -6536,3 +6536,16 @@ backend:
         -working: true
         -agent: "main"
         -comment: "SMÅFIKS VERIFISERT DIREKTE (ende-til-ende via API som ekte bruker): (1) byggChatEpost i lib/email.js — moderne tabellbasert mal (Outlook/Gmail-trygg): DigiHome-wordmark, avsender-avatar (deterministisk farge + initialer), meldingsboble med uthevede @-tagger (lilla piller), trådkontekst (navn + rot-sitat), vedleggs-chips (📎 navn + størrelse), mørk CTA-knapp, «svar går rett til X»-hint. Emne inkluderer trådnavn ved trådsvar. (2) Selv-tagging: eksplisitt @deg-selv gir nå BÅDE e-post (SendGrid-logg bekreftet) OG in-app-varsel (varsle kalles med actorId=null for å omgå den generelle selv-vakten — global semantikk for saker/tråder uendret: trådfølging varsler fortsatt aldri avsenderen). Verifisert: POST med selv-mention → 201, notifications fikk chat-varsel, e-post akseptert av SendGrid, testmeldinger slettet (chat ren)."
+
+backend:
+  - task: "E-post v2: CID-innebygde bilder + preheader + designpolish"
+    implemented: true
+    working: true
+    file: "/app/lib/email.js (byggChatEpost m/ bilder-param + preheader + aksent; sendHtmlEmail støtter disposition inline + content_id), /app/app/api/[[...path]]/route.js (chat POST: bildevedlegg nedskaleres m/ sharp til maks 960px jpeg q78, bygges inn som cid:chatbildeN, maks 3; øvrige filer som chips)"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "main"
+        -comment: "VERIFISERT DIREKTE: sharp konverterte ekte AVIF-bilde (87 kB) til 106 kB JPEG (gyldige magic bytes ffd8ff), SendGrid aksepterte sending m/ inline-attachment (ext_usage 23:11). E-posten viser nå bilder DIREKTE i innboksen (CID-inline — ingen offentlig URL, ingen «last ned bilder»-sperre). Andre nyheter: skjult preheader (innboksens forhåndsvisning viser selve meldingen), lilla aksent-pille øverst i kortet, større meldingstekst (15px), feil-tolerant per-bilde fallback til chip. Testmeldinger slettet — chat ren."
