@@ -375,40 +375,40 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
   const totals = data?.totals || {};
 
   /* ── Omvisning: 5 steg med levende scenario-demo ──────────────────────────
-     Steg 3 aktiverer faktisk «Om 3 måneder» slik at investoren SER tallene
+     Steg 3 aktiverer faktisk «Om 3 måneder» slik at brukeren SER tallene
      endre seg — nullstilles garantert i tourFerdig. Steg uten mål (skjulte
-     elementer) hoppes stille over av motoren. */
+     elementer) hoppes stille over av motoren. Tonen er nøktern og presis. */
   const tourSteg = [
     {
-      id: 'inntektstrapp',
-      tittel: 'Inntektstrappen',
-      tekst: 'Leie i dag → sikret → pipeline → full utleie. Honoraret (eks. mva) er DigiHomes inntekt — leien er huseiers.',
-      maal: () => document.querySelector('[data-testid="leieforhold-honorar-trapp"]') || document.querySelector('[data-testid="leieforhold-sone-leie"]'),
+      id: 'kpi',
+      tittel: 'Nøkkeltallene',
+      tekst: 'Honorar per måned (eks. mva) er DigiHomes inntekt; leien tilfaller huseier. «Detaljer» folder ut inntektstrappene fra dagens nivå til full utleie.',
+      maal: () => document.querySelector('[data-testid="leieforhold-kpi-strip"]') || document.querySelector('[data-testid="leieforhold-honorar-trapp"]'),
     },
     {
-      id: 'tidsmaskin',
-      tittel: 'Tidsmaskinen',
-      tekst: 'Under «Per dato» kan du se porteføljen på en hvilken som helst fremtidig dato. La oss prøve den sammen …',
+      id: 'perdato',
+      tittel: 'Porteføljen per valgt dato',
+      tekst: 'Under «Per dato» beregnes hele visningen om til en fremtidig dato — signerte kontrakter fases inn fra sin startdato.',
       foer: async () => { setEksportOpen(false); setVisOpen(true); },
       maal: () => document.querySelector('[data-testid="leieforhold-vis-meny"]'),
     },
     {
       id: 'fremtidsbilde',
-      tittel: 'Porteføljen om tre måneder',
-      tekst: 'Signerte kontrakter er faset inn og alle tall er regnet om til valgt dato. Datoen nullstilles når omvisningen er ferdig.',
+      tittel: 'Eksempel: om tre måneder',
+      tekst: 'Tallene viser nå porteføljen tre måneder frem. Datoen nullstilles automatisk når omvisningen avsluttes.',
       foer: async () => { tourScenarioRef.current = true; setScenario(plussMnd(3)); setVisOpen(false); },
-      maal: () => document.querySelector('[data-testid="leieforhold-honorar-trapp"]') || document.querySelector('[data-testid="leieforhold-sone-leie"]'),
+      maal: () => document.querySelector('[data-testid="leieforhold-kpi-strip"]') || document.querySelector('[data-testid="leieforhold-honorar-trapp"]'),
     },
     {
       id: 'skuff',
-      tittel: 'Alt om hver enhet',
-      tekst: 'Klikk en rad når som helst — der finner du kontraktsdetaljer, depositum og den signerte leiekontrakten som PDF.',
+      tittel: 'Detaljer per enhet',
+      tekst: 'Klikk en rad for kontraktsdetaljer, depositum og den signerte leiekontrakten som PDF.',
       maal: () => document.querySelector('[data-testid="leieforhold-tabell"] tbody tr'),
     },
     {
       id: 'eksport',
-      tittel: 'Ta tallene med deg',
-      tekst: 'Hele visningen — inkludert filter og valgt dato — kan lastes ned som ferdig formatert Excel.',
+      tittel: 'Eksport',
+      tekst: 'Gjeldende visning — inkludert filter og valgt dato — kan lastes ned som formatert Excel.',
       maal: () => document.querySelector('[data-testid="leieforhold-xlsx"]'),
     },
   ];

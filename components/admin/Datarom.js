@@ -108,7 +108,7 @@ const TomtFelt = ({ icon: Icon, tittel, tekst }) => (
   </div>
 );
 
-export default function Datarom({ apiKey, tab = 'oversikt', erAdmin = false, onGaaTil, onAapneBudsjett, autoTour = false }) {
+export default function Datarom({ apiKey, tab = 'oversikt', erAdmin = false, onGaaTil, onAapneBudsjett, autoTour = false, eoAutoTour = false }) {
   const api = useCallback(async (sti, opts = {}) => {
     const skille = sti.includes('?') ? '&' : '?';
     const r = await fetch(`/api/admin/datarom/${sti}${skille}key=${encodeURIComponent(apiKey)}`, {
@@ -135,7 +135,7 @@ export default function Datarom({ apiKey, tab = 'oversikt', erAdmin = false, onG
           />
         </Kort>
       )}
-      {tab === 'enheter' && <Enhetsokonomi api={api} erAdmin={erAdmin} />}
+      {tab === 'enheter' && <Enhetsokonomi api={api} erAdmin={erAdmin} autoTour={eoAutoTour} apiKey={apiKey} />}
       {tab === 'pipeline' && <Enheter api={api} erAdmin={erAdmin} fase="pipeline" />}
       {tab === 'selskap' && <Selskap api={api} erAdmin={erAdmin} />}
       {tab === 'dokumenter' && <Dokumenter api={api} apiKey={apiKey} erAdmin={erAdmin} />}
@@ -261,33 +261,33 @@ function Oversikt({ api, apiKey, xlsxHref, erAdmin, onGaaTil, onAapneBudsjett, a
   const tourSteg = [
     {
       id: 'selskapspuls',
-      tittel: 'Selskapspulsen',
-      tekst: 'DigiHomes månedlige honorar akkurat nå — og veksttrappen som viser veien fra i dag, via signert og annonsert, til full utleie.',
+      tittel: 'Månedlig honorar',
+      tekst: 'DigiHomes løpende honorarinntekt (eks. mva). Trappen viser nivåene: i dag → signert → annonsert → full utleie.',
       maal: () => document.querySelector('[data-testid="dr-hero"]'),
     },
     {
       id: 'fremtidsbilde-kontroll',
-      tittel: 'Fremtidsbildet',
-      tekst: 'Denne kontrollen flytter hele oversikten frem i tid — velg «+1 mnd», «+3 mnd» eller en hvilken som helst dato. La oss prøve …',
+      tittel: 'Beregning per dato',
+      tekst: 'Oversikten kan beregnes per en fremtidig dato — «+1 mnd», «+3 mnd» eller en valgfri dato. Signerte kontrakter fases inn fra sin startdato.',
       maal: () => document.querySelector('[data-testid="dr-scenario"]'),
     },
     {
       id: 'fremtidsbilde-aktiv',
-      tittel: 'Porteføljen om tre måneder',
-      tekst: 'Signerte kontrakter er faset inn — honorar, margin, utleiegrad og neste 30 dager er regnet om til valgt dato. Nullstilles når omvisningen er ferdig.',
+      tittel: 'Eksempel: om tre måneder',
+      tekst: 'Tallene viser nå porteføljen tre måneder frem. Datoen nullstilles automatisk når omvisningen avsluttes.',
       foer: async () => { tourScenarioRef.current = true; setScenario(plussMnd(3)); },
       maal: () => document.querySelector('[data-testid="dr-hero"]'),
     },
     {
       id: 'statstripe',
       tittel: 'Nøkkeltallene',
-      tekst: 'Margin, pipeline, ARR-potensial og utleiegrad — alle følger valgt dato. Margin er honorar minus faste kostnader.',
+      tekst: 'Margin, pipeline, ARR-potensial og utleiegrad — alle beregnet per valgt dato. Margin er honorar minus faste kostnader.',
       maal: () => document.querySelector('[data-testid="dr-statstripe"]'),
     },
     {
       id: 'investorpakke',
-      tittel: 'Investorpakken',
-      tekst: 'Hele datarommet — nøkkeltall, enheter og økonomi — som ferdig formatert Excel, alltid med ferske tall.',
+      tittel: 'Eksport',
+      tekst: 'Hele datarommet — nøkkeltall, enheter og økonomi — kan lastes ned som formatert Excel med gjeldende tall.',
       maal: () => document.querySelector('[data-testid="datarom-xlsx"]'),
     },
   ];

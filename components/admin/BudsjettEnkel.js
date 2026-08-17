@@ -10,11 +10,12 @@
    · Erstatter den gamle årsbudsjett-modulen i UI — gamle data ligger urørt i DB.
    ───────────────────────────────────────────────────────────────────────────── */
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
-  Plus, ArrowLeft, Trash2, RefreshCw, Loader2, Check, Eye, EyeOff, Wallet, TrendingUp,
+  Plus, ArrowLeft, Trash2, RefreshCw, Loader2, Check, Eye, EyeOff, Wallet, TrendingUp, HelpCircle,
 } from 'lucide-react';
 import BudsjettModell from '@/components/admin/BudsjettModell';
+import Omvisning from '@/components/admin/Omvisning';
 import { STANDARD_DRIVERE } from '@/lib/budsjett-modell';
 
 const heading = { fontFamily: 'var(--font-heading, inherit)' };
@@ -50,7 +51,7 @@ const honFraPlan = (plan) => {
   return Array.from({ length: N }, (_, i) => serier.reduce((s, arr) => s + (Number(arr?.[i]) || 0), 0));
 };
 
-export default function BudsjettEnkel({ apiKey, readOnly = false }) {
+export default function BudsjettEnkel({ apiKey, readOnly = false, autoTour = false }) {
   const api = useCallback(async (path, opts = {}) => {
     const url = `/api/admin/budsjett/${path}${path.includes('?') ? '&' : '?'}key=${encodeURIComponent(apiKey)}`;
     const r = await fetch(url, {
@@ -67,6 +68,42 @@ export default function BudsjettEnkel({ apiKey, readOnly = false }) {
   const [feil, setFeil] = useState('');
   const [visNy, setVisNy] = useState(false);
   const [valgtId, setValgtId] = useState(null);
+
+  /* ── Omvisning (budsjettoversikten): auto-start ved første besøk for alle
+        brukere; «?» åpner den igjen når som helst. Nøktern, presis tone. ── */
+  const [tourAktiv, setTourAktiv] = useState(false);
+  const tourStartetRef = useRef(false);
+  const tourSteg = [
+    {
+      id: 'liste',
+      tittel: 'Budsjettoversikten',
+      tekst: 'Alle budsjetter og investormodeller samlet. Klikk en plan for å åpne den — «I investorrommet» betyr at den er delt (skrivebeskyttet) med investorene.',
+      maal: () => document.querySelector('[data-testid="budsjett-liste"]'),
+    },
+    {
+      id: 'ny',
+      tittel: 'To plantyper',
+      tekst: 'Enkelt budsjett: honorarrader per måned, forhåndsutfylt fra leieforholdene. Investormodell: driverstyrt modell med vekst, kostnader, bemanning, break-even og kapitalbehov.',
+      maal: () => document.querySelector('[data-testid="budsjett-ny"]'),
+    },
+  ];
+  const tourFerdig = useCallback(() => {
+    setTourAktiv(false);
+    try { localStorage.setItem('dh-omvisning-budsjett', '1'); } catch (e) {}
+    fetch(`/api/admin/auth/profile?key=${encodeURIComponent(apiKey)}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tourSett: 'budsjett' }),
+    }).catch(() => {});
+  }, [apiKey]);
+  useEffect(() => {
+    if (!autoTour || tourStartetRef.current || valgtId || planer === null) return undefined;
+    if (typeof window === 'undefined' || window.innerWidth < 1024) return undefined;
+    try { if (localStorage.getItem('dh-omvisning-budsjett')) return undefined; } catch (e) {}
+    // Ref settes først når timeren FYRER — ellers dreper StrictMode/re-render
+    // timeren i cleanup og guarden blokkerer re-arming.
+    const t = setTimeout(() => { tourStartetRef.current = true; setTourAktiv(true); }, 800);
+    return () => clearTimeout(t);
+  }, [autoTour, valgtId, planer]);
 
   // Opprettelse
   const [nyNavn, setNyNavn] = useState('');
@@ -199,6 +236,7 @@ export default function BudsjettEnkel({ apiKey, readOnly = false }) {
         key={plan.id}
         plan={plan}
         api={api}
+        apiKey={apiKey}
         readOnly={readOnly}
         onTilbake={() => { tilListe(); hentPlaner(); }}
         onEndret={hentPlaner}
@@ -317,12 +355,20 @@ export default function BudsjettEnkel({ apiKey, readOnly = false }) {
             {readOnly ? 'Budsjetter delt med investorrommet.' : 'Enkle periodebudsjetter — honorar hentes ferdig utfylt fra leieforholdene.'}
           </p>
         </div>
-        {!readOnly && (
-          <button onClick={() => { setVisNy((v) => !v); setNyFeil(''); }} data-testid="budsjett-ny" className={`${KNAPP_PRIMAER} mt-1 shrink-0`}>
-            <Plus className="h-3.5 w-3.5" /> Nytt budsjett
+        <div className="mt-1 flex shrink-0 items-center gap-2">
+          <button onClick={() => setTourAktiv(true)} data-testid="budsjett-tour-knapp" title="Omvisning — se hvordan budsjettmodulen henger sammen"
+            className="flex h-9 w-9 items-center justify-center rounded-[9px] border border-black/[0.08] bg-white text-[#a6a19a] transition-colors hover:bg-[#f7f6f3] hover:text-[#1c1917]">
+            <HelpCircle className="h-4 w-4" />
           </button>
-        )}
+          {!readOnly && (
+            <button onClick={() => { setVisNy((v) => !v); setNyFeil(''); }} data-testid="budsjett-ny" className={`${KNAPP_PRIMAER} shrink-0`}>
+              <Plus className="h-3.5 w-3.5" /> Nytt budsjett
+            </button>
+          )}
+        </div>
       </div>
+
+      <Omvisning steg={tourSteg} aktiv={tourAktiv} onFerdig={tourFerdig} />
 
       {/* Opprettelse — ett lite panel, tre felter, ferdig */}
       {visNy && !readOnly && (

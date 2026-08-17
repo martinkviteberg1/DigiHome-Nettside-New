@@ -838,11 +838,15 @@ export default function AdminPage({ params }) {
               apiKey={token}
               readOnly={erBruker}
               erInvestor={user?.role === 'investor'}
-              autoTour={user?.role === 'investor' && !user?.impersonatedBy && !(user?.tourSett || []).includes('leieforhold')}
+              autoTour={!user?.impersonatedBy && !(user?.tourSett || []).includes('leieforhold')}
             />
           )}
           {section === 'budsjett' && (
-            <BudsjettEnkel apiKey={token} readOnly={erBruker || user?.role === 'investor'} />
+            <BudsjettEnkel
+              apiKey={token}
+              readOnly={erBruker || user?.role === 'investor'}
+              autoTour={!user?.impersonatedBy && !(user?.tourSett || []).includes('budsjett')}
+            />
           )}
           {section === 'datarom' && (
             <Datarom
@@ -852,6 +856,7 @@ export default function AdminPage({ params }) {
               onGaaTil={(t) => setDataromTab(t)}
               onAapneBudsjett={() => setSection('budsjett')}
               autoTour={user?.role === 'investor' && !user?.impersonatedBy && !(user?.tourSett || []).includes('datarom')}
+              eoAutoTour={!user?.impersonatedBy && !(user?.tourSett || []).includes('enhetsokonomi')}
             />
           )}
           {section === 'saker' && <TasksTab apiKey={token} user={user} onStats={setTaskStats} onOpenBrukere={() => setSection('brukere')} />}

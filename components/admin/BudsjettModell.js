@@ -14,11 +14,12 @@
    · Samme rene motor (lib/budsjett-modell.js) klient/server.
    ───────────────────────────────────────────────────────────────────────────── */
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   ArrowLeft, ArrowRight, Trash2, RefreshCw, Loader2, Check, Eye, EyeOff, Plus, X, RotateCcw, ChevronDown,
-  SlidersHorizontal,
+  SlidersHorizontal, TrendingUp, Scale, Users, Building2, Bookmark, HelpCircle,
 } from 'lucide-react';
+import Omvisning from '@/components/admin/Omvisning';
 import { beregnInvestorModell, rensModellDrivere, STANDARD_DRIVERE } from '@/lib/budsjett-modell';
 
 const heading = { fontFamily: 'var(--font-heading, inherit)' };
@@ -51,16 +52,23 @@ const utvidFakta = (fk, N2) => ({
 });
 
 /* ── Kollapsbar seksjon i driver-railen ── */
-const Seksjon = ({ tittel, sammendrag, open, onToggle, children }) => (
-  <div className="border-t border-black/[0.05] first:border-0">
+const Seksjon = ({ tittel, sammendrag, ikon: Ikon, open, onToggle, children }) => (
+  <div className={`-mx-2 rounded-[12px] px-2 transition-colors ${open ? 'bg-[#faf9f7]' : ''}`}>
     <button onClick={onToggle} className="group flex w-full items-center justify-between gap-2 py-2.5 text-left">
-      <span className="shrink-0 text-[11px] font-bold uppercase tracking-[0.09em] text-[#78716c] transition-colors group-hover:text-[#1c1917]">{tittel}</span>
+      <span className="flex min-w-0 items-center gap-2">
+        {Ikon && (
+          <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-[8px] transition-colors ${open ? 'bg-[#f0ebfa] text-[#6d28d9]' : 'bg-[#f5f4f1] text-[#a6a19a] group-hover:text-[#57534e]'}`}>
+            <Ikon className="h-3.5 w-3.5" />
+          </span>
+        )}
+        <span className={`shrink-0 text-[11px] font-bold uppercase tracking-[0.09em] transition-colors ${open ? 'text-[#1c1917]' : 'text-[#78716c] group-hover:text-[#1c1917]'}`}>{tittel}</span>
+      </span>
       <span className="flex min-w-0 items-center gap-1.5">
-        {!open && sammendrag && <span className="truncate text-[11.5px] text-[#a6a19a]">{sammendrag}</span>}
+        {!open && sammendrag && <span className="truncate rounded-full bg-[#f5f4f1] px-2 py-0.5 text-[11px] font-medium text-[#8f8a82]">{sammendrag}</span>}
         <ChevronDown className={`h-3.5 w-3.5 shrink-0 text-[#c2beb8] transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
       </span>
     </button>
-    {open && <div className="pb-2.5">{children}</div>}
+    {open && <div className="pb-2.5 pl-8">{children}</div>}
   </div>
 );
 
@@ -482,7 +490,7 @@ function BemanningsplanDrawer({ plan, fakta, drivere, readOnly, onLukk, onBruk }
   );
 }
 
-export default function BudsjettModell({ plan, api, readOnly = false, onTilbake, onEndret }) {
+export default function BudsjettModell({ plan, api, apiKey = '', readOnly = false, onTilbake, onEndret }) {
   const [navn, setNavn] = useState(plan.navn);
   const [investorSynlig, setInvestorSynlig] = useState(Boolean(plan.investorSynlig));
   const [drivere, setDrivere] = useState(() => ({ ...rensModellDrivere(plan.drivere) }));
@@ -491,6 +499,87 @@ export default function BudsjettModell({ plan, api, readOnly = false, onTilbake,
   const [aapne, setAapne] = useState({ portefolje: true, unit: false, org: false, faste: false });
   const [railAapen, setRailAapen] = useState(true);
   const [skittent, setSkittent] = useState(false);
+  // Navngitte scenariosett: lagrede driversett («Konservativt» osv.) på planen.
+  // Å velge et scenario laster driverne inn i editoren — «Lagre» i topplinjen
+  // gjør dem til budsjettets gjeldende forutsetninger.
+  const [scenarioer, setScenarioer] = useState(() => (Array.isArray(plan.scenarioer) ? plan.scenarioer : []));
+  const [aktivtScenario, setAktivtScenario] = useState(null);
+  const [nyScenarioNavn, setNyScenarioNavn] = useState(null); // null = lukket
+
+  /* ── Omvisning (modell-editoren): auto-start første gang en investormodell
+        åpnes; «?» i topplinjen åpner den igjen. Nøktern, presis tone. ── */
+  const [tourAktiv, setTourAktiv] = useState(false);
+  const tourStartetRef = useRef(false);
+  const tourSteg = [
+    {
+      id: 'nokkeltall',
+      tittel: 'Nøkkeltallene',
+      tekst: 'Resultat i perioden, siste måned, break-even og kapitalbehov — beregnes løpende fra forutsetningene.',
+      maal: () => document.querySelector('[data-testid="modell-nokkeltall"]'),
+    },
+    {
+      id: 'drivere',
+      tittel: 'Forutsetninger',
+      tekst: 'Modellens antakelser i fire grupper: portefølje & vekst, unit economics, organisasjon og faste kostnader. Endringer beregnes umiddelbart — «Lagre» gjør dem gjeldende.',
+      foer: async () => setRailAapen(true),
+      maal: () => document.querySelector('[data-testid="modell-drivere"]'),
+    },
+    {
+      id: 'scenarioer',
+      tittel: 'Scenariosett',
+      tekst: 'Lagre driversettet som et navngitt scenario, f.eks. «Konservativt», og bytt mellom sett. Det aktive settet blir budsjettets forutsetninger når du lagrer.',
+      maal: () => document.querySelector('[data-testid="modell-scenariovalg"]'),
+    },
+    {
+      id: 'bemanning',
+      tittel: 'Bemanningsplan',
+      tekst: 'Hendelsesbaserte bemanningstrinn — utløst av enhetsterskel eller dato — redigeres i eget panel. Modellen varsler i hovedflaten når kapasiteten nærmer seg taket.',
+      foer: async () => setAapne((a) => ({ ...a, org: true })),
+      maal: () => document.querySelector('[data-testid="modell-bemanning-aapne"]'),
+    },
+    {
+      id: 'graf',
+      tittel: 'Veien til break-even',
+      tekst: 'Inntekter og kostnader som linjer — skjæringspunktet er break-even. Hold musepekeren over grafen for månedstall.',
+      maal: () => document.querySelector('[data-testid="modell-graf"]'),
+    },
+    {
+      id: 'matrise',
+      tittel: 'Resultatoppstillingen',
+      tekst: 'Måneder eller kvartaler som kolonner og resultatlinjene som rader — med akkumulert resultat og kapitalbehov nederst.',
+      maal: () => document.querySelector('[data-testid="modell-matrise"]'),
+    },
+    {
+      id: 'unit',
+      tittel: 'Unit economics',
+      tekst: 'Sammendraget av hva én ny enhet er verdt — bidrag før og etter normalisert bemanning, payback og LTV/CAC. Full analyse ligger på Enhetsøkonomi-siden.',
+      maal: () => document.querySelector('[data-testid="modell-cac"]'),
+    },
+    {
+      id: 'deling',
+      tittel: 'Deling med investorrommet',
+      tekst: 'Bryteren gjør modellen synlig i investorrommet — alltid skrivebeskyttet. Investorene ser tallene, men kan ikke endre dem.',
+      maal: () => document.querySelector('[data-testid="budsjett-investor-bryter"]'),
+    },
+  ];
+  const tourFerdig = useCallback(() => {
+    setTourAktiv(false);
+    try { localStorage.setItem('dh-omvisning-budsjettmodell', '1'); } catch (e) {}
+    if (apiKey) {
+      fetch(`/api/admin/auth/profile?key=${encodeURIComponent(apiKey)}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tourSett: 'budsjettmodell' }),
+      }).catch(() => {});
+    }
+  }, [apiKey]);
+  useEffect(() => {
+    if (tourStartetRef.current) return undefined;
+    if (typeof window === 'undefined' || window.innerWidth < 1024) return undefined;
+    try { if (localStorage.getItem('dh-omvisning-budsjettmodell')) return undefined; } catch (e) {}
+    // Ref settes først når timeren FYRER — StrictMode-sikkert (se BudsjettEnkel).
+    const t = setTimeout(() => { tourStartetRef.current = true; setTourAktiv(true); }, 900);
+    return () => clearTimeout(t);
+  }, []);
   const [lagrer, setLagrer] = useState(false);
   const [lagret, setLagret] = useState(false);
   const [feil, setFeil] = useState('');
@@ -530,14 +619,54 @@ export default function BudsjettModell({ plan, api, readOnly = false, onTilbake,
           investorSynlig: overstyr.investorSynlig ?? investorSynlig,
           drivere: overstyr.drivere ?? drivere,
           fakta: overstyr.fakta ?? fakta,
+          scenarioer: overstyr.scenarioer ?? scenarioer,
         },
       });
-      setLagretDrivere(rensModellDrivere(overstyr.drivere ?? drivere));
-      setSkittent(false); setLagret(true); setTimeout(() => setLagret(false), 1800);
+      if (overstyr.stille) {
+        // Scenario-operasjon: planens basis er urørt — ikke nullstill editoren.
+        setLagret(true); setTimeout(() => setLagret(false), 1500);
+      } else {
+        setLagretDrivere(rensModellDrivere(overstyr.drivere ?? drivere));
+        setSkittent(false); setLagret(true); setTimeout(() => setLagret(false), 1800);
+      }
       onEndret?.();
     } catch (e) { setFeil(e.message); }
     setLagrer(false);
-  }, [api, plan, navn, investorSynlig, drivere, fakta, lagrer, onEndret]);
+  }, [api, plan, navn, investorSynlig, drivere, fakta, scenarioer, lagrer, onEndret]);
+
+  /* ── Scenariohandlinger ── */
+  const velgScenario = (sc) => {
+    if (!sc) {
+      setDrivere({ ...lagretDrivere });
+      setAktivtScenario(null);
+      setSkittent(false);
+      return;
+    }
+    setDrivere({ ...rensModellDrivere(sc.drivere) });
+    setAktivtScenario(sc.id);
+    setSkittent(true);
+  };
+  const lagreSomScenario = async () => {
+    const navnSc = String(nyScenarioNavn || '').trim().slice(0, 40);
+    if (!navnSc) return;
+    const sc = { id: `sc-${Date.now()}`, navn: navnSc, drivere: rensModellDrivere(drivere), opprettetAt: new Date().toISOString() };
+    const ny = [...scenarioer, sc];
+    setScenarioer(ny);
+    setNyScenarioNavn(null);
+    setAktivtScenario(sc.id);
+    await lagre({ scenarioer: ny, drivere: lagretDrivere, stille: true });
+  };
+  const oppdaterScenario = async () => {
+    const ny = scenarioer.map((s) => (s.id === aktivtScenario ? { ...s, drivere: rensModellDrivere(drivere) } : s));
+    setScenarioer(ny);
+    await lagre({ scenarioer: ny, drivere: lagretDrivere, stille: true });
+  };
+  const slettScenario = async (id) => {
+    const ny = scenarioer.filter((s) => s.id !== id);
+    setScenarioer(ny);
+    if (aktivtScenario === id) velgScenario(null);
+    await lagre({ scenarioer: ny, drivere: lagretDrivere, stille: true });
+  };
 
   const oppdaterFakta = async () => {
     if (henterFakta) return;
@@ -574,8 +703,8 @@ export default function BudsjettModell({ plan, api, readOnly = false, onTilbake,
     return { idx, enheter: Math.round(m2.enheter[idx]), kapital: Math.round(kap), utenfor: true };
   }, [m, s, fakta, sanert, plan.antallMnd]);
 
-  /* ── Scenarioer: Konservativ / Basis / Ambisiøs — beregnet på 36 mnd horisont ── */
-  const scenarioer = useMemo(() => {
+  /* ── Scenarioanalyse: Konservativ / Basis / Ambisiøs — beregnet på 36 mnd horisont ── */
+  const autoScenarioer = useMemo(() => {
     const fk36 = utvidFakta(fakta, 36);
     const lag = (navn, endr) => {
       const d2 = { ...sanert, ...endr };
@@ -699,6 +828,11 @@ export default function BudsjettModell({ plan, api, readOnly = false, onTilbake,
           </span>
         </div>
         <div className="flex items-center gap-2">
+          {/* Omvisning */}
+          <button onClick={() => setTourAktiv(true)} data-testid="modell-tour-knapp" title="Omvisning — se hvordan investormodellen henger sammen"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-[#a6a19a] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.08)] transition-colors hover:text-[#1c1917]">
+            <HelpCircle className="h-4 w-4" />
+          </button>
           {/* Vis/skjul forutsetninger — bor i topp-raden */}
           <button onClick={() => setRailAapen(!railAapen)} data-testid={railAapen ? 'modell-rail-skjul' : 'modell-rail-vis'}
             title={railAapen ? 'Skjul forutsetninger — mer plass til tallene' : 'Vis forutsetninger'}
@@ -742,7 +876,62 @@ export default function BudsjettModell({ plan, api, readOnly = false, onTilbake,
               )}
             </div>
 
-            <Seksjon tittel="Portefølje & vekst" open={aapne.portefolje} onToggle={() => veksle('portefolje')}
+            {/* ── Scenariosett: lagrede driversett — velg for å laste inn ── */}
+            <div className="mb-2 flex flex-wrap items-center gap-1" data-testid="modell-scenariovalg">
+              <button onClick={() => velgScenario(null)} data-testid="modell-scenario-basis"
+                className={`rounded-full px-2.5 py-1 text-[11.5px] font-bold transition-all ${!aktivtScenario ? 'bg-[#141414] text-white shadow-sm' : 'bg-[#f5f4f1] text-[#8f8a82] hover:text-[#1c1917]'}`}>
+                Basis
+              </button>
+              {scenarioer.map((sc) => (
+                <span key={sc.id} className={`group/sc flex items-center overflow-hidden rounded-full transition-all ${aktivtScenario === sc.id ? 'bg-[#6d28d9] text-white shadow-sm' : 'bg-[#f5f4f1] text-[#8f8a82] hover:text-[#1c1917]'}`}>
+                  <button onClick={() => velgScenario(sc)} data-testid={`modell-scenario-${sc.id}`} className="py-1 pl-2.5 pr-1 text-[11.5px] font-bold">
+                    {sc.navn}
+                  </button>
+                  {!readOnly && (
+                    <button onClick={() => slettScenario(sc.id)} title={`Slett scenarioet «${sc.navn}»`}
+                      className={`hidden py-1 pl-0.5 pr-1.5 group-hover/sc:block ${aktivtScenario === sc.id ? 'text-white/70 hover:text-white' : 'text-[#c2beb8] hover:text-[#c2413b]'}`}>
+                      <X className="h-3 w-3" />
+                    </button>
+                  )}
+                </span>
+              ))}
+              {!readOnly && scenarioer.length < 12 && (nyScenarioNavn === null ? (
+                <button onClick={() => setNyScenarioNavn('')} data-testid="modell-scenario-nytt"
+                  title="Lagre gjeldende forutsetninger som et navngitt scenario"
+                  className="flex items-center gap-1 rounded-full px-2 py-1 text-[11.5px] font-semibold text-[#a6a19a] transition-colors hover:bg-[#f0ebfa] hover:text-[#6d28d9]">
+                  <Bookmark className="h-3 w-3" /> Lagre som…
+                </button>
+              ) : (
+                <span className="flex items-center gap-1">
+                  <input autoFocus value={nyScenarioNavn} onChange={(e) => setNyScenarioNavn(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') lagreSomScenario(); if (e.key === 'Escape') setNyScenarioNavn(null); }}
+                    placeholder="F.eks. Konservativt" data-testid="modell-scenario-navn"
+                    className="h-7 w-[130px] rounded-full bg-white px-2.5 text-[11.5px] font-semibold text-[#1c1917] shadow-[inset_0_0_0_1.5px_rgba(109,40,217,0.4)] outline-none placeholder:font-normal placeholder:text-[#c2beb8]" />
+                  <button onClick={lagreSomScenario} disabled={!String(nyScenarioNavn).trim()} data-testid="modell-scenario-lagre"
+                    className="flex h-7 w-7 items-center justify-center rounded-full bg-[#6d28d9] text-white transition-colors hover:bg-[#5b21b6] disabled:opacity-30">
+                    <Check className="h-3.5 w-3.5" />
+                  </button>
+                  <button onClick={() => setNyScenarioNavn(null)} className="flex h-7 w-7 items-center justify-center rounded-full text-[#a6a19a] hover:bg-black/[0.05]">
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </span>
+              ))}
+            </div>
+            {aktivtScenario && (
+              <div className="mb-2 flex items-center justify-between gap-2 rounded-[10px] bg-[#f6f2fd] px-2.5 py-1.5" data-testid="modell-scenario-banner">
+                <p className="min-w-0 truncate text-[11px] leading-snug text-[#6d28d9]">
+                  Viser <b>«{scenarioer.find((s) => s.id === aktivtScenario)?.navn}»</b> — «Lagre» gjør dette til budsjettets forutsetninger
+                </p>
+                {!readOnly && (
+                  <button onClick={oppdaterScenario} data-testid="modell-scenario-oppdater" title="Overskriv scenarioet med driverne slik de står nå"
+                    className="shrink-0 rounded-full bg-white px-2 py-0.5 text-[10.5px] font-bold text-[#6d28d9] shadow-sm transition-colors hover:bg-[#ede6fb]">
+                    Oppdater
+                  </button>
+                )}
+              </div>
+            )}
+
+            <Seksjon tittel="Portefølje & vekst" ikon={TrendingUp} open={aapne.portefolje} onToggle={() => veksle('portefolje')}
               sammendrag={`${kma(sanert.nyePerMnd)} nye/mnd · ${kma(sanert.aarligChurnPct)} % churn · ${kma(sanert.honorarPctNye)} %`}>
               <Felt label="Nye enheter per måned" k="nyePerMnd" {...feltProps} enhet="enh." testid="driver-nye" slider={{ min: 0, max: 10, step: 0.5 }} />
               <Felt label="Årlig churn" k="aarligChurnPct" {...feltProps} enhet="%" testid="driver-churn" slider={{ min: 0, max: 40, step: 1 }} hint={`≈ ${kma(s.mndChurnPct)} %/mnd på modellerte enheter — dagens portefølje churnes ikke`} />
@@ -750,14 +939,14 @@ export default function BudsjettModell({ plan, api, readOnly = false, onTilbake,
               <Felt label="Honorar nye enheter" k="honorarPctNye" {...feltProps} enhet="%" testid="driver-honorar" slider={{ min: 0, max: 20, step: 0.5 }} hint={`≈ ${kr0(m.cac.bruttoHonorarNy)} kr eks. mva per enhet/mnd`} />
             </Seksjon>
 
-            <Seksjon tittel="Unit economics" open={aapne.unit} onToggle={() => veksle('unit')}
+            <Seksjon tittel="Unit economics" ikon={Scale} open={aapne.unit} onToggle={() => veksle('unit')}
               sammendrag={`CAC ${kr0(sanert.provisjonPerNyEnhet)} · system ${kr0(sanert.systemPerEnhet)}/enh`}>
               <Felt label="Systemkostnad per enhet" k="systemPerEnhet" {...feltProps} enhet="kr/mnd" testid="driver-system" heltall />
               <Felt label="Salgsprovisjon per ny (CAC)" k="provisjonPerNyEnhet" {...feltProps} enhet="kr" testid="driver-cac" heltall />
               <Felt label="Oppstartshonorar" k="oppstartPerEnhet" {...feltProps} enhet="kr" testid="driver-oppstart" heltall hint="engangsbeløp per ny signering" />
             </Seksjon>
 
-            <Seksjon tittel="Organisasjon" open={aapne.org} onToggle={() => veksle('org')}
+            <Seksjon tittel="Organisasjon" ikon={Users} open={aapne.org} onToggle={() => veksle('org')}
               sammendrag={`${kma(sanert.enheterPerAarsverk)} enh/åv · ${pctNaa} % · kap. ${kapNaa}`}>
               {/* Økonomisk forutsetning + inngang til planen — konsekvensene bor i hovedflaten */}
               <div className="space-y-1 py-1 text-[12.5px]" data-testid="modell-bemanning-sammendrag">
@@ -774,7 +963,7 @@ export default function BudsjettModell({ plan, api, readOnly = false, onTilbake,
               </button>
             </Seksjon>
 
-            <Seksjon tittel="Faste kostnader" open={aapne.faste} onToggle={() => veksle('faste')}
+            <Seksjon tittel="Faste kostnader" ikon={Building2} open={aapne.faste} onToggle={() => veksle('faste')}
               sammendrag={`${kr0(sanert.mfFast + sanert.adminFast + sanert.andreFaste)} kr/mnd`}>
               <Felt label="Fast markedsføring" k="mfFast" {...feltProps} enhet="kr/mnd" testid="driver-mf" heltall />
               <Felt label="Administrasjon" k="adminFast" {...feltProps} enhet="kr/mnd" testid="driver-admin" heltall />
@@ -920,7 +1109,7 @@ export default function BudsjettModell({ plan, api, readOnly = false, onTilbake,
                 <thead>
                   <tr className="text-[10.5px] uppercase tracking-[0.06em] text-[#a6a19a]">
                     <th className="pb-1.5 text-left font-semibold">&nbsp;</th>
-                    {scenarioer.map((sc) => (
+                    {autoScenarioer.map((sc) => (
                       <th key={sc.navn} className={`pb-1.5 text-right font-bold ${sc.navn === 'Basis' ? 'text-[#6d28d9]' : ''}`}>{sc.navn}</th>
                     ))}
                   </tr>
@@ -928,19 +1117,19 @@ export default function BudsjettModell({ plan, api, readOnly = false, onTilbake,
                 <tbody>
                   <tr className="border-t border-black/[0.04]">
                     <td className="py-1.5 text-[#8f8a82]">Nye enheter/mnd</td>
-                    {scenarioer.map((sc) => <td key={sc.navn} className={`py-1.5 text-right font-medium ${sc.navn === 'Basis' ? 'text-[#1c1917]' : 'text-[#57534e]'}`}>{kma(sc.d.nyePerMnd)}</td>)}
+                    {autoScenarioer.map((sc) => <td key={sc.navn} className={`py-1.5 text-right font-medium ${sc.navn === 'Basis' ? 'text-[#1c1917]' : 'text-[#57534e]'}`}>{kma(sc.d.nyePerMnd)}</td>)}
                   </tr>
                   <tr className="border-t border-black/[0.04]">
                     <td className="py-1.5 text-[#8f8a82]">Årlig churn</td>
-                    {scenarioer.map((sc) => <td key={sc.navn} className={`py-1.5 text-right font-medium ${sc.navn === 'Basis' ? 'text-[#1c1917]' : 'text-[#57534e]'}`}>{kma(sc.d.aarligChurnPct)} %</td>)}
+                    {autoScenarioer.map((sc) => <td key={sc.navn} className={`py-1.5 text-right font-medium ${sc.navn === 'Basis' ? 'text-[#1c1917]' : 'text-[#57534e]'}`}>{kma(sc.d.aarligChurnPct)} %</td>)}
                   </tr>
                   <tr className="border-t border-black/[0.04]">
                     <td className="py-1.5 text-[#8f8a82]">Honorar nye</td>
-                    {scenarioer.map((sc) => <td key={sc.navn} className={`py-1.5 text-right font-medium ${sc.navn === 'Basis' ? 'text-[#1c1917]' : 'text-[#57534e]'}`}>{kma(sc.d.honorarPctNye)} %</td>)}
+                    {autoScenarioer.map((sc) => <td key={sc.navn} className={`py-1.5 text-right font-medium ${sc.navn === 'Basis' ? 'text-[#1c1917]' : 'text-[#57534e]'}`}>{kma(sc.d.honorarPctNye)} %</td>)}
                   </tr>
                   <tr className="border-t border-black/[0.06]">
                     <td className="py-1.5 font-semibold text-[#1c1917]">Break-even</td>
-                    {scenarioer.map((sc) => (
+                    {autoScenarioer.map((sc) => (
                       <td key={sc.navn} className={`py-1.5 text-right font-bold ${sc.idx === null ? 'text-[#b3261e]' : 'text-[#1c1917]'}`}>
                         {sc.idx === null ? '36+ mnd' : mndLang(ymPluss(plan.startYm, sc.idx))}
                       </td>
@@ -948,7 +1137,7 @@ export default function BudsjettModell({ plan, api, readOnly = false, onTilbake,
                   </tr>
                   <tr className="border-t border-black/[0.04]">
                     <td className="py-1.5 font-semibold text-[#1c1917]">Kapitalbehov</td>
-                    {scenarioer.map((sc) => <td key={sc.navn} className="py-1.5 text-right font-bold text-[#1c1917]">{kr0(sc.kap)}</td>)}
+                    {autoScenarioer.map((sc) => <td key={sc.navn} className="py-1.5 text-right font-bold text-[#1c1917]">{kr0(sc.kap)}</td>)}
                   </tr>
                 </tbody>
               </table>
@@ -1010,6 +1199,7 @@ export default function BudsjettModell({ plan, api, readOnly = false, onTilbake,
           onLukk={() => setBemAapen(false)} onBruk={brukBemanningsplan}
         />
       )}
+      <Omvisning steg={tourSteg} aktiv={tourAktiv} onFerdig={tourFerdig} />
     </div>
   );
 }

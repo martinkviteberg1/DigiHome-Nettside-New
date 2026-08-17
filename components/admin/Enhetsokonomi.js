@@ -19,10 +19,11 @@
    Investor får read-only; admin justerer og lagrer driverne.
    ═════════════════════════════════════════════════════════════════════════════ */
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
-  Loader2, Check, ChevronDown, RotateCcw, ArrowRight, Sparkles, Scale, Info,
+  Loader2, Check, ChevronDown, RotateCcw, ArrowRight, Sparkles, Scale, Info, HelpCircle,
 } from 'lucide-react';
+import Omvisning from '@/components/admin/Omvisning';
 import {
   EO_STANDARD, rensEoDrivere, beregnEnhet, minHonorarPct, minLeie, scenarioDrivere,
 } from '@/lib/enhetsokonomi-modell';
@@ -218,7 +219,7 @@ function Matrise({ tittel, under, rader, kolonner, radFmt, kolFmt, verdi, fmt, b
 
 /* ═════════════════════════════ Hovedkomponent ═════════════════════════════ */
 
-export default function Enhetsokonomi({ api, erAdmin = false }) {
+export default function Enhetsokonomi({ api, erAdmin = false, autoTour = false, apiKey = '' }) {
   const [drivere, setDrivere] = useState({ ...EO_STANDARD });
   const [lagretDrivere, setLagretDrivere] = useState(null);
   const [portefolje, setPortefolje] = useState(null);
@@ -234,6 +235,79 @@ export default function Enhetsokonomi({ api, erAdmin = false }) {
   const [pvLeie, setPvLeie] = useState('');
   const [pvSats, setPvSats] = useState('');
   const [pvMargin, setPvMargin] = useState('60');
+
+  /* ── Omvisning: auto-start ved første besøk for alle brukere; «?» åpner
+        den igjen når som helst. Nøktern, presis tone — ingen salgsprat. ── */
+  const [tourAktiv, setTourAktiv] = useState(false);
+  const tourStartetRef = useRef(false);
+  const tourSteg = [
+    {
+      id: 'hero',
+      tittel: 'Konklusjonen',
+      tekst: 'Én setning oppsummerer økonomien i en ny enhet — generert direkte fra modellen. Endrer du forutsetningene, endres setningen.',
+      maal: () => document.querySelector('[data-testid="eo-hero"]'),
+    },
+    {
+      id: 'kpi',
+      tittel: 'Nøkkeltall per enhet',
+      tekst: 'Bidrag, margin, CAC payback, LTV og LTV/CAC. Bryteren veksler mellom økonomien FØR bemanning (ledig kapasitet) og ETTER normalisert bemanning (fullt skalert drift).',
+      maal: () => document.querySelector('[data-testid="eo-kpi"]'),
+    },
+    {
+      id: 'drivere',
+      tittel: 'Forutsetninger',
+      tekst: 'Alle antakelser er synlige og justerbare: inntekt, direkte kostnader, kapasitet og anskaffelse/levetid. Hele siden beregnes på nytt umiddelbart.',
+      maal: () => document.querySelector('[data-testid="eo-drivere"]'),
+    },
+    {
+      id: 'anatomi',
+      tittel: 'Anatomien til én enhet',
+      tekst: 'Fra husleie til bidrag, linje for linje — inkludert normalisert forvalterkost (fullkost ÷ kapasitet ÷ 12).',
+      maal: () => document.querySelector('[data-testid="eo-anatomi"]'),
+    },
+    {
+      id: 'portefolje',
+      tittel: 'Faktisk portefølje som benchmark',
+      tekst: 'Modellen sammenlignes med vektede tall fra dagens leieforhold. «Bruk porteføljesnitt» henter de reelle snittene inn i driverne.',
+      maal: () => document.querySelector('[data-testid="eo-portefolje"]'),
+    },
+    {
+      id: 'livslop',
+      tittel: 'Livsløpsøkonomi',
+      tekst: 'Kurven starter på −CAC og stiger med månedsbidraget. Markørene viser når anskaffelsen er tilbakebetalt og forventet levetid.',
+      maal: () => document.querySelector('[data-testid="eo-livslop"]'),
+    },
+    {
+      id: 'scenario',
+      tittel: 'Scenarioer',
+      tekst: 'Konservativ, Basis og Ambisiøs beregnes fra basisdriverne med kommersielle justeringer — honorar, leie, kapasitet, CAC og churn.',
+      maal: () => document.querySelector('[data-testid="eo-scenariovalg"]'),
+    },
+    {
+      id: 'pris',
+      tittel: 'Prisverktøyet',
+      tekst: 'Beregner minste honorar for en gitt husleie — eller minste husleie for et gitt honorar — ut fra ønsket bidragsmargin. Nyttig i salg: «bør vi ta denne kunden?»',
+      maal: () => document.querySelector('[data-testid="eo-prisverktoy"]'),
+    },
+  ];
+  const tourFerdig = useCallback(() => {
+    setTourAktiv(false);
+    try { localStorage.setItem('dh-omvisning-enhetsokonomi', '1'); } catch (e) {}
+    if (apiKey) {
+      fetch(`/api/admin/auth/profile?key=${encodeURIComponent(apiKey)}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tourSett: 'enhetsokonomi' }),
+      }).catch(() => {});
+    }
+  }, [apiKey]);
+  useEffect(() => {
+    if (!autoTour || tourStartetRef.current || laster) return undefined;
+    if (typeof window === 'undefined' || window.innerWidth < 1024) return undefined;
+    try { if (localStorage.getItem('dh-omvisning-enhetsokonomi')) return undefined; } catch (e) {}
+    // Ref settes først når timeren FYRER — StrictMode-sikkert.
+    const t = setTimeout(() => { tourStartetRef.current = true; setTourAktiv(true); }, 800);
+    return () => clearTimeout(t);
+  }, [autoTour, laster]);
 
   useEffect(() => {
     let aktivt = true;
@@ -374,6 +448,10 @@ export default function Enhetsokonomi({ api, erAdmin = false }) {
           )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <button onClick={() => setTourAktiv(true)} data-testid="eo-tour-knapp" title="Omvisning — se hvordan enhetsøkonomien henger sammen"
+            className="flex h-9 w-9 items-center justify-center rounded-[9px] bg-white text-[#a6a19a] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.08)] transition-colors hover:text-[#1c1917]">
+            <HelpCircle className="h-4 w-4" />
+          </button>
           {/* Scenariobrytere */}
           <div className="flex items-center gap-0.5 rounded-[9px] bg-[#f0efec] p-0.5" data-testid="eo-scenariovalg">
             {['konservativ', 'basis', 'ambisios'].map((sc) => (
@@ -824,6 +902,7 @@ export default function Enhetsokonomi({ api, erAdmin = false }) {
           </div>
         </main>
       </div>
+      <Omvisning steg={tourSteg} aktiv={tourAktiv} onFerdig={tourFerdig} />
     </div>
   );
 }
