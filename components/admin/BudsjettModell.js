@@ -35,6 +35,13 @@ const mndKort = (ym) => { const { y, m } = ymDeler(ym); return m >= 1 && m <= 12
 const mndLang = (ym) => { const { y, m } = ymDeler(ym); return m >= 1 && m <= 12 ? `${MND_KORT[m - 1]}. ${y}` : ym; };
 const stor = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 const kma = (s) => String(s).replace('.', ',');
+// Viser tall med norsk tusenskille mens man skriver (kun heltallsfelt i kr)
+const visTall = (v) => {
+  const s = String(v ?? '').trim();
+  if (s === '') return '';
+  const n = Number(s.replace(/[\s\u00a0]/g, '').replace(',', '.'));
+  return Number.isFinite(n) ? Math.round(n).toLocaleString('nb-NO') : s;
+};
 
 /* ── Kollapsbar seksjon i driver-railen ── */
 const Seksjon = ({ tittel, sammendrag, open, onToggle, children }) => (
@@ -51,8 +58,10 @@ const Seksjon = ({ tittel, sammendrag, open, onToggle, children }) => (
 );
 
 /* ── Driverfelt: etikett + tall + valgfri slider + endrings-prikk ── */
-const Felt = ({ label, k, drivere, sanert, lagret, onEndre, enhet, hint, slider, readOnly, testid }) => {
+const Felt = ({ label, k, drivere, sanert, lagret, onEndre, enhet, hint, slider, readOnly, testid, heltall }) => {
   const endret = lagret && sanert && Math.abs((sanert[k] ?? 0) - (lagret[k] ?? 0)) > 1e-9;
+  const vis = heltall ? visTall(drivere[k]) : drivere[k];
+  const endre = (e) => onEndre(k, heltall ? e.target.value.replace(/[^\d]/g, '') : e.target.value);
   return (
     <div className="py-[7px]">
       <div className="flex items-center justify-between gap-3">
@@ -62,10 +71,10 @@ const Felt = ({ label, k, drivere, sanert, lagret, onEndre, enhet, hint, slider,
         </span>
         <span className="flex shrink-0 items-center gap-1.5">
           {readOnly ? (
-            <span className="text-[13.5px] font-semibold text-[#1c1917]">{kma(drivere[k])}</span>
+            <span className="text-[13.5px] font-semibold text-[#1c1917]">{heltall ? visTall(drivere[k]) : kma(drivere[k])}</span>
           ) : (
-            <input value={drivere[k]} inputMode="decimal" data-testid={testid} onChange={(e) => onEndre(k, e.target.value)}
-              className="h-8 w-[100px] rounded-[8px] bg-[#f5f4f1] px-2 text-right text-[13.5px] font-semibold text-[#1c1917] outline-none ring-1 ring-transparent transition-all focus:bg-white focus:ring-[#6d28d9]/40" />
+            <input value={vis} inputMode={heltall ? 'numeric' : 'decimal'} data-testid={testid} onChange={endre}
+              className={`h-8 ${heltall ? 'w-[112px]' : 'w-[100px]'} rounded-[8px] bg-[#f5f4f1] px-2 text-right text-[13.5px] font-semibold text-[#1c1917] outline-none ring-1 ring-transparent transition-all focus:bg-white focus:ring-[#6d28d9]/40`} />
           )}
           <span className="w-12 text-[11px] text-[#a6a19a]">{enhet}</span>
         </span>
@@ -439,24 +448,24 @@ export default function BudsjettModell({ plan, api, readOnly = false, onTilbake,
               sammendrag={`${kma(sanert.nyePerMnd)} nye/mnd · ${kma(sanert.aarligChurnPct)} % churn · ${kma(sanert.honorarPctNye)} %`}>
               <Felt label="Nye enheter per måned" k="nyePerMnd" {...feltProps} enhet="enh." testid="driver-nye" slider={{ min: 0, max: 10, step: 0.5 }} />
               <Felt label="Årlig churn" k="aarligChurnPct" {...feltProps} enhet="%" testid="driver-churn" slider={{ min: 0, max: 40, step: 1 }} hint={`≈ ${kma(s.mndChurnPct)} %/mnd på modellerte enheter — dagens portefølje churnes ikke`} />
-              <Felt label="Snittleie nye enheter" k="snittleieNye" {...feltProps} enhet="kr/mnd" testid="driver-leie" slider={{ min: 5000, max: 40000, step: 500 }} />
+              <Felt label="Snittleie nye enheter" k="snittleieNye" {...feltProps} enhet="kr/mnd" testid="driver-leie" heltall slider={{ min: 5000, max: 40000, step: 500 }} />
               <Felt label="Honorar nye enheter" k="honorarPctNye" {...feltProps} enhet="%" testid="driver-honorar" slider={{ min: 0, max: 20, step: 0.5 }} hint={`≈ ${kr0(m.cac.bruttoHonorarNy)} kr eks. mva per enhet/mnd`} />
-              <Felt label="Oppstartshonorar (per ny)" k="oppstartPerEnhet" {...feltProps} enhet="kr" testid="driver-oppstart" />
+              <Felt label="Oppstartshonorar" k="oppstartPerEnhet" {...feltProps} enhet="kr" testid="driver-oppstart" heltall hint="engangsbeløp per ny signering" />
             </Seksjon>
 
             <Seksjon tittel="Kostnader" open={aapne.kostnader} onToggle={() => veksle('kostnader')}
               sammendrag={`${kr0(sanert.systemPerEnhet)}/enh · CAC ${kr0(sanert.provisjonPerNyEnhet)} · ${kr0(sanert.mfFast + sanert.adminFast + sanert.andreFaste)}/mnd fast`}>
-              <Felt label="Systemkostnad per enhet" k="systemPerEnhet" {...feltProps} enhet="kr/mnd" testid="driver-system" />
-              <Felt label="Fast markedsføring" k="mfFast" {...feltProps} enhet="kr/mnd" testid="driver-mf" />
-              <Felt label="Salgsprovisjon per ny (CAC)" k="provisjonPerNyEnhet" {...feltProps} enhet="kr" testid="driver-cac" />
-              <Felt label="Administrasjon" k="adminFast" {...feltProps} enhet="kr/mnd" testid="driver-admin" />
-              <Felt label="Andre faste kostnader" k="andreFaste" {...feltProps} enhet="kr/mnd" testid="driver-andre" />
+              <Felt label="Systemkostnad per enhet" k="systemPerEnhet" {...feltProps} enhet="kr/mnd" testid="driver-system" heltall />
+              <Felt label="Fast markedsføring" k="mfFast" {...feltProps} enhet="kr/mnd" testid="driver-mf" heltall />
+              <Felt label="Salgsprovisjon per ny (CAC)" k="provisjonPerNyEnhet" {...feltProps} enhet="kr" testid="driver-cac" heltall />
+              <Felt label="Administrasjon" k="adminFast" {...feltProps} enhet="kr/mnd" testid="driver-admin" heltall />
+              <Felt label="Andre faste kostnader" k="andreFaste" {...feltProps} enhet="kr/mnd" testid="driver-andre" heltall />
             </Seksjon>
 
             <Seksjon tittel="Bemanning — kapasitet" open={aapne.kapasitet} onToggle={() => veksle('kapasitet')}
               sammendrag={`${kma(sanert.enheterPerAarsverk)} enh/åv · fullkost ${kr0(fullkost)}`}>
               <Felt label="Kapasitet per årsverk" k="enheterPerAarsverk" {...feltProps} enhet="enh." testid="driver-kapasitet" slider={{ min: 50, max: 400, step: 10 }} hint="enheter én forvalter (100 %) dekker" />
-              <Felt label="Brutto årslønn" k="aarslonn" {...feltProps} enhet="kr/år" testid="driver-lonn" />
+              <Felt label="Brutto årslønn" k="aarslonn" {...feltProps} enhet="kr/år" testid="driver-lonn" heltall />
               <Felt label="Arbeidsgiverpåslag" k="paslagPct" {...feltProps} enhet="%" testid="driver-paslag" hint={`fullkost: ${kr0(fullkost)} kr per årsverk`} />
             </Seksjon>
 
@@ -470,7 +479,7 @@ export default function BudsjettModell({ plan, api, readOnly = false, onTilbake,
                     {readOnly ? (
                       <span className="text-[13.5px] font-semibold text-[#1c1917]">{t.fraEnheter}</span>
                     ) : (
-                      <input value={t.fraEnheter} inputMode="numeric" onChange={(e) => settTrinn(i, 'fraEnheter', e.target.value)} data-testid={`trinn-fra-${i}`}
+                      <input value={visTall(t.fraEnheter)} inputMode="numeric" onChange={(e) => settTrinn(i, 'fraEnheter', e.target.value.replace(/[^\d]/g, ''))} data-testid={`trinn-fra-${i}`}
                         className="h-8 w-[60px] rounded-[8px] bg-[#f5f4f1] px-1.5 text-right text-[13.5px] font-semibold outline-none ring-1 ring-transparent transition-all focus:bg-white focus:ring-[#6d28d9]/40" />
                     )}
                     <span className="text-[12.5px] text-[#8f8a82]">enh. →</span>

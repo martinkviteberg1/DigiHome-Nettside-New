@@ -395,25 +395,29 @@ export default function BudsjettEnkel({ apiKey, readOnly = false }) {
           )}
         </div>
       ) : (
-        <div className="mt-4 overflow-hidden rounded-[14px] bg-white shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]">
+        <div className="mt-5 overflow-hidden rounded-[16px] bg-white shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]">
           {planer.map((p) => (
             <button key={p.id} onClick={() => aapne(p.id)} data-testid={`budsjett-rad-${p.id}`}
-              className="flex w-full items-center justify-between gap-4 border-b border-black/[0.05] px-5 py-4 text-left transition-colors last:border-0 hover:bg-[#faf9f7]">
-              <span className="min-w-0">
+              className="group flex w-full items-center gap-4 border-b border-black/[0.05] px-5 py-4 text-left transition-colors last:border-0 hover:bg-[#faf9f7]">
+              <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] transition-colors ${p.type === 'modell' ? 'bg-[#1c1917] text-white' : 'bg-[#f0efec] text-[#78716c] group-hover:bg-[#e9e7e3]'}`}>
+                {p.type === 'modell' ? <TrendingUp className="h-[18px] w-[18px]" /> : <Wallet className="h-[18px] w-[18px]" />}
+              </span>
+              <span className="min-w-0 flex-1">
                 <span className="flex items-center gap-2">
-                  <span className="truncate text-[14.5px] font-semibold text-[#1c1917]" style={heading}>{p.navn}</span>
-                  {p.type === 'modell' && (
-                    <span className="flex shrink-0 items-center gap-1 rounded-full bg-[#1c1917] px-2 py-0.5 text-[10.5px] font-semibold text-white"><TrendingUp className="h-3 w-3" /> Investormodell</span>
-                  )}
+                  <span className="truncate text-[15.5px] font-semibold text-[#1c1917]" style={heading}>{p.navn}</span>
                   {!readOnly && p.investorSynlig && (
-                    <span className="flex shrink-0 items-center gap-1 rounded-full bg-[#f0ebfa] px-2 py-0.5 text-[10.5px] font-semibold text-[#6d28d9]" title="Synlig i investorrommet"><Eye className="h-3 w-3" /> Investorrom</span>
+                    <span className="flex shrink-0 items-center gap-1 rounded-full bg-[#f0ebfa] px-2 py-0.5 text-[10.5px] font-bold text-[#6d28d9]" title="Synlig i investorrommet"><Eye className="h-3 w-3" /> Investorrom</span>
                   )}
                 </span>
-                <span className="mt-0.5 block text-[12.5px] text-[#8f8a82]">{periodeLabel(p.startYm, p.antallMnd)}</span>
+                <span className="mt-0.5 block text-[13px] text-[#8f8a82]">{p.type === 'modell' ? 'Investormodell · ' : ''}{periodeLabel(p.startYm, p.antallMnd)}</span>
               </span>
               <span className="shrink-0 text-right">
-                <span className="block text-[14.5px] font-bold text-[#1c1917]" style={heading}>{kr(p.inntekter)}</span>
-                <span className="block text-[11.5px] text-[#a6a19a]">{p.type === 'modell' ? 'inntekt i perioden' : 'honorar i perioden'}</span>
+                <span className="block text-[16px] font-bold tracking-[-0.01em] text-[#1c1917]" style={heading}>{kr(p.inntekter)}</span>
+                {p.type === 'modell' ? (
+                  <span className={`block text-[12px] font-semibold ${(p.resultat || 0) >= 0 ? 'text-[#0a7d55]' : 'text-[#b3261e]'}`}>resultat {kr(p.resultat)}</span>
+                ) : (
+                  <span className="block text-[12px] text-[#a6a19a]">honorar i perioden</span>
+                )}
               </span>
             </button>
           ))}
