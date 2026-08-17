@@ -3,28 +3,29 @@
 /* ─────────────────────────────────────────────────────────────────────────────
    Omvisning — lett, egenbygd spotlight-tour (ingen tredjepartsbibliotek).
 
-   · Scrim med utklippet «lommelykt» (box-shadow-trikset) som GLIR mellom mål
-   · Rolig kort med tittel, én–to setninger, fremdriftsprikker og navigasjon
-   · Tastatur: ← / → / Esc · respekterer prefers-reduced-motion
+   · Scrim med utklippet «lommelykt» (box-shadow-trikset) som GLIR mellom mål,
+     med en rolig pulserende merkevare-ring rundt målet
+   · Glass-kort (blur) med steg-chip, klikkbar segmentert fremdriftslinje,
+     per-steg entrance-animasjon og tastaturhint
+   · Tastatur: ← / → / Enter / Esc · respekterer prefers-reduced-motion
    · Mål re-måles ved resize/scroll — spotlighten følger elementet
-   · Små skjermer (<640px): kortet legger seg som bunn-ark i stedet
+   · Små skjermer (<640px): kortet legger seg som bunn-ark med håndtak
 
-   Steg-kontrakt:
+   Steg-kontrakt (uendret):
      { id, tittel, tekst, maal: () => Element|null, foer?: async () => void }
    — `foer` kjøres FØR målingen (kan åpne menyer / aktivere scenario), og
      motoren venter tålmodig (opptil ~1,5 s) på at målet dukker opp i DOM.
      Steg hvis mål aldri dukker opp hoppes stille over.
 
    Avslutning: onFerdig(fullfort:boolean) — kalles både ved «Ferdig», «Hopp
-   over» og Esc, slik at eieren kan rydde (nullstille scenario, lukke menyer)
-   og persistere «sett»-status.
+   over» og Esc, slik at eieren kan rydde og persistere «sett»-status.
    ───────────────────────────────────────────────────────────────────────────── */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ArrowLeft, ArrowRight, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, X } from 'lucide-react';
 
-const PAD = 8;          // luft rundt målet i spotlighten
-const KORT_BREDDE = 336; // px — kortets maksbredde på desktop
+const PAD = 8;           // luft rundt målet i spotlighten
+const KORT_BREDDE = 364; // px — kortets maksbredde på desktop
 
 function maalRect(el) {
   const r = el.getBoundingClientRect();
@@ -118,7 +119,7 @@ export default function Omvisning({ steg = [], aktiv = false, onFerdig }) {
     };
   }, [aktiv]);
 
-  // Tastatur: ← → Esc
+  // Tastatur: ← → Enter Esc
   useEffect(() => {
     if (!aktiv) return undefined;
     const paaTast = (e) => {
@@ -139,16 +140,17 @@ export default function Omvisning({ steg = [], aktiv = false, onFerdig }) {
   // Kortplassering: under målet om det er plass, ellers over — klemt inn i viewport.
   let kortStil;
   if (smal) {
-    kortStil = { left: 12, right: 12, bottom: 12, position: 'fixed' };
+    kortStil = { left: 10, right: 10, bottom: 10, position: 'fixed' };
   } else {
-    const plassUnder = window.innerHeight - (boks.top + boks.height) > 220;
-    const top = plassUnder ? boks.top + boks.height + 12 : undefined;
-    const bottom = plassUnder ? undefined : window.innerHeight - boks.top + 12;
+    const plassUnder = window.innerHeight - (boks.top + boks.height) > 240;
+    const top = plassUnder ? boks.top + boks.height + 14 : undefined;
+    const bottom = plassUnder ? undefined : window.innerHeight - boks.top + 14;
     const left = Math.max(12, Math.min(boks.left, window.innerWidth - KORT_BREDDE - 12));
     kortStil = { top, bottom, left, width: KORT_BREDDE, position: 'fixed' };
   }
 
-  const anim = redusert ? 'none' : 'top 380ms cubic-bezier(.22,1,.36,1), left 380ms cubic-bezier(.22,1,.36,1), width 380ms cubic-bezier(.22,1,.36,1), height 380ms cubic-bezier(.22,1,.36,1)';
+  const fart = 'cubic-bezier(.22,1,.36,1)';
+  const anim = redusert ? 'none' : `top 380ms ${fart}, left 380ms ${fart}, width 380ms ${fart}, height 380ms ${fart}`;
 
   return (
     <div
@@ -160,57 +162,95 @@ export default function Omvisning({ steg = [], aktiv = false, onFerdig }) {
       onClick={(e) => e.stopPropagation()}
       onMouseDown={(e) => e.stopPropagation()}
     >
+      <style>{`
+        @keyframes omvInn { from { opacity: 0; transform: translateY(10px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+        @keyframes omvPuls {
+          0%, 100% { box-shadow: 0 0 0 4px rgba(139,92,246,0.32), 0 0 24px 2px rgba(139,92,246,0.18); }
+          50%      { box-shadow: 0 0 0 8px rgba(139,92,246,0.14), 0 0 32px 6px rgba(139,92,246,0.10); }
+        }
+      `}</style>
+
       {/* Spotlight: gjennomsiktig vindu + massiv skygge = dimmet resten av siden */}
       <div
-        className="absolute rounded-[12px]"
+        className="absolute rounded-[14px]"
         style={{
           top: boks.top, left: boks.left, width: boks.width, height: boks.height,
-          boxShadow: '0 0 0 9999px rgba(20,17,14,0.52), inset 0 0 0 1.5px rgba(255,255,255,0.85), 0 0 0 4px rgba(139,92,246,0.28)',
+          boxShadow: '0 0 0 9999px rgba(16,12,22,0.55), inset 0 0 0 1.5px rgba(255,255,255,0.9)',
           transition: anim,
           opacity: synlig ? 1 : 0,
         }}
       />
-
-      {/* Kortet */}
+      {/* Pulserende merkevare-ring — egen node så scrim-skyggen ikke repaintes */}
       <div
-        className="rounded-2xl bg-white p-4 shadow-[0_16px_60px_rgba(20,17,14,0.28)]"
-        style={{ ...kortStil, transition: redusert ? 'none' : 'top 380ms cubic-bezier(.22,1,.36,1), bottom 380ms cubic-bezier(.22,1,.36,1), left 380ms cubic-bezier(.22,1,.36,1)', opacity: synlig ? 1 : 0 }}
+        aria-hidden="true"
+        className="pointer-events-none absolute rounded-[14px]"
+        style={{
+          top: boks.top, left: boks.left, width: boks.width, height: boks.height,
+          transition: anim,
+          opacity: synlig ? 1 : 0,
+          animation: redusert ? 'none' : 'omvPuls 2.4s ease-in-out infinite',
+        }}
+      />
+
+      {/* Kortet — glass, myk skygge, glir mellom posisjoner */}
+      <div
+        className={`bg-white/95 shadow-[0_24px_80px_-16px_rgba(20,17,14,0.42)] ring-1 ring-black/[0.05] backdrop-blur-xl ${smal ? 'rounded-[22px] p-4 pb-3' : 'rounded-[20px] p-5 pb-4'}`}
+        style={{ ...kortStil, transition: redusert ? 'none' : `top 380ms ${fart}, bottom 380ms ${fart}, left 380ms ${fart}`, opacity: synlig ? 1 : 0 }}
         data-testid="omvisning-kort"
       >
-        <div className="flex items-start justify-between gap-3">
-          <p className="text-[10.5px] font-bold uppercase tracking-[0.09em] text-[#a8a29a]">
-            {idx + 1} av {steg.length}
-          </p>
-          <button
-            onClick={() => ferdig(false)}
-            data-testid="omvisning-lukk"
-            aria-label="Lukk omvisningen"
-            className="-mr-1 -mt-1 flex h-6 w-6 items-center justify-center rounded-md text-[#b3ada3] transition-colors hover:bg-[#f7f6f3] hover:text-[#57534e]"
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
-        </div>
-        <h3 className="mt-1 text-[14.5px] font-semibold leading-snug text-[#1c1917]" data-testid="omvisning-tittel">{s.tittel}</h3>
-        <p className="mt-1 text-[12.5px] leading-relaxed text-[#78716c]">{s.tekst}</p>
+        {smal && <span aria-hidden="true" className="mx-auto mb-3 block h-1 w-10 rounded-full bg-black/[0.12]" />}
 
-        <div className="mt-3.5 flex items-center gap-1.5">
-          {steg.map((x, i) => (
-            <span key={x.id || i} className={`h-[5px] rounded-full transition-all duration-300 ${i === idx ? 'w-4 bg-[#8b5cf6]' : 'w-[5px] bg-black/[0.12]'}`} />
-          ))}
-          <div className="ml-auto flex items-center gap-1.5">
+        {/* Innholdet re-animeres per steg */}
+        <div key={idx} style={{ animation: redusert ? 'none' : `omvInn 340ms ${fart}` }}>
+          <div className="flex items-center justify-between gap-3">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-[#f0eafc] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.09em] text-[#6d28d9]">
+              Omvisning · {idx + 1} av {steg.length}
+            </span>
             <button
               onClick={() => ferdig(false)}
-              data-testid="omvisning-hopp-over"
-              className="h-8 rounded-[8px] px-2.5 text-[12px] font-medium text-[#a8a29a] transition-colors hover:bg-[#f7f6f3] hover:text-[#57534e]"
+              data-testid="omvisning-lukk"
+              aria-label="Lukk omvisningen"
+              className="-mr-1 flex h-7 w-7 items-center justify-center rounded-full text-[#b3ada3] transition-colors hover:bg-[#f7f6f3] hover:text-[#57534e]"
             >
-              Hopp over
+              <X className="h-3.5 w-3.5" />
             </button>
+          </div>
+          <h3 className="mt-2.5 text-[15.5px] font-semibold leading-snug tracking-[-0.01em] text-[#1c1917]" data-testid="omvisning-tittel">{s.tittel}</h3>
+          <p className="mt-1.5 text-[13px] leading-[1.65] text-[#6f6a63]">{s.tekst}</p>
+        </div>
+
+        {/* Klikkbar segmentert fremdrift */}
+        <div className="mt-4 flex items-center gap-1" role="tablist" aria-label="Steg i omvisningen">
+          {steg.map((x, i) => (
+            <button
+              key={x.id || i}
+              type="button"
+              role="tab"
+              aria-selected={i === idx}
+              aria-label={`Gå til steg ${i + 1}`}
+              onClick={() => { if (i !== idx) gaaTil(i, i > idx ? 1 : -1); }}
+              className="group flex-1 py-1.5"
+            >
+              <span className={`block h-[4px] rounded-full transition-all duration-300 ${i <= idx ? 'bg-gradient-to-r from-[#8b5cf6] to-[#6d28d9]' : 'bg-black/[0.08] group-hover:bg-black/[0.18]'}`} />
+            </button>
+          ))}
+        </div>
+
+        <div className="mt-2.5 flex items-center gap-1.5">
+          <button
+            onClick={() => ferdig(false)}
+            data-testid="omvisning-hopp-over"
+            className="h-9 rounded-full px-3 text-[12px] font-medium text-[#a8a29a] transition-colors hover:bg-[#f7f6f3] hover:text-[#57534e]"
+          >
+            Hopp over
+          </button>
+          <div className="ml-auto flex items-center gap-1.5">
             {idx > 0 && (
               <button
                 onClick={() => gaaTil(idx - 1, -1)}
                 data-testid="omvisning-tilbake"
                 aria-label="Forrige steg"
-                className="flex h-8 w-8 items-center justify-center rounded-[8px] border border-black/[0.08] text-[#57534e] transition-colors hover:bg-[#f7f6f3]"
+                className="flex h-9 w-9 items-center justify-center rounded-full border border-black/[0.08] text-[#57534e] transition-colors hover:border-black/20 hover:bg-[#f7f6f3]"
               >
                 <ArrowLeft className="h-3.5 w-3.5" />
               </button>
@@ -218,13 +258,19 @@ export default function Omvisning({ steg = [], aktiv = false, onFerdig }) {
             <button
               onClick={() => (siste ? ferdig(true) : gaaTil(idx + 1, 1))}
               data-testid="omvisning-neste"
-              className="flex h-8 items-center gap-1.5 rounded-[8px] bg-[#141311] px-3.5 text-[12px] font-semibold text-white transition-all hover:bg-black active:scale-[0.98]"
+              className={`flex h-9 items-center gap-1.5 rounded-full px-4 text-[12.5px] font-semibold text-white transition-all active:scale-[0.97] ${siste ? 'bg-[#6d28d9] shadow-[0_6px_20px_rgba(109,40,217,0.35)] hover:bg-[#5b21b6]' : 'bg-[#141311] hover:bg-black'}`}
             >
               {siste ? 'Ferdig' : 'Neste'}
-              {!siste && <ArrowRight className="h-3.5 w-3.5" />}
+              {siste ? <Check className="h-3.5 w-3.5" /> : <ArrowRight className="h-3.5 w-3.5" />}
             </button>
           </div>
         </div>
+
+        {!smal && (
+          <p className="mt-3 border-t border-black/[0.05] pt-2.5 text-center text-[10.5px] tracking-wide text-[#c2bcb2]">
+            ← → for å navigere · Esc for å lukke
+          </p>
+        )}
       </div>
     </div>
   );

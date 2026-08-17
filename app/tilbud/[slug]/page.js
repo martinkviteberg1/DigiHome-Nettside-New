@@ -1,13 +1,21 @@
 'use client';
 
 /* ═══════════ OFFENTLIG TILBUDSSIDE — /tilbud/[slug] ═══════════
-   «Personlig utleievurdering som føles som et digitalt rådgivningsprodukt.»
-   Hver seksjon gjør én av fire jobber: vise hva boligen kan gi, bevise
-   hvorfor, demonstrere at jobben allerede er gjort, eller gjøre neste steg
-   ekstremt enkelt. Designspråk: lys og varm, blekk-tekst, hårfine delere,
-   sentence case, tabular-nums på alle tall, én mørk seksjon (final CTA),
-   én tonal seksjon (annonsen). Ingen gradients, ingen scroll-progress.
-   Åpninger spores (spor=1) og vises i Salgsradar-pipelinen. */
+   «Et personlig, digitalt utleieprospekt — ikke en landingsside.»
+   Dramaturgi: 1) Konklusjonen (anbefalt leie + netto + boligbildet høyt)
+   2) Beviset (markedsintervall, faktiske leieforhold, FINN-sammenligning)
+   3) Økonomien 4) Annonsen er klar 5) Arbeidsfordelingen (mørk seksjon)
+   6) Tryggheten 7) Neste steg 8) CTA (mørk).
+
+   Designsystem (alt må føles proporsjonalt):
+   · Typescala: kicker 11px/0.18em · H1 clamp(48→84) · H2 clamp(27→36)
+     · body 15.5–16.5 · meta 13–13.5 · alle tall tabular-nums
+   · Rytme: seksjonsavstand clamp(84→124px), heading→innhold 12/32px
+   · Flater: varm off-white #f8f8f6 · tonal #f5f5f2 · kort #fff rounded-[16–20px]
+   · Farger: blekk #141414 · grønn #1f7a45 (KUN økonomi) · DigiHome-lilla
+     #6d28d9/#8b5cf6 (kontrollert: kickers, markører, anbefaling)
+   · Knapper: pill (rounded-full) · Navbar: transparent → blur+kant ved scroll
+   Åpninger spores (spor=1) i Salgsradar. */
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams } from 'next/navigation';
@@ -21,11 +29,17 @@ const fmtDato = (iso) => {
 };
 const reduserMotion = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
 
-/* Palett: flate #F8F8F6 · tonal #F5F5F2 · overflate #FFF · blekk #141414
-   sekundær #737373 · grønn #1F7A45 · mørk seksjon #141414 (kun final CTA) */
+const LILLA = '#6d28d9';
+const LILLA_LYS = '#8b5cf6';
+const GRONN = '#1f7a45';
 
-const KNAPP_MORK = 'inline-flex h-11 items-center justify-center rounded-[10px] bg-[#141414] px-6 text-[14px] font-semibold text-white transition-colors hover:bg-black/80 disabled:opacity-40';
-const KNAPP_GHOST = 'inline-flex h-11 items-center justify-center rounded-[10px] border border-black/[0.14] px-6 text-[14px] font-semibold text-[#141414] transition-colors hover:border-black/30';
+/* Delt rytme og skala — én kilde til sannhet for proporsjonene */
+const SEKSJON = 'mt-[clamp(84px,9vw,124px)]';
+const H2 = 'text-[clamp(27px,3.4vw,36px)] font-semibold leading-[1.08] tracking-[-0.025em] [text-wrap:balance]';
+const BAND_PY = 'py-[clamp(60px,7vw,104px)]';
+
+const KNAPP_MORK = 'inline-flex h-12 items-center justify-center rounded-full bg-[#141414] px-7 text-[14.5px] font-semibold text-white transition-all hover:bg-black/80 hover:shadow-[0_10px_28px_rgba(20,20,20,0.22)] active:scale-[0.98] disabled:opacity-40';
+const KNAPP_GHOST = 'inline-flex h-12 items-center justify-center rounded-full border border-black/[0.13] bg-white/40 px-7 text-[14.5px] font-semibold text-[#141414] transition-all hover:border-black/30 active:scale-[0.98]';
 
 /* ── Scroll-reveal (én gang, respekterer reduced motion) ── */
 function useReveal() {
@@ -48,6 +62,22 @@ function Avsnitt({ id, className = '', children }) {
     <section id={id} ref={ref} className={`${className} transition-all duration-700 ease-out ${vist ? 'translate-y-0 opacity-100' : 'translate-y-3 opacity-0'}`}>
       {children}
     </section>
+  );
+}
+
+/* ── Seksjonshode — samme proporsjoner overalt ── */
+function SeksjonHode({ kicker, tittel, intro, lys = false, midt = false }) {
+  return (
+    <div className={midt ? 'text-center' : ''}>
+      <p
+        className={`text-[11px] font-bold uppercase tracking-[0.18em] ${midt ? 'inline-flex rounded-full px-3.5 py-1.5' : ''} ${lys ? (midt ? 'bg-white/10 text-[#c4b0f2]' : 'text-[#c4b0f2]') : midt ? 'bg-[#f0eafc]' : ''}`}
+        style={lys ? undefined : { color: LILLA }}
+      >
+        {kicker}
+      </p>
+      <h2 className={`${midt ? 'mx-auto mt-4 max-w-[720px]' : 'mt-3'} ${H2}`} style={heading}>{tittel}</h2>
+      {intro && <p className={`mt-4 max-w-[600px] text-[15.5px] leading-[1.65] [text-wrap:pretty] ${midt ? 'mx-auto' : ''} ${lys ? 'text-white/60' : 'text-[#525252]'}`}>{intro}</p>}
+    </div>
   );
 }
 
@@ -80,8 +110,9 @@ function TellOpp({ verdi, ms = 1000 }) {
   return <span ref={ref}>{tall(vis)}</span>;
 }
 
-/* ── Interaktiv før/etter-slider — demonstrerer DigiHome-produktet ── */
-function ForEtter({ forUrl, etterUrl, nokkel, etterEtikett = 'AI-stylet \u00b7 illustrasjon' }) {
+/* ── Interaktiv før/etter-slider — demonstrerer DigiHome-produktet.
+     Pointer-basert: fungerer med mus, touch-swipe og piltaster. ── */
+function ForEtter({ forUrl, etterUrl, nokkel, etterEtikett = 'AI-stylet \u00b7 illustrasjon', ratio = 'aspect-[16/10]' }) {
   const [pos, setPos] = useState(58);
   const boks = useRef(null);
   const drar = useRef(false);
@@ -118,7 +149,7 @@ function ForEtter({ forUrl, etterUrl, nokkel, etterEtikett = 'AI-stylet \u00b7 i
   return (
     <div
       ref={boks}
-      className="relative aspect-[16/10] cursor-ew-resize select-none overflow-hidden rounded-[12px] bg-[#e9e7e2]"
+      className={`relative ${ratio} cursor-ew-resize select-none overflow-hidden rounded-[18px] bg-[#e9e7e2] ring-1 ring-black/[0.05] shadow-[0_28px_72px_-36px_rgba(20,20,20,0.38)]`}
       style={{ touchAction: 'pan-y' }}
       onPointerDown={(e) => { drar.current = { x0: e.clientX, y0: e.clientY, laast: null }; }}
       onPointerMove={(e) => {
@@ -165,18 +196,92 @@ function ForEtter({ forUrl, etterUrl, nokkel, etterEtikett = 'AI-stylet \u00b7 i
       </div>
       <div className="absolute inset-y-0" style={{ left: `${pos}%` }}>
         <div className="absolute inset-y-0 -ml-px w-[2px] bg-white shadow-[0_0_14px_rgba(0,0,0,0.35)]" />
-        <span className="absolute top-1/2 flex h-9 w-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white/95 shadow-[0_2px_10px_rgba(0,0,0,0.22)]">
+        <span className="absolute top-1/2 flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white/92 shadow-[0_4px_16px_rgba(0,0,0,0.28)] ring-1 ring-black/[0.06] backdrop-blur-sm">
           <svg width="16" height="11" viewBox="0 0 18 12" fill="none" aria-hidden="true">
             <path d="M5.5 1 1 6l4.5 5M12.5 1 17 6l-4.5 5" stroke="#141414" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </span>
       </div>
-      <span className={`pointer-events-none absolute left-3 top-3 rounded-[7px] bg-black/50 px-2.5 py-1 text-[11px] font-semibold tracking-wide text-white transition-opacity duration-200 ${pos > 24 ? 'opacity-100' : 'opacity-0'}`}>
+      <span className={`pointer-events-none absolute left-3 top-3 rounded-full bg-black/45 px-3 py-1 text-[11px] font-semibold tracking-wide text-white backdrop-blur-sm transition-opacity duration-200 ${pos > 24 ? 'opacity-100' : 'opacity-0'}`}>
         Original
       </span>
-      <span className={`pointer-events-none absolute right-3 top-3 rounded-[7px] bg-black/50 px-2.5 py-1 text-[11px] font-semibold tracking-wide text-white transition-opacity duration-200 ${pos < 84 ? 'opacity-100' : 'opacity-0'}`} title="AI-generert forslag basert på annonsens eget foto">
+      <span className={`pointer-events-none absolute right-3 top-3 rounded-full bg-black/45 px-3 py-1 text-[11px] font-semibold tracking-wide text-white backdrop-blur-sm transition-opacity duration-200 ${pos < 84 ? 'opacity-100' : 'opacity-0'}`} title="AI-generert forslag basert på annonsens eget foto">
         {etterEtikett} {'\u24D8'}
       </span>
+    </div>
+  );
+}
+
+/* ── Markedsintervall som visuell prislinjal — anbefalingen plassert i
+     intervallet, med dagens annonsepris som referansepunkt når den finnes ── */
+function IntervallBar({ lo, hi, anbefalt, dagens }) {
+  const span = Math.max(1, hi - lo);
+  const pos = (v) => Math.min(96, Math.max(4, ((v - lo) / span) * 100));
+  const pAnb = pos(anbefalt);
+  const pDag = dagens > 0 ? pos(dagens) : null;
+  const samme = pDag != null && Math.abs(pDag - pAnb) < 8;
+  const labelJust = (p) => (p < 16 ? 'translate-x-0 text-left' : p > 84 ? '-translate-x-full text-right' : '-translate-x-1/2 text-center');
+  return (
+    <div className="mx-auto w-full max-w-[660px]" data-testid="tilbud-intervall">
+      <div className={`relative ${pDag != null && !samme ? 'pb-14' : 'pb-1'} pt-[52px]`}>
+        {/* Anbefalingen — over linjen */}
+        <div className={`absolute top-0 ${labelJust(pAnb)}`} style={{ left: `${pAnb}%` }}>
+          <p className="whitespace-nowrap text-[10.5px] font-bold uppercase tracking-[0.14em]" style={{ color: LILLA }}>
+            {samme ? 'Dagens pris · vår anbefaling' : 'Vår anbefaling'}
+          </p>
+          <p className="mt-0.5 whitespace-nowrap text-[17px] font-bold tabular-nums tracking-[-0.01em]" style={heading}>{tall(anbefalt)} kr</p>
+        </div>
+        {/* Linjalen */}
+        <div className="h-[6px] rounded-full bg-gradient-to-r from-[#efe9fb] via-[#e0d3f8] to-[#efe9fb]" />
+        <span className="absolute h-[15px] w-[15px] rounded-full border-[3px] border-white shadow-[0_1px_6px_rgba(109,40,217,0.4)]" style={{ left: `${pAnb}%`, top: 'calc(52px + 2.5px)', transform: 'translate(-50%, -50%)', background: LILLA }} />
+        {/* Dagens annonsepris — under linjen, kun når den avviker */}
+        {pDag != null && !samme && (
+          <>
+            <span className="absolute block h-[16px] w-[2px] -translate-x-1/2 rounded bg-[#141414]/50" style={{ left: `${pDag}%`, top: 'calc(52px + 9px)' }} />
+            <div className={`absolute ${labelJust(pDag)}`} style={{ left: `${pDag}%`, top: 'calc(52px + 30px)' }}>
+              <p className="whitespace-nowrap text-[11px] font-semibold text-[#8f8f8f]">Annonsert i dag</p>
+              <p className="whitespace-nowrap text-[14px] font-bold tabular-nums text-[#404040]" style={heading}>{tall(dagens)} kr</p>
+            </div>
+          </>
+        )}
+      </div>
+      <div className="mt-2.5 flex items-baseline justify-between gap-3 text-[12px] tabular-nums text-[#a3a3a3]">
+        <span>{tall(lo)} kr</span>
+        <span className="hidden text-[11.5px] font-medium sm:inline">Estimert markedsintervall for boligen</span>
+        <span>{tall(hi)} kr</span>
+      </div>
+      <p className="mt-1 text-[11.5px] font-medium text-[#a3a3a3] sm:hidden">Estimert markedsintervall for boligen</p>
+    </div>
+  );
+}
+
+/* ── Mini-annonsekort til «i dag → slik ville vi gjort det» ── */
+function MiniAnnonse({ variant, bilde, aiBilde, tittel, adresse, pris, netto }) {
+  const dh = variant === 'dh';
+  return (
+    <div className={`flex flex-col overflow-hidden rounded-[16px] bg-white transition-all duration-300 hover:-translate-y-1 ${dh ? 'ring-[1.5px] ring-[#8b5cf6]/40 shadow-[0_8px_32px_rgba(109,40,217,0.08)] hover:shadow-[0_16px_44px_rgba(109,40,217,0.13)]' : 'ring-1 ring-black/[0.07] hover:shadow-[0_14px_40px_rgba(20,20,20,0.08)]'}`}>
+      <div className={`flex items-center justify-between px-4 py-2.5 ${dh ? 'bg-[#f4f0fb]' : 'border-b border-black/[0.05] bg-[#fafaf8]'}`}>
+        <span className={`text-[10.5px] font-bold uppercase tracking-[0.12em] ${dh ? '' : 'text-[#a3a3a3]'}`} style={dh ? { color: LILLA } : undefined}>
+          {dh ? 'DigiHome anbefaler' : 'Annonsen din i dag'}
+        </span>
+        {dh && aiBilde && <span className="text-[10px] font-semibold text-[#a78bfa]" title="AI-generert forslag basert på annonsens eget foto">AI-forbedret foto {'\u24D8'}</span>}
+      </div>
+      {bilde ? (
+        <div className="relative">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={bilde} alt={dh ? 'Klargjort hovedbilde' : 'Dagens hovedbilde'} className={`block aspect-[16/9] w-full object-cover ${dh ? '' : 'saturate-[0.88]'}`} loading="lazy" draggable={false} />
+        </div>
+      ) : (
+        <div className="flex aspect-[16/9] items-center justify-center bg-[#f1f0ee] text-[12px] text-[#a3a3a3]">Uten klargjort bilde</div>
+      )}
+      <div className="flex flex-1 flex-col px-4 pb-4 pt-3 sm:px-5">
+        <p className={`text-[14.5px] font-bold leading-snug ${dh ? 'text-[#141414]' : 'text-[#525252]'}`} style={heading}>{tittel}</p>
+        <p className="mt-0.5 text-[12px] text-[#a3a3a3]">{adresse}</p>
+        <div className="mt-auto pt-3">
+          <p className={`text-[18px] font-bold tabular-nums tracking-[-0.01em] ${dh ? '' : 'text-[#525252]'}`} style={heading}>{tall(pris)} kr <span className="text-[12px] font-semibold text-[#a3a3a3]">/mnd</span></p>
+          {dh && netto > 0 && <p className="mt-0.5 text-[12px] font-semibold tabular-nums" style={{ color: GRONN }}>≈ {tall(netto)} kr til deg etter honorar</p>}
+        </div>
+      </div>
     </div>
   );
 }
@@ -207,12 +312,12 @@ function AnnonsePreview({ tilbud, r }) {
   return (
     <div data-testid="tilbud-annonse-preview">
       <div
-        className="overflow-hidden rounded-[12px] bg-white ring-1 ring-black/[0.08]"
+        className="overflow-hidden rounded-[16px] bg-white ring-1 ring-black/[0.07]"
         tabIndex={0}
         onKeyDown={(e) => { if (e.key === 'ArrowLeft') bytt(-1); if (e.key === 'ArrowRight') bytt(1); }}
       >
         <div className="flex items-center justify-between border-b border-black/[0.06] bg-[#fafaf8] px-4 py-2.5 sm:px-6">
-          <span className="rounded-[6px] bg-[#141414] px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.08em] text-white">Til leie</span>
+          <span className="rounded-full bg-[#141414] px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.08em] text-white">Til leie</span>
           <span className="text-[11px] font-medium text-[#737373]">Forhåndsvisning av annonsen din</span>
         </div>
 
@@ -223,7 +328,7 @@ function AnnonsePreview({ tilbud, r }) {
               data-testid="tilbud-annonse-bilde"
               onError={() => setDode((d) => (d.includes(akt.url) ? d : [...d, akt.url]))} />
             {akt.ai && (
-              <span className="pointer-events-none absolute left-3 top-3 rounded-[7px] bg-black/50 px-2 py-0.5 text-[10px] font-semibold text-white" title="AI-generert forslag basert på annonsens eget foto">AI-forbedret foto {'\u24D8'}</span>
+              <span className="pointer-events-none absolute left-3 top-3 rounded-full bg-black/45 px-2.5 py-0.5 text-[10px] font-semibold text-white backdrop-blur-sm" title="AI-generert forslag basert på annonsens eget foto">AI-forbedret foto {'\u24D8'}</span>
             )}
             {bilder.length > 1 && (
               <>
@@ -233,7 +338,7 @@ function AnnonsePreview({ tilbud, r }) {
                     {tegn}
                   </button>
                 ))}
-                <span className="pointer-events-none absolute bottom-3 right-3 rounded-[7px] bg-black/45 px-2 py-0.5 text-[11px] font-semibold tabular-nums text-white">
+                <span className="pointer-events-none absolute bottom-3 right-3 rounded-full bg-black/45 px-2.5 py-0.5 text-[11px] font-semibold tabular-nums text-white">
                   {Math.min(idx, bilder.length - 1) + 1} / {bilder.length}
                 </span>
               </>
@@ -253,7 +358,7 @@ function AnnonsePreview({ tilbud, r }) {
         </div>
 
         {fakta.length > 0 && (
-          <div className={`mx-4 mt-3 grid grid-cols-2 gap-px overflow-hidden rounded-[10px] border border-black/[0.06] bg-black/[0.06] sm:mx-6 ${fakta.length >= 5 ? 'sm:grid-cols-5' : fakta.length === 4 ? 'sm:grid-cols-4' : fakta.length === 3 ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
+          <div className={`mx-4 mt-3 grid grid-cols-2 gap-px overflow-hidden rounded-[12px] border border-black/[0.06] bg-black/[0.06] sm:mx-6 ${fakta.length >= 5 ? 'sm:grid-cols-5' : fakta.length === 4 ? 'sm:grid-cols-4' : fakta.length === 3 ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
             {fakta.map(([l, v]) => (
               <div key={l} className="bg-[#fafaf8] px-3.5 py-2.5">
                 <p className="text-[10.5px] font-medium text-[#a3a3a3]">{l}</p>
@@ -280,7 +385,7 @@ function AnnonsePreview({ tilbud, r }) {
           {(a.fasiliteter || []).length > 0 && (
             <div className="mt-4 flex flex-wrap gap-1.5" data-testid="tilbud-annonse-fasiliteter">
               {a.fasiliteter.map((f) => (
-                <span key={f} className="rounded-[8px] border border-black/[0.08] bg-[#fafaf8] px-2.5 py-1 text-[12px] font-medium text-[#525252]">{f}</span>
+                <span key={f} className="rounded-full border border-black/[0.08] bg-[#fafaf8] px-3 py-1 text-[12px] font-medium text-[#525252]">{f}</span>
               ))}
             </div>
           )}
@@ -320,7 +425,15 @@ export default function TilbudSide() {
   const [aktivStylet, setAktivStylet] = useState(0);
   const [visAnnonse, setVisAnnonse] = useState(false);
   const [visBunn, setVisBunn] = useState(false);
-  const [scrollet, setScrollet] = useState(false);
+  const [scrollet, setScrollet] = useState(false);   // heroen ute av syne → kontekst i navbar
+  const [harScrollet, setHarScrollet] = useState(false); // navbar får kant + blur
+  const [klar, setKlar] = useState(false);           // staggered hero-entrance
+  const [aapen, setAapen] = useState(-1);            // åpen rad i spørsmål-seksjonen
+
+  useEffect(() => {
+    const t = setTimeout(() => setKlar(true), 40);
+    return () => clearTimeout(t);
+  }, []);
 
   useEffect(() => {
     if (!slug) return;
@@ -337,13 +450,14 @@ export default function TilbudSide() {
     })();
   }, [slug]);
 
-  // Kontekst-header + sticky bunn-CTA på mobil
+  // Navbar-tilstand + sticky bunn-CTA på mobil
   useEffect(() => {
     const sjekk = () => {
       const kontakt = document.getElementById('kontakt');
       const kontaktSynlig = kontakt ? kontakt.getBoundingClientRect().top < window.innerHeight - 80 : false;
       setVisBunn(window.scrollY > 560 && !kontaktSynlig);
       setScrollet(window.scrollY > 420);
+      setHarScrollet(window.scrollY > 10);
     };
     window.addEventListener('scroll', sjekk, { passive: true });
     sjekk();
@@ -369,11 +483,14 @@ export default function TilbudSide() {
   const tilKontakt = () => {
     if (typeof document !== 'undefined') document.getElementById('kontakt')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
-  const tilRegnestykke = () => {
-    if (typeof document !== 'undefined') document.getElementById('regnestykke')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const tilHvorfor = () => {
+    if (typeof document !== 'undefined') document.getElementById('hvorfor')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
   const r = tilbud?.regnestykke || {};
+  const anbefalt = Number(r.anbefaltLeie) || 0;
+  const netto = Number(r.nettoTilEier) || 0;
+  const dagens = Number(r.dagensPris) || 0;
   const gevinst = r.gevinstMnd;
   const stylet = tilbud?.stylet || [];
   const valgtStylet = stylet[aktivStylet] || null;
@@ -381,34 +498,41 @@ export default function TilbudSide() {
   const harAnnonse = Boolean(tilbud?.annonse);
   const grunnlag = tilbud?.grunnlag || null;
   const vurdertDato = fmtDato(tilbud?.vurdert);
+  const harHeroBilde = Boolean(valgtStylet || originalBilde);
 
   // Markedsintervall rundt anbefalt leie (±3 %, rundet til nærmeste 100)
   const intervall = useMemo(() => {
-    const a = Number(r.anbefaltLeie) || 0;
-    if (!a) return null;
+    if (!anbefalt) return null;
     const rund = (x) => Math.round(x / 100) * 100;
-    return [rund(a * 0.97), rund(a * 1.03)];
-  }, [r.anbefaltLeie]);
+    return [rund(anbefalt * 0.97), rund(anbefalt * 1.03)];
+  }, [anbefalt]);
 
   const fakta = useMemo(() => [
     tilbud?.m2 ? `${tilbud.m2} m²` : null, tilbud?.soverom ? `${tilbud.soverom} soverom` : null, tilbud?.boligtype ? pent(tilbud.boligtype) : null,
   ].filter(Boolean), [tilbud]);
 
-  // «Hvorfor vi tror på leien» — konkrete punkter fra annonsens egne høydepunkter
-  const leiePunkter = useMemo(() => {
+  // «Dagens annonse → slik ville vi gjort det» — kun faglige, etterprøvbare punkter
+  const norm = (s) => String(s || '').toLowerCase().replace(/\s+/g, ' ').trim();
+  const nyTittel = harAnnonse && tilbud?.tittel && norm(tilbud.annonse.tittel) !== norm(tilbud.tittel);
+  const sammenligningsPunkter = useMemo(() => {
     const ut = [];
-    for (const h of (tilbud?.annonse?.hoydepunkter || []).slice(0, 2)) ut.push([h, 'Et tydelig salgsargument i annonsen.']);
-    if (tilbud?.m2 || tilbud?.soverom) {
-      ut.push([[tilbud?.m2 ? `${tilbud.m2} m²` : null, tilbud?.soverom ? `${tilbud.soverom} soverom` : null].filter(Boolean).join(' · '), 'Et format med bred leietakermålgruppe.']);
+    if (dagens && anbefalt) {
+      if (anbefalt > dagens) ut.push(['Prisen', `Dagens annonse ligger ${tall(anbefalt - dagens)} kr under det vi mener boligen bærer. Vurderingen bygger på hva sammenlignbare boliger faktisk leies ut for i porteføljen vår — ikke på annonsepriser.`]);
+      else if (anbefalt === dagens) ut.push(['Prisen', 'Dagens pris treffer godt — den beholder vi. Vår jobb blir å hente den raskt, med riktig leietaker fra første visning.']);
+      else ut.push(['Prisen', `Vi anbefaler ${tall(dagens - anbefalt)} kr lavere enn dagens annonse. Riktig pris fra dag én gir kortere ledighet — og mer utbetalt over året totalt.`]);
     }
-    return ut.slice(0, 3);
-  }, [tilbud]);
+    if (nyTittel) ut.push(['Tittelen', 'Vi har skrevet den om, slik at den løfter frem det leietakere i denne målgruppen faktisk ser etter når de skanner annonser.']);
+    if (stylet.length) ut.push(['Bildene', `${stylet.length === 1 ? 'Hovedbildet er' : `${stylet.length} av bildene er`} klargjort med riktig lys og presentasjon — det er det første leietakere sorterer på i søkeresultatet.`]);
+    if (harAnnonse && (tilbud?.annonse?.hoydepunkter || []).length) ut.push(['Målgruppen', 'Annonseteksten er spisset mot leietakerne som betaler best for akkurat denne typen bolig — ikke skrevet for alle.']);
+    return ut.slice(0, 4);
+  }, [dagens, anbefalt, nyTittel, stylet.length, harAnnonse, tilbud]);
+  const visSammenligning = dagens > 0 && (harAnnonse || stylet.length > 0) && sammenligningsPunkter.length > 0;
 
-  // Forsidebilde til det kompakte annonse-kortet
-  const annonseKortBilde = useMemo(() => {
-    if (stylet.length) return `/api/tilbud/bilde?id=${stylet[0].id}`;
-    return originalBilde;
-  }, [stylet, originalBilde]);
+  // Forsidebilde til det kompakte annonse-kortet + sammenligningskortene
+  const dhBilde = stylet.length ? `/api/tilbud/bilde?id=${stylet[0].id}` : originalBilde;
+
+  // Staggered entrance for hero-blokkene — rolig, ett åndedrag
+  const innKl = (delay) => `transition-all duration-700 ease-out motion-reduce:transition-none motion-reduce:translate-y-0 motion-reduce:opacity-100 ${klar ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'} ${delay}`;
 
   if (laster) {
     return (
@@ -430,21 +554,27 @@ export default function TilbudSide() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f8f8f6] text-[#141414]" data-testid="tilbud-side">
+    <div className="relative min-h-screen overflow-x-clip bg-[#f8f8f6] text-[#141414] selection:bg-[#e9defc]" data-testid="tilbud-side">
 
-      {/* ── Kontekst-header: logo → adresse + pris når heroen er ute av syne ── */}
-      <header className="sticky top-0 z-40 border-b border-black/[0.06] bg-[#f8f8f6]/92 backdrop-blur-md">
-        <div className="mx-auto flex h-[60px] max-w-[1200px] items-center justify-between gap-4 px-5 sm:px-8">
+      {/* Ambient glød bak heroen — knapt synlig, gir dybde uten støy */}
+      <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-[560px] bg-[radial-gradient(1000px_380px_at_72%_-90px,rgba(139,92,246,0.08),transparent_70%)]" />
+
+      {/* ── Navbar: fullbredde og usynlig på topp → flytende glasskapsel ved scroll ── */}
+      <header className="sticky top-0 z-40 px-4 sm:px-8">
+        <div className={`mx-auto flex items-center justify-between gap-4 transition-all duration-500 ease-out ${harScrollet
+          ? 'mt-3 h-[54px] max-w-[860px] rounded-full bg-[#fdfdfc]/85 py-0 pl-5 pr-2 shadow-[0_10px_36px_rgba(20,20,20,0.10)] ring-1 ring-black/[0.06] backdrop-blur-xl'
+          : 'h-16 max-w-[1200px] bg-transparent px-1 sm:px-0'}`}>
           <div className="relative flex min-w-0 flex-1 items-center">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/digihome-wordmark-ink.svg" alt="DigiHome" className={`h-[21px] w-auto transition-opacity duration-300 ${scrollet ? 'opacity-0' : 'opacity-100'}`} />
-            <span className={`absolute inset-x-0 flex min-w-0 items-baseline gap-2.5 transition-opacity duration-300 ${scrollet ? 'opacity-100' : 'pointer-events-none opacity-0'}`} data-testid="tilbud-header-kontekst">
-              <span className="truncate text-[14px] font-bold" style={heading}>{pent(tilbud.adresse)}</span>
-              {r?.nettoTilEier > 0 && <span className="shrink-0 text-[13px] font-semibold tabular-nums text-[#737373]">{tall(r.nettoTilEier)} kr/mnd</span>}
+            <img src="/digihome-wordmark-ink.svg" alt="DigiHome" className={`h-[20px] w-auto transition-opacity duration-300 ${scrollet ? 'opacity-0' : 'opacity-100'}`} />
+            <span className={`absolute inset-x-0 flex min-w-0 items-baseline gap-3 transition-opacity duration-300 ${scrollet ? 'opacity-100' : 'pointer-events-none opacity-0'}`} data-testid="tilbud-header-kontekst">
+              <span className="truncate text-[13.5px] font-bold tracking-[-0.01em]" style={heading}>{pent(tilbud.adresse)}</span>
+              {anbefalt > 0 && <span className="shrink-0 text-[12.5px] font-semibold tabular-nums text-[#737373]">{tall(anbefalt)} kr/mnd</span>}
+              {netto > 0 && <span className="hidden shrink-0 text-[12.5px] font-semibold tabular-nums sm:inline" style={{ color: GRONN }}>{tall(netto)} kr til deg</span>}
             </span>
           </div>
           <button onClick={tilKontakt} data-testid="tilbud-topp-cta"
-            className="h-9 shrink-0 rounded-[10px] bg-[#141414] px-4 text-[13px] font-semibold text-white transition-colors hover:bg-black/80">
+            className={`shrink-0 rounded-full bg-[#141414] text-[13px] font-semibold text-white transition-all duration-300 hover:bg-black/80 active:scale-[0.98] ${harScrollet ? 'h-10 px-5' : 'h-10 px-5 sm:h-11 sm:px-6'}`}>
             Snakk med Sarah
           </button>
         </div>
@@ -452,206 +582,267 @@ export default function TilbudSide() {
 
       <main className="mx-auto max-w-[1200px] px-5 sm:px-8">
 
-        {/* ── Hero: 7/5 — budskap venstre, tilbudsfakta høyre ── */}
-        <section className="pt-12 sm:pt-16">
-          <div className="grid grid-cols-1 gap-12 lg:grid-cols-[1fr_340px] lg:gap-24">
-            <div>
-              <p className="text-[11.5px] font-semibold uppercase tracking-[0.14em] text-[#737373]">
-                Personlig utleievurdering{vurdertDato ? ` · ${vurdertDato}` : ''}
+        {/* ══ 1 · KONKLUSJONEN — anbefalt leie som hovedbudskap, boligbildet høyt ══ */}
+        <section className="pt-6 sm:pt-10">
+          <div className={`grid grid-cols-1 gap-x-[clamp(48px,5vw,88px)] gap-y-8 ${harHeroBilde ? 'lg:grid-cols-[minmax(0,1.02fr)_minmax(0,0.98fr)] lg:grid-rows-[auto_1fr]' : ''}`}>
+
+            {/* A — konklusjonen */}
+            <div className={innKl(`delay-75 ${harHeroBilde ? 'lg:col-start-1 lg:row-start-1' : ''}`)}>
+              <p className="text-[11px] font-bold uppercase tracking-[0.18em]" style={{ color: LILLA }}>
+                Personlig utleievurdering{vurdertDato ? <span className="hidden sm:inline"> · {vurdertDato}</span> : null}
               </p>
-              {r?.nettoTilEier > 0 ? (
+              <p className="mt-4 text-[16px] font-bold tracking-[-0.01em] sm:text-[18px]" style={heading} data-testid="tilbud-hero-adresse">
+                {pent(tilbud.adresse)}{fakta.length > 0 && <span className="font-medium text-[#a3a3a3]"> · {fakta.join(' · ')}</span>}
+              </p>
+              {anbefalt > 0 ? (
                 <>
-                  <h1 className="mt-6 text-[54px] font-bold leading-none tracking-[-0.03em] sm:text-[80px]" style={heading}>
-                    {tall(r.nettoTilEier)}{'\u2009'}kr<span className="text-[24px] font-semibold text-[#737373] sm:text-[32px]"> / mnd</span>
+                  <h1 className="mt-3 font-bold leading-[0.98] tracking-[-0.035em]" style={{ ...heading, fontSize: 'clamp(48px, 7.5vw, 84px)' }}>
+                    <TellOpp verdi={anbefalt} ms={900} />{'\u2009'}kr<span className="text-[0.34em] font-semibold tracking-[-0.01em] text-[#a3a3a3]"> /mnd</span>
                   </h1>
-                  <p className="mt-3 text-[19px] font-semibold tracking-[-0.01em] text-[#262626] sm:text-[22px]" style={heading}>
-                    estimert til deg etter DigiHome-honorar
-                  </p>
+                  <p className="mt-2.5 text-[15px] font-medium text-[#737373] sm:text-[16px]">anbefalt månedsleie for boligen din</p>
+                  {netto > 0 && (
+                    <p className="mt-5 inline-flex max-w-full flex-wrap items-baseline gap-x-1.5 rounded-[14px] bg-[#e9f2ea] px-4 py-3 text-[14.5px] leading-snug text-[#2d4a36]" data-testid="tilbud-hero-netto">
+                      <span className="font-bold tabular-nums tracking-[-0.01em]" style={{ ...heading, color: GRONN, fontSize: '17px' }}>≈ {tall(netto)} kr til deg</span>
+                      <span>hver måned etter DigiHome-honorar ({r.honorarPct} % eks. mva)</span>
+                    </p>
+                  )}
+                  {grunnlag && (
+                    <p className="mt-4 flex items-start gap-2 text-[13.5px] leading-relaxed text-[#737373]">
+                      <svg width="14" height="14" viewBox="0 0 18 18" fill="none" className="mt-[3px] shrink-0" aria-hidden="true">
+                        <path d="m3.6 9.4 3.4 3.4 7.4-7.6" stroke={LILLA_LYS} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                      <span>Vurdert mot <b className="font-semibold text-[#404040]">{grunnlag.antallILeide} faktiske leieforhold</b> i DigiHome-porteføljen{grunnlag.antallISone > 0 ? `, ${grunnlag.antallISone} i samme postsone` : ''}.</span>
+                    </p>
+                  )}
                 </>
               ) : (
-                <h1 className="mt-6 text-[44px] font-bold leading-[1.02] tracking-[-0.025em] sm:text-[64px]" style={heading}>
+                <h1 className="mt-3 font-bold leading-[1.04] tracking-[-0.025em]" style={{ ...heading, fontSize: 'clamp(36px, 6vw, 56px)' }}>
                   {pent(tilbud.adresse)}
                 </h1>
               )}
-              <p className="mt-6 max-w-[540px] text-[16.5px] leading-relaxed text-[#404040]" data-testid="tilbud-hero-intro">
-                Vi anbefaler en månedlig leie på <span className="font-semibold tabular-nums text-[#141414]">{tall(r.anbefaltLeie)} kr</span>.
-                Vi håndterer annonsering, visninger, kontrakt og oppfølging.
-              </p>
+            </div>
 
-              <div className="mt-8 flex flex-wrap items-center gap-3">
-                <button onClick={tilKontakt} data-testid="tilbud-hero-cta" className={KNAPP_MORK}>Snakk med Sarah</button>
-                <button onClick={tilRegnestykke} data-testid="tilbud-hero-regnestykke" className={KNAPP_GHOST}>Se regnestykket ↓</button>
+            {/* B — boligbildet, høyt i første viewport (interaktiv før/etter når den finnes) */}
+            {harHeroBilde && (
+              <div className={innKl('delay-200 lg:col-start-2 lg:row-start-1 lg:row-span-2')}>
+                {valgtStylet ? (
+                  <>
+                    <ForEtter
+                      forUrl={valgtStylet.kildeUrl || originalBilde}
+                      etterUrl={`/api/tilbud/bilde?id=${valgtStylet.id}`}
+                      nokkel={valgtStylet.id}
+                      ratio="aspect-[4/3]"
+                      etterEtikett={['optimal', 'lysloft'].includes(valgtStylet.stil) ? 'Klargjort av DigiHome' : 'AI-møblert · illustrasjon'}
+                    />
+                    <div className="mt-3 flex items-center justify-between gap-3">
+                      <p className="text-[12.5px] text-[#a3a3a3]">Dra i linjen — original til venstre, klargjort av oss til høyre.</p>
+                      {stylet.length > 1 && <p className="shrink-0 text-[12px] tabular-nums text-[#c4c0ba]">{aktivStylet + 1} av {stylet.length}</p>}
+                    </div>
+                    {stylet.length > 1 && (
+                      <div className="mt-2.5 flex gap-2 overflow-x-auto pb-1">
+                        {stylet.map((s, i) => (
+                          <button key={s.id} type="button" onClick={() => setAktivStylet(i)} className="relative shrink-0">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={`/api/tilbud/bilde?id=${s.id}`} alt={s.stil ? `Stil: ${s.stil}` : ''} loading="lazy"
+                              className={`h-14 w-[84px] rounded-[10px] object-cover transition-all ${i === aktivStylet ? 'ring-2 ring-[#141414] ring-offset-2 ring-offset-[#f8f8f6]' : 'opacity-55 hover:opacity-100'}`} />
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="overflow-hidden rounded-[18px] ring-1 ring-black/[0.07]">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={originalBilde} alt="Boligen fra annonsen" className="block aspect-[4/3] w-full object-cover" fetchPriority="high" data-testid="tilbud-hovedbilde" />
+                  </div>
+                )}
               </div>
+            )}
 
-              <div className="mt-7 flex items-center gap-2.5" data-testid="tilbud-hero-sarah">
+            {/* C — neste steg + Sarah */}
+            <div className={innKl(`delay-300 ${harHeroBilde ? 'lg:col-start-1 lg:row-start-2 lg:self-end' : 'mt-1'}`)}>
+              <p className="max-w-[500px] text-[15px] leading-[1.65] text-[#525252]" data-testid="tilbud-hero-intro">
+                {tilbud.tekst?.heroIntro || 'Annonsen er allerede produsert — bilder, tekst og pris. Vi håndterer annonsering, visninger, kontrakt og oppfølging.'}
+              </p>
+              <div className="mt-7 flex flex-wrap items-center gap-3">
+                <button onClick={tilKontakt} data-testid="tilbud-hero-cta" className={KNAPP_MORK}>Snakk med Sarah</button>
+                <button onClick={tilHvorfor} data-testid="tilbud-hero-regnestykke" className={KNAPP_GHOST}>Hvorfor denne prisen?</button>
+              </div>
+              <div className="mt-7 flex items-center gap-3" data-testid="tilbud-hero-sarah">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/brand/sarah-sleeman-360.webp" alt="Sarah Sleeman" className="h-9 w-9 rounded-full object-cover" />
-                <p className="text-[13.5px] text-[#737373]">
-                  <span className="font-semibold text-[#141414]">Sarah Sleeman</span> — din kontaktperson i DigiHome
+                <img src="/brand/sarah-sleeman-360.webp" alt="Sarah Sleeman" className="h-10 w-10 rounded-full object-cover ring-2 ring-white" />
+                <p className="text-[13px] leading-snug text-[#737373]">
+                  <span className="block font-semibold text-[#141414]">Sarah Sleeman</span>
+                  din kontaktperson i DigiHome
                 </p>
               </div>
             </div>
-
-            {/* Tilbudsfakta — «investment memo», uten kort */}
-            <aside className="lg:pt-10" data-testid="tilbud-hero-fakta">
-              <p className="text-[17px] font-bold leading-snug" style={heading}>{pent(tilbud.adresse)}</p>
-              {fakta.length > 0 && <p className="mt-1 text-[13.5px] text-[#737373]">{fakta.join(' · ')}</p>}
-              <dl className="mt-5">
-                {[
-                  ['Anbefalt leie', `${tall(r.anbefaltLeie)} kr / mnd`],
-                  ['DigiHome-honorar', `${r.honorarPct} % eks. mva`],
-                  vurdertDato ? ['Vurdert', vurdertDato] : null,
-                  grunnlag ? ['Grunnlag', `${grunnlag.antallILeide} leieforhold i porteføljen`] : null,
-                ].filter(Boolean).map(([l, v]) => (
-                  <div key={l} className="flex items-baseline justify-between gap-4 border-t border-black/[0.08] py-3">
-                    <dt className="text-[13px] text-[#737373]">{l}</dt>
-                    <dd className="text-right text-[13.5px] font-semibold tabular-nums" style={heading}>{v}</dd>
-                  </div>
-                ))}
-              </dl>
-            </aside>
           </div>
         </section>
 
-        {/* ── Boligbildet — demonstrasjon av DigiHome-produktet ── */}
-        {valgtStylet ? (
-          <section className="mt-12 sm:mt-16">
-            <ForEtter
-              forUrl={valgtStylet.kildeUrl || originalBilde}
-              etterUrl={`/api/tilbud/bilde?id=${valgtStylet.id}`}
-              nokkel={valgtStylet.id}
-              etterEtikett={['optimal', 'lysloft'].includes(valgtStylet.stil) ? 'Klargjort av DigiHome' : 'AI-møblert · illustrasjon'}
-            />
-            <div className="mt-3 flex items-center justify-between gap-3">
-              <p className="text-[13px] text-[#a3a3a3]">Dra i linjen — original til venstre, klargjort av DigiHome til høyre.</p>
-              {stylet.length > 1 && <p className="hidden shrink-0 text-[12px] tabular-nums text-[#c4c0ba] sm:block">{aktivStylet + 1} av {stylet.length}</p>}
-            </div>
-            {stylet.length > 1 && (
-              <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
-                {stylet.map((s, i) => (
-                  <button key={s.id} type="button" onClick={() => setAktivStylet(i)} className="relative shrink-0">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={`/api/tilbud/bilde?id=${s.id}`} alt={s.stil ? `Stil: ${s.stil}` : ''} loading="lazy"
-                      className={`h-16 w-24 rounded-[8px] object-cover transition-all ${i === aktivStylet ? 'ring-2 ring-[#141414] ring-offset-2 ring-offset-[#f8f8f6]' : 'opacity-55 hover:opacity-100'}`} />
-                  </button>
-                ))}
-              </div>
-            )}
-          </section>
-        ) : originalBilde ? (
-          <section className="mt-12 sm:mt-16">
-            <div className="overflow-hidden rounded-[12px] ring-1 ring-black/[0.08]">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={originalBilde} alt="Boligen fra annonsen" className="block h-auto max-h-[640px] w-full object-cover" fetchPriority="high" data-testid="tilbud-hovedbilde" />
-            </div>
-          </section>
-        ) : null}
+        {/* ══ 2 · BEVISET — intervall, faktisk grunnlag og dagens annonse → vår versjon ══ */}
+        <Avsnitt id="hvorfor" className={`${SEKSJON} scroll-mt-24`}>
+          <SeksjonHode
+            midt
+            kicker="Beviset"
+            tittel={anbefalt > 0 ? `Hvorfor ${tall(anbefalt)} kr er riktig pris.` : 'Vår vurdering.'}
+            intro={tilbud.tekst?.potensialTekst || 'Vurderingen bygger på hva sammenlignbare boliger faktisk leies ut for i DigiHomes egen portefølje i Bergen — ikke på annonsepriser eller synsing.'}
+          />
 
-        {/* ── Regnestykket — presist, ikke pyntet ── */}
-        <Avsnitt id="regnestykke" className="mt-24 scroll-mt-24 sm:mt-28">
-          <h2 className="text-[26px] font-semibold tracking-[-0.02em] sm:text-[30px]" style={heading}>Regnestykket.</h2>
-
-          <div className="mt-8 grid grid-cols-1 gap-y-6 sm:flex sm:flex-wrap sm:items-baseline sm:gap-x-7" data-testid="tilbud-kpi">
-            <div>
-              <p className="text-[28px] font-bold tabular-nums tracking-[-0.02em] sm:text-[34px]" style={heading}><TellOpp verdi={r.anbefaltLeie} />{'\u2009'}kr</p>
-              <p className="mt-1 text-[13.5px] text-[#737373]">Anbefalt leie</p>
-            </div>
-            <span className="hidden text-[24px] font-light text-[#c4c0ba] sm:block" aria-hidden="true">−</span>
-            <div>
-              <p className="text-[28px] font-bold tabular-nums tracking-[-0.02em] text-[#737373] sm:text-[34px]" style={heading}><TellOpp verdi={r.honorarMnd} />{'\u2009'}kr</p>
-              <p className="mt-1 text-[13.5px] text-[#737373]">DigiHome · {r.honorarPct} % eks. mva</p>
-            </div>
-            <span className="hidden text-[24px] font-light text-[#c4c0ba] sm:block" aria-hidden="true">=</span>
-            <div>
-              <p className="text-[34px] font-bold tabular-nums tracking-[-0.02em] text-[#1f7a45] sm:text-[42px]" style={heading}><TellOpp verdi={r.nettoTilEier} />{'\u2009'}kr</p>
-              <p className="mt-1 text-[13.5px] text-[#737373]">estimert etter DigiHome-honorar</p>
-            </div>
-          </div>
-
-          {gevinst != null && (
-            <p className={`mt-7 max-w-[640px] border-t border-black/[0.07] pt-5 text-[15px] leading-relaxed ${gevinst > 0 ? 'text-[#1f7a45]' : 'text-[#737373]'}`}>
-              {gevinst > 0
-                ? <>Det er <b className="tabular-nums">{tall(gevinst)} kr mer i måneden</b> ({tall(r.gevinstAar)} kr i året) enn annonsert pris i dag — og vi tar hele jobben.</>
-                : <>Annonsert pris i dag er {tall(r.dagensPris)} kr/mnd. Med oss slipper du annonsering, visninger, kontrakter og oppfølging.</>}
-            </p>
-          )}
-          {r?.nettoTilEier > 0 && (
-            <p className="mt-3 text-[14px] tabular-nums text-[#737373]" data-testid="tilbud-regnestykke">
-              Over ett år: <span className="font-semibold text-[#141414]">{tall(r.nettoTilEier * 12)} kr</span> estimert til deg.
-            </p>
-          )}
-          <p className="mt-3 max-w-[620px] text-[12.5px] leading-relaxed text-[#a3a3a3]">
-            Honoraret er oppgitt eks. mva. Estimatet er før eierkostnader, eventuell ledighet og skatt.
-          </p>
-        </Avsnitt>
-
-        {/* ── Hvorfor vi anbefaler leien — vis grunnlaget, ikke bare påstanden ── */}
-        {r?.anbefaltLeie > 0 && (
-          <Avsnitt className="mt-24 sm:mt-28">
-            <h2 className="text-[26px] font-semibold tracking-[-0.02em] sm:text-[30px]" style={heading}>Hvorfor vi anbefaler {tall(r.anbefaltLeie)} kr.</h2>
-
-            <div className="mt-8 flex flex-wrap items-baseline gap-x-10 gap-y-5" data-testid="tilbud-grunnlag">
+          {/* Prislinjal + faktisk grunnlag — samlet i ett kort */}
+          {(intervall || grunnlag) && (
+            <div className="mx-auto mt-11 max-w-[880px] overflow-hidden rounded-[20px] bg-white shadow-[0_2px_20px_rgba(20,20,20,0.045)] ring-1 ring-black/[0.06]">
               {intervall && (
-                <div>
-                  <p className="text-[22px] font-bold tabular-nums tracking-[-0.01em]" style={heading}>{tall(intervall[0])}–{tall(intervall[1])} kr</p>
-                  <p className="mt-1 text-[13px] text-[#737373]">Estimert markedsintervall</p>
+                <div className="px-6 pb-6 pt-7 sm:px-10 sm:pb-7 sm:pt-8">
+                  <IntervallBar lo={intervall[0]} hi={intervall[1]} anbefalt={anbefalt} dagens={dagens} />
                 </div>
               )}
-              <div>
-                <p className="text-[22px] font-bold tabular-nums tracking-[-0.01em]" style={heading}>{tall(r.anbefaltLeie)} kr</p>
-                <p className="mt-1 text-[13px] text-[#737373]">Vår anbefaling</p>
-              </div>
               {grunnlag && (
-                <div>
-                  <p className="text-[22px] font-bold tabular-nums tracking-[-0.01em]" style={heading}>{grunnlag.antallILeide}</p>
-                  <p className="mt-1 text-[13px] text-[#737373]">leieforhold i vurderingsgrunnlaget{grunnlag.antallISone > 0 ? ` · ${grunnlag.antallISone} i samme postsone` : ''}</p>
+                <div className={`flex flex-wrap items-baseline justify-center gap-x-12 gap-y-4 px-6 py-5 text-center sm:px-10 ${intervall ? 'border-t border-black/[0.06] bg-[#fafaf8]' : ''}`} data-testid="tilbud-grunnlag">
+                  <div>
+                    <p className="text-[20px] font-bold tabular-nums tracking-[-0.015em]" style={heading}>{grunnlag.antallILeide}</p>
+                    <p className="mt-0.5 text-[12.5px] text-[#737373]">faktiske leieforhold i grunnlaget</p>
+                  </div>
+                  {grunnlag.antallISone > 0 && (
+                    <div>
+                      <p className="text-[20px] font-bold tabular-nums tracking-[-0.015em]" style={heading}>{grunnlag.antallISone}</p>
+                      <p className="mt-0.5 text-[12.5px] text-[#737373]">utleid i samme postsone{grunnlag.sone ? ` (${grunnlag.sone})` : ''}</p>
+                    </div>
+                  )}
+                  {grunnlag.snittSone > 0 && (
+                    <div>
+                      <p className="text-[20px] font-bold tabular-nums tracking-[-0.015em]" style={heading}>{tall(grunnlag.snittSone)} kr</p>
+                      <p className="mt-0.5 text-[12.5px] text-[#737373]">snitt oppnådd leie i sonen</p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
+          )}
+          {vurdertDato && (
+            <p className="mt-4 text-center text-[12.5px] text-[#a3a3a3]">Vurdert {vurdertDato} · oppdateres ved endringer i markedet.</p>
+          )}
 
-            {leiePunkter.length > 0 && (
-              <div className="mt-9 grid grid-cols-1 gap-8 sm:grid-cols-3 sm:gap-10">
-                {leiePunkter.map(([t, d]) => (
-                  <div key={t} className="border-t border-black/[0.1] pt-4">
-                    <p className="text-[15.5px] font-bold" style={heading}>{t}</p>
-                    <p className="mt-1.5 text-[14px] leading-relaxed text-[#737373]">{d}</p>
+          {/* Dagens annonse → slik ville vi gjort det */}
+          {visSammenligning && (
+            <div className="mt-[clamp(56px,6vw,84px)]">
+              <div className="text-center">
+                <h3 className="text-[clamp(19px,2vw,22px)] font-semibold tracking-[-0.015em]" style={heading}>Annonsen din i dag — og slik ville vi gjort det.</h3>
+                <p className="mx-auto mt-2.5 max-w-[600px] text-[14.5px] leading-[1.65] text-[#737373]">
+                  Dette handler ikke om at dagens annonse er dårlig — men om detaljene som avgjør hvem som tar kontakt, og til hvilken pris.
+                </p>
+              </div>
+
+              <div className="mx-auto mt-9 grid max-w-[1040px] grid-cols-1 items-stretch gap-4 sm:grid-cols-[1fr_auto_1fr] sm:gap-5" data-testid="tilbud-sammenligning">
+                <MiniAnnonse
+                  variant="idag"
+                  bilde={originalBilde}
+                  tittel={tilbud.tittel || 'Dagens annonse'}
+                  adresse={pent(tilbud.adresse)}
+                  pris={dagens}
+                />
+                <div className="flex items-center justify-center" aria-hidden="true">
+                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#f0eafc] text-[15px] font-semibold" style={{ color: LILLA }}>
+                    <span className="hidden sm:inline">→</span>
+                    <span className="sm:hidden">↓</span>
+                  </span>
+                </div>
+                <MiniAnnonse
+                  variant="dh"
+                  bilde={dhBilde}
+                  aiBilde={stylet.length > 0}
+                  tittel={harAnnonse ? tilbud.annonse.tittel : (tilbud.tittel || '')}
+                  adresse={pent(tilbud.adresse)}
+                  pris={anbefalt}
+                  netto={netto}
+                />
+              </div>
+
+              <div className="mx-auto mt-10 grid max-w-[920px] grid-cols-1 gap-x-12 gap-y-7 sm:grid-cols-2" data-testid="tilbud-sammenligning-punkter">
+                {sammenligningsPunkter.map(([t, d]) => (
+                  <div key={t} className="border-t border-black/[0.09] pt-4">
+                    <p className="text-[15px] font-bold tracking-[-0.01em]" style={heading}>{t}</p>
+                    <p className="mt-1.5 text-[14px] leading-[1.65] text-[#737373]">{d}</p>
                   </div>
                 ))}
               </div>
-            )}
-            <p className="mt-7 text-[13.5px] text-[#a3a3a3]">Vurderingen er gjort mot faktiske leieinntekter i DigiHomes egen portefølje i Bergen — ikke synsing.</p>
-          </Avsnitt>
-        )}
+            </div>
+          )}
 
-        {/* ── Annonsen er klar — tonal seksjon med ekte preview ── */}
+          <p className="mx-auto mt-12 max-w-[560px] text-center text-[12.5px] leading-relaxed text-[#a3a3a3]">
+            Vurderingen er gjort mot faktiske leieinntekter i DigiHomes egen portefølje i Bergen. Endelig leie settes alltid sammen med deg.
+          </p>
+        </Avsnitt>
+
+        {/* ══ 3 · ØKONOMIEN — én presis blokk, ikke pyntet ══ */}
+        <Avsnitt id="regnestykke" className={`${SEKSJON} scroll-mt-24`}>
+          <SeksjonHode midt kicker="Økonomien" tittel="Regnestykket." intro="Ett tall inn, to tall ut — hva boligen gir, hva vi tar, og hva som er igjen til deg." />
+
+          <div className="mx-auto mt-10 max-w-[1000px] overflow-hidden rounded-[20px] bg-white shadow-[0_2px_20px_rgba(20,20,20,0.045)] ring-1 ring-black/[0.06]">
+            <div className="grid grid-cols-1 divide-y divide-black/[0.06] sm:grid-cols-3 sm:divide-x sm:divide-y-0" data-testid="tilbud-kpi">
+              <div className="px-6 py-6 sm:px-8 sm:py-8">
+                <p className="text-[12.5px] font-medium text-[#737373]">Anbefalt leie</p>
+                <p className="mt-2 text-[clamp(26px,2.6vw,32px)] font-bold tabular-nums tracking-[-0.02em]" style={heading}><TellOpp verdi={anbefalt} />{'\u2009'}kr</p>
+                <p className="mt-1 text-[12.5px] text-[#a3a3a3]">per måned</p>
+              </div>
+              <div className="px-6 py-6 sm:px-8 sm:py-8">
+                <p className="text-[12.5px] font-medium text-[#737373]">− DigiHome-honorar</p>
+                <p className="mt-2 text-[clamp(26px,2.6vw,32px)] font-bold tabular-nums tracking-[-0.02em] text-[#737373]" style={heading}><TellOpp verdi={r.honorarMnd} />{'\u2009'}kr</p>
+                <p className="mt-1 text-[12.5px] text-[#a3a3a3]">{r.honorarPct} % eks. mva — alt arbeid inkludert</p>
+              </div>
+              <div className="bg-[#f4faf5] px-6 py-6 sm:px-8 sm:py-8">
+                <p className="text-[12.5px] font-semibold" style={{ color: GRONN }}>= Til deg hver måned</p>
+                <p className="mt-2 text-[clamp(28px,2.9vw,36px)] font-bold tabular-nums tracking-[-0.02em]" style={{ ...heading, color: GRONN }}><TellOpp verdi={netto} />{'\u2009'}kr</p>
+                <p className="mt-1 text-[12.5px] text-[#5b7a63]">estimert, før eierkostnader og skatt</p>
+              </div>
+            </div>
+            {netto > 0 && (
+              <div className="flex flex-wrap items-baseline justify-center gap-x-10 gap-y-2 border-t border-black/[0.06] bg-[#fafaf8] px-6 py-4 sm:px-8" data-testid="tilbud-regnestykke">
+                <p className="text-[13px] text-[#737373]">Over 12 måneder: <span className="font-bold tabular-nums text-[#141414]" style={heading}>{tall(netto * 12)} kr</span> til deg</p>
+                <p className="text-[13px] text-[#737373]">Årlig honorar: <span className="font-bold tabular-nums text-[#141414]" style={heading}>{tall((r.honorarMnd || 0) * 12)} kr</span></p>
+                {gevinst != null && gevinst > 0 && (
+                  <p className="text-[13px] font-medium" style={{ color: GRONN }}>+ {tall(gevinst)} kr/mnd mer enn annonsert pris i dag</p>
+                )}
+              </div>
+            )}
+          </div>
+
+          <p className="mx-auto mt-4 max-w-[620px] text-center text-[12.5px] leading-relaxed text-[#a3a3a3]">
+            Honoraret er oppgitt eks. mva. Estimatet er før eierkostnader, eventuell ledighet og skatt — det gir deg sammenligningsgrunnlaget, ikke et regnskap.
+          </p>
+        </Avsnitt>
+
+        {/* ══ 4 · ANNONSEN ER KLAR — tonal seksjon med ekte preview ══ */}
         {harAnnonse && (
-          <div className="relative left-1/2 mt-24 w-screen -translate-x-1/2 bg-[#f5f5f2] sm:mt-28">
-            <Avsnitt className="mx-auto max-w-[1200px] px-5 py-16 sm:px-8 sm:py-20">
-              <h2 className="text-[26px] font-semibold tracking-[-0.02em] sm:text-[30px]" style={heading}>Annonsen er klar.</h2>
-              <p className="mt-3 max-w-[560px] text-[16px] leading-relaxed text-[#404040]">
-                Bildene er valgt. Teksten er skrevet. Prisen er satt. Sier du ja, kan den være live innen 24 timer.
-              </p>
+          <div className={`relative left-1/2 ${SEKSJON} w-[min(100vw-16px,1360px)] -translate-x-1/2 overflow-hidden rounded-[28px] bg-[#f3f1ec] sm:rounded-[36px]`}>
+            <Avsnitt className={`mx-auto max-w-[1200px] px-5 sm:px-8 ${BAND_PY}`}>
+              <SeksjonHode
+                midt
+                kicker="Jobben er allerede gjort"
+                tittel="Annonsen er klar."
+                intro="Bildene er valgt. Teksten er skrevet. Prisen er satt. Sier du ja, kan den være live innen 24 timer."
+              />
 
               {/* Kompakt preview — jobben er synlig, ikke bare påstått */}
               {!visAnnonse && (
                 <button onClick={() => setVisAnnonse(true)} data-testid="tilbud-vis-annonse"
-                  className="group mt-8 block w-full max-w-[720px] overflow-hidden rounded-[12px] bg-white text-left ring-1 ring-black/[0.08] transition-shadow hover:shadow-[0_4px_20px_rgba(20,20,20,0.07)]">
-                  {annonseKortBilde && (
+                  className="group mx-auto mt-10 block w-full max-w-[720px] overflow-hidden rounded-[16px] bg-white text-left ring-1 ring-black/[0.07] transition-all hover:-translate-y-0.5 hover:shadow-[0_10px_36px_rgba(20,20,20,0.09)]">
+                  {dhBilde && (
                     <span className="relative block">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={annonseKortBilde} alt="Hovedbilde i annonsen" className="block aspect-[2/1] w-full object-cover" loading="lazy" data-testid="tilbud-annonse-kort-bilde" />
+                      <img src={dhBilde} alt="Hovedbilde i annonsen" className="block aspect-[2/1] w-full object-cover" loading="lazy" data-testid="tilbud-annonse-kort-bilde" />
                       {stylet.length > 0 && (
-                        <span className="pointer-events-none absolute left-3 top-3 rounded-[7px] bg-black/50 px-2 py-0.5 text-[10px] font-semibold text-white" title="AI-generert forslag basert på annonsens eget foto">AI-forbedret foto {'\u24D8'}</span>
+                        <span className="pointer-events-none absolute left-3 top-3 rounded-full bg-black/45 px-2.5 py-0.5 text-[10px] font-semibold text-white backdrop-blur-sm" title="AI-generert forslag basert på annonsens eget foto">AI-forbedret foto {'\u24D8'}</span>
                       )}
                     </span>
                   )}
                   <span className="block px-5 py-4 sm:px-6">
-                    <span className="block text-[17px] font-bold leading-snug" style={heading}>{tilbud.annonse.tittel}</span>
+                    <span className="block text-[16.5px] font-bold leading-snug tracking-[-0.01em]" style={heading}>{tilbud.annonse.tittel}</span>
                     <span className="mt-1.5 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
                       <span className="text-[13.5px] text-[#737373]">{pent(tilbud.adresse)}</span>
-                      <span className="text-[15px] font-bold tabular-nums" style={heading}>{tall(r.anbefaltLeie)} kr / mnd</span>
+                      <span className="text-[15px] font-bold tabular-nums" style={heading}>{tall(anbefalt)} kr / mnd</span>
                     </span>
-                    <span className="mt-3 flex items-center gap-1.5 text-[13.5px] font-semibold text-[#141414]">
+                    <span className="mt-3.5 flex items-center gap-1.5 text-[13.5px] font-semibold" style={{ color: LILLA }}>
                       Se hele annonsen <span aria-hidden="true" className="transition-transform group-hover:translate-x-0.5">→</span>
                     </span>
                   </span>
@@ -659,7 +850,7 @@ export default function TilbudSide() {
               )}
 
               {visAnnonse && (
-                <div className="mt-8">
+                <div className="mx-auto mt-10 max-w-[860px]">
                   <AnnonsePreview tilbud={tilbud} r={r} />
                   <button onClick={() => setVisAnnonse(false)} data-testid="tilbud-skjul-annonse"
                     className="mt-4 text-[13.5px] font-semibold text-[#737373] transition-colors hover:text-[#141414]">
@@ -671,87 +862,108 @@ export default function TilbudSide() {
           </div>
         )}
 
-        {/* ── Du gjør / DigiHome gjør — verdiforslaget på to sekunder ── */}
-        <Avsnitt className="mt-24 sm:mt-28">
-          <div className="grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,400px)_1fr] lg:gap-20" data-testid="tilbud-manifest">
-            <div>
-              <h2 className="text-[26px] font-semibold leading-[1.15] tracking-[-0.02em] sm:text-[30px]" style={heading}>
-                Å leie ut trenger ikke bli en ny jobb.
-              </h2>
-              <p className="mt-4 text-[15.5px] leading-relaxed text-[#404040]">
-                Vi er eiendomsmeglere med utleie som spesialfelt. Du gjør to ting — vi gjør resten.
-              </p>
-            </div>
-            <div className="grid grid-cols-1 gap-10 sm:grid-cols-2">
+        {/* ══ 5 · ARBEIDSFORDELINGEN — mørk seksjon: du gjør to ting, vi tar resten ══ */}
+        <div className={`relative left-1/2 ${SEKSJON} w-[min(100vw-16px,1360px)] -translate-x-1/2 overflow-hidden rounded-[28px] bg-[#141414] text-white sm:rounded-[36px]`}>
+          <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-[300px] bg-[radial-gradient(760px_260px_at_28%_-60px,rgba(196,176,242,0.10),transparent_70%)]" />
+          <Avsnitt className={`mx-auto max-w-[1200px] px-5 sm:px-8 ${BAND_PY}`}>
+            <div className="grid grid-cols-1 gap-12 lg:grid-cols-[minmax(0,400px)_1fr] lg:gap-24" data-testid="tilbud-manifest">
               <div>
-                <p className="text-[12px] font-semibold text-[#a3a3a3]">Du gjør</p>
-                <ul className="mt-3">
-                  {['Gir oss nøklene', 'Godkjenner leietaker'].map((t) => (
-                    <li key={t} className="border-t border-black/[0.08] py-3 text-[15px] font-semibold" style={heading}>{t}</li>
-                  ))}
-                </ul>
+                <SeksjonHode
+                  lys
+                  kicker="Arbeidsfordelingen"
+                  tittel={<>Du gjør to ting.<br />Vi tar resten.</>}
+                  intro="Vi er eiendomsmeglere med utleie som spesialfelt. Å leie ut trenger ikke bli en ny jobb for deg."
+                />
               </div>
-              <div>
-                <p className="text-[12px] font-semibold text-[#a3a3a3]">DigiHome gjør</p>
-                <ul className="mt-3">
-                  {['Annonse og bilder', 'Markedsføring', 'Visninger', 'Screening og referansesjekk', 'Kontrakt og depositum', 'Innflytting og protokoll', 'Oppfølging gjennom leieforholdet'].map((t) => (
-                    <li key={t} className="border-t border-black/[0.08] py-3 text-[14.5px] text-[#404040]">{t}</li>
-                  ))}
-                </ul>
+              <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:pt-1">
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-white/40">Du gjør</p>
+                  <ul className="mt-4">
+                    {['Gir oss nøklene', 'Godkjenner leietaker'].map((t, i) => (
+                      <li key={t} className="flex items-baseline gap-3.5 border-t border-white/10 py-4">
+                        <span className="text-[13px] font-bold tabular-nums text-[#c4b0f2]" style={heading}>0{i + 1}</span>
+                        <span className="text-[16.5px] font-semibold tracking-[-0.01em]" style={heading}>{t}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-white/40">DigiHome gjør</p>
+                  <ul className="mt-4">
+                    {['Annonse og bilder', 'Markedsføring', 'Visninger', 'Screening og referansesjekk', 'Kontrakt og depositum', 'Innflytting og protokoll', 'Oppfølging gjennom leieforholdet'].map((t) => (
+                      <li key={t} className="flex items-center gap-2.5 border-t border-white/10 py-3 text-[14px] text-white/75">
+                        <svg width="13" height="13" viewBox="0 0 18 18" fill="none" className="shrink-0" aria-hidden="true">
+                          <path d="m3.6 9.4 3.4 3.4 7.4-7.6" stroke="#7ed9a7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                        {t}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Trust-strip — kun verifiserbare fakta */}
-          <div className="mt-12 flex flex-wrap items-baseline gap-x-10 gap-y-3 border-t border-black/[0.07] pt-6" data-testid="tilbud-trust">
-            <p className="text-[13.5px] text-[#404040]"><span className="font-bold" style={heading}>Eiendomsmeglere</span> med utleie som spesialfelt</p>
-            {grunnlag && <p className="text-[13.5px] tabular-nums text-[#404040]"><span className="font-bold" style={heading}>{grunnlag.antallILeide}</span> aktive leieforhold i Bergen</p>}
-            {grunnlag?.antallISone > 0 && <p className="text-[13.5px] tabular-nums text-[#404040]"><span className="font-bold" style={heading}>{grunnlag.antallISone}</span> utleid i samme postsone</p>}
-          </div>
-        </Avsnitt>
+            {/* Trust-strip — kun verifiserbare fakta */}
+            <div className="mt-14 flex flex-wrap items-baseline gap-x-12 gap-y-3 border-t border-white/10 pt-7" data-testid="tilbud-trust">
+              <p className="text-[13.5px] text-white/55"><span className="font-bold text-white" style={heading}>Eiendomsmeglere</span> med utleie som spesialfelt</p>
+              {grunnlag && <p className="text-[13.5px] tabular-nums text-white/55"><span className="font-bold text-white" style={heading}>{grunnlag.antallILeide}</span> aktive leieforhold i Bergen</p>}
+              {grunnlag?.antallISone > 0 && <p className="text-[13.5px] tabular-nums text-white/55"><span className="font-bold text-white" style={heading}>{grunnlag.antallISone}</span> utleid i samme postsone</p>}
+            </div>
+          </Avsnitt>
+        </div>
 
-        {/* ── Slik kommer vi i gang — tidspunktet er hovedinformasjonen ── */}
-        <Avsnitt className="mt-24 sm:mt-28">
-          <h2 className="text-[26px] font-semibold tracking-[-0.02em] sm:text-[30px]" style={heading}>Slik kommer vi i gang.</h2>
-          <div className="mt-8 grid grid-cols-1 gap-7 sm:grid-cols-4 sm:gap-8">
+        {/* ══ 6 · TRYGGHETEN — innvendinger, ikke repetisjon ══ */}
+        <Avsnitt className={SEKSJON}>
+          <SeksjonHode midt kicker="Tryggheten" tittel="Spørsmål?" />
+          <div className="mx-auto mt-8 max-w-[760px] border-b border-black/[0.07]">
             {[
-              ['I dag', 'Vi tar en prat', 'Uforpliktende — vi går gjennom tallene sammen.'],
-              ['Dag 1–2', 'Vi ser boligen', 'Befaring, og du leverer nøklene.'],
-              ['Innen 24 timer', 'Annonsen går live', 'Den er allerede produsert — vi trykker publiser.'],
-              ['Deretter', 'Vi finner leietaker', 'Visninger, kontrakt og forvaltning — vi håndterer resten.'],
-            ].map(([tid, t, d]) => (
-              <div key={tid} className="border-t border-black/[0.1] pt-4">
-                <p className="text-[13px] font-bold text-[#141414]" style={heading}>{tid}</p>
-                <p className="mt-1.5 text-[16px] font-semibold" style={heading}>{t}</p>
-                <p className="mt-1.5 text-[13.5px] leading-relaxed text-[#737373]">{d}</p>
+              ['Er leien garantert?', `Nei — ${tall(anbefalt)} kr er vår faglige anbefaling basert på faktiske leieinntekter i porteføljen vår. Endelig leie settes sammen med deg, og markedet gir fasiten. Vi anbefaler aldri en pris vi ikke tror vi oppnår.`],
+              ['Hvem bestemmer hvilken leietaker jeg får?', 'Du. Vi screener interessenter, sjekker referanser og kredittverdighet, og legger frem de beste kandidatene — men du godkjenner alltid leietakeren selv.'],
+              ['Hva inngår faktisk i honoraret?', `Alt i «DigiHome gjør»-listen over: annonse, markedsføring, visninger, screening, kontrakt, depositum, innflytting og løpende oppfølging. ${r.honorarPct} % av månedsleien, eks. mva — ingen etableringsgebyr, ingen skjulte kostnader.`],
+              ['Hva skjer hvis det oppstår problemer i leieforholdet?', 'Da er det oss leietakeren kontakter — ikke deg. Vi håndterer oppfølging, purringer og praktiske spørsmål, og involverer deg kun når en beslutning faktisk er din.'],
+              ['Hva om jeg vil avslutte samarbeidet?', 'Ingen bindingstid på forvaltningen. Fungerer det ikke, avslutter vi ryddig — leiekontrakten med leietaker består uansett på dine vilkår.'],
+            ].map(([q, a], i) => (
+              <div key={q} className="border-t border-black/[0.07]">
+                <button type="button" onClick={() => setAapen(aapen === i ? -1 : i)} aria-expanded={aapen === i}
+                  className="flex w-full items-center justify-between gap-5 py-5 text-left">
+                  <span className="text-[15.5px] font-semibold tracking-[-0.01em]" style={heading}>{q}</span>
+                  <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-[15px] font-medium leading-none transition-all duration-300 ${aapen === i ? 'rotate-45 border-transparent bg-[#141414] text-white' : 'border-black/[0.12] text-[#737373]'}`} aria-hidden="true">+</span>
+                </button>
+                <div className={`grid transition-[grid-template-rows] duration-300 ease-out ${aapen === i ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
+                  <div className="overflow-hidden">
+                    <p className="max-w-[660px] pb-6 text-[14.5px] leading-[1.7] [text-wrap:pretty] text-[#737373]">{a}</p>
+                  </div>
+                </div>
               </div>
             ))}
           </div>
         </Avsnitt>
 
-        {/* ── Spørsmål — innvendinger, ikke repetisjon ── */}
-        <Avsnitt className="mt-24 sm:mt-28">
-          <h2 className="text-[26px] font-semibold tracking-[-0.02em] sm:text-[30px]" style={heading}>Spørsmål?</h2>
-          <div className="mt-4 max-w-[760px]">
+        {/* ══ 7 · NESTE STEG — tidspunktet er hovedinformasjonen ══ */}
+        <Avsnitt className={SEKSJON}>
+          <SeksjonHode midt kicker="Neste steg" tittel="Slik kommer vi i gang." />
+          <div className="mx-auto mt-10 grid max-w-[1060px] grid-cols-1 gap-7 sm:grid-cols-4 sm:gap-8">
             {[
-              ['Er leien garantert?', `Nei — ${tall(r.anbefaltLeie)} kr er vår faglige anbefaling basert på faktiske leieinntekter i porteføljen vår. Endelig leie settes sammen med deg, og markedet gir fasiten. Vi anbefaler aldri en pris vi ikke tror vi oppnår.`],
-              ['Hvem bestemmer hvilken leietaker jeg får?', 'Du. Vi screener interessenter, sjekker referanser og kredittverdighet, og legger frem de beste kandidatene — men du godkjenner alltid leietakeren selv.'],
-              ['Hva inngår faktisk i honoraret?', `Alt i «DigiHome gjør»-listen over: annonse, markedsføring, visninger, screening, kontrakt, depositum, innflytting og løpende oppfølging. ${r.honorarPct} % av månedsleien, eks. mva — ingen etableringsgebyr, ingen skjulte kostnader.`],
-              ['Hva skjer hvis det oppstår problemer i leieforholdet?', 'Da er det oss leietakeren kontakter — ikke deg. Vi håndterer oppfølging, purringer og praktiske spørsmål, og involverer deg kun når en beslutning faktisk er din.'],
-              ['Hva om jeg vil avslutte samarbeidet?', 'Ingen bindingstid på forvaltningen. Fungerer det ikke, avslutter vi ryddig — leiekontrakten med leietaker består uansett på dine vilkår.'],
-            ].map(([q, a]) => (
-              <div key={q} className="border-t border-black/[0.07] py-5">
-                <p className="text-[16px] font-semibold" style={heading}>{q}</p>
-                <p className="mt-1.5 max-w-[680px] text-[14.5px] leading-relaxed text-[#737373]">{a}</p>
+              ['I dag', 'Vi tar en prat', 'Uforpliktende — vi går gjennom tallene sammen.', false],
+              ['Dag 1–2', 'Vi ser boligen', 'Befaring, og du leverer nøklene.', false],
+              ['Innen 24 timer', 'Annonsen går live', 'Den er allerede produsert — vi trykker publiser.', true],
+              ['Deretter', 'Vi finner leietaker', 'Visninger, kontrakt og forvaltning — vi håndterer resten.', false],
+            ].map(([tid, t, d, uthev]) => (
+              <div key={tid} className={`relative border-t-2 pt-5 ${uthev ? 'border-[#8b5cf6]' : 'border-black/[0.08]'}`}>
+                <span aria-hidden="true" className={`absolute -top-[5px] left-0 h-2 w-2 rounded-full ${uthev ? 'bg-[#8b5cf6]' : 'bg-[#d6d2ca]'}`} />
+                <span className={`inline-flex rounded-full px-2.5 py-1 text-[11.5px] font-bold ${uthev ? 'bg-[#f0eafc]' : 'bg-black/[0.05] text-[#525252]'}`} style={uthev ? { color: LILLA } : undefined}>{tid}</span>
+                <p className="mt-3 text-[16px] font-semibold tracking-[-0.01em]" style={heading}>{t}</p>
+                <p className="mt-1.5 text-[13.5px] leading-[1.65] text-[#737373]">{d}</p>
               </div>
             ))}
           </div>
         </Avsnitt>
       </main>
 
-      {/* ── Final CTA — sidens eneste mørke område: neste steg i en dialog ── */}
-      <div id="kontakt" className="mt-24 scroll-mt-16 bg-[#141414] text-white sm:mt-28">
-        <Avsnitt className="mx-auto max-w-[1200px] px-5 py-16 sm:px-8 sm:py-20">
+      {/* ══ 8 · FINAL CTA — neste steg i en dialog, ikke et skjema ══ */}
+      <div id="kontakt" className={`relative ${SEKSJON} mx-auto w-[min(100vw-16px,1360px)] scroll-mt-16 overflow-hidden rounded-[28px] bg-[#141414] text-white sm:rounded-[36px]`}>
+        <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-[320px] bg-[radial-gradient(820px_280px_at_50%_-80px,rgba(196,176,242,0.12),transparent_70%)]" />
+        <Avsnitt className={`mx-auto max-w-[1200px] px-5 sm:px-8 ${BAND_PY}`}>
           {sendt ? (
             <div className="py-4 text-center" data-testid="tilbud-kontakt">
               <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-white/10">
@@ -759,52 +971,49 @@ export default function TilbudSide() {
                   <path d="m6 11.5 3.2 3.2L16.5 7.5" stroke="#7ed9a7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </div>
-              <p className="mt-4 text-[22px] font-bold" style={heading}>Takk! Sarah ringer deg i dag eller i morgen.</p>
+              <p className="mt-4 text-[22px] font-bold tracking-[-0.01em]" style={heading}>Takk! Sarah ringer deg i dag eller i morgen.</p>
               <p className="mt-2 text-[14px] text-white/55">Helt uforpliktende — en kort prat om boligen og hva vi kan få til.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,440px)_1fr] lg:gap-20" data-testid="tilbud-kontakt">
-              <div>
-                <h2 className="text-[28px] font-bold leading-[1.12] tracking-[-0.02em] sm:text-[34px]" style={heading}>Vil du at Sarah tar neste steg?</h2>
-                <p className="mt-4 text-[15px] leading-relaxed text-white/60">
-                  Neste steg er bare en uforpliktende prat. Ingenting signeres her.
+            <div className="mx-auto max-w-[640px] text-center" data-testid="tilbud-kontakt">
+              <div className="mx-auto flex w-fit items-center gap-3">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/brand/sarah-sleeman-360.webp" alt="Sarah Sleeman" className="h-11 w-11 rounded-full object-cover ring-2 ring-white/15" />
+                <p className="text-left text-[13px] leading-snug text-white/60">
+                  <span className="block font-semibold text-white">Sarah Sleeman</span>
+                  din kontaktperson
                 </p>
-                <div className="mt-6 flex items-center gap-2.5">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="/brand/sarah-sleeman-360.webp" alt="Sarah Sleeman" className="h-10 w-10 rounded-full object-cover ring-2 ring-white/15" />
-                  <p className="text-[13.5px] text-white/60"><span className="font-semibold text-white">Sarah Sleeman</span> — din kontaktperson</p>
-                </div>
-                {r?.nettoTilEier > 0 && (
-                  <p className="mt-7 border-t border-white/10 pt-5 text-[13.5px] text-white/50">
-                    Estimert etter DigiHome-honorar: <span className="font-bold tabular-nums text-[#7ed9a7]">{tall(r.nettoTilEier)} kr / mnd</span>
-                  </p>
-                )}
               </div>
-              <div className="lg:pt-2">
-                <label htmlFor="tilbud-tlf" className="block text-[13px] font-semibold text-white/70">Telefonnummeret ditt</label>
-                <div className="mt-2 flex flex-col gap-2.5 sm:flex-row">
-                  <input id="tilbud-tlf" value={skjema.telefon} onChange={(e) => setSkjema((s) => ({ ...s, telefon: e.target.value }))}
-                    placeholder="f.eks. 950 00 000" inputMode="tel" autoComplete="tel" data-testid="tilbud-telefon"
-                    className="h-12 flex-1 rounded-[10px] border border-white/15 bg-white/[0.07] px-4 text-[15px] text-white outline-none transition-colors placeholder:text-white/30 focus:border-white/45" />
-                  <button onClick={send} disabled={sender || !skjema.telefon.trim()} data-testid="tilbud-send"
-                    className="h-12 shrink-0 rounded-[10px] bg-white px-7 text-[15px] font-semibold text-[#141414] transition-colors hover:bg-white/90 disabled:opacity-40">
-                    {sender ? 'Sender…' : 'Be Sarah ringe meg'}
-                  </button>
-                </div>
-                <label htmlFor="tilbud-melding" className="mt-5 block text-[13px] font-semibold text-white/70">Melding <span className="font-normal text-white/40">(valgfritt)</span></label>
-                <textarea id="tilbud-melding" value={skjema.melding} onChange={(e) => setSkjema((s) => ({ ...s, melding: e.target.value }))}
-                  placeholder="Noe vi bør vite før vi ringer?" rows={2}
-                  className="mt-2 w-full resize-none rounded-[10px] border border-white/15 bg-white/[0.07] px-4 py-3 text-[15px] text-white outline-none transition-colors placeholder:text-white/30 focus:border-white/45" />
-                {feil && <p className="mt-2 text-[13px] text-rose-300">{feil}</p>}
-                <p className="mt-3 text-[12px] text-white/35">Vi bruker kun nummeret til å kontakte deg om dette tilbudet.</p>
+              <h2 className="mt-6 text-[clamp(28px,3.6vw,40px)] font-bold leading-[1.08] tracking-[-0.025em]" style={heading}>Vil du at Sarah tar neste steg?</h2>
+              <p className="mx-auto mt-4 max-w-[440px] text-[15px] leading-[1.65] text-white/60">
+                Neste steg er bare en uforpliktende prat. Ingenting signeres her.
+              </p>
+              <div className="mx-auto mt-9 flex max-w-[520px] flex-col gap-2.5 sm:flex-row">
+                <input value={skjema.telefon} onChange={(e) => setSkjema((s) => ({ ...s, telefon: e.target.value }))}
+                  placeholder="Telefonnummeret ditt" inputMode="tel" autoComplete="tel" aria-label="Telefonnummeret ditt" data-testid="tilbud-telefon"
+                  className="h-[52px] flex-1 rounded-full border border-white/15 bg-white/[0.07] px-6 text-[15px] text-white outline-none transition-colors placeholder:text-white/30 focus:border-white/45" />
+                <button onClick={send} disabled={sender || !skjema.telefon.trim()} data-testid="tilbud-send"
+                  className="h-[52px] shrink-0 rounded-full bg-white px-8 text-[15px] font-semibold text-[#141414] transition-all hover:bg-white/90 active:scale-[0.98] disabled:opacity-40">
+                  {sender ? 'Sender…' : 'Be Sarah ringe meg'}
+                </button>
               </div>
+              <textarea value={skjema.melding} onChange={(e) => setSkjema((s) => ({ ...s, melding: e.target.value }))}
+                placeholder="Noe vi bør vite før vi ringer? (valgfritt)" rows={2} aria-label="Melding (valgfritt)"
+                className="mx-auto mt-3 block w-full max-w-[520px] resize-none rounded-[18px] border border-white/15 bg-white/[0.07] px-6 py-3.5 text-[15px] text-white outline-none transition-colors placeholder:text-white/30 focus:border-white/45" />
+              {feil && <p className="mt-2 text-[13px] text-rose-300">{feil}</p>}
+              <p className="mt-4 text-[12px] text-white/35">Vi bruker kun nummeret til å kontakte deg om dette tilbudet.</p>
+              {netto > 0 && (
+                <p className="mx-auto mt-9 max-w-[440px] border-t border-white/10 pt-5 text-[13.5px] text-white/50">
+                  Estimert etter DigiHome-honorar: <span className="font-bold tabular-nums text-[#7ed9a7]">{tall(netto)} kr / mnd</span>
+                </p>
+              )}
             </div>
           )}
         </Avsnitt>
       </div>
 
       {/* ── Kolofon ── */}
-      <footer className="mx-auto max-w-[1200px] px-5 pb-24 pt-10 sm:px-8 sm:pb-14">
+      <footer className="mx-auto max-w-[1200px] px-5 pb-28 pt-12 sm:px-8 sm:pb-16">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
           <div>
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -818,16 +1027,16 @@ export default function TilbudSide() {
         </div>
       </footer>
 
-      {/* ── Sticky bunn-CTA (kun mobil) ── */}
+      {/* ── Flytende bunn-CTA (kun mobil) ── */}
       {!sendt && (
-        <div className={`fixed inset-x-0 bottom-0 z-40 border-t border-black/[0.08] bg-white/95 px-4 py-3 backdrop-blur-md transition-transform duration-300 sm:hidden ${visBunn ? 'translate-y-0' : 'translate-y-full'}`}>
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-[11px] font-medium text-[#a3a3a3]">Estimert til deg</p>
-              <p className="text-[16px] font-bold tabular-nums text-[#1f7a45]" style={heading}>{tall(r.nettoTilEier)} kr/mnd</p>
+        <div className={`fixed inset-x-0 bottom-0 z-40 px-3 pb-3 transition-transform duration-300 sm:hidden ${visBunn ? 'translate-y-0' : 'translate-y-[120%]'}`}>
+          <div className="flex items-center justify-between gap-3 rounded-[18px] bg-white/95 px-4 py-3 shadow-[0_8px_32px_rgba(0,0,0,0.14)] ring-1 ring-black/[0.06] backdrop-blur-md">
+            <div className="min-w-0">
+              <p className="truncate text-[11px] font-medium text-[#a3a3a3]">Anbefalt leie {tall(anbefalt)} kr/mnd</p>
+              <p className="text-[16px] font-bold tabular-nums tracking-[-0.01em]" style={{ ...heading, color: GRONN }}>{tall(netto)} kr til deg</p>
             </div>
             <button onClick={tilKontakt} data-testid="tilbud-bunn-cta"
-              className="h-11 shrink-0 rounded-[10px] bg-[#141414] px-5 text-[13.5px] font-semibold text-white transition-transform active:scale-[0.98]">
+              className="h-11 shrink-0 rounded-full bg-[#141414] px-5 text-[13.5px] font-semibold text-white transition-transform active:scale-[0.97]">
               Snakk med Sarah
             </button>
           </div>
