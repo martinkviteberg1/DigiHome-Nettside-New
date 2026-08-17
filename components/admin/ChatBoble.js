@@ -64,8 +64,22 @@ export default function ChatBoble({ token, user }) {
   const [fokus, setFokus] = useState(false);
   const listeRef = useRef(null);
   const inputRef = useRef(null);
+  const overlayRef = useRef(null);
   const aapenRef = useRef(false);
   aapenRef.current = aapen;
+
+  /* Dyplenke fra e-postvarsler: /admin?chat=1 åpner chatten direkte */
+  useEffect(() => {
+    try {
+      const p = new URLSearchParams(window.location.search);
+      if (p.has('chat')) {
+        setAapen(true);
+        p.delete('chat');
+        const q = p.toString();
+        window.history.replaceState({}, '', window.location.pathname + (q ? `?${q}` : '') + window.location.hash);
+      }
+    } catch (e) {}
+  }, []);
 
   const api = useCallback(async (sti, opts = {}) => {
     const skille = sti.includes('?') ? '&' : '?';
@@ -212,6 +226,18 @@ export default function ChatBoble({ token, user }) {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
     if (e.key === 'Escape') setMention(null);
   };
+
+  /* Badge-visning av @-tagger direkte i skrivefeltet: et speil-lag bak
+     textareaen rendrer samme tekst med pillebakgrunn på valgte tagger.
+     Selve textarea-teksten er transparent (caret/markering beholdes), og
+     identisk font/metrikk gjør at alt ligger perfekt på linje. Pillen lages
+     med box-shadow (påvirker ikke layout) — derfor forskyves ingen tegn. */
+  const inputDeler = useMemo(() => {
+    const navn = Object.keys(valgte).filter((n) => tekst.includes(`@${n}`)).sort((a, b) => b.length - a.length);
+    if (!navn.length) return [{ t: tekst }];
+    const re = new RegExp(`(@(?:${navn.map(escRe).join('|')}))`, 'g');
+    return tekst.split(re).map((del) => (del.startsWith('@') && navn.includes(del.slice(1)) ? { t: del, tag: true } : { t: del }));
+  }, [tekst, valgte]);
 
   const erAdminRolle = ['owner', 'admin'].includes(user?.role);
   const minId = user?.id;
@@ -360,20 +386,31 @@ export default function ChatBoble({ token, user }) {
               </div>
             )}
             <div className="flex items-end gap-2 rounded-[18px] bg-white p-1.5 transition-shadow"
-              style={{ boxShadow: fokus ? '0 0 0 2px rgba(109,40,217,0.28), 0 4px 16px rgba(20,16,40,0.08)' : 'inset 0 0 0 1px rgba(0,0,0,0.07), 0 2px 8px rgba(20,16,40,0.05)' }}>
-              <textarea
-                ref={inputRef}
-                value={tekst}
-                onChange={oppdaterTekst}
-                onKeyDown={paaTast}
-                onClick={oppdaterTekst}
-                onFocus={() => setFokus(true)}
-                onBlur={() => setFokus(false)}
-                placeholder="Skriv en melding… @ for å tagge"
-                rows={Math.min(4, Math.max(1, tekst.split('\n').length))}
-                data-testid="chat-input"
-                className="max-h-[110px] flex-1 resize-none bg-transparent px-2.5 py-2 text-[13.5px] leading-snug text-[#1c1917] outline-none placeholder:text-[#b3ada3]"
-              />
+              style={{ boxShadow: fokus ? 'inset 0 0 0 1px rgba(109,40,217,0.45), 0 6px 24px rgba(109,40,217,0.12)' : 'inset 0 0 0 1px rgba(0,0,0,0.07), 0 2px 8px rgba(20,16,40,0.05)' }}>
+              <div className="relative min-w-0 flex-1">
+                {/* Speil-laget med badges — nøyaktig samme typografi som textareaen */}
+                <div ref={overlayRef} aria-hidden="true"
+                  className="pointer-events-none absolute inset-0 overflow-hidden whitespace-pre-wrap break-words px-2.5 py-2 text-[13.5px] leading-snug text-[#1c1917]">
+                  {inputDeler.map((d, i) => (d.tag
+                    ? <span key={i} className="rounded-[5px] text-[#6d28d9]" style={{ background: '#ece4fb', boxShadow: '0 0 0 2.5px #ece4fb', boxDecorationBreak: 'clone', WebkitBoxDecorationBreak: 'clone' }}>{d.t}</span>
+                    : <React.Fragment key={i}>{d.t}</React.Fragment>))}
+                  {'\u200b'}
+                </div>
+                <textarea
+                  ref={inputRef}
+                  value={tekst}
+                  onChange={oppdaterTekst}
+                  onKeyDown={paaTast}
+                  onClick={oppdaterTekst}
+                  onFocus={() => setFokus(true)}
+                  onBlur={() => setFokus(false)}
+                  onScroll={(e) => { if (overlayRef.current) overlayRef.current.scrollTop = e.target.scrollTop; }}
+                  placeholder="Skriv en melding… @ for å tagge"
+                  rows={Math.min(4, Math.max(1, tekst.split('\n').length))}
+                  data-testid="chat-input"
+                  className="relative block max-h-[110px] w-full resize-none bg-transparent px-2.5 py-2 text-[13.5px] leading-snug text-transparent caret-[#1c1917] outline-none focus:outline-none placeholder:text-[#b3ada3]"
+                />
+              </div>
               <button onClick={send} disabled={sender || !tekst.trim()} data-testid="chat-send" title="Send (Enter)"
                 className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[13px] text-white transition-all hover:brightness-110 active:scale-90 disabled:opacity-25"
                 style={{ background: 'linear-gradient(135deg, #1c1917 10%, #4c2a94 140%)', boxShadow: '0 4px 12px rgba(59,35,115,0.3)' }}>

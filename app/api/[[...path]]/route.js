@@ -3258,17 +3258,25 @@ async function handleRoute(request, { params }) {
       }
       if (emailConfigured()) {
         const baseCh = process.env.NEXT_PUBLIC_BASE_URL || '';
+        // Dyplenke som åpner portalen MED chatten åpen (ChatBoble leser ?chat=1)
+        const chatUrl = baseCh ? `${baseCh}/admin?chat=1` : '';
         const epost = resCh.mottakere.filter((mt) => mt.id !== avsenderId && mt.email && !isUndeliverableTestAddress(mt.email));
         await Promise.allSettled(epost.map((mt) => sendHtmlEmail({
           to: mt.email,
           subject: `${avsenderNavn} nevnte deg i teamchatten`,
+          // Person-til-person-signaler (bedrer «Prioritert»-plassering i Outlook):
+          // avsendernavn = personen som tagget, svar-til = personens e-post,
+          // personlig=true skrur av sporing (ingen link-omskriving/piksel).
+          fromName: `${avsenderNavn} (DigiHome)`,
+          replyTo: sesCh.email || undefined,
+          personlig: true,
           html: `<div style="font-family:Inter,Helvetica,Arial,sans-serif;max-width:520px;margin:0 auto;padding:8px 0;color:#1c1917">
             <p style="font-size:15px;margin:0 0 6px"><b>${avsenderNavn}</b> nevnte deg i DigiHome-teamchatten:</p>
             <div style="background:#f5f4f1;border-radius:12px;padding:14px 16px;font-size:14px;line-height:1.5;white-space:pre-wrap">${resCh.melding.text.slice(0, 1000).replace(/</g, '&lt;')}</div>
-            ${baseCh ? `<p style="margin:16px 0 0"><a href="${baseCh}/admin" style="display:inline-block;background:#141414;color:#fff;text-decoration:none;font-size:13.5px;font-weight:600;padding:10px 18px;border-radius:9px">Åpne chatten</a></p>` : ''}
-            <p style="margin:14px 0 0;font-size:12px;color:#a6a19a">Du får denne e-posten fordi du ble @tagget. Andre meldinger varsles kun i portalen.</p>
+            ${chatUrl ? `<p style="margin:16px 0 0"><a href="${chatUrl}" style="display:inline-block;background:#141414;color:#fff;text-decoration:none;font-size:13.5px;font-weight:600;padding:10px 18px;border-radius:9px">Åpne chatten</a></p>` : ''}
+            <p style="margin:14px 0 0;font-size:12px;color:#a6a19a">Du får denne e-posten fordi du ble @tagget. Andre meldinger varsles kun i portalen. Svar på e-posten går direkte til ${avsenderNavn}.</p>
           </div>`,
-          text: `${avsenderNavn} nevnte deg i teamchatten: ${resCh.melding.text.slice(0, 500)}${baseCh ? ` — Åpne: ${baseCh}/admin` : ''}`,
+          text: `${avsenderNavn} nevnte deg i teamchatten: ${resCh.melding.text.slice(0, 500)}${chatUrl ? ` — Åpne chatten: ${chatUrl}` : ''}`,
           categories: ['chat-mention'],
         }).catch(() => {})));
       }
