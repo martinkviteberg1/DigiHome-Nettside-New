@@ -66,7 +66,7 @@ const Felt = ({ label, k, drivere, sanert, lagret, onEndre, enhet, hint, slider,
     <div className="py-[6px]">
       <div className="flex items-center justify-between gap-3">
         <span className="flex min-w-0 items-center gap-1.5">
-          <span className="truncate text-[13.5px] text-[#57534e]">{label}</span>
+          <span className="text-[13px] leading-tight text-[#57534e]">{label}</span>
           {endret && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#6d28d9]" title="Endret siden sist lagring" />}
         </span>
         <span className="flex shrink-0 items-center gap-1.5">

@@ -77,13 +77,13 @@ export default function BudsjettEnkel({ apiKey, readOnly = false, autoTour = fal
     {
       id: 'liste',
       tittel: 'Budsjettoversikten',
-      tekst: 'Alle budsjetter og investormodeller samlet. Klikk en plan for å åpne den — «I investorrommet» betyr at den er delt (skrivebeskyttet) med investorene.',
+      tekst: 'Alle budsjetter samlet. Klikk et budsjett for å åpne det — «I investorrommet» betyr at det er delt (skrivebeskyttet) med investorene.',
       maal: () => document.querySelector('[data-testid="budsjett-liste"]'),
     },
     {
       id: 'ny',
-      tittel: 'To plantyper',
-      tekst: 'Enkelt budsjett: honorarrader per måned, forhåndsutfylt fra leieforholdene. Investormodell: driverstyrt modell med vekst, kostnader, bemanning, break-even og kapitalbehov.',
+      tittel: 'Nytt budsjett',
+      tekst: 'Ett budsjett = én driverstyrt modell: porteføljefakta hentes fra leieforholdene, og vekst, kostnader, bemanning, break-even og kapitalbehov modelleres med synlige forutsetninger.',
       maal: () => document.querySelector('[data-testid="budsjett-ny"]'),
     },
   ];
@@ -105,9 +105,8 @@ export default function BudsjettEnkel({ apiKey, readOnly = false, autoTour = fal
     return () => clearTimeout(t);
   }, [autoTour, valgtId, planer]);
 
-  // Opprettelse
+  // Opprettelse — alle nye budsjetter er driverstyrte modeller (type 'modell')
   const [nyNavn, setNyNavn] = useState('');
-  const [nyType, setNyType] = useState('enkel'); // 'enkel' | 'modell'
   const [nyFra, setNyFra] = useState(naaYm());
   const [nyTil, setNyTil] = useState(ymPluss(naaYm(), 11));
   const [oppretter, setOppretter] = useState(false);
@@ -151,21 +150,15 @@ export default function BudsjettEnkel({ apiKey, readOnly = false, autoTour = fal
       let hentetOk = true;
       try { forslag = await api(`plan/forslag?startYm=${nyFra}&antallMnd=${n}`); } catch (e) { hentetOk = false; }
       const serie = (arr) => { const a = (arr || []).slice(0, n).map((v) => Math.max(0, Math.round(Number(v) || 0))); while (a.length < n) a.push(0); return a; };
-      const body = nyType === 'modell'
-        ? {
-            navn, startYm: nyFra, antallMnd: n, type: 'modell', investorSynlig: false,
-            fakta: { eksisterende: serie(forslag?.sikret), enheter: serie(forslag?.enheterSerie), oppdatertAt: new Date().toISOString() },
-            drivere: {
-              ...STANDARD_DRIVERE,
-              ...(forslag?.drivereBrukt?.snittLeie ? { snittleieNye: Math.round(forslag.drivereBrukt.snittLeie) } : {}),
-              ...(forslag?.drivereBrukt?.honorarPct ? { honorarPctNye: forslag.drivereBrukt.honorarPct } : {}),
-            },
-          }
-        : {
-            navn, startYm: nyFra, antallMnd: n, investorSynlig: false,
-            inntekter: { 'Honorar (forvaltning)': serie(forslag?.sikret) },
-            kostnader: {},
-          };
+      const body = {
+        navn, startYm: nyFra, antallMnd: n, type: 'modell', investorSynlig: false,
+        fakta: { eksisterende: serie(forslag?.sikret), enheter: serie(forslag?.enheterSerie), oppdatertAt: new Date().toISOString() },
+        drivere: {
+          ...STANDARD_DRIVERE,
+          ...(forslag?.drivereBrukt?.snittLeie ? { snittleieNye: Math.round(forslag.drivereBrukt.snittLeie) } : {}),
+          ...(forslag?.drivereBrukt?.honorarPct ? { honorarPctNye: forslag.drivereBrukt.honorarPct } : {}),
+        },
+      };
       const r = await api('plan', { method: 'PUT', body });
       setNyNavn(''); setVisNy(false);
       await hentPlaner();
@@ -352,7 +345,7 @@ export default function BudsjettEnkel({ apiKey, readOnly = false, autoTour = fal
         <div className="min-w-0">
           <h1 className="text-[24px] font-bold tracking-[-0.015em] text-[#1c1917]" style={heading}>Budsjetter</h1>
           <p className="mt-1 text-[13.5px] text-[#8f8a82]">
-            {readOnly ? 'Budsjetter delt med investorrommet.' : 'Enkle periodebudsjetter — honorar hentes ferdig utfylt fra leieforholdene.'}
+            {readOnly ? 'Budsjetter delt med investorrommet.' : 'Driverstyrte budsjetter — porteføljefakta fra leieforholdene, resten modellerer du med synlige forutsetninger.'}
           </p>
         </div>
         <div className="mt-1 flex shrink-0 items-center gap-2">
@@ -373,18 +366,6 @@ export default function BudsjettEnkel({ apiKey, readOnly = false, autoTour = fal
       {/* Opprettelse — ett lite panel, tre felter, ferdig */}
       {visNy && !readOnly && (
         <div className="mt-4 rounded-[14px] bg-white p-5 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]" data-testid="budsjett-ny-panel">
-          <div className="mb-4 grid gap-2 sm:grid-cols-2">
-            <button onClick={() => setNyType('enkel')} data-testid="budsjett-type-enkel"
-              className={`rounded-[11px] p-3.5 text-left transition-all ${nyType === 'enkel' ? 'bg-[#f0ebfa] shadow-[inset_0_0_0_1.5px_#6d28d9]' : 'bg-white shadow-[inset_0_0_0_1px_rgba(0,0,0,0.08)] hover:bg-[#faf9f7]'}`}>
-              <span className="flex items-center gap-2 text-[13.5px] font-bold text-[#1c1917]" style={heading}><Wallet className="h-4 w-4" /> Enkelt budsjett</span>
-              <span className="mt-1 block text-[12px] leading-relaxed text-[#8f8a82]">Honorar per måned fra leieforholdene — juster tallene selv.</span>
-            </button>
-            <button onClick={() => setNyType('modell')} data-testid="budsjett-type-modell"
-              className={`rounded-[11px] p-3.5 text-left transition-all ${nyType === 'modell' ? 'bg-[#f0ebfa] shadow-[inset_0_0_0_1.5px_#6d28d9]' : 'bg-white shadow-[inset_0_0_0_1px_rgba(0,0,0,0.08)] hover:bg-[#faf9f7]'}`}>
-              <span className="flex items-center gap-2 text-[13.5px] font-bold text-[#1c1917]" style={heading}><TrendingUp className="h-4 w-4" /> Investormodell</span>
-              <span className="mt-1 block text-[12px] leading-relaxed text-[#8f8a82]">Driver-drevet: vekst, churn, bemanning og kostnader — sensitivitet i sanntid.</span>
-            </button>
-          </div>
           <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_150px_150px]">
             <label className="block">
               <span className="text-[12px] font-medium text-[#8f8a82]">Navn</span>
@@ -408,8 +389,8 @@ export default function BudsjettEnkel({ apiKey, readOnly = false, autoTour = fal
           </div>
           <div className="mt-3.5 flex items-center gap-3">
             <button onClick={opprett} disabled={oppretter} data-testid="budsjett-opprett" className={KNAPP_PRIMAER}>
-              {oppretter ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wallet className="h-3.5 w-3.5" />}
-              {oppretter ? 'Henter honorar…' : 'Opprett budsjett'}
+              {oppretter ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <TrendingUp className="h-3.5 w-3.5" />}
+              {oppretter ? 'Henter porteføljefakta…' : 'Opprett budsjett'}
             </button>
             {nyFra && nyTil && ymDiff(nyFra, nyTil) >= 1 && (
               <span className="text-[12.5px] text-[#a6a19a]">{periodeLabel(nyFra, ymDiff(nyFra, nyTil))}</span>
@@ -417,9 +398,7 @@ export default function BudsjettEnkel({ apiKey, readOnly = false, autoTour = fal
           </div>
           {nyFeil && <p className="mt-2.5 text-[13px] text-[#b3261e]" data-testid="budsjett-ny-feil">{nyFeil}</p>}
           <p className="mt-2.5 text-[12px] leading-relaxed text-[#a6a19a]">
-            {nyType === 'modell'
-              ? 'Porteføljefakta (kontraktsfestet honorar og enheter) hentes automatisk — vekst, churn, bemanning og kostnader modellerer du med synlige drivere etterpå.'
-              : 'Honorar fylles inn automatisk fra de signerte leieforholdene — du kan justere hver måned etterpå.'}
+            Porteføljefakta (kontraktsfestet honorar og enheter) hentes automatisk fra leieforholdene — vekst, churn, bemanning og kostnader modellerer du med synlige forutsetninger etterpå.
           </p>
         </div>
       )}
@@ -434,7 +413,7 @@ export default function BudsjettEnkel({ apiKey, readOnly = false, autoTour = fal
           <Wallet className="mx-auto h-7 w-7 text-[#d6d1c9]" />
           <p className="mt-3 text-[14.5px] font-semibold text-[#1c1917]" style={heading}>{readOnly ? 'Ingen budsjetter er delt ennå' : 'Ingen budsjetter ennå'}</p>
           <p className="mx-auto mt-1 max-w-[380px] text-[13px] leading-relaxed text-[#8f8a82]">
-            {readOnly ? 'Når et budsjett deles med investorrommet, dukker det opp her.' : 'Lag ditt første budsjett — velg periode, så henter vi honoraret fra leieforholdene for deg.'}
+            {readOnly ? 'Når et budsjett deles med investorrommet, dukker det opp her.' : 'Lag ditt første budsjett — velg periode, så henter vi porteføljefakta fra leieforholdene for deg.'}
           </p>
           {!readOnly && !visNy && (
             <button onClick={() => setVisNy(true)} className={`${KNAPP_PRIMAER} mx-auto mt-5`}><Plus className="h-3.5 w-3.5" /> Nytt budsjett</button>
@@ -455,7 +434,7 @@ export default function BudsjettEnkel({ apiKey, readOnly = false, autoTour = fal
                     <span className="flex shrink-0 items-center gap-1 rounded-full bg-[#f0ebfa] px-2 py-0.5 text-[10.5px] font-bold text-[#6d28d9]" title="Synlig i investorrommet"><Eye className="h-3 w-3" /> Investorrom</span>
                   )}
                 </span>
-                <span className="mt-0.5 block text-[13px] text-[#8f8a82]">{p.type === 'modell' ? 'Investormodell · ' : ''}{periodeLabel(p.startYm, p.antallMnd)}</span>
+                <span className="mt-0.5 block text-[13px] text-[#8f8a82]">{p.type === 'modell' ? '' : 'Enkelt budsjett (eldre) · '}{periodeLabel(p.startYm, p.antallMnd)}</span>
               </span>
               <span className="shrink-0 text-right">
                 <span className="block text-[16px] font-bold tracking-[-0.01em] text-[#1c1917]" style={heading}>{kr(p.inntekter)}</span>

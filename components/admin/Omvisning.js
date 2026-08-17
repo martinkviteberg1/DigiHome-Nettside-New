@@ -137,16 +137,33 @@ export default function Omvisning({ steg = [], aktiv = false, onFerdig }) {
   const siste = idx === steg.length - 1;
   const smal = typeof window !== 'undefined' && window.innerWidth < 640;
 
-  // Kortplassering: under målet om det er plass, ellers over — klemt inn i viewport.
+  // Kortplassering: under målet om det er plass, ellers over, ellers ved siden
+  // — og ALLTID klemt innenfor viewporten (høye mål kan ellers dytte kortet ut).
+  const KORT_HOYDE_EST = 250; // estimat for klemming
   let kortStil;
   if (smal) {
     kortStil = { left: 10, right: 10, bottom: 10, position: 'fixed' };
   } else {
-    const plassUnder = window.innerHeight - (boks.top + boks.height) > 240;
-    const top = plassUnder ? boks.top + boks.height + 14 : undefined;
-    const bottom = plassUnder ? undefined : window.innerHeight - boks.top + 14;
-    const left = Math.max(12, Math.min(boks.left, window.innerWidth - KORT_BREDDE - 12));
-    kortStil = { top, bottom, left, width: KORT_BREDDE, position: 'fixed' };
+    const vh = window.innerHeight;
+    const vw = window.innerWidth;
+    const plassUnder = vh - (boks.top + boks.height);
+    const plassOver = boks.top;
+    const plassHoyre = vw - (boks.left + boks.width);
+    const plassVenstre = boks.left;
+    const klemTop = (t) => Math.max(12, Math.min(t, vh - KORT_HOYDE_EST - 12));
+    const klemLeft = (l) => Math.max(12, Math.min(l, vw - KORT_BREDDE - 12));
+    if (plassUnder >= KORT_HOYDE_EST) {
+      kortStil = { top: boks.top + boks.height + 14, left: klemLeft(boks.left), width: KORT_BREDDE, position: 'fixed' };
+    } else if (plassOver >= KORT_HOYDE_EST) {
+      kortStil = { bottom: vh - boks.top + 14, left: klemLeft(boks.left), width: KORT_BREDDE, position: 'fixed' };
+    } else if (plassHoyre >= KORT_BREDDE + 26) {
+      kortStil = { top: klemTop(boks.top), left: boks.left + boks.width + 14, width: KORT_BREDDE, position: 'fixed' };
+    } else if (plassVenstre >= KORT_BREDDE + 26) {
+      kortStil = { top: klemTop(boks.top), left: boks.left - KORT_BREDDE - 14, width: KORT_BREDDE, position: 'fixed' };
+    } else {
+      // Målet dekker (nesten) hele viewporten — legg kortet nederst til høyre.
+      kortStil = { bottom: 16, right: 16, width: KORT_BREDDE, position: 'fixed' };
+    }
   }
 
   const fart = 'cubic-bezier(.22,1,.36,1)';

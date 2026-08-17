@@ -20,7 +20,7 @@ import {
   SlidersHorizontal, TrendingUp, Scale, Users, Building2, Bookmark, HelpCircle,
 } from 'lucide-react';
 import Omvisning from '@/components/admin/Omvisning';
-import { beregnInvestorModell, rensModellDrivere, STANDARD_DRIVERE } from '@/lib/budsjett-modell';
+import { beregnInvestorModell, rensModellDrivere, STANDARD_DRIVERE, skalerVekst } from '@/lib/budsjett-modell';
 
 const heading = { fontFamily: 'var(--font-heading, inherit)' };
 const KNAPP_PRIMAER = 'flex h-9 items-center gap-1.5 rounded-[9px] bg-[#141414] px-4 text-[13px] font-medium text-white transition-colors hover:bg-black/80 active:scale-[0.98] disabled:opacity-40';
@@ -68,7 +68,7 @@ const Seksjon = ({ tittel, sammendrag, ikon: Ikon, open, onToggle, children }) =
         <ChevronDown className={`h-3.5 w-3.5 shrink-0 text-[#c2beb8] transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
       </span>
     </button>
-    {open && <div className="pb-2.5 pl-8">{children}</div>}
+    {open && <div className="pb-2.5 pl-1">{children}</div>}
   </div>
 );
 
@@ -81,7 +81,7 @@ const Felt = ({ label, k, drivere, sanert, lagret, onEndre, enhet, hint, slider,
     <div className="py-[6px]">
       <div className="flex items-center justify-between gap-3">
         <span className="flex min-w-0 items-center gap-1.5">
-          <span className="truncate text-[13.5px] text-[#57534e]">{label}</span>
+          <span className="text-[13px] leading-tight text-[#57534e]">{label}</span>
           {endret && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#6d28d9]" title="Endret siden sist lagring" />}
         </span>
         <span className="flex shrink-0 items-center gap-1.5">
@@ -199,6 +199,14 @@ const Graf = ({ m, startYm }) => {
 /* ── Kapasitetsgraf: modellerte enheter vs. tilgjengelig kapasitet (trapp) ──
    Skjæringen forteller historien: når vokser porteføljen forbi det dagens
    bemanning kan bære — og når hopper kapasiteten ved neste trinn? ── */
+const KpiBlokk = ({ label, verdi, under }) => (
+  <div className="min-w-[150px] flex-1 rounded-[12px] bg-white px-4 py-3 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]">
+    <p className="text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#a6a19a]">{label}</p>
+    <p className="mt-0.5 text-[20px] font-bold tracking-[-0.01em] text-[#1c1917]" style={heading}>{verdi}</p>
+    {under && <p className="text-[11px] text-[#a6a19a]">{under}</p>}
+  </div>
+);
+
 const KapasitetGraf = ({ m, startYm, enhPerAarsverk, maalPct }) => {
   const N = m.N;
   const kapasitet = m.budsjettertPct.map((p) => (p / 100) * enhPerAarsverk);
@@ -288,14 +296,6 @@ function BemanningsplanDrawer({ plan, fakta, drivere, readOnly, onLukk, onBruk }
   });
   const fjernTrinn = (i) => setDraft((d) => ({ ...d, bemanningstrinn: d.bemanningstrinn.filter((_, j) => j !== i) }));
   const settFelt = (k, v) => setDraft((d) => ({ ...d, [k]: v }));
-
-  const KpiBlokk = ({ label, verdi, under }) => (
-    <div className="min-w-[150px] flex-1 rounded-[12px] bg-white px-4 py-3 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]">
-      <p className="text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#a6a19a]">{label}</p>
-      <p className="mt-0.5 text-[20px] font-bold tracking-[-0.01em] text-[#1c1917]" style={heading}>{verdi}</p>
-      {under && <p className="text-[11px] text-[#a6a19a]">{under}</p>}
-    </div>
-  );
 
   const KostFelt = ({ label, k, enhet, heltall }) => (
     <label className="block">
@@ -490,6 +490,256 @@ function BemanningsplanDrawer({ plan, fakta, drivere, readOnly, onLukk, onBruk }
   );
 }
 
+/* ── Vekstgraf: søyler = nye enheter per måned (fasene synlige som trappetrinn),
+      linje = enheter under forvaltning. ── */
+const VekstGraf = ({ m, startYm }) => {
+  const N = m.N;
+  const rate = m.nyePerMndSerie || [];
+  const W = 960, H = 200, TOPP = 18, BUNN = 22;
+  const maksRate = Math.max(...rate, 1) * 1.3;
+  const maksEnh = Math.max(...m.enheter, 1) * 1.12;
+  const bw = W / Math.max(1, N);
+  const x = (i) => bw * i;
+  const yR = (v) => TOPP + (H - TOPP - BUNN) * (1 - v / maksRate);
+  const yE = (v) => TOPP + (H - TOPP - BUNN) * (1 - v / maksEnh);
+  const hopp = Math.max(1, Math.ceil(N / 10));
+  return (
+    <div data-testid="vekstplan-graf">
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: 200 }} preserveAspectRatio="none">
+        {Array.from({ length: N }, (_, i) => i).filter((i) => i % hopp === 0).map((i) => (
+          <text key={i} x={x(i)} y={H - 6} fontSize="10" fill="#c2beb8">{stor(mndKort(ymPluss(startYm, i)))}</text>
+        ))}
+        {/* nye per måned — søyler */}
+        {rate.map((v, i) => (
+          <rect key={i} x={x(i) + bw * 0.16} y={yR(v)} width={bw * 0.68} height={Math.max(0, H - BUNN - yR(v))} rx="2" fill="#ddD0f7" />
+        ))}
+        {/* enheter under forvaltning — linje */}
+        <polyline points={Array.from({ length: N }, (_, i) => `${x(i) + bw / 2},${yE(m.enheter[i])}`).join(' ')} fill="none" stroke="#6d28d9" strokeWidth="2.2" strokeLinejoin="round" />
+      </svg>
+      <div className="mt-1 flex flex-wrap items-center gap-4 text-[11px] text-[#a6a19a]">
+        <span className="flex items-center gap-1.5"><span className="h-2.5 w-3 rounded-[3px] bg-[#ddd0f7]" /> Nye enheter per måned</span>
+        <span className="flex items-center gap-1.5"><span className="h-[2.5px] w-4 rounded bg-[#6d28d9]" /> Enheter under forvaltning</span>
+      </div>
+    </div>
+  );
+};
+
+/* ── Vekstplan — drawer fra høyre, samme mønster som bemanningsplanen.
+      Faser med KONSTANT takt per fase, utløst av måned: fase 1 er grunntakten
+      (nyePerMnd), hver ny fase overtar fra sin måned. Redigerer et utkast —
+      ingenting treffer modellen før «Bruk vekstplan». ── */
+function VekstplanDrawer({ plan, fakta, drivere, readOnly, onLukk, onBruk }) {
+  const tilTall = (v) => Number(String(v ?? '').replace(/\s/g, '').replace(',', '.')) || 0;
+  const tilStreng = (v) => String(v ?? '').replace('.', ',');
+  const [draft, setDraft] = useState(() => ({
+    nyePerMnd: tilStreng(drivere.nyePerMnd),
+    faser: (drivere.vekstplan || []).map((f) => ({ fraMnd: f.fraMnd, perMnd: tilStreng(f.perMnd) })),
+  }));
+  const N = plan.antallMnd;
+  const ymFraIdx = (idx) => ymPluss(plan.startYm, idx - 1); // 1-basert fase-måned → ÅÅÅÅ-MM
+  const idxFraYm = (ym) => {
+    const [a, mn] = String(ym).split('-').map(Number);
+    const [a0, m0] = String(plan.startYm).split('-').map(Number);
+    if (!a || !mn || !a0 || !m0) return 2;
+    return Math.max(2, Math.min(N, (a - a0) * 12 + (mn - m0) + 1));
+  };
+
+  const sanertDraft = useMemo(() => rensModellDrivere({
+    ...drivere,
+    nyePerMnd: tilTall(draft.nyePerMnd),
+    vekstplan: draft.faser.map((f) => ({ fraMnd: f.fraMnd, perMnd: tilTall(f.perMnd) })),
+  }), [draft, drivere]);
+  const mV = useMemo(
+    () => beregnInvestorModell({ antallMnd: N, fakta, drivere: sanertDraft, startYm: plan.startYm }),
+    [N, fakta, sanertDraft, plan.startYm],
+  );
+
+  // Effektive faser (sortert) — til «nye i fasen»-kolonnen
+  const effektive = useMemo(() => {
+    const alle = [{ fraMnd: 1, perMnd: sanertDraft.nyePerMnd }, ...sanertDraft.vekstplan];
+    return alle.map((f, i) => {
+      const til = i + 1 < alle.length ? alle[i + 1].fraMnd - 1 : N;
+      const mnd = Math.max(0, til - f.fraMnd + 1);
+      return { ...f, tilMnd: til, mnd, sum: Math.round(f.perMnd * mnd * 10) / 10 };
+    });
+  }, [sanertDraft, N]);
+  const nyeIFase = (fraMnd) => effektive.find((f) => f.fraMnd === fraMnd);
+
+  const settFase = (i, k, v) => setDraft((d) => ({ ...d, faser: d.faser.map((f, j) => (j === i ? { ...f, [k]: v } : f)) }));
+  const fjernFase = (i) => setDraft((d) => ({ ...d, faser: d.faser.filter((_, j) => j !== i) }));
+  const leggFase = () => setDraft((d) => {
+    const siste = d.faser.length ? d.faser[d.faser.length - 1] : null;
+    const fra = Math.min(N, (siste ? Number(siste.fraMnd) || 1 : 1) + 6);
+    const takt = Math.round(((siste ? tilTall(siste.perMnd) : tilTall(d.nyePerMnd)) + 1) * 10) / 10;
+    return { ...d, faser: [...d.faser, { fraMnd: fra, perMnd: tilStreng(takt) }] };
+  });
+  const foreslaaTrapp = () => setDraft((d) => {
+    const r = Math.max(0.5, tilTall(d.nyePerMnd) || 1);
+    const rund = (v) => Math.round(v * 10) / 10;
+    const faser = [
+      { fraMnd: 7, perMnd: rund(r * 2) },
+      { fraMnd: 13, perMnd: rund(r * 3) },
+      { fraMnd: 19, perMnd: rund(r * 4) },
+    ].filter((f) => f.fraMnd <= N).map((f) => ({ fraMnd: f.fraMnd, perMnd: tilStreng(f.perMnd) }));
+    return { ...d, faser };
+  });
+
+  const taktSlutt = mV.nyePerMndSerie[N - 1] || 0;
+  const snittTakt = Math.round((mV.sammendrag.sumNyeBrutto / Math.max(1, N)) * 10) / 10;
+
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end" data-testid="vekstplan-drawer">
+      <div className="absolute inset-0 bg-black/30 backdrop-blur-[1.5px]" onClick={onLukk} />
+      <div className="relative flex h-full w-full max-w-[1080px] flex-col bg-[#faf9f7] shadow-[0_0_60px_rgba(0,0,0,0.25)] lg:w-[78vw]">
+        {/* Topp */}
+        <div className="flex items-center justify-between gap-3 border-b border-black/[0.06] bg-white px-5 py-3.5">
+          <div>
+            <p className="text-[16px] font-bold text-[#1c1917]" style={heading}>Vekstplan</p>
+            <p className="text-[12px] text-[#8f8a82]">Faser med konstant takt — hver fase overtar fra sin måned. Bemanning og kostnader følger planen automatisk.</p>
+          </div>
+          <button onClick={onLukk} data-testid="vekstplan-lukk" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] text-[#8f8a82] transition-colors hover:bg-black/[0.05] hover:text-[#1c1917]" title="Lukk">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* Innhold */}
+        <div className="flex-1 overflow-y-auto px-5 py-4" style={{ scrollbarWidth: 'thin' }}>
+          {/* KPI-er */}
+          <div className="flex flex-wrap gap-2.5">
+            <KpiBlokk label="Takt nå" verdi={`${kma(sanertDraft.nyePerMnd)} enh/mnd`} under="fase 1 — grunntakten" />
+            <KpiBlokk label="Takt ved periodeslutt" verdi={`${kma(taktSlutt)} enh/mnd`} under={sanertDraft.vekstplan.length ? `${sanertDraft.vekstplan.length + 1} faser i planen` : 'konstant hele perioden'} />
+            <KpiBlokk label="Nye enheter i perioden" verdi={`${kma(mV.sammendrag.sumNyeBrutto)}`} under={`snitt ${kma(snittTakt)} per måned`} />
+            <KpiBlokk label="Enheter ved periodeslutt" verdi={`${kr0(mV.sammendrag.enheterVedSlutt)}`} under="etter churn, inkl. kontraktsfestet" />
+          </div>
+
+          {/* Graf */}
+          <div className="mt-3 rounded-[16px] bg-white p-4 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]">
+            <p className="text-[13px] font-medium text-[#8f8a82]">Nye enheter per måned og porteføljen over tid</p>
+            <div className="mt-2">
+              <VekstGraf m={mV} startYm={plan.startYm} />
+            </div>
+          </div>
+
+          {/* Faser */}
+          <div className="mt-3 rounded-[16px] bg-white p-4 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]">
+            <p className="text-[13px] font-medium text-[#8f8a82]">Faser</p>
+            <p className="mt-0.5 text-[11.5px] text-[#a6a19a]">Taktene er absolutte (ikke tillegg): «2 per måned fra juli» betyr at det signeres 2 nye enheter hver måned fra juli — til neste fase overtar.</p>
+            <div className="mt-3 overflow-x-auto" style={{ scrollbarWidth: 'thin' }}>
+              <table className="w-full min-w-[560px] text-[13px]">
+                <thead>
+                  <tr className="text-[10.5px] uppercase tracking-[0.06em] text-[#a6a19a]">
+                    <th className="pb-1.5 text-left font-semibold">Fase</th>
+                    <th className="pb-1.5 text-left font-semibold">Gjelder fra</th>
+                    <th className="pb-1.5 text-right font-semibold">Nye per måned</th>
+                    <th className="pb-1.5 text-right font-semibold">Varighet</th>
+                    <th className="pb-1.5 text-right font-semibold">Nye i fasen</th>
+                    <th className="pb-1.5 text-right font-semibold">&nbsp;</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {/* Fase 1 — grunntakten */}
+                  <tr className="border-t border-black/[0.04]" data-testid="vekstplan-fase-start">
+                    <td className="py-2 pr-2"><span className="inline-flex rounded-[7px] bg-[#f5f4f1] px-2 py-1 text-[12px] font-semibold text-[#57534e]">1</span></td>
+                    <td className="py-2 pr-2 text-[12.5px] text-[#a6a19a]">start — {stor(mndLang(plan.startYm))}</td>
+                    <td className="py-2 pr-2 text-right">
+                      {readOnly ? (
+                        <span className="font-semibold text-[#1c1917]">{kma(sanertDraft.nyePerMnd)}</span>
+                      ) : (
+                        <input value={draft.nyePerMnd} inputMode="decimal" data-testid="vekstplan-grunntakt"
+                          onChange={(e) => setDraft((d) => ({ ...d, nyePerMnd: e.target.value }))}
+                          className="h-8 w-[84px] rounded-[8px] bg-[#f5f4f1] px-2 text-right text-[13px] font-semibold text-[#1c1917] outline-none ring-1 ring-transparent transition-all focus:bg-white focus:ring-[#6d28d9]/40" />
+                      )}
+                    </td>
+                    <td className="py-2 pr-2 text-right tabular-nums text-[#8f8a82]">{nyeIFase(1)?.mnd ?? N} mnd</td>
+                    <td className="py-2 pr-2 text-right tabular-nums font-semibold text-[#1c1917]">{kma(nyeIFase(1)?.sum ?? 0)}</td>
+                    <td className="py-2 text-right">&nbsp;</td>
+                  </tr>
+                  {draft.faser.map((f, i) => {
+                    const eff = nyeIFase(Math.max(2, Math.min(N, Number(f.fraMnd) || 2)));
+                    return (
+                      <tr key={i} className="border-t border-black/[0.04]" data-testid={`vekstplan-fase-${i}`}>
+                        <td className="py-2 pr-2"><span className="inline-flex rounded-[7px] bg-[#f0ebfa] px-2 py-1 text-[12px] font-semibold text-[#6d28d9]">{i + 2}</span></td>
+                        <td className="py-2 pr-2">
+                          {readOnly ? (
+                            <span className="font-semibold text-[#1c1917]">{stor(mndLang(ymFraIdx(f.fraMnd)))}</span>
+                          ) : (
+                            <input type="month" value={ymFraIdx(f.fraMnd)} min={ymPluss(plan.startYm, 1)} max={ymPluss(plan.startYm, N - 1)}
+                              onChange={(e) => settFase(i, 'fraMnd', idxFraYm(e.target.value))} data-testid={`vekstplan-fase-fra-${i}`}
+                              className="h-8 rounded-[8px] bg-[#f5f4f1] px-2 text-[12.5px] font-medium text-[#57534e] outline-none ring-1 ring-transparent transition-all focus:bg-white focus:ring-[#6d28d9]/40" />
+                          )}
+                        </td>
+                        <td className="py-2 pr-2 text-right">
+                          {readOnly ? (
+                            <span className="font-semibold text-[#1c1917]">{kma(tilTall(f.perMnd))}</span>
+                          ) : (
+                            <input value={f.perMnd} inputMode="decimal" data-testid={`vekstplan-fase-takt-${i}`}
+                              onChange={(e) => settFase(i, 'perMnd', e.target.value)}
+                              className="h-8 w-[84px] rounded-[8px] bg-[#f5f4f1] px-2 text-right text-[13px] font-semibold text-[#1c1917] outline-none ring-1 ring-transparent transition-all focus:bg-white focus:ring-[#6d28d9]/40" />
+                          )}
+                        </td>
+                        <td className="py-2 pr-2 text-right tabular-nums text-[#8f8a82]">{eff ? `${eff.mnd} mnd` : '—'}</td>
+                        <td className="py-2 pr-2 text-right tabular-nums font-semibold text-[#1c1917]">{eff ? kma(eff.sum) : '—'}</td>
+                        <td className="py-2 text-right">
+                          {!readOnly && (
+                            <button onClick={() => fjernFase(i)} data-testid={`vekstplan-fase-fjern-${i}`} title="Fjern fasen"
+                              className="inline-flex h-7 w-7 items-center justify-center rounded-[7px] text-[#c2beb8] transition-colors hover:bg-[#f6dedd] hover:text-[#c2413b]">
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            {!readOnly && (
+              <div className="mt-2 flex flex-wrap items-center gap-4">
+                {draft.faser.length < 11 && (
+                  <button onClick={leggFase} data-testid="vekstplan-legg-fase" className="flex items-center gap-1 text-[12.5px] font-semibold text-[#6d28d9] hover:text-[#4c1d95]">
+                    <Plus className="h-3.5 w-3.5" /> Legg til fase
+                  </button>
+                )}
+                <button onClick={foreslaaTrapp} data-testid="vekstplan-trapp"
+                  title="Erstatter fasene med en anbefalt opptrapping: 2× grunntakten fra måned 7, 3× fra måned 13, 4× fra måned 19"
+                  className="flex items-center gap-1 text-[12.5px] font-semibold text-[#8f8a82] transition-colors hover:text-[#1c1917]">
+                  <RefreshCw className="h-3 w-3" /> Foreslå opptrapping
+                </button>
+                {draft.faser.length > 0 && (
+                  <button onClick={() => setDraft((d) => ({ ...d, faser: [] }))} data-testid="vekstplan-nullstill"
+                    className="flex items-center gap-1 text-[12.5px] font-medium text-[#a6a19a] transition-colors hover:text-[#1c1917]">
+                    Konstant takt (fjern faser)
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Forklaring */}
+          <div className="mt-3 rounded-[12px] bg-[#faf9f7] px-3.5 py-2.5 text-[11.5px] leading-relaxed text-[#a6a19a] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.05)]">
+            Scenarioene («Konservativt», «Ambisiøst») lagrer hele vekstplanen — og sensitivitetsanalysen skalerer alle fasene, ikke bare grunntakten.
+            CAC/provisjon følger antall nye per måned, og bemanningens enhetsterskler utløses automatisk når veksten treffer dem.
+          </div>
+        </div>
+
+        {/* Bunn */}
+        <div className="flex items-center justify-end gap-2 border-t border-black/[0.06] bg-white px-5 py-3">
+          <button onClick={onLukk} data-testid="vekstplan-avbryt" className="flex h-9 items-center rounded-[9px] px-4 text-[13px] font-medium text-[#57534e] transition-colors hover:bg-black/[0.05]">
+            {readOnly ? 'Lukk' : 'Avbryt'}
+          </button>
+          {!readOnly && (
+            <button
+              onClick={() => onBruk({ nyePerMnd: tilTall(draft.nyePerMnd), vekstplan: draft.faser.map((f) => ({ fraMnd: Number(f.fraMnd) || 2, perMnd: tilTall(f.perMnd) })) })}
+              data-testid="vekstplan-bruk" className={KNAPP_PRIMAER}>
+              <Check className="h-3.5 w-3.5" /> Bruk vekstplan
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function BudsjettModell({ plan, api, apiKey = '', readOnly = false, onTilbake, onEndret }) {
   const [navn, setNavn] = useState(plan.navn);
   const [investorSynlig, setInvestorSynlig] = useState(Boolean(plan.investorSynlig));
@@ -505,6 +755,7 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
   const [scenarioer, setScenarioer] = useState(() => (Array.isArray(plan.scenarioer) ? plan.scenarioer : []));
   const [aktivtScenario, setAktivtScenario] = useState(null);
   const [nyScenarioNavn, setNyScenarioNavn] = useState(null); // null = lukket
+  const [scenarioMenyAapen, setScenarioMenyAapen] = useState(false); // scenario-dropdown i topplinjen
 
   /* ── Omvisning (modell-editoren): auto-start første gang en investormodell
         åpnes; «?» i topplinjen åpner den igjen. Nøktern, presis tone. ── */
@@ -527,8 +778,15 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
     {
       id: 'scenarioer',
       tittel: 'Scenariosett',
-      tekst: 'Lagre driversettet som et navngitt scenario, f.eks. «Konservativt», og bytt mellom sett. Det aktive settet blir budsjettets forutsetninger når du lagrer.',
+      tekst: 'Lagre driversettene som navngitte scenarioer («Konservativt», «Ambisiøst») og bytt mellom dem her i topplinjen. Det aktive settet blir budsjettets forutsetninger når du lagrer.',
       maal: () => document.querySelector('[data-testid="modell-scenariovalg"]'),
+    },
+    {
+      id: 'vekst',
+      tittel: 'Vekstplan',
+      tekst: 'Veksten trenger ikke være flat: legg inn faser («2 per måned fra juli») i eget panel. Scenarioene lagrer hele vekstplanen, og bemanningens enhetsterskler følger veksten automatisk.',
+      foer: async () => setAapne((a) => ({ ...a, portefolje: true })),
+      maal: () => document.querySelector('[data-testid="modell-vekst-aapne"]'),
     },
     {
       id: 'bemanning',
@@ -603,6 +861,13 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
     setSkittent(true);
     setBemAapen(false);
   };
+  // Vekstplanen (faser med konstant takt) redigeres i egen drawer
+  const [vekstAapen, setVekstAapen] = useState(false);
+  const brukVekstplan = (utkast) => {
+    setDrivere((d) => ({ ...d, nyePerMnd: utkast.nyePerMnd, vekstplan: utkast.vekstplan }));
+    setSkittent(true);
+    setVekstAapen(false);
+  };
   const tilbakestill = () => { setDrivere({ ...lagretDrivere }); setSkittent(false); };
 
   const lagre = useCallback(async (overstyr = {}) => {
@@ -613,7 +878,7 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
         method: 'PUT',
         body: {
           id: plan.id, type: 'modell',
-          navn: (overstyr.navn ?? navn) || 'Investormodell',
+          navn: (overstyr.navn ?? navn) || 'Budsjett',
           startYm: plan.startYm, antallMnd: plan.antallMnd,
           status: plan.status, notat: plan.notat || '',
           investorSynlig: overstyr.investorSynlig ?? investorSynlig,
@@ -714,9 +979,9 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
       return { navn, d: d2, idx, kap: Math.round(kap) };
     };
     return [
-      lag('Konservativ', { nyePerMnd: Math.round(sanert.nyePerMnd * 0.5 * 10) / 10, aarligChurnPct: Math.min(100, sanert.aarligChurnPct + 5), honorarPctNye: Math.max(0, sanert.honorarPctNye - 1) }),
+      lag('Konservativ', { ...skalerVekst(sanert, 0.5), aarligChurnPct: Math.min(100, sanert.aarligChurnPct + 5), honorarPctNye: Math.max(0, sanert.honorarPctNye - 1) }),
       lag('Basis', {}),
-      lag('Ambisiøs', { nyePerMnd: Math.round(sanert.nyePerMnd * 2 * 10) / 10, aarligChurnPct: Math.max(0, sanert.aarligChurnPct - 3) }),
+      lag('Ambisiøs', { ...skalerVekst(sanert, 2), aarligChurnPct: Math.max(0, sanert.aarligChurnPct - 3) }),
     ];
   }, [sanert, fakta]);
 
@@ -783,13 +1048,16 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
   const fullkost = Math.round(sanert.aarslonn * (1 + sanert.paslagPct / 100));
   const sisteIdx = m.N - 1;
   const antallEndret = ['nyePerMnd', 'aarligChurnPct', 'snittleieNye', 'honorarPctNye', 'oppstartPerEnhet', 'systemPerEnhet', 'enheterPerAarsverk', 'aarslonn', 'paslagPct', 'mfFast', 'provisjonPerNyEnhet', 'adminFast', 'andreFaste']
-    .filter((k) => Math.abs((sanert[k] ?? 0) - (lagretDrivere[k] ?? 0)) > 1e-9).length;
+    .filter((k) => Math.abs((sanert[k] ?? 0) - (lagretDrivere[k] ?? 0)) > 1e-9).length
+    + (JSON.stringify(sanert.vekstplan || []) !== JSON.stringify(lagretDrivere.vekstplan || []) ? 1 : 0);
 
   // Bemanning: nå-situasjon (rail-sammendrag) + flaskehals-innsikt (hovedflaten)
   const pctNaa = m.budsjettertPct[0] || 0;
   const kapNaa = Math.round((pctNaa / 100) * sanert.enheterPerAarsverk);
   const varselIdx = m.sammendrag.bemanningsVarselIdx;
   const kapVedVarsel = varselIdx !== null ? Math.round(((m.budsjettertPct[varselIdx] || 0) / 100) * sanert.enheterPerAarsverk) : null;
+  // Vekstplan: siste fases takt (til rail-sammendraget)
+  const vekstSiste = sanert.vekstplan.length ? sanert.vekstplan[sanert.vekstplan.length - 1].perMnd : sanert.nyePerMnd;
 
   const breakEvenVerdi = be.ingen ? 'Nås ikke innen 36 mnd' : stor(mndLang(ymPluss(plan.startYm, be.idx)));
   const breakEvenUnder = be.ingen ? 'juster drivere eller forleng perioden' : `ved ~${be.enheter} enheter${be.utenfor ? ' · utenfor perioden' : ''}`;
@@ -822,14 +1090,80 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
               onChange={(e) => { setNavn(e.target.value); setSkittent(true); }}
               className="-ml-1 w-[220px] min-w-0 rounded-[8px] border border-transparent bg-transparent px-1 text-[19px] font-bold tracking-[-0.01em] text-[#1c1917] outline-none transition-colors hover:border-black/[0.07] focus:border-black/[0.15] sm:w-[300px]" style={heading} />
           )}
-          <span className="hidden shrink-0 rounded-full bg-[#f0efec] px-2.5 py-1 text-[10.5px] font-bold uppercase tracking-[0.06em] text-[#78716c] sm:block">Investormodell</span>
+          <span className="hidden shrink-0 rounded-full bg-[#f0efec] px-2.5 py-1 text-[10.5px] font-bold uppercase tracking-[0.06em] text-[#78716c] sm:block">Budsjett</span>
           <span className="hidden shrink-0 text-[13px] text-[#a6a19a] lg:block">
             {stor(mndLang(plan.startYm))} – {mndLang(ymPluss(plan.startYm, plan.antallMnd - 1))} · {plan.antallMnd} mnd
           </span>
         </div>
         <div className="flex items-center gap-2">
+          {/* Forutsetningssett — velg scenario direkte fra topplinjen */}
+          <div className="relative" data-testid="modell-scenariovalg">
+            <button onClick={() => { setScenarioMenyAapen((v) => !v); setNyScenarioNavn(null); }} data-testid="modell-scenario-meny"
+              title="Velg forutsetningssett (scenario)"
+              className={`flex h-9 max-w-[210px] shrink-0 items-center gap-2 rounded-full px-3.5 text-[12.5px] font-semibold transition-all ${aktivtScenario ? 'bg-[#f0ebfa] text-[#6d28d9]' : 'bg-white text-[#57534e] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.08)] hover:text-[#1c1917]'}`}>
+              <Bookmark className="h-3.5 w-3.5 shrink-0" />
+              <span className="hidden truncate sm:block">{aktivtScenario ? (scenarioer.find((sc) => sc.id === aktivtScenario)?.navn || 'Scenario') : 'Basis'}</span>
+              <ChevronDown className={`h-3.5 w-3.5 shrink-0 transition-transform duration-200 ${scenarioMenyAapen ? 'rotate-180' : ''} ${aktivtScenario ? 'text-[#a78bfa]' : 'text-[#c2beb8]'}`} />
+            </button>
+            {scenarioMenyAapen && (
+              <>
+                <div className="fixed inset-0 z-[59]" onClick={() => { setScenarioMenyAapen(false); setNyScenarioNavn(null); }} />
+                <div className="absolute right-0 top-11 z-[60] w-[280px] rounded-[16px] bg-white p-1.5 shadow-[0_16px_48px_rgba(20,17,14,0.16)] ring-1 ring-black/[0.06]" data-testid="modell-scenario-menyliste">
+                  <p className="px-2.5 pb-1 pt-1.5 text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#a6a19a]">Forutsetningssett</p>
+                  <button onClick={() => { velgScenario(null); setScenarioMenyAapen(false); }} data-testid="modell-scenario-basis"
+                    className="flex w-full items-center justify-between gap-2 rounded-[10px] px-2.5 py-2 text-left transition-colors hover:bg-[#f7f6f3]">
+                    <span className="min-w-0">
+                      <span className="block text-[13px] font-semibold text-[#1c1917]">Basis</span>
+                      <span className="block text-[11px] text-[#a6a19a]">Budsjettets lagrede forutsetninger</span>
+                    </span>
+                    {!aktivtScenario && <Check className="h-3.5 w-3.5 shrink-0 text-[#6d28d9]" />}
+                  </button>
+                  {scenarioer.map((sc) => (
+                    <div key={sc.id} className="group/sc flex items-center rounded-[10px] transition-colors hover:bg-[#f7f6f3]">
+                      <button onClick={() => { velgScenario(sc); setScenarioMenyAapen(false); }} data-testid={`modell-scenario-${sc.id}`}
+                        className="flex min-w-0 flex-1 items-center justify-between gap-2 px-2.5 py-2 text-left">
+                        <span className="block truncate text-[13px] font-semibold text-[#1c1917]">{sc.navn}</span>
+                        {aktivtScenario === sc.id && <Check className="h-3.5 w-3.5 shrink-0 text-[#6d28d9]" />}
+                      </button>
+                      {!readOnly && (
+                        <button onClick={() => slettScenario(sc.id)} title={`Slett scenarioet «${sc.navn}»`}
+                          className="mr-1.5 hidden h-6 w-6 shrink-0 items-center justify-center rounded-full text-[#c2beb8] hover:bg-[#f6dedd] hover:text-[#c2413b] group-hover/sc:flex">
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  {!readOnly && (
+                    <>
+                      <div className="mx-1.5 my-1 border-t border-black/[0.06]" />
+                      {nyScenarioNavn === null ? (
+                        <button onClick={() => setNyScenarioNavn('')} data-testid="modell-scenario-nytt" disabled={scenarioer.length >= 12}
+                          className="flex w-full items-center gap-2 rounded-[10px] px-2.5 py-2 text-left text-[12.5px] font-semibold text-[#6d28d9] transition-colors hover:bg-[#f6f2fd] disabled:opacity-40">
+                          <Plus className="h-3.5 w-3.5" /> Lagre gjeldende som scenario…
+                        </button>
+                      ) : (
+                        <div className="flex items-center gap-1 px-1.5 py-1">
+                          <input autoFocus value={nyScenarioNavn} onChange={(e) => setNyScenarioNavn(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === 'Enter') lagreSomScenario(); if (e.key === 'Escape') setNyScenarioNavn(null); }}
+                            placeholder="F.eks. Konservativt" data-testid="modell-scenario-navn"
+                            className="h-8 min-w-0 flex-1 rounded-[9px] bg-[#f5f4f1] px-2.5 text-[12.5px] font-semibold text-[#1c1917] outline-none ring-1 ring-transparent placeholder:font-normal placeholder:text-[#c2beb8] focus:bg-white focus:ring-[#6d28d9]/40" />
+                          <button onClick={lagreSomScenario} disabled={!String(nyScenarioNavn).trim()} data-testid="modell-scenario-lagre"
+                            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] bg-[#6d28d9] text-white transition-colors hover:bg-[#5b21b6] disabled:opacity-30">
+                            <Check className="h-3.5 w-3.5" />
+                          </button>
+                          <button onClick={() => setNyScenarioNavn(null)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] text-[#a6a19a] hover:bg-black/[0.05]">
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
           {/* Omvisning */}
-          <button onClick={() => setTourAktiv(true)} data-testid="modell-tour-knapp" title="Omvisning — se hvordan investormodellen henger sammen"
+          <button onClick={() => setTourAktiv(true)} data-testid="modell-tour-knapp" title="Omvisning — se hvordan budsjettmodellen henger sammen"
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-[#a6a19a] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.08)] transition-colors hover:text-[#1c1917]">
             <HelpCircle className="h-4 w-4" />
           </button>
@@ -876,47 +1210,7 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
               )}
             </div>
 
-            {/* ── Scenariosett: lagrede driversett — velg for å laste inn ── */}
-            <div className="mb-2 flex flex-wrap items-center gap-1" data-testid="modell-scenariovalg">
-              <button onClick={() => velgScenario(null)} data-testid="modell-scenario-basis"
-                className={`rounded-full px-2.5 py-1 text-[11.5px] font-bold transition-all ${!aktivtScenario ? 'bg-[#141414] text-white shadow-sm' : 'bg-[#f5f4f1] text-[#8f8a82] hover:text-[#1c1917]'}`}>
-                Basis
-              </button>
-              {scenarioer.map((sc) => (
-                <span key={sc.id} className={`group/sc flex items-center overflow-hidden rounded-full transition-all ${aktivtScenario === sc.id ? 'bg-[#6d28d9] text-white shadow-sm' : 'bg-[#f5f4f1] text-[#8f8a82] hover:text-[#1c1917]'}`}>
-                  <button onClick={() => velgScenario(sc)} data-testid={`modell-scenario-${sc.id}`} className="py-1 pl-2.5 pr-1 text-[11.5px] font-bold">
-                    {sc.navn}
-                  </button>
-                  {!readOnly && (
-                    <button onClick={() => slettScenario(sc.id)} title={`Slett scenarioet «${sc.navn}»`}
-                      className={`hidden py-1 pl-0.5 pr-1.5 group-hover/sc:block ${aktivtScenario === sc.id ? 'text-white/70 hover:text-white' : 'text-[#c2beb8] hover:text-[#c2413b]'}`}>
-                      <X className="h-3 w-3" />
-                    </button>
-                  )}
-                </span>
-              ))}
-              {!readOnly && scenarioer.length < 12 && (nyScenarioNavn === null ? (
-                <button onClick={() => setNyScenarioNavn('')} data-testid="modell-scenario-nytt"
-                  title="Lagre gjeldende forutsetninger som et navngitt scenario"
-                  className="flex items-center gap-1 rounded-full px-2 py-1 text-[11.5px] font-semibold text-[#a6a19a] transition-colors hover:bg-[#f0ebfa] hover:text-[#6d28d9]">
-                  <Bookmark className="h-3 w-3" /> Lagre som…
-                </button>
-              ) : (
-                <span className="flex items-center gap-1">
-                  <input autoFocus value={nyScenarioNavn} onChange={(e) => setNyScenarioNavn(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === 'Enter') lagreSomScenario(); if (e.key === 'Escape') setNyScenarioNavn(null); }}
-                    placeholder="F.eks. Konservativt" data-testid="modell-scenario-navn"
-                    className="h-7 w-[130px] rounded-full bg-white px-2.5 text-[11.5px] font-semibold text-[#1c1917] shadow-[inset_0_0_0_1.5px_rgba(109,40,217,0.4)] outline-none placeholder:font-normal placeholder:text-[#c2beb8]" />
-                  <button onClick={lagreSomScenario} disabled={!String(nyScenarioNavn).trim()} data-testid="modell-scenario-lagre"
-                    className="flex h-7 w-7 items-center justify-center rounded-full bg-[#6d28d9] text-white transition-colors hover:bg-[#5b21b6] disabled:opacity-30">
-                    <Check className="h-3.5 w-3.5" />
-                  </button>
-                  <button onClick={() => setNyScenarioNavn(null)} className="flex h-7 w-7 items-center justify-center rounded-full text-[#a6a19a] hover:bg-black/[0.05]">
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                </span>
-              ))}
-            </div>
+            {/* Scenariovalget bor i topplinjen — her vises kun aktivt scenario-banner */}
             {aktivtScenario && (
               <div className="mb-2 flex items-center justify-between gap-2 rounded-[10px] bg-[#f6f2fd] px-2.5 py-1.5" data-testid="modell-scenario-banner">
                 <p className="min-w-0 truncate text-[11px] leading-snug text-[#6d28d9]">
@@ -932,8 +1226,21 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
             )}
 
             <Seksjon tittel="Portefølje & vekst" ikon={TrendingUp} open={aapne.portefolje} onToggle={() => veksle('portefolje')}
-              sammendrag={`${kma(sanert.nyePerMnd)} nye/mnd · ${kma(sanert.aarligChurnPct)} % churn · ${kma(sanert.honorarPctNye)} %`}>
-              <Felt label="Nye enheter per måned" k="nyePerMnd" {...feltProps} enhet="enh." testid="driver-nye" slider={{ min: 0, max: 10, step: 0.5 }} />
+              sammendrag={`${sanert.vekstplan.length ? `${kma(sanert.nyePerMnd)}→${kma(vekstSiste)}` : kma(sanert.nyePerMnd)} nye/mnd · ${kma(sanert.aarligChurnPct)} % churn`}>
+              <Felt label="Nye enheter per måned" k="nyePerMnd" {...feltProps} enhet="enh." testid="driver-nye" slider={{ min: 0, max: 10, step: 0.5 }}
+                hint={sanert.vekstplan.length ? `grunntakt (fase 1) — vekstplanen øker takten til ${kma(vekstSiste)}/mnd` : null} />
+              <button onClick={() => setVekstAapen(true)} data-testid="modell-vekst-aapne"
+                className="mb-1.5 mt-0.5 flex w-full items-center justify-between rounded-[10px] bg-[#f0ebfa] px-3 py-2.5 text-left transition-colors hover:bg-[#e7defa]">
+                <span>
+                  <span className="block text-[12.5px] font-bold text-[#6d28d9]">Vekstplan</span>
+                  <span className="block text-[11px] text-[#8b6bc7]">
+                    {sanert.vekstplan.length
+                      ? `${kma(sanert.nyePerMnd)} → ${kma(vekstSiste)} enh/mnd · ${sanert.vekstplan.length + 1} faser`
+                      : 'Konstant takt — legg inn faser for økende vekst'}
+                  </span>
+                </span>
+                <ArrowRight className="h-4 w-4 shrink-0 text-[#8b6bc7]" />
+              </button>
               <Felt label="Årlig churn" k="aarligChurnPct" {...feltProps} enhet="%" testid="driver-churn" slider={{ min: 0, max: 40, step: 1 }} hint={`≈ ${kma(s.mndChurnPct)} %/mnd på modellerte enheter — dagens portefølje churnes ikke`} />
               <Felt label="Snittleie nye enheter" k="snittleieNye" {...feltProps} enhet="kr/mnd" testid="driver-leie" heltall slider={{ min: 5000, max: 40000, step: 500 }} />
               <Felt label="Honorar nye enheter" k="honorarPctNye" {...feltProps} enhet="%" testid="driver-honorar" slider={{ min: 0, max: 20, step: 0.5 }} hint={`≈ ${kr0(m.cac.bruttoHonorarNy)} kr eks. mva per enhet/mnd`} />
@@ -1199,6 +1506,12 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
           onLukk={() => setBemAapen(false)} onBruk={brukBemanningsplan}
         />
       )}
+      {vekstAapen && (
+        <VekstplanDrawer
+          plan={plan} fakta={fakta} drivere={sanert} readOnly={readOnly}
+          onLukk={() => setVekstAapen(false)} onBruk={brukVekstplan}
+        />
+      )}
       <Omvisning steg={tourSteg} aktiv={tourAktiv} onFerdig={tourFerdig} />
     </div>
   );
@@ -1220,8 +1533,10 @@ function TornadoListe({ m, sanert, fakta, antallMnd, startYm }) {
     const rader = kandidater.map(([k, label]) => {
       const v = sanert[k];
       if (!Number.isFinite(v) || v === 0) return null;
-      const opp = beregnInvestorModell({ antallMnd, fakta, drivere: { ...sanert, [k]: v * 1.1 }, startYm }).sammendrag.resultat - basis;
-      const ned = beregnInvestorModell({ antallMnd, fakta, drivere: { ...sanert, [k]: v * 0.9 }, startYm }).sammendrag.resultat - basis;
+      // Veksttakten skaleres i ALLE faser — ikke bare grunntakten
+      const over = (f) => (k === 'nyePerMnd' ? skalerVekst(sanert, f) : { ...sanert, [k]: v * f });
+      const opp = beregnInvestorModell({ antallMnd, fakta, drivere: over(1.1), startYm }).sammendrag.resultat - basis;
+      const ned = beregnInvestorModell({ antallMnd, fakta, drivere: over(0.9), startYm }).sammendrag.resultat - basis;
       const spenn = (Math.abs(opp) + Math.abs(ned)) / 2;
       if (spenn < 1) return null;
       return { k, label, opp, spenn };
