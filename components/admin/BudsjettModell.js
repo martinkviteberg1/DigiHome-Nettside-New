@@ -15,6 +15,7 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import {
   ArrowLeft, Trash2, RefreshCw, Loader2, Check, Eye, EyeOff, Plus, X, RotateCcw, ChevronDown,
+  SlidersHorizontal, PanelLeftClose,
 } from 'lucide-react';
 import { beregnInvestorModell, rensModellDrivere } from '@/lib/budsjett-modell';
 
@@ -39,9 +40,9 @@ const kma = (s) => String(s).replace('.', ',');
 const Seksjon = ({ tittel, sammendrag, open, onToggle, children }) => (
   <div className="border-t border-black/[0.05] first:border-0">
     <button onClick={onToggle} className="group flex w-full items-center justify-between gap-2 py-2.5 text-left">
-      <span className="shrink-0 text-[10.5px] font-bold uppercase tracking-[0.09em] text-[#78716c] transition-colors group-hover:text-[#1c1917]">{tittel}</span>
+      <span className="shrink-0 text-[11px] font-bold uppercase tracking-[0.09em] text-[#78716c] transition-colors group-hover:text-[#1c1917]">{tittel}</span>
       <span className="flex min-w-0 items-center gap-1.5">
-        {!open && sammendrag && <span className="truncate text-[11px] text-[#a6a19a]">{sammendrag}</span>}
+        {!open && sammendrag && <span className="truncate text-[11.5px] text-[#a6a19a]">{sammendrag}</span>}
         <ChevronDown className={`h-3.5 w-3.5 shrink-0 text-[#c2beb8] transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
       </span>
     </button>
@@ -53,20 +54,20 @@ const Seksjon = ({ tittel, sammendrag, open, onToggle, children }) => (
 const Felt = ({ label, k, drivere, sanert, lagret, onEndre, enhet, hint, slider, readOnly, testid }) => {
   const endret = lagret && sanert && Math.abs((sanert[k] ?? 0) - (lagret[k] ?? 0)) > 1e-9;
   return (
-    <div className="py-[6px]">
+    <div className="py-[7px]">
       <div className="flex items-center justify-between gap-3">
         <span className="flex min-w-0 items-center gap-1.5">
-          <span className="truncate text-[12.5px] text-[#57534e]">{label}</span>
+          <span className="truncate text-[13.5px] text-[#57534e]">{label}</span>
           {endret && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#6d28d9]" title="Endret siden sist lagring" />}
         </span>
         <span className="flex shrink-0 items-center gap-1.5">
           {readOnly ? (
-            <span className="text-[12.5px] font-semibold text-[#1c1917]">{kma(drivere[k])}</span>
+            <span className="text-[13.5px] font-semibold text-[#1c1917]">{kma(drivere[k])}</span>
           ) : (
             <input value={drivere[k]} inputMode="decimal" data-testid={testid} onChange={(e) => onEndre(k, e.target.value)}
-              className="h-7 w-[84px] rounded-[7px] bg-[#f5f4f1] px-2 text-right text-[12.5px] font-semibold text-[#1c1917] outline-none ring-1 ring-transparent transition-all focus:bg-white focus:ring-[#6d28d9]/40" />
+              className="h-8 w-[100px] rounded-[8px] bg-[#f5f4f1] px-2 text-right text-[13.5px] font-semibold text-[#1c1917] outline-none ring-1 ring-transparent transition-all focus:bg-white focus:ring-[#6d28d9]/40" />
           )}
-          <span className="w-11 text-[10.5px] text-[#a6a19a]">{enhet}</span>
+          <span className="w-12 text-[11px] text-[#a6a19a]">{enhet}</span>
         </span>
       </div>
       {slider && !readOnly && (
@@ -74,7 +75,7 @@ const Felt = ({ label, k, drivere, sanert, lagret, onEndre, enhet, hint, slider,
           onChange={(e) => onEndre(k, e.target.value)} aria-label={label}
           className="mt-1.5 h-[3px] w-full cursor-pointer appearance-none rounded-full bg-black/[0.07] accent-[#6d28d9]" />
       )}
-      {hint && <p className="mt-1 text-[10.5px] leading-snug text-[#a6a19a]">{hint}</p>}
+      {hint && <p className="mt-1 text-[11px] leading-snug text-[#a6a19a]">{hint}</p>}
     </div>
   );
 };
@@ -115,7 +116,7 @@ const Graf = ({ m, startYm }) => {
         {[0.25, 0.5, 0.75, 1].map((f) => (
           <g key={f}>
             <line x1="0" x2={W} y1={H - maks * f * yS} y2={H - maks * f * yS} stroke="#f0efec" strokeWidth="1" />
-            <text x="2" y={H - maks * f * yS - 3} fontSize="8.5" fill="#c2beb8">{kr0(maks * f)}</text>
+            <text x="2" y={H - maks * f * yS - 3} fontSize="10" fill="#c2beb8">{kr0(maks * f)}</text>
           </g>
         ))}
         {/* Break-even-markør */}
@@ -134,7 +135,7 @@ const Graf = ({ m, startYm }) => {
               <rect x={x(i)} y={H - eksH} width={bw} height={Math.max(0, eksH)} rx="2" fill="#1c1917" />
               <rect x={x(i)} y={H - eksH - modH} width={bw} height={Math.max(0, modH)} rx="2" fill="#c4b5fd" />
               {i % hopp === 0 && (
-                <text x={x(i) + bw / 2} y={H + 14} textAnchor="middle" fontSize="10" fill="#a6a19a">{mndKort(ymPluss(startYm, i))}</text>
+                <text x={x(i) + bw / 2} y={H + 15} textAnchor="middle" fontSize="11" fill="#a6a19a">{mndKort(ymPluss(startYm, i))}</text>
               )}
               {/* usynlig hover-flate for hele kolonnen */}
               <rect x={(W / N) * i} y="0" width={W / N} height={H} fill="transparent" onMouseEnter={() => setHov(i)} />
@@ -148,7 +149,7 @@ const Graf = ({ m, startYm }) => {
       </svg>
       {/* Tooltip */}
       {hov !== null && (
-        <div className="pointer-events-none absolute top-0 z-20 w-[196px] -translate-x-1/2 rounded-[10px] bg-[#1c1917] px-3 py-2.5 text-[11px] leading-relaxed text-white shadow-xl"
+        <div className="pointer-events-none absolute top-0 z-20 w-[216px] -translate-x-1/2 rounded-[10px] bg-[#1c1917] px-3.5 py-3 text-[12px] leading-relaxed text-white shadow-xl"
           style={{ left: `${Math.min(92, Math.max(8, ((hov + 0.5) / N) * 100))}%` }}>
           <p className="font-bold">{stor(mndLang(ymPluss(startYm, hov)))} · {Math.round(m.enheter[hov])} enheter</p>
           <div className="mt-1 space-y-0.5 text-white/85">
@@ -161,7 +162,7 @@ const Graf = ({ m, startYm }) => {
           </div>
         </div>
       )}
-      <div className="mt-1.5 flex flex-wrap items-center gap-4 text-[11.5px] text-[#8f8a82]">
+      <div className="mt-1.5 flex flex-wrap items-center gap-4 text-[12.5px] text-[#8f8a82]">
         <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-[2px] bg-[#1c1917]" /> Kontraktsfestet (dagens portefølje)</span>
         <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-[2px] bg-[#c4b5fd]" /> Modellert vekst</span>
         <span className="flex items-center gap-1.5"><span className="h-[2px] w-4 rounded bg-[#b3261e]" /> Kostnader</span>
@@ -204,6 +205,7 @@ export default function BudsjettModell({ plan, api, readOnly = false, onTilbake,
   const [lagretDrivere, setLagretDrivere] = useState(() => rensModellDrivere(plan.drivere));
   const [fakta, setFakta] = useState(plan.fakta || { eksisterende: [], enheter: [], oppdatertAt: null });
   const [aapne, setAapne] = useState({ vekst: true, kostnader: false, kapasitet: false, beslutning: false });
+  const [railAapen, setRailAapen] = useState(true);
   const [skittent, setSkittent] = useState(false);
   const [lagrer, setLagrer] = useState(false);
   const [lagret, setLagret] = useState(false);
@@ -353,11 +355,11 @@ export default function BudsjettModell({ plan, api, readOnly = false, onTilbake,
   const feltProps = { drivere, sanert, lagret: lagretDrivere, onEndre: settDriver, readOnly };
 
   const Stat = ({ tittel, verdi, under, farge, testid, hoyre }) => (
-    <div className="flex min-w-[168px] flex-1 items-center justify-between gap-3 px-5 py-3.5">
+    <div className="flex min-w-[184px] flex-1 items-center justify-between gap-3 px-5 py-4">
       <div className="min-w-0">
-        <p className="text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#a6a19a]">{tittel}</p>
-        <p className={`mt-0.5 truncate text-[19px] font-bold tracking-[-0.01em] ${farge || 'text-[#1c1917]'}`} style={heading} data-testid={testid}>{verdi}</p>
-        {under && <p className="truncate text-[10.5px] text-[#a6a19a]">{under}</p>}
+        <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#a6a19a]">{tittel}</p>
+        <p className={`mt-0.5 truncate text-[24px] font-bold tracking-[-0.015em] ${farge || 'text-[#1c1917]'}`} style={heading} data-testid={testid}>{verdi}</p>
+        {under && <p className="truncate text-[11.5px] text-[#a6a19a]">{under}</p>}
       </div>
       {hoyre}
     </div>
@@ -372,14 +374,14 @@ export default function BudsjettModell({ plan, api, readOnly = false, onTilbake,
             <ArrowLeft className="h-4 w-4" />
           </button>
           {readOnly ? (
-            <h2 className="truncate text-[17px] font-bold tracking-[-0.01em] text-[#1c1917]" style={heading}>{navn}</h2>
+            <h2 className="truncate text-[19px] font-bold tracking-[-0.01em] text-[#1c1917]" style={heading}>{navn}</h2>
           ) : (
             <input value={navn} maxLength={80} data-testid="modell-navn"
               onChange={(e) => { setNavn(e.target.value); setSkittent(true); }}
-              className="-ml-1 w-[220px] min-w-0 rounded-[8px] border border-transparent bg-transparent px-1 text-[17px] font-bold tracking-[-0.01em] text-[#1c1917] outline-none transition-colors hover:border-black/[0.07] focus:border-black/[0.15] sm:w-[300px]" style={heading} />
+              className="-ml-1 w-[220px] min-w-0 rounded-[8px] border border-transparent bg-transparent px-1 text-[19px] font-bold tracking-[-0.01em] text-[#1c1917] outline-none transition-colors hover:border-black/[0.07] focus:border-black/[0.15] sm:w-[300px]" style={heading} />
           )}
           <span className="hidden shrink-0 rounded-full bg-[#f0efec] px-2.5 py-1 text-[10.5px] font-bold uppercase tracking-[0.06em] text-[#78716c] sm:block">Investormodell</span>
-          <span className="hidden shrink-0 text-[12.5px] text-[#a6a19a] lg:block">
+          <span className="hidden shrink-0 text-[13px] text-[#a6a19a] lg:block">
             {stor(mndLang(plan.startYm))} – {mndLang(ymPluss(plan.startYm, plan.antallMnd - 1))} · {plan.antallMnd} mnd
           </span>
         </div>
@@ -405,15 +407,32 @@ export default function BudsjettModell({ plan, api, readOnly = false, onTilbake,
       {/* Cockpit */}
       <div className="mt-4 flex flex-col gap-3 xl:flex-row xl:items-start">
         {/* ── Venstre: forutsetninger (sticky, kollapsbare seksjoner) ── */}
-        <aside className="w-full shrink-0 xl:sticky xl:top-3 xl:max-h-[calc(100vh-24px)] xl:w-[312px] xl:overflow-y-auto" data-testid="modell-drivere" style={{ scrollbarWidth: 'thin' }}>
+        {!railAapen && (
+          <aside className="w-full shrink-0 xl:sticky xl:top-3 xl:w-auto">
+            <button onClick={() => setRailAapen(true)} data-testid="modell-rail-vis" title="Vis forutsetninger"
+              className="relative flex h-11 w-full items-center justify-center gap-2 rounded-[14px] bg-white px-3 text-[13.5px] font-medium text-[#57534e] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)] transition-colors hover:text-[#1c1917] xl:h-[46px] xl:w-[46px]">
+              <SlidersHorizontal className="h-[18px] w-[18px]" />
+              <span className="xl:hidden">Vis forutsetninger</span>
+              {antallEndret > 0 && <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-[#6d28d9] ring-2 ring-[#f7f7f5]" />}
+            </button>
+          </aside>
+        )}
+        {railAapen && (
+        <aside className="w-full shrink-0 xl:sticky xl:top-3 xl:max-h-[calc(100vh-24px)] xl:w-[344px] xl:overflow-y-auto" data-testid="modell-drivere" style={{ scrollbarWidth: 'thin' }}>
           <div className="rounded-[16px] bg-white px-4 pb-3.5 pt-3.5 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]">
-            <div className="mb-1.5 flex items-center justify-between">
-              <p className="text-[13px] font-bold text-[#1c1917]" style={heading}>Forutsetninger</p>
-              {!readOnly && antallEndret > 0 && (
-                <button onClick={tilbakestill} className="flex items-center gap-1 rounded-full bg-[#f0ebfa] px-2 py-0.5 text-[10.5px] font-bold text-[#6d28d9] transition-colors hover:bg-[#e5dbf7]" title="Tilbakestill til sist lagrede verdier">
-                  <RotateCcw className="h-2.5 w-2.5" /> {antallEndret} endret · nullstill
+            <div className="mb-1.5 flex items-center justify-between gap-2">
+              <p className="text-[14.5px] font-bold text-[#1c1917]" style={heading}>Forutsetninger</p>
+              <span className="flex items-center gap-1.5">
+                {!readOnly && antallEndret > 0 && (
+                  <button onClick={tilbakestill} className="flex items-center gap-1 rounded-full bg-[#f0ebfa] px-2 py-0.5 text-[11px] font-bold text-[#6d28d9] transition-colors hover:bg-[#e5dbf7]" title="Tilbakestill til sist lagrede verdier">
+                    <RotateCcw className="h-2.5 w-2.5" /> {antallEndret} endret · nullstill
+                  </button>
+                )}
+                <button onClick={() => setRailAapen(false)} data-testid="modell-rail-skjul" title="Skjul forutsetninger — mer plass til tallene"
+                  className="rounded-[8px] p-1.5 text-[#c2beb8] transition-colors hover:bg-black/[0.04] hover:text-[#57534e]">
+                  <PanelLeftClose className="h-4 w-4" />
                 </button>
-              )}
+              </span>
             </div>
 
             <Seksjon tittel="Vekst og inntekt" open={aapne.vekst} onToggle={() => veksle('vekst')}
@@ -447,21 +466,21 @@ export default function BudsjettModell({ plan, api, readOnly = false, onTilbake,
               <div className="mt-1">
                 {drivere.bemanningstrinn.map((t, i) => (
                   <div key={i} className="flex items-center gap-1.5 py-1" data-testid={`trinn-${i}`}>
-                    <span className="w-6 text-[11.5px] text-[#8f8a82]">Fra</span>
+                    <span className="w-7 text-[12.5px] text-[#8f8a82]">Fra</span>
                     {readOnly ? (
-                      <span className="text-[12.5px] font-semibold text-[#1c1917]">{t.fraEnheter}</span>
+                      <span className="text-[13.5px] font-semibold text-[#1c1917]">{t.fraEnheter}</span>
                     ) : (
                       <input value={t.fraEnheter} inputMode="numeric" onChange={(e) => settTrinn(i, 'fraEnheter', e.target.value)} data-testid={`trinn-fra-${i}`}
-                        className="h-7 w-[54px] rounded-[7px] bg-[#f5f4f1] px-1.5 text-right text-[12.5px] font-semibold outline-none ring-1 ring-transparent transition-all focus:bg-white focus:ring-[#6d28d9]/40" />
+                        className="h-8 w-[60px] rounded-[8px] bg-[#f5f4f1] px-1.5 text-right text-[13.5px] font-semibold outline-none ring-1 ring-transparent transition-all focus:bg-white focus:ring-[#6d28d9]/40" />
                     )}
-                    <span className="text-[11.5px] text-[#8f8a82]">enh. →</span>
+                    <span className="text-[12.5px] text-[#8f8a82]">enh. →</span>
                     {readOnly ? (
-                      <span className="text-[12.5px] font-semibold text-[#1c1917]">{t.prosent} %</span>
+                      <span className="text-[13.5px] font-semibold text-[#1c1917]">{t.prosent} %</span>
                     ) : (
                       <>
                         <input value={t.prosent} inputMode="decimal" onChange={(e) => settTrinn(i, 'prosent', e.target.value)} data-testid={`trinn-pct-${i}`}
-                          className="h-7 w-[52px] rounded-[7px] bg-[#f5f4f1] px-1.5 text-right text-[12.5px] font-semibold outline-none ring-1 ring-transparent transition-all focus:bg-white focus:ring-[#6d28d9]/40" />
-                        <span className="text-[11.5px] text-[#8f8a82]">%</span>
+                          className="h-8 w-[58px] rounded-[8px] bg-[#f5f4f1] px-1.5 text-right text-[13.5px] font-semibold outline-none ring-1 ring-transparent transition-all focus:bg-white focus:ring-[#6d28d9]/40" />
+                        <span className="text-[12.5px] text-[#8f8a82]">%</span>
                         {drivere.bemanningstrinn.length > 1 && (
                           <button onClick={() => fjernTrinn(i)} className="ml-auto rounded p-1 text-[#c2beb8] transition-colors hover:text-[#c2413b]" title="Fjern trinn"><X className="h-3.5 w-3.5" /></button>
                         )}
@@ -476,7 +495,7 @@ export default function BudsjettModell({ plan, api, readOnly = false, onTilbake,
                 )}
               </div>
               <TrappKurve m={m} />
-              <div className="mt-2 grid grid-cols-3 gap-1.5 rounded-[10px] bg-[#faf9f7] p-2.5 text-[11px]" data-testid="modell-bemanningsstatus">
+              <div className="mt-2 grid grid-cols-3 gap-1.5 rounded-[10px] bg-[#faf9f7] p-2.5 text-[12px]" data-testid="modell-bemanningsstatus">
                 <span><span className="block text-[#8f8a82]">Behov v/slutt</span><span className="font-bold text-[#1c1917]">{Math.round((m.behovAarsverk[sisteIdx] || 0) * 100)} %</span></span>
                 <span><span className="block text-[#8f8a82]">Budsjettert</span><span className="font-bold text-[#1c1917]">{m.budsjettertPct[sisteIdx]} %</span></span>
                 <span><span className="block text-[#8f8a82]">Utnyttelse</span><span className={`font-bold ${(utn || 0) > 100 ? 'text-[#b3261e]' : 'text-[#0a7d55]'}`}>{utn === null ? '—' : `${utn} %`}</span></span>
@@ -487,7 +506,7 @@ export default function BudsjettModell({ plan, api, readOnly = false, onTilbake,
             </Seksjon>
 
             <div className="border-t border-black/[0.05] pt-2.5">
-              <p className="text-[10.5px] leading-relaxed text-[#a6a19a]">
+              <p className="text-[11.5px] leading-relaxed text-[#a6a19a]">
                 Porteføljefakta: {Math.round(fakta.enheter?.[0] || 0)} enheter · {kr0(fakta.eksisterende?.[0] || 0)} kr/mnd kontraktsfestet
                 {fakta.oppdatertAt ? ` · hentet ${new Date(fakta.oppdatertAt).toLocaleDateString('nb-NO')}` : ''}
               </p>
@@ -512,6 +531,7 @@ export default function BudsjettModell({ plan, api, readOnly = false, onTilbake,
             </div>
           </div>
         </aside>
+        )}
 
         {/* ── Høyre: output ── */}
         <main className="min-w-0 flex-1">
@@ -535,18 +555,18 @@ export default function BudsjettModell({ plan, api, readOnly = false, onTilbake,
           {/* Finansmatrise */}
           <div className="mt-2.5 rounded-[16px] bg-white shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]">
             <div className="flex flex-wrap items-center justify-between gap-2 px-4 pb-1 pt-3.5">
-              <p className="text-[12.5px] font-medium text-[#8f8a82]">Resultatoppstilling <span className="text-[#c2beb8]">· beløp i kr · beregnet fra driverne</span></p>
+              <p className="text-[13.5px] font-medium text-[#8f8a82]">Resultatoppstilling <span className="text-[#c2beb8]">· beløp i kr · beregnet fra driverne</span></p>
               <div className="flex items-center gap-0.5 rounded-[8px] bg-[#f0efec] p-0.5" data-testid="modell-visning">
                 {[['mnd', 'Måned'], ['kvartal', 'Kvartal']].map(([v, l]) => (
                   <button key={v} onClick={() => setVisning(v)} data-testid={`modell-visning-${v}`}
-                    className={`rounded-[6px] px-2.5 py-1 text-[11.5px] font-medium transition-colors ${visning === v ? 'bg-white text-[#1c1917] shadow-sm' : 'text-[#8f8a82] hover:text-[#57534e]'}`}>{l}</button>
+                    className={`rounded-[6px] px-3 py-1 text-[12.5px] font-medium transition-colors ${visning === v ? 'bg-white text-[#1c1917] shadow-sm' : 'text-[#8f8a82] hover:text-[#57534e]'}`}>{l}</button>
                 ))}
               </div>
             </div>
             <div className="overflow-x-auto pb-1" data-testid="modell-matrise" style={{ scrollbarWidth: 'thin' }}>
-              <table className="w-full text-[12px]">
+              <table className="w-full text-[13px]">
                 <thead>
-                  <tr className="text-[10.5px] uppercase tracking-[0.05em] text-[#a6a19a]">
+                  <tr className="text-[11px] uppercase tracking-[0.05em] text-[#a6a19a]">
                     <th className="sticky left-0 z-10 bg-white py-2 pl-4 pr-3 text-left font-semibold">&nbsp;</th>
                     {perioder.map((p) => (
                       <th key={p.label} className="whitespace-nowrap px-2 py-2 text-right font-semibold">{p.label}</th>
@@ -578,14 +598,14 @@ export default function BudsjettModell({ plan, api, readOnly = false, onTilbake,
                     const radBg = rad.resultat ? 'bg-[#fbfaf8]' : 'bg-white';
                     return (
                       <tr key={ri} className={`group border-t border-black/[0.04] ${rad.resultat ? 'bg-[#fbfaf8]' : ''} transition-colors hover:bg-[#f7f6f3]`}>
-                        <td className={`sticky left-0 z-10 whitespace-nowrap py-[6px] pl-4 pr-3 text-left ${radBg} transition-colors group-hover:bg-[#f7f6f3] ${rad.sum || rad.resultat ? 'font-bold text-[#1c1917]' : rad.info || rad.akk ? 'text-[#8f8a82]' : 'text-[#57534e]'}`}>
+                        <td className={`sticky left-0 z-10 whitespace-nowrap py-[7px] pl-4 pr-3 text-left ${radBg} transition-colors group-hover:bg-[#f7f6f3] ${rad.sum || rad.resultat ? 'font-bold text-[#1c1917]' : rad.info || rad.akk ? 'text-[#8f8a82]' : 'text-[#57534e]'}`}>
                           {rad.label}
                         </td>
                         {perioder.map((p) => {
                           const v = verdi(p.idx);
-                          return <td key={p.label} className={`whitespace-nowrap px-2 py-[6px] text-right ${vekt} ${celleFarge(v)}`}>{fmt(v)}</td>;
+                          return <td key={p.label} className={`whitespace-nowrap px-2 py-[7px] text-right ${vekt} ${celleFarge(v)}`}>{fmt(v)}</td>;
                         })}
-                        <td className={`sticky right-0 z-10 whitespace-nowrap border-l border-black/[0.06] bg-[#faf9f7] py-[6px] pl-2.5 pr-4 text-right font-bold transition-colors group-hover:bg-[#f2f1ee] ${rad.resultat || rad.akk ? (total >= 0 ? 'text-[#0a7d55]' : 'text-[#b3261e]') : rad.info ? 'text-[#b5b0a8]' : 'text-[#1c1917]'}`}>
+                        <td className={`sticky right-0 z-10 whitespace-nowrap border-l border-black/[0.06] bg-[#faf9f7] py-[7px] pl-2.5 pr-4 text-right font-bold transition-colors group-hover:bg-[#f2f1ee] ${rad.resultat || rad.akk ? (total >= 0 ? 'text-[#0a7d55]' : 'text-[#b3261e]') : rad.info ? 'text-[#b5b0a8]' : 'text-[#1c1917]'}`}>
                           {fmt(total)}
                         </td>
                       </tr>
@@ -599,30 +619,30 @@ export default function BudsjettModell({ plan, api, readOnly = false, onTilbake,
           {/* Sensitivitet + unit economics */}
           <div className="mt-2.5 grid gap-2.5 lg:grid-cols-2">
             <div className="rounded-[16px] bg-white p-4 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]" data-testid="modell-tornado">
-              <p className="text-[12.5px] font-medium text-[#8f8a82]">Sensitivitet — hva betyr mest?</p>
-              <p className="mt-0.5 text-[11px] text-[#a6a19a]">Effekt på periodens resultat når hver driver endres ±10 %.</p>
+              <p className="text-[13.5px] font-medium text-[#8f8a82]">Sensitivitet — hva betyr mest?</p>
+              <p className="mt-0.5 text-[11.5px] text-[#a6a19a]">Effekt på periodens resultat når hver driver endres ±10 %.</p>
               <div className="mt-3 space-y-2">
                 {tornado.rader.map((r) => (
                   <div key={r.k} className="flex items-center gap-2.5">
-                    <span className="w-[148px] shrink-0 truncate text-[12px] text-[#57534e]">{r.label}</span>
+                    <span className="w-[164px] shrink-0 truncate text-[13px] text-[#57534e]">{r.label}</span>
                     <span className="h-[8px] flex-1 overflow-hidden rounded-full bg-black/[0.04]">
                       <span className={`block h-full rounded-full transition-all duration-300 ${r.opp >= 0 ? 'bg-[#0a7d55]/70' : 'bg-[#b3261e]/60'}`} style={{ width: `${Math.max(3, (r.spenn / tornado.maks) * 100)}%` }} />
                     </span>
-                    <span className="w-[102px] shrink-0 text-right text-[11.5px] font-semibold text-[#1c1917]">±{kr0(r.spenn)} kr</span>
+                    <span className="w-[112px] shrink-0 text-right text-[12.5px] font-semibold text-[#1c1917]">±{kr0(r.spenn)} kr</span>
                   </div>
                 ))}
                 {tornado.rader.length === 0 && <p className="text-[12px] text-[#a6a19a]">Sett driverne over 0 for å se sensitivitet.</p>}
               </div>
             </div>
             <div className="rounded-[16px] bg-white p-4 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]" data-testid="modell-cac">
-              <p className="text-[12.5px] font-medium text-[#8f8a82]">Unit economics per ny enhet</p>
-              <div className="mt-3 space-y-1.5 text-[12.5px]">
+              <p className="text-[13.5px] font-medium text-[#8f8a82]">Unit economics per ny enhet</p>
+              <div className="mt-3 space-y-1.5 text-[13.5px]">
                 <div className="flex justify-between"><span className="text-[#57534e]">Anskaffelseskostnad (CAC)</span><span className="font-semibold text-[#1c1917]">{kr(m.cac.provisjon)}</span></div>
                 <div className="flex justify-between"><span className="text-[#57534e]">Månedlig honorar <span className="text-[#a6a19a]">eks. mva</span></span><span className="font-semibold text-[#1c1917]">{kr0(m.cac.bruttoHonorarNy)} kr</span></div>
                 <div className="flex justify-between"><span className="text-[#57534e]">− Systemkostnad</span><span className="font-semibold text-[#1c1917]">{kr0(m.cac.systemPerEnhet)} kr</span></div>
                 <div className="flex justify-between border-t border-black/[0.05] pt-1.5"><span className="text-[#57534e]">= Bidrag før bemanning</span><span className={`font-bold ${m.cac.bidrag > 0 ? 'text-[#0a7d55]' : 'text-[#b3261e]'}`}>{kr0(m.cac.bidrag)} kr/mnd</span></div>
               </div>
-              <p className="mt-3 inline-flex rounded-full bg-[#f0ebfa] px-3 py-1 text-[12px] font-bold text-[#6d28d9]" data-testid="modell-payback">
+              <p className="mt-3 inline-flex rounded-full bg-[#f0ebfa] px-3 py-1 text-[13px] font-bold text-[#6d28d9]" data-testid="modell-payback">
                 {m.cac.paybackMnd === null ? (m.cac.bidrag <= 0 ? 'Bidraget dekker ikke systemkostnaden' : 'Ingen CAC') : `CAC payback: ${kma(m.cac.paybackMnd)} mnd`}
               </p>
             </div>
