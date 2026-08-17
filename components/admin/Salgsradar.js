@@ -315,234 +315,6 @@ function SammenlignModal({ par, idx, setIdx, onClose }) {
   );
 }
 
-/* ── StylingPanel: manuell, kuratert AI-styling med review ───────────────────
-   Ingenting styles automatisk. Flyt: velg originalbilder → sett modus/
-   intensitet (+ valgfri instruks) → Generer → reviewkø med før/etter →
-   Bruk / Prøv igjen / Forkast. Kun godkjente bilder havner i galleriet og
-   på tilbudssiden — ærlig merket. Parring original↔AI garanteres av
-   kildeUrl på jobben. ───────────────────────────────────────────────────── */
-function StylingPanel({ lead, api, onEndret, dodeBilder, merkDodBilde, bento }) {
-  const [valgte, setValgte] = useState(() => new Set());
-  const [modus, setModus] = useState('optimal'); // 'optimal' | 'lysloft' | 'mobler'
-  const [variant, setVariant] = useState('nordisk');
-  const [intensitet, setIntensitet] = useState('full');
-  const [instruks, setInstruks] = useState('');
-  const [jobber, setJobber] = useState([]);
-  const [starter, setStarter] = useState(false);
-  const [busy, setBusy] = useState(null);
-  const [feil, setFeil] = useState('');
-  const [sml, setSml] = useState(null); // {ai, original, stil} → fullskjerm før/etter
-
-  const hentJobber = useCallback(async () => {
-    try { const j = await api(`styling-jobber?leadId=${lead.id}`); setJobber(j.jobber || []); } catch (e) { /* stille — prøver igjen */ }
-  }, [api, lead.id]);
-
-  useEffect(() => {
-    setValgte(new Set()); setInstruks(''); setFeil(''); setSml(null); setJobber([]);
-    setModus(lead.foreslattStil === 'lysloft' ? 'lysloft' : 'optimal');
-    hentJobber();
-  }, [lead.id]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const aktive = useMemo(() => jobber.filter((j) => ['venter', 'kjorer'].includes(j.status)), [jobber]);
-  const reviewKo = useMemo(() => jobber.filter((j) => j.status === 'ferdig' && j.review === 'venter'), [jobber]);
-  const feilede = useMemo(() => jobber.filter((j) => j.status === 'feilet' && j.review !== 'forkastet'), [jobber]);
-  const aktiveKilder = useMemo(() => new Set(aktive.map((j) => j.kildeUrl)), [aktive]);
-
-  // Poll hvert 4. sekund så lenge jobber kjører
-  useEffect(() => {
-    if (!aktive.length) return undefined;
-    const t = setInterval(hentJobber, 4000);
-    return () => clearInterval(t);
-  }, [aktive.length, hentJobber]);
-
-  const styletKilder = useMemo(() => new Set((lead.stylet || []).map((s) => s.kildeUrl)), [lead.stylet]);
-  const originaler = useMemo(() => (lead.bilder || []).filter((b) => !dodeBilder.has(b)).slice(0, 14), [lead.bilder, dodeBilder]);
-
-  const veksle = (u) => {
-    if (aktiveKilder.has(u)) return;
-    setValgte((prev) => { const n = new Set(prev); if (n.has(u)) n.delete(u); else n.add(u); return n; });
-  };
-
-  const generer = async () => {
-    if (starter || !valgte.size) return;
-    setStarter(true); setFeil('');
-    const stil = modus === 'mobler' ? variant : modus;
-    try {
-      await api('styling-jobber', {
-        method: 'POST',
-        body: { leadId: lead.id, bilder: Array.from(valgte).map((kildeUrl) => ({ kildeUrl, stil, intensitet, instruks })) },
-      });
-      setValgte(new Set());
-      await hentJobber();
-    } catch (e) { setFeil(e.message); }
-    setStarter(false);
-  };
-
-  const review = async (jobbId, handling) => {
-    if (busy) return;
-    setBusy(jobbId); setFeil('');
-    try {
-      await api('styling-review', { method: 'POST', body: { jobbId, handling } });
-      await hentJobber();
-      if (handling === 'godkjenn') await onEndret();
-    } catch (e) { setFeil(e.message); }
-    setBusy(null);
-  };
-
-  const info = MODUS_INFO[modus === 'mobler' ? variant : modus];
-  const erStaging = modus === 'mobler';
-  const SEG_AKTIV = 'bg-[#1c1917] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]';
-  const SEG_INAKTIV = 'text-[#78716c] hover:text-[#1c1917]';
-
-  return (
-    <section className="mt-7 border-t border-black/[0.07] pt-5" data-testid="radar-styling-panel">
-      <SekHode ikon={Wand2} tittel="Bildestyling" hoyre={aktive.length > 0 ? (
-        <span className="flex items-center gap-1.5 text-[11px] font-medium text-[#6d28d9]"><Loader2 className="h-3 w-3 animate-spin" /> {aktive.length} i arbeid</span>
-      ) : null} />
-      <p className="mt-1.5 text-[11.5px] leading-relaxed text-[#a8a29a]">Ingenting styles automatisk. Velg bildene du vil forbedre, sett modus — og se over resultatet før det brukes i tilbud og annonse.</p>
-
-      {feil && <p className="mt-2 rounded-[8px] bg-[#fdf0ef] px-3 py-2 text-[12px] font-medium text-[#c2413b]" data-testid="radar-styling-feil">{feil}</p>}
-
-      {/* 1 · Velg bilder */}
-      <div className="mt-3.5">
-        <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#a8a29a]">1 · Velg bilder{valgte.size > 0 ? ` — ${valgte.size} valgt` : ''}</p>
-        <div className="mt-2 grid grid-cols-3 gap-1.5 min-[480px]:grid-cols-4 sm:grid-cols-5 md:grid-cols-6">
-          {originaler.map((b, i) => {
-            const valgtB = valgte.has(b);
-            const kjorerB = aktiveKilder.has(b);
-            return (
-              <div key={b} role="button" tabIndex={0} data-testid={`radar-styling-velg-${i}`}
-                onClick={() => veksle(b)}
-                className={`group relative cursor-pointer overflow-hidden rounded-[9px] bg-[#f4f2ee] transition-all ${valgtB ? 'ring-2 ring-[#1c1917] ring-offset-1' : 'hover:opacity-95'} ${kjorerB ? 'cursor-default' : ''}`}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={b} alt="" draggable={false} onError={() => merkDodBilde(b)}
-                  className={`h-[68px] w-full object-cover transition-opacity sm:h-[76px] ${valgtB ? '' : 'opacity-90 group-hover:opacity-100'}`} />
-                {valgtB && (
-                  <span className="absolute right-1 top-1 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-[#1c1917] text-white shadow-[0_1px_4px_rgba(0,0,0,0.3)]"><Check className="h-3 w-3" /></span>
-                )}
-                {!valgtB && !kjorerB && (
-                  <span className="absolute right-1 top-1 h-[18px] w-[18px] rounded-full border-[1.5px] border-white/90 bg-black/20 opacity-0 shadow-[0_1px_3px_rgba(0,0,0,0.25)] transition-opacity group-hover:opacity-100" />
-                )}
-                {styletKilder.has(b) && (
-                  <span className="absolute bottom-1 left-1 rounded-[3px] bg-[#8b5cf6]/90 px-1 py-px text-[7.5px] font-bold uppercase text-white">Stylet</span>
-                )}
-                {kjorerB && (
-                  <span className="absolute inset-0 flex items-center justify-center bg-black/35"><Loader2 className="h-4 w-4 animate-spin text-white" /></span>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* 2 · Modus + intensitet + instruks */}
-      <div className="mt-4">
-        <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#a8a29a]">2 · Velg styling</p>
-        <div className="mt-2 flex flex-wrap items-center gap-2">
-          <div className="flex rounded-[8px] border border-black/[0.08] bg-[#f7f6f3] p-0.5">
-            {[['optimal', 'FINN-optimalisering'], ['lysloft', 'Lysløft'], ['mobler', 'Møblering']].map(([k, l]) => (
-              <button key={k} onClick={() => setModus(k)} data-testid={`radar-modus-${k}`}
-                className={`rounded-[6.5px] px-2.5 py-1.5 text-[11.5px] font-medium transition-all ${modus === k ? SEG_AKTIV : SEG_INAKTIV}`}>
-                {l}
-              </button>
-            ))}
-          </div>
-          {erStaging && (
-            <select value={variant} onChange={(e) => setVariant(e.target.value)} data-testid="radar-staging-variant"
-              className="h-8 rounded-[7px] border border-black/[0.08] bg-white px-2 text-[11.5px] outline-none focus:border-[#1c1917]/25">
-              <option value="nordisk">Nordisk</option>
-              <option value="moderne">Moderne</option>
-              <option value="varm">Varm</option>
-            </select>
-          )}
-          <div className="flex rounded-[8px] border border-black/[0.08] bg-[#f7f6f3] p-0.5">
-            {[['varsom', 'Varsom'], ['full', 'Full']].map(([k, l]) => (
-              <button key={k} onClick={() => setIntensitet(k)} data-testid={`radar-intensitet-${k}`}
-                className={`rounded-[6.5px] px-2.5 py-1.5 text-[11.5px] font-medium transition-all ${intensitet === k ? SEG_AKTIV : SEG_INAKTIV}`}>
-                {l}
-              </button>
-            ))}
-          </div>
-        </div>
-        <p className="mt-2 text-[11.5px] leading-relaxed text-[#78716c]">
-          {info.d} <span className={`ml-1 rounded-[4px] px-1.5 py-px text-[10px] font-bold ${erStaging ? 'bg-[#fdf3e0] text-[#9a6b1c]' : 'bg-[#f4f0fb] text-[#6d28d9]'}`}>{info.merk}</span>
-        </p>
-        <input value={instruks} onChange={(e) => setInstruks(e.target.value)} maxLength={500} data-testid="radar-styling-instruks"
-          placeholder="Egen instruks til stylisten (valgfritt) — f.eks. «behold de grønne putene»"
-          className="mt-2.5 h-9 w-full rounded-[8px] border border-black/[0.08] bg-white px-3 text-[12.5px] outline-none placeholder:text-[#c2beb8] focus:border-[#1c1917]/25" />
-        <div className="mt-3 flex items-center gap-3">
-          <button onClick={generer} disabled={starter || valgte.size === 0} data-testid="radar-styling-generer" className={KNAPP_PRIMAER}>
-            {starter ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5" />}
-            {valgte.size > 0 ? `Forbedre ${valgte.size} ${valgte.size === 1 ? 'bilde' : 'bilder'}` : 'Velg bilder først'}
-          </button>
-          {valgte.size > 0 && <span className="text-[11px] text-[#a8a29a]">~30–60 sek per bilde — du kan lukke og komme tilbake</span>}
-        </div>
-      </div>
-
-      {/* 3 · Reviewkø: før/etter → Bruk / Prøv igjen / Forkast */}
-      {(reviewKo.length > 0 || feilede.length > 0) && (
-        <div className="mt-5 border-t border-black/[0.05] pt-4">
-          <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#a8a29a]">3 · Se over{reviewKo.length > 0 ? ` — ${reviewKo.length} venter på deg` : ''}</p>
-          <div className="mt-2.5 grid gap-3">
-            {reviewKo.map((j) => {
-              const kandidatUrl = `/api/tilbud/bilde?id=${j.resultatBildeId}`;
-              const mi = MODUS_INFO[j.stil] || MODUS_INFO.optimal;
-              return (
-                <div key={j.id} className="overflow-hidden rounded-[12px] border border-black/[0.06] bg-[#fbfaf9]" data-testid="radar-review-kort">
-                  <div className="grid grid-cols-2 gap-px bg-black/[0.05]">
-                    <div className="relative cursor-pointer bg-[#f4f2ee]" role="button" tabIndex={0} onClick={() => setSml({ ai: kandidatUrl, original: j.kildeUrl, stil: j.stil })}>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={j.kildeUrl} alt="Original" draggable={false} className="h-[150px] w-full object-cover sm:h-[190px]" />
-                      <span className="pointer-events-none absolute left-2 top-2 rounded-[4px] bg-black/50 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white">Original</span>
-                    </div>
-                    <div className="relative cursor-pointer bg-[#f4f2ee]" role="button" tabIndex={0} onClick={() => setSml({ ai: kandidatUrl, original: j.kildeUrl, stil: j.stil })}>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={kandidatUrl} alt="AI-forslag" draggable={false} className="h-[150px] w-full object-cover sm:h-[190px]" />
-                      <span className="pointer-events-none absolute left-2 top-2 rounded-[4px] bg-[#8b5cf6]/90 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white">{mi.merk}</span>
-                      <span className="pointer-events-none absolute bottom-2 right-2 flex items-center gap-1 rounded-[5px] bg-white/90 px-1.5 py-0.5 text-[10px] font-medium text-[#1c1917]"><Maximize2 className="h-2.5 w-2.5" /> Sammenlign</span>
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2 px-3 py-2.5">
-                    <span className="mr-auto text-[11px] text-[#78716c]">
-                      {mi.l} · {j.intensitet === 'varsom' ? 'varsom' : 'full'}{j.instruks ? <span className="text-[#a8a29a]"> · «{j.instruks.slice(0, 60)}{j.instruks.length > 60 ? '…' : ''}»</span> : ''}
-                    </span>
-                    <button onClick={() => review(j.id, 'forkast')} disabled={!!busy} data-testid="radar-review-forkast"
-                      className="flex h-8 items-center gap-1.5 rounded-[7px] px-2.5 text-[12px] font-medium text-[#a8a29a] transition-colors hover:bg-[#fdf0ef] hover:text-[#c2413b] disabled:opacity-50">
-                      <X className="h-3.5 w-3.5" /> Forkast
-                    </button>
-                    <button onClick={() => review(j.id, 'provIgjen')} disabled={!!busy} data-testid="radar-review-provigjen" className={KNAPP_GHOST}>
-                      <RefreshCw className={`h-3.5 w-3.5 ${busy === j.id ? 'animate-spin' : ''}`} /> Prøv igjen
-                    </button>
-                    <button onClick={() => review(j.id, 'godkjenn')} disabled={!!busy} data-testid="radar-review-godkjenn" className={KNAPP_PRIMAER}>
-                      {busy === j.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />} Bruk bildet
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-            {feilede.map((j) => (
-              <div key={j.id} className="flex flex-wrap items-center gap-2.5 rounded-[10px] border border-[#f3d9d7] bg-[#fdf0ef] px-3 py-2.5" data-testid="radar-styling-feilet">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={j.kildeUrl} alt="" className="h-9 w-12 rounded-[6px] object-cover" />
-                <span className="mr-auto min-w-0 text-[12px] font-medium text-[#c2413b]">Styling feilet: {j.feil || 'ukjent feil'}</span>
-                <button onClick={() => review(j.id, 'provIgjen')} disabled={!!busy}
-                  className="flex items-center gap-1.5 rounded-[7px] border border-[#eec3c0] bg-white px-2.5 py-1.5 text-[11.5px] font-bold text-[#c2413b] transition-colors hover:bg-[#fdf6f5] disabled:opacity-50">
-                  <RefreshCw className={`h-3 w-3 ${busy === j.id ? 'animate-spin' : ''}`} /> Prøv igjen
-                </button>
-                <button onClick={() => review(j.id, 'forkast')} disabled={!!busy} className="rounded-[7px] px-2 py-1.5 text-[11.5px] font-medium text-[#c2413b]/70 hover:text-[#c2413b]">Fjern</button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Fullskjerm før/etter for kandidat */}
-      {sml && (
-        <SammenlignModal par={[sml]} idx={0} setIdx={() => {}} onClose={() => setSml(null)} />
-      )}
-    </section>
-  );
-}
 
 export default function Salgsradar({ apiKey }) {
   const api = useCallback(async (path, opts = {}) => {
@@ -587,6 +359,17 @@ export default function Salgsradar({ apiKey }) {
   const [loggTekst, setLoggTekst] = useState('');
   const [loggSender, setLoggSender] = useState(false);
   const [previewNokkel, setPreviewNokkel] = useState(0); // tvinger reload av tilbuds-previewen
+  // Bildestyling — integrert i Bilder-fanen (canvas + inspector, ingen egen seksjon)
+  const [styJobber, setStyJobber] = useState([]);
+  const [styModus, setStyModus] = useState('optimal'); // 'optimal' | 'lysloft' | 'mobler'
+  const [styVariant, setStyVariant] = useState('nordisk');
+  const [styIntensitet, setStyIntensitet] = useState('full');
+  const [styInstruks, setStyInstruks] = useState('');
+  const [styStarter, setStyStarter] = useState(false);
+  const [styBusy, setStyBusy] = useState(null);
+  const [styFeil, setStyFeil] = useState('');
+  const [styValgte, setStyValgte] = useState(() => new Set()); // multivalg i filmstripen
+  const [smlPar, setSmlPar] = useState(null); // {ai, original, stil} → fullskjerm før/etter
   const [heroIdx, setHeroIdx] = useState(0);
   const [heroPos, setHeroPos] = useState(55); // skillelinje for inline før/etter på hero
   const heroDrag = useRef(null); // {x0, y0, laast: 'slider'|'scroll'|null, flyttet}
@@ -595,7 +378,6 @@ export default function Salgsradar({ apiKey }) {
   // portrett vises med object-contain over en uskarp cover-bakgrunn i stedet
   // for å croppes brutalt inn i den horisontale rammen.
   const [heroAr, setHeroAr] = useState(null);
-  const [sammenlign, setSammenlign] = useState(null); // {idx} — fullskjerm før/etter-modal
   const swipeX = useRef(null); // touch-swipe i hero-galleriet
   const [lagret, setLagret] = useState(false);
   const lagretTimer = useRef(null);
@@ -611,7 +393,26 @@ export default function Salgsradar({ apiKey }) {
   useEffect(() => () => clearTimeout(lagretTimer.current), []);
   // Tilbuds-previewen laster på nytt når en endring lagres — «live» uten å telle åpninger
   useEffect(() => { if (lagret) setPreviewNokkel((k) => k + 1); }, [lagret]);
-  useEffect(() => { setHeroIdx(0); setSammenlign(null); setFane('oversikt'); setStatusMeny(false); setLoggTekst(''); }, [valgtId]);
+  useEffect(() => { setHeroIdx(0); setSmlPar(null); setFane('oversikt'); setStatusMeny(false); setLoggTekst(''); }, [valgtId]);
+  // Bildestyling-jobber hentes per lead (definert før effektene som bruker den)
+  const hentStyJobber = useCallback(async (leadId) => {
+    if (!leadId) return;
+    try { const j = await api(`styling-jobber?leadId=${leadId}`); setStyJobber(j.jobber || []); } catch (e) { /* stille — prøver igjen */ }
+  }, [api]);
+  // Bildestyling: nullstill + hent jobber når leaden byttes
+  useEffect(() => {
+    setStyJobber([]); setStyValgte(new Set()); setStyInstruks(''); setStyFeil(''); setSmlPar(null); setStyIntensitet('full');
+    const lSty = leads.find((x) => x.id === valgtId);
+    setStyModus(lSty?.foreslattStil === 'lysloft' ? 'lysloft' : 'optimal');
+    if (valgtId) hentStyJobber(valgtId);
+  }, [valgtId]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Poll hvert 4. sekund så lenge stylingjobber kjører
+  const styAktive = useMemo(() => styJobber.filter((j) => ['venter', 'kjorer'].includes(j.status)), [styJobber]);
+  useEffect(() => {
+    if (!styAktive.length || !valgtId) return undefined;
+    const t = setInterval(() => hentStyJobber(valgtId), 4000);
+    return () => clearInterval(t);
+  }, [styAktive.length, valgtId, hentStyJobber]);
   useEffect(() => { setHeroPos(55); setHeroAr(null); }, [heroIdx, valgtId]);
   const settHeroPos = (e) => {
     const r = e.currentTarget.getBoundingClientRect();
@@ -760,6 +561,33 @@ export default function Salgsradar({ apiKey }) {
     } catch (e) { setFeil(e.message); }
   };
 
+  // ── Bildestyling: manuell, kuratert flyt — velg bilde(r) → generer →
+  //    godkjenn/forkast. Kun godkjente bilder brukes i tilbud og annonse. ──
+  const styGenerer = async (leadId, kilder) => {
+    if (styStarter || !kilder.length) return;
+    setStyStarter(true); setStyFeil('');
+    const stil = styModus === 'mobler' ? styVariant : styModus;
+    try {
+      await api('styling-jobber', {
+        method: 'POST',
+        body: { leadId, bilder: kilder.map((kildeUrl) => ({ kildeUrl, stil, intensitet: styIntensitet, instruks: styInstruks })) },
+      });
+      setStyValgte(new Set());
+      await hentStyJobber(leadId);
+    } catch (e) { setStyFeil(e.message); }
+    setStyStarter(false);
+  };
+  const styReview = async (leadId, jobbId, handling) => {
+    if (styBusy) return;
+    setStyBusy(jobbId); setStyFeil('');
+    try {
+      await api('styling-review', { method: 'POST', body: { jobbId, handling } });
+      await hentStyJobber(leadId);
+      if (handling === 'godkjenn') await hentLeads();
+    } catch (e) { setStyFeil(e.message); }
+    setStyBusy(null);
+  };
+
   const valgt = useMemo(() => leads.find((l) => l.id === valgtId) || null, [leads, valgtId]);
   const filtrert = useMemo(() => {
     let arr = filter === 'alle' ? leads : leads.filter((l) => l.status === filter);
@@ -812,15 +640,42 @@ export default function Salgsradar({ apiKey }) {
     navigator.clipboard?.writeText(tekst).then(() => { setMeldingKopiert(true); setTimeout(() => setMeldingKopiert(false), 1600); });
   };
 
-  const galleri = useMemo(() => {
+  // Ett medium per originalfoto — godkjent AI-versjon, ventende kandidat og
+  // kjørende jobb kobles på samme motiv (aldri dobbeltoppføringer i galleriet)
+  const media = useMemo(() => {
     if (!valgt) return [];
-    return [
-      ...(valgt.stylet || []).map((s) => ({ url: `/api/tilbud/bilde?id=${s.id}`, etikett: MODUS_INFO[s.stil]?.merk || 'AI-forbedret foto', ai: true, kilde: s.kildeUrl, stil: s.stil })),
-      ...(valgt.bilder || []).filter((b) => !dodeBilder.has(b)).slice(0, 14).map((b) => ({ url: b, etikett: 'Original', ai: false, kilde: b })),
-    ];
-  }, [valgt, dodeBilder]);
-  // AI-par til før/etter-sammenligning: AI-bilde + originalen det bygger på
-  const aiPar = useMemo(() => galleri.filter((g) => g.ai && g.kilde).map((g) => ({ ai: g.url, original: g.kilde, stil: g.stil })), [galleri]);
+    const stylet = valgt.stylet || [];
+    const aiAvKilde = new Map(stylet.map((s) => [s.kildeUrl, s]));
+    const jobbAvKilde = new Map();
+    for (const j of styJobber) {
+      if (['venter', 'kjorer'].includes(j.status)) jobbAvKilde.set(j.kildeUrl, { type: 'kjorer', jobb: j });
+      else if (j.status === 'ferdig' && j.review === 'venter' && !jobbAvKilde.has(j.kildeUrl)) jobbAvKilde.set(j.kildeUrl, { type: 'kandidat', jobb: j });
+      else if (j.status === 'feilet' && j.review !== 'forkastet' && !jobbAvKilde.has(j.kildeUrl)) jobbAvKilde.set(j.kildeUrl, { type: 'feilet', jobb: j });
+    }
+    const ut = (valgt.bilder || []).filter((b) => !dodeBilder.has(b)).slice(0, 14).map((b) => {
+      const s = aiAvKilde.get(b);
+      const jb = jobbAvKilde.get(b);
+      return {
+        kilde: b,
+        kildeOk: true,
+        ai: s ? { url: `/api/tilbud/bilde?id=${s.id}`, stil: s.stil } : null,
+        kandidat: jb?.type === 'kandidat' ? { url: `/api/tilbud/bilde?id=${jb.jobb.resultatBildeId}`, jobb: jb.jobb } : null,
+        kjorer: jb?.type === 'kjorer' ? jb.jobb : null,
+        feilet: jb?.type === 'feilet' ? jb.jobb : null,
+      };
+    });
+    const dekket = new Set(ut.map((m) => m.kilde));
+    for (const s of stylet) {
+      if (!dekket.has(s.kildeUrl)) ut.push({ kilde: s.kildeUrl, kildeOk: false, ai: { url: `/api/tilbud/bilde?id=${s.id}`, stil: s.stil }, kandidat: null, kjorer: null, feilet: null });
+    }
+    return ut;
+  }, [valgt, dodeBilder, styJobber]);
+  // Lightbox-liste: beste tilgjengelige versjon per motiv, med ærlig etikett
+  const lysbilder = useMemo(() => media.map((m) => ({
+    url: m.kandidat?.url || m.ai?.url || m.kilde,
+    ai: Boolean(m.kandidat || m.ai),
+    etikett: m.kandidat ? 'AI-forslag' : m.ai ? (MODUS_INFO[m.ai.stil]?.merk || 'AI-forbedret') : 'Original',
+  })), [media]);
 
   const splitt = Boolean(valgt) && bred && visning === 'liste' && !utvidet;
   const sorter = (key) => setSort((p) => (p.key === key ? { key, dir: p.dir === 'desc' ? 'asc' : 'desc' } : { key, dir: 'desc' }));
@@ -834,7 +689,7 @@ export default function Salgsradar({ apiKey }) {
     // ultrabrede skjermer (>=1680px) — ekstra plass gir flere kolonner,
     // aldri bredere elementer.
     const toKol = utvidet || (splitt && ultra);
-    const nB = galleri.length;
+    const nB = media.length;
     const autoAktiv = Boolean(valgt.auto && ['analyserer', 'styler'].includes(valgt.auto.status));
     const steg = autoAktiv ? null : nesteSteg(valgt);
 
@@ -867,135 +722,292 @@ export default function Salgsradar({ apiKey }) {
 
     // Flat seksjonsstil — hårfin skillelinje i stedet for kort-i-kort
     const FLAT = 'border-t border-black/[0.07] pt-5 first:border-t-0 first:pt-0';
+    // Delt formspråk: myk flate + rolig etikett (brukes i Oversikt og Bilder)
+    const FLATE = 'rounded-[12px] bg-[#f7f6f4] p-4 sm:p-5';
+    const ETIKETT = 'text-[13px] font-medium text-[#8f8a82]';
     const HENDELSE_IKON = { notat: StickyNote, kontakt: Phone, oppgave: CheckSquare, svar: MessageSquare, aapning: Eye, pris: Banknote, analyse: Sparkles, hentet: Radar };
 
     const hIdx = Math.min(heroIdx, Math.max(0, nB - 1));
-    const hero = galleri[hIdx];
-    // Inline før/etter krever at originalen (kilde) fortsatt finnes på finncdn
-    const heroSml = Boolean(hero && hero.ai && hero.kilde && !dodeBilder.has(hero.kilde));
+    const mAkt = media[hIdx];
+    // Slider vises når det finnes en AI-versjon/kandidat OG originalen fortsatt lever.
+    // Kandidat (venter på godkjenning) prioriteres over godkjent AI-versjon.
+    const sliderTopp = mAkt ? (mAkt.kandidat?.url || mAkt.ai?.url || null) : null;
+    const heroSml = Boolean(mAkt && sliderTopp && mAkt.kildeOk);
+    const heroVis = mAkt ? (mAkt.kildeOk ? mAkt.kilde : (mAkt.ai?.url || mAkt.kilde)) : null;
     const erPortrett = heroAr != null && heroAr < 0.85;
     const heroFit = erPortrett ? 'object-contain' : 'object-cover';
     const heroH = 'h-[260px] min-[440px]:h-[320px] sm:h-[430px]';
     const settAr = (e) => { const w = e.target.naturalWidth; const h = e.target.naturalHeight; if (w && h) setHeroAr(w / h); };
-    const blurBak = erPortrett && hero ? (
+    const blurBak = erPortrett && (heroVis || heroSml) ? (
       // eslint-disable-next-line @next/next/no-img-element
-      <img src={hero.ai ? hero.url : hero.url} alt="" aria-hidden="true" draggable={false}
+      <img src={heroSml ? sliderTopp : heroVis} alt="" aria-hidden="true" draggable={false}
         className="absolute inset-0 h-full w-full scale-110 object-cover opacity-50 blur-2xl saturate-[1.1]" />
     ) : null;
+    const kandidatAntall = media.filter((m) => m.kandidat).length;
+    const mVurd = mAkt ? (ai?.bildeVurdering || []).find((x) => x.url === mAkt.kilde) : null;
+    const bulkValg = [...styValgte].filter((k) => media.some((m) => m.kilde === k && m.kildeOk));
 
-    const sekBilder = nB > 0 && (
-      <section data-testid="radar-bilder-flate">
-        {(valgt.stylet || []).length > 0 && (
-          <p className="mb-2 flex items-center gap-1.5 text-[11px] font-medium text-[#6d28d9]"><Sparkles className="h-3 w-3" /> {(valgt.stylet || []).length} AI-godkjente bilder i tilbudet</p>
-        )}
-        {/* Hero-canvas — AI-bilder viser før/etter-slider DIREKTE på bildet.
-            Mobil: retningslås — vertikal bevegelse scroller siden som normalt,
-            tydelig horisontal bevegelse drar slideren, og et trykk flytter
-            linjen dit med animasjon. Originaler har swipe/klikk som før. */}
-        <div className={`group relative overflow-hidden rounded-[10px] bg-[#f4f2ee] ${heroSml ? 'cursor-ew-resize' : ''}`} data-testid="radar-galleri-hero"
-          style={heroSml ? { touchAction: 'pan-y' } : undefined}
-          onPointerDown={heroSml ? (e) => { heroDrag.current = { x0: e.clientX, y0: e.clientY, laast: null, flyttet: false }; } : undefined}
-          onPointerMove={heroSml ? (e) => {
-            const d = heroDrag.current;
-            if (!d) return;
-            if (!d.laast) {
-              const dx = Math.abs(e.clientX - d.x0);
-              const dy = Math.abs(e.clientY - d.y0);
-              if (dx > 7 && dx > dy * 1.2) {
-                d.laast = 'slider';
-                try { e.currentTarget.setPointerCapture(e.pointerId); } catch (e2) { /* ok */ }
-                setHeroDrar(true);
-                settHeroPos(e);
-              } else if (dy > 10 && dy > dx) {
-                d.laast = 'scroll'; // la siden scrolle i fred
-              }
-              return;
-            }
-            if (d.laast === 'slider') settHeroPos(e);
-          } : undefined}
-          onPointerUp={heroSml ? (e) => {
-            const d = heroDrag.current;
-            heroDrag.current = null;
-            setHeroDrar(false);
-            // Trykk uten bevegelse → flytt linjen dit (transition er aktiv når vi ikke drar)
-            if (d && !d.laast && Math.abs(e.clientX - d.x0) < 6 && Math.abs(e.clientY - d.y0) < 6) settHeroPos(e);
-          } : undefined}
-          onPointerCancel={heroSml ? () => { heroDrag.current = null; setHeroDrar(false); } : undefined}
-          onTouchStart={!heroSml ? (e) => { swipeX.current = e.touches[0].clientX; } : undefined}
-          onTouchEnd={!heroSml ? (e) => {
-            if (swipeX.current == null || nB < 2) return;
-            const dx = e.changedTouches[0].clientX - swipeX.current;
-            swipeX.current = null;
-            if (dx > 45) setHeroIdx((hIdx - 1 + nB) % nB);
-            else if (dx < -45) setHeroIdx((hIdx + 1) % nB);
-          } : undefined}>
-          {heroSml ? (
-            <>
-              {blurBak}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={hero.kilde} alt="Original" draggable={false} data-testid="radar-galleri-bilde"
-                onError={() => merkDodBilde(hero.kilde)} onLoad={settAr}
-                className={`relative w-full select-none ${heroFit} ${heroH}`} />
-              <span className="pointer-events-none absolute inset-0" style={{ clipPath: `inset(0 ${100 - heroPos}% 0 0)`, transition: heroDrar ? 'none' : 'clip-path .22s ease' }}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={hero.url} alt="AI-forbedret" draggable={false} className={`h-full w-full select-none ${heroFit}`} />
-              </span>
-              <span className="pointer-events-none absolute inset-y-0 z-10" style={{ left: `${heroPos}%`, transition: heroDrar ? 'none' : 'left .22s ease' }} data-testid="radar-hero-slider">
-                <span className="absolute inset-y-0 -ml-px w-[2px] bg-white/95 shadow-[0_0_8px_rgba(0,0,0,0.45)]" />
-                <span className="absolute top-1/2 -ml-[17px] -mt-[17px] flex h-[34px] w-[34px] items-center justify-center rounded-full bg-white shadow-[0_2px_10px_rgba(0,0,0,0.3)] sm:-ml-[15px] sm:-mt-[15px] sm:h-[30px] sm:w-[30px]">
-                  <ChevronLeft className="-mr-0.5 h-3 w-3 text-[#1c1917]" /><ChevronRight className="-ml-0.5 h-3 w-3 text-[#1c1917]" />
-                </span>
-              </span>
-              <span className="pointer-events-none absolute left-3 top-3 rounded-[5px] bg-[#8b5cf6]/90 px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-wide text-white" style={{ opacity: heroPos > 14 ? 1 : 0, transition: 'opacity .2s' }}>{hero.etikett}</span>
-              <span className="pointer-events-none absolute right-3 top-3 rounded-[5px] bg-black/45 px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-wide text-white" style={{ opacity: heroPos < 86 ? 1 : 0, transition: 'opacity .2s' }}>Original</span>
-              <button onClick={(e) => { e.stopPropagation(); setSammenlign({ idx: Math.min(hIdx, Math.max(0, aiPar.length - 1)) }); }} onPointerDown={(e) => e.stopPropagation()} data-testid="radar-se-foretter" title="Åpne før/etter i fullskjerm"
-                className="absolute bottom-3 left-3 z-10 flex items-center gap-1.5 rounded-[7px] bg-white/95 px-2.5 py-1.5 text-[11.5px] font-medium text-[#1c1917] shadow-[0_2px_8px_rgba(0,0,0,0.18)] transition-all hover:bg-white">
-                <Maximize2 className="h-3 w-3" /> Fullskjerm
-              </button>
-            </>
-          ) : (
-            <>
-              {blurBak}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={hero.url} alt="" draggable={false}
-                onClick={() => setLightbox({ idx: hIdx })}
-                onError={hero.ai ? undefined : () => merkDodBilde(hero.url)}
-                onLoad={settAr}
-                data-testid="radar-galleri-bilde" role="button" tabIndex={0}
-                className={`relative w-full cursor-pointer transition-transform duration-500 ${heroFit} ${heroH}`} />
-              <span className="pointer-events-none absolute left-3 top-3 rounded-[5px] bg-black/45 px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-wide text-white">Original</span>
-            </>
-          )}
-          {nB > 1 && (
-            <>
-              <button onClick={(e) => { e.stopPropagation(); setHeroIdx((hIdx - 1 + nB) % nB); }} onPointerDown={(e) => e.stopPropagation()} aria-label="Forrige bilde" data-testid="radar-hero-forrige"
-                className="absolute left-2.5 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/95 text-[#1c1917] shadow-[0_2px_8px_rgba(0,0,0,0.18)] transition-all hover:scale-105 sm:left-3 lg:opacity-0 lg:group-hover:opacity-100">
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-              <button onClick={(e) => { e.stopPropagation(); setHeroIdx((hIdx + 1) % nB); }} onPointerDown={(e) => e.stopPropagation()} aria-label="Neste bilde" data-testid="radar-hero-neste"
-                className="absolute right-2.5 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/95 text-[#1c1917] shadow-[0_2px_8px_rgba(0,0,0,0.18)] transition-all hover:scale-105 sm:right-3 lg:opacity-0 lg:group-hover:opacity-100">
-                <ChevronRight className="h-4 w-4" />
-              </button>
-            </>
-          )}
-          <span className="pointer-events-none absolute bottom-3 right-3 rounded-[5px] bg-black/55 px-2 py-0.5 text-[10.5px] font-medium text-white">{hIdx + 1} / {nB}</span>
-        </div>
-        {/* Thumbnails — aktivt bilde markeres, AI-bilder åpner før/etter */}
-        <div className="mt-2 flex gap-1.5 overflow-x-auto pb-1">
-          {galleri.map((b, i) => (
-            <div key={b.url} className="group/t relative shrink-0 cursor-pointer" onClick={() => setHeroIdx(i)} role="button" tabIndex={0} data-testid={`radar-thumb-${i}`}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={b.url} alt="" draggable={false}
-                onError={b.ai ? undefined : () => merkDodBilde(b.url)}
-                className={`h-[52px] w-[74px] rounded-[8px] object-cover transition-all ${i === hIdx ? 'ring-2 ring-[#1c1917] ring-offset-1' : 'opacity-80 hover:opacity-100'}`} />
-              {b.ai && (
-                <span className="absolute left-1 top-1 rounded-[3px] bg-[#8b5cf6]/90 px-1 py-px text-[7.5px] font-bold uppercase text-white">AI</span>
-              )}
-            </div>
+    /* Stylingkontroller — gjenbrukes for ett bilde og for flervalg */
+    const stylingKontroller = (kjorLabel, kilder) => (
+      <div className="mt-3 space-y-2.5" data-testid="radar-styling-kontroller">
+        <div className="flex flex-wrap items-center gap-1.5">
+          {[['optimal', 'FINN-klar'], ['lysloft', 'Lysløft'], ['mobler', 'Møblering']].map(([k, l]) => (
+            <button key={k} onClick={() => setStyModus(k)} data-testid={`radar-modus-${k}`}
+              className={`h-8 rounded-[8px] px-2.5 text-[12.5px] font-medium transition-all ${styModus === k ? 'bg-[#1c1917] text-white' : 'bg-white text-[#78716c] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.07)] hover:text-[#1c1917]'}`}>
+              {l}
+            </button>
           ))}
         </div>
-        <p className="mt-1.5 text-[11px] text-[#a8a29a]">AI-bilder viser før/etter direkte — dra i skillelinjen · pilene blar. Nye AI-bilder lages i Bildestyling-seksjonen under.</p>
-      </section>
+        {styModus === 'mobler' && (
+          <select value={styVariant} onChange={(e) => setStyVariant(e.target.value)} data-testid="radar-staging-variant"
+            className="h-9 w-full rounded-[8px] border border-black/[0.08] bg-white px-2 text-[13px] outline-none focus:border-[#1c1917]/25">
+            <option value="nordisk">Nordisk stil</option>
+            <option value="moderne">Moderne stil</option>
+            <option value="varm">Varm stil</option>
+          </select>
+        )}
+        {(MODUS_INFO[styModus === 'mobler' ? styVariant : styModus] || {}).d && (
+          <p className="text-[12px] leading-relaxed text-[#8f8a82]">{MODUS_INFO[styModus === 'mobler' ? styVariant : styModus].d}</p>
+        )}
+        <div className="flex items-center gap-1.5">
+          {[['varsom', 'Varsom'], ['full', 'Full effekt']].map(([k, l]) => (
+            <button key={k} onClick={() => setStyIntensitet(k)} data-testid={`radar-intensitet-${k}`}
+              className={`h-7 rounded-[7px] px-2 text-[12px] font-medium transition-colors ${styIntensitet === k ? 'bg-[#ece9e4] text-[#1c1917]' : 'text-[#a6a19a] hover:text-[#57534e]'}`}>
+              {l}
+            </button>
+          ))}
+        </div>
+        <input value={styInstruks} onChange={(e) => setStyInstruks(e.target.value)} maxLength={500} data-testid="radar-styling-instruks"
+          placeholder="Egen instruks (valgfritt)…"
+          className="h-9 w-full rounded-[8px] border border-black/[0.08] bg-white px-3 text-[13px] outline-none transition-colors placeholder:text-[#c2beb8] focus:border-[#1c1917]/25" />
+        <button onClick={() => styGenerer(valgt.id, kilder)} disabled={styStarter || !kilder.length} data-testid="radar-styling-generer" className={`${KNAPP_PRIMAER} w-full justify-center`}>
+          {styStarter ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5" />} {kjorLabel}
+        </button>
+        <p className="text-[11.5px] leading-relaxed text-[#a6a19a]">~30–60 sek per bilde. Ingenting brukes før du har godkjent resultatet.</p>
+      </div>
+    );
+
+    /* Inspector — kontekst og handlinger for valgt bilde (eller flervalget) */
+    const bildeInspektor = (
+      <aside className={FLATE} data-testid="radar-bilde-inspektor">
+        {bulkValg.length > 0 ? (
+          <>
+            <div className="flex items-baseline justify-between">
+              <p className={ETIKETT}>{bulkValg.length} bilder valgt</p>
+              <button onClick={() => setStyValgte(new Set())} data-testid="radar-bulk-avbryt" className="text-[12.5px] font-medium text-[#8f8a82] transition-colors hover:text-[#1c1917]">Avbryt</button>
+            </div>
+            {stylingKontroller(`Forbedre ${bulkValg.length} bilder`, bulkValg)}
+            {styFeil && <p className="mt-2.5 text-[12.5px] text-[#b3261e]" data-testid="radar-styling-feil">{styFeil}</p>}
+          </>
+        ) : !mAkt ? null : (
+          <>
+            <p className={ETIKETT}>{mVurd?.rom ? mVurd.rom.charAt(0).toUpperCase() + mVurd.rom.slice(1) : `Bilde ${hIdx + 1} av ${nB}`}</p>
+            {mVurd && (
+              <p className="mt-1.5 text-[13px] leading-relaxed text-[#6f6a63]">
+                <span className="font-semibold" style={{ color: delFarge(mVurd.score) }}>{mVurd.score}/10</span>{mVurd.funn ? ` — ${mVurd.funn}` : ''}
+              </p>
+            )}
+            {mAkt.kjorer ? (
+              <div className="mt-3 flex items-center gap-2.5 text-[13px] text-[#57534e]" data-testid="radar-inspektor-kjorer">
+                <Loader2 className="h-4 w-4 shrink-0 animate-spin text-[#8b5cf6]" /> Forbedres med AI — tar 30–60 sek…
+              </div>
+            ) : mAkt.kandidat ? (
+              <>
+                <p className="mt-3 text-[13px] leading-relaxed text-[#57534e]">AI-forslaget ligger på bildet — dra i linjen for å sammenligne med originalen.</p>
+                <div className="mt-3 space-y-2">
+                  <button onClick={() => styReview(valgt.id, mAkt.kandidat.jobb.id, 'godkjenn')} disabled={Boolean(styBusy)} data-testid="radar-review-godkjenn" className={`${KNAPP_PRIMAER} w-full justify-center`}>
+                    {styBusy === mAkt.kandidat.jobb.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />} Bruk bildet
+                  </button>
+                  <div className="flex gap-2">
+                    <button onClick={() => styReview(valgt.id, mAkt.kandidat.jobb.id, 'provIgjen')} disabled={Boolean(styBusy)} data-testid="radar-review-provigjen" className={`${KNAPP_GHOST} flex-1 justify-center`}>
+                      <RefreshCw className="h-3.5 w-3.5" /> Prøv igjen
+                    </button>
+                    <button onClick={() => styReview(valgt.id, mAkt.kandidat.jobb.id, 'forkast')} disabled={Boolean(styBusy)} data-testid="radar-review-forkast"
+                      className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-[9px] px-3 text-[13px] font-medium text-[#b3261e] transition-colors hover:bg-[#fdf0ef] disabled:opacity-50">
+                      Forkast
+                    </button>
+                  </div>
+                  <button onClick={() => setSmlPar({ ai: mAkt.kandidat.url, original: mAkt.kilde, stil: mAkt.kandidat.jobb.stil })} data-testid="radar-kandidat-fullskjerm"
+                    className="w-full text-center text-[12.5px] font-medium text-[#6d28d9] hover:underline">
+                    Sammenlign i fullskjerm
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                {mAkt.feilet && (
+                  <p className="mt-2 text-[12.5px] leading-relaxed text-[#b3261e]" data-testid="radar-styling-feilet">Forrige forsøk feilet{mAkt.feilet.feil ? ` — ${mAkt.feilet.feil}` : ''}. Prøv gjerne igjen.</p>
+                )}
+                {mAkt.ai && (
+                  <div className="mt-2.5 flex items-center justify-between gap-2 text-[13px]">
+                    <span className="flex items-center gap-1.5 font-medium text-[#6d28d9]"><Sparkles className="h-3.5 w-3.5" /> AI-versjonen brukes i tilbudet</span>
+                    <button onClick={() => setSmlPar({ ai: mAkt.ai.url, original: mAkt.kilde, stil: mAkt.ai.stil })} data-testid="radar-ai-fullskjerm" className="shrink-0 text-[12.5px] font-medium text-[#6d28d9] hover:underline">Fullskjerm</button>
+                  </div>
+                )}
+                {mAkt.kildeOk ? (
+                  stylingKontroller(mAkt.ai ? 'Lag ny versjon' : 'Forbedre dette bildet', [mAkt.kilde])
+                ) : (
+                  <p className="mt-2 text-[12.5px] leading-relaxed text-[#a6a19a]">Originalen er fjernet fra FINN — den godkjente AI-versjonen beholdes i tilbudet.</p>
+                )}
+              </>
+            )}
+            {styFeil && <p className="mt-2.5 text-[12.5px] text-[#b3261e]" data-testid="radar-styling-feil">{styFeil}</p>}
+            <p className="mt-4 border-t border-black/[0.06] pt-3 text-[12px] leading-relaxed text-[#a6a19a]">Huk av flere bilder i filmstripen for å forbedre dem samlet.</p>
+          </>
+        )}
+      </aside>
+    );
+
+    /* ── Bilder-fanen: én integrert media-arbeidsflate — canvas + filmstrip +
+       inspector. Styling og godkjenning skjer PÅ det valgte bildet, ikke i en
+       egen seksjon. ── */
+    const sekBilder = nB > 0 ? (
+      <div data-testid="radar-bilder-flate" className={toKol ? 'mx-auto grid w-full max-w-[1160px] grid-cols-[minmax(0,1fr)_300px] items-start gap-8' : 'mx-auto max-w-[860px]'}>
+        <div className="min-w-0">
+          {kandidatAntall > 0 && !mAkt?.kandidat && (
+            <button onClick={() => setHeroIdx(Math.max(0, media.findIndex((m) => m.kandidat)))} data-testid="radar-kandidat-varsel"
+              className="mb-2.5 flex items-center gap-1.5 rounded-[8px] bg-[#fdf6ec] px-3 py-2 text-[13px] font-medium text-[#9a6b1c] transition-colors hover:bg-[#fbeed9]">
+              <Sparkles className="h-3.5 w-3.5" /> {kandidatAntall} AI-forslag venter på godkjenning — trykk for å se
+            </button>
+          )}
+          {/* Canvas — AI-versjoner viser før/etter-slider DIREKTE på bildet.
+              Mobil: retningslås — vertikal bevegelse scroller siden, horisontal
+              drar slideren, trykk flytter linjen dit med animasjon. */}
+          <div className={`group relative overflow-hidden rounded-[12px] bg-[#f4f2ee] ${heroSml ? 'cursor-ew-resize' : ''}`} data-testid="radar-galleri-hero"
+            style={heroSml ? { touchAction: 'pan-y' } : undefined}
+            onPointerDown={heroSml ? (e) => { heroDrag.current = { x0: e.clientX, y0: e.clientY, laast: null, flyttet: false }; } : undefined}
+            onPointerMove={heroSml ? (e) => {
+              const d = heroDrag.current;
+              if (!d) return;
+              if (!d.laast) {
+                const dx = Math.abs(e.clientX - d.x0);
+                const dy = Math.abs(e.clientY - d.y0);
+                if (dx > 7 && dx > dy * 1.2) {
+                  d.laast = 'slider';
+                  try { e.currentTarget.setPointerCapture(e.pointerId); } catch (e2) { /* ok */ }
+                  setHeroDrar(true);
+                  settHeroPos(e);
+                } else if (dy > 10 && dy > dx) {
+                  d.laast = 'scroll'; // la siden scrolle i fred
+                }
+                return;
+              }
+              if (d.laast === 'slider') settHeroPos(e);
+            } : undefined}
+            onPointerUp={heroSml ? (e) => {
+              const d = heroDrag.current;
+              heroDrag.current = null;
+              setHeroDrar(false);
+              if (d && !d.laast && Math.abs(e.clientX - d.x0) < 6 && Math.abs(e.clientY - d.y0) < 6) settHeroPos(e);
+            } : undefined}
+            onPointerCancel={heroSml ? () => { heroDrag.current = null; setHeroDrar(false); } : undefined}
+            onTouchStart={!heroSml ? (e) => { swipeX.current = e.touches[0].clientX; } : undefined}
+            onTouchEnd={!heroSml ? (e) => {
+              if (swipeX.current == null || nB < 2) return;
+              const dx = e.changedTouches[0].clientX - swipeX.current;
+              swipeX.current = null;
+              if (dx > 45) setHeroIdx((hIdx - 1 + nB) % nB);
+              else if (dx < -45) setHeroIdx((hIdx + 1) % nB);
+            } : undefined}>
+            {heroSml ? (
+              <>
+                {blurBak}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={mAkt.kilde} alt="Original" draggable={false} data-testid="radar-galleri-bilde"
+                  onError={() => merkDodBilde(mAkt.kilde)} onLoad={settAr}
+                  className={`relative w-full select-none ${heroFit} ${heroH}`} />
+                <span className="pointer-events-none absolute inset-0" style={{ clipPath: `inset(0 ${100 - heroPos}% 0 0)`, transition: heroDrar ? 'none' : 'clip-path .22s ease' }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={sliderTopp} alt="AI-versjon" draggable={false} className={`h-full w-full select-none ${heroFit}`} />
+                </span>
+                <span className="pointer-events-none absolute inset-y-0 z-10" style={{ left: `${heroPos}%`, transition: heroDrar ? 'none' : 'left .22s ease' }} data-testid="radar-hero-slider">
+                  <span className="absolute inset-y-0 -ml-px w-[2px] bg-white/95 shadow-[0_0_8px_rgba(0,0,0,0.45)]" />
+                  <span className="absolute top-1/2 -ml-[17px] -mt-[17px] flex h-[34px] w-[34px] items-center justify-center rounded-full bg-white shadow-[0_2px_10px_rgba(0,0,0,0.3)] sm:-ml-[15px] sm:-mt-[15px] sm:h-[30px] sm:w-[30px]">
+                    <ChevronLeft className="-mr-0.5 h-3 w-3 text-[#1c1917]" /><ChevronRight className="-ml-0.5 h-3 w-3 text-[#1c1917]" />
+                  </span>
+                </span>
+                <span className={`pointer-events-none absolute left-3 top-3 rounded-[5px] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white ${mAkt.kandidat ? 'bg-[#b45309]/90' : 'bg-[#8b5cf6]/90'}`} style={{ opacity: heroPos > 14 ? 1 : 0, transition: 'opacity .2s' }}>
+                  {mAkt.kandidat ? 'AI-forslag' : (MODUS_INFO[mAkt.ai?.stil]?.merk || 'AI-forbedret')}
+                </span>
+                <span className="pointer-events-none absolute right-3 top-3 rounded-[5px] bg-black/45 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white" style={{ opacity: heroPos < 86 ? 1 : 0, transition: 'opacity .2s' }}>Original</span>
+                <button onClick={(e) => { e.stopPropagation(); setSmlPar({ ai: sliderTopp, original: mAkt.kilde, stil: mAkt.kandidat?.jobb?.stil || mAkt.ai?.stil }); }} onPointerDown={(e) => e.stopPropagation()} data-testid="radar-se-foretter" title="Åpne før/etter i fullskjerm"
+                  className="absolute bottom-3 left-3 z-10 flex items-center gap-1.5 rounded-[8px] bg-white/95 px-2.5 py-1.5 text-[12px] font-medium text-[#1c1917] shadow-[0_2px_8px_rgba(0,0,0,0.18)] transition-all hover:bg-white">
+                  <Maximize2 className="h-3 w-3" /> Fullskjerm
+                </button>
+              </>
+            ) : (
+              <>
+                {blurBak}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={heroVis} alt="" draggable={false}
+                  onClick={() => setLightbox({ idx: hIdx })}
+                  onError={mAkt && mAkt.kildeOk && !mAkt.ai ? () => merkDodBilde(mAkt.kilde) : undefined}
+                  onLoad={settAr}
+                  data-testid="radar-galleri-bilde" role="button" tabIndex={0}
+                  className={`relative w-full cursor-pointer transition-transform duration-500 ${heroFit} ${heroH}`} />
+                <span className="pointer-events-none absolute left-3 top-3 rounded-[5px] bg-black/45 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+                  {mAkt && !mAkt.kildeOk && mAkt.ai ? (MODUS_INFO[mAkt.ai.stil]?.merk || 'AI-forbedret') : 'Original'}
+                </span>
+              </>
+            )}
+            {mAkt?.kjorer && (
+              <span className="pointer-events-none absolute bottom-3 left-3 z-10 flex items-center gap-1.5 rounded-[8px] bg-black/60 px-2.5 py-1.5 text-[12px] font-medium text-white">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" /> Forbedres med AI…
+              </span>
+            )}
+            {nB > 1 && (
+              <>
+                <button onClick={(e) => { e.stopPropagation(); setHeroIdx((hIdx - 1 + nB) % nB); }} onPointerDown={(e) => e.stopPropagation()} aria-label="Forrige bilde" data-testid="radar-hero-forrige"
+                  className="absolute left-2.5 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/95 text-[#1c1917] shadow-[0_2px_8px_rgba(0,0,0,0.18)] transition-all hover:scale-105 sm:left-3 lg:opacity-0 lg:group-hover:opacity-100">
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                <button onClick={(e) => { e.stopPropagation(); setHeroIdx((hIdx + 1) % nB); }} onPointerDown={(e) => e.stopPropagation()} aria-label="Neste bilde" data-testid="radar-hero-neste"
+                  className="absolute right-2.5 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/95 text-[#1c1917] shadow-[0_2px_8px_rgba(0,0,0,0.18)] transition-all hover:scale-105 sm:right-3 lg:opacity-0 lg:group-hover:opacity-100">
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </>
+            )}
+            <span className="pointer-events-none absolute bottom-3 right-3 rounded-[5px] bg-black/55 px-2 py-0.5 text-[11px] font-medium text-white">{hIdx + 1} / {nB}</span>
+          </div>
+          {/* Filmstrip — status på hvert motiv + avhuking for samlet forbedring */}
+          <div className="mt-2.5 flex gap-2 overflow-x-auto pb-1">
+            {media.map((m, i) => {
+              const visUrl = m.kandidat?.url || m.ai?.url || m.kilde;
+              const valgtThumb = styValgte.has(m.kilde);
+              return (
+                <div key={m.kilde} className="group/t relative shrink-0">
+                  <button type="button" onClick={() => setHeroIdx(i)} data-testid={`radar-thumb-${i}`} className="block">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={visUrl} alt="" draggable={false}
+                      onError={m.kildeOk && !m.ai && !m.kandidat ? () => merkDodBilde(m.kilde) : undefined}
+                      className={`h-[56px] w-[80px] rounded-[9px] object-cover transition-all ${i === hIdx ? 'ring-2 ring-[#1c1917] ring-offset-1' : valgtThumb ? 'ring-2 ring-[#8b5cf6] ring-offset-1' : 'opacity-85 hover:opacity-100'}`} />
+                  </button>
+                  {m.kandidat ? (
+                    <span className="pointer-events-none absolute left-1 top-1 rounded-[4px] bg-[#b45309]/95 px-1 py-px text-[8px] font-bold uppercase text-white">Se over</span>
+                  ) : m.ai ? (
+                    <span className="pointer-events-none absolute left-1 top-1 rounded-[4px] bg-[#8b5cf6]/90 px-1 py-px text-[8px] font-bold uppercase text-white">AI</span>
+                  ) : null}
+                  {m.kjorer && (
+                    <span className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-[9px] bg-black/35">
+                      <Loader2 className="h-4 w-4 animate-spin text-white" />
+                    </span>
+                  )}
+                  {m.kildeOk && !m.kjorer && !m.kandidat && (
+                    <button type="button" data-testid={`radar-thumb-velg-${i}`} aria-label="Velg for AI-forbedring" title="Velg for AI-forbedring"
+                      onClick={(e) => { e.stopPropagation(); setStyValgte((prev) => { const n = new Set(prev); if (n.has(m.kilde)) n.delete(m.kilde); else n.add(m.kilde); return n; }); }}
+                      className={`absolute right-1 top-1 flex h-[18px] w-[18px] items-center justify-center rounded-[5px] transition-all ${valgtThumb ? 'bg-[#8b5cf6] text-white' : `bg-white/90 text-transparent shadow-[0_1px_3px_rgba(0,0,0,0.2)] hover:text-[#b5b0a8] ${styValgte.size > 0 ? '' : 'lg:opacity-0 lg:group-hover/t:opacity-100'}`}`}>
+                      <Check className="h-3 w-3" />
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+        <div className={toKol ? '' : 'mt-3'}>{bildeInspektor}</div>
+      </div>
+    ) : (
+      <p className="text-[13.5px] text-[#a6a19a]">Ingen bilder på denne annonsen.</p>
     );
 
     /* ── AI-fanen: én samlet vurdering + konkrete anbefalinger — tekst, ikke donuts ── */
@@ -1422,10 +1434,6 @@ export default function Salgsradar({ apiKey }) {
 
     const forsteBilde = (valgt.bilder || []).find((b) => !dodeBilder.has(b));
 
-    // Delt formspråk for Oversikt: myk flate + rolig etikett
-    const FLATE = 'rounded-[12px] bg-[#f7f6f4] p-4 sm:p-5';
-    const ETIKETT = 'text-[13px] font-medium text-[#8f8a82]';
-
     const railDetaljer = (
       <aside className={toKol ? 'min-w-0' : `mt-3 ${FLATE}`} data-testid="radar-oversikt-detaljer">
         {toKol && (
@@ -1768,19 +1776,12 @@ export default function Salgsradar({ apiKey }) {
           </div>
         )}
 
-        {/* Panelinnhold — galleri øverst, bento-grid under (Airbnb-stil) */}
+        {/* Panelinnhold — fanestyrt: Bilder er én integrert media-arbeidsflate */}
         <div className="relative flex min-h-0 flex-1 flex-col">
           <div className={`min-h-0 flex-1 overflow-y-auto bg-white ${autoAktiv ? 'pointer-events-none select-none' : ''}`}>
             <div className="px-4 py-5 sm:px-7">
               {fane === 'oversikt' && sekOversikt}
-              {fane === 'bilder' && (
-                <div className="mx-auto max-w-[980px]">
-                  {sekBilder}
-                  {(valgt.bilder || []).length > 0 && (
-                    <StylingPanel lead={valgt} api={api} onEndret={hentLeads} dodeBilder={dodeBilder} merkDodBilde={merkDodBilde} bento="" />
-                  )}
-                </div>
-              )}
+              {fane === 'bilder' && sekBilder}
               {fane === 'ai' && sekAnalyse}
               {fane === 'tilbud' && (toKol ? (
                 <div className="grid grid-cols-[minmax(0,1fr)_minmax(340px,420px)] items-start gap-8">
@@ -2202,23 +2203,18 @@ export default function Salgsradar({ apiKey }) {
       )}
 
       {/* Lightbox */}
-      {valgt && lightbox && galleri.length > 0 && (
+      {valgt && lightbox && lysbilder.length > 0 && (
         <Lightbox
-          liste={galleri}
-          idx={Math.min(lightbox.idx, galleri.length - 1)}
+          liste={lysbilder}
+          idx={Math.min(lightbox.idx, lysbilder.length - 1)}
           setIdx={(fn) => setLightbox((prev) => ({ idx: typeof fn === 'function' ? fn(prev?.idx || 0) : fn }))}
           onClose={() => setLightbox(null)}
         />
       )}
 
-      {/* Før/etter-sammenligning av AI-stylede bilder */}
-      {valgt && sammenlign && aiPar.length > 0 && (
-        <SammenlignModal
-          par={aiPar}
-          idx={Math.min(sammenlign.idx, aiPar.length - 1)}
-          setIdx={(fn) => setSammenlign((prev) => ({ idx: typeof fn === 'function' ? fn(prev?.idx || 0) : fn }))}
-          onClose={() => setSammenlign(null)}
-        />
+      {/* Før/etter-sammenligning i fullskjerm — åpnes fra bildearbeidsflaten */}
+      {valgt && smlPar && (
+        <SammenlignModal par={[smlPar]} idx={0} setIdx={() => {}} onClose={() => setSmlPar(null)} />
       )}
 
       {/* Diskret lagret-kvittering */}

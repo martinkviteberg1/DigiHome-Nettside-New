@@ -6292,3 +6292,14 @@ agent_communication:
     -message: "Dokumenter+signering kan nå deles med brukere via modulen 'dokumenter'. Test tilgangsmatrisen med testbrukere (se task-beskrivelse). Admin-key i /app/memory/test_credentials.md. IKKE start ekte signeringsrunder mot Posten."
     -agent: "testing"
     -message: "✅ DOKUMENTER-MODUL TILGANGSSTYRING TESTING COMPLETE - ALL 23 TESTS PASSED (100% success rate). Comprehensive verification of access control for Dokumenter module. Tested: (A) User with 'dokumenter' module has full access to dokumenter/signering endpoints and DOKUMENTER files (12 tests: GET dokumenter/jobber/adressebok/oppsett, POST/DELETE oppsett rejected with 401, chunk upload, file download, detaljer, deling POST/DELETE, file deletion), (B) User without module gets 401 on all endpoints (4 tests), (C) Investor with module has read access but CRITICAL SECURITY: cannot read saksfiler (3 tests - investor gets 404 on saksfil, bruker gets 200), (D) Regression tests with admin key (4 tests). CRITICAL SAFETY: Did NOT call POST /admin/task-files/:id/signering (Posten production API), did NOT call purring/kanseller, did NOT call signering/poll. All safety rules followed. Mandatory cleanup successful (0 test users, 0 test files remain). Backend test created at /app/backend_test_dokumenter_tilgang.py for future regression testing."
+
+  - task: "Salgsradar: nytt integrert bilde-view (canvas + filmstrip + inspector)"
+    implemented: true
+    working: true
+    file: "/app/components/admin/Salgsradar.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -agent: "main"
+        -comment: "Frontend-only redesign av Bilder-fanen i Salgsradar: én integrert media-arbeidsflate (stor canvas, filmstrip m/ statusbadges og flervalg, inspector m/ AI-romkontekst + integrerte stylingkontroller). Egen Bildestyling-seksjon fjernet (StylingPanel-bruk fjernet). Fikset kritisk TDZ-krasj (hentStyJobber referert i useEffect-deps før deklarasjon — hele Salgsradar krasjet). Lightbox bruker nå lysbilder-memo fra media; fullskjerm før/etter styres av smlPar (SammenlignModal m/ ett par). Screenshot-verifisert: kandidat-review (banner, Se over-badge, inline slider, Bruk/Prøv igjen/Forkast), godkjent AI m/ inline før/etter, fullskjerm-modal, lightbox, forkast persistert i DB. Ingen backend-endringer."
