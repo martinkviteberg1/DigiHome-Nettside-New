@@ -309,13 +309,16 @@ export default function BudsjettEnkel({ apiKey, readOnly = false }) {
 
   /* ────────────────────────── Liste ────────────────────────── */
   return (
-    <div className="mx-auto w-full max-w-[760px]" data-testid="budsjett-liste">
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-[13.5px] text-[#8f8a82]">
-          {readOnly ? 'Budsjetter delt med investorrommet.' : 'Enkle periodebudsjetter — honorar hentes ferdig utfylt fra leieforholdene.'}
-        </p>
+    <div className="mx-auto w-full max-w-[760px] pt-2" data-testid="budsjett-liste">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-[24px] font-bold tracking-[-0.015em] text-[#1c1917]" style={heading}>Budsjetter</h1>
+          <p className="mt-1 text-[13.5px] text-[#8f8a82]">
+            {readOnly ? 'Budsjetter delt med investorrommet.' : 'Enkle periodebudsjetter — honorar hentes ferdig utfylt fra leieforholdene.'}
+          </p>
+        </div>
         {!readOnly && (
-          <button onClick={() => { setVisNy((v) => !v); setNyFeil(''); }} data-testid="budsjett-ny" className={`${KNAPP_PRIMAER} shrink-0`}>
+          <button onClick={() => { setVisNy((v) => !v); setNyFeil(''); }} data-testid="budsjett-ny" className={`${KNAPP_PRIMAER} mt-1 shrink-0`}>
             <Plus className="h-3.5 w-3.5" /> Nytt budsjett
           </button>
         )}

@@ -781,8 +781,11 @@ export default function AdminPage({ params }) {
 
       {/* Hovedinnhold */}
       <main className="flex-1 min-w-0">
-        {/* Topbar — supermoderne: én lav rad (48px), tittel uten undertittel, undertittelen ligger som tooltip */}
-        <div className="sticky top-0 z-30 bg-[#f7f6f4]/85 backdrop-blur-md border-b border-black/[0.05]">
+        {/* Topbar — supermoderne: én lav rad (48px), tittel uten undertittel, undertittelen ligger som tooltip.
+            Budsjett-cockpiten har egen header og trenger full høyde — der skjules
+            topbaren på desktop (⌘K-søket virker fortsatt globalt); mobil beholder
+            raden pga. hamburgermenyen. */}
+        <div className={`sticky top-0 z-30 bg-[#f7f6f4]/85 backdrop-blur-md border-b border-black/[0.05] ${section === 'budsjett' ? 'lg:hidden' : ''}`}>
           <div className="h-12 px-4 sm:px-6 flex items-center gap-3">
             <button onClick={() => setSidebarOpen(true)} aria-label="Åpne meny" data-testid="admin-menu-open" className="lg:hidden h-8 w-8 rounded-lg bg-white shadow-[0_2px_10px_rgba(0,0,0,0.05)] flex items-center justify-center text-[#444]"><Menu className="w-4 h-4" /></button>
             <h1
