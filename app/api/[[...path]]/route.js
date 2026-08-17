@@ -39,7 +39,7 @@ import {
   hentSelskap as drHentSelskap, lagreSelskap as drLagreSelskap,
 } from '@/lib/datarom';
 import { hentEnhetsokonomi as eoHent, lagreEnhetsokonomiDrivere as eoLagre } from '@/lib/enhetsokonomi';
-import { listMeldinger as chatList, nyMelding as chatNy, slettMelding as chatSlett, merkLest as chatLest, hentStatus as chatStatus, oppdaterTraad as chatTraadOppdater, listTraader as chatTraader } from '@/lib/chat';
+import { listMeldinger as chatList, nyMelding as chatNy, slettMelding as chatSlett, merkLest as chatLest, hentStatus as chatStatus, oppdaterTraad as chatTraadOppdater, listTraader as chatTraader, redigerMelding as chatRediger, reagerMelding as chatReager, festMelding as chatFest, hentFestede as chatFestede, settSkriver as chatSettSkriver, hentSkriver as chatHentSkriver, lagreFilChunk as chatFilChunk, hentFil as chatHentFil, slettUbundetFil as chatSlettFil } from '@/lib/chat';
 import { byggInvestorpakke } from '@/lib/datarom-excel';
 import { IMPORTED_COLL, importRecords, parseCsv, summarizeImported, syncFromPlatform, listImported, updateImportedOverride, getLeadSyncMeta, maybeAutoSyncLeads } from '@/lib/imported-leads';
 import { queueLeadPushback, flushLeadPushbacks, pushbackStats } from '@/lib/lead-pushback';
@@ -78,7 +78,7 @@ import { generateRsaCopy, generateMetaCopy } from '@/lib/ads-ai';
 import { runOptimization, getOptimizeConfig, setOptimizeConfig, getLastRun, listRuns, applyRecommendation } from '@/lib/ads-optimize';
 import { sendWeeklyReport, buildReportData, renderReportHtml } from '@/lib/ads-report';
 import { buildMarketingMetrics } from '@/lib/marketing-metrics';
-import { emailConfigured, reportRecipients, sendHtmlEmail, isUndeliverableTestAddress } from '@/lib/email';
+import { emailConfigured, reportRecipients, sendHtmlEmail, isUndeliverableTestAddress, byggChatEpost } from '@/lib/email';
 import { byggMoteProtokoll, protokollFilnavn } from '@/lib/protokoll';
 import { NEWSLETTER_COLL, OPTOUT_COLL, NL_EVENTS_COLL, renderNewsletterHtml, resolveAudience, audienceCounts, sanitizeBlocks, hasContent, buildUnsubUrl, verifyUnsubToken, verifyInterestToken, propertyInterestToken, verifyPropertyInterestToken, slugifyCampaign, normEmail as nlNormEmail, recipientId, TEMPLATES, templateBlocks, THEMES, TRACKING_GIF, applyMergeTags } from '@/lib/newsletter';
 import { syncPropertiesFromPlatform, maybeAutoSyncProperties, listAdminProperties, listPublicProperties, setPropertyVisibility, getPropertiesSyncMeta, backfillPropertyDistricts, refreshPropertyQuality, applyEnrichment, setPropertyEnrichment, setPropertyFinnSnapshot, setPropertyEditorialTitle, setPropertyEditorialFields, PROPERTIES_COLL } from '@/lib/properties-sync';
@@ -3248,13 +3248,17 @@ async function handleRoute(request, { params }) {
         const uCh = await db.collection('admin_users').findOne({ id: sesCh.sub }, { projection: { _id: 0, name: 1 } });
         avsenderNavn = String(uCh?.name || sesCh.email || 'Ukjent').slice(0, 80);
       }
-      const resCh = await chatNy(db, { kanal: bCh.kanal, userId: avsenderId, userName: avsenderNavn, text: bCh.text, mentions: bCh.mentions, threadId: bCh.threadId || null });
+      const resCh = await chatNy(db, { kanal: bCh.kanal, userId: avsenderId, userName: avsenderNavn, text: bCh.text, mentions: bCh.mentions, threadId: bCh.threadId || null, vedlegg: bCh.vedlegg || [] });
       if (!resCh.ok) return cors(NextResponse.json({ ok: false, error: resCh.error }, { status: resCh.status || 400 }));
-      // Varsling til @taggede: in-app (klokken) + e-post. Aldri til avsenderen selv.
-      const kortCh = resCh.melding.text.length > 140 ? `${resCh.melding.text.slice(0, 140)}…` : resCh.melding.text;
+      // Varsling til @taggede: in-app (klokken) + e-post. Eksplisitt @tagging av
+      // seg selv varsles OGSÅ (bevisst handling — selvpåminnelse/testing).
+      const kortCh = resCh.melding.text
+        ? (resCh.melding.text.length > 140 ? `${resCh.melding.text.slice(0, 140)}…` : resCh.melding.text)
+        : `📎 ${(resCh.melding.vedlegg || []).map((v) => v.name).join(', ').slice(0, 120) || 'vedlegg'}`;
       for (const mt of resCh.mottakere) {
-        if (mt.id === avsenderId) continue;
-        await varsle(db, mt.id, avsenderId, { type: 'chat', actor: avsenderNavn, text: `${avsenderNavn} nevnte deg i teamchatten: «${kortCh}»` });
+        // actorId settes til null ved selv-tagging — varsle() har en generell
+        // «aldri varsle deg selv»-vakt, men eksplisitt @deg-selv er et bevisst valg.
+        await varsle(db, mt.id, mt.id === avsenderId ? null : avsenderId, { type: 'chat', actor: avsenderNavn, text: `${avsenderNavn} nevnte deg i teamchatten: «${kortCh}»` });
       }
       // TRÅDFØLGING: alle som har deltatt i tråden får in-app-varsel om nye svar
       // — aldri e-post (den er forbeholdt @tagging), aldri avsenderen selv, og
@@ -3278,24 +3282,33 @@ async function handleRoute(request, { params }) {
         // — trådsvar lenker rett inn i tråden (?traad=<rotId>).
         const traadCh = resCh.melding.threadId ? `&traad=${resCh.melding.threadId}` : '';
         const chatUrl = baseCh ? `${baseCh}/admin?chat=1${traadCh}` : '';
-        const iTraadCh = resCh.melding.threadId ? ' i en tråd' : '';
-        const epost = resCh.mottakere.filter((mt) => mt.id !== avsenderId && mt.email && !isUndeliverableTestAddress(mt.email));
+        // Eksplisitt selv-tagging gir også e-post (bevisst handling fra avsenderen).
+        const epost = resCh.mottakere.filter((mt) => mt.email && !isUndeliverableTestAddress(mt.email));
+        const emneCh = resCh.melding.threadId
+          ? `${avsenderNavn} nevnte deg i tråden${resCh.traad?.navn ? ` «${resCh.traad.navn}»` : ''}`
+          : `${avsenderNavn} nevnte deg i teamchatten`;
+        const { html: htmlCh, text: textCh } = byggChatEpost({
+          avsenderNavn,
+          tekst: resCh.melding.text.slice(0, 1200),
+          mentions: resCh.melding.mentions,
+          vedlegg: resCh.melding.vedlegg,
+          erTraad: !!resCh.melding.threadId,
+          traadNavn: resCh.traad?.navn || null,
+          rotTekst: resCh.traad?.rotTekst || null,
+          chatUrl,
+          tidspunkt: resCh.melding.createdAt,
+        });
         await Promise.allSettled(epost.map((mt) => sendHtmlEmail({
           to: mt.email,
-          subject: `${avsenderNavn} nevnte deg i teamchatten`,
+          subject: emneCh,
           // Person-til-person-signaler (bedrer «Prioritert»-plassering i Outlook):
           // avsendernavn = personen som tagget, svar-til = personens e-post,
           // personlig=true skrur av sporing (ingen link-omskriving/piksel).
           fromName: `${avsenderNavn} (DigiHome)`,
           replyTo: sesCh.email || undefined,
           personlig: true,
-          html: `<div style="font-family:Inter,Helvetica,Arial,sans-serif;max-width:520px;margin:0 auto;padding:8px 0;color:#1c1917">
-            <p style="font-size:15px;margin:0 0 6px"><b>${avsenderNavn}</b> nevnte deg i DigiHome-teamchatten${iTraadCh}:</p>
-            <div style="background:#f5f4f1;border-radius:12px;padding:14px 16px;font-size:14px;line-height:1.5;white-space:pre-wrap">${resCh.melding.text.slice(0, 1000).replace(/</g, '&lt;')}</div>
-            ${chatUrl ? `<p style="margin:16px 0 0"><a href="${chatUrl}" style="display:inline-block;background:#141414;color:#fff;text-decoration:none;font-size:13.5px;font-weight:600;padding:10px 18px;border-radius:9px">${resCh.melding.threadId ? 'Åpne tråden' : 'Åpne chatten'}</a></p>` : ''}
-            <p style="margin:14px 0 0;font-size:12px;color:#a6a19a">Du får denne e-posten fordi du ble @tagget. Andre meldinger varsles kun i portalen. Svar på e-posten går direkte til ${avsenderNavn}.</p>
-          </div>`,
-          text: `${avsenderNavn} nevnte deg i teamchatten${iTraadCh}: ${resCh.melding.text.slice(0, 500)}${chatUrl ? ` — Åpne: ${chatUrl}` : ''}`,
+          html: htmlCh,
+          text: textCh,
           categories: ['chat-mention'],
         }).catch(() => {})));
       }
@@ -3308,6 +3321,153 @@ async function handleRoute(request, { params }) {
       const resChD = await chatSlett(db, { id: idCh, userId: sesChD.sub || 'master', erAdmin: adminAuthed(request) });
       if (!resChD.ok) return cors(NextResponse.json({ ok: false, error: resChD.error }, { status: resChD.status || 400 }));
       return cors(NextResponse.json({ ok: true }));
+    }
+    // Rediger egen melding (utløser aldri nye varsler)
+    if (route === '/admin/chat/melding' && method === 'PUT') {
+      if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let bChR = {}; try { bChR = await request.json(); } catch (e) {}
+      const sesChR = sessionFra(request) || {};
+      const resChR = await chatRediger(db, { id: bChR.id, userId: sesChR.sub || 'master', text: bChR.text, mentions: bChR.mentions || [] });
+      if (!resChR.ok) return cors(NextResponse.json({ ok: false, error: resChR.error }, { status: resChR.status || 400 }));
+      return cors(NextResponse.json({ ok: true, text: resChR.text, mentions: resChR.mentions, redigertAt: resChR.redigertAt }));
+    }
+    // Emoji-reaksjon (toggle)
+    if (route === '/admin/chat/reaksjon' && method === 'POST') {
+      if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let bChE = {}; try { bChE = await request.json(); } catch (e) {}
+      const sesChE = sessionFra(request) || {};
+      let navnChE = 'Admin';
+      if (sesChE.sub) {
+        const uChE = await db.collection('admin_users').findOne({ id: sesChE.sub }, { projection: { _id: 0, name: 1 } });
+        navnChE = String(uChE?.name || sesChE.email || 'Ukjent').slice(0, 80);
+      }
+      const resChE = await chatReager(db, { id: bChE.id, userId: sesChE.sub || 'master', userName: navnChE, emoji: bChE.emoji });
+      if (!resChE.ok) return cors(NextResponse.json({ ok: false, error: resChE.error }, { status: resChE.status || 400 }));
+      return cors(NextResponse.json({ ok: true, reaksjoner: resChE.reaksjoner }));
+    }
+    // Fest/løsne melding
+    if (route === '/admin/chat/fest' && method === 'PUT') {
+      if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let bChF = {}; try { bChF = await request.json(); } catch (e) {}
+      const sesChF = sessionFra(request) || {};
+      let navnChF = 'Admin';
+      if (sesChF.sub) {
+        const uChF = await db.collection('admin_users').findOne({ id: sesChF.sub }, { projection: { _id: 0, name: 1 } });
+        navnChF = String(uChF?.name || sesChF.email || 'Ukjent').slice(0, 80);
+      }
+      const resChF = await chatFest(db, { id: bChF.id, festet: !!bChF.festet, userId: sesChF.sub || 'master', userName: navnChF });
+      if (!resChF.ok) return cors(NextResponse.json({ ok: false, error: resChF.error }, { status: resChF.status || 400 }));
+      return cors(NextResponse.json({ ok: true, festet: resChF.festet }));
+    }
+    if (route === '/admin/chat/festede' && method === 'GET') {
+      if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const spChF = new URL(request.url).searchParams;
+      const festede = await chatFestede(db, { kanal: spChF.get('kanal') });
+      return cors(NextResponse.json({ ok: true, festede }));
+    }
+    // «Skriver…»-indikator: POST = heartbeat mens man taster, GET = hvem skriver nå
+    if (route === '/admin/chat/skriver' && method === 'POST') {
+      if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let bChS = {}; try { bChS = await request.json(); } catch (e) {}
+      const sesChS = sessionFra(request) || {};
+      let navnChS = 'Admin';
+      if (sesChS.sub) {
+        const uChS = await db.collection('admin_users').findOne({ id: sesChS.sub }, { projection: { _id: 0, name: 1 } });
+        navnChS = String(uChS?.name || sesChS.email || 'Ukjent').slice(0, 80);
+      }
+      await chatSettSkriver(db, { kanal: bChS.kanal, userId: sesChS.sub || 'master', userName: navnChS });
+      return cors(NextResponse.json({ ok: true }));
+    }
+    if (route === '/admin/chat/skriver' && method === 'GET') {
+      if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const spChS = new URL(request.url).searchParams;
+      const sesChS2 = sessionFra(request) || {};
+      const skriver = await chatHentSkriver(db, { kanal: spChS.get('kanal'), unntattUserId: sesChS2.sub || 'master' });
+      return cors(NextResponse.json({ ok: true, skriver }));
+    }
+    // Chunket filopplasting til chat (bilder + vedlegg, maks 8 MB)
+    if (route === '/admin/chat/fil-chunk' && method === 'POST') {
+      if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!rateLimit(`chatfil:${clientIp(request)}`, 120)) return cors(NextResponse.json({ error: 'For mange opplastinger — vent litt' }, { status: 429 }));
+      let bChU = {}; try { bChU = await request.json(); } catch (e) {}
+      const sesChU = sessionFra(request) || {};
+      let navnChU = 'Admin';
+      if (sesChU.sub) {
+        const uChU = await db.collection('admin_users').findOne({ id: sesChU.sub }, { projection: { _id: 0, name: 1 } });
+        navnChU = String(uChU?.name || sesChU.email || 'Ukjent').slice(0, 80);
+      }
+      const resChU = await chatFilChunk(db, {
+        uploadId: bChU.uploadId, index: bChU.index, total: bChU.total, data: bChU.data,
+        name: bChU.name, type: bChU.type, kanal: bChU.kanal,
+        userId: sesChU.sub || 'master', userName: navnChU,
+      });
+      if (!resChU.ok) return cors(NextResponse.json({ ok: false, error: resChU.error }, { status: resChU.status || 400 }));
+      return cors(NextResponse.json(resChU));
+    }
+    // Forhåndsvisning av Word-dokumenter i chat: konverteres til PDF på
+    // serversiden (resultatet caches på fildokumentet for umiddelbar gjenåpning)
+    if (path[0] === 'admin' && path[1] === 'chat' && path[2] === 'fil' && path.length === 5 && path[4] === 'forhandsvisning' && method === 'GET') {
+      if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const filFv = await chatHentFil(db, { id: path[3] });
+      if (!filFv) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
+      const erDocxFv = /wordprocessingml/i.test(String(filFv.type || '')) || /\.docx$/i.test(String(filFv.name || ''));
+      if (!erDocxFv) return cors(NextResponse.json({ ok: false, error: 'Kun Word-dokumenter (.docx) konverteres for forhåndsvisning' }, { status: 400 }));
+      let pdfB64Fv = filFv.pdfData || null;
+      if (!pdfB64Fv) {
+        try {
+          const pdfBufFv = await konverterDocxTilPdf(Buffer.from(filFv.data || '', 'base64'));
+          if (!pdfBufFv || pdfBufFv.length < 100 || pdfBufFv.subarray(0, 5).toString('latin1') !== '%PDF-') {
+            return cors(NextResponse.json({ ok: false, error: 'Kunne ikke lage forhåndsvisning — last ned filen i stedet' }, { status: 422 }));
+          }
+          pdfB64Fv = pdfBufFv.toString('base64');
+          // Cache kun når samlet dokument holder seg trygt under Mongo-grensen (16 MB)
+          if ((filFv.size || 0) + pdfBufFv.length < 10 * 1024 * 1024) {
+            await db.collection('chat_files').updateOne({ id: filFv.id }, { $set: { pdfData: pdfB64Fv } }).catch(() => {});
+          }
+        } catch (e) {
+          return cors(NextResponse.json({ ok: false, error: 'Kunne ikke lage forhåndsvisning — last ned filen i stedet' }, { status: 422 }));
+        }
+      }
+      const bufFv = Buffer.from(pdfB64Fv, 'base64');
+      return new NextResponse(bufFv, {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/pdf',
+          'Content-Length': String(bufFv.length),
+          'Content-Disposition': `inline; filename*=UTF-8''${encodeURIComponent(String(filFv.name || 'dokument').replace(/\.docx$/i, ''))}.pdf`,
+          'X-Content-Type-Options': 'nosniff',
+          'Cache-Control': 'private, max-age=3600',
+        },
+      });
+    }
+    // Hent chatfil (bilde/vedlegg) — ?inline=1 viser trygge typer i nettleseren
+    if (path[0] === 'admin' && path[1] === 'chat' && path[2] === 'fil' && path.length === 4 && method === 'GET') {
+      if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const filCh = await chatHentFil(db, { id: path[3] });
+      if (!filCh) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
+      const bufCh = Buffer.from(filCh.data || '', 'base64');
+      // KUN trygge typer inline — HTML/SVG kan inneholde script (XSS) og skal
+      // aldri serveres inline under vårt domene. Alt annet forblir nedlasting.
+      const INLINE_TRYGG_CH = /^(application\/pdf|image\/(png|jpe?g|gif|webp|avif|heic|heif)|video\/(mp4|webm|quicktime)|audio\/(mpeg|mp3|wav|ogg|aac|mp4|x-m4a|flac)|text\/plain)$/i;
+      const uFilCh = new URL(request.url);
+      const inlineCh = uFilCh.searchParams.get('inline') === '1' && INLINE_TRYGG_CH.test(String(filCh.type || ''));
+      return new NextResponse(bufCh, {
+        status: 200,
+        headers: {
+          'Content-Type': filCh.type || 'application/octet-stream',
+          'Content-Length': String(bufCh.length),
+          'Content-Disposition': `${inlineCh ? 'inline' : 'attachment'}; filename*=UTF-8''${encodeURIComponent(filCh.name || 'fil')}`,
+          'X-Content-Type-Options': 'nosniff',
+          'Cache-Control': 'private, max-age=3600',
+        },
+      });
+    }
+    // Angre en usendt opplasting (kun egne, ubundne filer)
+    if (path[0] === 'admin' && path[1] === 'chat' && path[2] === 'fil' && path.length === 4 && method === 'DELETE') {
+      if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const sesChD = sessionFra(request) || {};
+      const resChD = await chatSlettFil(db, { id: path[3], userId: sesChD.sub || 'master' });
+      return cors(NextResponse.json({ ok: resChD.ok }));
     }
     if (route === '/admin/chat/traader' && method === 'GET') {
       if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));

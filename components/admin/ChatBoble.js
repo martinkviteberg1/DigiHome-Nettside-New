@@ -13,7 +13,7 @@
    ═════════════════════════════════════════════════════════════════════════════ */
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { MessageCircle, X, Loader2, ArrowUp, Trash2, AtSign, Reply, ArrowLeft, CornerDownRight, Pencil, Link2, Plus, Search, MessagesSquare, ClipboardList } from 'lucide-react';
+import { MessageCircle, X, Loader2, ArrowUp, Trash2, AtSign, Reply, ArrowLeft, CornerDownRight, Pencil, Link2, Plus, Search, MessagesSquare, ClipboardList, Paperclip, Smile, Pin, FileText, Download, ExternalLink, ChevronLeft, ChevronRight, Image as BildeIkon } from 'lucide-react';
 
 const heading = { fontFamily: 'var(--font-heading, inherit)' };
 const AVATAR_FARGER = ['#6d28d9', '#0a7d55', '#b3562e', '#1d4ed8', '#9a6b1c', '#be185d', '#0e7490', '#4d7c0f'];
@@ -32,9 +32,101 @@ const dagLabel = (iso) => {
 };
 const escRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
+/* Emoji-utvalget for reaksjoner — må matche CHAT_EMOJIS i lib/chat.js */
+const EMOJIS = ['👍', '❤️', '😂', '🎉', '✅', '👀', '🙏', '🔥'];
+
+const erBilde = (type) => /^image\//i.test(String(type || ''));
+const erPdf = (type) => /^application\/pdf/i.test(String(type || ''));
+const erDocxFil = (fil) => /wordprocessingml/i.test(String(fil?.type || '')) || /\.docx$/i.test(String(fil?.name || ''));
+const erVideo = (type) => /^video\/(mp4|webm|quicktime)/i.test(String(type || ''));
+const erLyd = (type) => /^audio\//i.test(String(type || ''));
+const erRenTekst = (type) => /^text\/plain/i.test(String(type || ''));
+
+const filStorrelse = (b) => {
+  const n = Number(b) || 0;
+  if (n >= 1024 * 1024) return `${(n / (1024 * 1024)).toFixed(1).replace('.', ',')} MB`;
+  return `${Math.max(1, Math.round(n / 1024))} kB`;
+};
+
+/* Aggregér reaksjoner: [{emoji, antall, min, navn[]}] i innsettingsrekkefølge */
+const aggReaksjoner = (reaksjoner, minId) => {
+  const ut = [];
+  const per = new Map();
+  for (const r of reaksjoner || []) {
+    let e = per.get(r.emoji);
+    if (!e) { e = { emoji: r.emoji, antall: 0, min: false, navn: [] }; per.set(r.emoji, e); ut.push(e); }
+    e.antall += 1;
+    if (r.userId === minId) e.min = true;
+    if (e.navn.length < 6) e.navn.push(r.userName);
+  }
+  return ut;
+};
+
+/* PDF-visning i filviseren: rendres side for side med pdfjs (samme motor som
+   signeringssiden) — konsistent, nydelig visning i alle nettlesere, uten
+   nettleserens grå PDF-ramme. DOCX går via server-konvertering til PDF først. */
+function PdfVisning({ url, navn }) {
+  const holderRef = useRef(null);
+  const [status, setStatus] = useState('laster'); // 'laster' | 'ok' | 'feil'
+  const [antallSider, setAntallSider] = useState(0);
+  useEffect(() => {
+    let aktiv = true;
+    const holder = holderRef.current;
+    (async () => {
+      try {
+        setStatus('laster');
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('Kunne ikke hente dokumentet');
+        const data = await res.arrayBuffer();
+        const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
+        pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
+        const doc = await pdfjs.getDocument({ data }).promise;
+        if (!aktiv) return;
+        if (holder) holder.innerHTML = '';
+        const bredde = Math.min(920, Math.max(320, (holder?.clientWidth || 800) - 16));
+        const dpr = Math.min(2, (typeof window !== 'undefined' && window.devicePixelRatio) || 1);
+        for (let i = 1; i <= doc.numPages; i += 1) {
+          const side = await doc.getPage(i);
+          if (!aktiv) return;
+          const vp0 = side.getViewport({ scale: 1 });
+          const skala = bredde / vp0.width;
+          const vp = side.getViewport({ scale: skala * dpr });
+          const canvas = document.createElement('canvas');
+          canvas.width = vp.width;
+          canvas.height = vp.height;
+          canvas.style.cssText = `width:${Math.floor(vp.width / dpr)}px;height:${Math.floor(vp.height / dpr)}px;display:block;background:#fff;border-radius:10px;box-shadow:0 18px 60px rgba(0,0,0,0.45);margin:0 auto 14px;max-width:100%;`;
+          if (holder) holder.appendChild(canvas);
+          await side.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
+        }
+        if (aktiv) { setAntallSider(doc.numPages); setStatus('ok'); }
+      } catch (e) { if (aktiv) setStatus('feil'); }
+    })();
+    return () => { aktiv = false; if (holder) holder.innerHTML = ''; };
+  }, [url]);
+  return (
+    <div className="h-full w-full max-w-[960px] overflow-y-auto rounded-[14px] px-2 py-2" onClick={(e) => e.stopPropagation()}
+      style={{ scrollbarWidth: 'thin', animation: 'dhChatViserZoomInn 200ms ease-out both' }} data-testid="filviser-pdf">
+      {status === 'laster' && (
+        <div className="flex h-full flex-col items-center justify-center gap-2.5 text-white/70">
+          <Loader2 className="h-6 w-6 animate-spin" />
+          <p className="text-[12px]">Åpner {navn ? `«${navn}»` : 'dokumentet'} …</p>
+        </div>
+      )}
+      {status === 'feil' && (
+        <div className="flex h-full items-center justify-center">
+          <p className="px-6 text-center text-[12.5px] leading-relaxed text-white/70">Kunne ikke vise dokumentet her — bruk nedlastingsknappen øverst til høyre.</p>
+        </div>
+      )}
+      <div ref={holderRef} />
+      {status === 'ok' && antallSider > 0 && (
+        <p className="pb-2 pt-1 text-center text-[11px] text-white/45">{antallSider === 1 ? '1 side' : `${antallSider} sider`}</p>
+      )}
+    </div>
+  );
+}
+
 /* Grupperer meldinger: dag-separatorer + fortsettelser (samme avsender < 5 min).
-   Brukes både i hovedstrømmen og i trådvisningen. */
-const grupperMeldinger = (meldinger) => {
+   Brukes både i hovedstrømmen og i trådvisningen. */const grupperMeldinger = (meldinger) => {
   const ut = [];
   let sisteDag = '';
   let forrige = null;
@@ -104,6 +196,30 @@ export default function ChatBoble({ token, user }) {
   const faneRef = useRef('chat');
   faneRef.current = fane;
   const lesteTraaderRef = useRef(new Set()); // tråder åpnet i denne økten (badge nulles)
+  const [pendingVedlegg, setPendingVedlegg] = useState([]); // opplastede filer som venter på send
+  const [lasterOpp, setLasterOpp] = useState(null); // {navn, prosent} under opplasting
+  const [visEmojiFor, setVisEmojiFor] = useState(null); // meldingsid med åpen emoji-velger
+  const [redigerer, setRedigerer] = useState(null); // {id, tekst} under redigering
+  const [festede, setFestede] = useState([]); // festede meldinger (stripe øverst)
+  const [visFestede, setVisFestede] = useState(false); // utvidet festet-stripe
+  const [skriver, setSkriver] = useState([]); // navn som skriver nå
+  const [dragOver, setDragOver] = useState(false);
+  const filInputRef = useRef(null);
+  const skriverSistRef = useRef(0); // throttle for «skriver…»-heartbeat
+  const dragTellerRef = useRef(0); // dragenter/-leave-balanse (barneelementer)
+  const [viser, setViser] = useState(null); // {vedlegg, index, avsender, tidspunkt, zoom} — filviseren
+
+  /* Filviseren: Esc lukker, piltaster blar mellom vedlegg, zoom nullstilles */
+  useEffect(() => {
+    if (!viser) return undefined;
+    const h = (e) => {
+      if (e.key === 'Escape') setViser(null);
+      if (e.key === 'ArrowRight') setViser((v) => (v && v.index < v.vedlegg.length - 1 ? { ...v, index: v.index + 1, zoom: false } : v));
+      if (e.key === 'ArrowLeft') setViser((v) => (v && v.index > 0 ? { ...v, index: v.index - 1, zoom: false } : v));
+    };
+    window.addEventListener('keydown', h);
+    return () => window.removeEventListener('keydown', h);
+  }, [viser]);
 
   /* Dyplenke fra e-postvarsler: /admin?chat=1 åpner chatten — ?traad=<id> rett inn i tråden */
   useEffect(() => {
@@ -195,13 +311,15 @@ export default function ChatBoble({ token, user }) {
     setLaster(true);
     (async () => {
       try {
-        const [j, ur] = await Promise.all([
+        const [j, ur, , jFest] = await Promise.all([
           api('meldinger'),
           fetch(`/api/admin/users?key=${encodeURIComponent(token)}`).then((r) => r.json()).catch(() => ({})),
           lastTraader(), // lastes FØR merk-lest slik at ulest-badges per tråd fanges
+          api('festede').catch(() => ({})),
         ]);
         if (!alive) return;
         setMeldinger(j.meldinger || []);
+        setFestede(jFest?.festede || []);
         const alleU = ur.members || ur.users || ur.personer || (Array.isArray(ur) ? ur : []);
         setBrukere(alleU.filter((u) => ['owner', 'admin', 'bruker', 'partner'].includes(u.role)));
         setUlest(0);
@@ -227,30 +345,36 @@ export default function ChatBoble({ token, user }) {
     })();
     const iv = setInterval(async () => {
       try {
-        // Hovedstrømmen: full refetch gir ferske trådtellere («3 svar») i tillegg til nye meldinger
+        // Hovedstrømmen: full refetch gir ferske trådtellere, reaksjoner,
+        // redigeringer og pins i tillegg til nye meldinger
         const j = await api('meldinger');
         if (!alive || !j.meldinger) return;
         setMeldinger((prev) => {
-          const sig = (l) => l.map((m) => `${m.id}:${m.traad?.antall || 0}`).join('|');
+          const sig = (l) => l.map((m) => `${m.id}:${m.traad?.antall || 0}:${m.redigertAt || ''}:${m.festet ? 1 : 0}:${(m.reaksjoner || []).length}`).join('|');
           if (sig(prev) === sig(j.meldinger)) return prev;
           const nyttNederst = j.meldinger.length && j.meldinger[j.meldinger.length - 1].id !== prev[prev.length - 1]?.id;
           if (nyttNederst) { scrollNed(); api('lest', { method: 'PUT', body: {} }).catch(() => {}); }
           return j.meldinger;
         });
-        // Åpen tråd: hent evt. nye svar
+        // Åpen tråd: hent evt. nye svar + oppdater roten (reaksjoner/navn/sak)
         const t = traadRef.current;
         if (t && !t.laster) {
           const jt = await api(`meldinger?traad=${encodeURIComponent(t.id)}`);
           if (!alive || !jt.meldinger) return;
+          const rotNy = jt.meldinger.find((m) => m.id === t.id);
+          if (rotNy) setTraad((prev) => (prev && prev.id === rotNy.id ? { ...prev, ...rotNy, sak: rotNy.sak || prev.sak } : prev));
           setTraadMeldinger((prev) => {
             const svar = jt.meldinger.filter((m) => m.id !== t.id);
-            if (svar.length === prev.length && svar[svar.length - 1]?.id === prev[prev.length - 1]?.id) return prev;
-            scrollTraadNed();
+            const sigT = (l) => l.map((m) => `${m.id}:${m.redigertAt || ''}:${(m.reaksjoner || []).length}`).join('|');
+            if (sigT(svar) === sigT(prev)) return prev;
+            if (svar.length > prev.length) scrollTraadNed();
             return svar;
           });
         }
-        // Trådoversikten holdes fersk (badge på fanen + listen)
+        // Trådoversikten + festet-stripen holdes ferske
         await lastTraader();
+        const jF = await api('festede').catch(() => null);
+        if (alive && jF?.festede) setFestede(jF.festede);
       } catch (e) {}
     }, 8000);
     return () => {
@@ -260,6 +384,21 @@ export default function ChatBoble({ token, user }) {
       setFane('chat'); setVisSakVelger(false); setRedigererNavn(false);
     };
   }, [aapen, token, api, scrollNed, scrollTraadNed, lastTraader, user?.id]);
+
+  /* «Skriver…»-indikator: lett polling (3,5 s) mens chatten er åpen */
+  useEffect(() => {
+    if (!aapen || !token) return undefined;
+    let alive = true;
+    const hent = async () => {
+      try {
+        const j = await api('skriver');
+        if (alive && Array.isArray(j.skriver)) setSkriver(j.skriver);
+      } catch (e) {}
+    };
+    hent();
+    const iv = setInterval(hent, 3500);
+    return () => { alive = false; clearInterval(iv); setSkriver([]); };
+  }, [aapen, token, api]);
 
   /* Inn-animasjon + autofokus */
   useEffect(() => {
@@ -375,6 +514,95 @@ export default function ChatBoble({ token, user }) {
     setSakJobber(false);
   };
 
+  /* Fil-URL for visning/nedlasting (inline kun for trygge typer, håndheves server-side) */
+  const filUrl = (id, inline = true) => `/api/admin/chat/fil/${encodeURIComponent(id)}?key=${encodeURIComponent(token)}${inline ? '&inline=1' : ''}`;
+
+  /* Åpne filviseren på et gitt vedlegg i meldingen */
+  const aapneViser = (rad, filId) => {
+    const liste = rad.vedlegg || [];
+    if (!liste.length) return;
+    const idx = Math.max(0, liste.findIndex((v) => v.id === filId));
+    setViser({ vedlegg: liste, index: idx, avsender: rad.userName, tidspunkt: rad.createdAt, zoom: false });
+  };
+
+  /* Chunket opplasting (samme mønster som saksvedlegg) — maks 8 MB, 6 per melding */
+  const lastOppFil = async (fil) => {
+    if (!fil) return;
+    if (fil.size > 8 * 1024 * 1024) { setFeil(`«${fil.name}» er for stor (maks 8 MB)`); return; }
+    setFeil('');
+    setLasterOpp({ navn: fil.name, prosent: 0 });
+    try {
+      const base64 = await new Promise((res, rej) => {
+        const r = new FileReader();
+        r.onload = () => res(String(r.result).split(',')[1] || '');
+        r.onerror = () => rej(new Error('Kunne ikke lese filen'));
+        r.readAsDataURL(fil);
+      });
+      const BIT = 700000;
+      const total = Math.max(1, Math.ceil(base64.length / BIT));
+      const uploadId = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      let svar = null;
+      for (let i = 0; i < total; i += 1) {
+        svar = await api('fil-chunk', { method: 'POST', body: { uploadId, index: i, total, data: base64.slice(i * BIT, (i + 1) * BIT), name: fil.name, type: fil.type || 'application/octet-stream' } });
+        setLasterOpp({ navn: fil.name, prosent: Math.round(((i + 1) / total) * 100) });
+      }
+      if (svar?.complete && svar.fil) setPendingVedlegg((prev) => (prev.length >= 6 ? prev : [...prev, svar.fil]));
+    } catch (e) { setFeil(e.message || 'Opplastingen feilet'); }
+    setLasterOpp(null);
+    requestAnimationFrame(() => inputRef.current?.focus());
+  };
+
+  const fjernPendingVedlegg = async (id) => {
+    setPendingVedlegg((prev) => prev.filter((v) => v.id !== id));
+    try { await fetch(`/api/admin/chat/fil/${encodeURIComponent(id)}?key=${encodeURIComponent(token)}`, { method: 'DELETE' }); } catch (e) {}
+  };
+
+  /* Emoji-reaksjon (toggle) — oppdaterer alle visninger optimistisk fra svaret */
+  const reager = async (id, emoji) => {
+    setVisEmojiFor(null);
+    try {
+      const j = await api('reaksjon', { method: 'POST', body: { id, emoji } });
+      const oppd = (l) => l.map((m) => (m.id === id ? { ...m, reaksjoner: j.reaksjoner } : m));
+      setMeldinger(oppd);
+      setTraadMeldinger(oppd);
+      setFestede(oppd);
+      setTraad((t) => (t && t.id === id ? { ...t, reaksjoner: j.reaksjoner } : t));
+    } catch (e) { setFeil(e.message); }
+  };
+
+  /* Rediger egen melding — mentions beholdes for navn som fortsatt står i teksten */
+  const lagreRedigering = async () => {
+    const r = redigerer;
+    if (!r) return;
+    const nyTekst = r.tekst.trim();
+    try {
+      const alle = [...meldinger, ...traadMeldinger, ...festede, ...(traad ? [traad] : [])];
+      const orig = alle.find((m) => m.id === r.id);
+      const mentions = (orig?.mentions || []).filter((x) => nyTekst.includes(`@${x.name}`)).map((x) => ({ id: x.id }));
+      const j = await api('melding', { method: 'PUT', body: { id: r.id, text: nyTekst, mentions } });
+      const oppd = (l) => l.map((m) => (m.id === r.id ? { ...m, text: j.text, mentions: j.mentions, redigertAt: j.redigertAt } : m));
+      setMeldinger(oppd);
+      setTraadMeldinger(oppd);
+      setFestede(oppd);
+      setTraad((t) => (t && t.id === r.id ? { ...t, text: j.text, mentions: j.mentions, redigertAt: j.redigertAt } : t));
+      setRedigerer(null);
+    } catch (e) { setFeil(e.message); }
+  };
+
+  /* Fest/løsne — festede vises i gull-stripen øverst i chatten (maks 5) */
+  const fest = async (rad) => {
+    setVisEmojiFor(null);
+    try {
+      const j = await api('fest', { method: 'PUT', body: { id: rad.id, festet: !rad.festet } });
+      const oppd = (l) => l.map((m) => (m.id === rad.id ? { ...m, festet: j.festet } : m));
+      setMeldinger(oppd);
+      setTraadMeldinger(oppd);
+      setTraad((t) => (t && t.id === rad.id ? { ...t, festet: j.festet } : t));
+      if (j.festet) setFestede((prev) => [{ ...rad, festet: true }, ...prev.filter((f) => f.id !== rad.id)].slice(0, 5));
+      else setFestede((prev) => prev.filter((f) => f.id !== rad.id));
+    } catch (e) { setFeil(e.message); }
+  };
+
   /* Dyplenke ?traad=<id>: åpne tråden så snart chatten er åpen og token klar */
   useEffect(() => {
     if (!aapen || !token || !pendingTraad) return;
@@ -386,6 +614,11 @@ export default function ChatBoble({ token, user }) {
   /* @-tagging: finn aktiv «@query» rett før markøren */
   const oppdaterTekst = (e) => {
     const v = e.target.value;
+    // «Skriver…»-heartbeat (throttlet) — kun ved faktisk tasting
+    if (v !== tekst && Date.now() - skriverSistRef.current > 2500) {
+      skriverSistRef.current = Date.now();
+      api('skriver', { method: 'POST', body: {} }).catch(() => {});
+    }
     setTekst(v);
     const pos = e.target.selectionStart ?? v.length;
     const foer = v.slice(0, pos);
@@ -417,14 +650,14 @@ export default function ChatBoble({ token, user }) {
 
   const send = async () => {
     const t = tekst.trim();
-    if (!t || sender) return;
+    if ((!t && !pendingVedlegg.length) || sender || lasterOpp) return;
     setSender(true); setFeil('');
     try {
       const mentions = Object.entries(valgte)
         .filter(([navn]) => t.includes(`@${navn}`))
         .map(([, id]) => ({ id }));
       const iTraad = traadRef.current;
-      const j = await api('meldinger', { method: 'POST', body: { text: t, mentions, threadId: iTraad ? iTraad.id : null } });
+      const j = await api('meldinger', { method: 'POST', body: { text: t, mentions, threadId: iTraad ? iTraad.id : null, vedlegg: pendingVedlegg.map((v) => v.id) } });
       if (iTraad) {
         setTraadMeldinger((prev) => [...prev, j.melding]);
         // Oppdater trådtelleren på rotmeldingen i hovedstrømmen umiddelbart
@@ -436,7 +669,7 @@ export default function ChatBoble({ token, user }) {
         setMeldinger((prev) => [...prev, j.melding]);
         scrollNed();
       }
-      setTekst(''); setValgte({}); setMention(null);
+      setTekst(''); setValgte({}); setMention(null); setPendingVedlegg([]);
     } catch (e) { setFeil(e.message); }
     setSender(false);
   };
@@ -544,9 +777,75 @@ export default function ChatBoble({ token, user }) {
           <p className="flex items-baseline gap-2">
             <span className="text-[12.5px] font-bold text-[#1c1917]">{rad.userName}</span>
             <span className="text-[10px] font-medium text-[#c2beb8]">{klokke(rad.createdAt)}</span>
+            {rad.festet && <Pin className="h-2.5 w-2.5 self-center text-[#d97706]" title="Festet melding" />}
           </p>
         )}
-        <MeldingTekst text={rad.text} mentions={rad.mentions} />
+        {redigerer?.id === rad.id ? (
+          <div className="mt-0.5">
+            <textarea
+              autoFocus
+              value={redigerer.tekst}
+              onChange={(e) => setRedigerer((r) => ({ ...r, tekst: e.target.value }))}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); lagreRedigering(); }
+                if (e.key === 'Escape') setRedigerer(null);
+              }}
+              rows={Math.min(5, Math.max(1, redigerer.tekst.split('\n').length))}
+              data-testid="chat-rediger-input"
+              className="block w-full resize-none rounded-[10px] bg-white px-2.5 py-1.5 text-[13px] leading-snug text-[#1c1917] outline-none"
+              style={{ boxShadow: 'inset 0 0 0 1px rgba(109,40,217,0.4), 0 4px 14px rgba(109,40,217,0.1)' }}
+            />
+            <p className="mt-1 flex items-center gap-2 text-[10px] text-[#b3ada3]">
+              <button onClick={lagreRedigering} className="font-bold text-[#6d28d9] hover:underline">Lagre (↵)</button>
+              <button onClick={() => setRedigerer(null)} className="hover:underline">Avbryt (Esc)</button>
+            </p>
+          </div>
+        ) : (
+          <>
+            {rad.text && <MeldingTekst text={rad.text} mentions={rad.mentions} />}
+            {rad.redigertAt && <span className="text-[9px] italic text-[#c2beb8]"> (redigert)</span>}
+          </>
+        )}
+        {(rad.vedlegg || []).length > 0 && (
+          <div className="mt-1.5 flex flex-wrap gap-1.5" data-testid="chat-vedlegg">
+            {rad.vedlegg.map((v) => (erBilde(v.type) ? (
+              <button key={v.id} type="button" onClick={() => aapneViser(rad, v.id)} title={`${v.name} — åpne i visning`}
+                data-testid={`chat-bilde-${v.id}`}
+                className="block cursor-zoom-in overflow-hidden rounded-[12px] transition-all hover:-translate-y-px hover:brightness-105 active:scale-[0.99]"
+                style={{ boxShadow: '0 2px 10px rgba(20,16,40,0.12), inset 0 0 0 1px rgba(0,0,0,0.05)' }}>
+                <img src={filUrl(v.id)} alt={v.name} loading="lazy" className="block max-h-[170px] max-w-[230px] object-cover" />
+              </button>
+            ) : (
+              <div key={v.id} role="button" tabIndex={0} onClick={() => aapneViser(rad, v.id)}
+                onKeyDown={(e) => { if (e.key === 'Enter') aapneViser(rad, v.id); }}
+                title={`${v.name} — åpne i visning`} data-testid={`chat-dokument-${v.id}`}
+                className="flex max-w-[240px] cursor-pointer items-center gap-2 rounded-[10px] bg-white px-2.5 py-1.5 transition-all hover:-translate-y-px"
+                style={{ boxShadow: '0 1px 5px rgba(20,16,40,0.08), inset 0 0 0 1px rgba(0,0,0,0.06)' }}>
+                <FileText className="h-3.5 w-3.5 shrink-0 text-[#6d28d9]" />
+                <span className="min-w-0">
+                  <span className="block truncate text-[11.5px] font-semibold text-[#1c1917]">{v.name}</span>
+                  <span className="block text-[9.5px] text-[#b3ada3]">{filStorrelse(v.size)}</span>
+                </span>
+                <a href={filUrl(v.id, false)} onClick={(e) => e.stopPropagation()} title={`Last ned ${v.name}`}
+                  className="shrink-0 rounded-[6px] p-1 text-[#b3ada3] transition-colors hover:bg-black/[0.05] hover:text-[#6d28d9]">
+                  <Download className="h-3 w-3" />
+                </a>
+              </div>
+            )))}
+          </div>
+        )}
+        {(rad.reaksjoner || []).length > 0 && (
+          <div className="mt-1 flex flex-wrap gap-1" data-testid="chat-reaksjoner">
+            {aggReaksjoner(rad.reaksjoner, minId).map((r) => (
+              <button key={r.emoji} onClick={() => reager(rad.id, r.emoji)} title={r.navn.join(', ')}
+                className={`flex items-center gap-1 rounded-full px-1.5 py-[2px] text-[11px] transition-all hover:-translate-y-px active:scale-90 ${r.min ? 'bg-[#ece4fb]' : 'bg-white'}`}
+                style={{ boxShadow: r.min ? 'inset 0 0 0 1px rgba(109,40,217,0.4)' : 'inset 0 0 0 1px rgba(0,0,0,0.07), 0 1px 3px rgba(20,16,40,0.05)' }}>
+                <span>{r.emoji}</span>
+                <span className={`text-[10px] font-bold ${r.min ? 'text-[#6d28d9]' : 'text-[#8a857d]'}`}>{r.antall}</span>
+              </button>
+            ))}
+          </div>
+        )}
         {!iTraad && (rad.traad || rad.traadNavn || rad.sakId) && (
           <button onClick={() => aapneTraad(rad)} data-testid="chat-traad-chip"
             className="mt-1.5 flex max-w-full items-center gap-1.5 rounded-[10px] bg-white py-1 pl-1.5 pr-2 text-left transition-all hover:-translate-y-px active:scale-[0.98]"
@@ -566,10 +865,24 @@ export default function ChatBoble({ token, user }) {
         )}
       </div>
       <div className="absolute -top-1.5 right-2 flex items-center gap-1 opacity-0 transition-all group-hover:opacity-100">
+        <button onClick={() => setVisEmojiFor((v) => (v === rad.id ? null : rad.id))} title="Reager med emoji" data-testid={`chat-reager-${rad.id}`}
+          className="flex h-6 w-6 items-center justify-center rounded-[8px] bg-white text-[#a6a19a] shadow-[0_2px_8px_rgba(0,0,0,0.12),inset_0_0_0_1px_rgba(0,0,0,0.05)] transition-all hover:text-[#d97706] active:scale-90">
+          <Smile className="h-3 w-3" />
+        </button>
         {!iTraad && (
           <button onClick={() => aapneTraad(rad)} title="Svar i tråd" data-testid={`chat-svar-${rad.id}`}
             className="flex h-6 w-6 items-center justify-center rounded-[8px] bg-white text-[#a6a19a] shadow-[0_2px_8px_rgba(0,0,0,0.12),inset_0_0_0_1px_rgba(0,0,0,0.05)] transition-all hover:text-[#6d28d9] active:scale-90">
             <Reply className="h-3 w-3" />
+          </button>
+        )}
+        <button onClick={() => fest(rad)} title={rad.festet ? 'Løsne meldingen' : 'Fest meldingen øverst'} data-testid={`chat-fest-${rad.id}`}
+          className={`flex h-6 w-6 items-center justify-center rounded-[8px] bg-white shadow-[0_2px_8px_rgba(0,0,0,0.12),inset_0_0_0_1px_rgba(0,0,0,0.05)] transition-all active:scale-90 ${rad.festet ? 'text-[#d97706]' : 'text-[#a6a19a] hover:text-[#d97706]'}`}>
+          <Pin className="h-3 w-3" />
+        </button>
+        {rad.userId === minId && (
+          <button onClick={() => { setVisEmojiFor(null); setRedigerer({ id: rad.id, tekst: rad.text }); }} title="Rediger meldingen" data-testid={`chat-rediger-${rad.id}`}
+            className="flex h-6 w-6 items-center justify-center rounded-[8px] bg-white text-[#a6a19a] shadow-[0_2px_8px_rgba(0,0,0,0.12),inset_0_0_0_1px_rgba(0,0,0,0.05)] transition-all hover:text-[#1c1917] active:scale-90">
+            <Pencil className="h-3 w-3" />
           </button>
         )}
         {(rad.userId === minId || erAdminRolle) && (
@@ -579,6 +892,18 @@ export default function ChatBoble({ token, user }) {
           </button>
         )}
       </div>
+      {visEmojiFor === rad.id && (
+        <div className="absolute -top-9 right-2 z-20 flex items-center gap-0.5 rounded-full bg-white px-1.5 py-1"
+          style={{ boxShadow: '0 10px 32px rgba(20,16,40,0.2), inset 0 0 0 1px rgba(0,0,0,0.05)', animation: 'dhChatMeldingInn 140ms ease-out both' }}
+          data-testid="chat-emoji-velger">
+          {EMOJIS.map((e) => (
+            <button key={e} onClick={() => reager(rad.id, e)}
+              className="flex h-6 w-6 items-center justify-center rounded-full text-[14px] transition-transform hover:scale-125 active:scale-95">
+              {e}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 
@@ -588,13 +913,143 @@ export default function ChatBoble({ token, user }) {
         @keyframes dhChatMeldingInn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes dhChatBadgePop { 0% { transform: scale(0.4); } 60% { transform: scale(1.18); } 100% { transform: scale(1); } }
         @keyframes dhChatPuls { 0%, 100% { box-shadow: 0 0 0 0 rgba(109,40,217,0.35); } 55% { box-shadow: 0 0 0 9px rgba(109,40,217,0); } }
+        @keyframes dhChatViserInn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes dhChatViserZoomInn { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
       `}</style>
+
+      {/* ═══ Filviser — innebygd fullskjermsvisning av bilder og dokumenter ═══ */}
+      {viser && (() => {
+        const filV = viser.vedlegg[viser.index];
+        const flereV = viser.vedlegg.length > 1;
+        const docxV = erDocxFil(filV);
+        const fvUrl = `/api/admin/chat/fil/${encodeURIComponent(filV.id)}/forhandsvisning?key=${encodeURIComponent(token)}`;
+        return (
+          <div className="fixed inset-0 z-[120] flex flex-col" data-testid="chat-filviser"
+            style={{ background: 'rgba(15,11,26,0.88)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', animation: 'dhChatViserInn 180ms ease-out both' }}
+            onClick={() => setViser(null)}>
+            {/* Topplinje: filinfo + handlinger */}
+            <div className="flex items-center gap-2.5 px-4 py-3 sm:gap-3 sm:px-6" onClick={(e) => e.stopPropagation()}>
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] bg-white/10">
+                {erBilde(filV.type) ? <BildeIkon className="h-4 w-4 text-white/80" /> : <FileText className="h-4 w-4 text-white/80" />}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[13.5px] font-bold text-white">{filV.name}</p>
+                <p className="truncate text-[11px] text-white/45">{filStorrelse(filV.size)}{viser.avsender ? ` · delt av ${viser.avsender}` : ''}{viser.tidspunkt ? ` · ${dagLabel(viser.tidspunkt)} ${klokke(viser.tidspunkt)}` : ''}</p>
+              </div>
+              <a href={filUrl(filV.id, false)} title="Last ned" data-testid="filviser-nedlast"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] bg-white/10 text-white/80 transition-all hover:bg-white/20 hover:text-white active:scale-90">
+                <Download className="h-4 w-4" />
+              </a>
+              <a href={docxV ? fvUrl : filUrl(filV.id)} target="_blank" rel="noreferrer" title="Åpne i ny fane"
+                className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-[12px] bg-white/10 text-white/80 transition-all hover:bg-white/20 hover:text-white active:scale-90 sm:flex">
+                <ExternalLink className="h-4 w-4" />
+              </a>
+              <button onClick={() => setViser(null)} title="Lukk (Esc)" data-testid="filviser-lukk"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] bg-white/10 text-white/80 transition-all hover:bg-white/20 hover:text-white active:scale-90">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            {/* Innhold */}
+            <div className="relative flex min-h-0 flex-1 items-stretch justify-center px-3 pb-3 sm:px-16">
+              {flereV && viser.index > 0 && (
+                <button onClick={(e) => { e.stopPropagation(); setViser((v) => ({ ...v, index: v.index - 1, zoom: false })); }}
+                  title="Forrige (←)" data-testid="filviser-forrige"
+                  className="absolute left-2 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-white/80 transition-all hover:bg-white/20 active:scale-90 sm:left-4">
+                  <ChevronLeft className="h-5 w-5" />
+                </button>
+              )}
+              {erBilde(filV.type) ? (
+                viser.zoom ? (
+                  <div className="flex-1 overflow-auto" onClick={(e) => e.stopPropagation()} style={{ scrollbarWidth: 'thin' }}>
+                    <img src={filUrl(filV.id)} alt={filV.name} onClick={() => setViser((v) => ({ ...v, zoom: false }))}
+                      className="mx-auto cursor-zoom-out rounded-[10px]" style={{ maxWidth: 'none' }} />
+                  </div>
+                ) : (
+                  <div className="flex flex-1 items-center justify-center">
+                    <img src={filUrl(filV.id)} alt={filV.name} onClick={(e) => { e.stopPropagation(); setViser((v) => ({ ...v, zoom: true })); }}
+                      className="max-h-full max-w-full cursor-zoom-in rounded-[14px] object-contain"
+                      style={{ boxShadow: '0 30px 90px rgba(0,0,0,0.5)', animation: 'dhChatViserZoomInn 200ms ease-out both' }} />
+                  </div>
+                )
+              ) : (erPdf(filV.type) || docxV) ? (
+                <PdfVisning url={docxV ? fvUrl : filUrl(filV.id)} navn={filV.name} />
+              ) : erRenTekst(filV.type) ? (
+                <iframe title={filV.name} src={filUrl(filV.id)}
+                  className="h-full w-full max-w-[1100px] rounded-[14px] bg-white"
+                  style={{ boxShadow: '0 30px 90px rgba(0,0,0,0.5)', animation: 'dhChatViserZoomInn 200ms ease-out both' }} />
+              ) : erVideo(filV.type) ? (
+                <div className="flex flex-1 items-center justify-center">
+                  <video controls src={filUrl(filV.id)} onClick={(e) => e.stopPropagation()}
+                    className="max-h-full max-w-full rounded-[14px]" style={{ boxShadow: '0 30px 90px rgba(0,0,0,0.5)' }} />
+                </div>
+              ) : erLyd(filV.type) ? (
+                <div className="flex flex-1 items-center justify-center">
+                  <div onClick={(e) => e.stopPropagation()} className="w-[min(430px,90vw)] rounded-[20px] bg-white/[0.07] px-8 py-8 text-center" style={{ boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.1)' }}>
+                    <p className="truncate text-[14px] font-bold text-white">{filV.name}</p>
+                    <audio controls src={filUrl(filV.id)} className="mt-4 w-full" />
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-1 items-center justify-center">
+                  <div onClick={(e) => e.stopPropagation()} className="w-[min(400px,90vw)] rounded-[20px] bg-white/[0.07] px-8 py-10 text-center" style={{ boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.1)' }}>
+                    <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-[18px] bg-white/10"><FileText className="h-6 w-6 text-white/70" /></span>
+                    <p className="mt-4 truncate text-[14px] font-bold text-white">{filV.name}</p>
+                    <p className="mt-1 text-[11.5px] text-white/45">Ingen forhåndsvisning for denne filtypen ({filStorrelse(filV.size)})</p>
+                    <a href={filUrl(filV.id, false)} className="mt-5 inline-flex items-center gap-2 rounded-[12px] bg-white px-5 py-2.5 text-[13px] font-bold text-[#1c1917] transition-all hover:brightness-95 active:scale-[0.98]">
+                      <Download className="h-4 w-4" /> Last ned filen
+                    </a>
+                  </div>
+                </div>
+              )}
+              {flereV && viser.index < viser.vedlegg.length - 1 && (
+                <button onClick={(e) => { e.stopPropagation(); setViser((v) => ({ ...v, index: v.index + 1, zoom: false })); }}
+                  title="Neste (→)" data-testid="filviser-neste"
+                  className="absolute right-2 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-white/80 transition-all hover:bg-white/20 active:scale-90 sm:right-4">
+                  <ChevronRight className="h-5 w-5" />
+                </button>
+              )}
+            </div>
+            {/* Miniatyrstripe ved flere vedlegg */}
+            {flereV && (
+              <div className="flex items-center justify-center gap-1.5 pb-4" onClick={(e) => e.stopPropagation()}>
+                {viser.vedlegg.map((v, i) => (
+                  <button key={v.id} onClick={() => setViser((vs) => ({ ...vs, index: i, zoom: false }))} title={v.name}
+                    className={`overflow-hidden rounded-[9px] transition-all active:scale-95 ${i === viser.index ? 'ring-2 ring-white' : 'opacity-55 hover:opacity-90'}`}>
+                    {erBilde(v.type)
+                      ? <img src={filUrl(v.id)} alt={v.name} className="h-10 w-10 object-cover" />
+                      : <span className="flex h-10 w-10 items-center justify-center bg-white/10"><FileText className="h-4 w-4 text-white/70" /></span>}
+                  </button>
+                ))}
+                <span className="ml-2 text-[11px] font-medium text-white/45">{viser.index + 1} av {viser.vedlegg.length}</span>
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Panel */}
       {aapen && (
         <div
           data-testid="chat-panel"
           className="fixed bottom-[92px] right-4 z-[70] flex flex-col overflow-hidden rounded-[24px] sm:right-5"
+          onDragEnter={(e) => {
+            if (![...(e.dataTransfer?.types || [])].includes('Files')) return;
+            e.preventDefault();
+            dragTellerRef.current += 1;
+            setDragOver(true);
+          }}
+          onDragOver={(e) => { e.preventDefault(); }}
+          onDragLeave={() => {
+            dragTellerRef.current = Math.max(0, dragTellerRef.current - 1);
+            if (dragTellerRef.current === 0) setDragOver(false);
+          }}
+          onDrop={async (e) => {
+            e.preventDefault();
+            dragTellerRef.current = 0;
+            setDragOver(false);
+            const filer = [...(e.dataTransfer?.files || [])].slice(0, 6);
+            for (const f of filer) await lastOppFil(f); // sekvensielt — én fremdriftslinje
+          }}
           style={{
             width: 'min(408px, calc(100vw - 24px))',
             height: 'min(620px, calc(100vh - 120px))',
@@ -608,6 +1063,16 @@ export default function ChatBoble({ token, user }) {
             transition: 'opacity 180ms ease-out, transform 260ms cubic-bezier(0.34, 1.4, 0.64, 1)',
           }}
         >
+          {/* Slipp-overlegg ved dra-og-slipp av filer */}
+          {dragOver && (
+            <div className="pointer-events-none absolute inset-2 z-40 flex flex-col items-center justify-center gap-2 rounded-[18px]"
+              style={{ background: 'rgba(246,242,255,0.92)', backdropFilter: 'blur(4px)', boxShadow: 'inset 0 0 0 2px rgba(109,40,217,0.45)', outline: '2px dashed rgba(109,40,217,0.5)', outlineOffset: '-10px' }}
+              data-testid="chat-drop-overlegg">
+              <Paperclip className="h-6 w-6 text-[#6d28d9]" />
+              <p className="text-[13px] font-bold text-[#4c2a94]">Slipp for å laste opp</p>
+              <p className="text-[11px] text-[#8b6bc7]">Bilder og filer · maks 8 MB</p>
+            </div>
+          )}
           {/* Topp — gradient-aksent + avatarstabel */}
           <div className="relative border-b border-black/[0.05] px-4 pb-3 pt-3.5">
             <span className="pointer-events-none absolute inset-x-0 top-0 h-[2.5px] bg-gradient-to-r from-[#6d28d9] via-[#9d6bff] to-transparent" />
@@ -832,6 +1297,37 @@ export default function ChatBoble({ token, user }) {
             </div>
           ) : (
             <div ref={listeRef} className="flex-1 overflow-y-auto px-3 py-3" style={{ scrollbarWidth: 'thin', background: 'linear-gradient(180deg, rgba(250,249,247,0.6), rgba(255,255,255,0.35))' }} data-testid="chat-meldinger">
+              {/* Festede meldinger — gull-stripe øverst */}
+              {festede.length > 0 && (
+                <div className="mb-2 overflow-hidden rounded-[14px]" style={{ background: 'linear-gradient(135deg, #fffaf0, #fdf3e0)', boxShadow: 'inset 0 0 0 1px rgba(217,119,6,0.18), 0 1px 5px rgba(180,120,20,0.08)' }} data-testid="chat-festede">
+                  <button onClick={() => setVisFestede((v) => !v)} className="flex w-full items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-[#d97706]/5">
+                    <Pin className="h-3 w-3 shrink-0 text-[#d97706]" />
+                    {visFestede ? (
+                      <span className="flex-1 text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#b45309]">{festede.length === 1 ? '1 festet melding' : `${festede.length} festede meldinger`}</span>
+                    ) : (
+                      <span className="min-w-0 flex-1 truncate text-[11.5px] text-[#78350f]"><b>{festede[0].userName}:</b> {festede[0].text || `📎 ${(festede[0].vedlegg || []).map((v) => v.name).join(', ')}`}{festede.length > 1 ? `  ·  +${festede.length - 1} til` : ''}</span>
+                    )}
+                    <span className="shrink-0 text-[9.5px] font-bold text-[#d97706]">{visFestede ? 'Lukk' : 'Vis'}</span>
+                  </button>
+                  {visFestede && (
+                    <div className="space-y-1 px-2 pb-2">
+                      {festede.map((f) => (
+                        <div key={f.id} className="group/f flex items-start gap-2 rounded-[10px] bg-white/70 px-2.5 py-1.5">
+                          <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[7.5px] font-bold text-white" style={{ background: avatarFarge(f.userName) }}>{initialer(f.userName)}</span>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-[10px] font-bold text-[#78350f]">{f.userName} <span className="font-medium text-[#c9a227]">{dagLabel(f.createdAt)} {klokke(f.createdAt)}</span></p>
+                            <p className="line-clamp-2 whitespace-pre-wrap text-[11.5px] leading-snug text-[#44403c]">{f.text || `📎 ${(f.vedlegg || []).map((v) => v.name).join(', ')}`}</p>
+                          </div>
+                          <button onClick={() => fest(f)} title="Løsne meldingen"
+                            className="shrink-0 rounded-[6px] p-1 text-[#c9a227] opacity-0 transition-all hover:bg-[#d97706]/10 hover:text-[#b45309] group-hover/f:opacity-100">
+                            <X className="h-3 w-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
               {laster && (
                 <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin text-[#c2beb8]" /></div>
               )}
@@ -862,6 +1358,40 @@ export default function ChatBoble({ token, user }) {
           {(traad || fane === 'chat') ? (
           <div className="relative px-3 pb-3 pt-2">
             {feil && <p className="mb-1.5 px-1 text-[11.5px] text-[#b3261e]" data-testid="chat-feil">{feil}</p>}
+            {skriver.length > 0 && (
+              <p className="mb-1 flex items-center gap-1.5 px-1 text-[10.5px] font-medium text-[#8b6bc7]" data-testid="chat-skriver">
+                <span className="flex gap-[3px]">
+                  <span className="h-1 w-1 animate-bounce rounded-full bg-[#8b6bc7]" style={{ animationDelay: '0ms' }} />
+                  <span className="h-1 w-1 animate-bounce rounded-full bg-[#8b6bc7]" style={{ animationDelay: '120ms' }} />
+                  <span className="h-1 w-1 animate-bounce rounded-full bg-[#8b6bc7]" style={{ animationDelay: '240ms' }} />
+                </span>
+                {skriver.join(', ')} skriver…
+              </p>
+            )}
+            {pendingVedlegg.length > 0 && (
+              <div className="mb-1.5 flex flex-wrap gap-1.5 px-1" data-testid="chat-pending-vedlegg">
+                {pendingVedlegg.map((v) => (
+                  <span key={v.id} className="flex items-center gap-1.5 rounded-[10px] bg-white py-1 pl-1.5 pr-1" style={{ boxShadow: 'inset 0 0 0 1px rgba(109,40,217,0.2), 0 1px 4px rgba(20,16,40,0.06)' }}>
+                    {erBilde(v.type)
+                      ? <img src={filUrl(v.id)} alt={v.name} className="h-7 w-7 rounded-[7px] object-cover" />
+                      : <FileText className="h-4 w-4 text-[#6d28d9]" />}
+                    <span className="max-w-[120px] truncate text-[10.5px] font-semibold text-[#1c1917]">{v.name}</span>
+                    <span className="text-[9px] text-[#b3ada3]">{filStorrelse(v.size)}</span>
+                    <button onClick={() => fjernPendingVedlegg(v.id)} title="Fjern vedlegget" className="rounded-[5px] p-0.5 text-[#a6a19a] transition-colors hover:bg-black/[0.05] hover:text-[#c2413b]">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+            {lasterOpp && (
+              <div className="mb-1.5 px-1" data-testid="chat-opplasting">
+                <p className="mb-0.5 flex items-center gap-1.5 text-[10.5px] text-[#8a857d]"><Loader2 className="h-3 w-3 animate-spin" /> Laster opp «{lasterOpp.navn}» … {lasterOpp.prosent}%</p>
+                <div className="h-1 overflow-hidden rounded-full bg-black/[0.06]">
+                  <div className="h-full rounded-full transition-all" style={{ width: `${lasterOpp.prosent}%`, background: 'linear-gradient(90deg, #7c3aed, #6d28d9)' }} />
+                </div>
+              </div>
+            )}
             {mention && mentionTreff.length > 0 && (
               <div className="absolute bottom-full left-3 z-10 mb-1.5 w-[268px] overflow-hidden rounded-[14px] py-1"
                 style={{ background: 'rgba(255,255,255,0.96)', backdropFilter: 'blur(16px)', boxShadow: '0 16px 48px rgba(20,16,40,0.2), inset 0 0 0 1px rgba(0,0,0,0.05)' }}
@@ -881,6 +1411,12 @@ export default function ChatBoble({ token, user }) {
             )}
             <div className="flex items-end gap-2 rounded-[18px] bg-white p-1.5 transition-shadow"
               style={{ boxShadow: fokus ? 'inset 0 0 0 1px rgba(109,40,217,0.45), 0 6px 24px rgba(109,40,217,0.12)' : 'inset 0 0 0 1px rgba(0,0,0,0.07), 0 2px 8px rgba(20,16,40,0.05)' }}>
+              <input ref={filInputRef} type="file" multiple className="hidden" data-testid="chat-fil-input"
+                onChange={async (e) => { const filer = [...(e.target.files || [])].slice(0, 6); e.target.value = ''; for (const f of filer) await lastOppFil(f); }} />
+              <button onClick={() => filInputRef.current?.click()} title="Legg ved bilde eller fil (maks 8 MB)" data-testid="chat-vedlegg-knapp"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[13px] text-[#a6a19a] transition-all hover:bg-black/[0.04] hover:text-[#6d28d9] active:scale-90">
+                <Paperclip className="h-4 w-4" />
+              </button>
               <div className="relative min-w-0 flex-1">
                 {/* Speil-laget med badges — nøyaktig samme typografi som textareaen */}
                 <div ref={overlayRef} aria-hidden="true"
@@ -899,19 +1435,26 @@ export default function ChatBoble({ token, user }) {
                   onFocus={() => setFokus(true)}
                   onBlur={() => setFokus(false)}
                   onScroll={(e) => { if (overlayRef.current) overlayRef.current.scrollTop = e.target.scrollTop; }}
+                  onPaste={async (e) => {
+                    // Lim inn skjermbilder/filer direkte fra utklippstavlen
+                    const filer = [...(e.clipboardData?.files || [])];
+                    if (!filer.length) return;
+                    e.preventDefault();
+                    for (const f of filer.slice(0, 6)) await lastOppFil(f);
+                  }}
                   placeholder={traad ? 'Svar i tråden… @ for å tagge' : 'Skriv en melding… @ for å tagge'}
                   rows={Math.min(4, Math.max(1, tekst.split('\n').length))}
                   data-testid="chat-input"
                   className="relative block max-h-[110px] w-full resize-none bg-transparent px-2.5 py-2 text-[13.5px] leading-snug text-transparent caret-[#1c1917] outline-none focus:outline-none placeholder:text-[#b3ada3]"
                 />
               </div>
-              <button onClick={send} disabled={sender || !tekst.trim()} data-testid="chat-send" title="Send (Enter)"
+              <button onClick={send} disabled={sender || !!lasterOpp || (!tekst.trim() && !pendingVedlegg.length)} data-testid="chat-send" title="Send (Enter)"
                 className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[13px] text-white transition-all hover:brightness-110 active:scale-90 disabled:opacity-25"
                 style={{ background: 'linear-gradient(135deg, #1c1917 10%, #4c2a94 140%)', boxShadow: '0 4px 12px rgba(59,35,115,0.3)' }}>
                 {sender ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowUp className="h-4 w-4" />}
               </button>
             </div>
-            <p className="mt-1.5 px-2 text-[10px] text-[#c2beb8]">{traad ? '↵ send · svaret havner kun i denne tråden' : '↵ send · ⇧↵ ny linje · @-taggede varsles på e-post'}</p>
+            <p className="mt-1.5 px-2 text-[10px] text-[#c2beb8]">{traad ? '↵ send · svaret havner kun i denne tråden' : '↵ send · ⇧↵ ny linje · lim inn/dra filer rett inn · @tag varsler på e-post'}</p>
           </div>
           ) : (
             <p className="border-t border-black/[0.05] px-4 py-2.5 text-center text-[10.5px] text-[#b3ada3]">Velg en tråd for å svare — eller start en ny fra en melding i chatten</p>
