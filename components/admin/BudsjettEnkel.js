@@ -12,8 +12,10 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
-  Plus, ArrowLeft, Trash2, RefreshCw, Loader2, Check, Eye, EyeOff, Wallet,
+  Plus, ArrowLeft, Trash2, RefreshCw, Loader2, Check, Eye, EyeOff, Wallet, TrendingUp,
 } from 'lucide-react';
+import BudsjettModell from '@/components/admin/BudsjettModell';
+import { STANDARD_DRIVERE } from '@/lib/budsjett-modell';
 
 const heading = { fontFamily: 'var(--font-heading, inherit)' };
 const KNAPP_PRIMAER = 'flex h-9 items-center gap-1.5 rounded-[9px] bg-[#141414] px-4 text-[13px] font-medium text-white transition-colors hover:bg-black/80 active:scale-[0.98] disabled:opacity-40';
@@ -68,6 +70,7 @@ export default function BudsjettEnkel({ apiKey, readOnly = false }) {
 
   // Opprettelse
   const [nyNavn, setNyNavn] = useState('');
+  const [nyType, setNyType] = useState('enkel'); // 'enkel' | 'modell'
   const [nyFra, setNyFra] = useState(naaYm());
   const [nyTil, setNyTil] = useState(ymPluss(naaYm(), 11));
   const [oppretter, setOppretter] = useState(false);
@@ -106,25 +109,27 @@ export default function BudsjettEnkel({ apiKey, readOnly = false }) {
     if (!(n >= 1 && n <= 36)) { setNyFeil('Perioden må være 1–36 måneder (til-måned kan ikke være før fra-måned)'); return; }
     setOppretter(true); setNyFeil('');
     try {
-      // Honorar ferdig utfylt fra leieforholdene — kontraktsfestet serie, ingen antakelser
-      let hon = Array(n).fill(0);
+      // Porteføljefakta hentes fra leieforholdene — kontraktsfestet, ingen antakelser
+      let forslag = null;
       let hentetOk = true;
-      try {
-        const f = await api(`plan/forslag?startYm=${nyFra}&antallMnd=${n}`);
-        hon = (f.sikret || []).slice(0, n).map((v) => Math.max(0, Math.round(Number(v) || 0)));
-        while (hon.length < n) hon.push(0);
-      } catch (e) { hentetOk = false; }
-      const r = await api('plan', {
-        method: 'PUT',
-        body: {
-          navn,
-          startYm: nyFra,
-          antallMnd: n,
-          inntekter: { 'Honorar (forvaltning)': hon },
-          kostnader: {},
-          investorSynlig: false,
-        },
-      });
+      try { forslag = await api(`plan/forslag?startYm=${nyFra}&antallMnd=${n}`); } catch (e) { hentetOk = false; }
+      const serie = (arr) => { const a = (arr || []).slice(0, n).map((v) => Math.max(0, Math.round(Number(v) || 0))); while (a.length < n) a.push(0); return a; };
+      const body = nyType === 'modell'
+        ? {
+            navn, startYm: nyFra, antallMnd: n, type: 'modell', investorSynlig: false,
+            fakta: { eksisterende: serie(forslag?.sikret), enheter: serie(forslag?.enheterSerie), oppdatertAt: new Date().toISOString() },
+            drivere: {
+              ...STANDARD_DRIVERE,
+              ...(forslag?.drivereBrukt?.snittLeie ? { snittleieNye: Math.round(forslag.drivereBrukt.snittLeie) } : {}),
+              ...(forslag?.drivereBrukt?.honorarPct ? { honorarPctNye: forslag.drivereBrukt.honorarPct } : {}),
+            },
+          }
+        : {
+            navn, startYm: nyFra, antallMnd: n, investorSynlig: false,
+            inntekter: { 'Honorar (forvaltning)': serie(forslag?.sikret) },
+            kostnader: {},
+          };
+      const r = await api('plan', { method: 'PUT', body });
       setNyNavn(''); setVisNy(false);
       await hentPlaner();
       await aapne(r.id);
@@ -188,6 +193,18 @@ export default function BudsjettEnkel({ apiKey, readOnly = false }) {
   const sum = useMemo(() => (plan ? plan.hon.reduce((s, x) => s + x, 0) : 0), [plan]);
 
   /* ────────────────────────── Editor ────────────────────────── */
+  if (valgtId && !planLaster && plan && plan.type === 'modell') {
+    return (
+      <BudsjettModell
+        key={plan.id}
+        plan={plan}
+        api={api}
+        readOnly={readOnly}
+        onTilbake={() => { tilListe(); hentPlaner(); }}
+        onEndret={hentPlaner}
+      />
+    );
+  }
   if (valgtId) {
     return (
       <div className="mx-auto w-full max-w-[760px]" data-testid="budsjett-editor">
@@ -307,6 +324,18 @@ export default function BudsjettEnkel({ apiKey, readOnly = false }) {
       {/* Opprettelse — ett lite panel, tre felter, ferdig */}
       {visNy && !readOnly && (
         <div className="mt-4 rounded-[14px] bg-white p-5 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]" data-testid="budsjett-ny-panel">
+          <div className="mb-4 grid gap-2 sm:grid-cols-2">
+            <button onClick={() => setNyType('enkel')} data-testid="budsjett-type-enkel"
+              className={`rounded-[11px] p-3.5 text-left transition-all ${nyType === 'enkel' ? 'bg-[#f0ebfa] shadow-[inset_0_0_0_1.5px_#6d28d9]' : 'bg-white shadow-[inset_0_0_0_1px_rgba(0,0,0,0.08)] hover:bg-[#faf9f7]'}`}>
+              <span className="flex items-center gap-2 text-[13.5px] font-bold text-[#1c1917]" style={heading}><Wallet className="h-4 w-4" /> Enkelt budsjett</span>
+              <span className="mt-1 block text-[12px] leading-relaxed text-[#8f8a82]">Honorar per måned fra leieforholdene — juster tallene selv.</span>
+            </button>
+            <button onClick={() => setNyType('modell')} data-testid="budsjett-type-modell"
+              className={`rounded-[11px] p-3.5 text-left transition-all ${nyType === 'modell' ? 'bg-[#f0ebfa] shadow-[inset_0_0_0_1.5px_#6d28d9]' : 'bg-white shadow-[inset_0_0_0_1px_rgba(0,0,0,0.08)] hover:bg-[#faf9f7]'}`}>
+              <span className="flex items-center gap-2 text-[13.5px] font-bold text-[#1c1917]" style={heading}><TrendingUp className="h-4 w-4" /> Investormodell</span>
+              <span className="mt-1 block text-[12px] leading-relaxed text-[#8f8a82]">Driver-drevet: vekst, churn, bemanning og kostnader — sensitivitet i sanntid.</span>
+            </button>
+          </div>
           <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_150px_150px]">
             <label className="block">
               <span className="text-[12px] font-medium text-[#8f8a82]">Navn</span>
@@ -338,7 +367,11 @@ export default function BudsjettEnkel({ apiKey, readOnly = false }) {
             )}
           </div>
           {nyFeil && <p className="mt-2.5 text-[13px] text-[#b3261e]" data-testid="budsjett-ny-feil">{nyFeil}</p>}
-          <p className="mt-2.5 text-[12px] leading-relaxed text-[#a6a19a]">Honorar fylles inn automatisk fra de signerte leieforholdene — du kan justere hver måned etterpå.</p>
+          <p className="mt-2.5 text-[12px] leading-relaxed text-[#a6a19a]">
+            {nyType === 'modell'
+              ? 'Porteføljefakta (kontraktsfestet honorar og enheter) hentes automatisk — vekst, churn, bemanning og kostnader modellerer du med synlige drivere etterpå.'
+              : 'Honorar fylles inn automatisk fra de signerte leieforholdene — du kan justere hver måned etterpå.'}
+          </p>
         </div>
       )}
 
@@ -366,6 +399,9 @@ export default function BudsjettEnkel({ apiKey, readOnly = false }) {
               <span className="min-w-0">
                 <span className="flex items-center gap-2">
                   <span className="truncate text-[14.5px] font-semibold text-[#1c1917]" style={heading}>{p.navn}</span>
+                  {p.type === 'modell' && (
+                    <span className="flex shrink-0 items-center gap-1 rounded-full bg-[#1c1917] px-2 py-0.5 text-[10.5px] font-semibold text-white"><TrendingUp className="h-3 w-3" /> Investormodell</span>
+                  )}
                   {!readOnly && p.investorSynlig && (
                     <span className="flex shrink-0 items-center gap-1 rounded-full bg-[#f0ebfa] px-2 py-0.5 text-[10.5px] font-semibold text-[#6d28d9]" title="Synlig i investorrommet"><Eye className="h-3 w-3" /> Investorrom</span>
                   )}
@@ -374,7 +410,7 @@ export default function BudsjettEnkel({ apiKey, readOnly = false }) {
               </span>
               <span className="shrink-0 text-right">
                 <span className="block text-[14.5px] font-bold text-[#1c1917]" style={heading}>{kr(p.inntekter)}</span>
-                <span className="block text-[11.5px] text-[#a6a19a]">honorar i perioden</span>
+                <span className="block text-[11.5px] text-[#a6a19a]">{p.type === 'modell' ? 'inntekt i perioden' : 'honorar i perioden'}</span>
               </span>
             </button>
           ))}

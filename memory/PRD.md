@@ -591,3 +591,10 @@ Google Ads-styring via native REST API).
 ## Designløft (16. aug 2026, kveld) — LEVERT
 - Tilbudssiden (/tilbud/[slug]) BYGGET PÅ NYTT etter GPT-brief: lys varm flate (#f8f8f6), tallet som H1 («14 904 kr til deg. Hver måned.»), Sarah Sleeman (CEO) som liten kontaktperson-detalj m/portrett (/brand/sarah-sleeman-360.webp), boligbildet som hero-objekt, regnestykke-ligning, annonseutkast bak «Se hele annonseutkastet», sentence case, ingen gradients, pent() kapitaliserer FINN-adresser. IKKE gå tilbake til mørk hero med stort portrett.
 - Salgsradar admin: record-FANER (Oversikt/Bilder/AI/Tilbud/Aktivitet), «Neste handling» dominant i Oversikt, kompakt klikkbar KPI-stripe, forenklede lead-rader (score som diskret tall, ikke donut), rolige statusfarger (kun vunnet/tapt farget), flate knapper (ingen gradient), radius 8-12px.
+
+## Budsjett-modul (redesignet feb. 2026)
+- Gammelt årsbudsjett-UI skrotet (data bevart i DB). Ny modul: enkle periodebudsjetter.
+- To typer: **Enkelt budsjett** (fra/til måned, honorar auto-utfylt fra leieforholdene — «sikret» serie, redigerbar per måned, kun inntekter foreløpig) og **Investormodell** (driver-drevet).
+- Investormodell: tre lag — FAKTA (porteføljesnapshot: kontraktsfestet honorar + enheter fra leieforholdene; leiekontrakt-slutt churner IKKE forvaltningskunden), FORUTSETNINGER (synlige drivere: nye enheter/mnd, årlig churn % → kohortbasert månedlig, snittleie/honorar nye, oppstartshonorar, systemkost/enhet, fast markedsføring, salgsprovisjon/CAC per ny enhet, admin, andre faste, årslønn + synlig arbeidsgiverpåslag), BESLUTNINGER (bemanningstrapp: budsjettert stillings-% per enhetsterskel, ved siden av glidende kapasitetsbehov + utnyttelses-%).
+- Sensitivitet i sanntid: samme rene motor (lib/budsjett-modell.js) klient+server; break-even fra månedsserien; CAC-payback-KPI.
+- Per budsjett-bryter «Synlig i investorrommet»; investorer/brukere ser kun delte budsjetter, alltid read-only (håndheves server-side). Backend-testet 16/16 + 11/11.
