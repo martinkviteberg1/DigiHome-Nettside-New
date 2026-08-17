@@ -37,8 +37,9 @@ import {
   autoSyncFraLeieforhold as drAutoSync,
   listPnl as drListPnl, lagrePnlRad as drLagrePnlRad, slettPnlRad as drSlettPnlRad,
   hentSelskap as drHentSelskap, lagreSelskap as drLagreSelskap,
-  beregnEnhetsokonomi as drBeregnEnhetsokonomi, lagreEnhetsokonomiAntakelser as drLagreEoAntakelser,
 } from '@/lib/datarom';
+import { hentEnhetsokonomi as eoHent, lagreEnhetsokonomiDrivere as eoLagre } from '@/lib/enhetsokonomi';
+import { listMeldinger as chatList, nyMelding as chatNy, slettMelding as chatSlett, merkLest as chatLest, hentStatus as chatStatus } from '@/lib/chat';
 import { byggInvestorpakke } from '@/lib/datarom-excel';
 import { IMPORTED_COLL, importRecords, parseCsv, summarizeImported, syncFromPlatform, listImported, updateImportedOverride, getLeadSyncMeta, maybeAutoSyncLeads } from '@/lib/imported-leads';
 import { queueLeadPushback, flushLeadPushbacks, pushbackStats } from '@/lib/lead-pushback';
@@ -3227,6 +3228,75 @@ async function handleRoute(request, { params }) {
       return cors(NextResponse.json({ ok: true }));
     }
 
+    // ══════════════════════ TEAMCHAT: intern chat m/ @-tagging ══════════════════════
+    // Kun interne (owner/admin/bruker/partner via sakerAuthed) — investor/eier
+    // ser aldri chatten. E-post sendes KUN til @taggede, aldri på alle meldinger.
+    if (route === '/admin/chat/meldinger' && method === 'GET') {
+      if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const spCh = new URL(request.url).searchParams;
+      const meldinger = await chatList(db, { kanal: spCh.get('kanal'), etter: spCh.get('etter') || null });
+      return cors(NextResponse.json({ ok: true, meldinger }));
+    }
+    if (route === '/admin/chat/meldinger' && method === 'POST') {
+      if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!rateLimit(`chat:${clientIp(request)}`, 30)) return cors(NextResponse.json({ error: 'For mange meldinger — vent litt' }, { status: 429 }));
+      let bCh = {}; try { bCh = await request.json(); } catch (e) {}
+      const sesCh = sessionFra(request) || {};
+      let avsenderId = sesCh.sub || 'master';
+      let avsenderNavn = 'Admin';
+      if (sesCh.sub) {
+        const uCh = await db.collection('admin_users').findOne({ id: sesCh.sub }, { projection: { _id: 0, name: 1 } });
+        avsenderNavn = String(uCh?.name || sesCh.email || 'Ukjent').slice(0, 80);
+      }
+      const resCh = await chatNy(db, { kanal: bCh.kanal, userId: avsenderId, userName: avsenderNavn, text: bCh.text, mentions: bCh.mentions });
+      if (!resCh.ok) return cors(NextResponse.json({ ok: false, error: resCh.error }, { status: resCh.status || 400 }));
+      // Varsling til @taggede: in-app (klokken) + e-post. Aldri til avsenderen selv.
+      const kortCh = resCh.melding.text.length > 140 ? `${resCh.melding.text.slice(0, 140)}…` : resCh.melding.text;
+      for (const mt of resCh.mottakere) {
+        if (mt.id === avsenderId) continue;
+        await varsle(db, mt.id, avsenderId, { type: 'chat', actor: avsenderNavn, text: `${avsenderNavn} nevnte deg i teamchatten: «${kortCh}»` });
+      }
+      if (emailConfigured()) {
+        const baseCh = process.env.NEXT_PUBLIC_BASE_URL || '';
+        const epost = resCh.mottakere.filter((mt) => mt.id !== avsenderId && mt.email && !isUndeliverableTestAddress(mt.email));
+        await Promise.allSettled(epost.map((mt) => sendHtmlEmail({
+          to: mt.email,
+          subject: `${avsenderNavn} nevnte deg i teamchatten`,
+          html: `<div style="font-family:Inter,Helvetica,Arial,sans-serif;max-width:520px;margin:0 auto;padding:8px 0;color:#1c1917">
+            <p style="font-size:15px;margin:0 0 6px"><b>${avsenderNavn}</b> nevnte deg i DigiHome-teamchatten:</p>
+            <div style="background:#f5f4f1;border-radius:12px;padding:14px 16px;font-size:14px;line-height:1.5;white-space:pre-wrap">${resCh.melding.text.slice(0, 1000).replace(/</g, '&lt;')}</div>
+            ${baseCh ? `<p style="margin:16px 0 0"><a href="${baseCh}/admin" style="display:inline-block;background:#141414;color:#fff;text-decoration:none;font-size:13.5px;font-weight:600;padding:10px 18px;border-radius:9px">Åpne chatten</a></p>` : ''}
+            <p style="margin:14px 0 0;font-size:12px;color:#a6a19a">Du får denne e-posten fordi du ble @tagget. Andre meldinger varsles kun i portalen.</p>
+          </div>`,
+          text: `${avsenderNavn} nevnte deg i teamchatten: ${resCh.melding.text.slice(0, 500)}${baseCh ? ` — Åpne: ${baseCh}/admin` : ''}`,
+          categories: ['chat-mention'],
+        }).catch(() => {})));
+      }
+      return cors(NextResponse.json({ ok: true, melding: resCh.melding }, { status: 201 }));
+    }
+    if (route === '/admin/chat/meldinger' && method === 'DELETE') {
+      if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const idCh = new URL(request.url).searchParams.get('id') || '';
+      const sesChD = sessionFra(request) || {};
+      const resChD = await chatSlett(db, { id: idCh, userId: sesChD.sub || 'master', erAdmin: adminAuthed(request) });
+      if (!resChD.ok) return cors(NextResponse.json({ ok: false, error: resChD.error }, { status: resChD.status || 400 }));
+      return cors(NextResponse.json({ ok: true }));
+    }
+    if (route === '/admin/chat/status' && method === 'GET') {
+      if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const spChS = new URL(request.url).searchParams;
+      const sesChS = sessionFra(request) || {};
+      const st = await chatStatus(db, { kanal: spChS.get('kanal'), userId: sesChS.sub || 'master' });
+      return cors(NextResponse.json(st));
+    }
+    if (route === '/admin/chat/lest' && method === 'PUT') {
+      if (!sakerAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let bChL = {}; try { bChL = await request.json(); } catch (e) {}
+      const sesChL = sessionFra(request) || {};
+      await chatLest(db, { kanal: bChL.kanal, userId: sesChL.sub || 'master' });
+      return cors(NextResponse.json({ ok: true }));
+    }
+
     // ══════════════════════ VARSLER: in-app innboks + preferanser ══════════════════════
     // Alle endepunkter er per innlogget bruker (sesjonstoken → sub). Masternøkkel
     // uten sesjon har ingen bruker → tom innboks (brukes av QA/automasjon).
@@ -4032,14 +4102,14 @@ async function handleRoute(request, { params }) {
 
     if (route === '/admin/datarom/enhetsokonomi' && method === 'GET') {
       if (!(await modulAuthed(request, db, 'dr-enheter'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
-      // Auto-synk: enhetslisten speiler Leieforhold-porteføljen (maks hvert 10. min).
+      // Auto-synk: porteføljefakta speiler Leieforhold (maks hvert 10. min).
       await drAutoSync(db, async () => (await hentLeieforhold(leieforholdTarget(), { db })).rows || []);
-      return cors(NextResponse.json({ ok: true, ...(await drBeregnEnhetsokonomi(db)) }));
+      return cors(NextResponse.json({ ok: true, ...(await eoHent(db)) }));
     }
     if (route === '/admin/datarom/enhetsokonomi/antakelser' && method === 'PUT') {
       if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       let bodyEoA = {}; try { bodyEoA = await request.json(); } catch (e) {}
-      const resEoA = await drLagreEoAntakelser(db, bodyEoA);
+      const resEoA = await eoLagre(db, bodyEoA);
       if (!resEoA.ok) return cors(NextResponse.json({ ok: false, error: resEoA.error }, { status: resEoA.status || 400 }));
       return cors(NextResponse.json(resEoA));
     }

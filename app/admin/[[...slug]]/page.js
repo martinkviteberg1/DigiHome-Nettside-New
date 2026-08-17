@@ -30,6 +30,7 @@ import TasksTab from '@/components/admin/TasksTab';
 import MeetingsTab from '@/components/admin/MeetingsTab';
 import Datarom from '@/components/admin/Datarom';
 import DokumenterModul from '@/components/admin/DokumenterModul';
+import ChatBoble from '@/components/admin/ChatBoble';
 import { cacheHent, cacheSlett } from '@/lib/klient-cache';
 
 const SESSION_KEY = 'dh_admin_session';
@@ -57,7 +58,7 @@ const NAV = [
     items: [
       { k: 'dr-oversikt', datarom: 'oversikt', l: 'Oversikt', icon: Landmark, desc: 'Investorrommets forside — nøkkeltall, drift, pipeline og investorpakke' },
       { k: 'dr-resultat', datarom: 'resultat', l: 'Regnskap', icon: BarChart3, desc: 'Månedlig resultat fra oppstart — inntekter, kostnader og akkumulert' },
-      { k: 'dr-enheter', datarom: 'enheter', l: 'Enhetsøkonomi', icon: Scale, desc: 'Honorar, kostnad og margin per enhet — skalering og manpower-modell' },
+      { k: 'dr-enheter', datarom: 'enheter', l: 'Enhetsøkonomi', icon: Scale, desc: 'Hva én ny enhet er verdt — bidrag, CAC payback, LTV og prisverktøy' },
       { k: 'budsjett', l: 'Budsjett', icon: Target, desc: 'Enkle periodebudsjetter — honorar fra leieforholdene, del med investorrommet om ønskelig' },
       // Enhetsøkonomi er egen investorside (dr-enheter) — aggregert unit
       // economics med skaleringsgraf. Per-enhet-detaljer bor i Leieforhold.
@@ -180,7 +181,7 @@ const INSIGHT_SUBTITLES = {
 const DATAROM_TITLER = {
   oversikt: { t: 'Oversikt', s: 'Investorrommets forside — drift, pipeline og nøkkeltall · last ned investorpakken (Excel)' },
   resultat: { t: 'Regnskap', s: 'Månedlig resultat fra oppstart til i dag — inntekter, kostnader og akkumulert' },
-  enheter: { t: 'Enhetsøkonomi', s: 'Hva DigiHome tjener per leilighet og rom — honorar, direkte kostnader og margin' },
+  enheter: { t: 'Enhetsøkonomi', s: 'Er det attraktivt å skaffe én ny enhet — og hvor mye verdi skaper den over levetiden?' },
   pipeline: { t: 'Pipeline', s: 'Enheter på vei inn — signert kontra forventet, med estimert oppstart' },
   selskap: { t: 'Selskap', s: 'Ansatte, faste kostnader, gjeld og aksjonærlån — vedlikeholdt av DigiHome' },
   dokumenter: { t: 'Dokumenter', s: 'Delte rapporter og avtaler — fra dokumenthvelvet i Investor-rommet' },
@@ -735,6 +736,10 @@ export default function AdminPage({ params }) {
   return (
     <div className="min-h-screen bg-[#f7f6f4] flex">
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} commands={paletteCommands} />
+      {/* Teamchat — kun interne roller; investor/eier ser den aldri (håndheves også i API-et) */}
+      {user && ['owner', 'admin', 'bruker', 'partner'].includes(user.role) && (
+        <ChatBoble token={token} user={user} />
+      )}
       {profileOpen && (
         <ProfilModal
           token={token} user={user}
@@ -781,11 +786,13 @@ export default function AdminPage({ params }) {
 
       {/* Hovedinnhold */}
       <main className="flex-1 min-w-0">
-        {/* Topbar — supermoderne: én lav rad (48px), tittel uten undertittel, undertittelen ligger som tooltip.
+        {/* Topplinje — supermoderne: én lav rad (48px), tittel uten undertittel (den ligger som tooltip).
             Budsjett-cockpiten har egen header og trenger full høyde — der skjules
             topbaren på desktop (⌘K-søket virker fortsatt globalt); mobil beholder
-            raden pga. hamburgermenyen. */}
-        <div className={`sticky top-0 z-30 bg-[#f7f6f4]/85 backdrop-blur-md border-b border-black/[0.05] ${section === 'budsjett' ? 'lg:hidden' : ''}`}>
+            raden pga. hamburgermenyen. Samme énrads-prinsipp for Leieforhold og
+            Enhetsøkonomi: modulene har egen overskrift, så den globale raden
+            (med søkefeltet) skjules på desktop. */}
+        <div className={`sticky top-0 z-30 bg-[#f7f6f4]/85 backdrop-blur-md border-b border-black/[0.05] ${section === 'budsjett' || section === 'leieforhold' || (section === 'datarom' && dataromTab === 'enheter') ? 'lg:hidden' : ''}`}>
           <div className="h-12 px-4 sm:px-6 flex items-center gap-3">
             <button onClick={() => setSidebarOpen(true)} aria-label="Åpne meny" data-testid="admin-menu-open" className="lg:hidden h-8 w-8 rounded-lg bg-white shadow-[0_2px_10px_rgba(0,0,0,0.05)] flex items-center justify-center text-[#444]"><Menu className="w-4 h-4" /></button>
             <h1

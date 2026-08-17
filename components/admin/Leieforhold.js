@@ -283,6 +283,11 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
   // Fase 1: flervalgs-filter (status/type/inntekt/huseier)
   const [filtre, setFiltre] = useState(() => ({ status: [], typer: [], inntekt: [], eiere: [] }));
   const [filterOpen, setFilterOpen] = useState(false);
+  // KPI-sonen: lav, moderne stripe som standard — inntektstrappene kan foldes ut.
+  // Valget huskes per nettleser (leses i effect for å unngå hydration-avvik).
+  const [kpiAapen, setKpiAapen] = useState(false);
+  useEffect(() => { try { if (localStorage.getItem('dh-lf-kpi') === 'aapen') setKpiAapen(true); } catch (e) {} }, []);
+  const veksleKpi = () => setKpiAapen((v) => { try { localStorage.setItem('dh-lf-kpi', v ? 'lukket' : 'aapen'); } catch (e) {} return !v; });
   // Fase 2: eksplisitt eksportvalg (filtrert vs. hele porteføljen)
   const [eksportOpen, setEksportOpen] = useState(false);
   // Fase 4: scenario-dato («hvordan ser det ut om 1 måned?»)
@@ -639,6 +644,11 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
             må løftes over KPI-kortene for at menyene (Vis/Eksport) skal ligge
             øverst når de er åpne. ── */}
         <div className="relative z-30 mx-3 mt-3 flex flex-wrap items-center gap-1.5 rounded-[12px] border border-black/[0.05] bg-white/85 px-2.5 py-2 shadow-[0_1px_3px_rgba(28,25,23,0.05)] backdrop-blur-md sm:mx-4">
+          {/* Overskriften bor i verktøylinjen — den globale toppraden (m/ søk)
+              er skjult på desktop for denne siden (énrads-prinsippet). */}
+          <h1 className="mr-1.5 hidden shrink-0 text-[15px] font-bold tracking-[-0.01em] text-[#1c1917] lg:block" style={heading} data-testid="leieforhold-tittel">
+            Leieforhold & inntekter
+          </h1>
           <div className="relative order-last w-full sm:order-none sm:w-auto">
             <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#b3ada3]" />
             <input
@@ -848,11 +858,63 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
           </div>
         )}
 
-        {/* ── KPI-seksjon: tre kort med LESBARE inntektstrapper — stort tall
-            (i dag), stablet fremdriftslinje mot full utleie, og trinnene som
-            rader med rette tallkolonner («+ /mnd» og «Totalt»). Responsivt:
-            1 kolonne på mobil, 2 på md, 3 på xl. ── */}
-        <div className="grid grid-cols-1 gap-3 px-3 pt-3.5 sm:px-4 md:grid-cols-2 xl:grid-cols-[minmax(0,40fr)_minmax(0,40fr)_minmax(0,20fr)]">
+        {/* ── KPI-sone: LAV, moderne stripe (standard) — de tre nøkkeltallene på
+            én rad med mini-trapper som fargesegmenter. «Detaljer» folder ut de
+            fulle inntektstrappene (TrappKort). Valget huskes per nettleser. ── */}
+        <div className="mx-3 mt-3 overflow-hidden rounded-xl border border-black/[0.05] bg-white shadow-[0_1px_3px_rgba(28,25,23,0.04)] sm:mx-4" data-testid="leieforhold-kpi-strip">
+          <div className="flex flex-wrap items-stretch divide-x divide-black/[0.04]">
+            {/* Honorar — DigiHomes inntekt */}
+            <div className="relative min-w-[190px] flex-1 overflow-hidden px-4 py-2.5" data-testid="lf-strip-honorar">
+              <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(280px_90px_at_0%_0%,rgba(124,58,237,0.06),transparent_65%)]" />
+              <p className="relative text-[9.5px] font-bold uppercase tracking-[0.09em] text-[#b5b0a8]">Honorar / mnd <span className="normal-case tracking-normal text-[#c9c4bd]">eks. mva</span></p>
+              <div className="relative mt-0.5 flex items-baseline gap-2">
+                <p className="text-[21px] font-semibold leading-none tabular-nums tracking-[-0.02em] text-[#1c1917]" style={heading}>{laster ? '…' : <TallOpp verdi={honorarTrapp.iDag} />}</p>
+                <p className="truncate text-[10.5px] tabular-nums text-[#b3ada3]">→ {honorarTrapp.estFull ? '≈' : ''}{kr(honorarTrapp.potensial)} full utleie</p>
+              </div>
+              <div className="relative mt-1.5 flex h-[3px] w-full gap-[2px] overflow-hidden rounded-full bg-[#f4f2ee]">
+                {[[honorarTrapp.iDag, '#7c3aed'], [honorarTrapp.sikret - honorarTrapp.iDag, '#a78bfa'], [honorarTrapp.medAnnonsert - honorarTrapp.sikret, '#c4b5fd'], [honorarTrapp.potensial - honorarTrapp.medAnnonsert, '#e5dcfa']].map(([v, f], i) => (
+                  (v || 0) > 0 ? <span key={i} className="rounded-full transition-all duration-700" style={{ width: `${honorarTrapp.potensial > 0 ? Math.max(0, Math.min(100, (v / honorarTrapp.potensial) * 100)) : 0}%`, background: f }} /> : null
+                ))}
+              </div>
+            </div>
+            {/* Leie — huseiernes grunnlag */}
+            <div className="relative min-w-[190px] flex-1 overflow-hidden px-4 py-2.5" data-testid="lf-strip-leie">
+              <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(280px_90px_at_0%_0%,rgba(21,128,61,0.05),transparent_65%)]" />
+              <p className="relative text-[9.5px] font-bold uppercase tracking-[0.09em] text-[#b5b0a8]">Leie i dag / mnd</p>
+              <div className="relative mt-0.5 flex items-baseline gap-2">
+                <p className="text-[21px] font-semibold leading-none tabular-nums tracking-[-0.02em] text-[#1c1917]" style={heading}>{laster ? '…' : <TallOpp verdi={leieTrapp[0].v} />}</p>
+                <p className="truncate text-[10.5px] tabular-nums text-[#b3ada3]">→ {kr(leieTrapp[3].sum)} full utleie</p>
+              </div>
+              <div className="relative mt-1.5 flex h-[3px] w-full gap-[2px] overflow-hidden rounded-full bg-[#f4f2ee]">
+                {[[leieTrapp[0].v, '#15803d'], [leieTrapp[1].v, '#4ade80'], [leieTrapp[2].v, '#86efac'], [leieTrapp[3].v, '#d3f3de']].map(([v, f], i) => (
+                  (v || 0) > 0 ? <span key={i} className="rounded-full transition-all duration-700" style={{ width: `${leieTrapp[3].sum > 0 ? Math.max(0, Math.min(100, (v / leieTrapp[3].sum) * 100)) : 0}%`, background: f }} /> : null
+                ))}
+              </div>
+            </div>
+            {/* Utleiegrad */}
+            <div className="relative flex min-w-[150px] items-center gap-2.5 overflow-hidden px-4 py-2.5" data-testid="lf-strip-utleiegrad">
+              <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(240px_90px_at_0%_0%,rgba(14,116,144,0.06),transparent_65%)]" />
+              <Ring pct={visTotals.occupancy_pct || 0} size={32} />
+              <div className="relative min-w-0">
+                <p className="text-[9.5px] font-bold uppercase tracking-[0.09em] text-[#b5b0a8]">Utleiegrad</p>
+                <p className="mt-0.5 text-[21px] font-semibold leading-none tabular-nums tracking-[-0.02em] text-[#1c1917]" style={heading}>{visTotals.occupancy_pct ?? 0}&nbsp;%</p>
+                <p className="mt-0.5 truncate text-[10px] text-[#b3ada3]">{visTotals.leased ?? 0} av {visTotals.count ?? 0} utleid</p>
+              </div>
+            </div>
+            {/* Fold ut/inn */}
+            <button onClick={veksleKpi} data-testid="leieforhold-kpi-toggle"
+              title={kpiAapen ? 'Minimer — vis bare stripen' : 'Vis de fulle inntektstrappene'}
+              className="group flex items-center gap-1.5 px-3.5 text-[11px] font-semibold text-[#a8a29a] transition-colors hover:bg-[#faf9f7] hover:text-[#1c1917]">
+              <span className="hidden sm:block">{kpiAapen ? 'Minimer' : 'Detaljer'}</span>
+              <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-200 ${kpiAapen ? 'rotate-180' : ''}`} />
+            </button>
+          </div>
+        </div>
+
+        {/* ── Utfoldet: de fulle inntektstrappene — stort tall (i dag), stablet
+            fremdriftslinje mot full utleie, og trinnene som rader. ── */}
+        {kpiAapen && (
+        <div className="grid grid-cols-1 gap-3 px-3 pt-3 sm:px-4 md:grid-cols-2 xl:grid-cols-[minmax(0,40fr)_minmax(0,40fr)_minmax(0,20fr)]">
           {/* KORT 1 — Honorar (DigiHomes inntekt) · lilla */}
           <TrappKort
             testid="leieforhold-honorar-trapp"
@@ -920,6 +982,7 @@ export default function Leieforhold({ apiKey, readOnly = false, erInvestor = fal
             </div>
           </div>
         </div>
+        )}
 
         {/* ── Kontekstlinjer: filtrert visning + scenario ── */}
         {(aktivFiltrering || scenario) && (

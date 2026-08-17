@@ -1,23 +1,25 @@
 'use client';
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   BudsjettModell — «Investormodell»-cockpit (hypermoderne utgave).
-   · Venstre: sticky driver-rail med KOLLAPSBARE seksjoner (sammendrag i
-     headeren når lukket), slidere på myke drivere, endrings-prikker.
-   · Høyre: samlet nøkkeltall-linje m/ resultat-sparkline, graf med
-     hover-tooltip + break-even-markør + rutenett, finansmatrise
-     (måneder/kvartaler bortover, radhover, seksjonsbånd, sticky Totalt),
-     tornado-sensitivitet og unit economics.
-   · Samme rene motor (lib/budsjett-modell.js) klient/server — alt
-     omberegnes umiddelbart. Investor (readOnly): identisk, men låst.
+   BudsjettModell — «Investormodell»: beslutningsverktøy, ikke bare budsjett.
+   · Venstre rail (kollapsbar, sticky) følger investorens mentale kjede:
+     PORTEFØLJE & VEKST → UNIT ECONOMICS → ORGANISASJON → FASTE KOSTNADER.
+   · Nøkkeltall er diagnostiske: resultat siste måned (trenden!), break-even
+     med EKSTRAPOLERING utover perioden (motoren kjøres videre til 36 mnd
+     med porteføljefakta holdt flat), og kapitalbehov FREM TIL break-even.
+   · Scenarioer (Konservativ/Basis/Ambisiøs) svarer på investorens egentlige
+     spørsmål: «hva om salget går halvparten så fort som dere tror?»
+   · Unit economics med bidragsmargin, levetid fra churn, LTV og LTV/CAC.
+   · Grafen viser inntekts- og kostnadslinje som krysser i break-even.
+   · Samme rene motor (lib/budsjett-modell.js) klient/server.
    ───────────────────────────────────────────────────────────────────────────── */
 
 import React, { useState, useMemo, useCallback } from 'react';
 import {
-  ArrowLeft, Trash2, RefreshCw, Loader2, Check, Eye, EyeOff, Plus, X, RotateCcw, ChevronDown,
-  SlidersHorizontal, PanelLeftClose,
+  ArrowLeft, ArrowRight, Trash2, RefreshCw, Loader2, Check, Eye, EyeOff, Plus, X, RotateCcw, ChevronDown,
+  SlidersHorizontal,
 } from 'lucide-react';
-import { beregnInvestorModell, rensModellDrivere } from '@/lib/budsjett-modell';
+import { beregnInvestorModell, rensModellDrivere, STANDARD_DRIVERE } from '@/lib/budsjett-modell';
 
 const heading = { fontFamily: 'var(--font-heading, inherit)' };
 const KNAPP_PRIMAER = 'flex h-9 items-center gap-1.5 rounded-[9px] bg-[#141414] px-4 text-[13px] font-medium text-white transition-colors hover:bg-black/80 active:scale-[0.98] disabled:opacity-40';
@@ -42,6 +44,11 @@ const visTall = (v) => {
   const n = Number(s.replace(/[\s\u00a0]/g, '').replace(',', '.'));
   return Number.isFinite(n) ? Math.round(n).toLocaleString('nb-NO') : s;
 };
+// Holder porteføljefakta flat utover perioden — til ekstrapolering av break-even
+const utvidFakta = (fk, N2) => ({
+  eksisterende: Array.from({ length: N2 }, (_, i) => fk.eksisterende?.[Math.min(i, (fk.eksisterende?.length || 1) - 1)] || 0),
+  enheter: Array.from({ length: N2 }, (_, i) => fk.enheter?.[Math.min(i, (fk.enheter?.length || 1) - 1)] || 0),
+});
 
 /* ── Kollapsbar seksjon i driver-railen ── */
 const Seksjon = ({ tittel, sammendrag, open, onToggle, children }) => (
@@ -57,13 +64,13 @@ const Seksjon = ({ tittel, sammendrag, open, onToggle, children }) => (
   </div>
 );
 
-/* ── Driverfelt: etikett + tall + valgfri slider + endrings-prikk ── */
+/* ── Driverfelt: etikett + tall (m/ tusenskille for kr) + slider + endrings-prikk ── */
 const Felt = ({ label, k, drivere, sanert, lagret, onEndre, enhet, hint, slider, readOnly, testid, heltall }) => {
   const endret = lagret && sanert && Math.abs((sanert[k] ?? 0) - (lagret[k] ?? 0)) > 1e-9;
   const vis = heltall ? visTall(drivere[k]) : drivere[k];
   const endre = (e) => onEndre(k, heltall ? e.target.value.replace(/[^\d]/g, '') : e.target.value);
   return (
-    <div className="py-[7px]">
+    <div className="py-[6px]">
       <div className="flex items-center justify-between gap-3">
         <span className="flex min-w-0 items-center gap-1.5">
           <span className="truncate text-[13.5px] text-[#57534e]">{label}</span>
@@ -107,56 +114,55 @@ const Sparkline = ({ serie }) => {
   );
 };
 
-/* ── Graf: stablede søyler + kostnadslinje + rutenett + hover + break-even ── */
+/* ── Graf: inntektssøyler + inntekts-/kostnadslinje som krysser i break-even ── */
 const Graf = ({ m, startYm }) => {
   const [hov, setHov] = useState(null);
   const N = m.N;
-  const W = 960, H = 168, TOPP = 14;
+  const W = 960, H = 168, TOPP = 16;
   const maks = Math.max(...m.inntekt, ...m.kostSum, 1);
   const yS = (H - TOPP) / maks;
   const bw = Math.max(5, (W / N) * 0.66);
   const x = (i) => (W / N) * i + ((W / N) - bw) / 2;
+  const midt = (i) => x(i) + bw / 2;
   const hopp = Math.max(1, Math.ceil(N / 10));
   const beIdx = m.sammendrag.breakEvenIdx;
   return (
     <div className="relative" data-testid="modell-graf">
       <svg viewBox={`0 0 ${W} ${H + 20}`} className="w-full" style={{ height: 'auto' }} onMouseLeave={() => setHov(null)}>
-        {/* Rutenett */}
         {[0.25, 0.5, 0.75, 1].map((f) => (
           <g key={f}>
             <line x1="0" x2={W} y1={H - maks * f * yS} y2={H - maks * f * yS} stroke="#f0efec" strokeWidth="1" />
             <text x="2" y={H - maks * f * yS - 3} fontSize="10" fill="#c2beb8">{kr0(maks * f)}</text>
           </g>
         ))}
-        {/* Break-even-markør */}
-        {beIdx !== null && beIdx > 0 && (
-          <g>
-            <line x1={x(beIdx) + bw / 2} x2={x(beIdx) + bw / 2} y1={2} y2={H} stroke="#6d28d9" strokeWidth="1" strokeDasharray="3 3" opacity="0.55" />
-            <text x={x(beIdx) + bw / 2 + 4} y={9} fontSize="8.5" fill="#6d28d9" fontWeight="600">Break-even</text>
-          </g>
-        )}
         {Array.from({ length: N }, (_, i) => {
           const eksH = m.eksisterende[i] * yS;
           const modH = (m.vekst[i] + m.oppstart[i]) * yS;
           const dim = hov !== null && hov !== i;
           return (
-            <g key={i} opacity={dim ? 0.45 : 1} style={{ transition: 'opacity 120ms' }}>
-              <rect x={x(i)} y={H - eksH} width={bw} height={Math.max(0, eksH)} rx="2" fill="#1c1917" />
-              <rect x={x(i)} y={H - eksH - modH} width={bw} height={Math.max(0, modH)} rx="2" fill="#c4b5fd" />
+            <g key={i} opacity={dim ? 0.4 : 1} style={{ transition: 'opacity 120ms' }}>
+              <rect x={x(i)} y={H - eksH} width={bw} height={Math.max(0, eksH)} rx="2" fill="#1c1917" opacity="0.9" />
+              <rect x={x(i)} y={H - eksH - modH} width={bw} height={Math.max(0, modH)} rx="2" fill="#ddd2f5" />
               {i % hopp === 0 && (
-                <text x={x(i) + bw / 2} y={H + 15} textAnchor="middle" fontSize="11" fill="#a6a19a">{mndKort(ymPluss(startYm, i))}</text>
+                <text x={midt(i)} y={H + 15} textAnchor="middle" fontSize="11" fill="#a6a19a">{mndKort(ymPluss(startYm, i))}</text>
               )}
-              {/* usynlig hover-flate for hele kolonnen */}
               <rect x={(W / N) * i} y="0" width={W / N} height={H} fill="transparent" onMouseEnter={() => setHov(i)} />
             </g>
           );
         })}
-        <polyline
-          points={Array.from({ length: N }, (_, i) => `${x(i) + bw / 2},${H - m.kostSum[i] * yS}`).join(' ')}
-          fill="none" stroke="#b3261e" strokeWidth="1.6" strokeLinejoin="round" opacity="0.85" pointerEvents="none"
-        />
+        {/* Inntektslinje og kostnadslinje — krysset ER break-even */}
+        <polyline points={Array.from({ length: N }, (_, i) => `${midt(i)},${H - m.inntekt[i] * yS}`).join(' ')}
+          fill="none" stroke="#0a7d55" strokeWidth="1.8" strokeLinejoin="round" pointerEvents="none" />
+        <polyline points={Array.from({ length: N }, (_, i) => `${midt(i)},${H - m.kostSum[i] * yS}`).join(' ')}
+          fill="none" stroke="#b3261e" strokeWidth="1.8" strokeLinejoin="round" pointerEvents="none" opacity="0.9" />
+        {beIdx !== null && beIdx > 0 && (
+          <g pointerEvents="none">
+            <line x1={midt(beIdx)} x2={midt(beIdx)} y1={H - m.inntekt[beIdx] * yS - 14} y2={H} stroke="#6d28d9" strokeWidth="1" strokeDasharray="3 3" opacity="0.5" />
+            <circle cx={midt(beIdx)} cy={H - m.inntekt[beIdx] * yS} r="4.5" fill="#fff" stroke="#6d28d9" strokeWidth="2" />
+            <text x={midt(beIdx) + 8} y={H - m.inntekt[beIdx] * yS - 8} fontSize="10" fill="#6d28d9" fontWeight="700">Break-even — herfra bærer driften seg selv</text>
+          </g>
+        )}
       </svg>
-      {/* Tooltip */}
       {hov !== null && (
         <div className="pointer-events-none absolute top-0 z-20 w-[216px] -translate-x-1/2 rounded-[10px] bg-[#1c1917] px-3.5 py-3 text-[12px] leading-relaxed text-white shadow-xl"
           style={{ left: `${Math.min(92, Math.max(8, ((hov + 0.5) / N) * 100))}%` }}>
@@ -172,40 +178,309 @@ const Graf = ({ m, startYm }) => {
         </div>
       )}
       <div className="mt-1.5 flex flex-wrap items-center gap-4 text-[12.5px] text-[#8f8a82]">
-        <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-[2px] bg-[#1c1917]" /> Kontraktsfestet (dagens portefølje)</span>
-        <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-[2px] bg-[#c4b5fd]" /> Modellert vekst</span>
+        <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-[2px] bg-[#1c1917]" /> Kontraktsfestet</span>
+        <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-[2px] bg-[#ddd2f5]" /> Modellert vekst</span>
+        <span className="flex items-center gap-1.5"><span className="h-[2px] w-4 rounded bg-[#0a7d55]" /> Inntekt</span>
         <span className="flex items-center gap-1.5"><span className="h-[2px] w-4 rounded bg-[#b3261e]" /> Kostnader</span>
       </div>
     </div>
   );
 };
 
-/* ── Bemanningskurve: glidende behov (grå, stiplet) vs. budsjettert trapp ── */
-const TrappKurve = ({ m }) => {
+/* ── Bemanningskurve: glidende behov (stiplet) vs. budsjettert trapp ── */
+/* ── Kapasitetsgraf: modellerte enheter vs. tilgjengelig kapasitet (trapp) ──
+   Skjæringen forteller historien: når vokser porteføljen forbi det dagens
+   bemanning kan bære — og når hopper kapasiteten ved neste trinn? ── */
+const KapasitetGraf = ({ m, startYm, enhPerAarsverk, maalPct }) => {
   const N = m.N;
-  const W = 280, H = 56;
-  const behov = m.behovAarsverk.map((a) => a * 100);
-  const maks = Math.max(...behov, ...m.budsjettertPct, 10) * 1.15;
+  const kapasitet = m.budsjettertPct.map((p) => (p / 100) * enhPerAarsverk);
+  const buffer = kapasitet.map((k) => k * (maalPct / 100));
+  const W = 960, H = 200, TOPP = 18, BUNN = 22;
+  const maks = Math.max(...kapasitet, ...m.enheter, 1) * 1.12;
   const x = (i) => (W / Math.max(1, N - 1)) * i;
-  const y = (v) => H - (v / maks) * H;
-  const steg = [];
-  for (let i = 0; i < N; i++) {
-    if (i === 0) steg.push(`${x(0)},${y(m.budsjettertPct[0])}`);
-    else { steg.push(`${x(i)},${y(m.budsjettertPct[i - 1])}`); steg.push(`${x(i)},${y(m.budsjettertPct[i])}`); }
-  }
+  const y = (v) => TOPP + (H - TOPP - BUNN) * (1 - v / maks);
+  const steg = (serie) => {
+    const p = [];
+    for (let i = 0; i < N; i++) {
+      if (i === 0) p.push(`${x(0)},${y(serie[0])}`);
+      else { p.push(`${x(i)},${y(serie[i - 1])}`); p.push(`${x(i)},${y(serie[i])}`); }
+    }
+    return p.join(' ');
+  };
+  const hopp = Math.max(1, Math.ceil(N / 10));
+  const varselIdx = m.sammendrag.bemanningsVarselIdx;
   return (
-    <div className="mt-2" data-testid="modell-trappkurve">
-      <svg viewBox={`0 0 ${W} ${H + 4}`} className="w-full" style={{ height: 'auto' }}>
-        <polyline points={Array.from({ length: N }, (_, i) => `${x(i)},${y(behov[i])}`).join(' ')} fill="none" stroke="#c2beb8" strokeWidth="1.3" strokeDasharray="3 2.5" />
-        <polyline points={steg.join(' ')} fill="none" stroke="#6d28d9" strokeWidth="1.7" strokeLinejoin="round" />
+    <div data-testid="bemplan-graf">
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: 200 }} preserveAspectRatio="none">
+        {Array.from({ length: N }, (_, i) => i).filter((i) => i % hopp === 0).map((i) => (
+          <text key={i} x={x(i)} y={H - 6} fontSize="10" fill="#c2beb8">{stor(mndKort(ymPluss(startYm, i)))}</text>
+        ))}
+        {/* buffer (mål-utnyttelse av kapasiteten) */}
+        <polyline points={steg(buffer)} fill="none" stroke="#c9a35b" strokeWidth="1.2" strokeDasharray="4 3" />
+        {/* tilgjengelig kapasitet — trapp */}
+        <polyline points={steg(kapasitet)} fill="none" stroke="#1c1917" strokeWidth="2" strokeLinejoin="round" />
+        {/* modellerte enheter */}
+        <polyline points={Array.from({ length: N }, (_, i) => `${x(i)},${y(m.enheter[i])}`).join(' ')} fill="none" stroke="#6d28d9" strokeWidth="2.2" strokeLinejoin="round" />
+        {/* forventet bemanningsbehov */}
+        {varselIdx !== null && (
+          <g>
+            <line x1={x(varselIdx)} x2={x(varselIdx)} y1={TOPP} y2={H - BUNN} stroke="#9a6b1c" strokeWidth="1.4" strokeDasharray="5 3" />
+            <circle cx={x(varselIdx)} cy={y(m.enheter[varselIdx])} r="4.5" fill="#fff" stroke="#9a6b1c" strokeWidth="2.2" />
+            <text x={Math.min(x(varselIdx) + 7, W - 260)} y={TOPP + 10} fontSize="11" fontWeight="700" fill="#9a6b1c">
+              Bemanningsbehov — {stor(mndLang(ymPluss(startYm, varselIdx)))} (utnyttelse over {kma(maalPct)} %)
+            </text>
+          </g>
+        )}
       </svg>
-      <div className="mt-1 flex items-center gap-3 text-[10.5px] text-[#a6a19a]">
-        <span className="flex items-center gap-1"><span className="h-[2px] w-3.5 rounded bg-[#6d28d9]" /> Budsjettert</span>
-        <span className="flex items-center gap-1"><span className="h-[2px] w-3.5 rounded bg-[#c2beb8]" /> Kapasitetsbehov</span>
+      <div className="mt-1 flex flex-wrap items-center gap-4 text-[11px] text-[#a6a19a]">
+        <span className="flex items-center gap-1.5"><span className="h-[2.5px] w-4 rounded bg-[#6d28d9]" /> Modellerte enheter</span>
+        <span className="flex items-center gap-1.5"><span className="h-[2.5px] w-4 rounded bg-[#1c1917]" /> Kapasitet m/ budsjettert bemanning</span>
+        <span className="flex items-center gap-1.5"><span className="h-[2px] w-4 rounded border-t-2 border-dashed border-[#c9a35b]" /> Mål maks utnyttelse ({kma(maalPct)} %)</span>
       </div>
     </div>
   );
 };
+
+/* ── Bemanningsplan — stor drawer fra høyre. Skiller den ØKONOMISKE
+      forutsetningen (lønn/kapasitet) fra selve PLANEN (hendelsesbaserte
+      trinn: enhetsterskel eller dato). Redigerer et utkast — ingenting
+      treffer modellen før «Bruk bemanningsplan». ── */
+function BemanningsplanDrawer({ plan, fakta, drivere, readOnly, onLukk, onBruk }) {
+  const [draft, setDraft] = useState(() => ({
+    bemanningstrinn: (drivere.bemanningstrinn || []).map((t) => ({
+      type: t.type === 'dato' ? 'dato' : 'enheter',
+      fraEnheter: t.fraEnheter ?? 0,
+      fraYm: t.fraYm || '',
+      prosent: t.prosent,
+    })),
+    enheterPerAarsverk: drivere.enheterPerAarsverk,
+    aarslonn: drivere.aarslonn,
+    paslagPct: drivere.paslagPct,
+    maalUtnyttelsePct: drivere.maalUtnyttelsePct ?? 85,
+  }));
+
+  const mB = useMemo(
+    () => beregnInvestorModell({ antallMnd: plan.antallMnd, fakta, drivere: { ...drivere, ...draft }, startYm: plan.startYm }),
+    [plan.antallMnd, plan.startYm, fakta, drivere, draft],
+  );
+  const sB = mB.drivere;
+  const fullkostB = Math.round(sB.aarslonn * (1 + sB.paslagPct / 100));
+  const pctNaa = mB.budsjettertPct[0] || 0;
+  const kapNaa = Math.round((pctNaa / 100) * sB.enheterPerAarsverk);
+  const enhNaa = Math.round(mB.enheter[0] || 0);
+  const neste = sB.bemanningstrinn.filter((t) => t.prosent > pctNaa).sort((a, b) => a.prosent - b.prosent)[0] || null;
+  const varselIdx = mB.sammendrag.bemanningsVarselIdx;
+  const behovVedEnheter = Math.floor(kapNaa * (sB.maalUtnyttelsePct / 100));
+
+  const settTrinn = (i, felt, v) => setDraft((d) => ({ ...d, bemanningstrinn: d.bemanningstrinn.map((t, j) => (j === i ? { ...t, [felt]: v } : t)) }));
+  const leggTrinn = () => setDraft((d) => {
+    const siste = d.bemanningstrinn[d.bemanningstrinn.length - 1] || { fraEnheter: 0, prosent: 30 };
+    const nesteFra = (Number(String(siste.fraEnheter).replace(/\s/g, '')) || 0) + 50;
+    return { ...d, bemanningstrinn: [...d.bemanningstrinn, { type: 'enheter', fraEnheter: nesteFra, fraYm: '', prosent: Math.min(2000, (Number(siste.prosent) || 0) + 25) }] };
+  });
+  const fjernTrinn = (i) => setDraft((d) => ({ ...d, bemanningstrinn: d.bemanningstrinn.filter((_, j) => j !== i) }));
+  const settFelt = (k, v) => setDraft((d) => ({ ...d, [k]: v }));
+
+  const KpiBlokk = ({ label, verdi, under }) => (
+    <div className="min-w-[150px] flex-1 rounded-[12px] bg-white px-4 py-3 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]">
+      <p className="text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#a6a19a]">{label}</p>
+      <p className="mt-0.5 text-[20px] font-bold tracking-[-0.01em] text-[#1c1917]" style={heading}>{verdi}</p>
+      {under && <p className="text-[11px] text-[#a6a19a]">{under}</p>}
+    </div>
+  );
+
+  const KostFelt = ({ label, k, enhet, heltall }) => (
+    <label className="block">
+      <span className="text-[10.5px] font-bold uppercase tracking-[0.07em] text-[#a6a19a]">{label}</span>
+      <div className="mt-1 flex items-center gap-1.5">
+        {readOnly ? (
+          <span className="text-[14px] font-semibold text-[#1c1917]">{heltall ? visTall(draft[k]) : kma(draft[k])}</span>
+        ) : (
+          <input value={heltall ? visTall(draft[k]) : draft[k]} inputMode={heltall ? 'numeric' : 'decimal'} data-testid={`bemplan-${k}`}
+            onChange={(e) => settFelt(k, heltall ? e.target.value.replace(/[^\d]/g, '') : e.target.value)}
+            className="h-9 w-full rounded-[8px] bg-[#f5f4f1] px-2.5 text-right text-[14px] font-semibold text-[#1c1917] outline-none ring-1 ring-transparent transition-all focus:bg-white focus:ring-[#6d28d9]/40" />
+        )}
+        <span className="w-12 shrink-0 text-[11px] text-[#a6a19a]">{enhet}</span>
+      </div>
+    </label>
+  );
+
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end" data-testid="bemplan-drawer">
+      <div className="absolute inset-0 bg-black/30 backdrop-blur-[1.5px]" onClick={onLukk} />
+      <div className="relative flex h-full w-full max-w-[1080px] flex-col bg-[#faf9f7] shadow-[0_0_60px_rgba(0,0,0,0.25)] lg:w-[78vw]">
+        {/* Topp */}
+        <div className="flex items-center justify-between gap-3 border-b border-black/[0.06] bg-white px-5 py-3.5">
+          <div>
+            <p className="text-[16px] font-bold text-[#1c1917]" style={heading}>Bemanningsplan</p>
+            <p className="text-[12px] text-[#8f8a82]">Kapasitet og planlagte bemanningsøkninger — hendelsesbasert, følger scenarioets veksttempo</p>
+          </div>
+          <button onClick={onLukk} data-testid="bemplan-lukk" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] text-[#8f8a82] transition-colors hover:bg-black/[0.05] hover:text-[#1c1917]" title="Lukk">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* Innhold */}
+        <div className="flex-1 overflow-y-auto px-5 py-4" style={{ scrollbarWidth: 'thin' }}>
+          {/* KPI-er */}
+          <div className="flex flex-wrap gap-2.5">
+            <KpiBlokk label="Bemanning nå" verdi={`${pctNaa} %`} under={`${kr0(Math.round((pctNaa / 100) * fullkostB / 12))} kr/mnd fullkost`} />
+            <KpiBlokk label="Kapasitet nå" verdi={`${kr0(kapNaa)} enheter`} under={`${kma(sB.enheterPerAarsverk)} enh per årsverk`} />
+            <KpiBlokk label="Under forvaltning" verdi={`${kr0(enhNaa)} enheter`} under="første måned i planen" />
+            <KpiBlokk label="Neste planlagte nivå" verdi={neste ? `${kma(neste.prosent)} %` : '—'}
+              under={neste ? (neste.type === 'dato' ? `fra ${stor(mndLang(neste.fraYm))}` : `ved ${kr0(neste.fraEnheter)} enheter`) : 'ingen flere trinn'} />
+          </div>
+
+          {/* Buffer-varsel */}
+          <div className={`mt-3 rounded-[12px] px-3.5 py-2.5 text-[12.5px] font-medium leading-snug ${varselIdx !== null ? 'bg-[#fdf3e0] text-[#9a6b1c]' : 'bg-[#e7f4ee] text-[#0a7d55]'}`} data-testid="bemplan-varsel">
+            {varselIdx !== null ? (
+              <>Neste bemanningsbehov ved ca. <b>{kr0(behovVedEnheter)} enheter</b> ({kma(sB.maalUtnyttelsePct)} % av dagens kapasitet) — forventet <b>{stor(mndLang(ymPluss(plan.startYm, varselIdx)))}</b>. Vurder et nytt trinn før dette.</>
+            ) : (
+              <>Planen holder utnyttelsen under målnivået ({kma(sB.maalUtnyttelsePct)} %) i hele perioden — bemanningen bærer veksten.</>
+            )}
+          </div>
+
+          {/* Enheter vs. kapasitet */}
+          <div className="mt-3 rounded-[16px] bg-white p-4 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]">
+            <p className="text-[13px] font-medium text-[#8f8a82]">Enheter vs. kapasitet over tid</p>
+            <div className="mt-2">
+              <KapasitetGraf m={mB} startYm={plan.startYm} enhPerAarsverk={sB.enheterPerAarsverk} maalPct={sB.maalUtnyttelsePct} />
+            </div>
+          </div>
+
+          {/* Bemanningstrinn — hendelsesbasert */}
+          <div className="mt-3 rounded-[16px] bg-white p-4 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]">
+            <p className="text-[13px] font-medium text-[#8f8a82]">Bemanningstrinn</p>
+            <p className="mt-0.5 text-[11.5px] text-[#a6a19a]">Beskriver beslutningslogikken — ikke måned for måned. Nivået er det høyeste av alle utløste trinn; enhetsterskler følger automatisk scenarioets vekst.</p>
+            <div className="mt-3 overflow-x-auto" style={{ scrollbarWidth: 'thin' }}>
+              <table className="w-full min-w-[640px] text-[13px]">
+                <thead>
+                  <tr className="text-[10.5px] uppercase tracking-[0.06em] text-[#a6a19a]">
+                    <th className="pb-1.5 text-left font-semibold">Utløses av</th>
+                    <th className="pb-1.5 text-left font-semibold">Utløser</th>
+                    <th className="pb-1.5 text-right font-semibold">Bemanning</th>
+                    <th className="pb-1.5 text-right font-semibold">Kapasitet</th>
+                    <th className="pb-1.5 text-right font-semibold">Fullkost/mnd</th>
+                    <th className="pb-1.5 text-right font-semibold">&nbsp;</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {draft.bemanningstrinn.map((t, i) => {
+                    const p = Number(String(t.prosent).replace(',', '.')) || 0;
+                    const kapT = Math.round((p / 100) * sB.enheterPerAarsverk);
+                    const kostT = Math.round((p / 100) * fullkostB / 12);
+                    const erStart = t.type === 'enheter' && (Number(String(t.fraEnheter).replace(/\s/g, '')) || 0) === 0;
+                    return (
+                      <tr key={i} className="border-t border-black/[0.04]" data-testid={`bemplan-trinn-${i}`}>
+                        <td className="py-1.5 pr-2">
+                          {readOnly ? (
+                            <span className="text-[#57534e]">{erStart ? 'Nå' : t.type === 'dato' ? 'Fra måned' : 'Ved enheter'}</span>
+                          ) : erStart ? (
+                            <span className="inline-flex rounded-[7px] bg-[#f5f4f1] px-2 py-1 text-[12px] font-semibold text-[#57534e]">Nå</span>
+                          ) : (
+                            <select value={t.type} onChange={(e) => settTrinn(i, 'type', e.target.value)} data-testid={`bemplan-trinn-type-${i}`}
+                              className="h-8 rounded-[8px] bg-[#f5f4f1] px-2 text-[12.5px] font-medium text-[#57534e] outline-none ring-1 ring-transparent transition-all focus:bg-white focus:ring-[#6d28d9]/40">
+                              <option value="enheter">Ved enheter</option>
+                              <option value="dato">Fra måned</option>
+                            </select>
+                          )}
+                        </td>
+                        <td className="py-1.5 pr-2">
+                          {erStart ? (
+                            <span className="text-[12.5px] text-[#a6a19a]">fra start</span>
+                          ) : t.type === 'dato' ? (
+                            readOnly ? <span className="font-semibold text-[#1c1917]">{t.fraYm ? stor(mndLang(t.fraYm)) : '—'}</span> : (
+                              <input type="month" value={t.fraYm} onChange={(e) => settTrinn(i, 'fraYm', e.target.value)} data-testid={`bemplan-trinn-ym-${i}`}
+                                className="h-8 rounded-[8px] bg-[#f5f4f1] px-2 text-[12.5px] font-semibold text-[#1c1917] outline-none ring-1 ring-transparent transition-all focus:bg-white focus:ring-[#6d28d9]/40" />
+                            )
+                          ) : (
+                            readOnly ? <span className="font-semibold text-[#1c1917]">{kr0(t.fraEnheter)} enheter</span> : (
+                              <span className="flex items-center gap-1.5">
+                                <input value={visTall(t.fraEnheter)} inputMode="numeric" onChange={(e) => settTrinn(i, 'fraEnheter', e.target.value.replace(/[^\d]/g, ''))} data-testid={`bemplan-trinn-fra-${i}`}
+                                  className="h-8 w-[76px] rounded-[8px] bg-[#f5f4f1] px-2 text-right text-[13px] font-semibold text-[#1c1917] outline-none ring-1 ring-transparent transition-all focus:bg-white focus:ring-[#6d28d9]/40" />
+                                <span className="text-[11.5px] text-[#a6a19a]">enheter</span>
+                              </span>
+                            )
+                          )}
+                        </td>
+                        <td className="py-1.5 text-right">
+                          {readOnly ? (
+                            <span className="font-bold text-[#1c1917]">{kma(t.prosent)} %</span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1">
+                              <input value={t.prosent} inputMode="decimal" onChange={(e) => settTrinn(i, 'prosent', e.target.value)} data-testid={`bemplan-trinn-pct-${i}`}
+                                className="h-8 w-[64px] rounded-[8px] bg-[#f5f4f1] px-2 text-right text-[13px] font-bold text-[#1c1917] outline-none ring-1 ring-transparent transition-all focus:bg-white focus:ring-[#6d28d9]/40" />
+                              <span className="text-[11.5px] text-[#a6a19a]">%</span>
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-1.5 text-right font-medium tabular-nums text-[#57534e]">{kr0(kapT)} enh</td>
+                        <td className="py-1.5 text-right font-medium tabular-nums text-[#57534e]">{kr0(kostT)} kr</td>
+                        <td className="py-1.5 text-right">
+                          {!readOnly && draft.bemanningstrinn.length > 1 && !erStart && (
+                            <button onClick={() => fjernTrinn(i)} className="rounded p-1 text-[#c2beb8] transition-colors hover:text-[#c2413b]" title="Fjern trinn" data-testid={`bemplan-trinn-fjern-${i}`}>
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            {!readOnly && (
+              <div className="mt-2 flex flex-wrap items-center gap-4">
+                {draft.bemanningstrinn.length < 12 && (
+                  <button onClick={leggTrinn} data-testid="bemplan-legg-trinn" className="flex items-center gap-1 text-[12.5px] font-semibold text-[#6d28d9] hover:text-[#4c1d95]">
+                    <Plus className="h-3.5 w-3.5" /> Legg til bemanningstrinn
+                  </button>
+                )}
+                <button
+                  onClick={() => setDraft((d) => ({ ...d, bemanningstrinn: STANDARD_DRIVERE.bemanningstrinn.map((t) => ({ ...t, fraYm: '' })) }))}
+                  data-testid="bemplan-standardtrapp"
+                  title="Erstatter trinnene med en anbefalt trapp: 30 % nå → 50 % ved 55 enh → 75 % ved 90 → 100 % ved 140 → 150 % ved 190"
+                  className="flex items-center gap-1 text-[12.5px] font-semibold text-[#8f8a82] transition-colors hover:text-[#1c1917]">
+                  <RefreshCw className="h-3 w-3" /> Bruk standardtrapp
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Kostnadsforutsetninger */}
+          <div className="mt-3 rounded-[16px] bg-white p-4 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]">
+            <p className="text-[13px] font-medium text-[#8f8a82]">Kostnadsforutsetninger</p>
+            <p className="mt-0.5 text-[11.5px] text-[#a6a19a]">Fullkost per årsverk: {kr0(fullkostB)} kr (årslønn × (1 + påslag)). Målet for maks utnyttelse styrer når systemet varsler neste bemanningsbehov.</p>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <KostFelt label="Enheter per årsverk" k="enheterPerAarsverk" enhet="enh" heltall />
+              <KostFelt label="Brutto årslønn" k="aarslonn" enhet="kr/år" heltall />
+              <KostFelt label="Arbeidsgiverpåslag" k="paslagPct" enhet="%" />
+              <KostFelt label="Mål maks utnyttelse" k="maalUtnyttelsePct" enhet="%" />
+            </div>
+          </div>
+
+          {/* Behov vs. beslutning */}
+          <div className="mt-3 rounded-[12px] bg-[#faf9f7] px-3.5 py-2.5 text-[11.5px] leading-relaxed text-[#a6a19a] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.05)]">
+            Modellen skiller <b className="text-[#57534e]">beregnet behov</b> (enheter ÷ kapasitet, glidende) fra <b className="text-[#57534e]">budsjettert bemanning</b> (denne planen — det dere faktisk betaler).
+            Systemet foreslår aldri ansettelser automatisk; dere bestemmer trinnene, og modellen viser konsekvensen.
+          </div>
+        </div>
+
+        {/* Bunn */}
+        <div className="flex items-center justify-end gap-2 border-t border-black/[0.06] bg-white px-5 py-3">
+          <button onClick={onLukk} data-testid="bemplan-avbryt" className="flex h-9 items-center rounded-[9px] px-4 text-[13px] font-medium text-[#57534e] transition-colors hover:bg-black/[0.05]">
+            {readOnly ? 'Lukk' : 'Avbryt'}
+          </button>
+          {!readOnly && (
+            <button onClick={() => onBruk(draft)} data-testid="bemplan-bruk" className={KNAPP_PRIMAER}>
+              <Check className="h-3.5 w-3.5" /> Bruk bemanningsplan
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function BudsjettModell({ plan, api, readOnly = false, onTilbake, onEndret }) {
   const [navn, setNavn] = useState(plan.navn);
@@ -213,36 +488,32 @@ export default function BudsjettModell({ plan, api, readOnly = false, onTilbake,
   const [drivere, setDrivere] = useState(() => ({ ...rensModellDrivere(plan.drivere) }));
   const [lagretDrivere, setLagretDrivere] = useState(() => rensModellDrivere(plan.drivere));
   const [fakta, setFakta] = useState(plan.fakta || { eksisterende: [], enheter: [], oppdatertAt: null });
-  const [aapne, setAapne] = useState({ vekst: true, kostnader: false, kapasitet: false, beslutning: false });
+  const [aapne, setAapne] = useState({ portefolje: true, unit: false, org: false, faste: false });
   const [railAapen, setRailAapen] = useState(true);
   const [skittent, setSkittent] = useState(false);
   const [lagrer, setLagrer] = useState(false);
   const [lagret, setLagret] = useState(false);
   const [feil, setFeil] = useState('');
   const [henterFakta, setHenterFakta] = useState(false);
-  const [visning, setVisning] = useState('mnd'); // 'mnd' | 'kvartal'
+  const [visning, setVisning] = useState('mnd');
   const [sletteBekreft, setSletteBekreft] = useState(false);
 
   const m = useMemo(
-    () => beregnInvestorModell({ antallMnd: plan.antallMnd, fakta, drivere }),
-    [plan.antallMnd, fakta, drivere],
+    () => beregnInvestorModell({ antallMnd: plan.antallMnd, fakta, drivere, startYm: plan.startYm }),
+    [plan.antallMnd, plan.startYm, fakta, drivere],
   );
   const sanert = m.drivere;
+  const s = m.sammendrag;
 
   const veksle = (id) => setAapne((a) => ({ ...a, [id]: !a[id] }));
   const settDriver = (k, v) => { setDrivere((d) => ({ ...d, [k]: v })); setSkittent(true); };
-  const settTrinn = (i, felt, v) => {
-    setDrivere((d) => ({ ...d, bemanningstrinn: d.bemanningstrinn.map((t, j) => (j === i ? { ...t, [felt]: v } : t)) }));
+  // Bemanningsplanen redigeres i egen drawer (utkast → «Bruk bemanningsplan»)
+  const [bemAapen, setBemAapen] = useState(false);
+  const brukBemanningsplan = (utkast) => {
+    setDrivere((d) => ({ ...d, ...utkast }));
     setSkittent(true);
+    setBemAapen(false);
   };
-  const leggTrinn = () => {
-    setDrivere((d) => {
-      const siste = d.bemanningstrinn[d.bemanningstrinn.length - 1] || { fraEnheter: 0, prosent: 30 };
-      return { ...d, bemanningstrinn: [...d.bemanningstrinn, { fraEnheter: Number(siste.fraEnheter || 0) + 50, prosent: Math.min(2000, Number(siste.prosent || 0) + 25) }] };
-    });
-    setSkittent(true);
-  };
-  const fjernTrinn = (i) => { setDrivere((d) => ({ ...d, bemanningstrinn: d.bemanningstrinn.filter((_, j) => j !== i) })); setSkittent(true); };
   const tilbakestill = () => { setDrivere({ ...lagretDrivere }); setSkittent(false); };
 
   const lagre = useCallback(async (overstyr = {}) => {
@@ -288,31 +559,60 @@ export default function BudsjettModell({ plan, api, readOnly = false, onTilbake,
     catch (e) { setFeil(e.message); }
   };
 
-  /* Tornado: ±10 % per driver → effekt på periodens resultat */
-  const tornado = useMemo(() => {
-    const basis = m.sammendrag.resultat;
-    const kandidater = [
-      ['nyePerMnd', 'Nye enheter per måned'], ['aarligChurnPct', 'Årlig churn'],
-      ['snittleieNye', 'Snittleie nye enheter'], ['honorarPctNye', 'Honorar-% nye'],
-      ['oppstartPerEnhet', 'Oppstartshonorar'], ['systemPerEnhet', 'Systemkostnad per enhet'],
-      ['enheterPerAarsverk', 'Kapasitet per årsverk'], ['aarslonn', 'Årslønn'],
-      ['paslagPct', 'Arbeidsgiverpåslag'], ['mfFast', 'Fast markedsføring'],
-      ['provisjonPerNyEnhet', 'Salgsprovisjon (CAC)'], ['adminFast', 'Administrasjon'],
-      ['andreFaste', 'Andre faste'],
-    ];
-    const rader = kandidater.map(([k, label]) => {
-      const v = sanert[k];
-      if (!Number.isFinite(v) || v === 0) return null;
-      const opp = beregnInvestorModell({ antallMnd: plan.antallMnd, fakta, drivere: { ...sanert, [k]: v * 1.1 } }).sammendrag.resultat - basis;
-      const ned = beregnInvestorModell({ antallMnd: plan.antallMnd, fakta, drivere: { ...sanert, [k]: v * 0.9 } }).sammendrag.resultat - basis;
-      const spenn = (Math.abs(opp) + Math.abs(ned)) / 2;
-      if (spenn < 1) return null;
-      return { k, label, opp, spenn };
-    }).filter(Boolean).sort((a, b) => b.spenn - a.spenn).slice(0, 7);
-    return { rader, maks: Math.max(...rader.map((r) => r.spenn), 1) };
-  }, [m, sanert, fakta, plan.antallMnd]);
+  /* ── Break-even-analyse med ekstrapolering: kjører motoren videre til 36 mnd
+        (porteføljefakta holdes flat) hvis break-even ikke nås i perioden ── */
+  const be = useMemo(() => {
+    if (s.breakEvenIdx !== null) {
+      const kap = -Math.min(...m.akkumulert.slice(0, s.breakEvenIdx + 1), 0);
+      return { idx: s.breakEvenIdx, enheter: Math.round(m.enheter[s.breakEvenIdx]), kapital: Math.round(kap), utenfor: false };
+    }
+    if (plan.antallMnd >= 36) return { ingen: true };
+    const m2 = beregnInvestorModell({ antallMnd: 36, fakta: utvidFakta(fakta, 36), drivere: sanert, startYm: plan.startYm });
+    const idx = m2.sammendrag.breakEvenIdx;
+    if (idx === null) return { ingen: true };
+    const kap = -Math.min(...m2.akkumulert.slice(0, idx + 1), 0);
+    return { idx, enheter: Math.round(m2.enheter[idx]), kapital: Math.round(kap), utenfor: true };
+  }, [m, s, fakta, sanert, plan.antallMnd]);
 
-  /* Matrise-perioder (måned/kvartal som kolonner) */
+  /* ── Scenarioer: Konservativ / Basis / Ambisiøs — beregnet på 36 mnd horisont ── */
+  const scenarioer = useMemo(() => {
+    const fk36 = utvidFakta(fakta, 36);
+    const lag = (navn, endr) => {
+      const d2 = { ...sanert, ...endr };
+      const mm = beregnInvestorModell({ antallMnd: 36, fakta: fk36, drivere: d2, startYm: plan.startYm });
+      const idx = mm.sammendrag.breakEvenIdx;
+      const kap = idx === null ? -Math.min(...mm.akkumulert, 0) : -Math.min(...mm.akkumulert.slice(0, idx + 1), 0);
+      return { navn, d: d2, idx, kap: Math.round(kap) };
+    };
+    return [
+      lag('Konservativ', { nyePerMnd: Math.round(sanert.nyePerMnd * 0.5 * 10) / 10, aarligChurnPct: Math.min(100, sanert.aarligChurnPct + 5), honorarPctNye: Math.max(0, sanert.honorarPctNye - 1) }),
+      lag('Basis', {}),
+      lag('Ambisiøs', { nyePerMnd: Math.round(sanert.nyePerMnd * 2 * 10) / 10, aarligChurnPct: Math.max(0, sanert.aarligChurnPct - 3) }),
+    ];
+  }, [sanert, fakta]);
+
+  /* ── Utvidet unit economics: margin, levetid fra churn, LTV, LTV/CAC —
+        + normalisert bemanning (fullkost ÷ kapasitet ÷ 12) for «etter»-bildet.
+        Full analyse bor på Enhetsøkonomi-siden — dette er sammendraget. ── */
+  const unit = useMemo(() => {
+    const mChurn = 1 - Math.pow(1 - sanert.aarligChurnPct / 100, 1 / 12);
+    const levetidMnd = mChurn > 0 ? 1 / mChurn : null;
+    const ltv = levetidMnd !== null ? Math.round(m.cac.bidrag * levetidMnd) : null;
+    const bemPerEnhet = Math.round((sanert.aarslonn * (1 + sanert.paslagPct / 100)) / sanert.enheterPerAarsverk / 12);
+    const bidragEtter = m.cac.bidrag - bemPerEnhet;
+    return {
+      margin: m.cac.bruttoHonorarNy > 0 ? Math.round((m.cac.bidrag / m.cac.bruttoHonorarNy) * 100) : null,
+      levetidAar: levetidMnd !== null ? Math.round((levetidMnd / 12) * 10) / 10 : null,
+      ltv,
+      ltvCac: ltv !== null && m.cac.provisjon > 0 ? Math.round((ltv / m.cac.provisjon) * 10) / 10 : null,
+      bemPerEnhet,
+      bidragEtter,
+      marginEtter: m.cac.bruttoHonorarNy > 0 ? Math.round((bidragEtter / m.cac.bruttoHonorarNy) * 100) : null,
+      paybackEtter: bidragEtter > 0 && m.cac.provisjon > 0 ? Math.round((m.cac.provisjon / bidragEtter) * 10) / 10 : null,
+    };
+  }, [m.cac, sanert.aarligChurnPct, sanert.aarslonn, sanert.paslagPct, sanert.enheterPerAarsverk]);
+
+  /* ── Matrise: perioder som kolonner ── */
   const perioder = useMemo(() => {
     if (visning === 'mnd') return Array.from({ length: m.N }, (_, i) => ({ label: stor(mndKort(ymPluss(plan.startYm, i))), idx: [i] }));
     const grupper = [];
@@ -325,7 +625,7 @@ export default function BudsjettModell({ plan, api, readOnly = false, onTilbake,
     return grupper;
   }, [visning, m.N, plan.startYm]);
 
-  const flyt = (serie, idx) => idx.reduce((s, i) => s + (serie[i] || 0), 0);
+  const flyt = (serie, idx) => idx.reduce((sum, i) => sum + (serie[i] || 0), 0);
   const beholdning = (serie, idx) => serie[idx[idx.length - 1]] || 0;
 
   const matriseRader = useMemo(() => {
@@ -351,15 +651,19 @@ export default function BudsjettModell({ plan, api, readOnly = false, onTilbake,
     return r;
   }, [m]);
 
-  const s = m.sammendrag;
-  const breakEvenTekst = s.breakEvenIdx === null ? 'Nås ikke i perioden'
-    : s.breakEvenIdx === 0 ? 'Lønnsom fra start'
-      : stor(mndLang(ymPluss(plan.startYm, s.breakEvenIdx)));
   const fullkost = Math.round(sanert.aarslonn * (1 + sanert.paslagPct / 100));
   const sisteIdx = m.N - 1;
   const antallEndret = ['nyePerMnd', 'aarligChurnPct', 'snittleieNye', 'honorarPctNye', 'oppstartPerEnhet', 'systemPerEnhet', 'enheterPerAarsverk', 'aarslonn', 'paslagPct', 'mfFast', 'provisjonPerNyEnhet', 'adminFast', 'andreFaste']
     .filter((k) => Math.abs((sanert[k] ?? 0) - (lagretDrivere[k] ?? 0)) > 1e-9).length;
-  const utn = m.utnyttelsePct[sisteIdx];
+
+  // Bemanning: nå-situasjon (rail-sammendrag) + flaskehals-innsikt (hovedflaten)
+  const pctNaa = m.budsjettertPct[0] || 0;
+  const kapNaa = Math.round((pctNaa / 100) * sanert.enheterPerAarsverk);
+  const varselIdx = m.sammendrag.bemanningsVarselIdx;
+  const kapVedVarsel = varselIdx !== null ? Math.round(((m.budsjettertPct[varselIdx] || 0) / 100) * sanert.enheterPerAarsverk) : null;
+
+  const breakEvenVerdi = be.ingen ? 'Nås ikke innen 36 mnd' : stor(mndLang(ymPluss(plan.startYm, be.idx)));
+  const breakEvenUnder = be.ingen ? 'juster drivere eller forleng perioden' : `ved ~${be.enheter} enheter${be.utenfor ? ' · utenfor perioden' : ''}`;
 
   const feltProps = { drivere, sanert, lagret: lagretDrivere, onEndre: settDriver, readOnly };
 
@@ -394,127 +698,92 @@ export default function BudsjettModell({ plan, api, readOnly = false, onTilbake,
             {stor(mndLang(plan.startYm))} – {mndLang(ymPluss(plan.startYm, plan.antallMnd - 1))} · {plan.antallMnd} mnd
           </span>
         </div>
-        {!readOnly && (
-          <div className="flex items-center gap-2">
-            <button onClick={() => { const ny = !investorSynlig; setInvestorSynlig(ny); lagre({ investorSynlig: ny }); }}
-              data-testid="budsjett-investor-bryter"
-              className={`flex h-9 shrink-0 items-center gap-2 rounded-full px-3.5 text-[12.5px] font-medium transition-all ${investorSynlig ? 'bg-[#f0ebfa] text-[#6d28d9]' : 'bg-white text-[#8f8a82] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.08)] hover:text-[#57534e]'}`}>
-              {investorSynlig ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
-              {investorSynlig ? 'I investorrommet' : 'Ikke delt'}
-            </button>
-            <button onClick={() => lagre()} disabled={lagrer || !skittent} data-testid="modell-lagre" className={`${KNAPP_PRIMAER} relative`}>
-              {lagrer ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : lagret ? <Check className="h-3.5 w-3.5" /> : null}
-              {lagret ? 'Lagret' : 'Lagre'}
-              {skittent && !lagrer && <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-[#6d28d9] ring-2 ring-[#f7f7f5]" title="Ulagrede endringer" />}
-            </button>
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          {/* Vis/skjul forutsetninger — bor i topp-raden */}
+          <button onClick={() => setRailAapen(!railAapen)} data-testid={railAapen ? 'modell-rail-skjul' : 'modell-rail-vis'}
+            title={railAapen ? 'Skjul forutsetninger — mer plass til tallene' : 'Vis forutsetninger'}
+            className={`relative flex h-9 shrink-0 items-center gap-2 rounded-full px-3.5 text-[12.5px] font-medium transition-all ${railAapen ? 'bg-[#141414] text-white' : 'bg-white text-[#57534e] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.08)] hover:text-[#1c1917]'}`}>
+            <SlidersHorizontal className="h-3.5 w-3.5" />
+            <span className="hidden sm:block">Forutsetninger</span>
+            {!railAapen && antallEndret > 0 && <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-[#6d28d9] ring-2 ring-[#f7f7f5]" />}
+          </button>
+          {!readOnly && (
+            <>
+              <button onClick={() => { const ny = !investorSynlig; setInvestorSynlig(ny); lagre({ investorSynlig: ny }); }}
+                data-testid="budsjett-investor-bryter"
+                className={`flex h-9 shrink-0 items-center gap-2 rounded-full px-3.5 text-[12.5px] font-medium transition-all ${investorSynlig ? 'bg-[#f0ebfa] text-[#6d28d9]' : 'bg-white text-[#8f8a82] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.08)] hover:text-[#57534e]'}`}>
+                {investorSynlig ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+                {investorSynlig ? 'I investorrommet' : 'Ikke delt'}
+              </button>
+              <button onClick={() => lagre()} disabled={lagrer || !skittent} data-testid="modell-lagre" className={`${KNAPP_PRIMAER} relative`}>
+                {lagrer ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : lagret ? <Check className="h-3.5 w-3.5" /> : null}
+                {lagret ? 'Lagret' : 'Lagre'}
+                {skittent && !lagrer && <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-[#6d28d9] ring-2 ring-[#f7f7f5]" title="Ulagrede endringer" />}
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       {feil && <p className="mt-3 text-[13px] text-[#b3261e]" data-testid="modell-feil">{feil}</p>}
 
       {/* Cockpit */}
       <div className="mt-4 flex flex-col gap-3 xl:flex-row xl:items-start">
-        {/* ── Venstre: forutsetninger (sticky, kollapsbare seksjoner) ── */}
-        {!railAapen && (
-          <aside className="w-full shrink-0 xl:sticky xl:top-3 xl:w-auto">
-            <button onClick={() => setRailAapen(true)} data-testid="modell-rail-vis" title="Vis forutsetninger"
-              className="relative flex h-11 w-full items-center justify-center gap-2 rounded-[14px] bg-white px-3 text-[13.5px] font-medium text-[#57534e] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)] transition-colors hover:text-[#1c1917] xl:h-[46px] xl:w-[46px]">
-              <SlidersHorizontal className="h-[18px] w-[18px]" />
-              <span className="xl:hidden">Vis forutsetninger</span>
-              {antallEndret > 0 && <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-[#6d28d9] ring-2 ring-[#f7f7f5]" />}
-            </button>
-          </aside>
-        )}
+        {/* ── Venstre: forutsetninger — investorens mentale kjede (vis/skjul i topp-raden) ── */}
         {railAapen && (
         <aside className="w-full shrink-0 xl:sticky xl:top-3 xl:max-h-[calc(100vh-24px)] xl:w-[344px] xl:overflow-y-auto" data-testid="modell-drivere" style={{ scrollbarWidth: 'thin' }}>
           <div className="rounded-[16px] bg-white px-4 pb-3.5 pt-3.5 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]">
             <div className="mb-1.5 flex items-center justify-between gap-2">
               <p className="text-[14.5px] font-bold text-[#1c1917]" style={heading}>Forutsetninger</p>
-              <span className="flex items-center gap-1.5">
-                {!readOnly && antallEndret > 0 && (
-                  <button onClick={tilbakestill} className="flex items-center gap-1 rounded-full bg-[#f0ebfa] px-2 py-0.5 text-[11px] font-bold text-[#6d28d9] transition-colors hover:bg-[#e5dbf7]" title="Tilbakestill til sist lagrede verdier">
-                    <RotateCcw className="h-2.5 w-2.5" /> {antallEndret} endret · nullstill
-                  </button>
-                )}
-                <button onClick={() => setRailAapen(false)} data-testid="modell-rail-skjul" title="Skjul forutsetninger — mer plass til tallene"
-                  className="rounded-[8px] p-1.5 text-[#c2beb8] transition-colors hover:bg-black/[0.04] hover:text-[#57534e]">
-                  <PanelLeftClose className="h-4 w-4" />
+              {!readOnly && antallEndret > 0 && (
+                <button onClick={tilbakestill} className="flex items-center gap-1 rounded-full bg-[#f0ebfa] px-2 py-0.5 text-[11px] font-bold text-[#6d28d9] transition-colors hover:bg-[#e5dbf7]" title="Tilbakestill til sist lagrede verdier">
+                  <RotateCcw className="h-2.5 w-2.5" /> {antallEndret} endret · nullstill
                 </button>
-              </span>
+              )}
             </div>
 
-            <Seksjon tittel="Vekst og inntekt" open={aapne.vekst} onToggle={() => veksle('vekst')}
+            <Seksjon tittel="Portefølje & vekst" open={aapne.portefolje} onToggle={() => veksle('portefolje')}
               sammendrag={`${kma(sanert.nyePerMnd)} nye/mnd · ${kma(sanert.aarligChurnPct)} % churn · ${kma(sanert.honorarPctNye)} %`}>
               <Felt label="Nye enheter per måned" k="nyePerMnd" {...feltProps} enhet="enh." testid="driver-nye" slider={{ min: 0, max: 10, step: 0.5 }} />
               <Felt label="Årlig churn" k="aarligChurnPct" {...feltProps} enhet="%" testid="driver-churn" slider={{ min: 0, max: 40, step: 1 }} hint={`≈ ${kma(s.mndChurnPct)} %/mnd på modellerte enheter — dagens portefølje churnes ikke`} />
               <Felt label="Snittleie nye enheter" k="snittleieNye" {...feltProps} enhet="kr/mnd" testid="driver-leie" heltall slider={{ min: 5000, max: 40000, step: 500 }} />
               <Felt label="Honorar nye enheter" k="honorarPctNye" {...feltProps} enhet="%" testid="driver-honorar" slider={{ min: 0, max: 20, step: 0.5 }} hint={`≈ ${kr0(m.cac.bruttoHonorarNy)} kr eks. mva per enhet/mnd`} />
+            </Seksjon>
+
+            <Seksjon tittel="Unit economics" open={aapne.unit} onToggle={() => veksle('unit')}
+              sammendrag={`CAC ${kr0(sanert.provisjonPerNyEnhet)} · system ${kr0(sanert.systemPerEnhet)}/enh`}>
+              <Felt label="Systemkostnad per enhet" k="systemPerEnhet" {...feltProps} enhet="kr/mnd" testid="driver-system" heltall />
+              <Felt label="Salgsprovisjon per ny (CAC)" k="provisjonPerNyEnhet" {...feltProps} enhet="kr" testid="driver-cac" heltall />
               <Felt label="Oppstartshonorar" k="oppstartPerEnhet" {...feltProps} enhet="kr" testid="driver-oppstart" heltall hint="engangsbeløp per ny signering" />
             </Seksjon>
 
-            <Seksjon tittel="Kostnader" open={aapne.kostnader} onToggle={() => veksle('kostnader')}
-              sammendrag={`${kr0(sanert.systemPerEnhet)}/enh · CAC ${kr0(sanert.provisjonPerNyEnhet)} · ${kr0(sanert.mfFast + sanert.adminFast + sanert.andreFaste)}/mnd fast`}>
-              <Felt label="Systemkostnad per enhet" k="systemPerEnhet" {...feltProps} enhet="kr/mnd" testid="driver-system" heltall />
+            <Seksjon tittel="Organisasjon" open={aapne.org} onToggle={() => veksle('org')}
+              sammendrag={`${kma(sanert.enheterPerAarsverk)} enh/åv · ${pctNaa} % · kap. ${kapNaa}`}>
+              {/* Økonomisk forutsetning + inngang til planen — konsekvensene bor i hovedflaten */}
+              <div className="space-y-1 py-1 text-[12.5px]" data-testid="modell-bemanning-sammendrag">
+                <p className="flex justify-between"><span className="text-[#8f8a82]">Enheter per årsverk</span><span className="font-semibold text-[#1c1917]">{kma(sanert.enheterPerAarsverk)}</span></p>
+                <p className="flex justify-between"><span className="text-[#8f8a82]">Fullkost årsverk</span><span className="font-semibold text-[#1c1917]">{kr0(fullkost)} kr</span></p>
+              </div>
+              <button onClick={() => setBemAapen(true)} data-testid="modell-bemanning-aapne"
+                className="mt-1.5 flex w-full items-center justify-between rounded-[10px] bg-[#f0ebfa] px-3 py-2.5 text-left transition-colors hover:bg-[#e7defa]">
+                <span>
+                  <span className="block text-[12.5px] font-bold text-[#6d28d9]">Bemanningsplan</span>
+                  <span className="block text-[11px] text-[#8b6bc7]">{pctNaa} % nå · kapasitet {kr0(kapNaa)} enheter · {sanert.bemanningstrinn.length} trinn</span>
+                </span>
+                <ArrowRight className="h-3.5 w-3.5 shrink-0 text-[#6d28d9]" />
+              </button>
+            </Seksjon>
+
+            <Seksjon tittel="Faste kostnader" open={aapne.faste} onToggle={() => veksle('faste')}
+              sammendrag={`${kr0(sanert.mfFast + sanert.adminFast + sanert.andreFaste)} kr/mnd`}>
               <Felt label="Fast markedsføring" k="mfFast" {...feltProps} enhet="kr/mnd" testid="driver-mf" heltall />
-              <Felt label="Salgsprovisjon per ny (CAC)" k="provisjonPerNyEnhet" {...feltProps} enhet="kr" testid="driver-cac" heltall />
               <Felt label="Administrasjon" k="adminFast" {...feltProps} enhet="kr/mnd" testid="driver-admin" heltall />
               <Felt label="Andre faste kostnader" k="andreFaste" {...feltProps} enhet="kr/mnd" testid="driver-andre" heltall />
             </Seksjon>
 
-            <Seksjon tittel="Bemanning — kapasitet" open={aapne.kapasitet} onToggle={() => veksle('kapasitet')}
-              sammendrag={`${kma(sanert.enheterPerAarsverk)} enh/åv · fullkost ${kr0(fullkost)}`}>
-              <Felt label="Kapasitet per årsverk" k="enheterPerAarsverk" {...feltProps} enhet="enh." testid="driver-kapasitet" slider={{ min: 50, max: 400, step: 10 }} hint="enheter én forvalter (100 %) dekker" />
-              <Felt label="Brutto årslønn" k="aarslonn" {...feltProps} enhet="kr/år" testid="driver-lonn" heltall />
-              <Felt label="Arbeidsgiverpåslag" k="paslagPct" {...feltProps} enhet="%" testid="driver-paslag" hint={`fullkost: ${kr0(fullkost)} kr per årsverk`} />
-            </Seksjon>
+            {/* Bemanning som INNSIKT bor i hovedflaten — løftes kun frem når den er relevant */}
 
-            <Seksjon tittel="Bemanning — beslutning" open={aapne.beslutning} onToggle={() => veksle('beslutning')}
-              sammendrag={`${sanert.bemanningstrinn.length} trinn · ${m.budsjettertPct[sisteIdx]} % v/slutt · utn. ${utn === null ? '—' : `${utn} %`}`}>
-              <p className="text-[11px] leading-relaxed text-[#a6a19a]">Budsjettert stillingsprosent i trinn — det dere faktisk betaler for. Den stiplede linjen er det glidende kapasitetsbehovet.</p>
-              <div className="mt-1">
-                {drivere.bemanningstrinn.map((t, i) => (
-                  <div key={i} className="flex items-center gap-1.5 py-1" data-testid={`trinn-${i}`}>
-                    <span className="w-7 text-[12.5px] text-[#8f8a82]">Fra</span>
-                    {readOnly ? (
-                      <span className="text-[13.5px] font-semibold text-[#1c1917]">{t.fraEnheter}</span>
-                    ) : (
-                      <input value={visTall(t.fraEnheter)} inputMode="numeric" onChange={(e) => settTrinn(i, 'fraEnheter', e.target.value.replace(/[^\d]/g, ''))} data-testid={`trinn-fra-${i}`}
-                        className="h-8 w-[60px] rounded-[8px] bg-[#f5f4f1] px-1.5 text-right text-[13.5px] font-semibold outline-none ring-1 ring-transparent transition-all focus:bg-white focus:ring-[#6d28d9]/40" />
-                    )}
-                    <span className="text-[12.5px] text-[#8f8a82]">enh. →</span>
-                    {readOnly ? (
-                      <span className="text-[13.5px] font-semibold text-[#1c1917]">{t.prosent} %</span>
-                    ) : (
-                      <>
-                        <input value={t.prosent} inputMode="decimal" onChange={(e) => settTrinn(i, 'prosent', e.target.value)} data-testid={`trinn-pct-${i}`}
-                          className="h-8 w-[58px] rounded-[8px] bg-[#f5f4f1] px-1.5 text-right text-[13.5px] font-semibold outline-none ring-1 ring-transparent transition-all focus:bg-white focus:ring-[#6d28d9]/40" />
-                        <span className="text-[12.5px] text-[#8f8a82]">%</span>
-                        {drivere.bemanningstrinn.length > 1 && (
-                          <button onClick={() => fjernTrinn(i)} className="ml-auto rounded p-1 text-[#c2beb8] transition-colors hover:text-[#c2413b]" title="Fjern trinn"><X className="h-3.5 w-3.5" /></button>
-                        )}
-                      </>
-                    )}
-                  </div>
-                ))}
-                {!readOnly && drivere.bemanningstrinn.length < 12 && (
-                  <button onClick={leggTrinn} data-testid="trinn-legg-til" className="mt-1 flex items-center gap-1 text-[12px] font-medium text-[#6d28d9] hover:text-[#4c1d95]">
-                    <Plus className="h-3.5 w-3.5" /> Legg til trinn
-                  </button>
-                )}
-              </div>
-              <TrappKurve m={m} />
-              <div className="mt-2 grid grid-cols-3 gap-1.5 rounded-[10px] bg-[#faf9f7] p-2.5 text-[12px]" data-testid="modell-bemanningsstatus">
-                <span><span className="block text-[#8f8a82]">Behov v/slutt</span><span className="font-bold text-[#1c1917]">{Math.round((m.behovAarsverk[sisteIdx] || 0) * 100)} %</span></span>
-                <span><span className="block text-[#8f8a82]">Budsjettert</span><span className="font-bold text-[#1c1917]">{m.budsjettertPct[sisteIdx]} %</span></span>
-                <span><span className="block text-[#8f8a82]">Utnyttelse</span><span className={`font-bold ${(utn || 0) > 100 ? 'text-[#b3261e]' : 'text-[#0a7d55]'}`}>{utn === null ? '—' : `${utn} %`}</span></span>
-              </div>
-              {(utn || 0) > 100 && (
-                <p className="mt-1.5 text-[11px] text-[#b3261e]">Behovet overstiger budsjettert bemanning — vurder et nytt trinn.</p>
-              )}
-            </Seksjon>
-
-            <div className="border-t border-black/[0.05] pt-2.5">
+            <div className="mt-3 border-t border-black/[0.05] pt-2.5">
               <p className="text-[11.5px] leading-relaxed text-[#a6a19a]">
                 Porteføljefakta: {Math.round(fakta.enheter?.[0] || 0)} enheter · {kr0(fakta.eksisterende?.[0] || 0)} kr/mnd kontraktsfestet
                 {fakta.oppdatertAt ? ` · hentet ${new Date(fakta.oppdatertAt).toLocaleDateString('nb-NO')}` : ''}
@@ -544,19 +813,35 @@ export default function BudsjettModell({ plan, api, readOnly = false, onTilbake,
 
         {/* ── Høyre: output ── */}
         <main className="min-w-0 flex-1">
-          {/* Nøkkeltall-linje */}
+          {/* Nøkkeltall — diagnostiske */}
           <div className="flex flex-wrap divide-x divide-black/[0.05] rounded-[16px] bg-white shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]" data-testid="modell-nokkeltall">
             <Stat tittel="Resultat i perioden" verdi={kr(s.resultat)} farge={s.resultat >= 0 ? 'text-[#0a7d55]' : 'text-[#b3261e]'} testid="modell-resultat"
               hoyre={<Sparkline serie={m.resultat} />} />
-            <Stat tittel="Break-even" verdi={breakEvenTekst} under={s.breakEvenIdx !== null && s.breakEvenIdx > 0 ? `ved ~${Math.round(m.enheter[s.breakEvenIdx])} enheter` : undefined} testid="modell-breakeven" />
-            <Stat tittel="Maks kapitalbehov" verdi={s.kapitalbehov > 0 ? kr(s.kapitalbehov) : 'Ingen'}
-              under={s.kapitalbehov > 0 && s.kapitalbehovIdx !== null ? `dypest i ${mndLang(ymPluss(plan.startYm, s.kapitalbehovIdx))}` : 'positiv akkumulert hele veien'}
-              farge={s.kapitalbehov > 0 ? 'text-[#1c1917]' : 'text-[#0a7d55]'} testid="modell-kapitalbehov" />
-            <Stat tittel="Enheter ved slutt" verdi={String(Math.round(m.enheter[sisteIdx] || 0))} under={`${Math.round(fakta.enheter?.[sisteIdx] || 0)} fra dagens portefølje`} />
+            <Stat tittel="Resultat siste måned" verdi={`${kr0(m.resultat[sisteIdx])} kr`}
+              under={`fra ${kr0(m.resultat[0])} kr første måned`}
+              farge={m.resultat[sisteIdx] >= 0 ? 'text-[#0a7d55]' : 'text-[#b3261e]'} testid="modell-siste-mnd" />
+            <Stat tittel="Break-even" verdi={breakEvenVerdi} under={breakEvenUnder} testid="modell-breakeven" />
+            <Stat tittel="Kapitalbehov til break-even" verdi={be.ingen ? (s.kapitalbehov > 0 ? kr(s.kapitalbehov) : '—') : be.kapital > 0 ? kr(be.kapital) : 'Ingen'}
+              under={be.ingen ? 'maks. underskudd i perioden' : be.kapital > 0 ? 'akkumulert underskudd frem til krysset' : 'selvfinansiert fra start'}
+              farge={be.ingen || be.kapital > 0 ? 'text-[#1c1917]' : 'text-[#0a7d55]'} testid="modell-kapitalbehov" />
             <Stat tittel="Kontraktsfestet" verdi={s.andelEksisterendePct === null ? '—' : `${s.andelEksisterendePct} %`} under="av inntekten i perioden" testid="modell-andel" />
           </div>
 
-          {/* Graf */}
+          {/* Bemanning som innsikt: dukker KUN opp når kapasiteten faktisk sprenges */}
+          {varselIdx !== null && (
+            <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 rounded-[14px] bg-[#fdf3e0] px-4 py-3 shadow-[inset_0_0_0_1px_rgba(154,107,28,0.14)]" data-testid="modell-bemanning-innsikt">
+              <p className="text-[13px] leading-snug text-[#7a5615]">
+                <span className="font-bold">Bemanning blir en flaskehals {stor(mndLang(ymPluss(plan.startYm, varselIdx)))}.</span>{' '}
+                Porteføljen forventes å passere {kma(sanert.maalUtnyttelsePct)} % av kapasiteten på {kr0(kapVedVarsel)} enheter.
+              </p>
+              <button onClick={() => setBemAapen(true)} data-testid="modell-bemanning-innsikt-aapne"
+                className="flex shrink-0 items-center gap-1 rounded-[9px] bg-[#9a6b1c] px-3 py-1.5 text-[12.5px] font-bold text-white transition-colors hover:bg-[#7a5615]">
+                Åpne bemanningsplan <ArrowRight className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )}
+
+          {/* Graf — veien til break-even */}
           <div className="mt-2.5 rounded-[16px] bg-white p-4 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]">
             <Graf m={m} startYm={plan.startYm} />
           </div>
@@ -625,39 +910,146 @@ export default function BudsjettModell({ plan, api, readOnly = false, onTilbake,
             </div>
           </div>
 
-          {/* Sensitivitet + unit economics */}
-          <div className="mt-2.5 grid gap-2.5 lg:grid-cols-2">
-            <div className="rounded-[16px] bg-white p-4 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]" data-testid="modell-tornado">
+          {/* Scenarioer + unit economics + sensitivitet */}
+          <div className="mt-2.5 grid gap-2.5 lg:grid-cols-2 2xl:grid-cols-3">
+            {/* Scenarioer — investorens egentlige risikospørsmål */}
+            <div className="rounded-[16px] bg-white p-4 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]" data-testid="modell-scenarioer">
+              <p className="text-[13.5px] font-medium text-[#8f8a82]">Scenarioer</p>
+              <p className="mt-0.5 text-[11.5px] text-[#a6a19a]">Hva om salget går halvparten — eller dobbelt — så fort? Beregnet på 36 mnd horisont.</p>
+              <table className="mt-3 w-full text-[12.5px]">
+                <thead>
+                  <tr className="text-[10.5px] uppercase tracking-[0.06em] text-[#a6a19a]">
+                    <th className="pb-1.5 text-left font-semibold">&nbsp;</th>
+                    {scenarioer.map((sc) => (
+                      <th key={sc.navn} className={`pb-1.5 text-right font-bold ${sc.navn === 'Basis' ? 'text-[#6d28d9]' : ''}`}>{sc.navn}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="border-t border-black/[0.04]">
+                    <td className="py-1.5 text-[#8f8a82]">Nye enheter/mnd</td>
+                    {scenarioer.map((sc) => <td key={sc.navn} className={`py-1.5 text-right font-medium ${sc.navn === 'Basis' ? 'text-[#1c1917]' : 'text-[#57534e]'}`}>{kma(sc.d.nyePerMnd)}</td>)}
+                  </tr>
+                  <tr className="border-t border-black/[0.04]">
+                    <td className="py-1.5 text-[#8f8a82]">Årlig churn</td>
+                    {scenarioer.map((sc) => <td key={sc.navn} className={`py-1.5 text-right font-medium ${sc.navn === 'Basis' ? 'text-[#1c1917]' : 'text-[#57534e]'}`}>{kma(sc.d.aarligChurnPct)} %</td>)}
+                  </tr>
+                  <tr className="border-t border-black/[0.04]">
+                    <td className="py-1.5 text-[#8f8a82]">Honorar nye</td>
+                    {scenarioer.map((sc) => <td key={sc.navn} className={`py-1.5 text-right font-medium ${sc.navn === 'Basis' ? 'text-[#1c1917]' : 'text-[#57534e]'}`}>{kma(sc.d.honorarPctNye)} %</td>)}
+                  </tr>
+                  <tr className="border-t border-black/[0.06]">
+                    <td className="py-1.5 font-semibold text-[#1c1917]">Break-even</td>
+                    {scenarioer.map((sc) => (
+                      <td key={sc.navn} className={`py-1.5 text-right font-bold ${sc.idx === null ? 'text-[#b3261e]' : 'text-[#1c1917]'}`}>
+                        {sc.idx === null ? '36+ mnd' : mndLang(ymPluss(plan.startYm, sc.idx))}
+                      </td>
+                    ))}
+                  </tr>
+                  <tr className="border-t border-black/[0.04]">
+                    <td className="py-1.5 font-semibold text-[#1c1917]">Kapitalbehov</td>
+                    {scenarioer.map((sc) => <td key={sc.navn} className="py-1.5 text-right font-bold text-[#1c1917]">{kr0(sc.kap)}</td>)}
+                  </tr>
+                </tbody>
+              </table>
+              <p className="mt-2.5 text-[10.5px] leading-snug text-[#c2beb8]">Konservativ: halv vekst, +5 pp churn, −1 pp honorar · Ambisiøs: dobbel vekst, −3 pp churn</p>
+            </div>
+
+            {/* Unit economics — sammendrag; full analyse bor på Enhetsøkonomi-siden */}
+            <div className="rounded-[16px] bg-white p-4 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]" data-testid="modell-cac">
+              <p className="text-[13.5px] font-medium text-[#8f8a82]">Unit economics — ny enhet</p>
+              <div className="mt-3 space-y-1.5 text-[13px]">
+                <div className="flex justify-between"><span className="text-[#8f8a82]">Husleie</span><span className="font-medium text-[#57534e]">{kr0(sanert.snittleieNye)} kr/mnd</span></div>
+                <div className="flex justify-between"><span className="text-[#8f8a82]">Forvaltningshonorar</span><span className="font-medium text-[#57534e]">{kma(sanert.honorarPctNye)} %</span></div>
+                <div className="flex justify-between"><span className="text-[#57534e]">Inntekt <span className="text-[#a6a19a]">eks. mva</span></span><span className="font-semibold text-[#1c1917]">{kr0(m.cac.bruttoHonorarNy)} kr/mnd</span></div>
+                <div className="flex justify-between"><span className="text-[#57534e]">− Systemkostnad</span><span className="font-semibold text-[#1c1917]">{kr0(m.cac.systemPerEnhet)} kr</span></div>
+                <div className="flex justify-between border-t border-black/[0.05] pt-1.5">
+                  <span className="text-[#57534e]">= Bidrag før bemanning</span>
+                  <span className={`font-bold ${m.cac.bidrag > 0 ? 'text-[#0a7d55]' : 'text-[#b3261e]'}`}>{kr0(m.cac.bidrag)} kr/mnd{unit.margin !== null && <span className="ml-1 text-[11px] font-bold text-[#a6a19a]">({unit.margin} %)</span>}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-[#57534e]">− Normalisert forvalterkost <span className="text-[#c2beb8]" title={`Fullkost ${kr0(fullkost)} kr ÷ ${kr0(sanert.enheterPerAarsverk)} enheter ÷ 12`}>ⓘ</span></span>
+                  <span className="font-semibold text-[#1c1917]">{kr0(unit.bemPerEnhet)} kr</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-[#57534e]">= Bidrag etter bemanning</span>
+                  <span className={`font-bold ${unit.bidragEtter > 0 ? 'text-[#0a7d55]' : 'text-[#b3261e]'}`} data-testid="modell-bidrag-etter">{kr0(unit.bidragEtter)} kr/mnd{unit.marginEtter !== null && <span className="ml-1 text-[11px] font-bold text-[#a6a19a]">({unit.marginEtter} %)</span>}</span>
+                </div>
+                <div className="flex justify-between border-t border-black/[0.05] pt-1.5"><span className="text-[#8f8a82]">CAC</span><span className="font-medium text-[#57534e]">{kr0(m.cac.provisjon)} kr</span></div>
+                <div className="flex justify-between"><span className="text-[#8f8a82]">LTV <span className="text-[#c2beb8]">({unit.levetidAar === null ? 'fra churn' : `${kma(unit.levetidAar)} år levetid`})</span></span><span className="font-medium text-[#57534e]">{unit.ltv === null ? '—' : `${kr0(unit.ltv)} kr`}</span></div>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                <span className="inline-flex rounded-full bg-[#f0ebfa] px-3 py-1 text-[13px] font-bold text-[#6d28d9]" data-testid="modell-payback">
+                  {m.cac.paybackMnd === null ? (m.cac.bidrag <= 0 ? 'Bidrag dekker ikke system' : 'Ingen CAC') : `Payback: ${kma(m.cac.paybackMnd)} mnd`}
+                </span>
+                {unit.paybackEtter !== null && (
+                  <span className="inline-flex rounded-full bg-[#f5f4f1] px-3 py-1 text-[13px] font-bold text-[#57534e]" title="Etter normalisert bemanning">Etter bem.: {kma(unit.paybackEtter)} mnd</span>
+                )}
+                {unit.ltvCac !== null && (
+                  <span className="inline-flex rounded-full bg-[#e7f4ee] px-3 py-1 text-[13px] font-bold text-[#0a7d55]" data-testid="modell-ltvcac">LTV/CAC: {kma(unit.ltvCac)}×</span>
+                )}
+              </div>
+              <a href="/admin/datarom-enheter" data-testid="modell-eo-lenke"
+                className="mt-3 inline-flex items-center gap-1 text-[12.5px] font-semibold text-[#6d28d9] transition-colors hover:text-[#4c1d95]">
+                Se full enhetsøkonomi <ArrowRight className="h-3.5 w-3.5" />
+              </a>
+            </div>
+
+            {/* Sensitivitet */}
+            <div className="rounded-[16px] bg-white p-4 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)] lg:col-span-2 2xl:col-span-1" data-testid="modell-tornado">
               <p className="text-[13.5px] font-medium text-[#8f8a82]">Sensitivitet — hva betyr mest?</p>
               <p className="mt-0.5 text-[11.5px] text-[#a6a19a]">Effekt på periodens resultat når hver driver endres ±10 %.</p>
-              <div className="mt-3 space-y-2">
-                {tornado.rader.map((r) => (
-                  <div key={r.k} className="flex items-center gap-2.5">
-                    <span className="w-[164px] shrink-0 truncate text-[13px] text-[#57534e]">{r.label}</span>
-                    <span className="h-[8px] flex-1 overflow-hidden rounded-full bg-black/[0.04]">
-                      <span className={`block h-full rounded-full transition-all duration-300 ${r.opp >= 0 ? 'bg-[#0a7d55]/70' : 'bg-[#b3261e]/60'}`} style={{ width: `${Math.max(3, (r.spenn / tornado.maks) * 100)}%` }} />
-                    </span>
-                    <span className="w-[112px] shrink-0 text-right text-[12.5px] font-semibold text-[#1c1917]">±{kr0(r.spenn)} kr</span>
-                  </div>
-                ))}
-                {tornado.rader.length === 0 && <p className="text-[12px] text-[#a6a19a]">Sett driverne over 0 for å se sensitivitet.</p>}
-              </div>
-            </div>
-            <div className="rounded-[16px] bg-white p-4 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]" data-testid="modell-cac">
-              <p className="text-[13.5px] font-medium text-[#8f8a82]">Unit economics per ny enhet</p>
-              <div className="mt-3 space-y-1.5 text-[13.5px]">
-                <div className="flex justify-between"><span className="text-[#57534e]">Anskaffelseskostnad (CAC)</span><span className="font-semibold text-[#1c1917]">{kr(m.cac.provisjon)}</span></div>
-                <div className="flex justify-between"><span className="text-[#57534e]">Månedlig honorar <span className="text-[#a6a19a]">eks. mva</span></span><span className="font-semibold text-[#1c1917]">{kr0(m.cac.bruttoHonorarNy)} kr</span></div>
-                <div className="flex justify-between"><span className="text-[#57534e]">− Systemkostnad</span><span className="font-semibold text-[#1c1917]">{kr0(m.cac.systemPerEnhet)} kr</span></div>
-                <div className="flex justify-between border-t border-black/[0.05] pt-1.5"><span className="text-[#57534e]">= Bidrag før bemanning</span><span className={`font-bold ${m.cac.bidrag > 0 ? 'text-[#0a7d55]' : 'text-[#b3261e]'}`}>{kr0(m.cac.bidrag)} kr/mnd</span></div>
-              </div>
-              <p className="mt-3 inline-flex rounded-full bg-[#f0ebfa] px-3 py-1 text-[13px] font-bold text-[#6d28d9]" data-testid="modell-payback">
-                {m.cac.paybackMnd === null ? (m.cac.bidrag <= 0 ? 'Bidraget dekker ikke systemkostnaden' : 'Ingen CAC') : `CAC payback: ${kma(m.cac.paybackMnd)} mnd`}
-              </p>
+              <TornadoListe m={m} sanert={sanert} fakta={fakta} antallMnd={plan.antallMnd} startYm={plan.startYm} />
             </div>
           </div>
         </main>
       </div>
+      {bemAapen && (
+        <BemanningsplanDrawer
+          plan={plan} fakta={fakta} drivere={sanert} readOnly={readOnly}
+          onLukk={() => setBemAapen(false)} onBruk={brukBemanningsplan}
+        />
+      )}
+    </div>
+  );
+}
+
+/* ── Tornado som egen komponent (memoisert beregning) ── */
+function TornadoListe({ m, sanert, fakta, antallMnd, startYm }) {
+  const tornado = useMemo(() => {
+    const basis = m.sammendrag.resultat;
+    const kandidater = [
+      ['nyePerMnd', 'Nye enheter per måned'], ['aarligChurnPct', 'Årlig churn'],
+      ['snittleieNye', 'Snittleie nye enheter'], ['honorarPctNye', 'Honorar-% nye'],
+      ['oppstartPerEnhet', 'Oppstartshonorar'], ['systemPerEnhet', 'Systemkostnad per enhet'],
+      ['enheterPerAarsverk', 'Kapasitet per årsverk'], ['aarslonn', 'Årslønn'],
+      ['paslagPct', 'Arbeidsgiverpåslag'], ['mfFast', 'Fast markedsføring'],
+      ['provisjonPerNyEnhet', 'Salgsprovisjon (CAC)'], ['adminFast', 'Administrasjon'],
+      ['andreFaste', 'Andre faste'],
+    ];
+    const rader = kandidater.map(([k, label]) => {
+      const v = sanert[k];
+      if (!Number.isFinite(v) || v === 0) return null;
+      const opp = beregnInvestorModell({ antallMnd, fakta, drivere: { ...sanert, [k]: v * 1.1 }, startYm }).sammendrag.resultat - basis;
+      const ned = beregnInvestorModell({ antallMnd, fakta, drivere: { ...sanert, [k]: v * 0.9 }, startYm }).sammendrag.resultat - basis;
+      const spenn = (Math.abs(opp) + Math.abs(ned)) / 2;
+      if (spenn < 1) return null;
+      return { k, label, opp, spenn };
+    }).filter(Boolean).sort((a, b) => b.spenn - a.spenn).slice(0, 7);
+    return { rader, maks: Math.max(...rader.map((r) => r.spenn), 1) };
+  }, [m, sanert, fakta, antallMnd]);
+  return (
+    <div className="mt-3 space-y-2">
+      {tornado.rader.map((r) => (
+        <div key={r.k} className="flex items-center gap-2.5">
+          <span className="w-[164px] shrink-0 truncate text-[13px] text-[#57534e]">{r.label}</span>
+          <span className="h-[8px] flex-1 overflow-hidden rounded-full bg-black/[0.04]">
+            <span className={`block h-full rounded-full transition-all duration-300 ${r.opp >= 0 ? 'bg-[#0a7d55]/70' : 'bg-[#b3261e]/60'}`} style={{ width: `${Math.max(3, (r.spenn / tornado.maks) * 100)}%` }} />
+          </span>
+          <span className="w-[112px] shrink-0 text-right text-[12.5px] font-semibold text-[#1c1917]">±{kr0(r.spenn)} kr</span>
+        </div>
+      ))}
+      {tornado.rader.length === 0 && <p className="text-[12px] text-[#a6a19a]">Sett driverne over 0 for å se sensitivitet.</p>}
     </div>
   );
 }
