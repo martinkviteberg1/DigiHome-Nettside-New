@@ -13,7 +13,7 @@ import {
 import Brukere from '@/components/admin/Brukere';
 import Salgsradar from '@/components/admin/Salgsradar';
 import Leieforhold from '@/components/admin/Leieforhold';
-import Budsjett from '@/components/admin/Budsjett';
+import BudsjettEnkel from '@/components/admin/BudsjettEnkel';
 import InnsiktDashboard from '@/components/admin/InnsiktDashboard';
 import KpiDashboard from '@/components/admin/KpiDashboard';
 import FinanceDashboard from '@/components/admin/FinanceDashboard';
@@ -58,7 +58,7 @@ const NAV = [
       { k: 'dr-oversikt', datarom: 'oversikt', l: 'Oversikt', icon: Landmark, desc: 'Investorrommets forside — nøkkeltall, drift, pipeline og investorpakke' },
       { k: 'dr-resultat', datarom: 'resultat', l: 'Regnskap', icon: BarChart3, desc: 'Månedlig resultat fra oppstart — inntekter, kostnader og akkumulert' },
       { k: 'dr-enheter', datarom: 'enheter', l: 'Enhetsøkonomi', icon: Scale, desc: 'Honorar, kostnad og margin per enhet — skalering og manpower-modell' },
-      { k: 'budsjett', l: 'Budsjett', icon: Target, desc: 'Årsbudsjett per kategori — budsjett vs. faktisk, med forslag fra porteføljen' },
+      { k: 'budsjett', l: 'Budsjett', icon: Target, desc: 'Enkle periodebudsjetter — honorar fra leieforholdene, del med investorrommet om ønskelig' },
       // Enhetsøkonomi er egen investorside (dr-enheter) — aggregert unit
       // economics med skaleringsgraf. Per-enhet-detaljer bor i Leieforhold.
       { k: 'dr-pipeline', datarom: 'pipeline', l: 'Pipeline', icon: TrendingUp, desc: 'Enheter på vei inn — signert kontra forventet' },
@@ -143,7 +143,7 @@ const SECTION_TITLES = {
   innsikt: { t: 'Innsikt', s: 'Førsteparts analyse · cookieless · GDPR-trygt' },
   okonomi: { t: 'Økonomi', s: 'Resultat & likviditet · honorar (prosent av leie) · burn rate & runway' },
   leieforhold: { t: 'Leieforhold & inntekter', s: 'Inntektstrappen — leie i dag, sikret, pipeline og ledig · honorar & netto · Excel-eksport' },
-  budsjett: { t: 'Budsjett', s: 'Årsbudsjett per kategori/måned — automatisk mot faktisk fra Økonomi · forslag fra porteføljen' },
+  budsjett: { t: 'Budsjett', s: 'Velg fra/til måned — honorar hentes ferdig utfylt fra leieforholdene' },
   saker: { t: 'Saker', s: 'Internt sakssystem — fang, fordel og følg opp saker til de er ferdige. N = ny sak' },
   moter: { t: 'Møter', s: 'Styremøter & ledermøter — agenda, referat, vedtak og aksjonspunkter som blir saker' },
   dokumenter: { t: 'Dokumenter', s: 'Alle dokumenter på ett sted — opplasting, arkiv med synlighet og BankID-signering via Posten' },
@@ -832,7 +832,7 @@ export default function AdminPage({ params }) {
             />
           )}
           {section === 'budsjett' && (
-            <Budsjett apiKey={token} readOnly={erBruker || user?.role === 'investor'} investor={user?.role === 'investor'} />
+            <BudsjettEnkel apiKey={token} readOnly={erBruker || user?.role === 'investor'} />
           )}
           {section === 'datarom' && (
             <Datarom

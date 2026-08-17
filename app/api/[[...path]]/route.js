@@ -3657,13 +3657,15 @@ async function handleRoute(request, { params }) {
     // Lesing krever budsjett-modulen; skriving/sletting krever admin.
     if (route === '/admin/budsjett/planer' && method === 'GET') {
       if (!(await modulAuthed(request, db, 'budsjett'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
-      return cors(NextResponse.json({ ok: true, planer: await listPlaner(db) }));
+      // Ikke-admin (investor/bruker med modulen) ser KUN budsjetter som er delt med investorrommet
+      return cors(NextResponse.json({ ok: true, planer: await listPlaner(db, { kunInvestorSynlige: !adminAuthed(request) }) }));
     }
     if (route === '/admin/budsjett/plan' && method === 'GET') {
       if (!(await modulAuthed(request, db, 'budsjett'))) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
       const idP = (() => { try { return new URL(request.url).searchParams.get('id') || ''; } catch (e) { return ''; } })();
       const planP = await hentPlan(db, idP);
       if (!planP) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
+      if (!adminAuthed(request) && !planP.investorSynlig) return cors(NextResponse.json({ ok: false, error: 'Ikke funnet' }, { status: 404 }));
       const faktiskP = await beregnFaktiskPeriode(db, planP.startYm, planP.antallMnd);
       return cors(NextResponse.json({ ok: true, plan: planP, faktisk: faktiskP }));
     }
@@ -3694,7 +3696,7 @@ async function handleRoute(request, { params }) {
       const startYmPf = gyldigYm(uPf.searchParams.get('startYm'));
       const antallPf = Math.round(Number(uPf.searchParams.get('antallMnd'))) || 12;
       if (!startYmPf) return cors(NextResponse.json({ ok: false, error: 'startYm må være ÅÅÅÅ-MM' }, { status: 400 }));
-      if (!(antallPf >= 3 && antallPf <= 24)) return cors(NextResponse.json({ ok: false, error: 'antallMnd må være 3–24' }, { status: 400 }));
+      if (!(antallPf >= 1 && antallPf <= 36)) return cors(NextResponse.json({ ok: false, error: 'antallMnd må være 1–36' }, { status: 400 }));
       const lfPf = await hentLeieforhold(leieforholdTarget(), { db });
       if (!lfPf.ok) return cors(NextResponse.json({ ok: false, error: lfPf.error || 'Kunne ikke hente porteføljen' }, { status: 502 }));
       const costsPf = await hentBudsjettKostnader(db);
