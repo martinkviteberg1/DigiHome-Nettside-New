@@ -24,7 +24,7 @@ import { dataManagerConfigured, ingestOfflineConversion } from '@/lib/google-ads
 import { recordWonConversions } from '@/lib/closed-loop';
 import { runDueReminders } from '@/lib/reminders';
 import { hentLeieforhold } from '@/lib/leieforhold';
-import { synkFraBrreg, hentOrganisasjon, lagrePerson, slettPerson, nyRolle, oppdaterRolle, slettRolle, oppdaterSelskap, hentEierbok, lagreEier, slettEier, lagreKlasse, slettKlasse, nyTransaksjon, slettTransaksjon } from '@/lib/selskap';
+import { synkFraBrreg, hentOrganisasjon, lagrePerson, slettPerson, nyRolle, oppdaterRolle, slettRolle, oppdaterSelskap, hentEierbok, lagreEier, slettEier, lagreKlasse, slettKlasse, nyTransaksjon, slettTransaksjon, sokBrregEnheter, lagreStotte } from '@/lib/selskap';
 import { lagLeieforholdExcel, lagLeieforholdCsv } from '@/lib/leieforhold-excel';
 import {
   anvendScenario as lfScenario, filtrerRader as lfFiltrer, parseFilterParams as lfParseFilter,
@@ -4667,6 +4667,23 @@ async function handleRoute(request, { params }) {
       if (!rateLimit(`brregsynk:${clientIp(request)}`, 10)) return cors(NextResponse.json({ error: 'For mange synkroniseringer — vent litt' }, { status: 429 }));
       let bodySel = {}; try { bodySel = await request.json(); } catch (e) {}
       const resSel = await synkFraBrreg(db, { selskapId: bodySel.selskapId });
+      return cors(NextResponse.json(resSel, { status: resSel.ok ? 200 : 400 }));
+    }
+    // Søk i Enhetsregisteret (navn eller orgnr) — brukes når støtteselskaper
+    // (advokat, regnskap, revisjon …) skal knyttes til kartet.
+    if (route === '/admin/selskap/brreg-sok' && method === 'GET') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      if (!rateLimit(`brregsok:${clientIp(request)}`, 30)) return cors(NextResponse.json({ error: 'For mange søk — vent litt' }, { status: 429 }));
+      const qSel = new URL(request.url).searchParams.get('q') || '';
+      const resSel = await sokBrregEnheter(qSel);
+      return cors(NextResponse.json(resSel, { status: resSel.ok ? 200 : 400 }));
+    }
+    // Knytt et støtteselskap (enhet) til ett av DigiHome-selskapene — idempotent
+    // per orgnr, så samme juridiske enhet aldri registreres dobbelt.
+    if (route === '/admin/selskap/stotte' && method === 'POST') {
+      if (!adminAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      let bodySel = {}; try { bodySel = await request.json(); } catch (e) {}
+      const resSel = await lagreStotte(db, bodySel);
       return cors(NextResponse.json(resSel, { status: resSel.ok ? 200 : 400 }));
     }
     if (route === '/admin/selskap/person' && (method === 'POST' || method === 'PUT')) {

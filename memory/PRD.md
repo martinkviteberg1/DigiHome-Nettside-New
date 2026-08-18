@@ -652,3 +652,10 @@ Google Ads-styring via native REST API).
 - Isolasjon håndhevet overalt: meldinger, reaksjoner (404 på fremmede kanaler), filer (404 hvis filens kanal ≠ investors), søk, tråder, status/lest, skriver-indikator. fest + trådnavn/sak-kobling forblir interne (UI skjult + API-vakt).
 - auth/me + login returnerer nå user.id (fikset også minId/egen-melding-logikk i chat). rensKanal 40→60 tegn.
 - Backend-testagent: 29/30 bestått; T9 (fil-isolasjon) verifisert manuelt etterpå: investor 404 på intern fil, 200 på egen, kanal tvinges ved opplasting. UI screenshot-verifisert for både investor og owner.
+
+## Feb 2026 (forts. 4) — Org-kart: Blue Sky-dedupe + støtteselskaper m/ BRreg-søk
+- ROTÅRSAK «Blue Sky dobbelt»: Brønnøysund lister faktisk TO ulike juridiske enheter som regnskapsførere for DigiHome Tech AS (BLUE SKY ECONOMY AS 921171986 + BLUE SKY ECONOMY BERGEN AS 936595960) — registerdata, ikke duplikatfeil. Chips viser nå orgnr så enhetene kan skilles; gamle kan skjules via personskuffen.
+- Latent dedupe-bug fikset: synkFraBrreg matcher enheter på ORGNR først (navnebytte i BRreg ga tidligere duplikater); registernavn følges ved endring. dedupeEnheter(db) slår sammen enheter m/ samme orgnr (mest beriket beholdes, roller repekes, felter arves, doble roller fjernes) — kjøres i synk + selvhelbredende i hentOrganisasjon.
+- NYTT: GET /admin/selskap/brreg-sok?q= (adminAuthed, 30/min) — søk i Enhetsregisteret på navn eller orgnr. POST /admin/selskap/stotte — knytt støtteselskap (advokat/regnskap/revisor/bank …) idempotent per orgnr; samme funksjonsnavn gjenbruker rollen.
+- UI: «Støtteselskap»-knapp i org-kartets toolbar → modal m/ debounced BRreg-søk (navn/orgnr), valg-kort, manuell registrering som fallback, funksjonsforslag-chips (Juridisk, Regnskapsfører, Revisor, Bank & finans, Forsikring …). Enheter kan nå redigeres (nettside/kontakt) i personskuffen.
+- Backend-testagent: 11/11 bestått (brreg-sok, stotte-idempotens, dedupe-selvhelbredelse, synk-regresjon — begge ekte Blue Sky-enheter bevart som separate). QAFIX-data ryddet, 0 rester.

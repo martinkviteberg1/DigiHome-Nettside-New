@@ -11,6 +11,7 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import {
   Network, RefreshCw, Plus, X, Loader2, Pencil, Trash2, Eye, EyeOff, Landmark,
   Mail, Phone, Linkedin, AlertTriangle, Minus, Maximize2, Camera, Check, Users,
+  Search, Globe,
 } from 'lucide-react';
 
 const heading = { fontFamily: 'var(--font-heading, inherit)' };
@@ -144,6 +145,7 @@ export default function Organisasjon({ apiKey, erAdmin }) {
   const [valgtPersonId, setValgtPersonId] = useState(null);
   const [hoverPersonId, setHoverPersonId] = useState(null);
   const [visNyRolle, setVisNyRolle] = useState(false);
+  const [visStotte, setVisStotte] = useState(false);
   const [redigerPerson, setRedigerPerson] = useState(null);
   const autoSynket = useRef(false);
 
@@ -239,6 +241,11 @@ export default function Organisasjon({ apiKey, erAdmin }) {
               <RefreshCw className={`h-3.5 w-3.5 ${synker ? 'animate-spin' : ''}`} />
               Synk fra Brønnøysund
             </button>
+            <button onClick={() => setVisStotte(true)} data-testid="org-stotte-btn"
+              className="flex items-center gap-1.5 rounded-full bg-white px-3.5 py-1.5 text-[12px] font-bold text-[#44403c] shadow-[0_1px_4px_rgba(0,0,0,0.08),inset_0_0_0_1px_rgba(0,0,0,0.05)] transition-all hover:shadow-md active:scale-95">
+              <Landmark className="h-3.5 w-3.5" />
+              Støtteselskap
+            </button>
             <button onClick={() => setVisNyRolle(true)} data-testid="org-ny-rolle-btn"
               className="flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12px] font-bold text-white transition-all hover:opacity-95 active:scale-95"
               style={{ background: 'linear-gradient(135deg, #1c1917 10%, #4c2a94 140%)', boxShadow: '0 3px 10px rgba(59,35,115,0.3)' }}>
@@ -298,6 +305,14 @@ export default function Organisasjon({ apiKey, erAdmin }) {
           personer={data?.personer || []}
           onLukk={() => setVisNyRolle(false)}
           onLagret={() => { setVisNyRolle(false); hent(); }}
+        />
+      )}
+      {visStotte && (
+        <StotteModal
+          apiKey={apiKey}
+          selskaper={data?.selskaper || []}
+          onLukk={() => setVisStotte(false)}
+          onLagret={() => { setVisStotte(false); hent(); }}
         />
       )}
       {redigerPerson && (
@@ -503,7 +518,9 @@ function OrgCanvas({ layout, personAv, flereSelskap, hoverPersonId, onHover, onV
                   <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] bg-[#f4f1ec] text-[#8a857d]"><Landmark className="h-4 w-4" /></span>
                   <span className="min-w-0">
                     <span className="block truncate text-[11.5px] font-bold text-[#44403c]">{person.navn}</span>
-                    <span className="block text-[9.5px] font-semibold uppercase tracking-wide text-[#b3ada3]">{n.data.rolleNavn}</span>
+                    <span className="block truncate text-[9.5px] font-semibold uppercase tracking-wide text-[#b3ada3]">
+                      {n.data.rolleNavn}{person.erEnhet && person.orgnr ? ` · ${fmtOrgnr(person.orgnr)}` : ''}
+                    </span>
                   </span>
                 </button>
               </div>
@@ -645,10 +662,10 @@ function PersonSkuff({ person, roller, selskaper, erAdmin, apiKey, onLukk, onEnd
               {person.erEnhet && person.orgnr && <p className="mt-0.5 text-[11px] text-[#b3ada3]">Org.nr {fmtOrgnr(person.orgnr)}</p>}
             </div>
           </div>
-          {erAdmin && !person.erEnhet && (
+          {erAdmin && (
             <button onClick={onRediger} data-testid="org-rediger-person-btn"
               className="mt-4 flex items-center gap-1.5 rounded-full bg-[#1c1917] px-3.5 py-1.5 text-[11.5px] font-bold text-white transition-all hover:opacity-90 active:scale-95">
-              <Pencil className="h-3 w-3" /> Rediger profil
+              <Pencil className="h-3 w-3" /> {person.erEnhet ? 'Rediger informasjon' : 'Rediger profil'}
             </button>
           )}
         </div>
@@ -660,7 +677,12 @@ function PersonSkuff({ person, roller, selskaper, erAdmin, apiKey, onLukk, onEnd
             <div className="mb-5 space-y-2">
               {person.epost && <a href={`mailto:${person.epost}`} className="flex items-center gap-2.5 text-[12.5px] font-medium text-[#44403c] hover:text-[#6d28d9]"><Mail className="h-3.5 w-3.5 text-[#b3ada3]" />{person.epost}</a>}
               {person.telefon && <a href={`tel:${person.telefon}`} className="flex items-center gap-2.5 text-[12.5px] font-medium text-[#44403c] hover:text-[#6d28d9]"><Phone className="h-3.5 w-3.5 text-[#b3ada3]" />{person.telefon}</a>}
-              {person.linkedin && <a href={person.linkedin} target="_blank" rel="noreferrer" className="flex items-center gap-2.5 text-[12.5px] font-medium text-[#44403c] hover:text-[#6d28d9]"><Linkedin className="h-3.5 w-3.5 text-[#b3ada3]" />LinkedIn-profil</a>}
+              {person.linkedin && (
+                <a href={person.linkedin} target="_blank" rel="noreferrer" className="flex items-center gap-2.5 text-[12.5px] font-medium text-[#44403c] hover:text-[#6d28d9]">
+                  {person.erEnhet ? <Globe className="h-3.5 w-3.5 text-[#b3ada3]" /> : <Linkedin className="h-3.5 w-3.5 text-[#b3ada3]" />}
+                  {person.erEnhet ? 'Nettside' : 'LinkedIn-profil'}
+                </a>
+              )}
             </div>
           )}
 
@@ -868,6 +890,177 @@ function NyRolleModal({ apiKey, selskaper, personer, onLukk, onLagret }) {
   );
 }
 
+// ── Modal: knytt støtteselskap (BRreg-søk eller manuelt) ────────────────────
+
+const STOTTE_FORSLAG = ['Juridisk', 'Regnskapsfører', 'Revisor', 'Bank & finans', 'Forsikring', 'IT-drift', 'Markedsføring', 'HR & rekruttering', 'Rådgivning', 'Eiendomsmegler'];
+
+function StotteModal({ apiKey, selskaper, onLukk, onLagret }) {
+  const [selskapId, setSelskapId] = useState(selskaper[0]?.id || '');
+  const [sok, setSok] = useState('');
+  const [soker, setSoker] = useState(false);
+  const [treff, setTreff] = useState(null); // null = ikke søkt ennå
+  const [sokFeil, setSokFeil] = useState('');
+  const [valgt, setValgt] = useState(null); // {navn, orgnr, adresse, ...} fra BRreg
+  const [manuell, setManuell] = useState(false);
+  const [manNavn, setManNavn] = useState('');
+  const [manOrgnr, setManOrgnr] = useState('');
+  const [rolleNavn, setRolleNavn] = useState('');
+  const [lagrer, setLagrer] = useState(false);
+  const [feil, setFeil] = useState('');
+
+  // Debounced søk mot Brønnøysund — navn eller organisasjonsnummer
+  useEffect(() => {
+    if (manuell) return undefined;
+    const q = sok.trim();
+    if (q.length < 2) { setTreff(null); setSokFeil(''); return undefined; }
+    const timer = setTimeout(async () => {
+      setSoker(true); setSokFeil('');
+      try {
+        const r = await fetch(`/api/admin/selskap/brreg-sok?key=${encodeURIComponent(apiKey)}&q=${encodeURIComponent(q)}`);
+        const j = await r.json();
+        if (!r.ok || !j.ok) throw new Error(j.error || 'Søket feilet');
+        setTreff(j.treff || []);
+      } catch (e) { setSokFeil(e.message); setTreff([]); }
+      finally { setSoker(false); }
+    }, 450);
+    return () => clearTimeout(timer);
+  }, [sok, manuell, apiKey]);
+
+  const lagre = async () => {
+    setFeil('');
+    const navn = manuell ? manNavn.trim() : (valgt?.navn || '');
+    const orgnr = manuell ? manOrgnr.trim() : (valgt?.orgnr || '');
+    if (!navn) { setFeil(manuell ? 'Skriv inn navnet på selskapet' : 'Søk opp og velg et selskap — eller registrer manuelt'); return; }
+    if (!rolleNavn.trim()) { setFeil('Angi funksjonen — f.eks. Juridisk eller Regnskapsfører'); return; }
+    setLagrer(true);
+    try {
+      const r = await fetch(`/api/admin/selskap/stotte?key=${encodeURIComponent(apiKey)}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ selskapId, navn, orgnr: orgnr || undefined, rolleNavn: rolleNavn.trim() }),
+      });
+      const j = await r.json();
+      if (!j.ok) throw new Error(j.error || 'Kunne ikke knytte selskapet');
+      onLagret();
+    } catch (e) { setFeil(e.message); }
+    finally { setLagrer(false); }
+  };
+
+  const inp = 'w-full rounded-[12px] bg-[#faf9f7] px-3.5 py-2.5 text-[13px] text-[#1c1917] outline-none transition-all placeholder:text-[#c2beb8] focus:bg-white';
+  const inpStil = { boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.06)' };
+  const lbl = 'mb-1.5 block text-[10.5px] font-bold uppercase tracking-[0.1em] text-[#b3ada3]';
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/30 p-4 backdrop-blur-[3px]" onClick={onLukk}>
+      <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-[22px] bg-white p-6 shadow-2xl" onClick={(e) => e.stopPropagation()} data-testid="org-stotte-modal">
+        <div className="mb-1.5 flex items-center justify-between">
+          <h3 className="text-[17px] font-bold text-[#1c1917]" style={heading}>Knytt støtteselskap</h3>
+          <button onClick={onLukk} className="rounded-full p-1.5 text-[#a6a19a] hover:bg-black/[0.05]"><X className="h-4 w-4" /></button>
+        </div>
+        <p className="mb-5 text-[12px] leading-relaxed text-[#a6a19a]">Advokat, regnskapsfører, revisor, bank … Søk i Brønnøysundregistrene på navn eller org.nr — eller registrer manuelt.</p>
+        <div className="space-y-4">
+          <div>
+            <label className={lbl}>Knyttes til</label>
+            <div className="flex gap-2">
+              {selskaper.map((s) => (
+                <button key={s.id} onClick={() => setSelskapId(s.id)}
+                  className={`flex-1 rounded-[12px] px-3 py-2 text-[12px] font-bold transition-all ${selskapId === s.id ? 'bg-[#1c1917] text-white' : 'bg-[#faf9f7] text-[#8a857d] hover:text-[#44403c]'}`}
+                  style={selskapId === s.id ? {} : inpStil}>
+                  {s.navn}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {!manuell ? (
+            <div>
+              <label className={lbl}>Selskap — søk i Brønnøysund</label>
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#c2beb8]" />
+                <input value={sok} onChange={(e) => { setSok(e.target.value); setValgt(null); }} placeholder="Navn eller organisasjonsnummer …"
+                  className={`${inp} pl-9`} style={inpStil} data-testid="org-stotte-sok" autoFocus />
+                {soker && <Loader2 className="absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 animate-spin text-[#a6a19a]" />}
+              </div>
+              {sokFeil && <p className="mt-1.5 text-[11.5px] font-medium text-[#c2413b]">{sokFeil}</p>}
+              {valgt ? (
+                <div className="mt-2 flex items-start gap-2.5 rounded-[13px] bg-[#f0ebfa] px-3.5 py-3" data-testid="org-stotte-valgt">
+                  <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] bg-white text-[#6d28d9]"><Landmark className="h-4 w-4" /></span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[12.5px] font-bold text-[#1c1917]">{valgt.navn}</p>
+                    <p className="text-[10.5px] text-[#6d28d9]">Org.nr {fmtOrgnr(valgt.orgnr)}{valgt.orgform ? ` · ${valgt.orgform}` : ''}</p>
+                    {valgt.adresse && <p className="mt-0.5 truncate text-[10.5px] text-[#8a857d]">{valgt.adresse}</p>}
+                  </div>
+                  <button onClick={() => setValgt(null)} className="rounded-full p-1 text-[#a6a19a] hover:bg-white hover:text-[#1c1917]" title="Fjern valget"><X className="h-3.5 w-3.5" /></button>
+                </div>
+              ) : (
+                treff !== null && !soker && (
+                  treff.length ? (
+                    <div className="mt-2 max-h-56 space-y-1 overflow-y-auto" data-testid="org-stotte-treff">
+                      {treff.map((t) => (
+                        <button key={t.orgnr} onClick={() => { setValgt(t); }} data-testid={`org-stotte-treff-${t.orgnr}`}
+                          className="flex w-full items-center gap-2.5 rounded-[12px] bg-[#faf9f7] px-3 py-2.5 text-left transition-all hover:bg-[#f0ebfa] active:scale-[0.99]" style={inpStil}>
+                          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[9px] bg-white text-[#8a857d]"><Landmark className="h-3.5 w-3.5" /></span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-[12px] font-bold text-[#1c1917]">{t.navn}</span>
+                            <span className="block truncate text-[10px] text-[#a6a19a]">{fmtOrgnr(t.orgnr)}{t.adresse ? ` · ${t.adresse}` : ''}</span>
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    !sokFeil && <p className="mt-2 text-[11.5px] text-[#a6a19a]">Ingen treff i Brønnøysund på «{sok.trim()}»</p>
+                  )
+                )
+              )}
+              <button onClick={() => { setManuell(true); setManNavn(sok.trim().length > 1 && !/^[\d\s]+$/.test(sok) ? sok.trim() : ''); }}
+                className="mt-2 text-[11px] font-bold text-[#8a857d] underline-offset-2 hover:text-[#6d28d9] hover:underline" data-testid="org-stotte-manuell-btn">
+                Fant du ikke selskapet? Registrer manuelt
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div>
+                <label className={lbl}>Selskapsnavn</label>
+                <input value={manNavn} onChange={(e) => setManNavn(e.target.value)} placeholder="F.eks. Advokatfirmaet Hansen AS" className={inp} style={inpStil} data-testid="org-stotte-man-navn" autoFocus />
+              </div>
+              <div>
+                <label className={lbl}>Org.nr (valgfritt)</label>
+                <input value={manOrgnr} onChange={(e) => setManOrgnr(e.target.value)} placeholder="9 sifre" inputMode="numeric" className={inp} style={inpStil} data-testid="org-stotte-man-orgnr" />
+              </div>
+              <button onClick={() => setManuell(false)} className="text-[11px] font-bold text-[#8a857d] underline-offset-2 hover:text-[#6d28d9] hover:underline">
+                ← Tilbake til Brønnøysund-søket
+              </button>
+            </div>
+          )}
+
+          <div>
+            <label className={lbl}>Funksjon</label>
+            <input value={rolleNavn} onChange={(e) => setRolleNavn(e.target.value)} placeholder="F.eks. Juridisk, Regnskapsfører, Bank" list="dh-stotte-forslag"
+              className={inp} style={inpStil} data-testid="org-stotte-funksjon" />
+            <datalist id="dh-stotte-forslag">{STOTTE_FORSLAG.map((f) => <option key={f} value={f} />)}</datalist>
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
+              {STOTTE_FORSLAG.slice(0, 5).map((f) => (
+                <button key={f} onClick={() => setRolleNavn(f)}
+                  className={`rounded-full px-2.5 py-1 text-[10.5px] font-bold transition-all active:scale-95 ${rolleNavn === f ? 'bg-[#1c1917] text-white' : 'bg-[#faf9f7] text-[#8a857d] hover:text-[#44403c]'}`}
+                  style={rolleNavn === f ? {} : inpStil}>
+                  {f}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {feil && <p className="text-[12px] font-medium text-[#c2413b]">{feil}</p>}
+          <button onClick={lagre} disabled={lagrer} data-testid="org-stotte-lagre"
+            className="flex w-full items-center justify-center gap-2 rounded-[13px] py-2.5 text-[13px] font-bold text-white transition-all hover:opacity-95 active:scale-[0.99]"
+            style={{ background: 'linear-gradient(135deg, #1c1917 10%, #4c2a94 140%)' }}>
+            {lagrer ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+            Knytt selskapet
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Modal: rediger person (beriking + bilde) ────────────────────────────────
 
 function PersonModal({ apiKey, person, onLukk, onLagret }) {
@@ -959,8 +1152,8 @@ function PersonModal({ apiKey, person, onLukk, onLagret }) {
             </div>
           </div>
           <div>
-            <label className={lbl}>LinkedIn</label>
-            <input value={form.linkedin} onChange={(e) => setForm((f) => ({ ...f, linkedin: e.target.value }))} placeholder="https://linkedin.com/in/…" className={inp} style={inpStil} />
+            <label className={lbl}>{person.erEnhet ? 'Nettside' : 'LinkedIn'}</label>
+            <input value={form.linkedin} onChange={(e) => setForm((f) => ({ ...f, linkedin: e.target.value }))} placeholder={person.erEnhet ? 'https://…' : 'https://linkedin.com/in/…'} className={inp} style={inpStil} />
           </div>
           <div>
             <label className={lbl}>Kort bio</label>
