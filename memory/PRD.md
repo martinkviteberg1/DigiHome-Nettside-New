@@ -697,3 +697,10 @@ Google Ads-styring via native REST API).
 ## Feb 2026 (forts. 10) — «Endre horisont» på lagrede planer
 - BudsjettModell.js: horisontvelger (1 år/2 år/3 år) i editor-headeren. endreHorisont() henter FRISKE porteføljefakta (plan/forslag) for hele den nye horisonten (eksisterende/enheter/bortfall), setter lokal antallMnd, bytter til teleskopvisning og markerer ulagret — persisteres først ved «Lagre». «Tilbakestill» ruller tilbake horisont+fakta via lagret*-speil (robust også etter mellomlagring). Barne-drawere (vekstplan/bemanning/scenario-sammenligning) får patched plan med lokal horisont.
 - Screenshot-QA: brukerens 12-mnd plan utvidet til 36 mnd i UI (uten lagring) — årsstripe, teleskop, kapitalbunn og bemanningsvarsel fungerte.
+
+## Feb 2026 (forts. 11) — Budsjettmodulen: 2026-modernisering av UI/UX
+- Liste (BudsjettEnkel): kort-grid (2 kol) m/ horisontbadge (1/2/3 år), status/investor-chips, inntekter+resultat+margin %, «sist endret», hover-løft. Opprettelsespanel m/ gradient-aksent og horisont som segmented control. Skeleton-lasting.
+- Editor (BudsjettModell): nøkkeltall som bento — LYS hero-flis (hvit m/ subtil lilla radial glød; bruker ønsket IKKE mørk) med resultat, gradient-sparkline og chips (siste/første mnd, margin) + 2x2 fliser (break-even, kapitalbehov, NY ARR-flis, kontraktsfestet). Seksjonsheadere som uppercase mikro-etiketter. Verktøylinjen wrapper på mobil (fikset 116px overflow).
+- Graf 2026: full omskriving — glatte catmull-rom-kurver (inntekt m/ gradientareal, kostnad stiplet rosé), lyse avrundede søyler (violet-toner + mint for re-utleie), pill-markører for Break-even og Kapitalbunn, årsskiller, hover-guide m/ punkter, pill-legend.
+- Tusenskiller-bug: NBSP fra toLocaleString('nb-NO') rendret bredt i heading-font — byttet til U+202F (smalt no-break space) i kr/kr0 i begge filene.
+- Screenshot-QA desktop + mobil (0 px overflow). Kun frontend — ingen backend-endringer.

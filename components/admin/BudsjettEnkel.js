@@ -12,7 +12,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
-  Plus, ArrowLeft, Trash2, RefreshCw, Loader2, Check, Eye, EyeOff, Wallet, TrendingUp, HelpCircle,
+  Plus, ArrowLeft, ArrowRight, Trash2, RefreshCw, Loader2, Check, Eye, EyeOff, Wallet, TrendingUp, HelpCircle,
 } from 'lucide-react';
 import BudsjettModell from '@/components/admin/BudsjettModell';
 import Omvisning from '@/components/admin/Omvisning';
@@ -24,7 +24,8 @@ const KNAPP_GHOST = 'flex h-9 items-center gap-1.5 rounded-[9px] border border-b
 
 const MND = ['januar', 'februar', 'mars', 'april', 'mai', 'juni', 'juli', 'august', 'september', 'oktober', 'november', 'desember'];
 const MND_KORT = ['jan', 'feb', 'mar', 'apr', 'mai', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'des'];
-const kr = (n) => `${Math.round(Number(n) || 0).toLocaleString('nb-NO')} kr`;
+// Smalt no-break space (U+202F) som tusenskiller — NBSP fra nb-NO rendres bredt
+const kr = (n) => `${Math.round(Number(n) || 0).toLocaleString('nb-NO').replace(/\u00A0/g, '\u202F')} kr`;
 const ymDeler = (ym) => { const [y, m] = String(ym || '').split('-').map(Number); return { y, m }; };
 const ymPluss = (ym, i) => {
   const { y, m } = ymDeler(ym);
@@ -339,18 +340,20 @@ export default function BudsjettEnkel({ apiKey, readOnly = false, autoTour = fal
   }
 
   /* ────────────────────────── Liste ────────────────────────── */
+  const horisontLabel = (n) => (n === 12 ? '1 år' : n === 24 ? '2 år' : n === 36 ? '3 år' : `${n} mnd`);
+  const datoKort = (iso) => { try { return new Date(iso).toLocaleDateString('nb-NO', { day: 'numeric', month: 'short' }); } catch (e) { return ''; } };
   return (
-    <div className="mx-auto w-full max-w-[760px] pt-2" data-testid="budsjett-liste">
+    <div className="mx-auto w-full max-w-[1060px] pt-2" data-testid="budsjett-liste">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="text-[24px] font-bold tracking-[-0.015em] text-[#1c1917]" style={heading}>Budsjetter</h1>
+          <h1 className="text-[25px] font-bold tracking-[-0.015em] text-[#1c1917]" style={heading}>Budsjetter</h1>
           <p className="mt-1 text-[13.5px] text-[#8f8a82]">
             {readOnly ? 'Budsjetter delt med investorrommet.' : 'Driverstyrte budsjetter — porteføljefakta fra leieforholdene, resten modellerer du med synlige forutsetninger.'}
           </p>
         </div>
         <div className="mt-1 flex shrink-0 items-center gap-2">
           <button onClick={() => setTourAktiv(true)} data-testid="budsjett-tour-knapp" title="Omvisning — se hvordan budsjettmodulen henger sammen"
-            className="flex h-9 w-9 items-center justify-center rounded-[9px] border border-black/[0.08] bg-white text-[#a6a19a] transition-colors hover:bg-[#f7f6f3] hover:text-[#1c1917]">
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-black/[0.08] bg-white text-[#a6a19a] transition-colors hover:bg-[#f7f6f3] hover:text-[#1c1917]">
             <HelpCircle className="h-4 w-4" />
           </button>
           {!readOnly && (
@@ -363,28 +366,41 @@ export default function BudsjettEnkel({ apiKey, readOnly = false, autoTour = fal
 
       <Omvisning steg={tourSteg} aktiv={tourAktiv} onFerdig={tourFerdig} />
 
-      {/* Opprettelse — ett lite panel, tre felter, ferdig */}
+      {/* Opprettelse — horisont først (1/2/3 år er hovedvalget), datoene følger */}
       {visNy && !readOnly && (
-        <div className="mt-4 rounded-[14px] bg-white p-5 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]" data-testid="budsjett-ny-panel">
-          <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_150px_150px]">
+        <div className="relative mt-4 overflow-hidden rounded-[18px] bg-white p-5 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]" data-testid="budsjett-ny-panel">
+          <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-[#8b5cf6] via-[#a78bfa] to-transparent" />
+          <p className="text-[14px] font-bold text-[#1c1917]" style={heading}>Nytt budsjett</p>
+          <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto_150px_150px]">
             <label className="block">
-              <span className="text-[12px] font-medium text-[#8f8a82]">Navn</span>
+              <span className="text-[11px] font-bold uppercase tracking-[0.07em] text-[#a6a19a]">Navn</span>
               <input value={nyNavn} onChange={(e) => setNyNavn(e.target.value)} maxLength={80} autoFocus data-testid="budsjett-ny-navn"
-                placeholder="F.eks. «Budsjett 2027»"
+                placeholder="F.eks. «Vekstplan 2027–2029»"
                 onKeyDown={(e) => { if (e.key === 'Enter') opprett(); }}
-                className="mt-1 h-9 w-full rounded-[8px] border border-black/[0.08] bg-white px-3 text-[13.5px] outline-none transition-colors placeholder:text-[#c2beb8] focus:border-[#1c1917]/25" />
+                className="mt-1 h-9 w-full rounded-[9px] border border-black/[0.08] bg-white px-3 text-[13.5px] outline-none transition-colors placeholder:text-[#c2beb8] focus:border-[#1c1917]/25" />
             </label>
+            <div className="block">
+              <span className="text-[11px] font-bold uppercase tracking-[0.07em] text-[#a6a19a]">Horisont</span>
+              <span className="mt-1 flex h-9 items-center gap-0.5 rounded-[9px] bg-[#f0efec] p-0.5" data-testid="budsjett-ny-horisont">
+                {[[12, '1 år'], [24, '2 år'], [36, '3 år']].map(([n, l]) => (
+                  <button key={n} type="button" onClick={() => setNyTil(ymPluss(nyFra, n - 1))} data-testid={`budsjett-ny-horisont-${n}`}
+                    className={`h-full rounded-[7px] px-3 text-[12.5px] font-bold transition-all ${ymDiff(nyFra, nyTil) === n ? 'bg-[#1c1917] text-white shadow-sm' : 'text-[#8f8a82] hover:text-[#1c1917]'}`}>
+                    {l}
+                  </button>
+                ))}
+              </span>
+            </div>
             <label className="block">
-              <span className="text-[12px] font-medium text-[#8f8a82]">Fra måned</span>
+              <span className="text-[11px] font-bold uppercase tracking-[0.07em] text-[#a6a19a]">Fra måned</span>
               <input type="month" value={nyFra} data-testid="budsjett-ny-fra"
                 onChange={(e) => { const v = e.target.value; setNyFra(v); if (v && ymDiff(v, nyTil) < 1) setNyTil(v); }}
-                className="mt-1 h-9 w-full rounded-[8px] border border-black/[0.08] bg-white px-2.5 text-[13.5px] outline-none focus:border-[#1c1917]/25" />
+                className="mt-1 h-9 w-full rounded-[9px] border border-black/[0.08] bg-white px-2.5 text-[13.5px] outline-none focus:border-[#1c1917]/25" />
             </label>
             <label className="block">
-              <span className="text-[12px] font-medium text-[#8f8a82]">Til måned</span>
+              <span className="text-[11px] font-bold uppercase tracking-[0.07em] text-[#a6a19a]">Til måned</span>
               <input type="month" value={nyTil} min={nyFra} data-testid="budsjett-ny-til"
                 onChange={(e) => setNyTil(e.target.value)}
-                className="mt-1 h-9 w-full rounded-[8px] border border-black/[0.08] bg-white px-2.5 text-[13.5px] outline-none focus:border-[#1c1917]/25" />
+                className="mt-1 h-9 w-full rounded-[9px] border border-black/[0.08] bg-white px-2.5 text-[13.5px] outline-none focus:border-[#1c1917]/25" />
             </label>
           </div>
           <div className="mt-3.5 flex flex-wrap items-center gap-3">
@@ -392,35 +408,28 @@ export default function BudsjettEnkel({ apiKey, readOnly = false, autoTour = fal
               {oppretter ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <TrendingUp className="h-3.5 w-3.5" />}
               {oppretter ? 'Henter porteføljefakta…' : 'Opprett budsjett'}
             </button>
-            {/* Hurtigvalg av horisont — 3-årsplanen er investorstandarden */}
-            <span className="flex items-center gap-1" data-testid="budsjett-ny-horisont">
-              {[[12, '1 år'], [24, '2 år'], [36, '3 år']].map(([n, l]) => (
-                <button key={n} type="button" onClick={() => setNyTil(ymPluss(nyFra, n - 1))} data-testid={`budsjett-ny-horisont-${n}`}
-                  className={`h-7 rounded-full px-2.5 text-[11.5px] font-bold transition-all ${ymDiff(nyFra, nyTil) === n ? 'bg-[#1c1917] text-white' : 'bg-[#f0efec] text-[#8f8a82] hover:text-[#1c1917]'}`}>
-                  {l}
-                </button>
-              ))}
-            </span>
             {nyFra && nyTil && ymDiff(nyFra, nyTil) >= 1 && (
               <span className="text-[12.5px] text-[#a6a19a]">{periodeLabel(nyFra, ymDiff(nyFra, nyTil))}</span>
             )}
           </div>
           {nyFeil && <p className="mt-2.5 text-[13px] text-[#b3261e]" data-testid="budsjett-ny-feil">{nyFeil}</p>}
           <p className="mt-2.5 text-[12px] leading-relaxed text-[#a6a19a]">
-            Porteføljefakta (kontraktsfestet honorar og enheter) hentes automatisk fra leieforholdene — vekst, churn, bemanning og kostnader modellerer du med synlige forutsetninger etterpå.
+            Porteføljefakta (kontraktsfestet honorar, enheter og re-utleie) hentes automatisk fra leieforholdene — vekst, churn, bemanning og kostnader modellerer du med synlige forutsetninger etterpå.
           </p>
         </div>
       )}
 
       {feil && <p className="mt-4 text-[13px] text-[#b3261e]" data-testid="budsjett-feil">{feil}</p>}
 
-      {/* Budsjettliste */}
+      {/* Budsjettkort — rikt grid med status, horisont, nøkkeltall og margin */}
       {planer === null ? (
-        <div className="mt-8 flex items-center gap-2.5 text-[13.5px] text-[#8f8a82]"><Loader2 className="h-4 w-4 animate-spin" /> Henter budsjetter…</div>
+        <div className="mt-6 grid gap-3 sm:grid-cols-2">
+          {[0, 1].map((i) => <div key={i} className="h-[168px] animate-pulse rounded-[18px] bg-white shadow-[inset_0_0_0_1px_rgba(0,0,0,0.05)]" />)}
+        </div>
       ) : planer.length === 0 ? (
-        <div className="mt-8 rounded-[14px] bg-white px-6 py-10 text-center shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]" data-testid="budsjett-tom">
-          <Wallet className="mx-auto h-7 w-7 text-[#d6d1c9]" />
-          <p className="mt-3 text-[14.5px] font-semibold text-[#1c1917]" style={heading}>{readOnly ? 'Ingen budsjetter er delt ennå' : 'Ingen budsjetter ennå'}</p>
+        <div className="mt-8 rounded-[18px] bg-white px-6 py-12 text-center shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]" data-testid="budsjett-tom">
+          <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[#f4f0fb]"><Wallet className="h-6 w-6 text-[#8b5cf6]" /></span>
+          <p className="mt-4 text-[15px] font-bold text-[#1c1917]" style={heading}>{readOnly ? 'Ingen budsjetter er delt ennå' : 'Ingen budsjetter ennå'}</p>
           <p className="mx-auto mt-1 max-w-[380px] text-[13px] leading-relaxed text-[#8f8a82]">
             {readOnly ? 'Når et budsjett deles med investorrommet, dukker det opp her.' : 'Lag ditt første budsjett — velg periode, så henter vi porteføljefakta fra leieforholdene for deg.'}
           </p>
@@ -429,32 +438,50 @@ export default function BudsjettEnkel({ apiKey, readOnly = false, autoTour = fal
           )}
         </div>
       ) : (
-        <div className="mt-5 overflow-hidden rounded-[16px] bg-white shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]">
-          {planer.map((p) => (
-            <button key={p.id} onClick={() => aapne(p.id)} data-testid={`budsjett-rad-${p.id}`}
-              className="group flex w-full items-center gap-4 border-b border-black/[0.05] px-5 py-4 text-left transition-colors last:border-0 hover:bg-[#faf9f7]">
-              <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] transition-colors ${p.type === 'modell' ? 'bg-[#1c1917] text-white' : 'bg-[#f0efec] text-[#78716c] group-hover:bg-[#e9e7e3]'}`}>
-                {p.type === 'modell' ? <TrendingUp className="h-[18px] w-[18px]" /> : <Wallet className="h-[18px] w-[18px]" />}
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="flex items-center gap-2">
-                  <span className="truncate text-[15.5px] font-semibold text-[#1c1917]" style={heading}>{p.navn}</span>
-                  {!readOnly && p.investorSynlig && (
-                    <span className="flex shrink-0 items-center gap-1 rounded-full bg-[#f0ebfa] px-2 py-0.5 text-[10.5px] font-bold text-[#6d28d9]" title="Synlig i investorrommet"><Eye className="h-3 w-3" /> Investorrom</span>
+        <div className="mt-5 grid gap-3 sm:grid-cols-2">
+          {planer.map((p) => {
+            const marginPct = p.inntekter > 0 ? Math.round(((p.resultat || 0) / p.inntekter) * 100) : null;
+            return (
+              <button key={p.id} onClick={() => aapne(p.id)} data-testid={`budsjett-rad-${p.id}`}
+                className="group relative overflow-hidden rounded-[18px] bg-white p-5 text-left shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)] transition-all duration-200 hover:-translate-y-[2px] hover:shadow-[0_12px_32px_rgba(28,25,23,0.10),inset_0_0_0_1px_rgba(0,0,0,0.07)] active:scale-[0.995]">
+                <div className="flex items-center gap-2">
+                  <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px] ${p.type === 'modell' ? 'bg-[#1c1917] text-white' : 'bg-[#f0efec] text-[#78716c]'}`}>
+                    {p.type === 'modell' ? <TrendingUp className="h-4 w-4" /> : <Wallet className="h-4 w-4" />}
+                  </span>
+                  <span className="rounded-full bg-[#f0efec] px-2 py-[3px] text-[10.5px] font-bold uppercase tracking-[0.05em] text-[#78716c]">{horisontLabel(p.antallMnd)}</span>
+                  {p.status === 'vedtatt' && (
+                    <span className="rounded-full bg-[#e7f4ee] px-2 py-[3px] text-[10.5px] font-bold uppercase tracking-[0.05em] text-[#0a7d55]">Vedtatt</span>
                   )}
-                </span>
-                <span className="mt-0.5 block text-[13px] text-[#8f8a82]">{p.type === 'modell' ? '' : 'Enkelt budsjett (eldre) · '}{periodeLabel(p.startYm, p.antallMnd)}</span>
-              </span>
-              <span className="shrink-0 text-right">
-                <span className="block text-[16px] font-bold tracking-[-0.01em] text-[#1c1917]" style={heading}>{kr(p.inntekter)}</span>
-                {p.type === 'modell' ? (
-                  <span className={`block text-[12px] font-semibold ${(p.resultat || 0) >= 0 ? 'text-[#0a7d55]' : 'text-[#b3261e]'}`}>resultat {kr(p.resultat)}</span>
-                ) : (
-                  <span className="block text-[12px] text-[#a6a19a]">honorar i perioden</span>
+                  {!readOnly && p.investorSynlig && (
+                    <span className="flex items-center gap-1 rounded-full bg-[#f0ebfa] px-2 py-[3px] text-[10.5px] font-bold text-[#6d28d9]" title="Synlig i investorrommet"><Eye className="h-3 w-3" /> Investorrom</span>
+                  )}
+                  <ArrowRight className="ml-auto h-4 w-4 shrink-0 text-[#d6d1c9] transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-[#8f8a82]" />
+                </div>
+                <p className="mt-3 truncate text-[16.5px] font-bold tracking-[-0.01em] text-[#1c1917]" style={heading}>{p.navn}</p>
+                <p className="mt-0.5 text-[12.5px] text-[#a6a19a]">{p.type === 'modell' ? '' : 'Enkelt budsjett (eldre) · '}{periodeLabel(p.startYm, p.antallMnd)}</p>
+                <div className="mt-3.5 grid grid-cols-2 gap-3 border-t border-black/[0.05] pt-3">
+                  <div className="min-w-0">
+                    <p className="text-[10.5px] font-bold uppercase tracking-[0.07em] text-[#b5b0a8]">Inntekter</p>
+                    <p className="mt-0.5 truncate text-[15.5px] font-bold tabular-nums tracking-[-0.01em] text-[#1c1917]" style={heading}>{kr(p.inntekter)}</p>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[10.5px] font-bold uppercase tracking-[0.07em] text-[#b5b0a8]">{p.type === 'modell' ? 'Resultat' : 'Honorar'}</p>
+                    {p.type === 'modell' ? (
+                      <p className={`mt-0.5 truncate text-[15.5px] font-bold tabular-nums tracking-[-0.01em] ${(p.resultat || 0) >= 0 ? 'text-[#0a7d55]' : 'text-[#b3261e]'}`} style={heading}>
+                        {kr(p.resultat)}
+                        {marginPct !== null && <span className="ml-1.5 text-[11px] font-semibold text-[#a6a19a]">{marginPct} %</span>}
+                      </p>
+                    ) : (
+                      <p className="mt-0.5 text-[12.5px] text-[#a6a19a]">i perioden</p>
+                    )}
+                  </div>
+                </div>
+                {p.updatedAt && (
+                  <p className="mt-2.5 text-[11px] text-[#c2beb8]">Sist endret {datoKort(p.updatedAt)}{p.updatedBy ? ` · ${p.updatedBy}` : ''}</p>
                 )}
-              </span>
-            </button>
-          ))}
+              </button>
+            );
+          })}
         </div>
       )}
     </div>

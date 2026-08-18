@@ -27,8 +27,11 @@ const heading = { fontFamily: 'var(--font-heading, inherit)' };
 const KNAPP_PRIMAER = 'flex h-9 items-center gap-1.5 rounded-[9px] bg-[#141414] px-4 text-[13px] font-medium text-white transition-colors hover:bg-black/80 active:scale-[0.98] disabled:opacity-40';
 
 const MND_KORT = ['jan', 'feb', 'mar', 'apr', 'mai', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'des'];
-const kr = (n) => `${Math.round(Number(n) || 0).toLocaleString('nb-NO')} kr`;
-const kr0 = (n) => Math.round(Number(n) || 0).toLocaleString('nb-NO');
+// Tallformat: nb-NO gir NBSP (U+00A0) som tusenskiller — den rendres bredt i
+// overskriftsfonten. Vi bytter til SMALT no-break space (U+202F): «454 286 kr».
+const smal = (s) => String(s).replace(/[\u00A0\u0020]/g, '\u202F');
+const kr = (n) => `${smal(Math.round(Number(n) || 0).toLocaleString('nb-NO'))} kr`;
+const kr0 = (n) => smal(Math.round(Number(n) || 0).toLocaleString('nb-NO'));
 const ymDeler = (ym) => { const [y, m] = String(ym || '').split('-').map(Number); return { y, m }; };
 const ymPluss = (ym, i) => {
   const { y, m } = ymDeler(ym);
@@ -208,80 +211,164 @@ const Sparkline = ({ serie }) => {
   );
 };
 
-/* ── Graf: inntektssøyler + inntekts-/kostnadslinje som krysser i break-even ── */
+/* Sparkline for hero-flisen: gradientfylt areal + nullinje — lys utgave.
+   Grønn når siste måned er positiv, rosa når den er negativ. */
+const SparkHero = ({ serie }) => {
+  const N = serie.length;
+  if (N < 2) return null;
+  const W = 148, H = 44;
+  const min = Math.min(...serie, 0), maks = Math.max(...serie, 0);
+  const spenn = maks - min || 1;
+  const x = (i) => (W / (N - 1)) * i;
+  const y = (v) => 3 + (H - 6) * (1 - (v - min) / spenn);
+  const pts = serie.map((v, i) => `${x(i)},${y(v)}`).join(' ');
+  const positiv = serie[N - 1] >= 0;
+  const c = positiv ? '#0ea472' : '#e11d48';
+  const gid = positiv ? 'sparkHeroPos' : 'sparkHeroNeg';
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="h-[44px] w-[148px] shrink-0" aria-hidden>
+      <defs>
+        <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={c} stopOpacity="0.18" />
+          <stop offset="100%" stopColor={c} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <line x1="0" x2={W} y1={y(0)} y2={y(0)} stroke="rgba(0,0,0,0.10)" strokeWidth="1" strokeDasharray="2 3" />
+      <polygon points={`0,${y(0)} ${pts} ${W},${y(0)}`} fill={`url(#${gid})`} />
+      <polyline points={pts} fill="none" stroke={c} strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round" />
+      <circle cx={x(N - 1)} cy={y(serie[N - 1])} r="2.6" fill={c} />
+    </svg>
+  );
+};
+
+/* ── Graf 2026: lyse, avrundede søyler (inntektslag i toner) + glatte
+   spline-linjer med gradientareal. Krysset mellom inntekt og kostnad ER
+   break-even — markert med pille. Kapitalbunn og årsskiller like så. ── */
+
+// Catmull-Rom → kubisk bezier: glatt kurve gjennom alle punktene
+const glattSti = (pts) => {
+  if (pts.length < 2) return '';
+  let d = `M ${pts[0][0].toFixed(1)} ${pts[0][1].toFixed(1)}`;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[Math.max(0, i - 1)], p1 = pts[i], p2 = pts[i + 1], p3 = pts[Math.min(pts.length - 1, i + 2)];
+    const c1x = p1[0] + (p2[0] - p0[0]) / 6, c1y = p1[1] + (p2[1] - p0[1]) / 6;
+    const c2x = p2[0] - (p3[0] - p1[0]) / 6, c2y = p2[1] - (p3[1] - p1[1]) / 6;
+    d += ` C ${c1x.toFixed(1)} ${c1y.toFixed(1)}, ${c2x.toFixed(1)} ${c2y.toFixed(1)}, ${p2[0].toFixed(1)} ${p2[1].toFixed(1)}`;
+  }
+  return d;
+};
+
+// Liten SVG-pille med tekst — klemmes innenfor lerretet
+const GrafPille = ({ x, y, tekst, fill, W }) => {
+  const w = tekst.length * 5.3 + 14;
+  const rx = Math.max(4, Math.min(W - w - 4, x - w / 2));
+  return (
+    <g pointerEvents="none">
+      <rect x={rx} y={y - 9} width={w} height={17} rx="8.5" fill={fill} />
+      <text x={rx + w / 2} y={y + 3} fontSize="9" fontWeight="700" fill="#fff" textAnchor="middle">{tekst}</text>
+    </g>
+  );
+};
+
 const Graf = ({ m, startYm }) => {
   const [hov, setHov] = useState(null);
   const N = m.N;
-  const W = 960, H = 168, TOPP = 16;
+  const W = 960, H = 196, TOPP = 30;
   const maks = Math.max(...m.inntekt, ...m.kostSum, 1);
   const yS = (H - TOPP) / maks;
-  const bw = Math.max(5, (W / N) * 0.66);
-  const x = (i) => (W / N) * i + ((W / N) - bw) / 2;
-  const midt = (i) => x(i) + bw / 2;
+  const yV = (v) => H - v * yS;
+  const slot = W / N;
+  const bw = Math.max(4.5, slot * 0.54);
+  const x = (i) => slot * i + (slot - bw) / 2;
+  const midt = (i) => slot * i + slot / 2;
   const hopp = Math.max(1, Math.ceil(N / 10));
   const beIdx = m.sammendrag.breakEvenIdx;
+  const kapIdx = m.sammendrag.kapitalbehovIdx;
+  const innSti = glattSti(Array.from({ length: N }, (_, i) => [midt(i), yV(m.inntekt[i])]));
+  const kostSti = glattSti(Array.from({ length: N }, (_, i) => [midt(i), yV(m.kostSum[i])]));
+  const areal = N >= 2 ? `${innSti} L ${midt(N - 1).toFixed(1)} ${H} L ${midt(0).toFixed(1)} ${H} Z` : '';
   return (
     <div className="relative" data-testid="modell-graf">
-      <svg viewBox={`0 0 ${W} ${H + 20}`} className="w-full" style={{ height: 'auto' }} onMouseLeave={() => setHov(null)}>
-        {[0.25, 0.5, 0.75, 1].map((f) => (
+      <svg viewBox={`0 0 ${W} ${H + 22}`} className="w-full" style={{ height: 'auto' }} onMouseLeave={() => setHov(null)}>
+        <defs>
+          <linearGradient id="grafInntektFyll" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#0ea472" stopOpacity="0.12" />
+            <stop offset="100%" stopColor="#0ea472" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        {/* Nesten usynlige hjelpelinjer + diskré beløpsakser */}
+        {[0.33, 0.66, 1].map((f) => (
           <g key={f}>
-            <line x1="0" x2={W} y1={H - maks * f * yS} y2={H - maks * f * yS} stroke="#f0efec" strokeWidth="1" />
-            <text x="2" y={H - maks * f * yS - 3} fontSize="10" fill="#c2beb8">{kr0(maks * f)}</text>
+            <line x1="0" x2={W} y1={yV(maks * f)} y2={yV(maks * f)} stroke="#f2f1ee" strokeWidth="1" />
+            <text x="2" y={yV(maks * f) - 4} fontSize="9.5" fill="#cfcac2">{kr0(maks * f)}</text>
           </g>
         ))}
+        {/* Årsskiller — flerårsplanens rytme */}
+        {Array.from({ length: Math.floor((N - 1) / 12) }, (_, k) => (k + 1) * 12).map((i) => (
+          <g key={`aar-${i}`} pointerEvents="none">
+            <line x1={slot * i} x2={slot * i} y1="20" y2={H} stroke="#e5e2dc" strokeWidth="1" strokeDasharray="1 5" strokeLinecap="round" />
+            <text x={slot * i + 5} y="15" fontSize="8.5" fill="#b5b0a8" fontWeight="700" letterSpacing="1">ÅR {i / 12 + 1}</text>
+          </g>
+        ))}
+        {/* Hover-bakteppe */}
+        {hov !== null && <rect x={slot * hov + 1} y="20" width={slot - 2} height={H - 20} rx="6" fill="rgba(28,25,23,0.035)" pointerEvents="none" />}
+        {/* Søyler — inntektslagene i lyse toner, avrundet topp på øverste lag */}
         {Array.from({ length: N }, (_, i) => {
           const eksH = m.eksisterende[i] * yS;
           const reH = (m.reutleie?.[i] || 0) * yS;
           const modH = (m.vekst[i] + m.oppstart[i]) * yS;
           const dim = hov !== null && hov !== i;
+          const lag = [
+            { h: eksH, farge: '#a78bfa' },
+            { h: reH, farge: '#6ee7b7' },
+            { h: modH, farge: '#e7e1fb' },
+          ];
+          const sisteMedH = lag.map((l2, li) => (l2.h > 0.4 ? li : -1)).filter((li) => li >= 0).pop();
+          let yTop = H;
           return (
-            <g key={i} opacity={dim ? 0.4 : 1} style={{ transition: 'opacity 120ms' }}>
-              <rect x={x(i)} y={H - eksH} width={bw} height={Math.max(0, eksH)} rx="2" fill="#1c1917" opacity="0.9" />
-              {reH > 0 && <rect x={x(i)} y={H - eksH - reH} width={bw} height={Math.max(0, reH)} rx="2" fill="#8fd9be" />}
-              <rect x={x(i)} y={H - eksH - reH - modH} width={bw} height={Math.max(0, modH)} rx="2" fill="#ddd2f5" />
+            <g key={i} opacity={dim ? 0.4 : 1} style={{ transition: 'opacity 140ms' }}>
+              {lag.map((l2, li) => {
+                if (l2.h <= 0.4) return null;
+                yTop -= l2.h;
+                return <rect key={li} x={x(i)} y={yTop} width={bw} height={l2.h} rx={li === sisteMedH ? 3 : 1.5} fill={l2.farge} />;
+              })}
               {i % hopp === 0 && (
-                <text x={midt(i)} y={H + 15} textAnchor="middle" fontSize="11" fill="#a6a19a">{mndKort(ymPluss(startYm, i))}</text>
+                <text x={midt(i)} y={H + 15} textAnchor="middle" fontSize="10.5" fill="#b5b0a8">{mndKort(ymPluss(startYm, i))}</text>
               )}
-              <rect x={(W / N) * i} y="0" width={W / N} height={H} fill="transparent" onMouseEnter={() => setHov(i)} />
+              <rect x={slot * i} y="0" width={slot} height={H} fill="transparent" onMouseEnter={() => setHov(i)} />
             </g>
           );
         })}
-        {/* Inntektslinje og kostnadslinje — krysset ER break-even */}
-        <polyline points={Array.from({ length: N }, (_, i) => `${midt(i)},${H - m.inntekt[i] * yS}`).join(' ')}
-          fill="none" stroke="#0a7d55" strokeWidth="1.8" strokeLinejoin="round" pointerEvents="none" />
-        <polyline points={Array.from({ length: N }, (_, i) => `${midt(i)},${H - m.kostSum[i] * yS}`).join(' ')}
-          fill="none" stroke="#b3261e" strokeWidth="1.8" strokeLinejoin="round" pointerEvents="none" opacity="0.9" />
-        {/* Årsskiller — flerårsplanens rytme direkte i grafen */}
-        {Array.from({ length: Math.floor((N - 1) / 12) }, (_, k) => (k + 1) * 12).map((i) => (
-          <g key={`aar-${i}`} pointerEvents="none">
-            <line x1={(W / N) * i} x2={(W / N) * i} y1="4" y2={H} stroke="#d6d3cd" strokeWidth="1" strokeDasharray="2 4" />
-            <text x={(W / N) * i + 4} y="11" fontSize="9" fill="#a6a19a" fontWeight="700" letterSpacing="0.5">ÅR {i / 12 + 1}</text>
+        {/* Inntekt: glatt kurve med gradientareal · Kostnad: myk stiplet kurve */}
+        <path d={areal} fill="url(#grafInntektFyll)" pointerEvents="none" />
+        <path d={kostSti} fill="none" stroke="#f43f5e" strokeWidth="1.6" strokeDasharray="5 4" strokeLinecap="round" opacity="0.7" pointerEvents="none" />
+        <path d={innSti} fill="none" stroke="#0ea472" strokeWidth="2" strokeLinecap="round" pointerEvents="none" />
+        {/* Hover-guide + punkter på kurvene */}
+        {hov !== null && (
+          <g pointerEvents="none">
+            <circle cx={midt(hov)} cy={yV(m.inntekt[hov])} r="3.4" fill="#fff" stroke="#0ea472" strokeWidth="2" />
+            <circle cx={midt(hov)} cy={yV(m.kostSum[hov])} r="3" fill="#fff" stroke="#f43f5e" strokeWidth="1.8" />
           </g>
-        ))}
+        )}
         {/* Kapitalbunn — dypeste akkumulerte punkt = kapitalbehovet */}
-        {m.sammendrag.kapitalbehovIdx !== null && m.sammendrag.kapitalbehov > 0 && (() => {
-          const ki = m.sammendrag.kapitalbehovIdx;
-          const anker = ki < N * 0.18 ? 'start' : ki > N * 0.82 ? 'end' : 'middle';
-          return (
-            <g pointerEvents="none">
-              <line x1={midt(ki)} x2={midt(ki)} y1="18" y2={H} stroke="#b45309" strokeWidth="1" strokeDasharray="3 3" opacity="0.45" />
-              <circle cx={midt(ki)} cy={H} r="3.5" fill="#b45309" />
-              <text x={midt(ki) + (anker === 'start' ? 5 : anker === 'end' ? -5 : 0)} y="26" fontSize="9.5" fill="#b45309" fontWeight="700" textAnchor={anker}>
-                Kapitalbunn −{kr0(m.sammendrag.kapitalbehov)} kr
-              </text>
-            </g>
-          );
-        })()}
+        {kapIdx !== null && m.sammendrag.kapitalbehov > 0 && (
+          <g pointerEvents="none">
+            <line x1={midt(kapIdx)} x2={midt(kapIdx)} y1="30" y2={H} stroke="#d97706" strokeWidth="1" strokeDasharray="2 4" opacity="0.55" strokeLinecap="round" />
+            <circle cx={midt(kapIdx)} cy={H} r="3" fill="#d97706" />
+            <GrafPille W={W} x={midt(kapIdx)} y="30" tekst={`Kapitalbunn −${kr0(m.sammendrag.kapitalbehov)} kr`} fill="#b45309" />
+          </g>
+        )}
+        {/* Break-even — der inntektskurven krysser kostnadskurven */}
         {beIdx !== null && beIdx > 0 && (
           <g pointerEvents="none">
-            <line x1={midt(beIdx)} x2={midt(beIdx)} y1={H - m.inntekt[beIdx] * yS - 14} y2={H} stroke="#6d28d9" strokeWidth="1" strokeDasharray="3 3" opacity="0.5" />
-            <circle cx={midt(beIdx)} cy={H - m.inntekt[beIdx] * yS} r="4.5" fill="#fff" stroke="#6d28d9" strokeWidth="2" />
-            <text x={midt(beIdx) + 8} y={H - m.inntekt[beIdx] * yS - 8} fontSize="10" fill="#6d28d9" fontWeight="700">Break-even — herfra bærer driften seg selv</text>
+            <line x1={midt(beIdx)} x2={midt(beIdx)} y1={yV(m.inntekt[beIdx]) + 4} y2={H} stroke="#6d28d9" strokeWidth="1" strokeDasharray="2 4" opacity="0.5" strokeLinecap="round" />
+            <circle cx={midt(beIdx)} cy={yV(m.inntekt[beIdx])} r="4.5" fill="#fff" stroke="#6d28d9" strokeWidth="2" />
+            <GrafPille W={W} x={midt(beIdx)} y={Math.max(12, yV(m.inntekt[beIdx]) - 18)} tekst={`Break-even · ${mndKort(ymPluss(startYm, beIdx))}`} fill="#6d28d9" />
           </g>
         )}
       </svg>
       {hov !== null && (
-        <div className="pointer-events-none absolute top-0 z-20 w-[216px] -translate-x-1/2 rounded-[10px] bg-[#1c1917] px-3.5 py-3 text-[12px] leading-relaxed text-white shadow-xl"
+        <div className="pointer-events-none absolute top-0 z-20 w-[216px] -translate-x-1/2 rounded-[12px] bg-[#1c1917]/95 px-3.5 py-3 text-[12px] leading-relaxed text-white shadow-xl backdrop-blur-sm"
           style={{ left: `${Math.min(92, Math.max(8, ((hov + 0.5) / N) * 100))}%` }}>
           <p className="font-bold">{stor(mndLang(ymPluss(startYm, hov)))} · {Math.round(m.enheter[hov])} enheter</p>
           <div className="mt-1 space-y-0.5 text-white/85">
@@ -295,12 +382,12 @@ const Graf = ({ m, startYm }) => {
           </div>
         </div>
       )}
-      <div className="mt-1.5 flex flex-wrap items-center gap-4 text-[12.5px] text-[#8f8a82]">
-        <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-[2px] bg-[#1c1917]" /> Kontraktsfestet</span>
-        {(m.sammendrag.sumReutleie || 0) > 0 && <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-[2px] bg-[#8fd9be]" /> Forventet re-utleie</span>}
-        <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-[2px] bg-[#ddd2f5]" /> Modellert vekst</span>
-        <span className="flex items-center gap-1.5"><span className="h-[2px] w-4 rounded bg-[#0a7d55]" /> Inntekt</span>
-        <span className="flex items-center gap-1.5"><span className="h-[2px] w-4 rounded bg-[#b3261e]" /> Kostnader</span>
+      <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px] font-semibold">
+        <span className="flex items-center gap-1.5 rounded-full bg-[#f5f4f1] px-2.5 py-1 text-[#57534e]"><span className="h-2 w-2 rounded-full bg-[#a78bfa]" /> Kontraktsfestet</span>
+        {(m.sammendrag.sumReutleie || 0) > 0 && <span className="flex items-center gap-1.5 rounded-full bg-[#f5f4f1] px-2.5 py-1 text-[#57534e]"><span className="h-2 w-2 rounded-full bg-[#6ee7b7]" /> Forventet re-utleie</span>}
+        <span className="flex items-center gap-1.5 rounded-full bg-[#f5f4f1] px-2.5 py-1 text-[#57534e]"><span className="h-2 w-2 rounded-full bg-[#e7e1fb] ring-1 ring-black/[0.06]" /> Modellert vekst</span>
+        <span className="flex items-center gap-1.5 rounded-full bg-[#f5f4f1] px-2.5 py-1 text-[#57534e]"><span className="h-[2.5px] w-4 rounded-full bg-[#0ea472]" /> Inntekt</span>
+        <span className="flex items-center gap-1.5 rounded-full bg-[#f5f4f1] px-2.5 py-1 text-[#57534e]"><span className="h-[2.5px] w-4 rounded-full [background:repeating-linear-gradient(90deg,#f43f5e_0_4px,transparent_4px_7px)]" /> Kostnader</span>
       </div>
     </div>
   );
@@ -1587,7 +1674,7 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
             </span>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-2">
           {/* Forutsetningssett — velg scenario direkte fra topplinjen */}
           <div className="relative" data-testid="modell-scenariovalg">
             <button onClick={() => { setScenarioMenyAapen((v) => !v); setNyScenarioNavn(null); }} data-testid="modell-scenario-meny"
@@ -1694,7 +1781,7 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
                 data-testid="budsjett-investor-bryter"
                 className={`flex h-9 shrink-0 items-center gap-2 rounded-full px-3.5 text-[12.5px] font-medium transition-all ${investorSynlig ? 'bg-[#f0ebfa] text-[#6d28d9]' : 'bg-white text-[#8f8a82] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.08)] hover:text-[#57534e]'}`}>
                 {investorSynlig ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
-                {investorSynlig ? 'I investorrommet' : 'Ikke delt'}
+                <span className="hidden min-[440px]:block">{investorSynlig ? 'I investorrommet' : 'Ikke delt'}</span>
               </button>
               <button onClick={() => lagre()} disabled={lagrer || !skittent} data-testid="modell-lagre" className={`${KNAPP_PRIMAER} relative`}>
                 {lagrer ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : lagret ? <Check className="h-3.5 w-3.5" /> : null}
@@ -1890,19 +1977,40 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
 
         {/* ── Høyre: output ── */}
         <main className="min-w-0 flex-1">
-          {/* Nøkkeltall — diagnostiske. Responsivt grid: aldri avkuttede tall,
-              uansett om forutsetnings-panelet er åpent eller skjermen er smal. */}
-          <div className="grid grid-cols-2 gap-2 md:grid-cols-3 min-[1560px]:grid-cols-5" data-testid="modell-nokkeltall">
-            <Stat tittel="Resultat i perioden" verdi={kr(s.resultat)} farge={s.resultat >= 0 ? 'text-[#0a7d55]' : 'text-[#b3261e]'} testid="modell-resultat"
-              hoyre={<Sparkline serie={m.resultat} />} />
-            <Stat tittel="Resultat siste måned" verdi={`${kr0(m.resultat[sisteIdx])} kr`}
-              under={`fra ${kr0(m.resultat[0])} kr første måned`}
-              farge={m.resultat[sisteIdx] >= 0 ? 'text-[#0a7d55]' : 'text-[#b3261e]'} testid="modell-siste-mnd" />
-            <Stat tittel="Break-even" verdi={breakEvenVerdi} under={breakEvenUnder} testid="modell-breakeven" />
-            <Stat tittel="Kapitalbehov til break-even" verdi={be.ingen ? (s.kapitalbehov > 0 ? kr(s.kapitalbehov) : '—') : be.kapital > 0 ? kr(be.kapital) : 'Ingen'}
-              under={be.ingen ? 'maks. underskudd i perioden' : be.kapital > 0 ? 'akkumulert underskudd frem til krysset' : 'selvfinansiert fra start'}
-              farge={be.ingen || be.kapital > 0 ? 'text-[#1c1917]' : 'text-[#0a7d55]'} testid="modell-kapitalbehov" />
-            <Stat tittel="Kontraktsfestet" verdi={s.andelEksisterendePct === null ? '—' : `${s.andelEksisterendePct} %`} under="av inntekten i perioden" testid="modell-andel" />
+          {/* Nøkkeltall — bento: lys hero-flis (resultatet) + diagnostiske fliser.
+              Ett dominant tall, luftig og lyst — subtil lilla glød, ingen tunge flater. */}
+          <div className="grid grid-cols-1 gap-2.5 xl:grid-cols-12" data-testid="modell-nokkeltall">
+            <div className="relative overflow-hidden rounded-[18px] bg-white px-5 py-4 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)] xl:col-span-5">
+              <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(380px_190px_at_92%_-25%,rgba(139,92,246,0.10),transparent_62%)]" />
+              <div className="relative">
+                <p className="text-[10.5px] font-bold uppercase tracking-[0.09em] text-[#a6a19a]">Resultat i perioden</p>
+                <div className="mt-1.5 flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
+                  <p className={`text-[29px] font-bold leading-none tabular-nums tracking-[-0.02em] ${s.resultat >= 0 ? 'text-[#0a7d55]' : 'text-[#b3261e]'}`} style={heading} data-testid="modell-resultat">{kr(s.resultat)}</p>
+                  <SparkHero serie={m.resultat} />
+                </div>
+                <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+                  <span className="rounded-full bg-[#f5f4f1] px-2 py-[3px] text-[10.5px] font-semibold tabular-nums text-[#78716c]" data-testid="modell-siste-mnd">
+                    siste mnd {kr0(m.resultat[sisteIdx])} kr
+                  </span>
+                  <span className="rounded-full bg-[#f5f4f1] px-2 py-[3px] text-[10.5px] font-semibold tabular-nums text-[#78716c]">
+                    første mnd {kr0(m.resultat[0])} kr
+                  </span>
+                  {s.sumInntekt > 0 && (
+                    <span className="rounded-full bg-[#f0ebfa] px-2 py-[3px] text-[10.5px] font-semibold tabular-nums text-[#6d28d9]">
+                      margin {Math.round((s.resultat / s.sumInntekt) * 100)} %
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4 xl:col-span-7 xl:grid-cols-2">
+              <Stat tittel="Break-even" verdi={breakEvenVerdi} under={breakEvenUnder} testid="modell-breakeven" />
+              <Stat tittel="Kapitalbehov til break-even" verdi={be.ingen ? (s.kapitalbehov > 0 ? kr(s.kapitalbehov) : '—') : be.kapital > 0 ? kr(be.kapital) : 'Ingen'}
+                under={be.ingen ? 'maks. underskudd i perioden' : be.kapital > 0 ? 'akkumulert underskudd frem til krysset' : 'selvfinansiert fra start'}
+                farge={be.ingen || be.kapital > 0 ? 'text-[#1c1917]' : 'text-[#0a7d55]'} testid="modell-kapitalbehov" />
+              <Stat tittel="ARR ved slutt" verdi={s.arrExit ? kr(s.arrExit) : '—'} under="siste måneds inntekt × 12 — run-rate" farge="text-[#6d28d9]" testid="modell-arr" />
+              <Stat tittel="Kontraktsfestet" verdi={s.andelEksisterendePct === null ? '—' : `${s.andelEksisterendePct} %`} under="av inntekten i perioden" testid="modell-andel" />
+            </div>
           </div>
 
           {/* Årssammendrag — teleskopets øverste nivå: ett kort per planår med
@@ -1953,13 +2061,14 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
 
           {/* Graf — veien til break-even */}
           <div className="mt-2.5 rounded-[16px] bg-white p-4 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]">
+            <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.07em] text-[#a3a3a3]">Veien til break-even <span className="font-medium normal-case tracking-normal text-[#c2beb8]">· inntektslagene som søyler — linjene krysser i break-even</span></p>
             <Graf m={m} startYm={plan.startYm} />
           </div>
 
           {/* Finansmatrise */}
           <div className="mt-2.5 rounded-[16px] bg-white shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]">
             <div className="flex flex-wrap items-center justify-between gap-2 px-4 pb-1 pt-3.5">
-              <p className="text-[13.5px] font-medium text-[#8f8a82]">Resultatoppstilling <span className="text-[#c2beb8]">· beløp i kr · beregnet fra driverne</span></p>
+              <p className="text-[11px] font-bold uppercase tracking-[0.07em] text-[#a3a3a3]">Resultatoppstilling <span className="font-medium normal-case tracking-normal text-[#c2beb8]">· beløp i kr · beregnet fra driverne</span></p>
               <div className="flex items-center gap-0.5 rounded-[8px] bg-[#f0efec] p-0.5" data-testid="modell-visning">
                 {[...(antallMnd > 12 ? [['teleskop', 'Teleskop']] : []), ['mnd', 'Måned'], ['kvartal', 'Kvartal'], ...(antallMnd > 12 ? [['aar', 'År']] : [])].map(([v, l]) => (
                   <button key={v} onClick={() => setVisning(v)} data-testid={`modell-visning-${v}`}
@@ -2026,7 +2135,7 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
           <div className="mt-2.5 grid gap-2.5 lg:grid-cols-2 2xl:grid-cols-3">
             {/* Scenarioer — investorens egentlige risikospørsmål */}
             <div className="rounded-[16px] bg-white p-4 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]" data-testid="modell-scenarioer">
-              <p className="text-[13.5px] font-medium text-[#8f8a82]">Scenarioer</p>
+              <p className="text-[11px] font-bold uppercase tracking-[0.07em] text-[#a3a3a3]">Scenarioer</p>
               <p className="mt-0.5 text-[11.5px] text-[#a6a19a]">Hva om salget går halvparten — eller dobbelt — så fort? Beregnet på 36 mnd horisont.</p>
               <table className="mt-3 w-full text-[12.5px]">
                 <thead>
@@ -2069,7 +2178,7 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
 
             {/* Unit economics — sammendrag; full analyse bor på Enhetsøkonomi-siden */}
             <div className="rounded-[16px] bg-white p-4 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]" data-testid="modell-cac">
-              <p className="text-[13.5px] font-medium text-[#8f8a82]">Unit economics — ny enhet</p>
+              <p className="text-[11px] font-bold uppercase tracking-[0.07em] text-[#a3a3a3]">Unit economics — ny enhet</p>
               <div className="mt-3 space-y-1.5 text-[13px]">
                 <div className="flex justify-between"><span className="text-[#8f8a82]">Husleie</span><span className="font-medium text-[#57534e]">{kr0(sanert.snittleieNye)} kr/mnd</span></div>
                 <div className="flex justify-between"><span className="text-[#8f8a82]">Forvaltningshonorar</span><span className="font-medium text-[#57534e]">{kma(sanert.honorarPctNye)} %</span></div>
@@ -2109,7 +2218,7 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
 
             {/* Sensitivitet */}
             <div className="rounded-[16px] bg-white p-4 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)] lg:col-span-2 2xl:col-span-1" data-testid="modell-tornado">
-              <p className="text-[13.5px] font-medium text-[#8f8a82]">Sensitivitet — hva betyr mest?</p>
+              <p className="text-[11px] font-bold uppercase tracking-[0.07em] text-[#a3a3a3]">Sensitivitet — hva betyr mest?</p>
               <p className="mt-0.5 text-[11.5px] text-[#a6a19a]">Effekt på periodens resultat når hver driver endres ±10 %.</p>
               <TornadoListe m={m} sanert={sanert} fakta={fakta} antallMnd={antallMnd} startYm={plan.startYm} />
             </div>

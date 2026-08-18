@@ -6840,3 +6840,15 @@ agent_communication:
         -working: true
         -agent: "main"
         -comment: "Horisontvelger i editor-header. Bruker eksisterende GET plan/forslag (ingen backend-endring). Lokal antallMnd-state + lagret*-speil for korrekt Tilbakestill. Screenshot-verifisert på brukerens 12-mnd plan → 36 mnd (uten lagring): årsstripe, teleskoptabell, kapitalbunn-markør og bemanningsvarsel OK. Ingen backend-test nødvendig (kun frontend)."
+
+  - task: "Budsjettmodulen: 2026-modernisering (liste-kort, lys hero, moderne graf, tusenskiller-fiks) — frontend-only"
+    implemented: true
+    working: true
+    file: "/app/components/admin/BudsjettEnkel.js, /app/components/admin/BudsjettModell.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "main"
+        -comment: "Liste som kort-grid m/ badges og nøkkeltall; editor-nøkkeltall som lys bento-hero (bruker avviste mørk flis) + ARR-flis; Graf omskrevet (glatte kurver, gradientareal, lyse avrundede søyler, pill-markører for break-even/kapitalbunn, hover-guide); toolbar-wrap fikset mobil-overflow (116px→0); tusenskiller NBSP→U+202F. Alle testids bevart (modell-resultat/siste-mnd/breakeven/kapitalbehov/andel + ny modell-arr; budsjett-rad-*/ny-*). Screenshot-QA desktop+mobil OK. Ingen backend-endringer — backend-test ikke nødvendig."
