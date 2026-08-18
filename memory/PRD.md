@@ -641,3 +641,6 @@ Google Ads-styring via native REST API).
 - AVATARER OVERALT: profilbilder vises nå i chat (NavnAvatar m/ navnregister, 10 steder), saker og møter (Avatar-komponentene).
 - RESPONSIV BUDSJETT-COCKPIT: KPI-rad → responsivt kort-grid (clamp-fontstørrelse, aldri avkuttede tall); Forutsetninger blir bunn-ark m/ håndtak+Ferdig på <xl; rail auto-lukket på mobil ved oppstart.
 - Backend-testagent: 10/10 bestått (PDF, eierbok-xlsx, regresjon xlsx/mine/eierbok/users-avatar). Prod-endringer krever redeploy.
+
+## Feb 2026 (forts. 2) — Scenariosammenligning (A/B-duell)
+- «Sammenlign»-knapp i budsjett-cockpitens topplinje åpner fullskjerms ScenarioSammenligning (modulnivå-komponent i BudsjettModell.js): to velgere (Gjeldende forutsetninger + lagrede scenarioer, farge A=lilla/B=amber), KPI-duell m/ Δ-chips (grønn/rød etter hva som er bedre for B: tidligere break-even, lavere kapitalbehov, høyere resultat), to overlagte SVG-grafer (akkumulert resultat m/ break-even-prikker + enheter under forvaltning), driverdiff-tabell (kun felter som skiller settene, inkl. vekstplan/bemanningstrapp), årsvis tabell m/ Δ resultat. Fullt responsiv: mobil stabler KPI-rader m/ fargeprikker. Kun frontend — beregnes live m/ beregnInvestorModell/rensModellDrivere. Screenshot-verifisert desktop+mobil m/ midlertidige QAFIX-scenarioer (slettet etterpå — scenarioer:[] igjen).

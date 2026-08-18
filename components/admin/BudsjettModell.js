@@ -17,7 +17,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   ArrowLeft, ArrowRight, Trash2, RefreshCw, Loader2, Check, Eye, EyeOff, Plus, X, RotateCcw, ChevronDown,
-  SlidersHorizontal, TrendingUp, Scale, Users, Building2, Bookmark, HelpCircle, FileSpreadsheet, FileText,
+  SlidersHorizontal, TrendingUp, Scale, Users, Building2, Bookmark, HelpCircle, FileSpreadsheet, FileText, ArrowLeftRight,
 } from 'lucide-react';
 import Omvisning from '@/components/admin/Omvisning';
 import { beregnInvestorModell, rensModellDrivere, STANDARD_DRIVERE, skalerVekst } from '@/lib/budsjett-modell';
@@ -740,6 +740,279 @@ function VekstplanDrawer({ plan, fakta, drivere, readOnly, onLukk, onBruk }) {
   );
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   SCENARIOSAMMENLIGNING — fullskjerms A/B-duell mellom driversett.
+   Investorspørsmålet: «Hva skiller konservativt fra ambisiøst — i kroner,
+   måneder og enheter?» Alt beregnes live med samme motor som cockpiten.
+   ═══════════════════════════════════════════════════════════════════════════ */
+const FARGE_A = '#7c3aed';
+const FARGE_B = '#d97706';
+
+function SammenligningsGraf({ serieA, serieB, startYm, tittel, formatY, beA, beB }) {
+  const N = Math.max(serieA.length, serieB.length);
+  if (!N) return null;
+  const W = 720; const H = 230; const L = 6; const R = 6; const T = 12; const B = 26;
+  const alle = [...serieA, ...serieB, 0];
+  const maks = Math.max(...alle); const min = Math.min(...alle);
+  const spenn = (maks - min) || 1;
+  const x = (i) => L + ((W - L - R) * i) / Math.max(1, N - 1);
+  const y = (v) => T + (H - T - B) * (1 - (v - min) / spenn);
+  const sti = (serie) => serie.map((v, i) => `${i ? 'L' : 'M'} ${x(i).toFixed(1)} ${y(v).toFixed(1)}`).join(' ');
+  const hvert = Math.max(1, Math.ceil(N / 8));
+  return (
+    <div>
+      <p className="text-[10.5px] font-bold uppercase tracking-[0.09em] text-[#a6a19a]">{tittel}</p>
+      <svg viewBox={`0 0 ${W} ${H}`} className="mt-1.5 w-full" style={{ height: 'auto' }} role="img">
+        {[0.25, 0.5, 0.75].map((t) => (
+          <line key={t} x1={L} x2={W - R} y1={T + (H - T - B) * t} y2={T + (H - T - B) * t} stroke="#eceae5" strokeWidth="1" />
+        ))}
+        {min < 0 && maks > 0 && (
+          <line x1={L} x2={W - R} y1={y(0)} y2={y(0)} stroke="#c9c4bc" strokeWidth="1.2" strokeDasharray="3 3" />
+        )}
+        <path d={sti(serieB)} fill="none" stroke={FARGE_B} strokeWidth="2.4" strokeLinejoin="round" strokeLinecap="round" opacity="0.9" />
+        <path d={sti(serieA)} fill="none" stroke={FARGE_A} strokeWidth="2.6" strokeLinejoin="round" strokeLinecap="round" />
+        {beA !== null && beA >= 0 && beA < N && <circle cx={x(beA)} cy={y(serieA[beA])} r="4" fill={FARGE_A} stroke="#fff" strokeWidth="1.5" />}
+        {beB !== null && beB >= 0 && beB < N && <circle cx={x(beB)} cy={y(serieB[beB])} r="4" fill={FARGE_B} stroke="#fff" strokeWidth="1.5" />}
+        {Array.from({ length: N }).map((_, i) => (i % hvert === 0 ? (
+          <text key={i} x={x(i)} y={H - 8} textAnchor={i === 0 ? 'start' : 'middle'} fontSize="9.5" fill="#b3aca2">{mndKort(ymPluss(startYm, i))}</text>
+        ) : null))}
+        <text x={L + 2} y={T + 8} fontSize="9.5" fill="#b3aca2">{formatY(maks)}</text>
+        <text x={L + 2} y={H - B - 4} fontSize="9.5" fill="#b3aca2">{formatY(min)}</text>
+      </svg>
+    </div>
+  );
+}
+
+function ScenarioSammenligning({ plan, fakta, drivere, scenarioer, aktivtScenario, onLukk }) {
+  const alternativer = useMemo(() => ([
+    { id: 'gjeldende', navn: 'Gjeldende forutsetninger', drivere },
+    ...scenarioer.map((sc) => ({ id: sc.id, navn: sc.navn, drivere: sc.drivere })),
+  ]), [drivere, scenarioer]);
+  // Smart start: gjeldende mot første scenario som IKKE er det aktive settet
+  const [idA, setIdA] = useState('gjeldende');
+  const [idB, setIdB] = useState(() => {
+    const kandidat = scenarioer.find((sc) => sc.id !== aktivtScenario) || scenarioer[0];
+    return kandidat ? kandidat.id : 'gjeldende';
+  });
+  const altA = alternativer.find((a) => a.id === idA) || alternativer[0];
+  const altB = alternativer.find((a) => a.id === idB) || alternativer[0];
+  const sanA = useMemo(() => rensModellDrivere(altA.drivere), [altA]);
+  const sanB = useMemo(() => rensModellDrivere(altB.drivere), [altB]);
+  const mA = useMemo(() => beregnInvestorModell({ antallMnd: plan.antallMnd, fakta, drivere: sanA, startYm: plan.startYm }), [plan, fakta, sanA]);
+  const mB = useMemo(() => beregnInvestorModell({ antallMnd: plan.antallMnd, fakta, drivere: sanB, startYm: plan.startYm }), [plan, fakta, sanB]);
+  const N = plan.antallMnd;
+  const akkum = (serie) => serie.reduce((acc, v, i) => { acc.push((acc[i - 1] || 0) + v); return acc; }, []);
+  const akkA = useMemo(() => akkum(mA.resultat), [mA]);
+  const akkB = useMemo(() => akkum(mB.resultat), [mB]);
+  const beA = mA.sammendrag.breakEvenIdx ?? null;
+  const beB = mB.sammendrag.breakEvenIdx ?? null;
+  const krM = (n) => { const a = Math.abs(n); return a >= 1000000 ? `${kma((n / 1000000).toFixed(1))} mkr` : `${Math.round(n / 1000)} tkr`; };
+
+  // Lås bakgrunnsscroll mens duellen er åpen
+  useEffect(() => {
+    const forrige = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = forrige; };
+  }, []);
+
+  /* KPI-duell: [label, verdiFn, deltaFn, bedreNårB(delta)=>bool|null] */
+  const kpi = [
+    ['Resultat i perioden', (m) => kr(m.sammendrag.resultat), () => mB.sammendrag.resultat - mA.sammendrag.resultat, (d) => (d === 0 ? null : d > 0)],
+    ['Sum inntekter', (m) => kr(m.sammendrag.sumInntekt), () => mB.sammendrag.sumInntekt - mA.sammendrag.sumInntekt, (d) => (d === 0 ? null : d > 0)],
+    ['Sum kostnader', (m) => kr(m.sammendrag.sumKost), () => mB.sammendrag.sumKost - mA.sammendrag.sumKost, () => null],
+    ['Break-even', (m) => (m.sammendrag.breakEvenIdx !== null && m.sammendrag.breakEvenIdx !== undefined ? stor(mndLang(ymPluss(plan.startYm, m.sammendrag.breakEvenIdx))) : 'Utenfor perioden'),
+      () => (beA !== null && beB !== null ? beB - beA : null), (d) => (d === 0 ? null : d < 0), 'mnd'],
+    ['Kapitalbehov', (m) => (m.sammendrag.kapitalbehov > 0 ? kr(m.sammendrag.kapitalbehov) : 'Ingen'), () => mB.sammendrag.kapitalbehov - mA.sammendrag.kapitalbehov, (d) => (d === 0 ? null : d < 0)],
+    ['Enheter ved slutt', (m) => kr0(m.sammendrag.enheterVedSlutt), () => mB.sammendrag.enheterVedSlutt - mA.sammendrag.enheterVedSlutt, (d) => (d === 0 ? null : d > 0), 'stk'],
+    ['Resultat siste måned', (m) => kr(m.resultat[N - 1]), () => mB.resultat[N - 1] - mA.resultat[N - 1], (d) => (d === 0 ? null : d > 0)],
+  ];
+
+  /* Driverdiff — kun forutsetninger som faktisk skiller settene */
+  const DRIVER_FELT = [
+    ['nyePerMnd', 'Nye enheter/mnd (grunntakt)', (v) => kma(v)],
+    ['snittleieNye', 'Snittleie nye enheter', kr],
+    ['honorarPctNye', 'Honorarsats nye', (v) => `${kma(v)} %`],
+    ['oppstartPerEnhet', 'Oppstartshonorar', kr],
+    ['aarligChurnPct', 'Årlig churn', (v) => `${kma(v)} %`],
+    ['systemPerEnhet', 'Systemkostnad/enhet', kr],
+    ['enheterPerAarsverk', 'Enheter per årsverk', (v) => kma(v)],
+    ['aarslonn', 'Årslønn per årsverk', kr],
+    ['paslagPct', 'Arbeidsgiverpåslag', (v) => `${kma(v)} %`],
+    ['mfFast', 'Markedsføring fast/mnd', kr],
+    ['provisjonPerNyEnhet', 'Provisjon per ny enhet', kr],
+    ['adminFast', 'Administrasjon fast/mnd', kr],
+    ['andreFaste', 'Andre faste/mnd', kr],
+    ['maalUtnyttelsePct', 'Maks utnyttelse', (v) => `${kma(v)} %`],
+  ];
+  const vekstTekst = (d) => [`${kma(d.nyePerMnd)}/mnd fra start`, ...(d.vekstplan || []).map((f) => `${kma(f.perMnd)}/mnd fra mnd ${f.fraMnd}`)].join(' → ');
+  const diff = [
+    ...DRIVER_FELT.filter(([k]) => Number(sanA[k]) !== Number(sanB[k])).map(([k, label, fmt]) => [label, fmt(sanA[k]), fmt(sanB[k])]),
+    ...(JSON.stringify(sanA.vekstplan || []) !== JSON.stringify(sanB.vekstplan || []) ? [['Vekstplan (faser)', vekstTekst(sanA), vekstTekst(sanB)]] : []),
+    ...(JSON.stringify(sanA.bemanningstrinn || []) !== JSON.stringify(sanB.bemanningstrinn || []) ? [['Bemanningstrapp', `${(sanA.bemanningstrinn || []).length} trinn`, `${(sanB.bemanningstrinn || []).length} trinn`]] : []),
+  ];
+
+  /* Årsvis oppsummering */
+  const aarGrupper = useMemo(() => {
+    const g = new Map();
+    for (let i = 0; i < N; i += 1) {
+      const aar = ymDeler(ymPluss(plan.startYm, i)).y;
+      if (!g.has(aar)) g.set(aar, []);
+      g.get(aar).push(i);
+    }
+    return [...g.entries()];
+  }, [plan, N]);
+
+  const velger = (id, settId, farge, testid) => (
+    <label className="flex min-w-0 flex-1 items-center gap-2 rounded-[12px] bg-white px-3 py-2 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.07)] sm:flex-none sm:min-w-[220px]">
+      <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: farge }} />
+      <select
+        value={id} onChange={(e) => settId(e.target.value)} data-testid={testid}
+        className="w-full min-w-0 cursor-pointer bg-transparent text-[13px] font-semibold text-[#1c1917] outline-none"
+      >
+        {alternativer.map((a) => <option key={a.id} value={a.id}>{a.navn}</option>)}
+      </select>
+    </label>
+  );
+
+  const Delta = ({ d, enhet, bedre }) => {
+    if (d === null || d === undefined) return <span className="text-[11px] font-medium text-[#c2beb8]">—</span>;
+    const tekst = enhet === 'mnd' ? `${d > 0 ? '+' : ''}${d} mnd` : enhet === 'stk' ? `${d > 0 ? '+' : ''}${kr0(d)}` : `${d > 0 ? '+' : ''}${kr0(d)} kr`;
+    const tone = bedre === null ? 'bg-[#f4f2ee] text-[#8f8a82]' : bedre ? 'bg-[#e7f6ef] text-[#0a7d55]' : 'bg-[#fdf0ef] text-[#b3261e]';
+    return <span className={`inline-block whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-bold tabular-nums ${tone}`}>{tekst}</span>;
+  };
+
+  return (
+    <div className="fixed inset-0 z-[80] flex flex-col bg-[#f7f6f3]" data-testid="modell-sammenligning">
+      {/* Topplinje */}
+      <div className="border-b border-black/[0.06] bg-white/85 px-4 py-3 backdrop-blur sm:px-6">
+        <div className="flex items-center gap-2">
+          <div className="mr-auto min-w-0">
+            <p className="text-[15.5px] font-bold text-[#1c1917]" style={heading}>Scenariosammenligning</p>
+            <p className="truncate text-[11.5px] text-[#a6a19a]">{plan.navn} · {plan.antallMnd} måneder</p>
+          </div>
+          <button onClick={onLukk} data-testid="sammenlign-lukk"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#f4f2ee] text-[#57534e] transition-all hover:bg-[#ece9e3] active:scale-95">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="mt-2.5 flex flex-wrap items-center gap-2">
+          {velger(idA, setIdA, FARGE_A, 'sammenlign-velg-a')}
+          <span className="text-[11px] font-bold uppercase tracking-wide text-[#c2beb8]">mot</span>
+          {velger(idB, setIdB, FARGE_B, 'sammenlign-velg-b')}
+        </div>
+      </div>
+
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6" style={{ scrollbarWidth: 'thin' }}>
+        <div className="mx-auto max-w-[1160px] space-y-4">
+          {scenarioer.length === 0 && (
+            <div className="rounded-[14px] bg-[#fdf3e0] px-4 py-3 text-[12.5px] leading-relaxed text-[#7a5615] shadow-[inset_0_0_0_1px_rgba(154,107,28,0.14)]">
+              <span className="font-bold">Tips:</span> Lagre driversettene som navngitte scenarioer («Konservativt», «Ambisiøst») fra scenariomenyen i topplinjen — da får duellen faktisk to ulike sett å sammenligne.
+            </div>
+          )}
+
+          {/* KPI-duell */}
+          <div className="overflow-hidden rounded-[16px] bg-white shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]">
+            <div className="hidden grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1fr)_auto] items-center gap-x-3 border-b border-black/[0.05] bg-[#fbfaf8] px-4 py-2.5 sm:grid sm:px-5">
+              <span className="text-[10.5px] font-bold uppercase tracking-[0.09em] text-[#a6a19a]">Nøkkeltall</span>
+              <span className="flex min-w-0 items-center gap-1.5 text-[11px] font-bold" style={{ color: FARGE_A }}><span className="h-2 w-2 shrink-0 rounded-full" style={{ background: FARGE_A }} /><span className="truncate">{altA.navn}</span></span>
+              <span className="flex min-w-0 items-center gap-1.5 text-[11px] font-bold" style={{ color: FARGE_B }}><span className="h-2 w-2 shrink-0 rounded-full" style={{ background: FARGE_B }} /><span className="truncate">{altB.navn}</span></span>
+              <span className="text-right text-[10.5px] font-bold uppercase tracking-[0.09em] text-[#a6a19a]">Δ B−A</span>
+            </div>
+            {kpi.map(([label, verdiFn, deltaFn, bedreFn, enhet], i) => {
+              const d = deltaFn();
+              return (
+                <div key={label} className={i % 2 ? 'bg-[#fbfaf8]/70' : ''}>
+                  {/* ≥sm: fire kolonner på én linje */}
+                  <div className="hidden grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1fr)_auto] items-center gap-x-3 px-4 py-2.5 sm:grid sm:px-5">
+                    <span className="truncate text-[12.5px] font-medium text-[#57534e]">{label}</span>
+                    <span className="truncate text-[13.5px] font-bold tabular-nums text-[#1c1917]" style={heading}>{verdiFn(mA)}</span>
+                    <span className="truncate text-[13.5px] font-bold tabular-nums text-[#1c1917]" style={heading}>{verdiFn(mB)}</span>
+                    <span className="text-right"><Delta d={d} enhet={enhet} bedre={d === null ? null : bedreFn(d)} /></span>
+                  </div>
+                  {/* Mobil: stablet — etikett + Δ øverst, A/B under hverandre m/ fargeprikk */}
+                  <div className="px-4 py-2.5 sm:hidden">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="min-w-0 truncate text-[12px] font-semibold text-[#57534e]">{label}</span>
+                      <Delta d={d} enhet={enhet} bedre={d === null ? null : bedreFn(d)} />
+                    </div>
+                    <div className="mt-1 grid grid-cols-2 gap-2">
+                      <span className="flex min-w-0 items-center gap-1.5"><span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: FARGE_A }} /><span className="truncate text-[13px] font-bold tabular-nums text-[#1c1917]" style={heading}>{verdiFn(mA)}</span></span>
+                      <span className="flex min-w-0 items-center gap-1.5"><span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: FARGE_B }} /><span className="truncate text-[13px] font-bold tabular-nums text-[#1c1917]" style={heading}>{verdiFn(mB)}</span></span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Grafer */}
+          <div className="grid gap-4 lg:grid-cols-2">
+            <div className="rounded-[16px] bg-white px-4 py-4 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)] sm:px-5">
+              <SammenligningsGraf serieA={akkA} serieB={akkB} startYm={plan.startYm} tittel="Akkumulert resultat — prikk = break-even" formatY={krM} beA={beA} beB={beB} />
+            </div>
+            <div className="rounded-[16px] bg-white px-4 py-4 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)] sm:px-5">
+              <SammenligningsGraf serieA={mA.enheter} serieB={mB.enheter} startYm={plan.startYm} tittel="Enheter under forvaltning" formatY={(v) => kr0(v)} beA={null} beB={null} />
+            </div>
+          </div>
+
+          {/* Hva skiller settene */}
+          <div className="rounded-[16px] bg-white px-4 py-4 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)] sm:px-5" data-testid="sammenlign-diff">
+            <p className="text-[10.5px] font-bold uppercase tracking-[0.09em] text-[#a6a19a]">Forutsetninger som skiller settene</p>
+            {diff.length === 0 ? (
+              <p className="mt-2 text-[12.5px] text-[#8f8a82]">Settene er identiske — velg to ulike scenarioer for å se forskjellene.</p>
+            ) : (
+              <div className="mt-2 divide-y divide-black/[0.04]">
+                {diff.map(([label, a, b]) => (
+                  <div key={label} className="grid grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1fr)] items-baseline gap-x-3 py-2">
+                    <span className="truncate text-[12.5px] font-medium text-[#57534e]">{label}</span>
+                    <span className="min-w-0 break-words text-[12.5px] font-bold tabular-nums" style={{ color: FARGE_A }}>{a}</span>
+                    <span className="min-w-0 break-words text-[12.5px] font-bold tabular-nums" style={{ color: FARGE_B }}>{b}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Årsvis */}
+          <div className="overflow-x-auto rounded-[16px] bg-white shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]">
+            <table className="w-full min-w-[640px] text-[12.5px]">
+              <thead>
+                <tr className="border-b border-black/[0.05] bg-[#fbfaf8] text-left">
+                  <th className="px-4 py-2.5 text-[10.5px] font-bold uppercase tracking-[0.09em] text-[#a6a19a] sm:px-5">År</th>
+                  <th className="px-3 py-2.5 text-right text-[10.5px] font-bold uppercase tracking-[0.09em]" style={{ color: FARGE_A }}>Inntekter A</th>
+                  <th className="px-3 py-2.5 text-right text-[10.5px] font-bold uppercase tracking-[0.09em]" style={{ color: FARGE_B }}>Inntekter B</th>
+                  <th className="px-3 py-2.5 text-right text-[10.5px] font-bold uppercase tracking-[0.09em]" style={{ color: FARGE_A }}>Resultat A</th>
+                  <th className="px-3 py-2.5 text-right text-[10.5px] font-bold uppercase tracking-[0.09em]" style={{ color: FARGE_B }}>Resultat B</th>
+                  <th className="px-4 py-2.5 text-right text-[10.5px] font-bold uppercase tracking-[0.09em] text-[#a6a19a] sm:px-5">Δ resultat</th>
+                </tr>
+              </thead>
+              <tbody>
+                {aarGrupper.map(([aar, idx], i) => {
+                  const sumI = (m) => idx.reduce((a, ix) => a + m.inntekt[ix], 0);
+                  const sumR = (m) => idx.reduce((a, ix) => a + m.resultat[ix], 0);
+                  const dr = sumR(mB) - sumR(mA);
+                  return (
+                    <tr key={aar} className={i % 2 ? 'bg-[#fbfaf8]/70' : ''}>
+                      <td className="px-4 py-2.5 font-bold text-[#1c1917] sm:px-5">{aar}</td>
+                      <td className="px-3 py-2.5 text-right tabular-nums">{kr(sumI(mA))}</td>
+                      <td className="px-3 py-2.5 text-right tabular-nums">{kr(sumI(mB))}</td>
+                      <td className={`px-3 py-2.5 text-right font-semibold tabular-nums ${sumR(mA) >= 0 ? 'text-[#0a7d55]' : 'text-[#b3261e]'}`}>{kr(sumR(mA))}</td>
+                      <td className={`px-3 py-2.5 text-right font-semibold tabular-nums ${sumR(mB) >= 0 ? 'text-[#0a7d55]' : 'text-[#b3261e]'}`}>{kr(sumR(mB))}</td>
+                      <td className="px-4 py-2.5 text-right sm:px-5"><Delta d={dr} bedre={dr === 0 ? null : dr > 0} /></td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          <p className="pb-2 text-center text-[10.5px] text-[#c2beb8]">Δ-kolonnen viser B minus A — grønt betyr at B kommer bedre ut (tidligere break-even, lavere kapitalbehov, høyere resultat).</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function BudsjettModell({ plan, api, apiKey = '', readOnly = false, onTilbake, onEndret }) {
   const [navn, setNavn] = useState(plan.navn);
   const [investorSynlig, setInvestorSynlig] = useState(Boolean(plan.investorSynlig));
@@ -767,6 +1040,7 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
   const [tourAktiv, setTourAktiv] = useState(false);
   const [eksporterer, setEksporterer] = useState(false);
   const [eksportererPdf, setEksportererPdf] = useState(false);
+  const [visSammenlign, setVisSammenlign] = useState(false);
 
   /* Felles nedlaster for eksportformatene */
   const lastNedEksport = async (format, fallbackNavn, settBusy) => {
@@ -1213,6 +1487,13 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
             {eksportererPdf ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5 text-[#b91c1c]" />}
             <span className="hidden sm:block">PDF</span>
           </button>
+          {/* Scenariosammenligning — A/B-duell mellom driversett */}
+          <button onClick={() => setVisSammenlign(true)} data-testid="modell-sammenlign-knapp"
+            title="Sammenlign to scenarioer side ved side — resultat, break-even, kapitalbehov og drivere"
+            className="flex h-9 shrink-0 items-center gap-2 rounded-full bg-white px-3.5 text-[12.5px] font-medium text-[#57534e] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.08)] transition-all hover:text-[#1c1917]">
+            <ArrowLeftRight className="h-3.5 w-3.5 text-[#7c3aed]" />
+            <span className="hidden sm:block">Sammenlign</span>
+          </button>
           {/* Omvisning */}
           <button onClick={() => setTourAktiv(true)} data-testid="modell-tour-knapp" title="Omvisning — se hvordan budsjettmodellen henger sammen"
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-[#a6a19a] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.08)] transition-colors hover:text-[#1c1917]">
@@ -1580,6 +1861,16 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
         <VekstplanDrawer
           plan={plan} fakta={fakta} drivere={sanert} readOnly={readOnly}
           onLukk={() => setVekstAapen(false)} onBruk={brukVekstplan}
+        />
+      )}
+      {visSammenlign && (
+        <ScenarioSammenligning
+          plan={plan}
+          fakta={fakta}
+          drivere={drivere}
+          scenarioer={scenarioer}
+          aktivtScenario={aktivtScenario}
+          onLukk={() => setVisSammenlign(false)}
         />
       )}
       <Omvisning steg={tourSteg} aktiv={tourAktiv} onFerdig={tourFerdig} />
