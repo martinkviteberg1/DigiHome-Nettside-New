@@ -10,10 +10,10 @@
    API: GET/POST /api/admin/users, PUT/DELETE /api/admin/users/:id,
         POST /api/admin/users/:id/invite, POST /api/admin/impersonate (via forelder) */
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   Users, UserPlus, Plus, X, Check, Pencil, Trash2, Send, KeyRound, Loader2,
-  Search, Eye, ShieldCheck, Mail, ChevronDown,
+  Search, Eye, ShieldCheck, Mail, ChevronDown, Camera,
 } from 'lucide-react';
 
 const heading = { fontFamily: 'var(--font-heading)' };
@@ -90,6 +90,15 @@ function foreslaMoteTilgang(verv) {
 
 function Avatar({ member, size = 32 }) {
   const ini = String(member.name || member.email || '?').trim().slice(0, 1).toUpperCase();
+  if (member.avatar) {
+    return (
+      <img
+        src={member.avatar} alt=""
+        className="shrink-0 rounded-full object-cover"
+        style={{ width: size, height: size }}
+      />
+    );
+  }
   return (
     <div
       className="flex shrink-0 items-center justify-center rounded-full font-bold text-white"
@@ -98,6 +107,30 @@ function Avatar({ member, size = 32 }) {
       {ini}
     </div>
   );
+}
+
+// Les en bildefil → 256px kvadratisk JPEG-dataURL (senter-beskåret)
+function lesOgSkalerBilde(fil) {
+  return new Promise((resolve, reject) => {
+    if (!fil || !/^image\//.test(fil.type)) { reject(new Error('Velg en bildefil (JPG/PNG)')); return; }
+    const les = new FileReader();
+    les.onload = () => {
+      const img = new window.Image();
+      img.onload = () => {
+        const side = 256;
+        const c = document.createElement('canvas');
+        c.width = side; c.height = side;
+        const ctx = c.getContext('2d');
+        const min = Math.min(img.width, img.height);
+        ctx.drawImage(img, (img.width - min) / 2, (img.height - min) / 2, min, min, 0, 0, side, side);
+        resolve(c.toDataURL('image/jpeg', 0.85));
+      };
+      img.onerror = () => reject(new Error('Kunne ikke lese bildet'));
+      img.src = les.result;
+    };
+    les.onerror = () => reject(new Error('Kunne ikke lese filen'));
+    les.readAsDataURL(fil);
+  });
 }
 
 /* Chips-velger (grupper / møtetilgang) — samme mønster som i Saker. */
@@ -290,10 +323,11 @@ export default function Brukere({ apiKey, user, onImpersonate }) {
 
   // Redigering
   const [redigerId, setRedigerId] = useState(null);
-  const [red, setRed] = useState({ name: '', email: '', role: 'bruker', password: '', tittel: '', moteTilgang: [], moduler: [], groups: [] });
+  const [red, setRed] = useState({ name: '', email: '', role: 'bruker', password: '', tittel: '', moteTilgang: [], moduler: [], groups: [], avatar: undefined });
   const [lagrerEndring, setLagrerEndring] = useState(false);
   const [inviterer, setInviterer] = useState(null);
   const [imiterer, setImiterer] = useState(null); // person-id under oppstart av «se som»
+  const redBildeRef = useRef(null);
 
   const api = useCallback(
     (sti, opts) => fetch(`/api/admin/${sti}${sti.includes('?') ? '&' : '?'}key=${encodeURIComponent(apiKey)}`, opts),
@@ -378,6 +412,7 @@ export default function Brukere({ apiKey, user, onImpersonate }) {
     try {
       const payload = { name: red.name.trim(), email: red.email.trim(), role: red.role, tittel: red.tittel.trim(), moteTilgang: red.moteTilgang, moduler: red.moduler, groups: red.groups };
       if (red.password) payload.password = red.password;
+      if (red.avatar !== undefined) payload.avatar = red.avatar;
       const r = await api(`users/${id}`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -619,7 +654,7 @@ export default function Brukere({ apiKey, user, onImpersonate }) {
                   </button>
                 )}
                 <button
-                  onClick={() => { setRedigerId(m.id); setRed({ name: m.name, email: m.email || '', role: m.role || 'bruker', password: '', tittel: m.tittel || '', moteTilgang: Array.isArray(m.moteTilgang) ? m.moteTilgang : [], moduler: Array.isArray(m.moduler) ? m.moduler : [], groups: Array.isArray(m.groups) ? m.groups : [] }); }}
+                  onClick={() => { setRedigerId(m.id); setRed({ name: m.name, email: m.email || '', role: m.role || 'bruker', password: '', tittel: m.tittel || '', moteTilgang: Array.isArray(m.moteTilgang) ? m.moteTilgang : [], moduler: Array.isArray(m.moduler) ? m.moduler : [], groups: Array.isArray(m.groups) ? m.groups : [], avatar: undefined }); }}
                   data-testid={`member-edit-${m.id}`}
                   className="rounded-lg p-2 text-[#bbb] hover:bg-[#f3f2f0] hover:text-[#555]"
                 >
@@ -678,6 +713,42 @@ export default function Brukere({ apiKey, user, onImpersonate }) {
               </div>
             )}
           >
+            <div className="mb-4 flex items-center gap-3 rounded-xl border border-black/[0.06] bg-[#fafaf8] p-3">
+              <input
+                ref={redBildeRef} type="file" accept="image/*" className="hidden" data-testid="red-avatar-input"
+                onChange={async (e) => {
+                  const fil = e.target.files && e.target.files[0];
+                  e.target.value = '';
+                  if (!fil) return;
+                  try { const d = await lesOgSkalerBilde(fil); setRed((p) => ({ ...p, avatar: d })); }
+                  catch (er) { visToast(er.message, 'feil'); }
+                }}
+              />
+              <button
+                type="button" onClick={() => redBildeRef.current && redBildeRef.current.click()}
+                className="group relative shrink-0" title="Last opp profilbilde" data-testid="red-avatar-btn"
+              >
+                {(red.avatar !== undefined ? red.avatar : m.avatar) ? (
+                  <img src={red.avatar !== undefined ? red.avatar : m.avatar} alt="" className="h-12 w-12 rounded-full object-cover shadow" />
+                ) : (
+                  <Avatar member={{ ...m, avatar: '' }} size={48} />
+                )}
+                <span className="absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-[#0a0a0a] text-white shadow transition-transform group-hover:scale-110"><Camera className="h-2.5 w-2.5" /></span>
+              </button>
+              <div className="min-w-0 flex-1">
+                <p className="text-[12.5px] font-semibold text-[#1a1a1a]">Profilbilde</p>
+                <p className="text-[11px] text-[#a3a3a3]">Vises i personlister, chat og organisasjonskart — brukeren kan også endre det selv under «Min profil»</p>
+              </div>
+              {(red.avatar !== undefined ? red.avatar : m.avatar) && (
+                <button
+                  type="button" onClick={() => setRed((p) => ({ ...p, avatar: '' }))}
+                  className="shrink-0 rounded-lg px-2 py-1.5 text-[11.5px] font-semibold text-[#b5b5b5] hover:bg-rose-50 hover:text-rose-600"
+                  data-testid="red-avatar-fjern"
+                >
+                  Fjern
+                </button>
+              )}
+            </div>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               <input value={red.name} onChange={(e) => setRed((p) => ({ ...p, name: e.target.value }))} placeholder="Navn" data-testid="red-name-input" className={felt} />
               <input value={red.email} onChange={(e) => setRed((p) => ({ ...p, email: e.target.value }))} placeholder="E-post" data-testid="red-email-input" className={felt} />

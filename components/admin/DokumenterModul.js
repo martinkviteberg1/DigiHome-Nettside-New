@@ -37,6 +37,8 @@ const SYN_ETIKETT = { styret: 'Styret', investorer: 'Investorer', alle: 'Alle in
 export default function DokumenterModul({ apiKey, user }) {
   const [tab, setTab] = useState('dokumenter'); // 'dokumenter' | 'signering'
   const [jobber, setJobber] = useState([]);
+  const [mine, setMine] = useState([]); // runder som venter på DIN signatur
+  const [pollInfo, setPollInfo] = useState(null); // {sist, neste} — Posten-polling
   const [dokumenter, setDokumenter] = useState([]);
   const [arkiv, setArkiv] = useState([]);
   const [oppsett, setOppsett] = useState(null);
@@ -63,14 +65,15 @@ export default function DokumenterModul({ apiKey, user }) {
 
   const hentAlt = useCallback(async () => {
     try {
-      const [rj, rd, ra, ro] = await Promise.all([
-        api('signering/jobber'), api('dokumenter'), api('dokumentarkiv'), api('signering/oppsett'),
+      const [rj, rd, ra, ro, rm] = await Promise.all([
+        api('signering/jobber'), api('dokumenter'), api('dokumentarkiv'), api('signering/oppsett'), api('signering/mine'),
       ]);
-      const [jj, jd, ja, jo] = await Promise.all([rj.json(), rd.json(), ra.json(), ro.json()]);
-      if (jj.ok) setJobber(jj.jobber || []);
+      const [jj, jd, ja, jo, jm] = await Promise.all([rj.json(), rd.json(), ra.json(), ro.json(), rm.json()]);
+      if (jj.ok) { setJobber(jj.jobber || []); setPollInfo(jj.poll || null); }
       if (jd.ok) setDokumenter(jd.filer || []);
       if (ja.ok) setArkiv(ja.filer || []);
       if (jo.ok) setOppsett(jo.oppsett || null);
+      if (jm.ok) setMine(jm.ventende || []);
     } catch (e) { /* stille */ }
     setLastet(true);
   }, [api]);
@@ -209,13 +212,13 @@ export default function DokumenterModul({ apiKey, user }) {
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex rounded-[9px] border border-black/[0.07] bg-[#f7f6f3] p-0.5">
           {[
-            ['dokumenter', 'Dokumenter', null],
-            ['signering', 'Signering', antall.I_GANG || null],
-          ].map(([k, l, badge]) => (
+            ['dokumenter', 'Dokumenter', null, false],
+            ['signering', 'Signering', mine.length || antall.I_GANG || null, mine.length > 0],
+          ].map(([k, l, badge, deg]) => (
             <button key={k} onClick={() => setTab(k)} data-testid={`dokumenter-tab-${k}`}
               className={`flex items-center gap-1.5 rounded-[7px] px-3 py-1.5 text-[12.5px] font-semibold transition-all ${tab === k ? 'bg-white text-[#0a0a0a] shadow-sm' : 'text-[#a8a29a] hover:text-[#57534e]'}`}>
               {l}
-              {badge ? <span className="rounded-full bg-[#f4f0fb] px-1.5 py-px text-[10px] font-bold tabular-nums text-[#7c3aed]">{badge}</span> : null}
+              {badge ? <span className={`rounded-full px-1.5 py-px text-[10px] font-bold tabular-nums ${deg ? 'bg-amber-100 text-amber-700' : 'bg-[#f4f0fb] text-[#7c3aed]'}`}>{badge}</span> : null}
             </button>
           ))}
         </div>
@@ -280,7 +283,48 @@ export default function DokumenterModul({ apiKey, user }) {
                 : 'Virksomhetssertifikat mangler — signering er ikke tilgjengelig'}
             </span>
             {antall.I_GANG > 0 && <span className="flex items-center gap-1.5 font-medium text-[#7c3aed]"><Clock className="h-3 w-3" /> {antall.I_GANG} runde{antall.I_GANG === 1 ? '' : 'r'} pågår</span>}
+            {pollInfo?.sist && (
+              <span className="flex items-center gap-1.5" title={pollInfo.neste ? `Neste sjekk tidligst ${new Date(pollInfo.neste).toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit' })}` : ''} data-testid="signering-pollinfo">
+                <RefreshCw className="h-3 w-3" /> Statussjekk mot Posten {new Date(pollInfo.sist).toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            )}
           </div>
+
+          {/* ── Venter på DIN signatur ──────────────────────────────────────── */}
+          {mine.length > 0 && (
+            <div className="mt-4" data-testid="signering-mine">
+              <p className="flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-[0.1em] text-amber-600">
+                <PenLine className="h-3 w-3" /> Venter på din signatur · {mine.length}
+              </p>
+              <div className="mt-2 space-y-2">
+                {mine.map((m) => (
+                  <div key={m.jobbId} data-testid={`signering-min-${m.jobbId}`}
+                    className="flex flex-col gap-3 rounded-2xl border border-amber-200/80 bg-gradient-to-br from-amber-50/70 via-white to-white p-4 sm:flex-row sm:items-center sm:gap-4 sm:p-4">
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100/80">
+                      <PenLine className="text-amber-700" style={{ height: 18, width: 18 }} />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[14px] font-semibold text-[#0a0a0a]">{m.tittel}</span>
+                      <span className="mt-0.5 block text-[11.5px] text-[#a8a29a]">
+                        {m.av ? <>Sendt av {m.av} · </> : ''}frist <span className="font-semibold text-[#78716c]">{fmtDato(m.frist)}</span> · {m.signert}/{m.antall} har signert
+                      </span>
+                      {!m.paaTur && (
+                        <span className="mt-1 block text-[11.5px] font-medium text-amber-700">Signeres i rekkefølge — du får e-post når det er din tur</span>
+                      )}
+                    </span>
+                    {m.paaTur && m.lenke ? (
+                      <a href={m.lenke} target="_blank" rel="noopener noreferrer" data-testid={`signering-signernaa-${m.jobbId}`}
+                        className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-full bg-[#0a0a0a] px-5 text-[13px] font-semibold text-white transition-colors hover:bg-black/85">
+                        Signer med BankID <ChevronRight className="h-3.5 w-3.5" />
+                      </a>
+                    ) : m.paaTur ? (
+                      <span className="shrink-0 text-[11.5px] font-medium text-[#a8a29a]">Bruk lenken i e-posten din</span>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Nytt dokument til signering */}
           <div className="mt-4">

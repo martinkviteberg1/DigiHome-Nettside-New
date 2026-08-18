@@ -449,6 +449,21 @@ function NyTransaksjonModal({ apiKey, selskap, klasser, eiere, capTable, harStif
   const [lokaleEiere, setLokaleEiere] = useState(eiere);
   const [visNyEier, setVisNyEier] = useState(false);
   const [nyEierNavn, setNyEierNavn] = useState('');
+  const [nyEierEpost, setNyEierEpost] = useState('');
+  // Portalbrukere til hurtigvalg ved ny aksjonær
+  const [brukereNT, setBrukereNT] = useState([]);
+  useEffect(() => {
+    if (!visNyEier || brukereNT.length) return;
+    let alive = true;
+    (async () => {
+      try {
+        const r = await fetch(`/api/admin/users?key=${encodeURIComponent(apiKey)}`);
+        const j = await r.json();
+        if (alive && j.ok) setBrukereNT(j.members || []);
+      } catch (e) {}
+    })();
+    return () => { alive = false; };
+  }, [visNyEier]); // eslint-disable-line react-hooks/exhaustive-deps
   const [nyEierType, setNyEierType] = useState('person');
 
   // Stiftelse/emisjon: poster
@@ -489,12 +504,14 @@ function NyTransaksjonModal({ apiKey, selskap, klasser, eiere, capTable, harStif
 
   const opprettEier = async () => {
     if (!nyEierNavn.trim()) return;
+    const eierBody = { navn: nyEierNavn.trim(), type: nyEierType };
+    if (nyEierEpost.trim()) eierBody.epost = nyEierEpost.trim();
     const r = await fetch(`/api/admin/selskap/eier?key=${encodeURIComponent(apiKey)}`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ navn: nyEierNavn.trim(), type: nyEierType }),
+      body: JSON.stringify(eierBody),
     });
     const j = await r.json();
-    if (j.ok) { setLokaleEiere((l) => [...l, j.eier].sort((a, b) => a.navn.localeCompare(b.navn))); setNyEierNavn(''); setVisNyEier(false); }
+    if (j.ok) { setLokaleEiere((l) => [...l, j.eier].sort((a, b) => a.navn.localeCompare(b.navn))); setNyEierNavn(''); setNyEierEpost(''); setVisNyEier(false); }
     else setFeilM(j.error || 'Kunne ikke opprette aksjonæren');
   };
 
@@ -690,6 +707,29 @@ function NyTransaksjonModal({ apiKey, selskap, klasser, eiere, capTable, harStif
           {visNyEier && (
             <div className="rounded-[14px] bg-[#f0ebfa]/60 p-3.5" data-testid="eb-ny-eier-panel">
               <label className={lbl}>Ny aksjonær</label>
+              {(() => {
+                const navnSett = new Set(lokaleEiere.map((e) => String(e.navn || '').toLowerCase().trim()));
+                const forslag = brukereNT.filter((b) => b.name && !navnSett.has(String(b.name).toLowerCase().trim()));
+                if (!forslag.length) return null;
+                return (
+                  <div className="mb-2 flex flex-wrap gap-1.5" data-testid="eb-ny-eier-brukervalg">
+                    {forslag.slice(0, 8).map((b) => {
+                      const aktiv = nyEierNavn === b.name;
+                      return (
+                        <button key={b.id} type="button"
+                          onClick={() => { if (aktiv) { setNyEierNavn(''); setNyEierEpost(''); } else { setNyEierNavn(b.name); setNyEierEpost(b.email || ''); setNyEierType('person'); } }}
+                          className={`flex items-center gap-1.5 rounded-full py-1 pl-1 pr-2.5 text-[11px] font-semibold transition-all active:scale-[0.97] ${aktiv ? 'bg-[#1c1917] text-white' : 'bg-white text-[#57534e] hover:bg-[#faf9f7]'}`}
+                          style={aktiv ? {} : inpStil}>
+                          {b.avatar
+                            ? <img src={b.avatar} alt="" className="h-5 w-5 rounded-full object-cover" />
+                            : <span className="flex h-5 w-5 items-center justify-center rounded-full text-[8px] font-bold text-white" style={{ background: avatarFarge(b.name) }}>{initialer(b.name)}</span>}
+                          {b.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
               <div className="flex gap-2">
                 <input value={nyEierNavn} onChange={(e) => setNyEierNavn(e.target.value)} placeholder="Navn (person eller selskap)" className={inp} style={inpStil} data-testid="eb-ny-eier-navn" />
                 <select value={nyEierType} onChange={(e) => setNyEierType(e.target.value)} className="rounded-[12px] bg-[#faf9f7] px-2.5 text-[12px] outline-none" style={inpStil}>
@@ -727,6 +767,23 @@ function EiereModal({ apiKey, eiere, onLukk, onEndret }) {
   const [rediger, setRediger] = useState(null); // {id?, navn, type, orgnr, epost}
   const [feilM, setFeilM] = useState('');
   const [lagrer, setLagrer] = useState(false);
+  // Portalbrukere til hurtigvalg ved ny aksjonær
+  const [brukere, setBrukere] = useState([]);
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const r = await fetch(`/api/admin/users?key=${encodeURIComponent(apiKey)}`);
+        const j = await r.json();
+        if (alive && j.ok) setBrukere(j.members || []);
+      } catch (e) {}
+    })();
+    return () => { alive = false; };
+  }, [apiKey]);
+  const brukerForslag = useMemo(() => {
+    const navnSett = new Set(liste.map((e) => String(e.navn || '').toLowerCase().trim()));
+    return brukere.filter((b) => b.name && !navnSett.has(String(b.name).toLowerCase().trim()));
+  }, [brukere, liste]);
 
   const lagre = async () => {
     setFeilM(''); setLagrer(true);
@@ -785,6 +842,28 @@ function EiereModal({ apiKey, eiere, onLukk, onEndret }) {
         )}
         {rediger && (
           <div className="mt-4 space-y-3 rounded-[16px] bg-[#f0ebfa]/50 p-4">
+            {!rediger.id && brukerForslag.length > 0 && (
+              <div data-testid="eb-eier-brukervalg">
+                <label className={lbl}>Hent fra brukerne</label>
+                <div className="flex flex-wrap gap-1.5">
+                  {brukerForslag.slice(0, 8).map((b) => {
+                    const aktiv = rediger.navn === b.name && rediger.epost === (b.email || '');
+                    return (
+                      <button key={b.id} type="button"
+                        onClick={() => setRediger((r) => (aktiv ? { ...r, navn: '', epost: '' } : { ...r, navn: b.name, epost: b.email || '', type: 'person' }))}
+                        data-testid={`eb-eier-bruker-${b.id}`}
+                        className={`flex items-center gap-1.5 rounded-full py-1 pl-1 pr-2.5 text-[11.5px] font-semibold transition-all active:scale-[0.97] ${aktiv ? 'bg-[#1c1917] text-white' : 'bg-white text-[#57534e] hover:bg-[#faf9f7]'}`}
+                        style={aktiv ? {} : inpStil}>
+                        {b.avatar
+                          ? <img src={b.avatar} alt="" className="h-5 w-5 rounded-full object-cover" />
+                          : <span className="flex h-5 w-5 items-center justify-center rounded-full text-[8.5px] font-bold text-white" style={{ background: avatarFarge(b.name) }}>{initialer(b.name)}</span>}
+                        {b.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
             <div className="grid grid-cols-[1fr_auto] gap-2">
               <input value={rediger.navn} onChange={(e) => setRediger((r) => ({ ...r, navn: e.target.value }))} placeholder="Navn" className={inp} style={inpStil} data-testid="eb-eier-navn" />
               <select value={rediger.type} onChange={(e) => setRediger((r) => ({ ...r, type: e.target.value }))} className="rounded-[12px] bg-[#faf9f7] px-2.5 text-[12px] outline-none" style={inpStil}>

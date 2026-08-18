@@ -653,6 +653,37 @@ function NyRolleModal({ apiKey, selskaper, personer, onLukk, onLagret }) {
   const [gruppe, setGruppe] = useState('ledelse');
   const [lagrer, setLagrer] = useState(false);
   const [feil, setFeil] = useState('');
+  // Portalbrukere til hurtigvalg — ny person kan hentes rett fra brukerlisten
+  const [brukere, setBrukere] = useState([]);
+  const [valgtBruker, setValgtBruker] = useState(null); // {name,email,tittel,avatar}
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const r = await fetch(`/api/admin/users?key=${encodeURIComponent(apiKey)}`);
+        const j = await r.json();
+        if (alive && j.ok) setBrukere(j.members || []);
+      } catch (e) {}
+    })();
+    return () => { alive = false; };
+  }, [apiKey]);
+
+  // Brukere som ikke allerede finnes som person i kartet (match på navn)
+  const brukerForslag = useMemo(() => {
+    const navnSett = new Set(personer.map((p) => String(p.navn || '').toLowerCase().trim()));
+    return brukere.filter((b) => b.name && !navnSett.has(String(b.name).toLowerCase().trim()));
+  }, [brukere, personer]);
+
+  const velgBruker = (b) => {
+    if (valgtBruker && valgtBruker.email === b.email && valgtBruker.name === b.name) {
+      setValgtBruker(null); setNyttNavn('');
+      return;
+    }
+    setValgtBruker(b);
+    setNyttNavn(b.name);
+    if (!rolleNavn.trim() && b.tittel) setRolleNavn(b.tittel);
+  };
 
   const lagre = async () => {
     setFeil('');
@@ -662,8 +693,16 @@ function NyRolleModal({ apiKey, selskaper, personer, onLukk, onLagret }) {
     try {
       let pid = personId;
       if (!pid) {
+        // Ny person — beriket med e-post/tittel/bilde hvis hentet fra brukerlisten
+        const erFraBruker = valgtBruker && valgtBruker.name === nyttNavn.trim();
+        const personBody = { navn: nyttNavn.trim() };
+        if (erFraBruker) {
+          if (valgtBruker.email) personBody.epost = valgtBruker.email;
+          if (valgtBruker.tittel) personBody.tittel = valgtBruker.tittel;
+          if (valgtBruker.avatar) personBody.bilde = valgtBruker.avatar;
+        }
         const rp = await fetch(`/api/admin/selskap/person?key=${encodeURIComponent(apiKey)}`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ navn: nyttNavn.trim() }),
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(personBody),
         });
         const jp = await rp.json();
         if (!jp.ok) throw new Error(jp.error || 'Kunne ikke opprette personen');
@@ -706,13 +745,37 @@ function NyRolleModal({ apiKey, selskaper, personer, onLukk, onLagret }) {
           </div>
           <div>
             <label className={lbl}>Person</label>
-            <select value={personId} onChange={(e) => setPersonId(e.target.value)} className={inp} style={inpStil} data-testid="org-rolle-person-velger">
+            <select value={personId} onChange={(e) => { setPersonId(e.target.value); if (e.target.value) { setValgtBruker(null); setNyttNavn(''); } }} className={inp} style={inpStil} data-testid="org-rolle-person-velger">
               <option value="">Ny person …</option>
               {personer.filter((p) => !p.erEnhet).map((p) => <option key={p.id} value={p.id}>{p.navn}</option>)}
             </select>
             {!personId && (
-              <input value={nyttNavn} onChange={(e) => setNyttNavn(e.target.value)} placeholder="Fullt navn på den nye personen"
-                className={`${inp} mt-2`} style={inpStil} data-testid="org-rolle-nytt-navn" />
+              <>
+                <input value={nyttNavn} onChange={(e) => { setNyttNavn(e.target.value); if (valgtBruker && e.target.value !== valgtBruker.name) setValgtBruker(null); }} placeholder="Fullt navn på den nye personen"
+                  className={`${inp} mt-2`} style={inpStil} data-testid="org-rolle-nytt-navn" />
+                {brukerForslag.length > 0 && (
+                  <div className="mt-2" data-testid="org-rolle-brukervalg">
+                    <p className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.08em] text-[#c2beb8]">Eller hent fra brukerne</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {brukerForslag.slice(0, 8).map((b) => {
+                        const aktiv = valgtBruker && valgtBruker.email === b.email && valgtBruker.name === b.name;
+                        return (
+                          <button key={b.id} type="button" onClick={() => velgBruker(b)}
+                            data-testid={`org-rolle-bruker-${b.id}`}
+                            className={`flex items-center gap-1.5 rounded-full py-1 pl-1 pr-2.5 text-[11.5px] font-semibold transition-all active:scale-[0.97] ${aktiv ? 'bg-[#1c1917] text-white' : 'bg-[#faf9f7] text-[#57534e] hover:bg-[#f1efe9]'}`}
+                            style={aktiv ? {} : inpStil}>
+                            {b.avatar
+                              ? <img src={b.avatar} alt="" className="h-5 w-5 rounded-full object-cover" />
+                              : <span className="flex h-5 w-5 items-center justify-center rounded-full text-[8.5px] font-bold text-white" style={{ background: avatarFarge(b.name) }}>{initialer(b.name)}</span>}
+                            {b.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {valgtBruker && <p className="mt-1.5 text-[10.5px] text-[#a6a19a]">E-post{valgtBruker.avatar ? ', bilde' : ''}{valgtBruker.tittel ? ' og verv' : ''} hentes automatisk fra brukerkontoen</p>}
+                  </div>
+                )}
+              </>
             )}
           </div>
           <div>

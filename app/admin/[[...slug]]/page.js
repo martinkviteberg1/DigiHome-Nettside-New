@@ -8,7 +8,7 @@ import {
   Command, Search, CornerDownLeft, LayoutTemplate, Crosshair, TrendingUp, Wallet,
   Globe, ExternalLink, PenLine, Mail, Home, History, Landmark, Wand2, Layers, UserPlus,
   ClipboardCheck, CalendarDays, ArrowLeft, KeyRound, Check, User, Eye, EyeOff,
-  PanelLeftClose, PanelLeftOpen, Target, Scale, Radar, Network, BookMarked,
+  PanelLeftClose, PanelLeftOpen, Target, Scale, Radar, Network, BookMarked, Camera,
 } from 'lucide-react';
 import Brukere from '@/components/admin/Brukere';
 import Salgsradar from '@/components/admin/Salgsradar';
@@ -272,6 +272,26 @@ export default function AdminPage({ params }) {
   const [taskStats, setTaskStats] = useState({ open: 0, overdue: 0 });
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  // Eget profilbilde til sidemenyen — hentes fra personlisten (matcher på
+  // e-post) og oppdateres når «Min profil» lagres/lukkes.
+  const [minAvatar, setMinAvatar] = useState('');
+  useEffect(() => {
+    if (!token || !user) { setMinAvatar(''); return undefined; }
+    if (user.avatar !== undefined) { setMinAvatar(user.avatar || ''); return undefined; }
+    let alive = true;
+    (async () => {
+      try {
+        const r = await fetch(`/api/admin/users?key=${encodeURIComponent(token)}`);
+        const j = await r.json();
+        if (alive && j.ok) {
+          const epost = ((user && user.email) || '').toLowerCase();
+          const meg = (j.members || []).find((m) => (m.email || '').toLowerCase() === epost);
+          setMinAvatar((meg && meg.avatar) || '');
+        }
+      } catch (e) {}
+    })();
+    return () => { alive = false; };
+  }, [token, user, profileOpen]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   // Desktop-sidebar kan slås sammen til en smal ikonlist (persisteres).
   const [collapsed, setCollapsed] = useState(false);
@@ -671,11 +691,11 @@ export default function AdminPage({ params }) {
           <div className="flex flex-col items-center gap-1.5 py-1">
             <button
               onClick={() => { setProfileOpen(true); setSidebarOpen(false); }}
-              title="Min profil — navn, farge og passord"
+              title="Min profil — navn, bilde, farge og passord"
               data-testid="profile-open-btn"
-              className="h-9 w-9 rounded-full bg-[#cf97fc] text-[#0a0a0a] flex items-center justify-center text-[14px] font-bold hover:opacity-90 transition-opacity"
+              className="h-9 w-9 rounded-full bg-[#cf97fc] text-[#0a0a0a] flex items-center justify-center text-[14px] font-bold hover:opacity-90 transition-opacity overflow-hidden"
             >
-              {initials}
+              {minAvatar ? <img src={minAvatar} alt="" className="h-full w-full object-cover" /> : initials}
             </button>
             <button onClick={logout} title="Logg ut" className="text-white/40 hover:text-rose-400 transition-colors p-1.5"><LogOut className="w-4 h-4" /></button>
           </div>
@@ -683,11 +703,13 @@ export default function AdminPage({ params }) {
         <div className="flex items-center gap-1 px-2 py-2">
           <button
             onClick={() => { setProfileOpen(true); setSidebarOpen(false); }}
-            title="Min profil — navn, farge og passord"
+            title="Min profil — navn, bilde, farge og passord"
             data-testid="profile-open-btn"
             className="flex items-center gap-3 flex-1 min-w-0 rounded-lg -mx-1 px-1 py-1 text-left hover:bg-white/[0.06] transition-colors"
           >
-            <div className="h-9 w-9 rounded-full bg-[#cf97fc] text-[#0a0a0a] flex items-center justify-center text-[14px] font-bold shrink-0">{initials}</div>
+            <div className="h-9 w-9 rounded-full bg-[#cf97fc] text-[#0a0a0a] flex items-center justify-center text-[14px] font-bold shrink-0 overflow-hidden">
+              {minAvatar ? <img src={minAvatar} alt="" className="h-full w-full object-cover" /> : initials}
+            </div>
             <div className="min-w-0 flex-1">
               <p className="text-white text-[13px] font-semibold truncate">{(user && user.name) || (user && user.email)}</p>
               <p className="text-white/35 text-[11px]">{ROLLE_NAVN[(user && user.role) || 'admin'] || 'Admin'} · Min profil</p>
@@ -1398,14 +1420,17 @@ const PROFIL_FARGER = ['#8B5CF6', '#0EA5E9', '#F59E0B', '#10B981', '#EF4444', '#
 function ProfilModal({ token, user, onClose, onUpdated }) {
   const [name, setName] = useState((user && user.name) || '');
   const [color, setColor] = useState('');
+  const [avatar, setAvatar] = useState(''); // gjeldende/valgt bilde (dataURL)
+  const [avatarEndret, setAvatarEndret] = useState(false);
   const [curPw, setCurPw] = useState('');
   const [pw1, setPw1] = useState('');
   const [pw2, setPw2] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [okMsg, setOkMsg] = useState('');
+  const bildeRef = useRef(null);
 
-  // Hent egen farge (og navn hvis tomt) fra personlisten — matcher på e-post.
+  // Hent egen farge/bilde (og navn hvis tomt) fra personlisten — matcher på e-post.
   useEffect(() => {
     let alive = true;
     (async () => {
@@ -1418,12 +1443,39 @@ function ProfilModal({ token, user, onClose, onUpdated }) {
           if (meg) {
             setColor(meg.color || '');
             setName((prev) => prev || meg.name || '');
+            setAvatar((prev) => (prev ? prev : (meg.avatar || '')));
           }
         }
       } catch (e) {}
     })();
     return () => { alive = false; };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Velg bilde → skaler til 256px kvadrat klient-side → liten JPEG-dataURL
+  const velgBilde = (e) => {
+    const fil = e.target.files && e.target.files[0];
+    if (!fil) return;
+    if (!/^image\//.test(fil.type)) { setErr('Velg en bildefil (JPG/PNG)'); return; }
+    const les = new FileReader();
+    les.onload = () => {
+      const img = new window.Image();
+      img.onload = () => {
+        const side = 256;
+        const c = document.createElement('canvas');
+        c.width = side; c.height = side;
+        const ctx = c.getContext('2d');
+        const min = Math.min(img.width, img.height);
+        ctx.drawImage(img, (img.width - min) / 2, (img.height - min) / 2, min, min, 0, 0, side, side);
+        setAvatar(c.toDataURL('image/jpeg', 0.85));
+        setAvatarEndret(true);
+        setErr('');
+      };
+      img.onerror = () => setErr('Kunne ikke lese bildet');
+      img.src = les.result;
+    };
+    les.readAsDataURL(fil);
+    e.target.value = '';
+  };
 
   // Esc lukker
   useEffect(() => {
@@ -1445,6 +1497,7 @@ function ProfilModal({ token, user, onClose, onUpdated }) {
     try {
       const body = { name: name.trim() };
       if (color) body.color = color;
+      if (avatarEndret) body.avatar = avatar || '';
       if (pw1) { body.password = pw1; body.currentPassword = curPw; }
       const r = await fetch(`/api/admin/auth/profile?key=${encodeURIComponent(token)}`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
@@ -1475,12 +1528,27 @@ function ProfilModal({ token, user, onClose, onUpdated }) {
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 py-4">
-          {/* Identitet */}
+          {/* Identitet + profilbilde */}
           <div className="flex items-center gap-3">
-            <div className="h-12 w-12 rounded-full text-white flex items-center justify-center text-[18px] font-bold shrink-0" style={{ background: color || '#cf97fc' }}>{initialer}</div>
-            <div className="min-w-0">
+            <input ref={bildeRef} type="file" accept="image/*" className="hidden" onChange={velgBilde} data-testid="profile-avatar-input" />
+            <button
+              type="button" onClick={() => bildeRef.current && bildeRef.current.click()}
+              className="group relative shrink-0" title="Last opp profilbilde"
+              data-testid="profile-avatar-btn"
+            >
+              {avatar ? (
+                <img src={avatar} alt="" className="h-14 w-14 rounded-full object-cover shadow" />
+              ) : (
+                <div className="h-14 w-14 rounded-full text-white flex items-center justify-center text-[19px] font-bold" style={{ background: color || '#cf97fc' }}>{initialer}</div>
+              )}
+              <span className="absolute -bottom-0.5 -right-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-[#0a0a0a] text-white shadow transition-transform group-hover:scale-110"><Camera className="w-3 h-3" /></span>
+            </button>
+            <div className="min-w-0 flex-1">
               <p className="text-[14px] font-semibold text-[#1a1a1a] truncate">{user && user.email}</p>
               <p className="text-[12px] text-[#999]">{ROLLE_NAVN[(user && user.role) || 'admin'] || 'Admin'} — e-post og rolle endres av administrator</p>
+              {avatar
+                ? <button type="button" onClick={() => { setAvatar(''); setAvatarEndret(true); }} className="mt-1 text-[11px] font-medium text-[#b5b5b5] hover:text-rose-500" data-testid="profile-avatar-fjern">Fjern bildet</button>
+                : <button type="button" onClick={() => bildeRef.current && bildeRef.current.click()} className="mt-1 text-[11px] font-medium text-[#8b5cf6] hover:underline">Last opp profilbilde</button>}
             </div>
           </div>
 

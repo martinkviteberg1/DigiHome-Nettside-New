@@ -2102,6 +2102,14 @@ async function ensurePersonMigration(db) {
 }
 
 // Personliste uten hemmeligheter + harPassord-flagg (om kontoen kan logge inn).
+// Profilbilde: liten kvadratisk dataURL (skaleres til 256px klient-side).
+// Validerer format og størrelse — maks ~300 kB streng (≈220 kB bilde).
+function gyldigAvatar(v) {
+  return typeof v === 'string'
+    && v.length <= 300000
+    && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(v);
+}
+
 async function hentPersoner(db) {
   await ensurePersonMigration(db);
   const rader = await db.collection('admin_users').find({}).sort({ createdAt: 1 }).toArray();
@@ -2112,6 +2120,7 @@ async function hentPersoner(db) {
     color: u.color || TASK_FARGER[i % TASK_FARGER.length],
     role: u.role || 'admin',
     tittel: u.tittel || '',
+    avatar: u.avatar || '',
     groups: Array.isArray(u.groups) ? u.groups.filter((g) => SAK_GRUPPER.includes(g)) : [],
     moteTilgang: Array.isArray(u.moteTilgang) ? u.moteTilgang : [],
     moduler: Array.isArray(u.moduler) ? u.moduler : [],
@@ -2654,12 +2663,19 @@ async function handleRoute(request, { params }) {
         const tourKey = String(body.tourSett).trim().toLowerCase().slice(0, 40);
         if (/^[a-z0-9-]{2,40}$/.test(tourKey)) {
           await db.collection('admin_users').updateOne({ id: meg.id }, { $addToSet: { tourSett: tourKey } });
-          if (body.name === undefined && body.password === undefined && body.color === undefined) {
+          if (body.name === undefined && body.password === undefined && body.color === undefined && body.avatar === undefined) {
             return cors(NextResponse.json({ ok: true }));
           }
         }
       }
       if (body.color !== undefined && /^#[0-9a-fA-F]{6}$/.test(String(body.color))) set.color = body.color;
+      // Eget profilbilde: dataURL fra klienten (skaleres til 256px der) —
+      // tom streng fjerner bildet.
+      if (body.avatar !== undefined) {
+        if (body.avatar === '' || body.avatar === null) set.avatar = '';
+        else if (gyldigAvatar(body.avatar)) set.avatar = body.avatar;
+        else return cors(NextResponse.json({ ok: false, error: 'Ugyldig profilbilde — bruk JPG/PNG (maks ~200 kB)' }, { status: 400 }));
+      }
       if (body.password !== undefined && body.password) {
         const pw = String(body.password);
         if (pw.length < 8) return cors(NextResponse.json({ ok: false, error: 'Passord må ha minst 8 tegn' }, { status: 400 }));
@@ -2676,7 +2692,7 @@ async function handleRoute(request, { params }) {
       const member = (await hentPersoner(db)).find((m) => m.id === meg.id) || null;
       return cors(NextResponse.json({
         ok: true, member,
-        user: { email: meg.email || '', name: set.name || meg.name || '', role: meg.role || 'admin' },
+        user: { email: meg.email || '', name: set.name || meg.name || '', role: meg.role || 'admin', avatar: set.avatar !== undefined ? set.avatar : (meg.avatar || '') },
       }));
     }
 
@@ -3071,6 +3087,11 @@ async function handleRoute(request, { params }) {
         set.email = e;
       }
       if (body.color !== undefined && /^#[0-9a-fA-F]{6}$/.test(String(body.color))) set.color = body.color;
+      if (body.avatar !== undefined) {
+        if (body.avatar === '' || body.avatar === null) set.avatar = '';
+        else if (gyldigAvatar(body.avatar)) set.avatar = body.avatar;
+        else return cors(NextResponse.json({ ok: false, error: 'Ugyldig profilbilde — bruk JPG/PNG (maks ~200 kB)' }, { status: 400 }));
+      }
       if (body.role !== undefined && !erOwner && ['admin', 'bruker', 'partner', 'eier', 'investor'].includes(body.role)) set.role = body.role;
       // Verv/tittel (Styreleder, Daglig leder …) og møtetilgang per møtetype
       if (body.tittel !== undefined) set.tittel = String(body.tittel || '').trim().slice(0, 60);
@@ -5976,8 +5997,10 @@ async function handleRoute(request, { params }) {
       const jbFilIds = [...new Set(alleJb.map((j) => j.filId))];
       const jbFiler = await db.collection('task_files').find({ id: { $in: jbFilIds } }, { projection: { _id: 0, id: 1, name: 1, type: 1, size: 1, versjon: 1, laast: 1 } }).toArray();
       const jbFil = Object.fromEntries(jbFiler.map((f) => [f.id, f]));
+      const jbPollCfg = await db.collection('signering_config').findOne({ id: 'posten' }, { projection: { sistPoll: 1, nestePoll: 1 } });
       return cors(NextResponse.json({
         ok: true,
+        poll: { sist: (jbPollCfg && jbPollCfg.sistPoll) || null, neste: (jbPollCfg && jbPollCfg.nestePoll) || null },
         jobber: alleJb.map((j) => ({
           ...j,
           // aldri signer-URL-er/sid-hemmeligheter ut i lister
@@ -6002,6 +6025,44 @@ async function handleRoute(request, { params }) {
         }
       }
       return cors(NextResponse.json({ ok: true, kontakter: [...abSett.values()].slice(0, 30) }));
+    }
+    // Personlig signeringsoversikt: runder som venter på DIN signatur.
+    // Tilgjengelig for ALLE innloggede (matcher på kontoens e-postadresse) —
+    // returnerer signatarens egen lenke (jobbId+sid) slik at «Signer nå»
+    // fungerer rett fra portalen. Andres sid-er lekker aldri.
+    if (route === '/admin/signering/mine' && method === 'GET') {
+      if (!innloggetAuthed(request)) return cors(NextResponse.json({ error: 'Uautorisert' }, { status: 401 }));
+      const sesMn = sessionFra(request);
+      const megMn = sesMn && sesMn.sub ? await db.collection('admin_users').findOne({ id: sesMn.sub }, { projection: { _id: 0, email: 1 } }) : null;
+      const epostMn = String((megMn && megMn.email) || '').toLowerCase().trim();
+      if (!epostMn) return cors(NextResponse.json({ ok: true, ventende: [] }));
+      const jbMn = await db.collection(SIGN_JOBB_COLL)
+        .find({ status: 'I_GANG', 'signatarer.epost': epostMn }, { projection: { _id: 0 } })
+        .sort({ opprettet: -1 })
+        .limit(20)
+        .toArray();
+      const { signatarerPaaTur: paaTurMn } = await import('@/lib/signering');
+      const ventende = [];
+      for (const jMn of jbMn) {
+        const minMn = (jMn.signatarer || []).find((s) => s.epost === epostMn && s.status === 'VENTER');
+        if (!minMn) continue;
+        const erPaaTur = paaTurMn(jMn).some((s) => s.sid && s.sid === minMn.sid) || (!minMn.sid && paaTurMn(jMn).some((s) => s.epost === epostMn));
+        ventende.push({
+          jobbId: jMn.id,
+          tittel: jMn.tittel,
+          filNavn: jMn.filNavn,
+          melding: jMn.melding || '',
+          av: jMn.av || '',
+          opprettet: jMn.opprettet,
+          frist: new Date(new Date(jMn.opprettet).getTime() + (Number(jMn.dagerFrist) || 10) * 86400000).toISOString(),
+          antall: (jMn.signatarer || []).length,
+          signert: (jMn.signatarer || []).filter((s) => s.status === 'SIGNERT').length,
+          paaTur: erPaaTur,
+          // Kun direkteflyt har personlig DigiHome-signeringslenke
+          lenke: jMn.flyt === 'direkte' && minMn.sid ? `/signering/dokument/${jMn.id}/${minMn.sid}` : null,
+        });
+      }
+      return cors(NextResponse.json({ ok: true, ventende }));
     }
     // Frittstående dokumenter (Dokumenter-hubben, uten sak)
     if (route === '/admin/dokumenter' && method === 'GET') {
