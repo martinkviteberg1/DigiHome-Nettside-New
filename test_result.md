@@ -6828,3 +6828,15 @@ agent_communication:
     -message: "Flerårsbudsjett-funksjonen er implementert (motor + UI + Excel + PDF). Backend-endringene som trenger test: budsjett-motoren (via plan-API), Excel-/PDF-eksport og forslag med 36 mnd. Se detaljert testplan i tasken over. Viktigst: bakoverkompatibilitet — eksisterende planer skal gi identiske tall (B21=0 i deres Excel), og QA-planen som opprettes MÅ slettes til slutt."
     -agent: "testing"
     -message: "✅ FLERÅRSBUDSJETT TESTING COMPLETE - ALL 7 TESTS PASSED (100% success rate). Comprehensive verification of multi-year budget feature working PERFECTLY. Tested: (1) Forslag endpoint with 36 months returns correct arrays (sikret/enheterSerie/bortfall), (2) Created QA plan with drivers (indeksPct:3, lonnsvekstPct:4, kostInflasjonPct:3), (3) Verified drivers persisted correctly, (4) Excel export verified with openpyxl - all 4 sheets present (Månedsbudsjett with POWER formulas in B8/B9, Forutsetninger with B21=3/B22=4/B23=3, Årsoversikt with ARR column, Sammendrag with per-year rows), (5) PDF export valid (58.1 kB, starts with '%PDF'), (6) Backward compatibility verified - all 3 user plans intact ('Investormodell 2027–2028' with B21=0 in xlsx, 'Neste 12 mnd (rullerende)', 'Budsjett DigiHome'), (7) Cleanup successful - QA plan deleted, user plans preserved. CRITICAL SAFETY: Did NOT modify or delete existing user plans. All safety rules followed. Backend test created at /app/backend_test_fleraarsbudsjett.py for future regression testing. Response times: <5s per endpoint. No issues found."
+
+  - task: "Endre horisont på lagrede budsjettplaner (1/2/3 år) — frontend-only"
+    implemented: true
+    working: true
+    file: "/app/components/admin/BudsjettModell.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "main"
+        -comment: "Horisontvelger i editor-header. Bruker eksisterende GET plan/forslag (ingen backend-endring). Lokal antallMnd-state + lagret*-speil for korrekt Tilbakestill. Screenshot-verifisert på brukerens 12-mnd plan → 36 mnd (uten lagring): årsstripe, teleskoptabell, kapitalbunn-markør og bemanningsvarsel OK. Ingen backend-test nødvendig (kun frontend)."

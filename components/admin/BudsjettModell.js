@@ -1140,6 +1140,12 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
   const [drivere, setDrivere] = useState(() => ({ ...rensModellDrivere(plan.drivere) }));
   const [lagretDrivere, setLagretDrivere] = useState(() => rensModellDrivere(plan.drivere));
   const [fakta, setFakta] = useState(plan.fakta || { eksisterende: [], enheter: [], oppdatertAt: null });
+  // Horisont kan endres lokalt (utvid 12 → 24/36 mnd) — persisteres først ved
+  // «Lagre». lagret*-speilene gjør at «Tilbakestill» ruller tilbake korrekt
+  // også etter en mellomlagring (plan-prop'en er da foreldet).
+  const [antallMnd, setAntallMnd] = useState(plan.antallMnd);
+  const [lagretAntallMnd, setLagretAntallMnd] = useState(plan.antallMnd);
+  const [lagretFakta, setLagretFakta] = useState(plan.fakta || { eksisterende: [], enheter: [], oppdatertAt: null });
   const [aapne, setAapne] = useState({ portefolje: true, unit: false, org: false, faste: false, aarlig: false });
   const [railAapen, setRailAapen] = useState(true);
   // Under xl er panelet et bunn-ark som dekker innholdet — start derfor lukket
@@ -1274,12 +1280,13 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
   const [lagret, setLagret] = useState(false);
   const [feil, setFeil] = useState('');
   const [henterFakta, setHenterFakta] = useState(false);
+  const [endrerHorisont, setEndrerHorisont] = useState(0);
   const [visning, setVisning] = useState(plan.antallMnd > 12 ? 'teleskop' : 'mnd');
   const [sletteBekreft, setSletteBekreft] = useState(false);
 
   const m = useMemo(
-    () => beregnInvestorModell({ antallMnd: plan.antallMnd, fakta, drivere, startYm: plan.startYm }),
-    [plan.antallMnd, plan.startYm, fakta, drivere],
+    () => beregnInvestorModell({ antallMnd, fakta, drivere, startYm: plan.startYm }),
+    [antallMnd, plan.startYm, fakta, drivere],
   );
   const sanert = m.drivere;
   const s = m.sammendrag;
@@ -1300,7 +1307,12 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
     setSkittent(true);
     setVekstAapen(false);
   };
-  const tilbakestill = () => { setDrivere({ ...lagretDrivere }); setSkittent(false); };
+  const tilbakestill = () => {
+    setDrivere({ ...lagretDrivere });
+    setAntallMnd(lagretAntallMnd);
+    setFakta(lagretFakta);
+    setSkittent(false);
+  };
 
   const lagre = useCallback(async (overstyr = {}) => {
     if (lagrer) return;
@@ -1311,7 +1323,7 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
         body: {
           id: plan.id, type: 'modell',
           navn: (overstyr.navn ?? navn) || 'Budsjett',
-          startYm: plan.startYm, antallMnd: plan.antallMnd,
+          startYm: plan.startYm, antallMnd,
           status: plan.status, notat: plan.notat || '',
           investorSynlig: overstyr.investorSynlig ?? investorSynlig,
           drivere: overstyr.drivere ?? drivere,
@@ -1324,12 +1336,14 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
         setLagret(true); setTimeout(() => setLagret(false), 1500);
       } else {
         setLagretDrivere(rensModellDrivere(overstyr.drivere ?? drivere));
+        setLagretAntallMnd(antallMnd);
+        setLagretFakta(overstyr.fakta ?? fakta);
         setSkittent(false); setLagret(true); setTimeout(() => setLagret(false), 1800);
       }
       onEndret?.();
     } catch (e) { setFeil(e.message); }
     setLagrer(false);
-  }, [api, plan, navn, investorSynlig, drivere, fakta, scenarioer, lagrer, onEndret]);
+  }, [api, plan, navn, investorSynlig, drivere, fakta, scenarioer, lagrer, onEndret, antallMnd]);
 
   /* ── Scenariohandlinger ── */
   const velgScenario = (sc) => {
@@ -1369,7 +1383,7 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
     if (henterFakta) return;
     setHenterFakta(true); setFeil('');
     try {
-      const f = await api(`plan/forslag?startYm=${plan.startYm}&antallMnd=${plan.antallMnd}`);
+      const f = await api(`plan/forslag?startYm=${plan.startYm}&antallMnd=${antallMnd}`);
       setFakta({
         eksisterende: (f.sikret || []).map((x) => Math.max(0, Math.round(Number(x) || 0))),
         enheter: (f.enheterSerie || []).map((x) => Math.max(0, Math.round(Number(x) || 0))),
@@ -1379,6 +1393,27 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
       setSkittent(true);
     } catch (e) { setFeil(e.message); }
     setHenterFakta(false);
+  };
+
+  /* ── Endre horisont: utvid (eller krymp) planen til 12/24/36 mnd.
+        Henter FRISKE porteføljefakta for hele den nye horisonten — utvidelsen
+        står på ekte kontraktstall, ikke padding. Persisteres først ved «Lagre». ── */
+  const endreHorisont = async (ny) => {
+    if (ny === antallMnd || endrerHorisont || readOnly) return;
+    setEndrerHorisont(ny); setFeil('');
+    try {
+      const f = await api(`plan/forslag?startYm=${plan.startYm}&antallMnd=${ny}`);
+      setFakta({
+        eksisterende: (f.sikret || []).map((x) => Math.max(0, Math.round(Number(x) || 0))),
+        enheter: (f.enheterSerie || []).map((x) => Math.max(0, Math.round(Number(x) || 0))),
+        bortfall: (f.bortfall || []).map((x) => Math.max(0, Math.round(Number(x) || 0))),
+        oppdatertAt: new Date().toISOString(),
+      });
+      setAntallMnd(ny);
+      setVisning(ny > 12 ? 'teleskop' : 'mnd');
+      setSkittent(true);
+    } catch (e) { setFeil(e.message); }
+    setEndrerHorisont(0);
   };
 
   const slett = async () => {
@@ -1393,13 +1428,13 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
       const kap = -Math.min(...m.akkumulert.slice(0, s.breakEvenIdx + 1), 0);
       return { idx: s.breakEvenIdx, enheter: Math.round(m.enheter[s.breakEvenIdx]), kapital: Math.round(kap), utenfor: false };
     }
-    if (plan.antallMnd >= 36) return { ingen: true };
+    if (antallMnd >= 36) return { ingen: true };
     const m2 = beregnInvestorModell({ antallMnd: 36, fakta: utvidFakta(fakta, 36), drivere: sanert, startYm: plan.startYm });
     const idx = m2.sammendrag.breakEvenIdx;
     if (idx === null) return { ingen: true };
     const kap = -Math.min(...m2.akkumulert.slice(0, idx + 1), 0);
     return { idx, enheter: Math.round(m2.enheter[idx]), kapital: Math.round(kap), utenfor: true };
-  }, [m, s, fakta, sanert, plan.antallMnd]);
+  }, [m, s, fakta, sanert, antallMnd, plan.startYm]);
 
   /* ── Scenarioanalyse: Konservativ / Basis / Ambisiøs — beregnet på 36 mnd horisont ── */
   const autoScenarioer = useMemo(() => {
@@ -1538,8 +1573,19 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
           )}
           <span className="hidden shrink-0 rounded-full bg-[#f0efec] px-2.5 py-1 text-[10.5px] font-bold uppercase tracking-[0.06em] text-[#78716c] sm:block">Budsjett</span>
           <span className="hidden shrink-0 text-[13px] text-[#a6a19a] lg:block">
-            {stor(mndLang(plan.startYm))} – {mndLang(ymPluss(plan.startYm, plan.antallMnd - 1))} · {plan.antallMnd} mnd
+            {stor(mndLang(plan.startYm))} – {mndLang(ymPluss(plan.startYm, antallMnd - 1))} · {antallMnd} mnd
           </span>
+          {/* Horisontvelger — utvid planen til 2/3 år (henter friske fakta) */}
+          {!readOnly && (
+            <span className="hidden shrink-0 items-center gap-1 sm:flex" data-testid="modell-horisont" title="Endre planens horisont — porteføljefakta hentes på nytt for hele perioden">
+              {[[12, '1 år'], [24, '2 år'], [36, '3 år']].map(([n, l]) => (
+                <button key={n} onClick={() => endreHorisont(n)} disabled={endrerHorisont} data-testid={`modell-horisont-${n}`}
+                  className={`h-7 rounded-full px-2.5 text-[11.5px] font-bold transition-all disabled:opacity-50 ${antallMnd === n ? 'bg-[#1c1917] text-white' : 'bg-[#f0efec] text-[#8f8a82] hover:text-[#1c1917]'}`}>
+                  {endrerHorisont === n ? <Loader2 className="h-3 w-3 animate-spin" /> : l}
+                </button>
+              ))}
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-2">
           {/* Forutsetningssett — velg scenario direkte fra topplinjen */}
@@ -1804,9 +1850,9 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
                 hint="bemanningskostnaden justeres årlig" />
               <Felt label="Kostnadsinflasjon" k="kostInflasjonPct" {...feltProps} enhet="%/år" testid="driver-kostinflasjon" slider={{ min: 0, max: 10, step: 0.5 }}
                 hint="system, markedsføring, CAC, administrasjon og andre faste" />
-              {plan.antallMnd <= 12 && (
+              {antallMnd <= 12 && (
                 <p className="mt-1 rounded-[8px] bg-[#fdf3e0] px-2.5 py-1.5 text-[10.5px] leading-snug text-[#9a6b1c]">
-                  Planen er {plan.antallMnd} mnd — justeringen får først effekt i flerårsplaner (13+ måneder).
+                  Planen er {antallMnd} mnd — justeringen får først effekt i flerårsplaner (13+ måneder).
                 </p>
               )}
             </Seksjon>
@@ -1915,7 +1961,7 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
             <div className="flex flex-wrap items-center justify-between gap-2 px-4 pb-1 pt-3.5">
               <p className="text-[13.5px] font-medium text-[#8f8a82]">Resultatoppstilling <span className="text-[#c2beb8]">· beløp i kr · beregnet fra driverne</span></p>
               <div className="flex items-center gap-0.5 rounded-[8px] bg-[#f0efec] p-0.5" data-testid="modell-visning">
-                {[...(plan.antallMnd > 12 ? [['teleskop', 'Teleskop']] : []), ['mnd', 'Måned'], ['kvartal', 'Kvartal'], ...(plan.antallMnd > 12 ? [['aar', 'År']] : [])].map(([v, l]) => (
+                {[...(antallMnd > 12 ? [['teleskop', 'Teleskop']] : []), ['mnd', 'Måned'], ['kvartal', 'Kvartal'], ...(antallMnd > 12 ? [['aar', 'År']] : [])].map(([v, l]) => (
                   <button key={v} onClick={() => setVisning(v)} data-testid={`modell-visning-${v}`}
                     title={v === 'teleskop' ? 'År 1 måned for måned · år 2 kvartalsvis · år 3 årlig' : undefined}
                     className={`rounded-[6px] px-3 py-1 text-[12.5px] font-medium transition-colors ${visning === v ? 'bg-white text-[#1c1917] shadow-sm' : 'text-[#8f8a82] hover:text-[#57534e]'}`}>{l}</button>
@@ -2065,26 +2111,26 @@ export default function BudsjettModell({ plan, api, apiKey = '', readOnly = fals
             <div className="rounded-[16px] bg-white p-4 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)] lg:col-span-2 2xl:col-span-1" data-testid="modell-tornado">
               <p className="text-[13.5px] font-medium text-[#8f8a82]">Sensitivitet — hva betyr mest?</p>
               <p className="mt-0.5 text-[11.5px] text-[#a6a19a]">Effekt på periodens resultat når hver driver endres ±10 %.</p>
-              <TornadoListe m={m} sanert={sanert} fakta={fakta} antallMnd={plan.antallMnd} startYm={plan.startYm} />
+              <TornadoListe m={m} sanert={sanert} fakta={fakta} antallMnd={antallMnd} startYm={plan.startYm} />
             </div>
           </div>
         </main>
       </div>
       {bemAapen && (
         <BemanningsplanDrawer
-          plan={plan} fakta={fakta} drivere={sanert} readOnly={readOnly}
+          plan={{ ...plan, antallMnd }} fakta={fakta} drivere={sanert} readOnly={readOnly}
           onLukk={() => setBemAapen(false)} onBruk={brukBemanningsplan}
         />
       )}
       {vekstAapen && (
         <VekstplanDrawer
-          plan={plan} fakta={fakta} drivere={sanert} readOnly={readOnly}
+          plan={{ ...plan, antallMnd }} fakta={fakta} drivere={sanert} readOnly={readOnly}
           onLukk={() => setVekstAapen(false)} onBruk={brukVekstplan}
         />
       )}
       {visSammenlign && (
         <ScenarioSammenligning
-          plan={plan}
+          plan={{ ...plan, antallMnd }}
           fakta={fakta}
           drivere={drivere}
           scenarioer={scenarioer}

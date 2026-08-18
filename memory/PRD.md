@@ -693,3 +693,7 @@ Google Ads-styring via native REST API).
 - BudsjettEnkel.js: 1/2/3-års hurtigvalg ved opprettelse; bortfall-serien følger med fra forslaget.
 - Excel: levende faktor-rader (POWER-formler mot Forutsetninger B21/B23), kostformler ×kostnadsfaktor, ARR-kolonne i Årsoversikt, per-år-blokk + ARR i Sammendrag. PDF: ARR i KPI/årsoversikt + Årlig justering-blokk.
 - Backend-testet 7/7 inkl. bakoverkompatibilitet (gamle planer B21=0) og opprydding. Screenshot-QA av hele flyten.
+
+## Feb 2026 (forts. 10) — «Endre horisont» på lagrede planer
+- BudsjettModell.js: horisontvelger (1 år/2 år/3 år) i editor-headeren. endreHorisont() henter FRISKE porteføljefakta (plan/forslag) for hele den nye horisonten (eksisterende/enheter/bortfall), setter lokal antallMnd, bytter til teleskopvisning og markerer ulagret — persisteres først ved «Lagre». «Tilbakestill» ruller tilbake horisont+fakta via lagret*-speil (robust også etter mellomlagring). Barne-drawere (vekstplan/bemanning/scenario-sammenligning) får patched plan med lokal horisont.
+- Screenshot-QA: brukerens 12-mnd plan utvidet til 36 mnd i UI (uten lagring) — årsstripe, teleskop, kapitalbunn og bemanningsvarsel fungerte.
