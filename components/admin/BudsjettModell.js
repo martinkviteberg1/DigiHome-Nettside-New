@@ -18,6 +18,7 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import {
   ArrowLeft, ArrowRight, Trash2, RefreshCw, Loader2, Check, Eye, EyeOff, Plus, X, RotateCcw, ChevronDown,
   SlidersHorizontal, TrendingUp, Scale, Users, Building2, Bookmark, HelpCircle, FileSpreadsheet, FileText, ArrowLeftRight,
+  CalendarDays, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import Omvisning from '@/components/admin/Omvisning';
 import { beregnInvestorModell, rensModellDrivere, STANDARD_DRIVERE, skalerVekst } from '@/lib/budsjett-modell';
@@ -37,6 +38,89 @@ const ymPluss = (ym, i) => {
 const mndKort = (ym) => { const { y, m } = ymDeler(ym); return m >= 1 && m <= 12 ? `${MND_KORT[m - 1]}. ${String(y).slice(2)}` : ym; };
 const mndLang = (ym) => { const { y, m } = ymDeler(ym); return m >= 1 && m <= 12 ? `${MND_KORT[m - 1]}. ${y}` : ym; };
 const stor = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
+
+/* ── MndVelger — moderne månedvelger-popover (erstatter native input[type=month]).
+      Knapp m/ kalenderikon og lesbar måned → popover m/ årsnavigasjon og
+      12-måneders grid. Måneder utenfor min/maks er deaktivert. Popoveren
+      rendres position:fixed (unngår klipping i scrollende tabeller) og
+      flipper over knappen når det er trangt mot bunnen av vinduet. ── */
+function MndVelger({ value, min, max, onChange, testid }) {
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState({ x: 0, y: 0, flip: false });
+  const [visAar, setVisAar] = useState(() => ymDeler(value || min).y || new Date().getFullYear());
+  const knappRef = useRef(null);
+  const popRef = useRef(null);
+  const { y: minA, m: minM } = ymDeler(min || '1900-01');
+  const { y: maxA, m: maxM } = ymDeler(max || '2999-12');
+  const nr = (a, m) => a * 12 + (m - 1);
+  const valgt = String(value || '');
+
+  const aapne = () => {
+    const r = knappRef.current?.getBoundingClientRect();
+    if (r) {
+      const flip = r.bottom + 268 > window.innerHeight;
+      setPos({ x: Math.max(8, Math.min(r.left, window.innerWidth - 260)), y: flip ? r.top - 6 : r.bottom + 6, flip });
+    }
+    setVisAar(ymDeler(valgt).y || minA || new Date().getFullYear());
+    setOpen(true);
+  };
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const klikk = (e) => {
+      if (popRef.current?.contains(e.target) || knappRef.current?.contains(e.target)) return;
+      setOpen(false);
+    };
+    const esc = (e) => { if (e.key === 'Escape') setOpen(false); };
+    document.addEventListener('mousedown', klikk);
+    document.addEventListener('keydown', esc);
+    return () => { document.removeEventListener('mousedown', klikk); document.removeEventListener('keydown', esc); };
+  }, [open]);
+
+  return (
+    <>
+      <button type="button" ref={knappRef} onClick={() => (open ? setOpen(false) : aapne())} data-testid={testid}
+        className="flex h-8 items-center gap-1.5 rounded-[8px] bg-[#f5f4f1] pl-2.5 pr-2 text-[12.5px] font-semibold text-[#57534e] ring-1 ring-transparent transition-all hover:bg-[#efedea] focus:outline-none focus:ring-[#6d28d9]/40">
+        <CalendarDays className="h-3.5 w-3.5 text-[#a6a19a]" />
+        {valgt ? stor(mndLang(valgt)) : 'Velg måned'}
+        <ChevronDown className={`h-3 w-3 text-[#c2beb8] transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div ref={popRef} className="fixed z-[90] w-[252px] rounded-[16px] bg-white p-3 shadow-[0_18px_50px_rgba(20,16,40,0.20),inset_0_0_0_1px_rgba(0,0,0,0.05)]"
+          style={{ left: pos.x, top: pos.y, transform: pos.flip ? 'translateY(-100%)' : 'none' }} data-testid={testid ? `${testid}-popover` : undefined}>
+          <div className="flex items-center justify-between">
+            <button type="button" disabled={visAar <= minA} onClick={() => setVisAar((a) => a - 1)}
+              className="flex h-7 w-7 items-center justify-center rounded-[8px] text-[#8f8a82] transition-colors hover:bg-[#f5f4f1] hover:text-[#1c1917] disabled:opacity-25">
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <span className="text-[13.5px] font-bold tabular-nums text-[#1c1917]" style={heading}>{visAar}</span>
+            <button type="button" disabled={visAar >= maxA} onClick={() => setVisAar((a) => a + 1)}
+              className="flex h-7 w-7 items-center justify-center rounded-[8px] text-[#8f8a82] transition-colors hover:bg-[#f5f4f1] hover:text-[#1c1917] disabled:opacity-25">
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="mt-2 grid grid-cols-3 gap-1">
+            {MND_KORT.map((navn, i) => {
+              const ym = `${visAar}-${String(i + 1).padStart(2, '0')}`;
+              const deaktivert = nr(visAar, i + 1) < nr(minA, minM) || nr(visAar, i + 1) > nr(maxA, maxM);
+              const erValgt = ym === valgt;
+              return (
+                <button key={ym} type="button" disabled={deaktivert}
+                  onClick={() => { onChange(ym); setOpen(false); }}
+                  className={`h-9 rounded-[10px] text-[12px] font-bold capitalize transition-all ${erValgt
+                    ? 'text-white shadow-[0_3px_10px_rgba(59,35,115,0.3)]'
+                    : deaktivert ? 'cursor-not-allowed text-[#dcd9d3]' : 'text-[#57534e] hover:bg-[#f0ebfa] hover:text-[#6d28d9] active:scale-95'}`}
+                  style={erValgt ? { background: 'linear-gradient(135deg, #1c1917 10%, #4c2a94 140%)' } : {}}>
+                  {navn}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
 const kma = (s) => String(s).replace('.', ',');
 // Viser tall med norsk tusenskille mens man skriver (kun heltallsfelt i kr)
 const visTall = (v) => {
@@ -398,8 +482,8 @@ function BemanningsplanDrawer({ plan, fakta, drivere, readOnly, onLukk, onBruk }
                             <span className="text-[12.5px] text-[#a6a19a]">fra start</span>
                           ) : t.type === 'dato' ? (
                             readOnly ? <span className="font-semibold text-[#1c1917]">{t.fraYm ? stor(mndLang(t.fraYm)) : '—'}</span> : (
-                              <input type="month" value={t.fraYm} onChange={(e) => settTrinn(i, 'fraYm', e.target.value)} data-testid={`bemplan-trinn-ym-${i}`}
-                                className="h-8 rounded-[8px] bg-[#f5f4f1] px-2 text-[12.5px] font-semibold text-[#1c1917] outline-none ring-1 ring-transparent transition-all focus:bg-white focus:ring-[#6d28d9]/40" />
+                              <MndVelger value={t.fraYm} min={ymPluss(plan.startYm, 1)} max={ymPluss(plan.startYm, plan.antallMnd - 1)}
+                                onChange={(ym) => settTrinn(i, 'fraYm', ym)} testid={`bemplan-trinn-ym-${i}`} />
                             )
                           ) : (
                             readOnly ? <span className="font-semibold text-[#1c1917]">{kr0(t.fraEnheter)} enheter</span> : (
@@ -531,9 +615,12 @@ const VekstGraf = ({ m, startYm }) => {
 function VekstplanDrawer({ plan, fakta, drivere, readOnly, onLukk, onBruk }) {
   const tilTall = (v) => Number(String(v ?? '').replace(/\s/g, '').replace(',', '.')) || 0;
   const tilStreng = (v) => String(v ?? '').replace('.', ',');
+  // Fasene holdes ALLTID kronologisk sortert på «gjelder fra»-måneden —
+  // sortert ved innlasting, ved månedsendring og når nye faser legges til.
+  const sorterFaser = (faser) => [...faser].sort((a, b) => (Number(a.fraMnd) || 0) - (Number(b.fraMnd) || 0));
   const [draft, setDraft] = useState(() => ({
     nyePerMnd: tilStreng(drivere.nyePerMnd),
-    faser: (drivere.vekstplan || []).map((f) => ({ fraMnd: f.fraMnd, perMnd: tilStreng(f.perMnd) })),
+    faser: sorterFaser((drivere.vekstplan || []).map((f) => ({ fraMnd: f.fraMnd, perMnd: tilStreng(f.perMnd) }))),
   }));
   const N = plan.antallMnd;
   const ymFraIdx = (idx) => ymPluss(plan.startYm, idx - 1); // 1-basert fase-måned → ÅÅÅÅ-MM
@@ -565,13 +652,21 @@ function VekstplanDrawer({ plan, fakta, drivere, readOnly, onLukk, onBruk }) {
   }, [sanertDraft, N]);
   const nyeIFase = (fraMnd) => effektive.find((f) => f.fraMnd === fraMnd);
 
-  const settFase = (i, k, v) => setDraft((d) => ({ ...d, faser: d.faser.map((f, j) => (j === i ? { ...f, [k]: v } : f)) }));
+  const settFase = (i, k, v) => setDraft((d) => {
+    const faser = d.faser.map((f, j) => (j === i ? { ...f, [k]: v } : f));
+    // Månedsendring kan endre kronologien — resorter umiddelbart
+    return { ...d, faser: k === 'fraMnd' ? sorterFaser(faser) : faser };
+  });
   const fjernFase = (i) => setDraft((d) => ({ ...d, faser: d.faser.filter((_, j) => j !== i) }));
   const leggFase = () => setDraft((d) => {
-    const siste = d.faser.length ? d.faser[d.faser.length - 1] : null;
-    const fra = Math.min(N, (siste ? Number(siste.fraMnd) || 1 : 1) + 6);
-    const takt = Math.round(((siste ? tilTall(siste.perMnd) : tilTall(d.nyePerMnd)) + 1) * 10) / 10;
-    return { ...d, faser: [...d.faser, { fraMnd: fra, perMnd: tilStreng(takt) }] };
+    // Ny fase foreslås 6 mnd etter den KRONOLOGISK siste (ikke sist innlagte)
+    const sisteFra = d.faser.length ? Math.max(...d.faser.map((f) => Number(f.fraMnd) || 1)) : 1;
+    const sisteTakt = d.faser.length
+      ? d.faser.reduce((best, f) => ((Number(f.fraMnd) || 0) >= (Number(best.fraMnd) || 0) ? f : best), d.faser[0]).perMnd
+      : d.nyePerMnd;
+    const fra = Math.min(N, sisteFra + 6);
+    const takt = Math.round((tilTall(sisteTakt) + 1) * 10) / 10;
+    return { ...d, faser: sorterFaser([...d.faser, { fraMnd: fra, perMnd: tilStreng(takt) }]) };
   });
   const foreslaaTrapp = () => setDraft((d) => {
     const r = Math.max(0.5, tilTall(d.nyePerMnd) || 1);
@@ -663,9 +758,8 @@ function VekstplanDrawer({ plan, fakta, drivere, readOnly, onLukk, onBruk }) {
                           {readOnly ? (
                             <span className="font-semibold text-[#1c1917]">{stor(mndLang(ymFraIdx(f.fraMnd)))}</span>
                           ) : (
-                            <input type="month" value={ymFraIdx(f.fraMnd)} min={ymPluss(plan.startYm, 1)} max={ymPluss(plan.startYm, N - 1)}
-                              onChange={(e) => settFase(i, 'fraMnd', idxFraYm(e.target.value))} data-testid={`vekstplan-fase-fra-${i}`}
-                              className="h-8 rounded-[8px] bg-[#f5f4f1] px-2 text-[12.5px] font-medium text-[#57534e] outline-none ring-1 ring-transparent transition-all focus:bg-white focus:ring-[#6d28d9]/40" />
+                            <MndVelger value={ymFraIdx(f.fraMnd)} min={ymPluss(plan.startYm, 1)} max={ymPluss(plan.startYm, N - 1)}
+                              onChange={(ym) => settFase(i, 'fraMnd', idxFraYm(ym))} testid={`vekstplan-fase-fra-${i}`} />
                           )}
                         </td>
                         <td className="py-2 pr-2 text-right">

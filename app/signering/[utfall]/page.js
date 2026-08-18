@@ -40,6 +40,21 @@ export default function SigneringUtfall({ params, searchParams }) {
   const c = INNHOLD[utfall];
 
   useEffect(() => {
+    // Posten appender status_query_token på exit-URL-en — send det til API-et,
+    // som henter FULL jobbstatus direkte (alle signatarer) uavhengig av
+    // polling-køens tidsvinduer. Puls-pinget beholdes som fallback.
+    try {
+      const q = new URLSearchParams(window.location.search);
+      const token = q.get('status_query_token');
+      const jobb = q.get('jobb');
+      if (token) {
+        fetch('/api/signering-status-token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token, jobb: jobb || null }),
+        }).catch(() => {});
+      }
+    } catch (e) { /* stille */ }
     // Fremskynd statushenting — både signert og avvist gir en statushendelse
     // hos Posten. Endepunktet planlegger poll presist når Postens vindu åpner.
     fetch('/api/signering-puls', { method: 'POST' }).catch(() => {});

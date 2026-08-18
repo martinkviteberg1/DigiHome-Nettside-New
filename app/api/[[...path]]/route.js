@@ -6362,6 +6362,21 @@ async function handleRoute(request, { params }) {
         return NextResponse.redirect(`${baseSg}/signering/feil?grunn=${encodeURIComponent('Teknisk feil — prøv igjen om litt')}`, 302);
       }
     }
+    // OFFENTLIG: exit-siden sender Postens status_query_token hit — én GET mot
+    // jobbens status-url gir full status for ALLE signatarer umiddelbart
+    // (uavhengig av polling-køens vinduer). Tokenet er Postens autorisasjon;
+    // responsen lekker ingenting (kun ok/oppdatert).
+    if (route === '/signering-status-token' && method === 'POST') {
+      if (!rateLimit(`signtoken:${clientIp(request)}`, 10)) return cors(NextResponse.json({ ok: true, oppdatert: false }));
+      let bTok = {}; try { bTok = await request.json(); } catch (e) {}
+      try {
+        const { hentStatusMedToken } = await import('@/lib/signering');
+        const rTok = await hentStatusMedToken(db, { jobbId: bTok.jobb || null, token: bTok.token });
+        return cors(NextResponse.json({ ok: true, oppdatert: !!rTok.oppdatert }));
+      } catch (e) {
+        return cors(NextResponse.json({ ok: true, oppdatert: false }));
+      }
+    }
     // OFFENTLIG: puls fra exit-sidene — planlegger poll i det Postens vindu åpner
     if (route === '/signering-puls' && method === 'POST') {
       if (!rateLimit(`signpuls:${clientIp(request)}`, 10)) return cors(NextResponse.json({ ok: true }));

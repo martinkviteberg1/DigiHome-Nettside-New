@@ -32,6 +32,7 @@ const CHIP_W = 240; const CHIP_H = 56;
 const GX = 26;                    // luft mellom kort i en rad
 const RG = 74;                    // luft mellom rader (radetikett kommer i tillegg)
 const TRE_GAP = 170;              // luft mellom de to selskapstrærne
+const MOR_GAP = 104;              // luft mellom morselskapets kort og døtrene
 
 function sorterRoller(a, b) {
   return (a.rekkefolge - b.rekkefolge) || String(a.createdAt || '').localeCompare(String(b.createdAt || ''));
@@ -94,17 +95,42 @@ function byggTre(selskap, roller, x0) {
 }
 
 function byggLayout(selskaper, roller, modus) {
-  const valgte = modus === 'alle' ? selskaper : selskaper.filter((s) => s.id === modus);
+  const mor = (selskaper || []).find((s) => s.erMor);
+  const dotre = (selskaper || []).filter((s) => !s.erMor);
+  const valgte = modus === 'alle' ? (dotre.length ? dotre : selskaper) : selskaper.filter((s) => s.id === modus);
   let x = 0; const noder = []; const kanter = []; const etiketter = []; const traer = [];
   let hoyde = 0;
   for (const s of valgte) {
     const tre = byggTre(s, roller, x);
     noder.push(...tre.noder); kanter.push(...tre.kanter); etiketter.push(...(tre.etiketter || []));
-    traer.push({ x0: x, bredde: tre.bredde, hoyde: tre.hoyde });
+    traer.push({ x0: x, y0: 0, bredde: tre.bredde, hoyde: tre.hoyde });
     x += tre.bredde + TRE_GAP;
     hoyde = Math.max(hoyde, tre.hoyde);
   }
-  return { noder, kanter, etiketter, traer, bredde: Math.max(x - TRE_GAP, 400), hoyde: Math.max(hoyde, 300) };
+  const bredde = Math.max(x - TRE_GAP, 400);
+  const kantEtiketter = [];
+
+  // Konsernvisning: morselskapet troner øverst i midten med eierlinjer
+  // (m/ eierandel-badge) ned til hvert datterselskaps kort.
+  if (modus === 'alle' && mor && valgte.length > 0) {
+    const skyv = SH + MOR_GAP;
+    for (const n of noder) n.y += skyv;
+    for (const k of kanter) { k.y1 += skyv; k.y2 += skyv; }
+    for (const e of etiketter) e.y += skyv;
+    for (const t of traer) t.y0 = skyv;
+    const morX = bredde / 2 - SW / 2;
+    noder.unshift({ type: 'selskap', navn: 'mor', x: morX, y: 0, w: SW, h: SH, data: { selskap: mor }, selskapId: mor.id });
+    for (const sn of noder.filter((n) => n.type === 'selskap' && n.navn !== 'mor')) {
+      kanter.push({ x1: morX + SW / 2, y1: SH, x2: sn.x + SW / 2, y2: sn.y, tone: 'eier' });
+      kantEtiketter.push({
+        x: (morX + SW / 2 + sn.x + SW / 2) / 2,
+        y: (SH + sn.y) / 2,
+        tekst: `${sn.data.selskap.morPct ?? 100} %`,
+      });
+    }
+    hoyde += skyv;
+  }
+  return { noder, kanter, etiketter, kantEtiketter, traer, bredde, hoyde: Math.max(hoyde, 300) };
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -184,20 +210,22 @@ export default function Organisasjon({ apiKey, erAdmin }) {
 
   useEffect(() => { hent(); }, [hent]);
 
-  // På mobil: start med ett selskap (Begge blir for smått på liten skjerm)
+  // På mobil: start med ett selskap (konsernvisningen blir for smått)
   const mobilJustert = useRef(false);
   useEffect(() => {
     if (!data || mobilJustert.current) return;
     mobilJustert.current = true;
     if (typeof window !== 'undefined' && window.innerWidth < 640 && data.selskaper?.length) {
-      setModus(data.selskaper[0].id);
+      const forste = data.selskaper.find((s) => !s.erMor) || data.selskaper[0];
+      setModus(forste.id);
     }
   }, [data]);
 
-  // Første gang (tomt kart + admin): synk automatisk fra Brønnøysund
+  // Første gang (tomt kart eller nytt uslynket selskap + admin): synk automatisk
   useEffect(() => {
     if (!data || autoSynket.current || !erAdmin) return;
-    if ((data.roller || []).length === 0) { autoSynket.current = true; synk(true); }
+    const trengerSynk = (data.roller || []).length === 0 || (data.selskaper || []).some((s) => !s.sistSynket);
+    if (trengerSynk) { autoSynket.current = true; synk(true); }
   }, [data, erAdmin, synk]);
 
   const layout = useMemo(() => (data ? byggLayout(data.selskaper, data.roller, modus) : null), [data, modus]);
@@ -218,45 +246,7 @@ export default function Organisasjon({ apiKey, erAdmin }) {
 
   return (
     <div className="mx-auto max-w-[1720px]">
-      {/* Verktøylinje */}
-      <div className="mb-3 flex flex-wrap items-center gap-2.5">
-        <div className="max-w-full overflow-x-auto">
-          <div className="flex w-max items-center gap-0.5 rounded-full p-[3px]" style={{ background: 'rgba(0,0,0,0.045)', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.04)' }}>
-            {[...(data?.selskaper || []).map((s) => ({ id: s.id, navn: s.navn })), { id: 'alle', navn: 'Begge' }].map((v) => (
-              <button key={v.id} onClick={() => setModus(v.id)} data-testid={`org-modus-${v.id}`}
-                className={`whitespace-nowrap rounded-full px-3.5 py-1.5 text-[12px] font-bold transition-all ${modus === v.id ? 'text-white' : 'text-[#8a857d] hover:text-[#57534e]'}`}
-                style={modus === v.id ? { background: 'linear-gradient(135deg, #1c1917 10%, #4c2a94 140%)', boxShadow: '0 3px 10px rgba(59,35,115,0.25)' } : {}}>
-                {v.navn}
-              </button>
-            ))}
-          </div>
-        </div>
-        <span className="flex-1" />
-        {synkMelding && <span className="rounded-full bg-[#f0ebfa] px-3 py-1 text-[11px] font-bold text-[#6d28d9]" data-testid="org-synk-melding">{synkMelding}</span>}
-        {sistSynket && !synkMelding && <span className="hidden text-[11px] text-[#b3ada3] lg:inline">Brønnøysund · sist synket {fmtDato(sistSynket)}</span>}
-        {erAdmin && (
-          <>
-            <button onClick={() => synk(false)} disabled={synker} data-testid="org-synk-btn"
-              className="flex items-center gap-1.5 rounded-full bg-white px-3.5 py-1.5 text-[12px] font-bold text-[#44403c] shadow-[0_1px_4px_rgba(0,0,0,0.08),inset_0_0_0_1px_rgba(0,0,0,0.05)] transition-all hover:shadow-md active:scale-95">
-              <RefreshCw className={`h-3.5 w-3.5 ${synker ? 'animate-spin' : ''}`} />
-              Synk fra Brønnøysund
-            </button>
-            <button onClick={() => setVisStotte(true)} data-testid="org-stotte-btn"
-              className="flex items-center gap-1.5 rounded-full bg-white px-3.5 py-1.5 text-[12px] font-bold text-[#44403c] shadow-[0_1px_4px_rgba(0,0,0,0.08),inset_0_0_0_1px_rgba(0,0,0,0.05)] transition-all hover:shadow-md active:scale-95">
-              <Landmark className="h-3.5 w-3.5" />
-              Støtteselskap
-            </button>
-            <button onClick={() => setVisNyRolle(true)} data-testid="org-ny-rolle-btn"
-              className="flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12px] font-bold text-white transition-all hover:opacity-95 active:scale-95"
-              style={{ background: 'linear-gradient(135deg, #1c1917 10%, #4c2a94 140%)', boxShadow: '0 3px 10px rgba(59,35,115,0.3)' }}>
-              <Plus className="h-3.5 w-3.5" />
-              Legg til rolle
-            </button>
-          </>
-        )}
-      </div>
-
-      {/* Canvas */}
+      {/* Kartet fyller hele flaten — verktøylinjen flyter oppå som glass-rad */}
       {layout && (
         <div className="relative">
           <KartFeilgrense>
@@ -269,6 +259,45 @@ export default function Organisasjon({ apiKey, erAdmin }) {
               onVelg={setValgtPersonId}
             />
           </KartFeilgrense>
+
+          {/* Flytende verktøylinje */}
+          <div className="pointer-events-none absolute inset-x-3 top-3 z-20 flex flex-wrap items-center gap-2 sm:inset-x-4 sm:top-4">
+            <div className="pointer-events-auto max-w-full overflow-x-auto rounded-full bg-white/80 p-[3px] shadow-[0_4px_16px_rgba(20,16,40,0.10),inset_0_0_0_1px_rgba(0,0,0,0.05)] backdrop-blur-md" style={{ scrollbarWidth: 'none' }}>
+              <div className="flex w-max items-center gap-0.5">
+                {[{ id: 'alle', navn: 'Konsern' }, ...(data?.selskaper || []).map((s) => ({ id: s.id, navn: s.navn }))].map((v) => (
+                  <button key={v.id} onClick={() => setModus(v.id)} data-testid={`org-modus-${v.id}`}
+                    className={`whitespace-nowrap rounded-full px-3.5 py-1.5 text-[12px] font-bold transition-all ${modus === v.id ? 'text-white' : 'text-[#8a857d] hover:text-[#57534e]'}`}
+                    style={modus === v.id ? { background: 'linear-gradient(135deg, #1c1917 10%, #4c2a94 140%)', boxShadow: '0 3px 10px rgba(59,35,115,0.25)' } : {}}>
+                    {v.navn}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <span className="flex-1" />
+            {synkMelding && <span className="pointer-events-auto rounded-full bg-[#f0ebfa]/90 px-3 py-1.5 text-[11px] font-bold text-[#6d28d9] shadow-sm backdrop-blur" data-testid="org-synk-melding">{synkMelding}</span>}
+            {sistSynket && !synkMelding && <span className="hidden rounded-full bg-white/60 px-3 py-1.5 text-[10.5px] font-medium text-[#a6a19a] backdrop-blur xl:inline">Brønnøysund · sist synket {fmtDato(sistSynket)}</span>}
+            {erAdmin && (
+              <>
+                <button onClick={() => synk(false)} disabled={synker} data-testid="org-synk-btn" title="Synk fra Brønnøysund"
+                  className="pointer-events-auto flex items-center gap-1.5 rounded-full bg-white/85 px-3.5 py-1.5 text-[12px] font-bold text-[#44403c] shadow-[0_4px_16px_rgba(20,16,40,0.10),inset_0_0_0_1px_rgba(0,0,0,0.05)] backdrop-blur-md transition-all hover:shadow-md active:scale-95">
+                  <RefreshCw className={`h-3.5 w-3.5 ${synker ? 'animate-spin' : ''}`} />
+                  <span className="hidden md:inline">Synk fra Brønnøysund</span>
+                </button>
+                <button onClick={() => setVisStotte(true)} data-testid="org-stotte-btn" title="Knytt støtteselskap"
+                  className="pointer-events-auto flex items-center gap-1.5 rounded-full bg-white/85 px-3.5 py-1.5 text-[12px] font-bold text-[#44403c] shadow-[0_4px_16px_rgba(20,16,40,0.10),inset_0_0_0_1px_rgba(0,0,0,0.05)] backdrop-blur-md transition-all hover:shadow-md active:scale-95">
+                  <Landmark className="h-3.5 w-3.5" />
+                  <span className="hidden md:inline">Støtteselskap</span>
+                </button>
+                <button onClick={() => setVisNyRolle(true)} data-testid="org-ny-rolle-btn"
+                  className="pointer-events-auto flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12px] font-bold text-white transition-all hover:opacity-95 active:scale-95"
+                  style={{ background: 'linear-gradient(135deg, #1c1917 10%, #4c2a94 140%)', boxShadow: '0 3px 10px rgba(59,35,115,0.3)' }}>
+                  <Plus className="h-3.5 w-3.5" />
+                  <span className="hidden md:inline">Legg til rolle</span>
+                </button>
+              </>
+            )}
+          </div>
+
           {(data?.roller || []).length === 0 && (
             <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center p-6">
               <div className="pointer-events-auto max-w-sm rounded-[22px] bg-white/95 p-8 text-center shadow-[0_18px_50px_rgba(20,16,40,0.16)] backdrop-blur">
@@ -357,10 +386,11 @@ function OrgCanvas({ layout, personAv, flereSelskap, hoverPersonId, onHover, onV
   const tilpass = useCallback(() => {
     const el = ytreRef.current; if (!el) return;
     const cw = el.clientWidth; const ch = el.clientHeight;
+    const TOPP = 62; // den flytende verktøylinjen flyter over kartets topp
     const bw = layout.bredde + PAD * 2; const bh = layout.hoyde + PAD * 2;
-    const scale = Math.min((cw - 32) / bw, (ch - 32) / bh, 1.05);
+    const scale = Math.min((cw - 32) / bw, (ch - TOPP - 24) / bh, 1.05);
     setMyk(true);
-    setView({ x: (cw - bw * scale) / 2, y: (ch - bh * scale) / 2, scale });
+    setView({ x: (cw - bw * scale) / 2, y: TOPP + (ch - TOPP - bh * scale) / 2, scale });
   }, [layout]);
 
   useEffect(() => { tilpass(); }, [tilpass, hoydePx]);
@@ -477,7 +507,7 @@ function OrgCanvas({ layout, personAv, flereSelskap, hoverPersonId, onHover, onV
         {(layout.traer || []).map((t, i) => (
           <div key={`glow-${i}`} className="pointer-events-none absolute"
             style={{
-              left: t.x0 + PAD - 60, top: PAD - 50, width: t.bredde + 120, height: t.hoyde + 110,
+              left: t.x0 + PAD - 60, top: (t.y0 || 0) + PAD - 50, width: t.bredde + 120, height: t.hoyde + 110,
               background: 'radial-gradient(ellipse 60% 45% at 50% 26%, rgba(109,40,217,0.055), transparent 70%)',
             }} />
         ))}
@@ -488,16 +518,29 @@ function OrgCanvas({ layout, personAv, flereSelskap, hoverPersonId, onHover, onV
               <stop offset="0%" stopColor="rgba(28,25,23,0.22)" />
               <stop offset="100%" stopColor="rgba(109,40,217,0.42)" />
             </linearGradient>
+            <linearGradient id="dhOrgEier" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="rgba(109,40,217,0.55)" />
+              <stop offset="100%" stopColor="rgba(28,25,23,0.35)" />
+            </linearGradient>
           </defs>
           {layout.kanter.map((k, i) => {
             const x1 = k.x1 + PAD; const y1 = k.y1 + PAD; const x2 = k.x2 + PAD; const y2 = k.y2 + PAD;
             const midt = (y2 - y1) * 0.55;
             return (
               <path key={i} d={`M ${x1} ${y1} C ${x1} ${y1 + midt}, ${x2} ${y2 - midt}, ${x2} ${y2}`}
-                fill="none" stroke={k.tone === 'aksent' ? 'url(#dhOrgAksent)' : 'rgba(28,25,23,0.15)'} strokeWidth={k.tone === 'aksent' ? 1.8 : 1.5} strokeLinecap="round" />
+                fill="none"
+                stroke={k.tone === 'eier' ? 'url(#dhOrgEier)' : k.tone === 'aksent' ? 'url(#dhOrgAksent)' : 'rgba(28,25,23,0.15)'}
+                strokeWidth={k.tone === 'eier' ? 2.2 : k.tone === 'aksent' ? 1.8 : 1.5} strokeLinecap="round" />
             );
           })}
         </svg>
+        {/* Eierandel-badges på eierlinjene (konsernvisning) */}
+        {(layout.kantEtiketter || []).map((e, i) => (
+          <span key={`ke-${i}`} className="pointer-events-none absolute -translate-x-1/2 -translate-y-1/2 rounded-full px-2.5 py-[4px] text-[9.5px] font-black tracking-wide text-white shadow-[0_4px_12px_rgba(59,35,115,0.35)]"
+            style={{ left: e.x + PAD, top: e.y + PAD, background: 'linear-gradient(135deg, #1c1917 20%, #4c2a94 150%)', animation: 'dhOrgKantInn 600ms ease-out both' }}>
+            {e.tekst}
+          </span>
+        ))}
         {/* Radetiketter — redaksjonelle små merkelapper over hvert nivå */}
         {(layout.etiketter || []).map((e, i) => (
           <p key={`et-${i}`} className="pointer-events-none absolute flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-[0.16em] text-[#b3ada3]"
@@ -549,15 +592,20 @@ function OrgCanvas({ layout, personAv, flereSelskap, hoverPersonId, onHover, onV
 
 function SelskapKort({ node, pad, stagger = 0 }) {
   const s = node.data.selskap;
-  // Monogram: «Digihome AS» → DH, «Digihome Tech AS» → DT
-  const mono = /tech/i.test(s.navn || '') ? 'DT' : 'DH';
+  // Monogram: «SHD Gruppen AS» → SHD, «Digihome Tech AS» → DT, ellers DH
+  const mono = s.erMor || /shd/i.test(s.navn || '') ? 'SHD' : /tech/i.test(s.navn || '') ? 'DT' : 'DH';
   return (
     <div className="absolute" style={{ left: node.x + pad, top: node.y + pad, width: node.w, animation: `dhOrgKortInn 420ms cubic-bezier(0.22,1,0.36,1) ${Math.min(stagger * 45, 500)}ms both` }}>
       <div className="relative overflow-hidden rounded-[18px] px-5 py-4 text-white shadow-[0_14px_36px_rgba(28,20,60,0.30)]"
-        style={{ background: 'linear-gradient(135deg, #1c1917 15%, #3b2373 150%)', boxShadow: '0 14px 36px rgba(28,20,60,0.30), inset 0 1px 0 rgba(255,255,255,0.09)' }}>
-        <span className="pointer-events-none absolute -right-10 -top-14 h-36 w-36 rounded-full" style={{ background: 'radial-gradient(circle, rgba(139,92,246,0.22), transparent 70%)' }} />
+        style={{ background: s.erMor ? 'linear-gradient(135deg, #241c14 15%, #6b4b12 170%)' : 'linear-gradient(135deg, #1c1917 15%, #3b2373 150%)', boxShadow: '0 14px 36px rgba(28,20,60,0.30), inset 0 1px 0 rgba(255,255,255,0.09)' }}>
+        <span className="pointer-events-none absolute -right-10 -top-14 h-36 w-36 rounded-full" style={{ background: s.erMor ? 'radial-gradient(circle, rgba(212,169,78,0.26), transparent 70%)' : 'radial-gradient(circle, rgba(139,92,246,0.22), transparent 70%)' }} />
+        {s.erMor && (
+          <span className="absolute right-3 top-3 rounded-full px-2 py-[3px] text-[8.5px] font-black uppercase tracking-[0.1em] text-[#f4d795]" style={{ background: 'rgba(255,255,255,0.09)', boxShadow: 'inset 0 0 0 1px rgba(244,215,149,0.28)' }}>
+            Konsernspiss
+          </span>
+        )}
         <div className="relative flex items-center gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] text-[13px] font-black tracking-tight"
+          <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] font-black tracking-tight ${mono.length > 2 ? 'text-[11px]' : 'text-[13px]'}`}
             style={{ ...heading, background: 'rgba(255,255,255,0.10)', boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.14)' }}>
             {mono}
           </span>
